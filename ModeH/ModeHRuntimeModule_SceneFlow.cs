@@ -282,7 +282,6 @@ namespace BossRush
             _commandsClosed = false;
             _shutdownCompleted = false;
             _lastExitReasonId = null;
-            _pendingContractMainId = null;
             _recoveryDriveStateSequence = -1;
             _leaseCheckAccumulator = 0f;
             _errorSwapInputYielded = false;
@@ -405,7 +404,7 @@ namespace BossRush
 
             // 首次进入时 ProductionKeys 尚未物化；认证输入必须来自静态生产目录。
             // 有效缓存会把报告重新物化进注册表，因此仍需在双租约和地图审计之后命中。
-            if (_certification.TryUseCachedReport(ModeHRuntimeGates.SlotGeneration))
+            if (_certification.TryUseCachedReport())
             {
                 _lastCertificationUsedCache = true;
                 if (BlockSetupIfPersistedSeasonActive()) return;
@@ -480,6 +479,7 @@ namespace BossRush
         {
             long ownerToken = _runState != null ? _runState.OwnerToken : 0L;
             int generation = _sceneGeneration;
+            int shownFinishedKeys = -1;
 
             IEnumerator inner = _certification.Run(keys, _map, result);
             while (true)
@@ -502,9 +502,15 @@ namespace BossRush
                 {
                     yield break;
                 }
-                if (_ui != null)
+                // 进度只在「又热完一位」时刷新：文字要拼模板，不必每帧重拼
+                if (_ui != null && result.FinishedKeys != shownFinishedKeys)
                 {
-                    try { _ui.UpdateDiagnostics(DescribeCertificationProgress(result)); }
+                    shownFinishedKeys = result.FinishedKeys;
+                    try
+                    {
+                        _ui.UpdateDiagnostics(DescribeCertificationProgress(result),
+                            result.TotalKeys > 0 ? (float)result.FinishedKeys / result.TotalKeys : 0f);
+                    }
                     catch (Exception) { /* 诊断页失败不影响认证本身 */ }
                 }
                 // 必须把 inner.Current 透传出去：Run 内部是 `yield return CertifyKey(...)`，
@@ -556,12 +562,18 @@ namespace BossRush
             CreateDraftingSeason(result.Report);
         }
 
-        /// <summary>认证进度文案。只读 result，不分配大对象（每帧调一次）。</summary>
+        /// <summary>
+        /// 加载页进度行：「正在请选手上台热身（3/12）」。只读 result；UpdateDiagnostics 只在文字变化时写 TMP。
+        /// 旧写法在失败时直接把内部 reasonId 显示给玩家，失败原因现在只走中止提示（ResolveAbortMessageKey）。
+        /// </summary>
         private static string DescribeCertificationProgress(ModeHCertificationResult result)
         {
-            if (result == null) return string.Empty;
-            if (!string.IsNullOrEmpty(result.FailureReasonId)) return result.FailureReasonId;
-            return L10n.T(ModeHConfig.LocalizationKeyPrefix + "Diag_Progress");
+            if (result == null || result.TotalKeys <= 0) return string.Empty;
+            if (result.FinishedKeys >= result.TotalKeys)
+                return L10n.T(ModeHConfig.LocalizationKeyPrefix + "Diag_Finishing");
+            int current = Math.Min(result.FinishedKeys + 1, Math.Max(1, result.TotalKeys));
+            return L10n.T(ModeHConfig.LocalizationKeyPrefix + "Diag_Progress")
+                .Replace("{0}", current.ToString()).Replace("{1}", result.TotalKeys.ToString());
         }
 
         /// <summary>诊断页的取消按钮：等同于一次带退款的安全离场。</summary>

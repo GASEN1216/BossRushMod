@@ -50,6 +50,15 @@ namespace BossRush
         private bool _bellAccepting;
         private string _lastError;
 
+        /// <summary>官方镜头当前是否被本租约指到了选手身上（还原的唯一判据，幂等）。</summary>
+        private bool _cameraRedirected;
+        /// <summary>是否把官方战争迷雾临时放宽成「看台周围全视野」，以及放宽前的原值。</summary>
+        private bool _visionWidened;
+        private bool _originalAllVision;
+        private FogOfWarManager _widenedFogManager;
+        private static System.Reflection.FieldInfo _allVisionField;
+        private static bool _allVisionResolved;
+
         #endregion
 
         #region 只读
@@ -188,6 +197,9 @@ namespace BossRush
 
             // 1) 停止接收拍铃
             _bellAccepting = false;
+
+            // 1.5) 恢复控制目标的观感：官方镜头对回玩家身体、战争迷雾还原（幂等，场景已换时只丢引用）
+            RestoreCameraTarget();
 
             bool sameGeneration = currentSceneGeneration == _sceneGeneration;
             bool playerAlive = _hadPlayerReference && _player != null;
@@ -355,6 +367,119 @@ namespace BossRush
                 // token 销毁失败只丢弃引用
             }
             _inputToken = null;
+        }
+
+        #endregion
+
+        #region 观战镜头（2026-09-23 owner 实测：「选完后完全看不到有斗蛐蛐」）
+
+        /// <summary>
+        /// 每帧由模块调用：交战期间把官方 GameCamera 对准当前登场选手，离开交战相位对回玩家身体。
+        ///
+        /// 只调官方公开的 <c>GameCamera.SetTarget</c>，不动 <c>LevelManager.ControllingCharacter</c>——
+        /// 后者会把选手交给玩家操控、关掉它的 AI（那是 ERROR 互换的事）。输入仍由本租约阻断，
+        /// 镜头跟着谁都不会让玩家动到选手。ERROR 互换期间官方自己把镜头交给受控选手，与这里目标一致；
+        /// 互换结束官方把镜头还给玩家身体，下一帧这里再指回选手。
+        ///
+        /// 交战中选手引用为空或已销毁（先发倒下、接力正在入场）时保持当前镜头不动，不闪回看台。
+        /// O(1)、零分配：只做两次引用比较，目标变化时才调 SetTarget（它会重置 0.6 秒的镜头过渡）。
+        /// </summary>
+        public void SyncCameraTarget(CharacterMainControl fighter, bool matchLive)
+        {
+            if (!IsActive) return;
+            if (!matchLive)
+            {
+                if (_cameraRedirected || _visionWidened) RestoreCameraTarget();
+                return;
+            }
+            if (fighter == null) return;
+            try
+            {
+                GameCamera camera = GameCamera.Instance;
+                if (camera == null) return;
+                if (!ReferenceEquals(camera.target, fighter)) camera.SetTarget(fighter);
+                _cameraRedirected = true;
+                if (!_visionWidened) WidenSpectatorVision();
+            }
+            catch (Exception)
+            {
+                // 镜头跟不上只是看不清，不影响比赛与还原
+            }
+        }
+
+        /// <summary>
+        /// 幂等还原：镜头对回当前受控角色（正常就是玩家身体），战争迷雾恢复原值。
+        /// 结算、技术中止、倒地收尾、离场与租约释放都会走到这里；场景已换时旧引用判空后只清标记。
+        /// </summary>
+        public void RestoreCameraTarget()
+        {
+            if (_cameraRedirected)
+            {
+                _cameraRedirected = false;
+                try
+                {
+                    GameCamera camera = GameCamera.Instance;
+                    CharacterMainControl body = null;
+                    if (LevelManager.Instance != null) body = LevelManager.Instance.ControllingCharacter;
+                    if (body == null) body = _player != null ? _player : CharacterMainControl.Main;
+                    if (camera != null && body != null && !ReferenceEquals(camera.target, body)) camera.SetTarget(body);
+                }
+                catch (Exception)
+                {
+                    // 关卡已卸载：镜头随场景一起重建，无需补偿
+                }
+            }
+            RestoreSpectatorVision();
+        }
+
+        /// <summary>
+        /// 战争迷雾以受控角色（看台上的玩家身体）为中心，只露出它朝向的扇形。选手在十几到四十多米外开打，
+        /// 在 Raid 图上很可能整场被 DuckovHider 藏起来。官方 FogOfWarManager 自带「全视野」分支
+        /// （非 Raid 图或关闭迷雾规则时 360° / 50 米），这里只在观战期间临时打开它，结束还原原值。
+        /// 字段是私有的，读不到就什么都不做（镜头仍然跟随，最坏只是 Raid 图上看不到人）。
+        /// </summary>
+        private void WidenSpectatorVision()
+        {
+            try
+            {
+                FogOfWarManager fog = LevelManager.Instance != null ? LevelManager.Instance.FogOfWarManager : null;
+                if (fog == null) return;
+                if (!_allVisionResolved)
+                {
+                    _allVisionResolved = true;
+                    _allVisionField = typeof(FogOfWarManager).GetField("allVision",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                }
+                if (_allVisionField == null || _allVisionField.FieldType != typeof(bool)) return;
+                _originalAllVision = (bool)_allVisionField.GetValue(fog);
+                _widenedFogManager = fog;
+                _visionWidened = true;
+                if (!_originalAllVision) _allVisionField.SetValue(fog, true);
+            }
+            catch (Exception)
+            {
+                _visionWidened = false;
+                _widenedFogManager = null;
+            }
+        }
+
+        private void RestoreSpectatorVision()
+        {
+            if (!_visionWidened) return;
+            _visionWidened = false;
+            FogOfWarManager fog = _widenedFogManager;
+            _widenedFogManager = null;
+            try
+            {
+                if (fog != null && _allVisionField != null && !_originalAllVision)
+                {
+                    _allVisionField.SetValue(fog, false);
+                }
+            }
+            catch (Exception)
+            {
+                // 迷雾管理器已随场景销毁：新场景的实例本来就是原值
+            }
         }
 
         #endregion

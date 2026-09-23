@@ -13,7 +13,9 @@ ModeHPresetEligibilityGuard — Mode H 选手资格与生产目录守卫（设�
 
 运行时认证不变式：
 - 逐 key 用同一审计 preset 的两个独立 clone（scav/wolf）做双向敌对与规范死亡诊断；
-- 报告带 game/mod/content 三签名，按四签名缓存并命中才跳过逐 key 诊断；
+- 报告带 game/mod/content 三签名，按三签名缓存并命中才跳过逐 key 诊断
+  （2026-09-23 起 slotGeneration 只记录不比对：它是进程内计数器，每次启动从 0 起，
+  当键会让同一构建每开一次游戏都重跑热身；负向断言在 ModeHSaveCompatibilityGuard）；
 - 缓存不得跳过 arena isolation lease、spectator lease 与地图点位审计；
 - 存在“强制重新认证”入口；
 - isBoss/team/vehicle/showName/canDie/附件/managed key 过滤存在，
@@ -213,8 +215,8 @@ def main():
             (r"CertificationPerKeyTimeoutSeconds", "逐 key 15 秒上限"),
             (r"CertificationPoolTimeoutSeconds", "全池 180 秒上限"),
             (r"certification_pool_timeout", "全池超时条目标 Rejected"),
-            (r"TryUseCachedReport\(int slotGeneration\)", "四签名缓存命中入口"),
-            (r"TryGetCertificationCache\(game, mod, content, slotGeneration\)", "四签名键控"),
+            (r"internal bool TryUseCachedReport\(\)", "三签名缓存命中入口"),
+            (r"TryGetCertificationCache\(game, mod, content\)", "三签名键控（不带进程内 slotGeneration）"),
             (r"internal static bool InvalidateCache\(out string error\)", "强制重新认证入口"),
             (r"PassesStaticAudit\(CharacterRandomPreset preset, out string failureReasonId\)",
              "回查原版 preset 做资格审计"),

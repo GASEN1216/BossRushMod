@@ -111,13 +111,28 @@ def main():
             (r"envelope\.records\.RemoveAt\(0\);", "超上限删除最旧一条"),
             (r"string\.Equals\(existing\.hallOfFameId, record\.hallOfFameId, StringComparison\.Ordinal\)",
              "按稳定 ID 去重"),
-            (r"TryGetCertificationCache\(", "四签名认证缓存读取"),
-            (r"cache\.slotGeneration != slotGeneration", "缓存按 slotGeneration 键控"),
+            (r"TryGetCertificationCache\(", "三签名认证缓存读取"),
+            (r"string\.Equals\(cache\.gameBuildSignature, gameBuildSignature, StringComparison\.Ordinal\)",
+             "缓存按游戏构建签名键控"),
+            (r"string\.Equals\(cache\.modBuildSignature, modBuildSignature, StringComparison\.Ordinal\)",
+             "缓存按 Mod 构建签名键控"),
+            (r"string\.Equals\(cache\.contentCatalogSignature, contentCatalogSignature, StringComparison\.Ordinal\)",
+             "缓存按内容目录签名键控"),
+            (r"cache\.slotGeneration = slotGeneration;", "写缓存时仍记录 slotGeneration（DTO 与摘要口径不变）"),
             (r"if \(!cache\.snapshot\.overallPassed\) return null;", "未通过的缓存不得命中"),
         ]
         for pattern, desc in checks:
             if not re.search(pattern, code):
                 errors.append("[HallOfFame] 不满足: " + desc)
+        # 读缓存不得再比对 slotGeneration（2026-09-23）：它是进程内计数器，每次启动从 0 起、每次选档 +1，
+        # 当键会让同一构建、同一存档每开一次游戏都重跑整轮热身（owner 实测「一进去就在跑什么契约」）。
+        # 槽位身份由存储位置保证：envelope 存在当前槽文件里，OnSetFile 清空 _cache 重读。
+        lookup = re.search(r"public static ModeHProductionCertificationDto TryGetCertificationCache\([\s\S]*?\n        \}",
+                           code)
+        if lookup is None:
+            errors.append("[HallOfFame] 找不到 TryGetCertificationCache 方法体")
+        elif "slotGeneration" in lookup.group(0):
+            errors.append("[HallOfFame] 认证缓存读取不得再按进程内 slotGeneration 键控（会让缓存跨启动失效）")
         # 不得因签名不同删除旧记录
         if re.search(r"records\.Clear\(\)", code):
             errors.append("[HallOfFame] 不得清空历史记录")

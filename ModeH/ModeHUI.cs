@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Duckov.Utilities;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -35,8 +34,9 @@ namespace BossRush
     ///   `BossRushUILayers` 常量，本文件不得出现裸层级数字；
     /// - 遮罩只用 `BossRushUI.CreateBackdrop`，皮肤走 `BossRushUI.ApplyPanelSkin`，
     ///   颜色只用 `BossRushUIColors` token，文本一律 TMP；
-    /// - 官方 prefab 优先：按钮先取 `GameplayDataSettings.UIPrefabs.Button`，
-    ///   为 null 时回退共享库手搓；
+    /// - 页面按钮走共享库 `ZombieModeUIHelper.CreateButton`；拍铃是一整张可点的卡片
+    ///   （2026-09-23 owner 实测：旧的官方 prefab 大按钮压在底部快捷栏上、样子也丑），
+    ///   卡片挂在左上状态卡正下方，三态靠描边、徽章与文字区分；
     /// - HUD 与诊断层挂 `GraphicRaycaster` 但**不** `ClaimModalInput`、不暂停时间；
     ///   六个非战斗模态页共用**唯一**一个 `ModalInputLease`，
     ///   owner label 为 `ModeH:&lt;lifecycle&gt;:&lt;runId&gt;`，页面切换不重复 claim；
@@ -64,8 +64,21 @@ namespace BossRush
         private TextMeshProUGUI _hudRelay;
         private TextMeshProUGUI _hudEnemies;
         private Button _bellButton;
-        private TextMeshProUGUI _bellLabel;
+        private Image _bellStroke;
+        private Image _bellBadge;
+        private TextMeshProUGUI _bellBadgeText;
+        private TextMeshProUGUI _bellTitle;
+        private TextMeshProUGUI _bellHint;
+        private TextMeshProUGUI _bellSubtitle;
         private Image _bellWindowBar;
+        /// <summary>本场锁定口令的白话说明（开打时由模块写入一次）。</summary>
+        private string _bellCommandPlain;
+        /// <summary>拍铃卡当前画的是哪一态（-1 = 未画）；只在态或口令名变化时重写文字，避免每次刷新都拼串。</summary>
+        private int _bellShownState = -1;
+        private string _bellShownName;
+
+        private TextMeshProUGUI _diagProgressText;
+        private Image _diagProgressFill;
 
         private float _hudRefreshAccumulator;
         private int _lastTimerSeconds = -1;
@@ -147,48 +160,61 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 拍铃按钮：全场唯一主动操作，HUD 底部中央大按钮，三态呈现。
-        /// 官方 prefab 优先，为 null 时回退共享库手搓。
+        /// 拍铃卡：全场唯一主动操作。整张卡就是按钮，挂在左上状态卡正下方（旧版在底部正中，
+        /// 正好压住官方快捷栏）。左边一个圆徽章，右边「拍铃：口令名」+ 一句白话说明，
+        /// 底边一条细线是口令生效的 6 秒倒计时。三态：可拍（青色描边）/ 生效中（绿色）/ 已用完（灰）。
         /// </summary>
         private void CreateBellButton(Action onRingBell)
         {
-            Button official = TryInstantiateOfficialButton(_hudRoot.transform);
-            if (official != null)
-            {
-                RectTransform rect = official.GetComponent<RectTransform>();
-                rect.anchorMin = new Vector2(0.5f, 0f);
-                rect.anchorMax = new Vector2(0.5f, 0f);
-                rect.pivot = new Vector2(0.5f, 0.5f);
-                rect.sizeDelta = BellButtonSize;
-                rect.anchoredPosition = new Vector2(0f, BellButtonBottomOffset);
-                _bellButton = official;
-                _bellLabel = official.GetComponentInChildren<TextMeshProUGUI>();
-            }
-            else
-            {
-                _bellButton = ZombieModeUIHelper.CreateButton(
-                    "ModeH_Bell", _hudRoot.transform,
-                    L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_RingBell"),
-                    new Vector2(0.5f, 0f), new Vector2(0f, BellButtonBottomOffset),
-                    BellButtonSize, BossRushUIColors.Accent, 30f,
-                    new Vector2(BellButtonSize.x - 16f, BellButtonSize.y - 16f), null, true);
-                _bellLabel = _bellButton.GetComponentInChildren<TextMeshProUGUI>();
-            }
+            GameObject card = ZombieModeUIHelper.CreateRect(
+                "ModeH_Bell", _hudRoot.transform,
+                new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(StatusMargin + BellCardSize.x * 0.5f,
+                    -(StatusMargin + StatusSize.y + BellCardGap + BellCardSize.y * 0.5f)),
+                BellCardSize, new Vector2(0.5f, 0.5f));
+            Image background = card.AddComponent<Image>();
+            background.color = Color.white;
+            BossRushUI.ApplyPanelSkin(background, 10, BossRushUISkinPart.Card);
+            _bellStroke = BossRushUI.ApplyPanelStroke(background, 10, BossRushUISkinPart.Card, BossRushUIColors.Accent);
+            _bellButton = card.AddComponent<Button>();
+            _bellButton.targetGraphic = background;
 
-            if (_bellLabel != null) BossRushUI.ApplyGameFont(_bellLabel);
+            GameObject badge = ZombieModeUIHelper.CreateRect(
+                "Badge", card.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
+                new Vector2(BellInnerPadding + BellBadgeSize * 0.5f, 2f),
+                new Vector2(BellBadgeSize, BellBadgeSize), new Vector2(0.5f, 0.5f));
+            _bellBadge = badge.AddComponent<Image>();
+            _bellBadge.sprite = BossRushUI.GetRoundedSprite((int)(BellBadgeSize * 0.5f));
+            _bellBadge.type = Image.Type.Sliced;
+            _bellBadge.raycastTarget = false;
+            // 「铃」字本身就是图标：官方中文字体一定有字形，不依赖图片资源。
+            _bellBadgeText = CreateBellText(badge.transform, "Glyph", L10n.T("铃", "!"), 40f,
+                TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), Vector2.zero,
+                new Vector2(BellBadgeSize, BellBadgeSize));
+
+            float textLeft = BellInnerPadding + BellBadgeSize + 14f;
+            float textWidth = BellCardSize.x - textLeft - BellInnerPadding;
+            _bellTitle = CreateBellText(card.transform, "Title", string.Empty, 26f, TextAlignmentOptions.Left,
+                new Vector2(0f, 0.5f), new Vector2(textLeft, 20f),
+                new Vector2(textWidth - BellHintWidth, BellTitleHeight));
+            _bellHint = CreateBellText(card.transform, "Hint", string.Empty, 17f, TextAlignmentOptions.Right,
+                new Vector2(1f, 0.5f), new Vector2(-BellInnerPadding, 20f), new Vector2(BellHintWidth, 30f));
+            _bellSubtitle = CreateBellText(card.transform, "Subtitle", string.Empty, 19f, TextAlignmentOptions.Left,
+                new Vector2(0f, 0.5f), new Vector2(textLeft, -20f), new Vector2(textWidth, BellSubtitleHeight));
+
             if (onRingBell != null)
             {
                 _bellButton.onClick.RemoveAllListeners();
                 _bellButton.onClick.AddListener(delegate { onRingBell(); });
             }
 
-            // 口令窗口倒计时条
+            // 口令窗口倒计时：卡片底边一条细线
             GameObject bar = ZombieModeUIHelper.CreateRect(
-                "ModeH_BellWindow", _bellButton.transform,
+                "ModeH_BellWindow", card.transform,
                 new Vector2(0f, 0f), new Vector2(1f, 0f),
-                new Vector2(0f, 4f), new Vector2(0f, 6f), new Vector2(0.5f, 0f));
+                new Vector2(0f, 7f), new Vector2(-BellInnerPadding * 2f, 4f), new Vector2(0.5f, 0f));
             _bellWindowBar = bar.AddComponent<Image>();
-            _bellWindowBar.color = BossRushUIColors.Success;
+            _bellWindowBar.color = BossRushUIColors.SuccessText;
             _bellWindowBar.raycastTarget = false;
             // Filled 必须有 sprite：sprite 为 null 时 Image.OnPopulateMesh 直接退回整块矩形，
             // fillAmount 被完全忽略——口令倒计时条会一直满格、fillAmount=0 时也不消失。
@@ -196,6 +222,43 @@ namespace BossRush
             _bellWindowBar.type = Image.Type.Filled;
             _bellWindowBar.fillMethod = Image.FillMethod.Horizontal;
             _bellWindowBar.fillAmount = 0f;
+
+            _bellShownState = -1;
+            UpdateBellState(true, false, null, 0f);
+        }
+
+        /// <summary>
+        /// 拍铃卡上的一行字。单行框高至少 1.45×字号 + 4：TMP 的 Ellipsis 在框比一行还矮时会把整串清空。
+        /// </summary>
+        private static TextMeshProUGUI CreateBellText(Transform parent, string name, string value, float fontSize,
+            TextAlignmentOptions alignment, Vector2 anchor, Vector2 position, Vector2 size)
+        {
+            GameObject obj = ZombieModeUIHelper.CreateRect(name, parent, anchor, anchor, position, size,
+                new Vector2(anchor.x, 0.5f));
+            TextMeshProUGUI text = ZombieModeUIHelper.CreateTMPText(
+                obj, value, fontSize, alignment, BossRushUIColors.TextPrimary);
+            text.enableWordWrapping = false;
+            BossRushUI.ApplyGameFont(text);
+            return text;
+        }
+
+        /// <summary>
+        /// 入场时写入本场锁定口令（名字 + 白话说明）。拍铃卡还在「可拍」态时立刻重画，
+        /// 入场那一两秒就能看到口令；生效中 / 已用完时只标脏，下一次 HUD 刷新再画，不闪回「可拍」。
+        /// </summary>
+        public void SetBellCommand(string commandName, string plainMeaning)
+        {
+            bool plainChanged = !string.Equals(plainMeaning, _bellCommandPlain, StringComparison.Ordinal);
+            _bellCommandPlain = plainMeaning;
+            if (_bellShownState == -1 || _bellShownState == BellStateReady)
+            {
+                _bellShownState = -1;
+                UpdateBellState(true, false, commandName, 0f);
+            }
+            else if (plainChanged)
+            {
+                _bellShownState = -1;
+            }
         }
 
         /// <summary>
@@ -262,40 +325,73 @@ namespace BossRush
             }
             if (_hudEnemies != null)
             {
-                _hudEnemies.text = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Summary_EnemyCount")
+                // 这一行是**场上还活着的敌人数**。旧版借用了看盘页「人数区间」的标签，
+                // 玩家看到「人数区间 2」不知道在说什么（2026-09-23 owner 实测截图）。
+                _hudEnemies.text = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Hud_EnemiesLeft")
                     + "  " + liveEnemyCount;
             }
 
             UpdateBellState(bellAvailable, bellConsumed, lockedCommandName, commandWindowRemaining);
         }
 
-        /// <summary>三态：可用 + 口令名 / 窗口进行中 / 已消耗置灰。</summary>
+        private const int BellStateReady = 0;
+        private const int BellStateActive = 1;
+        private const int BellStateUsed = 2;
+
+        /// <summary>
+        /// 三态：可拍（青色描边、可点）/ 口令生效中（绿色、倒计时线）/ 本场已用完（灰）。
+        /// 态和口令名都没变时只推进倒计时线，不重写文字。
+        /// </summary>
         private void UpdateBellState(
             bool bellAvailable, bool bellConsumed, string lockedCommandName, float windowRemaining)
         {
             if (_bellButton == null) return;
 
-            if (windowRemaining > 0f)
+            int state = windowRemaining > 0f ? BellStateActive
+                : (bellConsumed || !bellAvailable ? BellStateUsed : BellStateReady);
+            if (state == _bellShownState && string.Equals(lockedCommandName, _bellShownName, StringComparison.Ordinal))
             {
-                _bellButton.interactable = false;
-                SetBellLabel(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Command_WindowActive"));
-                SetBellTint(BossRushUIColors.Success);
+                UpdateBellWindowBar(windowRemaining);
+                return;
             }
-            else if (bellConsumed || !bellAvailable)
+            _bellShownState = state;
+            _bellShownName = lockedCommandName;
+
+            string prefix = ModeHConfig.LocalizationKeyPrefix;
+            string name = string.IsNullOrEmpty(lockedCommandName) ? string.Empty : L10n.T("：", ": ") + lockedCommandName;
+            string plain = _bellCommandPlain ?? string.Empty;
+            if (state == BellStateActive)
             {
                 _bellButton.interactable = false;
-                SetBellLabel(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Command_BellConsumed"));
-                SetBellTint(BossRushUIColors.Disabled);
+                SetBellCard(L10n.T(prefix + "Command_WindowActive") + name, string.Empty, plain,
+                    BossRushUIColors.SuccessText, BossRushUIColors.Success, BossRushUIColors.SuccessText);
+            }
+            else if (state == BellStateUsed)
+            {
+                _bellButton.interactable = false;
+                SetBellCard(L10n.T(prefix + "Command_BellConsumed"), string.Empty,
+                    L10n.T(prefix + "Hud_BellUsedHint"),
+                    BossRushUIColors.Stroke, BossRushUIColors.Disabled, BossRushUIColors.TextSecondary);
             }
             else
             {
                 _bellButton.interactable = true;
-                string label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_RingBell");
-                if (!string.IsNullOrEmpty(lockedCommandName)) label += "  ·  " + lockedCommandName;
-                SetBellLabel(label);
-                SetBellTint(BossRushUIColors.Accent);
+                SetBellCard(L10n.T(prefix + "Button_RingBell") + name, L10n.T(prefix + "Hud_BellOncePerMatch"),
+                    plain, BossRushUIColors.Accent, BossRushUIColors.Accent, BossRushUIColors.TextPrimary);
             }
             UpdateBellWindowBar(windowRemaining);
+        }
+
+        private void SetBellCard(string title, string hint, string subtitle,
+            Color stroke, Color badge, Color titleColor)
+        {
+            SetBellTint(BossRushUIColors.SurfaceRaised);
+            if (_bellStroke != null) _bellStroke.color = stroke;
+            if (_bellBadge != null) _bellBadge.color = badge;
+            if (_bellBadgeText != null) _bellBadgeText.color = BossRushUI.GetButtonTextColor(badge);
+            if (_bellTitle != null) { _bellTitle.text = title; _bellTitle.color = titleColor; }
+            if (_bellHint != null) { _bellHint.text = hint; _bellHint.color = BossRushUIColors.TextSecondary; }
+            if (_bellSubtitle != null) { _bellSubtitle.text = subtitle; _bellSubtitle.color = BossRushUIColors.TextSecondary; }
         }
 
         private void UpdateBellWindowBar(float windowRemaining)
@@ -307,18 +403,12 @@ namespace BossRush
             _bellWindowBar.fillAmount = Mathf.Clamp01(fill);
         }
 
-        private void SetBellLabel(string text)
-        {
-            if (_bellLabel != null) _bellLabel.text = text;
-        }
-
         private void SetBellTint(Color color)
         {
             if (_bellButton == null) return;
             // 底色走 ColorBlock：直接写 Image.color 会和 ColorTint 相乘，三态越切越暗。
+            // 不可点的两态由 ColorBlock 的 disabledColor 自动压暗，状态差别主要靠描边与徽章颜色。
             ZombieModeUIHelper.SetButtonBaseColor(_bellButton, color);
-            // 官方 prefab 的标签不叫 "Text"，ApplyButtonColors 够不到，这里显式补一次。
-            if (_bellLabel != null) _bellLabel.color = BossRushUI.GetButtonTextColor(color);
         }
 
         #endregion
@@ -337,8 +427,15 @@ namespace BossRush
             _hudRelay = null;
             _hudEnemies = null;
             _bellButton = null;
-            _bellLabel = null;
+            _bellStroke = null;
+            _bellBadge = null;
+            _bellBadgeText = null;
+            _bellTitle = null;
+            _bellHint = null;
+            _bellSubtitle = null;
             _bellWindowBar = null;
+            _bellShownState = -1;
+            _bellShownName = null;
             _lastTimerSeconds = -1;
             _lastEnemyCount = -1;
         }
@@ -346,8 +443,9 @@ namespace BossRush
         #region 诊断覆盖层
 
         /// <summary>
-        /// 生产兼容性诊断：独立实时覆盖层，挂 raycaster 但不 claim 模态输入、
-        /// 不暂停 `Time.timeScale`。唯一可交互控件是 owner-checked“取消并退款”。
+        /// 生产认证期间的加载页（玩家看到的是「擂台准备中」）：独立实时覆盖层，挂 raycaster 但不 claim
+        /// 模态输入、不暂停 `Time.timeScale`。一句白话说明为什么要等、一行「正在请选手上台热身（3/12）」、
+        /// 一条进度条；唯一可交互控件是 owner-checked 的「取消并退票」。
         /// </summary>
         public void EnsureDiagnostics(Action onCancelAndRefund)
         {
@@ -364,39 +462,69 @@ namespace BossRush
 
             CreateTitle(surface.transform,
                 L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Diagnostics"), DiagnosticsSize);
-            CreateBody(surface.transform,
-                L10n.T(ModeHConfig.LocalizationKeyPrefix + "Diag_ReadOnlyNotice"),
-                DiagnosticsSize, 0f);
+            float innerWidth = DiagnosticsSize.x - SafeMargin * 2f;
+            GameObject notice = ZombieModeUIHelper.CreateRect(
+                "ModeH_Body", surface.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0f, 50f), new Vector2(innerWidth, 84f), new Vector2(0.5f, 0.5f));
+            TextMeshProUGUI noticeText = ZombieModeUIHelper.CreateTMPText(notice,
+                L10n.T(ModeHConfig.LocalizationKeyPrefix + "Diag_ReadOnlyNotice"), 20f,
+                TextAlignmentOptions.Center, BossRushUIColors.TextSecondary);
+            BossRushUI.ApplyGameFont(noticeText);
+
+            GameObject progress = ZombieModeUIHelper.CreateRect(
+                "ModeH_Progress", surface.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0f, -16f), new Vector2(innerWidth, 40f), new Vector2(0.5f, 0.5f));
+            _diagProgressText = ZombieModeUIHelper.CreateTMPText(progress, string.Empty, 24f,
+                TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
+            BossRushUI.ApplyGameFont(_diagProgressText);
+
+            GameObject track = ZombieModeUIHelper.CreateRect(
+                "ModeH_ProgressTrack", surface.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0f, -58f), new Vector2(innerWidth, 8f), new Vector2(0.5f, 0.5f));
+            Image trackImage = track.AddComponent<Image>();
+            trackImage.color = BossRushUIColors.Header;
+            trackImage.raycastTarget = false;
+            BossRushUI.ApplyPanelSkin(trackImage, 3, BossRushUISkinPart.Hairline);
+            GameObject fill = ZombieModeUIHelper.CreateRect(
+                "Fill", track.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero,
+                new Vector2(0.5f, 0.5f));
+            _diagProgressFill = fill.AddComponent<Image>();
+            _diagProgressFill.color = BossRushUIColors.Accent;
+            _diagProgressFill.raycastTarget = false;
+            _diagProgressFill.sprite = BossRushUI.GetSolidSprite();   // Filled 没有 sprite 时 fillAmount 不生效
+            _diagProgressFill.type = Image.Type.Filled;
+            _diagProgressFill.fillMethod = Image.FillMethod.Horizontal;
+            _diagProgressFill.fillAmount = 0f;
 
             ZombieModeUIHelper.CreateButton(
                 "ModeH_DiagCancel", surface.transform,
                 L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_CancelAndRefund"),
                 new Vector2(0.5f, 0f), new Vector2(0f, SafeMargin + 28f),
-                new Vector2(320f, 56f), BossRushUIColors.Danger, 24f,
-                new Vector2(300f, 44f),
+                new Vector2(280f, 52f), BossRushUIColors.Danger, 22f,
+                new Vector2(260f, 40f),
                 onCancelAndRefund != null ? new UnityEngine.Events.UnityAction(onCancelAndRefund) : null,
                 onCancelAndRefund != null);
 
             BossRushUI.PlayOpenAnimation(surface);
         }
 
-        /// <summary>只在状态变化时刷新诊断列表。</summary>
-        public void UpdateDiagnostics(string progressText)
+        /// <summary>刷新加载页的进度行与进度条。调用方只在「又热完一位」时调。</summary>
+        public void UpdateDiagnostics(string progressText, float progress01)
         {
             if (_diagnosticsRoot == null) return;
-            Transform body = _diagnosticsRoot.transform.Find(
-                "ModeH_DiagnosticsSurface/ModeH_Body");
-            if (body == null) return;
-            TextMeshProUGUI text = body.GetComponent<TextMeshProUGUI>();
-            if (text != null && !string.Equals(text.text, progressText, StringComparison.Ordinal))
+            if (_diagProgressText != null
+                && !string.Equals(_diagProgressText.text, progressText, StringComparison.Ordinal))
             {
-                text.text = progressText;
+                _diagProgressText.text = progressText;
             }
+            if (_diagProgressFill != null) _diagProgressFill.fillAmount = Mathf.Clamp01(progress01);
         }
 
         /// <summary>幂等销毁诊断覆盖层。</summary>
         public void DestroyDiagnostics()
         {
+            _diagProgressText = null;
+            _diagProgressFill = null;
             if (_diagnosticsRoot == null) return;
             UnityEngine.Object.Destroy(_diagnosticsRoot);
             _diagnosticsRoot = null;
@@ -490,24 +618,6 @@ namespace BossRush
 
         #region 共享构件
 
-        /// <summary>官方按钮 prefab 优先；不可用时返回 null 由调用方回退共享库。</summary>
-        internal static Button TryInstantiateOfficialButton(Transform parent)
-        {
-            try
-            {
-                if (GameplayDataSettings.UIPrefabs == null) return null;
-                Button prefab = GameplayDataSettings.UIPrefabs.Button;
-                if (prefab == null) return null;
-                Button instance = UnityEngine.Object.Instantiate(prefab, parent, false);
-                return instance;
-            }
-            catch (Exception)
-            {
-                // 官方 prefab 不可用（版本差异或尚未加载）：回退共享库手搓
-                return null;
-            }
-        }
-
         internal static TextMeshProUGUI CreateTitle(Transform parent, string title, Vector2 panelSize)
         {
             GameObject obj = ZombieModeUIHelper.CreateRect(
@@ -554,22 +664,32 @@ namespace BossRush
         internal static readonly Vector2 StatusSize = new Vector2(560f, 220f);
         /// <summary>计时区固定尺寸。</summary>
         internal static readonly Vector2 TimerSize = new Vector2(320f, 96f);
-        /// <summary>拍铃按钮稳定点击区。</summary>
-        internal static readonly Vector2 BellButtonSize = new Vector2(160f, 72f);
+        /// <summary>拍铃卡尺寸：与状态卡同宽，挂在它正下方（整张卡都是点击区）。</summary>
+        internal static readonly Vector2 BellCardSize = new Vector2(560f, 112f);
+        /// <summary>拍铃卡与状态卡之间的间隙。</summary>
+        internal const float BellCardGap = 12f;
+        /// <summary>拍铃卡内边距。</summary>
+        internal const float BellInnerPadding = 16f;
+        /// <summary>拍铃卡左侧圆徽章直径。</summary>
+        internal const float BellBadgeSize = 76f;
+        /// <summary>拍铃卡右上「每场一次」提示宽度。</summary>
+        internal const float BellHintWidth = 120f;
+        /// <summary>标题行高：26 号字单行至少 1.45×26+4≈42。</summary>
+        internal const float BellTitleHeight = 44f;
+        /// <summary>白话说明行高：19 号字单行至少 1.45×19+4≈32。</summary>
+        internal const float BellSubtitleHeight = 34f;
         /// <summary>主页面面板尺寸。</summary>
         internal static readonly Vector2 MainPanelSize = new Vector2(1480f, 860f);
         /// <summary>战报面板尺寸。</summary>
         internal static readonly Vector2 ReportPanelSize = new Vector2(1180f, 760f);
-        /// <summary>诊断覆盖层尺寸。</summary>
-        internal static readonly Vector2 DiagnosticsSize = new Vector2(1280f, 760f);
+        /// <summary>加载页（生产认证）尺寸：一句说明 + 进度行 + 进度条 + 取消键。</summary>
+        internal static readonly Vector2 DiagnosticsSize = new Vector2(960f, 400f);
         /// <summary>恢复壳尺寸。</summary>
         internal static readonly Vector2 RecoverySize = new Vector2(1280f, 780f);
         /// <summary>HUD 状态区边距。</summary>
         internal const float StatusMargin = 24f;
         /// <summary>模态页四周安全边距。</summary>
         internal const float SafeMargin = 48f;
-        /// <summary>拍铃按钮距底部距离。</summary>
-        internal const float BellButtonBottomOffset = 96f;
 
         #endregion
 

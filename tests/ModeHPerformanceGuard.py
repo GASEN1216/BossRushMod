@@ -45,6 +45,8 @@ HOT_PATH_PATTERNS = [
     r"public void Reassert\([\s\S]*?\n        \}",
     r"private void TickErrorSwap\([\s\S]*?\n        \}",
     r"internal static bool ShouldUnfreeze\([\s\S]*?\n        \}",
+    # 观战镜头同步（2026-09-23）：每帧由 OnUpdateInternal 调用，只许引用比较与目标变化时 SetTarget
+    r"public void SyncCameraTarget\([\s\S]*?\n        \}",
 ]
 
 FORBIDDEN_SCANS = [

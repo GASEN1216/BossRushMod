@@ -75,6 +75,7 @@ namespace BossRush
             HashSet<int> transfers = new HashSet<int>();
             bool hall = false;
             int draftPick = 0;
+            int cameraSamples = 0, cameraOnFighter = 0;
             string reason = null;
             ModeHLifecycle previous = ModeHLifecycle.Unknown;
             float lastProgress = Time.realtimeSinceStartup;
@@ -96,15 +97,18 @@ namespace BossRush
                 if (Time.realtimeSinceStartup - lastProgress > 100f) { reason = "phase_stalled:" + state.Lifecycle; break; }
                 string confirm = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Confirm");
                 string lockIn = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_LockIn");
+                string start = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_StartMatch");
                 switch (state.Lifecycle)
                 {
                     case ModeHLifecycle.Drafting:
-                        if (TryClickModeHButton("ModeH_CardAction_" + draftPick, null)) draftPick = 1;
+                        // 选人页一次点击即签约并自动开打（2026-09-23）；这次没开成（例如搭档凑不齐）再换下一张卡
+                        if (TryClickModeHButton("ModeH_CardAction_" + draftPick, null)) draftPick = (draftPick + 1) % ModeHConfig.DraftCandidateCount;
                         break;
                     case ModeHLifecycle.RosterLocked:
-                        TryClickModeHButton(null, confirm);
-                        break;
                     case ModeHLifecycle.MatchBrief:
+                        // 正常流程不停在这两页；停下来说明自动开打被拒或技术重试回落，点兜底页的「开打」
+                        TryClickModeHButton(null, start);
+                        break;
                     case ModeHLifecycle.LoadoutEditing:
                     case ModeHLifecycle.OddsPreview:
                         // 不选择真实押品：点击实际页面的锁盘按钮，走公开零押品路线。
@@ -116,6 +120,12 @@ namespace BossRush
                         CharacterMainControl attacker = null;
                         foreach (CharacterMainControl ally in allies)
                             if (IsLiveCharacter(ally)) { attacker = ally; break; }
+                        // 观战镜头应当跟着场上的选手（2026-09-23）；只记数，不进判定
+                        if (attacker != null && GameCamera.Instance != null)
+                        {
+                            cameraSamples++;
+                            if (ReferenceEquals(GameCamera.Instance.target, attacker)) cameraOnFighter++;
+                        }
                         if (attacker != null && enemies.Length > 0)
                         {
                             foreach (CharacterMainControl enemy in enemies)
@@ -130,14 +140,17 @@ namespace BossRush
                         }
                         break;
                     case ModeHLifecycle.Intermission:
-                        if (!TryClickModeHButton(null, L10n.T("拒绝战痕，换取名声", "Decline scar for fame"))
+                        // 战痕与整备奖励已按默认值自动处理，结算页只剩「下一场 / 继续」；自动处理没成时才会出现手动按钮
+                        if (!TryClickModeHButton(null, L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_NextMatch"))
+                            && !TryClickModeHButton(null, L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Continue"))
+                            && !TryClickModeHButton(null, L10n.T("拒绝战痕，换取名声", "Decline scar for fame"))
                             && !TryClickModeHButton(null, L10n.T("放弃整备，换取名声", "Decline kits for fame")))
                             TryClickModeHButton(null, confirm);
                         break;
                     case ModeHLifecycle.TransferWindow:
                         transfers.Add(state.MatchIndex);
-                        if (!TryClickModeHButton(null, L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Cancel")))
-                            TryClickModeHButton(null, confirm);
+                        if (!TryClickModeHButton(null, L10n.T(ModeHConfig.LocalizationKeyPrefix + "Transfer_Keep")))
+                            TryClickModeHButton(null, L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_NextMatch"));
                         break;
                     case ModeHLifecycle.HallOfFame:
                         hall = true;
@@ -193,6 +206,7 @@ namespace BossRush
                     + ",arena_ready=" + clean + ",active=" + runtime.HasActiveRun
                     + ",participants=" + ModeHEventRouter.ParticipantCount + ",diagnostics=" + ModeHEventRouter.DiagnosticCount
                     + ",faulted=" + ModeHProfilePersistence.IsStoreFaulted + ",barrier=" + ModeHProfilePersistence.IsWriteBarrier
+                    + ",camera_follow=" + cameraOnFighter + "/" + cameraSamples
                     + ",assisted=true,real_stake=false",
                 reason ?? (passed ? null : "six_match_season_incomplete"));
         }

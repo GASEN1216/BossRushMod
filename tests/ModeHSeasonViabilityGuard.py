@@ -176,14 +176,20 @@ def check_structure(planner_src, matchflow_src):
     need(collect_src, 'for (int count = skeleton.MinUnits; count <= skeleton.MaxUnits; count++)',
          '人数必须逐档判定，不能只判最小人数')
 
-    # 选秀页不得把玩家关在里面：再点一次已选主将 = 取消。
-    if not re.search(
-            r'if \(string\.Equals\(_pendingContractMainId, profileId, StringComparison\.Ordinal\)\) \{ '
-            r'_pendingContractMainId = null; RouteUiForLifecycle\(_runState\.Lifecycle\); return; \}',
-            pick_src):
-        found.append('再点一次已选主将必须能取消选择（否则点错主将就只能在四名替补里打转）')
+    # 选人页一次点击即签约（2026-09-23 owner：「只弄一个选择武将的页面，选完后就开始」）。
+    # 旧版「先点主将、再点替补、再点一次取消」的两步选秀已经没有了，这里改钉新语义：
+    # 点中的就是主将，接力按展示顺序自动配；每一位候选搭档都要过同一条签约 / 分流 / 六场可行性门，
+    # 一个都凑不出来就停在选人页提示重进，绝不签下一对死局。
+    need(pick_src, 'ModeHDraftController.TrySignContracts( _season.profiles, profileId, partner.profileId,',
+         '点中的选手必须作为主将签约，搭档按候选逐个试')
+    need(pick_src, 'viable = CanConstructFullSeason(contract, assignments, out failureReasonId);',
+         '每一位候选搭档都要过六场可行性门')
     need(pick_src, 'CanConstructFullSeason(contract, assignments, out failureReasonId)',
          '签约前仍要过六场可行性门')
+    gate = pick_src.find('if (!viable)')
+    accept = pick_src.find('_season.contract = contract;')
+    if gate < 0 or accept < 0 or gate > accept:
+        found.append('凑不出可行搭档时必须在写入合同之前返回（if (!viable) 要排在 _season.contract = contract; 之前）')
     return found
 
 
@@ -200,8 +206,10 @@ for before, after in [
      'corridor, condition, null, out probe)) continue;'),
     ('for (int count = skeleton.MinUnits; count <= skeleton.MaxUnits; count++)',
      'for (int count = skeleton.MinUnits; count <= skeleton.MinUnits; count++)'),
-    ('if (string.Equals(_pendingContractMainId, profileId, StringComparison.Ordinal))',
-     'if (false)'),
+    ('viable = CanConstructFullSeason(contract, assignments, out failureReasonId);',
+     'viable = true;'),
+    ('if (!viable)', 'if (false)'),
+    ('_season.profiles, profileId, partner.profileId,', '_season.profiles, partner.profileId, profileId,'),
 ]:
     in_planner = before in planner
     if not in_planner and before not in matchflow:
@@ -324,6 +332,6 @@ if errors:
     raise SystemExit(1)
 
 print('ModeHSeasonViabilityGuard: PASS（擂台条件先抽、(骨架, 人数) 只从本池真组得出来的组合里抽、'
-      '筛不出来时回落原路径并报原因；选秀页可取消已选主将；'
+      '筛不出来时回落原路径并报原因；选人一次点击即签约，搭档逐个过六场可行性门；'
       '走廊算术重算：每场都有可行档，认证池 ≥ 10 人时任何合法五席都建得出六场，'
       '门槛已抬到 9、8 人那一档进不了门，9 人的已知缺口未扩大）')

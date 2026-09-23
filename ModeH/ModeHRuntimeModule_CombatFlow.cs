@@ -1089,6 +1089,10 @@ namespace BossRush
             try { if (_spectatorLease != null) _spectatorLease.StopAcceptingBell(); }
             catch (Exception e) { LogFailure("bell_gate_close", e); }
 
+            // 选手即将回收：官方镜头与战争迷雾先还原（每帧同步也会做，这里不等下一帧）
+            try { if (_spectatorLease != null) _spectatorLease.RestoreCameraTarget(); }
+            catch (Exception e) { LogFailure("spectator_camera_restore", e); }
+
             // 兜底收回输入阻断：结算与技术中止路径不会再进 TickActiveCombat，
             // 靠 SyncErrorSwapInputYield 的状态翻转已经等不到了。
             // 收回而不是放着不管，是因为看台身体在租约释放前仍应保持不可操作。

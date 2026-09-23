@@ -36,6 +36,16 @@ namespace BossRush
         /// </summary>
         private UnityEngine.GameObject _activeRewardRevealRoot;
 
+        /// <summary>
+        /// 自动流程（选人后一路开打、结算默认值）进行中：页面相位的路由先不建页，结束后统一路由一次。
+        /// 只挡「开页面」，入场收页 / 开 HUD、恢复壳、挂起照常路由。纯运行时，不落盘。
+        /// </summary>
+        private bool _deferPageRoutes;
+
+        /// <summary>结算页上「已自动处理」的说明行，按奖励 operation 归属；换场自动作废。纯运行时。</summary>
+        private readonly List<string> _settlementNotes = new List<string>();
+        private string _settlementNotesOperationId;
+
         #endregion
 
         #region UI 生命周期
@@ -175,6 +185,9 @@ namespace BossRush
                 HideRecoveryShell();
             }
 
+            // 自动流程的中间相位不建页（名单、看盘、整备、赔率一闪而过），链条结束后统一路由一次
+            if (_deferPageRoutes && IsPageLifecycle(lifecycle)) return;
+
             switch (lifecycle)
             {
                 case ModeHLifecycle.Drafting:
@@ -194,9 +207,17 @@ namespace BossRush
                     // 战斗期只留观战 HUD，模态页必须关掉（它会暂停输入）
                     _ui.ClosePage();
                     _ui.EnsureHud(OnBellPressed);
+                    _ui.SetBellCommand(ResolveCommandDisplayName(ResolveLockedCommandId()),
+                        ResolveLockedCommandPlain());
                     break;
                 case ModeHLifecycle.MatchSettling:
+                    OpenPage(ModeHPage.Settlement, BuildSettlementPageContent());
+                    break;
                 case ModeHLifecycle.Intermission:
+                    // 战痕 / 整备奖励按默认值自动处理，结算页只剩战报与一个「下一场」
+                    ApplySettlementDefaults();
+                    if (_commandsClosed || _ui == null || _runState == null
+                        || _runState.Lifecycle != ModeHLifecycle.Intermission) break;
                     OpenPage(ModeHPage.Settlement, BuildSettlementPageContent());
                     break;
                 case ModeHLifecycle.TransferWindow:
@@ -221,6 +242,248 @@ namespace BossRush
         {
             if (_ui == null || _runState == null) return;
             _ui.OpenPage(page, _runState.Lifecycle, _runState.RunId, content);
+        }
+
+        /// <summary>会弹模态页的相位（自动流程期间先不建页）。</summary>
+        private static bool IsPageLifecycle(ModeHLifecycle lifecycle)
+        {
+            switch (lifecycle)
+            {
+                case ModeHLifecycle.Drafting:
+                case ModeHLifecycle.RosterLocked:
+                case ModeHLifecycle.MatchBrief:
+                case ModeHLifecycle.LoadoutEditing:
+                case ModeHLifecycle.OddsPreview:
+                case ModeHLifecycle.MatchSettling:
+                case ModeHLifecycle.Intermission:
+                case ModeHLifecycle.TransferWindow:
+                case ModeHLifecycle.HallOfFame:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        #endregion
+
+        #region 自动开打（2026-09-23：选完人就开打，场间最多按一个键）
+
+        /// <summary>
+        /// 自动开打链：先做 firstStep（选人签约 / 结算归档 / 转会决议），再从当前相位一路推到入场：
+        /// RosterLocked → 第一场看盘 → 整备 → 赔率 → 按默认值锁盘 → 入场。每一步都是原有的命令方法，
+        /// 走原有冻结转换边与落盘点，这里只负责「不停下来等玩家点」。
+        ///
+        /// 中间相位不建页面（<see cref="_deferPageRoutes"/>）；链条停在哪一步——锁盘被拒、技术重试、
+        /// 转会窗口、名人堂——结束后就按那一步正常路由一次，玩家看到的就是那一页。
+        /// </summary>
+        private void RunAutoAdvance(string reasonId, Action firstStep)
+        {
+            if (_commandsClosed || _runState == null) return;
+            bool outer = !_deferPageRoutes;
+            _deferPageRoutes = true;
+            try
+            {
+                if (firstStep != null) firstStep();
+                AdvanceTowardsFight();
+            }
+            catch (Exception e)
+            {
+                LogFailure("auto_advance", e);
+                ModBehaviour.DevLog("[ModeH] 自动开打中断 (" + (reasonId ?? "unknown") + ")");
+            }
+            finally
+            {
+                if (outer) _deferPageRoutes = false;
+            }
+            if (outer && !_commandsClosed && _runState != null && IsPageLifecycle(_runState.Lifecycle))
+            {
+                RouteUiForLifecycle(_runState.Lifecycle);
+            }
+        }
+
+        /// <summary>
+        /// 从名单 / 看盘 / 整备相位推到入场。默认值：不下虚拟注、不押真实物品、
+        /// 默认阵容与配装（EnsurePreparedMatchSelection）、口令取先发的招牌（不可用时取第一条可用口令）。
+        /// </summary>
+        private void AdvanceTowardsFight()
+        {
+            if (_commandsClosed || _runState == null || _season == null) return;
+            if (_runState.Lifecycle == ModeHLifecycle.RosterLocked) OpenFirstMatchBrief();
+
+            if (_commandsClosed || _runState == null || _season == null) return;
+            if (_runState.Lifecycle == ModeHLifecycle.MatchBrief)
+            {
+                // OpenNextMatchBrief 只清旧计划，建新计划原本发生在看盘页组装里
+                EnsureMatchPlan();
+                if (_runState == null || _season == null || _season.currentMatchPlan == null
+                    || _runState.Lifecycle != ModeHLifecycle.MatchBrief) return;
+                EnterLoadoutEditing();
+            }
+
+            if (_commandsClosed || _runState == null || _season == null) return;
+            if (_runState.Lifecycle != ModeHLifecycle.LoadoutEditing
+                && _runState.Lifecycle != ModeHLifecycle.OddsPreview) return;
+            _selectedVirtualStake = 0;
+            _showLoadoutEditor = false;
+            // 正常流程从不押真实物品：兜底页上勾过的押品格不能被这条链静默带进锁盘
+            ModeHRealStakeService.ClearSelection();
+            string prepareFailure;
+            if (EnsurePreparedMatchSelection(out prepareFailure)) ApplyAutoRosterDefaults();
+            LockLoadoutAndStartMatch();
+        }
+
+        /// <summary>
+        /// 默认阵容的一处取舍（好玩优先，owner 2026-09-23 授权拍板）：主将带伤、接力健康时让接力先上。
+        /// 带伤选手再被击倒会直接赛季退役，玩家在自动流程里没有机会自己换人；让它坐接力席，
+        /// 先发赢下来它就「整场没上」、赛后自动养好伤。两人都带伤或都健康时维持主将先发。
+        /// 交换方式与整备页的「首发」选项一致（选手带着各自的配装换席位），口令按新先发重选。
+        /// </summary>
+        private void ApplyAutoRosterDefaults()
+        {
+            ModeHMatchRosterDto roster = _season != null ? _season.matchRoster : null;
+            if (roster == null || (roster.enteredProfileIds != null && roster.enteredProfileIds.Count > 0)) return;
+            ModeHProfileDto starter = FindSeasonProfile(roster.matchStarterProfileId);
+            ModeHProfileDto relay = FindSeasonProfile(roster.matchRelayProfileId);
+            if (starter == null || relay == null) return;
+            if (string.IsNullOrEmpty(starter.injuryId) || !string.IsNullOrEmpty(relay.injuryId)) return;
+
+            roster.matchStarterProfileId = relay.profileId;
+            roster.matchRelayProfileId = starter.profileId;
+            List<string> starterKits = roster.starterKitIds;
+            roster.starterKitIds = roster.relayKitIds;
+            roster.relayKitIds = starterKits;
+            roster.activeProfileId = relay.profileId;
+            _selectedMatchCommandId = null;
+        }
+
+        private string ResolveLockedCommandId()
+        {
+            return _season != null && _season.currentLoadoutLock != null
+                ? _season.currentLoadoutLock.commandId : null;
+        }
+
+        /// <summary>本场锁定口令的白话说明（拍铃卡副标题）。</summary>
+        private string ResolveLockedCommandPlain()
+        {
+            string commandId = ResolveLockedCommandId();
+            if (string.IsNullOrEmpty(commandId)) return string.Empty;
+            return L10n.T(ModeHConfig.LocalizationKeyPrefix + "Command_" + commandId + "_Plain");
+        }
+
+        /// <summary>
+        /// 结算页的必选项按默认值处理，与玩家在结算页上点按钮走同一批方法（身份围栏、落盘屏障不变）：
+        /// - 战痕候选：有空位就留下（「百战留痕」本来就是让选手身上长出故事），已满三条或已有同名就换名声；
+        /// - 整备奖励：领第一件候选，之后按默认配装自动穿上（奖励套装 ID 排在起手套装前面）。
+        /// 处理结果写成说明行挂在结算页上。任何一步失败都留在原结算页，按钮照旧可点。
+        /// </summary>
+        private void ApplySettlementDefaults()
+        {
+            if (_commandsClosed || _season == null || _runState == null
+                || _runState.Lifecycle != ModeHLifecycle.Intermission || _season.matchReports == null) return;
+            bool outer = !_deferPageRoutes;
+            _deferPageRoutes = true;
+            try
+            {
+                string prefix = ModeHConfig.LocalizationKeyPrefix;
+                for (int attempt = 0; attempt <= _season.matchReports.Count; attempt++)
+                {
+                    ModeHMatchReportDto pending = null;
+                    ModeHProfileDto profile = null;
+                    for (int i = 0; i < _season.matchReports.Count && pending == null; i++)
+                    {
+                        ModeHMatchReportDto candidate = _season.matchReports[i];
+                        if (IsScarOfferPending(candidate) && TryGetScarOfferProfile(candidate, out profile)) pending = candidate;
+                    }
+                    if (pending == null) break;
+
+                    string scarId = pending.scarOfferId;
+                    bool decline = (profile.scarIds != null && profile.scarIds.Contains(scarId))
+                        || (profile.scarIds != null && profile.scarIds.Count >= ModeHConfig.MaxScarsPerProfile);
+                    string owner = ResolveProfileDisplayName(profile.profileId);
+                    ResolveScarOffer(pending.seasonRewardOperationId, scarId, null, decline,
+                        _runState.OwnerToken, _runState.MatchIndex);
+                    if (_commandsClosed || _runState == null || _runState.Lifecycle != ModeHLifecycle.Intermission) return;
+                    if (!decline && IsScarOfferPending(pending))
+                    {
+                        // 留不下（与原型不合等）就换名声：自动流程不能卡在一条战痕上
+                        decline = true;
+                        ResolveScarOffer(pending.seasonRewardOperationId, scarId, null, true,
+                            _runState.OwnerToken, _runState.MatchIndex);
+                        if (_commandsClosed || _runState == null || _runState.Lifecycle != ModeHLifecycle.Intermission) return;
+                    }
+                    // 仍没处理掉（落盘失败会挂起，走不到这里）就交还给结算页的按钮，不在这里反复重试
+                    if (IsScarOfferPending(pending)) break;
+                    AddSettlementNote(decline
+                        ? L10n.T(prefix + "Settle_AutoScarDeclined").Replace("{0}", owner)
+                        : L10n.T(prefix + "Settle_AutoScarTaken").Replace("{0}", owner)
+                            .Replace("{1}", L10n.T(prefix + "Scar_" + scarId))
+                            .Replace("{2}", L10n.T(prefix + "Scar_" + scarId + "_Desc")));
+                }
+
+                ModeHMatchReportDto report = FindLatestPendingReport();
+                ModeHSeasonRewardOperationDto operation = FindRewardOperation(
+                    report != null ? report.seasonRewardOperationId : null);
+                if (operation == null || operation.status != (int)ModeHSeasonRewardOperationStatus.Offered
+                    || operation.candidateKitIds == null || operation.candidateKitIds.Count == 0) return;
+                string kitId = operation.candidateKitIds[0];
+                string failureReasonId;
+                if (!ModeHSeasonRewardService.TrySelectKit(_season, operation.operationId, kitId, out failureReasonId))
+                {
+                    ModBehaviour.DevLog("[ModeH] 自动领取整备奖励失败: " + (failureReasonId ?? "unknown"));
+                    return;
+                }
+                // 普通落盘即可（按批节流，不强制本帧 SaveFile）：结算帧里 match_settling 与战痕已各写过一次整档。
+                // 万一这次没落到盘上就崩了，读档回来 operation 仍是 Offered，这里会原样再领一次，结果相同。
+                // 「下一场」归档时 CompleteSettlementAndRoute 会做 durable 落盘。
+                TryPersistSeason("reward_auto_selected");
+                AddSettlementNote(L10n.T(prefix + "Settle_AutoKit").Replace("{0}", L10n.T(prefix + "Kit_" + kitId)));
+            }
+            catch (Exception e)
+            {
+                LogFailure("settlement_defaults", e);
+            }
+            finally
+            {
+                if (outer) _deferPageRoutes = false;
+            }
+        }
+
+        private void AddSettlementNote(string note)
+        {
+            ModeHMatchReportDto report = FindLatestPendingReport();
+            string operationId = report != null ? report.seasonRewardOperationId : null;
+            if (!string.Equals(operationId, _settlementNotesOperationId, StringComparison.Ordinal))
+            {
+                _settlementNotes.Clear();
+                _settlementNotesOperationId = operationId;
+            }
+            if (!string.IsNullOrEmpty(note)) _settlementNotes.Add(note);
+        }
+
+        /// <summary>
+        /// 结算页收尾：挂上自动处理的说明行；只剩一个「确认」时把它换成「下一场」（最后一场、
+        /// 转会窗口前是「继续」），点下去归档本场并直接开打下一场。原确认回调（含身份围栏）原样保留在链首。
+        /// </summary>
+        private void DecorateSettlementPage(ModeHPageContent page)
+        {
+            if (page == null || _runState == null || _runState.Lifecycle != ModeHLifecycle.Intermission) return;
+            ModeHMatchReportDto report = FindLatestPendingReport();
+            if (report != null && _settlementNotes.Count > 0 && string.Equals(
+                    report.seasonRewardOperationId, _settlementNotesOperationId, StringComparison.Ordinal))
+            {
+                page.Lines.AddRange(_settlementNotes);
+            }
+
+            string prefix = ModeHConfig.LocalizationKeyPrefix;
+            if (page.Actions.Count != 1 || page.Actions[0] == null || page.Actions[0].OnClick == null
+                || !string.Equals(page.Actions[0].Label, L10n.T(prefix + "Button_Confirm"), StringComparison.Ordinal)) return;
+            Action archive = page.Actions[0].OnClick;
+            List<string> live = ModeHTransferMarket.GetLiveContractProfileIds(_season);
+            bool nextIsMatch = live != null && live.Count > 0
+                && _runState.MatchIndex < ModeHConfig.SeasonMatchCount
+                && !ModeHConfig.IsTransferWindowMatch(_runState.MatchIndex);
+            page.Actions[0].Label = L10n.T(prefix + (nextIsMatch ? "Button_NextMatch" : "Button_Continue"));
+            page.Actions[0].OnClick = delegate { RunAutoAdvance("next_match", archive); };
         }
 
         #endregion

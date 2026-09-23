@@ -39,6 +39,11 @@ namespace BossRush
         public List<ModeHActionData> PreparationOptions = new List<ModeHActionData>();
         /// <summary>是否在顶部显示真实资产风险行（入口页必须为 true）。</summary>
         public bool ShowRealStakeNotice;
+        /// <summary>
+        /// 风险行改成页脚一行小字而不是顶部红条。选人页用：正常流程按默认值开打、从不押真实物品，
+        /// 顶部红条会把「挑个选手」吓成「要赌仓库」；披露本身仍在（§22.1 入口页固定显示）。
+        /// </summary>
+        public bool CompactRiskNotice;
         /// <summary>押品选择器是否可用；不可用时原位显示 DisabledReason。</summary>
         public bool RealStakeSelectorEnabled;
         /// <summary>押品选择器禁用原因（已本地化）。</summary>
@@ -66,6 +71,11 @@ namespace BossRush
 #pragma warning restore 0649
         /// <summary>是否是异常（用 Warning/Danger token 区分于普通怪癖）。</summary>
         public bool IsAnomaly;
+        /// <summary>
+        /// 立绘键（选手的 stableKey = 官方 preset nameKey = 图鉴条目键）。非空时卡片按选人卡画，
+        /// 立绘取自鸭皇图鉴：图鉴立绘 → 官方角色图标 → 名字首字圆底。
+        /// </summary>
+        public string PortraitKey;
         /// <summary>点击回调；为 null 表示只读卡。</summary>
         public Action OnClick;
         /// <summary>点击按钮文案。</summary>
@@ -120,7 +130,7 @@ namespace BossRush
             ModeHUI.CreateTitle(surface, content.Title, panelSize);
 
             float cursorY = panelSize.y * 0.5f - ModeHUI.SafeMargin - 76f;
-            if (content.ShowRealStakeNotice)
+            if (content.ShowRealStakeNotice && !content.CompactRiskNotice)
             {
                 cursorY = CreateRealStakeNotice(surface, panelSize, cursorY);
             }
@@ -129,6 +139,8 @@ namespace BossRush
             {
                 case ModeHPage.Entry:
                 case ModeHPage.Transfer:
+                    CreateChampionCards(surface, panelSize, content, cursorY);
+                    break;
                 case ModeHPage.HallOfFame:
                     CreateCardGrid(surface, panelSize, content, cursorY);
                     break;
@@ -152,6 +164,10 @@ namespace BossRush
                     break;
             }
 
+            if (content.ShowRealStakeNotice && content.CompactRiskNotice)
+            {
+                CreateCompactRiskNotice(surface, panelSize);
+            }
             CreateActions(surface, panelSize, content);
         }
 
@@ -185,6 +201,162 @@ namespace BossRush
                 22f, TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
             BossRushUI.ApplyGameFont(text);
             return cursorY - NoticeHeight - 16f;
+        }
+
+        /// <summary>风险行的页脚形态：面板底边一行小字（两行高，英文会折行）。</summary>
+        private static void CreateCompactRiskNotice(Transform surface, Vector2 panelSize)
+        {
+            GameObject row = ZombieModeUIHelper.CreateRect(
+                "ModeH_RealStakeNotice", surface,
+                new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+                new Vector2(0f, CompactNoticeBottom + CompactNoticeHeight * 0.5f),
+                new Vector2(panelSize.x - ModeHUI.SafeMargin * 2f, CompactNoticeHeight),
+                new Vector2(0.5f, 0.5f));
+            TextMeshProUGUI text = ZombieModeUIHelper.CreateTMPText(
+                row,
+                L10n.T(ModeHConfig.LocalizationKeyPrefix + "RealStakeRiskNotice"),
+                17f, TextAlignmentOptions.Center, BossRushUIColors.TextSecondary);
+            BossRushUI.ApplyGameFont(text);
+        }
+
+        #endregion
+
+        #region 选人卡
+
+        /// <summary>
+        /// 选人卡（入口页五张、转会页一张）：一排大卡，每张 = 图鉴立绘 + 名字 + 打法定位 + 两三句白话 + 「选他出战」。
+        /// 立绘链与鸭皇图鉴同源（CodexView_Grid.ResolvePortrait）：图鉴立绘 → 官方角色图标 → 名字首字圆底；
+        /// 图鉴缓存 fail-open，缺包只少一张图，不挡选人。
+        /// 卡数有上界（候选固定五席），一排放得下，不需要滚动；底部按共用的动作带或页脚风险行让位。
+        /// </summary>
+        private static void CreateChampionCards(
+            Transform surface, Vector2 panelSize, ModeHPageContent content, float topY)
+        {
+            float usableWidth = panelSize.x - ModeHUI.SafeMargin * 2f;
+            if (!string.IsNullOrEmpty(content.Body))
+            {
+                GameObject intro = ZombieModeUIHelper.CreateRect(
+                    "ModeH_CardGridBody", surface, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                    new Vector2(0f, topY - CardBodyHeight * 0.5f),
+                    new Vector2(usableWidth - 24f, CardBodyHeight), new Vector2(0.5f, 0.5f));
+                TextMeshProUGUI introText = ZombieModeUIHelper.CreateTMPText(
+                    intro, content.Body, 22f, TextAlignmentOptions.Center, BossRushUIColors.TextSecondary);
+                BossRushUI.ApplyGameFont(introText);
+                topY -= CardBodyHeight + CardGap;
+            }
+
+            int count = content.Cards.Count;
+            if (count == 0) return;
+            float floorY = -panelSize.y * 0.5f + (content.Actions.Count > 0
+                ? GetActionBandReserve(panelSize, content)
+                : CompactNoticeBottom + CompactNoticeHeight + CardGap);
+            float height = Mathf.Min(ChampionCardMaxHeight, topY - floorY);
+            float width = Mathf.Min(ChampionCardMaxWidth, (usableWidth - (count - 1) * ChampionCardGap) / count);
+            float startX = -((count - 1) * (width + ChampionCardGap)) * 0.5f;
+
+            for (int i = 0; i < count; i++)
+            {
+                ModeHCardData data = content.Cards[i];
+                if (data == null) continue;
+                GameObject card = BossRushUI.CreateCard(
+                    "ModeH_Card_" + i, surface,
+                    new Vector2(startX + i * (width + ChampionCardGap), topY - height * 0.5f),
+                    new Vector2(width, height), BossRushUIColors.SurfaceRaised,
+                    data.IsAnomaly ? BossRushUIColors.Warning : BossRushUIColors.Accent, true);
+                BuildChampionCard(card.transform, data, width, height, i);
+                // 五张卡错峰升起：只动 alpha 与位置，按钮从第一帧就能点（见 BossRushUIEntranceAnimation）
+                BossRushUIEntranceAnimation.Play(card, 0.05f * i, 0.28f, 18f);
+            }
+        }
+
+        private static void BuildChampionCard(Transform card, ModeHCardData data, float width, float height, int index)
+        {
+            float inner = width - ChampionCardPadding * 2f;
+            float portrait = Mathf.Min(inner, height * 0.40f);
+            float y = -ChampionCardPadding;
+            CreatePortrait(card, data, new Vector2(0f, y), portrait);
+            y -= portrait + 10f;
+
+            // 单行框高按 1.45×字号 + 4 留足：TMP 的 Ellipsis 在框比一行还矮时会把整串清空
+            y = CreateChampionText(card, "Name", data.Title, 28f, BossRushUIColors.TextPrimary,
+                TextAlignmentOptions.Center, inner, y, ChampionNameHeight);
+            y = CreateChampionText(card, "Role", data.Subtitle, 19f, BossRushUIColors.Accent,
+                TextAlignmentOptions.Center, inner, y, ChampionRoleHeight);
+            y -= 6f;
+
+            float bottom = data.OnClick != null
+                ? ChampionCardPadding + ChampionButtonHeight + 8f
+                : ChampionCardPadding;
+            float bodyHeight = Mathf.Max(ChampionRoleHeight, height + y - bottom);
+            CreateChampionText(card, "Body", data.Body, 18f, BossRushUIColors.TextSecondary,
+                TextAlignmentOptions.TopLeft, inner, y, bodyHeight);
+
+            if (data.OnClick == null) return;
+            // 名字沿用 ModeH_CardAction_<i>：F3 验收按这个名字找按钮
+            ZombieModeUIHelper.CreateButton(
+                "ModeH_CardAction_" + index, card,
+                data.ActionLabel != null
+                    ? data.ActionLabel
+                    : L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Confirm"),
+                new Vector2(0.5f, 0f),
+                new Vector2(0f, ChampionCardPadding + ChampionButtonHeight * 0.5f),
+                new Vector2(inner, ChampionButtonHeight), BossRushUIColors.Accent, 22f,
+                new Vector2(inner - 16f, ChampionButtonHeight - 12f),
+                new UnityEngine.Events.UnityAction(data.OnClick), true);
+        }
+
+        /// <summary>从卡片顶边往下排一个文字块，返回下一块的顶边。</summary>
+        private static float CreateChampionText(Transform card, string name, string value, float fontSize,
+            Color color, TextAlignmentOptions alignment, float width, float top, float height)
+        {
+            GameObject obj = ZombieModeUIHelper.CreateRect(
+                name, card, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(0f, top), new Vector2(width, height), new Vector2(0.5f, 1f));
+            TextMeshProUGUI text = ZombieModeUIHelper.CreateTMPText(
+                obj, value != null ? value : string.Empty, fontSize, alignment, color);
+            BossRushUI.ApplyGameFont(text);
+            return top - height;
+        }
+
+        /// <summary>立绘块：图鉴立绘 → 官方角色图标 → 名字首字圆底。与 CodexView_Grid.CreatePortraitBlock 同一条链。</summary>
+        private static void CreatePortrait(Transform card, ModeHCardData data, Vector2 anchoredTop, float size)
+        {
+            GameObject holder = ZombieModeUIHelper.CreateRect(
+                "Portrait", card, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                anchoredTop, new Vector2(size, size), new Vector2(0.5f, 1f));
+            Image backing = holder.AddComponent<Image>();
+            backing.color = BossRushUIColors.Header;
+            backing.raycastTarget = false;
+            BossRushUI.ApplyPanelSkin(backing, 10, BossRushUISkinPart.Card);
+
+            Sprite sprite = null;
+            if (!string.IsNullOrEmpty(data.PortraitKey))
+            {
+                sprite = CodexPortraitCache.GetPortrait(data.PortraitKey);
+                if (sprite == null) sprite = CodexPortraitCache.GetOfficialIcon(data.PortraitKey);
+            }
+            if (sprite != null)
+            {
+                GameObject art = ZombieModeUIHelper.CreateRect(
+                    "Art", holder.transform, Vector2.zero, Vector2.one, Vector2.zero,
+                    new Vector2(-12f, -12f), new Vector2(0.5f, 0.5f));
+                Image image = art.AddComponent<Image>();
+                image.sprite = sprite;
+                image.preserveAspect = true;
+                image.raycastTarget = false;
+                return;
+            }
+
+            // 第三级占位：名字首字。官方 characterIconType == none 时图标为 null，这一级必须有，否则是一块空底。
+            string name = data.Title ?? string.Empty;
+            GameObject initial = ZombieModeUIHelper.CreateRect(
+                "Initial", holder.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero,
+                new Vector2(0.5f, 0.5f));
+            TextMeshProUGUI text = ZombieModeUIHelper.CreateTMPText(
+                initial, name.Length > 0 ? name.Substring(0, 1) : "?", size * 0.42f,
+                TextAlignmentOptions.Center, BossRushUIColors.Accent);
+            text.fontStyle = FontStyles.Bold;
+            BossRushUI.ApplyGameFont(text);
         }
 
         #endregion
@@ -630,6 +802,18 @@ namespace BossRush
         #region 布局常量
 
         private const float NoticeHeight = 64f;
+        /// <summary>页脚风险行：17 号字两行（1.45×17×2+4≈53）。</summary>
+        private const float CompactNoticeHeight = 54f;
+        private const float CompactNoticeBottom = 20f;
+        private const float ChampionCardMaxWidth = 360f;
+        private const float ChampionCardMaxHeight = 560f;
+        private const float ChampionCardGap = 16f;
+        private const float ChampionCardPadding = 16f;
+        /// <summary>选人卡名字行：28 号字单行至少 1.45×28+4≈45。</summary>
+        private const float ChampionNameHeight = 46f;
+        /// <summary>选人卡定位行：19 号字单行至少 1.45×19+4≈32。</summary>
+        private const float ChampionRoleHeight = 34f;
+        private const float ChampionButtonHeight = 52f;
         private const float CardMaxWidth = 420f;
         /// <summary>卡片最窄宽度：再窄标题就折行折到不可读，宁可继续往下排。</summary>
         private const float CardMinWidth = 220f;

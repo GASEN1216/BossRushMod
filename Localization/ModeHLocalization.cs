@@ -49,17 +49,19 @@ namespace BossRush
         {
             Add(map, "ModeName", "百战留痕：黑市鸭王杯", "Black Market Duck Cup");
             Add(map, "ModeDesc",
-                "你不是选手，是经理人。签两只斗士，看懂盘口，喊一嗓子，让它们替你打完六场。",
-                "You are not a fighter but a manager. Sign two contenders, read the odds, "
-                + "call one order, and let them fight all six matches for you.");
-            Add(map, "Page_Entry", "入口与试棚", "Entry & Tryout");
+                "你不是选手，是经理人。挑一只斗士上擂台，另一只自动当接力；你在看台上看，关键时刻拍一次铃，让它们替你打完六场。",
+                "You are not a fighter but a manager. Pick one contender for the ring and another joins as the relay; "
+                + "watch from the stands, ring the bell once when it counts, and let them fight all six matches for you.");
+            // 入口页就是唯一的选人页（2026-09-23 owner 实测第 6 条：「只弄一个选择武将的页面，选完后就开始」）。
+            Add(map, "Page_Entry", "挑一位选手出战", "Pick your fighter");
             Add(map, "Page_Brief", "赛前看盘", "Match Brief");
             Add(map, "Page_Odds", "赔率与下注", "Odds & Stake");
             Add(map, "Page_Hud", "观战", "Spectate");
             Add(map, "Page_Settlement", "结算战报", "Match Report");
             Add(map, "Page_Transfer", "转会窗口", "Transfer Window");
             Add(map, "Page_HallOfFame", "名人堂", "Hall of Fame");
-            Add(map, "Page_Diagnostics", "兼容性诊断", "Compatibility Diagnostics");
+            // 生产认证对玩家就是一张加载页：说人话，不提「认证」「契约」。
+            Add(map, "Page_Diagnostics", "擂台准备中", "Getting the ring ready");
             Add(map, "Page_Recovery", "恢复", "Recovery");
 
             Add(map, "Button_Confirm", "确认", "Confirm");
@@ -70,11 +72,28 @@ namespace BossRush
                 "The lineup spawned as planned, but match combat is not wired yet; "
                 + "the season returned to the brief and no loss was recorded.");
             Add(map, "Summary_NoOffer", "本次转会窗口没有报价", "No offers in this transfer window");
-            Add(map, "Summary_Draft", "五席试棚：先点主将，再点替补，落选者按回响去向分流。",
-                "Five try-outs: pick your starter first, then the relay; "
-                + "the rest are routed by echo destination.");
-            Add(map, "Button_CancelAndRefund", "取消并退款", "Cancel & Refund");
-            Add(map, "Button_Sign", "签约", "Sign");
+            Add(map, "Summary_Draft",
+                "挑一位替你上擂台。另一位会自动当接力：先上场的倒下了，它顶上。选好马上开打，你在看台上看，关键时刻可以拍一次铃。",
+                "Pick one to fight for you. Another joins as the relay and steps in if your fighter goes down. "
+                + "The match starts right away; you watch from the stands and may ring the bell once when it counts.");
+            Add(map, "Button_CancelAndRefund", "取消并退票", "Cancel & refund ticket");
+            Add(map, "Button_Sign", "选他出战", "Send this one in");
+            Add(map, "Button_StartMatch", "开打", "Start the match");
+            Add(map, "Button_CustomSetup", "自己调整再开打", "Adjust first");
+            Add(map, "Button_NextMatch", "下一场", "Next match");
+            Add(map, "Button_Continue", "继续", "Continue");
+            Add(map, "Draft_NoViablePair",
+                "这批选手凑不出完整的六场赛程。请退出本赛季重新进入，候选名单会重抽。",
+                "This group of fighters cannot fill all six matches. Leave the season and enter again for a fresh lineup.");
+            Add(map, "Transfer_Summary",
+                "有位选手想加入。签下他会换掉你现在的接力替补；不想换就直接下一场。",
+                "A fighter wants to join. Signing them replaces your current relay; otherwise just go to the next match.");
+            Add(map, "Transfer_Accept", "签下他（换掉接力）", "Sign (replaces relay)");
+            Add(map, "Transfer_Keep", "不换人，下一场", "Keep roster, next match");
+            Add(map, "Settle_AutoKit", "新装备到手：{0}（之后自动配上）", "New gear: {0} (equipped automatically from now on)");
+            Add(map, "Settle_AutoScarTaken", "{0} 留下了战痕：{1}。{2}", "{0} earned a scar: {1}. {2}");
+            Add(map, "Settle_AutoScarDeclined", "{0} 这次没有留下新战痕（战痕已满或重复），换成了名声 +1",
+                "{0} took no new scar this time (full or duplicate) and gained +1 fame instead");
             Add(map, "Button_Recon", "免费侦察一次", "Scout Once (Free)");
             Add(map, "Button_LockIn", "锁盘", "Lock In");
             Add(map, "Button_RingBell", "拍铃", "Ring the Bell");
@@ -105,6 +124,12 @@ namespace BossRush
             Add(map, "Archetype_tank", "重装", "Tank");
             Add(map, "Archetype_sustain", "消耗", "Sustain");
             Add(map, "Archetype_finisher", "残局", "Finisher");
+            // 选人卡副标题：用大白话说它是哪一类打法（原型名「消耗」「残局」玩家看不懂）。
+            Add(map, "Archetype_assault_Plain", "近身猛冲", "Brawler");
+            Add(map, "Archetype_ranged_Plain", "远程射手", "Shooter");
+            Add(map, "Archetype_tank_Plain", "重甲肉盾", "Tank");
+            Add(map, "Archetype_sustain_Plain", "持久消耗", "Grinder");
+            Add(map, "Archetype_finisher_Plain", "残局收割", "Closer");
 
             Add(map, "Temperament_aggressive", "莽攻", "Aggressive");
             Add(map, "Temperament_cautious", "谨慎", "Cautious");
@@ -171,12 +196,35 @@ namespace BossRush
             Add(map, "Command_handoff_Desc", "仅持有此招牌的接力者实际登场后可用：提高技能施放概率与转身速度，持续 6 秒。",
                 "Only usable after its signature owner relays in: raises skill chance and turn speed for 6 seconds.");
 
+            // 拍铃卡上的一句白话：这条口令让选手干什么（观战 HUD 用，2026-09-23）。
+            AddCommandPlain(map, "steady", "让它稳住，别临阵退缩", "Keep it from losing its nerve");
+            AddCommandPlain(map, "press", "让它主动压上去打", "Make it push forward");
+            AddCommandPlain(map, "center", "让它回到擂台中间", "Send it back to the middle");
+            AddCommandPlain(map, "spread", "先清掉身边的敌人", "Clear out nearby enemies");
+            AddCommandPlain(map, "finish", "专打最残的那个敌人", "Finish off the weakest enemy");
+            AddCommandPlain(map, "hold", "把技能留给后面的增援", "Save skills for the reinforcements");
+            AddCommandPlain(map, "guard", "站稳反击，出手更快", "Stand firm and react faster");
+            AddCommandPlain(map, "all_in", "不留后手，全力猛攻", "Go all out");
+            AddCommandPlain(map, "weakness", "集中打残血的敌人，看得更远", "Focus wounded enemies and look farther");
+            AddCommandPlain(map, "anchor", "站定别乱跑，转身更快", "Hold position and turn faster");
+            AddCommandPlain(map, "last_mag", "站定开火，多用道具技能", "Stand and fire; use more item skills");
+            AddCommandPlain(map, "together", "更频繁地放技能", "Use skills more often");
+            AddCommandPlain(map, "handoff", "接力上场后：技能更勤、转身更快", "After the relay enters: more skills, faster turns");
+
             Add(map, "CommandStatus_VerifiedBehavior", "已验证", "Verified");
             Add(map, "CommandStatus_PartiallyVerified", "部分验证", "Partially Verified");
             Add(map, "CommandStatus_ReportOnly", "仅显示", "Report Only");
             Add(map, "CommandStatus_Unavailable", "不可用", "Unavailable");
             Add(map, "Command_BellConsumed", "本场拍铃已用完", "Bell already used this match");
             Add(map, "Command_WindowActive", "口令生效中", "Order active");
+            Add(map, "Hud_BellOncePerMatch", "每场一次", "Once per match");
+            Add(map, "Hud_BellUsedHint", "下一场还能再拍一次", "You can ring again next match");
+            Add(map, "Hud_EnemiesLeft", "场上敌人", "Enemies left");
+        }
+
+        private static void AddCommandPlain(Dictionary<string, string> map, string id, string cn, string en)
+        {
+            Add(map, "Command_" + id + "_Plain", cn, en);
         }
 
         #endregion
@@ -403,6 +451,50 @@ namespace BossRush
             AddFighter(map, "warden", "典狱长", "Warden",
                 "越到最后越冷静，收尾的活它最熟。",
                 "Colder as the clock runs down; closing is what it does.");
+
+            // 选人卡正文：两三句白话讲它怎么打、强在哪、怕什么（2026-09-23 owner：「描述改得说人话」）。
+            // 与 BossProfiles.json 的原型、能力标签、怪癖 / 异常一一对应，改数据时同步这里。
+            AddFighterPlain(map, "shotgun_brawler",
+                "端着霰弹枪往脸上冲，贴身一枪伤害极高。专挑残血的敌人下手。离远了基本打不着。",
+                "Charges in with a shotgun; a point-blank blast hits very hard. Picks on wounded enemies. Almost useless at range.");
+            AddFighterPlain(map, "frost_marshal",
+                "跑得快，绕着敌人边跑边打，很难被抓住。缺点是胆小：自己残血时可能直接认输。",
+                "Fast and slippery: circles enemies while attacking. Downside: timid, and may give up when badly hurt.");
+            AddFighterPlain(map, "snow_sharpshooter",
+                "站在远处稳稳点射，对付站着不动的敌人很拿手。换弹又慢又磨叽，被贴身会很吃力。",
+                "Steady shots from range; great against enemies who stand still. Slow, fussy reloads; struggles up close.");
+            AddFighterPlain(map, "long_lens",
+                "远程火力压制，站得远、打得准。喜欢把技能攒到最后，有时憋到比赛结束也没放。",
+                "Long-range fire support: stays back and hits hard. Hoards its skill, sometimes until the match is over.");
+            AddFighterPlain(map, "triple_tap",
+                "中远距离一口气连开三枪，爆发很猛。偶尔会突然把操作权交给你，让你亲手打一段。",
+                "Rapid three-round bursts at mid range for big damage. Now and then it hands control to you for a while.");
+            AddFighterPlain(map, "great_xing",
+                "皮糙肉厚，站在擂台中间死扛。不爱追人，碰上会跑的敌人会打得很磨。",
+                "Heavily armored; plants itself in the middle and soaks damage. Won't chase, so fast enemies drag the fight out.");
+            AddFighterPlain(map, "mech_snowman",
+                "重甲机体，非常扛打。一心想着护住队友，自己进攻不够积极。",
+                "Heavily plated and very hard to put down. Busy protecting its teammate, so it attacks less.");
+            AddFighterPlain(map, "big_ice",
+                "块头大，范围攻击一砸一大片，专克扎堆的敌人。碰上特别强、久攻不下的对手，可能会认怂弃赛。",
+                "Huge, with wide area attacks that crush groups. Against a very strong foe it can't beat, it may lose heart and forfeit.");
+            AddFighterPlain(map, "bomb_maniac",
+                "到处扔炸弹，打一群人、拖长战线都拿手。开场慢热，前半分钟几乎不出力。",
+                "Lobs bombs everywhere; great against groups and in long fights. Slow starter: barely does anything for the first half minute.");
+            AddFighterPlain(map, "goose_leader",
+                "稳扎稳打，能磨也能控场。被三个以上的敌人围住时容易慌，可能直接弃赛。",
+                "A steady grinder that controls the fight. Panics when three or more surround it, and may forfeit.");
+            AddFighterPlain(map, "orion_hunter",
+                "擅长边走边打、收掉残血的敌人。记仇，会死盯先打它的那个。很适合当接力压轴。",
+                "Finishes off wounded enemies while on the move. Holds grudges against whoever hit it first. A great closer.");
+            AddFighterPlain(map, "warden",
+                "全场最能打的老手之一，越到最后越冷静，收残局最稳。开场偏保守，不会一上来就拼命。",
+                "One of the toughest veterans; calmer as the clock runs down and reliable in endgames. Plays it safe early on.");
+        }
+
+        private static void AddFighterPlain(Dictionary<string, string> map, string id, string cn, string en)
+        {
+            Add(map, "Fighter_" + id + "_Plain", cn, en);
         }
 
         private static void AddFighter(
@@ -534,7 +626,7 @@ namespace BossRush
             Add(map, "State_None", "无进行中的赛季", "No active season");
             Add(map, "State_EntryIntent", "已冻结入场意图", "Entry intent frozen");
             Add(map, "State_SceneLoading", "等待场景就绪", "Waiting for the arena");
-            Add(map, "State_ProductionCertifying", "正在做生产认证", "Running production certification");
+            Add(map, "State_ProductionCertifying", "擂台准备中", "Getting the ring ready");
             Add(map, "State_ErrorRecoveryPending", "等待恢复屏障", "Awaiting recovery barrier");
             Add(map, "State_StakePrepared", "押品已锁盘", "Stake locked in escrow");
             Add(map, "StakePhase_Unknown", "押品阶段未知", "Stake phase unknown");
@@ -561,8 +653,8 @@ namespace BossRush
                 "This map does not support the mode");
             Add(map, "Unavailable_modeh_presentation_missing", "展示资源缺失",
                 "Presentation assets missing");
-            Add(map, "Unavailable_modeh_certification_failed", "生产认证未通过",
-                "Production certification failed");
+            Add(map, "Unavailable_modeh_certification_failed", "选手热身没通过",
+                "The fighters' warm-up failed");
             Add(map, "Unavailable_modeh_owner_missing", "运行实例缺失", "Runtime owner missing");
             Add(map, "Unavailable_TicketRefunded", "已退还船票", "Ticket refunded");
 
@@ -599,8 +691,8 @@ namespace BossRush
                 "This map lacks the mode's spawn points");
             Add(map, "Abort_Lease", "无法接管擂台场地，已退回基地",
                 "Could not take over the arena; returned to base");
-            Add(map, "Abort_Certification", "开赛前的生产认证未通过，已退回基地",
-                "Pre-match production certification failed; returned to base");
+            Add(map, "Abort_Certification", "开赛前选手热身没通过，已退回基地",
+                "The fighters' warm-up failed before the season; returned to base");
             Add(map, "Abort_Cancelled", "已取消入场", "Entry cancelled");
             Add(map, "Abort_Save", "赛季存档写入失败，已退回基地",
                 "Season save failed; returned to base");
@@ -609,10 +701,15 @@ namespace BossRush
 
             Add(map, "Diag_Passed", "通过", "Passed");
             Add(map, "Diag_Rejected", "拒绝", "Rejected");
-            Add(map, "Diag_Progress", "认证进度", "Certification Progress");
+            // 加载页的进度行是模板：{0} 已热身人数，{1} 总人数。
+            Add(map, "Diag_Progress", "正在请选手上台热身（{0}/{1}）", "Warming up the fighters ({0}/{1})");
             Add(map, "Diag_Signatures", "构建签名", "Build Signatures");
-            Add(map, "Diag_ReadOnlyNotice", "诊断结果只读，不提供绕过或手工改写",
-                "Diagnostics are read-only; no bypass or manual override is offered");
+            Add(map, "Diag_ReadOnlyNotice",
+                "第一次进场、或者游戏 / Mod 更新之后，要先请每位选手上台热个身，确认他们都能正常开打。"
+                + "只做这一次，之后再进来会直接开始。",
+                "On your first visit, or after a game or mod update, each fighter does a quick warm-up bout "
+                + "to make sure they can fight. This only happens once; later visits start right away.");
+            Add(map, "Diag_Finishing", "马上就好", "Almost ready");
         }
 
         #endregion

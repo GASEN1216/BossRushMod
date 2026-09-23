@@ -28,27 +28,26 @@ namespace BossRush
             page.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Transfer");
             if (_season == null) return page;
 
+            // 转会窗口保留（第 2、4 场后各一次），但「不换」是一键直接开打下一场；
+            // 两个按钮都经 RunAutoAdvance，关窗后不再停在看盘 / 赔率页（2026-09-23 owner：场间最多按一个键）。
             ModeHOfferDto offer = EnsureTransferOffer();
             if (offer == null)
             {
                 page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Summary_NoOffer");
                 page.Actions.Add(new ModeHActionData
                 {
-                    Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Confirm"),
-                    OnClick = delegate { CloseTransferWindow("no_offer"); },
+                    Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_NextMatch"),
+                    OnClick = delegate { RunAutoAdvance("transfer_no_offer", delegate { CloseTransferWindow("no_offer"); }); },
                 });
                 return page;
             }
 
-            // 转会页走 CreateCardGrid，而那条渲染分支只画 Cards、从不读 page.Body。
-            // 此前这里只 Add 了确认/取消两个按钮，玩家看到的是「标题 + 两个按钮」，
-            // 对报价对象一无所知却要做不可逆的换人决定。复用选秀卡的构建器补上卡片。
+            // 报价对象用选人卡讲清楚（立绘 + 白话），卡片本身不带按钮：签 / 不签由下面两个动作按钮承担。
+            page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Transfer_Summary");
             ModeHProfileDto offered = FindSeasonProfile(offer.profileId);
             if (offered != null)
             {
                 ModeHCardData card = BuildProfileCard(offered);
-                // 转会卡不走「签下」点击：确认/取消由下面两个动作按钮承担，
-                // 卡片本身只负责把报价对象讲清楚。
                 card.ActionLabel = null;
                 card.OnClick = null;
                 page.Cards.Add(card);
@@ -56,13 +55,13 @@ namespace BossRush
 
             page.Actions.Add(new ModeHActionData
             {
-                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Confirm"),
-                OnClick = delegate { AcceptTransferOffer(offer); },
+                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Transfer_Accept"),
+                OnClick = delegate { RunAutoAdvance("transfer_accept", delegate { AcceptTransferOffer(offer); }); },
             });
             page.Actions.Add(new ModeHActionData
             {
-                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Cancel"),
-                OnClick = delegate { RejectTransferOffer(offer); },
+                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Transfer_Keep"),
+                OnClick = delegate { RunAutoAdvance("transfer_keep", delegate { RejectTransferOffer(offer); }); },
             });
             return page;
         }

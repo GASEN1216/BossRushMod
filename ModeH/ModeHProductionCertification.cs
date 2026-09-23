@@ -150,10 +150,15 @@ namespace BossRush
         #region 缓存
 
         /// <summary>
-        /// 按 (gameBuildSignature, modBuildSignature, contentCatalogSignature, slotGeneration)
-        /// 四元组命中缓存；命中且 overallPassed=true 时可跳过逐 key 诊断。
+        /// 按 (gameBuildSignature, modBuildSignature, contentCatalogSignature) 三签名命中缓存；
+        /// 命中且 overallPassed=true 时可跳过逐 key 诊断。
+        ///
+        /// 2026-09-23 起不再比对 slotGeneration：它是进程内计数器（每次选档 +1、每次启动从 0 起），
+        /// 同一构建、同一存档只要换过一次选档路径就对不上，玩家每开一次游戏都要重看一遍热身。
+        /// 认证结论只取决于游戏 / Mod / 内容三签名；缓存本身存在当前槽的存档文件里、
+        /// 换槽时 HallOfFame 缓存随 OnSetFile 清空重读，槽位身份已经由存储位置保证。
         /// </summary>
-        internal bool TryUseCachedReport(int slotGeneration)
+        internal bool TryUseCachedReport()
         {
             string game;
             string mod;
@@ -164,7 +169,7 @@ namespace BossRush
             if (string.IsNullOrEmpty(content)) return false;
 
             ModeHProductionCertificationDto cached =
-                ModeHHallOfFamePersistence.TryGetCertificationCache(game, mod, content, slotGeneration);
+                ModeHHallOfFamePersistence.TryGetCertificationCache(game, mod, content);
             if (cached == null) return false;
 
             _report = cached;
@@ -217,6 +222,8 @@ namespace BossRush
             if (result == null) yield break;
             result.Completed = false;
             result.Passed = false;
+            result.TotalKeys = stableKeys != null ? stableKeys.Count : 0;
+            result.FinishedKeys = 0;
 
             if (stableKeys == null || stableKeys.Count == 0 || map == null)
             {
@@ -270,6 +277,7 @@ namespace BossRush
                 string stableKey = stableKeys[i];
                 ModeHCertificationKeyResult keyResult = new ModeHCertificationKeyResult();
                 yield return CertifyKey(stableKey, map, poolDeadline, keyResult);
+                result.FinishedKeys = i + 1;
                 if (!keyResult.Passed)
                 {
                     ModBehaviour.DevLog("[ModeH] 认证拒绝 " + stableKey + ": " + keyResult.FailureReasonId);
@@ -901,6 +909,10 @@ namespace BossRush
         public string FailureReasonId;
         /// <summary>本次报告。</summary>
         public ModeHProductionCertificationDto Report;
+        /// <summary>待热身的选手总数（加载页进度用，纯运行时）。</summary>
+        public int TotalKeys;
+        /// <summary>已热身完的选手数（加载页进度用，纯运行时）。</summary>
+        public int FinishedKeys;
     }
 
     /// <summary>单个 key 的认证结果（协程载体）。</summary>

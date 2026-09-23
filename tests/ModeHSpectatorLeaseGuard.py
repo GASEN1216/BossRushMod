@@ -7,7 +7,8 @@ ModeHSpectatorLeaseGuard — Mode H 观战租约守卫（设计提案 §17.1、�
 - 不得复用会把 Time.timeScale 设为 0 的暂停型 modal lease；
 - 获取顺序固定：DisableInput -> 无敌 -> Teams.middle -> 移动 -> 光标；
   失败严格逆序回滚；
-- 释放顺序固定：停止拍铃 -> 位置 -> team -> invincible -> ActiveInput -> 光标 -> 销毁 token；
+- 释放顺序固定：停止拍铃 -> 镜头对回玩家与迷雾还原 -> 位置 -> team -> invincible -> ActiveInput
+  -> 光标 -> 销毁 token；
 - 输入 token 获取/释放对称，释放幂等；
 - 拍铃不得恢复角色输入；
 - 五类退出路径（正常结束/技术中止/场景切换/Mod 销毁/ERROR 恢复）调用同一释放入口。
@@ -91,12 +92,14 @@ def main():
         if all(p >= 0 for p in positions) and positions != sorted(positions):
             errors.append("[Order] 获取顺序必须是 输入阻断 -> 无敌 -> 中立 -> 移动")
 
-    # 释放顺序：停止拍铃 -> 位置 -> team -> invincible -> ActiveInput -> 光标 -> 销毁
+    # 释放顺序：停止拍铃 -> 镜头与迷雾还原 -> 位置 -> team -> invincible -> ActiveInput -> 光标 -> 销毁
+    # （2026-09-23 起交战期间官方镜头对准选手、Raid 图迷雾临时放宽；租约释放是离场、中止、Mod 销毁的共同出口）
     release = re.search(r"public void Release\(int currentSceneGeneration\)[\s\S]*?\n        \}\n", code)
     if release:
         body = release.group(0)
         order = [
             ("_bellAccepting = false;", "停止拍铃"),
+            ("RestoreCameraTarget();", "镜头对回玩家、迷雾还原"),
             ("SetPosition(_originalPosition)", "恢复位置"),
             ("SetTeam(_originalTeam)", "恢复阵营"),
             ("SetInvincible(_originalInvincible)", "恢复无敌"),

@@ -316,14 +316,19 @@ namespace BossRush
 
         #endregion
 
-        #region 生产认证缓存（四签名）
+        #region 生产认证缓存（三签名键控，slotGeneration 只记录不比对）
 
         /// <summary>
-        /// 读取与当前四签名完全匹配且 overallPassed=true 的认证缓存；
+        /// 读取与当前游戏 / Mod / 内容三签名完全匹配且 overallPassed=true 的认证缓存；
         /// 任一签名变化、未通过或摘要不符都返回 null，要求重跑。
+        ///
+        /// 写入时仍记 slotGeneration（DTO 字段与摘要口径不变），读取时不比对：它是进程内计数器，
+        /// 每次启动从 0 起、每次选档 +1，拿它当键会让同一构建的缓存在下次开游戏时对不上
+        /// （2026-09-23 owner 实测：每次进鸭王杯都先跑一遍热身）。槽位身份由存储位置保证——
+        /// 本 envelope 存在当前槽的存档文件里，换槽时 HandleSetFile 清空 _cache 重读。
         /// </summary>
         public static ModeHProductionCertificationDto TryGetCertificationCache(
-            string gameBuildSignature, string modBuildSignature, string contentCatalogSignature, int slotGeneration)
+            string gameBuildSignature, string modBuildSignature, string contentCatalogSignature)
         {
             try
             {
@@ -339,7 +344,6 @@ namespace BossRush
                 {
                     return null;
                 }
-                if (cache.slotGeneration != slotGeneration) return null;
                 if (!cache.snapshot.overallPassed) return null;
 
                 string computed;

@@ -28,6 +28,14 @@ namespace BossRush
             if (_runState == null) return;
             if (_restoredSeasonPending || _resumeScenePending) return;
 
+            // 观战镜头：开打期间对准当前登场选手，离开交战相位对回玩家身体。O(1)、零分配（见 ModeHSpectatorLease）。
+            if (_spectatorLease != null)
+            {
+                _spectatorLease.SyncCameraTarget(
+                    _activeFighterHandle != null ? _activeFighterHandle.Character : null,
+                    IsCombatLifecycle(_runState.Lifecycle));
+            }
+
             // Recovering 是过渡态不是终点：进来之后必须有人把它推回同一场，
             // 否则技术故障出口全部通向一个没有按钮的壳（CR-2026-08-29-010）。
             // 放在这里而不是 RequestRecovering 内同步推进，是因为 EnsureMatchPlan 会在
@@ -320,12 +328,18 @@ namespace BossRush
 
         #region 选秀（Drafting -> RosterLocked）
 
+        /// <summary>
+        /// 入口页 = 唯一的选人页（2026-09-23 owner：「只弄一个选择武将的页面，选完后就开始」）。
+        /// 五张大卡，点「选他出战」即签下主将、自动配接力并一路开打（OnDraftPick → RunAutoAdvance）。
+        /// </summary>
         private ModeHPageContent BuildDraftPageContent()
         {
             ModeHPageContent page = new ModeHPageContent();
             page.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Entry");
-            // §22.1：真实押品没有开关，进入模式即知情同意，入口页必须固定披露风险
+            // §22.1：真实押品没有开关，进入模式即知情同意，入口页必须固定披露风险。
+            // 选人页按默认值开打、从不押真实物品，所以披露放在页脚，不再占顶部红条。
             page.ShowRealStakeNotice = true;
+            page.CompactRiskNotice = true;
 
             if (_season == null) return page;
 
@@ -343,19 +357,6 @@ namespace BossRush
             }
 
             page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Summary_Draft");
-            if (!string.IsNullOrEmpty(_pendingContractMainId))
-            {
-                page.Actions.Add(new ModeHActionData
-                {
-                    Label = L10n.T("重新选择主将", "Choose a different starter"),
-                    OnClick = delegate
-                    {
-                        if (_runState == null || _runState.Lifecycle != ModeHLifecycle.Drafting) return;
-                        _pendingContractMainId = null;
-                        RouteUiForLifecycle(_runState.Lifecycle);
-                    },
-                });
-            }
             return page;
         }
 
@@ -400,18 +401,6 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 选秀卡。`ModeHCardData.Body` / `IsAnomaly` 此前从未被赋值——
-        /// 渲染器（ModeHUIPages）读它们画正文与描边色，于是玩家看到的是**空白卡身**：
-        /// 只有名字和原型，看不到怪癖/异常、招牌口令和试棚传闻，等于让人盲选。
-        /// 三项信息 DTO 里都有（quirkId / anomalyId、signatureCommandId、rumorKey），
-        /// 这里按「异常优先于普通怪癖」（两者互斥）拼成正文。
-        ///
-        /// `GameQuality` 刻意保持不赋值（编译期那条 CS0649 是有意的）：选手不是装备，
-        /// 没有品质等级。留 0 时 `ModeHUI.ResolveRarityColor(0)` 走
-        /// `BossRushUIColors.RarityCommon`（不是 accent——描边色只有 IsAnomaly 才换成
-        /// Warning），全部选秀卡因此共用同一条中性描边，正是想要的表现。
-        /// </summary>
-        /// <summary>
         /// 侦察揭示的核心特质 ID -> 显示名。`coreTraitTags` 里混着底色（temperament）
         /// 与怪癖（quirk）两类 ID，前缀不同，按已冻结的 ID 表判定该用哪个。
         /// </summary>
@@ -429,14 +418,22 @@ namespace BossRush
             return L10n.T(prefix + "Quirk_" + traitId);
         }
 
+        /// <summary>
+        /// 选人卡：图鉴立绘 + 名字 + 打法定位 + 两三句白话（`Fighter_&lt;id&gt;_Plain`）。
+        /// 旧卡把「异常名 / 招牌口令名 / 传闻」三行术语拼在一起，玩家读不懂（2026-09-23 owner 实测）；
+        /// 怪癖、异常与招牌口令的效果已经揉进白话里讲清楚。转会页复用同一张卡（去掉按钮）。
+        /// 立绘键是 stableKey（= 官方 preset nameKey = 鸭皇图鉴条目键）。
+        /// </summary>
         private ModeHCardData BuildProfileCard(ModeHProfileDto profile)
         {
+            string prefix = ModeHConfig.LocalizationKeyPrefix;
             ModeHCardData card = new ModeHCardData();
-            card.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Fighter_" + profile.profileId);
-            card.Subtitle = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Archetype_" + profile.archetypeId);
-            card.ActionLabel = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Sign");
+            card.Title = L10n.T(prefix + "Fighter_" + profile.profileId);
+            card.Subtitle = L10n.T(prefix + "Archetype_" + profile.archetypeId + "_Plain");
+            card.ActionLabel = L10n.T(prefix + "Button_Sign");
             card.IsAnomaly = !string.IsNullOrEmpty(profile.anomalyId);
-            card.Body = BuildProfileCardBody(profile);
+            card.PortraitKey = profile.stableKey;
+            card.Body = ResolveFighterPlainDescription(profile);
 
             string signedId = profile.profileId;
             card.OnClick = delegate { OnDraftPick(signedId); };
@@ -444,33 +441,23 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 拼选秀卡正文。缺字段就整行不出，不留「怪癖：」这种半截标签。
+        /// 选手的白话说明。没有逐人说明（将来新增模板忘了补文案）时退回传闻一句，绝不显示 *raw key*。
+        /// rumorKey 已经是完整本地化 key，不再补前缀。
         /// </summary>
-        private static string BuildProfileCardBody(ModeHProfileDto profile)
+        private static string ResolveFighterPlainDescription(ModeHProfileDto profile)
         {
             if (profile == null) return string.Empty;
-            string prefix = ModeHConfig.LocalizationKeyPrefix;
-            List<string> lines = new List<string>(3);
-
-            // 异常与普通怪癖互斥（见 ModeHProfileDto 字段注释），异常优先展示。
-            if (!string.IsNullOrEmpty(profile.anomalyId))
-                lines.Add(L10n.T(prefix + "Anomaly_" + profile.anomalyId));
-            else if (!string.IsNullOrEmpty(profile.quirkId))
-                lines.Add(L10n.T(prefix + "Quirk_" + profile.quirkId));
-
-            if (!string.IsNullOrEmpty(profile.signatureCommandId))
-                lines.Add(L10n.T(prefix + "Command_" + profile.signatureCommandId));
-
-            // rumorKey 已经是完整本地化 key（ModeHContentCatalogParsers 直接读的原值），
-            // 不再补前缀，否则会变成 BossRush_ModeH_BossRush_ModeH_xxx。
-            if (!string.IsNullOrEmpty(profile.rumorKey))
-                lines.Add(L10n.T(profile.rumorKey));
-
-            return string.Join("\n", lines.ToArray());
+            string plain = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Fighter_" + profile.profileId + "_Plain");
+            if (!string.IsNullOrEmpty(plain) && plain[0] != '*' && plain.IndexOf("_Plain", StringComparison.Ordinal) < 0)
+                return plain;
+            return !string.IsNullOrEmpty(profile.rumorKey) ? L10n.T(profile.rumorKey) : string.Empty;
         }
 
         /// <summary>
-        /// 选秀点击：先主将后替补，签满两人即锁定名单。
+        /// 选人点击：一次点击就定下出战选手，并按展示顺序自动配一位能组成完整六场的搭档做接力，
+        /// 随即一路推到开打（RosterLocked → 看盘 → 整备 → 按默认值锁盘 → 入场，见 RunAutoAdvance）。
+        /// 签约、落选分流与六场可行性仍走原有三道门，规则不在这里另写一份。
+        /// 搭档优先挑与主将打法不同的（近战配远程更好看），都不行再放宽到任意一位。
         /// 每次点击都重新校验 lifecycle，避免过期页面推进状态。
         /// </summary>
         private void OnDraftPick(string profileId)
@@ -480,75 +467,56 @@ namespace BossRush
 
             try
             {
-                if (_pendingContractMainId == null)
-                {
-                    _pendingContractMainId = profileId;
-                    RouteUiForLifecycle(_runState.Lifecycle);
-                    return;
-                }
-                // 再点一次已选中的主将 = 取消这次选择。没有这一手时，玩家点错主将就再也换不回来：
-                // 选秀页没有取消键，后续每次点击都只会被当成「选替补」。
-                if (string.Equals(_pendingContractMainId, profileId, StringComparison.Ordinal))
-                {
-                    _pendingContractMainId = null;
-                    RouteUiForLifecycle(_runState.Lifecycle);
-                    return;
-                }
+                ModeHProfileDto main = FindSeasonProfile(profileId);
+                if (main == null) return;
 
-                ModeHContractDto contract;
-                string failureReasonId;
-                if (!ModeHDraftController.TrySignContracts(
-                        _season.profiles, _pendingContractMainId, profileId,
-                        out contract, out failureReasonId))
+                ModeHContractDto contract = null;
+                List<ModeHEchoAssignmentDto> assignments = null;
+                string failureReasonId = null;
+                bool viable = false;
+                for (int pass = 0; pass < 2 && !viable; pass++)
                 {
-                    ModBehaviour.DevLog("[ModeH] 签约失败: "
-                        + (failureReasonId != null ? failureReasonId : "unknown"));
-                    return;
-                }
-
-                List<ModeHEchoAssignmentDto> assignments;
-                if (!ModeHDraftController.TryAssignEchoDestinations(
-                        _runState.RunSeed, _season.profiles, contract,
-                        out assignments, out failureReasonId))
-                {
-                    ModBehaviour.DevLog("[ModeH] 落选分流失败: "
-                        + (failureReasonId != null ? failureReasonId : "unknown"));
-                    return;
-                }
-
-                if (!CanConstructFullSeason(contract, assignments, out failureReasonId))
-                {
-                    if (_owner != null)
+                    for (int i = 0; _season.profiles != null && i < _season.profiles.Count && !viable; i++)
                     {
-                        // 对手池是「认证池减去这五名候选」，与签下的是哪两位无关：
-                        // 换替补不会改变可行性，让玩家一直换是把他关在选秀页里。
-                        _owner.ShowMessage(L10n.T(
-                            "当前认证池凑不出完整六场赛季。对手池对五名候选一视同仁，换替补也不会变——请退出本赛季重新进入，候选名单会重抽。",
-                            "The certified pool cannot fill all six matches. The opponent pool is the same whichever two you sign, so swapping the relay will not help — leave this season and re-enter for a fresh candidate list."));
+                        ModeHProfileDto partner = _season.profiles[i];
+                        if (partner == null || string.Equals(partner.profileId, profileId, StringComparison.Ordinal)) continue;
+                        if (pass == 0 && string.Equals(partner.archetypeId, main.archetypeId, StringComparison.Ordinal)) continue;
+                        if (!ModeHDraftController.TrySignContracts(
+                                _season.profiles, profileId, partner.profileId,
+                                out contract, out failureReasonId)) continue;
+                        if (!ModeHDraftController.TryAssignEchoDestinations(
+                                _runState.RunSeed, _season.profiles, contract,
+                                out assignments, out failureReasonId)) continue;
+                        viable = CanConstructFullSeason(contract, assignments, out failureReasonId);
                     }
-                    ModBehaviour.DevLog("[ModeH] 签约组合六场可行性检查失败: "
+                }
+
+                if (!viable)
+                {
+                    // 对手池是「认证池减去这五名候选」：五种搭配都凑不出六场，只能退出重进重抽。
+                    if (_owner != null) _owner.ShowMessage(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Draft_NoViablePair"));
+                    ModBehaviour.DevLog("[ModeH] 选人后找不到能组成六场的搭档: "
                         + (failureReasonId != null ? failureReasonId : "unknown"));
                     return;
                 }
 
                 _season.contract = contract;
                 _season.echoAssignments = assignments;
-                _pendingContractMainId = null;
 
-                if (TryTransition(ModeHLifecycle.Drafting, ModeHLifecycle.RosterLocked, "contracts_signed"))
+                RunAutoAdvance("champion_picked", delegate
                 {
-                    // 早期恢复子表要求 roster 快照有效，这里是一个显式落盘点
-                    TryPersistSeason("roster_locked");
-                }
+                    if (TryTransition(ModeHLifecycle.Drafting, ModeHLifecycle.RosterLocked, "contracts_signed"))
+                    {
+                        // 早期恢复子表要求 roster 快照有效，这里是一个显式落盘点
+                        TryPersistSeason("roster_locked");
+                    }
+                });
             }
             catch (Exception e)
             {
                 LogFailure("draft_pick", e);
             }
         }
-
-        /// <summary>已点选的主将（等待第二次点击选替补）。</summary>
-        private string _pendingContractMainId;
 
         #endregion
 
@@ -570,13 +538,15 @@ namespace BossRush
                     .Replace("{0}", displayIndex.ToString())
                 + " / " + ModeHConfig.SeasonMatchCount;
 
-            // RosterLocked 只是签完约，还要先把本场敌军计划建出来才能看盘
+            // 正常流程不经过这一页（选人 / 下一场都由 RunAutoAdvance 直接推到开打）。
+            // 只有技术重试回落、续赛或自动开打被拒时才停在这里：给一个「开打」走同一条默认值链，
+            // 另留「自己调整再开打」进原整备 / 赔率页，免费侦察也照旧可用。
             if (_runState.Lifecycle == ModeHLifecycle.RosterLocked)
             {
                 page.Actions.Add(new ModeHActionData
                 {
-                    Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Confirm"),
-                    OnClick = delegate { OpenFirstMatchBrief(); },
+                    Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_StartMatch"),
+                    OnClick = delegate { RunAutoAdvance("roster_start", null); },
                 });
                 return page;
             }
@@ -586,9 +556,15 @@ namespace BossRush
             AppendReconLinesAndActions(page);
             page.Actions.Add(new ModeHActionData
             {
-                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_LockIn"),
+                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_CustomSetup"),
                 Interactable = _season.currentMatchPlan != null,
                 OnClick = delegate { EnterLoadoutEditing(); },
+            });
+            page.Actions.Add(new ModeHActionData
+            {
+                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_StartMatch"),
+                Interactable = _season.currentMatchPlan != null,
+                OnClick = delegate { RunAutoAdvance("brief_start", null); },
             });
             return page;
         }
@@ -1189,9 +1165,15 @@ namespace BossRush
         /// <summary>本场生成事务。</summary>
         private ModeHSpawnTransaction _spawnTransaction;
 
+        /// <summary>
+        /// 结算页：战报本体仍由 BuildCompletedSettlementPageContent 组装（身份围栏不变），
+        /// 这里补上自动处理的战痕 / 整备说明，并把唯一的「确认」换成「下一场」直接开打（见 UiFlow）。
+        /// </summary>
         private ModeHPageContent BuildSettlementPageContent()
         {
-            return BuildCompletedSettlementPageContent();
+            ModeHPageContent page = BuildCompletedSettlementPageContent();
+            DecorateSettlementPage(page);
+            return page;
         }
 
         #endregion

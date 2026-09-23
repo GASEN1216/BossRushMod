@@ -31,10 +31,18 @@ namespace BossRush
             bool won = report.winner == (int)ModeHMatchOutcome.PlayerVictory;
             page.Body = won ? L10n.T("本场胜利", "Victory") : L10n.T("本场失利", "Defeat");
             page.Lines.Add(L10n.T("耗时：", "Time: ") + report.elapsedSeconds.ToString("0.0") + "s");
-            page.Lines.Add(L10n.T("赔率：x", "Odds: x") + report.lockedOdds
-                + L10n.T("　下注：", "  Stake: ") + report.virtualStakeAmount);
-            page.Lines.Add(L10n.T("筹码：", "Credits: ") + report.virtualStakeBalanceBefore
-                + " → " + report.virtualStakeBalanceAfter);
+            // 默认流程不下注（2026-09-23 起），没下注时下注额与筹码两行只是噪声，只留赔率
+            if (report.virtualStakeAmount > 0)
+            {
+                page.Lines.Add(L10n.T("赔率：x", "Odds: x") + report.lockedOdds
+                    + L10n.T("　下注：", "  Stake: ") + report.virtualStakeAmount);
+                page.Lines.Add(L10n.T("筹码：", "Credits: ") + report.virtualStakeBalanceBefore
+                    + " → " + report.virtualStakeBalanceAfter);
+            }
+            else
+            {
+                page.Lines.Add(L10n.T("赔率：x", "Odds: x") + report.lockedOdds);
+            }
             if (report.injuryEvents != null && report.injuryEvents.Count > 0)
             {
                 page.Lines.Add(L10n.T("倒地伤病：", "Down injuries: ") + report.injuryEvents.Count);
