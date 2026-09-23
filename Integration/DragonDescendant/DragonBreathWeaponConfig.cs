@@ -46,6 +46,9 @@ namespace BossRush
         /// </summary>
         public const float REPAIR_LOSS_RATIO = 0.2f;
 
+        /// <summary>价值下限：包内预制体约 3.4 万，按品质 7 专属掉落档（约 4–5 万）兜底（owner 2026-09-23 实测第 14 条）。</summary>
+        private const int MIN_VALUE = 45000;
+
         /// <summary>
         /// 开枪声音Key（与MCX Spear相同：rifle_heavy）
         /// </summary>
@@ -176,6 +179,7 @@ namespace BossRush
                 SetBulletCountDisplay(item);  // 设置BulletCount显示
                 ConfigureGunSettings(item);   // 配置枪械音效和特效
                 SyncItemValueFromRawValue(item);
+                if (item.Value < MIN_VALUE) item.Value = MIN_VALUE;
 
                 ModBehaviour.DevLog("[DragonBreathWeapon] 配置完成");
             }

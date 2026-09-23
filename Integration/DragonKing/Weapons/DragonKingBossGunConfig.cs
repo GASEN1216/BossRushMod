@@ -36,7 +36,8 @@ namespace BossRush
         private const string DefaultDisplayCaliber = "SMG";
         private const float DefaultMaxDurability = 100f;
         private const float DefaultRepairLossRatio = 0.2f;
-        private const int MinimumValue = 4800;
+        // 价值下限：包内预制体本身约 15 万，这里只兜住预制体缺值时不跌出 Q8 档（owner 实测第 14 条）。
+        private const int MinimumValue = 60000;
 
         private static readonly Dictionary<string, float> WeaponStats = new Dictionary<string, float>
         {

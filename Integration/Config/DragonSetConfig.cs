@@ -59,6 +59,11 @@ namespace BossRush
         private const float DRAGON_ARMOR_ELECTRIC_FACTOR = -0.2f;  // 电承伤倍率固定-0.2
         private const float DRAGON_ARMOR_POISON_FACTOR = 0.4f;     // 毒承伤倍率固定+0.4
 
+        // ========== 价值下限（owner 2026-09-23 实测第 14 条）==========
+        // 包内预制体只有约 9800，与龙裔遗族专属掉落、品质 6 不相称；按 Mod 稀有掉落档（Q6 约 2.5–3 万）兜底。
+        private const int DRAGON_HELM_MIN_VALUE = 28000;
+        private const int DRAGON_ARMOR_MIN_VALUE = 30000;
+
         /// <summary>
         /// 尝试配置龙套装（自动识别是否为龙套装物品）
         /// </summary>
@@ -120,6 +125,7 @@ namespace BossRush
             // 设置耐久度
             EquipmentHelper.SetItemConstant(item, "MaxDurability", DRAGON_HELM_DURABILITY);
             item.Durability = DRAGON_HELM_DURABILITY;
+            item.Value = Mathf.Max(item.Value, DRAGON_HELM_MIN_VALUE);
 
             // 风暴防护+1
             EquipmentHelper.AddModifierToItem(item, "StormProtection", ModifierType.Add, DRAGON_HELM_STORM_PROTECTION, true);
@@ -170,6 +176,7 @@ namespace BossRush
             // 设置耐久度
             EquipmentHelper.SetItemConstant(item, "MaxDurability", DRAGON_ARMOR_DURABILITY);
             item.Durability = DRAGON_ARMOR_DURABILITY;
+            item.Value = Mathf.Max(item.Value, DRAGON_ARMOR_MIN_VALUE);
 
             // 风暴防护+1
             EquipmentHelper.AddModifierToItem(item, "StormProtection", ModifierType.Add, DRAGON_ARMOR_STORM_PROTECTION, true);

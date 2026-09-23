@@ -45,7 +45,8 @@ namespace BossRush
         /// </summary>
         public const string ICON_NAME = "relic_egg";
 
-        public const int VALUE = 3200;
+        // 2026-09-23 owner 实测第 14 条：蛋只从 Boss 掉（4%）或 240 遗魂凝成，品质 5 按 Mod 稀有掉落档（Q5 约 1.5–2 万）定价。
+        public const int VALUE = 20000;
         public const int MAX_STACK = 1;
         public const int QUALITY = 5;
 

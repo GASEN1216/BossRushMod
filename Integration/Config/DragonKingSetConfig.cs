@@ -47,6 +47,11 @@ namespace BossRush
         private const float DRAGON_KING_ARMOR_COLD_PROTECTION = 1f;     // 寒冷防护+1
         private const float DRAGON_KING_ARMOR_FIRE_FACTOR = -0.25f;      // 火承伤倍率固定-0.25
         private const float DRAGON_KING_ARMOR_ELECTRIC_FACTOR = -0.25f;  // 电承伤倍率固定-0.25
+
+        // ========== 价值下限（owner 2026-09-23 实测第 14 条）==========
+        // 包内预制体约 4.4 万 / 4.6 万，低于品质 8 的焚天龙皇专属掉落应有的档位（Q8 约 6–8 万）。
+        private const int DRAGON_KING_HELM_MIN_VALUE = 70000;
+        private const int DRAGON_KING_ARMOR_MIN_VALUE = 72000;
         // 移除：毒承伤倍率
 
         /// <summary>
@@ -110,6 +115,7 @@ namespace BossRush
             // 设置耐久度
             EquipmentHelper.SetItemConstant(item, "MaxDurability", DRAGON_KING_HELM_DURABILITY);
             item.Durability = DRAGON_KING_HELM_DURABILITY;
+            item.Value = Mathf.Max(item.Value, DRAGON_KING_HELM_MIN_VALUE);
 
             // 风暴防护+1
             EquipmentHelper.AddModifierToItem(item, "StormProtection", ModifierType.Add, DRAGON_KING_HELM_STORM_PROTECTION, true);
@@ -156,6 +162,7 @@ namespace BossRush
             // 设置耐久度
             EquipmentHelper.SetItemConstant(item, "MaxDurability", DRAGON_KING_ARMOR_DURABILITY);
             item.Durability = DRAGON_KING_ARMOR_DURABILITY;
+            item.Value = Mathf.Max(item.Value, DRAGON_KING_ARMOR_MIN_VALUE);
 
             // 风暴防护+1
             EquipmentHelper.AddModifierToItem(item, "StormProtection", ModifierType.Add, DRAGON_KING_ARMOR_STORM_PROTECTION, true);
