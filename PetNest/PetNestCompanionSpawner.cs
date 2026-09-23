@@ -51,8 +51,8 @@ namespace BossRush
         internal bool Activated;
         /// <summary>CleanupOnce 幂等标记。</summary>
         internal bool CleanedUp;
-        /// <summary>炫彩 / 异色光环（普通崽为 null，零对象零成本）。</summary>
-        internal PetNestAuraEffect[] Auras;
+        /// <summary>炫彩 / 异色特效（普通崽为 null，零对象零成本）。</summary>
+        internal PetNestAuraEffect Aura;
     }
 
     /// <summary>
@@ -385,118 +385,53 @@ namespace BossRush
             handle.Activated = false;
         }
 
-        #region 炫彩 / 异色光环
+        #region 炫彩 / 异色特效
 
         /// <summary>
-        /// 给带炫彩或异色的崽挂上光环。owner 2026-09-20：
-        /// 「不同炫彩弄不同的粒子特效，异色则是最豪华的最好看的」。
-        ///
-        /// 炫彩：两层环形粒子，一层一色、半径与高度错开，转起来是两色交织；
-        /// 异色：一层高密度金色 + 一盏跟随点光（最显眼的那一档）。
-        /// 普通崽：**一个对象都不创建**，零每帧成本。
+        /// 给带炫彩或异色的崽挂上身上的特效。owner 2026-09-20：
+        /// 「不同炫彩弄不同的粒子特效，异色则是最豪华的最好看的」；2026-09-22 实测：
+        /// 「异色弄的特效要帅不要廉价」。配方与材质口径见 PetNestAuraEffect / PetNestAuraRecipes：
+        /// 炫彩第一色决定主元素（赤=龙息火焰……银=镜屑），第二色是一圈反向环绕的点缀；
+        /// 异色是金色符文环 + 金星 + 星芒 + 光冠 + 呼吸点光，带炫彩时再叠降强度的元素层。
+        /// 普通崽：**一个对象都不创建**，零每帧成本（AGENTS 4.12）。
         /// </summary>
         private static void AttachChromaAura(PetNestCompanionHandle handle, PetNestPetRecord pet)
         {
             if (handle == null || handle.Character == null || pet == null) return;
-            if (handle.Auras != null) return;
+            if (handle.Aura != null) return;
 
             bool chroma = PetNestChroma.HasChroma(pet);
             if (!pet.shiny && !chroma) return;
 
             try
             {
-                Transform follow = handle.Character.transform;
-                List<PetNestAuraEffect> auras = new List<PetNestAuraEffect>(3);
-
-                if (chroma)
-                {
-                    PetNestChromaColor a = PetNestChroma.Find(pet.chromaA);
-                    PetNestChromaColor b = PetNestChroma.Find(pet.chromaB);
-                    auras.Add(CreateAura(follow, ToColor(a), 4, 0.30f, 0.30f, 0.65f, 6f, 0.8f,
-                        new Vector3(0f, 0.05f, 0f)));
-                    auras.Add(CreateAura(follow, ToColor(b), 4, 0.44f, 0.26f, 0.5f, 5f, 0.95f,
-                        new Vector3(0f, 0.28f, 0f)));
-                }
-
-                if (pet.shiny)
-                {
-                    Color gold = new Color(PetNestChroma.ShinyParticleR,
-                        PetNestChroma.ShinyParticleG, PetNestChroma.ShinyParticleB);
-                    auras.Add(CreateAura(follow, gold, 6, 0.38f, 0.45f, 0.85f, 11f, 1.1f,
-                        new Vector3(0f, 0.15f, 0f)));
-                    AttachShinyLight(handle.Character, gold);
-                }
-
-                for (int i = auras.Count - 1; i >= 0; i--)
-                {
-                    if (auras[i] == null) auras.RemoveAt(i);
-                }
-                handle.Auras = auras.Count > 0 ? auras.ToArray() : null;
+                PetNestChromaColor a = chroma ? PetNestChroma.Find(pet.chromaA) : null;
+                PetNestChromaColor b = chroma ? PetNestChroma.Find(pet.chromaB) : null;
+                // 特效根挂在角色根下：角色被任何路径销毁时特效一起走，不会留孤儿
+                handle.Aura = PetNestAuraEffect.Attach(handle.Character, pet.shiny, a, b);
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[PetNest] 光环创建失败: " + e.Message);
-                handle.Auras = null;
+                ModBehaviour.DevLog("[PetNest] 崽特效创建失败: " + e.Message);
+                handle.Aura = null;
             }
         }
 
-        private static PetNestAuraEffect CreateAura(Transform follow, Color tint, int emitters,
-            float radius, float alpha, float size, float rate, float lifetime, Vector3 offset)
-        {
-            PetNestAuraEffect aura = PetNestAuraEffect.Create<PetNestAuraEffect>(
-                follow, follow.position + offset);
-            if (aura == null) return null;
-            aura.Configure(tint, emitters, radius, alpha, size, rate, lifetime, offset);
-            // 挂到崽底下：角色销毁时光环随之销毁，不会留孤儿
-            aura.transform.SetParent(follow, true);
-            return aura;
-        }
-
-        /// <summary>异色专属的跟随点光。挂在角色子节点上，随角色销毁。</summary>
-        private static void AttachShinyLight(CharacterMainControl character, Color color)
-        {
-            try
-            {
-                GameObject lightObj = new GameObject("PetNestShinyLight");
-                lightObj.transform.SetParent(character.transform, false);
-                lightObj.transform.localPosition = new Vector3(0f, 0.45f, 0f);
-                Light light = lightObj.AddComponent<Light>();
-                light.type = LightType.Point;
-                light.color = color;
-                light.intensity = 2.2f;
-                light.range = 1.8f;
-                light.shadows = LightShadows.None;
-                light.renderMode = LightRenderMode.ForcePixel;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[PetNest] 异色点光创建失败: " + e.Message);
-            }
-        }
-
-        private static Color ToColor(PetNestChromaColor color)
-        {
-            if (color == null) return Color.white;
-            return new Color(color.ParticleR, color.ParticleG, color.ParticleB);
-        }
-
-        /// <summary>回收光环。幂等；角色已销毁时光环也已随之销毁，这里只丢引用。</summary>
+        /// <summary>回收特效。幂等；角色已销毁时特效也已随之销毁（Unity 判空为假），这里只丢引用。</summary>
         private static void DetachChromaAura(PetNestCompanionHandle handle)
         {
-            if (handle == null || handle.Auras == null) return;
-            for (int i = 0; i < handle.Auras.Length; i++)
+            if (handle == null) return;
+            PetNestAuraEffect aura = handle.Aura;
+            handle.Aura = null;
+            if (aura == null) return;
+            try
             {
-                try
-                {
-                    PetNestAuraEffect aura = handle.Auras[i];
-                    if (aura != null) aura.StopEffect();
-                }
-                catch (Exception)
-                {
-                    // 光环回收失败不阻断角色回收
-                }
+                aura.Dispose();
             }
-            handle.Auras = null;
+            catch (Exception)
+            {
+                // 特效回收失败不阻断角色回收：它是角色的子节点，随后会随角色一起销毁
+            }
         }
 
         #endregion

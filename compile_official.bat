@@ -944,6 +944,8 @@ echo(PetNest\PetNestModels.cs
 echo(PetNest\PetNestTuning.cs
 echo(PetNest\PetNestChroma.cs
 echo(PetNest\PetNestAuraEffect.cs
+echo(PetNest\PetNestAuraRecipes.cs
+echo(PetNest\PetNestAuraTextures.cs
 echo(PetNest\PetNestPersonality.cs
 echo(PetNest\PetNestLineageCatalog.cs
 echo(Config\ConfigPetNest.cs
