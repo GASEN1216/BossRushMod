@@ -4,9 +4,13 @@ import argparse
 import csv
 import json
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'tools'))
+from compile_list import read_compile_sources  # noqa: E402
+
 MANIFEST = ROOT / 'Assets/Data/GameplayCoverage.json'
 
 
@@ -91,8 +95,9 @@ def validate(data):
         errors.append(f'覆盖清单引用不存在的 Wiki 条目: {entry}')
 
     # 用真实编译清单发现新增模块；细分 Integration/NPC/新武器/Common，避免父目录吞掉新功能。
-    compile_text = (ROOT / 'compile_official.bat').read_text(encoding='utf-8-sig')
-    compiled = re.findall(r'^echo\(([^\r\n]+\.cs)\s*$', compile_text, re.M)
+    # 清单解析走共用的 tools/compile_list.py：这里原本自带的 `^echo\(...\.cs$` 正则看不见清单里
+    # 残留的 `^` 续行写法（少 4 个文件），新模块若以那种写法登记就会整块漏掉。
+    compiled = read_compile_sources()
     domains = set()
     for name in compiled:
         parts = name.replace('\\', '/').split('/')

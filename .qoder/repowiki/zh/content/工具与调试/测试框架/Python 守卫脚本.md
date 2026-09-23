@@ -259,7 +259,8 @@ NextLine --> Done["输出汇总并返回退出码"]
 ### 数据注册表与内容守卫
 - ContentRegistryGuard：确保内容注册表的键值、类型映射一致，避免遗漏或冲突。
 - DataRegistryDeploymentGuard：确保数据注册表部署到预期路径，避免运行时找不到资源。
-- OfficialCompileListFileExistenceGuard：确保 compile_official.bat 列出的源文件确实存在。
+- OfficialCompileListFileExistenceGuard：确保 compile_official.bat 列出的源文件确实存在（清单解析走共用的 tools/compile_list.py）。
+- SyntaxProbeCompileListParityGuard：确保离线语法探针 tools/verify_syntax.py 实际检查的文件集合等于编译清单集合，并用 AST 挡住探针重新自带 .cs 正则、响应文件核对被摘掉。
 - GitIgnoreGuard：确保 .gitignore 包含必要的忽略规则，避免提交临时文件或敏感数据。
 - WindowsPathDetectionGuard：检测跨平台路径分隔符问题，避免 Windows 特有路径导致兼容性问题。
 - NoHardcodedMapFallbackGuard：禁止硬编码地图回退策略，确保地图选择逻辑集中可控。
@@ -270,6 +271,8 @@ NextLine --> Done["输出汇总并返回退出码"]
 - [tests/ContentRegistryGuard.py:1-200](file://tests/ContentRegistryGuard.py#L1-L200)
 - [tests/DataRegistryDeploymentGuard.py:1-200](file://tests/DataRegistryDeploymentGuard.py#L1-L200)
 - [tests/OfficialCompileListFileExistenceGuard.py:1-200](file://tests/OfficialCompileListFileExistenceGuard.py#L1-L200)
+- [tests/SyntaxProbeCompileListParityGuard.py:1-200](file://tests/SyntaxProbeCompileListParityGuard.py#L1-L200)
+- [tools/compile_list.py:1-100](file://tools/compile_list.py#L1-L100)
 - [tests/GitIgnoreGuard.py:1-200](file://tests/GitIgnoreGuard.py#L1-L200)
 - [tests/WindowsPathDetectionGuard.py:1-200](file://tests/WindowsPathDetectionGuard.py#L1-L200)
 - [tests/NoHardcodedMapFallbackGuard.py:1-200](file://tests/NoHardcodedMapFallbackGuard.py#L1-L200)

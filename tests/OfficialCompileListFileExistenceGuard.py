@@ -4,6 +4,13 @@ from pathlib import Path
 import re
 import sys
 
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+
+# 清单解析只有一份实现（tools/compile_list.py），本 guard 与离线语法探针共用，
+# 避免两边正则漂移出「探针少检几个文件却不报错」这种静默失明。
+from compile_list import normalize_source, parse_compile_sources, read_compile_text  # noqa: E402
+
 
 COMPILE = Path("compile_official.bat")
 EXCLUDED_DIRS = {
@@ -24,15 +31,8 @@ def fail(message: str) -> int:
     return 1
 
 
-def normalize_source(path: str) -> str:
-    return re.sub(r"/+", "/", path.replace("\\", "/")).lstrip("./")
-
-
 def iter_compile_sources(text: str) -> set[str]:
-    sources: set[str] = set()
-    for match in re.finditer(r"([A-Za-z0-9_./\\-]+\.cs)(?=\s*(?:\^|\r?\n|$))", text):
-        sources.add(normalize_source(match.group(1)))
-    return sources
+    return set(parse_compile_sources(text))
 
 
 def iter_production_sources() -> set[str]:
@@ -45,7 +45,7 @@ def iter_production_sources() -> set[str]:
 
 
 def main() -> int:
-    text = COMPILE.read_text(encoding="utf-8")
+    text = read_compile_text(COMPILE)
     compile_sources = iter_compile_sources(text)
 
     missing: list[str] = []

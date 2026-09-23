@@ -28,6 +28,19 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# 清单解析只有 tools/compile_list.py 一份实现，本探针与
+# tests/OfficialCompileListFileExistenceGuard.py 共用同一套规则。
+# 历史教训见 compile_list 的模块注释：探针自带的 `echo(...)` 正则漏掉了清单里残留的
+# `^` 续行写法，SkyIslandJournal.cs 从来没被语法检查过，而且既不报错也不显示差异。
+from compile_list import (  # noqa: E402
+    COMPILE_BAT as _SHARED_COMPILE_BAT,
+    normalize_source,
+    parse_compile_sources,
+    read_compile_text,
+)
+
 
 def _force_utf8_output():
     for stream in (sys.stdout, sys.stderr):
@@ -40,13 +53,7 @@ def _force_utf8_output():
 _force_utf8_output()
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-COMPILE_BAT = os.path.join(REPO_ROOT, "compile_official.bat")
-
-# compile_official.bat 当前通过 `echo(<file.cs` 生成 Roslyn 响应文件。
-# 同时兼容历史上的 `^` 续行源码清单，避免工具因构建脚本格式切换失明。
-RE_ECHO_SOURCE = re.compile(r"^\s*@?echo\(([^\r\n]+?\.cs)\s*$", re.M | re.I)
-RE_CONTINUED = re.compile(r"^\s+([^\s\r\n]+\.cs)\s+\^\s*$", re.M)
-RE_LAST = re.compile(r"^\s+([^\s\r\n]+\.cs)\s*$", re.M)
+COMPILE_BAT = _SHARED_COMPILE_BAT
 
 # 只有 CS1xxx 属于词法/语法层；CS0xxx 基本都是「找不到类型/成员」这类需要引用才能判定的。
 # 注意 CS16xx（如 CS1631「无法在 catch 子句体中生成值」）也在这个区间内，
@@ -95,18 +102,39 @@ def find_bcl_dir():
 
 
 def read_source_list():
-    text = open(COMPILE_BAT, encoding="utf-8", errors="ignore").read()
-    names = (RE_ECHO_SOURCE.findall(text) +
-             RE_CONTINUED.findall(text) +
-             RE_LAST.findall(text))
-    seen = set()
-    ordered = []
-    for name in names:
-        norm = name.replace("/", "\\")
-        if norm not in seen:
-            seen.add(norm)
-            ordered.append(norm)
-    return ordered
+    """从 compile_official.bat 取源码清单，路径换成 csc 习惯的反斜杠形式。"""
+    return [source.replace("/", "\\") for source in parse_compile_sources(read_compile_text(COMPILE_BAT))]
+
+
+def assert_rsp_covers_compile_list(rsp_sources):
+    """断言真正写进响应文件的源码集合 == 编译清单集合。
+
+    read_source_list() 已经直接取自共用解析器，正常情况下这条恒真；它挡的是
+    「日后有人在解析与写 rsp 之间插一道过滤/跳过，探针却照样 PASS」——
+    探针少检文件必须变红，不能像 SkyIslandJournal.cs 那次一样静默少检。
+    """
+    expected = set(parse_compile_sources(read_compile_text(COMPILE_BAT)))
+    actual = {normalize_source(source) for source in rsp_sources}
+    if actual == expected:
+        return True
+
+    missing = sorted(expected - actual)
+    extra = sorted(actual - expected)
+    print("[FAIL] 探针实际检查的源码集合与 compile_official.bat 清单不一致"
+          "（清单 {0} 个，实检 {1} 个）".format(len(expected), len(actual)))
+    if missing:
+        print("   漏检 {0} 个：".format(len(missing)))
+        for name in missing[:10]:
+            print("      " + name)
+        if len(missing) > 10:
+            print("      ...（还有 {0} 个）".format(len(missing) - 10))
+    if extra:
+        print("   清单外多检 {0} 个：".format(len(extra)))
+        for name in extra[:10]:
+            print("      " + name)
+        if len(extra) > 10:
+            print("      ...（还有 {0} 个）".format(len(extra) - 10))
+    return False
 
 
 def main():
@@ -160,6 +188,7 @@ def main():
     rsp_path = os.path.join(tmpdir, "syntax.rsp")
     out_dll = os.path.join(tmpdir, "syntax_probe.dll")
 
+    rsp_sources = []
     with open(rsp_path, "w", encoding="utf-8") as fh:
         fh.write("/target:library\n")
         fh.write("/langversion:7.3\n")
@@ -172,6 +201,13 @@ def main():
             fh.write('/reference:"{0}"\n'.format(ref))
         for src in sources:
             fh.write('"{0}"\n'.format(os.path.join(REPO_ROOT, src)))
+            rsp_sources.append(src)
+
+    # 在启动 csc 之前核对：写进响应文件的就是编译清单本身，一个不少、一个不多。
+    if not assert_rsp_covers_compile_list(rsp_sources):
+        print("")
+        print("verify_syntax: FAIL")
+        return 1
 
     proc = subprocess.run(["dotnet", csc, "@" + rsp_path],
                           cwd=REPO_ROOT, capture_output=True, text=True,

@@ -1,5 +1,42 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+<!-- BEGIN SYNTAX PROBE COMPILE LIST PARITY 2026-09-23 -->
+
+## 2026-09-23 离线语法探针漏检编译清单文件（OPERATIONAL）
+
+**问题**：`tools/verify_syntax.py` 自带一套 `echo(...\.cs` 正则读 `compile_official.bat`，
+吃不下清单里残留的 `^` 续行写法（第 265-268 行：`echo(A.cs ^` 后面跟三行缩进路径）。
+cmd 会把这几行拼成一条 echo，写进响应文件后 csc 按空白切参数，**正式构建照常编译这四个文件**
+（`Build/bossrush.rsp` 第 191 行实测就是一行四个路径）；但探针把 `echo(...SkyIslandJournal.cs ^`
+整行丢掉，`DebugAndTools/SkyIsland/SkyIslandJournal.cs` 从来没被离线语法检查过，
+而且探针既不报错，也不显示 979 与 980 的差。`tools/gameplay_coverage.py` 的第三套正则更盲，
+只看见 976 个（那四个文件都漏），只是它用的域集合恰好被同目录其它文件覆盖，暂未产生后果。
+
+**修复**：
+
+- 新增 `tools/compile_list.py`，作为编译清单解析的唯一实现，规则与
+  `OfficialCompileListFileExistenceGuard` 原有正则逐字相同（实测两边同为 980 个源、零差集）。
+- `tools/verify_syntax.py`、`tests/OfficialCompileListFileExistenceGuard.py`、
+  `tools/gameplay_coverage.py` 全部改为 import 它，删掉各自的正则。
+- 探针在启动 csc 之前核对「写进响应文件的集合 == 清单集合」，不一致就点名漏检/多检文件并 FAIL。
+- 新增 `tests/SyntaxProbeCompileListParityGuard.py`：外部钉同一条等式，并用 AST 挡住
+  「探针重新长出自己的 `.cs` 正则」与「响应文件核对被摘掉」。
+- `compile_official.bat` 未改（保持 CRLF，那几行本来就能正确编译）。
+
+**验证**（证据级别 L2，未做 Windows 正式编译）：
+
+- 探针：修复前 979 源，修复后 980 源，`--with-bcl` 仍 PASS（语法层 CS1xxx 零错误）；
+  `SkyIslandJournal.cs` 首次被语法检查，无错误。
+- 全量守卫 656 PASS / 0 NEW-FAIL / 0 KNOWN-RED。
+- `gameplay_coverage` 换解析器后域集合不变（70 -> 70，零差集），四条相关守卫仍 PASS。
+- 反向验证（稀疏副本上做，每次按字节还原并核对 sha256，5/5 按预期转红）：
+  探针漏检一个文件 -> 新守卫点名 `SkyIslandJournal.cs`；探针重新自带 `.cs` 正则 -> 新守卫红；
+  摘掉 main() 里的核对 -> 新守卫红；共用正则退回看不见 `^` 续行 ->
+  `OfficialCompileListFileExistenceGuard` 兜底报 3 个 omitted；
+  在写 rsp 处插过滤 -> 探针自身 0.2 秒内 FAIL（csc 未被启动）。
+
+<!-- END SYNTAX PROBE COMPILE LIST PARITY 2026-09-23 -->
+
 <!-- BEGIN MANUAL 16 FIX 2026-09-23 -->
 
 ## 2026-09-23 修复 20260922 人工实测 16 项（COMPAT / SCHEMA+ / WIRE+ / OPERATIONAL）

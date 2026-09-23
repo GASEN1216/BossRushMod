@@ -67,3 +67,5 @@ Wiki 导航另跑 `npm --prefix wiki-site run test:navigation`，构建后的链
 ## 6. 语法探针
 
 本机没装游戏时可以跑 `python tools/verify_syntax.py --with-bcl`（或 `verify_syntax.bat --with-bcl`）。它**不等于编译通过**：缺游戏程序集时 Roslyn 解析不出类型，就不分析迭代器方法体，CS16xx 一类错误根本不会产出。探针 PASS 只代表词法 / 语法层没问题，交付时写「语法通过，未正式编译」。
+
+探针检查哪些文件，取决于它怎么读 `compile_official.bat` 的源码清单。**清单解析只有 `tools/compile_list.py` 一份实现**，`tools/verify_syntax.py`、`tests/OfficialCompileListFileExistenceGuard.py`、`tools/gameplay_coverage.py` 都从它取，新增消费者一律 import，不要再写第二套正则。理由是踩过的坑：2026-09-23 实测探针自带的 `echo(...)` 正则吃不下清单里残留的 `^` 续行写法（cmd 会把几行拼成一条 echo，csc 响应文件按空白切参数，所以正式构建照常编译），`SkyIslandJournal.cs` 因此从来没被离线语法检查过，而且探针既不报错也不显示 979 与 980 的差。现在探针在启动 csc 前核对「写进响应文件的集合 == 清单集合」，`tests/SyntaxProbeCompileListParityGuard.py` 再从外面钉同一条等式，并用 AST 挡住「探针重新长出自己的 `.cs` 正则」和「核对被摘掉」。
