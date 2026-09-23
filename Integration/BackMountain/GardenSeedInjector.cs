@@ -22,12 +22,17 @@
 //
 // 【顺序硬约束】食材物品必须先于任何菜园场景加载完成注册，见上一条。
 // EnsureInjected 内部保证了这个顺序：先注册物品，再注入作物表。
+//
+// 【起步种子（2026-09-23 owner 实测第 15 条）】菜地开放后第一次在基地就绪时，每种种子送 2 颗进背包，
+//   让玩家建好菜地就能种；每个存档槽只送一次（可选存档键，旧档没有这个键 = 还没送，SCHEMA+）。
+//   先写标记并回读核对、再发物品：写不进去就不发（下次再试），发放中途出错也不会重复送。
 // ============================================================================
 
 using System;
 using System.Collections.Generic;
 using Duckov.Crops;
 using Duckov.Utilities;
+using ItemStatsSystem;
 using Saves;
 
 namespace BossRush
@@ -49,11 +54,20 @@ namespace BossRush
         /// <summary>每次收获产出数量。</summary>
         private const int HarvestAmount = 2;
 
+        /// <summary>起步种子已发放的存档键（按槽，可选；缺键 = 未发放）。</summary>
+        internal const string StarterSeedsSaveKey = "BossRush_BackMountain_StarterSeeds_v1";
+
+        /// <summary>起步种子每种几颗。</summary>
+        internal const int StarterSeedsPerType = 2;
+
         #endregion
 
         #region 状态
 
         private static bool _injected;
+
+        /// <summary>起步种子发放后排队的一条飘字；由运行时模块在对话结束后与工地飘字一起取走。</summary>
+        internal static string PendingStarterNotice;
 
         #endregion
 
@@ -210,29 +224,149 @@ namespace BossRush
 
         private static bool ReadRatchet()
         {
-            try
-            {
-                if (!SavesSystem.KeyExisits(RatchetSaveKey)) return false;
-                return SavesSystem.Load<bool>(RatchetSaveKey);
-            }
-            catch (Exception)
-            {
-                // 读不到就当没置位：注入与否由解锁状态决定，仍然安全
-                return false;
-            }
+            return ReadFlag(RatchetSaveKey);
         }
 
         private static bool WriteRatchet()
         {
+            return WriteFlag(RatchetSaveKey, "棘轮标记");
+        }
+
+        private static bool ReadFlag(string key)
+        {
+            try
+            {
+                if (!SavesSystem.KeyExisits(key)) return false;
+                return SavesSystem.Load<bool>(key);
+            }
+            catch (Exception)
+            {
+                // 读不到就当没置位：棘轮由解锁状态兜底；起步种子则因写前回读核对而不会重复发
+                return false;
+            }
+        }
+
+        private static bool WriteFlag(string key, string label)
+        {
             try
             {
                 if (SavesSystem.IsSaving || SavesSystem.CurrentSlot < 0) return false;
-                SavesSystem.Save<bool>(RatchetSaveKey, true);
-                return SavesSystem.Load<bool>(RatchetSaveKey);
+                SavesSystem.Save<bool>(key, true);
+                return SavesSystem.Load<bool>(key);
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 棘轮标记写入失败: " + e.Message);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] " + label + "写入失败: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>撤回一个未经证实 / 未兑现的标记（尽力而为；撤不回就宁可不发，也不重复发）。</summary>
+        private static void ClearFlag(string key)
+        {
+            try
+            {
+                if (SavesSystem.IsSaving || SavesSystem.CurrentSlot < 0 || !SavesSystem.KeyExisits(key)) return;
+                SavesSystem.Save<bool>(key, false);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 撤回标记失败: " + key + ", " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 菜地是否对这个槽开放：现查征程解锁，或本槽写过棘轮（征程解锁表还没读进来时靠它）。
+        /// 基地售货机的种子条目按它挂。
+        /// </summary>
+        internal static bool IsGardenAvailable()
+        {
+            return BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Garden) || ReadRatchet();
+        }
+
+        #endregion
+
+        #region 起步种子
+
+        /// <summary>
+        /// 菜地开放、作物已注入、主角已在基地就绪时，每个槽送一次起步种子（三种各 StarterSeedsPerType 颗）进背包。
+        /// 事件驱动（场景 / 关卡就绪 / 实时解锁），不在 tick 里轮询。已送过的槽读一次存档键即返回。
+        /// </summary>
+        /// <returns>本次是否发放了（至少一种）种子。</returns>
+        internal static bool TryGrantStarterSeeds(bool playerReadyInBase)
+        {
+            try
+            {
+                if (!_injected || !playerReadyInBase) return false;
+                if (ReadFlag(StarterSeedsSaveKey)) return false;
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player == null || player.CharacterItem == null) return false;
+
+                // 先落标记再发：写不进去就这次不发（下次就绪时重试），绝不重复送。
+                if (!WriteFlag(StarterSeedsSaveKey, "起步种子标记"))
+                {
+                    ClearFlag(StarterSeedsSaveKey);
+                    return false;
+                }
+
+                List<string> namesCN = new List<string>();
+                List<string> namesEN = new List<string>();
+                BackMountainItems.Definition[] all = BackMountainItems.Definitions;
+                for (int i = 0; i < all.Length; i++)
+                {
+                    BackMountainItems.Definition def = all[i];
+                    if (!def.IsSeed) continue;
+                    if (TryGiveStarterSeed(def.TypeId, StarterSeedsPerType))
+                    {
+                        namesCN.Add(def.NameCN + " ×" + StarterSeedsPerType);
+                        namesEN.Add(def.NameEN + " ×" + StarterSeedsPerType);
+                    }
+                }
+
+                if (namesCN.Count <= 0)
+                {
+                    // 一颗都没送出去：撤回标记，下次就绪时再试（送出去的判据见 TryGiveStarterSeed，不会重复送）
+                    ClearFlag(StarterSeedsSaveKey);
+                    return false;
+                }
+                PendingStarterNotice = L10n.T(
+                    "菜地起步种子已放进背包：" + string.Join("、", namesCN.ToArray()) + "。用完了去基地售货机买，龙裔遗族、焚天龙皇、幽灵女巫也会掉。",
+                    "Starter garden seeds are in your backpack: " + string.Join(", ", namesEN.ToArray())
+                    + ". Buy more from the base vendor; the Dragon Descendant, Dragon King and Phantom Witch also drop them.");
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "已发放菜地起步种子: " + namesEN.Count + " 种");
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 发放起步种子失败: " + e.Message);
+                return false;
+            }
+        }
+
+        private static bool TryGiveStarterSeed(int typeId, int count)
+        {
+            Item seed = null;
+            try
+            {
+                if (!BackMountainItems.EnsureRuntimeRegistration(typeId)) return false;
+                seed = ItemAssetsCollection.InstantiateSync(typeId);
+                if (seed == null) return false;
+                seed.StackCount = count;
+                // 进背包，放不下走官方仓库 / 快递（基地里仓库一定在）
+                ItemUtilities.SendToPlayer(seed, false, true);
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 起步种子 " + typeId + " 发放失败: " + e.Message);
+                if (seed == null) return false;
+                // 官方交付之后的回调抛错时物品其实已经到手：按已送出算，绝不销毁
+                if (seed.InInventory != null) return true;
+                try { seed.DestroyTree(); }
+                catch (Exception destroyError)
+                {
+                    ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 回收未送出的起步种子失败: " + destroyError.Message);
+                }
                 return false;
             }
         }
@@ -253,6 +387,7 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             _injected = false;
+            PendingStarterNotice = null;
         }
 
         #endregion

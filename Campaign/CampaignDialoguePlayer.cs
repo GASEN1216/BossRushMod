@@ -195,8 +195,8 @@ namespace BossRush
                             "册子上还要填一样东西，粮。",
                             "The ledger wants one more thing. Food." },
                         new string[] {
-                            "基地后头那块菜地我让人腾出来了。工地要一把铲子和九坨粑粑，粑粑去找蝇蝇队员要。凑齐了走过去交钱动工，下一章要用。",
-                            "I had the plot out back cleared. The site wants a Shovel and nine Poop, and the Fly Members carry the Poop. Bring them, walk up, pay, and it's yours. You'll need it next chapter." }
+                            "基地后头那块菜地我让人腾出来了。工地要一把铲子和九坨粑粑，粑粑去找蝇蝇队员要。凑齐了走过去交钱动工，种子先塞你几颗，下一章要用。",
+                            "I had the plot out back cleared. The site wants a Shovel and nine Poop, and the Fly Members carry the Poop. Bring them, walk up, pay, and it's yours. Here are a few seeds to start. You'll need it next chapter." }
                     };
                 case "ch2":
                     return new string[][]
@@ -234,8 +234,8 @@ namespace BossRush
                             "剩一行，疫区那场。签过的人没回来过，所以一直空着。",
                             "One line left. The quarantine match. Nobody who signed it came back, so it stayed blank." },
                         new string[] {
-                            "去之前先吃一顿。菜地有收成就做一份出击餐。",
-                            "Eat before you go. If the garden's in, make yourself a raid meal." }
+                            "去之前先吃一顿。菜地有收成，就在基地吃一份出击餐再走。",
+                            "Eat before you go. If the garden's in, eat a raid meal at base before you head out." }
                     };
                 case "ch5":
                     return new string[][]

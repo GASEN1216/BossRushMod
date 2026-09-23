@@ -183,7 +183,7 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 - **Clues**: one per chapter, written into the game's own **notes**. They are the six lines of the
   ledger. Unlocked entries stay readable forever.
 - **Arena Backyard**, one per chapter for the first three:
-  - Chapter 1 → **the garden**: the base's garden site opens; pay Shovel ×1 and Poop ×9 to build it, then Bosses start dropping seeds and what you grow becomes raid meals
+  - Chapter 1 → **the garden**: the base's garden site opens; pay Shovel ×1 and Poop ×9 to build it. You get a starter pack of seeds, the base vendor sells more and the three mod Bosses drop them; what you grow is your raid meal
   - Chapter 2 → **the display bonus**: put Boss trophies on the official weapon display rack or on a dummy, each one raises your max health
   - Chapter 3 → **jukebox battle tracks**: the base jukebox picks up the mod's own music
   - Chapters 4 through 6 unlock no backyard facility — they pay in cash, clues and ending

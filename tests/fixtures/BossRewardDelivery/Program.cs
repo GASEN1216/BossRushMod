@@ -9,7 +9,7 @@ internal static class Program
     { checks++; if (!ok) throw new Exception(reason); }
     private static void Reset()
     {
-        UnityEngine.Random.value = 0f;
+        UnityEngine.Random.value = 0f; Item.ThrowOnDrop = false;
         BackMountainItems.Registered = true; BackMountainUnlocks.Unlocked = true;
         ItemAssetsCollection.Last = null; ItemAssetsCollection.Creates = 0;
         ItemAssetsCollection.ReturnNull = false;
@@ -61,6 +61,35 @@ internal static class Program
         owner.Enabled = true;
         Reset(); ItemAssetsCollection.ReturnNull = true; owner.Seed(Full(), "king");
         Check(!ModBehaviour.Logs.Exists(x => x.Contains("掉落菜地种子:")), "missing prefab logged success");
+
+        // 官方 / 原生掉落箱路径（随机 Boss 掉落关闭、Mode E/F、找不到奖励箱模板）：种子进 characterItem，官方随后按它建箱。
+        for (int i = 0; i < bosses.Length; i++)
+        {
+            Reset(); var official = Full();
+            owner.SeedOfficialBox(ModBehaviour.Boss(bosses[i], official));
+            Check(official.Content.Count == 9 && official.Content[8].TypeID == seeds[i] && !ItemAssetsCollection.Last.Destroyed,
+                "official loot box path lost seed: " + bosses[i]);
+        }
+        Reset(); owner.SeedOfficialBox(ModBehaviour.Boss("king", null));
+        Check(ItemAssetsCollection.Creates == 0, "missing characterItem must not create a seed");
+        Reset(); UnityEngine.Random.value = .26f; var unlucky = Full(); owner.SeedOfficialBox(ModBehaviour.Boss("king", unlucky));
+        Check(ItemAssetsCollection.Creates == 0 && unlucky.Content.Count == 8, "official box path keeps the 25% roll");
+
+        // 无间炼狱：没有任何箱子，种子落在尸体处。
+        Reset(); var worldBoss = ModBehaviour.Boss("PhantomWitch", null); owner.SeedWorld(worldBoss);
+        Check(ItemAssetsCollection.Last != null && ItemAssetsCollection.Last.TypeID == 500064 && ItemAssetsCollection.Last.Dropped
+            && ItemAssetsCollection.Last.DropPosition.x == 3 && ItemAssetsCollection.Last.DropPosition.z == 4 && !ItemAssetsCollection.Last.Destroyed,
+            "infinite hell seed must drop at the boss body");
+        for (int gate = 0; gate < 5; gate++)
+        {
+            Reset(); owner.Enabled = gate != 0; BackMountainUnlocks.Unlocked = gate != 1;
+            BackMountainItems.Registered = gate != 2; UnityEngine.Random.value = gate == 3 ? .26f : 0f;
+            owner.SeedWorld(ModBehaviour.Boss(gate == 4 ? "ordinary" : "king", null));
+            Check(ItemAssetsCollection.Creates == 0, "world seed bypassed existing gate: " + gate);
+        }
+        owner.Enabled = true;
+        Reset(); Item.ThrowOnDrop = true; owner.SeedWorld(ModBehaviour.Boss("king", null));
+        Check(ItemAssetsCollection.Last.Destroyed && !ModBehaviour.Logs.Exists(x => x.Contains("掉落菜地种子（世界掉落）")), "failed world drop leaked the seed instance");
 
         for (int kind = 0; kind < 2; kind++)
         {

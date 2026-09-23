@@ -251,6 +251,8 @@ namespace BossRush
                     }
 
                     DevLog("[" + (modeFActive ? "ModeF" : "ModeE") + "] 保留原生掉落箱，不再拦截为独立奖励箱");
+                    // 原生箱由 characterItem 建：后山种子直接放进去（此前 Mode E/F 永远不掉种子）
+                    TryAddBackMountainSeedToCharacterItem(bossMain);
                     return;
                 }
 
@@ -327,6 +329,7 @@ namespace BossRush
                     // （里程碑现金用的就是这条，见 LootAndRewardsInfiniteHell）。
                     // 必须排在 FinalizeBossRushLootboxPathTracking 之前——后者会撤销 pending。
                     DropPendingExtraLootIntoWorld(bossMain);
+                    TryDropBackMountainSeedIntoWorld(bossMain);
                     FinalizeBossRushLootboxPathTracking(bossMain);
                     return;
                 }

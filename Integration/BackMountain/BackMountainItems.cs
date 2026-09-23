@@ -94,23 +94,23 @@ namespace BossRush
             {
                 Make(BossRushItemIds.DragonSeed, "BossRush_DragonSeed", "BossRush_DragonSeed",
                     "龙裔之种", "Dragon Seed",
-                    "从龙裔遗族的余烬里捡到的一粒硬核。种在菜地里能长出龙息果。",
+                    "从龙裔遗族的余烬里捡到的一粒硬核。种在菜地里能长出龙息果。菜地开放后，基地售货机也有卖。",
                     "A hard kernel picked from the embers of a fallen Dragon Descendant. "
-                    + "Plant it in the garden to grow Dragonbreath Fruit.",
+                    + "Plant it in the garden to grow Dragonbreath Fruit. Also sold at the base vendor once the garden opens.",
                     "dragon_seed", 900, 4, true),
 
                 Make(BossRushItemIds.EmberSeed, "BossRush_EmberSeed", "BossRush_EmberSeed",
                     "龙皇焰种", "Ember Seed",
-                    "焚天龙皇陨落处仍在发烫的种子。种在菜地里能长出焚心椒。",
+                    "焚天龙皇陨落处仍在发烫的种子。种在菜地里能长出焚心椒。菜地开放后，基地售货机也有卖。",
                     "A seed still warm from where the Ember Dragon King fell. "
-                    + "Plant it in the garden to grow Emberheart Chili.",
+                    + "Plant it in the garden to grow Emberheart Chili. Also sold at the base vendor once the garden opens.",
                     "ember_seed", 1100, 4, true),
 
                 Make(BossRushItemIds.PhantomSpore, "BossRush_PhantomSpore", "BossRush_PhantomSpore",
                     "幽魂孢子", "Phantom Spore",
-                    "幽灵女巫散去后飘落的孢子，摸上去是凉的。种在菜地里能长出幽影蘑菇。",
+                    "幽灵女巫散去后飘落的孢子，摸上去是凉的。种在菜地里能长出幽影蘑菇。菜地开放后，基地售货机也有卖。",
                     "A spore drifting down where the Phantom Witch dissolved. It feels cold to the touch. "
-                    + "Plant it in the garden to grow Umbral Mushroom.",
+                    + "Plant it in the garden to grow Umbral Mushroom. Also sold at the base vendor once the garden opens.",
                     "phantom_spore", 1000, 4, true),
 
                 Make(BossRushItemIds.DragonFruit, "BossRush_DragonFruit", "BossRush_DragonFruit",
@@ -378,6 +378,73 @@ namespace BossRush
                 }
             }
             return null;
+        }
+
+        #endregion
+
+        #region 基地售货机（种子的稳定来源）
+
+        /// <summary>
+        /// 种子在基地售货机的售价倍率：售价 = 物品价值 × 倍率（龙裔之种 2700 / 龙皇焰种 3300 / 幽魂孢子 3000）。
+        /// 一颗种子收两份出击餐，两份餐的卖价合计 2 × 2400 × 0.5 = 2400，售价定在它之上：买种子种菜倒卖不赚钱，
+        /// 种子的用处是出击餐的加成。Boss 掉落仍是更省钱的那条线。
+        /// </summary>
+        internal const float SeedShopPriceFactor = 3f;
+
+        /// <summary>每种种子每次补货的库存（官方售货机按自己的节奏补货）。</summary>
+        internal const int SeedShopMaxStock = 3;
+
+        /// <summary>
+        /// 菜地对这个槽开放后，把三种种子挂进基地普通商人（与船票、冒险家日志同一台售货机、同一条注入管线）。
+        /// 后山关闭或菜地未开放时不挂（不挂还用不上的东西）；已挂过的不重复挂。返回新增条目数。
+        /// </summary>
+        internal static int TryInjectSeedsIntoShop(Duckov.Economy.StockShop shop, ModBehaviour inst)
+        {
+            if (shop == null || shop.entries == null || inst == null) return 0;
+            int added = 0;
+            try
+            {
+                if (!inst.IsBaseHubNormalMerchantShop(shop)) return 0;
+                if (!inst.IsBackMountainConfiguredEnabled()) return 0;
+                if (!GardenSeedInjector.IsGardenAvailable()) return 0;
+
+                Definition[] all = Definitions;
+                for (int i = 0; i < all.Length; i++)
+                {
+                    Definition def = all[i];
+                    if (!def.IsSeed || ShopHasEntry(shop, def.TypeId)) continue;
+                    // 售货机按 TypeID 取 prefab 算价、实例化：没注册的号挂上去是空条目
+                    if (!EnsureRuntimeRegistration(def.TypeId)) continue;
+
+                    StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
+                    itemEntry.typeID = def.TypeId;
+                    itemEntry.maxStock = SeedShopMaxStock;
+                    itemEntry.forceUnlock = true;
+                    itemEntry.priceFactor = SeedShopPriceFactor;
+                    itemEntry.possibility = 1f;
+                    itemEntry.lockInDemo = false;
+
+                    Duckov.Economy.StockShop.Entry wrapped = new Duckov.Economy.StockShop.Entry(itemEntry);
+                    wrapped.CurrentStock = SeedShopMaxStock;
+                    wrapped.Show = true;
+                    shop.entries.Add(wrapped);
+                    added++;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 售货机种子注入失败: " + e.Message);
+            }
+            return added;
+        }
+
+        private static bool ShopHasEntry(Duckov.Economy.StockShop shop, int typeId)
+        {
+            foreach (Duckov.Economy.StockShop.Entry entry in shop.entries)
+            {
+                if (entry != null && entry.ItemTypeID == typeId) return true;
+            }
+            return false;
         }
 
         #endregion

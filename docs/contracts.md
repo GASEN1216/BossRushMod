@@ -72,6 +72,9 @@ Mode G 冻结 key：
   `GardenSeedInjector.RatchetSaveKey` 定义。缺键或读取失败视为 false，由当前解锁状态决定是否注入；
   解锁并注入作物后单向写 true，表示本槽可能已经种过 Mod 作物，以后即使解锁查询暂不可用也维持注入。
   它不是 JSON，没有独立 `schemaVersion` 字段；不得改名、重置为 false 或清掉旧值，否则可能使已种作物失去引用。
+- `BossRush_BackMountain_StarterSeeds_v1` — 槽位级 `bool`（2026-09-23 `SCHEMA+`，`GardenSeedInjector.StarterSeedsSaveKey`）。缺键 = 起步种子还没发；
+  菜地开放后主角在基地就绪时先写 true 并回读、再发三种种子各 2 颗。回读失败或一颗都没送出去时写回 false 以便下次重试；
+  已发过的槽不再发。旧档没有这个键，第一次在基地就绪时补发一次。
 
 常量单点分别在 `Campaign/CampaignTuning.cs` 与
 `Integration/BackMountain/BackMountainConfig.cs`，由

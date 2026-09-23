@@ -88,6 +88,57 @@ def validate(root):
             'GardenConstructionSite: 只激活付费交互的父物体，绝不写官方存档键')
     require('GardenSiteJudges.ShouldOpenSite(' in site and 'GardenSiteJudges.IsGardenBuilt(' in site,
             'GardenConstructionSite: 判据必须走 GardenSiteJudges')
+
+    # 2026-09-23 owner 实测第 15 条：种子必须有稳定来源，且 Boss 掉落不受「Boss掉落随机化」开关左右。
+    def body(source, signature):
+        start = source.find(signature)
+        if start < 0:
+            return ''
+        opening = source.find('{', start)
+        depth = 0
+        for index in range(opening, len(source)):
+            depth += (source[index] == '{') - (source[index] == '}')
+            if depth == 0:
+                return source[opening:index + 1]
+        return ''
+
+    special = compact(read('LootAndRewards/LootAndRewardsSpecialLoot.cs'))
+    require('TryAddBackMountainSeedLoot(inv,bossMain);' in body(special, 'privatevoidReturnPendingExtraLootToCharacterItem('),
+            'SeedDrops: 官方箱路径（随机掉落关闭 / 未追踪 / 找不到模板）必须在 ReturnPendingExtraLootToCharacterItem 里投种子')
+    random_loot = compact(read('LootAndRewards/LootAndRewardsRandomBossLoot.cs'))
+    gate = random_loot.find('if(config==null||!config.enableRandomBossLoot){')
+    gate_body = body(random_loot[gate:], 'if(') if gate >= 0 else ''
+    require('ReturnPendingExtraLootToCharacterItem(bossMain);' in gate_body,
+            'SeedDrops: 「Boss掉落随机化」关闭分支必须走 ReturnPendingExtraLootToCharacterItem（种子与额外掉落进官方箱）')
+    mode_ef = random_loot.find('if(allowModeEFIndependentLoot){')
+    mode_ef_body = body(random_loot[mode_ef:], 'if(') if mode_ef >= 0 else ''
+    require('TryAddBackMountainSeedToCharacterItem(bossMain);return;' in mode_ef_body,
+            'SeedDrops: Mode E/F 原生箱分支必须把种子放进 characterItem 再返回')
+    hell = random_loot.find('if(infiniteHellMode){')
+    hell_body = body(random_loot[hell:], 'if(') if hell >= 0 else ''
+    require('TryDropBackMountainSeedIntoWorld(bossMain);FinalizeBossRushLootboxPathTracking(bossMain);' in hell_body,
+            'SeedDrops: 无间炼狱没有箱子，种子必须在 Finalize 之前世界投放')
+    integration = compact(read('Integration/BossRushIntegration.cs'))
+    require('injectedCount+=BackMountainItems.TryInjectSeedsIntoShop(shop,this);'
+            in body(integration, 'internalintTryInjectAllBossRushItemsIntoShop('),
+            'SeedShop: 基地售货机注入管线必须挂上后山种子')
+    shop = body(items, 'internalstaticintTryInjectSeedsIntoShop(')
+    require('if(!inst.IsBaseHubNormalMerchantShop(shop))return0;' in shop and 'if(!inst.IsBackMountainConfiguredEnabled())return0;' in shop
+            and 'if(!GardenSeedInjector.IsGardenAvailable())return0;' in shop and 'EnsureRuntimeRegistration(def.TypeId)' in shop,
+            'SeedShop: 只挂基地普通商人、后山关闭或菜地未开放不挂、未注册的号不挂')
+    seeds = compact(read('Integration/BackMountain/GardenSeedInjector.cs'))
+    require('internalconststringStarterSeedsSaveKey="BossRush_BackMountain_StarterSeeds_v1";' in seeds,
+            'StarterSeeds: 发放标记是存档键（docs/contracts.md），字面值不得改')
+    grant = body(seeds, 'internalstaticboolTryGrantStarterSeeds(')
+    require(grant.find('if(ReadFlag(StarterSeedsSaveKey))returnfalse;') >= 0
+            and 0 <= grant.find('WriteFlag(StarterSeedsSaveKey,') < grant.find('TryGiveStarterSeed('),
+            'StarterSeeds: 每槽一次，必须先落标记（回读核对）再发种子')
+    refresh = body(runtime, 'privatevoidRefreshFacilitiesForScene(')
+    require(0 <= refresh.find('GardenSeedInjector.EnsureInjected();') < refresh.find('GardenSeedInjector.TryGrantStarterSeeds(')
+            and 'IsLevelAfterInit()' in refresh[refresh.find('GardenSeedInjector.TryGrantStarterSeeds('):],
+            'StarterSeeds: 起步种子排在作物注入之后，且只在主角已就绪时发')
+    require('if(starter!=null)Duckov.UI.NotificationText.Push(starter);' in body(runtime, 'privatestaticvoidFlushPendingNotice('),
+            'StarterSeeds: 起步种子飘字必须经 FlushPendingNotice 等对话结束再弹')
     return errors
 
 

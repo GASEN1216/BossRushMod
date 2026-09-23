@@ -703,6 +703,8 @@ namespace BossRush
                 AffixForgeStoneDropService.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
                 SetBonusBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
                 NewWeaponBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
+                // 后山种子不走 pending：官方箱路径（含「随机 Boss 掉落」关闭）在这里 roll 一次直接放进 characterItem。
+                TryAddBackMountainSeedLoot(inv, bossMain);
             }
             catch (Exception e)
             {

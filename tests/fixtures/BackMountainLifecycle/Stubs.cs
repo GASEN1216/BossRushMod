@@ -167,6 +167,8 @@ namespace ItemStatsSystem
         public int StackCount { get { return count; } set { count = Math.Max(0, Math.Min(MaxStackCount, value)); } }
         public void SetInt(string key, int value, bool notify) { count = value; }
         public void SetTypeID(int value) { TypeID = value; }
+        public object InInventory;
+        public void DestroyTree() { UnityEngine.Object.Destroy(gameObject); }
         public readonly Dictionary<string, Stat> Stats = new Dictionary<string, Stat>();
         public Stat GetStat(string name) { Stat s; return Stats.TryGetValue(name, out s) ? s : null; }
     }
@@ -176,6 +178,13 @@ namespace ItemStatsSystem
         public static readonly Dictionary<int, Item> Prefabs = new Dictionary<int, Item>();
         public static Item GetPrefab(int id) { Item item; return Prefabs.TryGetValue(id, out item) && item != null ? item : null; }
         public static void AddDynamicEntry(Item item) { Prefabs[item.TypeID] = item; }
+        public static int Instantiated;
+        public static Item InstantiateSync(int id)
+        {
+            Item prefab = GetPrefab(id); if (prefab == null) return null;
+            Instantiated++;
+            var item = new UnityEngine.GameObject().AddComponent<Item>(); item.TypeID = id; item.MaxStackCount = prefab.MaxStackCount; item.Value = prefab.Value; return item;
+        }
         public static ItemMetaData GetMetaData(int id) { Item item = GetPrefab(id); return item == null ? default(ItemMetaData) : new ItemMetaData { id = id, quality = item.Quality }; }
     }
     public class UtilityBase : UnityEngine.Component { private Item master; public Item Master { get { return master; } } }
@@ -211,7 +220,32 @@ namespace Duckov.Utilities
     public class RandomContainer<T> { public readonly List<T> Entries = new List<T>(); public void AddEntry(T value, float weight) { Entries.Add(value); } }
     public static class GameplayDataSettings { public static Duckov.Crops.CropDatabase CropDatabase; }
 }
-namespace Duckov.UI { public static class NotificationText { public static void Push(string message) { } } }
+namespace Duckov.UI { public static class NotificationText { public static readonly List<string> Pushed = new List<string>(); public static void Push(string message) { Pushed.Add(message); } } }
+// 官方 ItemUtilities.SendToPlayer：背包优先、放不下进仓库 / 快递；替身只记下交给玩家的物品。
+public static class ItemUtilities
+{
+    public static readonly List<Item> Sent = new List<Item>();
+    public static bool Fail;
+    public static void SendToPlayer(Item item, bool dontMerge, bool sendToStorage) { if (Fail) throw new InvalidOperationException("send"); item.InInventory = "player"; Sent.Add(item); }
+}
+// 官方售货机与商品表的最小形态：条目按 ItemEntry 包装，价 = 价值 × priceFactor。
+public class StockShopDatabase { public class ItemEntry { public int typeID, maxStock; public bool forceUnlock, lockInDemo; public float priceFactor, possibility; } }
+namespace Duckov.Economy
+{
+    public class StockShop : UnityEngine.Object
+    {
+        public bool BaseMerchant = true;
+        public List<Entry> entries = new List<Entry>();
+        public class Entry
+        {
+            public readonly StockShopDatabase.ItemEntry entry;
+            public Entry(StockShopDatabase.ItemEntry e) { entry = e; }
+            public int ItemTypeID { get { return entry.typeID; } }
+            public float PriceFactor { get { return entry.priceFactor; } }
+            public int CurrentStock; public bool Show;
+        }
+    }
+}
 namespace BossRush
 {
     internal struct SceneRuntimeContext { public string SceneName; }
@@ -230,6 +264,7 @@ namespace BossRush
         public bool Enabled = true, UnlockAll;
         public int Buildings, BuildingResets;
         public bool IsBackMountainConfiguredEnabled() { return Enabled; }
+        public bool IsBaseHubNormalMerchantShop(Duckov.Economy.StockShop shop) { return shop != null && shop.BaseMerchant; }
         public bool IsBackMountainUnlockAllConfigured() { return UnlockAll; }
         public static bool IsBaseHubSceneName(string name) { return name == "Base"; }
         public void InitBackMountainShowcase() { Buildings++; }

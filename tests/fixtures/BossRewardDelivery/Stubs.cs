@@ -35,7 +35,18 @@ namespace UnityEngine
     {
         public static float value;
         public static float Range(float min, float max) { return value; }
+        public static Vector3 insideUnitSphere { get { return new Vector3(1, 0, 0); } }
     }
+    public struct Vector3
+    {
+        public float x, y, z;
+        public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
+        public static Vector3 up { get { return new Vector3(0, 1, 0); } }
+        public Vector3 normalized { get { return this; } }
+        public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z); }
+        public static Vector3 operator *(Vector3 a, float k) { return new Vector3(a.x * k, a.y * k, a.z * k); }
+    }
+    public class Transform : Object { public Vector3 position; }
 }
 
 public class InteractableLootbox : UnityEngine.Object
@@ -47,6 +58,8 @@ public class CharacterMainControl : UnityEngine.Object
 {
     public string Kind;
     public UnityEngine.GameObject gameObject = new UnityEngine.GameObject();
+    public UnityEngine.Transform transform = new UnityEngine.Transform();
+    public Item CharacterItem;
     public Preset characterPreset;
 }
 public class Preset { public string nameKey; }
@@ -59,6 +72,16 @@ namespace ItemStatsSystem
         public object ParentObject;
         public Inventory InInventory;
         public float MaxDurability = 100, Durability, DurabilityLoss = 10;
+        public Inventory Inventory;
+        // 官方 Item.Drop(pos, createRigidbody, dir, randomAngle)：生成地面拾取物；替身只记落点，可注入异常。
+        public static bool ThrowOnDrop;
+        public bool Dropped;
+        public UnityEngine.Vector3 DropPosition;
+        public void Drop(UnityEngine.Vector3 position, bool createRigidbody, UnityEngine.Vector3 direction, float randomAngle)
+        {
+            if (ThrowOnDrop) throw new Exception("drop fault");
+            Dropped = true; DropPosition = position;
+        }
         public void DestroyTree() { Destroyed = true; }
     }
     public class Inventory : UnityEngine.Object
@@ -116,6 +139,15 @@ namespace BossRush
             TryAddBackMountainSeedLoot(inv, new CharacterMainControl
             { Kind = kind, gameObject = new UnityEngine.GameObject { name = kind } });
         }
+        public static CharacterMainControl Boss(string kind, Inventory inv)
+        {
+            var boss = new CharacterMainControl { Kind = kind, gameObject = new UnityEngine.GameObject { name = kind } };
+            boss.transform.position = new UnityEngine.Vector3(3, 0, 4);
+            if (inv != null) boss.CharacterItem = new Item { Inventory = inv };
+            return boss;
+        }
+        public void SeedOfficialBox(CharacterMainControl boss) { TryAddBackMountainSeedToCharacterItem(boss); }
+        public void SeedWorld(CharacterMainControl boss) { TryDropBackMountainSeedIntoWorld(boss); }
         public void Descendant(Inventory inv)
         { var routine = AddDragonDescendantLoot(inv); while (routine.MoveNext()) { } }
         public bool King(Inventory inv) { return TryAddDragonKingLootItem(inv, 500001, "reward"); }

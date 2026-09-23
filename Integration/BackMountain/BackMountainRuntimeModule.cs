@@ -369,6 +369,8 @@ namespace BossRush
                 // 菜地工地：必须排在 GardenSeedInjector.EnsureInjected() 之后（Built 子树激活时官方 Garden.Start 会读作物表）
                 GardenConstructionSite.EnsureSiteOpen(_sceneGeneration, IsEnabled,
                     BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Garden), baseScene, GardenSeedInjector.IsInjected);
+                // 起步种子：每槽一次，要主角已在基地就绪（sceneLoaded 那一拍主角还没生成，等关卡就绪 / 实时解锁那一拍）
+                GardenSeedInjector.TryGrantStarterSeeds(baseScene && IsLevelAfterInit() && CharacterMainControl.Main != null);
             }
             catch (Exception e)
             {
@@ -454,16 +456,22 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 菜地工地开门那一拍排队的飘字：等官方对话 / 面板都不在场再弹（交付对话先播、解锁提示后弹）。
+        /// 菜地工地开门、起步种子发放那一拍排队的飘字：等官方对话 / 面板都不在场再弹（交付对话先播、解锁提示后弹）。
         /// 平时第一条判断即早返，无日志。
         /// </summary>
         private static void FlushPendingNotice()
         {
             string notice = GardenConstructionSite.PendingNotice;
-            if (notice == null) return;
+            string starter = GardenSeedInjector.PendingStarterNotice;
+            if (notice == null && starter == null) return;
             if (DialogueManager.IsDialogueActive || BossRushUI.IsOfficialHudHidden() || BossRushUI.IsGamePaused()) return;
             GardenConstructionSite.PendingNotice = null;
-            try { Duckov.UI.NotificationText.Push(notice); }
+            GardenSeedInjector.PendingStarterNotice = null;
+            try
+            {
+                if (notice != null) Duckov.UI.NotificationText.Push(notice);
+                if (starter != null) Duckov.UI.NotificationText.Push(starter);
+            }
             catch (Exception) { }
         }
 

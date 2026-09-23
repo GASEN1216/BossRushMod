@@ -435,6 +435,8 @@ namespace BossRush
             // 鸭皇图鉴：面板的唯一入口就是这本书，漏了这行整个图鉴系统买不到也打不开。
             // 内部自带基地普通商人判定与开关 dormant 早返。
             if (TryInjectCodexBookIntoShop(shop)) injectedCount++;
+            // 后山种子（菜地开放后才挂，内部判开关与解锁）：Boss 掉落之外的稳定来源。
+            injectedCount += BackMountainItems.TryInjectSeedsIntoShop(shop, this);
             return injectedCount;
         }
 

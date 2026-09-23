@@ -7,7 +7,7 @@
 - It is not a new map. "Backyard" is just a name — all three facilities sit in the base you already
   know, and all three use the game's own buildings.
 - Each one does a single thing:
-  - **Garden** — turn Boss-dropped seeds into raid meals (the vanilla garden).
+  - **Garden** — turn seeds into raid meals (the vanilla garden). You get a starter pack, then the vendor sells them and Bosses drop them.
   - **Display bonus** — put the good gear you've earned on the vanilla weapon display rack or
     dummies for a permanent health bonus.
   - **Jukebox** — a few mod battle tracks added to the base's playlist.
@@ -32,13 +32,14 @@ tells you what just opened.
   in the notice.
 - The cost is the game's own: `Shovel ×1` (craft it at the Workbench from Metal Plate ×3, Wood ×2, Rope ×1) plus `Poop ×9` (dropped by Fly Members and Fly Captains in Farm Town, J-Lab, Lab Area 37 and the Island Challenge; decomposing one Poop Gun Range Module also gives 5). Storage and backpack both count.
 - **Building the garden is one of Chapter 2's objectives**, so hand in to Jeff once it's up.
-- Once the Garden is unlocked, the three mod Bosses drop **an extra** seed into their loot crate,
-  roughly `25%` each. It's a bonus on top — it never takes the place of the Dragon set pieces
-  or the Dragon Lord's exclusive drops.
+- **Where seeds come from**, three ways:
+  - **Starter seeds**: the first time you're back at base after the Garden opens, you get `2` of each of the three seeds in your backpack (once per save), so you can plant as soon as it's built.
+  - **Base vendor**: once the Garden opens, the base's regular merchant (the one that sells tickets) stocks all three seeds, `3` of each per restock, for about `2700`–`3300` each.
+  - **Boss drops**: each of the three mod Bosses drops **an extra** seed of its own kind, roughly `25%` each. This works whether or not "Boss loot randomization (time bonus)" is on in the settings, and also in Faction War / Blood Hunt and Infinite Hell (Infinite Hell has no crate, so the seed lands next to the body). It's a bonus on top — it never takes the place of the Dragon set pieces or the Dragon Lord's exclusive drops.
 - With a seed in hand, open the garden's normal planting screen and the mod seeds are simply there
   in the list alongside the vanilla crops.
 - A plant takes about `20` real-time minutes to ripen and yields `2` per harvest.
-- Same rule as vanilla crops: **it only grows while watered**. Forget to water and progress stops.
+- Same rule as vanilla crops: **it only grows while watered**. Watering is a tool on the planting screen and costs nothing; forget to water and progress stops.
 
 ::: warning
 Seeds and the food you harvest are not trophies. They can't go on a rack and give no bonus.
@@ -104,7 +105,7 @@ Two more that catch people out:
 
 ## Seeds and food
 
-**Seeds** (Boss drops, roughly `25%` each)
+**Seeds** (2 of each in the starter pack; sold at the base vendor; each Boss drops its own at roughly `25%`)
 
 - **Dragon Seed** — from the Dragon Descendant, grows Dragonbreath Fruit
 - **Ember Seed** — from the Skyburner Dragon Lord, grows Emberheart Chili
@@ -130,7 +131,7 @@ Chili adds to your equipment's reload speed gain. With no other reload bonuses, 
 - **Can I eat a raid meal during a run?** No, only in the base.
 - **Does a meal expire if I don't go out?** No. The record sits there until you actually start a run.
 - **Can I eat two different meals at once?** No, only the last one you ate is kept.
-- **Are Boss drops the only way to get seeds?** Yes. Each of the three mod Bosses drops its own,
-  and no shop sells them.
+- **Are Boss drops the only way to get seeds?** No. You get a starter pack when the Garden opens,
+  and the base vendor always stocks them after that. Boss drops are a free bonus.
 - **Can I turn the whole Backyard off?** There's no such switch — it's default content. Just don't
   use it: skip the garden, skip the racks, and it stays out of your way.

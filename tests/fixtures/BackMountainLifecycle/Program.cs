@@ -41,6 +41,7 @@ static class Program
         CampaignBaseObjectives.Providers.Clear(); DialogueManager.IsDialogueActive = false; BossRushUI.Hidden = BossRushUI.Paused = false;
         BackMountainUnlocks.ResetStaticCaches(); BackMountainItems.ResetStaticCaches();
         SavesSystem.Reset(); ItemAssetsCollection.Prefabs.Clear(); CampaignFacilityUnlocks.Tokens.Clear();
+        ItemUtilities.Sent.Clear(); ItemUtilities.Fail = false; ItemAssetsCollection.Instantiated = 0; Duckov.UI.NotificationText.Pushed.Clear();
         BossBgmCoordinator.Tracks.Clear(); UnityEngine.Object.Selector = null; UnityEngine.Object.FindCalls = 0;
         L10n.Chinese = true; ModBehaviour.Instance = new ModBehaviour(); LevelManager.Instance = new LevelManager { IsBaseLevel = true };
         LevelManager.AfterInit = false; CharacterMainControl.Main = null;
@@ -321,11 +322,79 @@ static class Program
         module.OnDestroy(); module = null;
         Check(!CampaignBaseObjectives.Providers.ContainsKey(CampaignObjectiveKind.TrophyDisplayed), "destroy withdraws providers");
     }
+    static int SentSeeds() { return ItemUtilities.Sent.Count(i => BackMountainItems.GetDefinition(i.TypeID) != null && BackMountainItems.GetDefinition(i.TypeID).IsSeed); }
+    static void StarterSeedsAndShop()
+    {
+        // ---- 起步种子：菜地开放后主角在基地就绪那一拍发一次，每槽一次，先落标记再发 ----
+        Reset(); StartModule(); Player(); LevelManager.Ready();
+        Check(SentSeeds() == 0 && !SavesSystem.KeyExisits(GardenSeedInjector.StarterSeedsSaveKey), "locked garden gives no starter seeds");
+        CampaignFacilityUnlocks.Grant(1);
+        Check(SentSeeds() == 3 && ItemUtilities.Sent.All(i => i.StackCount == GardenSeedInjector.StarterSeedsPerType)
+            && ItemUtilities.Sent.Select(i => i.TypeID).OrderBy(x => x).SequenceEqual(new[] { BossRushItemIds.DragonSeed, BossRushItemIds.EmberSeed, BossRushItemIds.PhantomSpore }),
+            "live chapter-1 unlock at base hands over two of each seed");
+        Check(SavesSystem.Load<bool>(GardenSeedInjector.StarterSeedsSaveKey) && GardenSeedInjector.PendingStarterNotice != null, "grant is recorded in the slot and queues one notice");
+        DialogueManager.IsDialogueActive = true; module.OnUpdate(0, 0);
+        Check(Duckov.UI.NotificationText.Pushed.Count == 0, "starter notice waits for the hand-in dialogue");
+        DialogueManager.IsDialogueActive = false; module.OnUpdate(0, 0);
+        Check(Duckov.UI.NotificationText.Pushed.Count == 1 && GardenSeedInjector.PendingStarterNotice == null, "starter notice flushes once");
+        LevelManager.Ready(); module.OnSceneLoaded(new SceneRuntimeContext { SceneName = "Base" }); LevelManager.Ready();
+        Check(SentSeeds() == 3, "re-entering base never grants again");
+        SavesSystem.Switch(1); LevelManager.Ready();
+        Check(SentSeeds() == 6, "another unlocked slot gets its own starter pack");
+        SavesSystem.Switch(0); LevelManager.Ready();
+        Check(SentSeeds() == 6, "switching back does not grant the first slot twice");
+
+        Reset(); StartModule(); CampaignFacilityUnlocks.Tokens.Add("Ch1");
+        module.OnSceneLoaded(new SceneRuntimeContext { SceneName = "Base" });
+        Check(SentSeeds() == 0, "scene-loaded beat without a spawned player grants nothing");
+        Player(); SavesSystem.FailReadback = GardenSeedInjector.StarterSeedsSaveKey; LevelManager.Ready();
+        Check(SentSeeds() == 0, "unverified grant marker withholds the seeds");
+        LevelManager.Ready();
+        Check(SentSeeds() == 3, "the next ready beat retries and grants exactly once");
+        LevelManager.Ready(); Check(SentSeeds() == 3, "retry does not duplicate");
+
+        Reset(); StartModule(); CampaignFacilityUnlocks.Tokens.Add("Ch1"); Player(); SavesSystem.IsSaving = true; LevelManager.Ready();
+        Check(SentSeeds() == 0 && !SavesSystem.KeyExisits(GardenSeedInjector.StarterSeedsSaveKey), "save busy defers the starter pack");
+        SavesSystem.IsSaving = false; LevelManager.Ready();
+        Check(SentSeeds() == 3, "starter pack arrives once the save is free");
+
+        Reset(); StartModule(); CampaignFacilityUnlocks.Tokens.Add("Ch1"); Player(); LevelManager.Instance = new LevelManager { IsRaidMap = true }; LevelManager.Ready();
+        Check(SentSeeds() == 0, "no starter pack during a raid");
+
+        Reset(); StartModule(); CampaignFacilityUnlocks.Tokens.Add("Ch1"); Player(); ItemUtilities.Fail = true; LevelManager.Ready();
+        Check(SentSeeds() == 0 && !SavesSystem.Load<bool>(GardenSeedInjector.StarterSeedsSaveKey) && ItemAssetsCollection.Instantiated == 3
+            && ItemUtilities.Sent.Count == 0, "total delivery fault withdraws the marker and leaks no instance");
+        ItemUtilities.Fail = false; LevelManager.Ready(); LevelManager.Ready();
+        Check(SentSeeds() == 3, "after a total delivery fault the next ready beat grants exactly once");
+
+        // ---- 基地售货机：菜地开放后才挂三种种子，按价值 × 3 定价，幂等，只挂基地普通商人 ----
+        Reset(); StartModule(); BackMountainItems.RegisterConfigurators();
+        var shop = new Duckov.Economy.StockShop();
+        Check(BackMountainItems.TryInjectSeedsIntoShop(shop, ModBehaviour.Instance) == 0 && shop.entries.Count == 0, "locked garden stocks no seeds");
+        CampaignFacilityUnlocks.Tokens.Add("Ch1");
+        Check(BackMountainItems.TryInjectSeedsIntoShop(shop, ModBehaviour.Instance) == 3 && shop.entries.Count == 3, "unlocked garden stocks all three seeds");
+        foreach (var entry in shop.entries)
+        {
+            var def = BackMountainItems.GetDefinition(entry.ItemTypeID);
+            Check(def != null && def.IsSeed && entry.entry.forceUnlock && entry.Show && entry.CurrentStock == BackMountainItems.SeedShopMaxStock
+                && entry.entry.maxStock == BackMountainItems.SeedShopMaxStock && entry.PriceFactor == BackMountainItems.SeedShopPriceFactor
+                && ItemAssetsCollection.GetPrefab(entry.ItemTypeID) != null, "seed entry is registered, unlocked and priced");
+            int price = (int)Math.Floor(ItemAssetsCollection.GetPrefab(entry.ItemTypeID).Value * entry.PriceFactor);
+            Check(price >= 2 * 2400 / 2 && price <= 5000, "seed price stays above two meals' resale and below a Q5 item: " + price);
+        }
+        Check(BackMountainItems.TryInjectSeedsIntoShop(shop, ModBehaviour.Instance) == 0 && shop.entries.Count == 3, "re-injection is idempotent");
+        var npcShop = new Duckov.Economy.StockShop { BaseMerchant = false };
+        Check(BackMountainItems.TryInjectSeedsIntoShop(npcShop, ModBehaviour.Instance) == 0, "only the base normal merchant sells seeds");
+        ModBehaviour.Instance.Enabled = false;
+        Check(BackMountainItems.TryInjectSeedsIntoShop(new Duckov.Economy.StockShop(), ModBehaviour.Instance) == 0, "dormant back mountain stocks nothing");
+        ModBehaviour.Instance.Enabled = true; CampaignFacilityUnlocks.Tokens.Clear(); SavesSystem.Save("BossRush_BackMountain_GardenRatchet_v1", true);
+        Check(BackMountainItems.TryInjectSeedsIntoShop(new Duckov.Economy.StockShop(), ModBehaviour.Instance) == 3, "slot ratchet keeps the vendor stocked before campaign tokens load");
+    }
     static int Main()
     {
         try
         {
-            RegistrationAndUsage(); MealLifecycle(); MealFailures(); Facilities(); Showcase(); GardenSite();
+            RegistrationAndUsage(); MealLifecycle(); MealFailures(); Facilities(); Showcase(); GardenSite(); StarterSeedsAndShop();
             if (module != null) module.OnDestroy();
             Console.WriteLine("BackMountainLifecycle PASS: " + assertions + " assertions"); return 0;
         }
