@@ -168,6 +168,8 @@ namespace BossRush
             graphicsContainer.transform.SetParent(backMountainShowcasePrefabGO.transform, false);
             if (!BuildingModelHelper.TryInstantiateBundle(BACKMOUNTAIN_SHOWCASE_BUILDING_ID, BACKMOUNTAIN_SHOWCASE_PREFAB_NAME, graphicsContainer.transform, out showcaseModelBundle))
                 CreateShowcasePlaceholderModel(graphicsContainer);
+            else
+                BuildingModelHelper.PrepareBaseBuildingModel(graphicsContainer.transform.GetChild(0).gameObject);
 
             GameObject functionContainer = new GameObject("Function");
             functionContainer.transform.SetParent(backMountainShowcasePrefabGO.transform, false);

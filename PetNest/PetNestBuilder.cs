@@ -284,6 +284,7 @@ namespace BossRush
                     petNestModelPrefab, graphicsContainer.transform);
                 modelInstance.name = "Model";
                 modelInstance.SetActive(true);
+                BuildingModelHelper.PrepareBaseBuildingModel(modelInstance);
             }
             else
             {

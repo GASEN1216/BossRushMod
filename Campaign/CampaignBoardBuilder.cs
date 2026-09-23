@@ -203,6 +203,8 @@ namespace BossRush
             graphicsContainer.transform.SetParent(campaignBoardPrefabGO.transform, false);
             if (!BuildingModelHelper.TryInstantiateBundle(CAMPAIGN_BOARD_BUILDING_ID, CAMPAIGN_BOARD_PREFAB_NAME, graphicsContainer.transform, out campaignBoardModelBundle))
                 CreateCampaignBoardPlaceholderModel(graphicsContainer);
+            else
+                BuildingModelHelper.PrepareBaseBuildingModel(graphicsContainer.transform.GetChild(0).gameObject);
 
             GameObject functionContainer = new GameObject("Function");
             functionContainer.transform.SetParent(campaignBoardPrefabGO.transform, false);

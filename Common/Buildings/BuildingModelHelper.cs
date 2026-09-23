@@ -231,5 +231,118 @@ namespace BossRush
                 ModBehaviour.DevLog("[WishFountain] 修复 AssetBundle Shader 失败: " + e.Message);
             }
         }
+
+        // 基地建筑包（tools/BaseBuildingBundleBuilder）的材质用天空岛环境着色器：它标成 Unlit、
+        // 自己算光且岛外用写死的冷色环境光，基地的延迟光照照不到它，报箱和遗种巢因此发灰（2026-09-22 实测）。
+        private const string BaseBuildingBundleShaderName = "BossRush/SkyIsland/Environment";
+        private const string OfficialModelShaderName = "SodaCraft/SodaCharacter";
+        private static readonly string[] OfficialShaderTextureSlots = { "_BaseMap", "_MainTex", "_BaseTex" };
+
+        /// <summary>
+        /// 基地建筑 bundle 模型的统一修整，与许愿台同一套做法：材质换成官方角色着色器
+        /// （许愿台实机落到的就是 SodaCharacter，自带 UniversalGBuffer，基地灯光能照亮），
+        /// 再按渲染包围盒补一个实体 BoxCollider（bundle 里刻意不带碰撞体）。
+        /// 只在建预制体时跑一次；材质按源材质去重，随预制体整局常驻。
+        /// </summary>
+        internal static void PrepareBaseBuildingModel(GameObject modelInstance)
+        {
+            if (modelInstance == null)
+            {
+                return;
+            }
+
+            ConvertBaseBuildingMaterials(modelInstance);
+            AddStarwishGraphicsCollider(modelInstance, CollectStarwishRenderableComponents(modelInstance));
+        }
+
+        private static void ConvertBaseBuildingMaterials(GameObject modelInstance)
+        {
+            try
+            {
+                Shader official = Shader.Find(OfficialModelShaderName);
+                if (official == null)
+                {
+                    ModBehaviour.DevLog("[BaseBuildings] 未找到官方着色器 " + OfficialModelShaderName + "，保持原材质");
+                    return;
+                }
+
+                Dictionary<Material, Material> converted = new Dictionary<Material, Material>();
+                Renderer[] renderers = CollectStarwishRenderableComponents(modelInstance);
+                for (int i = 0; i < renderers.Length; i++)
+                {
+                    Renderer renderer = renderers[i];
+                    Material[] materials = renderer.sharedMaterials;
+                    bool changed = false;
+                    for (int j = 0; j < materials.Length; j++)
+                    {
+                        Material source = materials[j];
+                        if (source == null || source.shader == null || !NeedsOfficialShader(source.shader.name))
+                        {
+                            continue;
+                        }
+
+                        Material replacement;
+                        if (!converted.TryGetValue(source, out replacement))
+                        {
+                            replacement = CreateOfficialModelMaterial(source, official);
+                            converted.Add(source, replacement);
+                        }
+
+                        materials[j] = replacement;
+                        changed = true;
+                    }
+
+                    if (changed)
+                    {
+                        renderer.sharedMaterials = materials;
+                    }
+                    renderer.gameObject.layer = 0;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BaseBuildings] 转换建筑材质失败: " + e.Message);
+            }
+        }
+
+        private static bool NeedsOfficialShader(string shaderName)
+        {
+            return shaderName == BaseBuildingBundleShaderName
+                || shaderName == "Hidden/InternalErrorShader"
+                || shaderName.IndexOf("Standard", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static Material CreateOfficialModelMaterial(Material source, Shader official)
+        {
+            Material material = new Material(official);
+            material.name = "BossRushBuilding_" + source.name;
+
+            // SodaCharacter 的颜色字段是 _Tint（实机枚举，见 ArenaPrototypeSession）；其余两个留给兼容着色器。
+            Color tint = source.HasProperty("_BaseColor") ? source.GetColor("_BaseColor")
+                : source.HasProperty("_Color") ? source.GetColor("_Color") : Color.white;
+            if (material.HasProperty("_Tint")) material.SetColor("_Tint", tint);
+            if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", tint);
+            if (material.HasProperty("_Color")) material.SetColor("_Color", tint);
+
+            // 基地建筑包的贴图在 _BaseMap、_MainTex 为空；只读 _MainTex 会得到一块无贴图的素色模型。
+            string sourceMap = source.HasProperty("_BaseMap") && source.GetTexture("_BaseMap") != null ? "_BaseMap"
+                : source.HasProperty("_MainTex") && source.GetTexture("_MainTex") != null ? "_MainTex" : null;
+            if (sourceMap != null)
+            {
+                Texture texture = source.GetTexture(sourceMap);
+                Vector2 scale = source.GetTextureScale(sourceMap);
+                Vector2 offset = source.GetTextureOffset(sourceMap);
+                for (int i = 0; i < OfficialShaderTextureSlots.Length; i++)
+                {
+                    string slot = OfficialShaderTextureSlots[i];
+                    if (!material.HasProperty(slot)) continue;
+                    material.SetTexture(slot, texture);
+                    material.SetTextureScale(slot, scale);
+                    material.SetTextureOffset(slot, offset);
+                }
+            }
+
+            return material;
+        }
     }
 }

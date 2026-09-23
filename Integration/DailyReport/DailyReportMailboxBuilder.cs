@@ -306,8 +306,8 @@ namespace BossRush
 
         /// <summary>
         /// bundle 模型的统一修整：按包围盒归一到 1x1 建筑的尺度、底部对齐地面、
-        /// 修 shader、补碰撞体。复用许愿台那套已经趟平的工具方法
-        /// （BuildingModelHelper 保留既有通用实现，许愿台与报箱共用）。
+        /// 换官方着色器、补碰撞体。复用许愿台那套已经趟平的工具方法
+        /// （BuildingModelHelper.PrepareBaseBuildingModel，报箱与遗种巢共用）。
         /// </summary>
         private void PrepareDailyReportBundleModel(GameObject modelInstance, GameObject graphicsContainer)
         {
@@ -342,8 +342,8 @@ namespace BossRush
                     modelInstance.transform.localPosition = new Vector3(0f, -bottomLocal, 0f);
                 }
 
-                BuildingModelHelper.FixStarwishModelShaders(modelInstance);
-                BuildingModelHelper.AddStarwishGraphicsCollider(modelInstance, BuildingModelHelper.CollectStarwishRenderableComponents(modelInstance));
+                // 天空岛环境着色器在基地发灰，换官方着色器并补实体碰撞体（与许愿台同一套）。
+                BuildingModelHelper.PrepareBaseBuildingModel(modelInstance);
             }
             catch (Exception e)
             {
