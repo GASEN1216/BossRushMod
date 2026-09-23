@@ -292,6 +292,9 @@ namespace BossRush
                 base.Awake();
                 overrideInteractName = true;
                 _overrideInteractNameKey = ModeHConfig.LocalizationKeyPrefix + "EntryInteract";
+                // 船点交互组里的子选项：和 Boss Rush 选项一样只进列表，不再单独冒一个世界交互圈。
+                // 组长只在自己的 Awake 里关组员标记，我们是事后追加的，得自己关（2026-09-22 实测多出交互圈）。
+                MarkerActive = false;
             }
             catch (Exception)
             {

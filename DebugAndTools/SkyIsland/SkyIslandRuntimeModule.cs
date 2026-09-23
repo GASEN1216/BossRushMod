@@ -305,6 +305,24 @@ namespace BossRush
         protected override string LogPrefix { get { return "[SkyIsland] "; } }
         protected override string InteractionGroupLabel { get { return "[SkyIslandDeparture]"; } }
         internal void Bind(ModBehaviour host, SkyIslandPreludeFlow gate) { owner = host; prelude = gate; }
+
+        /// <summary>
+        /// 船点交互组里的子选项：和 Boss Rush 选项一样只出现在船点的选项列表里。基类会重新启用
+        /// 交互碰撞体、官方 Start 会按默认值亮起世界标记，两样都关掉，否则船边多出一个交互圈（2026-09-22 实测）。
+        /// </summary>
+        protected override void Awake()
+        {
+            base.Awake();
+            try
+            {
+                MarkerActive = false;
+                if (interactCollider != null) interactCollider.enabled = false;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SkyIsland] 船点子选项隐藏交互标记失败: " + e.Message);
+            }
+        }
         protected override bool IsBuildingInteractable()
         { return owner != null && prelude != null && prelude.RouteUnlocked && owner.GetComponent<SkyIslandSession>() == null; }
         protected override void OnInteractCompleted()
