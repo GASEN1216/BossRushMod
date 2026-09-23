@@ -337,42 +337,8 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// E1 落地尘土 / E6 烟花只实例化官方特效并保留镜头轻震。
-        /// 官方零伤害爆炸仍会对范围内的接收体调用 Hurt；缩小半径不能保证纯演出。
-        /// </summary>
-        internal void CreateRandomEventHarmlessExplosion(Vector3 center, ExplosionFxTypes fx, float shake)
-        {
-            try
-            {
-                CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null)
-                {
-                    return;
-                }
-
-                LevelManager level = LevelManager.Instance;
-                if (level == null || level.ExplosionManager == null || level.MainCharacter == null)
-                {
-                    return;
-                }
-
-                GameObject prefab = fx == ExplosionFxTypes.normal
-                    ? level.ExplosionManager.normalFxPfb
-                    : fx == ExplosionFxTypes.flash ? level.ExplosionManager.flashFxPfb : null;
-                if (prefab != null)
-                    UnityEngine.Object.Instantiate<GameObject>(prefab, center, Quaternion.identity);
-
-                // 与官方爆炸相同的距离和幅度，只保留表现，不进入伤害与碰撞查询。
-                Vector3 offset = center - level.MainCharacter.transform.position;
-                if (shake > 0f && Vector3.Distance(center, main.transform.position) < 30f)
-                    CameraShaker.Shake(offset.normalized * 0.4f * shake, CameraShaker.CameraShakeTypes.explosion);
-            }
-            catch (Exception e)
-            {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 演出特效失败: " + e.Message);
-            }
-        }
+        // E1 落地扬尘 / E6 烟花不再借官方爆炸火球（零伤害爆炸仍会对范围内接收体调用 Hurt），
+        // 改由 RandomEvents/RandomEventFx.cs 的程序化粒子表现（2026-09-23 VA-22 / VA-23）。
 
         /// <summary>播放 Mod 自带音效。relativePath 相对 Assets/Sounds/，缺文件静默跳过。</summary>
         internal void PlayRandomEventModSound(string relativePath)

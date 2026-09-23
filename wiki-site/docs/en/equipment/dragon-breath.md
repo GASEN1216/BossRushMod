@@ -2,7 +2,7 @@
 
 ## What Is It?
 
-Your first custom gun. Dropped by Dragon Descendant. Looks modest on paper, but the **% max HP burn** makes it a Boss-killing machine.
+Your first custom gun. Dropped by Dragon Descendant. Looks modest on paper, but the **% max HP burn** does the real work against high-HP bosses.
 
 ## Stats
 
@@ -31,5 +31,5 @@ At full 10 stacks: **1% max HP + 10 true damage per second.** Against a non-fire
 - **Dragon Descendant Collector** — All Dragon Descendant drops (300K)
 
 ::: tip
-Your entry point to custom gear. Don't sleep on the burn — it melts high-HP targets.
+Your entry point to custom gear. Don't sleep on the burn: against high-HP targets it does most of the damage.
 :::

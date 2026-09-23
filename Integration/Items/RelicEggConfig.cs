@@ -30,11 +30,11 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_PetNest_RelicEgg";
         public const string DISPLAY_NAME_CN = "遗种蛋";
         public const string DISPLAY_NAME_EN = "Relic Egg";
-        public const string DESCRIPTION_CN = "Boss 陨落时留下的血脉遗种。带回基地的遗种巢即可孵化，"
-            + "孵出的幼体会认你作主人。每一枚蛋只记一条血脉，堆叠会让血脉丢失，因此它不可堆叠。";
-        public const string DESCRIPTION_EN = "A bloodline relic left behind when a boss falls. "
-            + "Hatch it at the PetNest in your base and the cub will take you as its master. "
-            + "Each egg records exactly one bloodline, so it cannot stack.";
+        public const string DESCRIPTION_CN = "Boss 倒下时留下的蛋。带回基地的遗种巢就能孵，"
+            + "孵出来的崽认你当主人。一枚蛋只记一条血脉，叠在一起就乱了，所以不能堆叠。";
+        public const string DESCRIPTION_EN = "An egg a boss leaves behind when it goes down. "
+            + "Hatch it at the PetNest in your base and the cub will treat you as its owner. "
+            + "Each egg carries exactly one bloodline, so they don't stack.";
 
         /// <summary>血脉 KV 键（与 PetNestTuning.EggLineageVariableKey 同一个契约）。</summary>
         public const string VAR_LINEAGE = "PetNest_Lineage";

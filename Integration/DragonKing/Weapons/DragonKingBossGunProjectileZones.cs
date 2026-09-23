@@ -19,8 +19,11 @@ namespace BossRush
         private const float PoisonTickKeepTime = 1.2f;
         private const float PoisonTickCleanupInterval = 1f;
         private const float DamageNormalFallbackSqr = 0.0000000001f;
-        private const int RingSegments = 16;
+        // VB-17：16 段在 2 m 半径时每段 0.8 m，看得出棱角；40 段约 0.3 m。
+        private const int RingSegments = 40;
         private const float RingUpdateInterval = 0.1f;
+        /// <summary>到时之后环宽与灯强淡到 0 的时长（VB-17：旧版满亮挂 2 s 再一帧消失）。伤害在到时那一刻就停，与原来一致。</summary>
+        private const float FadeOutSeconds = 0.4f;
 
         private static readonly Dictionary<int, float> poisonTickTimes = new Dictionary<int, float>();
         private static readonly List<int> poisonTickKeysToRemove = new List<int>();
@@ -28,8 +31,6 @@ namespace BossRush
         private static readonly Vector3 RingHeightOffset = Vector3.up * 0.04f;
         private static readonly Vector3[] RingUnitOffsets = BuildRingUnitOffsets();
         private static float lastPoisonTickCleanup;
-        private static Shader cachedZoneShader;
-        private static readonly Dictionary<ElementTypes, Material> cachedZoneMaterials = new Dictionary<ElementTypes, Material>();
 
         private ProjectileContext sourceContext;
         private DragonKingBossGunShotProfile profile;
@@ -43,20 +44,17 @@ namespace BossRush
         private float lastPulse;
         private float ringBaseWidth;
         private LineRenderer zoneRing;
-        private Material zoneRingMaterial;
+        private LineRenderer zoneStain;
         private Light zoneLight;
+        private Color ringColor;
+        private Color stainColor;
+        private float lightBaseIntensity;
+        private bool fadingOut;
+        private float fadeElapsed;
 
         internal static void ClearStaticCaches()
         {
-            foreach (var kvp in cachedZoneMaterials)
-            {
-                if (kvp.Value != null)
-                {
-                    UnityEngine.Object.Destroy(kvp.Value);
-                }
-            }
-            cachedZoneMaterials.Clear();
-            cachedZoneShader = null;
+            // 材质已改由全 Mod 共享工厂持有（BossRushFxMaterials），这里不再建、不再销毁。
             poisonTickTimes.Clear();
             poisonTickKeysToRemove.Clear();
             activePoisonZones.Clear();
@@ -115,23 +113,28 @@ namespace BossRush
 
         private void CreateZoneVisual()
         {
+            // VB-17：颜色只走顶点色 / 粒子色（旧版材质色 × 顶点色二次相乘，毒区实际是 (0.006,0.18,0.006) 的近黑绿方块）。
             Color zoneColor;
             switch (profile.GroundZoneElement)
             {
                 case ElementTypes.fire:
-                    zoneColor = new Color(1f, 0.4f, 0.1f, 0.7f);
+                    zoneColor = new Color(1f, 0.5f, 0.18f, 0.7f);
+                    stainColor = new Color(0.35f, 0.12f, 0.04f, 0.18f);
                     break;
                 case ElementTypes.poison:
-                    zoneColor = new Color(0.08f, 0.42f, 0.08f, 0.82f);
+                    zoneColor = new Color(0.35f, 0.62f, 0.22f, 0.6f);
+                    stainColor = new Color(0.16f, 0.30f, 0.10f, 0.22f);
                     break;
                 case ElementTypes.ice:
-                    zoneColor = new Color(0.42f, 0.86f, 1f, 0.82f);
+                    zoneColor = new Color(0.42f, 0.86f, 1f, 0.75f);
+                    stainColor = new Color(0.55f, 0.80f, 0.95f, 0.15f);
                     break;
                 default:
                     return;
             }
 
-            EnsureZoneShaderCached();
+            ringColor = zoneColor;
+            CreateZoneStain();
             CreateZoneRing(zoneColor);
             if (profile.GroundZoneElement != ElementTypes.poison)
             {
@@ -148,7 +151,8 @@ namespace BossRush
             main.duration = duration;
             main.startLifetime = Mathf.Min(0.6f, duration * 0.5f);
             main.startSpeed = 0.18f;
-            main.startSize = Mathf.Clamp(radius * 0.14f, 0.08f, 0.22f);
+            float baseSize = Mathf.Clamp(radius * 0.14f, 0.08f, 0.22f);
+            main.startSize = new ParticleSystem.MinMaxCurve(baseSize * 0.7f, baseSize * 1.2f);
             main.startColor = zoneColor;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = profile.GroundZoneElement == ElementTypes.poison ? PoisonZoneMaxParticles : 72;
@@ -162,46 +166,74 @@ namespace BossRush
             shape.shapeType = ParticleSystemShapeType.Circle;
             shape.radius = radius;
             shape.radiusThickness = 0.2f;
+            // Circle 默认竖在局部 XY 平面（VB-04 / VB-17）：转 90° 放平到地面上。
+            shape.rotation = new Vector3(90f, 0f, 0f);
 
             var col = ps.colorOverLifetime;
             col.enabled = true;
             Gradient gradient = new Gradient();
             gradient.SetKeys(
-                new GradientColorKey[] { new GradientColorKey(zoneColor, 0f), new GradientColorKey(zoneColor, 0.7f) },
-                new GradientAlphaKey[] { new GradientAlphaKey(0.7f, 0f), new GradientAlphaKey(0f, 1f) });
+                new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new GradientAlphaKey[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.7f, 0.15f), new GradientAlphaKey(0f, 1f) });
             col.color = gradient;
 
+            var sizeOverLifetime = ps.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.3f));
+
             var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            renderer.material = GetOrCreateZoneMaterial(profile.GroundZoneElement, zoneColor);
+            Material particleMaterial = GetZoneParticleMaterial(profile.GroundZoneElement);
+            if (particleMaterial != null)
+            {
+                renderer.sharedMaterial = particleMaterial;
+            }
+            else
+            {
+                renderer.enabled = false;
+            }
 
             ps.Play();
         }
 
-        private static void EnsureZoneShaderCached()
+        /// <summary>火区的火星发光（加色），毒雾与冰雾是普通半透明。材质归共享工厂所有。</summary>
+        private static Material GetZoneParticleMaterial(ElementTypes element)
         {
-            if (cachedZoneShader != null)
+            return DragonKingFxShared.Soft(element == ElementTypes.fire ? BossRushFxBlend.Additive : BossRushFxBlend.Alpha);
+        }
+
+        /// <summary>
+        /// 贴地的一块软色面（VB-17）：两点直线 + 带宽 = 直径，软圆贴图拉满就是一块中心浓、边缘散的圆，
+        /// TransformZ + 绕 X 转 90° 让它躺在地面上。毒区读作「一滩毒」，火区是焦痕，冰区是一层霜。
+        /// </summary>
+        private void CreateZoneStain()
+        {
+            Material material = DragonKingFxShared.Soft(BossRushFxBlend.Alpha);
+            if (material == null)
             {
                 return;
             }
 
-            cachedZoneShader = Shader.Find("Sprites/Default");
-            if (cachedZoneShader == null) cachedZoneShader = Shader.Find("Unlit/Color");
-            if (cachedZoneShader == null) cachedZoneShader = Shader.Find("Standard");
-        }
-
-        private static Material GetOrCreateZoneMaterial(ElementTypes element, Color color)
-        {
-            Material mat;
-            if (cachedZoneMaterials.TryGetValue(element, out mat) && mat != null)
-            {
-                return mat;
-            }
-
-            EnsureZoneShaderCached();
-            mat = new Material(cachedZoneShader);
-            mat.color = color;
-            cachedZoneMaterials[element] = mat;
-            return mat;
+            GameObject stainObj = new GameObject("ZoneStain");
+            stainObj.transform.SetParent(transform, false);
+            stainObj.transform.localPosition = RingHeightOffset * 0.5f;
+            stainObj.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            zoneStain = stainObj.AddComponent<LineRenderer>();
+            zoneStain.useWorldSpace = false;
+            zoneStain.loop = false;
+            zoneStain.positionCount = 2;
+            zoneStain.numCapVertices = 0;
+            zoneStain.numCornerVertices = 0;
+            zoneStain.alignment = LineAlignment.TransformZ;
+            zoneStain.textureMode = LineTextureMode.Stretch;
+            zoneStain.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            zoneStain.receiveShadows = false;
+            zoneStain.sharedMaterial = material;
+            float stainRadius = radius * 1.1f;
+            zoneStain.SetPosition(0, new Vector3(-stainRadius, 0f, 0f));
+            zoneStain.SetPosition(1, new Vector3(stainRadius, 0f, 0f));
+            zoneStain.widthMultiplier = stainRadius * 2f;
+            zoneStain.startColor = stainColor;
+            zoneStain.endColor = stainColor;
         }
 
         private void CreateZoneRing(Color zoneColor)
@@ -221,8 +253,16 @@ namespace BossRush
             zoneRing.startColor = zoneColor;
             zoneRing.endColor = zoneColor;
 
-            zoneRingMaterial = GetOrCreateZoneMaterial(profile.GroundZoneElement, zoneColor);
-            zoneRing.material = zoneRingMaterial;
+            // 软边带材质（共享工厂），颜色只走顶点色；用 sharedMaterial，不给每个区实例化一份材质。
+            Material ringMaterial = DragonKingFxShared.Band(BossRushFxBlend.Alpha);
+            if (ringMaterial != null)
+            {
+                zoneRing.sharedMaterial = ringMaterial;
+            }
+            else
+            {
+                zoneRing.enabled = false;
+            }
             ringBaseWidth = Mathf.Clamp(radius * 0.08f, 0.08f, 0.18f);
             zoneRing.widthMultiplier = ringBaseWidth;
             UpdateZoneRing(radius);
@@ -233,7 +273,8 @@ namespace BossRush
             zoneLight = gameObject.AddComponent<Light>();
             zoneLight.type = LightType.Point;
             zoneLight.color = zoneColor;
-            zoneLight.range = Mathf.Max(2.2f, radius * 3.25f);
+            // VB-17：照亮范围 = 判定半径 + 1 m（旧值 3.25 倍半径，地上的亮区比判定区大一圈）。
+            zoneLight.range = radius + 1f;
             zoneLight.intensity = Mathf.Lerp(1.1f, 2f, Mathf.InverseLerp(0.5f, 2f, radius));
             zoneLight.shadows = LightShadows.None;
         }
@@ -266,6 +307,12 @@ namespace BossRush
 
         private void Update()
         {
+            if (fadingOut)
+            {
+                UpdateFadeOut();
+                return;
+            }
+
             elapsed += Time.deltaTime;
             tickTimer += Time.deltaTime;
             pulseTime += Time.deltaTime * 3.5f;
@@ -297,7 +344,42 @@ namespace BossRush
 
             if (elapsed >= duration || elapsed >= MaxLifetime)
             {
+                // 到时：伤害就此停止（不再 TickZone），粒子停发射、2 s 后销毁照旧；环宽、环色与灯在 0.4 s 内淡到 0。
                 DragonKingBossGunProjectileAgent.FadeAndDestroy(gameObject, 2f);
+                fadingOut = true;
+                fadeElapsed = 0f;
+                lightBaseIntensity = zoneLight != null ? zoneLight.intensity : 0f;
+            }
+        }
+
+        private void UpdateFadeOut()
+        {
+            fadeElapsed += Time.deltaTime;
+            float k = 1f - BossRushUI.SmoothStep(fadeElapsed / FadeOutSeconds);
+            if (zoneRing != null)
+            {
+                zoneRing.widthMultiplier = ringBaseWidth * k;
+                Color c = ringColor;
+                c.a *= k;
+                zoneRing.startColor = c;
+                zoneRing.endColor = c;
+            }
+            if (zoneStain != null)
+            {
+                Color c = stainColor;
+                c.a *= k;
+                zoneStain.startColor = c;
+                zoneStain.endColor = c;
+            }
+            if (zoneLight != null)
+            {
+                zoneLight.intensity = lightBaseIntensity * k;
+            }
+            if (fadeElapsed >= FadeOutSeconds)
+            {
+                if (zoneRing != null) zoneRing.enabled = false;
+                if (zoneStain != null) zoneStain.enabled = false;
+                if (zoneLight != null) zoneLight.enabled = false;
                 enabled = false;
             }
         }
@@ -428,9 +510,7 @@ namespace BossRush
         private void OnDestroy()
         {
             activePoisonZones.Remove(this);
-
-            // Material 已改为静态共享缓存，不在单个 zone 销毁时 Destroy
-            zoneRingMaterial = null;
+            // 材质归共享工厂所有，不在单个 zone 销毁时 Destroy。
         }
     }
 

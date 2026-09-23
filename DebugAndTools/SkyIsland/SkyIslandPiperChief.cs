@@ -235,7 +235,7 @@ namespace BossRush
 
         private void DestroyRing()
         {
-            if (fluteRing != null) Destroy(fluteRing.gameObject);
+            SkyIslandBossForge.ReleaseRing(fluteRing);
             fluteRing = null;
         }
 

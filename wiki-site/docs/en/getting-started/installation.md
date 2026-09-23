@@ -5,7 +5,7 @@
 1. Open **Steam Workshop** for Escape from Duckov
 2. Search "BossRush" or go to the mod page directly
 3. Click **Subscribe**
-4. Launch the game — mod loads automatically
+4. Launch the game. The mod loads automatically
 
 ## Confirm It's Working
 

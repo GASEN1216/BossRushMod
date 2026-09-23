@@ -82,9 +82,10 @@ namespace BossRush
             Add(map, "Button_CustomSetup", "自己调整再开打", "Adjust first");
             Add(map, "Button_NextMatch", "下一场", "Next match");
             Add(map, "Button_Continue", "继续", "Continue");
+            // 选人页撞上这句时会挂出「退出本赛季」按钮（2026-09-23 复核 V6-1：旧版叫玩家退出，页面上却一个按钮都没有）
             Add(map, "Draft_NoViablePair",
-                "这批选手凑不出完整的六场赛程。请退出本赛季重新进入，候选名单会重抽。",
-                "This group of fighters cannot fill all six matches. Leave the season and enter again for a fresh lineup.");
+                "这位选手凑不齐六场赛程的搭档。换一位试试；都不行就点下方「退出本赛季」，下次进场会重抽候选。",
+                "This fighter can't be paired for all six matches. Try another one; if none work, press \"Leave season\" below and a fresh lineup is drawn next time.");
             Add(map, "Transfer_Summary",
                 "有位选手想加入。签下他会换掉你现在的接力替补；不想换就直接下一场。",
                 "A fighter wants to join. Signing them replaces your current relay; otherwise just go to the next match.");
@@ -128,8 +129,8 @@ namespace BossRush
             Add(map, "Archetype_assault_Plain", "近身猛冲", "Brawler");
             Add(map, "Archetype_ranged_Plain", "远程射手", "Shooter");
             Add(map, "Archetype_tank_Plain", "重甲肉盾", "Tank");
-            Add(map, "Archetype_sustain_Plain", "持久消耗", "Grinder");
-            Add(map, "Archetype_finisher_Plain", "残局收割", "Closer");
+            Add(map, "Archetype_sustain_Plain", "打持久战", "Grinder");
+            Add(map, "Archetype_finisher_Plain", "专收残血", "Closer");
 
             Add(map, "Temperament_aggressive", "莽攻", "Aggressive");
             Add(map, "Temperament_cautious", "谨慎", "Cautious");
@@ -216,7 +217,7 @@ namespace BossRush
             Add(map, "CommandStatus_ReportOnly", "仅显示", "Report Only");
             Add(map, "CommandStatus_Unavailable", "不可用", "Unavailable");
             Add(map, "Command_BellConsumed", "本场拍铃已用完", "Bell already used this match");
-            Add(map, "Command_WindowActive", "口令生效中", "Order active");
+            Add(map, "Command_WindowActive", "正在照做", "Following your call");
             Add(map, "Hud_BellOncePerMatch", "每场一次", "Once per match");
             Add(map, "Hud_BellUsedHint", "下一场还能再拍一次", "You can ring again next match");
             Add(map, "Hud_EnemiesLeft", "场上敌人", "Enemies left");
@@ -455,41 +456,41 @@ namespace BossRush
             // 选人卡正文：两三句白话讲它怎么打、强在哪、怕什么（2026-09-23 owner：「描述改得说人话」）。
             // 与 BossProfiles.json 的原型、能力标签、怪癖 / 异常一一对应，改数据时同步这里。
             AddFighterPlain(map, "shotgun_brawler",
-                "端着霰弹枪往脸上冲，贴身一枪伤害极高。专挑残血的敌人下手。离远了基本打不着。",
-                "Charges in with a shotgun; a point-blank blast hits very hard. Picks on wounded enemies. Almost useless at range.");
+                "端着霰弹枪往脸上冲，贴身一枪伤害极高。离远了基本打不着。",
+                "Charges in with a shotgun; a point-blank blast hits very hard. Almost useless at range.");
             AddFighterPlain(map, "frost_marshal",
-                "跑得快，绕着敌人边跑边打，很难被抓住。缺点是胆小：自己残血时可能直接认输。",
-                "Fast and slippery: circles enemies while attacking. Downside: timid, and may give up when badly hurt.");
+                "冲得快，贴上去打一轮就绕开，很难被抓住。缺点是胆小：自己残血时可能直接认输。",
+                "Rushes in fast, hits, then slips away; hard to pin down. Downside: timid, and may give up when badly hurt.");
             AddFighterPlain(map, "snow_sharpshooter",
-                "站在远处稳稳点射，对付站着不动的敌人很拿手。换弹又慢又磨叽，被贴身会很吃力。",
-                "Steady shots from range; great against enemies who stand still. Slow, fussy reloads; struggles up close.");
+                "站在远处稳稳点射，对付站着不动的敌人很拿手。被敌人贴身会很吃力。",
+                "Steady shots from range; great against enemies who stand still. Struggles once enemies get up close.");
             AddFighterPlain(map, "long_lens",
-                "远程火力压制，站得远、打得准。喜欢把技能攒到最后，有时憋到比赛结束也没放。",
-                "Long-range fire support: stays back and hits hard. Hoards its skill, sometimes until the match is over.");
+                "远程火力压制，站得远、打得准。敌人冲到脸上时会比较被动。",
+                "Long-range fire support: stays back and hits hard. Less comfortable once enemies close in.");
             AddFighterPlain(map, "triple_tap",
                 "中远距离一口气连开三枪，爆发很猛。偶尔会突然把操作权交给你，让你亲手打一段。",
                 "Rapid three-round bursts at mid range for big damage. Now and then it hands control to you for a while.");
             AddFighterPlain(map, "great_xing",
-                "皮糙肉厚，站在擂台中间死扛。不爱追人，碰上会跑的敌人会打得很磨。",
-                "Heavily armored; plants itself in the middle and soaks damage. Won't chase, so fast enemies drag the fight out.");
+                "皮糙肉厚，正面硬碰硬非常稳。碰上边跑边打的敌人，会打得比较久。",
+                "Heavily armored and rock-solid head-on. Against enemies who shoot on the move, fights take a while.");
             AddFighterPlain(map, "mech_snowman",
-                "重甲机体，非常扛打。一心想着护住队友，自己进攻不够积极。",
-                "Heavily plated and very hard to put down. Busy protecting its teammate, so it attacks less.");
+                "重甲机体，非常扛打，适合顶在前面硬吃伤害。出手不算凶，靠耐打把对手慢慢磨下来。",
+                "Heavily plated and very hard to put down; built to stand in front and soak damage. Not a heavy hitter, it wins by outlasting.");
             AddFighterPlain(map, "big_ice",
                 "块头大，范围攻击一砸一大片，专克扎堆的敌人。碰上特别强、久攻不下的对手，可能会认怂弃赛。",
                 "Huge, with wide area attacks that crush groups. Against a very strong foe it can't beat, it may lose heart and forfeit.");
             AddFighterPlain(map, "bomb_maniac",
-                "到处扔炸弹，打一群人、拖长战线都拿手。开场慢热，前半分钟几乎不出力。",
-                "Lobs bombs everywhere; great against groups and in long fights. Slow starter: barely does anything for the first half minute.");
+                "到处扔炸弹封住一片地方，打扎堆的敌人、拖长战线都拿手。",
+                "Lobs bombs to lock down whole areas; great against groups and in long fights.");
             AddFighterPlain(map, "goose_leader",
                 "稳扎稳打，能磨也能控场。被三个以上的敌人围住时容易慌，可能直接弃赛。",
                 "A steady grinder that controls the fight. Panics when three or more surround it, and may forfeit.");
             AddFighterPlain(map, "orion_hunter",
-                "擅长边走边打、收掉残血的敌人。记仇，会死盯先打它的那个。很适合当接力压轴。",
-                "Finishes off wounded enemies while on the move. Holds grudges against whoever hit it first. A great closer.");
+                "擅长边走边打，拉开距离追着残血的敌人收尾。",
+                "Shoots on the move and keeps its distance while finishing off wounded enemies.");
             AddFighterPlain(map, "warden",
-                "全场最能打的老手之一，越到最后越冷静，收残局最稳。开场偏保守，不会一上来就拼命。",
-                "One of the toughest veterans; calmer as the clock runs down and reliable in endgames. Plays it safe early on.");
+                "全场最能打的老手之一，又稳又耐打，收拾残局尤其拿手。",
+                "One of the toughest veterans: steady, durable, and especially good at cleaning up a fight.");
         }
 
         private static void AddFighterPlain(Dictionary<string, string> map, string id, string cn, string en)
@@ -704,11 +705,13 @@ namespace BossRush
             // 加载页的进度行是模板：{0} 已热身人数，{1} 总人数。
             Add(map, "Diag_Progress", "正在请选手上台热身（{0}/{1}）", "Warming up the fighters ({0}/{1})");
             Add(map, "Diag_Signatures", "构建签名", "Build Signatures");
+            // 热身结果按存档槽记，并认游戏、Mod、内容三个版本：换槽、每次游戏或 Mod 更新都会再热一次（2026-09-23 复核 V6-2）
             Add(map, "Diag_ReadOnlyNotice",
-                "第一次进场、或者游戏 / Mod 更新之后，要先请每位选手上台热个身，确认他们都能正常开打。"
-                + "只做这一次，之后再进来会直接开始。",
-                "On your first visit, or after a game or mod update, each fighter does a quick warm-up bout "
-                + "to make sure they can fight. This only happens once; later visits start right away.");
+                "第一次进场，或者游戏 / Mod 更新、换了存档之后，要先请每位选手上台热个身，确认他们都能正常开打。"
+                + "热身结果会记下来，同一版本、同一存档再进来就直接开始。",
+                "The first time you enter, and again after a game or mod update or on another save, each fighter does "
+                + "a quick warm-up bout to make sure they can fight. The result is remembered, so later visits on the same "
+                + "version and save start right away.");
             Add(map, "Diag_Finishing", "马上就好", "Almost ready");
         }
 

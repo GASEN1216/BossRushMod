@@ -48,31 +48,46 @@ namespace BossRush
         public const float EntryHeight = 70f;
         public const float Padding = 8f;
 
-        private static readonly Color BgColor = new Color32(30, 33, 40, 255);
-        private static readonly Color BgColorUnlocked = new Color32(40, 50, 45, 255);
-        private static readonly Color BgColorLocked = new Color32(25, 27, 32, 255);
-        private static readonly Color BorderColor = new Color32(60, 65, 75, 255);
-        private static readonly Color BorderColorUnlocked = new Color32(76, 175, 80, 255);
-        private static readonly Color TextColor = new Color32(240, 240, 240, 255);
-        private static readonly Color DescColor = new Color32(180, 180, 180, 255);
-        private static readonly Color DisabledColor = new Color32(100, 100, 100, 255);
-        private static readonly Color GoldColor = new Color32(255, 215, 0, 255);
-        private static readonly Color ButtonColor = new Color32(76, 175, 80, 255);
-        private static readonly Color ButtonDisabledColor = new Color32(60, 60, 60, 255);
+        // 配色只用共享 token（审美审查 UD-35 / UD-37）。旧版是一套 Material 配色：待领取行整圈亮绿边 +
+        // 一块 Material 绿 (76,175,80) 平涂按钮配白字（对比约 2.8:1），领取后直接变灰、没有任何回馈。
+        // 现在：卡片一层（Card 底 + 描边），描边颜色表达状态——待领取是传说金，其余是 Stroke；
+        // 领取按钮是次级按钮配金字（这一屏的主操作是页脚的「一键领取」，每行一块主色按钮会满屏抢眼）。
+        private static readonly Color BgColor = BossRushUIColors.Surface;
+        private static readonly Color BgColorUnlocked = BossRushUIColors.SurfaceRaised;
+        private static readonly Color BgColorLocked = BossRushUIColors.Surface;
+        private static readonly Color BorderColor = BossRushUIColors.Stroke;
+        private static readonly Color BorderColorUnlocked = new Color(
+            BossRushUIColors.RarityLegendary.r, BossRushUIColors.RarityLegendary.g, BossRushUIColors.RarityLegendary.b, 0.8f);
+        private static readonly Color BorderColorLocked = new Color(
+            BossRushUIColors.Stroke.r, BossRushUIColors.Stroke.g, BossRushUIColors.Stroke.b, BossRushUIColors.Stroke.a * 0.5f);
+        private static readonly Color TextColor = BossRushUIColors.TextPrimary;
+        private static readonly Color DescColor = BossRushUIColors.TextSecondary;
+        private static readonly Color DisabledColor = new Color(
+            BossRushUIColors.TextSecondary.r, BossRushUIColors.TextSecondary.g, BossRushUIColors.TextSecondary.b, 0.7f);
+        private static readonly Color GoldColor = BossRushUIColors.WarningText;
+        /// <summary>领取反馈：描边从金色淡回 Stroke 的时长；奖励数字从 1.2 倍回弹的时长。</summary>
+        private const float ClaimStrokeFadeSeconds = 0.5f;
+        private const float ClaimPopSeconds = 0.2f;
+        private const float IconSize = 60f;
+        private const float IconTextGap = 12f;
 
         #endregion
 
         #region UI组件引用
 
         private Image backgroundImage;
+        /// <summary>卡片描边（ApplyPanelStroke 返回的那层环），颜色表达状态。</summary>
         private Image borderImage;
+        private GameObject iconContainer;
+        private RectTransform nameRect;
+        private RectTransform descRect;
+        private Coroutine claimFeedback;
         private RawImage iconImage;
         private TextMeshProUGUI nameText;
         private TextMeshProUGUI descText;
         private TextMeshProUGUI rewardText;
         private Button claimButton;
         private TextMeshProUGUI claimButtonText;
-        private Image claimButtonImage;
 
         #endregion
 
@@ -120,12 +135,15 @@ namespace BossRush
             layoutElement.preferredHeight = EntryHeight;
             layoutElement.flexibleWidth = 1f;
 
-            // 背景图片
+            // 卡片：一层 Card 底 + 共享描边（投影与顶边高光随描边一起来）。
+            // 旧版是「外层 2px 色块当边框 + 内层再套一张卡」的卡套卡（审美审查 UD-35 / U2），
+            // 状态色改由描边环本身表达。
             Image bgImage = entryObj.AddComponent<Image>();
-            BossRushUI.ApplyPanelSkin(bgImage, 10, BossRushUISkinPart.Card);   // 外层是 2px 状态边框，待领取时变绿，不叠描边
-            bgImage.color = BgColor;
+            bgImage.color = BgColorUnlocked;   // 先给不透明底色：投影 / 斜面按底色不透明度决定挂不挂
+            BossRushUI.ApplyPanelSkin(bgImage, 10, BossRushUISkinPart.Card);
+            Image stroke = BossRushUI.ApplyPanelStroke(bgImage, 10, BossRushUISkinPart.Card, BorderColor);
 
-            // 内边距容器
+            // 内边距容器（只负责布局，不再铺第二层底）
             GameObject innerObj = new GameObject("Inner");
             innerObj.transform.SetParent(entryObj.transform, false);
 
@@ -135,11 +153,9 @@ namespace BossRush
             innerRect.offsetMin = new Vector2(2f, 2f);
             innerRect.offsetMax = new Vector2(-2f, -2f);
 
-            Image innerBg = innerObj.AddComponent<Image>();
-            BossRushUI.ApplyPanelSkin(innerBg, 8, BossRushUISkinPart.Card);   // 外层 bgImage 已是 2px 状态边框，内卡再叠描边会变成双层边
-            innerBg.color = BgColorLocked;
-
             AchievementEntryUI entry = entryObj.AddComponent<AchievementEntryUI>();
+            entry.backgroundImage = bgImage;
+            entry.borderImage = stroke;
             entry.InitializeComponents(innerObj.transform);
             entry.Setup(def);
 
@@ -151,10 +167,6 @@ namespace BossRush
         /// </summary>
         private void InitializeComponents(Transform parent)
         {
-            // 保存背景引用
-            borderImage = GetComponent<Image>();
-            backgroundImage = parent.GetComponent<Image>();
-
             // 创建图标区域
             CreateIconArea(parent);
 
@@ -171,7 +183,7 @@ namespace BossRush
         private void CreateIconArea(Transform parent)
         {
             // 图标容器
-            GameObject iconContainer = new GameObject("IconContainer");
+            iconContainer = new GameObject("IconContainer");
             iconContainer.transform.SetParent(parent, false);
 
             RectTransform containerRect = iconContainer.AddComponent<RectTransform>();
@@ -179,11 +191,13 @@ namespace BossRush
             containerRect.anchorMax = new Vector2(0f, 0.5f);
             containerRect.pivot = new Vector2(0f, 0.5f);
             containerRect.anchoredPosition = new Vector2(Padding, 0);
-            containerRect.sizeDelta = new Vector2(60f, 60f);
+            containerRect.sizeDelta = new Vector2(IconSize, IconSize);
 
-            // 图标背景
+            // 图标底：圆角凹槽（Surface，比卡片底更深一档），不再是圆角卡片里嵌一个直角黑方块（UD-37）
             Image iconBg = iconContainer.AddComponent<Image>();
-            iconBg.color = new Color32(20, 22, 28, 255);
+            iconBg.color = BossRushUIColors.Surface;
+            BossRushUI.ApplyPanelSkin(iconBg, 8, BossRushUISkinPart.Card);
+            iconBg.raycastTarget = false;
 
             // 图标
             GameObject iconObj = new GameObject("Icon");
@@ -197,6 +211,13 @@ namespace BossRush
 
             iconImage = iconObj.AddComponent<RawImage>();
             iconImage.color = Color.white;
+            iconImage.raycastTarget = false;
+        }
+
+        /// <summary>文字列的左边线：有图标时让出图标列，图标取不到时贴左（不留一块灰方块占位，UD-37）。</summary>
+        private static float GetTextStartX(bool hasIcon)
+        {
+            return hasIcon ? Padding + IconSize + IconTextGap : Padding + 6f;
         }
 
         /// <summary>
@@ -204,42 +225,57 @@ namespace BossRush
         /// </summary>
         private void CreateTextArea(Transform parent)
         {
-            float textStartX = Padding + 60f + 12f;
+            float textStartX = GetTextStartX(true);
 
             // 名称文本
             GameObject nameObj = new GameObject("NameText");
             nameObj.transform.SetParent(parent, false);
 
-            RectTransform nameRect = nameObj.AddComponent<RectTransform>();
+            nameRect = nameObj.AddComponent<RectTransform>();
             nameRect.anchorMin = new Vector2(0f, 0.5f);
             nameRect.anchorMax = new Vector2(1f, 1f);
             nameRect.offsetMin = new Vector2(textStartX, 2f);
-            nameRect.offsetMax = new Vector2(-100f, -2f);
+            // 右侧让出「奖励金额 + 领取按钮」一整列，长名字不再压到金额上
+            nameRect.offsetMax = new Vector2(-180f, -2f);
 
             nameText = nameObj.AddComponent<TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(nameText);
-            nameText.fontSize = 20;
+            nameText.fontSize = 18;
             nameText.fontStyle = FontStyles.Bold;
             nameText.color = TextColor;
-            nameText.alignment = TextAlignmentOptions.Left;
+            nameText.alignment = TextAlignmentOptions.BottomLeft;
+            nameText.enableWordWrapping = false;
+            nameText.overflowMode = TextOverflowModes.Ellipsis;
             nameText.raycastTarget = false;
 
             // 描述文本
             GameObject descObj = new GameObject("DescText");
             descObj.transform.SetParent(parent, false);
 
-            RectTransform descRect = descObj.AddComponent<RectTransform>();
+            descRect = descObj.AddComponent<RectTransform>();
             descRect.anchorMin = new Vector2(0f, 0f);
             descRect.anchorMax = new Vector2(1f, 0.5f);
             descRect.offsetMin = new Vector2(textStartX, 2f);
-            descRect.offsetMax = new Vector2(-100f, -2f);
+            descRect.offsetMax = new Vector2(-180f, -2f);
 
             descText = descObj.AddComponent<TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(descText);
             descText.fontSize = 15;
             descText.color = DescColor;
-            descText.alignment = TextAlignmentOptions.Left;
+            descText.alignment = TextAlignmentOptions.TopLeft;
             descText.raycastTarget = false;
+        }
+
+        /// <summary>图标列显隐与文字左边线一起切。</summary>
+        private void SetIconVisible(bool visible)
+        {
+            if (iconContainer != null && iconContainer.activeSelf != visible)
+            {
+                iconContainer.SetActive(visible);
+            }
+            float x = GetTextStartX(visible);
+            if (nameRect != null) nameRect.offsetMin = new Vector2(x, nameRect.offsetMin.y);
+            if (descRect != null) descRect.offsetMin = new Vector2(x, descRect.offsetMin.y);
         }
 
         /// <summary>
@@ -255,8 +291,9 @@ namespace BossRush
             rewardRect.anchorMin = new Vector2(1f, 0.5f);
             rewardRect.anchorMax = new Vector2(1f, 0.5f);
             rewardRect.pivot = new Vector2(1f, 0.5f);
-            rewardRect.anchoredPosition = new Vector2(-90f, 5f);
-            rewardRect.sizeDelta = new Vector2(80f, 20f);
+            rewardRect.anchoredPosition = new Vector2(-90f, 0f);
+            // 17 号单行框高按 字号×1.45+4 给足（旧值 20 装不下一行）
+            rewardRect.sizeDelta = new Vector2(80f, 30f);
 
             rewardText = rewardObj.AddComponent<TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(rewardText);
@@ -264,44 +301,29 @@ namespace BossRush
             rewardText.fontStyle = FontStyles.Bold;
             rewardText.color = GoldColor;
             rewardText.alignment = TextAlignmentOptions.Right;
+            rewardText.enableWordWrapping = false;
             rewardText.raycastTarget = false;
 
-            // 领取按钮
-            GameObject buttonObj = new GameObject("ClaimButton");
-            buttonObj.transform.SetParent(parent, false);
-
-            RectTransform buttonRect = buttonObj.AddComponent<RectTransform>();
-            buttonRect.anchorMin = new Vector2(1f, 0.5f);
-            buttonRect.anchorMax = new Vector2(1f, 0.5f);
-            buttonRect.pivot = new Vector2(1f, 0.5f);
-            buttonRect.anchoredPosition = new Vector2(-Padding, 0);
-            buttonRect.sizeDelta = new Vector2(75f, 30f);
-
-            claimButtonImage = buttonObj.AddComponent<Image>();
-            BossRushUI.ApplyPanelSkin(claimButtonImage, 6);
-            claimButtonImage.color = ButtonColor;
-
-            claimButton = buttonObj.AddComponent<Button>();
-            claimButton.targetGraphic = claimButtonImage;
-            claimButton.onClick.AddListener(OnClaimClicked);
-
-            // 按钮文本
-            GameObject buttonTextObj = new GameObject("ButtonText");
-            buttonTextObj.transform.SetParent(buttonObj.transform, false);
-
-            RectTransform buttonTextRect = buttonTextObj.AddComponent<RectTransform>();
-            buttonTextRect.anchorMin = Vector2.zero;
-            buttonTextRect.anchorMax = Vector2.one;
-            buttonTextRect.offsetMin = Vector2.zero;
-            buttonTextRect.offsetMax = Vector2.zero;
-
-            claimButtonText = buttonTextObj.AddComponent<TextMeshProUGUI>();
-            BossRushUI.ApplyGameFont(claimButtonText);
-            claimButtonText.fontSize = 15;
-            claimButtonText.fontStyle = FontStyles.Bold;
-            claimButtonText.color = Color.white;
-            claimButtonText.alignment = TextAlignmentOptions.Center;
-            claimButtonText.raycastTarget = false;
+            // 领取按钮：共享按钮 + 次级样式（三态、官方悬停 / 点击音效、按下回弹都由共享层给，UD-35）。
+            // 旧版手搓 AddComponent<Button>、默认 ColorBlock，悬停只乘 0.96，看不出能点。
+            claimButton = ZombieModeUIHelper.CreateButton(
+                "ClaimButton",
+                parent,
+                string.Empty,
+                new Vector2(1f, 0.5f),
+                new Vector2(-Padding - 37.5f, 0f),
+                new Vector2(75f, 30f),
+                BossRushUIColors.SurfaceRaised,
+                15f,
+                new Vector2(71f, 26f),
+                OnClaimClicked,
+                true);
+            BossRushUIKit.StyleSecondaryButton(claimButton);
+            claimButtonText = claimButton.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (claimButtonText != null)
+            {
+                claimButtonText.fontStyle = FontStyles.Bold;
+            }
         }
 
         #endregion
@@ -422,7 +444,7 @@ namespace BossRush
             {
                 case AchievementEntryState.Locked:
                     backgroundImage.color = BgColorLocked;
-                    borderImage.color = new Color32(45, 48, 55, 255);
+                    borderImage.color = BorderColorLocked;
                     nameText.text = isChinese ? achievement.nameCN : achievement.nameEN;
                     nameText.color = DisabledColor;
                     descText.text = GetDescriptionWithProgress(isChinese);
@@ -435,7 +457,7 @@ namespace BossRush
 
                 case AchievementEntryState.LockedHidden:
                     backgroundImage.color = BgColorLocked;
-                    borderImage.color = new Color32(45, 48, 55, 255);
+                    borderImage.color = BorderColorLocked;
                     nameText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_HiddenName, AchievementUIStrings.EN_HiddenName);
                     nameText.color = DisabledColor;
                     descText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_HiddenDesc, AchievementUIStrings.EN_HiddenDesc);
@@ -457,8 +479,12 @@ namespace BossRush
                     rewardText.color = GoldColor;
                     claimButton.gameObject.SetActive(true);
                     claimButton.interactable = true;
-                    claimButtonImage.color = ButtonColor;
-                    claimButtonText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_Claim, AchievementUIStrings.EN_Claim);
+                    // 底色住在 ColorBlock 里（StyleSecondaryButton），这里只切可点状态与字色，不写 Image.color
+                    if (claimButtonText != null)
+                    {
+                        claimButtonText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_Claim, AchievementUIStrings.EN_Claim);
+                        claimButtonText.color = GoldColor;
+                    }
                     LoadIcon(achievement.iconFile, false);
                     break;
 
@@ -473,8 +499,11 @@ namespace BossRush
                     rewardText.color = DisabledColor;
                     claimButton.gameObject.SetActive(true);
                     claimButton.interactable = false;
-                    claimButtonImage.color = ButtonDisabledColor;
-                    claimButtonText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_Claimed, AchievementUIStrings.EN_Claimed);
+                    if (claimButtonText != null)
+                    {
+                        claimButtonText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_Claimed, AchievementUIStrings.EN_Claimed);
+                        claimButtonText.color = DisabledColor;
+                    }
                     LoadIcon(achievement.iconFile, false);
                     break;
             }
@@ -483,6 +512,69 @@ namespace BossRush
         private void OnClaimClicked()
         {
             TryClaim();
+        }
+
+        /// <summary>
+        /// 领取成功的那一拍（审美审查 UD-35）：金额数字从 1.2 倍回弹、字色从金色淡到「已领取」的灰，
+        /// 卡片描边从传说金淡回 Stroke。音效由 AchievementView 播（一键领取整批只播一次）。
+        /// 走 unscaled 时间并过暂停门；在 Refresh 之后调用，终点就是新状态的颜色。
+        /// </summary>
+        internal void PlayClaimFeedback()
+        {
+            if (!isActiveAndEnabled)
+            {
+                return;
+            }
+            if (claimFeedback != null)
+            {
+                StopCoroutine(claimFeedback);
+            }
+            claimFeedback = StartCoroutine(ClaimFeedbackRoutine());
+        }
+
+        private System.Collections.IEnumerator ClaimFeedbackRoutine()
+        {
+            Color strokeTo = borderImage != null ? borderImage.color : BorderColor;
+            Color rewardTo = rewardText != null ? rewardText.color : DisabledColor;
+            RectTransform rewardRect = rewardText != null ? rewardText.rectTransform : null;
+            float elapsed = 0f;
+            while (elapsed < ClaimStrokeFadeSeconds)
+            {
+                if (!BossRushUI.IsGamePaused())
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                }
+                float fade = BossRushUI.SmoothStep(elapsed / ClaimStrokeFadeSeconds);
+                if (borderImage != null)
+                {
+                    borderImage.color = Color.Lerp(BorderColorUnlocked, strokeTo, fade);
+                }
+                if (rewardText != null)
+                {
+                    rewardText.color = Color.Lerp(GoldColor, rewardTo, fade);
+                }
+                if (rewardRect != null)
+                {
+                    rewardRect.localScale = Vector3.one * Mathf.Lerp(1.2f, 1f, BossRushUI.EaseOut(elapsed / ClaimPopSeconds));
+                }
+                yield return null;
+            }
+            if (borderImage != null) borderImage.color = strokeTo;
+            if (rewardText != null) rewardText.color = rewardTo;
+            if (rewardRect != null) rewardRect.localScale = Vector3.one;
+            claimFeedback = null;
+        }
+
+        private void OnDisable()
+        {
+            // 动画中途被整页重建 / 关面板：直接落到终态，别停在放大的样子
+            if (claimFeedback != null)
+            {
+                StopCoroutine(claimFeedback);
+                claimFeedback = null;
+                if (rewardText != null) rewardText.rectTransform.localScale = Vector3.one;
+                UpdateVisuals();
+            }
         }
 
         /// <summary>
@@ -505,6 +597,7 @@ namespace BossRush
                 
                 if (tex != null)
                 {
+                    SetIconVisible(true);
                     iconImage.texture = tex;
                     iconImage.color = grayscale ? new Color(0.4f, 0.4f, 0.4f, 1f) : Color.white;
                 }
@@ -520,10 +613,14 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 指定图标与 default 图标都取不到：去掉图标那一格、文字贴左，
+        /// 不再画一块灰方块占位（审美审查 UD-37，owner 点名过「灰方块占位图标」）。
+        /// </summary>
         private void SetDefaultIcon(bool grayscale)
         {
             iconImage.texture = null;
-            iconImage.color = grayscale ? new Color(0.15f, 0.15f, 0.15f, 1f) : new Color(0.25f, 0.25f, 0.25f, 1f);
+            SetIconVisible(false);
         }
 
         #endregion

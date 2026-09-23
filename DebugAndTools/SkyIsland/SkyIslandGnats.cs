@@ -77,6 +77,8 @@ namespace BossRush
             internal GameObject Root;
             internal Light Glow;
             internal LineRenderer Arc;
+            /// <summary>电弧的白芯（与 Arc 共用顶点，细一号、加色）：外缘淡蓝、芯白，VB-29.2。</summary>
+            internal LineRenderer ArcCore;
             internal float Until, NextPulse, ArcUntil;
         }
 
@@ -768,17 +770,24 @@ namespace BossRush
                 glow.range = 6f;
                 glow.intensity = 1.5f;
                 glow.shadows = LightShadows.None;
-                LineRenderer cage = Line(go.transform, "Cage", 13, 0.04f, new Color(0.7f, 0.9f, 1f, 0.9f));
+                LineRenderer cage = Line(go.transform, "Cage", 13, 0.06f, new Color(0.7f, 0.9f, 1f, 0.9f));
                 cage.loop = true;
                 for (int i = 0; i < 13; i++)
                 {
                     float angle = i * Mathf.PI * 2f / 13f;
                     cage.SetPosition(i, new Vector3(Mathf.Cos(angle) * 0.22f, 0.55f + (i % 2) * 0.08f, Mathf.Sin(angle) * 0.22f));
                 }
-                LineRenderer arc = Line(go.transform, "Arc", 6, 0.05f, new Color(0.8f, 0.95f, 1f, 1f));
+                // 电弧两层（VB-29.2）：外缘淡蓝 0.09 m、芯白 0.035 m，都从灯这头往目标收尖；旧的 0.05 m 硬边线只有 3 px。
+                LineRenderer arc = Line(go.transform, "Arc", 6, 0.09f, new Color(0.62f, 0.86f, 1f, 0.9f));
                 arc.useWorldSpace = true;
+                SkyIslandImpactFx.Taper(arc, 0.09f, 0.3f);
                 arc.enabled = false;
-                zappers[slot] = new Zapper { Root = go, Glow = glow, Arc = arc, Until = now + SkyIslandMosquitoRules.ZapperBurnSeconds, NextPulse = now + 0.3f };
+                LineRenderer arcCore = Line(go.transform, "ArcCore", 6, 0.035f, new Color(1f, 1f, 1f, 1f));
+                arcCore.useWorldSpace = true;
+                SkyIslandImpactFx.Taper(arcCore, 0.035f, 0.3f);
+                arcCore.sortingOrder = SortingOrder + 1;
+                arcCore.enabled = false;
+                zappers[slot] = new Zapper { Root = go, Glow = glow, Arc = arc, ArcCore = arcCore, Until = now + SkyIslandMosquitoRules.ZapperBurnSeconds, NextPulse = now + 0.3f };
                 message = SkyIslandMosquitoRules.ZapperLit;
                 if (story != null) story.LogTiming("zapper", slot.ToString());
                 return true;
@@ -808,6 +817,7 @@ namespace BossRush
                 }
                 zapper.Glow.intensity = 1.3f + 0.25f * Mathf.Sin(now * 9f + z);
                 if (zapper.Arc.enabled && now >= zapper.ArcUntil) zapper.Arc.enabled = false;
+                if (zapper.ArcCore != null && zapper.ArcCore.enabled && now >= zapper.ArcUntil) zapper.ArcCore.enabled = false;
                 if (now < zapper.NextPulse) continue;
                 zapper.NextPulse = now + SkyIslandMosquitoRules.ZapperPulseSeconds;
                 SkyIslandGnatVec center = ToVec(zapper.Root.transform.position);
@@ -829,9 +839,13 @@ namespace BossRush
                     if (p > 0 && p < 5)
                         point += new Vector3((float)(random.NextDouble() - 0.5), (float)(random.NextDouble() - 0.5), (float)(random.NextDouble() - 0.5)) * 0.25f;
                     zapper.Arc.SetPosition(p, point);
+                    if (zapper.ArcCore != null) zapper.ArcCore.SetPosition(p, point);
                 }
                 zapper.Arc.enabled = true;
+                if (zapper.ArcCore != null) zapper.ArcCore.enabled = true;
                 zapper.ArcUntil = now + 0.12f;
+                // 击中点迸 4 粒电火花（加色、拉伸、≤ 0.12 m），按脉冲节拍发一次，不进每帧路径。
+                SkyIslandImpactFx.Sparks(root, target.Position, new Color(0.62f, 0.86f, 1f, 1f), 4);
                 HurtGnat(target, SkyIslandMosquitoRules.ZapperDamage, player);
             }
         }
@@ -1001,7 +1015,8 @@ namespace BossRush
             GameObject child = new GameObject(name);
             child.transform.SetParent(parent, false);
             LineRenderer line = child.AddComponent<LineRenderer>();
-            line.sharedMaterial = trailMaterial;
+            // 灯笼骨、电弧、扇风弧：加色软边带，不再是硬边平色条（VB-29.2）；共享材质工厂不可用时退回原来的拖尾材质。
+            SkyIslandImpactFx.UseGlowLine(line, trailMaterial);
             line.useWorldSpace = false;
             line.positionCount = points;
             line.startWidth = line.endWidth = width;

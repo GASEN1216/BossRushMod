@@ -6,7 +6,7 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 
 ### Phase 1: Preparation (180s, 1%/sec drain)
 
-- Lowest pressure — use it wisely
+- Lowest pressure of the run. Make it count
 - Kill early Bosses for health + fortification items
 - Loot crates → upgrade gear
 - Pre-deploy covers at key spots
@@ -14,18 +14,18 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 
 ### Phase 2: Bounty (180s, 1.5%/sec)
 
-- Bounty list generated — all surviving Bosses marked
+- Bounty list generated; all surviving Bosses get marked
 - Read the Bounty Radar's direction arrow, distance, and `x mark count`; when the gold LEADER marker appears, decide quickly whether you can take that high-value fight
 - Bounty kills heal 45%–60% of entry max HP (vs 30% for regular kills) + extra drops
-- Bosses kill each other and **inherit marks** — track the Bounty Leader
+- Bosses kill each other and **inherit marks**, so keep an eye on the Bounty Leader
 - Marks accumulated = extraction reward count
 
 ### Phase 3: Hunt Surge (180s, 2%/sec)
 
 - All Bosses hunt you actively
 - Unmarked Bosses gain +50% speed
-- **Most dangerous phase** — kill fast or die
-- Fortifications are essential — create firing positions
+- **Most dangerous phase**: kill fast or die
+- Fortifications are essential here. Use them to build firing positions
 - Never stop moving
 
 ### Phase 4: Extraction (unlimited, 3%/sec)

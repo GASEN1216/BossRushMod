@@ -100,7 +100,8 @@ def main() -> int:
     if "transform.position" in position or "transform.rotation" in body:
         return fail("frame updates should use cached bubble Transform")
 
-    if "GetCachedTransform().position = targetTransform.position + Vector3.up * heightOffset;" not in position:
+    # 2026-09-23 UD-46：气泡存在期间上浮，高度 = 配置偏移 + 当前上浮量，仍然一次写穿缓存的 Transform。
+    if "GetCachedTransform().position = targetTransform.position + Vector3.up * (heightOffset + currentRise);" not in position:
         return fail("UpdatePosition should write through cached bubble Transform")
 
     print("NPCBubbleAnimatorCameraLookupGuard: PASS")

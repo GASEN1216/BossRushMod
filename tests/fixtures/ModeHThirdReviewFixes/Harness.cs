@@ -4,9 +4,11 @@ using System.Text.Json;
 namespace Saves { internal static class SavesSystem { public static int CurrentSlot = 1; } }
 namespace BossRush
 {
+    internal enum ModeHResultTone { None = 0, Victory = 1, Defeat = 2 }
     internal class ModeHPageContent
     {
         public string Title, Body;
+        public ModeHResultTone ResultTone;
         public List<string> Lines = new List<string>();
         public List<ModeHActionData> Actions = new List<ModeHActionData>();
     }

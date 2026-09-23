@@ -1,7 +1,7 @@
 # Phantom Witch
 
 ## Overview
-The Phantom Witch is the third custom Boss in BossRush Mod. She roams the battlefield by alternating between blinks and stealth, combining Curse Realms, scythe sweeps, and undead summoning in a three-phase fight. Defeating her grants a 50% chance to drop her exclusive melee weapon, Soulreaper's Requiem.
+The Phantom Witch is the third custom Boss in BossRush Mod. She flips between blinking and stealth, and fights in three phases with Curse Realms, scythe sweeps and undead summons. Killing her has a 50% chance to drop her exclusive melee weapon, Soulreaper's Requiem.
 
 ## Base Stats
 - HP: 1000
@@ -19,7 +19,7 @@ The Phantom Witch is the third custom Boss in BossRush Mod. She roams the battle
 ### Tracked Teleport
 Her most important move. The Witch places a violet marker about 2.2m from the player, and **the marker follows you for 2 seconds**, locking at its final position before the Witch blinks there and immediately sweeps.
 - Sweep damage: 18, range 3.1m, 170° arc
-- Moving one step when the marker appears isn't enough — keep strafing until it locks, or she'll land on your retreat path
+- Moving one step when the marker appears isn't enough. Keep strafing until it locks, or she'll land on your retreat path
 
 ### Scythe Sweep (Standalone)
 - Windup: 0.35s
@@ -61,8 +61,8 @@ The Phantom Witch cycles between true stealth, semi-stealth, and visible states:
 - Shows up on your status bar as **Ghost Curse**
 - Duration: 5 seconds
 - Max stacks: 3
-- Per-stack slow: -0.3 to both walk-speed and run-speed stats
-- At 3 stacks the flat reduction is 0.9, not a 90% slow or a root
+- Per-stack slow: -30% walk and run speed
+- At 3 stacks that's -90% walk and run speed: a crawl, but not a root
 
 ::: warning
 Be wary at one curse stack. If you eat another from a Curse Realm or the Harass minion while already cursed, reaching three stacks means you probably can't escape the next attack.
@@ -100,16 +100,16 @@ scythe is appended to the loot crate without displacing anything already in it.
 
 ## Combat Tips
 - **The violet tracking marker is the key signal**: keep strafing for 2 seconds until it locks, don't just take one step
-- Curse Realm has a ~1s warning ring — leave the area as soon as you see it
-- Wraith Trail requires waiting for the second hit (0.3s later) before it's safe to turn back for damage
-- Phase 2 ramps up attack tempo significantly — keep moving constantly
-- **In Phase 3, kill the Sustain minion first** — without removing it, the Witch heals 6-9 HP/s and your damage goes to waste
+- Curse Realm has a ~1s warning ring. Leave as soon as you see it
+- Wraith Trail: wait for the second hit (0.3s later) before turning back for damage
+- Phase 2 attacks come much faster. Keep moving
+- **In Phase 3, kill the Sustain minion first**. While it lives, the Witch heals 6-9 HP/s and your damage goes to waste
 - Then deal with the Harass minion's curse pressure, and finally return to the Witch
-- Don't chase the semi-transparent model — wait for the tracking marker to lock before looking for damage windows
+- Don't chase the semi-transparent model. Wait for the tracking marker to lock before looking for damage windows
 - Ranged players should circle in open ground, keeping markers and Realms in different spots
 - Melee players should treat each entry as a short trade: wait for the teleport sweep to end, hit from the side, then disengage
-- The curse slow stacks up to 3 times — avoid eating consecutive curse abilities
-- Don't peek the same cover repeatedly — the 2-second tracking marker can deliver a teleport sweep behind it
+- The curse slow stacks up to 3 times, so avoid eating curses back to back
+- Don't peek the same cover repeatedly: the 2-second tracking marker can deliver a teleport sweep behind it
 
 ## Spawn Restrictions
 - Standard BossRush and Infinite Hell: not in the strong-Boss exclusion list, can appear normally

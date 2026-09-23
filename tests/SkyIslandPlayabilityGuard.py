@@ -150,8 +150,10 @@ def main():
     ring = read("DebugAndTools/SkyIsland/SkyIslandGroundRing.cs")
     need(ring, "撤离环 owner",
          "internal sealed class SkyIslandExtractionRings",
-         "BossRushUIColors.Accent",
-         "BossRushUIColors.SuccessText",
+         # 2026-09-23 审美审查 UE-02：环色与 UI 字色 token 分开（降饱和、a=0.78），色相族不变——码头青、钟庭与航标广场绿，
+         # F3 面板、Wiki 与地图提示里的「青色环 / 绿环」仍然成立。
+         "dockRing = Build(root, dock, radius, groundMask, DockRingColor);",
+         "bellRing = Build(root, bell, radius, groundMask, BeaconRingColor);",
          "internal void Apply(bool bellUnlocked)",
          # 布局 v2：两处航标广场撤离环，与钟庭环同一套建造与翻转口径。
          "internal void AddBeaconRings(Transform root, Transform wind, Transform star, float radius, int groundMask)",

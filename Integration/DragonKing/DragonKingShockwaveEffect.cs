@@ -6,6 +6,12 @@
 //   从Boss身体中心向外扩散的圆环
 //   圆环碰到玩家时击退玩家
 //   三个波间隔0.5秒释放，释放期间Boss不能移动和射击
+//
+// 2026-09-23 特效审美审查 VB-14（只改表现，扩散速度、击退时机与力度一字不动）：
+//   - 环抬离地面 0.12 m、摊平（TransformZ，环物体绕 X 转 90°），不再是面向镜头、一半插进地里的锯齿带；
+//   - 软边带材质（共享工厂），不再是无贴图的 Sprites/Default 塑料色带；
+//   - 每一波起点官方口径震屏 0.6；
+//   - 环前沿在 1.5 / 4 / 8 / 13 m 处各扬一圈尘（放平的 Circle、世界空间、粒子数封顶），读得出「一道冲击扫过地面」。
 // ============================================================================
 
 using System;
@@ -24,6 +30,14 @@ namespace BossRush
         private const float WaveBaseWidth = 0.8f;
         private const float WaveMinWidth = 0.2f;
         private const int InitialEffectPoolCapacity = 4;
+        /// <summary>环离地高度（米）：圆心就是地面，旧环与地面同高、一半插进地里。</summary>
+        private const float RingLift = 0.12f;
+        /// <summary>每一波起点的震屏强度（官方手雷是 1）。</summary>
+        private const float WaveShake = 0.6f;
+        /// <summary>环前沿扬尘的半径档位与每档颗数：按事件发，不按帧发（与帧率无关）。</summary>
+        private static readonly float[] DustRadii = { 1.5f, 4f, 8f, 13f };
+        private static readonly int[] DustCounts = { 6, 8, 10, 12 };
+        private static readonly Color DustColor = new Color(0.75f, 0.68f, 0.58f, 1f);
 
         // ========== 配置参数 ==========
 
@@ -76,13 +90,13 @@ namespace BossRush
         // ========== 私有变量 ==========
 
         private readonly List<WaveRing> waveRings = new List<WaveRing>(3);
+        private ParticleSystem dustEmitter;
         private bool isActive = false;
         private bool isPooled = false;
         private Vector3 centerPosition;
         private CharacterMainControl playerCharacter;
         private Transform cachedPlayerTransform;
         private Transform cachedTransform;
-        private static Material sharedWaveMaterial;
         private static Vector2[] cachedRingUnitPoints;
         private static Transform sharedPoolRoot;
         private static readonly Stack<DragonKingShockwaveEffect> sharedEffectPool =
@@ -166,6 +180,7 @@ namespace BossRush
         private void Awake()
         {
             EnsureWaveRingPool(waveCount);
+            EnsureDustEmitter();
             DeactivateAllWaveRings();
         }
 
@@ -253,6 +268,8 @@ namespace BossRush
             GameObject ringObj = new GameObject($"WaveRing_{index}");
             ringObj.transform.SetParent(CachedTransform, false);
             ringObj.transform.localPosition = Vector3.zero;
+            // 世界坐标的环点 + TransformZ：环物体绕 X 转 90° 后 Z 轴朝下，带子摊平在地面上（VB-14）。
+            ringObj.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
 
             LineRenderer lineRenderer = ringObj.AddComponent<LineRenderer>();
             Material material = GetSharedWaveMaterial();
@@ -265,6 +282,10 @@ namespace BossRush
             lineRenderer.positionCount = RingSegmentCount + 1;
             lineRenderer.useWorldSpace = true;
             lineRenderer.loop = false;
+            lineRenderer.alignment = LineAlignment.TransformZ;
+            lineRenderer.textureMode = LineTextureMode.Stretch;
+            lineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            lineRenderer.receiveShadows = false;
 
             WaveRing waveRing = new WaveRing
             {
@@ -298,7 +319,10 @@ namespace BossRush
             wave.currentRadius = 0f;
             wave.hasHitPlayer = false;
             wave.isActive = true;
+            wave.dustStage = 0;
             wave.ringObject.SetActive(true);
+            // 每一波起点震一下（官方口径：30 m 内、朝向主角指向震源）；击退仍按原时机发生。
+            DragonKingFxShared.Shake(centerPosition, WaveShake);
 
             Color color = waveColor;
             color.a = 0f;
@@ -373,6 +397,7 @@ namespace BossRush
 
                 wave.currentRadius += expansionSpeed * Time.deltaTime;
                 UpdateRingPositions(wave, ringUnitPoints);
+                EmitFrontDust(wave);
 
                 if (playerValid && !wave.hasHitPlayer)
                 {
@@ -416,7 +441,7 @@ namespace BossRush
                 Vector2 point = unitPoints[i];
                 wave.positions[i] = new Vector3(
                     centerPosition.x + point.x * wave.currentRadius,
-                    centerPosition.y,
+                    centerPosition.y + RingLift,
                     centerPosition.z + point.y * wave.currentRadius);
             }
 
@@ -510,22 +535,72 @@ namespace BossRush
             waveRings.Clear();
         }
 
+        /// <summary>冲击波环的材质：软边带 + 普通半透明（共享工厂持有，这里不建、不销毁）。</summary>
         private static Material GetSharedWaveMaterial()
         {
-            if (sharedWaveMaterial == null)
-            {
-                Shader shader = Shader.Find("Sprites/Default");
-                if (shader == null)
-                {
-                    shader = Shader.Find("UI/Default");
-                }
-                if (shader != null)
-                {
-                    sharedWaveMaterial = new Material(shader);
-                }
-            }
+            return DragonKingFxShared.Band(BossRushFxBlend.Alpha);
+        }
 
-            return sharedWaveMaterial;
+        /// <summary>
+        /// 环前沿扬尘：环越过 <see cref="DustRadii"/> 的某一档时，在那一圈上发一次。
+        /// 发射器挂在本特效上（随对象池进出），世界空间：已扬起的尘不跟着下一波移动。
+        /// </summary>
+        private void EmitFrontDust(WaveRing wave)
+        {
+            if (dustEmitter == null || wave.dustStage >= DustRadii.Length) return;
+            if (wave.currentRadius < DustRadii[wave.dustStage]) return;
+            ParticleSystem.ShapeModule shape = dustEmitter.shape;
+            shape.radius = DustRadii[wave.dustStage];
+            dustEmitter.transform.position = centerPosition + Vector3.up * RingLift;
+            // 特效从对象池取出后发射器停在非播放态：补一次 Play（发射模块关着，只是让 Emit 的粒子被模拟）。
+            if (!dustEmitter.isPlaying) dustEmitter.Play();
+            dustEmitter.Emit(DustCounts[wave.dustStage]);
+            wave.dustStage++;
+        }
+
+        private void EnsureDustEmitter()
+        {
+            if (dustEmitter != null) return;
+            Material material = DragonKingFxShared.Soft(BossRushFxBlend.Alpha);
+            if (material == null) return;
+            GameObject go = new GameObject("ShockwaveDust");
+            go.transform.SetParent(CachedTransform, false);
+            ParticleSystem ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            ParticleSystem.MainModule main = ps.main;
+            main.playOnAwake = false;
+            main.loop = true;
+            main.maxParticles = 128;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.5f, 0.8f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(1f, 2f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.8f, 1.4f);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.startColor = DustColor;
+            ParticleSystem.EmissionModule emission = ps.emission;
+            emission.enabled = false;
+            ParticleSystem.ShapeModule shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            // Circle 默认竖在局部 XY 平面：转 90° 放平到地面，出生方向随之水平向外。
+            shape.rotation = new Vector3(90f, 0f, 0f);
+            shape.radiusThickness = 0f;
+            ParticleSystem.ColorOverLifetimeModule fade = ps.colorOverLifetime;
+            fade.enabled = true;
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.35f, 0.15f), new GradientAlphaKey(0f, 1f) });
+            fade.color = gradient;
+            ParticleSystem.SizeOverLifetimeModule grow = ps.sizeOverLifetime;
+            grow.enabled = true;
+            grow.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.6f, 1f, 1.4f));
+            ParticleSystemRenderer renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            dustEmitter = ps;
         }
 
         private static Vector2[] GetCachedRingUnitPoints()
@@ -555,6 +630,8 @@ namespace BossRush
             public float currentRadius;
             public bool hasHitPlayer;
             public bool isActive;
+            /// <summary>已经扬过尘的半径档位数（见 DustRadii）。</summary>
+            public int dustStage;
         }
     }
 }

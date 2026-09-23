@@ -17,6 +17,7 @@ internal static class Program
         RewardPlacement();
         GroundRing();
         AudioStop();
+        PanelLooks();
         LocalizationRegression.Run(Check);
         Check(HUDManager.Tokens.Count == 0 && ZombieModeUIHelper.Leases == 0, "all modal and HUD owners released");
         Console.WriteLine("PASS SkyIslandInteraction assertions=" + checks + " (production control flow; Unity, physics and audio substituted)");
@@ -220,6 +221,60 @@ internal static class Program
         UnityEngine.Object.Destroy(line.gameObject);
         SkyIslandGroundRing.SetShape(line, 7, .2f, tint);
         Check(line == null, "destroyed renderer is ignored");
+    }
+
+    /// <summary>
+    /// 2026-09-23 审美审查：主动关闭（ESC / 键帽 / Cancel）的状态当帧收掉、画面交给淡出；重开不重播遮罩淡入；
+    /// 选项修饰只挂在弱表上、不碰 Choice 本身；材料不够的数标红；手记正文的排版不拆句子。
+    /// </summary>
+    private static void PanelLooks()
+    {
+        var ui = new SkyIslandStoryPresentation();
+        ui.Show("dock", "intro", Empty());
+        GameObject canvas = ui.CanvasForTest;
+        int closes = BossRushUIKit.Closes;
+        ui.CloseForTest();
+        Check(!ui.Visible && HUDManager.Tokens.Count == 0 && ZombieModeUIHelper.Leases == 0,
+            "player close releases lease and HUD token in the same frame");
+        Check(BossRushUIKit.Closes == closes + 1 && ReferenceEquals(BossRushUIKit.LastClosed, canvas)
+            && canvas.name == "SkyIslandClosingPanel", "the old canvas is renamed and handed to the shared fade-out");
+        ui.CloseForTest();
+        Check(BossRushUIKit.Closes == closes + 1, "closing twice does nothing");
+
+        int plays = BossRushUIEntranceAnimation.Plays;
+        var choices = new List<SkyIslandStoryPresentation.Choice>();
+        choices.Add(new SkyIslandStoryPresentation.Choice("again", () => "changed body"));
+        ui.Show("dock", "intro", choices);
+        Check(BossRushUI.LastBackdrop.gameObject.GetComponent<BossRushUIEntranceAnimation>().enabled
+            && BossRushUI.LastBackdrop.gameObject.GetComponent<CanvasGroup>().alpha == 0f, "a fresh panel keeps the shared backdrop fade-in");
+        ui.ClickForTest(0);
+        Check(!BossRushUI.LastBackdrop.gameObject.GetComponent<BossRushUIEntranceAnimation>().enabled
+            && BossRushUI.LastBackdrop.gameObject.GetComponent<CanvasGroup>().alpha == 1f, "a rebuild settles the new backdrop instead of flashing it");
+        Check(ui.TextForTest == "changed body" && BossRushUIEntranceAnimation.Plays > plays, "a changed body fades in once on rebuild");
+        ui.Dispose();
+
+        var plain = new SkyIslandStoryPresentation.Choice("Back", () => null);
+        var item = new SkyIslandStoryPresentation.Choice("Make lantern (Driftwood 2/3 · Fiber 1/1)", () => null);
+        Check(ReferenceEquals(SkyIslandStoryPresentation.AsSecondary(plain), plain)
+            && ReferenceEquals(SkyIslandStoryPresentation.WithItem(item, 7), item), "decorations return the same choice");
+        Check(SkyIslandStoryPresentation.SecondaryForTest(plain) && !SkyIslandStoryPresentation.SecondaryForTest(item)
+            && SkyIslandStoryPresentation.ItemForTest(item), "looks live beside the choice, not on it");
+        Check(typeof(SkyIslandStoryPresentation.Choice).GetFields(System.Reflection.BindingFlags.Instance
+            | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic).Length == 2,
+            "Choice keeps exactly Label and Select (F3 SKY_CHOICE_GATES: no greyed-out state)");
+
+        string marked = SkyIslandStoryPresentation.MarkForTest("<nobr>Driftwood 2/3</nobr> · <nobr>Fiber 1/1</nobr> · 5/5");
+        Check(marked.Contains(">2/3</color>") && !marked.Contains(">1/1</color>") && !marked.Contains(">5/5</color>")
+            && marked.Contains("<nobr>Driftwood <color="), "only the short count turns red, inside its nobr run");
+
+        string styled = SkyIslandStoryPresentation.StyleForTest(
+            "Title line\n■ Letter A\nBody A\n□ Lamp B (not yet)\n· Lantern → blocks breezes\n· Veil → gnats circle a metre off");
+        Check(styled.StartsWith("Title line\n<b><size=108%>Letter A</size></b>\nBody A\n<size=92%>□ Lamp B (not yet)</size>\n"),
+            "recorded titles lose the square and gain weight; unrecorded lines keep it");
+        Check(styled.Contains("<b>Lantern</b>\n<indent=1em><size=92%>blocks breezes</size></indent>\n<size=45%> </size>\n<b>Veil</b>"),
+            "name / use pairs split onto two lines with a half-line gap between entries");
+        Check(styled.Contains("gnats circle a metre off") && styled.Contains("blocks breezes"), "use sentences stay whole for F3 substring checks");
+        Check(SkyIslandStoryPresentation.StyleForTest("plain text 3/10") == "plain text 3/10", "text without journal marks is untouched");
     }
 
     private static void AudioStop()

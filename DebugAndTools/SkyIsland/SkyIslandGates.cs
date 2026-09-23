@@ -25,10 +25,7 @@ namespace BossRush
         internal SkyIslandGates(GameObject root, ArenaPrototypeNavigation navigation, SkyIslandContentData content, int wallLayer)
         {
             this.navigation = navigation; this.content = content;
-            Material wood = null;
-            foreach (MeshRenderer renderer in root.GetComponentsInChildren<MeshRenderer>(true))
-                if (renderer.sharedMaterial != null && renderer.sharedMaterial.name.IndexOf("wood", StringComparison.OrdinalIgnoreCase) >= 0)
-                { wood = renderer.sharedMaterial; break; }
+            Material wood = FindWood(root);
             if (wood == null) throw new InvalidOperationException("天空岛进度门缺少作者木材质");
             // 布局 v2（2026-09-10）：门在受控端往桥内 8m 的桥中心线上、横跨整个桥面；坐标由 layout.json 离线算出，
             // 32 种开闭组合与门体横跨桥宽由 tests/SkyIslandGateNavigationPropertyTest.py 逐个验证。
@@ -63,6 +60,24 @@ namespace BossRush
             for (int i = 0; i <= 8; i++) Beam(root, material, layer, new Vector3((i / 8f - 0.5f) * width, 2.1f, 0), new Vector3(0.35f, 4.2f, 0.45f));
             gates.Add(new Gate { Id = id, Root = root, Blocker = blocker });
         }
+        /// <summary>作者场景里第一张名字带 wood 的材质（Sky_Wood 一类，作者着色器 BossRush/SkyIsland/Environment）。找不到返回 null。</summary>
+        internal static Material FindWood(GameObject root)
+        {
+            if (root == null) return null;
+            foreach (MeshRenderer renderer in root.GetComponentsInChildren<MeshRenderer>(true))
+                if (renderer.sharedMaterial != null && renderer.sharedMaterial.name.IndexOf("wood", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return renderer.sharedMaterial;
+            return null;
+        }
+
+        /// <summary>木纹大约每多少米重复一次（UE-24）。</summary>
+        private const float WoodTileMeters = 1.2f;
+
+        /// <summary>
+        /// 一根木料：立方体 + 作者木材质，无碰撞体。立方体每个面的 UV 都是 0–1，7.5 m 长的牌面会把一张木纹拉成糊掉的色带（UE-24），
+        /// 所以按尺寸给这一根单独写贴图平铺：<c>_BaseMap_ST</c>（作者着色器声明在 UnityPerMaterial 里、贴图是 Repeat）约每 1.2 m 重复一次，
+        /// 偏移按位置错开，相邻的木料纹理不一样。只写这一个渲染器的属性块，共享材质不动。
+        /// </summary>
         private static void Beam(GameObject parent, Material material, int layer, Vector3 position, Vector3 scale)
         {
             GameObject beam = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -71,7 +86,38 @@ namespace BossRush
             Collider collider = beam.GetComponent<Collider>();
             collider.enabled = false;
             UnityEngine.Object.Destroy(collider);
-            beam.GetComponent<MeshRenderer>().sharedMaterial = material;
+            MeshRenderer renderer = beam.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            if (material != null && material.HasProperty("_BaseMap_ST"))
+            {
+                var block = new MaterialPropertyBlock();
+                renderer.GetPropertyBlock(block);
+                float offset = Mathf.Repeat(position.x * 0.37f + position.y * 0.61f, 1f);
+                block.SetVector("_BaseMap_ST", new Vector4(Mathf.Max(0.25f, Mathf.Max(scale.x, scale.z) / WoodTileMeters),
+                    Mathf.Max(0.25f, scale.y / WoodTileMeters), offset, 0f));
+                renderer.SetPropertyBlock(block);
+            }
+        }
+
+        /// <summary>
+        /// 纪念物脚下的一根木桩 + 一块小木牌（UE-08）：纪念物原来只是空地上悬一行字加一盏光，看不出「那里有个东西」。
+        /// 复用桥口木牌同一张作者木材质与同一个 Beam 构件，无碰撞体、不挡交互触发，挂在纪念物下面随它一起重建 / 销毁。
+        /// 木材质找不到就什么都不建（纯装饰，fail-open）。
+        /// </summary>
+        internal static void AddMemorialPost(GameObject memorial, Material wood)
+        {
+            if (memorial == null || wood == null) return;
+            GameObject post = new GameObject("MemorialPost");
+            post.transform.SetParent(memorial.transform, false);
+            int layer = 0;
+            Beam(post, wood, layer, new Vector3(0f, 0.6f, 0f), new Vector3(0.14f, 1.2f, 0.14f));
+            GameObject board = new GameObject("MemorialBoard");
+            board.transform.SetParent(post.transform, false);
+            board.transform.localPosition = new Vector3(0f, 1.15f, -0.09f);
+            // 牌面朝向固定俯视相机（口径同桥口木牌），近处读得到它是一块牌子。
+            Camera camera = GameCamera.Instance == null ? null : GameCamera.Instance.renderCamera;
+            if (camera != null) board.transform.rotation = Quaternion.Euler(0f, camera.transform.eulerAngles.y, 0f);
+            Beam(board, wood, layer, Vector3.zero, new Vector3(0.9f, 0.46f, 0.07f));
         }
         private void AddSign(GameObject world, Material wood, int layer, string id, Vector3 position)
         {

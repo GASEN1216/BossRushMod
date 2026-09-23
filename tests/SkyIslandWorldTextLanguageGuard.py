@@ -12,6 +12,22 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# 2026-09-23：SkyIslandHud / SkyIslandStoryPresentation 超 1200 行，按 AGENTS §4.15 原样拆出同一 partial 的新文件。
+# 读主文件时把拆出去的那一半接在后面，断言照旧针对整个类。
+SPLIT_PARTS = {
+    "DebugAndTools/SkyIsland/SkyIslandHud.cs": "DebugAndTools/SkyIsland/SkyIslandHud_Layout.cs",
+    "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs": "DebugAndTools/SkyIsland/SkyIslandStoryPresentation_Parts.cs",
+}
+
+
+def read_with_parts(root, rel):
+    text = (root / rel).read_text(encoding="utf-8-sig")
+    part = SPLIT_PARTS.get(str(rel).replace("\\", "/"))
+    if part and (root / part).is_file():
+        text += "\n" + (root / part).read_text(encoding="utf-8-sig")
+    return text
+
 sys.path.insert(0, str(ROOT / "tests"))
 from cs_source_util import clean_source  # noqa: E402
 
@@ -24,7 +40,7 @@ def read(rel):
     if not path.exists():
         errors.append("读不到 " + rel)
         return ""
-    return clean_source(path.read_text(encoding="utf-8-sig"))
+    return clean_source(read_with_parts(ROOT, rel))
 
 
 def body(source, signature, what):

@@ -3,7 +3,7 @@
 ### What is it
 
 - The mod's first story campaign: six quests, each with a story beat, a line in the ledger, and a payout.
-- It **does not add a new mode**. You keep playing the modes you already play — there's just one
+- It **does not add a new mode**. You keep playing the modes you already play; there's just one
   extra layer of "and while I'm in here, do this too."
 - The quests come from **Jeff**, the game's own NPC at your base, and sit on his quest page next to
   his vanilla quests. The full loop: see Jeff at base and accept → go into the mode the quest names
@@ -45,12 +45,12 @@
 
 - When every in-run objective is met you'll get a prompt telling you to head back.
 - Open Jeff's quest page at base and press "Complete" under "In progress". That's when the cash,
-  the clue and the story arrive. Skip it and you get nothing — but the completed state is saved,
+  the clue and the story arrive. Skip it and you get nothing, but the completed state is saved,
   so you can go do something else and hand it in later.
 - Handing in shows the official completion panel first, then Jeff says a few words, then a notice
   tells you what this chapter unlocked and where to use it.
 
-[tip] Forgot what the chapter wants? Check the top-right tracker in a run, or open Jeff's quest page at base — the active quest lists the objectives and your current progress.
+[tip] Forgot what the chapter wants? Check the top-right tracker in a run, or open Jeff's quest page at base; the active quest lists the objectives and your current progress.
 
 ### What each chapter asks for
 
@@ -93,7 +93,7 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 
 ### How the final showdown works
 
-- With the final quest active, head into the arena — but **don't touch the central signpost to
+- With the final quest active, head into the arena, but **don't touch the central signpost to
   start a run**. The showdown can't begin while any mode is running.
 - A **sign-up stone** rises next to you. Hold it to start. The one holding the ring has a few words before the fight.
 - The Shadow of the Champion is an upgraded variant of the **Phantom Witch**: higher stat
@@ -112,7 +112,7 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
   - Chapter 1 → **the garden**: the base's garden site opens; pay Shovel ×1 and Poop ×9 to build it. You get a starter pack of seeds, the base vendor sells more and the three mod Bosses drop them; what you grow is your raid meal
   - Chapter 2 → **the display bonus**: put Boss trophies on the official weapon display rack or on a dummy, each one raises your max health
   - Chapter 3 → **jukebox battle tracks**: the base jukebox picks up the mod's own music
-  - Chapters 4 through 6 unlock no backyard facility — they pay in cash, clues and ending
+  - Chapters 4 through 6 unlock no backyard facility; they pay in cash, clues and ending
 
 ### Questions you might have
 
@@ -121,10 +121,10 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
   objectives (garden, display) stay done once done.
 - **Do the garden and display objectives have to happen in the same run?** No. Do them at base any time, then hand in to Jeff.
 - **Do kills by others count?** Usually only fatal blows attributed to the main player count. Ordinary companions, pets and environmental finishing blows do not. **In Faction War, kills by a Boss you hired are attributed to you**, subject to the entry's other mode and target requirements.
-- **I broke the no-damage objective — should I finish the run?** The tracker marks it `×`. That
+- **I broke the no-damage objective. Should I finish the run?** The tracker marks it `×`. That
   objective is done for this run and the others can't make up for it. Restarting is faster.
 - **Does Infinite Hell count as a Chapter 1 clear?** No. Chapter 1 only accepts the standard tiers.
-- **Do the Chapter 2 melee kills have to be Bosses?** No, regular enemies count too — the weapon in
+- **Do the Chapter 2 melee kills have to be Bosses?** No, regular enemies count too. The weapon in
   your hands just has to be an actual **melee weapon**. Bashing with a gun doesn't count; that's
   still a gun.
 - **What's a "bounty mark"?** The marked bounty targets in Blood Hunt. Only kills on marked targets

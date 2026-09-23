@@ -604,20 +604,23 @@ namespace BossRush
             }
         }
 
+        // 拾取气泡的品质色（审美审查 UC-24）：走 BossRushUIColors 的稀有度 token，色相顺序对齐官方品质（白 / 绿 / 蓝 / 紫 / 橙 / 红 / 金），
+        // 不再自带第三套色表（旧表 2 级浅蓝、5 级粉，和背包里的官方品质色、奖励卡的稀有度色三处对不上）。启动时转一次 hex，不在热路径拼。
+        private static readonly string[] ZombieModeDropQualityHex =
+        {
+            "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.RarityCommon),
+            "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.RarityUncommon),
+            "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.RarityRare),
+            "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.RarityEpic),
+            "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.RarityLegendary),
+            "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText),
+            "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.WarningText),
+            "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.WarningText)
+        };
+
         private string GetZombieModeDropQualityColorHex(int quality)
         {
-            switch (Mathf.Clamp(quality, 1, 8))
-            {
-                case 1: return "#9E9E9E";
-                case 2: return "#6B99CC";
-                case 3: return "#4D73D9";
-                case 4: return "#8C4DD9";
-                case 5: return "#D94D99";
-                case 6: return "#E64D4D";
-                case 7: return "#FFB326";
-                case 8: return "#FFD600";
-                default: return "#9E9E9E";
-            }
+            return ZombieModeDropQualityHex[Mathf.Clamp(quality, 1, 8) - 1];
         }
 
         private void RegisterZombieModeDropCandidate(int runId, GameObject gameObject, bool highValue, bool bossDrop)

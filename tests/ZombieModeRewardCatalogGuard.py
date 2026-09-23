@@ -10,6 +10,10 @@ REWARD_PARTS = [
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+    # 2026-09-23 审美审查：奖励选择面板与终端服务面板 / 交互体从 ZombieModeRewards.cs（宿主 partial）拆到独立文件，
+    # 结构断言照旧覆盖它们。
+    Path("ZombieMode/ZombieModeRewardSelectionView.cs"),
+    Path("ZombieMode/ZombieModeTemporaryNpcServiceView.cs"),
     Path("ZombieMode/ZombieModeRewardPreparationDuration.cs"),
     Path("ZombieMode/ZombieModeBackpackJunkRecycle.cs"),
 ]
@@ -155,7 +159,8 @@ def main() -> int:
         "slider.wholeNumbers = true;",
         "pendingRestSeconds",
         "UpdatePendingRestDurationText",
-        "float panelWidth = 840f;",
+        # 面板用稳定的参考宽度（不拿物理像素当参考坐标）；2026-09-23 拆文件后是类常量 PanelWidth。
+        "const float PanelWidth = 840f;",
     ]:
         result = require(rewards, snippet, "reward UI category/key usage")
         if result:

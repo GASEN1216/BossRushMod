@@ -136,100 +136,35 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 许愿台 bundle 模型的材质修整：与基地建筑（报箱、遗种巢）走同一条 ConvertBaseBuildingMaterials，
+        /// 统一换成官方 SodaCharacter（_Tint、_BaseMap/_MainTex，按源材质去重、不复制实例）。
+        /// 旧版单独维护一张 URP/Lit 优先的候选表，转成 URP/Lit 会带 PBR 高光，站在官方建筑旁边显得塑料（VA-33）；
+        /// 实机里 URP/Lit 本来就找不到、落到的也是 SodaCharacter，这里只是去掉那份重复的候选表。
+        /// </summary>
         internal static void FixStarwishModelShaders(GameObject modelInstance)
         {
-            try
+            if (modelInstance == null)
             {
-                Shader targetShader = null;
-                string[] shaderCandidates = new string[]
-                {
-                    "Universal Render Pipeline/Lit",
-                    "Universal Render Pipeline/Simple Lit",
-                    "SodaCraft/SodaCharacter",
-                    "Unlit/Texture"
-                };
-
-                for (int i = 0; i < shaderCandidates.Length; i++)
-                {
-                    targetShader = Shader.Find(shaderCandidates[i]);
-                    if (targetShader != null)
-                    {
-                        break;
-                    }
-                }
-
-                if (targetShader == null)
-                {
-                    ModBehaviour.DevLog("[WishFountain] 未找到兼容 Shader，保持 AssetBundle 原始材质");
-                    return;
-                }
-
-                Renderer[] renderers = modelInstance.GetComponentsInChildren<Renderer>(true);
-                for (int i = 0; i < renderers.Length; i++)
-                {
-                    Renderer renderer = renderers[i];
-                    if (renderer == null || renderer is ParticleSystemRenderer)
-                    {
-                        continue;
-                    }
-
-                    Material[] materials = renderer.materials;
-                    for (int j = 0; j < materials.Length; j++)
-                    {
-                        Material mat = materials[j];
-                        if (mat == null || mat.shader == null)
-                        {
-                            continue;
-                        }
-
-                        string originalShaderName = mat.shader.name;
-                        if (originalShaderName == "Standard"
-                            || originalShaderName.IndexOf("Standard", StringComparison.OrdinalIgnoreCase) >= 0
-                            || originalShaderName == "Hidden/InternalErrorShader")
-                        {
-                            Texture mainTex = mat.HasProperty("_MainTex") ? mat.GetTexture("_MainTex") : null;
-                            Texture normalMap = mat.HasProperty("_BumpMap") ? mat.GetTexture("_BumpMap") : null;
-                            Color color = mat.HasProperty("_Color") ? mat.GetColor("_Color") : Color.white;
-
-                            Material newMat = new Material(targetShader);
-                            if (mainTex != null)
-                            {
-                                if (newMat.HasProperty("_BaseMap"))
-                                {
-                                    newMat.SetTexture("_BaseMap", mainTex);
-                                }
-                                if (newMat.HasProperty("_MainTex"))
-                                {
-                                    newMat.SetTexture("_MainTex", mainTex);
-                                }
-                            }
-
-                            if (normalMap != null && newMat.HasProperty("_BumpMap"))
-                            {
-                                newMat.SetTexture("_BumpMap", normalMap);
-                            }
-
-                            if (newMat.HasProperty("_BaseColor"))
-                            {
-                                newMat.SetColor("_BaseColor", color);
-                            }
-                            if (newMat.HasProperty("_Color"))
-                            {
-                                newMat.SetColor("_Color", color);
-                            }
-
-                            materials[j] = newMat;
-                        }
-                    }
-
-                    renderer.materials = materials;
-                    renderer.gameObject.layer = 0;
-                }
+                return;
             }
-            catch (Exception e)
+
+            ConvertBaseBuildingMaterials(modelInstance);
+        }
+
+        /// <summary>缺包占位模型用的官方着色器纯色材质（SodaCharacter 写 _Tint），有明暗、吃基地灯光。找不到着色器返回 null。</summary>
+        internal static Material CreateOfficialTintMaterial(string name, Color tint)
+        {
+            Shader official = Shader.Find(OfficialModelShaderName);
+            if (official == null)
             {
-                ModBehaviour.DevLog("[WishFountain] 修复 AssetBundle Shader 失败: " + e.Message);
+                return null;
             }
+
+            Material material = new Material(official);
+            material.name = name;
+            if (material.HasProperty("_Tint")) material.SetColor("_Tint", tint);
+            return material;
         }
 
         // 基地建筑包（tools/BaseBuildingBundleBuilder）的材质用天空岛环境着色器：它标成 Unlit、
@@ -253,6 +188,34 @@ namespace BossRush
 
             ConvertBaseBuildingMaterials(modelInstance);
             AddStarwishGraphicsCollider(modelInstance, CollectStarwishRenderableComponents(modelInstance));
+            LogSolidCollider(modelInstance);
+        }
+
+        /// <summary>
+        /// 建预制体时把实体碰撞体的实际参数写进 Player.log（每座建筑每局一行，正式构建也打）。
+        /// 2026-09-22 实测「报箱没有碰撞」：离线核对代码、层、包内尺寸都与许愿台等价，找不到差异（复核 UNVERIFIED），
+        /// 下次实机看这一行就能分清是「碰撞体没建出来 / 尺寸为 0 / 被设成 trigger」还是「Default 层根本不挡玩家」。
+        /// </summary>
+        private static void LogSolidCollider(GameObject modelInstance)
+        {
+            try
+            {
+                BoxCollider box = modelInstance.GetComponent<BoxCollider>();
+                Transform root = modelInstance.transform.root;
+                string owner = root != null ? root.name : modelInstance.name;
+                if (box == null)
+                {
+                    Debug.LogWarning("[BaseBuilding] " + owner + " 没有建出实体碰撞体（模型没有可用渲染包围盒）");
+                    return;
+                }
+                Debug.Log("[BaseBuilding] " + owner + " 实体碰撞体 size=" + box.size + " center=" + box.center
+                    + " lossyScale=" + modelInstance.transform.lossyScale + " layer=" + LayerMask.LayerToName(modelInstance.layer)
+                    + " trigger=" + box.isTrigger + " enabled=" + box.enabled);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BaseBuilding] 记录碰撞体参数失败: " + e.Message);
+            }
         }
 
         private static void ConvertBaseBuildingMaterials(GameObject modelInstance)

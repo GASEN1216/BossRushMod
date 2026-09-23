@@ -17,8 +17,8 @@ you about this. You find out at the moment it happens.
 Max out Dingdang's affinity and he hands you a doodle he says took him days.
 Use it to view the picture full-screen.
 
-**Do not gift it back to him.** Affinity drops by **300** on the spot — nothing else in this Mod
-punishes you that hard. He isn't offended by a cheap present; that drawing meant something to him,
+**Do not gift it back to him.** Affinity drops by **300** on the spot; nothing else in this Mod
+punishes you that hard. It's not about a cheap present. He spent days on that drawing for you,
 and you handed it back.
 
 ### One fake diamond, two different wounds
@@ -33,7 +33,7 @@ Same worthless rock; it hurts them in different places.
 ### Wolves don't eat carrots
 
 Switch the mount to the wolf model in the config and you really do get a wolf. It also
-**eats dumplings now** — carrots won't do it.
+**eats dumplings now**. Carrots won't do it.
 
 ### The ammo vendor has opinions
 

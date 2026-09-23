@@ -45,12 +45,23 @@ namespace BossRush
         /// </summary>
         private const float GlowDiscSize = 1.8f;
 
-
+        /// <summary>采完那一处的光斑、点光与浮空字淡出的秒数（UE-05）。旧写法当帧 Destroy，光斑和 6 m 点光一起凭空熄灭。</summary>
+        private const float HarvestFade = 0.4f;
+        /// <summary>风晶簇的光斑：系数 0.45 → 0.35、上限 0.55（UE-05）。旧值夜里 0.9，差不多是一块实心青盘。</summary>
+        private const float CrystalDiscFactor = 0.35f;
+        private const float CrystalDiscMax = 0.55f;
+        private const float DiscFactor = 0.45f;
 
         private readonly List<Spot> spots = new List<Spot>();
         private readonly Transform root;
         private readonly Func<SkyIslandGatherNode, bool> harvest;
         private bool disposed, glowNight;
+        /// <summary>全部光斑共用的一份材质与它的呼吸驱动（<see cref="SkyIslandGatherGlowBreath"/>）；第一次建光斑时才建。</summary>
+        private Material discMaterial;
+        private GameObject breathDriver;
+        private bool discMaterialTried;
+        /// <summary>正在淡出的采完的点：本对象销毁时一并收掉（它们用着上面那份共享材质）。</summary>
+        private readonly List<GameObject> fading = new List<GameObject>();
 
         /// <param name="onHarvest">读条走完时调用；返回 true 表示已经发出产出，这一处随即收掉。</param>
         internal SkyIslandGathering(Transform worldRoot, int groundMask, Func<SkyIslandGatherNode, bool> onHarvest)
@@ -204,6 +215,9 @@ namespace BossRush
                     discObject.transform.localScale = Vector3.one * (GlowDiscSize / Mathf.Max(0.01f, disc.bounds.size.x));
                     SpriteRenderer renderer = discObject.AddComponent<SpriteRenderer>();
                     renderer.sprite = disc;
+                    // 共用一份材质：呼吸只写这一份的 _Color，每帧 O(1)（UE-05）。建不出来就留默认精灵材质，只是不呼吸。
+                    Material breathing = DiscMaterial();
+                    if (breathing != null) renderer.sharedMaterial = breathing;
                     renderer.color = GlowDiscColor(node.Kind, night);
                     renderer.sortingOrder = SkyIslandGroundRing.SortingOrder;
                     renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -222,6 +236,9 @@ namespace BossRush
                 text.alignment = TextAlignmentOptions.Center;
                 text.color = BossRushUIColors.TextPrimary;
                 text.rectTransform.sizeDelta = new Vector2(14f, 3f);
+                // 压在亮地面上的世界字要有描边托住（UE-14），共享材质按字体一份。
+                Material outlined = BossRushUIKit.GetOutlinedFontMaterial(text.font);
+                if (outlined != null) text.fontSharedMaterial = outlined;
                 // 字只在走近时浮现，远处只看得到那一点光（口径同纪念物）。
                 SkyIslandProximityLabel.Attach(sign, 5f, 10f);
 
@@ -244,28 +261,65 @@ namespace BossRush
             // 会话此刻无效（返航、死亡、换槽）时不发产出，交互体留着——这一趟本来也就结束了。
             if (!harvest(spot.Node)) return;
             spot.Harvested = true;
-            // Destroy 是帧末生效：官方 UpdateInteract 在 OnTimeOut 之后还要走 FinishInteract，本帧对象仍在。
-            if (spot.Root != null) UnityEngine.Object.Destroy(spot.Root);
+            GameObject gathered = spot.Root;
             spot.Root = null;
             spot.Glow = null;
+            spot.GlowDisc = null;
+            if (gathered != null)
+            {
+                // 交互体与触发器本帧就摘掉（Destroy 是帧末生效：官方 UpdateInteract 在 OnTimeOut 之后还要走 FinishInteract，
+                // 本帧组件仍在）；光斑、点光与字交给 0.4 秒的淡出再销毁根（UE-05）。改名：F3 按 SkyIslandGather_<id> 找「还在不在」。
+                SkyIslandGatherPoint point = gathered.GetComponent<SkyIslandGatherPoint>();
+                if (point != null) UnityEngine.Object.Destroy(point);
+                BoxCollider trigger = gathered.GetComponent<BoxCollider>();
+                if (trigger != null) UnityEngine.Object.Destroy(trigger);
+                gathered.name = "SkyIslandGatherFading";
+                fading.RemoveAll(go => go == null);
+                fading.Add(gathered);
+                SkyIslandFadeAway.Begin(gathered, HarvestFade, Vector3.zero);
+            }
             Debug.Log("[SkyIslandGather] HARVESTED id=" + spot.Node.Id + " total=" + HarvestedCount);
         }
 
-        /// <summary>光斑颜色 = 该资源的光色 + 按昼夜定的不透明度。白天要压住，不然满岛都是亮点。</summary>
+        /// <summary>全部光斑共用的 Sprites/Default 材质，连同驱动它呼吸的那一个组件一起建（每个出击一份，随本对象销毁）。</summary>
+        private Material DiscMaterial()
+        {
+            if (discMaterialTried) return discMaterial;
+            discMaterialTried = true;
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader == null) return null;
+            discMaterial = new Material(shader);
+            discMaterial.name = "SkyIslandGatherGlowDisc";
+            breathDriver = new GameObject("SkyIslandGatherGlowBreath");
+            breathDriver.transform.SetParent(root, false);
+            breathDriver.AddComponent<SkyIslandGatherGlowBreath>().Material = discMaterial;
+            return discMaterial;
+        }
+
+        /// <summary>
+        /// 光斑颜色 = 该资源的光色 + 按昼夜定的不透明度。白天要压住，不然满岛都是亮点。
+        /// 风晶簇是「魔法物」，保留冷色，但系数与上限都压一档（夜里不再是一块实心青盘）。
+        /// </summary>
         private static Color GlowDiscColor(SkyIslandGatherKind kind, bool night)
         {
             Color color = GlowColor(kind);
-            color.a = Mathf.Clamp01(GlowIntensity(kind, night) * 0.45f);
+            color.a = kind == SkyIslandGatherKind.Crystal
+                ? Mathf.Min(CrystalDiscMax, GlowIntensity(kind, night) * CrystalDiscFactor)
+                : Mathf.Clamp01(GlowIntensity(kind, night) * DiscFactor);
             return color;
         }
 
+        /// <summary>
+        /// 光色。草与苔收进暖色基准（UE-05）：旧值是高饱和的荧光绿、薄荷绿，在暖砂岩地面上读作「地上贴了张彩色贴纸」。
+        /// 浮木、矿本来就在暖琥珀带里，不动（F3 白天光斑可见度按浮木 A1 / A2 实测过）；风晶簇保留冷青。
+        /// </summary>
         private static Color GlowColor(SkyIslandGatherKind kind)
         {
             switch (kind)
             {
-                case SkyIslandGatherKind.Grass: return new Color(0.72f, 0.95f, 0.55f);
+                case SkyIslandGatherKind.Grass: return new Color(0.80f, 0.86f, 0.52f);
                 case SkyIslandGatherKind.Driftwood: return new Color(1f, 0.78f, 0.5f);
-                case SkyIslandGatherKind.Moss: return new Color(0.55f, 0.95f, 0.85f);
+                case SkyIslandGatherKind.Moss: return new Color(0.62f, 0.82f, 0.70f);
                 case SkyIslandGatherKind.Ore: return new Color(1f, 0.62f, 0.35f);
                 default: return new Color(0.62f, 0.9f, 1f);
             }
@@ -289,6 +343,36 @@ namespace BossRush
                 spots[i].Glow = null;
             }
             spots.Clear();
+            for (int i = 0; i < fading.Count; i++)
+                if (fading[i] != null) UnityEngine.Object.Destroy(fading[i]);
+            fading.Clear();
+            if (breathDriver != null) UnityEngine.Object.Destroy(breathDriver);
+            breathDriver = null;
+            // 运行时 new 的材质要显式销毁；用着它的光斑（含淡出中的）上面都已经一起销毁。
+            if (discMaterial != null) UnityEngine.Object.Destroy(discMaterial);
+            discMaterial = null;
+        }
+    }
+
+    /// <summary>
+    /// 采集光斑的呼吸（UE-05）：全部光斑共用一份材质，这里每帧只写一次它的 <c>_Color</c>（乘在各自的顶点色上）——
+    /// 30 处光斑同相呼吸，成本 O(1)，不给每个点挂 Update（AGENTS §4.12）。区间 0.85–1、周期 2.8 秒：看得出是活的资源点，
+    /// 又不削弱屏幕边缘的可见度（F3 白天 11 m 光斑判据按色度偏移判，低谷只少 15%）。
+    /// 走游戏时间：暂停菜单与模态面板（timeScale = 0）时停住。
+    /// </summary>
+    internal sealed class SkyIslandGatherGlowBreath : MonoBehaviour
+    {
+        private const float Period = 2.8f;
+        private const float Low = 0.85f;
+        internal Material Material;
+        private float age;
+
+        private void LateUpdate()
+        {
+            if (Material == null) return;
+            age += Time.deltaTime;
+            float wave = 0.5f + 0.5f * Mathf.Sin(age * (2f * Mathf.PI / Period));
+            Material.color = new Color(1f, 1f, 1f, Mathf.Lerp(Low, 1f, wave));
         }
     }
 

@@ -132,9 +132,18 @@ namespace BossRush
         /// <summary>补挂新怪的节流间隔：禁止每帧枚举角色。</summary>
         internal const float BloodMoonRefreshIntervalSeconds = 2f;
 
-        internal const float BloodMoonVignetteAlphaMin = 0.10f;
-        internal const float BloodMoonVignetteAlphaMax = 0.26f;
+        /// <summary>
+        /// 血月暗角（VA-21）：边缘红、中心透（BossRushFxKit.GetVignetteSprite），不再整屏平涂。
+        /// alpha 是四角最深处的值，画面中心恒为 0；开场淡入、到期前淡出，不改事件时长。
+        /// </summary>
+        internal const float BloodMoonVignetteAlphaMin = 0.30f;
+        internal const float BloodMoonVignetteAlphaMax = 0.50f;
         internal const float BloodMoonVignetteBreathSeconds = 2.4f;
+        internal const float BloodMoonVignetteFadeInSeconds = 1.2f;
+        internal const float BloodMoonVignetteFadeOutSeconds = 1.5f;
+        internal const float BloodMoonVignetteRed = 0.42f;
+        internal const float BloodMoonVignetteGreen = 0.03f;
+        internal const float BloodMoonVignetteBlue = 0.05f;
 
         /// <summary>
         /// 献祭：血月期间每击杀一只被挂 buff 的敌人补偿的现金（提升至 1200 以平衡高风险）。
@@ -208,7 +217,7 @@ namespace BossRush
         /// </summary>
         internal const float FireworksExplosionRadius = 0.05f;
 
-        internal const float FireworksShakeStrength = 0.25f;
+        // 震屏已去掉（VA-22）：烟花改为 RandomEventFx 的程序化爆发，不再借官方爆炸，读起来是庆祝不是空袭。
         internal const float FireworksRingRadius = 12f;
         internal const float FireworksHeight = 6f;
 

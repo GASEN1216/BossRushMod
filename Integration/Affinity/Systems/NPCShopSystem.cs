@@ -807,7 +807,10 @@ namespace BossRush
                         if (priceText != null)
                         {
                             priceText.text = disabledText;
-                            priceText.color = new Color(1f, 0.4f, 0.4f);
+                            // 「不可出售」是拒绝，用危险字色；「选择商品」只是提示，用次级字（UD-44：不再写死 (1,0.4,0.4)）。
+                            priceText.color = selected != null && selected.Target != null
+                                ? BossRushUIColors.DangerText
+                                : BossRushUIColors.TextSecondary;
                         }
                     }
 
@@ -840,10 +843,11 @@ namespace BossRush
                     var priceText = priceTextField.GetValue(shopView) as TextMeshProUGUI;
                     if (priceText != null)
                     {
+                        // UD-44：英文玩家不再看到中文「净化点」；字色走 token。
                         priceText.text = priceAvailable
-                            ? "净化点 " + price.ToString("N0")
+                            ? L10n.T("净化点 ", "Purification ") + price.ToString("N0")
                             : L10n.T("价格不可用", "Price unavailable");
-                        priceText.color = canAfford ? Color.white : new Color(1f, 0.4f, 0.4f);
+                        priceText.color = canAfford ? BossRushUIColors.TextPrimary : BossRushUIColors.DangerText;
                     }
                 }
 

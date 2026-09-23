@@ -65,12 +65,9 @@ namespace BossRush
         private const int AFFIX_LOCK_BUTTON_WIDTH = 84;
         private const int AFFIX_LOCK_BUTTON_HEIGHT = 38;
         private const int AFFIX_LOCK_FONT_SIZE = 18;
-        private const int AFFIX_ICON_FALLBACK_FONT_SIZE = 34;
 
-        // 锁定语义配色，与 PropertyEntryInteractable 一致：白=普通，蓝=悬停可操作，金=已锁定
-        private static readonly Color AffixLockNormalColor = Color.white;
-        private static readonly Color AffixLockHoverColor = new Color(0.4f, 0.7f, 1f, 1f);
-        private static readonly Color AffixLockLockedColor = new Color(1f, 0.84f, 0f, 1f);
+        // 锁定按钮外观（UD-27）：未锁 = 次级按钮（SurfaceRaised + Stroke），已锁 = Warning 底 + RarityLegendary 描边，
+        // 标签色由 ApplyButtonColors 按底色算。实现见 _Feel.cs 的 ApplyAffixLockButtonLook。
 
         // ============================================================================
         // 状态
@@ -94,7 +91,6 @@ namespace BossRush
         {
             public GameObject Root;
             public Image Icon;
-            public TextMeshProUGUI IconFallbackText;
             public TextMeshProUGUI NameText;
             public TextMeshProUGUI DescText;
             public LayoutElement RowLayout;
@@ -451,6 +447,12 @@ namespace BossRush
                 ShowAffixResultMessage(result);
                 UpdateAffixButtonInteractable();
 
+                // UD-29：新词缀行依次淡入、描边短暂换成稀有度色，抽到稀有播 UI/level_up
+                if (result != null && result.Success)
+                {
+                    PlayAffixRollReveal();
+                }
+
                 // 上面四个刷新的都是 Mod 自建面板；官方物品详情面板没人动，
                 // 新词缀行要玩家重新点一次物品才出现。复用重铸成功后的同一条刷新链
                 // （RefreshItemDetailsDisplay 内部走缓存好的 ItemDetailsDisplay.Setup 反射）。
@@ -640,24 +642,26 @@ namespace BossRush
             SetLockButtonState(row, true, view.Locked);
         }
 
+        /// <summary>
+        /// 图标取不到时整格隐藏，文字左移（UD-30：不再顶一个「◇」字符占位）。
+        /// 图标格是 LayoutGroup 子项，停用后布局自动把文字列挪过去。
+        /// </summary>
         private static void SetRowIcon(AffixRowWidgets row, Sprite sprite)
         {
             if (row.Icon != null)
             {
                 row.Icon.sprite = sprite;
                 row.Icon.enabled = sprite != null;
-            }
-
-            if (row.IconFallbackText != null)
-            {
-                row.IconFallbackText.gameObject.SetActive(sprite == null);
+                if (row.Icon.gameObject.activeSelf != (sprite != null))
+                {
+                    row.Icon.gameObject.SetActive(sprite != null);
+                }
             }
         }
 
         /// <summary>
-        /// 锁定按钮三态：可锁定=白字，已锁定=金字，不可操作=按钮隐藏。
-        /// 悬停变蓝由 ApplyButtonColors 的 highlightedColor 提供，与
-        /// PropertyEntryInteractable 的白/蓝/金语义一致。
+        /// 锁定按钮三态：可锁定 = 次级按钮，已锁定 = Warning 底 + 金色描边，不可操作 = 按钮隐藏。
+        /// 标签色由 ApplyButtonColors 按底色计算，这里不再手写字色（UD-27）。
         /// </summary>
         private static void SetLockButtonState(AffixRowWidgets row, bool interactable, bool locked)
         {
@@ -668,24 +672,21 @@ namespace BossRush
 
             row.LockButton.gameObject.SetActive(interactable);
             row.LockButton.interactable = interactable;
+            if (!interactable)
+            {
+                return;
+            }
+
+            ApplyAffixLockButtonLook(row.LockButton, locked);
 
             if (row.LockButtonText == null)
             {
                 return;
             }
 
-            if (locked)
-            {
-                row.LockButtonText.text = L10n.T("已锁定", "Locked");
-                row.LockButtonText.color = AffixLockLockedColor;
-            }
-            else
-            {
-                row.LockButtonText.text = string.Format(
-                    L10n.T("锁定 x{0}", "Lock x{0}"),
-                    AffixForgeSystem.GetLockStoneCost());
-                row.LockButtonText.color = AffixLockNormalColor;
-            }
+            row.LockButtonText.text = locked
+                ? L10n.T("已锁定", "Locked")
+                : string.Format(L10n.T("锁定 x{0}", "Lock x{0}"), AffixForgeSystem.GetLockStoneCost());
         }
 
         private static Color GetRarityColor(AffixRarity rarity)
@@ -748,7 +749,8 @@ namespace BossRush
             {
                 int owned = AffixForgeSystem.GetOwnedStoneCount();
                 affixStoneCountText.text = string.Format(L10n.T("词缀熔石 x{0}", "Affix Forge Stone x{0}"), owned);
-                affixStoneCountText.color = owned > 0 ? BossRushUIColors.TextPrimary : BossRushUIColors.Danger;
+                // UD-28：Danger 是按钮底色 token，写在深色面板上只有约 2.2:1；直接写在面板上的提示用 DangerText。
+                affixStoneCountText.color = owned > 0 ? BossRushUIColors.TextPrimary : BossRushUIColors.DangerText;
             }
             catch (Exception e)
             {
@@ -773,7 +775,7 @@ namespace BossRush
                     "请选择要锻造的装备\n可锻造：枪械、近战武器、护甲、头盔、面罩\n背包、耳机、图腾不吃词缀",
                     "Select equipment to forge\nEligible: guns, melee weapons, armor, helmets, face masks\n"
                     + "Backpacks, headsets and totems cannot carry affixes");
-                probabilityText.color = Color.gray;
+                probabilityText.color = BossRushUIColors.TextSecondary;
                 return;
             }
 
@@ -782,7 +784,7 @@ namespace BossRush
                 probabilityText.text = L10n.T(
                     "该装备无法附加词缀：只有枪械、近战武器、护甲、头盔、面罩可以",
                     "This equipment cannot carry affixes: only guns, melee weapons, armor, helmets and face masks can");
-                probabilityText.color = new Color(1f, 0.5f, 0.5f);
+                probabilityText.color = BossRushUIColors.DangerText;
                 return;
             }
 
@@ -791,22 +793,28 @@ namespace BossRush
             int ownedStones = AffixForgeSystem.GetOwnedStoneCount();
             long playerMoney = GetPlayerMoney();
 
-            string moneyColor = playerMoney >= moneyCost ? "#FFFF4D" : "#FF4D4D";
-            string stoneColor = ownedStones >= stoneCost ? "#4DFF4D" : "#FF4D4D";
+            // UD-23 同口径：两行主信息（费用、熔石）正文色，不够的那一行才染 DangerText 并写「还差 X」；说明行 16 号 TextSecondary。
+            string costLine = L10n.T("费用", "Cost") + "  " + FormatReforgeAmount(moneyCost);
+            if (playerMoney < moneyCost)
+            {
+                costLine = "<color=" + IntegrationUIFeedback.DangerHex + ">" + costLine + "    "
+                    + string.Format(L10n.T("还差 {0}", "{0} short"), FormatReforgeAmount(moneyCost - playerMoney)) + "</color>";
+            }
 
-            probabilityText.text = string.Format(
-                "<color={0}>{1}: {2}</color>\n" +
-                "<color={3}>{4}: {5} / {6}</color>\n" +
-                "{7}",
-                moneyColor,
-                L10n.T("费用", "Cost"),
-                moneyCost,
-                stoneColor,
-                L10n.T("词缀熔石", "Affix Forge Stone"),
-                stoneCost,
-                ownedStones,
-                L10n.T("每个未锁槽 1 熔石；费用含词缀稀有度附加。", "1 stone per unlocked slot; affix rarity adds to the cost."));
-            probabilityText.color = Color.white;
+            string stoneLine = string.Format(L10n.T("消耗熔石 {0}（持有 {1}）", "Forge stones {0} (have {1})"), stoneCost, ownedStones);
+            if (ownedStones < stoneCost)
+            {
+                stoneLine = "<color=" + IntegrationUIFeedback.DangerHex + ">" + stoneLine + "    "
+                    + string.Format(L10n.T("还差 {0}", "{0} short"), stoneCost - ownedStones) + "</color>";
+            }
+
+            probabilityText.text =
+                "<size=" + COST_TOTAL_SIZE + ">" + costLine + "</size>\n"
+                + "<size=" + COST_TOTAL_SIZE + ">" + stoneLine + "</size>\n"
+                + "<size=" + COST_DETAIL_SIZE + "><color=" + IntegrationUIFeedback.SecondaryHex + ">"
+                + L10n.T("每个未锁槽 1 熔石；费用含词缀稀有度附加。", "1 stone per unlocked slot; affix rarity adds to the cost.")
+                + "</color></size>";
+            probabilityText.color = BossRushUIColors.TextPrimary;
         }
 
         private static void ApplyAffixButtonText()
@@ -902,8 +910,8 @@ namespace BossRush
                 string message = string.IsNullOrEmpty(result.ErrorMessage)
                     ? L10n.T("锻造失败", "Forge failed")
                     : result.ErrorMessage;
-                probabilityText.text = "<color=#FF4D4D>" + message + "</color>";
-                probabilityText.color = Color.white;
+                probabilityText.text = "<color=" + IntegrationUIFeedback.DangerHex + ">" + message + "</color>";
+                probabilityText.color = BossRushUIColors.TextPrimary;
                 return;
             }
 
@@ -1056,6 +1064,12 @@ namespace BossRush
                 AffixForgeResult result = view.Locked
                     ? AffixForgeSystem.UnlockSlot(selectedItem, slotIndex)
                     : AffixForgeSystem.LockSlot(selectedItem, slotIndex);
+
+                // 锁上是一次花熔石的确认：播官方 UI/confirm（解锁不额外出声，按钮自带点击音）
+                if (!view.Locked && result != null && result.Success)
+                {
+                    IntegrationUIFeedback.PlaySound(IntegrationUIFeedback.SoundConfirm);
+                }
 
                 RefreshAffixPanel();
                 UpdateAffixStoneCount();

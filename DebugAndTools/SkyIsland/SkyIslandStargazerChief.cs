@@ -138,7 +138,12 @@ namespace BossRush
                 }
                 if (!Aborted())
                 {
-                    try { SkyIslandBossForge.Detonate(boss, locked, SkyIslandBossRules.FlareRadius, SkyIslandBossRules.FlareDamage); }
+                    // 星火是真的炸开：留官方火球，加余波圈、扬尘与震屏（VB-21）。
+                    try
+                    {
+                        SkyIslandBossForge.Detonate(boss, locked, SkyIslandBossRules.FlareRadius, SkyIslandBossRules.FlareDamage,
+                            true, SkyIslandImpactFx.BossShake, MarkTint);
+                    }
                     catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 星火落点失败：" + e.Message); }
                 }
                 DestroyRing();
@@ -167,7 +172,8 @@ namespace BossRush
 
         private void DestroyRing()
         {
-            if (markRing != null) Destroy(markRing.gameObject);
+            // 淡出后自毁，不再一帧消失（视线断了、结算完都走这里）。
+            SkyIslandBossForge.ReleaseRing(markRing);
             markRing = null;
         }
 

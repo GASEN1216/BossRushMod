@@ -10,6 +10,7 @@ BOUNTY = Path("ModeF/ModeFBounty.cs")
 UI = Path("ModeF/ModeFUI.cs")
 BLOODFIRE = Path("ModeF/ModeFBloodfire.cs")
 REWARD_BUBBLE = Path("ModeF/ModeFUI_KillRewardBubble.cs")
+STATUS_HUD = Path("ModeF/ModeFStatusHud.cs")
 
 
 def fail(message: str) -> int:
@@ -182,15 +183,27 @@ def main() -> int:
         if result is not None:
             return result
 
+    result = require(ui, "DialogueBubblesManager.Show(text, player.transform, duration",
+                     "bloodfire warning must use the existing player-head bubble path")
+    if result is not None:
+        return result
+
+    # 2026-09-23 审美审查 UB-06：命火状态不再靠每 15 秒一条阶段横幅，改由常驻状态卡 ModeFStatusHud 持续显示；
+    # 契约不变——充能与过载剩余时间都必须对玩家可见，上限取宿主的 MODEF_BLOODFIRE_MAX_CHARGE，不另存一份。
+    status_hud = STATUS_HUD.read_text(encoding="utf-8-sig")
     for needle, message in (
-        ("private string BuildModeFBloodfireStatusText()", "phase broadcast must expose bloodfire status"),
-        ("modeFState.BloodfireOverloadRemaining", "phase broadcast must expose overload remaining time"),
-        ("modeFState.BloodfireCharge", "phase broadcast must expose charge outside overload"),
-        ("DialogueBubblesManager.Show(text, player.transform, duration", "bloodfire warning must use the existing player-head bubble path"),
+        ("internal static void Tick(ModeFState state, float maxCharge)", "status HUD must expose bloodfire status"),
+        ("Mathf.CeilToInt(state.BloodfireOverloadRemaining)", "status HUD must print overload remaining seconds"),
+        ("Mathf.RoundToInt(state.BloodfireCharge)", "status HUD must print charge outside overload"),
+        ('fire + "/" + Mathf.RoundToInt(maxCharge)', "status HUD must print charge against the host cap"),
     ):
-        result = require(ui, needle, message)
+        result = require(status_hud, needle, message)
         if result is not None:
             return result
+    result = require(phases, "ModeFStatusHud.Tick(modeFState, MODEF_BLOODFIRE_MAX_CHARGE);",
+                     "Mode F tick must drive the status HUD with the host charge cap")
+    if result is not None:
+        return result
 
     print("ModeFBloodfireOverloadGuard: PASS")
     return 0

@@ -2,7 +2,7 @@
 
 There are **37 obtainable custom equipment pieces** (sets counted piece by piece): 20 regular pieces plus 17 Sky Islands wearable pieces. Regular gear comes from custom Bosses, extra official Boss drops and Dingdang's shop; island gear mainly comes from island lords and chiefs, and the prelude Warden can also drop a Galebreaker Hood.
 
-The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch are **all obtainable now** (see below): each weapon drops at 20% from one official boss — vanilla maps included — or can be bought from Dingdang's Shop at Affinity 5.
+The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch are **all obtainable now** (see below): each weapon drops at 20% from one official boss (vanilla maps included), or can be bought from Dingdang's Shop at Affinity 5.
 
 ## Full List
 
@@ -32,7 +32,7 @@ The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch
 - **Thunder Set** (Thunder Horn + Thunder Armor) — Electricity resistance + reactive lightning AOE. Drops from Storm Zone bosses (Four Horsemen, Koko Koko and friends; 20% per piece), or buy it from Dingdang's Shop at affinity level 6
 
 ::: tip
-Both sets drop on vanilla raids too — you don't need a BossRush run. See their own pages for details.
+Both sets drop on vanilla raids too, no BossRush run needed. See their own pages for details.
 :::
 
 ## Sky Islands Gear (17 Pieces)

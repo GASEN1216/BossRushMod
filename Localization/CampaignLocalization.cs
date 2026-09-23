@@ -70,7 +70,7 @@ namespace BossRush
             AddQuest(map, "ch5",
                 "没人肯去的那场", "The Match Nobody Takes",
                 "最后一行是疫区那场，签过名的人没回来过，所以册子上一直空着。用尸潮邀请函出发，投多少现金你自己看，撑到第 5 波，Boss 打完撤离点就开。站上去走，回来这一行就满了。",
-                "The last line is the quarantine match. Everyone who signed it never came back, so the line stayed empty. Use a Zombie Tide Invitation, put in as much cash as you think it's worth, and hold to wave 5. The extraction opens once that Boss is down. Step on it and leave, and the page is full.");
+                "The last line is the quarantine match. Nobody who signed it ever came back, so the line stayed empty. Use a Zombie Tide Invitation, put in as much cash as you think it's worth, and hold to wave 5. The extraction opens once that Boss is down. Step on it and leave, and the page is full.");
 
             AddQuest(map, "ch6",
                 "守擂的那个", "The One Holding the Ring",

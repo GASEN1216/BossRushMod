@@ -544,7 +544,10 @@ namespace BossRush
         {
             if (zombieModeRewardUiRoot != null)
             {
-                Destroy(zombieModeRewardUiRoot);
+                // 先还输入再淡出（审美审查 UC-07）：输入与时间流速这一帧就恢复，0.12 s 淡出只是表现。
+                ZombieModeRewardSelectionView view = zombieModeRewardUiRoot.GetComponent<ZombieModeRewardSelectionView>();
+                if (view != null) view.ReleaseInput();
+                BossRushUIKit.PlayCloseAndDestroy(zombieModeRewardUiRoot);
                 zombieModeRewardUiRoot = null;
             }
         }

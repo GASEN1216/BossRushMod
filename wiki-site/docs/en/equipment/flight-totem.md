@@ -2,7 +2,7 @@
 
 ## What Is It?
 
-Equip this totem and **you can fly**. Actual flight. Ascend, glide, dodge ground attacks from above. Changes how you play the game.
+Equip this totem and **you can fly**. Actual flight. Ascend, glide, and hop over ground attacks.
 
 ## Stats
 

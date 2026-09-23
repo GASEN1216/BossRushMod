@@ -6,17 +6,26 @@
 //
 // 旧版是一条可滚动的报纸：整页只有分隔线和大段文字，信息全靠读。
 // 新版是仪表盘：一张**无字底图**（Assets/ui/DailyReport/daily_report_bg.png）画出
-// 卡片、标题药丸与图标徽章，动态签到格、按钮和文字按同一份版面表
+// 纸面、卡片投影、斜切缎带与分隔线；图标、吉祥物、签到格、按钮和文字按同一份版面表
 // （Assets/Data/DailyReportLayout.json，DailyReportLayoutTable 读）摆进去。
 //
 // 为什么底图与版面表必须同源：底图是程序合成的（tools/gen_daily_report_ui.py），
 // 版面表由同一次运行写出，于是「卡片画在哪」与「字写在哪」永远一致；
 // 改版面只改脚本重跑，不存在两处手抄坐标漂移。
 //
+// 2026-09-23 第五轮（owner：「总体差不多但还是有差距」）：
+//   - 图标与吉祥物是独立 Sprite（底图进包被压到 1024 宽再放大，烤进去的小图标会糊成灰块），
+//     位置取版面表 "icons"；取不到就不画那一格、文字也不缩进，不退回汉字或灰方块；
+//   - 签到格改成程序化圆角胶囊 + 共享投影（BossRushUIDepth），不再用图集卡片图（它烤进去的内描边
+//     在浅色乘色下会显出一圈框）；图例色块改成圆点；
+//   - 数值块不再滚动，标签 / 大号数字 / 注脚三级字号；卡片内正文在块内垂直居中。
+//
 // 硬约束：
 //   - 整版保持定高：短标题在块内 autoSize，长正文在各卡片内部滚动，避免丢行；
-//   - 颜色沿用本文件顶部的纸面局部配色（底图用的就是这一组），不引入第二套 token；
-//   - 字体一律 ZombieModeUIHelper.CreateText + BossRushUI.ApplyGameFont（内置 Arial 渲染不了中文）。
+//   - 颜色沿用 DailyReportUI.cs 顶部的纸面局部配色（底图用的就是这一组），不引入第二套 token；
+//   - 字体一律 ZombieModeUIHelper.CreateText + BossRushUI.ApplyGameFont（内置 Arial 渲染不了中文）；
+//   - 卡片投影烤在底图里，面板本身**不**走 ApplyPanelStroke / ApplyFramedPanelSkin，
+//     否则共享的 Depth_Shadow 会在烤好的投影外再叠一圈。运行时共享投影只给运行时画的签到格与按钮。
 // ============================================================================
 
 using System;
@@ -28,6 +37,17 @@ namespace BossRush
 {
     public partial class DailyReportView
     {
+        #region 版面常量
+
+        /// <summary>期数块上 55% 写两行（期数 · 天数 / 本期进度），下 45% 写距离下期；生成器按同一比例摆两枚图标。</summary>
+        private const float MetaSplit = 0.55f;
+        /// <summary>签到格圆角。≥ 共享投影能取到的弧半径（注入图集时卡片档 14），投影的洞才不会压到格子四角。</summary>
+        private const int CellRadius = 14;
+        /// <summary>签到按钮圆角。</summary>
+        private const int ButtonRadius = 12;
+
+        #endregion
+
         #region 版面构建
 
         /// <summary>
@@ -35,8 +55,8 @@ namespace BossRush
         ///
         /// 分工（2026-09-20 第三轮收敛，避免同一处被画两遍）：
         ///   - **底图**（tools/gen_daily_report_ui.py 合成）只画不会变的装饰：
-        ///     纸面、卡片、标题药丸、图标徽章、分隔线、数值块底；
-        ///   - **运行时**画所有会变色 / 会响应状态的东西：签到格、签到按钮、图例色块。
+        ///     纸面、卡片与投影、标题缎带、分隔线、悬赏提示条；
+        ///   - **运行时**画图标、吉祥物，以及所有会变色 / 会响应状态的东西：签到格、签到按钮、图例色块。
         /// 两边的矩形都取自同一份版面表，所以位置天生对齐；颜色只有 C# 一个来源。
         /// </summary>
         private void BuildDashboard(RectTransform rootRect)
@@ -47,7 +67,7 @@ namespace BossRush
             paperFrame = panel.GetComponent<RectTransform>();
             panelRect = paperFrame;
 
-            // 底图只含固定装饰；签到格、按钮和图例色块由后续运行时控件绘制。
+            // 底图只含固定装饰；图标、签到格、按钮和图例色块由后续运行时控件绘制。
             Image background = panel.AddComponent<Image>();
             background.raycastTarget = true;
             Sprite sprite = DailyReportBackground.Load();
@@ -72,52 +92,59 @@ namespace BossRush
 
         private void BuildHeader()
         {
-            // 报名做成参考图那样的大号粗体压满报头（2026-09-22 第四轮：46 号在 1333 宽的报头里显得小气）
-            Rect title = DailyReportLayoutTable.Get("title");
-            mastheadText = CreateText("Masthead", title, 0f, 0.68f, 58f,
-                TextAlignmentOptions.BottomLeft, PaperInk, false);
-            mastheadText.fontStyle = FontStyles.Bold;
-            mastheadText.characterSpacing = 6f;
+            // 吉祥物：整只鸭压在报头左侧（参考图口径，不再套圆框）
+            CreateArt("Mascot", DailyReportBackground.LoadArt(DailyReportBackground.MascotFile),
+                DailyReportLayoutTable.Get("mascot"), panelRect);
 
-            subtitleText = CreateText("Subtitle", title, 0.72f, 1f, 20f,
-                TextAlignmentOptions.TopLeft, PaperInkSoft, false);
+            // 报名做成参考图那样的大号粗体压满报头，「— DUCK NEWS —」居中排在下面（两侧横线烤在底图里）
+            Rect title = DailyReportLayoutTable.Get("title");
+            mastheadText = CreateText("Masthead", title, 0f, 0.70f, 72f,
+                TextAlignmentOptions.Bottom, PaperInk, false);
+            mastheadText.fontStyle = FontStyles.Bold;
+            mastheadText.characterSpacing = 8f;
+
+            subtitleText = CreateText("Subtitle", title, 0.76f, 1f, 18f,
+                TextAlignmentOptions.Center, PaperInkSoft, false);
 
             Rect meta = DailyReportLayoutTable.Get("infoMeta");
-            metaIssueText = CreateIconText("MetaIssue", meta, 0f, 0.5f, 20f, PaperInk);
-            metaDeadlineText = CreateIconText("MetaDeadline", meta, 0.5f, 1f, 20f, PaperInk);
+            metaIssueText = CreateIconText("MetaIssue", meta, 0f, MetaSplit, 19f, PaperInk, "issue", true);
+            metaDeadlineText = CreateIconText("MetaDeadline", meta, MetaSplit, 1f, 19f, PaperInk, "deadline", true);
 
             Rect weather = DailyReportLayoutTable.Get("infoWeather");
-            weatherText = CreateIconText("Weather", weather, 0f, 1f, 20f, PaperInk);
+            weatherText = CreateIconText("Weather", weather, 0f, 1f, 19f, PaperInk, "weather", true);
         }
 
         private void BuildIncomeCard()
         {
-            incomeTitleText = CreatePillText("IncomeTitle", DailyReportLayoutTable.Get("incomePill"));
+            incomeTitleText = CreatePillText("IncomeTitle", DailyReportLayoutTable.Get("incomePill"), "ribbon_income");
 
-            statsText = CreateIconText("Income", DailyReportLayoutTable.Get("incomeLeft"), 0f, 1f, 22f, PaperInk);
-            bountyText = CreateIconText("Bounty", DailyReportLayoutTable.Get("incomeRight"), 0f, 1f, 22f, PaperInk);
+            // 数值块只有「标签 / 大号数字 / 注脚」三行，不需要滚动：关掉换行走 autoSize，
+            // 富文本里的字号用百分比，数字太长时整块等比缩，不会被截成半个数字。
+            statsText = CreateIconText("Income", DailyReportLayoutTable.Get("incomeLeft"), 0f, 1f, 22f, PaperInk, "income", false);
+            bountyText = CreateIconText("Bounty", DailyReportLayoutTable.Get("incomeRight"), 0f, 1f, 22f, PaperInk, "bounty", false);
 
-            headlineText = CreateText("Tip", DailyReportLayoutTable.Get("incomeTip"), 0f, 1f, 21f,
-                TextAlignmentOptions.Left, PaperInk, true);
+            headlineText = CreateIconText("Tip", DailyReportLayoutTable.Get("incomeTip"), 0f, 1f, 20f, PaperInk, "tip", true);
             // 战绩表按两列排（DailyReportView.JoinColumns），18 号三行正好装进这块，不再露半行
             Rect note = DailyReportLayoutTable.Get("incomeNote");
-            headlineBodyText = CreateText("IncomeNote", new Rect(note.x + 14f, note.y + 8f, note.width - 28f, note.height - 12f),
+            headlineBodyText = CreateText("IncomeNote", new Rect(note.x + 10f, note.y + 4f, note.width - 20f, note.height - 6f),
                 0f, 1f, 18f, TextAlignmentOptions.TopLeft, PaperInkSoft, true);
         }
 
         private void BuildStatusCard()
         {
-            statusTitleText = CreatePillText("StatusTitle", DailyReportLayoutTable.Get("statusPill"));
+            statusTitleText = CreatePillText("StatusTitle", DailyReportLayoutTable.Get("statusPill"), "ribbon_status");
 
-            fortuneText = CreateIconText("Fortune", DailyReportLayoutTable.Get("statusLeft"), 0f, 1f, 20f, PaperInk);
-            editorText = CreateIconText("Editor", DailyReportLayoutTable.Get("statusRight"), 0f, 1f, 20f, PaperInk);
-            sideText = CreateIconText("Luck", DailyReportLayoutTable.Get("statusLuck"), 0f, 1f, 20f, PaperInk);
-            gossipText = CreateIconText("Gossip", DailyReportLayoutTable.Get("statusTaboo"), 0f, 1f, 20f, PaperInkSoft);
+            // 四行从上到下：头条（粗体）→ 头条正文 → 趣味运势 → 编辑部便条。
+            editorText = CreateIconText("Editor", DailyReportLayoutTable.Get("statusLeft"), 0f, 1f, 20f, PaperInk, "headline", true);
+            editorText.fontStyle = FontStyles.Bold;
+            sideText = CreateIconText("Luck", DailyReportLayoutTable.Get("statusRight"), 0f, 1f, 19f, PaperInkSoft, "broadcast", true);
+            fortuneText = CreateIconText("Fortune", DailyReportLayoutTable.Get("statusLuck"), 0f, 1f, 19f, PaperInk, "fortune", true);
+            gossipText = CreateIconText("Gossip", DailyReportLayoutTable.Get("statusTaboo"), 0f, 1f, 19f, PaperInkSoft, "gossip", true);
         }
 
         private void BuildSignInCard()
         {
-            signInTitleText = CreatePillText("SignInTitle", DailyReportLayoutTable.Get("signinPill"));
+            signInTitleText = CreatePillText("SignInTitle", DailyReportLayoutTable.Get("signinPill"), "ribbon_signin");
 
             int cells = DailyReportLayoutTable.Columns * DailyReportLayoutTable.Rows;
             if (cells > DailyReportTuning.DaysPerPeriod) cells = DailyReportTuning.DaysPerPeriod;
@@ -131,7 +158,11 @@ namespace BossRush
 
                 Image image = cell.AddComponent<Image>();
                 image.color = CellEmpty;
-                BossRushUI.ApplyPanelSkin(image, 6, BossRushUISkinPart.Card);
+                // 圆角胶囊：Hairline 档一律程序化圆角，不吃图集——图集卡片图 panel_raised 烤进去的内描边
+                // 在浅色乘色下会显出一圈框，30 格排出来就是「灰方块墙」（审美审查 UA-07）。
+                BossRushUI.ApplyPanelSkin(image, CellRadius, BossRushUISkinPart.Hairline);
+                // 格子是运行时画的，底图里没有它的投影；这里挂共享的柔和投影 + 顶边高光，与参考图的立体胶囊一致。
+                BossRushUIDepth.ApplySurfaceDepth(image, CellRadius, BossRushUISkinPart.Card);
                 signInCells.Add(image);
 
                 TextMeshProUGUI label = ZombieModeUIHelper.CreateText(
@@ -140,6 +171,7 @@ namespace BossRush
                     TextAlignmentOptions.Center, PaperInk);
                 BossRushUI.ApplyGameFont(label);
                 LockFontSize(label, 20f);
+                label.fontStyle = FontStyles.Bold;
                 signInCellLabels.Add(label);
             }
 
@@ -153,21 +185,32 @@ namespace BossRush
                 DailyReportLayoutTable.ToAnchored(buttonRect);
             Image buttonImage = buttonObj.AddComponent<Image>();
             buttonImage.color = ButtonIdle;
-            BossRushUI.ApplyPanelSkin(buttonImage, 10, BossRushUISkinPart.Card);
+            BossRushUI.ApplyPanelSkin(buttonImage, ButtonRadius, BossRushUISkinPart.Button);
             signInButton = buttonObj.AddComponent<Button>();
             signInButton.targetGraphic = buttonImage;
             signInButton.onClick.AddListener(OnSignInClicked);
-            ZombieModeUIHelper.ApplyButtonColors(signInButton, ButtonIdle, ButtonHover, ButtonDisabled);
+            // 悬停色走共享口径（白字底提亮会跌破 4.5:1 时改压暗），按钮手感、音效与投影由 ApplyButtonColors 挂上
+            ZombieModeUIHelper.ApplyButtonColors(signInButton, ButtonIdle, BossRushUI.GetHoverColor(ButtonIdle), ButtonDisabled);
+            // 参考图的签到按钮有一圈暖金边
+            BossRushUI.ApplyPanelStroke(buttonImage, ButtonRadius, BossRushUISkinPart.Button, ButtonEdge);
+
+            // 礼盒图标压在按钮文字左侧；取不到图标时文字照常居中
+            float labelShift = 0f;
+            Rect giftRect = DailyReportLayoutTable.GetIcon("gift");
+            if (CreateArt("Gift", DailyReportBackground.LoadIcon("gift"), giftRect, buttonObj.transform) != null)
+            {
+                labelShift = 18f;
+            }
 
             signInButtonText = ZombieModeUIHelper.CreateText(
                 "SignInLabel", buttonObj.transform, string.Empty, 24f,
-                Vector2.zero, new Vector2(buttonRect.width - 16f, buttonRect.height - 10f),
+                new Vector2(labelShift, 0f), new Vector2(buttonRect.width - 16f - labelShift * 2f, buttonRect.height - 10f),
                 TextAlignmentOptions.Center, BossRushUI.GetButtonTextColor(ButtonIdle));
             BossRushUI.ApplyGameFont(signInButtonText);
             LockFontSize(signInButtonText, 24f);
             signInButtonText.fontStyle = FontStyles.Bold;
 
-            // 参考图：按钮下的期数 / 连签信息居中排，不套盒子（底图只画一条细线）
+            // 参考图：按钮下的期数 / 连签信息居中排，不套盒子（首行两侧的细线烤在底图里）
             signInStatusText = CreateText("SignInStatus", DailyReportLayoutTable.Get("sideText"), 0f, 1f, 19f,
                 TextAlignmentOptions.Top, PaperInkSoft, true);
 
@@ -197,7 +240,8 @@ namespace BossRush
                 Image image = swatchObj.AddComponent<Image>();
                 image.color = colors[i];
                 image.raycastTarget = false;
-                BossRushUI.ApplyPanelSkin(image, 4, BossRushUISkinPart.Card);
+                // 圆点（参考图口径）：半径取色块边长一半，Hairline 档程序化，不会被图集 border 压成歪圆
+                BossRushUI.ApplyPanelSkin(image, Mathf.Max(1, Mathf.RoundToInt(swatch * 0.5f)), BossRushUISkinPart.Hairline);
 
                 Rect labelRect = new Rect(legend.x + i * itemWidth + swatch + 8f, legend.y,
                     itemWidth - swatch - 14f, legend.height);
@@ -273,7 +317,8 @@ namespace BossRush
                 scroll.horizontal = false;
                 scroll.vertical = true;
                 scroll.movementType = ScrollRect.MovementType.Clamped;
-                scroll.scrollSensitivity = 8f;
+                // 与共享 ConfigureScrollRect 同一灵敏度；8 的时候滚一格只动 8 个单位，手感发黏（UA-09）
+                scroll.scrollSensitivity = 32f;
                 text.rectTransform.SetParent(viewRect, false);
                 text.rectTransform.anchorMin = new Vector2(0f, 1f);
                 text.rectTransform.anchorMax = new Vector2(1f, 1f);
@@ -293,31 +338,76 @@ namespace BossRush
                 if (fitter == null) fitter = text.gameObject.AddComponent<ContentSizeFitter>();
                 fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
                 fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                // 内容**至少**与视口等高：短正文按自身的垂直对齐（Left = 居中）落在块中间，
+                // 与左侧图标对齐；长正文照常按实际高度长出来、可以滚。
+                // （PreferredSize 取 max(minHeight, preferredHeight)，LayoutElement 优先级高于 TMP。）
+                LayoutElement minimum = text.gameObject.GetComponent<LayoutElement>();
+                if (minimum == null) minimum = text.gameObject.AddComponent<LayoutElement>();
+                minimum.minHeight = slice.height;
             }
             else text.enableWordWrapping = false;
             text.raycastTarget = false;
             return text;
         }
 
-        /// <summary>带图标徽章的块：文字从徽章右侧起排（缩进量来自版面表）。</summary>
+        /// <summary>
+        /// 带图标的块：先按版面表摆图标，文字从图标右沿 + 间距起排。
+        /// 图标取不到（包里没有这张图）就不画那一格，文字也不缩进——不退回汉字或灰方块。
+        /// </summary>
         private TextMeshProUGUI CreateIconText(string name, Rect box, float topFraction, float bottomFraction,
-            float fontSize, Color color)
+            float fontSize, Color color, string iconId, bool wrap)
         {
-            float indent = DailyReportLayoutTable.IconTextIndent;
-            Rect inset = new Rect(box.x + indent, box.y, box.width - indent - 12f, box.height);
-            TextMeshProUGUI text = CreateText(name, inset, topFraction, bottomFraction, fontSize,
-                TextAlignmentOptions.Left, color, true);
-            return text;
+            float indent = 8f;
+            Rect icon = DailyReportLayoutTable.GetIcon(iconId);
+            if (CreateArt("Icon_" + iconId, DailyReportBackground.LoadIcon(iconId), icon, panelRect) != null)
+            {
+                indent = icon.xMax + DailyReportLayoutTable.IconTextGap - box.x;
+            }
+            Rect inset = new Rect(box.x + indent, box.y, box.width - indent - 8f, box.height);
+            return CreateText(name, inset, topFraction, bottomFraction, fontSize,
+                TextAlignmentOptions.Left, color, wrap);
         }
 
-        /// <summary>标题药丸上的文字：底图已经画好药丸底与左端圆标，这里只写字。</summary>
-        private TextMeshProUGUI CreatePillText(string name, Rect pill)
+        /// <summary>标题缎带上的文字：底图已经画好缎带，这里摆缎带头上的图标并写字。</summary>
+        private TextMeshProUGUI CreatePillText(string name, Rect pill, string iconId)
         {
-            Rect inset = new Rect(pill.x + 48f, pill.y, pill.width - 58f, pill.height);
-            TextMeshProUGUI text = CreateText(name, inset, 0f, 1f, 22f,
+            float indent = 18f;
+            if (CreateArt("Icon_" + iconId, DailyReportBackground.LoadIcon(iconId),
+                    DailyReportLayoutTable.GetIcon(iconId), panelRect) != null)
+            {
+                indent = DailyReportLayoutTable.PillTextIndent;
+            }
+            // 右侧让出缎带的斜切段（约 20）
+            Rect inset = new Rect(pill.x + indent, pill.y, pill.width - indent - 24f, pill.height);
+            TextMeshProUGUI text = CreateText(name, inset, 0f, 1f, 23f,
                 TextAlignmentOptions.Left, PillInk, false);
             text.fontStyle = FontStyles.Bold;
             return text;
+        }
+
+        /// <summary>
+        /// 按版面表的矩形（面板坐标）摆一张图。parent 不是面板时按父节点中心换算。
+        /// Sprite 或矩形缺席返回 null，调用方据此不画、不缩进。
+        /// </summary>
+        private Image CreateArt(string name, Sprite sprite, Rect rect, Transform parent)
+        {
+            if (sprite == null || rect.width <= 0f || rect.height <= 0f || parent == null) return null;
+            GameObject obj = ZombieModeUIHelper.CreateRect(name, parent, new Vector2(0.5f, 0.5f),
+                new Vector2(rect.width, rect.height));
+            RectTransform objRect = obj.GetComponent<RectTransform>();
+            Vector2 position = DailyReportLayoutTable.ToAnchored(rect);
+            RectTransform parentRect = parent as RectTransform;
+            if (parentRect != null && parentRect != panelRect)
+            {
+                // 父节点（签到按钮）自身也是按版面表居中摆在面板上的：换算成相对父节点中心的偏移
+                position -= parentRect.anchoredPosition;
+            }
+            objRect.anchoredPosition = position;
+            Image image = obj.AddComponent<Image>();
+            image.sprite = sprite;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            return image;
         }
 
         #endregion

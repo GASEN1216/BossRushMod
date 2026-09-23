@@ -2,7 +2,7 @@
 
 ## Who Is She?
 
-Former senior medical researcher at J-Lab. After the lab collapsed, she escaped to Duckov and opened a field clinic. **Your healer and debuff cleaner** — plus her own Affinity storyline.
+Former senior medical researcher at J-Lab. After the lab collapsed, she escaped to Duckov and opened a field clinic. **Your healer and debuff cleaner**, with her own Affinity storyline.
 
 ## Services
 
@@ -27,7 +27,7 @@ Former senior medical researcher at J-Lab. After the lab collapsed, she escaped 
 - **Likes**: Diamond and consumable/medical items (+80); Birthday Cake (+150)
 - **Loves**: Diamond Ring (+500)
 - **Neutral**: Other items (+20)
-- **Dislikes**: Brick Stone — reminds her of the lab (-60)
+- **Dislikes**: Brick Stone, which reminds her of the lab (-60)
 
 ## Marriage
 
@@ -39,4 +39,4 @@ See Affinity and Marriage for details.
 
 - 40% healing discount at max Affinity — **worth the investment**
 - Calming Drops and nurse healing remove treatable debuffs such as bleeding, fractures and poison, but not the Phantom Witch's **Ghost Curse**; Ghost Curse alone does not allow Calming Drops to be used
-- Peace Amulet is passive — just having it in your inventory saves your life
+- Peace Amulet is passive. Keep it in your inventory: when you get hit below half health, it has a 10% chance to heal you to full, at most once per map

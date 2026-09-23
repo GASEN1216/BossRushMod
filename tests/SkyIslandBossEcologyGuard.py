@@ -320,9 +320,13 @@ def check(raw):
         require(errors, body_of(code[key], "private void OnHurt(DamageInfo damage)"),
                 'SkyIslandBossProps.WearSoftPiece(boss, damage, "%s", BossRushItemIds.%s);' % (slot, constant),
                 PATHS[key] + " 的%s要照官方口径在暴击时磨耐久" % slot)
-    detonate = body_of(code["forge"], "internal static void Detonate(CharacterMainControl source, Vector3 origin, float radius, float damageValue)")
+    detonate = body_of(code["forge"], "internal static void Detonate(CharacterMainControl source, Vector3 origin, float radius, float damageValue, bool blast, float shake, Color tint)")
     require(errors, detonate, "damage.isFromBuffOrEffect = true;", "Boss 范围伤害走 buff 通道")
-    require(errors, detonate, "CreateExplosion(origin, radius, damage, ExplosionFxTypes.normal, 0f, false);", "Boss 范围伤害 canHurtSelf:false")
+    # 2026-09-23 VB-21：非爆炸招式走 custom（官方不生成火球）、震屏由调用方给；canHurtSelf 仍必须是 false。
+    require(errors, detonate, "ExplosionFxTypes fx = blast ? ExplosionFxTypes.normal : ExplosionFxTypes.custom;", "Boss 范围伤害：只有爆炸招式留官方火球")
+    require(errors, detonate, "CreateExplosion(origin, radius, damage, fx, shake, false);", "Boss 范围伤害 canHurtSelf:false")
+    ordered(errors, detonate, ["CreateExplosion(origin, radius, damage, fx, shake, false);", "SkyIslandImpactFx.Play("],
+            "结算表现在伤害结算之后（表现失败不影响这一击）")
     teleport = body_of(code["props"], "internal static bool Teleport(CharacterMainControl character, Vector3 target, BossAIController pause)")
     ordered(errors, teleport, ["path.seeker.CancelCurrentPathRequest(true);", "pause.Pause();", "character.SetPosition(target);",
                                "Physics.SyncTransforms();"], "换位：先掐在途寻路请求、再暂停、再落位、最后同步物理")
@@ -460,6 +464,8 @@ def reverse_probes(raw):
         ("gnats", "!SkyIslandBossGearWorn.MossgauzeMask", "true", "苔纱面罩不挡躲闪"),
         ("fieldcraft_gear", 'headset = TypeIn(item, "Headset");', "", "穿戴快照漏读耳机槽"),
         ("stargazer", "SkyIslandBossRules.TelegraphSeconds(", "SkyIslandBossRules.EscapeSpeed(", "观星手的预警不过静听耳罩"),
+        ("forge", "CreateExplosion(origin, radius, damage, fx, shake, false);", "CreateExplosion(origin, radius, damage, fx, shake, true);", "Boss 范围伤害改成会炸自己人"),
+        ("forge", "ExplosionFxTypes fx = blast ? ExplosionFxTypes.normal : ExplosionFxTypes.custom;", "ExplosionFxTypes fx = ExplosionFxTypes.normal;", "所有招式都冒官方火球"),
     )
     errors = []
     for key, before, after, label in probes:

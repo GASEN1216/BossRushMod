@@ -42,7 +42,6 @@ namespace BossRush
         public bool ExtractionPointSpawned;
         public bool ExtractionResolved;
         public int RuntimeSessionToken;
-        public float PhaseStatusBroadcastTimer;
 
         public void Reset()
         {
@@ -66,7 +65,6 @@ namespace BossRush
             ExtractionPointSpawned = false;
             ExtractionResolved = false;
             RuntimeSessionToken = 0;
-            PhaseStatusBroadcastTimer = 0f;
         }
     }
 

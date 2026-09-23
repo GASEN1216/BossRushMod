@@ -13,8 +13,8 @@ A massive content expansion for Escape from Duckov (Steam Workshop). What starte
 - **37 Custom Equipment Pieces** (sets counted piece by piece) — 20 regular weapons, totems and armor pieces, plus 17 Sky Islands wearable pieces; see Equipment Overview for sources
 - **Sky Islands Residents & Adventures** — Island quests, per-expedition commissions, lords and chiefs, gathering and crafting, and affinity and marriage with Qinghe and Weibai
 - **Custom Items** — Consumables, mode-exclusive props, functional items, forge stones, relic eggs, raid meals
-- **A Story Campaign** — Duck King Campaign: six contracts that string the existing modes into one cold case, one piece of evidence per chapter
-- **Base Buildings** — Wedding Chapel, Dust-Covered StarWish Fountain, PetNest, Daily mailbox, Campaign board, Trophy showcase
+- **A Story Campaign** — Duck King Campaign: six chapters from Jeff that string the existing modes into one arena registration book, one line per chapter
+- **Base Buildings** — Wedding Chapel, Dust-Covered StarWish Fountain, PetNest, Daily mailbox; the garden, weapon rack and jukebox are vanilla buildings
 - **Reforge System** — Stat rerolling + Cold Quench Fluid to lock affixes
 - **Affix Forging** — Reforge changes numbers, affixes change behaviour: kill explosions, hit lifesteal, armor thorns
 - **Duck King Codex** — a Boss collection book that keeps its own ledger as you kill them
@@ -30,6 +30,6 @@ Full Chinese + English support: items, NPC dialogue, UI, encyclopedia.
 
 ### Compatibility
 
-- Steam Workshop subscription — one click install
+- Steam Workshop subscription, one-click install
 - No original game files modified (Mod loader + Harmony patches)
 - Check compatibility after game updates; see the release notes

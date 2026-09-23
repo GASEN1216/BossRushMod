@@ -313,8 +313,8 @@ namespace BossRush
                     Hint(L10n.T("航路威胁已清理，物资点也翻遍了。",
                             "The lanes are clear and the caches are picked over.")
                         + (session.HasGnatBountyThisRaid && !session.IsNightNow
-                            ? L10n.T("天黑以后再来——起蚋的夜里还有驱蚋委托可接。",
-                                " Come back after dark — gnat culling contracts are available on gnat nights.")
+                            ? L10n.T("天黑以后再来，起蚋的夜里还有驱蚋委托可接。",
+                                " Come back after dark. Gnat nights come with culling work.")
                             : L10n.T("下次出岛再来看看吧。",
                                 " Come and see me again next trip.")));
                 return;
@@ -383,10 +383,10 @@ namespace BossRush
                     return L10n.T("两端航标都亮起来，它才会循着光过来。",
                         "It only comes for the light once both beacons burn.");
                 if (session.IsStoryChallengeActive("Storm"))
-                    return L10n.T("它已经在栈道上了 —— 别停下。", "It is already on the boardwalk — keep moving.");
+                    return L10n.T("它已经在栈道上了，别停下。", "It's already on the boardwalk. Keep moving.");
                 if (!session.BeginStoryChallenge("Storm"))
-                    return L10n.T("当前无法开始：请站到鸣风栈道上，并等待上一场战斗结束。",
-                        "Cannot start now: stand on Windsong Boardwalk and wait for the previous fight to end.");
+                    return L10n.T("现在开不了：得站在鸣风栈道上，等上一场仗打完。",
+                        "Can't start yet: stand on Windsong Boardwalk and let the last fight finish.");
                 presentation.Dispose();
                 // 同 Challenge：面板已经收起，回执改走字幕。
                 string opened = L10n.T("风眼张开了", "The eye of the storm opens");
@@ -420,8 +420,8 @@ namespace BossRush
             return new SkyIslandStoryPresentation.Choice(label, delegate
             {
                 if (!session.BeginStoryChallenge(id))
-                    return L10n.T("当前无法开始：请靠近挑战地点，确认前置目标已完成或等待上次战斗结束。",
-                        "Cannot start now: move closer to the site, make sure the prerequisites are done, and wait for the previous fight to end.");
+                    return L10n.T("现在开不了：走近挑战地点，看看前置目标做完没有，或者等上一场仗打完。",
+                        "Can't start yet: get closer to the site, check the prerequisites are done, and let the last fight finish.");
                 presentation.Dispose();
                 // 面板已经收起，回执写不回正文（SetBodyText 见正文已销毁直接返回）：改走字幕，否则面板一关就没了下文。
                 string started = L10n.T("挑战开始", "The challenge begins");
@@ -506,8 +506,8 @@ namespace BossRush
             {
                 if ((action == SkyIslandStoryAction.ReconcileZheling && session.IsStoryChallengeActive("Zheling")) ||
                     (action == SkyIslandStoryAction.ReconcileBellKeeper && session.IsStoryChallengeActive("BellKeeper")))
-                    return L10n.T("请先结束当前战斗，或者返航后重新来谈。",
-                        "Finish the current fight first, or come back to talk after you return.");
+                    return L10n.T("先把这一仗打完，或者返航后再来谈。",
+                        "Finish this fight first, or come back and talk after you head home.");
                 string message;
                 // 成功后重开：修好风标，同一页上的 K1 立刻从「请先修复…」变成可用；
                 // 交还种植记录后，这一项也不该再挂在选项里。
@@ -603,7 +603,7 @@ namespace BossRush
         /// </summary>
         private string ZhelingBadgeText()
         {
-            return L10n.T("旧腰牌上刻着：『航路交给你。』\n钟守认得这块腰牌——它能证明折翎那一关已经有了结。",
+            return L10n.T("旧腰牌上刻着：『航路交给你。』\n钟守认得这块腰牌，拿着它就说明折翎那一关已经了结。",
                 "The old badge is engraved: 'The route is yours now.'\nThe Bell Keeper knows this badge. It proves the matter with Zheling is settled.") +
                 "\n\n" + story.Summary;
         }
@@ -628,7 +628,7 @@ namespace BossRush
             if (point == null) return;
             GameObject go = new GameObject("SkyIslandStoryFeedback"); go.transform.SetParent(root.transform, false);
             go.transform.position = point.position + Vector3.up * 3;
-            Light light = go.AddComponent<Light>(); light.type = LightType.Point; light.color = color;
+            Light light = go.AddComponent<Light>(); light.type = LightType.Point; light.color = WorldLight(color);
             light.intensity = 1.6f; light.range = 14; light.shadows = LightShadows.None;
             feedback.Add(go);
             // 纪念物**不能**摆在装置自己的位置上。官方 `CA_Interact.SearchInteractableAround`
@@ -653,6 +653,7 @@ namespace BossRush
                         choices != null ? choices() : new List<SkyIslandStoryPresentation.Choice>(),
                         null, SkyIslandUiArt.GetScene(marker));
                 }));
+            SkyIslandGates.AddMemorialPost(feedback[feedback.Count - 1], MemorialWood());
         }
         internal void Hide()
         {
@@ -825,11 +826,11 @@ namespace BossRush
         /// <summary>子页回到手记首页。回调必须返回首页自己的导语——它会被写进新开的那个面板。</summary>
         private SkyIslandStoryPresentation.Choice BackToJournal()
         {
-            return new SkyIslandStoryPresentation.Choice(L10n.T("返回手记", "Back to the journal"), delegate
+            return SkyIslandStoryPresentation.AsSecondary(new SkyIslandStoryPresentation.Choice(L10n.T("返回手记", "Back to the journal"), delegate
             {
                 OpenJournal();
                 return SkyIslandJournal.Brief(story.Current);
-            });
+            }));
         }
 
         /// <summary>
@@ -866,17 +867,17 @@ namespace BossRush
             if (overlook != null) { Hint(overlook); return; }
             Func<int, int> count = null;
             if (fieldcraft != null) count = fieldcraft.CountInPack;
-            choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandLights.ChoiceLabel(light, count), delegate
+            choices.Add(SkyIslandStoryPresentation.WithItem(new SkyIslandStoryPresentation.Choice(SkyIslandLights.ChoiceLabel(light, count), delegate
             {
                 if (fieldcraft == null)
-                    return L10n.T("工具还没摆开，等群岛就绪再来。", "The tools are not laid out yet — come back once the isles are ready.");
+                    return L10n.T("工具还没摆开，等群岛就绪再来。", "The tools aren't laid out yet. Come back once the isles are ready.");
                 string guarded = OverlookGuarded(key);
                 if (guarded != null) return guarded;
                 string message;
                 bool lit = fieldcraft.LightLamp(light, out message);
                 if (lit) story.LogTiming("light", light.Id);
                 return Refreshed(lit, message);
-            }));
+            }), BossRushItemIds.SkyIslandQinglanWindcrystal));
         }
 
         /// <summary>
@@ -937,7 +938,8 @@ namespace BossRush
                     locked.Add(SkyIslandFieldcraftRules.LockedLabel(recipe));
                     continue;
                 }
-                choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.RecipeLabel(
+                // 产物图标 + 不够的那个数标红（UE-09）：纯显示修饰，行照挂、照可点。
+                choices.Add(SkyIslandStoryPresentation.WithItem(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.RecipeLabel(
                     SkyIslandFieldcraftRules.ForWearer(recipe, starworksWorn), fieldcraft.CountInPack), delegate
                 {
                     if (fieldcraft == null) return L10n.T("现在没法做东西。", "Nothing can be made right now.");
@@ -945,7 +947,7 @@ namespace BossRush
                     bool crafted = fieldcraft.Craft(recipe, out message);
                     if (crafted) story.LogTiming("craft", recipe.Id);
                     return Refreshed(crafted, message);
-                }));
+                }), recipe.OutputTypeId));
             }
             presentation.Show(SkyIslandFieldcraftRules.StationName(station), CraftingBody(station, locked), choices, null,
                 SkyIslandUiArt.GetScene(StationScene(station)));
@@ -1019,7 +1021,7 @@ namespace BossRush
             GameObject glow = new GameObject("PigeonGlow");
             glow.transform.SetParent(pigeon.transform, false);
             glow.transform.localPosition = Vector3.up * 2f;
-            Light light = glow.AddComponent<Light>(); light.type = LightType.Point; light.color = BossRushUIColors.TextPrimary;
+            Light light = glow.AddComponent<Light>(); light.type = LightType.Point; light.color = PigeonLight;
             light.intensity = 1.2f; light.range = 9; light.shadows = LightShadows.None;
             return true;
         }
@@ -1156,7 +1158,8 @@ namespace BossRush
 
         private void ReleasePigeon()
         {
-            if (pigeon != null) UnityEngine.Object.Destroy(pigeon);
+            // 回执写着「信鸽抖抖翅膀飞过云海」：交互体本帧摘掉，光和字 0.8 秒里往上、往外飞走再淡没（UE-08）。
+            if (pigeon != null) SkyIslandStoryInteractable.FlyAway(pigeon);
             pigeon = null;
             pigeonLetter = null;
             pigeonCaptionAt = -1f;

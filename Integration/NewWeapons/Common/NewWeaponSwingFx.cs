@@ -7,8 +7,13 @@
 //   在 CA_Attack.OnStart 成功后生成一个绕玩家扫过去的粒子节点。
 //
 //   与霜之哀伤的差别：霜之哀伤要克隆龙息火焰拖尾再重染，依赖 Frostmourne 自己的资源链；
-//   本实现完全程序化——粒子系统运行时构造，材质走 RingParticleEffect.GetSharedParticleMaterial()
-//   （Alpha Blended + 64x64 径向渐变贴图，全 Mod 共享一份），零新增美术资源。
+//   本实现完全程序化——拖尾与粒子运行时构造，材质走共享特效层，零新增美术资源。
+//
+// 2026-09-23 审美修（VA-09）：旧版只有一串 0.22 m 的圆点粒子，间距 3.8 cm、每颗与相邻 6 颗重叠，
+//   出来是一根粗细均匀、中心不透明的荧光管（毒蛇匕首还是 #7CFC00 霓虹绿再 ×2 进 HDR）。现在：
+//     - 主体：一条 TrailRenderer 刀光（条带贴图、加色、头宽尾尖、0.16 s 淡尽），读得出刀锋前缘；
+//     - 粒子降为点缀：每米 10 颗、5–9 cm 的 HDR 星屑，沿弧逐点撒（密度与帧率无关）；
+//     - 配色去霓虹（NewWeaponPalette）。
 //
 // 生命周期（AGENTS.md 4.12）：
 //   对象池上限 8，用完回池、池满销毁；不持有玩家/场景引用，切图后残留对象在 Unity 里 == null，
@@ -30,8 +35,11 @@ namespace BossRush
         private const float ParticleTailDuration = 0.3f;
         private const int MaxPoolSize = 8;
 
-        /// <summary>每米弧长撒几颗。乘上 0.22 秒扫过的弧长（约 2.3–3.4 米）得到一条挥击的总量。</summary>
-        private const float ParticlesPerMeter = 26f;
+        /// <summary>每米弧长撒几颗星屑。乘上 0.22 秒扫过的弧长（约 2.3–3.4 米）得到一条挥击的总量。</summary>
+        private const float ParticlesPerMeter = 10f;
+
+        /// <summary>刀光拖尾的存活秒数（挥击结束后 0.16 秒内淡尽，早于粒子尾巴）。</summary>
+        private const float BladeTrailTime = 0.16f;
 
         /// <summary>单帧最多补几个采样点。60fps 下一帧只走 1/13 的弧，够用；掉帧时也不会一次撒爆。</summary>
         private const int MaxSubStepsPerFrame = 12;
@@ -45,6 +53,7 @@ namespace BossRush
         private Transform trailNode;
         private ParticleSystem trailParticles;
         private ParticleSystemRenderer trailRenderer;
+        private TrailRenderer bladeTrail;
 
         private float elapsed;
         private float startAngle;
@@ -102,7 +111,7 @@ namespace BossRush
             startAngle = -sweep * 0.5f;
             sweepAngle = sweep;
             trailRadius = trailDistance;
-            particleSize = 0.22f * sizeScale;
+            particleSize = 0.07f * sizeScale;
             lastEmittedAngle = startAngle;
 
             trailRoot.localRotation = Quaternion.Euler(0f, startAngle, 0f);
@@ -113,6 +122,12 @@ namespace BossRush
 
             Tint(coreColor, fadeColor, sizeScale);
             Restart();
+            // 池对象复用：先清掉上一次挥砍留下的顶点，否则会从上一次的位置拉出一条长线
+            if (bladeTrail != null)
+            {
+                bladeTrail.Clear();
+                bladeTrail.emitting = true;
+            }
 
             elapsed = 0f;
             isPlaying = true;
@@ -137,10 +152,11 @@ namespace BossRush
             trailRenderer = nodeObject.GetComponent<ParticleSystemRenderer>();
             if (trailRenderer != null)
             {
-                Material shared = RingParticleEffect.GetSharedParticleMaterial();
-                if (shared != null)
+                Material sparkle = BossRushFxKit.GetShapeMaterial(BossRushParticleShape.GlowDot, BossRushFxBlend.Additive, BossRushFxKit.GainHot);
+                if (sparkle == null) sparkle = RingParticleEffect.GetSharedParticleMaterial();
+                if (sparkle != null)
                 {
-                    trailRenderer.sharedMaterial = shared;
+                    trailRenderer.sharedMaterial = sparkle;
                 }
                 trailRenderer.renderMode = ParticleSystemRenderMode.Billboard;
                 trailRenderer.alignment = ParticleSystemRenderSpace.View;
@@ -177,6 +193,22 @@ namespace BossRush
             taper.AddKey(1f, 0.15f);
             sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, taper);
 
+            // 刀光主体：世界空间拖尾，头宽尾尖；材质是共享条带贴图 + 加色亮度档
+            Material blade = BossRushFxKit.GetShapeMaterial(BossRushParticleShape.TrailStrip, BossRushFxBlend.Additive, BossRushFxKit.GainBright);
+            if (blade != null)
+            {
+                bladeTrail = nodeObject.AddComponent<TrailRenderer>();
+                bladeTrail.sharedMaterial = blade;
+                bladeTrail.time = BladeTrailTime;
+                bladeTrail.minVertexDistance = 0.04f;
+                bladeTrail.widthCurve = new AnimationCurve(new Keyframe(0f, 0.32f), new Keyframe(1f, 0f));
+                bladeTrail.textureMode = LineTextureMode.Stretch;
+                bladeTrail.alignment = LineAlignment.View;
+                bladeTrail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                bladeTrail.receiveShadows = false;
+                bladeTrail.emitting = false;
+            }
+
             nodeObject.SetActive(true);
         }
 
@@ -188,7 +220,7 @@ namespace BossRush
             main.startColor = Color.white;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.14f, 0.3f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(0f);
-            main.startSizeMultiplier = 0.22f * sizeScale;
+            main.startSizeMultiplier = 0.07f * sizeScale;
 
             ParticleSystem.ColorOverLifetimeModule colorOverLifetime = trailParticles.colorOverLifetime;
             colorOverLifetime.enabled = true;
@@ -205,6 +237,16 @@ namespace BossRush
                     new GradientAlphaKey(0f, 1f)
                 });
             colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
+
+            if (bladeTrail != null)
+            {
+                bladeTrail.widthMultiplier = sizeScale;
+                Gradient blade = new Gradient();
+                blade.SetKeys(
+                    new GradientColorKey[] { new GradientColorKey(coreColor, 0f), new GradientColorKey(fadeColor, 1f) },
+                    new GradientAlphaKey[] { new GradientAlphaKey(0.9f, 0f), new GradientAlphaKey(0.35f, 0.4f), new GradientAlphaKey(0f, 1f) });
+                bladeTrail.colorGradient = blade;
+            }
         }
 
         private void Restart()
@@ -285,6 +327,11 @@ namespace BossRush
             if (trailParticles != null)
             {
                 trailParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+            if (bladeTrail != null)
+            {
+                bladeTrail.emitting = false;
+                bladeTrail.Clear();
             }
 
             if (Pool.Count < MaxPoolSize)

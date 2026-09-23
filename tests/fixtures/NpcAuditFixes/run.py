@@ -20,6 +20,9 @@ def source(path):
 
 def extract(path, signature):
     text = source(path)
+    # 2026-09-23：扫箱结果回到玩家手里的那一段按 AGENTS §4.15 原样拆到同一 partial 的 CourierPaidLootSweepDelivery.cs。
+    if path.endswith("CourierPaidLootSweepService.cs") and signature not in text:
+        text = source(path.replace("CourierPaidLootSweepService.cs", "CourierPaidLootSweepDelivery.cs"))
     start = text.index(signature)
     opening = text.index("{", start)
     depth, end = 1, opening + 1
@@ -77,8 +80,10 @@ def main():
     }.items():
         parts += [extract(courier + file, signature) for signature in signatures]
     async_host = (HERE.parent / "SkyIslandDialogue/Stubs.cs").read_text(encoding="utf-8-sig").split("namespace UnityEngine")[0]
-    generated = async_host + "\nnamespace BossRush { using UnityEngine; using Duckov.Economy; using Duckov.UI; using ItemStatsSystem; using ItemStatsSystem.Data; using Cysharp.Threading.Tasks; public static partial class StorageDepositService {\n" + "\n".join(parts) + "\n}}"
-    sweep = "\n".join(extract(courier + "CourierPaidLootSweepService.cs", sig) for sig in ["public static void ReleasePendingSweepResultToPlayer", "private static void OnStartNextSweepButtonClicked()", "private static bool TryReturnResultItemsToPlayer", "private static void ShowSweepResultMailedBanner", "private static void CaptureSweepProducedItems"])
+    generated = async_host + "\nnamespace BossRush { using UnityEngine; using Duckov.Economy; using Duckov.UI; using ItemStatsSystem; using ItemStatsSystem.Data; using Cysharp.Threading.Tasks; public static partial class StorageDepositService {\n" + "\n".join(parts) + "\n private static string hoveredDepositLink = null;\n}}"
+    sweep = "\n".join(extract(courier + "CourierPaidLootSweepService.cs", sig) for sig in ["public static void ReleasePendingSweepResultToPlayer", "private static void OnStartNextSweepButtonClicked()", "private static bool TryReturnResultItemsToPlayer(Inventory resultInventory)", "private static bool TryReturnResultItemsToPlayer(Inventory resultInventory, bool keepPlayerItemsWhenFull)", "private static bool TryKeepInCrate", "private static void ShowSweepResultKeptBanner", "private static void ShowSweepResultMailedBanner", "private static void CaptureSweepProducedItems"])
+    # 2026-09-23: banner colours now come from token hex strings (ColorUtility over BossRushUIColors in production); the stub uses literals.
+    sweep += "\n private static readonly string SweepHighlightHex = \"#FFC966\"; private static readonly string SweepSuccessHex = \"#80DBA8\";"
     generated += "\nnamespace BossRush {using UnityEngine; using ItemStatsSystem; using Duckov.UI; public static partial class CourierPaidLootSweepService {" + sweep + "}}"
     mail = "\n".join(extract(courier + "CourierService_CloseAndCleanup.cs", sig) for sig in ["internal static bool CanBufferItemsSilently", "internal static int BufferItemsSilently"])
     generated += "\nnamespace BossRush {using UnityEngine; using ItemStatsSystem; public static partial class CourierService {" + mail + "}}"

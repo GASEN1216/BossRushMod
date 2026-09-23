@@ -25,7 +25,7 @@ TINT_CHANNEL = re.compile(r"colors\.\w+Color = new Color\(\s*([\d.]+)f")
 LIGHT_THRESHOLD = re.compile(r"LightBackgroundLuminance = ([\d.]+)f")
 
 # 会被当作按钮底色用的设计 token，全部要离亮底阈值足够远。
-BUTTON_TOKENS = ("Accent", "Success", "Warning", "Danger", "Surface", "SurfaceRaised",
+BUTTON_TOKENS = ("Accent", "AccentFill", "Success", "Warning", "Danger", "Surface", "SurfaceRaised",
                  "Disabled", "RarityLegendary")
 # 阈值余量下限。低于这个值说明某个 token 已经挤到判定刀刃上，
 # 下一次配色微调就会把标签静默从白翻黑。
@@ -106,9 +106,14 @@ def check(sources):
     rows = re.findall(r'CreateHudLine\(status.transform, "\w+", (-?[\d.]+)f,', hud)
     require(len(rows) == 3, "Mode H 三条状态行必须完整")
     offsets = sorted(float(v) for v in rows)
-    require(all(abs(y) + 22 <= status_height / 2 - 12 for y in offsets), "Mode H 状态行超出背景")
-    require(all(b - a >= 52 for a, b in zip(offsets, offsets[1:])), "Mode H 状态行间距不足")
-    require('"TimerText", 0f, TimerSize.x - 32f' in hud, "计时文字必须按计时背景宽度排版")
+    # 行框高读生产常量（2026-09-23 HUD 收小：18 号正文、34 高的行）：行框不出背景、相邻行框之间留 4
+    line_height = re.search(r"HudLineHeight = ([\d.]+)f", hud)
+    require(line_height is not None, "Mode H 状态行必须声明行框高 HudLineHeight")
+    half_line = float(line_height.group(1)) / 2 if line_height else 22
+    require(all(abs(y) + half_line <= status_height / 2 - 12 for y in offsets), "Mode H 状态行超出背景")
+    require(all(b - a >= half_line * 2 + 4 for a, b in zip(offsets, offsets[1:])), "Mode H 状态行间距不足")
+    require(re.search(r'"TimerText", -?[\d.]+f, TimerSize\.x - 32f', hud) is not None,
+            "计时文字必须按计时背景宽度排版")
     require('size, BossRushUIColors.Accent, createBackdrop: false)' in hud,
             "Mode H 页面不能在既有 Backdrop 上再叠一层遮罩")
 
@@ -210,8 +215,8 @@ def main():
     probes = [
         ("PetNest/PetNestUI.cs", "new Vector2(0f, 14f), new Vector2(1120f, 412f)",
          "new Vector2(0f, -20f), new Vector2(1120f, 520f)"),
-        ("ModeH/ModeHUI.cs", '"Enemies", -64f', '"Enemies", -104f'),
-        ("ModeH/ModeHUIPages.cs", "cardWidth, 130f, 34f", "cardWidth, 122f, 96f"),
+        ("ModeH/ModeHUI.cs", '"Enemies", -38f', '"Enemies", -78f'),
+        ("ModeH/ModeHUIPages.cs", "cardWidth, 134f, 40f", "cardWidth, 122f, 96f"),
         ("ZombieMode/ZombieModeUIHelper.cs", "if (graphic != null) graphic.color = Color.white;", ""),
         ("Common/Effects/RingParticleEffect.cs", "new GradientColorKey(Color.white, 0f)",
          "new GradientColorKey(tint, 0f)"),

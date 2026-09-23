@@ -30,7 +30,7 @@ Fate Echo **reads you first, then tests you**. Do not treat the strongest habit 
 
 - Check the HUD for the named ammo type
 - Swap ammo, swap weapons, or go melee before you start violating the mark
-- The Nemesis is already pressure enough; protect the break condition; Last Stand belongs to waves 2, 5 and 8
+- The Nemesis is pressure enough. Protect the break condition and leave Last Stand to waves 2, 5 and 8
 
 ### Act II: Spend Resources Carefully (Waves 4-6)
 
@@ -49,7 +49,7 @@ This is where many runs spend too much chasing Resolve. Contract progress matter
 
 ### Should You Take Last Stand?
 
-Last Stand only triggers on multi-Boss waves (2, 5, 8) — at most 3 chances per run.
+Last Stand only triggers on multi-Boss waves (2, 5, 8), so you get at most 3 chances per run.
 
 - **Safe route**: finish the last Boss during the countdown and secure the wave
 - **Contract route**: only chase Resolve when a scoreable direct gun/melee final blow is ready

@@ -117,6 +117,12 @@ namespace BossRush
             get { return _activeContext != null ? _activeContext.RemainingSeconds : 0f; }
         }
 
+        /// <summary>当前活动事件总时长（秒）；无事件时为 0。只读，给 HUD 进度条用。</summary>
+        internal float ActiveDurationSeconds
+        {
+            get { return _activeContext != null ? _activeContext.DurationSeconds : 0f; }
+        }
+
         /// <summary>本局已触发的事件数。</summary>
         internal int EventsFiredThisRun { get { return _eventsFiredThisRun; } }
 

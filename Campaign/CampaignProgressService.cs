@@ -302,8 +302,8 @@ namespace BossRush
                         ModBehaviour.DevLog(CampaignTuning.LogPrefix
                             + "[ERROR] 契约目标达成写入失败，本局将继续重试: " + chapterId);
                         Duckov.UI.NotificationText.Push(L10n.T(
-                            "契约进度暂时无法保存，稍后会自动重试。",
-                            "Contract progress could not be saved yet; it will retry automatically."));
+                            "契约进度还没存上，稍后会自动再试。",
+                            "Couldn't save contract progress yet. It'll keep retrying."));
                     }
                     return false;
                 }
@@ -396,10 +396,10 @@ namespace BossRush
                     ModBehaviour.DevLog(CampaignTuning.LogPrefix
                         + "[ERROR] 交付状态写入失败，奖金回滚=" + refunded + ": " + chapterId);
                     Duckov.UI.NotificationText.Push(refunded
-                        ? L10n.T("交付写入失败，本次奖金已撤回，可稍后重试。",
-                            "Delivery could not be saved; the reward was rolled back. Try again later.")
-                        : L10n.T("交付写入与奖金回滚均失败；请勿重复交付。",
-                            "Delivery save and reward rollback both failed; do not submit again."));
+                        ? L10n.T("交付没存上，这次的奖金先收回了，等会儿再试。",
+                            "Couldn't save the delivery. The reward was taken back. Try again later.")
+                        : L10n.T("交付没存上，奖金也没能收回，别再交一次。",
+                            "Delivery and reward rollback both failed. Don't hand it in again."));
                     return false;
                 }
 

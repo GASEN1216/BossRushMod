@@ -871,6 +871,66 @@
       "maxSize": 1024
     },
     {
+      "path": "Assets/ui/DailyReport/dr_icon_bounty.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_broadcast.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_deadline.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_fortune.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_gift.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_gossip.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_headline.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_income.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_issue.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_ribbon_income.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_ribbon_signin.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_ribbon_status.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_tip.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_icon_weather.png",
+      "maxSize": 256
+    },
+    {
+      "path": "Assets/ui/DailyReport/dr_mascot.png",
+      "maxSize": 256
+    },
+    {
       "path": "Assets/ui/ModeG/modeg_echo_banner.png",
       "maxSize": 1024
     },
@@ -916,6 +976,18 @@
     },
     {
       "path": "Assets/ui/random_events/evt_8.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/random_events/evt_9.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/random_events/evt_10.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/random_events/evt_11.png",
       "maxSize": 1024
     },
     {

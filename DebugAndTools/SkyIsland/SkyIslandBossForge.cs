@@ -341,12 +341,26 @@ namespace BossRush
         // 各位 Boss 共用的表现与伤害（不改 SkyIslandStormBoss；R2–R4 另有 SkyIslandBossProps）
         // ====================================================================
 
-        /// <summary>贴地预警圈：挂在地图根上、放在世界坐标 <paramref name="world"/>。半径由 <see cref="SetRing"/> 画，必须等于真实判定范围。</summary>
+        /// <summary>
+        /// 贴地预警圈：挂在地图根上、放在世界坐标 <paramref name="world"/>。半径由 <see cref="SetRing"/> 画，必须等于真实判定范围。
+        /// 圈上挂 <see cref="SkyIslandBossRingFx"/>：圈内随蓄力长满的填充（计时读数）、出现淡入、收起淡出（<see cref="ReleaseRing"/>）。
+        /// </summary>
         internal static LineRenderer CreateGroundRing(Transform root, Vector3 world)
         {
             LineRenderer line = SkyIslandGroundRing.Create(root, LocalOf(root, world));
             line.gameObject.name = "SkyIslandBossRing";
+            try { SkyIslandBossRingFx.Attach(line); }
+            catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 预警圈填充失败（只剩描边）：" + e.Message); }
             return line;
+        }
+
+        /// <summary>收起一个 Boss 贴地圈：挂了 <see cref="SkyIslandBossRingFx"/> 的淡出后自毁，其余直接销毁。调用方随即丢掉引用。</summary>
+        internal static void ReleaseRing(LineRenderer line)
+        {
+            if (line == null) return;
+            SkyIslandBossRingFx fx;
+            if (line.TryGetComponent(out fx)) fx.Release();
+            else UnityEngine.Object.Destroy(line.gameObject);
         }
 
         internal static void PlaceRing(LineRenderer line, Transform root, Vector3 world)
@@ -360,12 +374,30 @@ namespace BossRush
             return local + Vector3.up * SkyIslandGroundRing.GroundLift;
         }
 
-        /// <summary>按半径与蓄力度（0..1）重画圈：蓄力只影响线宽与不透明度，**不影响半径**。</summary>
+        /// <summary>
+        /// 按半径与蓄力度（0..1）重画圈：蓄力只影响线宽与不透明度，**不影响半径**。
+        /// 圈内的填充（<see cref="SkyIslandBossRingFx"/>）随蓄力从圆心长到判定半径，这是给玩家读「还剩多久」的，边界圈不动。
+        /// </summary>
         internal static void SetRing(LineRenderer line, float radius, float charge, Color tint)
         {
             if (line == null) return;
             Color solid = new Color(tint.r, tint.g, tint.b, Mathf.Lerp(0.45f, 1f, charge));
             SkyIslandGroundRing.SetShape(line, radius, Mathf.Lerp(0.18f, 0.55f, charge), solid);
+            SkyIslandBossRingFx fx;
+            if (line.TryGetComponent(out fx)) fx.Charge(radius, charge, tint, solid);
+        }
+
+        /// <summary>
+        /// 常驻的一块地（穗镰漫开之后的泥，VB-22）：圈压到 0.6 不透明、带宽 0.3，圈内铺满一层 <paramref name="surface"/> 色的面，
+        /// 泥本身看得见。半径仍是判定半径。
+        /// </summary>
+        internal static void SetPatch(LineRenderer line, float radius, Color tint, Color surface)
+        {
+            if (line == null) return;
+            Color solid = new Color(tint.r, tint.g, tint.b, 0.6f);
+            SkyIslandGroundRing.SetShape(line, radius, 0.3f, solid);
+            SkyIslandBossRingFx fx;
+            if (line.TryGetComponent(out fx)) fx.Surface(radius, surface, solid);
         }
 
         /// <summary>两点直线（光柱、供能线）：借贴地圈的建造点拿共享材质，再改成世界坐标下的两点线，不另建材质。</summary>
@@ -382,6 +414,44 @@ namespace BossRush
             line.startColor = color;
             line.endColor = color;
             return line;
+        }
+
+        /// <summary>
+        /// 桩身光柱（供能桩 / 根桩，VB-24）：底部满宽、往上收到 35%，顶端淡到透明，不再是一根上下都硬断的平色条。
+        /// 位置由调用方写（第 0 点在地面、第 1 点在顶端）。
+        /// </summary>
+        internal static LineRenderer ColumnLine(Transform parent, string name, float width, Color color)
+        {
+            LineRenderer line = StraightLine(parent, name, width, color);
+            line.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 0.35f));
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(Color.Lerp(color, Color.white, 0.25f), 0f), new GradientColorKey(color, 0.6f), new GradientColorKey(color, 1f) },
+                new[] { new GradientAlphaKey(color.a, 0f), new GradientAlphaKey(color.a * 0.85f, 0.6f), new GradientAlphaKey(0f, 1f) });
+            line.colorGradient = gradient;
+            line.numCapVertices = 0;
+            return line;
+        }
+
+        /// <summary>
+        /// 桩上的小灯（VB-24）：与光柱同色，强度 1.2、半径 2.5 m，0.2 s 淡入。挂在桩自己身上，桩被打空停用时一起灭。
+        /// </summary>
+        internal static void PylonLight(Transform parent, Color color)
+        {
+            try
+            {
+                GameObject go = new GameObject("PylonLight");
+                go.transform.SetParent(parent, false);
+                go.transform.localPosition = Vector3.up * 0.4f;
+                Light light = go.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.color = color;
+                light.range = 2.5f;
+                light.intensity = 0f;
+                light.shadows = LightShadows.None;
+                SkyIslandLightFade.FadeTo(light, 1.2f, 0.2f, false);
+            }
+            catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 桩灯失败：" + e.Message); }
         }
 
         /// <summary>把一个点吸附到本图地面上（向下射线 + 墙体胶囊检查，口径同遭遇落点）。</summary>
@@ -402,8 +472,14 @@ namespace BossRush
         /// <summary>
         /// 范围伤害，口径照抄 `SkyIslandStormBoss.Detonate`：官方爆炸（无距离衰减，圈内吃满）、`canHurtSelf:false`
         /// （官方默认 true 时 selfTeam=Teams.all，同阵营的桩与随从也会被炸）、buff/effect 通道不计武器击杀。
+        ///
+        /// 表现（VB-21，判定半径与数值一字不动）：
+        /// - <paramref name="blast"/>：真的是爆炸的招式（星焰、星火）留官方火球（normal）；镰扫、落石、换位、冲步、伏击、绊索传 false，
+        ///   走 custom（官方分支不生成任何特效）——手雷火球和这些招式毫无关系，而且大小固定、不跟判定半径走；
+        /// - <paramref name="shake"/>：官方震屏强度（30 m 内生效）。一轮齐落的几圈只给第一发，其余传 0；
+        /// - 伤害结算后在原地放 <see cref="SkyIslandImpactFx.Play"/>：一圈先闪再扩散淡出的余波 + 圈沿扬尘，颜色取招式自己的预警色。
         /// </summary>
-        internal static void Detonate(CharacterMainControl source, Vector3 origin, float radius, float damageValue)
+        internal static void Detonate(CharacterMainControl source, Vector3 origin, float radius, float damageValue, bool blast, float shake, Color tint)
         {
             if (source == null || LevelManager.Instance == null || LevelManager.Instance.ExplosionManager == null) return;
             DamageInfo damage = new DamageInfo(source);
@@ -411,7 +487,9 @@ namespace BossRush
             damage.isExplosion = true;
             damage.isFromBuffOrEffect = true;
             damage.fromWeaponItemID = 0;
-            LevelManager.Instance.ExplosionManager.CreateExplosion(origin, radius, damage, ExplosionFxTypes.normal, 0f, false);
+            ExplosionFxTypes fx = blast ? ExplosionFxTypes.normal : ExplosionFxTypes.custom;
+            LevelManager.Instance.ExplosionManager.CreateExplosion(origin, radius, damage, fx, shake, false);
+            SkyIslandImpactFx.Play(source.transform.parent, origin, radius, tint, 0);
         }
 
         /// <summary>这件专属装备是否已经不起作用：没穿、被换掉、或耐久打空（官方耐久归零后属性修饰也失效）。</summary>
@@ -445,6 +523,7 @@ namespace BossRush
         {
             Defeated = null;
             SkyIslandBossGearWorn.Reset();
+            SkyIslandImpactFx.ResetStaticCaches();
         }
     }
 }

@@ -54,14 +54,17 @@ namespace BossRush
             appliedExits = exits;
             appliedLanguage = language;
             Clear();
-            Add(dock, L10n.T("码头撤离点", "Dock extraction"), BossRushUIColors.Accent, 0f);
-            Add(bell, L10n.T("归航钟庭撤离点", "Bell Court extraction"), BossRushUIColors.SuccessText, 0f);
-            Add(wind, L10n.T("悬根林广场撤离点", "Hanging Root Wood extraction"), BossRushUIColors.SuccessText, 0f);
-            Add(star, L10n.T("残星工坊广场撤离点", "Fallen Star Workshop extraction"), BossRushUIColors.SuccessText, 0f);
+            // 撤离点借官方出口的图标（UE-21）：和原版地图上的出口一个样子，一眼认得出「从这里走」；取不到就退回默认图标。
+            Sprite exit = ExitIcon();
+            Add(dock, L10n.T("码头撤离点", "Dock extraction"), BossRushUIColors.Accent, 0f, exit);
+            Add(bell, L10n.T("归航钟庭撤离点", "Bell Court extraction"), BossRushUIColors.SuccessText, 0f, exit);
+            Add(wind, L10n.T("悬根林广场撤离点", "Hanging Root Wood extraction"), BossRushUIColors.SuccessText, 0f, exit);
+            Add(star, L10n.T("残星工坊广场撤离点", "Fallen Star Workshop extraction"), BossRushUIColors.SuccessText, 0f, exit);
             foreach (string target in ObjectiveTargets(data))
-                Add(root.Find(target), L10n.T("当前目标", "Current objective"), BossRushUIColors.WarningText, ObjectiveRadius);
+                Add(root.Find(target), L10n.T("当前目标", "Current objective"), BossRushUIColors.WarningText, ObjectiveRadius, null);
+            // 支线 / 可选挑战用紫（UE-21）：旧写法和码头撤离点同为 Accent 青，地图上一眼分不开。
             foreach (string target in SideTargets(data))
-                Add(root.Find(target), SideLabel(target), BossRushUIColors.Accent, ObjectiveRadius);
+                Add(root.Find(target), SideLabel(target), BossRushUIColors.RarityEpic, ObjectiveRadius, null);
             if (notify == null) return;
             if ((opened & 2) != 0)
                 notify(L10n.T("风标点亮：悬根林广场开出返航风道，站进绿环即可撤离",
@@ -116,7 +119,28 @@ namespace BossRush
                 : L10n.T("支线目标", "Side objective");
         }
 
-        private void Add(Transform anchor, string label, Color color, float areaRadius)
+        private static readonly System.Reflection.FieldInfo ExitIconField = BossRush.Common.Utils.ReflectionCache.GetField(
+            typeof(global::ExitCreator), "icon", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        /// <summary>
+        /// 官方出口在地图上用的图标（<c>ExitCreator</c> 的私有序列化字段 <c>icon</c>，官方 SpawnMapElement 就拿它 Setup）。
+        /// 天空岛这张图上没有 ExitCreator、或官方改了字段名时返回 null，地图点退回官方默认图标（纯表现层，不告警）。
+        /// </summary>
+        private static Sprite ExitIcon()
+        {
+            try
+            {
+                global::LevelManager level = global::LevelManager.Instance;
+                global::ExitCreator creator = level != null ? level.ExitCreator : null;
+                return creator != null && ExitIconField != null ? ExitIconField.GetValue(creator) as Sprite : null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        private void Add(Transform anchor, string label, Color color, float areaRadius, Sprite icon)
         {
             if (anchor == null) return;
             try
@@ -133,7 +157,7 @@ namespace BossRush
                 // 直接传成品文字，地图上天空岛的标签全带星号（2026-09-15 第五轮截图）。按标记注册一条覆盖文本，再把键交给它。
                 string key = "BossRush_SkyIslandMap_" + spawned.Count;
                 LocalizationHelper.InjectLocalization(key, label);
-                poi.Setup(null, key);
+                poi.Setup(icon, key);
                 spawned.Add(go);
             }
             catch (Exception e)

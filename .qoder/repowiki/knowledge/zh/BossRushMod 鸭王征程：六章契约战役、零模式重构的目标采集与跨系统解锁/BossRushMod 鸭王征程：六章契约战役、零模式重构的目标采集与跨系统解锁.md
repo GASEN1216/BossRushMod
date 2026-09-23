@@ -148,7 +148,7 @@ Available。这样调整章节表不需要迁移存档，也不会出现「存�
 ### 3.4 终章：零新增 3D 资产
 
 复用 `SpawnPhantomWitch` 的公开生成 API，生成后叠三层：`ApplyBossStatMultiplier`
-补战役倍率、工厂 `extraModelScale` 在碰撞体缓存前缩放、`MaterialPropertyBlock` 绯红染色。
+补战役倍率、工厂 `extraModelScale` 在碰撞体缓存前缩放、`_Tint` 属性块在原色上乘冷红 (0.78,0.55,0.6)、跳过捏脸部件，并挂跟随的暗红烟缕 / 符文环（2026-09-23 起，`Campaign/CampaignFinalBossFx.cs`）。
 官方 preset 在生成流程里已被克隆过一份，改 `nameKey` 只影响这一只。
 
 **门禁与隔离**：复用女巫工厂的 `isNonWaveSpawn: true`，不登记标准波次；只在终章契约进行中、主玩家存活且场上没有其它模式时显示/允许召唤。玩家中途开了模式则征程取消独白、回收 Boss 并让路，不修改路牌入口。
@@ -295,6 +295,6 @@ CampaignObjectiveCollector 只把正 finalDamage 计为受伤，避免官方零�
 
 公告板给出入场准备、设施回报和丧尸最早第五波 Boss 后撤离的说明，复用现有模态租约；HUD 脏检查包含语言并按实际文本量高。线索以 Mod 当前槽为权威，修复官方列表已有但字典缺失，并撤回非权威镜像；存档读故障时不以空集撤回。对话 token 沿用共享管理器的 owner 清理，取消旧等待不影响后继会话。
 
-终章生成编号隔离旧成功/旧异常，返回无 Health/已死亡产物也回收。落点复用关卡点和 `SpawnPositionHelper`，召唤石采样至多每秒一次。程序化公告板/召唤石复用现有 URP shader，纹理、sprite、材质与染色工具归 `CampaignAssetCache` 的现有账本；没有另建缓存或调度器。
+终章生成编号隔离旧成功/旧异常，返回无 Health/已死亡产物也回收。落点复用关卡点和 `SpawnPositionHelper`，召唤石采样至多每秒一次。程序化公告板复用现有 URP shader，召唤石 2026-09-23 起首选 `SodaCraft/SodaCharacter`（浮动自转的晶体、自发光、呼吸点光、余烬，开战时 0.5 秒缩没，表现与退场在 `Campaign/CampaignFinalBossFx.cs`），纹理、sprite、材质与染色工具归 `CampaignAssetCache` 的现有账本；没有另建缓存或调度器。
 
 执行证据：`CampaignPlayability`、`ContentTransactions`；结构接线：`CampaignFlowGuard`。新增内容必须同时维护 JSON、硬编码 fallback 与签名校验，不能承诺只改 JSON 即热扩展。详细范围、失败记录与实机清单见 `docs/代码审查/2026-09-18-鸭王征程生产审核与体验优化.md`。离线结果不证明实战难度、物理/渲染或帧时间。

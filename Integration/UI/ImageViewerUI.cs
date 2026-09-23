@@ -4,6 +4,13 @@
 // 模块说明：
 //   用于全屏显示图片的UI管理器。
 //   支持从AssetBundle加载图片，点击任意位置关闭。
+//
+//   2026-09-23 审美审查 UD-45：叮当的涂鸦、生日贺图这类「礼物」旧版一帧弹满整屏、一帧消失，
+//   图片直接悬在 0.9 黑底上。现在：
+//   - 图片装进一张圆角卡（SurfaceRaised + 描边 + 外投影，内衬 12px），卡片按图片宽高比贴合（AspectRatioFitter）；
+//   - 打开：遮罩暗角 + 0.15 秒淡入，卡片走共享打开动画，标题 / 提示错峰淡入；
+//   - 关闭：0.12 秒淡出后再 SetActive(false)。本界面是复用的单例根，不能用 PlayCloseAndDestroy，
+//     淡出由自己的 Update 推进（unscaled 时间 + IsGamePaused 门），淡出中再次打开会直接取消淡出。
 // ============================================================================
 
 using System;
@@ -43,7 +50,10 @@ namespace BossRush
         // ============================================================================
 
         private GameObject uiRoot;
+        private CanvasGroup rootGroup;
         private Image backgroundImage;
+        private GameObject imageFrame;
+        private AspectRatioFitter frameFitter;
         private Image mainImage;
         private TextMeshProUGUI titleText;
         private TextMeshProUGUI hintText;
@@ -55,14 +65,19 @@ namespace BossRush
         private bool isOpen = false;
         private ZombieModeUIHelper.ModalInputLease modalLease;
         private Sprite currentSprite = null;
+        private bool closing = false;
+        private float closeElapsed = 0f;
 
         // ============================================================================
         // 常量
         // ============================================================================
 
         private const float IMAGE_MAX_SCALE = 0.85f;  // 图片最大占屏幕比例
-        private const int TITLE_FONT_SIZE = 36;
-        private const int HINT_FONT_SIZE = 24;
+        private const int TITLE_FONT_SIZE = 34;
+        private const int HINT_FONT_SIZE = 16;
+        /// <summary>图片与卡片边缘之间的内衬。</summary>
+        private const float FRAME_PADDING = 12f;
+        private const float BACKDROP_FADE_SECONDS = 0.15f;
 
         // ============================================================================
         // 初始化
@@ -103,6 +118,8 @@ namespace BossRush
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
 
             uiRoot.AddComponent<GraphicRaycaster>();
+            // 关闭淡出用：整个根一起淡（复用的单例根，淡完 SetActive(false)，见 Update）。
+            rootGroup = uiRoot.AddComponent<CanvasGroup>();
 
             // 2. 创建背景（半透明黑色，接收点击）
             GameObject bgObj = new GameObject("Background");
@@ -112,6 +129,8 @@ namespace BossRush
             // 全屏看图要压住背后的战斗画面，用强遮罩 token，不另起一套魔法数字。
             backgroundImage.color = BossRushUIColors.BackdropStrong;
             backgroundImage.raycastTarget = true;
+            // 暗角把视线往中间收（共享遮罩口径）；它顺带起播一次淡入，每次打开再重播（ShowRoot）。
+            BossRushUIKit.StyleBackdrop(backgroundImage);
 
             RectTransform bgRect = bgObj.GetComponent<RectTransform>();
             bgRect.anchorMin = Vector2.zero;
@@ -126,16 +145,11 @@ namespace BossRush
             clickEntry.callback.AddListener((data) => { CloseUI(); });
             trigger.triggers.Add(clickEntry);
 
-            // 3. 创建主图片
-            GameObject imgObj = new GameObject("MainImage");
-            imgObj.transform.SetParent(uiRoot.transform, false);
-
-            mainImage = imgObj.AddComponent<Image>();
-            mainImage.preserveAspect = true;
-            mainImage.raycastTarget = false;
-
-            RectTransform imgRect = imgObj.GetComponent<RectTransform>();
-            // 在 Canvas 逻辑坐标内留出标题/关闭提示区，Image.preserveAspect 负责适配。
+            // 3. 创建主图片：可用区域 → 按图片宽高比贴合的圆角卡 → 卡内留 12px 的图片
+            GameObject areaObj = new GameObject("ImageArea");
+            areaObj.transform.SetParent(uiRoot.transform, false);
+            RectTransform imgRect = areaObj.AddComponent<RectTransform>();
+            // 在 Canvas 逻辑坐标内留出标题/关闭提示区，卡片与 Image.preserveAspect 负责适配。
             // 不把 Screen 像素直接写入 sizeDelta，否则 4K 会被 CanvasScaler 再放大一遍。
             float sideMargin = (1f - IMAGE_MAX_SCALE) * 0.5f;
             imgRect.anchorMin = new Vector2(sideMargin, 0f);
@@ -143,6 +157,35 @@ namespace BossRush
             imgRect.pivot = new Vector2(0.5f, 0.5f);
             imgRect.offsetMin = new Vector2(0f, 110f);
             imgRect.offsetMax = new Vector2(0f, -110f);
+
+            imageFrame = new GameObject("ImageFrame");
+            imageFrame.transform.SetParent(areaObj.transform, false);
+            RectTransform frameRect = imageFrame.AddComponent<RectTransform>();
+            frameRect.anchorMin = Vector2.zero;
+            frameRect.anchorMax = Vector2.one;
+            frameRect.offsetMin = Vector2.zero;
+            frameRect.offsetMax = Vector2.zero;
+            Image frameImage = imageFrame.AddComponent<Image>();
+            frameImage.color = BossRushUIColors.SurfaceRaised;
+            frameImage.raycastTarget = false;
+            BossRushUI.ApplyFramedPanelSkin(frameImage, 10, BossRushUISkinPart.Card);
+            // 卡片在可用区域内按图片宽高比贴合：宽图贴左右、竖图贴上下，不会出现一大块空卡底。
+            frameFitter = imageFrame.AddComponent<AspectRatioFitter>();
+            frameFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            frameFitter.aspectRatio = 1f;
+
+            GameObject imgObj = new GameObject("MainImage");
+            imgObj.transform.SetParent(imageFrame.transform, false);
+
+            mainImage = imgObj.AddComponent<Image>();
+            mainImage.preserveAspect = true;
+            mainImage.raycastTarget = false;
+
+            RectTransform mainRect = imgObj.GetComponent<RectTransform>();
+            mainRect.anchorMin = Vector2.zero;
+            mainRect.anchorMax = Vector2.one;
+            mainRect.offsetMin = new Vector2(FRAME_PADDING, FRAME_PADDING);
+            mainRect.offsetMax = new Vector2(-FRAME_PADDING, -FRAME_PADDING);
 
             // 4. 创建标题文本
             GameObject titleObj = new GameObject("Title");
@@ -163,7 +206,8 @@ namespace BossRush
             titleRect.anchorMax = new Vector2(0.9f, 1);
             titleRect.pivot = new Vector2(0.5f, 1);
             titleRect.anchoredPosition = new Vector2(0, -30);
-            titleRect.sizeDelta = new Vector2(0f, 50f);
+            // 单行框高 ≥ 字号×1.45+4（34 号 → 54），框不够时 TMP Ellipsis 会清空整行。
+            titleRect.sizeDelta = new Vector2(0f, 54f);
 
             // 5. 创建提示文本
             GameObject hintObj = new GameObject("Hint");
@@ -238,9 +282,20 @@ namespace BossRush
             if (!isOpen) return;
 
             isOpen = false;
-            uiRoot.SetActive(false);
 
+            // 先放输入，再播淡出：动画不能变成输入延迟。淡出中不再吃点击，淡完由 Update 收起根物体。
             if (modalLease != null) { modalLease.Release(); modalLease = null; }
+            if (uiRoot != null && uiRoot.activeInHierarchy && rootGroup != null)
+            {
+                closing = true;
+                closeElapsed = 0f;
+                rootGroup.blocksRaycasts = false;
+                rootGroup.interactable = false;
+            }
+            else if (uiRoot != null)
+            {
+                uiRoot.SetActive(false);
+            }
 
             ModBehaviour.DevLog("[ImageViewer] UI已关闭");
         }
@@ -258,9 +313,12 @@ namespace BossRush
         {
             currentSprite = sprite;
 
-            // 设置图片
+            // 设置图片：卡片按图片宽高比贴合
             mainImage.sprite = sprite;
             mainImage.enabled = true;
+            imageFrame.SetActive(true);
+            Rect spriteRect = sprite.rect;
+            frameFitter.aspectRatio = spriteRect.height > 0f ? spriteRect.width / spriteRect.height : 1f;
             hintText.text = L10n.T("点击任意位置关闭", "Click anywhere to close");
 
             // 设置标题
@@ -275,8 +333,7 @@ namespace BossRush
             }
 
             // 显示UI
-            uiRoot.SetActive(true);
-            isOpen = true;
+            ShowRoot();
 
             // 暂停游戏
             if (modalLease == null) modalLease = ZombieModeUIHelper.ClaimModalInput(uiRoot, "ImageViewer");
@@ -290,17 +347,51 @@ namespace BossRush
             currentSprite = null;
             mainImage.sprite = null;
             mainImage.enabled = false;
+            imageFrame.SetActive(false);   // 没有图就不留一张空卡
             string placeholderTitle = string.IsNullOrEmpty(title) ?
                 L10n.T("图片暂不可用", "Image unavailable") : title;
             titleText.text = placeholderTitle;
             titleText.gameObject.SetActive(true);
             hintText.text = L10n.T("图片未能加载 · 点击任意位置关闭", "Image could not be loaded · Click anywhere to close");
 
-            uiRoot.SetActive(true);
-            isOpen = true;
+            ShowRoot();
             if (modalLease == null) modalLease = ZombieModeUIHelper.ClaimModalInput(uiRoot, "ImageViewer");
 
             ModBehaviour.DevLog("[ImageViewer] 显示占位图: " + placeholderTitle);
+        }
+
+        /// <summary>
+        /// 打开（或在淡出途中重新打开）：取消淡出、恢复点击，遮罩淡入，卡片走共享打开动画，标题 / 提示错峰淡入。
+        /// 同页已开着时换图不重播（换内容不该整屏再闪一次）。
+        /// </summary>
+        private void ShowRoot()
+        {
+            bool wasVisible = isOpen && !closing && uiRoot.activeSelf;
+            closing = false;
+            closeElapsed = 0f;
+            if (rootGroup != null)
+            {
+                rootGroup.alpha = 1f;
+                rootGroup.blocksRaycasts = true;
+                rootGroup.interactable = true;
+            }
+            uiRoot.SetActive(true);
+            isOpen = true;
+            if (wasVisible)
+            {
+                return;
+            }
+
+            BossRushUIEntranceAnimation.Play(backgroundImage.gameObject, 0f, BACKDROP_FADE_SECONDS, 0f);
+            if (imageFrame.activeSelf)
+            {
+                BossRushUI.PlayOpenAnimation(imageFrame);
+            }
+            if (titleText.gameObject.activeSelf)
+            {
+                BossRushUIEntranceAnimation.Play(titleText.gameObject, 0.06f, 0.2f, 8f);
+            }
+            BossRushUIEntranceAnimation.Play(hintText.gameObject, 0.12f, 0.2f, 0f);
         }
 
         private Sprite LoadSpriteFromBundle(string bundleName, string imageName)
@@ -373,12 +464,47 @@ namespace BossRush
 
         private void Update()
         {
+            if (closing)
+            {
+                TickCloseFade();
+                return;
+            }
             if (!isOpen) return;
 
             // ESC键关闭
             if (Input.GetKeyDown(KeyCode.Escape))
             {
                 CloseUI();
+            }
+        }
+
+        /// <summary>关闭淡出：0.12 秒 SmoothStep，走 unscaled 时间；暂停菜单开着时停推进。淡完收起根物体、复位 alpha。</summary>
+        private void TickCloseFade()
+        {
+            if (BossRushUI.IsGamePaused())
+            {
+                return;
+            }
+            closeElapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(closeElapsed / BossRushUIKit.CloseSeconds);
+            if (rootGroup != null)
+            {
+                rootGroup.alpha = 1f - BossRushUI.SmoothStep(t);
+            }
+            if (t < 1f)
+            {
+                return;
+            }
+            closing = false;
+            if (uiRoot != null)
+            {
+                uiRoot.SetActive(false);
+            }
+            if (rootGroup != null)
+            {
+                rootGroup.alpha = 1f;
+                rootGroup.blocksRaycasts = true;
+                rootGroup.interactable = true;
             }
         }
 

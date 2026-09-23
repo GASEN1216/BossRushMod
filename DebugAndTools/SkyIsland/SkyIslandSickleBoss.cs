@@ -29,13 +29,17 @@ namespace BossRush
         private const float TickInterval = 0.2f;
         /// <summary>每拍重新挂一次的减速时长：比节拍略长，站在泥里一直续上；出了泥最多再慢这么久。</summary>
         private const float MudSlowRefresh = 0.35f;
-        /// <summary>泥漫开之后圈保持的蓄力度（线宽与不透明度），和还在漫开、越来越亮的圈区分开。</summary>
-        private const float MudSteadyCharge = 0.75f;
         /// <summary>梯田一层层有落差：和泥块中心的高差超过这么多（米）就不算踩进这块泥（站在上一层田埂上不该被下一层的泥拖慢）。</summary>
         private const float MudHeightTolerance = 1.5f;
         private const string MudPatchName = "SkyIslandMudPatch";
         private const string SweepRingName = "SkyIslandSickleSweep";
         private static readonly Color MudTint = new Color(0.46f, 0.34f, 0.20f, 1f);
+        /// <summary>漫开之后的泥面：暗、半透明，压在暖琥珀的田埂上读作「湿泥」而不是一块色贴纸。</summary>
+        private static readonly Color MudSurface = new Color(0.22f, 0.16f, 0.10f, 0.45f);
+        /// <summary>踩进泥里溅起的泥点颜色。</summary>
+        private static readonly Color MudSplashColor = new Color(0.30f, 0.22f, 0.13f, 0.9f);
+        /// <summary>站在泥里时每隔几拍再溅一次（节拍 0.2 s，3 拍 ≈ 0.6 s），刚踩进去那一拍必溅。</summary>
+        private const int MudSplashEveryTicks = 3;
         private static readonly Color SweepTint = new Color(0.90f, 0.78f, 0.35f, 1f);
 
         /// <summary>一块泥：圈中心、开始漫开与漫开完成的时刻、消失时刻。值类型，节流推进与逐帧蓄力里不产生垃圾。</summary>
@@ -54,7 +58,7 @@ namespace BossRush
         private SkyIslandPlayerSlow slow;
         private readonly List<MudPatch> mudPatches = new List<MudPatch>();
         private LineRenderer sweepRing;
-        private int phase, helpersCalled;
+        private int phase, helpersCalled, mudTicks;
         private float nextTick, sweepReadyAt;
         private bool subscribed, finished, sweeping, mudCharging, sluiceAnnounced, sweepAnnounced;
         private bool hatEquipped, raincoatEquipped, hatBrokenAnnounced, raincoatBrokenAnnounced;
@@ -187,7 +191,8 @@ namespace BossRush
                     stillCharging = true;
                     continue;
                 }
-                SkyIslandBossForge.SetRing(patch.Ring, SkyIslandBossRules.MudRadius, MudSteadyCharge, MudTint);
+                // 漫开之后是一块看得见的泥：圈内铺满暗泥色，圈压到 0.6（VB-22；此前只剩一圈棕色细线，泥本身看不见）。
+                SkyIslandBossForge.SetPatch(patch.Ring, SkyIslandBossRules.MudRadius, MudTint, MudSurface);
                 patch.Steady = true;
                 mudPatches[i] = patch;
             }
@@ -206,7 +211,8 @@ namespace BossRush
                 MudPatch patch = mudPatches[i];
                 if (now >= patch.ExpiresAt || patch.Ring == null)
                 {
-                    if (patch.Ring != null) Destroy(patch.Ring.gameObject);
+                    // 泥干了：淡出，不一帧消失。
+                    SkyIslandBossForge.ReleaseRing(patch.Ring);
                     mudPatches.RemoveAt(i);
                     continue;
                 }
@@ -216,6 +222,13 @@ namespace BossRush
             }
             if (inMud) slow.Apply(player, SkyIslandBossRules.MudSlow, MudSlowRefresh);
             slow.Tick(now);
+            // 踩进泥里脚下溅几粒泥点（VB-22）：刚踩进去那一拍一定溅，之后每 3 拍再溅一次；按节拍走，不进每帧路径。
+            if (inMud)
+            {
+                if (mudTicks % MudSplashEveryTicks == 0) SkyIslandImpactFx.Splash(context.Root, feet, MudSplashColor, 4);
+                mudTicks++;
+            }
+            else mudTicks = 0;
         }
 
         /// <summary>谷仓叫人（只在第一次开闸时）：遭遇 owner 把那一组还活着的人拉到谷仓门口并盯上主角。</summary>
@@ -237,7 +250,7 @@ namespace BossRush
                 Announce("穗镰朝谷仓吆喝了一声，那边的帮手跑了过来。",
                     "Grain Sickle hollers toward the barn, and the helpers over there come running.", false);
             else
-                Announce("穗镰朝谷仓吆喝了一声，没有人应——谷仓那边已经清干净了。",
+                Announce("穗镰朝谷仓吆喝了一声，没人应，谷仓那边已经清干净了。",
                     "Grain Sickle hollers toward the barn. Nobody answers; the barn has already been cleared.", false);
         }
 
@@ -287,7 +300,12 @@ namespace BossRush
             if (!Aborted())
             {
                 // catch 子句体内不能 yield return（CS1631）：这里只记账。
-                try { SkyIslandBossForge.Detonate(boss, boss.transform.position, SkyIslandBossRules.SweepRadius, SkyIslandBossRules.SweepDamage); }
+                // 镰扫不是爆炸：不冒官方火球，只留余波圈与扬尘（VB-21）。
+                try
+                {
+                    SkyIslandBossForge.Detonate(boss, boss.transform.position, SkyIslandBossRules.SweepRadius, SkyIslandBossRules.SweepDamage,
+                        false, SkyIslandImpactFx.BossShake, SweepTint);
+                }
                 catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 穗镰镰扫失败：" + e.Message); }
             }
             DestroySweepRing();
@@ -341,7 +359,7 @@ namespace BossRush
 
         private void DestroySweepRing()
         {
-            if (sweepRing != null) Destroy(sweepRing.gameObject);
+            SkyIslandBossForge.ReleaseRing(sweepRing);
             sweepRing = null;
         }
 

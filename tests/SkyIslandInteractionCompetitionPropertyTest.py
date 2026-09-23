@@ -40,6 +40,22 @@ from SkyIslandContentPlacementPropertyTest import (  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# 2026-09-23：SkyIslandHud / SkyIslandStoryPresentation 超 1200 行，按 AGENTS §4.15 原样拆出同一 partial 的新文件。
+# 读主文件时把拆出去的那一半接在后面，断言照旧针对整个类。
+SPLIT_PARTS = {
+    "DebugAndTools/SkyIsland/SkyIslandHud.cs": "DebugAndTools/SkyIsland/SkyIslandHud_Layout.cs",
+    "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs": "DebugAndTools/SkyIsland/SkyIslandStoryPresentation_Parts.cs",
+}
+
+
+def read_with_parts(root, rel):
+    text = (root / rel).read_text(encoding="utf-8-sig")
+    part = SPLIT_PARTS.get(str(rel).replace("\\", "/"))
+    if part and (root / part).is_file():
+        text += "\n" + (root / part).read_text(encoding="utf-8-sig")
+    return text
+
+
 # ---------------------------------------------------------------------------
 # 生产常量。**必须从源码读出来**，不能在这里写死第二份：
 # 写死的话，生产改了间距而这里没改，测试会继续用旧值算出「安全」。
@@ -47,7 +63,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _read(path):
-    return (ROOT / path).read_text(encoding='utf-8-sig')
+    return read_with_parts(ROOT, path)
 
 
 def _const(source, pattern, label):

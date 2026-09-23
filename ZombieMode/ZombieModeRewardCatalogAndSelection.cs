@@ -26,6 +26,9 @@ namespace BossRush
 
             zombieModeRunState.CombatPhase = ZombieModeCombatPhase.RewardSelection;
             EnsureZombieModeRewardNode(bossNode);
+            // 同一节点内的刷新 / 追加选择 / 休息时长：面板原地重排，不重建遮罩与输入租约（审美审查 UC-08）。
+            ZombieModeRewardSelectionView current = zombieModeRewardUiRoot != null ? zombieModeRewardUiRoot.GetComponent<ZombieModeRewardSelectionView>() : null;
+            if (current != null && current.TryRebuild(runId, restEditorExpanded)) return;
             ClearZombieModeRewardShell();
             zombieModeRewardUiRoot = new GameObject("ZombieMode_RewardSelection");
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.RewardUi, zombieModeRewardUiRoot, zombieModeRewardUiRoot, null);

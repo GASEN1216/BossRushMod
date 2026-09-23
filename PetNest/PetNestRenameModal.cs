@@ -13,6 +13,9 @@
 //   - **接管输入**：canvas interactive + 独占 modal lease，否则底下的巢面板
 //     照样能被点到（同 PetNestHatchRevealView 的教训）；
 //   - 关闭即销毁，不常驻。
+//
+// 2026-09-23 审美审查 UA-19 / UA-21：输入框改成圆角底 + Accent 描边（旧写法是没有 sprite 的直角亮青方框）；
+// 按钮改成「取消 / 恢复默认 / 确认」三颗，确认是唯一的 AccentFill 主按钮；回车提交、ESC 取消；关闭淡出。
 // ============================================================================
 
 using System;
@@ -32,6 +35,8 @@ namespace BossRush
 
         private Canvas _canvas;
         private ZombieModeUIHelper.ModalInputLease _modalLease;
+        private PetNestCancelKey _cancelKey;
+        private bool _closing;
         private TMP_InputField _field;
         private string _petId;
         private Action _onClosed;
@@ -62,16 +67,31 @@ namespace BossRush
             }
         }
 
-        /// <summary>关闭并销毁。幂等。</summary>
+        /// <summary>弹窗是否开着（ESC 优先级判定用）。</summary>
+        internal static bool IsOpen
+        {
+            get { return _instance != null; }
+        }
+
+        /// <summary>关闭并销毁。幂等。异常清理 / 宿主销毁走这里（立即销毁）。</summary>
         internal static void Close()
+        {
+            CloseInternal(false);
+        }
+
+        /// <summary>animated 只在玩家点按钮 / 回车 / ESC 时为 true：画布 0.12 秒淡出（UA-21）。</summary>
+        private static void CloseInternal(bool animated)
         {
             try
             {
                 if (_instance == null) return;
-                _instance.ReleaseLease();
-                if (_instance.gameObject != null)
+                PetNestRenameModal closing = _instance;
+                closing.ReleaseLease();
+                if (closing._cancelKey != null) closing._cancelKey.Detach();
+                if (closing.gameObject != null)
                 {
-                    UnityEngine.Object.Destroy(_instance.gameObject);
+                    if (animated) PetNestUI.FadeOutAndDestroy(closing.gameObject, closing._canvas);
+                    else UnityEngine.Object.Destroy(closing.gameObject);
                 }
             }
             catch (Exception)
@@ -128,8 +148,9 @@ namespace BossRush
             TextMeshProUGUI title = ZombieModeUIHelper.CreateText(
                 "Title", surface.transform,
                 LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "Rename_Title"),
-                26f, new Vector2(0f, 104f), new Vector2(560f, 44f),
+                28f, new Vector2(0f, 104f), new Vector2(560f, 44f),
                 TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
+            title.fontStyle = FontStyles.Bold;
             BossRushUI.ApplyGameFont(title);
 
             TextMeshProUGUI hint = ZombieModeUIHelper.CreateText(
@@ -141,37 +162,48 @@ namespace BossRush
 
             BuildInput(surface.transform, pet);
 
+            // 三颗按钮：取消（次级）/ 恢复默认（次级）/ 确认（唯一主按钮 AccentFill）。
+            // 旧写法只有「确认」「恢复默认」两颗同色按钮，想不改名只能原样提交（UA-19）。
+            Button cancel = ZombieModeUIHelper.CreateButton(
+                "Cancel", surface.transform, L10n.T("取消", "Cancel"),
+                new Vector2(0.5f, 0.5f), new Vector2(-190f, -96f), new Vector2(170f, 48f),
+                BossRushUIColors.SurfaceRaised, 18f, new Vector2(160f, 44f),
+                delegate { Cancel(); }, true);
+            BossRushUIKit.StyleSecondaryButton(cancel);
+
+            Button reset = ZombieModeUIHelper.CreateButton(
+                "Reset", surface.transform,
+                LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "Rename_Reset"),
+                new Vector2(0.5f, 0.5f), new Vector2(0f, -96f), new Vector2(170f, 48f),
+                BossRushUIColors.SurfaceRaised, 18f, new Vector2(160f, 44f),
+                delegate { ResetToDefault(); }, true);
+            BossRushUIKit.StyleSecondaryButton(reset);
+
             ZombieModeUIHelper.CreateButton(
                 "Confirm", surface.transform,
                 LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "Rename_Confirm"),
-                new Vector2(0.5f, 0.5f), new Vector2(-130f, -96f), new Vector2(220f, 48f),
-                BossRushUIColors.SurfaceRaised, 19f, new Vector2(210f, 44f),
+                new Vector2(0.5f, 0.5f), new Vector2(190f, -96f), new Vector2(170f, 48f),
+                BossRushUIColors.AccentFill, 18f, new Vector2(160f, 44f),
                 delegate { Confirm(); }, true);
 
-            ZombieModeUIHelper.CreateButton(
-                "Reset", surface.transform,
-                LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "Rename_Reset"),
-                new Vector2(0.5f, 0.5f), new Vector2(130f, -96f), new Vector2(220f, 48f),
-                BossRushUIColors.SurfaceRaised, 19f, new Vector2(210f, 44f),
-                delegate { ResetToDefault(); }, true);
-
             _modalLease = ZombieModeUIHelper.ClaimModalInput(_canvas.gameObject, "PetNestRename");
+            // ESC / 手柄取消 = 取消（不改名）；上面压着揭晓演出时让给它
+            _cancelKey = PetNestCancelKey.Attach(_canvas.gameObject, delegate { Cancel(); },
+                delegate { return PetNestHatchRevealView.IsOpen || PetNestExpeditionRevealView.IsOpen; });
             BossRushUI.PlayOpenAnimation(surface);
         }
 
         private void BuildInput(Transform parent, PetNestPetRecord pet)
         {
-            GameObject border = ZombieModeUIHelper.CreateRect(
-                "InputBorder", parent, new Vector2(0.5f, 0.5f), new Vector2(520f, 52f));
-            border.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 8f);
-            Image borderImage = border.AddComponent<Image>();
-            borderImage.color = BossRushUIColors.Accent;
-
+            // 圆角输入底 + 一圈 Accent 描边（焦点色）。旧写法外面套一个没有 sprite 的直角亮青方框，
+            // 圆角面板里夹着一道 2px 直角线（UA-19）。
             GameObject inputObj = ZombieModeUIHelper.CreateRect(
-                "Input", border.transform, new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, new Vector2(-4f, -4f), new Vector2(0.5f, 0.5f));
+                "Input", parent, new Vector2(0.5f, 0.5f), new Vector2(520f, 52f));
+            inputObj.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 8f);
             Image inputBg = inputObj.AddComponent<Image>();
             inputBg.color = BossRushUIColors.SurfaceRaised;
+            BossRushUI.ApplyPanelSkin(inputBg, 8, BossRushUISkinPart.Button);
+            BossRushUI.ApplyPanelStroke(inputBg, 8, BossRushUISkinPart.Button, BossRushUIColors.Accent);
 
             _field = inputObj.AddComponent<TMP_InputField>();
             _field.contentType = TMP_InputField.ContentType.Standard;
@@ -194,11 +226,21 @@ namespace BossRush
             _field.caretColor = BossRushUIColors.Accent;
             // 预填当前显示名：玩家改名多半是微调，不是从零打
             _field.text = PetNestService.GetPetDisplayName(pet);
+            // 回车提交（单行输入框的 onSubmit 只在回车时触发）
+            _field.onSubmit.AddListener(delegate { Confirm(); });
             _field.ActivateInputField();
+        }
+
+        /// <summary>取消：不改名，直接关（刷新面板也无妨，名字没变）。</summary>
+        private void Cancel()
+        {
+            if (_closing) return;
+            CloseAndNotify();
         }
 
         private void Confirm()
         {
+            if (_closing) return;
             string reason = null;
             bool ok;
             try
@@ -220,6 +262,7 @@ namespace BossRush
         /// <summary>清空名字 = 恢复血脉默认名（服务层对空名的既有语义）。</summary>
         private void ResetToDefault()
         {
+            if (_closing) return;
             string reason = null;
             bool ok;
             try
@@ -238,8 +281,9 @@ namespace BossRush
 
         private void CloseAndNotify()
         {
+            _closing = true;
             Action callback = _onClosed;
-            Close();
+            CloseInternal(true);
             try
             {
                 if (callback != null) callback();

@@ -512,6 +512,7 @@ namespace BossRush
             ModeHPresetRegistry.ResetStaticCaches();
             ModeHDeathSuppressionRegistry.ResetStaticCaches();
             ModeHCombatTelemetry.ResetStaticCaches();
+            ModeHSpectatorLease.ResetStaticCaches();
         }
 
         private static void LogFailure(string stage, Exception e)

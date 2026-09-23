@@ -785,31 +785,11 @@ namespace BossRush
         {
             if (preview == null) return;
 
+            // 半透明全息（VA-18，见 ModeFFortificationHologramFx）；着色器缺失时保留原模型，不贴品红
             if (modeFPlacementPreviewMaterial == null)
-            {
-                Shader shader = Shader.Find("Unlit/Color");
-                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
-                if (shader == null) shader = Shader.Find("Sprites/Default");
-                if (shader == null) shader = Shader.Find("Standard");
-                modeFPlacementPreviewMaterial = new Material(shader);
-                if (modeFPlacementPreviewMaterial.HasProperty("_Mode"))
-                {
-                    modeFPlacementPreviewMaterial.SetFloat("_Mode", 3f); // Transparent
-                    modeFPlacementPreviewMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                    modeFPlacementPreviewMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                    modeFPlacementPreviewMaterial.SetInt("_ZWrite", 0);
-                    modeFPlacementPreviewMaterial.DisableKeyword("_ALPHATEST_ON");
-                    modeFPlacementPreviewMaterial.EnableKeyword("_ALPHABLEND_ON");
-                    modeFPlacementPreviewMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                    modeFPlacementPreviewMaterial.renderQueue = 3000;
-                }
-            }
-
-            Color color = canPlace ? new Color(0f, 1f, 0f, 0.4f) : new Color(1f, 0f, 0f, 0.4f);
-            if (modeFPlacementPreviewMaterial.HasProperty("_Color"))
-            {
-                modeFPlacementPreviewMaterial.SetColor("_Color", color);
-            }
+                modeFPlacementPreviewMaterial = ModeFFortificationHologramFx.CreateMaterial("ModeF_PlacementHologram", ModeFFortificationHologramFx.PlaceableColor);
+            if (modeFPlacementPreviewMaterial == null) return;
+            ModeFFortificationHologramFx.SetPreviewState(preview, modeFPlacementPreviewMaterial, canPlace);
 
             // 使用进入放置模式时缓存好的 Renderer 列表，避免每帧 GetComponentsInChildren 分配
             int rendererCount = modeFPlacementPreviewRendererCache.Count;

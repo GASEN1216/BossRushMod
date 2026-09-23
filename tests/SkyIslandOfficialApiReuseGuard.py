@@ -215,7 +215,8 @@ def check(sources):
     # 官方 SimplePointOfInterest.DisplayName => displayName.ToPlainText()，查不到键就显示「*键*」。
     # 2026-09-15 第五轮：直接传成品文字，地图上天空岛标签全带星号。要先注册覆盖文本、再把键交给它。
     markers = clean_source(sources[MARKERS])
-    require("LocalizationHelper.InjectLocalization(key, label);" in markers and "poi.Setup(null, key);" in markers,
+    # 2026-09-23 审美审查 UE-21：撤离点借官方出口的图标（取不到时是 null，官方退回默认图标），第二个参数仍是注册过的键。
+    require("LocalizationHelper.InjectLocalization(key, label);" in markers and "poi.Setup(icon, key);" in markers,
             MARKERS + " 给官方地图标记传的不是注册过的本地化键：SimplePointOfInterest 会把成品文字当键查，显示成「*文字*」")
     require("language == appliedLanguage" in markers,
             MARKERS + " 换语言时没有重建标记：覆盖文本按注入时的语言写死，地图上的字不会跟着换")
@@ -237,7 +238,7 @@ def main():
         # 居民叙事退回自绘
         (WORLD, "SkyIslandResidentDialogue.Run(", "NoOpDialogue.Run("),
         # 地图标记又把成品文字当本地化键：标签带星号
-        (MARKERS, "poi.Setup(null, key);", "poi.Setup(null, label);"),
+        (MARKERS, "poi.Setup(icon, key);", "poi.Setup(icon, label);"),
         # 换语言不重建：地图上的字停在旧语言
         (MARKERS, "language == appliedLanguage", "true"),
         # 取消被当成失败处理：玩家一走开就被塞一个 timeScale=0 的模态面板

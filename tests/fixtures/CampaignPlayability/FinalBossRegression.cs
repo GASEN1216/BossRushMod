@@ -57,6 +57,12 @@ namespace BossRush
         }
     }
     public enum PhantomWitchDeathPresentation { Standard, CampaignFinal }
+    // Presentation-only summon burst (VA-25). Counts calls so the schedule can be asserted without rendering.
+    internal static class CampaignFinalBossFx
+    {
+        public static int SummonBursts;
+        internal static void PlaySummonBurst(UnityEngine.Vector3 position) { SummonBursts++; }
+    }
     public static class BossBgmKeys { public const string PhantomWitch = "witch"; }
     public static class BossBgmEvents { public const string RunVictory = "victory"; }
     public class BossRushAudioManager
@@ -129,6 +135,7 @@ internal static class FinalBossRegression
         owner.CleanupCampaignFinalBoss(true);
         check(oldToken.IsCancellationRequested, "aborted showdown cancels dialogue wait");
         check(prologue.Wait(2000) && !owner.NonWaveRequested, "cancelled prologue never starts factory");
+        check(CampaignFinalBossFx.SummonBursts == 0, "cancelled prologue never plays the summon burst");
         Task nextPrologue = owner.BeginPrologue();
         check(!CampaignDialoguePlayer.ObservedToken.IsCancellationRequested && !nextPrologue.IsCompleted,
             "successor dialogue receives a fresh cancellation token");
@@ -138,6 +145,7 @@ internal static class FinalBossRegression
         var first = owner.SpawnResult = new TaskCompletionSource<CharacterMainControl>();
         Task firstRun = owner.BeginSpawn();
         check(owner.NonWaveRequested && !firstRun.IsCompleted, "final boss uses non-wave spawn while awaiting factory");
+        check(CampaignFinalBossFx.SummonBursts == 1, "summon burst plays once alongside the pending factory without delaying it");
         owner.CleanupCampaignFinalBoss(true);
         var late = Boss(); first.SetResult(late); firstRun.GetAwaiter().GetResult();
         check(late == null && !owner.FinalActive && owner.ClearedLoot == 1,

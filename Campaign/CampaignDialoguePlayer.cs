@@ -3,7 +3,8 @@
 // ============================================================================
 // **零新对话 UI**：直接复用官方对话框（经 mod 现有 Integration/Dialogue/DialogueManager
 // 封装）。交付台词的说话人是官方 Jeff：名字直接用官方键 Character_Jeff（各语言都有），
-// 不给立绘——**没有立绘时官方会自动隐藏立绘容器**，对话照常播。终章独白的冠军之影
+// 立绘借图鉴的杰夫立绘（CodexPortraitCache，codex_portraits 包里已有；审美审查 UA-25），
+// 取不到时传 null——**没有立绘时官方会自动隐藏立绘容器**，对话照常播。终章独白的冠军之影
 // 仍用 CampaignAssetCache 的冠军立绘（bundle → 开发期 raw PNG → 无立绘）。
 //
 // 【为什么在官方完成面板关掉之后才播】
@@ -178,8 +179,10 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 章节交付台词：杰夫说的。每章三句：这一行收了 → 下一行要什么 → 解锁的东西怎么用。
-        /// 终章三句收束。写法：第一人称、逗号句号、三句以内、不用填充词（教程 §18）。
+        /// 章节交付台词：杰夫说的。每章三段意思：这一行收了 → 下一行要什么 → 解锁的东西怎么用。
+        /// 写法：第一人称、逗号句号、不用填充词（教程 §18）；官方对话框一句一屏，每屏不超过 28 字
+        /// （审美审查 UA-26：旧写法一屏塞三四句、六十来字，会挤成三四行小字，玩家点得比读得快）。
+        /// 只拆句、不改意思；第一章补了一句基地售货机（与交付飘字 GetDeliveredNotice 同口径）。
         /// </summary>
         private static string[][] BuildLinesForChapter(CampaignChapterDef def)
         {
@@ -195,8 +198,20 @@ namespace BossRush
                             "册子上还要填一样东西，粮。",
                             "The ledger wants one more thing. Food." },
                         new string[] {
-                            "基地后头那块菜地我让人腾出来了。工地要一把铲子和九坨粑粑，粑粑去找蝇蝇队员要。凑齐了走过去交钱动工，种子先塞你几颗，下一章要用。",
-                            "I had the plot out back cleared. The site wants a Shovel and nine Poop, and the Fly Members carry the Poop. Bring them, walk up, pay, and it's yours. Here are a few seeds to start. You'll need it next chapter." }
+                            "基地后头那块菜地我让人腾出来了。",
+                            "I had the plot out back cleared." },
+                        new string[] {
+                            "工地要一把铲子和九坨粑粑，粑粑去找蝇蝇队员要。",
+                            "The site wants a Shovel and nine Poop. The Fly Members carry the Poop." },
+                        new string[] {
+                            "凑齐了走过去交钱动工。",
+                            "Bring them, walk up, pay, and it's yours." },
+                        new string[] {
+                            "种子先塞你几颗，不够就去基地售货机买。",
+                            "Here are a few seeds to start. The base vendor sells more." },
+                        new string[] {
+                            "下一章要用。",
+                            "You'll need them next chapter." }
                     };
                 case "ch2":
                     return new string[][]
@@ -205,8 +220,11 @@ namespace BossRush
                             "第二行写了。空手打到第五波，账房抬了下头。",
                             "Line two's written. Bare-handed to wave five. The bookkeeper actually looked up." },
                         new string[] {
-                            "战利品别锁在箱子里，摆到基地的枪械展示架或者假人上，看着自己打回来的东西，人扛得住更多。",
-                            "Stop locking your trophies in a crate. Put them on the weapon rack or on a dummy. Looking at what you won keeps you standing longer." },
+                            "战利品别锁在箱子里，摆到基地的枪械展示架或者假人上。",
+                            "Stop locking your trophies in a crate. Put them on the weapon rack or on a dummy." },
+                        new string[] {
+                            "看着自己打回来的东西，人扛得住更多。",
+                            "Looking at what you won keeps you standing longer." },
                         new string[] {
                             "下一章账房要看门面，先摆一件，再来找我。",
                             "The next line is about the look of the place. Put one up, then come see me." }
@@ -221,8 +239,11 @@ namespace BossRush
                             "来人看了架子，两眼就走了。两眼就够。",
                             "Their man looked at the rack twice and left. Twice is plenty." },
                         new string[] {
-                            "点唱机我加了两首，出击前听一听。第四行要赏金。",
-                            "I added two tracks to the jukebox. Play one before you head out. Line four wants bounty money." }
+                            "点唱机我加了两首，出击前听一听。",
+                            "I added two tracks to the jukebox. Play one before you head out." },
+                        new string[] {
+                            "第四行要赏金。",
+                            "Line four wants bounty money." }
                     };
                 case "ch4":
                     return new string[][]
@@ -244,8 +265,11 @@ namespace BossRush
                             "六行满了。账房把册子翻到我们那一页，让你签。",
                             "Six lines full. The bookkeeper turned to our page for your name." },
                         new string[] {
-                            "签之前有一场。守擂的那个穿着历任冠军留下的甲，不露脸，册上只印一道影子。",
-                            "There's a bout first. The one holding the ring wears the old champions' armor. No face. The ledger just prints a silhouette." },
+                            "签之前有一场。守擂的那个穿着历任冠军留下的甲。",
+                            "There's a bout first. The one holding the ring wears the old champions' armor." },
+                        new string[] {
+                            "不露脸，册上只印一道影子。",
+                            "No face. The ledger just prints a silhouette." },
                         new string[] {
                             "报名石会立在竞技场里等你，别先点路牌。按住它他就来。",
                             "A sign-up stone will be waiting for you in the arena. Don't touch the sign first. Hold the stone and he comes." }
@@ -257,8 +281,11 @@ namespace BossRush
                             "名字写上去了，上了墨，擦不掉。",
                             "The name's on the page. In ink. Won't rub out." },
                         new string[] {
-                            "那套甲还挂在擂台上，等下一个不打算回家的人来穿。你有地方回。",
-                            "The armor still hangs in the ring, waiting on the next one who isn't planning to go home. You've got somewhere to go home to." },
+                            "那套甲还挂在擂台上，等下一个不打算回家的人来穿。",
+                            "The armor still hangs in the ring, waiting on the next one who isn't planning to go home." },
+                        new string[] {
+                            "你有地方回。",
+                            "You've got somewhere to go home to." },
                         new string[] {
                             "菜地该收了，架子上再摆一件。回去吃饭吧。",
                             "The garden's ready to pick. Put one more piece on the rack. Go eat." }
@@ -287,9 +314,12 @@ namespace BossRush
                     UnityEngine.Object.DontDestroyOnLoad(_actorHost);
                 }
 
-                // 杰夫没有 Mod 立绘：传 null，官方自动隐藏立绘位
+                // 立绘借图鉴的杰夫立绘（bossKey 就是官方名字键 Character_Jeff → codex_portrait_character_jeff）；
+                // 取不到返回 null，官方自动隐藏立绘位。只借用不卸载：图鉴模块在 Mod 卸载时统一卸包，
+                // 那时本宿主也随 ResetStaticCaches 一起销毁。actor 按宿主缓存，第一次创建时就要带上立绘。
+                Sprite portrait = CodexPortraitCache.GetPortrait(JeffNameKey);
                 return DialogueActorFactory.Create(
-                    _actorHost, JeffActorId, JeffNameKey, null, null);
+                    _actorHost, JeffActorId, JeffNameKey, null, portrait);
             }
             catch (Exception e)
             {

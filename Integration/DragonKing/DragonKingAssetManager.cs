@@ -475,47 +475,47 @@ namespace BossRush
             Color effectColor = GetEffectColor(prefabName);
             float scale = GetEffectScale(prefabName);
             
-            // 创建发光球体
-            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.transform.SetParent(obj.transform);
-            sphere.transform.localPosition = Vector3.zero;
-            sphere.transform.localScale = Vector3.one * scale;
-            
-            // 移除碰撞器（特效不需要碰撞）
-            var collider = sphere.GetComponent<Collider>();
-            if (collider != null)
+            // 后备光团（VB-29.1）：旧版是 CreatePrimitive 球体 + 内置 Standard 材质——URP 画不出 Standard 的 ForwardBase pass，
+            // bundle 缺失时这颗后备球是隐形的。改成一个常驻的软圆加色光团（共享特效工厂），不再 new Material。
+            try
             {
-                UnityEngine.Object.Destroy(collider);
+                Material glowMaterial = DragonKingFxShared.Soft(BossRushFxBlend.Additive);
+                if (glowMaterial != null)
+                {
+                    GameObject glow = new GameObject("FallbackGlow");
+                    glow.transform.SetParent(obj.transform, false);
+                    ParticleSystem ps = glow.AddComponent<ParticleSystem>();
+                    ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                    var main = ps.main;
+                    main.loop = true;
+                    main.startLifetime = 0.5f;
+                    main.startSpeed = 0f;
+                    main.startSize = new ParticleSystem.MinMaxCurve(scale * 1.2f, scale * 1.6f);
+                    main.startColor = new Color(effectColor.r, effectColor.g, effectColor.b, 0.8f);
+                    main.maxParticles = 8;
+                    main.simulationSpace = ParticleSystemSimulationSpace.Local;
+                    var emission = ps.emission;
+                    emission.rateOverTime = 8f;
+                    var shape = ps.shape;
+                    shape.enabled = false;
+                    var fade = ps.colorOverLifetime;
+                    fade.enabled = true;
+                    Gradient gradient = new Gradient();
+                    gradient.SetKeys(
+                        new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                        new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.3f), new GradientAlphaKey(0f, 1f) });
+                    fade.color = gradient;
+                    var glowRenderer = glow.GetComponent<ParticleSystemRenderer>();
+                    glowRenderer.renderMode = ParticleSystemRenderMode.Billboard;
+                    glowRenderer.sharedMaterial = glowMaterial;
+                    glowRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    glowRenderer.receiveShadows = false;
+                    ps.Play();
+                }
             }
-            
-            // 设置材质颜色
-            var renderer = sphere.GetComponent<Renderer>();
-            if (renderer != null)
+            catch (Exception e)
             {
-                // 尝试使用发光材质
-                try
-                {
-                    Material mat = new Material(Shader.Find("Standard"));
-                    mat.SetColor("_Color", effectColor);
-                    mat.SetColor("_EmissionColor", effectColor * 2f);
-                    mat.EnableKeyword("_EMISSION");
-                    renderer.material = mat;
-
-                    // 跟踪动态创建的Material以便清理（添加null检查）
-                    if (mat != null)
-                    {
-                        lock (dynamicMaterials)
-                        {
-                            dynamicMaterials.Add(mat);
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    // 如果Standard着色器不可用，使用默认颜色
-                    ModBehaviour.DevLog($"[DragonKing] [WARNING] 创建发光材质失败，使用默认颜色: {e.Message}");
-                    renderer.material.color = effectColor;
-                }
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] 创建后备光团失败: {e.Message}");
             }
             
             // 添加点光源增强视觉效果
@@ -751,7 +751,26 @@ namespace BossRush
             }
         }
 
+        /// <summary>软回收时长：粒子停发射后自然死完、灯 0.2 s 淡到 0、拖尾停止延伸（VB-15）。</summary>
+        public const float SoftReleaseSeconds = 0.5f;
+
+        /// <summary>
+        /// 回收一个特效。默认走软回收（VB-15）：停发射、关碰撞 / 伤害组件、藏起实体网格，粒子与拖尾自然淡完后再回池，
+        /// 光束、岩浆拖痕、弹体、传送不再一帧消失。判定在软回收开始那一刻就停（碰撞体与伤害组件立即关闭）。
+        /// 场景 / 死亡清理走 <see cref="ReleaseEffectImmediate"/>。
+        /// </summary>
         public static void ReleaseEffect(GameObject instance)
+        {
+            ReleaseEffect(instance, SoftReleaseSeconds);
+        }
+
+        /// <summary>硬回收：立即清掉粒子、关灯、回池（场景清理、Boss 死亡与销毁路径用）。</summary>
+        public static void ReleaseEffectImmediate(GameObject instance)
+        {
+            ReleaseEffect(instance, 0f);
+        }
+
+        private static void ReleaseEffect(GameObject instance, float softSeconds)
         {
             if (instance == null) return;
 
@@ -763,6 +782,7 @@ namespace BossRush
             }
 
             if (pooledEffect.IsInPool) return;
+            if (softSeconds > 0f && pooledEffect.BeginSoftRelease(softSeconds)) return;
 
             DragonKingEffectPoolInfo poolInfo = GetOrCreateEffectPool(pooledEffect.PoolKey);
             int maxPoolSize = GetMaxPoolSize(pooledEffect.PoolKey);
@@ -918,8 +938,12 @@ namespace BossRush
             poolInfo.InactiveInstances.Push(pooledEffect);
         }
 
+        /// <summary>对象池代数：每次整池销毁（卸包 / 强制清理）加一。软回收中途碰上它的特效到时直接销毁，不回新池。</summary>
+        internal static int EffectPoolGeneration { get; private set; }
+
         private static void DestroyEffectPools()
         {
+            EffectPoolGeneration++;
             foreach (var pair in effectPools)
             {
                 pair.Value.InactiveInstances.Clear();
@@ -946,158 +970,6 @@ namespace BossRush
     {
         public readonly Stack<DragonKingPooledEffect> InactiveInstances = new Stack<DragonKingPooledEffect>();
         public int TotalCreated = 0;
-    }
-
-    public class DragonKingPooledEffect : MonoBehaviour
-    {
-        private string poolKey = null;
-        private Vector3 initialLocalScale = Vector3.one;
-        private ParticleSystem[] particleSystems = new ParticleSystem[0];
-        private Light[] lights = new Light[0];
-        private Rigidbody[] rigidbodies = new Rigidbody[0];
-        private TrailRenderer[] trailRenderers = new TrailRenderer[0];
-        private Action<GameObject> ownerReleaseTracker = null;
-
-        public string PoolKey => poolKey;
-        public bool IsInPool { get; private set; }
-
-        public void SetOwnerReleaseTracker(Action<GameObject> tracker)
-        {
-            ownerReleaseTracker = tracker;
-        }
-
-        public void Initialize(string key)
-        {
-            poolKey = key;
-            initialLocalScale = transform.localScale;
-            particleSystems = GetComponentsInChildren<ParticleSystem>(true);
-            lights = GetComponentsInChildren<Light>(true);
-            rigidbodies = GetComponentsInChildren<Rigidbody>(true);
-            trailRenderers = GetComponentsInChildren<TrailRenderer>(true);
-            IsInPool = false;
-        }
-
-        public void OnAcquire(Vector3 position, Quaternion rotation)
-        {
-            CancelScheduledRelease();
-
-            transform.SetParent(null, false);
-            transform.position = position;
-            transform.rotation = rotation;
-            transform.localScale = initialLocalScale;
-
-            ResetRigidbodies();
-            ClearTrails();
-            gameObject.SetActive(true);
-
-            for (int i = 0; i < lights.Length; i++)
-            {
-                if (lights[i] != null)
-                {
-                    lights[i].enabled = true;
-                }
-            }
-
-            for (int i = 0; i < particleSystems.Length; i++)
-            {
-                if (particleSystems[i] != null)
-                {
-                    particleSystems[i].gameObject.SetActive(true);
-                    particleSystems[i].Play(true);
-                }
-            }
-
-            IsInPool = false;
-        }
-
-        public void OnRelease(Transform poolRoot)
-        {
-            if (IsInPool) return;
-
-            CancelScheduledRelease();
-            NotifyOwnerReleased();
-
-            for (int i = 0; i < particleSystems.Length; i++)
-            {
-                if (particleSystems[i] != null)
-                {
-                    particleSystems[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-                }
-            }
-
-            for (int i = 0; i < lights.Length; i++)
-            {
-                if (lights[i] != null)
-                {
-                    lights[i].enabled = false;
-                }
-            }
-
-            ResetRigidbodies();
-            ClearTrails();
-
-            transform.SetParent(poolRoot, false);
-            transform.localPosition = Vector3.zero;
-            transform.localRotation = Quaternion.identity;
-            transform.localScale = initialLocalScale;
-            gameObject.SetActive(false);
-            IsInPool = true;
-        }
-
-        public void NotifyOwnerReleased()
-        {
-            Action<GameObject> tracker = ownerReleaseTracker;
-            ownerReleaseTracker = null;
-            tracker?.Invoke(gameObject);
-        }
-
-        public void ScheduleRelease(float delay)
-        {
-            CancelScheduledRelease();
-            Invoke(nameof(ReleaseToPool), delay);
-        }
-
-        public void CancelScheduledRelease()
-        {
-            CancelInvoke(nameof(ReleaseToPool));
-        }
-
-        private void ReleaseToPool()
-        {
-            DragonKingAssetManager.ReleaseEffect(gameObject);
-        }
-
-        private void ResetRigidbodies()
-        {
-            for (int i = 0; i < rigidbodies.Length; i++)
-            {
-                if (rigidbodies[i] != null)
-                {
-                    if (!rigidbodies[i].isKinematic)
-                    {
-                        rigidbodies[i].velocity = Vector3.zero;
-                        rigidbodies[i].angularVelocity = Vector3.zero;
-                    }
-                }
-            }
-        }
-
-        private void ClearTrails()
-        {
-            for (int i = 0; i < trailRenderers.Length; i++)
-            {
-                if (trailRenderers[i] != null)
-                {
-                    trailRenderers[i].Clear();
-                }
-            }
-        }
-
-        private void OnDestroy()
-        {
-            CancelScheduledRelease();
-            ownerReleaseTracker = null;
-        }
     }
 
     public class SimpleRotator : MonoBehaviour

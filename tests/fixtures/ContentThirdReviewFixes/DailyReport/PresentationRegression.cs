@@ -161,7 +161,7 @@ namespace BossRush
         {
             // 1) 版面表本身：每块都要落在面板里，宽高为正
             string[] names = {
-                "header", "mascot", "title", "infoMeta", "infoWeather",
+                "header", "mascot", "title", "info", "infoMeta", "infoWeather",
                 "income", "incomePill", "incomeLeft", "incomeRight", "incomeTip", "incomeNote",
                 "status", "statusPill", "statusLeft", "statusRight", "statusLuck", "statusTaboo",
                 "signin", "signinPill", "button", "sideText", "legend",
@@ -235,6 +235,32 @@ namespace BossRush
                     && PanelHeight * view.paperFrame.localScale.y <= size.y - 23.9f,
                     "paper fits viewport " + size.x + "x" + size.y);
             }
+
+            // 7) 运行时图标（2026-09-23 起不再烤进底图）：都在面板里、正尺寸，并落在各自的宿主块里
+            foreach (string icon in DailyReportLayoutTable.IconNames)
+            {
+                UnityEngine.Rect rect = DailyReportLayoutTable.GetIcon(icon);
+                check(rect.width > 0 && rect.height > 0 && rect.x >= 0 && rect.y >= 0
+                    && rect.x + rect.width <= DailyReportLayoutTable.PanelWidth
+                    && rect.y + rect.height <= DailyReportLayoutTable.PanelHeight,
+                    "icon " + icon + " stays inside the panel");
+            }
+            string[][] hosts = {
+                new[] { "issue", "infoMeta" }, new[] { "deadline", "infoMeta" }, new[] { "weather", "infoWeather" },
+                new[] { "income", "incomeLeft" }, new[] { "bounty", "incomeRight" }, new[] { "tip", "incomeTip" },
+                new[] { "headline", "statusLeft" }, new[] { "broadcast", "statusRight" },
+                new[] { "fortune", "statusLuck" }, new[] { "gossip", "statusTaboo" }, new[] { "gift", "button" },
+            };
+            foreach (string[] host in hosts)
+            {
+                check(Contains(DailyReportLayoutTable.Get(host[1]), DailyReportLayoutTable.GetIcon(host[0])),
+                    host[0] + " icon sits inside " + host[1]);
+            }
+            check(Contains(DailyReportLayoutTable.Get("info"), DailyReportLayoutTable.Get("infoMeta"))
+                && Contains(DailyReportLayoutTable.Get("info"), DailyReportLayoutTable.Get("infoWeather")),
+                "issue and weather blocks share one info card");
+            check(DailyReportLayoutTable.PillTextIndent > 0 && DailyReportLayoutTable.IconTextGap > 0,
+                "ribbon text indent and icon gap are configured");
 
             string body = BuildBountyBlock(new DailyReportIssue { TodayBountyTarget = 1, TodayBountyTitle = "Return",
                 TodayBountyStatus = "Failed today", TodayBountyCash = 1500 });

@@ -264,7 +264,7 @@ namespace BossRush
                     }
 
                     // 显示差异: 预制体值 (↑/↓ xx)，保留两位小数
-                    string colorHex = diff > 0 ? "#66FF66" : "#FF6666";
+                    string colorHex = diff > 0 ? IntegrationUIFeedback.SuccessHex : IntegrationUIFeedback.DangerHex;
 
                     string newText = baseText + BuildPropertyDiffMarkup(key, prefabValue, playerValue, diff, colorHex, true);
                     valueText.text = newText;
@@ -399,6 +399,9 @@ namespace BossRush
             // 刷新锁定图标
             ClearPropertyLockIcons();
             AddPropertyLockIcons();
+
+            // UD-25：详情面板已经按新数值重建完，这时才逐行揭晓（挂在 Setup 之前会被整页刷掉）
+            PlayQueuedReforgeReveal();
         }
 
         /// <summary>
@@ -499,6 +502,9 @@ namespace BossRush
 
             // 清理冷淬液UI
             CleanupColdQuenchFluidUI();
+
+            // 撤回待确认的固定、清揭晓队列、拆掉贴在官方属性条目上的表现层（UD-24 / UD-25）
+            CleanupReforgeFeel();
         }
 
         public static void ResetStaticCaches()
@@ -560,7 +566,10 @@ namespace BossRush
                 {
                     coldQuenchFluidContainer = existing.gameObject;
                     coldQuenchFluidContainer.SetActive(true);
-                    coldQuenchFluidCountText = coldQuenchFluidContainer.GetComponentInChildren<TextMeshProUGUI>();
+                    // 按名字取计数文本：容器里还有说明行（以及旧版的字符图标），「第一个 TMP」不一定是计数
+                    Transform countTransform = existing.Find("FluidCount");
+                    coldQuenchFluidCountText = countTransform != null ? countTransform.GetComponent<TextMeshProUGUI>() : null;
+                    EnsureColdQuenchHint(existing);
                     UpdateColdQuenchFluidCount();
                     ModBehaviour.DevLog("[ReforgeUI] 冷淬液UI已存在，复用");
                     return;
@@ -599,36 +608,43 @@ namespace BossRush
                 iconLayout.preferredWidth = COLD_QUENCH_ICON_SIZE;
                 iconLayout.preferredHeight = COLD_QUENCH_ICON_SIZE;
 
-                // 尝试加载图标
+                // 尝试加载图标：自带 bundle → 官方物品元数据图标；都取不到就不画这一格（UD-30，不再顶一个「◇」字符）
                 Sprite iconSprite = ItemFactory.GetSprite(ColdQuenchFluidConfig.BUNDLE_NAME, ColdQuenchFluidConfig.ICON_NAME);
+                if (iconSprite == null)
+                {
+                    iconSprite = TryGetItemMetaIcon(ColdQuenchFluidConfig.TYPE_ID);
+                }
 
                 if (iconSprite != null)
                 {
                     Image iconImage = iconObj.AddComponent<Image>();
                     iconImage.sprite = iconSprite;
                     iconImage.preserveAspect = true;
+                    iconImage.raycastTarget = false;
                 }
                 else
                 {
-                    // 使用文本作为后备
-                    TextMeshProUGUI iconText = iconObj.AddComponent<TextMeshProUGUI>();
-                    iconText.text = "◇";
-                    iconText.fontSize = COLD_QUENCH_ICON_FONT_SIZE;
-                    iconText.color = new Color(0.5f, 0.8f, 1f);
-                    iconText.alignment = TextAlignmentOptions.Center;
-                    ModBehaviour.DevLog("[ReforgeUI] 冷淬液图标加载失败，使用文本图标");
+                    iconObj.SetActive(false);
+                    ModBehaviour.DevLog("[ReforgeUI] 冷淬液图标加载失败，不显示图标");
                 }
 
-                // 创建数量文本
+                // 创建数量文本（UD-26：20 号正文色，走共享字体入口；关自动缩字，框高 ≥ 字号×1.45+4）
                 GameObject countObj = new GameObject("FluidCount");
                 countObj.transform.SetParent(coldQuenchFluidContainer.transform, false);
-                coldQuenchFluidCountText = countObj.AddComponent<TextMeshProUGUI>();
-                coldQuenchFluidCountText.text = "x0";
-                coldQuenchFluidCountText.fontSize = COLD_QUENCH_FONT_SIZE;
-                coldQuenchFluidCountText.color = Color.white;
-                coldQuenchFluidCountText.alignment = TextAlignmentOptions.Left;
+                coldQuenchFluidCountText = ZombieModeUIHelper.CreateTMPText(
+                    countObj,
+                    string.Empty,
+                    COLD_QUENCH_FONT_SIZE,
+                    TextAlignmentOptions.MidlineLeft,
+                    BossRushUIColors.TextPrimary);
+                coldQuenchFluidCountText.enableAutoSizing = false;
+                coldQuenchFluidCountText.enableWordWrapping = false;
+                coldQuenchFluidCountText.overflowMode = TextOverflowModes.Overflow;
                 RectTransform countRect = countObj.GetComponent<RectTransform>();
-                countRect.sizeDelta = new Vector2(80, COLD_QUENCH_ICON_SIZE);
+                countRect.sizeDelta = new Vector2(COLD_QUENCH_COUNT_WIDTH, COLD_QUENCH_ICON_SIZE);
+
+                // 计数下方一行说明：点两下属性行即可固定（UD-24，常态就看得出属性行能点）
+                EnsureColdQuenchHint(coldQuenchFluidContainer.transform);
 
                 // 更新数量显示
                 UpdateColdQuenchFluidCount();
@@ -649,17 +665,11 @@ namespace BossRush
             if (coldQuenchFluidCountText == null) return;
 
             int count = ItemFactory.GetItemCountInInventory(ColdQuenchFluidConfig.TYPE_ID);
-            coldQuenchFluidCountText.text = "x" + count;
+            coldQuenchFluidCountText.text = string.Format(L10n.T("冷淬液 x{0}", "Cold Quench x{0}"), count);
 
-            // 根据数量改变颜色
-            if (count > 0)
-            {
-                coldQuenchFluidCountText.color = new Color(0.5f, 1f, 0.5f);  // 绿色
-            }
-            else
-            {
-                coldQuenchFluidCountText.color = new Color(0.7f, 0.7f, 0.7f);  // 灰色
-            }
+            // 有货正文色、没货说明色（UD-26：旧版是 32 号荧光绿，比标题还抢眼）
+            coldQuenchFluidCountText.color = count > 0 ? BossRushUIColors.TextPrimary : BossRushUIColors.TextSecondary;
+            UpdateColdQuenchHint(count);
         }
 
         /// <summary>
@@ -779,8 +789,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 为属性条目设置交互功能（文字颜色变化方案）
-        /// 白色=普通，蓝色=悬停可固定，金色=已固定
+        /// 为属性条目设置交互功能：点两下固定（UD-24）。
+        /// 常态左侧 Accent 细条表示能点，悬停 / 待确认有行底淡色，已固定数值为 RarityLegendary；只给数值那个 TMP 上色。
         /// </summary>
         private static void SetupPropertyEntryInteraction(Transform propertyEntry, string propertyKey, PropertyType propType, bool canLock)
         {
@@ -794,9 +804,17 @@ namespace BossRush
                 // 检查属性是否已固定
                 bool isLocked = PropertyLockSystem.IsPropertyLocked(selectedItem, propertyKey, propType);
 
-                // 获取属性条目上的所有文本组件
-                TextMeshProUGUI[] textComponents = propertyEntry.GetComponentsInChildren<TextMeshProUGUI>(true);
-                if (textComponents == null || textComponents.Length == 0)
+                // 数值文本：取官方条目的 value 字段（标签不动）；取不到时退到条目里最后一个 TMP
+                string ignoredKey;
+                PropertyType ignoredType;
+                TextMeshProUGUI valueText;
+                TryGetDisplayedEntryIdentity(propertyEntry, out ignoredKey, out ignoredType, out valueText);
+                if (valueText == null)
+                {
+                    TextMeshProUGUI[] textComponents = propertyEntry.GetComponentsInChildren<TextMeshProUGUI>(true);
+                    valueText = textComponents != null && textComponents.Length > 0 ? textComponents[textComponents.Length - 1] : null;
+                }
+                if (valueText == null)
                 {
                     ModBehaviour.DevLog("[ReforgeUI] 属性条目没有文本组件: " + propertyKey);
                     return;
@@ -816,12 +834,13 @@ namespace BossRush
                 interactable.PropertyKey = propertyKey;
                 interactable.PropType = propType;
                 interactable.TargetItem = selectedItem;
-                interactable.TextComponents = textComponents;
+                interactable.ValueText = valueText;
+                interactable.Fx = ReforgeRowFx.Ensure(propertyEntry);
                 interactable.IsLocked = isLocked;
                 interactable.CanLock = canLock && !isLocked;  // 有冷淬液且未固定才能固定
 
-                // 初始化颜色
-                interactable.InitializeColor();
+                // 初始化外观（细条 / 数值色）
+                interactable.ApplyVisualState();
 
                 // 保存引用
                 PropertyLockIcon lockIcon = new PropertyLockIcon
@@ -941,6 +960,9 @@ namespace BossRush
         /// </summary>
         private static void ClearPropertyLockIcons()
         {
+            // 切换物品 / 刷新 / 关闭都走这里：待确认的固定一并撤回（UD-24）
+            CancelPendingPropertyLock();
+
             foreach (var kvp in propertyLockIcons)
             {
                 if (kvp.Value != null && kvp.Value.IconObject != null)
@@ -949,17 +971,8 @@ namespace BossRush
                     PropertyEntryInteractable interactable = kvp.Value.IconObject.GetComponent<PropertyEntryInteractable>();
                     if (interactable != null)
                     {
-                        // 恢复文字颜色为白色
-                        if (interactable.TextComponents != null)
-                        {
-                            foreach (var text in interactable.TextComponents)
-                            {
-                                if (text != null)
-                                {
-                                    text.color = Color.white;
-                                }
-                            }
-                        }
+                        // 还原官方数值色（记下的原色；官方 Setup 已重写过的不动），收起行底表现
+                        interactable.ReleaseVisuals();
                         GameObject.Destroy(interactable);
                     }
 

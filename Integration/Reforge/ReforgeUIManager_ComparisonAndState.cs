@@ -191,7 +191,6 @@ namespace BossRush
             // 计算基础费用（应用哥布林好感度折扣）
             int baseCost = ReforgeSystem.GetDiscountedCost(selectedItem);
             long playerMoney = GetPlayerMoney();
-            float discount = ReforgeSystem.GetCurrentDiscount();
             int tendencyCost = GetTendencyCost();
             int totalCost = currentMoney + tendencyCost;
 
@@ -199,18 +198,8 @@ namespace BossRush
             bool canAfford = playerMoney >= totalCost && playerMoney >= baseCost;
             reforgeButton.interactable = canAfford && ReforgeSystem.CanExecuteReforge(selectedItem);
 
-            // 如果金钱不足，更新概率显示提示
-            if (!canAfford && probabilityText != null)
-            {
-                bool usePurification = currentController != null &&
-                    ModBehaviour.Instance != null &&
-                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentController);
-                string currencyName = usePurification ? L10n.T("净化点", "Purification") : L10n.T("金钱", "Money");
-                string discountInfo = discount > 0 ? string.Format(L10n.T(" ({0:P0}折扣)", " ({0:P0} discount)"), discount) : "";
-                probabilityText.text = string.Format(L10n.T("<color=#FF4D4D>{6}不足！\n基础费用: {0}{1}\n投入: {2}\n极性滑块花费: {3}\n所需总额: {4}\n你的当前总{6}: {5}</color>", "<color=#FF4D4D>Not enough {6}!\nBase cost: {0}{1}\nInvestment: {2}\nPolarity cost: {3}\nTotal required: {4}\nYour {6}: {5}</color>"),
-                    baseCost, discountInfo, currentMoney, tendencyCost, totalCost, playerMoney, currencyName);
-                probabilityText.color = Color.white;
-            }
+            // 钱不够的提示不再在这里整段刷红（UD-23）：每条调用路径都会配一次 UpdateProbabilityDisplay，
+            // 由费用区（RenderReforgeCostText）按同一判据只把「总计」那一行染成 DangerText 并写「还差 X」。
         }
 
         /// <summary>
@@ -330,89 +319,8 @@ namespace BossRush
         {
             if (AffixForge_HandleProbabilityDisplay()) return;
 
-            if (probabilityText == null) return;
-
-            if (selectedItem == null)
-            {
-                probabilityText.text = L10n.T("请选择物品", "Select an item");
-                probabilityText.color = Color.gray;
-                return;
-            }
-
-            if (!ReforgeSystem.CanExecuteReforge(selectedItem))
-            {
-                probabilityText.text = L10n.T("该物品没有未固定的可重铸属性", "This item has no unlocked reforgeable properties.");
-                probabilityText.color = new Color(1f, 0.5f, 0.5f);
-                return;
-            }
-
-            // 使用新概率公式计算
-            int rarity = GetItemQuality(selectedItem);
-            float itemValue = ReforgeSystem.GetItemValue(selectedItem);
-            int itemId = selectedItem.GetInstanceID();
-
-            // 计算各个系数
-            float rarityFactor = ReforgeSystem.RarityFactor(rarity);      // 品质系数
-            float valueFactor = ReforgeSystem.ValueFactor(itemValue);     // 价值系数
-            float moneyBonus = ReforgeSystem.MoneyBonus(currentMoney, itemValue);    // 金钱加成（基于物品价值）
-
-            // 计算最终概率
-            float p = ReforgeSystem.FinalProbability(rarity, itemValue, currentMoney);
-
-            // 根据概率获取颜色
-            string probColorHex;
-            if (p >= 0.8f)
-                probColorHex = "#4DFF4D";  // 绿色
-            else if (p >= 0.5f)
-                probColorHex = "#FFFF4D";  // 黄色
-            else if (p >= 0.3f)
-                probColorHex = "#FF994D";  // 橙色
-            else
-                probColorHex = "#FF4D4D";  // 红色
-
-            // 显示详细公式（每行一个参数，白字显示参数，最后概率公式带颜色）
-            // 品质: X (系数: X.XX)
-            // 价值: XXXX (系数: X.XX)
-            // 投入: XXXX (加成: X.XX)
-            // 极性费用: XX
-            // 负向概率: XX%  正向概率: XX%
-            // 概率: 0.20×X.XX×X.XX+X.XX = XX%
-            // 总计花费: XX
-
-            int tendencyCost = GetTendencyCost();
-            string tendencyLine = string.Format(L10n.T("极性费用: {0}\n", "Polarity cost: {0}\n"), tendencyCost);
-            bool usePurification = currentController != null &&
-                ModBehaviour.Instance != null &&
-                ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentController);
-            string investLabel = usePurification ? L10n.T("净化点投入", "Purification invested") : L10n.T("投入", "Investment");
-            string totalCostLabel = usePurification ? L10n.T("总计花费(净化点)", "Total cost (Purification)") : L10n.T("总计花费", "Total cost");
-
-            float posProb = currentTendencyChance;
-            float negProb = 1.0f - currentTendencyChance;
-            string polarityProbLine = string.Format(L10n.T("<color=#00FFFF>负向概率: {0:P0}   正向概率: {1:P0}</color>\n", "<color=#00FFFF>Negative: {0:P0}   Positive: {1:P0}</color>\n"), negProb, posProb);
-
-            int totalCost = currentMoney + tendencyCost;
-            string totalCostLine = string.Format("<color=#FFFF00>{0}: {1}</color>", totalCostLabel, totalCost);
-
-            probabilityText.text = string.Format(
-                L10n.T("品质: {0} (系数: {1:F2})\n", "Quality: {0} (factor: {1:F2})\n") +
-                L10n.T("价值: {2:F0} (系数: {3:F2})\n", "Value: {2:F0} (factor: {3:F2})\n") +
-                L10n.T("{11}: {4} (加成: {5:F2})\n", "{11}: {4} (bonus: {5:F2})\n") +
-                "{8}" +
-                "{9}" +
-                L10n.T("<color={6}>幅度乘数参数: 0.20×{1:F2}×{3:F2}+{5:F2}={7:P0}</color>\n", "<color={6}>Magnitude factor: 0.20×{1:F2}×{3:F2}+{5:F2}={7:P0}</color>\n") +
-                "{10}",
-                rarity, rarityFactor,           // {0}, {1}
-                itemValue, valueFactor,         // {2}, {3}
-                currentMoney, moneyBonus,       // {4}, {5}
-                probColorHex, p,                // {6}, {7}
-                tendencyLine, polarityProbLine, // {8}, {9}
-                totalCostLine,                  // {10}
-                investLabel                     // {11}
-            );
-
-            // 整体文本使用白色
-            probabilityText.color = Color.white;
+            // UD-23：主信息两行（重铸幅度、总计花费）+ 次信息，颜色走 token；实现在 _Feel.cs。
+            RenderReforgeCostText();
         }
 
         /// <summary>
@@ -1091,7 +999,8 @@ namespace BossRush
                                     baseText = baseText.Substring(0, colorTagIndex);
                                 }
 
-                                string colorHex = diff > 0 ? "#66FF66" : "#FF6666";
+                                string colorHex = diff > 0 ? IntegrationUIFeedback.SuccessHex : IntegrationUIFeedback.DangerHex;
+                                QueueReforgeReveal(key, propType, entryOrdinal, newValue, diff);   // UD-25：详情面板重建后逐行揭晓
                                 float prefabValue;
                                 string diffMarkup = TryGetCachedPrefabValue(key, propType, entryOrdinal, out prefabValue)
                                     ? BuildPropertyDiffMarkup(key, prefabValue, newValue, diff, colorHex, false)
@@ -1143,12 +1052,12 @@ namespace BossRush
         {
             if (diff > 0 && ReforgeSystem.IsValueAtUpperBound(key, prefabValue, currentValue))
             {
-                return string.Format(" <color={0}>Max</color>", MAX_BOUND_LABEL_COLOR);
+                return string.Format(" <color={0}>Max</color>", IntegrationUIFeedback.LegendaryHex);
             }
 
             if (diff < 0 && ReforgeSystem.IsValueAtLowerBound(key, prefabValue, currentValue))
             {
-                return string.Format(" <color={0}>Min</color>", MIN_BOUND_LABEL_COLOR);
+                return string.Format(" <color={0}>Min</color>", IntegrationUIFeedback.SecondaryHex);
             }
 
             return string.Empty;

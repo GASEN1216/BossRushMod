@@ -35,8 +35,6 @@ namespace BossRush
         private const float MODEF_BOSS_RETARGET_INTERVAL = 1.5f;
         private const float MODEF_BOSS_INTEGRITY_CHECK_INTERVAL = 1f;
 
-        private const float MODEF_PHASE_BROADCAST_INTERVAL = 15f;
-
         /// <summary>Mode F 最大生命成长 Modifier 引用（用于清理）</summary>
         private Modifier modeFMaxHealthModifier = null;
         /// <summary>
@@ -141,17 +139,11 @@ namespace BossRush
 
                 RefreshModeFBountyLeaderIfDirty();
                 UpdateModeFBountyRadarUI();
+                // 阶段 / 剩余时间 / 命火常驻状态卡（取代旧的每 15 秒一条状态横幅，审美审查 UB-06）
+                ModeFStatusHud.Tick(modeFState, MODEF_BLOODFIRE_MAX_CHARGE);
                 UpdateModeFFortificationHighlights();
                 UpdateFortPlacementMode();
                 UpdateModeFRepairSelection();
-
-                // 阶段广播计时
-                modeFState.PhaseStatusBroadcastTimer += deltaTime;
-                if (modeFState.PhaseStatusBroadcastTimer >= MODEF_PHASE_BROADCAST_INTERVAL)
-                {
-                    modeFState.PhaseStatusBroadcastTimer = 0f;
-                    BroadcastModeFPhaseStatus();
-                }
 
                 if (modeFState.CurrentPhase != ModeFPhase.Preparation)
                 {
@@ -191,15 +183,16 @@ namespace BossRush
             {
                 modeFState.CurrentPhase = phase;
                 modeFState.PhaseElapsed = 0f;
-                modeFState.PhaseStatusBroadcastTimer = 0f;
 
+                // 阶段横幅配色走 token（审美审查 UB-06 / UB-25）：模式名 DangerText，阶段名 WarningText，
+                // 撤离阶段 SuccessText；旧版是纯红纯黄纯绿加竖线。
                 switch (phase)
                 {
                     case ModeFPhase.Preparation:
                         modeFState.PhaseDuration = MODEF_PREPARATION_DURATION;
                         ShowBigBanner(L10n.T(
-                            "<color=red>血猎追击</color> | <color=yellow>准备阶段</color> 开始！持续 180 秒",
-                            "<color=red>Bloodhunt</color> | <color=yellow>Preparation Phase</color> started! 180 seconds"
+                            RichDangerTag + "血猎追击</color> · " + RichWarningTag + "准备阶段</color> 开始！持续 180 秒",
+                            RichDangerTag + "Bloodhunt</color> · " + RichWarningTag + "Preparation Phase</color> started! 180 seconds"
                         ));
                         DevLog("[ModeF] 进入准备阶段 (180s, 1%/s)");
                         break;
@@ -209,8 +202,8 @@ namespace BossRush
                         GenerateBountyList();
                         TryFulfillModeFPendingRespawns();
                         ShowBigBanner(L10n.T(
-                            "<color=red>血猎追击</color> | <color=orange>悬赏阶段</color> 开始！悬赏名单已生成",
-                            "<color=red>Bloodhunt</color> | <color=orange>Bounty Phase</color> started! Bounty list generated"
+                            RichDangerTag + "血猎追击</color> · " + RichWarningTag + "悬赏阶段</color> 开始！悬赏名单已生成",
+                            RichDangerTag + "Bloodhunt</color> · " + RichWarningTag + "Bounty Phase</color> started! Bounty list generated"
                         ));
                         DevLog("[ModeF] 进入悬赏阶段 (180s, 1.5%/s)");
                         break;
@@ -218,8 +211,8 @@ namespace BossRush
                     case ModeFPhase.HuntStorm:
                         modeFState.PhaseDuration = MODEF_HUNTSTORM_DURATION;
                         ShowBigBanner(L10n.T(
-                            "<color=red>血猎追击</color> | <color=red>猎潮阶段</color> 开始！Boss 全面追杀！",
-                            "<color=red>Bloodhunt</color> | <color=red>Hunt Storm</color> started! All bosses hunting you!"
+                            RichDangerTag + "血猎追击</color> · " + RichDangerTag + "猎潮阶段</color> 开始！Boss 全面追杀！",
+                            RichDangerTag + "Bloodhunt</color> · " + RichDangerTag + "Hunt Storm</color> started! All bosses hunting you!"
                         ));
                         DevLog("[ModeF] 进入猎潮阶段 (180s, 2%/s)");
                         break;
@@ -228,8 +221,8 @@ namespace BossRush
                         modeFState.PhaseDuration = float.MaxValue;
                         SpawnFinalExtractionPoint();
                         ShowBigBanner(L10n.T(
-                            "<color=red>血猎追击</color> | <color=green>撤离阶段</color> 开始！撤离点已生成，速速撤离！",
-                            "<color=red>Bloodhunt</color> | <color=green>Extraction Phase</color> started! Extraction point spawned, evacuate now!"
+                            RichDangerTag + "血猎追击</color> · " + RichSuccessTag + "撤离阶段</color> 开始！撤离点已生成，速速撤离！",
+                            RichDangerTag + "Bloodhunt</color> · " + RichSuccessTag + "Extraction Phase</color> started! Extraction point spawned, evacuate now!"
                         ));
                         DevLog("[ModeF] 进入撤离阶段 (无限, 3%/s)");
                         break;
@@ -533,8 +526,8 @@ namespace BossRush
                 DevLog("[ModeF] 玩家死亡，Mode F 失败");
 
                 ShowBigBanner(L10n.T(
-                    "<color=red>血猎追击失败！</color> 你倒在了血猎场上...",
-                    "<color=red>Bloodhunt Failed!</color> You fell on the hunting grounds..."
+                    RichDangerTag + "血猎追击失败！</color> 你倒在了血猎场上...",
+                    RichDangerTag + "Bloodhunt Failed!</color> You fell on the hunting grounds..."
                 ));
 
                 // 印记清零、不发奖励
@@ -640,6 +633,7 @@ namespace BossRush
                 ResetModeFPlayerBountyKillLatch();
                 CleanupModeFPlayerNameTag();
                 CleanupModeFBountyRadarUI();
+                ModeFStatusHud.Dispose();
                 CleanupModeFExtractionMapMarker();
                 ResetModeFUiCaches();
                 ClearModeFBossMoveSpeedModifiers();
@@ -790,7 +784,7 @@ namespace BossRush
         /// <summary>
         /// 获取阶段中文名
         /// </summary>
-        private string GetModeFPhaseName(ModeFPhase phase)
+        internal static string GetModeFPhaseName(ModeFPhase phase)
         {
             switch (phase)
             {

@@ -2,7 +2,7 @@
 
 ## What Is It?
 
-The hardest mode in BossRush. **You're bleeding out from the moment you enter.** Killing Bosses is your main sustain tool, but not your only support option. Survive four escalating phases and evacuate before you bleed dry. Good luck.
+The hardest mode in BossRush. **You're bleeding out from the moment you enter.** Killing Bosses is your main way to heal, though not the only one. Survive four phases, each bleeding faster than the last, and evacuate before you bleed dry.
 
 ## Entry
 

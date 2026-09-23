@@ -322,9 +322,9 @@ namespace BossRush
                         radarForward,
                         radarRight);
                 }
-                else if (modeFBountyRadarEntries[i] != null && modeFBountyRadarEntries[i].root != null)
+                else
                 {
-                    modeFBountyRadarEntries[i].root.SetActive(false);
+                    BeginModeFBountyRadarEntryHide(modeFBountyRadarEntries[i]);
                 }
             }
 
@@ -350,9 +350,9 @@ namespace BossRush
                     radarForward,
                     radarRight);
             }
-            else if (modeFBountyLeaderRadarEntry != null && modeFBountyLeaderRadarEntry.root != null)
+            else
             {
-                modeFBountyLeaderRadarEntry.root.SetActive(false);
+                BeginModeFBountyRadarEntryHide(modeFBountyLeaderRadarEntry);
             }
 
             if (modeFBountyRadarGuideImage != null)
@@ -564,30 +564,11 @@ namespace BossRush
             countText.fontStyle = FontStyles.Bold;
             countText.color = Color.white;
             countText.raycastTarget = false;
-            AddModeFBountyRadarTextOutline(countText, leaderStyle ? 1.5f : 1.2f);
+            // 压在游戏世界上的字走共享的 TMP 距离场描边材质（2026-09-23 审美审查 UB-24）：旧版挂的是
+            // UnityEngine.UI.Outline，那只改 uGUI 的 VertexHelper，TextMeshProUGUI 自己 SetMesh，挂上去什么都不发生。
+            BossRushUIKit.ApplyWorldTextOutline(countText);
 
-            GameObject typeObject = new GameObject("Type", typeof(RectTransform), typeof(TextMeshProUGUI));
-            RectTransform typeRect = typeObject.GetComponent<RectTransform>();
-            typeRect.SetParent(iconRect, false);
-            typeRect.anchorMin = new Vector2(0.5f, 0.5f);
-            typeRect.anchorMax = new Vector2(0.5f, 0.5f);
-            typeRect.pivot = new Vector2(0.5f, 0.5f);
-            typeRect.anchoredPosition = new Vector2(0f, size * 0.23f);
-            typeRect.sizeDelta = new Vector2(size * 0.86f, 14f);
-
-            TextMeshProUGUI typeText = typeObject.GetComponent<TextMeshProUGUI>();
-            if (font != null)
-            {
-                typeText.font = font;
-            }
-            typeText.alignment = TextAlignmentOptions.Center;
-            typeText.fontSize = 9f;
-            typeText.fontStyle = FontStyles.Bold;
-            typeText.color = leaderStyle ? ModeFBountyRadarLeaderColor : ModeFBountyRadarRegularColor;
-            typeText.raycastTarget = false;
-            typeText.gameObject.SetActive(leaderStyle);
-            AddModeFBountyRadarTextOutline(typeText, 1f);
-
+            // 「首领」不再单独画成图标里的 9 号字（1080p 下几个像素的糊块），并进距离标签：「首领 · 42m」。
             GameObject distanceObject = new GameObject("Distance", typeof(RectTransform), typeof(Image));
             RectTransform distanceRect = distanceObject.GetComponent<RectTransform>();
             distanceRect.SetParent(rootRect, false);
@@ -595,7 +576,7 @@ namespace BossRush
             distanceRect.anchorMax = new Vector2(0.5f, 0.5f);
             distanceRect.pivot = new Vector2(0.5f, 0.5f);
             distanceRect.anchoredPosition = new Vector2(0f, -size * 0.82f);
-            distanceRect.sizeDelta = leaderStyle ? new Vector2(70f, 20f) : new Vector2(62f, 18f);
+            distanceRect.sizeDelta = leaderStyle ? ModeFBountyRadarLeaderLabelSize : ModeFBountyRadarRegularLabelSize;
 
             Image distanceBackground = distanceObject.GetComponent<Image>();
             // 距离底板从 2x2 纯白硬边换成共享圆角九宫格，和其余界面同一套观感。
@@ -624,7 +605,7 @@ namespace BossRush
             distanceText.fontStyle = FontStyles.Bold;
             distanceText.color = leaderStyle ? ModeFBountyRadarLeaderColor : Color.white;
             distanceText.raycastTarget = false;
-            AddModeFBountyRadarTextOutline(distanceText, 1f);
+            BossRushUIKit.ApplyWorldTextOutline(distanceText);
 
             root.SetActive(false);
             return new ModeFBountyRadarEntryUi
@@ -638,7 +619,6 @@ namespace BossRush
                 directionImage = directionImage,
                 icon = icon,
                 countText = countText,
-                typeText = typeText,
                 distanceRect = distanceRect,
                 distanceBackground = distanceBackground,
                 distanceText = distanceText,
@@ -695,18 +675,12 @@ namespace BossRush
                 entry.countText.text = "x" + Mathf.Max(1, marks);
             }
 
-            if (entry.typeText != null)
-            {
-                entry.typeText.text = L10n.T("首领", "LEADER");
-                entry.typeText.gameObject.SetActive(leaderStyle);
-            }
-
             if (entry.distanceRect != null)
             {
                 float horizontalDistanceBias = Mathf.Abs(direction.x);
                 float labelDistance = Mathf.Lerp(size * 0.82f, size * 1.25f, horizontalDistanceBias);
                 entry.distanceRect.anchoredPosition = -direction * labelDistance;
-                entry.distanceRect.sizeDelta = leaderStyle ? new Vector2(70f, 20f) : new Vector2(62f, 18f);
+                entry.distanceRect.sizeDelta = leaderStyle ? ModeFBountyRadarLeaderLabelSize : ModeFBountyRadarRegularLabelSize;
             }
 
             if (entry.distanceBackground != null)
@@ -723,9 +697,11 @@ namespace BossRush
                 entry.distanceText.fontSize = leaderStyle ? 15f : 14f;
                 entry.distanceText.fontSizeMax = leaderStyle ? 15f : 14f;
                 entry.distanceText.color = leaderStyle ? ModeFBountyRadarLeaderColor : Color.white;
-                entry.distanceText.text = Mathf.RoundToInt(Mathf.Sqrt(displayDistanceSqr)) + "m";
+                int meters = Mathf.RoundToInt(Mathf.Sqrt(displayDistanceSqr));
+                entry.distanceText.text = leaderStyle ? L10n.T("首领 · ", "Leader · ") + meters + "m" : meters + "m";
             }
 
+            entry.hiding = false;
             if (!entry.root.activeSelf)
             {
                 if (entry.canvasGroup != null)
@@ -734,6 +710,24 @@ namespace BossRush
                 }
                 entry.root.SetActive(true);
             }
+        }
+
+        /// <summary>
+        /// 目标进入视野 / 名额被挤掉时淡出再隐藏（0.14 秒，与出现同速），不再一帧消失（审美审查 UB-24）。
+        /// 整块雷达因官方界面或暂停收起时仍走 HideModeFBountyRadarEntries 立即隐藏：那是跟着官方 HUD 一起让位。
+        /// </summary>
+        private static void BeginModeFBountyRadarEntryHide(ModeFBountyRadarEntryUi entry)
+        {
+            if (entry == null || entry.root == null || !entry.root.activeSelf)
+            {
+                return;
+            }
+            if (entry.canvasGroup == null)
+            {
+                entry.root.SetActive(false);
+                return;
+            }
+            entry.hiding = true;
         }
 
         private float GetModeFBountyRadarSafeRadius(float desiredRadius, float size)
@@ -777,8 +771,14 @@ namespace BossRush
             {
                 entry.canvasGroup.alpha = Mathf.MoveTowards(
                     entry.canvasGroup.alpha,
-                    1f,
+                    entry.hiding ? 0f : 1f,
                     Time.unscaledDeltaTime * 7f);
+                if (entry.hiding && entry.canvasGroup.alpha <= 0f)
+                {
+                    entry.hiding = false;
+                    entry.root.SetActive(false);
+                    return;
+                }
             }
 
             if (!entry.leaderStyle || entry.pulseRect == null || entry.pulseImage == null)
@@ -794,19 +794,6 @@ namespace BossRush
                 ModeFBountyRadarLeaderColor.g,
                 ModeFBountyRadarLeaderColor.b,
                 Mathf.Lerp(0.10f, 0.28f, pulse));
-        }
-
-        private static void AddModeFBountyRadarTextOutline(TextMeshProUGUI text, float distance)
-        {
-            if (text == null)
-            {
-                return;
-            }
-
-            Outline outline = text.gameObject.AddComponent<Outline>();
-            outline.effectColor = new Color(0f, 0f, 0f, 0.82f);
-            outline.effectDistance = new Vector2(distance, -distance);
-            outline.useGraphicAlpha = true;
         }
 
         private CharacterMainControl GetModeFBountyRadarLeader(out int leaderMarks)
@@ -897,6 +884,7 @@ namespace BossRush
         {
             if (modeFBountyLeaderRadarEntry != null && modeFBountyLeaderRadarEntry.root != null)
             {
+                modeFBountyLeaderRadarEntry.hiding = false;
                 modeFBountyLeaderRadarEntry.root.SetActive(false);
             }
 
@@ -905,6 +893,7 @@ namespace BossRush
                 ModeFBountyRadarEntryUi entry = modeFBountyRadarEntries[i];
                 if (entry != null && entry.root != null)
                 {
+                    entry.hiding = false;
                     entry.root.SetActive(false);
                 }
             }

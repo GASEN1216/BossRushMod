@@ -30,18 +30,19 @@ namespace BossRush
 
             bool won = report.winner == (int)ModeHMatchOutcome.PlayerVictory;
             page.Body = won ? L10n.T("本场胜利", "Victory") : L10n.T("本场失利", "Defeat");
+            // 输法说具体：超时判负、整队弃赛与被打倒是三种不同的教训（文案与恢复壳战报行同一套 key）
+            if (!won && report.timeout) page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Outcome_Timeout");
+            else if (!won && !string.IsNullOrEmpty(report.cowardiceType)) page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Outcome_Cowardice");
+            // 胜负画在结算页横幅上（UB-03：旧版有逐行战报时 Body 根本不渲染，打完看不到输赢）
+            page.ResultTone = won ? ModeHResultTone.Victory : ModeHResultTone.Defeat;
             page.Lines.Add(L10n.T("耗时：", "Time: ") + report.elapsedSeconds.ToString("0.0") + "s");
-            // 默认流程不下注（2026-09-23 起），没下注时下注额与筹码两行只是噪声，只留赔率
+            // 默认流程不下注（2026-09-23 起）：没下注时赔率、下注额与筹码三行都只是噪声，整段不出（V6-5）
             if (report.virtualStakeAmount > 0)
             {
                 page.Lines.Add(L10n.T("赔率：x", "Odds: x") + report.lockedOdds
                     + L10n.T("　下注：", "  Stake: ") + report.virtualStakeAmount);
                 page.Lines.Add(L10n.T("筹码：", "Credits: ") + report.virtualStakeBalanceBefore
                     + " → " + report.virtualStakeBalanceAfter);
-            }
-            else
-            {
-                page.Lines.Add(L10n.T("赔率：x", "Odds: x") + report.lockedOdds);
             }
             if (report.injuryEvents != null && report.injuryEvents.Count > 0)
             {

@@ -405,17 +405,18 @@ namespace BossRush
         /// </remarks>
         private void TryTriggerStoryMilestone()
         {
+            int reached = 0;
             try
             {
                 int level = AffinityManager.GetLevel(_npcId);
-                int[] milestones = new int[] { 3, 5, 8, 10 };
 
-                for (int i = 0; i < milestones.Length; i++)
+                for (int i = 0; i < StoryMilestones.Length; i++)
                 {
-                    int milestone = milestones[i];
+                    int milestone = StoryMilestones[i];
                     if (level >= milestone && !AffinityManager.HasTriggeredStory(_npcId, milestone))
                     {
                         AffinityManager.MarkStoryTriggered(_npcId, milestone);
+                        reached = milestone;
                         ModBehaviour.DevLog(LogPrefix + " " + _npcId + " 触发剧情里程碑 Lv." + milestone);
                     }
                 }
@@ -423,6 +424,40 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog(LogPrefix + " [WARNING] 剧情里程碑打标失败: " + e.Message);
+            }
+
+            if (reached > 0)
+            {
+                ShowMilestoneBanner(reached);
+            }
+        }
+
+        private static readonly int[] StoryMilestones = { 3, 5, 8, 10 };
+
+        /// <summary>
+        /// 里程碑横幅（审美审查 UA-33）：旧写法只静默打标，玩家不知道自己解锁了什么——羽织、叮当到同样的等级会播一段剧情。
+        /// 一次聊天跨过几档时只报最高那一档；10 级额外写明婚礼教堂的建造条件已达成（判据见上面的 remarks）。
+        /// 捏脸 NPC 暂无里程碑台词：要做完整剧情得给 DuckNpcs.json 加可选字段（SCHEMA+），本轮不做。
+        /// </summary>
+        private void ShowMilestoneBanner(int milestone)
+        {
+            try
+            {
+                INPCAffinityConfig config = AffinityManager.GetNPCConfig(_npcId);
+                string name = config != null && !string.IsNullOrEmpty(config.DisplayName) ? config.DisplayName : _npcId;
+                string text = L10n.T(
+                    name + " 和你更亲近了（好感 Lv" + milestone + "）",
+                    "You and " + name + " grew closer (Affinity Lv" + milestone + ")");
+                if (milestone >= 10)
+                {
+                    text += L10n.T("\n婚礼教堂的建造条件已达成", "\nWedding Chapel requirement met");
+                }
+                // 官方通知横幅（与快递到账同一通道）；不经宿主单例，也不走 ShowBigBanner 的「动态内容」去重判据
+                Duckov.UI.NotificationText.Push(text);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LogPrefix + " [WARNING] 里程碑横幅显示失败: " + e.Message);
             }
         }
 

@@ -15,7 +15,7 @@ Custom items cover entry, NPC services, consumables, mode tools, base progressio
 ## Where to Get Them
 
 - **Base Merchant** — Tickets, Banners, Transponder, Fate Echo Relic, Journal, Medal, Duck King Codex, Brick Stone
-- **Dingdang** — Diamond, Diamond Ring (Affinity-gated), Cold Quench Fluid, Affix Forge Stones (affinity Lv.2)
+- **Dingdang** — Diamond, Diamond Ring (Affinity-gated), Cold Quench Fluid, Affix Forge Stones (affinity Lv.10)
 - **Yuori** — Calming Drops (Lv.3), Peace Amulet (Lv.8)
 - **Boss Drops** — Exclusive equipment, Affix Forge Stones, relic eggs and souls, the three Backyard seeds
 - **Garden Harvest** — the three raid meals, 2 per harvest

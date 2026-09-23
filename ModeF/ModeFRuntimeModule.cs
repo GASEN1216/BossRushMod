@@ -16,6 +16,8 @@ namespace BossRush
 
         public override void OnDestroy()
         {
+            // Mod 卸载时 Mode F 可能还在跑：状态卡是静态 owner，这里兜底销毁（切图走 ExitModeF 那一份）。
+            ModeFStatusHud.Dispose();
             owner = null;
         }
     }

@@ -18,8 +18,9 @@ namespace BossRush
         private static readonly int ZombieModeRendererColorProperty = Shader.PropertyToID("_Color");
         private static readonly int ZombieModeRendererTintColorProperty = Shader.PropertyToID("_TintColor");
         private static readonly int ZombieModeRendererBaseColorProperty = Shader.PropertyToID("_BaseColor");
-        private static readonly Color ZombieModePlagueAuraCoreColor = new Color(0.35f, 1.00f, 0.55f, 0.88f);
-        private static readonly Color ZombieModePlagueAuraFadeColor = new Color(0.72f, 1.00f, 0.75f, 0.45f);
+        // 瘟疫光环去荧光（审美审查 VA-30）：病态的灰绿，不再是 (0.35,1,0.55) 的霓虹绿；alpha 由 colorOverLifetime 控制淡入淡出。
+        private static readonly Color ZombieModePlagueAuraCoreColor = new Color(0.55f, 0.82f, 0.45f, 0.55f);
+        private static readonly Color ZombieModePlagueAuraFadeColor = new Color(0.35f, 0.50f, 0.30f, 0.35f);
 
         private void SetZombieModeRendererColor(Renderer renderer, Color color)
         {
@@ -53,10 +54,10 @@ namespace BossRush
         // 自带 MeshFilter+MeshRenderer+CapsuleCollider，然后又 Destroy(collider)；
         // 高峰每秒 5–15 个新 GameObject 触发 GC + 物理初始化 ≈ 0.5–1 ms/帧。
         //
-        // 改造：第一次仍然用 CreatePrimitive 提取一个 mesh 副本作为 shared mesh，
-        // material 重新构造一次 standard shader 实例并共享；之后所有调用直接 new
-        // GameObject + AddComponent<MeshFilter+MeshRenderer> 用 sharedMesh / sharedMaterial。
-        // 省去 collider 构造 + destroy、省去 default-material 实例化。
+        // 改造：所有调用直接 new GameObject + AddComponent<MeshFilter+MeshRenderer> 用 sharedMesh / sharedMaterial。
+        // 2026-09-23 审美审查（VA-27 / VA-28 / UC-03）：mesh 从 Cylinder 换成单面平面 quad（圆柱上下两个盖叠画，alpha 翻倍），
+        // 材质从首选 Standard（URP 正式构建不画）换成共享半透明粒子材质 + 「内淡外亮」圆盘贴图，
+        // 淡入 / 读条 / 淡出在 ZombieModeZoneVisuals.cs 的 ZombieModeZoneVisualFx 里。
         // ====================================================================
         private static Mesh s_zoneDiskMesh;
         private static Material s_zoneDiskMaterial;
@@ -65,23 +66,12 @@ namespace BossRush
         {
             if (s_zoneDiskMesh == null)
             {
-                GameObject scratch = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                MeshFilter mf = scratch.GetComponent<MeshFilter>();
-                if (mf != null && mf.sharedMesh != null)
-                {
-                    s_zoneDiskMesh = mf.sharedMesh;
-                }
-                UnityEngine.Object.Destroy(scratch);
+                s_zoneDiskMesh = ZombieModeZoneVisuals.GetDiskMesh();
             }
 
-            if (s_zoneDiskMaterial == null)
+            if (s_zoneDiskMaterial == null || s_zoneDiskMaterial.mainTexture == null)
             {
-                Shader shader = Shader.Find("Standard");
-                if (shader == null)
-                {
-                    shader = Shader.Find("Sprites/Default");
-                }
-                s_zoneDiskMaterial = shader != null ? new Material(shader) : null;
+                s_zoneDiskMaterial = ZombieModeZoneVisuals.GetDiskMaterial();
             }
         }
 
@@ -111,7 +101,7 @@ namespace BossRush
             }
             try
             {
-                SetZombieModeRendererColor(mr, color);
+                ZombieModeZoneVisuals.Attach(go, mr, color);
             }
             catch (System.Exception e)
             {
@@ -181,23 +171,29 @@ namespace BossRush
                     continue;
                 }
 
+                // 贴身的瘟气（审美审查 VA-30）：发射体从 2.6×3 m 收到约 0.45×0.7 m，颗粒 0.25–0.45 m，
+                // World 空间让丧尸走动时拖出一小段；上限 14 颗 / 只（旧 45 颗），总量更省。
                 var main = ps.main;
-                main.simulationSpace = ParticleSystemSimulationSpace.Local;
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
                 main.startColor = new ParticleSystem.MinMaxGradient(ZombieModePlagueAuraCoreColor, ZombieModePlagueAuraFadeColor);
                 main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 2.4f);
-                main.startSize = new ParticleSystem.MinMaxCurve(0.75f, 1.35f);
-                main.maxParticles = 45;
+                main.startSize = new ParticleSystem.MinMaxCurve(0.25f, 0.45f);
+                main.maxParticles = 14;
                 main.loop = true;
 
                 var emission = ps.emission;
                 emission.enabled = true;
-                emission.rateOverTime = 3f;
+                emission.rateOverTime = 6f;
 
                 var shape = ps.shape;
                 shape.enabled = true;
                 shape.shapeType = ParticleSystemShapeType.Sphere;
-                shape.radius = 1.25f;
-                shape.scale = new Vector3(2.1f, 2.4f, 2.1f);
+                shape.radius = 0.45f;
+                shape.scale = new Vector3(1f, 1.6f, 1f);
+
+                var sizeOverLifetime = ps.sizeOverLifetime;
+                sizeOverLifetime.enabled = true;
+                sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.6f, 1f, 1.3f));
 
                 var velocity = ps.velocityOverLifetime;
                 velocity.enabled = true;
@@ -215,8 +211,8 @@ namespace BossRush
                     },
                     new GradientAlphaKey[]
                     {
-                        new GradientAlphaKey(0.65f, 0f),
-                        new GradientAlphaKey(0.28f, 0.65f),
+                        new GradientAlphaKey(0f, 0f),
+                        new GradientAlphaKey(0.45f, 0.25f),
                         new GradientAlphaKey(0f, 1f)
                     });
 
@@ -274,8 +270,8 @@ namespace BossRush
                     continue;
                 }
                 light.color = ZombieModePlagueAuraCoreColor;
-                light.range = 2.8f;
-                light.intensity = 1.25f;
+                light.range = 2.2f;
+                light.intensity = 0.9f;
             }
         }
 
@@ -296,42 +292,15 @@ namespace BossRush
             ParticleSystemRenderer renderer = mist.GetComponent<ParticleSystemRenderer>();
             if (renderer != null)
             {
-                Shader shader = Shader.Find("Particles/Standard Unlit");
-                if (shader == null)
-                {
-                    shader = Shader.Find("Sprites/Default");
-                }
-                if (shader != null)
-                {
-                    Material material = new Material(shader);
-                    if (material.HasProperty(ZombieModeRendererColorProperty)) material.color = ZombieModePlagueAuraCoreColor;
-                    if (material.HasProperty(ZombieModeRendererTintColorProperty)) material.SetColor(ZombieModeRendererTintColorProperty, ZombieModePlagueAuraCoreColor);
-                    if (material.HasProperty(ZombieModeRendererBaseColorProperty)) material.SetColor(ZombieModeRendererBaseColorProperty, ZombieModePlagueAuraCoreColor);
-                    renderer.sharedMaterial = material;
-                    FrostmourneRuntimeMaterialTracker tracker = FrostmourneRuntimeMaterialTracker.GetOrAdd(parent.gameObject);
-                    if (tracker != null)
-                    {
-                        tracker.Track(material);
-                    }
-                }
+                // 共享软圆粒子材质（审美审查 VA-30）：旧兜底 Sprites/Default 没有贴图，粒子是硬边方块。共享材质不进 tracker 销毁。
+                renderer.sharedMaterial = BossRushFxMaterials.Get(BossRushFxBlend.Alpha);
             }
+            // 发射参数随后由 ConfigureZombieModePlagueFrostmourneAura 的循环统一写（贴身、小颗粒、淡入淡出）。
             var main = ps.main;
-            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.startColor = new ParticleSystem.MinMaxGradient(ZombieModePlagueAuraCoreColor, ZombieModePlagueAuraFadeColor);
-            main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 2.4f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.75f, 1.35f);
-            main.maxParticles = 45;
+            main.maxParticles = 14;
             main.loop = true;
-
-            var emission = ps.emission;
-            emission.enabled = true;
-            emission.rateOverTime = 3f;
-
-            var shape = ps.shape;
-            shape.enabled = true;
-            shape.shapeType = ParticleSystemShapeType.Sphere;
-            shape.radius = 1.25f;
-            shape.scale = new Vector3(2.1f, 2.4f, 2.1f);
             ps.Play(true);
         }
 
@@ -1246,7 +1215,7 @@ namespace BossRush
                 {
                     throw new System.InvalidOperationException("pooled foot marker renderer missing");
                 }
-                SetZombieModeRendererColor(meshRenderer, Color.Lerp(Color.white, targetColor, 0.65f));
+                ZombieModeZoneVisuals.SetColor(meshRenderer, Color.Lerp(Color.white, targetColor, 0.65f));
                 marker.VisualFootMarker = footMarker;
                 marker.VisualFootMarkerFallbackApplied = true;
             }

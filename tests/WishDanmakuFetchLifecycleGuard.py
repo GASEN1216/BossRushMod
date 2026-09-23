@@ -4,11 +4,17 @@ import sys
 
 FETCH_PIPELINE = Path("Integration/WishFountain/WishFountainFetchPipeline.cs")
 UI_SOURCE = Path("Integration/WishFountain/WishFountainUI.cs")
+DANMAKU_VIEW = Path("Integration/WishFountain/WishFountainDanmakuView.cs")
 
 
 def fail(message: str) -> int:
     print("WishDanmakuFetchLifecycleGuard: FAIL - " + message)
     return 1
+
+
+def strip_line_comments(text: str) -> str:
+    # Commented-out code must not satisfy (or trip) a substring check.
+    return "\n".join(line.split("//", 1)[0] for line in text.splitlines())
 
 
 def extract_block(text: str, signature: str) -> str:
@@ -58,6 +64,20 @@ def main() -> int:
         return fail("missing UI CancelDanmakuFetch block")
     if "WishFountainService.CancelRecentWishesRequest(danmakuFetchSuccessHandler, danmakuFetchFailureHandler);" not in ui_cancel_block:
         return fail("UI CancelDanmakuFetch must unregister pending waiters")
+
+    # Danmaku render lifecycle (2026-09-23 UI review UD-22): TMP ignores UI.Shadow, so the text
+    # underlay comes from one shared UNDERLAY_ON material instance that OnDestroy must release.
+    danmaku_code = strip_line_comments(DANMAKU_VIEW.read_text(encoding="utf-8"))
+    if "AddComponent<Shadow>" in danmaku_code:
+        return fail("danmaku TMP must not use UI.Shadow (no effect on TMP); use the underlay material")
+    material_block = extract_block(danmaku_code, "private Material GetTextMaterial()")
+    if 'EnableKeyword("UNDERLAY_ON")' not in material_block:
+        return fail("danmaku text material must enable UNDERLAY_ON")
+    if "fontSharedMaterial = material" not in danmaku_code:
+        return fail("danmaku items must share the underlay material via fontSharedMaterial")
+    destroy_block = extract_block(danmaku_code, "private void OnDestroy()")
+    if "Destroy(textMaterial);" not in destroy_block:
+        return fail("danmaku OnDestroy must destroy the underlay material instance")
 
     print("WishDanmakuFetchLifecycleGuard: PASS")
     return 0

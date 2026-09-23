@@ -585,7 +585,7 @@ namespace BossRush
             {
                 case SkyIslandStoryFlag.PlantingDelivered: return L10n.T("种植记录交还晴禾之后", "once Qinghe has her planting record back");
                 case SkyIslandStoryFlag.StarLamp: return L10n.T("残星工坊的星灯亮起之后", "once the Fallen Star Workshop's star lamp is lit");
-                default: return L10n.T("旅程再往前走一段之后", "further along the journey");
+                default: return L10n.T("旅程再往前走一段之后", "once the story moves on");
             }
         }
 
@@ -604,13 +604,13 @@ namespace BossRush
             switch (recipe.Id)
             {
                 case "Bento": return L10n.T("晴禾：归航菜的做法写在种植记录里。记录还泡在蛙鸣池边，我凑不齐那几样。",
-                    "Qinghe: The homecoming recipe is written in my planting record, and that is still soaking by Frogsong Pool. I cannot put it together without it.");
+                    "Qinghe: The homecoming recipe is written in my planting record, and that's still soaking by Frogsong Pool. Can't cook it without that.");
                 case "Windcrystal": return L10n.T("浮舟：星灯不亮，工坊的熔晶炉就烧不起来。先把星灯修好，再把碎晶交给我，渡口工台能代你熔成整块。",
-                    "Fuzhou: The workshop's crystal furnace will not burn until the star lamp is lit. Repair the lamp, then bring the shards to my dock workbench; I will have them fused for you.");
+                    "Fuzhou: The workshop's crystal furnace won't burn until the star lamp is lit. Fix the lamp, then bring the shards to my dock workbench and I'll fuse them for you.");
                 case "Compass": return L10n.T("浮舟：罗盘我还没捎给你呢。等第一只信鸽落了、你手里有过一只，我才照着样子重做。",
-                    "Fuzhou: I have not even sent you the compass yet. Once the first pigeon has come and you have held one, I can make another to match.");
+                    "Fuzhou: I haven't even sent you the compass yet. Once the first pigeon has come and you've held one, I can copy it.");
                 case "Zapper": return L10n.T("浮舟：苇白说风晶灯芯的嗡声调低半个音就能引蚋，可她得先在岛上听够两盏灯的调子。灯亮了，我给它打铜罩。",
-                    "Fuzhou: Weibai says a windcrystal wick tuned half a note lower draws the gnats, but she has to hear two lamps burning on the isles before she can find that note. Light them and I will beat the brass cage.");
+                    "Fuzhou: Weibai says a windcrystal wick tuned half a note lower draws the gnats, but she has to hear two lamps burning on the isles before she can find that note. Light them and I'll hammer out the brass cage.");
                 default: return L10n.T("还不会做：", "Not yet: ") + UnlockHint(recipe) + L10n.T("。", ".");
             }
         }
@@ -669,10 +669,10 @@ namespace BossRush
                     "Fuzhou sweeps the shavings aside: 'Lanterns, charms and compasses are all made on this bench. Bring five shards and I will fuse them whole.'");
                 case SkyIslandCraftStation.Stove: return L10n.T(
                     "晴禾往灶里添了块浮木：『驱风香、归航菜便当、云苔纱笠，灶上都做得出来。』",
-                    "Qinghe feeds a piece of driftwood into the stove: 'Windward incense, homecoming bentos, cloudmoss veils — the stove makes them all.'");
+                    "Qinghe feeds a piece of driftwood into the stove: 'Windward incense, homecoming bentos, cloudmoss veils. This stove does them all.'");
                 default: return L10n.T(
                     "眠苔把药臼推过来：『星苔药膏、驱风香、药烟蒲扇，都从这口臼里出来。』",
-                    "Miantai slides the mortar over: 'Starmoss salve, windward incense, the remedy-smoke fan — all of it comes out of this mortar.'");
+                    "Miantai slides the mortar over: 'Starmoss salve, windward incense, the remedy-smoke fan. It all comes out of this mortar.'");
             }
         }
 
@@ -688,8 +688,8 @@ namespace BossRush
                 list += SkyIslandItemRules.Name(MaterialTypeIds[i]) + " " + have;
             }
             if (list.Length == 0)
-                return L10n.T("背包里还没有群岛材料——去找采集点：青穗草丛、浮木、云苔、残铜矿脉和风晶簇，走近时会亮起一点光。",
-                    "No island materials in your pack yet — look for gathering spots: greenear tufts, driftwood, cloudmoss, brass veins and wind crystal clusters. They glow faintly as you get close.");
+                return L10n.T("背包里还没有群岛材料，去找采集点：青穗草丛、浮木、云苔、残铜矿脉和风晶簇，走近时会亮起一点光。",
+                    "No island materials in your pack yet. Look for gathering spots: greenear tufts, driftwood, cloudmoss, brass veins and wind crystal clusters. They glow faintly as you get close.");
             return L10n.T("背包里的群岛材料（只算背包，不算基地仓库）：", "Island materials in your pack (pack only, not base storage): ") + list;
         }
 
@@ -806,8 +806,8 @@ namespace BossRush
         {
             get
             {
-                return L10n.T("你拉了拉航徽上的缆绳——云海那头有人把它收紧了。回过神来，你已经站在登云码头上。（这一趟的缆绳用掉了）",
-                    "You tug the line on the badge — someone across the cloud sea hauls it in. The next moment you are standing on Cloudrise Dock. (That was this trip's line.)");
+                return L10n.T("你拉了拉航徽上的缆绳，云海那头有人把它收紧了。回过神来，你已经站在登云码头上。（这一趟的缆绳用掉了）",
+                    "You tug the badge's line and someone across the cloud sea hauls it in. The next moment you are standing on Cloudrise Dock. (That was this trip's line.)");
             }
         }
 
@@ -824,15 +824,15 @@ namespace BossRush
         { get { return L10n.T("群岛还没就绪，缆绳拉不动。", "The isles are not ready yet; the line will not pull."); } }
 
         internal static string RecallFailed
-        { get { return L10n.T("缆绳没拉动——码头那头找不到落脚的地方。", "The line will not pull — there is no footing at the dock end."); } }
+        { get { return L10n.T("缆绳没拉动，码头那头找不到落脚的地方。", "The line won't pull. There's no footing at the dock end."); } }
 
         /// <summary>耗材生效时的字幕（便当的回话由归航菜服务给，这里没有）。</summary>
         internal static string BuffStarted(SkyIslandFieldBuff buff)
         {
             switch (buff)
             {
-                case SkyIslandFieldBuff.Lantern: return L10n.T("风灯点亮了：约 4 分钟内微风吹不透，大风里也能挡掉一半。夜里云蚋会循着光聚到灯罩上——它们只盯着火，不咬人，也躲不开子弹。",
-                    "The wind lantern is lit: for about 4 minutes a breeze cannot chill you, and it holds off half of a gale. At night cloud gnats gather on its shade — fixed on the flame, they will not bite, and they cannot dodge a bullet.");
+                case SkyIslandFieldBuff.Lantern: return L10n.T("风灯点亮了：约 4 分钟内微风吹不透，大风里也能挡掉一半。夜里云蚋会顺着光聚到灯罩上，只盯着火，不咬人，也躲不开子弹。",
+                    "The wind lantern is lit: for about 4 minutes a breeze cannot chill you, and it holds off half of a gale. At night cloud gnats swarm the shade. They only care about the flame, won't bite, and can't dodge bullets.");
                 case SkyIslandFieldBuff.Incense: return L10n.T("驱风香点上了：约 5 分钟内什么风都侵不了身，耐力恢复加快。",
                     "Windward incense is burning: for about 5 minutes no wind can chill you, and stamina recovers faster.");
                 case SkyIslandFieldBuff.Charm: return L10n.T("晴岚护符系上了：本趟噬风的风暴伤不到你那么深，生命上限与耐力恢复也小幅提升（离岛失效）。",
@@ -855,8 +855,8 @@ namespace BossRush
         internal static string LanternLow(int gnatsInLight)
         {
             if (gnatsInLight <= 0) return BuffLow(SkyIslandFieldBuff.Lantern);
-            return L10n.T("风灯快燃尽了——灯罩上还绕着 ", "The wind lantern is burning low — ") + gnatsInLight +
-                L10n.T(" 只云蚋，火一灭它们就下嘴。", " cloud gnats are still circling the shade, and they will bite the moment it goes out.");
+            return L10n.T("风灯快燃尽了，灯罩上还绕着 ", "The wind lantern is burning low. ") + gnatsInLight +
+                L10n.T(" 只云蚋，火一灭它们就下嘴。", " cloud gnats still circle the shade, and they'll bite the moment it goes out.");
         }
 
         internal static string BuffEnded(SkyIslandFieldBuff buff)
@@ -870,7 +870,7 @@ namespace BossRush
         { get { return L10n.T("身上已经系着一枚晴岚护符了，这一趟不会再叠。", "You are already wearing a Qinglan charm; a second one will not stack this raid."); } }
 
         internal static string OffIsland
-        { get { return L10n.T("它只认得晴岚群岛的风——到了岛上才有用。", "It only answers to the winds of the Qinglan isles — use it there."); } }
+        { get { return L10n.T("它只认晴岚群岛的风，到了岛上才有用。", "It only works with the Qinglan winds. Use it on the isles."); } }
 
         /// <summary>
         /// 夜里：转给唯一口径 <see cref="SkyIslandNight.IsNight"/>（19 点到次日 5 点，光照的星夜整档、夜风与云蚋共用）。
@@ -968,8 +968,8 @@ namespace BossRush
         {
             get
             {
-                return L10n.T("寒意渐重——找处灶火或风晶灯，或者焚一炷驱风香、点上风灯。",
-                    "The chill is setting in — find a hearth or a windcrystal lamp, or burn windward incense or light a wind lantern.");
+                return L10n.T("寒意渐重，找处灶火或风晶灯，或者焚一炷驱风香、点上风灯。",
+                    "The chill is setting in. Find a hearth or a windcrystal lamp, burn windward incense, or light a wind lantern.");
             }
         }
 

@@ -33,7 +33,6 @@ namespace BossRush
         // 悬停色由共享 GetHoverColor 派生，它对白字按钮封顶了提亮幅度。DangerHoverColor 是手调的同色相提亮，不是副本。
         internal static readonly Color ModalBackdropColor = BossRushUIColors.Backdrop;
         internal static readonly Color ModalSurfaceColor = BossRushUIColors.Surface;
-        internal static readonly Color ModalHeaderColor = new Color(0.09f, 0.115f, 0.13f, 0.16f);
         internal static readonly Color DividerColor = BossRushUIColors.Divider;
         internal static readonly Color TextPrimaryColor = BossRushUIColors.TextPrimary;
         internal static readonly Color TextSecondaryColor = BossRushUIColors.TextSecondary;
@@ -396,6 +395,7 @@ namespace BossRush
                 Image backdropImage = backdrop.AddComponent<Image>();
                 backdropImage.color = ModalBackdropColor;
                 backdropImage.raycastTarget = true;
+                BossRushUIKit.StyleBackdrop(backdropImage);   // 暗角 + 0.15 秒淡入，与 BossRushUI.CreateBackdrop 同口径
             }
 
             GameObject surface = CreateRect(
@@ -457,7 +457,7 @@ namespace BossRush
             ColorBlock colors = button.colors;
             colors.normalColor = normalColor;
             colors.highlightedColor = highlightedColor;
-            colors.pressedColor = Color.Lerp(normalColor, Color.black, 0.18f);
+            colors.pressedColor = BossRushUI.GetPressedColor(normalColor);   // 与 GetHoverColor 的 0.10 压暗拉开梯度（审美审查 UC-28）
             colors.selectedColor = highlightedColor;
             colors.disabledColor = disabledColor;
             colors.colorMultiplier = 1f;
@@ -468,9 +468,13 @@ namespace BossRush
             // 赋 colors 会触发一次 0.08 秒的非即时过渡，起点是 OnEnable 时按默认 ColorBlock 定下的白色：
             // 新建或整页重建的按钮都会先白一下再变回底色（审核 F-21；遗种巢点出战/放生「闪一下」，2026-09-22 实测）。
             // 这里直接把当前底色即时写进去，后续悬停/按下照常走 ColorTint 过渡。
+            // 鼠标正停在这颗按钮上时（页签、拍铃这类原地改色的按钮）要落到悬停色，否则改完色悬停反馈就没了（2026-09-23 复核）。
             if (graphic != null)
             {
-                graphic.CrossFadeColor(button.IsInteractable() ? normalColor : disabledColor, 0f, true, true);
+                BossRushButtonFeel feel = button.GetComponent<BossRushButtonFeel>();
+                Color instant = !button.IsInteractable() ? disabledColor
+                    : (feel != null && feel.IsHovered ? highlightedColor : normalColor);
+                graphic.CrossFadeColor(instant, 0f, true, true);
             }
 
             // 共享按钮的标签跟着底色走，否则改完配色会留下亮底白字。
@@ -481,6 +485,14 @@ namespace BossRush
             {
                 TextMeshProUGUI label = labelTransform.GetComponent<TextMeshProUGUI>();
                 if (label != null) label.color = BossRushUI.GetButtonTextColor(normalColor);
+            }
+
+            // 手感与质感（BossRushUIFeel.cs）：官方悬停 / 点击音效、按下回弹、投影与斜面。都幂等。
+            // 几乎透明的按钮（整屏遮罩上的「点空白处关闭」一类）不挂：鼠标一划过遮罩就响悬停音。
+            if (normalColor.a >= 0.3f)
+            {
+                BossRushButtonFeel.Attach(button);
+                BossRushUIDepth.ApplyButtonDepth(button, normalColor);
             }
         }
 
@@ -568,6 +580,8 @@ namespace BossRush
             Image barImage = bar.AddComponent<Image>();
             barImage.color = backgroundColor;
             barImage.raycastTarget = false;
+            // 圆角卡片档：面板是圆角的，横在里面的直角色带和周围的构件不是一套语言（审美审查 UC-20）。
+            BossRushUI.ApplyPanelSkin(barImage, 6, BossRushUISkinPart.Card);
 
             GameObject textObject = CreateRect(name + "_Text", bar.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
             RectTransform textRect = textObject.GetComponent<RectTransform>();

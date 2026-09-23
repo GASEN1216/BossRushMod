@@ -176,8 +176,11 @@ namespace BossRush
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 断风游猎拉开距离停手失败：" + e.Message); }
             yield return null;
             bool moved = false;
+            Vector3 from = boss.transform.position;
             try { moved = SkyIslandBossProps.Teleport(boss, spot + Vector3.up * 0.1f, aiControl); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 断风游猎拉开距离落位失败：" + e.Message); }
+            // 退开也是一次瞬身：留一道风痕和两团扬尘，看得出它往哪退了（VB-25，不伤人）。
+            if (moved) Blink(from, spot);
             disengaging = false;
             ResumeAi();
             // 落位失败（官方寻路没接住）时不进长冷却、也不报字幕：这一次等于没撤。
@@ -259,9 +262,11 @@ namespace BossRush
                     yield break;
                 }
                 Vector3 originGround;
+                Vector3 blinkFrom = boss.transform.position;
                 if (SkyIslandBossProps.SnapNear(origin, context, LandingClearance, LandingJitter, out originGround) &&
                     SkyIslandBossProps.Teleport(boss, originGround + Vector3.up * 0.1f, aiControl))
                 {
+                    Blink(blinkFrom, originGround);
                     // 闪回边缘就立刻恢复官方 AI 补枪：它的反打窗口是冲到你面前那一下（五栏「等它下一次冲过来」），不是躲回去之后。
                     EndLunge(true);
                     yield break;
@@ -311,9 +316,14 @@ namespace BossRush
                 // catch 子句体内不能 yield return（CS1631）：这里只落地与记账。
                 try
                 {
+                    Vector3 from = boss.transform.position;
                     if (SkyIslandBossProps.Teleport(boss, landing + Vector3.up * 0.1f, aiControl))
                     {
-                        SkyIslandBossForge.Detonate(boss, landing, SkyIslandBossRules.LungeRadius, SkyIslandBossRules.LungeDamage);
+                        // 冲步是一段冲锋，不是爆炸：起点扬尘 + 两点之间一道风痕 + 落点余波，不冒官方火球（VB-21 / VB-25）。
+                        SkyIslandImpactFx.Puff(context.Root, from, 0.5f, 8);
+                        SkyIslandImpactFx.Streak(context.Root, from, landing, LungeTint);
+                        SkyIslandBossForge.Detonate(boss, landing, SkyIslandBossRules.LungeRadius, SkyIslandBossRules.LungeDamage,
+                            false, SkyIslandImpactFx.BossShake, LungeTint);
                         stepLanded = true;
                     }
                 }
@@ -365,10 +375,19 @@ namespace BossRush
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 断风游猎恢复失败：" + e.Message); }
         }
 
+        /// <summary>不伤人的瞬身（拉开距离、伏的闪回）：起落两团扬尘 + 一道风痕。纯表现，失败不影响动作。</summary>
+        private void Blink(Vector3 from, Vector3 to)
+        {
+            if (context == null) return;
+            SkyIslandImpactFx.Puff(context.Root, from, 0.5f, 6);
+            SkyIslandImpactFx.Streak(context.Root, from, to, LungeTint);
+            SkyIslandImpactFx.Puff(context.Root, to, 0.5f, 6);
+        }
+
         private void DestroyVisuals()
         {
             if (windLine != null) Destroy(windLine.gameObject);
-            if (landingRing != null) Destroy(landingRing.gameObject);
+            SkyIslandBossForge.ReleaseRing(landingRing);
             windLine = null;
             landingRing = null;
         }

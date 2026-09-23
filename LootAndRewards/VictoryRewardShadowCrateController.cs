@@ -10,6 +10,17 @@ namespace BossRush
 {
     /// <summary>
     /// 标准 BossRush 通关奖励箱的虚影跟随与落地控制器。
+    ///
+    /// 表现口径（2026-09-23 特效审美审查 VA-16 / VA-17）：
+    ///   - 视觉模板（实机日志：Box_EnemyDie_Red）的材质是 SodaCraft/SodaLit_EdgeLight，只有 ShadowCaster / DepthOnly /
+    ///     DepthNormals / UniversalGBuffer 四个 pass，混合与 ZWrite 写死（UnityPy 直读 resources.assets）。
+    ///     旧版把它改到 renderQueue 3000 伪造半透明：URP Deferred 的透明队列只画 Forward 系 pass，虚影和英雄外壳因此根本不画；
+    ///     写的 _Color / _BaseColor / _TintColor 着色器也不认。
+    ///   - 现在不伪造透明：虚影期缩到 0.6 倍、淡金加一点自发光；凝实时 0.4 s EaseOut 长到 1 倍、换成金色，叠一圈金环。
+    ///     颜色只写官方的 _Tint 与 _EmissionColor，走 MaterialPropertyBlock，不复制材质、不改渲染队列（VictoryRewardCrateTint）。
+    ///   - 下落先慢后快，触地前约 0.05 s 压扁，真箱外壳接着回弹；落地放金环、碎片、尘与轻微震屏。
+    ///   - 灯只照出箱子周围一小片暖斑：淡入、缓呼吸，落地 / 打开 / 销毁时淡出（BossRushFxLightFade）。
+    ///   只在通关奖励演出期间存在；触地那一帧生成真箱的时序与奖励逻辑不变。
     /// </summary>
     public sealed class VictoryRewardShadowCrateController : MonoBehaviour
     {
@@ -21,28 +32,33 @@ namespace BossRush
             Completed
         }
 
+        private const float AppearDurationSeconds = 0.3f;
         private const float MaterializeDurationSeconds = 0.4f;
-        private const float DescendSpeedMetersPerSecond = 1.4f;
+        private const float DescendStartSpeedMetersPerSecond = 0.3f;
+        private const float DescendAccelerationMetersPerSecondSquared = 3.5f;
+        private const float LandingSquashHeight = 0.24f;
+        private const float LandingSquashY = 0.9f;
         private const float RotationSpeedDegreesPerSecond = 30f;
         private const float GhostHeroScaleMultiplier = 2f;
-        private const float InitialGhostAlpha = 0.45f;
-        private const float FinalGhostAlpha = 1f;
-        private const float InitialGhostScale = 1.08f;
+        private const float InitialGhostScale = 0.6f;
         private const float FinalGhostScale = 1f;
         private const float GroundRaycastDistance = 32f;
-        private const float GhostAuraBaseIntensity = 4.5f;
-        private const float GhostAuraPulseIntensity = 1.4f;
-        private const float GhostAuraPulseSpeed = 4.5f;
-        private const float GhostAuraRange = 6.5f;
+        private const float GhostAuraBaseIntensity = 1.6f;
+        private const float GhostAuraBreatheAmplitude = 0.25f;
+        private const float GhostAuraBreathePeriod = 2.9f;
+        private const float GhostAuraRange = 3.8f;
+        private const float GhostAuraFadeInSeconds = 0.4f;
+        private const float GhostAuraFadeOutSeconds = 0.3f;
+        private const float MaterializeRingRadius = 1.2f;
+        private const float LandingRingRadius = 1.8f;
+        private const float RingLifeSeconds = 0.6f;
+        private const int LandingShardCount = 8;
+        private const int LandingDustCount = 6;
+        private const float LandingShakeStrength = 0.15f;
 
-        private static readonly int ColorPropertyId = Shader.PropertyToID("_Color");
-        private static readonly int BaseColorPropertyId = Shader.PropertyToID("_BaseColor");
-        private static readonly int TintColorPropertyId = Shader.PropertyToID("_TintColor");
-        private static readonly int EmissionColorPropertyId = Shader.PropertyToID("_EmissionColor");
-        private static readonly Color GhostTint = new Color(1f, 0.95f, 0.78f, 1f);
-        private static readonly Color GhostAuraColor = new Color(1f, 0.82f, 0.22f, 1f);
-
-        private readonly List<Material> ghostMaterials = new List<Material>();
+        private static readonly Color RingColor = new Color(
+            BossRushUIColors.RarityLegendary.r, BossRushUIColors.RarityLegendary.g, BossRushUIColors.RarityLegendary.b, 0.85f);
+        private static readonly Color LandingDustColor = new Color(0.62f, 0.55f, 0.44f, 0.32f);
 
         private ModBehaviour owner;
         private CharacterMainControl player;
@@ -51,11 +67,15 @@ namespace BossRush
         private GameObject ghostObject;
         private Transform ghostTransform;
         private Vector3 ghostBaseScale = Vector3.one;
+        private Renderer[] ghostRenderers;
+        private float appliedSolidity = -1f;
         private Light ghostAuraLight;
+        private BossRushFxLightFade ghostAuraFade;
         private ShadowCrateState state = ShadowCrateState.Following;
         private Vector3 landingPosition = Vector3.zero;
         private int highQualityCount;
         private float stateElapsedSeconds;
+        private float appearElapsedSeconds;
         private bool disposed;
 
         public bool Initialize(
@@ -71,6 +91,7 @@ namespace BossRush
             highQualityCount = rewardHighQualityCount;
             state = ShadowCrateState.Following;
             stateElapsedSeconds = 0f;
+            appearElapsedSeconds = 0f;
 
             if (owner == null || player == null || sourcePrefab == null || highQualityCount <= 0)
             {
@@ -86,8 +107,9 @@ namespace BossRush
                 MultiSceneCore.MoveToActiveWithScene(ghostObject, SceneManager.GetActiveScene().buildIndex);
                 DisableGhostInteraction(ghostObject);
                 CreateGhostAuraLight();
-                CacheGhostMaterials();
-                ApplyGhostVisual(InitialGhostAlpha, InitialGhostScale);
+                ghostRenderers = ghostObject.GetComponentsInChildren<Renderer>(true);
+                // 从 0 长出来（AppearDurationSeconds 内 SmoothStep 到虚影尺寸），不在头顶一帧弹出
+                ApplyGhostVisual(0f, 0f);
                 UpdateFollowPose(Time.unscaledTime);
                 ModBehaviour.DevLog("[BossRush] 通关奖励箱虚影已创建: pos=" + ghostTransform.position);
                 return true;
@@ -117,6 +139,8 @@ namespace BossRush
             {
                 Vector3 currentPosition = ghostTransform.position;
                 ghostTransform.position = new Vector3(anchorPosition.x, currentPosition.y, anchorPosition.z);
+                // 凝实的那一下：绕箱子一圈金环（不开灯，箱子自己的灯已经够了）
+                NewWeaponFx.PlayBurst(ghostTransform.position, RingColor, MaterializeRingRadius, RingLifeSeconds, 0, false);
             }
         }
 
@@ -152,15 +176,20 @@ namespace BossRush
             float followY = VictoryRewardShadowMath.ComputeFollowY(anchorPosition.y, elapsedSeconds);
             ghostTransform.position = new Vector3(anchorPosition.x, followY, anchorPosition.z);
             ghostTransform.Rotate(0f, RotationSpeedDegreesPerSecond * Time.unscaledDeltaTime, 0f, Space.World);
+
+            if (appearElapsedSeconds < AppearDurationSeconds)
+            {
+                appearElapsedSeconds += Time.unscaledDeltaTime;
+                ApplyGhostVisual(InitialGhostScale * BossRushUI.SmoothStep(appearElapsedSeconds / AppearDurationSeconds), 0f);
+            }
         }
 
         private void UpdateMaterialize(float deltaTime)
         {
             stateElapsedSeconds += deltaTime;
             float t = Mathf.Clamp01(stateElapsedSeconds / MaterializeDurationSeconds);
-            float alpha = Mathf.Lerp(InitialGhostAlpha, FinalGhostAlpha, t);
-            float scale = Mathf.Lerp(InitialGhostScale, FinalGhostScale, t);
-            ApplyGhostVisual(alpha, scale);
+            float eased = BossRushUI.EaseOut(t);
+            ApplyGhostVisual(Mathf.Lerp(InitialGhostScale, FinalGhostScale, eased), eased);
             if (ghostTransform != null)
             {
                 ghostTransform.Rotate(0f, RotationSpeedDegreesPerSecond * deltaTime, 0f, Space.World);
@@ -181,17 +210,30 @@ namespace BossRush
                 return;
             }
 
+            // 先慢后快的落体：速度随下落时间线性增加，3.2 m 约 1.3 s 落地（旧版 1.4 m/s 匀速约 2.3 s）
             Vector3 currentPosition = ghostTransform.position;
+            float descendSpeed = DescendStartSpeedMetersPerSecond + DescendAccelerationMetersPerSecondSquared * stateElapsedSeconds;
             float nextY = VictoryRewardShadowMath.MoveTowardsY(
                 currentPosition.y,
                 landingPosition.y,
-                DescendSpeedMetersPerSecond,
+                descendSpeed,
                 deltaTime);
 
             ghostTransform.position = new Vector3(landingPosition.x, nextY, landingPosition.z);
             ghostTransform.Rotate(0f, RotationSpeedDegreesPerSecond * deltaTime, 0f, Space.World);
 
-            if (Mathf.Abs(nextY - landingPosition.y) <= 0.0001f)
+            // 触地前最后约 0.05 s 压扁（y 到 0.9、水平略鼓），真箱外壳接着回弹（VictoryRewardCrateLandingBounce）
+            float remaining = Mathf.Abs(nextY - landingPosition.y);
+            if (remaining < LandingSquashHeight)
+            {
+                float squashY = Mathf.Lerp(LandingSquashY, 1f, remaining / LandingSquashHeight);
+                float bulge = 1f + (1f - squashY) * 0.5f;
+                ghostTransform.localScale = Vector3.Scale(
+                    ghostBaseScale * (GhostHeroScaleMultiplier * FinalGhostScale),
+                    new Vector3(bulge, squashY, bulge));
+            }
+
+            if (remaining <= 0.0001f)
             {
                 SpawnRealRewardAndDispose();
             }
@@ -279,15 +321,18 @@ namespace BossRush
                 return;
             }
 
+            // 光源在虚影底部（头顶约 3.2 m），3.8 m 的范围只在地面照出约 2 m 半径的暖斑；0.4 s 淡入，约 2.9 s 一次 ±0.4 的呼吸
             GameObject auraLightObject = new GameObject("BossRush_VictoryRewardShadowAuraLight");
             auraLightObject.transform.SetParent(ghostTransform, false);
             auraLightObject.transform.localPosition = Vector3.zero;
             ghostAuraLight = auraLightObject.AddComponent<Light>();
             ghostAuraLight.type = LightType.Point;
-            ghostAuraLight.color = GhostAuraColor;
+            ghostAuraLight.color = VictoryRewardCrateTint.AuraLightColor;
             ghostAuraLight.range = GhostAuraRange;
-            ghostAuraLight.intensity = GhostAuraBaseIntensity;
+            ghostAuraLight.intensity = 0f;
             ghostAuraLight.shadows = LightShadows.None;
+            ghostAuraFade = BossRushFxLightFade.Attach(ghostAuraLight, GhostAuraBaseIntensity, GhostAuraFadeInSeconds,
+                GhostAuraBreatheAmplitude, GhostAuraBreathePeriod);
         }
 
         private void DisableGhostInteraction(GameObject target)
@@ -378,109 +423,27 @@ namespace BossRush
             EnsureVisualChildrenVisible(target);
         }
 
-        private void CacheGhostMaterials()
+        /// <summary>
+        /// scale 是相对虚影终态的尺寸倍数（虚影期 0.6、凝实后 1）；solidity 0 → 1 从淡金虚影过渡到英雄箱的金色。
+        /// 颜色只在 solidity 变化时重写（出现阶段只改尺寸）。
+        /// </summary>
+        private void ApplyGhostVisual(float scale, float solidity)
         {
-            ghostMaterials.Clear();
+            if (ghostTransform != null)
+            {
+                ghostTransform.localScale = ghostBaseScale * (GhostHeroScaleMultiplier * Mathf.Max(0.001f, scale));
+            }
 
-            if (ghostObject == null)
+            if (Mathf.Abs(solidity - appliedSolidity) < 0.001f)
             {
                 return;
             }
 
-            try
-            {
-                Renderer[] renderers = ghostObject.GetComponentsInChildren<Renderer>(true);
-                for (int i = 0; i < renderers.Length; i++)
-                {
-                    Renderer renderer = renderers[i];
-                    if (renderer == null)
-                    {
-                        continue;
-                    }
-
-                    Material[] materials = renderer.materials;
-                    if (materials == null)
-                    {
-                        continue;
-                    }
-
-                    for (int j = 0; j < materials.Length; j++)
-                    {
-                        Material material = materials[j];
-                        if (material != null)
-                        {
-                            ConfigureGhostMaterialTransparency(material);
-                            ghostMaterials.Add(material);
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[BossRush] [WARNING] 缓存奖励箱虚影材质失败: " + e.Message);
-            }
-        }
-
-        private void ApplyGhostVisual(float alpha, float scale)
-        {
-            if (ghostTransform != null)
-            {
-                ghostTransform.localScale = ghostBaseScale * (GhostHeroScaleMultiplier * scale);
-            }
-
-            for (int i = 0; i < ghostMaterials.Count; i++)
-            {
-                Material material = ghostMaterials[i];
-                if (material == null)
-                {
-                    continue;
-                }
-
-                Color color = new Color(GhostTint.r, GhostTint.g, GhostTint.b, alpha);
-                try
-                {
-                    if (material.HasProperty(ColorPropertyId))
-                    {
-                        material.SetColor(ColorPropertyId, color);
-                    }
-                }
-                catch {}
-
-                try
-                {
-                    if (material.HasProperty(TintColorPropertyId))
-                    {
-                        material.SetColor(TintColorPropertyId, color);
-                    }
-                }
-                catch {}
-
-                try
-                {
-                    if (material.HasProperty(BaseColorPropertyId))
-                    {
-                        material.SetColor(BaseColorPropertyId, color);
-                    }
-                }
-                catch {}
-
-                try
-                {
-                    if (material.HasProperty(EmissionColorPropertyId))
-                    {
-                        material.EnableKeyword("_EMISSION");
-                        material.SetColor(EmissionColorPropertyId, GhostAuraColor * (0.8f + alpha * 1.6f));
-                    }
-                }
-                catch {}
-            }
-
-            if (ghostAuraLight != null)
-            {
-                float pulse = 1f + Mathf.Sin(Time.unscaledTime * GhostAuraPulseSpeed) * 0.5f;
-                ghostAuraLight.intensity = (GhostAuraBaseIntensity + GhostAuraPulseIntensity * pulse) * Mathf.Lerp(0.7f, 1f, alpha);
-                ghostAuraLight.range = GhostAuraRange * Mathf.Lerp(0.85f, 1.1f, alpha);
-            }
+            appliedSolidity = solidity;
+            VictoryRewardCrateTint.Apply(
+                ghostRenderers,
+                Color.Lerp(VictoryRewardCrateTint.PhantomTint, VictoryRewardCrateTint.HeroTint, solidity),
+                Vector4.Lerp(VictoryRewardCrateTint.PhantomEmission, VictoryRewardCrateTint.HeroEmission, solidity));
         }
 
         private void EnsureVisualChildrenVisible(GameObject root)
@@ -548,46 +511,6 @@ namespace BossRush
             }
         }
 
-        private void ConfigureGhostMaterialTransparency(Material material)
-        {
-            if (material == null)
-            {
-                return;
-            }
-
-            try
-            {
-                if (material.HasProperty("_Surface"))
-                {
-                    material.SetFloat("_Surface", 1f);
-                }
-
-                if (material.HasProperty("_Mode"))
-                {
-                    material.SetFloat("_Mode", 3f);
-                }
-
-                if (material.HasProperty("_AlphaClip"))
-                {
-                    material.SetFloat("_AlphaClip", 0f);
-                }
-
-                material.SetOverrideTag("RenderType", "Transparent");
-                material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-                material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-                material.SetInt("_ZWrite", 0);
-                material.DisableKeyword("_ALPHATEST_ON");
-                material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                material.EnableKeyword("_ALPHABLEND_ON");
-                material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                material.renderQueue = 3000;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[BossRush] [WARNING] 配置奖励箱虚影透明材质失败: " + e.Message);
-            }
-        }
-
         private void SpawnRealRewardAndDispose()
         {
             if (state == ShadowCrateState.Completed)
@@ -598,31 +521,87 @@ namespace BossRush
             state = ShadowCrateState.Completed;
             ModBehaviour.DevLog("[BossRush] 通关奖励箱虚影完成落地: landing=" + landingPosition);
 
+            // 真箱外壳沿用虚影触地时的朝向并接着回弹；交接只在这一次同步生成里有效
+            VictoryRewardCrateHeroVisual.BeginLandingHandoff(ghostTransform != null ? ghostTransform.rotation : Quaternion.identity);
             try
             {
-                if (owner != null)
-                {
-                    owner.SpawnDifficultyRewardLootboxAtWorldPosition_LootAndRewards(highQualityCount, landingPosition);
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[BossRush] [WARNING] 奖励箱虚影落地生成实体失败，回退默认逻辑: " + e.Message);
-
                 try
                 {
                     if (owner != null)
                     {
-                        owner.SpawnDifficultyRewardLootboxFallback_LootAndRewards(highQualityCount);
+                        owner.SpawnDifficultyRewardLootboxAtWorldPosition_LootAndRewards(highQualityCount, landingPosition);
                     }
                 }
-                catch (Exception inner)
+                catch (Exception e)
                 {
-                    ModBehaviour.DevLog("[BossRush] [WARNING] 奖励箱虚影回退默认生成也失败: " + inner.Message);
+                    ModBehaviour.DevLog("[BossRush] [WARNING] 奖励箱虚影落地生成实体失败，回退默认逻辑: " + e.Message);
+
+                    try
+                    {
+                        if (owner != null)
+                        {
+                            owner.SpawnDifficultyRewardLootboxFallback_LootAndRewards(highQualityCount);
+                        }
+                    }
+                    catch (Exception inner)
+                    {
+                        ModBehaviour.DevLog("[BossRush] [WARNING] 奖励箱虚影回退默认生成也失败: " + inner.Message);
+                    }
                 }
             }
+            finally
+            {
+                VictoryRewardCrateHeroVisual.EndLandingHandoff();
+            }
 
+            PlayLandingImpact();
+            ReleaseGhostAuraLight();
             CleanupAndDestroy(true);
+        }
+
+        /// <summary>落地冲击：贴地金环 + 8 片碎片（不开灯）、一小团尘、轻微向下的震屏（官方手雷的 0.15 倍）。</summary>
+        private void PlayLandingImpact()
+        {
+            try
+            {
+                NewWeaponFx.PlayBurst(landingPosition, RingColor, LandingRingRadius, RingLifeSeconds, LandingShardCount, false);
+                BossRushFxKit.PlayBurst(landingPosition, BossRushFxKit.Dust(LandingDustColor, LandingDustCount));
+                CameraShaker.Shake(Vector3.down * (0.4f * LandingShakeStrength), CameraShaker.CameraShakeTypes.explosion);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] [WARNING] 通关奖励箱落地特效失败: " + e.Message);
+            }
+        }
+
+        /// <summary>虚影的灯脱离虚影留在原地 0.3 s 淡出，与真箱灯的 0.4 s 淡入交叉，落地那一帧地面不闪。</summary>
+        private void ReleaseGhostAuraLight()
+        {
+            if (ghostAuraLight == null)
+            {
+                return;
+            }
+
+            try
+            {
+                Transform lightTransform = ghostAuraLight.transform;
+                lightTransform.SetParent(ghostTransform != null ? ghostTransform.parent : null, true);
+                if (ghostAuraFade != null)
+                {
+                    ghostAuraFade.FadeOut(GhostAuraFadeOutSeconds, true);
+                }
+                else
+                {
+                    UnityEngine.Object.Destroy(lightTransform.gameObject);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] [WARNING] 通关奖励箱虚影灯淡出失败: " + e.Message);
+            }
+
+            ghostAuraLight = null;
+            ghostAuraFade = null;
         }
 
         private void CleanupAndDestroy(bool destroySelf)
@@ -641,6 +620,9 @@ namespace BossRush
             }
             ghostTransform = null;
             playerTransform = null;
+            ghostRenderers = null;
+            ghostAuraLight = null;
+            ghostAuraFade = null;
 
             if (owner != null)
             {
@@ -869,18 +851,34 @@ namespace BossRush
     internal static class VictoryRewardCrateHeroVisual
     {
         private const float HeroShellScaleMultiplier = 2f;
-        private const float AuraRange = 8f;
-        private const float AuraIntensity = 5.5f;
+        // 常驻灯只照亮箱子周围一小片（旧版贴地 8 m / 5.5，约 16 m 宽的地面被洗平）；抬到箱子中部高度
+        private const float AuraRange = 2.5f;
+        private const float AuraIntensity = 1.8f;
+        private const float AuraHeight = 0.9f;
+        private const float AuraFadeInSeconds = 0.4f;
+        private const float AuraBreatheAmplitude = 0.15f;
+        private const float AuraBreathePeriod = 2.9f;
 
-        private static readonly int ColorPropertyId = Shader.PropertyToID("_Color");
-        private static readonly int BaseColorPropertyId = Shader.PropertyToID("_BaseColor");
-        private static readonly int TintColorPropertyId = Shader.PropertyToID("_TintColor");
-        private static readonly int EmissionColorPropertyId = Shader.PropertyToID("_EmissionColor");
-        private static readonly Color HeroShellColor = new Color(1f, 0.84f, 0.26f, 0.92f);
-        private static readonly Color HeroEmissionColor = new Color(1f, 0.72f, 0.18f, 1f);
+        // 虚影触地那一帧由控制器设置、AttachToLootbox 读完即清（控制器 finally 里也会清）：
+        // 外壳沿用虚影的朝向，并从虚影触地时的压扁接着回弹
+        private static bool landingHandoffActive;
+        private static Quaternion landingHandoffRotation = Quaternion.identity;
+
+        internal static void BeginLandingHandoff(Quaternion ghostRotation)
+        {
+            landingHandoffActive = true;
+            landingHandoffRotation = ghostRotation;
+        }
+
+        internal static void EndLandingHandoff()
+        {
+            landingHandoffActive = false;
+        }
 
         internal static void AttachToLootbox(InteractableLootbox lootbox, InteractableLootbox visualPrefab)
         {
+            bool landed = landingHandoffActive;
+            landingHandoffActive = false;
             if (lootbox == null || lootbox.gameObject == null)
             {
                 return;
@@ -904,11 +902,17 @@ namespace BossRush
                 shell.name = "BossRush_VictoryRewardHeroShell";
                 shell.transform.SetParent(lootbox.transform, false);
                 shell.transform.localPosition = Vector3.zero;
-                shell.transform.localRotation = Quaternion.identity;
+                shell.transform.localRotation = landed
+                    ? Quaternion.Inverse(lootbox.transform.rotation) * landingHandoffRotation
+                    : Quaternion.identity;
                 shell.transform.localScale = Vector3.one * HeroShellScaleMultiplier;
 
                 PrepareHeroShell(shell);
-                CreateAuraLight(lootbox.transform);
+                if (landed)
+                {
+                    shell.AddComponent<VictoryRewardCrateLandingBounce>();
+                }
+                CreateAuraLight(lootbox);
 
                 ModBehaviour.DevLog("[BossRush] 已为通关奖励箱附加英雄视觉外壳");
             }
@@ -958,65 +962,45 @@ namespace BossRush
             DisableBehaviour<BossRushCarryInteractable>(shell);
             DisableBehaviour<BossRushLootboxMarker>(shell);
 
+            // 外壳是实心的金色箱子：保留官方材质与投影（不再伪造半透明，见 VictoryRewardShadowCrateController 文件头），
+            // 只经属性块写 _Tint 与一丝自发光
             try
             {
-                Renderer[] renderers = shell.GetComponentsInChildren<Renderer>(true);
-                for (int i = 0; i < renderers.Length; i++)
-                {
-                    Renderer renderer = renderers[i];
-                    if (renderer == null)
-                    {
-                        continue;
-                    }
-
-                    renderer.shadowCastingMode = ShadowCastingMode.Off;
-                    renderer.receiveShadows = false;
-
-                    Material[] materials = renderer.materials;
-                    if (materials == null)
-                    {
-                        continue;
-                    }
-
-                    for (int j = 0; j < materials.Length; j++)
-                    {
-                        Material material = materials[j];
-                        if (material == null)
-                        {
-                            continue;
-                        }
-
-                        ConfigureTransparentGoldMaterial(material);
-                    }
-                }
+                VictoryRewardCrateTint.Apply(
+                    shell.GetComponentsInChildren<Renderer>(true),
+                    VictoryRewardCrateTint.HeroTint,
+                    VictoryRewardCrateTint.HeroEmission);
             }
             catch {}
 
             EnsureVisualChildrenVisible(shell);
         }
 
-        private static void CreateAuraLight(Transform parent)
+        /// <summary>
+        /// 常驻灯不挂在箱子下面，由 VictoryRewardCrateAuraFollower 跟随（箱子可被搬运）：
+        /// 箱子被打开或被销毁时灯还在，才能 0.3 s 淡出而不是跟着一帧消失。
+        /// </summary>
+        private static void CreateAuraLight(InteractableLootbox lootbox)
         {
-            if (parent == null)
+            Transform target = lootbox != null ? lootbox.transform : null;
+            if (target == null)
             {
                 return;
             }
 
-            Transform existing = parent.Find("BossRush_VictoryRewardHeroAuraLight");
-            if (existing != null)
-            {
-                return;
-            }
-
+            Vector3 offset = new Vector3(0f, AuraHeight, 0f);
             GameObject auraLightObject = new GameObject("BossRush_VictoryRewardHeroAuraLight");
-            auraLightObject.transform.SetParent(parent, false);
-            auraLightObject.transform.localPosition = Vector3.zero;
+            auraLightObject.transform.SetParent(target.parent, false);
+            auraLightObject.transform.position = target.position + offset;
             Light aura = auraLightObject.AddComponent<Light>();
             aura.type = LightType.Point;
-            aura.color = HeroEmissionColor;
+            aura.color = VictoryRewardCrateTint.AuraLightColor;
             aura.range = AuraRange;
-            aura.intensity = AuraIntensity;
+            aura.intensity = 0f;
             aura.shadows = LightShadows.None;
+            BossRushFxLightFade fade = BossRushFxLightFade.Attach(aura, AuraIntensity, AuraFadeInSeconds,
+                AuraBreatheAmplitude, AuraBreathePeriod);
+            auraLightObject.AddComponent<VictoryRewardCrateAuraFollower>().Bind(lootbox, fade, offset);
         }
 
         private static void DisableBehaviour<T>(GameObject root) where T : Behaviour
@@ -1087,64 +1071,6 @@ namespace BossRush
                         lights[i].gameObject.SetActive(true);
                         lights[i].enabled = true;
                     }
-                }
-            }
-            catch {}
-        }
-
-        private static void ConfigureTransparentGoldMaterial(Material material)
-        {
-            if (material == null)
-            {
-                return;
-            }
-
-            try
-            {
-                if (material.HasProperty("_Surface"))
-                {
-                    material.SetFloat("_Surface", 1f);
-                }
-
-                if (material.HasProperty("_Mode"))
-                {
-                    material.SetFloat("_Mode", 3f);
-                }
-
-                if (material.HasProperty("_AlphaClip"))
-                {
-                    material.SetFloat("_AlphaClip", 0f);
-                }
-
-                material.SetOverrideTag("RenderType", "Transparent");
-                material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-                material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-                material.SetInt("_ZWrite", 0);
-                material.DisableKeyword("_ALPHATEST_ON");
-                material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                material.EnableKeyword("_ALPHABLEND_ON");
-                material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                material.renderQueue = 3000;
-
-                if (material.HasProperty(ColorPropertyId))
-                {
-                    material.SetColor(ColorPropertyId, HeroShellColor);
-                }
-
-                if (material.HasProperty(TintColorPropertyId))
-                {
-                    material.SetColor(TintColorPropertyId, HeroShellColor);
-                }
-
-                if (material.HasProperty(BaseColorPropertyId))
-                {
-                    material.SetColor(BaseColorPropertyId, HeroShellColor);
-                }
-
-                if (material.HasProperty(EmissionColorPropertyId))
-                {
-                    material.EnableKeyword("_EMISSION");
-                    material.SetColor(EmissionColorPropertyId, HeroEmissionColor * 2.6f);
                 }
             }
             catch {}

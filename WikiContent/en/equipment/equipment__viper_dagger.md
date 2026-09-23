@@ -26,13 +26,13 @@ Each melee hit applies **1 poison stack** to the target (max 5 layers):
 
 ### What It Looks Like
 
-Swings leave a **venom-green trail**. When the 5th stack triggers the toxic burst, a poison ring bursts at the target's feet and throws out shards, with a muffled bubbling pop — seeing that ring and hearing that pop means the burst actually resolved. (The burst no longer prints a bubble over your head: at full attack speed it would sit there permanently.)
+Swings leave a **venom-green trail**. When the 5th stack triggers the toxic burst, a poison ring bursts at the target's feet and throws out shards, with a muffled bubbling pop. Seeing that ring and hearing that pop means the burst actually resolved. (The burst no longer prints a bubble over your head: at full attack speed it would sit there permanently.)
 
 ### Tips
 
 - Fast attack speed (2.1) and low stamina cost (4/hit) let you stack venom quickly
 - On base stats a burst lands around 50-57; reforges, affixes and set bonuses push it up with everything else
-- 1.4m range requires you to be right on top of enemies — risky when surrounded
+- 1.4m range means you have to be right on top of enemies, which is risky when surrounded
 - Low crit stats mean early single-hit damage is weak; venom stacking is how you deal competitive DPS
 
 [tip] Works best against slow/stationary bosses you can reliably hit 5 times. Struggles against fast-moving targets like the Hunter Boss.

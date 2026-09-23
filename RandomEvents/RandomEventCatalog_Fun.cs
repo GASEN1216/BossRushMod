@@ -194,15 +194,6 @@ namespace BossRush
 
         private IEnumerator FireworksRoutine(ModBehaviour owner)
         {
-            Color[] palette = new Color[]
-            {
-                BossRushUIColors.RarityLegendary,
-                BossRushUIColors.RarityRare,
-                BossRushUIColors.RarityEpic,
-                BossRushUIColors.RarityUncommon,
-                BossRushUIColors.Accent
-            };
-
             int bursts = Mathf.Max(1, RandomEventsTuning.FireworksBurstCount);
             for (int i = 0; i < bursts; i++)
             {
@@ -219,12 +210,10 @@ namespace BossRush
                     yield break;
                 }
 
-                owner.CreateRandomEventHarmlessExplosion(
-                    p,
-                    ExplosionFxTypes.normal,
-                    RandomEventsTuning.FireworksShakeStrength);
+                // 程序化烟花（VA-22）：白芯 → 稀有度色 → 暗透明的拖尾火花，每 3 发一盏短闪光；
+                // 零伤害、零碰撞查询、不震屏，不再借官方爆炸火球与「★」飘字。
+                RandomEventFx.PlayFirework(p, i);
                 _burstsPlayed++;
-                owner.PopRandomEventText("★", p, palette[i % palette.Length], 1.6f);
 
                 yield return new WaitForSeconds(RandomEventsTuning.FireworksIntervalSeconds);
             }

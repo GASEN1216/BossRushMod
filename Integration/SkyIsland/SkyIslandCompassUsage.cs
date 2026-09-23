@@ -42,8 +42,8 @@ namespace BossRush
             {
                 SkyIslandSession session = UnityEngine.Object.FindObjectOfType<SkyIslandSession>();
                 if (session != null && session.UseCompass()) return;
-                Duckov.UI.NotificationText.Push(L10n.T("风标只是乱转——它只认得晴岚群岛的风。",
-                    "The vane just spins — it only knows the winds of the Qinglan isles."));
+                Duckov.UI.NotificationText.Push(L10n.T("风标只是乱转，它只认得晴岚群岛的风。",
+                    "The vane just spins. It only knows the winds of the Qinglan isles."));
             }
             catch (Exception e)
             {

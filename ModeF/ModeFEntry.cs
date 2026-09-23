@@ -399,8 +399,8 @@ namespace BossRush
                     "Bloodhunt mode activated! You're bleeding out - kill bosses to survive!"
                 ));
                 ShowBigBanner(L10n.T(
-                    "欢迎来到 <color=red>血猎追击</color>！",
-                    "Welcome to <color=red>Bloodhunt</color>!"
+                    "欢迎来到 " + RichDangerTag + "血猎追击</color>！",
+                    "Welcome to " + RichDangerTag + "Bloodhunt</color>!"
                 ));
                 profiler.Complete("success");
                 return true;

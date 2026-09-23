@@ -731,3 +731,12 @@ owner 人工实测第 6 条：「一进去就在跑什么契约」「选完武�
 - **HUD**：拍铃改为左上状态卡下方的一整张卡片（徽章、「拍铃：口令名」、口令白话、6 秒倒计时细线，三态：可拍 / 生效中 / 已用完）；敌人行改为「场上敌人 N」。
 
 守卫：`ModeHOneClickFlowGuard`（新）、`ModeHSeasonViabilityGuard`、`ModeHSaveCompatibilityGuard`、`ModeHPresetEligibilityGuard`、`ModeHSpectatorLeaseGuard`、`ModeHPerformanceGuard`。执行回归沿用现有七套 Mode H 夹具。实机待验：镜头是否全程跟住、Raid 图上选手是否可见、拍铃卡是否与官方 HUD 冲突、选人卡文字是否完整。
+
+## 2026-09-23 审美修复与一键流程补缺
+
+- 观战 HUD 收小分层：标签小号灰字、值白字，计时 m:ss 等宽数字，最后 10 / 5 秒变金 / 红；整组下移到官方左上时钟之下（y=140）。
+- 拍铃卡徽章改用 Mode H 徽记图（不再是「铃」字）；三态颜色渐变、拍下时徽章弹一下，倒计时条改圆角细条。
+- 选人页与结算页加 Mode H 横幅（共享组件 `Common/UI/BossRushUIHero.cs`）；结算页顶部大字显示胜 / 负 / 超时 / 弃赛（旧版 `Body` 在有逐行内容时不渲染，胜负从来没显示过）。
+- 按钮口径：每页至多一个 `AccentFill` 主按钮，不可逆操作 `Danger`，其余次级描边按钮；选人卡整张可点。同页刷新不重播打开动画、保住滚动位置。
+- 复核补缺：凑不出接力搭档时选人页有「退出本赛季」按钮（复用既有退出路径、不退船票）；热身文案不再写「只做这一次」；无报价的转会窗口自动关窗直进下一场（F3 `MODE_H_FULL_SEASON` 已接受这种情况）；12 位选手描述只写战斗代码真实实现的行为；打法标签改为「打持久战」「专收残血」。
+- 新文件 `ModeH/ModeHUIPageParts.cs`（从 `ModeHUIPages.cs` 拆出，行数预算）。详情：本地 `docs/代码审查/2026-09-23-审美审查/fix_modeH_report.md`。

@@ -67,12 +67,12 @@ namespace BossRush
         /// <summary>
         /// 物品描述（中文）
         /// </summary>
-        public const string DESCRIPTION_CN = "哥布林工匠重铸时用的极寒液体，能够把装备部件进行永久固定。";
+        public const string DESCRIPTION_CN = "哥布林重铸用的冰液。点在一条属性上，以后重铸就不再改它。";
         
         /// <summary>
         /// 物品描述（英文）
         /// </summary>
-        public const string DESCRIPTION_EN = "An extremely cold liquid used by goblin craftsmen during reforging, capable of permanently locking equipment components.";
+        public const string DESCRIPTION_EN = "Ice-cold fluid goblins use when reforging. Dab it on one stat and future reforges leave that stat alone.";
         
         // ============================================================================
         // 标签配置

@@ -4,17 +4,17 @@
 
 PetNest is a base-side raising and collection system: **kill bosses, bring their relics home, raise the cubs, take one along, or send them somewhere you would not go yourself.**
 
-It is not a ninth game mode. It adds a second reason to run any existing mode: should I bring a cub this time? Have I collected an egg from that boss yet?
+It hooks into the modes you already play and adds two questions before each run: bring a cub this time? Got that boss's egg yet?
 
-PetNest is on by default and needs no setting turned on anywhere — build the nest and it works.
+PetNest is on by default and needs no setting turned on anywhere. Build the nest and it works.
 
 ### Getting Started
 
 #### 1. Kill bosses, collect relics
 Every boss kill feeds two tracks at once:
 
-- **Relic Egg (the lucky track)**: a low-probability direct drop of that boss's egg. It follows that boss's normal loot path — into the **loot crate** in standard arena and From Scratch, **onto the ground** in Infinite Hell (no crate there), and **on the boss itself** only in Faction War and Blood Hunt, where you do have to search the body.
-- **Boss Relic Soul (the guaranteed track)**: **always dropped**, scaled by the boss's max health. Souls are only used to condense an egg of that bloodline — they are not currency and never enter shops.
+- **Relic Egg (the lucky track)**: a low-probability direct drop of that boss's egg. It follows that boss's normal loot path: into the **loot crate** in standard arena and From Scratch, **onto the ground** in Infinite Hell (no crate there), and **on the boss itself** only in Faction War and Blood Hunt, where you do have to search the body.
+- **Boss Relic Soul (the guaranteed track)**: **always dropped**, scaled by the boss's max health. Souls are only used to condense an egg of that bloodline. They are not currency and never enter shops.
 
 Drops cover the three standard difficulties, From Scratch, Faction War and Blood Hunt. **Fate Echo, the Black Market Duck Cup and Zombie Mode do not drop relics** - Bosses in those three modes spawn through their own separate paths and never enter the relic ledger.
 
@@ -32,9 +32,9 @@ Hatching locks in three things at once, **with no rerolls**:
 - **Two endowments** — small bonuses to move speed, damage, health, pet backpack slots, and so on
 - **One temperament** — Reckless / Cautious / Lazy / Loyal
 - **Shiny** — about **0.4%**, ultra rare. Its name gets a golden "★ Shiny" with a shimmer, and it wears a golden halo and star sparks. Purely a collector's honour, no stats
-- **Chroma** — about **10%**, any two of ten colours (45 pairs). The name shows the pair as a two-colour gradient ("Black-White - Cub") and the cub carries matching particle effects. Rolled independently of shiny; hitting both gives a shiny chroma cub
+- **Chroma** — about **10%**, any two of ten colours, in order (Black-White and White-Black are different gradients), 90 combinations. The name shows the pair as a two-colour gradient ("Black-White - Cub") and the cub carries matching particle effects. Rolled independently of shiny; hitting both gives a shiny chroma cub
 
-**Pity**: if 10 hatches in a row are not chroma, the 10th is guaranteed chroma; if 100 in a row are not shiny, the 100th is guaranteed shiny. The counters reset when one appears, and the hatch and nest pages show how many are left.
+**Pity**: after 9 hatches in a row without a chroma, the 10th is guaranteed chroma; after 99 in a row without a shiny, the 100th is guaranteed shiny. The counters reset when one appears, and the hatch and nest pages show how many are left.
 
 Temperament affects combat and following as well as personality:
 
@@ -48,17 +48,17 @@ If an egg's bloodline can no longer be identified after a game update, the syste
 ### Taking a Cub Into a Run
 
 #### Deployment slot
-- **One cub per run.** Set it as "deployed" in the nest — it does **not** take an inventory slot.
+- **One cub per run.** Set it as "deployed" in the nest; it does **not** take an inventory slot.
 - The system spawns it beside you on entry. It follows you and finds its own targets.
-- Its damage is a garnish, not a game-changer. The value is pressure, finishing blows, and simply having it there.
+- Its damage is a bonus on top. It earns its keep with pressure and finishing blows.
 
 #### Scavenging backpack
 The slots go onto the **official pet backpack**: when the deployed cub joins a BossRush-family raid (the three standard difficulties, From Scratch, Faction War, Blood Hunt), the official pet backpack gets **+4 slots**, with further slots from levels, endowments and the Lazy temperament. Open the pet backpack during the raid to see them; they do not apply in the base or in normal raids, and are removed if the cub is carried off. The nest page shows how many slots the current deployed cub adds.
 
 #### While you are there, it does not die
 - A downed cub **does not die**. It is **carried off wounded**: out for the rest of the run, restored when you return to base.
-- Each knockdown leaves a **scar**: when, which map, and who put it down — plus one small permanent debuff.
-- Scars are a résumé, not a punishment. Each cub has a scar cap; older ones merge into an "old wounds" count.
+- Each knockdown leaves a **scar**: when, which map, and who put it down, plus one small permanent debuff.
+- Scars double as its service record. Each cub has a scar cap; older ones merge into an "old wounds" count.
 
 #### Where cubs are not allowed
 - **Cubs allowed**
@@ -84,29 +84,29 @@ Matching the cub's bloodline element to the destination adds `12` percentage poi
 #### Three risk tiers
 The tier sets the payout, the risk and the wait all at once (the wait is real time):
 
-- **Safe**: **2 hours**, low reward, **0%** death rate — completely safe, the worst case is coming home empty-handed. +15 experience on return
-- **Rough**: **4 hours**, medium reward, about **6%** death rate — the cub may come back wounded. +30 experience on return
-- **Desperate**: **8 hours**, high reward, about **12%** death rate — you are betting a life on rare output. +60 experience on return
+- **Safe**: **10 minutes**, low reward, **0%** death rate. Completely safe; the worst case is coming home empty-handed. +15 experience on return
+- **Rough**: **30 minutes**, medium reward, about **6%** death rate. The cub may come back wounded. +30 experience on return
+- **Desperate**: **60 minutes**, high reward, about **12%** death rate. You are betting a life on rare output. +60 experience on return
 
-[tip] All three tiers award 7.5 experience per hour waited if the cub survives. Desperate does not level it faster and carries a risk of permanent death. Choose Safe for steady growth; Desperate offers more loot and a chance at a Relic Egg.
+[tip] Per minute waited, Safe gives 1.5 experience and Rough and Desperate give 1 each if the cub survives. Desperate does not level it faster and carries a risk of permanent death. Choose Safe for steady growth; Desperate offers more loot and a chance at a Relic Egg.
 
 Successful Safe / Rough / Desperate trips bring back `400–1200 / 1200–3600 / 4000–12000` money and `15 / 40 / 90` souls of the cub's bloodline.
 Successful trips also roll an extra item: **one quality-3 item** for Rough, or **one quality-4 item** for Desperate; Safe has no random-item reward. If no eligible item is available at settlement, that random item is skipped and is not queued for later delivery.
 After a Desperate trip survives and succeeds, it has a further `20%` chance to award a Relic Egg of that bloodline. This is not the overall egg chance per departure.
 Returning empty-handed still awards survival experience; dying awards neither experience nor loot.
 
-**The death rate is written on the button before you commit**, and it is frozen into that departure — later balance changes never alter a trip already under way.
+**The death rate is written on the button before you commit**, and it is frozen into that departure; later balance changes never alter a trip already under way.
 
 #### Countdown and settlement
 - The countdown runs on **real time**: it keeps ticking while the game is closed.
 - Returning to base settles automatically, then turns the cards one by one: loot / wounded / empty-handed / a death notice.
-- The card flip is only a replay — the outcome was decided and saved the moment you walked into base. Quit mid-flip and the card is still waiting next time.
+- The card flip is only a replay; the outcome was decided and saved the moment you walked into base. Quit mid-flip and the card is still waiting next time.
 - A real death is **irreversible**: the cub leaves the nest and its name goes on the memorial.
 
 ### Relic Museum
 
 - **Bloodline index** — one page per bloodline, unlocked on first hatch. Tracks kills, hatches, shinies, highest level and expedition count.
-- **Memorial** — cubs lost on expeditions are carved in permanently: name, bloodline, where they fell, **the risk tier you chose**, the death rate at departure, and their career record. You pressed "Desperate"; the epitaph remembers that for you.
+- **Memorial** — cubs lost on expeditions are carved in permanently: name, bloodline, where they fell, **the risk tier you chose**, the death rate at departure, and their career record. The stone spells out that you chose "Desperate".
 - **Taming achievements** — First Hatch, Bloodline Collector, Lineage Obsession, The Pale Purple One (shiny), A Name on the Stone.
 
 ### Levels
@@ -125,13 +125,13 @@ Cubs grow by working with you, capping at level 10 ("Adult"), after which they s
 ### Nest capacity and releasing
 
 - **The nest starts with 12 places.** It expands by +4 each time your index reaches 10 / 20 / 30 unlocked bloodlines, up to 24.
-- **Releasing** — click a cub's card on the nest page to select it (no need to deploy it first), then release it to get back 60 relic souls of its bloodline. Releasing is permanent and the cub is not memorialized; a cub away on an expedition cannot be released. This is the predictable way to make room when the nest is full, instead of gambling a Desperate expedition and waiting for a cub to die.
+- **Releasing** — click a cub's card on the nest page to select it (no need to deploy it first), then release it to get back 60 relic souls of its bloodline. Releasing is permanent and the cub is not memorialized; a cub away on an expedition cannot be released. When the nest is full, this is how you make room; no need to send a cub on a Desperate expedition and hope.
 - **Batch release** — "Batch release..." on the nest page switches to ticking mode: click cards to tick or untick, or tick every releasable cub at once; confirm to release them all in one go, 60 souls back per cub.
 
 ### Tips
-- Souls exist only to condense eggs. Bank **240** of one bloodline and you can target that boss's egg directly — unlucky players can still complete the index.
+- Souls exist only to condense eggs. Bank **240** of one bloodline and you can target that boss's egg directly, so unlucky players can still complete the index.
   Releasing a cub refunds 60 souls, so four released cubs pay for a fresh egg.
 - When the nest is full, expand or release: unlocking more bloodlines raises the cap, releasing frees a place immediately and refunds some souls.
 - Eggs are easiest to track in the top level of your bag or storage. Eggs tucked inside crates and containers are now found too, but the outer level keeps the count obvious.
 - Want a safe trickle? Send Safe runs. Want to gamble? Read the death rate before you press Desperate.
-- A cub on an expedition cannot be deployed or removed — the tension is exactly in those few hours without it.
+- A cub on an expedition cannot be deployed or removed; while it is away, it can't fight with you.

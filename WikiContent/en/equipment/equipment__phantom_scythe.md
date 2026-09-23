@@ -13,8 +13,8 @@ The Phantom Witch's scythe. Ghost-element melee with **50% curse chance on every
 ### Soulreaving Power (Passive)
 
 - All attacks deal Ghost damage
-- **50% chance** to apply Curse: -0.3 to walk-speed and run-speed stats per stack, max 3 stacks, 5s duration
-- 3 stacks = **0.9 flat speed reduction**, not a 90% slow or a root
+- **50% chance** to apply Curse: -30% walk and run speed per stack, max 3 stacks, 5s duration
+- 3 stacks = **-90% speed** (summed with the target's other percentage speed modifiers), but never a root
 
 ### Requiem Realm (Right Click)
 
@@ -26,7 +26,7 @@ The Phantom Witch's scythe. Ghost-element melee with **50% curse chance on every
 
 - **120% move speed** = best kiting weapon in the mod
 - Curse stacking = free crowd control. Keep the slow applied while repositioning
-- Realm holds chokepoints beautifully — stand in it and watch enemies melt
+- The Realm is great for holding chokepoints: stand in it and let the ticks do the work
 - Raw damage slightly below Frostmourne, but mobility + CC more than compensate
 
 [tip] Core strength = mobility and control, not raw numbers.

@@ -25,6 +25,11 @@ namespace BossRush
     /// </summary>
     internal static class BossRushUILayers
     {
+        /// <summary>
+        /// 全屏氛围层（血月暗角一类）：压在官方 HUD 画布（sortingOrder 0：快捷栏、血条、准星）之下，
+        /// 只染场景、不染官方界面（2026-09-23 特效审查 VA-21）。仍是 ScreenSpaceOverlay，照样盖在 3D 画面上。
+        /// </summary>
+        internal const int ScreenAmbience = -10;
         /// <summary>世界空间标记、常驻角标等最底层装饰。</summary>
         internal const int WorldOverlay = 100;
         /// <summary>ModeF 赏金雷达画布，压住世界装饰、让位各模式 HUD。</summary>
@@ -113,6 +118,13 @@ namespace BossRush
         internal static readonly Color TextPrimary = new Color(0.94f, 0.96f, 0.97f, 1f);
         internal static readonly Color TextSecondary = new Color(0.67f, 0.72f, 0.75f, 1f);
         internal static readonly Color Accent = new Color(0.20f, 0.72f, 0.67f, 1f);
+        /// <summary>
+        /// 主按钮的大面积填充色：Accent 压深、降一点饱和（2026-09-23 审美审查）。
+        /// Accent 本身是高饱和薄荷青，做描边、强调竖条、焦点环、强调字都合适，
+        /// 但铺满一整块按钮就是 owner 点名「太丑了」的那种平涂薄荷绿（Mode H 旧拍铃、选人卡五条绿杠）。
+        /// 相对亮度 ≈0.130：走白字，白字对比 ≈5.4:1；离亮底阈值 0.30 余量 57%（UILayoutReadabilityGuard 复算）。
+        /// </summary>
+        internal static readonly Color AccentFill = new Color(0.14f, 0.44f, 0.41f, 1f);
         // Success / Warning 压暗了约 7%（2026-09-13）：旧值上 GetButtonTextColor 会选白字，
         // 而白字压在旧的 Success(L=0.180) 上只有 **4.15:1**、旧 Warning(L=0.170) 上 4.34:1，
         // 两个都过不了正文 4.5:1。压到 L≈0.15 之后分别是 4.67:1 与 4.89:1；
@@ -310,6 +322,12 @@ namespace BossRush
                 }
                 ruleSprite = null;
             }
+
+            BossRushUIDepth.ResetStaticCaches();
+            BossRushUISound.ResetStaticCaches();
+            BossRushUIKit.ResetStaticCaches();
+            BossRushFxMaterials.ResetStaticCaches();   // 共享程序化特效材质（Common/Effects），同样是 DontSave，挂在这条已有的卸载路径上
+            BossRushFxKit.ResetStaticCaches();          // 共享特效小件（含粒子贴图），与特效材质同一条卸载路径
 
             cachedLegacyFont = null;
             legacyFontResolved = false;
@@ -596,6 +614,10 @@ namespace BossRush
                 stroke.fillCenter = false;   // 中心本来就透明，关掉可以少画一个整块四边形
                 stroke.pixelsPerUnitMultiplier = 1f;
             }
+            // 有边的面 = 立起来的面：外投影 + 顶边内高光（BossRushUIFeel.cs，2026-09-23「塑料感」验收）。幂等。
+            BossRushUIDepth.ApplySurfaceDepth(surface, radius, part);
+            // 之后加的全宽标题栏 / 页脚不能把框线盖掉：描边随层级变化挪回最上层（审美审查 UD-01）。
+            BossRushStrokeOnTop.Track(surface, stroke);
             return stroke;
         }
 
@@ -1059,6 +1081,7 @@ namespace BossRush
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+            BossRushUIKit.StyleBackdrop(image);   // 暗角 + 0.15 秒淡入（审美审查 UD-04 / UD-10）
             return image;
         }
 

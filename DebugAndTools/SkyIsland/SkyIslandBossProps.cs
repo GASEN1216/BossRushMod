@@ -337,11 +337,14 @@ namespace BossRush
             }
         }
 
-        /// <summary>销毁一组圈并清空列表。</summary>
+        /// <summary>
+        /// 收起一组圈并清空列表：Boss 圈 0.16 s 淡出后自毁（<see cref="SkyIslandBossForge.ReleaseRing"/>），不再一帧消失。
+        /// 结算那一刻的「闪一下再扩散」另由 <see cref="SkyIslandImpactFx.Play"/> 在原地放一圈余波。
+        /// </summary>
         internal static void DestroyRings(List<LineRenderer> lines)
         {
             if (lines == null) return;
-            for (int i = 0; i < lines.Count; i++) if (lines[i] != null) UnityEngine.Object.Destroy(lines[i].gameObject);
+            for (int i = 0; i < lines.Count; i++) SkyIslandBossForge.ReleaseRing(lines[i]);
             lines.Clear();
         }
     }

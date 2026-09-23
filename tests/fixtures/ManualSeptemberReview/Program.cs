@@ -160,8 +160,9 @@ class Program
             "pause during hold neither consumes nor closes the card");
         BossRushUI.Paused = false;
         for (int i = 0; i < 20 && AdvancePresentation(stack); i++) { }
-        Check(stack.Count == 0 && PetNestExpeditionService.Revealed == 1 && PetNestExpeditionRevealView.Closed == 1,
-            "resuming finishes the same expedition exactly once");
+        // 2026-09-23（UA-13）：最后一张不再自动收起，「跳过」变「关闭」等玩家自己点；这里只核对只翻一次、翻完停在可关闭状态。
+        Check(stack.Count == 0 && PetNestExpeditionService.Revealed == 1 && PetNestExpeditionRevealView.Closed == 0 && reveal.Finished,
+            "resuming finishes the same expedition exactly once and waits for the player to close");
     }
     static Vector3 Point(JsonElement e) { var a=e.EnumerateArray().Select(x=>x.GetSingle()).ToArray();return new Vector3(a[0],a[1],a[2]); }
     static bool Same(Vector3 a,Vector3 b) { return Vector3.Distance(a,b)<.001f; }

@@ -369,25 +369,27 @@ namespace BossRush
     /// <summary>
     /// 诅咒领域视觉：多层叠加（地面染色 / 开场冲击波 / 双层旋转符文环 / 外缘星轨 /
     /// 上升亡魂粒子 / 中心脉冲光晕 / 尾声淡出），避免"一个紫球"的廉价观感。
+    /// 2026-09-23 审查 VB-10：此前是直径约 9.7 m、alpha 0.55 的饱和紫圆盘 + 0.22 m 纯紫硬边带 + 2.9 m 亮紫呼吸面片，
+    /// 在暖琥珀地图上像一块塑料贴纸。现在向 Redesign 那套银灰 + 暗紫色板靠拢：环走柔边带贴图、地面暗染、
+    /// 大面积颜色压饱和压 alpha，亮的只留细环与火星。玩家右键领域与 Boss 领域共用这一套。
     /// </summary>
     internal static class PhantomWitchCurseRealmVisual
     {
-        // 配色 —— 主色调为紫罗兰（亡灵/诅咒），高光偏冷白，阴影偏深靛
-        private static readonly Color RingColorOuter = new Color(0.62f, 0.25f, 1.00f, 0.95f);
-        private static readonly Color RingColorInner = new Color(0.95f, 0.70f, 1.00f, 0.90f);
-        private static readonly Color RuneMarkColor = new Color(1.00f, 0.85f, 1.00f, 1.00f);
-        private static readonly Color GroundStainColor = new Color(0.34f, 0.05f, 0.58f, 0.55f);
-        private static readonly Color CoreGlowColor = new Color(0.80f, 0.35f, 1.00f, 0.65f);
-        private static readonly Color ShockwaveColor = new Color(1.00f, 0.75f, 1.00f, 0.85f);
-        private static readonly Color WispColor = new Color(0.75f, 0.55f, 1.00f, 1.00f);
-        private static readonly Color SparkColor = new Color(1.00f, 0.90f, 1.00f, 1.00f);
+        // 配色 —— 银灰高光 + 低饱和灰紫，阴影偏深靛；大面积（地面、中心光晕）只用暗色低 alpha
+        private static readonly Color RingColorOuter = new Color(PhantomWitchConfig.VioletVoidVeil.r, PhantomWitchConfig.VioletVoidVeil.g, PhantomWitchConfig.VioletVoidVeil.b, 0.85f);
+        private static readonly Color RingColorInner = new Color(PhantomWitchConfig.SilverAshCore.r, PhantomWitchConfig.SilverAshCore.g, PhantomWitchConfig.SilverAshCore.b, 0.60f);
+        private static readonly Color RuneMarkColor = new Color(0.90f, 0.89f, 0.85f, 1.00f);
+        private static readonly Color GroundStainColor = new Color(0.18f, 0.10f, 0.24f, 0.28f);
+        private static readonly Color CoreGlowColor = new Color(0.62f, 0.50f, 0.78f, 0.25f);
+        private static readonly Color ShockwaveColor = new Color(0.90f, 0.86f, 0.95f, 0.80f);
+        private static readonly Color WispColor = new Color(0.72f, 0.62f, 0.90f, 1.00f);
+        private static readonly Color SparkColor = new Color(1.00f, 0.94f, 0.98f, 1.00f);
         private static readonly Color BlackSmokeCoreColor = new Color(0.10f, 0.08f, 0.12f, 0.90f);
         private static readonly Color BlackSmokeMidColor = new Color(0.20f, 0.14f, 0.26f, 0.68f);
         private static readonly Color BlackSmokeEdgeColor = new Color(0.42f, 0.28f, 0.56f, 0.12f);
+        /// <summary>领域点光：与女巫其它特效同一套低饱和灰紫，强度 ≤3.5、半径 ≤5 m（审查 VB-09）。</summary>
+        private static readonly Color RealmLightColor = new Color(0.65f, 0.58f, 0.72f, 1f);
 
-        private static Material cachedLineMaterial;
-        private static Material cachedQuadMaterial;
-        private static Material cachedParticleMaterial;
         private static Mesh cachedQuadMesh;
 
         private const int OuterRingSegments = 32;
@@ -432,28 +434,27 @@ namespace BossRush
             root.transform.position = origin;
             PhantomWitchFxRuntime.RegisterEffectRoot(root);
 
-            Shader unlit = Shader.Find("Legacy Shaders/Particles/Additive") ?? Shader.Find("Particles/Additive") ?? Shader.Find("Sprites/Default") ?? Shader.Find("Unlit/Transparent") ?? Shader.Find("Unlit/Color");
-
+            // 材质统一走 BossRushFxMaterials（审查 VB-02）：此前这里的 Shader.Find 回退链首选项在游戏里都不存在。
             if (detailLevel != PhantomWitchFxDetailLevel.Minimal)
             {
-                CreatePointLight(root.transform, new Vector3(0f, 1f, 0f), CoreGlowColor, radius * 1.5f, 6.5f, duration);
+                CreatePointLight(root.transform, new Vector3(0f, 1f, 0f), RealmLightColor, Mathf.Min(5f, radius + 1f), 3.2f, duration);
             }
 
-            CreateGroundStain(root.transform, radius, unlit);
+            CreateGroundStain(root.transform, radius);
             CreateAreaBlackSmoke(root.transform, radius, duration, detailLevel);
-            CreateShockwave(root.transform, radius, outerSegments, unlit);
-            CreateRingChild(root.transform, "OuterRing", radius, outerSegments, 0.22f, RingColorOuter, RotationSpeedOuter, unlit, pulse: detailLevel == PhantomWitchFxDetailLevel.Full);
-            CreateRingChild(root.transform, "InnerRing", radius * 0.72f, innerSegments, 0.14f, RingColorInner, RotationSpeedInner, unlit, pulse: detailLevel != PhantomWitchFxDetailLevel.Minimal);
+            CreateShockwave(root.transform, radius, outerSegments);
+            CreateRingChild(root.transform, "OuterRing", radius, outerSegments, 0.28f, RingColorOuter, RotationSpeedOuter, pulse: detailLevel == PhantomWitchFxDetailLevel.Full);
+            CreateRingChild(root.transform, "InnerRing", radius * 0.72f, innerSegments, 0.10f, RingColorInner, RotationSpeedInner, pulse: detailLevel != PhantomWitchFxDetailLevel.Minimal);
 
             if (runeCount > 0)
             {
-                CreateRuneMarks(root.transform, radius * 0.55f, runeCount, unlit);
+                CreateRuneMarks(root.transform, radius * 0.55f, runeCount);
             }
             if (detailLevel != PhantomWitchFxDetailLevel.Minimal)
             {
-                CreatePentagram(root.transform, radius * 0.55f, unlit);
+                CreatePentagram(root.transform, radius * 0.55f);
             }
-            CreateCoreGlow(root.transform, radius * 0.32f, unlit, detailLevel != PhantomWitchFxDetailLevel.Minimal);
+            CreateCoreGlow(root.transform, radius * 0.32f, detailLevel != PhantomWitchFxDetailLevel.Minimal);
             CreateRisingWisps(root.transform, radius, duration, detailLevel);
             CreateOrbitSparks(root.transform, radius, duration, detailLevel);
             if (detailLevel != PhantomWitchFxDetailLevel.Minimal)
@@ -482,19 +483,19 @@ namespace BossRush
             Light light = lightGo.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = color;
-            light.range = range;
-            light.intensity = intensity;
+            light.range = Mathf.Min(5f, range);
+            light.intensity = Mathf.Min(3.5f, intensity);
             light.shadows = LightShadows.None;
             light.renderMode = LightRenderMode.ForceVertex;
 
             PhantomWitchLightPulse pulser = lightGo.AddComponent<PhantomWitchLightPulse>();
-            pulser.Configure(intensity, range, duration);
+            pulser.Configure(light.intensity, light.range, duration);
         }
 
-        // ---------- 地面染色：放在最底层的柔化紫色圆盘，给一种"被污染的土地"感 ----------
-        private static void CreateGroundStain(Transform parent, float radius, Shader unlit)
+        // ---------- 地面染色：最底层的暗色半透明圆盘，读作"被污染的土地"而不是一层紫光 ----------
+        private static void CreateGroundStain(Transform parent, float radius)
         {
-            CreateFlatQuad(parent, "GroundStain", radius * 2.15f, 0.02f, GroundStainColor, unlit);
+            CreateFlatQuad(parent, "GroundStain", radius * 2.15f, 0.02f, GroundStainColor, PhantomWitchAssetManager.GetQuadMaterial());
         }
 
         // ---------- 整区黑烟覆盖：以 billbord 粒子铺满法阵区域，让整个领域都带有左键那种黑紫雾感 ----------
@@ -569,7 +570,8 @@ namespace BossRush
             go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
 
             ParticleSystem ps = go.AddComponent<ParticleSystem>();
-            ConfigureDefaultParticleRenderer(ps);
+            // 黑烟必须半透明混合：加色的暗色粒子等于看不见。
+            ConfigureDefaultParticleRenderer(ps, BossRushFxBlend.Alpha);
 
             var main = ps.main;
             main.duration = Mathf.Max(0.5f, duration);
@@ -591,13 +593,16 @@ namespace BossRush
             shape.radius = emitterRadius;
             shape.radiusThickness = radiusThickness;
 
+            // 审查 VB-29-4：发射器 GO 转了 90° 放平，Local 空间的 y 实际指向 +Z（远离镜头）；
+            // 速度改用 World 空间，y 才是真正的向上漂。
             var velocity = ps.velocityOverLifetime;
             velocity.enabled = true;
-            velocity.space = ParticleSystemSimulationSpace.Local;
+            velocity.space = ParticleSystemSimulationSpace.World;
             velocity.x = new ParticleSystem.MinMaxCurve(-horizontalDrift, horizontalDrift);
             velocity.y = new ParticleSystem.MinMaxCurve(0.03f, verticalDrift);
             velocity.z = new ParticleSystem.MinMaxCurve(-horizontalDrift, horizontalDrift);
 
+            // 大面积烟压 alpha（审美口径第 6 条）：峰值 0.82 → 0.62，读得出黑紫雾感但不糊成一整块。
             var colorOverLifetime = ps.colorOverLifetime;
             colorOverLifetime.enabled = true;
             Gradient gradient = new Gradient();
@@ -611,8 +616,8 @@ namespace BossRush
                 new[]
                 {
                     new GradientAlphaKey(0f, 0f),
-                    new GradientAlphaKey(0.82f, 0.18f),
-                    new GradientAlphaKey(0.55f, 0.62f),
+                    new GradientAlphaKey(0.62f, 0.18f),
+                    new GradientAlphaKey(0.40f, 0.62f),
                     new GradientAlphaKey(0f, 1f)
                 });
             colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
@@ -637,28 +642,28 @@ namespace BossRush
         }
 
         // ---------- 开场冲击波：0→1 快速扩张再立即消失，给施法瞬间的"咚"一下反馈 ----------
-        private static void CreateShockwave(Transform parent, float radius, int segments, Shader unlit)
+        private static void CreateShockwave(Transform parent, float radius, int segments)
         {
             GameObject shock = new GameObject("Shockwave");
             shock.transform.SetParent(parent, false);
             shock.transform.localPosition = new Vector3(0f, 0.01f, 0f);
 
             PhantomWitchFlatRingMesh ringMesh = shock.AddComponent<PhantomWitchFlatRingMesh>();
-            ringMesh.Configure(Mathf.Max(12, segments), 0.01f, 0.28f, GetSharedLineMaterial(unlit), ShockwaveColor);
+            ringMesh.Configure(Mathf.Max(12, segments), 0.01f, 0.28f, GetSharedLineMaterial(), ShockwaveColor);
 
             PhantomWitchShockwaveAnimation shockAnim = shock.AddComponent<PhantomWitchShockwaveAnimation>();
             shockAnim.Configure(radius * 1.15f, 0.35f, ShockwaveColor);
         }
 
-        // ---------- 发光符文环：LineRenderer 绕轴旋转，宽度可轻微呼吸 ----------
-        private static void CreateRingChild(Transform parent, string name, float radius, int segments, float width, Color color, float rotationSpeed, Shader unlit, bool pulse)
+        // ---------- 符文环：柔边带绕轴旋转，宽度可轻微呼吸 ----------
+        private static void CreateRingChild(Transform parent, string name, float radius, int segments, float width, Color color, float rotationSpeed, bool pulse)
         {
             GameObject ring = new GameObject(name);
             ring.transform.SetParent(parent, false);
             ring.transform.localPosition = new Vector3(0f, 0.03f, 0f);
 
             PhantomWitchFlatRingMesh ringMesh = ring.AddComponent<PhantomWitchFlatRingMesh>();
-            ringMesh.Configure(Mathf.Max(12, segments), radius, width, GetSharedLineMaterial(unlit), color);
+            ringMesh.Configure(Mathf.Max(12, segments), radius, width, GetSharedLineMaterial(), color);
 
             PhantomWitchRingSpin spin = ring.AddComponent<PhantomWitchRingSpin>();
             spin.rotationSpeed = rotationSpeed;
@@ -671,7 +676,7 @@ namespace BossRush
         }
 
         // ---------- 符文横条：内环上切出几段亮边，随内环一起反向旋转 ----------
-        private static void CreateRuneMarks(Transform parent, float radius, int count, Shader unlit)
+        private static void CreateRuneMarks(Transform parent, float radius, int count)
         {
             if (count <= 0)
             {
@@ -681,7 +686,7 @@ namespace BossRush
             GameObject runeRoot = new GameObject("RuneMarks");
             runeRoot.transform.SetParent(parent, false);
             runeRoot.transform.localPosition = new Vector3(0f, 0.05f, 0f);
-            Material sharedLine = GetSharedLineMaterial(unlit);
+            Material sharedLine = GetSharedLineMaterial();
             Color runeColor = new Color(RuneMarkColor.r, RuneMarkColor.g, RuneMarkColor.b, 0.78f);
 
             for (int i = 0; i < count; i++)
@@ -697,13 +702,13 @@ namespace BossRush
         }
 
         // ---------- 五芒星：连接内环上的 5 个等距点，经典的"诅咒阵法"元素 ----------
-        private static void CreatePentagram(Transform parent, float radius, Shader unlit)
+        private static void CreatePentagram(Transform parent, float radius)
         {
             GameObject pent = new GameObject("Pentagram");
             pent.transform.SetParent(parent, false);
             pent.transform.localPosition = new Vector3(0f, 0.07f, 0f);
-            Material sharedLine = GetSharedLineMaterial(unlit);
-            Color pentagramColor = new Color(RingColorInner.r, RingColorInner.g, RingColorInner.b, 0.55f);
+            Material sharedLine = GetSharedLineMaterial();
+            Color pentagramColor = new Color(RingColorInner.r, RingColorInner.g, RingColorInner.b, 0.45f);
 
             // 5 点五芒星：按 i * 2 跳点连接形成星形
             Vector3[] points = new Vector3[5];
@@ -721,17 +726,17 @@ namespace BossRush
 
             for (int i = 0; i < order.Length; i++)
             {
-                CreateFlatSegment(pent.transform, "Edge_" + i, order[i], order[(i + 1) % order.Length], 0.06f, pentagramColor, sharedLine, i * 0.002f);
+                CreateFlatSegment(pent.transform, "Edge_" + i, order[i], order[(i + 1) % order.Length], 0.08f, pentagramColor, sharedLine, i * 0.002f);
             }
 
             PhantomWitchRingSpin spin = pent.AddComponent<PhantomWitchRingSpin>();
             spin.rotationSpeed = RotationSpeedOuter * 0.4f;
         }
 
-        // ---------- 中心脉冲光晕：贴地的四边形，周期缩放 + alpha 呼吸 ----------
-        private static void CreateCoreGlow(Transform parent, float radius, Shader unlit, bool enablePulse)
+        // ---------- 中心脉冲光晕：贴地的加色软圆，周期缩放 + alpha 呼吸（alpha 上限 0.25，只做核心不铺大面） ----------
+        private static void CreateCoreGlow(Transform parent, float radius, bool enablePulse)
         {
-            GameObject core = CreateFlatQuad(parent, "CoreGlow", radius * 2f, 0.12f, CoreGlowColor, unlit);
+            GameObject core = CreateFlatQuad(parent, "CoreGlow", radius * 2f, 0.12f, CoreGlowColor, PhantomWitchAssetManager.GetGlowQuadMaterial());
             Renderer renderer = core.GetComponent<Renderer>();
             if (renderer != null && enablePulse)
             {
@@ -771,11 +776,13 @@ namespace BossRush
             var emission = ps.emission;
             emission.rateOverTime = emissionRate;
 
+            // 审查 VB-04：Circle 形状默认在局部 XY 平面（竖着），此前亡魂从一面竖直的 4 m 大圆盘上升起；放平到地面。
             var shape = ps.shape;
             shape.enabled = true;
             shape.shapeType = ParticleSystemShapeType.Circle;
             shape.radius = radius * 0.9f;
             shape.radiusThickness = 1f;
+            shape.rotation = new Vector3(90f, 0f, 0f);
 
             var vel = ps.velocityOverLifetime;
             vel.enabled = true;
@@ -789,8 +796,8 @@ namespace BossRush
             gradient.SetKeys(
                 new[] {
                     new GradientColorKey(WispColor, 0f),
-                    new GradientColorKey(new Color(1f, 0.85f, 1f), 0.5f),
-                    new GradientColorKey(new Color(0.5f, 0.2f, 0.8f), 1f)
+                    new GradientColorKey(new Color(0.92f, 0.86f, 0.96f), 0.5f),
+                    new GradientColorKey(PhantomWitchConfig.VioletVoidMid, 1f)
                 },
                 new[] {
                     new GradientAlphaKey(0f, 0f),
@@ -850,11 +857,24 @@ namespace BossRush
             var emission = ps.emission;
             emission.rateOverTime = emissionRate;
 
+            // 审查 VB-04：「只在边缘」的火星此前在一面竖着的圆上，立成一道 4.5 m 高的拱门；放平后沿边缘绕圈（阵法运转）。
             var shape = ps.shape;
             shape.enabled = true;
             shape.shapeType = ParticleSystemShapeType.Circle;
             shape.radius = radius;
             shape.radiusThickness = 0.02f; // 只在边缘
+            shape.rotation = new Vector3(90f, 0f, 0f);
+
+            var velocity = ps.velocityOverLifetime;
+            velocity.enabled = true;
+            velocity.space = ParticleSystemSimulationSpace.Local;
+            velocity.x = new ParticleSystem.MinMaxCurve(0f, 0f);
+            velocity.y = new ParticleSystem.MinMaxCurve(0.05f, 0.25f);
+            velocity.z = new ParticleSystem.MinMaxCurve(0f, 0f);
+            // 轨道速度三轴与线速度三轴同为「两常数」模式，避免 Unity 的 "Particle Velocity curves must all be in the same mode" 刷屏。
+            velocity.orbitalX = new ParticleSystem.MinMaxCurve(0f, 0f);
+            velocity.orbitalY = new ParticleSystem.MinMaxCurve(0.5f, 0.7f);
+            velocity.orbitalZ = new ParticleSystem.MinMaxCurve(0f, 0f);
 
             var colorOverLifetime = ps.colorOverLifetime;
             colorOverLifetime.enabled = true;
@@ -862,7 +882,7 @@ namespace BossRush
             gradient.SetKeys(
                 new[] {
                     new GradientColorKey(SparkColor, 0f),
-                    new GradientColorKey(new Color(0.85f, 0.55f, 1f), 1f)
+                    new GradientColorKey(PhantomWitchConfig.VioletVoidVeil, 1f)
                 },
                 new[] {
                     new GradientAlphaKey(0f, 0f),
@@ -873,43 +893,31 @@ namespace BossRush
             );
             colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
 
-            // 用 texture sheet 简单模拟闪烁（没有贴图就保留静态亮点）
+            var sizeOverLifetime = ps.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
+                new Keyframe(0f, 0.4f),
+                new Keyframe(0.25f, 1f),
+                new Keyframe(1f, 0.3f)));
+
             ps.Play();
         }
 
         private static void ConfigureDefaultParticleRenderer(ParticleSystem ps)
         {
-            // 复用 AssetManager 的共享软圆粒子材质（Additive 混合 + 柔和渐变纹理）
+            // 亡魂、火星：共享软圆加色材质（BossRushFxMaterials）
             PhantomWitchAssetManager.ConfigureSharedParticleRenderer(ps);
         }
 
-        private static Material GetSharedLineMaterial(Shader shader)
+        private static void ConfigureDefaultParticleRenderer(ParticleSystem ps, BossRushFxBlend blend)
         {
-            if (cachedLineMaterial != null)
-            {
-                return cachedLineMaterial;
-            }
-
-            shader = ResolveShader(shader);
-            if (shader == null)
-            {
-                return null;
-            }
-
-            cachedLineMaterial = new Material(shader);
-            cachedLineMaterial.name = "PW_CurseRealm_FlatLine";
-            cachedLineMaterial.enableInstancing = true;
-            if (cachedLineMaterial.HasProperty("_MainTex"))
-            {
-                cachedLineMaterial.mainTexture = Texture2D.whiteTexture;
-            }
-            cachedLineMaterial.renderQueue = 3000;
-            return cachedLineMaterial;
+            PhantomWitchAssetManager.ConfigureSharedParticleRenderer(ps, blend);
         }
 
-        private static Material GetSharedQuadMaterial(Shader shader)
+        /// <summary>环、符文、五芒星：柔边带贴图的半透明材质（此前是 whiteTexture 硬边带）。</summary>
+        private static Material GetSharedLineMaterial()
         {
-            return PhantomWitchAssetManager.GetQuadMaterial();
+            return PhantomWitchVfxRedesign.GetSharedGroundLineMaterial();
         }
 
 
@@ -1043,24 +1051,7 @@ namespace BossRush
 
         internal static void ClearCache()
         {
-            if (cachedLineMaterial != null)
-            {
-                UnityEngine.Object.Destroy(cachedLineMaterial);
-                cachedLineMaterial = null;
-            }
-
-            if (cachedQuadMaterial != null)
-            {
-                UnityEngine.Object.Destroy(cachedQuadMaterial);
-                cachedQuadMaterial = null;
-            }
-
-            if (cachedParticleMaterial != null)
-            {
-                UnityEngine.Object.Destroy(cachedParticleMaterial);
-                cachedParticleMaterial = null;
-            }
-
+            // 线 / 面片 / 粒子材质归 BossRushFxMaterials（全 Mod 共享），这里只清自己建的网格。
             if (cachedQuadMesh != null)
             {
                 UnityEngine.Object.Destroy(cachedQuadMesh);
@@ -1068,7 +1059,7 @@ namespace BossRush
             }
         }
 
-        private static GameObject CreateFlatQuad(Transform parent, string name, float scale, float yOffset, Color color, Shader unlit)
+        private static GameObject CreateFlatQuad(Transform parent, string name, float scale, float yOffset, Color color, Material material)
         {
             GameObject quad = new GameObject(name);
             quad.transform.SetParent(parent, false);
@@ -1079,25 +1070,13 @@ namespace BossRush
             meshFilter.sharedMesh = GetSharedQuadMesh();
 
             MeshRenderer meshRenderer = quad.AddComponent<MeshRenderer>();
-            Material sharedQuad = GetSharedQuadMaterial(unlit);
-            if (sharedQuad != null)
+            if (material != null)
             {
-                meshRenderer.sharedMaterial = sharedQuad;
+                meshRenderer.sharedMaterial = material;
                 PhantomWitchFxRenderUtil.SetRendererColor(meshRenderer, color);
             }
 
             return quad;
-        }
-
-        private static Shader ResolveShader(Shader shader)
-        {
-            if (shader != null)
-            {
-                return shader;
-            }
-
-            shader = Shader.Find("Legacy Shaders/Particles/Additive") ?? Shader.Find("Particles/Additive") ?? Shader.Find("Sprites/Default") ?? Shader.Find("Unlit/Transparent") ?? Shader.Find("Unlit/Color");
-            return shader;
         }
     }
 }

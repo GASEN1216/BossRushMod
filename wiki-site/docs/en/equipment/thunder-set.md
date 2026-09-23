@@ -6,21 +6,21 @@ Now obtainable: Storm Zone bosses (Four Horsemen, Koko Koko and friends) drop it
 
 ## What Is It?
 
-A **2-piece lightning set** composed of the **Thunder Horn** helmet and **Thunder Armor** body piece. Each item alone gives modest armor plus storm protection; equipping both activates **Thunder's Wrath** — shock damage heals you, normal hits arc to nearby foes, and you counter-shock attackers — with cyan flickering eyes and arcs crawling over your shoulders. An elemental defense and counter set, with lower clearing damage than the Dragon Descendant and Dragon King sets.
+A **2-piece lightning set** composed of the **Thunder Horn** helmet and **Thunder Armor** body piece. Each item alone gives modest armor plus storm protection; equipping both activates **Thunder's Wrath**: shock damage heals you, normal hits arc to nearby foes, and you counter-shock attackers. It also gives you cyan flickering eyes and arcs crawling over your shoulders. An elemental defense and counter set, with lower clearing damage than the Dragon Descendant and Dragon King sets.
 
 ## Set Pieces
 
 - **Thunder Horn** (helmet): quality 6, Head Armor +5, Storm Protection +1, item ID 500055
 - **Thunder Armor** (body armor): quality 6, Body Armor +5, Storm Protection +1, item ID 500056
 - Durability: 100
-- On death: like the Dragon King set, these drop with the rest of your gear (they are not bound) — bring them knowing you can lose them
+- On death: like the Dragon King set, these drop with the rest of your gear (they are not bound), so bring them knowing you can lose them
 - Repairable at the workbench; check its condition before a raid
 
 ## How to Get It
 
-- **Storm Zone boss drop**: killing a Storm Zone boss such as the Four Horsemen or Koko Koko rolls once for the set: Thunder Horn 20%, Thunder Armor 20%, 60% nothing. **Vanilla raids count too** — you don't need a BossRush run. Inside the arena it lands in the mod reward crate; in Infinite Hell it drops on the ground.
+- **Storm Zone boss drop**: killing a Storm Zone boss such as the Four Horsemen or Koko Koko rolls once for the set: Thunder Horn 20%, Thunder Armor 20%, 60% nothing. **Vanilla raids count too**, no BossRush run needed. Inside the arena it lands in the mod reward crate; in Infinite Hell it drops on the ground.
 - **Dingdang's Shop**: both pieces at affinity level 6, 1 in stock each (restocks every time the shop opens), 30000 per piece.
-- Never in any random pool (Wish Fountain, daily sign-in, ordinary boss crates) — these two routes are the only ones.
+- Never in any random pool (Wish Fountain, daily sign-in, ordinary boss crates). These two routes are the only ones.
 
 ## 2-Piece Effect: Thunder's Wrath
 
@@ -29,7 +29,7 @@ Activates when both pieces are equipped (screen notification appears). Your eyes
 **Passive:**
 - Electricity damage resistance **+50%**
 - **50%** of the shock damage you take is refunded as healing (next frame, green numbers)
-- Storm Protection +2 in total — Storm Zone thunderstorms no longer hurt you
+- Storm Protection +2 in total; Storm Zone thunderstorms no longer hurt you
 
 **Thunderbite (on normal hit):**
 - A normal hit sends an arc from the impact point to up to **2 other** enemies within **4 m**, dealing **7 shock damage** each
@@ -54,7 +54,7 @@ Activates when both pieces are equipped (screen notification appears). Your eyes
 - The arc only adds chip damage to bystanders and fires at most once every 1.4 s, so it never becomes a clearing tool
 - The counter has a 5 s cooldown and deals 12 shock damage; your weapon remains your main damage source
 - Shock resistance and healing improve elemental survival, but you still need to dodge
-- Thunderbite kills count as yours — codex, daily report and campaign objectives all register them
+- Thunderbite kills count as yours: codex, daily report and campaign objectives all register them
 
 ::: tip
 Thunder Set is for dense multi-enemy waves; Frost Set is better for 1v1 boss control. Pick based on the run type.

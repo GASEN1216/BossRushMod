@@ -299,6 +299,15 @@ namespace BossRush
         internal static void EnsureInstance() { Active = true; }
         internal static void DestroyInstance() { Active = false; }
     }
+    // Presentation-only trigger feedback (VA-24). Records calls; the real one draws popups/arcs/rings.
+    internal static class AffixTriggerFeedback
+    {
+        internal static int Lifesteals, Overcharges, ThornsHits;
+        internal static float LastHealed;
+        internal static void OnLifesteal(CharacterMainControl main, float healed) { Lifesteals++; LastHealed = healed; }
+        internal static void OnOvercharge(Health victim, Vector3 hitPoint) { Overcharges++; }
+        internal static void OnThorns(CharacterMainControl attacker) { ThornsHits++; }
+    }
     public static class AffixBuffFactory
     {
         public static Duckov.Buffs.Buff GetBulwarkBuff(int tier) { return new Duckov.Buffs.Buff { Id = "bulwark" }; }

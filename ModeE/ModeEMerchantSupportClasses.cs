@@ -1948,7 +1948,8 @@ namespace BossRush
                 : L10n.T("贝壳价格不可用", "Shell price unavailable");
             if (image != null)
             {
-                image.color = canBuy ? new Color(0.2f, 0.8f, 0.35f, 1f) : Color.gray;
+                // 官方自己的「可买 / 不可买」两色，旧版刷成荧光绿 / Color.gray（UB-21，见 GetModeEShellOfficialButtonColor）
+                image.color = GetModeEShellOfficialButtonColor(view, canBuy);
             }
         }
 
@@ -3363,8 +3364,7 @@ namespace BossRush
                 lotteryButtonObject,
                 lotteryButtonText,
                 displayText,
-                interactable,
-                interactable ? new Color(0.2f, 0.65f, 0.85f) : Color.gray);
+                interactable);
         }
 
         private static void UpdateShellBalanceText()
@@ -3436,13 +3436,11 @@ namespace BossRush
             string sellAllLabel = L10n.T("一键卖出", "Sell All");
             string displayText;
             bool interactable;
-            Color buttonColor;
 
             if (isSelling || (modeEShellOwner != null && modeEShellOwner.IsModeEShellTransactionGateBusy))
             {
                 displayText = L10n.T("交易处理中...", "Transaction in progress...");
                 interactable = false;
-                buttonColor = Color.gray;
             }
             else
             {
@@ -3450,10 +3448,9 @@ namespace BossRush
                 bool canSell = currentShop != null && itemCount > 0;
                 displayText = canSell ? sellAllLabel + " (" + itemCount + ")" : sellAllLabel;
                 interactable = canSell;
-                buttonColor = canSell ? new Color(0.2f, 0.8f, 0.2f) : Color.gray;
             }
 
-            ApplyButtonState(sellAllButton, sellAllButtonObject, sellAllButtonText, displayText, interactable, buttonColor);
+            ApplyButtonState(sellAllButton, sellAllButtonObject, sellAllButtonText, displayText, interactable);
         }
 
         private static int CountSellableInventoryItems()
@@ -3832,13 +3829,17 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 写标签与可点状态。底色**不写**：一键卖出与抽奖都是克隆的官方「整理」按钮，保留官方 prefab 自带的
+        /// ColorBlock 与三态（旧版刷成纯绿 / 天蓝、悬停只乘 1.1、禁用 Color.gray，和官方购买键三种颜色在同一个官方界面里打架，
+        /// 2026-09-23 审美审查 UB-21 / UB-33）。
+        /// </summary>
         private static void ApplyButtonState(
             Button targetButton,
             GameObject targetObject,
             TextMeshProUGUI targetText,
             string displayText,
-            bool interactable,
-            Color buttonColor)
+            bool interactable)
         {
             if (targetButton == null)
             {
@@ -3861,12 +3862,6 @@ namespace BossRush
             }
 
             targetButton.interactable = interactable;
-            ColorBlock colors = targetButton.colors;
-            colors.normalColor = buttonColor;
-            colors.highlightedColor = buttonColor * 1.1f;
-            colors.pressedColor = buttonColor * 0.9f;
-            colors.disabledColor = Color.gray;
-            targetButton.colors = colors;
         }
     }
 

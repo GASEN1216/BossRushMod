@@ -1,5 +1,5 @@
 ---
-description: BossRush guide index — the beginner route, phase-by-phase tactics for the three original bosses, and dedicated strategies for Infinite Hell, From Scratch, Faction War, Blood Hunt and Fate Echo.
+description: BossRush guide index covering the beginner route, phase-by-phase tactics for the three original bosses, and dedicated strategies for Infinite Hell, From Scratch, Faction War, Blood Hunt and Fate Echo.
 ---
 
 # Guides
@@ -23,5 +23,5 @@ This section is not about rules; it is about winning. Pick the guide for whereve
 - **Fate Echo Guide** — How to switch builds once it starts countering you
 
 ::: tip
-Guides only cover tactics. For the rules and numbers, go back to the matching page under Game Modes or Bosses — the infobox at the top of every boss and mode page is the quickest reference.
+Guides only cover tactics. For the rules and numbers, go back to the matching page under Game Modes or Bosses. The infobox at the top of every boss and mode page is the quickest reference.
 :::

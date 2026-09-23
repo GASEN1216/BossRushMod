@@ -61,13 +61,61 @@ using UnityEngine.UI;
 
 namespace BossRush
 {
-    internal sealed class SkyIslandStoryPresentation : IDisposable
+    internal sealed partial class SkyIslandStoryPresentation : IDisposable
     {
         internal sealed class Choice
         {
             internal string Label;
             internal Func<string> Select;
             internal Choice(string label, Func<string> select) { Label = label; Select = select; }
+        }
+
+        /// <summary>
+        /// 选项的**纯显示**修饰（2026-09-23 审美审查 UE-09 / UE-17）：产物图标、「材料不够的那个数标红」、次级导航（返回）。
+        /// 不做成 <see cref="Choice"/> 的字段：F3 SKY_CHOICE_GATES 钉着 Choice 只有 Label 与 Select 两个字段——选项没有「灰掉」这一态。
+        /// 修饰只改长相，行照挂、照可点（AGENTS §4.14 商店口径：钱不够照挂）。按 Choice 实例挂在弱表上，随 Choice 一起回收。
+        /// </summary>
+        private sealed class ChoiceLook
+        {
+            internal int IconTypeId;
+            internal bool MarkShortfall;
+            internal bool Secondary;
+        }
+
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Choice, ChoiceLook> looks =
+            new System.Runtime.CompilerServices.ConditionalWeakTable<Choice, ChoiceLook>();
+
+        /// <summary>给一条「做 / 点 某件物品」的选项挂上产物的官方图标，并把标签里「有几件/要几件」不够的那个数标红。返回同一个 Choice。</summary>
+        internal static Choice WithItem(Choice choice, int typeId)
+        {
+            if (choice == null) return null;
+            ChoiceLook look = looks.GetOrCreateValue(choice);
+            look.IconTypeId = typeId;
+            look.MarkShortfall = true;
+            return choice;
+        }
+
+        /// <summary>导航类选项（「返回手记」「返回」）：标签用次级色，一眼和内容选项分开。返回同一个 Choice。</summary>
+        internal static Choice AsSecondary(Choice choice)
+        {
+            if (choice == null) return null;
+            looks.GetOrCreateValue(choice).Secondary = true;
+            return choice;
+        }
+
+        private static ChoiceLook LookOf(Choice choice)
+        {
+            ChoiceLook look;
+            return choice != null && looks.TryGetValue(choice, out look) ? look : null;
+        }
+
+        /// <summary>选项行的产物图标：官方物品元数据里的图标（岛上物品是动态条目，同一个入口）。取不到就不画这一格，不退回灰块。</summary>
+        private static Sprite ChoiceIcon(Choice choice)
+        {
+            ChoiceLook look = LookOf(choice);
+            if (look == null || look.IconTypeId <= 0) return null;
+            try { return ItemStatsSystem.ItemAssetsCollection.GetMetaData(look.IconTypeId).icon; }
+            catch (Exception) { return null; }
         }
 
         #region 布局常量
@@ -200,6 +248,35 @@ namespace BossRush
         /// </summary>
         private const float KeyHintWidth = 36f;
         private const float KeyCapSize = 24f;
+        /// <summary>
+        /// 数字键帽（UE-16）：底色比行底浅一档的半透明白 + 一圈描边，字 14px 正文色——读作「一颗键」。
+        /// 旧版是 Surface 深底压在 SurfaceRaised 行上（只差 1.1:1），没有边，只看得到一个灰色数字。
+        /// </summary>
+        private const float NumberKeyFillAlpha = 0.10f;
+        private const float KeyCapStrokeAlpha = 0.55f;
+        private const float NumberKeyFont = 14f;
+        private const float EscKeyFont = 13f;
+        /// <summary>
+        /// 选项行产物图标（UE-09）：边长与它占掉的宽度（图标 32 + 间距 8）。有图标的行标签可用宽度扣这一格，
+        /// 量高与摆放共用 <see cref="ChoiceLabelWidthFor"/>；布局属性测试按「每行都有图标」的最坏情况复算。
+        /// </summary>
+        private const float ChoiceIconSize = 32f;
+        private const float ChoiceIconSlot = 40f;
+        /// <summary>焦点行边（Accent ↔ Stroke）的渐变秒数，与行底 ColorTint 的 0.08 秒同步（UE-17）。旧写法行边当帧硬切、行底在渐变。</summary>
+        private const float ChoiceFocusFade = 0.08f;
+
+        /// <summary>
+        /// 正文行距（TMP 单位：1/100 em）。24px 的正文按默认行高排，长页读起来是一整块字墙（UE-06）。
+        /// 量高用的是同一个 TMP 组件，所以挤压与滚动算术自动算进去；布局属性测试按同一个常量复算。
+        /// </summary>
+        private const float BodyLineSpacing = 6f;
+
+        /// <summary>
+        /// 面板开合与换页（UE-04）：换正文时新正文 0.14 秒淡入、上浮 4 px（只动正文，选项不重播）。
+        /// 关闭淡出走共享的 BossRushUIKit.PlayCloseAndDestroy（0.12 秒）。
+        /// </summary>
+        private const float BodySwapFade = 0.14f;
+        private const float BodySwapRise = 4f;
 
         /// <summary>正文右侧给滚动条留的空。<see cref="BossRushUI.ConfigureScrollRect"/> 要求 20px。</summary>
         private const float ScrollbarGutter = 20f;
@@ -264,6 +341,8 @@ namespace BossRush
         private int selected = -1;
         /// <summary>导航键当前按住的方向（-1 上 / 1 下 / 0 中位）。按边沿走一步，见 <see cref="OnNavigate"/>。</summary>
         private int navigateHeld;
+        /// <summary>焦点行边的渐变秒数：重开面板恢复当前项时当帧落定（0），之后跟手的移动走 <see cref="ChoiceFocusFade"/>。</summary>
+        private float focusFade = ChoiceFocusFade;
 
         internal bool Visible { get { return canvas != null; } }
 
@@ -292,6 +371,8 @@ namespace BossRush
             // 3. 保留键盘的当前项：玩家正用 W/S + Enter 连着操作（接委托 → 交付），
             //    旧版每重开一次都丢焦点，下一次 Enter 只会「重新高亮第一项」，白白多按一下还跳回了顶上。
             int previousSelected = reopening ? selected : -1;
+            // 4. 正文换了的重开，新正文淡入一下（UE-04）：整页当帧换掉时，眼睛找不到新的一句在哪。
+            bool bodyChanged = reopening && !string.Equals(shownText, text, StringComparison.Ordinal);
             GameObject previousHideToken = hideToken;
             hideToken = null;
             Dispose();
@@ -301,9 +382,13 @@ namespace BossRush
             shownChoices = choices;
             shownPortrait = portrait;
             shownBanner = banner;
+            // 手记类正文的排版（■ / □ / 「名字 → 用处」）只加在显示层，shownText 仍存原文（UE-06）。
+            text = StyleJournalLines(text);
 
             canvas = BossRushUI.CreateCanvasRoot("SkyIslandStory", BossRushUILayers.Modal, true);
-            BossRushUI.CreateBackdrop(canvas.transform);
+            Image backdrop = BossRushUI.CreateBackdrop(canvas.transform);
+            // 共享遮罩自带 0.15 秒淡入；重开时旧画布当帧销毁，新遮罩再从 0 淡起的话，每点一个选项背景就闪一下——当帧落定。
+            if (reopening) SettleEntrance(backdrop != null ? backdrop.gameObject : null);
 
             float maxPanelHeight = Mathf.Clamp(
                 ZombieModeUIHelper.GetReferenceViewportSize().y - 140f, 520f, 980f);
@@ -350,8 +435,9 @@ namespace BossRush
             {
                 TextMeshProUGUI probe = MakeText(canvas.transform, choices[i].Label, ChoiceFont,
                     BossRushUIColors.TextPrimary, TextAlignmentOptions.Left);
+                // 有产物图标的行标签窄一格（UE-09）：量高与摆放用同一个宽度。
                 float h = Mathf.Max(ChoiceMinHeight,
-                    BossRushUI.MeasureTextHeight(probe, ChoiceLabelWidth, 26f) + ChoicePadY * 2f);
+                    BossRushUI.MeasureTextHeight(probe, ChoiceLabelWidthFor(ChoiceIcon(choices[i]) != null), 26f) + ChoicePadY * 2f);
                 // **必须 DestroyImmediate**：`Destroy` 要等到帧末才真正移除，而量高用的探针
                 // 此刻是 canvas 的子物体、带着选项文字挂在屏幕正中 —— 用延迟销毁的话，
                 // 这一帧会把所有选项文字重叠着闪一下再消失。对象是运行时创建、非 prefab 资产，
@@ -364,6 +450,7 @@ namespace BossRush
             // 正文用 TextPrimary 不是 TextSecondary：它是主信息不是注脚。
             TextMeshProUGUI bodyText = MakeText(canvas.transform, text, BodyFont,
                 BossRushUIColors.TextPrimary, TextAlignmentOptions.TopLeft);
+            bodyText.lineSpacing = BodyLineSpacing;
             // 空正文（居民功能面板常见）收成 0 高，连同它下面那道 Gap 一起省掉，选项紧接分隔线（2026-09-15 第五轮 D5）。
             // 有正文按自然高度量、不再垫到 BodyMinHeight：一行回执就是一行高；BodyMinHeight 只管「挤到多矮就上滚动条」。
             bool hasBody = !string.IsNullOrEmpty(text);
@@ -384,6 +471,16 @@ namespace BossRush
             float chrome = Pad + heroHeight + dividerBlock + choicesHeight + Gap + bodyGap;
             // 限制的是视口，不能截断自然高度，否则长正文不会建立完整的滚动内容。
             float bodyHeight = Mathf.Min(BodyPreferredMax, bodyNatural);
+            // 阅读页（手记子页、信、名册、谜题回执）：正文比 BodyPreferredMax 长时不再封在 300，先吃掉面板的余量，
+            // 还不够就让主视觉退到地板，都用完了才上滚动条（UE-07）。旧写法一律塞进 300 高的滚动框（24px 字只露 8 行），
+            // 面板下面还空着一截、插图也不让位。短正文不受影响。
+            if (bodyNatural > BodyPreferredMax)
+            {
+                float heroGive = Mathf.Clamp(bodyNatural - (maxPanelHeight - chrome), 0f, Mathf.Max(0f, heroHeight - heroFloor));
+                heroHeight -= heroGive;
+                chrome -= heroGive;
+                bodyHeight = Mathf.Max(BodyPreferredMax, Mathf.Min(bodyNatural, maxPanelHeight - chrome));
+            }
             float panelHeight = chrome + bodyHeight;
             if (panelHeight > maxPanelHeight)
             {
@@ -414,7 +511,7 @@ namespace BossRush
             // 主视觉也建在里面，这样一个 Mask 同时把整屏底图与插图切成面板的圆角。
             RectTransform background = BuildBackground(panel,
                 SkyIslandUiArt.GetPanelBackground(banner));
-            BuildHero(background, titleText, portrait, banner, heroHeight, titleWidth, titleBlock, cursor, Dispose);
+            BuildHero(background, titleText, portrait, banner, heroHeight, titleWidth, titleBlock, cursor, Close);
             cursor -= heroHeight + Gap;
 
             // 描边在背景层**之后**加，否则会被整屏底图盖住。
@@ -436,6 +533,8 @@ namespace BossRush
 
             BuildBody(panel, bodyText, bodyHeight, bodyNatural, cursor);
             cursor -= bodyHeight + bodyGap;
+            if (bodyChanged && hasBody)
+                BossRushUIEntranceAnimation.Play(bodyText.rectTransform.parent.gameObject, 0f, BodySwapFade, BodySwapRise);
 
             for (int i = 0; i < choices.Count; i++)
             {
@@ -444,7 +543,10 @@ namespace BossRush
                 cursor -= h + Gap * 0.5f;
             }
             choiceCount = choices.Count;
+            // 重开恢复的当前项当帧落定：行边再从 Stroke 渐变到 Accent 的话，每点一次那一行的边都会闪一下。
+            focusFade = 0f;
             if (previousSelected >= 0) Select(previousSelected);
+            focusFade = ChoiceFocusFade;
 
             if (!reopening) BossRushUI.PlayOpenAnimation(panel.gameObject);
             input = ZombieModeUIHelper.ClaimModalInput(canvas.gameObject, "SkyIslandStory");
@@ -470,10 +572,10 @@ namespace BossRush
             SubscribeInput();
         }
 
-        /// <summary>选项文字的可用宽度：扣掉左右内边距与左侧键帽。量高与摆放共用。</summary>
-        private static float ChoiceLabelWidth
+        /// <summary>选项文字的可用宽度：扣掉左右内边距、左侧键帽，有产物图标时再扣一格（UE-09）。量高与摆放共用。</summary>
+        private static float ChoiceLabelWidthFor(bool hasIcon)
         {
-            get { return ContentWidth - ChoicePadX * 2f - KeyHintWidth; }
+            return ContentWidth - ChoicePadX * 2f - KeyHintWidth - (hasIcon ? ChoiceIconSlot : 0f);
         }
 
         /// <summary>
@@ -579,14 +681,28 @@ namespace BossRush
             RectTransform hero = MakeRect(background, "Hero",
                 new Vector2(0f, top - height * 0.5f), new Vector2(PanelWidth, height));
 
-            if (banner != null)
+            if (banner != null && banner.rect.height > 0f)
             {
-                Image art = Stretched(hero, "Art");
+                // 插图按**自然比例** cover（UE-23）：宽至少铺满面板、高至少铺满主视觉，贴主视觉顶边摆，
+                // 多出来的部分由这一层 RectMask2D 裁掉（下缘本来就被标题带盖住）。旧写法非等比拉伸，
+                // 面板被挤矮时 1024×288 的插图纵向只剩七成，云和建筑都被压扁。
+                RectTransform clip = MakeRect(hero, "ArtClip", Vector2.zero, Vector2.zero);
+                clip.anchorMin = Vector2.zero;
+                clip.anchorMax = Vector2.one;
+                clip.offsetMin = Vector2.zero;
+                clip.offsetMax = Vector2.zero;
+                clip.gameObject.AddComponent<RectMask2D>();
+                float aspect = banner.rect.width / banner.rect.height;
+                float artHeight = Mathf.Max(height, PanelWidth / Mathf.Max(0.01f, aspect));
+                RectTransform artRect = MakeRect(clip, "Art", Vector2.zero,
+                    new Vector2(artHeight * aspect, artHeight));
+                artRect.anchorMin = artRect.anchorMax = artRect.pivot = new Vector2(0.5f, 1f);
+                artRect.anchoredPosition = Vector2.zero;
+                Image art = artRect.gameObject.AddComponent<Image>();
                 art.sprite = banner;
                 art.type = Image.Type.Simple;
-                // 直接拉伸铺满（不裁剪）而不是留边：preserveAspect 会在两侧留出背景色，
-                // 而面板底色和插图色调不一致，看着像图没铺满。hero 高度随面板变，插图会有轻微的纵向拉伸。
-                art.preserveAspect = false;
+                art.preserveAspect = false;   // 框本身就是插图的比例，不需要再留边
+                art.raycastTarget = false;
             }
 
             float titleHeight = titleBlock;
@@ -685,20 +801,11 @@ namespace BossRush
             Button closeButton = escCap.gameObject.AddComponent<Button>();
             closeButton.targetGraphic = escCap;
             closeButton.navigation = new Navigation { mode = Navigation.Mode.None };
-            // 三态照 ZombieModeUIHelper.ApplyButtonColors 的口径（Graphic 置白、绝对色进 ColorBlock），
-            // 但不直接调它：它会把名为 Text 的子物体改成按钮字色，键帽上的字色由 KeyCap 定。
-            escCap.color = Color.white;
-            ColorBlock escColors = closeButton.colors;
-            escColors.normalColor = BossRushUIColors.Surface;
-            escColors.highlightedColor = BossRushUI.GetHoverColor(BossRushUIColors.Surface);
-            escColors.pressedColor = BossRushUI.GetPressedColor(BossRushUIColors.Surface);
-            escColors.selectedColor = BossRushUIColors.Surface;
-            escColors.colorMultiplier = 1f;
-            escColors.fadeDuration = 0.08f;
-            closeButton.colors = escColors;
-            // 刚挂上的 Button 已把渲染色置白，赋完 colors 会从白渐变到常态色（0.08 秒）。回执重开面板不播入场动画，
-            // 这几帧白底会直接露出来——立即落到常态色（2026-09-14 审核 F-21，选项行同理）。
-            escCap.CrossFadeColor(escColors.normalColor * escColors.colorMultiplier, 0f, true, true);
+            // 走共享按钮入口（UE-15）：三态（Graphic 置白、绝对色进 ColorBlock）、即时落到常态色（审核 F-21），
+            // 外加官方悬停 / 点击音效、按下回弹与投影斜面——同一块面板上的选项行都有，唯一的关闭按钮不能没有。
+            // 它会把名为 Text 的子物体改成 GetButtonTextColor(Surface) = TextPrimary，正是 F-19 要的字色。
+            ZombieModeUIHelper.ApplyButtonColors(closeButton, BossRushUIColors.Surface,
+                BossRushUI.GetHoverColor(BossRushUIColors.Surface), BossRushUI.GetDisabledColor(BossRushUIColors.Surface));
             if (close != null) closeButton.onClick.AddListener(close);
         }
 
@@ -739,6 +846,12 @@ namespace BossRush
             // 描边是这一行「是一个独立可点区域」的视觉证据，也是焦点指示物：当前项的边换成 Accent（见 SetFocused）。
             // SurfaceRaised 对面板底 Surface 实算只有 1.03:1（亮云海）/ 1.07:1（暗地形）——不画边的话玩家看到的只是几行浮着的字。
             Image stroke = BossRushUI.ApplyPanelStroke(image, 10, BossRushUISkinPart.Card, BossRushUIColors.Stroke);
+            // 行边的颜色改由 CanvasRenderer 的渐变承担（UE-17）：Graphic 置白、渲染色落在 Stroke，焦点移动时和行底一起 0.08 秒渐变。
+            if (stroke != null)
+            {
+                stroke.color = Color.white;
+                stroke.CrossFadeColor(BossRushUIColors.Stroke, 0f, true, true);
+            }
             buttonStrokes.Add(stroke);
             Button button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
@@ -767,11 +880,31 @@ namespace BossRush
                 KeyCap(rect, (index + 1).ToString(), KeyCapSize,
                     new Vector2(-ContentWidth * 0.5f + ChoicePadX + KeyCapSize * 0.5f, 0f));
 
+            // 产物图标（UE-09）：键帽右边一格，取不到就不画，标签照常占满。
+            ChoiceLook look = LookOf(choice);
+            Sprite icon = ChoiceIcon(choice);
+            if (icon != null)
+            {
+                RectTransform iconRect = MakeRect(rect, "Icon",
+                    new Vector2(-ContentWidth * 0.5f + ChoicePadX + KeyHintWidth + ChoiceIconSize * 0.5f, 0f),
+                    new Vector2(ChoiceIconSize, ChoiceIconSize));
+                Image iconImage = iconRect.gameObject.AddComponent<Image>();
+                iconImage.sprite = icon;
+                iconImage.preserveAspect = true;
+                iconImage.raycastTarget = false;
+            }
+
+            // 导航类选项（返回）用次级色，和内容选项分开（UE-17）；行底照旧，次级字在行底上仍有 5.9:1。
             TextMeshProUGUI label = MakeText(rect, choice.Label, ChoiceFont,
-                BossRushUI.GetButtonTextColor(BossRushUIColors.SurfaceRaised),
+                look != null && look.Secondary
+                    ? BossRushUIColors.TextSecondary
+                    : BossRushUI.GetButtonTextColor(BossRushUIColors.SurfaceRaised),
                 TextAlignmentOptions.Left);
-            label.rectTransform.sizeDelta = new Vector2(ChoiceLabelWidth, height - ChoicePadY * 2f);
-            label.rectTransform.anchoredPosition = new Vector2(KeyHintWidth * 0.5f, 0f);
+            // 「有几件 / 要几件」里不够的那个数标红（UE-09）：够和不够不再长得一模一样。行照挂、照可点。
+            if (look != null && look.MarkShortfall) label.text = MarkShortfalls(label.text);
+            float iconSlot = icon != null ? ChoiceIconSlot : 0f;
+            label.rectTransform.sizeDelta = new Vector2(ChoiceLabelWidthFor(icon != null), height - ChoicePadY * 2f);
+            label.rectTransform.anchoredPosition = new Vector2((KeyHintWidth + iconSlot) * 0.5f, 0f);
             label.enableWordWrapping = true;
             label.overflowMode = TextOverflowModes.Ellipsis;
 
@@ -786,30 +919,44 @@ namespace BossRush
 
 
         /// <summary>
-        /// 键帽底板 + 字。默认**不吃点击**：数字键帽画在选项行里，点击要归整行。
+        /// 键帽底板 + 描边 + 字。默认**不吃点击**：数字键帽画在选项行里，点击要归整行。
         /// 右上角 ESC 键帽由 BuildHero 拿返回值另接成可点的关闭按钮。
+        /// 一圈描边（Stroke，a=0.55）把「一颗键」的形状勾出来（UE-16）；描边随共享库自动留在最上层。
         /// </summary>
-        private static Image KeyCap(RectTransform parent, string key, float width, Vector2 position, Color glyphColor)
+        private static Image KeyCap(RectTransform parent, string key, float width, Vector2 position, Color glyphColor,
+            Color fill, float glyphSize)
         {
             RectTransform cap = MakeRect(parent, "KeyCap", position, new Vector2(width, KeyCapSize));
             Image capImage = cap.gameObject.AddComponent<Image>();
-            capImage.color = BossRushUIColors.Surface;
+            capImage.color = fill;
             BossRushUI.ApplyPanelSkin(capImage, 6);
             capImage.raycastTarget = false;
-            TextMeshProUGUI glyph = MakeText(cap, key, 13f, glyphColor, TextAlignmentOptions.Center);
+            Color edge = BossRushUIColors.Stroke;
+            edge.a = KeyCapStrokeAlpha;
+            BossRushUI.ApplyPanelStroke(capImage, 6, BossRushUISkinPart.Button, edge);
+            TextMeshProUGUI glyph = MakeText(cap, key, glyphSize, glyphColor, TextAlignmentOptions.Center);
             glyph.rectTransform.sizeDelta = new Vector2(width, KeyCapSize);
             glyph.enableWordWrapping = false;
             return capImage;
         }
 
         /// <summary>
-        /// 数字键帽：坐在压暗过的选项行里，次级字色余量足够。右上角 ESC 键帽压在**没模糊过的插图**上
-        /// （最亮处接近纯白），13px 的 TextSecondary 按线性色彩空间只有 3.9:1、悬停 3.3:1，
-        /// 那一个由 BuildHero 传 TextPrimary（2026-09-14 审核 F-19）。
+        /// 右上角 ESC 键帽：压在**没模糊过的插图**上（最亮处接近纯白），保留 Surface 深底；
+        /// 13px 的 TextSecondary 按线性色彩空间只有 3.9:1、悬停 3.3:1，所以 BuildHero 传 TextPrimary（2026-09-14 审核 F-19）。
+        /// </summary>
+        private static Image KeyCap(RectTransform parent, string key, float width, Vector2 position, Color glyphColor)
+        {
+            return KeyCap(parent, key, width, position, glyphColor, BossRushUIColors.Surface, EscKeyFont);
+        }
+
+        /// <summary>
+        /// 数字键帽（UE-16）：坐在压暗过的选项行里，底色是比行底浅一档的半透明白，字 14px 正文色——读作「一颗键」，
+        /// 不再是深底压在深行上的一块黑斑。
         /// </summary>
         private static Image KeyCap(RectTransform parent, string key, float width, Vector2 position)
         {
-            return KeyCap(parent, key, width, position, BossRushUIColors.TextSecondary);
+            return KeyCap(parent, key, width, position, BossRushUIColors.TextPrimary,
+                new Color(1f, 1f, 1f, NumberKeyFillAlpha), NumberKeyFont);
         }
 
         /// <summary>
@@ -879,144 +1026,31 @@ namespace BossRush
 
         #endregion
 
-        #region 键盘与手柄
-
-        private void Register(Button button, Color color)
-        {
-            buttons.Add(button);
-            buttonColors.Add(color);
-        }
-
         /// <summary>
-        /// 键盘方向键的当前项。**与鼠标悬停同一个焦点色**：只把这一行 ColorBlock 的 normalColor
-        /// 换成 <see cref="FocusColor"/>，由 Button 自己的 ColorTint 过渡过去——写法同
-        /// <c>ZombieModeUIHelper.SetButtonBaseColor</c>（页签、拍铃靠它变色）。
-        /// 不去动 EventSystem 的选中态：选项的 navigation 是 None（见 BuildChoice）。
+        /// 玩家主动关面板（ESC、右上角键帽、官方 Cancel）。状态与 <see cref="Dispose"/> 完全一样**当帧**收掉——
+        /// 输入租约、HUD 隐藏令牌、键盘订阅都当帧释放，<see cref="Visible"/> 立刻为 false——只有画面 0.12 秒淡出再销毁（UE-04）。
+        /// 旧写法整块画布当帧消失、官方 HUD 同时淡回来，画面一跳。重开（选项回执、换正文）与会话清理照旧走 Dispose 当帧销毁。
+        /// 淡出中的画布改名：F3 按 "SkyIslandStory" 找面板（GameObject.Find 与根名子串），它不能被当成还开着的那一块。
         /// </summary>
-        private void Select(int index)
+        internal void Close()
         {
-            if (buttons.Count == 0) return;
-            index = Mathf.Clamp(index, 0, buttons.Count - 1);
-            if (selected >= 0 && selected < buttons.Count) SetFocused(selected, false);
-            selected = index;
-            SetFocused(index, true);
-        }
-
-        private void SetFocused(int index, bool focused)
-        {
-            Button button = buttons[index];
-            if (button == null) return;
-            ColorBlock colors = button.colors;
-            colors.normalColor = focused ? FocusColor(buttonColors[index]) : buttonColors[index];
-            button.colors = colors;
-            // 焦点指示物是行边（见 ChoiceFocusLift）：当前项 Accent，移走换回 Stroke。
-            Image stroke = index < buttonStrokes.Count ? buttonStrokes[index] : null;
-            if (stroke != null) stroke.color = focused ? BossRushUIColors.Accent : BossRushUIColors.Stroke;
-        }
-
-        /// <summary>焦点色：鼠标悬停与键盘当前项共用这一个。系数与 WCAG 实算见 <see cref="ChoiceFocusLift"/>。</summary>
-        private static Color FocusColor(Color row)
-        {
-            Color focus = Color.Lerp(row, Color.white, ChoiceFocusLift);
-            focus.a = ChoiceFocusAlpha;
-            return focus;
-        }
-
-        /// <summary>执行第 index 项。回调可能重开或关掉面板，调用方执行完必须立刻返回。</summary>
-        private void Press(int index)
-        {
-            if (index < 0 || index >= buttons.Count) return;
-            Button button = buttons[index];
-            if (button == null || !button.interactable) return;
-            button.onClick.Invoke();
-        }
-
-        private void SubscribeInput()
-        {
-            if (inputSubscribed) return;
-            try
-            {
-                global::UIInputManager.OnNavigate += OnNavigate;
-                global::UIInputManager.OnConfirm += OnConfirm;
-                global::UIInputManager.OnCancel += OnCancel;
-                inputSubscribed = true;
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning("[SkyIsland] 剧情面板订阅官方 UI 输入失败，手柄将无法操作面板：" + e.Message);
-            }
-        }
-
-        private void UnsubscribeInput()
-        {
-            if (!inputSubscribed) return;
-            inputSubscribed = false;
-            try
-            {
-                global::UIInputManager.OnNavigate -= OnNavigate;
-                global::UIInputManager.OnConfirm -= OnConfirm;
-                global::UIInputManager.OnCancel -= OnCancel;
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning("[SkyIsland] 剧情面板退订官方 UI 输入失败：" + e.Message);
-            }
-        }
-
-        /// <summary>
-        /// 导航**按边沿走一步**。官方 `UIInputManager.Bind` 把 UI_Navigate 的 started / performed / canceled
-        /// 三个阶段全订上了，`OnInputActionNavigate` 又不看阶段、每次新建一个事件对象（Use 去不了重）；
-        /// 而 UI_Navigate 是 Value 型 Vector2（W/S 组合键），Input System 在同一次处理里先 Started 再 Performed。
-        /// 于是按一下 W/S 会收到两条同向事件——逐条走一步就是一按跳两格。回到中位（|y| ≤ 0.5）才重新武装。
-        /// </summary>
-        private void OnNavigate(global::UIInputEventData data)
-        {
-            if (!Visible || data == null || buttons.Count == 0) return;
-            int step = data.vector.y > 0.5f ? -1 : (data.vector.y < -0.5f ? 1 : 0);
-            if (step == 0) { navigateHeld = 0; return; }
-            data.Use();
-            if (navigateHeld == step) return;
-            navigateHeld = step;
-            Select(selected < 0 ? (step > 0 ? 0 : buttons.Count - 1) : selected + step);
-        }
-
-        private void OnConfirm(global::UIInputEventData data)
-        {
-            if (!Visible || data == null) return;
-            // 还没有当前项时，第一次确认只把焦点放到第一项：先让玩家看清自己选中了什么。
-            // 默认键位下交互（F）与确认（Enter）不是同一个键，而且交互完成（InteractableBase.OnTimeOut）
-            // 发生在 CA_Interact 的 Update 里、晚于同一次按键的输入派发，同帧误触发本来就不会出现；
-            // 这一步留作玩家改键把两者绑到同一个键时的保险。
-            if (selected < 0) Select(0);
-            else Press(selected);
-            data.Use();
-        }
-
-        private void OnCancel(global::UIInputEventData data)
-        {
-            if (!Visible) return;
+            GameObject closing = canvas != null ? canvas.gameObject : null;
+            canvas = null;
             Dispose();
-            if (data != null) data.Use();
+            if (closing == null) return;
+            closing.name = "SkyIslandClosingPanel";
+            BossRushUIKit.PlayCloseAndDestroy(closing);
         }
 
-        internal void Tick()
+        /// <summary>把一个刚挂上的共享入场淡入当帧落定（重开时的遮罩，见 Show）。</summary>
+        private static void SettleEntrance(GameObject go)
         {
-            if (!Visible) return;
-            if (Input.GetKeyDown(KeyCode.Escape)) { Dispose(); return; }
-            // 数字键直选：主流 PC 对话界面的通用写法，手不必离开键盘去找鼠标。
-            int keyed = Mathf.Min(choiceCount, 9);
-            for (int i = 0; i < keyed; i++)
-            {
-                if (Input.GetKeyDown(KeyCode.Alpha1 + i) || Input.GetKeyDown(KeyCode.Keypad1 + i))
-                {
-                    Press(i);
-                    return;
-                }
-            }
-            ZombieModeUIHelper.EnforceModalInputPause();
+            if (go == null) return;
+            BossRushUIEntranceAnimation entrance = go.GetComponent<BossRushUIEntranceAnimation>();
+            if (entrance != null) entrance.enabled = false;
+            CanvasGroup group = go.GetComponent<CanvasGroup>();
+            if (group != null) group.alpha = 1f;
         }
-
-        #endregion
 
         public void Dispose()
         {
@@ -1050,100 +1084,5 @@ namespace BossRush
             navigateHeld = 0;
         }
 
-        #region 基础构件
-
-        private static RectTransform MakeRect(Transform parent, string name, Vector2 position, Vector2 size)
-        {
-            GameObject go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            RectTransform rect = (RectTransform)go.transform;
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = size;
-            rect.anchoredPosition = position;
-            return rect;
-        }
-
-        private static TextMeshProUGUI MakeText(Transform parent, string value, float size,
-            Color color, TextAlignmentOptions alignment)
-        {
-            TextMeshProUGUI text = MakeRect(parent, "Text", Vector2.zero, new Vector2(ContentWidth, 40f))
-                .gameObject.AddComponent<TextMeshProUGUI>();
-            BossRushUI.ApplyGameFont(text);
-            text.fontSize = size;
-            text.text = KeepCountsTogether(value);
-            text.color = color;
-            text.alignment = alignment;
-            text.enableWordWrapping = true;
-            text.raycastTarget = false;
-            return text;
-        }
-
-        /// <summary>
-        /// 「名称 + 计数」不许被折行拆开（2026-09-15 第五轮 D8）：「（已读 / 0/4）」「到 / 访区域 5/12」「Brass / Scrap 0/3」「Greenear / Sheaf 2」。
-        /// 分隔符（行首、换行、「· 」、全角或半角左括号、全角冒号、「: 」）之后、以计数结尾（后面紧跟行尾、换行、「 ·」或右括号）
-        /// 的一小段包进 TMP 的 &lt;nobr&gt;：中文字之间 TMP 可以任意断，U+00A0 只管得住空格，所以用标签。
-        /// 段长上限 24 字：最长一段加计数在正文与选项的一行里都放得下（布局属性测试按这个上限复算），TMP 不会被迫逐字断。
-        /// 规则文案本身不带标签（隔离回归逐字核对的是纯文本）；F3 验收读面板文字时剥掉标签再匹配。
-        /// </summary>
-        private static readonly Regex CountedRun = new Regex(
-            @"(^|\n|· |（|\(|：|: )([^\n·（）()：:<>]{1,24} \d+(?:/\d+)?)(?=$|\n| ·|）|\))",
-            RegexOptions.CultureInvariant);
-
-        private static string KeepCountsTogether(string value)
-        {
-            if (string.IsNullOrEmpty(value)) return string.Empty;
-            if (value.IndexOf("<nobr>", StringComparison.Ordinal) >= 0) return value;
-            return CountedRun.Replace(value, "$1<nobr>$2</nobr>");
-        }
-
-        #endregion
-    }
-
-    public sealed class SkyIslandStoryInteractable : BossRushBuildingInteractableBase
-    {
-        private string label;
-        private Action interact;
-        protected override string InteractNameKey
-        {
-            get
-            {
-                string key = "BossRush_SkyIsland_Story_" + name;
-                LocalizationHelper.InjectLocalization(key, label ?? L10n.T("群岛记事", "Archipelago record"));
-                return key;
-            }
-        }
-        protected override string LogPrefix { get { return "[SkyIsland] "; } }
-        protected override string InteractionGroupLabel { get { return "[SkyIsland]"; } }
-        protected override bool IsBuildingInteractable() { return interact != null; }
-        internal void Bind(string title, Action action) { label = title; interact = action; }
-        /// <summary>切了语言：换交互名与头顶的字，回调不动（标题由 owner 按当前语言重取）。</summary>
-        internal void Relabel(string title)
-        {
-            label = title;
-            Transform sign = transform.Find("Label");
-            TextMeshPro text = sign != null ? sign.GetComponent<TextMeshPro>() : null;
-            if (text != null) text.text = title;
-        }
-        protected override void OnInteractCompleted() { if (interact != null) interact(); }
-        internal static GameObject Create(Transform parent, Vector3 position, string name, string title, Action action)
-        {
-            GameObject go = new GameObject(name);
-            go.transform.SetParent(parent, false); go.transform.position = position;
-            go.layer = LayerMask.NameToLayer("Interactable");
-            BoxCollider trigger = go.AddComponent<BoxCollider>(); trigger.isTrigger = true;
-            trigger.center = Vector3.up; trigger.size = new Vector3(3, 2, 3);
-            go.AddComponent<SkyIslandStoryInteractable>().Bind(title, action);
-            GameObject sign = new GameObject("Label", typeof(TextMeshPro));
-            sign.transform.SetParent(go.transform, false); sign.transform.localPosition = Vector3.up * 2.5f;
-            sign.transform.rotation = Quaternion.Euler(60, 0, 0);
-            TextMeshPro text = sign.GetComponent<TextMeshPro>(); text.font = ZombieModeUIHelper.GetGameFont();
-            text.text = title; text.fontSize = 3; text.alignment = TextAlignmentOptions.Center;
-            // 纪念物上方的字不再是远远就亮着的黄字：点位上的光已经把「那里有东西」说清楚了，
-            // 字只在走近时浮现，用正文色而不是警示色（它不是警告）。
-            text.color = BossRushUIColors.TextPrimary;
-            text.rectTransform.sizeDelta = new Vector2(18, 5);
-            SkyIslandProximityLabel.Attach(sign, 6f, 11f);
-            return go;
-        }
     }
 }

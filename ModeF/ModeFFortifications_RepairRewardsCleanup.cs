@@ -219,9 +219,6 @@ namespace BossRush
             }
         }
 
-        /// <summary>M2: 缓存 MaterialPropertyBlock，避免每次 CreatePrimitivePart 泄漏 Material</summary>
-        private static readonly MaterialPropertyBlock fortMaterialPropertyBlock = new MaterialPropertyBlock();
-
         private void CreatePrimitivePart(Transform parent, PrimitiveType primitiveType, Vector3 localPosition, Vector3 localScale, Color color)
         {
             GameObject part = GameObject.CreatePrimitive(primitiveType);
@@ -229,12 +226,8 @@ namespace BossRush
             part.transform.localPosition = localPosition;
             part.transform.localScale = localScale;
 
-            Renderer renderer = part.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                fortMaterialPropertyBlock.SetColor("_Color", color);
-                renderer.SetPropertyBlock(fortMaterialPropertyBlock);
-            }
+            // 属性块同时写 _BaseColor / _Color（URP 默认材质只认前者，VA-20），不复制材质
+            ModeFFortificationHologramFx.TintFallbackPart(part.GetComponent<Renderer>(), color);
         }
 
         private void HighlightModeFFortification(ModeFFortificationMarker marker, bool enabled)
@@ -249,19 +242,12 @@ namespace BossRush
             {
                 marker.HighlightUntilTime = Mathf.Max(marker.HighlightUntilTime, Time.unscaledTime + FORT_HIGHLIGHT_DURATION);
                 modeFHasActiveFortificationHighlight = true;
-                if (marker.HighlightRoot != null)
-                {
-                    marker.HighlightRoot.SetActive(true);
-                }
-
+                ModeFFortificationHologramFx.ShowHighlight(marker.HighlightRoot, true);
                 return;
             }
 
             marker.HighlightUntilTime = 0f;
-            if (marker.HighlightRoot != null && marker.HighlightRoot.activeSelf)
-            {
-                marker.HighlightRoot.SetActive(false);
-            }
+            ModeFFortificationHologramFx.ShowHighlight(marker.HighlightRoot, false);
         }
 
         private void UpdateModeFFortificationHighlights()
@@ -295,7 +281,8 @@ namespace BossRush
                 bool shouldShow = !marker.IsDestroyed && now < marker.HighlightUntilTime;
                 if (marker.HighlightRoot.activeSelf != shouldShow)
                 {
-                    marker.HighlightRoot.SetActive(shouldShow);
+                    // 0.15 s 淡入淡出（VA-19）；淡出期间根物体仍亮着，这里每帧再告诉它一次「要藏」是 O(1)
+                    ModeFFortificationHologramFx.ShowHighlight(marker.HighlightRoot, shouldShow);
                 }
 
                 if (shouldShow)
@@ -329,7 +316,8 @@ namespace BossRush
 
         private void EnsureModeFFortificationHighlight(ModeFFortificationMarker marker)
         {
-            if (marker == null || marker.gameObject == null || marker.HighlightRoot != null)
+            Material outlineMaterial = GetModeFFortificationOutlineMaterial();
+            if (marker == null || marker.gameObject == null || marker.HighlightRoot != null || outlineMaterial == null)
             {
                 return;
             }
@@ -337,8 +325,6 @@ namespace BossRush
             GameObject outlineRoot = new GameObject("ModeF_FortificationHighlight");
             outlineRoot.transform.SetParent(marker.transform, false);
             outlineRoot.SetActive(false);
-
-            Material outlineMaterial = GetModeFFortificationOutlineMaterial();
             Renderer[] renderers = marker.GetComponentsInChildren<Renderer>(true);
             for (int i = 0; i < renderers.Length; i++)
             {
@@ -359,8 +345,10 @@ namespace BossRush
 
                     GameObject outlinePart = new GameObject(renderer.gameObject.name + "_Outline");
                     outlinePart.layer = renderer.gameObject.layer;
-                    outlinePart.transform.SetPositionAndRotation(renderer.transform.position, renderer.transform.rotation);
-                    outlinePart.transform.localScale = renderer.transform.lossyScale * 1.04f;
+                    // 暖白全息罩只外扩 1.5%，绕部件包围盒中心放大（枢轴不在中心时不往一侧偏）
+                    Vector3 center = renderer.bounds.center;
+                    outlinePart.transform.SetPositionAndRotation(center + (renderer.transform.position - center) * 1.015f, renderer.transform.rotation);
+                    outlinePart.transform.localScale = renderer.transform.lossyScale * 1.015f;
                     outlinePart.transform.SetParent(outlineRoot.transform, true);
 
                     MeshFilter outlineFilter = outlinePart.AddComponent<MeshFilter>();
@@ -382,29 +370,10 @@ namespace BossRush
 
         private Material GetModeFFortificationOutlineMaterial()
         {
-            if (modeFFortificationOutlineMaterial != null)
+            // 暖白半透明全息罩（VA-19）；旧版是 Unlit/Color 纯白实心复制体，整座工事被盖成一块白剪影
+            if (modeFFortificationOutlineMaterial == null)
             {
-                return modeFFortificationOutlineMaterial;
-            }
-
-            Shader shader = Shader.Find("Unlit/Color");
-            if (shader == null)
-            {
-                shader = Shader.Find("Sprites/Default");
-            }
-            if (shader == null)
-            {
-                shader = Shader.Find("Standard");
-            }
-
-            modeFFortificationOutlineMaterial = new Material(shader);
-            if (modeFFortificationOutlineMaterial.HasProperty("_Color"))
-            {
-                modeFFortificationOutlineMaterial.SetColor("_Color", Color.white);
-            }
-            if (modeFFortificationOutlineMaterial.HasProperty("_BaseColor"))
-            {
-                modeFFortificationOutlineMaterial.SetColor("_BaseColor", Color.white);
+                modeFFortificationOutlineMaterial = ModeFFortificationHologramFx.CreateMaterial("ModeF_RepairHologram", ModeFFortificationHologramFx.RepairColor);
             }
 
             return modeFFortificationOutlineMaterial;

@@ -7,7 +7,11 @@ import sys
 
 CATALOG = Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs")
 NPC_CATALOG = Path("ZombieMode/ZombieModeNpcCatalog.cs")
-REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
+# 2026-09-23 审美审查：奖励选择面板与终端服务面板从 ZombieModeRewards.cs（宿主 partial）拆到独立文件。
+REWARD_VIEWS = [
+    Path("ZombieMode/ZombieModeRewardSelectionView.cs"),
+    Path("ZombieMode/ZombieModeTemporaryNpcServiceView.cs"),
+]
 CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 
@@ -38,7 +42,7 @@ def extract_method(text: str, marker: str) -> str:
 def main() -> int:
     catalog = CATALOG.read_text(encoding="utf-8")
     npc_catalog = NPC_CATALOG.read_text(encoding="utf-8")
-    rewards = REWARDS.read_text(encoding="utf-8")
+    rewards = "\n".join(path.read_text(encoding="utf-8") for path in REWARD_VIEWS)
     cleanup = CLEANUP.read_text(encoding="utf-8")
     localization = LOCALIZATION.read_text(encoding="utf-8")
 
@@ -67,13 +71,19 @@ def main() -> int:
     if 'InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_RandomDrink"' not in localization:
         return fail("drink terminal stock localization missing")
 
+    # 终端格子的「买不起」反馈（2026-09-23 审美审查 UC-09 / UC-27 重做）：价格按余额换 DangerText，
+    # 点了在格子上方就地提示「还差 N 净化点」（官方 Toast 被模态遮罩压着看不见）；卖完的格子写「售罄」、不可点。
     for token in [
         "BossRush_ZombieMode_Npc_MerchantSubtitle",
         "BossRush_ZombieMode_Npc_NurseSubtitle",
         "owner.GetZombieModePurificationPoints(runId)",
         "bool affordable",
-        "BossRush_ZombieMode_Notify_NpcServiceNoPoints",
-        "bool interactable, bool affordable",
+        "affordable ? BossRushUIColors.WarningText : BossRushUIColors.DangerText",
+        "BossRush_ZombieMode_Notify_PointsShort",
+        "ZombieModeUiNudge.Flash(cell.Button",
+        "ZombieModeUiNudge.Flash(button",
+        "cell.Button.interactable = !soldOut;",
+        "BossRush_ZombieMode_Npc_SoldOut",
         "canAffordPaidRefresh",
     ]:
         if token not in rewards:

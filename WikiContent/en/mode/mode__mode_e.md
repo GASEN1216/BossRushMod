@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-Multi-faction sandbox chaos. Pick a faction, watch Bosses from different factions rip each other apart, and profit from the carnage. No waves, no win condition — just pure, beautiful mayhem.
+Multi-faction sandbox chaos. Pick a faction, watch Bosses from different factions rip each other apart, and profit from the carnage. No waves, no win condition. Just mayhem.
 
 ### Entry
 
@@ -104,7 +104,7 @@ Bosses from every faction can be hired. When you can afford a living Boss, appro
 
 #### Summon Coalball
 
-Main interaction with the merchant lets you summon **Coalball** — a pet combat companion on your faction. Follows you and fights hostile Bosses. On the field it carries its vanilla name, **Coal Briquette**.
+Main interaction with the merchant lets you summon **Coalball**, a pet combat companion on your faction that follows you and fights hostile Bosses. On the field it carries its vanilla name, **Coal Briquette**.
 
 ### Tactical Consumables
 
@@ -125,11 +125,11 @@ None. It's a sandbox. Leave the scene when you're done.
 
 ### Tips
 
-- Faction choice matters — Boss pools vary wildly in strength
+- Faction choice matters: Boss pools vary wildly in strength
 - Lone Wolf is the ultimate challenge. **No allies, everyone wants you dead**
 - Use Smoke Bombs and Detonators to make factions fight each other
 - Spend early Shells on a weapon, ammo, and survival gear; lottery and expensive hires make more sense once your core build is stable
 - Because every living hire doubles later offers, recruiting a cheap, useful Boss first is often better than immediately chasing the most expensive one
-- New Boss respawns don't inherit old stacks — fresh meat
+- New Boss respawns don't inherit old stacks
 - Secure final hits yourself to build your player growth
 - See the Faction War strategy guide for detailed tips

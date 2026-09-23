@@ -3,9 +3,9 @@
 // ============================================================================
 // 模块说明：
 //   为 FrostSetBonus / ThunderSetBonus 提供龙王套装同级的表现与公共判定：
-//   - 双眼点光：复用 DragonSetBonus 的头骨查找（FindHeadTransform / cachedHeadTransform），
-//     两种脉动模式（Breathe 慢呼吸 / Flicker 电闪）
-//   - 元素爆发环 + 放射碎片：复用 DragonSetBonus_Dash 的程序化圆形精灵
+//   - 眼光：复用 DragonSetBonus 的头骨查找（FindHeadTransform / cachedHeadTransform），
+//     表现在 SetBonusFx.cs（SetBonusEyeGlow），两种脉动模式（Breathe 慢呼吸 / Flicker 电闪）
+//   - 元素爆发环 + 放射碎片：转调 NewWeaponFx.PlayBurst（与新武器同一份实现）
 //   - 折线电弧：委托 Common/Effects/SetBonusArcPool（独立 MonoBehaviour 池，惰性建、停用即销毁）
 //   - 击杀过滤（照 CodexKillCollector.OnGlobalDead 的过滤序）与敌人扫描（照 PlayerLavaZone）
 //   - 音效路径常量（照 DragonKingConfig.SoundBasePath）
@@ -51,17 +51,15 @@ namespace BossRush
             Flicker
         }
 
+        /// <summary>眼光句柄。表现（两颗面朝镜头的 HDR 亮点 + 一盏弱补光）在 SetBonusFx.cs 的 SetBonusEyeGlow。</summary>
         private sealed class SetEyeLightState
         {
             public GameObject Root;
-            public Light Left;
-            public Light Right;
-            public Coroutine Pulse;
         }
 
         /// <summary>
-        /// 在主角头骨上挂一对点光。挂点复用龙套装的查找与缓存；龙套装的场景回调会先把缓存清空，
-        /// 因此过图后这里拿到的是新角色的头骨。
+        /// 在主角头骨上挂一对眼光。挂点复用龙套装的查找与缓存；龙套装的场景回调会先把缓存清空，
+        /// 因此过图后这里拿到的是新角色的头骨。baseIntensity 沿用旧常量，折成补光的 0.3 倍（约 1.5–1.8）。
         /// </summary>
         private SetEyeLightState CreateSetEyeLights(CharacterMainControl character, Color color, float baseIntensity, SetEyePulseMode mode)
         {
@@ -81,12 +79,7 @@ namespace BossRush
                 }
 
                 SetEyeLightState state = new SetEyeLightState();
-                state.Root = new GameObject("SetBonusEyeEffect");
-                state.Root.transform.SetParent(head, false);
-                state.Root.transform.localPosition = new Vector3(0f, 0.15f, 0.2f);
-                state.Left = CreateSetEyeLight(state.Root.transform, new Vector3(-0.08f, 0f, 0f), color, baseIntensity);
-                state.Right = CreateSetEyeLight(state.Root.transform, new Vector3(0.08f, 0f, 0f), color, baseIntensity);
-                state.Pulse = StartCoroutine(SetEyePulseLoop(state, baseIntensity, mode));
+                state.Root = SetBonusEyeGlow.Create(head, color, baseIntensity * 0.3f, mode == SetEyePulseMode.Flicker);
                 return state;
             }
             catch (Exception e)
@@ -96,59 +89,12 @@ namespace BossRush
             }
         }
 
-        private static Light CreateSetEyeLight(Transform parent, Vector3 localPosition, Color color, float intensity)
-        {
-            GameObject eye = new GameObject("SetBonusEyeLight");
-            eye.transform.SetParent(parent, false);
-            eye.transform.localPosition = localPosition;
-
-            Light light = eye.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.color = color;
-            light.intensity = intensity;
-            light.range = 0.25f;
-            light.shadows = LightShadows.None;
-            light.renderMode = LightRenderMode.ForcePixel;
-            return light;
-        }
-
-        private IEnumerator SetEyePulseLoop(SetEyeLightState state, float baseIntensity, SetEyePulseMode mode)
-        {
-            float seed = UnityEngine.Random.value * 10f;
-            while (state != null && state.Left != null && state.Right != null)
-            {
-                float t = Time.time + seed;
-                float intensity;
-                if (mode == SetEyePulseMode.Breathe)
-                {
-                    intensity = baseIntensity * (1f + 0.5f * Mathf.Sin(t * 2f));
-                }
-                else
-                {
-                    float flicker = Mathf.Abs(Mathf.Sin(t * 9f) * Mathf.Sin(t * 2.3f + 1f));
-                    intensity = baseIntensity * (0.6f + 0.6f * flicker);
-                    if (UnityEngine.Random.value < 0.04f)
-                    {
-                        intensity += baseIntensity;
-                    }
-                }
-
-                state.Left.intensity = intensity;
-                state.Right.intensity = intensity;
-                yield return null;
-            }
-        }
-
         private void DestroySetEyeLights(ref SetEyeLightState state)
         {
             if (state == null) return;
 
             try
             {
-                if (state.Pulse != null)
-                {
-                    StopCoroutine(state.Pulse);
-                }
                 if (state.Root != null)
                 {
                     UnityEngine.Object.Destroy(state.Root);
@@ -167,114 +113,13 @@ namespace BossRush
         #region 爆发环与碎片
 
         /// <summary>
-        /// 一次性元素爆发：平铺地面的圆环放大淡出 + 点光衰减 + 可选放射碎片。
-        /// 精灵复用 DragonSetBonus_Dash.CreateSimpleCircleSprite()（静态缓存，零新贴图）。
+        /// 一次性元素爆发：转调 NewWeaponFx.PlayBurst（贴地空心 HDR 环 + 亮芯 + 粒子碎片），与新武器共用一份实现。
+        /// 2026-09-23（VA-03）：旧版是实心圆饼放大 + 每次一盏强度 4 的点光；霜噬 / 雷噬每 1–1.4 秒一次，
+        /// 地面一闪一闪。现在默认不开灯，只有冻结反击传 withLight（雷霆反震已有官方 flash 爆炸）。
         /// </summary>
-        private void SpawnSetBurst(Vector3 position, Color color, float radius, float life, int shardCount)
+        private void SpawnSetBurst(Vector3 position, Color color, float radius, float life, int shardCount, bool withLight = false)
         {
-            try
-            {
-                Sprite sprite = CreateSimpleCircleSprite();
-
-                GameObject ring = new GameObject("SetBonusBurst");
-                ring.transform.position = position + Vector3.up * 0.3f;
-                ring.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-                float startScale = Mathf.Max(0.2f, radius * 0.4f);
-                ring.transform.localScale = new Vector3(startScale, startScale, 1f);
-
-                SpriteRenderer sr = ring.AddComponent<SpriteRenderer>();
-                sr.sprite = sprite;
-                sr.color = color;
-                sr.sortingOrder = 100;
-
-                Light light = ring.AddComponent<Light>();
-                light.type = LightType.Point;
-                light.color = new Color(color.r, color.g, color.b);
-                light.intensity = 4f;
-                light.range = radius * 1.5f;
-                light.shadows = LightShadows.None;
-
-                StartCoroutine(FadeOutSetBurst(ring, sr, light, life, radius * 2f));
-
-                if (shardCount > 0)
-                {
-                    SpawnSetBurstShards(position, color, sprite, shardCount, radius * 2.5f, life);
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[SetBonusVisuals] SpawnSetBurst 出错: " + e.Message);
-            }
-        }
-
-        private void SpawnSetBurstShards(Vector3 origin, Color color, Sprite sprite, int count, float speed, float life)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                float angle = (360f / count) * i + UnityEngine.Random.Range(-15f, 15f);
-                Vector3 direction = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
-
-                GameObject shard = new GameObject("SetBonusShard");
-                shard.transform.position = origin + Vector3.up * 0.8f;
-                shard.transform.localScale = new Vector3(0.25f, 0.6f, 1f);
-
-                SpriteRenderer sr = shard.AddComponent<SpriteRenderer>();
-                sr.sprite = sprite;
-                sr.color = color;
-                sr.sortingOrder = 101;
-
-                StartCoroutine(MoveAndFadeSetShard(shard, sr, direction * speed, life));
-            }
-        }
-
-        private IEnumerator MoveAndFadeSetShard(GameObject shard, SpriteRenderer sr, Vector3 velocity, float life)
-        {
-            if (shard == null || sr == null) yield break;
-
-            Color start = sr.color;
-            float elapsed = 0f;
-            while (elapsed < life && shard != null)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / life);
-                shard.transform.position += velocity * (Time.deltaTime * (1f - t));
-                sr.color = new Color(start.r, start.g, start.b, Mathf.Lerp(start.a, 0f, t));
-                yield return null;
-            }
-
-            if (shard != null)
-            {
-                UnityEngine.Object.Destroy(shard);
-            }
-        }
-
-        private IEnumerator FadeOutSetBurst(GameObject ring, SpriteRenderer sr, Light light, float duration, float endScale)
-        {
-            if (ring == null || sr == null) yield break;
-
-            Color start = sr.color;
-            float startIntensity = light != null ? light.intensity : 0f;
-            float startScale = ring.transform.localScale.x;
-            float elapsed = 0f;
-            while (elapsed < duration && ring != null)
-            {
-                elapsed += Time.deltaTime;
-                float t = Mathf.Clamp01(elapsed / duration);
-                float eased = 1f - (1f - t) * (1f - t);   // ease-out：先快后慢地扩散
-                float scale = Mathf.Lerp(startScale, endScale, eased);
-                ring.transform.localScale = new Vector3(scale, scale, 1f);
-                sr.color = new Color(start.r, start.g, start.b, Mathf.Lerp(start.a, 0f, t * t));
-                if (light != null)
-                {
-                    light.intensity = Mathf.Lerp(startIntensity, 0f, t);
-                }
-                yield return null;
-            }
-
-            if (ring != null)
-            {
-                UnityEngine.Object.Destroy(ring);
-            }
+            NewWeaponFx.PlayBurst(position, color, radius, life, shardCount, withLight);
         }
 
         #endregion

@@ -150,8 +150,10 @@ namespace BossRush
             SummonStaffAction.PreparePreset();
             yield return null;
             if (!CanPrepare(player)) { preparation = null; yield break; }
-            BossRushProceduralSprites.GetCircleSprite();
+            // 召唤爆发要用的贴图（环、亮芯软圆、碎片形状）在手持时先建好，首次右键不卡
             BossRushProceduralSprites.GetRingSprite();
+            BossRushFxKit.GetSoftCircleSprite();
+            BossRushParticleTextures.Get(BossRushParticleShape.Shard);
             BossRush.Common.Effects.RingParticleEffect.GetSharedParticleMaterial();
             preparationComplete = true;
             preparation = null;

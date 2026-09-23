@@ -118,7 +118,6 @@ namespace BossRush
             out bool dailyChatGranted)
         {
             int gainedPoints = 0;
-            int levelBeforeChat = AffinityManager.GetLevel(npcId);
             dailyChatGranted = false;
 
             try
@@ -149,11 +148,10 @@ namespace BossRush
                 ModBehaviour.DevLog(logPrefix + " [WARNING] 处理聊天好感度逻辑失败: " + e.Message);
             }
 
-            int levelAfterChat = AffinityManager.GetLevel(npcId);
-            if (levelAfterChat <= levelBeforeChat)
-            {
-                ShowChatProgressBanner(npcId, gainedPoints);
-            }
+            // 聊天反馈（2026-09-23 审美审查 UD-39，owner 拍板）：旧版每次开口都弹一条大横幅
+            // 「好感度 Lv.3 进度 120/300」，当天已聊过（+0）也照弹，读起来像调试输出。
+            // 现在：没加分就什么都不弹；加了分由好感变化事件在 NPC 头侧冒浮字「+30 / Lv.3 · 120/300」
+            // （AffinityUIManager.ShowAffinityChange），升级由 ShowLevelUpNotification 合成一条消息。这里不再另发横幅。
             return gainedPoints;
         }
 
@@ -231,56 +229,6 @@ namespace BossRush
             {
                 ModBehaviour.DevLog(logPrefix + " [WARNING] 处理配偶谴责对话失败: " + e.Message);
                 return false;
-            }
-        }
-
-        /// <summary>
-        /// 显示聊天后的好感度进度反馈（统一为横幅）
-        /// </summary>
-        public static void ShowChatProgressBanner(string npcId, int gainedPoints)
-        {
-            try
-            {
-                var config = AffinityManager.GetNPCConfig(npcId);
-                string npcName = config != null ? config.DisplayName : npcId;
-
-                int currentLevel = AffinityManager.GetLevel(npcId);
-                int maxLevel = AffinityManager.UNIFIED_MAX_LEVEL;
-
-                string notificationText;
-                if (currentLevel >= maxLevel)
-                {
-                    notificationText = L10n.T(
-                        npcName + "好感度 Lv." + currentLevel + " (MAX)",
-                        npcName + " Affinity Lv." + currentLevel + " (MAX)");
-                }
-                else
-                {
-                    int currentLevelProgress;
-                    int pointsNeededForNextLevel;
-                    AffinityManager.GetLevelProgressDetails(npcId, out currentLevelProgress, out pointsNeededForNextLevel);
-                    notificationText = L10n.T(
-                        npcName + "好感度 Lv." + currentLevel + " 进度 " + currentLevelProgress + "/" + pointsNeededForNextLevel,
-                        npcName + " Affinity Lv." + currentLevel + " Progress " + currentLevelProgress + "/" + pointsNeededForNextLevel);
-                }
-
-                if (gainedPoints > 0)
-                {
-                    notificationText += " (+" + gainedPoints + ")";
-                }
-
-                if (ModBehaviour.Instance != null)
-                {
-                    ModBehaviour.Instance.ShowBigBanner(notificationText);
-                }
-                else
-                {
-                    NotificationText.Push(notificationText);
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[NPCAffinityHelper] 显示聊天反馈失败: " + e.Message);
             }
         }
     }

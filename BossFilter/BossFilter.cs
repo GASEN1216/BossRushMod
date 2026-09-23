@@ -415,6 +415,9 @@ namespace BossRush
                 bossPoolScrollRect.verticalNormalizedPosition = 1f;
             }
 
+            // 打开淡入微放大（UB-27：旧版一帧出现）；关闭见 CloseBossPoolWindow 的淡出
+            if (!showBossPoolWindow) BossRushUI.PlayOpenAnimation(bossPoolPanel);
+
             // 禁用游戏输入，阻止 InputManager 更新鼠标状态
             InputManager.DisableInput(bossPoolCanvas);
 
@@ -427,11 +430,13 @@ namespace BossRush
         /// </summary>
         public void CloseBossPoolWindow()
         {
-            // 恢复游戏输入
+            // 恢复游戏输入；面板淡出后销毁（UB-32），引用立刻清空，下次打开重建一份
             if (bossPoolCanvas != null)
             {
                 InputManager.ActiveInput(bossPoolCanvas);
-                bossPoolCanvas.SetActive(false);
+                GameObject closing = bossPoolCanvas;
+                ReleaseBossPoolUIReferences();
+                BossRushUIKit.PlayCloseAndDestroy(closing);
             }
 
             showBossPoolWindow = false;
@@ -494,8 +499,10 @@ namespace BossRush
                 deselectAllButton.gameObject.SetActive(false);
             }
 
-            // 切换 Boss 列表显示
+            // 切换 Boss 列表显示（保住滚动位置，UB-27）
+            float scroll = bossPoolScrollRect != null ? bossPoolScrollRect.verticalNormalizedPosition : 1f;
             RefreshBossListForFactorMode();
+            RestoreBossPoolScroll(scroll);
         }
 
         /// <summary>
@@ -521,8 +528,10 @@ namespace BossRush
                 deselectAllButton.gameObject.SetActive(true);
             }
 
-            // 切换回 Toggle 列表
+            // 切换回 Toggle 列表（保住滚动位置，UB-27）
+            float scroll = bossPoolScrollRect != null ? bossPoolScrollRect.verticalNormalizedPosition : 1f;
             PopulateBossList();
+            RestoreBossPoolScroll(scroll);
         }
 
         /// <summary>
@@ -548,10 +557,7 @@ namespace BossRush
             // 清空现有内容
             bossToggles.Clear();
             bossFactorSelectors.Clear();
-            foreach (Transform child in bossPoolContent)
-            {
-                UnityEngine.Object.Destroy(child.gameObject);
-            }
+            ClearBossPoolContent();
 
             if (enemyPresets == null || enemyPresets.Count == 0)
             {
@@ -563,7 +569,7 @@ namespace BossRush
                 tipText.text = L10n.T("暂无 Boss 数据，请先进入游戏", "No Boss data available, please enter the game first");
                 tipText.fontSize = 16;
                 tipText.alignment = TextAlignmentOptions.Center;
-                tipText.color = new Color(0.7f, 0.7f, 0.7f);
+                tipText.color = BossRushUIColors.TextSecondary;
                 LayoutElement le = tipObj.AddComponent<LayoutElement>();
                 le.preferredHeight = 40f;
                 return;
@@ -587,9 +593,8 @@ namespace BossRush
             GameObject selectorObj = new GameObject("FactorSelector_" + preset.name);
             selectorObj.transform.SetParent(bossPoolContent, false);
 
-            // 背景
-            Image bgImage = selectorObj.AddComponent<Image>();
-            bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+            // 背景：与开关列表同一种行底（UB-26）
+            AddBossPoolRowBackground(selectorObj);
 
             // 布局
             HorizontalLayoutGroup hlg = selectorObj.AddComponent<HorizontalLayoutGroup>();
@@ -611,7 +616,7 @@ namespace BossRush
             labelText.text = displayName;
             labelText.fontSize = 18;
             labelText.alignment = TextAlignmentOptions.MidlineLeft;
-            labelText.color = Color.white;
+            labelText.color = BossRushUIColors.TextPrimary;
             LayoutElement labelLE = labelObj.AddComponent<LayoutElement>();
             labelLE.flexibleWidth = 1f;
 
@@ -710,14 +715,15 @@ namespace BossRush
         /// </summary>
         private Color GetFactorLevelColor(int index)
         {
+            // 五档走 token（UB-26：旧版是另一套手写的灰 / 绿 / 白 / 橙 / 红）
             switch (index)
             {
-                case 0: return new Color(0.5f, 0.5f, 0.5f); // 极低 - 灰色
-                case 1: return new Color(0.3f, 0.7f, 0.3f); // 低 - 绿色
-                case 2: return Color.white;                  // 中 - 白色
-                case 3: return new Color(1f, 0.7f, 0.3f);   // 高 - 橙色
-                case 4: return new Color(1f, 0.3f, 0.3f);   // 极高 - 红色
-                default: return Color.white;
+                case 0: return BossRushUIColors.TextSecondary; // 极低
+                case 1: return BossRushUIColors.SuccessText;   // 低
+                case 2: return BossRushUIColors.TextPrimary;   // 中
+                case 3: return BossRushUIColors.WarningText;   // 高
+                case 4: return BossRushUIColors.DangerText;    // 极高
+                default: return BossRushUIColors.TextPrimary;
             }
         }
 
@@ -819,7 +825,7 @@ namespace BossRush
                 GameObject viewport = new GameObject("Viewport");
                 viewport.transform.SetParent(scrollViewObj.transform, false);
                 Image vpImage = viewport.AddComponent<Image>();
-                vpImage.color = new Color(0.1f, 0.1f, 0.1f, 1f);
+                vpImage.color = BossRushUIColors.Surface;
                 Mask mask = viewport.AddComponent<Mask>();
                 mask.showMaskGraphic = true;
                 RectTransform vpRect = viewport.GetComponent<RectTransform>();
@@ -860,10 +866,8 @@ namespace BossRush
             scrollRectTransform.offsetMin = new Vector2(10f, 100f);
             scrollRectTransform.offsetMax = new Vector2(-10f, -100f);
 
-            scrollRect.horizontal = false;
-            scrollRect.vertical = true;
-            scrollRect.scrollSensitivity = 0.5f;  // 降低滚动灵敏度
-            scrollRect.movementType = ScrollRect.MovementType.Clamped;  // 启用拖拽滚动
+            // 滚动手感走共享口径（UB-27：旧版灵敏度 0.5，滚轮一格几乎不动）：纵向、Clamped、灵敏度 32、空白处也能滚
+            BossRushUI.ConfigureScrollRect(scrollRect);
             scrollRect.inertia = true;  // 启用惯性
             scrollRect.decelerationRate = 0.135f;  // 惯性减速率
 
@@ -925,9 +929,10 @@ namespace BossRush
             GameObject statsTextObj = new GameObject("StatsText");
             statsTextObj.transform.SetParent(statsBar.transform, false);
             statsText = statsTextObj.AddComponent<TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(statsText);
             statsText.fontSize = 18;
             statsText.alignment = TextAlignmentOptions.Center;
-            statsText.color = Color.white;
+            statsText.color = BossRushUIColors.TextSecondary;
             RectTransform statsTextRect = statsTextObj.GetComponent<RectTransform>();
             statsTextRect.anchorMin = Vector2.zero;
             statsTextRect.anchorMax = Vector2.one;
@@ -985,10 +990,7 @@ namespace BossRush
             // 清空现有内容
             bossToggles.Clear();
             bossFactorSelectors.Clear();
-            foreach (Transform child in bossPoolContent)
-            {
-                UnityEngine.Object.Destroy(child.gameObject);
-            }
+            ClearBossPoolContent();
 
             if (enemyPresets == null || enemyPresets.Count == 0)
             {
@@ -1000,7 +1002,7 @@ namespace BossRush
                 tipText.text = L10n.T("暂无 Boss 数据，请先进入游戏", "No Boss data available, please enter the game first");
                 tipText.fontSize = 16;
                 tipText.alignment = TextAlignmentOptions.Center;
-                tipText.color = new Color(0.7f, 0.7f, 0.7f);
+                tipText.color = BossRushUIColors.TextSecondary;
                 LayoutElement le = tipObj.AddComponent<LayoutElement>();
                 le.preferredHeight = 40f;
                 return;
@@ -1025,9 +1027,8 @@ namespace BossRush
             GameObject toggleObj = new GameObject("Toggle_" + preset.name);
             toggleObj.transform.SetParent(bossPoolContent, false);
 
-            // 背景
-            Image bgImage = toggleObj.AddComponent<Image>();
-            bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+            // 背景：Card 档圆角 + SurfaceRaised（旧版无 sprite 的直角灰条，UB-26）；整行可点，悬停 / 按下由行底三态给
+            Image bgImage = AddBossPoolRowBackground(toggleObj);
 
             // 布局
             HorizontalLayoutGroup hlg = toggleObj.AddComponent<HorizontalLayoutGroup>();
@@ -1040,31 +1041,38 @@ namespace BossRush
             LayoutElement toggleLE = toggleObj.AddComponent<LayoutElement>();
             toggleLE.preferredHeight = 40f;
 
-            // Toggle 组件
+            // Toggle 组件：targetGraphic 是整行底图，悬停整行提亮（旧版只有 24px 的小方块有反馈）
             Toggle toggle = toggleObj.AddComponent<Toggle>();
+            ApplyBossPoolRowColors(toggle, bgImage);
 
-            // Checkmark 背景
+            // 勾选框：圆角描边小框（比行底深一档，读起来是「凹进去的格子」）
             GameObject checkBg = new GameObject("CheckBackground");
             checkBg.transform.SetParent(toggleObj.transform, false);
             Image checkBgImage = checkBg.AddComponent<Image>();
-            checkBgImage.color = new Color(0.3f, 0.3f, 0.3f, 1f);
+            checkBgImage.color = BossRushUIColors.Surface;
+            checkBgImage.raycastTarget = false;
+            BossRushUI.ApplyFramedPanelSkin(checkBgImage, 4, BossRushUISkinPart.Button);
             LayoutElement checkBgLE = checkBg.AddComponent<LayoutElement>();
             checkBgLE.preferredWidth = 24f;
             checkBgLE.preferredHeight = 24f;
 
-            // Checkmark
+            // 勾：「√」字（GBK 有字形），不再是一块绿色实心方块（UB-26）
             GameObject checkmark = new GameObject("Checkmark");
             checkmark.transform.SetParent(checkBg.transform, false);
-            Image checkmarkImage = checkmark.AddComponent<Image>();
-            checkmarkImage.color = new Color(0.3f, 0.8f, 0.3f, 1f);
+            TextMeshProUGUI checkmarkText = checkmark.AddComponent<TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(checkmarkText);
+            checkmarkText.text = "√";
+            checkmarkText.fontSize = 18;
+            checkmarkText.alignment = TextAlignmentOptions.Center;
+            checkmarkText.color = BossRushUIColors.SuccessText;
+            checkmarkText.raycastTarget = false;
             RectTransform checkmarkRect = checkmark.GetComponent<RectTransform>();
-            checkmarkRect.anchorMin = new Vector2(0.15f, 0.15f);
-            checkmarkRect.anchorMax = new Vector2(0.85f, 0.85f);
+            checkmarkRect.anchorMin = Vector2.zero;
+            checkmarkRect.anchorMax = Vector2.one;
             checkmarkRect.offsetMin = Vector2.zero;
             checkmarkRect.offsetMax = Vector2.zero;
 
-            toggle.graphic = checkmarkImage;
-            toggle.targetGraphic = checkBgImage;
+            toggle.graphic = checkmarkText;
 
             // 标签文本
             GameObject labelObj = new GameObject("Label");
@@ -1075,7 +1083,8 @@ namespace BossRush
             labelText.text = displayName;
             labelText.fontSize = 18;
             labelText.alignment = TextAlignmentOptions.MidlineLeft;
-            labelText.color = Color.white;
+            labelText.color = BossRushUIColors.TextPrimary;
+            labelText.raycastTarget = false;
             LayoutElement labelLE = labelObj.AddComponent<LayoutElement>();
             labelLE.flexibleWidth = 1f;
 
@@ -1107,7 +1116,8 @@ namespace BossRush
 
             if (enabledCount == 0 && totalCount > 0)
             {
-                text += "\n<color=#FF6666>" + L10n.T("警告：至少需要启用一个 Boss！", "Warning: At least one Boss must be enabled!") + "</color>";
+                text += "\n<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText) + ">"
+                    + L10n.T("警告：至少需要启用一个 Boss！", "Warning: At least one Boss must be enabled!") + "</color>";
             }
 
             statsText.text = text;
@@ -1173,19 +1183,7 @@ namespace BossRush
             if (bossPoolCanvas != null)
             {
                 UnityEngine.Object.Destroy(bossPoolCanvas);
-                bossPoolCanvas = null;
-                bossPoolPanel = null;
-                bossPoolContent = null;
-                bossPoolScrollRect = null;
-                bossToggles.Clear();
-                bossFactorSelectors.Clear();
-                statsText = null;
-                selectAllButton = null;
-                deselectAllButton = null;
-                infiniteHellFactorButton = null;
-                selectAllButtonText = null;
-                infiniteHellFactorButtonText = null;
-                isInfiniteHellFactorMode = false;
+                ReleaseBossPoolUIReferences();
             }
         }
 

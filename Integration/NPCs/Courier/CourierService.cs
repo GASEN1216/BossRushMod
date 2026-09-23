@@ -233,6 +233,12 @@ namespace BossRush
         private static int lastSentItemCount = 0;
         private static int lastDeliveryFee = 0;
 
+        // 横幅 / 气泡 / 按钮里的富文本颜色：由共享 token 预先转成十六进制（审美审查 UA-31），
+        // 不再写 #00FF00 荧光绿、#FF0000 纯红。到账 = SuccessText，数字高亮 = WarningText，不足 = DangerText。
+        private static readonly string CourierSuccessHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.SuccessText);
+        private static readonly string CourierHighlightHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.WarningText);
+        private static readonly string CourierDangerHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText);
+
         // 常量
         private const int CONTAINER_CAPACITY = 35;  // 35个格子
         private const float DELIVERY_FEE_RATE = 0.1f;  // 10%快递费
@@ -524,8 +530,8 @@ namespace BossRush
                 if (string.IsNullOrEmpty(bannerText))
                 {
                     bannerText = L10n.T(
-                        "<color=#00FF00>" + lastSentItemCount + "件快递已送达！</color>",
-                        "<color=#00FF00>" + lastSentItemCount + " items delivered!</color>"
+                        "<color=" + CourierSuccessHex + ">" + lastSentItemCount + "件快递已送达！</color>",
+                        "<color=" + CourierSuccessHex + ">" + lastSentItemCount + " items delivered!</color>"
                     );
                 }
 

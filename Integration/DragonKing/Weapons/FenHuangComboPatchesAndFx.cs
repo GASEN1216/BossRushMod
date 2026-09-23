@@ -220,7 +220,9 @@ namespace BossRush
 
                 FenHuangSwingFx swingFx = fx.AddComponent<FenHuangSwingFx>();
                 swingFx.Initialize(step, rangeScale);
-                UnityEngine.Object.Destroy(fx, 0.22f);
+                // VB-19：根比粒子先死——火焰拖尾寿命 0.15–0.35 s，根却在 0.22 s 整棵销毁，半空的火一刀切掉。
+                // 挥完之后再留 0.4 s 让粒子自然死完、灯淡掉（发射在 80% 进度就已停）。
+                UnityEngine.Object.Destroy(fx, 0.22f + FenHuangSwingFx.ParticleLinger);
             }
             catch
             {
@@ -429,11 +431,17 @@ namespace BossRush
         private const float BaseTrailDistance = 1.5f;
         private const float MinTrailDistance = 0.35f;
 
+        /// <summary>挥完之后留给粒子自然死完、灯淡掉的时间（VB-19）。</summary>
+        internal const float ParticleLinger = 0.4f;
+        private const float LightIntensity = 2.0f;
+        private const float LightFadeSeconds = 0.13f;
+
         private float elapsed;
         private float duration = 0.2f;
         private Transform trailRoot;
         private GameObject blurObj; // 保存运动节点的引用，用于在 Update 中控制粒子
         private ParticleSystem[] injectedParticles;
+        private Light[] injectedLights;
 
         // Parameters for swing motion
         private float startAngle;
@@ -504,8 +512,9 @@ namespace BossRush
                     // 2. 移除初始速度，让火焰留在挥砍轨迹上，而不是向外喷射
                     main.startSpeed = new ParticleSystem.MinMaxCurve(0.2f, 0.8f);
 
-                    // 3. 放大粒子体积，但避免过于遮挡视线
-                    main.startSizeMultiplier *= 1.8f * sizeScale;
+                    // 3. 放大粒子体积，但避免过于遮挡视线。两端一起放大（VB-03：startSizeMultiplier 在两常数模式下只改上限，
+                    //    火苗大小会被拉得参差不齐）；倍率 1.5 让整体平均尺寸与旧写法相当。
+                    DragonKingFxShared.ScaleStartSize(main, 1.5f * sizeScale);
 
                     // 4. 最重要：原版火焰是靠时间生成的 (rateOverTime)。
                     // 我们挥砍极快（0.2秒），必须改为根据移动距离生成 (rateOverDistance)！
@@ -521,12 +530,12 @@ namespace BossRush
                 }
 
                 // 尝试抓取刚才注入的 SodaPointLight 改变颜色并适当缩减范围避免过曝
-                Light[] injectedLights = blurObj.GetComponentsInChildren<Light>(true);
+                injectedLights = blurObj.GetComponentsInChildren<Light>(true);
                 foreach (var l in injectedLights)
                 {
                     l.color = color;
                     l.range = 3.0f * lightScale;
-                    l.intensity = 2.0f;
+                    l.intensity = LightIntensity;
                 }
             }
 
@@ -555,6 +564,19 @@ namespace BossRush
                     {
                         var em = ps.emission;
                         em.enabled = false;
+                    }
+                }
+            }
+
+            // 挥完那一刻起灯在 0.13 s 内 SmoothStep 淡到 0（VB-19：旧版随根一起硬切）。
+            if (injectedLights != null && elapsed > duration)
+            {
+                float k = 1f - BossRushUI.SmoothStep((elapsed - duration) / LightFadeSeconds);
+                for (int i = 0; i < injectedLights.Length; i++)
+                {
+                    if (injectedLights[i] != null)
+                    {
+                        injectedLights[i].intensity = LightIntensity * k;
                     }
                 }
             }

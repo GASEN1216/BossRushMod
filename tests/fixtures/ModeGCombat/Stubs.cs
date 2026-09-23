@@ -246,6 +246,12 @@ namespace BossRush
         internal static string ComposeBanAttributionLine(string name,int share) { return name; }
     }
     internal static class ModeGDeathRouting { internal static void HandleVictory(ModeGRuntimeModule module) { } }
+    // 生产里是 token 预先转成的富文本开标签（ModeGHUD.cs）；夹具不带 BossRushUIColors / ColorUtility，只需同名字段。
+    internal static class ModeGRichText
+    {
+        internal static readonly string WarningTag = "<color=#FFC966>", DangerTag = "<color=#FF9C96>",
+            SuccessTag = "<color=#80DBA8>", SecondaryTag = "<color=#ABB8BF>";
+    }
     internal static partial class HudHarness
     {
         internal static string Compose(ModeGHudModel model) { return ComposeObjectiveLine(model); }

@@ -37,9 +37,9 @@ namespace BossRush
 
         public override string DisplayNameEN => "Reverse Scale";
 
-        public override string DescriptionCN => "龙之逆鳞，触之必怒。装备后在濒死时触发：恢复一定比例的生命值，并向四周发射多颗棱彩弹攻击敌人，随后图腾碎裂。";
+        public override string DescriptionCN => "龙之逆鳞，触之必怒。装备后濒死时触发：回复50%最大生命，向四周射出8颗棱彩弹，然后图腾碎掉。";
 
-        public override string DescriptionEN => "The forbidden scale of a dragon. When equipped, triggers upon near-death: restores a portion of health, fires multiple prismatic bolts at nearby enemies, then shatters.";
+        public override string DescriptionEN => "A dragon's reverse scale. Touch it and it bites back. Equipped, it triggers when you'd die: restores 50% max HP, fires 8 prismatic bolts in all directions, then shatters.";
 
         public override int ItemQuality => 6;
 

@@ -178,7 +178,7 @@ namespace BossRush
             {
                 frostMistEffect = FrostMistEffect.Create<FrostMistEffect>(
                     player.transform,
-                    player.transform.position + new Vector3(0f, -0.3f, 0f));
+                    player.transform.position + new Vector3(0f, 0.05f, 0f));
             }
             catch (Exception e)
             {
@@ -324,7 +324,7 @@ namespace BossRush
                 {
                     lastFrostTriggerTime = Time.time;
                     Vector3 attackerPosition = damageInfo.fromCharacter.transform.position;
-                    SpawnSetBurst(attackerPosition, FROST_SET_BURST_COLOR, 1.2f, 0.3f, 4);
+                    SpawnSetBurst(attackerPosition, FROST_SET_BURST_COLOR, 1.2f, 0.3f, 4, true);
                     PlaySoundEffect(SetBonusSfx.FrostCounter);
                 }
             }

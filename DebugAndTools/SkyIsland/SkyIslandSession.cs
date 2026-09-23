@@ -111,7 +111,7 @@ namespace BossRush
             if (!SkyIslandRaidLease.IsBundleDeployed())
             {
                 reason = L10n.T("缺少天空岛独立出击场景包，请更新 Mod 资源",
-                    "The Sky Islands raid scene bundle is missing — update the mod's assets");
+                    "The Sky Islands raid scene bundle is missing. Update the mod's assets");
                 return false;
             }
             if (owner.GetComponent<SkyIslandSession>() != null || owner.GetComponent<ArenaPrototypeSession>() != null)
@@ -123,7 +123,7 @@ namespace BossRush
             if (SkyIslandStorySaveRecovery.IsPending())
             {
                 reason = L10n.T("上一段群岛记录仍在保存，请稍后重试",
-                    "The previous archipelago record is still saving — try again shortly");
+                    "The previous archipelago record is still saving. Try again shortly");
                 return false;
             }
             if (F3GameplayValidationRunner.IsRunning)
@@ -879,7 +879,7 @@ namespace BossRush
                 // 与官方撤离成功同口径：读条控件随成功一起收掉，不停在 00:00 一直挂到黑幕落下。
                 if (extractionCountdown != null) extractionCountdown.Hide();
                     Status(L10n.T("正在返回基地，已完成的群岛故事会保留…",
-                        "Returning to base — everything you finished on the isles is kept…"), false);
+                        "Returning to base. Everything you finished on the isles is kept…"), false);
                 BlockInputForReturn();
                 DispatchReturnIfReady();
                 return;
@@ -1037,8 +1037,8 @@ namespace BossRush
             if (encounters != null &&
                 encounters.HasLivingEnemiesWithin(player.transform.position, StoryPanelQuietRadius))
             {
-                reason = L10n.T("附近还有威胁 —— 先把这一段航路清干净，再静下心来。",
-                    "There are still threats nearby — clear this stretch of the lane before you settle down.");
+                reason = L10n.T("附近还有威胁，先把这段航路清干净再说。",
+                    "There are still threats nearby. Clear this stretch of the lane first.");
                 return false;
             }
             return true;

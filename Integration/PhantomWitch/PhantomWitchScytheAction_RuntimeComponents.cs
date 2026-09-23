@@ -233,9 +233,14 @@ namespace BossRush
         }
     }
 
-    /// <summary>中心光晕：正弦缩放 + 透明度呼吸。</summary>
+    /// <summary>
+    /// 中心光晕：正弦缩放 + 透明度呼吸。它每帧写满 alpha，会盖掉领域淡出，所以由
+    /// <see cref="PhantomWitchCurseRealmFader"/> 通过 <see cref="FadeMultiplier"/> 把淡入淡出乘进来（审查 VB-05）。
+    /// </summary>
     internal sealed class PhantomWitchCorePulse : MonoBehaviour
     {
+        internal float FadeMultiplier = 1f;
+
         private Material material;
         private Renderer targetRenderer;
         private MaterialPropertyBlock propertyBlock;
@@ -297,36 +302,47 @@ namespace BossRush
             if (material != null)
             {
                 Color c = baseColor;
-                c.a = Mathf.Lerp(baseColor.a * 0.55f, baseColor.a, s);
+                c.a = Mathf.Lerp(baseColor.a * 0.55f, baseColor.a, s) * FadeMultiplier;
                 material.color = c;
             }
             else if (targetRenderer != null)
             {
                 Color c = baseColor;
-                c.a = Mathf.Lerp(baseColor.a * 0.55f, baseColor.a, s);
+                c.a = Mathf.Lerp(baseColor.a * 0.55f, baseColor.a, s) * FadeMultiplier;
                 PhantomWitchFxRenderUtil.SetRendererColor(targetRenderer, propertyBlock, c);
             }
         }
     }
 
-    /// <summary>领域结束前 0.5s 让所有层淡出，避免视觉骤然消失。</summary>
+    /// <summary>
+    /// 领域开头 0.2 s 淡入、结束前 0.7 s 让所有层淡出，避免视觉骤然出现 / 消失。
+    /// 2026-09-23 审查 VB-05：粒子渲染器也按同一 alpha 淡出（此前跳过，黑烟 / 亡魂在销毁那一帧整片消失），
+    /// 淡出过半停止发射；中心光晕的呼吸改为乘上淡入淡出系数，不再每帧写满 alpha 盖掉淡出。
+    /// </summary>
     internal sealed class PhantomWitchCurseRealmFader : MonoBehaviour
     {
+        private const float FadeInDuration = 0.2f;
         private const float FadeOutDuration = 0.7f;
 
         private float totalDuration;
         private float elapsed;
+        private bool emissionStopped;
         private LineRenderer[] lines;
         private Renderer[] otherRenderers;
         private MaterialPropertyBlock[] otherPropertyBlocks;
         private Color[] lineStartColors;
         private Color[] lineEndColors;
         private Color[] otherBaseColors;
+        private ParticleSystem[] particleSystems;
+        private PhantomWitchCorePulse[] corePulses;
 
         internal void Initialize(float duration)
         {
             totalDuration = Mathf.Max(0.05f, duration);
             elapsed = 0f;
+            emissionStopped = false;
+            particleSystems = GetComponentsInChildren<ParticleSystem>(true);
+            corePulses = GetComponentsInChildren<PhantomWitchCorePulse>(true);
 
             lines = GetComponentsInChildren<LineRenderer>(true);
             lineStartColors = new Color[lines.Length];
@@ -347,7 +363,13 @@ namespace BossRush
             for (int i = 0; i < allRenderers.Length; i++)
             {
                 Renderer r = allRenderers[i];
-                if (r == null || r is LineRenderer || r is ParticleSystemRenderer)
+                if (r == null || r is LineRenderer)
+                {
+                    continue;
+                }
+
+                // 中心光晕由 CorePulse 自己写颜色（乘淡入淡出系数）；开场冲击波 0.35 s 内自己淡完。这里都不抢写。
+                if (r.GetComponent<PhantomWitchCorePulse>() != null || r.GetComponent<PhantomWitchShockwaveAnimation>() != null)
                 {
                     continue;
                 }
@@ -360,18 +382,52 @@ namespace BossRush
             otherRenderers = rendererList.ToArray();
             otherPropertyBlocks = blockList.ToArray();
             otherBaseColors = colorList.ToArray();
+
+            ApplyAlpha(0f);
         }
 
         private void Update()
         {
             elapsed += Time.deltaTime;
             float remaining = totalDuration - elapsed;
-            if (remaining >= FadeOutDuration)
+            if (remaining >= FadeOutDuration && elapsed >= FadeInDuration)
             {
                 return;
             }
 
-            float alpha = Mathf.Clamp01(remaining / FadeOutDuration);
+            float fadeIn = BossRushUI.SmoothStep(elapsed / FadeInDuration);
+            float fadeOut = BossRushUI.SmoothStep(remaining / FadeOutDuration);
+            float alpha = Mathf.Min(fadeIn, fadeOut);
+            ApplyAlpha(alpha);
+
+            if (!emissionStopped && remaining < FadeOutDuration * 0.5f)
+            {
+                emissionStopped = true;
+                if (particleSystems != null)
+                {
+                    for (int i = 0; i < particleSystems.Length; i++)
+                    {
+                        if (particleSystems[i] != null)
+                        {
+                            particleSystems[i].Stop(false, ParticleSystemStopBehavior.StopEmitting);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void ApplyAlpha(float alpha)
+        {
+            if (corePulses != null)
+            {
+                for (int i = 0; i < corePulses.Length; i++)
+                {
+                    if (corePulses[i] != null)
+                    {
+                        corePulses[i].FadeMultiplier = alpha;
+                    }
+                }
+            }
 
             if (lines != null)
             {

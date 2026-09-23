@@ -45,6 +45,7 @@ namespace BossRush
         private Vector3 dashDirection;
         private float dashDistance;
         private float startupEndTime;
+        private float startupSeconds;
         private float dashDuration;
         private float dashEndTime;
         private bool dashStarted;
@@ -63,6 +64,7 @@ namespace BossRush
             dashDistance = Mathf.Max(0.5f, newDashDistance);
             dashDuration = Mathf.Max(0.05f, newDashDuration);
             startupEndTime = Time.unscaledTime + Mathf.Max(0.05f, startupSeconds);
+            this.startupSeconds = Mathf.Max(0.05f, startupSeconds);
             dashEndTime = 0f;
             dashStarted = false;
             stopped = false;
@@ -74,13 +76,15 @@ namespace BossRush
             if (ShouldCancelDash())
             {
                 StopDashVelocity();
-                Destroy(gameObject);
+                ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);
                 return;
             }
 
             RefreshTelegraphPosition();
             if (!dashStarted)
             {
+                // 起手读条（纯表现，审美审查 VA-27）：内圈在起手时间内涨满，冲刺时机不变。
+                ZombieModeZoneVisuals.SetCountdown(gameObject, 1f - (startupEndTime - Time.unscaledTime) / startupSeconds);
                 if (Time.unscaledTime < startupEndTime)
                 {
                     return;
@@ -92,7 +96,7 @@ namespace BossRush
             if (Time.unscaledTime >= dashEndTime)
             {
                 StopDashVelocity();
-                Destroy(gameObject);
+                ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);
                 return;
             }
 
@@ -186,6 +190,7 @@ namespace BossRush
         private float radius;
         private float damage;
         private float triggerTime;
+        private float telegraphSeconds;
         private bool triggered;
         private bool followSourcePosition;
 
@@ -198,6 +203,7 @@ namespace BossRush
             float delay,
             bool newFollowSourcePosition = false)
         {
+            telegraphSeconds = Mathf.Max(0.05f, delay);
             source = newSource;
             origin = newOrigin;
             radius = newRadius;
@@ -212,11 +218,13 @@ namespace BossRush
         {
             if (ShouldCancelFollowSourceRuntime())
             {
-                Destroy(gameObject);
+                ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);
                 return;
             }
 
             RefreshFollowSourceOrigin();
+            // 预警读条（纯表现，审美审查 UC-19 / VA-27）：内圈从圆心涨满到边带即结算，触发时刻不变。
+            ZombieModeZoneVisuals.SetCountdown(gameObject, 1f - (triggerTime - Time.unscaledTime) / telegraphSeconds);
             if (triggered || Time.unscaledTime < triggerTime)
             {
                 return;
@@ -224,7 +232,7 @@ namespace BossRush
 
             triggered = true;
             inst.TryExecuteZombieModeTelegraphedAreaDamage(RuntimeRunId, source, origin, radius, damage);
-            Destroy(gameObject);
+            ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);
         }
 
         private void RefreshFollowSourceOrigin()
@@ -287,12 +295,16 @@ namespace BossRush
             slowPercent = Mathf.Clamp01(newSlowPercent);
             slowDuration = Mathf.Max(0.05f, newSlowDuration);
             triggerTime = Time.unscaledTime + Mathf.Max(0.05f, delay);
+            telegraphSeconds = Mathf.Max(0.05f, delay);
             triggered = false;
             InitializeTimedRuntime(newRunId, Mathf.Max(0.05f, delay) + 0.1f);
         }
 
+        private float telegraphSeconds;
+
         protected override void TickRuntime(ModBehaviour inst)
         {
+            ZombieModeZoneVisuals.SetCountdown(gameObject, 1f - (triggerTime - Time.unscaledTime) / telegraphSeconds);
             if (triggered || Time.unscaledTime < triggerTime)
             {
                 return;
@@ -300,7 +312,7 @@ namespace BossRush
 
             triggered = true;
             inst.TryApplyZombieModePlayerSlowInArea(RuntimeRunId, origin, radius, slowPercent, slowDuration);
-            Destroy(gameObject);
+            ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);
         }
 
         protected override void OnRuntimeResumedAfterPause(ModBehaviour inst, float pausedDuration)
@@ -323,6 +335,7 @@ namespace BossRush
         private bool followSourceAfterSpawn;
         private string cloudName;
         private Color cloudColor;
+        private float telegraphSeconds;
 
         public void Initialize(
             int newRunId,
@@ -345,6 +358,7 @@ namespace BossRush
             damagePerSecond = Mathf.Max(0f, newDamagePerSecond);
             tickInterval = Mathf.Max(0.1f, newTickInterval);
             triggerTime = Time.unscaledTime + Mathf.Max(0.05f, delay);
+            telegraphSeconds = Mathf.Max(0.05f, delay);
             triggered = false;
             followSourceDuringTelegraph = newFollowSourceDuringTelegraph;
             followSourceAfterSpawn = newFollowSourceAfterSpawn;
@@ -357,11 +371,12 @@ namespace BossRush
         {
             if (ShouldCancelFollowSourceRuntime())
             {
-                Destroy(gameObject);
+                ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);
                 return;
             }
 
             RefreshFollowSourceOrigin();
+            ZombieModeZoneVisuals.SetCountdown(gameObject, 1f - (triggerTime - Time.unscaledTime) / telegraphSeconds);
             if (triggered || Time.unscaledTime < triggerTime)
             {
                 return;
@@ -379,7 +394,7 @@ namespace BossRush
                 cloudName,
                 cloudColor,
                 followSourceAfterSpawn);
-            Destroy(gameObject);
+            ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);
         }
 
         private void RefreshFollowSourceOrigin()

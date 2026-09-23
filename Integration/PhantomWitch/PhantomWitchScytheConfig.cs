@@ -23,12 +23,12 @@ namespace BossRush
         public override string DisplayNameEN => "Soulreaper's Requiem";
 
         public override string DescriptionCN =>
-            "镰刃拖着一缕冷焰，挥过时像有人在耳边低语。\n" +
+            "镰刃拖着一缕冷焰，一挥起来后脖子就发凉。\n" +
             "<color=#C88BFF>【噬魂之力】</color>幽灵属性攻击，50% 概率施加诅咒，每层 -30% 移速，最多 3 层。\n" +
             "<color=#9B4DCA>【挽歌领域】</color>右键在脚下展开符文阵，持续4秒。\n阵内敌人每0.5秒受到诅咒和幽能伤害。冷却12秒。";
 
         public override string DescriptionEN =>
-            "A cold flame trails the blade. Each swing brings a whisper close to your ear.\n" +
+            "A cold flame trails the blade. Every swing sends a chill down your neck.\n" +
             "<color=#C88BFF>[Soulreaving Power]</color> Ghost-element attacks with a 50% chance to inflict Curse (-30% move speed per stack, up to 3 stacks).\n" +
             "<color=#9B4DCA>[Requiem Realm]</color> Right-click to unfurl a violet rune circle beneath you for 4s. Enemies inside take ghost damage and receive a curse stack every 0.5s. 12s cooldown.";
 

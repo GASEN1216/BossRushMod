@@ -57,6 +57,15 @@ namespace BossRush
 
         /// <summary>相同横幅短时间去重窗口</summary>
         private const float BIG_BANNER_DEDUP_WINDOW = 1.25f;
+
+        /// <summary>
+        /// 横幅 / 头顶气泡富文本的配色：token 预先转成的开标签，类型初始化时算一次（2026-09-23 审美审查 UB-07 / UB-23 / UB-25）。
+        /// 旧写法是 red / yellow / green / orange 纯色标签：压在官方暖色提示条上刺眼，收益用红色读起来像扣血。
+        /// BossRush 波次、无间炼狱、Mode F 的 ModBehaviour partial 共用这一份。
+        /// </summary>
+        internal static readonly string RichDangerTag = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText) + ">";
+        internal static readonly string RichWarningTag = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.WarningText) + ">";
+        internal static readonly string RichSuccessTag = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.SuccessText) + ">";
         
         #endregion
         
@@ -346,8 +355,8 @@ namespace BossRush
                 {
                     // 多Boss模式：不显示方向，改为“xxx已将你包围”，其中名字和“包围”用红色
                     bannerText = L10n.T(
-                        "第 " + waveIndex + "/" + waveTotalText + " 波: <color=red>" + enemyName + "</color> 已将你<color=red>包围</color>",
-                        "Wave " + waveIndex + "/" + waveTotalText + ": <color=red>" + enemyName + "</color> has <color=red>surrounded</color> you"
+                        "第 " + waveIndex + "/" + waveTotalText + " 波: " + RichDangerTag + enemyName + "</color> 已将你" + RichDangerTag + "包围</color>",
+                        "Wave " + waveIndex + "/" + waveTotalText + ": " + RichDangerTag + enemyName + "</color> has " + RichDangerTag + "surrounded</color> you"
                     );
                 }
                 else
@@ -356,8 +365,8 @@ namespace BossRush
                     string direction = GetDirectionFromPlayer(enemyPos, playerPos);
                     string localizedDirection = L10n.Direction(direction);
                     bannerText = L10n.T(
-                        "第 " + waveIndex + "/" + waveTotalText + " 波: <color=red>" + enemyName + "</color> 在 <color=yellow>" + direction + "</color> 方向",
-                        "Wave " + waveIndex + "/" + waveTotalText + ": <color=red>" + enemyName + "</color> at <color=yellow>" + localizedDirection + "</color>"
+                        "第 " + waveIndex + "/" + waveTotalText + " 波: " + RichDangerTag + enemyName + "</color> 在 " + RichWarningTag + direction + "</color> 方向",
+                        "Wave " + waveIndex + "/" + waveTotalText + ": " + RichDangerTag + enemyName + "</color> at " + RichWarningTag + localizedDirection + "</color>"
                     );
                 }
 
@@ -444,9 +453,11 @@ namespace BossRush
                 float now = Time.realtimeSinceStartup;
 
                 // 检查是否包含动态内容(数字、颜色标签等)
-                // 包含 <color=red>数字</color> 这样的动态内容时不进行去重
+                // 包含 <color=red>数字</color> 这样的动态内容时不进行去重（token 配色的两个开标签同口径，UB-07）
                 bool hasDynamicContent = normalizedText.Contains("<color=red>") ||
                                         normalizedText.Contains("<color=yellow>") ||
+                                        normalizedText.Contains(RichDangerTag) ||
+                                        normalizedText.Contains(RichWarningTag) ||
                                         System.Text.RegularExpressions.Regex.IsMatch(normalizedText, @"\d+");
 
                 // 只对静态文本进行去重检查
@@ -816,8 +827,8 @@ namespace BossRush
                     hardInteract.bossesPerWave = 3;
                     list.Add(hardInteract);
 
+                    // 注入是后台接线，不推玩家提示（旧版每次进竞技场都推一条单语提示、还念 GameObject 名，审美审查 UB-28）
                     DevLog("[BossRush] 成功注入 BossRush 难度选项到 " + target.name + " 的列表中！");
-                    ShowMessage_UIAndSigns("BossRush 弹指可灭 / 有点意思 已添加到 " + target.name + "！");
                 }
                 else
                 {
@@ -836,7 +847,6 @@ namespace BossRush
                     list.Add(newInteract);
 
                     DevLog("[BossRush] 成功注入 BossRush 选项到 " + target.name + " 的列表中！");
-                    ShowMessage_UIAndSigns("BossRush 挑战已就绪！");
 
                     TryInjectModeHEntryOption(target, list);
                 }

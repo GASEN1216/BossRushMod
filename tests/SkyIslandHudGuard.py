@@ -47,6 +47,22 @@ from pathlib import Path
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# 2026-09-23：SkyIslandHud / SkyIslandStoryPresentation 超 1200 行，按 AGENTS §4.15 原样拆出同一 partial 的新文件。
+# 读主文件时把拆出去的那一半接在后面，断言照旧针对整个类。
+SPLIT_PARTS = {
+    "DebugAndTools/SkyIsland/SkyIslandHud.cs": "DebugAndTools/SkyIsland/SkyIslandHud_Layout.cs",
+    "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs": "DebugAndTools/SkyIsland/SkyIslandStoryPresentation_Parts.cs",
+}
+
+
+def read_with_parts(root, rel):
+    text = (root / rel).read_text(encoding="utf-8-sig")
+    part = SPLIT_PARTS.get(str(rel).replace("\\", "/"))
+    if part and (root / part).is_file():
+        text += "\n" + (root / part).read_text(encoding="utf-8-sig")
+    return text
+
 NEWLINE = chr(10)
 BACKSLASH = chr(92)
 
@@ -98,7 +114,7 @@ def line_with(source, token):
 
 def main():
     def read(path):
-        return clean_source((ROOT / path).read_text(encoding="utf-8-sig"))
+        return clean_source(read_with_parts(ROOT, path))
 
     session = read("DebugAndTools/SkyIsland/SkyIslandSession.cs")
     hud = read("DebugAndTools/SkyIsland/SkyIslandHud.cs")
@@ -107,6 +123,7 @@ def main():
     panel = read("DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs")
     module = read("DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs")
     encounters = read("DebugAndTools/SkyIsland/SkyIslandEncounters.cs")
+    scavenging = read("DebugAndTools/SkyIsland/SkyIslandScavenging.cs")
     storm = read("DebugAndTools/SkyIsland/SkyIslandStormBoss.cs")
     caption_queue = read("DebugAndTools/SkyIsland/SkyIslandCaptionQueue.cs")
     shared_ui = read("Common/UI/BossRushUI.cs")
@@ -335,7 +352,12 @@ def main():
     # ---- 13. 世界提示字走近才浮现，不用警示黄常亮 ----
     memorial = need_body(panel, "internal static GameObject Create(", "纪念物建造")
     sign = need_body(module, "private void CreateSign(Transform boat)", "船点招牌建造")
-    for label, body in (("纪念物提示字", memorial), ("船点招牌", sign)):
+    # 2026-09-23 审美审查 UE-03：搜刮箱头顶的档次牌子也走近才浮现（旧写法 45 m 内常亮，一屏里每个箱子都顶着一行彩字）。
+    loot_label = need_body(scavenging, "private static GameObject AttachLabel(Transform parent, SkyIslandLootTier tier)", "搜刮箱牌子建造")
+    loot_color = need_body(scavenging, "internal static Color TierColor(SkyIslandLootTier tier)", "搜刮箱牌子字色")
+    if loot_color and ("BossRushUIColors.WarningText" in loot_color or "BossRushUIColors.Success;" in loot_color):
+        errors.append("搜刮箱牌子字色又借了警示黄或按钮底色 Success：档次按稀有度色区分")
+    for label, body in (("纪念物提示字", memorial), ("船点招牌", sign), ("搜刮箱牌子", loot_label)):
         if not body:
             continue
         if "SkyIslandProximityLabel.Attach(" not in body:
@@ -499,8 +521,21 @@ def main():
     keycap = need_body(panel, "private static Image KeyCap(", "键帽构件")
     if keycap and "capImage.raycastTarget = false;" not in keycap:
         errors.append("键帽默认必须不吃点击：数字键帽画在选项行里，吃掉点击会让点在数字上的那一下落空")
-    if panel_show and "cursor, Dispose);" not in panel_show:
-        errors.append("Show 没有把 Dispose 交给主视觉的 ESC 键帽：点了没反应")
+    # 2026-09-23 审美审查 UE-04：键帽交的是 Close——状态与 Dispose 同帧收掉（输入租约、HUD 令牌、订阅），只有画面淡出 0.12 秒。
+    if panel_show and "cursor, Close);" not in panel_show:
+        errors.append("Show 没有把 Close 交给主视觉的 ESC 键帽：点了没反应")
+    close_body = need_body(panel, "internal void Close()", "剧情面板主动关闭")
+    if close_body:
+        ordered_ok = (0 <= close_body.find("canvas = null;") < close_body.find("Dispose();")
+                      < close_body.find("BossRushUIKit.PlayCloseAndDestroy("))
+        if not ordered_ok:
+            errors.append("Close 必须先摘下画布引用、再走 Dispose（租约 / 令牌 / 订阅当帧释放），最后才把画布交给淡出")
+        if 'closing.name = "SkyIslandClosingPanel";' not in close_body:
+            errors.append("淡出中的画布要改名：F3 按 SkyIslandStory 找面板，淡出那 0.12 秒会被当成还开着")
+    for handler in ("private void OnCancel(global::UIInputEventData data)", "internal void Tick()"):
+        body = need_body(panel, handler, "剧情面板 " + handler)
+        if body and "Close();" not in body:
+            errors.append("玩家主动关面板（ESC / Cancel）没有走 Close：画布当帧消失，官方 HUD 又同时淡回来，画面一跳")
 
     if errors:
         for error in errors:

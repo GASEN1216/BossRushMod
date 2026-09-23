@@ -60,7 +60,7 @@ namespace BossRush
         public static List<ModeHResolvedKit> GetSelectableKits(List<string> ids, string archetype, string profile)
         { return Kits.Where(x => ids.Contains(x.Spec.KitId)).ToList(); }
     }
-    internal sealed class ModeHActionData { public string Label; public Action OnClick; public bool Interactable = true; }
+    internal sealed class ModeHActionData { public string Label; public Action OnClick; public bool Interactable = true; public bool IsSelected; }
     internal sealed class ModeHPageContent
     {
         public string Title, Body;

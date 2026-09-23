@@ -31,9 +31,6 @@ namespace BossRush
         private static FieldInfo effectTriggersField = null;
         private static FieldInfo effectActionsField = null;
 
-        private static Material cachedLineMaterial = null;
-        private static Material cachedQuadMaterial = null;
-        private static Material cachedParticleMaterial = null;
         private static Mesh cachedQuadMesh = null;
         private static GameObject cachedEffectTemplate = null;
         private static Material cachedEffectMaterial = null;
@@ -54,7 +51,7 @@ namespace BossRush
         private const string CurseBuffDisplayNameCN = "幽灵诅咒";
         private const string CurseBuffDisplayNameEN = "Ghost Curse";
         private const string CurseBuffDescriptionCN = "每层降低30%移动速度，可叠加至3层。";
-        private const string CurseBuffDescriptionEN = "Reduces move speed by 30% per layer, up to 3 layers.";
+        private const string CurseBuffDescriptionEN = "Reduces move speed by 30% per stack, up to 3 stacks.";
 
         private static void InitBuffReflection()
         {
@@ -422,90 +419,45 @@ namespace BossRush
         }
 
         // ==================== 共享基础设施 ====================
+        // 2026-09-23 审查 VB-02：此前各自 Shader.Find 回退链首选的 `Legacy Shaders/Particles/Additive`、
+        // `Particles/Additive`、`Mobile/Particles/*` 在游戏里都不存在，线与面片实际落到 Sprites/Default（发不了光），
+        // 粒子则可能撞上龙王包里未开 _ALPHABLEND_ON 的 `Particles/Standard Unlit`（alpha 恒 1 的加色方片）。
+        // 现在全部改走全 Mod 共享工厂 BossRushFxMaterials：线、面片、雾走 Alpha，星尘 / 魂焰 / 闪光走 Additive。
+        // 这些材质归工厂所有，女巫侧只取用、不销毁。
 
-        private static Texture2D cachedSoftCircle;
-
+        /// <summary>全 Mod 共享的 64×64 白色软圆（RGBA，颜色走顶点色 / 材质属性块）。</summary>
         internal static Texture2D GetSoftCircleTexture()
         {
-            if (cachedSoftCircle != null) return cachedSoftCircle;
-
-            cachedSoftCircle = new Texture2D(32, 32, TextureFormat.Alpha8, false);
-            Color[] pixels = new Color[32 * 32];
-            Vector2 center = new Vector2(15.5f, 15.5f);
-            for (int y = 0; y < 32; y++)
-            {
-                for (int x = 0; x < 32; x++)
-                {
-                    float dist = Vector2.Distance(new Vector2(x, y), center);
-                    float alpha = Mathf.Clamp01(1f - (dist / 15.5f));
-                    alpha = alpha * alpha * (3f - 2f * alpha);
-                    pixels[y * 32 + x] = new Color(1f, 1f, 1f, alpha);
-                }
-            }
-            cachedSoftCircle.SetPixels(pixels);
-            cachedSoftCircle.Apply();
-            return cachedSoftCircle;
+            return BossRushFxMaterials.GetSoftCircleTexture();
         }
 
+        /// <summary>LineRenderer / TrailRenderer：半透明软线。</summary>
         internal static Material GetLineMaterial()
         {
-            if (cachedLineMaterial != null)
-            {
-                return cachedLineMaterial;
-            }
-            Shader shader = Shader.Find("Legacy Shaders/Particles/Additive") ?? Shader.Find("Particles/Additive") ?? Shader.Find("Sprites/Default");
-            if (shader == null) shader = Shader.Find("Unlit/Transparent");
-            if (shader != null)
-            {
-                cachedLineMaterial = new Material(shader);
-                cachedLineMaterial.name = "PW_SharedLine";
-                cachedLineMaterial.enableInstancing = true;
-                cachedLineMaterial.mainTexture = GetSoftCircleTexture();
-            }
-            return cachedLineMaterial;
+            return BossRushFxMaterials.Get(BossRushFxBlend.Alpha);
         }
 
+        /// <summary>贴地面片（染色、扭曲场）：半透明。</summary>
         internal static Material GetQuadMaterial()
         {
-            if (cachedQuadMaterial != null)
-            {
-                return cachedQuadMaterial;
-            }
-            Shader shader = Shader.Find("Legacy Shaders/Particles/Additive") ?? Shader.Find("Particles/Additive") ?? Shader.Find("Sprites/Default");
-            if (shader == null) shader = Shader.Find("Unlit/Transparent");
-            if (shader != null)
-            {
-                cachedQuadMaterial = new Material(shader);
-                cachedQuadMaterial.name = "PW_SharedQuad";
-                cachedQuadMaterial.enableInstancing = true;
-                cachedQuadMaterial.mainTexture = GetSoftCircleTexture();
-            }
-            return cachedQuadMaterial;
+            return BossRushFxMaterials.Get(BossRushFxBlend.Alpha);
         }
 
+        /// <summary>发光面片（魂焰核心、广告牌光点）：加色。</summary>
+        internal static Material GetGlowQuadMaterial()
+        {
+            return BossRushFxMaterials.Get(BossRushFxBlend.Additive);
+        }
+
+        /// <summary>粒子默认加色（星尘、魂焰、火星）；雾、烟、灵纱用 <see cref="BossRushFxBlend.Alpha"/>。</summary>
         internal static Material GetParticleMaterial()
         {
-            if (cachedParticleMaterial != null)
-            {
-                return cachedParticleMaterial;
-            }
+            return GetParticleMaterial(BossRushFxBlend.Additive);
+        }
 
-            Shader shader = Shader.Find("Particles/Standard Unlit") ?? Shader.Find("Mobile/Particles/Additive") ?? Shader.Find("Sprites/Default");
-            if (shader == null) shader = Shader.Find("Unlit/Transparent");
-            if (shader != null)
-            {
-                cachedParticleMaterial = new Material(shader);
-                cachedParticleMaterial.name = "PW_SharedParticle";
-                cachedParticleMaterial.enableInstancing = true;
-
-                cachedParticleMaterial.mainTexture = GetSoftCircleTexture();
-
-                // Additive 混合：粒子叠加发光而非覆盖，消除实色块感
-                cachedParticleMaterial.SetInt("_SrcBlend", 5); // SrcAlpha
-                cachedParticleMaterial.SetInt("_DstBlend", 1); // One
-                cachedParticleMaterial.renderQueue = 3000;
-            }
-            return cachedParticleMaterial;
+        internal static Material GetParticleMaterial(BossRushFxBlend blend)
+        {
+            return BossRushFxMaterials.Get(blend);
         }
 
         private static Mesh GetQuadMesh()
@@ -596,13 +548,20 @@ namespace BossRush
 
 
         /// <summary>
-        /// 为粒子系统配置共享材质和渲染参数。公开供 SweatVfx 等外部粒子使用。
+        /// 为粒子系统配置共享材质和渲染参数。公开供 SweatVfx 等外部粒子使用。默认加色（发光的星点 / 魂焰）。
         /// </summary>
         public static void ConfigureSharedParticleRenderer(ParticleSystem ps)
         {
+            ConfigureSharedParticleRenderer(ps, BossRushFxBlend.Additive);
+        }
+
+        /// <summary>雾、烟、灵纱这类不该发光的粒子传 <see cref="BossRushFxBlend.Alpha"/>（加色的黑烟会直接看不见）。</summary>
+        internal static void ConfigureSharedParticleRenderer(ParticleSystem ps, BossRushFxBlend blend)
+        {
+            if (ps == null) return;
             ParticleSystemRenderer renderer = ps.GetComponent<ParticleSystemRenderer>();
             if (renderer == null) return;
-            Material sharedParticle = GetParticleMaterial();
+            Material sharedParticle = GetParticleMaterial(blend);
             if (sharedParticle != null)
             {
                 renderer.sharedMaterial = sharedParticle;
@@ -865,6 +824,47 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 扇形出手预警（审查 VB-07）：半径 / 半角 / 前移量传判定值，预警跟随 origin → target 方向
+        /// （判定 ResolveAttackForward 在出手瞬间朝向目标）。只是表现，不参与任何判定。
+        /// </summary>
+        internal static GameObject CreateConeTelegraph(Transform origin, Transform target, float radius, float halfAngle, float forwardOffset, float chargeDuration)
+        {
+            try
+            {
+                if (origin == null || PhantomWitchFxRuntime.ShouldSkipEffect(PhantomWitchFxEffectImportance.Critical))
+                {
+                    return null;
+                }
+
+                return PhantomWitchVfxRedesign.CreateConeTelegraph(origin, target, radius, halfAngle, forwardOffset, chargeDuration, false);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PhantomWitch] [ERROR] CreateConeTelegraph: " + e.Message);
+                return null;
+            }
+        }
+
+        /// <summary>第二段 / 延伸判定的外沿（只画边、不画填充），与 <see cref="CreateConeTelegraph"/> 叠用。</summary>
+        internal static GameObject CreateConeTelegraphOutline(Transform origin, Transform target, float radius, float halfAngle, float forwardOffset, float chargeDuration)
+        {
+            try
+            {
+                if (origin == null || PhantomWitchFxRuntime.ShouldSkipEffect(PhantomWitchFxEffectImportance.Critical))
+                {
+                    return null;
+                }
+
+                return PhantomWitchVfxRedesign.CreateConeTelegraph(origin, target, radius, halfAngle, forwardOffset, chargeDuration, true);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PhantomWitch] [ERROR] CreateConeTelegraphOutline: " + e.Message);
+                return null;
+            }
+        }
+
         public static GameObject CreateBossCurseRealmVisual(Vector3 position, float radius, float duration)
         {
             try
@@ -954,24 +954,7 @@ namespace BossRush
                 cachedCurseBuffGO = null;
             }
 
-            if (cachedLineMaterial != null)
-            {
-                UnityEngine.Object.Destroy(cachedLineMaterial);
-                cachedLineMaterial = null;
-            }
-
-            if (cachedQuadMaterial != null)
-            {
-                UnityEngine.Object.Destroy(cachedQuadMaterial);
-                cachedQuadMaterial = null;
-            }
-
-            if (cachedParticleMaterial != null)
-            {
-                UnityEngine.Object.Destroy(cachedParticleMaterial);
-                cachedParticleMaterial = null;
-            }
-
+            // 线 / 面片 / 粒子材质归 BossRushFxMaterials 所有（全 Mod 共享），这里不销毁。
             if (cachedQuadMesh != null)
             {
                 UnityEngine.Object.Destroy(cachedQuadMesh);

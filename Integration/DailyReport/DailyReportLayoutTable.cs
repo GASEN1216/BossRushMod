@@ -1,16 +1,20 @@
 // ============================================================================
-// DailyReportLayoutTable.cs - 日报面板版面表（底图与文字的唯一坐标真值）
+// DailyReportLayoutTable.cs - 日报面板版面表（底图、图标与文字的唯一坐标真值）
 // ============================================================================
-// 底图 Assets/ui/DailyReport/daily_report_bg.png 与本表 Assets/Data/DailyReportLayout.json
-// 由同一个脚本 tools/gen_daily_report_ui.py 一次产出。文字按本表摆位，于是
-// 「卡片画在哪」与「字写在哪」天生对齐——改版面只改脚本，不用两处手抄坐标。
+// 底图 Assets/ui/DailyReport/daily_report_bg.png、图标 dr_icon_*.png 与本表
+// Assets/Data/DailyReportLayout.json 由同一个脚本 tools/gen_daily_report_ui.py 一次产出。
+// 文字与图标按本表摆位，于是「卡片画在哪」「图标在哪」「字写在哪」天生对齐——
+// 改版面只改脚本，不用几处手抄坐标。
 //
 // 坐标系：左上原点、像素单位、与底图同尺寸（1333 × 1013）。
 // UI 侧用 ToAnchored() 转成 Unity 的中心原点 + Y 向上。
 //
+// 2026-09-23 第五轮：图标不再烤进底图（底图进包被压到 1024 宽再放大，小图标会糊），
+// 版面表多了一段 "icons"（每个图标一块矩形）；schemaVersion 2。
+//
 // 硬约束（AGENTS 4.8 第 3 层：大型数据表 = JSON + Registry + guard + 硬编码 fallback）：
-//   - 读表失败一律回落硬编码版面（与 JSON 同源，DailyReportLayoutGuard 交叉核对），
-//     面板绝不因为少一个数据文件就打不开；
+//   - 读表失败一律回落硬编码版面（与 JSON 同源，DailyReportPresentationGuard.check_layout_fallback_sync
+//     交叉核对），面板绝不因为少一个数据文件就打不开；
 //   - 纯查询、无 Unity 依赖以外的副作用，惰性读一次。
 // ============================================================================
 
@@ -31,6 +35,7 @@ namespace BossRush
 
         private static readonly object _lock = new object();
         private static Dictionary<string, Rect> _rects;
+        private static Dictionary<string, Rect> _icons;
         private static bool _loadedFromJson;
 
         // 网格与图例
@@ -38,7 +43,7 @@ namespace BossRush
         private static int _columns, _rows;
         private static float _legendSwatch, _legendItemWidth;
         private static int _legendCount;
-        private static float _iconSize, _iconInset, _iconTextIndent;
+        private static float _pillTextIndent, _iconTextGap;
 
         internal static bool LoadedFromJson { get { EnsureBuilt(); return _loadedFromJson; } }
 
@@ -53,10 +58,10 @@ namespace BossRush
         internal static float LegendItemWidth { get { EnsureBuilt(); return _legendItemWidth; } }
         /// <summary>图例项数（2026-09-22 起 5 项；旧表没有这个字段按 4 项读）。</summary>
         internal static int LegendCount { get { EnsureBuilt(); return _legendCount; } }
-        internal static float IconSize { get { EnsureBuilt(); return _iconSize; } }
-        internal static float IconInset { get { EnsureBuilt(); return _iconInset; } }
-        /// <summary>带图标的块里，文字相对块左边的缩进（让开徽章）。</summary>
-        internal static float IconTextIndent { get { EnsureBuilt(); return _iconTextIndent; } }
+        /// <summary>缎带标题字相对缎带左沿的缩进（让开缎带头上的图标）。</summary>
+        internal static float PillTextIndent { get { EnsureBuilt(); return _pillTextIndent; } }
+        /// <summary>图标右沿到正文的间距。</summary>
+        internal static float IconTextGap { get { EnsureBuilt(); return _iconTextGap; } }
 
         /// <summary>取一块矩形（左上原点、像素）。未知名字返回全零矩形。</summary>
         internal static Rect Get(string name)
@@ -64,6 +69,14 @@ namespace BossRush
             EnsureBuilt();
             Rect rect;
             return _rects.TryGetValue(name, out rect) ? rect : new Rect(0f, 0f, 0f, 0f);
+        }
+
+        /// <summary>取一个图标的矩形（左上原点、像素）。未知名字返回全零矩形，调用方据此不画。</summary>
+        internal static Rect GetIcon(string name)
+        {
+            EnsureBuilt();
+            Rect rect;
+            return _icons.TryGetValue(name, out rect) ? rect : new Rect(0f, 0f, 0f, 0f);
         }
 
         /// <summary>
@@ -96,6 +109,7 @@ namespace BossRush
             lock (_lock)
             {
                 _rects = null;
+                _icons = null;
                 _loadedFromJson = false;
             }
         }
@@ -108,6 +122,7 @@ namespace BossRush
                 if (_rects != null) return;
 
                 Dictionary<string, Rect> rects = new Dictionary<string, Rect>(StringComparer.Ordinal);
+                Dictionary<string, Rect> icons = new Dictionary<string, Rect>(StringComparer.Ordinal);
                 bool fromJson = false;
                 try
                 {
@@ -117,7 +132,7 @@ namespace BossRush
                         BossRushJsonValue root = BossRushJsonParser.ParseOrNull(json);
                         if (root != null && root.Kind == BossRushJsonKind.Object)
                         {
-                            fromJson = ReadTable(root, rects);
+                            fromJson = ReadTable(root, rects, icons);
                         }
                     }
                 }
@@ -134,18 +149,22 @@ namespace BossRush
                         "daily-report-layout-fallback",
                         "[DailyReport] [WARNING] " + DataFileName + " 无效，使用硬编码版面兜底");
                     rects.Clear();
-                    ApplyFallback(rects);
+                    icons.Clear();
+                    ApplyFallback(rects, icons);
                 }
 
+                _icons = icons;
                 _rects = rects;
                 _loadedFromJson = fromJson;
             }
         }
 
-        private static bool ReadTable(BossRushJsonValue root, Dictionary<string, Rect> rects)
+        private static bool ReadTable(BossRushJsonValue root, Dictionary<string, Rect> rects,
+            Dictionary<string, Rect> icons)
         {
             BossRushJsonValue rectNode = root.GetObject("rects");
-            if (rectNode == null) return false;
+            BossRushJsonValue iconNode = root.GetObject("icons");
+            if (rectNode == null || iconNode == null) return false;
 
             for (int i = 0; i < FallbackNames.Length; i++)
             {
@@ -153,6 +172,13 @@ namespace BossRush
                 Rect rect;
                 if (!TryReadRect(rectNode, name, out rect)) return false;
                 rects[name] = rect;
+            }
+            for (int i = 0; i < IconNames.Length; i++)
+            {
+                string name = IconNames[i];
+                Rect rect;
+                if (!TryReadRect(iconNode, name, out rect)) return false;
+                icons[name] = rect;
             }
 
             BossRushJsonValue grid = root.GetObject("grid");
@@ -170,11 +196,10 @@ namespace BossRush
             _legendSwatch = legend.GetInt("swatch", 0);
             _legendItemWidth = legend.GetInt("itemWidth", 0);
             _legendCount = legend.GetInt("count", 4);
-            _iconSize = icon.GetInt("size", 0);
-            _iconInset = icon.GetInt("inset", 0);
-            _iconTextIndent = icon.GetInt("textIndent", 0);
+            _pillTextIndent = icon.GetInt("pillTextIndent", 0);
+            _iconTextGap = icon.GetInt("textGap", 0);
 
-            return _cellWidth > 0f && _cellHeight > 0f && _columns > 0 && _rows > 0 && _iconTextIndent > 0f;
+            return _cellWidth > 0f && _cellHeight > 0f && _columns > 0 && _rows > 0 && _pillTextIndent > 0f;
         }
 
         private static bool TryReadRect(BossRushJsonValue node, string name, out Rect rect)
@@ -198,7 +223,7 @@ namespace BossRush
 
         private static readonly string[] FallbackNames =
         {
-            "header", "mascot", "title", "infoMeta", "infoWeather",
+            "header", "mascot", "title", "info", "infoMeta", "infoWeather",
             "income", "incomePill", "incomeLeft", "incomeRight", "incomeTip", "incomeNote",
             "status", "statusPill", "statusLeft", "statusRight", "statusLuck", "statusTaboo",
             "signin", "signinPill", "button", "sideText", "legend",
@@ -206,28 +231,46 @@ namespace BossRush
 
         private static readonly float[,] FallbackRects =
         {
-            { 22, 20, 1289, 150 }, { 40, 32, 126, 126 }, { 182, 34, 460, 122 },
-            { 682, 36, 330, 118 }, { 1026, 36, 269, 118 },
-            { 22, 186, 766, 402 }, { 42, 200, 232, 46 }, { 46, 260, 351, 132 },
-            { 413, 260, 351, 132 }, { 46, 404, 718, 56 }, { 46, 472, 718, 98 },
-            { 804, 186, 507, 402 }, { 824, 200, 300, 46 }, { 828, 260, 221, 132 },
-            { 1065, 260, 222, 132 }, { 828, 404, 459, 68 }, { 828, 482, 459, 88 },
-            { 22, 604, 1289, 320 }, { 42, 618, 232, 46 }, { 780, 680, 505, 62 },
-            { 780, 754, 505, 102 }, { 48, 870, 710, 36 },
+            { 22, 14, 1289, 154 }, { 26, 6, 166, 166 }, { 200, 18, 460, 144 }, { 676, 30, 635, 126 },
+            { 688, 35, 330, 116 }, { 1042, 35, 257, 116 }, { 22, 182, 766, 404 }, { 38, 200, 280, 46 },
+            { 46, 262, 351, 136 }, { 413, 262, 351, 136 }, { 46, 410, 718, 56 }, { 46, 480, 718, 90 },
+            { 804, 182, 507, 404 }, { 820, 200, 336, 46 }, { 824, 262, 467, 70 }, { 824, 341, 467, 70 },
+            { 824, 420, 467, 70 }, { 824, 499, 467, 70 }, { 22, 600, 1289, 326 }, { 38, 618, 256, 46 },
+            { 798, 682, 489, 62 }, { 798, 758, 489, 100 }, { 48, 872, 710, 36 },
         };
 
-        private static void ApplyFallback(Dictionary<string, Rect> rects)
+        /// <summary>图标 id；Sprite 路径是 Assets/ui/DailyReport/dr_icon_&lt;id&gt;.png。</summary>
+        internal static readonly string[] IconNames =
+        {
+            "issue", "deadline", "weather", "income", "bounty", "tip", "headline", "broadcast",
+            "fortune", "gossip", "ribbon_income", "ribbon_status", "ribbon_signin", "gift",
+        };
+
+        private static readonly float[,] FallbackIconRects =
+        {
+            { 692, 48, 36, 36 }, { 692, 106, 36, 36 }, { 1046, 64, 58, 58 }, { 50, 295, 70, 70 },
+            { 417, 295, 70, 70 }, { 60, 423, 30, 30 }, { 826, 269, 56, 56 }, { 826, 348, 56, 56 },
+            { 826, 427, 56, 56 }, { 826, 506, 56, 56 }, { 44, 195, 54, 54 }, { 828, 197, 50, 50 },
+            { 47, 617, 46, 46 }, { 944, 695, 36, 36 },
+        };
+
+        private static void ApplyFallback(Dictionary<string, Rect> rects, Dictionary<string, Rect> icons)
         {
             for (int i = 0; i < FallbackNames.Length; i++)
             {
                 rects[FallbackNames[i]] = new Rect(
                     FallbackRects[i, 0], FallbackRects[i, 1], FallbackRects[i, 2], FallbackRects[i, 3]);
             }
-            _gridX = 48f; _gridY = 680f;
+            for (int i = 0; i < IconNames.Length; i++)
+            {
+                icons[IconNames[i]] = new Rect(
+                    FallbackIconRects[i, 0], FallbackIconRects[i, 1], FallbackIconRects[i, 2], FallbackIconRects[i, 3]);
+            }
+            _gridX = 48f; _gridY = 682f;
             _cellWidth = 62f; _cellHeight = 52f; _cellGap = 10f;
             _columns = 10; _rows = 3;
             _legendSwatch = 16f; _legendItemWidth = 142f; _legendCount = 5;
-            _iconSize = 34f; _iconInset = 12f; _iconTextIndent = 56f;
+            _pillTextIndent = 68f; _iconTextGap = 12f;
         }
 
         #endregion

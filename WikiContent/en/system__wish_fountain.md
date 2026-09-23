@@ -24,9 +24,8 @@
 ### Feedback After Submission
 
 - While sending, the panel shows `Sending your wish to the stars…`
-- On success, the game shows the original large banner:
-  - `May this starlight illuminate the utopia in your heart~`
-- The panel closes automatically about 1 second after success.
+- On success, the status line shows `Wish sent`.
+- The panel pauses for a moment after success, then closes automatically.
 - The cooldown is currently a global `30 seconds`, not per individual fountain.
 
 ### Wish Gacha Reward

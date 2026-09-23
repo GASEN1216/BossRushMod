@@ -4,7 +4,7 @@
 
 ### What Is It?
 
-**The gear worn by the Starforge Foreman, island lord of the Fallen Star Workshop, and the Overlook Stargazer, chief of the Starfall Overlook**: the Starbrass Visor Helm, Starfurnace Harness and Starfurnace Pack come from the Foreman; the Stargazer's Lens Helm comes from the Stargazer. Worn, they give the game's usual head armour / body armour / pack capacity; on the isles each also has a use — any two Starworks pieces make Fuzhou's dock workbench take one less Brass Scrap, and the lens helm spots nearby enemies for you while you stand still.
+**The gear worn by the Starforge Foreman, island lord of the Fallen Star Workshop, and the Overlook Stargazer, chief of the Starfall Overlook**: the Starbrass Visor Helm, Starfurnace Harness and Starfurnace Pack come from the Foreman; the Stargazer's Lens Helm comes from the Stargazer. Worn, they give the game's usual head armour / body armour / pack capacity; on the isles each also has a use: any two Starworks pieces make Fuzhou's dock workbench take one less Brass Scrap, and the lens helm spots nearby enemies for you while you stand still.
 
 ### The Four Pieces
 
@@ -13,14 +13,14 @@
 - **Starfurnace Pack** (backpack): quality 5, pack capacity +6, item ID 500088
 - **Stargazer's Lens Helm** (helmet): quality 5, Head Armor +2, durability 50, item ID 500089
 - Repairable: the three pieces with durability can be fixed at the workbench (the pack has no durability)
-- On death: they are not bound — fall during a raid and they stay behind with the rest of your gear
+- On death: they are not bound; fall during a raid and they stay behind with the rest of your gear
 
 ### How to Get It
 
-- **Starforge Foreman** (island lord, Fallen Star Workshop beacon guards): there every raid. It **always drops one piece**: Starbrass Visor Helm 35%, Starfurnace Harness 35%, Starfurnace Pack 30% — it takes a few raids to complete the set.
+- **Starforge Foreman** (island lord, Fallen Star Workshop beacon guards): there every raid. It **always drops one piece**: Starbrass Visor Helm 35%, Starfurnace Harness 35%, Starfurnace Pack 30%, so it takes a few raids to complete the set.
 - **Overlook Stargazer** (chief, Starfall Overlook guards): drops the Stargazer's Lens Helm **30%** of the time, nothing the other 70%.
 - The piece that drops comes at **full durability**; the pieces it did not roll never reach the box.
-- Never in any random pool (island crates, Wish Fountain, daily sign-in, boss loot crates) — these two are the only source.
+- Never in any random pool (island crates, Wish Fountain, daily sign-in, boss loot crates). These two are the only source.
 
 ### Uses on the Isles
 
@@ -36,13 +36,13 @@
 
 **Starforge Foreman:**
 - At **70% / 40% / 15%** health it raises **2 starfurnace pylons** each time (5.5–8.5 m away): while they stand, its head and body armour are each 6 thicker. Break the pylons first; they also burn out on their own after 25 seconds.
-- **Starfire**: 3 warning rings land around you and burst about 1.25 seconds later (2.6 m radius) — sidestep as soon as you see them.
-- After every two rounds of starfire it **overheats for 4 seconds**: it holds fire and takes 25% more physical damage — that is your window.
+- **Starfire**: 3 warning rings land around you and burst about 1.25 seconds later (2.6 m radius). Sidestep as soon as you see them.
+- After every two rounds of starfire it **overheats for 4 seconds**: it holds fire and takes 25% more physical damage. That is your window.
 - **Breaking its gear cuts its attacks**: with the visor helm at zero durability, starfire lands only 1 ring; with the harness at zero, the pylons' armour bonus is halved.
 
 **Overlook Stargazer:**
 - Between 8 and 42 m, with a line of sight, it paints a ring at your feet that follows you for about 0.8 seconds, locks, and 0.6 seconds later drops **two starfire shells** on the locked spot (2.2 m radius, 0.4 seconds apart).
-- Once it locks, step out of the ring; or break line of sight behind cover while it aims — the mark is cancelled, but it re-aims sooner.
+- Once it locks, step out of the ring; or break line of sight behind cover while it aims. The mark is cancelled, but it re-aims sooner.
 - Inside **8 m** it can only shoot normally.
 - Wear its lens helm down to zero durability and it can no longer mark anyone.
 

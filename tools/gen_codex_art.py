@@ -115,6 +115,10 @@ EVENTS = {
     6: "a bright festive firework bursting in gold and red sparks, celebration motif.",
     7: "gold coins and banknotes raining down, money-rain motif.",
     8: "a row of small cheerful cartoon ducks waddling in a line, duck-parade motif.",
+    # 2026-09-23：9–11 是后加的节奏类事件，HUD 徽章此前没有图（审美审查 UA-27）。
+    9: "a pair of winged running boots trailing swirling gusts of wind and speed streaks, swift-chase motif.",
+    10: "a cleaver and a spiked wooden club crossed in an X over a burst of festive confetti sparks, melee-carnival motif.",
+    11: "a heavy iron-plated boot stomping down and cracking the ground with a puff of dust, heavy-footsteps motif.",
 }
 
 ACHIEVEMENTS = {

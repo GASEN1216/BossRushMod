@@ -61,6 +61,9 @@ namespace BossRush
                 return false;
             }
 
+            // 好感变化浮字要挂在这只 NPC 头侧：送礼入口手里就有控制器，先登记，事件回调里不必再按类型查找（UD-41）。
+            AffinityUIManager.NoteController(npcId, npcController);
+
             int itemTypeId = GetItemTypeId(item);
             bool isDiamondRingGift = (itemTypeId == DiamondRingConfig.TYPE_ID);
             string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
@@ -122,7 +125,6 @@ namespace BossRush
                         npcController.ShowBrokenHeartBubble();
                     }
 
-                    ShowAffinityNotification(npcId, -penalty);
                     AffinityManager.RecordCheatingIncidentForSpouse(spouseNpcId);
                     ModBehaviour.DevLog("[NPCGift] 已婚后向其他NPC送戒指，触发惩罚: npc=" + npcId + ", penalty=" + penalty);
                     return true; // 视为赠送成功（消耗戒指）
@@ -193,9 +195,6 @@ namespace BossRush
                     npcController.ShowBrokenHeartBubble();
                 }
                 
-                // 显示好感度变化通知
-                ShowAffinityNotification(npcId, -DINGDANG_DRAWING_PENALTY);
-                
                 ModBehaviour.DevLog("[NPCGift] 叮当涂鸦特殊处理：扣除" + DINGDANG_DRAWING_PENALTY + "好感度");
                 return true;
             }
@@ -238,8 +237,9 @@ namespace BossRush
                 }
             }
             
-            // 显示好感度进度通知
-            ShowAffinityNotification(npcId, giftValue);
+            // 送礼反馈（2026-09-23 审美审查 UD-39，owner 拍板「三路合一」）：旧版横幅「好感度 Lv.x 进度 a/b」、
+            // 屏幕正中的 +N 浮字、升级通知三路叠在一起。现在只留 NPC 头侧的浮字（带「Lv.x · a/b」进度行，
+            // 由 AddPoints 触发的好感变化事件画），升级另合成一条多行消息；这里不再另发横幅。
 
             // 钻石戒指赠送成功：触发结婚流程
             if (isDiamondRingGift)
@@ -586,53 +586,6 @@ namespace BossRush
             }
             
             return "Default";
-        }
-        
-        /// <summary>
-        /// 显示好感度进度通知
-        /// </summary>
-        private static void ShowAffinityNotification(string npcId, int change)
-        {
-            try
-            {
-                var config = AffinityManager.GetNPCConfig(npcId);
-                string npcName = config?.DisplayName ?? npcId;
-                
-                int currentLevel = AffinityManager.GetLevel(npcId);
-                
-                // 使用递增式等级配置获取正确的进度
-                AffinityManager.GetLevelProgressDetails(npcId, out int currentLevelProgress, out int levelRequired);
-                
-                // 满级时显示特殊文本
-                string notificationText;
-                if (levelRequired <= 0)
-                {
-                    notificationText = L10n.T(
-                        npcName + "好感度 Lv." + currentLevel + " (满级)",
-                        npcName + " Affinity Lv." + currentLevel + " (MAX)"
-                    );
-                }
-                else
-                {
-                    notificationText = L10n.T(
-                        npcName + "好感度 Lv." + currentLevel + " 进度 " + currentLevelProgress + "/" + levelRequired,
-                        npcName + " Affinity Lv." + currentLevel + " Progress " + currentLevelProgress + "/" + levelRequired
-                    );
-                }
-                
-                if (ModBehaviour.Instance != null)
-                {
-                    ModBehaviour.Instance.ShowBigBanner(notificationText);
-                }
-                else
-                {
-                    Duckov.UI.NotificationText.Push(notificationText);
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[NPCGift] [WARNING] 显示通知失败: " + e.Message);
-            }
         }
     }
 }

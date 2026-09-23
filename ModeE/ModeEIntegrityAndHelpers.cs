@@ -216,19 +216,66 @@ namespace BossRush
                 case Teams.lab:     return L10n.T("实验室", "Lab");
                 case Teams.wolf:    return L10n.T("狼群", "Wolf");
                 case Teams.player:  return L10n.T("独狼", "Lone Wolf");
-                default:            return faction.ToString();
+                default:            return string.Empty;   // 未知阵营不念枚举名（UB-30）
+            }
+        }
+
+        // 阵营后缀的字色：每个阵营一个 token 色（审美审查 UB-30），类型初始化时算一次；自己人（独狼）用成功色。
+        private static readonly string ModeEFactionTagNeutral = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextSecondary) + ">";
+        private static readonly string ModeEFactionTagUsec = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.RarityRare) + ">";
+        private static readonly string ModeEFactionTagBear = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText) + ">";
+        private static readonly string ModeEFactionTagLab = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.RarityEpic) + ">";
+        private static readonly string ModeEFactionTagWolf = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.WarningText) + ">";
+        private static readonly string ModeEFactionTagPlayer = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.SuccessText) + ">";
+
+        private static string GetModeEFactionTag(Teams faction)
+        {
+            switch (faction)
+            {
+                case Teams.usec:    return ModeEFactionTagUsec;
+                case Teams.bear:    return ModeEFactionTagBear;
+                case Teams.lab:     return ModeEFactionTagLab;
+                case Teams.wolf:    return ModeEFactionTagWolf;
+                case Teams.player:  return ModeEFactionTagPlayer;
+                default:            return ModeEFactionTagNeutral;
             }
         }
 
         /// <summary>
         /// 获取阵营后缀字符串（供 Harmony 补丁在 HealthBar 名字后追加）
-        /// 格式：" - 阵营名"，非 Mode E 阵营返回 null
+        /// 格式：" · 阵营名"，按阵营着 token 色（旧版是纯文本「 - 阵营名」，不同阵营看起来一样，UB-30）；
+        /// 非 Mode E 阵营返回 null。剥离旧后缀（StripModeEFactionSuffix）按同一个字符串比对，两边永远一致。
         /// </summary>
         public string GetModeEFactionSuffix(Teams faction)
         {
             string name = GetFactionDisplayName(faction);
             if (string.IsNullOrEmpty(name)) return null;
-            return " - " + name;
+            return " " + GetModeEFactionTag(faction) + "· " + name + "</color>";
+        }
+
+        /// <summary>
+        /// 贝壳商店购买键底色：还原官方商店自己的「可买 / 不可买」两色（StockShopView.buttonColor_Interactable /
+        /// _NotInteractable，官方 RefreshInteractionButton 也写这两个）。旧版刷成 (0.2,0.8,0.35) 荧光绿 / Color.gray，
+        /// 在暖色调的官方商店里扎眼（2026-09-23 审美审查 UB-21）。两个都是官方私有序列化字段（WIRE+，经 ReflectionCache 缓存）：
+        /// 读不到时退回 token 主操作色 / 禁用色，不影响交易，也不进壳层 fail-closed 的契约清单。
+        /// </summary>
+        private static Color GetModeEShellOfficialButtonColor(global::Duckov.Economy.UI.StockShopView view, bool interactable)
+        {
+            try
+            {
+                FieldInfo field = BossRush.Common.Utils.ReflectionCache.GetField(typeof(global::Duckov.Economy.UI.StockShopView),
+                    interactable ? "buttonColor_Interactable" : "buttonColor_NotInteractable",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                if (view != null && field != null && field.FieldType == typeof(Color))
+                {
+                    return (Color)field.GetValue(view);
+                }
+            }
+            catch (Exception)
+            {
+                // 官方字段改名 / 类型变了：走下面的 token 回退
+            }
+            return interactable ? BossRushUIColors.AccentFill : BossRushUIColors.Disabled;
         }
 
         private void ClearModeEHealthBarOverrideCache(HealthBar healthBar)

@@ -4,6 +4,14 @@
 // 模块说明：
 //   在NPC头顶显示序列帧动画（如心裂开效果）
 //   使用 SpriteRenderer 实现，自动面向相机
+//
+//   2026-09-23 审美审查 UD-46：旧版一出现就是满尺寸、不透明，到时间 Destroy 一帧消失，悬在头顶一动不动，
+//   看起来像贴图 bug。现在：
+//   - 入场 0.18 秒：缩放 0.6→1（EaseOut，弹出来）、alpha 0→1（SmoothStep）；
+//   - 存在期间 1.2 秒内 EaseOut 上浮 0.25 米；
+//   - 离场：最后 0.3 秒 SmoothStep 淡到 0 再销毁（displayDuration≤0 的「播完即毁」也补 0.3 秒淡出）；
+//   - 计时改 unscaled：官方对话期间 timeScale 可能是 0，旧版的心会冻在头顶。暂停菜单开着时停推进。
+//   - 同一目标、同一套序列帧 0.3 秒内重复创建时复用已有的那个（送礼的正向反应和升级庆祝会同帧各冒一颗心）。
 // ============================================================================
 
 using System;
@@ -59,6 +67,24 @@ namespace BossRush
         private static Camera cachedBillboardCamera;
         private static Transform cachedBillboardCameraTransform;
         private static int cachedBillboardCameraFrame = -1;
+
+        // 出场 / 离场表现（UD-46）
+        private const float EnterSeconds = 0.18f;
+        private const float EnterScale = 0.6f;
+        private const float ExitSeconds = 0.3f;
+        private const float RiseMeters = 0.25f;
+        private const float RiseSeconds = 1.2f;
+        /// <summary>同一目标、同一套帧在这么短的间隔内再次创建时复用已有气泡。</summary>
+        private const float DuplicateWindowSeconds = 0.3f;
+
+        /// <summary>存活中的气泡（只用于去重；OnDestroy 时移除，不持有已销毁对象）。</summary>
+        private static readonly List<NPCBubbleAnimator> activeBubbles = new List<NPCBubbleAnimator>();
+
+        private float age;
+        private float currentRise;
+        private float lastAppliedAlpha = -1f;
+        private float lastAppliedScale = -1f;
+        private Color baseColor = Color.white;
         
         // ============================================================================
         // 静态工厂方法
@@ -85,7 +111,13 @@ namespace BossRush
                 ModBehaviour.DevLog("[NPCBubbleAnimator] 创建失败：参数无效");
                 return null;
             }
-            
+
+            NPCBubbleAnimator recent = FindRecentDuplicate(target, frames);
+            if (recent != null)
+            {
+                return recent;
+            }
+
             // 创建GameObject
             GameObject bubbleObj = new GameObject("NPCBubble_Animation");
             
@@ -170,6 +202,12 @@ namespace BossRush
         private void Awake()
         {
             cachedTransform = transform;
+            activeBubbles.Add(this);
+        }
+
+        private void OnDestroy()
+        {
+            activeBubbles.Remove(this);
         }
 
         private void Initialize()
@@ -177,57 +215,140 @@ namespace BossRush
             // 创建SpriteRenderer
             spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
             spriteRenderer.sortingOrder = 100;  // 确保在前面显示
-            
+            baseColor = spriteRenderer.color;
+
             // 设置初始帧
             if (frames != null && frames.Length > 0)
             {
                 spriteRenderer.sprite = frames[0];
             }
-            
-            // 设置缩放
-            GetCachedTransform().localScale = Vector3.one * spriteScale;
-            
+
+            // 设置缩放与透明度：从入场首帧开始（小一圈、全透明），不在第一帧就满尺寸弹出来
+            UpdatePresentation();
+
             // 更新位置
             UpdatePosition();
         }
-        
+
         void Update()
         {
             // 更新位置（跟随目标）
             UpdatePosition();
-            
+
             // 面向相机（Billboard效果）
             FaceCamera();
-            
+
+            // 暂停菜单开着时停推进（下面全走 unscaled 时间）
+            if (BossRushUI.IsGamePaused())
+            {
+                return;
+            }
+
+            float deltaTime = Time.unscaledDeltaTime;
+            age += deltaTime;
+
             // 更新动画帧
             if (isPlaying)
             {
-                UpdateAnimation();
+                UpdateAnimation(deltaTime);
             }
-            
+
             // 更新显示计时器
             if (animationCompleted || loop)
             {
-                displayTimer += Time.deltaTime;
-                if (displayDuration > 0 && displayTimer >= displayDuration)
+                displayTimer += deltaTime;
+                if (HasTimedEnd() && displayTimer >= GetEndSeconds())
                 {
                     if (destroyOnComplete)
                     {
                         Destroy(gameObject);
+                        return;
                     }
-                    else
-                    {
-                        Stop();
-                    }
+                    Stop();
                 }
             }
+
+            UpdatePresentation();
         }
-        
+
+        /// <summary>
+        /// 会不会按时结束：设了显示时长，或者「播完即毁」（displayDuration≤0 且不循环，补一段淡出再毁）。
+        /// </summary>
+        private bool HasTimedEnd()
+        {
+            return displayDuration > 0f || (!loop && destroyOnComplete);
+        }
+
+        private float GetEndSeconds()
+        {
+            return displayDuration > 0f ? displayDuration : ExitSeconds;
+        }
+
+        /// <summary>
+        /// 入场缩放 / 淡入、上浮与离场淡出。只有值变化时才写 SpriteRenderer 与缩放。
+        /// </summary>
+        private void UpdatePresentation()
+        {
+            float enter = Mathf.Clamp01(age / EnterSeconds);
+            float alpha = BossRushUI.SmoothStep(enter);
+            float scale = spriteScale * Mathf.Lerp(EnterScale, 1f, BossRushUI.EaseOut(enter));
+
+            if (destroyOnComplete && HasTimedEnd() && (animationCompleted || loop))
+            {
+                float exitStart = GetEndSeconds() - ExitSeconds;
+                float exit = Mathf.Clamp01((displayTimer - exitStart) / ExitSeconds);
+                alpha *= 1f - BossRushUI.SmoothStep(exit);
+            }
+
+            currentRise = RiseMeters * BossRushUI.EaseOut(age / RiseSeconds);
+
+            if (scale != lastAppliedScale)
+            {
+                lastAppliedScale = scale;
+                GetCachedTransform().localScale = Vector3.one * scale;
+            }
+            if (alpha != lastAppliedAlpha)
+            {
+                lastAppliedAlpha = alpha;
+                ApplyColor(alpha);
+            }
+        }
+
+        private void ApplyColor(float presentationAlpha)
+        {
+            if (spriteRenderer == null)
+            {
+                return;
+            }
+            Color c = baseColor;
+            c.a = baseColor.a * presentationAlpha;
+            spriteRenderer.color = c;
+        }
+
+        /// <summary>同一目标、同一套帧、刚创建不久的气泡（送礼反应与升级庆祝同帧各要一颗心时只留一颗）。</summary>
+        private static NPCBubbleAnimator FindRecentDuplicate(Transform target, Sprite[] frames)
+        {
+            for (int i = activeBubbles.Count - 1; i >= 0; i--)
+            {
+                NPCBubbleAnimator bubble = activeBubbles[i];
+                if (bubble == null)
+                {
+                    activeBubbles.RemoveAt(i);
+                    continue;
+                }
+                if (bubble.targetTransform == target && bubble.frames == frames && bubble.age < DuplicateWindowSeconds)
+                {
+                    return bubble;
+                }
+            }
+            return null;
+        }
+
         private void UpdatePosition()
         {
             if (targetTransform != null)
             {
-                GetCachedTransform().position = targetTransform.position + Vector3.up * heightOffset;
+                GetCachedTransform().position = targetTransform.position + Vector3.up * (heightOffset + currentRise);
             }
         }
         
@@ -269,17 +390,17 @@ namespace BossRush
             return cachedTransform;
         }
         
-        private void UpdateAnimation()
+        private void UpdateAnimation(float deltaTime)
         {
             if (frames == null || frames.Length == 0) return;
 
-            frameTimer += Time.deltaTime;
+            frameTimer += deltaTime;
 
             if (frameTimer >= cachedFrameInterval)
             {
                 frameTimer -= cachedFrameInterval;
                 currentFrame++;
-                
+
                 if (currentFrame >= frames.Length)
                 {
                     if (loop)
@@ -288,19 +409,13 @@ namespace BossRush
                     }
                     else
                     {
+                        // 没有设置显示持续时间时，不再当帧销毁：由 Update 的计时器补 0.3 秒淡出后再毁
                         currentFrame = frames.Length - 1;
                         animationCompleted = true;
                         isPlaying = false;
-                        
-                        // 如果没有设置显示持续时间，动画完成后立即销毁
-                        if (displayDuration <= 0 && destroyOnComplete)
-                        {
-                            Destroy(gameObject);
-                            return;
-                        }
                     }
                 }
-                
+
                 spriteRenderer.sprite = frames[currentFrame];
             }
         }
@@ -346,24 +461,20 @@ namespace BossRush
             }
         }
         
-        /// <summary>设置透明度</summary>
+        /// <summary>设置透明度（作为基准透明度，入场 / 离场的淡入淡出在它之上相乘）</summary>
         public void SetAlpha(float alpha)
         {
-            if (spriteRenderer != null)
-            {
-                Color c = spriteRenderer.color;
-                c.a = alpha;
-                spriteRenderer.color = c;
-            }
+            baseColor.a = alpha;
+            lastAppliedAlpha = -1f;
+            UpdatePresentation();
         }
-        
-        /// <summary>设置颜色</summary>
+
+        /// <summary>设置颜色（作为基准色，入场 / 离场的淡入淡出在它之上相乘）</summary>
         public void SetColor(Color color)
         {
-            if (spriteRenderer != null)
-            {
-                spriteRenderer.color = color;
-            }
+            baseColor = color;
+            lastAppliedAlpha = -1f;
+            UpdatePresentation();
         }
     }
 }

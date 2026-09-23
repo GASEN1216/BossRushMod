@@ -12,6 +12,7 @@
 
 using System;
 using System.IO;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Video;
@@ -27,6 +28,12 @@ namespace BossRush
     public static class NPCMarriageSystem
     {
         private const float MARRIAGE_VIDEO_TIMEOUT_SECONDS = 120f;
+        // 过场进出与回放跳过提示的节奏（UD-47）
+        private const float MARRIAGE_VIDEO_FADE_IN_SECONDS = 0.5f;
+        private const float MARRIAGE_VIDEO_REVEAL_SECONDS = 0.4f;
+        private const float MARRIAGE_VIDEO_FADE_OUT_SECONDS = 0.6f;
+        private const float MARRIAGE_SKIP_HINT_DELAY_SECONDS = 1f;
+        private const float MARRIAGE_SKIP_HINT_FADE_SECONDS = 0.3f;
         private const int MARRIAGE_VIDEO_CANVAS_ORDER = BossRushUILayers.WeddingCutscene;
         private const float DIVORCE_RELOCATE_DELAY_SECONDS = 2.8f;
         private static GameObject marriageVideoInputToken;
@@ -197,7 +204,8 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[Marriage] 回忆当天：开始重播结婚过场, npcId=" + npcId);
 
-                bool playedVideo = await PlayMarriageVideoCutsceneAsync(npcId);
+                // 回放允许按 Esc 跳过（第一次结婚的过场仍不可跳过，见 RunMarriageSequenceAsync）
+                bool playedVideo = await PlayMarriageVideoCutsceneAsync(npcId, null, true);
                 if (!playedVideo)
                 {
                     Transform npcTransform = null;
@@ -296,16 +304,23 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 播放结婚过场视频（全屏播放，不可跳过，自然结束或超时退出）
+        /// 播放结婚过场视频（全屏播放，自然结束或超时退出）
         /// 视频文件位置：
         /// 1) Assets/cutscenes/marriage_{npcId}.mp4
         /// 2) Assets/cutscenes/marriage.mp4
+        ///
+        /// 2026-09-23 审美审查 UD-47（owner 拍板）：
+        /// - 进场先 0.5 秒 SmoothStep 淡到黑，淡完且视频 Prepare 好了才同时开播画面与音频，画面再 0.4 秒从黑底里淡出；
+        ///   旧版同一帧建好黑底，视频还在 Prepare，画面一帧切黑。
+        /// - 出场 0.6 秒 SmoothStep 淡回游戏再销毁（音频跟着压下去）；旧版结束时 Destroy 一帧切回。
+        /// - 第一次结婚仍不可跳过；「回忆当天」回放（skippable）1 秒后右下角淡入「按 Esc 跳过」，
+        ///   按 Esc 跳过时连单独播放的音频一起淡出并停掉。
+        /// 淡入淡出走 unscaled 时间，暂停菜单开着时停推进。
         /// </summary>
-        /// <returns>播放过视频返回 true；没有视频或播放失败返回 false</returns>
-        private static async UniTask<bool> PlayMarriageVideoCutsceneAsync(string npcId, Func<bool> valid = null)
+        /// <returns>播放过视频（含回放中途跳过）返回 true；没有视频或播放失败返回 false</returns>
+        private static async UniTask<bool> PlayMarriageVideoCutsceneAsync(string npcId, Func<bool> valid = null, bool skippable = false)
         {
             if (valid != null && !valid()) return false;
-            ModBehaviour videoHost = ModBehaviour.Instance;
             string videoPath = DiamondRingConfig.GetMarriageVideoPath(npcId);
             if (string.IsNullOrEmpty(videoPath) || !File.Exists(videoPath))
             {
@@ -317,9 +332,14 @@ namespace BossRush
             RenderTexture renderTexture = null;
             VideoPlayer videoPlayer = null;
             RawImage rawImage = null;
+            CanvasGroup rootGroup = null;
+            TMPro.TextMeshProUGUI skipHint = null;
+            object audioHandle = null;
 
             bool finished = false;
+            bool prepared = false;
             bool started = false;
+            bool skipped = false;
             string errorMessage = null;
             bool inputLocked = false;
 
@@ -341,6 +361,9 @@ namespace BossRush
                 CanvasScaler scaler = root.AddComponent<CanvasScaler>();
                 ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
                 root.AddComponent<GraphicRaycaster>();
+                // 整个过场一起淡入淡出：第一帧全透明，不再一帧切黑。
+                rootGroup = root.AddComponent<CanvasGroup>();
+                rootGroup.alpha = 0f;
 
                 GameObject bgObj = new GameObject("Background");
                 bgObj.transform.SetParent(root.transform, false);
@@ -354,7 +377,13 @@ namespace BossRush
                 RectTransform videoRt = videoObj.AddComponent<RectTransform>();
                 StretchToFullScreen(videoRt);
                 rawImage = videoObj.AddComponent<RawImage>();
-                rawImage.color = Color.white;
+                // 开播前 RenderTexture 内容未定义：画面先透明，开播后从黑底里淡出来。
+                rawImage.color = new Color(1f, 1f, 1f, 0f);
+
+                if (skippable)
+                {
+                    skipHint = CreateSkipHint(root.transform);
+                }
 
                 int width = Mathf.Clamp(Screen.width, 1, 1920);
                 int height = Mathf.Clamp(Screen.height, 1, 1080);
@@ -377,33 +406,10 @@ namespace BossRush
                 string audioPath = FindMarriageAudioPath(videoPath);
                 ModBehaviour.DevLog("[Marriage] 音频文件路径: " + (audioPath ?? "null"));
 
+                // 只记下「准备好了」：真正开播放到淡到黑之后，画面与音频同一帧起。
                 onPrepared = delegate(VideoPlayer vp)
                 {
-                    if (valid != null && !valid()) { finished = true; return; }
-                    try
-                    {
-                        if (!string.IsNullOrEmpty(audioPath))
-                        {
-                            ModBehaviour mod = videoHost;
-                            if (mod != null)
-                            {
-                                mod.PlaySoundEffect(audioPath);
-                                ModBehaviour.DevLog("[Marriage] 通过PlaySoundEffect播放音频: " + audioPath);
-                            }
-                            else
-                            {
-                                ModBehaviour.DevLog("[Marriage] [WARNING] ModBehaviour.Instance为null，无法播放音频");
-                            }
-                        }
-                        started = true;
-                        vp.Play();
-                    }
-                    catch (Exception e)
-                    {
-                        ModBehaviour.DevLog("[Marriage] [WARNING] prepareCompleted异常: " + e.Message);
-                        started = true;
-                        try { vp.Play(); } catch { }
-                    }
+                    prepared = true;
                 };
                 onFinished = delegate(VideoPlayer vp)
                 {
@@ -423,16 +429,74 @@ namespace BossRush
                 ModBehaviour.DevLog("[Marriage] 开始播放结婚视频: " + videoPath);
 
                 float elapsed = 0f;
+                float fadeIn = 0f;
+                float reveal = 0f;
+                float hintTimer = 0f;
                 while (!finished && elapsed < MARRIAGE_VIDEO_TIMEOUT_SECONDS)
                 {
                     await UniTask.Yield(PlayerLoopTiming.Update);
                     if (valid != null && !valid()) return false;
-                    elapsed += Time.unscaledDeltaTime;
+                    float deltaTime = Time.unscaledDeltaTime;
+                    elapsed += deltaTime;
+                    if (BossRushUI.IsGamePaused())
+                    {
+                        continue;
+                    }
+
+                    fadeIn = Mathf.Min(1f, fadeIn + deltaTime / MARRIAGE_VIDEO_FADE_IN_SECONDS);
+                    rootGroup.alpha = BossRushUI.SmoothStep(fadeIn);
+
+                    if (!started && prepared && fadeIn >= 1f)
+                    {
+                        started = true;
+                        if (!string.IsNullOrEmpty(audioPath))
+                        {
+                            audioHandle = MarriageCutsceneAudio.Play(audioPath);
+                            ModBehaviour.DevLog("[Marriage] 播放过场音频: " + audioPath + (audioHandle != null ? "" : "（未取得句柄，跳过时无法停止）"));
+                        }
+                        try { videoPlayer.Play(); }
+                        catch (Exception e) { ModBehaviour.DevLog("[Marriage] [WARNING] 开播结婚视频异常: " + e.Message); }
+                    }
+
+                    if (started && reveal < 1f)
+                    {
+                        reveal = Mathf.Min(1f, reveal + deltaTime / MARRIAGE_VIDEO_REVEAL_SECONDS);
+                        rawImage.color = new Color(1f, 1f, 1f, BossRushUI.SmoothStep(reveal));
+                    }
+
+                    if (skipHint != null)
+                    {
+                        hintTimer += deltaTime;
+                        skipHint.alpha = BossRushUI.SmoothStep((hintTimer - MARRIAGE_SKIP_HINT_DELAY_SECONDS) / MARRIAGE_SKIP_HINT_FADE_SECONDS);
+                        if (Input.GetKeyDown(KeyCode.Escape))
+                        {
+                            skipped = true;
+                            ModBehaviour.DevLog("[Marriage] 回忆当天：玩家按 Esc 跳过过场");
+                            break;
+                        }
+                    }
                 }
 
                 if (elapsed >= MARRIAGE_VIDEO_TIMEOUT_SECONDS)
                 {
                     ModBehaviour.DevLog("[Marriage] [WARNING] 结婚视频播放超时，强制结束");
+                }
+
+                // 出场：淡回游戏（音频跟着压下去），淡完由 finally 销毁。
+                float fadeOut = 0f;
+                float fromAlpha = rootGroup.alpha;
+                while (fadeOut < 1f)
+                {
+                    await UniTask.Yield(PlayerLoopTiming.Update);
+                    if (valid != null && !valid()) return false;
+                    if (BossRushUI.IsGamePaused())
+                    {
+                        continue;
+                    }
+                    fadeOut = Mathf.Min(1f, fadeOut + Time.unscaledDeltaTime / MARRIAGE_VIDEO_FADE_OUT_SECONDS);
+                    float remain = 1f - BossRushUI.SmoothStep(fadeOut);
+                    rootGroup.alpha = fromAlpha * remain;
+                    MarriageCutsceneAudio.SetVolume(audioHandle, remain);
                 }
 
                 if (!string.IsNullOrEmpty(errorMessage))
@@ -441,7 +505,7 @@ namespace BossRush
                     return false;
                 }
 
-                return started;
+                return started || skipped;
             }
             catch (Exception e)
             {
@@ -450,6 +514,9 @@ namespace BossRush
             }
             finally
             {
+                // 跳过、超时、失效、异常都要把单独播放的音频停掉（自然播完时它已结束，停一次无害）。
+                MarriageCutsceneAudio.Stop(audioHandle);
+
                 if (inputLocked)
                 {
                     EndMarriageVideoInputLock();
@@ -486,6 +553,133 @@ namespace BossRush
                 if (root != null)
                 {
                     UnityEngine.Object.Destroy(root);
+                }
+            }
+        }
+
+        /// <summary>回放专用的「按 Esc 跳过」：右下角 16 号次级字，带描边（压在视频画面上），初始透明、1 秒后淡入。</summary>
+        private static TMPro.TextMeshProUGUI CreateSkipHint(Transform parent)
+        {
+            GameObject hintObj = ZombieModeUIHelper.CreateRect("SkipHint", parent,
+                new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-48f, 36f), new Vector2(420f, 28f), new Vector2(1f, 0f));
+            TMPro.TextMeshProUGUI hint = ZombieModeUIHelper.CreateTMPText(hintObj,
+                L10n.T("按 Esc 跳过", "Press Esc to skip"), 16f, TMPro.TextAlignmentOptions.BottomRight, BossRushUIColors.TextSecondary);
+            hint.enableAutoSizing = false;
+            hint.enableWordWrapping = false;
+            hint.margin = Vector4.zero;
+            BossRushUIKit.ApplyWorldTextOutline(hint);
+            hint.alpha = 0f;
+            return hint;
+        }
+
+        /// <summary>
+        /// 过场音频：与 ModBehaviour.PlaySoundEffect 同一条官方路径（AudioManager.PostCustomSFX，挂在玩家身上），
+        /// 但留住返回的 FMOD EventInstance，回放跳过时能压音量并停掉。
+        /// 编译清单没有 FMOD 引用（见 IntegrationUIFeedback 的注释），EventInstance 的 setVolume / stop 走反射；
+        /// MethodInfo 解析一次缓存，只在过场开始与淡出的那几帧调用。任何一步失败都静默降级（音频不是关键路径）。
+        /// </summary>
+        private static class MarriageCutsceneAudio
+        {
+            private static MethodInfo postCustomSfx;
+            private static bool postResolved;
+            private static MethodInfo setVolumeMethod;
+            private static MethodInfo stopMethod;
+            private static object stopAllowFadeOut;
+            private static Type handleType;
+
+            internal static object Play(string filePath)
+            {
+                try
+                {
+                    if (!postResolved)
+                    {
+                        postResolved = true;
+                        postCustomSfx = typeof(global::Duckov.AudioManager).GetMethod("PostCustomSFX",
+                            BindingFlags.Public | BindingFlags.Static, null,
+                            new Type[] { typeof(string), typeof(GameObject), typeof(bool) }, null);
+                    }
+                    if (postCustomSfx == null)
+                    {
+                        return null;
+                    }
+                    GameObject target = null;
+                    CharacterMainControl main = CharacterMainControl.Main;
+                    if (main != null && main.gameObject.activeInHierarchy)
+                    {
+                        target = main.gameObject;
+                    }
+                    // 返回 EventInstance?：有值时装箱成 EventInstance，没有时为 null。
+                    return postCustomSfx.Invoke(null, new object[] { filePath, target, false });
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[Marriage] [WARNING] 播放过场音频失败: " + e.Message);
+                    return null;
+                }
+            }
+
+            internal static void SetVolume(object handle, float volume)
+            {
+                if (handle == null || !Resolve(handle) || setVolumeMethod == null)
+                {
+                    return;
+                }
+                try
+                {
+                    setVolumeMethod.Invoke(handle, new object[] { Mathf.Clamp01(volume) });
+                }
+                catch (Exception)
+                {
+                    // 音频不是关键路径：FMOD 句柄已失效（事件已自然结束并回收）时静默跳过
+                }
+            }
+
+            internal static void Stop(object handle)
+            {
+                if (handle == null || !Resolve(handle) || stopMethod == null)
+                {
+                    return;
+                }
+                try
+                {
+                    stopMethod.Invoke(handle, new object[] { stopAllowFadeOut });
+                }
+                catch (Exception)
+                {
+                    // 同上：句柄失效或 FMOD 未就绪时静默跳过，过场收尾不能因为停音频抛异常
+                }
+            }
+
+            private static bool Resolve(object handle)
+            {
+                Type type = handle.GetType();
+                if (type == handleType)
+                {
+                    return true;
+                }
+                try
+                {
+                    handleType = type;
+                    setVolumeMethod = type.GetMethod("setVolume", new Type[] { typeof(float) });
+                    stopMethod = null;
+                    stopAllowFadeOut = null;
+                    MethodInfo[] methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance);
+                    for (int i = 0; i < methods.Length; i++)
+                    {
+                        ParameterInfo[] parameters = methods[i].GetParameters();
+                        if (methods[i].Name == "stop" && parameters.Length == 1 && parameters[0].ParameterType.IsEnum)
+                        {
+                            stopMethod = methods[i];
+                            // FMOD.Studio.STOP_MODE.ALLOWFADEOUT = 0：按事件自带的淡出停，不硬切。
+                            stopAllowFadeOut = Enum.ToObject(parameters[0].ParameterType, 0);
+                            break;
+                        }
+                    }
+                    return true;
+                }
+                catch (Exception)
+                {
+                    return false;
                 }
             }
         }
@@ -633,7 +827,7 @@ namespace BossRush
             {
                 new string[] { "这枚钻石戒指...是送给我的吗？", "This diamond ring... is for me?" },
                 new string[] { npcName + "轻轻握住了你的手。", npcName + " gently holds your hand." },
-                new string[] { "从今天开始，我们一起走下去吧。", "From today on, let's walk this road together." },
+                new string[] { "从今天开始，我们一起走下去吧。", "From today on, it's you and me." },
                 new string[] { "我愿意。", "I do." }
             };
         }

@@ -490,7 +490,10 @@ namespace BossRush
                 if (ps == null) continue;
 
                 var main = ps.main;
-                main.simulationSpace = ParticleSystemSimulationSpace.Local;
+                // World 空间（VA-12）：挥剑 / 走动时冰焰留下一小段拖曳，不再死死贴在刀身上；
+                // 寿命同时封顶，拖出来的只有一两个身位
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+                main.startLifetime = new ParticleSystem.MinMaxCurve(0.45f, 0.8f);
                 main.startColor = new ParticleSystem.MinMaxGradient(IceCoreColor, IceFadeColor);
 
                 var emission = ps.emission;
@@ -548,9 +551,10 @@ namespace BossRush
                     if (source == null) continue;
 
                     Material tinted = new Material(source);
-                    if (tinted.HasProperty("_Color")) tinted.color = IceCoreColor;
-                    if (tinted.HasProperty("_TintColor")) tinted.SetColor("_TintColor", IceCoreColor);
-                    if (tinted.HasProperty("_EmissionColor")) tinted.SetColor("_EmissionColor", IceCoreColor * 0.45f);
+                    RetintIceKeepIntensity(tinted, "_BaseColor", IceCoreColor);
+                    RetintIceKeepIntensity(tinted, "_TintColor", IceCoreColor);
+                    RetintIceKeepIntensity(tinted, "_Color", IceCoreColor);
+                    RetintIceKeepIntensity(tinted, "_EmissionColor", IceCoreColor * 0.45f);
 
                     tintedMaterials[j] = tinted;
                     if (materialTracker != null)
@@ -573,6 +577,24 @@ namespace BossRush
             }
 
             copy.SetActive(true);
+        }
+
+        /// <summary>
+        /// 把官方火焰材质的颜色属性「换色相、留亮度」（VA-12）：读原始值（GetVector，不经 sRGB 换算），
+        /// 取最大通道当亮度，写回 冰色 × 亮度。
+        ///   - 旧写法 SetColor("_TintColor", 冰色)：Legacy 粒子着色器是 2 × _TintColor，冰色被翻倍成近白；
+        ///     SetColor 在线性空间还会先做 sRGB→线性，色相也跟着偏；
+        ///   - 官方材质若把火焰色放在 HDR 的 _BaseColor 里（官方火星材质就是 (24, 6, 0.4) 这种值），
+        ///     旧写法根本碰不到它，乘上冰色顶点色后是发灰的青褐色。
+        /// 属性不存在时什么都不做。
+        /// </summary>
+        private static void RetintIceKeepIntensity(Material material, string property, Color ice)
+        {
+            if (material == null || !material.HasProperty(property)) return;
+            Vector4 source = material.GetVector(property);
+            float intensity = Mathf.Max(source.x, Mathf.Max(source.y, source.z));
+            if (intensity <= 0.0001f) intensity = 1f;
+            material.SetVector(property, new Vector4(ice.r * intensity, ice.g * intensity, ice.b * intensity, source.w));
         }
 
         private static void GetVisualBounds(GameObject targetVisual, out Vector3 localCenter, out Vector3 localExtents)

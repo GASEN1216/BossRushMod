@@ -58,11 +58,33 @@ def main() -> int:
         "InputManager.ActiveInput",
         "UnityEngine.Object.DontDestroyOnLoad",
         "Time.timeScale",
-        "new Color(0f, 0f, 0f",
+        # 2026-09-23 审美审查 UA-30：遮罩 / 面板走共享 token，不再是 0.45 纯黑 + 中性灰面板。
+        "backgroundImage.color = BossRushUIColors.Backdrop;",
+        "panelImage.color = BossRushUIColors.Surface;",
+        "BossRushUI.PlayOpenAnimation(panelRoot);",
         "new GameObject(\"Panel\")",
+        # UA-29：官方 View 里的不可逆操作走不关 View 的入口；显示期间吃掉官方 UI 取消键，隐藏 / 销毁时退订。
+        "public static UniTask<OriginalConfirmDialogueResult> ExecuteOverActiveView(",
+        "if (!keepActiveView)",
+        "UIInputManager.OnCancelEarly += OnUICancelEarly;",
+        "UIInputManager.OnCancelEarly -= OnUICancelEarly;",
+        "Button target = defaultToCancel ? cancelButton : confirmButton;",
     ):
         if required not in adapter_text:
             return fail("AwenOriginalConfirmDialogueGuard: adapter missing " + required)
+
+    hide_index = adapter_text.find("private static void HideDialog()")
+    hide_body = adapter_text[hide_index:hide_index + 400] if hide_index >= 0 else ""
+    if "UnsubscribeCancelEarly();" not in hide_body:
+        return fail("AwenOriginalConfirmDialogueGuard: HideDialog must unhook UI cancel (AGENTS 4.6)")
+
+    for legacy_look in (
+        "new Color(0.24f, 0.19f, 0.13f",   # 没有 sprite 的棕色直角标题条
+        "new Color(0.12f, 0.12f, 0.12f",   # 中性灰面板
+        "closeButtonLabel.text = \"X\";",  # 字母 X 当关闭图标
+    ):
+        if legacy_look in adapter_text:
+            return fail("AwenOriginalConfirmDialogueGuard: adapter regressed to legacy look -> " + legacy_look)
 
     confirm_index = adapter_text.find("confirmButton = UnityEngine.Object.Instantiate(buttonPrefab, footer.transform);")
     cancel_index = adapter_text.find("cancelButton = UnityEngine.Object.Instantiate(buttonPrefab, footer.transform);")

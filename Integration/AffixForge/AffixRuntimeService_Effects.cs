@@ -172,37 +172,41 @@ namespace BossRush
         // 普通档
         // ====================================================================
 
-        /// <summary>汲血：命中回血。</summary>
+        /// <summary>汲血：命中回血，并把实际回复量交给表现层飘字（节流在 AffixTriggerFeedback 里，VA-24）。</summary>
         private static void Do_Lifesteal(ActiveAffix active, CharacterMainControl main)
         {
-            Do_HealByMaxHealthRatio(main, AffixDefinitions.GetTierValue(active.Def, active.Tier));
+            float healed = Do_HealByMaxHealthRatio(main, AffixDefinitions.GetTierValue(active.Def, active.Tier));
+            AffixTriggerFeedback.OnLifesteal(main, healed);
         }
 
         /// <summary>
-        /// 按最大生命比例回血。
+        /// 按最大生命比例回血，返回实际回复量（满血时为 0）。
         /// 走 Health.AddHealth 而不是 CharacterMainControl.AddHealth：
         /// 前者不吃 HealGain 加成，与 blood_pact 现役口径一致，词缀数值才可控。
         /// </summary>
-        private static void Do_HealByMaxHealthRatio(CharacterMainControl main, float ratio)
+        private static float Do_HealByMaxHealthRatio(CharacterMainControl main, float ratio)
         {
             if (ratio <= 0f)
             {
-                return;
+                return 0f;
             }
 
             Health health = main.Health;
             if (health == null || health.IsDead)
             {
-                return;
+                return 0f;
             }
 
             float heal = health.MaxHealth * ratio;
             if (heal <= 0f)
             {
-                return;
+                return 0f;
             }
 
+            float before = health.CurrentHealth;
             health.AddHealth(heal);
+            float healed = health.CurrentHealth - before;
+            return healed > 0f ? healed : 0f;
         }
 
         /// <summary>磐石：受击短暂加护甲（叠层由 ModifierAction.OnBuffLayerChanged 免费处理）。</summary>
@@ -260,6 +264,7 @@ namespace BossRush
             reflect.damagePoint = attacker.transform != null ? attacker.transform.position : info.damagePoint;
             reflect.AddElementFactor(ElementTypes.physics, 1f);
             target.Hurt(reflect);
+            AffixTriggerFeedback.OnThorns(attacker);
         }
 
         // ====================================================================
@@ -381,6 +386,7 @@ namespace BossRush
             extra.fromWeaponItemID = info.fromWeaponItemID;
             extra.AddElementFactor(ElementTypes.electricity, 1f);
             victim.Hurt(extra);
+            AffixTriggerFeedback.OnOvercharge(victim, info.damagePoint);
         }
 
         // ====================================================================

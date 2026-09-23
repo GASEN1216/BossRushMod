@@ -501,7 +501,7 @@ namespace BossRush
                     {
                         FX.PopText.Pop("+" + amount.ToString("F0"),
                             dragonDescendantInstance.transform.position + Vector3.up * 2.5f,
-                            new Color(0.2f, 1f, 0.2f), 1.2f, null);
+                            BossRushUIColors.SuccessText, 1.2f, null);
                     }
                 }
                 catch { }

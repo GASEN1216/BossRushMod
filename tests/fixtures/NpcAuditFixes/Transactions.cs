@@ -37,7 +37,7 @@ namespace Saves
 }
 namespace ItemStatsSystem
 {
-    public class Inventory { public List<Item> Content = new List<Item>(); public event Action<Inventory, int> onContentChanged; public bool AddItem(Item item) { Content.Add(item); item.InInventory = this; return true; } }
+    public class Inventory { public List<Item> Content = new List<Item>(); public event Action<Inventory, int> onContentChanged; public bool AddItem(Item item) { Content.Add(item); item.InInventory = this; return true; } public bool AddAndMerge(Item item, int start) { return AddItem(item); } }
     public class Item : UnityEngine.Object
     {
         public readonly GameObject gameObject;
@@ -84,6 +84,8 @@ public static class ItemUtilities
     public static bool FailBefore, FailAfter;
     public static int Buffered;
     public static void SendToPlayerStorage(Item item, bool buffer) { Buffered++; item.DestroyTree(); }
+    // 2026-09-23：玩家自己塞进扫箱的物品先试背包（TryReturnResultItemsToPlayer 的留箱分支）；替身与 SendToPlayer 同一套失败开关。
+    public static bool SendToPlayerCharacter(Item item, bool dontMerge) { if (FailBefore) return false; item.InInventory = CharacterMainControl.Main.Inventory; item.InInventory.Content.Add(item); return true; }
     public static void SendToPlayer(Item item, bool dontMerge, bool storage)
     {
         if (FailBefore) throw new Exception("delivery refused");

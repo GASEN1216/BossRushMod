@@ -142,7 +142,7 @@ namespace BossRush
             var choices = new List<SkyIslandStoryPresentation.Choice>();
             BountyChoices(choices, rewardPosition);
             if (back != null)
-                choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("返回", "Back"), delegate { back(); return null; }));
+                choices.Add(SkyIslandStoryPresentation.AsSecondary(new SkyIslandStoryPresentation.Choice(L10n.T("返回", "Back"), delegate { back(); return null; })));
             presentation.Show(L10n.T("航务委托", "Lane contracts"), WithNextStep(ContractsBrief()), choices, null,
                 SkyIslandUiArt.GetScene("Search_B"));
         }
@@ -178,11 +178,45 @@ namespace BossRush
             choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.StationChoice(station), delegate
             {
                 if (fieldcraft == null)
-                    return L10n.T("工具还没摆开，等群岛就绪再来。", "The tools are not laid out yet — come back once the isles are ready.");
+                    return L10n.T("工具还没摆开，等群岛就绪再来。", "The tools aren't laid out yet. Come back once the isles are ready.");
                 OpenCrafting(station);
                 // 返回 null：新开的合成面板自己的正文保持不动（见 SkyIslandStoryPresentation.BuildChoice）。
                 return null;
             }));
         }
+
+        #region 世界里的光与纪念物木桩（2026-09-23 审美审查 UE-08 / UE-20）
+
+        /// <summary>
+        /// 纪念物点光的世界色：调用点仍按语义传 UI token（航标绿 / 星灯金 / 天青），这里换成世界里的光色。
+        /// UI token 是给深底上的小字配的：<c>Success</c> 是给白字垫底的暗绿按钮色，拿来当 14 m 的点光在地上是一片发闷的绿；
+        /// <c>Accent</c> 的薄荷青、<c>WarningText</c> 的亮黄在暖琥珀的岛上也都偏艳。强度与范围不变。
+        /// </summary>
+        private static Color WorldLight(Color token)
+        {
+            if (token == BossRushUIColors.Success) return new Color(0.72f, 0.92f, 0.76f);        // 风标、菜畦：柔和的叶绿
+            if (token == BossRushUIColors.WarningText) return new Color(1.0f, 0.86f, 0.58f);     // 星灯、钟庭：暖金
+            if (token == BossRushUIColors.Accent) return new Color(0.66f, 0.88f, 0.90f);          // 星图、风眼、腰牌、归航船：浅天青
+            return token;
+        }
+
+        /// <summary>信鸽头顶那盏光：暖白，不再借 TextPrimary 的冷白（在暖色岛上发青）。</summary>
+        private static readonly Color PigeonLight = new Color(1.0f, 0.92f, 0.80f);
+
+        private Material memorialWood;
+        private bool memorialWoodSearched;
+
+        /// <summary>纪念物木桩用的作者木材质：每趟在世界根里找一次（与桥口木牌同一张），找不到就不建木桩。</summary>
+        private Material MemorialWood()
+        {
+            if (!memorialWoodSearched)
+            {
+                memorialWoodSearched = true;
+                memorialWood = SkyIslandGates.FindWood(root);
+            }
+            return memorialWood;
+        }
+
+        #endregion
     }
 }

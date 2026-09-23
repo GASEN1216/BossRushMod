@@ -71,13 +71,13 @@
         "positiveItemTypeIds": [],
         "negativeItemTypeIds": [],
         "positiveBubbles": [
-          { "cn": "诶——这个我正好喜欢！", "en": "Oh, I like this!" },
+          { "cn": "诶，这个我正好喜欢！", "en": "Oh, I like this!" },
           { "cn": "谢谢你，我会好好收着的。", "en": "Thank you. I'll keep it safe." },
           { "cn": "你怎么知道我想要这个呀？", "en": "How did you know I wanted this?" }
         ],
         "negativeBubbles": [
           { "cn": "……这个我大概用不上。", "en": "I don't think I can use this." },
-          { "cn": "唔，谢谢，不过下次不用麻烦了。", "en": "Thanks, but you needn't bring this again." }
+          { "cn": "唔，谢谢，不过下次不用麻烦了。", "en": "Thanks. No need to bring this one again." }
         ],
         "normalBubbles": [
           { "cn": "谢谢啦。", "en": "Thanks." },
@@ -89,7 +89,7 @@
               "minLevel": 0,
               "lines": [
                 { "cn": "又是你啊，今天外面还太平吗？", "en": "You again. Quiet out there today?" },
-                { "cn": "站在这儿看久了，连风都认得我了。", "en": "Been here so long, I know every draft." },
+                { "cn": "在这儿待久了，哪块砖松了我都知道。", "en": "Been here so long I know which bricks are loose." },
                 { "cn": "你回来了就好。", "en": "Glad you're back." }
               ]
             },
@@ -144,7 +144,7 @@
             { "cn": "今天也辛苦了。", "en": "Long day? Take a rest." }
           ],
           "dialogue_idle_married": [
-            { "cn": "有你在，这地方才像个家。", "en": "This place feels like home with you here." }
+            { "cn": "你一出门，屋里就静得慌。", "en": "House gets way too quiet when you're out." }
           ],
           "dialogue_farewell_married": [
             { "cn": "去吧，我等你。", "en": "Go on. I'll be waiting." }
@@ -197,7 +197,7 @@
           { "cn": "你还记得我喜欢什么。", "en": "You remembered what I like." }
         ],
         "negativeBubbles": [
-          { "cn": "谢谢你的心意，只是我暂时用不上。", "en": "That is kind of you, but I have no use for it just now." }
+          { "cn": "心意我领了，这个地里用不上。", "en": "Kind of you, but it's no use in the fields." }
         ],
         "normalBubbles": [
           { "cn": "我收下了，谢谢。", "en": "I'll take it. Thank you." }
@@ -233,7 +233,7 @@
             { "cn": "这一垄先留种，可别全摘了。", "en": "Leave this row for seed. Don't pick it all." },
             { "cn": "菜汤得小火煨，火大了准糊底。", "en": "Low heat for the soup, or it will burn." },
             { "cn": "篱笆又松了一截，明早得补上。", "en": "The fence has come loose again. I'll mend it tomorrow." },
-            { "cn": "菜篮要补个底，不然一路捡菜回来。", "en": "Need to mend this basket, or I will be picking greens off the path." }
+            { "cn": "菜篮要补个底，不然一路捡菜回来。", "en": "Need to mend this basket, or I'll be picking greens off the path." }
           ],
           "afterGift": [
             { "cn": "我会好好收着的。", "en": "I'll keep it safe." }
@@ -245,26 +245,26 @@
             { "cn": "路上当心，等你回来。", "en": "Mind the road. I'll be waiting." }
           ],
           "alreadyGifted": [
-            { "cn": "今天已经收过你的礼物啦。", "en": "You have already given me something today." }
+            { "cn": "今天已经收过你的礼物啦。", "en": "You already gave me something today." }
           ],
           "alreadyGiftedPositive": [
-            { "cn": "今天已经送过了，留一些给自己吧。", "en": "You have given already today — keep something for yourself." }
+            { "cn": "今天已经送过了，留一些给自己吧。", "en": "That's plenty for today, save some for yourself." }
           ],
           "alreadyGiftedNormal": [
             { "cn": "今天收过啦，给自己留点。", "en": "You gave me something today. Keep some for yourself." }
           ],
           "alreadyGiftedNegative": [
-            { "cn": "今天就不再麻烦你了。", "en": "I will not trouble you any further today." }
+            { "cn": "今天就不再麻烦你了。", "en": "Don't trouble yourself any more today." }
           ]
         },
         "marriedDialogues": {
           "dialogue_greeting_married": [
             { "cn": "忙完啦？饿了就歇一会儿，别光顾着赶路。", "en": "Done for now? Rest if you're hungry. Don't spend all day rushing." },
-            { "cn": "鞋又湿了？可别硬撑，咱们找机会换双干的。", "en": "Wet boots again? Don't tough it out. Let's find you a dry pair when we can." }
+            { "cn": "鞋又湿了？脱下来，我给你烤烤。", "en": "Wet boots again? Take them off. I'll dry them by the fire." }
           ],
           "dialogue_idle_married": [
             { "cn": "明天种点什么？这次听你的。", "en": "What shall we plant tomorrow? Your pick this time." },
-            { "cn": "再忙也得歇歇，陪我说会儿话吧。", "en": "Even busy days need a pause. Stay and talk with me a little." }
+            { "cn": "再忙也得歇歇，陪我说会儿话吧。", "en": "Take a break. Sit and talk with me a while." }
           ],
           "dialogue_farewell_married": [
             { "cn": "饭给你留着，别赶路赶得忘了吃。", "en": "I'll save you dinner. Don't forget to eat out there." },
@@ -277,7 +277,7 @@
             { "cn": "正想买这个呢，你倒先带回来了。", "en": "I was going to buy this. You beat me to it." }
           ],
           "gift_normal_married": [
-            { "cn": "我先收好了。你的心意，我记着呢。", "en": "I'll keep it safe. I know the thought you put into it." }
+            { "cn": "我先收好了。你的心意，我记着呢。", "en": "I'll keep it safe. I won't forget this." }
           ]
         }
       }
@@ -315,7 +315,7 @@
           { "cn": "你还记得我喜欢什么。", "en": "You remembered what I like." }
         ],
         "negativeBubbles": [
-          { "cn": "谢谢你的心意，只是我暂时用不上。", "en": "That is kind of you, but I have no use for it just now." }
+          { "cn": "心意我领了，这个修灯用不上。", "en": "Kind of you, but it's no use for lamp work." }
         ],
         "normalBubbles": [
           { "cn": "我收下了，谢谢。", "en": "I'll take it. Thank you." }
@@ -357,22 +357,22 @@
             { "cn": "我会好好收着的。", "en": "I'll keep it safe." }
           ],
           "levelUp": [
-            { "cn": "这回我不用放下工具防着你了。", "en": "I don't feel the need to guard my tools around you now." }
+            { "cn": "这回我不用放下工具防着你了。", "en": "I don't have to watch my tools around you anymore." }
           ],
           "farewell": [
             { "cn": "路上当心，等你回来。", "en": "Mind the road. I'll be waiting." }
           ],
           "alreadyGifted": [
-            { "cn": "今天已经收过你的礼物啦。", "en": "You have already given me something today." }
+            { "cn": "今天已经收过你的礼物啦。", "en": "You already gave me something today." }
           ],
           "alreadyGiftedPositive": [
-            { "cn": "今天已经送过了，留一些给自己吧。", "en": "You have given already today — keep something for yourself." }
+            { "cn": "今天已经送过了，留一些给自己吧。", "en": "That's plenty for today, save some for yourself." }
           ],
           "alreadyGiftedNormal": [
             { "cn": "今天的收好了，别又掏空口袋。", "en": "Today's gift is put away. Don't empty your pockets again." }
           ],
           "alreadyGiftedNegative": [
-            { "cn": "今天就不再麻烦你了。", "en": "I will not trouble you any further today." }
+            { "cn": "今天就不再麻烦你了。", "en": "Don't trouble yourself any more today." }
           ]
         },
         "marriedDialogues": {

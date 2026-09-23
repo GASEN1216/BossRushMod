@@ -1291,7 +1291,6 @@ namespace BossRush
                 StartCoroutine(DelayedBossPositionValidation(character, 0.5f));
                 RegisterEnemyRecoveryAnchor(character, position);
 
-                ShowMessage(L10n.T("第 " + (currentEnemyIndex + 1) + " 波: " + preset.displayName, "Wave " + (currentEnemyIndex + 1) + ": " + preset.displayName));
                 DevLog("[BossRush] 成功生成敌人: " + preset.displayName + " at " + position);
 
                 return character;

@@ -165,30 +165,26 @@ namespace BossRush
 
                 string displayText;
                 bool interactable;
-                Color buttonColor;
 
                 if (!hasItems)
                 {
                     displayText = emptyText;
                     interactable = false;
-                    buttonColor = Color.gray;
                 }
                 else if (!canAfford)
                 {
                     bool usePurification = IsZombieModeTemporaryCourierPurificationService(courierNPCTransform);
-                    displayText = sendText + " (<color=#FF0000>" + (usePurification ? "净化点 " : "￥") + fee + "</color>)";
+                    displayText = sendText + " (<color=" + CourierDangerHex + ">" + GetCourierCurrencyPrefix(usePurification) + fee + "</color>)";
                     interactable = false;
-                    buttonColor = Color.gray;
                 }
                 else
                 {
                     bool usePurification = IsZombieModeTemporaryCourierPurificationService(courierNPCTransform);
-                    displayText = sendText + " (" + (usePurification ? "净化点 " : "￥") + fee + ")";
+                    displayText = sendText + " (" + GetCourierCurrencyPrefix(usePurification) + fee + ")";
                     interactable = true;
-                    buttonColor = new Color(0.2f, 0.8f, 0.2f);
                 }
 
-                ApplyButtonState(sendButton, sendButtonObject, buttonText, displayText, interactable, buttonColor, true);
+                ApplyButtonState(sendButton, sendButtonObject, buttonText, displayText, interactable, true);
             }
 
             if (quickStoreButton != null)
@@ -199,7 +195,6 @@ namespace BossRush
                 string quickStoreText = canQuickStore
                     ? quickStoreLabel + " (" + transferableCount + ")"
                     : quickStoreLabel;
-                Color quickStoreColor = canQuickStore ? new Color(0.2f, 0.8f, 0.2f) : Color.gray;
 
                 ApplyButtonState(
                     quickStoreButton,
@@ -207,13 +202,16 @@ namespace BossRush
                     quickStoreButtonText,
                     quickStoreText,
                     canQuickStore,
-                    quickStoreColor,
                     false);
             }
         }
 
         /// <summary>
-        /// 统一应用按钮文案、颜色和交互状态。
+        /// 统一应用按钮文案与交互状态。
+        ///
+        /// 【不再改 ColorBlock】这几颗按钮克隆自官方整理按钮，保持官方外观与官方 hover / click 音效。
+        /// 旧写法把 normalColor 写成 (0.2,0.8,0.2) 荧光绿、悬停 ×1.1（alpha 一起乘、RGB 只到 0.88），
+        /// 官方灰褐色背包界面里冒出一块平涂色块（审美审查 UA-02）。能不能点只由 interactable 与文案表达。
         /// </summary>
         private static void ApplyButtonState(
             Button targetButton,
@@ -221,7 +219,6 @@ namespace BossRush
             TextMeshProUGUI targetText,
             string displayText,
             bool interactable,
-            Color buttonColor,
             bool useRichText)
         {
             if (targetButton == null)
@@ -245,12 +242,14 @@ namespace BossRush
             }
 
             targetButton.interactable = interactable;
-            ColorBlock colors = targetButton.colors;
-            colors.normalColor = buttonColor;
-            colors.highlightedColor = buttonColor * 1.1f;
-            colors.pressedColor = buttonColor * 0.9f;
-            colors.disabledColor = Color.gray;
-            targetButton.colors = colors;
+        }
+
+        /// <summary>
+        /// 费用前缀：丧尸模式临时快递员收净化点（中英双语，AGENTS §4.4；旧写法英文界面也输出「净化点」），其余收现金。
+        /// </summary>
+        private static string GetCourierCurrencyPrefix(bool usePurification)
+        {
+            return usePurification ? L10n.T("净化点 ", "Purification ") : "￥";
         }
 
         /// <summary>

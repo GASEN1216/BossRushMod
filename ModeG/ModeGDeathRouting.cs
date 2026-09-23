@@ -275,8 +275,8 @@ namespace BossRush
                         }
 
                         host.ShowBigBanner(L10n.T(
-                            "<color=#B8860B>宿命已改写</color> 九波胜利",
-                            "<color=#B8860B>Fate Rewritten</color> Nine Waves Cleared"));
+                            ModeGRichText.WarningTag + "宿命已改写</color> 九波胜利",
+                            ModeGRichText.WarningTag + "Fate Rewritten</color> Nine Waves Cleared"));
                         try { ModeGRecapPanel.Show(module, ModeGBattleResult.Victory, string.Empty, previousBestWave); }
                         catch (Exception e)
                         {

@@ -19,12 +19,17 @@ namespace BossRush
                     || _runState.Lifecycle == ModeHLifecycle.OddsPreview);
         }
 
-        private void AddPreparationOption(ModeHPageContent page, string label, Action edit)
+        /// <summary>
+        /// 整备页的一行选项。<paramref name="selected"/> 为真时这一行画成选中卡（主色描边 + 「√ 已选」角标），
+        /// 标签里不再拼行首「√ 」（审查 UB-11：选中与未选中只差一个字符）。
+        /// </summary>
+        private void AddPreparationOption(ModeHPageContent page, string label, Action edit, bool selected = false)
         {
             ModeHMatchRosterDto owner = _season.matchRoster;
             page.PreparationOptions.Add(new ModeHActionData
             {
                 Label = label,
+                IsSelected = selected,
                 OnClick = delegate
                 {
                     if (!CanEditLoadout(owner)) return;
@@ -101,8 +106,8 @@ namespace BossRush
             foreach (string id in live)
             {
                 string profileId = id;
-                AddPreparationOption(page, (roster.matchStarterProfileId == id ? "√ " : "")
-                    + L10n.T("首发：", "Starter: ") + ResolveProfileDisplayName(id) + "\n" + DescribeFighterState(FindSeasonProfile(id)), delegate
+                AddPreparationOption(page, L10n.T("首发：", "Starter: ") + ResolveProfileDisplayName(id)
+                    + "\n" + DescribeFighterState(FindSeasonProfile(id)), delegate
                 {
                     if (roster.matchStarterProfileId == profileId) return;
                     string old = roster.matchStarterProfileId;
@@ -114,22 +119,21 @@ namespace BossRush
                     }
                     roster.starterKitIds = BuildDefaultKitSelection(FindSeasonProfile(profileId));
                     roster.activeProfileId = profileId;
-                });
+                }, roster.matchStarterProfileId == id);
                 if (id == roster.matchStarterProfileId) continue;
-                AddPreparationOption(page, (roster.matchRelayProfileId == id ? "√ " : "")
-                    + L10n.T("接力：", "Relay: ") + ResolveProfileDisplayName(id) + "\n" + DescribeFighterState(FindSeasonProfile(id)), delegate
+                AddPreparationOption(page, L10n.T("接力：", "Relay: ") + ResolveProfileDisplayName(id)
+                    + "\n" + DescribeFighterState(FindSeasonProfile(id)), delegate
                 {
                     if (roster.matchRelayProfileId == profileId) return;
                     roster.matchRelayProfileId = profileId;
                     roster.relayKitIds = BuildDefaultKitSelection(FindSeasonProfile(profileId));
-                });
+                }, roster.matchRelayProfileId == id);
             }
-            AddPreparationOption(page, (string.IsNullOrEmpty(roster.matchRelayProfileId) ? "√ " : "")
-                + L10n.T("接力休息，本场单人出战", "Rest relay; fight solo"), delegate
+            AddPreparationOption(page, L10n.T("接力休息，本场单人出战", "Rest relay; fight solo"), delegate
             {
                 roster.matchRelayProfileId = string.Empty;
                 roster.relayKitIds = new List<string>();
-            });
+            }, string.IsNullOrEmpty(roster.matchRelayProfileId));
         }
 
         private void AddCommandOptions(ModeHPageContent page, ModeHMatchRosterDto roster)
@@ -144,9 +148,8 @@ namespace BossRush
                 foreach (ModeHCommandSpec spec in ModeHContentCatalog.Commands)
                     if (spec.CommandId == command) { name = L10n.T(spec.NameKey) + "\n"
                         + DescribeCommand(spec, starter, relay); break; }
-                AddPreparationOption(page, (_selectedMatchCommandId == command ? "√ " : "")
-                    + L10n.T("口令：", "Command: ") + name,
-                    delegate { _selectedMatchCommandId = selected; });
+                AddPreparationOption(page, L10n.T("口令：", "Command: ") + name,
+                    delegate { _selectedMatchCommandId = selected; }, _selectedMatchCommandId == command);
             }
         }
 
@@ -165,8 +168,7 @@ namespace BossRush
                 });
                 if (!replacesSlot && selected.Count >= ModeHConfig.MaxKitsPerFighter) continue;
                 ModeHResolvedKit choice = kit;
-                AddPreparationOption(page, (selected.Contains(kit.Spec.KitId) ? "√ " : "")
-                    + L10n.T(kit.Spec.NameKey) + "\n" + L10n.T(kit.Spec.DescKey), delegate
+                AddPreparationOption(page, L10n.T(kit.Spec.NameKey) + "\n" + L10n.T(kit.Spec.DescKey), delegate
                 {
                     if (!selected.Remove(choice.Spec.KitId))
                     {
@@ -178,7 +180,7 @@ namespace BossRush
                         if (selected.Count < ModeHConfig.MaxKitsPerFighter) selected.Add(choice.Spec.KitId);
                     }
                     selected.Sort(StringComparer.Ordinal);
-                });
+                }, selected.Contains(kit.Spec.KitId));
             }
         }
 

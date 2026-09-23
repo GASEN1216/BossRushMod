@@ -13,7 +13,7 @@ No end. No evacuation. Bosses get +2% stronger every wave, forever. **How long c
 - **Bosses/wave**: 3 (adjustable in config)
 - **Waves**: Unlimited
 - **Boss scaling**: +2% HP and damage per wave, added linearly: 1.00× on wave 1, 1.98× on wave 50, 2.98× on wave 100
-- **Loot crates**: None — uses a cash pool instead
+- **Loot crates**: None; you get a cash pool instead
 - **Clear condition**: Can't clear. Survive until you don't
 
 ## Cash Pool & Rewards

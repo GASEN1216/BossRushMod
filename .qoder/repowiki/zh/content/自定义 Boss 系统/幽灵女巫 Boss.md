@@ -387,3 +387,11 @@ Boss --> Weapon["PhantomWitchScytheWeaponConfig"]
 - 阶段阈值与包间隔：Phase2/Phase3 血量阈值与包间隔在配置中定义，便于调参与平衡。
 - 诅咒 Buff：共享 Buff ID 与层数限制，确保多来源叠加可控。
 - 武器 Stats：攻速、范围、穿透、暴击等数值位于武器配置，便于后续平衡调整。
+
+## 2026-09-23 特效系统修复
+
+- 材质：原先首选的 `Legacy Shaders/Particles/Additive` 等着色器在游戏里不存在，全部改走共享工厂 `Common/Effects/BossRushFxMaterials.cs`（URP `Particles/Unlit` 透明变体；线与面片 Alpha，星尘 / 魂焰核心 / 闪光 Additive）。上色写 `_BaseColor`，不写废弃的 `_Color`。
+- 粒子尺寸：不再用 `startSizeMultiplier`（两常数随机模式下它只改上限，把烟与星尘拉到 2 m 的紫雾团），显式 `MinMaxCurve`；守卫 `PhantomWitchScytheSwingParticleProfileGuard` 禁止目录内再出现该写法。
+- `Circle` 发射器统一放平；诅咒领域预警外圈固定在判定半径、中心填充按蓄力长满、最后闪一下；横扫与怨灵拖斩出手前有扇形预警（守卫 `PhantomWitchVfxReadabilityGuard`）。判定半径与时序未改。
+- 灯光强度与范围收敛，特效按粒子寿命淡出后再回收；瞬移标记给借来的霜之哀伤冰焰改色走 MaterialPropertyBlock，不再污染共享材质。
+- 待 owner 定：横扫刀光视觉半径仍是判定的 2 倍（旧要求，守卫钉着）；怨灵拖斩刀光按蓄力起点锁方向、判定却跟随玩家。详情：本地 `docs/代码审查/2026-09-23-审美审查/fix_witch_report.md`。

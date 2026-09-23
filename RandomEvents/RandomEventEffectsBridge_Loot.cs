@@ -416,10 +416,8 @@ namespace BossRush
             return entriesList.Count > 0;
         }
 
-        /// <summary>
-        /// 空投下落协程：从 groundPos + height 线性落到 groundPos，落地做零伤爆炸 + AI 声源 + 音效。
-        /// crate 被销毁（切图 / 关开关 / 事件结束）时协程自行退出，绝不对空引用写坐标。
-        /// </summary>
+        /// <summary>空投伞降（先快后慢，落点琥珀圈收拢），落地扬尘 + AI 声源 + 音效；落地时刻与箱子逻辑不变（VA-23）。
+        /// crate 被销毁（切图 / 关开关 / 事件结束）时协程自行退出，绝不对空引用写坐标。</summary>
         internal IEnumerator RandomEventAirdropDropRoutine(
             GameObject crate,
             Vector3 groundPos,
@@ -435,7 +433,7 @@ namespace BossRush
             Vector3 start = groundPos + Vector3.up * height;
             float duration = Mathf.Max(0.05f, seconds);
             float t = 0f;
-
+            RandomEventFx.SpawnAirdropMarker(groundPos, crate, duration);
             while (t < duration)
             {
                 if (crate == null)
@@ -443,7 +441,7 @@ namespace BossRush
                     yield break;
                 }
 
-                crate.transform.position = Vector3.Lerp(start, groundPos, t / duration);
+                crate.transform.position = Vector3.LerpUnclamped(start, groundPos, BossRushUI.EaseOut(t / duration));
                 t += Time.deltaTime;
                 yield return null;
             }
@@ -457,7 +455,7 @@ namespace BossRush
 
             try
             {
-                CreateRandomEventHarmlessExplosion(groundPos, ExplosionFxTypes.normal, 0.5f);
+                RandomEventFx.PlayAirdropLanding(groundPos);
                 MakeRandomEventAiSound(
                     groundPos,
                     RandomEventsTuning.AirdropLandingSoundRadius,

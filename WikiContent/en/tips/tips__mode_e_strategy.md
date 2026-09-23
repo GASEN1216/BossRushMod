@@ -11,7 +11,7 @@ Sandbox free-for-all. No win/loss conditions. Set your own goals:
 
 - **Random** — Surprise assignment. For the adventurous
 - **Scav / USEC / Lab** — Balanced pools, standard experience
-- **BEAR** — Boss stats x2.5, allies are beefy. Want strong friends? Pick this
+- **BEAR** — BEAR-faction units get x2.5 HP and damage, so your allies are beefy. Want strong friends? Pick this
 - **Wolves** — Unique Wolf Bosses prioritized
 - **Lone Wolf** — No allies, everyone hostile. **Hardcore only**
 
@@ -44,8 +44,8 @@ Sandbox free-for-all. No win/loss conditions. Set your own goals:
 
 ### Lone Wolf Tips
 
-- No allies — all 5 factions are hostile
+- No allies; all 5 factions are hostile
 - Extra starting supplies to compensate
-- **Let Bosses fight each other** — clean up the survivors
+- **Let Bosses fight each other**, then clean up the survivors
 - Blood Hunt Beacon → map-wide free-for-all (spectacular and dangerous)
 - Only attempt with solid gear

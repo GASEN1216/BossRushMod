@@ -101,10 +101,10 @@ namespace BossRush
         public const string DISPLAY_NAME_EN = "Wild Horn";
 
         /// <summary>物品描述（中文）</summary>
-        public const string DESCRIPTION_CN = "一只古老的号角，吹响它可以召唤一匹忠诚的坐骑。如果坐骑已在身边，再次吹响可将其呼唤过来。";
+        public const string DESCRIPTION_CN = "一只磨旧了的号角。吹一声，坐骑就跑来；坐骑已经放出来了，再吹一声它就回到你身边。";
 
         /// <summary>物品描述（英文）</summary>
-        public const string DESCRIPTION_EN = "An ancient horn. Blow it to summon a loyal mount. If the mount is already nearby, blow again to call it to your side.";
+        public const string DESCRIPTION_EN = "A worn old horn. Blow it and your mount comes running. If it's already out, blow again to call it back to you.";
 
         /// <summary>使用说明（中文）</summary>
         public const string USAGE_DESC_CN = "使用：召唤/呼唤坐骑";

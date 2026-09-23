@@ -872,8 +872,8 @@ namespace BossRush
         {
             get
             {
-                return L10n.T("云蚋来了——夜里静水边最多。灶火的烟和驱风香能把它们赶开，风灯的光会招来更多；它们躲得开远处的子弹，贴近了才打得中。",
-                    "Cloud gnats are out — thickest near still water at night. Hearth smoke and windward incense drive them off, and a wind lantern's light draws more in. They dodge bullets from afar; up close they are easy to hit.");
+                return L10n.T("云蚋来了，夜里静水边最多。灶火的烟和驱风香能把它们赶开，风灯的光会招来更多；它们躲得开远处的子弹，贴近了才打得中。",
+                    "Cloud gnats are out, thickest near still water at night. Hearth smoke and windward incense drive them off, and a wind lantern's light draws more in. They dodge bullets from afar; up close they are easy to hit.");
             }
         }
 
@@ -881,8 +881,8 @@ namespace BossRush
         {
             get
             {
-                return L10n.T("风灯把云蚋招了过来——可灯下它们晃了眼，躲不开枪口。",
-                    "The lantern draws the gnats in — but dazzled by its light, they cannot dodge your aim.");
+                return L10n.T("风灯把云蚋招了过来，可灯下它们晃了眼，躲不开枪口。",
+                    "The lantern pulls the gnats in, but the light dazzles them and they can't dodge.");
             }
         }
 
@@ -943,7 +943,7 @@ namespace BossRush
         { get { return L10n.T("已经有两盏灭蚊灯在响了。", "Two zappers are already humming."); } }
 
         internal static string ZapperNoGround
-        { get { return L10n.T("这里放不稳灭蚊灯，换块平地。", "The zapper will not stand here — find flat ground."); } }
+        { get { return L10n.T("这里放不稳灭蚊灯，换块平地。", "The zapper won't stand here. Find flat ground."); } }
 
         /// <summary>镜水寺池边「捧一团蛙卵」的按钮：夜里才有，写着要用的云苔纤维与蛙鸣池的进度。</summary>
         internal static string SpawnChoice(bool night, int fiberInPack, int released)
@@ -963,14 +963,14 @@ namespace BossRush
         { get { return L10n.T("得有一把云苔纤维才包得住蛙卵。", "You need a strand of cloudmoss fibre to wrap the spawn."); } }
 
         internal static string SpawnAlreadyCarried
-        { get { return L10n.T("你已经捧着一团蛙卵了，先把它送回蛙鸣池。", "You are already carrying frogspawn — take it to Frogsong Pool first."); } }
+        { get { return L10n.T("你已经捧着一团蛙卵了，先把它送回蛙鸣池。", "You're already carrying frogspawn. Take it to Frogsong Pool first."); } }
 
         internal static string SpawnTaken
         {
             get
             {
-                return L10n.T("你用云苔纤维包起一团蛙卵。这一趟里把它送回蛙鸣池——人倒下了，它也就没了。",
-                    "You wrap a clutch of frogspawn in cloudmoss. Bring it to Frogsong Pool this trip — if you fall, it is lost.");
+                return L10n.T("你用云苔纤维包起一团蛙卵。这一趟里把它送回蛙鸣池，人倒下了它也就没了。",
+                    "You wrap a clutch of frogspawn in cloudmoss. Get it to Frogsong Pool this trip. If you go down, it's gone.");
             }
         }
 
@@ -987,10 +987,10 @@ namespace BossRush
         internal static string Released(int released)
         {
             if (released >= FrogTarget)
-                return L10n.T("三团蛙卵都在蛙鸣池里了。长成的蛙夜里会顺着水边散到岛上各处，替所有静水守着。那封写给池子里青蛙的信，总算有谁在替那个孩子数灯了。",
-                    "All three clutches are in Frogsong Pool now. The frogs that grow there will spread along the waterline across the isles at night, keeping watch over every pool. Someone is counting the lights for that child at last.");
-            return L10n.T("蛙卵沉进了蛙鸣池的浅水。等它们长起来，会顺着水边散开——岛上近水的地方都会少些云蚋。（蛙鸣池 ",
-                "The frogspawn sinks into the shallows of Frogsong Pool. Once they grow, they will spread along the waterline — there will be fewer gnats near standing water across the isles. (Frogsong Pool ") +
+                return L10n.T("三团蛙卵都在蛙鸣池里了。长成的蛙夜里会顺着水边散到岛上各处，静水边都有它们。那封写给池子里青蛙的信，总算有谁在替那个孩子数灯了。",
+                    "All three clutches are in Frogsong Pool now. The frogs that grow there will spread along the waterline at night, and every still pond will have a few. Someone is counting the lights for that child at last.");
+            return L10n.T("蛙卵沉进了蛙鸣池的浅水。等它们长起来，会顺着水边散开，岛上近水的地方都会少些云蚋。（蛙鸣池 ",
+                "The frogspawn sinks into the shallows of Frogsong Pool. Once they grow, they'll spread along the waterline, and there'll be fewer gnats near standing water across the isles. (Frogsong Pool ") +
                 released + "/" + FrogTarget + L10n.T("）", ")");
         }
 

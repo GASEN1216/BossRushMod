@@ -295,7 +295,7 @@ namespace BossRush
                 origin + Vector3.up * 0.04f,
                 ZombieModeTuning.CorruptorZoneRadius,
                 0.04f,
-                new Color(0.45f, 0.10f, 0.65f, 0.50f));
+                new Color(0.58f, 0.36f, 0.74f, 0.55f));
 
             ZombieModeAreaTickRuntime runtime = zone.AddComponent<ZombieModeAreaTickRuntime>();
             runtime.Initialize(
@@ -321,7 +321,7 @@ namespace BossRush
                 origin + Vector3.up * 0.03f,
                 radius,
                 0.03f,
-                new Color(0.30f, 0.65f, 0.20f, 0.45f));
+                new Color(0.46f, 0.70f, 0.36f, 0.50f));
 
             ZombieModeAreaTickRuntime runtime = seg.AddComponent<ZombieModeAreaTickRuntime>();
             runtime.Initialize(
@@ -871,7 +871,7 @@ namespace BossRush
                 origin + Vector3.up * 0.05f,
                 ZombieModeTuning.CorruptorDeathCloudRadius,
                 0.04f,
-                new Color(0.55f, 0.20f, 0.85f, 0.40f));
+                new Color(0.62f, 0.42f, 0.82f, 0.50f));
 
             ZombieModeAreaTickRuntime runtime = cloud.AddComponent<ZombieModeAreaTickRuntime>();
             runtime.Initialize(
@@ -977,7 +977,8 @@ namespace BossRush
             if (currentTime >= runtimeEndTime)
             {
                 OnRuntimeStopping(inst, true);
-                Destroy(gameObject);
+                // 地面圈到时淡出 0.18 s 再删（纯表现，审美审查 VA-27）；没有地面圈的 runtime 照旧直接删。
+                ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);
                 return;
             }
 
@@ -1011,6 +1012,8 @@ namespace BossRush
         private float tickInterval;
         private float nextTickTime;
         private bool followSourcePosition;
+        private float startupSeconds;
+        private bool armed;
 
         public void Initialize(
             int newRunId,
@@ -1030,6 +1033,8 @@ namespace BossRush
             tickInterval = Mathf.Max(0.1f, tick);
             followSourcePosition = followSource;
             nextTickTime = Time.unscaledTime + Mathf.Max(Mathf.Max(0f, startupDelay), tickInterval);
+            startupSeconds = Mathf.Max(0f, startupDelay);
+            armed = startupSeconds <= 0f;
             InitializeTimedRuntime(newRunId, duration);
         }
 
@@ -1043,6 +1048,13 @@ namespace BossRush
             if (followSourcePosition && source != null && source.transform != null)
             {
                 transform.position = source.transform.position + Vector3.up * 0.04f;
+            }
+
+            if (!armed)
+            {
+                // 启动期读条（纯表现，审美审查 UC-19）：腐蚀领域启动期内圈涨满，第一次结算时刻不变。
+                ZombieModeZoneVisuals.SetCountdown(gameObject, 1f - (nextTickTime - Time.unscaledTime) / startupSeconds);
+                armed = Time.unscaledTime >= nextTickTime;
             }
 
             if (Time.unscaledTime < nextTickTime)

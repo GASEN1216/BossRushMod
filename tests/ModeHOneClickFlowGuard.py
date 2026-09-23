@@ -199,8 +199,9 @@ def check(sources):
             "入口页与转会页用选人卡渲染")
     portrait = body("pages", "private static void CreatePortrait(")
     ordered(portrait, ["CodexPortraitCache.GetPortrait(data.PortraitKey)",
-                       "CodexPortraitCache.GetOfficialIcon(data.PortraitKey)", '"Initial"'],
-            "立绘链与图鉴同源：图鉴立绘 → 官方图标 → 名字首字")
+                       "CodexPortraitCache.GetOfficialIcon(data.PortraitKey)",
+                       "ModeHPresentationAssetCache.GetEmblemSprite()", '"Initial"'],
+            "立绘链与图鉴同源：图鉴立绘 → 官方图标 → 模式徽记淡显 → 名字首字（2026-09-23 UB-13：首字与名字重复，像占位）")
 
     # 单行字框：高度至少 1.45×字号 + 4，否则 TMP Ellipsis 会把整串清空
     def const_value(text, name):
@@ -249,7 +250,8 @@ PROBES = [
     ("lease", "_allVisionField.SetValue(fog, false)", "_allVisionField.GetValue(fog)"),
     ("combat", "_spectatorLease.RestoreCameraTarget();", "_spectatorLease.StopAcceptingBell();"),
     ("hud", '"Hud_EnemiesLeft"', '"Summary_EnemyCount"'),
-    ("hud", "internal const float BellTitleHeight = 44f;", "internal const float BellTitleHeight = 30f;"),
+    ("hud", "internal const float BellTitleHeight = 34f;", "internal const float BellTitleHeight = 28f;"),
+    ("pages", "sprite = ModeHPresentationAssetCache.GetEmblemSprite();", "sprite = null;"),
     ("scene", "            if (result == null || result.TotalKeys <= 0) return string.Empty;\n",
      "            if (result == null || result.TotalKeys <= 0) return string.Empty;\n"
      "            if (result.FailureReasonId != null) return result.FailureReasonId;\n"),

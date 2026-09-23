@@ -133,6 +133,50 @@ namespace BossRush
         internal static readonly int TintColorPropertyId = Shader.PropertyToID("_TintColor");
         internal static readonly int BaseColorPropertyId = Shader.PropertyToID("_BaseColor");
 
+        /// <summary>
+        /// 世界空间线 / 地面带的最小宽度（米）。相机俯仰约 55°、臂长 45 m，1080p 下 0.1 m ≈ 7 px；
+        /// 低于 0.06 m 的线只剩 1–2 px，会闪烁成噪点（审查 VB-08）。
+        /// </summary>
+        internal const float MinWorldLineWidth = 0.06f;
+
+        /// <summary>
+        /// 着色器真正读取的颜色属性。材质来自 <see cref="BossRushFxMaterials"/>：
+        /// URP `Particles/Unlit` 读 `_BaseColor`（它另有一个废弃的隐藏 `_Color`，写进去不生效，所以 `_BaseColor` 必须排第一）；
+        /// 兜底的 Legacy `Particles/Alpha Blended` 读 `_TintColor`。
+        /// </summary>
+        private static int ResolveColorPropertyId(Material shared)
+        {
+            if (shared == null)
+            {
+                return BaseColorPropertyId;
+            }
+
+            if (shared.HasProperty(BaseColorPropertyId))
+            {
+                return BaseColorPropertyId;
+            }
+
+            if (shared.HasProperty(TintColorPropertyId))
+            {
+                return TintColorPropertyId;
+            }
+
+            if (shared.HasProperty(ColorPropertyId))
+            {
+                return ColorPropertyId;
+            }
+
+            return BaseColorPropertyId;
+        }
+
+        private static bool IsUnset(Color color)
+        {
+            return Mathf.Approximately(color.r, 0f) &&
+                Mathf.Approximately(color.g, 0f) &&
+                Mathf.Approximately(color.b, 0f) &&
+                Mathf.Approximately(color.a, 0f);
+        }
+
         internal static Color GetRendererColor(Renderer renderer, MaterialPropertyBlock block)
         {
             if (renderer == null)
@@ -146,41 +190,18 @@ namespace BossRush
             }
 
             renderer.GetPropertyBlock(block);
-            Color color = block.GetColor(ColorPropertyId);
-            if (Mathf.Approximately(color.r, 0f) &&
-                Mathf.Approximately(color.g, 0f) &&
-                Mathf.Approximately(color.b, 0f) &&
-                Mathf.Approximately(color.a, 0f))
+            Material shared = renderer.sharedMaterial;
+            int propertyId = ResolveColorPropertyId(shared);
+            Color color = block.GetColor(propertyId);
+            if (IsUnset(color) && shared != null && shared.HasProperty(propertyId))
             {
-                color = block.GetColor(TintColorPropertyId);
+                color = shared.GetColor(propertyId);
             }
 
-            if (Mathf.Approximately(color.r, 0f) &&
-                Mathf.Approximately(color.g, 0f) &&
-                Mathf.Approximately(color.b, 0f) &&
-                Mathf.Approximately(color.a, 0f))
+            // Legacy Particles 片元是 2 × 顶点色 × _TintColor：存的是半值，读回时还原成 1× 语义。
+            if (propertyId == TintColorPropertyId)
             {
-                color = block.GetColor(BaseColorPropertyId);
-            }
-
-            if (Mathf.Approximately(color.r, 0f) &&
-                Mathf.Approximately(color.g, 0f) &&
-                Mathf.Approximately(color.b, 0f) &&
-                Mathf.Approximately(color.a, 0f))
-            {
-                Material shared = renderer.sharedMaterial;
-                if (shared != null && shared.HasProperty(ColorPropertyId))
-                {
-                    color = shared.color;
-                }
-                else if (shared != null && shared.HasProperty(TintColorPropertyId))
-                {
-                    color = shared.GetColor(TintColorPropertyId);
-                }
-                else if (shared != null && shared.HasProperty(BaseColorPropertyId))
-                {
-                    color = shared.GetColor(BaseColorPropertyId);
-                }
+                color *= 2f;
             }
 
             return color;
@@ -210,29 +231,25 @@ namespace BossRush
             }
 
             renderer.GetPropertyBlock(block);
-            Material shared = renderer.sharedMaterial;
-            if (shared != null && shared.HasProperty(ColorPropertyId))
-            {
-                block.SetColor(ColorPropertyId, color);
-            }
-            else if (shared != null && shared.HasProperty(TintColorPropertyId))
-            {
-                block.SetColor(TintColorPropertyId, color);
-            }
-            else
-            {
-                block.SetColor(BaseColorPropertyId, color);
-            }
+            int propertyId = ResolveColorPropertyId(renderer.sharedMaterial);
+            block.SetColor(propertyId, propertyId == TintColorPropertyId ? color * 0.5f : color);
             renderer.SetPropertyBlock(block);
         }
     }
 
+    /// <summary>
+    /// 淡出后销毁。2026-09-23 审查 VB-05：此前跳过粒子渲染器、到点整棵 Destroy，星尘 / 魂雾在亮度峰值处一帧消失。
+    /// 现在粒子渲染器也按同一 alpha 淡出（URP 粒子材质的 `_BaseColor` 乘在每颗粒子上），淡出过半时停止发射；
+    /// 挂在对象池根上时不销毁根，交给 <see cref="PhantomWitchVfxRedesign.PhantomWitchVfxRecycler"/> 回收。
+    /// </summary>
     internal sealed class PhantomWitchFadeDestroy : MonoBehaviour
     {
         private float duration = 0.3f;
         private float fadeDuration = 0.3f;
         private float elapsed;
         private bool initialized;
+        private bool emissionStopped;
+        private bool finished;
 
         private LineRenderer[] lineRenderers = new LineRenderer[0];
         private Renderer[] renderers = new Renderer[0];
@@ -240,6 +257,7 @@ namespace BossRush
         private Color[] lineStartColors = new Color[0];
         private Color[] lineEndColors = new Color[0];
         private Color[] rendererBaseColors = new Color[0];
+        private ParticleSystem[] particleSystems = new ParticleSystem[0];
 
         public void Configure(float duration)
         {
@@ -251,6 +269,8 @@ namespace BossRush
             this.duration = Mathf.Max(0.01f, duration);
             this.fadeDuration = Mathf.Clamp(fadeDuration <= 0f ? this.duration : fadeDuration, 0.01f, this.duration);
             this.elapsed = 0f;
+            this.emissionStopped = false;
+            this.finished = false;
             CacheTargets();
             initialized = true;
         }
@@ -268,13 +288,56 @@ namespace BossRush
             if (initialized)
             {
                 elapsed = 0f;
+                emissionStopped = false;
+                finished = false;
                 ApplyAlpha(1f);
             }
         }
 
+        /// <summary>
+        /// 每个渲染器 / 粒子只归离它最近的那个 FadeDestroy 管（子物体自带淡出时，根上的淡出不再抢写它的颜色，
+        /// 否则两边在重叠的几帧里交替写 alpha 会闪）。预警圈 / 扇形由 PhantomWitchTelegraphDriver 驱动，这里跳过。
+        /// </summary>
+        private bool Owns(Component component)
+        {
+            if (component == null)
+            {
+                return false;
+            }
+
+            if (component.GetComponentInParent<PhantomWitchTelegraphDriver>() != null)
+            {
+                return false;
+            }
+
+            return component.GetComponentInParent<PhantomWitchFadeDestroy>() == this;
+        }
+
         private void CacheTargets()
         {
-            lineRenderers = GetComponentsInChildren<LineRenderer>(true);
+            ParticleSystem[] allParticles = GetComponentsInChildren<ParticleSystem>(true);
+            List<ParticleSystem> particleList = new List<ParticleSystem>(allParticles.Length);
+            for (int i = 0; i < allParticles.Length; i++)
+            {
+                if (Owns(allParticles[i]))
+                {
+                    particleList.Add(allParticles[i]);
+                }
+            }
+
+            particleSystems = particleList.ToArray();
+
+            LineRenderer[] allLines = GetComponentsInChildren<LineRenderer>(true);
+            List<LineRenderer> lineList = new List<LineRenderer>(allLines.Length);
+            for (int i = 0; i < allLines.Length; i++)
+            {
+                if (Owns(allLines[i]))
+                {
+                    lineList.Add(allLines[i]);
+                }
+            }
+
+            lineRenderers = lineList.ToArray();
             lineStartColors = new Color[lineRenderers.Length];
             lineEndColors = new Color[lineRenderers.Length];
 
@@ -297,7 +360,12 @@ namespace BossRush
             for (int i = 0; i < allRenderers.Length; i++)
             {
                 Renderer renderer = allRenderers[i];
-                if (renderer == null || renderer is LineRenderer || renderer is ParticleSystemRenderer)
+                if (renderer == null || renderer is LineRenderer)
+                {
+                    continue;
+                }
+
+                if (!Owns(renderer))
                 {
                     continue;
                 }
@@ -315,6 +383,11 @@ namespace BossRush
 
         private void Update()
         {
+            if (finished)
+            {
+                return;
+            }
+
             elapsed += Time.deltaTime;
 
             float fadeStart = duration - fadeDuration;
@@ -324,11 +397,37 @@ namespace BossRush
             }
 
             float t = Mathf.Clamp01((elapsed - fadeStart) / fadeDuration);
-            ApplyAlpha(1f - t);
+            ApplyAlpha(1f - BossRushUI.SmoothStep(t));
+
+            // 淡出过半再停发射：t=0 的 burst 一定已经发出，新粒子也不会在 alpha 接近 0 时白白生成。
+            if (!emissionStopped && t >= 0.5f)
+            {
+                emissionStopped = true;
+                StopEmission();
+            }
 
             if (elapsed >= duration)
             {
+                finished = true;
+                // 对象池根由回收器负责清子物体并入池；这里销毁根会让池子永远拿不到可复用的根。
+                if (GetComponent<PhantomWitchVfxRedesign.PhantomWitchVfxRecycler>() != null)
+                {
+                    return;
+                }
+
                 Destroy(gameObject);
+            }
+        }
+
+        private void StopEmission()
+        {
+            for (int i = 0; i < particleSystems.Length; i++)
+            {
+                ParticleSystem ps = particleSystems[i];
+                if (ps != null)
+                {
+                    ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+                }
             }
         }
 
@@ -547,7 +646,7 @@ namespace BossRush
             this.targetRadius = Mathf.Max(0f, targetRadius);
             this.duration = Mathf.Max(0.01f, duration);
             this.baseColor = color;
-            this.startWidth = lineRenderer != null ? lineRenderer.widthMultiplier : Mathf.Max(0.001f, width);
+            this.startWidth = Mathf.Max(PhantomWitchFxRenderUtil.MinWorldLineWidth, lineRenderer != null ? lineRenderer.widthMultiplier : width);
             this.elapsed = 0f;
         }
 
@@ -579,7 +678,7 @@ namespace BossRush
             float t = Mathf.Clamp01((elapsed - delay) / duration);
             float eased = 1f - (1f - t) * (1f - t);
             float radius = Mathf.Lerp(0f, targetRadius, eased);
-            float width = Mathf.Lerp(startWidth, Mathf.Max(0.04f, startWidth * 0.3f), t);
+            float width = Mathf.Lerp(startWidth, Mathf.Max(PhantomWitchFxRenderUtil.MinWorldLineWidth, startWidth * 0.3f), t);
 
             Color color = baseColor;
             color.a = baseColor.a * (1f - t);
@@ -621,7 +720,7 @@ namespace BossRush
             this.startRadius = Mathf.Max(0f, startRadius);
             this.duration = Mathf.Max(0.01f, duration);
             this.baseColor = color;
-            this.startWidth = lineRenderer != null ? lineRenderer.widthMultiplier : Mathf.Max(0.001f, width);
+            this.startWidth = Mathf.Max(PhantomWitchFxRenderUtil.MinWorldLineWidth, lineRenderer != null ? lineRenderer.widthMultiplier : width);
             this.elapsed = 0f;
         }
 
@@ -648,7 +747,7 @@ namespace BossRush
             float t = Mathf.Clamp01(elapsed / duration);
             float eased = t * t;
             float radius = Mathf.Lerp(startRadius, 0f, eased);
-            float width = Mathf.Lerp(startWidth, Mathf.Max(0.02f, startWidth * 0.4f), t);
+            float width = Mathf.Lerp(startWidth, Mathf.Max(PhantomWitchFxRenderUtil.MinWorldLineWidth, startWidth * 0.4f), t);
 
             Color color = baseColor;
             color.a = baseColor.a * (1f - t);
@@ -697,7 +796,7 @@ namespace BossRush
             this.forward = forward;
             this.duration = Mathf.Max(0.01f, duration);
             this.baseColor = color;
-            this.startWidth = lineRenderer != null ? lineRenderer.widthMultiplier : Mathf.Max(0.001f, width);
+            this.startWidth = Mathf.Max(PhantomWitchFxRenderUtil.MinWorldLineWidth, lineRenderer != null ? lineRenderer.widthMultiplier : width);
             this.elapsed = 0f;
             this.pathPointsBuffer = null;
         }
@@ -738,7 +837,7 @@ namespace BossRush
             float t = Mathf.Clamp01(elapsed / duration);
             float eased = 1f - (1f - t) * (1f - t);
             float radius = Mathf.Lerp(startRadius, targetRadius, eased);
-            float width = Mathf.Lerp(startWidth, Mathf.Max(0.03f, startWidth * 0.35f), t);
+            float width = Mathf.Lerp(startWidth, Mathf.Max(PhantomWitchFxRenderUtil.MinWorldLineWidth, startWidth * 0.35f), t);
 
             Color color = baseColor;
             color.a = baseColor.a * (1f - t);

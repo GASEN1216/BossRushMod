@@ -200,6 +200,8 @@ namespace BossRush
             label.transform.SetParent(sign.transform, false);
             TextMeshProUGUI text = label.GetComponent<TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(text);
+            // 压在码头与亮地面上的世界字要有描边托住（2026-09-23 审美审查 UE-14），共享材质按字体一份。
+            BossRushUIKit.ApplyWorldTextOutline(text);
             text.rectTransform.anchorMin = Vector2.zero;
             text.rectTransform.anchorMax = Vector2.one;
             text.rectTransform.offsetMin = text.rectTransform.offsetMax = Vector2.zero;

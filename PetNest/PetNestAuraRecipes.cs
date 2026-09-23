@@ -172,7 +172,15 @@ namespace BossRush
                     shape.shapeType = ParticleSystemShapeType.Box;
                     shape.scale = new Vector3(1.5f * r, 1.5f * r, 0.02f);
                     shape.randomDirectionAmount = 0.15f;
+                    // 官方 Smoke 的尺寸 / 颜色曲线是给枪管 0.3–0.5 m 大团调的，原样继承会在寿命后段
+                    // 长到比崽还大：显式写「先窜起再收尖」与「亮黄 → 橙 → 暗红、淡入淡出」（VA-14）
+                    ParticleSystem.SizeOverLifetimeModule size = flames.sizeOverLifetime;
+                    size.enabled = true;
+                    size.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
+                        new Keyframe(0f, 0.6f), new Keyframe(0.3f, 1f), new Keyframe(1f, 0.25f)));
+                    Fade(flames, new Color(1f, 0.95f, 0.8f), new Color(1f, 0.7f, 0.4f), new Color(0.7f, 0.25f, 0.1f), 0.1f, 0.5f);
                     Prewarm(flames);
+                    BuildFlameLight(h);
                 }
             }
 
@@ -203,6 +211,24 @@ namespace BossRush
                 }
             }
             return any;
+        }
+
+        /// <summary>
+        /// 火光：一盏小范围、闪烁的暖橙点光（龙息武器同样带官方火光）。闪烁由 BossRushFxLightFade 自己驱动，
+        /// 不启用本组件的 Update；随特效根一起淡出、销毁。
+        /// </summary>
+        private void BuildFlameLight(float h)
+        {
+            GameObject lightObject = new GameObject("FlameLight");
+            lightObject.transform.SetParent(transform, false);
+            lightObject.transform.localPosition = new Vector3(0f, 0.3f * h, 0f);
+            Light light = lightObject.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(1f, 0.55f, 0.22f);
+            light.range = Mathf.Clamp(2.2f * h, 0.8f, 1.8f);
+            light.shadows = LightShadows.None;
+            light.bounceIntensity = 0f;
+            BossRushFxLightFade.Attach(light, 0.7f, 0.4f, 0f, 2.9f, 0.3f);
         }
 
         private void BuildFlameFallback(float f)
@@ -237,7 +263,7 @@ namespace BossRush
                 Velocity(embers, 0.25f * u, 0.5f * u, 0f, 0f);
                 Noise(embers, 0.12f * u, 1.4f);
                 Life(embers, 0.7f, 1.2f);
-                Size(embers, 0.028f * u, 0.045f * u);
+                Size(embers, 0.032f * u, 0.05f * u);
                 Tint(embers, yellow, red);
                 Fade(embers, Color.white, new Color(1f, 0.6f, 0.3f), new Color(0.8f, 0.15f, 0.05f), 0.1f, 0.6f);
                 Stretch(embers, 0.04f, 1f);
@@ -261,7 +287,7 @@ namespace BossRush
                 Speed(shower, 0.9f * u, 1.5f * u);
                 Gravity(shower, 0.45f);
                 Life(shower, 0.45f, 0.75f);
-                Size(shower, 0.022f * u, 0.038f * u);
+                Size(shower, 0.03f * u, 0.05f * u);
                 Rate(shower, 4f * f);
                 Bursts(shower, 0.6f, 3, 5, 0.75f * f + 0.1f);
                 Fade(shower, new Color(1f, 0.95f, 0.75f), c, new Color(0.85f, 0.18f, 0.05f), 0.02f, 0.7f);
@@ -312,7 +338,7 @@ namespace BossRush
                 ShapeSphere(crackle, 0.45f * r, 0f);
                 Speed(crackle, 1.8f * u, 3f * u);
                 Life(crackle, 0.06f, 0.12f);
-                Size(crackle, 0.02f * u, 0.035f * u);
+                Size(crackle, 0.028f * u, 0.045f * u);
                 Tint(crackle, hot, c);
                 Fade(crackle, 0.02f, 0.5f);
                 Stretch(crackle, 0.035f, 1f);
@@ -341,19 +367,20 @@ namespace BossRush
             float u = _unit;
             Color light = Color.Lerp(c, new Color(0.85f, 1f, 0.45f), 0.5f);
 
+            // 叶片 16–22 cm（屏上约 11–15 px）：9–13 cm 时叶脉在 mip 3 以下糊成一个色点（VA-13）
             ParticleSystem leaves = NewEmitter("VerdantLeaves", PetNestAuraTexture.Leaf, Glow.Soft,
-                Scaled(9, f), new Vector3(0f, h + 0.05f * u, 0f), true);
+                Scaled(6, f), new Vector3(0f, h + 0.05f * u, 0f), true);
             if (leaves != null)
             {
                 ShapeCircle(leaves, r + 0.06f * u, 1f);
                 Life(leaves, 1.8f, 2.6f);
-                Size(leaves, 0.09f * u, 0.13f * u);
+                Size(leaves, 0.16f * u, 0.22f * u);
                 Gravity(leaves, 0.025f);
                 Noise(leaves, 0.18f * u, 0.7f);
                 RandomSpin(leaves, 140f);
                 Tint(leaves, c, light);
                 Fade(leaves, 0.12f, 0.8f);
-                Rate(leaves, 3.2f * f);
+                Rate(leaves, 2.2f * f);
                 Prewarm(leaves);
             }
 
@@ -365,7 +392,7 @@ namespace BossRush
                 Velocity(spores, 0.12f * u, 0.22f * u, 0f, 0f);
                 Noise(spores, 0.08f * u, 1.1f);
                 Life(spores, 1.2f, 1.9f);
-                Size(spores, 0.022f * u, 0.036f * u);
+                Size(spores, 0.03f * u, 0.048f * u);
                 Tint(spores, new Color(0.8f, 1f, 0.5f), c);
                 Twinkle(spores);
                 Rate(spores, 7f * f);
@@ -381,19 +408,20 @@ namespace BossRush
             float u = _unit;
             Color ice = Color.Lerp(c, Color.white, 0.55f);
 
+            // 雪花 16–22 cm：六条臂要在屏上认得出（VA-13；贴图臂宽也加粗了）
             ParticleSystem flakes = NewEmitter("FrostFlakes", PetNestAuraTexture.Snowflake, Glow.Bright,
-                Scaled(9, f), new Vector3(0f, h + 0.05f * u, 0f), true);
+                Scaled(6, f), new Vector3(0f, h + 0.05f * u, 0f), true);
             if (flakes != null)
             {
                 ShapeCircle(flakes, r + 0.05f * u, 1f);
                 Life(flakes, 1.6f, 2.4f);
-                Size(flakes, 0.09f * u, 0.13f * u);
+                Size(flakes, 0.16f * u, 0.22f * u);
                 Gravity(flakes, 0.02f);
                 Noise(flakes, 0.1f * u, 0.6f);
                 RandomSpin(flakes, 40f);
                 Tint(flakes, c, ice);
                 Fade(flakes, 0.12f, 0.8f);
-                Rate(flakes, 3.2f * f);
+                Rate(flakes, 2.2f * f);
                 Prewarm(flakes);
             }
 
@@ -472,7 +500,7 @@ namespace BossRush
                 Speed(drops, 0.6f * u, 0.9f * u);
                 Gravity(drops, 0.7f);
                 Life(drops, 0.35f, 0.55f);
-                Size(drops, 0.022f * u, 0.034f * u);
+                Size(drops, 0.03f * u, 0.045f * u);
                 Tint(drops, foam, Color.white);
                 Fade(drops, 0.02f, 0.7f);
                 Stretch(drops, 0.06f, 1f);
@@ -588,7 +616,8 @@ namespace BossRush
                 Size(wisps, 0.12f * u, 0.2f * u);
                 Grow(wisps, 0.6f, 1.35f);
                 RandomSpin(wisps, 60f);
-                Tint(wisps, new Color(0.05f, 0.035f, 0.08f, 0.62f), new Color(0.12f, 0.08f, 0.17f, 0.5f));
+                // 近黑但不是泥色：0.62 的不透明黑烟在浅色地面上像一块污渍，压到 0.45 并带一点紫
+                Tint(wisps, new Color(0.09f, 0.07f, 0.13f, 0.45f), new Color(0.16f, 0.12f, 0.22f, 0.38f));
                 Fade(wisps, 0.15f, 0.55f);
                 Rate(wisps, 7f * f);
                 Prewarm(wisps);
@@ -601,7 +630,7 @@ namespace BossRush
                 ShapeSphere(rim, r, 0f);
                 Velocity(rim, 0.1f * u, 0.2f * u, 0f, 0f);
                 Life(rim, 0.6f, 1f);
-                Size(rim, 0.022f * u, 0.035f * u);
+                Size(rim, 0.032f * u, 0.05f * u);
                 Tint(rim, new Color(0.72f, 0.6f, 0.95f), new Color(0.5f, 0.45f, 0.7f));
                 Fade(rim, 0.1f, 0.5f);
                 Rate(rim, 4f * f);
@@ -637,7 +666,7 @@ namespace BossRush
                 ShapeCircle(shards, r + 0.1f * u, 0f);
                 Velocity(shards, -0.03f * u, 0.03f * u, 0.9f, 0f);
                 Life(shards, 1.4f, 2f);
-                Size(shards, 0.07f * u, 0.1f * u);
+                Size(shards, 0.12f * u, 0.16f * u);
                 RandomSpin(shards, 360f);
                 Tint(shards, c, bright);
                 Fade(shards, 0.12f, 0.8f);
@@ -684,16 +713,16 @@ namespace BossRush
                 case PetNestAuraElement.Verdant:
                     kind = PetNestAuraTexture.Leaf;
                     level = Glow.Soft;
-                    sizeMin = 0.08f;
-                    sizeMax = 0.11f;
+                    sizeMin = 0.13f;
+                    sizeMax = 0.175f;
                     trails = false;
                     spin = true;
                     break;
                 case PetNestAuraElement.Frost:
                     kind = PetNestAuraTexture.Snowflake;
                     level = Glow.Bright;
-                    sizeMin = 0.08f;
-                    sizeMax = 0.11f;
+                    sizeMin = 0.13f;
+                    sizeMax = 0.175f;
                     trails = false;
                     spin = true;
                     break;
@@ -716,14 +745,14 @@ namespace BossRush
                     sizeMax = 0.13f;
                     trails = false;
                     spin = true;
-                    c = new Color(0.05f, 0.035f, 0.08f, 0.65f);
-                    c2 = new Color(0.14f, 0.1f, 0.2f, 0.55f);
+                    c = new Color(0.09f, 0.07f, 0.13f, 0.48f);
+                    c2 = new Color(0.16f, 0.12f, 0.22f, 0.4f);
                     break;
                 case PetNestAuraElement.Glimmer:
                     kind = PetNestAuraTexture.Shard;
                     level = Glow.Bright;
-                    sizeMin = 0.06f;
-                    sizeMax = 0.09f;
+                    sizeMin = 0.1f;
+                    sizeMax = 0.14f;
                     trails = false;
                     spin = true;
                     break;
@@ -876,7 +905,7 @@ namespace BossRush
             RandomSpin(glints, 0f);
             Tint(glints, Color.white, whiteGold);
             Pop(glints);
-            Bursts(glints, 0.4f, 1, 1, 0.55f);
+            Bursts(glints, 0.7f, 1, 1, 0.45f);
         }
 
         /// <summary>头顶一圈带拖尾的光冠。</summary>
@@ -911,7 +940,7 @@ namespace BossRush
             ShapeSphere(dust, 1.1f * r, 1f);
             Noise(dust, 0.08f * u, 0.9f);
             Life(dust, 1.5f, 2.5f);
-            Size(dust, 0.018f * u, 0.03f * u);
+            Size(dust, 0.026f * u, 0.04f * u);
             Tint(dust, gold, whiteGold);
             Twinkle(dust);
             Rate(dust, 9f);
@@ -994,6 +1023,12 @@ namespace BossRush
             copy.transform.localRotation = ZUp;
             copy.transform.localScale = Vector3.one;
 
+            // 只保留根上的粒子系统：官方预制体的子节点（子发射器、灯、别的粒子）不计预算、不随崽缩放
+            for (int i = copy.transform.childCount - 1; i >= 0; i--)
+            {
+                Destroy(copy.transform.GetChild(i).gameObject);
+            }
+
             ParticleSystem ps = copy.GetComponent<ParticleSystem>();
             ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             ParticleSystem.MainModule main = ps.main;
@@ -1001,6 +1036,14 @@ namespace BossRush
             main.playOnAwake = true;
             main.loop = true;
             main.scalingMode = ParticleSystemScalingMode.Local;
+            // 三轴尺寸会让 Size() 写的 startSize 不生效；子发射器 / 灯光 / 碰撞模块一律关掉
+            main.startSize3D = false;
+            ParticleSystem.SubEmittersModule subEmitters = ps.subEmitters;
+            subEmitters.enabled = false;
+            ParticleSystem.LightsModule lights = ps.lights;
+            lights.enabled = false;
+            ParticleSystem.CollisionModule collision = ps.collision;
+            collision.enabled = false;
             ParticleSystem.EmissionModule emission = ps.emission;
             emission.rateOverDistance = 0f;
 

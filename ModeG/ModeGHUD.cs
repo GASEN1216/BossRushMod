@@ -71,6 +71,19 @@ namespace BossRush
     }
 
     /// <summary>
+    /// Mode G 富文本配色：token 预先转成的开标签（HUD、终局横幅、recap 共用），类型初始化时算一次，不每帧拼。
+    /// 旧写法是 7 种网页命名色（#B8860B / #FFD700 / #FF3333 / #FF8C00 / #B22222 / #2E8B57 / #9FB4C7），
+    /// 自成一套配色，#B22222 压在深底上只有约 3.1:1（2026-09-23 审美审查 UB-05 / UB-20）。
+    /// </summary>
+    internal static class ModeGRichText
+    {
+        internal static readonly string WarningTag = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.WarningText) + ">";
+        internal static readonly string DangerTag = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText) + ">";
+        internal static readonly string SuccessTag = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.SuccessText) + ">";
+        internal static readonly string SecondaryTag = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextSecondary) + ">";
+    }
+
+    /// <summary>
     /// Mode G 运行时 HUD（规格 §15/§17 重写版）。
     ///
     /// 硬约束：
@@ -79,6 +92,12 @@ namespace BossRush
     /// - 行规格：幕·波次（"II · 5/9"）/ 唯一反制目标（本波轴或宿敌）/
     ///   Resolve X/11 / Last Stand 整数秒倒计时（休整倒计时同行替代）；
     /// - 全程防御式 try/catch，Canvas 创建失败降级为静默无 HUD（不影响 run）。
+    ///
+    /// 【底板与版式（2026-09-23 审美审查 UB-05）】旧版是一块没有底板的裸字：亮地面、雪地上白字全靠运气，
+    /// 自动缩字又开着，宿敌名或目标行一变长整块字号就缩一档。现在文字压在一张 Card 档卡片上
+    /// （共享库的描边、投影与左侧强调竖条），不缩字、自动换行，卡片高度只在文本变化时按内容量一次。
+    /// 位置 (16, -140)：左上角是官方时间显示，照随机事件徽章（RandomEventsTuning.HudBadgeMarginY）的口径让开它；
+    /// Mode G 不 roll 变异词条，左上 -240 以下的词条面板不会同时出现。
     /// </summary>
     internal sealed class ModeGHUD : IDisposable
     {
@@ -86,11 +105,21 @@ namespace BossRush
         private const float RefreshIntervalSeconds = 0.25f;
         private const string RootName = "ModeG_Hud";
         private const int CanvasSortOrder = BossRushUILayers.ModeGHud;
+        private const float CardLeft = 16f;
+        private const float CardTop = 140f;
+        private const float CardWidth = 440f;
+        /// <summary>文字左边距：卡片左侧 3–7 是强调竖条，再留 11。</summary>
+        private const float TextInsetLeft = 18f;
+        private const float TextInsetRight = 14f;
+        private const float TextInsetY = 10f;
+        /// <summary>正文 16、首行（模式名 · 幕波次）18，常驻 HUD 正文档（AGENTS §4.14 字号梯度）。</summary>
+        private const float BodyFontSize = 16f;
 
         private readonly ModeGRuntimeModule _module;
         private readonly StringBuilder _builder = new StringBuilder(256);
 
         private GameObject _root;
+        private RectTransform _cardRect;
         private TextMeshProUGUI _statusText;
         private string _lastText = string.Empty;
         private float _refreshTimer;
@@ -113,34 +142,36 @@ namespace BossRush
         {
             try
             {
-                GameObject root = new GameObject(RootName);
+                Canvas canvas = BossRushUI.CreateCanvasRoot(RootName, CanvasSortOrder, false);
+                GameObject root = canvas.gameObject;
                 _root = root; // 创建后立即归属 owner，后续构建失败也能销毁。
                 UnityEngine.Object.DontDestroyOnLoad(root);
 
-                Canvas canvas = root.AddComponent<Canvas>();
-                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvas.sortingOrder = CanvasSortOrder;
+                // 底板：Surface 压到 0.85，仍在共享库投影的门槛（0.75）之上；强调竖条取 Mode G 的金色。
+                Color surface = BossRushUIColors.Surface;
+                surface.a = 0.85f;
+                GameObject card = BossRushUI.CreateCard("ModeG_HudCard", root.transform, Vector2.zero,
+                    new Vector2(CardWidth, 64f), surface, BossRushUIColors.WarningText, true);
+                _cardRect = card.GetComponent<RectTransform>();
+                _cardRect.anchorMin = _cardRect.anchorMax = _cardRect.pivot = new Vector2(0f, 1f);
+                _cardRect.anchoredPosition = new Vector2(CardLeft, -CardTop);
+                card.GetComponent<Image>().raycastTarget = false;
 
-                CanvasScaler scaler = root.AddComponent<CanvasScaler>();
-                ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
-
-                root.AddComponent<CanvasRenderer>();
-
-                // 状态文本：左上角锚定，富文本（color 标签）
+                // 状态文本：卡片左上角锚定，富文本（color / size 标签）；不缩字、自动换行，高度由 FitCard 按内容量。
                 _statusText = ZombieModeUIHelper.CreateText(
                     "ModeG_Status",
-                    root.transform,
+                    card.transform,
                     string.Empty,
-                    20f,
+                    BodyFontSize,
                     new Vector2(0f, 1f),
                     new Vector2(0f, 1f),
-                    new Vector2(16f, -16f),
-                    new Vector2(560f, 210f),
+                    new Vector2(TextInsetLeft, -TextInsetY),
+                    new Vector2(CardWidth - TextInsetLeft - TextInsetRight, 30f),
                     TextAlignmentOptions.TopLeft,
-                    new Color(0.92f, 0.94f, 0.95f, 1f));
+                    BossRushUIColors.TextPrimary);
+                _statusText.rectTransform.pivot = new Vector2(0f, 1f);
                 _statusText.richText = true;
-                _statusText.enableWordWrapping = false;
-
+                card.SetActive(false); // 第一次拿到文本再出现，不闪一张空卡
             }
             catch (Exception e)
             {
@@ -180,7 +211,11 @@ namespace BossRush
                 if (!string.Equals(text, _lastText, StringComparison.Ordinal))
                 {
                     _lastText = text;
-                    if (_statusText != null) _statusText.text = text;
+                    if (_statusText != null)
+                    {
+                        _statusText.text = text;
+                        FitCard();
+                    }
                 }
             }
             catch (Exception e)
@@ -195,6 +230,19 @@ namespace BossRush
             if (_root.activeSelf != visible) _root.SetActive(visible);
         }
 
+        /// <summary>
+        /// 卡片收到文本高度。只在文本变化时调（≤4Hz），不是每帧路径：MeasureTextHeight 关掉自动缩字、打开换行，
+        /// 按实际内容量高，宿敌名再长也只是多一行，不再整块缩一档字号。
+        /// </summary>
+        private void FitCard()
+        {
+            if (_cardRect == null) return;
+            if (!_cardRect.gameObject.activeSelf) _cardRect.gameObject.SetActive(true);
+            float height = BossRushUI.MeasureTextHeight(_statusText,
+                CardWidth - TextInsetLeft - TextInsetRight, Mathf.Ceil(BodyFontSize * 1.45f) + 4f);
+            _cardRect.sizeDelta = new Vector2(CardWidth, Mathf.Ceil(height + TextInsetY * 2f));
+        }
+
         #endregion
 
         #region Text Composition（§15 行规格）
@@ -203,14 +251,14 @@ namespace BossRush
         {
             _builder.Length = 0;
 
-            // 行 1：模式名 + 幕·波次（"II · 5/9"）
-            _builder.Append("<color=#B8860B>")
+            // 行 1：模式名 + 幕·波次（"II · 5/9"），比正文大一档
+            _builder.Append("<size=18>").Append(ModeGRichText.WarningTag)
                 .Append(L10n.T("BossRush_ModeG_Preview"))
                 .Append("</color> ")
                 .Append(GetActRoman(m.actIndex))
                 .Append(" · ")
                 .Append(m.waveNumber)
-                .Append("/9");
+                .Append("/9</size>");
 
             if (m.intermissionActive)
             {
@@ -222,7 +270,7 @@ namespace BossRush
                     .Append(L10n.T("BossRush_ModeG_Hud_Seconds"));
                 if (m.calmGateActive)
                 {
-                    _builder.Append(" · <color=#FFD700>")
+                    _builder.Append(" · ").Append(ModeGRichText.WarningTag)
                         .Append(L10n.T("BossRush_ModeG_Hud_CalmGate"))
                         .Append("</color>");
                 }
@@ -251,7 +299,7 @@ namespace BossRush
             // Last Stand 只作为短时倒计时覆盖在反制目标下方，不构成第二份常驻目标清单
             if (m.lastStandActive)
             {
-                _builder.Append("\n<color=#FF3333>")
+                _builder.Append('\n').Append(ModeGRichText.DangerTag)
                     .Append(L10n.T("BossRush_ModeG_Hud_LastStand"))
                     .Append(' ')
                     .Append(m.lastStandSeconds)
@@ -266,7 +314,7 @@ namespace BossRush
                 .Append(m.resolveMax);
             if (!string.IsNullOrEmpty(m.contractTitle))
             {
-                _builder.Append(" · <color=#9FB4C7>").Append(m.contractTitle).Append("</color>");
+                _builder.Append(" · ").Append(ModeGRichText.SecondaryTag).Append(m.contractTitle).Append("</color>");
             }
 
             // 本波 Boss 进度（击杀/已提交）
@@ -286,7 +334,7 @@ namespace BossRush
         /// <summary>宿敌身份与本次登场 Rank（§15：HUD 需显示宿敌名称与 Rank）。</summary>
         private void AppendNemesis(ModeGHudModel m)
         {
-            _builder.Append(" · <color=#FF8C00>");
+            _builder.Append(" · ").Append(ModeGRichText.DangerTag);
             _builder.Append(string.IsNullOrEmpty(m.nemesisName)
                 ? L10n.T("BossRush_ModeG_Hud_Nemesis")
                 : m.nemesisName);
@@ -311,25 +359,25 @@ namespace BossRush
                 case ModeGObjectiveState.NoCounter:
                     return L10n.T("BossRush_ModeG_Hud_NoCounter");
                 case ModeGObjectiveState.Invalid:
-                    return "<color=#B22222>" + L10n.T("BossRush_ModeG_Hud_Invalid") + "</color>";
+                    return ModeGRichText.DangerTag + L10n.T("BossRush_ModeG_Hud_Invalid") + "</color>";
                 case ModeGObjectiveState.NoAmmoCandidate:
                     return L10n.T("BossRush_ModeG_Hud_NoAmmoCandidate");
                 case ModeGObjectiveState.AmmoViolated:
                     return L10n.T("BossRush_ModeG_Hud_BanPrefix") + m.bannedAmmoName
-                        + " · <color=#B22222>" + L10n.T("BossRush_ModeG_Hud_BanViolated") + "</color>";
+                        + " · " + ModeGRichText.DangerTag + L10n.T("BossRush_ModeG_Hud_BanViolated") + "</color>";
             }
 
             if (m.axis == ModeGCounterAxis.Ammo)
             {
                 return L10n.T("BossRush_ModeG_Hud_BanPrefix") + m.bannedAmmoName
-                    + " · <color=#2E8B57>" + L10n.T("BossRush_ModeG_Hud_BanClean") + "</color>";
+                    + " · " + ModeGRichText.SuccessTag + L10n.T("BossRush_ModeG_Hud_BanClean") + "</color>";
             }
 
             // 属性轴双门槛达标后仍需相反武器系末击，继续显示具体收尾要求。
             if (m.objectiveState == ModeGObjectiveState.ThresholdsMet
                 && m.axis == ModeGCounterAxis.Distance)
             {
-                return "<color=#2E8B57>" + L10n.T("BossRush_ModeG_Hud_WillBreak") + "</color>";
+                return ModeGRichText.SuccessTag + L10n.T("BossRush_ModeG_Hud_WillBreak") + "</color>";
             }
 
             string prefix;
@@ -404,6 +452,7 @@ namespace BossRush
             }
             catch { /* no-throw */ }
             _root = null;
+            _cardRect = null;
             _statusText = null;
             _lastText = string.Empty;
         }

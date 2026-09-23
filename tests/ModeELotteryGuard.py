@@ -92,7 +92,8 @@ def main() -> int:
         "TryDebitModeEShell(lotteryPrice, owner.TransactionID)",
         "MarkModeEShellTransactionCommitted(owner.TransactionID)",
         "HandleCommittedModeEShellDeliveryRemainder(",
-        "PushModeELotteryRewardNotification(capturedDisplayName)",
+        # 2026-09-23 审美审查 UB-22：结果提示按品质着色，品质在交付前与名字一起取
+        "PushModeELotteryRewardNotification(capturedDisplayName, capturedQuality)",
         "RefundIfDebited(owner.TransactionID)",
         'ClearBusyAndReleaseModeEShellTransactionIfOwned(owner, "Lottery finally")',
     ]:

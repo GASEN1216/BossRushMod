@@ -367,7 +367,7 @@ namespace BossRush
 
                 Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
                     L10n.T(
-                        "唔...太久没理生气了呢",
+                        "唔...太久没理人家，生气了",
                         "Hm... guess they're upset I ignored them too long."),
                     playerTransform,
                     2.5f,

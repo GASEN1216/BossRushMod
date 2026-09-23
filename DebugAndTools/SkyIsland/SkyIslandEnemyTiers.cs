@@ -199,17 +199,32 @@ namespace BossRush
             catch (Exception e) { Debug.LogWarning("[SkyIslandEnemy] 体型缩放失败：" + e.Message); }
         }
 
+        /// <summary>
+        /// 档次染色的强度：只往档次色靠 35%（风暴档约 (0.78,0.87,0.90)）。
+        /// 旧写法把档次色直接当乘色，风暴档红通道只剩 36%，暖色的鸭子和装备整只变成暗青灰，像没打光的占位模型（VB-26）。
+        /// </summary>
+        internal const float TintStrength = 0.35f;
+
+        /// <summary>乘到模型材质上的颜色：白色往档次色靠 <see cref="TintStrength"/>。<see cref="Tint"/> 本身仍是档次的识别色（噬风的预警圈用它）。</summary>
+        internal static Color ModelTint(SkyIslandEnemyTier tier)
+        {
+            return Color.Lerp(Color.white, Tint(tier), TintStrength);
+        }
+
         private static void ApplyTint(CharacterMainControl character, SkyIslandEnemyTier tier)
         {
             try
             {
                 if (colorBlock == null) colorBlock = new MaterialPropertyBlock();
-                Color tint = Tint(tier);
-                Renderer[] renderers = character.GetComponentsInChildren<Renderer>(true);
+                Color tint = ModelTint(tier);
+                // 只染角色模型下的网格（身体与挂点上的装备模型）。粒子、拖尾、线（枪口火、弹道拖尾、特效）不染：
+                // 它们的 _TintColor 被乘成青灰就是一团脏色。
+                Transform model = character.characterModel != null ? character.characterModel.transform : character.transform;
+                Renderer[] renderers = model.GetComponentsInChildren<Renderer>(true);
                 for (int i = 0; i < renderers.Length; i++)
                 {
                     Renderer renderer = renderers[i];
-                    if (renderer == null) continue;
+                    if (renderer == null || !(renderer is SkinnedMeshRenderer || renderer is MeshRenderer)) continue;
                     renderer.GetPropertyBlock(colorBlock);
                     Material shared = renderer.sharedMaterial;
                     if (shared != null && shared.HasProperty(ColorProperty)) colorBlock.SetColor(ColorProperty, tint);
@@ -219,6 +234,23 @@ namespace BossRush
                 }
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandEnemy] 染色失败：" + e.Message); }
+            ApplyTierRing(character, tier);
+        }
+
+        /// <summary>
+        /// 档次的脚下标识（VB-26）：一圈贴地细环，档次色、0.45 不透明，半径随模型放大。挂在角色身上跟着走，
+        /// 建一次、没有每帧成本；角色销毁时一起没了。染色压淡之后，玩家靠它一眼分出精英 / 风暴。
+        /// </summary>
+        private static void ApplyTierRing(CharacterMainControl character, SkyIslandEnemyTier tier)
+        {
+            try
+            {
+                Color tint = Tint(tier);
+                LineRenderer ring = SkyIslandGroundRing.Create(character.transform, Vector3.up * SkyIslandGroundRing.GroundLift);
+                ring.gameObject.name = "SkyIslandTierRing";
+                SkyIslandGroundRing.SetShape(ring, 0.7f * ModelScale(tier), 0.12f, new Color(tint.r, tint.g, tint.b, 0.45f));
+            }
+            catch (Exception e) { Debug.LogWarning("[SkyIslandEnemy] 档次脚环失败：" + e.Message); }
         }
 
         /// <summary>

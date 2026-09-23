@@ -1,6 +1,17 @@
 // ============================================================================
 // WishFountainRewardAnimationView.cs - 星愿许愿台抽奖动画运行时遮罩层
 // ============================================================================
+// 2026-09-23 审美审查 UD-11…UD-16：
+//   - 轮带：一条 ease-out 曲线从最高速连续减速（旧版前 3 秒加速、第 3 秒速度突降到 37%）；
+//     起点放在中奖格前约 22 格，中奖格不会在第一秒就滑进视窗。
+//   - 格子：卡片底图 + 品质色描边 + 内缩品质细条（旧版是直角块 + 四根边条拼的框）；
+//     视窗用 RectMask2D 软边，两端自然淡出；指示器是程序化柔光竖条。
+//   - 品质色读官方 DisplayQualityLook（与背包同一套），取不到退回 BossRushUIColors.Rarity*。
+//   - 入场淡入 + 轮带升入；停轮后的揭晓演出（弹出、柔光、结果横幅、闪白、音效）在
+//     WishFountainRewardAnimationView_Reveal.cs；收场走共享淡出。
+//   - Esc：滚动中按一下直接跳到终点进入揭晓；揭晓阶段再按 Esc 或点击才收下关闭。
+//     奖励只在 Complete() 里发一次（finished 标志 + OnDestroy 保底），淡出期间不会重复发奖。
+// ============================================================================
 
 using System;
 using System.Collections;
@@ -13,24 +24,25 @@ using UnityEngine.UI;
 
 namespace BossRush
 {
-    public class WishFountainRewardAnimationView : MonoBehaviour
+    public partial class WishFountainRewardAnimationView : MonoBehaviour
     {
-        private const float OverlayAlpha = 0.9f;
-        private const float FastSpinDurationSeconds = 3f;
-        private const float SlowSpinDurationSeconds = 2f;
-        private const float ResultDisplayDurationSeconds = 3f;
+        /// <summary>轮带从起步到停稳的总时长（秒）。曲线见 <see cref="EvaluateRollProgress"/>。</summary>
+        private const float RollDurationSeconds = 5f;
+        /// <summary>起点放在中奖格前多少格：曲线起手最快，路程太短时中奖格在第一秒就进视窗，悬念没了。</summary>
+        private const int RollTravelSlots = 22;
         private const float SlotWidth = 132f;
         private const float SlotHeight = 132f;
         private const float SlotSpacing = 18f;
         private const float ViewportWidth = 1728f;
         private const float ViewportHeight = 184f;
+        /// <summary>视窗两端的软边宽度（RectMask2D.softness），滚到边上的格子淡出而不是被一刀切掉。</summary>
+        private const int ViewportEdgeSoftness = 160;
         private const float MarkerHeight = 184f;
-        private const float SlotHighlightScale = 1.1f;
-        private const float HighlightAnimDuration = 0.35f;
         private const float DimmedAlpha = 0.3f;
-        private const float QualityBarHeight = 6f;
-        private const float FastSpinTargetProgress = 0.86f;
+        private const float QualityBarHeight = 3f;
         private const float SafetyTimeoutSeconds = 15f;
+        /// <summary>收场淡出（秒）。</summary>
+        private const float CloseFadeSeconds = 0.25f;
 
         private static WishFountainRewardAnimationView activeInstance;
         private static readonly Dictionary<int, Sprite> iconCache = new Dictionary<int, Sprite>();
@@ -42,40 +54,16 @@ namespace BossRush
         private RectTransform reelContentRect;
         private readonly List<RectTransform> slotRects = new List<RectTransform>();
         private readonly List<CanvasGroup> slotCanvasGroups = new List<CanvasGroup>();
+        private readonly List<Image> slotStrokes = new List<Image>();
         private readonly List<int> sequenceTypeIds = new List<int>();
         private Action<int, string> finishedCallback;
         private int rewardTypeId;
         private string rewardDisplayName;
         private int winnerIndex;
         private bool finished;
-        private float createdTime;
-
-        // ====================================================================
-        // 品质颜色映射 (Q1~Q8) — 灵感来源 CS:GO 稀有度配色
-        // ====================================================================
-        private static readonly Color[] QualityColors =
-        {
-            new Color(0.62f, 0.62f, 0.62f, 1f),   // Q1 - 灰色 (消费级)
-            new Color(0.42f, 0.60f, 0.80f, 1f),    // Q2 - 浅蓝 (工业级)
-            new Color(0.30f, 0.45f, 0.85f, 1f),    // Q3 - 蓝色 (军规级)
-            new Color(0.55f, 0.30f, 0.85f, 1f),    // Q4 - 紫色 (受限)
-            new Color(0.85f, 0.30f, 0.60f, 1f),    // Q5 - 粉红 (保密)
-            new Color(0.90f, 0.30f, 0.30f, 1f),    // Q6 - 红色 (隐秘)
-            new Color(1.00f, 0.70f, 0.15f, 1f),    // Q7 - 金色 (非凡)
-            new Color(1.00f, 0.84f, 0.00f, 1f)     // Q8 - 亮金 (传奇)
-        };
-
-        private static readonly Color[] QualityBackgroundColors =
-        {
-            new Color(0.14f, 0.14f, 0.14f, 0.96f),   // Q1
-            new Color(0.12f, 0.15f, 0.22f, 0.96f),   // Q2
-            new Color(0.10f, 0.13f, 0.24f, 0.96f),   // Q3
-            new Color(0.16f, 0.10f, 0.24f, 0.96f),   // Q4
-            new Color(0.24f, 0.10f, 0.18f, 0.96f),   // Q5
-            new Color(0.24f, 0.10f, 0.10f, 0.96f),   // Q6
-            new Color(0.24f, 0.18f, 0.06f, 0.96f),   // Q7
-            new Color(0.26f, 0.22f, 0.04f, 0.96f)    // Q8
-        };
+        private float safetyElapsed;
+        private float rollFromX;
+        private float rollToX;
 
         public static void PlayRuntime(
             int rewardTypeId,
@@ -139,22 +127,43 @@ namespace BossRush
 
         private void Initialize()
         {
-            createdTime = Time.realtimeSinceStartup;
+            safetyElapsed = 0f;
             CreateOverlayUI();
+            // 起止位置在第一帧渲染前定好，否则第一帧会先画在中间、下一帧再跳到起点。
+            rollToX = CalculateFinalContentX();
+            rollFromX = CalculateInitialContentX();
+            if (reelContentRect != null)
+            {
+                reelContentRect.anchoredPosition = new Vector2(rollFromX, 0f);
+            }
+
+            // 入场（UD-15）：整层淡入（根画布只淡入不缩放），轮带台面从下方升入。
+            BossRushUI.PlayOpenAnimation(gameObject);
+            if (stageRect != null)
+            {
+                BossRushUIEntranceAnimation.Play(stageRect.gameObject, 0.05f, 0.25f, 24f);
+            }
             StartCoroutine(PlayAnimationCoroutine());
         }
 
         private void Update()
         {
-            // Escape 键跳过动画
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (finished)
             {
-                Complete();
                 return;
             }
 
+            // 暂停菜单开着：演出停推进，超时也不计（走 unscaled 时间的表现层统一的暂停门）
+            if (BossRushUI.IsGamePaused())
+            {
+                return;
+            }
+
+            HandleRevealInput();
+
             // 安全超时：防止协程异常中断导致遮罩卡死
-            if (Time.realtimeSinceStartup - createdTime > SafetyTimeoutSeconds)
+            safetyElapsed += Time.unscaledDeltaTime;
+            if (!finished && safetyElapsed > SafetyTimeoutSeconds)
             {
                 ModBehaviour.DevLog("[WishFountainAnimation] 安全超时触发，强制关闭动画遮罩");
                 Complete();
@@ -166,113 +175,78 @@ namespace BossRush
             RectTransform rootRect = GetComponent<RectTransform>();
             StretchRect(rootRect);
 
-            GameObject background = CreateUiObject("Background", rootRect, typeof(Image));
-            RectTransform backgroundRect = background.GetComponent<RectTransform>();
-            StretchRect(backgroundRect);
-            Image backgroundImage = background.GetComponent<Image>();
-            backgroundImage.color = new Color(0f, 0f, 0f, OverlayAlpha);
+            // 遮罩：强遮罩 token + 共享暗角与 0.15 秒淡入（UD-14 / UD-15）
+            Image backgroundImage = BossRushUI.CreateBackdrop(rootRect);
+            backgroundImage.color = BossRushUIColors.BackdropStrong;
             backgroundImage.raycastTarget = true;
 
-            GameObject title = CreateUiObject("Title", rootRect, typeof(TextMeshProUGUI));
-            RectTransform titleRect = title.GetComponent<RectTransform>();
-            titleRect.anchorMin = new Vector2(0.5f, 0.5f);
-            titleRect.anchorMax = new Vector2(0.5f, 0.5f);
-            titleRect.pivot = new Vector2(0.5f, 0.5f);
-            titleRect.anchoredPosition = new Vector2(0f, 144f);
-            titleRect.sizeDelta = new Vector2(720f, 54f);
-            TextMeshProUGUI titleText = title.GetComponent<TextMeshProUGUI>();
-            titleText.text = L10n.T("星愿抽奖", "Starwish Draw");
-            titleText.fontSize = 32f;
-            titleText.alignment = TextAlignmentOptions.Center;
-            titleText.color = Color.white;
-            titleText.raycastTarget = false;
+            // 台面：标题、轮带、指示器、提示一起入场，揭晓柔光也挂在这里（夹在底板与格子之间）
+            GameObject stage = CreateUiObject("Stage", rootRect, typeof(RectTransform));
+            stageRect = stage.GetComponent<RectTransform>();
+            StretchRect(stageRect);
 
-            GameObject viewport = CreateUiObject("Viewport", rootRect, typeof(Image), typeof(Mask));
+            titleText = CreateRevealLabel("Title", stageRect, 32f, BossRushUIColors.TextPrimary, new Vector2(0f, 150f), new Vector2(720f, 54f));
+            titleText.fontStyle = FontStyles.Bold;
+            titleText.text = L10n.T("星愿抽奖", "Starwish Draw");
+
+            GameObject plate = CreateUiObject("ReelPlate", stageRect, typeof(Image));
+            PlaceCentered(plate.GetComponent<RectTransform>(), Vector2.zero, new Vector2(ViewportWidth + 24f, ViewportHeight + 24f));
+            Image plateImage = plate.GetComponent<Image>();
+            plateImage.color = BossRushUIColors.Surface;
+            plateImage.raycastTarget = false;
+            BossRushUI.ApplyFramedPanelSkin(plateImage, 12, BossRushUISkinPart.Panel);
+
+            winnerGlowImage = CreateUiObject("WinnerGlow", stageRect, typeof(Image)).GetComponent<Image>();
+            PlaceCentered(winnerGlowImage.rectTransform, Vector2.zero, new Vector2(WinnerGlowSize, WinnerGlowSize));
+            winnerGlowImage.sprite = GetRevealGlowSprite();
+            winnerGlowImage.color = Color.clear;
+            winnerGlowImage.raycastTarget = false;
+
+            // 视窗：RectMask2D 软边代替 Mask 硬裁（UD-14）；不再自带底色，底色由上面的台面板承担
+            GameObject viewport = CreateUiObject("Viewport", stageRect, typeof(RectMask2D));
             RectTransform viewportRect = viewport.GetComponent<RectTransform>();
-            viewportRect.anchorMin = new Vector2(0.5f, 0.5f);
-            viewportRect.anchorMax = new Vector2(0.5f, 0.5f);
-            viewportRect.pivot = new Vector2(0.5f, 0.5f);
-            viewportRect.anchoredPosition = Vector2.zero;
-            viewportRect.sizeDelta = new Vector2(ViewportWidth, ViewportHeight);
-            Image viewportImage = viewport.GetComponent<Image>();
-            viewportImage.color = new Color(0.08f, 0.1f, 0.14f, 0.96f);
-            viewportImage.raycastTarget = false;
-            Mask viewportMask = viewport.GetComponent<Mask>();
-            viewportMask.showMaskGraphic = true;
+            PlaceCentered(viewportRect, Vector2.zero, new Vector2(ViewportWidth, ViewportHeight));
+            viewport.GetComponent<RectMask2D>().softness = new Vector2Int(ViewportEdgeSoftness, 0);
 
             GameObject reelContent = CreateUiObject("ReelContent", viewportRect, typeof(RectTransform));
             reelContentRect = reelContent.GetComponent<RectTransform>();
-            reelContentRect.anchorMin = new Vector2(0.5f, 0.5f);
-            reelContentRect.anchorMax = new Vector2(0.5f, 0.5f);
-            reelContentRect.pivot = new Vector2(0.5f, 0.5f);
-            reelContentRect.anchoredPosition = Vector2.zero;
-            reelContentRect.sizeDelta = new Vector2(GetSequenceTotalWidth(), ViewportHeight);
+            PlaceCentered(reelContentRect, Vector2.zero, new Vector2(GetSequenceTotalWidth(), ViewportHeight));
 
-            // 细线激光指示器 (发光层)
-            GameObject markerGlow = CreateUiObject("MarkerGlow", rootRect, typeof(Image));
-            RectTransform markerGlowRect = markerGlow.GetComponent<RectTransform>();
-            markerGlowRect.anchorMin = new Vector2(0.5f, 0.5f);
-            markerGlowRect.anchorMax = new Vector2(0.5f, 0.5f);
-            markerGlowRect.pivot = new Vector2(0.5f, 0.5f);
-            markerGlowRect.anchoredPosition = Vector2.zero;
-            markerGlowRect.sizeDelta = new Vector2(16f, MarkerHeight + 16f);
-            Image markerGlowImage = markerGlow.GetComponent<Image>();
-            markerGlowImage.color = new Color(1f, 0.85f, 0.3f, 0.15f);
-            markerGlowImage.raycastTarget = false;
+            // 指示器：柔光竖条（程序化横向渐隐）+ 暗色背衬 + 亮芯，上下两个圆角定位点
+            Color markerColor = BossRushUIColors.WarningText;
+            Image markerGlow = CreateMarkerPiece("MarkerGlow", Vector2.zero, new Vector2(24f, MarkerHeight + 16f), WithAlpha(markerColor, 0.32f));
+            markerGlow.sprite = GetMarkerBeamSprite();
+            ApplyHairline(CreateMarkerPiece("MarkerShadow", Vector2.zero, new Vector2(4f, MarkerHeight + 8f), WithAlpha(BossRushUIColors.BackdropStrong, 0.6f)));
+            ApplyHairline(CreateMarkerPiece("Marker", Vector2.zero, new Vector2(2f, MarkerHeight + 8f), WithAlpha(markerColor, 0.96f)));
+            ApplyHairline(CreateMarkerPiece("MarkerTopLocator", new Vector2(0f, MarkerHeight * 0.5f + 7f), new Vector2(14f, 4f), markerColor));
+            ApplyHairline(CreateMarkerPiece("MarkerBotLocator", new Vector2(0f, -MarkerHeight * 0.5f - 7f), new Vector2(14f, 4f), markerColor));
 
-            // 细线激光指示器 (黑色背衬)
-            GameObject markerShadow = CreateUiObject("MarkerShadow", rootRect, typeof(Image));
-            RectTransform markerShadowRect = markerShadow.GetComponent<RectTransform>();
-            markerShadowRect.anchorMin = new Vector2(0.5f, 0.5f);
-            markerShadowRect.anchorMax = new Vector2(0.5f, 0.5f);
-            markerShadowRect.pivot = new Vector2(0.5f, 0.5f);
-            markerShadowRect.anchoredPosition = Vector2.zero;
-            markerShadowRect.sizeDelta = new Vector2(4f, MarkerHeight + 8f);
-            Image markerShadowImage = markerShadow.GetComponent<Image>();
-            markerShadowImage.color = new Color(0f, 0f, 0f, 0.6f);
-            markerShadowImage.raycastTarget = false;
-
-            // 细线激光指示器 (核心高亮层)
-            GameObject marker = CreateUiObject("Marker", rootRect, typeof(Image));
-            RectTransform markerRect = marker.GetComponent<RectTransform>();
-            markerRect.anchorMin = new Vector2(0.5f, 0.5f);
-            markerRect.anchorMax = new Vector2(0.5f, 0.5f);
-            markerRect.pivot = new Vector2(0.5f, 0.5f);
-            markerRect.anchoredPosition = Vector2.zero;
-            markerRect.sizeDelta = new Vector2(2f, MarkerHeight + 8f);
-            Image markerImage = marker.GetComponent<Image>();
-            markerImage.color = new Color(1f, 0.88f, 0.42f, 0.96f);
-            markerImage.raycastTarget = false;
-
-            // 顶部小指示定点
-            GameObject topDot = CreateUiObject("MarkerTopLocator", rootRect, typeof(Image));
-            RectTransform topDotRect = topDot.GetComponent<RectTransform>();
-            topDotRect.anchorMin = new Vector2(0.5f, 0.5f);
-            topDotRect.anchorMax = new Vector2(0.5f, 0.5f);
-            topDotRect.pivot = new Vector2(0.5f, 0.5f);
-            topDotRect.anchoredPosition = new Vector2(0f, MarkerHeight * 0.5f + 6f);
-            topDotRect.sizeDelta = new Vector2(12f, 4f);
-            topDot.GetComponent<Image>().color = markerImage.color;
-            topDot.GetComponent<Image>().raycastTarget = false;
-
-            // 底部小指示定点
-            GameObject botDot = CreateUiObject("MarkerBotLocator", rootRect, typeof(Image));
-            RectTransform botDotRect = botDot.GetComponent<RectTransform>();
-            botDotRect.anchorMin = new Vector2(0.5f, 0.5f);
-            botDotRect.anchorMax = new Vector2(0.5f, 0.5f);
-            botDotRect.pivot = new Vector2(0.5f, 0.5f);
-            botDotRect.anchoredPosition = new Vector2(0f, -MarkerHeight * 0.5f - 6f);
-            botDotRect.sizeDelta = new Vector2(12f, 4f);
-            botDot.GetComponent<Image>().color = markerImage.color;
-            botDot.GetComponent<Image>().raycastTarget = false;
+            hintText = CreateRevealLabel("Hint", stageRect, 15f, BossRushUIColors.TextSecondary, new Vector2(0f, -262f), new Vector2(720f, 28f));
+            hintText.text = L10n.T("按 Esc 直接揭晓", "Press Esc to reveal now");
 
             BuildSlots();
+        }
+
+        private Image CreateMarkerPiece(string name, Vector2 position, Vector2 size, Color color)
+        {
+            GameObject piece = CreateUiObject(name, stageRect, typeof(Image));
+            PlaceCentered(piece.GetComponent<RectTransform>(), position, size);
+            Image image = piece.GetComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        private static void ApplyHairline(Image image)
+        {
+            BossRushUI.ApplyPanelSkin(image, 1, BossRushUISkinPart.Hairline);
         }
 
         private void BuildSlots()
         {
             slotRects.Clear();
             slotCanvasGroups.Clear();
+            slotStrokes.Clear();
 
             float totalWidth = GetSequenceTotalWidth();
             float startX = -0.5f * totalWidth + SlotWidth * 0.5f;
@@ -281,80 +255,38 @@ namespace BossRush
             for (int i = 0; i < sequenceTypeIds.Count; i++)
             {
                 int typeId = sequenceTypeIds[i];
-                int quality = GetItemQuality(typeId);
-                Color qualityColor = GetQualityColor(quality);
-                Color qualityBgColor = GetQualityBackgroundColor(quality);
+                Color qualityColor = GetQualityColor(typeId);
 
                 GameObject slot = CreateUiObject("Slot_" + i, reelContentRect, typeof(Image), typeof(CanvasGroup));
                 RectTransform slotRect = slot.GetComponent<RectTransform>();
-                slotRect.anchorMin = new Vector2(0.5f, 0.5f);
-                slotRect.anchorMax = new Vector2(0.5f, 0.5f);
-                slotRect.pivot = new Vector2(0.5f, 0.5f);
-                slotRect.anchoredPosition = new Vector2(startX + stepX * i, 0f);
-                slotRect.sizeDelta = new Vector2(SlotWidth, SlotHeight);
+                PlaceCentered(slotRect, new Vector2(startX + stepX * i, 0f), new Vector2(SlotWidth, SlotHeight));
 
+                // 卡片底图 + 品质色描边（UD-14 / UD-16）：底色是品质色淡淡叠在卡片底上，不再维护第二张底色表
                 Image slotImage = slot.GetComponent<Image>();
-                slotImage.color = qualityBgColor;
+                slotImage.color = GetSlotSurfaceColor(qualityColor);
                 slotImage.raycastTarget = false;
+                BossRushUI.ApplyPanelSkin(slotImage, 8, BossRushUISkinPart.Card);
+                slotStrokes.Add(BossRushUI.ApplyPanelStroke(slotImage, 8, BossRushUISkinPart.Card, WithAlpha(qualityColor, 0.55f)));
 
                 CanvasGroup slotCanvasGroup = slot.GetComponent<CanvasGroup>();
                 slotCanvasGroup.alpha = 0.95f;
 
-                // 品质颜色底部边框条
+                // 品质细条：内缩的圆角细条，贴在卡片底部、不碰圆角
                 GameObject qualityBar = CreateUiObject("QualityBar", slotRect, typeof(Image));
                 RectTransform qualityBarRect = qualityBar.GetComponent<RectTransform>();
                 qualityBarRect.anchorMin = new Vector2(0f, 0f);
                 qualityBarRect.anchorMax = new Vector2(1f, 0f);
                 qualityBarRect.pivot = new Vector2(0.5f, 0f);
-                qualityBarRect.anchoredPosition = Vector2.zero;
-                qualityBarRect.sizeDelta = new Vector2(0f, QualityBarHeight);
+                qualityBarRect.anchoredPosition = new Vector2(0f, 7f);
+                qualityBarRect.sizeDelta = new Vector2(-28f, QualityBarHeight);
                 Image qualityBarImage = qualityBar.GetComponent<Image>();
                 qualityBarImage.color = qualityColor;
                 qualityBarImage.raycastTarget = false;
-
-                // 品质颜色左侧边框条
-                GameObject leftBorder = CreateUiObject("LeftBorder", slotRect, typeof(Image));
-                RectTransform leftBorderRect = leftBorder.GetComponent<RectTransform>();
-                leftBorderRect.anchorMin = new Vector2(0f, 0f);
-                leftBorderRect.anchorMax = new Vector2(0f, 1f);
-                leftBorderRect.pivot = new Vector2(0f, 0.5f);
-                leftBorderRect.anchoredPosition = Vector2.zero;
-                leftBorderRect.sizeDelta = new Vector2(3f, 0f);
-                Image leftBorderImage = leftBorder.GetComponent<Image>();
-                leftBorderImage.color = new Color(qualityColor.r, qualityColor.g, qualityColor.b, 0.5f);
-                leftBorderImage.raycastTarget = false;
-
-                // 品质颜色右侧边框条
-                GameObject rightBorder = CreateUiObject("RightBorder", slotRect, typeof(Image));
-                RectTransform rightBorderRect = rightBorder.GetComponent<RectTransform>();
-                rightBorderRect.anchorMin = new Vector2(1f, 0f);
-                rightBorderRect.anchorMax = new Vector2(1f, 1f);
-                rightBorderRect.pivot = new Vector2(1f, 0.5f);
-                rightBorderRect.anchoredPosition = Vector2.zero;
-                rightBorderRect.sizeDelta = new Vector2(3f, 0f);
-                Image rightBorderImage = rightBorder.GetComponent<Image>();
-                rightBorderImage.color = new Color(qualityColor.r, qualityColor.g, qualityColor.b, 0.5f);
-                rightBorderImage.raycastTarget = false;
-
-                // 品质颜色顶部边框条
-                GameObject topBorder = CreateUiObject("TopBorder", slotRect, typeof(Image));
-                RectTransform topBorderRect = topBorder.GetComponent<RectTransform>();
-                topBorderRect.anchorMin = new Vector2(0f, 1f);
-                topBorderRect.anchorMax = new Vector2(1f, 1f);
-                topBorderRect.pivot = new Vector2(0.5f, 1f);
-                topBorderRect.anchoredPosition = Vector2.zero;
-                topBorderRect.sizeDelta = new Vector2(0f, 3f);
-                Image topBorderImage = topBorder.GetComponent<Image>();
-                topBorderImage.color = new Color(qualityColor.r, qualityColor.g, qualityColor.b, 0.5f);
-                topBorderImage.raycastTarget = false;
+                ApplyHairline(qualityBarImage);
 
                 GameObject iconObject = CreateUiObject("Icon", slotRect, typeof(Image));
                 RectTransform iconRect = iconObject.GetComponent<RectTransform>();
-                iconRect.anchorMin = new Vector2(0.5f, 0.5f);
-                iconRect.anchorMax = new Vector2(0.5f, 0.5f);
-                iconRect.pivot = new Vector2(0.5f, 0.5f);
-                iconRect.anchoredPosition = new Vector2(0f, 8f);
-                iconRect.sizeDelta = new Vector2(84f, 84f);
+                PlaceCentered(iconRect, new Vector2(0f, 8f), new Vector2(84f, 84f));
                 Image iconImage = iconObject.GetComponent<Image>();
                 iconImage.preserveAspect = true;
                 iconImage.raycastTarget = false;
@@ -373,10 +305,11 @@ namespace BossRush
                     RectTransform fallbackRect = fallbackLabel.GetComponent<RectTransform>();
                     StretchRect(fallbackRect);
                     TextMeshProUGUI fallbackText = fallbackLabel.GetComponent<TextMeshProUGUI>();
+                    BossRushUI.ApplyGameFont(fallbackText);
                     fallbackText.text = GetCompactName(typeId);
                     fallbackText.fontSize = 18f;
                     fallbackText.alignment = TextAlignmentOptions.Center;
-                    fallbackText.color = new Color(0.92f, 0.95f, 1f, 0.95f);
+                    fallbackText.color = BossRushUIColors.TextPrimary;
                     fallbackText.enableWordWrapping = true;
                     fallbackText.raycastTarget = false;
                 }
@@ -386,13 +319,14 @@ namespace BossRush
                 nameRect.anchorMin = new Vector2(0.5f, 0f);
                 nameRect.anchorMax = new Vector2(0.5f, 0f);
                 nameRect.pivot = new Vector2(0.5f, 0f);
-                nameRect.anchoredPosition = new Vector2(0f, 12f);
+                nameRect.anchoredPosition = new Vector2(0f, 13f);
                 nameRect.sizeDelta = new Vector2(SlotWidth - 18f, 28f);
                 TextMeshProUGUI nameText = nameObject.GetComponent<TextMeshProUGUI>();
+                BossRushUI.ApplyGameFont(nameText);
                 nameText.text = GetCompactName(typeId);
                 nameText.fontSize = 16f;
                 nameText.alignment = TextAlignmentOptions.Center;
-                nameText.color = new Color(0.9f, 0.93f, 1f, 0.92f);
+                nameText.color = BossRushUIColors.TextPrimary;
                 nameText.enableWordWrapping = false;
                 nameText.overflowMode = TextOverflowModes.Ellipsis;
                 nameText.raycastTarget = false;
@@ -406,22 +340,23 @@ namespace BossRush
         {
             yield return null;
 
-            float initialX = 0f;
-            float finalX = CalculateFinalContentX();
-            float rollDuration = FastSpinDurationSeconds + SlowSpinDurationSeconds;
             float elapsed = 0f;
-
             int lastSlotIndex = -1;
             float stepX = SlotWidth + SlotSpacing;
             float totalWidth = GetSequenceTotalWidth();
             float startX = -0.5f * totalWidth + SlotWidth * 0.5f;
             string soundPath = System.IO.Path.Combine(ModBehaviour.GetModPath(), "Assets", "Sounds", "lottery", "tick.wav");
+            // 只查一次盘：旧写法每经过一格都 File.Exists 一次
+            bool tickAvailable = System.IO.File.Exists(soundPath);
 
-            while (elapsed < rollDuration)
+            while (elapsed < RollDurationSeconds && !skipRequested)
             {
-                elapsed += Time.unscaledDeltaTime;
-                float progress = EvaluateRollProgress(elapsed, rollDuration);
-                float animatedX = Mathf.LerpUnclamped(initialX, finalX, progress);
+                if (!BossRushUI.IsGamePaused())
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                }
+                float progress = EvaluateRollProgress(elapsed);
+                float animatedX = Mathf.LerpUnclamped(rollFromX, rollToX, progress);
                 if (reelContentRect != null)
                 {
                     reelContentRect.anchoredPosition = new Vector2(animatedX, 0f);
@@ -431,7 +366,7 @@ namespace BossRush
                 if (currentSlotIndex != lastSlotIndex && currentSlotIndex >= 0 && currentSlotIndex < sequenceTypeIds.Count)
                 {
                     lastSlotIndex = currentSlotIndex;
-                    if (System.IO.File.Exists(soundPath))
+                    if (tickAvailable)
                     {
                         ModBehaviour.Instance?.PlaySoundEffect(soundPath);
                     }
@@ -440,156 +375,78 @@ namespace BossRush
                 yield return null;
             }
 
+            // 跑完或按了 Esc：都落到同一个终点，再进揭晓
             if (reelContentRect != null)
             {
-                reelContentRect.anchoredPosition = new Vector2(finalX, 0f);
+                reelContentRect.anchoredPosition = new Vector2(rollToX, 0f);
             }
 
-            TryPlayWinningRewardResultSfx();
-            yield return StartCoroutine(HighlightWinningSlotAnimated());
-            float remainingDisplayTime = Mathf.Max(0f, ResultDisplayDurationSeconds - HighlightAnimDuration);
-            if (remainingDisplayTime > 0f)
-            {
-                yield return new WaitForSecondsRealtime(remainingDisplayTime);
-            }
-            Complete();
+            yield return StartCoroutine(PlayRevealSequence());
         }
 
-        private float EvaluateRollProgress(float elapsed, float rollDuration)
+        /// <summary>
+        /// 轮带进度：<c>EaseOut(EaseOut(t))</c> = 1-(1-t)⁴。起手就是最高速，之后连续减速到停（UD-13）。
+        /// 旧版前 3 秒 ease-in 加速、第 3 秒换成另一条曲线，速度一瞬间掉到 37%，轮带像被卡了一下。
+        /// 只用共享缓动，不另写曲线。
+        /// </summary>
+        private static float EvaluateRollProgress(float elapsed)
         {
             if (elapsed <= 0f)
             {
                 return 0f;
             }
 
-            if (elapsed >= rollDuration)
+            if (elapsed >= RollDurationSeconds)
             {
                 return 1f;
             }
 
-            if (elapsed <= FastSpinDurationSeconds)
-            {
-                float fastT = Mathf.Clamp01(elapsed / FastSpinDurationSeconds);
-                // ease-in 二次曲线，模拟加速启动感
-                float easedFastT = fastT * fastT;
-                return FastSpinTargetProgress * easedFastT;
-            }
-
-            float slowT = Mathf.Clamp01((elapsed - FastSpinDurationSeconds) / SlowSpinDurationSeconds);
-            float easedSlowT = 1f - Mathf.Pow(1f - slowT, 3f);
-            return Mathf.LerpUnclamped(FastSpinTargetProgress, 1f, easedSlowT);
+            return BossRushUI.EaseOut(BossRushUI.EaseOut(elapsed / RollDurationSeconds));
         }
 
-        private void TryPlayWinningRewardResultSfx()
+        /// <summary>
+        /// 揭晓音效（UD-11）：普通品质 UI/pop；Q≥5 UI/level_up；Q≥7 保留原有的 special.mp3（缺文件时退回 level_up）。
+        /// </summary>
+        private void TryPlayWinningRewardResultSfx(int rewardQuality)
         {
             if (rewardTypeId <= 0)
             {
                 return;
             }
 
-            int rewardQuality = GetItemQuality(rewardTypeId);
-            if (rewardQuality < 7)
+            if (rewardQuality >= 7)
             {
-                return;
+                string modPath = ModBehaviour.GetModPath();
+                string specialSoundPath = string.IsNullOrEmpty(modPath)
+                    ? null
+                    : System.IO.Path.Combine(modPath, "Assets", "Sounds", "lottery", "special.mp3");
+                if (specialSoundPath != null && System.IO.File.Exists(specialSoundPath))
+                {
+                    ModBehaviour.Instance?.PlaySoundEffect(specialSoundPath);
+                    return;
+                }
             }
 
-            string modPath = ModBehaviour.GetModPath();
-            if (string.IsNullOrEmpty(modPath))
-            {
-                return;
-            }
-
-            string specialSoundPath = System.IO.Path.Combine(modPath, "Assets", "Sounds", "lottery", "special.mp3");
-            if (!System.IO.File.Exists(specialSoundPath))
-            {
-                return;
-            }
-
-            ModBehaviour.Instance?.PlaySoundEffect(specialSoundPath);
+            IntegrationUIFeedback.PlaySound(rewardQuality >= 5
+                ? IntegrationUIFeedback.SoundLevelUp
+                : IntegrationUIFeedback.SoundPop);
         }
 
-        /// <summary>
-        /// 获奖物品高亮动画 — 其他物品变暗 + 获奖物品弹出缩放
-        /// </summary>
-        private IEnumerator HighlightWinningSlotAnimated()
+        private int GetSafeWinnerIndex(int count)
         {
-            int slotCount = Mathf.Min(slotRects.Count, slotCanvasGroups.Count);
-            if (slotCount <= 0)
+            if (count <= 0)
             {
-                yield break;
+                return -1;
             }
 
-            int safeWinnerIndex = winnerIndex;
-            if (safeWinnerIndex < 0 || safeWinnerIndex >= slotCount)
-            {
-                safeWinnerIndex = slotCount - 1;
-            }
+            return winnerIndex < 0 || winnerIndex >= count ? count - 1 : winnerIndex;
+        }
 
-            // 将获奖 Slot 提至最顶层渲染，确保缩放动画不被相邻 Slot 遮挡
-            // 注意：位置靠 anchoredPosition 控制，SetAsLastSibling 仅影响渲染层级
-            if (slotRects[safeWinnerIndex] != null)
-            {
-                slotRects[safeWinnerIndex].SetAsLastSibling();
-            }
-
-            // 阶段1: 其他物品变暗 + 获奖物品缩放弹出
-            float elapsed = 0f;
-            while (elapsed < HighlightAnimDuration)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / HighlightAnimDuration);
-                float easedT = Mathf.SmoothStep(0f, 1f, t);
-
-                for (int i = 0; i < slotCount; i++)
-                {
-                    if (i == safeWinnerIndex)
-                    {
-                        // 获奖物品: 从1.0 放大到 SlotHighlightScale
-                        if (slotRects[i] != null)
-                        {
-                            float scale = Mathf.Lerp(1f, SlotHighlightScale, easedT);
-                            slotRects[i].localScale = Vector3.one * scale;
-                        }
-                        if (slotCanvasGroups[i] != null)
-                        {
-                            slotCanvasGroups[i].alpha = 1f;
-                        }
-                    }
-                    else
-                    {
-                        // 其他物品: alpha 从 0.95 降到 DimmedAlpha
-                        if (slotCanvasGroups[i] != null)
-                        {
-                            slotCanvasGroups[i].alpha = Mathf.Lerp(0.95f, DimmedAlpha, easedT);
-                        }
-                    }
-                }
-
-                yield return null;
-            }
-
-            // 确保最终状态精确
-            for (int i = 0; i < slotCount; i++)
-            {
-                if (i == safeWinnerIndex)
-                {
-                    if (slotRects[i] != null)
-                    {
-                        slotRects[i].localScale = Vector3.one * SlotHighlightScale;
-                    }
-                    if (slotCanvasGroups[i] != null)
-                    {
-                        slotCanvasGroups[i].alpha = 1f;
-                    }
-                }
-                else
-                {
-                    if (slotCanvasGroups[i] != null)
-                    {
-                        slotCanvasGroups[i].alpha = DimmedAlpha;
-                    }
-                }
-            }
+        private float GetSlotCenterX(int index)
+        {
+            float totalWidth = GetSequenceTotalWidth();
+            float startX = -0.5f * totalWidth + SlotWidth * 0.5f;
+            return startX + (SlotWidth + SlotSpacing) * index;
         }
 
         private float CalculateFinalContentX()
@@ -599,19 +456,20 @@ namespace BossRush
                 return 0f;
             }
 
-            float stepX = SlotWidth + SlotSpacing;
-            float totalWidth = GetSequenceTotalWidth();
-            float startX = -0.5f * totalWidth + SlotWidth * 0.5f;
-
-            int safeWinnerIndex = winnerIndex;
-            if (safeWinnerIndex < 0 || safeWinnerIndex >= sequenceTypeIds.Count)
-            {
-                safeWinnerIndex = sequenceTypeIds.Count - 1;
-            }
-
-            float winnerX = startX + stepX * safeWinnerIndex;
+            float winnerX = GetSlotCenterX(GetSafeWinnerIndex(sequenceTypeIds.Count));
             float randomOffset = UnityEngine.Random.Range(-SlotWidth * 0.3f, SlotWidth * 0.3f);
             return -(winnerX + randomOffset);
+        }
+
+        private float CalculateInitialContentX()
+        {
+            if (sequenceTypeIds.Count <= 0)
+            {
+                return 0f;
+            }
+
+            int startIndex = Mathf.Max(0, GetSafeWinnerIndex(sequenceTypeIds.Count) - RollTravelSlots);
+            return -GetSlotCenterX(startIndex);
         }
 
         private float GetSequenceTotalWidth()
@@ -622,22 +480,6 @@ namespace BossRush
             }
 
             return sequenceTypeIds.Count * SlotWidth + Mathf.Max(0, sequenceTypeIds.Count - 1) * SlotSpacing;
-        }
-
-        // ====================================================================
-        // 品质颜色工具方法
-        // ====================================================================
-
-        private static Color GetQualityColor(int quality)
-        {
-            int index = Mathf.Clamp(quality - 1, 0, QualityColors.Length - 1);
-            return QualityColors[index];
-        }
-
-        private static Color GetQualityBackgroundColor(int quality)
-        {
-            int index = Mathf.Clamp(quality - 1, 0, QualityBackgroundColors.Length - 1);
-            return QualityBackgroundColors[index];
         }
 
         private static int GetItemQuality(int typeId)
@@ -708,6 +550,15 @@ namespace BossRush
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+        }
+
+        private static void PlaceCentered(RectTransform rect, Vector2 position, Vector2 size)
+        {
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
         }
 
         private static string GetCompactName(int typeId)
@@ -887,11 +738,13 @@ namespace BossRush
             iconCache.Clear();
             displayNameCache.Clear();
             qualityCache.Clear();
+            qualityColorCache.Clear();
         }
 
         /// <summary>
         /// 静态缓存兜底清理 — 由 IBossRushRuntimeModule.OnDestroy 统一调用。
         /// 作为 ClearItemCaches 的上位兜底，确保模组/场景销毁时所有静态缓存被完整释放。
+        /// 揭晓用的两张程序化贴图（柔光、指示器竖条）带 DontSave，也在这里销毁。
         /// </summary>
         public static void ResetStaticCaches()
         {
@@ -910,10 +763,17 @@ namespace BossRush
                 qualityCache.Clear();
             }
 
+            if (qualityColorCache != null)
+            {
+                qualityColorCache.Clear();
+            }
+
             if (spriteMemberCache != null)
             {
                 spriteMemberCache.Clear();
             }
+
+            DestroyRevealSprites();
         }
 
         private void Complete()
@@ -924,6 +784,7 @@ namespace BossRush
             }
 
             finished = true;
+            StopAllCoroutines();
             try
             {
                 if (finishedCallback != null)
@@ -935,7 +796,9 @@ namespace BossRush
             {
                 activeInstance = null;
                 ClearItemCaches();
-                Destroy(gameObject);
+                // 收场淡出（UD-15）。奖励已在上面同步发放且 finished=true，
+                // 淡出后 Destroy 触发的 OnDestroy 不会再走保底回调，不会重复发奖。
+                BossRushUIKit.PlayCloseAndDestroy(gameObject, CloseFadeSeconds);
             }
         }
 

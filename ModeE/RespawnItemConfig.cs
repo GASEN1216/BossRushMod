@@ -53,15 +53,15 @@ namespace BossRush
         public const string TAUNT_SMOKE_LOC_KEY = "BossRush_TauntSmoke";
         public const string TAUNT_SMOKE_NAME_CN = "挑衅烟雾弹";
         public const string TAUNT_SMOKE_NAME_EN = "Taunt Smoke";
-        public const string TAUNT_SMOKE_DESC_CN = "一枚散发着挑衅气息的烟雾弹。使用后在最近的10个刷怪点重新生成随机阵营Boss。";
-        public const string TAUNT_SMOKE_DESC_EN = "A smoke grenade that provokes nearby enemies. Respawns random faction Bosses at the 10 nearest spawn points.";
+        public const string TAUNT_SMOKE_DESC_CN = "一扔就招 Boss 的烟雾弹。使用后在最近的10个刷怪点重新生成随机阵营Boss。";
+        public const string TAUNT_SMOKE_DESC_EN = "A smoke grenade that picks fights for you. Respawns random faction Bosses at the 10 nearest spawn points.";
 
         // --- 混沌引爆器 ---
         public const string CHAOS_DETONATOR_LOC_KEY = "BossRush_ChaosDetonator";
         public const string CHAOS_DETONATOR_NAME_CN = "混沌引爆器";
         public const string CHAOS_DETONATOR_NAME_EN = "Chaos Detonator";
-        public const string CHAOS_DETONATOR_DESC_CN = "一个充满混沌能量的引爆装置。使用后在全图所有刷怪点重新生成随机阵营Boss。";
-        public const string CHAOS_DETONATOR_DESC_EN = "A detonator charged with chaotic energy. Respawns random faction Bosses at every spawn point on the map.";
+        public const string CHAOS_DETONATOR_DESC_CN = "按下去，全图都热闹起来。使用后在全图所有刷怪点重新生成随机阵营Boss。";
+        public const string CHAOS_DETONATOR_DESC_EN = "Press it and the whole map wakes up. Respawns random faction Bosses at every spawn point on the map.";
 
         // --- 猎王响哨 ---
         public const string BOSSCALL_WHISTLE_LOC_KEY = "BossRush_BosscallWhistle";

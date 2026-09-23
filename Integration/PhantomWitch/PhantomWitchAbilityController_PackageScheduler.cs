@@ -179,6 +179,14 @@ namespace BossRush
                 1.2f,
                 PhantomWitchConfig.RequiemArcWindup,
                 false));
+            // 审查 VB-07：安魂弧同样按判定值（RequiemArcRange / 28° / 前移 1.0）画扇形预警，跟随目标方向。
+            TrackEffect(PhantomWitchAssetManager.CreateConeTelegraph(
+                bossCharacter.transform,
+                target != null ? target.transform : null,
+                PhantomWitchConfig.RequiemArcRange,
+                28f,
+                1.0f,
+                PhantomWitchConfig.RequiemArcWindup));
             yield return new WaitForSeconds(PhantomWitchConfig.RequiemArcWindup);
 
             if (!CanContinueAttacking())
@@ -241,6 +249,25 @@ namespace BossRush
 
             TrackEffect(windupOutline);
 
+            // 审查 VB-07：两段判定各画一片扇形预警（半径 / 半角 / 前移量与下方 DealConeDamage 的字面量一致）：
+            // 第一段 3.2 m / 48° 实色填充，蓄力结束即结算；第二段 3.6 m / 54° 只画虚线外沿，再过 WraithTrailDelay 结算。
+            // 判定在出手瞬间朝向目标（ResolveAttackForward），预警跟随目标方向。
+            Transform wraithTargetTransform = target != null ? target.transform : null;
+            TrackEffect(PhantomWitchAssetManager.CreateConeTelegraph(
+                bossCharacter.transform,
+                wraithTargetTransform,
+                3.2f,
+                48f,
+                1.15f,
+                windupDuration));
+            TrackEffect(PhantomWitchAssetManager.CreateConeTelegraphOutline(
+                bossCharacter.transform,
+                wraithTargetTransform,
+                3.6f,
+                54f,
+                1.0f,
+                windupDuration + PhantomWitchConfig.WraithTrailDelay));
+
             TrackEffect(PhantomWitchAssetManager.CreateChannelChargeEffect(
                 bossCharacter.transform.position,
                 1.0f,
@@ -257,15 +284,20 @@ namespace BossRush
 
             SetStealthMode(PhantomWitchStealthMode.Visible);
             ForceScytheAttackAnimation(target);
-            Vector3 origin = bossCharacter.transform.position + lockedForward * 1.15f;
-            TrackEffect(PhantomWitchAssetManager.CreateHeavySlashEffect(origin, lockedForward, 3.2f));
+            // 2026-09-23 拍板：刀光与伤害同一个方向。两段 DealConeDamage 都在出手瞬间重新朝向目标，扇形预警也跟着目标转；
+            // 旧写法刀光仍按蓄力起点的 lockedForward 画，玩家横移后刀光扫向旧方向、伤害却照样打中。判定一字未改。
+            Vector3 releaseForward = ResolveAttackForward(target);
+            Vector3 origin = bossCharacter.transform.position + releaseForward * 1.15f;
+            TrackEffect(PhantomWitchAssetManager.CreateHeavySlashEffect(origin, releaseForward, 3.2f));
             DealConeDamage(3.2f, 48f, PhantomWitchConfig.WraithTrailDamage, true, 1.15f, target);
             yield return new WaitForSeconds(PhantomWitchConfig.WraithTrailDelay);
 
             if (CanContinueAttacking())
             {
                 ForceScytheAttackAnimation(target);
-                TrackEffect(PhantomWitchAssetManager.CreateScytheSweepEffect(origin, lockedForward, 3.6f, 54f));
+                Vector3 secondForward = ResolveAttackForward(target);
+                Vector3 secondOrigin = bossCharacter.transform.position + secondForward * 1.0f;
+                TrackEffect(PhantomWitchAssetManager.CreateScytheSweepEffect(secondOrigin, secondForward, 3.6f, 54f));
                 DealConeDamage(3.6f, 54f, PhantomWitchConfig.WraithTrailDamage, false, 1.0f, target);
             }
 

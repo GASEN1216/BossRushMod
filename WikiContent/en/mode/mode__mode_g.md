@@ -46,7 +46,7 @@ Last Stand occurs only on **multi-Boss waves (2, 5, and 8)**: once that wave's c
 - Environmental, Buff, or unclassified final blows still clear the wave, but do not grant this Resolve
 - If the timer expires, the surviving Boss receives a revenge boost: healing, movement speed, and gun/melee damage
 
-Single-Boss waves (1, 3, 4, 6, 7, 9) never trigger Last Stand, so a run offers at most 3 executions — matching the Last Stand cap of 3 Resolve.
+Single-Boss waves (1, 3, 4, 6, 7, 9) never trigger Last Stand, so a run offers at most 3 executions, which matches the Last Stand cap of 3 Resolve.
 
 Lower several Bosses' health before finishing them, then save your burst for the last survivor. Missing the 12-second window still allows a clear, but loses the execution Resolve and triggers Revenge.
 
@@ -116,9 +116,8 @@ Press **K** in-run (default; rebindable in the Mod settings) to open the abandon
   and relic you spent are not refunded, and your contract win streak resets.**
 - Abandoning ends the challenge and resets the contract streak while preserving your existing Nemesis. It does not add a death record or create a new Nemesis.
 
-The point of this exit is simple: Fate Echo is a nine-wave commitment, and grinding to death
-against a counter you can't break is not worth the time. Bowing out costs you less than being
-worn down for another ten minutes.
+Fate Echo is nine waves long, and grinding to death against a counter you can't break isn't
+worth it. Quitting early wastes less time than getting worn down for another ten minutes.
 
 [warn] Abandoning does **not** refund the ticket or the Fate Echo Relic. The relic costs 20,000 from the vending machine, so don't treat abandoning as a quick "reroll".
 
@@ -131,4 +130,4 @@ worn down for another ten minutes.
 - Last Stand is optional and only appears on waves 2, 5, and 8. Secure the wave first, then gamble for Resolve and contract progress
 - Bring a backup answer for the Nemesis temperament in rematches; an R3 Nemesis is not the same fight as its first appearance
 
-[tip] Fate Echo is not about finding one permanently correct build. It is about keeping a second and third way to fight ready. The more you rely on one habit, the easier the next wave can counter it.
+[tip] There is no build that always works in Fate Echo. Keep a second and third way to fight ready; the more you lean on one habit, the easier the next wave counters it.

@@ -35,14 +35,14 @@ Jeff's **Chapter 1, "Sign Us Up"** is practically written for your second run:
 That's 20,000, and it unlocks the **base garden** - after which the three custom Bosses start
 dropping seeds you can grow into "raid meals" that buff the start of your next run.
 
-Each later chapter unlocks something else: chapter 2 opens the trophy showcase, chapter 3 the
-jukebox tracks.
+Each later chapter unlocks something else: chapter 2 opens the display bonus (Boss trophies on a
+weapon rack or dummy), chapter 3 the jukebox tracks.
 
 ## Meet the NPCs
 
 - Find **Dingdang** and **Yuori** on normal maps
 - Chat + gift daily → build Affinity
-- Dingdang **Lv.2** = shop (**Affix Forge Stones** stocked here) / **Lv.4** = Cold Quench Fluid for stat locks; reforging is available from the start
+- Dingdang **Lv.2** = shop (**Affix Forge Stones** only show up at **Lv.10**) / **Lv.4** = Cold Quench Fluid for stat locks; reforging is available from the start
 - Dingdang also runs **affix forging**: reforging changes numbers, affixes change behavior
   (kill explosions, lifesteal on hit, armor thorns)
 
@@ -79,7 +79,7 @@ By the official difficulty rating, lowest first:
 - **Blood Hunt** ★★★★★ — Naked + Ticket + Transponder. The hardest challenge
 
 ::: warning
-The Duck Cup may be relaxed to play, but it is the **only** place in the Mod that lets you stake real items from your stash, and a loss confiscates them permanently. Staking is entirely optional and you can play a full season without touching it - new players should stake nothing.
+The Duck Cup may be relaxed to play, but it is the **only** place in the Mod that lets you stake real items from your stash, and a loss confiscates them permanently. Staking is entirely optional and you can play a full season without touching it. New players should stake nothing.
 :::
 
 ## Economy

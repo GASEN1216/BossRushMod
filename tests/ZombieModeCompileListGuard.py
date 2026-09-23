@@ -29,6 +29,11 @@ REQUIRED_FILES = [
     "ZombieMode\\ZombieModeExtractionController.cs",
     "ZombieMode\\ZombieModeHudController.cs",
     "ZombieMode\\ZombieModeCashInvestmentView.cs",
+    # 2026-09-23 审美审查新增：表现层与从宿主 partial 拆出的视图（不登记就不会编进 DLL，也不报错）。
+    "ZombieMode\\ZombieModeZoneVisuals.cs",
+    "ZombieMode\\ZombieModeUiWidgets.cs",
+    "ZombieMode\\ZombieModeRewardSelectionView.cs",
+    "ZombieMode\\ZombieModeTemporaryNpcServiceView.cs",
     "ZombieMode\\ZombieModeCleanup.cs",
     "ZombieMode\\ZombieModeDebug.cs",
     "Integration\\Items\\ZombieTideInvitationConfig.cs",

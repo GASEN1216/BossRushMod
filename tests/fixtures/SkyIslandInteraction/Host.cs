@@ -30,6 +30,14 @@ namespace BossRush
         private void BuildBody(RectTransform panel, TextMeshProUGUI text, float height, float natural, float cursor) { }
         private static Image KeyCap(RectTransform parent, string label, float width, Vector2 position)
         { return new GameObject("key-cap").AddComponent<Image>(); }
+        // 官方物品图标是引擎数据：替身一律取不到（生产此时不画图标格、标签照常占满）。
+        private static Sprite ChoiceIcon(Choice choice) { return null; }
+        internal GameObject CanvasForTest { get { return canvas != null ? canvas.gameObject : null; } }
+        internal void CloseForTest() { Close(); }
+        internal static string MarkForTest(string value) { return MarkShortfalls(value); }
+        internal static string StyleForTest(string value) { return StyleJournalLines(value); }
+        internal static bool SecondaryForTest(Choice choice) { ChoiceLook look = LookOf(choice); return look != null && look.Secondary; }
+        internal static bool ItemForTest(Choice choice) { ChoiceLook look = LookOf(choice); return look != null && look.MarkShortfall && look.IconTypeId == 7; }
     }
 
     internal sealed class SkyIslandSession

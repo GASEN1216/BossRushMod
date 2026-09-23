@@ -70,14 +70,14 @@ namespace BossRush
                         "Yunduo: I had the helm. The year of the storm we drifted a long time under the cloud sea, no shore in sight, nothing to hear but the wind. When the bell rang, I was the first to know which way was home."));
                     text.Append("\n\n");
                     text.Append(data.StormResolved
-                        ? L10n.T("那阵风散了，我在云底下都感觉得到——船身一下子轻了。谢谢你。",
-                            "When that wind broke up I felt it even from under the clouds — the hull went light all at once. Thank you.")
+                        ? L10n.T("那阵风散了，我在云底下都觉得出来，船身一下子轻了。谢了。",
+                            "When that wind broke up I felt it even from under the clouds. The hull went light all at once. Thanks.")
                         : L10n.T("可云海上那阵风还没散。下次去栈道，别一个人站在桥心。",
                             "But the wind out on the cloud sea has not broken up yet. Next time you are on the boardwalk, do not stand alone at mid-span."));
                     // 噬风·回响：栈道那头的装置还记着那阵风（与引风同一个解锁口径 SkyIslandStormEchoRules.UnlockedBySave）。
                     if (SkyIslandStormEchoRules.UnlockedBySave(data))
-                        text.Append(L10n.T("可栈道那头的装置还记着那阵风：带着它的核、烧一块风晶，它会回来——就当给还在云底下的人练练手。",
-                            " The device at the boardwalk still remembers that wind, though: carry its core, burn a windcrystal, and it comes back — call it practice for the ones still under the clouds."));
+                        text.Append(L10n.T("可栈道那头的装置还记着那阵风：带着它的核、烧一块风晶，它就会回来。就当替还在云底下的人练练手。",
+                            " The device at the boardwalk still remembers that wind, though: carry its core, burn a windcrystal, and it comes back. Call it practice for the ones still under the clouds."));
                     // 岛上的灯（SkyIslandLights）：十盏都亮了，老舵手在船头数得出来。
                     if (SkyIslandLights.AllLit(data))
                     {
@@ -92,18 +92,18 @@ namespace BossRush
                     text.Append("\n\n");
                     if (data.Has(SkyIslandStoryFlag.ZhelingReconciled))
                         text.Append(L10n.T("听说折翎肯坐下来谈了。我把寺里那封回信也带回来了，他接过去的时候，手一直在抖。",
-                            "I hear Zheling agreed to sit down and talk. I brought back the reply from the temple too — his hands would not stop shaking when he took it."));
+                            "I hear Zheling agreed to sit down and talk. I brought back the reply from the temple too. His hands wouldn't stop shaking when he took it."));
                     else if (data.Has(SkyIslandStoryFlag.ZhelingDefeated))
                         text.Append(L10n.T("路是通了，可寺里没人收信了。我把那封信压在他留下的旧腰牌旁边，风会替我送到的。",
                             "The road is open, but there is no one at the temple to take the letter now. I weighed it down beside the old badge he left; the wind will deliver it for me."));
                     else
                         text.Append(L10n.T("镜水寺那条路还封着吗？写给折翎的那封信，我一直没敢送。",
-                            "Is the Mirrorwater Temple road still closed? The letter addressed to Zheling — I never dared deliver it."));
+                            "Is the Mirrorwater Temple road still closed? I've got a letter for Zheling I never dared deliver."));
                     if (SkyIslandLights.Lit(data, "Light_S2"))
                     {
                         text.Append("\n\n");
-                        text.Append(L10n.T("邮亭里亮了灯，倒挂的信我一封封取下来了——都还朝着家。",
-                            "There is a lamp in the post hut now. I took the upside-down letters down one by one — every one still pointing home."));
+                        text.Append(L10n.T("邮亭里亮了灯，倒挂的信我一封封取下来了，每封都还朝着家。",
+                            "There's a lamp in the post hut now. I took the upside-down letters down one by one. Every one still pointed home."));
                     }
                     break;
                 case 2:
@@ -111,8 +111,8 @@ namespace BossRush
                         "Xiaomao: I am the workshop apprentice! Master always said the Bell Court answers when the star lamp is lit. I never believed it."));
                     text.Append("\n\n");
                     text.Append(data.Has(SkyIslandStoryFlag.Telescope)
-                        ? L10n.T("可观星镜真的对准了——我在船上听见钟庭回应了一声！师傅没骗我。",
-                            "But the telescope really is aligned — I heard the Bell Court answer from the boat! Master was not lying.")
+                        ? L10n.T("可观星镜真的对准了！我在船上听见钟庭回应了一声！师傅没骗我。",
+                            "But the telescope really is aligned! I heard the Bell Court answer from the boat! Master wasn't lying.")
                         : L10n.T("星灯是亮了，可瞭台上的观星镜还偏着。你要是有空，替我去校准一下吧？",
                             "The star lamp is lit, but the telescope on the overlook is still off. If you have the time, would you calibrate it for me?"));
                     if (SkyIslandLights.Lit(data, "Light_G"))
@@ -134,12 +134,12 @@ namespace BossRush
                             "After the bell engine stopped, the Bell Keeper polished the bell alone all night. I dressed his hands; he did not say a word."));
                     else
                         text.Append(L10n.T("钟守那边还没松口吗？他不是坏人，只是怕钟一响，又有人回不来。",
-                            "Has the Bell Keeper still not given way? He is not a bad man — he is only afraid that if the bell rings, someone else will not come back."));
+                            "Has the Bell Keeper still not given way? He's not a bad man. He's just afraid that if the bell rings, someone else won't come back."));
                     if (SkyIslandLights.Lit(data, "Light_H"))
                     {
                         text.Append("\n\n");
                         text.Append(L10n.T("钟架下那盏灯，守夜的人总算有地方暖手了。",
-                            "That lamp under the bell frame — at last the night watch has somewhere to warm their hands."));
+                            "With that lamp under the bell frame, the night watch finally has somewhere to warm their hands."));
                     }
                     if (data.Has(SkyIslandStoryFlag.PlantingDelivered))
                     {

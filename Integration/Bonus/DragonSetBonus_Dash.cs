@@ -472,8 +472,7 @@ namespace BossRush
                         DragonKingConfig.LavaRadius
                     );
 
-                    // 特效持续时间与熔浆区域一致
-                    UnityEngine.Object.Destroy(effect, DragonKingConfig.LavaDuration);
+                    // 退场交给 PlayerLavaZone：到点停伤害，视觉停发射、灯淡出、粒子烧完再销毁（不再到点一帧硬删）
                 }
                 else
                 {
@@ -497,40 +496,15 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 创建龙王套装残影（金色/橙色）
+        /// 创建龙王套装残影（金橙）。表现在 SetBonusFx.cs 的 DragonDashAfterimageFx：
+        /// 面朝镜头、角色大小的柔光 + 一小团上飘烟缕，只有本次冲刺的第一个残影带弱灯（VA-07）。
         /// </summary>
         private void CreateDragonKingAfterimageAtPosition(CharacterMainControl main, Vector3 position)
         {
             try
             {
-                // 创建简单的残影精灵
-                GameObject afterimage = new GameObject("DragonKingAfterimage");
-                afterimage.transform.position = position + Vector3.up * 1f; // 角色中心高度
-                afterimage.transform.rotation = main.transform.rotation;
-
-                // 添加精灵渲染器
-                SpriteRenderer sr = afterimage.AddComponent<SpriteRenderer>();
-
-                // 使用内置的白色圆形精灵
-                sr.sprite = CreateSimpleCircleSprite();
-                sr.color = new Color(1f, 0.6f, 0.1f, 0.7f); // 金橙色半透明（龙王特色）
-                sr.sortingOrder = 100;
-
-                // 设置适中的尺寸
-                afterimage.transform.localScale = new Vector3(2f, 3f, 1f);
-
-                // 添加光源增强视觉效果
-                Light light = afterimage.AddComponent<Light>();
-                light.type = LightType.Point;
-                light.color = new Color(1f, 0.5f, 0.1f); // 金橙色
-                light.intensity = 3f;
-                light.range = 2f;
-                light.shadows = LightShadows.None;
-
-                afterimages.Add(afterimage);
-
-                // 启动淡出协程
-                StartCoroutine(FadeOutAfterimageLight(afterimage, sr, light, 0.5f));
+                afterimages.RemoveAll(ai => ai == null);
+                afterimages.Add(DragonDashAfterimageFx.Spawn(position, new Color(1f, 0.62f, 0.22f, 0.42f), afterimages.Count == 0));
             }
             catch (Exception e)
             {
@@ -538,130 +512,17 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 在指定位置创建残影 - 轻量级粒子效果版本
-        /// [性能优化] 不再复制完整角色模型，改用简单的精灵残影
-        /// </summary>
+        /// <summary>在指定位置创建残影（龙裔套装，橙红）。同上。</summary>
         private void CreateAfterimageAtPosition(CharacterMainControl main, Vector3 position)
         {
             try
             {
-                // 创建简单的残影精灵
-                GameObject afterimage = new GameObject("DragonAfterimage_Light");
-                afterimage.transform.position = position + Vector3.up * 1f; // 角色中心高度
-                afterimage.transform.rotation = main.transform.rotation;
-
-                // 添加精灵渲染器
-                SpriteRenderer sr = afterimage.AddComponent<SpriteRenderer>();
-
-                // 使用内置的白色圆形精灵（Unity默认）
-                sr.sprite = CreateSimpleCircleSprite();
-                sr.color = new Color(1f, 0.3f, 0.1f, 0.6f); // 橙红色半透明
-                sr.sortingOrder = 100;
-
-                // 设置适中的尺寸
-                afterimage.transform.localScale = new Vector3(1.8f, 2.8f, 1f);
-
-                // 添加光源增强视觉效果
-                Light light = afterimage.AddComponent<Light>();
-                light.type = LightType.Point;
-                light.color = new Color(1f, 0.3f, 0.1f);
-                light.intensity = 2f;
-                light.range = 1.5f;
-                light.shadows = LightShadows.None;
-
-                afterimages.Add(afterimage);
-
-                // 启动淡出协程（延长持续时间）
-                StartCoroutine(FadeOutAfterimageLight(afterimage, sr, light, 0.5f));
+                afterimages.RemoveAll(ai => ai == null);
+                afterimages.Add(DragonDashAfterimageFx.Spawn(position, new Color(1f, 0.45f, 0.18f, 0.36f), afterimages.Count == 0));
             }
             catch (Exception e)
             {
                 DevLog("[DragonSet] CreateAfterimageAtPosition 异常: " + e.Message);
-            }
-        }
-
-        // [性能优化] 缓存生成的精灵
-        private static Sprite cachedCircleSprite = null;
-
-        /// <summary>
-        /// 创建简单的圆形精灵（用于残影效果）
-        /// [性能优化] 使用缓存避免重复创建
-        /// </summary>
-        private Sprite CreateSimpleCircleSprite()
-        {
-            if (cachedCircleSprite != null) return cachedCircleSprite;
-
-            // 创建一个更大更清晰的渐变圆形纹理
-            int size = 64;
-            Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            Color[] pixels = new Color[size * size];
-
-            float center = size / 2f;
-            float maxDist = center;
-
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
-                    float alpha = Mathf.Clamp01(1f - (dist / maxDist));
-                    // 更锐利的边缘，中心更亮
-                    alpha = Mathf.Pow(alpha, 0.7f);
-                    pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
-                }
-            }
-
-            tex.SetPixels(pixels);
-            tex.Apply();
-
-            cachedCircleSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
-            return cachedCircleSprite;
-        }
-
-        /// <summary>
-        /// 轻量级残影淡出效果
-        /// [性能优化] 只修改单个 SpriteRenderer 的颜色，无材质实例化
-        /// </summary>
-        private System.Collections.IEnumerator FadeOutAfterimageLight(GameObject afterimage, SpriteRenderer sr, Light light, float duration)
-        {
-            if (afterimage == null || sr == null) yield break;
-
-            Color startColor = sr.color;
-            float startIntensity = light != null ? light.intensity : 0f;
-            Vector3 startScale = afterimage.transform.localScale;
-            float elapsed = 0f;
-
-            while (elapsed < duration && afterimage != null)
-            {
-                elapsed += Time.deltaTime;
-                float t = elapsed / duration;
-
-                // 使用缓动函数让淡出更自然
-                float easedT = t * t; // ease-in
-
-                // 透明度衰减
-                float alpha = Mathf.Lerp(startColor.a, 0f, easedT);
-                sr.color = new Color(startColor.r, startColor.g, startColor.b, alpha);
-
-                // 光源强度衰减
-                if (light != null)
-                {
-                    light.intensity = Mathf.Lerp(startIntensity, 0f, easedT);
-                }
-
-                // 轻微放大效果（扩散感）
-                float scale = Mathf.Lerp(1f, 1.3f, easedT);
-                afterimage.transform.localScale = new Vector3(startScale.x * scale, startScale.y * scale, 1f);
-
-                yield return null;
-            }
-
-            // 淡出完成后销毁
-            if (afterimage != null)
-            {
-                afterimages.Remove(afterimage);
-                UnityEngine.Object.Destroy(afterimage);
             }
         }
 

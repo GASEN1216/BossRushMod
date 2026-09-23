@@ -29,9 +29,10 @@ namespace BossRush
 {
     /// <summary>
     /// TMP 链接点击处理器（处理"全部取出"和"全部丢弃"的点击）
-    /// 使用 TMP 的 <link> 标签实现可点击文本区域
+    /// 使用 TMP 的 <link> 标签实现可点击文本区域。
+    /// 悬停时提亮当前链接并播官方 UI/hover、点中时播 UI/click（审美审查 UA-29：旧写法鼠标移上去毫无变化）。
     /// </summary>
-    public class DepositLinkClickHandler : MonoBehaviour, IPointerClickHandler
+    public class DepositLinkClickHandler : MonoBehaviour, IPointerClickHandler, IPointerMoveHandler, IPointerExitHandler
     {
         private TextMeshProUGUI textComponent;
         private Camera uiCamera;
@@ -41,10 +42,9 @@ namespace BossRush
             textComponent = GetComponent<TextMeshProUGUI>();
         }
 
-        public void OnPointerClick(PointerEventData eventData)
+        private string FindLinkId(Vector2 screenPosition)
         {
-            if (!StorageDepositService.IsServiceActive) return;
-            if (textComponent == null) return;
+            if (textComponent == null) return null;
 
             // 获取 UI 相机（用于坐标转换）
             if (uiCamera == null)
@@ -56,14 +56,32 @@ namespace BossRush
                 }
             }
 
+            int linkIndex = TMP_TextUtilities.FindIntersectingLink(textComponent, screenPosition, uiCamera);
+            if (linkIndex < 0 || textComponent.textInfo == null || linkIndex >= textComponent.textInfo.linkCount) return null;
+            return textComponent.textInfo.linkInfo[linkIndex].GetLinkID();
+        }
+
+        public void OnPointerMove(PointerEventData eventData)
+        {
+            if (!StorageDepositService.IsServiceActive || eventData == null) return;
+            StorageDepositService.SetHoveredDepositLink(FindLinkId(eventData.position));
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            StorageDepositService.SetHoveredDepositLink(null);
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (!StorageDepositService.IsServiceActive) return;
+            if (textComponent == null) return;
+
             // 检测点击的链接
-            int linkIndex = TMP_TextUtilities.FindIntersectingLink(textComponent, eventData.position, uiCamera);
-            if (linkIndex < 0) return;
+            string linkID = FindLinkId(eventData.position);
+            if (string.IsNullOrEmpty(linkID)) return;
 
-            // 获取链接信息
-            TMP_LinkInfo linkInfo = textComponent.textInfo.linkInfo[linkIndex];
-            string linkID = linkInfo.GetLinkID();
-
+            BossRushUISound.PlayClick();
             ModBehaviour.DevLog("[DepositLinkClickHandler] 点击链接: " + linkID);
 
             // 根据链接 ID 执行对应操作
@@ -184,9 +202,20 @@ namespace BossRush
         private static TMPro.TextMeshProUGUI retrieveAllText = null;
         private static TMPro.TextMeshProUGUI originalRefreshCountDown = null;
         private static GameObject hiddenRefreshLabel = null;  // 被隐藏的"下次刷新"标签
-        private static Color colorEnough = new Color(0.2f, 0.8f, 0.2f);  // 绿色
-        private static Color colorNotEnough = new Color(0.9f, 0.2f, 0.2f);  // 红色
-        private static Color colorDiscard = new Color(0.7f, 0.3f, 0.3f);  // 丢弃按钮颜色（暗红色）
+
+        // 「全部取出 | 全部丢弃」两条链接的颜色：一律由共享 token 预先转成十六进制（审美审查 UA-29 / UA-31），
+        // 不再写 #33CC33 / #CC3333 这类纯色。悬停色是同色相向白提亮 35%。
+        private static readonly string DepositSuccessHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.SuccessText);
+        private static readonly string DepositSuccessHoverHex = "#" + ColorUtility.ToHtmlStringRGB(Color.Lerp(BossRushUIColors.SuccessText, Color.white, 0.35f));
+        private static readonly string DepositDangerHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText);
+        private static readonly string DepositDangerHoverHex = "#" + ColorUtility.ToHtmlStringRGB(Color.Lerp(BossRushUIColors.DangerText, Color.white, 0.35f));
+        private static readonly string DepositMutedHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextSecondary);
+        private static readonly string DepositTextHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextPrimary);
+
+        // 鼠标当前悬停的链接 id（retrieve / discard / null），只在变化时重排一次文字。
+        private static string hoveredDepositLink = null;
+        // 「全部丢弃」确认框在等玩家回答：防止连点弹出第二个。
+        private static bool discardConfirmPending = false;
 
         // "全部丢弃"按钮相关
         private static GameObject discardAllButtonObj = null;
@@ -259,6 +288,7 @@ namespace BossRush
             isServiceActive = false;
             isQuickDepositInProgress = false;
             isRetrieveAllInProgress = false;
+            discardConfirmPending = false;
             pendingDepositItem = null;
 
             Cleanup();

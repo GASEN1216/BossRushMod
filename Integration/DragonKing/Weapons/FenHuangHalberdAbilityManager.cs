@@ -708,18 +708,23 @@ namespace BossRush
 
     internal class FenHuangLeapPreview : MonoBehaviour
     {
-        private const int MarkerSegments = 24;
+        // VB-20：外圈半径 3 m，24 段每段约 0.8 m 看得出棱角；48 段约 0.4 m。
+        private const int MarkerSegments = 48;
+        /// <summary>落地火海的真实覆盖半径：五根火柱落在 1.8 m 圈上、各 1.2 m 半径（FenHuangHalberdAction.BeginLanding）。</summary>
+        private const float FireReachRadius = FenHuangHalberdConfig.LandingFireRingRadius + FenHuangHalberdConfig.FirePillarRadius;
+        /// <summary>可跳 / 不可跳两色拉开（VB-20：旧的材质色 × 顶点色二次相乘后两种都是深橙红，分不出来）。</summary>
+        private static readonly Color ValidColor = new Color(1f, 0.66f, 0.28f, 0.95f);
+        private static readonly Color InvalidColor = new Color(0.92f, 0.22f, 0.22f, 0.95f);
         private static readonly Vector3 MarkerHeightOffset = Vector3.up * 0.05f;
         private static readonly Vector3[] MarkerUnitOffsets = BuildMarkerUnitOffsets();
 
         private LineRenderer trajectoryLine;
         private LineRenderer landingRing;
+        private LineRenderer reachRing;
         private Light markerLight;
         private Transform cachedTransform;
         private Transform banIconTransform;
         private Transform markerLightTransform;
-        private Material trajectoryMaterial;
-        private Material ringMaterial;
         private float pulseTime;
         private bool currentValid = true;
 
@@ -749,8 +754,13 @@ namespace BossRush
         public void Initialize()
         {
             trajectoryLine = CreateLineRenderer("Trajectory", 0.12f, 0.05f);
-            landingRing = CreateLineRenderer("LandingRing", 0.06f, 0.06f);
+            landingRing = CreateLineRenderer("LandingRing", 0.10f, 0.10f);
             landingRing.loop = true;
+            FlattenRing(landingRing);
+            // 外圈 = 落地火海实际覆盖到哪（3 m）：旧预览只画 0.85 m 的落点圈，火海低估了一半以上（VB-20）。
+            reachRing = CreateLineRenderer("FireReachRing", 0.12f, 0.12f);
+            reachRing.loop = true;
+            FlattenRing(reachRing);
 
             // 创建禁止图标
             InitBanIcon();
@@ -780,11 +790,17 @@ namespace BossRush
                 trajectoryLine.SetPositions(points);
             }
 
-            Color color = valid ? new Color(1f, 0.55f, 0.15f, 0.95f) : new Color(1f, 0.18f, 0.18f, 0.95f);
+            Color color = valid ? ValidColor : InvalidColor;
             trajectoryLine.startColor = color;
             trajectoryLine.endColor = color;
             landingRing.startColor = color;
             landingRing.endColor = color;
+            if (reachRing != null)
+            {
+                Color reach = new Color(color.r, color.g, color.b, 0.45f);
+                reachRing.startColor = reach;
+                reachRing.endColor = reach;
+            }
 
             currentValid = valid;
             UpdateLandingRing(landingPoint, valid);
@@ -809,6 +825,11 @@ namespace BossRush
                 landingRing.positionCount = 0;
             }
 
+            if (reachRing != null)
+            {
+                reachRing.positionCount = 0;
+            }
+
             if (banIconObject != null)
             {
                 banIconObject.SetActive(false);
@@ -823,7 +844,7 @@ namespace BossRush
 
             if (landingRing != null)
             {
-                landingRing.widthMultiplier = 0.06f * pulse;
+                landingRing.widthMultiplier = 0.10f * pulse;
             }
 
             // 禁止图标脉冲动画 + billboard 面向摄像机
@@ -860,6 +881,27 @@ namespace BossRush
                 Vector3 offset = MarkerUnitOffsets[i] * radius;
                 landingRing.SetPosition(i, landingPoint + offset + MarkerHeightOffset);
             }
+
+            if (reachRing != null)
+            {
+                reachRing.positionCount = MarkerUnitOffsets.Length;
+                for (int i = 0; i < MarkerUnitOffsets.Length; i++)
+                {
+                    reachRing.SetPosition(i, landingPoint + MarkerUnitOffsets[i] * FireReachRadius + MarkerHeightOffset);
+                }
+            }
+        }
+
+        /// <summary>落点圈摊平在地面上（世界坐标的点 + TransformZ，子物体绕 X 转 90°），不再是面向镜头、一半插进地里的带子。</summary>
+        private static void FlattenRing(LineRenderer ring)
+        {
+            if (ring == null)
+            {
+                return;
+            }
+
+            ring.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            ring.alignment = LineAlignment.TransformZ;
         }
 
         private static Vector3[] BuildMarkerUnitOffsets()
@@ -1014,27 +1056,16 @@ namespace BossRush
             line.receiveShadows = false;
             line.textureMode = LineTextureMode.Stretch;
 
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null)
+            // 软边带材质（共享工厂），颜色只走顶点色（VB-20：旧版材质色 × 顶点色二次相乘，可跳 / 不可跳分不出来）；
+            // 删掉了 URP 下画不出来的 Standard 兜底（VB-29.1），材质归工厂所有，不在这里建或销毁。
+            Material material = DragonKingFxShared.Band(BossRushFxBlend.Alpha);
+            if (material != null)
             {
-                shader = Shader.Find("Unlit/Color");
-            }
-            if (shader == null)
-            {
-                shader = Shader.Find("Standard");
-            }
-
-            Material material = new Material(shader);
-            material.color = new Color(1f, 0.55f, 0.15f, 0.95f);
-            line.material = material;
-
-            if (trajectoryMaterial == null)
-            {
-                trajectoryMaterial = material;
+                line.sharedMaterial = material;
             }
             else
             {
-                ringMaterial = material;
+                line.enabled = false;
             }
 
             return line;
@@ -1042,16 +1073,6 @@ namespace BossRush
 
         private void OnDestroy()
         {
-            if (trajectoryMaterial != null)
-            {
-                Destroy(trajectoryMaterial);
-            }
-
-            if (ringMaterial != null)
-            {
-                Destroy(ringMaterial);
-            }
-
             if (banTexture != null && banTexture != cachedBanTexture)
             {
                 if (!ProductionIconCache.IsBorrowed(banTexture)) Destroy(banTexture);

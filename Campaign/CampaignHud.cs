@@ -55,6 +55,17 @@ namespace BossRush
         /// <summary>正文拼装缓冲。复用同一个 builder，避免每帧新建。</summary>
         private static readonly StringBuilder _builder = new StringBuilder(160);
 
+        // 行着色（审美审查 UA-24）：完成 / 失败 / 进行中不再只靠行首符号区分。token 预先转成十六进制，不每帧拼。
+        private static readonly string DoneHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.SuccessText);
+        private static readonly string FailedHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText);
+        private static readonly string CountHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextPrimary);
+
+        /// <summary>进度推进时面板上叠的一层 Accent 闪光（0.35→0，0.6 秒）。只在推进那一刻播，常态关着、零开销。</summary>
+        private static Image _flash;
+        private static float _flashElapsed = -1f;
+        private const float FlashSeconds = 0.6f;
+        private const float FlashPeakAlpha = 0.35f;
+
         #endregion
 
         #region 每帧驱动
@@ -80,7 +91,12 @@ namespace BossRush
                 EnsureBuilt();
                 if (_panel == null) return;
 
-                if (!_panel.activeSelf) _panel.SetActive(true);
+                if (!_panel.activeSelf)
+                {
+                    _panel.SetActive(true);
+                    // 从隐藏到显示：淡入 + 微放大，不再一帧切出来（UA-24）。轴心在右上角，放大从角上长出来。
+                    BossRushUI.PlayOpenAnimation(_panel);
+                }
 
                 // 跟随官方 HUD 显隐：背包、地图与对话画在 sortingOrder 100 的官方画布上，本 HUD 在
                 // HudOverlay（1200），不让位就会压在它们上面（口径同 SkyIslandHud，判定共用 BossRushUI）。
@@ -89,6 +105,9 @@ namespace BossRush
                 // 暂停菜单开着时也收起（常驻 HUD 同一口径，2026-09-14）：暂停菜单不是 View，不让官方 HUD 隐藏。
                 if (BossRushUI.IsGamePaused()) visible = false;
                 if (_canvas != null && _canvas.enabled != visible) _canvas.enabled = visible;
+
+                // 进度闪光：暂停与让位期间不推进（unscaled 时间，自己过暂停门）。
+                if (_flashElapsed >= 0f && visible) StepFlash(Time.unscaledDeltaTime);
 
                 // 顶边排在官方右上角「操作说明」提示栈下面：它展开后会一路长到屏幕中部，写死的 y=-110 会被盖住。
                 // 0.25 秒量一次，位置真的变了才写。
@@ -106,6 +125,8 @@ namespace BossRush
                 // 这里只比整数与 bool，零分配。
                 if (!HasProgressChanged(def)) return;
 
+                // 某条目标计数变大（含刚达成）才闪一下；换章、换语言、首次显示都不算。
+                if (HasProgressAdvanced(def)) StartFlash();
                 CaptureProgressSnapshot(def);
 
                 string title = L10n.T("契约 · " + def.TitleCN, "Contract · " + def.TitleEN);
@@ -148,6 +169,54 @@ namespace BossRush
             return false;
         }
 
+        /// <summary>
+        /// 与上一次显示相比，同一章、同一语言下是否有某条目标的计数变大。只读整数，不分配。
+        /// </summary>
+        private static bool HasProgressAdvanced(CampaignChapterDef def)
+        {
+            if (!string.Equals(_shownChapterId, def.ChapterId, StringComparison.Ordinal)) return false;
+            if (_shownChinese != L10n.IsChinese) return false;
+
+            IList<CampaignObjectiveProgress> progress = CampaignObjectiveTracker.Progress;
+            if (_shownCurrent.Count != progress.Count) return false;
+
+            for (int i = 0; i < progress.Count; i++)
+            {
+                CampaignObjectiveProgress item = progress[i];
+                if (item != null && !item.Failed && item.Current > _shownCurrent[i]) return true;
+            }
+            return false;
+        }
+
+        private static void StartFlash()
+        {
+            if (_flash == null) return;
+            _flashElapsed = 0f;
+            _flash.enabled = true;
+            StepFlash(0f);
+        }
+
+        /// <summary>闪光推进：SmoothStep 从峰值落到 0，播完关掉 Image。</summary>
+        private static void StepFlash(float delta)
+        {
+            if (_flash == null)
+            {
+                _flashElapsed = -1f;
+                return;
+            }
+
+            _flashElapsed += delta;
+            float t = Mathf.Clamp01(_flashElapsed / FlashSeconds);
+            Color c = _flash.color;
+            c.a = FlashPeakAlpha * (1f - BossRushUI.SmoothStep(t));
+            _flash.color = c;
+            if (t >= 1f)
+            {
+                _flash.enabled = false;
+                _flashElapsed = -1f;
+            }
+        }
+
         /// <summary>记下这次显示对应的进度快照。</summary>
         private static void CaptureProgressSnapshot(CampaignChapterDef def)
         {
@@ -178,8 +247,9 @@ namespace BossRush
 
                 if (_builder.Length > 0) _builder.Append('\n');
 
-                if (item.Failed) _builder.Append("× ");
-                else if (item.IsSatisfied) _builder.Append("√ ");
+                // 完成整行 SuccessText、失败整行 DangerText；进行中保持正文的 TextSecondary，计数用 TextPrimary 提出来。
+                if (item.Failed) _builder.Append("<color=").Append(FailedHex).Append(">× ");
+                else if (item.IsSatisfied) _builder.Append("<color=").Append(DoneHex).Append(">√ ");
                 else _builder.Append("· ");
 
                 _builder.Append(L10n.T(item.Def.DescCN, item.Def.DescEN));
@@ -190,8 +260,13 @@ namespace BossRush
                 }
                 else if (item.Def.Threshold > 1)
                 {
-                    _builder.Append("  ").Append(item.Current).Append('/').Append(item.Def.Threshold);
+                    _builder.Append("  ");
+                    if (!item.IsSatisfied) _builder.Append("<color=").Append(CountHex).Append('>');
+                    _builder.Append(item.Current).Append('/').Append(item.Def.Threshold);
+                    if (!item.IsSatisfied) _builder.Append("</color>");
                 }
+
+                if (item.Failed || item.IsSatisfied) _builder.Append("</color>");
             }
 
             return _builder.ToString();
@@ -223,19 +298,32 @@ namespace BossRush
                 background.raycastTarget = false;
                 BossRushUI.ApplyFramedPanelSkin(background, 10, BossRushUISkinPart.Card);
 
+                // 进度闪光层：与卡片同形（Card 档、同半径），排在文字下面，常态关着。
+                GameObject flashObj = ZombieModeUIHelper.CreateRect(
+                    "ProgressFlash", _panel.transform, Vector2.zero, Vector2.one,
+                    Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+                _flash = flashObj.AddComponent<Image>();
+                _flash.color = new Color(BossRushUIColors.Accent.r, BossRushUIColors.Accent.g, BossRushUIColors.Accent.b, 0f);
+                _flash.raycastTarget = false;
+                BossRushUI.ApplyPanelSkin(_flash, 10, BossRushUISkinPart.Card);
+                _flash.enabled = false;
+
+                // 字号梯度（UA-24）：标题 17 粗体、正文 15（常驻 HUD 正文 15–18）；旧写法 15 / 13，层级几乎看不出。
                 _titleText = ZombieModeUIHelper.CreateText(
-                    "Title", _panel.transform, string.Empty, 15f,
+                    "Title", _panel.transform, string.Empty, 17f,
                     new Vector2(0f, 1f), new Vector2(1f, 1f),
                     new Vector2(0f, -24f), new Vector2(-24f, 40f),
                     TextAlignmentOptions.Left, BossRushUIColors.Accent);
+                _titleText.fontStyle = FontStyles.Bold;
                 _titleText.raycastTarget = false;
                 BossRushUI.ApplyGameFont(_titleText);
 
                 _bodyText = ZombieModeUIHelper.CreateText(
-                    "Body", _panel.transform, string.Empty, 13f,
+                    "Body", _panel.transform, string.Empty, 15f,
                     new Vector2(0f, 1f), new Vector2(1f, 1f),
                     new Vector2(0f, -52f), new Vector2(-24f, 36f),
                     TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
+                _bodyText.richText = true;
                 _bodyText.rectTransform.pivot = new Vector2(0.5f, 1f);
                 _bodyText.raycastTarget = false;
                 BossRushUI.ApplyGameFont(_bodyText);
@@ -258,6 +346,8 @@ namespace BossRush
             try
             {
                 if (_panel != null && _panel.activeSelf) _panel.SetActive(false);
+                if (_flash != null) _flash.enabled = false;
+                _flashElapsed = -1f;
                 // 快照作废：下次显示时无条件重建一次，
                 // 顺带覆盖「隐藏期间换了语言」这种不体现在计数上的变化
                 _shownChapterId = null;
@@ -289,6 +379,8 @@ namespace BossRush
             _panel = null;
             _titleText = null;
             _bodyText = null;
+            _flash = null;
+            _flashElapsed = -1f;
             _shownChapterId = null;
             _shownCurrent.Clear();
             _shownFailed.Clear();

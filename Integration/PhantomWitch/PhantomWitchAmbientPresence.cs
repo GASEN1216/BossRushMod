@@ -9,7 +9,8 @@ namespace BossRush
         private const float DefaultGroundMistEmissionRate = 3f;
         private const float CloseCameraDistance = 5f;
 
-        private static readonly int MainTexPropertyId = Shader.PropertyToID("_MainTex");
+        /// <summary>冷光晕贴图全场共用一张（会话常驻），它是共享材质工厂的缓存键，不随 Boss 销毁。</summary>
+        private static Texture2D sharedHaloTexture;
 
         private Transform cachedTransform;
         private Transform bossBody;
@@ -118,22 +119,14 @@ namespace BossRush
             CleanupTransientEffects();
             CleanupOwnedObjects();
 
-            if (haloMaterial != null)
-            {
-                Destroy(haloMaterial);
-                haloMaterial = null;
-            }
+            // 光晕材质归 BossRushFxMaterials（全 Mod 共享），光晕贴图是全场共用的一张：只放手，不销毁。
+            haloMaterial = null;
+            haloTexture = null;
 
             if (lineMaterial != null)
             {
                 Destroy(lineMaterial);
                 lineMaterial = null;
-            }
-
-            if (haloTexture != null)
-            {
-                Destroy(haloTexture);
-                haloTexture = null;
             }
         }
 
@@ -232,12 +225,14 @@ namespace BossRush
             emission.enabled = true;
             emission.rateOverTime = DefaultVeilEmissionRate;
 
+            // 审查 VB-04：Circle 默认竖着；放平后半径 0.6 m 的一圈正好环在腰上（shape.rotation 不影响速度轴）。
             var shape = veilParticles.shape;
             shape.enabled = true;
             shape.shapeType = ParticleSystemShapeType.Circle;
             shape.radius = 0.6f;
             shape.radiusThickness = 0.35f;
             shape.arcMode = ParticleSystemShapeMultiModeValue.Random;
+            shape.rotation = new Vector3(90f, 0f, 0f);
 
             var colorOverLifetime = veilParticles.colorOverLifetime;
             colorOverLifetime.enabled = true;
@@ -280,7 +275,8 @@ namespace BossRush
             noise.frequency = 0.25f;
             noise.scrollSpeed = 0.1f;
 
-            PhantomWitchAssetManager.ConfigureSharedParticleRenderer(veilParticles);
+            // 灵纱是半透明的纱，不发光：半透明混合。
+            PhantomWitchAssetManager.ConfigureSharedParticleRenderer(veilParticles, BossRushFxBlend.Alpha);
             veilParticles.Play();
         }
 
@@ -306,12 +302,14 @@ namespace BossRush
             emission.enabled = true;
             emission.rateOverTime = DefaultGroundMistEmissionRate;
 
+            // 审查 VB-04：地雾铺在脚下，放平 Circle。
             var shape = groundMistParticles.shape;
             shape.enabled = true;
             shape.shapeType = ParticleSystemShapeType.Circle;
             shape.radius = 0.75f;
             shape.radiusThickness = 1f;
             shape.arcMode = ParticleSystemShapeMultiModeValue.Random;
+            shape.rotation = new Vector3(90f, 0f, 0f);
 
             var colorOverLifetime = groundMistParticles.colorOverLifetime;
             colorOverLifetime.enabled = true;
@@ -331,6 +329,13 @@ namespace BossRush
                 });
             colorOverLifetime.color = new ParticleSystem.MinMaxGradient(colorGradient);
 
+            // 地雾边走边散开，不是一出生就满尺寸的圆片。
+            var sizeOverLifetime = groundMistParticles.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
+                new Keyframe(0f, 0.7f),
+                new Keyframe(1f, 1.3f)));
+
             var noise = groundMistParticles.noise;
             noise.enabled = true;
             noise.strength = 0.04f;
@@ -343,7 +348,7 @@ namespace BossRush
                 renderer.sortMode = ParticleSystemSortMode.Distance;
             }
 
-            PhantomWitchAssetManager.ConfigureSharedParticleRenderer(groundMistParticles);
+            PhantomWitchAssetManager.ConfigureSharedParticleRenderer(groundMistParticles, BossRushFxBlend.Alpha);
             groundMistParticles.Play();
         }
 
@@ -364,10 +369,10 @@ namespace BossRush
 
             coldHaloTransform = haloTransform;
             coldHaloRenderer = halo.GetComponent<MeshRenderer>();
-            haloMaterial = new Material(ResolveTransparentShader());
-            haloMaterial.name = "PW_AmbientColdHalo";
-            haloTexture = CreateHaloTexture();
-            haloMaterial.SetTexture(MainTexPropertyId, haloTexture);
+            // 审查 VB-02：此前 Shader.Find 回退链首选项在游戏里不存在，落到 Sprites/Default 发不了光。
+            // 冷光晕是「光」：共享加色材质 + 全场共用的椭圆软光贴图。
+            haloTexture = GetSharedHaloTexture();
+            haloMaterial = BossRushFxMaterials.Get(BossRushFxBlend.Additive, haloTexture);
 
             if (coldHaloRenderer != null)
             {
@@ -409,12 +414,24 @@ namespace BossRush
             }
         }
 
-        private Texture2D CreateHaloTexture()
+        private static Texture2D GetSharedHaloTexture()
         {
-            Texture2D texture = new Texture2D(32, 64, TextureFormat.Alpha8, false);
+            if (sharedHaloTexture == null)
+            {
+                sharedHaloTexture = CreateHaloTexture();
+            }
+
+            return sharedHaloTexture;
+        }
+
+        private static Texture2D CreateHaloTexture()
+        {
+            // RGBA 白色 + alpha（Alpha8 在部分图形 API 上采样出 rgb = 0，走顶点色 / 属性块上色会变黑）。
+            Texture2D texture = new Texture2D(32, 64, TextureFormat.RGBA32, false);
             texture.name = "PW_AmbientHaloAlpha";
             texture.wrapMode = TextureWrapMode.Clamp;
             texture.filterMode = FilterMode.Bilinear;
+            texture.hideFlags = HideFlags.HideAndDontSave;
 
             float centerX = 15.5f;
             float centerY = 31.5f;
@@ -718,7 +735,9 @@ namespace BossRush
                 line.useWorldSpace = false;
                 line.loop = false;
                 line.positionCount = 3;
-                line.widthMultiplier = Random.Range(0.018f, 0.028f);
+                // 审查 VB-08：0.018-0.028 m 的线在相机距离下只剩 1-2 px。
+                line.widthMultiplier = Random.Range(0.05f, 0.065f);
+                line.widthCurve = PhantomWitchVfxRedesign.TaperedLineWidthCurve;
                 line.startColor = new Color(
                     PhantomWitchConfig.SilverAshCore.r,
                     PhantomWitchConfig.SilverAshCore.g,
@@ -746,16 +765,6 @@ namespace BossRush
         private Material GetLineMaterial()
         {
             return PhantomWitchAssetManager.GetLineMaterial();
-        }
-
-        private Shader ResolveTransparentShader()
-        {
-            return Shader.Find("Legacy Shaders/Particles/Additive")
-                ?? Shader.Find("Particles/Additive")
-                ?? Shader.Find("Sprites/Default")
-                ?? Shader.Find("Unlit/Transparent")
-                ?? Shader.Find("Legacy Shaders/Particles/Alpha Blended")
-                ?? Shader.Find("Standard");
         }
 
         private void CleanupTransientEffects()

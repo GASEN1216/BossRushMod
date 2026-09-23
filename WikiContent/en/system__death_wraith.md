@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-Wherever you died, the body is still standing there — waiting for you to come back.
+Wherever you died, something will be waiting for you when you go back.
 
 When you return to the matching sub-scene and the official lost-property cache spawns, an echo appears nearby: **wearing your gear, wearing your face, breathing with your voice.** Its name is written
 above it: `Strong / Balanced / Weak` + your name + `'s Wraith`.
@@ -17,7 +17,7 @@ How hard it hits depends on **how expensive you were when you died**.
 - **Your style** — died holding a gun and it fights as a gunner; died in melee and it closes the
   distance and chases you down.
 
-It won't lunge the second you load in. Like any vanilla enemy it has to notice you first — which
+It won't lunge the second you load in. Like any vanilla enemy it has to notice you first, which
 gives you a moment to look at what's standing there before it looks back.
 
 ### You Set Its Strength Yourself
@@ -40,12 +40,12 @@ clean up after yourself is often harder than the Boss that killed you in the fir
 - **Beating it settles that record.** Killing a wraith removes its record, leaving other raids' records intact. Opening its matching official lost-property cache also removes the saved record, preventing later respawns from that entry.
 - **It drops nothing.** A wraith has no loot crate, and killing it returns not one piece of gear.
   Recover your belongings from the official lost-property cache; the wraith gives no extra gear.
-- **Normal game scenes only** — menus and loading screens never trigger it.
-- It carries its own name and health bar, so you can pick your own echo out at a glance.
+- **Normal game scenes only**; menus and loading screens never trigger it.
+- It carries its own name and health bar, so you can spot your own wraith at a glance.
 
 ### Do I Need to Turn It On?
 
-On by default. `enableDeathWraithSystem` in ModConfig switches it off — after which nothing is
+On by default. `enableDeathWraithSystem` in ModConfig switches it off. After that nothing is
 recorded and nothing spawns, and the existing wraith record in your save is cleared out.
 
 [warn] Think it through before you head out: what you're wearing now is what you'll be fighting next.

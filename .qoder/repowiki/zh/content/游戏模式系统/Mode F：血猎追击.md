@@ -372,3 +372,11 @@ Mode F 通过清晰的状态机驱动高压生存体验，结合悬赏系统与�
 
 
 2026-09-22 审计修复（COMPAT，L1，未实机）：补位生成的失败/异常续体在扣 inflight 和清龙裔预约前复核 session。工事部署、维修先检查官方 InputActived，再复用现有完整 overlay 判据；输入禁用、暂停、官方界面、其他 View 和地图打开时停止读取鼠标，恢复后保留原选择。EntityModelFactory 返回无 Renderer 的空壳时，预览和直接落地都销毁空壳并走已有几何后备。补位名称 marker 保存 preset name key，显示时解析当前语言。补位的旧 null / fault / success 与后继请求交错另由 `AuditModeLifecycle` 生产方法抽取回归验证（L2）。
+
+## 2026-09-23 审美修复：阶段状态从横幅改成常驻状态卡
+
+- 旧行为「每 15 秒推一条多色阶段广播横幅」已删除（撤离阶段也不留）。阶段名、剩余时间、命火进度改由常驻状态卡 `ModeF/ModeFStatusHud.cs` 显示：左上 (16,-140)，与随机事件徽章同一让位口径，避开官方左上时间显示；每帧入口过 `BossRushUI.IsOfficialHudHidden()` 与 `IsGamePaused()`，已登记 `PersistentHudVisibilityGuard`。
+- 横幅只保留阶段切换、榜首变更与胜负；颜色一律 token（得到 `SuccessText`、命火 / 金 `WarningText`、危险 `DangerText`），不再用纯红纯绿。
+- 击杀奖励气泡改为分段换行、收益用 `SuccessText`；赏金雷达字改用 TMP 距离场描边（`BossRushUIKit.ApplyWorldTextOutline`，旧的 `UI.Outline` 挂在 TMP 上无效），隐藏改淡出。
+- 放置预览与维修高亮改由 `ModeF/ModeFFortificationHologramFx.cs` 负责（旧预览着色器不支持透明，0.4 alpha 不生效，出来是实心纯色模型）。
+- 详情：本地 `docs/代码审查/2026-09-23-审美审查/fix_modesGEF_report.md`、`fix_vfxA_report.md`。

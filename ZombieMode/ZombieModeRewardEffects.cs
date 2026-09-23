@@ -70,7 +70,7 @@ namespace BossRush
             float now = inst.GetZombieModeRuntimeNow();
             if (now >= endTime)
             {
-                Destroy(gameObject);
+                ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);   // 引力井地面圈淡出再删（纯表现）
                 return;
             }
 

@@ -137,7 +137,8 @@ namespace BossRush
         /// <summary>网格列数。</summary>
         internal const int GridColumns = 4;
         internal const float CardWidth = 168f;
-        internal const float CardHeight = 210f;
+        /// <summary>卡片高。2026-09-23 从 210 加到 236：统计行字号放大（13/12 → 15/14）、框高按 字号×1.45+4 给足（审美审查 UD-31）。</summary>
+        internal const float CardHeight = 236f;
         internal const float CardSpacing = 12f;
 
         /// <summary>锁定条目立绘 tint（同图压黑当剪影）。</summary>

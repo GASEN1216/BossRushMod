@@ -33,7 +33,7 @@ namespace BossRush
         private static Texture2D cachedRingTexture;
 
         /// <summary>
-        /// 中心亮、边缘线性淡出的圆形精灵。用于爆发环、碎片、护盾闪光等一次性表现。
+        /// 中心亮、边缘 SmoothStep 淡出到 0 的圆形精灵。用于爆发环、碎片、护盾闪光等一次性表现。
         /// 失败返回 null，调用方按「没有特效但功能正常」处理。
         /// </summary>
         public static Sprite GetCircleSprite()
@@ -53,16 +53,20 @@ namespace BossRush
                 tex.wrapMode = TextureWrapMode.Clamp;
 
                 Color[] pixels = new Color[size * size];
-                float center = size / 2f;
+                // 圆心取像素中心 (size-1)/2，半径取 size/2（2026-09-23 审美审查 UE-22）：旧写法圆心偏半个像素，
+                // 衰减是锥形再开 0.7 次幂——0 附近导数趋于无穷，放大后外缘一道清楚的硬圈（d=0.9 处还有 0.2），中心是锥尖。
+                // 现在与 SkyIslandUiArt.GetRadialGlow / BossRushFxMaterials 的软圆同一条 SmoothStep：中心实、外缘收到 0 没有台阶。
+                float center = (size - 1) * 0.5f;
+                float radius = size * 0.5f;
 
                 for (int y = 0; y < size; y++)
                 {
                     for (int x = 0; x < size; x++)
                     {
-                        float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
-                        float alpha = Mathf.Clamp01(1f - (dist / center));
-                        // 0.7 次幂让边缘更锐利、中心更亮，与龙套装残影同款手感
-                        alpha = Mathf.Pow(alpha, 0.7f);
+                        float dx = x - center;
+                        float dy = y - center;
+                        float t = Mathf.Clamp01(1f - Mathf.Sqrt(dx * dx + dy * dy) / radius);
+                        float alpha = t * t * (3f - 2f * t);
                         pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
                     }
                 }
@@ -103,7 +107,9 @@ namespace BossRush
                 for (int x = 0; x < size; x++)
                 {
                     float radius = Vector2.Distance(new Vector2(x, y), new Vector2(center, center)) / center;
-                    float alpha = Mathf.Clamp01(1f - Mathf.Abs(radius - 0.82f) / 0.12f);
+                    float band = Mathf.Clamp01(1f - Mathf.Abs(radius - 0.82f) / 0.12f);
+                    // 环带剖面过一道 SmoothStep（UE-22）：三角剖面的两条边在放大后是两道折线，收成柔边。
+                    float alpha = band * band * (3f - 2f * band);
                     pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
                 }
             }

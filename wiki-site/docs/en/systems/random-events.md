@@ -11,7 +11,7 @@ red, it starts raining money, or a Boss who isn't on tonight's card kicks the do
 - The run opens with `90` quiet seconds so you can loot and settle before the first one.
 - After that, events are `45-75` seconds apart, and **only one is ever active at a time**.
 
-Put simply: it doesn't change the rules of your run, it changes your plan for this minute.
+Put simply: the rules of the run stay the same, but for the next minute you'll have to change plans.
 
 ## Event list
 
@@ -22,11 +22,11 @@ The percentages below describe the first draw. Consecutive repeats are excluded,
 A supply crate drops from `28` metres up and lands a couple of seconds later.
 
 - **4 items** inside, quality `4-7`. **Infinite Hell** raises the ceiling to `8`;
-  **From Scratch** caps it at `5` — that mode's economy curve is steep enough already.
+  **From Scratch** caps it at `5`, since that mode's economy curve is steep enough already.
 - The landing is loud. Every enemy within `34` metres comes to grab it. The crate always
-  lands at least `18` metres from you, so you have to run for it — and you won't be alone.
+  lands at least `18` metres from you, so you have to run for it, and you won't be alone.
 - **It will not vanish while you're looting it.** With the loot window open the expiry keeps
-  getting pushed back, and closing it leaves you another `3` seconds — a misclick shouldn't
+  getting pushed back, and closing it leaves you another `3` seconds, so a misclick won't
   cost you the whole crate.
 - The grace total is capped at `120` seconds, though. Camping the window doesn't work: once
   the cap is hit the crate expires normally and the window closes itself. Only one event can
@@ -50,9 +50,9 @@ One Boss pulled at random from the current Boss pool, walking in from `30` metre
 
 - **It is not part of the current wave.** You don't need to kill it to advance, and killing
   it won't skip a wave either.
-- In **Standard BossRush** and **From Scratch** it still drops a full loot crate — one free crate.
+- In **Standard BossRush** and **From Scratch** it still drops a full loot crate. Free loot.
 - **In Infinite Hell it drops no crate and feeds no cash pool.** That mode never drops Boss crates
-  (it pays into a cash pool instead), and the cash pool only counts wave Bosses — an intruder is
+  (it pays into a cash pool instead), and the cash pool only counts wave Bosses. An intruder is
   neither. It still banks **relic souls** as normal, and still carries the `4%` relic egg and `8%`
   forge stone rolls (both land on the ground in this mode).
 - Wait out the `120` seconds and it withdraws, leaving nothing.
@@ -65,7 +65,7 @@ In Infinite Hell it doesn't advance the wave, doesn't drop a crate and doesn't f
 :::
 
 ::: tip
-It shares the field with the wave Boss. Don't lose track of which is which — only the wave Boss advances the wave.
+It shares the field with the wave Boss. Don't lose track of which is which: only the wave Boss advances the wave.
 :::
 
 ### Blood Moon (about 11%, 75 seconds)
@@ -85,7 +85,7 @@ by things moving 25% faster than usual.
 A stall opens `6` metres from you and stays open for exactly one minute.
 
 - Ammo, medical supplies, plus **1 random item of quality `6` or better**.
-- Prices are **1.5x** the resident merchant's. You're paying for "right now".
+- Prices are **1.5x** the resident merchant's. Call the markup a delivery fee.
 
 A minute is short. Start running when you see the banner and do your budgeting on the way.
 
@@ -94,7 +94,7 @@ A minute is short. Start running when you see the banner and do your budgeting o
 `6` noises, one every `1.4` seconds, from a ring `26` metres out, each one heard `40` metres
 around.
 
-Enemies get pulled around chasing them. **Nothing is actually there** — no enemies, no crate,
+Enemies get pulled around chasing them. **Nothing is actually there**: no enemies, no crate,
 no reward. Twelve seconds of pure disinformation.
 
 ::: tip
@@ -136,7 +136,7 @@ These three events grant no cash or items and spend the normal event budget. The
 Only **Standard BossRush, Infinite Hell and From Scratch**.
 
 Faction War, Blood Hunt, Fate Echo, the Black Market Duck Cup, Zombie Apocalypse and vanilla
-raid maps do **not** trigger events — those modes have their own pacing and rules, and forcing
+raid maps do **not** trigger events. Those modes have their own pacing and rules, and forcing
 events in would only fight with them.
 
 ## Frequency

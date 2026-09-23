@@ -23,10 +23,14 @@ namespace BossRush
 
         private sealed class FireExplosionEffectHandle : MonoBehaviour
         {
+            /// <summary>到点后先停发射、再等这么久让借来的龙息火粒子自然死完才回池（VB-29.5：旧版到点直接停用，火被截断）。</summary>
+            private const float LingerSeconds = 0.4f;
+
             private ParticleSystem[] particles;
             private float releaseTime;
             private int poolGeneration;
             private bool leased;
+            private bool lingering;
 
             internal void Initialize()
             {
@@ -64,6 +68,7 @@ namespace BossRush
                 }
 
                 releaseTime = Time.time + lifetime;
+                lingering = false;
             }
 
             private void Update()
@@ -73,6 +78,21 @@ namespace BossRush
                     return;
                 }
 
+                if (!lingering)
+                {
+                    lingering = true;
+                    releaseTime = Time.time + LingerSeconds;
+                    for (int i = 0; i < particles.Length; i++)
+                    {
+                        if (particles[i] != null)
+                        {
+                            particles[i].Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                        }
+                    }
+                    return;
+                }
+
+                lingering = false;
                 leased = false;
                 if (poolGeneration != fireExplosionEffectPoolGeneration || fireExplosionEffectPool.Count >= MaxPooledFireExplosionEffects)
                 {

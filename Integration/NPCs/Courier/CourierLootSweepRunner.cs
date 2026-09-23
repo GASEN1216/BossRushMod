@@ -17,6 +17,8 @@ namespace BossRush
         private const float SWEEP_RUN_SPEED = 15f;
         private const float SWEEP_COMPLETED_BUBBLE_Y_OFFSET = 2.5f;
         private const float SWEEP_COMPLETED_BUBBLE_DURATION = 3f;
+        // 「爽吃 xN」的计数高亮走 WarningText token，不再是 <color=red>（审美审查 UA-31）。
+        private static readonly string SweepCountHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.WarningText);
 
         private readonly List<AwenLootSweepTarget> activeTargets = new List<AwenLootSweepTarget>();
 
@@ -370,7 +372,7 @@ namespace BossRush
             try
             {
                 DialogueBubblesManager.Show(
-                    L10n.T("爽吃x<color=red>" + clearedCount + "</color>", "Nom x<color=red>" + clearedCount + "</color>"),
+                    L10n.T("爽吃x<color=" + SweepCountHex + ">" + clearedCount + "</color>", "Nom x<color=" + SweepCountHex + ">" + clearedCount + "</color>"),
                     transform,
                     1.5f,
                     false,
@@ -395,7 +397,7 @@ namespace BossRush
                 }
 
                 DialogueBubblesManager.Show(
-                    L10n.T("阿稳感谢你的箱子！", "Awen thanks for your loot!"),
+                    L10n.T("阿稳感谢你的箱子！", "Awen says thanks for the loot!"),
                     player.transform,
                     SWEEP_COMPLETED_BUBBLE_Y_OFFSET,
                     false,

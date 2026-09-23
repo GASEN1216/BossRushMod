@@ -295,7 +295,7 @@ namespace BossRush
     // ========================================================================
 
     /// <summary>
-    /// 血月凶兆：全屏红色 vignette 呼吸 + 场内存活敌人临时增益 + 强制暴风雨天气。
+    /// 血月凶兆：边缘血红的暗角呼吸 + 场内存活敌人临时增益 + 强制暴风雨天气。
     /// 献祭支线：每有一只被增益的敌人死亡，给玩家结算一笔现金。
     ///
     /// 性能纪律：目标列表经桥只读收集（量级十几个），按 2 秒节流补挂新怪，
@@ -357,23 +357,15 @@ namespace BossRush
                 _weatherApplied = false;
                 _vignette = null;
 
-                // ── 全屏红 vignette：uGUI 纯色 Image + alpha 呼吸，零贴图、非交互 ──
+                // ── 暗角氛围（VA-21）：边缘血红、画面中心透明，非交互；alpha 由 OnTick 按呼吸与出现 / 消失包络算 ──
+                // 层级 ScreenAmbience（-10）：压在官方 HUD 画布（0）与本库全部 HUD 之下，只染场景；官方界面 / 暂停时由 OnTick 的显隐门收起。
                 try
                 {
-                    Canvas canvas = BossRushUI.CreateCanvasRoot(
-                        "BossRushBloodMoon",
-                        BossRushUILayers.HudOverlay,
-                        false);
+                    Canvas canvas = BossRushUI.CreateCanvasRoot("BossRushBloodMoon", BossRushUILayers.ScreenAmbience, false);
                     if (canvas != null)
                     {
                         ctx.Scope.RegisterObject(canvas.gameObject);
-                        Image img = BossRushUI.CreateBackdrop(canvas.transform);
-                        if (img != null)
-                        {
-                            img.color = new Color(0.62f, 0.05f, 0.06f, RandomEventsTuning.BloodMoonVignetteAlphaMin);
-                            img.raycastTarget = false;
-                            _vignette = img;
-                        }
+                        _vignette = RandomEventFx.CreateScreenVignette(canvas.transform, RandomEventFx.BloodMoonTint);
                     }
                 }
                 catch (Exception e)
@@ -432,21 +424,15 @@ namespace BossRush
                     return;
                 }
 
-                // 呼吸动画：纯 float 运算 + 一次 color 赋值，无分配、无日志
+                // 呼吸 + 出现 / 消失包络：纯 float 运算 + 一次 color 赋值，无分配、无日志
                 if (_vignette != null)
                 {
-                    // 红罩也是常驻覆盖层（HudOverlay 1200，压在 sortingOrder 100 的背包 / 地图上面）：官方界面、
-                    // 暂停菜单与拍照模式开着时一起收起，否则背包与地图会被整片染红（2026-09-14）。
+                    // 暗角也是常驻覆盖层：官方界面、暂停菜单与拍照模式开着时一起收起，
+                    // 否则会叠在背包与地图（官方 sortingOrder 100）边缘（2026-09-14）。
                     bool shown = !BossRushUI.IsOfficialHudHidden() && !BossRushUI.IsGamePaused();
                     if (_vignette.enabled != shown) _vignette.enabled = shown;
-                    float phase = (Mathf.Sin(
-                        ctx.ElapsedSeconds * (Mathf.PI * 2f) / RandomEventsTuning.BloodMoonVignetteBreathSeconds) + 1f) * 0.5f;
-                    float alpha = Mathf.Lerp(
-                        RandomEventsTuning.BloodMoonVignetteAlphaMin,
-                        RandomEventsTuning.BloodMoonVignetteAlphaMax,
-                        phase);
                     Color c = _vignette.color;
-                    c.a = alpha;
+                    c.a = RandomEventFx.BloodMoonVignetteAlpha(ctx.ElapsedSeconds, ctx.RemainingSeconds);
                     _vignette.color = c;
                 }
 

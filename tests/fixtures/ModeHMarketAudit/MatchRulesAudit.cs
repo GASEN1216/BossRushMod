@@ -118,6 +118,14 @@ namespace BossRush
         { Last = new LineRenderer(); if (MissingMaterial) Last.sharedMaterial = null; parent.Owner.Children.Add(Last); return Last; }
         internal static void SetShape(LineRenderer ring, float radius, float width, Color color) { Radius = radius; }
     }
+    // 规则区地面圈的表现层（生产在 ModeHUI.cs）：桩里不做淡出，收圈即销毁，清理断言照旧成立。
+    internal static class ModeHRuleRingPresenter
+    {
+        internal const float RingWidth = 0.22f;
+        internal static readonly Color CoverColor = new Color(0f, 0f, 0f, 0f), HazardColor = new Color(0f, 0f, 0f, 0f);
+        internal static void Show(LineRenderer ring, Color color) { }
+        internal static void FadeOutAndDestroy(GameObject root) { UnityEngine.Object.Destroy(root); }
+    }
     internal static class MatchRulesAudit
     {
         private static int _checks;

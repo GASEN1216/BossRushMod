@@ -80,8 +80,8 @@ namespace BossRush
         private static readonly string DragonBreathNameEN = "Dragon's Breath";
         
         // 龙息武器描述
-        private static readonly string DragonBreathDescCN = "J-Lab实验室将赤龙的残骸与MCX相结合的完美艺术品。按下扳机的那一刻，你会明白\"生存\"和\"撤离\"之间还有第三个选项：把道路烤出来。";
-        private static readonly string DragonBreathDescEN = "A masterpiece from J-Lab, fusing crimson dragon remains with the MCX. The moment you pull the trigger, you'll realize there's a third option between 'survive' and 'extract': burn your way out.";
+        private static readonly string DragonBreathDescCN = "J-Lab拿赤龙残骸改的MCX。扣一次扳机你就懂了：\"生存\"和\"撤离\"之外还有第三个选项，把路烤出来。";
+        private static readonly string DragonBreathDescEN = "J-Lab bolted crimson dragon remains onto an MCX. Pull the trigger once and you'll get it: besides 'survive' and 'extract', there's a third option. Burn your way out.";
         
         #endregion
         
@@ -93,7 +93,7 @@ namespace BossRush
         
         // 龙焰灼烧Buff描述
         private static readonly string DragonBurnDescCN = "每秒受到最大生命值0.1%+1点真实火焰伤害，最多叠加10层，持续10秒";
-        private static readonly string DragonBurnDescEN = "Takes 0.1% max HP + 1 true fire damage per second per layer, stacks up to 10, lasts 10 seconds";
+        private static readonly string DragonBurnDescEN = "Takes 0.1% max HP + 1 true fire damage per second per stack, stacks up to 10, lasts 10 seconds";
         
         #endregion
         
@@ -579,8 +579,8 @@ namespace BossRush
         // 冰冻 Buff
         private static readonly string FrostBuffNameCN = "冰冻";
         private static readonly string FrostBuffNameEN = "Frozen";
-        private static readonly string FrostBuffDescCN = "被寒冰之力冻结，移动速度大幅降低。";
-        private static readonly string FrostBuffDescEN = "Frozen by ice power, movement speed greatly reduced.";
+        private static readonly string FrostBuffDescCN = "冻住了，走不动道。";
+        private static readonly string FrostBuffDescEN = "Frozen stiff. Can barely move.";
 
         #endregion
 

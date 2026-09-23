@@ -336,6 +336,7 @@ namespace BossRush
                 NormalizeModeEShellStackForShop(shop, deliveryItem);
                 deliveryItem.FromInfoKey = "UI_Trade";
                 string capturedDisplayName = deliveryItem.DisplayName;
+                int capturedQuality = deliveryItem.Quality;
 
                 if (!TryDebitModeEShell(lotteryPrice, owner.TransactionID))
                 {
@@ -379,7 +380,7 @@ namespace BossRush
                 {
                     InvokeModeEShellItemPurchased(shop, deliveryItem);
                 }
-                PushModeELotteryRewardNotification(capturedDisplayName);
+                PushModeELotteryRewardNotification(capturedDisplayName, capturedQuality);
                 return true;
             }
             catch (Exception e)
@@ -406,13 +407,21 @@ namespace BossRush
             }
         }
 
-        private static void PushModeELotteryRewardNotification(string displayName)
+        /// <summary>
+        /// 抽奖结果：物品名按官方品质着色（稀有度 token，映射与 Mode H 选手卡同一份），前面标品级。
+        /// 旧版和「购买成功」同一种一闪而过的灰字，没有揭晓感（2026-09-23 审美审查 UB-22）。
+        /// 走官方提示条而不是头顶气泡或许愿台揭晓层：商店 View 开着时全屏盖住玩家（头顶气泡看不见），
+        /// 揭晓层是 5 秒的全屏转盘、会挡住商店操作；官方购买提示本来就走这条通道，商店开着也看得见。
+        /// </summary>
+        private static void PushModeELotteryRewardNotification(string displayName, int quality)
         {
             try
             {
+                string hex = ColorUtility.ToHtmlStringRGB(ModeHUI.ResolveRarityColor(quality));
                 NotificationText.Push(
                     L10n.T("抽奖获得：", "Lottery reward: ") +
-                    (displayName ?? string.Empty));
+                    "<color=#" + hex + ">" + (quality > 0 ? "Q" + quality + " " : string.Empty) +
+                    (displayName ?? string.Empty) + "</color>");
             }
             catch (Exception e)
             {
@@ -639,6 +648,30 @@ namespace BossRush
                     false);
             }
             modeEBossHireCharacterScratch.Clear();
+        }
+
+        /// <summary>
+        /// 雇佣没成交时告诉玩家差在哪（2026-09-23 审美审查 UB-30）：旧版贝壳不够与交易占线都是同一句「当前无法雇佣」。
+        /// 价格随已雇数量翻倍，没有人数上限，所以只分这两种可说清的原因，其余（目标已变、阵营已变）仍是通用句。
+        /// </summary>
+        internal string DescribeModeEBossHireFailure(CharacterMainControl character)
+        {
+            ModeEBossHireState state;
+            if (character != null && modeEBossHireOffers.TryGetValue(character, out state) &&
+                IsModeEBossHireStateCurrent(state) && !state.Hired)
+            {
+                int shortBy = GetCurrentModeEBossHirePrice(state) - modeEShellBalance;
+                if (modeEShellTransactionOwner != null)
+                {
+                    return L10n.T("交易处理中，稍后再试", "Another transaction is in progress");
+                }
+                if (shortBy > 0)
+                {
+                    return L10n.T("贝壳不足（还差 " + shortBy.ToString("N0") + "）",
+                        "Not enough Shells (" + shortBy.ToString("N0") + " short)");
+                }
+            }
+            return L10n.T("当前无法雇佣该 Boss", "This Boss cannot be hired right now");
         }
 
         internal bool TryHireModeEBoss(CharacterMainControl character)
@@ -1008,9 +1041,9 @@ namespace BossRush
             {
                 try
                 {
-                    NotificationText.Push(L10n.T(
-                        "当前无法雇佣该 Boss",
-                        "This Boss cannot be hired right now"));
+                    NotificationText.Push(owner != null
+                        ? owner.DescribeModeEBossHireFailure(boss)
+                        : L10n.T("当前无法雇佣该 Boss", "This Boss cannot be hired right now"));
                 }
                 catch { /* Notification failure must not break interaction cleanup. */ }
             }

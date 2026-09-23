@@ -213,9 +213,15 @@ namespace BossRush
             if (!Aborted())
             {
                 // catch 子句体内不能 yield return（CS1631）：换位与落点各自只记账，互不连坐。
+                // 钻进树根的地方扬起一团土（VB-25）；从根洞里钻出来不是爆炸：不冒官方火球，只留余波圈与扬尘（VB-21）。
+                SkyIslandImpactFx.Puff(context.Root, boss.transform.position, 0.6f, 10);
                 try { SkyIslandBossProps.Teleport(boss, hollow + Vector3.up * 0.1f, aiControl); }
                 catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 悬根猎首钻出根洞失败：" + e.Message); }
-                try { SkyIslandBossForge.Detonate(boss, hollow, SkyIslandBossRules.AmbushRadius, SkyIslandBossRules.AmbushDamage); }
+                try
+                {
+                    SkyIslandBossForge.Detonate(boss, hollow, SkyIslandBossRules.AmbushRadius, SkyIslandBossRules.AmbushDamage,
+                        false, SkyIslandImpactFx.BossShake, AmbushTint);
+                }
                 catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 根洞伏击落点失败：" + e.Message); }
             }
             SkyIslandBossProps.DestroyRings(ambushRings);
@@ -251,6 +257,8 @@ namespace BossRush
             {
                 if (!SkyIslandBossProps.Alive(stakeA) || !SkyIslandBossProps.Alive(stakeB))
                 {
+                    ShatterStake(stakeA);
+                    ShatterStake(stakeB);
                     DestroySnare();
                     if (snapAnnounced) return;
                     snapAnnounced = true;
@@ -332,8 +340,9 @@ namespace BossRush
             if (go == null) return null;
             try
             {
-                // 桩身挂在桩自己身上：官方 HealthSimpleBase 打空后停用根物体，桩身跟着一起消失。
-                LineRenderer column = SkyIslandBossForge.StraightLine(go.transform, "Column", StakeWidth, StakeTint);
+                // 桩身挂在桩自己身上：官方 HealthSimpleBase 打空后停用根物体，桩身跟着一起消失；
+                // 砍倒的那一下由 TickSnare 在原位补碎裂（VB-24）。桩身底宽顶窄、顶端淡出。
+                LineRenderer column = SkyIslandBossForge.ColumnLine(go.transform, "Column", StakeWidth, StakeTint);
                 column.SetPosition(0, ground + Vector3.up * 0.05f);
                 column.SetPosition(1, ground + Vector3.up * StakeTopHeight);
             }
@@ -349,7 +358,8 @@ namespace BossRush
 
         private void Trip(CharacterMainControl player, Vector3 at)
         {
-            try { SkyIslandBossForge.Detonate(boss, at, TripBlastRadius, SkyIslandBossRules.SnareDamage); }
+            // 绊索不是爆炸：不冒官方火球，只在脚下一小圈余波（VB-21）。
+            try { SkyIslandBossForge.Detonate(boss, at, TripBlastRadius, SkyIslandBossRules.SnareDamage, false, SkyIslandImpactFx.BossShake, SnareTautTint); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 绊索伤害失败：" + e.Message); }
             // 藤编甲被打空之后减速只剩一半（纯规则 SnareSlowFor）；同幅度再绊只顺延，不叠。
             slow.Apply(player, SkyIslandBossRules.SnareSlowFor(cuirassEquipped && CuirassBroken()), SkyIslandBossRules.SnareSlowSeconds);
@@ -358,6 +368,14 @@ namespace BossRush
             tripAnnounced = true;
             Announce("被悬根猎首的绊索绊住了：先砍倒一根根桩，绊索就断。",
                 "The Huntmaster's snare trips you. Cut down either root stake and the snare snaps.", true);
+        }
+
+        /// <summary>被砍倒的那根桩（已被官方停用）在原位碎一下：木屑 + 小圈余波 + 轻震。活着的那根跟着绊索一起收，不碎。</summary>
+        private void ShatterStake(GameObject stake)
+        {
+            if (stake == null || stake.activeSelf) return;
+            Vector3 core = stake.transform.position;
+            SkyIslandImpactFx.Shatter(context.Root, core, core - Vector3.up * StakeCoreHeight, StakeTint);
         }
 
         private void DestroySnare()

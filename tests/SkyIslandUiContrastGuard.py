@@ -30,6 +30,22 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# 2026-09-23：SkyIslandHud / SkyIslandStoryPresentation 超 1200 行，按 AGENTS §4.15 原样拆出同一 partial 的新文件。
+# 读主文件时把拆出去的那一半接在后面，断言照旧针对整个类。
+SPLIT_PARTS = {
+    "DebugAndTools/SkyIsland/SkyIslandHud.cs": "DebugAndTools/SkyIsland/SkyIslandHud_Layout.cs",
+    "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs": "DebugAndTools/SkyIsland/SkyIslandStoryPresentation_Parts.cs",
+}
+
+
+def read_with_parts(root, rel):
+    text = (root / rel).read_text(encoding="utf-8-sig")
+    part = SPLIT_PARTS.get(str(rel).replace("\\", "/"))
+    if part and (root / part).is_file():
+        text += "\n" + (root / part).read_text(encoding="utf-8-sig")
+    return text
+
 sys.path.insert(0, str(ROOT / "tests"))
 from cs_source_util import clean_source
 
@@ -324,8 +340,10 @@ def check(raw_sources):
     hero = body_of(panel, "private static void BuildHero(")
     esc = re.search(r'KeyCap\(hero, "ESC",.*?BossRushUIColors\.(\w+)\);', hero, re.S)
     require(esc is not None and esc.group(1) in tokens, PANEL + " 找不到 ESC 键帽的字色")
-    require("escColors.normalColor = BossRushUIColors.Surface;" in hero
-            and "escColors.highlightedColor = BossRushUI.GetHoverColor(BossRushUIColors.Surface);" in hero,
+    # 2026-09-23 审美审查 UE-15：键帽改走共享按钮入口 ApplyButtonColors（常态 Surface、悬停 GetHoverColor(Surface)），
+    # 拿到官方 UI 音效、按下回弹与投影斜面；三态的算式与原先手写的 ColorBlock 相同。
+    require(re.search(r"ZombieModeUIHelper\.ApplyButtonColors\(closeButton,\s*BossRushUIColors\.Surface,\s*"
+                      r"BossRushUI\.GetHoverColor\(BossRushUIColors\.Surface\),", hero) is not None,
             PANEL + " 的 ESC 键帽三态不再是 Surface / GetHoverColor(Surface)：守卫复算的对象对不上生产")
     hover_body = body_of(ui, "internal static Color GetHoverColor(Color background)")
     hover_lift = const(ui, "HoverLift", UI)
@@ -362,8 +380,12 @@ def check(raw_sources):
     focused = body_of(panel, "private void SetFocused(int index, bool focused)")
     require("SetFocused(index, true);" in select and "FocusColor(buttonColors[index])" in focused,
             PANEL + " 的键盘当前项没有走同一个 FocusColor：悬停与键盘又会是两种样子")
-    require("stroke.color = focused ? BossRushUIColors.Accent : BossRushUIColors.Stroke;" in focused,
+    # 2026-09-23 审美审查 UE-17：行边的颜色改由 CanvasRenderer 渐变承担（Graphic 置白、渲染色落在 Stroke / Accent），
+    # 与行底 ColorTint 同步 0.08 秒；终值与旧写法相同，复算照旧。
+    require("stroke.CrossFadeColor(focused ? BossRushUIColors.Accent : BossRushUIColors.Stroke, focusFade, true, true);" in focused,
             PANEL + " 的焦点不再把行边换成 Accent：只靠行底提亮的话焦点行对常态行在亮底图上只有 2.13:1（审核 F-01）")
+    require("stroke.color = Color.white;" in choice and "stroke.CrossFadeColor(BossRushUIColors.Stroke, 0f, true, true);" in choice,
+            PANEL + " 的选项行边没有当帧落在 Stroke：Graphic 置白之后渲染色不落定，行边会是一圈白（守卫按 Stroke 复算）")
     require("GetHoverColor(" not in select + focused + choice,
             PANEL + " 的选项又用回共享 GetHoverColor：向白 0.22 在半透明行底上不够非文本 3:1")
 
@@ -403,7 +425,7 @@ def main():
         if not path.is_file():
             print("SkyIslandUiContrastGuard: FAIL - 找不到 " + rel)
             return 1
-        sources[rel] = path.read_text(encoding="utf-8-sig")
+        sources[rel] = read_with_parts(ROOT, rel)
 
     try:
         errors = check(sources)
@@ -436,7 +458,10 @@ def main():
         (PANEL, "HeroTitleBandAlpha = 0.82f", "HeroTitleBandAlpha = 0.10f"),
         (PANEL, 'MakeRect(hero, "TitleBand"', 'MakeRect(hero, "Removed"'),
         (PANEL, "ChoiceFocusLift = 0.12f", "ChoiceFocusLift = 0.60f"),        # 焦点行抬太亮，标签读不清
-        (PANEL, "if (stroke != null) stroke.color = focused ? BossRushUIColors.Accent : BossRushUIColors.Stroke;", ""),
+        (PANEL, "if (stroke != null) stroke.CrossFadeColor(focused ? BossRushUIColors.Accent : BossRushUIColors.Stroke, focusFade, true, true);", ""),
+        (PANEL, "stroke.CrossFadeColor(BossRushUIColors.Stroke, 0f, true, true);", ""),   # 行边渲染色不落定（白圈）
+        (PANEL, "ZombieModeUIHelper.ApplyButtonColors(closeButton, BossRushUIColors.Surface,",
+                "ZombieModeUIHelper.ApplyButtonColors(closeButton, BossRushUIColors.SurfaceRaised,"),   # ESC 键帽换了底色
         (PANEL, "            rowColor.a = ChoiceRowAlpha;\n",
                 "            rowColor.a = ChoiceRowAlpha;\n            image.color = rowColor;\n"),
         (PANEL, "FocusColor(rowColor),", "BossRushUI.GetHoverColor(rowColor),"),

@@ -59,12 +59,12 @@ namespace BossRush
         /// <summary>
         /// 物品描述（中文）
         /// </summary>
-        public const string DESCRIPTION_CN = "一块轻飘飘的砖石，据说哥布林对闪闪发光的东西有着特殊的执念，使用一下试试看呢";
+        public const string DESCRIPTION_CN = "一块轻飘飘的砖石。听说哥布林见了亮闪闪的东西就挪不动腿，用一下试试？";
         
         /// <summary>
         /// 物品描述（英文）
         /// </summary>
-        public const string DESCRIPTION_EN = "A light brick stone. Goblins seem to have a peculiar obsession with shiny things. Try using it and see what happens.";
+        public const string DESCRIPTION_EN = "A suspiciously light brick. Word is goblins can't walk past anything shiny. Try using it?";
         
         /// <summary>
         /// 无哥布林提示（中文）

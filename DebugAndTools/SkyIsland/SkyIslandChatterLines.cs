@@ -197,7 +197,7 @@ namespace BossRush
                     L10n.T("风晶在云海边上。谁敢去谁去。", "Crystal's out by the cloud sea. Go if you dare."),
                     L10n.T("这屋子住过人。锅还挂在墙上。", "Someone lived here. Pot's still on the wall."),
                     L10n.T("上头说下月来收货。上月也这么说。", "Collection's next month, they say. Said that last month."),
-                    L10n.T("别往钟那边走。那边邪门。", "Don't go near the bell. That side's wrong."),
+                    L10n.T("别往钟那边走。那边邪门。", "Don't go near the bell. That side's bad news."),
                     L10n.T("我干到攒够船钱就走。", "I work till I've got boat fare, then I'm gone."),
                     L10n.T("桥板松了一块，记着点。", "One bridge board's loose. Remember it."),
                     L10n.T("半夜有东西在飞，不是鸟。", "Something flies at night. Not birds."),
@@ -205,7 +205,7 @@ namespace BossRush
                 };
                 case SkyIslandChatterMoment.Noticed: return new[]
                 {
-                    L10n.T("有人上来了——这片是我们先到的！", "Someone's up here! We got to this patch first!"),
+                    L10n.T("有人上来了！这片是我们先到的！", "Someone's up here! We got to this patch first!"),
                     L10n.T("喂！那边那个！站住！", "Hey! You there! Hold it!"),
                     L10n.T("又是来抢货的。", "Another one after our haul."),
                     L10n.T("从桥那头来的。拦住！", "Came over the bridge. Head them off!"),
@@ -237,7 +237,7 @@ namespace BossRush
                     L10n.T("桥是我们的。风也是。", "The bridge is ours. So is the wind."),
                     L10n.T("过路的，先把东西放下。", "Passing through? Put something down first."),
                     L10n.T("那帮翻垃圾的又上来了。", "The scrap-pickers are back up here."),
-                    L10n.T("站桥上才知道风往哪走。", "Only on the bridge do you learn where wind goes."),
+                    L10n.T("站桥上才知道风往哪走。", "Stand on a bridge and you learn the wind."),
                     L10n.T("这条线，我画过很多次。", "I've drawn this line many times."),
                     L10n.T("别在我的桥上跑。", "Don't run on my bridge.")
                 };
@@ -292,7 +292,7 @@ namespace BossRush
                 case SkyIslandBossKind.Stargazer:
                     if (moment == SkyIslandChatterMoment.Noticed) return new[]
                     {
-                        L10n.T("从这儿，整片云海都在我眼里。", "From here the whole cloud sea is in my eye."),
+                        L10n.T("从这儿，整片云海都在我眼里。", "I can see the whole cloud sea from up here."),
                         L10n.T("别动。我在量你。", "Hold still. I'm taking your measure.")
                     };
                     if (moment == SkyIslandChatterMoment.Wounded) return new[]
@@ -308,7 +308,7 @@ namespace BossRush
                 case SkyIslandBossKind.RootHunter:
                     if (moment == SkyIslandChatterMoment.Noticed) return new[]
                     {
-                        L10n.T("线已经拉好了。你踩上来了。", "The line is set. You walked onto it."),
+                        L10n.T("线已经拉好了。你踩上来了。", "Tripline's set. You just stepped on it."),
                         L10n.T("这片林子底下都是我的路。", "Every path under this wood is mine.")
                     };
                     if (moment == SkyIslandChatterMoment.Wounded) return new[]
@@ -333,7 +333,7 @@ namespace BossRush
                     };
                     if (moment == SkyIslandChatterMoment.Down) return new[]
                     {
-                        L10n.T("信……我只想要一封写给我的。", "The letters... I just wanted one for me.")
+                        L10n.T("信……我只想要一封写给我的。", "The letters... I just wanted one addressed to me.")
                     };
                     return Silent;
                 // 【声音】穗镰：把梯田当自己家的把式。开闸、喊人、护田，说话像在指挥农活。
@@ -345,7 +345,7 @@ namespace BossRush
                     };
                     if (moment == SkyIslandChatterMoment.Wounded) return new[]
                     {
-                        L10n.T("开闸！谷仓那边的，过来！", "Open the gates! Barn — get over here!")
+                        L10n.T("开闸！谷仓那边的，过来！", "Open the gates! Barn crew, over here!")
                     };
                     if (moment == SkyIslandChatterMoment.Down) return new[]
                     {
@@ -372,8 +372,8 @@ namespace BossRush
                 case SkyIslandBossKind.Piper:
                     if (moment == SkyIslandChatterMoment.Noticed) return new[]
                     {
-                        L10n.T("夜里池边只有我的调子。", "At night this pool has only my tune."),
-                        L10n.T("它们听我的。你也听听。", "They answer me. You listen too.")
+                        L10n.T("夜里池边只有我的调子。", "At night this pool hears only my tune."),
+                        L10n.T("它们听我的。你也听听。", "They answer to me. Now you listen.")
                     };
                     if (moment == SkyIslandChatterMoment.Wounded) return new[]
                     {
@@ -389,7 +389,7 @@ namespace BossRush
                     if (moment == SkyIslandChatterMoment.Noticed) return new[]
                     {
                         L10n.T("池面照得清楚。你看见几个自己？", "The water is clear. How many of you do you see?"),
-                        L10n.T("你背后那个，也是你。", "The one behind you is also you.")
+                        L10n.T("你背后那个，也是你。", "That one behind you? Also you.")
                     };
                     if (moment == SkyIslandChatterMoment.Wounded) return new[]
                     {
@@ -453,7 +453,7 @@ namespace BossRush
             };
             if (moment == SkyIslandChatterMoment.Down) return new[]
             {
-                L10n.T("桥……交给谁？", "The bridge... to whom?")
+                L10n.T("桥……交给谁？", "The bridge... who holds it now?")
             };
             return Silent;
         }

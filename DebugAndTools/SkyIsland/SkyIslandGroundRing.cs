@@ -32,7 +32,15 @@ namespace BossRush
         internal const float GroundLift = 0.16f;
 
         private static Material shared;
+        /// <summary>
+        /// <see cref="shared"/> 是不是本类 new 出来的。退到共享特效材质工厂（<see cref="BossRushFxMaterials"/>）时那份归工厂所有，
+        /// 这里不能销毁它。
+        /// </summary>
+        private static bool sharedOwned;
+        private static bool sharedWarned;
         private static Texture2D bandTexture;
+        private static Texture2D fillTexture;
+        private static Sprite fillSprite;
 
         internal static LineRenderer Create(Transform parent, Vector3 localPosition)
         {
@@ -52,6 +60,8 @@ namespace BossRush
             line.sortingOrder = SortingOrder;
             Material material = SharedMaterial();
             if (material != null) line.sharedMaterial = material;
+            // 两条路都找不到着色器：不画（UE-19）。没有材质的 LineRenderer 在 URP 下是一圈品红，比没有更坏。
+            else line.enabled = false;
             return line;
         }
 
@@ -76,21 +86,108 @@ namespace BossRush
             if (!line.endColor.Equals(color)) line.endColor = color;
         }
 
+        /// <summary>
+        /// 贴地圈的共享材质。首选 <c>Sprites/Default</c>（实机已验证：撤离环第五轮起按环带覆盖率判绿）；
+        /// 找不到时退到全 Mod 共享的特效材质工厂（URP 粒子 Unlit、半透明），它同样吃顶点色与柔边贴图。
+        /// 旧退回链是 <c>Unlit/Color</c>（忽略贴图与顶点色 → 纯白硬边带）再 <c>Standard</c>（URP 下是品红），
+        /// 撤离环、全部头目预警圈与 Mode H 的圈会一起变成白带或品红而且不报错（2026-09-23 审美审查 UE-19）。
+        /// 两条都没有就返回 null、告警一次，调用方不画——owner 口径：资源不对就硬失败，不做「看起来差不多」的降级。
+        /// </summary>
         private static Material SharedMaterial()
         {
             if (shared != null) return shared;
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null) shader = Shader.Find("Unlit/Color");
-            if (shader == null) shader = Shader.Find("Standard");
-            if (shader == null) return null;
-            shared = new Material(shader);
-            shared.name = "SkyIslandGroundRingMat";
-            // 没有贴图时 LineRenderer 画的是一条硬边平色带——两条笔直的边缘线，
-            // 在俯视视角的地面上一眼就是「程序化画的方框」。挂一张横跨带宽的柔边即可，
-            // 几何、半径、判定一字不动。
             Texture2D band = BandTexture();
-            if (band != null) shared.mainTexture = band;
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader != null)
+            {
+                shared = new Material(shader);
+                shared.name = "SkyIslandGroundRingMat";
+                sharedOwned = true;
+                // 没有贴图时 LineRenderer 画的是一条硬边平色带——两条笔直的边缘线，
+                // 在俯视视角的地面上一眼就是「程序化画的方框」。挂一张横跨带宽的柔边即可，
+                // 几何、半径、判定一字不动。
+                if (band != null) shared.mainTexture = band;
+                return shared;
+            }
+            shared = band != null ? BossRushFxMaterials.Get(BossRushFxBlend.Alpha, band) : null;
+            sharedOwned = false;
+            if (shared == null && !sharedWarned)
+            {
+                sharedWarned = true;
+                Debug.LogWarning("[SkyIsland] 贴地圈找不到 Sprites/Default 与共享特效材质，撤离环与预警圈不绘制");
+            }
             return shared;
+        }
+
+        /// <summary>
+        /// 撤离环圈内的「内缘亮」填充精灵（UE-02）：圆心透明，从 55% 半径起 smoothstep 亮到环带下方，最外 3% 收回 0。
+        /// 纯白 + alpha，颜色走 <see cref="SpriteRenderer.color"/>。读作「这一片是返航的光区」，而不是地上画了一个圈；
+        /// 圆心留空，站在圈里的角色脚下不被罩一层色。只有 <c>Sprites/Default</c> 可用时才画（SpriteRenderer 按 _MainTex 取精灵图）。
+        /// </summary>
+        internal static Sprite FillSprite()
+        {
+            if (fillSprite != null) return fillSprite;
+            try
+            {
+                const int size = 128;
+                Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false, false);
+                texture.name = "SkyIslandGroundRingFill";
+                texture.wrapMode = TextureWrapMode.Clamp;
+                texture.filterMode = FilterMode.Bilinear;
+                texture.hideFlags = HideFlags.HideAndDontSave;
+                Color32[] pixels = new Color32[size * size];
+                float center = (size - 1) * 0.5f;
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float dx = (x - center) / (size * 0.5f);
+                        float dy = (y - center) / (size * 0.5f);
+                        float d = Mathf.Sqrt(dx * dx + dy * dy);
+                        float rise = Mathf.Clamp01((d - 0.55f) / 0.42f);
+                        float fall = Mathf.Clamp01((d - 0.97f) / 0.03f);
+                        float alpha = rise * rise * (3f - 2f * rise) * (1f - fall * fall * (3f - 2f * fall));
+                        pixels[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(Mathf.Clamp01(alpha) * 255f));
+                    }
+                }
+                texture.SetPixels32(pixels);
+                texture.Apply(false, false);
+                fillTexture = texture;
+                fillSprite = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), size * 0.5f,
+                    0u, SpriteMeshType.FullRect);
+                fillSprite.name = "SkyIslandGroundRingFill";
+                fillSprite.hideFlags = HideFlags.HideAndDontSave;
+            }
+            catch (Exception e)
+            {
+                // 纯观感层：填充出不来，环照样画。
+                Debug.LogWarning("[SkyIsland] 撤离环内缘填充贴图生成失败：" + e.Message);
+            }
+            return fillSprite;
+        }
+
+        /// <summary>
+        /// 在 <paramref name="ring"/> 下面铺一层内缘亮填充（UE-02），直径 = 2 × <paramref name="radius"/>、同色。
+        /// 精灵 PPU = 半边长，原生直径正好 2 个单位，缩放就是半径。只在共享材质是本类的 <c>Sprites/Default</c> 时才铺。
+        /// </summary>
+        internal static SpriteRenderer AddFill(LineRenderer ring, float radius, Color color)
+        {
+            if (ring == null || !sharedOwned || shared == null) return null;
+            Sprite sprite = FillSprite();
+            if (sprite == null) return null;
+            GameObject go = new GameObject("RingFill");
+            go.transform.SetParent(ring.transform, false);
+            // 环自己已经绕 X 转了 90° 摊平在地面上，局部 XY 就是地面：填充不用再转。
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localScale = new Vector3(radius, radius, 1f);
+            SpriteRenderer renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sharedMaterial = shared;
+            renderer.color = color;
+            renderer.sortingOrder = SortingOrder - 1;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return renderer;
         }
 
         /// <summary>
@@ -143,11 +240,18 @@ namespace BossRush
         /// </summary>
         internal static void ResetStaticCaches()
         {
-            if (shared != null) UnityEngine.Object.Destroy(shared);
+            // 退到共享特效材质时那份归 BossRushFxMaterials 所有，由它自己的 ResetStaticCaches 销毁。
+            if (shared != null && sharedOwned) UnityEngine.Object.Destroy(shared);
             shared = null;
+            sharedOwned = false;
+            sharedWarned = false;
             // 贴图带 HideFlags.DontSave，切场景不会自动回收，必须和材质一起显式销毁。
             if (bandTexture != null) UnityEngine.Object.Destroy(bandTexture);
             bandTexture = null;
+            if (fillSprite != null) UnityEngine.Object.Destroy(fillSprite);
+            fillSprite = null;
+            if (fillTexture != null) UnityEngine.Object.Destroy(fillTexture);
+            fillTexture = null;
         }
     }
 
@@ -171,10 +275,17 @@ namespace BossRush
         private const float BreathAlpha = 0.14f;
 
         private LineRenderer line;
-        private float baseWidth, age;
+        private SpriteRenderer fill;
+        private float baseWidth, age, fillAlpha;
         private Color baseColor;
 
         internal static void Attach(LineRenderer target, float width, Color color)
+        {
+            Attach(target, width, color, null, 0f);
+        }
+
+        /// <param name="ringFill">环下的内缘亮填充（UE-02），可为 null；开环时与带宽同一条 EaseOut 从 0 淡到 <paramref name="fillPeak"/>，之后同相呼吸。</param>
+        internal static void Attach(LineRenderer target, float width, Color color, SpriteRenderer ringFill, float fillPeak)
         {
             if (target == null) return;
             SkyIslandGroundRingPulse pulse = target.gameObject.GetComponent<SkyIslandGroundRingPulse>();
@@ -182,6 +293,8 @@ namespace BossRush
             pulse.line = target;
             pulse.baseWidth = width;
             pulse.baseColor = color;
+            pulse.fill = ringFill;
+            pulse.fillAlpha = fillPeak;
             pulse.age = 0f;
         }
 
@@ -198,9 +311,15 @@ namespace BossRush
             Color color = baseColor;
             // 不透明度只往下呼吸（区间 [1-BreathAlpha, 1]）：顶点色超过 1 会被 Color32 夹回，
             // 往上摆等于半个周期没有动静。
-            color.a = baseColor.a * open * (1f - BreathAlpha * (0.5f - breath * 0.5f));
+            float level = open * (1f - BreathAlpha * (0.5f - breath * 0.5f));
+            color.a = baseColor.a * level;
             line.startColor = color;
             line.endColor = color;
+            if (fill != null)
+            {
+                color.a = fillAlpha * level;
+                fill.color = color;
+            }
         }
     }
 
@@ -223,8 +342,21 @@ namespace BossRush
     /// </summary>
     internal sealed class SkyIslandExtractionRings : IDisposable
     {
-        /// <summary>环带宽度。够粗才能在俯视视角下一眼看见，又不至于糊住脚下的地面。</summary>
-        internal const float RingWidth = 0.32f;
+        /// <summary>
+        /// 环带宽度。够粗才能在俯视视角下一眼看见，又不至于糊住脚下的地面。
+        /// 0.32 → 0.24（2026-09-23 审美审查 UE-02）：1080p 下从约 22 px 收到约 17 px，圈里加了一层内缘亮填充，
+        /// 「这里是光区」不再只靠一道粗线表达。F3 环带覆盖率探针按带宽取样点（内外各 1.5 个带宽），跟着自动收窄。
+        /// </summary>
+        internal const float RingWidth = 0.24f;
+        /// <summary>
+        /// 撤离环的世界色（UE-02）。和 UI 字色 token 分开：<c>Accent</c> / <c>SuccessText</c> 是给深底上的小字用的高饱和色，
+        /// 原样铺进暖琥珀的地面就是一圈霓虹。这里饱和度降约三成、不透明度 0.78，地面纹理透得出来；
+        /// 色相族不变（码头青、钟庭与航标广场绿），F3 面板、Wiki 与地图提示里的「青色环 / 绿环」仍然成立。
+        /// </summary>
+        internal static readonly Color DockRingColor = new Color(0.60f, 0.84f, 0.86f, 0.78f);
+        internal static readonly Color BeaconRingColor = new Color(0.62f, 0.88f, 0.74f, 0.78f);
+        /// <summary>圈内填充最亮处的不透明度（在环带下方，圆心透明）。</summary>
+        internal const float RingFillAlpha = 0.16f;
         /// <summary>抬离地面碰撞体的高度：与噬风预警圈、头目圈共用 <see cref="SkyIslandGroundRing.GroundLift"/>，高过广场台面与放射缝。</summary>
         internal const float GroundOffset = SkyIslandGroundRing.GroundLift;
 
@@ -234,8 +366,8 @@ namespace BossRush
         internal SkyIslandExtractionRings(Transform root, Transform dock, Transform bell, float radius, int groundMask)
         {
             if (root == null) return;
-            dockRing = Build(root, dock, radius, groundMask, BossRushUIColors.Accent);
-            bellRing = Build(root, bell, radius, groundMask, BossRushUIColors.SuccessText);
+            dockRing = Build(root, dock, radius, groundMask, DockRingColor);
+            bellRing = Build(root, bell, radius, groundMask, BeaconRingColor);
             if (bellRing != null) bellRing.gameObject.SetActive(false);
         }
 
@@ -252,8 +384,10 @@ namespace BossRush
                 LineRenderer ring = SkyIslandGroundRing.Create(root, position + Vector3.up * GroundOffset);
                 ring.gameObject.name = "SkyIslandExtractionRing_" + anchor.name;
                 SkyIslandGroundRing.SetShape(ring, radius, RingWidth, color);
+                // 圈内一层内缘亮（UE-02）：同色、圆心透明，开环时和带宽一起从 0 淡进来。
+                SpriteRenderer fill = SkyIslandGroundRing.AddFill(ring, radius, new Color(color.r, color.g, color.b, 0f));
                 // 开环与呼吸挂在环自己身上：半径不动，只有带宽与不透明度在动。
-                SkyIslandGroundRingPulse.Attach(ring, RingWidth, color);
+                SkyIslandGroundRingPulse.Attach(ring, RingWidth, color, fill, RingFillAlpha);
                 return ring;
             }
             catch (Exception e)
@@ -279,8 +413,8 @@ namespace BossRush
         internal void AddBeaconRings(Transform root, Transform wind, Transform star, float radius, int groundMask)
         {
             if (root == null || disposed) return;
-            windRing = Build(root, wind, radius, groundMask, BossRushUIColors.SuccessText);
-            starRing = Build(root, star, radius, groundMask, BossRushUIColors.SuccessText);
+            windRing = Build(root, wind, radius, groundMask, BeaconRingColor);
+            starRing = Build(root, star, radius, groundMask, BeaconRingColor);
             if (windRing != null) windRing.gameObject.SetActive(false);
             if (starRing != null) starRing.gameObject.SetActive(false);
         }

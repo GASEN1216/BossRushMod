@@ -26,8 +26,22 @@ namespace BossRush
 
         /// <summary>面板宽</summary>
         private const float PanelWidth = 820f;
-        /// <summary>面板高</summary>
+        /// <summary>建面板时的初始高；排版完成后按内容收口</summary>
         private const float PanelHeight = 620f;
+        private const float PadX = 40f;
+        private const float ContentWidth = PanelWidth - PadX * 2f;
+        private const float PadTop = 24f;
+        private const float PadBottom = 24f;
+        private const float EmblemSize = 56f;
+        /// <summary>卡片之间的间距</summary>
+        private const float SectionGap = 10f;
+        /// <summary>卡片正文左边距：卡片左侧 3–7 是强调竖条，再留 11</summary>
+        private const float SectionPadLeft = 18f;
+        private const float SectionPadRight = 16f;
+        private const float SectionPadY = 12f;
+        /// <summary>三张卡的错峰间隔（每项 0.04–0.06 秒，AGENTS §4.14 动效口径）</summary>
+        private const float SectionStagger = 0.05f;
+        private static readonly Vector2 CloseButtonSize = new Vector2(220f, 48f);
         /// <summary>失败 recap 自动关闭秒数（不阻塞死亡/回城流程）</summary>
         private const float DefeatAutoCloseSeconds = 14f;
         /// <summary>胜利 recap 自动关闭秒数</summary>
@@ -89,7 +103,7 @@ namespace BossRush
         {
             try
             {
-                string line1 = "<color=#B22222>" + L10n.T("BossRush_ModeG_DefeatTitle") + "</color> "
+                string line1 = ModeGRichText.DangerTag + L10n.T("BossRush_ModeG_DefeatTitle") + "</color> "
                     + L10n.T("BossRush_ModeG_WaveWord") + " " + waveNumber + L10n.T("BossRush_ModeG_WaveOfNine")
                     + " · " + L10n.T("决意", "Resolve") + " " + resolve + "/" + ModeGAdaptiveCombat.MaxResolveTotal;
                 string line2 = ComposeNemesisPreviewLine(attribution);
@@ -165,28 +179,27 @@ namespace BossRush
 
                 DismissActive();
 
-                GameObject root = new GameObject("ModeG_Recap");
+                GameObject root = BossRushUI.CreateCanvasRoot("ModeG_Recap", BossRushUILayers.ModeGRecap, true).gameObject;
                 _activeRoot = root; // 构建中途失败仍由唯一 owner 回收画布。
                 UnityEngine.Object.DontDestroyOnLoad(root);
 
-                Canvas canvas = root.AddComponent<Canvas>();
-                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvas.sortingOrder = BossRushUILayers.ModeGRecap;
-                CanvasScaler scaler = root.AddComponent<CanvasScaler>();
-                ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
-                root.AddComponent<GraphicRaycaster>();
-
+                // 版式（2026-09-23 审美审查 UB-20）：旧版九行居中字写死 y 从 +262 排到 -96，按钮下空 110px，
+                // 面板一帧出现、到点一帧消失，关闭钮与面板同色、悬停突然变橙。现在与入场确认页同一套：
+                // 近不透明底、徽记 + 标题一行、从顶边往下按内容排，内容分三张卡（奖励 / 三轴与契约 / 纪录与印章），
+                // 卡内左对齐、错峰滑入；关闭钮是次级样式并写着自动关闭的倒计时，到点淡出。
+                bool victory = result == ModeGBattleResult.Victory;
                 GameObject surface = ZombieModeUIHelper.CreateModalSurface(
                     "ModeG_RecapSurface", root.transform, new Vector2(PanelWidth, PanelHeight),
-                    new Color(0.72f, 0.53f, 0.04f, 1f));
+                    BossRushUIColors.WarningText);
+                ModeGInteractable.MakeSurfaceOpaque(surface);
                 Transform st = surface.transform;
 
-                // 标题
-                bool victory = result == ModeGBattleResult.Victory;
-                ZombieModeUIHelper.CreateText("Title", st,
+                // 标题：胜利金色、失败红色，左侧 Mode G 徽记
+                float cursor = PadTop;
+                cursor += ModeGInteractable.PlaceTitleRow(st, ModeGInteractable.CreateEmblem(st, EmblemSize), cursor,
                     victory ? L10n.T("BossRush_ModeG_Recap_VictoryTitle") : L10n.T("BossRush_ModeG_Recap_DefeatTitle"),
-                    32f, new Vector2(0f, 262f), new Vector2(PanelWidth - 60f, 54f),
-                    TextAlignmentOptions.Center, ZombieModeUIHelper.TextPrimaryColor);
+                    32f, victory ? BossRushUIColors.WarningText : BossRushUIColors.DangerText,
+                    ContentWidth, EmblemSize) + 4f;
 
                 // 概要：第 X/9 波 · Resolve Y/11（± 新纪录）
                 int wave = module.State != null ? module.State.waveEpoch + 1 : 0;
@@ -195,63 +208,62 @@ namespace BossRush
                     + " · " + L10n.T("决意", "Resolve") + " " + resolve + "/" + ModeGAdaptiveCombat.MaxResolveTotal;
                 if (IsNewBestWave(wave, previousBestWave))
                 {
-                    summary += " · <color=#B8860B>" + L10n.T("BossRush_ModeG_NewRecord") + "</color>";
+                    summary += " · " + ModeGRichText.WarningTag + L10n.T("BossRush_ModeG_NewRecord") + "</color>";
                 }
-                ZombieModeUIHelper.CreateText("Summary", st, summary,
-                    20f, new Vector2(0f, 214f), new Vector2(PanelWidth - 80f, 34f),
-                    TextAlignmentOptions.Center, ZombieModeUIHelper.TextPrimaryColor);
+                TextMeshProUGUI summaryText = ZombieModeUIHelper.CreateText("Summary", st, summary,
+                    20f, Vector2.zero, new Vector2(ContentWidth, 33f),
+                    TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
+                cursor += ModeGInteractable.PlaceText(summaryText, ContentWidth, 0f, cursor) + 14f;
 
-                // 奖励档 near-miss：当前档件数 + 距下一档还差 X Resolve
-                ZombieModeUIHelper.CreateText("RewardGap", st,
-                    victory ? ComposeRewardGapLine(resolve) : L10n.T("本局未通关，无通关奖励。", "Run not cleared; no victory rewards."),
-                    18f, new Vector2(0f, 178f), new Vector2(PanelWidth - 80f, 30f),
-                    TextAlignmentOptions.Center, ZombieModeUIHelper.TextSecondaryColor);
-
-                // 失败 recap：宿敌预告行（复仇钩子）
+                // 卡 1：奖励档 near-miss（当前档件数 + 距下一档还差 X 决意）；失败时带宿敌预告行（复仇钩子）
+                string reward = victory
+                    ? ComposeRewardGapLine(resolve)
+                    : ModeGRichText.SecondaryTag + L10n.T("本局未通关，无通关奖励。", "Run not cleared; no victory rewards.") + "</color>";
                 if (!victory && !string.IsNullOrEmpty(nemesisPreviewLine))
                 {
-                    ZombieModeUIHelper.CreateText("NemesisPreview", st, nemesisPreviewLine,
-                        18f, new Vector2(0f, 144f), new Vector2(PanelWidth - 80f, 30f),
-                        TextAlignmentOptions.Center, new Color(1f, 0.55f, 0f, 1f));
+                    reward += "\n" + ModeGRichText.DangerTag + nemesisPreviewLine + "</color>";
+                }
+                cursor += PlaceSection(st, "RewardCard", 0, cursor, reward, 18f, BossRushUIColors.TextPrimary,
+                    victory ? BossRushUIColors.WarningText : BossRushUIColors.DangerText) + SectionGap;
+
+                // 卡 2：三轴本局尝试/破解计数 + 本局契约达成状态
+                string axes = ComposeAxisLines(module);
+                string contract = ComposeContractLine(module);
+                if (!string.IsNullOrEmpty(contract)) axes += "\n" + contract;
+                cursor += PlaceSection(st, "AxesCard", 1, cursor, axes, 16f, BossRushUIColors.TextPrimary,
+                    BossRushUIColors.Accent) + SectionGap;
+
+                // 卡 3：印章目标 + 图鉴 near-miss + 累计纪录（读 profile 累计数据；读不到的行跳过）
+                string records = JoinLines(ComposeSealLine(), ComposeCodexLine(), ComposeProfileLine());
+                if (!string.IsNullOrEmpty(records))
+                {
+                    cursor += PlaceSection(st, "RecordsCard", 2, cursor, records, 14f, BossRushUIColors.TextSecondary,
+                        BossRushUIColors.Stroke) + SectionGap;
                 }
 
-                // 三轴本局尝试/破解计数
-                ZombieModeUIHelper.CreateText("Axes", st, ComposeAxisLines(module),
-                    17f, new Vector2(0f, 72f), new Vector2(PanelWidth - 80f, 96f),
-                    TextAlignmentOptions.Center, ZombieModeUIHelper.TextPrimaryColor);
-
-                // 本局契约：名称 · 达成状态
-                ZombieModeUIHelper.CreateText("Contract", st, ComposeContractLine(module),
-                    17f, new Vector2(0f, 2f), new Vector2(PanelWidth - 80f, 28f),
-                    TextAlignmentOptions.Center, ZombieModeUIHelper.TextPrimaryColor);
-
-                // 印章目标 + 图鉴 near-miss（读 profile 累计数据）
-                ZombieModeUIHelper.CreateText("Seal", st, ComposeSealLine(),
-                    16f, new Vector2(0f, -32f), new Vector2(PanelWidth - 80f, 26f),
-                    TextAlignmentOptions.Center, ZombieModeUIHelper.TextSecondaryColor);
-                ZombieModeUIHelper.CreateText("Codex", st, ComposeCodexLine(),
-                    16f, new Vector2(0f, -60f), new Vector2(PanelWidth - 80f, 26f),
-                    TextAlignmentOptions.Center, ZombieModeUIHelper.TextSecondaryColor);
-
-                // 累计纪录摘要
-                ZombieModeUIHelper.CreateText("Profile", st, ComposeProfileLine(),
-                    16f, new Vector2(0f, -96f), new Vector2(PanelWidth - 80f, 26f),
-                    TextAlignmentOptions.Center, ZombieModeUIHelper.TextSecondaryColor);
-
-                // 关闭按钮（另有自动倒计时关闭）
+                // 关闭按钮（另有自动倒计时关闭，按钮上写着还剩几秒）
+                cursor += 8f;
+                string closeLabel = L10n.T("BossRush_ModeG_Recap_Close");
                 Button closeButton = ZombieModeUIHelper.CreateButton(
-                    "Close", st, L10n.T("BossRush_ModeG_Recap_Close"),
-                    new Vector2(0.5f, 0.5f), new Vector2(0f, -230f), new Vector2(200f, 52f),
-                    ZombieModeUIHelper.ModalSurfaceColor, 20f, new Vector2(180f, 44f),
-                    DismissActive, true);
-                ZombieModeUIHelper.ApplyButtonColors(closeButton,
-                    ZombieModeUIHelper.ModalSurfaceColor, ZombieModeUIHelper.WarningHoverColor,
-                    ZombieModeUIHelper.DisabledColor);
+                    "Close", st, closeLabel,
+                    new Vector2(0.5f, 1f), new Vector2(0f, -(cursor + CloseButtonSize.y * 0.5f)), CloseButtonSize,
+                    BossRushUIColors.SurfaceRaised, 18f, CloseButtonSize - new Vector2(20f, 8f),
+                    () => DismissActive(), true);
+                BossRushUIKit.StyleSecondaryButton(closeButton);
+                cursor += CloseButtonSize.y + PadBottom;
+
+                surface.GetComponent<RectTransform>().sizeDelta = new Vector2(PanelWidth, Mathf.Ceil(cursor));
+                BossRushUI.PlayOpenAnimation(surface);
 
                 // 自动关闭（不阻塞官方死亡/回城流程）
                 RecapAutoClose autoClose = root.AddComponent<RecapAutoClose>();
                 autoClose.remainingSeconds = victory ? VictoryAutoCloseSeconds : DefeatAutoCloseSeconds;
-
+                Transform closeText = closeButton.transform.Find("Text");
+                autoClose.label = closeText != null ? closeText.GetComponent<TextMeshProUGUI>() : null;
+                autoClose.baseLabel = closeLabel;
+                autoClose.RefreshLabel();
+                // ESC / 手柄取消 = 关闭（不再穿透去开官方暂停菜单）
+                ModeGModalCancelKey.Attach(root, () => DismissActive());
             }
             catch (Exception e)
             {
@@ -260,29 +272,93 @@ namespace BossRush
             }
         }
 
-        /// <summary>关闭当前 recap 面板（幂等 no-throw）。</summary>
-        internal static void DismissActive()
+        /// <summary>
+        /// 关闭当前 recap 面板（幂等 no-throw）。淡出后销毁（UB-32）：引用立刻置空，
+        /// 下一局的 Show / StartRun 看到的是「没有面板」，淡出中的旧根自己走完 <paramref name="fadeSeconds"/> 秒。
+        /// </summary>
+        internal static void DismissActive(float fadeSeconds = BossRushUIKit.CloseSeconds)
         {
             try
             {
-                if (_activeRoot != null) UnityEngine.Object.Destroy(_activeRoot);
+                if (_activeRoot != null) BossRushUIKit.PlayCloseAndDestroy(_activeRoot, fadeSeconds);
             }
             catch { /* no-throw */ }
             _activeRoot = null;
         }
 
-        /// <summary>自动倒计时关闭组件（面板 root 自驱动，无外部 owner 依赖）。</summary>
+        /// <summary>
+        /// 卡片化的一段：Card 档底 + 描边 + 左侧强调竖条（共享 CreateCard），正文左对齐、按内容量高，错峰滑入。
+        /// 返回卡片高度。
+        /// </summary>
+        private static float PlaceSection(Transform parent, string name, int index, float top, string text,
+            float fontSize, Color textColor, Color accent)
+        {
+            GameObject card = BossRushUI.CreateCard(name, parent, Vector2.zero,
+                new Vector2(ContentWidth, 40f), BossRushUIColors.SurfaceRaised, accent, true);
+            RectTransform cardRect = card.GetComponent<RectTransform>();
+            cardRect.anchorMin = cardRect.anchorMax = cardRect.pivot = new Vector2(0.5f, 1f);
+            card.GetComponent<Image>().raycastTarget = false;
+
+            TextMeshProUGUI body = ZombieModeUIHelper.CreateText("Body", card.transform, text, fontSize,
+                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(SectionPadLeft, -SectionPadY),
+                new Vector2(ContentWidth - SectionPadLeft - SectionPadRight, 30f),
+                TextAlignmentOptions.TopLeft, textColor);
+            body.rectTransform.pivot = new Vector2(0f, 1f);
+            body.richText = true;
+            float height = BossRushUI.MeasureTextHeight(body, ContentWidth - SectionPadLeft - SectionPadRight,
+                Mathf.Ceil(fontSize * 1.45f) + 4f);
+            float cardHeight = Mathf.Ceil(height + SectionPadY * 2f);
+            cardRect.sizeDelta = new Vector2(ContentWidth, cardHeight);
+            cardRect.anchoredPosition = new Vector2(0f, -top);
+            BossRushUIEntranceAnimation.Play(card, 0.08f + SectionStagger * index, 0.22f, 10f);
+            return cardHeight;
+        }
+
+        private static string JoinLines(params string[] lines)
+        {
+            string joined = string.Empty;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (string.IsNullOrEmpty(lines[i])) continue;
+                joined = joined.Length == 0 ? lines[i] : joined + "\n" + lines[i];
+            }
+            return joined;
+        }
+
+        /// <summary>自动倒计时关闭组件（面板 root 自驱动，无外部 owner 依赖）。关闭钮上写着还剩几秒，整秒变化时才写字。</summary>
         internal sealed class RecapAutoClose : MonoBehaviour
         {
+            /// <summary>到点后的淡出时长：比手动关闭（0.12 秒）慢一点，自己消失的面板要让人看见它在走。</summary>
+            private const float AutoFadeSeconds = 0.2f;
+
             internal float remainingSeconds;
+            internal TextMeshProUGUI label;
+            internal string baseLabel;
+            private int _shownSeconds = -1;
+            private bool _closing;
+
+            internal void RefreshLabel()
+            {
+                int seconds = Mathf.Max(0, Mathf.CeilToInt(remainingSeconds));
+                if (seconds == _shownSeconds || label == null) return;
+                _shownSeconds = seconds;
+                label.text = baseLabel + L10n.T("（", " (") + seconds + L10n.T("）", ")");
+            }
 
             private void Update()
             {
                 try
                 {
-                    if (BossRushUI.IsGamePaused()) return;
+                    if (_closing || BossRushUI.IsGamePaused()) return;
+                    // 已被 DismissActive / 下一局的 Show 换下、正在淡出：不能再去关「当前」面板（那是新的一张）。
+                    if (!ReferenceEquals(_activeRoot, gameObject)) { _closing = true; return; }
                     remainingSeconds -= Time.unscaledDeltaTime;
-                    if (remainingSeconds <= 0f) DismissActive();
+                    RefreshLabel();
+                    if (remainingSeconds <= 0f)
+                    {
+                        _closing = true;
+                        DismissActive(AutoFadeSeconds);
+                    }
                 }
                 catch { /* no-throw */ }
             }
@@ -376,8 +452,8 @@ namespace BossRush
                 bool fulfilled = ModeGFateContract.Evaluate(contractId, module.BuildContractProgress());
                 return L10n.T("BossRush_ModeG_Recap_Contract") + ": " + def.GetDisplayName()
                     + " · " + (fulfilled
-                        ? "<color=#2E8B57>" + L10n.T("BossRush_ModeG_Recap_ContractDone") + "</color>"
-                        : "<color=#B22222>" + L10n.T("BossRush_ModeG_Recap_ContractFailed") + "</color>");
+                        ? ModeGRichText.SuccessTag + L10n.T("BossRush_ModeG_Recap_ContractDone") + "</color>"
+                        : ModeGRichText.DangerTag + L10n.T("BossRush_ModeG_Recap_ContractFailed") + "</color>");
             }
             catch { return string.Empty; }
         }

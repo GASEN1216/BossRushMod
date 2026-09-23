@@ -272,8 +272,10 @@ def main():
     ordered(bind, ['ModeFItemConfigHelper.SetHiddenMember(this, "interactTime", seconds);', "Mathf.Abs(InteractTime - seconds) > 0.01f",
                    "Debug.LogWarning("], "读条时长写进官方私有字段后必须读回核对（改名时有声）")
     ordered(need_body(gathering, "private void OnGathered(Spot spot)", "采集完成"),
-            ["if (!harvest(spot.Node)) return;", "spot.Harvested = true;", "UnityEngine.Object.Destroy(spot.Root);"],
-            "先发出产出、再标记采过、最后收掉交互体")
+            # 2026-09-23 审美审查 UE-05：交互体与触发器本帧摘掉，光斑、点光与字交给 0.4 秒淡出再销毁根（不再当帧整块 Destroy）。
+            ["if (!harvest(spot.Node)) return;", "spot.Harvested = true;", "UnityEngine.Object.Destroy(point);",
+             "UnityEngine.Object.Destroy(trigger);", "SkyIslandFadeAway.Begin(gathered, HarvestFade, Vector3.zero);"],
+            "先发出产出、再标记采过、最后收掉交互体（光斑与点光淡出后再销毁）")
     if 'InteractionGroupLabel { get { return "[SkyIslandGather]"; } }' not in gathering:
         errors.append("采集点必须走官方交互组（InteractionGroupLabel）")
     give = need_body(fieldcraft, "private static int Give(int typeId, int count)", "产出发放")

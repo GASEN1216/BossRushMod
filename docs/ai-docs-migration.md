@@ -276,3 +276,8 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 复审核实的重点包括：Host 多阶段 Tick 与 early-return、G 每局核心、Campaign 消费 F 死亡闩、OfficialQuest 初始化顺序、内容分阶段装配、公共 UI 租约、目录空扫假绿、编译清单解析差异、正式/Dev 环境变量和 CI 分级协议。它们是执行计划的约束，不宣称已修生产代码或验证实机。
 
 本次精确放行计划与配套 GitHub 研究记录两份文件，便于后续提交后跨窗口/签出使用；不开放其他 local-only 提案。同步 docs 导航和研究记录的范围说明，保留原历史研究依据。已跑编译清单与 partial 预算两个守卫、文档结构/路径核验；未启动游戏、未访问玩家存档、未编译部署，未提交。新架构目录和工具仍待实施。
+
+## 2026-09-23 AGENTS §4.14 增加「质感层」「按钮配色口径」「程序化特效材质」三条
+
+- 来源：owner 要求 UI / 交互 / 特效不要塑料感，本轮在共享层落地（`Common/UI/BossRushUIFeel.cs`、`Common/Effects/BossRushFxMaterials.cs`、`BossRushUIColors.AccentFill`）。长期规则写进 §4.14，守卫 `tests/BossRushUIFeelGuard.py` 登记进 §4.14 守卫列表。
+- 明细见 `FIX_TRACKER.md` 2026-09-23「全 Mod UI / 交互 / 特效」一节。

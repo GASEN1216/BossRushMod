@@ -109,7 +109,7 @@ namespace BossRush
             { message = L10n.T("这不是一份有效的委托。", "That is not a valid contract."); return false; }
             if (HasActive)
             {
-                message = L10n.T("苇白：手头这一单还没交呢 —— ", "Weibai: You still owe me on this one — ") + Describe();
+                message = L10n.T("苇白：手头这一单还没交呢：", "Weibai: You still owe me this one: ") + Describe();
                 return false;
             }
             if (!CanAcceptMore)
@@ -122,7 +122,7 @@ namespace BossRush
             target = TargetFor(kind);
             // 基线取当前计数：接单前已经做过的量不计入本单，也不会倒扣。
             baseline = Counter(kind);
-            message = L10n.T("苇白：那就拜托了 —— ", "Weibai: Much obliged, then — ") + Describe();
+            message = L10n.T("苇白：那就拜托了。", "Weibai: Thanks, then. ") + Describe();
             return true;
         }
 
@@ -152,7 +152,7 @@ namespace BossRush
             }
             if (!IsComplete)
             {
-                message = L10n.T("苇白：还差一点 —— ", "Weibai: Not quite there yet — ") + Describe();
+                message = L10n.T("苇白：还差一点：", "Weibai: Not quite there yet: ") + Describe();
                 return false;
             }
             if (deliver != null && !deliver(reward))
@@ -166,7 +166,7 @@ namespace BossRush
             target = 0;
             baseline = 0;
             message = L10n.T("苇白：辛苦了。这些是集市能凑出来的谢礼，收下吧。",
-                "Weibai: Thank you. This is what the market could put together — take it.");
+                "Weibai: Good work. This is what the market could scrape together. Take it.");
             return true;
         }
 
@@ -185,7 +185,7 @@ namespace BossRush
                 return false;
             }
             message = L10n.T("苇白：不勉强。这一单先撤了，想做别的随时来。",
-                "Weibai: No pressure. I have withdrawn it — come back if you fancy something else.");
+                "Weibai: No pressure. I've pulled it. Come back if you fancy something else.");
             active = SkyIslandBountyKind.None;
             target = 0;
             baseline = 0;

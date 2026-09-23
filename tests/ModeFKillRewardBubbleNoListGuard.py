@@ -67,17 +67,28 @@ def main() -> int:
             return fail("reward branch order changed around -> " + snippet)
         previous = current
 
+    # 2026-09-23 审美审查 UB-23：段落改由 JoinModeFRewardPart 接（两段一行、全角空格分隔），
+    # 收益不再用纯红（读起来像扣血）。拼接仍不许建临时集合——接段 helper 的方法体一起查。
     required = [
-        'result + " | " +',
-        "hasPart",
+        "JoinModeFRewardPart(result, ref parts,",
+        "if (parts == 0)",
         "Mathf.RoundToInt(healAmount)",
         "Mathf.RoundToInt(maxHealthGain)",
-        '"悬赏印记 <color=red>+1</color>"',
-        '"Bounty <color=red>+1</color>"',
+        '"悬赏印记 " + RichWarningTag + "+1</color>"',
+        '"Bounty " + RichWarningTag + "+1</color>"',
     ]
     for snippet in required:
         if snippet not in body:
             return fail("missing allocation-free reward text snippet -> " + snippet)
+    if "<color=red>" in body:
+        return fail("kill reward gains must not use pure red (reads as damage) -> <color=red>")
+
+    join = extract_method_body(text, "private static string JoinModeFRewardPart(")
+    if join is None:
+        return fail("missing JoinModeFRewardPart body")
+    for snippet in forbidden:
+        if snippet in join:
+            return fail("reward part join still allocates temporary collection -> " + snippet)
 
     print("ModeFKillRewardBubbleNoListGuard: PASS")
     return 0

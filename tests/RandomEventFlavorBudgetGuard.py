@@ -29,7 +29,7 @@ MODELS = 'RandomEvents/RandomEventModels.cs'
 DIRECTOR = 'RandomEvents/RandomEventDirector.cs'
 CATALOG = 'RandomEvents/RandomEventCatalog.cs'
 FUN = 'RandomEvents/RandomEventCatalog_Fun.cs'
-EFFECTS = 'RandomEvents/RandomEventEffectsBridge.cs'
+FX = 'RandomEvents/RandomEventFx.cs'
 
 # 纯演出事件的白名单。往这里加条目 = 声明「这个事件对玩家没有任何玩法回报」，
 # 要同时改玩家 Wiki 的频率一节与 repowiki；给了回报就不该进这里。
@@ -87,7 +87,7 @@ models = read(MODELS)
 director = read(DIRECTOR)
 catalog = read(CATALOG)
 fun = read(FUN)
-effects = read(EFFECTS)
+fx = read(FX)
 
 # ---- 1. 基类默认占配额 ----
 base_prop = body(models, 'internal virtual bool ConsumesRunBudget', 'RandomEventBase')
@@ -129,16 +129,17 @@ for name in FLAVOR_CLASSES:
             errors.append('%s 里出现了 %r：给了玩法回报就不该算纯演出，请去掉白名单登记'
                           % (name, token))
 
-# 纯演出的调用链也必须只播特效：0 点伤害的官方爆炸仍调用 DamageReceiver.Hurt。
-harmless = body(effects, 'internal void CreateRandomEventHarmlessExplosion(', EFFECTS)
-for token in ('CreateExplosion', 'Hurt', 'DamageInfo', 'OverlapSphere', 'OverlapSphereNonAlloc'):
-    if re.search(r'\b' + token + r'\b', harmless):
-        errors.append('纯演出桥包含战斗调用 ' + token)
-compact = re.sub(r'\s+', '', harmless)
-require(compact, 'UnityEngine.Object.Instantiate<GameObject>(prefab,center,Quaternion.identity);',
-        '纯演出桥必须实际实例化官方特效')
-require(compact, 'level.ExplosionManager.normalFxPfb', '普通演出复用官方 normalFxPfb')
-require(compact, 'level.ExplosionManager.flashFxPfb', '闪光演出复用官方 flashFxPfb')
+# 纯演出的调用链也必须只播特效：0 点伤害的官方爆炸仍调用 DamageReceiver.Hurt，所以烟花不借官方爆炸，
+# 由 RandomEventFx.PlayFirework 放程序化粒子（2026-09-23 审美审查 VA-22，旧的「官方火球 + 震屏」桥已删）。
+fireworks = body(fun, class_decl(fun, 'RandomEventFireworks'), FUN)
+require(fireworks, 'RandomEventFx.PlayFirework(p, i);', '烟花事件必须真的放出程序化烟花')
+show = body(fx, 'internal static void PlayFirework(', FX)
+for token in ('CreateExplosion', 'Hurt', 'DamageInfo', 'OverlapSphere', 'OverlapSphereNonAlloc', 'CameraShaker', 'AISound'):
+    if re.search(r'\b' + token + r'\b', show + fireworks):
+        errors.append('纯演出烟花包含战斗 / 引怪 / 震屏调用 ' + token)
+compact = re.sub(r'\s+', '', show)
+require(compact, 'BossRushFxKit.PlayBurst(position,sparks);', '烟花必须实际放出共享粒子爆发（火花主体）')
+require(compact, 'fade.FadeOut(FireworkFlashSeconds,true);', '烟花闪光灯必须淡出并随后销毁，不能常亮')
 
 # ---- 4. 登记事件与有副作用的节奏事件都不得绕过配额 ----
 pool = body(catalog, '_all = new RandomEventBase[]', CATALOG)

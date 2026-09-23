@@ -113,26 +113,35 @@ namespace BossRush
         /// </summary>
         internal static string Overview(SkyIslandStoryData data, string summary)
         {
+            // 每类一行（2026-09-23 审美审查 UE-06）：旧版七组「a/b」用「 · 」串成一整行，读起来是状态转储。
+            // 每行仍是「名称 计数」的写法（半角空格），面板会把它包成不可拆的一段；回归按「岛上的灯 3/10」一类子串核对。
             var text = new StringBuilder();
-            text.Append(L10n.T("群岛手记 · 见闻 ", "Archipelago journal · notes "));
+            text.Append(L10n.T("见闻 ", "notes "));
             text.Append(NotesRecorded(data)).Append('/').Append(NoteCount);
-            text.Append(L10n.T(" · 信鸽来信 ", " · pigeon letters "));
+            text.Append('\n').Append(L10n.T("信鸽来信 ", "pigeon letters "));
             text.Append(SkyIslandLetters.CollectedCount(data)).Append('/').Append(SkyIslandLetters.Count);
-            text.Append(L10n.T(" · 船员名册 ", " · crew roster "));
+            text.Append('\n').Append(L10n.T("船员名册 ", "crew roster "));
             text.Append(SkyIslandCrew.ReadCount(data)).Append('/').Append(SkyIslandCrew.Count);
-            text.Append(L10n.T(" · 纪念品 ", " · keepsakes "));
+            text.Append('\n').Append(L10n.T("纪念品 ", "keepsakes "));
             text.Append(SkyIslandItemRules.GrantedCount(data)).Append('/').Append(SkyIslandItemRules.Keepsakes.Length);
-            text.Append(L10n.T(" · 到访区域 ", " · regions visited "));
+            text.Append('\n').Append(L10n.T("到访区域 ", "regions visited "));
             text.Append(RegionsVisited(data)).Append("/12");
-            text.Append(L10n.T(" · 岛上的灯 ", " · lights on the isles "));
+            text.Append('\n').Append(L10n.T("岛上的灯 ", "lights on the isles "));
             text.Append(SkyIslandLights.LitCount(data)).Append('/').Append(SkyIslandLights.Target);
-            // 内容批次四：放回蛙鸣池的蛙卵（写在本槽手记里的 Frog_1..3）。
-            text.Append(SkyIslandMosquitoRules.FrogProgress(data));
+            // 内容批次四：放回蛙鸣池的蛙卵（写在本槽手记里的 Frog_1..3）。那两处的写法带着「 · 」前缀，这里去掉另起一行。
+            text.Append('\n').Append(OwnLine(SkyIslandMosquitoRules.FrogProgress(data)));
             // 头目 / 岛主 R1：首杀记在本槽手记（Lord_Foreman / Chief_Stargazer）；它们每趟照常刷新、照常掉装备。
-            text.Append(SkyIslandBossRules.ProgressLine(data));
+            text.Append('\n').Append(OwnLine(SkyIslandBossRules.ProgressLine(data)));
             if (!string.IsNullOrEmpty(summary)) text.Append("\n\n").Append(summary);
             if (NotesComplete(data)) text.Append("\n\n").Append(Epilogue);
             return text.ToString();
+        }
+
+        /// <summary>把「 · 名称 计数」这类接在一行后面的片段改成自成一行（去掉前导分隔）。</summary>
+        private static string OwnLine(string clause)
+        {
+            if (string.IsNullOrEmpty(clause)) return string.Empty;
+            return clause.StartsWith(" · ", StringComparison.Ordinal) ? clause.Substring(3) : clause.Trim();
         }
 
         /// <summary>
@@ -230,8 +239,8 @@ namespace BossRush
         {
             get
             {
-                return L10n.T("终页 · 晴岚手记\n二十处见闻都收进了这本手记。翻到最后，你发现每一页的边角都画着同一个小记号——一只系在码头的空船。浮舟说那是岛上的老规矩：把走过的路记下来，留给下一位旅人，就不会再有人迷路。",
-                    "Last page · The Qinglan journal\nAll twenty notes are in this journal now. On the last page you notice the same small mark in the corner of every page — an empty boat tied at the dock. Fuzhou says it is an old island custom: write down the way you walked and leave it for the next traveller, so that no one gets lost again.");
+                return L10n.T("终页 · 晴岚手记\n二十处见闻都收进了这本手记。翻到最后，你发现每一页的边角都画着同一个小记号：一只系在码头的空船。浮舟说这是岛上的老规矩，走过的路记下来留给下一位旅人，后来的人就不会迷路。",
+                    "Last page · The Qinglan journal\nAll twenty notes are in this journal now. On the last page you notice the same small mark in the corner of every page: an empty boat tied at the dock. Fuzhou says it's an old island custom. Write down the way you came and leave it for the next traveller, and nobody after you gets lost.");
             }
         }
 

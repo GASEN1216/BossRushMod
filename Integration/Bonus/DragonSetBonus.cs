@@ -54,10 +54,8 @@ namespace BossRush
         private bool dragonSetEventRegistered = false;
         private bool dragonHurtEventRegistered = false;
 
-        // 眼睛特效
+        // 眼睛特效（表现在 SetBonusFx.cs 的 SetBonusEyeGlow：两颗 HDR 亮点 + 一盏弱补光，自带呼吸）
         private GameObject dragonEyeEffect = null;
-        private Light dragonEyeLight1 = null;
-        private Light dragonEyeLight2 = null;
 
         // [性能优化] 缓存反射 FieldInfo，避免重复反射调用
         private static FieldInfo cachedSlotChangedEventField = null;
@@ -365,11 +363,8 @@ namespace BossRush
                 // 注册伤害事件（用于火焰伤害转治疗）
                 RegisterDragonHurtEvent();
 
-                // 创建眼睛红光特效
+                // 创建眼睛红光特效（呼吸在 SetBonusEyeGlow 自己的 Update 里）
                 CreateDragonEyeEffect(character);
-
-                // 启动呼吸灯协程
-                StartDragonEyeEffectCoroutine();
 
                 // 显示提示（物理减伤已通过装备属性实现，会显示在装备详情中）
                 string titleCN = isDragonKing ? "<color=#FFD700>【龙王之庇护】</color>" : "<color=#FFD700>【龙之庇护】</color>";
@@ -398,9 +393,6 @@ namespace BossRush
                 dragonSetActive = false;
                 dragonKingSetActive = false;
                 DevLog("[DragonSet] 龙套装效果停用");
-
-                // 停止呼吸灯协程
-                StopDragonEyeEffectCoroutine();
 
                 // 取消注册伤害事件
                 UnregisterDragonHurtEvent();
@@ -497,7 +489,7 @@ namespace BossRush
                     if (main != null)
                     {
                         FX.PopText.Pop("+" + amount.ToString("F0"), main.transform.position + Vector3.up * 2f,
-                            new Color(0.2f, 1f, 0.2f), 1.2f, null);
+                            BossRushUIColors.SuccessText, 1.2f, null);
                     }
                 }
                 catch { }
@@ -507,46 +499,6 @@ namespace BossRush
         #endregion
 
         #region 眼睛特效
-
-        // 呼吸灯协程引用
-        private Coroutine dragonEyeEffectCoroutine = null;
-
-        /// <summary>
-        /// 启动龙眼呼吸灯协程
-        /// </summary>
-        private void StartDragonEyeEffectCoroutine()
-        {
-            StopDragonEyeEffectCoroutine();
-            dragonEyeEffectCoroutine = StartCoroutine(DragonEyeEffectLoop());
-        }
-
-        /// <summary>
-        /// 停止龙眼呼吸灯协程
-        /// </summary>
-        private void StopDragonEyeEffectCoroutine()
-        {
-            if (dragonEyeEffectCoroutine != null)
-            {
-                StopCoroutine(dragonEyeEffectCoroutine);
-                dragonEyeEffectCoroutine = null;
-            }
-        }
-
-        /// <summary>
-        /// 龙眼呼吸灯循环协程
-        /// </summary>
-        private System.Collections.IEnumerator DragonEyeEffectLoop()
-        {
-            while (dragonSetActive && dragonEyeLight1 != null && dragonEyeLight2 != null)
-            {
-                // 呼吸灯效果：光强在 5 ~ 15 之间波动
-                float pulse = 10f + Mathf.Sin(Time.time * 2f) * 5f;
-                dragonEyeLight1.intensity = pulse;
-                dragonEyeLight2.intensity = pulse;
-                yield return null;
-            }
-            dragonEyeEffectCoroutine = null;
-        }
 
         /// <summary>
         /// 创建龙眼红光特效
@@ -572,24 +524,9 @@ namespace BossRush
                     headTransform = character.transform;
                 }
 
-                // 创建特效容器 - 眼睛位置
-                dragonEyeEffect = new GameObject("DragonEyeEffect");
-                dragonEyeEffect.transform.SetParent(headTransform, false);
-                dragonEyeEffect.transform.localPosition = new Vector3(0f, 0.15f, 0.2f);
-
-                // 创建左眼光源 - Point Light
-                GameObject leftEye = new GameObject("LeftEyeLight");
-                leftEye.transform.SetParent(dragonEyeEffect.transform, false);
-                leftEye.transform.localPosition = new Vector3(-0.08f, 0f, 0f);
-                dragonEyeLight1 = leftEye.AddComponent<Light>();
-                ConfigureDragonEyeLight(dragonEyeLight1);
-
-                // 创建右眼光源 - Point Light
-                GameObject rightEye = new GameObject("RightEyeLight");
-                rightEye.transform.SetParent(dragonEyeEffect.transform, false);
-                rightEye.transform.localPosition = new Vector3(0.08f, 0f, 0f);
-                dragonEyeLight2 = rightEye.AddComponent<Light>();
-                ConfigureDragonEyeLight(dragonEyeLight2);
+                // 眼位两颗暗红 HDR 亮点 + 一盏 0.6 m 弱补光（旧版两盏 5–15 强度、25 cm 的点光看不见眼睛，
+                // 只在头盔正面烫一块红斑）
+                dragonEyeEffect = SetBonusEyeGlow.Create(headTransform, new Color(1f, 0.22f, 0.08f), 1.6f, false);
 
                 DevLog("[DragonSet] 龙眼特效已创建，挂载到: " + headTransform.name);
             }
@@ -597,19 +534,6 @@ namespace BossRush
             {
                 DevLog("[DragonSet] CreateDragonEyeEffect 出错: " + e.Message);
             }
-        }
-
-        /// <summary>
-        /// 配置龙眼光源（Point Light）
-        /// </summary>
-        private void ConfigureDragonEyeLight(Light light)
-        {
-            light.type = LightType.Point;          // 点光源
-            light.color = new Color(1f, 0.1f, 0.05f); // 深红色
-            light.intensity = 0.5f;                // 微弱亮度
-            light.range = 0.25f;                   // 小范围
-            light.shadows = LightShadows.None;
-            light.renderMode = LightRenderMode.ForcePixel;
         }
 
         /// <summary>
@@ -688,8 +612,6 @@ namespace BossRush
             {
                 UnityEngine.Object.Destroy(dragonEyeEffect);
                 dragonEyeEffect = null;
-                dragonEyeLight1 = null;
-                dragonEyeLight2 = null;
                 DevLog("[DragonSet] 龙眼特效已销毁");
             }
         }
@@ -772,7 +694,8 @@ namespace BossRush
             float elapsed = currentTime - createTime;
             if (elapsed > duration)
             {
-                Destroy(gameObject);
+                // 伤害到点即停；视觉（龙王冲刺轨迹预制体）停发射、灯淡出，等粒子烧完再销毁，不一帧消失
+                enabled = false; BossRushFxKit.Release(gameObject, 0.4f, 2f, false);
                 return;
             }
 

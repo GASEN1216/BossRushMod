@@ -62,13 +62,17 @@ namespace BossRush
         /// </summary>
         private const float BuffCheckInterval = 0.25f;
         private const float RuneFlashDuration = 0.35f;
-        private const float Layer1HaloAlpha = 0.42f;
-        private const float Layer2HaloAlpha = 0.58f;
-        private const float Layer3HaloAlpha = 0.76f;
+        // 轮廓光改走加色后按层压 alpha（审美口径第 6 条：大面积光晕压 alpha）；此前半透明混合下 0.42–0.76 是一层紫膜。
+        private const float Layer1HaloAlpha = 0.22f;
+        private const float Layer2HaloAlpha = 0.30f;
+        private const float Layer3HaloAlpha = 0.40f;
 
         // ========== 全局 Hook 状态 ==========
 
         private static bool hookRegistered = false;
+
+        /// <summary>丧纱轮廓贴图全场共用一张（会话常驻）：它是共享材质工厂的缓存键，不随单个角色的挂件销毁。</summary>
+        private static Texture2D sharedHaloTexture;
 
         // ========== 运行时状态 ==========
 
@@ -397,17 +401,9 @@ namespace BossRush
                 haloTransform = null;
             }
 
-            if (haloMaterial != null)
-            {
-                Destroy(haloMaterial);
-                haloMaterial = null;
-            }
-
-            if (haloTexture != null)
-            {
-                Destroy(haloTexture);
-                haloTexture = null;
-            }
+            // 轮廓材质归 BossRushFxMaterials（全 Mod 共享），贴图是全场共用的一张：只放手，不销毁。
+            haloMaterial = null;
+            haloTexture = null;
 
             if (runeLineMaterial != null)
             {
@@ -525,8 +521,8 @@ namespace BossRush
                     new Keyframe(1f, 0.1f));
                 sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
 
-                // ---------- Renderer（复用 AssetManager 共享粒子材质）----------
-                PhantomWitchAssetManager.ConfigureSharedParticleRenderer(particleSys);
+                // ---------- Renderer（复用共享粒子材质）：丧纱气息是半透明的纱，不发光 ----------
+                PhantomWitchAssetManager.ConfigureSharedParticleRenderer(particleSys, BossRushFxBlend.Alpha);
 
                 particleSys.Play();
             }
@@ -555,19 +551,14 @@ namespace BossRush
                 }
 
                 haloRenderer = halo.GetComponent<MeshRenderer>();
-                haloMaterial = new Material(ResolveTransparentShader());
-                haloMaterial.name = "PW_CurseHalo";
-                haloTexture = CreateHaloTexture();
-                if (haloMaterial.HasProperty("_MainTex"))
+                // 审查 VB-02：此前每挂一次就 new 一份材质 + 贴图，Shader.Find 首选项在游戏里又不存在（落到 Sprites/Default）。
+                // 现在共享加色材质 + 全场共用的轮廓贴图，颜色走材质属性块。
+                haloTexture = GetSharedHaloTexture();
+                haloMaterial = BossRushFxMaterials.Get(BossRushFxBlend.Additive, haloTexture);
+                if (haloMaterial != null)
                 {
-                    haloMaterial.mainTexture = haloTexture;
+                    haloRenderer.sharedMaterial = haloMaterial;
                 }
-                if (haloMaterial.HasProperty("_Color"))
-                {
-                    haloMaterial.color = Color.white;
-                }
-                haloMaterial.renderQueue = 3000;
-                haloRenderer.sharedMaterial = haloMaterial;
                 haloBlock = new MaterialPropertyBlock();
                 halo.AddComponent<PhantomWitchBillboard>();
                 UpdateHaloVisual(Layer1HaloAlpha);
@@ -578,11 +569,23 @@ namespace BossRush
             }
         }
 
-        private Texture2D CreateHaloTexture()
+        private static Texture2D GetSharedHaloTexture()
+        {
+            if (sharedHaloTexture == null)
+            {
+                sharedHaloTexture = CreateHaloTexture();
+            }
+
+            return sharedHaloTexture;
+        }
+
+        private static Texture2D CreateHaloTexture()
         {
             Texture2D texture = new Texture2D(32, 64, TextureFormat.RGBA32, false);
+            texture.name = "PW_CurseHalo";
             texture.wrapMode = TextureWrapMode.Clamp;
             texture.filterMode = FilterMode.Bilinear;
+            texture.hideFlags = HideFlags.HideAndDontSave;
 
             float centerX = 15.5f;
             float centerY = 31.5f;
@@ -601,16 +604,6 @@ namespace BossRush
 
             texture.Apply();
             return texture;
-        }
-
-        private Shader ResolveTransparentShader()
-        {
-            return Shader.Find("Legacy Shaders/Particles/Additive")
-                ?? Shader.Find("Particles/Additive")
-                ?? Shader.Find("Sprites/Default")
-                ?? Shader.Find("Unlit/Transparent")
-                ?? Shader.Find("Legacy Shaders/Particles/Alpha Blended")
-                ?? Shader.Find("Standard");
         }
 
         private void UpdateHaloVisual(float alpha)
@@ -721,7 +714,9 @@ namespace BossRush
                     line.useWorldSpace = false;
                     line.loop = false;
                     line.positionCount = 3;
-                    line.widthMultiplier = 0.014f;
+                    // 审查 VB-08：0.014 m 的线在相机距离下不到 1 px。
+                    line.widthMultiplier = 0.045f;
+                    line.widthCurve = PhantomWitchVfxRedesign.TaperedLineWidthCurve;
                     line.sharedMaterial = GetRuneLineMaterial();
                     Color color = new Color(
                         PhantomWitchConfig.SilverAshCore.r,

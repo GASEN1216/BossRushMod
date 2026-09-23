@@ -71,6 +71,7 @@ namespace UnityEngine
     }
     public class Transform { public Vector3 position; }
     public class Coroutine { }
+    public class Sprite { }
     public static class Time { public static float unscaledTime=1, unscaledDeltaTime=.5f; }
     public static class Mathf { public static int RoundToInt(float f) { return (int)Math.Round(f); } }
 }
@@ -114,7 +115,7 @@ namespace BossRush
         public static void StageCommit() { }
     }
     static class PetNestCompanionAgent { public static bool IsCompanionHealth(Health h) { return h.IsCompanion; } }
-    class PetNestLineageInfo { public float ModelScale; public string DisplayName="lineage"; }
+    class PetNestLineageInfo { public float ModelScale; public string DisplayName="lineage"; public string LineageKey="boss"; }
     static class PetNestLineageCatalog
     {
         public static IList<PetNestLineageInfo> All=new List<PetNestLineageInfo>();
@@ -149,10 +150,21 @@ namespace BossRush
     static class PetNestCompanionHudView { public static void EnsureCreated() { } public static void Destroy() { } }
     class PetNestPersonality { public int ExtraPetCapacity; public static PetNestPersonality Resolve(PetNestPetRecord p) { return new PetNestPersonality(); } }
     static class PetNestPersistenceAccess { public static bool BeginTransaction(out string reason) { reason=null;return true; } public static void AbortTransaction() { } }
-    class Label { public string text; }
-    class RevealResult { public string LineageDisplayName="actual"; public bool Shiny=true; }
+    class Label { public string text; public float fontSize, fontSizeMax; public object gameObject = new object(); }
+    class RevealResult { public string LineageDisplayName="actual"; public bool Shiny=true; public PetNestPetRecord Pet=new PetNestPetRecord { lineageKey="boss" }; }
     static class BossRushUI { public static bool Paused; public static bool IsGamePaused() { return Paused; } }
-    static class BossRushUIColors { public const int Accent=1; }
+    static class BossRushUIColors { public const int Accent=1, AccentFill=2, RarityLegendary=3; }
+    // 2026-09-23 审美修复（UA-10 / UA-11）：孵化揭晓与远征翻牌换成有图的卡片、入场动效与流光。表现层替身只要能编译，不参与断言。
+    static class BossRushUIEntranceAnimation { public static void Play(object go, float delay, float duration, float rise) { } }
+    static class PetNestShinyTextShimmer { public static void Attach(Label text) { } }
+    static class PetNestUIPages
+    {
+        public static UnityEngine.Sprite ResolveItemIcon(int typeId) { return null; }
+        public static UnityEngine.Sprite ResolveLineagePortrait(string lineageKey) { return null; }
+    }
+    static class RelicEggConfig { public const int TYPE_ID = 500059; }
+    class FakeCard { public bool activeSelf = true; }
+    class FakeStroke { public int color; }
     static class ZombieModeUIHelper { public static void SetButtonBaseColor(object button,int color) { } }
     partial class PetNestHatchRevealView
     {
@@ -163,6 +175,13 @@ namespace BossRush
         RevealResult _result=new RevealResult();
         Coroutine _playRoutine=new Coroutine();
         bool _resultShown,_finished;
+        bool _shaking; float _popElapsed; FakeCard _card=new FakeCard(); FakeStroke _cardStroke=new FakeStroke();
+        void SetCardSprite(UnityEngine.Sprite sprite,bool rolling) { }
+        void ResetCardTransform() { }
+        void SetDetail(string text) { _detailText.text=text; }
+        void AddChromaRails() { }
+        // 结果出来后玩家点「关闭」走 CloseByPlayer（旧写法直接 Stop）；计数语义不变。
+        void CloseByPlayer() { Closed++; }
         public static int Music,Closed;
         static void SetText(Label t,string s) { t.text=s; }
         static void Stop() { Closed++; }
@@ -183,7 +202,14 @@ namespace BossRush
     partial class PetNestExpeditionRevealView
     {
         const float CardEnterSeconds = .3f, CardFlipSeconds = .55f, CardHoldSeconds = 1.4f;
-        Label _cardText = new Label(), _detailText = new Label();
+        Label _cardText = new Label(), _detailText = new Label(), _skipLabel = new Label();
+        object _skipButton = new object();
+        bool _finished;
+        public bool Finished { get { return _finished; } }
+        void ShowBack(PetNestExpeditionRecord record) { }
+        void ClearLoot() { }
+        IEnumerator Flip(PetNestExpeditionRecord record) { yield break; }
+        void BuildLoot(PetNestExpeditionRecord record) { }
         List<PetNestExpeditionRecord> _pending = new List<PetNestExpeditionRecord> { new PetNestExpeditionRecord { id = "trip" } };
         public static int Closed;
         static void SetText(Label target, string text) { target.text = text; }

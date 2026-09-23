@@ -56,6 +56,12 @@ namespace BossRush
         private Vector3 eyeOrigin;
         /// <summary>这一档还在场的预警光与地面圈。回响挂在地图根上、不随本体销毁，所以组件销毁时自己收。</summary>
         private GameObject warningObject, ringObject;
+        /// <summary>这一档预警灯（随蓄力升亮、结束时淡出）。</summary>
+        private Light warningLight;
+        /// <summary>预警灯的峰值强度与圈的出现 / 波间过渡时长（纯表现）。</summary>
+        private const float WarningPeak = 4f;
+        private const float RingAppearSeconds = 0.18f;
+        private const float RingEaseSeconds = 0.12f;
         /// <summary>回响的圈与光：晴岚风晶那种暖金色，一眼分得出不是首战的风暴色。</summary>
         private static readonly Color EchoTint = new Color(0.96f, 0.74f, 0.40f, 1f);
 
@@ -102,10 +108,10 @@ namespace BossRush
             health.OnDeadEvent.AddListener(OnDead);
             subscribed = true;
             if (echo)
-                Announce("噬风的回响翻上了栈道 —— 这一回，风眼落在哪儿就钉在哪儿。",
+                Announce("噬风的回响翻上了栈道，这回风眼落在哪儿就钉在哪儿。",
                     "The Windeater's echo climbs onto the boardwalk. This time the eye stays where it falls.", false);
             else
-                Announce("噬风从云海里翻上来了 —— 它循着重新亮起的两盏灯。",
+                Announce("噬风从云海里翻上来了，冲着那两盏重新亮起的灯。",
                     "The Windeater rises from the sea of cloud, drawn by the two relit beacons.", false);
         }
 
@@ -151,13 +157,13 @@ namespace BossRush
             // 漏译一支时看不出来，本地化守卫也认不出这是配好的对照。
             // 相位台词是**机制提示**（1.4 秒后圈内吃伤害），走警示通道：抢在普通字幕前面播、不会被队列挤掉。
             if (phase == 1)
-                Announce("噬风收拢了风眼 —— 离开它脚下的那一圈。",
+                Announce("噬风收拢了风眼：快离开它脚下那一圈。",
                     "The Windeater draws its eye shut. Get out of the ring.", true);
             else if (phase >= PhaseThresholds.Length)
-                Announce("云柱塌下来了 —— 最后一段，别站在原地。",
+                Announce("云柱塌下来了：最后一段，别站在原地。",
                     "The column collapses. Last stretch: keep moving.", true);
             else
-                Announce("风眼又张开了 —— 跟着圈往外跑。",
+                Announce("风眼又张开了：跟着圈往外跑。",
                     "The eye opens again. Run out with the ring.", true);
             StartCoroutine(PulseRoutine());
         }
@@ -183,15 +189,21 @@ namespace BossRush
 
             // 预警阶段：地面圈按 wave0 的实际半径画出来，并随倒计时加粗、提亮。
             // 只靠一盏点光源读不出「这一圈到底多大」，而三波 38 伤害站在中心必死。
+            // 预警灯随蓄力从 0 亮到 4、照亮范围就是第一波半径（VB-23：旧灯恒 4.5、照 14 m，亮区本身在误导范围）。
             float started = Time.time;
             while (Time.time - started < PulseTelegraph && !Aborted())
             {
+                float charge = Mathf.Clamp01((Time.time - started) / PulseTelegraph);
                 if (ring != null)
-                    SetRing(ring, RadiusForWave(0), Mathf.Clamp01((Time.time - started) / PulseTelegraph));
+                    SetRing(ring, RadiusForWave(0), charge, BossRushUI.SmoothStep((Time.time - started) / RingAppearSeconds));
+                if (warningLight != null) warningLight.intensity = WarningPeak * charge;
                 yield return null;
             }
-            if (warning != null) Destroy(warning);
+            // 预警结束：灯 0.2 s 淡出后自毁，不再一帧熄灭。
+            if (warningLight != null) SkyIslandLightFade.FadeTo(warningLight, 0f, 0.2f, true);
+            else if (warning != null) Destroy(warning);
             warningObject = null;
+            warningLight = null;
 
             for (int wave = 0; wave < PulseWaves && !Aborted(); wave++)
             {
@@ -199,10 +211,11 @@ namespace BossRush
                 try { Detonate(wave); }
                 catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 风暴脉冲失败：" + e.Message); }
                 // 下一波的范围在这 0.45 秒间隔里就画出来，后两波各有一段真正可反应的预警。
-                if (ring != null && wave + 1 < PulseWaves) SetRing(ring, RadiusForWave(wave + 1), 1f);
+                // 圈从刚炸完的半径用 0.12 s EaseOut 滑到下一波半径（VB-23，间隔内的表现，判定不变），不再一帧跳过去。
+                if (ring != null && wave + 1 < PulseWaves) StartCoroutine(EaseRing(ring, RadiusForWave(wave), RadiusForWave(wave + 1)));
                 // 回响：最后一波之后风眼还会在原地再响一声（半径同最后一波，圈留着不动），提示赶在这段间隔里发出。
                 if (echo && wave + 1 == PulseWaves)
-                    Announce("风眼在原地又响了一声 —— 别急着回到圈里。",
+                    Announce("风眼在原地又响了一声，别急着回圈里。",
                         "The eye echoes where it stood. Do not step back into the ring yet.", true);
                 float waveUntil = Time.time + WaveGap;
                 while (Time.time < waveUntil && !Aborted()) yield return null;
@@ -213,9 +226,25 @@ namespace BossRush
                 try { Detonate(PulseWaves - 1); }
                 catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 回响脉冲失败：" + e.Message); }
             }
-            if (ring != null) Destroy(ring.gameObject);
+            // 收圈：0.16 s 淡出后自毁（最后一波的余波圈已由 SkyIslandImpactFx 放出），不一帧消失。
+            if (ring != null) SkyIslandRingFadeOut.Begin(ring, 0.16f);
             ringObject = null;
             pulsing = false;
+        }
+
+        /// <summary>
+        /// 两波之间圈的半径过渡：0.12 s EaseOut 从刚炸完的一圈滑到下一波的判定半径，之后恒等于下一波半径。
+        /// 只在 0.45 s 的波间隔里跑，下一波结算时圈早已落在判定半径上。
+        /// </summary>
+        private IEnumerator EaseRing(LineRenderer line, float from, float to)
+        {
+            float began = Time.time;
+            while (line != null && Time.time - began < RingEaseSeconds && !Aborted())
+            {
+                SetRing(line, Mathf.Lerp(from, to, BossRushUI.EaseOut((Time.time - began) / RingEaseSeconds)), 1f);
+                yield return null;
+            }
+            if (line != null) SetRing(line, to, 1f);
         }
 
         private bool Aborted()
@@ -236,8 +265,11 @@ namespace BossRush
             // 首战每一波重读本体当前位置（风眼跟着它走）；回响钉在预警开始时的位置。
             Vector3 origin = echo ? eyeOrigin : boss.transform.position;
             // canHurtSelf=false：官方默认 true 时 selfTeam=Teams.all，风眼中心的一切都会被判定为敌人。
+            // 震屏 0.8（VB-21 / VB-23：旧值 0 把官方震屏关了）；噬风是真的风暴炸开，留官方火球。
             LevelManager.Instance.ExplosionManager.CreateExplosion(
-                origin, RadiusForWave(wave), damage, ExplosionFxTypes.normal, 0f, false);
+                origin, RadiusForWave(wave), damage, ExplosionFxTypes.normal, SkyIslandImpactFx.StormShake, false);
+            // 每一波都在原地放一圈余波（先闪、再扩散淡出）+ 48 颗圈沿扬尘：圆心那颗固定大小的火球读不出 7–10 m 的范围。
+            SkyIslandImpactFx.Play(boss.transform.parent, origin, RadiusForWave(wave), RingTint, 48);
         }
 
         private GameObject CreateWarningLight()
@@ -256,9 +288,11 @@ namespace BossRush
             Light light = go.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = RingTint;
-            light.intensity = 4.5f;
-            light.range = PulseRadius * 2f;
+            // 从 0 起亮（预警循环里随蓄力升到 WarningPeak）；照亮范围就是第一波判定半径，不把圈外的地也洗亮。
+            light.intensity = 0f;
+            light.range = RadiusForWave(0);
             light.shadows = LightShadows.None;
+            warningLight = light;
             return go;
         }
 
@@ -285,10 +319,11 @@ namespace BossRush
         /// 按半径重画圆环。<paramref name="charge"/> 是 0..1 的蓄力度，
         /// 只影响线宽与不透明度，**不影响半径**——半径必须始终等于真实作用范围。
         /// </summary>
-        private void SetRing(LineRenderer line, float radius, float charge)
+        private void SetRing(LineRenderer line, float radius, float charge, float appear = 1f)
         {
             Color tint = RingTint;
-            Color solid = new Color(tint.r, tint.g, tint.b, Mathf.Lerp(0.45f, 1f, charge));
+            // appear：刚画出来那 0.18 s 从透明淡入（VB-23），之后恒为 1。
+            Color solid = new Color(tint.r, tint.g, tint.b, Mathf.Lerp(0.45f, 1f, charge) * Mathf.Clamp01(appear));
             SkyIslandGroundRing.SetShape(line, radius, Mathf.Lerp(0.18f, 0.55f, charge), solid);
         }
 
@@ -337,6 +372,7 @@ namespace BossRush
             if (ringObject != null) Destroy(ringObject);
             warningObject = null;
             ringObject = null;
+            warningLight = null;
             valid = null;
             report = null;
             defeated = null;

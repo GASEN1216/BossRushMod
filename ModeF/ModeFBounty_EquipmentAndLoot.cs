@@ -539,9 +539,9 @@ namespace BossRush
             string killerName = GetModeFActorDisplayName(killer, true);
             string victimName = GetModeFActorDisplayName(victim, false);
 
-            modeFBountyLeaderContextZh = "<color=orange>" + killerName + "</color> 杀死了 <color=red>" + victimName
+            modeFBountyLeaderContextZh = RichWarningTag + killerName + "</color> 杀死了 " + RichDangerTag + victimName
                 + "</color>，并成为悬赏榜首！";
-            modeFBountyLeaderContextEn = "<color=orange>" + killerName + "</color> killed <color=red>" + victimName
+            modeFBountyLeaderContextEn = RichWarningTag + killerName + "</color> killed " + RichDangerTag + victimName
                 + "</color> and became the Bounty Leader!";
         }
 

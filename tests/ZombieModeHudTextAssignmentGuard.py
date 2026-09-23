@@ -19,7 +19,8 @@ def main() -> int:
         "private string lastMainText;",
         "private string lastSafeZoneText;",
         "private string lastStageText;",
-        "SetTextIfChanged(mainText, inst.GetZombieModeHudMainText(RunId), ref lastMainText);",
+        # 2026-09-23 审美审查 UC-04：主面板带上 HUD 滚动中的净化点显示值，仍走缓存比较。
+        "SetTextIfChanged(mainText, inst.GetZombieModeHudMainText(RunId, shownPurification), ref lastMainText);",
         "SetTextIfChanged(safeZoneText, inst.GetZombieModeHudSafeZoneText(RunId), ref lastSafeZoneText);",
         "SetTextIfChanged(stageText, inst.GetZombieModeHudStageText(RunId), ref lastStageText);",
         "private static void SetTextIfChanged(TextMeshProUGUI target, string value, ref string lastValue)",

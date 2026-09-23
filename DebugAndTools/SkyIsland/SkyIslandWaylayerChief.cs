@@ -157,7 +157,7 @@ namespace BossRush
             try { Flee(player); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 截信人闪身失败：" + e.Message); }
             Say(string.Format(L10n.T("截信人抢走了你的{0}，闪到了邮亭另一头：追上去打倒它，东西就在它身上。",
-                "The Waylayer snatched your {0} and flicked to the far end of the hut: run it down — it is carrying your things."),
+                "The Waylayer snatched your {0} and flicked to the far end of the hut: run it down, it's got your stuff."),
                 SkyIslandItemRules.Name(typeId)), !snatchAnnounced);
             snatchAnnounced = true;
         }
@@ -309,7 +309,16 @@ namespace BossRush
                 Vector3 ground;
                 // 宁可少闪一次，也不把它塞进墙里或悬在半空。
                 if (SkyIslandBossProps.SnapNear(target, context, 0.45f, 2f, out ground))
-                    SkyIslandBossProps.Teleport(boss, ground + Vector3.up * 0.1f, null);
+                {
+                    Vector3 blinkFrom = boss.transform.position;
+                    // 闪身留一道风痕和两团扬尘：看得出它带着东西跑去了哪头（VB-25，纯表现）。
+                    if (SkyIslandBossProps.Teleport(boss, ground + Vector3.up * 0.1f, null))
+                    {
+                        SkyIslandImpactFx.Puff(context.Root, blinkFrom, 0.5f, 6);
+                        SkyIslandImpactFx.Streak(context.Root, blinkFrom, ground, SnatchTint);
+                        SkyIslandImpactFx.Puff(context.Root, ground, 0.5f, 6);
+                    }
+                }
             }
             else Debug.LogWarning("[SkyIslandBoss] 倒挂邮亭的逃点标记都不在，截信人只加速不闪身");
             RuntimeStatModifierTracker.RemoveAll(fleeRecords, "SkyIslandWaylayerFlee");
@@ -399,7 +408,7 @@ namespace BossRush
 
         private void DestroyRing()
         {
-            if (snatchRing != null) Destroy(snatchRing.gameObject);
+            SkyIslandBossForge.ReleaseRing(snatchRing);
             snatchRing = null;
         }
 

@@ -22,8 +22,8 @@ namespace BossRush
         public const string DISPLAY_NAME_EN = "Awen Loot Sweep Token";
         public const string DESCRIPTION_CN = "刻着鸭邮回收章的铜令。\n在标准BossRush、划地为营或血猎追击中使用。阿稳会从近到远清理当前已有的掉落箱。";
         public const string DESCRIPTION_EN = "A brass token with Awen's cleanup seal.\nUse in standard BossRush, Faction War or Blood Hunt. Awen clears existing lootboxes from nearest to farthest.";
-        public const string USE_DESC_CN = "使用：命令阿稳清理当前已存在的掉落箱";
-        public const string USE_DESC_EN = "Use: Command Awen to clear the currently existing lootboxes";
+        public const string USE_DESC_CN = "使用：叫阿稳清掉场上现有的掉落箱";
+        public const string USE_DESC_EN = "Use: Call Awen to clear the lootboxes already on the field";
         public const float USE_TIME_SECONDS = 1f;
 
         private static bool runtimeFallbackRegistered = false;

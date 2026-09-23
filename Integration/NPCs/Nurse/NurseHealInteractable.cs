@@ -149,6 +149,36 @@ namespace BossRush
             UpdateHealOptionName();
         }
 
+        /// <summary>
+        /// 选项显隐：满血且没有减益时整项不挂（AGENTS §4.14「没有要做的不挂」；审美审查 UA-32，
+        /// 旧写法常挂一行「治疗（不需要）」，点了只弹一句「你现在不需要治疗」）。钱不够照挂、按钮上写价钱。
+        /// 官方 GetInteractableList 只收 activeInHierarchy 的成员，所以显隐就是 SetActive。
+        /// 本组件隐藏后收不到经验 / 减益事件（OnDisable 退订），由宿主 NurseInteractable 在玩家走近时调用本方法。
+        /// </summary>
+        internal void RefreshOptionVisibility()
+        {
+            bool needed;
+            try
+            {
+                needed = NurseHealingService.NeedsHealing();
+            }
+            catch (Exception ex)
+            {
+                ModBehaviour.DevLog("[NurseNPC] [WARNING] 判定治疗选项显隐失败: " + ex.Message);
+                needed = true;   // 判不出来时照挂：宁可多一行，不能让受伤的玩家找不到治疗
+            }
+
+            if (gameObject.activeSelf != needed)
+            {
+                gameObject.SetActive(needed);
+            }
+
+            if (needed)
+            {
+                UpdateHealOptionName();
+            }
+        }
+
         public void UpdateHealOptionName()
         {
             try
@@ -262,7 +292,7 @@ namespace BossRush
             {
                 if (controller != null)
                 {
-                    controller.ShowDialogueBubble(L10n.T("你现在不需要治疗。", "No treatment needed right now."));
+                    controller.ShowDialogueBubble(L10n.T("没伤没病，治什么。", "You're fine. Nothing to treat."));
                     EndDialogueWithMark(5f);
                 }
                 return;
@@ -304,8 +334,8 @@ namespace BossRush
 
                 default:
                     string failedText = L10n.T(
-                        "这次治疗没能完全处理好，稍后再来找我看看吧。",
-                        "I couldn't finish the treatment this time. Come back and let me check again in a bit.");
+                        "这次没处理干净，过会儿再来让我看看。",
+                        "Couldn't finish the job this time. Come back in a bit and I'll take another look.");
 
                     if (controller != null)
                     {
@@ -363,6 +393,12 @@ namespace BossRush
             }
 
             handledDialogueEndThisInteraction = false;
+
+            // 治好了就把「治疗」从菜单里撤掉：交互结束后官方 InteractHUD 会重建一次选项（UA-32）。
+            NPCExceptionHandler.TryExecute(
+                RefreshOptionVisibility,
+                "NurseHealInteractable.OnInteractStop.RefreshOptionVisibility",
+                false);
         }
     }
 }

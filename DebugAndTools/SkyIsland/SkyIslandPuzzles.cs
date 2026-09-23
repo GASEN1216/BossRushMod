@@ -152,11 +152,11 @@ namespace BossRush
                     "三格补齐，纸页上的字又连成了句子。", "With all three beds filled in, the words on the page run together into sentences again.",
                     Step("第一格种什么？", "What goes in the first bed?",
                         new[] { Option("水芹", "Water celery"), Option("归航菜", "Homecoming greens"), Option("青麦", "Green wheat") }, 2,
-                        "第一格要挡风——哪一样长得高，能替后面的菜挡住风？", "The first bed breaks the wind — which crop grows tall enough to shelter the rest?",
+                        "第一格要挡风：哪一样长得高，能替后面的菜挡住风？", "The first bed breaks the wind. Which crop grows tall enough to shelter the rest?",
                         "晴禾的笔迹从纸背透出来：第一格是青麦。", "Qinghe's handwriting shows through from the back of the page: the first bed is green wheat."),
                     Step("第二格种什么？", "What goes in the second bed?",
                         new[] { Option("青麦", "Green wheat"), Option("水芹", "Water celery"), Option("归航菜", "Homecoming greens") }, 1,
-                        "第二格离不开水——池边哪一样一离水就蔫？", "The second bed cannot live without water — which crop wilts the moment it leaves the pool?",
+                        "第二格离不开水：池边哪一样一离水就蔫？", "The second bed needs water. Which crop wilts the moment it leaves the pool?",
                         "纸背透出来：第二格是水芹。", "Through the page: the second bed is water celery."),
                     Step("最后一畦留给什么？", "What goes in the last bed?",
                         new[] { Option("归航菜", "Homecoming greens"), Option("青麦", "Green wheat"), Option("水芹", "Water celery") }, 0,
@@ -200,7 +200,7 @@ namespace BossRush
                     "三道刻环都对准了，星图重新连成一片。", "All three rings are aligned and the star chart joins up again.",
                     Step("外环转向哪边？", "Where does the outer ring point?",
                         new[] { Option("东", "East"), Option("西", "West"), Option("北", "North") }, 1,
-                        "外环指星灯——星灯在工坊那边。", "The outer ring points to the star lamp, over at the workshop.",
+                        "外环指星灯，星灯在工坊那边。", "The outer ring points to the star lamp, over at the workshop.",
                         "外环停在「西」时，镜片里亮起一点暖光。", "When the outer ring stops at 'west', a warm point of light appears in the lens."),
                     Step("中环转向哪边？", "Where does the middle ring point?",
                         new[] { Option("北", "North"), Option("南", "South"), Option("西北", "Northwest") }, 0,
@@ -208,7 +208,7 @@ namespace BossRush
                         "中环停在「北」时，一颗星稳稳落进十字线。", "When the middle ring stops at 'north', a star settles steady in the crosshairs."),
                     Step("内环转向哪边？", "Where does the inner ring point?",
                         new[] { Option("东南", "Southeast"), Option("正南", "Due south"), Option("西北", "Northwest") }, 2,
-                        "内环指归航钟——钟庭在瞭台的西北。", "The inner ring points to the Homecoming Bell, northwest of the overlook.",
+                        "内环指归航钟，钟庭在瞭台的西北。", "The inner ring points to the Homecoming Bell, northwest of the overlook.",
                         "内环停在「西北」时，远处的钟庭好像轻轻响了一声。", "When the inner ring stops at 'northwest', the distant Bell Court seems to chime once."))
             };
         }

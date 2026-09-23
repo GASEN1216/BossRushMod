@@ -1,18 +1,18 @@
 # Dragon Descendant
 
 ## Overview
-Dragon Descendant is the first custom boss in BossRush Mod, featuring a two-phase combat system. It is your entry point to the custom boss drop system — defeating it yields the Dragon Set and Dragon Breath weapon.
+Dragon Descendant is the first custom boss in BossRush Mod, with two phases. Beat it for the Dragon Set and the Dragon Breath gun; it's the first stop for custom boss loot.
 
 ## Base Stats
 - HP: 500
 - Contact Damage: 20 (1.5m range, 0.5s cooldown, knockback force 10)
 - Equipment: Crimson Dragon Helm, Flame Scale Armor, Dragon Breath
-- **Fire Immune**: Fire damage not only deals no damage, it actually heals the boss
+- **Fire Immune**: Fire damage heals it instead of hurting it
 
 ## Combat Phases
 
 ### Phase 1 (Full HP ~ First Lethal Hit)
-- Shooting: Uses Dragon Breath for standard gunfire; every 10th shot triggers a small blast at the player's feet if within 5m (5 fire damage, 1m radius) — staying 5m+ away avoids this entirely
+- Shooting: Uses Dragon Breath for standard gunfire; every 10th shot triggers a small blast at the player's feet if within 5m (5 fire damage, 1m radius). Stay 5m+ away and it never reaches you
 - Incendiary Grenade: Thrown every 5 seconds, always aimed at the player's feet
 - Phase 1 damage multiplier is low (0.3x), mainly to let you learn its attack patterns
 
@@ -23,7 +23,7 @@ Dragon Descendant doesn't die when its HP first hits zero. When it takes lethal 
 2. Throws incendiary grenades in eight directions
 3. Restores to 50% of maximum HP and enters the frenzied Phase 2
 
-This triggers only once. Note: **it's NOT triggered at 50% HP** — it triggers on the first lethal hit.
+This triggers only once. Note: **it's NOT triggered at 50% HP**. It triggers on the first lethal hit.
 
 ::: warning
 When you see 1 HP and the revival line, create distance! Standing on the body waiting for loot is the easiest way to get hit by the eight-way incendiaries and contact damage at the same time.
@@ -60,12 +60,12 @@ several kills, and Dragon Breath is the stubborn one.
   Grows Dragon Breath Fruit: +10% gun and melee damage for your next run
 
 ## Combat Strategy
-- Phase 1 pressure is low — keeping 5m+ distance avoids most damage
+- Phase 1 pressure is low; keeping 5m+ away avoids most damage
 - Watch for the incendiary arc — move away from your current spot when you see the throw
-- On first lethal hit, **don't rush in to loot** — create distance and watch for gaps in the eight-way incendiaries
-- Don't use fire DoT during the revival sequence — it only heals the boss
+- On first lethal hit, **don't rush in to loot**. Back off and watch for gaps in the eight-way incendiaries
+- Don't use fire DoT during the revival sequence; it only heals the boss
 - In Phase 2, read the loop: strafe during straight shots, dodge the rush, then use the short pause after the fan sweep as your best damage window
-- Melee players shouldn't facetank — the 1.5m contact hitbox plus the 5m blast check means taking multiple damage instances at once
+- Melee players shouldn't facetank: the 1.5m contact hitbox plus the 5m blast check means taking multiple damage instances at once
 - **Ice weapons/ammo shine in Phase 2**: stack up the slow threshold, attack from the side while it's slowed, then disengage before the next rush
 - Wearing Dragon Set or Dragon King Set turns fire damage into healing for you
 - Melee players should wait for the ice slow to trigger before committing

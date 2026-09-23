@@ -223,6 +223,14 @@ namespace BossRush
                 0.85f,
                 PhantomWitchConfig.ScytheSweepWindup,
                 false));
+            // 审查 VB-07：蓄力期间按判定值（半径 / 半角 / 前移量）画扇形预警，跟随 Boss→目标方向；只是表现，判定不变。
+            TrackEffect(PhantomWitchAssetManager.CreateConeTelegraph(
+                bossCharacter.transform,
+                target != null ? target.transform : null,
+                PhantomWitchConfig.ScytheSweepRadius,
+                PhantomWitchConfig.ScytheSweepHalfAngle,
+                PhantomWitchConfig.ScytheSweepForwardOffset,
+                PhantomWitchConfig.ScytheSweepWindup));
             yield return waitScytheSweepWindup;
 
             if (!CanContinueAttacking())

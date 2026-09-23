@@ -205,7 +205,49 @@ namespace BossRush
 
         protected override bool IsInteractable()
         {
+            RefreshHealOptionWhenApproached();
             return true;
+        }
+
+        /// <summary>治疗选项显隐的刷新间隔（秒）。玩家贴着护士时官方每帧都来问 IsInteractable。</summary>
+        private const float HealOptionRefreshInterval = 0.25f;
+        private float nextHealOptionRefreshTime;
+
+        /// <summary>
+        /// 玩家走近、护士即将成为交互主体时刷新「治疗」选项显隐（满血无减益不挂，见 NurseHealInteractable.RefreshOptionVisibility）。
+        ///
+        /// 【菜单正显示本护士时不改列表】官方 InteractHUD 只在交互主体变化时重建选项，中途增删成员会让
+        /// 高亮项与实际交互目标错位（按「送礼」却触发了别的）。所以只在官方扫描候选、主体还不是本护士时刷新；
+        /// 一次交互结束后官方会重建一次菜单，那一刻由治疗选项自己的 OnInteractStop 刷新。
+        /// </summary>
+        private void RefreshHealOptionWhenApproached()
+        {
+            if (healInteractable == null)
+            {
+                return;
+            }
+
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null && player.interactAction != null
+                    && player.interactAction.MasterInteractableAround == this)
+                {
+                    return;
+                }
+
+                float now = Time.unscaledTime;
+                if (now < nextHealOptionRefreshTime)
+                {
+                    return;
+                }
+                nextHealOptionRefreshTime = now + HealOptionRefreshInterval;
+                healInteractable.RefreshOptionVisibility();
+            }
+            catch (Exception ex)
+            {
+                ModBehaviour.DevLog("[NurseNPC] [WARNING] 刷新治疗选项显隐失败: " + ex.Message);
+            }
         }
 
         protected override void OnInteractStart(CharacterMainControl interactCharacter)

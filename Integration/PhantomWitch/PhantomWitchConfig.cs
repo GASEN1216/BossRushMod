@@ -68,6 +68,12 @@ namespace BossRush
         /// 放大后碰撞/近战范围随 transform 一起变大，让 Boss 更具威慑感。
         /// </summary>
         public const float BossModelScale = 2f;
+        /// <summary>
+        /// 横扫刀光跟模型放大的上限（2026-09-23 拍板）。刀光曾按模型 2 倍画，是判定半径的两倍：
+        /// 站在刀光里却打不中、离得远以为会挨打，玩家读不了招。1.35 倍仍看得出是大个子的挥砍，
+        /// 出手前的扇形预警按真实判定画。伤害半径 / 前移量不随它变。回退：改回 float.MaxValue。
+        /// </summary>
+        public const float ScytheSweepVisualScaleCap = 1.35f;
         public const string BossNameKey = "boss_phantomwitch";
         public const string BossNameCN = "幽灵女巫";
         public const string BossNameEN = "Phantom Witch";
@@ -304,10 +310,10 @@ namespace BossRush
 
         // ========== 阶段切换提示 ==========
 
-        public const string Phase2MessageCN = "幽灵女巫的诅咒扩散开来，镰刀变得更加狂暴！";
-        public const string Phase2MessageEN = "The Phantom Witch's curse spreads outward, and her scythe grows more violent!";
-        public const string Phase3MessageCN = "残喘之影——她已无法满场游弋，却仍不肯离去。";
-        public const string Phase3MessageEN = "Dwindling Wraith - she can no longer roam, yet refuses to leave.";
+        public const string Phase2MessageCN = "诅咒散开了，幽灵女巫的镰刀挥得更凶了！";
+        public const string Phase2MessageEN = "The curse spreads. The Phantom Witch swings harder!";
+        public const string Phase3MessageCN = "残喘之影：她飘不动了，可还是不肯走。";
+        public const string Phase3MessageEN = "Dwindling Wraith: she can't roam anymore, but she won't leave.";
         public const string SpawnMessageCN = "幽灵女巫出现了！";
         public const string SpawnMessageEN = "The Phantom Witch has appeared!";
         public const string DefeatedMessageCN = "幽灵女巫被击败了！";

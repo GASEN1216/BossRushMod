@@ -426,13 +426,15 @@ def check_storm_boss():
     assert 'internal static float RadiusForWave(int wave)' in boss, \
         'Wave radius must live in one place so the ring and the damage cannot drift apart'
     assert 'SetRing(ring, RadiusForWave(0)' in boss, 'The telegraph ring must use the real wave radius'
-    assert 'SetRing(ring, RadiusForWave(wave + 1), 1f)' in boss, \
+    # 2026-09-23 VB-23：下一波的圈在间隔里用 0.12 s 从上一波半径滑到下一波判定半径，过渡结束恒等于下一波半径。
+    assert ('StartCoroutine(EaseRing(ring, RadiusForWave(wave), RadiusForWave(wave + 1)))' in boss
+            and 'if (line != null) SetRing(line, to, 1f);' in boss), \
         'Later waves must be telegraphed during the inter-wave gap'
     # 自建伤害三件套：不显式传就会打到玩家自己 / 被当成直接击杀起链。
     detonate = boss.split('private void Detonate(int wave)', 1)[1].split('\n        }', 1)[0]
     assert 'damage.isFromBuffOrEffect = true' in detonate, 'Storm pulse must use the buff/effect channel'
     assert 'damage.fromWeaponItemID = 0' in detonate, 'Storm pulse must not claim a weapon'
-    assert 'ExplosionFxTypes.normal, 0f, false)' in detonate, 'Storm pulse must pass canHurtSelf:false'
+    assert 'ExplosionFxTypes.normal, SkyIslandImpactFx.StormShake, false)' in detonate, 'Storm pulse must pass canHurtSelf:false'
     assert 'RadiusForWave(wave)' in detonate, 'Damage radius must come from the shared accessor'
     assert 'health.OnDeadEvent.AddListener(OnDead)' in boss and 'health.OnDeadEvent.RemoveListener(OnDead)' in boss, \
         'Boss death subscription must be paired'

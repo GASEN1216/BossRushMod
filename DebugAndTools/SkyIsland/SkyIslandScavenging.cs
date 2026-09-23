@@ -38,9 +38,18 @@ namespace BossRush
         private readonly Action<string, bool> report;
         private readonly Action scavenged;
         private readonly int raidSeed;
-        /// <summary>牌子显示/隐藏的滞回带，避免在阈值上反复开关。</summary>
+        /// <summary>
+        /// 牌子建不建（启用对象）的滞回带，避免在阈值上反复开关。只管「这块牌子要不要在场」，
+        /// 亮不亮交给 <see cref="SkyIslandProximityLabel"/> 按 <see cref="LabelNear"/> / <see cref="LabelFar"/> 走近才浮现（UE-03）。
+        /// 旧写法 45 m 内直接亮：一屏只有约 28×20 m，屏幕里每个箱子头顶都一直挂着一行彩字。
+        /// </summary>
         private const float LabelShowRange = 45f;
         private const float LabelHideRange = 55f;
+        /// <summary>牌子走近才浮现的距离带（米），与采集点（5 / 10）、纪念物（6 / 11）同一量级。</summary>
+        private const float LabelNear = 6f;
+        private const float LabelFar = 12f;
+        /// <summary>翻过的箱子牌子最亮到多少：压暗成「看过了」，不再顶着「星工遗存」招人。</summary>
+        private const float OpenedLabelPeak = 0.45f;
         private bool closed, subscribed, poolWarned;
         private float nextTick;
         private int openedCount;
@@ -302,6 +311,11 @@ namespace BossRush
             text.alignment = TextAlignmentOptions.Center;
             text.color = TierColor(tier);
             text.rectTransform.sizeDelta = new Vector2(12f, 3f);
+            // 压在砂岩与云海高光上的世界字要有描边托住（UE-14），共享材质按字体一份。
+            Material outlined = BossRushUIKit.GetOutlinedFontMaterial(text.font);
+            if (outlined != null) text.fontSharedMaterial = outlined;
+            // 走近才浮现（UE-03）：和纪念物、采集点、船点招牌同一口径，不再 45 m 外就常亮。
+            SkyIslandProximityLabel.Attach(sign, LabelNear, LabelFar);
             return sign;
         }
 
@@ -310,11 +324,15 @@ namespace BossRush
             return L10n.T(SkyIslandLootTables.TierNameCn(tier), SkyIslandLootTables.TierNameEn(tier));
         }
 
+        /// <summary>
+        /// 牌子字色按档次走稀有度色（UE-03）：星工遗存传说金、航务补给稀有蓝、生活物资次级灰。
+        /// 旧写法借了警示黄（它不是警告）与按钮底色 Success（给白字垫底的暗绿，当字色读不清）。
+        /// </summary>
         internal static Color TierColor(SkyIslandLootTier tier)
         {
-            if (tier == SkyIslandLootTier.Starworks) return BossRushUIColors.WarningText;
-            if (tier == SkyIslandLootTier.Voyage) return BossRushUIColors.Accent;
-            return BossRushUIColors.Success;
+            if (tier == SkyIslandLootTier.Starworks) return BossRushUIColors.RarityLegendary;
+            if (tier == SkyIslandLootTier.Voyage) return BossRushUIColors.RarityRare;
+            return BossRushUIColors.TextSecondary;
         }
 
         private void OnStartLoot(InteractableLootbox box)
@@ -326,6 +344,14 @@ namespace BossRush
                 if (point.Box != box || point.Opened) continue;
                 point.Opened = true;
                 openedCount++;
+                // 翻过的箱子：牌子换次级色、最亮压到一半以下，读作「看过了」（UE-03）。
+                if (point.Label != null)
+                {
+                    TextMeshPro text = point.Label.GetComponent<TextMeshPro>();
+                    if (text != null) text.color = new Color(BossRushUIColors.TextSecondary.r, BossRushUIColors.TextSecondary.g,
+                        BossRushUIColors.TextSecondary.b, text.color.a);
+                    SkyIslandProximityLabel.SetPeak(point.Label, OpenedLabelPeak);
+                }
                 // 委托进度由会话持有的 owner 记账，本类不持有跨系统静态状态。
                 if (scavenged != null) scavenged();
                 Debug.Log("[SkyIslandLoot] POINT_OPENED id=" + point.Anchor.Id + " total=" + openedCount);

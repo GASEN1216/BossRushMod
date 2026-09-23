@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-An **ice-element spear** with the longest attack range of all the new weapons. Every hit applies a guaranteed vanilla Cold slow. Steady mid-range damage with low crit potential — built for controlled distance fighting.
+An **ice-element spear** with the longest attack range of all the new weapons. Every hit applies a guaranteed vanilla Cold slow. Steady mid-range damage, low crits. Built for fighting at arm's length.
 
 - **Type**: Melee / **Quality**: 5 / **Element**: Ice
 - **Drop**: 20% from Big Ice (works on vanilla maps too) / Dingdang's Shop (Affinity 5, stock 1)
@@ -24,9 +24,9 @@ Thrusts leave an **ice-blue trail**, and each hit drops a small frost ring at th
 
 ### Tips
 
-- 2.4m reach means you keep distance from bosses while still hitting — ideal for low-mobility players
+- 2.4m reach lets you keep your distance from bosses while still hitting them
 - Guaranteed Cold on every hit makes kiting viable
-- Lowest crit stats (3% / 1.2x) of all new weapons — avoid crit-stacking builds
+- Lowest crit stats (3% / 1.2x) of all new weapons; skip crit-stacking builds
 - No right-click ability; simple to use and requires no resource management
 
-[tip] In Zombie Mode, slowing Sprinters and Harassers on first contact is very strong — 2.4m lets you keep them slow before they can close the gap.
+[tip] In Zombie Mode, slowing Sprinters and Harassers on first contact is very strong. 2.4m of reach lets you slow them before they close the gap.

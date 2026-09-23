@@ -41,6 +41,8 @@ def generate():
                  "SkyIslandServices.cs", "SkyIslandGnats.cs", "SkyIslandGroundRing.cs",
                  "SkyIslandRuntimeModule.cs", "SkyIslandPreludeFlow.cs", "SkyIslandResidents.cs"):
         sources[name] = (ROOT / SKY / name).read_text(encoding="utf-8-sig")
+    # 2026-09-23：面板类超 1200 行，按 AGENTS §4.15 原样拆出 SkyIslandStoryPresentation_Parts.cs（同一 partial），接在后面照旧抽取。
+    sources["SkyIslandStoryPresentation.cs"] += "\n" + (ROOT / SKY / "SkyIslandStoryPresentation_Parts.cs").read_text(encoding="utf-8-sig")
     presentation = sources["SkyIslandStoryPresentation.cs"]
     fields = presentation[presentation.index("        #region 布局常量"):presentation.index("        internal void Show(string title, string text, IList<Choice> choices)\n")]
     panel_methods = (
@@ -50,10 +52,23 @@ def generate():
         "private void SetFocused(", "private static Color FocusColor(", "private static float FitTitleFont(",
         "private static float ChoiceLabelWidth", "public void Dispose()",
         "private static RectTransform MakeRect(", "private static TextMeshProUGUI MakeText(",
-        "private static string KeepCountsTogether(")
+        "private static string KeepCountsTogether(",
+        # 2026-09-23 审美审查：选项的纯显示修饰（图标 / 不够的数标红 / 次级导航）、手记正文排版、主动关闭的淡出交接。
+        "private sealed class ChoiceLook", "internal static Choice WithItem(", "internal static Choice AsSecondary(",
+        "private static ChoiceLook LookOf(", "internal void Close()", "private static void SettleEntrance(",
+        "private static string MarkShortfalls(", "private static string StyleJournalLines(")
     counted = re.search(r"        private static readonly Regex CountedRun = new Regex\([\s\S]*?RegexOptions.CultureInvariant\);", presentation)
     if not counted:
         raise AssertionError("CountedRun 缺失")
+    look_fields = []
+    for pattern in (r"        private static readonly System\.Runtime\.CompilerServices\.ConditionalWeakTable<Choice, ChoiceLook> looks =[\s\S]*?;",
+                    r"        private static readonly Regex HaveNeed = [^;]+;",
+                    r"        private static readonly string DangerHex = [^;]+;",
+                    r"        private const string JournalEntrySpacer = [^;]+;"):
+        found = re.findall(pattern, presentation)
+        if len(found) != 1:
+            raise AssertionError("面板字段锚点必须唯一: " + pattern)
+        look_fields.append(found[0])
     world = sources["SkyIslandWorldStory.cs"]
     world_services = sources["SkyIslandWorldStoryServices.cs"]
     service = sources["SkyIslandServices.cs"]
@@ -61,7 +76,7 @@ def generate():
     parts = ["using System;\nusing System.Collections.Generic;\nusing System.Reflection;\nusing System.Text.RegularExpressions;\nusing UnityEngine;\nusing UnityEngine.UI;\nusing TMPro;\nusing Duckov.Economy;\nusing BossRush.Utils;\nnamespace BossRush {\n"]
     parts.append("internal sealed partial class SkyIslandStoryPresentation {\n" + member(presentation, "internal sealed class Choice") + "\n" + fields)
     parts.extend(member(presentation, s) for s in panel_methods)
-    parts.append(counted.group(0) + "\n}\ninternal sealed partial class SkyIslandWorldStory {\n")
+    parts.append(counted.group(0) + "\n" + "\n".join(look_fields) + "\n}\ninternal sealed partial class SkyIslandWorldStory {\n")
     parts.extend(member(world, s) for s in (
         "private string Refreshed(", "private void ServiceChoice(", "private string WithNextStep(",
         "private void Hint(", "private string NextStep()", "private void PuzzleChoices(",

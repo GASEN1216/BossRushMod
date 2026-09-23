@@ -29,6 +29,22 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# 2026-09-23：SkyIslandHud / SkyIslandStoryPresentation 超 1200 行，按 AGENTS §4.15 原样拆出同一 partial 的新文件。
+# 读主文件时把拆出去的那一半接在后面，断言照旧针对整个类。
+SPLIT_PARTS = {
+    "DebugAndTools/SkyIsland/SkyIslandHud.cs": "DebugAndTools/SkyIsland/SkyIslandHud_Layout.cs",
+    "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs": "DebugAndTools/SkyIsland/SkyIslandStoryPresentation_Parts.cs",
+}
+
+
+def read_with_parts(root, rel):
+    text = (root / rel).read_text(encoding="utf-8-sig")
+    part = SPLIT_PARTS.get(str(rel).replace("\\", "/"))
+    if part and (root / part).is_file():
+        text += "\n" + (root / part).read_text(encoding="utf-8-sig")
+    return text
+
 sys.path.insert(0, str(ROOT / 'tests'))
 from cs_source_util import clean_source
 
@@ -41,7 +57,7 @@ PAIR = r'L10n\.T\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\)'
 
 
 def read(rel):
-    return clean_source((ROOT / rel).read_text(encoding='utf-8-sig'))
+    return clean_source(read_with_parts(ROOT, rel))
 
 
 def const(src, name):
@@ -57,8 +73,11 @@ C = {n: const(PANEL_SRC, n) for n in (
     'PanelWidth', 'Pad', 'Gap', 'HeroMaxHeight', 'HeroMinHeight', 'HeroInset', 'PortraitSize',
     'TitleMinHeight', 'TitleFontMin', 'TitleFontMax', 'BodyMinHeight', 'BodyPreferredMax',
     'ChoiceMinHeight', 'ChoicePadY', 'ChoicePadX', 'ScrollbarGutter', 'KeyHintWidth',
-    'DividerHeight', 'BodyFont', 'ChoiceFont', 'HeroFadeFraction', 'KeyCapSize')}
+    'DividerHeight', 'BodyFont', 'ChoiceFont', 'HeroFadeFraction', 'KeyCapSize', 'ChoiceIconSlot', 'BodyLineSpacing')}
 CONTENT_W = C['PanelWidth'] - C['Pad'] * 2
+# 2026-09-23 审美审查 UE-09：配方 / 点灯行在键帽右边多一格产物图标，那一行标签窄 ChoiceIconSlot。
+# 哪一行有图标取决于运行时取不取得到官方图标，这里按「每一行都有图标」的最坏情况量高（只会更高、更保守）。
+CHOICE_LABEL_W = CONTENT_W - C['ChoicePadX'] * 2 - C['KeyHintWidth'] - C['ChoiceIconSlot']
 
 # D8（2026-09-15 第五轮）：面板把「名称 + 计数」包进 TMP 的 <nobr>（SkyIslandStoryPresentation.KeepCountsTogether，MakeText 统一过一遍）。
 # 正则从生产源码逐字抽取、不在这里写第二份；.NET 与 Python 在这个子集（捕获组、字符类、\d、先行断言）上语义一致。
@@ -200,8 +219,8 @@ PORTRAIT_PAGE_MAX_CHOICES = 5
 MAX_PANEL = min(980.0, 1080.0 - 140.0)
 
 
-def text_height(s, width, font):
-    """保守估高：按 1.0em/0.5em 估宽折行，行高 1.25em，再加 MeasureTextHeight 的 +4。
+def text_height(s, width, font, spacing=0.0):
+    """保守估高：按 1.0em/0.5em 估宽折行，行高 1.25em（正文再加 BodyLineSpacing/100 em 的行距），再加 MeasureTextHeight 的 +4。
 
     带 <nobr> 的行按「不可拆的一段整体换行」贪心排（D8）；不带的行照旧按总宽除行宽。
     """
@@ -228,7 +247,7 @@ def text_height(s, width, font):
                 n += 1
                 used -= width
         lines += n
-    return lines * font * 1.25 + 4.0
+    return lines * font * (1.25 + spacing / 100.0) + 4.0
 
 
 def layout(title, body, choices, has_portrait, has_banner, banner_aspect=1024.0 / 288.0, src=None):
@@ -267,16 +286,16 @@ def layout(title, body, choices, has_portrait, has_banner, banner_aspect=1024.0 
     choice_hs = []
     choices_h = 0.0
     for i, label in enumerate(choices):
-        # 选项左侧有数字键帽，文字可用宽度要再扣 KeyHintWidth（与生产 ChoiceLabelWidth 同一个算式）。
+        # 选项左侧有数字键帽（与产物图标），文字可用宽度要再扣掉（与生产 ChoiceLabelWidthFor 同一个算式，按有图标算）。
         h = max(C['ChoiceMinHeight'],
-                text_height(label, CONTENT_W - C['ChoicePadX'] * 2 - C['KeyHintWidth'], C['ChoiceFont'])
+                text_height(label, CHOICE_LABEL_W, C['ChoiceFont'])
                 + C['ChoicePadY'] * 2)
         choice_hs.append(h)
         choices_h += h + (C['Gap'] * 0.5 if i > 0 else 0.0)
 
     # 空正文收成 0 高、连同它下面那道 Gap（2026-09-15 第五轮 D5）；有正文按自然高度量，不再垫到 BodyMinHeight。
     has_body = bool(body)
-    body_natural = text_height(body, CONTENT_W - C['ScrollbarGutter'], C['BodyFont']) if has_body else 0.0
+    body_natural = text_height(body, CONTENT_W - C['ScrollbarGutter'], C['BodyFont'], C['BodyLineSpacing']) if has_body else 0.0
     body_gap = C['Gap'] if has_body else 0.0
 
     # 分隔线不再是 1px 裸 quad：它现在铺图集的 divider（8×8 / border 2），亮带在可拉伸中心区，
@@ -286,6 +305,12 @@ def layout(title, body, choices, has_portrait, has_banner, banner_aspect=1024.0 
     # 现在是 hero → Gap → 分隔线 → Gap → 正文 → Gap → 选项 → 下 Pad，三个 Gap 里一个在 dividerBlock；空正文时正文下那道 Gap 是 0。
     chrome = C['Pad'] + hero_h + divider_block + choices_h + C['Gap'] + body_gap
     body_h = min(C['BodyPreferredMax'], body_natural)
+    # 阅读页（2026-09-23 审美审查 UE-07）：正文比 BodyPreferredMax 长时先吃掉面板余量，再让主视觉退到地板，都用完才滚动。
+    if body_natural > C['BodyPreferredMax']:
+        hero_give = min(max(0.0, body_natural - (MAX_PANEL - chrome)), max(0.0, hero_h - hero_floor))
+        hero_h -= hero_give
+        chrome -= hero_give
+        body_h = max(C['BodyPreferredMax'], min(body_natural, MAX_PANEL - chrome))
     panel_h = chrome + body_h
     if panel_h > MAX_PANEL:
         excess = panel_h - MAX_PANEL
@@ -446,6 +471,20 @@ def body_collapse_errors(src):
     return errors
 
 
+def reading_page_errors(src):
+    """UE-07：阅读页的正文视口不再封在 BodyPreferredMax——先吃面板余量、再让主视觉退到地板，都用完才滚动。
+    这份测试的 layout() 逐行镜像了这段挤压算术，生产改了而这里没跟上，算出来的「放得下」就是假的。"""
+    show = ' '.join(method_body(src, 'internal void Show(string title, string text, IList<Choice> choices,').split())
+    errors = []
+    for token in ('if (bodyNatural > BodyPreferredMax)',
+                  'float heroGive = Mathf.Clamp(bodyNatural - (maxPanelHeight - chrome), 0f, Mathf.Max(0f, heroHeight - heroFloor));',
+                  'heroHeight -= heroGive; chrome -= heroGive;',
+                  'bodyHeight = Mathf.Max(BodyPreferredMax, Mathf.Min(bodyNatural, maxPanelHeight - chrome));'):
+        if token not in show:
+            errors.append('Show 的阅读页挤压口径变了（缺 ' + token + '）：这份测试复算的正文区与主视觉对不上生产')
+    return errors
+
+
 def keep_counts_errors(src):
     """D8：第五轮截图里被拆开的五处都包成一段；叙事句不包；包起来的一段最长也放得进选项一行。"""
     errors = []
@@ -472,7 +511,7 @@ def keep_counts_errors(src):
         if '<nobr>' in keep_counts_together(text):
             errors.append('D8：叙事句被误包：' + keep_counts_together(text))
     worst_run = COUNTED_CAP * 1.0 * C['ChoiceFont'] + len(' 99/99') * 0.5 * C['ChoiceFont']
-    label_w = CONTENT_W - C['ChoicePadX'] * 2 - C['KeyHintWidth']
+    label_w = CHOICE_LABEL_W
     if worst_run > label_w:
         errors.append('D8：包起来的一段最长 %.0f px，超过选项一行 %.0f px（TMP 会被迫逐字断）' % (worst_run, label_w))
     return errors
@@ -521,8 +560,15 @@ def main():
     # 首次打开长正文时，滚动内容必须保留全部自然高度，而非 300px 的视口上限。
     long_body = body * 12
     scroll = layout(title, long_body, [], False, False)
-    expected = text_height(long_body, CONTENT_W - C['ScrollbarGutter'], C['BodyFont'])
+    expected = text_height(long_body, CONTENT_W - C['ScrollbarGutter'], C['BodyFont'], C['BodyLineSpacing'])
     assert scroll['body_natural'] >= expected > scroll['body']
+    # UE-07：长正文的阅读页把面板余量与主视觉让出的那一截给正文，视口高过旧的 300 上限；主视觉只退到地板，不整条撤掉。
+    reading = layout(title, long_body, ['返回手记'], False, True)
+    if not reading['body'] > C['BodyPreferredMax'] + 1.0:
+        errors.append('阅读页长正文的视口仍被封在 %.0f px（UE-07），实际 %.0f px' % (C['BodyPreferredMax'], reading['body']))
+    if reading['hero'] + 0.5 < reading['hero_floor']:
+        errors.append('阅读页的主视觉被压到地板 %.0f 以下（%.0f）' % (reading['hero_floor'], reading['hero']))
+    errors += check('阅读页/长正文', reading)
     presentation = read(PANEL)
     natural = presentation.split('float bodyNatural =', 1)[1].split(';', 1)[0]
     assert 'BodyPreferredMax' not in natural, '自然高度不能截为视口上限，否则末段不可滚动到达'
@@ -562,6 +608,7 @@ def main():
 
     # ---- D3 / D5 / D8（2026-09-15 第五轮）----
     errors += set_body_errors(PANEL_SRC) + body_collapse_errors(PANEL_SRC) + keep_counts_errors(PANEL_SRC)
+    errors += reading_page_errors(PANEL_SRC)
     empty = layout('晴禾的菜畦', '', ['接一单委托'] * 3, True, True)
     if empty['body'] != 0 or empty['body_gap'] != 0:
         errors.append('空正文仍占 %.0f + %.0f px（D5）' % (empty['body'], empty['body_gap']))
@@ -569,7 +616,9 @@ def main():
     for anchor, broken, fn, name in (
             ('Show(shownTitle, value, shownChoices, shownPortrait, shownBanner);', 'body.text = value;', set_body_errors, '三'),
             ('Gap + bodyGap;', 'Gap * 2f;', body_collapse_errors, '四'),
-            ('text.text = KeepCountsTogether(value);', 'text.text = value ?? string.Empty;', keep_counts_errors, '五')):
+            ('text.text = KeepCountsTogether(value);', 'text.text = value ?? string.Empty;', keep_counts_errors, '五'),
+            ('bodyHeight = Mathf.Max(BodyPreferredMax, Mathf.Min(bodyNatural, maxPanelHeight - chrome));',
+             'bodyHeight = Mathf.Min(BodyPreferredMax, bodyNatural);', reading_page_errors, '六')):
         if anchor not in PANEL_SRC:
             errors.append('破坏探针' + name + '的锚点失效：' + anchor)
         elif not fn(PANEL_SRC.replace(anchor, broken, 1)):
@@ -584,7 +633,7 @@ def main():
     sample = layout(title, body, [longest_label] * 5, False, True)
     print('PASS SkyIslandStoryPanelLayoutPropertyTest '
           '(最长标题 %d 字 / 最长正文 %d 字 / %d 条选项文案；5 选项+横幅时面板 %.0f/%.0f px，'
-          '15 种组合全部不溢出；居民面板实底带 %.0f/%.0f px（按 BuildHero 真实分支）；五个破坏探针被拒)'
+          '15 种组合全部不溢出；居民面板实底带 %.0f/%.0f px（按 BuildHero 真实分支）；六个破坏探针被拒（含 UE-07 阅读页）)'
           % (len(title), len(body), label_count, sample['panel'], MAX_PANEL, resident['band'], resident['hero']))
 
 

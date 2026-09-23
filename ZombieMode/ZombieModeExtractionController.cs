@@ -117,6 +117,11 @@ namespace BossRush
                 {
                     remaining -= Time.unscaledDeltaTime;
                 }
+                else
+                {
+                    // 暂停时起点跟着顺延：HUD 信标读条按「当前时刻 - 起点」算已引导时长（审美审查 UC-17）。
+                    zombieModeRunState.BeaconChannelStartTime += Time.unscaledDeltaTime;
+                }
 
                 yield return null;
             }
@@ -484,7 +489,10 @@ namespace BossRush
         {
             if (zombieModeExtractionOpportunityUiRoot != null)
             {
-                Destroy(zombieModeExtractionOpportunityUiRoot);
+                // 先还输入再淡出（审美审查 UC-07）：输入与时间流速在这一帧就恢复，淡出只是表现。
+                ZombieModeExtractionOpportunityView view = zombieModeExtractionOpportunityUiRoot.GetComponent<ZombieModeExtractionOpportunityView>();
+                if (view != null) view.ReleaseInput();
+                BossRushUIKit.PlayCloseAndDestroy(zombieModeExtractionOpportunityUiRoot);
                 zombieModeExtractionOpportunityUiRoot = null;
             }
         }
@@ -512,7 +520,7 @@ namespace BossRush
             if (zombieModeRunState.ActiveSafeZoneVisual != null)
             {
                 RemoveZombieModeSafeZoneRunOnlyRecord(zombieModeRunState.ActiveSafeZoneVisual);
-                try { Destroy(zombieModeRunState.ActiveSafeZoneVisual); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy ActiveSafeZoneVisual 失败: " + e.Message); }
+                try { ZombieModeZoneVisuals.FadeOutAndDestroy(zombieModeRunState.ActiveSafeZoneVisual, null); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy ActiveSafeZoneVisual 失败: " + e.Message); }
             }
             DestroyZombieModeSafeZoneMapPoi();
             ClearZombieModePortableSafeZoneSlot();
@@ -559,7 +567,7 @@ namespace BossRush
             if (zombieModeRunState.ActiveSafeZoneVisual != null)
             {
                 RemoveZombieModeSafeZoneRunOnlyRecord(zombieModeRunState.ActiveSafeZoneVisual);
-                try { Destroy(zombieModeRunState.ActiveSafeZoneVisual); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy cancelled safe-zone visual 失败: " + e.Message); }
+                try { ZombieModeZoneVisuals.FadeOutAndDestroy(zombieModeRunState.ActiveSafeZoneVisual, null); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy cancelled safe-zone visual 失败: " + e.Message); }
             }
             DestroyZombieModeSafeZoneMapPoi();
             ClearZombieModePortableSafeZoneSlot();
@@ -612,7 +620,7 @@ namespace BossRush
                 position + Vector3.up * 0.03f,
                 ZombieModeTuning.SafeZoneRadius,
                 0.05f,
-                new Color(0.12f, 0.88f, 0.36f, 0.62f));
+                ZombieModeZoneVisuals.SafeZoneColor);
             AttachZombieModeSafeZoneBoundaryVisual(safeZone, position, ZombieModeTuning.SafeZoneRadius);
 
             ZombieModeSafeZoneController controller = safeZone.AddComponent<ZombieModeSafeZoneController>();
@@ -664,7 +672,7 @@ namespace BossRush
             if (oldVisual != null)
             {
                 RemoveZombieModeSafeZoneRunOnlyRecord(oldVisual);
-                try { Destroy(oldVisual); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy replaced safe-zone visual 失败: " + e.Message); }
+                try { ZombieModeZoneVisuals.FadeOutAndDestroy(oldVisual, null); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy replaced safe-zone visual 失败: " + e.Message); }
             }
             DestroyZombieModeSafeZoneMapPoi();
 
@@ -717,12 +725,14 @@ namespace BossRush
             line.widthMultiplier = 0.10f;
             line.numCornerVertices = 4;
             line.numCapVertices = 4;
-            Material lineMaterial = CreateZombieModeSafeZoneLineMaterial();
+            line.textureMode = LineTextureMode.Stretch;
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            // 共享材质（柔边带贴图 + 白色，颜色只走顶点色），不随环销毁，所以不再按环 new Material（审美审查 VA-28）。
+            Material lineMaterial = ZombieModeZoneVisuals.GetRingMaterial();
             if (lineMaterial != null)
             {
-                line.material = lineMaterial;
-                ZombieModeSafeZoneMaterialOwner materialOwner = ring.AddComponent<ZombieModeSafeZoneMaterialOwner>();
-                materialOwner.Initialize(lineMaterial);
+                line.sharedMaterial = lineMaterial;
             }
 
             const int segments = 96;
@@ -732,33 +742,9 @@ namespace BossRush
                 line.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius));
             }
 
-            Color ringColor = new Color(0.35f, 1f, 0.45f, 0.82f);
-            line.startColor = ringColor;
-            line.endColor = ringColor;
-
             ring.transform.SetParent(safeZone.transform, true);
-        }
-
-        private static Material CreateZombieModeSafeZoneLineMaterial()
-        {
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null)
-            {
-                shader = Shader.Find("Unlit/Color");
-            }
-            if (shader == null)
-            {
-                shader = Shader.Find("Standard");
-            }
-
-            if (shader == null)
-            {
-                return null;
-            }
-
-            Material material = new Material(shader);
-            material.color = new Color(0.35f, 1f, 0.45f, 0.95f);
-            return material;
+            // 压饱和的静态边线，跟着圆盘一起淡入淡出；边线本身不做任何脉冲。挂到父物体之后再交给表现组件（它要按父物体当前的出场缩放校正）。
+            ZombieModeZoneVisuals.AttachRing(safeZone, line, ZombieModeZoneVisuals.SafeZoneRingColor);
         }
 
         private void EnsureZombieModeSafeZoneMerchantTerminal(int runId)
@@ -805,7 +791,7 @@ namespace BossRush
                 return;
             }
 
-            poi.Color = new Color(0.18f, 0.78f, 0.32f, 0.75f);
+            poi.Color = ZombieModeZoneVisuals.SafeZoneMapColor;
             poi.ShadowColor = new Color(0.02f, 0.18f, 0.06f, 0.75f);
             poi.ShadowDistance = 1.5f;
             poi.IsArea = true;
@@ -884,7 +870,7 @@ namespace BossRush
             if (visual != null)
             {
                 RemoveZombieModeSafeZoneRunOnlyRecord(visual);
-                try { Destroy(visual); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy portable safe-zone visual 失败: " + e.Message); }
+                try { ZombieModeZoneVisuals.FadeOutAndDestroy(visual, null); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy portable safe-zone visual 失败: " + e.Message); }
             }
             DestroyZombieModeSafeZoneMapPoi(true);
 
@@ -942,24 +928,14 @@ namespace BossRush
                 return;
             }
 
-            Renderer renderer = visual.GetComponent<Renderer>();
-            if (renderer == null)
-            {
-                return;
-            }
-
-            if (zombieModeRunState.PreparationTimer <= ZombieModeTuning.SafeZoneFlashStartSeconds &&
-                zombieModeRunState.PreparationTimer > 0f)
-            {
-                float flash = Mathf.PingPong(Time.unscaledTime / ZombieModeTuning.SafeZoneFlashCycleSeconds, 1f);
-                float alpha = Mathf.Lerp(0.15f, 0.55f, flash);
-                SetZombieModeRendererColor(renderer, new Color(0.92f, 0.72f, 0.18f, alpha));
-                UpdateZombieModeSafeZoneMapPoiColor(new Color(0.92f, 0.72f, 0.18f, 0.75f), secondarySlot);
-                return;
-            }
-
-            SetZombieModeRendererColor(renderer, new Color(0.12f, 0.88f, 0.36f, 0.62f));
-            UpdateZombieModeSafeZoneMapPoiColor(new Color(0.12f, 0.88f, 0.36f, 0.85f), secondarySlot);
+            // 最后几秒的警示：圆盘在 ZombieModeZoneVisualFx 里按帧做平滑的暖色呼吸（旧写法是这里 0.2 s 一跳的线性三角波），
+            // 边线不动（ZombieModeSafeZoneVisualGuard）。这里只切开关与地图标记色。
+            bool warning = zombieModeRunState.PreparationTimer <= ZombieModeTuning.SafeZoneFlashStartSeconds &&
+                zombieModeRunState.PreparationTimer > 0f;
+            ZombieModeZoneVisuals.SetSafeZoneWarning(visual, warning);
+            UpdateZombieModeSafeZoneMapPoiColor(
+                warning ? ZombieModeZoneVisuals.SafeZoneWarningMapColor : ZombieModeZoneVisuals.SafeZoneMapColor,
+                secondarySlot);
         }
 
         private void UpdateZombieModeSafeZoneMapPoiColor(Color color, bool secondarySlot = false)
@@ -988,30 +964,12 @@ namespace BossRush
         }
     }
 
-    public sealed class ZombieModeSafeZoneMaterialOwner : MonoBehaviour
-    {
-        private Material material;
-
-        public void Initialize(Material createdMaterial)
-        {
-            material = createdMaterial;
-        }
-
-        private void OnDestroy()
-        {
-            if (material != null)
-            {
-                Destroy(material);
-                material = null;
-            }
-        }
-    }
-
     public sealed class ZombieModeExtractionOpportunityView : MonoBehaviour
     {
         private int runId;
         private ModBehaviour owner;
         private ZombieModeUIHelper.ModalInputLease inputLease;
+        private bool decided;
 
         public void Initialize(int newRunId, ModBehaviour newOwner)
         {
@@ -1021,6 +979,10 @@ namespace BossRush
             ClaimInputAndPause();
         }
 
+        /// <summary>
+        /// 两张后果卡 + 一个主按钮（审美审查 UC-06）：旧版是两块 256×108 的半透明绿 / 橙平涂大按钮，没有任何说明。
+        /// 撤离是本屏唯一的主操作（AccentFill），继续战斗走次级按钮；卡片左侧强调条区分两条路。
+        /// </summary>
         private void Build()
         {
             Canvas canvas = gameObject.AddComponent<Canvas>();
@@ -1036,25 +998,11 @@ namespace BossRush
                 new Vector2(680f, 340f),
                 ZombieModeUIHelper.WarningColor);
 
-            GameObject header = ZombieModeUIHelper.CreateRect(
-                "Header",
-                panel.transform,
-                new Vector2(0f, 1f),
-                new Vector2(1f, 1f),
-                new Vector2(0f, -34f),
-                new Vector2(0f, 68f),
-                new Vector2(0.5f, 0.5f));
-            Image headerImage = header.AddComponent<Image>();
-            headerImage.color = ZombieModeUIHelper.ModalHeaderColor;
+            // 标题行不再垫底色条：直角色条会在 14px 圆角外露出方角（UC-21），分区交给下面的分隔线。
             TextMeshProUGUI titleText = ZombieModeUIHelper.CreateText(
-                "Title",
-                header.transform,
-                L10n.T("BossRush_ZombieMode_Extraction_Title"),
-                27,
-                Vector2.zero,
-                new Vector2(620f, 56f),
-                TextAlignmentOptions.Center,
-                ZombieModeUIHelper.TextPrimaryColor);
+                "Title", panel.transform, L10n.T("BossRush_ZombieMode_Extraction_Title"), 28,
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -34f), new Vector2(-48f, 48f),
+                TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
             titleText.fontStyle = FontStyles.Bold;
             ZombieModeUIHelper.CreateSeparator(
                 "HeaderDivider",
@@ -1065,45 +1013,47 @@ namespace BossRush
                 2f,
                 ZombieModeUIHelper.WarningColor);
 
-            GameObject actionArea = ZombieModeUIHelper.CreateRect(
-                "DecisionArea",
-                panel.transform,
-                new Vector2(0f, 0f),
-                new Vector2(1f, 1f),
-                new Vector2(0f, -32f),
-                new Vector2(-44f, -128f),
-                new Vector2(0.5f, 0.5f));
-            CreateButton("Extract", actionArea.transform, L10n.T("BossRush_ZombieMode_Extraction_ExtractNow"), new Vector2(-142f, 0f), true);
-            CreateButton("Continue", actionArea.transform, L10n.T("BossRush_ZombieMode_Extraction_Continue"), new Vector2(142f, 0f), false);
+            int points = owner != null ? owner.GetZombieModePurificationPoints(runId) : 0;
+            CreateChoiceCard(panel.transform, "Extract", new Vector2(-152f, -38f), true,
+                L10n.T("BossRush_ZombieMode_Extraction_ExtractNow"),
+                string.Format(L10n.T("BossRush_ZombieMode_Extraction_ExtractDesc"),
+                    Mathf.CeilToInt(ZombieModeTuning.ExtractionCountdownSeconds), points.ToString("N0")));
+            CreateChoiceCard(panel.transform, "Continue", new Vector2(152f, -38f), false,
+                L10n.T("BossRush_ZombieMode_Extraction_Continue"),
+                L10n.T("BossRush_ZombieMode_Extraction_ContinueDesc"));
+            BossRushUI.PlayOpenAnimation(panel);
         }
 
-        private void CreateButton(string name, Transform parent, string text, Vector2 position, bool extract)
+        private void CreateChoiceCard(Transform parent, string name, Vector2 position, bool extract, string title, string description)
         {
-            Color normalColor = extract
-                ? ZombieModeUIHelper.SuccessColor
-                : ZombieModeUIHelper.WarningColor;
-            Color hoverColor = extract
-                ? ZombieModeUIHelper.SuccessHoverColor
-                : ZombieModeUIHelper.WarningHoverColor;
-            normalColor.a = 0.68f;
-            hoverColor.a = 0.92f;
+            GameObject card = BossRushUI.CreateCard(name + "Card", parent, position, new Vector2(288f, 204f),
+                BossRushUIColors.SurfaceRaised, extract ? BossRushUIColors.Accent : BossRushUIColors.Warning);
+            TextMeshProUGUI titleText = ZombieModeUIHelper.CreateText("Title", card.transform, title, 20,
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(4f, -26f), new Vector2(-40f, 30f),
+                TextAlignmentOptions.MidlineLeft, BossRushUIColors.TextPrimary);
+            titleText.fontStyle = FontStyles.Bold;
+            ZombieModeUIHelper.CreateText("Desc", card.transform, description, 15,
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(4f, -82f), new Vector2(-40f, 72f),
+                TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
+
             Button button = ZombieModeUIHelper.CreateButton(
                 name,
-                parent,
-                text,
-                new Vector2(0.5f, 0.5f),
-                position,
-                new Vector2(256f, 108f),
-                normalColor,
-                21,
-                new Vector2(228f, 86f),
+                card.transform,
+                title,
+                new Vector2(0.5f, 0f),
+                new Vector2(0f, 34f),
+                new Vector2(236f, 42f),
+                extract ? BossRushUIColors.AccentFill : BossRushUIColors.SurfaceRaised,
+                17,
+                new Vector2(220f, 36f),
                 delegate
                 {
-                    if (owner == null)
+                    if (owner == null || decided)
                     {
                         return;
                     }
 
+                    decided = true;
                     if (extract)
                     {
                         RestoreInputState();
@@ -1114,25 +1064,21 @@ namespace BossRush
                         RestoreInputState();
                         owner.ContinueZombieModeAfterExtractionOpportunity(runId);
                     }
+                    // 被宿主拒绝（例如信标引导中）时页面没关：放开防连点，允许再选。
+                    decided = GetComponent<BossRushUICloseAnimation>() != null;
                 },
                 true);
-            ZombieModeUIHelper.ApplyButtonColors(
-                button,
-                normalColor,
-                hoverColor,
-                ZombieModeUIHelper.DisabledColor);
+            if (!extract)
+            {
+                BossRushUIKit.StyleSecondaryButton(button);
+            }
+            BossRushUIEntranceAnimation.Play(card, extract ? 0.06f : 0.11f, 0.22f, 12f);
+        }
 
-            GameObject stateBar = ZombieModeUIHelper.CreateRect(
-                "StateBar",
-                button.transform,
-                new Vector2(0.10f, 0f),
-                new Vector2(0.90f, 0f),
-                new Vector2(0f, 2f),
-                new Vector2(0f, 4f),
-                new Vector2(0.5f, 0f));
-            Image stateBarImage = stateBar.AddComponent<Image>();
-            stateBarImage.color = Color.Lerp(normalColor, Color.white, 0.30f);
-            stateBarImage.raycastTarget = false;
+        /// <summary>关闭前由宿主先还输入（UC-07：输入与时间流速当帧恢复，淡出只是表现）。</summary>
+        internal void ReleaseInput()
+        {
+            RestoreInputState();
         }
 
         private void ClaimInputAndPause()

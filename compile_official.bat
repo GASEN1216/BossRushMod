@@ -142,6 +142,11 @@ echo(Common\Events\BossRushEventBus.cs
 echo(Common\Infrastructure\BossRushEagerReflectionCache.cs
 echo(Common\UI\BossRushUI.cs
 echo(Common\UI\BossRushUIAnimation.cs
+echo(Common\UI\BossRushUIFeel.cs
+echo(Common\UI\BossRushUIHero.cs
+echo(Common\Effects\BossRushFxMaterials.cs
+echo(Common\Effects\BossRushFxKit.cs
+echo(Common\Effects\BossRushParticleTextures.cs
 echo(Common\Infrastructure\ObjectCache.cs
 echo(Common\Infrastructure\IHarmonyPatchGroup.cs
 echo(Common\Infrastructure\HarmonyPatchGroupRegistrar.cs
@@ -205,6 +210,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandRuntimeModule.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSceneReferenceBridge.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryCodec.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryPresentation.cs
+echo(DebugAndTools\SkyIsland\SkyIslandStoryPresentation_Parts.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryRules.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStorySaveRecovery.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryService.cs
@@ -225,9 +231,11 @@ echo(DebugAndTools\SkyIsland\SkyIslandBounty.cs
 echo(DebugAndTools\SkyIsland\SkyIslandServices.cs
 echo(DebugAndTools\SkyIsland\SkyIslandExplosionObstaclePatch.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGroundRing.cs
+echo(DebugAndTools\SkyIsland\SkyIslandImpactFx.cs
 echo(DebugAndTools\SkyIsland\SkyIslandMapMarkers.cs
 echo(DebugAndTools\SkyIsland\SkyIslandUiArt.cs
 echo(DebugAndTools\SkyIsland\SkyIslandHud.cs
+echo(DebugAndTools\SkyIsland\SkyIslandHud_Layout.cs
 echo(DebugAndTools\SkyIsland\SkyIslandCaptionQueue.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionValidation.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionAutotest.cs
@@ -377,6 +385,7 @@ echo(Integration\Bonus\ThunderSetBonus_Storm.cs
 echo(Integration\Bonus\FrostSetBonus_Nova.cs
 echo(Integration\Bonus\FrostMistEffect.cs
 echo(Integration\Bonus\SetBonusVisuals.cs
+echo(Integration\Bonus\SetBonusFx.cs
 echo(Integration\Bonus\SetBonusDamageObservation.cs
 echo(Integration\ContentBuildingBridges.cs
 echo(Integration\Bonus\SetBonusBossDropHandler.cs
@@ -443,6 +452,7 @@ echo(LootAndRewards\LootAndRewardsRandomBossLoot.cs
 echo(LootAndRewards\LootAndRewardsSpecialLoot.cs
 echo(LootAndRewards\LootAndRewardsRuntimeHooks.cs
 echo(LootAndRewards\VictoryRewardShadowCrateController.cs
+echo(LootAndRewards\VictoryRewardCrateFx.cs
 echo(LootAndRewards\ModeEFLootboxTracker.cs
 echo(Interactables\BossRushBuildingInteractableBase.cs
 echo(Interactables\BossRushInteractables.cs
@@ -576,6 +586,7 @@ echo(ModeH\ModeHStateModel.cs
 echo(ModeH\ModeHTransferMarket.cs
 echo(ModeH\ModeHUI.cs
 echo(ModeH\ModeHUIPages.cs
+echo(ModeH\ModeHUIPageParts.cs
 echo(ModeH\ModeHVirtualStakeController.cs
 echo(ModeH\ModeHWarehouseStakeJournal.cs
 echo(ModeH\ModeHWarehouseStakeJournalStorageBuffer.cs
@@ -583,11 +594,13 @@ echo(ModeF\ModeFBounty_EquipmentAndLoot.cs
 echo(ModeF\ModeFRespawn.cs
 echo(ModeF\ModeFExtraction.cs
 echo(ModeF\ModeFFortifications.cs
+echo(ModeF\ModeFFortificationHologramFx.cs
 echo(ModeF\ModeFFortifications_RuntimePlacement.cs
 echo(ModeF\ModeFFortifications_RepairRewardsCleanup.cs
 echo(ModeF\ModeFItemUsageAndTriggers.cs
 echo(ModeF\ModeFUIStaticCacheReset.cs
 echo(ModeF\ModeFUI.cs
+echo(ModeF\ModeFStatusHud.cs
 echo(ModeF\ModeFUI_BountyRadarAndHealthBars.cs
 echo(ModeF\ModeFUI_KillRewardBubble.cs
 echo(ModeF\ModeFUI_BountyRadarAssets.cs
@@ -612,6 +625,10 @@ echo(ZombieMode\ZombieModeSpawner.cs
 echo(ZombieMode\ZombieModeWaveController.cs
 echo(ZombieMode\ZombieModeEnemyRuntime.cs
 echo(ZombieMode\ZombieModeRewards.cs
+echo(ZombieMode\ZombieModeRewardSelectionView.cs
+echo(ZombieMode\ZombieModeTemporaryNpcServiceView.cs
+echo(ZombieMode\ZombieModeZoneVisuals.cs
+echo(ZombieMode\ZombieModeUiWidgets.cs
 echo(ZombieMode\ZombieModeRewardCatalogAndSelection.cs
 echo(ZombieMode\ZombieModeRewardPreparationDuration.cs
 echo(ZombieMode\ZombieModeRewardEffectsAndNpc.cs
@@ -654,6 +671,9 @@ echo(Integration\DragonDescendant\DragonBreathWeaponConfig.cs
 echo(Integration\DragonDescendant\DragonBreathWeaponConfig_FireEffects.cs
 echo(Integration\DragonKing\DragonKingConfig.cs
 echo(Integration\DragonKing\DragonKingAssetManager.cs
+echo(Integration\DragonKing\DragonKingFxShared.cs
+echo(Integration\DragonKing\DragonKingWarningVisuals.cs
+echo(Integration\DragonKing\DragonKingPooledEffect.cs
 echo(Integration\DragonKing\DragonKingAbilityController.cs
 echo(Integration\DragonKing\DragonKingAbilityController_AttackFlow.cs
 echo(Integration\DragonKing\DragonKingAbilityController_ProjectileAndMovement.cs
@@ -670,6 +690,7 @@ echo(Integration\DragonKing\Weapons\DragonFlameMarkTracker.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunConfig.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunProfiles.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileAgent.cs
+echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileAgent_Fx.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileAgent_HitStage.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileZones.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunRuntime.cs
@@ -775,6 +796,7 @@ echo(Integration\NPCs\Courier\CourierInteractables.cs
 echo(Integration\NPCs\Courier\CourierLootSweepRunner.cs
 echo(Integration\NPCs\Courier\OriginalConfirmDialogueAdapter.cs
 echo(Integration\NPCs\Courier\CourierPaidLootSweepService.cs
+echo(Integration\NPCs\Courier\CourierPaidLootSweepDelivery.cs
 echo(Integration\NPCs\Goblin\GoblinNPC.cs
 echo(Integration\NPCs\Goblin\GoblinNPCController.cs
 echo(Integration\NPCs\Goblin\GoblinNPCAnimation.cs
@@ -821,6 +843,7 @@ echo(Integration\Reforge\ColdQuenchFluidConfig.cs
 echo(Integration\Reforge\ReforgeSystem.cs
 echo(Integration\Reforge\ReforgeSystem_ApplyAndResults.cs
 echo(Integration\Reforge\ReforgeUIManager.cs
+echo(Integration\Reforge\ReforgeUIManager_Feel.cs
 echo(Integration\Reforge\ReforgeUIManager_ComparisonAndState.cs
 echo(Integration\Reforge\ReforgeUIManager_RuntimeAndCleanup.cs
 echo(Integration\Reforge\ReforgeDataPersistence.cs
@@ -866,6 +889,7 @@ echo(Integration\Items\ZombieTideBeaconUsage.cs
 echo(Integration\Items\PortableSafeZoneDeviceConfig.cs
 echo(Integration\Items\PortableSafeZoneDeviceUsage.cs
 echo(Integration\UI\ImageViewerUI.cs
+echo(Integration\UI\IntegrationUIFeedback.cs
 echo(Integration\Affinity\INPCAffinityConfig.cs
 echo(Integration\Affinity\AffinityConfig.cs
 echo(Integration\Affinity\AffinityData.cs
@@ -936,8 +960,10 @@ echo(Integration\WishFountain\WishFountainFetchPipeline.cs
 echo(Integration\WishFountain\WishFountainInteractable.cs
 echo(Integration\WishFountain\WishFountainDanmakuView.cs
 echo(Integration\WishFountain\WishFountainUI.cs
+echo(Integration\WishFountain\WishFountainUI_Feel.cs
 echo(Integration\WishFountain\WishFountainUIBridge.cs
 echo(Integration\WishFountain\WishFountainRewardAnimationView.cs
+echo(Integration\WishFountain\WishFountainRewardAnimationView_Reveal.cs
 echo(Integration\WishFountain\WishFountainBuilder.cs
 echo(Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs
 echo(PetNest\PetNestModels.cs
@@ -967,6 +993,7 @@ echo(PetNest\PetNestBuilder.cs
 echo(PetNest\PetNestBuilder_DataEventsAndRuntime.cs
 echo(PetNest\PetNestUIPages.cs
 echo(PetNest\PetNestUI.cs
+echo(PetNest\PetNestUIWidgets.cs
 echo(PetNest\PetNestHatchRevealView.cs
 echo(PetNest\PetNestExpeditionRevealView.cs
 echo(PetNest\PetNestCompanionHudView.cs
@@ -1025,6 +1052,7 @@ echo(RandomEvents\RandomEventModels.cs
 echo(RandomEvents\RandomEventModeGate.cs
 echo(RandomEvents\RandomEventDirector.cs
 echo(RandomEvents\RandomEventCatalog.cs
+echo(RandomEvents\RandomEventFx.cs
 echo(RandomEvents\RandomEventCatalog_Fun.cs
 echo(RandomEvents\RandomEventAirdropHold.cs
 echo(RandomEvents\RandomEventEffectsBridge.cs
@@ -1040,6 +1068,7 @@ echo(Integration\AffixForge\AffixForgeStoneConfig.cs
 echo(Integration\AffixForge\AffixForgeStoneDropService.cs
 echo(Integration\AffixForge\AffixRuntimeService.cs
 echo(Integration\AffixForge\AffixRuntimeService_Effects.cs
+echo(Integration\AffixForge\AffixTriggerFeedback.cs
 echo(Integration\AffixForge\AffixRuntimeTicker.cs
 echo(Integration\AffixForge\AffixBuffFactory.cs
 echo(Integration\AffixForge\GoblinAffixForgeInteractable.cs
@@ -1074,6 +1103,7 @@ echo(Campaign\CampaignBoardBuilder.cs
 echo(Campaign\CampaignHud.cs
 echo(Campaign\CampaignFinalBossInteractable.cs
 echo(Campaign\CampaignFinalBoss.cs
+echo(Campaign\CampaignFinalBossFx.cs
 echo(Localization\CampaignLocalization.cs
 echo(Campaign\CampaignRuntimeModule.cs
 echo(Config\ConfigBackMountain.cs

@@ -603,12 +603,12 @@ namespace BossRush
                     rewardKey = NurseAffinityConfig.LEVEL3_REWARD_KEY;
                     rewardTypeId = CalmingDropsConfig.TYPE_ID;
                     rewardCount = CalmingDropsConfig.REWARD_COUNT;
-                    rewardDialogue = L10n.T("这些安神滴剂你拿着，撑不住的时候记得用。", "Take these calming drops. Use them when things become too much.");
+                    rewardDialogue = L10n.T("这些安神滴剂你拿着，撑不住的时候记得用。", "Take these calming drops. Use them when it gets too much.");
                     break;
                 case 8:
                     rewardKey = NurseAffinityConfig.LEVEL8_REWARD_KEY;
                     rewardTypeId = PeaceCharmConfig.TYPE_ID;
-                    rewardDialogue = L10n.T("这个平安护身符给你。别嫌我多事，我只是想让你平安回来。", "This peace charm is for you. Call me overprotective if you want, I just want you to come back safe.");
+                    rewardDialogue = L10n.T("这个平安护身符给你。别嫌我多事，给我活着回来就行。", "Here, a peace charm. Call me a worrier if you like. Just come back alive.");
                     break;
                 default:
                     return;

@@ -41,7 +41,7 @@ namespace BossRush
                     position, sceneId, label, null, false);
                 if (modeFExtractionMapMarker != null)
                 {
-                    modeFExtractionMapMarker.Color = new Color(0.2f, 1f, 0.2f, 1f);
+                    modeFExtractionMapMarker.Color = BossRushUIColors.SuccessText;   // 旧值 (0.2,1,0.2) 荧光绿，和官方地图标记不是一套（UB-25）
                     modeFExtractionMapMarker.ScaleFactor = 1.5f;
                 }
                 DevLog("[ModeF] 撤离点地图标记已创建: " + position);
@@ -306,8 +306,8 @@ namespace BossRush
                     SafeRuntime.Run("ModeF extraction storage buffer save", PlayerStorageBuffer.SaveBuffer);
 
                     ShowBigBanner(L10n.T(
-                        "<color=green>血猎追击胜利！</color> 已向寄存点发送 " + storageRewards + " 件悬赏奖励",
-                        "<color=green>Bloodhunt Victory!</color> " + storageRewards + " bounty rewards sent to storage"
+                        RichSuccessTag + "血猎追击胜利！</color> 已向寄存点发送 " + storageRewards + " 件悬赏奖励",
+                        RichSuccessTag + "Bloodhunt Victory!</color> " + storageRewards + " bounty rewards sent to storage"
                     ));
 
                     DevLog("[ModeF] 寄存点奖励发放: storage=" + storageRewards + ", failed=" + failedRewards);
@@ -315,8 +315,8 @@ namespace BossRush
                 else
                 {
                     ShowBigBanner(L10n.T(
-                        "<color=green>血猎追击胜利！</color> 你成功撤离了",
-                        "<color=green>Bloodhunt Victory!</color> You successfully extracted"
+                        RichSuccessTag + "血猎追击胜利！</color> 你成功撤离了",
+                        RichSuccessTag + "Bloodhunt Victory!</color> You successfully extracted"
                     ));
                 }
 

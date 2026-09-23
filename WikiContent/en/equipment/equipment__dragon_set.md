@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-Your first custom set. Dropped by Dragon Descendant. Equip both pieces for fire immunity + dash. Yes, the stats have downsides — **but the survivability is worth it.**
+Your first custom set. Dropped by Dragon Descendant. Equip both pieces for fire immunity + dash. Yes, the stats have downsides, **but the survivability is worth it.**
 
 ### Pieces
 
@@ -24,6 +24,6 @@ Armor 7 / Durability 200 / Physical damage taken -20% / Storm +1 / Cold +1 / Fir
 
 ### Tips
 
-- Fire-to-heal makes Dragon Descendant trivial — its fire literally heals you
+- Fire-to-heal makes Dragon Descendant a lot easier: its fire heals you
 - Poison vulnerability and FOV loss are the real downsides; watch out for poison enemies
-- Once you get the Dragon King Set, **replace immediately** — it's a direct upgrade
+- Once you get the Dragon King Set, **replace this one**; it's a straight upgrade

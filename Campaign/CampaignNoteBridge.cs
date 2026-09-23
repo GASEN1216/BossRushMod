@@ -134,7 +134,7 @@ namespace BossRush
                 if (NoteIndex.Instance == null || !NoteIndex.GetNoteUnlocked(key)) return;
 
                 ModBehaviour.Instance?.ShowMessage(
-                    L10n.T("已获得新线索，可在笔记中查看", "New clue acquired — check your notes"));
+                    L10n.T("有新线索了，去笔记里看", "New clue. Check your notes."));
             }
             catch (Exception e)
             {

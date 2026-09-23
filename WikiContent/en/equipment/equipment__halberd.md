@@ -42,9 +42,9 @@ Every hit applies: +15 fire bonus, 2s burn, +1 Dragon Flame Mark.
 
 ### Tips
 
-- Hit 2 launches, Hit 3 pulls — great for positioning enemies into your Slam
+- Hit 2 launches, Hit 3 pulls, which sets enemies up nicely for your Slam
 - Preview arc = precision landing. Don't leap blind
 - Jump into dense clusters for max fire pillar coverage
 - Pair with Dragon King Set dash → close gap → combo → slam
 
-[tip] Extremely high skill ceiling. Master the combo rhythm and leap timing to dominate.
+[tip] High skill ceiling. Learn the combo rhythm and the leap timing first.

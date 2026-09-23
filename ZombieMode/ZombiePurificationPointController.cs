@@ -20,6 +20,10 @@ namespace BossRush
         public ZombiePurificationStar StarRecord;
         private bool collected;
         private float lifeTime;
+        /// <summary>出生 0.2 s 从 0 长到满尺寸（审美审查 VA-32：旧版一出生就满尺寸弹出）。</summary>
+        private float spawnAge;
+        /// <summary>超时后强制飞向玩家（旧版在原地直接结算，远处的星星像是凭空蒸发）。</summary>
+        private bool homing;
         private Vector3 baseScale;
         private ModBehaviour owner;
         private Transform cachedTransform;
@@ -61,7 +65,8 @@ namespace BossRush
             }
 
             lifeTime += Time.deltaTime;
-            float pulse = 1f + Mathf.Sin(Time.time * 7f) * 0.12f;
+            spawnAge += Time.unscaledDeltaTime;
+            float pulse = (1f + Mathf.Sin(Time.time * 7f) * 0.12f) * BossRushUI.EaseOut(spawnAge / 0.2f);
             Transform pointTransform = cachedTransform;
             if (pointTransform == null)
             {
@@ -73,16 +78,18 @@ namespace BossRush
             pointTransform.Rotate(Vector3.up, 120f * Time.deltaTime, Space.World);
 
             Transform playerTransform = GetCachedPlayerTransform();
+            bool inMagnet = false;
             if (playerTransform != null)
             {
                 Vector3 playerPos = playerTransform.position;
                 Vector3 currentPosition = pointTransform.position;
                 Vector3 deltaToPlayer = playerPos - currentPosition;
                 float distanceSqr = deltaToPlayer.sqrMagnitude;
-                if (distanceSqr <= MAGNET_RADIUS_SQR)
+                inMagnet = distanceSqr <= MAGNET_RADIUS_SQR;
+                if (inMagnet || homing)
                 {
                     float distanceToPlayer = Mathf.Sqrt(distanceSqr);
-                    float speed = Mathf.Lerp(4f, 18f, 1f - Mathf.Clamp01(distanceToPlayer / MAGNET_RADIUS));
+                    float speed = homing ? 18f : Mathf.Lerp(4f, 18f, 1f - Mathf.Clamp01(distanceToPlayer / MAGNET_RADIUS));
                     currentPosition = Vector3.MoveTowards(
                         currentPosition,
                         playerPos + Vector3.up * 0.8f,
@@ -90,7 +97,8 @@ namespace BossRush
                     pointTransform.position = currentPosition;
                 }
 
-                if ((playerPos - currentPosition).sqrMagnitude <= PICKUP_DISTANCE_SQR)
+                if ((playerPos - currentPosition).sqrMagnitude <= PICKUP_DISTANCE_SQR ||
+                    (homing && (playerPos + Vector3.up * 0.8f - currentPosition).sqrMagnitude <= 0.25f))
                 {
                     Collect();
                     return;
@@ -99,7 +107,13 @@ namespace BossRush
 
             if (lifeTime >= AUTO_COLLECT_SECONDS)
             {
-                Collect();
+                // 超时：磁吸范围内的（已经贴在玩家身上）照旧当场结算；范围外的远星先按磁吸上限速度飞过来，
+                // 到胸口就结算，最多再飞 3 秒；找不到玩家时原地结算（审美审查 VA-32：旧版远处的星星原地蒸发）。
+                homing = homing || (!inMagnet && playerTransform != null);
+                if (!homing || playerTransform == null || lifeTime >= AUTO_COLLECT_SECONDS + 3f)
+                {
+                    Collect();
+                }
             }
         }
 
@@ -356,7 +370,8 @@ namespace BossRush
 
             if (pointObject != null)
             {
-                try { Destroy(pointObject); } catch (System.Exception e) { Debug.LogWarning("[ZombieMode] PurificationPoint Destroy 失败: " + e.Message); }
+                // 0.14 s 吸进玩家胸口再销毁（纯表现，审美审查 UC-18 / VA-32）；点数照旧在下面当帧结算。
+                try { ZombieModePickupAbsorbFx.Play(pointObject); } catch (System.Exception e) { Debug.LogWarning("[ZombieMode] PurificationPoint Destroy 失败: " + e.Message); }
             }
 
             if (starRecord != null)

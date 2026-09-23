@@ -371,6 +371,9 @@ namespace BossRush
                     BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Garden), baseScene, GardenSeedInjector.IsInjected);
                 // 起步种子：每槽一次，要主角已在基地就绪（sceneLoaded 那一拍主角还没生成，等关卡就绪 / 实时解锁那一拍）
                 GardenSeedInjector.TryGrantStarterSeeds(baseScene && IsLevelAfterInit() && CharacterMainControl.Main != null);
+                // 菜地在这一趟基地里刚开放（第一章交付当场解锁）：售货机早在 Awake 时注入过、那时还没有种子，
+                // 而起步种子与交付提示都叫玩家「去售货机买」——对已经在场的售货机补挂一次（幂等，只在事件点跑）。
+                if (baseScene && _owner != null) BackMountainItems.TryInjectSeedsIntoLiveShops(_owner);
             }
             catch (Exception e)
             {

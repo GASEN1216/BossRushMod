@@ -58,8 +58,11 @@ namespace BossRush
                 if (ring == null || ring.sharedMaterial == null)
                     throw new InvalidOperationException("match_rule_ring_unavailable");
                 bool cover = plan.conditionId == "center_cover";
+                // 颜色走 token（掩体圈主色青、危险边界警示暖金），开圈展开 + 轻呼吸；半径仍是真实判定半径（UB-17）
+                Color color = cover ? ModeHRuleRingPresenter.CoverColor : ModeHRuleRingPresenter.HazardColor;
                 SkyIslandGroundRing.SetShape(ring, _radius * (cover ? CoverRadiusFraction : SafeRadiusFraction),
-                    0.22f, cover ? new Color(0.35f, 0.8f, 1f, 0.9f) : new Color(1f, 0.42f, 0.15f, 0.9f));
+                    ModeHRuleRingPresenter.RingWidth, color);
+                ModeHRuleRingPresenter.Show(ring, color);
                 return true;
             }
             catch (Exception e)
@@ -133,7 +136,8 @@ namespace BossRush
         {
             for (int i = _participants.Count - 1; i >= 0; i--) _participants[i].Restore();
             _participants.Clear();
-            if (_visualRoot != null) UnityEngine.Object.Destroy(_visualRoot);
+            // 圈淡出后再销毁（表现层负责；没画出来的圈直接销毁）。引用立即放掉，下一场 Begin 新建一个
+            if (_visualRoot != null) ModeHRuleRingPresenter.FadeOutAndDestroy(_visualRoot);
             _visualRoot = null;
             _plan = null;
             _pollRemaining = 0f;

@@ -198,11 +198,15 @@ namespace BossRush
             bool clean = !runtime.HasActiveRun && IsRuntimeReady(arenaScene)
                 && ModeHEventRouter.ParticipantCount == 0 && ModeHEventRouter.DiagnosticCount == 0
                 && !ModeHProfilePersistence.IsStoreFaulted && !ModeHProfilePersistence.IsWriteBarrier;
-            bool passed = fights.Count == ModeHConfig.SeasonMatchCount && transfers.Contains(2) && transfers.Contains(4)
+            // 转会窗口没有报价时会自动关窗、直接进下一场（2026-09-23 鸭王杯一键流程），轮询可能根本看不到那一页：
+            // 看到了转会页，或者第 N+1 场已经开打（窗口必须先关才开得了下一场），都算这一窗走过了。
+            bool transfer2 = transfers.Contains(2) || fights.Contains(3);
+            bool transfer4 = transfers.Contains(4) || fights.Contains(5);
+            bool passed = fights.Count == ModeHConfig.SeasonMatchCount && transfer2 && transfer4
                 && hall && exactOnce && clean;
             Record("MODE_H_FULL_SEASON", passed ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
-                "fights=" + fights.Count + ",reports=" + reports + ",transfer2=" + transfers.Contains(2)
-                    + ",transfer4=" + transfers.Contains(4) + ",hall=" + hall + ",exact_once=" + exactOnce
+                "fights=" + fights.Count + ",reports=" + reports + ",transfer2=" + transfer2 + (transfers.Contains(2) ? "" : "(auto)")
+                    + ",transfer4=" + transfer4 + (transfers.Contains(4) ? "" : "(auto)") + ",hall=" + hall + ",exact_once=" + exactOnce
                     + ",arena_ready=" + clean + ",active=" + runtime.HasActiveRun
                     + ",participants=" + ModeHEventRouter.ParticipantCount + ",diagnostics=" + ModeHEventRouter.DiagnosticCount
                     + ",faulted=" + ModeHProfilePersistence.IsStoreFaulted + ",barrier=" + ModeHProfilePersistence.IsWriteBarrier

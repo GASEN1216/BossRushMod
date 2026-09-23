@@ -119,10 +119,10 @@ namespace BossRush
                     string emptyText = LocalizationHelper.GetLocalizedText("BossRush_StorageService_Empty");
                     if (string.IsNullOrEmpty(emptyText) || emptyText.StartsWith("BossRush_"))
                     {
-                        emptyText = "空";
+                        emptyText = L10n.T("空", "Empty");
                     }
                     retrieveAllText.text = emptyText;
-                    retrieveAllText.color = Color.gray;
+                    retrieveAllText.color = BossRushUIColors.TextSecondary;
                 }
                 else
                 {
@@ -143,21 +143,32 @@ namespace BossRush
                     }
 
                     // 构建显示文本：<link=retrieve>全部取出 ￥xxx</link> | <link=discard>全部丢弃</link>
-                    string retrieveColor = canAfford ? "#33CC33" : "#CC3333";  // 绿色或红色
-                    string discardColor = "#AA5555";  // 暗红色
+                    // 颜色走 token（审美审查 UA-29）：取出 = SuccessText，丢弃 = DangerText，钱不够时取出变灰、价钱标 DangerText
+                    // （照商店口径照挂、写明价钱）。鼠标悬停的那条链接提亮，见 SetHoveredDepositLink。
+                    bool retrieveHovered = hoveredDepositLink == "retrieve";
+                    bool discardHovered = hoveredDepositLink == "discard";
+                    string retrieveColor = canAfford
+                        ? (retrieveHovered ? DepositSuccessHoverHex : DepositSuccessHex)
+                        : (retrieveHovered ? DepositTextHex : DepositMutedHex);
+                    string feeText = GetRetrieveFeePrefix() + totalFee.ToString("N0");
+                    if (!canAfford)
+                    {
+                        feeText = "<color=" + DepositDangerHex + ">" + feeText + "</color>";
+                    }
+                    string discardColor = discardHovered ? DepositDangerHoverHex : DepositDangerHex;
 
                     string displayText = string.Format(
-                        "<link=retrieve><color={0}><u>{1} {5}{2}</u></color></link> | <link=discard><color={3}><u>{4}</u></color></link>",
+                        "<link=retrieve><color={0}><u>{1} {2}</u></color></link><color={5}>   |   </color><link=discard><color={3}><u>{4}</u></color></link>",
                         retrieveColor,
                         retrieveAllLabel,
-                        totalFee.ToString("N0"),
+                        feeText,
                         discardColor,
                         discardAllLabel,
-                        GetRetrieveFeePrefix()
+                        DepositMutedHex
                     );
 
                     retrieveAllText.text = displayText;
-                    retrieveAllText.color = Color.white;  // 基础颜色为白色，实际颜色由富文本控制
+                    retrieveAllText.color = BossRushUIColors.TextPrimary;  // 基础颜色，实际颜色由富文本控制
 
                     ModBehaviour.DevLog("[StorageDepositService] 更新操作按钮: 总费用=" + totalFee + ", 物品数=" + itemCount + ", 可支付=" + canAfford);
                 }
@@ -177,7 +188,35 @@ namespace BossRush
         }
 
         /// <summary>
-        /// "全部丢弃"按钮点击事件
+        /// 链接悬停态（DepositLinkClickHandler 调用）。只在悬停对象变化时重排一次文字、播一次官方悬停音，
+        /// 指针在同一条链接上移动不做任何事。
+        /// </summary>
+        internal static void SetHoveredDepositLink(string linkId)
+        {
+            if (string.IsNullOrEmpty(linkId))
+            {
+                linkId = null;
+            }
+            if (string.Equals(hoveredDepositLink, linkId, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            hoveredDepositLink = linkId;
+            if (!isServiceActive || retrieveAllText == null)
+            {
+                return;
+            }
+            if (linkId != null)
+            {
+                BossRushUISound.PlayHover();
+            }
+            UpdateRetrieveAllButton();
+        }
+
+        /// <summary>
+        /// "全部丢弃"按钮点击事件。
+        /// 丢弃不可恢复，必须先过确认框（2026-09-23 审美审查 UA-29：旧写法点一下下划线文字就清空全部寄存物）。
         /// </summary>
         private static void OnDiscardAllClicked()
         {
@@ -190,8 +229,69 @@ namespace BossRush
                 return;
             }
 
-            // 执行全部丢弃
-            DiscardAllItems();
+            if (discardConfirmPending)
+            {
+                return;
+            }
+
+            ConfirmDiscardAllAsync(itemCount).Forget();
+        }
+
+        /// <summary>
+        /// 在商店界面上弹确认框（不关商店），确认后重新校验服务与写入状态再丢弃。
+        /// 确认期间商店可能被关、服务可能换了一轮：会话代号不一致就什么都不做。
+        /// </summary>
+        private static async UniTaskVoid ConfirmDiscardAllAsync(int itemCount)
+        {
+            discardConfirmPending = true;
+            int session = depositSessionGeneration;
+            try
+            {
+                string countText = "<color=" + DepositDangerHex + ">" + itemCount + "</color>";
+                OriginalConfirmDialogueResult result = await OriginalConfirmDialogueAdapter.ExecuteOverActiveView(
+                    L10n.T("丢弃寄存物", "Discard Stored Items"),
+                    L10n.T("要丢弃全部 " + countText + " 件寄存物吗？\n丢弃后无法找回。",
+                        "Discard all " + countText + " stored items?\nThey cannot be recovered."),
+                    L10n.T("全部丢弃", "Discard All"),
+                    L10n.T("取消", "Cancel"),
+                    true);
+
+                if (!result.Completed)
+                {
+                    if (!string.IsNullOrEmpty(result.FailureMessage))
+                    {
+                        NotificationText.Push(result.FailureMessage);
+                    }
+                    return;
+                }
+
+                if (!result.Confirmed)
+                {
+                    ModBehaviour.DevLog("[StorageDepositService] 玩家取消了全部丢弃");
+                    return;
+                }
+
+                if (session != depositSessionGeneration || !isServiceActive || IsTransactionBusy || !DepositDataManager.CanWrite)
+                {
+                    ModBehaviour.DevLog("[StorageDepositService] 确认期间寄存服务已变化，放弃全部丢弃");
+                    return;
+                }
+
+                if (DepositDataManager.GetItemCount() == 0)
+                {
+                    return;
+                }
+
+                DiscardAllItems();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 全部丢弃确认失败: " + e.Message);
+            }
+            finally
+            {
+                discardConfirmPending = false;
+            }
         }
 
         /// <summary>
@@ -958,6 +1058,7 @@ namespace BossRush
             pendingDepositItem = null;
             isQuickDepositInProgress = false;
             isRetrieveAllInProgress = false;
+            hoveredDepositLink = null;
 
             ModBehaviour.DevLog("[StorageDepositService] 资源清理完成");
         }

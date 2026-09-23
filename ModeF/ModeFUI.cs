@@ -87,12 +87,17 @@ namespace BossRush
             public Image directionImage;
             public Image icon;
             public TextMeshProUGUI countText;
-            public TextMeshProUGUI typeText;
             public RectTransform distanceRect;
             public Image distanceBackground;
             public TextMeshProUGUI distanceText;
             public bool leaderStyle;
+            /// <summary>正在淡出（目标进入视野 / 名额被挤掉），alpha 到 0 再 SetActive(false)。</summary>
+            public bool hiding;
         }
+
+        // 距离标签：榜首的写「首领 · 42m」，比普通目标宽一截（UB-24 把 9 号「首领」字并进来）。
+        private static readonly Vector2 ModeFBountyRadarLeaderLabelSize = new Vector2(100f, 22f);
+        private static readonly Vector2 ModeFBountyRadarRegularLabelSize = new Vector2(62f, 18f);
 
         // ====================================================================
         // 与 ModeE 血条名牌那套的关系：**保持两套独立，不要合并**
@@ -237,8 +242,8 @@ namespace BossRush
             }
 
             return chinese
-                ? "<color=yellow>悬赏" + marks + "</color>"
-                : "<color=yellow>Bounty " + marks + "</color>";
+                ? RichWarningTag + "悬赏" + marks + "</color>"
+                : RichWarningTag + "Bounty " + marks + "</color>";
         }
 
         private string BuildModeFMarkSuffix(int marks)
@@ -289,54 +294,8 @@ namespace BossRush
             return modeFHealthBarNameTextField.GetValue(healthBar) as TextMeshProUGUI;
         }
 
-        /// <summary>
-        /// 广播当前阶段状态（每 15s 调用）
-        /// </summary>
-        private void BroadcastModeFPhaseStatus()
-        {
-            try
-            {
-                if (!modeFActive) return;
-
-                string modeName = L10n.T("<color=red>血猎追击</color>", "<color=red>Bloodhunt</color>");
-                string phaseName = GetModeFPhaseName(modeFState.CurrentPhase);
-                string bloodfireStatus = BuildModeFBloodfireStatusText();
-                float remaining = modeFState.PhaseDuration - modeFState.PhaseElapsed;
-
-                if (modeFState.CurrentPhase == ModeFPhase.Extraction)
-                {
-                    ShowBigBanner(L10n.T(
-                        modeName + " | <color=green>" + phaseName + "</color> | " + bloodfireStatus + " | 掉血率: 3%/s | 速速撤离！",
-                        modeName + " | <color=green>" + phaseName + "</color> | " + bloodfireStatus + " | Bleed: 3%/s | Evacuate now!"
-                    ));
-                }
-                else
-                {
-                    int remainSec = Mathf.CeilToInt(remaining);
-                    ShowBigBanner(L10n.T(
-                        modeName + " | " + phaseName + " | " + bloodfireStatus + " | 剩余 <color=yellow>" + remainSec + "</color> 秒",
-                        modeName + " | " + phaseName + " | " + bloodfireStatus + " | <color=yellow>" + remainSec + "</color>s remaining"
-                    ));
-                }
-            }
-            catch { }
-        }
-
-        private string BuildModeFBloodfireStatusText()
-        {
-            if (modeFState.BloodfireOverloadActive)
-            {
-                int remainingSeconds = Mathf.CeilToInt(modeFState.BloodfireOverloadRemaining);
-                return L10n.T(
-                    "<color=#FF4500>命火过载 " + remainingSeconds + "秒</color>",
-                    "<color=#FF4500>Overload " + remainingSeconds + "s</color>");
-            }
-
-            int charge = Mathf.RoundToInt(modeFState.BloodfireCharge);
-            return L10n.T(
-                "命火 <color=#FF8C00>" + charge + "/100</color>",
-                "Bloodfire <color=#FF8C00>" + charge + "/100</color>");
-        }
+        // 阶段 / 剩余时间 / 命火的持续状态在常驻状态卡 ModeFStatusHud（2026-09-23 审美审查 UB-06），
+        // 不再每 15 秒广播一条彩色长横幅；横幅只留阶段切换、榜首变更与胜负这类事件。
 
         /// <summary>
         /// 广播榜首变化
@@ -362,8 +321,8 @@ namespace BossRush
                 else
                 {
                     ShowBigBanner(L10n.T(
-                        "<color=orange>" + leaderName + "</color> 成为悬赏榜首！ " + markTextZh,
-                        "<color=orange>" + leaderName + "</color> is now the Bounty Leader! " + markTextEn
+                        RichWarningTag + leaderName + "</color> 成为悬赏榜首！ " + markTextZh,
+                        RichWarningTag + leaderName + "</color> is now the Bounty Leader! " + markTextEn
                     ));
                 }
 
@@ -386,10 +345,10 @@ namespace BossRush
                 int growthValue = Mathf.RoundToInt(growthPercent * 100f);
 
                 ShowBigBanner(L10n.T(
-                    "<color=orange>" + killerName + "</color> 啃噬了 <color=red>" + victimName
-                        + "</color> 的命火！<color=yellow>最大生命与火力 +" + growthValue + "%</color>",
-                    "<color=orange>" + killerName + "</color> devoured <color=red>" + victimName
-                        + "</color> and stole its life! <color=yellow>Max HP and firepower +" + growthValue + "%</color>"
+                    RichWarningTag + killerName + "</color> 啃噬了 " + RichDangerTag + victimName
+                        + "</color> 的命火！" + RichWarningTag + "最大生命与火力 +" + growthValue + "%</color>",
+                    RichWarningTag + killerName + "</color> devoured " + RichDangerTag + victimName
+                        + "</color> and stole its life! " + RichWarningTag + "Max HP and firepower +" + growthValue + "%</color>"
                 ));
             }
             catch { }

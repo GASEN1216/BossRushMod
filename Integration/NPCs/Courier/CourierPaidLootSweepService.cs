@@ -43,6 +43,10 @@ namespace BossRush
         private static bool sweepPromptInProgress = false;
         private static int serviceGeneration = 0;
 
+        // 富文本颜色走共享 token 的十六进制（审美审查 UA-31）。
+        private static readonly string SweepHighlightHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.WarningText);
+        private static readonly string SweepSuccessHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.SuccessText);
+
         private sealed class PaidSweepBoxPlan
         {
             public InteractableLootbox Lootbox;
@@ -72,7 +76,14 @@ namespace BossRush
             DiscardPendingSweepResultInternal(closeLootView, true);
         }
 
-        public static void ReleasePendingSweepResultToPlayer(bool closeLootView, bool showMessage)
+        /// <summary>
+        /// 把代收箱交还玩家并收掉箱子。
+        /// <paramref name="keepPlayerItemsWhenFull"/>：只有玩家主动点「开启下次扫箱」时为 true——
+        /// 背包满了的话，玩家自己塞进箱子的东西留在箱里、这次不放行，并汇总提示一条（2026-09-23 复核第 13 项：
+        /// 旧写法背包满时把它们送进快递、不收费，「开启下次扫箱」成了免费寄件口）。
+        /// NPC 销毁、模式结束、卸载这些被动收尾路径传 false：箱子随后就没了，只能照官方交付，不能丢东西。
+        /// </summary>
+        public static void ReleasePendingSweepResultToPlayer(bool closeLootView, bool showMessage, bool keepPlayerItemsWhenFull)
         {
             bool hadPending = HasPendingSweepResult();
             if (!hadPending)
@@ -81,7 +92,7 @@ namespace BossRush
                 return;
             }
 
-            if (!TryReturnResultItemsToPlayer(pendingResultInventory)) return;
+            if (!TryReturnResultItemsToPlayer(pendingResultInventory, keepPlayerItemsWhenFull)) return;
             DiscardPendingSweepResultInternal(closeLootView, false);
 
             if (showMessage)
@@ -94,6 +105,12 @@ namespace BossRush
                         "Old sweep crate contents were sent to your base deliveries."));
                 }
             }
+        }
+
+        /// <summary>被动收尾路径（NPC 销毁、Mode E/F 结束、卸载）：照官方交付，不留东西在要消失的箱子里。</summary>
+        public static void ReleasePendingSweepResultToPlayer(bool closeLootView, bool showMessage)
+        {
+            ReleasePendingSweepResultToPlayer(closeLootView, showMessage, false);
         }
 
         public static void CloseServiceIfOwnedBy(Transform npcTransform)
@@ -141,14 +158,14 @@ namespace BossRush
             int targetCount = mod.CopyFreshAwenLootSweepTargets(targets);
             if (targetCount <= 0)
             {
-                ShowBubbleOrMessage(npcTransform, L10n.T("小子，我只接受bossrush箱子服务", "Kid, I only accept BossRush lootbox services."));
+                ShowBubbleOrMessage(npcTransform, L10n.T("小子，我只扫bossrush的箱子", "Kid, I only sweep BossRush crates."));
                 return false;
             }
 
             List<PaidSweepBoxPlan> plans = BuildBoxPlans(targets);
             if (plans.Count <= 0)
             {
-                ShowBubbleOrMessage(npcTransform, L10n.T("小子，我只接受bossrush箱子服务", "Kid, I only accept BossRush lootbox services."));
+                ShowBubbleOrMessage(npcTransform, L10n.T("小子，我只扫bossrush的箱子", "Kid, I only sweep BossRush crates."));
                 return false;
             }
 
@@ -168,14 +185,14 @@ namespace BossRush
             int targetCount = mod.CopyFreshAwenLootSweepTargets(freshTargets);
             if (targetCount <= 0)
             {
-                ShowBubbleOrMessage(npcTransform, L10n.T("小子，我只接受bossrush箱子服务", "Kid, I only accept BossRush lootbox services."));
+                ShowBubbleOrMessage(npcTransform, L10n.T("小子，我只扫bossrush的箱子", "Kid, I only sweep BossRush crates."));
                 return false;
             }
 
             List<PaidSweepBoxPlan> freshPlans = BuildBoxPlans(freshTargets);
             if (freshPlans.Count <= 0)
             {
-                ShowBubbleOrMessage(npcTransform, L10n.T("小子，我只接受bossrush箱子服务", "Kid, I only accept BossRush lootbox services."));
+                ShowBubbleOrMessage(npcTransform, L10n.T("小子，我只扫bossrush的箱子", "Kid, I only sweep BossRush crates."));
                 return false;
             }
 
@@ -389,13 +406,15 @@ namespace BossRush
             bool usePurification = activeServiceController != null &&
                 ModBehaviour.Instance != null &&
                 ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(activeServiceController);
+            // 数字高亮走 WarningText token（审美审查 UA-31：旧写法 #FFD700 纯金，和快递那边的纯红各写各的）。
+            string hl = SweepHighlightHex;
             string message = usePurification
                 ? L10n.T(
-                    "当前可扫箱子：<color=#FFD700>" + plans.Count + "</color> 个\n本次费用：<color=#FFD700>净化点 " + cost + "</color>\n阿稳会把场上的战利品统一整理进代收箱。\n确认开始扫箱？",
-                    "Sweepable lootboxes: <color=#FFD700>" + plans.Count + "</color>\nCost: <color=#FFD700>Purification " + cost + "</color>\nAwen will organize the battlefield loot into one pickup crate.\nStart sweep?")
+                    "当前可扫箱子：<color=" + hl + ">" + plans.Count + "</color> 个\n本次费用：<color=" + hl + ">净化点 " + cost + "</color>\n阿稳会把场上的战利品统一整理进代收箱。\n确认开始扫箱？",
+                    "Sweepable lootboxes: <color=" + hl + ">" + plans.Count + "</color>\nCost: <color=" + hl + ">Purification " + cost + "</color>\nAwen will organize the battlefield loot into one pickup crate.\nStart sweep?")
                 : L10n.T(
-                    "当前可扫箱子：<color=#FFD700>" + plans.Count + "</color> 个\n本次费用：<color=#FFD700>￥" + cost + "</color>\n阿稳会把场上的战利品统一整理进代收箱。\n确认开始扫箱？",
-                    "Sweepable lootboxes: <color=#FFD700>" + plans.Count + "</color>\nCost: <color=#FFD700>$" + cost + "</color>\nAwen will organize the battlefield loot into one pickup crate.\nStart sweep?");
+                    "当前可扫箱子：<color=" + hl + ">" + plans.Count + "</color> 个\n本次费用：<color=" + hl + ">￥" + cost + "</color>\n阿稳会把场上的战利品统一整理进代收箱。\n确认开始扫箱？",
+                    "Sweepable lootboxes: <color=" + hl + ">" + plans.Count + "</color>\nCost: <color=" + hl + ">$" + cost + "</color>\nAwen will organize the battlefield loot into one pickup crate.\nStart sweep?");
 
             sweepPromptInProgress = true;
             int promptGeneration = serviceGeneration;
@@ -753,15 +772,8 @@ namespace BossRush
                 startNextSweepButtonText.enableWordWrapping = false;
             }
 
+            // 克隆自官方整理按钮：保持官方外观与官方音效，不再染成 (0.85,0.55,0.2) 平涂橙（审美审查 UA-02）。
             startNextSweepButton.interactable = true;
-            ColorBlock colors = startNextSweepButton.colors;
-            Color buttonColor = new Color(0.85f, 0.55f, 0.2f, 1f);
-            colors.normalColor = buttonColor;
-            colors.highlightedColor = buttonColor * 1.05f;
-            colors.selectedColor = colors.highlightedColor;
-            colors.pressedColor = buttonColor * 0.9f;
-            colors.disabledColor = Color.gray;
-            startNextSweepButton.colors = colors;
         }
 
         private static void DestroyStartNextSweepButton()
@@ -779,7 +791,8 @@ namespace BossRush
         private static void OnStartNextSweepButtonClicked()
         {
             Transform npc = pendingResultNpcTransform;
-            ReleasePendingSweepResultToPlayer(true, false);
+            // 玩家主动开下一趟：背包满时自己塞进来的东西留在箱里、不放行（不当免费寄件口）
+            ReleasePendingSweepResultToPlayer(true, false, true);
             if (HasPendingSweepResult()) return;
 
             if (npc != null)
@@ -1097,88 +1110,5 @@ namespace BossRush
                 }
             }
         }
-
-        private static bool TryReturnResultItemsToPlayer(Inventory resultInventory)
-        {
-            if (resultInventory == null || resultInventory.Content == null)
-            {
-                return true;
-            }
-            bool deliveredAll = true;
-            // 只有扫箱产出的物品寄快递；玩家自己塞进箱子的东西照旧交还背包（否则开启下次扫箱就成了免快递费的寄件口）。
-            List<Item> items = new List<Item>();
-            List<Item> remainingItems = new List<Item>();
-            for (int i = 0; i < resultInventory.Content.Count; i++)
-            {
-                Item item = resultInventory.Content[i];
-                if (item == null)
-                {
-                    continue;
-                }
-
-                if (pendingResultSweepItems.Contains(item)) items.Add(item);
-                else remainingItems.Add(item);
-            }
-
-            if (items.Count <= 0 && remainingItems.Count <= 0)
-            {
-                return true;
-            }
-
-            // 阿稳代收的整箱一律寄进快递：静默入缓冲、一次落盘、只报一条汇总横幅。
-            // 逐件 SendToPlayer 在背包满时每件都推一条官方横幅，会把要看的消息全挡住（2026-09-22 实测第 13 条）。
-            int mailedCount = CourierService.BufferItemsSilently(items, remainingItems);
-            if (mailedCount > 0)
-            {
-                ShowSweepResultMailedBanner(mailedCount);
-            }
-
-            // 玩家塞进来的东西、快递站不可写或个别物品序列化失败：走官方逐件交付，交付不了的留在箱里、不放行下一趟。
-            for (int i = 0; i < remainingItems.Count; i++)
-            {
-                Item item = remainingItems[i];
-                if (item == null)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    item.Detach();
-                }
-                catch {}
-
-                try
-                {
-                    ItemUtilities.SendToPlayer(item, true, true);
-                }
-                catch (Exception e)
-                {
-                    if (item != null && item.InInventory == null && item.PluggedIntoSlot == null)
-                    {
-                        deliveredAll = false;
-                        try { resultInventory.AddItem(item); }
-                        catch (Exception restoreError) { ModBehaviour.DevLog("[CourierPaidLootSweep] 保留未交付物品失败: " + restoreError.Message); }
-                    }
-                    ModBehaviour.DevLog("[CourierPaidLootSweep] [WARNING] 返还总箱物品失败: " + e.Message);
-                }
-            }
-            return deliveredAll;
-        }
-
-        private static void ShowSweepResultMailedBanner(int mailedCount)
-        {
-            try
-            {
-                NotificationText.Push(L10n.T(
-                    "<color=#00FF00>阿稳已把扫箱箱子里的 " + mailedCount + " 件物品放进快递</color>",
-                    "<color=#00FF00>Awen sent " + mailedCount + " sweep crate items to your base deliveries</color>"));
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[CourierPaidLootSweep] [WARNING] 显示扫箱寄件横幅失败: " + e.Message);
-            }
-        }
-
     }
 }

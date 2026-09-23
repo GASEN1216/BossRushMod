@@ -188,7 +188,7 @@ namespace BossRush
             if (given.Count > 0)
                 session.Announce(SkyIslandFieldcraftRules.HarvestCaption(given.ToArray(), SkyIslandFieldcraftRules.StoryBonusReason(node, data)), false);
             if (!complete)
-                session.Announce(L10n.T("还有材料没能装好，采集点保留着，稍后可再取。", "Some materials could not be packed. This gathering spot remains available; try again later."), true);
+                session.Announce(L10n.T("有些材料没装上，采集点还留着，待会儿再来拿。", "Some materials didn't make it into your pack. The spot is still here; come back for them."), true);
             if (complete)
             {
                 pendingHarvest.Remove(node.Id);
@@ -294,7 +294,7 @@ namespace BossRush
             {
                 SkyIslandInventoryTransaction.DestroyUnowned(output);
                 Debug.LogWarning("[SkyIslandCraft] 配方 " + recipe.Id + " 失败：" + e.Message);
-                message = L10n.T("没做成——材料好像没对上，再看一眼背包。", "It did not come together — check your pack again.");
+                message = L10n.T("没做成，材料好像没对上，再看一眼背包。", "That didn't work. Check your pack again.");
                 return false;
             }
             finally
@@ -366,7 +366,7 @@ namespace BossRush
                 // 不允许灯已永久点亮之后才发现材料扣不下来。
                 if (!SkyIslandInventoryTransaction.TryReserve(CharacterMainControl.Main, light.Inputs, out materials))
                 {
-                    message = L10n.T("材料在操作时发生变化，请再试一次。", "The materials changed while lighting the lamp. Try again.");
+                    message = L10n.T("材料刚才动过了，再试一次。", "The materials changed while lighting the lamp. Try again.");
                     return false;
                 }
                 if (disposed || !session.IsReady)
@@ -702,6 +702,8 @@ namespace BossRush
             light.range = 9f;
             light.intensity = fireNight == 1 ? 2.4f : 1f;
             light.shadows = LightShadows.None;
+            // 灶火的光跟着火苗闪（近处 ±1/6，VB-27）；风晶灯是稳的光，不闪。昼夜切换照旧由 UpdateFires 改基准强度。
+            if (hearth) SkyIslandHearthFx.Flicker(light);
             fires.Add(light);
             if (hearth) hearthFires.Add(light);
             else lampFires.Add(light);

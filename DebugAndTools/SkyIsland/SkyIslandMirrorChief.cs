@@ -159,10 +159,15 @@ namespace BossRush
             {
                 // 倒影先落在它此刻站的地方，再翻身。镜纹甲还起作用、场上没有倒影时才留。
                 if (PlateWorking && !decoyOut) SpawnDecoy();
+                Vector3 from = boss.transform.position;
                 if (SkyIslandBossProps.Teleport(boss, ground + Vector3.up * 0.1f, null))
                 {
                     SkyIslandBossProps.NoticePlayer(boss);
-                    SkyIslandBossForge.Detonate(boss, ground, SkyIslandBossRules.SwapRadius, SkyIslandBossRules.SwapDamage);
+                    // 换位不是爆炸：不冒官方火球；起点留一团扬尘、两点之间一道风痕，看得出「它翻过来了」（VB-21 / VB-25）。
+                    SkyIslandImpactFx.Puff(context.Root, from, 0.5f, 8);
+                    SkyIslandImpactFx.Streak(context.Root, from, ground, SwapTint);
+                    SkyIslandBossForge.Detonate(boss, ground, SkyIslandBossRules.SwapRadius, SkyIslandBossRules.SwapDamage,
+                        false, SkyIslandImpactFx.BossShake, SwapTint);
                 }
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 镜中客换位落地失败：" + e.Message); }

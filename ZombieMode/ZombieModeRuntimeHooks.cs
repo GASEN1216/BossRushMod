@@ -26,6 +26,7 @@ namespace BossRush
         {
             CleanupZombieModeOnDestroy();
             ZombieModeFootMarkerPool.Clear();
+            ZombieModeZoneVisuals.ResetStaticCaches();
         }
     }
 }

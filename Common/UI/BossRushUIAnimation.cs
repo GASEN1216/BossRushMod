@@ -120,23 +120,26 @@ namespace BossRush
     }
 
     /// <summary>
-    /// 面板打开动画：0.18 秒淡入并从 0.96 放大到 1。
+    /// 面板打开动画：0.16 秒淡入，0.22 秒内从 0.94 放大到 1（2026-09-23 前是 0.18 秒 / 0.96，见常量处注释）。
     /// 用 unscaledDeltaTime，模态会把 timeScale 置 0。
     ///
-    /// 【为什么是 0.18 不是 0.12】0.12 秒在 60fps 下只有 7 帧，玩家看到的基本是「面板直接出现」，
-    /// 等于白做。0.18 秒（约 11 帧）是仍然不拖沓、但看得出「它是长出来的」的下限。
+    /// 【时长下限】0.12 秒在 60fps 下只有 7 帧，玩家看到的基本是「面板直接出现」，等于白做；
+    /// 缩放 0.22 秒（约 13 帧）、淡入 0.16 秒是仍然不拖沓、但看得出「它是长出来的」的口径。
     ///
-    /// 【为什么 SmoothStep 而不是纯 ease-out】纯 ease-out 起手最快，适合「元素飞进屏幕」；
-    /// 面板是原地长出来的，两头都收一点（SmoothStep ≈ ease-in-out）才不显得从天上砸下来。
-    /// 子元素的**入场**（列表行、卡片滑入）才用 ease-out——它们真的在移动。
+    /// 【两条曲线】透明度是原地变化，用 SmoothStep 两头都收；缩放是尺寸真的在变，用 EaseOut——
+    /// 起手快、落定慢，像东西弹出来停稳。旧版两者共用 SmoothStep，起步太慢，4% 的缩放几乎看不出。
     ///
     /// 【挂在根画布上时不缩放】根画布 RectTransform 的缩放由 Canvas 按 CanvasScaler 的缩放系数驱动，
     /// 写 localScale 要么被覆盖、要么和缩放系数打架抖一帧。这种情况只做淡入。
     /// </summary>
     internal sealed class BossRushUIOpenAnimation : MonoBehaviour
     {
-        private const float DurationSeconds = 0.18f;
-        private const float StartScale = 0.96f;
+        // 2026-09-23 审美审查 UD-04：旧口径 0.18 秒、0.96 起、缩放与透明度共用一条 SmoothStep，
+        // 4% 的缩放配上起步很慢的 SmoothStep 几乎看不出「长出来」。现在拆成两条：
+        // 透明度 0.16 秒 SmoothStep（原地淡入），缩放 0.22 秒 EaseOut 从 0.94 起（真的在变大，按位移类动效走 EaseOut）。
+        private const float DurationSeconds = 0.22f;
+        private const float FadeSeconds = 0.16f;
+        private const float StartScale = 0.94f;
 
         private CanvasGroup canvasGroup;
         private float elapsed;
@@ -181,14 +184,13 @@ namespace BossRush
 
             elapsed += Time.unscaledDeltaTime;
             float t = Mathf.Clamp01(elapsed / DurationSeconds);
-            float eased = BossRushUI.SmoothStep(t);
             if (canvasGroup != null)
             {
-                canvasGroup.alpha = eased;
+                canvasGroup.alpha = BossRushUI.SmoothStep(elapsed / FadeSeconds);
             }
             if (scales)
             {
-                transform.localScale = Vector3.one * Mathf.Lerp(StartScale, 1f, eased);
+                transform.localScale = Vector3.one * Mathf.Lerp(StartScale, 1f, BossRushUI.EaseOut(t));
             }
 
             if (t >= 1f)

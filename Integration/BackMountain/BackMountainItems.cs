@@ -398,6 +398,34 @@ namespace BossRush
         /// 菜地对这个槽开放后，把三种种子挂进基地普通商人（与船票、冒险家日志同一台售货机、同一条注入管线）。
         /// 后山关闭或菜地未开放时不挂（不挂还用不上的东西）；已挂过的不重复挂。返回新增条目数。
         /// </summary>
+        /// <summary>
+        /// 对场上已经 Awake 过的基地售货机补挂种子（2026-09-23 复核：菜地在本趟基地里刚开放时，售货机的 Awake 注入早已跑过，
+        /// 下一趟才有种子，提示却当场叫玩家去买）。只在设施刷新的事件点调用（进基地 / 关卡就绪 / 实时解锁），不在 tick 里；
+        /// 条目已在时 <see cref="TryInjectSeedsIntoShop"/> 直接跳过，重复调用无副作用。
+        /// </summary>
+        internal static int TryInjectSeedsIntoLiveShops(ModBehaviour inst)
+        {
+            if (inst == null || !GardenSeedInjector.IsGardenAvailable()) return 0;
+            int added = 0;
+            try
+            {
+                Duckov.Economy.StockShop[] shops = UnityEngine.Object.FindObjectsOfType<Duckov.Economy.StockShop>();
+                for (int i = 0; i < shops.Length; i++)
+                {
+                    added += TryInjectSeedsIntoShop(shops[i], inst);
+                }
+                if (added > 0)
+                {
+                    ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "菜地本趟开放，已对在场售货机补挂种子 " + added + " 条");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 在场售货机补挂种子失败: " + e.Message);
+            }
+            return added;
+        }
+
         internal static int TryInjectSeedsIntoShop(Duckov.Economy.StockShop shop, ModBehaviour inst)
         {
             if (shop == null || shop.entries == null || inst == null) return 0;

@@ -80,15 +80,15 @@ namespace BossRush
 
         internal static string ReserveFailed
         {
-            get { return L10n.T("风晶在操作时发生了变化，再试一次。", "The windcrystal changed while you were using it. Try again."); }
+            get { return L10n.T("风晶刚才动过了，再试一次。", "The windcrystal changed while you were using it. Try again."); }
         }
 
         internal static string StartFailed
         {
             get
             {
-                return L10n.T("风没引起来：请站到鸣风栈道上，并等上一场战斗结束。风晶还在背包里。",
-                    "The wind did not come: stand on Windsong Boardwalk and wait for the previous fight to end. The windcrystal is still in your pack.");
+                return L10n.T("风没引起来：得站在鸣风栈道上，等上一场仗打完。风晶还在背包里。",
+                    "The wind didn't come: stand on Windsong Boardwalk and let the last fight finish. The windcrystal is still in your pack.");
             }
         }
     }

@@ -14,30 +14,53 @@ using ItemStatsSystem.Stats;
 namespace BossRush
 {
     /// <summary>
-    /// 属性条目交互组件 - 通过文字颜色变化实现固定功能
-    /// 白色=普通，蓝色=悬停可固定，金色=已固定
+    /// 属性条目交互组件：点两下固定属性（消耗 1 瓶冷淬液）。
+    ///
+    /// 2026-09-23 审美审查 UD-24：旧版一点就扣、只有悬停变色才看得出能点，还把官方条目的标签和数值
+    /// 整行刷成同一个颜色、关闭时再统一刷回纯白（官方数值的正负两色回不来）。现在：
+    ///   常态：可固定的行左侧一道 Accent 细条（没有冷淬液时不画——不可点的东西不像能点）。
+    ///   悬停：行底 Accent 极淡底色，数值变 Accent。
+    ///   第一次点：进入待确认——行底 Accent 淡色，数值后面追加「再点一次固定」，UI/pop；2 秒内再点同一行才扣。
+    ///   固定成功：数值变 RarityLegendary，行底金色闪一下，UI/confirm。
+    /// 只给数值那一个 TMP 上色：第一次改色前记下官方原色，清理时还原（官方 Setup 已经重写过颜色就不动）。
+    /// 扣费与锁定的业务路径与旧版逐行相同；待确认的计时由 ReforgeUIManager 管，切换物品、关闭界面时清掉。
     /// </summary>
     public class PropertyEntryInteractable : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
     {
         public string PropertyKey { get; set; }
         public PropertyType PropType { get; set; }
         public Item TargetItem { get; set; }
-        public TextMeshProUGUI[] TextComponents { get; set; }  // 属性条目的所有文本组件
+        /// <summary>条目的数值文本（官方 ItemXxxEntry.value）。只给它上色，标签不动。</summary>
+        public TextMeshProUGUI ValueText { get; set; }
+        /// <summary>贴在条目上的表现层（细条 / 行底淡色 / 闪光）。</summary>
+        internal ReforgeRowFx Fx { get; set; }
         public bool IsLocked { get; set; }
         public bool CanLock { get; set; }  // 是否可以固定（有冷淬液）
 
-        // 颜色定义
-        private static readonly Color normalColor = Color.white;  // 白色 - 普通状态
-        private static readonly Color hoverColor = new Color(0.4f, 0.7f, 1f, 1f);  // 蓝色 - 悬停可固定
-        private static readonly Color lockedColor = new Color(1f, 0.84f, 0f, 1f);  // 金色 - 已固定
+        private bool hovered;
+        private bool pending;
+        private bool ownsValueColor;
+        private Color originalValueColor;
+        private Color appliedValueColor;
+        private string pendingBaseText;
+        private string pendingShownText;
 
         public void OnPointerClick(PointerEventData eventData)
         {
             if (IsLocked || !CanLock) return;
 
-            ModBehaviour.DevLog("[PropertyEntry] 点击固定属性: " + PropertyKey);
-
             if (TargetItem == null) return;
+
+            // 第一步：进入待确认，不扣任何东西（防误点）
+            if (!ReforgeUIManager.IsPropertyLockPending(this))
+            {
+                ReforgeUIManager.BeginPropertyLockPending(this);
+                return;
+            }
+
+            // 第二步：2 秒内再点同一行，才走下面原有的扣费与固定流程
+            ReforgeUIManager.CancelPendingPropertyLock();
+            ModBehaviour.DevLog("[PropertyEntry] 点击固定属性: " + PropertyKey);
 
             // 检查冷淬液数量
             int fluidCount = ItemFactory.GetItemCountInInventory(ColdQuenchFluidConfig.TYPE_ID);
@@ -57,8 +80,9 @@ namespace BossRush
                 IsLocked = true;
                 CanLock = false;
 
-                // 更新为金色
-                SetTextColor(lockedColor);
+                // 数值变金色 + 金色闪光与 UI/confirm
+                ApplyVisualState();
+                ReforgeUIManager.PlayPropertyLockedFeedback(this);
 
                 // 通知UI刷新
                 ReforgeUIManager.NotifyPropertyLocked();
@@ -67,50 +91,120 @@ namespace BossRush
 
         public void OnPointerEnter(PointerEventData eventData)
         {
-            if (IsLocked) return;  // 已固定不变色
-
-            if (CanLock)
-            {
-                // 有冷淬液，显示蓝色表示可固定
-                SetTextColor(hoverColor);
-            }
+            hovered = true;
+            ApplyVisualState();
         }
 
         public void OnPointerExit(PointerEventData eventData)
         {
-            if (IsLocked) return;  // 已固定保持金色
-
-            // 恢复白色
-            SetTextColor(normalColor);
+            hovered = false;
+            ApplyVisualState();
         }
 
-        /// <summary>
-        /// 设置所有文本组件的颜色
-        /// </summary>
-        private void SetTextColor(Color color)
+        private void OnDisable()
         {
-            if (TextComponents == null) return;
-            foreach (var text in TextComponents)
+            hovered = false;
+            // 条目被官方对象池回收时撤回待确认，别让「再点一次固定」留在下一次复用的条目上
+            if (ReforgeUIManager.IsPropertyLockPending(this))
             {
-                if (text != null)
-                {
-                    text.color = color;
-                }
+                ReforgeUIManager.CancelPendingPropertyLock();
             }
         }
 
-        /// <summary>
-        /// 初始化颜色状态
-        /// </summary>
-        public void InitializeColor()
+        /// <summary>由 ReforgeUIManager.BeginPropertyLockPending 调用。</summary>
+        internal void EnterPending()
         {
+            pending = true;
+            if (ValueText != null)
+            {
+                pendingBaseText = ValueText.text;
+                pendingShownText = pendingBaseText + " <size=75%><color=" + IntegrationUIFeedback.AccentHex + ">"
+                    + L10n.T("再点一次固定", "Click again to lock") + "</color></size>";
+                ValueText.text = pendingShownText;
+            }
+            ApplyVisualState();
+        }
+
+        /// <summary>由 ReforgeUIManager.CancelPendingPropertyLock 调用。数值文本只在仍是我们写的那串时才还原。</summary>
+        internal void ExitPending()
+        {
+            if (!pending) return;
+            pending = false;
+            if (ValueText != null && pendingShownText != null && ValueText.text == pendingShownText)
+            {
+                ValueText.text = pendingBaseText;
+            }
+            pendingBaseText = null;
+            pendingShownText = null;
+            ApplyVisualState();
+        }
+
+        /// <summary>
+        /// 按「已固定 / 不可固定 / 待确认 / 悬停 / 常态」刷新数值色与行底表现。
+        /// </summary>
+        public void ApplyVisualState()
+        {
+            ReforgeRowFx fx = Fx;
             if (IsLocked)
             {
-                SetTextColor(lockedColor);
+                SetValueColor(BossRushUIColors.RarityLegendary);
+                if (fx != null) fx.SetState(BossRushUIColors.RarityLegendary, 0.9f, BossRushUIColors.RarityLegendary, 0f);
+                return;
             }
-            else
+
+            if (!CanLock)
             {
-                SetTextColor(normalColor);
+                RestoreValueColor();
+                if (fx != null) fx.SetIdle();
+                return;
+            }
+
+            if (pending)
+            {
+                SetValueColor(BossRushUIColors.Accent);
+                if (fx != null) fx.SetState(BossRushUIColors.Accent, 1f, BossRushUIColors.Accent, 0.18f);
+                return;
+            }
+
+            if (hovered)
+            {
+                SetValueColor(BossRushUIColors.Accent);
+                if (fx != null) fx.SetState(BossRushUIColors.Accent, 0.9f, BossRushUIColors.Accent, 0.08f);
+                return;
+            }
+
+            RestoreValueColor();
+            if (fx != null) fx.SetState(BossRushUIColors.Accent, 0.5f, BossRushUIColors.Accent, 0f);
+        }
+
+        /// <summary>清理前调用：撤回待确认文本、还原官方数值色、收起行底表现。</summary>
+        internal void ReleaseVisuals()
+        {
+            ExitPending();
+            RestoreValueColor();
+            if (Fx != null) Fx.SetIdle();
+        }
+
+        private void SetValueColor(Color color)
+        {
+            if (ValueText == null) return;
+            if (!ownsValueColor)
+            {
+                originalValueColor = ValueText.color;
+                ownsValueColor = true;
+            }
+            ValueText.color = color;
+            appliedValueColor = color;
+        }
+
+        private void RestoreValueColor()
+        {
+            if (!ownsValueColor) return;
+            ownsValueColor = false;
+            // 官方 Setup 可能已经把条目换成别的属性、重写了颜色（数值条目按正负取色）：那时不能用旧原色覆盖。
+            if (ValueText != null && ValueText.color == appliedValueColor)
+            {
+                ValueText.color = originalValueColor;
             }
         }
     }
@@ -137,17 +231,15 @@ namespace BossRush
         // ============================================================================
         private const float UI_INIT_DELAY = 0.1f;
         private const float DIFF_THRESHOLD = 0.01f;
-        private const string MAX_BOUND_LABEL_COLOR = "#FF4D4D";
-        private const string MIN_BOUND_LABEL_COLOR = "#9AD8FF";
 
-        // 冷淬液UI常量
+        // 冷淬液UI常量（UD-26：计数从 32 号荧光绿降到 20 号正文色，图标随之缩到 40）
         private const float COLD_QUENCH_UI_OFFSET_Y = -10f;
-        private const int COLD_QUENCH_ICON_SIZE = 56;
-        private const int COLD_QUENCH_CONTAINER_WIDTH = 200;
-        private const int COLD_QUENCH_CONTAINER_HEIGHT = 70;
+        private const int COLD_QUENCH_ICON_SIZE = 40;
+        private const int COLD_QUENCH_CONTAINER_WIDTH = 260;
+        private const int COLD_QUENCH_CONTAINER_HEIGHT = 52;
         private const int COLD_QUENCH_SPACING = 10;
-        private const int COLD_QUENCH_FONT_SIZE = 32;
-        private const int COLD_QUENCH_ICON_FONT_SIZE = 40;
+        private const int COLD_QUENCH_FONT_SIZE = 20;
+        private const int COLD_QUENCH_COUNT_WIDTH = 190;
 
         // 预制体缓存常量
         private const int MAX_PREFAB_CACHE_SIZE = 10;
@@ -899,11 +991,18 @@ namespace BossRush
                             probObj.transform.SetSiblingIndex(resultDisplay.transform.GetSiblingIndex());
 
                             probabilityText = probObj.AddComponent<TextMeshProUGUI>();
-                            probabilityText.fontSize = 24; // 大字体
+                            BossRushUI.ApplyGameFont(probabilityText);
                             probabilityText.alignment = TextAlignmentOptions.Center;
-                            probabilityText.color = Color.white; // 白色字体
                             probabilityText.enableWordWrapping = false;
                             probabilityText.overflowMode = TextOverflowModes.Overflow;
+                        }
+
+                        // UD-23：基准字号 18，各行再用 <size> 分级（幅度 30 / 总计 20 / 次信息 16）；颜色走 token。
+                        if (probabilityText != null)
+                        {
+                            probabilityText.fontSize = COST_BASE_FONT_SIZE;
+                            probabilityText.enableAutoSizing = false;
+                            probabilityText.color = BossRushUIColors.TextPrimary;
                         }
 
                         // 隐藏原版结果显示
@@ -1044,10 +1143,13 @@ namespace BossRush
 
             if (tendencyText != null)
             {
+                // UD-26：倾向色走 token（DangerText / SuccessText），不再写 #FF4D4D / #4DFF4D。
                 if (value < -10f)
-                    tendencyText.text = string.Format(L10n.T("<color=#FF4D4D>偏向负面 ({0})</color>", "<color=#FF4D4D>Negative tendency ({0})</color>"), (int)value);
+                    tendencyText.text = "<color=" + IntegrationUIFeedback.DangerHex + ">"
+                        + string.Format(L10n.T("偏向负面 ({0})", "Negative tendency ({0})"), (int)value) + "</color>";
                 else if (value > 10f)
-                    tendencyText.text = string.Format(L10n.T("<color=#4DFF4D>偏向正面 (+{0})</color>", "<color=#4DFF4D>Positive tendency (+{0})</color>"), (int)value);
+                    tendencyText.text = "<color=" + IntegrationUIFeedback.SuccessHex + ">"
+                        + string.Format(L10n.T("偏向正面 (+{0})", "Positive tendency (+{0})"), (int)value) + "</color>";
                 else
                     tendencyText.text = L10n.T("平衡 (0)", "Balanced (0)");
             }
@@ -1175,9 +1277,10 @@ namespace BossRush
 
             Item newItem = ItemUIUtilities.SelectedItem;
 
-            // 切换了物品，清除原属性快照和锁定图标
+            // 切换了物品，清除原属性快照和锁定图标（ClearPropertyLockIcons 同时撤回待确认的固定）
             originalProperties.Clear();
             ClearPropertyLockIcons();
+            ResetReforgeRevealQueue();
             selectedItem = newItem;
 
             if (AffixForge_HandleSelectionChanged()) return;

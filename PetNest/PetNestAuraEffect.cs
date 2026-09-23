@@ -133,6 +133,8 @@ namespace BossRush
         private Light _light;
         private float _phase;
         private bool _disposed;
+        /// <summary>退场淡出进度（1 → 0），只在 Dispose 之后由 Update 推进。</summary>
+        private float _releaseFade;
 
         /// <summary>本实例实际分配出去的粒子上限之和（诊断 / 验收用）。</summary>
         internal int AllocatedParticles { get; private set; }
@@ -163,6 +165,7 @@ namespace BossRush
             }
 
             GameObject root = null;
+            PetNestAuraEffect fx = null;
             try
             {
                 root = new GameObject("PetNestAura");
@@ -174,7 +177,7 @@ namespace BossRush
                 root.transform.localRotation = Quaternion.identity;
                 root.transform.localScale = Vector3.one;
 
-                PetNestAuraEffect fx = root.AddComponent<PetNestAuraEffect>();
+                fx = root.AddComponent<PetNestAuraEffect>();
                 fx.Build(character, template, shiny, chroma ? colorA : null, chroma ? colorB : null);
                 root.SetActive(true);
                 fx.PlayAll();
@@ -183,18 +186,30 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[PetNest] 崽特效创建失败: " + e.Message);
+                // 根还没激活过时 Unity 不会调 OnDestroy：已画好的贴图、材质、网格要手动回收（幂等）
+                if (fx != null) fx.OnDestroy();
                 if (root != null) UnityEngine.Object.Destroy(root);
                 return null;
             }
         }
 
-        /// <summary>回收。幂等；角色随后被销毁时本对象也会跟着走，这里只是不等那一帧。</summary>
+        /// <summary>
+        /// 回收。幂等。召回、倒地、换崽时不再一帧消失：先脱离角色留在原地，停发射、灯淡出、
+        /// 符文环 0.3 秒淡掉，最后一颗粒子走完（至多 1.5 秒）再销毁。看不见的时候直接销毁。
+        /// </summary>
         internal void Dispose()
         {
             if (_disposed) return;
             _disposed = true;
-            enabled = false;
-            Destroy(gameObject);
+            if (!gameObject.activeInHierarchy)
+            {
+                enabled = false;
+                Destroy(gameObject);
+                return;
+            }
+            _releaseFade = 1f;
+            enabled = _haloOuterRenderer != null || _haloInnerRenderer != null;
+            BossRushFxKit.Release(gameObject, 0.3f, 1.5f, true);
         }
 
         #endregion
@@ -683,9 +698,28 @@ namespace BossRush
 
         private void Update()
         {
-            if (_disposed) return;
             float dt = Time.deltaTime;
             if (dt <= 0f) return; // 暂停时整套表现一起停
+            if (_disposed)
+            {
+                // 退场：符文环 0.3 秒淡掉（灯由 BossRushFxKit.Release 挂的淡出组件负责）
+                _releaseFade = Mathf.MoveTowards(_releaseFade, 0f, dt / 0.3f);
+                if (_haloBlock != null)
+                {
+                    if (_haloOuterRenderer != null)
+                    {
+                        _haloBlock.SetVector(_tintPropertyId, Scale(_haloOuterTint, _releaseFade));
+                        _haloOuterRenderer.SetPropertyBlock(_haloBlock);
+                    }
+                    if (_haloInnerRenderer != null)
+                    {
+                        _haloBlock.SetVector(_tintPropertyId, Scale(_haloInnerTint, _releaseFade));
+                        _haloInnerRenderer.SetPropertyBlock(_haloBlock);
+                    }
+                }
+                if (_releaseFade <= 0f) enabled = false;
+                return;
+            }
             _phase += dt;
 
             if (_haloOuter != null) _haloOuter.Rotate(0f, ShinyHaloOuterDegreesPerSecond * dt, 0f, Space.Self);

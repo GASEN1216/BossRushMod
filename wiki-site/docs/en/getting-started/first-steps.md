@@ -47,7 +47,7 @@ Once you've extracted with your first payout, three cheap things start paying ou
   shop at Lv.2 and gives Cold Quench Fluid at Lv.4, for locking good stats; reforging itself is available from the start
 
 ::: tip
-The mailbox and the board are 1000 combined - the two best-value builds in the Mod. The earlier you put them up, the longer they've been accumulating.
+The 500 mailbox is the best-value build in the Mod, and Chapter 1 of the campaign costs nothing to take. The earlier you start, the more piles up.
 :::
 
 ## Advanced Modes
@@ -74,7 +74,7 @@ Press **L** anytime for achievement progress.
 :::
 
 ::: tip
-Chat with Dingdang and Yuori on normal maps to unlock more content. Beyond reforging, Dingdang also does **affix forging** - affixes that change how your gear behaves, like kill explosions, lifesteal on hit, or armor that throws damage back.
+Chat with Dingdang and Yuori on normal maps to unlock more content. Beyond reforging, Dingdang also does **affix forging**: affixes that change how your gear behaves, like kill explosions, lifesteal on hit, or armor that throws damage back.
 :::
 
 ::: tip

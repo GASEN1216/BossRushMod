@@ -7,6 +7,10 @@
 //   - 场景中有坐骑时：调用 CallHorse() 呼唤坐骑到身边
 //   - 包含冷却时间检查（默认3秒）
 //   - 场景切换时自动清理缓存引用
+//
+//   2026-09-23 审美审查 UD-49：吹号角没有声音、坐骑一帧凭空冒出来。现在吹响时给一声官方 UI 确认音（占位，
+//   真号角声要出音频并在 WildHornConfig 里设 UsageUtilities.hasSound，见 D 区分报告），坐骑刷出时脚下扬一团
+//   暖灰烟尘、模型 0.25 秒从 0.85 倍长到原尺寸（WildHornMountArrival）。只在坐骑真的刷出来的那一瞬间生成一次。
 // ============================================================================
 
 using System;
@@ -86,6 +90,8 @@ namespace BossRush
 
                 // 记录使用时间，开始冷却（需求 4.3）
                 lastUseTime = Time.time;
+                // 吹响反馈：官方确认音占位（UD-49）
+                IntegrationUIFeedback.PlaySound(IntegrationUIFeedback.SoundConfirm);
 
                 // 判断坐骑是否已存在
                 if (HasExistingMount(player))
@@ -191,6 +197,9 @@ namespace BossRush
                 {
                     ModBehaviour.DevLog("[WildHorn] 配置关闭狼模型，保持原版马匹外观");
                 }
+
+                // 入场：脚下烟尘 + 模型缩放长出来（狼模型挂在 modelRoot 下，一起缩放）
+                WildHornMountArrival.Play(horse);
 
                 // 显示召唤成功提示（需求 2.4）
                 ShowBubbleHint(player, WildHornConfig.GetSummonSuccessHint());
@@ -428,6 +437,147 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[WildHorn] 狼模型替换失败: " + e.Message);
             }
+        }
+    }
+
+    /// <summary>
+    /// 荒野号角坐骑入场表现（UD-49）：落地烟尘 + 模型 0.25 秒从 0.85 倍 EaseOut 长到原尺寸。
+    /// 挂在坐骑身上，缩放播完即自毁；烟尘是一次性的 30 颗粒子爆发，粒子自然死完后由 stopAction 销毁。
+    /// 世界里的东西随游戏时间走（暂停时停住），不改碰撞与骑乘逻辑：只缩放 modelRoot（视觉子树）。
+    /// </summary>
+    internal sealed class WildHornMountArrival : MonoBehaviour
+    {
+        private const float PopSeconds = 0.25f;
+        private const float PopStartScale = 0.85f;
+        private const int DustCount = 30;
+
+        private Transform model;
+        private Vector3 baseScale = Vector3.one;
+        private float elapsed;
+
+        internal static void Play(CharacterMainControl mount)
+        {
+            if (mount == null)
+            {
+                return;
+            }
+            try
+            {
+                SpawnDust(mount.transform.position);
+                Transform modelRoot = mount.modelRoot;
+                if (modelRoot == null || mount.GetComponent<WildHornMountArrival>() != null)
+                {
+                    return;
+                }
+                WildHornMountArrival arrival = mount.gameObject.AddComponent<WildHornMountArrival>();
+                arrival.model = modelRoot;
+                arrival.baseScale = modelRoot.localScale;
+                modelRoot.localScale = arrival.baseScale * PopStartScale;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[WildHorn] 坐骑入场表现失败: " + e.Message);
+            }
+        }
+
+        private void Update()
+        {
+            if (model == null)
+            {
+                Destroy(this);
+                return;
+            }
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / PopSeconds);
+            model.localScale = baseScale * Mathf.Lerp(PopStartScale, 1f, BossRushUI.EaseOut(t));
+            if (t >= 1f)
+            {
+                Destroy(this);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            // 半途被收掉（坐骑被销毁以外的原因）也要把缩放还原，不留一匹缩水的马。
+            if (model != null)
+            {
+                model.localScale = baseScale;
+            }
+        }
+
+        /// <summary>
+        /// 一团贴地扬起的暖灰烟尘：30 颗、寿命 0.45–0.7 秒、尺寸 0.4–0.8 米，沿地面一圈向外扩散并减速，
+        /// 透明度先升到 0.5 再淡到 0，尺寸 0.6→1.2 倍。材质走共享粒子材质工厂（半透明软圆），取不到就不画。
+        /// </summary>
+        private static void SpawnDust(Vector3 position)
+        {
+            Material material = BossRushFxMaterials.Get(BossRushFxBlend.Alpha);
+            if (material == null)
+            {
+                return;
+            }
+
+            GameObject go = new GameObject("WildHorn_ArrivalDust");
+            go.transform.position = position + Vector3.up * 0.15f;
+            ParticleSystem ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            ParticleSystem.MainModule main = ps.main;
+            main.playOnAwake = false;
+            main.loop = false;
+            main.duration = 0.2f;
+            main.maxParticles = DustCount + 4;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.45f, 0.7f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.8f, 2.0f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.startColor = new ParticleSystem.MinMaxGradient(
+                new Color(0.55f, 0.50f, 0.44f, 1f), new Color(0.44f, 0.40f, 0.35f, 1f));
+            main.gravityModifier = -0.05f;
+            main.stopAction = ParticleSystemStopAction.Destroy;
+
+            ParticleSystem.EmissionModule emission = ps.emission;
+            emission.enabled = true;
+            emission.rateOverTime = 0f;
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)DustCount) });
+
+            // 地面一圈向外扩散：圆形发射面转到水平面
+            ParticleSystem.ShapeModule shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = 0.6f;
+            shape.rotation = new Vector3(90f, 0f, 0f);
+
+            ParticleSystem.LimitVelocityOverLifetimeModule drag = ps.limitVelocityOverLifetime;
+            drag.enabled = true;
+            drag.limit = 0.25f;
+            drag.dampen = 0.2f;
+
+            ParticleSystem.RotationOverLifetimeModule spin = ps.rotationOverLifetime;
+            spin.enabled = true;
+            spin.z = new ParticleSystem.MinMaxCurve(-0.6f, 0.6f);
+
+            ParticleSystem.ColorOverLifetimeModule fade = ps.colorOverLifetime;
+            fade.enabled = true;
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.5f, 0.12f),
+                        new GradientAlphaKey(0.35f, 0.5f), new GradientAlphaKey(0f, 1f) });
+            fade.color = gradient;
+
+            ParticleSystem.SizeOverLifetimeModule grow = ps.sizeOverLifetime;
+            grow.enabled = true;
+            grow.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.6f, 1f, 1.2f));
+
+            ParticleSystemRenderer renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+
+            ps.Play();
         }
     }
 

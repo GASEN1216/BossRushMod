@@ -833,14 +833,16 @@ namespace BossRush
                 }
             }
 
+            // 真模型当外观（审美审查 UC-01 / VA-29）：医疗终端用羽织，补给终端用阿稳（快递员送补给）。
+            // 胶囊只留碰撞体（交互与阻挡）；交互体与服务状态不动。资源缺失时退回旧胶囊并染色。
+            bool nurseTerminal = string.Equals(serviceType, "Nurse", System.StringComparison.Ordinal);
+            GameObject lookPrefab = nurseTerminal
+                ? (LoadNurseAssetBundle() ? nursePrefab : null)
+                : (LoadCourierAssetBundle() ? courierPrefab : null);
             Renderer renderer = terminal.GetComponent<Renderer>();
-            if (renderer != null)
+            if (!ZombieModeServiceTerminalLook.Dress(terminal, lookPrefab, nurseTerminal ? "[ZombieModeNurseTerminal]" : "[ZombieModeSupplyTerminal]") && renderer != null)
             {
-                SetZombieModeRendererColor(
-                    renderer,
-                    string.Equals(serviceType, "Nurse", System.StringComparison.Ordinal)
-                        ? new Color(0.85f, 0.25f, 0.28f, 0.95f)
-                        : new Color(0.25f, 0.65f, 0.35f, 0.95f));
+                SetZombieModeRendererColor(renderer, nurseTerminal ? new Color(0.85f, 0.25f, 0.28f, 0.95f) : new Color(0.25f, 0.65f, 0.35f, 0.95f));
             }
 
             ZombieModeTemporaryNpcInteractable interactable = terminal.GetComponent<ZombieModeTemporaryNpcInteractable>();

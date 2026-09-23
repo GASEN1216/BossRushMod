@@ -17,7 +17,7 @@ namespace BossRush
         public const string DESCRIPTION_CN = "羽织亲手调配的安神滴剂，带着淡淡草药香。使用后可清除大部分负面buff。";
         public const string DESCRIPTION_EN = "A calming tincture blended by Yu Zhi. Use it to clear most negative buffs on you.";
         public const string USE_DESC_CN = "使用：清除大部分负面buff";
-        public const string USE_DESC_EN = "Use: Clear all negative status effects";
+        public const string USE_DESC_EN = "Use: Clear most negative status effects";
         public const float USE_TIME_SECONDS = 2.5f;
 
         public static string GetDisplayName()

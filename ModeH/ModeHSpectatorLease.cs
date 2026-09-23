@@ -59,6 +59,16 @@ namespace BossRush
         private static System.Reflection.FieldInfo _allVisionField;
         private static bool _allVisionResolved;
 
+        /// <summary>
+        /// 反射缓存的统一清理入口（ModeHRuntimeModule.ResetModeHStaticCaches 调用）：Mod 卸载 / 宿主重建后
+        /// 重新解析 FogOfWarManager.allVision，不握着旧程序集的 FieldInfo（2026-09-23 复核 V6-7）。
+        /// </summary>
+        internal static void ResetStaticCaches()
+        {
+            _allVisionField = null;
+            _allVisionResolved = false;
+        }
+
         #endregion
 
         #region 只读

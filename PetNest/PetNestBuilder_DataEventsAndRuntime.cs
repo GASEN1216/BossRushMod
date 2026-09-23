@@ -505,7 +505,9 @@ namespace BossRush
                 if (collider == null) collider = interactTr.gameObject.AddComponent<BoxCollider>();
                 collider.isTrigger = true;
                 collider.center = Vector3.zero;
-                collider.size = new Vector3(2f, 2.5f, 2f);
+                // 模型根上补了实体碰撞体之后（2026-09-23，最宽约 1.8 m），交互 trigger 每边只比它大约 0.1 m：
+                // 官方交互检测球在脚下 +0.5 m、朝瞄准方向偏 0.2 m、半径 0.3 m，背对巢时够不着。每边放宽到约 0.4 m。
+                collider.size = new Vector3(2.6f, 2.5f, 2.6f);
 
                 PetNestInteractable interactable = interactTr.GetComponent<PetNestInteractable>();
                 if (interactable == null)

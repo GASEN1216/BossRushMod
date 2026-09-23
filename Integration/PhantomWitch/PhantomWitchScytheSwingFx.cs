@@ -95,11 +95,23 @@ namespace BossRush
         private const float StartAngle = -75f;
         private const float SweepAngle = FenHuangHalberdConfig.Combo1Angle + 18f;
         private const int MaxPoolSize = 6;
+        /// <summary>
+        /// 刀光转完后再留一段让世界空间里的粒子自然死完（审查 VB-05）：此前 0.22 s 一到就 StopEmittingAndClear +
+        /// SetActive(false)，拖尾和星尘在半空一帧消失。最长粒子寿命约 0.6 s，从 0.15 s 停发射算起留 0.55 s。
+        /// </summary>
+        private const float ParticleTail = 0.55f;
+        /// <summary>挥砍点光：强度 / 半径压到不把地面洗平（审查 VB-09），随刀光平方衰减到 0，不硬切。</summary>
+        private const float SwingLightIntensity = 2.2f;
+        private const float SwingLightMaxRange = 3.5f;
+        /// <summary>刀光烟粒子的基础尺寸（米）：0.10–0.22，按攻击范围 k∈[0.8,1.3] 两端一起缩放（审查 VB-03）。</summary>
+        private const float SmokeStartSizeMin = 0.10f;
+        private const float SmokeStartSizeMax = 0.22f;
+        private const string StardustEmitterName = "StardustAmbient";
 
-        // 核心亮点
-        private static readonly Color ScytheCoreColor = new Color(0.85f, 0.45f, 1f, 0.95f);
-        // 消散尾焰亮紫色
-        private static readonly Color ScytheFadeColor = new Color(0.65f, 0.2f, 0.85f, 0.45f);
+        // 核心亮点：低饱和的银紫（审查 VB-03：此前 (0.85,0.45,1) 高饱和霓虹紫）
+        private static readonly Color ScytheCoreColor = new Color(0.78f, 0.62f, 0.95f, 0.9f);
+        // 消散尾焰：暗灰紫
+        private static readonly Color ScytheFadeColor = new Color(0.45f, 0.30f, 0.60f, 0.4f);
 
         private static readonly Gradient CachedScytheGradient;
 
@@ -131,8 +143,15 @@ namespace BossRush
         private Light[] injectedLights;
         private bool emissionStoppedForCurrentPlay;
         private bool isPlaying;
+        private bool lightEnabledForCurrentPlay = true;
 
         internal static void PlayAt(Vector3 position, Quaternion rotation, float rangeScale)
+        {
+            PlayAt(position, rotation, rangeScale, true);
+        }
+
+        /// <summary>withLight = false：Boss 横扫 / 重斩叠加刀光时用，那边的特效根已有自己的点光（审查 VB-09：一个特效只留一盏灯）。</summary>
+        internal static void PlayAt(Vector3 position, Quaternion rotation, float rangeScale, bool withLight)
         {
             PhantomWitchScytheSwingFx swingFx = Acquire();
             if (swingFx == null || swingFx.gameObject == null)
@@ -143,6 +162,7 @@ namespace BossRush
             swingFx.transform.position = position;
             swingFx.transform.rotation = rotation;
             swingFx.gameObject.SetActive(true);
+            swingFx.lightEnabledForCurrentPlay = withLight;
             swingFx.Initialize(rangeScale);
         }
 
@@ -164,11 +184,10 @@ namespace BossRush
             node.transform.localPosition = Vector3.zero;
 
             BuildSharedSmokeParticles(node);
+            // 烟团只出现在女巫自己的特效根里（瞬移、追踪标记），那边已有受控点光：这里不再加灯（审查 VB-09）。
             AttachSharedSmokeAccents(
                 node,
-                5f,
-                5.5f,
-                Mathf.Max(0.35f, duration),
+                false,
                 Mathf.Max(0.95f, 1.2f * clampedRangeScale),
                 Mathf.Lerp(22f, 35f, Mathf.Clamp01(clampedRangeScale - 0.35f)),
                 Mathf.Max(0.35f, duration));
@@ -207,7 +226,11 @@ namespace BossRush
             RestartParticles(particles);
             TintLights(lights, Mathf.Lerp(1.1f, clampedRangeScale, 0.40f));
 
-            UnityEngine.Object.Destroy(root, Mathf.Max(0.35f, duration));
+            // 审查 VB-05：到点前先淡出、停发射，不再在销毁那一帧整团消失。
+            float lifetime = Mathf.Max(0.35f, duration);
+            PhantomWitchFadeDestroy fade = root.AddComponent<PhantomWitchFadeDestroy>();
+            fade.Configure(lifetime, Mathf.Min(0.25f, lifetime * 0.5f));
+            UnityEngine.Object.Destroy(root, lifetime);
 
             return root;
         }
@@ -264,6 +287,7 @@ namespace BossRush
             noise.strength = 0.1f;
             noise.frequency = 0.45f;
 
+            // 刀光粒子是发光的细屑：共享加色软圆材质（BossRushFxMaterials）。
             PhantomWitchAssetManager.ConfigureSharedParticleRenderer(ps);
             ParticleSystemRenderer renderer = ps.GetComponent<ParticleSystemRenderer>();
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
@@ -271,9 +295,7 @@ namespace BossRush
 
         private static void AttachSharedSmokeAccents(
             GameObject node,
-            float lightIntensity,
-            float lightRange,
-            float pulseDuration,
+            bool addLight,
             float stardustRadius,
             float stardustRate,
             float stardustDuration)
@@ -283,14 +305,17 @@ namespace BossRush
                 return;
             }
 
-            Light light = node.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.intensity = lightIntensity;
-            light.range = lightRange;
-            light.color = ScytheCoreColor;
-
-            PhantomWitchLightPulse pulser = node.AddComponent<PhantomWitchLightPulse>();
-            pulser.Configure(lightIntensity, lightRange, pulseDuration);
+            if (addLight)
+            {
+                // 灯的强度由 Update 按刀光进度衰减（TintLights 设起始值），不再挂一次性的 LightPulse：
+                // 那个组件跑完一次就自毁，池化复用后第二刀起灯就恒亮到回收那一帧硬切。
+                Light light = node.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.intensity = SwingLightIntensity;
+                light.range = SwingLightMaxRange;
+                light.color = ScytheCoreColor;
+                light.shadows = LightShadows.None;
+            }
 
             ParticleSystem stardust = PhantomWitchVfxRedesign.CreateStardustEmitter(
                 node.transform,
@@ -348,6 +373,16 @@ namespace BossRush
             TintParticles(injectedParticles, sizeScale);
             RestartParticles(injectedParticles);
             TintLights(injectedLights, lightScale);
+            if (injectedLights != null)
+            {
+                for (int i = 0; i < injectedLights.Length; i++)
+                {
+                    if (injectedLights[i] != null)
+                    {
+                        injectedLights[i].enabled = lightEnabledForCurrentPlay;
+                    }
+                }
+            }
 
             elapsed = 0f;
             emissionStoppedForCurrentPlay = false;
@@ -359,7 +394,7 @@ namespace BossRush
             // 如果后续可以加载真正的镰刀刀光粒子模型，这里可以直接复制。
             // 当前我们使用代码动态构建一个基础的漂亮拖尾粒子。
             BuildSharedSmokeParticles(node);
-            AttachSharedSmokeAccents(node, 5f, 5.5f, 0.35f, 1.2f, 35f, 0.3f);
+            AttachSharedSmokeAccents(node, true, 1.2f, 35f, 0.3f);
         }
 
         private void Update()
@@ -379,6 +414,19 @@ namespace BossRush
                 trailRoot.localRotation = Quaternion.Euler(0f, currentAngle, 0f);
             }
 
+            if (injectedLights != null)
+            {
+                float lightFade = (1f - t) * (1f - t);
+                for (int i = 0; i < injectedLights.Length; i++)
+                {
+                    Light light = injectedLights[i];
+                    if (light != null)
+                    {
+                        light.intensity = lightEnabledForCurrentPlay ? SwingLightIntensity * lightFade : 0f;
+                    }
+                }
+            }
+
             if (!emissionStoppedForCurrentPlay && injectedParticles != null && t >= 0.7f)
             {
                 emissionStoppedForCurrentPlay = true;
@@ -393,7 +441,8 @@ namespace BossRush
                 }
             }
 
-            if (t >= 1f)
+            // 刀光转完后留 ParticleTail 让世界空间里的拖尾粒子自然死完，再回池。
+            if (elapsed >= Duration + ParticleTail)
             {
                 Recycle();
             }
@@ -406,14 +455,19 @@ namespace BossRush
                 return;
             }
 
+            // 审查 VB-03：此前写 startSizeMultiplier = 2.0 * sizeScale。startSize 是「两常数随机」时它只改上限，
+            // 0.10–0.22 m 的烟被拉成 0.10–2 m 的紫雾团，每一刀、Boss 每次横扫 / 瞬移都盖在人身上。
+            // 现在两端一起按 k 缩放，k 夹在 0.8–1.3；星尘有自己的尺寸与银紫渐变，不在这里改。
+            float k = Mathf.Clamp(sizeScale, 0.8f, 1.3f);
             for (int i = 0; i < particleSystems.Length; i++)
             {
                 ParticleSystem ps = particleSystems[i];
                 if (ps == null) continue;
+                if (ps.gameObject.name == StardustEmitterName) continue;
 
                 var main = ps.main;
                 main.startColor = new ParticleSystem.MinMaxGradient(ScytheCoreColor, ScytheFadeColor);
-                main.startSizeMultiplier = 2.0f * sizeScale;
+                main.startSize = new ParticleSystem.MinMaxCurve(SmokeStartSizeMin * k, SmokeStartSizeMax * k);
 
                 var colorOverLifetime = ps.colorOverLifetime;
                 if (colorOverLifetime.enabled)
@@ -455,8 +509,8 @@ namespace BossRush
                 if (light == null) continue;
 
                 light.color = ScytheCoreColor;
-                light.range = 4f * lightScale;
-                light.intensity = 3.5f;
+                light.range = Mathf.Min(SwingLightMaxRange, 3f * lightScale);
+                light.intensity = SwingLightIntensity;
             }
         }
 

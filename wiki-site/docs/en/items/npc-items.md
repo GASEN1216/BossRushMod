@@ -59,7 +59,7 @@ Clears treatable debuffs such as bleeding, fractures and poison. Herbal fragranc
 Passive lifesaver. 10% proc when HP drops below 50% → **full heal**. Once per scene.
 
 - **Source**: Yuori Lv.8 reward / Stack 1
-- Just keep it in your inventory — no manual use needed
+- Just keep it in your inventory; no manual use needed
 
 ---
 
@@ -75,7 +75,7 @@ Ships everything you're carrying home in one action. Brass token with Awen's duc
 
 ## Awen Loot Sweep Token
 
-Awen sweeps all existing lootboxes nearest-to-farthest. Faction War / Blood Hunt only.
+Awen sweeps all existing lootboxes nearest-to-farthest. Works in standard BossRush, Faction War and Blood Hunt.
 
 - **Source**: Auto-granted per 20 Boss deaths in Mode E/F
 - Stack 1 / Use time 1s / Requires Awen present + lootboxes on field
@@ -86,7 +86,7 @@ Awen sweeps all existing lootboxes nearest-to-farthest. Faction War / Blood Hunt
 
 ## Dingdang's Drawing
 
-A painting he spent days on. Use to view fullscreen. Durability 999 — it's indestructible.
+A painting he spent days on. Use to view fullscreen. Durability 999, so it never wears out.
 
 - **Source**: Dingdang Lv.10 special gift
 
@@ -98,7 +98,7 @@ Gift it back to him = **-300 Affinity**. He will be devastated. Don't.
 
 ## Wild Horn
 
-Ancient horn. Blow it to summon a mount (3s cooldown). Use again to call it over.
+A worn old horn. Blow it to summon a mount (3s cooldown). Blow again to call it over.
 
 - **Source**: Normal Wish Fountain reward pool / Durability 999
 - Wolf model enabled in config → mount becomes a wolf (eats dumplings instead of carrots)

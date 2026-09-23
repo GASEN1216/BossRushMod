@@ -401,22 +401,43 @@ namespace BossRush
             trigger.radius = 0.7f;
             artifact = objectiveRoot.AddComponent<SkyIslandPreludeArtifactInteractable>();
             artifact.Bind(this);
-            CreateInstrumentPiece(PrimitiveType.Cylinder, new Vector3(0f, 0.28f, 0f), new Vector3(0.55f, 0.12f, 0.55f), new Color(0.28f, 0.50f, 0.56f));
-            CreateInstrumentPiece(PrimitiveType.Cube, new Vector3(0f, 0.55f, 0f), new Vector3(0.08f, 0.08f, 0.8f), new Color(0.82f, 0.70f, 0.34f));
-            CreateInstrumentPiece(PrimitiveType.Cube, new Vector3(0f, 0.55f, 0f), new Vector3(0.8f, 0.08f, 0.08f), new Color(0.82f, 0.70f, 0.34f));
+            // 摔在地上、微微歪着的一具黄铜航向仪（2026-09-23 审美审查 UE-12）：暗铜底座 + 亮黄铜外圈 + 旧羊皮纸表盘 +
+            // 红白两截指针 + 顶上的铜帽。旧版是一块青灰圆饼上交叉两根黄方条，在零号区的写实场景里一眼是临时占位。
+            // 仍是程序化的小件（没有新模型之前），但有金属度与光泽，读得出「铜的仪器」。碰撞体一律摘掉，触发器不动。
+            Transform body = new GameObject("Instrument").transform;
+            body.SetParent(objectiveRoot.transform, false);
+            body.localRotation = Quaternion.Euler(8f, 23f, -5f);
+            CreateInstrumentPiece(body, PrimitiveType.Cylinder, new Vector3(0f, 0.2f, 0f), new Vector3(0.62f, 0.03f, 0.62f), InstrumentBronze, 0.6f, 0.35f);
+            CreateInstrumentPiece(body, PrimitiveType.Cylinder, new Vector3(0f, 0.26f, 0f), new Vector3(0.56f, 0.035f, 0.56f), InstrumentBrass, 0.85f, 0.55f);
+            CreateInstrumentPiece(body, PrimitiveType.Cylinder, new Vector3(0f, 0.268f, 0f), new Vector3(0.46f, 0.036f, 0.46f), InstrumentDial, 0f, 0.2f);
+            Transform needle = new GameObject("Needle").transform;
+            needle.SetParent(body, false);
+            needle.localPosition = new Vector3(0f, 0.305f, 0f);
+            needle.localRotation = Quaternion.Euler(0f, 38f, 0f);
+            CreateInstrumentPiece(needle, PrimitiveType.Cube, new Vector3(0f, 0f, 0.1f), new Vector3(0.045f, 0.016f, 0.2f), InstrumentNorth, 0.2f, 0.4f);
+            CreateInstrumentPiece(needle, PrimitiveType.Cube, new Vector3(0f, 0f, -0.1f), new Vector3(0.045f, 0.016f, 0.2f), InstrumentSouth, 0.2f, 0.4f);
+            CreateInstrumentPiece(body, PrimitiveType.Sphere, new Vector3(0f, 0.315f, 0f), new Vector3(0.06f, 0.035f, 0.06f), InstrumentBrass, 0.85f, 0.6f);
             Light signal = objectiveRoot.AddComponent<Light>();
             signal.type = LightType.Point;
             signal.range = 5f;
             signal.intensity = 1.2f;
-            signal.color = new Color(0.38f, 0.84f, 0.90f);
+            // 暖白的光（UE-12）：旧色是 token 之外的一套青色；铜在暖光下才亮得出来。
+            signal.color = new Color(1.0f, 0.86f, 0.62f);
             objectiveRoot.SetActive(true);
         }
 
-        private void CreateInstrumentPiece(PrimitiveType type, Vector3 localPosition, Vector3 localScale, Color color)
+        private static readonly Color InstrumentBronze = new Color(0.36f, 0.26f, 0.16f);
+        private static readonly Color InstrumentBrass = new Color(0.78f, 0.60f, 0.32f);
+        private static readonly Color InstrumentDial = new Color(0.80f, 0.74f, 0.58f);
+        private static readonly Color InstrumentNorth = new Color(0.62f, 0.18f, 0.14f);
+        private static readonly Color InstrumentSouth = new Color(0.86f, 0.84f, 0.78f);
+
+        private static void CreateInstrumentPiece(Transform parent, PrimitiveType type, Vector3 localPosition, Vector3 localScale,
+            Color color, float metallic, float smoothness)
         {
             GameObject piece = GameObject.CreatePrimitive(type);
             piece.name = "InstrumentPiece";
-            piece.transform.SetParent(objectiveRoot.transform, false);
+            piece.transform.SetParent(parent, false);
             piece.transform.localPosition = localPosition;
             piece.transform.localScale = localScale;
             Collider collider = piece.GetComponent<Collider>();
@@ -428,6 +449,9 @@ namespace BossRush
                 renderer.GetPropertyBlock(properties);
                 properties.SetColor("_Color", color);
                 properties.SetColor("_BaseColor", color);
+                // 默认材质是 URP Lit：金属度与光泽走属性块，共享材质不动。
+                properties.SetFloat("_Metallic", metallic);
+                properties.SetFloat("_Smoothness", smoothness);
                 renderer.SetPropertyBlock(properties);
             }
         }
@@ -443,7 +467,8 @@ namespace BossRush
                 mapMarker = SimplePointOfInterest.Create(position, sceneId, ObjectiveNameKey, null, false);
                 if (mapMarker != null)
                 {
-                    mapMarker.Color = new Color(0.35f, 0.90f, 0.95f, 1f);
+                    // 与岛上「当前目标」同一个颜色（UE-12）：旧值是 token 之外的一套青色。
+                    mapMarker.Color = BossRushUIColors.WarningText;
                     mapMarker.ScaleFactor = 1.35f;
                     // 画成一个圈：坠落点 + 守卫要占一小片地方，只画一个点在零号区那张图上很容易被漏看
                     // （owner 2026-09-20 反馈「地图上好像没标出来」）。撤离点那种 3 米触发区不适用，仍然只画点。
@@ -512,7 +537,7 @@ namespace BossRush
                     throw new InvalidOperationException("断风游猎档案装配失败");
                 boss = created;
                 retained = true;
-                Report(L10n.T("风声不对了。看着航向仪的那个——断风游猎·守，醒了。",
+                Report(L10n.T("风声不对了。看着航向仪的那个，断风游猎·守，醒了。",
                     "The wind turns wrong. The one watching the instrument, the Galebreaker Warden, is awake."), false);
             }
             catch (Exception e)

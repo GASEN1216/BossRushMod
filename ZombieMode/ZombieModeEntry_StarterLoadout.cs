@@ -280,6 +280,65 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 开局流派卡与奖励卡的图标（审美审查 UC-02 / UC-05）：取对应候选池里第一件有图标的官方物品的图标，
+        /// 自定义物品直接取 TypeID 的图标。取不到返回 null，界面去掉图标位（不退回汉字或灰方块）。
+        /// 只在建界面时调；候选列表走 GetZombieModeRewardCandidateIds 的缓存。
+        /// </summary>
+        internal Sprite GetZombieModeStarterIcon(ZombieModeStarterLoadout loadout)
+        {
+            return GetZombieModeTagIcon(loadout == ZombieModeStarterLoadout.Melee ? ZombieModeRewardTagMeleeWeapon : ZombieModeRewardTagGun);
+        }
+
+        internal Sprite GetZombieModeRewardIcon(ZombieModeRewardType rewardType)
+        {
+            switch (rewardType)
+            {
+                case ZombieModeRewardType.RandomMeleeWeapon: return GetZombieModeTagIcon(ZombieModeRewardTagMeleeWeapon);
+                case ZombieModeRewardType.RandomGunWithAmmo: return GetZombieModeTagIcon(ZombieModeRewardTagGun);
+                case ZombieModeRewardType.AmmoSupply: return GetZombieModeTagIcon(ZombieModeRewardTagBullet);
+                case ZombieModeRewardType.MedicalSupply: return GetZombieModeTagIcon(ZombieModeRewardTagsMedicMedicalHealing);
+                case ZombieModeRewardType.ArmorOrHelmet: return GetZombieModeTagIcon(ZombieModeRewardTagBodyArmor);
+                case ZombieModeRewardType.PortableSafeZoneDevice: return GetZombieModeTypeIcon(PortableSafeZoneDeviceConfig.TYPE_ID);
+                case ZombieModeRewardType.FortificationPack: return GetZombieModeTypeIcon(ReinforcedRoadblockPackConfig.TYPE_ID);
+                default: return null;
+            }
+        }
+
+        private Sprite GetZombieModeTagIcon(string[] tags)
+        {
+            try
+            {
+                int[] candidates = GetZombieModeRewardCandidateIds(tags, 1, ZombieModeTuning.StarterMaxQuality);
+                for (int i = 0; candidates != null && i < candidates.Length; i++)
+                {
+                    Sprite icon = GetZombieModeTypeIcon(candidates[i]);
+                    if (icon != null)
+                    {
+                        return icon;
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] 取界面图标失败: " + e.Message);
+            }
+            return null;
+        }
+
+        private static Sprite GetZombieModeTypeIcon(int typeId)
+        {
+            try
+            {
+                ItemMetaData meta = ItemAssetsCollection.GetMetaData(typeId);
+                return meta.id == typeId ? meta.icon : null;
+            }
+            catch (System.Exception)
+            {
+                return null;
+            }
+        }
+
         private bool TryGiveRandomItemByTags(string[] requiredTags, int minQuality, int maxQuality)
         {
             int typeId = FindRandomItemTypeByTags(requiredTags, minQuality, maxQuality);
@@ -301,30 +360,14 @@ namespace BossRush
 
     public sealed class ZombieModeStarterChoiceView : MonoBehaviour
     {
-        // ==================== 配色方案（与 CashInvestmentView 统一） ====================
-        private static readonly Color BackdropColor = new Color(0f, 0f, 0f, 0.72f);
-        private static readonly Color PanelOuterColor = new Color(0.12f, 0.16f, 0.24f, 0.98f);
-        private static readonly Color PanelBorderColor = new Color(0.22f, 0.30f, 0.44f, 0.45f);
-        private static readonly Color PanelInnerColor = new Color(0.10f, 0.12f, 0.16f, 0.98f);
-        private static readonly Color HeaderColor = new Color(0.14f, 0.20f, 0.32f, 1.00f);
-        private static readonly Color AccentLineColor = new Color(0.35f, 0.55f, 0.85f, 0.70f);
-        private static readonly Color SubtitleColor = new Color(0.62f, 0.70f, 0.82f, 0.90f);
-
-        // 近战卡片：暗红-铜色调
-        private static readonly Color MeleeCardColor = new Color(0.14f, 0.10f, 0.10f, 0.98f);
-        private static readonly Color MeleeAccentColor = new Color(0.85f, 0.50f, 0.25f, 0.95f);
-        private static readonly Color MeleeBtnColor = new Color(0.52f, 0.30f, 0.14f, 1.00f);
-        private static readonly Color MeleeBtnHoverColor = new Color(0.68f, 0.40f, 0.20f, 1.00f);
-
-        // 枪手卡片：暗蓝-钢色调
-        private static readonly Color GunnerCardColor = new Color(0.10f, 0.10f, 0.14f, 0.98f);
-        private static readonly Color GunnerAccentColor = new Color(0.35f, 0.65f, 0.92f, 0.95f);
-        private static readonly Color GunnerBtnColor = new Color(0.16f, 0.36f, 0.56f, 1.00f);
-        private static readonly Color GunnerBtnHoverColor = new Color(0.22f, 0.48f, 0.72f, 1.00f);
-
+        // 2026-09-23 审美审查（UC-05 / UC-07 / UC-11）：旧版是手搓的三层直角方框 + 第二套遮罩色、图标位写着「刀」「枪」两个汉字，
+        // 按钮手写 ColorBlock 绕过共享三态（悬停白字对比跌破 4.5:1）。现在与本模式其它模态同一套：
+        // CreateModalSurface（圆角底图、描边、投影、遮罩暗角淡入）+ CreateCard + 官方物品图标，按钮走共享次级样式。
+        // 两个流派是并列的二选一，不设主按钮；卡片强调条按流派分色（近战暖铜 WarningText，枪械钢蓝 RarityRare）。
         private int runId;
         private ModBehaviour owner;
         private ZombieModeUIHelper.ModalInputLease inputLease;
+        private bool chosen;
 
         public void Initialize(int newRunId, ModBehaviour newOwner)
         {
@@ -343,180 +386,96 @@ namespace BossRush
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
             gameObject.AddComponent<GraphicRaycaster>();
 
-            // ── 全屏遮罩 ──
-            GameObject backdrop = ZombieModeUIHelper.CreateRect(
-                "Backdrop", transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, Vector2.zero, Vector2.zero);
-            Image backdropImage = backdrop.AddComponent<Image>();
-            backdropImage.color = BackdropColor;
-            backdropImage.raycastTarget = true;
+            GameObject panel = ZombieModeUIHelper.CreateModalSurface(
+                "Panel", transform, new Vector2(700f, 452f), BossRushUIColors.Accent);
 
-            // ── 外框（深靛色） ──
-            GameObject outer = ZombieModeUIHelper.CreateRect("PanelOuter", transform,
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(700f, 420f), new Vector2(0.5f, 0.5f));
-            Image outerImage = outer.AddComponent<Image>();
-            outerImage.color = PanelOuterColor;
-
-            // ── 亮边层 ──
-            GameObject borderGlow = ZombieModeUIHelper.CreateRect("BorderGlow", outer.transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, new Vector2(-3f, -3f), new Vector2(0.5f, 0.5f));
-            Image borderImg = borderGlow.AddComponent<Image>();
-            borderImg.color = PanelBorderColor;
-
-            // ── 主面板 ──
-            GameObject panel = ZombieModeUIHelper.CreateRect("Panel", borderGlow.transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, new Vector2(-3f, -3f), new Vector2(0.5f, 0.5f));
-            Image panelImage = panel.AddComponent<Image>();
-            panelImage.color = PanelInnerColor;
-
-            // ── 标题栏 ──
-            float yPos = 0f;
-            float headerH = 64f;
-            GameObject header = ZombieModeUIHelper.CreateRect("Header", panel.transform,
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -(headerH * 0.5f)), new Vector2(0f, headerH), new Vector2(0.5f, 0.5f));
-            Image headerImage = header.AddComponent<Image>();
-            headerImage.color = HeaderColor;
-
-            ZombieModeUIHelper.CreateText("Title", header.transform,
-                L10n.T("BossRush_ZombieMode_Starter_Title"), 26,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, Vector2.zero,
-                TextAlignmentOptions.Center, Color.white);
-            yPos += headerH;
-
-            // ── 标题装饰线 ──
+            TextMeshProUGUI title = ZombieModeUIHelper.CreateText("Title", panel.transform,
+                L10n.T("BossRush_ZombieMode_Starter_Title"), 28,
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -34f), new Vector2(-48f, 44f),
+                TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
+            title.fontStyle = FontStyles.Bold;
             ZombieModeUIHelper.CreateSeparator("AccentLine", panel.transform,
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -yPos), 2f, AccentLineColor);
-            yPos += 6f;
-
-            // ── 副标题 ──
-            float subtitleH = 36f;
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -64f), 2f,
+                new Color(BossRushUIColors.Accent.r, BossRushUIColors.Accent.g, BossRushUIColors.Accent.b, 0.6f));
             ZombieModeUIHelper.CreateText("Subtitle", panel.transform,
                 L10n.T("BossRush_ZombieMode_Starter_Subtitle"), 15,
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -(yPos + subtitleH * 0.5f)), new Vector2(-40f, subtitleH),
-                TextAlignmentOptions.Center, SubtitleColor);
-            yPos += subtitleH + 10f;
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -90f), new Vector2(-48f, 30f),
+                TextAlignmentOptions.Center, BossRushUIColors.TextSecondary);
 
-            // ── 卡片区域 ──
-            float cardW = 290f;
-            float cardH = 230f;
-            float cardGap = 24f;
-            float cardsStartX = -(cardW + cardGap * 0.5f) * 0.5f;
-
-            // 近战卡片
-            CreateLoadoutCard(panel.transform, "MeleeCard",
-                new Vector2(-(cardW * 0.5f + cardGap * 0.5f), -(yPos + cardH * 0.5f)),
-                new Vector2(cardW, cardH),
+            CreateLoadoutCard(panel.transform, "MeleeCard", new Vector2(-157f, -42f),
                 L10n.T("BossRush_ZombieMode_Starter_Melee"),
                 L10n.T("BossRush_ZombieMode_Starter_Melee_Desc"),
-                "刀",
-                MeleeCardColor, MeleeAccentColor, MeleeBtnColor, MeleeBtnHoverColor,
-                ZombieModeStarterLoadout.Melee);
-
-            // 枪手卡片
-            CreateLoadoutCard(panel.transform, "GunnerCard",
-                new Vector2(cardW * 0.5f + cardGap * 0.5f, -(yPos + cardH * 0.5f)),
-                new Vector2(cardW, cardH),
+                BossRushUIColors.WarningText, ZombieModeStarterLoadout.Melee, 0);
+            CreateLoadoutCard(panel.transform, "GunnerCard", new Vector2(157f, -42f),
                 L10n.T("BossRush_ZombieMode_Starter_Gunner"),
                 L10n.T("BossRush_ZombieMode_Starter_Gunner_Desc"),
-                "枪",
-                GunnerCardColor, GunnerAccentColor, GunnerBtnColor, GunnerBtnHoverColor,
-                ZombieModeStarterLoadout.Gunner);
+                BossRushUIColors.RarityRare, ZombieModeStarterLoadout.Gunner, 1);
+            BossRushUI.PlayOpenAnimation(panel);
         }
 
         private void CreateLoadoutCard(
-            Transform parent, string name, Vector2 position, Vector2 size,
-            string title, string description, string iconText,
-            Color cardBg, Color accentColor, Color btnColor, Color btnHoverColor,
-            ZombieModeStarterLoadout loadout)
+            Transform parent, string name, Vector2 position,
+            string title, string description, Color accentColor,
+            ZombieModeStarterLoadout loadout, int index)
         {
-            // ── 卡片底板 ──
-            GameObject card = ZombieModeUIHelper.CreateRect(name, parent,
-                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                position, size, new Vector2(0.5f, 0.5f));
-            Image cardImage = card.AddComponent<Image>();
-            cardImage.color = cardBg;
+            Vector2 size = new Vector2(290f, 276f);
+            GameObject card = BossRush.BossRushUI.CreateCard(name, parent, position, size, BossRushUIColors.SurfaceRaised, accentColor);
 
-            // ── 顶部高亮条 ──
-            GameObject topAccent = ZombieModeUIHelper.CreateRect("TopAccent", card.transform,
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -2f), new Vector2(0f, 4f), new Vector2(0.5f, 1f));
-            Image topAccentImg = topAccent.AddComponent<Image>();
-            topAccentImg.color = accentColor;
-            topAccentImg.raycastTarget = false;
+            // 图标：该流派候选池里的官方武器图标；取不到就整块去掉，标题上移（不退回汉字）。
+            float y = 18f;
+            Sprite icon = owner != null ? owner.GetZombieModeStarterIcon(loadout) : null;
+            if (icon != null)
+            {
+                GameObject iconObject = ZombieModeUIHelper.CreateRect("Icon", card.transform,
+                    new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -y), new Vector2(120f, 72f), new Vector2(0.5f, 1f));
+                Image iconImage = iconObject.AddComponent<Image>();
+                iconImage.sprite = icon;
+                iconImage.preserveAspect = true;
+                iconImage.raycastTarget = false;
+                y += 72f + 8f;
+            }
 
-            // ── 图标区域（使用文字模拟） ──
-            float iconAreaH = 52f;
-            ZombieModeUIHelper.CreateText("Icon", card.transform, iconText, 32,
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -(14f + iconAreaH * 0.5f)), new Vector2(0f, iconAreaH),
-                TextAlignmentOptions.Center, accentColor);
-
-            // ── 名称 ──
-            float titleY = 14f + iconAreaH + 4f;
-            float titleH = 34f;
-            ZombieModeUIHelper.CreateText("Title", card.transform, title, 22,
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -(titleY + titleH * 0.5f)), new Vector2(-16f, titleH),
-                TextAlignmentOptions.Center, Color.white);
-
-            // ── 分隔线 ──
-            float sepY = titleY + titleH + 6f;
+            TextMeshProUGUI titleText = ZombieModeUIHelper.CreateText("Title", card.transform, title, 22,
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -(y + 17f)), new Vector2(-32f, 34f),
+                TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
+            titleText.fontStyle = FontStyles.Bold;
+            y += 34f + 6f;
             ZombieModeUIHelper.CreateSeparator("Sep", card.transform,
-                new Vector2(0.15f, 1f), new Vector2(0.85f, 1f),
-                new Vector2(0f, -sepY), 1f, new Color(accentColor.r, accentColor.g, accentColor.b, 0.35f));
+                new Vector2(0.15f, 1f), new Vector2(0.85f, 1f), new Vector2(0f, -y), 1f, BossRushUIColors.Divider);
+            y += 8f;
 
-            // ── 说明文字 ──
-            float descY = sepY + 8f;
-            float descH = 56f;
-            ZombieModeUIHelper.CreateText("Desc", card.transform, description, 13,
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -(descY + descH * 0.5f)), new Vector2(-24f, descH),
-                TextAlignmentOptions.Center, new Color(0.70f, 0.74f, 0.80f, 0.92f));
+            float buttonHeight = 42f;
+            float descHeight = size.y - y - buttonHeight - 30f;
+            ZombieModeUIHelper.CreateText("Desc", card.transform, description, 15,
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(2f, -(y + descHeight * 0.5f)), new Vector2(-40f, descHeight),
+                TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
 
-            // ── 选择按钮 ──
-            float btnW = 200f;
-            float btnH = 42f;
-            float btnY = size.y - 18f - btnH * 0.5f;
             ZombieModeStarterLoadout capturedLoadout = loadout;
-
             Button button = ZombieModeUIHelper.CreateButton(
                 "SelectBtn", card.transform,
                 L10n.T("BossRush_ZombieMode_Starter_Select"),
-                new Vector2(0.5f, 1f),
-                new Vector2(0f, -btnY),
-                new Vector2(btnW, btnH),
-                btnColor, 17,
-                new Vector2(btnW - 12f, btnH - 6f),
+                new Vector2(0.5f, 0f),
+                new Vector2(0f, 16f + buttonHeight * 0.5f),
+                new Vector2(200f, buttonHeight),
+                BossRushUIColors.SurfaceRaised, 17,
+                new Vector2(188f, 36f),
                 delegate
                 {
+                    if (chosen)
+                    {
+                        return;
+                    }
+                    chosen = true;
                     RestoreInputState();
                     if (owner != null)
                     {
                         owner.SelectZombieModeStarterLoadout(runId, capturedLoadout);
                     }
-                    Destroy(gameObject);
+                    BossRushUIKit.PlayCloseAndDestroy(gameObject);
                 },
                 true);
-
-            // 设置按钮悬停色
-            Image btnImage = button.GetComponent<Image>();
-            ColorBlock colors = button.colors;
-            colors.normalColor = btnColor;
-            colors.highlightedColor = btnHoverColor;
-            colors.pressedColor = btnColor * 0.85f;
-            colors.selectedColor = btnHoverColor;
-            colors.disabledColor = btnColor * 0.6f;
-            colors.colorMultiplier = 1f;
-            button.colors = colors;
-            button.targetGraphic = btnImage;
+            BossRushUIKit.StyleSecondaryButton(button);
+            BossRushUIEntranceAnimation.Play(card, 0.06f + index * 0.06f, 0.24f, 14f);
         }
 
         private void ClaimInputAndPause()

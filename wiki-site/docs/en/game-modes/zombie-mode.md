@@ -2,7 +2,7 @@
 
 ## What Is It?
 
-A Roguelite survival mode in BossRush — you're dropped into a map with nothing, facing endless waves of zombies. Clear each wave, pick a reward to grow stronger, but enemies scale up too. Survive long enough to extract and convert your Purification Points into cash; die and you lose everything.
+A Roguelite survival mode in BossRush: you're dropped into a map with nothing, and the zombies keep coming. Clear each wave, pick a reward to grow stronger, but enemies scale up too. Survive long enough to extract and convert your Purification Points into cash; die and you lose everything.
 
 ## Entry Requirements
 
@@ -380,14 +380,14 @@ Normal wave packs contain 1 of each; Boss node packs contain 2 of each.
 
 ## Tips
 
-- **Investing cash** is a solid strategy — starting Purification Points let you buy gear after wave 1
+- **Investing cash** pays off: starting Purification Points let you buy gear after wave 1
 - **Melee loadout** suits aggressive playstyles with more healing; **Gunner loadout** suits kiting with abundant ammo
-- First 5 waves are your buildup phase — use the safe zone to rest and shop
-- Always consider extracting after Boss Waves — it gets harder, but points also increase
-- Watch your pollution level — high-pollution elites are terrifying (3 affixes + enhanced multipliers)
-- Shielder Boss is the most annoying — group shield makes all zombies tanky, prioritize killing it
-- Hunter Boss frenzies at low HP — keep enough health to survive the dash
-- Don't fight Splitter Boss in tight spaces — split zombies will block your escape
+- The first 5 waves are your buildup phase. Use the safe zone to rest and shop
+- Always consider extracting after Boss Waves. It gets harder, but points also increase
+- Watch your pollution level. High-pollution elites are nasty (3 affixes + enhanced multipliers)
+- Shielder Boss is the most annoying: its group shield makes every zombie tanky, so kill it first
+- Hunter Boss frenzies at low HP. Keep enough health to survive the dash
+- Don't fight Splitter Boss in tight spaces; split zombies will block your escape
 - Use the Zombie Tide Beacon to skip preparation when you're well-equipped
-- Projectile mods stack (most cap at 3) — Penetration + Burn is a universal combo
-- Lifesteal trigger is the best sustain option — grab it early
+- Projectile mods stack (most cap at 3). Penetration + Burn works with almost anything
+- Lifesteal trigger is the best sustain option. Grab it early

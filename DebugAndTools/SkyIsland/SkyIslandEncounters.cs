@@ -283,12 +283,12 @@ namespace BossRush
             }
             if (Vector3.Distance(player.transform.position, encounter.Marker.position) > ChallengeRange)
             {
-                reason = L10n.T("挑战地点就在这座岛上：走近一些再来。", "The challenge site is on this isle — come closer first.");
+                reason = L10n.T("挑战地点就在这座岛上：走近一些再来。", "The challenge site is on this isle. Get closer first.");
                 return false;
             }
             if (Time.time < encounter.RetryAt || AnySpawning() || CountActiveActors() + encounter.Count > 12)
             {
-                reason = L10n.T("附近还在交战：等这一阵打完再来挑战。", "There is still fighting nearby — finish it before you start a challenge.");
+                reason = L10n.T("附近还在交战：等这一阵打完再来挑战。", "There's still fighting nearby. Finish it before starting a challenge.");
                 return false;
             }
             return true;

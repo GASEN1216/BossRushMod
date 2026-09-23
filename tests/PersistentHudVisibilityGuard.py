@@ -41,7 +41,7 @@ from cs_source_util import clean_source  # noqa: E402
 
 OFFICIAL = "BossRushUI.IsOfficialHudHidden()"
 PAUSED = "BossRushUI.IsGamePaused()"
-HUD_LAYERS = ("WorldOverlay", "ModeFBountyRadar", "ModeGHud", "ModeHHud", "PetNestCompanionHud",
+HUD_LAYERS = ("ScreenAmbience", "WorldOverlay", "ModeFBountyRadar", "ModeGHud", "ModeHHud", "PetNestCompanionHud",
               "Hud", "HudOverlay", "ZombieHud")
 LAYER_PATTERN = re.compile(r"\bBossRushUILayers\.(?:" + "|".join(HUD_LAYERS) + r")\b")
 ANY_LAYER_PATTERN = re.compile(r"\bBossRushUILayers\.\w+\b")
@@ -67,7 +67,7 @@ PERSISTENT = (
      "_vignette.enabled = shown;",
      ("call", "RandomEvents/RandomEventDirector.cs", "evt.OnTick(ctx, dt);",
       "private void TickEventActive(float dt)", ["if (!_activeTickFaulted)", "try"], "", 1),
-     "血月全屏红罩"),
+     "血月暗角（ScreenAmbience，官方 HUD 之下）"),
     ("PetNest/PetNestCompanionHudView.cs", None, "private void Update()",
      "_canvas.enabled = visible;", ("unity", r"class PetNestCompanionHudView\s*:\s*MonoBehaviour"),
      "伴宠状态条"),
@@ -81,6 +81,12 @@ PERSISTENT = (
      ("call", "ModeG/ModeGEntry.cs", "modeGHUD.Update(deltaTime);",
       "private void UpdateModeG(float deltaTime)", ["try"], "if (modeGHUD != null)", 1),
      "Mode G 状态文本"),
+    # 2026-09-23 审美审查 UB-06：取代每 15 秒一条的阶段横幅的常驻状态卡（左上，Hud 层）
+    ("ModeF/ModeFStatusHud.cs", None, "internal static void Tick(ModeFState state, float maxCharge)",
+     "_canvas.enabled = visible;",
+     ("call", "ModeF/ModeFPhases.cs", "ModeFStatusHud.Tick(modeFState, MODEF_BLOODFIRE_MAX_CHARGE);",
+      "private void TickModeF(float deltaTime)", ["try"], "", 2),
+     "Mode F 状态卡"),
     ("ModeF/ModeFUI_BountyRadarAndHealthBars.cs", None, "private bool IsModeFBountyRadarSuppressedByOverlay()",
      "return true;",
      ("call", "ModeF/ModeFUI_BountyRadarAndHealthBars.cs", "if (IsModeFBountyRadarSuppressedByOverlay())",
@@ -117,6 +123,9 @@ EXCLUDED = {
         "Dev 专用自建试验场的状态行：只在 Dev 构建出现，本轮只登记不改（见报告第三节待办）",
     "ModeF/ModeFUI.cs":
         "只定义雷达画布层级常量；画布与显隐在 ModeFUI_BountyRadarAndHealthBars.cs（已在常驻清单）",
+    "Integration/Affinity/AffinityUIManager.cs":
+        "好感变化浮字（HudOverlay）：好感事件触发、约 1.2 秒后自毁的一次性浮字，不是常驻 HUD；"
+        "浮字每帧仍跟随 IsOfficialHudHidden 隐藏、IsGamePaused 停推进（AffinityFloatText.Update）",
 }
 
 # 只引用非 HUD 层级（Panel / Modal / Toast / 过场……）的文件：模态、玩家主动打开的面板或一次性演出，
@@ -146,7 +155,8 @@ MODAL = {
     "ZombieMode/ZombieModeCashInvestmentView.cs": "丧尸模式投资面板（ZombieModalInput）：占模态输入",
     "ZombieMode/ZombieModeEntry_StarterLoadout.cs": "丧尸模式开局配装（ZombieModal）",
     "ZombieMode/ZombieModeExtractionController.cs": "丧尸模式撤离确认（ZombieModal）",
-    "ZombieMode/ZombieModeRewards.cs": "丧尸模式奖励与护士服务面板（ZombieModal / ZombieService）",
+    "ZombieMode/ZombieModeRewardSelectionView.cs": "丧尸模式奖励选择面板（ZombieModal）：每波结束的必答模态",
+    "ZombieMode/ZombieModeTemporaryNpcServiceView.cs": "丧尸模式补给 / 医疗终端服务面板（ZombieService）：交互打开",
 }
 
 # 写了 OnGUI 的生产文件。IMGUI 画在所有 uGUI 画布之上，常驻内容走这里同样会压住官方界面。

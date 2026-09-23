@@ -68,6 +68,7 @@ namespace UnityEngine
         internal Vector2 anchorMin, anchorMax, pivot, sizeDelta, anchoredPosition;
     }
     internal class Canvas : Component { }
+    internal class CanvasGroup : Component { internal float alpha = 1f; }
     internal class Sprite : Object { internal Rect rect = new Rect { width = 1024, height = 288 }; }
     internal struct Rect { internal float width, height; }
     internal struct Vector2
@@ -131,7 +132,8 @@ namespace UnityEngine.UI
     internal class Image : UnityEngine.Component
     {
         internal UnityEngine.Color color;
-        internal bool raycastTarget;
+        internal bool raycastTarget, preserveAspect;
+        internal UnityEngine.Sprite sprite;
         internal void CrossFadeColor(UnityEngine.Color value, float duration, bool ignoreTimeScale, bool useAlpha) { color = value; }
     }
     internal struct ColorBlock { internal UnityEngine.Color normalColor; }
@@ -173,6 +175,7 @@ namespace TMPro
         internal string text { get { return value; } set { this.value = value; TextWrites++; } }
         internal float fontSize;
         internal bool enableAutoSizing, enableWordWrapping, raycastTarget;
+        internal float lineSpacing;
         internal UnityEngine.Color color;
         internal TextAlignmentOptions alignment;
         internal TextOverflowModes overflowMode;
@@ -229,13 +232,25 @@ namespace BossRush
     internal static class BossRushUIColors
     {
         internal static Color TextPrimary = Color.white, SurfaceRaised = new Color(.1f, .1f, .1f), Surface = new Color(.05f, .05f, .05f),
-            Stroke = Color.white, Accent = Color.white, Divider = Color.white, TextSecondary = Color.white;
+            Stroke = Color.white, Accent = Color.white, Divider = Color.white, TextSecondary = Color.white,
+            DangerText = new Color(1f, .61f, .59f);
     }
     internal static class BossRushUI
     {
         internal static int Canvases, Opens;
         internal static Canvas CreateCanvasRoot(string name, int layer, bool events) { Canvases++; return new GameObject(name).AddComponent<Canvas>(); }
-        internal static void CreateBackdrop(Transform t) { }
+        internal static int Backdrops;
+        internal static UnityEngine.UI.Image LastBackdrop;
+        internal static UnityEngine.UI.Image CreateBackdrop(Transform t)
+        {
+            Backdrops++;
+            var image = new GameObject("Backdrop").AddComponent<UnityEngine.UI.Image>();
+            LastBackdrop = image;
+            // 共享遮罩自带淡入：替身照样挂一个入场组件，面板重开时要把它当帧落定。
+            image.gameObject.AddComponent<CanvasGroup>().alpha = 0f;
+            image.gameObject.AddComponent<BossRushUIEntranceAnimation>();
+            return image;
+        }
         internal static void ApplyGameFont(TMPro.TextMeshProUGUI t) { }
         internal static float MeasureTextHeight(TMPro.TextMeshProUGUI text, float width, float minimum)
         { return Math.Max(minimum, ((text.text ?? "").Length / 35 + 1) * 30); }
@@ -259,7 +274,19 @@ namespace BossRush
         internal static void ApplyButtonColors(UnityEngine.UI.Button b, Color normal, Color hover, Color disabled)
         { b.colors = new UnityEngine.UI.ColorBlock { normalColor = normal }; }
     }
-    internal static class BossRushUIEntranceAnimation { internal static void Play(GameObject go, float delay, float seconds, float rise) { } }
+    internal sealed class BossRushUIEntranceAnimation : Component
+    {
+        internal bool enabled = true;
+        internal static int Plays;
+        internal static void Play(GameObject go, float delay, float seconds, float rise) { Plays++; }
+    }
+    internal static class BossRushUIKit
+    {
+        internal static int Closes;
+        internal static GameObject LastClosed;
+        internal static void PlayCloseAndDestroy(GameObject root, float seconds = 0.12f)
+        { Closes++; LastClosed = root; UnityEngine.Object.Destroy(root); }
+    }
     internal static class SkyIslandUiArt { internal static Sprite GetPanelBackground(Sprite banner) { return banner; } }
     internal static class SkyIslandNoteBridge { internal static int Unlocks; internal static void Unlock(string key) { Unlocks++; } }
     internal static class ModBehaviour { internal static void DevLog(string text) { } }

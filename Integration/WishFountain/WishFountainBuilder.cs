@@ -76,12 +76,6 @@ namespace BossRush
         /// <summary>从 AssetBundle 加载的模型</summary>
         private static GameObject starwishModelPrefab = null;
 
-        /// <summary>布满了灰尘的星愿许愿台粒子共享材质</summary>
-        private static Material starwishParticleMaterial = null;
-
-        /// <summary>布满了灰尘的星愿许愿台粒子共享纹理</summary>
-        private static Texture2D starwishParticleTexture = null;
-
         /// <summary>场景内恢复交互点的协程句柄</summary>
         private Coroutine starwishRestoreCoroutine = null;
 
@@ -91,7 +85,6 @@ namespace BossRush
         /// <summary>已处理建筑缓存对应的场景句柄</summary>
         private int preparedStarwishSceneHandle = int.MinValue;
 
-        private static readonly Color StarwishParticleTint = new Color(0.76f, 0.93f, 1f, 0.96f);
         private static readonly Color StardustIceCoreColor = new Color(0.62f, 0.86f, 1f, 0.9f);
         private static readonly Color StardustIceFadeColor = new Color(0.82f, 0.96f, 1f, 0.66f);
         private static readonly Color TwinkleIceCoreColor = new Color(0.88f, 0.97f, 1f, 0.98f);
@@ -399,74 +392,23 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 创建占位模型（蓝紫色圆柱 + 金色小球 + 粒子效果）
+        /// 创建占位模型（蓝紫色圆柱 + 金色小球 + 粒子效果）。只在缺 bundle 时出现。
+        /// 上色走官方角色着色器（SodaCharacter 的 _Tint，与基地建筑同一条路），有明暗、吃基地灯光；
+        /// 旧版的 Unlit/Color 在游戏里找不到，退到 Standard 在 URP 下画不出来（VA-15）。
         /// </summary>
         private void CreateStarwishPlaceholderModel(GameObject graphicsContainer)
         {
             try
             {
-                // 获取 shader
-                Shader shader = Shader.Find("Unlit/Color");
-                if (shader == null) shader = Shader.Find("Standard");
+                CreateStarwishPlaceholderPart(graphicsContainer, PrimitiveType.Cylinder, "WishBottle",
+                    new Vector3(0f, 1.2f, 0f), new Vector3(0.8f, 1.2f, 0.8f), new Color(0.36f, 0.3f, 0.62f));
+                GameObject star = CreateStarwishPlaceholderPart(graphicsContainer, PrimitiveType.Sphere, "WishStar",
+                    new Vector3(0f, 2.7f, 0f), new Vector3(0.35f, 0.35f, 0.35f), new Color(0.95f, 0.8f, 0.42f));
+                star.AddComponent<StarwishRotator>();   // 星星缓慢旋转
+                CreateStarwishPlaceholderPart(graphicsContainer, PrimitiveType.Cylinder, "BasePlate",
+                    new Vector3(0f, 0.05f, 0f), new Vector3(1.2f, 0.1f, 1.2f), new Color(0.3f, 0.27f, 0.36f));
 
-                // 底座圆柱
-                GameObject bottle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                bottle.name = "WishBottle";
-                bottle.transform.SetParent(graphicsContainer.transform, false);
-                bottle.transform.localScale = new Vector3(0.8f, 1.2f, 0.8f);
-                bottle.transform.localPosition = new Vector3(0f, 1.2f, 0f);
-
-                Renderer bottleRenderer = bottle.GetComponent<Renderer>();
-                if (bottleRenderer != null && shader != null)
-                {
-                    bottleRenderer.material = new Material(shader);
-                    // 深蓝紫色，半透明感
-                    bottleRenderer.material.color = new Color(0.3f, 0.2f, 0.7f, 1f);
-                }
-
-                // 移除碰撞体（由 Building 自动管理）
-                Collider bottleCol = bottle.GetComponent<Collider>();
-                if (bottleCol != null) UnityEngine.Object.Destroy(bottleCol);
-
-                // 顶部星星（金色小球）
-                GameObject star = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                star.name = "WishStar";
-                star.transform.SetParent(graphicsContainer.transform, false);
-                star.transform.localScale = new Vector3(0.35f, 0.35f, 0.35f);
-                star.transform.localPosition = new Vector3(0f, 2.7f, 0f);
-
-                Renderer starRenderer = star.GetComponent<Renderer>();
-                if (starRenderer != null && shader != null)
-                {
-                    starRenderer.material = new Material(shader);
-                    // 金色
-                    starRenderer.material.color = new Color(1f, 0.85f, 0.3f, 1f);
-                }
-
-                Collider starCol = star.GetComponent<Collider>();
-                if (starCol != null) UnityEngine.Object.Destroy(starCol);
-
-                // 添加旋转动画（星星缓慢旋转）
-                var rotator = star.AddComponent<StarwishRotator>();
-
-                // 底座平台
-                GameObject basePlate = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                basePlate.name = "BasePlate";
-                basePlate.transform.SetParent(graphicsContainer.transform, false);
-                basePlate.transform.localScale = new Vector3(1.2f, 0.1f, 1.2f);
-                basePlate.transform.localPosition = new Vector3(0f, 0.05f, 0f);
-
-                Renderer baseRenderer = basePlate.GetComponent<Renderer>();
-                if (baseRenderer != null && shader != null)
-                {
-                    baseRenderer.material = new Material(shader);
-                    baseRenderer.material.color = new Color(0.25f, 0.2f, 0.35f, 1f);
-                }
-
-                Collider baseCol = basePlate.GetComponent<Collider>();
-                if (baseCol != null) UnityEngine.Object.Destroy(baseCol);
-
-                // 粒子效果：星尘上升
+                // 碰撞统一按渲染包围盒补；粒子效果：星尘上升 + 星芒闪烁
                 AddStarwishGraphicsCollider(graphicsContainer, CollectStarwishRenderableComponents(graphicsContainer));
                 CreateStardustParticles(graphicsContainer);
                 CreateStarTwinkleParticles(graphicsContainer);
@@ -477,6 +419,25 @@ namespace BossRush
             {
                 DevLog("[WishFountain] 占位模型创建异常: " + e.Message);
             }
+        }
+
+        private GameObject CreateStarwishPlaceholderPart(GameObject parent, PrimitiveType type, string name,
+            Vector3 localPosition, Vector3 localScale, Color tint)
+        {
+            GameObject part = GameObject.CreatePrimitive(type);
+            part.name = name;
+            part.transform.SetParent(parent.transform, false);
+            part.transform.localScale = localScale;
+            part.transform.localPosition = localPosition;
+
+            Renderer renderer = part.GetComponent<Renderer>();
+            Material material = BuildingModelHelper.CreateOfficialTintMaterial("StarwishPlaceholder_" + name, tint);
+            if (renderer != null && material != null) renderer.sharedMaterial = material;
+
+            // 移除碰撞体（由 Building 自动管理）
+            Collider collider = part.GetComponent<Collider>();
+            if (collider != null) UnityEngine.Object.Destroy(collider);
+            return part;
         }
 
         /// <summary>
@@ -496,7 +457,7 @@ namespace BossRush
                 var main = ps.main;
                 main.startLifetime = 3f;
                 main.startSpeed = 0.3f;
-                main.startSize = 0.11f;
+                main.startSize = new ParticleSystem.MinMaxCurve(0.07f, 0.12f);
                 main.maxParticles = 42;
                 main.simulationSpace = ParticleSystemSimulationSpace.World;
                 main.startColor = new ParticleSystem.MinMaxGradient(
@@ -553,11 +514,10 @@ namespace BossRush
                 if (renderer != null)
                 {
                     renderer.renderMode = ParticleSystemRenderMode.Billboard;
-                    Material particleMat = CreateStarwishParticleMaterial();
-                    if (particleMat != null)
-                    {
-                        renderer.material = particleMat;
-                    }
+                    // 亮核光点、加色、亮档（进 HDR 吃官方泛光）；原色相走顶点色，不再被 _TintColor 再翻一倍推成白
+                    Material particleMat = BossRushFxKit.GetShapeMaterial(BossRushParticleShape.GlowDot, BossRushFxBlend.Additive, BossRushFxKit.GainBright);
+                    renderer.sharedMaterial = particleMat;
+                    renderer.enabled = particleMat != null;
                 }
 
                 DevLog("[WishFountain] 星尘粒子效果已创建");
@@ -580,7 +540,8 @@ namespace BossRush
                 var main = ps.main;
                 main.startLifetime = 0.55f;
                 main.startSpeed = 0.02f;
-                main.startSize = 0.22f;
+                main.startSize = new ParticleSystem.MinMaxCurve(0.14f, 0.2f);
+                main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
                 main.maxParticles = 12;
                 main.simulationSpace = ParticleSystemSimulationSpace.Local;
                 main.startColor = TwinkleIceCoreColor;
@@ -621,115 +582,16 @@ namespace BossRush
                 if (renderer != null)
                 {
                     renderer.renderMode = ParticleSystemRenderMode.Billboard;
-                    Material particleMat = CreateStarwishParticleMaterial();
-                    if (particleMat != null)
-                    {
-                        renderer.material = particleMat;
-                    }
+                    // 星芒（四主芒 + 四副芒）、加色、热档：闪烁读作一颗星，而不是一团软圆斑
+                    Material particleMat = BossRushFxKit.GetShapeMaterial(BossRushParticleShape.Star, BossRushFxBlend.Additive, BossRushFxKit.GainHot);
+                    renderer.sharedMaterial = particleMat;
+                    renderer.enabled = particleMat != null;
                 }
             }
             catch (Exception e)
             {
                 DevLog("[WishFountain] 星光闪烁特效创建异常: " + e.Message);
             }
-        }
-
-        private Material CreateStarwishParticleMaterial()
-        {
-            if (starwishParticleMaterial != null)
-            {
-                return starwishParticleMaterial;
-            }
-
-            string[] shaderCandidates = new string[]
-            {
-                "Particles/Alpha Blended",
-                "Legacy Shaders/Particles/Alpha Blended",
-                "Mobile/Particles/Alpha Blended",
-                "UI/Default",
-                "Sprites/Default"
-            };
-
-            for (int i = 0; i < shaderCandidates.Length; i++)
-            {
-                Shader particleShader = Shader.Find(shaderCandidates[i]);
-                if (particleShader == null)
-                {
-                    continue;
-                }
-
-                Material material = new Material(particleShader);
-                material.name = "StarwishParticleMat_Shared";
-                material.renderQueue = 3000;
-                material.hideFlags = HideFlags.DontSave;
-
-                if (material.HasProperty("_TintColor"))
-                {
-                    material.SetColor("_TintColor", StarwishParticleTint);
-                }
-                if (material.HasProperty("_Color"))
-                {
-                    material.SetColor("_Color", StarwishParticleTint);
-                }
-
-                Texture2D particleTexture = GetOrCreateStarwishParticleTexture();
-                if (particleTexture != null)
-                {
-                    if (material.HasProperty("_MainTex"))
-                    {
-                        material.SetTexture("_MainTex", particleTexture);
-                    }
-                    else
-                    {
-                        material.mainTexture = particleTexture;
-                    }
-                }
-
-                starwishParticleMaterial = material;
-                return starwishParticleMaterial;
-            }
-
-            DevLog("[WishFountain] 未找到兼容的粒子 Shader，粒子将保持默认材质");
-            return null;
-        }
-
-        private Texture2D GetOrCreateStarwishParticleTexture()
-        {
-            if (starwishParticleTexture != null)
-            {
-                return starwishParticleTexture;
-            }
-
-            int size = 64;
-            Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            texture.hideFlags = HideFlags.DontSave;
-            texture.name = "StarwishParticleTexture_Shared";
-            texture.wrapMode = TextureWrapMode.Clamp;
-            texture.filterMode = FilterMode.Bilinear;
-
-            for (int x = 0; x < size; x++)
-            {
-                for (int y = 0; y < size; y++)
-                {
-                    float dx = (x - size / 2f) / (size / 2f);
-                    float dy = (y - size / 2f) / (size / 2f);
-                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
-
-                    if (dist < 1f)
-                    {
-                        float alpha = (1f - dist) * (1f - dist);
-                        texture.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
-                    }
-                    else
-                    {
-                        texture.SetPixel(x, y, new Color(0f, 0f, 0f, 0f));
-                    }
-                }
-            }
-
-            texture.Apply();
-            starwishParticleTexture = texture;
-            return starwishParticleTexture;
         }
 
         private void PrepareStarwishAssetBundleModel(GameObject modelInstance, GameObject graphicsContainer)

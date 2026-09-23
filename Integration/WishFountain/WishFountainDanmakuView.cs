@@ -17,6 +17,14 @@
 //   - 文本预处理：Show 时一次性做单行化、截断、测宽，滚动阶段不重复格式化/测宽
 //   - 每帧只做位移 + 少量入场/回收判断，无 GC 抖动、无网络请求
 //   - raycastTarget 全部关闭，不拦截输入（输入交给上层面板遮罩）
+//
+// 观感（2026-09-23 审美审查 UD-22）：
+//   - 只在屏幕上下各 25% 的两条带里飘，中间 50% 留给许愿面板，不再满屏文字墙。
+//   - 三层景深：远 / 中 / 近 = 字号 18/22/26、不透明度 0.35/0.5/0.7、速度 60/80/100，按泳道分层。
+//   - 字底：UI.Shadow 对 TMP 不起作用（TMP 自己出网格，不走 IMeshModifier），改为弹幕池共用一份
+//     打开 UNDERLAY_ON 的材质实例，OnDestroy 销毁。
+//   - 整层 0.3 秒 SmoothStep 淡入；收起时随面板根节点一起淡出。
+//   - 配色只用 token（主文字 / 次要文字 / 一点暖金）。
 // ============================================================================
 
 using System;
@@ -31,15 +39,15 @@ namespace BossRush
     public class WishFountainDanmakuView : MonoBehaviour
     {
         // ==== 布局与滚动参数 ====
-        private const int MIN_LANES = 10;                 // 保底泳道数，避免高分辨率下视觉太稀
-        private const int MAX_LANES = 28;                 // 高分辨率仍要保持纵向铺满感
-        private const float LANE_TARGET_HEIGHT = 72f;     // 期望泳道高度（据此按屏高自适应泳道数）
+        private const int MIN_LANES_PER_BAND = 2;         // 每条带的保底泳道数
+        private const int MAX_LANES_PER_BAND = 7;         // 每条带的泳道上限
+        private const float BAND_HEIGHT_RATIO = 0.25f;    // 上下两条带各占屏高 25%，中间 50% 不放弹幕
+        private const float LANE_TARGET_HEIGHT = 72f;     // 期望泳道高度（据此按带高自适应泳道数）
         private const float ITEM_HEIGHT = 56f;
-        private const float SCROLL_SPEED = 80f;           // 滚动速度（像素/秒，参考 1080p）
         private const float SPAWN_GAP_MIN = 200f;         // 同泳道两条弹幕的最小水平间距
         private const float SPAWN_GAP_MAX = 500f;         // 同泳道两条弹幕的最大水平间距
-        private const float FONT_SIZE = 24f;
-        private const float TEXT_ALPHA = 0.82f;           // 弹幕文字透明度（不喧宾夺主）
+        private const float BASE_FONT_SIZE = 22f;         // 测宽基准字号；各层按字号比例缩放宽度
+        private const float FADE_SECONDS = 0.3f;          // 整层淡入时长
         private const int MAX_CONTENT_LENGTH = 40;        // 单条弹幕最长字符数，超出省略
         private const float SIDE_PADDING = 40f;           // 弹幕文本左右内边距（估宽用）
         private const int MAX_SPAWNS_PER_LANE_PER_FRAME = 3;
@@ -49,14 +57,18 @@ namespace BossRush
         private const float ESTIMATED_PREFILL_WIDTH_RATIO = 1.3f;
         private const int MAX_ESTIMATED_ITEMS_PER_LANE = 8;
 
+        // 三层景深（远 / 中 / 近）：字号、不透明度、速度（像素/秒）。按泳道分层，同一泳道速度一致、不会追尾。
+        private static readonly float[] DepthFontSizes = { 18f, 22f, 26f };
+        private static readonly float[] DepthAlphas = { 0.35f, 0.5f, 0.7f };
+        private static readonly float[] DepthSpeeds = { 60f, 80f, 100f };
+
+        // 只用 token：主文字为主，夹一点次要文字与暖金（星光），alpha 由景深层决定
         private static readonly Color[] DanmakuColors =
         {
-            new Color(0.85f, 0.92f, 1f, TEXT_ALPHA),
-            new Color(0.78f, 0.88f, 0.98f, TEXT_ALPHA),
-            new Color(0.92f, 0.86f, 0.72f, TEXT_ALPHA),
-            new Color(0.82f, 0.94f, 0.86f, TEXT_ALPHA),
-            new Color(0.94f, 0.84f, 0.9f, TEXT_ALPHA),
-            new Color(0.88f, 0.9f, 0.98f, TEXT_ALPHA)
+            BossRushUIColors.TextPrimary,
+            BossRushUIColors.TextPrimary,
+            BossRushUIColors.TextSecondary,
+            BossRushUIColors.WarningText
         };
 
         private sealed class DanmakuItem
@@ -70,19 +82,24 @@ namespace BossRush
         private sealed class PreparedDanmakuContent
         {
             public string text;
-            public float width;
+            public float width;             // 基准字号下的文字宽度（不含内边距）
         }
 
         private sealed class Lane
         {
             public float centerY;
+            public int depth;               // 景深层：0 远 / 1 中 / 2 近
             public readonly List<DanmakuItem> items = new List<DanmakuItem>();
             public int nextContentIndex;    // 该泳道下一个要取用的内容索引
             public float nextSpawnGap;      // 下一条入场所需的额外间距
         }
 
         private RectTransform selfRect;
+        private CanvasGroup canvasGroup;
         private TMP_FontAsset font;
+        private Material textMaterial;      // 弹幕池共用的字底材质实例，OnDestroy 销毁
+        private float fadeFrom;
+        private float fadeElapsed = FADE_SECONDS;
         private readonly List<Lane> lanes = new List<Lane>();
         private readonly Stack<DanmakuItem> pool = new Stack<DanmakuItem>();
         private readonly List<PreparedDanmakuContent> preparedContents = new List<PreparedDanmakuContent>();
@@ -116,9 +133,11 @@ namespace BossRush
             CanvasGroup cg = host.GetComponent<CanvasGroup>();
             cg.blocksRaycasts = false;
             cg.interactable = false;
+            cg.alpha = 0f;   // 第一次 Show 从 0 淡入
 
             WishFountainDanmakuView view = host.AddComponent<WishFountainDanmakuView>();
             view.selfRect = hostRect;
+            view.canvasGroup = cg;
 
             // 层级：插到主面板之前，使其渲染在面板下方
             if (siblingBefore != null)
@@ -138,6 +157,11 @@ namespace BossRush
                 selfRect = GetComponent<RectTransform>();
             }
 
+            if (canvasGroup == null)
+            {
+                canvasGroup = GetComponent<CanvasGroup>();
+            }
+
             font = ZombieModeUIHelper.GetGameFont();
             if (font == null)
             {
@@ -146,10 +170,14 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 用一批心愿内容启动弹幕。内容为空时不显示。
+        /// 用一批心愿内容启动弹幕。内容为空时不显示。每次打开面板都从 0 淡入。
         /// </summary>
         public void Show(List<string> wishContents)
         {
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 0f;
+            }
             ApplyContents(wishContents, false);
         }
 
@@ -165,6 +193,11 @@ namespace BossRush
         public void Hide()
         {
             RecycleAllActiveItems();
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 0f;   // 下次出现重新淡入
+            }
+            fadeElapsed = FADE_SECONDS;
             if (gameObject != null)
             {
                 gameObject.SetActive(false);
@@ -208,6 +241,7 @@ namespace BossRush
                 return;
             }
 
+            BeginFadeIn();
             globalContentCursor = 0;
             if (!preservePlayback || !HasActiveItems())
             {
@@ -237,7 +271,8 @@ namespace BossRush
                 viewHeight = Screen.height;
             }
 
-            int laneCount = Mathf.Clamp(Mathf.FloorToInt(viewHeight / LANE_TARGET_HEIGHT), MIN_LANES, MAX_LANES);
+            int lanesPerBand = ComputeLanesPerBand(viewHeight);
+            int laneCount = lanesPerBand * 2;
 
             // 首次、分辨率变化或泳道数变化时都重建中心线，避免尺寸变化后弹幕垂直位置漂移。
             if (!built || lanes.Count != laneCount)
@@ -246,7 +281,9 @@ namespace BossRush
                 lanes.Clear();
             }
 
-            float laneHeight = viewHeight / laneCount;
+            // 上带从屏幕顶往下排、下带从屏幕底往上排；中间 50% 是许愿面板，不放弹幕（UD-22）
+            float laneHeight = viewHeight * BAND_HEIGHT_RATIO / lanesPerBand;
+            float topY = viewHeight * 0.5f;
             for (int i = 0; i < laneCount; i++)
             {
                 Lane lane;
@@ -261,11 +298,46 @@ namespace BossRush
                 }
 
                 // 泳道中心 Y：以中心为原点的坐标系（父节点 pivot 0.5）
-                float topY = viewHeight * 0.5f;
-                lane.centerY = topY - laneHeight * (i + 0.5f);
+                int band = i / lanesPerBand;
+                int slot = i % lanesPerBand;
+                lane.centerY = band == 0
+                    ? topY - laneHeight * (slot + 0.5f)
+                    : -topY + laneHeight * (slot + 0.5f);
+                // 相邻泳道错开景深层，远近交替
+                lane.depth = (slot + band) % DepthFontSizes.Length;
             }
 
             built = true;
+        }
+
+        private static int ComputeLanesPerBand(float height)
+        {
+            return Mathf.Clamp(
+                Mathf.FloorToInt(Mathf.Max(height, 1f) * BAND_HEIGHT_RATIO / LANE_TARGET_HEIGHT),
+                MIN_LANES_PER_BAND,
+                MAX_LANES_PER_BAND);
+        }
+
+        private void BeginFadeIn()
+        {
+            if (canvasGroup == null)
+            {
+                return;
+            }
+
+            fadeFrom = canvasGroup.alpha;
+            fadeElapsed = fadeFrom >= 0.999f ? FADE_SECONDS : 0f;
+        }
+
+        private void AdvanceFade()
+        {
+            if (fadeElapsed >= FADE_SECONDS || canvasGroup == null)
+            {
+                return;
+            }
+
+            fadeElapsed += Time.unscaledDeltaTime;
+            canvasGroup.alpha = Mathf.Lerp(fadeFrom, 1f, BossRushUI.SmoothStep(fadeElapsed / FADE_SECONDS));
         }
 
         private void ResetLanes()
@@ -345,6 +417,8 @@ namespace BossRush
             DanmakuItem measureItem = AcquireItem();
             try
             {
+                // 统一按基准字号测一次宽，各景深层按字号比例缩放（滚动阶段不再测宽）
+                measureItem.text.fontSize = BASE_FONT_SIZE;
                 for (int i = 0; i < wishContents.Count; i++)
                 {
                     string display = FormatContent(wishContents[i]);
@@ -354,11 +428,11 @@ namespace BossRush
                     }
 
                     measureItem.text.text = display;
-                    float preferred = measureItem.text.GetPreferredValues(display).x + SIDE_PADDING;
+                    float preferred = measureItem.text.GetPreferredValues(display).x;
                     preparedContents.Add(new PreparedDanmakuContent
                     {
                         text = display,
-                        width = Mathf.Max(preferred, 40f)
+                        width = Mathf.Max(preferred, 1f)
                     });
                 }
             }
@@ -370,6 +444,14 @@ namespace BossRush
 
         private void Update()
         {
+            // 许愿面板是官方 View，暂停菜单一般盖不上来；保险起见仍按共享口径停推进
+            if (BossRushUI.IsGamePaused())
+            {
+                return;
+            }
+
+            AdvanceFade();
+
             if (preparedContents.Count == 0 || lanes.Count == 0)
             {
                 return;
@@ -385,13 +467,14 @@ namespace BossRush
                 return;
             }
 
-            float delta = SCROLL_SPEED * Mathf.Min(Time.unscaledDeltaTime, 0.05f);
+            float deltaTime = Mathf.Min(Time.unscaledDeltaTime, 0.05f);
             float rightEdge = viewWidth * 0.5f;
             float leftEdge = -viewWidth * 0.5f;
 
             for (int i = 0; i < lanes.Count; i++)
             {
-                UpdateLane(lanes[i], delta, rightEdge, leftEdge);
+                Lane lane = lanes[i];
+                UpdateLane(lane, DepthSpeeds[lane.depth] * deltaTime, rightEdge, leftEdge);
             }
         }
 
@@ -502,10 +585,15 @@ namespace BossRush
                 return null;
             }
 
+            float fontSize = DepthFontSizes[lane.depth];
+            Color color = DanmakuColors[UnityEngine.Random.Range(0, DanmakuColors.Length)];
+            color.a = DepthAlphas[lane.depth];
+
             DanmakuItem item = AcquireItem();
+            item.text.fontSize = fontSize;
             item.text.text = content.text;
-            item.text.color = DanmakuColors[UnityEngine.Random.Range(0, DanmakuColors.Length)];
-            item.width = content.width;
+            item.text.color = color;
+            item.width = Mathf.Max(content.width * (fontSize / BASE_FONT_SIZE) + SIDE_PADDING, 40f);
             item.rect.sizeDelta = new Vector2(item.width, ITEM_HEIGHT);
             return item;
         }
@@ -537,7 +625,7 @@ namespace BossRush
             float width = viewWidth > 0f ? viewWidth : (selfRect != null && selfRect.rect.width > 0f ? selfRect.rect.width : Screen.width);
             float height = viewHeight > 0f ? viewHeight : (selfRect != null && selfRect.rect.height > 0f ? selfRect.rect.height : Screen.height);
 
-            int laneCount = Mathf.Clamp(Mathf.FloorToInt(height / LANE_TARGET_HEIGHT), MIN_LANES, MAX_LANES);
+            int laneCount = ComputeLanesPerBand(height) * 2;
             float averageGap = (SPAWN_GAP_MIN + SPAWN_GAP_MAX) * 0.5f;
             float pitch = Mathf.Max(ESTIMATED_AVERAGE_ITEM_WIDTH + averageGap, 1f);
             float coverageWidth = Mathf.Max(width, 1f) * ESTIMATED_PREFILL_WIDTH_RATIO;
@@ -585,17 +673,19 @@ namespace BossRush
             {
                 text.font = font;
             }
-            text.fontSize = FONT_SIZE;
+            // 字底走 TMP 距离场的 Underlay（UI.Shadow 挂在 TMP 上不起作用）；整池共用一份材质
+            Material material = GetTextMaterial();
+            if (material != null)
+            {
+                text.fontSharedMaterial = material;
+            }
+            text.fontSize = BASE_FONT_SIZE;
+            text.enableAutoSizing = false;
             text.alignment = TextAlignmentOptions.Left;
             text.richText = false;
             text.enableWordWrapping = false;
             text.overflowMode = TextOverflowModes.Overflow;
             text.raycastTarget = false;
-
-            // 轻微阴影提升可读性
-            Shadow shadow = go.AddComponent<Shadow>();
-            shadow.effectColor = new Color(0f, 0f, 0f, 0.5f);
-            shadow.effectDistance = new Vector2(1.5f, -1.5f);
 
             DanmakuItem item = new DanmakuItem
             {
@@ -635,12 +725,51 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 弹幕字底材质：在字体材质上打开 UNDERLAY_ON（柔和黑色底影），整池共用一份，OnDestroy 销毁。
+        /// 字体取不到时返回 null，文本保持字体默认材质。
+        /// </summary>
+        private Material GetTextMaterial()
+        {
+            if (textMaterial != null)
+            {
+                return textMaterial;
+            }
+
+            if (font == null || font.material == null)
+            {
+                return null;
+            }
+
+            textMaterial = new Material(font.material);
+            textMaterial.name = font.material.name + " (BossRush Wish Danmaku)";
+            textMaterial.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                textMaterial.EnableKeyword("UNDERLAY_ON");
+                textMaterial.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0f, 0f, 0f, 0.6f));
+                textMaterial.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 0f);
+                textMaterial.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.6f);
+                textMaterial.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0.4f);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[WishDanmaku] [WARNING] 字底材质参数写入失败: " + e.Message);
+            }
+            return textMaterial;
+        }
+
         private void OnDestroy()
         {
             lanes.Clear();
             pool.Clear();
             preparedContents.Clear();
             allocatedItemCount = 0;
+            if (textMaterial != null)
+            {
+                Destroy(textMaterial);
+                textMaterial = null;
+            }
         }
     }
 }

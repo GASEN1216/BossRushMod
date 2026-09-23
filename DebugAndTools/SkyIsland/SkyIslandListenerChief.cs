@@ -165,7 +165,12 @@ namespace BossRush
                 for (int i = 0; i < rockPoints.Count; i++)
                 {
                     // catch 子句体内不能 yield return（CS1631）：这里只记账。
-                    try { SkyIslandBossForge.Detonate(boss, rockPoints[i], SkyIslandBossRules.RockfallRadius, SkyIslandBossRules.RockfallDamage); }
+                    // 落石不是爆炸：不冒官方火球，只留余波圈与扬尘；几块齐落只震第一块（VB-21）。
+                    try
+                    {
+                        SkyIslandBossForge.Detonate(boss, rockPoints[i], SkyIslandBossRules.RockfallRadius, SkyIslandBossRules.RockfallDamage,
+                            false, i == 0 ? SkyIslandImpactFx.BossShake : 0f, RockTint);
+                    }
                     catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 听雨人落石失败：" + e.Message); }
                 }
             }

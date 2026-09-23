@@ -116,14 +116,19 @@ internal static class Program
         Enemy(1).Health.Hurt(Hit(player)); ModBehaviour.Instance.Advance();
         Check(explosions.Calls == 1, "held affixed weapon remains playable");
 
+        CheckTriggerFeedback();
+
         player = Reset(AffixDefinitions.Id_Thorns, AffixDefinitions.Id_Bulwark, AffixDefinitions.Id_DeathPact);
-        CharacterMainControl attacker = Enemy(); player.Health.Hurt(Hit(attacker, 200));
+        CharacterMainControl attacker = Enemy(); int thornsShown = AffixTriggerFeedback.ThornsHits;
+        player.Health.Hurt(Hit(attacker, 200));
         Check(attacker.Health.Hits.Count == 0 && player.Buffs.Count == 0, "lethal trailing OnHurt must not reflect or grant buffs");
+        Check(AffixTriggerFeedback.ThornsHits == thornsShown, "no thorns feedback when nothing was reflected");
         Check(AffixRuntimeService.ActiveAffixCount == 0 && !AffixRuntimeTicker.Active, "death releases active affixes and drain ticker");
         player.Health.IsDead = false; player.Health.CurrentHealth = 100; LevelManager.Initialize();
         Check(AffixRuntimeService.ActiveAffixCount == 3 && AffixRuntimeTicker.Active, "initialization rebuilds living player equipment after death");
         player.Health.Hurt(Hit(attacker));
         Check(attacker.Health.Hits.Count == 1 && player.Buffs.Count == 1, "nonlethal thorns and bulwark remain usable");
+        Check(AffixTriggerFeedback.ThornsHits == thornsShown + 1, "reflected thorns damage shows exactly one feedback ring");
         player.Health.CurrentHealth = 1.5f; AffixRuntimeService.TickDrain(1000);
         Check(player.Health.CurrentHealth == 1f && !player.Health.IsDead, "death pact drain remains nonlethal");
         AffixRuntimeService.ShutdownRuntime();
@@ -132,6 +137,27 @@ internal static class Program
         CheckZombieExplosions();
         Console.WriteLine("AffixCombat: " + (checks - failures) + " PASS / " + failures + " FAIL");
         if (failures > 0) Environment.Exit(1);
+    }
+
+    // VA-24: lifesteal/overcharge feedback fires after the effect resolves and reports the real heal.
+    private static void CheckTriggerFeedback()
+    {
+        CharacterMainControl player = Reset();
+        player.Hold(Affixed(AffixDefinitions.Id_Lifesteal, AffixDefinitions.Id_Overcharge));
+        player.Health.CurrentHealth = 50f;
+        int lifesteals = AffixTriggerFeedback.Lifesteals, overcharges = AffixTriggerFeedback.Overcharges;
+        CharacterMainControl target = Enemy();
+        target.Health.Hurt(Hit(player));
+        Check(AffixTriggerFeedback.Lifesteals == lifesteals + 1 && AffixTriggerFeedback.LastHealed > 0f
+            && Math.Abs(AffixTriggerFeedback.LastHealed - (player.Health.CurrentHealth - 50f)) < 0.001f,
+            "lifesteal feedback receives the real healed amount");
+        Check(AffixTriggerFeedback.Overcharges == overcharges + 1 && target.Health.Hits.Count == 2,
+            "overcharge feedback follows its extra electric hit");
+        player.Health.CurrentHealth = player.Health.MaxHealth; Time.time += 1f;
+        target.Health.Hurt(Hit(player));
+        Check(AffixTriggerFeedback.Lifesteals == lifesteals + 2 && AffixTriggerFeedback.LastHealed == 0f,
+            "full-health lifesteal reports zero so no popup is shown");
+        AffixRuntimeService.ShutdownRuntime();
     }
 
     private static void CheckMutators()

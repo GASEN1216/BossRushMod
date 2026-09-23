@@ -13,12 +13,12 @@ For the full achievement list, see the "Achievement List" page.
   - Armor, helmets, masks, backpacks, headsets
   - Firearms, melee weapons
   - Totems
-- Reforge only rerolls the item's own stats — the ones you can see on its detail panel.
+- Reforge only rerolls the item's own stats, the ones you can see on its detail panel.
 
 #### Properties Excluded from the Reforge Pool
 - The hidden data an item uses to track its own state is never rerolled. You can't see it on the detail panel, and Reforge can't touch it.
-- Temporary effects picked up during a run (bonuses from buffs and debuffs) are exactly that — temporary. They don't count as the item's own stats, so Reforge never touches them.
-- A melee weapon's swing timing is never rerolled — otherwise the same blade would feel different after every reforge.
+- Temporary effects picked up during a run (bonuses from buffs and debuffs) are exactly that: temporary. They don't count as the item's own stats, so Reforge never touches them.
+- A melee weapon's swing timing is never rerolled; otherwise the same blade would feel different after every reforge.
 
 ### Reforge Process
 - Interact with Dingdang and select "Reforge".
@@ -74,8 +74,8 @@ percentage points.
 [tip] In practice: on cheap gear just throw 1000x at it, the base is small anyway. On valuable gear **100x** is usually the sweet spot - beyond that, your money buys more by funding extra attempts than by pushing one roll.
 
 ### Tips
-- Don't waste Reforge resources on temporary equipment — first decide which equipment you'll use long-term.
+- Don't waste Reforge resources on temporary equipment. First decide which equipment you'll use long-term.
 - Reforge multiple times to find core stats first, then lock them with Cold Quench Fluid.
 - Think in **multiples**, not absolute cash: stop at 100x on valuable gear and spend the rest on more attempts.
-- Affinity discounts significantly reduce long-term Reforge costs — build Affinity first, and note the same discount **also applies to affix forging**.
+- Affinity discounts cut long-term Reforge costs a lot, so build Affinity first. Note the same discount **also applies to affix forging**.
 - Settle the stats before you forge affixes. The other order works too, but fixing the numbers first makes it easier to judge whether a piece is worth investing in.

@@ -110,7 +110,7 @@ def check_layout_fallback_sync():
     spec = json.loads((ROOT / "Assets/Data/DailyReportLayout.json").read_text(encoding="utf-8"))
     names = re.findall(r'"(\w+)"', table[table.index("FallbackNames ="):table.index("FallbackRects =")])
     rows = re.findall(r"\{\s*(-?\d+),\s*(-?\d+),\s*(\d+),\s*(\d+)\s*\}",
-                      table[table.index("FallbackRects ="):table.index("private static void ApplyFallback(")])
+                      table[table.index("FallbackRects ="):table.index("IconNames =")])
     assert len(names) == len(rows) == len(spec["rects"]), "兜底矩形与版面表条目数不一致"
     for name, row in zip(names, rows):
         assert [int(v) for v in row] == spec["rects"][name], "兜底矩形与版面表不同源: " + name
@@ -119,8 +119,61 @@ def check_layout_fallback_sync():
     for token in ("_legendItemWidth = %sf;" % legend["itemWidth"], "_legendCount = %s;" % legend.get("count", 4),
                   "_legendSwatch = %sf;" % legend["swatch"]):
         assert token in fallback, "图例兜底与版面表不同源: " + token
+    # 2026-09-23：图标是运行时 Sprite，位置同样来自版面表；兜底的图标段与参数也必须同源
+    icon_names = re.findall(r'"(\w+)"', table[table.index("IconNames ="):table.index("FallbackIconRects =")])
+    icon_rows = re.findall(r"\{\s*(-?\d+),\s*(-?\d+),\s*(\d+),\s*(\d+)\s*\}",
+                           table[table.index("FallbackIconRects ="):table.index("private static void ApplyFallback(")])
+    assert len(icon_names) == len(icon_rows) == len(spec["icons"]), "兜底图标与版面表条目数不一致"
+    for name, row in zip(icon_names, icon_rows):
+        assert [int(v) for v in row] == spec["icons"][name], "兜底图标与版面表不同源: " + name
+    icon = spec["icon"]
+    for token in ("_pillTextIndent = %sf;" % icon["pillTextIndent"], "_iconTextGap = %sf;" % icon["textGap"]):
+        assert token in fallback, "图标参数兜底与版面表不同源: " + token
     assert spec["rects"]["legend"][3] >= 31, "图例行高 %d 放不下一行 18 号中文" % spec["rects"]["legend"][3]
     assert legend.get("count", 4) * legend["itemWidth"] <= spec["rects"]["legend"][2], "图例项排出了图例行"
+
+
+def check_ribbon_contrast(colors):
+    """三条标题缎带是底图里的渐变色块，字色 PillInk 对缎带**两端**都要 ≥ 4.5:1（2026-09-23）。
+
+    缎带色只在生成器里，C# 只知道字色；这里从生成器读 RIBBON_* 常量复算，缎带调亮或字色调暗都会转红。
+    """
+    generator = (ROOT / "tools/gen_daily_report_ui.py").read_text(encoding="utf-8")
+    ink = luminance(colors["PillInk"][:3])
+    found = 0
+    for name, body in re.findall(r"^(RIBBON_\w+)\s*=\s*\((.*?)\)\s*#", generator, re.M):
+        ends = re.findall(r"\((\d+),\s*(\d+),\s*(\d+)", body)
+        assert len(ends) == 2, name + " 必须是左右两端两个颜色"
+        for end in ends:
+            contrast = ratio(ink, luminance(tuple(int(v) / 255.0 for v in end)))
+            assert contrast >= 4.5, "%s 缎带标题对比度 %.2f < 4.5" % (name, contrast)
+        found += 1
+    assert found == 3, "应有三条缎带颜色（收益 / 状态 / 签到），实际 %d" % found
+
+
+def check_runtime_icons(dashboard):
+    """图标与吉祥物是运行时 Sprite（2026-09-23）：取不到就不画、不缩进；每一张都必须在发布清单里。
+
+    「有代码」不等于「拿得到」：图标没登记进 production_icon_manifest，Unity 就不会把它打进包，
+    正式构建里整排图标静默消失。
+    """
+    create = method(dashboard, "private TextMeshProUGUI CreateIconText(")
+    assert "DailyReportBackground.LoadIcon(iconId)" in create, "带图标的正文必须按版面表摆运行时图标"
+    assert "indent = icon.xMax + DailyReportLayoutTable.IconTextGap - box.x;" in create, \
+        "文字缩进必须跟着实际摆出来的图标走（取不到图标就不缩进）"
+    art = method(dashboard, "private Image CreateArt(")
+    assert "if (sprite == null" in art and "return null;" in art, "图标取不到必须不画那一格，不退回汉字或灰方块"
+    assert "DailyReportBackground.LoadArt(DailyReportBackground.MascotFile)" in dashboard, "报头吉祥物缺接线"
+    spec = json.loads((ROOT / "Assets/Data/DailyReportLayout.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "tools/production_icon_manifest.json").read_text(encoding="utf-8"))
+    budgets = {row["path"]: row["maxSize"] for row in manifest["icons"]}
+    wanted = ["Assets/ui/DailyReport/daily_report_bg.png", "Assets/ui/DailyReport/dr_mascot.png"] + [
+        "Assets/ui/DailyReport/dr_icon_%s.png" % name for name in spec["icons"]]
+    for path in wanted:
+        assert path in budgets, "日报资源没登记进 production_icon_manifest: " + path
+    for path in wanted[1:]:
+        assert 128 <= budgets[path] <= 512, "图标贴图上限要在 128–512（AGENTS 4.16）: " + path
+    assert budgets[wanted[0]] <= 1024, "底图是展示图，上限 1024（AGENTS 4.16）"
 
 
 def main():
@@ -130,11 +183,12 @@ def main():
     colors = {name: tuple(float(v or 1) for v in values)
               for name, *values in COLOR.findall(ui + shared)}
     threshold = float(re.search(r"LightBackgroundLuminance\s*=\s*([\d.]+)f", shared)[1])
-    for background in ("CellEmpty", "CellSigned", "CellToday", "CellMilestone", "CellMilestoneDone", "PaperRaised"):
+    for background in ("CellEmpty", "CellSigned", "CellToday", "CellTodayBright", "CellMilestone", "CellMilestoneDone",
+                       "PaperRaised", "ButtonIdle", "ButtonDisabled"):
         bg = colors[background]
         fg = colors["TextOnAccent" if luminance(bg) > threshold else "TextPrimary"]
         # 单元格和按钮均不透明；按钮另查共享三态的按下暗化。
-        states = (1, .8) if background in ("CellMilestone", "PaperRaised") else (1,)
+        states = (1, .8) if background in ("CellMilestone", "PaperRaised", "ButtonIdle") else (1,)
         for scale in states:
             contrast = ratio(luminance(fg), luminance(tuple(c * scale for c in bg[:3])))
             assert contrast >= 4.5, f"{background} label contrast {contrast:.2f} < 4.5"
@@ -159,6 +213,8 @@ def main():
     check_single_source_chrome(dashboard)
     check_scrollable_body(dashboard)
     check_layout_fallback_sync()
+    check_ribbon_contrast(colors)
+    check_runtime_icons(dashboard)
     refresh = method(ui, "public void Refresh()")
     assert "RefreshLabels();" in refresh
     labels = method(ui, "private void RefreshLabels()")
@@ -181,7 +237,7 @@ def main():
     announce = method(runtime, "private void AnnounceNewIssue()")
     assert announce.index("_announcedDayIndex == data.DayIndex && _announcedSlot == slot") < announce.index("ShowBigBanner")
     assert announce.index("_announcedDayIndex = data.DayIndex;") < announce.index("ShowBigBanner")
-    print("DailyReportPresentationGuard: PASS (colors, layout table, localization, notification deduplication)")
+    print("DailyReportPresentationGuard: PASS (colors, ribbons, layout table, runtime icons, localization, notification deduplication)")
 
 
 if __name__ == "__main__":

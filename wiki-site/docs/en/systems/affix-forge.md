@@ -2,7 +2,7 @@
 
 ## What is it
 
-Reforging changes **numbers** — a few more points of armor, a little more fire rate.
+Reforging changes **numbers**: a few more points of armor, a little more fire rate.
 Affix forging changes **behavior**: your gun detonates corpses on kill, your blade drinks
 health on every hit, your armor throws damage back at whoever dealt it.
 
@@ -10,7 +10,7 @@ A single piece can carry both reforged stats and affixes. The two systems never 
 
 - **12 affixes** across three tiers: Common, Rare and **Cursed**.
 - Works on **guns, melee weapons, body armor, helmets and face masks**. Not totems or bags.
-- Every Cursed affix is a trade, not a gift — obviously strong, with the price written out.
+- Every Cursed affix is a trade, not a gift: obviously strong, with the price written out.
 
 ## How to use it
 
@@ -32,7 +32,7 @@ A single piece can carry both reforged stats and affixes. The two systems never 
 - Each affix also rolls one of three strengths: T1 `60%`, T2 `30%`, T3 `10%`.
 
 So "a Rare at T3" is about a `3%` outcome, and "a Cursed at T3" is under `1%`. The tables
-below list **T1 / T2 / T3** — you will usually get the leftmost number.
+below list **T1 / T2 / T3**, and you will usually get the leftmost number.
 
 <div class="brs-icon">
 
@@ -76,7 +76,7 @@ Each affix only goes on certain gear types, noted after the name.
 - **Death Burst** (all) — Kills detonate the corpse for `35 / 55 / 80` fire damage in a
   `2.5 / 3.0 / 3.5` metre radius. **It never hurts you**, so feel free to blow it up in your face.
 - **Frenzy** (all) — Fire rate and mobility `+4% / +6% / +9%` for 6s after a kill, up to 5
-  stacks. Fully stacked that's `+20%` to `+45%` — you get faster the deeper into the pile you go.
+  stacks. Fully stacked that's `+20%` to `+45%`; you get faster the deeper into the pile you go.
 - **Hawk Eye** (weapons) — Passive: gun and melee crit chance `+4% / +7% / +11%`. Nothing to
   trigger; just hold it.
 - **Overcharge** (weapons) — Hits add an electric strike for `12% / 20% / 30%` of the damage
@@ -90,15 +90,15 @@ holding or wearing the piece.
 - **Blood Rage** — All weapon damage `+10% / +16% / +24%`, but max health `-12% / -18% / -25%`.
 - **Glass Cannon** — All weapon damage `+15% / +24% / +35%`, but armor `-1 / -2 / -3`.
 - **Death Pact** — Kills restore `10% / 14% / 20%` of max health, but you lose
-  `0.8% / 1.2% / 1.8%` of max health per second. **It can never kill you** — it always leaves
+  `0.8% / 1.2% / 1.8%` of max health per second. **It can never kill you**: it always leaves
   you at 1 HP, and there's no drain inside the base.
 
 ::: tip
-"All weapon damage" really does mean all of it: Blood Rage on a helmet still boosts the gun in your hands. Putting Cursed affixes on armor is the efficient play — you keep the damage and your weapon slots stay free for something else.
+"All weapon damage" really does mean all of it: Blood Rage on a helmet still boosts the gun in your hands. Putting Cursed affixes on armor is the efficient play: you keep the damage and your weapon slots stay free for something else.
 :::
 
 ::: tip
-Cursed affixes work best as a set: stack Blood Rage and Glass Cannon for `+59%` damage, then use Death Pact or Slaughter to keep the health topped up. Commit fully or don't touch them — half-measures just leave you fragile without the payoff.
+Cursed affixes work best as a set: stack Blood Rage and Glass Cannon for `+59%` damage, then use Death Pact or Slaughter to keep the health topped up. Commit fully or don't touch them; half-measures just leave you fragile without the payoff.
 :::
 
 ## Common questions

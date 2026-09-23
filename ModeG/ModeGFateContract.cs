@@ -142,12 +142,12 @@ namespace BossRush
             new ContractDef(IdCounterflowChain, ModeGContractFamily.Tempo, "CounterflowChain",
                 "逆流连锁", "Counterflow Chain",
                 "连续破解三个反制目标，中间不能断。",
-                "Break three axis objectives consecutively without interruption."),
+                "Break three axis objectives in a row, no gaps."),
 
             new ContractDef(IdUnbrokenActs, ModeGContractFamily.Tempo, "UnbrokenActs",
                 "三幕无缺", "Unbroken Acts",
                 "三幕里每一幕都拿到至少 2 点决意。",
-                "Achieve at least 2 Resolves in each of the three acts."),
+                "Earn at least 2 Resolve in each of the three acts."),
 
             new ContractDef(IdEdgeWalker, ModeGContractFamily.Style, "EdgeWalker",
                 "边缘行者", "Edge Walker",

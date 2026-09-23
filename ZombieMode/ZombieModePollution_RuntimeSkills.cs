@@ -218,7 +218,7 @@ namespace BossRush
                         ZombieModeTuning.ThreatTelegraphDelaySeconds,
                         L10n.T("BossRush_ZombieMode_Special_Plague"),
                         "ZombieMode_PlagueCloud",
-                        new Color(0.18f, 0.82f, 0.28f, 0.42f));
+                        new Color(0.46f, 0.74f, 0.38f, 0.50f));
                     break;
                 case ZombieModeSpecialKind.Summoner:
                     character.PopText(L10n.T("BossRush_ZombieMode_Special_Summoner"));
@@ -271,7 +271,7 @@ namespace BossRush
                     ZombieModeTuning.ThreatTelegraphDelaySeconds,
                     toxicAura ? L10n.T("BossRush_ZombieMode_Affix_ToxicAura") : L10n.T("BossRush_ZombieMode_Affix_Plague"),
                     toxicAura ? "ZombieMode_ToxicAuraCloud" : "ZombieMode_ElitePlagueCloud",
-                    toxicAura ? new Color(0.45f, 0.92f, 0.32f, 0.38f) : new Color(0.18f, 0.82f, 0.28f, 0.40f),
+                    toxicAura ? new Color(0.62f, 0.80f, 0.40f, 0.48f) : new Color(0.46f, 0.74f, 0.38f, 0.50f),
                     toxicAura,
                     toxicAura);
             }
@@ -466,7 +466,7 @@ namespace BossRush
                 source.transform.position + Vector3.up * 0.035f,
                 1.4f,
                 0.02f,
-                new Color(1f, 0.82f, 0.10f, 0.30f));
+                new Color(1f, 0.72f, 0.28f, 0.55f));
 
             ZombieModeSprinterDashRuntime runtime = telegraph.AddComponent<ZombieModeSprinterDashRuntime>();
             runtime.Initialize(
@@ -505,7 +505,7 @@ namespace BossRush
                 origin + Vector3.up * 0.03f,
                 radius,
                 0.02f,
-                new Color(1f, 0.16f, 0.08f, 0.35f));
+                new Color(0.95f, 0.35f, 0.22f, 0.60f));
 
             ZombieModeTelegraphedAreaDamageRuntime runtime = telegraph.AddComponent<ZombieModeTelegraphedAreaDamageRuntime>();
             runtime.Initialize(runId, source, origin, radius, damage, delay, followSourcePosition);
@@ -537,7 +537,7 @@ namespace BossRush
                 origin + Vector3.up * 0.03f,
                 radius,
                 0.02f,
-                new Color(0.12f, 0.75f, 1f, 0.35f));
+                new Color(0.40f, 0.72f, 0.95f, 0.60f));
 
             ZombieModeTelegraphedPlayerSlowRuntime runtime = telegraph.AddComponent<ZombieModeTelegraphedPlayerSlowRuntime>();
             runtime.Initialize(runId, origin, radius, slowPercent, slowDuration, delay);
@@ -673,24 +673,6 @@ namespace BossRush
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, projectile, runtime, null);
         }
 
-        /// <summary>
-        /// 缓存 Sprites/Default。Shader.Find 是按名字查着色器注册表的字符串查找，
-        /// 每发弹丸调两次纯属浪费；材质本身仍按弹丸各自持有（见 MaterialOwner 的回收契约）。
-        /// </summary>
-        private static Shader zombieModeCachedSpriteShader;
-        private static bool zombieModeSpriteShaderResolved;
-
-        private static Shader GetZombieModeSpriteShader()
-        {
-            if (!zombieModeSpriteShaderResolved)
-            {
-                zombieModeCachedSpriteShader = Shader.Find("Sprites/Default");
-                zombieModeSpriteShaderResolved = true;
-            }
-
-            return zombieModeCachedSpriteShader;
-        }
-
         private static void ConfigureZombieModeHarasserProjectileVisual(GameObject projectile)
         {
             if (projectile == null)
@@ -704,8 +686,8 @@ namespace BossRush
             main.duration = 0.35f;
             main.startLifetime = 0.22f;
             main.startSpeed = 0.08f;
-            main.startSize = 0.22f;
-            main.startColor = new Color(0.12f, 0.75f, 1f, 0.90f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.12f, 0.2f);
+            main.startColor = new Color(0.40f, 0.80f, 1f, 0.45f);
 
             ParticleSystem.EmissionModule emission = particles.emission;
             emission.rateOverTime = 18f;
@@ -718,19 +700,23 @@ namespace BossRush
             if (renderer != null)
             {
                 renderer.renderMode = ParticleSystemRenderMode.Billboard;
+                // 共享软圆粒子材质（审美审查 VA-31）：不指定材质时是运行时默认粒子材质，URP 构建里是白色方片。
+                renderer.sharedMaterial = BossRushFxMaterials.Get(BossRushFxBlend.Additive);
             }
 
             TrailRenderer trail = projectile.AddComponent<TrailRenderer>();
             trail.time = 0.28f;
             trail.startWidth = 0.18f;
             trail.endWidth = 0.02f;
-            trail.startColor = new Color(0.18f, 0.9f, 1f, 0.95f);
-            trail.endColor = new Color(0.08f, 0.35f, 1f, 0f);
-            Shader trailShader = GetZombieModeSpriteShader();
+            trail.startColor = new Color(0.40f, 0.80f, 1f, 0.80f);
+            trail.endColor = new Color(0.20f, 0.45f, 0.90f, 0f);
+            // 拖尾 / 轨迹线：共享粒子材质的副本 + 横跨带宽的柔边贴图（旧 Sprites/Default 无贴图，条带边缘硬切）。
+            // 仍是每发各持一份副本，由 ZombieModeHarasserProjectileMaterialOwner 随弹丸销毁。
+            Material fxTemplate = BossRushFxMaterials.Get(BossRushFxBlend.Additive, ZombieModeZoneVisuals.GetBandTexture());
             Material trailMaterial = null;
-            if (trailShader != null)
+            if (fxTemplate != null)
             {
-                trailMaterial = new Material(trailShader);
+                trailMaterial = new Material(fxTemplate);
                 trail.material = trailMaterial;
             }
 
@@ -744,11 +730,10 @@ namespace BossRush
             trajectory.widthMultiplier = 0.035f;
             trajectory.startColor = new Color(0.25f, 0.9f, 1f, 0.24f);
             trajectory.endColor = new Color(0.10f, 0.45f, 1f, 0.05f);
-            Shader lineShader = GetZombieModeSpriteShader();
             Material lineMaterial = null;
-            if (lineShader != null)
+            if (fxTemplate != null)
             {
-                lineMaterial = new Material(lineShader);
+                lineMaterial = new Material(fxTemplate);
                 trajectory.material = lineMaterial;
             }
 
@@ -802,7 +787,7 @@ namespace BossRush
                 origin + Vector3.up * 0.035f,
                 radius,
                 0.03f,
-                new Color(0.12f, 0.75f, 1f, 0.32f));
+                new Color(0.40f, 0.72f, 0.95f, 0.45f));
 
             ZombieModeAreaTickRuntime runtime = zone.AddComponent<ZombieModeAreaTickRuntime>();
             runtime.Initialize(

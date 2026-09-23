@@ -76,8 +76,14 @@ namespace BossRush
         /// <summary>终章 Boss 体型放大系数。在生成时应用，让模型与碰撞器初始化保持一致。</summary>
         internal const float FinalBossScale = 1.15f;
 
-        /// <summary>终章 Boss 染色（绯红）。走 MaterialPropertyBlock，不改共享材质。</summary>
+        /// <summary>终章的绯红主色：召唤石核心、召唤爆发与「影」的烟缕 / 符文环都从它取色。</summary>
         internal static readonly Color FinalBossTint = new Color(0.85f, 0.15f, 0.2f, 1f);
+
+        /// <summary>
+        /// 冠军之影的角色染色（VA-26）：乘在官方 SodaCharacter 的 _Tint 上的柔和冷红，走 MaterialPropertyBlock，
+        /// 不改共享材质、不碰捏脸部件。直接把 FinalBossTint 写进 _Tint 会把整张贴图压成一片暗红。
+        /// </summary>
+        internal static readonly Color FinalBossShadowTint = new Color(0.78f, 0.55f, 0.6f, 1f);
 
         #endregion
     }

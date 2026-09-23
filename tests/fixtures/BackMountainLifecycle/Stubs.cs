@@ -17,6 +17,8 @@ namespace UnityEngine
         public static bool operator !=(Object a, Object b) { return !(a == b); }
         public override bool Equals(object value) { return ReferenceEquals(this, value); }
         public override int GetHashCode() { return base.GetHashCode(); }
+        // 2026-09-23：菜地本趟开放时对在场售货机补挂种子（BackMountainItems.TryInjectSeedsIntoLiveShops）。替身场景里没有售货机。
+        public static T[] FindObjectsOfType<T>() where T : Object { return new T[0]; }
         public static void Destroy(Object value)
         {
             if (ReferenceEquals(value, null)) return;

@@ -22,6 +22,13 @@ def main():
     y = grid['y'] + (grid['rows'] - 1) * (grid['cellHeight'] + grid['gap'])
     ImageDraw.Draw(bad).rectangle((x, y, x + grid['cellWidth'] - 1, y + grid['cellHeight'] - 1), fill=(226, 219, 205, 255))
     assert validate_chrome(measure_chrome(bad, layout), layout), '最后一格的烤色未被检测'
+    # 2026-09-23：图标改成运行时 Sprite 后，纯色区的图标位也必须留白，否则底图与运行时各画一遍
+    assert 'icons' in layout and 'income' in layout['icons'], '版面表缺少运行时图标位'
+    baked = clean.copy()
+    ix, iy, iw, ih = layout['icons']['income']
+    ImageDraw.Draw(baked).ellipse((ix, iy, ix + iw - 1, iy + ih - 1), fill=(62, 122, 76, 255))
+    baked_errors = validate_chrome(measure_chrome(baked, layout), layout)
+    assert any('icon_income' in error for error in baked_errors), '烤进底图的图标未被检测'
     assert validate_chrome(None, layout), '缺实际像素不能算通过'
 
     raw = ROOT / 'Assets/ui/DailyReport/daily_report_bg.png'

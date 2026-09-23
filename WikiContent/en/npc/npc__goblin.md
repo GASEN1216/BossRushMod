@@ -2,7 +2,7 @@
 
 ### Who Is He?
 
-A goblin created by J-Lab, way smarter than your average green dude. **Your go-to NPC for gear upgrades** — reforging, affix forging, and an exclusive shop.
+A goblin created by J-Lab, way smarter than your average green dude. **Your go-to NPC for gear upgrades**: reforging, affix forging, and an exclusive shop.
 
 ### Services
 
@@ -29,9 +29,9 @@ A goblin created by J-Lab, way smarter than your average green dude. **Your go-t
 - **Likes**: Diamond and recipe/blueprint items (+80); Birthday Cake (+150)
 - **Loves**: Diamond Ring (+500)
 - **Neutral**: Other items (+20)
-- **Dislikes**: Brick Stone — fake diamond (-40)
+- **Dislikes**: Brick Stone, the fake diamond (-40)
 
-[warn] Giving his Drawing back = -300 Affinity. That painting means everything to him. Don't.
+[warn] Giving his Drawing back = -300 Affinity. He drew it for you. Don't.
 
 ### Reforge & Affix Forging
 
@@ -40,7 +40,7 @@ Dingdang runs both gear progression lines, and you handle both in one stop:
 - **Reforge** — rerolls the stats the gear already has; Cold Quench Fluid locks the one you want to keep. See the Reforge system.
 - **Affix Forging** — rerolls every unlocked slot for one Affix Forge Stone per slot, plus gold with existing-affix rarity surcharges; lock the ones you like and reroll the rest. See Affix Forging.
 
-**Affinity discounts apply to both**: 10% at Lv.3, 15% at Lv.6, 20% at Lv.10 — affix forging uses the same price curve, so staying friendly pays twice.
+**Affinity discounts apply to both**: 10% at Lv.3, 15% at Lv.6, 20% at Lv.10. Affix forging uses the same price curve, so staying friendly pays twice.
 
 ### Marriage
 

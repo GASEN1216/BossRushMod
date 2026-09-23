@@ -6,7 +6,7 @@ Only found on two of Sky Island's island lords, the Hanging-Root Huntmaster and 
 
 ## What Is It?
 
-**The two sets worn by the Hanging-Root Huntmaster, island lord of the Hanging Root Wood, and Grain Sickle, island lord of the Green Terraces**: the Rootweave Mask, Vinewoven Cuirass and Hanging-Root Quiver are the rootweave hunting gear and come from the Huntmaster; the Greenear Straw Hat, Straw Raincoat and Grain Sack are the straw-cloak farm gear and come from Grain Sickle. Worn, they give the game's usual head armour / body armour / pack capacity; on the isles each set also has a use — any two rootweave pieces double the chance of an island good turning up in scavenging crates, and any two straw-cloak pieces add one sheaf to every cut of greenear. The Starforge Foreman's set is under "Starworks Gear", and the single pieces the chiefs wear are under "Island Chief Gear".
+**The two sets worn by the Hanging-Root Huntmaster, island lord of the Hanging Root Wood, and Grain Sickle, island lord of the Green Terraces**: the Rootweave Mask, Vinewoven Cuirass and Hanging-Root Quiver are the rootweave hunting gear and come from the Huntmaster; the Greenear Straw Hat, Straw Raincoat and Grain Sack are the straw-cloak farm gear and come from Grain Sickle. Worn, they give the game's usual head armour / body armour / pack capacity; on the isles each set also has a use: any two rootweave pieces double the chance of an island good turning up in scavenging crates, and any two straw-cloak pieces add one sheaf to every cut of greenear. The Starforge Foreman's set is under "Starworks Gear", and the single pieces the chiefs wear are under "Island Chief Gear".
 
 ## The Six Pieces
 
@@ -17,14 +17,14 @@ Only found on two of Sky Island's island lords, the Hanging-Root Huntmaster and 
 - **Straw Raincoat** (body armor): quality 5, Body Armor +3, durability 90, item ID 500095
 - **Grain Sack** (backpack): quality 5, pack capacity +7, item ID 500096
 - Repairable: the four pieces with durability can be fixed at the workbench (the two packs have no durability)
-- On death: they are not bound — fall during a raid and they stay behind with the rest of your gear
+- On death: they are not bound; fall during a raid and they stay behind with the rest of your gear
 
 ## How to Get It
 
-- **Hanging-Root Huntmaster** (island lord, Hanging Root Wood beacon guards): there every raid. It **always drops one piece**: Rootweave Mask 35%, Vinewoven Cuirass 35%, Hanging-Root Quiver 30% — it takes a few raids to complete the set.
+- **Hanging-Root Huntmaster** (island lord, Hanging Root Wood beacon guards): there every raid. It **always drops one piece**: Rootweave Mask 35%, Vinewoven Cuirass 35%, Hanging-Root Quiver 30%, so it takes a few raids to complete the set.
 - **Grain Sickle** (island lord, the group between the waterwheel channel and the barn on the Green Terraces): there every raid. It **always drops one piece**: Greenear Straw Hat 35%, Straw Raincoat 35%, Grain Sack 30%.
 - The piece that drops comes at **full durability**; the pieces it did not roll never reach the box.
-- Never in any random pool (island crates, Wish Fountain, daily sign-in, boss loot crates) — these two are the only source.
+- Never in any random pool (island crates, Wish Fountain, daily sign-in, boss loot crates). These two are the only source.
 
 ## Uses on the Isles
 
@@ -38,15 +38,15 @@ Only found on two of Sky Island's island lords, the Hanging-Root Huntmaster and 
 ## Tips
 
 **Hanging-Root Huntmaster:**
-- **Root snare**: once you are within **20 m**, it plants **two root stakes** between you and it and strings a tripwire about 8 m long between them. The wire starts slack, pulls taut about 0.8 seconds later and vanishes on its own after 12 seconds; once it is taut, step across it or brush against it and you are tripped — a small hit and **45% slower for 2.5 seconds** — and the wire snaps.
+- **Root snare**: once you are within **20 m**, it plants **two root stakes** between you and it and strings a tripwire about 8 m long between them. The wire starts slack, pulls taut about 0.8 seconds later and vanishes on its own after 12 seconds; once it is taut, step across it or brush against it and you are tripped (a small hit and **45% slower for 2.5 seconds**), and the wire snaps.
 - **Break either stake** (30 health) and the wire snaps.
-- **Root-hollow ambush**: at **75% / 45%** health a ring (2.5 m radius) lights over the root hollow nearest you, and about 1 second later it bursts out there in a blast — step away as soon as a hollow glows. After bursting out it **reels for 1.5 seconds** — that is your window.
+- **Root-hollow ambush**: at **75% / 45%** health a ring (2.5 m radius) lights over the root hollow nearest you, and about 1 second later it bursts out there in a blast. Step away as soon as a hollow glows. After bursting out it **reels for 1.5 seconds**; that is your window.
 - **Breaking its gear cuts its attacks**: once the Rootweave Mask is crit through, a hollow glows for 2 seconds before it bursts out; once the Vinewoven Cuirass is at zero durability, the tripwire's slow is halved.
 
 **Grain Sickle:**
 - **Opening the sluices**: at **80% / 50% / 25%** health it floods a patch of mud (3.5 m radius) under you and one on each side (5.5 m out). The mud takes about 1.2 seconds to spread and does not slow you before then; after that it stays for 12 seconds, and you walk and run **40% slower** while standing in it.
-- The first time it opens a sluice it shouts toward the barn and calls over **whatever hands from the barn group are still standing** — clear the barn side first and nobody comes.
-- **Sickle sweep**: get within 3 m and a ring lights at its feet; about 0.9 seconds later it sweeps (2.2 m radius), then waits 4 seconds — keep your distance and back off when the ring lights.
+- The first time it opens a sluice it shouts toward the barn and calls over **whatever hands from the barn group are still standing**. Clear the barn side first and nobody comes.
+- **Sickle sweep**: get within 3 m and a ring lights at its feet; about 0.9 seconds later it sweeps (2.2 m radius), then waits 4 seconds. Keep your distance and back off when the ring lights.
 - **Breaking its gear cuts its attacks**: once the Greenear Straw Hat is shot through, a sluice floods only one patch; once the Straw Raincoat is at zero durability, the sweep's warning slows to 1.6 seconds.
 
 ::: tip

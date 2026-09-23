@@ -50,7 +50,11 @@ def check():
     final = "Campaign/CampaignFinalBoss.cs"
     require(final, "internal bool CanStartCampaignFinalBoss()", "return ShouldCampaignFinalBossAltarExist();")
     require(final, "private async UniTask StartCampaignFinalBossAsync(", "CampaignTuning.FinalBossScale, isNonWaveSpawn: true);")
-    require(final, "private void CreateCampaignAltarPart(", "renderer.sharedMaterial = material;")
+    # 召唤石的几何与表现 2026-09-23 移到独立类型（VA-25）：部件仍共用缓存里那一份材质，退场走缩没 + 自然退场
+    altar_fx = "Campaign/CampaignFinalBossFx.cs"
+    require(altar_fx, "private static Renderer CreatePart(", "renderer.sharedMaterial = material;")
+    require(final, "private void CreateCampaignFinalBossAltar(", "CampaignFinalBossFx.Build(campaignFinalBossAltar);")
+    require(final, "internal void TickCampaignFinalBossAltar()", "CampaignFinalBossFx.Dismiss(campaignFinalBossAltar);")
     require(final, "private Vector3 ResolveCampaignFinalBossSpawnPosition()", "SpawnPositionHelper.FindNearestSafeSpawnPoint(points, main.transform.position, 8f);")
     require(final, "internal void TickCampaignFinalBossAltar()", "if (Time.unscaledTime < campaignAltarRetryAt) return;")
     require(final, "internal void CleanupCampaignFinalBoss(", "if (campaignFinalBossActive) CampaignDialoguePlayer.InvalidatePlayback();")

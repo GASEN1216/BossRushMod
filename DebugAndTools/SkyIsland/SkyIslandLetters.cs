@@ -127,7 +127,7 @@ namespace BossRush
                 Letter("Letter_03", "Region_C", "C", SkyIslandStoryFlag.None,
                     "田埂上的空格", "The empty plot on the ridge",
                     "晴禾：田埂上那格空着的，是给我留的吧？我记得你说过，谁先回来，谁就先吃第一碗。别等太久，菜老了就不好吃了。——一个没署名的人",
-                    "Qinghe — the empty plot on the ridge is the one you kept for me, is it not? You said whoever comes home first gets the first bowl. Do not wait too long; greens go tough when they are left. — someone who did not sign"),
+                    "Qinghe — the empty plot on the ridge is the one you kept for me, right? You said whoever gets home first eats first. Don't wait too long; greens go tough if you leave them. — someone who did not sign"),
                 Letter("Letter_04", "Region_S1", "S1", SkyIslandStoryFlag.None,
                     "写给池子里的青蛙", "To the frogs in the pool",
                     "写给池子里的青蛙：你们替我数一数，岸上的灯亮了几盏。数到十盏的时候，我就该回家了。——一个等灯的孩子",
@@ -138,7 +138,7 @@ namespace BossRush
                     "Post hut log: three hundred days after the storm, the mailbags still hang in the roots. I hang the letters that could not be sent upside down, so that when the wind blows they point toward home."),
                 Letter("Letter_06", "Region_F", "F", SkyIslandStoryFlag.None,
                     "寺里的扫地人", "From the one who sweeps the temple",
-                    "折翎：寺里的钟我替你擦过了。你守着的那条路，我不怪你封上——我只怪那年风太大。等路修好，回来喝口热茶。——寺里的扫地人",
+                    "折翎：寺里的钟我替你擦过了。你守着的那条路，我不怪你封上，只怪那年风太大。等路修好，回来喝口热茶。——寺里的扫地人",
                     "Zheling — I polished the temple bell for you. I do not blame you for closing the road you guard; I only blame how hard the wind blew that year. When the road is mended, come back for a cup of hot tea. — the one who sweeps the temple"),
                 Letter("Letter_07", "Region_S3", "S3", SkyIslandStoryFlag.None,
                     "航路图附言", "A note pinned to the chart",
@@ -146,12 +146,12 @@ namespace BossRush
                     "A note pinned to the chart: of the three streams, the slow one is the one to trust. If you read this far, stack the stones at the cave mouth a little higher — the next person sheltering from the rain will thank you."),
                 Letter("Letter_08", "Region_S4", "S4", SkyIslandStoryFlag.None,
                     "瞭台观星记", "The overlook stargazing log",
-                    "观星记：镜片偏了，星星就走错了路，我们的船也跟着走错了路。等有人重新校准它，请替我看一眼正北那颗最亮的——那是回家的方向。",
-                    "Stargazing log: when the lens drifts the stars go the wrong way, and our ships went the wrong way with them. When someone calibrates it again, look at the brightest star due north for me — that is the way home."),
+                    "观星记：镜片偏了，星星就走错了路，我们的船也跟着走错了路。等有人重新校准它，请替我看一眼正北那颗最亮的，那是回家的方向。",
+                    "Stargazing log: when the lens drifts the stars go the wrong way, and our ships went the wrong way with them. When someone calibrates it again, look at the brightest star due north for me. That's the way home."),
                 Letter("Letter_09", "Region_E", "E", SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp,
                     "栈道守望人", "From the boardwalk watch",
-                    "栈道守望人：两盏灯都亮了。我在栏杆上刻下最后一道记号——风会循着光来，可光也会引我们回去。别怕它，跑出那一圈，然后回家。",
-                    "From the boardwalk watch: both lamps are lit. I cut the last notch into the rail — the wind follows the light, but the light also leads us back. Do not fear it. Run clear of the ring, and then come home."),
+                    "栈道守望人：两盏灯都亮了。我在栏杆上刻下最后一道记号。风会顺着光找来，可我们回家也得靠这光。别怕它，跑出那一圈，然后回家。",
+                    "From the boardwalk watch: both lamps are lit. I cut the last notch into the rail. The wind follows the light, but so do we, on the way home. Don't be scared of it. Get out of the ring, then come home."),
                 Letter("Letter_10", "POI_G", "G", SkyIslandStoryFlag.StarLamp,
                     "学徒的检修单", "The apprentice's work order",
                     "学徒小铆的检修单：星灯的铜环我擦了三遍。师傅说灯亮的时候钟庭会回应，我不信，除非亲耳听见。要是你听见了，写信告诉我。",
@@ -162,8 +162,8 @@ namespace BossRush
                     "A loose page from the Bell Keeper's register: on the day the bell rang, one new line appeared. Nobody knows who wrote it. It says only: 'I am home.'"),
                 Letter("Letter_12", "Lamp_A", "A", SkyIslandStoryFlag.Ending,
                     "给下一位旅人", "To the next traveller",
-                    "给下一位旅人：船系在码头，灯亮在云海上。你走过的每一座桥，都会有人接着走。谢谢你把路修好。——晴岚群岛的所有人",
-                    "To the next traveller: the boat is tied at the dock and the lights burn over the cloud sea. Every bridge you crossed, someone will cross after you. Thank you for mending the way. — everyone on the Qinglan isles")
+                    "给下一位旅人：船系在码头，灯亮在云海上。你修过的桥，往后天天有人走。谢谢你把路修好。——晴岚群岛的所有人",
+                    "To the next traveller: the boat is tied at the dock and the lights burn over the cloud sea. The bridges you fixed get walked every day now. Thanks for mending the way. — everyone on the Qinglan isles")
             };
         }
 

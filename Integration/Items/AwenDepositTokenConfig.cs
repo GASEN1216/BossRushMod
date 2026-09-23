@@ -26,8 +26,8 @@ namespace BossRush
         public const string TAG_DESC_EN = "Used to ship your currently carried items back home";
         public const string DISPLAY_NAME_CN = "阿稳快递牌";
         public const string DISPLAY_NAME_EN = "Awen Courier Token";
-        public const string DESCRIPTION_CN = "刻着小鸭邮记的铜制快递牌。使用后会把你当前穿戴和背包中的物品一键快递回家。在基地使用免费，其他地方会按阿稳快递服务的同价收费。";
-        public const string DESCRIPTION_EN = "A brass courier token stamped with Awen's duck mark. Use it to ship your equipped gear and backpack items back home in one go. It is free in base, and costs the same delivery fee as Awen's courier service elsewhere.";
+        public const string DESCRIPTION_CN = "刻着小鸭邮记的铜快递牌。用了会把你身上穿的和背包里的东西一起寄回家。在基地用免费，在外面按阿稳的快递价收钱。";
+        public const string DESCRIPTION_EN = "A brass courier token stamped with Awen's duck mark. Ships everything you're wearing and carrying back home in one go. Free at base; anywhere else it costs Awen's usual delivery fee.";
         public const string USE_DESC_CN = "使用：基地免费，其他地方按阿稳快递费送回当前携带物品";
         public const string USE_DESC_EN = "Use: Free in base, otherwise costs Awen's normal courier fee";
         public const float USE_TIME_SECONDS = 1.5f;

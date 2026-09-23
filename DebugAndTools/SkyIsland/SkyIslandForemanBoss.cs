@@ -49,6 +49,8 @@ namespace BossRush
         private Stat headArmorStat, bodyArmorStat, physicsStat;
         private Modifier headShield, bodyShield, overheatModifier;
         private GameObject overheatGlow;
+        private Light overheatLight;
+        private ParticleSystem overheatSteam;
         private int receiverLayer, phase, casts;
         private float nextTick, nextCastAt, overheatUntil;
         private bool subscribed, casting, overheated, finished;
@@ -179,12 +181,15 @@ namespace BossRush
                 simple.maxHealthValue = SkyIslandBossRules.PylonHealth;
                 simple.dmgReceiver = receiver;
                 receiver.simpleHealth = simple;
-                // 表现全部挂在桩自己身上：官方 HealthSimpleBase 打空后停用根物体，圈、光柱与供能线跟着一起消失。
+                // 表现全部挂在桩自己身上：官方 HealthSimpleBase 打空后停用根物体，圈、光柱与供能线跟着一起消失；
+                // 打碎的那一下由 TickPylons 在原位补一次碎裂（碎裂不能挂在被停用的根上）。
                 LineRenderer ring = SkyIslandGroundRing.Create(go.transform, new Vector3(0f, 0.08f - PylonCoreHeight, 0f));
                 SkyIslandGroundRing.SetShape(ring, 0.9f, 0.22f, PylonTint);
-                LineRenderer column = SkyIslandBossForge.StraightLine(go.transform, "Column", 0.2f, PylonTint);
+                // 光柱底宽顶窄、顶端淡出（VB-24），不再是一根上下硬断的平色条；桩上再点一盏同色小灯。
+                LineRenderer column = SkyIslandBossForge.ColumnLine(go.transform, "Column", 0.24f, PylonTint);
                 column.SetPosition(0, ground + Vector3.up * 0.05f);
                 column.SetPosition(1, ground + Vector3.up * 2.3f);
+                SkyIslandBossForge.PylonLight(go.transform, PylonTint);
                 LineRenderer tether = SkyIslandBossForge.StraightLine(go.transform, "Tether", 0.07f, PylonTint);
                 go.SetActive(true);
                 // 非触发球是官方弹道扫掠要的；它不该把人顶开或卡住（口径同云蚋，必须在 SetActive 之后调用）。
@@ -234,7 +239,15 @@ namespace BossRush
                 Pylon pylon = pylons[i];
                 bool down = pylon.Root == null || !pylon.Root.activeSelf;
                 if (!down && Time.time < pylon.ExpiresAt) continue;
-                if (pylon.Root != null) Destroy(pylon.Root);
+                if (pylon.Root != null)
+                {
+                    // 打碎：原位碎片 + 地面余波 + 轻震；到时自灭：一小团扬尘。表现挂地图根，不挂在被停用的桩上（VB-24）。
+                    Vector3 core = pylon.Root.transform.position;
+                    Vector3 foot = core - Vector3.up * PylonCoreHeight;
+                    if (down) SkyIslandImpactFx.Shatter(context.Root, core, foot, PylonTint);
+                    else SkyIslandImpactFx.Puff(context.Root, foot, 0.6f, 8);
+                    Destroy(pylon.Root);
+                }
                 pylons.RemoveAt(i);
                 removed = true;
             }
@@ -345,7 +358,12 @@ namespace BossRush
                 for (int i = 0; i < points.Count; i++)
                 {
                     // catch 子句体内不能 yield return（CS1631）：这里只记账。
-                    try { SkyIslandBossForge.Detonate(boss, points[i], SkyIslandBossRules.StarfireRadius, SkyIslandBossRules.StarfireDamage); }
+                    // 星焰是真的爆炸：留官方火球；三圈齐落只震第一发（VB-21）。
+                    try
+                    {
+                        SkyIslandBossForge.Detonate(boss, points[i], SkyIslandBossRules.StarfireRadius, SkyIslandBossRules.StarfireDamage,
+                            true, i == 0 ? SkyIslandImpactFx.BossShake : 0f, StarfireTint);
+                    }
                     catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 星焰落点失败：" + e.Message); }
                 }
             }
@@ -353,7 +371,7 @@ namespace BossRush
             {
                 if (lines[i] == null) continue;
                 rings.Remove(lines[i].gameObject);
-                Destroy(lines[i].gameObject);
+                SkyIslandBossForge.ReleaseRing(lines[i]);
             }
             casting = false;
             if (Aborted()) yield break;
@@ -401,6 +419,10 @@ namespace BossRush
             nextCastAt = Time.time + SkyIslandBossRules.StarfireInterval * 0.5f;
         }
 
+        /// <summary>
+        /// 过热的样子（VB-29.3）：背后一盏橙灯 0.2 s 淡入淡出（不再硬开硬关），加一股往上冒的灰白蒸汽；
+        /// 散热结束蒸汽只停发射、已冒出来的自然散完。只在过热时存在，挂在 Boss 身上随它销毁。
+        /// </summary>
         private void ShowOverheatGlow(bool on)
         {
             try
@@ -411,16 +433,67 @@ namespace BossRush
                     overheatGlow = new GameObject("SkyIslandForemanOverheat");
                     overheatGlow.transform.SetParent(boss.transform, false);
                     overheatGlow.transform.localPosition = new Vector3(0f, 1.2f, -0.35f);
-                    Light light = overheatGlow.AddComponent<Light>();
-                    light.type = LightType.Point;
-                    light.color = StarfireTint;
-                    light.intensity = 3.5f;
-                    light.range = 4f;
-                    light.shadows = LightShadows.None;
+                    overheatLight = overheatGlow.AddComponent<Light>();
+                    overheatLight.type = LightType.Point;
+                    overheatLight.color = StarfireTint;
+                    overheatLight.intensity = 0f;
+                    overheatLight.range = 4f;
+                    overheatLight.shadows = LightShadows.None;
+                    overheatSteam = CreateOverheatSteam(overheatGlow.transform);
                 }
-                overheatGlow.SetActive(on);
+                SkyIslandLightFade.FadeTo(overheatLight, on ? 3.5f : 0f, 0.2f, false);
+                if (overheatSteam == null) return;
+                if (on) overheatSteam.Play(true);
+                else overheatSteam.Stop(true, ParticleSystemStopBehavior.StopEmitting);
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 过热光失败：" + e.Message); }
+        }
+
+        private static ParticleSystem CreateOverheatSteam(Transform parent)
+        {
+            Material material = BossRushFxMaterials.Get(BossRushFxBlend.Alpha);
+            if (material == null) return null;
+            GameObject go = new GameObject("OverheatSteam");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(0f, 0.25f, 0f);
+            // 锥形默认朝 +Z：转到朝上。
+            go.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+            ParticleSystem ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            ParticleSystem.MainModule main = ps.main;
+            main.playOnAwake = false;
+            main.loop = true;
+            main.maxParticles = 24;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1f, 1.4f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.8f, 1.4f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.25f, 0.4f);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.startColor = new Color(0.86f, 0.84f, 0.80f, 1f);
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            ParticleSystem.EmissionModule emission = ps.emission;
+            emission.enabled = true;
+            emission.rateOverTime = 12f;
+            ParticleSystem.ShapeModule shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 14f;
+            shape.radius = 0.12f;
+            ParticleSystem.ColorOverLifetimeModule fade = ps.colorOverLifetime;
+            fade.enabled = true;
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.3f, 0.15f), new GradientAlphaKey(0f, 1f) });
+            fade.color = gradient;
+            ParticleSystem.SizeOverLifetimeModule grow = ps.sizeOverLifetime;
+            grow.enabled = true;
+            grow.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 2.4f));
+            ParticleSystemRenderer renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return ps;
         }
 
         // ====================================================================
@@ -486,6 +559,8 @@ namespace BossRush
             rings.Clear();
             if (overheatGlow != null) Destroy(overheatGlow);
             overheatGlow = null;
+            overheatLight = null;
+            overheatSteam = null;
         }
 
         private void OnDestroy()

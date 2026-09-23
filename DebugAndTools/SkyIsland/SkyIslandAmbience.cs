@@ -125,10 +125,14 @@ namespace BossRush
             GameObject child = new GameObject("LightFilament");
             child.transform.SetParent(parent, false);
             LineRenderer line = child.AddComponent<LineRenderer>();
-            line.sharedMaterial = BossRush.Common.Effects.RingParticleEffect.GetSharedParticleMaterial();
+            // 光丝是「光」：走共享特效工厂的加色软边带（跨线宽羽化）。旧材质是共享粒子材质，它的 _TintColor 从 2× 改回中性 1× 之后
+            // 这些线会变成平涂的彩色细条（VB-27）；加色才读得出发光。工厂不可用时退回共享粒子材质。
+            Material glow = SkyIslandImpactFx.SoftLineMaterial(true);
+            line.sharedMaterial = glow != null ? glow : BossRush.Common.Effects.RingParticleEffect.GetSharedParticleMaterial();
+            line.textureMode = LineTextureMode.Stretch;
             line.useWorldSpace = false;
-            line.startWidth = line.endWidth = .055f;
-            line.startColor = line.endColor = color;
+            line.startWidth = line.endWidth = .08f;
+            line.startColor = line.endColor = new Color(color.r, color.g, color.b, .85f);
             line.loop = loop;
             line.positionCount = points.Length;
             line.SetPositions(points);

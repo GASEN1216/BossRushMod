@@ -220,8 +220,9 @@ namespace BossRush
         private GameObject CreateWarningCircle(Vector3 position, float chargeTime)
         {
             GameObject circleObj = RentWarningCircle();
-            circleObj.transform.position = position + Vector3.up * 0.05f;
-            circleObj.transform.rotation = Quaternion.identity;
+            circleObj.transform.position = position + Vector3.up * 0.08f;
+            // 绕 X 转 90°：圈的局部 XY 就是地面，TransformZ 把带子摊平（VB-13），不再面向镜头、一半插进地里。
+            circleObj.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             circleObj.transform.localScale = Vector3.one;
 
             WarningCircleAnimation animation = circleObj.GetComponent<WarningCircleAnimation>();
@@ -387,9 +388,6 @@ namespace BossRush
             float lineLength = 50f;     // 线长50米
             // 注：lineInterval=0.1f对应wait01s, warningTime=1f对应wait1s, wavePause=0.5f对应wait05s
 
-            // 使用缓存的彩虹渐变（避免每次攻击重复创建）
-            Gradient rainbowGradient = GetSharedRainbowGradient();
-
             // 执行3波攻击
             for (int wave = 0; wave < waves; wave++)
             {
@@ -406,8 +404,10 @@ namespace BossRush
                     // 每条线都在玩家脚下，旋转5°
                     float rotation = i * 5f;
 
-                    // 创建警告线（中心在玩家脚下，带旋转）
-                    GameObject line = CreateHorizontalWarningLine(currentPos, lineLength, rainbowGradient, rotation);
+                    // 创建警告线（中心在玩家脚下，带旋转）。蓄力时长 = 离这一波发射还剩多久（每 0.1 s 一条、1 s 齐射），
+                    // 核心线随它从 0.12 m 涨到 0.25 m，发射那一刻刚好满（VB-11，纯表现，判定时序不变）。
+                    float chargeSeconds = (linesPerWave - i) * 0.1f;
+                    GameObject line = CreateHorizontalWarningLine(currentPos, lineLength, rotation, chargeSeconds, 0.08f, 1f);
                     if (line != null)
                     {
                         warningLines.Add(line);
@@ -435,8 +435,8 @@ namespace BossRush
                         // 播放长矛发射音效（每条长矛都播放）
 
                         FireLanceFromWarningLine(line);
-                        activeWarningLines.Remove(line); // 从全局清理列表移除
-                        ReturnWarningLine(line);
+                        // 发射瞬间核心线闪白 0.06 s 再回池（VB-11）；闪完之前仍在全局清理列表里，死亡清理照样收得到。
+                        FlashLanceWarningLine(line);
                     }
                 }
                 warningLines.Clear();
@@ -452,72 +452,29 @@ namespace BossRush
         }
 
         /// <summary>
-        ///创建警告线（50米长，可旋转，支持初始透明度）
+        /// 创建警告线（50米长，可旋转）。
+        /// 根物体的位置与朝向就是长矛的发射线（FireLanceFromWarningLine 读它，高度仍是玩家身体中间，判定不变）；
+        /// 画面贴地：一条淡蓝核心线 + 一条 4 m 宽（= 2 × 长矛命中半径）的软边危险带（VB-11），
+        /// 核心线在 <paramref name="chargeSeconds"/> 内从 0.12 m 涨到 0.25 m，<paramref name="appearSeconds"/> 内淡入；
+        /// <paramref name="bandScale"/> 按同时在场的条数压危险带的不透明度，叠满时中心不超过约 0.4。
         /// </summary>
-        private GameObject CreateHorizontalWarningLine(Vector3 center, float length, Gradient gradient, float rotationY, float initialAlpha = 1f)
+        private GameObject CreateHorizontalWarningLine(Vector3 center, float length, float rotationY, float chargeSeconds, float appearSeconds, float bandScale)
         {
             try
             {
                 GameObject lineObj = RentWarningLine();
                 lineObj.transform.position = center;
 
-                LineRenderer lr = lineObj.GetComponent<LineRenderer>();
-
-                // 使用共享材质
-                Material mat = GetSharedInternalColoredMaterial();
-                if (mat != null)
-                {
-                    lr.sharedMaterial = mat;
-                }
-
-                // 设置线条属性
-                lr.startWidth = 0.05f;
-                lr.endWidth = 0.05f;
-                lr.numCornerVertices = 0;
-                lr.numCapVertices = 0;
-                lr.sortingOrder = 100;
-                lr.useWorldSpace = true;
-                lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                lr.receiveShadows = false;
-
-                // 设置彩虹渐变（应用初始透明度）
-                if (initialAlpha <= 0f)
-                {
-                    lr.colorGradient = GetTransparentRainbowGradient();
-                }
-                else if (initialAlpha < 1f)
-                {
-                    // 创建带初始透明度的渐变副本
-                    Gradient fadedGradient = new Gradient();
-                    fadedGradient.SetKeys(
-                        gradient.colorKeys,
-                        new GradientAlphaKey[] {
-                            new GradientAlphaKey(initialAlpha, 0f),
-                            new GradientAlphaKey(initialAlpha * 0.95f, 0.15f),
-                            new GradientAlphaKey(initialAlpha * 0.8f, 0.35f),
-                            new GradientAlphaKey(initialAlpha * 0.6f, 0.55f),
-                            new GradientAlphaKey(initialAlpha * 0.4f, 0.75f),
-                            new GradientAlphaKey(initialAlpha * 0.3f, 1f)
-                        }
-                    );
-                    lr.colorGradient = fadedGradient;
-                }
-                else
-                {
-                    lr.colorGradient = gradient;
-                }
-
-                // 计算旋转后的方向
-                Vector3 forwardDir = Quaternion.Euler(0, rotationY, 0) * Vector3.forward;
-                Vector3 backDir = Quaternion.Euler(0, rotationY, 0) * Vector3.back;
-
-                // 设置线条顶点（50米长，沿旋转后的方向）
-                lr.positionCount = 2;
-                lr.SetPosition(0, center + backDir * (length / 2f));
-                lr.SetPosition(1, center + forwardDir * (length / 2f));
-
                 // 存储旋转角度到lineObj的transform中，供发射长矛时使用
                 lineObj.transform.rotation = Quaternion.Euler(0, rotationY, 0);
+
+                DragonKingLanceWarning warning = lineObj.GetComponent<DragonKingLanceWarning>();
+                if (warning != null)
+                {
+                    Vector3 ground = center - Vector3.up * (DragonKingConfig.PlayerTargetHeightOffset - 0.05f);
+                    Vector3 forwardDir = Quaternion.Euler(0, rotationY, 0) * Vector3.forward;
+                    warning.Begin(ground, forwardDir, length, chargeSeconds, appearSeconds, bandScale);
+                }
 
                 return lineObj;
             }
@@ -528,67 +485,27 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 警告线淡入效果协程
-        /// 优化：复用Gradient和GradientAlphaKey数组，减少GC压力
-        /// </summary>
-        private IEnumerator FadeInWarningLines(List<GameObject> lines, float duration)
+        /// <summary>发射那一刻：预警线闪白 0.06 s 后自己回池（经 <see cref="OnLanceWarningFlashDone"/>）。组件缺失时照旧立即回池。</summary>
+        private void FlashLanceWarningLine(GameObject line)
         {
-            float elapsed = 0f;
-
-            // 预先缓存所有LineRenderer（避免每帧GetComponent）
-            var renderers = new List<LineRenderer>(lines.Count);
-            foreach (var line in lines)
+            if (line == null) return;
+            DragonKingLanceWarning warning = line.GetComponent<DragonKingLanceWarning>();
+            if (warning == null || !line.activeInHierarchy)
             {
-                if (line != null)
-                {
-                    var lr = line.GetComponent<LineRenderer>();
-                    if (lr != null) renderers.Add(lr);
-                }
+                activeWarningLines.Remove(line);
+                ReturnWarningLine(line);
+                return;
             }
+            if (lanceFlashDoneCallback == null) lanceFlashDoneCallback = OnLanceWarningFlashDone;
+            warning.Flash(lanceFlashDoneCallback);
+        }
 
-            // 预分配Gradient和GradientAlphaKey数组（避免每帧创建）
-            Gradient fadeGradient = new Gradient();
-            GradientAlphaKey[] alphaKeys = new GradientAlphaKey[6];
-            alphaKeys[0] = new GradientAlphaKey(0f, 0f);
-            alphaKeys[1] = new GradientAlphaKey(0f, 0.15f);
-            alphaKeys[2] = new GradientAlphaKey(0f, 0.35f);
-            alphaKeys[3] = new GradientAlphaKey(0f, 0.55f);
-            alphaKeys[4] = new GradientAlphaKey(0f, 0.75f);
-            alphaKeys[5] = new GradientAlphaKey(0f, 1f);
-
-            // 缓存颜色键（只需获取一次）
-            GradientColorKey[] colorKeys = null;
-            if (renderers.Count > 0 && renderers[0] != null)
+        /// <summary>闪完回池。死亡清理已经收过的（不在列表里了）不再回第二次。</summary>
+        private void OnLanceWarningFlashDone(GameObject line)
+        {
+            if (line != null && activeWarningLines.Remove(line))
             {
-                colorKeys = renderers[0].colorGradient.colorKeys;
-            }
-
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float alpha = Mathf.Clamp01(elapsed / duration);
-
-                // 更新预分配的alpha值（避免每帧创建新数组）
-                alphaKeys[0].alpha = alpha;
-                alphaKeys[1].alpha = alpha * 0.95f;
-                alphaKeys[2].alpha = alpha * 0.8f;
-                alphaKeys[3].alpha = alpha * 0.6f;
-                alphaKeys[4].alpha = alpha * 0.4f;
-                alphaKeys[5].alpha = alpha * 0.3f;
-
-                // 更新所有线条的透明度
-                foreach (var lr in renderers)
-                {
-                    if (lr == null) continue;
-
-                    // 复用Gradient对象，只更新alpha键
-                    if (colorKeys == null) colorKeys = lr.colorGradient.colorKeys;
-                    fadeGradient.SetKeys(colorKeys, alphaKeys);
-                    lr.colorGradient = fadeGradient;
-                }
-
-                yield return null;
+                ReturnWarningLine(line);
             }
         }
 
@@ -707,6 +624,7 @@ namespace BossRush
             if (toPlayerSqr < lanceLengthSqr)
             {
                 ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage);
+                DragonKingFxShared.HitBurst(lancePos, LanceHitColor);
                 return true;
             }
 
@@ -721,6 +639,7 @@ namespace BossRush
             if (toPlayerDistance <= 0.001f)
             {
                 ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage);
+                DragonKingFxShared.HitBurst(lancePos, LanceHitColor);
                 return true;
             }
 
@@ -736,6 +655,7 @@ namespace BossRush
                     hit.collider.transform.IsChildOf(targetCharacter.transform))
                 {
                     ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage);
+                    DragonKingFxShared.HitBurst(hit.point, LanceHitColor);
                     return true;
                 }
             }
@@ -760,9 +680,6 @@ namespace BossRush
             int linesPerWave = 16;        // 每波16条线（同时画出）
             float lineLength = 50f;       // 线长50米
             // 注：warningTime=0.5f对应wait05s, wavePause=0.5f对应wait05s
-
-            // 使用缓存的彩虹渐变（避免每次攻击重复创建）
-            Gradient rainbowGradient = GetSharedRainbowGradient();
 
             // 执行4波攻击
             for (int wave = 0; wave < waveCount; wave++)
@@ -795,17 +712,14 @@ namespace BossRush
                     }
 
                     float rotation = i * 5f;
-                    GameObject line = CreateHorizontalWarningLine(linePos, lineLength, rainbowGradient, rotation, 0f);
+                    // 16 条同时画、0.3 s 淡入、0.5 s 蓄满；危险带按 10/16 压淡，叠满时中心不糊成一整块（VB-11）。
+                    GameObject line = CreateHorizontalWarningLine(linePos, lineLength, rotation, 0.5f, 0.3f, 10f / linesPerWave);
                     if (line != null)
                     {
                         warningLines.Add(line);
                         activeWarningLines.Add(line); // 添加到全局清理列表
                     }
                 }
-
-                // 启动淡入效果（0.3秒淡入）
-                float fadeInDuration = 0.3f;
-                StartCoroutine(FadeInWarningLines(warningLines, fadeInDuration));
 
                 // 等待警告显示（warningTime = 0.5f）
                 yield return wait05s;
@@ -819,8 +733,7 @@ namespace BossRush
                     if (line != null)
                     {
                         FireLanceFromWarningLine(line, fireFromFront, fireFromBack);
-                        activeWarningLines.Remove(line); // 从全局清理列表移除
-                        ReturnWarningLine(line);
+                        FlashLanceWarningLine(line);
                     }
                 }
                 warningLines.Clear();

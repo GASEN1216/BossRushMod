@@ -41,6 +41,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
+using System.Text.RegularExpressions;
 using Duckov.UI;
 using TMPro;
 using UnityEngine;
@@ -49,7 +51,7 @@ using UnityEngine.UI;
 namespace BossRush
 {
     /// <summary>天空岛局内指引。非交互，点击必须穿透。会话独占一个实例。</summary>
-    internal sealed class SkyIslandHud : IDisposable
+    internal sealed partial class SkyIslandHud : IDisposable
     {
         #region 版式常量
 
@@ -93,9 +95,29 @@ namespace BossRush
         private const float ObjectiveFlashLift = 0.6f;
         private const int ObjectiveFlashSteps = 8;
 
+        /// <summary>
+        /// 右上卡的字号梯度（2026-09-23 审美审查 UE-01）：玩家瞄一眼要读到的是「现在该做什么」，所以目标是卡片的主角——
+        /// 15px 正文色；地名退成 12px 眉题（强调色、拉开字距），进度行 12px 次级色。旧版反过来：地名 15px 强调色抢了主位，
+        /// 目标是 13px 灰字，整块读起来像一块调试框。撤离读秒仍用 15px：站在圈里的那几秒它就是最要紧的数。
+        /// </summary>
+        private const float RegionFont = 12f;
         private const float TitleFont = 15f;
-        private const float BodyFont = 13f;
+        private const float BodyFont = 15f;
         private const float ChipFont = 12f;
+        /// <summary>地名眉题的字距（1/100 em）：小字拉开才读作标签，而不是一行正文。</summary>
+        private const float RegionSpacing = 6f;
+        /// <summary>目标行最多占几行高（含「目标更新」眉题与拆开的分句）：再长就省略号收尾，卡片不无限长高。</summary>
+        private const int ObjectiveMaxLines = 7;
+        /// <summary>目标与进度行之间那道分隔线的占位高度：分隔线档的 rect 至少 8 高才画得出一条线（见 CreateSeparator）。</summary>
+        private const float CardRuleHeight = 8f;
+        /// <summary>
+        /// 卡片的过渡（UE-11）：高度补间、新出现的行淡入、目标换字（旧字淡出 → 换字 → 新字淡入）。
+        /// 旧写法三件事都是当帧硬切：挂「目标更新」那一帧卡片猛地长高一行，6 秒后又猛地缩回，新目标当帧顶掉旧目标。
+        /// </summary>
+        private const float CardResize = 0.16f;
+        private const float RowFadeIn = 0.15f;
+        private const float ObjectiveSwapOut = 0.1f;
+        private const float ObjectiveSwapIn = 0.2f;
 
         /// <summary>
         /// 区域大标题相对屏幕中心的 y。**负数 = 中线偏下**，这是刻意的：
@@ -136,8 +158,15 @@ namespace BossRush
         /// rect 高 1 时上下 border 各分到 0.5px、中心区归零，整条线一个像素都画不出来。
         /// 8 高时中心区剩 4px，亮带画成约 2px 实线外加上下柔边。
         /// </summary>
-        private const float BannerRuleWidth = 120f;
+        private const float BannerRuleWidth = 180f;
         private const float BannerRuleHeight = 8f;
+        /// <summary>
+        /// 细线的颜色与不透明度（UE-10）：琥珀色（WarningText 当「金色」用），呼应原版暖琥珀画风。
+        /// 旧值是 Divider（a=0.32 的蓝灰），压在近黑的压暗底上几乎看不见，整块大标题只剩黑白两色。
+        /// </summary>
+        private const float BannerRuleAlpha = 0.8f;
+        /// <summary>地名淡入时从这个字距收拢到 <see cref="AreaTitleSpacing"/>（EaseOut）：一次性的「题字」揭示，每个区域一趟只播一次。</summary>
+        private const float AreaTitleRevealSpacing = 16f;
 
         /// <summary>
         /// 区域大标题压暗底的基准尺寸，以及英文长句时允许扩到多宽。
@@ -149,9 +178,14 @@ namespace BossRush
         private const float BannerScrimHeight = 340f;
         private const float BannerScrimMaxWidth = 1700f;
 
-        /// <summary>区域大标题的淡入 / 停留 / 淡出秒数。</summary>
+        /// <summary>
+        /// 区域大标题的淡入 / 停留 / 淡出秒数。停留从 2.2 拉到 3.0（UE-10）：三行字读完要这么久。
+        /// 落地那一次（带操作提示）仍停 2.2：F3 自动验收 SKY_AUTO_LAND_DOCK_WORLD 在落地后约 4 秒断言大标题已淡出
+        /// （步骤表 wait_real:3），要加长得先同步步骤表，见 2026-09-23 修复报告。
+        /// </summary>
         private const float BannerFadeIn = 0.45f;
-        private const float BannerHold = 2.2f;
+        private const float BannerHold = 3.0f;
+        private const float BannerLandingHold = 2.2f;
         private const float BannerFadeOut = 1.0f;
         /// <summary>上一次大标题收掉之后至少隔多少秒才出下一次：连着走过两个地标时不连弹。</summary>
         private const float BannerMinGap = 8f;
@@ -202,6 +236,15 @@ namespace BossRush
         /// <summary>后面还排着字幕时，当前这条最多停这么久（口径同官方 NotificationText.durationIfPending）。</summary>
         private const float CaptionHoldIfPending = 1.6f;
         private const int CaptionQueueLimit = 3;
+        /// <summary>
+        /// 警示字幕的形态（UE-25）：开播时 0.12 秒从 1.04 缩回 1（EaseOut），字下方一道琥珀细线。
+        /// 旧版警示只换了字色，Boss 机制预警（噬风只给 1.4 秒）扫一眼和「航路已清理」一样。
+        /// 细线画在字幕根底边之下（不占 CaptionMaxHeight，守卫复算的上沿不变），仍在官方底部堆叠之上。
+        /// </summary>
+        private const float WarningPulse = 0.12f;
+        private const float WarningPulseScale = 1.04f;
+        private const float WarningRuleHeight = 2f;
+        private const float WarningRuleOffset = -5f;
 
         /// <summary>「目标更新」眉题的停留秒数。</summary>
         private const float ObjectiveUpdatedHold = 6f;
@@ -218,14 +261,35 @@ namespace BossRush
         private CanvasGroup cardGroup;
         private Image cardAccentBar;
         private TextMeshProUGUI regionText, objectiveText, chipText, extractionText, statusText;
+        /// <summary>目标与进度行之间的分隔线（UE-01）。</summary>
+        private RectTransform chipRule;
+        /// <summary>
+        /// 卡片五行（地名 / 目标 / 进度 / 撤离读秒 / 存档状态）各自的淡入进度（0..1）。卡片已经显着时才新出现的行
+        /// 从 0 淡到 1（UE-11）；卡片整块入场时行不单独淡，跟着卡片一起走。
+        /// </summary>
+        private readonly TextMeshProUGUI[] rowTexts = new TextMeshProUGUI[5];
+        private readonly float[] rowReveal = { 1f, 1f, 1f, 1f, 1f };
+        private bool rowsRevealing;
+        /// <summary>卡片高度补间：当前高、起点、终点、已过秒数（-1 表示到位，常态只有一次比较）。</summary>
+        private float cardHeight = 96f, cardHeightFrom = 96f, cardHeightTo = 96f, cardHeightAge = -1f;
+        /// <summary>
+        /// 卡片上此刻**显示着**的目标。<see cref="objective"/> 是最新登记的（F3 读它），换字时先淡出旧字再换成它，
+        /// <see cref="objectiveSwap"/> 是这段过渡的秒表（-1 表示没在换）。
+        /// </summary>
+        private string shownObjective = string.Empty;
+        private float objectiveSwap = -1f;
 
         private RectTransform bannerRect, bannerScrim, bannerRule;
         private CanvasGroup bannerGroup;
         private TextMeshProUGUI bannerOverline, bannerTitle, bannerHint;
+        /// <summary>这一次大标题的停留秒数：落地那次与其后各区域不一样长（见 <see cref="BannerHold"/>）。</summary>
+        private float bannerHold = BannerHold;
 
         private RectTransform captionRect, captionShade;
         private CanvasGroup captionGroup;
         private TextMeshProUGUI captionText;
+        /// <summary>警示字幕下方的琥珀细线（UE-25）。普通字幕时关着。</summary>
+        private RectTransform captionWarningRule;
 
         private string region = string.Empty, objective = string.Empty, chips = string.Empty;
         private string extraction, status, landingHint, pendingTitle, captionShowing;
@@ -296,16 +360,29 @@ namespace BossRush
             cardAccentBar = barImage;
             card.SetActive(false);
 
-            regionText = Text("Region", card.transform, TitleFont, BossRushUIColors.Accent,
+            // 地名是眉题：12px 强调色、拉开字距；目标是主角：15px 正文色（UE-01，字号梯度见 RegionFont）。
+            regionText = Text("Region", card.transform, RegionFont, BossRushUIColors.Accent,
                 TextAlignmentOptions.Left);
-            objectiveText = Text("Objective", card.transform, BodyFont, BossRushUIColors.TextSecondary,
+            regionText.characterSpacing = RegionSpacing;
+            objectiveText = Text("Objective", card.transform, BodyFont, BossRushUIColors.TextPrimary,
                 TextAlignmentOptions.TopLeft);
+            // 进度是另一类信息：靠一道细线和留白分组，不再套一层盒子。
+            GameObject rule = ZombieModeUIHelper.CreateSeparator("ChipsRule", card.transform,
+                new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, CardRuleHeight, BossRushUIColors.Divider);
+            chipRule = rule.GetComponent<RectTransform>();
+            chipRule.pivot = new Vector2(0f, 1f);
+            rule.SetActive(false);
             chipText = Text("Chips", card.transform, ChipFont, BossRushUIColors.TextSecondary,
                 TextAlignmentOptions.Left);
             extractionText = Text("Extraction", card.transform, TitleFont, BossRushUIColors.SuccessText,
                 TextAlignmentOptions.Left);
             statusText = Text("Status", card.transform, BodyFont, BossRushUIColors.WarningText,
                 TextAlignmentOptions.TopLeft);
+            rowTexts[0] = regionText;
+            rowTexts[1] = objectiveText;
+            rowTexts[2] = chipText;
+            rowTexts[3] = extractionText;
+            rowTexts[4] = statusText;
         }
 
         private void BuildBanner()
@@ -346,7 +423,9 @@ namespace BossRush
                 new Vector2(0f, -24f), new Vector2(BannerRuleWidth, BannerRuleHeight),
                 new Vector2(0.5f, 0.5f));
             Image ruleImage = rule.AddComponent<Image>();
-            ruleImage.color = BossRushUIColors.Divider;
+            Color ruleColor = BossRushUIColors.WarningText;
+            ruleColor.a = BannerRuleAlpha;
+            ruleImage.color = ruleColor;
             ruleImage.raycastTarget = false;
             BossRushUI.ApplyPanelSkin(ruleImage, 2, BossRushUISkinPart.Rule);
             bannerRule = rule.GetComponent<RectTransform>();
@@ -381,6 +460,19 @@ namespace BossRush
             captionText.enableWordWrapping = true;
             captionText.overflowMode = TextOverflowModes.Ellipsis;
             BossRushUI.ApplyGameFont(captionText);
+
+            // 警示字幕下方的琥珀细线（UE-25）：锚在字幕根底边之下，随字幕一起淡；宽度每条按实测字宽的一半给（StartCaption）。
+            GameObject warningRule = ZombieModeUIHelper.CreateRect("WarningRule", root.transform,
+                new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+                new Vector2(0f, WarningRuleOffset), new Vector2(120f, WarningRuleHeight), new Vector2(0.5f, 1f));
+            Image warningImage = warningRule.AddComponent<Image>();
+            Color warningColor = BossRushUIColors.WarningText;
+            warningColor.a = BannerRuleAlpha;
+            warningImage.color = warningColor;
+            warningImage.raycastTarget = false;
+            BossRushUI.ApplyPanelSkin(warningImage, 1, BossRushUISkinPart.Hairline);
+            captionWarningRule = warningRule.GetComponent<RectTransform>();
+            warningRule.SetActive(false);
         }
 
         /// <summary>
@@ -461,7 +553,22 @@ namespace BossRush
             // 真的变了才算「目标更新」：进岛时写入初始目标不算，清空也不算。
             if (objective.Length > 0 && value.Length > 0) objectiveUpdatedAge = 0f;
             objective = value;
-            Apply();
+            // 换字要有过渡（UE-11）：卡片已经显着、新旧都不是空的，就先把旧字淡出，再换（TickObjectiveSwap）。
+            // 卡片还没出来、或是从空到有 / 从有到空，直接换：那时本来就有卡片或整行的淡变。
+            bool visible = card != null && card.activeSelf && cardVisible > 0f;
+            if (!visible || shownObjective.Length == 0 || value.Length == 0)
+            {
+                shownObjective = value;
+                objectiveSwap = -1f;
+                SetRowAlpha(1);
+                Apply();
+                return;
+            }
+            // 正在淡入时又换了：从当前的透明度接着往下淡，不跳回全亮。
+            if (objectiveSwap >= ObjectiveSwapOut)
+                objectiveSwap = (1f - ObjectiveSwapAlpha()) * ObjectiveSwapOut;
+            else if (objectiveSwap < 0f)
+                objectiveSwap = 0f;
         }
 
         /// <summary>卡片此刻登记的目标文本（不含「目标更新」眉题）。只读，给 F3 验收比对「显示的」。</summary>
@@ -472,6 +579,7 @@ namespace BossRush
             value = value ?? string.Empty;
             if (string.Equals(chips, value, StringComparison.Ordinal)) return;
             chips = value;
+            chipsDisplay = value.Length == 0 ? string.Empty : CountPattern.Replace(value, CountMarkup);
             Apply();
         }
 
@@ -559,6 +667,9 @@ namespace BossRush
             }
 
             TickCard(unscaledDelta);
+            TickCardHeight(unscaledDelta);
+            TickObjectiveSwap(unscaledDelta);
+            TickRows(unscaledDelta);
             sinceBanner += unscaledDelta;
             TickBanner(unscaledDelta);
             TickCaption(unscaledDelta);
@@ -674,6 +785,86 @@ namespace BossRush
             cardRect.anchoredPosition = target;
         }
 
+        /// <summary>
+        /// 定卡片高度：<paramref name="snap"/> 时直接落定（卡片整块入场本来就有淡入与滑入）；
+        /// 卡片已经显着时从当前高度补间过去（UE-11），不再「目标更新」那一帧猛地长高一行。
+        /// </summary>
+        private void SetCardHeight(float target, bool snap)
+        {
+            if (cardRect == null) return;
+            if (snap)
+            {
+                cardHeight = cardHeightFrom = cardHeightTo = target;
+                cardHeightAge = -1f;
+                cardRect.sizeDelta = new Vector2(CardWidth, target);
+                return;
+            }
+            if (Mathf.Abs(target - cardHeightTo) < 0.5f) return;
+            cardHeightFrom = cardHeight;
+            cardHeightTo = target;
+            cardHeightAge = 0f;
+        }
+
+        /// <summary>卡片高度补间：SmoothStep、<see cref="CardResize"/> 秒到位。到位之后每帧只有一次比较。</summary>
+        private void TickCardHeight(float delta)
+        {
+            if (cardHeightAge < 0f || cardRect == null) return;
+            cardHeightAge += delta;
+            float t = Mathf.Clamp01(cardHeightAge / CardResize);
+            cardHeight = Mathf.Lerp(cardHeightFrom, cardHeightTo, BossRushUI.SmoothStep(t));
+            cardRect.sizeDelta = new Vector2(CardWidth, cardHeight);
+            if (t >= 1f) cardHeightAge = -1f;
+        }
+
+        /// <summary>目标换字此刻的透明度：旧字 <see cref="ObjectiveSwapOut"/> 秒线性淡出 → 换字 → 新字 <see cref="ObjectiveSwapIn"/> 秒 EaseOut 淡入。</summary>
+        private float ObjectiveSwapAlpha()
+        {
+            if (objectiveSwap < 0f) return 1f;
+            if (objectiveSwap < ObjectiveSwapOut) return 1f - objectiveSwap / ObjectiveSwapOut;
+            return BossRushUI.EaseOut((objectiveSwap - ObjectiveSwapOut) / ObjectiveSwapIn);
+        }
+
+        /// <summary>推进目标换字；旧字淡没的那一帧换成最新登记的目标并重排（卡片高度随之补间）。没在换时第一句就返回。</summary>
+        private void TickObjectiveSwap(float delta)
+        {
+            if (objectiveSwap < 0f) return;
+            bool fadingOut = objectiveSwap < ObjectiveSwapOut;
+            objectiveSwap += delta;
+            if (fadingOut && objectiveSwap >= ObjectiveSwapOut)
+            {
+                shownObjective = objective;
+                Apply();
+            }
+            if (objectiveSwap >= ObjectiveSwapOut + ObjectiveSwapIn) objectiveSwap = -1f;
+            SetRowAlpha(1);
+        }
+
+        /// <summary>卡片显着时新出现的行淡入。没有在淡的行时第一句就返回。</summary>
+        private void TickRows(float delta)
+        {
+            if (!rowsRevealing) return;
+            bool any = false;
+            for (int i = 0; i < rowReveal.Length; i++)
+            {
+                if (rowReveal[i] >= 1f) continue;
+                rowReveal[i] = Mathf.MoveTowards(rowReveal[i], 1f, delta / RowFadeIn);
+                SetRowAlpha(i);
+                if (rowReveal[i] < 1f) any = true;
+            }
+            rowsRevealing = any;
+        }
+
+        /// <summary>
+        /// 一行的透明度 = 行淡入 ×（目标行）换字过渡。TMP 的 alpha 每写一次重建一次网格，所以只在过渡期间、值真的变了才写。
+        /// </summary>
+        private void SetRowAlpha(int index)
+        {
+            TextMeshProUGUI text = rowTexts[index];
+            if (text == null) return;
+            float alpha = BossRushUI.SmoothStep(rowReveal[index]) * (index == 1 ? ObjectiveSwapAlpha() : 1f);
+            if (Mathf.Abs(text.alpha - alpha) > 0.001f) text.alpha = alpha;
+        }
+
         private void TickBanner(float delta)
         {
             if (bannerAge < 0f)
@@ -688,7 +879,7 @@ namespace BossRush
             }
 
             bannerAge += delta;
-            float total = BannerFadeIn + BannerHold + BannerFadeOut;
+            float total = BannerFadeIn + bannerHold + BannerFadeOut;
             if (bannerAge >= total)
             {
                 bannerAge = -1f;
@@ -708,16 +899,22 @@ namespace BossRush
                 if (bannerRule != null)
                     bannerRule.sizeDelta = new Vector2(
                         BossRushUI.EaseOut(bannerAge / BannerFadeIn) * BannerRuleWidth, BannerRuleHeight);
+                // 地名字距在同一段时间里从宽收拢（UE-10）：一次性的「题字」揭示。一趟每区一次，TMP 重排约 27 帧。
+                if (bannerTitle != null)
+                    bannerTitle.characterSpacing = Mathf.Lerp(AreaTitleRevealSpacing, AreaTitleSpacing,
+                        BossRushUI.EaseOut(bannerAge / BannerFadeIn));
             }
-            else if (bannerAge < BannerFadeIn + BannerHold)
+            else if (bannerAge < BannerFadeIn + bannerHold)
             {
                 alpha = 1f;
                 if (bannerRule != null && bannerRule.sizeDelta.x < BannerRuleWidth)
                     bannerRule.sizeDelta = new Vector2(BannerRuleWidth, BannerRuleHeight);
+                if (bannerTitle != null && bannerTitle.characterSpacing != AreaTitleSpacing)
+                    bannerTitle.characterSpacing = AreaTitleSpacing;
             }
             else
             {
-                alpha = 1f - BossRushUI.SmoothStep((bannerAge - BannerFadeIn - BannerHold) / BannerFadeOut);
+                alpha = 1f - BossRushUI.SmoothStep((bannerAge - BannerFadeIn - bannerHold) / BannerFadeOut);
             }
             if (bannerGroup != null) bannerGroup.alpha = alpha;
             if (bannerRect != null) bannerRect.anchoredPosition = new Vector2(0f, AreaTitleY - rise);
@@ -728,7 +925,10 @@ namespace BossRush
             if (bannerOverline != null) bannerOverline.text = L10n.T("晴岚群岛", "QINGLAN ARCHIPELAGO");
             if (bannerTitle != null) bannerTitle.text = title;
             if (bannerHint != null) bannerHint.text = landingHint ?? string.Empty;
+            bannerHold = landingHint != null ? BannerLandingHold : BannerHold;
             landingHint = null;
+            // 压暗底按字距最宽的那一刻量（揭示开始时），收拢之后只会更窄，行首行尾始终在平台里。
+            if (bannerTitle != null) bannerTitle.characterSpacing = AreaTitleRevealSpacing;
             FitBannerScrim();
             bannerAge = 0f;
             if (bannerGroup != null) bannerGroup.alpha = 0f;
@@ -816,6 +1016,14 @@ namespace BossRush
                 float rise = (1f - BossRushUI.EaseOut(captionAge / CaptionFadeIn)) * CaptionRise;
                 captionRect.anchoredPosition = new Vector2(0f, CaptionY - rise);
             }
+            // 警示字幕开播的一下缩放脉冲（UE-25）：1.04 → 1，EaseOut。轴心在底边，往上收，不压官方底部堆叠。
+            if (captionRect != null && captionWarning)
+            {
+                float scale = captionAge < WarningPulse
+                    ? Mathf.Lerp(WarningPulseScale, 1f, BossRushUI.EaseOut(captionAge / WarningPulse))
+                    : 1f;
+                if (captionRect.localScale.x != scale) captionRect.localScale = new Vector3(scale, scale, 1f);
+            }
         }
 
         private void EndCaption()
@@ -826,7 +1034,12 @@ namespace BossRush
             captionCutAge = -1f;
             captionAlpha = 0f;
             if (captionGroup != null) captionGroup.alpha = 0f;
-            if (captionRect != null) captionRect.anchoredPosition = new Vector2(0f, CaptionY);
+            if (captionRect != null)
+            {
+                captionRect.anchoredPosition = new Vector2(0f, CaptionY);
+                captionRect.localScale = Vector3.one;
+            }
+            if (captionWarningRule != null && captionWarningRule.gameObject.activeSelf) captionWarningRule.gameObject.SetActive(false);
         }
 
         private void StartCaption(string text, bool warning)
@@ -847,8 +1060,20 @@ namespace BossRush
             float height = Mathf.Clamp(
                 Mathf.Ceil(captionText.GetPreferredValues(text, CaptionWidth, float.PositiveInfinity).y) + 8f,
                 CaptionFont * 1.6f, CaptionMaxHeight);
-            if (captionRect != null) captionRect.sizeDelta = new Vector2(CaptionWidth, height);
+            if (captionRect != null)
+            {
+                captionRect.sizeDelta = new Vector2(CaptionWidth, height);
+                captionRect.localScale = warning ? new Vector3(WarningPulseScale, WarningPulseScale, 1f) : Vector3.one;
+            }
             FitCaptionScrim(height);
+            // 警示字幕下方的琥珀细线，宽度取实测字宽的一半（UE-25）；普通字幕关掉。
+            if (captionWarningRule != null)
+            {
+                if (warning)
+                    captionWarningRule.sizeDelta = new Vector2(
+                        Mathf.Max(48f, Mathf.Min(CaptionWidth, MeasuredWidth(captionText)) * 0.5f), WarningRuleHeight);
+                if (captionWarningRule.gameObject.activeSelf != warning) captionWarningRule.gameObject.SetActive(warning);
+            }
         }
 
         /// <summary>
@@ -864,75 +1089,6 @@ namespace BossRush
             Vector2 size = new Vector2(Mathf.Max(CaptionScrimMinWidth, textWidth / plateau), ScrimHeightFor(textHeight));
             if ((captionShade.sizeDelta - size).sqrMagnitude < 0.01f) return;
             captionShade.sizeDelta = size;
-        }
-
-        #endregion
-
-        #region 版式
-
-        /// <summary>
-        /// 重排卡片：**先量后排**，卡片高度由实际内容决定。
-        /// 只在内容真的变化时调用（写入方法自己短路），不是每帧路径。
-        /// </summary>
-        private void Apply()
-        {
-            if (card == null) return;
-            float width = CardWidth - CardPadX * 2f - AccentBarWidth - 6f;
-            float left = CardPadX + AccentBarWidth + 6f;
-            float y = -CardPadY;
-
-            y -= Row(regionText, region, width, left, y, TitleFont);
-            y -= Row(objectiveText, ObjectiveDisplay(), width, left, y, BodyFont);
-            y -= Row(chipText, chips, width, left, y, ChipFont);
-            y -= Row(extractionText, extraction, width, left, y, TitleFont);
-            y -= Row(statusText, status, width, left, y, BodyFont);
-
-            // 一行都没有就整张卡片收掉。装配期间（还没就绪、什么都没得说）留一块空底板在那儿，
-            // 恰恰是「廉价感」的来源之一：没内容就不该有框。
-            // 收与放都走 TickCard 的淡变，不再 SetActive 硬开关；真正关掉对象是淡完之后的事。
-            bool anything = region.Length > 0 || objective.Length > 0 || chips.Length > 0
-                || !string.IsNullOrEmpty(extraction) || !string.IsNullOrEmpty(status);
-            RetargetCard(anything ? 1f : 0f);
-            if (anything && !card.activeSelf)
-            {
-                card.SetActive(true);
-                cardVisible = 0f;
-                cardSlide = CardSlideIn;
-                if (cardGroup != null) cardGroup.alpha = 0f;
-                WriteCardTransform();
-            }
-            cardRect.sizeDelta = new Vector2(CardWidth, Mathf.Max(48f, -y + CardPadY));
-        }
-
-        /// <summary>目标行的实际文本：目标刚变过时，在上方挂一行强调色的「目标更新」眉题。</summary>
-        private string ObjectiveDisplay()
-        {
-            if (objectiveUpdatedAge < 0f || objective.Length == 0) return objective;
-            return "<size=85%><color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.Accent) + ">"
-                + L10n.T("目标更新", "Objective updated") + "</color></size>\n" + objective;
-        }
-
-        /// <summary>摆一行并返回它占掉的高度（含行距）。内容为空时整行隐藏、不占位。</summary>
-        private static float Row(TextMeshProUGUI text, string value, float width, float left,
-            float top, float font)
-        {
-            if (text == null) return 0f;
-            if (string.IsNullOrEmpty(value))
-            {
-                if (text.gameObject.activeSelf) text.gameObject.SetActive(false);
-                return 0f;
-            }
-            if (!text.gameObject.activeSelf) text.gameObject.SetActive(true);
-            text.text = value;
-            float height = Mathf.Max(font * 1.3f,
-                Mathf.Ceil(text.GetPreferredValues(value, width, float.PositiveInfinity).y) + 2f);
-            RectTransform rect = text.rectTransform;
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0f, 1f);
-            rect.sizeDelta = new Vector2(width, height);
-            rect.anchoredPosition = new Vector2(left, top);
-            return height + 4f;
         }
 
         #endregion
@@ -954,95 +1110,6 @@ namespace BossRush
             captionGroup = null;
             captionText = null;
             captions.Clear();
-        }
-    }
-
-    /// <summary>
-    /// 世界空间提示字的「走近才浮现」。
-    ///
-    /// 常驻的浮空字远远就亮着，满屏都是网游式的头顶标语。主流做法是靠光、模型与地图点让人
-    /// 远远注意到「那里有东西」，走近了才浮出文字说明它是什么。硬开关（SetActive）会「啪」地弹出，
-    /// 这里按距离做连续的 smoothstep 淡变，完全透明时顺手关掉渲染，不白占 draw call。
-    ///
-    /// 纯表现层：不碰交互体，官方交互提示照常由 InteractableBase 负责。
-    /// 支持两种载体：世界空间 TextMeshPro（淡 alpha + 关 Renderer），或世界空间 Canvas（淡 CanvasGroup + 关 Canvas）。
-    /// </summary>
-    internal sealed class SkyIslandProximityLabel : MonoBehaviour
-    {
-        /// <summary>
-        /// 透明度量化步长。TMP 的 alpha 每改一次都要重建整块文字网格（顶点色跟着重算），
-        /// 旧写法按 1% 阈值更新，玩家走过一次 5 米的淡变带要重建上百次；按 5% 一档最多 20 次，肉眼看不出台阶。
-        /// </summary>
-        private const float AlphaStep = 0.05f;
-        /// <summary>估算玩家接近速度的上限（米/秒）：离得远时据此推迟下一次距离检查。</summary>
-        private const float ApproachSpeed = 8f;
-        private const float MaxRecheckSeconds = 1f;
-
-        private float near, far;
-        private TMP_Text text;
-        private Renderer textRenderer;
-        private Canvas worldCanvas;
-        private CanvasGroup group;
-        private float applied = -1f, nextCheck;
-
-        /// <param name="near">这个距离以内完全显形。</param>
-        /// <param name="far">这个距离以外完全消失。</param>
-        internal static void Attach(GameObject target, float near, float far)
-        {
-            if (target == null) return;
-            SkyIslandProximityLabel label = target.GetComponent<SkyIslandProximityLabel>();
-            if (label == null) label = target.AddComponent<SkyIslandProximityLabel>();
-            label.near = Mathf.Max(0f, near);
-            label.far = Mathf.Max(label.near + 0.5f, far);
-            label.worldCanvas = target.GetComponent<Canvas>();
-            if (label.worldCanvas != null)
-            {
-                label.group = target.GetComponent<CanvasGroup>();
-                if (label.group == null) label.group = target.AddComponent<CanvasGroup>();
-                label.group.blocksRaycasts = false;
-                label.group.interactable = false;
-            }
-            else
-            {
-                label.text = target.GetComponent<TMP_Text>();
-                label.textRenderer = target.GetComponent<Renderer>();
-            }
-            // 先按完全透明起步，第一次 LateUpdate 再按实际距离打开，不会在建出来那一帧闪一下。
-            label.ApplyAlpha(0f);
-        }
-
-        private void LateUpdate()
-        {
-            // 完全隐形且离得远时不必每帧量距离：按「以最快接近速度走到淡变带外沿还要多久」推迟下一次检查，
-            // 最多隔 1 秒。纪念物与船点招牌大部分时间离玩家很远，这里通常只是一次时间比较。
-            if (applied <= 0f && Time.unscaledTime < nextCheck) return;
-            float alpha = 0f;
-            CharacterMainControl main = CharacterMainControl.Main;
-            if (main != null)
-            {
-                float distance = Vector3.Distance(main.transform.position, transform.position);
-                float t = Mathf.Clamp01((far - distance) / (far - near));
-                alpha = Mathf.Round(t * t * (3f - 2f * t) / AlphaStep) * AlphaStep;
-                if (alpha <= 0f)
-                    nextCheck = Time.unscaledTime + Mathf.Min(MaxRecheckSeconds, (distance - far) / ApproachSpeed);
-            }
-            else
-            {
-                nextCheck = Time.unscaledTime + MaxRecheckSeconds;
-            }
-            // 量化后同一档不重写；「归零」这一档照样要写下去，否则 Renderer 会以最低一档的 alpha 一直开着。
-            if (Mathf.Abs(alpha - applied) < AlphaStep * 0.5f) return;
-            ApplyAlpha(alpha);
-        }
-
-        private void ApplyAlpha(float alpha)
-        {
-            applied = alpha;
-            bool visible = alpha > 0.001f;
-            if (group != null) group.alpha = alpha;
-            if (worldCanvas != null && worldCanvas.enabled != visible) worldCanvas.enabled = visible;
-            if (text != null) text.alpha = alpha;
-            if (textRenderer != null && textRenderer.enabled != visible) textRenderer.enabled = visible;
         }
     }
 }

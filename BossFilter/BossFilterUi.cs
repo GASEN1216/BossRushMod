@@ -27,23 +27,15 @@ namespace BossRush
                 bossPoolCanvas.AddComponent<GraphicRaycaster>();
                 UnityEngine.Object.DontDestroyOnLoad(bossPoolCanvas);
 
-                // 创建半透明背景
-                GameObject bgObj = new GameObject("Background");
-                bgObj.transform.SetParent(bossPoolCanvas.transform, false);
-                Image bgImage = bgObj.AddComponent<Image>();
-                bgImage.color = BossRushUIColors.Backdrop;
-                RectTransform bgRect = bgObj.GetComponent<RectTransform>();
-                bgRect.anchorMin = Vector2.zero;
-                bgRect.anchorMax = Vector2.one;
-                bgRect.offsetMin = Vector2.zero;
-                bgRect.offsetMax = Vector2.zero;
+                // 遮罩：共享 Backdrop token + 暗角与淡入（BossRushUI.CreateBackdrop 自带 StyleBackdrop）
+                BossRushUI.CreateBackdrop(bossPoolCanvas.transform);
 
-                // 创建主面板（加大尺寸）
+                // 创建主面板（加大尺寸）。底色走 Surface token：旧版 (0.15,0.15,0.15) 中性灰和全 Mod 的蓝灰不是一个色系（UB-26）。
                 bossPoolPanel = new GameObject("Panel");
                 bossPoolPanel.transform.SetParent(bossPoolCanvas.transform, false);
                 Image panelImage = bossPoolPanel.AddComponent<Image>();
+                panelImage.color = BossRushUIColors.Surface;
                 BossRushUI.ApplyFramedPanelSkin(panelImage, 14, BossRushUISkinPart.Panel);
-                panelImage.color = new Color(0.15f, 0.15f, 0.15f, 0.95f);
                 RectTransform panelRect = bossPoolPanel.GetComponent<RectTransform>();
                 panelRect.anchorMin = new Vector2(0.5f, 0.5f);
                 panelRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -96,9 +88,9 @@ namespace BossRush
             TextMeshProUGUI titleText = titleTextObj.AddComponent<TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(titleText);
             titleText.text = L10n.T("Boss池设置", "Boss Pool Settings");
-            titleText.fontSize = 24;
+            titleText.fontSize = 28;
             titleText.alignment = TextAlignmentOptions.Center;
-            titleText.color = Color.white;
+            titleText.color = BossRushUIColors.TextPrimary;
             RectTransform titleTextRect = titleTextObj.GetComponent<RectTransform>();
             titleTextRect.anchorMin = Vector2.zero;
             titleTextRect.anchorMax = Vector2.one;
@@ -121,8 +113,8 @@ namespace BossRush
                 TextMeshProUGUI btnText = closeBtn.GetComponentInChildren<TextMeshProUGUI>();
                 if (btnText != null)
                 {
-                    btnText.text = "X";
-                    btnText.fontSize = 20;
+                    btnText.text = "×";   // 乘号（GBK 有字形），不再拿字母 X 当关闭图标（UB-26）
+                    btnText.fontSize = 22;
                 }
 
                 closeBtn.onClick.AddListener(() => CloseBossPoolWindow());
@@ -186,6 +178,77 @@ namespace BossRush
                 if (infiniteHellFactorButtonText != null) infiniteHellFactorButtonText.text = L10n.T("无间炼狱因子", "Infinite Hell Factor");
                 infiniteHellFactorButton.onClick.AddListener(() => OnInfiniteHellFactorButtonClicked());
             }
+        }
+
+        /// <summary>列表行底：Card 档圆角 + SurfaceRaised。开关行与因子行共用（UB-26）。</summary>
+        private static Image AddBossPoolRowBackground(GameObject row)
+        {
+            Image background = row.AddComponent<Image>();
+            background.color = BossRushUIColors.SurfaceRaised;
+            BossRushUI.ApplyPanelSkin(background, 8, BossRushUISkinPart.Card);
+            return background;
+        }
+
+        /// <summary>
+        /// 开关行的三态：与共享按钮同一套绝对色（Graphic 置白、ColorBlock 承担底色），悬停提亮、按下压暗，
+        /// 并挂共享的按钮手感（官方悬停 / 点击音效）。Toggle 不是 Button，走不了 ApplyButtonColors，这里照它的口径写一份。
+        /// </summary>
+        private static void ApplyBossPoolRowColors(Toggle toggle, Image background)
+        {
+            Color normal = BossRushUIColors.SurfaceRaised;
+            background.color = Color.white;
+            toggle.targetGraphic = background;
+            ColorBlock colors = toggle.colors;
+            colors.normalColor = normal;
+            colors.highlightedColor = BossRushUI.GetHoverColor(normal);
+            colors.pressedColor = BossRushUI.GetPressedColor(normal);
+            colors.selectedColor = normal;
+            colors.disabledColor = BossRushUI.GetDisabledColor(normal);
+            colors.colorMultiplier = 1f;
+            colors.fadeDuration = 0.08f;
+            toggle.colors = colors;
+            toggle.transition = Selectable.Transition.ColorTint;
+            background.CrossFadeColor(normal, 0f, true, true);
+            BossRushButtonFeel.Attach(toggle);
+        }
+
+        /// <summary>
+        /// 清空列表行：先摘下再销毁。Destroy 要到帧末才生效，旧行留在布局里会让内容高度翻倍一帧、滚动位置跳（UB-27）。
+        /// </summary>
+        private void ClearBossPoolContent()
+        {
+            for (int i = bossPoolContent.childCount - 1; i >= 0; i--)
+            {
+                Transform child = bossPoolContent.GetChild(i);
+                child.SetParent(null, false);
+                UnityEngine.Object.Destroy(child.gameObject);
+            }
+        }
+
+        /// <summary>列表重建后立即排版并写回滚动位置：开关列表与因子列表行数、行高相同，切换前后停在同一处。</summary>
+        private void RestoreBossPoolScroll(float normalizedPosition)
+        {
+            if (bossPoolScrollRect == null || bossPoolContent == null) return;
+            LayoutRebuilder.ForceRebuildLayoutImmediate(bossPoolContent);
+            bossPoolScrollRect.verticalNormalizedPosition = Mathf.Clamp01(normalizedPosition);
+        }
+
+        /// <summary>丢掉对 Boss 池界面的全部引用（关闭淡出与卸载共用）。不销毁物体。</summary>
+        private void ReleaseBossPoolUIReferences()
+        {
+            bossPoolCanvas = null;
+            bossPoolPanel = null;
+            bossPoolContent = null;
+            bossPoolScrollRect = null;
+            bossToggles.Clear();
+            bossFactorSelectors.Clear();
+            statsText = null;
+            selectAllButton = null;
+            deselectAllButton = null;
+            infiniteHellFactorButton = null;
+            selectAllButtonText = null;
+            infiniteHellFactorButtonText = null;
+            isInfiniteHellFactorMode = false;
         }
     }
 }

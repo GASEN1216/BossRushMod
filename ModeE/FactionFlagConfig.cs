@@ -111,8 +111,8 @@ namespace BossRush
         public const string PLAYER_FLAG_LOC_KEY = "BossRush_FactionFlagPlayer";
         public const string PLAYER_FLAG_NAME_CN = "爷的营旗";
         public const string PLAYER_FLAG_NAME_EN = "Lone Wolf Flag";
-        public const string PLAYER_FLAG_DESC_CN = "一面只属于你自己的战旗。携带它裸装进入bossrush，你将独自面对所有阵营的Boss——没有盟友，只有敌人。";
-        public const string PLAYER_FLAG_DESC_EN = "A battle flag that belongs to you alone. Enter bossrush naked with it to face all faction bosses solo — no allies, only enemies.";
+        public const string PLAYER_FLAG_DESC_CN = "只属于你自己的战旗。携带它裸装进入bossrush，所有阵营的Boss都冲你来，没人跟你一伙。";
+        public const string PLAYER_FLAG_DESC_EN = "A flag that belongs to you alone. Enter bossrush naked with it and every faction's bosses come for you. Nobody's on your side.";
 
         // ============================================================================
         // 营旗信息结构（内部使用）

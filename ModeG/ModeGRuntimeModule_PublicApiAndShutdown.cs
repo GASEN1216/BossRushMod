@@ -286,8 +286,8 @@ namespace BossRush
             try
             {
                 _host.ShowMessage(L10n.T(
-                    "<color=#B22222>弹药禁令已违规</color>，本波破解不可得。",
-                    "<color=#B22222>Ammo ban violated</color> — this wave's break is no longer available."));
+                    ModeGRichText.DangerTag + "用了被禁的弹药</color>，这波破解没了。",
+                    ModeGRichText.DangerTag + "Used banned ammo</color>. No break for this wave."));
             }
             catch (Exception e)
             {
@@ -436,8 +436,8 @@ namespace BossRush
                     case ModeGExitReason.RewardAbandoned:
                         // 不得断言信物状态：Execute 内 TryReturnRelicOnce 可能已返还也可能未执行
                         _host.ShowBigBanner(L10n.T(
-                            "<color=#B22222>宿命回响</color> 结算中止，奖励未完整发放",
-                            "<color=#B22222>Fate Echo</color> settlement aborted - rewards incomplete"));
+                            ModeGRichText.DangerTag + "宿命回响</color> 结算中止，奖励未完整发放",
+                            ModeGRichText.DangerTag + "Fate Echo</color> settlement aborted - rewards incomplete"));
                         break;
                     case ModeGExitReason.SpawnExhausted:
                     case ModeGExitReason.TechnicalIntegrityLoss:
@@ -445,14 +445,14 @@ namespace BossRush
                         if (_firstWaveCombatStarted)
                         {
                             _host.ShowBigBanner(L10n.T(
-                                "<color=#B22222>宿命回响</color> 因技术故障中止",
-                                "<color=#B22222>Fate Echo</color> aborted on technical failure"));
+                                ModeGRichText.DangerTag + "宿命回响</color> 因技术故障中止",
+                                ModeGRichText.DangerTag + "Fate Echo</color> aborted on technical failure"));
                         }
                         break;
                     case ModeGExitReason.ManualExit:
                         _host.ShowBigBanner(L10n.T(
-                            "<color=#B8860B>宿命回响</color> 已放弃挑战",
-                            "<color=#B8860B>Fate Echo</color> challenge abandoned"));
+                            ModeGRichText.WarningTag + "宿命回响</color> 已放弃挑战",
+                            ModeGRichText.WarningTag + "Fate Echo</color> challenge abandoned"));
                         break;
                     case ModeGExitReason.SceneChanged:
                         _host.ShowMessage(L10n.T("离开战场，宿命回响挑战中止。",

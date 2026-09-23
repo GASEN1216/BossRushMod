@@ -8,6 +8,8 @@ using Saves;
 namespace UnityEngine
 {
     static class Time { public static int frameCount; }
+    // 2026-09-23：遗种巢卡片数据带一张图（PetNestCardData.Icon，UA-10）；事务逻辑不碰它，替身只要能编译。
+    class Sprite { }
     static class Random { public static float value = 0; public static int Range(int min, int max) { return min; } }
     static class Mathf { public static int Min(int a, int b) { return Math.Min(a, b); } public static float Clamp01(float v) { return Math.Max(0, Math.Min(1, v)); } }
     static class JsonUtility

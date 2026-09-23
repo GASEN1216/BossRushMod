@@ -3,7 +3,8 @@
 from pathlib import Path
 
 
-SOURCE = Path("ZombieMode/ZombieModeRewards.cs")
+# 2026-09-23 审美审查：交互体随服务面板从 ZombieModeRewards.cs 拆到独立文件。
+SOURCE = Path("ZombieMode/ZombieModeTemporaryNpcServiceView.cs")
 
 
 def fail(message):

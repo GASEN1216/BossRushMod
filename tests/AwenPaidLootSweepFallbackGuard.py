@@ -8,6 +8,8 @@ from cs_source_util import clean_source
 
 
 SERVICE = Path("Integration/NPCs/Courier/CourierPaidLootSweepService.cs")
+# 2026-09-23：结果物品回到玩家手里的那一段按 AGENTS §4.15 原样拆到同一 partial 的新文件，断言针对整个类。
+SERVICE_DELIVERY = Path("Integration/NPCs/Courier/CourierPaidLootSweepDelivery.cs")
 COURIER = Path("Integration/NPCs/Courier/CourierNPC.cs")
 COURIER_NPC_SOURCES = [
     COURIER,
@@ -51,19 +53,23 @@ def extract_method(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    service_text = clean_source(SERVICE.read_text(encoding="utf-8"))
+    service_text = clean_source(SERVICE.read_text(encoding="utf-8") + chr(10) + SERVICE_DELIVERY.read_text(encoding="utf-8"))
     courier_text = read_courier_npc_sources()
     tracker_text = TRACKER.read_text(encoding="utf-8")
 
     if "ReleasePendingSweepResultToPlayer" not in service_text:
         return fail("AwenPaidLootSweepFallbackGuard: missing safe pending result release API")
 
-    release_method = extract_method(service_text, "public static void ReleasePendingSweepResultToPlayer")
+    # 实现体是三参版本（keepPlayerItemsWhenFull）；两参版本只转发 false，给被动收尾路径用（2026-09-23 复核第 13 项）。
+    release_method = extract_method(service_text, "public static void ReleasePendingSweepResultToPlayer(bool closeLootView, bool showMessage, bool keepPlayerItemsWhenFull)")
     if not release_method:
         return fail("AwenPaidLootSweepFallbackGuard: missing public safe release method body")
+    passive_release = extract_method(service_text, "public static void ReleasePendingSweepResultToPlayer(bool closeLootView, bool showMessage)")
+    if "ReleasePendingSweepResultToPlayer(closeLootView, showMessage, false);" not in passive_release:
+        return fail("AwenPaidLootSweepFallbackGuard: passive release paths must deliver everything (keepPlayerItemsWhenFull=false)")
 
     for required in (
-        "TryReturnResultItemsToPlayer(pendingResultInventory)",
+        "TryReturnResultItemsToPlayer(pendingResultInventory, keepPlayerItemsWhenFull)",
         "DiscardPendingSweepResultInternal(closeLootView, false)",
     ):
         if required not in release_method:
@@ -98,26 +104,27 @@ def main() -> int:
         if forbidden in pending_method or forbidden in service_text:
             return fail("AwenPaidLootSweepFallbackGuard: pending confirm still exposes extra branch -> " + forbidden)
 
+    next_call = "ReleasePendingSweepResultToPlayer(true, false, true)"
     for required in (
         "CreateStartNextSweepButton(",
         "OnStartNextSweepButtonClicked",
         "开启下次扫箱",
-        "ReleasePendingSweepResultToPlayer(true, false)",
+        next_call,
         "StartNextSweepDelayed(npc)",
     ):
         if required not in service_text:
             return fail("AwenPaidLootSweepFallbackGuard: missing LootView next-sweep button path -> " + required)
 
     next_sweep = extract_method(service_text, "private static void OnStartNextSweepButtonClicked()")
-    if "ReleasePendingSweepResultToPlayer(true, false)" not in next_sweep or "DiscardPendingSweepResultInternal(" in next_sweep:
-        return fail("AwenPaidLootSweepFallbackGuard: next sweep must return the old crate first")
-    if not (next_sweep.index("ReleasePendingSweepResultToPlayer(true, false)") < next_sweep.index("StartNextSweepDelayed(npc)")):
+    if next_call not in next_sweep or "DiscardPendingSweepResultInternal(" in next_sweep:
+        return fail("AwenPaidLootSweepFallbackGuard: next sweep must return the old crate first (keeping player items when the backpack is full)")
+    if not (next_sweep.index(next_call) < next_sweep.index("StartNextSweepDelayed(npc)")):
         return fail("AwenPaidLootSweepFallbackGuard: next sweep started before delivery")
-    if "if (!TryReturnResultItemsToPlayer(pendingResultInventory)) return;" not in release_method:
+    if "if (!TryReturnResultItemsToPlayer(pendingResultInventory, keepPlayerItemsWhenFull)) return;" not in release_method:
         return fail("AwenPaidLootSweepFallbackGuard: failed delivery must retain the crate owner")
 
     # 2026-09-22 实测第 13 条：整箱静默寄进快递、只报一条汇总横幅；逐件 SendToPlayer 只做快递站不可写时的兜底。
-    return_method = extract_method(service_text, "private static bool TryReturnResultItemsToPlayer")
+    return_method = extract_method(service_text, "private static bool TryReturnResultItemsToPlayer(Inventory resultInventory, bool keepPlayerItemsWhenFull)")
     mail_call = "CourierService.BufferItemsSilently(items, remainingItems)"
     fallback_call = "ItemUtilities.SendToPlayer(item, true, true)"
     if mail_call not in return_method or fallback_call not in return_method:
@@ -126,6 +133,15 @@ def main() -> int:
         return fail("AwenPaidLootSweepFallbackGuard: crate return calls SendToPlayer before the silent delivery buffer")
     if "ShowSweepResultMailedBanner(mailedCount)" not in return_method:
         return fail("AwenPaidLootSweepFallbackGuard: crate return must show one summary banner")
+    # 2026-09-23 复核第 13 项：剩下的先静默塞回背包；主动开下一趟时塞不下的留在箱里、汇总一条，不当免费寄件口。
+    backpack_call = "ItemUtilities.SendToPlayerCharacter(item, false)"
+    if backpack_call not in return_method or return_method.index(backpack_call) > return_method.index(fallback_call):
+        return fail("AwenPaidLootSweepFallbackGuard: leftovers must try the backpack (no banner) before the official per-item fallback")
+    keep_at = return_method.find("if (keepPlayerItemsWhenFull && TryKeepInCrate(resultInventory, item))")
+    if keep_at < 0 or keep_at > return_method.index(fallback_call):
+        return fail("AwenPaidLootSweepFallbackGuard: a full backpack on next-sweep must keep player items in the crate instead of free shipping")
+    if "ShowSweepResultKeptBanner(keptInCrate)" not in return_method:
+        return fail("AwenPaidLootSweepFallbackGuard: items kept in the crate must be reported with one summary banner")
     # 只寄扫箱产出的物品：玩家塞进箱子的东西走官方交还，否则「开启下次扫箱」成了免快递费的寄件口。
     if "if (pendingResultSweepItems.Contains(item)) items.Add(item);" not in return_method:
         return fail("AwenPaidLootSweepFallbackGuard: only sweep-produced items may be mailed for free")

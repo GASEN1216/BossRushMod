@@ -119,8 +119,9 @@ namespace BossRush
             {
                 ApplyDamageToPlayer(damage);
 
-                // 播放棱彩弹命中音效
+                // 播放棱彩弹命中音效；命中点迸一把火花 + 核心闪（VB-15：此前命中时只有这一声）
                 ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_BoltHit);
+                DragonKingFxShared.HitBurst(position, BoltHitColor);
 
                 return true;
             }
@@ -761,6 +762,18 @@ namespace BossRush
         /// 执行太阳舞攻击
         /// 龙王传送到玩家附近，传送后收枪并停止 AI，发射旋转弹幕
         /// </summary>
+        /// <summary>太阳舞传送前 0.1 s 在龙王当前位置放一次传送特效（VB-28）。Boss 已不在 / 已进入阶段转换就不放。</summary>
+        private IEnumerator SpawnSunDanceDepartFx()
+        {
+            yield return sunDanceDepartFxLead;
+            // 攻击被阶段转换、护崽或死亡打断时太阳舞不会再传送：这几种情况不放。
+            if (bossCharacter != null && !isInChildProtection &&
+                (CurrentPhase == DragonKingPhase.Phase1 || CurrentPhase == DragonKingPhase.Phase2))
+            {
+                SpawnTeleportEffect(bossCharacter.transform.position);
+            }
+        }
+
         private IEnumerator ExecuteSunDance()
         {
             ModBehaviour.DevLog("[DragonKing] 执行太阳舞攻击");
@@ -783,6 +796,9 @@ namespace BossRush
             // 播放太阳舞警告音效
             ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_SunWarning);
 
+            // 离传送还有 0.1 s 时在原位放传送特效，遮住「凭空消失」（VB-28）；并行协程，不改下面 1.5 s 的传送时刻。
+            StartCoroutine(SpawnSunDanceDepartFx());
+
             yield return wait15s; // 使用缓存的WaitForSeconds(1.5f)
 
             // 回收预警圆圈
@@ -794,6 +810,8 @@ namespace BossRush
 
             // Boss传送到目标位置
             bossCharacter.transform.position = targetPos;
+            // 落点同帧放一个传送特效（资源现成，阶段转换已在用；VB-13 / VB-28）。
+            SpawnTeleportEffect(targetPos);
 
             // 记录锁定位置（用于弹幕发射位置）
             sunDanceLockPosition = targetPos;

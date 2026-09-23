@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-Touch the dragon's scale, and face its wrath. **A one-time lifesave totem**: auto-triggers at death's door, heals you, fires counterattack bolts, then shatters. Gone forever.
+Touch a dragon's reverse scale and it bites back. **A one-time lifesaver totem**: it triggers when you're about to die, heals you, fires counterattack bolts, then shatters.
 
 ### Stats
 
@@ -16,11 +16,11 @@ Touch the dragon's scale, and face its wrath. **A one-time lifesave totem**: aut
 - **Protection**: gains a brief **0.5s invincibility** window after activation
 - **Then**: Totem shatters, removed from slot
 
-[warn] "The Reverse Scale shattered..." — you'll see this message. Then it's gone.
+[warn] When it triggers you'll see "The Reverse Scale shattered...". You nearly died, and that save is used up.
 
 ### Tips
 
-- Pure insurance — save it for high-risk moments (first Dragon Lord attempt, deep Infinite Hell, Blood Hunt)
+- Pure insurance. Save it for high-risk moments (first Dragon Lord attempt, deep Infinite Hell, Blood Hunt)
 - **Single use.** Get a new one after it triggers
 - Bolt tracking works best in close-range multi-enemy scenarios
 - Swap with Cloud Rider: fly during safe periods, equip Reverse Scale for danger

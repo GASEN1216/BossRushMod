@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 namespace BossRush
 {
+    internal enum ModeHResultTone { None = 0, Victory = 1, Defeat = 2 }
     internal class ModeHPageContent
     {
         public string Title, Body;
+        public ModeHResultTone ResultTone;
         public List<string> Lines = new List<string>();
         public List<ModeHActionData> Actions = new List<ModeHActionData>();
     }
@@ -40,6 +42,7 @@ namespace BossRush
         public void Cancel() { Release(0); }
         public void DestroyAll() { Release(0); }
         public void Hide() { Release(0); }
+        public void Hide(bool immediate) { Release(0); }
     }
     internal static class ModeHRuntimeGates
     {

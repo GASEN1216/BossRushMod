@@ -665,10 +665,10 @@ namespace BossRush
                     string currencyTextEn = usePurification ? "Purification " : "￥";
 
                     // 格式：已送达x件物品，共花费x，欢迎下次光临~
-                    // x 用红色显示
+                    // x 用数字高亮色（WarningText）显示：这是一条正面消息，旧写法用纯红 #FF0000 像是报错（审美审查 UA-31）
                     string goodbyeText = L10n.T(
-                        "已送达<color=#FF0000>" + lastSentItemCount + "</color>件物品，共花费<color=#FF0000>" + currencyTextCn + lastDeliveryFee + "</color>，欢迎下次光临~",
-                        "Delivered <color=#FF0000>" + lastSentItemCount + "</color> items, cost <color=#FF0000>" + currencyTextEn + lastDeliveryFee + "</color>, come again~"
+                        "已送达<color=" + CourierHighlightHex + ">" + lastSentItemCount + "</color>件物品，共花费<color=" + CourierHighlightHex + ">" + currencyTextCn + lastDeliveryFee + "</color>，欢迎下次光临~",
+                        "Delivered <color=" + CourierHighlightHex + ">" + lastSentItemCount + "</color> items, cost <color=" + CourierHighlightHex + ">" + currencyTextEn + lastDeliveryFee + "</color>, come again~"
                     );
 
                     // 使用原版气泡系统显示对话

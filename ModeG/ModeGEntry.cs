@@ -326,8 +326,8 @@ namespace BossRush
                 {
                     DevLog("[ModeG] 持久化写屏障已故障，本 runtime fail-closed 拒绝启动");
                     ShowMessage(L10n.T(
-                        "宿命回响存档写入发生故障，请重启游戏后再试。你的物品不会被消耗。",
-                        "Fate Echo save persistence faulted. Restart the game and try again. Your items were not consumed."));
+                        "宿命回响的存档写不进去，重启游戏再试。这次不扣你的东西。",
+                        "Fate Echo couldn't write its save. Restart the game and try again. Nothing was used up."));
                     return false;
                 }
 
@@ -379,8 +379,8 @@ namespace BossRush
                 {
                     DevLog("[ModeG] 署名 Boss 资源/adapter 能力预检失败，fail-closed 拒绝启动");
                     ShowMessage(L10n.T(
-                        "宿命回响资源未完整加载，请返回基地后重试。",
-                        "Fate Echo resources are incomplete. Return to base and try again."));
+                        "宿命回响的资源没加载全，回基地再试。",
+                        "Fate Echo didn't finish loading. Head back to base and try again."));
                     return false;
                 }
 
@@ -395,8 +395,8 @@ namespace BossRush
                     DevLog("[ModeG] preview 缺失、过期或与当前 verified scene pair/revision 不一致");
                     // 与上面同款：场内无可达入口，指向撤离重进而不是「重新打开入口」。
                     ShowMessage(L10n.T(
-                        "宿命回响预览已失效，请撤离返回基地后重新入场。",
-                        "Fate Echo preview is no longer valid. Extract to base, then re-enter."));
+                        "宿命回响的预览过期了，撤回基地再重新进场。",
+                        "The Fate Echo preview expired. Extract to base, then come back in."));
                     return false;
                 }
                 if (cachedPreview != null && !ReferenceEquals(cachedPreview, preview))
@@ -408,8 +408,8 @@ namespace BossRush
                     // 选项），auto 确认页只在进图协程里开一次且协程已退出，玩家唯一出路
                     // 是撤离回基地重新入场——不要再写「重新打开确认页」。
                     ShowMessage(L10n.T(
-                        "宿命契约候选已刷新，本次入场取消；请撤离返回基地后重新携带船票与信物入场。",
-                        "Fate contract candidates refreshed - entry cancelled. Extract to base, then re-enter with a ticket and relic."));
+                        "宿命契约的候选换了一批，这次进场取消。撤回基地，带上船票和信物重新进场。",
+                        "The Fate Contract picks changed, so entry is cancelled. Extract to base and come back with a ticket and relic."));
                     return false;
                 }
 
@@ -612,8 +612,8 @@ namespace BossRush
                 ConsumeModeGEntryPreview();
 
                 ShowBigBanner(L10n.T(
-                    "<color=#B8860B>宿命回响</color> 已启动",
-                    "<color=#B8860B>Fate Echo</color> Started"
+                    ModeGRichText.WarningTag + "宿命回响</color> 已启动",
+                    ModeGRichText.WarningTag + "Fate Echo</color> Started"
                 ));
 
                 // 发现性：放弃入口只有快捷键，开局告知一次当前绑定键

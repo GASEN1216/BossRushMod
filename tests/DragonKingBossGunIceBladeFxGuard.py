@@ -82,7 +82,8 @@ def main() -> int:
     for snippet, label in [
         ("trail.enabled = true;", "IceBlade trail enable"),
         ("trail.Clear();", "IceBlade trail clear before reuse"),
-        ("trail.sharedMaterial = GetOrCreateIceMaterial();", "IceBlade shared trail material"),
+        # 2026-09-23 VB-16：拖尾走共享工厂的加色软边带（软圆贴图拉在拖尾上会让头部透明），仍必须是 sharedMaterial。
+        ("trail.sharedMaterial = GetOrCreateTrailMaterial();", "IceBlade shared trail material"),
         ("trail.numCornerVertices = 4;", "more polished IceBlade trail corners"),
         ("trail.numCapVertices = 4;", "more polished IceBlade trail caps"),
     ]:
@@ -110,21 +111,34 @@ def main() -> int:
     if "DragonKingBossGunProfileId.IceBlade" in death_fx:
         return fail("IceBlade must not force old death explosion FX on obstacle/max distance")
 
-    shatter_fx = extract_method(text, "private void SpawnIceBladeShatterEffect(")
-    if shatter_fx is None:
+    # 2026-09-23 VB-16：冰碎改成一个世界空间的共享发射器（懒建一次，挪到命中点 Emit），不再每次命中 new GameObject + Destroy。
+    spawn_shatter = extract_method(text, "private void SpawnIceBladeShatterEffect(")
+    if spawn_shatter is None:
         return fail("missing SpawnIceBladeShatterEffect")
+    result = require(spawn_shatter, "EmitAt(iceShatterEmitter, hitPoint, hitNormal, 14);", "focused IceBlade shard burst from the pooled emitter")
+    if result is not None:
+        return result
+    if "new GameObject(" in spawn_shatter or "Destroy(" in spawn_shatter:
+        return fail("IceBlade shatter must reuse the pooled emitter instead of creating/destroying an object per hit")
+
+    shatter_fx = extract_method(text, "private static ParticleSystem BuildIceBladeShatterEmitter(")
+    if shatter_fx is None:
+        return fail("missing BuildIceBladeShatterEmitter")
 
     for snippet, label in [
         ("DragonGun_IceBladeShatterFx", "custom IceBlade shatter object"),
-        ("new ParticleSystem.Burst(0f, 14)", "focused IceBlade shard burst"),
         ("ParticleSystemShapeType.Cone", "directional IceBlade shard cone"),
+        ("main.simulationSpace = ParticleSystemSimulationSpace.World;", "world-space shards stay where they burst"),
         ("renderer.renderMode = ParticleSystemRenderMode.Stretch;", "stretched IceBlade shard streaks"),
         ("renderer.sharedMaterial = GetOrCreateIceMaterial();", "shared IceBlade shatter material"),
-        ("UnityEngine.Object.Destroy(iceFx, 0.7f);", "IceBlade shatter cleanup"),
     ]:
         result = require(shatter_fx, snippet, label)
         if result is not None:
             return result
+
+    clear = extract_method(text, "internal static void ClearStaticCaches()")
+    if clear is None or "ClearIceEmitters();" not in clear:
+        return fail("pooled ice emitters must be destroyed in ClearStaticCaches")
 
     if "LightType.Point" in shatter_fx:
         return fail("IceBlade shatter effect should avoid per-hit lights")
@@ -144,7 +158,7 @@ def main() -> int:
         if result is not None:
             return result
 
-    if "trail.material = GetOrCreateIceMaterial();" in text:
+    if "trail.material = GetOrCreateIceMaterial();" in text or "trail.material = GetOrCreateTrailMaterial();" in text:
         return fail("IceBlade trail must use sharedMaterial to avoid material instance churn")
 
     if "renderer.material = GetOrCreateIceMaterial();" in text:

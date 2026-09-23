@@ -440,13 +440,11 @@ namespace BossRush
             string quickDepositLabel = L10n.T("一键寄存", "Deposit All");
             string displayText;
             bool interactable;
-            Color buttonColor;
 
             if (isQuickDepositInProgress)
             {
                 displayText = L10n.T("寄存中...", "Depositing...");
                 interactable = false;
-                buttonColor = Color.gray;
             }
             else
             {
@@ -457,16 +455,16 @@ namespace BossRush
                     ? quickDepositLabel + " (" + itemCount + ")"
                     : quickDepositLabel;
                 interactable = canDeposit;
-                buttonColor = canDeposit ? new Color(0.2f, 0.8f, 0.2f) : Color.gray;
             }
 
-            ApplyButtonState(quickDepositButton, quickDepositButtonObj, quickDepositButtonText, displayText, interactable, buttonColor);
+            ApplyButtonState(quickDepositButton, quickDepositButtonObj, quickDepositButtonText, displayText, interactable);
         }
 
         /// <summary>
-        /// 统一应用按钮文字、颜色和可交互状态。
+        /// 统一应用按钮文字与可交互状态。按钮克隆自官方整理按钮，不再改 ColorBlock：
+        /// 保持官方外观与官方音效，不在官方背包界面里染出一块荧光绿（审美审查 UA-02）。
         /// </summary>
-        private static void ApplyButtonState(Button targetButton, GameObject targetObject, TextMeshProUGUI targetText, string displayText, bool interactable, Color buttonColor)
+        private static void ApplyButtonState(Button targetButton, GameObject targetObject, TextMeshProUGUI targetText, string displayText, bool interactable)
         {
             if (targetButton == null)
             {
@@ -489,12 +487,6 @@ namespace BossRush
             }
 
             targetButton.interactable = interactable;
-            ColorBlock colors = targetButton.colors;
-            colors.normalColor = buttonColor;
-            colors.highlightedColor = buttonColor * 1.1f;
-            colors.pressedColor = buttonColor * 0.9f;
-            colors.disabledColor = Color.gray;
-            targetButton.colors = colors;
         }
 
         /// <summary>

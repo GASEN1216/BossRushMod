@@ -4,7 +4,7 @@
 
 - The Backyard is what you do **between runs**: grow a little food, show off some trophies,
   put on a new battle track.
-- It is not a new map. "Backyard" is just a name — all three facilities sit in the base you already
+- It is not a new map. "Backyard" is just a name: all three facilities sit in the base you already
   know, and all three use the game's own buildings.
 - Each one does a single thing:
   - **Garden** — turn seeds into raid meals (the vanilla garden). You get a starter pack, then the vendor sells them and Bosses drop them.
@@ -17,7 +17,7 @@
 ### How to unlock it
 
 The three facilities follow the first three chapters of the **Duck King Campaign**. Each opens the
-moment you hand in that chapter to Jeff — no need to leave and re-enter the base — and a notice
+moment you hand in that chapter to Jeff (no need to leave and re-enter the base), and a notice
 tells you what just opened.
 
 - Hand in Chapter 1 `Sign Us Up` → **Garden** (the site opens; you pay Shovel ×1 and Poop ×9 to build it)
@@ -35,7 +35,7 @@ tells you what just opened.
 - **Where seeds come from**, three ways:
   - **Starter seeds**: the first time you're back at base after the Garden opens, you get `2` of each of the three seeds in your backpack (once per save), so you can plant as soon as it's built.
   - **Base vendor**: once the Garden opens, the base's regular merchant (the one that sells tickets) stocks all three seeds, `3` of each per restock, for about `2700`–`3300` each.
-  - **Boss drops**: each of the three mod Bosses drops **an extra** seed of its own kind, roughly `25%` each. This works whether or not "Boss loot randomization (time bonus)" is on in the settings, and also in Faction War / Blood Hunt and Infinite Hell (Infinite Hell has no crate, so the seed lands next to the body). It's a bonus on top — it never takes the place of the Dragon set pieces or the Dragon Lord's exclusive drops.
+  - **Boss drops**: each of the three mod Bosses drops **an extra** seed of its own kind, roughly `25%` each. This works whether or not "Boss loot randomization (time bonus)" is on in the settings, and also in Faction War / Blood Hunt and Infinite Hell (Infinite Hell has no crate, so the seed lands next to the body). It's a bonus on top; it never takes the place of the Dragon set pieces or the Dragon Lord's exclusive drops.
 - With a seed in hand, open the garden's normal planting screen and the mod seeds are simply there
   in the list alongside the vanilla crops.
 - A plant takes about `20` real-time minutes to ripen and yields `2` per harvest.
@@ -78,7 +78,7 @@ tells you what just opened.
 
 Raid meals are the Backyard's signature mechanic, and there are only three rules:
 
-- **Eat it in the base.** You can't eat one mid-run — the eat option is unavailable out there,
+- **Eat it in the base.** You can't eat one mid-run; the eat option is unavailable out there,
   so you can't waste one by accident.
 - **It applies to your next run.** Nothing happens when you eat it; the effect goes on at the start
   of the next run you leave the base for.
@@ -86,7 +86,7 @@ Raid meals are the Backyard's signature mechanic, and there are only three rules
 
 Two more that catch people out:
 
-- **Only one meal can be pending at a time.** Eating two doesn't stack — the second one **replaces**
+- **Only one meal can be pending at a time.** Eating two doesn't stack: the second one **replaces**
   the first, and the first has already been consumed. Pick one and eat only that.
 - **You can safely quit after eating.** The record is saved, so the meal still counts when you come
   back tomorrow and head out.
@@ -119,5 +119,5 @@ Two more that catch people out:
 - **Can I eat two different meals at once?** No, only the last one you ate is kept.
 - **Are Boss drops the only way to get seeds?** No. You get a starter pack when the Garden opens,
   and the base vendor always stocks them after that. Boss drops are a free bonus.
-- **Can I turn the whole Backyard off?** There's no such switch — it's default content. Just don't
+- **Can I turn the whole Backyard off?** There's no such switch; it's default content. Just don't
   use it: skip the garden, skip the racks, and it stays out of your way.

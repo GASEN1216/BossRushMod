@@ -42,7 +42,7 @@ source_files:
 | `RandomEventDirector.cs` | 调度状态机：边缘轮询、冷却、权重抽取、全量清理编排 |
 | `RandomEventCatalog.cs` / `_Fun.cs` | 8 个事件的 `RandomEventBase` 子类实现 |
 | `RandomEventEffectsBridge*.cs` | `partial ModBehaviour` 桥：收口所有需要触碰宿主私有基建的代码（生成、掉落箱、Buff 目标收集） |
-| `RandomEventHud.cs` | 活动事件徽章 + 剩余秒数 |
+| `RandomEventHud.cs` | 活动事件徽章 + 剩余秒数（2026-09-23：名字 20 / 秒数 18 等宽、底边 3 单位进度条、≤5 秒转 WarningText、入场 0.25 秒升起、结束 0.15 秒淡出；缺图时名字左移，不留空白） |
 | `RandomEventsRuntimeModule.cs` | 宿主回调唯一落点，dormant 契约 |
 
 ## 3. 架构与设计约定

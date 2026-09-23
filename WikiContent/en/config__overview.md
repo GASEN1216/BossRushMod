@@ -1,12 +1,12 @@
 ## Configuration Options
 
 ### Overview
-- BossRush Mod provides multiple configurable parameters, allowing you to adjust the gameplay experience to your preferences.
+- Everything below can be tuned to taste.
 
 ### Configuration Methods
 - **Config file**: `StreamingAssets/BossRushModConfig.txt` (JSON format), auto-generated on first run.
 - **In-game settings**: If the game supports ModConfig UI, you can modify settings directly in the Mod settings interface.
-- When you change BossRush-registered options through ModConfig UI, supported settings now sync immediately to the running Mod and are written back to the local config file.
+- When you change BossRush-registered options through ModConfig UI, supported settings sync immediately to the running Mod and are written back to the local config file.
 
 ### Configuration Reference
 
@@ -28,7 +28,6 @@
   - Standard BossRush: affects the quality distribution of Boss loot crates and keeps the Q5+ guarantee for high-HP Bosses
   - From Scratch / Faction War / Blood Hunt: affects the quality distribution of regular on-death backpack bonus items, backpack refill items, and extra backpack ammo stacks
   - Does not affect drop counts, currently equipped weapons, equipped armor/helmets/accessories, melee weapons, current bullet type, or Blood Hunt bounty / extraction bonus rewards
-  - Current versions now apply this scope correctly across Standard BossRush and the corresponding regular loot paths in From Scratch / Faction War / Blood Hunt, rather than only Standard BossRush
 
 #### useInteractBetweenWaves
 - Default: false

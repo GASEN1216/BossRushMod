@@ -136,6 +136,9 @@ namespace BossRush
             float rowStride = ActionSize.y + ActionGap;
             int totalRows = (actions.Count + perRow - 1) / perRow;
 
+            // 主次与页面动作行同一口径（审查 UB-09）：「同场重开」这类唯一的前进操作是 AccentFill 实心，
+            // 「放弃赛季」是 Danger，其余次级（深色底 + 描边）；只读置灰时一律按次级画、字用次级色。
+            int primary = ModeHUIPages.ResolvePrimaryAction(actions);
             for (int i = 0; i < actions.Count; i++)
             {
                 ModeHActionData action = actions[i];
@@ -146,17 +149,23 @@ namespace BossRush
                 int row = i / perRow;
                 float y = ModeHUI.SafeMargin + ActionSize.y * 0.5f
                     + (totalRows - 1 - row) * rowStride;
-                ZombieModeUIHelper.CreateButton(
+                // 只读置灰按「不可点」画：借一份只改可交互性的副本去取底色与样式，不改调用方的数据
+                ModeHActionData shown = interactable == action.Interactable ? action : new ModeHActionData
+                {
+                    Label = action.Label, Interactable = interactable, IsDanger = action.IsDanger,
+                    IsPrimary = action.IsPrimary, IsSelected = action.IsSelected,
+                };
+                bool isPrimary = i == primary;
+                Button button = ZombieModeUIHelper.CreateButton(
                     "ModeH_RecoveryAction_" + i, surface, action.Label,
                     new Vector2(0.5f, 0f),
                     new Vector2(startX + column * step, y),
                     ActionSize,
-                    interactable
-                        ? (action.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.Accent)
-                        : BossRushUIColors.Disabled,
-                    22f, new Vector2(ActionSize.x - 16f, ActionSize.y - 16f),
+                    ModeHUIPages.ResolveActionFill(shown, isPrimary),
+                    20f, new Vector2(ActionSize.x - 16f, ActionSize.y - 16f),
                     interactable ? new UnityEngine.Events.UnityAction(action.OnClick) : null,
                     interactable);
+                ModeHUIPages.StyleAction(button, shown, isPrimary);
             }
         }
 
@@ -167,6 +176,10 @@ namespace BossRush
         /// <summary>
         /// 组装恢复壳内容。真实资产明细只有在存在 active journal 时才出现；
         /// 无法证明安全时调用方传 `allowActions=false`，这里只做只读展示。
+        ///
+        /// 分四组（技术中止 / 本赛季 / 奖励记录 / 押品），每组一行主色小标题、组间空一行（审查 UB-16：
+        /// 旧版一整块同号灰字，还夹着英文枚举名「[Offered]」与完整事务号）。奖励状态走中英对照，
+        /// 事务号只留末 6 位、用注脚小字——它只用来和日志对得上，玩家不需要读它。
         /// </summary>
         public static List<string> BuildLines(
             ModeHSeasonDto season, ModeHStakeJournalDto journal, string technicalReasonId)
@@ -175,42 +188,47 @@ namespace BossRush
 
             if (!string.IsNullOrEmpty(technicalReasonId))
             {
+                AddGroupHeader(lines, L10n.T("技术中止", "Technical stop"));
                 lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_TechnicalAbort"));
                 lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_SameMatchRestart"));
             }
 
             if (season != null && season.runState != null)
             {
+                AddGroupHeader(lines, L10n.T("本赛季", "This season"));
                 lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Label_Match")
-                    .Replace("{0}", season.runState.matchIndex.ToString()));
-                lines.Add(ResolveStateLabel((ModeHLifecycle)season.runState.lifecycle));
-            }
-
-            if (season != null && season.matchReports != null)
-            {
-                for (int i = 0; i < season.matchReports.Count; i++)
+                    .Replace("{0}", season.runState.matchIndex.ToString())
+                    + "  " + ResolveStateLabel((ModeHLifecycle)season.runState.lifecycle));
+                if (season.matchReports != null)
                 {
-                    ModeHMatchReportDto report = season.matchReports[i];
-                    if (report == null) continue;
-                    lines.Add(BuildReportLine(report));
+                    for (int i = 0; i < season.matchReports.Count; i++)
+                    {
+                        ModeHMatchReportDto report = season.matchReports[i];
+                        if (report == null) continue;
+                        lines.Add(BuildReportLine(report));
+                    }
                 }
             }
 
-            if (season != null && season.seasonRewardOperations != null)
+            if (season != null && season.seasonRewardOperations != null
+                && season.seasonRewardOperations.Count > 0)
             {
+                AddGroupHeader(lines, L10n.T("奖励记录", "Rewards"));
                 for (int i = 0; i < season.seasonRewardOperations.Count; i++)
                 {
                     ModeHSeasonRewardOperationDto operation = season.seasonRewardOperations[i];
                     if (operation == null) continue;
-                    lines.Add("· " + operation.operationId + "  ["
-                        + (ModeHSeasonRewardOperationStatus)operation.status + "]");
+                    lines.Add("· " + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Label_Match")
+                            .Replace("{0}", operation.matchIndex.ToString())
+                        + L10n.T("奖励", " reward") + "  "
+                        + ResolveRewardStatusLabel((ModeHSeasonRewardOperationStatus)operation.status));
                 }
             }
 
             // 真实资产明细只在存在 journal 时显示
             if (journal != null)
             {
-                lines.Add("txId: " + journal.txId);
+                AddGroupHeader(lines, L10n.T("押品", "Stake"));
                 lines.Add(ResolveStakePhaseLabel((ModeHStakePhase)journal.phase));
                 lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "RealStake_Escrowed")
                     + ": " + (journal.escrowItems != null ? journal.escrowItems.Count : 0));
@@ -218,9 +236,41 @@ namespace BossRush
                 {
                     lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_ManualIntervention"));
                 }
+                lines.Add(FootnoteOpen + L10n.T("事务号 …", "Transaction …") + Tail(journal.txId, 6) + FootnoteClose);
             }
             return lines;
         }
+
+        /// <summary>组标题：主色、比正文大一号；不是第一组时先空一行。</summary>
+        private static void AddGroupHeader(List<string> lines, string title)
+        {
+            if (lines.Count > 0) lines.Add(string.Empty);
+            lines.Add(GroupHeaderOpen + title + GroupHeaderClose);
+        }
+
+        private static string Tail(string value, int count)
+        {
+            if (string.IsNullOrEmpty(value)) return "-";
+            return value.Length <= count ? value : value.Substring(value.Length - count);
+        }
+
+        private static string ResolveRewardStatusLabel(ModeHSeasonRewardOperationStatus status)
+        {
+            switch (status)
+            {
+                case ModeHSeasonRewardOperationStatus.Offered: return L10n.T("待领取", "Not claimed yet");
+                case ModeHSeasonRewardOperationStatus.Applied: return L10n.T("已领取", "Claimed");
+                case ModeHSeasonRewardOperationStatus.Archived: return L10n.T("已归档", "Archived");
+                default: return L10n.T("状态未知", "Unknown");
+            }
+        }
+
+        /// <summary>富文本色值按 token 预先转好（不每次拼）。</summary>
+        private static readonly string GroupHeaderOpen =
+            "<size=19><color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextPrimary) + ">";
+        private const string GroupHeaderClose = "</color></size>";
+        private static readonly string FootnoteOpen = "<size=14>";
+        private const string FootnoteClose = "</size>";
 
         private static string BuildReportLine(ModeHMatchReportDto report)
         {
@@ -270,15 +320,31 @@ namespace BossRush
             }
         }
 
-        /// <summary>幂等销毁恢复壳。</summary>
+        /// <summary>幂等收起恢复壳（淡出，审查 UB-32）。</summary>
         public void Hide()
         {
+            Hide(false);
+        }
+
+        /// <summary>
+        /// 幂等收起恢复壳。<paramref name="immediate"/> 为真时立即销毁（关停 / 卸载路径：展示 bundle 紧接着可能被卸载，
+        /// 标题徽记不能还挂在淡出中的界面上）。引用先置空，重开会新建根，不复用淡出中的这一个。
+        /// </summary>
+        public void Hide(bool immediate)
+        {
             if (_root == null) return;
-            UnityEngine.Object.Destroy(_root);
+            GameObject root = _root;
             _root = null;
             _canvas = null;
             _body = null;
             _lastBody = null;
+            if (immediate)
+            {
+                UnityEngine.Object.Destroy(root);
+                return;
+            }
+            root.name = root.name + "_Closing";
+            BossRushUIKit.PlayCloseAndDestroy(root);
         }
 
         #endregion

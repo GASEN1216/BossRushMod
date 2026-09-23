@@ -240,6 +240,11 @@ namespace BossRush
 
             CreateDetonationEffect(leapTargetPoint);
             DealLandingImpactDamage(leapTargetPoint);
+            // 跳斩落地的分量（VB-20）：主玩家自己落地时往下震一下（官方口径 ×0.4，强度 0.7）；NPC 用这把戟不震玩家的镜头。
+            if (characterController == CharacterMainControl.Main)
+            {
+                CameraShaker.Shake(Vector3.down * 0.4f * 0.7f, CameraShaker.CameraShakeTypes.explosion);
+            }
 
             BossRushAudioManager.Instance.PlayHalberdZadiSFX();
 
@@ -580,7 +585,8 @@ namespace BossRush
                     main.duration = 0.5f;
                     main.startLifetime = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
                     main.startSpeed = new ParticleSystem.MinMaxCurve(10f, 25f);
-                    main.startSizeMultiplier *= 3f;
+                    // 两端一起放大（VB-03：startSizeMultiplier 在两常数模式下只改上限，火团大小会参差不齐）。
+                    DragonKingFxShared.ScaleStartSize(main, 2.2f);
 
                     var em = ps.emission;
                     em.rateOverDistance = 0;
@@ -667,12 +673,27 @@ namespace BossRush
 
             if (pointLight != null)
             {
-                pointLight.intensity = Mathf.Lerp(startIntensity, 0f, t);
+                pointLight.intensity = Mathf.Lerp(startIntensity, 0f, BossRushUI.SmoothStep(t));
             }
 
             if (elapsed >= duration)
             {
-                Destroy(gameObject);
+                // VB-19：到时只把灯归零、停发射，粒子（寿命 0.4–0.8 s、10–25 m/s 飞出去的火团）自然死完再销毁，
+                // 不在火团飞到一半时整棵删掉。
+                if (pointLight != null)
+                {
+                    pointLight.intensity = 0f;
+                }
+                ParticleSystem[] systems = GetComponentsInChildren<ParticleSystem>(true);
+                for (int i = 0; i < systems.Length; i++)
+                {
+                    if (systems[i] != null)
+                    {
+                        systems[i].Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                    }
+                }
+                Destroy(gameObject, 0.8f);
+                enabled = false;
             }
         }
     }

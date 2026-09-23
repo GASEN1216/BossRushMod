@@ -69,7 +69,8 @@ namespace BossRush
 
             try
             {
-                if (_recoveryPanel != null) _recoveryPanel.Hide();
+                // 整体销毁：立即销毁，不淡出（展示 bundle 可能紧接着卸载）
+                if (_recoveryPanel != null) _recoveryPanel.Hide(true);
             }
             catch (Exception e)
             {
@@ -308,6 +309,10 @@ namespace BossRush
         private void AdvanceTowardsFight()
         {
             if (_commandsClosed || _runState == null || _season == null) return;
+            // 转会窗口没有报价时没有可决定的事：直接关窗进下一场，不停在一张只有「下一场」的空页上（V6-3）
+            if (_runState.Lifecycle == ModeHLifecycle.TransferWindow && EnsureTransferOffer() == null)
+                CloseTransferWindow("no_offer");
+            if (_commandsClosed || _runState == null || _season == null) return;
             if (_runState.Lifecycle == ModeHLifecycle.RosterLocked) OpenFirstMatchBrief();
 
             if (_commandsClosed || _runState == null || _season == null) return;
@@ -471,17 +476,17 @@ namespace BossRush
             if (report != null && _settlementNotes.Count > 0 && string.Equals(
                     report.seasonRewardOperationId, _settlementNotesOperationId, StringComparison.Ordinal))
             {
-                page.Lines.AddRange(_settlementNotes);
+                page.NoteLines.AddRange(_settlementNotes);
             }
 
             string prefix = ModeHConfig.LocalizationKeyPrefix;
             if (page.Actions.Count != 1 || page.Actions[0] == null || page.Actions[0].OnClick == null
                 || !string.Equals(page.Actions[0].Label, L10n.T(prefix + "Button_Confirm"), StringComparison.Ordinal)) return;
             Action archive = page.Actions[0].OnClick;
+            // 转会窗口前也写「下一场」：没有报价时自动链直接关窗开打，有报价才停在转会页让玩家拿主意（V6-3）
             List<string> live = ModeHTransferMarket.GetLiveContractProfileIds(_season);
             bool nextIsMatch = live != null && live.Count > 0
-                && _runState.MatchIndex < ModeHConfig.SeasonMatchCount
-                && !ModeHConfig.IsTransferWindowMatch(_runState.MatchIndex);
+                && _runState.MatchIndex < ModeHConfig.SeasonMatchCount;
             page.Actions[0].Label = L10n.T(prefix + (nextIsMatch ? "Button_NextMatch" : "Button_Continue"));
             page.Actions[0].OnClick = delegate { RunAutoAdvance("next_match", archive); };
         }
@@ -545,6 +550,7 @@ namespace BossRush
                 {
                     Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_SameMatchRestart"),
                     OnClick = ResumeFromSuspended,
+                    IsPrimary = true,
                 });
             }
 
@@ -604,6 +610,7 @@ namespace BossRush
                     Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_AbandonSeason"),
                     OnClick = AbandonSeasonFromRecovery,
                     BypassReadOnly = true,
+                    IsDanger = true,
                 });
             }
 

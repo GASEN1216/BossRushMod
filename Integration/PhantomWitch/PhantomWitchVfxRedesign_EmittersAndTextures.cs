@@ -54,6 +54,11 @@ namespace BossRush
             {
                 shape.angle = 10f;
             }
+            else if (shapeType == ParticleSystemShapeType.Circle)
+            {
+                // 审查 VB-04：Circle 默认在局部 XY 平面（竖着），放平到地面。
+                shape.rotation = new Vector3(90f, 0f, 0f);
+            }
 
             var colorOverLifetime = ps.colorOverLifetime;
             colorOverLifetime.enabled = true;
@@ -99,7 +104,8 @@ namespace BossRush
             go.transform.localPosition = new Vector3(0f, yOffset, 0f);
 
             ParticleSystem ps = go.AddComponent<ParticleSystem>();
-            PhantomWitchAssetManager.ConfigureSharedParticleRenderer(ps);
+            // 雾走半透明混合：加色的大雾团会叠成一片发白的光膜。
+            PhantomWitchAssetManager.ConfigureSharedParticleRenderer(ps, BossRushFxBlend.Alpha);
 
             var main = ps.main;
             main.duration = 30f;
@@ -115,11 +121,13 @@ namespace BossRush
             var emission = ps.emission;
             emission.rateOverTime = rate;
 
+            // 审查 VB-04：Circle 默认竖着，魂雾此前是一面竖直的雾扇；用 shape.rotation 放平（速度轴不受影响）。
             var shape = ps.shape;
             shape.enabled = true;
             shape.shapeType = ParticleSystemShapeType.Circle;
             shape.radius = radius;
             shape.radiusThickness = 1f;
+            shape.rotation = new Vector3(90f, 0f, 0f);
 
             var velocity = ps.velocityOverLifetime;
             velocity.enabled = true;
@@ -142,11 +150,18 @@ namespace BossRush
                 new GradientAlphaKey[]
                 {
                     new GradientAlphaKey(0f, 0f),
-                    new GradientAlphaKey(0.85f, 0.15f),
-                    new GradientAlphaKey(0.6f, 0.65f),
+                    new GradientAlphaKey(0.45f, 0.15f),
+                    new GradientAlphaKey(0.3f, 0.65f),
                     new GradientAlphaKey(0f, 1f)
                 });
             colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
+
+            // 雾团出生偏小、边走边散开，不是一出生就满尺寸的圆片。
+            var sizeOverLifetime = ps.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
+                new Keyframe(0f, 0.6f),
+                new Keyframe(1f, 1.25f)));
 
             ps.Play();
             return ps;
@@ -161,12 +176,15 @@ namespace BossRush
             ParticleSystem ps = go.AddComponent<ParticleSystem>();
             PhantomWitchAssetManager.ConfigureSharedParticleRenderer(ps);
 
+            // 审查 VB-05 / 口径第 7 条：星点 <=0.2 m；寿命跟特效时长走（此前固定 1.5-3.5 s，0.72 s 的横扫回收时正处在最亮处被一刀切）。
             var main = ps.main;
             main.duration = duration;
             main.loop = false;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(1.5f, 3.5f);
+            main.startLifetime = new ParticleSystem.MinMaxCurve(
+                Mathf.Clamp(duration * 0.5f, 0.4f, 0.9f),
+                Mathf.Clamp(duration * 0.8f, 0.6f, 1.4f));
             main.startSpeed = new ParticleSystem.MinMaxCurve(0.05f, 0.35f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.18f); // Very small, bright dots
+            main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.12f); // 细小亮点
             main.startColor = Color.white;
             main.maxParticles = 48;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
@@ -205,6 +223,13 @@ namespace BossRush
                 });
             colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
 
+            var sizeOverLifetime = ps.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
+                new Keyframe(0f, 0.5f),
+                new Keyframe(0.2f, 1f),
+                new Keyframe(1f, 0.35f)));
+
             var noise = ps.noise;
             noise.enabled = true;
             noise.strength = 0.2f;
@@ -222,9 +247,9 @@ namespace BossRush
             root.transform.localRotation = Quaternion.Euler(0f, 0f, inverted ? 180f : 0f);
             root.AddComponent<PhantomWitchBillboard>();
 
-            LineRenderer vertical = CreateCrossLine(root.transform, new Vector3(0f, size * 0.7f, 0f), new Vector3(0f, -size, 0f), 0.024f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.9f));
-            LineRenderer horizontal = CreateCrossLine(root.transform, new Vector3(-size * 0.35f, size * 0.15f, 0f), new Vector3(size * 0.35f, size * 0.15f, 0f), 0.018f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.75f));
-            if (vertical != null && horizontal != null)
+            // 审查 VB-08：0.018-0.024 m 的十字只剩 1-2 px、一闪一闪；只留一道 0.08 m 收尖的竖向闪光。
+            LineRenderer vertical = CreateCrossLine(root.transform, new Vector3(0f, size * 0.7f, 0f), new Vector3(0f, -size, 0f), 0.08f, WithAlpha(PhantomWitchConfig.SilverAshCore, 0.9f));
+            if (vertical != null)
             {
                 PhantomWitchFadeDestroy fade = root.AddComponent<PhantomWitchFadeDestroy>();
                 fade.Configure(duration, duration);
@@ -240,10 +265,11 @@ namespace BossRush
             line.useWorldSpace = false;
             line.loop = false;
             line.positionCount = 2;
-            line.widthMultiplier = width;
+            line.widthMultiplier = Mathf.Max(PhantomWitchFxRenderUtil.MinWorldLineWidth, width);
+            line.widthCurve = TaperedLineWidthCurve;
             line.sharedMaterial = GetLineMaterial();
             line.startColor = color;
-            line.endColor = color;
+            line.endColor = WithAlpha(color, color.a * 0.35f);
             line.SetPosition(0, start);
             line.SetPosition(1, end);
             return line;
@@ -266,7 +292,8 @@ namespace BossRush
                 line.useWorldSpace = false;
                 line.loop = false;
                 line.positionCount = 3;
-                line.widthMultiplier = 0.018f;
+                line.widthMultiplier = PhantomWitchFxRenderUtil.MinWorldLineWidth;
+                line.widthCurve = TaperedLineWidthCurve;
                 line.sharedMaterial = PhantomWitchVfxRedesign.GetSharedLineMaterial();
                 line.startColor = lineColor;
                 line.endColor = WithAlpha(lineColor, lineColor.a * 0.2f);
@@ -299,7 +326,8 @@ namespace BossRush
             line.useWorldSpace = false;
             line.loop = false;
             line.positionCount = 4;
-            line.widthMultiplier = 0.03f;
+            line.widthMultiplier = PhantomWitchFxRenderUtil.MinWorldLineWidth;
+            line.widthCurve = TaperedLineWidthCurve;
             line.sharedMaterial = GetLineMaterial();
             line.startColor = color;
             line.endColor = WithAlpha(color, color.a * 0.35f);
@@ -322,20 +350,22 @@ namespace BossRush
             ParticleSystem ps = go.AddComponent<ParticleSystem>();
             PhantomWitchAssetManager.ConfigureSharedParticleRenderer(ps);
 
+            // 审查 VB-08：0.02-0.05 m 的微粒只有 1-3 px，改 0.06-0.12 m、数量减半（不再是一片噪点）。
+            int burstCount = Mathf.Max(3, count / 2);
             var main = ps.main;
             main.duration = lifetime + 0.1f;
             main.loop = false;
             main.startLifetime = new ParticleSystem.MinMaxCurve(lifetime * 0.6f, lifetime);
             main.startSpeed = new ParticleSystem.MinMaxCurve(0.25f, 0.7f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.02f, 0.05f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.06f, 0.12f);
             main.startColor = color;
-            main.maxParticles = count + 4;
+            main.maxParticles = burstCount + 4;
             main.simulationSpace = ParticleSystemSimulationSpace.Local;
             main.gravityModifier = -0.05f;
 
             var emission = ps.emission;
             emission.rateOverTime = 0f;
-            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, (short)count) });
+            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, (short)burstCount) });
 
             var shape = ps.shape;
             shape.enabled = true;
@@ -349,6 +379,12 @@ namespace BossRush
                 new GradientColorKey[] { new GradientColorKey(color, 0f), new GradientColorKey(PhantomWitchConfig.VioletVoidDust, 1f) },
                 new GradientAlphaKey[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(color.a, 0.2f), new GradientAlphaKey(0f, 1f) });
             colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
+
+            var sizeOverLifetime = ps.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
+                new Keyframe(0f, 1f),
+                new Keyframe(1f, 0.3f)));
 
             ps.Play();
             Object.Destroy(go, lifetime + 0.2f);
@@ -368,7 +404,7 @@ namespace BossRush
             main.loop = true;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.22f, 0.38f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(0.10f, 0.28f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.018f, 0.045f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.10f);
             main.startColor = WithAlpha(PhantomWitchConfig.SilverAshCore, 0.75f);
             main.maxParticles = 24;
             main.simulationSpace = ParticleSystemSimulationSpace.Local;
@@ -400,6 +436,12 @@ namespace BossRush
                     new GradientAlphaKey(0f, 1f)
                 });
             colorOverLifetime.color = new ParticleSystem.MinMaxGradient(gradient);
+
+            var sizeOverLifetime = ps.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
+                new Keyframe(0f, 1f),
+                new Keyframe(1f, 0.35f)));
 
             ps.Play();
         }
@@ -490,9 +532,13 @@ namespace BossRush
         private static Texture2D CreateProjectionTexture(bool broken)
         {
             const int size = 128;
-            Texture2D texture = new Texture2D(size, size, TextureFormat.Alpha8, false);
+            // RGBA（白色 + alpha）：Alpha8 在部分图形 API 上采样出 rgb = 0，颜色走顶点色 / 属性块时会变黑。
+            // 会话常驻（HideAndDontSave）：它是共享材质工厂的缓存键，清缓存时不销毁。
+            Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.name = broken ? "PW_BrokenAltarProjection" : "PW_AltarProjection";
             texture.wrapMode = TextureWrapMode.Clamp;
             texture.filterMode = FilterMode.Bilinear;
+            texture.hideFlags = HideFlags.HideAndDontSave;
 
             float center = (size - 1) * 0.5f;
             for (int y = 0; y < size; y++)
@@ -530,7 +576,8 @@ namespace BossRush
             root.transform.SetParent(parent, false);
             root.transform.localPosition = new Vector3(0f, 0.1f, 0f);
 
-            for (int i = 0; i < 3; i++)
+            // 审查 VB-08：3 条 0.012 m（约 0.8 px）的发丝线看不见只会闪；改 2 条 0.06 / 0.045 m、自下而上收尖。
+            for (int i = 0; i < 2; i++)
             {
                 GameObject lineGo = new GameObject("Line_" + i);
                 lineGo.transform.SetParent(root.transform, false);
@@ -539,7 +586,8 @@ namespace BossRush
                 line.useWorldSpace = false;
                 line.loop = false;
                 line.positionCount = 2;
-                line.widthMultiplier = 0.012f;
+                line.widthMultiplier = i == 0 ? PhantomWitchFxRenderUtil.MinWorldLineWidth : 0.045f;
+                line.widthCurve = TaperedLineWidthCurve;
                 line.sharedMaterial = PhantomWitchVfxRedesign.GetSharedLineMaterial();
                 line.startColor = color;
                 line.endColor = WithAlpha(color, color.a * 0.2f);
@@ -561,6 +609,253 @@ namespace BossRush
         {
             float baseAngle = Mathf.Atan2(forward.x, forward.z) + angleOffset;
             return new Vector3(Mathf.Sin(baseAngle) * radius, 0f, Mathf.Cos(baseAngle) * radius);
+        }
+
+        // ==================== 地面预警（审查 VB-01 / VB-07）与尺寸缩放工具 ====================
+        // 从 PhantomWitchVfxRedesign.cs 原样挪来（LargeFileBudgetGuard：主文件不超过 1200 行）。
+
+        private static void CreateCircleTelegraph(Transform parent, float radius, float chargeDuration)
+        {
+            GameObject telegraph = new GameObject("CircleTelegraph");
+            telegraph.transform.SetParent(parent, false);
+            telegraph.transform.localPosition = Vector3.zero;
+            PhantomWitchTelegraphDriver driver = telegraph.AddComponent<PhantomWitchTelegraphDriver>();
+
+            GameObject fill = CreateFlatQuad(telegraph.transform, "TelegraphFill", radius * 2f, 0.025f, WithAlpha(TelegraphFillColor, 0f));
+            MeshRenderer fillRenderer = fill.GetComponent<MeshRenderer>();
+            Material fillMaterial = GetTelegraphFillMaterial();
+            if (fillRenderer != null && fillMaterial != null)
+            {
+                fillRenderer.sharedMaterial = fillMaterial;
+            }
+
+            PhantomWitchFlatRingMesh ring = CreateRing(telegraph.transform, radius, 0.20f, WithAlpha(TelegraphOutlineColor, 0f), 0.035f);
+
+            driver.Configure(chargeDuration, TelegraphPostFade);
+            driver.SetRingOutline(ring, radius);
+            driver.SetOutlineStyle(TelegraphOutlineColor, 0.55f, 1f, 0.20f, 0.40f, TelegraphFlashColor);
+            driver.SetFill(fill.transform, fillRenderer, new Vector3(radius * 2f, 1f, radius * 2f), TelegraphFillColor, 0.10f, 0.28f);
+        }
+
+        /// <summary>
+        /// 扇形出手预警（审查 VB-07）。apex 在 origin 前方 forwardOffset 处，半径 / 半角取判定值；
+        /// 每帧跟随 origin → target 的水平方向（与判定 ResolveAttackForward 在出手瞬间的朝向一致）。
+        /// outlineOnly = true 时只画虚线外沿、不画填充，用来标第二段更远的判定。
+        /// </summary>
+        internal static GameObject CreateConeTelegraph(Transform origin, Transform target, float radius, float halfAngle, float forwardOffset, float chargeDuration, bool outlineOnly)
+        {
+            float safeRadius = Mathf.Max(0.3f, radius);
+            float safeHalfAngle = Mathf.Clamp(halfAngle, 1f, 179f);
+            float safeDuration = Mathf.Max(0.05f, chargeDuration);
+
+            GameObject root = CreateRoot(outlineOnly ? "PW_ConeTelegraphOutline" : "PW_ConeTelegraph", origin.position);
+            PhantomWitchTelegraphDriver driver = root.AddComponent<PhantomWitchTelegraphDriver>();
+            driver.Configure(safeDuration, TelegraphPostFade);
+            driver.SetTracking(origin, target, forwardOffset, 0.03f);
+
+            int segments = ResolveAdaptiveCount(24, 16, 10);
+            if (!outlineOnly)
+            {
+                GameObject fill = new GameObject("TelegraphFill");
+                fill.transform.SetParent(root.transform, false);
+                fill.transform.localPosition = Vector3.zero;
+                Mesh mesh = BuildSectorFillMesh(safeRadius, safeHalfAngle, segments);
+                MeshFilter filter = fill.AddComponent<MeshFilter>();
+                filter.sharedMesh = mesh;
+                fill.AddComponent<PhantomWitchRuntimeMesh>().SetMesh(mesh);
+                MeshRenderer renderer = fill.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = GetTelegraphFillMaterial();
+                PhantomWitchFxRenderUtil.SetRendererColor(renderer, WithAlpha(TelegraphFillColor, 0f));
+                driver.SetFill(fill.transform, renderer, Vector3.one, TelegraphFillColor, 0.12f, 0.30f);
+            }
+
+            Vector3[] arcPoints = BuildArcPoints(safeRadius, safeHalfAngle, Vector3.forward, segments);
+            Vector3[][] outlinePoints = new Vector3[][]
+            {
+                arcPoints,
+                new Vector3[] { Vector3.zero, arcPoints[0] },
+                new Vector3[] { Vector3.zero, arcPoints[arcPoints.Length - 1] }
+            };
+            Material outlineMaterial = outlineOnly ? GetDashedGroundLineMaterial() : GetGroundLineMaterial();
+            PhantomWitchFlatPathMesh[] outlines = new PhantomWitchFlatPathMesh[outlinePoints.Length];
+            for (int i = 0; i < outlinePoints.Length; i++)
+            {
+                GameObject edge = new GameObject(i == 0 ? "TelegraphArc" : "TelegraphEdge");
+                edge.transform.SetParent(root.transform, false);
+                edge.transform.localPosition = new Vector3(0f, 0.01f, 0f);
+                PhantomWitchFlatPathMesh path = edge.AddComponent<PhantomWitchFlatPathMesh>();
+                path.Configure(outlinePoints[i], 0.16f, outlineMaterial, WithAlpha(TelegraphOutlineColor, 0f));
+                outlines[i] = path;
+            }
+
+            driver.SetPathOutlines(outlines, outlinePoints);
+            if (outlineOnly)
+            {
+                driver.SetOutlineStyle(TelegraphOutlineColor, 0.35f, 0.75f, 0.14f, 0.24f, TelegraphFlashColor);
+            }
+            else
+            {
+                driver.SetOutlineStyle(TelegraphOutlineColor, 0.5f, 1f, 0.16f, 0.30f, TelegraphFlashColor);
+            }
+
+            Object.Destroy(root, safeDuration + TelegraphPostFade + 0.05f);
+            return root;
+        }
+
+        /// <summary>扇形填充网格：顶点在原点、朝 +Z。UV 按位置线性映射到软圆盘贴图，弧边自然羽化。</summary>
+        private static Mesh BuildSectorFillMesh(float radius, float halfAngle, int segments)
+        {
+            segments = Mathf.Max(2, segments);
+            Mesh mesh = new Mesh();
+            mesh.name = "PW_ConeTelegraphFill";
+            Vector3[] vertices = new Vector3[segments + 2];
+            Vector2[] uv = new Vector2[segments + 2];
+            int[] triangles = new int[segments * 3];
+            vertices[0] = Vector3.zero;
+            uv[0] = new Vector2(0.5f, 0.5f);
+            float halfRadians = halfAngle * Mathf.Deg2Rad;
+            for (int i = 0; i <= segments; i++)
+            {
+                float angle = Mathf.Lerp(-halfRadians, halfRadians, (float)i / segments);
+                float sin = Mathf.Sin(angle);
+                float cos = Mathf.Cos(angle);
+                vertices[i + 1] = new Vector3(sin * radius, 0f, cos * radius);
+                uv[i + 1] = new Vector2(0.5f + 0.5f * sin, 0.5f + 0.5f * cos);
+            }
+
+            for (int i = 0; i < segments; i++)
+            {
+                triangles[i * 3] = 0;
+                triangles[i * 3 + 1] = i + 1;
+                triangles[i * 3 + 2] = i + 2;
+            }
+
+            mesh.vertices = vertices;
+            mesh.uv = uv;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        /// <summary>
+        /// 按倍率缩放粒子初始尺寸的两端。`startSizeMultiplier` 在 TwoConstants 模式下只写上限常数，
+        /// 会把 0.1–0.2 m 的粒子拉成 0.1–2 m 的雾团（审查 VB-03）。
+        /// </summary>
+        internal static ParticleSystem.MinMaxCurve ScaleStartSize(ParticleSystem.MinMaxCurve size, float scale)
+        {
+            switch (size.mode)
+            {
+                case ParticleSystemCurveMode.Constant:
+                    return new ParticleSystem.MinMaxCurve(size.constant * scale);
+                case ParticleSystemCurveMode.TwoConstants:
+                    return new ParticleSystem.MinMaxCurve(size.constantMin * scale, size.constantMax * scale);
+                default:
+                    size.curveMultiplier = size.curveMultiplier * scale;
+                    return size;
+            }
+        }
+
+        private static Material GetLineMaterial()
+        {
+            return PhantomWitchAssetManager.GetLineMaterial();
+        }
+
+        // ==================== 程序化贴图（会话常驻，是 BossRushFxMaterials 共享材质的缓存键） ====================
+
+        /// <summary>
+        /// 柔边带：沿长度（u）不变，横向（v）中间实心、两侧各约 1/3 羽化到 0。
+        /// 给贴地环 / 弧 / 扇形边用（PhantomWitchFlatRingMesh 与 PhantomWitchFlatPathMesh 的 v 都是横跨带宽）。
+        /// 此前是 whiteTexture 硬边带（审查 VB-10）。
+        /// </summary>
+        internal static Texture2D GetSoftBandTexture()
+        {
+            if (cachedSoftBandTexture == null)
+            {
+                cachedSoftBandTexture = CreateBandTexture("PW_SoftBand", 4, 0);
+            }
+
+            return cachedSoftBandTexture;
+        }
+
+        /// <summary>虚线柔边带：沿长度切成 9 段短划（第二段 / 延伸判定的扇形外沿）。</summary>
+        private static Texture2D GetDashedBandTexture()
+        {
+            if (cachedDashedBandTexture == null)
+            {
+                cachedDashedBandTexture = CreateBandTexture("PW_DashedBand", 72, 9);
+            }
+
+            return cachedDashedBandTexture;
+        }
+
+        private static Texture2D CreateBandTexture(string name, int width, int dashCount)
+        {
+            const int height = 32;
+            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            texture.name = name;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.filterMode = FilterMode.Bilinear;
+            texture.hideFlags = HideFlags.HideAndDontSave;
+            Color32[] pixels = new Color32[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                float v = (y + 0.5f) / height;
+                float across = Mathf.Abs(v * 2f - 1f);
+                float band = 1f - BossRushUI.SmoothStep((across - 0.35f) / 0.65f);
+                for (int x = 0; x < width; x++)
+                {
+                    float dash = 1f;
+                    if (dashCount > 0)
+                    {
+                        float phase = ((x + 0.5f) / width) * dashCount;
+                        phase -= Mathf.Floor(phase);
+                        // 每段前 60% 实、后 40% 空，两头各 0.08 羽化，避免锯齿状硬断。
+                        dash = Mathf.Clamp01(Mathf.Min(phase, 0.6f - phase) / 0.08f);
+                    }
+
+                    byte alpha = (byte)Mathf.RoundToInt(Mathf.Clamp01(band * dash) * 255f);
+                    pixels[y * width + x] = new Color32(255, 255, 255, alpha);
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            return texture;
+        }
+
+        /// <summary>预警填充用的实心软边圆盘：半径 0.82 内不透明，之外 SmoothStep 羽化到 0。</summary>
+        private static Texture2D GetSoftDiscTexture()
+        {
+            if (cachedSoftDiscTexture != null)
+            {
+                return cachedSoftDiscTexture;
+            }
+
+            const int size = 64;
+            Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.name = "PW_SoftDisc";
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.filterMode = FilterMode.Bilinear;
+            texture.hideFlags = HideFlags.HideAndDontSave;
+            Color32[] pixels = new Color32[size * size];
+            float half = size * 0.5f;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = (x + 0.5f - half) / half;
+                    float dy = (y + 0.5f - half) / half;
+                    float r = Mathf.Sqrt(dx * dx + dy * dy);
+                    float alpha = 1f - BossRushUI.SmoothStep((r - 0.82f) / 0.18f);
+                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(Mathf.Clamp01(alpha) * 255f));
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+            cachedSoftDiscTexture = texture;
+            return cachedSoftDiscTexture;
         }
     }
 }

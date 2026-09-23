@@ -136,7 +136,13 @@ namespace BossRush
                 new Vector2(AFFIX_STONE_ICON_SIZE, AFFIX_STONE_ICON_SIZE));
             AddFixedLayoutElement(iconObj, AFFIX_STONE_ICON_SIZE, AFFIX_STONE_ICON_SIZE);
 
+            // 图标：自带 PNG → 官方物品元数据图标；都取不到就不画这一格（UD-30，不再用「◆」字符兜底）
             Sprite stoneSprite = TryLoadAffixForgeStoneSprite();
+            if (stoneSprite == null)
+            {
+                stoneSprite = TryGetItemMetaIcon(AffixForgeStoneConfig.TYPE_ID);
+            }
+
             if (stoneSprite != null)
             {
                 Image stoneIcon = iconObj.AddComponent<Image>();
@@ -146,13 +152,7 @@ namespace BossRush
             }
             else
             {
-                // 图标缺文件时用符号兜底（照冷淬液 "❄" 的先例）
-                ZombieModeUIHelper.CreateTMPText(
-                    iconObj,
-                    "◆",
-                    AFFIX_ICON_FALLBACK_FONT_SIZE,
-                    TextAlignmentOptions.Center,
-                    BossRushUIColors.Accent);
+                iconObj.SetActive(false);
             }
 
             GameObject countObj = ZombieModeUIHelper.CreateRect(
@@ -211,22 +211,11 @@ namespace BossRush
                 new Vector2(AFFIX_ICON_SIZE, AFFIX_ICON_SIZE));
             AddFixedLayoutElement(iconObj, AFFIX_ICON_SIZE, AFFIX_ICON_SIZE);
 
+            // 图标取不到时整格隐藏、文字左移（SetRowIcon，UD-30），不再画「◇」字符占位
             widgets.Icon = iconObj.AddComponent<Image>();
             widgets.Icon.preserveAspect = true;
             widgets.Icon.raycastTarget = false;
             widgets.Icon.enabled = false;
-
-            GameObject iconFallbackObj = ZombieModeUIHelper.CreateRect(
-                "IconFallback",
-                iconObj.transform,
-                new Vector2(0.5f, 0.5f),
-                new Vector2(AFFIX_ICON_SIZE, AFFIX_ICON_SIZE));
-            widgets.IconFallbackText = ZombieModeUIHelper.CreateTMPText(
-                iconFallbackObj,
-                "◇",
-                AFFIX_ICON_FALLBACK_FONT_SIZE,
-                TextAlignmentOptions.Center,
-                BossRushUIColors.TextSecondary);
 
             // ---- 文本列 ----
             GameObject textColumn = ZombieModeUIHelper.CreateRect(
@@ -298,11 +287,8 @@ namespace BossRush
             if (widgets.LockButton != null)
             {
                 AddFixedLayoutElement(widgets.LockButton.gameObject, AFFIX_LOCK_BUTTON_WIDTH, AFFIX_LOCK_BUTTON_HEIGHT);
-                ZombieModeUIHelper.ApplyButtonColors(
-                    widgets.LockButton,
-                    BossRushUIColors.SurfaceRaised,
-                    AffixLockHoverColor,
-                    BossRushUIColors.Disabled);
+                // 次级按钮（SurfaceRaised + Stroke，悬停由 GetHoverColor 派生）。旧版悬停是整块亮天蓝配白字，约 2.2:1（UD-27）
+                ApplyAffixLockButtonLook(widgets.LockButton, false);
                 widgets.LockButtonText = widgets.LockButton.GetComponentInChildren<TextMeshProUGUI>(true);
             }
 

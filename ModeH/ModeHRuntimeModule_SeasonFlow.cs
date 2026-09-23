@@ -61,6 +61,8 @@ namespace BossRush
             page.Actions.Add(new ModeHActionData
             {
                 Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Transfer_Keep"),
+                // 「不换人，下一场」是往前走的那一颗：本页主按钮；「签下他」是次级（两个都一键直达下一场）
+                IsPrimary = true,
                 OnClick = delegate { RunAutoAdvance("transfer_keep", delegate { RejectTransferOffer(offer); }); },
             });
             return page;
@@ -320,6 +322,55 @@ namespace BossRush
             card.IsAnomaly = !string.IsNullOrEmpty(record.anomalyId);
             return card;
         }
+
+        #region 选人页出口（V6-1）
+
+        /// <summary>本局选人撞上「凑不齐六场搭档」时记下的 runId：选人页据此挂出「退出本赛季」。纯运行时，不落盘。</summary>
+        private string _draftDeadEndRunId;
+
+        /// <summary>
+        /// 选人撞上「五种搭配都凑不出六场」后，选人页挂一颗「退出本赛季」（危险色）。
+        /// 提示叫玩家退出重进，可选人页是停住时间的模态页，原本一个按钮都没有（2026-09-23 复核 V6-1）。
+        /// </summary>
+        private void AppendDraftLeaveAction(ModeHPageContent page)
+        {
+            if (page == null || _runState == null
+                || !string.Equals(_draftDeadEndRunId, _runState.RunId, StringComparison.Ordinal)) return;
+            page.Actions.Add(new ModeHActionData
+            {
+                Label = L10n.T("退出本赛季", "Leave season"),
+                IsDanger = true,
+                OnClick = LeaveSeasonFromDraft,
+            });
+        }
+
+        /// <summary>
+        /// 选人页的「退出本赛季」：复用已有的 Drafting → None 冻结边与赛季终局的退出路径
+        /// （与 Dev 验收收场 DebugFinishValidationSeason 同一序列：先转相位、再 durable 落盘、再 RequestExit(SeasonComplete)），
+        /// 不另造状态转换。赛季记录归档成 None，下次进场重抽候选；选人阶段还没有下注与押品，退出不涉及资产。
+        /// </summary>
+        private void LeaveSeasonFromDraft()
+        {
+            if (_commandsClosed || _runState == null || _runState.Lifecycle != ModeHLifecycle.Drafting) return;
+            try
+            {
+                if (!TryTransition(ModeHLifecycle.Drafting, ModeHLifecycle.None, "draft_no_viable_pair")) return;
+                _draftDeadEndRunId = null;
+                TryPersistSeason("draft_left", true);
+                RequestExit(ModeHExitReason.SeasonComplete, "draft_left");
+                if (_owner != null)
+                {
+                    _owner.ShowMessage(L10n.T("已退出本赛季，下次进场会重新抽选手。",
+                        "Season ended. A fresh lineup will be drawn next time."));
+                }
+            }
+            catch (Exception e)
+            {
+                LogFailure("draft_leave", e);
+            }
+        }
+
+        #endregion
 
         /// <summary>赛季终局：唯一允许把持久 lifecycle 写成 None 的路径之一（§18.2）。</summary>
         private void FinishSeason(string reasonId)

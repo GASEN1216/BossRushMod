@@ -75,36 +75,10 @@ namespace BossRush
 
     public sealed class ZombieModeCashInvestmentView : MonoBehaviour
     {
-        // ==================== 生存模式配色方案 ====================
-        // 标题栏：中性深灰，避免全屏界面被单一蓝色占满。
-        private static readonly Color HeaderColor = new Color(0.09f, 0.12f, 0.13f, 0.12f);
-        // 标题装饰线
-        private static readonly Color AccentLineColor = new Color(0.20f, 0.72f, 0.67f, 0.82f);
-        // 输入行底色
-        private static readonly Color RowColor = new Color(0.08f, 0.10f, 0.14f, 0.18f);
-        // 输入框底色
-        private static readonly Color InputBgColor = new Color(0.04f, 0.05f, 0.08f, 0.64f);
-        // 输入框边框
-        private static readonly Color InputBorderColor = new Color(0.25f, 0.35f, 0.55f, 0.34f);
-        // 预览条底色：暗金色调
-        private static readonly Color PreviewBarColor = new Color(0.12f, 0.14f, 0.08f, 0.20f);
-        // 正文说明色：降低纯白刺眼感
-        private static readonly Color BodyTextColor = new Color(0.78f, 0.82f, 0.88f, 1.00f);
-        // 余额金色
-        private static readonly Color BalanceGoldColor = new Color(1.00f, 0.85f, 0.40f, 1.00f);
-        // 预览文本色：明亮黄绿
-        private static readonly Color PreviewTextColor = new Color(0.75f, 0.92f, 0.45f, 1.00f);
-
-        // 按钮配色：更柔和的现代色调
-        private static readonly Color ConfirmColor = new Color(0.16f, 0.50f, 0.35f, 0.72f);
-        private static readonly Color ConfirmHoverColor = new Color(0.22f, 0.62f, 0.42f, 0.94f);
-        private static readonly Color SkipColor = new Color(0.38f, 0.34f, 0.16f, 0.68f);
-        private static readonly Color SkipHoverColor = new Color(0.50f, 0.44f, 0.22f, 0.92f);
-        private static readonly Color CancelColor = new Color(0.35f, 0.16f, 0.18f, 0.62f);
-        private static readonly Color CancelHoverColor = new Color(0.48f, 0.22f, 0.24f, 0.90f);
-        private static readonly Color QuickColor = new Color(0.16f, 0.22f, 0.32f, 0.50f);
-        private static readonly Color QuickHoverColor = new Color(0.24f, 0.34f, 0.50f, 0.84f);
-
+        // 2026-09-23 审美审查（UC-11 / UC-12 / UC-21 / UC-25 / UC-26 / UC-07）：
+        // 旧版自带 14 色私有调色板（「返回」是危险色的红、确认悬停白字只有 3.05:1）、输入框靠两层直角方块拼边、「Max」写死英文。
+        // 现在颜色全走 token：确认是本屏唯一主操作（AccentFill），跳过 / 返回走共享次级样式；
+        // 输入框走按钮档圆角底图 + 描边（超额时描边换 DangerText）；标题行不垫直角色条；ESC 等同「返回」。
         private ModBehaviour owner;
         private System.Action onConfirmed;
         private System.Action onCancelled;
@@ -115,7 +89,7 @@ namespace BossRush
         private TextMeshProUGUI errorText;
         private TextMeshProUGUI previewText;
         private TextMeshProUGUI balanceText;
-        private Image inputBorderImage;
+        private Image inputFrame;
 
         public void Initialize(ModBehaviour newOwner, System.Action newOnConfirmed, System.Action newOnCancelled)
         {
@@ -146,103 +120,90 @@ namespace BossRush
                 "Panel",
                 transform,
                 new Vector2(780f, 460f),
-                AccentLineColor);
+                BossRushUIColors.Accent);
 
             // ────────────────────────────────────────────────────────────
             // 以下所有子元素均使用「top-stretch」锚定（anchorMin(0,1) anchorMax(1,1)）
             // Y 偏移从面板顶部向下计算，CanvasScaler 负责分辨率缩放。
             // ────────────────────────────────────────────────────────────
 
-            // ── 标题栏 ──
+            // ── 标题行（不垫底色条：直角色条会在圆角外露出方角） ──
             float yPos = 0f;
             float headerH = 68f;
-            GameObject header = ZombieModeUIHelper.CreateRect("Header", panel.transform,
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -(headerH * 0.5f)), new Vector2(0f, headerH), new Vector2(0.5f, 0.5f));
-            Image headerImage = header.AddComponent<Image>();
-            headerImage.color = HeaderColor;
-
-            TextMeshProUGUI titleText = ZombieModeUIHelper.CreateText("Title", header.transform,
+            TextMeshProUGUI titleText = ZombieModeUIHelper.CreateText("Title", panel.transform,
                 L10n.T("BossRush_ZombieMode_CashPrompt_Title"), 26,
-                new Vector2(0f, 0f), new Vector2(0.65f, 1f),
-                new Vector2(20f, 0f), new Vector2(0f, 0f),
-                TextAlignmentOptions.Left, ZombieModeUIHelper.TextPrimaryColor);
+                new Vector2(0f, 1f), new Vector2(0.64f, 1f),
+                new Vector2(8f, -(headerH * 0.5f)), new Vector2(-40f, 48f),
+                TextAlignmentOptions.MidlineLeft, BossRushUIColors.TextPrimary);
             titleText.fontStyle = FontStyles.Bold;
 
-            balanceText = ZombieModeUIHelper.CreateText("Balance", header.transform,
-                GetBalanceLabel(), 18,
-                new Vector2(0.65f, 0f), new Vector2(1f, 1f),
-                new Vector2(-20f, 0f), new Vector2(0f, 0f),
-                TextAlignmentOptions.Right, BalanceGoldColor);
+            balanceText = ZombieModeUIHelper.CreateText("Balance", panel.transform,
+                GetBalanceLabel(), 17,
+                new Vector2(0.64f, 1f), new Vector2(1f, 1f),
+                new Vector2(-16f, -(headerH * 0.5f)), new Vector2(-32f, 40f),
+                TextAlignmentOptions.MidlineRight, BossRushUIColors.WarningText);
 
             yPos += headerH;
 
             // ── 标题装饰线 ──
             ZombieModeUIHelper.CreateSeparator("AccentLine", panel.transform,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -yPos), 2f, AccentLineColor);
-            yPos += 6f;
+                new Vector2(0f, -yPos), 2f,
+                new Color(BossRushUIColors.Accent.r, BossRushUIColors.Accent.g, BossRushUIColors.Accent.b, 0.6f));
+            yPos += 8f;
 
             // ── 正文说明 ──
             float bodyH = 64f;
             ZombieModeUIHelper.CreateText("Body", panel.transform,
                 L10n.T("BossRush_ZombieMode_CashPrompt_Body"), 15,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -(yPos + bodyH * 0.5f)), new Vector2(-40f, bodyH),
-                TextAlignmentOptions.TopLeft, BodyTextColor);
+                new Vector2(0f, -(yPos + bodyH * 0.5f)), new Vector2(-56f, bodyH),
+                TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
             yPos += bodyH + 10f;
 
-            // ── 输入行 ──
+            // ── 输入行（行本身不垫底色，靠留白与分隔线分区） ──
             float rowH = 48f;
             GameObject row = ZombieModeUIHelper.CreateRect("InputRow", panel.transform,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -(yPos + rowH * 0.5f)), new Vector2(-40f, rowH), new Vector2(0.5f, 0.5f));
-            Image rowImage = row.AddComponent<Image>();
-            rowImage.color = RowColor;
 
             // 标签（行内左侧 2%~18%）
             ZombieModeUIHelper.CreateText("Label", row.transform,
-                L10n.T("BossRush_ZombieMode_CashPrompt_AmountLabel"), 17,
+                L10n.T("BossRush_ZombieMode_CashPrompt_AmountLabel"), 16,
                 new Vector2(0.02f, 0f), new Vector2(0.18f, 1f),
                 Vector2.zero, Vector2.zero,
-                TextAlignmentOptions.Left, Color.white);
+                TextAlignmentOptions.MidlineLeft, BossRushUIColors.TextPrimary);
 
-            // 输入框边框（行内 20%~50%）
-            GameObject inputBorder = ZombieModeUIHelper.CreateRect("InputBorder", row.transform,
+            // 输入框（行内 20%~50%）：按钮档圆角底图 + 描边，描边在超额时换成 DangerText。
+            GameObject inputObj = ZombieModeUIHelper.CreateRect("Input", row.transform,
                 new Vector2(0.20f, 0.10f), new Vector2(0.50f, 0.90f),
                 Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
-            inputBorderImage = inputBorder.AddComponent<Image>();
-            inputBorderImage.color = InputBorderColor;
-
-            // 输入框内部
-            GameObject inputObj = ZombieModeUIHelper.CreateRect("Input", inputBorder.transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, new Vector2(-4f, -4f), new Vector2(0.5f, 0.5f));
             Image inputBg = inputObj.AddComponent<Image>();
-            inputBg.color = InputBgColor;
+            inputBg.color = BossRushUIColors.Surface;
+            inputFrame = BossRushUI.ApplyFramedPanelSkin(inputBg, 6, BossRushUISkinPart.Button);
             amountField = inputObj.AddComponent<TMP_InputField>();
             amountField.contentType = TMP_InputField.ContentType.IntegerNumber;
 
             GameObject textArea = ZombieModeUIHelper.CreateRect("TextArea", inputObj.transform,
                 new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, new Vector2(-10f, -4f), new Vector2(0.5f, 0.5f));
+                Vector2.zero, new Vector2(-16f, -4f), new Vector2(0.5f, 0.5f));
             TextMeshProUGUI inputText = ZombieModeUIHelper.CreateTMPText(textArea, "0", 18,
-                TextAlignmentOptions.MidlineLeft, Color.white);
+                TextAlignmentOptions.MidlineLeft, BossRushUIColors.TextPrimary);
             inputText.raycastTarget = false;
             amountField.targetGraphic = inputBg;
             amountField.textComponent = inputText;
             amountField.textViewport = textArea.GetComponent<RectTransform>();
             amountField.lineType = TMP_InputField.LineType.SingleLine;
             amountField.customCaretColor = true;
-            amountField.caretColor = AccentLineColor;
-            amountField.selectionColor = new Color(0.20f, 0.72f, 0.67f, 0.35f);
+            amountField.caretColor = BossRushUIColors.Accent;
+            amountField.selectionColor = new Color(BossRushUIColors.Accent.r, BossRushUIColors.Accent.g, BossRushUIColors.Accent.b, 0.35f);
             amountField.text = "0";
             amountField.onValueChanged.AddListener(delegate { UpdatePreview(); });
 
-            // 快捷按钮（行内 55%/70%/85%）
-            CreateQuickButton(row.transform, "+100",  0.55f, QuickAmountAdd(100));
-            CreateQuickButton(row.transform, "+1000", 0.70f, QuickAmountAdd(1000));
-            CreateQuickButton(row.transform, "Max",   0.85f, QuickAmountMax());
+            // 快捷按钮（行内 55%/70%/85%）；「全部」走本地化，不再半中半英。
+            CreateQuickButton(row.transform, "+100", "+100", 0.55f, QuickAmountAdd(100));
+            CreateQuickButton(row.transform, "+1000", "+1000", 0.70f, QuickAmountAdd(1000));
+            CreateQuickButton(row.transform, "Max", L10n.T("BossRush_ZombieMode_CashPrompt_Max"), 0.85f, QuickAmountMax());
 
             yPos += rowH + 10f;
 
@@ -250,15 +211,16 @@ namespace BossRush
             ZombieModeUIHelper.CreateSeparator("Sep1", panel.transform,
                 new Vector2(0.05f, 1f), new Vector2(0.95f, 1f),
                 new Vector2(0f, -yPos), 1f,
-                new Color(0.25f, 0.35f, 0.50f, 0.35f));
+                BossRushUIColors.Divider);
             yPos += 8f;
 
             // ── 预览条（带高亮背景） ──
             float previewH = 34f;
+            Color success = BossRushUIColors.Success;
             previewText = ZombieModeUIHelper.CreateHighlightBar("Preview", panel.transform, "", 16,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -(yPos + previewH * 0.5f)), new Vector2(-40f, previewH),
-                TextAlignmentOptions.Center, PreviewTextColor, PreviewBarColor);
+                TextAlignmentOptions.Center, BossRushUIColors.SuccessText, new Color(success.r, success.g, success.b, 0.14f));
             yPos += previewH + 6f;
 
             // ── 错误条 ──
@@ -266,15 +228,14 @@ namespace BossRush
             errorText = ZombieModeUIHelper.CreateText("Err", panel.transform, "", 14,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -(yPos + errH * 0.5f)), new Vector2(-40f, errH),
-                TextAlignmentOptions.Center, Color.white);
-            errorText.color = new Color(1f, 0.45f, 0.45f, 1f);
+                TextAlignmentOptions.Center, BossRushUIColors.DangerText);
             yPos += errH + 8f;
 
             // ── 分隔线 ──
             ZombieModeUIHelper.CreateSeparator("Sep2", panel.transform,
                 new Vector2(0.05f, 1f), new Vector2(0.95f, 1f),
                 new Vector2(0f, -yPos), 1f,
-                new Color(0.25f, 0.35f, 0.50f, 0.35f));
+                BossRushUIColors.Divider);
             yPos += 14f;
 
             // ── 底部按钮：固定到底部按钮栏，避免内容高度变化时被压到面板外 ──
@@ -290,15 +251,13 @@ namespace BossRush
             buttonLayout.childForceExpandHeight = false;
 
             CreateActionButton(actionRow.transform, "Confirm",
-                L10n.T("BossRush_ZombieMode_CashPrompt_Confirm"),
-                ConfirmColor, ConfirmHoverColor, 0);
+                L10n.T("BossRush_ZombieMode_CashPrompt_Confirm"), true, 0);
             CreateActionButton(actionRow.transform, "SkipZero",
-                L10n.T("BossRush_ZombieMode_CashPrompt_SkipZero"),
-                SkipColor, SkipHoverColor, 1);
+                L10n.T("BossRush_ZombieMode_CashPrompt_SkipZero"), false, 1);
             CreateActionButton(actionRow.transform, "Cancel",
-                L10n.T("BossRush_ZombieMode_CashPrompt_Cancel"),
-                CancelColor, CancelHoverColor, 2);
+                L10n.T("BossRush_ZombieMode_CashPrompt_Cancel"), false, 2);
 
+            BossRushUI.PlayOpenAnimation(panel);
             ModBehaviour.DevLog("[ZombieMode] 现金投入弹窗已创建底部操作按钮");
         }
 
@@ -341,10 +300,10 @@ namespace BossRush
                 affordable = amount <= Duckov.Economy.EconomyManager.Money;
             }
             catch { /* Keep the preview usable when economy state is unavailable. */ }
-            previewText.color = affordable ? PreviewTextColor : new Color(1f, 0.48f, 0.42f, 1f);
-            if (inputBorderImage != null)
+            previewText.color = affordable ? BossRushUIColors.SuccessText : BossRushUIColors.DangerText;
+            if (inputFrame != null)
             {
-                inputBorderImage.color = affordable ? InputBorderColor : ZombieModeUIHelper.DangerHoverColor;
+                inputFrame.color = affordable ? BossRushUIColors.Stroke : BossRushUIColors.DangerText;
             }
 
             if (errorText != null)
@@ -381,6 +340,21 @@ namespace BossRush
             };
         }
 
+        /// <summary>ESC 等同「返回」（UC-26）。输入框正在编辑非零金额时让给输入框（它自己用 ESC 退出编辑）。</summary>
+        private void Update()
+        {
+            if (dispatched || !Input.GetKeyDown(KeyCode.Escape))
+            {
+                return;
+            }
+            if (amountField != null && amountField.isFocused &&
+                !string.IsNullOrEmpty(amountField.text) && amountField.text != "0")
+            {
+                return;
+            }
+            OnButton(2);
+        }
+
         private void OnButton(int code)
         {
             if (dispatched)
@@ -390,12 +364,13 @@ namespace BossRush
 
             // 返回按钮：只关闭这一个弹窗，不再 Close 整个 MapSelectionView，也不 Cancel Phase1。
             // 由调用方在 onCancelled 里释放 cashPromptOpen 标记，让玩家可继续在地图选择 UI 里挑选其他地图。
+            // 关闭一律先还输入、再淡出（UC-07）：淡出只是表现，输入与时间流速这一帧就恢复。
             if (code == 2)
             {
                 dispatched = true;
                 System.Action cancelCb = onCancelled;
                 RestoreInputState();
-                Destroy(gameObject);
+                BossRushUIKit.PlayCloseAndDestroy(gameObject);
                 if (cancelCb != null)
                 {
                     cancelCb();
@@ -406,7 +381,7 @@ namespace BossRush
             if (owner == null)
             {
                 RestoreInputState();
-                Destroy(gameObject);
+                BossRushUIKit.PlayCloseAndDestroy(gameObject);
                 return;
             }
 
@@ -422,6 +397,7 @@ namespace BossRush
                 if (errorText != null && !string.IsNullOrEmpty(failureKey))
                 {
                     errorText.text = L10n.T(failureKey);
+                    ZombieModeUiNudge.Flash(amountField, string.Empty);
                 }
                 return;
             }
@@ -429,7 +405,7 @@ namespace BossRush
             dispatched = true;
             System.Action callback = onConfirmed;
             RestoreInputState();
-            Destroy(gameObject);
+            BossRushUIKit.PlayCloseAndDestroy(gameObject);
             if (callback != null)
             {
                 callback();
@@ -459,9 +435,9 @@ namespace BossRush
 
         /// <summary>
         /// 创建底部操作按钮。按钮所在行由 HorizontalLayoutGroup 负责排布。
+        /// 主操作（确认）用 AccentFill 实色，其余走共享次级样式；三态、音效与按下回弹都由共享入口派生。
         /// </summary>
-        private void CreateActionButton(Transform parent, string name, string text,
-            Color baseColor, Color hoverColor, int code)
+        private void CreateActionButton(Transform parent, string name, string text, bool primary, int code)
         {
             int captured = code;
             float btnW = 170f;
@@ -471,7 +447,7 @@ namespace BossRush
                 new Vector2(0.5f, 0.5f),
                 Vector2.zero,
                 new Vector2(btnW, btnH),
-                baseColor, 17,
+                primary ? BossRushUIColors.AccentFill : BossRushUIColors.SurfaceRaised, 17,
                 new Vector2(btnW - 12f, btnH - 8f),
                 delegate { OnButton(captured); },
                 true);
@@ -487,23 +463,26 @@ namespace BossRush
             layoutElement.flexibleWidth = 0f;
             layoutElement.flexibleHeight = 0f;
 
-            ZombieModeUIHelper.ApplyButtonColors(button, baseColor, hoverColor, baseColor * 0.6f);
+            if (!primary)
+            {
+                BossRushUIKit.StyleSecondaryButton(button);
+            }
         }
 
         /// <summary>
         /// 创建快捷金额按钮。xPercent 为行内宽度百分比（0~1）。
         /// </summary>
-        private void CreateQuickButton(Transform parent, string text, float xPercent, System.Action onClick)
+        private void CreateQuickButton(Transform parent, string name, string text, float xPercent, System.Action onClick)
         {
             System.Action captured = onClick;
-            float btnW = 60f;
-            float btnH = 30f;
+            float btnW = 64f;
+            float btnH = 32f;
             Button button = ZombieModeUIHelper.CreateButton(
-                text, parent, text,
+                name, parent, text,
                 new Vector2(xPercent, 0.5f),
                 Vector2.zero,
                 new Vector2(btnW, btnH),
-                QuickColor, 13,
+                BossRushUIColors.SurfaceRaised, 14,
                 new Vector2(btnW - 6f, btnH - 4f),
                 delegate
                 {
@@ -511,7 +490,7 @@ namespace BossRush
                     UpdatePreview();
                 },
                 true);
-            ZombieModeUIHelper.ApplyButtonColors(button, QuickColor, QuickHoverColor, QuickColor * 0.6f);
+            BossRushUIKit.StyleSecondaryButton(button);
         }
     }
 }

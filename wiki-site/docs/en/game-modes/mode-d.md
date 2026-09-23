@@ -56,7 +56,7 @@ Enemies carry random gear too — quality scales with wave and HP: `Quality = 1 
 ## Tips
 
 - Random start = **use whatever you get**. Don't restart for a perfect roll
-- First 5 waves have no Bosses — scavenge upgrades
+- First 5 waves have no Bosses. Use them to scavenge upgrades
 - Medical supplies are precious: 3 items, that's it. **Don't get hit**
 - From Scratch rolls timed random events as well: an airdropped supply crate or a passing merchant is the best thing that can happen to you while you're still broke, while a Blood Moon or an uninvited Boss is worth thinking twice about. See the "Random Events" page
 

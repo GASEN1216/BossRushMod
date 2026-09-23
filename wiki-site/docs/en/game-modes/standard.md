@@ -25,7 +25,7 @@ Interact with the arena signpost to pick:
 5. On-screen compass shows Boss directions (E/W/S/N)
 6. Multi-Boss waves = surrounded from all sides. Fun!
 
-Screen suddenly going red, a supply crate falling out of the sky, or a Boss that clearly isn't part of this wave walking in? Those are timed random events, and Standard BossRush is one of the three modes that roll them. Each one is announced, runs for a set time, and cleans itself up — see the "Random Events" page.
+Screen suddenly going red, a supply crate falling out of the sky, or a Boss that clearly isn't part of this wave walking in? Those are timed random events, and Standard BossRush is one of the three modes that roll them. Each one is announced, runs for a set time, and cleans itself up. See the "Random Events" page.
 
 ## Boss Pool
 
@@ -35,8 +35,7 @@ Screen suddenly going red, a supply crate falling out of the sky, or a Boss that
 
 ## Clear Rewards
 
-- The completion reward crate no longer appears instantly by the signpost.
-- It now first shows up as a highlighted ghost crate above you, then slowly descends and becomes a normal interactable reward crate.
+- After the last wave, the reward crate shows up as a glowing ghost crate above you, follows you down, and becomes a normal crate you can open once it lands.
 - **Easy**: Reward crate with 3 high-quality items
 - **Normal**: Reward crate with 10 high-quality items
 

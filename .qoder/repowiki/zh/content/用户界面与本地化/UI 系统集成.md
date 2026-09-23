@@ -243,7 +243,7 @@ UI->>Notify : "Push(text)"
 - **程序化圆角九宫格 `ApplyPanelSkin`**：运行时生成、按半径缓存共享的圆角底图；将来换美术图集时通过 `BossRushUISkin` 注入，调用方零改动（规格见 `docs/制作教程/BossRushUI_图集规格.md`）。
 - **字体**：`ApplyGameFont` / `GetLegacyChineseFont()` 统一取游戏字体，源码禁止再出现内置 Arial（渲染不了中文）；`CanvasScaler` 必须经 `ZombieModeUIHelper.ConfigureCanvasScaler` 配置。
 - **生命周期**：程序化贴图带 `HideFlags.DontSave`，由 `BossRushUI.ResetStaticCaches` 在 `ModBehaviour.OnDestroy` 路径显式销毁。
-- **变异词条 overlay**：`MutatorUI` 已从 IMGUI（OnGUI）迁为 uGUI Canvas（HudOverlay 层），由 `ModBehaviour.Update` 的 `Tick()` 驱动，抑制契约（判定早于显示、抑制期清悬停、异常按抑制处理）不变。
+- **变异词条 overlay**：`MutatorUI` 已从 IMGUI（OnGUI）迁为 uGUI Canvas（HudOverlay 层），由 `ModBehaviour.Update` 的 `Tick()` 驱动，抑制契约（判定早于显示、抑制期清悬停、异常按抑制处理）不变。2026-09-23 审美整改：字号按常驻 HUD 梯度（标题 / 计数 15、名字 16、分类 14、详情标题 18、正文 15，全部关自动缩字），分类色改 DangerText / SuccessText / WarningText，面板 Surface；悬停行底 0.1 秒 SmoothStep、详情卡 0.12 秒淡入上浮并对齐悬停行，动效由 `Tick` 推进（unscaled，抑制分支直接落终点）。
 
 结构由 `tests/BossRushUISharedLibraryGuard.py` 守卫：层级表严格递增、已迁移界面不得回退裸数值或第二套遮罩色、全仓禁止手写 `uiScaleMode` 赋值与内置 Arial。
 
@@ -570,7 +570,7 @@ BossRushUI.ApplyPanelStroke(surface, 18, BossRushUISkinPart.Panel, BossRushUICol
 | 常驻 HUD | 画布层级 | 判定落点 |
 | --- | --- | --- |
 | 随机事件徽章 | `HudOverlay` 1200 | `RandomEventHud.Tick` → `_canvas.enabled` |
-| 血月全屏红罩 | `HudOverlay` 1200 | `RandomEventBloodMoon.OnTick` → `_vignette.enabled` |
+| 血月边缘暗角 | `WorldOverlay` 100（待共享库补一个官方 HUD 之下的层级常量后再下移） | `RandomEventBloodMoon.OnTick` → `_vignette.enabled` |
 | 伴宠状态条 | `PetNestCompanionHud` 990 | `PetNestCompanionHudView.Update` → `_canvas.enabled` |
 | Mode H 观战 HUD | `ModeHHud` 960 | `ModeHUI.ApplyHudVisibility`，由模块每帧入口调用（`TickHud` 只在交战期调，刷怪期会漏） |
 | Mode G 状态文本 | `ModeGHud` 900 | `ModeGHUD.Update` → `SetVisible` |

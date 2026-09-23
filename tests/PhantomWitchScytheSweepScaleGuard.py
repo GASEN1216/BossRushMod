@@ -65,6 +65,11 @@ def main() -> int:
     if "bossCharacter.transform.lossyScale" not in helper_block:
         return fail("PhantomWitchScytheSweepScaleGuard: helper must read bossCharacter.transform.lossyScale")
 
+    # 2026-09-23 decision: the sweep VFX follows the model scale only up to a cap, so the drawn arc
+    # never promises a danger area much larger than the (unscaled) damage radius.
+    if "PhantomWitchConfig.ScytheSweepVisualScaleCap" not in helper_block:
+        return fail("PhantomWitchScytheSweepScaleGuard: sweep visual scale must be capped by ScytheSweepVisualScaleCap")
+
     sweep_block = extract_block(ability_text, "private IEnumerator ExecuteImmediateScytheSweep(CharacterMainControl target)")
     if not sweep_block:
         return fail("PhantomWitchScytheSweepScaleGuard: missing ExecuteImmediateScytheSweep block")

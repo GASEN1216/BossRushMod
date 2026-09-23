@@ -46,7 +46,7 @@ Once you've extracted with your first payout, three cheap things start paying ou
 - **Go meet Dingdang and Yuori** — chat and gift daily to build affinity. Dingdang opens his
   shop at Lv.2 and gives Cold Quench Fluid at Lv.4, for locking good stats; reforging itself is available from the start
 
-[tip] The mailbox and the board are 1000 combined - the two best-value builds in the Mod. The earlier you put them up, the longer they've been accumulating.
+[tip] The 500 mailbox is the best-value build in the Mod, and Chapter 1 of the campaign costs nothing to take. The earlier you start, the more piles up.
 
 ### Advanced Modes
 
@@ -67,6 +67,6 @@ Once you're comfortable:
 
 [tip] Press **L** anytime for achievement progress.
 
-[tip] Chat with Dingdang and Yuori on normal maps to unlock more content. Beyond reforging, Dingdang also does **affix forging** - affixes that change how your gear behaves, like kill explosions, lifesteal on hit, or armor that throws damage back.
+[tip] Chat with Dingdang and Yuori on normal maps to unlock more content. Beyond reforging, Dingdang also does **affix forging**: affixes that change how your gear behaves, like kill explosions, lifesteal on hit, or armor that throws damage back.
 
 [tip] Eligible Bosses in Standard BossRush, Infinite Hell, From Scratch, Faction War and Blood Hunt bank **relic souls** (tankier Bosses pay more), with about a 4% chance of dropping a **relic egg** outright. This accumulates whether or not you've built the PetNest yet, so it's all waiting for you when you do. The egg lands with the rest of the loot, so don't stop at the gear.

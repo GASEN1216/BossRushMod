@@ -18,6 +18,9 @@ REWARD_PARTS = [
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
+    # 2026-09-23 审美审查：奖励选择面板与终端服务面板 / 交互体从 ZombieModeRewards.cs（宿主 partial）拆到独立文件，
+    # 结构断言照旧覆盖它们。
+    Path("ZombieMode/ZombieModeTemporaryNpcServiceView.cs"),
 ]
 
 

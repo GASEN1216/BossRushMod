@@ -33,19 +33,18 @@ namespace BossRush
         private const float FooterHeight = 55f;
         private const float StatsHeight = 35f;
 
-        private static readonly Color PanelBgColor = new Color32(18, 20, 25, 250);
-        private static readonly Color HeaderBgColor = new Color32(28, 32, 40, 255);
-        private static readonly Color FooterBgColor = new Color32(28, 32, 40, 255);
-        private static readonly Color StatsBgColor = new Color32(22, 25, 32, 255);
-        private static readonly Color TitleColor = new Color32(255, 215, 0, 255);
-        private static readonly Color StatsColor = new Color32(180, 180, 180, 255);
-        private static readonly Color ProgressBarBgColor = new Color32(40, 42, 50, 255);
+        // 配色只用共享 token（审美审查 UD-34）：旧版自建了一套 Color32 常量，标题是纯金 (255,215,0)，
+        // 页头 / 统计栏 / 页脚各铺一条全宽直角底色，压在圆角面板上四角露出直角、顶边底边的框线也被盖掉（UD-01）。
+        // 现在三条都不铺底色，层级靠留白 + 分隔线；标题白字，前面一根传说金竖条（成就 = 金）。
+        private static readonly Color PanelBgColor = BossRushUIColors.Surface;
+        private static readonly Color TitleColor = BossRushUIColors.TextPrimary;
+        private static readonly Color TitleRailColor = BossRushUIColors.RarityLegendary;
+        private static readonly Color StatsColor = BossRushUIColors.TextSecondary;
+        private static readonly Color ProgressBarBgColor = BossRushUIColors.Disabled;
         private static readonly Color ProgressBarFillColor = BossRushUIColors.Accent;
-        private static readonly Color ButtonColor = BossRushUIColors.Success;
-        private static readonly Color ButtonHoverColor = new Color(0.24f, 0.66f, 0.45f, 1f);
-        private static readonly Color ButtonDisabledColor = new Color32(60, 60, 65, 255);
-        private static readonly Color CloseButtonColor = BossRushUIColors.Danger;
-        private static readonly Color ScrollBgColor = new Color32(15, 17, 22, 255);
+        /// <summary>一键领取是这一屏唯一的主操作：AccentFill 底（全 Mod 按钮口径 2026-09-23）。只用在官方按钮 prefab 取不到时的回退按钮上。</summary>
+        private static readonly Color ClaimAllFallbackColor = BossRushUIColors.AccentFill;
+        private const float SideInset = 20f;
 
         #endregion
 
@@ -69,6 +68,12 @@ namespace BossRush
         #region UI组件引用
 
         private Canvas canvas;
+        /// <summary>画布根上的 CanvasGroup：关闭时遮罩与面板一起淡出，淡完才 SetActive(false)。</summary>
+        private CanvasGroup canvasGroup;
+        private Image backdropImage;
+        private Coroutine closeFade;
+        /// <summary>销毁路径上 Close 走立即关闭，不在正在销毁的对象上起协程。</summary>
+        private bool destroying;
         private GameObject panelRoot;
         private RectTransform panelRect;
         private ScrollRect scrollRect;
@@ -137,6 +142,7 @@ namespace BossRush
 
         void OnDestroy()
         {
+            destroying = true;
             Close();
             foreach (AchievementEntryUI entry in entries) if (entry != null) entry.Cleanup();
             entries.Clear();
@@ -149,6 +155,7 @@ namespace BossRush
         internal static void Shutdown()
         {
             if (_instance == null) return;
+            _instance.destroying = true;
             _instance.Close();
             _instance.gameObject.SetActive(false);
             Destroy(_instance.gameObject);
@@ -173,17 +180,12 @@ namespace BossRush
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
 
             canvasObj.AddComponent<GraphicRaycaster>();
+            canvasGroup = canvasObj.AddComponent<CanvasGroup>();
 
-            // 创建半透明背景
-            GameObject bgObj = new GameObject("Background");
-            bgObj.transform.SetParent(canvasObj.transform, false);
-            Image bgImage = bgObj.AddComponent<Image>();
-            bgImage.color = BossRushUIColors.Backdrop;
-            RectTransform bgRect = bgObj.GetComponent<RectTransform>();
-            bgRect.anchorMin = Vector2.zero;
-            bgRect.anchorMax = Vector2.one;
-            bgRect.offsetMin = Vector2.zero;
-            bgRect.offsetMax = Vector2.zero;
+            // 创建半透明背景（共享遮罩：Backdrop token + 暗角 + 0.15 秒淡入，审美审查 UD-04 / UD-10）
+            Image bgImage = BossRushUI.CreateBackdrop(canvasObj.transform);
+            GameObject bgObj = bgImage.gameObject;
+            backdropImage = bgImage;
 
             Button bgButton = bgObj.AddComponent<Button>();
             bgButton.transition = Selectable.Transition.None;
@@ -220,8 +222,9 @@ namespace BossRush
             panelRect.sizeDelta = new Vector2(calculatedPanelWidth, calculatedPanelHeight);
 
             Image panelImage = panelRoot.AddComponent<Image>();
-            BossRushUI.ApplyFramedPanelSkin(panelImage, 14, BossRushUISkinPart.Panel);
+            // 先上色再套皮：投影 / 斜面按底色不透明度决定挂不挂
             panelImage.color = PanelBgColor;
+            BossRushUI.ApplyFramedPanelSkin(panelImage, 14, BossRushUISkinPart.Panel);
 
             Button panelButton = panelRoot.AddComponent<Button>();
             panelButton.transition = Selectable.Transition.None;
@@ -242,8 +245,19 @@ namespace BossRush
             headerRect.anchoredPosition = Vector2.zero;
             headerRect.sizeDelta = new Vector2(0f, HeaderHeight);
 
-            Image headerImage = headerObj.AddComponent<Image>();
-            headerImage.color = HeaderBgColor;
+            // 页头不铺底色（UD-01），标题前一根传说金竖条
+            GameObject railObj = ZombieModeUIHelper.CreateRect(
+                "TitleRail",
+                headerObj.transform,
+                new Vector2(0f, 0.5f),
+                new Vector2(0f, 0.5f),
+                new Vector2(SideInset, 0f),
+                new Vector2(3f, 24f),
+                new Vector2(0f, 0.5f));
+            Image railImage = railObj.AddComponent<Image>();
+            railImage.color = TitleRailColor;
+            BossRushUI.ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
+            railImage.raycastTarget = false;
 
             // 标题
             GameObject titleObj = new GameObject("Title");
@@ -252,13 +266,15 @@ namespace BossRush
             RectTransform titleRect = titleObj.AddComponent<RectTransform>();
             titleRect.anchorMin = new Vector2(0f, 0f);
             titleRect.anchorMax = new Vector2(1f, 1f);
-            titleRect.offsetMin = new Vector2(20f, 0f);
-            titleRect.offsetMax = new Vector2(-50f, 0f);
+            titleRect.offsetMin = new Vector2(SideInset + 12f, 0f);
+            titleRect.offsetMax = new Vector2(-56f, 0f);
 
             titleText = titleObj.AddComponent<TextMeshProUGUI>();
 
             BossRushUI.ApplyGameFont(titleText);
-            titleText.fontSize = 24;
+            titleText.fontSize = 28;
+            titleText.enableWordWrapping = false;
+            titleText.overflowMode = TextOverflowModes.Ellipsis;
             titleText.fontStyle = FontStyles.Bold;
             titleText.color = TitleColor;
             titleText.alignment = TextAlignmentOptions.Left;
@@ -288,42 +304,44 @@ namespace BossRush
             }
             else
             {
-                // 回退创建简单按钮
-                GameObject closeObj = new GameObject("CloseButton");
-                closeObj.transform.SetParent(headerObj.transform, false);
+                // 回退：共享按钮 + 幽灵关闭样式（常态透明、悬停显出 Danger 底，审美审查 UD-32）。
+                // 旧回退是手搓的 35px 平涂暗红块，没走 ApplyButtonColors，悬停几乎看不出、也没有音效。
+                Color ghost = new Color(BossRushUIColors.Danger.r, BossRushUIColors.Danger.g, BossRushUIColors.Danger.b, 0f);
+                exitButton = ZombieModeUIHelper.CreateButton(
+                    "CloseButton",
+                    headerObj.transform,
+                    "×",
+                    new Vector2(1f, 0.5f),
+                    new Vector2(-10f - 17.5f, 0f),
+                    new Vector2(35f, 35f),
+                    ghost,
+                    24f,
+                    new Vector2(35f, 35f),
+                    Close,
+                    true);
+                IntegrationUIFeedback.StyleGhostCloseButton(
+                    exitButton, exitButton.GetComponentInChildren<TextMeshProUGUI>(true));
+            }
 
-                RectTransform closeRect = closeObj.AddComponent<RectTransform>();
-                closeRect.anchorMin = new Vector2(1f, 0.5f);
-                closeRect.anchorMax = new Vector2(1f, 0.5f);
-                closeRect.pivot = new Vector2(1f, 0.5f);
-                closeRect.anchoredPosition = new Vector2(-10f, 0f);
-                closeRect.sizeDelta = new Vector2(35f, 35f);
+            GameObject divider = ZombieModeUIHelper.CreateSeparator(
+                "HeaderDivider",
+                panelRoot.transform,
+                new Vector2(0f, 1f),
+                new Vector2(1f, 1f),
+                new Vector2(0f, -HeaderHeight),
+                2f,
+                BossRushUIColors.Divider);
+            InsetDivider(divider);
+        }
 
-                Image closeImage = closeObj.AddComponent<Image>();
-                BossRushUI.ApplyPanelSkin(closeImage, 6);
-                closeImage.color = CloseButtonColor;
-
-                exitButton = closeObj.AddComponent<Button>();
-                exitButton.targetGraphic = closeImage;
-                exitButton.onClick.AddListener(Close);
-
-                GameObject closeTextObj = new GameObject("CloseText");
-                closeTextObj.transform.SetParent(closeObj.transform, false);
-
-                RectTransform closeTextRect = closeTextObj.AddComponent<RectTransform>();
-                closeTextRect.anchorMin = Vector2.zero;
-                closeTextRect.anchorMax = Vector2.one;
-                closeTextRect.offsetMin = Vector2.zero;
-                closeTextRect.offsetMax = Vector2.zero;
-
-                TextMeshProUGUI closeText = closeTextObj.AddComponent<TextMeshProUGUI>();
-
-                BossRushUI.ApplyGameFont(closeText);
-                closeText.fontSize = 20;
-                closeText.color = Color.white;
-                closeText.alignment = TextAlignmentOptions.Center;
-                closeText.text = "×";
-                closeText.raycastTarget = false;
+        /// <summary>分隔线左右各让 12：满宽的线头会顶到面板的圆角描边上。</summary>
+        private static void InsetDivider(GameObject divider)
+        {
+            if (divider == null) return;
+            RectTransform rect = divider.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.sizeDelta = new Vector2(-24f, rect.sizeDelta.y);
             }
         }
 
@@ -357,8 +375,7 @@ namespace BossRush
             statsRect.anchoredPosition = new Vector2(0f, -HeaderHeight);
             statsRect.sizeDelta = new Vector2(0f, StatsHeight);
 
-            Image statsImage = statsObj.AddComponent<Image>();
-            statsImage.color = StatsBgColor;
+            // 统计栏不铺底色（UD-01），与列表之间一条分隔线
 
             // 统计文本（左侧）
             GameObject statsTextObj = new GameObject("StatsText");
@@ -367,13 +384,15 @@ namespace BossRush
             RectTransform statsTextRect = statsTextObj.AddComponent<RectTransform>();
             statsTextRect.anchorMin = new Vector2(0f, 0f);
             statsTextRect.anchorMax = new Vector2(0.35f, 1f);
-            statsTextRect.offsetMin = new Vector2(15f, 0f);
+            statsTextRect.offsetMin = new Vector2(SideInset, 0f);
             statsTextRect.offsetMax = Vector2.zero;
 
             statsText = statsTextObj.AddComponent<TextMeshProUGUI>();
 
             BossRushUI.ApplyGameFont(statsText);
-            statsText.fontSize = 14;
+            statsText.fontSize = 15;
+            statsText.enableWordWrapping = false;
+            statsText.overflowMode = TextOverflowModes.Ellipsis;
             statsText.color = StatsColor;
             statsText.alignment = TextAlignmentOptions.Left;
             statsText.raycastTarget = false;
@@ -406,6 +425,16 @@ namespace BossRush
             progressBarFill = progressFillObj.AddComponent<Image>();
             BossRushUI.ApplyPanelSkin(progressBarFill, 4, BossRushUISkinPart.ScrollHandle);
             progressBarFill.color = ProgressBarFillColor;
+
+            GameObject divider = ZombieModeUIHelper.CreateSeparator(
+                "StatsDivider",
+                panelRoot.transform,
+                new Vector2(0f, 1f),
+                new Vector2(1f, 1f),
+                new Vector2(0f, -(HeaderHeight + StatsHeight)),
+                2f,
+                BossRushUIColors.Divider);
+            InsetDivider(divider);
         }
 
         /// <summary>
@@ -435,7 +464,7 @@ namespace BossRush
                 GameObject viewport = new GameObject("Viewport");
                 viewport.transform.SetParent(scrollViewObj.transform, false);
                 Image vpImage = viewport.AddComponent<Image>();
-                vpImage.color = ScrollBgColor;
+                vpImage.color = BossRushUIColors.Surface;   // 只作遮罩形状（showMaskGraphic=false），不显示
                 Mask mask = viewport.AddComponent<Mask>();
                 mask.showMaskGraphic = false;
                 RectTransform vpRect = viewport.GetComponent<RectTransform>();
@@ -546,8 +575,16 @@ namespace BossRush
             footerRect.anchoredPosition = Vector2.zero;
             footerRect.sizeDelta = new Vector2(0f, FooterHeight);
 
-            Image footerImage = footerObj.AddComponent<Image>();
-            footerImage.color = FooterBgColor;
+            // 页脚不铺底色（UD-01），与列表之间一条分隔线
+            GameObject divider = ZombieModeUIHelper.CreateSeparator(
+                "FooterDivider",
+                panelRoot.transform,
+                new Vector2(0f, 0f),
+                new Vector2(1f, 0f),
+                new Vector2(0f, FooterHeight),
+                2f,
+                BossRushUIColors.Divider);
+            InsetDivider(divider);
 
             // 已领取奖励总额
             GameObject totalObj = new GameObject("TotalReward");
@@ -556,14 +593,16 @@ namespace BossRush
             RectTransform totalRect = totalObj.AddComponent<RectTransform>();
             totalRect.anchorMin = new Vector2(0f, 0f);
             totalRect.anchorMax = new Vector2(0.6f, 1f);
-            totalRect.offsetMin = new Vector2(20f, 0f);
+            totalRect.offsetMin = new Vector2(SideInset, 0f);
             totalRect.offsetMax = Vector2.zero;
 
             totalRewardText = totalObj.AddComponent<TextMeshProUGUI>();
 
             BossRushUI.ApplyGameFont(totalRewardText);
             totalRewardText.fontSize = 16;
-            totalRewardText.color = new Color32(255, 215, 0, 255);
+            totalRewardText.enableWordWrapping = false;
+            totalRewardText.overflowMode = TextOverflowModes.Ellipsis;
+            totalRewardText.color = BossRushUIColors.WarningText;   // 金钱 = WarningText（审美口径第 2 条），不再用纯金 (255,215,0)
             totalRewardText.alignment = TextAlignmentOptions.Left;
             totalRewardText.raycastTarget = false;
 
@@ -577,7 +616,8 @@ namespace BossRush
                 claimBtnRect.anchorMax = new Vector2(1f, 0.5f);
                 claimBtnRect.pivot = new Vector2(1f, 0.5f);
                 claimBtnRect.anchoredPosition = new Vector2(-15f, 0f);
-                claimBtnRect.sizeDelta = new Vector2(120f, 40f);
+                // 放得下「一键领取 (12)」/「Claim All (12)」：可领数量写进按钮（UD-36）
+                claimBtnRect.sizeDelta = new Vector2(156f, 40f);
 
                 TextMeshProUGUI btnText = claimBtn.GetComponentInChildren<TextMeshProUGUI>();
                 if (btnText != null)
@@ -590,41 +630,24 @@ namespace BossRush
             }
             else
             {
-                GameObject claimAllObj = new GameObject("ClaimAllButton");
-                claimAllObj.transform.SetParent(footerObj.transform, false);
-
-                RectTransform claimAllRect = claimAllObj.AddComponent<RectTransform>();
-                claimAllRect.anchorMin = new Vector2(1f, 0.5f);
-                claimAllRect.anchorMax = new Vector2(1f, 0.5f);
-                claimAllRect.pivot = new Vector2(1f, 0.5f);
-                claimAllRect.anchoredPosition = new Vector2(-15f, 0f);
-                claimAllRect.sizeDelta = new Vector2(120f, 40f);
-
-                Image claimAllImage = claimAllObj.AddComponent<Image>();
-                BossRushUI.ApplyPanelSkin(claimAllImage, 6);
-                claimAllImage.color = ButtonColor;
-
-                claimAllButton = claimAllObj.AddComponent<Button>();
-                claimAllButton.targetGraphic = claimAllImage;
-                claimAllButton.onClick.AddListener(ClaimAllRewards);
-
-                GameObject claimAllTextObj = new GameObject("ButtonText");
-                claimAllTextObj.transform.SetParent(claimAllObj.transform, false);
-
-                RectTransform claimAllTextRect = claimAllTextObj.AddComponent<RectTransform>();
-                claimAllTextRect.anchorMin = Vector2.zero;
-                claimAllTextRect.anchorMax = Vector2.one;
-                claimAllTextRect.offsetMin = Vector2.zero;
-                claimAllTextRect.offsetMax = Vector2.zero;
-
-                claimAllButtonText = claimAllTextObj.AddComponent<TextMeshProUGUI>();
-
-                BossRushUI.ApplyGameFont(claimAllButtonText);
-                claimAllButtonText.fontSize = 16;
-                claimAllButtonText.fontStyle = FontStyles.Bold;
-                claimAllButtonText.color = Color.white;
-                claimAllButtonText.alignment = TextAlignmentOptions.Center;
-                claimAllButtonText.raycastTarget = false;
+                // 回退：共享按钮（三态、音效、按下回弹、投影斜面都由共享层给），主操作 AccentFill 底
+                claimAllButton = ZombieModeUIHelper.CreateButton(
+                    "ClaimAllButton",
+                    footerObj.transform,
+                    string.Empty,
+                    new Vector2(1f, 0.5f),
+                    new Vector2(-15f - 78f, 0f),
+                    new Vector2(156f, 40f),
+                    ClaimAllFallbackColor,
+                    16f,
+                    new Vector2(140f, 32f),
+                    ClaimAllRewards,
+                    true);
+                claimAllButtonText = claimAllButton.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (claimAllButtonText != null)
+                {
+                    claimAllButtonText.fontStyle = FontStyles.Bold;
+                }
             }
         }
 
@@ -637,7 +660,15 @@ namespace BossRush
             if (isOpen) return;
 
             isOpen = true;
+            // 上一次关闭的淡出还没播完就又打开：停掉淡出、恢复成完整面板
+            StopCloseFade();
+            IntegrationUIFeedback.ResetFade(canvasGroup);
             canvas.gameObject.SetActive(true);
+            // 遮罩只在建 UI 时淡入过一次；常驻面板每次打开都重播，否则第二次起背景一帧压黑
+            if (backdropImage != null)
+            {
+                BossRushUIEntranceAnimation.Play(backdropImage.gameObject, 0f, 0.15f, 0f);
+            }
 
             try
             {
@@ -654,26 +685,57 @@ namespace BossRush
                 scrollRect.verticalNormalizedPosition = 1f;
             }
 
+            // 与图鉴同一口径：面板从中间长出来（审美审查 UD-34，旧版一帧直接出现）
+            BossRushUI.PlayOpenAnimation(panelRoot);
             ModBehaviour.DevLog("[AchievementView] 成就页面已打开");
         }
 
         public void Close()
         {
-            if (!isOpen && canvas != null && !canvas.gameObject.activeSelf) return;
+            if (!isOpen && canvas != null && (!canvas.gameObject.activeSelf || closeFade != null)) return;
 
+            bool wasOpen = isOpen;
             isOpen = false;
-            if (canvas != null)
-            {
-                canvas.gameObject.SetActive(false);
-            }
 
+            // 先还输入，再播淡出：动效绝不能变成输入延迟
             try
             {
                 InputManager.ActiveInput(gameObject);
             }
             catch { }
 
+            if (canvas != null)
+            {
+                // 玩家关面板时 0.12 秒淡出（打开有长出来、关闭一帧消失，前后不对称，审美审查 UD-03）；构建期与销毁路径直接关
+                if (wasOpen && !destroying && isActiveAndEnabled && canvasGroup != null && canvas.gameObject.activeSelf)
+                {
+                    StopCloseFade();
+                    closeFade = StartCoroutine(CloseFadeRoutine());
+                }
+                else
+                {
+                    StopCloseFade();
+                    canvas.gameObject.SetActive(false);
+                    IntegrationUIFeedback.ResetFade(canvasGroup);
+                }
+            }
+
             ModBehaviour.DevLog("[AchievementView] 成就页面已关闭");
+        }
+
+        private System.Collections.IEnumerator CloseFadeRoutine()
+        {
+            yield return IntegrationUIFeedback.FadeOutAndDeactivate(canvasGroup, canvas.gameObject, BossRushUIKit.CloseSeconds);
+            closeFade = null;
+        }
+
+        private void StopCloseFade()
+        {
+            if (closeFade != null)
+            {
+                StopCoroutine(closeFade);
+                closeFade = null;
+            }
         }
 
         public void Toggle()
@@ -727,11 +789,14 @@ namespace BossRush
                         claimedCount++;
                         totalCash += achievement.reward != null ? achievement.reward.cashReward : 0;
                         entry.Refresh();
+                        // 每行照样有「到账」的一拍（金框淡回、奖励数字回弹），音效整批只播一次
+                        entry.PlayClaimFeedback();
                     }
                 }
 
                 if (claimedCount > 0)
                 {
+                    IntegrationUIFeedback.PlaySound(IntegrationUIFeedback.SoundSell);
                     string message = string.Format(
                         AchievementUIStrings.GetText(AchievementUIStrings.CN_ClaimedTotal, AchievementUIStrings.EN_ClaimedTotal),
                         totalCash.ToString("N0")
@@ -761,10 +826,7 @@ namespace BossRush
         private void UpdateLocalizedTexts()
         {
             titleText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_Title, AchievementUIStrings.EN_Title);
-            if (claimAllButtonText != null)
-            {
-                claimAllButtonText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_ClaimAll, AchievementUIStrings.EN_ClaimAll);
-            }
+            // 一键领取的文字随可领数量刷新，见 UpdateClaimAllButton
         }
 
         /// <summary>
@@ -868,29 +930,37 @@ namespace BossRush
 
         private void UpdateClaimAllButton()
         {
-            bool hasClaimable = false;
+            int claimable = 0;
             foreach (var entry in entries)
             {
-                if (entry.CanClaim)
+                if (entry != null && entry.CanClaim)
                 {
-                    hasClaimable = true;
-                    break;
+                    claimable++;
                 }
             }
+            bool hasClaimable = claimable > 0;
 
             if (claimAllButton != null)
             {
+                // 只切 interactable：官方按钮 prefab 有自己的底图与禁用态，回退按钮的三态住在 ColorBlock 里。
+                // 旧写法把 Image.color 整块乘成平涂绿，官方形状 + Mod 颜色混搭，禁用时还再叠一层禁用乘色（审美审查 UD-36）。
                 claimAllButton.interactable = hasClaimable;
-                Image btnImage = claimAllButton.GetComponent<Image>();
-                if (btnImage != null)
-                {
-                    btnImage.color = hasClaimable ? ButtonColor : ButtonDisabledColor;
-                }
+            }
+            if (claimAllButtonText != null)
+            {
+                // 「还有几个能领」直接写在按钮上：比一块绿按钮更能说明「这里有东西」
+                string label = AchievementUIStrings.GetText(AchievementUIStrings.CN_ClaimAll, AchievementUIStrings.EN_ClaimAll);
+                claimAllButtonText.text = hasClaimable ? label + " (" + claimable + ")" : label;
             }
         }
 
         private void OnEntryRewardClaimed(AchievementEntryUI entry)
         {
+            IntegrationUIFeedback.PlaySound(IntegrationUIFeedback.SoundSell);
+            if (entry != null)
+            {
+                entry.PlayClaimFeedback();
+            }
             UpdateStats();
             UpdateClaimAllButton();
         }

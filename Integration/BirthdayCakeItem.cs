@@ -52,12 +52,12 @@ namespace BossRush
         /// <summary>
         /// 生日蛋糕描述（中文）
         /// </summary>
-        private const string BIRTHDAY_CAKE_DESCRIPTION_CN = "祝你永远开开心心快快乐乐！----来自小猪鲨的祝福";
+        private const string BIRTHDAY_CAKE_DESCRIPTION_CN = "祝你永远开开心心快快乐乐！——来自小猪鲨的祝福";
         
         /// <summary>
         /// 生日蛋糕描述（英文）
         /// </summary>
-        private const string BIRTHDAY_CAKE_DESCRIPTION_EN = "May you always be happy! ----Blessings from Little Pig Shark";
+        private const string BIRTHDAY_CAKE_DESCRIPTION_EN = "May you always be happy! — Blessings from Little Pig Shark";
         
         /// <summary>
         /// 获取本地化的生日蛋糕名称
@@ -515,22 +515,20 @@ namespace BossRush
                 {
                     EquipmentHelper.AddTagToItem(cakeItem, "Special");
                 }
-                bool added = inventory.AddAndMerge(cakeItem, 0);
-                if (added)
+                if (!inventory.AddAndMerge(cakeItem, 0))
                 {
-                    // 标记已赠送
-                    Saves.SavesSystem.Save<bool>(BIRTHDAY_CAKE_GIVEN_KEY, true);
-                    DevLog("[BirthdayCake] 12月份生日蛋糕已赠送！");
-                    
-                    // 显示大横幅祝福语
-                    ShowBirthdayBanner();
+                    // 背包满（UD-48）：旧版直接销毁，玩家当年再也收不到也不知道原因。改走官方 SendToPlayer：
+                    // 放不下的进仓库；不在基地或仓库也满时进快递缓冲（官方 PlayerStorage.Push 自带「已送到快递」通知）。
+                    ItemUtilities.SendToPlayer(cakeItem, false, true);
+                    if (cakeItem != null && cakeItem.InInventory != null)
+                    {
+                        Duckov.UI.NotificationText.Push(L10n.T("背包已满，生日蛋糕已放进仓库。", "Inventory full. The Birthday Cake was put in your storage."));
+                    }
                 }
-                else
-                {
-                    // 背包满了，销毁物品
-                    UnityEngine.Object.Destroy(cakeItem.gameObject);
-                    DevLog("[BirthdayCake] 背包已满，无法赠送生日蛋糕");
-                }
+                // 送到了才走到这里（SendToPlayer 抛异常会落进外层 catch，不写已赠送键）
+                Saves.SavesSystem.Save<bool>(BIRTHDAY_CAKE_GIVEN_KEY, true);
+                DevLog("[BirthdayCake] 12月份生日蛋糕已赠送！");
+                ShowBirthdayBanner();
             }
             catch (Exception e)
             {

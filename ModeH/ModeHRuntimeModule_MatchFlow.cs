@@ -357,6 +357,7 @@ namespace BossRush
             }
 
             page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Summary_Draft");
+            AppendDraftLeaveAction(page);
             return page;
         }
 
@@ -497,6 +498,8 @@ namespace BossRush
                     if (_owner != null) _owner.ShowMessage(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Draft_NoViablePair"));
                     ModBehaviour.DevLog("[ModeH] 选人后找不到能组成六场的搭档: "
                         + (failureReasonId != null ? failureReasonId : "unknown"));
+                    _draftDeadEndRunId = _runState.RunId; // 选人页挂出「退出本赛季」（V6-1）
+                    RouteUiForLifecycle(_runState.Lifecycle);
                     return;
                 }
 
@@ -527,6 +530,7 @@ namespace BossRush
             ModeHPageContent page = new ModeHPageContent();
             page.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Brief");
             page.ShowRealStakeNotice = true;
+            page.CompactRiskNotice = true; // 兜底页不选押品：风险披露放页脚，不占顶部红条（V6-4）
             if (_season == null || _runState == null) return page;
 
             // matchIndex 是 1-based（0 表示尚未开赛），展示时不再 +1
@@ -546,6 +550,7 @@ namespace BossRush
                 page.Actions.Add(new ModeHActionData
                 {
                     Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_StartMatch"),
+                    IsPrimary = true,
                     OnClick = delegate { RunAutoAdvance("roster_start", null); },
                 });
                 return page;
@@ -564,6 +569,7 @@ namespace BossRush
             {
                 Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_StartMatch"),
                 Interactable = _season.currentMatchPlan != null,
+                IsPrimary = true,
                 OnClick = delegate { RunAutoAdvance("brief_start", null); },
             });
             return page;
@@ -827,7 +833,8 @@ namespace BossRush
                     // 「锁盘」推到点不到的地方，玩家就卡在这个时停模态页了。
                     page.RealStakeSlots.Add(new ModeHActionData
                     {
-                        Label = (isSelected ? "● " : "○ ") + label,
+                        Label = label,
+                        IsSelected = isSelected, // 选中格：危险色描边与字，不再靠行首实心 / 空心圆点区分
                         // 已选中的永远可点（要能取消）；未选中的在满员时置灰
                         Interactable = isSelected
                             || selectedCount < ModeHConfig.MaxRealStakeItemsPerMatch,
@@ -984,12 +991,12 @@ namespace BossRush
 
             if (_showLoadoutEditor) return BuildLoadoutEditorPage();
 
-            page.Body = L10n.T("我方公开分 ", "Player public score ")
-                + _currentOddsQuote.PlayerPublicScore
-                + L10n.T("　敌方公开分 ", "  Enemy public score ")
-                + _currentOddsQuote.EnemyPublicScore
-                + L10n.T("　锁定赔率 x", "  Locked odds x") + _currentOddsQuote.Odds
-                + L10n.T("\n虚拟筹码余额 ", "\nVirtual credits ") + _season.virtualStakeCredits
+            // 大字只放锁定赔率；双方公开分、筹码与当前下注降到一行次级小字（UB-34）
+            page.Headline = L10n.T("锁定赔率", "Locked odds");
+            page.HeadlineValue = "x" + _currentOddsQuote.Odds;
+            page.Body = L10n.T("我方公开分 ", "Player public score ") + _currentOddsQuote.PlayerPublicScore
+                + L10n.T("　敌方公开分 ", "  Enemy public score ") + _currentOddsQuote.EnemyPublicScore
+                + L10n.T("　虚拟筹码余额 ", "  Virtual credits ") + _season.virtualStakeCredits
                 + L10n.T("　当前下注 ", "  Current stake ") + _selectedVirtualStake;
 
             if (_currentOddsQuote.Breakdown != null)
@@ -1014,7 +1021,7 @@ namespace BossRush
                 page.Actions.Add(new ModeHActionData
                 {
                     Label = L10n.T("下注 ", "Stake ") + selected,
-                    Interactable = selected != _selectedVirtualStake,
+                    IsSelected = selected == _selectedVirtualStake, // 选中档染主色、仍可点（旧版置灰像「不能选」）
                     OnClick = delegate { SelectVirtualStake(selected); },
                 });
             }
@@ -1036,6 +1043,7 @@ namespace BossRush
             page.Actions.Add(new ModeHActionData
             {
                 Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_LockIn"),
+                IsPrimary = true,
                 Interactable = _season.currentMatchPlan != null && _season.matchRoster != null
                     && _currentOddsQuote != null,
                 OnClick = LockLoadoutAndStartMatch,

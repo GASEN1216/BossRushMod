@@ -114,8 +114,12 @@ def main() -> int:
             ),
             require(
                 ability_text,
-                r"Vector3\s+lockedForward\s*=\s*ResolveAttackForward\(target\).*?CreateHeavySlashEffect\(.*?lockedForward.*?CreateScytheSweepEffect\(.*?lockedForward",
-                "WraithTrailObserve still does not keep a windup-locked forward vector for both hits",
+                # 2026-09-23 decision: the windup outline keeps the windup-locked forward, but both slash visuals use the
+                # release-time forward, the same one DealConeDamage aims with (the cone telegraphs also track the target).
+                r"Vector3\s+lockedForward\s*=\s*ResolveAttackForward\(target\).*?CreateWraithWindupOutlineEffect\(.*?lockedForward"
+                r".*?Vector3\s+releaseForward\s*=\s*ResolveAttackForward\(target\).*?CreateHeavySlashEffect\([^;]*releaseForward"
+                r".*?Vector3\s+secondForward\s*=\s*ResolveAttackForward\(target\).*?CreateScytheSweepEffect\([^;]*secondForward",
+                "WraithTrailObserve slash visuals must use the release-time forward that the damage cones use",
                 re.S,
             ),
             require(

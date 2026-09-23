@@ -48,8 +48,8 @@ namespace BossRush
         {
             Add(map, "SystemName", "遗种巢", "PetNest");
             Add(map, "SystemDesc",
-                "打过的每一个 Boss 都可能留下遗种。把它们孵出来、起个名字、带在身边打下一场，"
-                + "或者派它们去你不敢去的天灾深处。",
+                "你打过的 Boss 都可能留下遗种。孵出来、起个名字、带着打下一场，"
+                + "或者派去你自己都不敢去的天灾区。",
                 "Every boss you have killed may leave a relic behind. Hatch them, name them, "
                 + "take them along for the next run, or send them into disasters you would not face yourself.");
             Add(map, "Page_Nest", "巢", "Nest");
@@ -87,9 +87,9 @@ namespace BossRush
         {
             // 说明：遗魂没有实体道具，只有账本，因此不需要单独的物品名 key。
             Add(map, "SoulDesc",
-                "击杀 Boss 必得的血脉残响。只用于在巢中定向凝成该血脉的遗种蛋，不作货币、不进商店。",
-                "A bloodline echo guaranteed by every boss kill. It is only used to condense a relic egg "
-                + "of that bloodline; it is not currency and never enters shops.");
+                "每杀一个 Boss 必得的遗魂。只能在巢里凝成同血脉的遗种蛋，不能当钱花，商店也不收。",
+                "Every boss kill leaves some of these behind. They only condense into a relic egg "
+                + "of the same bloodline. Not currency; no shop will take them.");
             Add(map, "SoulGained", "获得遗魂", "Relic souls gained");
             Add(map, "SoulLedger", "遗魂账本", "Relic Soul Ledger");
             Add(map, "CondenseEgg", "凝成遗种蛋", "Condense Relic Egg");
@@ -271,7 +271,7 @@ namespace BossRush
             {
                 string name = L10n.T("遗种巢", "PetNest");
                 string desc = L10n.T(
-                    "把 Boss 留下的遗种孵成幼体、带在身边打下一场，或者派它们去天灾深处。",
+                    "把 Boss 留下的遗种孵成幼崽，带着打下一场，或者派去天灾区远征。",
                     "Hatch the relics bosses leave behind, take a cub along for your next run, "
                     + "or send it into a disaster you would not face yourself.");
 

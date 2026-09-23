@@ -35,14 +35,20 @@ namespace BossRush
 
     // Historical name kept to avoid touching all call sites; the implementation now
     // uses the BossFilter-style reusable modal UI instead of cloning Duckov's full-screen prompt.
+    //
+    // 外观（2026-09-23 审美审查 UA-30）：遮罩、面板一律走 BossRushUIColors token，
+    // 不再是中性灰面板 + 棕色直角标题条 + 字母「X」——标题直接写在面板上、下接分隔线，关闭走底部「取消」与 ESC。
+    // 底部两颗按钮仍克隆官方按钮 prefab（官方外观 + 官方 hover / click 音效，与 BossFilter 同口径），不另染色：
+    // 官方 prefab 自带 ButtonAnimation，再挂共享按钮手感会一次悬停响两声。
+    // 第二个入口 ExecuteOverActiveView（UA-29）：给「寄存全部丢弃」这类发生在官方 View 里的不可逆操作用，
+    // 不关当前 View、默认选中「取消」，并吃掉官方 UI 取消键，避免一按 ESC 连商店一起关掉。
     public static class OriginalConfirmDialogueAdapter
     {
         private const string CanvasName = "BossRush_SweepConfirmCanvas";
         private const int SortingOrder = BossRushUILayers.ModalConfirm;
-        private const float BackgroundAlpha = 0.45f;
         private const float PanelWidth = 680f;
         private const float PanelHeight = 300f;
-        private const float TitleBarHeight = 50f;
+        private const float TitleBarHeight = 56f;
         private const float FooterHeight = 78f;
         private const float ButtonWidth = 160f;
         private const float ButtonHeight = 40f;
@@ -50,6 +56,7 @@ namespace BossRush
 
         private static GameObject canvasRoot = null;
         private static GameObject panelRoot = null;
+        private static Image backdropImage = null;
         private static TextMeshProUGUI titleText = null;
         private static TextMeshProUGUI messageText = null;
         private static Button confirmButton = null;
@@ -61,33 +68,65 @@ namespace BossRush
         private static bool inputClaimed = false;
         private static bool isVisible = false;
         private static float previousTimeScale = 1f;
+        private static bool cancelEarlySubscribed = false;
+        private static bool defaultToCancel = false;
 
-        public static async UniTask<OriginalConfirmDialogueResult> Execute(
+        public static UniTask<OriginalConfirmDialogueResult> Execute(
             string message,
             string confirmText,
             string cancelText)
         {
+            return ExecuteCore(L10n.T("扫箱确认", "Sweep Confirmation"), message, confirmText, cancelText, false, false);
+        }
+
+        /// <summary>
+        /// 在官方 View（商店、背包）打开着的时候弹确认：不关当前 View，确认 / 取消后回到原界面。
+        /// <paramref name="destructive"/> 为真时默认选中「取消」，回车 / 手柄确认键不会误触不可逆操作。
+        /// 调用方拿到结果后必须重新检查自己的状态（View 可能已经被关、服务可能已经结束）。
+        /// </summary>
+        public static UniTask<OriginalConfirmDialogueResult> ExecuteOverActiveView(
+            string title,
+            string message,
+            string confirmText,
+            string cancelText,
+            bool destructive)
+        {
+            return ExecuteCore(title, message, confirmText, cancelText, true, destructive);
+        }
+
+        private static async UniTask<OriginalConfirmDialogueResult> ExecuteCore(
+            string title,
+            string message,
+            string confirmText,
+            string cancelText,
+            bool keepActiveView,
+            bool destructive)
+        {
             try
             {
-                await WaitForPreviousViewCleanup();
+                if (!keepActiveView)
+                {
+                    await WaitForPreviousViewCleanup();
+                }
 
                 if (!EnsureUiCreated())
                 {
                     return OriginalConfirmDialogueResult.Failure(L10n.T(
-                        "扫箱确认框初始化失败，当前操作已取消。",
-                        "Sweep confirmation UI could not be created. The operation was cancelled."));
+                        "确认框初始化失败，当前操作已取消。",
+                        "Confirmation UI could not be created. The operation was cancelled."));
                 }
 
                 if (pendingCompletion != null)
                 {
                     return OriginalConfirmDialogueResult.Failure(L10n.T(
-                        "扫箱确认框忙碌中，请稍后再试。",
-                        "Sweep confirmation UI is busy. Try again in a moment."));
+                        "确认框忙碌中，请稍后再试。",
+                        "Confirmation UI is busy. Try again in a moment."));
                 }
 
                 pendingCompletion = new UniTaskCompletionSource<bool>();
+                defaultToCancel = destructive;
                 ShowDialog(
-                    L10n.T("扫箱确认", "Sweep Confirmation"),
+                    title,
                     message,
                     confirmText,
                     cancelText);
@@ -101,8 +140,8 @@ namespace BossRush
                 HideDialog();
                 pendingCompletion = null;
                 return OriginalConfirmDialogueResult.Failure(L10n.T(
-                    "扫箱确认框执行失败，当前操作已取消。",
-                    "Sweep confirmation UI failed. The operation was cancelled."));
+                    "确认框执行失败，当前操作已取消。",
+                    "Confirmation UI failed. The operation was cancelled."));
             }
         }
 
@@ -162,29 +201,25 @@ namespace BossRush
                 runtime = canvasRoot.AddComponent<SweepConfirmRuntime>();
                 UnityEngine.Object.DontDestroyOnLoad(canvasRoot);
 
-                GameObject background = new GameObject("Background");
-                background.transform.SetParent(canvasRoot.transform, false);
-                Image backgroundImage = background.AddComponent<Image>();
-                backgroundImage.color = new Color(0f, 0f, 0f, BackgroundAlpha);
+                // 遮罩走共享 token（旧值是 0.45 的纯黑，与全 Mod 其他模态不是一套）。
+                Image backgroundImage = BossRushUI.CreateBackdrop(canvasRoot.transform);
+                backgroundImage.color = BossRushUIColors.Backdrop;
                 backgroundImage.raycastTarget = true;
-                RectTransform backgroundRect = background.GetComponent<RectTransform>();
-                backgroundRect.anchorMin = Vector2.zero;
-                backgroundRect.anchorMax = Vector2.one;
-                backgroundRect.offsetMin = Vector2.zero;
-                backgroundRect.offsetMax = Vector2.zero;
+                backdropImage = backgroundImage;
 
                 panelRoot = new GameObject("Panel");
                 panelRoot.transform.SetParent(canvasRoot.transform, false);
                 Image panelImage = panelRoot.AddComponent<Image>();
+                // 先上色再套皮：投影按底色不透明度判定（BossRushUIDepth），反过来会按默认白色判。
+                panelImage.color = BossRushUIColors.Surface;
                 BossRushUI.ApplyFramedPanelSkin(panelImage, 14, BossRushUISkinPart.Panel);
-                panelImage.color = new Color(0.12f, 0.12f, 0.12f, 0.94f);
                 RectTransform panelRect = panelRoot.GetComponent<RectTransform>();
                 panelRect.anchorMin = new Vector2(0.5f, 0.5f);
                 panelRect.anchorMax = new Vector2(0.5f, 0.5f);
                 panelRect.pivot = new Vector2(0.5f, 0.5f);
                 panelRect.sizeDelta = new Vector2(PanelWidth, PanelHeight);
 
-                CreateTitleBar(panelRoot.transform, buttonPrefab);
+                CreateTitle(panelRoot.transform);
                 CreateMessageArea(panelRoot.transform);
                 CreateFooter(panelRoot.transform, buttonPrefab);
 
@@ -199,49 +234,36 @@ namespace BossRush
             }
         }
 
-        private static void CreateTitleBar(Transform parent, Button buttonPrefab)
+        /// <summary>
+        /// 标题直接写在面板上，下面接一条分隔线。旧写法是一条没有 sprite 的棕色直角标题条，
+        /// 两个上角从圆角面板外面露出来，右上还有一颗写着字母「X」的关闭钮（审美审查 UA-30）；
+        /// 关闭现在走底部「取消」与 ESC，不再重复一颗。
+        /// </summary>
+        private static void CreateTitle(Transform parent)
         {
-            GameObject titleBar = new GameObject("TitleBar");
-            titleBar.transform.SetParent(parent, false);
-            Image titleBarImage = titleBar.AddComponent<Image>();
-            titleBarImage.color = new Color(0.24f, 0.19f, 0.13f, 0.98f);
-            RectTransform titleBarRect = titleBar.GetComponent<RectTransform>();
-            titleBarRect.anchorMin = new Vector2(0f, 1f);
-            titleBarRect.anchorMax = new Vector2(1f, 1f);
-            titleBarRect.pivot = new Vector2(0.5f, 1f);
-            titleBarRect.anchoredPosition = Vector2.zero;
-            titleBarRect.sizeDelta = new Vector2(0f, TitleBarHeight);
-
             GameObject titleTextObj = new GameObject("TitleText");
-            titleTextObj.transform.SetParent(titleBar.transform, false);
+            titleTextObj.transform.SetParent(parent, false);
             titleText = titleTextObj.AddComponent<TextMeshProUGUI>();
-            titleText.fontSize = 24f;
-            titleText.color = Color.white;
-            titleText.alignment = TextAlignmentOptions.Center;
+            BossRushUI.ApplyGameFont(titleText);
+            titleText.fontSize = 26f;
+            titleText.fontStyle = FontStyles.Bold;
+            titleText.color = BossRushUIColors.TextPrimary;
+            titleText.alignment = TextAlignmentOptions.MidlineLeft;
+            titleText.enableWordWrapping = false;
+            titleText.overflowMode = TextOverflowModes.Ellipsis;
             titleText.raycastTarget = false;
             RectTransform titleTextRect = titleTextObj.GetComponent<RectTransform>();
-            titleTextRect.anchorMin = new Vector2(0f, 0f);
+            titleTextRect.anchorMin = new Vector2(0f, 1f);
             titleTextRect.anchorMax = new Vector2(1f, 1f);
-            titleTextRect.offsetMin = new Vector2(56f, 0f);
-            titleTextRect.offsetMax = new Vector2(-56f, 0f);
+            titleTextRect.pivot = new Vector2(0.5f, 1f);
+            titleTextRect.offsetMin = new Vector2(28f, -TitleBarHeight);
+            titleTextRect.offsetMax = new Vector2(-28f, 0f);
 
-            Button closeButton = UnityEngine.Object.Instantiate(buttonPrefab, titleBar.transform);
-            RectTransform closeButtonRect = closeButton.GetComponent<RectTransform>();
-            closeButtonRect.anchorMin = new Vector2(1f, 0.5f);
-            closeButtonRect.anchorMax = new Vector2(1f, 0.5f);
-            closeButtonRect.pivot = new Vector2(1f, 0.5f);
-            closeButtonRect.anchoredPosition = new Vector2(-10f, 0f);
-            closeButtonRect.sizeDelta = new Vector2(36f, 36f);
-
-            TextMeshProUGUI closeButtonLabel = closeButton.GetComponentInChildren<TextMeshProUGUI>(true);
-            if (closeButtonLabel != null)
-            {
-                closeButtonLabel.text = "X";
-                closeButtonLabel.fontSize = 20f;
-            }
-
-            closeButton.onClick.RemoveAllListeners();
-            closeButton.onClick.AddListener(() => Resolve(false));
+            GameObject rule = ZombieModeUIHelper.CreateSeparator(
+                "TitleRule", parent, new Vector2(0f, 1f), new Vector2(1f, 1f),
+                new Vector2(0f, -TitleBarHeight), 2f, BossRushUIColors.Divider);
+            RectTransform ruleRect = rule.GetComponent<RectTransform>();
+            ruleRect.sizeDelta = new Vector2(-40f, ruleRect.sizeDelta.y);
         }
 
         private static void CreateMessageArea(Transform parent)
@@ -249,8 +271,9 @@ namespace BossRush
             GameObject messageObj = new GameObject("Message");
             messageObj.transform.SetParent(parent, false);
             messageText = messageObj.AddComponent<TextMeshProUGUI>();
-            messageText.fontSize = 21f;
-            messageText.color = Color.white;
+            BossRushUI.ApplyGameFont(messageText);
+            messageText.fontSize = 18f;
+            messageText.color = BossRushUIColors.TextPrimary;
             messageText.alignment = TextAlignmentOptions.MidlineLeft;
             messageText.richText = true;
             messageText.enableWordWrapping = true;
@@ -322,6 +345,10 @@ namespace BossRush
 
             canvasRoot.SetActive(true);
             isVisible = true;
+            // 遮罩暗角淡入 + 面板淡入放大，与全 Mod 模态同一口径（旧写法一帧弹出）。画布是复用的，每次显示都重播。
+            BossRushUIKit.StyleBackdrop(backdropImage);
+            BossRushUI.PlayOpenAnimation(panelRoot);
+            SubscribeCancelEarly();
 
             try
             {
@@ -338,9 +365,62 @@ namespace BossRush
             SelectConfirmButton();
         }
 
+        /// <summary>
+        /// 确认框开着时吃掉官方 UI 取消键（ESC / 手柄 B）：官方在 OnCancelEarly 之后才分发给 View 与暂停菜单，
+        /// 不吃掉的话，按一下 ESC 会同时关掉确认框背后的商店（ExecuteOverActiveView），或者弹出暂停菜单。
+        /// 只在显示期间订阅，HideDialog / 销毁时退订（AGENTS §4.6）。
+        /// </summary>
+        private static void SubscribeCancelEarly()
+        {
+            if (cancelEarlySubscribed)
+            {
+                return;
+            }
+
+            try
+            {
+                UIInputManager.OnCancelEarly += OnUICancelEarly;
+                cancelEarlySubscribed = true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[OriginalConfirmDialogueAdapter] [WARNING] Failed to hook UI cancel: " + e.Message);
+            }
+        }
+
+        private static void UnsubscribeCancelEarly()
+        {
+            if (!cancelEarlySubscribed)
+            {
+                return;
+            }
+
+            cancelEarlySubscribed = false;
+            try
+            {
+                UIInputManager.OnCancelEarly -= OnUICancelEarly;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[OriginalConfirmDialogueAdapter] [WARNING] Failed to unhook UI cancel: " + e.Message);
+            }
+        }
+
+        private static void OnUICancelEarly(UIInputEventData eventData)
+        {
+            if (!isVisible || eventData == null)
+            {
+                return;
+            }
+
+            eventData.Use();
+            Resolve(false);
+        }
+
         private static void HideDialog()
         {
             isVisible = false;
+            UnsubscribeCancelEarly();
 
             if (inputClaimed && canvasRoot != null)
             {
@@ -380,14 +460,16 @@ namespace BossRush
 
         private static void SelectConfirmButton()
         {
-            if (confirmButton == null || EventSystem.current == null)
+            // 不可逆操作默认停在「取消」上：回车 / 手柄确认键不会一下就把东西删掉。
+            Button target = defaultToCancel ? cancelButton : confirmButton;
+            if (target == null || EventSystem.current == null)
             {
                 return;
             }
 
             try
             {
-                EventSystem.current.SetSelectedGameObject(confirmButton.gameObject);
+                EventSystem.current.SetSelectedGameObject(target.gameObject);
             }
             catch (Exception e)
             {
@@ -412,6 +494,7 @@ namespace BossRush
 
         private static void DestroyUi()
         {
+            UnsubscribeCancelEarly();
             if (canvasRoot != null)
             {
                 UnityEngine.Object.Destroy(canvasRoot);
@@ -419,6 +502,7 @@ namespace BossRush
 
             canvasRoot = null;
             panelRoot = null;
+            backdropImage = null;
             titleText = null;
             messageText = null;
             confirmButton = null;
@@ -441,6 +525,7 @@ namespace BossRush
                     return;
                 }
 
+                // 官方 UI 取消键已由 OnUICancelEarly 处理并置 isVisible=false；这里兜底官方输入没接管到的情况。
                 if (Input.GetKeyDown(KeyCode.Escape))
                 {
                     Resolve(false);
@@ -460,6 +545,7 @@ namespace BossRush
                 completion?.TrySetResult(false);
                 canvasRoot = null;
                 panelRoot = null;
+                backdropImage = null;
                 titleText = null;
                 messageText = null;
                 confirmButton = null;

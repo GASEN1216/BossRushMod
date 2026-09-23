@@ -47,7 +47,7 @@ namespace BossRush
         /// <summary>选中卡片向 Accent 染色的比例。白字 12.6:1、次级字 6.8:1（线性亮度实算）。</summary>
         private const float CardSelectedTint = 0.16f;
         /// <summary>
-        /// 卡片悬停提亮比例。不用 BossRushUI.GetHoverColor 的 0.22：那会把 15px 次级说明字压到 4.4:1，
+        /// 卡片悬停提亮比例。不用 BossRushUI.GetHoverColor 的 0.22：那会把 16px 次级说明字压到 4.4:1，
         /// 0.12 时常态卡 6.3:1、选中卡 4.7:1，都过正文 4.5:1。
         /// </summary>
         private const float CardHoverLift = 0.12f;
@@ -75,6 +75,7 @@ namespace BossRush
         private TextMeshProUGUI _startLabel;
         private ModeGEntryPreview _modalPreview;
         private ModBehaviour _entryHost;
+        private ModeGModalCancelKey _cancelKey;
         private bool _confirmed;
         private bool _autoPresenter;
 
@@ -213,16 +214,16 @@ namespace BossRush
                     || !host.IsModeGEntryPreviewValidForCurrentScene(preview))
                 {
                     host.ShowMessage(L10n.T(
-                        "宿命回响入口准备失败，请稍后重试。",
-                        "Fate Echo entry is not ready. Please try again later."));
+                        "宿命回响入口还没准备好，稍后再试。",
+                        "Fate Echo entry isn't ready yet. Try again in a moment."));
                     return;
                 }
 
                 if (!OpenConfirmPage(host, preview))
                 {
                     host.ShowMessage(L10n.T(
-                        "宿命回响确认页无法安全暂停战斗，请稍后重试。",
-                        "Fate Echo could not safely pause combat for confirmation. Please try again."));
+                        "宿命回响确认页没法安全暂停战斗，稍后再试。",
+                        "Fate Echo couldn't safely pause the fight to confirm. Try again."));
                 }
             }
             catch (Exception e)
@@ -248,20 +249,14 @@ namespace BossRush
             _modalPreview = preview;
             _selectedCandidateIndex = -1;
 
-            GameObject root = new GameObject("ModeG_ConfirmPage");
+            GameObject root = BossRushUI.CreateCanvasRoot("ModeG_ConfirmPage", BossRushUILayers.ModeGEntry, true).gameObject;
             UnityEngine.Object.DontDestroyOnLoad(root);
             _modalRoot = root;
-
-            Canvas canvas = root.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = BossRushUILayers.ModeGEntry;
-            CanvasScaler scaler = root.AddComponent<CanvasScaler>();
-            ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
-            root.AddComponent<GraphicRaycaster>();
 
             GameObject surface = ZombieModeUIHelper.CreateModalSurface(
                 "ModeG_Confirm", root.transform, new Vector2(ModalWidth, ModalInitialHeight),
                 BossRushUIColors.WarningText);
+            MakeSurfaceOpaque(surface);
 
             Transform st = surface.transform;
             // 纵向游标：从面板顶边往下量的距离。下面每一段都挂在面板顶边上、排完把游标往下推。
@@ -293,38 +288,21 @@ namespace BossRush
             }
 
             // 徽记 + 标题同一行、整组居中（展示缓存提供徽记；缺失时标题单独居中）
-            RectTransform emblemRect = null;
-            try
-            {
-                Sprite emblem = ModeGPresentationAssetCache.GetEmblemSprite();
-                if (emblem != null)
-                {
-                    GameObject emblemObj = ZombieModeUIHelper.CreateRect(
-                        "Emblem", st, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                        Vector2.zero, new Vector2(EmblemSize, EmblemSize), new Vector2(0.5f, 1f));
-                    Image emblemImage = emblemObj.AddComponent<Image>();
-                    emblemImage.sprite = emblem;
-                    emblemImage.preserveAspect = true;
-                    emblemImage.raycastTarget = false;
-                    emblemRect = emblemObj.GetComponent<RectTransform>();
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ModeG] [WARNING] 确认页徽记加载失败: " + e.Message);
-            }
-            cursor += PlaceTitleRow(st, emblemRect, cursor) + 8f;
+            RectTransform emblemRect = CreateEmblem(st, EmblemSize);
+            cursor += PlaceTitleRow(st, emblemRect, cursor, L10n.T("宿命回响", "Fate Echo"), 34f,
+                BossRushUIColors.WarningText, ContentWidth, EmblemSize) + 8f;
 
             // 玩法说明：三句大白话——怎么打、敌人会怎样、能拿到什么。「决意」金色标出，和局内 HUD 同一个词。
+            // 长段落左对齐、按 ①②③ 分条（2026-09-23 审美审查 UB-19：居中长句行首参差，读不出是三条）。
             string gold = ColorUtility.ToHtmlStringRGB(BossRushUIColors.WarningText);
-            cursor += PlaceText(CreateBodyText("Rules", st,
+            cursor += PlaceText(CreateParagraphText("Rules", st,
                 L10n.T(
-                    "带上自己的装备连打九波，敌人会专门针对你上一波的打法。\n"
-                    + "换个距离、弹药或武器破解针对，就能攒下<color=#" + gold + ">决意</color>。\n"
-                    + "九波全部打赢后按决意发 6–10 件高品质物品（Q5–Q8），并退还信物。",
-                    "Bring your own gear through 9 waves. Enemies adapt to how you fought the last wave.\n"
-                    + "Switch range, ammo or weapon to beat the counter and earn <color=#" + gold + ">Resolve</color>.\n"
-                    + "Clear all 9 waves for 6–10 Q5–Q8 items (more Resolve, more items); your relic comes back."),
+                    "① 带上自己的装备连打九波，敌人会专门针对你上一波的打法。\n"
+                    + "② 换个距离、弹药或武器破解针对，就能攒下<color=#" + gold + ">决意</color>。\n"
+                    + "③ 九波全部打赢后按决意发 6–10 件高品质物品（Q5–Q8），并退还信物。",
+                    "① Bring your own gear through 9 waves. Enemies adapt to how you fought the last wave.\n"
+                    + "② Switch range, ammo or weapon to beat the counter and earn <color=#" + gold + ">Resolve</color>.\n"
+                    + "③ Clear all 9 waves for 6–10 Q5–Q8 items (more Resolve, more items); your relic comes back."),
                 16f, BossRushUIColors.TextSecondary), ContentWidth, 0f, cursor) + 12f;
 
             // 宿敌回响（有活跃宿敌时显示）：整局的威胁提示，放在选契约之前
@@ -363,7 +341,7 @@ namespace BossRush
                 string sealLine = ModeGRecapPanel.ComposeEntrySealLine();
                 if (!string.IsNullOrEmpty(sealLine))
                 {
-                    cursor += PlaceText(CreateBodyText("SealGoal", st, sealLine, 15f, BossRushUIColors.TextSecondary),
+                    cursor += PlaceText(CreateBodyText("SealGoal", st, sealLine, 14f, BossRushUIColors.TextSecondary),
                         ContentWidth, 0f, cursor);
                 }
             }
@@ -379,7 +357,7 @@ namespace BossRush
 
             // 强制披露（规格 §3.1）：死亡损失遵循当前地图规则 + 多攒决意的备装建议。
             // 两行都必须在扣除入场物品前对玩家可见，不得省略。
-            cursor += PlaceText(CreateBodyText("Disclosure", st,
+            cursor += PlaceText(CreateParagraphText("Disclosure", st,
                 L10n.T("BossRush_ModeG_Entry_DeathRule") + "\n"
                     + L10n.T("BossRush_ModeG_Entry_LoadoutHint"),
                 14f, BossRushUIColors.TextSecondary), ContentWidth, 0f, cursor) + 6f;
@@ -388,39 +366,38 @@ namespace BossRush
             cursor += PlaceText(CreateBodyText("Cost", st,
                 L10n.T("入场消耗：船票 ×1、宿命回响信物 ×1。点「暂不挑战」不扣任何东西。",
                     "Entry cost: 1 ticket + 1 Fate Echo relic. \"Not Now\" costs nothing."),
-                15f, BossRushUIColors.TextPrimary), ContentWidth, 0f, cursor) + 16f;
+                16f, BossRushUIColors.TextPrimary), ContentWidth, 0f, cursor) + 16f;
 
-            // 立即迎战（选好契约前不可点，按钮上直接写还差什么）/ 暂不挑战（免费退出，中性色）
+            // 立即迎战（选好契约前不可点，按钮上直接写还差什么）/ 暂不挑战（免费退出，次级样式）。
+            // 主操作底色走 AccentFill（全 Mod 按钮口径，2026-09-23）：旧版是 Success 平涂绿，与 Mode H / Mode E 三套主操作色（UB-33）。
             float buttonY = -(cursor + ButtonHeight * 0.5f);
             float buttonX = (ButtonWidth + ButtonGap) * 0.5f;
             Button startButton = ZombieModeUIHelper.CreateButton(
                 "Start", st, L10n.T("立即迎战", "Fight Now"),
                 new Vector2(0.5f, 1f), new Vector2(-buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
-                BossRushUIColors.Success, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
+                BossRushUIColors.AccentFill, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
                 () => ConfirmAndStart(host), true);
-            ZombieModeUIHelper.ApplyButtonColors(startButton,
-                BossRushUIColors.Success, BossRushUI.GetHoverColor(BossRushUIColors.Success),
-                BossRushUIColors.Disabled);
             _startButton = startButton;
             Transform startTextTransform = startButton.transform.Find("Text");
             if (startTextTransform != null) _startLabel = startTextTransform.GetComponent<TextMeshProUGUI>();
             RefreshStartButton();
 
             // 「放弃挑战」在局内是不可逆的弃局（ModeGAbandonPresenter）；这里只是免费退出、还会退回船票，
-            // 所以不用危险色、也不叫放弃。描边给它一个可点的轮廓（SurfaceRaised 对面板底只有 1.03:1）。
+            // 所以不用危险色、也不叫放弃。次级样式：SurfaceRaised 底 + Stroke 描边（SurfaceRaised 对面板底只有 1.03:1）。
             Button cancelButton = ZombieModeUIHelper.CreateButton(
                 "Cancel", st, L10n.T("暂不挑战", "Not Now"),
                 new Vector2(0.5f, 1f), new Vector2(buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
                 BossRushUIColors.SurfaceRaised, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
                 CloseModal, true);
-            BossRushUI.ApplyPanelStroke(cancelButton.targetGraphic as Image, 8,
-                BossRushUISkinPart.Button, BossRushUIColors.Stroke);
+            BossRushUIKit.StyleSecondaryButton(cancelButton);
             cursor += ButtonHeight + BottomPad;
 
             // 面板收到内容高度。子物体都挂在顶边上，改高度不会挪动它们。
             RectTransform surfaceRect = surface.GetComponent<RectTransform>();
             surfaceRect.sizeDelta = new Vector2(ModalWidth, Mathf.Ceil(cursor));
             BossRushUI.PlayOpenAnimation(surface);
+            // ESC / 手柄取消 = 「暂不挑战」：同一下 ESC 不再穿透去开官方暂停菜单（UB-19）。
+            _cancelKey = ModeGModalCancelKey.Attach(root, CloseModal);
 
             try
             {
@@ -474,23 +451,49 @@ namespace BossRush
             return Mathf.Clamp((HeroFocusY - 0.5f) * artHeight, -slack, slack);
         }
 
-        /// <summary>徽记在左、标题在右，按标题实际宽度整组居中。返回这一行的高度。</summary>
-        private static float PlaceTitleRow(Transform parent, RectTransform emblem, float top)
+        /// <summary>
+        /// Mode G 徽记（展示缓存提供）。锚在父物体顶边中央，位置由 <see cref="PlaceTitleRow"/> 定；
+        /// 取不到返回 null，标题单独居中（不退回汉字或灰方块）。入场页与弃局页共用。
+        /// </summary>
+        internal static RectTransform CreateEmblem(Transform parent, float size)
         {
-            TextMeshProUGUI title = CreateBodyText("Title", parent,
-                L10n.T("宿命回响", "Fate Echo"), 34f, BossRushUIColors.WarningText);
-            float maxWidth = emblem != null ? ContentWidth - EmblemSize - EmblemGap : ContentWidth;
+            try
+            {
+                Sprite emblem = ModeGPresentationAssetCache.GetEmblemSprite();
+                if (emblem == null) return null;
+                GameObject emblemObj = ZombieModeUIHelper.CreateRect(
+                    "Emblem", parent, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                    Vector2.zero, new Vector2(size, size), new Vector2(0.5f, 1f));
+                Image emblemImage = emblemObj.AddComponent<Image>();
+                emblemImage.sprite = emblem;
+                emblemImage.preserveAspect = true;
+                emblemImage.raycastTarget = false;
+                return emblemObj.GetComponent<RectTransform>();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 确认页徽记加载失败: " + e.Message);
+                return null;
+            }
+        }
+
+        /// <summary>徽记在左、标题在右，按标题实际宽度整组居中。返回这一行的高度。入场页与弃局页共用。</summary>
+        internal static float PlaceTitleRow(Transform parent, RectTransform emblem, float top, string text,
+            float fontSize, Color color, float contentWidth, float emblemSize)
+        {
+            TextMeshProUGUI title = CreateBodyText("Title", parent, text, fontSize, color);
+            float maxWidth = emblem != null ? contentWidth - emblemSize - EmblemGap : contentWidth;
             title.enableAutoSizing = false;
             title.margin = Vector4.zero;
             float width = Mathf.Min(maxWidth, Mathf.Ceil(title.GetPreferredValues(title.text).x) + 8f);
             float height = PlaceText(title, width, 0f, top);
-            float row = emblem != null ? Mathf.Max(height, EmblemSize) : height;
-            float group = emblem != null ? EmblemSize + EmblemGap + width : width;
+            float row = emblem != null ? Mathf.Max(height, emblemSize) : height;
+            float group = emblem != null ? emblemSize + EmblemGap + width : width;
             float left = -group * 0.5f;
             if (emblem != null)
             {
-                emblem.anchoredPosition = new Vector2(left + EmblemSize * 0.5f, -(top + (row - EmblemSize) * 0.5f));
-                left += EmblemSize + EmblemGap;
+                emblem.anchoredPosition = new Vector2(left + emblemSize * 0.5f, -(top + (row - emblemSize) * 0.5f));
+                left += emblemSize + EmblemGap;
             }
             title.rectTransform.anchoredPosition = new Vector2(left + width * 0.5f, -(top + (row - height) * 0.5f));
             return row;
@@ -503,10 +506,32 @@ namespace BossRush
                 new Vector2(ContentWidth, LineHeight(fontSize)), TextAlignmentOptions.Center, color);
         }
 
+        /// <summary>多行说明段落：左对齐（居中的长句行首参差，读不出分条），其余同 <see cref="CreateBodyText"/>。</summary>
+        internal static TextMeshProUGUI CreateParagraphText(string name, Transform parent, string text, float fontSize,
+            Color color)
+        {
+            TextMeshProUGUI paragraph = CreateBodyText(name, parent, text, fontSize, color);
+            paragraph.alignment = TextAlignmentOptions.TopLeft;
+            return paragraph;
+        }
+
+        /// <summary>
+        /// 模态面板底色压到近不透明（owner 实测第 16 条复核 V16-1）：共享 Surface 的 α 0.92 在亮场景上能透出背后的地形，
+        /// 字压在「花」背景上。只改 alpha，色相仍取 Surface token。入场页、弃局页、recap 共用。
+        /// </summary>
+        internal static void MakeSurfaceOpaque(GameObject surface)
+        {
+            Image image = surface != null ? surface.GetComponent<Image>() : null;
+            if (image == null) return;
+            Color color = BossRushUIColors.Surface;
+            color.a = 0.98f;
+            image.color = color;
+        }
+
         /// <summary>
         /// 挂到父物体顶边中央、按内容量高（自动换行，不缩字、不省略）。返回高度，调用方据此推游标。
         /// </summary>
-        private static float PlaceText(TextMeshProUGUI text, float width, float x, float top)
+        internal static float PlaceText(TextMeshProUGUI text, float width, float x, float top)
         {
             RectTransform rect = text.rectTransform;
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 1f);
@@ -581,7 +606,7 @@ namespace BossRush
                 BossRushUIColors.TextPrimary);
             float nameHeight = PlaceCardText(nameText, innerWidth - badgeWidth - 8f, CardPadY);
             TextMeshProUGUI descText = ZombieModeUIHelper.CreateText("Desc", card.transform, def.GetDescription(),
-                15f, Vector2.zero, new Vector2(innerWidth, LineHeight(15f)), TextAlignmentOptions.TopLeft,
+                16f, Vector2.zero, new Vector2(innerWidth, LineHeight(16f)), TextAlignmentOptions.TopLeft,
                 BossRushUIColors.TextSecondary);
             float descHeight = PlaceCardText(descText, innerWidth, CardPadY + nameHeight + 4f);
             height = CardPadY * 2f + nameHeight + 4f + descHeight;
@@ -675,9 +700,10 @@ namespace BossRush
             _startButton.interactable = ready;
             if (_startLabel == null) return;
             _startLabel.text = ready ? L10n.T("立即迎战", "Fight Now") : L10n.T("先选一个契约", "Pick a Contract");
-            _startLabel.color = ready
-                ? BossRushUI.GetButtonTextColor(BossRushUIColors.Success)
-                : BossRushUIColors.TextSecondary;
+            // 标签色按按钮此刻的实际底色走 GetButtonTextColor（V16-2）：不可点时底色是 ColorBlock 的禁用色。
+            _startLabel.color = BossRushUI.GetButtonTextColor(ready
+                ? BossRushUIColors.AccentFill
+                : _startButton.colors.disabledColor);
         }
 
         #endregion
@@ -712,7 +738,7 @@ namespace BossRush
                 if (_modalPreview == null || _selectedCandidateIndex < 0
                     || _selectedCandidateIndex >= _modalPreview.contractCandidateIds.Length)
                 {
-                    host.ShowMessage(L10n.T("请先选择一个宿命契约。", "Choose a Fate Contract first."));
+                    host.ShowMessage(L10n.T("先挑一个宿命契约。", "Pick a Fate Contract first."));
                     return;
                 }
                 if (_modalPreview != null && _modalPreview.contractCandidateIds != null
@@ -755,7 +781,14 @@ namespace BossRush
             catch { }
             try
             {
-                if (_modalRoot != null) UnityEngine.Object.Destroy(_modalRoot);
+                if (_cancelKey != null) _cancelKey.Detach();
+            }
+            catch { /* 根已随场景销毁：订阅由 ModeGModalCancelKey.OnDestroy 退掉 */ }
+            _cancelKey = null;
+            try
+            {
+                // 淡出后销毁（UB-32）：输入租约已在上面先还掉，引用下面立刻置空，重开会新建根，动画不变成输入延迟。
+                if (_modalRoot != null) BossRushUIKit.PlayCloseAndDestroy(_modalRoot);
             }
             catch { }
             _modalRoot = null;
@@ -821,12 +854,22 @@ namespace BossRush
     internal sealed class ModeGAbandonPresenter : MonoBehaviour
     {
         private const float ModalWidth = 720f;
-        private const float ModalHeight = 380f;
+        /// <summary>建面板时的初始高度；排版完成后按内容收口（口径同入场确认页）。</summary>
+        private const float ModalInitialHeight = 320f;
+        private const float PadX = 36f;
+        private const float ContentWidth = ModalWidth - PadX * 2f;
+        private const float TopPad = 28f;
+        private const float EmblemSize = 48f;
+        private const float ButtonWidth = 240f;
+        private const float ButtonHeight = 52f;
+        private const float ButtonGap = 20f;
+        private const float BottomPad = 24f;
 
         private static ModeGAbandonPresenter _active;
 
         private GameObject _modalRoot;
         private ZombieModeUIHelper.ModalInputLease _inputLease;
+        private ModeGModalCancelKey _cancelKey;
         private ModeGRuntimeModule _module;
 
         /// <summary>确认页是否已打开（轮询侧防重入）。</summary>
@@ -877,53 +920,57 @@ namespace BossRush
 
         private bool OpenPage()
         {
-            GameObject root = new GameObject("ModeG_AbandonPage");
+            GameObject root = BossRushUI.CreateCanvasRoot("ModeG_AbandonPage", BossRushUILayers.ModeGEntry, true).gameObject;
             UnityEngine.Object.DontDestroyOnLoad(root);
             _modalRoot = root;
 
-            Canvas canvas = root.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = BossRushUILayers.ModeGEntry;
-            CanvasScaler scaler = root.AddComponent<CanvasScaler>();
-            ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
-            root.AddComponent<GraphicRaycaster>();
-
+            // 与入场确认页同一套样式（2026-09-23 审美审查 UB-18 / owner 实测第 16 条复核 V16-3）：
+            // 近不透明底、徽记 + 标题一行、从顶边往下按内容排、分隔线、次级「继续战斗」+ 危险「确认放弃」；
+            // 打开淡入、关闭淡出、ESC 等于「继续战斗」。旧版是一对平涂绿 / 红按钮，面板一帧弹出。
             GameObject surface = ZombieModeUIHelper.CreateModalSurface(
-                "ModeG_Abandon", root.transform, new Vector2(ModalWidth, ModalHeight),
-                ZombieModeUIHelper.DangerColor);
+                "ModeG_Abandon", root.transform, new Vector2(ModalWidth, ModalInitialHeight),
+                BossRushUIColors.DangerText);
+            ModeGInteractable.MakeSurfaceOpaque(surface);
             Transform st = surface.transform;
 
-            ZombieModeUIHelper.CreateText("Title", st,
-                L10n.T("放弃宿命回响挑战？", "Abandon the Fate Echo run?"),
-                26f, new Vector2(0f, 118f), new Vector2(ModalWidth - 80f, 44f),
-                TextAlignmentOptions.Center, ZombieModeUIHelper.TextPrimaryColor);
+            float cursor = TopPad;
+            cursor += ModeGInteractable.PlaceTitleRow(st, ModeGInteractable.CreateEmblem(st, EmblemSize), cursor,
+                L10n.T("放弃宿命回响挑战？", "Abandon the Fate Echo run?"), 28f, BossRushUIColors.TextPrimary,
+                ContentWidth, EmblemSize) + 14f;
 
             // §3.1 强制披露：放弃的全部代价一次讲清，不得只写「确认放弃」
-            ZombieModeUIHelper.CreateText("Disclosure", st,
+            cursor += ModeGInteractable.PlaceText(ModeGInteractable.CreateParagraphText("Disclosure", st,
                 L10n.T(
                     "放弃后本局进度作废：已消耗的船票与信物不返还，契约连胜清零。",
                     "Abandoning voids this run: the ticket and relic are not refunded, "
                     + "and your contract win streak resets."),
-                16f, new Vector2(0f, 40f), new Vector2(ModalWidth - 100f, 70f),
-                TextAlignmentOptions.Center, ZombieModeUIHelper.TextSecondaryColor);
+                16f, BossRushUIColors.TextSecondary), ContentWidth, 0f, cursor) + 12f;
 
+            GameObject divider = ZombieModeUIHelper.CreateSeparator("Divider", st,
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -(cursor + 4f)), 1f, BossRushUIColors.Divider);
+            RectTransform dividerRect = divider.GetComponent<RectTransform>();
+            dividerRect.sizeDelta = new Vector2(-PadX * 2f, dividerRect.sizeDelta.y);
+            cursor += 22f;
+
+            float buttonY = -(cursor + ButtonHeight * 0.5f);
+            float buttonX = (ButtonWidth + ButtonGap) * 0.5f;
             Button keepButton = ZombieModeUIHelper.CreateButton(
                 "Keep", st, L10n.T("继续战斗", "Keep Fighting"),
-                new Vector2(0.5f, 0.5f), new Vector2(-120f, -110f), new Vector2(220f, 56f),
-                ZombieModeUIHelper.SuccessColor, 20f, new Vector2(200f, 48f),
+                new Vector2(0.5f, 1f), new Vector2(-buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
+                BossRushUIColors.SurfaceRaised, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
                 Close, true);
-            ZombieModeUIHelper.ApplyButtonColors(keepButton,
-                ZombieModeUIHelper.SuccessColor, ZombieModeUIHelper.SuccessHoverColor,
-                ZombieModeUIHelper.DisabledColor);
+            BossRushUIKit.StyleSecondaryButton(keepButton);
 
-            Button abandonButton = ZombieModeUIHelper.CreateButton(
+            ZombieModeUIHelper.CreateButton(
                 "Abandon", st, L10n.T("确认放弃", "Abandon Run"),
-                new Vector2(0.5f, 0.5f), new Vector2(120f, -110f), new Vector2(220f, 56f),
-                ZombieModeUIHelper.DangerColor, 20f, new Vector2(200f, 48f),
+                new Vector2(0.5f, 1f), new Vector2(buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
+                BossRushUIColors.Danger, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
                 ConfirmAbandon, true);
-            ZombieModeUIHelper.ApplyButtonColors(abandonButton,
-                ZombieModeUIHelper.DangerColor, ZombieModeUIHelper.DangerHoverColor,
-                ZombieModeUIHelper.DisabledColor);
+            cursor += ButtonHeight + BottomPad;
+
+            surface.GetComponent<RectTransform>().sizeDelta = new Vector2(ModalWidth, Mathf.Ceil(cursor));
+            BossRushUI.PlayOpenAnimation(surface);
+            _cancelKey = ModeGModalCancelKey.Attach(root, Close);
 
             try
             {
@@ -968,7 +1015,11 @@ namespace BossRush
                 }
             }
             catch { /* 租约已被宿主回收：继续走完销毁，不得中断 */ }
-            try { if (_modalRoot != null) UnityEngine.Object.Destroy(_modalRoot); }
+            try { if (_cancelKey != null) _cancelKey.Detach(); }
+            catch { /* 根已销毁：订阅随 OnDestroy 退掉 */ }
+            _cancelKey = null;
+            // 淡出后销毁（UB-32）：租约已先还掉、引用立刻置空，淡出中的根不再吃点击也不再吃 ESC。
+            try { if (_modalRoot != null) BossRushUIKit.PlayCloseAndDestroy(_modalRoot); }
             catch { /* 面板已随场景销毁：置空即可 */ }
             _modalRoot = null;
             _module = null;
@@ -997,6 +1048,81 @@ namespace BossRush
             _modalRoot = null;
             _module = null;
             if (ReferenceEquals(_active, this)) _active = null;
+        }
+    }
+
+    /// <summary>
+    /// Mode G 模态页的 ESC / 手柄取消（2026-09-23 审美审查 UB-18 / UB-19）。
+    ///
+    /// 订官方 <c>UIInputManager.OnCancelEarly</c>，关页并 <c>Use()</c> 掉这次事件：官方
+    /// <c>UIInputManager.OnInputActionCancel</c> 在没人用掉事件、又没有官方 View 时会 <c>PauseMenu.Toggle()</c>——
+    /// 不用掉的话同一下 ESC 在关掉确认页之后接着打开暂停菜单。模态租约的 <c>InputManager.DisableInput</c>
+    /// 只挡角色输入，挡不住 UI 取消键，所以旧版在确认页上按 ESC 是直接开暂停菜单。
+    ///
+    /// 挂在模态根上；订阅幂等（私有布尔），关页开始淡出时调用方先 <see cref="Detach"/>，根销毁时 OnDestroy 兜底退订（AGENTS §4.6）。
+    /// 只收事件、没有 Update。
+    /// </summary>
+    internal sealed class ModeGModalCancelKey : MonoBehaviour
+    {
+        private Action _onCancel;
+        private bool _subscribed;
+
+        internal static ModeGModalCancelKey Attach(GameObject root, Action onCancel)
+        {
+            if (root == null || onCancel == null) return null;
+            ModeGModalCancelKey key = root.GetComponent<ModeGModalCancelKey>();
+            if (key == null) key = root.AddComponent<ModeGModalCancelKey>();
+            key._onCancel = onCancel;
+            key.Subscribe();
+            return key;
+        }
+
+        /// <summary>关页时调用：不再响应取消键（淡出中的根还会活 0.12 秒）。</summary>
+        internal void Detach()
+        {
+            _onCancel = null;
+            Unsubscribe();
+        }
+
+        private void Subscribe()
+        {
+            if (_subscribed) return;
+            try
+            {
+                global::UIInputManager.OnCancelEarly += HandleCancel;
+                _subscribed = true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 模态页订阅取消键失败（只能点按钮关闭）: " + e.Message);
+            }
+        }
+
+        private void Unsubscribe()
+        {
+            if (!_subscribed) return;
+            _subscribed = false;
+            try { global::UIInputManager.OnCancelEarly -= HandleCancel; }
+            catch (Exception e) { ModBehaviour.DevLog("[ModeG] [WARNING] 模态页退订取消键失败: " + e.Message); }
+        }
+
+        private void HandleCancel(global::UIInputEventData data)
+        {
+            Action onCancel = _onCancel;
+            if (onCancel == null || !isActiveAndEnabled) return;
+            // 正在淡出的页（已关、根还活 0.12 秒）不再吃 ESC：让这一下照常落到下一层（例如新开的页或暂停菜单）。
+            BossRushUICloseAnimation closing = GetComponent<BossRushUICloseAnimation>();
+            if (closing != null && closing.enabled) return;
+            if (data != null) data.Use();
+            Detach();
+            try { onCancel(); }
+            catch (Exception e) { ModBehaviour.DevLog("[ModeG] [WARNING] 模态页取消键处理失败: " + e.Message); }
+        }
+
+        private void OnDestroy()
+        {
+            _onCancel = null;
+            Unsubscribe();
         }
     }
 }

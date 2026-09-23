@@ -150,6 +150,9 @@ python tools/run_guards.py --filter OfficialCompileList
 - 面板、按钮、卡片底图走 `BossRushUI.ApplyPanelSkin`：卡片、分隔线、滚动滑块与细轨显式传 `BossRushUISkinPart`，`radius <= 3` 的细条程序化绘制（规格见 `docs/制作教程/BossRushUI_图集规格.md`）。深色面板要有边就调 `BossRushUI.ApplyPanelStroke`（描边色 `BossRushUIColors.Stroke`），或用 `ApplyFramedPanelSkin` 一次套上底图与描边——图集里烤进去的内描边会被深色 token 乘到看不见。
 - 按钮字色用 `BossRushUI.GetButtonTextColor(背景色)`，不写死；对比度按实际合成后的底色算，正文至少 4.5:1。游戏是 Linear 色彩空间，半透明在线性光里混合，复算按线性模型（`docs/contracts.md` §7.1），观感修复以实机截图取色为准。
 - 缓动只用 `BossRushUI.EaseOut`（位移）与 `BossRushUI.SmoothStep`（原地淡变），子元素错峰入场用 `BossRushUIEntranceAnimation`，不引入 DOTween 一类第三方依赖。走 unscaled 时间的表现层自带 `BossRushUI.IsGamePaused()` 门；常驻 HUD 跟随 `BossRushUI.IsOfficialHudHidden()`。
+- **质感层（2026-09-23，owner 验收「不要塑料感」）**：按钮一律经过 `ZombieModeUIHelper.ApplyButtonColors` / `SetButtonBaseColor`，面板与卡片一律经过 `ApplyPanelStroke`（或 `ApplyFramedPanelSkin`、`CreateCard`、`CreateModalSurface`），这样才拿得到共享层（`Common/UI/BossRushUIFeel.cs`）挂上的官方 `UI/hover`、`UI/click` 音效、按下回弹、外投影、顶边高光与描边置顶。手搓 `AddComponent<Button>()` 或裸 `Image` 当面板，等于绕开这一层。关闭用 `BossRushUIKit.PlayCloseAndDestroy`（先释放输入租约），手搓遮罩调 `BossRushUIKit.StyleBackdrop`。压在游戏世界上的 HUD 字用 `BossRushUIKit.ApplyWorldTextOutline`；`UI.Outline` / `UI.Shadow` 挂在 TMP 上无效。
+- **按钮配色口径**：主操作的整块填充用 `BossRushUIColors.AccentFill`，每屏最多一个；`Accent` 只做描边、强调竖条、焦点环、进度条、小字强调，不铺满整块按钮（owner 点名的「平涂薄荷绿」）；危险且不可逆用 `Danger`；其余是次级按钮（`BossRushUIKit.StyleSecondaryButton`）；`Success` 只表示「已完成 / 已达成」状态。富文本颜色用 token 预先转成的 hex，不写 `<color=red>` 一类纯色。
+- **程序化特效材质**一律用 `BossRushFxMaterials.Get(Alpha / Additive, 贴图)`（`Common/Effects/BossRushFxMaterials.cs`）。游戏里 `Shader.Find` 找不到 `Legacy Shaders/Particles/Additive`、`Particles/Additive`、`Particles/Alpha Blended`、`Mobile/Particles/*`、`Unlit/Color`、`Unlit/Transparent`，`Standard` 在 URP 下画不出来；各写一串回退链只会落到不发光的 `Sprites/Default` 或 alpha 失效的方片。
 - 字体用 `BossRushUI.ApplyGameFont` / `ZombieModeUIHelper.GetGameFont()`，新文本用 TMP（内置 Arial 渲染不了中文）；`CanvasScaler` 调 `ZombieModeUIHelper.ConfigureCanvasScaler`。
 - 玩家可见文本（含 `WikiContent/` 正文与随包数据表）**只能用 GBK 收录的符号**：官方字体是中文字体，★☆○●◎◇■□△▲※→←↑↓√Ⅰ① 一定有字形，Emoji、✓✗❄❌⚠、U+2212 减号、U+2022 圆点在游戏里是空白豆腐块（2026-09-19 实测）。判据与例外见 `tests/PlayerFacingGlyphGuard.py`；日志与只给人在编辑器里读的报告不受此限。
 - 能直接复用官方 prefab（`GameplayDataSettings.UIPrefabs.*`、克隆 `MapSelectionEntry` 等）就不用共享库重造。
@@ -157,7 +160,7 @@ python tools/run_guards.py --filter OfficialCompileList
   付费服务照主流商店口径（2026-09-14 拍板）：没有要做的不挂；钱不够、还在冷却照挂，按钮上写明价钱或还要等几秒。剧情前置没到、已经做完、纯说明性的占位项一律不挂，「还差什么」进正文。
 - 叙事走官方对话（`DialogueManager.ShowDialogueSequenceBilingual` / `ShowMultipleChoiceBilingual`，长文案一句一屏），图鉴条目走官方 `NoteIndex`（我们的存档是权威，官方图鉴只做双向镜像）。镜像会随官方存档写进 `NoteIndexData`，2026-09-14 拍板接受为 §10「写入官方存档键」的例外（`docs/contracts.md` §7.1）。自绘面板只在官方给不了的能力上保留，理由写进文件头。跨局、一次性的持久剧情可以在 owner 明确授权后接 `Duckov.Quests`；已授权范围：**天空岛跨局主线**（2026-09-16：Jeff 序章 590001 加岛上三条 590011–590013，给予者是岛上居民，用官方 enum 之外的整数 5901–5903）与**鸭王征程六章**（2026-09-22：590101–590106，给予者官方 Jeff=1）。任务表按子系统各一份（`SkyIslandOfficialQuestTable`、`CampaignQuestTable`），投影核心只有 `Utilities/OfficialQuests/` 一份（唯一实例、四个 Harmony 补丁只装一次，守卫 `OfficialQuestProjectionGuard`），两者都以各自的 Mod 存档为权威，官方 Quest 只做 UI / 事件投影，并在保存快照中过滤自定义 ID。按出击刷新的岛内委托不接跨局 Quest（教程见 `docs/制作教程/官方任务系统接入教程.md`）。
 
-守卫：`BossRushUISharedLibraryGuard`、`BossRushUISkinLoaderGuard`、`SkyIslandUiContrastGuard`、`SkyIslandOfficialApiReuseGuard`、`SkyIslandChoiceGateGuard`。
+守卫：`BossRushUISharedLibraryGuard`、`BossRushUISkinLoaderGuard`、`BossRushUIFeelGuard`、`SkyIslandUiContrastGuard`、`SkyIslandOfficialApiReuseGuard`、`SkyIslandChoiceGateGuard`。
 
 ### 4.15 新子系统的状态归属与宿主 partial 预算
 

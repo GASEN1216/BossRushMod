@@ -582,7 +582,7 @@ namespace BossRush
 
             Vector3 lossyScale = bossCharacter.transform.lossyScale;
             float maxAxisScale = Mathf.Max(Mathf.Abs(lossyScale.x), Mathf.Abs(lossyScale.z));
-            return Mathf.Max(1f, maxAxisScale);
+            return Mathf.Clamp(maxAxisScale, 1f, PhantomWitchConfig.ScytheSweepVisualScaleCap);
         }
 
         private bool IsEnemyReceiver(DamageReceiver receiver)

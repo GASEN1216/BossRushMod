@@ -12,8 +12,8 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_PeaceCharm";
         public const string DISPLAY_NAME_CN = "平安护身符";
         public const string DISPLAY_NAME_EN = "Peace Charm";
-        public const string DESCRIPTION_CN = "一枚平安护身符。也许挡不住子弹，但至少承着平安归来的心意。";
-        public const string DESCRIPTION_EN = "A peace charm. It may not stop bullets, but it carries a heartfelt wish for your safe return.";
+        public const string DESCRIPTION_CN = "平安符，放背包里就行。挡不住子弹，但伤重时偶尔能让你缓过来。";
+        public const string DESCRIPTION_EN = "A good-luck charm for your bag. Won't stop bullets, but now and then it pulls you through.";
         public const float TRIGGER_HEALTH_RATIO = 0.5f;
         public const float TRIGGER_CHANCE = 0.1f;
         public const string WARMTH_BUBBLE_TEXT_CN = "感受到一股暖意...";

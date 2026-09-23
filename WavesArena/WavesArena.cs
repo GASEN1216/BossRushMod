@@ -193,15 +193,15 @@ namespace BossRush
             if (!infiniteHellMode && !string.IsNullOrEmpty(nextWaveBossName))
             {
                 ShowBigBanner(L10n.T(
-                    "<color=red>" + nextWaveBossName + "</color> 将在 <color=yellow>" + secondsInt + "</color> 秒后抵达战场...",
-                    "<color=red>" + nextWaveBossName + "</color> arriving in <color=yellow>" + secondsInt + "</color> seconds..."
+                    RichDangerTag + nextWaveBossName + "</color> 将在 " + RichWarningTag + secondsInt + "</color> 秒后抵达战场...",
+                    RichDangerTag + nextWaveBossName + "</color> arriving in " + RichWarningTag + secondsInt + "</color> seconds..."
                 ));
             }
             else
             {
                 ShowBigBanner(L10n.T(
-                    "下一波将在 <color=yellow>" + secondsInt + "</color> 秒后开始...",
-                    "Next wave in <color=yellow>" + secondsInt + "</color> seconds..."
+                    "下一波将在 " + RichWarningTag + secondsInt + "</color> 秒后开始...",
+                    "Next wave in " + RichWarningTag + secondsInt + "</color> seconds..."
                 ));
             }
         }

@@ -6,7 +6,7 @@
 //   - 固定高度的多行 TMP_InputField，超长内容通过垂直滚动条浏览
 //   - 文本框聚焦高亮、固定提示文案、字数统计与状态提示
 //   - 匿名勾选默认关闭，发送成功后走原版 NotificationText 大横幅
-//   - 发送成功后 3 秒自动关闭，失败时保留输入内容供重试
+//   - 发送成功后停 0.6 秒（状态淡入 + 确认音）再淡出关闭并开始抽奖，失败时保留输入内容供重试
 // ============================================================================
 
 using System;
@@ -22,7 +22,7 @@ using UnityEngine.UI;
 
 namespace BossRush
 {
-    public class WishFountainView : View
+    public partial class WishFountainView : View
     {
         public static WishFountainView Instance { get; private set; }
 
@@ -41,14 +41,14 @@ namespace BossRush
         private TextMeshProUGUI cancelButtonText;
         private TextMeshProUGUI anonymousToggleLabelText;
         private Image inputContainerImage;
-        private Outline inputContainerOutline;
+        private Image inputContainerStroke;
         private Scrollbar inputScrollbar;
 
         private bool sending;
         private bool successDisplayed;
         private bool submittedThisSession;
         private bool hasExplicitStatus;
-        private Color statusColor = new Color(1f, 0.75f, 0.35f);
+        private Color statusColor = BossRushUIColors.WarningText;
         private Coroutine autoCloseCoroutine;
         private Coroutine danmakuWarmupCoroutine;
 
@@ -99,7 +99,6 @@ namespace BossRush
                 "WishFountainView",
                 typeof(RectTransform),
                 typeof(CanvasGroup),
-                typeof(Image),
                 typeof(FadeGroup),
                 typeof(CanvasGroupFade));
             root.transform.SetParent(host.transform, false);
@@ -108,9 +107,7 @@ namespace BossRush
             RectTransform rootRect = root.GetComponent<RectTransform>();
             StretchRect(rootRect);
 
-            Image overlay = root.GetComponent<Image>();
-            overlay.color = new Color(0f, 0f, 0f, 0.58f);
-            overlay.raycastTarget = true;
+            BossRushUI.CreateBackdrop(rootRect);   // 遮罩走 Backdrop token + 共享暗角（UD-17），挡点击
 
             FadeGroup fadeGroup = root.GetComponent<FadeGroup>();
             fadeGroup.manageGameObjectActive = true;
@@ -202,23 +199,20 @@ namespace BossRush
             CancelDanmakuFetch();
             cachedDanmakuContents = null;
             danmakuView = null;
+            DestroyFeelResources();
 
             base.OnDestroy();
         }
 
         public void ResetAndOpen()
         {
-            if (autoCloseCoroutine != null)
-            {
-                StopCoroutine(autoCloseCoroutine);
-                autoCloseCoroutine = null;
-            }
+            ReleaseSuccessBeatOnClose();   // 成功停顿中被重开：先把抽奖发出去，再清输入
 
             sending = false;
             successDisplayed = false;
             submittedThisSession = false;
             hasExplicitStatus = false;
-            statusColor = new Color(1f, 0.75f, 0.35f);
+            statusColor = BossRushUIColors.WarningText;
             cooldownStateInitialized = false;
             inputFocusStateInitialized = false;
             lastCooldownRemaining = -1;
@@ -275,11 +269,11 @@ namespace BossRush
 
             if (fadeGroup != null)
             {
-                fadeGroup.SkipHide();
+                fadeGroup.Hide();   // 淡出关闭（0.18 秒），弹幕层随根节点一起淡出
             }
 
             CancelDanmakuFetch();
-            HideDanmaku();
+            ReleaseSuccessBeatOnClose();
             MaybeShowCloseReminder();
 
             sending = false;
@@ -379,7 +373,7 @@ namespace BossRush
                 defaultFont = TMP_Settings.defaultFontAsset;
             }
 
-            GameObject panel = CreateUIObject("Panel", rootRect, typeof(Image), typeof(VerticalLayoutGroup), typeof(Shadow), typeof(ContentSizeFitter));
+            GameObject panel = CreateUIObject("Panel", rootRect, typeof(Image), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
             RectTransform panelRect = panel.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -392,12 +386,9 @@ namespace BossRush
             panelFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
 
             Image panelImage = panel.GetComponent<Image>();
+            // 投影由共享层给（外沿柔和暗晕），不再用 UI.Shadow 复制出一块 14px 硬边黑板（UD-18）
             BossRushUI.ApplyFramedPanelSkin(panelImage, 14, BossRushUISkinPart.Panel);
-            panelImage.color = new Color(0.07f, 0.1f, 0.17f, 0.98f);
-
-            Shadow panelShadow = panel.GetComponent<Shadow>();
-            panelShadow.effectColor = new Color(0f, 0f, 0f, 0.45f);
-            panelShadow.effectDistance = new Vector2(0f, -14f);
+            panelImage.color = BossRushUIColors.Surface;
 
             VerticalLayoutGroup panelLayout = panel.GetComponent<VerticalLayoutGroup>();
             panelLayout.padding = new RectOffset(32, 32, 24, 34);
@@ -407,12 +398,7 @@ namespace BossRush
             panelLayout.childForceExpandHeight = false;
             panelLayout.childForceExpandWidth = true;
 
-            GameObject accentLine = CreateUIObject("AccentLine", panelRect, typeof(Image));
-            RectTransform accentLineRect = accentLine.GetComponent<RectTransform>();
-            SetPreferredHeight(accentLineRect, 4f);
-            Image accentLineImage = accentLine.GetComponent<Image>();
-            accentLineImage.color = new Color(0.44f, 0.78f, 1f, 0.95f);
-            accentLineImage.raycastTarget = false;
+            AddTopTrace(panelRect);   // 顶边左段 Accent 细线，代替全宽 4px 亮天蓝条（UD-19）
 
             GameObject headerBlock = CreateUIObject("HeaderBlock", panelRect, typeof(VerticalLayoutGroup));
             RectTransform headerRect = headerBlock.GetComponent<RectTransform>();
@@ -423,20 +409,19 @@ namespace BossRush
             headerLayout.childForceExpandHeight = false;
             headerLayout.childForceExpandWidth = true;
 
-
             titleText = CreateText("Title", headerRect, defaultFont, 34, FontStyles.Bold, TextAlignmentOptions.Center);
             SetPreferredHeight(titleText.rectTransform, 38f);
 
             hintText = CreateText("Hint", headerRect, defaultFont, 18, FontStyles.Normal, TextAlignmentOptions.Center);
             hintText.enableWordWrapping = true;
-            hintText.color = new Color(0.74f, 0.8f, 0.9f, 0.95f);
+            hintText.color = BossRushUIColors.TextSecondary;
             SetPreferredHeight(hintText.rectTransform, 28f);
 
             GameObject contentCard = CreateUIObject("ContentCard", panelRect, typeof(Image), typeof(VerticalLayoutGroup));
             RectTransform contentCardRect = contentCard.GetComponent<RectTransform>();
             Image contentCardImage = contentCard.GetComponent<Image>();
             BossRushUI.ApplyFramedPanelSkin(contentCardImage, 10, BossRushUISkinPart.Card);
-            contentCardImage.color = new Color(0.09f, 0.13f, 0.22f, 0.98f);
+            contentCardImage.color = BossRushUIColors.SurfaceRaised;
             VerticalLayoutGroup contentCardLayout = contentCard.GetComponent<VerticalLayoutGroup>();
             contentCardLayout.padding = new RectOffset(20, 20, 16, 16);
             contentCardLayout.spacing = 12f;
@@ -458,7 +443,7 @@ namespace BossRush
 
             TextMeshProUGUI inputCaption = CreateText("InputCaption", inputHeaderRowRect, defaultFont, 16, FontStyles.Bold, TextAlignmentOptions.Left);
             inputCaption.text = L10n.T("心愿内容", "Wish Content");
-            inputCaption.color = new Color(0.8f, 0.86f, 0.95f, 0.95f);
+            inputCaption.color = BossRushUIColors.TextSecondary;
             SetPreferredWidth(inputCaption.rectTransform, 110f);
             SetPreferredHeight(inputCaption.rectTransform, 20f);
 
@@ -467,7 +452,7 @@ namespace BossRush
             inputHeaderSpacerElement.flexibleWidth = 1f;
 
             inputFocusHintText = CreateText("InputFocusHint", inputHeaderRowRect, defaultFont, 14, FontStyles.Normal, TextAlignmentOptions.Right);
-            inputFocusHintText.color = new Color(0.62f, 0.7f, 0.8f, 0.96f);
+            inputFocusHintText.color = BossRushUIColors.WarningText;
             SetPreferredWidth(inputFocusHintText.rectTransform, 250f);
             SetPreferredHeight(inputFocusHintText.rectTransform, 18f);
 
@@ -482,11 +467,9 @@ namespace BossRush
             RectTransform inputContainerRect = inputContainer.GetComponent<RectTransform>();
             StretchRect(inputContainerRect);
             inputContainerImage = inputContainer.GetComponent<Image>();
-            inputContainerImage.color = new Color(0.04f, 0.06f, 0.11f, 1f);
-            inputContainerOutline = inputContainer.AddComponent<Outline>();
-            inputContainerOutline.effectColor = new Color(0.16f, 0.24f, 0.34f, 0.95f);
-            inputContainerOutline.effectDistance = new Vector2(1f, -1f);
-            inputContainerOutline.useGraphicAlpha = false;
+            inputContainerImage.color = BossRushUIColors.Surface;
+            // 圆角卡片 + 独立描边环（焦点态换 Accent），代替 UI.Outline 叠四份网格的歪边（UD-19）
+            inputContainerStroke = BossRushUI.ApplyFramedPanelSkin(inputContainerImage, 8, BossRushUISkinPart.Card);
 
             GameObject inputViewport = CreateUIObject("Viewport", inputContainerRect, typeof(RectMask2D));
             RectTransform inputViewportRect = inputViewport.GetComponent<RectTransform>();
@@ -513,7 +496,7 @@ namespace BossRush
             placeholderText = placeholderGO.GetComponent<TextMeshProUGUI>();
             ConfigureTMPText(placeholderText, defaultFont, 18, TextAlignmentOptions.TopLeft);
             placeholderText.enableWordWrapping = true;
-            placeholderText.color = new Color(0.55f, 0.63f, 0.72f, 0.82f);
+            placeholderText.color = WithAlpha(BossRushUIColors.TextSecondary, 0.7f);
 
             inputField = inputContainer.AddComponent<TMP_InputField>();
             inputField.textViewport = inputViewportRect;
@@ -525,9 +508,9 @@ namespace BossRush
             inputField.scrollSensitivity = 20f;
             inputField.pointSize = 20f;
             inputField.customCaretColor = true;
-            inputField.caretColor = new Color(0.78f, 0.94f, 1f, 1f);
+            inputField.caretColor = BossRushUIColors.Accent;
             inputField.caretWidth = 3;
-            inputField.selectionColor = new Color(0.26f, 0.57f, 0.9f, 0.38f);
+            inputField.selectionColor = WithAlpha(BossRushUIColors.Accent, 0.35f);
             // 颜色过渡由 RefreshInputFieldVisualState() 手动控制，不使用 Unity 内置 ColorBlock
             inputField.transition = Selectable.Transition.None;
             inputField.targetGraphic = inputContainerImage;
@@ -541,7 +524,6 @@ namespace BossRush
             scrollbarRect.offsetMax = new Vector2(-8f, -10f);
 
             Image scrollbarTrackImage = scrollbarGO.GetComponent<Image>();
-            scrollbarTrackImage.color = new Color(0.11f, 0.16f, 0.23f, 0.95f);
 
             inputScrollbar = scrollbarGO.GetComponent<Scrollbar>();
             inputScrollbar.direction = Scrollbar.Direction.BottomToTop;
@@ -558,19 +540,10 @@ namespace BossRush
             RectTransform handleRect = handle.GetComponent<RectTransform>();
             StretchRect(handleRect);
             Image handleImage = handle.GetComponent<Image>();
-            handleImage.color = new Color(0.48f, 0.82f, 1f, 0.92f);
 
             inputScrollbar.targetGraphic = handleImage;
             inputScrollbar.handleRect = handleRect;
-
-            ColorBlock scrollbarColors = inputScrollbar.colors;
-            scrollbarColors.normalColor = handleImage.color;
-            scrollbarColors.highlightedColor = new Color(0.62f, 0.9f, 1f, 0.96f);
-            scrollbarColors.pressedColor = new Color(0.34f, 0.68f, 0.92f, 1f);
-            scrollbarColors.selectedColor = scrollbarColors.highlightedColor;
-            scrollbarColors.disabledColor = new Color(0.22f, 0.28f, 0.34f, 0.9f);
-            scrollbarColors.colorMultiplier = 1f;
-            inputScrollbar.colors = scrollbarColors;
+            StyleInputScrollbar(scrollbarTrackImage, handleImage, inputScrollbar);
 
             inputField.verticalScrollbar = inputScrollbar;
 
@@ -593,11 +566,11 @@ namespace BossRush
             SetPreferredWidth(countText.rectTransform, 170f);
             SetPreferredHeight(countText.rectTransform, 28f);
 
-            GameObject statusCard = CreateUIObject("StatusCard", contentCardRect, typeof(Image));
+            // 状态行：不再是又一层直角底色卡，只留文字 + 左侧状态色细竖条（UD-19）
+            GameObject statusCard = CreateUIObject("StatusCard", contentCardRect);
             RectTransform statusCardRect = statusCard.GetComponent<RectTransform>();
             SetPreferredHeight(statusCardRect, 48f);
-            Image statusCardImage = statusCard.GetComponent<Image>();
-            statusCardImage.color = new Color(0.12f, 0.15f, 0.23f, 0.95f);
+            statusRail = CreateStatusRail(statusCardRect);
 
             statusText = CreateText("StatusText", statusCardRect, defaultFont, 17, FontStyles.Normal, TextAlignmentOptions.Left);
             statusText.enableWordWrapping = true;
@@ -606,10 +579,9 @@ namespace BossRush
             statusText.rectTransform.offsetMin = new Vector2(14f, 8f);
             statusText.rectTransform.offsetMax = new Vector2(-14f, -8f);
 
-            GameObject actionBar = CreateUIObject("ActionBar", panelRect, typeof(Image), typeof(VerticalLayoutGroup));
+            // 操作栏：去掉全宽直角底色条，只用一条分隔线分区（UD-19）
+            GameObject actionBar = CreateUIObject("ActionBar", panelRect, typeof(VerticalLayoutGroup));
             RectTransform actionBarRect = actionBar.GetComponent<RectTransform>();
-            Image actionBarImage = actionBar.GetComponent<Image>();
-            actionBarImage.color = new Color(0.08f, 0.11f, 0.18f, 0.98f);
             VerticalLayoutGroup actionBarLayout = actionBar.GetComponent<VerticalLayoutGroup>();
             actionBarLayout.padding = new RectOffset(18, 18, 12, 10);
             actionBarLayout.spacing = 8f;
@@ -618,12 +590,8 @@ namespace BossRush
             actionBarLayout.childForceExpandHeight = false;
             actionBarLayout.childForceExpandWidth = true;
 
-            GameObject divider = CreateUIObject("Divider", actionBarRect, typeof(Image));
-            RectTransform dividerRect = divider.GetComponent<RectTransform>();
-            SetPreferredHeight(dividerRect, 2f);
-            Image dividerImage = divider.GetComponent<Image>();
-            dividerImage.color = new Color(0.26f, 0.44f, 0.64f, 0.9f);
-            dividerImage.raycastTarget = false;
+            GameObject divider = ZombieModeUIHelper.CreateSeparator("Divider", actionBarRect, Vector2.zero, Vector2.one, Vector2.zero, 2f, BossRushUIColors.Divider);
+            SetPreferredHeight(divider.GetComponent<RectTransform>(), 8f);
 
             GameObject buttonRow = CreateUIObject("ButtonRow", actionBarRect, typeof(HorizontalLayoutGroup));
             HorizontalLayoutGroup buttonLayout = buttonRow.GetComponent<HorizontalLayoutGroup>();
@@ -891,13 +859,13 @@ namespace BossRush
             string errorMsg;
             if (!WishFountainService.ValidateWishText(standardized, out errorMsg))
             {
-                SetStatus(errorMsg, new Color(1f, 0.45f, 0.45f), true);
+                SetStatus(errorMsg, BossRushUIColors.DangerText, true);
                 return;
             }
 
             sending = true;
             hasExplicitStatus = true;
-            SetStatus(L10n.T("正在将心愿送往星空…", "Sending your wish to the stars…"), new Color(0.9f, 0.9f, 0.95f), true);
+            SetStatus(L10n.T("正在将心愿送往星空…", "Sending your wish to the stars…"), BossRushUIColors.Accent, true);
             RefreshUIState();
 
             StartCoroutine(WishFountainService.SendWish(
@@ -908,16 +876,15 @@ namespace BossRush
                     sending = false;
                     successDisplayed = true;
                     submittedThisSession = true;
-                    SetStatus(L10n.T("心愿已被星空收纳", "Your wish has been received by the stars"), new Color(0.75f, 0.95f, 0.75f), true);
+                    SetStatus(L10n.T("心愿送出去了", "Wish sent"), BossRushUIColors.SuccessText, true);
                     RefreshUIState();
-                    Close();
-                    NotifyClosedAfterSuccessfulWish();
+                    BeginSuccessBeat();   // 停 0.6 秒让「送出去了」这一拍被看到，再淡出并开始抽奖（UD-21）
                 },
                 error =>
                 {
                     sending = false;
                     successDisplayed = false;
-                    SetStatus(error, new Color(1f, 0.45f, 0.45f), true);
+                    SetStatus(error, BossRushUIColors.DangerText, true);
                     RefreshUIState();
                     StartCoroutine(FocusInputFieldNextFrame());
                 }));
@@ -939,7 +906,7 @@ namespace BossRush
             {
                 hintText.text = L10n.T(
                     "许愿对抽奖有加成哦，另外有想要实现的功能也可以写下来，我可以看到~",
-                    "Feel free to write down any features you'd like to implement, and I'll see them~");
+                    "Wishing boosts your draw. Want a feature added? Write that too, I read these~");
             }
 
             if (placeholderText != null)
@@ -977,8 +944,8 @@ namespace BossRush
                     "已输入 " + charCount + " / " + WishFountainService.MAX_CHARS + " 字",
                     "Typed " + charCount + " / " + WishFountainService.MAX_CHARS + " chars");
                 countText.color = charCount < WishFountainService.MIN_CHARS
-                    ? new Color(1f, 0.55f, 0.55f)
-                    : new Color(0.85f, 0.85f, 0.88f);
+                    ? BossRushUIColors.DangerText
+                    : BossRushUIColors.TextSecondary;
             }
 
             bool inCooldown = WishFountainService.IsInCooldown();
@@ -1045,19 +1012,19 @@ namespace BossRush
                     int remain = WishFountainService.GetCooldownRemaining();
                     SetStatus(
                         L10n.T("请 " + remain + " 秒后再试", "Please wait " + remain + " seconds"),
-                        new Color(1f, 0.75f, 0.35f),
+                        BossRushUIColors.WarningText,
                         false);
                 }
                 else if (charCount > 0 && charCount < WishFountainService.MIN_CHARS)
                 {
                     SetStatus(
                         L10n.T("最少输入 " + WishFountainService.MIN_CHARS + " 个字符哦", "At least " + WishFountainService.MIN_CHARS + " characters required"),
-                        new Color(1f, 0.75f, 0.35f),
+                        BossRushUIColors.WarningText,
                         false);
                 }
                 else
                 {
-                    SetStatus(" ", new Color(0.8f, 0.8f, 0.85f), false);
+                    SetStatus(" ", BossRushUIColors.TextSecondary, false);
                 }
             }
 
@@ -1073,66 +1040,7 @@ namespace BossRush
 
         private void RefreshInputFieldVisualState()
         {
-            bool inputFocused = IsInputFieldFocused();
-
-            if (inputContainerImage != null)
-            {
-                if (successDisplayed)
-                {
-                    inputContainerImage.color = new Color(0.05f, 0.09f, 0.12f, 1f);
-                }
-                else if (sending)
-                {
-                    inputContainerImage.color = new Color(0.05f, 0.08f, 0.14f, 1f);
-                }
-                else if (inputFocused)
-                {
-                    inputContainerImage.color = new Color(0.08f, 0.12f, 0.21f, 1f);
-                }
-                else
-                {
-                    inputContainerImage.color = new Color(0.04f, 0.06f, 0.11f, 1f);
-                }
-            }
-
-            if (inputContainerOutline != null)
-            {
-                if (successDisplayed)
-                {
-                    inputContainerOutline.effectColor = new Color(0.38f, 0.74f, 0.6f, 0.95f);
-                    inputContainerOutline.effectDistance = new Vector2(2f, -2f);
-                }
-                else if (sending)
-                {
-                    inputContainerOutline.effectColor = new Color(0.35f, 0.62f, 0.87f, 0.92f);
-                    inputContainerOutline.effectDistance = new Vector2(2f, -2f);
-                }
-                else if (inputFocused)
-                {
-                    inputContainerOutline.effectColor = new Color(0.48f, 0.82f, 1f, 0.96f);
-                    inputContainerOutline.effectDistance = new Vector2(2f, -2f);
-                }
-                else
-                {
-                    inputContainerOutline.effectColor = new Color(0.16f, 0.24f, 0.34f, 0.95f);
-                    inputContainerOutline.effectDistance = new Vector2(1f, -1f);
-                }
-            }
-
-            if (placeholderText != null && !successDisplayed)
-            {
-                placeholderText.color = inputFocused
-                    ? new Color(0.72f, 0.83f, 0.95f, 0.88f)
-                    : new Color(0.55f, 0.63f, 0.72f, 0.82f);
-            }
-
-            if (inputFocusHintText != null)
-            {
-                inputFocusHintText.text = L10n.T(
-                    "请不要输入无效/垃圾内容哦~",
-                    "Please don't enter invalid or spam content~");
-                inputFocusHintText.color = new Color(0.9f, 0.82f, 0.58f, 0.98f);
-            }
+            ApplyInputVisualState(IsInputFieldFocused());   // 配色与描边环见 WishFountainUI_Feel.cs（UD-17 / UD-19）
         }
 
         private bool IsInputFieldFocused()
@@ -1152,7 +1060,6 @@ namespace BossRush
                 || (inputField.textViewport != null && current == inputField.textViewport.gameObject);
         }
 
-
         private void SetStatus(string text, Color color, bool explicitStatus)
         {
             hasExplicitStatus = explicitStatus;
@@ -1162,6 +1069,7 @@ namespace BossRush
                 statusText.text = text;
                 statusText.color = color;
             }
+            ApplyStatusRail(text, color);
         }
 
         private static void ConfigureFadeGroup(GameObject root, FadeGroup fadeGroup)
@@ -1245,17 +1153,6 @@ namespace BossRush
             bgRect.sizeDelta = new Vector2(24f, 24f);
 
             Image bgImage = background.GetComponent<Image>();
-            bgImage.color = new Color(0.11f, 0.16f, 0.25f, 1f);
-
-            GameObject checkmark = CreateUIObject("Checkmark", bgRect, typeof(TextMeshProUGUI));
-            RectTransform checkRect = checkmark.GetComponent<RectTransform>();
-            StretchRect(checkRect);
-            TextMeshProUGUI checkmarkText = checkmark.GetComponent<TextMeshProUGUI>();
-            ConfigureTMPText(checkmarkText, font, 18, TextAlignmentOptions.Center);
-            checkmarkText.fontStyle = FontStyles.Bold;
-            checkmarkText.text = "√";
-            checkmarkText.color = new Color(0.99f, 0.82f, 0.33f, 1f);
-            checkmarkText.raycastTarget = false;
 
             label = CreateText("Label", rootRect, font, 18, FontStyles.Normal, TextAlignmentOptions.Left);
             RectTransform labelRect = label.rectTransform;
@@ -1263,11 +1160,10 @@ namespace BossRush
             labelRect.anchorMax = new Vector2(1f, 1f);
             labelRect.offsetMin = new Vector2(38f, 0f);
             labelRect.offsetMax = Vector2.zero;
-            label.color = new Color(0.9f, 0.93f, 0.98f, 1f);
+            label.color = BossRushUIColors.TextPrimary;
 
             Toggle toggle = root.GetComponent<Toggle>();
-            toggle.targetGraphic = bgImage;
-            toggle.graphic = checkmarkText;
+            StyleAnonymousToggle(toggle, bgImage);   // 圆角框 + 三态色 + 程序化对勾 + 官方音效（UD-19 / UD-20）
             toggle.isOn = false;
             return toggle;
         }
@@ -1279,25 +1175,21 @@ namespace BossRush
             SetPreferredWidth(rect, width);
             SetPreferredHeight(rect, height);
 
-            Image image = root.GetComponent<Image>();
-            BossRushUI.ApplyPanelSkin(image, 6);
-            image.color = primary
-                ? new Color(0.22f, 0.53f, 0.76f, 1f)
-                : new Color(0.16f, 0.19f, 0.27f, 1f);
-
-            // 按钮态走共享实现（pressed 由 normal 推导），不再自己拼 ColorBlock。
+            BossRushUI.ApplyPanelSkin(root.GetComponent<Image>(), 8, BossRushUISkinPart.Button);
             Button button = root.GetComponent<Button>();
-            ZombieModeUIHelper.ApplyButtonColors(
-                button,
-                image.color,
-                primary ? new Color(0.28f, 0.61f, 0.86f, 1f) : new Color(0.22f, 0.26f, 0.35f, 1f),
-                new Color(0.11f, 0.13f, 0.17f, 0.9f));
-
             label = CreateText("Text", rect, font, 20, FontStyles.Bold, TextAlignmentOptions.Center);
             StretchRect(label.rectTransform);
-            label.color = primary
-                ? new Color(0.98f, 0.99f, 1f, 1f)
-                : new Color(0.91f, 0.93f, 0.99f, 1f);
+
+            // 全 Mod 按钮口径：主操作 AccentFill、其余次级；三态、音效、按下回弹、投影斜面都由共享层给，
+            // 标签色由 ApplyButtonColors 按底色算（只认名为 "Text" 的子物体，所以标签要先建）。
+            if (primary)
+            {
+                ZombieModeUIHelper.SetButtonBaseColor(button, BossRushUIColors.AccentFill);
+            }
+            else
+            {
+                BossRushUIKit.StyleSecondaryButton(button);
+            }
             return button;
         }
 
@@ -1318,7 +1210,7 @@ namespace BossRush
             }
             text.fontSize = fontSize;
             text.alignment = alignment;
-            text.color = new Color(0.95f, 0.95f, 0.97f, 1f);
+            text.color = BossRushUIColors.TextPrimary;
             text.text = string.Empty;
             text.raycastTarget = false;
         }

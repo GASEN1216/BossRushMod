@@ -162,7 +162,7 @@ namespace BossRush
                 {
                     if (campaignFinalBossAltar != null)
                     {
-                        UnityEngine.Object.Destroy(campaignFinalBossAltar);
+                        CampaignFinalBossFx.Dismiss(campaignFinalBossAltar);   // 0.5 秒缩没淡出，不阻塞开战
                         campaignFinalBossAltar = null;
                     }
                     return;
@@ -211,25 +211,14 @@ namespace BossRush
             return !IsAnyGameplayModeActiveForCampaign();
         }
 
-        /// <summary>造一块程序化召唤石：黑曜石基座 + 悬浮的绯红核心。</summary>
+        /// <summary>造一块程序化召唤石：黑曜石基座 + 悬浮的绯红核心（表现见 CampaignFinalBossFx）。</summary>
         private void CreateCampaignFinalBossAltar(Vector3 position)
         {
             try
             {
                 campaignFinalBossAltar = new GameObject("BossRushCampaignFinalBossAltar");
                 campaignFinalBossAltar.transform.position = position;
-
-                Material material = CampaignAssetCache.GetAltarMaterial();
-
-                CreateCampaignAltarPart(campaignFinalBossAltar, PrimitiveType.Cube, "Base",
-                    new Vector3(1.0f, 0.25f, 1.0f), new Vector3(0f, 0.12f, 0f),
-                    new Color(0.10f, 0.10f, 0.13f, 1f), material);
-                CreateCampaignAltarPart(campaignFinalBossAltar, PrimitiveType.Cube, "Pillar",
-                    new Vector3(0.34f, 0.85f, 0.34f), new Vector3(0f, 0.60f, 0f),
-                    new Color(0.16f, 0.15f, 0.19f, 1f), material);
-                CreateCampaignAltarPart(campaignFinalBossAltar, PrimitiveType.Sphere, "Core",
-                    new Vector3(0.34f, 0.34f, 0.34f), new Vector3(0f, 1.20f, 0f),
-                    CampaignTuning.FinalBossTint, material);
+                CampaignFinalBossFx.Build(campaignFinalBossAltar);
 
                 BoxCollider collider = campaignFinalBossAltar.AddComponent<BoxCollider>();
                 collider.isTrigger = true;
@@ -245,28 +234,6 @@ namespace BossRush
                 DevLog(CampaignTuning.LogPrefix + "[WARNING] 召唤石生成失败: " + e.Message);
                 if (campaignFinalBossAltar != null) UnityEngine.Object.Destroy(campaignFinalBossAltar);
                 campaignFinalBossAltar = null;
-            }
-        }
-
-        private void CreateCampaignAltarPart(
-            GameObject parent, PrimitiveType type, string name,
-            Vector3 scale, Vector3 localPos, Color color, Material material)
-        {
-            GameObject part = GameObject.CreatePrimitive(type);
-            part.name = name;
-            part.transform.SetParent(parent.transform, false);
-            part.transform.localPosition = localPos;
-            part.transform.localScale = scale;
-
-            // 装饰件的碰撞体会跟交互 trigger 打架，必须删掉
-            Collider partCollider = part.GetComponent<Collider>();
-            if (partCollider != null) UnityEngine.Object.Destroy(partCollider);
-
-            Renderer renderer = part.GetComponent<Renderer>();
-            if (renderer != null && material != null)
-            {
-                renderer.sharedMaterial = material;
-                CampaignAssetCache.SetRendererColor(renderer, color);
             }
         }
 
@@ -351,6 +318,7 @@ namespace BossRush
                 ShowMessage(L10n.T("冠军之影现身了……", "The Shadow of the Champion appears..."));
 
                 Vector3 position = ResolveCampaignFinalBossSpawnPosition();
+                CampaignFinalBossFx.PlaySummonBurst(position);   // 召唤爆发与生成并行，不改时序
 
                 // notifyBossRushOnFailure:false、isNonWaveSpawn:true —— 不读写标准竞技场的波次，
                 // 那会在没有波次的情况下推进它的状态机
@@ -387,7 +355,7 @@ namespace BossRush
                 {
                     campaignFinalBossInstance = boss;
                     CleanupCampaignFinalBoss(true);
-                    ShowMessage(L10n.T("决战未能开始，请稍后重试", "The showdown could not begin; try again"));
+                    ShowMessage(L10n.T("决战没能开打，等会儿再试", "The showdown didn't start. Try again."));
                     return;
                 }
 
@@ -446,19 +414,9 @@ namespace BossRush
             // 2) 体型：已由 SpawnPhantomWitch 的 extraModelScale 在碰撞器缓存之前应用，
             //    这里不再二次缩放（事后改 localScale 会让碰撞体与模型口径不一致）。
 
-            // 3) 染色：走 MaterialPropertyBlock，绝不碰 sharedMaterial（会污染同款所有敌人）
-            try
-            {
-                Renderer[] renderers = boss.GetComponentsInChildren<Renderer>(true);
-                for (int i = 0; i < renderers.Length; i++)
-                {
-                    CampaignAssetCache.SetRendererColor(renderers[i], CampaignTuning.FinalBossTint);
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战染色失败: " + e.Message);
-            }
+            // 3) 影的外观：_Tint 属性块乘冷红（不碰 sharedMaterial、不碰捏脸部件）+ 跟随的烟缕与符文环，
+            //    失败各自吞掉（CampaignFinalBossFx，VA-26）
+            CampaignFinalBossFx.ApplyShadowLook(boss);
 
             // 4) 变体名：生成流程已把 preset 克隆过一份，改它不会污染 Boss 池
             try
@@ -491,7 +449,7 @@ namespace BossRush
             try
             {
                 DevLog(CampaignTuning.LogPrefix + "冠军之影已被击败");
-                ShowMessage(L10n.T("冠军之影已被击败", "The Shadow of the Champion has fallen"));
+                ShowMessage(L10n.T("冠军之影倒下了", "The Shadow of the Champion is down"));
 
                 CampaignObjectiveTracker.ReportFinalBossKill();
                 BossRushAudioManager.Instance?.StopBossBGM(

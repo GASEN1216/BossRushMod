@@ -44,9 +44,11 @@ namespace BossRush
                     int seconds = Mathf.CeilToInt(waveCountdown);
                     if (seconds != lastWaveCountdownSeconds && seconds > 0)
                     {
+                        bool firstTick = lastWaveCountdownSeconds < 0;
                         lastWaveCountdownSeconds = seconds;
 
-                        if (seconds % 5 == 0)
+                        // 只在倒计时开始与剩 3 秒各推一条：旧版每 5 秒一条，一段 15 秒休整连推 3 条（审美审查 UB-07）
+                        if (firstTick || seconds == 3)
                         {
                             ShowNextWaveCountdownBanner(seconds);
                         }

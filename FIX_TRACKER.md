@@ -1,5 +1,67 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+## 2026-09-23 玩家文案去「人机感」打磨（SAFE / COMPAT，纯文本）
+
+**起因**：owner「优化 mod 剧情、UI、物品 / 装备描述的文字，不要有人机感」，并追加「Wiki 正文一起改」。
+
+**范围与规模**（只改字符串值；key、占位符、数字、专有名词、标题、链接、catalog.tsv 未动）：
+- 游戏内：剧情与对白（护士 / 叮当好感、捏脸 NPC、婚礼、天空岛居民 / 地点 / 信件 / 手记 / 头目、征程提示、宿命回响）约中 134 / 英 191 条；物品 / 装备 / UI（装备与物品 Desc、遗种巢、许愿台、日报、Mode E 物品）中 33 / 英 37 条。
+- Wiki：`WikiContent/zh|en` 的 boss / npc / mode / tips / start / map / easter / config 约 239 处，item / equipment / system 约 310 处，`wiki-site/hubs/` 各一份。跳过 `changelog__*`（历史记录）与 `mode__mode_h.md`（另一会话在改）；成就文案（Steam 登记）不改。
+- 逐条清单（文件:行号 | 原文 | 新文 | 原因）在本会话 scratchpad 的 `changes_A*.md` / `changes_B*.md`，未入库。
+
+**顺带按代码改正的 Wiki 数值 / 机制**：遗种巢远征 2/4/8 小时 → 10/30/60 分钟（`PetNestTuning.cs:180-187`）；词缀熔石叮当解锁 Lv.2 → Lv.10（`GoblinAffinityConfig.cs:805`）；噬魂挽歌 / 幽灵诅咒改为每层 -30%、叠满 -90%、不定身（`PhantomWitchAssetManager.cs:336`、`:362`）；雷神套装对比段改成普攻附带 + 内置冷却；阿稳扫箱令标准 BossRush 也可用（`ModeEFLootboxTracker.cs:84`）；许愿成功横幅已不存在；平安护身符「多一条命」改为实际机制；征程第 2 章是陈列加成；Mode E BEAR ×2.5 是阵营单位血量伤害；英文入门页的旧征程口径与建筑名。游戏内：逆鳞描述补上 50% 与 8 颗（`HealPercent` / `PrismaticBoltCount`），冷淬液锁的是属性不是部件，安神滴剂英文 all → most。
+
+**没改**：`LocalizationInjector.cs:840-848` 丧尸奖励同义反复（`ZombieModeRewardPlainTextGuard` 逐字钉住）；霜之哀伤「低语」（魔兽梗）。Wiki 两处自相矛盾未定：龙裔一阶段「每 10 发」爆炸范围（攻略页 1 m vs Boss 页 5 m 内 5 点火焰）、无间炼狱专属装备是否掉落（中英说法相反）。
+
+**Needs owner confirmation**：平安护身符新描述「伤重时偶尔能让你缓过来」点破了隐藏机制；许愿台「写个愿望投进去，有人看」；共用花心台词对叮当串味；护士 9 级 / 「手都是抖的」等由深情改嘴硬的几句；系统拒绝提示改口语。
+
+**验证**（L2，无 L3）：全量守卫 662 PASS / 0 NEW-FAIL；语法探针 PASS（语法通过，未正式编译：另一会话当时有未登记新文件且编译会自动部署）；执行回归 SkyIslandDialogue / Story / Interaction / Encounters / Loot / Delivery / Marriage、CampaignPlayability、RandomEventTempo / Failure、ModeGCombat、PermanentDuckNpcDialogue 全部 PASS；天空岛改过的居民台词用 `tools/sky_island_line_screens.py` 核过屏数不变；`npm --prefix wiki-site run build` 成功。实机只能看观感：进基地找护士 / 叮当送礼、看装备 tooltip、天空岛与居民对话，看有没有截断或串味。
+
+<!-- BEGIN AESTHETIC AUDIT 2026-09-23 -->
+
+## 2026-09-23 全 Mod UI / 交互 / 特效「塑料感」审查与修复（COMPAT / OPERATIONAL，少量 WIRE+）
+
+**起因**：owner「全面检查我们 mod 里的 UI 以及交互，确保符合审美，而不是塑料感，以及特效也是」，同时复核 20260922 人工实测 16 项。
+
+**审查**：8 个区域只读审查，约 280 条 finding（判据、逐条锚点与修法在本地 `docs/代码审查/2026-09-23-审美审查/`：`ui_A…E_findings.md`、`vfx_A/B_findings.md`、`verify16_findings.md`；各区修复报告 `fix_*_report.md`）。16 项独立复核：9 项已修、4 项部分修复（本轮补完，见下）、3 项只能实机判断。
+
+**共享层（主会话）**：
+- 新增 `Common/UI/BossRushUIFeel.cs`：按钮经 `ApplyButtonColors` 自动挂官方 `UI/hover` / `UI/click` 音效与按下回弹（常态零 Update）；面与卡片经 `ApplyPanelStroke` 自动加外投影与顶边高光，描边随层级变化置顶；`BossRushUIKit.PlayCloseAndDestroy`（关闭淡出）、`StyleSecondaryButton`、`StyleBackdrop`（遮罩暗角 + 淡入，整页重建不重播）、TMP 世界字描边材质。
+- 新 token `BossRushUIColors.AccentFill`（主按钮填充；Accent 不再整块平涂）；新层级 `BossRushUILayers.ScreenAmbience = -10`（血月暗角压在官方 HUD 之下）。
+- `PlayOpenAnimation` 改为 0.16 s SmoothStep 淡入 + 0.22 s EaseOut 从 0.94 放大；按下色统一 `GetPressedColor`；原地改色时鼠标在上落到悬停色；`CreateHighlightBar` 圆角。
+- 新增 `Common/Effects/BossRushFxMaterials.cs`：只用游戏里确认存在的 `Universal Render Pipeline/Particles/Unlit`（透明变体），兜底 Legacy Alpha Blended 以 `SetVector` 写中性 0.5 Tint。规则写进 AGENTS §4.14，守卫 `tests/BossRushUIFeelGuard.py`（10 个反向检查 + 磁盘反向验证）。
+
+**各区修复**（逐条表见各区报告；P1、P2 除明确延期项外全修）：Mode H 24 条（含复核 V6 七条）、Mode G/E/F 与波次提示 20 条、丧尸模式 35 条、遗种巢 / 征程 / 随机事件 / 阿稳寄存 29+3 条、集成面板 37+2 条、天空岛 UI 23 条、日报 7 条（重打 `production_icons`，14 个图标与吉祥物为 AI 插画）、特效 A 29 条、特效 B 21 条、幽灵女巫 10 条。
+
+**主会话补修**：
+- 复核第 2 项：基地建筑建预制体时把实体碰撞体参数写进 Player.log（`[BaseBuilding]`，正式构建也打）；遗种巢交互 trigger 2→2.6 m。报箱碰撞仍 UNVERIFIED，等 owner 按清单 R1 实测。
+- 复核第 15 项：菜地本趟开放时对在场售货机补挂种子（`BackMountainItems.TryInjectSeedsIntoLiveShops`）。
+- 幽灵女巫瞬移标记直接改 `sharedMaterials`（借来的霜之哀伤冰焰），会把玩家的冰焰与共享材质染紫：改走 MaterialPropertyBlock。
+- Wiki：保底措辞（连续 9 枚没出、第 10 枚必出）、炫彩 90 种（渐变有先后）、Mode G 中文「最后处决」、Mode H 打法标签。
+- 超 1200 行的文件按 §4.15 原样拆 partial：`SkyIslandHud_Layout.cs`、`SkyIslandStoryPresentation_Parts.cs`、`CourierPaidLootSweepDelivery.cs`，读它们的 6 个守卫与 2 个夹具同步读新文件。F3 `MODE_H_FULL_SEASON` 接受无报价时自动关窗的转会窗口。
+- `ModBehaviourInstanceClassificationGuard` 基线 410→404（Integration −6）；宿主 partial 预算 104499→103200（丧尸奖励面板迁出独立类）。
+
+**延期 / 需 owner 定**：UB-29（地图选择改 Harmony postfix，新增绑定不做）；UD-07（`CreateTMPText` 默认自动缩字不改，改默认会让大量窄框文本整串清空）；UD-43 叮当 / 羽织 / 阿稳立绘与 UA-27 随机事件 9–11 图标、UE-08 信鸽、UE-12 罗盘（都要出图 / 重打包）；UD-49 号角音效（无音频资源）；VB-06 女巫横扫视觉半径是判定 2 倍（owner 旧要求，守卫钉着）；怨灵拖斩刀光锁方向而判定跟随玩家（要么改玩法要么改守卫意图）；VB-19 焚皇戟特效池（纯性能）；遗种巢头顶名条显示血脉名（要改 preset nameKey，离线证不了安全）；异色实际约 1.2%（100 枚保底后）；Mode H 迷雾半径 50 m 未动；许愿揭晓后头顶气泡保留（确认到账）。
+
+**验证**（证据 L1 + L2，**没有 L3**）：
+- 全量守卫 662 PASS / 0 NEW-FAIL / 0 KNOWN-RED。
+- Windows 正式编译 `Build succeeded!`（1010 个源，无新警告）；`check_dll_identifiers --expect absent` PASS；DLL `842AEE45617B2C9AB5A85D199EF403DF86ECB1158B4ED3B9DF21DD5BB37216BC` 已部署并与 `Build/` 一致。
+- 执行回归 56/56 PASS（`AuditModeLifecycle`、`NpcAuditFixes` 两组写死 net10，本机临时改 net8 跑通后按字节还原 run.py）；本轮同步了 `SkyIslandInteraction`、`BackMountainLifecycle`、`ContentTransactions`、`ManualSeptemberReview`、`NpcAuditFixes` 五个夹具的抽取范围与替身。
+- `production_icons` 重打并部署（新 SHA-256 `230c07ce…62efe02`，旧包备份 `Build/resource-release-backups/20260923-094639-313/`），72 包发布校验 0 错误；作者工程 31 个未提交改动都是日报图。
+- owner 看图清单：`docs/testing/2026-09-23-UI与特效审美-看图清单.md`（R1–R8 + 共享层 S1–S8 + 各区条目）。
+
+**owner 授权拍板（2026-09-23 同日，「照着你的感觉去决定」）**：
+- VB-06 女巫横扫刀光：跟模型放大，但上限 1.35 倍判定半径（`PhantomWitchConfig.ScytheSweepVisualScaleCap`）；判定不变。理由：2 倍刀光让玩家读错危险区。守卫 `PhantomWitchScytheSweepScaleGuard` 补断言并反向验证。回退：常量改 `float.MaxValue`。
+- 怨灵拖斩：两道刀光改用出手瞬间的朝向，与两段伤害、扇形预警一致；蓄力轮廓仍按起手方向。判定一字未改。`PhantomWitchSpecCompletionGuard` 规格同步并反向验证。回退：刀光改回 `lockedForward`、守卫正则还原。
+- 异色实际约 1.2%（天然 0.4% + 100 枚保底）：保持，不改。
+- 叮当 / 羽织 / 阿稳对话立绘：不做（自定义模型，AI 立绘对不上模型比没有更出戏；官方对话框立绘为空时整块隐藏，不留空框）。随机事件 9–11 图标：做了，`tools/gen_codex_art.py` 同风格出图（网关 3 次、0 失败），登记 `production_icon_manifest.json`，IconsBuild `BUILD PASS sprites=346`，`production_icons` → `a75b0a30b86a865541ebf2232b67cb08b3a7cf5051da6e98ba1c534c517341dc`，72 包发布校验 0 错误并已部署。
+- 重编正式 DLL `648FAE0E48C662AD3AD51F935D91CF6B72AADD0DDC3B3A0AC491CD8B04F112C1` 已部署；662 守卫全绿。注意：这次编译用的是工作区当前内容，**包含**另一会话进行中的「去掉 ——」文案改动（只改字符串，编译通过）。
+
+**工作区提醒**：同一时段另一会话在做「去掉 ——」的文案整理（`DebugAndTools/SkyIsland/*` 十余个文件、`WikiContent/*` 五十余篇），不属本轮；本轮部署的 DLL 编于 10:33，不含那些 10:38 之后的改动。提交时按文件分开暂存。
+
+<!-- END AESTHETIC AUDIT 2026-09-23 -->
+
+
 <!-- BEGIN SYNTAX PROBE COMPILE LIST PARITY 2026-09-23 -->
 
 ## 2026-09-23 离线语法探针漏检编译清单文件（OPERATIONAL）

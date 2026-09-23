@@ -168,7 +168,7 @@ namespace BossRush
             get
             {
                 if (!IsCurrentSlot)
-                    return L10n.T("存档槽已改变，请重新进入群岛", "Save slot changed — re-enter the archipelago");
+                    return L10n.T("存档槽已改变，请重新进入群岛", "Save slot changed. Re-enter the archipelago");
                 if (store.HasWriteBarrier)
                     return L10n.T("群岛记录无法读取，已保护原存档；任务暂不可提交",
                         "Archipelago records are unreadable; the original save is protected and progress cannot be submitted");
@@ -546,10 +546,10 @@ namespace BossRush
                         ? L10n.T("听见钟声了，船头的名册也添了四页。归来的人亲手写的，去看看。",
                             "Heard the bell. Four new pages in the roster at the bow. Written by the people who came home.")
                         : weibaiAway
-                            ? L10n.T("航路任务找苇白接交；她没来岛上，就用风铃集委托板。要返航就回码头解系泊桩——记下的事，下趟接着算。",
-                            "Take and turn in route quests with Weibai; if she stayed home, use the Windchime Market board. To head home, use the mooring post — your progress keeps for next trip.")
-                            : L10n.T("沿桥去风铃集，找苇白。要返航就回码头解系泊桩——记下的事，下趟接着算。",
-                            "Follow the bridge to Windchime Market and find Weibai. To head home, come back to the mooring post — whatever you've written down keeps for next trip.")) +
+                            ? L10n.T("航路任务找苇白接交；她没来岛上，就用风铃集委托板。要返航就回码头解系泊桩，记下的事下趟接着算。",
+                            "Take and turn in route quests with Weibai; if she stayed home, use the Windchime Market board. To head home, use the mooring post, and your progress carries over.")
+                            : L10n.T("沿桥去风铃集，找苇白。要返航就回码头解系泊桩，记下的事下趟接着算。",
+                            "Follow the bridge to Windchime Market and find Weibai. To head home, come back to the mooring post, and your progress carries over.")) +
                         (SkyIslandLetters.Collected(data, "Letter_01")
                             ? L10n.T("\n阿潮的缆绳，我挂回最高那根桩上了。打结的手法还是老样子。",
                             "\nAchao's mooring line is back on the tallest post. Same old knots.")
@@ -584,7 +584,7 @@ namespace BossRush
                             : L10n.T("风标转顺了，根环也不呜呜响了。倒挂邮亭还吊着封旧信，别落下。",
                             "The beacon turns freely and the roots have stopped howling. There's still an old letter at the Upturned Post Hut."))
                         : L10n.T("根环那头就是风标，先把跟前的人清干净再动手。倒挂邮亭那封旧信，顺路取了。",
-                            "The beacon is past the root ring — clear whoever's standing there before you touch it. Pick up the old letter at the Upturned Post Hut on your way.");
+                            "The beacon is past the root ring, so clear whoever's standing there before you touch it. Pick up the old letter at the Upturned Post Hut on your way.");
         }
 
         private static string ZhelingLine(SkyIslandStoryData data)

@@ -24,8 +24,8 @@ Ice-element melee with an icy aura and a right-click **undead army summon**. Dro
 
 ## Tips
 
-- More stable than Halberd — trades combo burst for steady performance
-- Summons **split aggro** in Boss fights — huge survivability boost
+- Steadier than the Halberd: less combo burst, more consistent damage
+- Summons **split aggro** in Boss fights, which buys you a lot of breathing room
 - Ice damage + cold protection = great on snow maps and debuff-heavy scenarios
 - Compared to Soulreaper's Requiem: higher raw damage, less mobility
 

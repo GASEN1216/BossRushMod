@@ -5,12 +5,11 @@
 //   五把武器的运行时机制此前完全没有视听反馈——毒素叠满爆发、雷电蓄满释放、
 //   法杖召唤、能量盾正面吸收这四个关键瞬间屏幕上什么都不会发生。本文件补齐这一层。
 //
-//   为什么不复用 SetBonusVisuals：那边的 SpawnSetBurst / SpawnSetArc 是
-//   partial class ModBehaviour 的私有成员，静态的 XxxRuntime 调不到；
-//   而 ModBehaviourPartialBudgetGuard 的文件数已经顶格（204/204），
-//   不能再往宿主上加 partial。因此新武器的表现层独立成本类。
+//   表现层独立成本类（不往 ModBehaviour partial 上加）；2026-09-23 起冰霜 / 雷霆套装的
+//   SpawnSetBurst 也转调这里的爆发环，两边只维护一份实现。
 //
-//   配色直接取自各武器描述文案里的 color 标签，保证「描述里写的颜色」与「屏幕上看到的颜色」一致。
+//   配色取自各武器描述文案里的 color 标签（色相一致）；挥砍拖尾用的几种色 2026-09-23 按原版画风
+//   降了饱和（VA-09：#7CFC00 霓虹草绿再进 HDR 是最典型的廉价色），爆发环同用这一套。
 //
 // 生命周期（AGENTS.md 4.12）：
 //   电弧池惰性创建（只有雷电戒指真的释放过才会建），cleanup 时销毁；
@@ -62,17 +61,17 @@ namespace BossRush
     /// <summary>五把新武器的配色。取自各自描述文案里的 color 标签。</summary>
     internal static class NewWeaponPalette
     {
-        // 毒蛇匕首 #7CFC00 / #ADFF2F
-        public static readonly Color VenomCore = new Color(0.486f, 0.988f, 0f, 0.85f);
-        public static readonly Color VenomFade = new Color(0.678f, 1f, 0.184f, 0.35f);
+        // 毒蛇匕首：描述色 #7CFC00 / #ADFF2F 的色相，饱和度压到原版画风（霓虹草绿 → 毒液黄绿）
+        public static readonly Color VenomCore = new Color(0.62f, 0.90f, 0.35f, 0.85f);
+        public static readonly Color VenomFade = new Color(0.35f, 0.60f, 0.18f, 0.35f);
 
-        // 冰霜长矛 #4FC3F7 / #81D4FA
-        public static readonly Color FrostCore = new Color(0.310f, 0.765f, 0.969f, 0.85f);
-        public static readonly Color FrostFade = new Color(0.506f, 0.831f, 0.980f, 0.35f);
+        // 冰霜长矛：#4FC3F7 / #81D4FA 同色相，饱和度 -20%
+        public static readonly Color FrostCore = new Color(0.44f, 0.80f, 0.97f, 0.85f);
+        public static readonly Color FrostFade = new Color(0.60f, 0.86f, 0.98f, 0.35f);
 
-        // 召唤法杖 #BA68C8 / #CE93D8
-        public static readonly Color SoulCore = new Color(0.729f, 0.408f, 0.784f, 0.85f);
-        public static readonly Color SoulFade = new Color(0.808f, 0.576f, 0.847f, 0.35f);
+        // 召唤法杖：#BA68C8 / #CE93D8 同色相，饱和度 -20%
+        public static readonly Color SoulCore = new Color(0.74f, 0.48f, 0.78f, 0.85f);
+        public static readonly Color SoulFade = new Color(0.82f, 0.63f, 0.85f, 0.35f);
 
         // 能量盾 #64B5F6 / #90CAF9
         public static readonly Color ShieldCore = new Color(0.392f, 0.710f, 0.965f, 0.85f);
@@ -214,38 +213,54 @@ namespace BossRush
 
             NewWeaponSwingFx.ResetStaticCaches();
             BossRushProceduralSprites.ResetStaticCaches();
+            // 共享特效层（BossRushFxKit）的清理在 BossRushUI.ResetStaticCaches，与 BossRushFxMaterials 同一条卸载路径。
         }
     }
 
     /// <summary>
-    /// 一次性扩散光环。自带 Update 淡出并自毁，不依赖 ModBehaviour 的协程，
-    /// 因此静态的 XxxRuntime 也能直接用。
+    /// 一次性元素爆发：贴地空心光环（EaseOut 扩散、(1-t)^1.5 淡出、HDR 加色）+ 中心一闪的亮芯
+    /// + 可选粒子碎片 + 可选只在前半程衰减的点光。自带 Update 并自毁，不依赖 ModBehaviour 的协程，
+    /// 因此静态的 XxxRuntime 与套装都能直接用。
+    ///
+    /// 2026-09-23 审美修（VA-03 / VA-04 / VA-10）：
+    ///   - 旧版是 Sprites-Default 上的 LDR 纯色环，线性扩散线性淡出，推不到泛光也没有亮芯；
+    ///   - 旧碎片是 0.22×0.55 m 的实心椭圆精灵，竖着平移、不朝运动方向、不减速，俯视下读成一坨坨色斑。
+    ///     现在碎片交给 BossRushFxKit 的一次性粒子：拉伸公告板沿速度方向拉长，先快后慢、受一点重力；
+    ///   - 灯在 0.5×life 内衰减完，不再陪着环一起慢慢暗到最后。
     /// </summary>
     public class NewWeaponBurstFx : MonoBehaviour
     {
         private SpriteRenderer ringRenderer;
+        private SpriteRenderer coreRenderer;
         private Light ringLight;
         private float elapsed;
         private float lifeTime;
         private float startScale;
         private float endScale;
+        private float coreScale;
         private Color startColor;
         private float startIntensity;
 
         internal static void Play(
             Vector3 position, Color color, float radius, float life, int shardCount, bool withLight)
         {
-            Sprite sprite = BossRushProceduralSprites.GetCircleSprite();
-            if (sprite == null) return;
-
             Sprite ringSprite = BossRushProceduralSprites.GetRingSprite();
             if (ringSprite != null) SpawnRing(position, color, radius, life, ringSprite, withLight);
 
-            for (int i = 0; i < shardCount; i++)
+            if (shardCount > 0)
             {
-                float angle = (360f / shardCount) * i + UnityEngine.Random.Range(-15f, 15f);
-                Vector3 direction = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
-                SpawnShard(position, color, sprite, direction, radius * 2.2f, life * 0.8f);
+                // 碎片：数量按旧的「片数」放大一点（粒子很小，3 片读不出来），速度随半径走
+                BossRushFxBurst shards = BossRushFxKit.Sparks(color, Mathf.Clamp(shardCount * 2, 4, 14));
+                shards.Shape = BossRushParticleShape.Shard;
+                shards.SpeedMin = Mathf.Max(2.5f, radius * 1.8f);
+                shards.SpeedMax = Mathf.Max(4f, radius * 3f);
+                shards.LifeMin = Mathf.Clamp(life * 0.6f, 0.15f, 0.35f);
+                shards.LifeMax = Mathf.Clamp(life * 1.1f, 0.22f, 0.5f);
+                shards.SizeMin = 0.06f;
+                shards.SizeMax = 0.09f;
+                shards.Gravity = 0.5f;
+                shards.Upward = true;
+                BossRushFxKit.PlayBurst(position + Vector3.up * 0.5f, shards);
             }
         }
 
@@ -253,17 +268,39 @@ namespace BossRush
             Vector3 position, Color color, float radius, float life, Sprite sprite, bool withLight)
         {
             GameObject ring = new GameObject("NewWeaponBurst");
-            ring.transform.position = position + Vector3.up * 0.3f;
-            // 躺平贴地，与套装爆发环同款朝向
+            ring.transform.position = position + Vector3.up * 0.2f;
+            // 躺平贴地
             ring.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
 
-            float begin = Mathf.Max(0.2f, radius * 0.35f);
+            float begin = Mathf.Max(0.2f, radius * 0.25f);
             ring.transform.localScale = new Vector3(begin, begin, 1f);
 
             SpriteRenderer sr = ring.AddComponent<SpriteRenderer>();
             sr.sprite = sprite;
-            sr.color = color;
+            // 加色 + 亮度档：环带在泛光里发亮，而不是一圈 LDR 塑料色；材质不可用时保留默认 Sprites-Default
+            Material ringMaterial = BossRushFxKit.GetSpriteMaterial(sprite, BossRushFxBlend.Additive, BossRushFxKit.GainBright);
+            if (ringMaterial != null) sr.sharedMaterial = ringMaterial;
+            Color ringColor = new Color(color.r, color.g, color.b, Mathf.Clamp01(color.a) * 0.9f);
+            sr.color = ringColor;
             sr.sortingOrder = 100;
+
+            // 亮芯：中心一闪（前 35% 寿命内收掉），给爆发一个「源头」
+            SpriteRenderer core = null;
+            Sprite coreSprite = BossRushFxKit.GetSoftCircleSprite();
+            Material coreMaterial = coreSprite != null
+                ? BossRushFxKit.GetSpriteMaterial(coreSprite, BossRushFxBlend.Additive, BossRushFxKit.GainHot)
+                : null;
+            if (coreMaterial != null)
+            {
+                GameObject coreObject = new GameObject("Core");
+                coreObject.transform.SetParent(ring.transform, false);
+                core = coreObject.AddComponent<SpriteRenderer>();
+                core.sprite = coreSprite;
+                core.sharedMaterial = coreMaterial;
+                core.color = new Color(
+                    Mathf.Lerp(color.r, 1f, 0.55f), Mathf.Lerp(color.g, 1f, 0.55f), Mathf.Lerp(color.b, 1f, 0.55f), 0.8f);
+                core.sortingOrder = 101;
+            }
 
             Light light = null;
             if (withLight)
@@ -271,34 +308,27 @@ namespace BossRush
                 light = ring.AddComponent<Light>();
                 light.type = LightType.Point;
                 light.color = new Color(color.r, color.g, color.b);
-                light.intensity = 3.5f;
-                light.range = Mathf.Max(1f, radius * 1.5f);
+                light.intensity = 2.2f;
+                light.range = Mathf.Clamp(radius * 1.2f, 1f, 3.5f);
                 light.shadows = LightShadows.None;
             }
 
             NewWeaponBurstFx fx = ring.AddComponent<NewWeaponBurstFx>();
             fx.ringRenderer = sr;
+            fx.coreRenderer = core;
             fx.ringLight = light;
             fx.lifeTime = Mathf.Max(0.05f, life);
             fx.startScale = begin;
             fx.endScale = Mathf.Max(begin, radius * 2f);
-            fx.startColor = color;
+            // 亮芯在环本地空间里：环长大时芯按反比缩，世界尺寸从 0.9 m 左右收到 0
+            fx.coreScale = Mathf.Clamp(radius * 0.7f, 0.5f, 1.4f);
+            if (core != null)
+            {
+                float coreLocal = fx.coreScale / begin;
+                core.transform.localScale = new Vector3(coreLocal, coreLocal, 1f);
+            }
+            fx.startColor = ringColor;
             fx.startIntensity = light != null ? light.intensity : 0f;
-        }
-
-        private static void SpawnShard(Vector3 origin, Color color, Sprite sprite, Vector3 direction, float speed, float life)
-        {
-            GameObject shard = new GameObject("NewWeaponBurstShard");
-            shard.transform.position = origin + Vector3.up * 0.7f;
-            shard.transform.localScale = new Vector3(0.22f, 0.55f, 1f);
-
-            SpriteRenderer sr = shard.AddComponent<SpriteRenderer>();
-            sr.sprite = sprite;
-            sr.color = color;
-            sr.sortingOrder = 101;
-
-            NewWeaponBurstShardFx fx = shard.AddComponent<NewWeaponBurstShardFx>();
-            fx.Initialize(sr, direction * speed, life);
         }
 
         private void Update()
@@ -306,52 +336,29 @@ namespace BossRush
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / lifeTime);
 
-            float scale = Mathf.Lerp(startScale, endScale, t);
+            // 先快后慢地推开（与帧率无关：按已过时间取值，不做逐帧 Lerp 逼近）
+            float scale = Mathf.Lerp(startScale, endScale, BossRushUI.EaseOut(t));
             transform.localScale = new Vector3(scale, scale, 1f);
 
-            float fade = 1f - t;
+            // 环在扩散后半程就淡掉，不拖到最后一帧才一起消失
+            float fade = Mathf.Pow(1f - t, 1.5f);
             if (ringRenderer != null)
             {
                 ringRenderer.color = new Color(startColor.r, startColor.g, startColor.b, startColor.a * fade);
             }
+            if (coreRenderer != null)
+            {
+                float coreT = Mathf.Clamp01(t / 0.35f);
+                float coreWorld = coreScale * (1f - coreT * coreT);
+                float local = scale > 0.001f ? coreWorld / scale : 0f;
+                coreRenderer.transform.localScale = new Vector3(local, local, 1f);
+                Color c = coreRenderer.color;
+                coreRenderer.color = new Color(c.r, c.g, c.b, 0.8f * (1f - coreT));
+            }
             if (ringLight != null)
             {
-                ringLight.intensity = startIntensity * fade;
-            }
-
-            if (t >= 1f)
-            {
-                Destroy(gameObject);
-            }
-        }
-    }
-
-    /// <summary>爆发碎片：沿固定方向飞出并淡出，自毁。</summary>
-    public class NewWeaponBurstShardFx : MonoBehaviour
-    {
-        private SpriteRenderer shardRenderer;
-        private Vector3 velocity;
-        private float lifeTime;
-        private float elapsed;
-        private Color startColor;
-
-        internal void Initialize(SpriteRenderer sr, Vector3 shardVelocity, float life)
-        {
-            shardRenderer = sr;
-            velocity = shardVelocity;
-            lifeTime = Mathf.Max(0.05f, life);
-            startColor = sr != null ? sr.color : Color.white;
-        }
-
-        private void Update()
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / lifeTime);
-
-            transform.position += velocity * Time.deltaTime;
-            if (shardRenderer != null)
-            {
-                shardRenderer.color = new Color(startColor.r, startColor.g, startColor.b, startColor.a * (1f - t));
+                float lightT = Mathf.Clamp01(t * 2f);
+                ringLight.intensity = startIntensity * (1f - lightT) * (1f - lightT);
             }
 
             if (t >= 1f)

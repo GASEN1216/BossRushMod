@@ -38,8 +38,8 @@ See the Duck King Codex page.
 
 The material for rolling affixes onto gear. Spent when you pick "Affix Forging" at Dingdang.
 
-- **Source**: Dingdang's shop (unlocks at affinity **Lv.2**, up to 5 per restock); about **8%** from arena Bosses,
-  landing wherever that Boss's normal loot lands — the loot crate in standard arena and From Scratch,
+- **Source**: Dingdang's shop (unlocks at affinity **Lv.10**, up to 5 per restock); about **8%** from arena Bosses,
+  landing wherever that Boss's normal loot lands: the loot crate in standard arena and From Scratch,
   the ground in Infinite Hell, the body itself in Faction War and Blood Hunt
 - **Cost**: **1** stone per re-roll, **2** to lock a slot (unlocking is free)
 - **Stack**: up to 20
@@ -84,7 +84,7 @@ Entry key for Blood Hunt. Carried naked + ticket to trigger the mode.
 
 ## Fate Echo Relic
 
-The dedicated key for Fate Echo. It is designed for rematches rather than a one-way entry cost.
+The dedicated key for Fate Echo. Win wave 9 and you get one back, so you can go again.
 
 - **Source**: Base merchant / **Stock**: 5
 - **Price**: 20,000
@@ -120,7 +120,7 @@ See Sky Islands · Qinglan Archipelago.
 
 ## Qinglan Homecoming Badge / Windeater Core
 
-The Sky Islands' two keepsakes — one of each per save, sent straight to base storage when granted. **They only do something when carried in your pack on the islands**, and if you fall there they stay behind with the rest of your pack.
+The Sky Islands' two keepsakes, one of each per save, sent straight to base storage when granted. **They only do something when carried in your pack on the islands**, and if you fall there they stay behind with the rest of your pack.
 
 - **Qinglan Homecoming Badge**: granted when you ring the Homecoming Bell. Carried: Fuzhou's dock refit and Miantai's moss remedy cost **half** (the islanders know it); used on the islands: **pull the line back to Cloudrise Dock** (once per raid, not with enemies nearby, not consumed)
 - **Windeater Core**: granted when you defeat the Windeater. Carried: on night bridges and on the boardwalk before the storm, **a gale only counts as a breeze for you**; after the ending it is also the key for "Call the wind" on Windsong Boardwalk (burn a Qinglan Windcrystal for the Windeater's echo, once per raid; the core is not used up)
@@ -153,6 +153,6 @@ Materials for the Sky Islands' gathering spots, crafting stations and windcrysta
 - **Windcrystal Shard**: gathered from wind crystal clusters, and now and then from the deeper brass veins; charms, salves and compasses need them; five fuse into a whole **Qinglan Windcrystal** at Fuzhou's dock workbench once the Fallen Star Workshop's star lamp is lit. Boardwalk clusters yield 1 more once the Windeater is gone
 - **Stardust**: an occasional extra from wind crystal clusters from the boardwalk onward, more often at night (19:00–05:00) and at the overlook once the telescope is calibrated; Qinglan charms, cloudmoss veils and the Starfall Overlook lamp need it
 - **Qinglan Windcrystal**: **the wick of the seven windcrystal lamps**. Seven devices are each missing one, and each lamp is something a letter asked for; once lit, the night wind cannot reach you beside it and it burns on every later trip; with ten lights on the isles (the three hearths count as three) the nights stop blowing. Once two lamps are lit, the dock workbench also turns one into a pair of gnat zappers
-- Gathered materials go into your pack and drop at your feet if it is full — never to base storage; crafting and lighting lamps count only what is in your pack
+- Gathered materials go into your pack and drop at your feet if it is full, never to base storage; crafting and lighting lamps count only what is in your pack
 
 See "Gathering, crafting, the isles' lights and the night wind" on Sky Islands · Qinglan Archipelago.

@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using Duckov.UI;
 using Duckov.UI.Animations;
@@ -37,22 +38,29 @@ namespace BossRush
     {
         #region 纸张配色（局部，不进共享 token）
 
-        private static readonly Color PaperBase = new Color(0.91f, 0.87f, 0.78f, 0.99f);
+        // 2026-09-23 第五轮按参考图 docs/testing/image-9.png 取色：纸面与底图生成器的 PAPER 同值
+        // （底图缺席时的纯色兜底要和底图一个颜色），签到格是浅米色胶囊 / 深绿 / 暖黄，按钮是深金棕。
+        private static readonly Color PaperBase = new Color(0.925f, 0.89f, 0.82f, 0.99f);
         private static readonly Color PaperRaised = new Color(0.86f, 0.82f, 0.72f, 1f);
         private static readonly Color PaperInk = new Color(0.13f, 0.11f, 0.09f, 1f);
         private static readonly Color PaperInkSoft = new Color(0.34f, 0.30f, 0.25f, 1f);
-        private static readonly Color PaperRule = new Color(0.42f, 0.36f, 0.28f, 0.55f);
-        private static readonly Color CellEmpty = new Color(0.78f, 0.74f, 0.65f, 1f);
-        private static readonly Color CellSigned = new Color(0.28f, 0.38f, 0.23f, 1f);
+        private static readonly Color CellEmpty = new Color(0.89f, 0.86f, 0.80f, 1f);
+        private static readonly Color CellSigned = new Color(0.22f, 0.40f, 0.18f, 1f);
         private static readonly Color CellMilestone = new Color(0.86f, 0.70f, 0.34f, 1f);
         private static readonly Color CellMilestoneDone = new Color(0.45f, 0.35f, 0.12f, 1f);
         /// <summary>今天还没签时，下一格（今天要签的那一格）点亮成暖黄，参考图的「当日签到」。</summary>
         private static readonly Color CellToday = new Color(0.97f, 0.79f, 0.36f, 1f);
-        /// <summary>标题药丸上的字色。药丸底是深绿 / 深灰，字必须是浅色。</summary>
+        /// <summary>今日可签那一格呼吸到的最亮色（两端都走深字，对比度与 CellToday 同档）。</summary>
+        private static readonly Color CellTodayBright = new Color(1f, 0.87f, 0.52f, 1f);
+        /// <summary>标题缎带上的字色。缎带是墨绿 / 炭灰 / 暖棕，字必须是浅色（对比度由 DailyReportPresentationGuard 复算）。</summary>
         private static readonly Color PillInk = new Color(0.97f, 0.95f, 0.91f, 1f);
-        private static readonly Color ButtonIdle = new Color(0.69f, 0.52f, 0.19f, 1f);
-        private static readonly Color ButtonHover = new Color(0.78f, 0.61f, 0.26f, 1f);
-        private static readonly Color ButtonDisabled = new Color(0.55f, 0.49f, 0.38f, 1f);
+        /// <summary>签到按钮：深金棕底 + 白字（L 约 0.158，白字约 4.6:1）。旧的亮金底配白字只有约 3:1。</summary>
+        private static readonly Color ButtonIdle = new Color(0.53f, 0.415f, 0.215f, 1f);
+        private static readonly Color ButtonDisabled = new Color(0.47f, 0.42f, 0.34f, 1f);
+        /// <summary>签到按钮的暖金描边（参考图的按钮有一圈金边）。</summary>
+        private static readonly Color ButtonEdge = new Color(0.86f, 0.70f, 0.34f, 0.9f);
+        /// <summary>富文本里的次要墨色（标签、注脚）。预先转好，不每次刷新拼。</summary>
+        private static readonly string InkSoftHex = "#" + ColorUtility.ToHtmlStringRGB(PaperInkSoft);
 
         #endregion
 
@@ -63,6 +71,8 @@ namespace BossRush
         private const float PanelHeight = DailyReportLayoutTable.PanelHeight;
 
         private const int HostSortingOrder = BossRushUILayers.Panel;
+        /// <summary>今日可签格呼吸的半周期（秒）。</summary>
+        private const float TodayPulseHalfPeriod = 0.6f;
 
         #endregion
 
@@ -103,6 +113,10 @@ namespace BossRush
 
         private readonly List<Image> signInCells = new List<Image>();
         private readonly List<TextMeshProUGUI> signInCellLabels = new List<TextMeshProUGUI>();
+        /// <summary>今天还没签时要签的那一格（呼吸提示）；已签或没有时为 null。</summary>
+        private Image todayCell;
+        /// <summary>卸载路径上的关闭：跳过淡出直接隐藏，宿主马上就要销毁。</summary>
+        private bool closingForCleanup;
 
         #endregion
 
@@ -137,9 +151,16 @@ namespace BossRush
             RectTransform rootRect = root.GetComponent<RectTransform>();
             StretchRect(rootRect);
 
+            // 根节点的 Image 只负责拦点击（透明）；看得见的遮罩是下面那层，走共享的暗角遮罩。
             Image overlay = root.GetComponent<Image>();
-            overlay.color = BossRushUIColors.Backdrop;
+            overlay.color = Color.clear;
             overlay.raycastTarget = true;
+            GameObject backdropObj = ZombieModeUIHelper.CreateRect(
+                "Backdrop", root.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+            Image backdrop = backdropObj.AddComponent<Image>();
+            backdrop.color = BossRushUIColors.Backdrop;
+            backdrop.raycastTarget = false;
+            BossRushUIKit.StyleBackdrop(backdrop);
 
             FadeGroup fade = root.GetComponent<FadeGroup>();
             fade.manageGameObjectActive = true;
@@ -193,9 +214,9 @@ namespace BossRush
                 displayedMinutes = DailyReportService.GetRemainingPlayMinutes();
 
                 SetText(metaIssueText, L10n.T(
-                    "第 " + issue.IssueNumber + " 期\n今日为第 " + data.DayIndex + " 天 · 进度 "
+                    "第 " + issue.IssueNumber + " 期 · 今日为第 " + data.DayIndex + " 天\n本期进度 "
                         + displayedPercent + "%",
-                    "Issue " + issue.IssueNumber + "\nDay " + data.DayIndex + " · " + displayedPercent + "%"));
+                    "Issue " + issue.IssueNumber + " · Day " + data.DayIndex + "\nProgress " + displayedPercent + "%"));
 
                 SetText(metaDeadlineText, displayedMinutes < 0
                     ? L10n.T("日报时钟已停", "Daily clock stopped")
@@ -224,21 +245,36 @@ namespace BossRush
             }
         }
 
-        /// <summary>收益块：本日进账 + 当日进度（与报头的百分比同源）。</summary>
+        /// <summary>
+        /// 收益块三级字号：小号次要色标签 / 大号粗体数字（千分位）/ 小号注脚。
+        /// 参考图的核心是「一眼看到大数字」；字号用百分比，块放不下时 autoSize 整块等比缩（UA-06）。
+        /// </summary>
         private static string BuildIncomeBlock(DailyReportIssue issue, DailyReportData data)
         {
             long earned = data.Today != null ? data.Today.MoneyEarned : 0L;
             long spent = data.Today != null ? data.Today.MoneySpent : 0L;
-            return L10n.T("本日进账", "Today's income") + "\n<size=30><b>" + earned + "</b></size> "
-                + L10n.T("金", "cash")
-                + "  <size=17>(" + L10n.T("支出 ", "spent ") + spent + ")</size>";
+            return BuildValueBlock(L10n.T("本日进账", "Today's income"), earned,
+                L10n.T("支出 ", "Spent ") + FormatCash(spent));
         }
 
-        /// <summary>奖金块：今日悬赏奖金 + 结算时机。</summary>
+        /// <summary>奖金块：今日悬赏奖金 + 结算时机，与收益块同一套三级字号。</summary>
         private static string BuildBountyValueBlock(DailyReportIssue issue)
         {
-            return L10n.T("奖金", "Bounty") + "\n<size=30><b>" + issue.TodayBountyCash + "</b></size> "
-                + L10n.T("金（下期结算）", "cash (next issue)");
+            return BuildValueBlock(L10n.T("奖金", "Bounty"), issue.TodayBountyCash,
+                L10n.T("下期结算", "Paid next issue"));
+        }
+
+        private static string BuildValueBlock(string label, long value, string note)
+        {
+            return "<size=75%><color=" + InkSoftHex + ">" + label + "</color></size>\n"
+                + "<size=200%><b>" + FormatCash(value) + "</b></size><size=85%> " + L10n.T("金", "cash") + "</size>\n"
+                + "<size=70%><color=" + InkSoftHex + ">" + note + "</color></size>";
+        }
+
+        /// <summary>千分位；固定用不变区域，免得系统区域把分隔符换成点或空格。</summary>
+        private static string FormatCash(long value)
+        {
+            return value.ToString("N0", CultureInfo.InvariantCulture);
         }
 
         private static string BuildBountyBlock(DailyReportIssue issue)
@@ -263,6 +299,7 @@ namespace BossRush
         private void RefreshSignInGrid(DailyReportData data)
         {
             bool signedToday = DailyReportService.IsSignedToday;
+            todayCell = null;
             for (int i = 0; i < signInCells.Count; i++)
             {
                 int slot = i + 1;
@@ -286,6 +323,7 @@ namespace BossRush
                 else
                 {
                     cell.color = signed ? CellSigned : (isToday ? CellToday : CellEmpty);
+                    if (isToday) todayCell = cell;
                 }
 
                 if (label == null) continue;
@@ -349,6 +387,7 @@ namespace BossRush
         private void Update()
         {
             if (!open) return;
+            PulseTodayCell();
             if (displayedChinese == L10n.IsChinese
                 && (BossRushUI.IsGamePaused() || Time.unscaledTime < nextRefreshTime)) return;
             nextRefreshTime = Time.unscaledTime + 1f;
@@ -361,6 +400,26 @@ namespace BossRush
                 || displayedEarned != (data.Today != null ? data.Today.MoneyEarned : 0L)
                 || displayedSpent != (data.Today != null ? data.Today.MoneySpent : 0L)
                 || displayedMinutes != DailyReportService.GetRemainingPlayMinutes()) Refresh();
+        }
+
+        /// <summary>
+        /// 今日可签那一格在 CellToday 与 CellTodayBright 之间呼吸（1.2 秒一周期，SmoothStep 缓动），
+        /// 提示「今天还能签」。走 unscaled 时间，与帧率无关；暂停时不动。只改这一格的颜色。
+        /// </summary>
+        private void PulseTodayCell()
+        {
+            if (todayCell == null || BossRushUI.IsGamePaused()) return;
+            float wave = BossRushUI.SmoothStep(Mathf.PingPong(Time.unscaledTime / TodayPulseHalfPeriod, 1f));
+            todayCell.color = Color.Lerp(CellToday, CellTodayBright, wave);
+        }
+
+        /// <summary>签到成功：刚签的那一格从下方淡入落位，像盖了一个章（共享入场动画）。</summary>
+        private void PlaySignedStamp(DailyReportData data)
+        {
+            if (data == null) return;
+            int index = data.PeriodSignedCount - 1;
+            if (index < 0 || index >= signInCells.Count || signInCells[index] == null) return;
+            BossRushUIEntranceAnimation.Play(signInCells[index].gameObject, 0f, 0.28f, 10f);
         }
 
         private void FitPaper()
@@ -427,6 +486,7 @@ namespace BossRush
                 }
 
                 Refresh();
+                if (result.Outcome == DailyReportSignInOutcome.Success) PlaySignedStamp(DailyReportService.Data);
             }
             catch (Exception e)
             {
@@ -473,6 +533,7 @@ namespace BossRush
         {
             DailyReportView view = Instance;
             if (view == null) return;
+            view.closingForCleanup = true;
             try { view.Close(); }
             finally
             {
@@ -491,10 +552,16 @@ namespace BossRush
             if (fadeGroup != null) fadeGroup.Show();
         }
 
+        /// <summary>
+        /// 关闭与打开对称：走官方 FadeGroup 的 0.18 秒淡出（UA-08，旧版一帧消失）。
+        /// 卸载路径上宿主马上被销毁，不等淡出，直接隐藏。
+        /// </summary>
         protected override void OnClose()
         {
             base.OnClose();
-            if (fadeGroup != null) fadeGroup.SkipHide();
+            if (fadeGroup == null) return;
+            if (closingForCleanup) fadeGroup.SkipHide();
+            else fadeGroup.Hide();
         }
 
         private void HideImmediately()

@@ -1,5 +1,33 @@
 # CODE_REVIEW_FINDINGS.md — 已确认问题库
 
+<!-- BEGIN AESTHETIC AUDIT FINDINGS 2026-09-23 -->
+
+## 2026-09-23 UI / 交互 / 特效审美审查中确认的缺陷（均 Fixed / L1+L2，L3 待 owner）
+
+全部约 280 条审美 finding（观感、配色、版式、动效取舍）在本地 `docs/代码审查/2026-09-23-审美审查/`，流水见 `FIX_TRACKER.md` 同日「全 Mod UI / 交互 / 特效」一节。这里只登记**有确定根因、会让设计效果根本不出现或行为出错**的缺陷。
+
+| ID | 级别 | 问题与根因 | 位置 |
+| --- | --- | --- | --- |
+| CR-2026-09-23-018 | P1 | 幽灵女巫整套程序化材质首选 `Legacy Shaders/Particles/Additive` 等游戏里不存在的着色器（UnityPy 直读 resources.assets），线与面片落到 `Sprites/Default` 发不了光；粒子若先撞上龙王包里的 `Particles/Standard Unlit`，没开 `_ALPHABLEND_ON` 时 alpha 恒为 1，成了加色方片 | `Integration/PhantomWitch/*`；修：`Common/Effects/BossRushFxMaterials.cs` |
+| CR-2026-09-23-019 | P1 | `startSizeMultiplier` 在「两常数随机」模式下只改上限，0.1–0.2 m 的烟与星尘被拉到最大 2 m，噬魂挽歌每一刀冒紫色大雾团 | `PhantomWitchScytheSwingFx.cs` 等；守卫 `PhantomWitchScytheSwingParticleProfileGuard` 补运行时断言 |
+| CR-2026-09-23-020 | P1 | `Circle` 发射器没转 90°，诅咒领域立着 4.5 m 的星火拱门，魂雾 / 地雾 / 灵纱 / 龙皇铳地面区域是竖着的圆盘 | 女巫、龙王武器 |
+| CR-2026-09-23-021 | P2 | 共享粒子材质把 Legacy Alpha Blended 的 `_TintColor` 设成白（默认 0.5），片元 2×，所有使用方颜色与 alpha 翻倍（霜雾、飞行云、天空岛灶火烟成发光白团） | `Common/Effects/RingParticleEffect.cs` |
+| CR-2026-09-23-022 | P1 | Mode H 结算页 `Body`（「本场胜利 / 失利」）在有逐行内容时不渲染，而逐行内容恒有「耗时」一行：每场打完都看不到胜负 | `ModeH/ModeHUIPages.cs` |
+| CR-2026-09-23-023 | P2 | 通关奖励箱虚影改到透明队列，但箱子着色器只有 GBuffer pass，透明队列里根本不画：玩家只看到两盏大灯 | `LootAndRewards/VictoryRewardShadowCrateController.cs` |
+| CR-2026-09-23-024 | P2 | Mode F 放置预览用不支持透明的着色器，写的 0.4 alpha 不生效，出来是纯绿 / 纯红实心模型 | `ModeF/ModeFFortifications.cs` |
+| CR-2026-09-23-025 | P2 | `UnityEngine.UI.Outline` / `Shadow` 挂在 TextMeshProUGUI 上（TMP 自己 SetMesh，不走 IMeshModifier），雷达字、丧尸 HUD、弹幕以为有描边 / 投影，实际没有 | Mode F 雷达、丧尸 HUD、许愿弹幕；修：`BossRushUIKit.ApplyWorldTextOutline` |
+| CR-2026-09-23-026 | P2 | 面板描边是创建时的第一个子物体，之后加的全宽标题栏 / 页脚盖住上下框线（图鉴、成就页），成就页四角露出直角 | `Common/UI/BossRushUI.cs`；修：`BossRushStrokeOnTop` |
+| CR-2026-09-23-027 | P1 | 寄存「全部丢弃」是一行下划线文字，点一下直接删光全部寄存物品，没有确认 | `Integration/NPCs/Courier/StorageDepositService.cs`；守卫 `StorageDepositDiscardConfirmGuard` |
+| CR-2026-09-23-028 | P2 | 幽灵女巫瞬移标记给借来的霜之哀伤冰焰改色时直接写 `sharedMaterials`：玩家手里的冰焰（以及共用那份材质的特效）被染成紫色 | `PhantomWitchVfxRedesign.cs`（`RetintTeleportMarkerAura`） |
+| CR-2026-09-23-029 | P3 | 每次回基地弹一条只有中文的「BossRush 挑战已就绪！」，竞技场分支还把 GameObject 名念给玩家 | `UIAndSigns/UIAndSigns.cs` |
+| CR-2026-09-23-030 | P3 | 共享按钮原地改色（页签、拍铃）时即时写常态色，鼠标还停在按钮上也丢了悬停色 | `ZombieMode/ZombieModeUIHelper.cs` |
+| CR-2026-09-23-031 | P3 | 菜地在本趟基地里刚开放时，售货机的 Awake 注入早已跑过：当趟没有种子，提示却叫玩家去买 | `Integration/BackMountain/BackMountainItems.cs` |
+
+报箱缺碰撞（CR-2026-09-23-006 的后半）仍 UNVERIFIED：离线核对代码、层、尺寸与许愿台等价；本轮加了 `[BaseBuilding]` 碰撞体参数日志，等 owner 按清单 R1 实测区分「Default 层不挡人」与「报箱特有问题」。
+
+<!-- END AESTHETIC AUDIT FINDINGS 2026-09-23 -->
+
+
 <!-- BEGIN MANUAL 16 FINDINGS 2026-09-23 -->
 
 ## 2026-09-23 人工实测 16 项中确认的缺陷（均 Fixed / L1+L2，L3 待 owner）

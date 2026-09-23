@@ -30,7 +30,11 @@ namespace BossRush
         #region 卡片布局常量
 
         private const float CardPortraitSize = 124f;
-        private const float CardTextHeight = 18f;
+        /// <summary>
+        /// 统计行框高。统计行关了自动缩字（一列卡片里字号不能忽大忽小），单行框高按 字号×1.45+4 给足：
+        /// 15 号 ≈ 25.75，取 26（旧值 18 配 12–13 号字，最后一行离卡片底边只剩 1px，审美审查 UD-31）。
+        /// </summary>
+        private const float CardTextHeight = 26f;
         private const float DetailPanelWidth = 520f;
         private const float DetailPanelHeight = 650f;
         private const float DetailPortraitSize = 180f;
@@ -190,11 +194,13 @@ namespace BossRush
                 CardPortraitSize);
 
             // 名字：锁定态也照常显示，"我还差谁"本身就是图鉴要给的信息
+            // 字号梯度（审美审查 UD-31）：名字 17（长名最小缩到 14）、击杀 15、最快 14。
+            // 旧值 15 / 13 / 12 在 1080p 下要凑近屏幕才看得清。卡片高随之从 210 加到 236（CodexTuning.CardHeight）。
             TextMeshProUGUI nameText = ZombieModeUIHelper.CreateText(
                 "Name",
                 card.transform,
                 displayName,
-                15f,
+                17f,
                 new Vector2(0f, 1f),
                 new Vector2(1f, 1f),
                 new Vector2(0f, -(CardPortraitSize + 27f)),
@@ -203,8 +209,8 @@ namespace BossRush
                 locked ? BossRushUIColors.TextSecondary : BossRushUIColors.TextPrimary);
             nameText.fontStyle = locked ? FontStyles.Normal : FontStyles.Bold;
             nameText.enableAutoSizing = true;
-            nameText.fontSizeMin = 12f;
-            nameText.fontSizeMax = 15f;
+            nameText.fontSizeMin = 14f;
+            nameText.fontSizeMax = 17f;
             nameText.overflowMode = TextOverflowModes.Ellipsis;
             nameText.raycastTarget = false;
 
@@ -215,13 +221,14 @@ namespace BossRush
                 locked
                     ? L10n.T("未记录", "Unrecorded")
                     : L10n.T("击杀 ", "Kills ") + entry.Kills.ToString(),
-                13f,
+                15f,
                 new Vector2(0f, 1f),
                 new Vector2(1f, 1f),
-                new Vector2(0f, -181f),
+                new Vector2(0f, -183f),
                 new Vector2(-8f, CardTextHeight),
                 TextAlignmentOptions.Center,
                 locked ? BossRushUIColors.TextSecondary : BossRushUIColors.Accent);
+            killsText.enableAutoSizing = false;
             killsText.raycastTarget = false;
 
             TextMeshProUGUI fastestText = ZombieModeUIHelper.CreateText(
@@ -230,13 +237,14 @@ namespace BossRush
                 locked
                     ? "—"
                     : L10n.T("最快 ", "Best ") + FormatFastest(entry.FastestKillSeconds),
-                12f,
+                14f,
                 new Vector2(0f, 1f),
                 new Vector2(1f, 1f),
-                new Vector2(0f, -200f),
+                new Vector2(0f, -210f),
                 new Vector2(-8f, CardTextHeight),
                 TextAlignmentOptions.Center,
                 BossRushUIColors.TextSecondary);
+            fastestText.enableAutoSizing = false;
             fastestText.raycastTarget = false;
 
             return card;
@@ -275,23 +283,40 @@ namespace BossRush
 
             // 第三级占位：名字首字 + 圆底。官方 characterIconType == none 时
             // GetCharacterIcon() 返回 null，这一级必须实装，否则出现空白卡。
+            // 真正的圆（审美审查 UD-33）：旧写法是 124px 方块配 32px 圆角的九宫格，看起来像头像加载失败。
+            // 半径 32 的圆角图本身就是 66px 见方的圆（中间只有 2px 直边），按 Simple + 保持宽高比铺满正方形即是圆盘；
+            // 同尺寸的描边环叠一圈 Stroke，深色卡片上也分得出轮廓。
             Image badge = holder.AddComponent<Image>();
             badge.sprite = BossRushUI.GetRoundedSprite(32);
-            badge.type = Image.Type.Sliced;
-            badge.color = locked ? BossRushUIColors.Disabled : BossRushUIColors.Header;
+            badge.type = Image.Type.Simple;
+            badge.preserveAspect = true;
+            badge.color = locked ? BossRushUIColors.Surface : BossRushUIColors.Header;
             badge.raycastTarget = false;
 
+            GameObject ring = ZombieModeUIHelper.CreateRect(
+                "Ring", holder.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+            Image ringImage = ring.AddComponent<Image>();
+            ringImage.sprite = BossRushUI.GetStrokeSprite(32);
+            ringImage.type = Image.Type.Simple;
+            ringImage.preserveAspect = true;
+            Color ringColor = BossRushUIColors.Stroke;
+            ringColor.a *= locked ? 0.35f : 0.6f;
+            ringImage.color = ringColor;
+            ringImage.raycastTarget = false;
+
+            Color initialColor = BossRushUIColors.TextSecondary;
+            if (locked) initialColor.a = 0.35f;   // 锁定态仍是「剪影」：看得出有个字，但不抢眼
             TextMeshProUGUI initial = ZombieModeUIHelper.CreateText(
                 "Initial",
                 holder.transform,
                 ResolveInitial(displayName),
-                size * 0.42f,
+                size * 0.36f,
                 Vector2.zero,
                 Vector2.one,
                 Vector2.zero,
                 Vector2.zero,
                 TextAlignmentOptions.Center,
-                locked ? BossRushUIColors.Surface : BossRushUIColors.Accent);
+                initialColor);
             initial.fontStyle = FontStyles.Bold;
             initial.raycastTarget = false;
         }
@@ -368,7 +393,7 @@ namespace BossRush
                     "DetailName",
                     surface.transform,
                     displayName,
-                    24f,
+                    28f,
                     new Vector2(0f, 1f),
                     new Vector2(1f, 1f),
                     new Vector2(0f, -(DetailPortraitSize + 56f)),
@@ -377,8 +402,8 @@ namespace BossRush
                     BossRushUIColors.TextPrimary);
                 title.fontStyle = FontStyles.Bold;
                 title.enableAutoSizing = true;
-                title.fontSizeMin = 16f;
-                title.fontSizeMax = 24f;
+                title.fontSizeMin = 18f;
+                title.fontSizeMax = 28f;
                 title.overflowMode = TextOverflowModes.Ellipsis;
 
                 ZombieModeUIHelper.CreateSeparator(
@@ -408,16 +433,13 @@ namespace BossRush
                     new Vector2(0.5f, 0f),
                     new Vector2(0f, 30f),
                     new Vector2(140f, 38f),
-                    BossRushUIColors.Header,
+                    BossRushUIColors.SurfaceRaised,
                     16f,
                     new Vector2(140f, 38f),
                     HideDetail,
                     true);
-                ZombieModeUIHelper.ApplyButtonColors(
-                    closeButton,
-                    BossRushUIColors.Header,
-                    Color.Lerp(BossRushUIColors.Header, BossRushUIColors.Accent, 0.28f),
-                    BossRushUIColors.Disabled);
+                // 「关闭」不是主操作：走全 Mod 的次级按钮口径（SurfaceRaised + Stroke 描边）
+                BossRushUIKit.StyleSecondaryButton(closeButton);
 
                 BossRushUI.PlayOpenAnimation(surface);
             }
@@ -437,7 +459,17 @@ namespace BossRush
             _detailCanvasRoot = null;
             try
             {
-                Destroy(root);
+                // 引用先置空（IsDetailOpen 立刻为假、Esc 下一下就关主面板），再 0.12 秒淡出后销毁；
+                // 重新打开详情会新建一个 Canvas，不复用正在淡出的这个（审美审查 UD-03）。
+                // 销毁路径上直接 Destroy：这时起淡出组件也会随宿主一起被销毁，不如一步到位。
+                if (_destroying)
+                {
+                    Destroy(root);
+                }
+                else
+                {
+                    BossRushUIKit.PlayCloseAndDestroy(root);
+                }
             }
             catch (Exception)
             {
@@ -452,7 +484,7 @@ namespace BossRush
                 "Row_" + label,
                 parent,
                 label,
-                15f,
+                16f,
                 new Vector2(0f, 1f),
                 new Vector2(0.5f, 1f),
                 new Vector2(20f, -topOffset),
@@ -465,7 +497,7 @@ namespace BossRush
                 "Value_" + label,
                 parent,
                 value,
-                15f,
+                16f,
                 new Vector2(0.5f, 1f),
                 new Vector2(1f, 1f),
                 new Vector2(-20f, -topOffset),

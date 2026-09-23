@@ -137,8 +137,8 @@ namespace BossRush
         {
             get
             {
-                return L10n.T("十盏灯都亮了。蛙鸣池边那个等灯的孩子，终于数到了十——从今夜起，岛上的夜里不再起风，只有桥上还留着一点。",
-                    "All ten lights are burning. The child waiting by Frogsong Pool has finally counted to ten — from tonight the islands' nights are still, and only the bridges keep a little wind.");
+                return L10n.T("十盏灯都亮了。蛙鸣池边那个等灯的孩子，终于数到了十。从今夜起，岛上夜里不再起风，只有桥上还留着一点。",
+                    "All ten lights are burning. The child waiting by Frogsong Pool has finally counted to ten. From tonight the isles are calm after dark; only the bridges keep a little wind.");
             }
         }
 
@@ -165,7 +165,7 @@ namespace BossRush
             }
             text.Append("\n\n").Append(L10n.T(
                 "灶火与风晶灯旁暖和，什么风都挡得住。残星工坊的星灯亮起之后，浮舟的渡口工台能把五片风晶碎片熔成一块晴岚风晶，那就是灯芯。十盏灯都亮起来，岛上的夜里就不再起风（桥上照旧有风）。",
-                "It is warm beside a hearth or a windcrystal lamp, and no wind gets through. Once the Fallen Star Workshop's star lamp is lit, Fuzhou's dock workbench can fuse five windcrystal shards into a Qinglan Windcrystal — that is the wick. With all ten lights burning, the islands' nights stop blowing (the bridges keep their wind)."));
+                "It is warm beside a hearth or a windcrystal lamp, and no wind gets through. Once the Fallen Star Workshop's star lamp is lit, Fuzhou's dock workbench can fuse five windcrystal shards into a Qinglan Windcrystal; that's the wick. With all ten lights burning, the islands' nights stop blowing (the bridges keep their wind)."));
             if (AllLit(data)) text.Append("\n\n").Append(Capstone);
             return text.ToString();
         }
@@ -176,8 +176,8 @@ namespace BossRush
             return new[]
             {
                 Lamp("Light_E", "Search_E", "E", "Letter_09",
-                    "栈道栏杆最后一道记号旁亮起了灯。守望人说得对：风循着光来，光也引人回去。",
-                    "A lamp comes up beside the last notch on the boardwalk rail. The watch was right: the wind follows the light, but the light leads people home.",
+                    "栈道栏杆最后一道记号旁亮起了灯。守望人说得对：风顺着光来，人也顺着光回家。",
+                    "A lamp comes up beside the last notch on the boardwalk rail. The watch was right: the wind follows the light, and so do people heading home.",
                     In(crystal, 1), In(BossRushItemIds.SkyIslandDriftwood, 3), In(BossRushItemIds.SkyIslandCloudmossFiber, 2)),
                 Lamp("Light_F", "Search_F", "F", "Letter_06",
                     "镜水寺的香炉里焚着驱风香，烟绕着风晶灯转。扫地的老人说，这下给折翎留的茶一直是热的。",
@@ -192,7 +192,7 @@ namespace BossRush
                     "A lamp now hangs beneath the bell frame. Every name in the register can be read, even at night.",
                     In(crystal, 1), In(BossRushItemIds.SkyIslandWindLantern, 1), In(BossRushItemIds.SkyIslandBrassScrap, 2)),
                 Lamp("Light_S2", "Search_S2", "S2", "Letter_05",
-                    "邮亭里倒挂的信都朝着有光的方向了——风一吹，它们就指着家。",
+                    "邮亭里倒挂的信都朝着有光的方向了，风一吹，它们就指着家。",
                     "Every letter hanging upside down in the post hut now points toward the light. When the wind blows, they point home.",
                     In(crystal, 1), In(BossRushItemIds.SkyIslandCloudmossFiber, 3), In(BossRushItemIds.SkyIslandDriftwood, 1)),
                 Lamp("Light_S3", "Search_S3", "S3", "Letter_07",

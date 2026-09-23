@@ -40,7 +40,7 @@ namespace BossRush
         /// <summary>底部留白。分页控件已取消，这里只留一点视觉呼吸，不再放文字或按钮。</summary>
         private const float FooterHeight = 14f;
 
-        /// <summary>滚轮灵敏度。卡片高 210px，取 8 约等于一格滚过半张卡。</summary>
+        /// <summary>滚轮灵敏度。卡片高 236px（CodexTuning.CardHeight），取 8 约等于一格滚过半张卡。</summary>
         private const float ScrollSensitivity = 8f;
         private const float PanelSidePadding = 20f;
         private const float GridPadding = 12f;
@@ -112,6 +112,7 @@ namespace BossRush
                 {
                     // 先归还输入占用，再销毁对象。Close 幂等，且不动 _instance，
                     // 下面的销毁块照常执行（清 _instance 的是 OnDestroy）。
+                    _instance._destroying = true;
                     try { _instance.Close(); }
                     catch (Exception closeEx)
                     {
@@ -141,6 +142,12 @@ namespace BossRush
         #region UI 引用
 
         private Canvas _canvas;
+        /// <summary>画布根上的 CanvasGroup：关闭时整块（遮罩 + 面板）淡出，淡完才 SetActive(false)。</summary>
+        private CanvasGroup _canvasGroup;
+        private Image _backdropImage;
+        private Coroutine _closeFade;
+        /// <summary>销毁路径上 Close 走立即关闭，不在正在销毁的对象上起协程。</summary>
+        private bool _destroying;
         private GameObject _panelRoot;
         private ScrollRect _scrollRect;
         private RectTransform _contentContainer;
@@ -205,6 +212,7 @@ namespace BossRush
 
         private void OnDestroy()
         {
+            _destroying = true;
             try
             {
                 Close();
@@ -256,9 +264,17 @@ namespace BossRush
             if (!_uiBuilt) return;
 
             _isOpen = true;
+            // 上一次关闭的淡出还没播完就又打开：停掉淡出、恢复成完整面板
+            StopCloseFade();
+            IntegrationUIFeedback.ResetFade(_canvasGroup);
             if (_canvas != null)
             {
                 _canvas.gameObject.SetActive(true);
+            }
+            // 遮罩只在建 UI 时淡入过一次；常驻面板每次打开都要重播，否则第二次起背景又是一帧压黑
+            if (_backdropImage != null)
+            {
+                BossRushUIEntranceAnimation.Play(_backdropImage.gameObject, 0f, 0.15f, 0f);
             }
 
             try
@@ -289,11 +305,7 @@ namespace BossRush
 
             HideDetail();
 
-            if (_canvas != null)
-            {
-                _canvas.gameObject.SetActive(false);
-            }
-
+            // 先还输入，再播淡出：动效绝不能变成输入延迟
             try
             {
                 InputManager.ActiveInput(gameObject);
@@ -303,9 +315,37 @@ namespace BossRush
                 // 输入释放失败不阻断关闭
             }
 
+            if (_canvas != null)
+            {
+                // 玩家关面板时 0.12 秒淡出（打开有长出来、关闭一帧消失，前后不对称，审美审查 UD-03）；
+                // 构建期与销毁路径直接关。
+                if (wasOpen && !_destroying && isActiveAndEnabled && _canvasGroup != null
+                    && _canvas.gameObject.activeSelf)
+                {
+                    StopCloseFade();
+                    _closeFade = StartCoroutine(IntegrationUIFeedback.FadeOutAndDeactivate(
+                        _canvasGroup, _canvas.gameObject, BossRushUIKit.CloseSeconds));
+                }
+                else
+                {
+                    StopCloseFade();
+                    _canvas.gameObject.SetActive(false);
+                    IntegrationUIFeedback.ResetFade(_canvasGroup);
+                }
+            }
+
             if (wasOpen)
             {
                 ModBehaviour.DevLog(CodexTuning.LogPrefix + "图鉴面板已关闭");
+            }
+        }
+
+        private void StopCloseFade()
+        {
+            if (_closeFade != null)
+            {
+                StopCoroutine(_closeFade);
+                _closeFade = null;
             }
         }
 
@@ -370,8 +410,10 @@ namespace BossRush
             Canvas canvas = BossRushUI.CreateCanvasRoot("CodexCanvas", BossRushUILayers.Panel, true);
             canvas.transform.SetParent(transform, false);
             _canvas = canvas;
+            _canvasGroup = canvas.gameObject.AddComponent<CanvasGroup>();
 
             Image backdrop = BossRushUI.CreateBackdrop(canvas.transform);
+            _backdropImage = backdrop;
             Button backdropButton = backdrop.gameObject.AddComponent<Button>();
             backdropButton.transition = Selectable.Transition.None;
             backdropButton.onClick.AddListener(Close);
@@ -413,25 +455,40 @@ namespace BossRush
                 new Vector2(0f, HeaderHeight),
                 new Vector2(0.5f, 1f));
 
-            Image headerImage = header.AddComponent<Image>();
-            headerImage.color = BossRushUIColors.Header;
-            BossRushUI.ApplyPanelSkin(headerImage, 12);
-            headerImage.raycastTarget = false;
+            // 标题栏不铺底色（审美审查 UD-01）：旧的圆角 Header 色块压在面板顶上，四角的弧和面板的弧对不上，
+            // 下面再接直角的进度行，交界处露出两个缺口。层级改靠留白 + 一条分隔线，框线由面板描边一圈画完。
+            GameObject rail = ZombieModeUIHelper.CreateRect(
+                "TitleRail",
+                header.transform,
+                new Vector2(0f, 0.5f),
+                new Vector2(0f, 0.5f),
+                new Vector2(PanelSidePadding, 0f),
+                new Vector2(3f, 24f),
+                new Vector2(0f, 0.5f));
+            Image railImage = rail.AddComponent<Image>();
+            railImage.color = BossRushUIColors.Accent;
+            BossRushUI.ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
+            railImage.raycastTarget = false;
 
             _titleText = ZombieModeUIHelper.CreateText(
                 "Title",
                 header.transform,
                 L10n.T("鸭皇图鉴", "Duckov Codex"),
-                26f,
+                28f,
                 new Vector2(0f, 0f),
                 new Vector2(1f, 1f),
-                new Vector2(PanelSidePadding, 0f),
-                new Vector2(-120f, 0f),
+                Vector2.zero,
+                Vector2.zero,
                 TextAlignmentOptions.Left,
                 BossRushUIColors.TextPrimary);
             _titleText.fontStyle = FontStyles.Bold;
+            // 与下面「已解锁 X / Y」同一条左边线（旧写法 sizeDelta 居中收缩，标题比正文往右缩进了 60px）
+            _titleText.rectTransform.offsetMin = new Vector2(PanelSidePadding + 10f, 0f);
+            _titleText.rectTransform.offsetMax = new Vector2(-64f, 0f);
 
-            // 关闭按钮走共享库，颜色用 Danger token
+            // 关闭按钮：幽灵按钮，常态只有一个「×」，悬停才显出 Danger 底（审美审查 UD-32）。
+            // 建的时候就传透明底色：先传实色的话共享层会先挂上投影与斜面，改色后也摘不掉。
+            Color ghost = new Color(BossRushUIColors.Danger.r, BossRushUIColors.Danger.g, BossRushUIColors.Danger.b, 0f);
             Button closeButton = ZombieModeUIHelper.CreateButton(
                 "CloseButton",
                 header.transform,
@@ -439,16 +496,34 @@ namespace BossRush
                 new Vector2(1f, 0.5f),
                 new Vector2(-14f, 0f),
                 new Vector2(36f, 36f),
-                BossRushUIColors.Danger,
-                22f,
+                ghost,
+                24f,
                 new Vector2(36f, 36f),
                 Close,
                 true);
-            ZombieModeUIHelper.ApplyButtonColors(
-                closeButton,
-                BossRushUIColors.Danger,
-                Color.Lerp(BossRushUIColors.Danger, Color.white, 0.22f),
-                BossRushUIColors.Disabled);
+            IntegrationUIFeedback.StyleGhostCloseButton(
+                closeButton, closeButton.GetComponentInChildren<TextMeshProUGUI>(true));
+
+            GameObject divider = ZombieModeUIHelper.CreateSeparator(
+                "HeaderDivider",
+                _panelRoot.transform,
+                new Vector2(0f, 1f),
+                new Vector2(1f, 1f),
+                new Vector2(0f, -HeaderHeight),
+                2f,
+                BossRushUIColors.Divider);
+            InsetDivider(divider);
+        }
+
+        /// <summary>分隔线左右各让 12：满宽的线头会顶到面板的圆角描边上。</summary>
+        private static void InsetDivider(GameObject divider)
+        {
+            if (divider == null) return;
+            RectTransform rect = divider.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.sizeDelta = new Vector2(-24f, rect.sizeDelta.y);
+            }
         }
 
         /// <summary>
@@ -466,15 +541,13 @@ namespace BossRush
                 new Vector2(0f, ProgressHeight),
                 new Vector2(0.5f, 1f));
 
-            Image rowImage = row.AddComponent<Image>();
-            rowImage.color = BossRushUIColors.SurfaceRaised;
-            rowImage.raycastTarget = false;
-
+            // 进度行同样不铺底色：旧的全宽直角 SurfaceRaised 条在圆角面板里是一块「盒子套盒子」（UD-01），
+            // 与网格之间用分隔线隔开。
             _progressText = ZombieModeUIHelper.CreateText(
                 "ProgressText",
                 row.transform,
                 string.Empty,
-                15f,
+                17f,
                 new Vector2(0f, 0.42f),
                 new Vector2(0.34f, 1f),
                 new Vector2(PanelSidePadding, 0f),
@@ -512,10 +585,20 @@ namespace BossRush
 
             _filterButton = CreateNavigationButton("Filter", row.transform, new Vector2(0f, 0f),
                 new Vector2(100f, 22f), new Vector2(164f, 30f), ToggleMissingFilter);
-            _statusText = ZombieModeUIHelper.CreateText("Status", row.transform, string.Empty, 13f,
+            _statusText = ZombieModeUIHelper.CreateText("Status", row.transform, string.Empty, 14f,
                 new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(89f, 22f),
                 new Vector2(-218f, 34f), TextAlignmentOptions.Left, BossRushUIColors.TextSecondary);
             _statusText.raycastTarget = false;
+
+            GameObject divider = ZombieModeUIHelper.CreateSeparator(
+                "ProgressDivider",
+                _panelRoot.transform,
+                new Vector2(0f, 1f),
+                new Vector2(1f, 1f),
+                new Vector2(0f, -(HeaderHeight + ProgressHeight)),
+                2f,
+                BossRushUIColors.Divider);
+            InsetDivider(divider);
         }
 
         private void CreateScrollArea()
@@ -625,12 +708,14 @@ namespace BossRush
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         }
 
-        /// <summary>小号次级按钮（筛选按钮复用）。</summary>
+        /// <summary>小号次级按钮（筛选按钮复用）。走全 Mod 的次级按钮口径：SurfaceRaised 底 + Stroke 描边。</summary>
         private Button CreateNavigationButton(string name, Transform parent, Vector2 anchor,
             Vector2 position, Vector2 size, UnityEngine.Events.UnityAction action)
         {
-            return ZombieModeUIHelper.CreateButton(name, parent, string.Empty, anchor, position, size,
-                BossRushUIColors.Header, 14f, size, action, true);
+            Button button = ZombieModeUIHelper.CreateButton(name, parent, string.Empty, anchor, position, size,
+                BossRushUIColors.SurfaceRaised, 15f, size, action, true);
+            BossRushUIKit.StyleSecondaryButton(button);
+            return button;
         }
 
         private static void SetButtonLabel(Button button, string value)
@@ -734,10 +819,13 @@ namespace BossRush
                 new Vector2(0.5f, 0.5f));
 
             Image tickImage = tick.AddComponent<Image>();
-            // 已达成的刻度点亮成 Success，未达成留 Divider
+            // 已达成的刻度点亮成 SuccessText（压在 Accent 填充上也分得清），未达成用 Stroke——
+            // 旧的 Divider(α0.32) 压在 Disabled 轨道上几乎看不见。
             tickImage.color = unlocked >= threshold
-                ? BossRushUIColors.Success
-                : BossRushUIColors.Divider;
+                ? BossRushUIColors.SuccessText
+                : BossRushUIColors.Stroke;
+            // 2px 细条走细条档：没有 sprite 的裸 quad 在非整数画布缩放下时有时无（审美审查 UD-33）
+            BossRushUI.ApplyPanelSkin(tickImage, 1, BossRushUISkinPart.Hairline);
             tickImage.raycastTarget = false;
         }
 

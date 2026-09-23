@@ -795,8 +795,8 @@ namespace BossRush
         // 婚礼教堂本地化数据
         private const string WEDDING_BUILDING_NAME_CN = "婚礼教堂";
         private const string WEDDING_BUILDING_NAME_EN = "Wedding Chapel";
-        private const string WEDDING_BUILDING_DESC_CN = "一座温馨的小教堂，可以在这里举办婚礼仪式。";
-        private const string WEDDING_BUILDING_DESC_EN = "A cozy little chapel where wedding ceremonies can be held.";
+        private const string WEDDING_BUILDING_DESC_CN = "一间小教堂。求婚成了，婚礼就在这儿办。";
+        private const string WEDDING_BUILDING_DESC_EN = "A small chapel. Once the proposal lands, the wedding happens here.";
 
         /// <summary>
         /// 注入婚礼教堂建筑本地化
@@ -820,8 +820,8 @@ namespace BossRush
 
         private const string STARWISH_BUILDING_NAME_CN = "布满了灰尘的星愿许愿台";
         private const string STARWISH_BUILDING_NAME_EN = "Dust-Covered StarWish Fountain";
-        private const string STARWISH_BUILDING_DESC_CN = "闭上眼，将心愿写入星光…";
-        private const string STARWISH_BUILDING_DESC_EN = "Close your eyes, write your wish into the starlight...";
+        private const string STARWISH_BUILDING_DESC_CN = "写个愿望投进去，有人看。";
+        private const string STARWISH_BUILDING_DESC_EN = "Drop a wish in. Someone will read it.";
         private const string STARWISH_INTERACT_CN = "许愿";
         private const string STARWISH_INTERACT_EN = "Make a Wish";
 

@@ -52,15 +52,15 @@ namespace BossRush
 
         internal static void ClearStaticCaches()
         {
-            cachedIceMaterial = null;
             ClearFireworkSparkEffectPool();
             ClearFireworkBloomEffectPool();
-            cachedFireworkMaterial = null;
+            ClearIceEmitters();
             DragonKingBossGunGroundZone.ClearStaticCaches();
         }
 
-        private static Material cachedIceMaterial;
-        private static Material cachedFireworkMaterial;
+        // 2026-09-23 特效审美审查 VB-16：冰屑 / 烟花 / 拖尾原先是无贴图的 Sprites/Default——实心方块、半透明、不发光，
+        // 烟花爆开那 10 个 15–34 px 的白方片一眼就是占位。材质改走全 Mod 共享工厂（粒子：加色软圆；拖尾：加色软边带），
+        // 归工厂所有，这里不建、不销毁。
         private static readonly Color[] FireworkPalette =
         {
             new Color(1f, 0.28f, 0.18f),
@@ -161,6 +161,7 @@ namespace BossRush
         {
             private ParticleSystem burst;
             private ParticleSystem flash;
+            private ParticleSystem halo;
             private float releaseTime;
             private int poolGeneration;
             private bool leased;
@@ -207,23 +208,65 @@ namespace BossRush
                 var flashMain = flash.main;
                 flashMain.loop = false;
                 flashMain.duration = 0.05f;
-                flashMain.startLifetime = new ParticleSystem.MinMaxCurve(0.09f, 0.16f);
-                flashMain.startSpeed = new ParticleSystem.MinMaxCurve(0.2f, 1.1f);
-                flashMain.startSize = new ParticleSystem.MinMaxCurve(0.22f, 0.48f);
+                // VB-16：3 团 0.35–0.6 m 的软圆闪光、0.08–0.12 s（旧的是 10 个 0.22–0.48 m 的白方片）。
+                flashMain.startLifetime = new ParticleSystem.MinMaxCurve(0.08f, 0.12f);
+                flashMain.startSpeed = new ParticleSystem.MinMaxCurve(0f, 0.4f);
+                flashMain.startSize = new ParticleSystem.MinMaxCurve(0.35f, 0.6f);
                 flashMain.simulationSpace = ParticleSystemSimulationSpace.World;
-                flashMain.maxParticles = 12;
+                flashMain.maxParticles = 4;
 
                 var flashEmission = flash.emission;
                 flashEmission.rateOverTime = 0;
-                flashEmission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 10) });
+                flashEmission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 3) });
 
                 var flashShape = flash.shape;
                 flashShape.shapeType = ParticleSystemShapeType.Sphere;
                 flashShape.radius = 0.03f;
 
+                var flashFade = flash.colorOverLifetime;
+                flashFade.enabled = true;
+                Gradient flashGradient = new Gradient();
+                flashGradient.SetKeys(
+                    new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                    new GradientAlphaKey[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0f, 1f) });
+                flashFade.color = flashGradient;
+
                 var flashRenderer = flash.GetComponent<ParticleSystemRenderer>();
                 flashRenderer.renderMode = ParticleSystemRenderMode.Billboard;
                 flashRenderer.sharedMaterial = GetOrCreateFireworkMaterial();
+
+                // 外面再罩一层 0.9 m、α 0.25 的暖色光晕：读作「一团光炸开」，而不是几颗亮点。
+                GameObject haloObject = new GameObject("BloomHalo");
+                haloObject.transform.SetParent(transform);
+                haloObject.transform.localPosition = Vector3.zero;
+                haloObject.transform.localRotation = Quaternion.identity;
+                halo = haloObject.AddComponent<ParticleSystem>();
+                var haloMain = halo.main;
+                haloMain.loop = false;
+                haloMain.duration = 0.05f;
+                haloMain.startLifetime = 0.18f;
+                haloMain.startSpeed = 0f;
+                haloMain.startSize = 0.9f;
+                haloMain.simulationSpace = ParticleSystemSimulationSpace.World;
+                haloMain.maxParticles = 2;
+                var haloEmission = halo.emission;
+                haloEmission.rateOverTime = 0;
+                haloEmission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 1) });
+                var haloShape = halo.shape;
+                haloShape.enabled = false;
+                var haloFade = halo.colorOverLifetime;
+                haloFade.enabled = true;
+                Gradient haloGradient = new Gradient();
+                haloGradient.SetKeys(
+                    new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                    new GradientAlphaKey[] { new GradientAlphaKey(0.6f, 0f), new GradientAlphaKey(1f, 0.2f), new GradientAlphaKey(0f, 1f) });
+                haloFade.color = haloGradient;
+                var haloSize = halo.sizeOverLifetime;
+                haloSize.enabled = true;
+                haloSize.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.8f, 1f, 1.3f));
+                var haloRenderer = halo.GetComponent<ParticleSystemRenderer>();
+                haloRenderer.renderMode = ParticleSystemRenderMode.Billboard;
+                haloRenderer.sharedMaterial = GetOrCreateFireworkMaterial();
             }
 
             internal void Play(Vector3 position, Color colorA, Color colorB, int generation)
@@ -243,11 +286,15 @@ namespace BossRush
                 burstColorOverLifetime.color = burstGradient;
 
                 var flashMain = flash.main;
-                flashMain.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(Color.white, 0.95f), WithAlpha(new Color(1f, 0.92f, 0.55f), 0.9f));
+                flashMain.startColor = WithAlpha(new Color(1f, 0.95f, 0.8f), 0.95f);
+                var haloMain = halo.main;
+                haloMain.startColor = WithAlpha(Color.Lerp(new Color(1f, 0.8f, 0.5f), colorA, 0.3f), 0.25f);
                 burst.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 flash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                halo.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 burst.Play(true);
                 flash.Play(true);
+                halo.Play(true);
                 releaseTime = Time.time + 1.35f;
             }
 
@@ -446,9 +493,9 @@ namespace BossRush
             context.explosionDamage = 0f;
             projectile.context = context;
             deathHandled = true;
+            DetachTrailForFade();
             deadRef(projectile) = true;
         }
-
 
         private void SpawnFireHitEffect(Vector3 hitPoint, Vector3 hitNormal)
         {
@@ -619,7 +666,7 @@ namespace BossRush
             trail.endWidth = 0.035f;
             trail.startColor = new Color(0.55f, 0.92f, 1f, 0.92f);
             trail.endColor = new Color(0.2f, 0.55f, 1f, 0f);
-            trail.sharedMaterial = GetOrCreateIceMaterial();
+            trail.sharedMaterial = GetOrCreateTrailMaterial();
             trail.numCornerVertices = 4;
             trail.numCapVertices = 4;
             trail.minVertexDistance = 0.025f;
@@ -653,7 +700,7 @@ namespace BossRush
             trail.endWidth = 0.018f;
             trail.startColor = WithAlpha(hotColor, spark ? 0.92f : 0.98f);
             trail.endColor = WithAlpha(color, 0f);
-            trail.sharedMaterial = GetOrCreateFireworkMaterial();
+            trail.sharedMaterial = GetOrCreateTrailMaterial();
             trail.numCornerVertices = 4;
             trail.numCapVertices = 4;
             trail.minVertexDistance = 0.025f;
@@ -776,66 +823,20 @@ namespace BossRush
             }
         }
 
-        private void SpawnIcePierceEffect(Vector3 hitPoint, Vector3 hitNormal)
-        {
-            GameObject iceFx = new GameObject("DragonGun_IcePierceFx");
-            iceFx.transform.position = hitPoint;
-            iceFx.transform.rotation = Quaternion.LookRotation(hitNormal);
-
-            ParticleSystem ps = iceFx.AddComponent<ParticleSystem>();
-            var main = ps.main;
-            main.loop = false;
-            main.duration = 0.16f;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.34f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(3.2f, 6.2f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.035f, 0.095f);
-            main.startColor = new ParticleSystem.MinMaxGradient(
-                new Color(0.9f, 1f, 1f, 0.88f),
-                new Color(0.42f, 0.78f, 1f, 0.7f));
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles = 18;
-
-            var emission = ps.emission;
-            emission.rateOverTime = 0;
-            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 14) });
-
-            var shape = ps.shape;
-            shape.shapeType = ParticleSystemShapeType.Cone;
-            shape.angle = 28f;
-            shape.radius = 0.045f;
-
-            var col = ps.colorOverLifetime;
-            col.enabled = true;
-            Gradient gradient = new Gradient();
-            gradient.SetKeys(
-                new GradientColorKey[] { new GradientColorKey(new Color(0.9f, 1f, 1f), 0f), new GradientColorKey(new Color(0.45f, 0.75f, 1f), 0.55f), new GradientColorKey(new Color(0.2f, 0.45f, 1f), 1f) },
-                new GradientAlphaKey[] { new GradientAlphaKey(0.9f, 0f), new GradientAlphaKey(0f, 1f) });
-            col.color = gradient;
-
-            var sizeOverLifetime = ps.sizeOverLifetime;
-            sizeOverLifetime.enabled = true;
-            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.08f));
-
-            var renderer = ps.GetComponent<ParticleSystemRenderer>();
-            renderer.renderMode = ParticleSystemRenderMode.Stretch;
-            renderer.lengthScale = 1.35f;
-            renderer.velocityScale = 0.22f;
-            renderer.sharedMaterial = GetOrCreateIceMaterial();
-
-            ps.Play();
-            UnityEngine.Object.Destroy(iceFx, 0.65f);
-        }
-
         private void SpawnIceBladeShatterEffect(Vector3 hitPoint, Vector3 hitNormal)
         {
+            if (iceShatterEmitter == null) iceShatterEmitter = BuildIceBladeShatterEmitter();
+            EmitAt(iceShatterEmitter, hitPoint, hitNormal, 14);
+        }
+
+        private static ParticleSystem BuildIceBladeShatterEmitter()
+        {
             GameObject iceFx = new GameObject("DragonGun_IceBladeShatterFx");
-            iceFx.transform.position = hitPoint;
-            iceFx.transform.rotation = hitNormal.sqrMagnitude > 0.001f
-                ? Quaternion.LookRotation(hitNormal.normalized, Vector3.up)
-                : Quaternion.identity;
 
             ParticleSystem shards = iceFx.AddComponent<ParticleSystem>();
+            shards.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             var main = shards.main;
+            main.playOnAwake = false;
             main.loop = false;
             main.duration = 0.16f;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.22f, 0.42f);
@@ -845,11 +846,10 @@ namespace BossRush
                 new Color(0.92f, 1f, 1f, 0.86f),
                 new Color(0.38f, 0.75f, 1f, 0.68f));
             main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles = 18;
+            main.maxParticles = 72;
 
             var emission = shards.emission;
-            emission.rateOverTime = 0;
-            emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 14) });
+            emission.enabled = false;
 
             var shape = shards.shape;
             shape.shapeType = ParticleSystemShapeType.Cone;
@@ -873,27 +873,25 @@ namespace BossRush
             renderer.lengthScale = 1.75f;
             renderer.velocityScale = 0.28f;
             renderer.sharedMaterial = GetOrCreateIceMaterial();
-
-            shards.Play();
-            UnityEngine.Object.Destroy(iceFx, 0.7f);
+            return shards;
         }
 
+        /// <summary>冰屑粒子：加色软圆（共享工厂）。</summary>
         private static Material GetOrCreateIceMaterial()
         {
-            if (cachedIceMaterial == null)
-            {
-                cachedIceMaterial = new Material(Shader.Find("Sprites/Default"));
-            }
-            return cachedIceMaterial;
+            return DragonKingFxShared.Soft(BossRushFxBlend.Additive);
         }
 
+        /// <summary>烟花火花、闪光与光晕：加色软圆（共享工厂）。</summary>
         private static Material GetOrCreateFireworkMaterial()
         {
-            if (cachedFireworkMaterial == null)
-            {
-                cachedFireworkMaterial = new Material(Shader.Find("Sprites/Default"));
-            }
-            return cachedFireworkMaterial;
+            return DragonKingFxShared.Soft(BossRushFxBlend.Additive);
+        }
+
+        /// <summary>冰刃 / 烟花的 TrailRenderer：加色软边带——软圆贴图拉在拖尾上会让拖尾头部透明、整条拖尾变成一个枣核。</summary>
+        private static Material GetOrCreateTrailMaterial()
+        {
+            return DragonKingFxShared.Band(BossRushFxBlend.Additive);
         }
 
         private static Color ResolveFireworkColor(int seed, bool secondary)
@@ -2102,6 +2100,7 @@ namespace BossRush
             }
 
             deathHandled = true;
+            DetachTrailForFade();
             Vector3 resolvedDeathPoint = GetDeathPoint();
             bool playDeathExplosionFx = ShouldPlayDeathExplosionFx();
             bool isNativeExplosion = profile.UseNativeProjectile && secondaryProjectile;

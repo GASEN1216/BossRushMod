@@ -135,6 +135,15 @@ namespace BossRush
         /// </summary>
         private List<GameObject> activeWarningLines = new List<GameObject>(64);
 
+        /// <summary>长矛预警线闪完白之后回池的回调（每个控制器建一次，不在每条线上分配委托）。</summary>
+        private Action<GameObject> lanceFlashDoneCallback;
+
+        /// <summary>以太长矛命中爆闪的颜色：长矛自己的淡蓝。</summary>
+        private static readonly Color LanceHitColor = new Color(0.8f, 0.85f, 1f, 1f);
+
+        /// <summary>棱彩弹命中爆闪的颜色：偏暖的淡紫白（弹体是彩虹色，取中间调）。</summary>
+        private static readonly Color BoltHitColor = new Color(0.95f, 0.85f, 1f, 1f);
+
         /// <summary>
         /// 碰撞检测器
         /// </summary>
@@ -290,91 +299,29 @@ namespace BossRush
 
         // ========== 资源管理：Material缓存（防止内存泄漏） ==========
 
-        /// <summary>
-        /// 缓存的通用材质（用于特效，避免重复创建）
-        /// </summary>
-        private static Material cachedInternalColoredMaterial = null;
 
-        /// <summary>
-        /// 缓存的白色材质（用于冲刺蓄力粒子）
-        /// </summary>
-        private static Material cachedWhiteParticleMaterial = null;
+        // 2026-09-23 特效审美审查 VB-12：预警圈、倒计时圈与冲刺聚能粒子原先用 `Hidden/Internal-Colored`——
+        // 没有贴图（硬边平色带、14 px 白方块）、默认写深度（粒子互相挡）。改走全 Mod 共享工厂的软边带 / 软圆材质，
+        // 材质归工厂所有，这里只取不建、不销毁。
 
-        /// <summary>
-        /// 缓存的黄色材质（用于太阳舞预警圆圈）
-        /// </summary>
-        private static Material cachedYellowWarningMaterial = null;
-
-        /// <summary>
-        /// 获取或创建共享的Internal-Colored材质
-        /// </summary>
-        private static Material GetSharedInternalColoredMaterial()
+        /// <summary>预警圈、倒计时圈：软边带 + 普通半透明。</summary>
+        private static Material GetSharedWarningBandMaterial()
         {
-            if (cachedInternalColoredMaterial == null)
-            {
-                var shader = Shader.Find("Hidden/Internal-Colored");
-                if (shader != null)
-                {
-                    cachedInternalColoredMaterial = new Material(shader);
-                }
-            }
-            return cachedInternalColoredMaterial;
+            return DragonKingFxShared.Band(BossRushFxBlend.Alpha);
+        }
+
+        /// <summary>冲刺聚能粒子：软圆 + 加色。</summary>
+        private static Material GetSharedChargeParticleMaterial()
+        {
+            return DragonKingFxShared.Soft(BossRushFxBlend.Additive);
         }
 
         /// <summary>
-        /// 获取或创建共享的白色粒子材质
-        /// </summary>
-        private static Material GetSharedWhiteParticleMaterial()
-        {
-            if (cachedWhiteParticleMaterial == null)
-            {
-                var shader = Shader.Find("Hidden/Internal-Colored");
-                if (shader != null)
-                {
-                    cachedWhiteParticleMaterial = new Material(shader);
-                    cachedWhiteParticleMaterial.color = new Color(1f, 1f, 1f, 1f);
-                }
-            }
-            return cachedWhiteParticleMaterial;
-        }
-
-        /// <summary>
-        /// 获取或创建共享的黄色警告材质
-        /// </summary>
-        private static Material GetSharedYellowWarningMaterial()
-        {
-            if (cachedYellowWarningMaterial == null)
-            {
-                var shader = Shader.Find("Hidden/Internal-Colored");
-                if (shader != null)
-                {
-                    cachedYellowWarningMaterial = new Material(shader);
-                    cachedYellowWarningMaterial.color = new Color(1f, 0.9f, 0f, 1f);
-                }
-            }
-            return cachedYellowWarningMaterial;
-        }
-
-        /// <summary>
-        /// 清理静态材质缓存（场景切换时调用）
+        /// 清理静态材质缓存（场景切换时调用）。材质已改由共享工厂持有；这里只收掉龙王共用的命中爆闪发射器。
         /// </summary>
         public static void ClearStaticMaterialCache()
         {
-            if (cachedInternalColoredMaterial != null)
-            {
-                UnityEngine.Object.Destroy(cachedInternalColoredMaterial);
-                cachedInternalColoredMaterial = null;
-            }
-            if (cachedWhiteParticleMaterial != null)
-            {
-                UnityEngine.Object.Destroy(cachedWhiteParticleMaterial);
-                cachedWhiteParticleMaterial = null;
-            }
-            if (cachedYellowWarningMaterial != null)
-            {
-                UnityEngine.Object.Destroy(cachedYellowWarningMaterial);
-                cachedYellowWarningMaterial = null;
-            }
+            DragonKingFxShared.ClearStaticCaches();
         }
 
         /// <summary>
@@ -429,6 +376,8 @@ namespace BossRush
         private static readonly WaitForSeconds wait05s = new WaitForSeconds(0.5f);
         private static readonly WaitForSeconds wait1s = new WaitForSeconds(1f);
         private static readonly WaitForSeconds wait15s = new WaitForSeconds(1.5f);
+        /// <summary>太阳舞：离传送还有 0.1 s 时在原位放传送特效（与 wait15s 并行，不改传送时刻）。</summary>
+        private static readonly WaitForSeconds sunDanceDepartFxLead = new WaitForSeconds(1.4f);
         private static readonly WaitForSeconds wait2s = new WaitForSeconds(2f);
         private static readonly WaitForSeconds wait25s = new WaitForSeconds(2.5f);
         private static readonly WaitForSeconds wait3s = new WaitForSeconds(3f);
@@ -437,19 +386,18 @@ namespace BossRush
 
         // ========== 性能优化：Gradient缓存（避免每次攻击重复创建） ==========
 
-        /// <summary>
-        /// 缓存的彩虹渐变（用于以太长矛警告线）
-        /// </summary>
-        private static Gradient cachedRainbowGradient = null;
         private static int nextAttackDesyncSeed = 0;
 
         private const float PLAYER_AIM_SAMPLE_INTERVAL = 0.05f;
         private const float ATTACK_LOOP_DESYNC_STEP = 0.18f;
         private const int ATTACK_LOOP_DESYNC_BUCKET_COUNT = 5;
         private const int WARNING_CIRCLE_SEGMENTS = 64;
-        private const float WARNING_CIRCLE_START_RADIUS = 20f;
-        private const float WARNING_CIRCLE_END_RADIUS = 0f;
-        private const int WARNING_LINE_PREWARM_COUNT = 64;
+        // VB-13：太阳舞落点圈从屏内的 9 m 收到 Boss 占地 1.2 m（旧值 20 m → 0：开场在屏幕外、落地时只剩一个点）。
+        private const float WARNING_CIRCLE_START_RADIUS = 9f;
+        private const float WARNING_CIRCLE_END_RADIUS = 1.2f;
+        // 长矛预警线现在每条 = 根 + 核心线 + 危险带三个物体（VB-11）：预热从 64 条降到 24 条（够长矛 2 一波 16 条 + 闪白重叠），
+        // 其余按需建；出生那一帧不再一次建 190 多个物体。
+        private const int WARNING_LINE_PREWARM_COUNT = 24;
         private const int WARNING_CIRCLE_PREWARM_COUNT = 6;
         private const int DASH_CHARGE_PREWARM_COUNT = 3;
         private const int DASH_COUNTDOWN_RING_PREWARM_COUNT = 3;
@@ -469,7 +417,6 @@ namespace BossRush
         private static Bounds sharedTargetHitboxBounds = default(Bounds);
         private static float lastSharedTargetHitboxBoundsRefreshTime = float.NegativeInfinity;
         private static bool hasSharedTargetHitboxBounds = false;
-        private static Gradient cachedTransparentRainbowGradient = null;
         private static Vector3[] cachedWarningCircleUnitPoints = null;
         private static readonly Collider[] sharedTeleportValidationBuffer = new Collider[24];
         private static Stack<GameObject> sharedWarningLinePool = new Stack<GameObject>(96);
@@ -481,58 +428,6 @@ namespace BossRush
         private static int sharedDashChargeEffectCreatedCount = 0;
         private static int sharedDashCountdownRingCreatedCount = 0;
 
-        /// <summary>
-        /// 获取或创建共享的彩虹渐变
-        /// </summary>
-        private static Gradient GetSharedRainbowGradient()
-        {
-            if (cachedRainbowGradient == null)
-            {
-                cachedRainbowGradient = new Gradient();
-                cachedRainbowGradient.SetKeys(
-                    new GradientColorKey[] {
-                        new GradientColorKey(new Color(1f, 1f, 0f, 1f), 0f),      // 亮黄
-                        new GradientColorKey(new Color(1f, 0.5f, 0f, 1f), 0.15f), // 橙
-                        new GradientColorKey(new Color(1f, 0f, 0f, 1f), 0.3f),    // 红
-                        new GradientColorKey(new Color(0.5f, 0f, 1f, 1f), 0.45f), // 紫
-                        new GradientColorKey(new Color(0f, 0f, 1f, 1f), 0.6f),    // 蓝
-                        new GradientColorKey(new Color(0f, 1f, 1f, 1f), 0.75f),   // 青
-                        new GradientColorKey(new Color(0f, 1f, 0f, 1f), 0.9f),    // 绿
-                        new GradientColorKey(new Color(1f, 1f, 0f, 1f), 1f)       // 亮黄
-                    },
-                    new GradientAlphaKey[] {
-                        new GradientAlphaKey(1f, 0f),
-                        new GradientAlphaKey(0.95f, 0.15f),
-                        new GradientAlphaKey(0.8f, 0.35f),
-                        new GradientAlphaKey(0.6f, 0.55f),
-                        new GradientAlphaKey(0.4f, 0.75f),
-                        new GradientAlphaKey(0.3f, 1f)
-                    }
-                );
-            }
-            return cachedRainbowGradient;
-        }
-
-        private static Gradient GetTransparentRainbowGradient()
-        {
-            if (cachedTransparentRainbowGradient == null)
-            {
-                Gradient baseGradient = GetSharedRainbowGradient();
-                cachedTransparentRainbowGradient = new Gradient();
-                cachedTransparentRainbowGradient.SetKeys(
-                    baseGradient.colorKeys,
-                    new GradientAlphaKey[] {
-                        new GradientAlphaKey(0f, 0f),
-                        new GradientAlphaKey(0f, 0.15f),
-                        new GradientAlphaKey(0f, 0.35f),
-                        new GradientAlphaKey(0f, 0.55f),
-                        new GradientAlphaKey(0f, 0.75f),
-                        new GradientAlphaKey(0f, 1f)
-                    }
-                );
-            }
-            return cachedTransparentRainbowGradient;
-        }
 
         private static Vector3[] GetWarningCircleUnitPoints()
         {
@@ -571,8 +466,6 @@ namespace BossRush
         public static void ClearStaticCache()
         {
             ClearStaticMaterialCache();
-            cachedRainbowGradient = null;
-            cachedTransparentRainbowGradient = null;
             cachedWarningCircleUnitPoints = null;
             nextAttackDesyncSeed = 0;
             cachedAudioPostDelegate = null;
@@ -1732,28 +1625,19 @@ namespace BossRush
                 return;
             }
 
-            DragonKingAssetManager.ReleaseEffect(effect);
+            // 只有 CleanupAllEffects 走这里：它先销毁了特效上的实例化材质，不能再软回收（剩下的粒子会拿着失效材质画 0.5 s），硬回收。
+            DragonKingAssetManager.ReleaseEffectImmediate(effect);
         }
 
+        /// <summary>
+        /// 以太长矛预警线（VB-11）：根物体只承载长矛的发射位置与方向（FireLanceFromWarningLine 读它的 transform，判定不变），
+        /// 画面由 <see cref="DragonKingLanceWarning"/> 的两条贴地子线负责——淡蓝核心线 + 4 m 宽的软边危险带。
+        /// </summary>
         private static GameObject CreateWarningLineObject()
         {
             GameObject lineObj = new GameObject("EtherealLanceWarningLine");
-            LineRenderer lr = lineObj.AddComponent<LineRenderer>();
-            Material mat = GetSharedInternalColoredMaterial();
-            if (mat != null)
-            {
-                lr.sharedMaterial = mat;
-            }
-
-            lr.startWidth = 0.05f;
-            lr.endWidth = 0.05f;
-            lr.numCornerVertices = 0;
-            lr.numCapVertices = 0;
-            lr.sortingOrder = 100;
-            lr.useWorldSpace = true;
-            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            lr.receiveShadows = false;
-            lr.positionCount = 2;
+            DragonKingLanceWarning warning = lineObj.AddComponent<DragonKingLanceWarning>();
+            warning.Build();
             sharedWarningLineCreatedCount++;
             return lineObj;
         }
@@ -1784,21 +1668,28 @@ namespace BossRush
             sharedWarningLinePool.Push(line);
         }
 
+        /// <summary>
+        /// 太阳舞落点圈（VB-12 / VB-13）：软边带 + 暖金色（不再是 Internal-Colored 的纯黄硬边带），
+        /// 外圈由 <see cref="WarningCircleAnimation"/> 从屏内的 9 m 收到 Boss 占地 1.2 m，落点另有一圈静态内圈先画出来。
+        /// </summary>
         private static GameObject CreateWarningCircleObject()
         {
             GameObject circleObj = new GameObject("WarningCircle");
             LineRenderer lineRenderer = circleObj.AddComponent<LineRenderer>();
-            Material mat = GetSharedYellowWarningMaterial();
+            Material mat = GetSharedWarningBandMaterial();
             if (mat != null)
             {
                 lineRenderer.sharedMaterial = mat;
             }
 
-            lineRenderer.startWidth = 0.15f;
-            lineRenderer.endWidth = 0.15f;
+            lineRenderer.startWidth = WarningCircleAnimation.BaseWidth;
+            lineRenderer.endWidth = WarningCircleAnimation.BaseWidth;
             lineRenderer.useWorldSpace = false;
             lineRenderer.loop = true;
             lineRenderer.positionCount = WARNING_CIRCLE_SEGMENTS;
+            lineRenderer.textureMode = LineTextureMode.Stretch;
+            lineRenderer.startColor = WarningCircleAnimation.RingColor;
+            lineRenderer.endColor = WarningCircleAnimation.RingColor;
             lineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             lineRenderer.receiveShadows = false;
 
@@ -1806,6 +1697,29 @@ namespace BossRush
             for (int i = 0; i < unitPoints.Length; i++)
             {
                 lineRenderer.SetPosition(i, unitPoints[i] * WARNING_CIRCLE_START_RADIUS);
+            }
+
+            // 落点内圈：一开始就画在 Boss 要落的位置（半径 = 占地），外圈收到它身上时读作「就是这里」。
+            GameObject innerObj = new GameObject("WarningCircleInner");
+            innerObj.transform.SetParent(circleObj.transform, false);
+            LineRenderer inner = innerObj.AddComponent<LineRenderer>();
+            if (mat != null)
+            {
+                inner.sharedMaterial = mat;
+            }
+            inner.startWidth = 0.18f;
+            inner.endWidth = 0.18f;
+            inner.useWorldSpace = false;
+            inner.loop = true;
+            inner.positionCount = WARNING_CIRCLE_SEGMENTS;
+            inner.textureMode = LineTextureMode.Stretch;
+            inner.startColor = WarningCircleAnimation.InnerColor;
+            inner.endColor = WarningCircleAnimation.InnerColor;
+            inner.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            inner.receiveShadows = false;
+            for (int i = 0; i < unitPoints.Length; i++)
+            {
+                inner.SetPosition(i, unitPoints[i] * WARNING_CIRCLE_END_RADIUS);
             }
 
             circleObj.AddComponent<WarningCircleAnimation>();
@@ -1850,8 +1764,9 @@ namespace BossRush
             main.loop = false;
             main.startLifetime = 0.5f;
             main.startSpeed = -5f;
-            main.startSize = 0.2f;
-            main.startColor = new Color(1f, 1f, 1f, 1f);
+            // VB-12：0.06–0.14 m 的拉伸光丝（旧的是 0.2 m ≈ 14 px 的白方块），冷白里掺一成暖金芯。
+            main.startSize = new ParticleSystem.MinMaxCurve(0.06f, 0.14f);
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.85f, 0.92f, 1f, 1f), new Color(1f, 0.85f, 0.55f, 1f));
             main.maxParticles = 100;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
 
@@ -1866,12 +1781,15 @@ namespace BossRush
             ParticleSystemRenderer renderer = ps.GetComponent<ParticleSystemRenderer>();
             if (renderer != null)
             {
-                Material particleMat = GetSharedWhiteParticleMaterial();
+                Material particleMat = GetSharedChargeParticleMaterial();
                 if (particleMat != null)
                 {
                     renderer.sharedMaterial = particleMat;
                 }
-                renderer.renderMode = ParticleSystemRenderMode.Billboard;
+                // 顺着往身上收的速度拉长：读作「光被吸过去」，不是一片方块往里挤。
+                renderer.renderMode = ParticleSystemRenderMode.Stretch;
+                renderer.lengthScale = 2f;
+                renderer.velocityScale = 0.05f;
             }
 
             var colorOverLifetime = ps.colorOverLifetime;
@@ -1883,8 +1801,9 @@ namespace BossRush
                     new GradientColorKey(new Color(1f, 1f, 1f), 1f)
                 },
                 new GradientAlphaKey[] {
-                    new GradientAlphaKey(1f, 0f),
-                    new GradientAlphaKey(0f, 1f)
+                    new GradientAlphaKey(0f, 0f),
+                    new GradientAlphaKey(1f, 0.25f),
+                    new GradientAlphaKey(0.2f, 1f)
                 }
             );
             colorOverLifetime.color = gradient;
@@ -1968,25 +1887,29 @@ namespace BossRush
             GameObject ringObj = new GameObject("DashCountdownRing");
             LineRenderer lineRenderer = ringObj.AddComponent<LineRenderer>();
 
-            Material mat = GetSharedInternalColoredMaterial();
+            // VB-12：软边带、冷白 (0.9,0.95,1)（旧的是 Internal-Colored 的纯白实心环）；宽度与亮度由 RingShrinkAnimation 随倒计时加。
+            Material mat = GetSharedWarningBandMaterial();
             if (mat != null)
             {
-                Color ringColor = new Color(1f, 1f, 1f, 0.9f);
+                Color ringColor = new Color(0.9f, 0.95f, 1f, 0.9f);
                 lineRenderer.sharedMaterial = mat;
                 lineRenderer.startColor = ringColor;
                 lineRenderer.endColor = ringColor;
             }
 
-            lineRenderer.startWidth = 0.25f;
-            lineRenderer.endWidth = 0.25f;
+            lineRenderer.startWidth = 0.3f;
+            lineRenderer.endWidth = 0.3f;
             lineRenderer.useWorldSpace = false;
             lineRenderer.loop = true;
+            lineRenderer.textureMode = LineTextureMode.Stretch;
+            // 摊平在地面上：局部 XY 画圈 + TransformZ，物体在租用时绕 X 转 90°（RentDashCountdownRing）。
+            lineRenderer.alignment = LineAlignment.TransformZ;
             lineRenderer.positionCount = WARNING_CIRCLE_SEGMENTS;
 
             Vector3[] unitPoints = GetWarningCircleUnitPoints();
             for (int i = 0; i < unitPoints.Length; i++)
             {
-                lineRenderer.SetPosition(i, unitPoints[i] * 2f);
+                lineRenderer.SetPosition(i, new Vector3(unitPoints[i].x, unitPoints[i].z, 0f) * 2f);
             }
 
             RingShrinkAnimation shrink = ringObj.AddComponent<RingShrinkAnimation>();
@@ -2017,8 +1940,8 @@ namespace BossRush
                 ringObj = CreateDashCountdownRingObject();
             }
 
-            ringObj.transform.position = position + Vector3.up * 0.05f;
-            ringObj.transform.rotation = Quaternion.identity;
+            ringObj.transform.position = position + Vector3.up * 0.08f;
+            ringObj.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             ringObj.transform.localScale = Vector3.one;
             ringObj.SetActive(true);
 

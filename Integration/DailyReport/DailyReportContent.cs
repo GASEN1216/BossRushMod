@@ -230,10 +230,10 @@ namespace BossRush
                 ? L10n.T("昨日阵亡 " + y.Deaths + " 次。整理补给，下一趟量力而行。",
                     "Deaths yesterday: " + y.Deaths + ". Restock and plan your next run.")
                 : y.Kills > 0
-                ? L10n.T("昨日击杀 " + y.Kills + " 名敌人。每一场战斗都已记入战绩栏。",
-                    "Enemies defeated yesterday: " + y.Kills + ". The recap records your progress.")
-                : L10n.T("补给、整备与路上的见闻，也是出击的一部分。昨日记录见下栏。",
-                    "Supplies and preparation are part of every run. Yesterday's record is below.");
+                ? L10n.T("昨日击杀 " + y.Kills + " 名敌人。明细见下方战绩栏。",
+                    "Enemies defeated yesterday: " + y.Kills + ". Details in the stats below.")
+                : L10n.T("昨日没怎么开枪，忙着整备和赶路。记录见下栏。",
+                    "A quiet day: mostly restocking and walking. Yesterday's record is below.");
         }
 
         #endregion

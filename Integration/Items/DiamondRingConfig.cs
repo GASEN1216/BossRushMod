@@ -71,12 +71,12 @@ namespace BossRush
         /// <summary>
         /// 物品描述（中文）
         /// </summary>
-        public const string DESCRIPTION_CN = "一枚镶嵌着璀璨钻石的精致戒指。据说将它送给心仪的人，就能表达最真挚的心意。";
+        public const string DESCRIPTION_CN = "镶着一颗大钻石的戒指。送给处得够好的那个人，就算求婚了。";
         
         /// <summary>
         /// 物品描述（英文）
         /// </summary>
-        public const string DESCRIPTION_EN = "An exquisite ring set with a brilliant diamond. It's said that giving this to someone special expresses your deepest feelings.";
+        public const string DESCRIPTION_EN = "A ring with a big diamond on it. Give it to someone you're close enough with, and that's a proposal.";
         
         // ============================================================================
         // 拒绝礼物对话配置
@@ -107,9 +107,9 @@ namespace BossRush
         /// </summary>
         public static readonly string[] CHEATER_DIALOGUES_CN = new string[]
         {
-            "你不应该如此花心。",
+            "都结婚了还到处送戒指？",
             "戒指可不是这样送的。",
-            "请先对你的承诺负责。"
+            "先把家里那位顾好吧。"
         };
 
         /// <summary>
@@ -117,9 +117,9 @@ namespace BossRush
         /// </summary>
         public static readonly string[] CHEATER_DIALOGUES_EN = new string[]
         {
-            "You shouldn't be so fickle.",
-            "A ring is not something you give around.",
-            "Please honor your promise first."
+            "You're married. Still handing out rings?",
+            "That's not how rings work.",
+            "Look after the one at home first."
         };
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace BossRush
         public static readonly string[] SPOUSE_RING_REJECT_DIALOGUES_EN = new string[]
         {
             "Alright, I don't need so many rings. Having you is enough~",
-            "I've already received your heart. Keep this ring with you.",
+            "I already know how you feel. Keep this one.",
             "One ring is enough. Our promise won't change."
         };
         
