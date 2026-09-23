@@ -1,5 +1,28 @@
 # CODE_REVIEW_FINDINGS.md — 已确认问题库
 
+<!-- BEGIN MANUAL 16 FINDINGS 2026-09-23 -->
+
+## 2026-09-23 人工实测 16 项中确认的缺陷（均 Fixed / L1+L2，L3 待 owner）
+
+详情与证据见 [修复记录](docs/testing/20260922人工实测发现的问题_修复记录.md)。只登记有确定根因的缺陷；功能需求类（保底、选人页、特效重做等）不在此列。
+
+| ID | 级别 | 问题与根因 | 位置 |
+| --- | --- | --- | --- |
+| CR-2026-09-23-001 | P2 | 词缀名整行消失。名字 26 号、关闭自动缩字，框高 32 比一行中文矮；TMP Ellipsis 在首行都放不下时整串清空（09-19 放大字号引入，09-20 修复未覆盖高度） | `Integration/Reforge/ReforgeUIManager_AffixForge*.cs` |
+| CR-2026-09-23-002 | P2 | 日报图例只有色块没有字。原因同上：行高 30，18 号字无法缩小 | `Assets/Data/DailyReportLayout.json`、`DailyReportUI_Dashboard.cs` |
+| CR-2026-09-23-003 | P3 | 日报标题药丸显示灰方块。生成器画的 alpha 48 白块在 RGBA 画布上是覆盖，等于挖洞，透出背后的遮罩 | `tools/gen_daily_report_ui.py` |
+| CR-2026-09-23-004 | P3 | 日报战绩表 4–5 行塞进 3 行高的框，末行露半截 | `DailyReportUI.cs`（JoinColumns） |
+| CR-2026-09-23-005 | P2 | 报箱、遗种巢发灰。基地建筑包材质是天空岛环境着色器（Unlit、自算光、岛外冷色环境光），许愿台的着色器替换只认 Standard | `Common/Buildings/BuildingModelHelper.cs` |
+| CR-2026-09-23-006 | P2 | 遗种巢没有实体碰撞：建预制体时只实例化模型，从来没补碰撞体。报箱缺碰撞离线未证实（UNVERIFIED） | `PetNest/PetNestBuilder.cs` |
+| CR-2026-09-23-007 | P3 | 船点多出鸭王杯、天空岛两个交互圈。事后追加进组的选项没关自己的世界标记，天空岛选项的基类还重开了交互碰撞体 | `ModeH/ModeHInteractable.cs`、`DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs` |
+| CR-2026-09-23-008 | P3 | 共享按钮新建时从白色淡入 0.08 秒。赋 ColorBlock 触发非即时过渡；是 F-21 的共享根因，遗种巢整页重建时尤其明显 | `ZombieMode/ZombieModeUIHelper.cs` |
+| CR-2026-09-23-010 | P2 | Mode H 认证缓存键含每次启动归零的选档计数，同一版本同一存档也会反复重跑热身 | `ModeH/ModeHProductionCertification.cs` 等 |
+| CR-2026-09-23-012 | P3 | Mode H HUD 用「人数区间」的文案显示场上敌人数 | `ModeH/ModeHUI.cs` |
+| CR-2026-09-23-014 | P2 | 菜地种子唯一来源被玩家可关的「Boss掉落随机化」开关挡住，也没有商店来源，关掉开关就永远拿不到种子 | `LootAndRewards/LootAndRewardsSpecialLoot.cs`、`Integration/BackMountain/*` |
+| CR-2026-09-23-017 | P2 | 遗种巢异色 / 炫彩特效是雾片配方染色：挂在角色根上不随崽缩小，每帧手动撒粒子（浓度随帧率变化），粒子长到 0.7–1.1 m，成一团黄雾 | `PetNest/PetNestAuraEffect.cs` |
+
+<!-- END MANUAL 16 FINDINGS 2026-09-23 -->
+
 <!-- BEGIN FULL AUDIT REPAIR INDEX 2026-09-22 -->
 
 ## 2026-09-22 全仓审计条目修复闭环
