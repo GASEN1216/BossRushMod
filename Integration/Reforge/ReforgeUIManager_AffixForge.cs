@@ -58,6 +58,8 @@ namespace BossRush
         private const int AFFIX_STONE_ROW_HEIGHT = 44;
         private const int AFFIX_STONE_ICON_SIZE = 36;
         private const int AFFIX_NAME_FONT_SIZE = 26;
+        // 游戏中文字体行高约为字号的 1.45 倍，再加 TMP 上下 margin；框高低于它时 TMP 会把整行名字清空。
+        private const int AFFIX_NAME_MIN_HEIGHT = (int)(AFFIX_NAME_FONT_SIZE * 1.5f) + 4;
         private const int AFFIX_DESC_FONT_SIZE = 20;
         private const int AFFIX_STONE_FONT_SIZE = 22;
         private const int AFFIX_LOCK_BUTTON_WIDTH = 84;
@@ -96,6 +98,7 @@ namespace BossRush
             public TextMeshProUGUI NameText;
             public TextMeshProUGUI DescText;
             public LayoutElement RowLayout;
+            public LayoutElement NameLayout;
             public LayoutElement DescriptionLayout;
             public Button LockButton;
             public TextMeshProUGUI LockButtonText;
@@ -555,9 +558,27 @@ namespace BossRush
                 float descriptionHeight = BossRushUI.MeasureTextHeight(row.DescText, textWidth,
                     AFFIX_DESC_FONT_SIZE * 2 + 8);
                 row.DescriptionLayout.minHeight = row.DescriptionLayout.preferredHeight = descriptionHeight;
+                // 名字行按实测行高给框：TMP 的 Ellipsis 在首行都放不下时整串清空，
+                // 旧的「字号 + 6」比中文行高矮，名字因此整行消失（2026-09-22 实测）。
+                float nameHeight = MeasureAffixNameHeight(row.NameText);
+                row.NameLayout.minHeight = row.NameLayout.preferredHeight = nameHeight;
                 row.RowLayout.minHeight = row.RowLayout.preferredHeight = Mathf.Max(AFFIX_ROW_HEIGHT,
-                    descriptionHeight + AFFIX_NAME_FONT_SIZE + 12);
+                    descriptionHeight + nameHeight + 8);
             }
+        }
+
+        /// <summary>单行词缀名需要的框高（含 TMP margin），至少一行中文行高。</summary>
+        private static float MeasureAffixNameHeight(TextMeshProUGUI nameText)
+        {
+            float minimum = AFFIX_NAME_MIN_HEIGHT;
+            if (nameText == null || string.IsNullOrEmpty(nameText.text))
+            {
+                return minimum;
+            }
+
+            float measured = Mathf.Ceil(nameText.GetPreferredValues(
+                nameText.text, float.PositiveInfinity, float.PositiveInfinity).y) + 2f;
+            return Mathf.Max(minimum, measured);
         }
 
         private static void RefreshAffixRow(AffixRowWidgets row, bool hasSlot, AffixSlotView view)

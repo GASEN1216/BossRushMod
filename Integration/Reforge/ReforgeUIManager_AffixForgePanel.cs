@@ -251,8 +251,8 @@ namespace BossRush
                 "Name",
                 textColumn.transform,
                 new Vector2(0.5f, 0.5f),
-                new Vector2(200f, AFFIX_NAME_FONT_SIZE + 6));
-            AddFixedLayoutElement(nameObj, 0, AFFIX_NAME_FONT_SIZE + 6);
+                new Vector2(200f, AFFIX_NAME_MIN_HEIGHT));
+            AddFixedLayoutElement(nameObj, 0, AFFIX_NAME_MIN_HEIGHT);
             widgets.NameText = ZombieModeUIHelper.CreateTMPText(
                 nameObj,
                 string.Empty,
@@ -274,8 +274,8 @@ namespace BossRush
                 BossRushUIColors.TextSecondary);
 
             widgets.NameText.enableAutoSizing = false;
-            // 词缀名固定一行：名字行的 LayoutElement 高度是 AFFIX_NAME_FONT_SIZE + 6，
-            // 一旦换行第二行就落在框外被裁掉，看起来就是「词缀名不见了」。
+            // 词缀名固定一行，框高按一行中文行高给（RefreshAffixPanel 再按实测放大）：
+            // 框比首行矮时 TMP 的 Ellipsis 会把整串清空，「词缀名不见了」就是这个。
             widgets.NameText.enableWordWrapping = false;
             widgets.NameText.overflowMode = TextOverflowModes.Ellipsis;
             widgets.DescText.enableAutoSizing = false;
@@ -307,6 +307,7 @@ namespace BossRush
             }
 
             widgets.RowLayout = rowLayout;
+            widgets.NameLayout = nameObj.GetComponent<LayoutElement>();
             widgets.DescriptionLayout = descObj.GetComponent<LayoutElement>();
             widgets.Root = row;
             return widgets;
