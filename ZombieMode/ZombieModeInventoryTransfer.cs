@@ -9,167 +9,32 @@ namespace BossRush
     {
         private bool PrepareZombieModeInventoryTransferShell(int runId)
         {
-            if (!IsZombieModeRunValid(runId))
-            {
-                return false;
-            }
-
-            if (zombieModeEntryTransaction.InventoryTransferStarted)
-            {
-                return true;
-            }
-
-            List<Item> items = CollectZombieModeTopLevelPlayerItems();
-            for (int i = 0; i < items.Count; i++)
-            {
-                Item item = items[i];
-                if (item == null || item.IsBeingDestroyed)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    if (!TryMoveZombieModeEntryItemToStorageOrInbox(item))
-                    {
-                        throw new System.InvalidOperationException("Storage transfer returned false");
-                    }
-                }
-                catch (System.Exception e)
-                {
-                    DevLog("[ZombieMode] 裸装转移失败: " + e.Message);
-                    try
-                    {
-                        if (item != null && !item.IsBeingDestroyed)
-                        {
-                            ItemUtilities.SendToPlayer(item, false, false);
-                        }
-                    }
-                    catch (System.Exception ex2)
-                    {
-                        DevLog("[ZombieMode] 裸装回退 SendToPlayer 失败: " + ex2.Message);
-                    }
-                    RollbackZombieModeInventoryTransferShell();
-                    return false;
-                }
-            }
-
-            zombieModeEntryTransaction.InventoryTransferStarted = true;
-            return true;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.PrepareZombieModeInventoryTransfer(runId);
         }
 
         private bool TryMoveZombieModeEntryItemToStorageOrInbox(Item item)
         {
-            if (item == null || item.IsBeingDestroyed)
-            {
-                return true;
-            }
-
-            item.Detach();
-            ReforgeDataPersistence.SyncCurrentReforgeState(item);
-            Inventory storage = PlayerStorage.Inventory;
-            if (storage != null)
-            {
-                int firstEmptyPosition = storage.GetFirstEmptyPosition(0);
-                if (firstEmptyPosition >= 0)
-                {
-                    bool added = storage.AddAt(item, firstEmptyPosition);
-                    if (added)
-                    {
-                        zombieModeEntryTransaction.InventoryTransferredItems.Add(item);
-                        return true;
-                    }
-                }
-            }
-
-            ItemTreeData itemData = ItemTreeData.FromItem(item);
-            if (itemData == null)
-            {
-                throw new System.InvalidOperationException("ItemTreeData.FromItem returned null");
-            }
-
-            PlayerStorageBuffer.Buffer.Add(itemData);
-            try
-            {
-                PlayerStorageBuffer.SaveBuffer();
-            }
-            catch
-            {
-                // 原物尚存；失败回退时撤销候选数据，避免同时返还原物和保留 inbox 副本。
-                PlayerStorageBuffer.Buffer.Remove(itemData);
-                throw;
-            }
-            zombieModeEntryTransaction.InventoryTransferredInboxItems.Add(itemData);
-            item.DestroyTree();
-            return true;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.TryMoveZombieModeEntryItemToStorageOrInbox(item);
         }
 
         private void RollbackZombieModeInventoryTransferShell()
         {
-            // 反向迭代清理走 RunScopedRegistry.ForEachReverse（审查 §1.3）。
-            RunScopedRegistry.ForEachReverse(
-                zombieModeEntryTransaction.InventoryTransferredItems,
-                item =>
-                {
-                    if (item != null && !item.IsBeingDestroyed)
-                    {
-                        ItemUtilities.SendToPlayer(item, false, false);
-                    }
-                },
-                (e, item) => DevLog("[ZombieMode] 裸装转移回滚失败: " + e.Message));
-
-            // inbox 已保存完整物品树，原物已销毁；保留已完成的转存，玩家可从收件箱取回。
-            // 不移除唯一副本，也不重建第二份物品；重复回滚只清本次事务的引用。
-            zombieModeEntryTransaction.InventoryTransferredItems.Clear();
-            zombieModeEntryTransaction.InventoryTransferredInboxItems.Clear();
-            zombieModeEntryTransaction.InventoryTransferStarted = false;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.RollbackZombieModeInventoryTransfer();
         }
 
         private List<Item> CollectZombieModeTopLevelPlayerItems()
         {
-            List<Item> result = new List<Item>();
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null || player.CharacterItem == null)
-            {
-                return result;
-            }
-
-            Item characterItem = player.CharacterItem;
-            Inventory inventory = characterItem.Inventory;
-            if (inventory != null && inventory.Content != null)
-            {
-                for (int i = 0; i < inventory.Content.Count; i++)
-                {
-                    AddZombieModeTransferCandidate(result, inventory.Content[i]);
-                }
-            }
-
-            SlotCollection slots = characterItem.Slots;
-            if (slots != null)
-            {
-                foreach (Slot slot in slots)
-                {
-                    if (slot != null)
-                    {
-                        AddZombieModeTransferCandidate(result, slot.Content);
-                    }
-                }
-            }
-
-            return result;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.CollectZombieModeTopLevelPlayerItems() : new List<Item>();
         }
 
         private void AddZombieModeTransferCandidate(List<Item> result, Item item)
         {
-            if (result == null || item == null || item.IsBeingDestroyed)
-            {
-                return;
-            }
-
-            if (!result.Contains(item))
-            {
-                result.Add(item);
-            }
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.AddZombieModeTransferCandidate(result, item);
         }
     }
 }

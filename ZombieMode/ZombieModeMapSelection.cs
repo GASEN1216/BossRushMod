@@ -158,7 +158,8 @@ namespace BossRush
 
         internal bool PrepareZombieModeInventoryTransferForRuntimeModule(int runId)
         {
-            return PrepareZombieModeInventoryTransferShell(runId);
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.PrepareZombieModeInventoryTransfer(runId);
         }
 
         internal bool CollectZombieModeSpawnPointsForRuntimeModule(int runId)

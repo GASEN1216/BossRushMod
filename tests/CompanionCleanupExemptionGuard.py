@@ -21,7 +21,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 文件 -> 该文件里必须出现豁免调用的次数下限
 SCANS = {
     os.path.join(ROOT, "ModBehaviour.cs"): 2,
-    os.path.join(ROOT, "WavesArena", "WavesArenaEnemyMaintenance.cs"): 2,
+    os.path.join(ROOT, "WavesArena", "WavesArenaRuntimeModule_EnemyMaintenance.cs"): 2,
 }
 
 EXEMPTION = "PetNestCompanionAgent.IsCompanionCharacter"

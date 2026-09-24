@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 
-ENEMY_MAINTENANCE_SOURCE = Path("WavesArena/WavesArenaEnemyMaintenance.cs")
+ENEMY_MAINTENANCE_SOURCE = Path("WavesArena/WavesArenaRuntimeModule_EnemyMaintenance.cs")
 DEATH_WRAITH_SOURCES = [
     Path("Integration/DeathWraith/DeathWraithSystem.cs"),
     Path("Integration/DeathWraith/DeathWraithRecording.cs"),
@@ -83,34 +83,37 @@ def main() -> int:
         if snippet not in helper_block:
             return fail("DeathWraithBossRushClearGuard: helper missing snippet -> " + snippet)
 
-    force_block = extract_block(enemy_maintenance_text, "private void ForceKillAllEnemies()")
+    force_block = extract_block(enemy_maintenance_text, "internal void ForceKillAllEnemies()")
     if not force_block:
         return fail("DeathWraithBossRushClearGuard: missing ForceKillAllEnemies block")
 
     result = require_before(
         force_block,
-        "if (IsDeathWraithCharacter_DeathWraith(c))",
+        "if (owner.IsDeathWraithCharacterForArena(c))",
         "bool isPet = false;",
         "DeathWraithBossRushClearGuard: ForceKillAllEnemies",
     )
     if result != 0:
         return result
 
-    clear_block = extract_block(enemy_maintenance_text, "private void ClearEnemiesForBossRush()")
+    clear_block = extract_block(enemy_maintenance_text, "internal void ClearEnemiesForBossRush()")
     if not clear_block:
         return fail("DeathWraithBossRushClearGuard: missing ClearEnemiesForBossRush block")
 
     result = require_before(
         clear_block,
-        "if (IsDeathWraithCharacter_DeathWraith(c))",
+        "if (owner.IsDeathWraithCharacterForArena(c))",
         "bool isEggDuck = false;",
         "DeathWraithBossRushClearGuard: ClearEnemiesForBossRush",
     )
     if result != 0:
         return result
 
-    if clear_block.find("if (IsDeathWraithCharacter_DeathWraith(c))") > clear_block.find("_reusableDestroyList.Add(c.gameObject);"):
+    if clear_block.find("if (owner.IsDeathWraithCharacterForArena(c))") > clear_block.find("owner.ArenaReusableDestroyList.Add(c.gameObject);"):
         return fail("DeathWraithBossRushClearGuard: Death Wraith guard must run before destroy-list collection")
+    host = Path("WavesArena/WavesArenaEnemyMaintenance.cs").read_text(encoding="utf-8")
+    if "return IsDeathWraithCharacter_DeathWraith(enemy);" not in host:
+        return fail("DeathWraithBossRushClearGuard: host query bridge must reach Death Wraith owner")
 
     print("DeathWraithBossRushClearGuard: PASS")
     return 0

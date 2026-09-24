@@ -120,11 +120,14 @@ def check_module(errors):
             errors.append("[目录时序] 重建入口必须紧接着重建目录")
 
     waves = read_text(repo_path(os.path.join("WavesArena", "WavesArena.cs")))
-    if waves is None:
-        errors.append("[File] 缺少 WavesArena/WavesArena.cs")
-    elif not re.search(
-            r"_enemyPresetsInitialized = true;[\s\S]{0,600}?"
-            r"PetNestRuntime\.NotifyEnemyPresetsRefreshed\(\);", waves):
+    wave_module = read_text(repo_path(os.path.join("WavesArena", "WavesArenaRuntimeModule_EnemyPresets.cs")))
+    if waves is None or wave_module is None:
+        errors.append("[File] 缺少竞技场预设池宿主桥或模块实现")
+    elif not (re.search(
+            r"EnemyPresetsInitialized = true;[\s\S]{0,600}?"
+            r"owner\.NotifyArenaPresetCatalogsRefreshed\(\);", wave_module)
+            and re.search(r"internal void NotifyArenaPresetCatalogsRefreshed\(\)[\s\S]{0,200}?"
+                          r"PetNestRuntime\.NotifyEnemyPresetsRefreshed\(\);", waves)):
         errors.append("[目录时序] InitializeEnemyPresets 填充完成后未通知重建血脉目录")
 
     boss_filter = read_text(repo_path(os.path.join("BossFilter", "BossFilter.cs")))
@@ -154,9 +157,10 @@ def check_module(errors):
         errors.append("[目录时序] 预热必须在回基地分支的最前面，"
                       "晚于任何读血脉目录的一步就等于没修")
 
-    if waves is not None and not re.search(
-            r"internal bool EnsureEnemyPresetsReadyForGameplayCatalogs\(\)[\s\S]{0,900}?"
-            r"InitializeEnemyPresets\(\);", waves):
+    if waves is not None and wave_module is not None and not (
+            "wavesArenaRuntime.EnsureEnemyPresetsReadyForGameplayCatalogs()" in waves
+            and re.search(r"internal bool EnsureEnemyPresetsReadyForGameplayCatalogs\(\)[\s\S]{0,900}?"
+                          r"InitializeEnemyPresets\(\);", wave_module)):
         errors.append("[目录时序] WavesArena 缺少图鉴/遗种巢共享的幂等预设初始化入口")
 
     # OnUpdate 未 bootstrap 时零成本早返；开关运行时打开要当帧复活

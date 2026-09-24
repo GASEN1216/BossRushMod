@@ -33,10 +33,6 @@ namespace BossRush
             {
                 InitializeDynamicItems = InitializeDynamicItems,
                 InjectBossRushTicketLocalization = InjectBossRushTicketLocalization,
-                InitializeBirthdayCakeItem = InitializeBirthdayCakeItem,
-                InjectBirthdayCakeLocalization = InjectBirthdayCakeLocalization,
-                InitializeWikiBookItem = InitializeWikiBookItem,
-                InjectWikiBookLocalization = InjectWikiBookLocalization,
                 InjectAchievementMedalLocalization = InjectAchievementMedalLocalization,
                 LoadEquipmentContent = LoadEquipmentContent,
                 InitializeEarlyEquipmentAbilitySystems = InitializeEarlyEquipmentAbilitySystems,
@@ -48,7 +44,6 @@ namespace BossRush
                 SetupPhantomWitchScytheForScene = SetupPhantomWitchScytheForScene,
                 SetupNewWeaponsForScene = SetupNewWeaponsForScene,
                 InjectAchievementMedalIntoShops = InjectAchievementMedalIntoShops,
-                DelayedBirthdayCakeGift = DelayedBirthdayCakeGift,
                 ScheduleWishRewardPoolWarmup = ScheduleWishRewardPoolWarmup,
             };
         }

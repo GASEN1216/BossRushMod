@@ -30,7 +30,7 @@ HELPER = os.path.join(REPO_ROOT, "MapSelection", "BossRushMapSelectionHelper.cs"
 ENTRY_FLOW = os.path.join(REPO_ROOT, "WavesArena", "BossRushEntryFlow.cs")
 INTEGRATION = os.path.join(REPO_ROOT, "Integration", "BossRushIntegration_StartAndScene.cs")
 TRAVEL = os.path.join(REPO_ROOT, "Integration", "BossRushIntegration_TravelAndSetup.cs")
-MAINTENANCE = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaEnemyMaintenance.cs")
+MAINTENANCE = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_EnemyMaintenance.cs")
 REGISTRATION = os.path.join(REPO_ROOT, "ModBehaviourRuntimeModules.cs")
 MODEH_ENTRY = os.path.join(REPO_ROOT, "ModeH", "ModeHEntry.cs")
 

@@ -40,7 +40,112 @@ def execute(name, files, generated=''):
     code=subprocess.call(['dotnet','run','--project',str(project),'--configuration','Release','--',str(ROOT)],cwd=ROOT)
     if code: raise SystemExit(code)
 
-execute('transfer',[HERE/'Transfer.cs',ROOT/'ZombieMode/ZombieModeInventoryTransfer.cs'])
+transfer_module=ROOT/'ZombieMode/ZombieModeRuntimeModule.cs'
+transfer_inventory_module=ROOT/'ZombieMode/ZombieModeRuntimeModule_InventoryTransfer.cs'
+transfer_host=ROOT/'ZombieMode/ZombieModeInventoryTransfer.cs'
+transfer_bridge=ROOT/'ZombieMode/ZombieModeMapSelection.cs'
+enemy_runtime=ROOT/'ZombieMode/ZombieModeEnemyRuntime.cs'
+enemy_module=ROOT/'ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs'
+enemy_module_fields='\n'.join(declaration(enemy_module,m) for m in [
+    'private readonly HashSet<int> zombieModeEnemyInstanceIds',
+    'private readonly Dictionary<int, ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkersByInstanceId',
+])
+enemy_module_methods='\n'.join(member(enemy_module,m) for m in [
+    'internal bool IsZombieModeKnownEnemy(CharacterMainControl character)',
+    'internal bool TryGetZombieModeKnownEnemyMarker(CharacterMainControl character, out ZombieModeEnemyRuntimeMarker marker)',
+    'internal void RegisterZombieModeEnemyInstanceId(CharacterMainControl character)',
+    'internal void RegisterZombieModeEnemyInstanceId(CharacterMainControl character, ZombieModeEnemyRuntimeMarker marker)',
+    'internal void UnregisterZombieModeEnemyInstanceId(CharacterMainControl character)',
+    'internal void ClearZombieModeEnemyInstanceIds()',
+    'internal ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(',
+])
+enemy_host_methods='\n'.join(member(enemy_runtime,m) for m in [
+    'internal bool IsZombieModeKnownEnemy(CharacterMainControl character)',
+    'internal bool TryGetZombieModeKnownEnemyMarker(CharacterMainControl character, out ZombieModeEnemyRuntimeMarker marker)',
+    'internal void RegisterZombieModeEnemyInstanceId(CharacterMainControl character)',
+    'internal void RegisterZombieModeEnemyInstanceId(CharacterMainControl character, ZombieModeEnemyRuntimeMarker marker)',
+    'internal void UnregisterZombieModeEnemyInstanceId(CharacterMainControl character)',
+    'internal void ClearZombieModeEnemyInstanceIds()',
+    'private ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(',
+    'internal int CalculateZombieModeEnemyPurificationPointsForRuntimeModule(',
+    'internal void RestoreZombieModeVisualScaleForRuntimeModule(',
+    'internal void ReleaseZombieModeFootMarkerForRuntimeModule(',
+    'private static void RestoreZombieModeVisualScale(',
+    'private static void ReleaseZombieModeFootMarker(',
+])
+transfer_module_methods='\n'.join([member(transfer_module,'internal bool IsZombieModeRunValid(int runId)')]+[member(transfer_inventory_module,m) for m in [
+    'internal bool PrepareZombieModeInventoryTransfer(int runId)',
+    'internal bool TryMoveZombieModeEntryItemToStorageOrInbox(Item item)',
+    'internal void RollbackZombieModeInventoryTransfer()',
+    'internal List<Item> CollectZombieModeTopLevelPlayerItems()',
+    'internal void AddZombieModeTransferCandidate(List<Item> result, Item item)',
+]])
+transfer_host_methods='\n'.join(member(transfer_host,m) for m in [
+    'private bool PrepareZombieModeInventoryTransferShell(int runId)',
+    'private bool TryMoveZombieModeEntryItemToStorageOrInbox(Item item)',
+    'private void RollbackZombieModeInventoryTransferShell()',
+    'private List<Item> CollectZombieModeTopLevelPlayerItems()',
+    'private void AddZombieModeTransferCandidate(List<Item> result, Item item)',
+])
+transfer_bridge_method=member(transfer_bridge,'internal bool PrepareZombieModeInventoryTransferForRuntimeModule(int runId)')
+transfer='''using System;
+using System.Collections.Generic;
+using ItemStatsSystem;
+using ItemStatsSystem.Data;
+using ItemStatsSystem.Items;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+namespace BossRush {
+public enum ZombieModeLifecyclePhase { None, InitializingRun, WaitingStarterChoice, Active }
+public enum ZombieModeRunOnlyObjectKind { Enemy, Boss }
+public enum ZombieModeBossKind { Titan }
+public enum ZombieModeEnemyKind { Normal, Elite, Special }
+public enum ZombieModeSpecialKind { None }
+public enum ZombieModeEliteAffix { Commander, Swift }
+internal static class ZombieModePhaseGuards { internal static bool IsActive(ZombieModeLifecyclePhase phase) { return phase == ZombieModeLifecyclePhase.Active; } }
+internal sealed class ZombieModeRunState { internal int RunId; internal int SceneBuildIndex = -1; internal bool IsCleaningUp; internal ZombieModeLifecyclePhase LifecyclePhase = ZombieModeLifecyclePhase.Active; }
+public sealed class ZombieModeEntryTransaction {
+ public bool InventoryTransferStarted;
+ public readonly List<Item> InventoryTransferredItems = new List<Item>();
+ public readonly List<ItemTreeData> InventoryTransferredInboxItems = new List<ItemTreeData>();
+}
+internal sealed partial class ZombieModeRuntimeModule {
+ private ModBehaviour owner; private ZombieModeRunState runState; private ZombieModeEntryTransaction entryTransaction;
+'''+enemy_module_fields+'''
+ internal bool WasIndexedAtLastRunOnlyRegistration; internal Action LastRunOnlyCleanup; internal int RunOnlyRegistrationCount;
+ internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState, ZombieModeEntryTransaction entryTransaction) { this.owner = owner; this.runState = runState; this.entryTransaction = entryTransaction; }
+ internal void RegisterZombieModeRunOnlyObject(int runId, ZombieModeRunOnlyObjectKind kind, GameObject gameObject, UnityEngine.Object target, Action cleanupAction) {
+  RunOnlyRegistrationCount++; LastRunOnlyCleanup = cleanupAction;
+  ZombieModeEnemyRuntimeMarker marker = target as ZombieModeEnemyRuntimeMarker;
+  WasIndexedAtLastRunOnlyRegistration = marker != null && IsZombieModeKnownEnemy(marker.Owner);
+  TransferTrace.Add("runonly-register");
+ }
+'''+enemy_module_methods+'''
+'''+transfer_module_methods+'''
+}
+public partial class ModBehaviour {
+ private ZombieModeRuntimeModule zombieModeRuntimeModule; private ZombieModeEntryTransaction zombieModeEntryTransaction;
+ internal void AttachTransferTestModule(ZombieModeRuntimeModule module, ZombieModeEntryTransaction transaction) { zombieModeRuntimeModule = module; zombieModeEntryTransaction = transaction; }
+ public bool InventoryTransferStarted { get { return zombieModeEntryTransaction != null && zombieModeEntryTransaction.InventoryTransferStarted; } }
+ public static void DevLog(string message) { Console.WriteLine(message); }
+ private int CalculateZombieModeEnemyPurificationPoints(bool isBoss, ZombieModeEnemyKind enemyKind) { TransferTrace.Add("calculate-points:" + isBoss + ":" + enemyKind); return 733; }
+'''+transfer_host_methods+'\n'+transfer_bridge_method+'''
+'''+enemy_host_methods+'''
+ public bool IsKnownEnemyForTest(CharacterMainControl character) { return IsZombieModeKnownEnemy(character); }
+ public bool TryGetKnownMarkerForTest(CharacterMainControl character, out ZombieModeEnemyRuntimeMarker marker) { return TryGetZombieModeKnownEnemyMarker(character, out marker); }
+ public void RegisterEnemyIndexForTest(CharacterMainControl character) { RegisterZombieModeEnemyInstanceId(character); }
+ public void UnregisterEnemyIndexForTest(CharacterMainControl character) { UnregisterZombieModeEnemyInstanceId(character); }
+ public void ClearEnemyIndexForTest() { ClearZombieModeEnemyInstanceIds(); }
+ public ZombieModeEnemyRuntimeMarker RegisterEnemyForTest(int runId, CharacterMainControl enemy, bool isBoss = false, ZombieModeBossKind bossKind = ZombieModeBossKind.Titan, int overridePointValue = -1, ZombieModeEnemyKind enemyKind = ZombieModeEnemyKind.Normal, ZombieModeSpecialKind specialKind = ZombieModeSpecialKind.None, List<ZombieModeEliteAffix> eliteAffixes = null) { return RegisterZombieModeEnemyRuntimeShell(runId, enemy, isBoss, bossKind, overridePointValue, enemyKind, specialKind, eliteAffixes); }
+ public int RunOnlyRegistrationCountForTest { get { return zombieModeRuntimeModule == null ? 0 : zombieModeRuntimeModule.RunOnlyRegistrationCount; } }
+ public bool WasIndexedAtRunOnlyRegistrationForTest { get { return zombieModeRuntimeModule != null && zombieModeRuntimeModule.WasIndexedAtLastRunOnlyRegistration; } }
+ public void RunLastCleanupForTest() { if (zombieModeRuntimeModule != null && zombieModeRuntimeModule.LastRunOnlyCleanup != null) zombieModeRuntimeModule.LastRunOnlyCleanup(); }
+ public bool Prepare() { return PrepareZombieModeInventoryTransferShell(1); }
+ public bool PrepareViaRuntimeBridge() { return PrepareZombieModeInventoryTransferForRuntimeModule(1); }
+ public void Rollback() { RollbackZombieModeInventoryTransferShell(); }
+}
+}'''
+execute('transfer',[HERE/'Transfer.cs',ROOT/'Utilities/RunScopedRegistry.cs'],transfer)
 source=ROOT/'ZombieMode/ZombieModeRewardTriggerEffects.cs'
 execute('projectile',[HERE/'Projectile.cs'],
     'using UnityEngine; using ItemStatsSystem; using Duckov.Utilities; namespace BossRush { public partial class ModBehaviour {'+member(source,'private bool TrySpawnZombieModePlayerSupportProjectile(')+'}}')

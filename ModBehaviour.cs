@@ -328,12 +328,20 @@ namespace BossRush
         }
 
         // Boss管理
-        private MonoBehaviour currentBoss;  // CharacterMainControl
+        private MonoBehaviour currentBoss
+        {
+            get { return wavesArenaRuntime.CurrentBoss; }
+            set { wavesArenaRuntime.CurrentBoss = value; }
+        }
         internal MonoBehaviour CurrentBossForWavesArena { get { return currentBoss; } }
         private MonoBehaviour playerCharacter;  // CharacterMainControl
         private static SpawnEgg cachedSpawnEggBehavior = null;
         private static CharacterRandomPreset eggSpawnPreset = null; // 记录下蛋所用的角色预设，清理敌人时保留这类鸭鸭
-        private int currentEnemyIndex = 0;
+        private int currentEnemyIndex
+        {
+            get { return wavesArenaRuntime.CurrentEnemyIndex; }
+            set { wavesArenaRuntime.CurrentEnemyIndex = value; }
+        }
         // 记录由 BossRush 自己生成的“大兴兴”Boss，用于区分原版 DEMO 地图刷出的同名 Boss
         private readonly HashSet<CharacterMainControl> bossRushOwnedDaXingXing = new HashSet<CharacterMainControl>();
         // 状态
@@ -504,7 +512,11 @@ namespace BossRush
         /// </summary>
         public bool IsBossRushArenaActive => bossRushArenaActive;
 
-        private Vector3 demoChallengeStartPosition = Vector3.zero;
+        private Vector3 demoChallengeStartPosition
+        {
+            get { return wavesArenaRuntime.DemoChallengeStartPosition; }
+            set { wavesArenaRuntime.DemoChallengeStartPosition = value; }
+        }
 
         // 单波生成模式
         // 每波生成的Boss数量和当前波次的Boss列表
@@ -535,7 +547,7 @@ namespace BossRush
         private bool spawnersDisabled { get { return wavesArenaRuntime.SpawnersDisabled; } set { wavesArenaRuntime.SpawnersDisabled = value; } }
 
         // [性能优化] 竞技场范围限制 - 以路牌为圆心的清理/禁用范围
-        private const float ARENA_RADIUS = 500f; // 竞技场半径（米）
+        internal const float ARENA_RADIUS = 500f; // 竞技场半径（米）
         private static Vector3 _arenaCenter = Vector3.zero; // 竞技场中心位置（路牌位置）
         private static bool _arenaCenterSet = false; // 是否已设置竞技场中心
 

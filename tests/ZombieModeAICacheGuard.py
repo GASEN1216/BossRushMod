@@ -5,6 +5,7 @@ import sys
 
 
 MARKER = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 SAFE_ZONE = Path("ZombieMode/ZombieModeSafeZoneController.cs")
 GRAVITY = Path("ZombieMode/ZombieModeRewardProjectileSpread.cs")
@@ -56,6 +57,7 @@ def require_body_uses_helper(path: Path, signature: str, snippet: str) -> int:
 
 def main() -> int:
     marker_text = MARKER.read_text(encoding="utf-8-sig")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8-sig")
     helper = extract_method_body(
         marker_text,
         "private static AICharacterController GetZombieModeEnemyAI(",
@@ -65,11 +67,13 @@ def main() -> int:
 
     marker_required = [
         "public AICharacterController CachedAI;",
-        "marker.CachedAI = null;",
     ]
     for snippet in marker_required:
         if snippet not in marker_text:
             return fail("missing marker AI cache snippet -> " + snippet)
+
+    if "marker.CachedAI = null;" not in runtime_module:
+        return fail("RuntimeModule marker registration must clear cached AI")
 
     helper_required = [
         "AICharacterController ai = marker != null ? marker.CachedAI : null;",

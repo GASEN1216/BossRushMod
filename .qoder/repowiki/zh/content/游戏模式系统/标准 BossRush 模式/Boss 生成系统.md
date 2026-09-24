@@ -1,5 +1,7 @@
 # Boss 生成系统
 
+> 2026-09-25 迁移注：波次状态与倒计时由 `WavesArenaRuntimeModule` 持有，实际逻辑分别见 [倒计时](file://WavesArena/WavesArenaRuntimeModule_Countdown.cs)、[死亡与推波](file://WavesArena/WavesArenaRuntimeModule_WaveDeaths.cs)、[Boss 选择与重试生成](file://WavesArena/WavesArenaRuntimeModule_BossSpawning.cs)、[掉落状态](file://WavesArena/WavesArenaRuntimeModule_LootState.cs)。`WavesArena.cs`、`WavesArenaBossSpawning.cs` 保留兼容入口；下面旧流程图中的类名按原设计语义理解。
+
 <cite>
 **本文引用的文件**
 - [ModBehaviour.cs](file://ModBehaviour.cs)
@@ -51,7 +53,7 @@ A --> H["NPCSpawnConfig<br/>公共NPC刷点复用"]
 
 图表来源
 - [ModBehaviour.cs:1-200](file://ModBehaviour.cs#L1-L200)
-- [WavesArenaBossSpawning.cs:1-200](file://WavesArena/WavesArenaBossSpawning.cs#L1-L200)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [EnemySpawnCore.cs:1-200](file://Utilities/EnemySpawnCore.cs#L1-L200)
 - [LootAndRewardsRandomBossLoot.cs:1-200](file://LootAndRewards/LootAndRewardsRandomBossLoot.cs#L1-L200)
 - [MapSpawnPointRegistry.cs:1-120](file://Common/MapConfig/MapSpawnPointRegistry.cs#L1-L120)
@@ -61,7 +63,7 @@ A --> H["NPCSpawnConfig<br/>公共NPC刷点复用"]
 章节来源
 - [ModBehaviour.cs:1-200](file://ModBehaviour.cs#L1-L200)
 - [MapSpawnPointRegistry.cs:1-120](file://Common/MapConfig/MapSpawnPointRegistry.cs#L1-L120)
-- [WavesArenaBossSpawning.cs:1-200](file://WavesArena/WavesArenaBossSpawning.cs#L1-L200)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 
 ## 核心组件
 - 地图配置与刷新点
@@ -78,7 +80,7 @@ A --> H["NPCSpawnConfig<br/>公共NPC刷点复用"]
 章节来源
 - [BossRushMapConfig.cs:1-49](file://Common/MapConfig/BossRushMapConfig.cs#L1-L49)
 - [MapSpawnPointRegistry.cs:1-120](file://Common/MapConfig/MapSpawnPointRegistry.cs#L1-L120)
-- [WavesArenaBossSpawning.cs:100-250](file://WavesArena/WavesArenaBossSpawning.cs#L100-L250)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [EnemySpawnCore.cs:140-220](file://Utilities/EnemySpawnCore.cs#L140-L220)
 - [LootAndRewardsRandomBossLoot.cs:196-450](file://LootAndRewards/LootAndRewardsRandomBossLoot.cs#L196-L450)
 - [Config.cs:36-120](file://Config/Config.cs#L36-L120)
@@ -108,8 +110,8 @@ L-->>M : 随机化掉落/生成箱子
 ```
 
 图表来源
-- [WavesArenaBossSpawning.cs:18-120](file://WavesArena/WavesArenaBossSpawning.cs#L18-L120)
-- [WavesArenaBossSpawning.cs:343-473](file://WavesArena/WavesArenaBossSpawning.cs#L343-L473)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [EnemySpawnCore.cs:485-592](file://Utilities/EnemySpawnCore.cs#L485-L592)
 - [LootAndRewardsRandomBossLoot.cs:196-450](file://LootAndRewards/LootAndRewardsRandomBossLoot.cs#L196-L450)
 - [MapSpawnPointRegistry.cs:40-80](file://Common/MapConfig/MapSpawnPointRegistry.cs#L40-L80)
@@ -172,14 +174,14 @@ J --> K
 ```
 
 图表来源
-- [WavesArenaBossSpawning.cs:18-120](file://WavesArena/WavesArenaBossSpawning.cs#L18-L120)
-- [WavesArenaBossSpawning.cs:343-473](file://WavesArena/WavesArenaBossSpawning.cs#L343-L473)
-- [WavesArenaBossSpawning.cs:475-661](file://WavesArena/WavesArenaBossSpawning.cs#L475-L661)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 
 章节来源
-- [WavesArenaBossSpawning.cs:18-120](file://WavesArena/WavesArenaBossSpawning.cs#L18-L120)
-- [WavesArenaBossSpawning.cs:343-473](file://WavesArena/WavesArenaBossSpawning.cs#L343-L473)
-- [WavesArenaBossSpawning.cs:475-661](file://WavesArena/WavesArenaBossSpawning.cs#L475-L661)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 
 ### 通用敌人生成核心（预设发现与动态注册）
 - 预设缓存
@@ -248,12 +250,12 @@ R --> O["输出安全位置"]
 ```
 
 图表来源
-- [WavesArenaBossSpawning.cs:110-201](file://WavesArena/WavesArenaBossSpawning.cs#L110-L201)
-- [WavesArenaBossSpawning.cs:135-146](file://WavesArena/WavesArenaBossSpawning.cs#L135-L146)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [ModBehaviour.cs:186-229](file://ModBehaviour.cs#L186-L229)
 
 章节来源
-- [WavesArenaBossSpawning.cs:110-201](file://WavesArena/WavesArenaBossSpawning.cs#L110-L201)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [ModBehaviour.cs:186-229](file://ModBehaviour.cs#L186-L229)
 
 ### 生成失败处理机制
@@ -280,12 +282,12 @@ G --> |正常| I["结束"]
 ```
 
 图表来源
-- [WavesArenaBossSpawning.cs:475-661](file://WavesArena/WavesArenaBossSpawning.cs#L475-L661)
-- [WavesArenaBossSpawning.cs:253-341](file://WavesArena/WavesArenaBossSpawning.cs#L253-L341)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 
 章节来源
-- [WavesArenaBossSpawning.cs:475-661](file://WavesArena/WavesArenaBossSpawning.cs#L475-L661)
-- [WavesArenaBossSpawning.cs:253-341](file://WavesArena/WavesArenaBossSpawning.cs#L253-L341)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 
 ### 多 Boss 同时生成的协调机制
 - 预分配多点
@@ -309,11 +311,11 @@ W->>W : 统计失败并集中重试
 ```
 
 图表来源
-- [WavesArenaBossSpawning.cs:521-661](file://WavesArena/WavesArenaBossSpawning.cs#L521-L661)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [EnemySpawnCore.cs:485-592](file://Utilities/EnemySpawnCore.cs#L485-L592)
 
 章节来源
-- [WavesArenaBossSpawning.cs:521-661](file://WavesArena/WavesArenaBossSpawning.cs#L521-L661)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [EnemySpawnCore.cs:485-592](file://Utilities/EnemySpawnCore.cs#L485-L592)
 
 ### Boss 属性继承与修改、难度相关调节
@@ -409,14 +411,14 @@ M --> C["Config"]
 
 图表来源
 - [ModBehaviour.cs:1-200](file://ModBehaviour.cs#L1-L200)
-- [WavesArenaBossSpawning.cs:1-200](file://WavesArena/WavesArenaBossSpawning.cs#L1-L200)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [EnemySpawnCore.cs:1-200](file://Utilities/EnemySpawnCore.cs#L1-L200)
 - [LootAndRewardsRandomBossLoot.cs:1-200](file://LootAndRewards/LootAndRewardsRandomBossLoot.cs#L1-L200)
 - [Config.cs:1-120](file://Config/Config.cs#L1-L120)
 
 章节来源
 - [ModBehaviour.cs:1-200](file://ModBehaviour.cs#L1-L200)
-- [WavesArenaBossSpawning.cs:1-200](file://WavesArena/WavesArenaBossSpawning.cs#L1-L200)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [EnemySpawnCore.cs:1-200](file://Utilities/EnemySpawnCore.cs#L1-L200)
 - [LootAndRewardsRandomBossLoot.cs:1-200](file://LootAndRewards/LootAndRewardsRandomBossLoot.cs#L1-L200)
 - [Config.cs:1-120](file://Config/Config.cs#L1-L120)
@@ -436,7 +438,7 @@ M --> C["Config"]
 章节来源
 - [EnemySpawnCore.cs:147-187](file://Utilities/EnemySpawnCore.cs#L147-L187)
 - [EnemySpawnCore.cs:198-248](file://Utilities/EnemySpawnCore.cs#L198-L248)
-- [WavesArenaBossSpawning.cs:110-201](file://WavesArena/WavesArenaBossSpawning.cs#L110-L201)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [LootAndRewardsRandomBossLoot.cs:94-115](file://LootAndRewards/LootAndRewardsRandomBossLoot.cs#L94-L115)
 
 ## 故障排查指南
@@ -450,8 +452,8 @@ M --> C["Config"]
   - 观察批量生成重试日志，确认是否因位置冲突导致失败；调整刷新点密度与安全距离。
 
 章节来源
-- [WavesArenaBossSpawning.cs:343-473](file://WavesArena/WavesArenaBossSpawning.cs#L343-L473)
-- [WavesArenaBossSpawning.cs:253-341](file://WavesArena/WavesArenaBossSpawning.cs#L253-L341)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [LootAndRewardsRandomBossLoot.cs:483-549](file://LootAndRewards/LootAndRewardsRandomBossLoot.cs#L483-L549)
 
 ## 结论
@@ -467,6 +469,6 @@ Boss 生成系统以 JSON 地图配置为基础，结合波次调度、通用生
 
 章节来源
 - [ModBehaviour.cs:171-229](file://ModBehaviour.cs#L171-L229)
-- [WavesArenaBossSpawning.cs:18-120](file://WavesArena/WavesArenaBossSpawning.cs#L18-L120)
+- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [EnemySpawnCore.cs:147-187](file://Utilities/EnemySpawnCore.cs#L147-L187)
 - [LootAndRewardsRandomBossLoot.cs:196-450](file://LootAndRewards/LootAndRewardsRandomBossLoot.cs#L196-L450)

@@ -20,7 +20,7 @@ SCRIPT_FIXTURES = (
     "ContentBuildingOwnership", "BuildingRestoreCore", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
     "StoneOutpostSceneLease", "StoneOutpostMap", "EquipmentResourceScene", "SkyIslandStory", "SkyIslandDelivery", "SkyIslandOfficialContract", "SkyIslandEncounters", "SkyIslandLighting", "SkyIslandRaidLease", "SkyIslandLoot",
     "SkyIslandMarriage", "SkyIslandHudPolicy", "SkyIslandDialogue", "SkyIslandInteraction", "ZombieModeEntryDebt", "PermanentDuckNpcDialogue", "RewardPoolReliability",
-    "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy",
+    "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {
     "ReviewSeptember": "ReviewSeptember.csproj",

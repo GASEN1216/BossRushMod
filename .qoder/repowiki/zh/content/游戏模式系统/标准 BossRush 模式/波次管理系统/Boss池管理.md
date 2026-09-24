@@ -287,3 +287,6 @@ WAS --> MB["ModBehaviour"]
 
 ## 结论
 Boss池管理系统通过动态敌人发现、团队过滤、血量排序、缓存清理与权重随机选择，实现了灵活高效的Boss生成机制。结合Boss池过滤器与性能优化策略，确保了在不同模式下的稳定表现与用户体验。建议在实际使用中关注初始化标记与缓存脏标记的正确使用，以避免重复计算与性能瓶颈。
+## 2026-09-25 预设池归属（COMPAT）
+
+官方预设扫描、非 Boss 剪枝、血量范围缓存和基地侧图鉴 / 遗种巢幂等预热由 `WavesArena/WavesArenaRuntimeModule_EnemyPresets.cs` 执行，状态仍属于已注册的 `WavesArenaRuntimeModule`。旧 `ModBehaviour.InitializeEnemyPresets` 等入口只转发，扫描后沿原时序通知图鉴与遗种巢目录重建。`WavesArenaPresetWeight` 执行回归直接抽取无间炼狱预设选择方法，验证因子回退、波次血量权重及随机数调用次数；实际场景中的预设来源仍需实机确认。

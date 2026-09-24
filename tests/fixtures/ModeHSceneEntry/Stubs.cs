@@ -14,7 +14,7 @@ namespace UnityEngine
         public override int GetHashCode() { return base.GetHashCode(); }
         public static void Destroy(Object o) { if (!ReferenceEquals(o,null)) o.Destroyed = true; }
     }
-    public class Coroutine { public IEnumerator Body; public bool Stopped; }
+    public class Coroutine { public IEnumerator Body; public Stack<IEnumerator> Nested=new Stack<IEnumerator>(); public bool Stopped; }
     public struct Vector3
     {
         public float x,y,z; public Vector3(float a,float b,float c) { x=a;y=b;z=c; }
@@ -125,14 +125,29 @@ namespace BossRush
     {
         public readonly List<Coroutine> Routines=new List<Coroutine>(); public int LegacySetups;
         private WaitForSeconds sharedWait05s=new WaitForSeconds(.5f);
+        private IntegrationRuntimeModule bossRushIntegrationRuntime;
         public bool IsZombieModeActive;
+        public ModBehaviour() { bossRushIntegrationRuntime=new IntegrationRuntimeModule(this); }
+        internal WaitForSeconds IntegrationSharedWait05s { get { return sharedWait05s; } }
         public static void DevLog(string text) { }
         public static bool IsModeHRunInProgressSafe() { return ModeHRuntimeGates.Active; }
         public Coroutine StartCoroutine(IEnumerator body)
-        { var c=new Coroutine{Body=body};Routines.Add(c);if(!body.MoveNext())c.Stopped=true;return c; }
+        { var c=new Coroutine{Body=body};c.Nested.Push(body);Routines.Add(c);Advance(c);return c; }
         public void StopCoroutine(Coroutine c) { c.Stopped=true; }
         public void Tick()
-        { foreach(var c in Routines.ToArray())if(!c.Stopped && !c.Body.MoveNext())c.Stopped=true; }
+        { foreach(var c in Routines.ToArray())if(!c.Stopped)Advance(c); }
+        private static void Advance(Coroutine coroutine)
+        {
+            while(coroutine.Nested.Count>0)
+            {
+                IEnumerator current=coroutine.Nested.Peek();
+                if(!current.MoveNext()) { coroutine.Nested.Pop();continue; }
+                IEnumerator nested=current.Current as IEnumerator;
+                if(nested!=null) { coroutine.Nested.Push(nested);continue; }
+                return;
+            }
+            coroutine.Stopped=true;
+        }
         public Coroutine Legacy(Vector3 point) { return StartCoroutine(TeleportPlayerToCustomPosition(point)); }
         private bool ReadMainExistsWithWarning(string context) { return CharacterMainControl.Main!=null; }
         private bool ReadLevelInitedWithWarning(string context) { return LevelManager.LevelInited; }
@@ -141,6 +156,13 @@ namespace BossRush
         { return BossRushMapSelectionHelper.Pending?BossRushEntryMode.ModeH:BossRushEntryMode.Normal; }
         private BossRushMapConfig GetMapConfigBySceneName(string name) { return new BossRushMapConfig{customSpawnPos=new Vector3(1,0,1)}; }
         private IEnumerator SetupBossRushInGroundZero(Vector3 point,BossRushEntryMode entry) { LegacySetups++;yield break; }
+    }
+    internal partial class IntegrationRuntimeModule
+    {
+        private ModBehaviour _owner;
+        public IntegrationRuntimeModule(ModBehaviour owner) { _owner=owner; }
+        private bool ReadMainExistsWithWarning(string context) { return CharacterMainControl.Main!=null; }
+        private bool ReadLevelInitedWithWarning(string context) { return LevelManager.LevelInited; }
     }
     internal partial class ModeHRuntimeModule
     {

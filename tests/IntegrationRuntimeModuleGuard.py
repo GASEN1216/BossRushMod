@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MODULE_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule.cs"
 MODULE_RUNTIME_HOOKS_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_RuntimeHooks.cs"
 MODULE_MAP_OBJECTS_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_MapObjects.cs"
+MODULE_TRAVEL_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_Travel.cs"
 HOST_PATH = ROOT / "Integration/BossRushIntegration.cs"
 LIFECYCLE_PATH = ROOT / "Integration/BossRushIntegration_StartAndScene.cs"
 MAP_HOST_PATH = ROOT / "Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"
@@ -72,7 +73,8 @@ def main():
     module_core = clean_source(MODULE_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_runtime_hooks = clean_source(MODULE_RUNTIME_HOOKS_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_map_objects = clean_source(MODULE_MAP_OBJECTS_PATH.read_text(encoding="utf-8", errors="ignore"))
-    module = module_core + "\n" + module_runtime_hooks + "\n" + module_map_objects
+    module_travel = clean_source(MODULE_TRAVEL_PATH.read_text(encoding="utf-8", errors="ignore"))
+    module = module_core + "\n" + module_runtime_hooks + "\n" + module_map_objects + "\n" + module_travel
     host = clean_source(HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
     lifecycle = clean_source(LIFECYCLE_PATH.read_text(encoding="utf-8", errors="ignore"))
     map_host = clean_source(MAP_HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
@@ -86,6 +88,8 @@ def main():
         return fail("runtime hooks must be a single partial declaration of the registered module type")
     if module_map_objects.count("internal sealed partial class IntegrationRuntimeModule") != 1:
         return fail("map-object behavior must be a single partial declaration of the registered module type")
+    if module_travel.count("internal sealed partial class IntegrationRuntimeModule") != 1:
+        return fail("travel behavior must be a single partial declaration of the registered module type")
     if "partial class ModBehaviour" in module:
         return fail("the runtime module source must not declare a ModBehaviour partial")
     if "private ModBehaviour _owner;" not in module or "_owner = owner;" not in method_body(module, "public override void OnAwake(ModBehaviour owner)"):
@@ -181,6 +185,69 @@ def main():
     delayed_dragon = method_body(module, "internal System.Collections.IEnumerator DelayedSubscribeDragonBreathEvents()")
     if "yield return _owner.IntegrationSharedWait05s;" not in delayed_dragon:
         return fail("dragon-breath delayed subscription must preserve the host's shared wait instance")
+
+    travel_wait = method_body(module_travel, "internal IEnumerator WaitForCustomTeleportSceneReady()")
+    if require_order(travel_wait, [
+        "const float maxWait = 30f;", "const float interval = 0.1f;",
+        'ReadMainExistsWithWarning("TeleportPlayerToCustomPosition")',
+        'ReadLevelInitedWithWarning("TeleportPlayerToCustomPosition")',
+        "yield return new WaitForSeconds(interval);", "elapsed += interval;",
+        "yield return _owner.IntegrationSharedWait05s;",
+    ], "WaitForCustomTeleportSceneReady"):
+        return fail("custom teleport readiness polling must preserve its interval, shared wait, and order")
+
+    landing = method_body(module_travel, "internal Vector3 ApplyCustomTeleportPosition(Vector3 targetPosition, CharacterMainControl main, bool isModeEEntry)")
+    if not landing or landing.find("if (isModeEEntry)") > landing.find("Physics.RaycastAll("):
+        return fail("Mode E must return before applying the custom teleport landing")
+    if require_order(landing, [
+        "Physics.RaycastAll(rayStart, Vector3.down, 5f)",
+        "Mathf.Abs(h.point.y - configY) < 1f", "h.point.y < lowestY",
+        "Physics.Raycast(rayStart, Vector3.down, out hit, 5f)",
+        "camera.transform.position - main.transform.position", "main.SetPosition(finalPosition);",
+        "main.transform.position = finalPosition;",
+        "camera.transform.position = main.transform.position + cameraOffset;",
+    ], "ApplyCustomTeleportPosition"):
+        return fail("custom teleport must preserve ground selection, camera offset, and SetPosition fallback")
+    if landing.rfind("return finalPosition;") <= landing.find("Physics.RaycastAll("):
+        return fail("custom teleport must return the resolved landing after applying it")
+
+    travel_host_teleport = method_body(travel_host, "private System.Collections.IEnumerator TeleportPlayerToCustomPosition(Vector3 targetPosition)")
+    mode_h_gate = "if (ShouldSkipLegacySceneSetupForModeH()) yield break;"
+    first_gate = travel_host_teleport.find(mode_h_gate)
+    wait_call = travel_host_teleport.find("WaitForCustomTeleportSceneReady()")
+    second_gate = travel_host_teleport.find(mode_h_gate, first_gate + len(mode_h_gate))
+    entry_selection = travel_host_teleport.find("DetermineBossRushEntryMode(\"TeleportPlayerToCustomPosition\")")
+    apply_landing = travel_host_teleport.find("ApplyCustomTeleportPosition(")
+    zombie_guard = travel_host_teleport.find("IsZombieModeStartupInProgress()")
+    ground_zero_schedule = travel_host_teleport.find("StartCoroutine(SetupBossRushInGroundZero(finalPosition, entryMode));")
+    travel_positions = [first_gate, wait_call, second_gate, entry_selection, apply_landing, zombie_guard, ground_zero_schedule]
+    if not travel_host_teleport or any(position < 0 for position in travel_positions) or travel_positions != sorted(travel_positions):
+        return fail("host travel coordination must keep both Mode H gates, entry selection, teleport, and ZombieMode guard order")
+
+    force_teleport = method_body(module_travel, "internal IEnumerator ForceTeleportToSubScene(string targetSubSceneID, Vector3 targetPosition)")
+    if require_order(force_teleport, [
+        "const float maxWait = 10f;", "const float interval = 0.1f;",
+        'ReadMainExistsWithWarning("ForceTeleportToSubScene")',
+        'ReadLevelInitedWithWarning("ForceTeleportToSubScene")',
+        "yield return new WaitForSeconds(interval);", "yield return _owner.IntegrationSharedWait1s;",
+        "FindObjectsOfType<MultiSceneTeleporter>(true)", "targetSceneID == targetSubSceneID",
+        'targetSubSceneID == "Level_StormZone_B0"', "targetTeleporter.DoTeleport();",
+        "multiSceneCore.LoadAndTeleport(targetSubSceneID, targetPosition, true)",
+        "SetBossRushArenaPlannedForIntegration(false)",
+        "TeleportPlayerToCustomPositionForIntegration(targetPosition)",
+        "ClearBossRushPendingMapEntryForIntegration()", "ClearBossRushPendingEntryFlowStateForIntegration()",
+    ], "ForceTeleportToSubScene"):
+        return fail("subscene teleport must preserve readiness, teleporter preference, fallback, and pending-entry cleanup order")
+    force_host_bridge = method_body(travel_host, "private System.Collections.IEnumerator ForceTeleportToSubScene(string targetSubSceneID, Vector3 targetPosition)")
+    if "return bossRushIntegrationRuntime.ForceTeleportToSubScene(targetSubSceneID, targetPosition);" not in force_host_bridge:
+        return fail("legacy ForceTeleportToSubScene entrypoint must forward to the module")
+
+    set_spawn_host = method_body(travel_host, "private void SetCurrentMapSpawnPoints(string sceneName)")
+    if "currentMapSpawnPoints = bossRushIntegrationRuntime.ResolveMapSpawnPointsForScene(sceneName);" not in set_spawn_host:
+        return fail("legacy spawn-point entrypoint must keep its shared host state while delegating config resolution")
+    spawn_resolver = method_body(module_travel, "internal Vector3[] ResolveMapSpawnPointsForScene(string sceneName)")
+    if not spawn_resolver or "ModBehaviour.GetMapConfigBySceneName(sceneName)" not in spawn_resolver or "return mapConfig.spawnPoints;" not in spawn_resolver:
+        return fail("spawn-point config resolution must live in IntegrationRuntimeModule")
 
     map_spawn = method_body(module_map_objects, "internal void SpawnBossRushMapObjects()")
     if require_order(map_spawn, [
@@ -338,6 +405,8 @@ def main():
         return fail("compile_official.bat must include the extracted runtime-hooks partial")
     if "Integration/BossRushIntegrationRuntimeModule_MapObjects.cs" not in compile_text:
         return fail("compile_official.bat must include the extracted map-objects partial")
+    if "Integration/BossRushIntegrationRuntimeModule_Travel.cs" not in compile_text:
+        return fail("compile_official.bat must include the extracted travel partial")
 
     print("IntegrationRuntimeModuleGuard: PASS（商店状态 owner、库存委托、兼容入口与原订阅顺序）")
     return 0

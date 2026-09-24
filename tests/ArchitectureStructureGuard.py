@@ -31,7 +31,7 @@ MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
 WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
 WAVES_RUNTIME_TICK = Path("WavesArena/WavesArenaRuntimeModule_Tick.cs")
 WAVES_ENTRY_FLOW = Path("WavesArena/BossRushEntryFlow.cs")
-WAVES_ENEMY_MAINTENANCE = Path("WavesArena/WavesArenaEnemyMaintenance.cs")
+WAVES_ENEMY_MAINTENANCE = Path("WavesArena/WavesArenaRuntimeModule_EnemyMaintenance.cs")
 WAVES_SPAWNER_CONTROL = Path("WavesArena/WavesArenaSpawnerControl.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
 MODEF_RUNTIME_HOOKS = Path("ModeF/ModeFRuntimeHooks.cs")
@@ -79,7 +79,7 @@ REQUIRED_COMPILE_SOURCES = [
     "WavesArena/WavesArenaRuntimeModule.cs",
     "WavesArena/WavesArenaRuntimeHooks.cs",
     "WavesArena/BossRushEntryFlow.cs",
-    "WavesArena/WavesArenaEnemyMaintenance.cs",
+    "WavesArena/WavesArenaRuntimeModule_EnemyMaintenance.cs",
     "WavesArena/WavesArenaSpawnerControl.cs",
     "ModeE/ModeERuntimeModule.cs",
     "ModeE/ModeERuntimeHooks.cs",
@@ -406,16 +406,16 @@ def main() -> int:
             if required not in body:
                 return fail("ArchitectureStructureGuard: BossRushEntryFlow missing token: " + required)
     for signature, required_tokens in {
-        "private void ForceKillAllEnemies()": [
+        "internal void ForceKillAllEnemies()": [
             "ForceKillAllEnemies: 已杀死 ",
             "DamageInfo dmgInfo = new DamageInfo(main);",
         ],
-        "private void ClearEnemiesForBossRush()": [
+        "internal void ClearEnemiesForBossRush()": [
             "ClearEnemiesForBossRush: 开始清理",
-            "_reusableDestroyList.Clear();",
-            "_arenaCenterSet",
+            "owner.ArenaReusableDestroyList.Clear();",
+            "owner.ArenaCenterSetForCleanup",
         ],
-        "private IEnumerator ContinuousClearEnemiesUntilWaveStart()": [
+        "internal IEnumerator ContinuousClearEnemiesUntilWaveStart()": [
             "ContinuousClearEnemiesUntilWaveStart: 协程已启动",
             "DisableAllSpawners();",
             "ClearEnemiesForBossRush();",

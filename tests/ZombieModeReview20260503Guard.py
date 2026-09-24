@@ -80,6 +80,8 @@ def main() -> int:
     rewards_text = read_rewards()
     cleanup = Path("ZombieMode/ZombieModeCleanup.cs")
     runtime_module = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+    runtime_module_enemy = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
+    runtime_module_inventory = Path("ZombieMode/ZombieModeRuntimeModule_InventoryTransfer.cs")
     runtime_bridges = Path("ZombieMode/ZombieModeMapSelection.cs")
     inventory = Path("ZombieMode/ZombieModeInventoryTransfer.cs")
     map_iso = Path("ZombieMode/ZombieModeMapIsolation.cs")
@@ -118,7 +120,7 @@ def main() -> int:
 
     # §1.3 — RunScopedRegistry.ForEachReverse 至少 5 处
     fer_count = 0
-    for path in [cleanup, runtime_module, map_iso, drops, inventory]:
+    for path in [cleanup, runtime_module, runtime_module_inventory, map_iso, drops, inventory]:
         if path.is_file():
             txt = path.read_text(encoding="utf-8")
             fer_count += txt.count("RunScopedRegistry.ForEachReverse")
@@ -179,8 +181,21 @@ def main() -> int:
         return fail(err)
 
     # §3.1 — OnHurt HashSet 早返
-    err = must_contain(enemy_runtime, "zombieModeEnemyInstanceIds", "RegisterZombieModeEnemyInstanceId",
-                       "UnregisterZombieModeEnemyInstanceId", "ClearZombieModeEnemyInstanceIds")
+    err = must_contain(runtime_module_enemy,
+                       "private readonly HashSet<int> zombieModeEnemyInstanceIds",
+                       "private readonly Dictionary<int, ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkersByInstanceId",
+                       "internal void RegisterZombieModeEnemyInstanceId(CharacterMainControl character, ZombieModeEnemyRuntimeMarker marker)",
+                       "internal void UnregisterZombieModeEnemyInstanceId(CharacterMainControl character)",
+                       "internal void ClearZombieModeEnemyInstanceIds()")
+    if err:
+        return fail(err)
+    err = must_contain(enemy_runtime,
+                       "module.IsZombieModeKnownEnemy(character)",
+                       "module.TryGetZombieModeKnownEnemyMarker(character, out marker)",
+                       "module.RegisterZombieModeEnemyInstanceId(character, marker)",
+                       "module.UnregisterZombieModeEnemyInstanceId(character)",
+                       "module.ClearZombieModeEnemyInstanceIds()",
+                       "module.RegisterZombieModeEnemyRuntimeShell(")
     if err:
         return fail(err)
     err = must_contain(wave, "TryGetZombieModeKnownEnemyMarker", "TryHandleZombieModeSafeZonePlayerAttack", "CancelZombieModeSafeZone(runId, \"PlayerAttack\");")

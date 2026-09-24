@@ -14,7 +14,7 @@
 | P5 目录归位 | 未开始 | 天空岛迁移与注入占位清理 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-最近已提交：`e81ff798`（P3 簇 2 Tick / 生成器 / 预设、簇 5 Tick / 暂停、簇 6 地图物件）；当前批次迁移 Arena 奖励缓存与前期波次排除、丧尸奖励准备时长 / RunOnly 清理及集成延迟初始化。本节证据随当前检查点提交归档；下一动作是继续簇 2 余下业务。真实游戏目录尚未部署。
+最近已提交：`c8abc536`（P3 簇 2 奖励缓存 / 前期排除，簇 5 奖励时长 / RunOnly 清理，簇 6 延迟初始化）；下一动作是继续簇 2 预设池与余下业务，簇 5、6 的独立叶子并行推进。真实游戏目录尚未部署。
 
 ## P0 基线（2026-09-24）
 
@@ -70,6 +70,14 @@
 - Zombie：奖励准备时长选项、默认值与阶段门归 `ZombieModeRuntimeModule`；宿主和地图选择 UI 经薄桥调用。`AuditModeLifecycle` 覆盖 20 个选项、边界钳位、跨波次选值；相关守卫反向转红后按字节还原。RunOnly 记录注册、剪枝、局失效和逆序清理也归模块，旧宿主入口转发；清理动作、停协程、销毁对象的顺序保持。
 - Integration：`BossRushIntegrationRuntimeModule_DeferredBootstrap.cs` 接管延迟初始化的阶段状态与协程，宿主保留入口和回调绑定；基础物品、`EssentialContentReady`、配偶 / 建筑恢复、装备加载及场景占位符的顺序未改。`DeferredBootstrapGuard` 反向验证通过；五个旧路径守卫已按新生产文件定位并完成反向验证；整树守卫与回归均已通过。
 - 当前编译清单 1,044 源，宿主 partial 实测 177 文件 / 83,562 行，预算下调至 177 / 83,600。改动相关守卫 184 PASS / 0 FAIL；全量守卫 679 PASS / 0 FAIL / 0 known-red，修改的 RunOnly 守卫均反向转红并按字节恢复；全量执行回归 67 PASS / 0 FAIL / 0 SKIP；RunOnly 清理夹具直接抽取生产模块、记录与 `RunScopedRegistry` 验证反向回收及事件顺序。隔离正式构建 `Build succeeded!`、Dev 标识缺席，SHA-256 `2252254A5F47D05553A16B01076A9DBB049C5236DB191C16E3D5C9A7B153D221`；隔离 Dev 构建 `Build succeeded!`、标识在位，SHA-256 `FC4AD39ADEAC84DC0B93A96DCF133164542EF0A7DF3F1DB537EF983594BDB5B9`。两种 DLL 均与隔离发布副本哈希一致，72 bundle 清单通过。本节离线验证完成，真实游戏目录未动，L3 待 owner。
+
+### 当前可恢复步骤：预设、波次结算、入场转存与物品引导（进行中，COMPAT）
+
+- 簇 2：`WavesArenaRuntimeModule_EnemyPresets.cs` 接管预设全量扫描、非 Boss 剪枝、基地幂等预热、静态反射缓存及无间炼狱加权抽取；`WavesArenaRuntimeModule_BossSpawning.cs` 接管单/多 Boss 生成与原重试等待；`WavesArenaRuntimeModule_Countdown.cs` 接管间隔、里程碑加时与横幅；`WavesArenaRuntimeModule_WaveDeaths.cs` 接管本波成员判定、击杀去重与推波；首波初始化、持续清场、无间炼狱完成回调和掉落追踪/奖励临时状态也归同一模块。宿主保留原订阅委托与兼容入口薄桥；持续清场仍经窄查询读取原共享角色缓存与 Mode E 身份。`WavesArenaPresetWeight` 直接抽取生产选择器，覆盖空池、因子回退、波次血量权重、用户因子和随机数调用次数；去掉波次权重会转红。死亡成员闸、关键异常日志、首波顺序及状态归属守卫按实际模块方法反向转红并逐字还原。簇 2 的剩余掉落、奖励和结算方法仍在宿主，不记完成。
+- 簇 5：入场物品转存/回滚已迁入 `ZombieModeRuntimeModule_InventoryTransfer.cs`；敌人 marker 注册与缓存正在迁入 `ZombieModeRuntimeModule_EnemyRuntime.cs`。保持原物与 inbox 唯一副本语义、RunId 与事件相对顺序；相关旧路径守卫和执行回归由独立叶子收尾。
+- 簇 6：Wiki Book 与生日蛋糕初始化状态归 `IntegrationRuntimeModule`，保留一次性 latch、原 TypeID / 资源 / 本地化 / 存档键；原 2 秒生日赠礼等待和 DebugGive 入口保持。`BirthdayCakeGift` 从生产协程抽取，已通过聚合执行回归，两个专项守卫做反向验证。出行叶子将准备轮询、落点计算、子场景传送器扫描与出生点配置解析归同一模块；`SetupBossRushInGroundZero` 编排 Mode D/E/F/G/H/Zombie，按 §2.2 保留宿主，`currentMapSpawnPoints` 仍由宿主兼容入口赋值。Travel 专项守卫和 `ModeHSceneEntry` 执行回归已通过反向验证。
+- 本批离线检查点：编译清单 1,057 源，模块索引 47 个模块；宿主 partial 177 文件 / 80,384 行，预算下调到 177 / 80,400。全量守卫 679 PASS / 0 FAIL / 0 known-red；全量执行回归 69 PASS / 0 FAIL（SKIP 0）。隔离正式构建 `Build succeeded!`、Dev 标识缺席、SHA-256 `7D5C5F881C4AA23F926403DC4A896657AC97CF8ADF6A450B5C48C01EA1F8E44E`；隔离 Dev 构建 `Build succeeded!`、标识在位、SHA-256 `D50D5CA925A3F3E164CB422A9193BC6C434A8EC5A5B6179C539BB9553C1F6CB5`。两种 DLL 与隔离发布副本哈希分别一致，72 个 bundle 清单通过。真实游戏目录未动，L3 待 owner。
+- 下一动作：完成簇 2 余下掉落与奖励主体；簇 5 的 HUD 叶子在本批提交后开始；簇 6 剩余 Integration partial 再逐片盘点。P3 簇 3、4、7，P4 §6 第 9 条，P5 与 P6 均未完成。
 
 ## P1 上下文治理（2026-09-24）
 

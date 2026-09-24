@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using Duckov.Utilities;
 using Duckov.UI;
 using ItemStatsSystem;
+using ItemStatsSystem.Data;
+using ItemStatsSystem.Items;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
-    internal sealed class ZombieModeRuntimeModule : BossRushRuntimeModuleBase
+    internal sealed partial class ZombieModeRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour owner;
         private ZombieModeRunState runState;
@@ -886,7 +888,7 @@ namespace BossRush
 
             runState.LifecyclePhase = ZombieModeLifecyclePhase.InitializingRun;
             owner.PrepareSoulCubePrefabCacheForRuntimeModule();
-            if (!owner.PrepareZombieModeInventoryTransferForRuntimeModule(runId))
+            if (!PrepareZombieModeInventoryTransfer(runId))
             {
                 return false;
             }

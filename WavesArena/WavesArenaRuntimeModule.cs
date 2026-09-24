@@ -39,6 +39,11 @@ namespace BossRush
         internal float WaveIntegrityCheckTimer { get; set; }
         internal float DaXingXingCleanTimer { get; set; }
         internal int TotalEnemies { get; set; }
+        internal int CurrentEnemyIndex { get; set; }
+        internal UnityEngine.MonoBehaviour CurrentBoss { get; set; }
+        internal UnityEngine.Vector3 DemoChallengeStartPosition { get; set; }
+        internal readonly System.Collections.Generic.HashSet<CharacterMainControl> CountedDeadBosses =
+            new System.Collections.Generic.HashSet<CharacterMainControl>();
         internal int DefeatedEnemies { get; set; }
         internal string NextWaveBossName { get; set; }
         internal int BossesPerWave { get; set; } = 1;

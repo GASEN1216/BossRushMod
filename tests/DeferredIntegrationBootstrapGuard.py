@@ -6,6 +6,8 @@ START_AND_SCENE = Path("Integration/BossRushIntegration_StartAndScene.cs")
 DEFERRED_HOST = Path("Integration/IntegrationDeferredBootstrap.cs")
 DEFERRED_MODULE = Path("Integration/BossRushIntegrationRuntimeModule_DeferredBootstrap.cs")
 RUNTIME_MODULE = Path("Integration/BossRushIntegrationRuntimeModule.cs")
+WIKI_BOOK_MODULE = Path("Integration/BossRushIntegrationRuntimeModule_WikiBook.cs")
+BIRTHDAY_CAKE_MODULE = Path("Integration/BossRushIntegrationRuntimeModule_BirthdayCake.cs")
 
 
 def fail(message: str) -> int:
@@ -48,10 +50,13 @@ def main() -> int:
     host_text = DEFERRED_HOST.read_text(encoding="utf-8", errors="ignore")
     module_text = DEFERRED_MODULE.read_text(encoding="utf-8", errors="ignore")
     runtime_text = RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
+    wiki_book_module_text = WIKI_BOOK_MODULE.read_text(encoding="utf-8", errors="ignore")
+    birthday_cake_module_text = BIRTHDAY_CAKE_MODULE.read_text(encoding="utf-8", errors="ignore")
 
     for token in [
         "Integration\\IntegrationDeferredBootstrap.cs",
         "Integration\\BossRushIntegrationRuntimeModule_DeferredBootstrap.cs",
+        "Integration\\BossRushIntegrationRuntimeModule_BirthdayCake.cs",
     ]:
         if token not in compile_text:
             return fail("compile list missing -> " + token)
@@ -130,10 +135,6 @@ def main() -> int:
     for token in [
         "InitializeDynamicItems = InitializeDynamicItems",
         "InjectBossRushTicketLocalization = InjectBossRushTicketLocalization",
-        "InitializeBirthdayCakeItem = InitializeBirthdayCakeItem",
-        "InjectBirthdayCakeLocalization = InjectBirthdayCakeLocalization",
-        "InitializeWikiBookItem = InitializeWikiBookItem",
-        "InjectWikiBookLocalization = InjectWikiBookLocalization",
         "InjectAchievementMedalLocalization = InjectAchievementMedalLocalization",
         "LoadEquipmentContent = LoadEquipmentContent",
         "InitializeEarlyEquipmentAbilitySystems = InitializeEarlyEquipmentAbilitySystems",
@@ -145,11 +146,21 @@ def main() -> int:
         "SetupPhantomWitchScytheForScene = SetupPhantomWitchScytheForScene",
         "SetupNewWeaponsForScene = SetupNewWeaponsForScene",
         "InjectAchievementMedalIntoShops = InjectAchievementMedalIntoShops",
-        "DelayedBirthdayCakeGift = DelayedBirthdayCakeGift",
         "ScheduleWishRewardPoolWarmup = ScheduleWishRewardPoolWarmup",
     ]:
         if token not in actions_factory:
             return fail("private host callback binding missing -> " + token)
+
+    for token in ("InitializeWikiBookItem = InitializeWikiBookItem", "InjectWikiBookLocalization = InjectWikiBookLocalization"):
+        if token in actions_factory:
+            return fail("WikiBook stateful work must execute on its IntegrationRuntimeModule owner -> " + token)
+    for token in (
+        "InitializeBirthdayCakeItem = InitializeBirthdayCakeItem",
+        "InjectBirthdayCakeLocalization = InjectBirthdayCakeLocalization",
+        "DelayedBirthdayCakeGift = DelayedBirthdayCakeGift",
+    ):
+        if token in actions_factory:
+            return fail("Birthday Cake stateful work must execute on its IntegrationRuntimeModule owner -> " + token)
 
     module_lifecycle = extract_method(runtime_text, "public override void OnAwake(ModBehaviour owner)")
     if "_deferredBootstrapActions = owner.CreateIntegrationDeferredBootstrapActions();" not in module_lifecycle:
@@ -184,9 +195,50 @@ def main() -> int:
     ], "bootstrap phase ordering")
     if order_error:
         return fail(order_error)
+    for token in (
+        'FactoryResourceLoading.RunSpecial(_owner, "Assets/birthday_cake", InitializeBirthdayCakeItem)',
+        'RunDeferredStep_Integration("InjectBirthdayCakeLocalization", () => InjectBirthdayCakeLocalization())',
+    ):
+        if token not in run_bootstrap:
+            return fail("Birthday Cake bootstrap work must execute on the IntegrationRuntimeModule owner -> " + token)
+    for token in (
+        'FactoryResourceLoading.RunSpecial(_owner, "Assets/ui/bossrush_wiki", InitializeWikiBookItem)',
+        'RunDeferredStep_Integration("InjectWikiBookLocalization", () => InjectWikiBookLocalization())',
+    ):
+        if token not in run_bootstrap:
+            return fail("WikiBook bootstrap work must execute on the IntegrationRuntimeModule owner -> " + token)
+    if "internal void InitializeWikiBookItem()" not in wiki_book_module_text or "internal void InjectWikiBookLocalization()" not in wiki_book_module_text:
+        return fail("WikiBook initialization and localization entrypoints must be owned by IntegrationRuntimeModule")
+    for signature in (
+        "internal void InitializeBirthdayCakeItem()",
+        "internal void InjectBirthdayCakeLocalization()",
+        "internal System.Collections.IEnumerator DelayedBirthdayCakeGift()",
+    ):
+        if signature not in birthday_cake_module_text:
+            return fail("Birthday Cake stateful entrypoint must be owned by IntegrationRuntimeModule -> " + signature)
+    birthday_gift = extract_method(birthday_cake_module_text, "internal System.Collections.IEnumerator DelayedBirthdayCakeGift()")
+    if not birthday_gift or require_order(birthday_gift, [
+        "yield return new WaitForSeconds(2f);",
+        "CheckAndGiveDecemberBirthdayCake();",
+    ], "Birthday Cake delay"):
+        return fail("Birthday Cake gift must retain its two-second delay before the monthly check")
+    birthday_check = extract_method(birthday_cake_module_text, "private void CheckAndGiveDecemberBirthdayCake()")
+    if not birthday_check:
+        return fail("Birthday Cake monthly grant logic must remain in IntegrationRuntimeModule")
+    gift_order_error = require_order(birthday_check, [
+        "DateTime.Now.Month != 12",
+        "Saves.SavesSystem.KeyExisits(BIRTHDAY_CAKE_GIVEN_KEY)",
+        "if (birthdayCakeTypeId <= 0)",
+        "ItemAssetsCollection.InstantiateSync(birthdayCakeTypeId)",
+        "ItemUtilities.SendToPlayer(cakeItem, false, true)",
+        "Saves.SavesSystem.Save<bool>(BIRTHDAY_CAKE_GIVEN_KEY, true)",
+        "ShowBirthdayBanner();",
+    ], "Birthday Cake grant semantics")
+    if gift_order_error:
+        return fail(gift_order_error)
 
     for token in [
-        "InitializeDynamicItems", "InitializeBirthdayCakeItem", "InitializeWikiBookItem",
+        "InitializeDynamicItems", "InitializeBirthdayCakeItem", "InitializeWikiBookItem", "InjectWikiBookLocalization",
         "InjectAchievementMedalLocalization", "LoadEquipmentContent",
         "InitializeEarlyEquipmentAbilitySystems", "InitializeLateEquipmentAbilitySystems",
         "SetupFlightTotemForScene", "SetupReverseScaleForScene", "SetupFenHuangHalberdForScene",
@@ -226,7 +278,7 @@ def main() -> int:
         "BloodhuntTransponderConfig.InjectIntoShops(sceneName)",
         "FateEchoRelicConfig.InjectIntoShops(sceneName)",
         "InjectCodexBookIntoShops(sceneName)",
-        "DelayedBirthdayCakeGift()",
+        "_owner.StartCoroutine(DelayedBirthdayCakeGift());",
         '"Assets/buildings/weddingchapel"',
         "RestoreWeddingBuildingNPC()",
         '"Assets/buildings/starwish_fountain"',

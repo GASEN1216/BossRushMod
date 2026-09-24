@@ -1,6 +1,8 @@
 """ZombieModeReuseCompatibilityGuard: ZombieMode should reuse Duckov/BossRush shared paths."""
 from pathlib import Path
 import sys
+import re
+from cs_source_util import clean_source
 
 REWARD_PARTS = [
     Path("ZombieMode/ZombieModeRewards.cs"),
@@ -39,12 +41,29 @@ def forbid(text: str, needle: str, message: str):
         raise AssertionError(message + " -> " + needle)
 
 
+def extract_method(text: str, name: str):
+    matches = list(re.finditer(r"\b" + re.escape(name) + r"\s*\([^)]*\)\s*\{", text))
+    if len(matches) != 1:
+        return None
+    opening = text.find("{", matches[0].start())
+    depth = 0
+    for index in range(opening, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[matches[0].start():index + 1]
+    return None
+
+
 def main() -> int:
     spawner = Path("ZombieMode/ZombieModeSpawner.cs").read_text(encoding="utf-8")
     spawn_core = Path("Utilities/EnemySpawnCore.cs").read_text(encoding="utf-8")
     extraction = Path("ZombieMode/ZombieModeExtractionController.cs").read_text(encoding="utf-8")
     isolation = Path("ZombieMode/ZombieModeMapIsolation.cs").read_text(encoding="utf-8")
-    inventory = Path("ZombieMode/ZombieModeInventoryTransfer.cs").read_text(encoding="utf-8")
+    inventory_bridge = clean_source(Path("ZombieMode/ZombieModeInventoryTransfer.cs").read_text(encoding="utf-8"))
+    runtime_module = clean_source(Path("ZombieMode/ZombieModeRuntimeModule_InventoryTransfer.cs").read_text(encoding="utf-8"))
     rewards = read_rewards()
     pollution = read_pollution()
     marker = Path("ZombieMode/ZombieModeEnemyRuntime.cs").read_text(encoding="utf-8")
@@ -68,10 +87,14 @@ def main() -> int:
         require(isolation, "OriginalExtractionPointIsolationHelper.Disable", "ZombieMode map isolation must reuse shared extraction isolation")
         require(isolation, "OriginalExtractionPointIsolationHelper.Restore", "ZombieMode extraction isolation must restore through shared helper")
 
-        require(inventory, "ReforgeDataPersistence.SyncCurrentReforgeState(item);", "ZombieMode inventory transfer must sync reforge state before storage/inbox handoff")
-        require(inventory, "PlayerStorageBuffer.Buffer.Add(itemData);", "ZombieMode inventory transfer inbox fallback must use direct storage buffer writes like courier service")
-        forbid(inventory, "PlayerStorage.Push(item, true);", "ZombieMode inventory transfer must not use opaque PlayerStorage.Push for pre-active inbox fallback")
-        require(inventory, "ItemUtilities.SendToPlayer(item, false, false);", "ZombieMode rollback must use Duckov item return helper")
+        transfer = extract_method(runtime_module, "TryMoveZombieModeEntryItemToStorageOrInbox")
+        rollback = extract_method(runtime_module, "RollbackZombieModeInventoryTransfer")
+        require(transfer or "", "ReforgeDataPersistence.SyncCurrentReforgeState(item);", "ZombieMode runtime-module inventory transfer must sync reforge state before storage/inbox handoff")
+        require(transfer or "", "PlayerStorageBuffer.Buffer.Add(itemData);", "ZombieMode runtime-module inbox fallback must use direct storage buffer writes like courier service")
+        forbid(transfer or "", "PlayerStorage.Push(item, true);", "ZombieMode inventory transfer must not use opaque PlayerStorage.Push for pre-active inbox fallback")
+        require(rollback or "", "ItemUtilities.SendToPlayer(item, false, false);", "ZombieMode runtime-module rollback must use Duckov item return helper")
+        require(inventory_bridge, "module.TryMoveZombieModeEntryItemToStorageOrInbox(item)", "host inventory compatibility method must forward to runtime module")
+        require(inventory_bridge, "module.RollbackZombieModeInventoryTransfer()", "host rollback compatibility method must forward to runtime module")
 
         require(rewards, "ReforgeDataPersistence.SyncCurrentReforgeState(item);", "ZombieMode insurance/storage handoff must sync reforge state")
         require(rewards, "ItemUtilities.SendToPlayerCharacterInventory(item, false)", "ZombieMode rewards must use Duckov inventory helper first")

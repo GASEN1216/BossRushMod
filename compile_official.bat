@@ -339,6 +339,9 @@ echo(Integration\BossRushIntegration.cs
 echo(Integration\BossRushIntegrationRuntimeModule.cs
 echo(Integration\BossRushIntegrationRuntimeModule_MapObjects.cs
 echo(Integration\BossRushIntegrationRuntimeModule_DeferredBootstrap.cs
+echo(Integration\BossRushIntegrationRuntimeModule_WikiBook.cs
+echo(Integration\BossRushIntegrationRuntimeModule_BirthdayCake.cs
+echo(Integration\BossRushIntegrationRuntimeModule_Travel.cs
 echo(Integration\BossRushIntegrationRuntimeModule_RuntimeHooks.cs
 echo(Integration\BossRushIntegration_StartAndScene.cs
 echo(Integration\IntegrationDeferredBootstrap.cs
@@ -450,6 +453,14 @@ echo(WavesArena\WavesArenaBossSpawning.cs
 echo(WavesArena\WavesArenaRuntimeModule.cs
 echo(WavesArena\WavesArenaRuntimeModule_Tick.cs
 echo(WavesArena\WavesArenaRuntimeModule_RewardPool.cs
+echo(WavesArena\WavesArenaRuntimeModule_EnemyPresets.cs
+echo(WavesArena\WavesArenaRuntimeModule_InfiniteHellCompletion.cs
+echo(WavesArena\WavesArenaRuntimeModule_BossSpawning.cs
+echo(WavesArena\WavesArenaRuntimeModule_Countdown.cs
+echo(WavesArena\WavesArenaRuntimeModule_WaveDeaths.cs
+echo(WavesArena\WavesArenaRuntimeModule_LootState.cs
+echo(WavesArena\WavesArenaRuntimeModule_Start.cs
+echo(WavesArena\WavesArenaRuntimeModule_EnemyMaintenance.cs
 echo(WavesArena\WavesArenaRuntimeHooks.cs
 echo(WavesArena\BossRushEntryFlow.cs
 echo(WavesArena\WavesArenaEnemyMaintenance.cs
@@ -626,6 +637,8 @@ echo(ModeF\ModeFMerchant.cs
 echo(ZombieMode\ZombieModeModels.cs
 echo(ZombieMode\ZombieModeTuning.cs
 echo(ZombieMode\ZombieModeRuntimeModule.cs
+echo(ZombieMode\ZombieModeRuntimeModule_EnemyRuntime.cs
+echo(ZombieMode\ZombieModeRuntimeModule_InventoryTransfer.cs
 echo(ZombieMode\ZombieModeRuntimeHooks.cs
 echo(ZombieMode\ZombieModeEntry.cs
 echo(ZombieMode\ZombieModeEntryDebt.cs

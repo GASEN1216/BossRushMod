@@ -113,86 +113,41 @@ namespace BossRush
 
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        // Hot path 早返/marker 缓存（审查 §3.1）：OnHurt / OnDead 是 Health 全局事件，丧尸模式
-        // 启动后场内每次扣血都会触发；过去需要付出 GetComponent<ZombieModeEnemyRuntimeMarker>
-        // 才能判断是否丧尸模式敌人。引入 InstanceID 集合和 marker 字典后，handler 可以做 O(1)
-        // 早返并复用 spawn 时注册的 marker；只有 fallback 才重新 GetComponent。
-        // 同步路径：
-        //   - spawn:   RegisterZombieModeEnemyRuntimeShell 内 Add
-        //   - death:   HandleZombieModeHealthDead 在 marker.DeathSettled = true 之后 Remove
-        //   - cleanup: 安全区/运行期清理移除敌人时 Remove
-        //   - cleanup: ClearRuntime / CleanupZombieModeRunOnlyState 调用 Clear
-        private readonly System.Collections.Generic.HashSet<int> zombieModeEnemyInstanceIds
-            = new System.Collections.Generic.HashSet<int>();
-        private readonly System.Collections.Generic.Dictionary<int, ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkersByInstanceId
-            = new System.Collections.Generic.Dictionary<int, ZombieModeEnemyRuntimeMarker>();
-
         internal bool IsZombieModeKnownEnemy(CharacterMainControl character)
         {
-            return character != null && zombieModeEnemyInstanceIds.Contains(character.GetInstanceID());
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.IsZombieModeKnownEnemy(character);
         }
 
         internal bool TryGetZombieModeKnownEnemyMarker(CharacterMainControl character, out ZombieModeEnemyRuntimeMarker marker)
         {
             marker = null;
-            if (character == null)
-            {
-                return false;
-            }
-
-            int instanceId = character.GetInstanceID();
-            if (!zombieModeEnemyInstanceIds.Contains(instanceId))
-            {
-                return false;
-            }
-
-            if (zombieModeEnemyMarkersByInstanceId.TryGetValue(instanceId, out marker) &&
-                marker != null)
-            {
-                return true;
-            }
-
-            marker = character.GetComponent<ZombieModeEnemyRuntimeMarker>();
-            if (marker != null)
-            {
-                zombieModeEnemyMarkersByInstanceId[instanceId] = marker;
-            }
-
-            return true;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.TryGetZombieModeKnownEnemyMarker(character, out marker);
         }
 
         internal void RegisterZombieModeEnemyInstanceId(CharacterMainControl character)
         {
-            RegisterZombieModeEnemyInstanceId(character, null);
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.RegisterZombieModeEnemyInstanceId(character);
         }
 
         internal void RegisterZombieModeEnemyInstanceId(CharacterMainControl character, ZombieModeEnemyRuntimeMarker marker)
         {
-            if (character != null)
-            {
-                int instanceId = character.GetInstanceID();
-                zombieModeEnemyInstanceIds.Add(instanceId);
-                if (marker != null)
-                {
-                    zombieModeEnemyMarkersByInstanceId[instanceId] = marker;
-                }
-            }
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.RegisterZombieModeEnemyInstanceId(character, marker);
         }
 
         internal void UnregisterZombieModeEnemyInstanceId(CharacterMainControl character)
         {
-            if (character != null)
-            {
-                int instanceId = character.GetInstanceID();
-                zombieModeEnemyInstanceIds.Remove(instanceId);
-                zombieModeEnemyMarkersByInstanceId.Remove(instanceId);
-            }
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.UnregisterZombieModeEnemyInstanceId(character);
         }
 
         internal void ClearZombieModeEnemyInstanceIds()
         {
-            zombieModeEnemyInstanceIds.Clear();
-            zombieModeEnemyMarkersByInstanceId.Clear();
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.ClearZombieModeEnemyInstanceIds();
         }
 
         private ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(
@@ -205,58 +160,33 @@ namespace BossRush
             ZombieModeSpecialKind specialKind = ZombieModeSpecialKind.None,
             System.Collections.Generic.List<ZombieModeEliteAffix> eliteAffixes = null)
         {
-            if (!IsZombieModeRunValid(runId) || enemy == null || enemy.gameObject == null)
-            {
-                return null;
-            }
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null
+                ? module.RegisterZombieModeEnemyRuntimeShell(
+                    runId,
+                    enemy,
+                    isBoss,
+                    bossKind,
+                    overridePointValue,
+                    enemyKind,
+                    specialKind,
+                    eliteAffixes)
+                : null;
+        }
 
-            ZombieModeEnemyRuntimeMarker marker = enemy.gameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
-            if (marker == null)
-            {
-                marker = enemy.gameObject.AddComponent<ZombieModeEnemyRuntimeMarker>();
-            }
+        internal int CalculateZombieModeEnemyPurificationPointsForRuntimeModule(bool isBoss, ZombieModeEnemyKind enemyKind)
+        {
+            return CalculateZombieModeEnemyPurificationPoints(isBoss, enemyKind);
+        }
 
-            marker.RunId = runId;
-            marker.PurificationPointValue = overridePointValue > 0
-                ? overridePointValue
-                : CalculateZombieModeEnemyPurificationPoints(isBoss, enemyKind);
-            marker.SuppressDrops = true;
-            marker.IsBoss = isBoss;
-            marker.DeathSettled = false;
-            marker.RemovedFromRuntime = false;
-            marker.CustomExploderSkillDetonated = false;
-            marker.BossKind = bossKind;
-            marker.EnemyKind = isBoss ? ZombieModeEnemyKind.Elite : enemyKind;
-            marker.SpecialKind = specialKind;
-            marker.Owner = enemy;
-            marker.CachedAI = null;
-            marker.RuntimeModifierRecords.Clear();
-            marker.EliteAffixes.Clear();
-            marker.AllyShield = null;
-            marker.ShieldedAffix = null;
-            marker.CommanderAuraTargetRuntime = null;
-            marker.SuppressedForceTraceDistance = 0f;
-            marker.HasSuppressedForceTraceDistance = false;
+        internal void RestoreZombieModeVisualScaleForRuntimeModule(ZombieModeEnemyRuntimeMarker marker)
+        {
             RestoreZombieModeVisualScale(marker);
+        }
+
+        internal void ReleaseZombieModeFootMarkerForRuntimeModule(ZombieModeEnemyRuntimeMarker marker)
+        {
             ReleaseZombieModeFootMarker(marker);
-            marker.VisualIdentityApplied = false;
-            marker.VisualScaleApplied = false;
-            marker.VisualFaceApplied = false;
-            marker.VisualFootMarkerFallbackApplied = false;
-            if (eliteAffixes != null)
-            {
-                marker.EliteAffixes.AddRange(eliteAffixes);
-            }
-
-            RegisterZombieModeEnemyInstanceId(enemy, marker);
-
-            RegisterZombieModeRunOnlyObject(
-                runId,
-                isBoss ? ZombieModeRunOnlyObjectKind.Boss : ZombieModeRunOnlyObjectKind.Enemy,
-                marker.gameObject,
-                marker,
-                () => ReleaseZombieModeFootMarker(marker));
-            return marker;
         }
 
         private static void RestoreZombieModeVisualScale(ZombieModeEnemyRuntimeMarker marker)

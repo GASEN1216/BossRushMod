@@ -6,6 +6,7 @@ import sys
 
 POLLUTION = Path("ZombieMode/ZombieModePollution.cs")
 RUNTIME = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 
 
@@ -35,8 +36,9 @@ def extract_method(text: str, signature: str) -> str:
 def main() -> int:
     pollution = POLLUTION.read_text(encoding="utf-8")
     runtime = RUNTIME.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
     tuning = TUNING.read_text(encoding="utf-8")
-    combined = pollution + "\n" + runtime + "\n" + tuning
+    combined = pollution + "\n" + runtime + "\n" + runtime_module + "\n" + tuning
 
     required = [
         "marker.IsBoss",
@@ -141,9 +143,9 @@ def main() -> int:
         if token not in restore:
             return fail("CustomFace rollback must isolate every restore step -> " + token)
 
-    register = extract_method(runtime, "private ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(")
-    restore_scale_idx = register.find("RestoreZombieModeVisualScale(marker)")
-    release_marker_idx = register.find("ReleaseZombieModeFootMarker(marker)")
+    register = extract_method(runtime_module, "internal ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(")
+    restore_scale_idx = register.find("owner.RestoreZombieModeVisualScaleForRuntimeModule(marker)")
+    release_marker_idx = register.find("owner.ReleaseZombieModeFootMarkerForRuntimeModule(marker)")
     clear_marker_idx = register.find("marker.VisualFootMarkerFallbackApplied = false")
     if min(restore_scale_idx, release_marker_idx, clear_marker_idx) < 0 or not (
             restore_scale_idx < release_marker_idx < clear_marker_idx):

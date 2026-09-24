@@ -7,6 +7,7 @@ import sys
 
 RUNTIME = Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs")
 MARKER = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 
 
@@ -71,12 +72,12 @@ def main() -> int:
         return fail("custom Exploder distance gate must run before telegraphed explosion")
 
     marker_text = MARKER.read_text(encoding="utf-8-sig")
-    for token in [
-        "public bool CustomExploderSkillDetonated;",
-        "marker.CustomExploderSkillDetonated = false;",
-    ]:
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8-sig")
+    for token in ["public bool CustomExploderSkillDetonated;"]:
         if token not in marker_text:
             return fail("custom Exploder self-detonation marker missing token -> " + token)
+    if "marker.CustomExploderSkillDetonated = false;" not in runtime_module:
+        return fail("RuntimeModule marker registration must reset custom Exploder self-detonation state")
 
     death_body = extract_method_body(runtime, "private void HandleZombieModeSpecialDeathEffects(")
     if death_body is None:

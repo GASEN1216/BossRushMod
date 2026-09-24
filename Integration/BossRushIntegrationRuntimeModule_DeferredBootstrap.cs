@@ -44,10 +44,10 @@ namespace BossRush
             yield return RunDeferredStep_Integration("InitializeAlwaysOnDeferredContent", () => _owner.InitializeAlwaysOnDeferredContent());
             yield return FactoryResourceLoading.InitializeItems(_owner, _deferredBootstrapActions.InitializeDynamicItems);
             yield return RunDeferredStep_Integration("InjectBossRushTicketLocalization", () => _deferredBootstrapActions.InjectBossRushTicketLocalization());
-            yield return FactoryResourceLoading.RunSpecial(_owner, "Assets/birthday_cake", _deferredBootstrapActions.InitializeBirthdayCakeItem);
-            yield return RunDeferredStep_Integration("InjectBirthdayCakeLocalization", () => _deferredBootstrapActions.InjectBirthdayCakeLocalization());
-            yield return FactoryResourceLoading.RunSpecial(_owner, "Assets/ui/bossrush_wiki", _deferredBootstrapActions.InitializeWikiBookItem);
-            yield return RunDeferredStep_Integration("InjectWikiBookLocalization", () => _deferredBootstrapActions.InjectWikiBookLocalization());
+            yield return FactoryResourceLoading.RunSpecial(_owner, "Assets/birthday_cake", InitializeBirthdayCakeItem);
+            yield return RunDeferredStep_Integration("InjectBirthdayCakeLocalization", () => InjectBirthdayCakeLocalization());
+            yield return FactoryResourceLoading.RunSpecial(_owner, "Assets/ui/bossrush_wiki", InitializeWikiBookItem);
+            yield return RunDeferredStep_Integration("InjectWikiBookLocalization", () => InjectWikiBookLocalization());
             yield return RunDeferredStep_Integration("InjectAchievementMedalLocalization", () => _deferredBootstrapActions.InjectAchievementMedalLocalization());
 
             integrationEssentialContentFinished = true;
@@ -263,7 +263,7 @@ namespace BossRush
             // 场景已加载完再进基地时要靠这一步补注入（与上面几个 InjectIntoShops 同理）。
             yield return RunDeferredStep_Integration("InjectCodexBookIntoShops", () => _owner.InjectCodexBookIntoShops(sceneName));
 
-            _owner.StartCoroutine(_deferredBootstrapActions.DelayedBirthdayCakeGift());
+            _owner.StartCoroutine(DelayedBirthdayCakeGift());
             yield return null;
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
@@ -407,10 +407,6 @@ namespace BossRush
     {
         internal Action InitializeDynamicItems;
         internal Action InjectBossRushTicketLocalization;
-        internal Action InitializeBirthdayCakeItem;
-        internal Action InjectBirthdayCakeLocalization;
-        internal Action InitializeWikiBookItem;
-        internal Action InjectWikiBookLocalization;
         internal Action InjectAchievementMedalLocalization;
         internal Action LoadEquipmentContent;
         internal Action InitializeEarlyEquipmentAbilitySystems;
@@ -422,7 +418,6 @@ namespace BossRush
         internal Action<Scene> SetupPhantomWitchScytheForScene;
         internal Action<Scene> SetupNewWeaponsForScene;
         internal Action<string> InjectAchievementMedalIntoShops;
-        internal Func<IEnumerator> DelayedBirthdayCakeGift;
         internal Action ScheduleWishRewardPoolWarmup;
     }
 }

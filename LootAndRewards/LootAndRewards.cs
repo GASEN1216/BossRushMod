@@ -70,9 +70,21 @@ namespace BossRush
 
         // ============================================================================
 
-        private VictoryRewardShadowCrateController _activeVictoryRewardShadowCrateController = null;
-        private bool _difficultyRewardSpawnPositionOverrideActive = false;
-        private Vector3 _difficultyRewardSpawnPositionOverride = Vector3.zero;
+        private VictoryRewardShadowCrateController _activeVictoryRewardShadowCrateController
+        {
+            get { return wavesArenaRuntime._activeVictoryRewardShadowCrateController; }
+            set { wavesArenaRuntime._activeVictoryRewardShadowCrateController = value; }
+        }
+        private bool _difficultyRewardSpawnPositionOverrideActive
+        {
+            get { return wavesArenaRuntime._difficultyRewardSpawnPositionOverrideActive; }
+            set { wavesArenaRuntime._difficultyRewardSpawnPositionOverrideActive = value; }
+        }
+        private Vector3 _difficultyRewardSpawnPositionOverride
+        {
+            get { return wavesArenaRuntime._difficultyRewardSpawnPositionOverride; }
+            set { wavesArenaRuntime._difficultyRewardSpawnPositionOverride = value; }
+        }
 
         /// <summary>
         /// 检查物品ID是否在掉落黑名单中
@@ -122,22 +134,57 @@ namespace BossRush
 
         // [性能优化] 敌人预设初始化标记，避免每次传送都重复扫描
 
-        private readonly Dictionary<CharacterMainControl, float> bossSpawnTimes = new Dictionary<CharacterMainControl, float>();
-        private readonly Dictionary<CharacterMainControl, int> bossOriginalLootCounts = new Dictionary<CharacterMainControl, int>();
-        private readonly HashSet<CharacterMainControl> countedDeadBosses = new HashSet<CharacterMainControl>();
-        private readonly HashSet<CharacterMainControl> bossRushLootboxPathBosses = new HashSet<CharacterMainControl>();
-        private readonly Dictionary<CharacterMainControl, Action<DamageInfo>> trackedBossLootHooks
-            = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
-        private readonly List<CharacterMainControl> bossRushLootboxPathTrackedBossScratch = new List<CharacterMainControl>(16);
-        private readonly List<CharacterMainControl> bossRushLootboxPathStaleBossScratch = new List<CharacterMainControl>(4);
+        private Dictionary<CharacterMainControl, float> bossSpawnTimes
+        {
+            get { return wavesArenaRuntime.bossSpawnTimes; }
+        }
+        private Dictionary<CharacterMainControl, int> bossOriginalLootCounts
+        {
+            get { return wavesArenaRuntime.bossOriginalLootCounts; }
+        }
+        private HashSet<CharacterMainControl> countedDeadBosses { get { return wavesArenaRuntime.CountedDeadBosses; } }
+        private HashSet<CharacterMainControl> bossRushLootboxPathBosses
+        {
+            get { return wavesArenaRuntime.bossRushLootboxPathBosses; }
+        }
+        private Dictionary<CharacterMainControl, Action<DamageInfo>> trackedBossLootHooks
+        {
+            get { return wavesArenaRuntime.trackedBossLootHooks; }
+        }
+        private List<CharacterMainControl> bossRushLootboxPathTrackedBossScratch
+        {
+            get { return wavesArenaRuntime.bossRushLootboxPathTrackedBossScratch; }
+        }
+        private List<CharacterMainControl> bossRushLootboxPathStaleBossScratch
+        {
+            get { return wavesArenaRuntime.bossRushLootboxPathStaleBossScratch; }
+        }
         private readonly List<Item> modeFPlunderPenaltyScratch = new List<Item>();
-        private readonly List<int> legacyBossGuaranteeCandidateScratch = new List<int>(1024);
-        private readonly Dictionary<int, List<int>> legacyBossGuaranteeQualityBucketsScratch = new Dictionary<int, List<int>>(8);
-        private readonly List<Item> difficultyRewardPreferredScratch = new List<Item>(32);
-        private readonly List<Item> difficultyRewardFallbackHighQualityScratch = new List<Item>(32);
-        private readonly List<Item> difficultyRewardKeepScratch = new List<Item>(32);
+        private List<int> legacyBossGuaranteeCandidateScratch
+        {
+            get { return wavesArenaRuntime.legacyBossGuaranteeCandidateScratch; }
+        }
+        private Dictionary<int, List<int>> legacyBossGuaranteeQualityBucketsScratch
+        {
+            get { return wavesArenaRuntime.legacyBossGuaranteeQualityBucketsScratch; }
+        }
+        private List<Item> difficultyRewardPreferredScratch
+        {
+            get { return wavesArenaRuntime.difficultyRewardPreferredScratch; }
+        }
+        private List<Item> difficultyRewardFallbackHighQualityScratch
+        {
+            get { return wavesArenaRuntime.difficultyRewardFallbackHighQualityScratch; }
+        }
+        private List<Item> difficultyRewardKeepScratch
+        {
+            get { return wavesArenaRuntime.difficultyRewardKeepScratch; }
+        }
         private const float LOOT_WARNING_LOG_INTERVAL = 5f;
-        private readonly Dictionary<string, float> lootNextWarningLogTimes = new Dictionary<string, float>();
+        private Dictionary<string, float> lootNextWarningLogTimes
+        {
+            get { return wavesArenaRuntime.lootNextWarningLogTimes; }
+        }
 
         private void LogLootWarningLimited(string key, string message, Exception e = null)
         {

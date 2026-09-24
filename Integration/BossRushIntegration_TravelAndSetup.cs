@@ -26,33 +26,11 @@ namespace BossRush
             if (ShouldSkipLegacySceneSetupForModeH()) yield break;
             DevLog("[BossRush] TeleportPlayerToCustomPosition: 开始等待场景初始化，目标位置: " + targetPosition);
 
-            // 等待场景完全加载
-            const float maxWait = 30f;
-            const float interval = 0.1f;
-            float elapsed = 0f;
-
-            while (elapsed < maxWait)
-            {
-                bool mainExists = ReadMainExistsWithWarning("TeleportPlayerToCustomPosition");
-                bool levelInited = ReadLevelInitedWithWarning("TeleportPlayerToCustomPosition");
-
-                if (mainExists && levelInited)
-                {
-                    break;
-                }
-
-                yield return new WaitForSeconds(interval);
-                elapsed += interval;
-            }
-
-            // 额外等待一小段时间，确保游戏自身的出生点逻辑已执行完毕
-            yield return sharedWait05s;
+            yield return bossRushIntegrationRuntime.WaitForCustomTeleportSceneReady();
 
             // 等待期间可能进入 H，或认证已消费 typed intent；两种情况都由 H 持有位置。
             if (ShouldSkipLegacySceneSetupForModeH()) yield break;
 
-            // [Mode E 修复] 使用统一入场判定，只在 Mode E 时跳过 customSpawnPos 传送
-            // Mode E 设计为"玩家留在地图默认出生点"，不需要传送到 customSpawnPos
             BossRushEntryMode entryMode = DetermineBossRushEntryMode("TeleportPlayerToCustomPosition");
             bool isModeEEntry = entryMode == BossRushEntryMode.ModeE;
             if (isModeEEntry)
@@ -60,85 +38,15 @@ namespace BossRush
                 DevLog("[BossRush] TeleportPlayerToCustomPosition: 检测到 Mode E 入场条件，跳过传送");
             }
 
-            // 传送玩家到目标位置
             try
             {
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main != null)
                 {
-                    // Mode E 跳过传送，直接进入 SetupBossRushInGroundZero
-                    Vector3 finalPosition = targetPosition;
-
-                    if (!isModeEEntry)
-                    {
-                    // [修复] 使用 RaycastAll 找到最接近配置 Y 坐标的地面点（1m，防止卡到屋顶）
-                    Vector3 rayStart = targetPosition + Vector3.up * 1f;
-                    RaycastHit[] hits = Physics.RaycastAll(rayStart, Vector3.down, 5f);
-
-                    if (hits != null && hits.Length > 0)
-                    {
-                        float configY = targetPosition.y;
-                        float bestY = targetPosition.y;
-                        float lowestY = float.MaxValue;
-
-                        foreach (var h in hits)
-                        {
-                            // 优先选择接近配置 Y 坐标的点（允许 1 米误差）
-                            if (Mathf.Abs(h.point.y - configY) < 1f)
-                            {
-                                bestY = h.point.y + 0.1f;
-                                break;
-                            }
-                            // 否则选择最低的点
-                            if (h.point.y < lowestY)
-                            {
-                                lowestY = h.point.y;
-                                bestY = h.point.y + 0.1f;
-                            }
-                        }
-
-                        finalPosition = new Vector3(targetPosition.x, bestY, targetPosition.z);
-                        DevLog("[BossRush] TeleportPlayerToCustomPosition: 使用 RaycastAll 修正落点: " + finalPosition + " (配置Y=" + configY + ")");
-                    }
-                    else
-                    {
-                        // 如果没有碰撞，使用单次射线检测
-                        RaycastHit hit;
-                        if (Physics.Raycast(rayStart, Vector3.down, out hit, 5f))
-                        {
-                            finalPosition = hit.point + new Vector3(0f, 0.1f, 0f);
-                            DevLog("[BossRush] TeleportPlayerToCustomPosition: 使用单次 Raycast 修正落点: " + finalPosition);
-                        }
-                    }
-
-                    // 保存相机偏移
-                    GameCamera camera = GameCamera.Instance;
-                    Vector3 cameraOffset = Vector3.zero;
-                    if (camera != null)
-                    {
-                        cameraOffset = camera.transform.position - main.transform.position;
-                    }
-
-                    // 传送玩家
-                    try
-                    {
-                        main.SetPosition(finalPosition);
-                        DevLog("[BossRush] TeleportPlayerToCustomPosition: 使用 SetPosition 传送玩家到 " + finalPosition);
-                    }
-                    catch (System.Exception e)
-                    {
-                        DevLog("[BossRush] SetPosition 失败: " + e.Message + "，改用 transform.position");
-                        main.transform.position = finalPosition;
-                    }
-
-                    // 恢复相机位置
-                    if (camera != null)
-                    {
-                        camera.transform.position = main.transform.position + cameraOffset;
-                    }
-
-                    DevLog("[BossRush] TeleportPlayerToCustomPosition: 传送完成");
-                    } // end if (!isModeEEntry)
+                    Vector3 finalPosition = bossRushIntegrationRuntime.ApplyCustomTeleportPosition(
+                        targetPosition,
+                        main,
+                        isModeEEntry);
 
                     bool zombieModeOwnsCurrentEntry = IsZombieModeStartupInProgress() ||
                         ZombieModeMapSelectionHelper.HasPendingZombieEntry ||
@@ -149,12 +57,10 @@ namespace BossRush
                         yield break;
                     }
 
-                    // 在有效的 BossRush 竞技场场景执行初始化
                     string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
                     BossRushMapConfig mapConfig = GetMapConfigBySceneName(currentScene);
                     if (mapConfig != null && mapConfig.customSpawnPos.HasValue)
                     {
-                        // 启动该地图的 BossRush 初始化协程
                         StartCoroutine(SetupBossRushInGroundZero(finalPosition, entryMode));
                     }
                 }
@@ -175,127 +81,9 @@ namespace BossRush
         /// </summary>
         private System.Collections.IEnumerator ForceTeleportToSubScene(string targetSubSceneID, Vector3 targetPosition)
         {
-            DevLog("[BossRush] ForceTeleportToSubScene: 开始强制传送到子场景 " + targetSubSceneID);
-
-            // 等待场景完全加载（使用较短的间隔提高响应速度）
-            const float maxWait = 10f;
-            const float interval = 0.1f;
-            float elapsed = 0f;
-
-            while (elapsed < maxWait)
-            {
-                bool mainExists = ReadMainExistsWithWarning("ForceTeleportToSubScene");
-                bool levelInited = ReadLevelInitedWithWarning("ForceTeleportToSubScene");
-
-                if (mainExists && levelInited) break;
-
-                yield return new WaitForSeconds(interval);
-                elapsed += interval;
-            }
-
-            // 额外等待确保场景稳定
-            yield return sharedWait1s;
-
-            // 方案1：查找场景中通往目标子场景的传送器并触发
-            try
-            {
-                MultiSceneTeleporter[] teleporters = UnityEngine.Object.FindObjectsOfType<MultiSceneTeleporter>(true);
-                MultiSceneTeleporter targetTeleporter = null;
-
-                // [性能优化] 只在找到传送器时输出日志
-                foreach (MultiSceneTeleporter t in teleporters)
-                {
-                    if (t == null) continue;
-
-                    try
-                    {
-                        MultiSceneLocation target = t.Target;
-                        string targetSceneID = target.SceneID;
-
-                        // 精确匹配
-                        if (targetSceneID == targetSubSceneID)
-                        {
-                            targetTeleporter = t;
-                            break;
-                        }
-
-                        // 风暴区特殊处理：模糊匹配
-                        if (targetSubSceneID == "Level_StormZone_B0")
-                        {
-                            string interactName = t.InteractName ?? "";
-                            if (interactName.Contains("下去") || interactName.Contains("地下") ||
-                                t.name.Contains("Down") || t.name.Contains("B0") ||
-                                (targetSceneID != null && targetSceneID.Contains("B0")))
-                            {
-                                targetTeleporter = t;
-                                break;
-                            }
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        string teleporterName = string.Empty;
-                        try
-                        {
-                            teleporterName = t.name;
-                        }
-                        catch
-                        {
-                            teleporterName = "<unknown>";
-                        }
-
-                        LogIntegrationWarningLimited(
-                            "ForceTeleportToSubScene_teleporter_scan",
-                            "ForceTeleportToSubScene 读取传送器信息失败: " + teleporterName,
-                            e);
-                    }
-                }
-
-                if (targetTeleporter != null)
-                {
-                    DevLog("[BossRush] ForceTeleportToSubScene: 触发传送器 " + targetTeleporter.name);
-                    targetTeleporter.DoTeleport();
-                    yield break;
-                }
-            }
-            catch (Exception e)
-            {
-                LogIntegrationWarningLimited(
-                    "ForceTeleportToSubScene_search",
-                    "ForceTeleportToSubScene 查找目标传送器失败，准备回退到备用方案",
-                    e);
-            }
-
-            // 方案2：使用 MultiSceneCore.LoadAndTeleport（备用方案）
-            try
-            {
-                Duckov.Scenes.MultiSceneCore multiSceneCore = Duckov.Scenes.MultiSceneCore.Instance;
-                if (multiSceneCore != null)
-                {
-                    DevLog("[BossRush] ForceTeleportToSubScene: 使用 LoadAndTeleport 备用方案");
-                    Cysharp.Threading.Tasks.UniTaskExtensions.Forget(multiSceneCore.LoadAndTeleport(targetSubSceneID, targetPosition, true));
-                }
-                else
-                {
-                    // 回退：直接传送玩家到目标位置
-                    bossRushArenaPlanned = false;
-                    StartCoroutine(TeleportPlayerToCustomPosition(targetPosition));
-                    BossRushMapSelectionHelper.ClearPendingMapEntry();
-                    BossRushMapSelectionHelper.ClearPendingEntryFlowState();
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[BossRush] ForceTeleportToSubScene 失败: " + e.Message);
-                bossRushArenaPlanned = false;
-                BossRushMapSelectionHelper.ClearPendingMapEntry();
-                BossRushMapSelectionHelper.ClearPendingEntryFlowState();
-            }
+            return bossRushIntegrationRuntime.ForceTeleportToSubScene(targetSubSceneID, targetPosition);
         }
 
-        /// <summary>
-        /// 在零号区设置 BossRush 模式（类似 SetupBossRushInDemoChallenge）
-        /// </summary>
         private System.Collections.IEnumerator SetupBossRushInGroundZero(Vector3 playerPosition, BossRushEntryMode? resolvedEntryMode = null)
         {
             if (IsZombieModeStartupInProgress() ||
@@ -501,18 +289,27 @@ namespace BossRush
         /// </summary>
         private void SetCurrentMapSpawnPoints(string sceneName)
         {
-            // 使用配置系统获取刷新点（使用 mapConfig 避免与实例字段 config 混淆）
-            BossRushMapConfig mapConfig = GetMapConfigBySceneName(sceneName);
-            if (mapConfig != null && mapConfig.spawnPoints != null)
-            {
-                currentMapSpawnPoints = mapConfig.spawnPoints;
-                DevLog("[BossRush] SetCurrentMapSpawnPoints: 使用 " + mapConfig.displayName + " 刷新点，共 " + mapConfig.spawnPoints.Length + " 个");
-            }
-            else
-            {
-                currentMapSpawnPoints = null;
-                DevLog("[BossRush] [WARNING] SetCurrentMapSpawnPoints: 未找到场景 JSON 配置 " + sceneName);
-            }
+            currentMapSpawnPoints = bossRushIntegrationRuntime.ResolveMapSpawnPointsForScene(sceneName);
+        }
+
+        internal System.Collections.IEnumerator TeleportPlayerToCustomPositionForIntegration(Vector3 targetPosition)
+        {
+            return TeleportPlayerToCustomPosition(targetPosition);
+        }
+
+        internal void SetBossRushArenaPlannedForIntegration(bool planned)
+        {
+            bossRushArenaPlanned = planned;
+        }
+
+        internal void ClearBossRushPendingMapEntryForIntegration()
+        {
+            BossRushMapSelectionHelper.ClearPendingMapEntry();
+        }
+
+        internal void ClearBossRushPendingEntryFlowStateForIntegration()
+        {
+            BossRushMapSelectionHelper.ClearPendingEntryFlowState();
         }
 
     }

@@ -204,9 +204,9 @@ def check_spawner(errors):
 
 
 def check_exemptions(errors):
-    maintenance = read_text(repo_path("WavesArena", "WavesArenaEnemyMaintenance.cs"))
+    maintenance = read_text(repo_path("WavesArena", "WavesArenaRuntimeModule_EnemyMaintenance.cs"))
     if maintenance is None:
-        errors.append("[File] 缺少 WavesArena/WavesArenaEnemyMaintenance.cs")
+        errors.append("[File] 缺少 WavesArena/WavesArenaRuntimeModule_EnemyMaintenance.cs")
     else:
         mcode = strip_cs_comments(maintenance)
         if mcode.count("PetNestCompanionAgent.IsCompanionCharacter(c)") < 2:

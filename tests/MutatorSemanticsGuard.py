@@ -12,7 +12,8 @@ import sys
 DEFINITIONS = Path("Integration/Mutators/MutatorDefinitions.cs")
 MANAGER = Path("Integration/Mutators/MutatorManager.cs")
 RUNTIME_BRIDGE = Path("Integration/Mutators/MutatorRuntimeBridge.cs")
-WAVES = Path("WavesArena/WavesArenaBossSpawning.cs")
+WAVES = Path("WavesArena/WavesArenaRuntimeModule_Start.cs")
+WAVES_HOST = Path("WavesArena/WavesArenaBossSpawning.cs")
 LOOT = Path("LootAndRewards/LootAndRewardsRandomBossLoot.cs")
 
 
@@ -77,10 +78,12 @@ def main() -> int:
 
     if "MutatorManager.RollAndApply(player, count, null, modeTag);" not in runtime_bridge:
         return fail("runtime bridge must pass modeTag into RollAndApply")
-    if 'infiniteHellMode ? "InfiniteHell" : "BossRush"' not in waves:
+    if 'owner.TryRollMutatorsForArena(InfiniteHellMode ? "InfiniteHell" : "BossRush");' not in waves:
         return fail("standard BossRush mutators must pass an explicit modeTag")
-    if "TryRollMutatorsForMode(" not in waves:
+    if "owner.TryRollMutatorsForArena(" not in waves:
         return fail("standard BossRush must roll a run mutator at StartFirstWave")
+    if "TryRollMutatorsForMode(mode);" not in WAVES_HOST.read_text(encoding="utf-8"):
+        return fail("arena mutator bridge must call the original run mutator entry")
     if "public bool enableMutators = true;" not in config:
         return fail("mutators must default on so every BossRush mode rolls a run mutator")
     if 'ModName + "_EnableMutators"' not in config:

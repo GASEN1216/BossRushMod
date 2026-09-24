@@ -50,6 +50,8 @@ namespace BossRush
 
         internal WaitForSeconds IntegrationSharedWait05s { get { return sharedWait05s; } }
 
+        internal WaitForSeconds IntegrationSharedWait1s { get { return sharedWait1s; } }
+
         private void LogIntegrationWarningLimited(string key, string message, Exception e = null) { bossRushIntegrationRuntime.LogIntegrationWarningLimited(key, message, e); }
 
         private bool ReadMainExistsWithWarning(string context) { return bossRushIntegrationRuntime.ReadMainExistsWithWarning(context); }

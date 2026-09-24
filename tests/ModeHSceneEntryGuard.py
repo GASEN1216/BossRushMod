@@ -39,8 +39,21 @@ def main():
     assert 'BossRushMapSelectionHelper.GetPendingModeHSceneGeneration() == intentGeneration' in body(recovery, 'private bool IsSeasonResumeRequestCurrent(')
     legacy = body('Integration/BossRushIntegration_TravelAndSetup.cs', 'private System.Collections.IEnumerator TeleportPlayerToCustomPosition(')
     gates = list(re.finditer(r'if\s*\(ShouldSkipLegacySceneSetupForModeH\(\)\)\s*yield break;', legacy))
-    assert len(gates) == 2 and gates[0].start() < legacy.index('while (elapsed < maxWait)')
-    assert legacy.index('yield return sharedWait05s;') < gates[1].start() < legacy.index('main.SetPosition(finalPosition);')
+    assert len(gates) == 2 and gates[0].start() < legacy.index('yield return bossRushIntegrationRuntime.WaitForCustomTeleportSceneReady();')
+    assert legacy.index('yield return bossRushIntegrationRuntime.WaitForCustomTeleportSceneReady();') < gates[1].start()
+    assert gates[1].start() < legacy.index('bossRushIntegrationRuntime.ApplyCustomTeleportPosition(')
+    travel = body('Integration/BossRushIntegrationRuntimeModule_Travel.cs', 'internal IEnumerator WaitForCustomTeleportSceneReady(')
+    for token in ('const float maxWait = 30f;', 'const float interval = 0.1f;',
+                  'ReadMainExistsWithWarning("TeleportPlayerToCustomPosition")',
+                  'ReadLevelInitedWithWarning("TeleportPlayerToCustomPosition")',
+                  'yield return new WaitForSeconds(interval);',
+                  'yield return _owner.IntegrationSharedWait05s;'):
+        assert token in travel, 'custom teleport readiness wait changed: ' + token
+    landing = body('Integration/BossRushIntegrationRuntimeModule_Travel.cs', 'internal Vector3 ApplyCustomTeleportPosition(')
+    assert landing.index('if (isModeEEntry)') < landing.index('Physics.RaycastAll('), 'Mode E must keep the default spawn point'
+    assert landing.index('Physics.RaycastAll(') < landing.index('Physics.Raycast(') < landing.index('main.SetPosition(finalPosition);')
+    assert landing.index('cameraOffset = camera.transform.position - main.transform.position;') < landing.index('main.SetPosition(finalPosition);')
+    assert 'camera.transform.position = main.transform.position + cameraOffset;' in landing
     gate = body('ModeH/ModeHEntry.cs', 'private bool ShouldSkipLegacySceneSetupForModeH()')
     assert 'HasPendingModeHEntryIntent()' in gate and 'IsModeHRunInProgressSafe()' in gate
     integration = body('Integration/BossRushIntegration_StartAndScene.cs', 'private void OnSceneLoaded_Integration(')

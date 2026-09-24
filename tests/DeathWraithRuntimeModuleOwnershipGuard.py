@@ -119,7 +119,7 @@ def main() -> int:
         ],
         "Utilities/AlwaysOnRuntimeHooks.cs": ["UpdateDeferredDeathWraithSave_DeathWraith();"],
         "ModeF/ModeFPhases.cs": ["RecordManualDeathWraithData_DeathWraith("],
-        "WavesArena/WavesArenaEnemyMaintenance.cs": ["IsDeathWraithCharacter_DeathWraith(c)"],
+        "WavesArena/WavesArenaRuntimeModule_EnemyMaintenance.cs": ["owner.IsDeathWraithCharacterForArena(c)"],
     }
     for relative, tokens in consumers.items():
         source = read_source(relative)
