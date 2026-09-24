@@ -289,3 +289,9 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 - 纳管：`docs/架构说明/` 默认 local-only，本文件在 `.gitignore` 单独放行（同 2026-09-22 两份设计提案的先例），其余架构说明仍 local-only。
 - 首轮对照审查（其他界面是否符合共识）放 `docs/代码审查/2026-09-24-UI共识对照审查.md`。
 - 同日追加：owner「全部修复」后确认弹窗抽成共享件 `Common/UI/BossRushConfirmDialog.cs`（第三个自绘确认框出现，按共识第 11 节抽取），§4.14「交互骨架」一句改为「确认一律走共享的 `BossRushConfirmDialog`，不再各写一份」；`UI制作共识.md` 第 11 节表格同步标「已共享」，并补 `ModeHUIPageRows`（正文选项行）一行。修复状态见审查报告第九节。
+
+## 2026-09-24 全面修订《模块解耦与上下文治理计划》
+
+- 来源：owner 要求审核 09-22 版计划是否可行、是否真省上下文、是否最好架构。审核结论：方向对，但全仓搬迁不减少读取字节且波及 468 个守卫文件、212 条夹具引用、1.16 万条 repowiki 链接；Frameworks/Contracts/Adapter 与 Roslyn/IL 分析器对单游戏单 DLL 的 Mod 是净负担；原 MIG-08 已由 `tools/compile_list.py`（29480ec0）落地；原 §9.2 的 `D:\sofrware` 是笔误。
+- 处理：主计划原地重写（同路径，约 95 KB 压到约三分之一）。新范围：上下文治理（根 AGENTS 瘦身但章节号不动、台账按月归档到 `archive/`、`MODULES.md` + `architecture/modules.json` + `tools/task_context.py`）、宿主状态提取（按目录 partial 占比排簇）、1A/1B 复用试点、耦合点表、只搬 `DebugAndTools/SkyIsland/` 与删 `Injection/`。研究记录只改开头的过期引用段。
+- 执行时会动到本文件：根 AGENTS §4.14 / §4.16 / §4.17 迁出后要在这里记「原 §x → 新位置」对照（主计划 §3.2）。
