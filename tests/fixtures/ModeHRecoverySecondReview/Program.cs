@@ -38,32 +38,32 @@ namespace BossRush
         private static void Rewards()
         {
             var run = Create(); var page = run.Page();
-            Check(run._lastRewardOperation == null && page.Actions.Count == 2, "restored DTO renders both reward choices without runtime caches");
-            page.Actions[0].OnClick();
+            Check(run._lastRewardOperation == null && page.Cards.Count == 2, "restored DTO renders both reward choices without runtime caches");
+            page.Cards[0].OnClick();
             Check(run._season.unlockedKitIds.Count == 1 && run._season.unlockedKitIds[0] == "kitA", "restored kit click invokes production reward application");
             Check(run._season.seasonRewardOperations[0].status == (int)ModeHSeasonRewardOperationStatus.Archived
                 && run._season.matchReports[0].reportStatus == (int)ModeHMatchReportStatus.Archived
                 && run.Persists == 1 && run.Routes == 1, "applied reward archives durably and routes");
-            page.Actions[0].OnClick(); page.Actions[1].OnClick();
+            page.Cards[0].OnClick(); page.Cards[1].OnClick();
             Check(run.Routes == 1 && run._season.profiles[0].fameDisplayCount == 0, "repeated and alternate old click cannot apply twice");
-            run = Create(); page = run.Page(); page.Actions[1].OnClick();
+            run = Create(); page = run.Page(); page.Cards[1].OnClick();
             Check(run._season.profiles[0].fameDisplayCount == ModeHConfig.ScarDeclineFameGain
                 && run._season.unlockedKitIds == null && run.Routes == 1, "restored decline awards fame once and advances");
-            run = Create(); page = run.Page(); run._runState = ModeHRunState.FromDto(run._season.runState); page.Actions[0].OnClick();
+            run = Create(); page = run.Page(); run._runState = ModeHRunState.FromDto(run._season.runState); page.Cards[0].OnClick();
             Check(run.Persists == 0 && run._season.unlockedKitIds == null, "callback from former run owner is rejected");
-            run = Create(); page = run.Page(); run._runState.RestoreMatchIndex(2, 0, 2); page.Actions[1].OnClick();
+            run = Create(); page = run.Page(); run._runState.RestoreMatchIndex(2, 0, 2); page.Cards[1].OnClick();
             Check(run.Persists == 0 && run._season.profiles[0].fameDisplayCount == 0, "callback from previous match is rejected");
-            run = Create(); page = run.Page(); run._season.matchReports[0].seasonRewardOperationId = "replacement"; page.Actions[0].OnClick();
+            run = Create(); page = run.Page(); run._season.matchReports[0].seasonRewardOperationId = "replacement"; page.Cards[0].OnClick();
             Check(run.Persists == 0, "replaced operation cannot be targeted by stale page");
-            run = Create(); page = run.Page(); run._commandsClosed = true; page.Actions[0].OnClick();
+            run = Create(); page = run.Page(); run._commandsClosed = true; page.Cards[0].OnClick();
             Check(run.Persists == 0, "closed commands reject reward clicks");
-            run = Create(); page = run.Page(); run._runState.RestoreLifecycle(ModeHLifecycle.Suspended, ModeHLifecycle.Unknown, ModeHLifecycle.Unknown); page.Actions[0].OnClick();
+            run = Create(); page = run.Page(); run._runState.RestoreLifecycle(ModeHLifecycle.Suspended, ModeHLifecycle.Unknown, ModeHLifecycle.Unknown); page.Cards[0].OnClick();
             Check(run.Persists == 0, "non-intermission rejects reward click");
             run = Create(); run._lastRewardOperation = new ModeHSeasonRewardOperationDto { operationId = "wrong", status = (int)ModeHSeasonRewardOperationStatus.Archived };
             run._lastSettlementReport = new ModeHMatchReportDto { matchIndex = 0, seasonRewardOperationId = "wrong" };
-            run.Page().Actions[0].OnClick();
+            run.Page().Cards[0].OnClick();
             Check(run._season.unlockedKitIds.Contains("kitA") && run.Routes == 1, "stale runtime caches cannot redirect current report or operation");
-            run = Create(); page = run.Page(); run.PersistResult = false; page.Actions[0].OnClick();
+            run = Create(); page = run.Page(); run.PersistResult = false; page.Cards[0].OnClick();
             Check(run.Routes == 0 && run.Suspends == 1, "failed archive durability prevents route");
             run = Create(); run._season.seasonRewardOperations[0].status = (int)ModeHSeasonRewardOperationStatus.Applied;
             page = run.Page(); run._runState = ModeHRunState.FromDto(run._season.runState); page.Actions[0].OnClick();

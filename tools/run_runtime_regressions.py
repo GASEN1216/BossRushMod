@@ -49,9 +49,10 @@ def main():
         here = ROOT / "tests/fixtures" / name
         if name in PROJECT_FIXTURES:
             command = ["dotnet", "run", "--project", str(here / PROJECT_FIXTURES[name]),
-                       "--configuration", "Release",
-                       "-p:BaseIntermediateOutputPath=" + str(out / name / "obj") + os.sep,
-                       "-p:BaseOutputPath=" + str(out / name / "bin") + os.sep]
+                       "--configuration", "Release"]
+            if name == "ReviewSeptember":
+                command += ["-p:BaseIntermediateOutputPath=" + str(out / name / "obj") + os.sep,
+                            "-p:BaseOutputPath=" + str(out / name / "bin") + os.sep]
         else:
             command = [sys.executable, str(here / "run.py")]
         try:

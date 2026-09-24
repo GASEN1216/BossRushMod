@@ -29,7 +29,7 @@ def execute(name, files, generated=''):
         if not p.exists(): raise RuntimeError('Missing production/fixture source: '+str(p))
     incl=''.join('<Compile Include="'+xml.sax.saxutils.escape(str(p),{'"':'&quot;'})+'"/>' for p in files)
     project=out/'Regression.csproj'
-    project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>'+incl+'</ItemGroup></Project>',encoding='utf-8')
+    project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>'+incl+'</ItemGroup></Project>',encoding='utf-8')
     code=subprocess.call(['dotnet','run','--project',str(project),'--configuration','Release','--',str(ROOT)],cwd=ROOT)
     if code: raise SystemExit(code)
 
