@@ -163,6 +163,7 @@ echo(Common\Effects\RingParticleEffect.cs
 echo(Common\Effects\BossRushProceduralSprites.cs
 echo(Common\Effects\SetBonusArcPool.cs
 echo(Common\Buildings\BuildingInjectionHelper.cs
+echo(Common\Buildings\BuildingRestoreCore.cs
 echo(Common\Buildings\BuildingModelHelper.cs
 echo(Common\Effects\MeleeWeaponFxPolicy.cs
 echo(Common\Equipment\EquipmentAbilityConfig.cs

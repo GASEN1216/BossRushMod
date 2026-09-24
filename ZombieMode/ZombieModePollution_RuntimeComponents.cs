@@ -801,8 +801,8 @@ namespace BossRush
         private CharacterMainControl targetCharacter;
         private ModBehaviour owner;
         private readonly HashSet<int> sourceIds = new HashSet<int>();
-        private readonly List<ZombieModeAttributeModifierRecord> auraModifierRecords =
-            new List<ZombieModeAttributeModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> auraModifierRecords =
+            new List<BossRushStatModifierRecord>();
 
         public void ApplySource(int newRunId, int sourceId)
         {

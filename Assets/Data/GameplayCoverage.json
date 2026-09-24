@@ -1532,7 +1532,7 @@
     },
     {
       "id": "CONTENT_BUILDINGS",
-      "title": "内容建筑共享反射、宿主归属与模型复用",
+      "title": "内容建筑共享反射、恢复核心、宿主归属与模型复用",
       "sources": [
         "Common/Buildings",
         "Integration/ContentBuildingBridges.cs"
@@ -1542,8 +1542,8 @@
       "manual": [
         {
           "id": "M_CONTENT_BUILDINGS_01",
-          "steps": "先运行 python tests/fixtures/ContentBuildingOwnership/run.py 并保存夹具日志；再冷启动加载已建报箱、征程公告板、后山展示柜和遗种巢的专用旧档，从各建筑交互入口打开功能。",
-          "expected": "夹具仅证明真实反射工具与宿主桥的无宿主断言，不视作 Unity PASS；实机四类建筑均在场景早期恢复，无缺 prefab、重复建筑或失效交互。未实测本条保持 MANUAL_PENDING。"
+          "steps": "先运行 python tests/fixtures/ContentBuildingOwnership/run.py 与 python tools/run_runtime_regressions.py --filter BuildingRestoreCore 并保存日志；再冷启动加载已建报箱、征程公告板、后山展示柜和遗种巢的专用旧档，从各建筑交互入口打开功能。",
+          "expected": "夹具证明真实反射工具、宿主桥与恢复核心的离线时序，不视作 Unity PASS；实机四类建筑均在场景早期恢复，无缺 prefab、重复建筑或失效交互。未实测本条保持 MANUAL_PENDING。"
         },
         {
           "id": "M_CONTENT_BUILDINGS_02",

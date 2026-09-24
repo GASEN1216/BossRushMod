@@ -32,6 +32,8 @@ namespace BossRush
         {
             if (owner == null) throw new ArgumentNullException(nameof(owner));
             _owner = owner;
+            dailyReportRestore = new BuildingRestoreCore(owner, HasPendingDailyReportBuildingsInManager,
+                IsDailyReportBuildingComponent, NeedsDailyReportFunctionPointRepair, EnsureDailyReportFunctionPoints);
         }
 
         // ====================================================================
@@ -81,9 +83,7 @@ namespace BossRush
         /// <summary>模型 bundle 是否仍由本建筑持有（基地装配管线据此跳过重复的异步加载）。</summary>
         internal static bool IsBundleLoaded { get { return dailyReportAssetBundle != null; } }
         private static GameObject dailyReportModelPrefab;
-        private Coroutine dailyReportRestoreCoroutine;
-        private readonly HashSet<int> preparedDailyReportBuildingInstanceIds = new HashSet<int>();
-        private int preparedDailyReportSceneHandle = int.MinValue;
+        private readonly BuildingRestoreCore dailyReportRestore;
 
         // ====================================================================
         // 初始化
@@ -172,11 +172,7 @@ namespace BossRush
         {
             try
             {
-                if (dailyReportRestoreCoroutine != null)
-                {
-                    _owner.StopCoroutine(dailyReportRestoreCoroutine);
-                    dailyReportRestoreCoroutine = null;
-                }
+                dailyReportRestore.Cancel();
                 ResetDailyReportPreparedBuildingCache();
                 UnregisterDailyReportBuildingEvents();
                 AssetBundleUnloadHelper.TryUnload(dailyReportAssetBundle, DailyReportTuning.LogPrefix);

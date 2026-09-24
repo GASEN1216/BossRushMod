@@ -26,7 +26,7 @@ namespace BossRush
     /// <summary>玩家身上的一种减速（绊索、烂泥）：同一来源只挂一份、同幅度只顺延；到时或出圈就摘，Boss 倒下与销毁时由控制器 Release。</summary>
     internal sealed class SkyIslandPlayerSlow
     {
-        private readonly List<ZombieModeAttributeModifierRecord> records = new List<ZombieModeAttributeModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> records = new List<BossRushStatModifierRecord>();
         private readonly object source = new object();
         private readonly string context;
         private float applied, until = -1f;

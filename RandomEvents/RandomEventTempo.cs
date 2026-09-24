@@ -7,7 +7,7 @@ namespace BossRush
     internal sealed class RandomEventTempo : RandomEventBase
     {
         private readonly RandomEventId _id;
-        private readonly List<ZombieModeAttributeModifierRecord> _records = new List<ZombieModeAttributeModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> _records = new List<BossRushStatModifierRecord>();
         private readonly List<CharacterMainControl> _targets = new List<CharacterMainControl>();
         private readonly HashSet<CharacterMainControl> _tracked = new HashSet<CharacterMainControl>();
         private float _refresh;

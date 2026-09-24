@@ -303,7 +303,7 @@ namespace BossRush
         public bool FrenzyActive;
         public float FrenzyEndTime;
         public float FrenzyOriginalScale = 1f;
-        public readonly List<ZombieModeAttributeModifierRecord> FrenzyModifierRecords = new List<ZombieModeAttributeModifierRecord>();
+        public readonly List<BossRushStatModifierRecord> FrenzyModifierRecords = new List<BossRushStatModifierRecord>();
 
         public override float CooldownSeconds => ZombieModeTuning.HunterDashCooldownSeconds;
 
@@ -420,14 +420,6 @@ namespace BossRush
         public int Weight;
     }
 
-    public sealed class ZombieModeAttributeModifierRecord
-    {
-        public ItemStatsSystem.Item CharacterItem;
-        public ItemStatsSystem.Stat Stat;
-        public ItemStatsSystem.Stats.Modifier Modifier;
-        public string StatName = string.Empty;
-    }
-
     public sealed class ZombieModeOptionRuntimeState
     {
         public int ProjectilePenetrationStacks;
@@ -476,9 +468,9 @@ namespace BossRush
         public float OptionTradeoffReloadSpeedPenalty;
         public float OptionTradeoffDamageTakenPenalty;
         public float OptionTradeoffMaxHealthPenalty;
-        public readonly List<ZombieModeAttributeModifierRecord> ModifierRecords = new List<ZombieModeAttributeModifierRecord>();
-        public readonly List<ZombieModeAttributeModifierRecord> GuardianShieldRecords = new List<ZombieModeAttributeModifierRecord>();
-        public readonly List<ZombieModeAttributeModifierRecord> ContractRuntimeModifierRecords = new List<ZombieModeAttributeModifierRecord>();
+        public readonly List<BossRushStatModifierRecord> ModifierRecords = new List<BossRushStatModifierRecord>();
+        public readonly List<BossRushStatModifierRecord> GuardianShieldRecords = new List<BossRushStatModifierRecord>();
+        public readonly List<BossRushStatModifierRecord> ContractRuntimeModifierRecords = new List<BossRushStatModifierRecord>();
 
         public void Reset()
         {
@@ -738,7 +730,7 @@ namespace BossRush
         // 本局沿用的准备时长；默认 45 秒，玩家在任意波奖励界面修改后持续沿用。
         public int SelectedPreparationDurationSeconds = 45;
         public readonly Dictionary<string, float> AttributeBonuses = new Dictionary<string, float>();
-        public readonly List<ZombieModeAttributeModifierRecord> AttributeModifierRecords = new List<ZombieModeAttributeModifierRecord>();
+        public readonly List<BossRushStatModifierRecord> AttributeModifierRecords = new List<BossRushStatModifierRecord>();
         public bool AttributeModifierCleanupRegistered;
         public int GuaranteedMerchantPurchaseMinQuality;
         public bool GuaranteedMerchantPurchasePending;

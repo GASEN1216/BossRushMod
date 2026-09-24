@@ -35,7 +35,7 @@ namespace BossRush
         private LineRenderer snatchRing;
         /// <summary>抢来的物品实例（丢下时与 F3 计数用）；只清引用，从不在这里销毁。</summary>
         private readonly List<Item> stolen = new List<Item>();
-        private readonly List<ZombieModeAttributeModifierRecord> fleeRecords = new List<ZombieModeAttributeModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> fleeRecords = new List<BossRushStatModifierRecord>();
         private readonly object fleeSource = new object();
         private int snatches;
         private float nextTick, snatchReadyAt, fleeUntil;

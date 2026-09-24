@@ -45,9 +45,9 @@ namespace BossRush
         private readonly SkyIslandGathering gathering;
         private readonly Dictionary<string, SkyIslandYield[]> pendingHarvest = new Dictionary<string, SkyIslandYield[]>(StringComparer.Ordinal);
         private readonly object modifierSource = new object();
-        private readonly List<ZombieModeAttributeModifierRecord> chillRecords = new List<ZombieModeAttributeModifierRecord>();
-        private readonly List<ZombieModeAttributeModifierRecord> incenseRecords = new List<ZombieModeAttributeModifierRecord>();
-        private readonly List<ZombieModeAttributeModifierRecord> charmRecords = new List<ZombieModeAttributeModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> chillRecords = new List<BossRushStatModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> incenseRecords = new List<BossRushStatModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> charmRecords = new List<BossRushStatModifierRecord>();
         /// <summary>岛上亮着的灯：三处灶火 + 本存档点起来的风晶灯（<see cref="SkyIslandLights"/>）。只是光，灯旁暖和。</summary>
         private readonly List<Light> fires = new List<Light>();
         /// <summary>同一批灯按来历分开：灶火有烟（云蚋躲开），风晶灯只有光（云蚋循光而来）。</summary>

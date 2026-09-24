@@ -33,6 +33,8 @@ namespace BossRush
         {
             if (owner == null) throw new ArgumentNullException(nameof(owner));
             _owner = owner;
+            petNestRestore = new BuildingRestoreCore(owner, HasPendingPetNestBuildingsInManager,
+                IsPetNestBuildingComponent, NeedsPetNestFunctionPointRepair, EnsurePetNestFunctionPoints);
         }
 
         // ====================================================================
@@ -72,9 +74,7 @@ namespace BossRush
         /// <summary>模型 bundle 是否仍由本建筑持有（基地装配管线据此跳过重复的异步加载）。</summary>
         internal static bool IsBundleLoaded { get { return petNestAssetBundle != null; } }
         private static GameObject petNestModelPrefab;
-        private Coroutine petNestRestoreCoroutine;
-        private readonly HashSet<int> preparedPetNestBuildingInstanceIds = new HashSet<int>();
-        private int preparedPetNestSceneHandle = int.MinValue;
+        private readonly BuildingRestoreCore petNestRestore;
 
         // ====================================================================
         // 初始化
@@ -163,11 +163,7 @@ namespace BossRush
         {
             try
             {
-                if (petNestRestoreCoroutine != null)
-                {
-                    _owner.StopCoroutine(petNestRestoreCoroutine);
-                    petNestRestoreCoroutine = null;
-                }
+                petNestRestore.Cancel();
                 ResetPetNestPreparedBuildingCache();
                 UnregisterPetNestBuildingEvents();
                 AssetBundleUnloadHelper.TryUnload(petNestAssetBundle, "[PetNest]");

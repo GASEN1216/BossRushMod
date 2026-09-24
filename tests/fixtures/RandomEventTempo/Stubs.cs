@@ -35,7 +35,6 @@ namespace ItemStatsSystem
 public class CharacterMainControl { public Item CharacterItem; }
 namespace BossRush
 {
-    public class ZombieModeAttributeModifierRecord { public Item CharacterItem; public Stat Stat; public Modifier Modifier; public string StatName; }
     public static class ZombieModeStatNames
     {
         public const string WalkSpeed = "WalkSpeed", RunSpeed = "RunSpeed", GunDamageMultiplier = "GunDamageMultiplier", MeleeDamageMultiplier = "MeleeDamageMultiplier";

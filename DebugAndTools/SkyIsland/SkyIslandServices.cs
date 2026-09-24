@@ -72,8 +72,8 @@ namespace BossRush
         internal const int WalkDepthBudget = 4;
         internal const int BountyRewardItemCount = 3;
 
-        private readonly List<ZombieModeAttributeModifierRecord> records =
-            new List<ZombieModeAttributeModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> records =
+            new List<BossRushStatModifierRecord>();
         private readonly object modifierSource = new object();
         private readonly CharacterMainControl player;
         private readonly GameObject root;

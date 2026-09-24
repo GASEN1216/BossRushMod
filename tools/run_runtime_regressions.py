@@ -17,7 +17,7 @@ SCRIPT_FIXTURES = (
     "RuntimeOwnership", "ContentTransactions", "BackMountainLifecycle", "ModeGCombat", "CampaignPlayability", "BossRewardDelivery", "AffixCombat", "ContentSecondReview", "AirdropSecondReview",
     "HarmonyBindingSecondReview", "ModeHReinforcementSecondReview", "modeh_effects",
     "ModeHThirdReviewFixes", "ModeHMarketAudit", "ModeHItemBetLedger", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes",
-    "ContentBuildingOwnership", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
+    "ContentBuildingOwnership", "BuildingRestoreCore", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
     "StoneOutpostSceneLease", "StoneOutpostMap", "EquipmentResourceScene", "SkyIslandStory", "SkyIslandDelivery", "SkyIslandOfficialContract", "SkyIslandEncounters", "SkyIslandLighting", "SkyIslandRaidLease", "SkyIslandLoot",
     "SkyIslandMarriage", "SkyIslandHudPolicy", "SkyIslandDialogue", "SkyIslandInteraction", "ZombieModeEntryDebt", "PermanentDuckNpcDialogue", "RewardPoolReliability",
     "SkyIslandValidationJudges", "F3AutotestJudges",

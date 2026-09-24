@@ -42,9 +42,9 @@ namespace BossRush
         /// 所以存 record 列表而不是单个 Modifier：官方角色没有 "MoveSpeed" 这个 stat
         /// （那是 Animator 参数名，AGENTS §14），必须分别挂到两个真实 stat 上。
         /// </summary>
-        private readonly Dictionary<CharacterMainControl, List<ZombieModeAttributeModifierRecord>>
+        private readonly Dictionary<CharacterMainControl, List<BossRushStatModifierRecord>>
             modeFBossMoveSpeedModifiers
-            = new Dictionary<CharacterMainControl, List<ZombieModeAttributeModifierRecord>>();
+            = new Dictionary<CharacterMainControl, List<BossRushStatModifierRecord>>();
         private readonly Dictionary<CharacterMainControl, float> modeFBossAppliedSpeedBonuses
             = new Dictionary<CharacterMainControl, float>();
         private readonly Dictionary<CharacterMainControl, CharacterMainControl> modeFBossForcedTargets
@@ -1073,10 +1073,10 @@ namespace BossRush
                 }
 
                 // 先摘旧的，再按新数值挂。RemoveAll 会顺带清空列表，可直接复用。
-                List<ZombieModeAttributeModifierRecord> records;
+                List<BossRushStatModifierRecord> records;
                 if (!modeFBossMoveSpeedModifiers.TryGetValue(boss, out records) || records == null)
                 {
-                    records = new List<ZombieModeAttributeModifierRecord>();
+                    records = new List<BossRushStatModifierRecord>();
                     modeFBossMoveSpeedModifiers[boss] = records;
                 }
                 RuntimeStatModifierTracker.RemoveAll(records, "ModeF BossMoveSpeed");

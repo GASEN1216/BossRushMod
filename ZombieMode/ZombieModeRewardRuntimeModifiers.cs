@@ -162,7 +162,7 @@ namespace BossRush
             string statName,
             float value,
             ModifierType type,
-            System.Collections.Generic.List<ZombieModeAttributeModifierRecord> records,
+            System.Collections.Generic.List<BossRushStatModifierRecord> records,
             string context)
         {
             if (type == ModifierType.PercentageAdd)
@@ -187,7 +187,7 @@ namespace BossRush
                 Modifier modifier = new Modifier(ModifierType.Add, value, this);
                 stat.AddModifier(modifier);
 
-                ZombieModeAttributeModifierRecord record = new ZombieModeAttributeModifierRecord();
+                BossRushStatModifierRecord record = new BossRushStatModifierRecord();
                 record.CharacterItem = character.CharacterItem;
                 record.Stat = stat;
                 record.Modifier = modifier;

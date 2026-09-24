@@ -54,7 +54,8 @@ def main():
     extracted.write_text(generated, encoding="utf-8")
     sources = [ROOT / "Integration/AffixForge" / name for name in (
         "AffixRuntimeService.cs", "AffixRuntimeService_Effects.cs", "AffixDefinitions.cs",
-    )] + [ROOT / "ZombieMode/ZombieModeRuntimeModule.cs", ROOT / "Utilities/RunScopedRegistry.cs",
+    )] + [ROOT / "Common/Stats/RuntimeStatModifierTracker.cs",
+          ROOT / "ZombieMode/ZombieModeRuntimeModule.cs", ROOT / "Utilities/RunScopedRegistry.cs",
           HERE / "Program.cs", HERE / "Stubs.cs", extracted]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
     project += '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'

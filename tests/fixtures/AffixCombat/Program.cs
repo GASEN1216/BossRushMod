@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using BossRush;
 using ItemStatsSystem;
+using ItemStatsSystem.Stats;
 using UnityEngine;
 
 internal static class Program
@@ -60,6 +62,7 @@ internal static class Program
     private static void Main()
     {
         ForgePricingAndEligibility();
+        RuntimeModifierTracking();
         CharacterMainControl player = Reset(AffixDefinitions.Id_DeathBurst);
         CharacterMainControl first = Enemy(1f), second = Enemy(), third = Enemy(), near = Enemy();
         ExplosionManager explosions = LevelManager.Instance.ExplosionManager;
@@ -137,6 +140,43 @@ internal static class Program
         CheckZombieExplosions();
         Console.WriteLine("AffixCombat: " + (checks - failures) + " PASS / " + failures + " FAIL");
         if (failures > 0) Environment.Exit(1);
+    }
+
+    private static void RuntimeModifierTracking()
+    {
+        var character = new CharacterMainControl();
+        var ownerA = new List<BossRushStatModifierRecord>();
+        var ownerB = new List<BossRushStatModifierRecord>();
+        object sourceA = new object(), sourceB = new object();
+        foreach (ModifierType type in new[] { ModifierType.Add, ModifierType.PercentageAdd, ModifierType.PercentageMultiply })
+            Check(RuntimeStatModifierTracker.TryAdd(character, "BodyArmor", 0.25f, sourceA,
+                ownerA, "affix", type), "shared tracker accepts " + type);
+        Stat stat = character.CharacterItem.GetStat("BodyArmor");
+        Check(ownerA.Count == 3 && stat.Modifiers.Count == 3
+            && stat.Modifiers[0].Type == ModifierType.Add
+            && stat.Modifiers[1].Type == ModifierType.PercentageAdd
+            && stat.Modifiers[2].Type == ModifierType.PercentageMultiply,
+            "shared tracker retains all three explicit modifier types");
+        Check(RuntimeStatModifierTracker.TryAdd(character, "BodyArmor", 0.5f, sourceB,
+            ownerB, "other", ModifierType.Add), "second owner may attach to same stat");
+        Check(!RuntimeStatModifierTracker.TryAdd(character, "__missing__", 1f, sourceA,
+            ownerA, "affix", ModifierType.Add) && ownerA.Count == 3,
+            "missing stat does not create an untracked record");
+        Check(!RuntimeStatModifierTracker.TryAdd(character, "BodyArmor", 0f, sourceA,
+            ownerA, "affix", ModifierType.Add) && ownerA.Count == 3,
+            "zero value does not attach a modifier");
+        bool reported = false;
+        Check(!RuntimeStatModifierTracker.TryAdd(character, "__throw__", 1f, sourceA,
+            ownerA, "affix", ModifierType.Add, (name, error) =>
+            { reported = name == "__throw__" && error.Message.Contains("injected"); }) && reported,
+            "failed lookup reaches caller's logging hook");
+        RuntimeStatModifierTracker.RemoveAll(ownerA, "affix");
+        Check(ownerA.Count == 0 && stat.Modifiers.Count == 1
+            && ReferenceEquals(stat.Modifiers[0].Source, sourceB),
+            "removal clears only its owner's records");
+        RuntimeStatModifierTracker.RemoveAll(ownerB, "other");
+        Check(ownerB.Count == 0 && stat.Modifiers.Count == 0,
+            "second owner removes its remaining modifier");
     }
 
     // VA-24: lifesteal/overcharge feedback fires after the effect resolves and reports the real heal.

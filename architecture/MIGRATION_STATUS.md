@@ -7,14 +7,14 @@
 | 检查点 | 状态 | 证据或下一步 |
 | --- | --- | --- |
 | P0 基线 | 完成，`3323e33e` | 665 项全量守卫 PASS，59 项全量回归 PASS；隔离正式与 Dev 构建 PASS |
-| P1 上下文治理 | 完成，待提交 | 根规则 180 行 / 17,329 B；台账 1,050 / 975 行；48 模块导航覆盖 1,020 源 |
-| P2 复用试点 | 未开始 | 词缀追踪器与建筑恢复核心 |
+| P1 上下文治理 | 完成，`adef32ef` | 根规则 180 行 / 17,329 B；台账 1,050 / 975 行；48 模块导航覆盖 1,020 源 |
+| P2 复用试点 | 完成，待提交 | 词缀追踪器与建筑恢复核心；203 项相关守卫、60 项全量回归与两种隔离构建通过 |
 | P3 状态提取 | 未开始 | 簇 1→7；簇盘点按 §5.1 记录 |
 | P4 耦合点 | 未开始 | §6 第 1、3–8 条 |
 | P5 目录归位 | 未开始 | 天空岛迁移与注入占位清理 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-最近提交：`3323e33e`（P0）；P1 提交待写入。下一具体动作：提交 P1，然后进入 P2 词缀追踪器试点。
+最近提交：`adef32ef`（P1）；P2 提交待写入。下一具体动作：提交 P2，进入 P3 簇 1（BossFilter、UIAndSigns、Injection）。
 
 ## P0 基线（2026-09-24）
 
@@ -38,6 +38,13 @@
 - 全量守卫 668 PASS / 0 FAIL。新 `RootAgentsBudgetGuard`、`LedgerSizeGuard`、`ModuleIndexGuard` 分别作破坏转红、按字节还原；模块索引验证了无效 glob 和生成区漂移两种破坏。首次仅改台账标题是等价变异，未转红，随后改为超过 1,500 行并转红。归档文段标题破坏也使 `SkyIslandOfficialApiReuseGuard` 转红。还原后各守卫 PASS。
 - P1 无生产 C# 变更，执行回归沿用 P0 全量 59 PASS / 0 FAIL。隔离正式构建 `Build succeeded!`、Dev 标识缺席、DLL SHA-256 `2FCE9388A09E27232C7FC69C36ED03ADB36EE34490FE4CD7B0CEB2451A989317`；隔离 Dev 构建 `Build succeeded!`、Dev 标识在位、SHA-256 `BED667125B7F5E596EF93799D2C97307B4BD753C8608E309938307C935824704`。两者各自与隔离目录部署哈希一致，72 bundle 清单通过。
 
+## P2 复用试点（2026-09-24，COMPAT）
+
+- 词缀运行时属性改用 `Common/Stats/RuntimeStatModifierTracker` 的显式 `ModifierType` 入口；词缀原失败日志由静态回调保留，移除仍用 `RemoveAll`。删除重复的 `AffixStatModifierApplier`。记录类统一为 `BossRushStatModifierRecord` 并移到共享追踪器；生产引用与夹具一次改名，不保留旧类型别名。`AffixCombat` 直接链接生产追踪器，覆盖 `Add`、`PercentageAdd`、`PercentageMultiply`、失败、移除和 owner 隔离。
+- 报箱与遗种巢各持一个 `BuildingRestoreCore`；核心承担两帧等待、请求合并、等待后场景句柄读取、Unity 假 null、实例 ID 缓存、取消与 `finally`。两个构建器仍提供身份、修复判据、装配与管理器存在判据，原清理时序保持。新 `BuildingRestoreCore` 执行回归覆盖两个 owner、等待期间切图、重复请求、取消与旧请求迟到收尾、销毁对象、单个装配异常后的重试；`ContentBuildingOwnership` 继续通过。相关覆盖表与两篇 repowiki 专题已更新。
+- `--changed-only` 守卫 203 PASS / 0 FAIL；五个修改的守卫均作破坏转红并按 SHA-256 验证原字节还原。首次全量回归 57 PASS / 3 FAIL，原因是三个夹具随生产追踪器链接的同名记录替身重复定义；删除替身后全量 60 PASS / 0 FAIL。基线红项 0，SKIP 0。结果留在忽略的 `Build/runtime-regressions/`，P2 副本留在 `Build/migration/`。
+- 隔离正式构建 `Build succeeded!`，Dev 标识缺席，DLL SHA-256 `4786D683A6781F73BDCCC16F89FC9AFD9F2F33E2947B0FFE8E902435AEE67388`，与隔离部署副本一致。隔离 Dev 构建 `Build succeeded!`，Dev 标识在位，SHA-256 `B1FD48544858D15C20649E2D202C8859770B8403307FF9B92C97D27D065C8AAF`，与隔离部署副本一致；两次均通过 72 bundle 清单。未启动游戏，L3 待 owner。
+
 ## 未完成项
 
-P2–P6 尚未完成；不能据此宣称离线迁移完成或实机通过。
+P3–P6 尚未完成；不能据此宣称离线迁移完成或实机通过。

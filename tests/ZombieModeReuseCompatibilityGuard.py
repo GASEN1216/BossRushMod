@@ -77,7 +77,7 @@ def main() -> int:
         require(rewards, "ItemUtilities.SendToPlayerCharacterInventory(item, false)", "ZombieMode rewards must use Duckov inventory helper first")
         require(rewards, "item.Drop(dropPosition, true", "ZombieMode reward fallback must use Duckov item.Drop")
 
-        require(marker, "public readonly System.Collections.Generic.List<ZombieModeAttributeModifierRecord> RuntimeModifierRecords", "ZombieMode enemies must track runtime stat modifiers")
+        require(marker, "public readonly System.Collections.Generic.List<BossRushStatModifierRecord> RuntimeModifierRecords", "ZombieMode enemies must track runtime stat modifiers")
         require(pollution, "RuntimeStatModifierTracker.TryAdd", "ZombieMode pollution/enemy buffs must use shared runtime modifier tracker")
         require(pollution, "RuntimeStatModifierTracker.RemoveAll", "ZombieMode pollution/enemy buffs must use shared runtime modifier cleanup")
         forbid(pollution, "new Modifier(", "ZombieMode pollution must not hand-roll runtime stat modifiers")

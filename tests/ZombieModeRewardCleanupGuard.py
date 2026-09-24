@@ -34,8 +34,8 @@ def main() -> int:
     for token in [
         "public sealed class ZombieModeOptionRuntimeState",
         "public readonly ZombieModeOptionRuntimeState OptionRuntime",
-        "public readonly List<ZombieModeAttributeModifierRecord> ModifierRecords",
-        "public readonly List<ZombieModeAttributeModifierRecord> GuardianShieldRecords",
+        "public readonly List<BossRushStatModifierRecord> ModifierRecords",
+        "public readonly List<BossRushStatModifierRecord> GuardianShieldRecords",
         "public void Reset()",
     ]:
         if token not in models:

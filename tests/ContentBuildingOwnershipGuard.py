@@ -30,12 +30,22 @@ def main():
         assert "BuildingInjectionHelper.FindGameType(" in code, name + " must use shared reflection"
         assert not re.search(r"(?<![.\w])(FindGameType|AssignBuildingContainerField)\(", code), name + " must not rely on hidden partial helpers"
         assert "_owner.RequestBaseBuildingAreaRepaint(" in code, name + " must reuse host-owned repaint lifecycle"
+    restore_core = read("Common/Buildings/BuildingRestoreCore.cs")
     for path in (MODULES["DailyReportMailboxBuilder"][1], MODULES["PetNestBuilder"][1]):
         code = read(path)
-        assert "_owner.StartCoroutine(" in code, path + " must schedule restoration on the same owner"
+        assert "Restore.Request(source)" in code, path + " must request its owner-local restore core"
         assert "AddEventHandler(null," in code and "RemoveEventHandler(null," in code, path + " must keep event cleanup"
     for path in (MODULES["DailyReportMailboxBuilder"][0], MODULES["PetNestBuilder"][0]):
-        assert "_owner.StopCoroutine(" in read(path), path + " cleanup must stop the owner's restoration coroutine"
+        code = read(path)
+        assert "new BuildingRestoreCore(owner," in code, path + " must bind a restore core to its actual owner"
+        assert "Restore.Cancel()" in code, path + " cleanup must cancel its restoration coroutine"
+    assert "owner.StartCoroutine(RestoreDelayed(generation))" in restore_core, "Shared core must schedule on creating owner"
+    assert "owner.StopCoroutine(active)" in restore_core, "Shared core must cancel on creating owner"
+    assert restore_core.count("yield return null;") == 2, "Shared core must wait two frames"
+    assert "SceneManager.GetActiveScene().handle" in restore_core, "Shared core must read active scene after waiting"
+    assert "if (comp == null || !isTargetBuilding(comp)) continue;" in restore_core, "Shared core must respect Unity fake null"
+    assert "buildingGO.GetInstanceID()" in restore_core, "Shared core must deduplicate by Unity instance ID"
+    assert "if (generation == requestGeneration) restoreCoroutine = null;" in restore_core, "Late finally must not clear a new request"
     assert "internal void RequestBaseBuildingAreaRepaint(string source)" in read("Integration/Wedding/WeddingBuildingInjector_DataEventsAndRuntime.cs"), \
         "Repaint keeps its existing host implementation and only opens internal access"
     assert "RepaintBaseBuildingAreasDelayed" not in bridge, "Bridge must not clone the repaint engine"

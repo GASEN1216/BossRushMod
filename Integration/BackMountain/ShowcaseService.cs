@@ -65,8 +65,8 @@ namespace BossRush
         /// </summary>
         private static int _loadedSlot = SlotUnknown;
 
-        private static readonly List<ZombieModeAttributeModifierRecord> _records =
-            new List<ZombieModeAttributeModifierRecord>();
+        private static readonly List<BossRushStatModifierRecord> _records =
+            new List<BossRushStatModifierRecord>();
         private static readonly object _modifierSource = new object();
 
         #endregion

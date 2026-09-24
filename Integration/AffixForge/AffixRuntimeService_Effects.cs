@@ -14,12 +14,8 @@
 //   3. 死契的持续流失只写 Health.CurrentHealth 并 clamp 最低 1 点血，绝不调 Hurt()。
 //   4. TickDrain 是每帧热路径：零日志、零分配、零 GetComponent。
 //
-// 对 RuntimeStatModifierTracker 的刻意偏离（写明理由）：
-//   RuntimeStatModifierTracker.TryAdd 把 ModifierType 写死成 PercentageAdd，
-//   而 GunCritRateGain / MeleeCritRateGain / BodyArmor / HeadArmor 是"加点型"stat，
-//   用百分比会算错量级。因此本文件自建 AffixStatModifierApplier.TryAdd 显式带
-//   ModifierType 参数；**移除路径仍复用 RuntimeStatModifierTracker.RemoveAll**，
-//   记录容器沿用同一个 ZombieModeAttributeModifierRecord，不产生第二套语义。
+// 常驻属性直接走共享 RuntimeStatModifierTracker 的显式 ModifierType 重载；
+// 词缀保留自己的失败日志文案与记录容器，移除继续走共享 RemoveAll。
 // ============================================================================
 
 using System.Collections;
@@ -31,59 +27,6 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>
-    /// 运行时 Stat Modifier 挂载器（带显式 ModifierType）。
-    /// 与 RuntimeStatModifierTracker 的差异见文件头，移除仍走 RemoveAll。
-    /// </summary>
-    internal static class AffixStatModifierApplier
-    {
-        internal static bool TryAdd(
-            CharacterMainControl character,
-            string statKey,
-            ModifierType modifierType,
-            float value,
-            object source,
-            List<ZombieModeAttributeModifierRecord> records,
-            string context)
-        {
-            if (character == null || character.CharacterItem == null ||
-                string.IsNullOrEmpty(statKey) || records == null || source == null)
-            {
-                return false;
-            }
-
-            if (System.Math.Abs(value) < 0.0001f)
-            {
-                return false;
-            }
-
-            try
-            {
-                Stat stat = character.CharacterItem.GetStat(statKey);
-                if (stat == null)
-                {
-                    return false;
-                }
-
-                Modifier modifier = new Modifier(modifierType, value, source);
-                stat.AddModifier(modifier);
-
-                ZombieModeAttributeModifierRecord record = new ZombieModeAttributeModifierRecord();
-                record.CharacterItem = character.CharacterItem;
-                record.Stat = stat;
-                record.Modifier = modifier;
-                record.StatName = statKey;
-                records.Add(record);
-                return true;
-            }
-            catch (System.Exception e)
-            {
-                ModBehaviour.DevLog(context + " [WARNING] 挂载 modifier 失败: " + statKey + ", " + e.Message);
-                return false;
-            }
-        }
-    }
-
     public static partial class AffixRuntimeService
     {
         // ---- Stat key 常量（拼写逐个核实过，禁止散落字面量）----
@@ -94,6 +37,13 @@ namespace BossRush
         private const string StatMeleeDamageMultiplier = "MeleeDamageMultiplier";
         private const string StatGunCritRateGain = "GunCritRateGain";
         private const string StatMeleeCritRateGain = "MeleeCritRateGain";
+
+        private static readonly System.Action<string, System.Exception> ModifierFailureLogger = LogAffixModifierFailure;
+
+        private static void LogAffixModifierFailure(string statKey, System.Exception error)
+        {
+            ModBehaviour.DevLog(LogPrefix + " [WARNING] 挂载 modifier 失败: " + statKey + ", " + error.Message);
+        }
 
         // ====================================================================
         // 分发入口（由 AffixRuntimeService.cs 的热路径 handler 调用）
@@ -426,20 +376,20 @@ namespace BossRush
                 if (id == AffixDefinitions.Id_HawkEye)
                 {
                     // 暴击率增益是加点型 stat，必须用 Add，不能用 PercentageAdd
-                    AffixStatModifierApplier.TryAdd(main, StatGunCritRateGain, ModifierType.Add, value, ModifierSource, _persistentModifiers, LogPrefix);
-                    AffixStatModifierApplier.TryAdd(main, StatMeleeCritRateGain, ModifierType.Add, value, ModifierSource, _persistentModifiers, LogPrefix);
+                    RuntimeStatModifierTracker.TryAdd(main, StatGunCritRateGain, value, ModifierSource, _persistentModifiers, LogPrefix, ModifierType.Add, ModifierFailureLogger);
+                    RuntimeStatModifierTracker.TryAdd(main, StatMeleeCritRateGain, value, ModifierSource, _persistentModifiers, LogPrefix, ModifierType.Add, ModifierFailureLogger);
                     continue;
                 }
 
                 if (id == AffixDefinitions.Id_BloodRage)
                 {
-                    AffixStatModifierApplier.TryAdd(main, StatGunDamageMultiplier, ModifierType.PercentageAdd, value, ModifierSource, _persistentModifiers, LogPrefix);
-                    AffixStatModifierApplier.TryAdd(main, StatMeleeDamageMultiplier, ModifierType.PercentageAdd, value, ModifierSource, _persistentModifiers, LogPrefix);
+                    RuntimeStatModifierTracker.TryAdd(main, StatGunDamageMultiplier, value, ModifierSource, _persistentModifiers, LogPrefix, ModifierType.PercentageAdd, ModifierFailureLogger);
+                    RuntimeStatModifierTracker.TryAdd(main, StatMeleeDamageMultiplier, value, ModifierSource, _persistentModifiers, LogPrefix, ModifierType.PercentageAdd, ModifierFailureLogger);
                     // 生命上限惩罚必须用 PercentageMultiply：官方 Recalculate 对 PercentageAdd 是
                     // 先把同 Order 的百分比求和再 Max(0, 1+sum)，狂血是 AppliesTo=All 的诅咒，
                     // 手持 + 3 件穿戴叠满 4 层 tier3（4 × −25%）会让乘数正好归零、生命上限变 0，
                     // 玩家开局即死且看不出原因。PercentageMultiply 逐层相乘（0.75^4 ≈ 0.32），永不归零。
-                    if (AffixStatModifierApplier.TryAdd(main, StatMaxHealth, ModifierType.PercentageMultiply, -value2, ModifierSource, _persistentModifiers, LogPrefix))
+                    if (RuntimeStatModifierTracker.TryAdd(main, StatMaxHealth, -value2, ModifierSource, _persistentModifiers, LogPrefix, ModifierType.PercentageMultiply, ModifierFailureLogger))
                     {
                         maxHealthTouched = true;
                     }
@@ -448,11 +398,11 @@ namespace BossRush
 
                 if (id == AffixDefinitions.Id_GlassCannon)
                 {
-                    AffixStatModifierApplier.TryAdd(main, StatGunDamageMultiplier, ModifierType.PercentageAdd, value, ModifierSource, _persistentModifiers, LogPrefix);
-                    AffixStatModifierApplier.TryAdd(main, StatMeleeDamageMultiplier, ModifierType.PercentageAdd, value, ModifierSource, _persistentModifiers, LogPrefix);
+                    RuntimeStatModifierTracker.TryAdd(main, StatGunDamageMultiplier, value, ModifierSource, _persistentModifiers, LogPrefix, ModifierType.PercentageAdd, ModifierFailureLogger);
+                    RuntimeStatModifierTracker.TryAdd(main, StatMeleeDamageMultiplier, value, ModifierSource, _persistentModifiers, LogPrefix, ModifierType.PercentageAdd, ModifierFailureLogger);
                     // 护甲是加点型；负护甲在 Health.Hurt 里会被 Clamp 到 0，不会反向加伤
-                    AffixStatModifierApplier.TryAdd(main, StatBodyArmor, ModifierType.Add, -value2, ModifierSource, _persistentModifiers, LogPrefix);
-                    AffixStatModifierApplier.TryAdd(main, StatHeadArmor, ModifierType.Add, -value2, ModifierSource, _persistentModifiers, LogPrefix);
+                    RuntimeStatModifierTracker.TryAdd(main, StatBodyArmor, -value2, ModifierSource, _persistentModifiers, LogPrefix, ModifierType.Add, ModifierFailureLogger);
+                    RuntimeStatModifierTracker.TryAdd(main, StatHeadArmor, -value2, ModifierSource, _persistentModifiers, LogPrefix, ModifierType.Add, ModifierFailureLogger);
                 }
             }
 

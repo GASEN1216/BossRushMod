@@ -53,8 +53,8 @@ namespace BossRush
         #region 状态
 
         /// <summary>本局已挂上的 Modifier 记录，退局时按 source 一次清干净。</summary>
-        private static readonly List<ZombieModeAttributeModifierRecord> _records =
-            new List<ZombieModeAttributeModifierRecord>();
+        private static readonly List<BossRushStatModifierRecord> _records =
+            new List<BossRushStatModifierRecord>();
 
         /// <summary>Modifier 的 source 标记。同一个对象贯穿加与摘。</summary>
         private static readonly object _modifierSource = new object();

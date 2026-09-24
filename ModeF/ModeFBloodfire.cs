@@ -29,8 +29,8 @@ namespace BossRush
 
         #region 命火过载状态
 
-        private readonly List<ZombieModeAttributeModifierRecord> modeFBloodfireModifiers =
-            new List<ZombieModeAttributeModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> modeFBloodfireModifiers =
+            new List<BossRushStatModifierRecord>();
 
         #endregion
 
@@ -202,7 +202,7 @@ namespace BossRush
             int speedModifierCount = 0;
             for (int i = 0; i < modeFBloodfireModifiers.Count; i++)
             {
-                ZombieModeAttributeModifierRecord record = modeFBloodfireModifiers[i];
+                BossRushStatModifierRecord record = modeFBloodfireModifiers[i];
                 if (record == null || record.Modifier == null) continue;
                 if (record.StatName == "WalkSpeed" || record.StatName == "RunSpeed")
                 {

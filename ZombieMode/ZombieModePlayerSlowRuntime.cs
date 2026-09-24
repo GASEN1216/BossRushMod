@@ -9,7 +9,7 @@ namespace BossRush
         private float currentSlowPercent;
         private bool slowActive;
         private ModBehaviour owner;
-        private readonly System.Collections.Generic.List<ZombieModeAttributeModifierRecord> slowModifierRecords = new System.Collections.Generic.List<ZombieModeAttributeModifierRecord>();
+        private readonly System.Collections.Generic.List<BossRushStatModifierRecord> slowModifierRecords = new System.Collections.Generic.List<BossRushStatModifierRecord>();
 
         public void ApplySlow(int newRunId, float percent, float duration)
         {

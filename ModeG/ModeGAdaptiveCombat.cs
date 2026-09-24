@@ -159,8 +159,8 @@ namespace BossRush
         #region State
 
         private readonly ModeGRunState _state;
-        private readonly List<ZombieModeAttributeModifierRecord> _modifierRecords
-            = new List<ZombieModeAttributeModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> _modifierRecords
+            = new List<BossRushStatModifierRecord>();
 
         private int _resolveDistance;
         private int _resolveAmmo;
@@ -418,7 +418,7 @@ namespace BossRush
                     return false;
                 }
 
-                ZombieModeAttributeModifierRecord record = new ZombieModeAttributeModifierRecord();
+                BossRushStatModifierRecord record = new BossRushStatModifierRecord();
                 record.CharacterItem = player.CharacterItem;
                 record.Stat = stat;
                 record.Modifier = modifier;
@@ -744,7 +744,7 @@ namespace BossRush
                     return false;
                 }
 
-                ZombieModeAttributeModifierRecord record = new ZombieModeAttributeModifierRecord();
+                BossRushStatModifierRecord record = new BossRushStatModifierRecord();
                 record.CharacterItem = character.CharacterItem;
                 record.Stat = stat;
                 record.Modifier = modifier;
@@ -781,7 +781,7 @@ namespace BossRush
                 Modifier modifier = new Modifier(type, value, source);
                 stat.AddModifier(modifier);
 
-                ZombieModeAttributeModifierRecord record = new ZombieModeAttributeModifierRecord();
+                BossRushStatModifierRecord record = new BossRushStatModifierRecord();
                 record.CharacterItem = character.CharacterItem;
                 record.Stat = stat;
                 record.Modifier = modifier;
@@ -819,7 +819,7 @@ namespace BossRush
         {
             for (int i = _modifierRecords.Count - 1; i >= 0; i--)
             {
-                ZombieModeAttributeModifierRecord record = _modifierRecords[i];
+                BossRushStatModifierRecord record = _modifierRecords[i];
                 if (record == null || record.Modifier == null
                     || !ReferenceEquals(record.Modifier.Source, source)) continue;
                 try
@@ -842,7 +842,7 @@ namespace BossRush
             if (startIndex < 0) startIndex = 0;
             for (int i = _modifierRecords.Count - 1; i >= startIndex; i--)
             {
-                ZombieModeAttributeModifierRecord record = _modifierRecords[i];
+                BossRushStatModifierRecord record = _modifierRecords[i];
                 try
                 {
                     Stat stat = record != null ? record.Stat : null;

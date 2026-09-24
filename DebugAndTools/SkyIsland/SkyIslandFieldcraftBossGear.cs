@@ -56,7 +56,7 @@ namespace BossRush
 
         private readonly List<Transform> sightTargets = new List<Transform>();
         private readonly List<GameObject> sightRings = new List<GameObject>();
-        private readonly List<ZombieModeAttributeModifierRecord> strideRecords = new List<ZombieModeAttributeModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> strideRecords = new List<BossRushStatModifierRecord>();
         private Vector3 sightAnchor;
         private float sightStill, sightReadyAt = -1f, sightClearAt = -1f, strideApplied;
         private bool sightExplained, strideExplained;

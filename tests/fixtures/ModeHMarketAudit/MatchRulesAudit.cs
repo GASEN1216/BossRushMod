@@ -69,8 +69,6 @@ namespace ItemStatsSystem
 }
 namespace BossRush
 {
-    internal sealed class ZombieModeAttributeModifierRecord
-    { public ItemStatsSystem.Item CharacterItem; public ItemStatsSystem.Stats.Stat Stat; public ItemStatsSystem.Stats.Modifier Modifier; public string StatName; }
     internal enum DamageTypes { normal, realDamage }
     internal enum ElementTypes { physics }
     internal struct DamageInfo

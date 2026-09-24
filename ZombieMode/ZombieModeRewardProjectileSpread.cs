@@ -205,7 +205,7 @@ namespace BossRush
                 // Order 300 is intentional: spread overlays are a late runtime delta; revisit if ShotCount/ShotAngle gain multiplicative gear affixes.
                 Modifier modifier = new Modifier(ModifierType.Add, delta, true, 300, snapshot);
                 stat.AddModifier(modifier);
-                ZombieModeAttributeModifierRecord record = new ZombieModeAttributeModifierRecord();
+                BossRushStatModifierRecord record = new BossRushStatModifierRecord();
                 record.CharacterItem = item;
                 record.Stat = stat;
                 record.Modifier = modifier;
@@ -236,7 +236,7 @@ namespace BossRush
                 // Order 300 is intentional: spread overlays are a late runtime delta; revisit if per-pellet Damage needs to compose differently with gun affixes.
                 Modifier modifier = new Modifier(ModifierType.PercentageAdd, percent, true, 300, snapshot);
                 stat.AddModifier(modifier);
-                ZombieModeAttributeModifierRecord record = new ZombieModeAttributeModifierRecord();
+                BossRushStatModifierRecord record = new BossRushStatModifierRecord();
                 record.CharacterItem = item;
                 record.Stat = stat;
                 record.Modifier = modifier;

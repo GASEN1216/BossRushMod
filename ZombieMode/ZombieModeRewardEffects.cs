@@ -16,8 +16,8 @@ namespace BossRush
         private sealed class ZombieModeProjectileSpreadSnapshot
         {
             public Item Item;
-            public readonly System.Collections.Generic.List<ZombieModeAttributeModifierRecord> ModifierRecords =
-                new System.Collections.Generic.List<ZombieModeAttributeModifierRecord>();
+            public readonly System.Collections.Generic.List<BossRushStatModifierRecord> ModifierRecords =
+                new System.Collections.Generic.List<BossRushStatModifierRecord>();
         }
 
         private UnityEngine.Events.UnityAction<Health> zombieModeOptionPlayerHealthChangeHandler;
@@ -103,8 +103,8 @@ namespace BossRush
         private bool active;
         private CharacterMainControl cachedEnemy;
         private ModBehaviour owner;
-        private readonly System.Collections.Generic.List<ZombieModeAttributeModifierRecord> stasisModifierRecords =
-            new System.Collections.Generic.List<ZombieModeAttributeModifierRecord>();
+        private readonly System.Collections.Generic.List<BossRushStatModifierRecord> stasisModifierRecords =
+            new System.Collections.Generic.List<BossRushStatModifierRecord>();
 
         public void Apply(int newRunId, float newSlowPercent, float duration)
         {

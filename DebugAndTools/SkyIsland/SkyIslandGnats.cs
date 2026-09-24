@@ -103,7 +103,7 @@ namespace BossRush
         private readonly Gnat[] gnats = new Gnat[SkyIslandMosquitoRules.MaxAlive];
         private readonly Zapper[] zappers = new Zapper[SkyIslandMosquitoRules.ZapperMaxActive];
         private readonly Splat[] splats = new Splat[SkyIslandMosquitoRules.MaxAlive];
-        private readonly List<ZombieModeAttributeModifierRecord> itchRecords = new List<ZombieModeAttributeModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> itchRecords = new List<BossRushStatModifierRecord>();
         private readonly object modifierSource = new object();
         private readonly MethodInfo postSound, stopAll;
         private readonly object stopImmediately;

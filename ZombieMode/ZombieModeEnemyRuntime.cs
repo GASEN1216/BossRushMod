@@ -90,8 +90,8 @@ namespace BossRush
         public bool AdaptiveMeleeActive;
         public CharacterMainControl Owner;
         public AICharacterController CachedAI;
-        public readonly System.Collections.Generic.List<ZombieModeAttributeModifierRecord> RuntimeModifierRecords =
-            new System.Collections.Generic.List<ZombieModeAttributeModifierRecord>();
+        public readonly System.Collections.Generic.List<BossRushStatModifierRecord> RuntimeModifierRecords =
+            new System.Collections.Generic.List<BossRushStatModifierRecord>();
 
         // Hot path 缓存：HandleZombieModeHealthHurt 每次玩家命中都会查 ally shield；
         // 改读字段而非 GetComponent。激活护盾时由 ApplyZombieModeShielderGroupShield /
