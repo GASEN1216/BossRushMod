@@ -5,7 +5,7 @@ using ItemStatsSystem.Data;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class DeathWraithRuntimeModule
     {
         internal void NotifyOriginalMainCharacterDeathInfoCaptured_DeathWraith(
             DeadBodyManager.DeathInfo info)

@@ -54,10 +54,15 @@ def main():
     generated += member(damage, "public DamageInfo(CharacterMainControl fromCharacter = null)")
     generated += member(damage, "public void AddElementFactor(ElementTypes _type, float _factor)") + "}\n"
     # The actual production helper and ownership predicate are included, too.
-    visuals = (ROOT / "Integration/Bonus/SetBonusVisuals.cs").read_text(encoding="utf-8-sig")
-    generated += "namespace BossRush { public partial class ModBehaviour {\n"
+    visuals_path = ROOT / "Integration/Bonus/SetBonusVisuals.cs"
+    visuals = visuals_path.read_text(encoding="utf-8-sig")
+    bridge_path = ROOT / "Integration/Bonus/SetBonusRuntimeHostBridge.cs"
+    bridge = bridge_path.read_text(encoding="utf-8-sig")
+    generated += "namespace BossRush { internal partial class SetBonusRuntimeModule {\n"
     generated += member(visuals, "private static float GetSetBonusElementDamagePortion(")
     generated += member(visuals, "internal bool HasSetBonusElementHealing") + "}}\n"
+    generated += "namespace BossRush { public partial class ModBehaviour {\n"
+    generated += member(bridge, "internal bool HasSetBonusElementHealing") + "}}\n"
     generated_path = OUT / "OfficialAndHelpers.cs"
     generated_path.write_text(generated, encoding="utf-8")
     sources = [ROOT / "Integration/NPCs/DuckNpc/DuckNpcMovement.cs",
@@ -78,7 +83,7 @@ def main():
     response.write_text("\n".join(args), encoding="utf-8-sig")
     (OUT / "source-hashes.txt").write_text("\n".join(
         hashlib.sha256(path.read_bytes()).hexdigest() + "  " + str(path)
-        for path in sources + [official / "Health.cs", official / "DamageInfo.cs", harmony]), encoding="utf-8")
+        for path in sources + [visuals_path, bridge_path, official / "Health.cs", official / "DamageInfo.cs", harmony]), encoding="utf-8")
     result = subprocess.call(["dotnet", str(compiler), "/noconfig", "@" + str(response)], cwd=ROOT)
     if result:
         return result

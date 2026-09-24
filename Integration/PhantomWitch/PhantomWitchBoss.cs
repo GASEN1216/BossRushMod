@@ -23,9 +23,9 @@ namespace BossRush
     }
 
     /// <summary>
-    /// 幽灵女巫Boss主控制器（partial class）
+    /// 幽灵女巫Boss运行时模块。
     /// </summary>
-    public partial class ModBehaviour
+    internal sealed partial class PhantomWitchRuntimeModule : BossRushRuntimeModuleBase
     {
         // ========== 幽灵女巫Boss实例引用 ==========
 
@@ -62,12 +62,17 @@ namespace BossRush
         /// </summary>
         public static void ClearPhantomWitchStaticCache()
         {
-            cachedPhantomWitchBasePreset = null;
-            phantomWitchBasePresetSearched = false;
-            phantomWitchRegistered = false;
+            PhantomWitchRuntimeModule.ResetPhantomWitchRuntimeModuleStaticCaches();
             PhantomWitchAssetManager.ForceCleanup();
             PhantomWitchCurseRealmVisual.ClearCache();
             PhantomWitchAbilityController.ClearStaticCache();
+        }
+
+        private static void ResetPhantomWitchRuntimeModuleStaticCaches()
+        {
+            cachedPhantomWitchBasePreset = null;
+            phantomWitchBasePresetSearched = false;
+            phantomWitchRegistered = false;
         }
 
         /// <summary>
@@ -83,16 +88,19 @@ namespace BossRush
             }
         }
 
-        private void CleanupPhantomWitchTrackedStateOnArenaExit()
+        internal void CleanupPhantomWitchTrackedStateOnArenaExit()
         {
             HashSet<CharacterMainControl> trackedCharacters = new HashSet<CharacterMainControl>();
             foreach (var kv in phantomWitchInstances)
             {
                 if (kv.Key != null) trackedCharacters.Add(kv.Key);
             }
-            foreach (var kv in bossSpawnTimes)
+            if (bossSpawnTimes != null)
             {
-                if (kv.Key != null) trackedCharacters.Add(kv.Key);
+                foreach (var kv in bossSpawnTimes)
+                {
+                    if (kv.Key != null) trackedCharacters.Add(kv.Key);
+                }
             }
 
             HashSet<CharacterMainControl> destroyed = new HashSet<CharacterMainControl>();
@@ -170,7 +178,7 @@ namespace BossRush
             PhantomWitchAbilityController abilities = null;
             bool assetReferenceAdded = false;
             int sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
-            Func<bool> isCurrent = () => this != null && Instance == this &&
+            Func<bool> isCurrent = () => owner != null && ModBehaviour.Instance == owner &&
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == sceneHandle &&
                 (isActiveCheck == null || isActiveCheck());
 
@@ -411,7 +419,7 @@ namespace BossRush
             }
         }
 
-        private void CleanupFailedPhantomWitchSpawn(CharacterMainControl character)
+        internal void CleanupFailedPhantomWitchSpawn(CharacterMainControl character)
         {
             if (character == null)
             {
@@ -649,7 +657,7 @@ namespace BossRush
         /// <summary>
         /// 查找幽灵女巫基础预设（精确匹配 Cname_Ghost）
         /// </summary>
-        private CharacterRandomPreset FindPhantomWitchBasePreset()
+        internal CharacterRandomPreset FindPhantomWitchBasePreset()
         {
             if (phantomWitchBasePresetSearched)
             {
@@ -780,7 +788,7 @@ namespace BossRush
         /// <summary>
         /// 检查是否是幽灵女巫预设
         /// </summary>
-        private bool IsPhantomWitchPreset(EnemyPresetInfo preset)
+        internal bool IsPhantomWitchPreset(EnemyPresetInfo preset)
         {
             return ModBossPresetLookup.Matches(
                 preset,
@@ -789,17 +797,10 @@ namespace BossRush
                 PhantomWitchConfig.BossNameEN);
         }
 
-        private bool IsManagedBossPreset(EnemyPresetInfo preset)
-        {
-            return IsDragonDescendantPreset(preset)
-                || IsDragonKingPreset(preset)
-                || IsPhantomWitchPreset(preset);
-        }
-
         /// <summary>
         /// 注册幽灵女巫Boss到敌人预设列表
         /// </summary>
-        private void RegisterPhantomWitchPreset()
+        internal void RegisterPhantomWitchPreset()
         {
             if (phantomWitchRegistered) return;
             if (enemyPresets == null) return;

@@ -1,5 +1,5 @@
 ﻿// ============================================================================
-// GoblinNPC.cs - 哥布林NPC系统（ModBehaviour partial）
+// GoblinNPC.cs - 哥布林NPC运行时模块
 // ============================================================================
 // 模块说明：
 //   管理 BossRush 模组的哥布林 NPC，包括：
@@ -20,11 +20,23 @@ using BossRush.Utils;
 
 namespace BossRush
 {
-    /// <summary>
-    /// 哥布林NPC系统 - ModBehaviour 的 partial class
-    /// </summary>
-    public partial class ModBehaviour
+    /// <summary>哥布林 NPC 的唯一运行时状态 owner。</summary>
+    internal sealed class GoblinNpcRuntimeModule : BossRushRuntimeModuleBase
     {
+        private ModBehaviour owner;
+
+        public override string ModuleName { get { return "GoblinNPC"; } }
+
+        public override void OnAwake(ModBehaviour owner)
+        {
+            this.owner = owner;
+        }
+
+        public override void OnDestroy()
+        {
+            owner = null;
+        }
+
         // ============================================================================
         // 哥布林实例和资源
         // ============================================================================
@@ -32,15 +44,20 @@ namespace BossRush
         // 哥布林实例
         private GameObject goblinNPCInstance = null;
         private GoblinNPCController goblinController = null;
+
+        internal GameObject GoblinNPCInstance { get { return goblinNPCInstance; } }
+        internal GoblinNPCController GoblinController { get { return goblinController; } }
         
         // AssetBundle 缓存
         private static AssetBundle goblinAssetBundle = null;
         private static GameObject goblinPrefab = null;
+
+        internal GameObject GoblinPrefab { get { return goblinPrefab; } }
         
         /// <summary>
         /// 加载哥布林 AssetBundle
         /// </summary>
-        private bool LoadGoblinAssetBundle()
+        internal bool LoadGoblinAssetBundle()
         {
             return NPCAssetBundleHelper.LoadNPCPrefab(
                 "goblinnpc", "GoblinNPC", "[GoblinNPC]",
@@ -62,14 +79,17 @@ namespace BossRush
             // 获取快递员位置（如果存在）
             NPCExceptionHandler.TryExecute(() =>
             {
+                GameObject courierNPCInstance = owner != null
+                    ? owner.GoblinCourierNpcInstanceForRuntime
+                    : null;
                 if (courierNPCInstance != null)
                 {
                     courierPosition = courierNPCInstance.transform.position;
-                    DevLog("[GoblinNPC] 检测到快递员位置: " + courierPosition + "，将避开此位置");
+                    ModBehaviour.DevLog("[GoblinNPC] 检测到快递员位置: " + courierPosition + "，将避开此位置");
                 }
             }, "ModBehaviour.GetGoblinSpawnPosition - 获取快递员位置");
             
-            Vector3[] sharedSpawnPoints = GetSharedCommonNPCSpawnPointsForScene(sceneName);
+            Vector3[] sharedSpawnPoints = ModBehaviour.GetSharedCommonNPCSpawnPointsForScene(sceneName);
             if (NPCSpawnConfig.TryGetSharedSpawnPosition(
                 sharedSpawnPoints,
                 out Vector3 position,
@@ -80,7 +100,7 @@ namespace BossRush
                 if (courierPosition != Vector3.zero)
                 {
                     float distance = Vector3.Distance(position, courierPosition);
-                    DevLog("[GoblinNPC] 刷新位置与快递员距离: " + distance.ToString("F1") + "米");
+                    ModBehaviour.DevLog("[GoblinNPC] 刷新位置与快递员距离: " + distance.ToString("F1") + "米");
                 }
                 return position;
             }
@@ -93,13 +113,13 @@ namespace BossRush
         /// </summary>
         private bool ShouldSpawnGoblin(string sceneName)
         {
-            if (ShouldUseRandomSupportNpcSelection(sceneName))
+            if (owner != null && owner.ShouldUseRandomSupportNpcSelection(sceneName))
             {
-                return IsValidBossRushArenaScene(sceneName);
+                return owner.IsValidBossRushArenaScene(sceneName);
             }
-            if (UsesArenaSupportNpcPlacement())
+            if (owner != null && owner.UsesArenaSupportNpcPlacement())
             {
-                return IsValidBossRushArenaScene(sceneName);
+                return owner.IsValidBossRushArenaScene(sceneName);
             }
 
             return NPCSpawnConfig.HasCourierNormalModeConfig(sceneName);
@@ -111,9 +131,9 @@ namespace BossRush
         /// <param name="overrideSpawnPos">强制刷新位置（用于婚礼教堂等特殊场景）</param>
         /// <param name="stayStillOnSpawn">刷新后是否保持不动</param>
         /// <param name="forceSpawn">是否忽略普通模式刷新条件</param>
-        public void SpawnGoblinNPC(Vector3? overrideSpawnPos = null, bool stayStillOnSpawn = false, bool forceSpawn = false)
+        internal void SpawnGoblinNPC(Vector3? overrideSpawnPos = null, bool stayStillOnSpawn = false, bool forceSpawn = false)
         {
-            DevLog("[GoblinNPC] 开始生成哥布林...");
+            ModBehaviour.DevLog("[GoblinNPC] 开始生成哥布林...");
             
             // 懒加载：在NPC生成时统一检查并应用每日好感度衰减
             NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(GoblinAffinityConfig.NPC_ID, "[GoblinNPC]");
@@ -121,21 +141,21 @@ namespace BossRush
             // 已婚后不再参与普通地图刷新（仅婚礼教堂强制生成）
             if (!forceSpawn && AffinityManager.IsMarriedToPlayer(GoblinAffinityConfig.NPC_ID))
             {
-                DevLog("[GoblinNPC] 已与玩家结婚，跳过普通地图刷新");
+                ModBehaviour.DevLog("[GoblinNPC] 已与玩家结婚，跳过普通地图刷新");
                 return;
             }
             
             // 如果已经存在，不重复生成
             if (goblinNPCInstance != null)
             {
-                DevLog("[GoblinNPC] 哥布林已存在，跳过生成");
+                ModBehaviour.DevLog("[GoblinNPC] 哥布林已存在，跳过生成");
                 return;
             }
             
             // 加载 AssetBundle
             if (!LoadGoblinAssetBundle())
             {
-                DevLog("[GoblinNPC] 无法加载哥布林资源，跳过生成");
+                ModBehaviour.DevLog("[GoblinNPC] 无法加载哥布林资源，跳过生成");
                 return;
             }
             
@@ -145,19 +165,19 @@ namespace BossRush
             // 检查场景是否配置了哥布林刷新点
             if (!forceSpawn && !ShouldSpawnGoblin(currentSceneName))
             {
-                DevLog("[GoblinNPC] 场景 " + currentSceneName + " 未配置哥布林刷新点，跳过生成");
+                ModBehaviour.DevLog("[GoblinNPC] 场景 " + currentSceneName + " 未配置哥布林刷新点，跳过生成");
                 return;
             }
             
             Vector3 spawnPos = overrideSpawnPos.HasValue
                 ? overrideSpawnPos.Value
                 : GetGoblinSpawnPosition(currentSceneName);
-            DevLog("[GoblinNPC] 场景: " + currentSceneName + ", 位置: " + spawnPos);
+            ModBehaviour.DevLog("[GoblinNPC] 场景: " + currentSceneName + ", 位置: " + spawnPos);
             
             // 检查是否获取到有效位置
             if (spawnPos == Vector3.zero)
             {
-                DevLog("[GoblinNPC] 无法获取刷新点，跳过生成");
+                ModBehaviour.DevLog("[GoblinNPC] 无法获取刷新点，跳过生成");
                 return;
             }
             
@@ -166,11 +186,11 @@ namespace BossRush
             if (Physics.Raycast(spawnPos + Vector3.up * 1f, Vector3.down, out hit, 5f))
             {
                 spawnPos = hit.point + new Vector3(0f, 0.1f, 0f);
-                DevLog("[GoblinNPC] Raycast修正后位置: " + spawnPos);
+                ModBehaviour.DevLog("[GoblinNPC] Raycast修正后位置: " + spawnPos);
             }
             else
             {
-                DevLog("[GoblinNPC] Raycast修正失败，使用原始坐标: " + spawnPos);
+                ModBehaviour.DevLog("[GoblinNPC] Raycast修正失败，使用原始坐标: " + spawnPos);
             }
             
             try
@@ -178,7 +198,7 @@ namespace BossRush
                 // 实例化预制体
                 goblinNPCInstance = UnityEngine.Object.Instantiate(goblinPrefab, spawnPos, Quaternion.identity);
                 goblinNPCInstance.name = "GoblinNPC_BossRush";
-                DevLog("[GoblinNPC] 预制体实例化成功");
+                ModBehaviour.DevLog("[GoblinNPC] 预制体实例化成功");
                 
                 // 确保所有子对象都激活
                 goblinNPCInstance.SetActive(true);
@@ -192,12 +212,12 @@ namespace BossRush
                 
                 // 添加控制器组件
                 goblinController = goblinNPCInstance.AddComponent<GoblinNPCController>();
-                DevLog("[GoblinNPC] 控制器组件添加成功");
+                ModBehaviour.DevLog("[GoblinNPC] 控制器组件添加成功");
                 
                 // 添加移动控制组件
                 GoblinMovement movement = goblinNPCInstance.AddComponent<GoblinMovement>();
                 movement.SetSceneName(currentSceneName);
-                DevLog("[GoblinNPC] 移动组件添加成功");
+                ModBehaviour.DevLog("[GoblinNPC] 移动组件添加成功");
 
                 // 婚礼教堂中的已婚NPC暂时站桩不动
                 if (stayStillOnSpawn)
@@ -208,14 +228,14 @@ namespace BossRush
                     {
                         goblinController.EnterStationaryIdleState();
                     }
-                    DevLog("[GoblinNPC] 已设置为站桩模式（不移动）");
+                    ModBehaviour.DevLog("[GoblinNPC] 已设置为站桩模式（不移动）");
                 }
                 
                 // 添加交互组件（重铸服务）
                 GoblinInteractable interactable = goblinNPCInstance.AddComponent<GoblinInteractable>();
-                DevLog("[GoblinNPC] 交互组件添加成功");
+                ModBehaviour.DevLog("[GoblinNPC] 交互组件添加成功");
                 
-                DevLog("[GoblinNPC] 哥布林生成成功，位置: " + spawnPos);
+                ModBehaviour.DevLog("[GoblinNPC] 哥布林生成成功，位置: " + spawnPos);
             }
             catch (Exception e)
             {
@@ -232,14 +252,14 @@ namespace BossRush
         /// <summary>
         /// 销毁哥布林 NPC
         /// </summary>
-        public void DestroyGoblinNPC()
+        internal void DestroyGoblinNPC()
         {
             if (goblinNPCInstance != null)
             {
                 UnityEngine.Object.Destroy(goblinNPCInstance);
                 goblinNPCInstance = null;
                 goblinController = null;
-                DevLog("[GoblinNPC] 哥布林已销毁");
+                ModBehaviour.DevLog("[GoblinNPC] 哥布林已销毁");
             }
         }
         
@@ -247,23 +267,23 @@ namespace BossRush
         /// 召唤哥布林跑向玩家
         /// 当玩家使用特定物品时调用此方法
         /// </summary>
-        public void SummonGoblin()
+        internal void SummonGoblin()
         {
             if (goblinController != null)
             {
                 goblinController.RunToPlayer();
-                DevLog("[GoblinNPC] 哥布林被召唤，开始跑向玩家");
+                ModBehaviour.DevLog("[GoblinNPC] 哥布林被召唤，开始跑向玩家");
             }
             else
             {
-                DevLog("[GoblinNPC] 哥布林控制器不存在，无法召唤");
+                ModBehaviour.DevLog("[GoblinNPC] 哥布林控制器不存在，无法召唤");
             }
         }
         
         /// <summary>
         /// 获取哥布林NPC实例
         /// </summary>
-        public GoblinNPCController GetGoblinController()
+        internal GoblinNPCController GetGoblinController()
         {
             return goblinController;
         }

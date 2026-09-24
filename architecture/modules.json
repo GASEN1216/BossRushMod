@@ -662,12 +662,15 @@
         "Integration/NPCs/**/*.cs"
       ],
       "entry": "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
-      "state_owner": "CommonNpcRuntimeModule",
+      "state_owner": "CommonNpcRuntimeModule, GoblinNpcRuntimeModule",
       "public_api": [
-        "CommonNpcRuntimeHooks"
+        "CommonNpcRuntimeHooks",
+        "GoblinNpcRuntimeModule"
       ],
       "data": [],
-      "tests": [],
+      "tests": [
+        "tests/GoblinRuntimeModuleGuard.py"
+      ],
       "docs": [
         ".qoder/repowiki/zh/content/NPC 关系系统/NPC 交互系统.md"
       ],
@@ -713,13 +716,16 @@
       "paths": [
         "Integration/Affinity/**/*.cs"
       ],
-      "entry": "Integration/Affinity/AffinityConfig.cs",
-      "state_owner": "AffinityConfig",
+      "entry": "Integration/Affinity/AffinityRuntimeHooks.cs",
+      "state_owner": "AffinityRuntimeModule",
       "public_api": [
+        "AffinityRuntimeModule",
         "AffinityConfig"
       ],
       "data": [],
-      "tests": [],
+      "tests": [
+        "tests/AffinityRuntimeModuleGuard.py"
+      ],
       "docs": [
         ".qoder/repowiki/zh/content/NPC 关系系统/好感度框架核心.md"
       ],
@@ -801,13 +807,16 @@
       "paths": [
         "Integration/WishFountain/**/*.cs"
       ],
-      "entry": "Integration/WishFountain/WishFountainService.cs",
-      "state_owner": "WishFountainService",
+      "entry": "Integration/WishFountain/WishFountainRuntimeModule.cs",
+      "state_owner": "WishFountainRuntimeModule",
       "public_api": [
+        "WishFountainRuntimeModule",
         "WishFountainService"
       ],
       "data": [],
-      "tests": [],
+      "tests": [
+        "tests/WishFountainRuntimeModuleGuard.py"
+      ],
       "docs": [],
       "rules": [
         "AGENTS.md",
@@ -913,14 +922,16 @@
       "paths": [
         "Integration/DragonKing/**/*.cs"
       ],
-      "entry": "Integration/DragonKing/DragonKingAbilityController.cs",
-      "state_owner": "DragonKingAbilityController",
+      "entry": "Integration/DragonKing/DragonKingBoss.cs",
+      "state_owner": "DragonKingRuntimeModule",
       "public_api": [
+        "DragonKingRuntimeModule",
         "DragonKingAbilityController"
       ],
       "data": [],
       "tests": [
-        "tests/DragonKing*Guard.py"
+        "tests/DragonKing*Guard.py",
+        "tests/ManagedBossRuntimeModuleOwnershipGuard.py"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/项目概览/核心功能特性/装备与物品系统/套装效果系统/龙王套装效果.md"
@@ -941,14 +952,16 @@
       "paths": [
         "Integration/DragonDescendant/**/*.cs"
       ],
-      "entry": "Integration/DragonDescendant/DragonBreathBuffHandler.cs",
-      "state_owner": "DragonBreathBuffHandler",
+      "entry": "Integration/DragonDescendant/DragonDescendantBoss.cs",
+      "state_owner": "DragonDescendantRuntimeModule",
       "public_api": [
+        "DragonDescendantRuntimeModule",
         "DragonBreathBuffHandler"
       ],
       "data": [],
       "tests": [
-        "tests/DragonDescendant*Guard.py"
+        "tests/DragonDescendant*Guard.py",
+        "tests/ManagedBossRuntimeModuleOwnershipGuard.py"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/自定义 Boss 系统/龙裔遗族 Boss/龙裔遗族 Boss.md"
@@ -969,14 +982,16 @@
       "paths": [
         "Integration/PhantomWitch/**/*.cs"
       ],
-      "entry": "Integration/PhantomWitch/PhantomWitchAbilityController.cs",
-      "state_owner": "PhantomWitchAbilityController",
+      "entry": "Integration/PhantomWitch/PhantomWitchBoss.cs",
+      "state_owner": "PhantomWitchRuntimeModule",
       "public_api": [
+        "PhantomWitchRuntimeModule",
         "PhantomWitchAbilityController"
       ],
       "data": [],
       "tests": [
-        "tests/PhantomWitch*Guard.py"
+        "tests/PhantomWitch*Guard.py",
+        "tests/ManagedBossRuntimeModuleOwnershipGuard.py"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/自定义 Boss 系统/幽灵女巫 Boss.md"
@@ -1022,12 +1037,15 @@
         "Integration/Bonus/**/*.cs"
       ],
       "entry": "Integration/Bonus/DragonSetBonus.cs",
-      "state_owner": "DragonSetBonus",
+      "state_owner": "SetBonusRuntimeModule",
       "public_api": [
+        "SetBonusRuntimeModule",
         "DragonSetBonus"
       ],
       "data": [],
-      "tests": [],
+      "tests": [
+        "tests/SetBonusLifecycleGuard.py"
+      ],
       "docs": [
         ".qoder/repowiki/zh/content/装备与物品系统/套装效果系统.md"
       ],
@@ -1047,14 +1065,16 @@
       "paths": [
         "Integration/Frostmourne/**/*.cs"
       ],
-      "entry": "Integration/Frostmourne/FrostmourneAbilityManager.cs",
-      "state_owner": "FrostmourneAbilityManager",
+      "entry": "Integration/Frostmourne/FrostmourneBootstrap.cs",
+      "state_owner": "FrostmourneRuntimeModule",
       "public_api": [
+        "FrostmourneRuntimeModule",
         "FrostmourneAbilityManager"
       ],
       "data": [],
       "tests": [
-        "tests/Frostmourne*Guard.py"
+        "tests/Frostmourne*Guard.py",
+        "tests/EquipmentBootstrapRuntimeModuleGuard.py"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/装备与物品系统/自定义武器系统/霜之哀伤（Frostmourne）.md"
@@ -1075,14 +1095,16 @@
       "paths": [
         "Integration/FlightTotem/**/*.cs"
       ],
-      "entry": "Integration/FlightTotem/CA_Flight.cs",
-      "state_owner": "CA_Flight",
+      "entry": "Integration/FlightTotem/FlightTotemBootstrap.cs",
+      "state_owner": "FlightTotemRuntimeModule",
       "public_api": [
+        "FlightTotemRuntimeModule",
         "CA_Flight"
       ],
       "data": [],
       "tests": [
-        "tests/FlightTotem*Guard.py"
+        "tests/FlightTotem*Guard.py",
+        "tests/EquipmentBootstrapRuntimeModuleGuard.py"
       ],
       "docs": [],
       "rules": [
@@ -1101,14 +1123,16 @@
       "paths": [
         "Integration/DeathWraith/**/*.cs"
       ],
-      "entry": "Integration/DeathWraith/DeathWraithCombatLoadout.cs",
-      "state_owner": "DeathWraithCombatLoadout",
+      "entry": "Integration/DeathWraith/DeathWraithSystem.cs",
+      "state_owner": "DeathWraithRuntimeModule",
       "public_api": [
+        "DeathWraithRuntimeModule",
         "DeathWraithCombatLoadout"
       ],
       "data": [],
       "tests": [
-        "tests/DeathWraith*Guard.py"
+        "tests/DeathWraith*Guard.py",
+        "tests/DeathWraithRuntimeModuleOwnershipGuard.py"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/项目概览/核心功能特性/高级功能/死亡亡魂系统.md"
@@ -1129,14 +1153,16 @@
       "paths": [
         "Integration/ReverseScale/**/*.cs"
       ],
-      "entry": "Integration/ReverseScale/ReverseScaleAbilityManager.cs",
-      "state_owner": "ReverseScaleAbilityManager",
+      "entry": "Integration/ReverseScale/ReverseScaleBootstrap.cs",
+      "state_owner": "ReverseScaleRuntimeModule",
       "public_api": [
+        "ReverseScaleRuntimeModule",
         "ReverseScaleAbilityManager"
       ],
       "data": [],
       "tests": [
-        "tests/ReverseScale*Guard.py"
+        "tests/ReverseScale*Guard.py",
+        "tests/EquipmentBootstrapRuntimeModuleGuard.py"
       ],
       "docs": [],
       "rules": [
@@ -1155,13 +1181,16 @@
       "paths": [
         "Integration/Wedding/**/*.cs"
       ],
-      "entry": "Integration/Wedding/NPCMarriageSystem.cs",
-      "state_owner": "NPCMarriageSystem",
+      "entry": "Integration/Wedding/WeddingRuntimeModule.cs",
+      "state_owner": "WeddingRuntimeModule",
       "public_api": [
+        "WeddingRuntimeModule",
         "NPCMarriageSystem"
       ],
       "data": [],
-      "tests": [],
+      "tests": [
+        "tests/PermanentSpouseRestoreLifecycleGuard.py"
+      ],
       "docs": [],
       "rules": [
         "AGENTS.md",

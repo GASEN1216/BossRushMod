@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class WeddingRuntimeModule
     {
         private Coroutine baseBuildingAreaRepaintCoroutine = null;
 
@@ -75,7 +75,7 @@ namespace BossRush
 
             if (alreadyExists)
             {
-                DevLog("[WeddingBuilding] 建筑数据已存在于 infos 列表中，跳过注入");
+                ModBehaviour.DevLog("[WeddingBuilding] 建筑数据已存在于 infos 列表中，跳过注入");
                 return;
             }
 
@@ -94,11 +94,11 @@ namespace BossRush
             if (weddingBuildingIcon != null)
             {
                 buildingInfoType.GetField("iconReference")?.SetValue(newBuildingInfo, weddingBuildingIcon);
-                DevLog("[WeddingBuilding] 建筑图标已设置到 BuildingInfo");
+                ModBehaviour.DevLog("[WeddingBuilding] 建筑图标已设置到 BuildingInfo");
             }
             else
             {
-                DevLog("[WeddingBuilding] 警告：建筑图标为空，建造UI将显示空白图标");
+                ModBehaviour.DevLog("[WeddingBuilding] 警告：建筑图标为空，建造UI将显示空白图标");
             }
 
             // 设置建造费用
@@ -109,7 +109,7 @@ namespace BossRush
             if (addMethod != null)
             {
                 addMethod.Invoke(infosList, new object[] { newBuildingInfo });
-                DevLog("[WeddingBuilding] BuildingInfo 已注入到 infos 列表");
+                ModBehaviour.DevLog("[WeddingBuilding] BuildingInfo 已注入到 infos 列表");
             }
 
             // ---- 注入 Building prefab 到 prefabs 列表 ----
@@ -128,7 +128,7 @@ namespace BossRush
                         {
                             MethodInfo prefabAddMethod = prefabsList.GetType().GetMethod("Add");
                             prefabAddMethod?.Invoke(prefabsList, new object[] { buildingComp });
-                            DevLog("[WeddingBuilding] Building prefab 已注入到 prefabs 列表");
+                            ModBehaviour.DevLog("[WeddingBuilding] Building prefab 已注入到 prefabs 列表");
                         }
                     }
                 }
@@ -140,10 +140,10 @@ namespace BossRush
             if (readonlyField != null)
             {
                 readonlyField.SetValue(bdcInstance, null);
-                DevLog("[WeddingBuilding] readonlyInfos 缓存已重置");
+                ModBehaviour.DevLog("[WeddingBuilding] readonlyInfos 缓存已重置");
             }
 
-            DevLog("[WeddingBuilding] 建筑数据注入完成！建筑应该出现在建造UI中了");
+            ModBehaviour.DevLog("[WeddingBuilding] 建筑数据注入完成！建筑应该出现在建造UI中了");
         }
 
         /// <summary>
@@ -157,7 +157,7 @@ namespace BossRush
                 Type costType = FindGameType("Duckov.Economy.Cost");
                 if (costType == null)
                 {
-                    DevLog("[WeddingBuilding] 无法找到 Cost 类型，建筑将免费");
+                    ModBehaviour.DevLog("[WeddingBuilding] 无法找到 Cost 类型，建筑将免费");
                     return;
                 }
 
@@ -167,7 +167,7 @@ namespace BossRush
                 {
                     object cost = costCtor.Invoke(new object[] { WEDDING_BUILDING_COST });
                     buildingInfoType.GetField("cost")?.SetValue(buildingInfo, cost);
-                    DevLog("[WeddingBuilding] 建造费用设置为: " + WEDDING_BUILDING_COST);
+                    ModBehaviour.DevLog("[WeddingBuilding] 建造费用设置为: " + WEDDING_BUILDING_COST);
                 }
                 else
                 {
@@ -177,18 +177,18 @@ namespace BossRush
                     costType.GetField("items")?.SetValue(cost, Array.CreateInstance(
                         costType.GetNestedType("ItemEntry") ?? typeof(object), 0));
                     buildingInfoType.GetField("cost")?.SetValue(buildingInfo, cost);
-                    DevLog("[WeddingBuilding] 建造费用设置为: " + WEDDING_BUILDING_COST + "（备用方式）");
+                    ModBehaviour.DevLog("[WeddingBuilding] 建造费用设置为: " + WEDDING_BUILDING_COST + "（备用方式）");
                 }
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBuilding] 设置费用失败: " + e.Message + "，建筑将免费");
+                ModBehaviour.DevLog("[WeddingBuilding] 设置费用失败: " + e.Message + "，建筑将免费");
             }
         }
 
         internal void RequestBaseBuildingAreaRepaint(string source)
         {
-            if (!IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            if (!ModBehaviour.IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
             {
                 return;
             }
@@ -208,7 +208,7 @@ namespace BossRush
 
             try
             {
-                if (!IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+                if (!ModBehaviour.IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
                 {
                     yield break;
                 }
@@ -245,13 +245,13 @@ namespace BossRush
                     }
                     catch (Exception repaintError)
                     {
-                        DevLog("[WeddingBuilding] 重绘基地建筑区失败: " + repaintError.Message);
+                        ModBehaviour.DevLog("[WeddingBuilding] 重绘基地建筑区失败: " + repaintError.Message);
                     }
                 }
 
                 if (repaintCount > 0)
                 {
-                    DevLog("[WeddingBuilding] 已重绘基地建筑区 " + repaintCount + " 个, source=" + source);
+                    ModBehaviour.DevLog("[WeddingBuilding] 已重绘基地建筑区 " + repaintCount + " 个, source=" + source);
                 }
             }
             finally
@@ -281,20 +281,22 @@ namespace BossRush
 
                 // 订阅 OnBuildingBuilt 事件
                 EventInfo builtEvent = bmType.GetEvent("OnBuildingBuilt", BindingFlags.Public | BindingFlags.Static);
-                if (builtEvent != null)
+                if (builtEvent != null && !_builtEventSubscribed)
                 {
                     Action<int> builtHandler = OnWeddingBuildingBuilt;
                     builtEvent.AddEventHandler(null, builtHandler);
-                    DevLog("[WeddingBuilding] 已订阅 OnBuildingBuilt 事件");
+                    _builtEventSubscribed = true;
+                    ModBehaviour.DevLog("[WeddingBuilding] 已订阅 OnBuildingBuilt 事件");
                 }
 
                 // 订阅 OnBuildingDestroyed 事件
                 EventInfo destroyedEvent = bmType.GetEvent("OnBuildingDestroyed", BindingFlags.Public | BindingFlags.Static);
-                if (destroyedEvent != null)
+                if (destroyedEvent != null && !_destroyedEventSubscribed)
                 {
                     Action<int> destroyedHandler = OnWeddingBuildingDestroyed;
                     destroyedEvent.AddEventHandler(null, destroyedHandler);
-                    DevLog("[WeddingBuilding] 已订阅 OnBuildingDestroyed 事件");
+                    _destroyedEventSubscribed = true;
+                    ModBehaviour.DevLog("[WeddingBuilding] 已订阅 OnBuildingDestroyed 事件");
                 }
             }
             catch (Exception e)
@@ -314,20 +316,22 @@ namespace BossRush
                 if (bmType == null) return;
 
                 EventInfo builtEvent = bmType.GetEvent("OnBuildingBuilt", BindingFlags.Public | BindingFlags.Static);
-                if (builtEvent != null)
+                if (builtEvent != null && _builtEventSubscribed)
                 {
                     Action<int> builtHandler = OnWeddingBuildingBuilt;
                     builtEvent.RemoveEventHandler(null, builtHandler);
+                    _builtEventSubscribed = false;
                 }
 
                 EventInfo destroyedEvent = bmType.GetEvent("OnBuildingDestroyed", BindingFlags.Public | BindingFlags.Static);
-                if (destroyedEvent != null)
+                if (destroyedEvent != null && _destroyedEventSubscribed)
                 {
                     Action<int> destroyedHandler = OnWeddingBuildingDestroyed;
                     destroyedEvent.RemoveEventHandler(null, destroyedHandler);
+                    _destroyedEventSubscribed = false;
                 }
 
-                DevLog("[WeddingBuilding] 已取消事件订阅");
+                ModBehaviour.DevLog("[WeddingBuilding] 已取消事件订阅");
             }
             catch (Exception e)
             {
@@ -356,7 +360,7 @@ namespace BossRush
 
                 if (buildingId != WEDDING_BUILDING_ID) return;
 
-                DevLog("[WeddingBuilding] 检测到婚礼教堂被放置，GUID=" + guid);
+                ModBehaviour.DevLog("[WeddingBuilding] 检测到婚礼教堂被放置，GUID=" + guid);
                 SetWeddingBuildingPresence(true);
                 ResetWeddingBuildingLocationCache();
                 ObjectCache.InvalidateSceneObjectsByType(GetBuildingType());
@@ -396,11 +400,11 @@ namespace BossRush
                 string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
                 if (spouseNpcId == GoblinAffinityConfig.NPC_ID)
                 {
-                    DestroyGoblinNPC();
+                    _owner.DestroyWeddingGoblinNpc();
                 }
                 else if (spouseNpcId == NurseAffinityConfig.NPC_ID)
                 {
-                    DestroyNurseNPC();
+                    _owner.DestroyWeddingNurseNpc();
                 }
                 else if (PermanentDuckNpcRegistry.IsPermanentDuckNpc(spouseNpcId))
                 {
@@ -412,7 +416,7 @@ namespace BossRush
                     PermanentDuckNpcRegistry.UnregisterInstance(spouseNpcId);
                 }
 
-                DevLog("[WeddingBuilding] 婚礼教堂被拆除，已清理驻留NPC");
+                ModBehaviour.DevLog("[WeddingBuilding] 婚礼教堂被拆除，已清理驻留NPC");
             }
             catch (Exception e)
             {
@@ -440,7 +444,7 @@ namespace BossRush
 
                 if (npcPosition == Vector3.zero)
                 {
-                    DevLog("[WeddingBuilding] ????????NPC???");
+                    ModBehaviour.DevLog("[WeddingBuilding] ????????NPC???");
                     yield break;
                 }
 
@@ -490,7 +494,7 @@ namespace BossRush
                     GameObject buildingGO = b.gameObject;
                     Renderer[] renderers = buildingGO.GetComponentsInChildren<Renderer>(true);
 
-                    DevLog("[WeddingBuilding] 放置后建筑诊断: " + buildingGO.name
+                    ModBehaviour.DevLog("[WeddingBuilding] 放置后建筑诊断: " + buildingGO.name
                         + " pos=" + buildingGO.transform.position
                         + " active=" + buildingGO.activeSelf
                         + " renderers=" + renderers.Length);
@@ -501,7 +505,7 @@ namespace BossRush
                         MeshFilter mf = r.GetComponent<MeshFilter>();
                         if (mf != null && mf.sharedMesh == null) hasMesh = false;
 
-                        DevLog("[WeddingBuilding]   Renderer: " + r.gameObject.name
+                        ModBehaviour.DevLog("[WeddingBuilding]   Renderer: " + r.gameObject.name
                             + " | enabled=" + r.enabled
                             + " | active=" + r.gameObject.activeSelf
                             + " | hasMesh=" + hasMesh
@@ -558,7 +562,7 @@ namespace BossRush
                                     newMat.SetColor("_Color", color);
 
                                 r.material = newMat;
-                                DevLog("[WeddingBuilding]   → 已修复材质 Shader 为 " + targetShader.name);
+                                ModBehaviour.DevLog("[WeddingBuilding]   → 已修复材质 Shader 为 " + targetShader.name);
                             }
                             else if (targetShader != null)
                             {
@@ -566,7 +570,7 @@ namespace BossRush
                                 Material newMat = new Material(targetShader);
                                 newMat.color = new Color(1f, 0.75f, 0.8f, 1f);
                                 r.material = newMat;
-                                DevLog("[WeddingBuilding]   → 材质为空，创建新材质");
+                                ModBehaviour.DevLog("[WeddingBuilding]   → 材质为空，创建新材质");
                             }
                         }
 
@@ -579,12 +583,12 @@ namespace BossRush
                     Transform graphicsTr = buildingGO.transform.Find("Graphics");
                     if (graphicsTr != null)
                     {
-                        DevLog("[WeddingBuilding]   Graphics: active=" + graphicsTr.gameObject.activeSelf
+                        ModBehaviour.DevLog("[WeddingBuilding]   Graphics: active=" + graphicsTr.gameObject.activeSelf
                             + " childCount=" + graphicsTr.childCount);
                         for (int i = 0; i < graphicsTr.childCount; i++)
                         {
                             Transform child = graphicsTr.GetChild(i);
-                            DevLog("[WeddingBuilding]     child[" + i + "]: " + child.name
+                            ModBehaviour.DevLog("[WeddingBuilding]     child[" + i + "]: " + child.name
                                 + " active=" + child.gameObject.activeSelf
                                 + " pos=" + child.localPosition
                                 + " scale=" + child.localScale);
@@ -592,7 +596,7 @@ namespace BossRush
                     }
                     else
                     {
-                        DevLog("[WeddingBuilding]   警告：未找到 Graphics 子物体！");
+                        ModBehaviour.DevLog("[WeddingBuilding]   警告：未找到 Graphics 子物体！");
                     }
                 }
             }
@@ -648,7 +652,7 @@ namespace BossRush
                         }
 
                         Vector3 fallbackPos = building.transform.TransformPoint(WEDDING_NPC_OFFSET);
-                        DevLog("[WeddingBuilding] 使用建筑中心位置作为NPC站位: " + fallbackPos);
+                        ModBehaviour.DevLog("[WeddingBuilding] 使用建筑中心位置作为NPC站位: " + fallbackPos);
                         return fallbackPos;
                     }
                 }
@@ -677,7 +681,7 @@ namespace BossRush
                     GameObject functionObject = new GameObject("Function");
                     functionContainer = functionObject.transform;
                     functionContainer.SetParent(buildingGO.transform, false);
-                    DevLog("[WeddingBuilding] 运行时补建 Function 容器: " + buildingGO.name);
+                    ModBehaviour.DevLog("[WeddingBuilding] 运行时补建 Function 容器: " + buildingGO.name);
                 }
 
                 Transform npcSpawnPoint = functionContainer.Find("NPCSpawnPoint");
@@ -686,7 +690,7 @@ namespace BossRush
                     GameObject npcPointObject = new GameObject("NPCSpawnPoint");
                     npcSpawnPoint = npcPointObject.transform;
                     npcSpawnPoint.SetParent(functionContainer, false);
-                    DevLog("[WeddingBuilding] 运行时补建 NPCSpawnPoint");
+                    ModBehaviour.DevLog("[WeddingBuilding] 运行时补建 NPCSpawnPoint");
                 }
 
                 npcSpawnPoint.localPosition = WEDDING_NPC_OFFSET;
@@ -698,7 +702,7 @@ namespace BossRush
                     GameObject interactPointObject = new GameObject("WeddingChapelInteractPoint");
                     interactPoint = interactPointObject.transform;
                     interactPoint.SetParent(functionContainer, false);
-                    DevLog("[WeddingBuilding] 运行时补建 WeddingChapelInteractPoint");
+                    ModBehaviour.DevLog("[WeddingBuilding] 运行时补建 WeddingChapelInteractPoint");
                 }
 
                 interactPoint.localPosition = WEDDING_INTERACT_OFFSET;
@@ -728,12 +732,12 @@ namespace BossRush
                         interactPoint.gameObject.SetActive(true);
                     }
 
-                    DevLog("[WeddingBuilding] 已附加 WeddingChapelInteractable");
+                    ModBehaviour.DevLog("[WeddingBuilding] 已附加 WeddingChapelInteractable");
                 }
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBuilding] 修复 Function 点位失败: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBuilding] 修复 Function 点位失败: " + e.Message);
             }
         }
 
@@ -774,7 +778,7 @@ namespace BossRush
             }
             marker.NpcId = string.Empty;
 
-            DevLog("[WeddingBuilding] 婚礼NPC占位已生成在: " + position);
+            ModBehaviour.DevLog("[WeddingBuilding] 婚礼NPC占位已生成在: " + position);
         }
 
         // ============================================================================
@@ -792,7 +796,7 @@ namespace BossRush
                 bool hasWeddingBuilding = RefreshWeddingBuildingPresence();
                 if (hasWeddingBuilding)
                 {
-                    DevLog("[WeddingBuilding] 检测到已放置的婚礼教堂，恢复NPC");
+                    ModBehaviour.DevLog("[WeddingBuilding] 检测到已放置的婚礼教堂，恢复NPC");
                     StartCoroutine(DelayedRestoreWeddingNPC());
                 }
                 else

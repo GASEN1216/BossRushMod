@@ -18,9 +18,9 @@ using Pathfinding;
 namespace BossRush
 {
     /// <summary>
-    /// 龙王Boss主控制器（partial class）
+    /// 龙王Boss运行时模块。
     /// </summary>
-    public partial class ModBehaviour
+    internal sealed partial class DragonKingRuntimeModule : BossRushRuntimeModuleBase
     {
         // ========== 龙王Boss实例引用（多实例支持） ==========
         
@@ -78,8 +78,7 @@ namespace BossRush
         /// </summary>
         public static void ClearDragonKingStaticCache()
         {
-            cachedDragonKingBasePreset = null;
-            dragonKingBasePresetSearched = false;
+            DragonKingRuntimeModule.ResetDragonKingRuntimeModuleStaticCaches();
 
             // 强制清理资源管理器缓存（场景切换时使用）
             DragonKingAssetManager.ForceCleanup();
@@ -92,6 +91,12 @@ namespace BossRush
 
             // 重置BGM播放状态
             BossRushAudioManager.Instance?.ResetDragonKingBGMState();
+        }
+
+        private static void ResetDragonKingRuntimeModuleStaticCaches()
+        {
+            cachedDragonKingBasePreset = null;
+            dragonKingBasePresetSearched = false;
         }
 
         /// <summary>
@@ -109,7 +114,7 @@ namespace BossRush
             }
         }
 
-        private void CleanupTrackedDragonKingsOnArenaExit()
+        internal void CleanupTrackedDragonKingsOnArenaExit()
         {
             // 取两个跟踪字典键的并集：通常两者等同，但拆分防御一致性破损。
             HashSet<CharacterMainControl> trackedCharacters = new HashSet<CharacterMainControl>();
@@ -263,7 +268,7 @@ namespace BossRush
             bool completed = false;
             bool assetReferenceAdded = false;
             int sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
-            Func<bool> isCurrent = () => this != null && Instance == this &&
+            Func<bool> isCurrent = () => owner != null && ModBehaviour.Instance == owner &&
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == sceneHandle &&
                 (isActiveCheck == null || isActiveCheck());
             try
@@ -425,7 +430,7 @@ namespace BossRush
                     // 龙王走的是这条手动掉落订阅，不经 RegisterBossRandomLootTracking，
                     // 因此遗种巢的掉落追踪从来没挂上——焚天龙皇血脉不掉蛋也不记遗魂。
                     // 这里并联一次；PetNestDropService 内部幂等，且开关关闭时自身早返。
-                    try { PetNestDropService.TryTrack(this, character); }
+                    try { PetNestDropService.TryTrack(owner, character); }
                     catch (Exception petNestEx)
                     {
                         DevLog("[DragonKing] 遗种巢掉落追踪挂接失败: " + petNestEx.Message);
@@ -435,7 +440,7 @@ namespace BossRush
                     // RegisterBossRandomLootTracking 里被调用，龙王绕过那条路径，于是熔石
                     // 判定从来没挂上——三个自定义 Boss 里只有龙王不掉熔石。
                     // 与上面的遗种巢并联同一时点；服务内部幂等，开关关闭时自身早返。
-                    try { AffixForgeStoneDropService.TryTrack(this, character); }
+                    try { AffixForgeStoneDropService.TryTrack(owner, character); }
                     catch (Exception affixStoneEx)
                     {
                         DevLog("[DragonKing] 词缀熔石掉落追踪挂接失败: " + affixStoneEx.Message);
@@ -477,7 +482,7 @@ namespace BossRush
         /// <summary>
         /// 查找龙王基础预设（复用???预设）
         /// </summary>
-        private CharacterRandomPreset FindDragonKingBasePreset()
+        internal CharacterRandomPreset FindDragonKingBasePreset()
         {
             // 使用缓存
             if (cachedDragonKingBasePreset != null) return cachedDragonKingBasePreset;
@@ -761,7 +766,7 @@ namespace BossRush
         /// <summary>
         /// 检查是否是龙王预设
         /// </summary>
-        private bool IsDragonKingPreset(EnemyPresetInfo preset)
+        internal bool IsDragonKingPreset(EnemyPresetInfo preset)
         {
             return ModBossPresetLookup.Matches(
                 preset,
@@ -773,7 +778,7 @@ namespace BossRush
         /// <summary>
         /// 注册龙王Boss到敌人预设列表
         /// </summary>
-        private void RegisterDragonKingPreset()
+        internal void RegisterDragonKingPreset()
         {
             if (dragonKingRegistered) return;
             if (enemyPresets == null) return;
@@ -825,7 +830,7 @@ namespace BossRush
                     // 全局静态事件只注册一次
                     if (!dragonKingSetBonusRegistered)
                     {
-                        Health.OnHurt += OnDragonKingBossHurt;
+                        Health.OnHurt += owner.OnDragonKingBossHurt;
                         dragonKingSetBonusRegistered = true;
                     }
                     
@@ -859,7 +864,7 @@ namespace BossRush
                 // 所有龙皇都死亡后，取消全局事件订阅
                 if (activeDragonKingHealths.Count == 0 && dragonKingSetBonusRegistered)
                 {
-                    Health.OnHurt -= OnDragonKingBossHurt;
+                    Health.OnHurt -= owner.OnDragonKingBossHurt;
                     dragonKingSetBonusRegistered = false;
                     DevLog("[DragonKing] 所有龙皇已死亡，已取消注册龙王套装效果");
                 }
@@ -878,7 +883,7 @@ namespace BossRush
         /// 龙王Boss伤害事件回调 - 火焰伤害免疫并转化为治疗
         /// [性能优化] 使用缓存的Health引用进行快速身份验证
         /// </summary>
-        private void OnDragonKingBossHurt(Health health, DamageInfo damageInfo)
+        internal void OnDragonKingBossHurt(Health health, DamageInfo damageInfo)
         {
             // [性能优化] 快速过滤：使用活跃龙皇Health集合判断
             if (activeDragonKingHealths.Count == 0 || !activeDragonKingHealths.Contains(health)) return;

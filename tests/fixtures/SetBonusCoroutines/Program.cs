@@ -72,13 +72,20 @@ public sealed class Health
 namespace FX { public static class PopText { public static string Last; public static void Pop(string text, Vector3 p, Color color, float size, object sprite) { Last = text; } } }
 namespace BossRush
 {
+    internal abstract class BossRushRuntimeModuleBase
+    {
+        public abstract string ModuleName { get; }
+        public virtual void OnAwake(ModBehaviour owner) { }
+        public virtual void OnDestroy() { }
+    }
+
     internal static class NewWeaponIds { internal const int EnergyShieldTypeId = 500045; }
     internal static class NewWeaponEquipState { internal static bool Equipped = true; internal static bool IsTotemEquipped(int id) { return Equipped; } }
     internal static class NewWeaponPalette { internal static Color ShieldCore = new Color(); }
     internal static class NewWeaponSfx { internal const string ShieldAbsorb = "shield"; }
     internal static class NewWeaponFx { internal static void PlayBurst(Vector3 p, Color c, float r, float t, int n) {} internal static void PlaySound(string s) {} }
 
-    public partial class ModBehaviour
+    internal partial class SetBonusRuntimeModule : BossRushRuntimeModuleBase
     {
         private bool thunderSetActive = true, frostSetActive = true;
         private int setBonusGeneration;
@@ -87,7 +94,7 @@ namespace BossRush
         private const float FROST_SET_ICE_HEAL_RATIO = 0.5f, FROST_SET_COOLDOWN = 5f, FROST_SET_CLOSE_RANGE = 5f, FROST_SET_FREEZE_CHANCE = 1f;
         private const float THUNDER_SET_ELEC_HEAL_RATIO = 0.5f, THUNDER_SET_COOLDOWN = 3f, THUNDER_SET_CLOSE_RANGE = 6f, THUNDER_SET_COUNTER_CHANCE = 1f;
         private readonly Health[] setBonusScanResults = new Health[3];
-        internal readonly Queue<IEnumerator> Scheduled = new Queue<IEnumerator>();
+        internal Queue<IEnumerator> Scheduled { get { return _owner.Scheduled; } }
         internal Health Target = new Health();
         internal int Scans;
         internal int LastLimit;
@@ -125,12 +132,6 @@ namespace BossRush
             if (frost) OnFrostSetAnyDead(player, new DamageInfo());
             else OnThunderSetAnyDead(player, new DamageInfo());
         }
-        private Coroutine StartCoroutine(IEnumerator routine)
-        {
-            if (routine.MoveNext()) Scheduled.Enqueue(routine);
-            return new Coroutine();
-        }
-        private void StopCoroutine(Coroutine coroutine) { }
         private bool TryResolveSetBonusEnemyTarget(Health health, DamageInfo damage, out CharacterMainControl victim, out Vector3 position)
         { victim = new CharacterMainControl(); position = new Vector3(); return ValidKill; }
         internal int ScanCap = int.MaxValue;
@@ -138,14 +139,47 @@ namespace BossRush
         { Scans++; LastLimit = limit; LastRadius = radius; int count = Math.Min(Math.Min(limit, Enemies.Length), ScanCap); for (int i = 0; i < count; i++) setBonusScanResults[i] = Enemies[i]; return count; }
         private void SpawnSetArc(Vector3 from, Vector3 to, int color, float a, float b) { }
         private void SpawnSetBurst(Vector3 origin, int color, float a, float b, int count) { }
-        private void PlaySoundEffect(string effect) { LastSfx = effect; }
-        public static void DevLog(string text) { }
         internal bool FreezeSucceeds = true;
         internal int FreezeAttempts;
         private bool TryApplyFrostFreeze(CharacterMainControl target) { FreezeAttempts++; return FreezeSucceeds; }
         internal string LastSfx;
         private void StopAndClearFrostFallbackSlowCoroutines() { }
+
+        internal void RegisterDragonSetEvents() { }
+        internal void UnregisterDragonSetEvents() { }
+        internal void RegisterSetBonusEvents() { }
+        internal void UnregisterSetBonusEvents() { }
+        internal void UpdateDragonDash() { }
+        internal bool HasSetBonusElementHealing { get { return frostSetActive || thunderSetActive; } }
     }
+
+    public partial class ModBehaviour
+    {
+        private sealed class RuntimeConfig { internal bool enableDragonDash; }
+        private RuntimeConfig config;
+        private SetBonusRuntimeModule setBonusRuntime;
+        internal readonly Queue<IEnumerator> Scheduled = new Queue<IEnumerator>();
+
+        internal static SetBonusRuntimeModule CreateSetBonusTestModule()
+        {
+            ModBehaviour owner = new ModBehaviour();
+            SetBonusRuntimeModule module = new SetBonusRuntimeModule();
+            owner.setBonusRuntime = module;
+            module.OnAwake(owner);
+            return module;
+        }
+
+        public Coroutine StartCoroutine(IEnumerator routine)
+        {
+            if (routine.MoveNext()) Scheduled.Enqueue(routine);
+            return new Coroutine();
+        }
+
+        public void StopCoroutine(Coroutine coroutine) { }
+        public void PlaySoundEffect(string effect) { setBonusRuntime.LastSfx = effect; }
+        public static void DevLog(string text) { }
+    }
+
 internal static class SetBonusSfx { internal const string ThunderChain = "thunder", FrostNova = "frost", FrostCounter = "frost_counter", ThunderCounter = "thunder_counter"; }
 }
 internal static class Program
@@ -175,11 +209,11 @@ internal static class Program
             }
         }
         // 旧激活醒来后再次命中：不能清掉新激活请求的 pending 而排进第三条请求。
-        BossRush.ModBehaviour host;
+        BossRush.SetBonusRuntimeModule host;
         foreach (bool frost in new[] { false, true })
         {
             string label = frost ? "frost" : "thunder";
-            host = new BossRush.ModBehaviour();
+            host = BossRush.ModBehaviour.CreateSetBonusTestModule();
             Time.time = 20f;
             host.Hit(frost);
             IEnumerator old = host.Scheduled.Dequeue();
@@ -198,7 +232,7 @@ internal static class Program
             Check(!host.Resolving(frost), label + " current resolution releases resolving gate");
 
             // 即使上游重复交付，结算时的冷却也必须拒绝第二次伤害和扫描。
-            host = new BossRush.ModBehaviour();
+            host = BossRush.ModBehaviour.CreateSetBonusTestModule();
             Time.time = 30f;
             host.Hit(frost);
             IEnumerator duplicate = host.DuplicateBite(frost);
@@ -219,7 +253,7 @@ internal static class Program
         {
             string label = frost ? "frost" : "thunder";
             Time.time = 40f;
-            host = new BossRush.ModBehaviour();
+            host = BossRush.ModBehaviour.CreateSetBonusTestModule();
             host.Hit(frost);
             IEnumerator pending = host.Scheduled.Dequeue();
             host.Die(frost);
@@ -231,7 +265,7 @@ internal static class Program
         {
             string label = frost ? "frost" : "thunder";
             Time.time = 100f;
-            host = new BossRush.ModBehaviour();
+            host = BossRush.ModBehaviour.CreateSetBonusTestModule();
 
             host.Hit(frost, true);
             Check(host.Scheduled.Count == 0, label + " buff/effect damage never triggers the on-hit effect");
@@ -257,7 +291,7 @@ internal static class Program
         // 2026-09-20 第三轮：冷却必须在**效果真的落地**之后才扣，不能在排队时先扣。
         // 雷噬扫不到其它敌人 = 这一次不造成任何伤害，下一发普攻还应该能再试。
         Time.time = 500f;
-        host = new BossRush.ModBehaviour();
+        host = BossRush.ModBehaviour.CreateSetBonusTestModule();
         host.ScanCap = 0;
         host.Hit(false); host.Drain();
         Check(host.Scans == 1 && host.Enemies[0].TotalDamage == 0f, "thunder bite with nobody in range deals no damage");
@@ -271,7 +305,7 @@ internal static class Program
 
         // 霜噬：目标在延迟窗口内死掉 = 这一次不造成任何伤害，冷却同样不能被吃掉
         Time.time = 600f;
-        host = new BossRush.ModBehaviour();
+        host = BossRush.ModBehaviour.CreateSetBonusTestModule();
         host.Hit(true);
         host.Target.IsDead = true;
         host.Drain();
@@ -284,7 +318,7 @@ internal static class Program
 
         // 冻结失败（抗冻目标）不得播放冻结音效：TryApplyFrostFreeze 现在回报真实结果
         Time.time = 700f;
-        host = new BossRush.ModBehaviour();
+        host = BossRush.ModBehaviour.CreateSetBonusTestModule();
         UnityEngine.Random.Forced = 0f;                 // 必定进入冻结分支
         host.FreezeSucceeds = false;
         host.Hit(true); host.Drain();
@@ -297,7 +331,7 @@ internal static class Program
 
         // 冰霜：单目标、常数伤害、不扫描
         Time.time = 200f;
-        host = new BossRush.ModBehaviour();
+        host = BossRush.ModBehaviour.CreateSetBonusTestModule();
         UnityEngine.Random.Forced = 1f;                 // 高于冻结概率 -> 本次不冻结
         host.Hit(true); host.Drain();
         Check(host.Scans == 0, "frost bite never scans for extra targets");
@@ -305,7 +339,7 @@ internal static class Program
 
         // 雷霆：只打命中目标之外的敌人，常数伤害，目标上限与半径
         Time.time = 300f;
-        host = new BossRush.ModBehaviour();
+        host = BossRush.ModBehaviour.CreateSetBonusTestModule();
         host.Hit(false); host.Drain();
         Check(host.LastLimit == 2 && host.LastRadius == 4f, "thunder bite target and radius budget");
         Check(host.Enemies[0].TotalDamage == 7f && host.Enemies[2].Hits == 0, "thunder bite constant damage and scan cap");
@@ -342,7 +376,7 @@ internal static class Program
         BossRush.EnergyShieldBehaviourProbe.Hurt(player.Health, frontal);
         Check(player.Health.CurrentHealth == 66f, "unequipped shield cannot heal");
         Time.time = 400f;
-        host = new BossRush.ModBehaviour();
+        host = BossRush.ModBehaviour.CreateSetBonusTestModule();
         foreach (Health enemy in host.Enemies) enemy.KillOnHit = true;
         host.Hit(false); host.Drain();
         Check(host.Scans == 1, "thunder bite lethal hit cannot continue into another hop");

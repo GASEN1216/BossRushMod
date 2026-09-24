@@ -394,6 +394,11 @@ namespace BossRush
                 interactable = npc.AddComponent<GoblinInteractable>();
             }
 
+            // 临时 NPC 的创建者决定支付策略；商店不推断玩法模式。
+            interactable.ShopPaymentStrategy = NPCShopPaymentStrategy.Purification(
+                price => CanAffordZombieModePurificationPointsForRealNpc(npc.transform, price),
+                price => TrySpendZombieModePurificationPointsForRealNpc(npc.transform, price, "ZombieModeTempGoblinShopBuy"));
+
             return npc;
         }
 

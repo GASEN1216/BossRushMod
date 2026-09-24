@@ -140,15 +140,15 @@ def check_dragonking_parallel(errors):
         return
     code = strip_cs_comments(text)
 
-    if "PetNestDropService.TryTrack(this, character);" not in code:
+    if "PetNestDropService.TryTrack(owner, character);" not in code:
         errors.append("[挂接] 龙王手动掉落路径必须并联 PetNestDropService.TryTrack")
     if code.count("PetNestDropService.ClearTracking(") < 2:
         errors.append("[挂接] 龙王的离场与死亡两个清理点都必须并联 ClearTracking")
 
     # TryTrack 必须挂在订阅掉落事件的同一处，而不是随便找个地方
     if not re.search(
-            r"PetNestDropService\.TryTrack\(this, character\);[\s\S]{0,1200}?"
-            r"AffixForgeStoneDropService\.TryTrack\(this, character\);[\s\S]{0,600}?"
+            r"PetNestDropService\.TryTrack\(owner, character\);[\s\S]{0,1200}?"
+            r"AffixForgeStoneDropService\.TryTrack\(owner, character\);[\s\S]{0,600}?"
             r"character\.BeforeCharacterSpawnLootOnDead \+= lootHandler;", code):
         errors.append("[挂接] 龙王两项额外掉落必须先于主掉落订阅，否则无间炼狱消费时尚未 roll")
 

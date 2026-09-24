@@ -120,10 +120,81 @@ namespace BossRush
     }
 
     /// <summary>
-    /// 死亡亡魂系统（partial class ModBehaviour）
+    /// 死亡亡魂系统运行模块。
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class DeathWraithRuntimeModule : BossRushRuntimeModuleBase
     {
+        private ModBehaviour owner;
+
+        public override string ModuleName { get { return "DeathWraith"; } }
+
+        public override void OnAwake(ModBehaviour owner)
+        {
+            this.owner = owner;
+            if (owner != null)
+            {
+                owner.AttachDeathWraithRuntimeModule_DeathWraith(this);
+            }
+        }
+
+        public override void OnDestroy()
+        {
+            UnsubscribeDeathWraithEvents_DeathWraith();
+            ModBehaviour currentOwner = owner;
+            owner = null;
+            if (currentOwner != null)
+            {
+                currentOwner.DetachDeathWraithRuntimeModule_DeathWraith(this);
+            }
+        }
+
+        private bool IsDeathWraithSystemEnabled()
+        {
+            return owner != null && owner.IsDeathWraithSystemEnabledForModule_DeathWraith();
+        }
+
+        private bool IsRuntimeCharacterPresetClone(CharacterRandomPreset preset)
+        {
+            return owner != null && owner.IsRuntimeCharacterPresetCloneForModule_DeathWraith(preset);
+        }
+
+        private void NormalizeDamageMultiplier(CharacterMainControl character)
+        {
+            if (owner != null)
+            {
+                owner.NormalizeDamageMultiplierForModule_DeathWraith(character);
+            }
+        }
+
+        private void ApplyBossStatMultiplier(CharacterMainControl character)
+        {
+            if (owner != null)
+            {
+                owner.ApplyBossStatMultiplierForModule_DeathWraith(character);
+            }
+        }
+
+        [System.Diagnostics.Conditional("BOSSRUSH_DEV")]
+        private static void DevLog(string message)
+        {
+            ModBehaviour.DevLog(message);
+        }
+
+        private void UnsubscribeDeathWraithEvents_DeathWraith()
+        {
+            ModBehaviour currentOwner = owner;
+            if (currentOwner == null)
+            {
+                return;
+            }
+
+            Health.OnHurt -= currentOwner.PrimeDeathWraithData_DeathWraith;
+            Health.OnDead -= currentOwner.RecordDeathWraithData_DeathWraith;
+            Health.OnDead -= currentOwner.OnWraithDied_DeathWraith;
+            SavesSystem.OnCollectSaveData -= currentOwner.OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
+            SavesSystem.OnCollectSaveData -= currentOwner.FlushDeathWraithListIfDirty_DeathWraith;
+        }
+
         #region 亡魂系统 — 常量与字段
 
         private const string DEATH_WRAITH_LIST_SAVE_KEY = "BossRush_DeathWraith_List";
@@ -185,7 +256,7 @@ namespace BossRush
         private readonly List<DeadBodySpawnContext_DeathWraith> pendingDeadBodySpawnContexts =
             new List<DeadBodySpawnContext_DeathWraith>();
 
-        private void HandleDeathWraithConfigChanged_DeathWraith()
+        internal void HandleDeathWraithConfigChanged_DeathWraith()
         {
             RefreshDeathWraithEventBindings_DeathWraith();
 
@@ -200,28 +271,30 @@ namespace BossRush
             InvalidateStoredDeathWraithRecords_DeathWraith("配置关闭");
         }
 
-        private void RefreshDeathWraithEventBindings_DeathWraith()
+        internal void RefreshDeathWraithEventBindings_DeathWraith()
         {
             try
             {
-                Health.OnHurt -= PrimeDeathWraithData_DeathWraith;
-                Health.OnDead -= RecordDeathWraithData_DeathWraith;
-                Health.OnDead -= OnWraithDied_DeathWraith;
-                SavesSystem.OnCollectSaveData -= OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
-                SavesSystem.OnCollectSaveData -= FlushDeathWraithListIfDirty_DeathWraith;
+                UnsubscribeDeathWraithEvents_DeathWraith();
 
                 if (!IsDeathWraithSystemEnabled())
                 {
                     return;
                 }
 
-                Health.OnHurt += PrimeDeathWraithData_DeathWraith;
-                Health.OnDead += RecordDeathWraithData_DeathWraith;
-                Health.OnDead += OnWraithDied_DeathWraith;
-                SavesSystem.OnCollectSaveData += OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
+                ModBehaviour currentOwner = owner;
+                if (currentOwner == null)
+                {
+                    return;
+                }
+
+                Health.OnHurt += currentOwner.PrimeDeathWraithData_DeathWraith;
+                Health.OnDead += currentOwner.RecordDeathWraithData_DeathWraith;
+                Health.OnDead += currentOwner.OnWraithDied_DeathWraith;
+                SavesSystem.OnCollectSaveData += currentOwner.OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
                 // 借道游戏官方存档收集点把内存中的亡魂列表落到 ES3 缓存（撤离/切场景/退出时都会触发），
                 // 这样死亡帧本身不再做 Load+Save 全表序列化。
-                SavesSystem.OnCollectSaveData += FlushDeathWraithListIfDirty_DeathWraith;
+                SavesSystem.OnCollectSaveData += currentOwner.FlushDeathWraithListIfDirty_DeathWraith;
             }
             catch (Exception e)
             {
@@ -229,7 +302,7 @@ namespace BossRush
             }
         }
 
-        private void OnSetFile_DeathWraith()
+        internal void OnSetFile_DeathWraith()
         {
             ClearDeathWraithState_DeathWraith();
             // 切换存档槽：丢弃内存缓存，下次访问时从新槽位重新加载，避免跨槽串档。

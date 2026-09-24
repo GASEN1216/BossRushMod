@@ -20,7 +20,7 @@ using Saves;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class DeathWraithRuntimeModule
     {
         #region 亡魂系统 — 战斗配置
 

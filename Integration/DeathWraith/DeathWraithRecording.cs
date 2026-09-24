@@ -20,7 +20,7 @@ using Saves;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class DeathWraithRuntimeModule
     {
         #region 亡魂系统 — 死亡记录与预缓存
 
@@ -63,7 +63,7 @@ namespace BossRush
         /// <summary>
         /// 玩家受到致死伤害前缓存亡魂数据，避免主角死亡流程先清空背包。
         /// </summary>
-        private void PrimeDeathWraithData_DeathWraith(Health hurtHealth, DamageInfo damageInfo)
+        internal void PrimeDeathWraithData_DeathWraith(Health hurtHealth, DamageInfo damageInfo)
         {
             try
             {
@@ -114,7 +114,7 @@ namespace BossRush
         /// <summary>
         /// 玩家死亡时记录亡魂数据（所有模式通用）
         /// </summary>
-        private void RecordDeathWraithData_DeathWraith(Health deadHealth, DamageInfo damageInfo)
+        internal void RecordDeathWraithData_DeathWraith(Health deadHealth, DamageInfo damageInfo)
         {
             try
             {
@@ -132,7 +132,7 @@ namespace BossRush
             }
         }
 
-        private void RecordManualDeathWraithData_DeathWraith(
+        internal void RecordManualDeathWraithData_DeathWraith(
             CharacterMainControl main,
             DamageInfo damageInfo,
             string source)

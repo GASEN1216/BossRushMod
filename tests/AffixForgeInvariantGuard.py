@@ -89,12 +89,12 @@ def check_forge_stone_drop_wiring():
         return "共享刷怪路径 RegisterBossRandomLootTracking 必须并联熔石 TryTrack"
 
     king = strip_comments(DRAGON_KING.read_text(encoding="utf-8", errors="ignore"))
-    if "AffixForgeStoneDropService.TryTrack(this, character);" not in king:
+    if "AffixForgeStoneDropService.TryTrack(owner, character);" not in king:
         return "龙王手动掉落路径必须并联 AffixForgeStoneDropService.TryTrack（否则龙王不掉熔石）"
     if king.count("AffixForgeStoneDropService.ClearTracking(") < 2:
         return "龙王的离场与死亡两个清理点都必须并联熔石 ClearTracking"
     if not re.search(
-            r"AffixForgeStoneDropService\.TryTrack\(this, character\);[\s\S]{0,1200}?"
+            r"AffixForgeStoneDropService\.TryTrack\(owner, character\);[\s\S]{0,1200}?"
             r"character\.BeforeCharacterSpawnLootOnDead \+= lootHandler;", king):
         return "龙王的熔石 pending 生产者必须先于同步主掉落消费者订阅"
 

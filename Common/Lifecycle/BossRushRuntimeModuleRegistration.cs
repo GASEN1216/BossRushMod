@@ -17,6 +17,8 @@ namespace BossRush
             runtimeModuleHost.Register(new SkyIslandRuntimeModule());
             runtimeModuleHost.Register(new AchievementRuntimeModule());
             runtimeModuleHost.Register(new CommonNpcRuntimeModule());
+            goblinNpcRuntime = new GoblinNpcRuntimeModule();
+            runtimeModuleHost.Register(goblinNpcRuntime);
             runtimeModuleHost.Register(new WavesArenaRuntimeModule());
             runtimeModuleHost.Register(new ModeERuntimeModule());
             runtimeModuleHost.Register(new ModeFRuntimeModule());
@@ -63,6 +65,28 @@ namespace BossRush
             runtimeModuleHost.Register(bossFilterRuntime);
             uiAndSignsRuntime = new UIAndSignsRuntimeModule(this);
             runtimeModuleHost.Register(uiAndSignsRuntime);
+            setBonusRuntime = new SetBonusRuntimeModule();
+            runtimeModuleHost.Register(setBonusRuntime);
+            deathWraithRuntimeModule = new DeathWraithRuntimeModule();
+            runtimeModuleHost.Register(deathWraithRuntimeModule);
+            affinityRuntime = new AffinityRuntimeModule();
+            runtimeModuleHost.Register(affinityRuntime);
+            weddingRuntime = new WeddingRuntimeModule();
+            runtimeModuleHost.Register(weddingRuntime);
+            wishFountainRuntime = new WishFountainRuntimeModule();
+            runtimeModuleHost.Register(wishFountainRuntime);
+            flightTotemRuntime = new FlightTotemRuntimeModule();
+            runtimeModuleHost.Register(flightTotemRuntime);
+            reverseScaleRuntime = new ReverseScaleRuntimeModule();
+            runtimeModuleHost.Register(reverseScaleRuntime);
+            frostmourneRuntime = new FrostmourneRuntimeModule();
+            runtimeModuleHost.Register(frostmourneRuntime);
+            dragonKingRuntimeModule = new DragonKingRuntimeModule();
+            runtimeModuleHost.Register(dragonKingRuntimeModule);
+            dragonDescendantRuntimeModule = new DragonDescendantRuntimeModule();
+            runtimeModuleHost.Register(dragonDescendantRuntimeModule);
+            phantomWitchRuntimeModule = new PhantomWitchRuntimeModule();
+            runtimeModuleHost.Register(phantomWitchRuntimeModule);
         }
 
         /// <summary>官方任务投影核心唯一运行时实例。</summary>
@@ -139,5 +163,13 @@ namespace BossRush
 
         private BossFilterRuntimeModule bossFilterRuntime;
         private UIAndSignsRuntimeModule uiAndSignsRuntime;
+        private SetBonusRuntimeModule setBonusRuntime;
+        private WeddingRuntimeModule weddingRuntime;
+        internal WeddingRuntimeModule WeddingRuntime { get { return weddingRuntime; } }
+        private WishFountainRuntimeModule wishFountainRuntime;
+        internal WishFountainRuntimeModule WishFountainRuntime { get { return wishFountainRuntime; } }
+        private FlightTotemRuntimeModule flightTotemRuntime;
+        private ReverseScaleRuntimeModule reverseScaleRuntime;
+        private FrostmourneRuntimeModule frostmourneRuntime;
     }
 }

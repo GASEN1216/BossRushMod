@@ -1,6 +1,6 @@
 # 拾取保护与永久配偶恢复回归
 
-运行 `python tests/fixtures/RuntimeOwnership/run.py`（需要 .NET 8）。脚本只把当前生产方法摘取到 `Build/runtime-ownership-fixture/Production.cs`；不读写玩家存档，不调用游戏。C# 7.3 编译，方法体与生产代码相同，仅把 UniTask 返回类型适配为 Task 以便脱离 Unity 驱动真实挂起/恢复。
+运行 `python tools/run_runtime_regressions.py --filter RuntimeOwnership`（需要 .NET 8）。脚本只把当前生产方法摘取到 `Build/runtime-ownership-fixture/Production.cs`；不读写玩家存档，不调用游戏。C# 7.3 编译，方法体与生产代码相同，仅把 UniTask 返回类型适配为 Task 以便脱离 Unity 驱动真实挂起/恢复。永久配偶恢复方法在夹具中归入 `WeddingRuntimeModule` 并绑定宿主实例；替身只提供 Unity、存档外状态和异步调度边界。
 
 覆盖扫描间隔内背包/槽位归属保护、地面到期物回收、未到期候选降频、Boss/高价值豁免；婚后驻留冷加载去重与收尾、跟随恢复后重新取玩家位置、同名场景重新加载、离婚、模块清理、建筑拆除、owner 取消以及旧请求迟到不覆盖新实例。
 

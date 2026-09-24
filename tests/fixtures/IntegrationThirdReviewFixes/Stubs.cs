@@ -177,14 +177,25 @@ public partial class Health : MonoBehaviour
 }
 namespace BossRush
 {
+    internal partial class SetBonusRuntimeModule
+    {
+        internal bool frostSetActive, thunderSetActive;
+        internal static float ReadElementPortion(Health health, DamageInfo info, ElementTypes element)
+        {
+            return GetSetBonusElementDamagePortion(health, info, element);
+        }
+    }
+
     public partial class ModBehaviour : UnityEngine.Object
     {
         public static ModBehaviour Instance;
-        public bool frostSetActive, thunderSetActive;
+        private SetBonusRuntimeModule setBonusRuntime = new SetBonusRuntimeModule();
+        public bool frostSetActive { get { return setBonusRuntime.frostSetActive; } set { setBonusRuntime.frostSetActive = value; } }
+        public bool thunderSetActive { get { return setBonusRuntime.thunderSetActive; } set { setBonusRuntime.thunderSetActive = value; } }
         public static readonly List<string> Logs = new List<string>();
         public static void DevLog(string value) { Logs.Add(value); }
         public static void CriticalLog(string key, string value) { Logs.Add(key + ": " + value); }
-        public static float ReadPortion(Health h, DamageInfo info, ElementTypes element) { return GetSetBonusElementDamagePortion(h, info, element); }
+        public static float ReadPortion(Health h, DamageInfo info, ElementTypes element) { return SetBonusRuntimeModule.ReadElementPortion(h, info, element); }
     }
 }
 namespace BossRush.Utils

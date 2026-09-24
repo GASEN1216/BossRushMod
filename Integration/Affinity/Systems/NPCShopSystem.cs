@@ -22,6 +22,32 @@ using TMPro;
 
 namespace BossRush
 {
+    internal sealed class NPCShopPaymentStrategy
+    {
+        internal static readonly NPCShopPaymentStrategy Cash = new NPCShopPaymentStrategy(null, null);
+
+        private readonly Func<int, bool> canAfford;
+        private readonly Func<int, bool> trySpend;
+
+        private NPCShopPaymentStrategy(Func<int, bool> canAfford, Func<int, bool> trySpend)
+        {
+            this.canAfford = canAfford;
+            this.trySpend = trySpend;
+        }
+
+        internal static NPCShopPaymentStrategy Purification(
+            Func<int, bool> canAfford, Func<int, bool> trySpend)
+        {
+            if (canAfford == null || trySpend == null)
+                throw new ArgumentNullException(canAfford == null ? "canAfford" : "trySpend");
+            return new NPCShopPaymentStrategy(canAfford, trySpend);
+        }
+
+        internal bool UsesPurification { get { return canAfford != null; } }
+        internal bool CanAfford(int price) { return canAfford != null && canAfford(price); }
+        internal bool TrySpend(int price) { return trySpend != null && trySpend(price); }
+    }
+
     /// <summary>
     /// 通用NPC商店系统
     /// </summary>
@@ -38,6 +64,7 @@ namespace BossRush
         private static Transform currentNpcTransform = null;
         private static INPCController currentController = null;
         private static bool isServiceActive = false;
+        private static NPCShopPaymentStrategy currentPaymentStrategy = NPCShopPaymentStrategy.Cash;
 
         // 反射缓存
         private static FieldInfo textSellField = null;
@@ -94,6 +121,12 @@ namespace BossRush
         /// </summary>
         public static void OpenShop(string npcId, Transform npcTransform, INPCController controller = null)
         {
+            OpenShop(npcId, npcTransform, controller, NPCShopPaymentStrategy.Cash);
+        }
+
+        internal static void OpenShop(string npcId, Transform npcTransform, INPCController controller,
+            NPCShopPaymentStrategy paymentStrategy)
+        {
             if (isServiceActive)
             {
                 ModBehaviour.DevLog("[NPCShop] 商店已在运行中，忽略重复调用");
@@ -148,6 +181,7 @@ namespace BossRush
             currentNpcId = npcId;
             currentNpcTransform = npcTransform;
             currentController = controller;
+            currentPaymentStrategy = paymentStrategy ?? NPCShopPaymentStrategy.Cash;
 
             // 让NPC进入对话状态
             if (currentController != null)
@@ -367,7 +401,7 @@ namespace BossRush
 
             if (shopConfig == null) return;
 
-            if (IsZombieModeTemporaryPurificationShop())
+            if (IsPurificationShop())
             {
                 currentShop.sellFactor = 0f;
                 ModBehaviour.DevLog("[NPCShop] 临时净化点商店已禁用现金出售: sellFactor=0");
@@ -434,7 +468,7 @@ namespace BossRush
                         {
                             ownedDisplayItems.Add(item);
                             dict[typeId] = item;
-                            if (IsZombieModeTemporaryPurificationShop())
+                            if (IsPurificationShop())
                             {
                                 float factor;
                                 if (temporaryPurificationFactors.TryGetValue(typeId, out factor))
@@ -509,7 +543,7 @@ namespace BossRush
                     itemEntry.lockInDemo = false;
                     itemEntry.possibility = item.Possibility;
 
-                    if (IsZombieModeTemporaryPurificationShop())
+                    if (IsPurificationShop())
                     {
                         temporaryPurificationFactors[item.TypeID] = adjustedPriceFactor;
                         itemEntry.priceFactor = 0f;
@@ -627,7 +661,7 @@ namespace BossRush
 
                     textSellField.SetValue(
                         shopView,
-                        IsZombieModeTemporaryPurificationShop()
+                        IsPurificationShop()
                             ? L10n.T("购买（净化点）", "Buy (Purification)")
                             : L10n.T("购买", "Buy"));
                 }
@@ -711,15 +745,14 @@ namespace BossRush
             currentNpcId = null;
             currentNpcTransform = null;
             currentController = null;
+            currentPaymentStrategy = NPCShopPaymentStrategy.Cash;
             temporaryPurificationFactors.Clear();
             temporaryPurificationPrices.Clear();
         }
 
-        private static bool IsZombieModeTemporaryPurificationShop()
+        private static bool IsPurificationShop()
         {
-            return currentNpcTransform != null &&
-                   ModBehaviour.Instance != null &&
-                   ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentNpcTransform);
+            return currentPaymentStrategy != null && currentPaymentStrategy.UsesPurification;
         }
 
         private static int CalculatePurificationPrice(Item item, float factor)
@@ -752,8 +785,7 @@ namespace BossRush
                 return false;
             }
 
-            return ModBehaviour.Instance != null &&
-                   ModBehaviour.Instance.CanAffordZombieModePurificationPointsForRealNpc(currentNpcTransform, price);
+            return currentPaymentStrategy.CanAfford(price);
         }
 
         private static IEnumerator UpdateTemporaryShopCurrencyUiNextFrame()
@@ -764,7 +796,7 @@ namespace BossRush
 
         private static void UpdateTemporaryShopCurrencyUiDeferred()
         {
-            if (!IsZombieModeTemporaryPurificationShop() || ModBehaviour.Instance == null)
+            if (!IsPurificationShop() || ModBehaviour.Instance == null)
             {
                 return;
             }
@@ -774,7 +806,7 @@ namespace BossRush
 
         private static void UpdateTemporaryShopCurrencyUi()
         {
-            if (!IsZombieModeTemporaryPurificationShop())
+            if (!IsPurificationShop())
             {
                 return;
             }
@@ -881,7 +913,7 @@ namespace BossRush
 
         private static void OnItemPurchased(StockShop shop, Item purchasedItem)
         {
-            if (!isServiceActive || shop != currentShop || purchasedItem == null || !IsZombieModeTemporaryPurificationShop())
+            if (!isServiceActive || shop != currentShop || purchasedItem == null || !IsPurificationShop())
             {
                 return;
             }
@@ -896,8 +928,7 @@ namespace BossRush
                 return;
             }
 
-            if (ModBehaviour.Instance == null ||
-                !ModBehaviour.Instance.TrySpendZombieModePurificationPointsForRealNpc(currentNpcTransform, price, "ZombieModeTempGoblinShopBuy"))
+            if (!currentPaymentStrategy.TrySpend(price))
             {
                 RollbackTemporaryPurificationShopPurchase(purchasedItem, "NotEnoughPurification");
                 NotificationText.Push(L10n.T("净化点不足。", "Not enough purification."));
@@ -963,7 +994,7 @@ namespace BossRush
 
         private static void OnItemSoldByPlayer(StockShop shop, Item soldItem, int price)
         {
-            if (!isServiceActive || shop != currentShop || soldItem == null || !IsZombieModeTemporaryPurificationShop())
+            if (!isServiceActive || shop != currentShop || soldItem == null || !IsPurificationShop())
             {
                 return;
             }

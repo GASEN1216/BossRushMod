@@ -18,9 +18,9 @@ using Duckov.ItemUsage;
 namespace BossRush
 {
     /// <summary>
-    /// 龙裔遗族Boss主控制器（partial class）
+    /// 龙裔遗族Boss运行时模块。
     /// </summary>
-    public partial class ModBehaviour
+    internal sealed partial class DragonDescendantRuntimeModule : BossRushRuntimeModuleBase
     {
         // ========== Boss实例引用 ==========
 
@@ -75,7 +75,7 @@ namespace BossRush
             CharacterMainControl character = null;
             bool completed = false;
             int sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
-            Func<bool> isCurrent = () => this != null && Instance == this &&
+            Func<bool> isCurrent = () => owner != null && ModBehaviour.Instance == owner &&
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == sceneHandle &&
                 (isActiveCheck == null || isActiveCheck());
             try
@@ -172,7 +172,7 @@ namespace BossRush
                 ApplyBossStatMultiplier(character);
 
                 // 关键：在装备龙息武器之前，从角色已装备的原始武器获取完整属性（二阶段使用）
-                OriginalWeaponData originalWeaponData = GetWeaponDataFromEquippedWeapon(character);
+                ModBehaviour.OriginalWeaponData originalWeaponData = GetWeaponDataFromEquippedWeapon(character);
 
                 // 装备武器和护甲
                 await EquipDragonDescendant(character);
@@ -313,7 +313,7 @@ namespace BossRush
         /// 查找"???"敌人预设（带缓存）
         /// [性能优化] 使用EnemySpawner.AllPresets替代Resources.FindObjectsOfTypeAll
         /// </summary>
-        private CharacterRandomPreset FindQuestionMarkPreset()
+        internal CharacterRandomPreset FindQuestionMarkPreset()
         {
             // 使用缓存
             if (cachedQuestionMarkPreset != null) return cachedQuestionMarkPreset;
@@ -394,16 +394,7 @@ namespace BossRush
         /// </summary>
         public static void ClearDragonDescendantStaticCache()
         {
-            // 清理预设缓存
-            cachedQuestionMarkPreset = null;
-            questionMarkPresetSearched = false;
-            cachedFallbackPreset = null;
-            fallbackPresetSearched = false;
-            cachedDragonDescendantOriginalWeaponData = null;
-
-            // 清理物品缓存
-            cachedItemsByName.Clear();
-            cachedBulletsByCaliber.Clear();
+            DragonDescendantRuntimeModule.ResetDragonDescendantRuntimeModuleStaticCaches();
 
             // 清理武器配置缓存
             DragonBreathWeaponConfig.ClearStaticCache();
@@ -415,11 +406,25 @@ namespace BossRush
             DragonDescendantAbilityController.ClearStaticCache();
         }
 
+        private static void ResetDragonDescendantRuntimeModuleStaticCaches()
+        {
+            // 清理预设缓存
+            cachedQuestionMarkPreset = null;
+            questionMarkPresetSearched = false;
+            cachedFallbackPreset = null;
+            fallbackPresetSearched = false;
+            cachedDragonDescendantOriginalWeaponData = null;
+
+            // 清理物品缓存
+            cachedItemsByName.Clear();
+            cachedBulletsByCaliber.Clear();
+        }
+
         /// <summary>
         /// 查找后备预设（任意showName=true的敌人）（带缓存）
         /// [性能优化] 复用FindQuestionMarkPreset的预设列表获取逻辑
         /// </summary>
-        private CharacterRandomPreset FindFallbackPreset()
+        internal CharacterRandomPreset FindFallbackPreset()
         {
             // 使用缓存
             if (cachedFallbackPreset != null) return cachedFallbackPreset;
@@ -461,28 +466,14 @@ namespace BossRush
             return null;
         }
 
-        /// <summary>
-        /// 原始武器属性数据（用于二阶段射击）
-        /// </summary>
-        public class OriginalWeaponData
-        {
-            public Projectile bulletPrefab;      // 子弹预制体
-            public GameObject muzzleFxPrefab;    // 枪口特效预制体
-            public string shootKey;              // 开枪音效键
-            public float bulletSpeed;            // 子弹速度
-            public float shootSpeed;             // 射速（每秒发射数）
-            public float damage;                 // 伤害
-            public float bulletDistance;         // 子弹射程
-        }
-
-        private static OriginalWeaponData cachedDragonDescendantOriginalWeaponData;
+        private static ModBehaviour.OriginalWeaponData cachedDragonDescendantOriginalWeaponData;
 
         internal static Projectile GetCachedDragonDescendantPhase2BulletPrefab()
         {
             return cachedDragonDescendantOriginalWeaponData != null ? cachedDragonDescendantOriginalWeaponData.bulletPrefab : null;
         }
 
-        private static void CacheDragonDescendantOriginalWeaponData(OriginalWeaponData data)
+        private static void CacheDragonDescendantOriginalWeaponData(ModBehaviour.OriginalWeaponData data)
         {
             if (data == null || data.bulletPrefab == null)
             {
@@ -497,13 +488,13 @@ namespace BossRush
         /// 从角色已装备的武器获取完整属性（在替换为龙息武器之前调用）
         /// 用于二阶段发射原始武器的子弹
         /// </summary>
-        private OriginalWeaponData GetWeaponDataFromEquippedWeapon(CharacterMainControl character)
+        private ModBehaviour.OriginalWeaponData GetWeaponDataFromEquippedWeapon(CharacterMainControl character)
         {
             try
             {
                 if (character == null) return null;
 
-                OriginalWeaponData data = new OriginalWeaponData();
+                ModBehaviour.OriginalWeaponData data = new ModBehaviour.OriginalWeaponData();
 
                 // 从角色当前手持的枪获取属性
                 var gun = character.GetGun();
@@ -775,7 +766,7 @@ namespace BossRush
         /// 通过TypeID查找物品预制体
         /// [性能优化] 使用ItemAssetsCollection替代Resources.FindObjectsOfTypeAll
         /// </summary>
-        private Item FindItemByTypeId(int typeId)
+        internal Item FindItemByTypeId(int typeId)
         {
             try
             {
@@ -811,7 +802,7 @@ namespace BossRush
         /// <summary>
         /// 装备护甲物品（直接传入Item）
         /// </summary>
-        private void EquipArmorItem(CharacterMainControl character, Item armorItem, int slotHash)
+        internal void EquipArmorItem(CharacterMainControl character, Item armorItem, int slotHash)
         {
             try
             {
@@ -849,7 +840,7 @@ namespace BossRush
         /// <summary>
         /// 刷新装备模型显示
         /// </summary>
-        private void RefreshEquipmentModels(CharacterMainControl character)
+        internal void RefreshEquipmentModels(CharacterMainControl character)
         {
             try
             {
@@ -876,7 +867,7 @@ namespace BossRush
         /// <summary>
         /// 加载最高级子弹并装填到武器
         /// </summary>
-        private UniTask LoadHighestTierAmmo(CharacterMainControl character)
+        internal UniTask LoadHighestTierAmmo(CharacterMainControl character)
         {
             try
             {

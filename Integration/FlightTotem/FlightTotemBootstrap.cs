@@ -13,24 +13,36 @@ using BossRush.Common.Equipment;
 
 namespace BossRush
 {
-    /// <summary>
-    /// 飞行图腾系统启动模块 - 使用 partial class 扩展 ModBehaviour
-    /// </summary>
-    public partial class ModBehaviour
+    /// <summary>飞行图腾 bootstrap 入口的唯一运行时 owner。</summary>
+    internal sealed class FlightTotemRuntimeModule : BossRushRuntimeModuleBase
     {
+        private ModBehaviour _owner;
+
+        public override string ModuleName { get { return "FlightTotem"; } }
+
+        public override void OnAwake(ModBehaviour owner)
+        {
+            _owner = owner;
+        }
+
+        public override void OnDestroy()
+        {
+            _owner = null;
+        }
+
         // ========== 初始化 ==========
 
         /// <summary>
         /// 初始化飞行图腾系统（在 Start_Integration 中调用）
         /// </summary>
-        private void InitializeFlightTotemSystem()
+        internal void InitializeFlightTotemSystem()
         {
             AbilitySystemHelper.InitializeSystem(
                 config: FlightConfig.Instance,
                 ensureManagerInstance: () => FlightAbilityManager.EnsureInstance(),
                 ensureEffectManagerInstance: () => FlightTotemEffectManager.EnsureInstance(),
-                initializeItem: InitializeFlightTotemItem,
-                injectLocalization: InjectFlightTotemLocalization
+                initializeItem: () => _owner.InitializeFlightTotemItemFromRuntimeModule(),
+                injectLocalization: () => _owner.InjectFlightTotemLocalizationFromRuntimeModule()
             );
         }
 
@@ -39,9 +51,9 @@ namespace BossRush
         /// <summary>
         /// 在场景加载后设置飞行图腾（场景切换时调用）
         /// </summary>
-        private void SetupFlightTotemForScene(Scene scene)
+        internal void SetupFlightTotemForScene(Scene scene)
         {
-            if (IsGameplaySceneName(scene.name))
+            if (ModBehaviour.IsGameplaySceneName(scene.name))
             {
                 AbilitySystemHelper.HandleSceneChange(
                     config: FlightConfig.Instance,
@@ -53,7 +65,7 @@ namespace BossRush
                         }
                     },
                     delayedCheckEquipment: DelayedCheckFlightTotemEquipment,
-                    monoBehaviour: this
+                    monoBehaviour: _owner
                 );
                 return;
             }
@@ -76,7 +88,7 @@ namespace BossRush
         /// </summary>
         private IEnumerator DelayedCheckFlightTotemEquipment()
         {
-            yield return sharedWait05s;
+            yield return ModBehaviour.FlightTotemSharedWait05sForRuntime;
 
             if (FlightTotemEffectManager.Instance != null)
             {
@@ -89,7 +101,7 @@ namespace BossRush
         /// <summary>
         /// 清理飞行图腾系统
         /// </summary>
-        private void CleanupFlightTotemSystem()
+        internal void CleanupFlightTotemSystem()
         {
             AbilitySystemHelper.CleanupSystem(
                 config: FlightConfig.Instance,
@@ -98,10 +110,16 @@ namespace BossRush
                 {
                     if (FlightTotemEffectManager.Instance != null)
                     {
-                        Destroy(FlightTotemEffectManager.Instance.gameObject);
+                        UnityEngine.Object.Destroy(FlightTotemEffectManager.Instance.gameObject);
                     }
                 }
             );
+        }
+
+        [System.Diagnostics.Conditional("BOSSRUSH_DEV")]
+        private static void DevLog(string message)
+        {
+            ModBehaviour.DevLog(message);
         }
     }
 }

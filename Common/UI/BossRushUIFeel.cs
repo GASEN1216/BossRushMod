@@ -711,7 +711,7 @@ namespace BossRush
     /// 共享 UI 小件：关闭淡出、次级按钮样式、HUD 文字描边材质。
     /// 放在这里而不是 BossRushUI.cs：那边有行数预算（AGENTS §4.15），且不是 partial。
     /// </summary>
-    internal static class BossRushUIKit
+    internal static partial class BossRushUIKit
     {
         /// <summary>关闭淡出的默认时长。打开是 0.18 秒 SmoothStep，关闭更快一点：没人在看东西离开。</summary>
         internal const float CloseSeconds = 0.12f;

@@ -5,9 +5,7 @@
 //   收口全 Mod 的 UI 视觉语言：设计 token、Canvas 层级表、圆角九宫格底图，
 //   以及模态窗口/卡片/滚动列表等重复了多份的构件。
 //
-//   字体获取与模态输入租约仍然委托 ZombieModeUIHelper——那两块已经是全 Mod
-//   事实标准（ModeF/ModeG/ZombieMode 都在用），且被多个 guard 逐行钉死，
-//   不重复实现，也不搬动。
+//   字体、缩放与模态输入租约统一由 BossRushUIKit 持有，旧模式经兼容转发共用同一份状态。
 //
 //   皮肤两步走：当前用运行时程序化生成的圆角九宫格 Sprite；将来出了美术图集，
 //   通过 BossRushUISkin.InjectPanelSprite 等注入点替换即可，调用方无需改动。
@@ -635,7 +633,7 @@ namespace BossRush
 
         /// <summary>
         /// 给已创建的 TMP 文本套上游戏字体。
-        /// 字体解析走 ZombieModeUIHelper.GetGameFont() 的四级回退（TMP_Settings →
+        /// 字体解析走 BossRushUIKit.GetGameFont() 的四级回退（TMP_Settings →
         /// HealthBar 反射 → 场景内任意 TMP_Text → ObjectCache），不要另起一套。
         /// </summary>
         internal static void ApplyGameFont(TMPro.TextMeshProUGUI text)
@@ -645,7 +643,7 @@ namespace BossRush
                 return;
             }
 
-            TMPro.TMP_FontAsset font = ZombieModeUIHelper.GetGameFont();
+            TMPro.TMP_FontAsset font = BossRushUIKit.GetGameFont();
             if (font != null)
             {
                 text.font = font;
@@ -673,7 +671,7 @@ namespace BossRush
             legacyFontResolved = true;
             try
             {
-                TMPro.TMP_FontAsset tmpFont = ZombieModeUIHelper.GetGameFont();
+                TMPro.TMP_FontAsset tmpFont = BossRushUIKit.GetGameFont();
                 if (tmpFont != null && tmpFont.sourceFontFile != null)
                 {
                     cachedLegacyFont = tmpFont.sourceFontFile;
@@ -1060,7 +1058,7 @@ namespace BossRush
             canvas.sortingOrder = sortingOrder;
 
             CanvasScaler scaler = root.AddComponent<CanvasScaler>();
-            ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
+            BossRushUIKit.ConfigureCanvasScaler(scaler);
 
             GraphicRaycaster raycaster = root.AddComponent<GraphicRaycaster>();
             // HUD 类界面必须让点击穿透过去，否则会挡住游戏内的交互。

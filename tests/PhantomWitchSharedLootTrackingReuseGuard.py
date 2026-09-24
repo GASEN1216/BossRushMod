@@ -51,7 +51,7 @@ def main() -> int:
         return fail("PhantomWitchSharedLootTrackingReuseGuard: SpawnPhantomWitch must reuse RegisterBossRandomLootTracking(..., 0f)")
 
     for signature in [
-        "private void CleanupFailedPhantomWitchSpawn(CharacterMainControl character)",
+        "internal void CleanupFailedPhantomWitchSpawn(CharacterMainControl character)",
         "private void CleanupTrackedPhantomWitchCharacter(",
         "private void OnPhantomWitchDeath(CharacterMainControl deadWitch, DamageInfo damageInfo)",
     ]:

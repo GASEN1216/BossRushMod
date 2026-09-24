@@ -267,7 +267,8 @@ namespace BossRush
             {
                 yield break;
             }
-            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/weddingchapel", InitWeddingBuilding, () => weddingAssetBundle != null);
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/weddingchapel", InitWeddingBuilding,
+                () => WeddingRuntime != null && WeddingRuntime.HasAssetBundle);
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
             {
@@ -279,7 +280,8 @@ namespace BossRush
             {
                 yield break;
             }
-            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/starwish_fountain", InitWishFountainBuilding, () => starwishAssetBundle != null);
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/starwish_fountain", InitWishFountainBuilding,
+                () => WishFountainRuntime != null && WishFountainRuntime.HasAssetBundle);
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
             {

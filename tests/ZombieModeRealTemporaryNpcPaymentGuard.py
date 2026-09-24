@@ -62,6 +62,8 @@ def read_courier_service() -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in COURIER_SERVICE_PARTS)
 
 NPC_SHOP = Path("Integration/Affinity/Systems/NPCShopSystem.cs")
+NPC_SHOP_INTERACTABLE = Path("Integration/Affinity/Interactables/NPCShopInteractable.cs")
+GOBLIN_INTERACTABLE = Path("Integration/Reforge/GoblinReforgeInteractable.cs")
 
 
 def fail(message: str) -> int:
@@ -108,6 +110,8 @@ def main() -> int:
     courier_sweep = read_courier_sweep_service()
     courier_storage = read_storage_deposit_service()
     npc_shop = NPC_SHOP.read_text(encoding="utf-8")
+    npc_shop_interactable = NPC_SHOP_INTERACTABLE.read_text(encoding="utf-8")
+    goblin_interactable = GOBLIN_INTERACTABLE.read_text(encoding="utf-8")
 
     for snippet in [
         "public sealed class ZombieModeTemporaryRealNpcMarker",
@@ -200,9 +204,11 @@ def main() -> int:
             return result
 
     for snippet in [
-        "TrySpendZombieModePurificationPointsForRealNpc",
-        "CanAffordZombieModePurificationPointsForRealNpc",
-        "IsZombieModeTemporaryRealNpc(currentNpcTransform)",
+        "currentPaymentStrategy.CanAfford(price)",
+        "currentPaymentStrategy.TrySpend(price)",
+        "currentPaymentStrategy = paymentStrategy ?? NPCShopPaymentStrategy.Cash",
+        "currentPaymentStrategy = NPCShopPaymentStrategy.Cash",
+        "return currentPaymentStrategy != null && currentPaymentStrategy.UsesPurification",
         "private static void OnItemPurchased(StockShop shop, Item purchasedItem)",
         "private static void OnItemSoldByPlayer(StockShop shop, Item soldItem, int price)",
         "StockShop.OnItemPurchased +=",
@@ -213,6 +219,19 @@ def main() -> int:
         result = require(npc_shop, snippet, "npc shop purification path")
         if result:
             return result
+
+    for source, snippet, label in [
+        (rewards, "interactable.ShopPaymentStrategy = NPCShopPaymentStrategy.Purification(", "temporary NPC creator payment policy"),
+        (rewards, "CanAffordZombieModePurificationPointsForRealNpc(npc.transform, price)", "temporary NPC afford delegate"),
+        (rewards, 'TrySpendZombieModePurificationPointsForRealNpc(npc.transform, price, "ZombieModeTempGoblinShopBuy")', "temporary NPC spend delegate"),
+        (goblin_interactable, "component.PaymentStrategy = shopPaymentStrategy", "goblin grouped shop policy"),
+        (npc_shop_interactable, "NPCShopSystem.OpenShop(npcId, npcTransform, npcController, PaymentStrategy)", "shop interaction payment policy"),
+    ]:
+        result = require(source, snippet, label)
+        if result:
+            return result
+    if "IsZombieModeTemporaryRealNpc(currentNpcTransform)" in npc_shop:
+        return fail("generic shop still detects ZombieMode directly")
 
     print("ZombieModeRealTemporaryNpcPaymentGuard: PASS")
     return 0

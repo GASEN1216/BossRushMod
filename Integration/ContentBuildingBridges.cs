@@ -32,7 +32,7 @@ namespace BossRush
         }
 
         // 报箱只借已有模型；加载、缓存和卸载继续由许愿台的原生命周期负责。
-        internal GameObject StarwishBuildingModelPrefab { get { return starwishModelPrefab; } }
+        internal GameObject StarwishBuildingModelPrefab { get { return wishFountainRuntime != null ? wishFountainRuntime.ModelPrefab : null; } }
 
         public void InitDailyReportMailbox() { DailyReportMailbox.InitDailyReportMailbox(); }
         internal void TryInitializeDailyReportMailboxEarly() { DailyReportMailbox.TryInitializeDailyReportMailboxEarly(); }

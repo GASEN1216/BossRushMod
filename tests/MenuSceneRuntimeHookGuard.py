@@ -13,12 +13,13 @@ INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
 ]
 ALWAYS_ON_RUNTIME_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
+AFFINITY_RUNTIME = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
 EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
 STEAM_ACHIEVEMENT_POPUP = Path("Achievement/SteamAchievementPopup.cs")
 BOOTSTRAP_FILES = [
     (
         Path("Integration/FlightTotem/FlightTotemBootstrap.cs"),
-        "private void SetupFlightTotemForScene",
+        "internal void SetupFlightTotemForScene",
         "delayedCheckEquipment: DelayedCheckFlightTotemEquipment,",
     ),
     (
@@ -28,8 +29,8 @@ BOOTSTRAP_FILES = [
     ),
     (
         Path("Integration/Frostmourne/FrostmourneBootstrap.cs"),
-        "private void SetupFrostmourneForScene",
-        "StartCoroutine(DelayedSetupFrostmourneAbility());",
+        "internal void SetupFrostmourneForScene",
+        "_owner.StartCoroutine(DelayedSetupFrostmourneAbility());",
     ),
     (
         Path("Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs"),
@@ -226,10 +227,14 @@ def main() -> int:
         method = extract_method(text, signature)
         if not method:
             return fail("could not find bootstrap method -> " + str(path))
+        scene_guard = "ModBehaviour.IsGameplaySceneName(scene.name)" if path in (
+            Path("Integration/FlightTotem/FlightTotemBootstrap.cs"),
+            Path("Integration/Frostmourne/FrostmourneBootstrap.cs"),
+        ) else "IsGameplaySceneName(scene.name)"
         if not has_recent_guard(
             method,
             delayed_call,
-            "if (IsGameplaySceneName(scene.name))",
+            "if (" + scene_guard + ")",
             window=800,
         ):
             return fail("equipment delayed setup must be guarded in " + str(path))
@@ -268,8 +273,12 @@ def main() -> int:
     always_on_runtime_tick_block = extract_method(always_on_runtime_text, "internal void TickAlwaysOnRuntime()")
     if not always_on_runtime_tick_block:
         return fail("could not find TickAlwaysOnRuntime")
-    if "AffinityManager.UpdateDeferredSave();" not in always_on_runtime_tick_block:
-        return fail("Affinity deferred save must remain in the always-on runtime tick")
+    affinity_runtime_text = AFFINITY_RUNTIME.read_text(encoding="utf-8", errors="ignore")
+    if "TickAffinityRuntimeFromHost();" not in always_on_runtime_tick_block:
+        return fail("Affinity module tick must remain in the always-on runtime tick")
+    affinity_tick = extract_method(affinity_runtime_text, "internal void TickAffinityRuntime()")
+    if "AffinityManager.UpdateDeferredSave();" not in affinity_tick:
+        return fail("Affinity module tick must still flush deferred saves")
 
     equipment_runtime_tick_block = extract_method(equipment_runtime_text, "internal void TickEquipmentAbilityRuntime()")
     if not equipment_runtime_tick_block:

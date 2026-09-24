@@ -69,7 +69,7 @@ def main() -> int:
 
     helper_block = extract_block(
         death_text,
-        "private bool IsDeathWraithCharacter_DeathWraith(CharacterMainControl character)",
+        "internal bool IsDeathWraithCharacter_DeathWraith(CharacterMainControl character)",
     )
     if not helper_block:
         return fail("DeathWraithBossRushClearGuard: missing IsDeathWraithCharacter_DeathWraith helper")

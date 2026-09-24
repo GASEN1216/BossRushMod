@@ -86,30 +86,19 @@ public partial class PermanentDuckNpcModule
 public partial class ModBehaviour
 {
     public static ModBehaviour Instance;
-    private int permanentSpouseRestoreGeneration;
-    private PermanentSpouseRestoreRequest permanentSpouseRestoreRequest;
     private RunState zombieModeRunState=new RunState();
     private float zombieModeLastDropPickupScanTime, now;
     public bool Building=true, Placeholder=true;
+    internal WeddingRuntimeModule WeddingRuntime;
     public static void DevLog(string value) {}
+    public static bool IsBaseHubSceneName(string name) => name=="Base";
     private float GetZombieModeRuntimeNow() => now;
     private void RemoveZombieModeRunOnlyObjectRecord(GameObject o) {}
     private void PruneZombieModeUnknownRunOnlyRecords() {}
     private void Destroy(GameObject o) { o.Destroyed=true; }
-    private bool IsBaseHubSceneName(string name) => name=="Base";
-    private bool HasWeddingBuildingPlaced() => Building;
-    private Vector3 FindWeddingBuildingNPCPosition() => new Vector3(5,0,5);
-    private bool CanCurrentSpouseFollowPlayer(string id) => AffinityManager.IsMarriedToPlayer(id);
-    private bool TryGetSpouseFollowSpawnPosition(out Vector3 position) { position=CharacterMainControl.Main.transform.position; return true; }
-    private void SnapSpouseInstanceToPosition(GameObject npc, Vector3 position) { npc.transform.position=position; }
-    private void SetWeddingNpcIdle(GameObject npc) { npc.Idle=true; }
-    private void MarkWeddingNpcInstance(GameObject npc, string id) { npc.Marked=true; }
-    private void DestroyWeddingPlaceholder() { Placeholder=false; }
-    private void RefreshSpouseInteractionOptions(GameObject npc) { npc.Refreshes++; }
-    private void PrepareSpouseInstanceForFollow(GameObject npc, string id) { npc.Following=true; Placeholder=false; }
-    public void Begin(bool following) { RequestPermanentSpouseRestore("xiaoman",new Vector3(5,0,5),following); }
-    public void Invalidate() { InvalidatePermanentSpouseRestore(); }
-    public bool HasPending => permanentSpouseRestoreRequest!=null;
+    public void Begin(bool following) { WeddingRuntime.Begin(following); }
+    public void Invalidate() { WeddingRuntime.Invalidate(); }
+    public bool HasPending => WeddingRuntime.HasPending;
     public GameObject Cleanup(float age, float lastScan, bool owned, bool equipped, bool force, bool high=false, bool boss=false)
     {
         now=300.01f; zombieModeLastDropPickupScanTime=lastScan;
@@ -117,4 +106,24 @@ public partial class ModBehaviour
         zombieModeRunState.EntityDropCleanupCandidates.Add(new ZombieModeDropCandidate {GameObject=obj,SpawnTime=now-age,WaveAtSpawn=1,HighValue=high,BossDrop=boss});
         CleanupZombieModeExpiredDropCandidates(force); return obj;
     }
+}
+internal sealed partial class WeddingRuntimeModule
+{
+    internal void OnAwake(ModBehaviour owner) { _owner = owner; }
+    private bool HasWeddingBuildingPlaced() => _owner.Building;
+    private Vector3 FindWeddingBuildingNPCPosition() => new Vector3(5,0,5);
+    private bool CanCurrentSpouseFollowPlayer(string id) => AffinityManager.IsMarriedToPlayer(id);
+    internal GameObject GetSpouseInstance(string id)
+    { CharacterMainControl npc=PermanentDuckNpcRegistry.GetInstance(id); return npc==null ? null : npc.gameObject; }
+    private bool TryGetSpouseFollowSpawnPosition(out Vector3 position)
+    { position=CharacterMainControl.Main.transform.position; return true; }
+    private void SnapSpouseInstanceToPosition(GameObject npc, Vector3 position) { npc.transform.position=position; }
+    private void SetWeddingNpcIdle(GameObject npc) { npc.Idle=true; }
+    private void MarkWeddingNpcInstance(GameObject npc, string id) { npc.Marked=true; }
+    private void DestroyWeddingPlaceholder() { _owner.Placeholder=false; }
+    private void RefreshSpouseInteractionOptions(GameObject npc) { npc.Refreshes++; }
+    private void PrepareSpouseInstanceForFollow(GameObject npc, string id) { npc.Following=true; _owner.Placeholder=false; }
+    internal void Begin(bool following) { RequestPermanentSpouseRestore("xiaoman",new Vector3(5,0,5),following); }
+    internal void Invalidate() { InvalidatePermanentSpouseRestore(); }
+    internal bool HasPending => permanentSpouseRestoreRequest!=null;
 }

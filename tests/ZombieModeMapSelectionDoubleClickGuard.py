@@ -6,6 +6,7 @@ import sys
 
 MAP_SELECTION = Path("ZombieMode/ZombieModeMapSelectionHelper.cs")
 UI_HELPER = Path("ZombieMode/ZombieModeUIHelper.cs")
+SHARED_UI = Path("Common/UI/BossRushUIFoundation.cs")
 
 
 def fail(message: str) -> int:
@@ -35,6 +36,7 @@ def extract_method(text: str, marker: str) -> str:
 def main() -> int:
     map_selection = MAP_SELECTION.read_text(encoding="utf-8")
     helper = UI_HELPER.read_text(encoding="utf-8")
+    shared_ui = SHARED_UI.read_text(encoding="utf-8")
 
     for snippet in [
         "private static bool pendingZombieMapLoadStarted = false;",
@@ -65,10 +67,12 @@ def main() -> int:
     if "pendingZombieMapLoadStarted = false;" not in clear_method:
         return fail("ClearPendingZombieEntry must reset load-start guard")
 
-    release_method = extract_method(helper, "private static void ReleaseModalInput")
+    release_method = extract_method(shared_ui, "private static void ReleaseModalInput")
     if not release_method:
-        return fail("ReleaseModalInput not found")
-    if "catch (Exception e)" not in release_method or "输入释放失败" not in release_method:
+        return fail("shared ReleaseModalInput not found")
+    if "shared.Release();" not in helper or "BossRushUIKit.ReleaseModalInput(this);" not in shared_ui:
+        return fail("ZombieMode lease must forward to shared ReleaseModalInput")
+    if "InputManager.ActiveInput(lease.InputToken)" not in release_method or "catch (Exception e)" not in release_method or "输入释放失败" not in release_method:
         return fail("Modal input release must catch InputManager.ActiveInput failures")
 
     print("ZombieModeMapSelectionDoubleClickGuard: PASS")

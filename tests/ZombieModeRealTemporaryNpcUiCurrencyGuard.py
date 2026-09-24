@@ -167,7 +167,7 @@ def main() -> int:
             return result
 
     for snippet in [
-        "IsZombieModeTemporaryRealNpc(currentNpcTransform)",
+        "currentPaymentStrategy.UsesPurification",
         "净化点",
         "interactionButton",
         "interactionText",

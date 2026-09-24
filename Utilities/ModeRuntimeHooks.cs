@@ -4,6 +4,21 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
+        // 天空岛正式入口与 F3 共用此只读冲突判据；顺序与原 F3 实现一致。
+        internal bool ValidationHasActiveMode(out string reason)
+        {
+            reason = null;
+            if (IsActive) { reason = "BossRush"; return true; }
+            if (modeDActive) { reason = "ModeD"; return true; }
+            if (modeEActive) { reason = "ModeE"; return true; }
+            if (modeFActive) { reason = "ModeF"; return true; }
+            if (modeGActive || ModeGRuntimeGates.IsModeGEntryBlocked) { reason = "ModeG"; return true; }
+            if (IsZombieModeActive || IsZombieModeStartupInProgress()) { reason = "Zombie"; return true; }
+            if (ModeHRuntime != null && ModeHRuntime.HasActiveRun) { reason = "ModeH"; return true; }
+            if (campaignFinalBossActive) { reason = "CampaignFinal"; return true; }
+            return false;
+        }
+
         internal bool TickModeRuntimeGroup(float deltaTime, float unscaledDeltaTime)
         {
             // 共享刷怪核心的分帧后处理并不只服务 Mode E/F：标准模式中的随机事件

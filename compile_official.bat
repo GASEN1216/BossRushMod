@@ -143,6 +143,7 @@ echo(Common\Infrastructure\BossRushEagerReflectionCache.cs
 echo(Common\UI\BossRushUI.cs
 echo(Common\UI\BossRushUIAnimation.cs
 echo(Common\UI\BossRushUIFeel.cs
+echo(Common\UI\BossRushUIFoundation.cs
 echo(Common\UI\BossRushUIHero.cs
 echo(Common\UI\BossRushConfirmDialog.cs
 echo(Common\Effects\BossRushFxMaterials.cs
@@ -345,6 +346,7 @@ echo(Integration\Mutators\MutatorUI.cs
 echo(Integration\Mutators\MutatorRuntimeBridge.cs
 echo(Integration\ZombieModeIntegration.cs
 echo(Integration\DeathWraith\DeathWraithSystem.cs
+echo(Integration\DeathWraith\DeathWraithRuntimeModuleHostBridge.cs
 echo(Integration\DeathWraith\DeathWraithRecording.cs
 echo(Integration\DeathWraith\DeathWraithOriginalDeadBodyBridge.cs
 echo(Integration\DeathWraith\DeathWraithSpawnFlow.cs
@@ -381,6 +383,7 @@ echo(Integration\EquipmentHelperIcon.cs
 echo(Integration\Bonus\DragonSetBonus.cs
 echo(Integration\Bonus\DragonSetBonus_Dash.cs
 echo(Integration\Bonus\SetBonusManager.cs
+echo(Integration\Bonus\SetBonusRuntimeHostBridge.cs
 echo(Integration\Bonus\FrostSetBonus.cs
 echo(Integration\Bonus\ThunderSetBonus.cs
 echo(Integration\Bonus\ThunderSetBonus_Storm.cs
@@ -671,6 +674,7 @@ echo(Integration\DragonDescendant\DragonDescendantAbilities_ResurrectionAndPhase
 echo(Integration\DragonDescendant\DragonDescendantAbilities_Phase2Combat.cs
 echo(Integration\DragonDescendant\DragonDescendantAbilities_CollisionAndIce.cs
 echo(Integration\DragonDescendant\DragonDescendantBoss.cs
+echo(Integration\DragonDescendant\DragonDescendantRuntimeModuleHostBridge.cs
 echo(Integration\DragonDescendant\DragonDescendantBoss_RuntimeAndCleanup.cs
 echo(Integration\DragonDescendant\DragonDescendantBossStaticCacheReset.cs
 echo(Integration\DragonDescendant\DragonDescendantBoss_ModeGAdapter.cs
@@ -691,6 +695,7 @@ echo(Integration\DragonKing\DragonKingAbilityController_ChildProtection.cs
 echo(Integration\DragonKing\DragonKingAbilityHelpers.cs
 echo(Integration\DragonKing\DragonKingShockwaveEffect.cs
 echo(Integration\DragonKing\DragonKingBoss.cs
+echo(Integration\DragonKing\DragonKingRuntimeModuleHostBridge.cs
 echo(Integration\DragonKing\DragonKingBoss_ModeGAdapter.cs
 echo(Integration\DragonKing\Weapons\FenHuangHalberdIds.cs
 echo(Integration\DragonKing\Weapons\FenHuangHalberdConfig.cs
@@ -730,6 +735,7 @@ echo(Integration\PhantomWitch\PhantomWitchAbilityController_MovementAndDamage.cs
 echo(Integration\PhantomWitch\PhantomWitchAbilityController_CleanupAndTelemetry.cs
 echo(Integration\PhantomWitch\PhantomWitchBossCurseRealmRuntime.cs
 echo(Integration\PhantomWitch\PhantomWitchBoss.cs
+echo(Integration\PhantomWitch\PhantomWitchRuntimeModuleHostBridge.cs
 echo(Integration\PhantomWitch\PhantomWitchBoss_ModeGAdapter.cs
 echo(Integration\PhantomWitch\PhantomWitchScytheIds.cs
 echo(Integration\PhantomWitch\PhantomWitchScytheConfig.cs
@@ -747,6 +753,7 @@ echo(Integration\Frostmourne\FrostmourneSwingFx.cs
 echo(Integration\Frostmourne\FrostmourneAction.cs
 echo(Integration\Frostmourne\FrostmourneAbilityManager.cs
 echo(Integration\Frostmourne\FrostmourneBootstrap.cs
+echo(Integration\Frostmourne\FrostmourneRuntimeModuleHostBridge.cs
 echo(Integration\NewWeapons\Common\NewWeaponIds.cs
 echo(Integration\NewWeapons\Common\NewWeaponEquipState.cs
 echo(Integration\NewWeapons\Common\NewWeaponConfiguratorCore.cs
@@ -778,6 +785,7 @@ echo(Integration\NewWeapons\ThunderRing\ThunderRingRuntime.cs
 echo(Integration\FlightTotem\FlightConfig.cs
 echo(Integration\FlightTotem\FlightTotemFactory.cs
 echo(Integration\FlightTotem\FlightTotemBootstrap.cs
+echo(Integration\FlightTotem\FlightTotemRuntimeModuleHostBridge.cs
 echo(Integration\FlightTotem\FlightAbilityManager.cs
 echo(Integration\FlightTotem\FlightTotemEffectManager.cs
 echo(Integration\FlightTotem\FlightCloudEffect.cs
@@ -807,6 +815,7 @@ echo(Integration\NPCs\Courier\OriginalConfirmDialogueAdapter.cs
 echo(Integration\NPCs\Courier\CourierPaidLootSweepService.cs
 echo(Integration\NPCs\Courier\CourierPaidLootSweepDelivery.cs
 echo(Integration\NPCs\Goblin\GoblinNPC.cs
+echo(Integration\NPCs\Goblin\GoblinNPCRuntimeModuleHostBridge.cs
 echo(Integration\NPCs\Goblin\GoblinNPCController.cs
 echo(Integration\NPCs\Goblin\GoblinNPCAnimation.cs
 echo(Integration\NPCs\Goblin\GoblinNPCDialogue.cs
@@ -919,6 +928,7 @@ echo(Integration\Affinity\Systems\NPCDialogueSystem.cs
 echo(Integration\Affinity\Systems\NPCShopSystem.cs
 echo(Integration\Affinity\Systems\NPCAffinityInteractionHelper.cs
 echo(Integration\Affinity\AffinityRuntimeHooks.cs
+echo(Integration\Affinity\AffinityRuntimeModuleHostBridge.cs
 echo(Integration\Affinity\Interactables\NPCInteractableBase.cs
 echo(Integration\Affinity\Interactables\NPCGiftInteractable.cs
 echo(Integration\Affinity\Interactables\NPCShopInteractable.cs
@@ -935,6 +945,7 @@ echo(Integration\ReverseScale\ReverseScaleConfig.cs
 echo(Integration\ReverseScale\ReverseScaleEffectManager.cs
 echo(Integration\ReverseScale\ReverseScaleAbilityManager.cs
 echo(Integration\ReverseScale\ReverseScaleBootstrap.cs
+echo(Integration\ReverseScale\ReverseScaleRuntimeModuleHostBridge.cs
 echo(Integration\ReverseScale\ReverseScaleFactory.cs
 echo(Achievement\AchievementRuntimeModule.cs
 echo(Achievement\AchievementRuntimeHooks.cs
@@ -959,6 +970,8 @@ echo(Integration\Wedding\WeddingChapelInteractable.cs
 echo(Integration\Wedding\WeddingBuildingInjector.cs
 echo(Integration\Wedding\WeddingBuildingInjector_DataEventsAndRuntime.cs
 echo(Integration\Wedding\WeddingModBehaviourBridge.cs
+echo(Integration\Wedding\WeddingRuntimeModule.cs
+echo(Integration\Wedding\WeddingHostCompatibilityBridge.cs
 echo(Integration\WishFountain\WishFountainService.cs
 echo(Integration\WishFountain\WishFountainConfigAndValidation.cs
 echo(Integration\WishFountain\WishFountainRewardPoolBuild.cs
@@ -972,6 +985,8 @@ echo(Integration\WishFountain\WishFountainUI_Feel.cs
 echo(Integration\WishFountain\WishFountainUIBridge.cs
 echo(Integration\WishFountain\WishFountainRewardAnimationView.cs
 echo(Integration\WishFountain\WishFountainRewardAnimationView_Reveal.cs
+echo(Integration\WishFountain\WishFountainRuntimeModule.cs
+echo(Integration\WishFountain\WishFountainHostCompatibilityBridge.cs
 echo(Integration\WishFountain\WishFountainBuilder.cs
 echo(Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs
 echo(PetNest\PetNestModels.cs

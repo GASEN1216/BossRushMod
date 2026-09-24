@@ -34,6 +34,7 @@ cash = Path("ZombieMode/ZombieModeCashInvestmentView.cs")
 extraction = Path("ZombieMode/ZombieModeExtractionController.cs")
 HUD = Path("ZombieMode/ZombieModeHudController.cs")
 UI_HELPER = Path("ZombieMode/ZombieModeUIHelper.cs")
+SHARED_UI = Path("Common/UI/BossRushUIFoundation.cs")
 MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
 ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
 
@@ -71,6 +72,7 @@ def main() -> int:
     extraction_text = extraction.read_text(encoding="utf-8")
     hud = HUD.read_text(encoding="utf-8")
     helper = UI_HELPER.read_text(encoding="utf-8")
+    shared = SHARED_UI.read_text(encoding="utf-8")
     mode_runtime_hooks = MODE_RUNTIME_HOOKS.read_text(encoding="utf-8")
     zombie_runtime_hooks = ZOMBIE_RUNTIME_HOOKS.read_text(encoding="utf-8")
 
@@ -91,8 +93,13 @@ def main() -> int:
         "internal static bool IsModalInputPaused",
         "internal static void EnforceModalInputPause()",
     ]:
-        if snippet not in helper:
-            return fail("ZombieModeUIHelper modal input lease missing: " + snippet)
+        if snippet not in shared:
+            return fail("BossRushUIKit modal input lease missing: " + snippet)
+    for forwarding in ("BossRushUIKit.IsModalInputPaused", "BossRushUIKit.ModalInputLeaseCount",
+                       "BossRushUIKit.ClaimModalInput(inputToken, ownerLabel)",
+                       "BossRushUIKit.EnforceModalInputPause()"):
+        if forwarding not in helper:
+            return fail("ZombieModeUIHelper must forward shared modal state: " + forwarding)
 
     tick_method = extract_block(entry, "private void TickZombieMode(float deltaTime)")
     if not tick_method:

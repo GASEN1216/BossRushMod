@@ -63,7 +63,7 @@ namespace BossRush
         private static BossRushConfirmDialog _instance;
 
         private Canvas _canvas;
-        private ZombieModeUIHelper.ModalInputLease _modalLease;
+        private BossRushUIKit.ModalInputLease _modalLease;
         private PetNestCancelKey _cancelKey;
         private Options _options;
         private bool _hasAnchor;
@@ -174,7 +174,7 @@ namespace BossRush
                 delegate { Finish(false); }, true);
             BossRushUIKit.StyleSecondaryButton(cancel);
 
-            _modalLease = ZombieModeUIHelper.ClaimModalInput(_canvas.gameObject, "ConfirmDialog");
+            _modalLease = BossRushUIKit.ClaimModalInput(_canvas.gameObject, "ConfirmDialog");
             _cancelKey = PetNestCancelKey.Attach(_canvas.gameObject, delegate { Finish(false); }, null);
             BossRushUI.PlayOpenAnimation(surface);
         }

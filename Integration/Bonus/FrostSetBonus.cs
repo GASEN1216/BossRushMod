@@ -30,7 +30,7 @@ namespace BossRush
     /// <summary>
     /// 冰霜套装效果 - 冰伤转治疗 + 受击冻结反制（霜噬在 FrostSetBonus_Nova.cs）
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal partial class SetBonusRuntimeModule
     {
         #region 冰霜套配置
 
@@ -115,7 +115,7 @@ namespace BossRush
                 // 4. 显示激活提示
                 if (announce)
                 {
-                    ShowMessage(L10n.T(
+                    _owner.ShowMessage(L10n.T(
                         "<color=#87CEEB>【寒冰之护】</color> 套装效果激活！\n冰伤转治疗 · 普攻附带霜噬 · 受击冻结攻击者",
                         "<color=#87CEEB>[Frost Ward]</color> Set bonus activated!\nIce heals you · attacks carry frostbite · freeze attackers when hit"
                     ));
@@ -292,7 +292,7 @@ namespace BossRush
                     float heal = iceDamage * FROST_SET_ICE_HEAL_RATIO;
                     if (heal > 0f)
                     {
-                        StartCoroutine(DelayedHeal(health, heal));
+                        StartSetBonusCoroutine(DelayedHeal(health, heal));
                     }
                 }
 
@@ -325,7 +325,7 @@ namespace BossRush
                     lastFrostTriggerTime = Time.time;
                     Vector3 attackerPosition = damageInfo.fromCharacter.transform.position;
                     SpawnSetBurst(attackerPosition, FROST_SET_BURST_COLOR, 1.2f, 0.3f, 4, true);
-                    PlaySoundEffect(SetBonusSfx.FrostCounter);
+                    _owner.PlaySoundEffect(SetBonusSfx.FrostCounter);
                 }
             }
             catch (Exception e)
@@ -435,7 +435,7 @@ namespace BossRush
                     RunSpeedStat = runSpeedStat,
                     RunSpeedModifier = slowRun
                 };
-                state.Coroutine = StartCoroutine(RemoveFrostFallbackSlow(state, 2f));
+                state.Coroutine = StartSetBonusCoroutine(RemoveFrostFallbackSlow(state, 2f));
                 if (state.Coroutine == null)
                 {
                     // 协程起不来（宿主已 disable）意味着减速永远摘不掉，宁可当场回滚也不留残留
@@ -485,7 +485,7 @@ namespace BossRush
                     }
                     if (state.Coroutine != null)
                     {
-                        StopCoroutine(state.Coroutine);
+                        StopSetBonusCoroutine(state.Coroutine);
                     }
                     RemoveFrostFallbackSlowModifiers(state);
                 }

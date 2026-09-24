@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class DragonDescendantRuntimeModule
     {
         internal async UniTask<ManagedBossPrepareResult> PrepareManagedDragonDescendantAsync(
             Vector3 position, ManagedBossSpawnContext ctx)
@@ -21,7 +21,7 @@ namespace BossRush
 
                 SetupBossAttributes(character);
                 ApplyBossStatMultiplier(character);
-                OriginalWeaponData originalWeaponData = GetWeaponDataFromEquippedWeapon(character);
+                ModBehaviour.OriginalWeaponData originalWeaponData = GetWeaponDataFromEquippedWeapon(character);
                 await EquipDragonDescendant(character);
                 if (!IsManagedOwnerValid(ctx))
                 {
@@ -92,6 +92,13 @@ namespace BossRush
             }
         }
 
+    }
+}
+
+namespace BossRush
+{
+    public partial class ModBehaviour
+    {
         #region Mode G Managed Adapter Shared Helpers
 
         internal static bool IsManagedOwnerValid(ManagedBossSpawnContext ctx)
@@ -100,7 +107,7 @@ namespace BossRush
             try { return ctx.IsOwnerValid(); } catch { return false; }
         }
 
-        private async UniTask<CharacterMainControl> CreateModeGManagedCharacterAsync(
+        internal async UniTask<CharacterMainControl> CreateModeGManagedCharacterAsync(
             CharacterRandomPreset basePreset, Vector3 position, ManagedBossSpawnContext ctx,
             string runtimeNameKey, string runtimePresetName)
         {
@@ -192,13 +199,13 @@ namespace BossRush
             return false;
         }
 
-        private void BeginActivateModeGManagedCharacter(CharacterMainControl character)
+        internal void BeginActivateModeGManagedCharacter(CharacterMainControl character)
         {
             character.gameObject.SetActive(true);
             character.SetTeam(Teams.wolf);
         }
 
-        private void CompleteActivateModeGManagedCharacter(CharacterMainControl character)
+        internal void CompleteActivateModeGManagedCharacter(CharacterMainControl character)
         {
             SetupAIAggro(character);
             if (character.Health != null)
@@ -214,7 +221,7 @@ namespace BossRush
             CompleteActivateModeGManagedCharacter(character);
         }
 
-        private void CleanupModeGManagedCharacter(CharacterMainControl character,
+        internal void CleanupModeGManagedCharacter(CharacterMainControl character,
             string runtimeNameKey, string runtimePresetName, string logTag)
         {
             if (character == null) return;

@@ -21,6 +21,10 @@ THUNDER = Path("Integration/Bonus/ThunderSetBonus.cs")
 THUNDER_STORM = Path("Integration/Bonus/ThunderSetBonus_Storm.cs")
 VISUALS = Path("Integration/Bonus/SetBonusVisuals.cs")
 MANAGER = Path("Integration/Bonus/SetBonusManager.cs")
+BRIDGE = Path("Integration/Bonus/SetBonusRuntimeHostBridge.cs")
+REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+INTEGRATION_LIFECYCLE = Path("Integration/BossRushIntegration_StartAndScene.cs")
+EQUIPMENT_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
 PLACEHOLDER = Path("Integration/Bonus/SetBonusPlaceholderRegistry.cs")
 FACTORY = Path("Integration/EquipmentFactory.cs")
 CONFIG = Path("Integration/Config/FrostThunderSetConfig.cs")
@@ -43,7 +47,7 @@ def require(text: str, snippets, label: str) -> int:
 
 
 def main() -> int:
-    for path in (FROST, FROST_NOVA, THUNDER, THUNDER_STORM, VISUALS, MANAGER, PLACEHOLDER, FACTORY, CONFIG, SET_LOOT, ON_DEAD_PATCH, SPECIAL_LOOT, GOBLIN):
+    for path in (FROST, FROST_NOVA, THUNDER, THUNDER_STORM, VISUALS, MANAGER, BRIDGE, REGISTRATION, INTEGRATION_LIFECYCLE, EQUIPMENT_HOOKS, PLACEHOLDER, FACTORY, CONFIG, SET_LOOT, ON_DEAD_PATCH, SPECIAL_LOOT, GOBLIN):
         if not path.exists():
             return fail("missing source file -> " + path.as_posix())
 
@@ -53,6 +57,10 @@ def main() -> int:
     thunder_storm = THUNDER_STORM.read_text(encoding="utf-8")
     visuals = VISUALS.read_text(encoding="utf-8")
     manager = MANAGER.read_text(encoding="utf-8")
+    bridge = BRIDGE.read_text(encoding="utf-8")
+    registration = REGISTRATION.read_text(encoding="utf-8")
+    integration_lifecycle = INTEGRATION_LIFECYCLE.read_text(encoding="utf-8")
+    equipment_hooks = EQUIPMENT_HOOKS.read_text(encoding="utf-8")
     placeholder = PLACEHOLDER.read_text(encoding="utf-8")
     factory = FACTORY.read_text(encoding="utf-8")
     config = CONFIG.read_text(encoding="utf-8")
@@ -60,6 +68,63 @@ def main() -> int:
     on_dead_patch = ON_DEAD_PATCH.read_text(encoding="utf-8")
     special_loot = SPECIAL_LOOT.read_text(encoding="utf-8")
     goblin = GOBLIN.read_text(encoding="utf-8")
+
+    # 八个原 partial 路径都归同一 RuntimeModule。主宿主只留旧入口薄桥；
+    # 单实例注册、初始化、原冲刺 Tick 槽和注册/清理顺序必须继续成立。
+    module_sources = (FROST, FROST_NOVA, THUNDER, THUNDER_STORM, VISUALS, MANAGER,
+                      Path("Integration/Bonus/DragonSetBonus.cs"), Path("Integration/Bonus/DragonSetBonus_Dash.cs"))
+    for path in module_sources:
+        source = clean_source(path.read_text(encoding="utf-8"))
+        if "internal partial class SetBonusRuntimeModule" not in source:
+            return fail(path.as_posix() + " must remain a SetBonusRuntimeModule partial")
+        if "public partial class ModBehaviour" in source:
+            return fail(path.as_posix() + " still carries ModBehaviour partial state")
+    if "internal partial class SetBonusRuntimeModule : BossRushRuntimeModuleBase" not in clean_source(
+            Path("Integration/Bonus/DragonSetBonus.cs").read_text(encoding="utf-8")):
+        return fail("DragonSetBonus.cs must declare the SetBonusRuntimeModule base class")
+    rc = require(bridge, (
+        "public override string ModuleName { get { return \"SetBonus\"; } }",
+        "public override void OnAwake(ModBehaviour owner)",
+        "private Coroutine StartSetBonusCoroutine(IEnumerator routine)",
+        "_owner.StartCoroutine(routine)",
+        "private void StopSetBonusCoroutine(Coroutine coroutine)",
+        "_owner.StopCoroutine(coroutine)",
+        "setBonusRuntime.RegisterDragonSetEvents();",
+        "setBonusRuntime.UnregisterDragonSetEvents();",
+        "setBonusRuntime.RegisterSetBonusEvents();",
+        "setBonusRuntime.UnregisterSetBonusEvents();",
+        "setBonusRuntime.UpdateDragonDash();",
+        "setBonusRuntime.HasSetBonusElementHealing",
+        "config.enableDragonDash",
+    ), "set bonus host bridge")
+    if rc:
+        return rc
+    if "setBonusRuntime = new SetBonusRuntimeModule();" not in registration or "runtimeModuleHost.Register(setBonusRuntime);" not in registration:
+        return fail("SetBonusRuntimeModule must be registered once from its stored host instance")
+    if "UpdateDragonDash();" not in equipment_hooks:
+        return fail("TickEquipmentAbilityRuntime must retain its original UpdateDragonDash slot")
+    start_body = integration_lifecycle.split("void Start_Integration()", 1)[1].split("void OnDestroy_Integration()", 1)[0]
+    stop_body = integration_lifecycle.split("void OnDestroy_Integration()", 1)[1]
+    if start_body.find("RegisterDragonSetEvents();") < 0 or start_body.find("RegisterSetBonusEvents();") < 0 or not (
+            start_body.find("RegisterDragonSetEvents();") < start_body.find("RegisterSetBonusEvents();")):
+        return fail("integration start must keep Dragon registration before Frost/Thunder registration")
+    if stop_body.find("UnregisterDragonSetEvents();") < 0 or stop_body.find("UnregisterSetBonusEvents();") < 0 or not (
+            stop_body.find("UnregisterDragonSetEvents();") < stop_body.find("UnregisterSetBonusEvents();")):
+        return fail("integration cleanup must keep Dragon unregistration before Frost/Thunder unregistration")
+
+    # 反射槽位事件缺失时，等级事件仍独立订阅；它必须能独立退订。
+    dragon = Path("Integration/Bonus/DragonSetBonus.cs").read_text(encoding="utf-8")
+    if "private bool dragonLevelEventRegistered = false;" not in dragon:
+        return fail("dragon level-event owner flag is missing")
+    for snippet in (
+        "if (dragonSetEventRegistered && dragonLevelEventRegistered) return;",
+        "if (!dragonLevelEventRegistered)",
+        "LevelManager.OnAfterLevelInitialized += OnLevelInitializedCheckDragonSet;",
+        "if (dragonLevelEventRegistered)",
+        "LevelManager.OnAfterLevelInitialized -= OnLevelInitializedCheckDragonSet;",
+    ):
+        if snippet not in dragon:
+            return fail("dragon event cleanup missing paired independent subscription -> " + snippet)
 
     rc = require(frost, (
         "private const float FROST_SET_CLOSE_RANGE",
@@ -122,8 +187,8 @@ def main() -> int:
     # 2026-09-20 第三轮：冷却只能在「效果真的落地」之后扣，不能在排队时先扣。
     # 判据用**位置关系**而不是子串存在性：两者在文件里都在，顺序才是不变式。
     for label, text, pending_call, cooldown_write in (
-        ("frost bite", frost_nova, "StartCoroutine(FrostBiteStep(", "lastFrostBiteTime = Time.time;"),
-        ("thunder bite", thunder_storm, "StartCoroutine(ThunderBiteStep(", "lastThunderBiteTime = Time.time;"),
+        ("frost bite", frost_nova, "StartSetBonusCoroutine(FrostBiteStep(", "lastFrostBiteTime = Time.time;"),
+        ("thunder bite", thunder_storm, "StartSetBonusCoroutine(ThunderBiteStep(", "lastThunderBiteTime = Time.time;"),
     ):
         schedule_at = text.find(pending_call)
         cooldown_at = text.find(cooldown_write)
@@ -180,7 +245,7 @@ def main() -> int:
         "Health.OnDead += OnThunderSetAnyDead;",
         "Health.OnDead -= OnThunderSetAnyDead;",
         "TryScheduleThunderBite(health, damageInfo);",
-        "StartCoroutine(ThunderCounterStep(player, damageInfo.fromCharacter, setBonusGeneration));",
+        "StartSetBonusCoroutine(ThunderCounterStep(player, damageInfo.fromCharacter, setBonusGeneration));",
         "dmg.isFromBuffOrEffect = true;",
         "dmg.fromWeaponItemID = 0;",
         "DestroySetEyeLights(ref thunderSetEyeLights);",
@@ -234,7 +299,7 @@ def main() -> int:
         return fail("thunder bite damage must not scale with the triggering hit")
 
     # 只有一跳：被电死的目标不得再起第二段（击杀自续清场是旧设计的病灶）
-    if thunder_storm.count("StartCoroutine(ThunderBiteStep(") != 1:
+    if thunder_storm.count("StartSetBonusCoroutine(ThunderBiteStep(") != 1:
         return fail("ThunderBiteStep must be started exactly once (no chain continuation)")
 
     # 主角死亡也必须作废已排队的延时技能；只清冷却会让旧伤害在死后/复活后执行。
@@ -257,7 +322,7 @@ def main() -> int:
     rc = require(visuals, (
         "private bool TryResolveSetBonusEnemyTarget(Health target, DamageInfo info, out CharacterMainControl victim, out Vector3 position)",
         "if (target.IsMainCharacterHealth) return false;",
-        "if (IsModeHRunInProgressSafe()) return false;",
+        "if (ModBehaviour.IsModeHRunInProgressSafe()) return false;",
         "if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter) return false;",
         "if (PetNestCompanionAgent.IsCompanionHealth(target)) return false;",
         "if (!Team.IsEnemy(info.fromCharacter.Team, resolved.Team)) return false;",

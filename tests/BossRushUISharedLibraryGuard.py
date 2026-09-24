@@ -11,6 +11,7 @@ import sys
 
 
 UI_LIB = Path("Common/UI/BossRushUI.cs")
+UI_FOUNDATION = Path("Common/UI/BossRushUIFoundation.cs")
 COMPILE_LIST = Path("compile_official.bat")
 MOD_BEHAVIOUR = Path("ModBehaviour.cs")
 
@@ -35,11 +36,11 @@ MIGRATED = [
     Path("Integration/DailyReport/DailyReportUI.cs"),
 ]
 
-# CanvasScaler 必须走 ZombieModeUIHelper.ConfigureCanvasScaler（AGENTS 4.14）。
+# CanvasScaler 的参数只在 BossRushUIKit.ConfigureCanvasScaler 维护，旧帮助类转发。
 # 只 AddComponent 不配置会退化成 ConstantPixelSize，4K 屏上面板缩成一小块；
 # 各写各的参数则会在不同界面之间产生不一致的缩放。
 # 唯一允许出现 uiScaleMode 赋值的地方就是 helper 自身的实现。
-CANVAS_SCALER_HELPER = Path("ZombieMode/ZombieModeUIHelper.cs")
+CANVAS_SCALER_HELPER = UI_FOUNDATION
 SCAN_EXCLUDE_DIRS = {"Build", "tests", ".git", ".kiro", ".codex_tmp", "鸭科夫源码", "wiki-site", ".qoder", "tmp", "output", "outputs", "obj", "bin"}
 
 # legacy UI.Text + 内置 Arial 渲染不了中文，这些文件已转 TMP 或改用字体解析器
@@ -95,9 +96,19 @@ def main():
     if "BossRushUI.ResetStaticCaches()" not in MOD_BEHAVIOUR.read_text(encoding="utf-8"):
         return fail("ResetStaticCaches 必须挂到 ModBehaviour 的 OnDestroy 路径")
 
-    # 4) 字体解析不得另起一套，必须转发 ZombieModeUIHelper 的四级回退
-    if "ZombieModeUIHelper.GetGameFont()" not in lib:
-        return fail("字体必须走 ZombieModeUIHelper.GetGameFont() 的四级回退")
+    # 4) 字体解析在共享层唯一实现，丧尸帮助类只保留兼容转发。
+    foundation = UI_FOUNDATION.read_text(encoding="utf-8")
+    if "BossRushUIKit.GetGameFont()" not in lib or "TMP_Settings.defaultFontAsset" not in foundation \
+            or "ObjectCache.GetFirstTmpFont()" not in foundation:
+        return fail("字体必须走 BossRushUIKit.GetGameFont() 的四级回退")
+    zombie_helper = Path("ZombieMode/ZombieModeUIHelper.cs").read_text(encoding="utf-8")
+    if "return BossRushUIKit.GetGameFont();" not in zombie_helper:
+        return fail("ZombieMode 字体入口必须转发共享实现")
+    if "_modalInputLeaseCount" in zombie_helper or "_modalPreviousTimeScale" in zombie_helper:
+        return fail("模态租约计数与 timeScale 快照只能由共享 UI 持有")
+    confirm = Path("Common/UI/BossRushConfirmDialog.cs").read_text(encoding="utf-8")
+    if "BossRushUIKit.ClaimModalInput(_canvas.gameObject, \"ConfirmDialog\")" not in confirm:
+        return fail("共享确认弹窗必须直接占用共享模态租约")
 
     # 5) 新增 .cs 必须进编译清单（AGENTS 4.1）
     if "Common\\UI\\BossRushUI.cs" not in COMPILE_LIST.read_text(encoding="utf-8", errors="ignore"):
@@ -120,7 +131,7 @@ def main():
         if 'GetBuiltinResource<Font>("Arial.ttf")' in path.read_text(encoding="utf-8", errors="ignore"):
             return fail(path.as_posix() + " 仍在用内置 Arial，中文会显示为方块")
 
-    # 8) CanvasScaler 不得再手写参数，必须走 ZombieModeUIHelper.ConfigureCanvasScaler
+    # 8) CanvasScaler 不得再手写参数，统一走 BossRushUIKit 的共享实现。
     offenders = []
     for path in sorted(Path(".").rglob("*.cs")):
         if any(part in SCAN_EXCLUDE_DIRS for part in path.parts):
@@ -136,7 +147,7 @@ def main():
 
     if offenders:
         return fail(
-            "CanvasScaler 必须调 ZombieModeUIHelper.ConfigureCanvasScaler，"
+            "CanvasScaler 必须调用 BossRushUIKit.ConfigureCanvasScaler 或兼容转发，"
             "不要各写各的参数 -> " + ", ".join(offenders))
 
     print("BossRushUISharedLibraryGuard: PASS")

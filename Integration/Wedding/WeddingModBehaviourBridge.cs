@@ -6,10 +6,10 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>
-    /// Wedding runtime bridge helpers for ModBehaviour.
+    /// Wedding runtime bridge helpers.
     /// Uses cached building state and marker-based NPC checks to avoid per-frame reflection/scans.
     /// </summary>
-    public partial class ModBehaviour
+    internal sealed partial class WeddingRuntimeModule
     {
         private const float SpouseFollowRestorePollInterval = 0.25f;
         private const float SpouseFollowRestoreSettleDelay = 0.75f;
@@ -57,7 +57,7 @@ namespace BossRush
                 string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
                 if (string.IsNullOrEmpty(spouseNpcId)
                     || AffinityManager.IsSpouseFollowingPlayer(spouseNpcId)
-                    || !IsBaseHubSceneName(currentSceneName)
+                    || !ModBehaviour.IsBaseHubSceneName(currentSceneName)
                     || !HasWeddingBuildingPlaced())
                 {
                     return null;
@@ -74,11 +74,11 @@ namespace BossRush
                 {
                     if (spouseNpcId == GoblinAffinityConfig.NPC_ID)
                     {
-                        SpawnGoblinNPC(weddingPosition, true, true);
+                        _owner.SpawnWeddingGoblinNpc(weddingPosition, true, true);
                     }
                     else if (spouseNpcId == NurseAffinityConfig.NPC_ID)
                     {
-                        SpawnNurseNPC(weddingPosition, true, true);
+                        _owner.SpawnWeddingNurseNpc(weddingPosition, true, true);
                     }
                     else if (PermanentDuckNpcRegistry.IsPermanentDuckNpc(spouseNpcId))
                     {
@@ -107,7 +107,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBridge] 生成已婚NPC失败: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBridge] 生成已婚NPC失败: " + e.Message);
                 return null;
             }
         }
@@ -221,12 +221,12 @@ namespace BossRush
 
                 InvalidatePermanentSpouseRestore();
                 PrepareSpouseInstanceForFollow(spouseInstance, npcId);
-                ShowMessage(L10n.T("配偶开始跟随你了。", "Your spouse is now following you."));
+                _owner.ShowMessage(L10n.T("配偶开始跟随你了。", "Your spouse is now following you."));
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBridge] 启动配偶跟随失败: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBridge] 启动配偶跟随失败: " + e.Message);
                 return false;
             }
         }
@@ -268,7 +268,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBridge] 处理配偶跟随请求失败: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBridge] 处理配偶跟随请求失败: " + e.Message);
                 return false;
             }
         }
@@ -305,11 +305,11 @@ namespace BossRush
                 {
                     if (npcId == GoblinAffinityConfig.NPC_ID)
                     {
-                        DestroyGoblinNPC();
+                        _owner.DestroyWeddingGoblinNpc();
                     }
                     else if (npcId == NurseAffinityConfig.NPC_ID)
                     {
-                        DestroyNurseNPC();
+                        _owner.DestroyWeddingNurseNpc();
                     }
                     else if (PermanentDuckNpcRegistry.IsPermanentDuckNpc(npcId))
                     {
@@ -320,14 +320,14 @@ namespace BossRush
 
                 if (showMessage)
                 {
-                    ShowMessage(L10n.T("配偶已经回家了。", "Your spouse has gone home."));
+                    _owner.ShowMessage(L10n.T("配偶已经回家了。", "Your spouse has gone home."));
                 }
 
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBridge] 配偶回家失败: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBridge] 配偶回家失败: " + e.Message);
                 return false;
             }
         }
@@ -345,13 +345,13 @@ namespace BossRush
 
                 SendSpouseHome(npcId, false);
                 ShowSpouseFollowAffinityLossBubble();
-                ShowMessage(L10n.T(
+                _owner.ShowMessage(L10n.T(
                     "配偶的好感度低于10级，已经先回家了。",
                     "Your spouse's Affinity fell below Lv.10, so they went home."));
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBridge] 处理配偶好感不足回家失败: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBridge] 处理配偶好感不足回家失败: " + e.Message);
             }
         }
 
@@ -378,7 +378,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBridge] 显示配偶回家提示气泡失败: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBridge] 显示配偶回家提示气泡失败: " + e.Message);
             }
         }
 
@@ -424,7 +424,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBridge] 判断婚礼NPC失败: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBridge] 判断婚礼NPC失败: " + e.Message);
                 return false;
             }
         }
@@ -438,19 +438,19 @@ namespace BossRush
 
                 if (npcId == GoblinAffinityConfig.NPC_ID)
                 {
-                    DestroyGoblinNPC();
-                    SpawnGoblinNPC(null, false, false);
+                    _owner.DestroyWeddingGoblinNpc();
+                    _owner.SpawnWeddingGoblinNpc(null, false, false);
                 }
                 else if (npcId == NurseAffinityConfig.NPC_ID)
                 {
-                    DestroyNurseNPC();
-                    SpawnNurseNPC(null, false, false);
+                    _owner.DestroyWeddingNurseNpc();
+                    _owner.SpawnWeddingNurseNpc(null, false, false);
                 }
                 else PermanentDuckNpcModule.ReleaseDivorcedNpc(npcId);
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBridge] 处理离婚NPC复位失败: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBridge] 处理离婚NPC复位失败: " + e.Message);
             }
         }
 
@@ -554,11 +554,11 @@ namespace BossRush
 
                     if (spouseNpcId == GoblinAffinityConfig.NPC_ID)
                     {
-                        SpawnGoblinNPC(restorePosition, false, true);
+                        _owner.SpawnWeddingGoblinNpc(restorePosition, false, true);
                     }
                     else if (spouseNpcId == NurseAffinityConfig.NPC_ID)
                     {
-                        SpawnNurseNPC(restorePosition, false, true);
+                        _owner.SpawnWeddingNurseNpc(restorePosition, false, true);
                     }
                     else if (PermanentDuckNpcRegistry.IsPermanentDuckNpc(spouseNpcId))
                     {
@@ -585,11 +585,11 @@ namespace BossRush
                 }
 
                 PrepareSpouseInstanceForFollow(spouseInstance, spouseNpcId);
-                DevLog("[WeddingBridge] 已恢复配偶跟随: " + spouseNpcId + ", context=" + context);
+                ModBehaviour.DevLog("[WeddingBridge] 已恢复配偶跟随: " + spouseNpcId + ", context=" + context);
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBridge] 恢复配偶跟随失败: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBridge] 恢复配偶跟随失败: " + e.Message);
             }
         }
 
@@ -622,7 +622,7 @@ namespace BossRush
 
         private bool IsPermanentSpouseRestoreCurrent(PermanentSpouseRestoreRequest request)
         {
-            if (this == null || Instance != this || request != permanentSpouseRestoreRequest
+            if (_owner == null || ModBehaviour.Instance != _owner || request != permanentSpouseRestoreRequest
                 || request.Generation != permanentSpouseRestoreGeneration
                 || request.SceneHandle != UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle
                 || !string.Equals(AffinityManager.GetCurrentSpouseNpcId(), request.NpcId, StringComparison.Ordinal)
@@ -637,7 +637,7 @@ namespace BossRush
                 return CanCurrentSpouseFollowPlayer(request.NpcId) && CharacterMainControl.Main != null;
             }
 
-            return IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name)
+            return ModBehaviour.IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name)
                 && HasWeddingBuildingPlaced() && FindWeddingBuildingNPCPosition() != Vector3.zero;
         }
 
@@ -673,7 +673,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBridge] 永久配偶恢复失败: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBridge] 永久配偶恢复失败: " + e.Message);
             }
             finally
             {
@@ -688,12 +688,12 @@ namespace BossRush
         {
             if (spouseNpcId == GoblinAffinityConfig.NPC_ID)
             {
-                return goblinNPCInstance;
+                return _owner.GetWeddingGoblinNpcInstance();
             }
 
             if (spouseNpcId == NurseAffinityConfig.NPC_ID)
             {
-                return nurseNPCInstance;
+                return _owner.GetWeddingNurseNpcInstance();
             }
 
             CharacterMainControl duckNpc = PermanentDuckNpcRegistry.GetInstance(spouseNpcId);
@@ -978,7 +978,7 @@ namespace BossRush
                 return true;
             }
 
-            return IsBaseHubSceneName(expectedSceneName) && IsBaseHubSceneName(actualSceneName);
+            return ModBehaviour.IsBaseHubSceneName(expectedSceneName) && ModBehaviour.IsBaseHubSceneName(actualSceneName);
         }
 
         private void RefreshSpouseInteractionOptions(GameObject spouseInstance)

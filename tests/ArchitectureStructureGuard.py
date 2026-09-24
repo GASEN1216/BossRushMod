@@ -23,6 +23,7 @@ COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.c
 EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
 INTEGRATION_RUNTIME_HOOKS = Path("Integration/IntegrationRuntimeHooks.cs")
 AFFINITY_RUNTIME_HOOKS = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
+AFFINITY_RUNTIME_HOST_BRIDGE = Path("Integration/Affinity/AffinityRuntimeModuleHostBridge.cs")
 AUDI0_RUNTIME_HOOKS = Path("Audio/BossRushAudioHooks.cs")
 LOOT_RUNTIME_HOOKS = Path("LootAndRewards/LootAndRewardsRuntimeHooks.cs")
 GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
@@ -68,6 +69,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Integration/EquipmentRuntimeHooks.cs",
     "Integration/IntegrationRuntimeHooks.cs",
     "Integration/Affinity/AffinityRuntimeHooks.cs",
+    "Integration/Affinity/AffinityRuntimeModuleHostBridge.cs",
     "Audio/BossRushAudioHooks.cs",
     "LootAndRewards/LootAndRewardsRuntimeHooks.cs",
     "Utilities/GameplayRuntimeHooks.cs",
@@ -170,8 +172,12 @@ def main() -> int:
         "ModeERuntimeModule",
         "ModeFRuntimeModule",
         "ZombieModeRuntimeModule",
+        "AffinityRuntimeModule",
     ]:
-        if "runtimeModuleHost.Register(new " + module_name + "());" not in registration_text:
+        registration_token = "runtimeModuleHost.Register(new " + module_name + "());"
+        if module_name == "AffinityRuntimeModule":
+            registration_token = "affinityRuntime = new AffinityRuntimeModule();"
+        if registration_token not in registration_text:
             return fail("ArchitectureStructureGuard: runtime module registration missing " + module_name)
 
     mode_d_runtime_module = MODED_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
@@ -195,11 +201,11 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing TickAlwaysOnRuntime wrapper")
     for required in [
         "UpdateMessage();",
-        "AffinityManager.UpdateDeferredSave();",
+        "TickAffinityRuntimeFromHost();",
     ]:
         if required not in always_on_tick_body:
             return fail("ArchitectureStructureGuard: TickAlwaysOnRuntime missing token: " + required)
-    if always_on_tick_body.find("UpdateMessage();") > always_on_tick_body.find("AffinityManager.UpdateDeferredSave();"):
+    if always_on_tick_body.find("UpdateMessage();") > always_on_tick_body.find("TickAffinityRuntimeFromHost();"):
         return fail("ArchitectureStructureGuard: TickAlwaysOnRuntime must preserve message update before deferred save")
 
     always_on_init_body = extract_method_body(always_on_hooks, "internal void InitializeAlwaysOnRuntime()")
@@ -276,22 +282,18 @@ def main() -> int:
     if not always_on_scene_unload_body:
         return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing OnSceneUnloadAlwaysOnRuntime wrapper")
     for required in [
-        "AffinityUIManager.OnSceneUnload();",
-        "AffinityManager.OnSceneUnload();",
+        "OnSceneUnloadAffinityRuntimeFromHost();",
     ]:
         if required not in always_on_scene_unload_body:
             return fail("ArchitectureStructureGuard: OnSceneUnloadAlwaysOnRuntime missing token: " + required)
-    if always_on_scene_unload_body.find("AffinityUIManager.OnSceneUnload();") > always_on_scene_unload_body.find("AffinityManager.OnSceneUnload();"):
-        return fail("ArchitectureStructureGuard: OnSceneUnloadAlwaysOnRuntime must preserve UI unload before affinity unload")
+    if "AffinityUIManager.OnSceneUnload();" in always_on_scene_unload_body or "AffinityManager.OnSceneUnload();" in always_on_scene_unload_body:
+        return fail("ArchitectureStructureGuard: OnSceneUnloadAlwaysOnRuntime must forward affinity unload to its owner")
 
     always_on_destroy_body = extract_method_body(always_on_hooks, "internal void CleanupAlwaysOnRuntimeOnDestroy()")
     if not always_on_destroy_body:
         return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing CleanupAlwaysOnRuntimeOnDestroy wrapper")
     for required in [
-        "AffinityManager.OnAffinityChanged -= OnAffinityChanged;",
-        "AffinityManager.OnLevelUp -= OnAffinityLevelUp;",
-        "AffinityManager.Shutdown();",
-        "AffinityUIManager.Cleanup();",
+        "CleanupAffinityRuntimeFromHost();",
         "EntityModelFactory.ResetStaticCaches();",
         'DevLog("[BossRush] [WARNING] EntityModelFactory 卸载异常: " + e.Message);',
         # 关键失败日志与补丁自检的去重状态必须随 OnDestroy 一起重置，
@@ -301,7 +303,7 @@ def main() -> int:
     ]:
         if required not in always_on_destroy_body:
             return fail("ArchitectureStructureGuard: CleanupAlwaysOnRuntimeOnDestroy missing token: " + required)
-    if always_on_destroy_body.find("AffinityUIManager.Cleanup();") > always_on_destroy_body.find("EntityModelFactory.ResetStaticCaches();"):
+    if always_on_destroy_body.find("CleanupAffinityRuntimeFromHost();") > always_on_destroy_body.find("EntityModelFactory.ResetStaticCaches();"):
         return fail("ArchitectureStructureGuard: CleanupAlwaysOnRuntimeOnDestroy must preserve affinity cleanup before entity model shutdown")
 
     if "TryFixStuckWaveIfNoModeDEnemyAlive();" in update_body:
@@ -1120,29 +1122,19 @@ def main() -> int:
             if required not in body:
                 return fail("ArchitectureStructureGuard: IntegrationRuntimeHooks wrapper missing token: " + required)
 
-    affinity_runtime_hooks = AFFINITY_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
-    for signature, required_tokens in {
-        "private void InitializeAffinitySystem()": [
-            "AffinityManager.Initialize();",
-            "NPCModuleRegistry.RegisterAffinityConfigs();",
-            "AffinityManager.OnAffinityChanged += OnAffinityChanged;",
-            "AffinityManager.OnLevelUp += OnAffinityLevelUp;",
-        ],
-        "private void OnAffinityChanged(string npcId, int oldPoints, int newPoints)": [
-            "AffinityUIManager.ShowAffinityChange(npcId, delta);",
-            "HandleSpouseFollowAffinityLoss(npcId);",
-            "RefreshSpouseInteractionOptionsForNpc(npcId);",
-        ],
-        "private void OnAffinityLevelUp(string npcId, int newLevel)": [
-            "AffinityUIManager.ShowLevelUpNotification(npcId, newLevel);",
-        ],
-    }.items():
-        body = extract_method_body(affinity_runtime_hooks, signature)
-        if not body:
-            return fail("ArchitectureStructureGuard: AffinityRuntimeHooks missing method: " + signature)
-        for required in required_tokens:
-            if required not in body:
-                return fail("ArchitectureStructureGuard: AffinityRuntimeHooks method missing token: " + required)
+    affinity_runtime_bridge = AFFINITY_RUNTIME_HOST_BRIDGE.read_text(encoding="utf-8", errors="ignore")
+    if "private void InitializeAffinitySystem()" not in affinity_runtime_bridge:
+        return fail("ArchitectureStructureGuard: Affinity host bridge must preserve InitializeAffinitySystem signature")
+    if "affinityRuntime.InitializeAffinitySystem();" not in extract_method_body(affinity_runtime_bridge, "private void InitializeAffinitySystem()"):
+        return fail("ArchitectureStructureGuard: InitializeAffinitySystem must forward to AffinityRuntimeModule")
+    for signature, target in [
+        ("internal void TickAffinityRuntimeFromHost()", "affinityRuntime.TickAffinityRuntime();"),
+        ("internal void OnSceneUnloadAffinityRuntimeFromHost()", "affinityRuntime.OnAffinitySceneUnload();"),
+        ("internal void CleanupAffinityRuntimeFromHost()", "affinityRuntime.Cleanup();"),
+    ]:
+        body = extract_method_body(affinity_runtime_bridge, signature)
+        if not body or target not in body:
+            return fail("ArchitectureStructureGuard: Affinity host lifecycle bridge missing forward: " + signature)
     for forbidden in [
         "private void InitializeAffinitySystem()",
         "private void OnAffinityChanged(string npcId, int oldPoints, int newPoints)",

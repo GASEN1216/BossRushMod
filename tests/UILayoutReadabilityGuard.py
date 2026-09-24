@@ -9,7 +9,7 @@ import re
 
 ROOT = Path(__file__).resolve().parent.parent
 PATHS = [
-    "Common/UI/BossRushUI.cs", "ZombieMode/ZombieModeUIHelper.cs",
+    "Common/UI/BossRushUI.cs", "Common/UI/BossRushUIFoundation.cs", "ZombieMode/ZombieModeUIHelper.cs",
     "PetNest/PetNestUI.cs", "PetNest/PetNestUILayout.cs", "ModeH/ModeHUI.cs", "ModeH/ModeHUIPages.cs",
     "Integration/UI/ImageViewerUI.cs", "Achievement/SteamAchievementPopup.cs",
     "Achievement/AchievementView.cs", "Integration/Codex/CodexView.cs",
@@ -184,8 +184,10 @@ def check(sources):
 
 
     helper = sources["ZombieMode/ZombieModeUIHelper.cs"]
+    foundation = sources["Common/UI/BossRushUIFoundation.cs"]
     lib = sources["Common/UI/BossRushUI.cs"]
-    require("scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;" in helper,
+    require("BossRushUIKit.ConfigureCanvasScaler(scaler);" in helper
+            and "scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;" in foundation,
             "参考画布必须在两轴都容纳布局")
     require("graphic.color = Color.white;" in helper, "绝对按钮配色前必须清除 Graphic 重复乘色")
     require("label.rectTransform.anchorMax = Vector2.one;" in helper, "按钮文字必须随点击区拉伸")

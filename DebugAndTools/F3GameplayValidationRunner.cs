@@ -136,20 +136,6 @@ namespace BossRush
                 f3GameplayValidationStatusText.text = F3GameplayValidationRunner.GetStatusText();
         }
 
-        internal bool ValidationHasActiveMode(out string reason)
-        {
-            reason = null;
-            if (IsActive) { reason = "BossRush"; return true; }
-            if (modeDActive) { reason = "ModeD"; return true; }
-            if (modeEActive) { reason = "ModeE"; return true; }
-            if (modeFActive) { reason = "ModeF"; return true; }
-            if (modeGActive || ModeGRuntimeGates.IsModeGEntryBlocked) { reason = "ModeG"; return true; }
-            if (IsZombieModeActive || IsZombieModeStartupInProgress()) { reason = "Zombie"; return true; }
-            if (ModeHRuntime != null && ModeHRuntime.HasActiveRun) { reason = "ModeH"; return true; }
-            if (campaignFinalBossActive) { reason = "CampaignFinal"; return true; }
-            return false;
-        }
-
         internal void ValidationSafeCleanup()
         {
             if (F3GameplayValidationRunner.HasChangedSessionSlot) return;

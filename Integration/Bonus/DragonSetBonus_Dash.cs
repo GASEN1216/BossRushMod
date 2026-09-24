@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal partial class SetBonusRuntimeModule
     {
         #region 龙影冲刺
 
@@ -60,13 +60,13 @@ namespace BossRush
         /// <summary>
         /// 龙影冲刺 Update 检测（在主 Update 中调用）
         /// </summary>
-        private void UpdateDragonDash()
+        internal void UpdateDragonDash()
         {
             // 龙套装或龙王套装激活时都检测冲刺
             if (!dragonSetActive) return;
 
             // 检查配置是否启用冲刺（龙套装需要配置，龙王套装始终启用）
-            if (!dragonKingSetActive && (config == null || !config.enableDragonDash)) return;
+            if (!dragonKingSetActive && !_owner.IsDragonDashEnabledForRuntime) return;
 
             // 冷却中不检测（但龙王套装连续冲刺窗口期内可以触发）
             // 龙王套装使用独立的冷却时间
@@ -255,13 +255,13 @@ namespace BossRush
             {
                 DevLog("[DragonKingSet] 龙王冲刺触发！方向: " + dashDirection);
                 lastDashTime = Time.time;
-                StartCoroutine(DragonKingDashCoroutine(main, dashDirection, DRAGON_KING_DASH_DISTANCE_FIRST, true));
+                StartSetBonusCoroutine(DragonKingDashCoroutine(main, dashDirection, DRAGON_KING_DASH_DISTANCE_FIRST, true));
             }
             else
             {
                 DevLog("[DragonSet] 龙影冲刺触发！方向: " + dashDirection);
                 lastDashTime = Time.time;
-                StartCoroutine(DragonDashCoroutine(main, dashDirection));
+                StartSetBonusCoroutine(DragonDashCoroutine(main, dashDirection));
             }
         }
 
@@ -279,7 +279,7 @@ namespace BossRush
 
             DevLog("[DragonKingSet] 龙王连续冲刺触发！方向: " + dashDirection);
             lastDashTime = Time.time;
-            StartCoroutine(DragonKingDashCoroutine(main, dashDirection, DRAGON_KING_DASH_DISTANCE_SECOND, false));
+            StartSetBonusCoroutine(DragonKingDashCoroutine(main, dashDirection, DRAGON_KING_DASH_DISTANCE_SECOND, false));
         }
 
         /// <summary>
@@ -361,7 +361,7 @@ namespace BossRush
             isDragonDashing = false;
 
             // 延迟清理残影
-            StartCoroutine(ClearAfterimagesDelayed(0.5f));
+            StartSetBonusCoroutine(ClearAfterimagesDelayed(0.5f));
         }
 
         /// <summary>
@@ -393,7 +393,7 @@ namespace BossRush
             float nextLavaTime = 0f;
 
             // 播放冲刺音效
-            PlaySoundEffect(DragonKingConfig.Sound_DashBurst);
+            _owner.PlaySoundEffect(DragonKingConfig.Sound_DashBurst);
 
             // 使用原版的 SetForceMoveVelocity 方式移动，让物理系统处理碰撞
             while (elapsed < DRAGON_KING_DASH_DURATION)
@@ -441,7 +441,7 @@ namespace BossRush
             }
 
             // 延迟清理残影
-            StartCoroutine(ClearAfterimagesDelayed(0.5f));
+            StartSetBonusCoroutine(ClearAfterimagesDelayed(0.5f));
         }
 
         /// <summary>

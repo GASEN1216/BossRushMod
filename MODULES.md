@@ -33,23 +33,23 @@
 | `integration-core` | 物品、装备工厂与集成生命周期 | `Integration/BossRushIntegration.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `npcs` | NPC 与建筑内容 | `Integration/NPCs/Common/CommonNpcRuntimeHooks.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `items` | 物品内容注册 | `Integration/Items/AwenDepositTokenConfig.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
-| `affinity` | 好感与商店 | `Integration/Affinity/AffinityConfig.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `affinity` | 好感与商店 | `Integration/Affinity/AffinityRuntimeHooks.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `daily-report` | 日报、悬赏与报箱 | `Integration/DailyReport/DailyReportRuntimeModule.cs` | `AGENTS.md`、`Integration/AGENTS.md`、`Common/UI/AGENTS.md` |
 | `back-mountain` | 竞技场后山 | `Integration/BackMountain/BackMountainRuntimeModule.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
-| `wish-fountain` | 星愿许愿台 | `Integration/WishFountain/WishFountainService.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `wish-fountain` | 星愿许愿台 | `Integration/WishFountain/WishFountainRuntimeModule.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `codex` | 鸭皇图鉴 | `Integration/Codex/CodexRuntimeModule.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `reforge` | 重铸 | `Integration/Reforge/ColdQuenchFluidConfig.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `affix-forge` | 词缀锻造 | `Integration/AffixForge/AffixBuffFactory.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
-| `dragon-king` | 龙王 Boss 与武器 | `Integration/DragonKing/DragonKingAbilityController.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
-| `dragon-descendant` | 龙裔 Boss | `Integration/DragonDescendant/DragonBreathBuffHandler.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
-| `phantom-witch` | 幽灵女巫 Boss | `Integration/PhantomWitch/PhantomWitchAbilityController.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `dragon-king` | 龙王 Boss 与武器 | `Integration/DragonKing/DragonKingBoss.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `dragon-descendant` | 龙裔 Boss | `Integration/DragonDescendant/DragonDescendantBoss.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `phantom-witch` | 幽灵女巫 Boss | `Integration/PhantomWitch/PhantomWitchBoss.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `new-weapons` | 新武器 | `Integration/NewWeapons/Common/NewWeaponBootstrap.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `set-bonus` | 套装效果 | `Integration/Bonus/DragonSetBonus.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
-| `frostmourne` | 霜之哀伤 | `Integration/Frostmourne/FrostmourneAbilityManager.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
-| `flight-totem` | 飞行图腾 | `Integration/FlightTotem/CA_Flight.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
-| `death-wraith` | 死亡亡魂 | `Integration/DeathWraith/DeathWraithCombatLoadout.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
-| `reverse-scale` | 逆鳞 | `Integration/ReverseScale/ReverseScaleAbilityManager.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
-| `wedding` | 婚姻 | `Integration/Wedding/NPCMarriageSystem.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `frostmourne` | 霜之哀伤 | `Integration/Frostmourne/FrostmourneBootstrap.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `flight-totem` | 飞行图腾 | `Integration/FlightTotem/FlightTotemBootstrap.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `death-wraith` | 死亡亡魂 | `Integration/DeathWraith/DeathWraithSystem.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `reverse-scale` | 逆鳞 | `Integration/ReverseScale/ReverseScaleBootstrap.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `wedding` | 婚姻 | `Integration/Wedding/WeddingRuntimeModule.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `sky-items` | 天空岛物品 | `Integration/SkyIsland/SkyIslandBossGearConfig.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `mutators` | 变异词条 | `Integration/Mutators/MutatorDefinitions.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 <!-- END GENERATED MODULES -->

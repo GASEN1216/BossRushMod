@@ -39,7 +39,7 @@ if __name__ == '__main__':
         guard = body.find('IsDead')
         if guard < 0:
             raise SystemExit('missing lethal IsDead guard: ' + str(path))
-        first_effect = min((p for token in ('StartCoroutine', 'SetHealth', 'currentCharges++', 'TryApplyFrostFreeze')
+        first_effect = min((p for token in ('StartCoroutine', 'StartSetBonusCoroutine', 'SetHealth', 'currentCharges++', 'TryApplyFrostFreeze')
                              for p in [body.find(token)] if p >= 0), default=len(body))
         if guard > first_effect:
             raise SystemExit('lethal guard occurs after effect: ' + str(path))
@@ -57,7 +57,7 @@ if __name__ == '__main__':
         methods.append(member(source, f'private void On{name}SetAnyDead('))
     visuals = (ROOT / 'Integration/Bonus/SetBonusVisuals.cs').read_text(encoding='utf-8-sig')
     methods.append(member(visuals, 'private void BumpSetBonusGeneration('))
-    generated = 'using System; using System.Collections; using UnityEngine;\nnamespace BossRush { public partial class ModBehaviour {\n' + '\n'.join(methods) + '\n}}'
+    generated = 'using System; using System.Collections; using UnityEngine;\nnamespace BossRush { internal partial class SetBonusRuntimeModule {\n' + '\n'.join(methods) + '\n}}'
     (OUT / 'DeathHandlers.cs').write_text(generated, encoding='utf-8')
     weapon_methods = []
     for name, fields in (

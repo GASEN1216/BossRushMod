@@ -37,10 +37,14 @@ if __name__ == "__main__":
             ("Integration/DragonKing/DragonKingAbilityController_AttackFlow.cs", "private void OnBossHurt("),
             ("Integration/DragonKing/DragonKingAbilityController_AttackFlow.cs", "private void CheckChildProtection()"),
         ],
-        "internal partial class ModBehaviour": [
+        "internal sealed partial class WeddingRuntimeModule": [
             ("Integration/Wedding/WeddingBuildingInjector.cs", "public void InitWeddingBuilding()"),
-            ("Integration/Wedding/WeddingBuildingInjector.cs", "private void TryInitializeWeddingBuildingEarly()"),
+            ("Integration/Wedding/WeddingBuildingInjector.cs", "internal void TryInitializeWeddingBuildingEarly()"),
             ("Integration/Wedding/WeddingBuildingInjector.cs", "private bool RefreshWeddingBuildingPresence()"),
+        ],
+        "internal partial class ModBehaviour": [
+            ("Integration/Wedding/WeddingHostCompatibilityBridge.cs", "public void InitWeddingBuilding()"),
+            ("Integration/Wedding/WeddingHostCompatibilityBridge.cs", "internal void TryInitializeWeddingBuildingEarly()"),
         ],
     }
     parts = ["using System; using System.Collections; using System.Collections.Generic; using System.Reflection; using UnityEngine; namespace BossRush {"]

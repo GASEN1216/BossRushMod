@@ -29,7 +29,11 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
-        private static UnityEngine.GameObject starwishModelPrefab = new UnityEngine.GameObject();
+        internal WishFountainRuntimeModule wishFountainRuntime = new WishFountainRuntimeModule();
+    }
+    internal sealed class WishFountainRuntimeModule
+    {
+        internal UnityEngine.GameObject ModelPrefab = new UnityEngine.GameObject();
     }
     class BuilderSpy
     {
@@ -136,7 +140,10 @@ class Program
         Check(Spy<DailyReportMailboxBuilder>(owner).Calls.Count == 5, "cleanup does not replace module state during same host lifetime");
         var other = new ModBehaviour(); other.InitDailyReportMailbox();
         Check(!ReferenceEquals(Spy<DailyReportMailboxBuilder>(owner), Spy<DailyReportMailboxBuilder>(other)), "new host owns an independent building module");
-        Check(ReferenceEquals(owner.StarwishBuildingModelPrefab, other.StarwishBuildingModelPrefab), "borrowed model remains the existing shared resource without another loader");
+        Check(ReferenceEquals(owner.StarwishBuildingModelPrefab, owner.wishFountainRuntime.ModelPrefab)
+            && ReferenceEquals(other.StarwishBuildingModelPrefab, other.wishFountainRuntime.ModelPrefab)
+            && !ReferenceEquals(owner.StarwishBuildingModelPrefab, other.StarwishBuildingModelPrefab),
+            "mailbox borrows its creating host's WishFountain module resource without a second loader");
         var cleanupOnly = new ModBehaviour();
         cleanupOnly.CleanupDailyReportMailbox(); cleanupOnly.CleanupCampaignBoardBuilding(); cleanupOnly.CleanupBackMountainShowcase(); cleanupOnly.CleanupPetNestBuilding();
         Check(Spy<DailyReportMailboxBuilder>(cleanupOnly).Calls[0] == "cleanup"
