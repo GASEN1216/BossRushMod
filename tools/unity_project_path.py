@@ -46,6 +46,7 @@ def describe_missing():
 #: Unity Editor 可执行文件的候选位置。版本必须与工程 ProjectVersion.txt 一致，
 #: 换版本会触发整工程重新导入，而且 Hub 会弹版本升级确认。
 EDITOR_CANDIDATES = (
+    os.path.join("D:", os.sep, "sofrware", "unity_editor", "2022.3.62f3", "Editor", "Unity.exe"),
     os.path.join("E:", os.sep, "Unity", "2022.3.62f3", "Editor", "Unity.exe"),
     os.path.join("C:", os.sep, "Program Files", "Unity", "Hub", "Editor",
                  "2022.3.62f3", "Editor", "Unity.exe"),

@@ -98,6 +98,32 @@ def check_scrollable_body(dashboard):
     assert "fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;" in create
 
 
+def check_bounty_and_close(ui, dashboard):
+    """人工复核：悬赏全文直接显示；ESC 由官方 View 关闭，淡出曲线是插值进度。"""
+    income = method(dashboard, "private void BuildIncomeCard(")
+    assert re.search(r'headlineText\s*=\s*CreateIconText\("Tip",\s*DailyReportLayoutTable.Get\("incomeTip"\),'
+                     # 字号走正文常量（A-16 字号只留三档常量，见 check_ui_consensus）；这里守的是「换行、不滚动」
+                     r'\s*0f,\s*1f,\s*BodyFontSize,\s*PaperInk,\s*"tip",\s*true,\s*false\);', income), \
+        "今日悬赏必须启用换行并关闭卡片内滚动"
+    icon = method(dashboard, "private TextMeshProUGUI CreateIconText(")
+    assert "TextAlignmentOptions.Left, color, wrap, scrollBody);" in icon, "滚动选项必须传入文字控件"
+    create = method(dashboard, "private TextMeshProUGUI CreateText(")
+    assert "if (wrap && scrollBody)" in create, "ScrollRect 创建必须受 scrollBody 门控"
+    assert "text.enableWordWrapping = wrap;" in create, "不滚动的悬赏仍须保留换行"
+    assert "BuildCloseButton(" not in dashboard and "closeText" not in ui, "不再占用底部空间放合上报纸按钮"
+    assert "override void OnCancel(" not in ui, "官方 View.OnCancel 随后还会 TryQuit，不得再次手动 Close"
+    configure = method(ui, "private static void ConfigureCanvasGroupFade(")
+    for curve in ("showingCurve", "hidingCurve"):
+        assert ('SetPrivateInstanceField(canvasFade, "' + curve
+                + '", AnimationCurve.EaseInOut(0f, 0f, 1f, 1f));') in configure, \
+            curve + " 必须是 0 -> 1 的插值进度，否则关闭会反向闪亮"
+    spec = json.loads((ROOT / "Assets/Data/DailyReportLayout.json").read_text(encoding="utf-8"))
+    rects = spec["rects"]
+    assert rects["incomeTip"][3] >= 116, "撤掉关闭按钮释放的高度必须用于展示悬赏全文"
+    assert rects["incomeTip"][1] + rects["incomeTip"][3] < rects["incomeNote"][1], "悬赏与战绩不得重叠"
+    assert rects["signin"][1] + rects["signin"][3] <= spec["panel"][3] - 22, "签到卡不得挤出纸面"
+
+
 def check_layout_fallback_sync():
     """版面表的硬编码兜底必须与 Assets/Data/DailyReportLayout.json 同源（2026-09-22）。
 
@@ -231,11 +257,11 @@ def main():
               for name, *values in COLOR.findall(ui + shared)}
     threshold = float(re.search(r"LightBackgroundLuminance\s*=\s*([\d.]+)f", shared)[1])
     for background in ("CellEmpty", "CellSigned", "CellToday", "CellTodayBright", "CellMilestone", "CellMilestoneDone",
-                       "PaperRaised", "ButtonIdle", "ButtonDisabled"):
+                       "ButtonIdle", "ButtonDisabled"):
         bg = colors[background]
         fg = colors["TextOnAccent" if luminance(bg) > threshold else "TextPrimary"]
         # 单元格和按钮均不透明；按钮另查共享三态的按下暗化。
-        states = (1, .8) if background in ("CellMilestone", "PaperRaised", "ButtonIdle") else (1,)
+        states = (1, .8) if background in ("CellMilestone", "ButtonIdle") else (1,)
         for scale in states:
             contrast = ratio(luminance(fg), luminance(tuple(c * scale for c in bg[:3])))
             assert contrast >= 4.5, f"{background} label contrast {contrast:.2f} < 4.5"
@@ -253,12 +279,13 @@ def main():
     assert "background.color = PaperBase;" in layout, "底图缺席必须退回纯纸色底（fail-open）"
     signin = method(dashboard, "private void BuildSignInCard(")
     for token in ("DailyReportLayoutTable.GetCell(i)", "signInButton.onClick.AddListener(OnSignInClicked)",
-                  "BuildLegend();", "BuildCloseButton();"):
+                  "BuildLegend();"):
         assert token in signin, "签到卡缺接线: " + token
     # 所有摆位必须经版面表转换，禁止直接写 anchoredPosition 常量
     assert "DailyReportLayoutTable.ToAnchored(" in dashboard
     check_single_source_chrome(dashboard)
     check_scrollable_body(dashboard)
+    check_bounty_and_close(ui, dashboard)
     check_layout_fallback_sync()
     check_ribbon_contrast(colors)
     check_runtime_icons(dashboard)
@@ -266,7 +293,7 @@ def main():
     assert "RefreshLabels();" in refresh
     labels = method(ui, "private void RefreshLabels()")
     for target in ("mastheadText", "subtitleText", "incomeTitleText", "statusTitleText",
-                   "signInTitleText", "closeText"):
+                   "signInTitleText"):
         assert f"SetText({target}, L10n.T(" in labels, target + " must refresh in both languages"
     tick = method(ui, "private void Update()")
     assert tick.index("if (!open) return;") < tick.index("DailyReportService.Data")

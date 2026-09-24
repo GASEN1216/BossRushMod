@@ -70,6 +70,8 @@ namespace UnityEngine
         public static float Distance(Vector3 a,Vector3 b) { return (float)Math.Sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)+(a.z-b.z)*(a.z-b.z)); }
     }
     public class Transform { public Vector3 position; }
+    public class GameObject { public string name = "Character"; }
+    public static class Debug { public static void Log(string s) { } public static void LogWarning(string s) { } }
     public class Coroutine { }
     public class Sprite { }
     public static class Time { public static float unscaledTime=1, unscaledDeltaTime=.5f; }
@@ -86,8 +88,74 @@ public static class SceneInfoCollection
 public enum Teams { player,scav,wolf,middle }
 public static class Team { public static bool IsEnemy(Teams a,Teams b) { return a!=b && a!=Teams.middle && b!=Teams.middle; } }
 public struct DamageInfo { public CharacterMainControl fromCharacter; public Vector3 damagePoint; }
-public class LevelManager { public static LevelManager Instance=new LevelManager(); public bool IsBaseLevel; }
-public class CharacterMainControl : UnityEngine.Object { public static CharacterMainControl Main=new CharacterMainControl(); public Transform transform=new Transform(); public Health Health=new Health(); public bool IsMainCharacter; public Teams Team; }
+public class LevelManager
+{
+    public static LevelManager Instance=new LevelManager();
+    public static bool LevelInited, AfterInit;
+    public bool IsBaseLevel;
+    private CharacterMainControl petCharacter;
+    public CharacterMainControl PetCharacter { get { return petCharacter; } }
+    public void SetOfficialPet(CharacterMainControl pet) { petCharacter=pet; }
+}
+public static class SceneLoader { public static bool IsSceneLoading; }
+public static class LevelConfig { public static bool SavePet=true; }
+public static class PetProxy { public static ItemStatsSystem.Inventory PetInventory; }
+public static class PlayerStorage
+{
+    public static List<ItemStatsSystem.Item> Rescued=new List<ItemStatsSystem.Item>();
+    public static List<ItemStatsSystem.Item> IncomingItemBuffer { get { return Rescued; } }
+    public static bool ThrowBeforeAccept, ThrowAfterAccept;
+    public static void Push(ItemStatsSystem.Item item,bool buffer)
+    {
+        if(ThrowBeforeAccept)throw new Exception("notification before accept");
+        Rescued.Add(item);
+        item.Detach();
+        if(ThrowAfterAccept)throw new Exception("notification after accept");
+        item.DestroyTree();
+    }
+}
+public class CharacterMainControl : UnityEngine.Object
+{
+    public static CharacterMainControl Main=new CharacterMainControl();
+    public Transform transform=new Transform(); public Health Health=new Health();
+    public UnityEngine.GameObject gameObject=new UnityEngine.GameObject();
+    public ItemStatsSystem.Item CharacterItem;
+    public int PetCapcity { get { return CharacterItem==null?0:Mathf.RoundToInt(CharacterItem.GetStatValue("PetCapcity".GetHashCode())); } }
+    public bool IsMainCharacter, IsCompanion; public Teams Team;
+}
+namespace HarmonyLib
+{
+    static class AccessTools { public static System.Reflection.FieldInfo Field(Type t,string name) { return t.GetField(name,System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic); } }
+}
+namespace ItemStatsSystem.Stats
+{
+    public enum ModifierType { Add }
+    public class Modifier
+    {
+        public float Value; public object Source;
+        public Modifier(ModifierType type,float value,object source) { Value=value;Source=source; }
+    }
+}
+namespace ItemStatsSystem
+{
+    public class Item : UnityEngine.Object
+    {
+        public int BaseCapacity; public bool HasCapacityStat=true;
+        public Inventory InInventory;
+        public void Detach() { if(InInventory!=null)InInventory.RemoveItem(this); }
+        public void DestroyTree() { Destroyed=true; }
+        private readonly List<Stats.Modifier> modifiers=new List<Stats.Modifier>();
+        public float GetStatValue(int key) { float value=BaseCapacity;foreach(var m in modifiers)value+=m.Value;return value; }
+        public void RemoveAllModifiersFrom(object source) { modifiers.RemoveAll(m=>m.Source==source); }
+        public bool AddModifier(string key,Stats.Modifier m) { if(!HasCapacityStat || key!="PetCapcity")return false; modifiers.Add(m);return true; }
+    }
+    public class Inventory : UnityEngine.Object
+    {
+        public int Capacity; public bool Loading; public readonly List<Item> Content=new List<Item>();
+        public void SetCapacity(int n) { Capacity=n; }
+        public void RemoveItem(Item item) { int i=Content.IndexOf(item);if(i>=0)Content[i]=null;item.InInventory=null; }
+    }
+}
 public class Health { public bool IsDead,IsMainCharacterHealth,IsCompanion; public CharacterMainControl Character; public CharacterMainControl TryGetCharacter(){return Character;} }
 public class CharacterRandomPreset { }
 
@@ -114,7 +182,7 @@ namespace BossRush
         public static string GetPetDisplayName(PetNestPetRecord p) { return p.id; }
         public static void StageCommit() { }
     }
-    static class PetNestCompanionAgent { public static bool IsCompanionHealth(Health h) { return h.IsCompanion; } }
+    static class PetNestCompanionAgent { public static bool IsCompanionHealth(Health h) { return h.IsCompanion; } public static bool IsCompanionCharacter(CharacterMainControl c) { return c.IsCompanion; } }
     class PetNestLineageInfo { public float ModelScale; public string DisplayName="lineage"; public string LineageKey="boss"; }
     static class PetNestLineageCatalog
     {
@@ -137,14 +205,6 @@ namespace BossRush
     static class PetNestTuning { public const int MaxBaseIdleCompanions=3,CompanionPetCapacityBonus=1,PetLevelsPerCapacityBonus=3; public const float BaseIdleSpawnIntervalSeconds=.1f; }
     static class PetNestModeGate { public const string ReasonQueryFailed="query"; public static bool Allowed=true; public static bool IsCompanionAllowed(ModBehaviour o,out string reason) { reason=null;return Allowed; } }
     static class PetNestLocalization { public static string DescribeFailure(string s) { return s; } }
-    static class PetNestPetProxyBridge
-    {
-        public const string PetCapacityStatKey="PetCapcity";
-        public static bool TryBorrowSeat(CharacterMainControl c,out string reason) { reason=null;return true; }
-        public static void ApplyCapacityBonus(CharacterMainControl p,int n) { }
-        public static void ReleaseSeat() { }
-        public static void RemoveCapacityBonus(CharacterMainControl p) { }
-    }
     static class PetNestDownedHandler { public static void EnsureHurtSubscribed() { } public static void ShutdownHurtSubscription() { } }
     static class PetNestProgressionService { public static void EnsureKillTrackingSubscribed() { } public static void ShutdownKillTracking() { } }
     static class PetNestCompanionHudView { public static void EnsureCreated() { } public static void Destroy() { } }

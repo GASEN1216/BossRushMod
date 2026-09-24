@@ -1,5 +1,17 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+## 2026-09-24 合并 origin/main（b2f98312 续接人工复查与鸭王杯 F3 认证收尾）（OPERATIONAL）
+
+本地 fe122a36 与远端 b2f98312 各自从 25fe502a 出发，29 个文件重叠，4 个有冲突：
+- `Integration/DailyReport/DailyReportUI_Dashboard.cs`：远端去掉关闭按钮、悬赏全文显示不滚动（`CreateIconText(..., true, false)`）；本地 A-16 把字号收成三档常量。合并取远端的布局与「换行、不滚动」，字号用 `BodyFontSize`，关闭按钮按远端删除。
+- `tests/DailyReportPresentationGuard.py`：远端 `check_bounty_and_close` 的正则钉死字面量 `20f`，与本地 `check_ui_consensus`（禁止字面量字号）互斥。按其断言本意（「今日悬赏必须启用换行并关闭卡片内滚动」）把字号参数改为 `BodyFontSize`，换行 / 不滚动照旧钉住；反向验证：把 `true, false` 改成 `true, true` 转红，按字节还原。
+- `tests/ModBehaviourInstanceClassificationGuard.py` 与分类文档：两边都给 Integration 加了宿主引用（本地百科淡出 +3、远端菜地横幅 +2），合并为 268 / 409，按实际计数核对通过。
+- `FIX_TRACKER.md`：两边的条目全部保留，本地在上。
+
+验证：全量守卫 664 PASS / 1 红；Windows 正式构建通过，`Build/BossRush.dll` 与游戏目录同为 `D8030B0C…`；执行回归 59/59 PASS（含远端新增的 `ModeHPlayerFlow`、`GardenHarvestNotice`；net10 两个照旧临时改 net8、按字节还原）。
+
+**本机仍红的一条（环境，不是代码）**：`DailyReportArtPropertyTest` 读本机正式包 `Assets/ui/production_icons` 的日报底图像素。远端改了版面表 `Assets/Data/DailyReportLayout.json` 并在它那台机器上重打了包；包是 local-only，本机这份还是 09-23 的旧包，按新版面检查就在按钮、图例、图标位上「烤色」。本地底图原图已按新版面用 `tools/gen_daily_report_ui.py` 重新生成（生成的版面表与合并结果内容一致；原图备份在本会话 scratchpad），`BOSSRUSH_GUARD_SOURCE_ONLY=1` 下源码部分通过。要转绿需在本机 Unity 作者工程重打 `production_icons`（`tools/optimize_unity_resources.py --stage IconsBuild`），或从远端那台机器拷回它的包；在那之前本机进游戏时日报底图会与新版面错位。
+
 ## 2026-09-24 第三轮：押背包物品不设限，赢了按押品的品质与价值发奖品（COMPAT / SCHEMA+）
 
 **起因**：owner：「押上的物品不要有限制，只是其品质和价钱会影响到再次给予其奖品的品质和价钱。」
@@ -122,6 +134,32 @@
 - 文档：设计与验收记录 `docs/设计文档/遗种巢UI交互重排_2026-09-24.md`；通用做法沉淀为 `docs/架构说明/UI制作共识.md`（`.gitignore` 放行），根 `AGENTS.md` §4.14 新增「交互骨架」一条指向它。
 - 其他界面对照共识的首轮审查（只审不改）：`docs/代码审查/2026-09-24-UI共识对照审查.md`，4 条已核 P1 登记为 CR-2026-09-24-001…004（同日已全部修复，见上一节「UI 共识全量修复」）。
 - 证据级别 L1 + L2；**未实机**。实机清单见 `docs/设计文档/遗种巢UI交互重排_2026-09-24.md` 第 7 节。
+
+## 2026-09-24 续接人工复查与鸭王杯 F3 认证收尾（COMPAT / SCHEMA+ / WIRE+ / OPERATIONAL）
+
+承接会话 `01a0ce08-0491-77b1-98a3-b0bbce929093`。普通新赛季、续赛及 Dev 构建均直接检查发布目录后选人；动态认证仅由 F3「玩法验收 → 鸭王杯逐项认证」显式启动，要求专用测试档且停在选人页。关闭 F3 后再释放选人页暂停；完成、失败、取消均回收诊断选手并恢复原页面，不重抽候选、不写赛季或认证缓存。复用 `ValidationCoroutineStack` 处理嵌套异常与取消，旧 owner 回调不能干扰新认证。自动验收改为普通入场和再次入场用例，同步覆盖清单。补修发布支持状态导致整备页漏掉口令说明，说明与候选列表共用兼容判据；取消认证不再误报通过。
+
+一并收齐上轮菜地横幅、遗种巢灯光与宠物容量、日报、天空岛招牌移除及鸭王杯交战/拍铃修复的代码、夹具和专题资料。菜地补丁新增的两处宿主取值按 Unity owner 归类，计数守卫与分类文档同步。
+
+验证（L1/L2）：全量守卫 663 PASS；最终补修后 167 项相关守卫 PASS。58 组隔离回归全部通过，其中 ModeHPlayerFlow 153 条、菜地横幅 76 条；新改守卫的稀疏副本反向验证转红、按字节恢复后转绿。Windows 正式版和 Dev 版编译成功，仅既有 RuntimeGate CS0649；14 个 Dev 专用标识在正式版缺席、Dev 版齐全。正式 DLL 已部署且 SHA-256 一致：`6377310021E1F3DC66D16620F5D1E1FB7B9980A94692C85436CE5F79D2B8FBAE`；72 个包部署哈希核对通过。Wiki 构建、80 项导航与 237 页链接检查通过（0 缺失、0 断锚）；额外图片总表检查发现本机已有 51 份图鉴源图尚无对应站点产物，当前页面引用检查无缺失，本轮未扩展站点图库。
+
+环境说明：使用自带 Pillow 的 bundled Python；本机仅 .NET 10，夹具以 `DOTNET_ROLL_FORWARD=Major` 运行，分配测量关闭分层编译；三组官方绑定夹具显式指定实际 Harmony 路径后通过，未放宽断言。日志及聚合结果在 `Build/thread-resume-20260924/`。无 L3、未启动游戏或读写玩家存档；复测操作与看图清单见 `docs/testing/20260924会话续接与提交记录.md`，其余六项沿用 `20260923人工复查续修记录.md`。
+
+## 2026-09-23 菜地收获完成横幅（COMPAT / WIRE+）
+
+owner 要求收获时给玩家横幅。新增 `GardenHarvestNoticePatch`，只在官方 `Crop.Harvest` 的唯一 `Cost.Return → Forget` 之间等待已有交付任务；原版与 Mod 作物均显示名称、数量，以及基地仓库/满仓马蜂自提点说明。任务失败不误报到账，换槽/换主角/切图/停用/卸载后不迟发，正常 Crop 回收不吞提示。保留原发货、清格和异常消费者，无新存档字段或每帧开销。中英 Wiki 与后山专题已同步。
+
+L1/L2：157 相关守卫、76 条隔离回归通过，6 个反向探针按字节还原；官方实际 IL 匹配确认，Windows 正式编译通过（仅既有 CS0649），Dev 标识缺席，Wiki 构建/导航 80 项通过。正式构建脚本曾被自动审批以 blocked by policy 拒绝，已用仅写工作区的编译方式产出正式 DLL `E9F22EE5…2A0D5EAF`；owner 退出游戏后已定点部署 DLL 与中英百科 3 文件，并逐一核对 SHA-256。详见 `docs/testing/20260923菜地收获横幅修复记录.md`。
+
+## 2026-09-23 人工复查六项续修（COMPAT / SCHEMA+ / OPERATIONAL）
+
+承接 `docs/testing/20260922人工实测发现的问题-复核记录.md` 的六条新复查。冰霜作者资源已改但四端仍旧包，已单独重打、回读并正式部署；遗种巢罩灯补暖光；日报去关闭按钮、悬赏全文显示、修复旧图标叠画与反向淡出曲线；删除天空岛独立招牌；Mode H 正式入口免动态认证，追加保留旧值的 ReleaseSupported，补对手目标与每场拍铃重开；宠物扩容等待官方完整就绪，按实际 Item/Inventory owner 同步与回收，切图等安全箱快照加载，官方 Push 提交后才清理实物。
+
+证据 L1/L2：663 守卫、57 组隔离回归全绿，Windows 正式编译成功（既有 RuntimeGate CS0649），14 个 Dev 专用标识缺席；72 包源/目标哈希一致且实际读包 0 错误；25 个 DLL/数据/散图/Wiki 文件核对。Wiki 构建与 80 项导航通过。Pillow 缺失与 .NET 10 分层编译分配计量的环境失败已在正确依赖、关闭分层编译后通过原断言，无放宽。最初游戏占用 DLL 部署失败，owner 回复已退出后完成部署；DLL `D052898A…69DBE8706`，frost_set `A3236664…4FA4E553`，production_icons `031EE280…6E485055`。
+
+详细原因、完整哈希、反向验证、回退资源及六条实机操作清单见 `docs/testing/20260923人工复查续修记录.md`。尚无 L3，未采样性能；宠物此前未扩容的具体实机场景待日志核对。回退用本次 `Build/manual-recheck-20260923/loose-before`、DLL before 文件和资源部署器生成的备份；灯光可撤掉 Attach 调用，Mode H 可恢复原入口分支与配套守卫。
+
+追加菜地核查（SAFE，L1）：官方收获经 Cost.Return(false,false,1,null) 直接送基地仓库，同类可静默叠加；满仓进入马蜂自提点「待取件」，腾空后点「发送至仓库」。Mod 三种作物产物与数量有效，未发现拦截官方收获链的补丁，未确认本次实际丢物。补中英百科去向说明；详细核查与复测见上述续修记录。
 
 ## 2026-09-23 玩家文案去「人机感」打磨（SAFE / COMPAT，纯文本）
 

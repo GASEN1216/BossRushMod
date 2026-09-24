@@ -1,7 +1,7 @@
 """天空岛语言刷新入口接线；文字/缓存行为由 SkyIslandInteraction 执行真实方法。
 
 这里只守不能在纯 UI 替身中执行的生命周期接线，不把结构断言当成运行时证明。
-反向验证须分别移除招牌推进、居民推进、出生后的现取姓名、稳定 key 注入。
+反向验证须分别移除居民推进、出生后的现取姓名、稳定 key 注入。
 """
 from pathlib import Path
 import re
@@ -38,12 +38,6 @@ def need(ok, message):
 runtime = read("SkyIslandRuntimeModule.cs")
 residents = read("SkyIslandResidents.cs")
 prelude = read("SkyIslandPreludeFlow.cs")
-late = body(runtime, "public override void OnLateUpdate()")
-create = body(runtime, "private void CreateSign(")
-clear = body(runtime, "private void ClearEntry()")
-need("RefreshSignText();" in late, "已有船点的 LateUpdate 必须刷新招牌语言")
-need("signText = text; RefreshSignText();" in create, "招牌创建必须绑定原 TMP 并立即取当前语言")
-need("signText = null;" in clear and "signChinese = null;" in clear, "清理必须释放招牌引用和语言缓存")
 tick = body(residents, "internal void Tick(")
 need("RefreshLocalizedNames();" in tick and tick.index("RefreshLocalizedNames();") < tick.find("bool busy"),
      "居民语言刷新必须接在 Tick 的暂停/气泡冷却门前")

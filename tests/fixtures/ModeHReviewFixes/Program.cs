@@ -106,7 +106,18 @@ internal static class Program
         typeof(ModeHCanonicalDigest).GetField("_cachedGameSignature", BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, "game");
         typeof(ModeHCanonicalDigest).GetField("_cachedModSignature", BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, "mod");
         string error;
-        Check(run.Prepare(out error), "matching build/catalog/slot/certification permits preparation: " + error);
+        run._season.productionCertificationSnapshot = null;
+        foreach (bool dev in new[] { false, true })
+        {
+            ModBehaviour.DevModeEnabled = dev;
+            int releaseCalls = ModeHProductionCertification.ReleaseCalls;
+            Check(run.Prepare(out error), "release and Dev resume use current release catalog without old diagnostic report: " + error);
+            Check(ModeHProductionCertification.ReleaseCalls == releaseCalls + 1 && ModeHProductionCertification.RestoreCalls == 0,
+                "resume never restores dynamic certification snapshot");
+        }
+        ModeHProductionCertification.RejectRelease = true;
+        Check(!run.Prepare(out error) && error == "season_resume_release_catalog_unavailable", "resume retains release eligibility gate");
+        ModeHProductionCertification.RejectRelease = false;
         run._season.modBuildSignature = "other";
         Check(!run.Prepare(out error) && error == "season_resume_signature_mismatch", "different build cannot resume or restamp");
         run._season.modBuildSignature = "mod";

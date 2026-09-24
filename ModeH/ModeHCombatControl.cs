@@ -1009,6 +1009,7 @@ namespace BossRush
                 }
 
                 float sqr = (enemyPos - originPos).sqrMagnitude;
+                WakeArenaOpponent(character, origin.mainDamageReceiver);
                 if (sqr < bestSqr)
                 {
                     bestSqr = sqr;
@@ -1024,6 +1025,28 @@ namespace BossRush
                     _fireContext.LowestHealthEnemy = receiver;
                 }
             }
+            WakeArenaOpponent(origin, _fireContext.NearestEnemy);
+        }
+
+        /// <summary>
+        /// 擂台选手已知道对手是谁。只给丢失目标者补一次官方索敌/警觉输入：
+        /// 原生出生时大家同向，又清掉了强制追踪玩家，雨夜/围挡会让双方一直等索敌。
+        /// 复用现有 0.1 秒目标扫描，不扫场景，也不覆盖拍铃选中的有效目标。
+        /// </summary>
+        private static void WakeArenaOpponent(CharacterMainControl character, DamageReceiver target)
+        {
+            if (character == null || target == null || target.health == null || target.health.IsDead
+                || character.Health == null || character.Health.IsDead
+                || !character.gameObject.activeInHierarchy || !Team.IsEnemy(character.Team, target.Team)) return;
+            if (LevelManager.Instance != null && LevelManager.Instance.ControllingCharacter == character) return;
+            AICharacterController ai = ResolveAi(character);
+            if (ai == null) return;
+            DamageReceiver current = ai.searchedEnemy;
+            if (current != null && current.health != null && !current.health.IsDead
+                && Team.IsEnemy(character.Team, current.Team)) return;
+            ai.searchedEnemy = target;
+            ai.noticed = true;
+            ai.SetNoticedToTarget(target);
         }
 
         /// <summary>

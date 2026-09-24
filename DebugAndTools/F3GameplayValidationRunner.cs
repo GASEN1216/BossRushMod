@@ -55,6 +55,10 @@ namespace BossRush
             // 演练会改这趟出击的状态（强制夜里、刷云蚋、压血量、弹对话），独立按钮、只在 Dev 构建里有；仍不写存档。
             CreateActionButton(rowSky.transform, font, L10n.T("天空岛演练（会改状态）", "Sky Islands Drill (changes state)"),
                 BossRushUIColors.Warning, StartSkyIslandDrillFromF3);
+            GameObject rowModeH = CreateF3Row(section.transform);
+            CreateActionButton(rowModeH.transform, font,
+                L10n.T("鸭王杯逐项认证（选人页）", "Duck Cup certification (fighter selection)"),
+                BossRushUIColors.SurfaceRaised, StartModeHCertificationFromF3);
 #endif
 
             GameObject row3 = CreateF3Row(section.transform);
@@ -99,6 +103,16 @@ namespace BossRush
         }
 
 #if BOSSRUSH_DEV
+        private void StartModeHCertificationFromF3()
+        {
+            string reason;
+            if (!F3GameplayValidationRunner.CanRunModeHCertification(this, out reason))
+            { SetF3DebugCheatStatus(reason, true); return; }
+            // F3 先还原它记住的选人页暂停，再由 Mode H 释放自己的暂停租约。
+            HideF3DebugCheatMenu();
+            if (!ModeHRuntime.StartCertificationFromF3(out reason)) ShowMessage(reason);
+        }
+
         private void StartSkyIslandDrillFromF3()
         {
             string reason;
@@ -392,6 +406,19 @@ namespace BossRush
         }
 
         internal static bool IsRunning { get { return _instance != null && _instance._running && !_instance.AllowsSkyIslandEntry(); } }
+
+        internal static bool CanRunModeHCertification(ModBehaviour host, out string reason)
+        {
+            reason = null;
+            if (!ModBehaviour.DevModeEnabled || host == null)
+            { reason = L10n.T("仅 Dev 构建可用", "Dev build required"); return false; }
+            if (!IsDedicatedCurrentSlot())
+            { reason = L10n.T("请先在基地将当前槽标记为专用测试档", "Mark this slot as a test save at the base first"); return false; }
+            if ((_instance != null && _instance._running) || SavesSystem.IsSaving
+                || SceneLoader.IsSceneLoading || host.ModeHRuntime == null)
+            { reason = L10n.T("当前无法开始鸭王杯认证，请稍后重试", "Duck Cup certification is unavailable right now; try again shortly"); return false; }
+            return host.ModeHRuntime.CanRunCertificationFromF3(out reason);
+        }
 
 #if BOSSRUSH_DEV
         internal static bool CanRunManualProgression(ModBehaviour host, out string reason)

@@ -49,6 +49,8 @@ namespace BossRush
         public static bool IsCommandSelectable(string key, string command) { return !string.IsNullOrEmpty(key); }
         public static ModeHCommandCompatibilityStatus GetEffectStatus(string key, string effect)
         { return effect == UnverifiedEffect ? ModeHCommandCompatibilityStatus.ReportOnly : ModeHCommandCompatibilityStatus.VerifiedBehavior; }
+        public static bool HasVerifiedBehavior(string key, string effect)
+        { return effect != UnverifiedEffect; }
     }
 
     internal sealed class ModeHResolvedKit { public ModeHKitSpec Spec; public bool Available = true; public int ResolvedQuality = 3; }

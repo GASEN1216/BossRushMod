@@ -376,8 +376,8 @@
         "ModeH"
       ],
       "automatic": [
-        "MODE_H_FIRST_CERTIFICATION",
-        "MODE_H_CACHE_HIT",
+        "MODE_H_PLAYER_ENTRY",
+        "MODE_H_PLAYER_REENTRY",
         "MODE_H_STARTER_KITS",
         "MODE_H_ERROR_SWAP",
         "MODE_H_FULL_SEASON"
@@ -388,13 +388,13 @@
       "manual": [
         {
           "id": "M_MODE_H_01",
-          "steps": "真实入口依次走「擂台准备中」加载页（首次或更新后）、选人页点一位「选他出战」、观战与拍铃、结算页点「下一场」（转会窗口点「不换人，下一场」），完成一整个赛季；名人堂点「确认」后在竞技场里找撤离点离场。",
+          "steps": "真实入口加载地图后直接到选人页，点一位「选他出战」、观战与拍铃、结算页点「下一场」（转会窗口点「不换人，下一场」），完成一整个赛季；名人堂点「确认」后在竞技场里找撤离点离场。",
           "expected": "选人后直接开打，不再经过看盘 / 整备 / 赔率页；场间只按一个键；交战时镜头跟着场上选手、结束后回到玩家；拍铃卡在左上状态卡下方、不挡快捷栏；指令产生真实行为；赛季冠军和名人堂写入，奖励只一次；赛季结束后 Mode H 原地收场、不切场景，竞技场里有走得到的撤离点，玩家不会被困住。"
         },
         {
           "id": "M_MODE_H_02",
-          "steps": "首轮认证后再开一局；在比赛失败后重试同场，再耗尽重试预算；暂停后继续。",
-          "expected": "缓存仍满足实际认证阈值；重试同场不越过锁定，预算耗尽有正确恢复入口。"
+          "steps": "完成一季后再开一局；在比赛失败后重试同场，再耗尽重试预算；暂停后继续。",
+          "expected": "正式与 Dev 普通入场均直接选人，不运行逐项认证；重试同场不越过锁定，预算耗尽有正确恢复入口。"
         },
         {
           "id": "M_MODE_H_03",
@@ -1582,7 +1582,7 @@
         "CLEANUP_AFTER_MODE_F_BOUNTY",
         "CLEANUP_AFTER_MODE_F_EXTRACTION",
         "CLEANUP_AFTER_MODE_G",
-        "CLEANUP_AFTER_MODE_H_CACHE",
+        "CLEANUP_AFTER_MODE_H_REENTRY",
         "CLEANUP_AFTER_MODE_H_FIRST",
         "CLEANUP_AFTER_STANDARD",
         "CLEANUP_AFTER_VICTORY_REWARD",

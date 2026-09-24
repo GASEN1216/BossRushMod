@@ -8,8 +8,8 @@ namespace BossRush
     ///
     /// 冻结契约：
     /// - 先加载静态候选审计（ModeHProfileRegistry + BossProfiles.json），
-    ///   随后**只**把当前 runtime 生产认证中状态为 Passed 的 stable key 物化为本次生产池；
-    /// - 未通过、未认证或签名变化的 key 一律不得进入生产池；
+    ///   随后只物化当前报告状态为 Passed 的 key（正式入口为发布契约检查，Dev 为动态认证）；
+    /// - 未通过当前目录检查或签名变化的 key 一律不得进入生产池；
     /// - 生产池随 (game, mod, content) 三签名绑定，签名变化即失效；
     /// - EnemyPresetInfo 字段有限，不能单独作为资格判断，实际 preset 由认证阶段回查。
     /// </summary>

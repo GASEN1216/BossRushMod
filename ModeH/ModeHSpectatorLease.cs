@@ -185,6 +185,12 @@ namespace BossRush
 
         #region 拍铃门控
 
+        /// <summary>本场成功进入战斗后重新开门；同一观战租约贯穿整季。</summary>
+        public void StartAcceptingBell()
+        {
+            _bellAccepting = IsActive;
+        }
+
         /// <summary>停止接收拍铃（结算、倒地、技术中止、离场前调用）。</summary>
         public void StopAcceptingBell()
         {

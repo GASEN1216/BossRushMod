@@ -115,8 +115,6 @@ PERSISTENT = (
 EXCLUDED = {
     "Integration/WishFountain/WishFountainUI.cs":
         "许愿台是玩家主动打开的界面，只借 HudOverlay 当宿主层（HOST_TOPMOST_SORTING_ORDER）",
-    "DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs":
-        "基地船点招牌：世界空间画布（WorldOverlay），挂在场景物体上，不是屏幕常驻 HUD",
     "DebugAndTools/SkyIsland/SkyIslandGates.cs":
         "桥口木牌：世界空间文字（WorldOverlay）",
     "DebugAndTools/ArenaPrototype/ArenaPrototypeControls.cs":

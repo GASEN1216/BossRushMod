@@ -4,6 +4,10 @@
 from pathlib import Path
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from cs_source_util import clean_source
+from ModeHOneClickFlowGuard import method_body, squeeze
+
 
 RUNNER = Path("DebugAndTools/F3GameplayValidationRunner.cs")
 RANDOM_EVENTS_CASE = Path("DebugAndTools/F3GameplayValidationRandomEvents.cs")
@@ -55,8 +59,8 @@ def main():
             'SetStage("1/7 基线与数据")', 'SetStage("7/7 最终清场、泄漏与回读")',
             "DATA_CAMPAIGN_JSON", "DATA_CODEX_CATALOG", "DAILY_REPORT_ROLLBACK",
             "PETNEST_REWARD_DEBT", "AFFIX_TEMP_ITEM_LIFECYCLE", "MODE_F_BLOODFIRE",
-            "MODE_H_FIRST_CERTIFICATION", "MODE_H_CACHE_HIT", "BGM_OWNER_LEASES",
-            "ModeHProductionCertification.InvalidateCache",
+            "MODE_H_PLAYER_ENTRY", "MODE_H_PLAYER_REENTRY", "BGM_OWNER_LEASES",
+            "StartModeHCertificationFromF3", "CanRunModeHCertification",
             "CAMPAIGN_FINAL_BOSS", "FINAL_CLEAN_STATE", "FINAL_SAVE_READBACK",
             "CANCELLED", "ValidationSafeCleanup", "BossRushTestReports",
             '" | " + outcome + " | "', "_baselineP95Ms * 1.75f", "_peakFrameMs",
@@ -84,6 +88,14 @@ def main():
         ):
             if token not in code:
                 errors.append("验收 runner 不变式缺失: " + token)
+
+        modeh_case = squeeze(method_body(clean_source(Path("DebugAndTools/F3GameplayValidationModes.cs").read_text(encoding="utf-8")), "private IEnumerator RunModeH(bool fullSeason)"))
+        for token in ("_host.ModeHRuntime.OnSceneLoaded(", "sawDiagnostics |= _host.ModeHRuntime.IsCertificationDiagnosticRunning;", 'drafting && !sawDiagnostics ? "PASS" : "FAIL"', "RunModeHFullSeason()"):
+            if token not in modeh_case:
+                errors.append("Mode H 自动验收必须模拟普通入场并观察无动态测试: " + token)
+        for token in ("InvalidateCache", "StartCertificationFromF3", "TryUseCachedReport"):
+            if token in modeh_case:
+                errors.append("Mode H 自动入场用例不得启动或准备逐项认证: " + token)
 
         deep = Path("DebugAndTools/F3GameplayValidationDeepFlows.cs").read_text(encoding="utf-8")
         victory = deep[deep.index("private IEnumerator RunStandardVictoryReward()"):]

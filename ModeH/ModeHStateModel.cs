@@ -19,7 +19,7 @@ namespace BossRush
         EntryIntent = 2,
         /// <summary>等待目标场景、点位与静态候选缓存</summary>
         SceneLoading = 3,
-        /// <summary>正式入口内逐 stable key 运行生产兼容性认证</summary>
+        /// <summary>入场目录检查；Dev 验收可在此相位运行逐 key 动态认证</summary>
         ProductionCertifying = 4,
         /// <summary>五席试棚展示</summary>
         Drafting = 5,
@@ -196,7 +196,10 @@ namespace BossRush
         ///   标成 VerifiedBehavior，这正是 ModeHCommandCompatibilityGuard 明令禁止的。
         ///   单列一档既让 finish 这类纯动作口令能到玩家手里，又不谎称它通过了字段验证。
         /// </summary>
-        ActionApplied = 5
+        ActionApplied = 5,
+
+        /// <summary>发布目录支持且当前官方控制点存在；不表示本局做过动态实测。</summary>
+        ReleaseSupported = 6
     }
 
     /// <summary>名人堂跨 key 幂等命令状态（§20.1）。</summary>
@@ -646,7 +649,7 @@ namespace BossRush
         public static ModeHCommandCompatibilityStatus ToCompatibilityStatus(int raw)
         {
             if (raw < (int)ModeHCommandCompatibilityStatus.VerifiedBehavior
-                || raw > (int)ModeHCommandCompatibilityStatus.PartiallyVerified)
+                || raw > (int)ModeHCommandCompatibilityStatus.ReleaseSupported)
             {
                 return ModeHCommandCompatibilityStatus.Unknown;
             }

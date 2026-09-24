@@ -125,7 +125,8 @@ def layout():
 
     # ---- 第二行：今日收益 / 今日状态
     row2_y = header[1] + header[3] + 14
-    row2_h = 404
+    # 去掉底部关闭按钮后，将 60 px 让给悬赏全文；签到卡仍留在纸面内。
+    row2_h = 464
     income = [pad, row2_y, 766, row2_h]
     status = [income[0] + income[2] + 16, row2_y, W - pad - (income[0] + income[2] + 16), row2_h]
 
@@ -137,12 +138,12 @@ def layout():
     body_y = income_pill[1] + rib_h + 16
     income_left = [income[0] + 24, body_y, 351, 136]
     income_right = [income_left[0] + income_left[2] + 16, body_y, 351, 136]
-    income_tip = [income[0] + 24, body_y + 136 + 12, income[2] - 48, 56]
+    income_tip = [income[0] + 24, body_y + 136 + 12, income[2] - 48, 116]
     income_note = [income[0] + 24, income_tip[1] + income_tip[3] + 14, income[2] - 48,
                    income[1] + income[3] - 16 - (income_tip[1] + income_tip[3] + 14)]
 
     # 今日状态：四行「徽章 + 正文」，行间一条细线（参考图是图标 + 文字直接排在卡片上）
-    row_h, row_gap = 70, 9
+    row_h, row_gap = 85, 9
     status_rows = [[status[0] + 20, body_y + i * (row_h + row_gap), status[2] - 40, row_h] for i in range(4)]
 
     # ---- 第三行：签到墙 10 × 3 + 右侧按钮块 + 底部图例

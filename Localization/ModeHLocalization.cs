@@ -60,8 +60,8 @@ namespace BossRush
             Add(map, "Page_Settlement", "结算战报", "Match Report");
             Add(map, "Page_Transfer", "转会窗口", "Transfer Window");
             Add(map, "Page_HallOfFame", "名人堂", "Hall of Fame");
-            // 生产认证对玩家就是一张加载页：说人话，不提「认证」「契约」。
-            Add(map, "Page_Diagnostics", "擂台准备中", "Getting the ring ready");
+            // 逐项认证只在 F3 开发测试入口展示。
+            Add(map, "Page_Diagnostics", "鸭王杯逐项认证", "Duck Cup Certification");
             Add(map, "Page_Recovery", "恢复", "Recovery");
 
             Add(map, "Button_Confirm", "确认", "Confirm");
@@ -76,7 +76,7 @@ namespace BossRush
                 "挑一位替你上擂台。另一位会自动当接力：先上场的倒下了，它顶上。选好马上开打，你在看台上看，关键时刻可以拍一次铃。",
                 "Pick one to fight for you. Another joins as the relay and steps in if your fighter goes down. "
                 + "The match starts right away; you watch from the stands and may ring the bell once when it counts.");
-            Add(map, "Button_CancelAndRefund", "取消并退票", "Cancel & refund ticket");
+            Add(map, "Button_CancelAndRefund", "停止测试，返回选人", "Stop Test and Return to Selection");
             Add(map, "Button_Sign", "选他出战", "Send this one in");
             Add(map, "Button_StartMatch", "开打", "Start the match");
             Add(map, "Button_CustomSetup", "自己调整再开打", "Adjust first");
@@ -702,17 +702,14 @@ namespace BossRush
 
             Add(map, "Diag_Passed", "通过", "Passed");
             Add(map, "Diag_Rejected", "拒绝", "Rejected");
-            // 加载页的进度行是模板：{0} 已热身人数，{1} 总人数。
-            Add(map, "Diag_Progress", "正在请选手上台热身（{0}/{1}）", "Warming up the fighters ({0}/{1})");
+            // F3 逐项认证进度：{0} 当前选手，{1} 总人数。
+            Add(map, "Diag_Progress", "正在测试选手（{0}/{1}）", "Testing fighters ({0}/{1})");
             Add(map, "Diag_Signatures", "构建签名", "Build Signatures");
-            // 热身结果按存档槽记，并认游戏、Mod、内容三个版本：换槽、每次游戏或 Mod 更新都会再热一次（2026-09-23 复核 V6-2）
+            // 仅 F3 显式启动；普通入场不测试，结果不写入玩家赛季或认证缓存。
             Add(map, "Diag_ReadOnlyNotice",
-                "第一次进场，或者游戏 / Mod 更新、换了存档之后，要先请每位选手上台热个身，确认他们都能正常开打。"
-                + "热身结果会记下来，同一版本、同一存档再进来就直接开始。",
-                "The first time you enter, and again after a game or mod update or on another save, each fighter does "
-                + "a quick warm-up bout to make sure they can fight. The result is remembered, so later visits on the same "
-                + "version and save start right away.");
-            Add(map, "Diag_Finishing", "马上就好", "Almost ready");
+                "F3 开发测试：逐个检查选手和口令，结果写入日志。结束或停止后回到原选人页，不改赛季和认证缓存。",
+                "F3 developer test: checks each fighter and command and logs the results. Finish or stop to return to the same selection page without changing the season or certification cache.");
+            Add(map, "Diag_Finishing", "正在整理测试结果", "Finishing test results");
         }
 
         #endregion

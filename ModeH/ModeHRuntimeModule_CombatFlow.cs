@@ -365,6 +365,7 @@ namespace BossRush
                 RequestTechnicalRetry("combat_transition_rejected");
                 yield break;
             }
+            if (_spectatorLease != null) _spectatorLease.StartAcceptingBell();
             TryPersistSeason("match_fighting");
         }
         private bool InitializeCombatRuntime(ModeHProfileDto starter, out string failureReasonId)
@@ -495,7 +496,8 @@ namespace BossRush
                     _starterDisplayName,
                     _relayDisplayName,
                     _combatTelemetry.LiveEnemyCount,
-                    _combatControl.CommandController.CanRingBell,
+                    _combatControl.CommandController.CanRingBell
+                        && (_spectatorLease == null || _spectatorLease.IsBellAccepting),
                     _combatControl.CommandController.BellConsumed,
                     // 形参要的是**名字**，此前直接把内部 ID 传了进去，
                     // 玩家在拍铃按钮上看到的是 "steady" / "all_in" 这类下划线标识。

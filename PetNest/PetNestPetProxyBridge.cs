@@ -262,8 +262,10 @@ namespace BossRush
 
         private static bool _capacityBonusApplied;
 
-        /// <summary>当前挂着的额外格子数（摘除时要按它算越界范围）。</summary>
+        /// <summary>当前挂着的额外格子数（重复应用时保持幂等）。</summary>
         private static int _capacityBonusSlots;
+        private static Item _capacityOwner;
+        private static Inventory _capacityInventory;
 
         /// <summary>当前是否挂着容量加成。</summary>
         internal static bool HasCapacityBonus { get { return _capacityBonusApplied; } }
@@ -285,6 +287,16 @@ namespace BossRush
             {
                 Item characterItem = player.CharacterItem;
                 if (characterItem == null) return false;
+                Inventory inventory = PetProxy.PetInventory;
+                if (inventory == null || inventory.Loading) return false;
+                if (_capacityBonusApplied && _capacityOwner == characterItem
+                    && _capacityInventory == inventory && _capacityBonusSlots == extraSlots)
+                {
+                    inventory.SetCapacity(player.PetCapcity);
+                    return true;
+                }
+                if (_capacityBonusApplied)
+                    RemoveCapacityBonus(player);
 
                 // 幂等：先摘干净再挂，避免切图重挂叠加
                 characterItem.RemoveAllModifiersFrom(CapacityModifierSource);
@@ -292,18 +304,26 @@ namespace BossRush
                 Modifier modifier = new Modifier(ModifierType.Add, extraSlots, CapacityModifierSource);
                 if (!characterItem.AddModifier(PetCapacityStatKey, modifier))
                 {
-                    ModBehaviour.DevLog("[PetNest] [WARNING] 玩家没有 " + PetCapacityStatKey
+                    Debug.LogWarning("[PetNest] 玩家没有 " + PetCapacityStatKey
                         + " stat，捡漏背包容量加成未生效");
                     return false;
                 }
 
                 _capacityBonusApplied = true;
                 _capacityBonusSlots = extraSlots;
+                _capacityOwner = characterItem;
+                _capacityInventory = inventory;
+                // 官方 PetProxy 按秒同步。这里即时同步同一份 Inventory，让打开中的
+                // 官方背包也当帧重铺格子，随后继续由官方按玩家 PetCapcity 维护。
+                inventory.SetCapacity(player.PetCapcity);
+                Debug.Log("[PetNest] 捡漏背包已同步：额外 " + extraSlots
+                    + " 格，官方宠物背包总容量 " + inventory.Capacity);
                 return true;
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[PetNest] [WARNING] 挂容量 Modifier 失败: " + e.Message);
+                RemoveCapacityBonus(player);
+                Debug.LogWarning("[PetNest] 挂容量 Modifier 失败: " + e.Message);
                 return false;
             }
         }
@@ -315,46 +335,55 @@ namespace BossRush
             {
                 return;
             }
+            Item characterItem = _capacityOwner;
+            Inventory inventory = _capacityInventory;
+            // 官方切图先保存安全箱、再销毁旧主角和背包。新场景可能已经从该快照
+            // 读出额外槽物品；等加载完成，按新主角真实容量回收超出的部分。
+            // 不用旧 extraSlots 去减新图容量，也不删除仍合法的格子。
+            if (inventory == null)
+            {
+                if (!LevelManager.AfterInit || player == null || player.CharacterItem == null
+                    || PetProxy.PetInventory == null || PetProxy.PetInventory.Loading) return;
+                if (characterItem != null) characterItem.RemoveAllModifiersFrom(CapacityModifierSource);
+                characterItem = player.CharacterItem;
+                inventory = PetProxy.PetInventory;
+            }
             _capacityBonusApplied = false;
+            _capacityOwner = null;
+            _capacityInventory = null;
 
-            // 先把超出「摘掉加成后容量」的那几格清空，再摘加成。
-            // 官方 PetProxy.Update 每秒把宠物背包容量同步成玩家的 PetCapcity，
-            // 而 Inventory.SetCapacity 只改 defaultCapacity、**不动 content**：
+            // 先摘属性取得真实目标容量，再清溢出，最后收缩同一份背包。
+            // Inventory.SetCapacity 只改 defaultCapacity、**不动 content**：
             // 物品没被销毁，但超出新容量后在宠物保险箱 UI 里既看不见也取不出，
             // 玩家会当成东西丢了。交官方溢出缓冲区是既有解法（同 ModeH 押品满仓那条出路）。
-            RescuePetInventoryOverflow(player);
-
             try
             {
-                if (player == null) return;
-                Item characterItem = player.CharacterItem;
                 if (characterItem == null) return;
                 characterItem.RemoveAllModifiersFrom(CapacityModifierSource);
+                // 按卸下本来源后真实的 stat 取容量，避免官方尚未同步或其他装备
+                // 同时变动时，用当前背包容量减 extraSlots 算错溢出范围。
+                int targetCapacity = Math.Max(0, Mathf.RoundToInt(characterItem.GetStatValue(PetCapacityStatKey.GetHashCode())));
+                RescuePetInventoryOverflow(inventory, targetCapacity);
+                if (inventory != null) inventory.SetCapacity(targetCapacity);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[PetNest] [WARNING] 摘容量 Modifier 失败: " + e.Message);
             }
+            finally { _capacityBonusSlots = 0; }
         }
 
         /// <summary>
         /// 把宠物背包里超出「摘掉容量加成后」那部分槽位的物品捞出来，交官方溢出缓冲区。
         ///
-        /// 判据用**摘除后的目标容量**而不是当前 Capacity：PetProxy 是每秒同步一次的，
-        /// 摘加成的那一帧容量还没跌下去，按当前值算会漏掉全部越界物品。
+        /// 判据用摘除后的真实 stat 容量；切图后的恢复只处理超出新主角真实容量的物品。
         /// no-throw：捞不出来也不阻断离场流程，最坏是回到原来的「看不见」状态。
         /// </summary>
-        private static void RescuePetInventoryOverflow(CharacterMainControl player)
+        private static void RescuePetInventoryOverflow(Inventory petInventory, int targetCapacity)
         {
             try
             {
-                Inventory petInventory = PetProxy.PetInventory;
                 if (petInventory == null) return;
-
-                int currentCapacity = petInventory.Capacity;
-                int targetCapacity = currentCapacity - _capacityBonusSlots;
-                if (targetCapacity < 0) targetCapacity = 0;
-                if (targetCapacity >= currentCapacity) return;
 
                 List<Item> content = petInventory.Content;
                 if (content == null) return;
@@ -365,15 +394,24 @@ namespace BossRush
                     if (i >= content.Count) continue;
                     Item item = content[i];
                     if (item == null) continue;
+                    int countBefore = PlayerStorage.IncomingItemBuffer.Count;
                     try
                     {
-                        petInventory.RemoveItem(item);
+                        // Push 先记入缓冲，再 Detach。不要先手动 RemoveItem：官方
+                        // 容器通知抛错时，先移出会留下没有任何容器持有的孤儿物品。
                         PlayerStorage.Push(item, true);
-                        rescued++;
                     }
                     catch (Exception e)
                     {
                         ModBehaviour.DevLog("[PetNest] [WARNING] 捡漏背包越界物品回收失败: " + e.Message);
+                    }
+                    if (PlayerStorage.IncomingItemBuffer.Count <= countBefore) continue;
+                    rescued++;
+                    // 缓冲已接收而 Detach 的通知抛错时，完成剩余清理，不再推第二份。
+                    if (item != null)
+                    {
+                        try { item.Detach(); } catch (Exception) { }
+                        try { item.DestroyTree(); } catch (Exception) { }
                     }
                 }
                 if (rescued > 0)
@@ -465,6 +503,10 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             RemoveCapacityBonus(SafeMainCharacter());
+            _capacityBonusApplied = false;
+            _capacityBonusSlots = 0;
+            _capacityOwner = null;
+            _capacityInventory = null;
             lock (_lock)
             {
                 _seatBorrowed = false;

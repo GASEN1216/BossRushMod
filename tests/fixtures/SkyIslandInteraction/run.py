@@ -39,7 +39,7 @@ def generate():
     sources = {}
     for name in ("SkyIslandStoryPresentation.cs", "SkyIslandWorldStory.cs", "SkyIslandWorldStoryServices.cs",
                  "SkyIslandServices.cs", "SkyIslandGnats.cs", "SkyIslandGroundRing.cs",
-                 "SkyIslandRuntimeModule.cs", "SkyIslandPreludeFlow.cs", "SkyIslandResidents.cs"):
+                 "SkyIslandPreludeFlow.cs", "SkyIslandResidents.cs"):
         sources[name] = (ROOT / SKY / name).read_text(encoding="utf-8-sig")
     # 2026-09-23：面板类超 1200 行，按 AGENTS §4.15 原样拆出 SkyIslandStoryPresentation_Parts.cs（同一 partial），接在后面照旧抽取。
     sources["SkyIslandStoryPresentation.cs"] += "\n" + (ROOT / SKY / "SkyIslandStoryPresentation_Parts.cs").read_text(encoding="utf-8-sig")
@@ -96,17 +96,13 @@ def generate():
         raise AssertionError("Segments 缺失")
     parts.append("internal static class SkyIslandGroundRing {\n" + segments.group(0) + "\n" + member(ring, "internal static void SetShape(") + "\n}\n}\n")
     # 语言刷新运行真实方法和字段，Unity UI 写入与语言管理器由显式替身观测。
-    runtime, prelude, residents = (sources[n] for n in (
-        "SkyIslandRuntimeModule.cs", "SkyIslandPreludeFlow.cs", "SkyIslandResidents.cs"))
+    prelude, residents = (sources[n] for n in ("SkyIslandPreludeFlow.cs", "SkyIslandResidents.cs"))
     def field(source, name):
         found = re.findall(r"^        private [^;{}]*\b" + name + r"\b[^;{}]*;", source, re.M)
         if len(found) != 1:
             raise AssertionError("字段锚点必须唯一: " + name)
         return found[0]
-    parts.append("namespace BossRush { internal sealed partial class SkyIslandRuntimeModule {\n"
-                 + field(runtime, "signText") + "\n" + field(runtime, "signChinese") + "\n"
-                 + member(runtime, "private void RefreshSignText()") + "\n}\n")
-    parts.append("internal sealed partial class SkyIslandResidents {\n" + field(residents, "owned") + "\n"
+    parts.append("namespace BossRush { internal sealed partial class SkyIslandResidents {\n" + field(residents, "owned") + "\n"
                  + field(residents, "namesChinese") + "\n" + member(residents, "private void RefreshLocalizedNames()") + "\n}\n")
     parts.append("internal sealed class SkyIslandPreludeFlow {\n"
                  + "\n".join(re.findall(r"^        (?:private|internal) const string [^;]+;", prelude, re.M))

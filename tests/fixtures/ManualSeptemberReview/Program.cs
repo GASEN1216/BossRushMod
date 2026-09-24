@@ -61,6 +61,20 @@ class Program
 
         PetNestService.DeployedPet=Pet("raid-a");
         PetNestCompanionRuntime.TrySpawnForScene(owner,7);
+        Check(PetNestCompanionSpawner.Requests.Count==0,"sceneLoaded cannot spawn before official initialization");
+        LevelManager.LevelInited=true;
+        PetNestCompanionRuntime.TrySpawnForScene(owner,7);
+        Check(PetNestCompanionSpawner.Requests.Count==0,"LevelInited alone cannot borrow before AfterInit");
+        LevelManager.AfterInit=true;
+        CharacterMainControl.Main.CharacterItem=new ItemStatsSystem.Item { BaseCapacity=2 };
+        PetNestCompanionRuntime.TrySpawnForScene(owner,7);
+        Check(PetNestCompanionSpawner.Requests.Count==0,"missing official pet inventory waits for retry");
+        PetProxy.PetInventory=new ItemStatsSystem.Inventory { Capacity=2 };
+        SceneLoader.IsSceneLoading=true;
+        PetNestCompanionRuntime.TrySpawnForScene(owner,7);
+        Check(PetNestCompanionSpawner.Requests.Count==0,"loading screen keeps cub creation pending");
+        SceneLoader.IsSceneLoading=false;
+        PetNestCompanionRuntime.TrySpawnForScene(owner,7);
         PetNestCompanionRuntime.CleanupOnce();
         old=CompleteSpawn();
         Check(old.Cleanups>0 && !PetNestCompanionRuntime.HasCompanion,"cancelled raid request cannot reappear with unchanged seat");
@@ -81,6 +95,7 @@ class Program
         old=CompleteSpawn();
         Check(old.Cleanups>0 && !PetNestCompanionRuntime.HasCompanion,"seat revalidation rejects a late cub even without a notification");
         PetNestCompanionRuntime.ResetStaticCaches();
+        VerifyCapacityOwnership();
         foreach(var task in UniTaskVoid.Pending) Check(task.IsCompleted && !task.IsFaulted,"all asynchronous requests finished without hidden exceptions");
 
         var reveal=new PetNestHatchRevealView();
@@ -175,6 +190,86 @@ class Program
         Check(batchStack.Count == 0 && PetNestExpeditionService.Revealed == revealedBefore + 3
               && batch.Summaries == 1 && batch.Finished && PetNestExpeditionRevealView.Closed == 0,
             "multi-card reveal marks each card once, then shows one summary and waits for the player to close");
+    }
+    static void VerifyCapacityOwnership()
+    {
+        var player=CharacterMainControl.Main;
+        var characterItem=new ItemStatsSystem.Item { BaseCapacity=2 };
+        player.CharacterItem=characterItem;
+        var inventory=new ItemStatsSystem.Inventory { Capacity=2 };
+        PetProxy.PetInventory=inventory;
+        var official=new CharacterMainControl();
+        LevelManager.Instance.SetOfficialPet(official);
+        var cub=new CharacterMainControl { IsCompanion=true };
+        string reason;
+        Check(PetNestPetProxyBridge.TryBorrowSeat(cub,out reason),"cub borrows ready official seat");
+        Check(PetNestPetProxyBridge.ApplyCapacityBonus(player,4) && player.PetCapcity==6 && inventory.Capacity==6,
+            "capacity bonus expands the official inventory immediately from 2 to 6");
+        Check(PetNestPetProxyBridge.ApplyCapacityBonus(player,4) && inventory.Capacity==6,
+            "repeated application never stacks bonus");
+        var retained=new ItemStatsSystem.Item();var overflow=new ItemStatsSystem.Item();
+        for(int i=0;i<6;i++)inventory.Content.Add(null);
+        inventory.Content[0]=retained;inventory.Content[5]=overflow;
+        retained.InInventory=inventory;overflow.InInventory=inventory;
+        characterItem.BaseCapacity=3; // Official training/equipment changed while this bonus was active.
+        PetNestPetProxyBridge.ReleaseSeat();
+        Check(LevelManager.Instance.PetCharacter==official,"cleanup restores original pet seat");
+        PetNestPetProxyBridge.RemoveCapacityBonus(player);
+        Check(player.PetCapcity==3 && inventory.Capacity==3 && inventory.Content[0]==retained,
+            "removal uses actual unmodified stat and retains legal slots");
+        Check(inventory.Content[5]==null && PlayerStorage.Rescued.Contains(overflow),
+            "items from disappearing slots are recovered before inventory shrink");
+        int rescued=PlayerStorage.Rescued.Count;
+        PetNestPetProxyBridge.RemoveCapacityBonus(player);
+        Check(rescued==PlayerStorage.Rescued.Count,"repeated cleanup cannot duplicate overflow recovery");
+        PetNestPetProxyBridge.ApplyCapacityBonus(player,4);
+        var oldInventory=inventory;
+        var nextPlayer=new CharacterMainControl { CharacterItem=new ItemStatsSystem.Item { BaseCapacity=8 } };
+        var nextInventory=new ItemStatsSystem.Inventory { Capacity=8 };
+        var nextItem=new ItemStatsSystem.Item();nextInventory.Content.Add(nextItem);
+        CharacterMainControl.Main=nextPlayer;PetProxy.PetInventory=nextInventory;
+        PetNestPetProxyBridge.RemoveCapacityBonus(nextPlayer);
+        Check(characterItem.GetStatValue("PetCapcity".GetHashCode())==3 && oldInventory.Capacity==3,
+            "scene cleanup removes bonus from the original CharacterItem");
+        Check(nextInventory.Capacity==8 && nextInventory.Content[0]==nextItem,
+            "late cleanup cannot shrink or move items from the new scene inventory");
+        PetNestPetProxyBridge.ApplyCapacityBonus(nextPlayer,4);
+        nextPlayer.CharacterItem.Destroyed=true;nextInventory.Destroyed=true;
+        var reloadedPlayer=new CharacterMainControl { CharacterItem=new ItemStatsSystem.Item { BaseCapacity=2 } };
+        var reloadedInventory=new ItemStatsSystem.Inventory { Capacity=12, Loading=true };
+        var savedExtra=new ItemStatsSystem.Item();
+        for(int i=0;i<12;i++)reloadedInventory.Content.Add(null);
+        reloadedInventory.Content[11]=savedExtra;
+        savedExtra.InInventory=reloadedInventory;
+        CharacterMainControl.Main=reloadedPlayer;PetProxy.PetInventory=reloadedInventory;
+        PetNestPetProxyBridge.RemoveCapacityBonus(reloadedPlayer);
+        Check(PetNestPetProxyBridge.HasCapacityBonus && reloadedInventory.Capacity==12,
+            "scene recovery waits until the official inventory finishes loading");
+        reloadedInventory.Loading=false;
+        PetNestPetProxyBridge.RemoveCapacityBonus(reloadedPlayer);
+        Check(!PetNestPetProxyBridge.HasCapacityBonus && reloadedInventory.Capacity==2
+            && reloadedInventory.Content[11]==null && PlayerStorage.Rescued.Contains(savedExtra),
+            "destroyed scene owners recover saved extra-slot items against new actual capacity");
+        nextPlayer=reloadedPlayer;
+        nextPlayer.CharacterItem.HasCapacityStat=false;
+        Check(!PetNestPetProxyBridge.ApplyCapacityBonus(nextPlayer,4) && !PetNestPetProxyBridge.HasCapacityBonus,
+            "missing stat cannot report a successful capacity bonus");
+        nextPlayer.CharacterItem.HasCapacityStat=true;
+        PetNestPetProxyBridge.ApplyCapacityBonus(nextPlayer,4);
+        var rejected=new ItemStatsSystem.Item { InInventory=reloadedInventory };
+        reloadedInventory.Content[4]=rejected;
+        PlayerStorage.ThrowBeforeAccept=true;
+        PetNestPetProxyBridge.RemoveCapacityBonus(nextPlayer);
+        Check(rejected.InInventory==reloadedInventory && reloadedInventory.Content[4]==rejected,
+            "notification failure before buffer accept cannot orphan an item");
+        PlayerStorage.ThrowBeforeAccept=false;PlayerStorage.ThrowAfterAccept=true;
+        PetNestPetProxyBridge.ApplyCapacityBonus(nextPlayer,4);
+        rescued=PlayerStorage.Rescued.Count;
+        PetNestPetProxyBridge.RemoveCapacityBonus(nextPlayer);
+        Check(PlayerStorage.Rescued.Count==rescued+1 && rejected.Destroyed && rejected.InInventory==null,
+            "exception after buffer commit finishes detachment without duplicating item");
+        PlayerStorage.ThrowAfterAccept=false;
+        PetNestPetProxyBridge.ResetStaticCaches();
     }
     static Vector3 Point(JsonElement e) { var a=e.EnumerateArray().Select(x=>x.GetSingle()).ToArray();return new Vector3(a[0],a[1],a[2]); }
     static bool Same(Vector3 a,Vector3 b) { return Vector3.Distance(a,b)<.001f; }

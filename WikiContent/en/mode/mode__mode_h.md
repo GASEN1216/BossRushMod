@@ -19,11 +19,11 @@ Six matches per season. Match 6 is the final. There is no match 7.
 - You cannot enter while another mode is running (Standard BossRush, From Scratch, Faction War, Blood Hunt, Fate Echo and Zombie Mode all count).
 - If entry is turned away anyway — content not ready, unsuitable venue, a clash with another mode — **your ticket comes back**, along with the reason.
 
-### After You Arrive: Warm-Up, Then Pick
+### After You Arrive: Pick and Fight
 
-**On your first visit, or after a game or mod update**, you first see a "Getting the ring ready" loading page: every candidate fighter does a quick warm-up bout to make sure they can fight on your machine, with progress shown as "Warming up the fighters (3/12)". This only happens once; later visits go straight to the pick page. If you do not want to wait, "Cancel & refund ticket" gives the ticket back.
+Once the map finishes loading, you can pick your fighter immediately, **including on your first visit or after a game or mod update**. There is no warm-up to wait through.
 
-Then comes **the one and only pick page**:
+On **the one and only pick page**:
 
 - Candidates are dealt once per season: **five fighters, one of each style** — Brawler, Shooter, Tank, Grinder and Closer.
 - Each card shows the fighter's **Codex portrait**, name, style and two or three plain sentences: how it fights, what it is good at, and what it is afraid of.
@@ -197,7 +197,7 @@ Being pushed out is not a failure. It is what the rule was always going to do �
 
 ### Questions You Might Have
 
-- **Do I have to sit through the warm-up every time?** No. It only runs on your first visit or after a game or mod update; later visits on the same version go straight to the pick page.
+- **Do I have to sit through the warm-up every time?** No. You go straight to the pick page once the map finishes loading, including on your first visit, after an update, and in development builds. Optional per-fighter checks are under F3 Gameplay Validation → Duck Cup Certification and require a dedicated test save.
 - **I can't see my own character — is that right?** Yes. During a match the camera follows your fighter while your body waits in the stands; the camera comes back to you when the match ends.
 - **Can I fight myself?** Normally no. Certain eligible fighters with the **ERROR** anomaly get one 8% check per match. Success gives you control of the fighter while your own body stays in the stands. The swap ends when the fighter goes down, the match ends or control is restored. These kills still do not count toward the Codex.
 - **Can I bring my PetNest companions?** No. This mode does not admit PetNest companions.

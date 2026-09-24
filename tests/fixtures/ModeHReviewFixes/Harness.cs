@@ -42,7 +42,10 @@ namespace BossRush
     public static class ModeHContentCatalog { public static string ContentCatalogSignature = "content"; }
     public class ModeHProductionCertification
     {
-        public bool TryRestoreSeasonReport(ModeHProductionCertificationDto report) { return report != null && report.overallPassed; }
+        public static int ReleaseCalls, RestoreCalls;
+        public static bool RejectRelease;
+        public bool TryRestoreSeasonReport(ModeHProductionCertificationDto report) { RestoreCalls++; return report != null && report.overallPassed; }
+        public bool TryUseReleaseCatalog() { ReleaseCalls++; return !RejectRelease; }
     }
     public class ModeHSupportedMap { public string SceneName = "arena", SceneId = "arena-id"; public int SpectatorPos; }
     public static class ModeHMapSupportRegistry

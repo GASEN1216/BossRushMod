@@ -194,7 +194,7 @@ def main():
 
     # ---- 10. 每帧路径不得产生垃圾（AGENTS 4.12） ----
     module = read("DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs")
-    update = module.split("public override void OnUpdate(", 1)[1].split("private void CreateSign(", 1)[0]
+    update = module.split("public override void OnUpdate(", 1)[1].split("\n        }", 1)[0]
     # Scene.name 每次调用都新建托管字符串；模块 OnUpdate 在所有场景每帧都跑。
     if "GetActiveScene().name" in update:
         errors.append("模块 OnUpdate 不得每帧调用 Scene.name（每次分配一个托管字符串）")

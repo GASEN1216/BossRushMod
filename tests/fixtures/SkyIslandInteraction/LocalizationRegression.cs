@@ -11,11 +11,6 @@ namespace UnityEngine
 namespace BossRush
 {
     internal static class SkyIslandResidentInteractable { internal static void InjectLocalizations() { } }
-    internal sealed partial class SkyIslandRuntimeModule
-    {
-        internal void BindText(TextMeshProUGUI text) { signText = text; signChinese = null; }
-        internal void RefreshForTest() { RefreshSignText(); }
-    }
     internal sealed partial class SkyIslandResidents
     {
         internal void Add(string id, CharacterMainControl npc) { owned.Add(id, npc); }
@@ -58,9 +53,6 @@ internal static class LocalizationRegression
         string[] keys = { "BossRush_SkyIsland_Departure", "BossRush_SkyIslandPrelude_Objective", "BossRush_SkyIslandPrelude_Instrument" };
         string[] english = { "Depart for Sky Islands · Qinglan", "Lost Navigation Instrument", "Salvage a navigation instrument" };
         string[] chinese = { "前往天空岛 · 晴岚群岛", "失落的航向仪", "从残骸里拆一具航向仪" };
-        var sign = new SkyIslandRuntimeModule();
-        var label = new GameObject("sign").AddComponent<TextMeshProUGUI>();
-        sign.BindText(label);
         var residents = new SkyIslandResidents();
         string[] ids = { "sky_qinghe", "sky_weibai", "sky_fuzhou", "sky_miantai", "sky_zheling", "sky_bellkeeper" };
         var npcs = new CharacterMainControl[ids.Length];
@@ -78,14 +70,13 @@ internal static class LocalizationRegression
         {
             L10n.IsChinese = cn;
             SkyIslandPreludeFlow.InjectLocalizations();
-            sign.RefreshForTest(); residents.RefreshForTest();
+            residents.RefreshForTest();
             for (int i = 0; i < keys.Length; i++) check(LocalizationHelper.Texts[keys[i]] == (cn ? chinese[i] : english[i]), "live entry key: " + keys[i]);
-            check(label.text.Contains(cn ? "天空岛 · 晴岚群岛" : "Sky Islands · Qinglan") && label.text.Contains(cn ? "与船点互动即可出发" : "Interact with the boat to depart"), "same sign changes language");
             for (int i = 0; i < ids.Length; i++)
                 check(names[i].text == SkyIslandWorldStory.ResidentName(ids[i]) && NPCNameTagHelper.OriginalUiRetained(npcs[i], names[i]), "same resident UI and height retained: " + ids[i]);
-            int signWrites = label.TextWrites, refreshes = NPCNameTagHelper.Refreshes;
-            for (int i = 0; i < 120; i++) { sign.RefreshForTest(); residents.RefreshForTest(); }
-            check(label.TextWrites == signWrites && NPCNameTagHelper.Refreshes == refreshes, "unchanged language does no text writes or UI refreshes");
+            int refreshes = NPCNameTagHelper.Refreshes;
+            for (int i = 0; i < 120; i++) residents.RefreshForTest();
+            check(NPCNameTagHelper.Refreshes == refreshes, "unchanged language does no UI refreshes");
         }
         var absent = new CharacterMainControl();
         check(!npcs[4].transform.gameObject.activeSelf && names[4].text == "Zheling", "hidden resident name also follows language");
@@ -96,10 +87,5 @@ internal static class LocalizationRegression
         L10n.IsChinese = true;
         residents.RefreshForTest();
         check(names[2].text == "浮舟", "dead and unregistered residents do not stop remaining name refreshes");
-        UnityEngine.Object.Destroy(label.gameObject);
-        sign.RefreshForTest();
-        var replacement = new GameObject("new sign").AddComponent<TextMeshProUGUI>();
-        sign.BindText(replacement); sign.RefreshForTest();
-        check(replacement.text.Contains("天空岛"), "new scene sign initializes even without language change");
     }
 }

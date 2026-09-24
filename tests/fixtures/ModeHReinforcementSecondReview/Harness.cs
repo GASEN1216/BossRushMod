@@ -158,7 +158,7 @@ namespace BossRush
         private bool HandleFighterDown(string p, ModeHBattleSnapshotContext c) { return false; }
         public void RestoreAll() { }
     }
-    internal sealed class Spectator { public void StopAcceptingBell() { } public void RestoreCameraTarget() { } public void ReclaimInputAfterErrorSwap() { } }
+    internal sealed class Spectator { public bool IsBellAccepting; public void StopAcceptingBell() { IsBellAccepting = false; } public void RestoreCameraTarget() { } public void ReclaimInputAfterErrorSwap() { } }
     internal sealed class UI { public void DestroyHud() { } public void TickHud(params object[] args) { } }
     internal static class ModeHEventRouter { public static void ClearMatchRegistry() { } public static void Unbind() { } }
     internal static class ModeHLoadoutKitApplicator { public static void Recycle(object x) { } }
