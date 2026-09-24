@@ -75,8 +75,9 @@ scene handle、主角、`LevelManager.LevelInited`、`LevelManager.AfterInit`、
   typed pending entry kind（`BossRushPendingEntryKind.ModeH`），与 Mode G 互斥。
 - `modeHEnabled` 字段与旧键 `BossRush_ModeHEnabled` 仅为兼容保留；Mode H 现属默认内容，
   不再注册总开关，并会在读配置后强制恢复为开启。
-- 入口页顶部**固定显示**真实资产风险行 `BossRush_ModeH_RealStakeRiskNotice`，
-  不可折叠、不可关闭：本模式允许押上真实仓库物品，失败会永久没收，唯一装备也不豁免。
+- 入口页顶部**固定显示**风险行 `BossRush_ModeH_RealStakeRiskNotice`，不可折叠、不可关闭。
+  2026-09-24 起文案改为押钱口径（「押的是你的钱……押金归庄家」，见下文「押钱」一节）；
+  key 不变，`ModeHLocalizationGuard` 按新口径核对中英关键词。
 - 五种拒绝原因（内容未就绪、地图不支持、展示资源缺失、旧模式冲突、生产认证失败）
   各自恰好退还一张预扣船票，退款是 `ModeHEntry.TryRefundPrepaidTicket()` 的唯一实现点。
 
@@ -405,7 +406,22 @@ Intermission / TransferWindow / HallOfFame / Suspended`，**没有任何一条�
 采集侧保持不变（四类触发点、只在内存构造、随 Season 一并落盘、参与 §20.2 canonical digest）：
 `currentBattleSnapshot` 是落盘字段，摘掉它属 `SCHEMA-`，需 owner 签字。
 
+## 押钱 / 押背包物品：押你的选手赢（2026-09-24，COMPAT / SCHEMA+）
+
+**现行玩家侧押注只有这一种。** 起因：`PlayerStorage` 只在基地场景存在，鸭王杯在出击地图上打，下一节的真实仓库押品链在比赛里恒为 `slot_storage_unavailable`，赔率页的押品选择器因此整块不画（`RealStakeSelectorEnabled` 为假）。owner 拍板改押钱：看比赛输赢、按赔率抽水，长期让玩家的钱慢慢往下掉。
+
+- 档位 `ModeHConfig.CashBetAmounts = {0, 1000, 5000, 20000}` 加一颗「押物品」，默认不押、读档回到不押；在选人页、每场结算页、兜底赔率页的页脚一排选（`AppendCashBetRow`）。
+- 赔付：赢了拿回 `押金 × (1000 − 80) ÷ 假定胜率‰`，向下取整到 10；假定胜率表 `CashBetAssumedWinPermilleByOdds`（x1…x5 = 850/700/550/420/300）。每档满 20 场后取 `max(表, 实际胜率)`，只会让赔付变少。
+- 资金：`ModeHCashBetService` 的账本是本槽 typed 存档 `BossRush_ModeHCashBet_v1`（`BossRushSlotJsonStore` + `BossRushSaveCoordinatorEngine`，现金快照同批落盘）；Reserved → Settled / Refunded 单向，结算与退回至多一次。赛季 DTO 不动（canonical digest 反射全部公有字段）。
+- 接线：锁盘落盘后下注（`ReserveStandingCashBet`，并播 `ModeHBetRevealView`「开盘」揭晓）；本场结算处结算（`SettleCashBetForMatch` → `SettleReservedBet`）；两处读档与开新赛季对账（`ReconcileCashBetOnRestore`）。
+- **押注跟着这一场走**（同日第二轮）：技术重试、恢复回落、挂起 / 关停 / 切图中止（`TryReturnRealStakeOnAbort`）都不退，重锁时经 `ModeHCashBetService.ReservedFor` 沿用挂着的那一笔、按重打结果结算；只有恢复页放弃赛季、开新赛季对到上一季、F3 清理才退。旧版一中断就整额退回，打输了强退重进等于免费重掷。
+- **押背包物品**（同日第二轮，第三轮去掉限制并改发奖品）：押注行「押物品」打开 `ModeHPage.ItemBet` 卡片栅格选背包里的东西，押什么、押几件都不限（只挡任务物品与估值为 0 的），估值 = 官方总价 × 0.5 的商人收购口径，只管下一场。物品侧 `ModeH/ModeHItemBetStake.cs` 是玩家资产访问白名单的一条：只读主角色背包，物品押上**不离开背包**；输了由 `ForfeitLocked` 收走仍在玩家身上的那几件，找不到的按估值从余额扣到 0 为止；赢了东西留着、另发奖品——品质 = 押品按估值加权的平均品质，总价值 = 「赔付 − 估值」，件数 = 押上件数（最多 6），从 `BossRushQualityItemPool` 挑、经 `ModeHRewardItemPool.TryInstantiate` 实例化，账本记成才 `SendToPlayer(prize, true, false)` 发，凑不满的折成钱；读档后按账本 typeId / 数量重新认领。账本同一本（`kind`、`items`、`charged`、`prizes`、`prizeCash`）。
+- ESC（同日第二轮）：页面动作可标 `IsCancel`（整备页与押物品页的「完成」、恢复壳的「稍后处理」），ESC 等于点它；没有返回语义的页不接 ESC，照常交给官方暂停菜单。
+- 守卫 `tests/ModeHCashBetGuard.py`、`tests/ModeHIsolationGuard.py`（`check_item_bet_stake`）；设计与回退见本地 `docs/设计文档/鸭王杯押钱_2026-09-24.md`。
+
 ## 真实仓库抵押（§22）
+
+> 2026-09-24：这条链保留（旧档托管的押品照常结清、返还），但在比赛场景里仓库不可用，玩家侧已不再提供押品选择；现行押注见上一节「押钱」。
 
 没有真实资产开关，可用性是**只读派生结果** `IsSlotConsistent`（§22.1 四条取值规则）。
 

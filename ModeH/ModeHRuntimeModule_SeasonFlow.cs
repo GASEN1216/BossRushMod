@@ -43,6 +43,7 @@ namespace BossRush
             }
 
             // 报价对象用选人卡讲清楚（立绘 + 白话），卡片本身不带按钮：签 / 不签由下面两个动作按钮承担。
+            // 旁边并排一张「现任接力」：签下他换掉的就是这一位，两张摆在一起才比得出来（审查 B-34）。
             page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Transfer_Summary");
             ModeHProfileDto offered = FindSeasonProfile(offer.profileId);
             if (offered != null)
@@ -50,7 +51,19 @@ namespace BossRush
                 ModeHCardData card = BuildProfileCard(offered);
                 card.ActionLabel = null;
                 card.OnClick = null;
+                card.Subtitle = L10n.T("新人 · ", "Newcomer · ") + card.Subtitle;
                 page.Cards.Add(card);
+            }
+            ModeHProfileDto currentRelay = _season.contract != null ? FindSeasonProfile(_season.contract.contractSubProfileId) : null;
+            if (currentRelay != null && offered != null)
+            {
+                ModeHCardData current = BuildProfileCard(currentRelay);
+                current.ActionLabel = null;
+                current.OnClick = null;
+                current.Subtitle = L10n.T("现任接力 · ", "Current relay · ") + current.Subtitle;
+                page.Cards.Add(current);
+                page.Body += "\n" + L10n.T("签下他会换掉现任接力 ", "Signing him replaces your current relay, ")
+                    + ResolveProfileDisplayName(currentRelay.profileId) + L10n.T("。", ".");
             }
 
             page.Actions.Add(new ModeHActionData
@@ -252,7 +265,9 @@ namespace BossRush
 
             page.Actions.Add(new ModeHActionData
             {
-                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Confirm"),
+                // 按钮写它真正做的事：结束这一季（审查 B-18：旧版写「确认」）
+                Label = L10n.T("结束赛季", "End season"),
+                IsPrimary = true,
                 OnClick = delegate { FinishSeason("hall_of_fame_ack"); },
             });
             return page;
@@ -298,26 +313,29 @@ namespace BossRush
             }
             card.Subtitle = string.Join(" · ", subtitle.ToArray());
 
+            // 正文写白话（审查 B-18：旧版是「口令名　最高赔率胜 x3」这样用全角空格拼起来的术语）
             List<string> body = new List<string>(4);
             if (!string.IsNullOrEmpty(record.signatureCommandId))
             {
-                body.Add(L10n.T(prefix + "Command_" + record.signatureCommandId));
+                body.Add(L10n.T("招牌口令：", "Signature call: ") + L10n.T(prefix + "Command_" + record.signatureCommandId));
             }
             if (record.maxOddsWin > 0)
             {
-                body.Add(L10n.T("最高赔率胜 x", "Best odds win x") + record.maxOddsWin);
+                body.Add(L10n.T("赢过赔率 x" + record.maxOddsWin + " 的冷门", "Won an upset at x" + record.maxOddsWin));
             }
             if (record.maxVirtualStakeWin > 0)
             {
-                body.Add(L10n.T("最高筹码胜 ", "Best credit win ") + record.maxVirtualStakeWin);
+                body.Add(L10n.T("单场最多赢 " + record.maxVirtualStakeWin + " 枚筹码", "Best credit win: " + record.maxVirtualStakeWin));
             }
             if (snapshot != null) body.Add(L10n.T("名声 ", "Fame ") + snapshot.fameDisplayCount);
             int scarCount = record.scarIds != null ? record.scarIds.Count : 0;
             if (scarCount > 0)
             {
-                body.Add(L10n.T("战痕 ", "Scars ") + scarCount);
+                body.Add(L10n.T("身上 " + scarCount + " 道战痕", scarCount + " scar(s)"));
             }
-            card.Body = string.Join("　", body.ToArray());
+            card.Body = string.Join(L10n.T("；", "; "), body.ToArray());
+            // 冠军立绘（与选人卡同一条立绘链）：快照里有 stableKey
+            if (snapshot != null) card.PortraitKey = snapshot.stableKey;
 
             card.IsAnomaly = !string.IsNullOrEmpty(record.anomalyId);
             return card;
@@ -336,6 +354,9 @@ namespace BossRush
         {
             if (page == null || _runState == null
                 || !string.Equals(_draftDeadEndRunId, _runState.RunId, StringComparison.Ordinal)) return;
+            // 原因写进页面正文（审查 B-05：旧版只走一条官方提示，页面上突然多出一颗按钮却不说为什么）
+            page.Body = L10n.T("这五位怎么搭都凑不齐六场对手，只能退出本赛季重进；重进会重新抽五位。",
+                "No pairing of these five can fill six matches. Leave this season and come back for a fresh five.");
             page.Actions.Add(new ModeHActionData
             {
                 Label = L10n.T("退出本赛季", "Leave season"),

@@ -163,6 +163,18 @@ class Program
         // 2026-09-23（UA-13）：最后一张不再自动收起，「跳过」变「关闭」等玩家自己点；这里只核对只翻一次、翻完停在可关闭状态。
         Check(stack.Count == 0 && PetNestExpeditionService.Revealed == 1 && PetNestExpeditionRevealView.Closed == 0 && reveal.Finished,
             "resuming finishes the same expedition exactly once and waits for the player to close");
+        Check(reveal.Summaries == 0, "a single card waits on its own result instead of a one-line summary");
+
+        // 2026-09-24（A-40）：一次翻两张以上时收成一屏汇总再等关闭，前几张的结果不会一闪就没
+        var batch = new PetNestExpeditionRevealView();
+        batch.SetPending(3);
+        int revealedBefore = PetNestExpeditionService.Revealed;
+        var batchStack = new System.Collections.Generic.Stack<System.Collections.IEnumerator>();
+        batchStack.Push(batch.Play());
+        for (int i = 0; i < 400 && AdvancePresentation(batchStack); i++) { }
+        Check(batchStack.Count == 0 && PetNestExpeditionService.Revealed == revealedBefore + 3
+              && batch.Summaries == 1 && batch.Finished && PetNestExpeditionRevealView.Closed == 0,
+            "multi-card reveal marks each card once, then shows one summary and waits for the player to close");
     }
     static Vector3 Point(JsonElement e) { var a=e.EnumerateArray().Select(x=>x.GetSingle()).ToArray();return new Vector3(a[0],a[1],a[2]); }
     static bool Same(Vector3 a,Vector3 b) { return Vector3.Distance(a,b)<.001f; }

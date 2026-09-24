@@ -24,7 +24,8 @@ internal static class Program
             ReforgeUIManager.Frame();
             Check(ReforgeUIManager.ButtonVisible && ReforgeUIManager.Clickable, "Eligible weapon must have an enabled forge button regardless of decomposition recipe or callback order");
             Check(!ReforgeUIManager.CannotVisible && !ReforgeUIManager.EmptyVisible, "Vanilla cannot-decompose and empty indicators must be hidden");
-            Check(ReforgeUIManager.ButtonLabel == (english ? "Reroll Affixes" : "随机词缀"), "Forge label must match the current language");
+            // 2026-09-24（A-07）：付费按钮写价钱，替身的金币价是 100
+            Check(ReforgeUIManager.ButtonLabel == (english ? "Reroll Affixes · 100" : "随机词缀 · 100"), "Forge label must match the current language and show the price");
             Check(ReforgeUIManager.Pending == 0, "Selection refresh must not keep polling");
             ReforgeUIManager.RefreshSharedButton();
             Check(ReforgeUIManager.Clickable && ReforgeSystem.QueryCount == 0, "Shared slider callback must use affix costs, not ordinary reforge costs");

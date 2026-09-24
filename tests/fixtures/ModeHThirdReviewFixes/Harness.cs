@@ -11,8 +11,19 @@ namespace BossRush
         public ModeHResultTone ResultTone;
         public List<string> Lines = new List<string>();
         public List<ModeHActionData> Actions = new List<ModeHActionData>();
+        public List<ModeHCardData> Cards = new List<ModeHCardData>();
+        // 2026-09-24：战痕 / 整备决定从底部按钮改成卡片；可选项 = 按钮 + 卡片
+        public int ChoiceCount { get { return Actions.Count + Cards.Count; } }
     }
-    internal class ModeHActionData { public string Label; public Action OnClick; }
+    internal class ModeHActionData { public string Label; public Action OnClick; public bool IsPrimary; }
+    // 2026-09-24：结算页的战痕 / 整备决定改成卡片
+    internal class ModeHCardData { public string Title, Subtitle, Body, ActionLabel; public Action OnClick; }
+    // 2026-09-24：替换战痕等不可逆操作先弹共享确认框；夹具里直接确认
+    internal sealed class BossRushConfirmDialog
+    {
+        internal sealed class Options { public string Title, Target, Body, Warning, ConfirmLabel, CancelLabel; public bool Danger; public Action OnConfirm, OnCancel; }
+        internal static void Show(Options options) { if (options != null && options.OnConfirm != null) options.OnConfirm(); }
+    }
     internal static class L10n
     {
         public static string T(string text) { return text; }
@@ -142,9 +153,14 @@ namespace BossRush
         private void LogFailure(string context, Exception error) { throw new Exception(context, error); }
         private string ResolveProfileDisplayName(string id) { return id; }
         private void RouteUiForLifecycle(ModeHLifecycle lifecycle) { UiRefreshes++; }
+        private void OpenRecoveryShell(string reason) { }
         private void FinishSeason(string reason) { Routes++; }
         private void EnterHallOfFame() { Routes++; }
         private void OpenNextMatchBrief(string reason) { Routes++; }
+        // 押钱（2026-09-24）：退回与结算行由 ModeHCashBetGuard 守结构，这里只记次数
+        public int CashRefunds;
+        private void RefundCashBet(string context) { CashRefunds++; }
+        private void AppendCashBetReportLine(ModeHPageContent page, ModeHMatchReportDto report) { }
     }
     internal static class Program
     {
@@ -186,25 +202,32 @@ namespace BossRush
         }
         private static ModeHProfileDto Fighter(ModeHRuntimeModule run) { return run._season.profiles[0]; }
         private static Action Click(ModeHRuntimeModule run, string prefix)
-        { return run.Page().Actions.Find(x => x.Label.StartsWith(prefix, StringComparison.Ordinal)).OnClick; }
+        {
+            var page = run.Page();
+            var action = page.Actions.Find(x => x.Label.StartsWith(prefix, StringComparison.Ordinal));
+            if (action != null) return action.OnClick;
+            // 卡片按按钮字或标题找（替换战痕的卡片标题是「换掉：<旧战痕>」）
+            return page.Cards.Find(x => (x.ActionLabel != null && x.ActionLabel.StartsWith(prefix, StringComparison.Ordinal))
+                || (x.Title != null && x.Title.StartsWith(prefix, StringComparison.Ordinal))).OnClick;
+        }
         private static void ScarTests()
         {
             var run = Create(); run.Save(); string offeredDisk = ModeHSaveFlushCoordinator.Disk;
-            Check(run.Page().Actions.Count == 4, "live candidate and kit actions are reachable");
+            Check(run.Page().ChoiceCount == 4, "live candidate and kit actions are reachable");
             var cold = Cold(offeredDisk);
-            Check(cold.Page().Actions.Count == 4, "cold candidate resolves persisted reward owner without runtime cache");
+            Check(cold.Page().ChoiceCount == 4, "cold candidate resolves persisted reward owner without runtime cache");
             Action accept = Click(cold, "留下战痕"); accept(); accept();
             Check(Fighter(cold).scarIds.Count == 1 && !cold.Pending, "accept grants once and closes offer");
             Check(ModeHSaveFlushCoordinator.DurableWrites >= 2, "offer snapshot and resolution cross durable barriers");
             var resolved = Cold(ModeHSaveFlushCoordinator.Disk);
-            Check(resolved.Page().Actions.Count == 2 && Fighter(resolved).scarIds.Count == 1, "accepted scar and receipt survive cold reload together");
+            Check(resolved.Page().ChoiceCount == 2 && Fighter(resolved).scarIds.Count == 1, "accepted scar and receipt survive cold reload together");
             cold = Cold(offeredDisk); Action decline = Click(cold, "拒绝战痕"); decline(); decline();
             Check(Fighter(cold).fameDisplayCount == 1 && !cold.Pending, "decline fame is exactly once");
             resolved = Cold(ModeHSaveFlushCoordinator.Disk);
-            Check(Fighter(resolved).fameDisplayCount == 1 && resolved.Page().Actions.Count == 2, "decline receipt survives reload without resurrecting choice");
+            Check(Fighter(resolved).fameDisplayCount == 1 && resolved.Page().ChoiceCount == 2, "decline receipt survives reload without resurrecting choice");
             run = Create(); Fighter(run).scarIds.AddRange(new[] { "old1", "old2", "old3" }); run.Save(); cold = Cold(ModeHSaveFlushCoordinator.Disk);
-            Check(cold.Page().Actions.Count == 6, "three owned scars expose explicit replacements and decline");
-            Action replace = Click(cold, "替换：" + ModeHConfig.LocalizationKeyPrefix + "Scar_old2"); replace(); replace();
+            Check(cold.Page().ChoiceCount == 6, "three owned scars expose explicit replacements and decline");
+            Action replace = Click(cold, "换掉：" + ModeHConfig.LocalizationKeyPrefix + "Scar_old2"); replace(); replace();
             Check(Fighter(cold).scarIds.Count == 3 && !Fighter(cold).scarIds.Contains("old2") && Fighter(cold).scarIds.Contains("center_keeper"), "replacement applies exactly once");
             resolved = Cold(ModeHSaveFlushCoordinator.Disk);
             Check(!resolved.Pending && !Fighter(resolved).scarIds.Contains("old2") && Fighter(resolved).scarIds.Count == 3,
@@ -223,7 +246,7 @@ namespace BossRush
             run.Choose("reward1", "other-scar", null, true, run._runState.OwnerToken, 1);
             Check(Fighter(run).fameDisplayCount == 0, "operation and candidate identities are both checked");
             run._season.seasonRewardOperations[0].resultToken = "other-result";
-            Check(run.Page().Actions.Count == 2, "mismatched report and reward result cannot choose another owner");
+            Check(run.Page().ChoiceCount == 2, "mismatched report and reward result cannot choose another owner");
             foreach (bool after in new[] { false, true })
             {
                 run = Create(); run.Save(); string before = ModeHSaveFlushCoordinator.Disk;
@@ -249,7 +272,7 @@ namespace BossRush
             Click(run, "拒绝战痕")(); Click(run, ModeHConfig.LocalizationKeyPrefix + "Button_Confirm")();
             Check(run.Routes == 1 && !run.Pending, "final season remains finishable after scar resolution");
             run = Create(false); AddOffer(run, 1, false); run.Save(); cold = Cold(ModeHSaveFlushCoordinator.Disk);
-            Check(cold.Page().Actions.Count == 2 && cold.Page().Lines.Exists(x => x.Contains("旧版未记录"))
+            Check(cold.Page().ChoiceCount == 2 && cold.Page().Lines.Exists(x => x.Contains("旧版未记录"))
                 && Fighter(cold).fameDisplayCount == 0, "ambiguous legacy receipt is preserved without invented reward");
             string oldRecord = JsonSerializer.Serialize(cold._season.matchReports[0], ModeHSaveFlushCoordinator.Json);
             cold.Page(); cold.Page(); cold.Save(); resolved = Cold(ModeHSaveFlushCoordinator.Disk);
@@ -261,7 +284,7 @@ namespace BossRush
             Check(run.Routes == 1 && !run.Pending, "ambiguous legacy offer cannot block ordinary season completion");
             run = Create(false); AddOffer(run, 1, false); Fighter(run).scarIds.Add("center_keeper"); Fighter(run).fameDisplayCount = 7;
             run.Save(); cold = Cold(ModeHSaveFlushCoordinator.Disk);
-            Check(cold.Page().Actions.Count == 2 && !cold.Page().Lines.Exists(x => x.Contains("旧版未记录"))
+            Check(cold.Page().ChoiceCount == 2 && !cold.Page().Lines.Exists(x => x.Contains("旧版未记录"))
                 && Fighter(cold).scarIds.Count == 1 && Fighter(cold).fameDisplayCount == 7,
                 "legacy already-owned scar is recognized without regranting or claiming an unresolved reward");
         }

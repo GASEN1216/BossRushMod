@@ -139,7 +139,7 @@ namespace BossRush
                 inputFocusHintText.text = L10n.T(
                     "请不要输入无效/垃圾内容哦~",
                     "Please don't enter invalid or spam content~");
-                inputFocusHintText.color = BossRushUIColors.WarningText;
+                inputFocusHintText.color = BossRushUIColors.TextSecondary;   // 常驻提醒用次色（2026-09-24 A-10）
             }
         }
 

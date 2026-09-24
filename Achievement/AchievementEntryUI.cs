@@ -23,7 +23,7 @@ namespace BossRush
         Locked,            // 未解锁，灰色显示
         LockedHidden,      // 隐藏成就未解锁，显示 ???
         UnlockedUnclaimed, // 已解锁未领取，可点击领取
-        UnlockedClaimed    // 已解锁已领取，按钮禁用
+        UnlockedClaimed    // 已解锁已领取，按钮收起、写「√ 已领取」
     }
 
     /// <summary>
@@ -70,6 +70,14 @@ namespace BossRush
         private const float ClaimPopSeconds = 0.2f;
         private const float IconSize = 60f;
         private const float IconTextGap = 12f;
+        // 字号只用两级（UI 共识第 7 节，2026-09-24 对照审查 A-25）：名字与奖励 18 / 其余 15。
+        // 单行框高 ≥ 字号×1.45+4：18 号 → 30.1（名字框 33、奖励框 32），15 号 → 25.75（状态位 26）。
+        private const float NameFontSize = 18f;
+        private const float BodyFontSize = 15f;
+        /// <summary>右侧状态位（领取按钮 / 「√ 已领取」/ 累计进度）的宽度，三者互斥、占同一格。</summary>
+        private const float SlotWidth = 75f;
+        private const float SlotLineHeight = 26f;
+        private const float SlotBarHeight = 6f;
 
         #endregion
 
@@ -88,6 +96,12 @@ namespace BossRush
         private TextMeshProUGUI rewardText;
         private Button claimButton;
         private TextMeshProUGUI claimButtonText;
+        /// <summary>已领取：右侧一行小字「√ 已领取」（A-21：不再留一颗灰掉的「已领取」按钮）。</summary>
+        private TextMeshProUGUI claimedText;
+        /// <summary>累计成就未完成：「12 / 50」+ 细进度条（A-24：不再把进度括在描述末尾）。</summary>
+        private TextMeshProUGUI progressText;
+        private GameObject progressTrack;
+        private Image progressFill;
 
         #endregion
 
@@ -234,13 +248,14 @@ namespace BossRush
             nameRect = nameObj.AddComponent<RectTransform>();
             nameRect.anchorMin = new Vector2(0f, 0.5f);
             nameRect.anchorMax = new Vector2(1f, 1f);
-            nameRect.offsetMin = new Vector2(textStartX, 2f);
+            // 名字框取满上半行 33（旧值上下各让 2 只剩 29，18 号单行要 30.1，Ellipsis 会整行清空）
+            nameRect.offsetMin = new Vector2(textStartX, 0f);
             // 右侧让出「奖励金额 + 领取按钮」一整列，长名字不再压到金额上
-            nameRect.offsetMax = new Vector2(-180f, -2f);
+            nameRect.offsetMax = new Vector2(-180f, 0f);
 
             nameText = nameObj.AddComponent<TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(nameText);
-            nameText.fontSize = 18;
+            nameText.fontSize = NameFontSize;
             nameText.fontStyle = FontStyles.Bold;
             nameText.color = TextColor;
             nameText.alignment = TextAlignmentOptions.BottomLeft;
@@ -260,7 +275,7 @@ namespace BossRush
 
             descText = descObj.AddComponent<TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(descText);
-            descText.fontSize = 15;
+            descText.fontSize = BodyFontSize;
             descText.color = DescColor;
             descText.alignment = TextAlignmentOptions.TopLeft;
             descText.raycastTarget = false;
@@ -292,12 +307,12 @@ namespace BossRush
             rewardRect.anchorMax = new Vector2(1f, 0.5f);
             rewardRect.pivot = new Vector2(1f, 0.5f);
             rewardRect.anchoredPosition = new Vector2(-90f, 0f);
-            // 17 号单行框高按 字号×1.45+4 给足（旧值 20 装不下一行）
-            rewardRect.sizeDelta = new Vector2(80f, 30f);
+            // 18 号单行框高按 字号×1.45+4 给足（旧值 20 装不下一行）
+            rewardRect.sizeDelta = new Vector2(80f, 32f);
 
             rewardText = rewardObj.AddComponent<TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(rewardText);
-            rewardText.fontSize = 17;
+            rewardText.fontSize = NameFontSize;
             rewardText.fontStyle = FontStyles.Bold;
             rewardText.color = GoldColor;
             rewardText.alignment = TextAlignmentOptions.Right;
@@ -311,11 +326,11 @@ namespace BossRush
                 parent,
                 string.Empty,
                 new Vector2(1f, 0.5f),
-                new Vector2(-Padding - 37.5f, 0f),
-                new Vector2(75f, 30f),
+                new Vector2(-Padding - SlotWidth * 0.5f, 0f),
+                new Vector2(SlotWidth, 30f),
                 BossRushUIColors.SurfaceRaised,
-                15f,
-                new Vector2(71f, 26f),
+                BodyFontSize,
+                new Vector2(SlotWidth - 4f, 26f),
                 OnClaimClicked,
                 true);
             BossRushUIKit.StyleSecondaryButton(claimButton);
@@ -324,6 +339,52 @@ namespace BossRush
             {
                 claimButtonText.fontStyle = FontStyles.Bold;
             }
+
+            // 同一格的另外两种状态：已领取的小字、累计成就的进度（数字 + 细条）。
+            claimedText = CreateSlotText(parent, "ClaimedText", 0f);
+            progressText = CreateSlotText(parent, "ProgressText", 8f);
+            CreateSlotProgressBar(parent);
+        }
+
+        /// <summary>状态位里的一行小字：居中、不换行，长数字（1000 / 1000）自动缩到 11 号。</summary>
+        private static TextMeshProUGUI CreateSlotText(Transform parent, string name, float offsetY)
+        {
+            GameObject obj = ZombieModeUIHelper.CreateRect(name, parent,
+                new Vector2(1f, 0.5f), new Vector2(1f, 0.5f),
+                new Vector2(-Padding - SlotWidth * 0.5f, offsetY),
+                new Vector2(SlotWidth, SlotLineHeight), new Vector2(0.5f, 0.5f));
+            TextMeshProUGUI text = ZombieModeUIHelper.CreateTMPText(obj, string.Empty, BodyFontSize,
+                TextAlignmentOptions.Center, BossRushUIColors.TextSecondary);
+            text.enableWordWrapping = false;
+            text.fontSizeMin = 11f;
+            obj.SetActive(false);
+            return text;
+        }
+
+        /// <summary>
+        /// 状态位里的细进度条：Filled 必须配纯色 sprite（sprite 为空时 fillAmount 失效、永远满格），
+        /// 不走 ApplyPanelSkin（会把 type 改回 Sliced）。
+        /// </summary>
+        private void CreateSlotProgressBar(Transform parent)
+        {
+            progressTrack = ZombieModeUIHelper.CreateRect("ProgressTrack", parent,
+                new Vector2(1f, 0.5f), new Vector2(1f, 0.5f),
+                new Vector2(-Padding - SlotWidth * 0.5f, -14f),
+                new Vector2(SlotWidth - 8f, SlotBarHeight), new Vector2(0.5f, 0.5f));
+            Image track = progressTrack.AddComponent<Image>();
+            track.color = BossRushUIColors.Surface;
+            track.raycastTarget = false;
+            BossRushUI.ApplyPanelSkin(track, 3, BossRushUISkinPart.Hairline);
+
+            GameObject fillObj = ZombieModeUIHelper.CreateRect("ProgressFill", progressTrack.transform,
+                Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+            progressFill = fillObj.AddComponent<Image>();
+            progressFill.sprite = BossRushUI.GetSolidSprite();
+            progressFill.type = Image.Type.Filled;
+            progressFill.fillMethod = Image.FillMethod.Horizontal;
+            progressFill.color = BossRushUIColors.Accent;
+            progressFill.raycastTarget = false;
+            progressTrack.SetActive(false);
         }
 
         #endregion
@@ -396,34 +457,70 @@ namespace BossRush
 
         #region 内部方法
 
-        /// <summary>
-        /// 获取带进度的描述文本（用于累计成就）
-        /// </summary>
-        private string GetDescriptionWithProgress(bool isChinese)
+        /// <summary>描述正文（累计进度不再括在末尾，改由右侧状态位的数字 + 进度条给出，A-24）。</summary>
+        private string GetDescription(bool isChinese)
         {
-            string baseDesc = isChinese ? achievement.descCN : achievement.descEN;
-            
-            // 累计击杀成就显示实时进度
+            return isChinese ? achievement.descCN : achievement.descEN;
+        }
+
+        /// <summary>累计成就的当前值与目标值；不是累计成就返回 false。</summary>
+        private bool TryGetProgress(out int current, out int target)
+        {
+            current = 0;
+            target = 0;
             switch (achievement.id)
             {
-                case "kill_50_bosses":
-                    return baseDesc + " (" + AchievementTracker.TotalBossKills + "/50)";
-                case "kill_100_bosses":
-                    return baseDesc + " (" + AchievementTracker.TotalBossKills + "/100)";
-                case "kill_500_bosses":
-                    return baseDesc + " (" + AchievementTracker.TotalBossKills + "/500)";
-                case "kill_1000_bosses":
-                    return baseDesc + " (" + AchievementTracker.TotalBossKills + "/1000)";
-                case "dragon_slayer_master":
-                    return baseDesc + " (" + AchievementTracker.TotalDragonKingKills + "/10)";
-                case "clear_10_times":
-                    return baseDesc + " (" + AchievementTracker.TotalClears + "/10)";
-                case "clear_50_times":
-                    return baseDesc + " (" + AchievementTracker.TotalClears + "/50)";
-                case "clear_100_times":
-                    return baseDesc + " (" + AchievementTracker.TotalClears + "/100)";
-                default:
-                    return baseDesc;
+                case "kill_50_bosses": current = AchievementTracker.TotalBossKills; target = 50; return true;
+                case "kill_100_bosses": current = AchievementTracker.TotalBossKills; target = 100; return true;
+                case "kill_500_bosses": current = AchievementTracker.TotalBossKills; target = 500; return true;
+                case "kill_1000_bosses": current = AchievementTracker.TotalBossKills; target = 1000; return true;
+                case "dragon_slayer_master": current = AchievementTracker.TotalDragonKingKills; target = 10; return true;
+                case "clear_10_times": current = AchievementTracker.TotalClears; target = 10; return true;
+                case "clear_50_times": current = AchievementTracker.TotalClears; target = 50; return true;
+                case "clear_100_times": current = AchievementTracker.TotalClears; target = 100; return true;
+                default: return false;
+            }
+        }
+
+        /// <summary>
+        /// 右侧状态位三选一（UI 共识第 4 节「不挂灰按钮」）：待领取 = 「领取」按钮；已领取 = 「√ 已领取」小字；
+        /// 累计成就未完成 = 进度数字 + 细条（够数时条换成 Success）。其余状态这一格留空。
+        /// </summary>
+        private void SetStatusSlot(bool showClaim, bool showClaimed, bool showProgress)
+        {
+            if (claimButton != null && claimButton.gameObject.activeSelf != showClaim)
+            {
+                claimButton.gameObject.SetActive(showClaim);
+            }
+            if (claimedText != null)
+            {
+                claimedText.gameObject.SetActive(showClaimed);
+                if (showClaimed)
+                {
+                    claimedText.text = "√ " + AchievementUIStrings.GetText(AchievementUIStrings.CN_Claimed, AchievementUIStrings.EN_Claimed);
+                }
+            }
+
+            int current = 0;
+            int target = 0;
+            bool hasProgress = showProgress && TryGetProgress(out current, out target) && target > 0;
+            if (progressText != null)
+            {
+                progressText.gameObject.SetActive(hasProgress);
+                if (hasProgress)
+                {
+                    progressText.text = Mathf.Min(current, target) + " / " + target;
+                }
+            }
+            if (progressTrack != null)
+            {
+                progressTrack.SetActive(hasProgress);
+            }
+            if (hasProgress && progressFill != null)
+            {
+                float ratio = Mathf.Clamp01((float)current / target);
+                progressFill.fillAmount = ratio;
+                progressFill.color = ratio >= 1f ? BossRushUIColors.Success : BossRushUIColors.Accent;
             }
         }
 
@@ -447,11 +544,11 @@ namespace BossRush
                     borderImage.color = BorderColorLocked;
                     nameText.text = isChinese ? achievement.nameCN : achievement.nameEN;
                     nameText.color = DisabledColor;
-                    descText.text = GetDescriptionWithProgress(isChinese);
+                    descText.text = GetDescription(isChinese);
                     descText.color = DisabledColor;
                     rewardText.text = "$" + achievement.reward.cashReward.ToString("N0");
                     rewardText.color = DisabledColor;
-                    claimButton.gameObject.SetActive(false);
+                    SetStatusSlot(false, false, true);
                     LoadIcon(achievement.iconFile, true);
                     break;
 
@@ -464,7 +561,7 @@ namespace BossRush
                     descText.color = DisabledColor;
                     rewardText.text = "???";
                     rewardText.color = DisabledColor;
-                    claimButton.gameObject.SetActive(false);
+                    SetStatusSlot(false, false, false);
                     LoadIcon("default.png", true);
                     break;
 
@@ -473,11 +570,11 @@ namespace BossRush
                     borderImage.color = BorderColorUnlocked;
                     nameText.text = isChinese ? achievement.nameCN : achievement.nameEN;
                     nameText.color = TextColor;
-                    descText.text = GetDescriptionWithProgress(isChinese);
+                    descText.text = GetDescription(isChinese);
                     descText.color = DescColor;
                     rewardText.text = "$" + achievement.reward.cashReward.ToString("N0");
                     rewardText.color = GoldColor;
-                    claimButton.gameObject.SetActive(true);
+                    SetStatusSlot(true, false, false);
                     claimButton.interactable = true;
                     // 底色住在 ColorBlock 里（StyleSecondaryButton），这里只切可点状态与字色，不写 Image.color
                     if (claimButtonText != null)
@@ -493,17 +590,12 @@ namespace BossRush
                     borderImage.color = BorderColor;
                     nameText.text = isChinese ? achievement.nameCN : achievement.nameEN;
                     nameText.color = TextColor;
-                    descText.text = GetDescriptionWithProgress(isChinese);
+                    descText.text = GetDescription(isChinese);
                     descText.color = DescColor;
                     rewardText.text = "$" + achievement.reward.cashReward.ToString("N0");
                     rewardText.color = DisabledColor;
-                    claimButton.gameObject.SetActive(true);
-                    claimButton.interactable = false;
-                    if (claimButtonText != null)
-                    {
-                        claimButtonText.text = AchievementUIStrings.GetText(AchievementUIStrings.CN_Claimed, AchievementUIStrings.EN_Claimed);
-                        claimButtonText.color = DisabledColor;
-                    }
+                    // 已领取不留灰按钮（A-21）：按钮收起，同一格写「√ 已领取」
+                    SetStatusSlot(false, true, false);
                     LoadIcon(achievement.iconFile, false);
                     break;
             }

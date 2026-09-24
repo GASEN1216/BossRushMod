@@ -132,6 +132,7 @@ EXCLUDED = {
 # 本来就该画在官方界面之上。2026-09-14 审核 F-08 ⑦：旧版只归类 HUD 层，新写一块常驻 HUD 却用 Panel 层就查不到。
 MODAL = {
     "Achievement/SteamAchievementPopup.cs": "成就解锁提示（Toast）：几秒后自动消失的一次性提示",
+    "Common/UI/BossRushConfirmDialog.cs": "共享确认弹窗（ModalConfirm，调用方可传更高的模态层）：不可逆操作前玩家主动触发",
     "Achievement/AchievementView.cs": "成就界面（Panel）：玩家主动打开",
     "BossFilter/BossFilterUi.cs": "Boss 筛选界面（Panel）：玩家主动打开",
     "DebugAndTools/F3DebugCheatMenuUi.cs": "F3 调试菜单（Modal）：Dev 构建里玩家主动打开",
@@ -147,9 +148,9 @@ MODAL = {
     "ModeG/ModeGInteractable.cs": "Mode G 入口确认页（ModeGEntry）：交互打开的模态",
     "ModeG/ModeGRecapPanel.cs": "Mode G 战后回顾（ModeGRecap）：模态",
     "ModeH/ModeHRecoveryPanel.cs": "Mode H 恢复壳（ModeHRecovery）：应急模态",
+    "ModeH/ModeHBetRevealView.cs": "Mode H 押钱「开盘」揭晓（Modal）：锁盘后播 3.5 秒的一次性演出，不接管输入",
     "PetNest/PetNestUI.cs": "遗种巢主界面（PetNestPanel）：交互打开",
     "PetNest/PetNestRenameModal.cs": "遗种巢改名（PetNestModal）",
-    "PetNest/PetNestReleaseConfirmModal.cs": "遗种巢放生确认（PetNestModal）",
     "PetNest/PetNestHatchRevealView.cs": "遗种巢孵化揭晓（PetNestModal）",
     "PetNest/PetNestExpeditionRevealView.cs": "遗种巢远征揭晓（PetNestModal）",
     "ZombieMode/ZombieModeCashInvestmentView.cs": "丧尸模式投资面板（ZombieModalInput）：占模态输入",

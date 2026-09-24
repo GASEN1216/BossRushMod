@@ -93,6 +93,7 @@ namespace BossRush
         internal bool ConsistentAtRestore;
         private void EnsureLevelReadySubscription() { }
         private void RestoreFromSaveIfPresent() { ConsistentAtRestore = ModeHWarehouseStakeJournal.IsSlotConsistent; }
+        private void ReconcileCashBetOnRestore() { }
         private void LogFailure(string step, Exception error) { throw new Exception(step, error); }
     }
     internal static class ModeHSaveFlushCoordinator { internal static void EnsureSubscribed() { } }

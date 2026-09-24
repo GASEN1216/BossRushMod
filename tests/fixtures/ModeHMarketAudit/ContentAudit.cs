@@ -60,12 +60,15 @@ namespace BossRush
         public static List<ModeHResolvedKit> GetSelectableKits(List<string> ids, string archetype, string profile)
         { return Kits.Where(x => ids.Contains(x.Spec.KitId)).ToList(); }
     }
-    internal sealed class ModeHActionData { public string Label; public Action OnClick; public bool Interactable = true; public bool IsSelected; }
+    internal sealed class ModeHActionData { public string Label; public Action OnClick; public bool Interactable = true; public bool IsSelected; public bool IsPrimary; public string SelectedBadge; public bool IsCancel; }
+    // 2026-09-24：整备页的分区改成页头下的一排页签（ModeHOptionRow）
+    internal sealed class ModeHOptionRow { public string Label, Caption; public bool AtTop; public List<ModeHActionData> Options = new List<ModeHActionData>(); }
     internal sealed class ModeHPageContent
     {
         public string Title, Body;
         public List<string> Lines = new List<string>();
         public List<ModeHActionData> Actions = new List<ModeHActionData>(), PreparationOptions = new List<ModeHActionData>();
+        public List<ModeHOptionRow> OptionRows = new List<ModeHOptionRow>();
     }
     internal sealed partial class ModeHRuntimeModule
     {
@@ -128,19 +131,21 @@ namespace BossRush
             Check(!season.matchRoster.starterKitIds.Contains("Armor") && season.matchRoster.relayKitIds.Contains("Armor"), "disabled armor removed only from injured fighter");
             Check(runtime.Command != "handoff", "starter never defaults to unreachable command");
             var commandPageOwner = runtime.Page();
-            commandPageOwner.PreparationOptions[3].OnClick();
+            // 分区是页头下的一排页签：最后一个是口令
+            commandPageOwner.OptionRows[0].Options.Last().OnClick();
             var commandsPage = runtime.Page();
-            Check(commandsPage.PreparationOptions.Count <= 6 && commandsPage.Actions.Count <= 3, "command pages stay bounded");
+            // 2026-09-24：整备页不再 6 项一页翻页（选项列表可滚动）；底栏只剩一颗「完成」
+            Check(commandsPage.PreparationOptions.Count > 0 && commandsPage.Actions.Count == 1, "command page lists commands with a single Done action");
             Check(commandsPage.PreparationOptions.All(x => x.Label.Contains("seconds")), "each command exposes its active window");
             commandsPage.Actions.Last().OnClick();
-            runtime.Page().PreparationOptions[1].OnClick();
+            runtime.Page().OptionRows[0].Options[1].OnClick();
             Check(runtime.Page().PreparationOptions.All(x => !x.Label.StartsWith("Armor") && !x.Label.StartsWith("✓ Armor")), "disabled armor has no editing button");
             runtime.Page().Actions.Last().OnClick();
             int score = runtime.Score;
             season.matchRoster.starterKitIds.Add("Armor");
             Check(runtime.Prepare(out error) && runtime.Score == score, "restored stale armor cannot improve score");
-            var page = runtime.Page(); Check(page.PreparationOptions.Count == 4, "preparation has four sections");
-            page.PreparationOptions[0].OnClick();
+            var page = runtime.Page(); Check(page.OptionRows.Count == 1 && page.OptionRows[0].Options.Count == 4, "preparation has four section tabs");
+            page.OptionRows[0].Options[0].OnClick();
             var rosterPage = runtime.Page(); Check(rosterPage.PreparationOptions.Any(x => x.Label.Contains("Damaged Armor")), "roster shows actual injury");
             var stale = rosterPage.PreparationOptions.Last().OnClick;
             season.matchRoster = new ModeHMatchRosterDto { matchIndex = 1, matchRelayProfileId = "relay" };

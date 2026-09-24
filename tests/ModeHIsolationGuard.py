@@ -7,6 +7,9 @@ ModeHIsolationGuard — Mode H 隔离与玩家资产白名单守卫（设计提�
   1) ModeHEntry.TryRefundPrepaidTicket()：只允许 Inventory + 一个船票 typeId，禁止 PlayerStorage；
   2) ModeHLoadoutKitApplicator：只允许 owner 标记且 inactive 的临时选手实例 slots/inventory；
   3) ModeHWarehouseStakeJournal + ModeHInventoryPersistenceBridge：真实押品/奖励根物品；
+  4) ModeHItemBetStake（2026-09-24 owner 拍板押背包物品）：只读主角色背包列候选，物品押上不离开背包，
+     只在押输时由 ForfeitLocked 收走仍在玩家身上的那几件；押赢的奖品只经 ModeHRewardItemPool 实例化、
+     只在 DeliverPrizes 里用 SendToPlayer(prize, true, false) 发一次（不送仓库），不碰仓库；
 - 白名单以外的任何 Mode H 文件都不得出现 Inventory / PlayerStorage / ItemTreeData；
 - Mode H 不写旧模式状态（波次计数、Mode E/F/G/Zombie profile/loot/mutator、全局玩家生命）；
 - 退款路径必须先 ClearPendingEntryFlowState 再发票，失败时 DestroyTree；
@@ -34,7 +37,49 @@ ASSET_WHITELIST = {
     "ModeHInventoryPersistenceBridge.cs": {"Inventory", "PlayerStorage", "ItemTreeData"},
     "ModeHItemTreeNormalizer.cs": {"ItemTreeData"},
     "ModeHItemTreeRestoration.cs": {"ItemTreeData"},  # 同一只读 normalizer partial，恢复官方树数据
+    # 押背包物品（2026-09-24 owner 拍板）：只读主角色背包列候选、输了只收走押上的那几件，见 check_item_bet_stake
+    "ModeHItemBetStake.cs": {"Inventory"},
 }
+
+
+def check_item_bet_stake(code, errors):
+    """押背包物品的物品侧：只读背包、只在「输了」这一处收走（堆叠变多只扣回押上的数量）、
+    奖品只经共享实例化门禁生成、只在 DeliverPrizes 发一次且不送仓库。"""
+    if not code:
+        errors.append("[ItemBet] 缺少 ModeH/ModeHItemBetStake.cs")
+        return
+    for forbidden, why in [
+        ("InstantiateSync", "不得绕过 ModeHRewardItemPool.TryInstantiate 的空壳门禁直接生成物品"),
+        ("AddItem", "不得直接往背包塞物品"),
+        ("AddAndMerge", "不得直接往背包塞物品"),
+        ("SendToPlayerStorage", "出击地图上没有仓库，不得送仓库"),
+    ]:
+        if forbidden in code:
+            errors.append("[ItemBet] 押物品{}（发现 {}）".format(why, forbidden))
+    if code.count("SendToPlayer(") != 1:
+        errors.append("[ItemBet] 发奖品只能有一处（DeliverPrizes）")
+    deliver = re.search(r"internal static void DeliverPrizes\(List<Item> prizes\)[\s\S]*?\n        \}", code)
+    if not deliver or "ItemUtilities.SendToPlayer(prize, true, false);" not in deliver.group(0):
+        errors.append("[ItemBet] 奖品必须在 DeliverPrizes 里经 SendToPlayer(prize, true, false) 发（进背包、满了落地、不送仓库）")
+    if "ModeHRewardItemPool.TryInstantiate(" not in code or "BossRushQualityItemPool.GetCandidates(" not in code:
+        errors.append("[ItemBet] 奖品必须从共享品质候选池挑、经共享实例化门禁生成")
+    if code.count("DestroyTree(") != 1 or code.count(".Detach()") != 1:
+        errors.append("[ItemBet] 收走物品只能有一处（ForfeitLocked）")
+    forfeit = re.search(r"internal static long ForfeitLocked\(\)[\s\S]*?\n        \}", code)
+    if not forfeit or "DestroyTree(" not in forfeit.group(0):
+        errors.append("[ItemBet] 收走物品必须在 ForfeitLocked 里")
+    else:
+        body = forfeit.group(0)
+        for token, why in [
+            ("if (_forfeited) return _forfeitMissing;", "收走必须幂等（账本顺延时不能再收一遍）"),
+            ("IsOnPlayer(item, character)", "只收走仍在玩家身上的"),
+            ("item.StackCount = now - entry.Count;", "堆叠被合并变多时只扣回押上的数量"),
+            ("missing += entry.Value;", "找不到的按估值记账"),
+        ]:
+            if token not in body:
+                errors.append("[ItemBet] " + why)
+    if "character.Inventory" not in code or "CharacterMainControl.Main" not in code:
+        errors.append("[ItemBet] 候选只能来自主角色背包")
 
 ASSET_SYMBOLS = ["PlayerStorage", "ItemTreeData", "Inventory"]
 
@@ -79,6 +124,8 @@ def main():
                          and re.search(r"LevelManager\.Instance\.InputManager != null", code))
             if not has_guard:
                 errors.append("[Input] {} 调用 ActiveInput 前必须判空 InputManager 实例".format(name))
+
+    check_item_bet_stake(strip_cs_comments(read_text(os.path.join(MODEH_DIR, "ModeHItemBetStake.cs")) or ""), errors)
 
     entry = read_text(os.path.join(MODEH_DIR, "ModeHEntry.cs"))
     if entry is None:

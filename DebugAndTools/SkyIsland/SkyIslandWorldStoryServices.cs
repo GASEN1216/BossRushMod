@@ -185,6 +185,90 @@ namespace BossRush
             }));
         }
 
+        #region 确认页与阅读页栏目（2026-09-24 UI 共识对照审查 B-14 / B-15 / B-32）
+
+        private static readonly string ConfirmWarningTag = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText) + ">";
+
+        /// <summary>
+        /// 不可逆动作的确认页（退单、和解 / 战胜二选一的挑战）。用面板自己的换页（<see cref="reopen"/> 机制），不另开共享确认框：
+        /// 这块面板本身就是模态（时间压到 0），再叠一层弹窗就是两份输入租约、两套 ESC。
+        /// 页型照 UI 制作共识的确认页：标题问句 + 后果（红字）+ 确认一项 +「再想想」（次级色，回到点之前那一页）；
+        /// ESC 照常整个关掉面板，什么都没做。打开时不继承上一页的键盘当前项，免得回车连按两下就把确认按掉了。
+        /// 确认时 <see cref="reopen"/> 先指回上一页，动作里的 <see cref="Refreshed"/> 重开的就是那一页。
+        /// 返回 null：新开的确认页自己的正文保持不动（见 SkyIslandStoryPresentation.BuildChoice）。
+        /// </summary>
+        private string ConfirmPage(string title, string warning, string confirmLabel, Func<string> confirm, Sprite banner)
+        {
+            ShowConfirmPage(title, warning, confirmLabel, confirm, banner, reopen);
+            return null;
+        }
+
+        private void ShowConfirmPage(string title, string warning, string confirmLabel, Func<string> confirm, Sprite banner, Action back)
+        {
+            reopen = delegate { ShowConfirmPage(title, warning, confirmLabel, confirm, banner, back); };
+            hiddenHints.Clear();
+            var choices = new List<SkyIslandStoryPresentation.Choice>();
+            choices.Add(new SkyIslandStoryPresentation.Choice(confirmLabel, delegate
+            {
+                reopen = back;
+                return confirm();
+            }));
+            choices.Add(SkyIslandStoryPresentation.AsSecondary(new SkyIslandStoryPresentation.Choice(L10n.T("再想想", "Not yet"), delegate
+            {
+                if (back != null) back();
+                else presentation.Close();
+                return null;
+            })));
+            presentation.ResetFocusOnNextShow();
+            presentation.Show(title, ConfirmWarningTag + warning + "</color>", choices, null, banner);
+        }
+
+        /// <summary>退单确认页的后果（B-14）：进度作废、没有谢礼；不占轮次，退完马上能接下一单（SkyIslandBounty.TryAbandon）。</summary>
+        private static string DropContractWarning(string contract)
+        {
+            return L10n.T("手上这一单：", "Current contract: ") + contract + "\n" +
+                L10n.T("退掉之后，这一单已经做的进度全部作废，也拿不到谢礼。退完可以马上再接一单。",
+                    "Dropping it throws away all progress on it, and there is no reward. You can take another contract right away.");
+        }
+
+        private static string ChallengeConfirmTitle(string id)
+        {
+            if (string.Equals(id, "Zheling", StringComparison.Ordinal))
+                return L10n.T("真的要和折翎动手吗？", "Really fight Zheling?");
+            if (string.Equals(id, "BellKeeper", StringComparison.Ordinal))
+                return L10n.T("真的要挑战守钟装置吗？", "Really take on the bell engine?");
+            return L10n.T("现在开打吗？", "Start the fight now?");
+        }
+
+        /// <summary>挑战确认页的后果（B-15）：两个具名对手都是和解 / 战胜二选一，打赢就永久关掉和解线（SkyIslandStoryRules：ZhelingResolved / BellKeeperResolved）。</summary>
+        private static string ChallengeWarning(string id)
+        {
+            if (string.Equals(id, "Zheling", StringComparison.Ordinal))
+                return L10n.T("打赢以后，和折翎坐下来谈的那条路就永久关了，旧信与航路图再也交不出去。想和解的话，别点这里，去走「留下来谈」那条线。",
+                    "Win this and talking it out with Zheling is closed for good: the old letter and the route chart can never be shown. To make peace, skip this and follow the 'Stay and talk' route.");
+            if (string.Equals(id, "BellKeeper", StringComparison.Ordinal))
+                return L10n.T("打赢以后就再也不能和钟守和解。想和解的话，别点这里，先证明航路安全。",
+                    "Win this and you can never reconcile with the Bell Keeper. To make peace, skip this and prove the lanes are safe.");
+            return L10n.T("开打之后就没有回头路。", "Once it starts, there is no turning back.");
+        }
+
+        /// <summary>
+        /// 手记子页的一个栏目：点了正文换成它，这一行一直用 WarningText 行边标着「正在看这一栏」，直到点别的栏目
+        /// （B-32；UI 制作共识第 6 节：选中态看得见、不置灰）。键盘 / 悬停焦点仍是 Accent 行边，两者分开。
+        /// </summary>
+        private static SkyIslandStoryPresentation.Choice Section(List<SkyIslandStoryPresentation.Choice> group, string label, Func<string> body)
+        {
+            SkyIslandStoryPresentation.Choice choice = null;
+            choice = new SkyIslandStoryPresentation.Choice(label, delegate
+            {
+                SkyIslandStoryPresentation.MarkCurrent(group, choice);
+                return body();
+            });
+            return choice;
+        }
+
+        #endregion
+
         #region 世界里的光与纪念物木桩（2026-09-23 审美审查 UE-08 / UE-20）
 
         /// <summary>

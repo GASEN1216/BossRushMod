@@ -22,7 +22,9 @@ A single piece can carry both reforged stats and affixes. The two systems never 
   **2** at quality 5-6, **3** at quality 7+. The slot count is frozen at the first forge and
   never changes afterwards.
 - **Lock** an affix you like (costs `2` stones) and a re-roll leaves it alone, rolling only the
-  unlocked slots. **Unlocking is free.**
+  unlocked slots. At least one slot must stay unlocked, so the last one can't be locked.
+- **Unlocking costs nothing, but the stones spent on the lock are not refunded**; locking again
+  costs another 2. Unlock asks for confirmation first.
 - Affix names show up directly on the item details panel, so you can see at a glance what a
   gun is carrying.
 

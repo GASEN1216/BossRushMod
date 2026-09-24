@@ -182,6 +182,48 @@ namespace BossRush
         /// </summary>
         public const int MaxRealStakeItemsPerMatch = 3;
 
+        /// <summary>
+        /// 押钱档位（2026-09-24 owner 拍板：仓库物品在出击地图上押不了，改成玩家自己选押多少钱）。
+        /// 下标 0 = 不押。选人页与结算页页脚的一排分段按钮就是这几档。
+        /// </summary>
+        public static readonly long[] CashBetAmounts = { 0L, 1000L, 5000L, 20000L };
+
+        /// <summary>
+        /// 押钱赔付的庄家抽水（‰）。赢了拿回 = 押金 ×（1000 − 抽水）÷ 假定胜率：
+        /// 假定胜率准的时候，每押 100 长期亏 8（owner：「总体下来玩家的钱是慢慢往下掉的，这才符合赌徒的性质」）。
+        /// </summary>
+        public const int CashBetHouseCutPermille = 80;
+
+        /// <summary>
+        /// 各赔率档（下标 = 赔率 1–5）的假定胜率（‰），故意取偏高的保守值：宁可赔少也不能让押钱变成印钞机。
+        /// 本档实际胜率样本够了（CashBetCalibrationMinSamples）且更高时，改用实际胜率（ModeHCashBetService）。
+        /// 实机跑够场次后按账本里的分档统计再调（owner：赢钱概率取决于实战，要实机再调）。
+        /// </summary>
+        public static readonly int[] CashBetAssumedWinPermilleByOdds = { 1000, 850, 700, 550, 420, 300 };
+
+        /// <summary>本档实际胜率参与赔付计算前至少要多少场样本。</summary>
+        public const int CashBetCalibrationMinSamples = 20;
+
+        /// <summary>
+        /// 押背包物品（2026-09-24 owner：「让玩家自己选择押注多少背包里的物品」）的估值折算（‰）：
+        /// 按官方商人的收购口径（StockShop.sellFactor 默认 0.5）估，不按原价——按原价估，拿卖不上价的东西去押
+        /// 反而比卖掉划算，钱就不会「慢慢往下掉」了。好感折扣能把收购价抬到 0.5 以上，这里仍取 0.5，只会更亏不会更赚。
+        /// </summary>
+        public const int ItemBetValuePermille = 500;
+
+        /// <summary>
+        /// 押物品赢了发几件奖品的上限（2026-09-24 owner：「押上的物品不要有限制，只是其品质和价钱会影响到再次给予其奖品的品质和价钱」）。
+        /// 押什么、押多少件都不限；奖品件数 = 押上的件数，最多这么多件（发太多会把背包塞爆、满地都是），
+        /// 奖品凑不满的价值折成钱补上。
+        /// </summary>
+        public const int ItemBetMaxPrizeItems = 6;
+
+        /// <summary>
+        /// 挑奖品时单件价值落在「每件目标值」的哪个区间里随机（‰）：目标值的 50%–100% 之间随机挑一件，
+        /// 区间里一件都没有就取不超过目标值的最贵那件，再没有就降一档品质找。
+        /// </summary>
+        public const int ItemBetPrizeBandLowPermille = 500;
+
         /// <summary>奖励候选数公式的净收益除数。</summary>
         public const int RewardCandidateNetDivisor = 2;
 

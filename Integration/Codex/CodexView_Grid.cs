@@ -128,11 +128,24 @@ namespace BossRush
             Canvas.ForceUpdateCanvases();
         }
 
-        private void ToggleMissingFilter()
+        /// <summary>分段「全部」。切换视图才回到顶部；点已选中的那颗只刷新、不跳位置。</summary>
+        private void ShowAllEntries()
         {
-            _onlyMissing = !_onlyMissing;
+            SetMissingFilter(false);
+        }
+
+        /// <summary>分段「待收集」。</summary>
+        private void ShowMissingEntries()
+        {
+            SetMissingFilter(true);
+        }
+
+        private void SetMissingFilter(bool onlyMissing)
+        {
+            bool changed = _onlyMissing != onlyMissing;
+            _onlyMissing = onlyMissing;
             RefreshAll();
-            if (_scrollRect != null) _scrollRect.verticalNormalizedPosition = 1f;
+            if (changed && _scrollRect != null) _scrollRect.verticalNormalizedPosition = 1f;
         }
 
         /// <summary>目录为空时的占位提示（Boss 池被全筛掉时会出现）。</summary>
@@ -148,7 +161,7 @@ namespace BossRush
                 hintRoot,
                 _onlyMissing ? L10n.T("当前目录已收集齐全。", "All current entries collected.")
                     : L10n.T("目录暂不可用，请稍后重新打开。", "Catalog unavailable. Please reopen later."),
-                15f,
+                BodyFontSize,
                 TextAlignmentOptions.Center,
                 BossRushUIColors.TextSecondary);
             text.raycastTarget = false;
@@ -194,13 +207,13 @@ namespace BossRush
                 CardPortraitSize);
 
             // 名字：锁定态也照常显示，"我还差谁"本身就是图鉴要给的信息
-            // 字号梯度（审美审查 UD-31）：名字 17（长名最小缩到 14）、击杀 15、最快 14。
+            // 字号（A-20 收成四级）：名字 17（长名最小缩到 14）、击杀与最快同为正文 15。
             // 旧值 15 / 13 / 12 在 1080p 下要凑近屏幕才看得清。卡片高随之从 210 加到 236（CodexTuning.CardHeight）。
             TextMeshProUGUI nameText = ZombieModeUIHelper.CreateText(
                 "Name",
                 card.transform,
                 displayName,
-                17f,
+                NameFontSize,
                 new Vector2(0f, 1f),
                 new Vector2(1f, 1f),
                 new Vector2(0f, -(CardPortraitSize + 27f)),
@@ -209,35 +222,36 @@ namespace BossRush
                 locked ? BossRushUIColors.TextSecondary : BossRushUIColors.TextPrimary);
             nameText.fontStyle = locked ? FontStyles.Normal : FontStyles.Bold;
             nameText.enableAutoSizing = true;
-            nameText.fontSizeMin = 14f;
-            nameText.fontSizeMax = 17f;
+            nameText.fontSizeMin = NoteFontSize;
+            nameText.fontSizeMax = NameFontSize;
             nameText.overflowMode = TextOverflowModes.Ellipsis;
             nameText.raycastTarget = false;
 
-            // 统计数字：锁定态一律隐藏成占位符
+            // 未解锁卡只留剪影与名字（A-19）：旧版再写一行「未记录」和一道「—」占位，满屏都是没信息的字。
+            if (locked)
+            {
+                return card;
+            }
+
             TextMeshProUGUI killsText = ZombieModeUIHelper.CreateText(
                 "Kills",
                 card.transform,
-                locked
-                    ? L10n.T("未记录", "Unrecorded")
-                    : L10n.T("击杀 ", "Kills ") + entry.Kills.ToString(),
-                15f,
+                L10n.T("击杀 ", "Kills ") + entry.Kills.ToString(),
+                BodyFontSize,
                 new Vector2(0f, 1f),
                 new Vector2(1f, 1f),
                 new Vector2(0f, -183f),
                 new Vector2(-8f, CardTextHeight),
                 TextAlignmentOptions.Center,
-                locked ? BossRushUIColors.TextSecondary : BossRushUIColors.Accent);
+                BossRushUIColors.Accent);
             killsText.enableAutoSizing = false;
             killsText.raycastTarget = false;
 
             TextMeshProUGUI fastestText = ZombieModeUIHelper.CreateText(
                 "Fastest",
                 card.transform,
-                locked
-                    ? "—"
-                    : L10n.T("最快 ", "Best ") + FormatFastest(entry.FastestKillSeconds),
-                14f,
+                L10n.T("最快 ", "Best ") + FormatFastest(entry.FastestKillSeconds),
+                BodyFontSize,
                 new Vector2(0f, 1f),
                 new Vector2(1f, 1f),
                 new Vector2(0f, -210f),
@@ -393,7 +407,7 @@ namespace BossRush
                     "DetailName",
                     surface.transform,
                     displayName,
-                    28f,
+                    TitleFontSize,
                     new Vector2(0f, 1f),
                     new Vector2(1f, 1f),
                     new Vector2(0f, -(DetailPortraitSize + 56f)),
@@ -402,8 +416,8 @@ namespace BossRush
                     BossRushUIColors.TextPrimary);
                 title.fontStyle = FontStyles.Bold;
                 title.enableAutoSizing = true;
-                title.fontSizeMin = 18f;
-                title.fontSizeMax = 28f;
+                title.fontSizeMin = NameFontSize;
+                title.fontSizeMax = TitleFontSize;
                 title.overflowMode = TextOverflowModes.Ellipsis;
 
                 ZombieModeUIHelper.CreateSeparator(
@@ -434,7 +448,7 @@ namespace BossRush
                     new Vector2(0f, 30f),
                     new Vector2(140f, 38f),
                     BossRushUIColors.SurfaceRaised,
-                    16f,
+                    BodyFontSize,
                     new Vector2(140f, 38f),
                     HideDetail,
                     true);
@@ -484,7 +498,7 @@ namespace BossRush
                 "Row_" + label,
                 parent,
                 label,
-                16f,
+                BodyFontSize,
                 new Vector2(0f, 1f),
                 new Vector2(0.5f, 1f),
                 new Vector2(20f, -topOffset),
@@ -497,7 +511,7 @@ namespace BossRush
                 "Value_" + label,
                 parent,
                 value,
-                16f,
+                BodyFontSize,
                 new Vector2(0.5f, 1f),
                 new Vector2(1f, 1f),
                 new Vector2(-20f, -topOffset),

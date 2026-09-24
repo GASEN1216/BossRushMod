@@ -65,6 +65,21 @@ namespace BossRush
             get { return presetIndex < 0 ? L10n.T("自动 · ", "Auto · ") + Presets[automaticIndex].Name : Presets[presetIndex].Name; }
         }
 
+        /// <summary>
+        /// 导览牌「换一种天色」之后给玩家的回话（2026-09-24 UI 共识对照审查 B-33，owner 定：对玩家开放）。
+        /// 说白话、不叫 preset，并说清只换景色、不拨时间（判夜照旧读官方时钟）；转回自动档时说「跟着时间走」。
+        /// </summary>
+        internal string PlayerCaption
+        {
+            get
+            {
+                return presetIndex < 0
+                    ? L10n.T("群岛天色：跟着时间走（现在是", "Island sky: following the clock (now ") + Presets[automaticIndex].Name + L10n.T("）", ")")
+                    : L10n.T("群岛天色：", "Island sky: ") + Presets[presetIndex].Name +
+                        L10n.T("（只换景色，时间照常走；再看一次换下一种）", " (just the view; the clock keeps running. Look again for the next one)");
+            }
+        }
+
         internal void Apply(GameObject root)
         {
             if (acquired) throw new InvalidOperationException("天空岛光照租约已经启用");

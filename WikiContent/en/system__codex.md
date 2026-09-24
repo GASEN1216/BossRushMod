@@ -14,8 +14,8 @@ The Codex records defeated bosses so you can choose an opponent you have not bea
 ### Choosing your next opponent
 
 - The top bar shows collected entries and the current catalog size, with marks at 10, 20 and completion.
-- Select **Show missing** to find undefeated bosses, or **Show all** to restore the full list. This display filter does not change achievement requirements.
-- The whole catalog is laid out **in one pass** - there are no page buttons, just scroll. Cards show names, kills and best times.
+- Switch views with the **All / Missing** segments at the top: Missing lists only undefeated bosses and shows how many are left; All restores the full list. This display filter does not change achievement requirements.
+- The whole catalog is laid out **in one pass** - there are no page buttons, just scroll. Recorded cards show names, kills and best times; unrecorded ones show only a silhouette and the name.
 - Click a card for its **category, total kills, fastest kill, first-seen date and first-seen location**. Locked cards still show names and category; unrecorded stats show a dash.
 - ESC closes the details first, then the Codex. Changing the game language updates the interface and boss names that have a current translation.
 

@@ -109,7 +109,7 @@ namespace BossRush
                 WishFountainRewardAnimationView view = root.GetComponent<WishFountainRewardAnimationView>();
                 activeInstance = view;
                 view.rewardTypeId = rewardTypeId;
-                view.rewardDisplayName = string.IsNullOrEmpty(rewardDisplayName) ? "Unknown Reward" : rewardDisplayName;
+                view.rewardDisplayName = string.IsNullOrEmpty(rewardDisplayName) ? L10n.T("未知奖励", "Unknown reward") : rewardDisplayName;
                 view.finishedCallback = onFinished;
                 view.sequenceTypeIds.AddRange(sequenceTypeIds);
                 view.winnerIndex = Mathf.Clamp(winnerIndex, 0, sequenceTypeIds.Count - 1);

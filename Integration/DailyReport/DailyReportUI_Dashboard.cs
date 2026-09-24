@@ -46,6 +46,13 @@ namespace BossRush
         /// <summary>签到按钮圆角。</summary>
         private const int ButtonRadius = 12;
 
+        // 字号只用四级（UI 共识第 7 节，2026-09-24 对照审查 A-16；旧版 72 / 24 / 23 / 22 / 20 / 19 / 18 共七级）：
+        //   报头 72（报名当作标志用）/ 标题 22（缎带、按钮、数值块基准，块内大数字 200%）/ 正文 18（其余全部）。
+        // 数值块里的标签、单位、注脚用 82%（22 × 0.82 ≈ 18），和正文同一级。
+        private const float MastheadFontSize = 72f;
+        private const float HeadingFontSize = 22f;
+        private const float BodyFontSize = 18f;
+
         #endregion
 
         #region 版面构建
@@ -98,20 +105,20 @@ namespace BossRush
 
             // 报名做成参考图那样的大号粗体压满报头，「— DUCK NEWS —」居中排在下面（两侧横线烤在底图里）
             Rect title = DailyReportLayoutTable.Get("title");
-            mastheadText = CreateText("Masthead", title, 0f, 0.70f, 72f,
+            mastheadText = CreateText("Masthead", title, 0f, 0.70f, MastheadFontSize,
                 TextAlignmentOptions.Bottom, PaperInk, false);
             mastheadText.fontStyle = FontStyles.Bold;
             mastheadText.characterSpacing = 8f;
 
-            subtitleText = CreateText("Subtitle", title, 0.76f, 1f, 18f,
+            subtitleText = CreateText("Subtitle", title, 0.76f, 1f, BodyFontSize,
                 TextAlignmentOptions.Center, PaperInkSoft, false);
 
             Rect meta = DailyReportLayoutTable.Get("infoMeta");
-            metaIssueText = CreateIconText("MetaIssue", meta, 0f, MetaSplit, 19f, PaperInk, "issue", true);
-            metaDeadlineText = CreateIconText("MetaDeadline", meta, MetaSplit, 1f, 19f, PaperInk, "deadline", true);
+            metaIssueText = CreateIconText("MetaIssue", meta, 0f, MetaSplit, BodyFontSize, PaperInk, "issue", true);
+            metaDeadlineText = CreateIconText("MetaDeadline", meta, MetaSplit, 1f, BodyFontSize, PaperInk, "deadline", true);
 
             Rect weather = DailyReportLayoutTable.Get("infoWeather");
-            weatherText = CreateIconText("Weather", weather, 0f, 1f, 19f, PaperInk, "weather", true);
+            weatherText = CreateIconText("Weather", weather, 0f, 1f, BodyFontSize, PaperInk, "weather", true);
         }
 
         private void BuildIncomeCard()
@@ -120,14 +127,14 @@ namespace BossRush
 
             // 数值块只有「标签 / 大号数字 / 注脚」三行，不需要滚动：关掉换行走 autoSize，
             // 富文本里的字号用百分比，数字太长时整块等比缩，不会被截成半个数字。
-            statsText = CreateIconText("Income", DailyReportLayoutTable.Get("incomeLeft"), 0f, 1f, 22f, PaperInk, "income", false);
-            bountyText = CreateIconText("Bounty", DailyReportLayoutTable.Get("incomeRight"), 0f, 1f, 22f, PaperInk, "bounty", false);
+            statsText = CreateIconText("Income", DailyReportLayoutTable.Get("incomeLeft"), 0f, 1f, HeadingFontSize, PaperInk, "income", false);
+            bountyText = CreateIconText("Bounty", DailyReportLayoutTable.Get("incomeRight"), 0f, 1f, HeadingFontSize, PaperInk, "bounty", false);
 
-            headlineText = CreateIconText("Tip", DailyReportLayoutTable.Get("incomeTip"), 0f, 1f, 20f, PaperInk, "tip", true);
+            headlineText = CreateIconText("Tip", DailyReportLayoutTable.Get("incomeTip"), 0f, 1f, BodyFontSize, PaperInk, "tip", true);
             // 战绩表按两列排（DailyReportView.JoinColumns），18 号三行正好装进这块，不再露半行
             Rect note = DailyReportLayoutTable.Get("incomeNote");
             headlineBodyText = CreateText("IncomeNote", new Rect(note.x + 10f, note.y + 4f, note.width - 20f, note.height - 6f),
-                0f, 1f, 18f, TextAlignmentOptions.TopLeft, PaperInkSoft, true);
+                0f, 1f, BodyFontSize, TextAlignmentOptions.TopLeft, PaperInkSoft, true);
         }
 
         private void BuildStatusCard()
@@ -135,11 +142,11 @@ namespace BossRush
             statusTitleText = CreatePillText("StatusTitle", DailyReportLayoutTable.Get("statusPill"), "ribbon_status");
 
             // 四行从上到下：头条（粗体）→ 头条正文 → 趣味运势 → 编辑部便条。
-            editorText = CreateIconText("Editor", DailyReportLayoutTable.Get("statusLeft"), 0f, 1f, 20f, PaperInk, "headline", true);
+            editorText = CreateIconText("Editor", DailyReportLayoutTable.Get("statusLeft"), 0f, 1f, BodyFontSize, PaperInk, "headline", true);
             editorText.fontStyle = FontStyles.Bold;
-            sideText = CreateIconText("Luck", DailyReportLayoutTable.Get("statusRight"), 0f, 1f, 19f, PaperInkSoft, "broadcast", true);
-            fortuneText = CreateIconText("Fortune", DailyReportLayoutTable.Get("statusLuck"), 0f, 1f, 19f, PaperInk, "fortune", true);
-            gossipText = CreateIconText("Gossip", DailyReportLayoutTable.Get("statusTaboo"), 0f, 1f, 19f, PaperInkSoft, "gossip", true);
+            sideText = CreateIconText("Luck", DailyReportLayoutTable.Get("statusRight"), 0f, 1f, BodyFontSize, PaperInkSoft, "broadcast", true);
+            fortuneText = CreateIconText("Fortune", DailyReportLayoutTable.Get("statusLuck"), 0f, 1f, BodyFontSize, PaperInk, "fortune", true);
+            gossipText = CreateIconText("Gossip", DailyReportLayoutTable.Get("statusTaboo"), 0f, 1f, BodyFontSize, PaperInkSoft, "gossip", true);
         }
 
         private void BuildSignInCard()
@@ -166,11 +173,11 @@ namespace BossRush
                 signInCells.Add(image);
 
                 TextMeshProUGUI label = ZombieModeUIHelper.CreateText(
-                    "Label", cell.transform, string.Empty, 20f,
+                    "Label", cell.transform, string.Empty, BodyFontSize,
                     Vector2.zero, new Vector2(cellRect.width, cellRect.height),
                     TextAlignmentOptions.Center, PaperInk);
                 BossRushUI.ApplyGameFont(label);
-                LockFontSize(label, 20f);
+                LockFontSize(label, BodyFontSize);
                 label.fontStyle = FontStyles.Bold;
                 signInCellLabels.Add(label);
             }
@@ -203,15 +210,21 @@ namespace BossRush
             }
 
             signInButtonText = ZombieModeUIHelper.CreateText(
-                "SignInLabel", buttonObj.transform, string.Empty, 24f,
+                "SignInLabel", buttonObj.transform, string.Empty, HeadingFontSize,
                 new Vector2(labelShift, 0f), new Vector2(buttonRect.width - 16f - labelShift * 2f, buttonRect.height - 10f),
                 TextAlignmentOptions.Center, BossRushUI.GetButtonTextColor(ButtonIdle));
             BossRushUI.ApplyGameFont(signInButtonText);
-            LockFontSize(signInButtonText, 24f);
+            LockFontSize(signInButtonText, HeadingFontSize);
             signInButtonText.fontStyle = FontStyles.Bold;
 
+            // 签过之后按钮收起，同一块位置换成状态字（A-13：不挂灰按钮）。不是按钮、不吃点击。
+            signedTagText = CreateText("SignedTag", buttonRect, 0f, 1f, HeadingFontSize,
+                TextAlignmentOptions.Center, CellSigned, false);
+            signedTagText.fontStyle = FontStyles.Bold;
+            signedTagText.gameObject.SetActive(false);
+
             // 参考图：按钮下的期数 / 连签信息居中排，不套盒子（首行两侧的细线烤在底图里）
-            signInStatusText = CreateText("SignInStatus", DailyReportLayoutTable.Get("sideText"), 0f, 1f, 19f,
+            signInStatusText = CreateText("SignInStatus", DailyReportLayoutTable.Get("sideText"), 0f, 1f, BodyFontSize,
                 TextAlignmentOptions.Top, PaperInkSoft, true);
 
             BuildLegend();
@@ -245,7 +258,7 @@ namespace BossRush
 
                 Rect labelRect = new Rect(legend.x + i * itemWidth + swatch + 8f, legend.y,
                     itemWidth - swatch - 14f, legend.height);
-                TextMeshProUGUI label = CreateText("LegendLabel" + i, labelRect, 0f, 1f, 18f,
+                TextMeshProUGUI label = CreateText("LegendLabel" + i, labelRect, 0f, 1f, BodyFontSize,
                     TextAlignmentOptions.Left, PaperInkSoft, false);
                 // 允许缩到 13 号：英文标签比中文长；框高已按一行中文行高给足（版面表 legend 高 36）
                 label.fontSizeMin = 13f;
@@ -265,13 +278,13 @@ namespace BossRush
                 new Vector2(0.5f, 0.5f),
                 DailyReportLayoutTable.ToAnchored(closeRect),
                 new Vector2(closeRect.width, closeRect.height),
-                PaperRaised, 19f, new Vector2(closeRect.width - 12f, closeRect.height - 8f),
+                PaperRaised, BodyFontSize, new Vector2(closeRect.width - 12f, closeRect.height - 8f),
                 OnCloseClicked, true);
             if (close != null)
             {
                 closeText = close.GetComponentInChildren<TextMeshProUGUI>();
                 BossRushUI.ApplyGameFont(closeText);
-                LockFontSize(closeText, 19f);
+                LockFontSize(closeText, BodyFontSize);
                 if (closeText != null) closeText.color = BossRushUI.GetButtonTextColor(PaperRaised);
             }
         }
@@ -319,6 +332,9 @@ namespace BossRush
                 scroll.movementType = ScrollRect.MovementType.Clamped;
                 // 与共享 ConfigureScrollRect 同一灵敏度；8 的时候滚一格只动 8 个单位，手感发黏（UA-09）
                 scroll.scrollSensitivity = 32f;
+                // 能滚就要看得出来（A-15：十来块卡片内滚动都没有滚动条，放不下的字玩家不知道还有）。
+                // 共享滚动条是 AutoHide：装得下时不出现，装不下才在右沿冒出细轨；正文右侧让出 16 给它。
+                BossRushUI.ConfigureScrollRect(scroll);
                 text.rectTransform.SetParent(viewRect, false);
                 text.rectTransform.anchorMin = new Vector2(0f, 1f);
                 text.rectTransform.anchorMax = new Vector2(1f, 1f);
@@ -329,6 +345,7 @@ namespace BossRush
                 text.rectTransform.sizeDelta = Vector2.zero;
                 text.enableAutoSizing = false;
                 text.overflowMode = TextOverflowModes.Overflow;
+                text.margin = new Vector4(6f, 2f, 16f, 2f);
                 // 内容高度必须**按实际文本**长出来。写死成 viewport 高度
                 // （sizeDelta = slice.height）会让 ScrollRect 认为内容刚好装得下，
                 // Clamped 模式下一格都滚不动——控件在、事件在、就是滚不到最后一行。
@@ -379,7 +396,7 @@ namespace BossRush
             }
             // 右侧让出缎带的斜切段（约 20）
             Rect inset = new Rect(pill.x + indent, pill.y, pill.width - indent - 24f, pill.height);
-            TextMeshProUGUI text = CreateText(name, inset, 0f, 1f, 23f,
+            TextMeshProUGUI text = CreateText(name, inset, 0f, 1f, HeadingFontSize,
                 TextAlignmentOptions.Left, PillInk, false);
             text.fontStyle = FontStyles.Bold;
             return text;

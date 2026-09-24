@@ -5,6 +5,10 @@
 // 交互点上，走 NPCInteractionGroupHelper 的多选项交互菜单（先例：护士 NPC 五选项、
 // 婚礼教堂宿主 + 子选项）。
 //
+// 2026-09-24 交互重排：菜单只挂「当下有事可做」的项（§4.14「没有要做的不挂」，口径同护士的治疗项）。
+// 宿主「遗种巢」常驻；「孵化」只在有蛋或遗魂够凝蛋时挂，「远征」只在有在途 / 待揭晓的远征时挂；
+// 博物馆不再单挂一项——面板里有页签，同一种导航只给一套。
+//
 // 时序纪律（照既有派生类）：
 //   - PrepareGroupedInteractionOwner 必须在 base.Awake() **之前**调；
 //   - 子选项在 Start() 里、base.Start() **之后**建；
@@ -27,8 +31,11 @@ namespace BossRush
 
         private PetNestHatchInteractable hatchOption;
         private PetNestExpeditionInteractable expeditionOption;
-        private PetNestMuseumInteractable museumOption;
         private bool optionsInjected;
+
+        /// <summary>子选项显隐的刷新间隔（秒）。玩家站在巢边时官方每帧都来问 IsInteractable，孵化项要扫背包与仓库。</summary>
+        private const float OptionRefreshInterval = 1f;
+        private float nextOptionRefreshTime;
 
         protected override void Awake()
         {
@@ -141,12 +148,8 @@ namespace BossRush
                     expeditionOption = NPCInteractionGroupHelper.AddSubInteractable<PetNestExpeditionInteractable>(
                         transform, "ExpeditionOption", groupList);
                 }
-                if (museumOption == null)
-                {
-                    museumOption = NPCInteractionGroupHelper.AddSubInteractable<PetNestMuseumInteractable>(
-                        transform, "MuseumOption", groupList);
-                }
-
+                // 显隐不在这里算：Start 时玩家背包 / 仓库可能还没就绪，扫出 0 枚蛋会把「孵化」误藏。
+                // 官方 CA_Interact.SearchInteractableAround 在选定交互主体之前先调 CheckInteractable，玩家每次走近都会刷新一次。
                 optionsInjected = true;
             }
             catch (Exception e)
@@ -157,7 +160,62 @@ namespace BossRush
 
         protected override bool IsInteractable()
         {
+            RefreshOptionsWhenApproached();
             return PetNestUIBridge.IsPetNestUsable();
+        }
+
+        /// <summary>
+        /// 玩家走近、巢即将成为交互主体时刷新子选项显隐。
+        /// 【菜单正显示本巢时不改列表】官方 InteractHUD 只在交互主体变化时重建选项，中途增删成员会让
+        /// 高亮项与实际交互目标错位（同 NurseInteractable.RefreshHealOptionWhenApproached）。
+        /// 代价：站在巢边把蛋孵完，「孵化」项要等走开再回来才消失；点它照样打开孵化页，不会点空。
+        /// </summary>
+        private void RefreshOptionsWhenApproached()
+        {
+            if (hatchOption == null && expeditionOption == null) return;
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null && player.interactAction != null
+                    && player.interactAction.MasterInteractableAround == this)
+                {
+                    return;
+                }
+                float now = Time.unscaledTime;
+                if (now < nextOptionRefreshTime) return;
+                nextOptionRefreshTime = now + OptionRefreshInterval;
+                RefreshOptionVisibility();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 刷新子选项显隐失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 官方 GetInteractableList 只收 activeInHierarchy 的成员，所以显隐就是 SetActive。
+        /// 判不出来时照挂：宁可多一行，不能让玩家找不到入口。
+        /// </summary>
+        private void RefreshOptionVisibility()
+        {
+            // 巢不可用时宿主本身就点不动、菜单不出现，子选项保持原样，免得启动期误判后藏住入口
+            if (!PetNestUIBridge.IsPetNestUsable()) return;
+            bool hatch, expedition;
+            try
+            {
+                hatch = PetNestHatchService.CountCondensable() > 0
+                    || PetNestHatchService.CollectAvailableEggs().Count > 0;
+            }
+            catch (Exception) { hatch = true; }
+            try { expedition = PetNestExpeditionService.Records.Count > 0; }
+            catch (Exception) { expedition = true; }
+            SetOptionActive(hatchOption, hatch);
+            SetOptionActive(expeditionOption, expedition);
+        }
+
+        private static void SetOptionActive(InteractableBase option, bool active)
+        {
+            if (option != null && option.gameObject.activeSelf != active) option.gameObject.SetActive(active);
         }
 
         protected override void OnTimeOut()
@@ -186,13 +244,6 @@ namespace BossRush
     {
         protected override string InteractKey { get { return "BossRush_PetNest_Interact_Expedition"; } }
         protected override PetNestUIPage TargetPage { get { return PetNestUIPage.Expedition; } }
-    }
-
-    /// <summary>子选项：遗种博物馆。</summary>
-    public class PetNestMuseumInteractable : PetNestSubInteractableBase
-    {
-        protected override string InteractKey { get { return "BossRush_PetNest_Interact_Museum"; } }
-        protected override PetNestUIPage TargetPage { get { return PetNestUIPage.Museum; } }
     }
 
     /// <summary>

@@ -329,6 +329,8 @@ namespace BossRush
                 string runId = ComposeRunId(sceneName, _sceneGeneration);
                 long runSeed = ComposeRunSeed(runId);
                 _runState = new ModeHRunState(runId, runSeed, sceneName, _sceneGeneration);
+                // 上一季挂着没结的押金（崩在比赛中、换过档）原样退回：新赛季的 runId 不同
+                ReconcileCashBetOnRestore();
                 ModeHRuntimeGates.SetRunOwnerActive(true);
 
                 if (!TryTransition(ModeHLifecycle.None, ModeHLifecycle.EntryIntent, "scene_intent_matched")
@@ -460,6 +462,7 @@ namespace BossRush
             {
                 // 复用完整逆序释放：先停认证/生成，再清选手、租约和 UI。
                 // 清空状态前保留押品返还所需的 runSeed / matchIndex。
+                RefundCashBet("f3_validation_cleanup");
                 TryReturnRealStakeOnAbort("f3_validation_cleanup");
                 ReleaseRuntimeObjects();
                 if (BossRushMapSelectionHelper.HasPendingModeHEntryIntent()) ModeHEntry.CancelPendingEntry();
@@ -757,6 +760,8 @@ namespace BossRush
         /// </summary>
         private void TryReturnRealStakeOnAbort(string context)
         {
+            // 押钱 / 押物品不在这里退：挂起、关停、切图都还能回来重打这一场，押注跟着这一场走；
+            // 这一季不再打了才退（放弃赛季、开新赛季时对账、F3 清理），见 ModeHRuntimeModule_BetFlow。
             try
             {
                 if (ModeHWarehouseStakeJournal.Active == null) return;

@@ -5,8 +5,10 @@
 //   2026-09-23 审美审查 D 区 UD-23…UD-30。重铸寄生在官方分解界面上，官方那一侧是克制的深灰底、
 //   白色数值；我们塞进去的部分原先是七行算式配霓虹色富文本、点一下属性行就扣冷淬液、结果一帧换完。
 //   这里放「让它像官方界面的一部分」所需的表现逻辑：
-//     - UD-23 费用区：主信息两行（重铸幅度、总计花费）+ 次信息三行，颜色全走 token（IntegrationUIFeedback.*Hex）；
+//     - UD-23 费用区：只留两行（重铸幅度、总计花费），颜色全走 token（IntegrationUIFeedback.*Hex）；
 //       钱不够只染「总计」那一行并写「还差 X」，不再把算式原样写给玩家看。
+//       2026-09-24 UI 共识对照审查 A-01…A-03：按钮写价钱（ApplyReforgeButtonLabel）、系数等次信息删掉、
+//       涨跌倾向的概率与额外费用挪到滑块旁的白话标签（RefreshTendencyLabel）。
 //     - UD-24 属性行固定：两步确认（第一次点进入待确认：行底 Accent 淡色 + 「再点一次固定」，2 秒内再点才扣），
 //       常态左侧一道 Accent 细条表示能点，冷淬液计数下方一行说明；成功播 UI/confirm、行底金色闪一下。
 //     - UD-25 重铸揭晓：变化的行按顺序闪一下（涨 SuccessText、跌 DangerText、触顶 RarityLegendary + UI/pop），
@@ -88,12 +90,17 @@ namespace BossRush
         // ============================================================================
 
         /// <summary>
-        /// 重铸模式的费用区。主信息两行：「重铸幅度 72%」（按档位取色）与「总计花费 12,345」；
-        /// 次信息三行 16 号 TextSecondary：系数、投入加成与极性费用、正负向概率。
+        /// 重铸模式的费用区（2026-09-24 UI 共识对照审查 A-02）：只留两行——「重铸幅度 72%」（按档位取色）
+        /// 与「总计花费 12,345」。系数、投入加成这些公式量不再写给玩家；涨跌倾向的概率与额外费用挪到倾向滑块旁边
+        /// （A-03，RefreshTendencyLabel），总价同时写在按钮上（A-01，ApplyReforgeButtonLabel）。
         /// 钱不够时只把总计那一行染成 DangerText 并写「还差 X」。
         /// </summary>
         private static void RenderReforgeCostText()
         {
+            // 倾向滑块的白话标签与按钮价钱跟费用区同一时机刷新：每条改费用的路径都会走到这里。
+            RefreshTendencyLabel();
+            ApplyReforgeButtonLabel();
+
             if (probabilityText == null)
             {
                 return;
@@ -116,7 +123,6 @@ namespace BossRush
             int rarity = GetItemQuality(selectedItem);
             float itemValue = ReforgeSystem.GetItemValue(selectedItem);
             float magnitude = ReforgeSystem.FinalProbability(rarity, itemValue, currentMoney);
-            float moneyBonus = ReforgeSystem.MoneyBonus(currentMoney, itemValue);
             int tendencyCost = GetTendencyCost();
             int totalCost = currentMoney + tendencyCost;
             // 与 UpdateReforgeButtonInteractable 的 canAfford 同一判据：既要付得起总额，也要付得起基础费用。
@@ -140,16 +146,82 @@ namespace BossRush
                 "<size=" + COST_HEADLINE_LABEL_SIZE + "><color=" + IntegrationUIFeedback.SecondaryHex + ">"
                 + L10n.T("重铸幅度", "Magnitude") + "</color></size>  "
                 + "<size=" + COST_HEADLINE_VALUE_SIZE + "><b><color=" + tierHex + ">" + FormatReforgePercent(magnitude) + "</color></b></size>\n"
-                + "<size=" + COST_TOTAL_SIZE + ">" + totalLine + "</size>\n"
-                + "<size=" + COST_DETAIL_SIZE + "><color=" + IntegrationUIFeedback.SecondaryHex + ">"
-                + string.Format(CultureInfo.InvariantCulture, L10n.T("品质系数 {0:F2} · 价值系数 {1:F2}", "Quality ×{0:F2} · Value ×{1:F2}"),
-                    ReforgeSystem.RarityFactor(rarity), ReforgeSystem.ValueFactor(itemValue)) + "\n"
-                + string.Format(L10n.T("投入加成 +{0} · 极性费用 {1}", "Investment +{0} · Polarity cost {1}"),
-                    FormatReforgePercent(moneyBonus), FormatReforgeAmount(tendencyCost)) + "\n"
-                + string.Format(L10n.T("正向 {0} · 负向 {1}", "Positive {0} · Negative {1}"),
-                    FormatReforgePercent(currentTendencyChance), FormatReforgePercent(1f - currentTendencyChance))
-                + "</color></size>";
+                + "<size=" + COST_TOTAL_SIZE + ">" + totalLine + "</size>";
             probabilityText.color = BossRushUIColors.TextPrimary;
+        }
+
+        /// <summary>
+        /// 重铸按钮写价钱（A-01，UI 共识第 4 节「付费按钮写价钱」）：「重铸 · 12,345」，丧尸模式临时哥布林写「净化点」。
+        /// 钱不够时按钮照挂（interactable=false 由 UpdateReforgeButtonInteractable 管），玩家一眼看得到要多少。
+        /// 只改按钮里显示「分解 / 重铸」的那几段字（主文字与手柄提示里的同名文字），别的子文字不动。
+        /// </summary>
+        private static void ApplyReforgeButtonLabel()
+        {
+            if (reforgeButton == null || currentForgeMode != ForgeUIMode.Reforge)
+            {
+                return;
+            }
+
+            string label = L10n.T("重铸", "Reforge");
+            if (selectedItem != null && ReforgeSystem.CanExecuteReforge(selectedItem))
+            {
+                string price = FormatReforgeAmount(currentMoney + GetTendencyCost());
+                label = IsReforgePaidWithPurification()
+                    ? string.Format(L10n.T("重铸 · {0} 净化点", "Reforge · {0} Purification"), price)
+                    : string.Format(L10n.T("重铸 · {0}", "Reforge · {0}"), price);
+            }
+
+            TextMeshProUGUI[] texts = reforgeButton.GetComponentsInChildren<TextMeshProUGUI>(true);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TextMeshProUGUI text = texts[i];
+                if (text != null && IsReforgeButtonLabel(text.text) && text.text != label)
+                {
+                    text.text = label;
+                }
+            }
+        }
+
+        /// <summary>按钮里的这段字是不是「分解 / 重铸」动作名（含上一次写上去的价钱）。两种语言都认：玩家能在局内切语言。</summary>
+        private static bool IsReforgeButtonLabel(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return false;
+            }
+            return text == "分解" || text == "Decompose"
+                || text.StartsWith("重铸", StringComparison.Ordinal)
+                || text.StartsWith("Reforge", StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// 涨跌倾向滑块的白话标签（A-03）：旧版「正负极性倾向 / 偏向正面 (+20)」是内部术语，概率与额外费用又写在远处的费用区。
+        /// 现在滑块旁边直接写「数值偏涨：涨 70% · 另加 1,234」；居中时「数值涨跌各半 · 不加钱」。
+        /// 「涨」是数值变大，不等于变好（后坐力涨了是坏事），所以只写涨跌、不写好坏。
+        /// </summary>
+        private static void RefreshTendencyLabel()
+        {
+            if (tendencyText == null || currentForgeMode != ForgeUIMode.Reforge)
+            {
+                return;
+            }
+
+            float up = currentTendencyChance;
+            int cost = GetTendencyCost();
+            if (Mathf.Abs(up - 0.5f) < 0.001f)
+            {
+                tendencyText.text = L10n.T("数值涨跌各半 · 不加钱", "Values rise or fall 50/50 · no extra cost");
+                return;
+            }
+
+            bool leansUp = up > 0.5f;
+            string chance = FormatReforgePercent(leansUp ? up : 1f - up);
+            string extra = FormatReforgeAmount(cost);
+            string body = leansUp
+                ? string.Format(L10n.T("数值偏涨：涨 {0} · 另加 {1}", "Leans up: {0} rise · +{1} cost"), chance, extra)
+                : string.Format(L10n.T("数值偏跌：跌 {0} · 另加 {1}", "Leans down: {0} fall · +{1} cost"), chance, extra);
+            tendencyText.text = "<color=" + (leansUp ? IntegrationUIFeedback.SuccessHex : IntegrationUIFeedback.WarningHex) + ">"
+                + body + "</color>";
         }
 
         /// <summary>丧尸模式临时哥布林收净化点，其余收钱（与 OnReforgeButtonClick 的付款分支同一判据）。</summary>
@@ -528,30 +600,36 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 词缀锁定按钮：未锁是次级按钮（SurfaceRaised + Stroke，悬停由 GetHoverColor 派生）；
-        /// 已锁换成 Warning 底 + RarityLegendary 描边，标签色交给 ApplyButtonColors 按底色算。
-        /// 旧版悬停是整块亮天蓝配白字（约 2.2:1）、已锁只把字刷成纯金。
+        /// 词缀槽按钮：「锁定」是次级按钮（SurfaceRaised + Stroke，悬停由 GetHoverColor 派生）；
+        /// 「解锁」是危险次级按钮——深底不变、DangerText 描边 + 红字（UI 共识第 4 节：进确认前不铺实心色块）。
+        /// 旧版把「已锁定」画成 Warning 实心底 + 金描边的按钮（A-06），读起来像主操作，一点就免费解锁。
         /// </summary>
-        private static void ApplyAffixLockButtonLook(Button button, bool locked)
+        private static void ApplyAffixLockButtonLook(Button button, bool unlockAction)
         {
             if (button == null)
             {
                 return;
             }
 
-            // 幂等：保证描边存在、底色回到次级口径。
+            // 幂等：保证描边存在、底色回到次级口径（同时把标签色按底色复位）。
             BossRushUIKit.StyleSecondaryButton(button);
-            if (locked)
-            {
-                ZombieModeUIHelper.SetButtonBaseColor(button, BossRushUIColors.Warning);
-            }
 
             Graphic target = button.targetGraphic;
             Transform strokeTransform = target != null ? target.transform.Find("Stroke") : null;
             Image stroke = strokeTransform != null ? strokeTransform.GetComponent<Image>() : null;
             if (stroke != null)
             {
-                stroke.color = locked ? BossRushUIColors.RarityLegendary : BossRushUIColors.Stroke;
+                stroke.color = unlockAction ? BossRushUIColors.DangerText : BossRushUIColors.Stroke;
+            }
+
+            if (unlockAction)
+            {
+                Transform labelTransform = button.transform.Find("Text");
+                TextMeshProUGUI label = labelTransform != null ? labelTransform.GetComponent<TextMeshProUGUI>() : null;
+                if (label != null)
+                {
+                    label.color = BossRushUIColors.DangerText;
+                }
             }
         }
 

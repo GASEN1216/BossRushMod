@@ -1093,7 +1093,7 @@ namespace BossRush
                 {
                     if (txt.gameObject.name.Contains("Title") || txt.text.Contains("\u6295\u5165") || txt.text.Contains("\u5206\u89e3") || txt.text.Contains("Decompose") || txt.text == "\u6295\u5165" || txt.text == "\u6b63\u8d1f\u6781\u6027\u503e\u5411")
                     {
-                        txt.text = L10n.T("正负极性倾向", "Polarity tendency");
+                        txt.text = L10n.T("数值涨跌各半 · 不加钱", "Values rise or fall 50/50 · no extra cost");
                         txt.gameObject.SetActive(true);
                         tendencyText = txt;
                     }
@@ -1141,19 +1141,7 @@ namespace BossRush
         {
             currentTendencyChance = 0.5f + (value / 40f) * 0.4f; // 转换为 0.1 ~ 0.9 的几率
 
-            if (tendencyText != null)
-            {
-                // UD-26：倾向色走 token（DangerText / SuccessText），不再写 #FF4D4D / #4DFF4D。
-                if (value < -10f)
-                    tendencyText.text = "<color=" + IntegrationUIFeedback.DangerHex + ">"
-                        + string.Format(L10n.T("偏向负面 ({0})", "Negative tendency ({0})"), (int)value) + "</color>";
-                else if (value > 10f)
-                    tendencyText.text = "<color=" + IntegrationUIFeedback.SuccessHex + ">"
-                        + string.Format(L10n.T("偏向正面 (+{0})", "Positive tendency (+{0})"), (int)value) + "</color>";
-                else
-                    tendencyText.text = L10n.T("平衡 (0)", "Balanced (0)");
-            }
-
+            // 标签（白话 + 就近写额外费用，A-03）由 UpdateProbabilityDisplay → RenderReforgeCostText → RefreshTendencyLabel 统一刷新。
             UpdateReforgeButtonInteractable();
             UpdateProbabilityDisplay();
         }

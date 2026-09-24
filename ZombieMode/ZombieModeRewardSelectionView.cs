@@ -135,13 +135,11 @@ namespace BossRush
                 new Color(BossRushUIColors.Accent.r, BossRushUIColors.Accent.g, BossRushUIColors.Accent.b, 0.6f));
             yPos += 8f;
 
-            // ── 信息行 ──
+            // ── 信息行：只留当前净化点（UI 共识对照审查 B-27）；免费次数与付费价钱已经写在底部两颗刷新按钮上，不再重复 ──
             float infoH = 28f;
             string info = string.Format(
                 L10n.T("BossRush_ZombieMode_Reward_Info"),
-                owner.GetZombieModePurificationPoints(runId),
-                owner.GetZombieModeRewardFreeRefreshes(runId),
-                owner.GetZombieModeRewardPaidRefreshCost(runId).ToString("N0"));
+                owner.GetZombieModePurificationPoints(runId).ToString("N0"));
             if (titleExtra.Length > 0)
             {
                 info += "    " + titleExtra;
@@ -343,13 +341,14 @@ namespace BossRush
                 new Vector2(-120f + sliderWidth * 0.5f - 43f, -96f),
                 new Vector2(86f, 22f), TextAlignmentOptions.MidlineRight, BossRushUIColors.TextSecondary);
 
-            // 休息时长编辑器里的「确定」是这一块的主操作（AccentFill）；卡片才是整屏的主角，不另设主按钮。
+            // 休息时长是低频设置，「保存时长」走次级样式（B-27）：卡片才是整屏的主角，这一屏不设实心主按钮。
             Button applyButton = ZombieModeUIHelper.CreateButton(
                 "RestApply", restPanel.transform,
                 L10n.T("BossRush_ZombieMode_Reward_RestApply"),
                 new Vector2(1f, 1f), new Vector2(-66f, -66f),
-                new Vector2(104f, 36f), BossRushUIColors.AccentFill, 15,
+                new Vector2(104f, 36f), BossRushUIColors.SurfaceRaised, 15,
                 new Vector2(92f, 30f), null, true);
+            BossRushUIKit.StyleSecondaryButton(applyButton);
             applyButton.onClick.AddListener(delegate
             {
                 if (owner != null && !closing)

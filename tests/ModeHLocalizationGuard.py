@@ -10,8 +10,8 @@ ModeHLocalizationGuard — Mode H 本地化守卫（设计提案 §23.2、§26.1
   不得误写到 LocalizationInjector；
 - 所有 BossRush_ModeH_ raw key 都必须有中英注入（一律走 L10n.T(cn, en)）；
 - 命令 / 异常 / 伤病 / 战痕 / 状态 / 侦察 / 恢复错误 / 押品明细文本无缺项；
-- 显式断言 BossRush_ModeH_RealStakeRiskNotice 存在，中英文本都提到
-  “永久没收”与“唯一装备不豁免”，且被入口页、模式说明与 ModeHInteractable 三处引用；
+- 显式断言 BossRush_ModeH_RealStakeRiskNotice 存在，中英文本都讲清「押的是钱、输了押金归庄家」
+  （2026-09-24 owner 拍板：仓库物品在出击地图上押不了，押注改押钱），且被入口页、模式说明与 ModeHInteractable 三处引用；
 - 代码里出现的 BossRush_ModeH_ key 都必须被注入（不得显示 raw key）。
 """
 import os
@@ -75,8 +75,8 @@ REQUIRED_STATES = [
 ]
 
 # 真实资产风险行必须点名的两件事
-RISK_NOTICE_CN_TOKENS = ["永久没收", "唯一装备"]
-RISK_NOTICE_EN_TOKENS = ["permanently", "only copy"]
+RISK_NOTICE_CN_TOKENS = ["押的是你的钱或背包里的东西", "归庄家"]
+RISK_NOTICE_EN_TOKENS = ["real money or backpack items", "house keeps"]
 
 
 def collect_injected_suffixes(code):

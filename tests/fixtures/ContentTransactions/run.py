@@ -38,7 +38,10 @@ def main():
     extracted += method("Integration/DailyReport/DailyReportRewards.cs", "internal static bool TryGrantBountyCash(long amount, out string failureReason)")
     extracted += "}\n"
     # 远征入口执行生产页面方法；卡片渲染适配器只记录有没有挂上派遣入口。
-    for signature in ("internal sealed class PetNestPageContent", "internal sealed class PetNestCardData",
+    # 2026-09-24 交互重排：页面快照多了分区与巢页两栏的数据类，一起抽出来原样编译
+    for signature in ("internal sealed class PetNestPageContent", "internal enum PetNestSectionLayout",
+                      "internal sealed class PetNestSection", "internal sealed class PetNestCardData",
+                      "internal sealed class PetNestNestView", "internal sealed class PetNestDetailData",
                       "internal sealed class PetNestActionData"):
         extracted += method("PetNest/PetNestUIPages.cs", signature) + "\n"
     extracted += "internal static partial class PetNestUIPages {\n"

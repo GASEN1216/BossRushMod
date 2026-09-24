@@ -55,7 +55,7 @@ B --> E["游戏内 UI Prefab<br/>Button/ScrollRect"]
 - [Config/Config.cs:158-232](file://Config/Config.cs#L158-L232)
 
 ## 核心组件
-- BossFilterUi：负责创建 Boss 池 UI，包括 Canvas、背景、主面板、标题栏、工具栏（全选/全不选/无间炼狱因子）、滚动列表、统计信息、底部按钮（保存并关闭）。
+- BossFilterUi：负责创建 Boss 池 UI，包括 Canvas、背景、主面板、标题栏、工具栏（两个页签「出场 Boss / 无间炼狱因子」+ 当前页的列表头操作）、滚动列表、统计信息、底部按钮（保存并关闭）。
 - BossFilter：维护 Boss 启用状态字典、无间炼狱因子字典、UI 引用、模式切换（普通/因子编辑），提供初始化、打开/关闭窗口、全选/全不选、保存配置、刷新 UI、快捷键检测等功能。
 - Config：提供 BossRush 配置数据结构与本地文件读写（JSON），包含 disabledBosses 与 bossInfiniteHellFactors。
 - ModBehaviour：承载全局上下文，持有 enemyPresets、config 等，BossFilter 与其紧密协作以获取 Boss 预设列表和进行生成流程控制。
@@ -105,11 +105,11 @@ BF-->>U : 显示统计/提示
 ### BossFilterUi 类：界面创建与管理
 - 创建 Canvas：设置渲染模式为屏幕空间叠加，排序层级降低以避免遮挡鼠标；添加 CanvasScaler 与 GraphicRaycaster，确保 UI 可交互。
 - 背景与主面板：半透明黑色背景，居中面板尺寸加大以提升可读性。
-- 标题栏：标题文本居中，右上角关闭按钮使用官方 Button prefab，点击调用 CloseBossPoolWindow。
-- 工具栏：水平布局，包含全选、全不选、分隔空间、无间炼狱因子按钮；按钮宽度与高度统一，文本使用本地化键。
+- 标题栏：标题文本居中，右上角关闭按钮使用官方 Button prefab，点击调用 SaveAndCloseBossPoolWindow（与 ESC、Ctrl+F10、「保存并关闭」同一条先保存再关的路，2026-09-24 A-27）。
+- 工具栏：水平布局，左边两个页签「出场 Boss / 无间炼狱因子」（共享分段按钮，选中态 Accent 淡底 + WarningText 描边），右边是当前页签的列表头操作：开关页「全选 / 全不选」，因子页「全部恢复默认」（危险次级，点了先弹 BossRushConfirmDialog 确认，A-28）。按钮一律是共享按钮（ZombieModeUIHelper.CreateButton）。
 - 滚动视图：优先使用官方 ScrollRect prefab；若不可用则回退手动创建 Viewport 与 Content，并配置垂直滚动、惯性、拖拽等参数。
 - 统计栏：显示已启用数量与总数，当全部禁用时给出警告提示。
-- 底部按钮：保存并关闭，点击后执行配置同步并关闭窗口。
+- 底部按钮：保存并关闭（AccentFill、靠右，这一屏唯一主操作，A-29），点击走 SaveAndCloseBossPoolWindow：一个 Boss 都没启用时不存不关、统计行写明原因（A-30），否则执行配置同步并关闭窗口。
 
 ```mermaid
 flowchart TD
@@ -139,8 +139,8 @@ Populate --> End(["完成"])
 - 启用状态管理：IsBossEnabled/SetBossEnabled 提供查询与设置；GetFilteredEnemyPresets 返回过滤后的 Boss 列表，使用缓存并在状态变化时标记脏位。
 - 全选/全不选：批量修改启用状态，触发缓存失效与 UI 刷新。
 - 配置同步：SyncBossPoolToConfig 将禁用列表与因子映射写入配置，仅保存非默认值（因子不为 1.0）的条目，随后保存到本地文件。
-- 无间炼狱因子编辑：Enter/ExitInfiniteHellFactorMode 切换模式，RefreshBossListForFactorMode 重建列表为因子选择器；Decrease/IncreaseBossFactor 调整因子等级；UpdateBossFactorDisplay 实时更新显示文本与颜色。
-- 窗口控制：Open/CloseBossPoolWindow 管理窗口生命周期，禁用/恢复输入，重置滚动位置；CheckBossPoolWindowHotkey 监听 Ctrl+F10；BossPoolLateUpdate 在窗口打开时暂停时间并显示光标。
+- 无间炼狱因子编辑：ShowBossPoolTab(factorTab) 切换页签（2026-09-24 起取代 Enter/ExitInfiniteHellFactorMode），RefreshBossListForFactorMode 重建列表为因子选择器；Decrease/IncreaseBossFactor 调整因子等级；UpdateBossFactorDisplay 实时更新显示文本与颜色。
+- 窗口控制：Open/CloseBossPoolWindow 管理窗口生命周期，打开时占模态租约（ZombieModeUIHelper.ClaimModalInput，A-43）并挂 PetNestCancelKey（ESC / 手柄取消 = 保存并关闭，A-26），租约在 ReleaseBossPoolUIReferences 里随界面一起归还；CheckBossPoolWindowHotkey 监听 Ctrl+F10；BossPoolLateUpdate 在窗口打开时暂停时间并显示光标。
 
 ```mermaid
 classDiagram
@@ -216,7 +216,7 @@ class BossFilter {
 ### 权重调整机制与颜色编码系统
 - 因子等级定义：极低(0.2)、低(0.5)、中(1.0)、高(1.5)、极高(2.0)。
 - 颜色编码：极低灰色、低绿色、中白色、高橙色、极高红色，便于直观识别难度梯度。
-- 交互方式：左右箭头按钮增减因子等级，文本与颜色实时更新；重置按钮将所有因子恢复为默认值。
+- 交互方式：左右箭头按钮增减因子等级，文本与颜色实时更新；「全部恢复默认」确认后将所有因子恢复为默认值（RequestResetAllBossFactors → ResetAllBossFactors）。
 - 持久化：仅保存非默认值（不等于 1.0）的因子映射，减少配置体积。
 
 ```mermaid
@@ -325,7 +325,7 @@ Core --> Wiki["boss-filter.md"]
 - [BossFilter/BossFilter.cs:1147-1169](file://BossFilter/BossFilter.cs#L1147-L1169)
 
 ## 故障排查指南
-- 窗口无法打开：检查 enemyPresets 是否为空，若为空则先初始化；确认 InputManager.DisableInput 正确调用。
+- 窗口无法打开：检查 enemyPresets 是否为空，若为空则先初始化；确认模态租约（ClaimModalInput）已占用、关闭时已归还。
 - Toggle 无效：确认 onValueChanged 回调已绑定，SetBossEnabled 是否被调用；检查 bossEnabledStates 字典是否包含该 Boss。
 - 配置未保存：确认 SyncBossPoolToConfig 是否被调用；检查文件路径是否存在且可写；查看日志中的错误信息。
 - 因子颜色异常：确认 GetFactorLevelIndex 与 GetFactorLevelColor 逻辑是否正确；检查因子值是否在预定义范围内。

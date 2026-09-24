@@ -6,8 +6,8 @@
 //   「词缀模式与重铸模式的差异」，重铸模式的语义一行不改：
 //     - 背包/仓库过滤谓词换成 AffixForgeSystem.CanAffixForge
 //     - 隐藏金钱滑块 / 正负极性倾向滑块 / 冷淬液计数（词缀费用固定、不做加权）
-//     - 主按钮文字改「随机词缀」
-//     - 右侧插一块词缀面板：≤3 行，图标 56px + 名称 + 一句话描述 + 锁定按钮
+//     - 主按钮文字改「随机词缀 · 价钱」
+//     - 右侧插一块词缀面板：≤3 行，图标 56px + 名称 + 一句话描述 + 操作列（已锁定标签 / 锁定 / 解锁，解锁先确认）
 //     - probabilityText 复用成「费用 / 熔石 / 提示」三行文本
 //
 // 为什么模式枚举与状态字段声明在这个新文件里：
@@ -65,9 +65,14 @@ namespace BossRush
         private const int AFFIX_LOCK_BUTTON_WIDTH = 84;
         private const int AFFIX_LOCK_BUTTON_HEIGHT = 38;
         private const int AFFIX_LOCK_FONT_SIZE = 18;
+        // 「已锁定」标签：16 号单行，框高 ≥ 16×1.45+4 = 27.2（TMP Ellipsis 首行放不下会整串清空）。
+        private const int AFFIX_LOCKED_TAG_FONT_SIZE = 16;
+        private const int AFFIX_LOCKED_TAG_HEIGHT = 28;
 
-        // 锁定按钮外观（UD-27）：未锁 = 次级按钮（SurfaceRaised + Stroke），已锁 = Warning 底 + RarityLegendary 描边，
-        // 标签色由 ApplyButtonColors 按底色算。实现见 _Feel.cs 的 ApplyAffixLockButtonLook。
+        // 槽操作列（2026-09-24 UI 共识对照审查 A-04…A-06）：
+        //   已锁 = 不可点的「已锁定」标签（WarningText 字，不铺实心底）+ 小号「解锁」（红描边红字，点了先确认：锁定花的熔石不退）；
+        //   未锁且还能锁 = 次级「锁定 ×N」；最后一个可重铸的槽不挂「锁定」，描述行写原因（与 LockSlot 同一判据）。
+        // 按钮外观见 _Feel.cs 的 ApplyAffixLockButtonLook。
 
         // ============================================================================
         // 状态
@@ -98,6 +103,7 @@ namespace BossRush
             public LayoutElement DescriptionLayout;
             public Button LockButton;
             public TextMeshProUGUI LockButtonText;
+            public TextMeshProUGUI LockedTag;
             public int SlotIndex;
         }
 
@@ -600,7 +606,7 @@ namespace BossRush
                     row.DescText.color = BossRushUIColors.TextSecondary;
                 }
 
-                SetLockButtonState(row, false, false);
+                SetSlotActions(row, false, false, false);
                 return;
             }
 
@@ -621,7 +627,8 @@ namespace BossRush
                     row.DescText.color = BossRushUIColors.TextSecondary;
                 }
 
-                SetLockButtonState(row, false, view.Locked);
+                // 未知词缀不给解锁（解锁后下一次随机会把它抹掉），只标出锁定状态
+                SetSlotActions(row, view.Locked, false, false);
                 return;
             }
 
@@ -633,13 +640,22 @@ namespace BossRush
                 row.NameText.color = GetRarityColor(definition.Rarity);
             }
 
+            // 挂不挂「锁定」与 LockSlot 的拒绝同一判据（A-05）；熔石不够照挂，点了在费用区写还差多少。
+            bool canLock = !view.Locked && AffixForgeSystem.LeavesUnlockedSlotAfterLock(selectedItem);
             if (row.DescText != null)
             {
-                row.DescText.text = AffixDefinitions.GetDisplayDescription(view.AffixId, view.Tier);
+                string description = AffixDefinitions.GetDisplayDescription(view.AffixId, view.Tier);
+                if (!view.Locked && !canLock && AffixForgeSystem.GetSlotCount(selectedItem) > 1)
+                {
+                    description += "\n<color=" + IntegrationUIFeedback.WarningHex + ">"
+                        + L10n.T("至少保留一个可重铸的槽，这一槽不能再锁", "One slot must stay rerollable, so this one can't be locked")
+                        + "</color>";
+                }
+                row.DescText.text = description;
                 row.DescText.color = BossRushUIColors.TextSecondary;
             }
 
-            SetLockButtonState(row, true, view.Locked);
+            SetSlotActions(row, view.Locked, view.Locked, canLock);
         }
 
         /// <summary>
@@ -660,33 +676,42 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 锁定按钮三态：可锁定 = 次级按钮，已锁定 = Warning 底 + 金色描边，不可操作 = 按钮隐藏。
-        /// 标签色由 ApplyButtonColors 按底色计算，这里不再手写字色（UD-27）。
+        /// 槽操作列（A-04 / A-05 / A-06）：
+        ///   - <paramref name="locked"/>：显示不可点的「已锁定」标签（旧版把「已锁定」做成按钮，一点就免费解锁、熔石不退）；
+        ///   - <paramref name="canUnlock"/>：挂一颗小号「解锁」，红描边红字，点了先弹确认；
+        ///   - <paramref name="canLock"/>：挂次级「锁定 ×N」（N = 熔石）。
+        /// 两颗按钮互斥，共用同一个 Button（回调按当前锁定状态分流）；都不满足时按钮隐藏，不挂灰按钮。
         /// </summary>
-        private static void SetLockButtonState(AffixRowWidgets row, bool interactable, bool locked)
+        private static void SetSlotActions(AffixRowWidgets row, bool locked, bool canUnlock, bool canLock)
         {
+            if (row.LockedTag != null)
+            {
+                row.LockedTag.gameObject.SetActive(locked);
+            }
+
             if (row.LockButton == null)
             {
                 return;
             }
 
-            row.LockButton.gameObject.SetActive(interactable);
-            row.LockButton.interactable = interactable;
-            if (!interactable)
+            bool showButton = canUnlock || canLock;
+            row.LockButton.gameObject.SetActive(showButton);
+            row.LockButton.interactable = showButton;
+            if (!showButton)
             {
                 return;
             }
 
-            ApplyAffixLockButtonLook(row.LockButton, locked);
+            ApplyAffixLockButtonLook(row.LockButton, canUnlock);
 
             if (row.LockButtonText == null)
             {
                 return;
             }
 
-            row.LockButtonText.text = locked
-                ? L10n.T("已锁定", "Locked")
-                : string.Format(L10n.T("锁定 x{0}", "Lock x{0}"), AffixForgeSystem.GetLockStoneCost());
+            row.LockButtonText.text = canUnlock
+                ? L10n.T("解锁", "Unlock")
+                : string.Format(L10n.T("锁定 ×{0}", "Lock ×{0}"), AffixForgeSystem.GetLockStoneCost());
         }
 
         private static Color GetRarityColor(AffixRarity rarity)
@@ -824,7 +849,13 @@ namespace BossRush
                 return;
             }
 
+            // 付费按钮写价钱（A-07）：「随机词缀 · 12,345」；熔石消耗与「还差」写在紧挨着的费用区。
             string label = L10n.T("随机词缀", "Reroll Affixes");
+            if (selectedItem != null && AffixForgeSystem.CanAffixForge(selectedItem))
+            {
+                label = string.Format(L10n.T("随机词缀 · {0}", "Reroll Affixes · {0}"),
+                    FormatReforgeAmount(AffixForgeSystem.GetMoneyCost(selectedItem)));
+            }
             TextMeshProUGUI[] texts = reforgeButton.GetComponentsInChildren<TextMeshProUGUI>(true);
             for (int i = 0; i < texts.Length; i++)
             {
@@ -842,6 +873,8 @@ namespace BossRush
                 return;
             }
 
+            // 锁 / 解锁 / 抽完之后费用会变（未锁槽数、稀有度附加），价钱跟着按钮状态一起刷新。
+            ApplyAffixButtonText();
             reforgeButton.interactable = CanAffordAffixRoll();
         }
 
@@ -1061,25 +1094,78 @@ namespace BossRush
                     return;
                 }
 
-                AffixForgeResult result = view.Locked
-                    ? AffixForgeSystem.UnlockSlot(selectedItem, slotIndex)
-                    : AffixForgeSystem.LockSlot(selectedItem, slotIndex);
+                // 解锁不直接执行（A-04）：锁定时花的熔石不退、再锁要重新付，先弹确认写清后果。
+                if (view.Locked)
+                {
+                    RequestAffixUnlock(slotIndex, view);
+                    return;
+                }
 
-                // 锁上是一次花熔石的确认：播官方 UI/confirm（解锁不额外出声，按钮自带点击音）
-                if (!view.Locked && result != null && result.Success)
+                AffixForgeResult result = AffixForgeSystem.LockSlot(selectedItem, slotIndex);
+
+                // 锁上是一次花熔石的确认：播官方 UI/confirm
+                if (result != null && result.Success)
                 {
                     IntegrationUIFeedback.PlaySound(IntegrationUIFeedback.SoundConfirm);
                 }
 
-                RefreshAffixPanel();
-                UpdateAffixStoneCount();
-                ShowAffixResultMessage(result);
-                UpdateAffixButtonInteractable();
+                AfterAffixSlotAction(result);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[AffixForgeUI] [ERROR] 词缀锁定操作失败: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 解锁确认（UI 共识第 2 节 E 型确认弹窗）。回调只捕获槽位号与物品实例号（不捕获 Item，硬约束 4），
+        /// 确认时现取 selectedItem 并核对仍是同一件，防止弹窗期间换了物品。锻造面板关掉时弹窗随 Anchor 自动按取消收场。
+        /// </summary>
+        private static void RequestAffixUnlock(int slotIndex, AffixSlotView view)
+        {
+            int itemInstanceId = selectedItem != null ? selectedItem.GetInstanceID() : 0;
+            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
+            {
+                Title = L10n.T("解锁这条词缀？", "Unlock this affix?"),
+                Target = AffixDefinitions.GetDisplayName(view.AffixId),
+                Body = L10n.T("解锁后，下次「随机词缀」会把它一起重抽。",
+                    "Once unlocked, the next Reroll Affixes rerolls it too."),
+                Warning = string.Format(L10n.T("锁定时花的 {0} 颗词缀熔石不退，想再锁要重新付。",
+                    "The {0} Affix Forge Stone(s) spent on the lock are not refunded; locking again costs more."),
+                    AffixForgeSystem.GetLockStoneCost()),
+                ConfirmLabel = L10n.T("解锁（不退熔石）", "Unlock (no refund)"),
+                CancelLabel = L10n.T("留着锁", "Keep locked"),
+                Danger = true,
+                OnConfirm = delegate { ConfirmAffixUnlock(slotIndex, itemInstanceId); },
+                Anchor = affixPanelRoot
+            });
+        }
+
+        private static void ConfirmAffixUnlock(int slotIndex, int itemInstanceId)
+        {
+            try
+            {
+                if (currentForgeMode != ForgeUIMode.AffixForge || selectedItem == null
+                    || selectedItem.GetInstanceID() != itemInstanceId)
+                {
+                    return;
+                }
+
+                AfterAffixSlotAction(AffixForgeSystem.UnlockSlot(selectedItem, slotIndex));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[AffixForgeUI] [ERROR] 词缀解锁失败: " + e.Message);
+            }
+        }
+
+        /// <summary>锁定 / 解锁之后的统一刷新：槽位、熔石计数、结果提示（失败原因写在费用区）、主按钮。</summary>
+        private static void AfterAffixSlotAction(AffixForgeResult result)
+        {
+            RefreshAffixPanel();
+            UpdateAffixStoneCount();
+            ShowAffixResultMessage(result);
+            UpdateAffixButtonInteractable();
         }
     }
 }

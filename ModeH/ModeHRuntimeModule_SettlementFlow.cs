@@ -19,7 +19,14 @@ namespace BossRush
                 report != null ? report.seasonRewardOperationId : null);
             if (report == null)
             {
-                page.Body = L10n.T("结算记录不可用", "Settlement record unavailable");
+                page.Body = L10n.T("这一场的结算记录读不到。", "This match's settlement record can't be read.");
+                // 模态页停着时间又没有 ESC：零按钮会把玩家困住（审查 B-16），给一条通往恢复壳的出口
+                page.Actions.Add(new ModeHActionData
+                {
+                    Label = L10n.T("查看恢复选项", "Recovery options"),
+                    IsPrimary = true,
+                    OnClick = delegate { OpenRecoveryShell("settlement_report_missing"); },
+                });
                 return page;
             }
 
@@ -44,6 +51,7 @@ namespace BossRush
                 page.Lines.Add(L10n.T("筹码：", "Credits: ") + report.virtualStakeBalanceBefore
                     + " → " + report.virtualStakeBalanceAfter);
             }
+            AppendCashBetReportLine(page, report);
             if (report.injuryEvents != null && report.injuryEvents.Count > 0)
             {
                 page.Lines.Add(L10n.T("倒地伤病：", "Down injuries: ") + report.injuryEvents.Count);
@@ -76,24 +84,29 @@ namespace BossRush
                 && operation.status == (int)ModeHSeasonRewardOperationStatus.Offered
                 && operation.candidateKitIds != null)
             {
+                // 整备候选做成二选一卡片挂在战报下面（审查 B-09：旧版说明写成正文行、按钮全堆在底栏）
                 for (int i = 0; i < operation.candidateKitIds.Count; i++)
                 {
                     string kitId = operation.candidateKitIds[i];
                     string selectedKitId = kitId;
-                    page.Lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Kit_" + kitId)
-                        + ": " + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Kit_" + kitId + "_Desc"));
-                    page.Actions.Add(new ModeHActionData
+                    // kitId 是内部 ID（如 "assault_starter"）。32 条 Kit_ 文案早已注入，
+                    // 此前直接拼原文，玩家看到的是一串英文下划线标识。
+                    string kitName = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Kit_" + kitId);
+                    page.Cards.Add(new ModeHCardData
                     {
-                        // kitId 是内部 ID（如 "assault_starter"）。32 条 Kit_ 文案早已注入，
-                        // 此前直接拼原文，玩家看到的是一串英文下划线标识。
-                        Label = L10n.T("解锁整备：", "Unlock kit: ")
-                            + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Kit_" + kitId),
+                        Title = kitName,
+                        Subtitle = L10n.T("整备奖励", "Kit reward"),
+                        Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Kit_" + kitId + "_Desc"),
+                        ActionLabel = L10n.T("解锁整备：", "Unlock kit: ") + kitName,
                         OnClick = delegate { SelectSettlementReward(selectedKitId, false, ownerToken, matchIndex, operationId); },
                     });
                 }
-                page.Actions.Add(new ModeHActionData
+                page.Cards.Add(new ModeHCardData
                 {
-                    Label = L10n.T("放弃整备，换取名声", "Decline kits for fame"),
+                    Title = L10n.T("不要整备", "Skip the kit"),
+                    Subtitle = L10n.T("换成名声", "Take fame instead"),
+                    Body = L10n.T("这次的整备奖励都不拿，选手多一点名声。", "Leave these kits; your fighter gains some fame instead."),
+                    ActionLabel = L10n.T("放弃整备，换取名声", "Decline kits for fame"),
                     OnClick = delegate { SelectSettlementReward(null, true, ownerToken, matchIndex, operationId); },
                 });
             }
@@ -255,7 +268,6 @@ namespace BossRush
             page.Lines.Add(L10n.T("战痕候选：", "Scar offer: ") + scarName + "　"
                 + ResolveProfileDisplayName(profile.profileId) + "　#" + report.matchIndex);
 
-            page.Lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Scar_" + report.scarOfferId + "_Desc"));
             string offerId = report.scarOfferId;
             string operationId = report.seasonRewardOperationId;
             long ownerToken = _runState.OwnerToken;
@@ -263,11 +275,16 @@ namespace BossRush
             bool full = profile.scarIds != null
                 && profile.scarIds.Count >= ModeHConfig.MaxScarsPerProfile;
 
+            // 战痕的去留做成对比卡挂在战报下面（审查 B-09：旧版「留下 / 替换×3 / 拒绝」全堆在底栏，最多七颗按钮）
+            string offerDesc = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Scar_" + offerId + "_Desc");
             if (!full && (profile.scarIds == null || !profile.scarIds.Contains(offerId)))
             {
-                page.Actions.Add(new ModeHActionData
+                page.Cards.Add(new ModeHCardData
                 {
-                    Label = L10n.T("留下战痕：", "Take scar: ") + scarName,
+                    Title = scarName,
+                    Subtitle = L10n.T("留下这道战痕", "Keep this scar"),
+                    Body = offerDesc,
+                    ActionLabel = L10n.T("留下战痕：", "Take scar: ") + scarName,
                     OnClick = delegate { ResolveScarOffer(operationId, offerId, null, false, ownerToken, pageMatchIndex); },
                 });
             }
@@ -276,18 +293,36 @@ namespace BossRush
                 for (int i = 0; i < profile.scarIds.Count; i++)
                 {
                     string replaced = profile.scarIds[i];
-                    page.Actions.Add(new ModeHActionData
+                    string replacedName = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Scar_" + replaced);
+                    page.Cards.Add(new ModeHCardData
                     {
-                        Label = L10n.T("替换：", "Replace: ")
-                            + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Scar_" + replaced),
-                        OnClick = delegate { ResolveScarOffer(operationId, offerId, replaced, false, ownerToken, pageMatchIndex); },
+                        Title = L10n.T("换掉：", "Replace: ") + replacedName,
+                        Subtitle = L10n.T("换成 ", "With ") + scarName,
+                        Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Scar_" + replaced + "_Desc"),
+                        ActionLabel = L10n.T("换掉这一道", "Replace this one"),
+                        // 替换会抹掉一道已有战痕，不可逆：先确认（审查 B-09）
+                        OnClick = delegate
+                        {
+                            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
+                            {
+                                Title = L10n.T("换掉「" + replacedName + "」？", "Replace \"" + replacedName + "\"?"),
+                                Target = replacedName + L10n.T(" → ", " -> ") + scarName,
+                                Warning = L10n.T("被换掉的这道战痕不会回来。", "The replaced scar will not come back."),
+                                ConfirmLabel = L10n.T("换掉", "Replace"),
+                                Danger = true,
+                                OnConfirm = delegate { ResolveScarOffer(operationId, offerId, replaced, false, ownerToken, pageMatchIndex); },
+                            });
+                        },
                     });
                 }
             }
 
-            page.Actions.Add(new ModeHActionData
+            page.Cards.Add(new ModeHCardData
             {
-                Label = L10n.T("拒绝战痕，换取名声", "Decline scar for fame"),
+                Title = L10n.T("不要战痕", "No scar"),
+                Subtitle = L10n.T("换成名声", "Take fame instead"),
+                Body = L10n.T("这道战痕不留，选手多一点名声。", "Leave this scar; your fighter gains some fame instead."),
+                ActionLabel = L10n.T("拒绝战痕，换取名声", "Decline scar for fame"),
                 OnClick = delegate { ResolveScarOffer(operationId, offerId, null, true, ownerToken, pageMatchIndex); },
             });
         }

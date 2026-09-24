@@ -86,7 +86,8 @@ namespace BossRush
             return modDirectory;
         }
 
-        private static AssetBundle FindAlreadyLoadedAssetBundle(string bundleName)
+        // ImageViewerUI 的回退看图也借它找已打开的同名 bundle，避免同一文件 LoadFromFile 两次（2026-09-24）
+        internal static AssetBundle FindAlreadyLoadedAssetBundle(string bundleName)
         {
             if (string.IsNullOrEmpty(bundleName)) return null;
 

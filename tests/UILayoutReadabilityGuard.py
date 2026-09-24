@@ -10,11 +10,12 @@ import re
 ROOT = Path(__file__).resolve().parent.parent
 PATHS = [
     "Common/UI/BossRushUI.cs", "ZombieMode/ZombieModeUIHelper.cs",
-    "PetNest/PetNestUI.cs", "ModeH/ModeHUI.cs", "ModeH/ModeHUIPages.cs",
+    "PetNest/PetNestUI.cs", "PetNest/PetNestUILayout.cs", "ModeH/ModeHUI.cs", "ModeH/ModeHUIPages.cs",
     "Integration/UI/ImageViewerUI.cs", "Achievement/SteamAchievementPopup.cs",
     "Achievement/AchievementView.cs", "Integration/Codex/CodexView.cs",
     "Common/Effects/RingParticleEffect.cs", "ModeH/ModeHRecoveryPanel.cs",
     "Integration/Bonus/FrostMistEffect.cs", "Integration/Affinity/AffinityUIManager.cs",
+    "Achievement/AchievementEntryUI.cs",
 ]
 VECTOR = re.compile(r"new Vector2\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)")
 COLOR = re.compile(
@@ -70,6 +71,11 @@ def field_size(text, name):
     return vectors(call(text, name + " ="))[0]
 
 
+def const(text, name):
+    match = re.search(r"const float " + name + r" = (-?[\d.]+)f;", text)
+    return float(match.group(1)) if match else None
+
+
 def check(sources):
     errors = []
 
@@ -89,16 +95,32 @@ def check(sources):
     title_pos, title_size = vectors(call(pet, '"Title", parent,'))[-2:]
     require(abs(title_pos[0]) + title_size[0] / 2 <= panel[0] / 2 - 24,
             "PetNest 标题越过面板左边界")
-    card = pet[pet.index("private void SpawnCard("):]
-    card_width = field_size(pet, "CardSize")[0]
-    for marker in ('"Title", card.transform', '"Subtitle", card.transform', '"Body", card.transform'):
-        spec = vectors(call(card, marker))
-        require(spec[0] == (0, 1) and spec[1] == (0, 1), "PetNest 卡片文字必须从左上向下排")
-        pos, size = spec[-2:]
-        require(pos[0] >= 20 and pos[0] + size[0] <= card_width - 216,
-                "PetNest 卡片文字与右侧按钮列重叠")
-    require("BossRushUI.MeasureTextHeight(body" in pet and "86f + bodyHeight + 18f" in pet,
-            "PetNest 长正文必须扩展卡片高度，不能缩小或截断")
+    # 2026-09-24 交互重排：巢页「列表 + 详情」两栏与分区行画在 PetNestUILayout.cs
+    layout = sources["PetNest/PetNestUILayout.cs"]
+    names = ("NestListWidth", "NestListCenterX", "NestDetailWidth", "NestDetailCenterX",
+             "RowActionWidth", "RowTitleHeight", "RowSubtitleHeight")
+    geo = dict((n, const(layout, n)) for n in names)
+    require(all(v is not None for v in geo.values()), "PetNest 两栏与行的几何常量必须声明为 const float")
+    if all(v is not None for v in geo.values()):
+        list_right = geo["NestListCenterX"] + geo["NestListWidth"] / 2
+        detail_left = geo["NestDetailCenterX"] - geo["NestDetailWidth"] / 2
+        require(detail_left - list_right >= 12, "PetNest 巢页左右两栏必须留出至少 12px 间隔")
+        for center, width, label in ((geo["NestListCenterX"], geo["NestListWidth"], "左栏"),
+                                     (geo["NestDetailCenterX"], geo["NestDetailWidth"], "右栏")):
+            require(abs(center) + width / 2 <= panel[0] / 2 - 20, "PetNest 巢页" + label + "超出面板安全边距")
+        # 单行字框高 ≥ 字号 × 1.45 + 4：放不下时 TMP Ellipsis 会把整行清空（标题 20、副标题 16）
+        require(geo["RowTitleHeight"] >= 20 * 1.45 + 4 and geo["RowSubtitleHeight"] >= 16 * 1.45 + 4,
+                "PetNest 行标题 / 副标题的框高不够，TMP 会整行清空")
+        reserve = re.search(r"hasAction \? RowActionWidth \+ ([\d.]+)f", layout)
+        offset = re.search(r"new Vector2\(-([\d.]+)f - RowActionWidth \* 0\.5f, 0f\)", layout)
+        require(reserve is not None and offset is not None
+                and float(reserve.group(1)) >= float(offset.group(1)) + 8,
+                "PetNest 行文字与右侧按钮列重叠")
+        checkbox = re.search(r"data\.Checkbox \? ([\d.]+)f", layout)
+        require(checkbox is not None and float(checkbox.group(1)) >= 18 + 26 + 8,
+                "PetNest 行文字与勾选框重叠")
+    require("BossRushUI.MeasureTextHeight(body, textWidth" in layout and "SetLayoutHeight(card, height)" in layout,
+            "PetNest 长正文必须扩展行高，不能缩小或截断")
     require("_tabs[page] = tab" in pet and "pair.Key == _page" in pet, "PetNest 必须显示当前页签")
 
     hud = sources["ModeH/ModeHUI.cs"]
@@ -119,16 +141,43 @@ def check(sources):
 
     pages = sources["ModeH/ModeHUIPages.cs"]
     sections = []
+    # 有立绘（名人堂冠军，B-18）时三段整体下移 shift，基准位置写在 "- shift" 前面；
+    # 正文高度是变量 bodyHeight：无立绘分支写死数值，有立绘分支按「让开卡底按钮」现算
+    body_height = re.search(r"float bodyHeight = hasPortrait\s*\?\s*\(([\d.]+)f - shift\) \+ CardHeight \* 0\.5f"
+                            r" - \(data\.OnClick != null \? ([\d.]+)f : ([\d.]+)f\)\s*:\s*([\d.]+)f;", pages)
+    require(body_height is not None, "Mode H 卡片正文高度必须按有无立绘两支声明")
     for name in ("Title", "Subtitle", "Body"):
         text = call(pages, 'CreateCardText(card.transform, "' + name + '"')
-        match = re.search(r"cardWidth, (-?[\d.]+)f, ([\d.]+)f", text)
+        match = re.search(r"cardWidth, (-?[\d.]+)f(?: - shift)?, (?:([\d.]+)f|bodyHeight)\)", text)
         require(match is not None, "Mode H 卡片各文本区必须声明独立高度")
         if match:
-            top, height = map(float, match.groups())
+            top = float(match.group(1))
+            if match.group(2) is not None:
+                height = float(match.group(2))
+            else:
+                height = float(body_height.group(4)) if body_height else 0.0
             sections.append((top - height, top))
     require(all(-84 <= bottom < top <= 134 for bottom, top in sections), "Mode H 卡片文字越过标题/动作边界")
     ordered = sorted(sections)
     require(all(b[0] - a[1] >= 4 for a, b in zip(ordered, ordered[1:])), "Mode H 卡片文本区重叠")
+    # 有立绘分支：标题整体下移后要落在立绘下沿之下，正文下沿要让开卡底按钮（按钮顶 = 卡底 + 34 + 22）
+    card_h = re.search(r"const float CardHeight = ([\d.]+)f;", pages)
+    portrait = re.search(r"const float GridPortraitSize = ([\d.]+)f;", pages)
+    shift_expr = re.search(r"float shift = hasPortrait \? GridPortraitSize \+ ([\d.]+)f : 0f;", pages)
+    portrait_top = re.search(r"CreatePortrait\(card\.transform, data, new Vector2\(0f, (-?[\d.]+)f\), GridPortraitSize\)", pages)
+    require(card_h and portrait and shift_expr and portrait_top and body_height and sections,
+            "Mode H 卡片立绘分支的几何常量必须可读")
+    if card_h and portrait and shift_expr and portrait_top and body_height and sections:
+        half = float(card_h.group(1)) / 2
+        size = float(portrait.group(1))
+        shift = size + float(shift_expr.group(1))
+        portrait_bottom = half + float(portrait_top.group(1)) - size
+        title_top = max(top for _, top in sections) - shift
+        require(title_top <= portrait_bottom - 4, "Mode H 卡片有立绘时标题压到立绘")
+        body_top = float(body_height.group(1)) - shift
+        with_button = body_top - (body_top + half - float(body_height.group(2)))
+        button_top = -half + 34 + 22
+        require(with_button >= button_top + 4, "Mode H 卡片有立绘时正文压到卡底按钮")
     require(pages.count("GetActionBandReserve(panelSize, content)") >= 3,
             "卡片、战报、配装列表都必须避让换行后的动作区")
     require("BossRushUI.MeasureTextHeight(text" in pages, "战报长行应换行增高并滚动")
@@ -215,15 +264,22 @@ def main():
     probes = [
         ("PetNest/PetNestUI.cs", "new Vector2(0f, 14f), new Vector2(1120f, 412f)",
          "new Vector2(0f, -20f), new Vector2(1120f, 520f)"),
+        ("PetNest/PetNestUILayout.cs", "const float NestDetailCenterX = 228f;",
+         "const float NestDetailCenterX = 180f;"),
+        ("PetNest/PetNestUILayout.cs", "hasAction ? RowActionWidth + 30f", "hasAction ? RowActionWidth + 10f"),
+        ("PetNest/PetNestUILayout.cs", "const float RowTitleHeight = 34f;", "const float RowTitleHeight = 28f;"),
         ("ModeH/ModeHUI.cs", '"Enemies", -38f', '"Enemies", -78f'),
-        ("ModeH/ModeHUIPages.cs", "cardWidth, 134f, 40f", "cardWidth, 122f, 96f"),
+        ("ModeH/ModeHUIPages.cs", "cardWidth, 134f - shift, 40f", "cardWidth, 122f - shift, 96f"),
+        ("ModeH/ModeHUIPages.cs", "float shift = hasPortrait ? GridPortraitSize + 10f : 0f;",
+         "float shift = hasPortrait ? GridPortraitSize - 30f : 0f;"),
         ("ZombieMode/ZombieModeUIHelper.cs", "if (graphic != null) graphic.color = Color.white;", ""),
         ("Common/Effects/RingParticleEffect.cs", "new GradientColorKey(Color.white, 0f)",
          "new GradientColorKey(tint, 0f)"),
         ("ModeH/ModeHRecoveryPanel.cs", "BossRushUIColors.Warning, createBackdrop: false)",
          "BossRushUIColors.Warning)"),
-        ("Integration/Affinity/AffinityUIManager.cs",
-         "progressBar.sprite = BossRushUI.GetSolidSprite();", ""),
+        # 好感度面板（原 Filled 进度条的锚点）是死代码，2026-09-24 删除（A-35）；锚点换到成就条目的累计进度条。
+        ("Achievement/AchievementEntryUI.cs",
+         "progressFill.sprite = BossRushUI.GetSolidSprite();", ""),
         ("ZombieMode/ZombieModeUIHelper.cs", "Mathf.Max(0f, (size.x - textSize.x) * 0.5f)",
          "Mathf.Max(8f, (size.x - textSize.x) * 0.5f)"),
         ("Common/UI/BossRushUI.cs", "LightBackgroundLuminance = 0.30f",

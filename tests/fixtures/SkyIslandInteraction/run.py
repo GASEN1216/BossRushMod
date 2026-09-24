@@ -49,7 +49,7 @@ def generate():
         "internal void Show(string title, string text, IList<Choice> choices,",
         "private void BuildChoice(", "private void RunChoice(", "private void SetBodyText(",
         "private void RestoreBottom(", "private void Register(", "private void Select(",
-        "private void SetFocused(", "private static Color FocusColor(", "private static float FitTitleFont(",
+        "private void SetFocused(", "private Color RestStroke(", "private static Color FocusColor(", "private static float FitTitleFont(",
         "private static float ChoiceLabelWidth", "public void Dispose()",
         "private static RectTransform MakeRect(", "private static TextMeshProUGUI MakeText(",
         "private static string KeepCountsTogether(",

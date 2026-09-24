@@ -23,6 +23,30 @@ def main():
     require(item,['ProductionIconCache.Get(relativePath)','if (!ProductionIconCache.AllowRawFallback) return null;','if (!retained)'], 'raw fallback')
     require(item,['if (acquired && !retained && bundle != null) bundle.Unload(true);'], 'unpublished item bundle cleanup')
     require(source('Integration/EquipmentFactory.cs'),['if (!retained && bundle != null) bundle.Unload(true);'], 'unpublished equipment bundle cleanup')
+    # 看图器回退路径（2026-09-24）：旧写法每次看图都反射调 LoadFromFile、从不 Unload，同一 bundle 第二次加载被 Unity 拒绝。
+    # 现在同一个文件只打开一次：先查自己的缓存 -> 再借已打开的同名 bundle -> 才经 ResourceBundleLoader 打开，并按此顺序写回缓存；
+    # 卸载只 Unload(false) 自己打开的（不销毁正在用的图），且挂在 Integration 的销毁路径上。
+    viewer=source('Integration/UI/ImageViewerUI.cs')
+    start=viewer.find('private static AssetBundle AcquireFallbackBundle(')
+    acquire=viewer[start:viewer.find('\n        }\n',start)] if start>=0 else ''
+    steps=[r'if \(fallbackBundles\.TryGetValue\(key, out entry\)\)\s*\{\s*if \(entry != null && entry\.Bundle != null\) return entry\.Bundle;',
+        r'AssetBundle bundle = ItemFactory\.FindAlreadyLoadedAssetBundle\(bundleName\);',
+        r'if \(bundle == null\)\s*\{\s*bundle = ResourceBundleLoader\.LoadFromFile\(bundlePath\);\s*owned = bundle != null;',
+        r'fallbackBundles\[key\] = new FallbackBundle \{ Bundle = bundle, Owned = owned \};']
+    positions=[(lambda m: m.start() if m else -1)(re.search(step,acquire)) for step in steps]
+    if -1 in positions or positions!=sorted(positions):
+        errors.append('image viewer fallback: cache -> borrow loaded -> load once -> store, in order: '+repr(positions))
+    if 'AcquireFallbackBundle(bundlePath, bundleName)' not in viewer: errors.append('image viewer fallback: bundle must come from AcquireFallbackBundle')
+    if viewer.count('LoadFromFile(')!=1 or '"LoadFromFile"' in viewer:
+        errors.append('image viewer fallback: the only LoadFromFile is ResourceBundleLoader.LoadFromFile inside AcquireFallbackBundle')
+    if 'Unload(true)' in viewer: errors.append('image viewer fallback: never Unload(true), the shown sprite would be destroyed')
+    reset=viewer[viewer.find('internal static void ResetStaticCaches()'):]
+    require(reset,['if (entry == null || !entry.Owned || entry.Bundle == null) continue;','entry.Bundle.Unload(false);',
+        'fallbackBundles.Clear();','fallbackCreatedSprites.Clear();'], 'image viewer cache release')
+    hooks=source('Integration/IntegrationRuntimeHooks.cs')
+    cleanup=hooks[hooks.find('internal void CleanupIntegrationRuntimeOnDestroy()'):]
+    if 'ImageViewerUI.ResetStaticCaches()' not in cleanup[:cleanup.find('\n        }')]:
+        errors.append('image viewer cache release must run in CleanupIntegrationRuntimeOnDestroy')
     sampling=source('DebugAndTools/F3GameplayValidationResourcePerformance.cs')
     require(sampling,['FrameTimingManager.CaptureFrameTimings();','FrameTimingManager.GetLatestTimings(1, timings)',
         'Time.realtimeSinceStartupAsDouble - started < 10','ResourcePerformanceMetrics.IsComplete(',

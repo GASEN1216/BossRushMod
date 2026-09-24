@@ -74,7 +74,15 @@ namespace BossRush
         private const float MAX_HEIGHT_RATIO = 0.85f;
         private const float BASE_INPUT_HEIGHT = 186f;
         private const float MIN_INPUT_HEIGHT = 100f;
-        private const float FIXED_CONTENT_HEIGHT = 466f;
+        private const float FIXED_CONTENT_HEIGHT = 486f;
+        // 字号只用四级（UI 共识第 7 节，2026-09-24 对照审查 A-09）：标题 32 / 按钮 20 / 正文 18 / 注脚 16。
+        // 单行框高 ≥ 字号 × 1.45 + 4：18 号 → 32，16 号 → 28。
+        private const float TITLE_FONT_SIZE = 32f;
+        private const float BUTTON_FONT_SIZE = 20f;
+        private const float BODY_FONT_SIZE = 18f;
+        private const float NOTE_FONT_SIZE = 16f;
+        private const float BODY_LINE_HEIGHT = 32f;
+        private const float NOTE_LINE_HEIGHT = 28f;
         private const int HOST_TOPMOST_SORTING_ORDER = BossRushUILayers.HudOverlay;
 
         public static WishFountainView CreateRuntime(Transform parent)
@@ -409,13 +417,13 @@ namespace BossRush
             headerLayout.childForceExpandHeight = false;
             headerLayout.childForceExpandWidth = true;
 
-            titleText = CreateText("Title", headerRect, defaultFont, 34, FontStyles.Bold, TextAlignmentOptions.Center);
-            SetPreferredHeight(titleText.rectTransform, 38f);
+            titleText = CreateText("Title", headerRect, defaultFont, TITLE_FONT_SIZE, FontStyles.Bold, TextAlignmentOptions.Center);
+            SetPreferredHeight(titleText.rectTransform, 44f);
 
-            hintText = CreateText("Hint", headerRect, defaultFont, 18, FontStyles.Normal, TextAlignmentOptions.Center);
+            hintText = CreateText("Hint", headerRect, defaultFont, BODY_FONT_SIZE, FontStyles.Normal, TextAlignmentOptions.Center);
             hintText.enableWordWrapping = true;
             hintText.color = BossRushUIColors.TextSecondary;
-            SetPreferredHeight(hintText.rectTransform, 28f);
+            SetPreferredHeight(hintText.rectTransform, BODY_LINE_HEIGHT);
 
             GameObject contentCard = CreateUIObject("ContentCard", panelRect, typeof(Image), typeof(VerticalLayoutGroup));
             RectTransform contentCardRect = contentCard.GetComponent<RectTransform>();
@@ -432,7 +440,7 @@ namespace BossRush
 
             GameObject inputHeaderRow = CreateUIObject("InputHeaderRow", contentCardRect, typeof(HorizontalLayoutGroup));
             RectTransform inputHeaderRowRect = inputHeaderRow.GetComponent<RectTransform>();
-            SetPreferredHeight(inputHeaderRowRect, 22f);
+            SetPreferredHeight(inputHeaderRowRect, NOTE_LINE_HEIGHT);
             HorizontalLayoutGroup inputHeaderLayout = inputHeaderRow.GetComponent<HorizontalLayoutGroup>();
             inputHeaderLayout.spacing = 8f;
             inputHeaderLayout.childControlWidth = true;
@@ -441,20 +449,21 @@ namespace BossRush
             inputHeaderLayout.childForceExpandWidth = false;
             inputHeaderLayout.childAlignment = TextAnchor.MiddleLeft;
 
-            TextMeshProUGUI inputCaption = CreateText("InputCaption", inputHeaderRowRect, defaultFont, 16, FontStyles.Bold, TextAlignmentOptions.Left);
+            TextMeshProUGUI inputCaption = CreateText("InputCaption", inputHeaderRowRect, defaultFont, NOTE_FONT_SIZE, FontStyles.Bold, TextAlignmentOptions.Left);
             inputCaption.text = L10n.T("心愿内容", "Wish Content");
             inputCaption.color = BossRushUIColors.TextSecondary;
             SetPreferredWidth(inputCaption.rectTransform, 110f);
-            SetPreferredHeight(inputCaption.rectTransform, 20f);
+            SetPreferredHeight(inputCaption.rectTransform, NOTE_LINE_HEIGHT);
 
             GameObject inputHeaderSpacer = CreateUIObject("InputHeaderSpacer", inputHeaderRowRect, typeof(LayoutElement));
             LayoutElement inputHeaderSpacerElement = inputHeaderSpacer.GetComponent<LayoutElement>();
             inputHeaderSpacerElement.flexibleWidth = 1f;
 
-            inputFocusHintText = CreateText("InputFocusHint", inputHeaderRowRect, defaultFont, 14, FontStyles.Normal, TextAlignmentOptions.Right);
-            inputFocusHintText.color = BossRushUIColors.WarningText;
-            SetPreferredWidth(inputFocusHintText.rectTransform, 250f);
-            SetPreferredHeight(inputFocusHintText.rectTransform, 18f);
+            inputFocusHintText = CreateText("InputFocusHint", inputHeaderRowRect, defaultFont, NOTE_FONT_SIZE, FontStyles.Normal, TextAlignmentOptions.Right);
+            // 常驻的一句提醒不是警告：次色（A-10），警告色只留给真出了问题的状态行
+            inputFocusHintText.color = BossRushUIColors.TextSecondary;
+            SetPreferredWidth(inputFocusHintText.rectTransform, 300f);
+            SetPreferredHeight(inputFocusHintText.rectTransform, NOTE_LINE_HEIGHT);
 
             GameObject inputFrame = CreateUIObject("InputFrame", contentCardRect, typeof(LayoutElement));
             RectTransform inputFrameRect = inputFrame.GetComponent<RectTransform>();
@@ -486,7 +495,7 @@ namespace BossRush
             inputTextRect.offsetMin = Vector2.zero;
             inputTextRect.offsetMax = Vector2.zero;
             TextMeshProUGUI inputText = inputTextGO.GetComponent<TextMeshProUGUI>();
-            ConfigureTMPText(inputText, defaultFont, 18, TextAlignmentOptions.TopLeft);
+            ConfigureTMPText(inputText, defaultFont, BODY_FONT_SIZE, TextAlignmentOptions.TopLeft);
             inputText.enableWordWrapping = true;
             inputText.overflowMode = TextOverflowModes.Overflow;
 
@@ -494,7 +503,7 @@ namespace BossRush
             RectTransform placeholderRect = placeholderGO.GetComponent<RectTransform>();
             StretchRect(placeholderRect);
             placeholderText = placeholderGO.GetComponent<TextMeshProUGUI>();
-            ConfigureTMPText(placeholderText, defaultFont, 18, TextAlignmentOptions.TopLeft);
+            ConfigureTMPText(placeholderText, defaultFont, BODY_FONT_SIZE, TextAlignmentOptions.TopLeft);
             placeholderText.enableWordWrapping = true;
             placeholderText.color = WithAlpha(BossRushUIColors.TextSecondary, 0.7f);
 
@@ -506,7 +515,7 @@ namespace BossRush
             inputField.characterLimit = WishFountainService.MAX_CHARS;
             inputField.richText = false;
             inputField.scrollSensitivity = 20f;
-            inputField.pointSize = 20f;
+            inputField.pointSize = BODY_FONT_SIZE;
             inputField.customCaretColor = true;
             inputField.caretColor = BossRushUIColors.Accent;
             inputField.caretWidth = 3;
@@ -562,9 +571,9 @@ namespace BossRush
             LayoutElement metaSpacerElement = metaSpacer.GetComponent<LayoutElement>();
             metaSpacerElement.flexibleWidth = 1f;
 
-            countText = CreateText("CountText", metaRow.GetComponent<RectTransform>(), defaultFont, 16, FontStyles.Normal, TextAlignmentOptions.Right);
+            countText = CreateText("CountText", metaRow.GetComponent<RectTransform>(), defaultFont, NOTE_FONT_SIZE, FontStyles.Normal, TextAlignmentOptions.Right);
             SetPreferredWidth(countText.rectTransform, 170f);
-            SetPreferredHeight(countText.rectTransform, 28f);
+            SetPreferredHeight(countText.rectTransform, NOTE_LINE_HEIGHT);
 
             // 状态行：不再是又一层直角底色卡，只留文字 + 左侧状态色细竖条（UD-19）
             GameObject statusCard = CreateUIObject("StatusCard", contentCardRect);
@@ -572,7 +581,7 @@ namespace BossRush
             SetPreferredHeight(statusCardRect, 48f);
             statusRail = CreateStatusRail(statusCardRect);
 
-            statusText = CreateText("StatusText", statusCardRect, defaultFont, 17, FontStyles.Normal, TextAlignmentOptions.Left);
+            statusText = CreateText("StatusText", statusCardRect, defaultFont, BODY_FONT_SIZE, FontStyles.Normal, TextAlignmentOptions.Left);
             statusText.enableWordWrapping = true;
             statusText.rectTransform.anchorMin = Vector2.zero;
             statusText.rectTransform.anchorMax = Vector2.one;
@@ -602,8 +611,9 @@ namespace BossRush
             buttonLayout.spacing = 16f;
             buttonLayout.childAlignment = TextAnchor.MiddleCenter;
 
-            confirmButton = CreateButton(buttonRow.GetComponent<RectTransform>(), defaultFont, out confirmButtonText, 248f, 46f, true);
+            // 主操作放最右（A-08，UI 共识第 4 节）：先建次级「取消」，再建 AccentFill 的「许愿」
             cancelButton = CreateButton(buttonRow.GetComponent<RectTransform>(), defaultFont, out cancelButtonText, 180f, 46f, false);
+            confirmButton = CreateButton(buttonRow.GetComponent<RectTransform>(), defaultFont, out confirmButtonText, 248f, 46f, true);
         }
 
         private void AdjustPanelForResolution()
@@ -943,7 +953,8 @@ namespace BossRush
                 countText.text = L10n.T(
                     "已输入 " + charCount + " / " + WishFountainService.MAX_CHARS + " 字",
                     "Typed " + charCount + " / " + WishFountainService.MAX_CHARS + " chars");
-                countText.color = charCount < WishFountainService.MIN_CHARS
+                // 还没开始写时不先亮红（A-11）：要求写在状态行，计数只在写了但不够时才标红
+                countText.color = charCount > 0 && charCount < WishFountainService.MIN_CHARS
                     ? BossRushUIColors.DangerText
                     : BossRushUIColors.TextSecondary;
             }
@@ -1020,6 +1031,15 @@ namespace BossRush
                     SetStatus(
                         L10n.T("最少输入 " + WishFountainService.MIN_CHARS + " 个字符哦", "At least " + WishFountainService.MIN_CHARS + " characters required"),
                         BossRushUIColors.WarningText,
+                        false);
+                }
+                else if (charCount == 0)
+                {
+                    // 0 字时「许愿」按不动，原因要写出来（A-11）
+                    SetStatus(
+                        string.Format(L10n.T("写下心愿就能许愿（至少 {0} 个字）", "Write your wish to send it (at least {0} characters)"),
+                            WishFountainService.MIN_CHARS),
+                        BossRushUIColors.TextSecondary,
                         false);
                 }
                 else
@@ -1143,7 +1163,7 @@ namespace BossRush
             GameObject root = CreateUIObject("AnonymousToggle", parent, typeof(RectTransform), typeof(Toggle));
             RectTransform rootRect = root.GetComponent<RectTransform>();
             SetPreferredWidth(rootRect, 430f);
-            SetPreferredHeight(rootRect, 28f);
+            SetPreferredHeight(rootRect, BODY_LINE_HEIGHT);
 
             GameObject background = CreateUIObject("Background", rootRect, typeof(Image));
             RectTransform bgRect = background.GetComponent<RectTransform>();
@@ -1154,7 +1174,7 @@ namespace BossRush
 
             Image bgImage = background.GetComponent<Image>();
 
-            label = CreateText("Label", rootRect, font, 18, FontStyles.Normal, TextAlignmentOptions.Left);
+            label = CreateText("Label", rootRect, font, BODY_FONT_SIZE, FontStyles.Normal, TextAlignmentOptions.Left);
             RectTransform labelRect = label.rectTransform;
             labelRect.anchorMin = new Vector2(0f, 0f);
             labelRect.anchorMax = new Vector2(1f, 1f);
@@ -1177,7 +1197,7 @@ namespace BossRush
 
             BossRushUI.ApplyPanelSkin(root.GetComponent<Image>(), 8, BossRushUISkinPart.Button);
             Button button = root.GetComponent<Button>();
-            label = CreateText("Text", rect, font, 20, FontStyles.Bold, TextAlignmentOptions.Center);
+            label = CreateText("Text", rect, font, BUTTON_FONT_SIZE, FontStyles.Bold, TextAlignmentOptions.Center);
             StretchRect(label.rectTransform);
 
             // 全 Mod 按钮口径：主操作 AccentFill、其余次级；三态、音效、按下回弹、投影斜面都由共享层给，

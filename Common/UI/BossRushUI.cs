@@ -326,6 +326,7 @@ namespace BossRush
             BossRushUIDepth.ResetStaticCaches();
             BossRushUISound.ResetStaticCaches();
             BossRushUIKit.ResetStaticCaches();
+            BossRushConfirmDialog.ResetStaticCaches();  // 共享确认弹窗（DontDestroyOnLoad 宿主 + 模态租约），卸载时收掉
             BossRushFxMaterials.ResetStaticCaches();   // 共享程序化特效材质（Common/Effects），同样是 DontSave，挂在这条已有的卸载路径上
             BossRushFxKit.ResetStaticCaches();          // 共享特效小件（含粒子贴图），与特效材质同一条卸载路径
 

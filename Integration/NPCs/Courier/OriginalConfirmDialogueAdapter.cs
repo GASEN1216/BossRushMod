@@ -42,6 +42,8 @@ namespace BossRush
     // 官方 prefab 自带 ButtonAnimation，再挂共享按钮手感会一次悬停响两声。
     // 第二个入口 ExecuteOverActiveView（UA-29）：给「寄存全部丢弃」这类发生在官方 View 里的不可逆操作用，
     // 不关当前 View、默认选中「取消」，并吃掉官方 UI 取消键，避免一按 ESC 连商店一起关掉。
+    // 2026-09-24 UI 共识对照审查：标题由调用方写成问句（A-38，旧版写死「扫箱确认」）；不可逆（destructive）时确认键换成
+    // 共享的 Danger 实心按钮、与「取消」拉开到 40（A-37，旧版两颗同色同宽、间距 18）——这是「进确认之后」的那颗，允许实心红。
     public static class OriginalConfirmDialogueAdapter
     {
         private const string CanvasName = "BossRush_SweepConfirmCanvas";
@@ -52,6 +54,9 @@ namespace BossRush
         private const float FooterHeight = 78f;
         private const float ButtonWidth = 160f;
         private const float ButtonHeight = 40f;
+        private const float FooterSpacing = 18f;
+        /// <summary>不可逆时危险键与「取消」之间拉开的距离（UI 共识第 4 节：破坏性按钮与安全按钮拉开）。</summary>
+        private const float DestructiveFooterSpacing = 40f;
         private const int ActiveViewCloseWaitFrames = 8;
 
         private static GameObject canvasRoot = null;
@@ -63,6 +68,10 @@ namespace BossRush
         private static Button cancelButton = null;
         private static TextMeshProUGUI confirmButtonText = null;
         private static TextMeshProUGUI cancelButtonText = null;
+        /// <summary>不可逆时代替 confirmButton 出场的危险确认键（共享按钮、Danger 实心）。</summary>
+        private static Button dangerConfirmButton = null;
+        private static TextMeshProUGUI dangerConfirmButtonText = null;
+        private static HorizontalLayoutGroup footerLayout = null;
         private static SweepConfirmRuntime runtime = null;
         private static UniTaskCompletionSource<bool> pendingCompletion = null;
         private static bool inputClaimed = false;
@@ -71,12 +80,17 @@ namespace BossRush
         private static bool cancelEarlySubscribed = false;
         private static bool defaultToCancel = false;
 
+        /// <summary>
+        /// 通用确认（会先关掉当前官方 View）。<paramref name="title"/> 写成问句（「花 ￥1,200 让阿稳扫 6 个箱子？」），
+        /// 确认键写「动词 + 对象」，不用「确定」。
+        /// </summary>
         public static UniTask<OriginalConfirmDialogueResult> Execute(
+            string title,
             string message,
             string confirmText,
             string cancelText)
         {
-            return ExecuteCore(L10n.T("扫箱确认", "Sweep Confirmation"), message, confirmText, cancelText, false, false);
+            return ExecuteCore(title, message, confirmText, cancelText, false, false);
         }
 
         /// <summary>
@@ -290,8 +304,8 @@ namespace BossRush
         {
             GameObject footer = new GameObject("Footer");
             footer.transform.SetParent(parent, false);
-            HorizontalLayoutGroup footerLayout = footer.AddComponent<HorizontalLayoutGroup>();
-            footerLayout.spacing = 18f;
+            footerLayout = footer.AddComponent<HorizontalLayoutGroup>();
+            footerLayout.spacing = FooterSpacing;
             footerLayout.padding = new RectOffset(24, 24, 16, 16);
             footerLayout.childAlignment = TextAnchor.MiddleCenter;
             footerLayout.childForceExpandWidth = false;
@@ -310,6 +324,16 @@ namespace BossRush
             confirmButtonText = confirmButton.GetComponentInChildren<TextMeshProUGUI>(true);
             confirmButton.onClick.RemoveAllListeners();
             confirmButton.onClick.AddListener(() => Resolve(true));
+
+            // 危险确认键（A-37）：官方按钮 prefab 的配色由它自己的动画组件管，不另染色；不可逆时换这颗共享 Danger 实心键。
+            dangerConfirmButton = ZombieModeUIHelper.CreateButton("DangerConfirm", footer.transform, string.Empty,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(ButtonWidth, ButtonHeight), BossRushUIColors.Danger,
+                18f, new Vector2(ButtonWidth - 12f, ButtonHeight - 6f), () => Resolve(true), true);
+            LayoutElement dangerLayout = dangerConfirmButton.gameObject.AddComponent<LayoutElement>();
+            dangerLayout.preferredWidth = ButtonWidth;
+            dangerLayout.preferredHeight = ButtonHeight;
+            dangerConfirmButtonText = dangerConfirmButton.GetComponentInChildren<TextMeshProUGUI>(true);
+            dangerConfirmButton.gameObject.SetActive(false);
 
             cancelButton = UnityEngine.Object.Instantiate(buttonPrefab, footer.transform);
             LayoutElement cancelLayout = cancelButton.gameObject.AddComponent<LayoutElement>();
@@ -338,7 +362,13 @@ namespace BossRush
             }
 
             ApplyButtonText(confirmButtonText, confirmText ?? L10n.T("确认", "Confirm"));
+            ApplyButtonText(dangerConfirmButtonText, confirmText ?? L10n.T("确认", "Confirm"));
             ApplyButtonText(cancelButtonText, cancelText ?? L10n.T("取消", "Cancel"));
+            // 不可逆：危险实心键在左、「取消」在右并拉开（A-37）；可逆：官方按钮、原间距
+            bool destructive = defaultToCancel;
+            if (confirmButton != null) confirmButton.gameObject.SetActive(!destructive);
+            if (dangerConfirmButton != null) dangerConfirmButton.gameObject.SetActive(destructive);
+            if (footerLayout != null) footerLayout.spacing = destructive ? DestructiveFooterSpacing : FooterSpacing;
 
             previousTimeScale = Time.timeScale;
             Time.timeScale = 0f;
@@ -509,6 +539,9 @@ namespace BossRush
             cancelButton = null;
             confirmButtonText = null;
             cancelButtonText = null;
+            dangerConfirmButton = null;
+            dangerConfirmButtonText = null;
+            footerLayout = null;
             runtime = null;
             pendingCompletion = null;
             inputClaimed = false;
@@ -552,6 +585,9 @@ namespace BossRush
                 cancelButton = null;
                 confirmButtonText = null;
                 cancelButtonText = null;
+                dangerConfirmButton = null;
+                dangerConfirmButtonText = null;
+                footerLayout = null;
                 runtime = null;
                 inputClaimed = false;
                 isVisible = false;

@@ -34,9 +34,10 @@ def main():
     code += '\n'.join(member(raw, signature) for signature in signatures) + '\n}}'
     (OUT / 'Reveal.cs').write_text(code, encoding='utf-8')
     expedition = ROOT / 'PetNest/PetNestExpeditionRevealView.cs'
-    code = 'using System.Collections; using UnityEngine; namespace BossRush { partial class PetNestExpeditionRevealView {\n'
+    code = 'using System.Collections; using System.Collections.Generic; using UnityEngine; namespace BossRush { partial class PetNestExpeditionRevealView {\n'
     code += '\n'.join(member(expedition.read_text(encoding='utf-8-sig'), signature) for signature in (
-        'private IEnumerator PlayRoutine()', 'private static IEnumerator WaitForPresentation(')) + '\n}}'
+        'private IEnumerator PlayRoutine()', 'private static int CountRecords(',
+        'private static IEnumerator WaitForPresentation(')) + '\n}}'
     (OUT / 'ExpeditionReveal.cs').write_text(code, encoding='utf-8')
     combat = ROOT / 'Integration/Bonus/SetBonusVisuals.cs'
     code = 'using System; using UnityEngine; namespace BossRush { public partial class ModBehaviour {\n'

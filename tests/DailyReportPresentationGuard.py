@@ -176,6 +176,53 @@ def check_runtime_icons(dashboard):
     assert budgets[wanted[0]] <= 1024, "底图是展示图，上限 1024（AGENTS 4.16）"
 
 
+def check_ui_consensus(ui, dashboard):
+    """2026-09-24 UI 共识对照审查 A-13…A-17。
+
+    - 签过之后不留灰按钮：按钮收起，同一位置换成状态字；
+    - 签到没受理的原因写进签到状态行（官方横幅可能压在报纸下面）；
+    - 卡片内滚动要有（AutoHide 的）滚动条；
+    - 字号四级：报头 / 标题 / 正文三个常量，数值块只用一个缩小百分比 + 大数字 200%；
+    - 奖品品质写名字不写数字。
+    """
+    button = method(ui, "private void RefreshSignInButton(")
+    assert "signInButton.gameObject.SetActive(!signed)" in button, "签过之后签到按钮必须收起，不留灰按钮（A-13）"
+    assert "signedTagText.gameObject.SetActive(signed)" in button, "签过之后要在按钮位置显示已签状态字（A-13）"
+    assert "今日已签\", \"SIGNED\"" not in ui, "又把「今日已签」写回了按钮文字（A-13）"
+    assert "signInFailure" in button and "InkDangerHex" in button, "签到失败原因必须写进签到状态行（A-14）"
+    click = method(ui, "private void OnSignInClicked()")
+    blocked = click[click.index("case DailyReportSignInOutcome.PersistBlocked:"):]
+    blocked = blocked[:blocked.index("break;")]
+    assert "signInFailure =" in blocked and "ShowBanner" not in blocked, "存档写不进的失败要写在状态行，不只走横幅（A-14）"
+    create = method(dashboard, "private TextMeshProUGUI CreateText(")
+    assert "BossRushUI.ConfigureScrollRect(scroll);" in create, "卡片内滚动必须挂共享滚动条（A-15）"
+    sizes = set(re.findall(r"private const float (\w+FontSize) = ", dashboard))
+    assert sizes == {"MastheadFontSize", "HeadingFontSize", "BodyFontSize"}, "日报字号常量只留三档（A-16）: %s" % sorted(sizes)
+    for match in re.finditer(r"(ZombieModeUIHelper\.)?(CreateText|CreateIconText)\(", dashboard):
+        head = dashboard[max(0, match.start() - 20):match.start()]
+        if "TextMeshProUGUI " in head:
+            continue  # 方法定义本身
+        depth, index, args, current = 1, match.end(), [], ""
+        while depth:
+            ch = dashboard[index]
+            if ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                depth -= 1
+            if depth == 1 and ch == ",":
+                args.append(current.strip())
+                current = ""
+            elif depth:
+                current += ch
+            index += 1
+        args.append(current.strip())
+        size = args[3] if match.group(1) else args[4]
+        assert size.endswith("FontSize") or size == "fontSize", "日报文字又写回了字面量字号（A-16）: %s(%s…)" % (match.group(2), ", ".join(args[:5]))
+    value = method(ui, "private static string BuildValueBlock(")
+    assert set(re.findall(r"<size=(\d+)%>", value)) == {"82", "200"}, "数值块只用 82% 与 200% 两档（A-16）"
+    assert "QualityName(" in button and "品质 \"" not in button, "签到奖品品质要写名字不写数字（A-17）"
+
+
 def main():
     ui = source("Integration/DailyReport/DailyReportUI.cs")
     dashboard = source("Integration/DailyReport/DailyReportUI_Dashboard.cs")
@@ -192,7 +239,7 @@ def main():
         for scale in states:
             contrast = ratio(luminance(fg), luminance(tuple(c * scale for c in bg[:3])))
             assert contrast >= 4.5, f"{background} label contrast {contrast:.2f} < 4.5"
-    for ink in ("PaperInk", "PaperInkSoft"):
+    for ink in ("PaperInk", "PaperInkSoft", "PaperInkDanger", "CellSigned"):
         for scene in (0, 1):
             contrast = ratio(luminance(colors[ink]), blend(scene, colors["PaperBase"][:3], colors["PaperBase"][3]))
             assert contrast >= 4.5, f"{ink} on paper contrast {contrast:.2f} < 4.5"
@@ -237,6 +284,7 @@ def main():
     announce = method(runtime, "private void AnnounceNewIssue()")
     assert announce.index("_announcedDayIndex == data.DayIndex && _announcedSlot == slot") < announce.index("ShowBigBanner")
     assert announce.index("_announcedDayIndex = data.DayIndex;") < announce.index("ShowBigBanner")
+    check_ui_consensus(ui, dashboard)
     print("DailyReportPresentationGuard: PASS (colors, ribbons, layout table, runtime icons, localization, notification deduplication)")
 
 

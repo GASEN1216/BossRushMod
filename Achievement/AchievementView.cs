@@ -4,6 +4,9 @@
 // 模块说明：
 //   成就页面的主容器，参考BossFilter的实现方式
 //   支持 L 键打开/关闭，ESC 键关闭
+//   2026-09-24 UI 共识对照审查：打开时占模态租约（A-43，时停 + 光标 + 输入占用一处管），ESC / 手柄取消走
+//   PetNestCancelKey 并用掉官方取消事件（旧版 Input.GetKeyDown 关面板的同时官方暂停菜单也会弹出来）；
+//   可领取的排最前（A-23），没有可领的就不挂「一键领取」（A-22）。
 //   包含成就列表、统计信息、一键领取功能
 // ============================================================================
 
@@ -45,6 +48,8 @@ namespace BossRush
         /// <summary>一键领取是这一屏唯一的主操作：AccentFill 底（全 Mod 按钮口径 2026-09-23）。只用在官方按钮 prefab 取不到时的回退按钮上。</summary>
         private static readonly Color ClaimAllFallbackColor = BossRushUIColors.AccentFill;
         private const float SideInset = 20f;
+        // 字号只用三级（A-25）：标题 28 / 条目名字与奖励 18（AchievementEntryUI）/ 其余 15。
+        private const float BodyFontSize = 15f;
 
         #endregion
 
@@ -93,6 +98,8 @@ namespace BossRush
         #region 状态字段
 
         private bool isOpen;
+        private ZombieModeUIHelper.ModalInputLease modalLease;
+        private PetNestCancelKey cancelKey;
         private List<AchievementEntryUI> entries = new List<AchievementEntryUI>();
         private bool isClaimingAll = false;
 
@@ -390,7 +397,7 @@ namespace BossRush
             statsText = statsTextObj.AddComponent<TextMeshProUGUI>();
 
             BossRushUI.ApplyGameFont(statsText);
-            statsText.fontSize = 15;
+            statsText.fontSize = BodyFontSize;
             statsText.enableWordWrapping = false;
             statsText.overflowMode = TextOverflowModes.Ellipsis;
             statsText.color = StatsColor;
@@ -599,7 +606,7 @@ namespace BossRush
             totalRewardText = totalObj.AddComponent<TextMeshProUGUI>();
 
             BossRushUI.ApplyGameFont(totalRewardText);
-            totalRewardText.fontSize = 16;
+            totalRewardText.fontSize = BodyFontSize;
             totalRewardText.enableWordWrapping = false;
             totalRewardText.overflowMode = TextOverflowModes.Ellipsis;
             totalRewardText.color = BossRushUIColors.WarningText;   // 金钱 = WarningText（审美口径第 2 条），不再用纯金 (255,215,0)
@@ -639,7 +646,7 @@ namespace BossRush
                     new Vector2(-15f - 78f, 0f),
                     new Vector2(156f, 40f),
                     ClaimAllFallbackColor,
-                    16f,
+                    BodyFontSize,
                     new Vector2(140f, 32f),
                     ClaimAllRewards,
                     true);
@@ -670,11 +677,12 @@ namespace BossRush
                 BossRushUIEntranceAnimation.Play(backdropImage.gameObject, 0f, 0.15f, 0f);
             }
 
-            try
+            // 模态租约（A-43）：时停、光标、输入占用与其它模态面板共用一个计数，关闭时成对归还
+            if (modalLease == null)
             {
-                InputManager.DisableInput(gameObject);
+                modalLease = ZombieModeUIHelper.ClaimModalInput(gameObject, "Achievement");
             }
-            catch { }
+            cancelKey = PetNestCancelKey.Attach(canvas.gameObject, Close, IsCancelCovered);
 
             BossRushAchievementManager.Initialize();
             RefreshAll();
@@ -698,11 +706,7 @@ namespace BossRush
             isOpen = false;
 
             // 先还输入，再播淡出：动效绝不能变成输入延迟
-            try
-            {
-                InputManager.ActiveInput(gameObject);
-            }
-            catch { }
+            ReleaseModalInput();
 
             if (canvas != null)
             {
@@ -721,6 +725,31 @@ namespace BossRush
             }
 
             ModBehaviour.DevLog("[AchievementView] 成就页面已关闭");
+        }
+
+        /// <summary>归还模态租约并停听取消键。幂等。</summary>
+        private void ReleaseModalInput()
+        {
+            if (cancelKey != null)
+            {
+                cancelKey.Detach();
+                cancelKey = null;
+            }
+            try
+            {
+                if (modalLease != null)
+                {
+                    modalLease.Release();
+                }
+            }
+            catch { }
+            modalLease = null;
+        }
+
+        /// <summary>共享确认框压在上面时 ESC 让给它。</summary>
+        private static bool IsCancelCovered()
+        {
+            return BossRushConfirmDialog.IsOpen;
         }
 
         private System.Collections.IEnumerator CloseFadeRoutine()
@@ -831,7 +860,7 @@ namespace BossRush
 
         /// <summary>
         /// 填充成就条目 - 使用LayoutElement
-        /// 排序规则：已完成的成就排在前面，未完成的排在后面
+        /// 排序规则：可领取的最前（A-23），然后已领取、未完成，隐藏成就最后
         /// </summary>
         private void PopulateEntries()
         {
@@ -861,12 +890,17 @@ namespace BossRush
                 return;
             }
 
-            // 排序：已完成的成就排在前面，隐藏成就排在最后，其余按分类和难度排序
+            // 排序：可领取的排最前（A-23：玩家打开就该看到能领的），已完成的其次，隐藏成就排在最后，其余按分类和难度排序
             achievements.Sort((a, b) =>
             {
                 bool aUnlocked = BossRushAchievementManager.IsUnlocked(a.id);
                 bool bUnlocked = BossRushAchievementManager.IsUnlocked(b.id);
-                
+                bool aClaimable = aUnlocked && !BossRushAchievementManager.IsRewardClaimed(a.id);
+                bool bClaimable = bUnlocked && !BossRushAchievementManager.IsRewardClaimed(b.id);
+
+                if (aClaimable && !bClaimable) return -1;
+                if (!aClaimable && bClaimable) return 1;
+
                 // 已完成的排前面
                 if (aUnlocked && !bUnlocked) return -1;
                 if (!aUnlocked && bUnlocked) return 1;
@@ -942,9 +976,13 @@ namespace BossRush
 
             if (claimAllButton != null)
             {
-                // 只切 interactable：官方按钮 prefab 有自己的底图与禁用态，回退按钮的三态住在 ColorBlock 里。
-                // 旧写法把 Image.color 整块乘成平涂绿，官方形状 + Mod 颜色混搭，禁用时还再叠一层禁用乘色（审美审查 UD-36）。
+                // 没有可领的就不挂（A-22，UI 共识「不挂灰按钮」）：旧版留一颗灰掉的「一键领取」。
+                // 不改 Image.color：官方按钮 prefab 有自己的底图，回退按钮的三态住在 ColorBlock 里（审美审查 UD-36）。
                 claimAllButton.interactable = hasClaimable;
+                if (claimAllButton.gameObject.activeSelf != hasClaimable)
+                {
+                    claimAllButton.gameObject.SetActive(hasClaimable);
+                }
             }
             if (claimAllButtonText != null)
             {
@@ -969,15 +1007,7 @@ namespace BossRush
 
         #region Update
 
-        void Update()
-        {
-            if (!isOpen) return;
-
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                Close();
-            }
-        }
+        // ESC / 手柄取消由 PetNestCancelKey（Open 时挂在画布上）处理，这里不再每帧读键盘。
 
         #endregion
     }

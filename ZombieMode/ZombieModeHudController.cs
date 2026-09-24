@@ -523,10 +523,11 @@ namespace BossRush
             bool stagePanel = name == "StagePanel";
             // HUD 此前是三块裸文本，只靠投影和背景区分；补一层半透底板，
             // 亮场景下才读得清。raycastTarget 必须关掉，HUD 不能挡住游戏内点击。
+            // 底色走 Surface token，只调透明度（UI 共识对照审查 B-30，与血猎追击状态卡同口径）。
             Image panelBackground = obj.AddComponent<Image>();
-            panelBackground.color = stagePanel
-                ? new Color(0.02f, 0.025f, 0.03f, 0.42f)
-                : new Color(0.02f, 0.025f, 0.03f, 0.55f);
+            Color panelColor = BossRushUIColors.Surface;
+            panelColor.a = stagePanel ? 0.42f : 0.55f;
+            panelBackground.color = panelColor;
             BossRushUI.ApplyPanelSkin(panelBackground, 8, BossRushUISkinPart.Card);
             panelBackground.raycastTarget = false;
 

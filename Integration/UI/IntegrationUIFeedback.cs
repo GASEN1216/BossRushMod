@@ -158,5 +158,62 @@ namespace BossRush
                 label.color = BossRushUIColors.TextSecondary;
             }
         }
+
+        // ---------------- 分段按钮 / 危险次级按钮（UI 共识第 4、6 节） ----------------
+
+        /// <summary>
+        /// 分段按钮（页签、「全部 / 待收集」这类互斥视图）的选中态：选中压一点 Accent 底色 + WarningText 描边 + 粗体，
+        /// 未选中是次级按钮（SurfaceRaised + Stroke）。选中态不置灰；可原地反复调用（切换时只改颜色，不重建）。
+        /// 口径照遗种巢 SpawnSegments；图鉴筛选与 Boss 池页签共用这一份（2026-09-24 UI 共识对照审查 A-18 / A-28）。
+        /// </summary>
+        internal static void StyleSegment(Button button, bool selected)
+        {
+            if (button == null)
+            {
+                return;
+            }
+            BossRushUIKit.StyleSecondaryButton(button);   // 幂等：保证有描边、底色回到次级、标签色按底色复位
+            if (selected)
+            {
+                ZombieModeUIHelper.SetButtonBaseColor(button,
+                    Color.Lerp(BossRushUIColors.SurfaceRaised, BossRushUIColors.Accent, 0.22f));
+            }
+            SetButtonStrokeColor(button, selected ? BossRushUIColors.WarningText : BossRushUIColors.Stroke);
+            TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (label != null)
+            {
+                label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
+            }
+        }
+
+        /// <summary>
+        /// 危险但还没到最后一步的按钮（后面还有一道确认）：深底不变、DangerText 描边 + 红字，不铺实心红块。
+        /// 真正执行的那颗实心 Danger 只在确认弹窗里（BossRushConfirmDialog）。
+        /// </summary>
+        internal static void StyleDangerSecondary(Button button)
+        {
+            if (button == null)
+            {
+                return;
+            }
+            BossRushUIKit.StyleSecondaryButton(button);
+            SetButtonStrokeColor(button, BossRushUIColors.DangerText);
+            TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (label != null)
+            {
+                label.color = BossRushUIColors.DangerText;
+            }
+        }
+
+        private static void SetButtonStrokeColor(Button button, Color color)
+        {
+            Image image = button.targetGraphic as Image;
+            Transform strokeTransform = image != null ? image.transform.Find("Stroke") : null;
+            Image stroke = strokeTransform != null ? strokeTransform.GetComponent<Image>() : null;
+            if (stroke != null)
+            {
+                stroke.color = color;
+            }
+        }
     }
 }

@@ -224,7 +224,6 @@ namespace BossRush
                 // 4) UI（与 RegisterOpener 成对：面板关掉并把打开器注销，避免 dormant 后还能开面板）
                 SafeRuntime.Run("PetNestUI.ResetStaticCaches", () => PetNestUI.ResetStaticCaches());
                 SafeRuntime.Run("PetNestRenameModal.ResetStaticCaches", () => PetNestRenameModal.ResetStaticCaches());
-                SafeRuntime.Run("PetNestReleaseConfirmModal.ResetStaticCaches", () => PetNestReleaseConfirmModal.ResetStaticCaches());
                 SafeRuntime.Run("PetNestHatchRevealView.ResetStaticCaches", () => PetNestHatchRevealView.ResetStaticCaches());
                 SafeRuntime.Run("PetNestExpeditionRevealView.ResetStaticCaches", () => PetNestExpeditionRevealView.ResetStaticCaches());
                 SafeRuntime.Run("PetNestCompanionHudView.ResetStaticCaches", () => PetNestCompanionHudView.ResetStaticCaches());
@@ -419,11 +418,10 @@ namespace BossRush
         /// </summary>
         internal static void CloseAllInteractiveViewsForSceneChange()
         {
+            // 放生 / 亡命出发的确认是共享 BossRushConfirmDialog，Anchor 挂在主面板宿主上：面板一关它就按「取消」收场
             try { PetNestUI.Close(); }
             catch (Exception) { /* 清理路径继续 */ }
             try { PetNestRenameModal.Close(); }
-            catch (Exception) { /* 清理路径继续 */ }
-            try { PetNestReleaseConfirmModal.Close(); }
             catch (Exception) { /* 清理路径继续 */ }
             try { PetNestHatchRevealView.Stop(); }
             catch (Exception) { /* 清理路径继续 */ }

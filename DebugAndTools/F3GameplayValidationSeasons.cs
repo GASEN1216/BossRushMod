@@ -154,7 +154,9 @@ namespace BossRush
                         break;
                     case ModeHLifecycle.HallOfFame:
                         hall = true;
-                        TryClickModeHButton(null, confirm);
+                        // 名人堂唯一的按钮 2026-09-24 起写「结束赛季」（UI 共识对照审查 B-18）
+                        if (!TryClickModeHButton(null, L10n.T("结束赛季", "End season")))
+                            TryClickModeHButton(null, confirm);
                         break;
                     case ModeHLifecycle.Suspended:
                         reason = "season_suspended:" + runtime.LastExitReasonId;

@@ -9,6 +9,10 @@
 //
 // 快捷键：
 //   - Ctrl+F10: 打开/关闭 Boss 池配置窗口
+//
+// 2026-09-24 UI 共识对照审查 A-26…A-30、A-43：两个页签（出场 Boss / 无间炼狱因子），列表头操作跟着页签换；
+//   「全部恢复默认」先确认；×、ESC、Ctrl+F10、「保存并关闭」走同一条「先保存再关」，一个 Boss 都没启用时不存不关、
+//   原因写在统计行；打开时占模态租约（时停 + 光标 + 输入占用一处管）。
 // ============================================================================
 
 using System;
@@ -70,12 +74,13 @@ namespace BossRush
         /// <summary>Boss 无间炼狱刷新因子字典 (key: boss name, value: factor)</summary>
         private Dictionary<string, float> bossInfiniteHellFactors = new Dictionary<string, float>();
 
-        /// <summary>工具栏按钮引用</summary>
+        /// <summary>工具栏按钮引用：两个页签（bossTabButton / infiniteHellFactorButton）+ 各页的列表头操作</summary>
         private Button selectAllButton = null;
         private Button deselectAllButton = null;
         private Button infiniteHellFactorButton = null;
-        private TextMeshProUGUI selectAllButtonText = null;
-        private TextMeshProUGUI infiniteHellFactorButtonText = null;
+        private Button bossTabButton = null;
+        private Button resetFactorsButton = null;
+        private ZombieModeUIHelper.ModalInputLease bossPoolModalLease = null;
 
         /// <summary>Boss 因子选择器 UI 字典</summary>
         private Dictionary<string, GameObject> bossFactorSelectors = new Dictionary<string, GameObject>();
@@ -382,10 +387,7 @@ namespace BossRush
                 InitializeBossPoolFilter();
             }
 
-            // 重置为普通模式
-            isInfiniteHellFactorMode = false;
-
-            // 创建或显示 UI
+            // 创建或显示 UI；每次打开都从「出场 Boss」页开始（页签选中态、列表头操作、列表内容一起切）
             if (bossPoolCanvas == null)
             {
                 CreateBossPoolUI();
@@ -393,21 +395,8 @@ namespace BossRush
             else
             {
                 bossPoolCanvas.SetActive(true);
-                // 确保按钮状态正确
-                if (selectAllButtonText != null)
-                {
-                    selectAllButtonText.text = L10n.T("全选", "Select All");
-                }
-                if (infiniteHellFactorButtonText != null)
-                {
-                    infiniteHellFactorButtonText.text = L10n.T("无间炼狱因子", "Infinite Hell Factor");
-                }
-                if (deselectAllButton != null)
-                {
-                    deselectAllButton.gameObject.SetActive(true);
-                }
-                PopulateBossList();
             }
+            ShowBossPoolTab(false);
 
             // 将滚动位置重置到顶部
             if (bossPoolScrollRect != null)
@@ -418,8 +407,12 @@ namespace BossRush
             // 打开淡入微放大（UB-27：旧版一帧出现）；关闭见 CloseBossPoolWindow 的淡出
             if (!showBossPoolWindow) BossRushUI.PlayOpenAnimation(bossPoolPanel);
 
-            // 禁用游戏输入，阻止 InputManager 更新鼠标状态
-            InputManager.DisableInput(bossPoolCanvas);
+            // 模态租约（A-43）：时停、光标、输入占用与其它模态面板共用一个计数；ESC / 手柄取消 = 保存并关闭（A-26）
+            if (bossPoolCanvas != null)
+            {
+                if (bossPoolModalLease == null) bossPoolModalLease = ZombieModeUIHelper.ClaimModalInput(bossPoolCanvas, "BossPool");
+                PetNestCancelKey.Attach(bossPoolCanvas, SaveAndCloseBossPoolWindow, () => BossRushConfirmDialog.IsOpen);
+            }
 
             showBossPoolWindow = true;
             DevLog("[BossRush] 打开 Boss 池配置窗口，当前 Boss 数量: " + (enemyPresets != null ? enemyPresets.Count : 0));
@@ -430,10 +423,9 @@ namespace BossRush
         /// </summary>
         public void CloseBossPoolWindow()
         {
-            // 恢复游戏输入；面板淡出后销毁（UB-32），引用立刻清空，下次打开重建一份
+            // 归还模态租约（在 ReleaseBossPoolUIReferences 里）；面板淡出后销毁（UB-32），引用立刻清空，下次打开重建一份
             if (bossPoolCanvas != null)
             {
-                InputManager.ActiveInput(bossPoolCanvas);
                 GameObject closing = bossPoolCanvas;
                 ReleaseBossPoolUIReferences();
                 BossRushUIKit.PlayCloseAndDestroy(closing);
@@ -444,94 +436,55 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 全选按钮点击处理（根据模式不同执行不同操作）
+        /// 所有关闭入口（×、ESC、Ctrl+F10、「保存并关闭」）走同一条路（A-27）：先保存再关。旧版只有「保存并关闭」存盘，
+        /// × 与 Ctrl+F10 只关窗不存也不回滚：本局按新设置刷怪、重启后又变回去，没有任何提示。
+        /// 一个 Boss 都没启用时不存也不关（A-30）：竞技场会无怪可刷，原因写在统计行并闪一下。
         /// </summary>
-        private void OnSelectAllButtonClicked()
+        private void SaveAndCloseBossPoolWindow()
         {
-            if (isInfiniteHellFactorMode)
+            if (bossEnabledStates.Count > 0 && !bossEnabledStates.ContainsValue(true))
             {
-                // 重置所有因子为默认值（中 = 1.0）
-                ResetAllBossFactors();
+                UpdateStatsText();
+                if (statsText != null) BossRushUIEntranceAnimation.Play(statsText.gameObject, 0f, 0.25f, 6f);
+                return;
             }
-            else
-            {
-                EnableAllBosses();
-            }
+            SyncBossPoolToConfig();
+            CloseBossPoolWindow();
         }
 
         /// <summary>
-        /// 无间炼狱因子按钮点击处理
+        /// 切换页签（A-28）：「出场 Boss」是开关列表 + 全选 / 全不选；「无间炼狱因子」是档位列表 + 全部恢复默认。
+        /// 两张列表逐行对齐（同一批 Boss），切换时保住滚动位置（UB-27）。
         /// </summary>
-        private void OnInfiniteHellFactorButtonClicked()
+        private void ShowBossPoolTab(bool factorTab)
         {
-            if (isInfiniteHellFactorMode)
-            {
-                // 退出因子编辑模式
-                ExitInfiniteHellFactorMode();
-            }
-            else
-            {
-                // 进入因子编辑模式
-                EnterInfiniteHellFactorMode();
-            }
-        }
+            isInfiniteHellFactorMode = factorTab;
+            IntegrationUIFeedback.StyleSegment(bossTabButton, !factorTab);
+            IntegrationUIFeedback.StyleSegment(infiniteHellFactorButton, factorTab);
+            if (selectAllButton != null) selectAllButton.gameObject.SetActive(!factorTab);
+            if (deselectAllButton != null) deselectAllButton.gameObject.SetActive(!factorTab);
+            if (resetFactorsButton != null) resetFactorsButton.gameObject.SetActive(factorTab);
 
-        /// <summary>
-        /// 进入无间炼狱因子编辑模式
-        /// </summary>
-        private void EnterInfiniteHellFactorMode()
-        {
-            isInfiniteHellFactorMode = true;
-
-            // 更新按钮文本
-            if (selectAllButtonText != null)
-            {
-                selectAllButtonText.text = L10n.T("重置", "Reset");
-            }
-            if (infiniteHellFactorButtonText != null)
-            {
-                infiniteHellFactorButtonText.text = L10n.T("返回", "Back");
-            }
-
-            // 隐藏全不选按钮
-            if (deselectAllButton != null)
-            {
-                deselectAllButton.gameObject.SetActive(false);
-            }
-
-            // 切换 Boss 列表显示（保住滚动位置，UB-27）
             float scroll = bossPoolScrollRect != null ? bossPoolScrollRect.verticalNormalizedPosition : 1f;
-            RefreshBossListForFactorMode();
+            if (factorTab) RefreshBossListForFactorMode();
+            else PopulateBossList();
             RestoreBossPoolScroll(scroll);
         }
 
-        /// <summary>
-        /// 退出无间炼狱因子编辑模式
-        /// </summary>
-        private void ExitInfiniteHellFactorMode()
+        /// <summary>「全部恢复默认」一次复位全部因子、不能撤销：先弹确认（A-28）。</summary>
+        private void RequestResetAllBossFactors()
         {
-            isInfiniteHellFactorMode = false;
-
-            // 恢复按钮文本
-            if (selectAllButtonText != null)
+            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
             {
-                selectAllButtonText.text = L10n.T("全选", "Select All");
-            }
-            if (infiniteHellFactorButtonText != null)
-            {
-                infiniteHellFactorButtonText.text = L10n.T("无间炼狱因子", "Infinite Hell Factor");
-            }
-
-            // 显示全不选按钮
-            if (deselectAllButton != null)
-            {
-                deselectAllButton.gameObject.SetActive(true);
-            }
-
-            // 切换回 Toggle 列表（保住滚动位置，UB-27）
-            float scroll = bossPoolScrollRect != null ? bossPoolScrollRect.verticalNormalizedPosition : 1f;
-            PopulateBossList();
-            RestoreBossPoolScroll(scroll);
+                Title = L10n.T("把全部因子恢复成「中」？", "Reset every factor to Medium?"),
+                Body = L10n.T("无间炼狱里每个 Boss 的出场频率都回到默认档。",
+                    "Every Boss goes back to the default spawn weight in Infinite Hell."),
+                Warning = L10n.T("你调过的档位会全部丢掉，不能撤销。", "All your adjustments are lost; this can't be undone."),
+                ConfirmLabel = L10n.T("全部恢复默认", "Reset all"),
+                Danger = true,
+                OnConfirm = ResetAllBossFactors,
+                Anchor = bossPoolPanel
+            });
         }
 
         /// <summary>
@@ -951,8 +904,8 @@ namespace BossRush
             bottomBar.transform.SetParent(parent, false);
             HorizontalLayoutGroup hlg = bottomBar.AddComponent<HorizontalLayoutGroup>();
             hlg.spacing = 20f;
-            hlg.padding = new RectOffset(10, 10, 5, 10);
-            hlg.childAlignment = TextAnchor.MiddleCenter;
+            hlg.padding = new RectOffset(10, 16, 5, 10);
+            hlg.childAlignment = TextAnchor.MiddleRight;
             hlg.childForceExpandWidth = false;
             hlg.childForceExpandHeight = false;
 
@@ -963,21 +916,13 @@ namespace BossRush
             bottomRect.anchoredPosition = new Vector2(0f, 0f);
             bottomRect.sizeDelta = new Vector2(0f, 55f);
 
-            Button buttonPrefab = GameplayDataSettings.UIPrefabs.Button;
-            if (buttonPrefab != null)
-            {
-                // 保存并关闭按钮
-                Button saveBtn = UnityEngine.Object.Instantiate(buttonPrefab, bottomBar.transform);
-                LayoutElement le = saveBtn.gameObject.AddComponent<LayoutElement>();
-                le.preferredWidth = 150f;
-                le.preferredHeight = 40f;
-                TextMeshProUGUI txt = saveBtn.GetComponentInChildren<TextMeshProUGUI>();
-                if (txt != null) txt.text = L10n.T("保存并关闭", "Save & Close");
-                saveBtn.onClick.AddListener(() => {
-                    SyncBossPoolToConfig();
-                    CloseBossPoolWindow();
-                });
-            }
+            // 这一屏唯一的主操作：AccentFill、放最右（A-29）。×、ESC、Ctrl+F10 也走同一条「先保存再关」（A-27）
+            Button saveBtn = ZombieModeUIHelper.CreateButton("SaveAndClose", bottomBar.transform, L10n.T("保存并关闭", "Save & Close"),
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(150f, 40f), BossRushUIColors.AccentFill, 18f,
+                new Vector2(140f, 36f), SaveAndCloseBossPoolWindow, true);
+            LayoutElement le = saveBtn.gameObject.AddComponent<LayoutElement>();
+            le.preferredWidth = 150f;
+            le.preferredHeight = 40f;
         }
 
         /// <summary>
@@ -1117,7 +1062,7 @@ namespace BossRush
             if (enabledCount == 0 && totalCount > 0)
             {
                 text += "\n<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText) + ">"
-                    + L10n.T("警告：至少需要启用一个 Boss！", "Warning: At least one Boss must be enabled!") + "</color>";
+                    + L10n.T("一个 Boss 都没选：至少启用一个才能保存关闭", "No Boss enabled: enable at least one to save and close") + "</color>";
             }
 
             statsText.text = text;
@@ -1152,7 +1097,7 @@ namespace BossRush
                 {
                     if (showBossPoolWindow)
                     {
-                        CloseBossPoolWindow();
+                        SaveAndCloseBossPoolWindow();
                     }
                     else
                     {

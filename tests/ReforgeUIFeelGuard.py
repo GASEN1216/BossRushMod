@@ -117,6 +117,42 @@ def main():
         if '"◇"' in text or '"◆"' in text:
             errors.append("%s: 图标又退回「◇/◆」字符占位（取不到就不画那一格）" % name)
 
+    # 7. 2026-09-24 UI 共识对照审查 A-01…A-07
+    #    - 词缀解锁（锁定时花的熔石不退）必须先弹确认：点按钮只进 RequestAffixUnlock，UnlockSlot 只在确认回调里调；
+    #    - 挂不挂「锁定」与 LockSlot 的拒绝共用 LeavesUnlockedSlotAfterLock；
+    #    - 已锁态不再是 Warning 实心底的按钮；
+    #    - 重铸 / 随机词缀按钮写价钱；费用区不再写系数这些公式量。
+    lock_click = method_body(forge, "private static void OnAffixLockButtonClicked(int slotIndex)")
+    if "AffixForgeSystem.UnlockSlot(" in lock_click:
+        errors.append("OnAffixLockButtonClicked 直接调了 UnlockSlot：解锁必须先弹确认（A-04）")
+    if "RequestAffixUnlock(slotIndex, view);" not in lock_click:
+        errors.append("已锁的槽点按钮必须走 RequestAffixUnlock 弹确认（A-04）")
+    request = method_body(forge, "private static void RequestAffixUnlock(int slotIndex, AffixSlotView view)")
+    if "BossRushConfirmDialog.Show(" not in request or "ConfirmAffixUnlock(slotIndex, itemInstanceId)" not in request:
+        errors.append("RequestAffixUnlock 必须经 BossRushConfirmDialog，确认回调才调 ConfirmAffixUnlock（A-04）")
+    if "AffixForgeSystem.UnlockSlot(" not in method_body(forge, "private static void ConfirmAffixUnlock(int slotIndex, int itemInstanceId)"):
+        errors.append("ConfirmAffixUnlock 必须是 UnlockSlot 的唯一入口（A-04）")
+    if forge.count("AffixForgeSystem.UnlockSlot(") != 1:
+        errors.append("词缀界面只能在确认回调里调一次 UnlockSlot（A-04）")
+    system = clean_source((ROOT / "Integration/AffixForge/AffixForgeSystem.cs").read_text(encoding="utf-8-sig"))
+    lock_slot = method_body(system, "public static AffixForgeResult LockSlot(Item item, int slotIndex)")
+    if "!LeavesUnlockedSlotAfterLock(item)" not in lock_slot:
+        errors.append("LockSlot 的「至少留一个未锁槽」必须走 LeavesUnlockedSlotAfterLock（与界面同一判据，A-05）")
+    if "AffixForgeSystem.LeavesUnlockedSlotAfterLock(selectedItem)" not in method_body(
+            forge, "private static void RefreshAffixRow(AffixRowWidgets row, bool hasSlot, AffixSlotView view)"):
+        errors.append("RefreshAffixRow 挂不挂「锁定」必须用 LeavesUnlockedSlotAfterLock（A-05）")
+    look = method_body(feel, "private static void ApplyAffixLockButtonLook(Button button, bool unlockAction)") \
+        if "ApplyAffixLockButtonLook(Button button, bool unlockAction)" in feel else ""
+    if not look or "BossRushUIColors.Warning)" in look:
+        errors.append("ApplyAffixLockButtonLook 不能再把已锁态铺成 Warning 实心底（A-06）")
+    if "ApplyReforgeButtonLabel();" not in render or "RefreshTendencyLabel();" not in render:
+        errors.append("RenderReforgeCostText 必须同时刷新按钮价钱与倾向滑块白话标签（A-01 / A-03）")
+    if "品质系数" in feel or "投入加成" in feel or "极性费用" in feel:
+        errors.append("费用区又写回了系数 / 投入加成 / 极性费用这些公式量（A-02）")
+    if "FormatReforgeAmount(AffixForgeSystem.GetMoneyCost(selectedItem))" not in method_body(
+            forge, "private static void ApplyAffixButtonText()"):
+        errors.append("「随机词缀」按钮必须写价钱（A-07）")
+
     if errors:
         for error in errors:
             print("[FAIL] " + error)

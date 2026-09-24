@@ -305,6 +305,13 @@ namespace BossRush
             }
         }
 
+        /// <summary>补给终端货架格的图标（UI 共识对照审查 B-29）：固定 TypeID 取它自己的，按标签抽的取该标签候选池的第一件。</summary>
+        internal Sprite GetZombieModeMerchantIcon(ZombieModeNpcCatalog.MerchantStockEntry entry)
+        {
+            if (entry == null || (entry.TypeId <= 0 && string.IsNullOrEmpty(entry.GrantTag))) return null;
+            return entry.TypeId > 0 ? GetZombieModeTypeIcon(entry.TypeId) : GetZombieModeTagIcon(new[] { entry.GrantTag });
+        }
+
         private Sprite GetZombieModeTagIcon(string[] tags)
         {
             try
@@ -375,6 +382,8 @@ namespace BossRush
             owner = newOwner;
             Build();
             ClaimInputAndPause();
+            // 开局必选、没有「取消」：ESC 只用掉事件，不穿透去开官方暂停菜单（B-28）。
+            PetNestCancelKey.Attach(gameObject, delegate { }, null);
         }
 
         private void Build()
@@ -451,6 +460,22 @@ namespace BossRush
                 TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
 
             ZombieModeStarterLoadout capturedLoadout = loadout;
+            UnityEngine.Events.UnityAction choose = delegate
+            {
+                if (chosen)
+                {
+                    return;
+                }
+                chosen = true;
+                RestoreInputState();
+                if (owner != null)
+                {
+                    owner.SelectZombieModeStarterLoadout(runId, capturedLoadout);
+                }
+                BossRushUIKit.PlayCloseAndDestroy(gameObject);
+            };
+            // 整张卡可点（B-28）；卡里的按钮只是把「能点」说清楚。
+            ZombieModeClickableCard.Make(card, choose);
             Button button = ZombieModeUIHelper.CreateButton(
                 "SelectBtn", card.transform,
                 L10n.T("BossRush_ZombieMode_Starter_Select"),
@@ -459,20 +484,7 @@ namespace BossRush
                 new Vector2(200f, buttonHeight),
                 BossRushUIColors.SurfaceRaised, 17,
                 new Vector2(188f, 36f),
-                delegate
-                {
-                    if (chosen)
-                    {
-                        return;
-                    }
-                    chosen = true;
-                    RestoreInputState();
-                    if (owner != null)
-                    {
-                        owner.SelectZombieModeStarterLoadout(runId, capturedLoadout);
-                    }
-                    BossRushUIKit.PlayCloseAndDestroy(gameObject);
-                },
+                choose,
                 true);
             BossRushUIKit.StyleSecondaryButton(button);
             BossRushUIEntranceAnimation.Play(card, 0.06f + index * 0.06f, 0.24f, 14f);

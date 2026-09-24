@@ -299,7 +299,8 @@ namespace BossRush
             for (int i = 0; i < stock.Length && i < ZombieModeNpcCatalog.MaxMerchantStockButtons; i++)
             {
                 ZombieModeNpcCatalog.MerchantStockEntry entry = stock[i];
-                CreateServiceButton(parent, "Merchant_" + i, i, entry.BasePrice, L10n.T(entry.DisplayKey), false);
+                CreateServiceButton(parent, "Merchant_" + i, i, entry.BasePrice, L10n.T(entry.DisplayKey), false,
+                    owner != null ? owner.GetZombieModeMerchantIcon(entry) : null);
             }
         }
 
@@ -324,15 +325,15 @@ namespace BossRush
             for (int i = 0; i < services.Length; i++)
             {
                 ZombieModeNpcCatalog.NurseServiceEntry entry = services[i];
-                CreateServiceButton(parent, "Nurse_" + i, i, entry.BasePrice, L10n.T(entry.ServiceKey), true);
+                CreateServiceButton(parent, "Nurse_" + i, i, entry.BasePrice, L10n.T(entry.ServiceKey), true, null);
             }
         }
 
         /// <summary>
-        /// 一个服务格。货架格 168×102（名称两行、左下价格、右下剩余），医疗横条 640×64（左名称、右价格与剩余）。
-        /// 文字与可点状态由 <see cref="RefreshCells"/> 填，购买后原地刷新。
+        /// 一个服务格。货架格 168×102（左上官方物品图标、右侧名称两行、左下价格、右下剩余；取不到图标时名称占满一行），
+        /// 医疗横条 640×64（左名称、右价格与剩余）。文字与可点状态由 <see cref="RefreshCells"/> 填，购买后原地刷新。
         /// </summary>
-        private void CreateServiceButton(Transform parent, string name, int index, int basePrice, string label, bool nurse)
+        private void CreateServiceButton(Transform parent, string name, int index, int basePrice, string label, bool nurse, Sprite icon)
         {
             Vector2 size = nurse ? new Vector2(640f, 64f) : new Vector2(168f, 102f);
             GameObject obj = ZombieModeUIHelper.CreateRect(name, parent, new Vector2(0.5f, 0.5f), size);
@@ -378,11 +379,24 @@ namespace BossRush
             }
             else
             {
+                // 货架格补官方物品图标（UI 共识对照审查 B-29）：40×40 放左上，名称挪到图标右边。
+                float nameLeft = 15f;
+                if (icon != null)
+                {
+                    GameObject iconObject = ZombieModeUIHelper.CreateRect("Icon", obj.transform,
+                        new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(12f, -10f), new Vector2(40f, 40f), new Vector2(0f, 1f));
+                    Image iconImage = iconObject.AddComponent<Image>();
+                    iconImage.sprite = icon;
+                    iconImage.preserveAspect = true;
+                    iconImage.raycastTarget = false;
+                    nameLeft = 60f;
+                }
                 cell.Name = CreateCellText("Name", obj.transform, label, 15, new Vector2(0f, 1f), new Vector2(1f, 1f),
-                    new Vector2(3f, -30f), new Vector2(-30f, 44f), TextAlignmentOptions.TopLeft, BossRushUIColors.TextPrimary);
+                    new Vector2((nameLeft - 15f) * 0.5f + 3f, -30f), new Vector2(-(nameLeft + 15f), 44f), TextAlignmentOptions.TopLeft, BossRushUIColors.TextPrimary);
                 cell.Name.enableWordWrapping = true;
+                // 价格框高 26 ≥ 14×1.45+4：旧的 22 在 Ellipsis 下会把整行价钱清空（B-29）。
                 cell.Price = CreateCellText("Price", obj.transform, string.Empty, 14, new Vector2(0f, 0f), new Vector2(0.62f, 0f),
-                    new Vector2(8f, 18f), new Vector2(-16f, 22f), TextAlignmentOptions.MidlineLeft, BossRushUIColors.WarningText);
+                    new Vector2(8f, 18f), new Vector2(-16f, 26f), TextAlignmentOptions.MidlineLeft, BossRushUIColors.WarningText);
                 cell.Remaining = CreateCellText("Remaining", obj.transform, string.Empty, 12, new Vector2(0.62f, 0f), new Vector2(1f, 0f),
                     new Vector2(-8f, 18f), new Vector2(-10f, 22f), TextAlignmentOptions.MidlineRight, BossRushUIColors.TextSecondary);
             }

@@ -627,8 +627,8 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_Title", "投入现金兑换初始净化点数", "Convert Cash to Initial Purification Points");
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_Body", "兑换比例：100 现金 = 1 局内净化点数。失败/死亡全部损失；撤离时剩余净化点按点数结算为现金奖励。", "Rate: 100 cash = 1 run-only Purification Point. All lost on failure or death; remaining points are settled as cash rewards on extraction.");
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_AmountLabel", "投入金额", "Investment Amount");
-            InjectZombieModeString("BossRush_ZombieMode_CashPrompt_Confirm", "确认", "Confirm");
-            InjectZombieModeString("BossRush_ZombieMode_CashPrompt_SkipZero", "跳过（投入 0）", "Skip (Invest 0)");
+            InjectZombieModeString("BossRush_ZombieMode_CashPrompt_Confirm", "投入并出发", "Invest & Deploy");
+            InjectZombieModeString("BossRush_ZombieMode_CashPrompt_SkipZero", "不投入，直接出发", "Deploy Without Cash");
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_Cancel", "返回", "Back");
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_NotEnough", "现金不足。", "Not enough cash.");
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_Balance", "余额", "Balance");
@@ -698,6 +698,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Notify_BeaconNotZombieMode", "尸潮信标只能在末日丧尸模式中使用。", "Zombie Tide Beacon only works in Zombie Mode.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_BeaconExtractionLocked", "撤离读条进行中，无法使用信标。", "Extraction is in progress; beacon unavailable.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_ExtractionBeaconLocked", "信标读条进行中，无法开始撤离。", "Beacon is channeling; extraction unavailable.");
+            InjectZombieModeString("BossRush_ZombieMode_Notify_ExtractionAreaFailed", "撤离点没能建起来，请再点一次。", "Could not set up the extraction zone. Try again.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_RefreshNoPoints", "净化点数不足以刷新。", "Not enough Purification Points to refresh.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_NpcServiceNoPoints", "净化点数不足。", "Not enough Purification Points.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_PointsShort", "还差 {0} 净化点", "Need {0} more Purification");
@@ -752,7 +753,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Reason_Unknown", "未知原因。", "Unknown reason.");
             InjectZombieModeString("BossRush_ZombieMode_Reward_Title_Normal", "第 {0} 波 奖励选择", "Wave {0} Rewards");
             InjectZombieModeString("BossRush_ZombieMode_Reward_Title_Boss", "<color=#FFC966>Boss 第 {0} 波</color> | 净化收益 {1}% | 剩余 {2} 选", "<color=#FFC966>Boss Wave {0}</color> | Purification {1}% | {2} Pick(s) Left");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_Info", "净化点: {0}    免费刷新: {1}    付费刷新: {2}", "Purification: {0}    Free Refreshes: {1}    Paid Refresh: {2}");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_Info", "当前净化点：{0}", "Purification: {0}");
             InjectZombieModeString("BossRush_ZombieMode_Reward_NextWavePreview", "下一波 {0}：压力 {1} | 非 Boss 移速 {2}% | {3}", "Next Wave {0}: Pressure {1} | Non-Boss Speed {2}% | {3}");
             InjectZombieModeString("BossRush_ZombieMode_Reward_NextBossPreview", "下一波 {0}：Boss 强度 {1} | 数量 {2} | 生命 {3}% | 伤害 {4}% | 支援 {5} | 净化收益 {6}%", "Next Wave {0}: Boss Tier {1} | Count {2} | HP {3}% | Damage {4}% | Support {5} | Purification {6}%");
             InjectZombieModeString("BossRush_ZombieMode_Reward_PointsHeader", "净化点数 {0}", "Purification {0}");
@@ -761,7 +762,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Reward_RefreshPaid", "付费刷新 -{0}", "Paid Refresh -{0}");
             InjectZombieModeString("BossRush_ZombieMode_Reward_RestTitle", "休息时长：{0} 秒", "Rest: {0}s");
             InjectZombieModeString("BossRush_ZombieMode_Reward_RestEdit", "修改", "Edit");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_RestApply", "确定", "Apply");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_RestApply", "保存时长", "Save");
             InjectZombieModeString("BossRush_ZombieMode_Reward_RestOption", "{0} 秒", "{0}s");
             InjectZombieModeString("BossRush_ZombieMode_Reward_RefreshHalfPriced", "下次半价", "Next Half Price");
             InjectZombieModeString("BossRush_ZombieMode_Reward_PurificationPoints", "净化点 +{0}", "Purification +{0}");
@@ -971,8 +972,9 @@ namespace BossRush
                 InjectModeGString("BossRush_ModeG_BanAttrPrefix", "上局你的", "Last run your");
                 InjectModeGString("BossRush_ModeG_BanAttrMid", "贡献了", " contributed");
                 InjectModeGString("BossRush_ModeG_BanAttrTail", "% 威胁", "% of the threat");
-                InjectModeGString("BossRush_ModeG_Axis_Attempts", "次尝试", "attempts");
-                InjectModeGString("BossRush_ModeG_Axis_Breaks", "次破解", "breaks");
+                // 结算三轴统计的白话格式（UI 共识对照审查 B-25）：「遇上 2 波 · 破解 1 次」
+                InjectModeGString("BossRush_ModeG_Axis_Attempts", "遇上 {0} 波", "met in {0} waves");
+                InjectModeGString("BossRush_ModeG_Axis_Breaks", "破解 {0} 次", "beaten {0} times");
 
                 // 战斗 HUD（规格 §15：唯一反制目标 + 可验证双门槛进度）
                 InjectModeGString("BossRush_ModeG_Hud_Counter", "反制:", "Counter:");
@@ -1009,11 +1011,12 @@ namespace BossRush
 
                 // 宿敌追猎
                 InjectModeGString("BossRush_ModeG_NextNemesis", "下局宿敌", "Next nemesis:");
-                InjectModeGString("BossRush_ModeG_RankWord", "Rank", "Rank");
+                // 宿敌等级是格式串：中文界面不夹英文 Rank（B-25）
+                InjectModeGString("BossRush_ModeG_RankWord", "{0} 阶", "Rank {0}");
                 InjectModeGString("BossRush_ModeG_KillerWord", "击杀者", "Killer:");
-                InjectModeGString("BossRush_ModeG_NemesisProtected", "宿敌记录受版本保护，未变更", "nemesis record version-protected, unchanged");
+                InjectModeGString("BossRush_ModeG_NemesisProtected", "这次没能记下宿敌，存档保持原样", "nemesis not recorded this time; your save is unchanged");
                 InjectModeGString("BossRush_ModeG_NoNewNemesis", "未形成新宿敌", "No new nemesis formed");
-                InjectModeGString("BossRush_ModeG_NemesisKills", "宿敌击败", "Nemesis kills");
+                InjectModeGString("BossRush_ModeG_NemesisKills", "击败宿敌", "Nemeses beaten");
 
                 // 结算面板（Recap）
                 InjectModeGString("BossRush_ModeG_Recap_VictoryTitle", "宿命已改写", "Fate Rewritten");
@@ -1035,8 +1038,8 @@ namespace BossRush
                 // 宿敌图鉴
                 InjectModeGString("BossRush_ModeG_Codex", "宿敌图鉴", "Nemesis codex");
                 InjectModeGString("BossRush_ModeG_Codex_Complete", "图鉴集齐", "complete");
-                InjectModeGString("BossRush_ModeG_Codex_Need", "还需", "need");
-                InjectModeGString("BossRush_ModeG_Codex_More", "次宿敌击败解锁下一里程碑", "more nemesis kills for next milestone");
+                InjectModeGString("BossRush_ModeG_Codex_Need", "再打败", "beat");
+                InjectModeGString("BossRush_ModeG_Codex_More", "个宿敌解锁下一档", "more nemeses to unlock the next tier");
 
                 // 个人记录
                 InjectModeGString("BossRush_ModeG_TotalRuns", "总场次", "Runs");

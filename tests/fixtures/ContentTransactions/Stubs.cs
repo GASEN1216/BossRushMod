@@ -181,6 +181,8 @@ namespace BossRush
         private static string T(string key) { return key; }
         private static PetNestCardData BuildExpeditionCard(PetNestExpeditionRecord record) { return new PetNestCardData(); }
         private static void AppendDepartCards(PetNestPageContent page, PetNestPetRecord pet, Action refresh) { DepartCardRequests++; }
+        // 远征页的选崽区（2026-09-24）：只在面板传了换人回调时画，本夹具传 null，替身不参与断言
+        private static void AppendPetPicker(PetNestPageContent page, string selectedPetId, Action<string> select, Action refresh) { }
     }
 
     // 2026-09-20：席位变化的表现层同步入口。本夹具只验数据事务，
@@ -247,9 +249,11 @@ namespace BossRush
         public static bool FlushPending() { SavesSystem.Save("BountyClaimed", Current.BountyRewardClaimed); HasPendingWrite = false; return true; }
         public static void Collect() { HandleCollectSaveData(); }
     }
-    class PetNestLineageInfo { public string DisplayName = "test"; public ElementTypes Element = ElementTypes.electricity; }
+    class PetNestLineageInfo { public string DisplayName = "test"; public string LineageKey = "test"; public ElementTypes Element = ElementTypes.electricity; }
     static class PetNestLineageCatalog
     {
+        // 2026-09-24：PetNestHatchService.CountCondensable（孵化页签徽标、交互菜单显隐）遍历全部血脉
+        public static readonly IList<PetNestLineageInfo> All = new List<PetNestLineageInfo> { new PetNestLineageInfo() };
         public static bool TryGet(string key, out PetNestLineageInfo info) { info = IsKnownLineage(key) ? new PetNestLineageInfo() : null; return info != null; }
         public static bool IsKnownLineage(string key) { return key == "test" || (key != null && key.StartsWith("test_", StringComparison.Ordinal)); }
         public static ElementTypes GetDestinationElement(string id) { return ElementTypes.electricity; }

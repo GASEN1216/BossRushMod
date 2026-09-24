@@ -36,7 +36,7 @@
 | `ZombieModeTargetSceneActivationGuard.py` | 目标子场景必须成为 ActiveScene 后才初始化丧尸模式，避免扫错场景。 |
 | `ZombieModeGroundZeroBossRushIsolationGuard.py` | 丧尸模式入图/传送期间不得触发普通 GroundZero BossRush 初始化。 |
 | `ZombieModeSpawnCoreModeDIsolationGuard.py` | 丧尸模式复用 `SpawnEnemyCore(...)` 时不得执行 ModeD 伤害倍率归一化。 |
-| `ZombieModeChoiceUiPauseAndLayoutGuard.py` | 丧尸模式选择 UI 必须暂停时间/释放鼠标并保持 HUD 指定偏移。 |
+| `ZombieModeChoiceUiPauseAndLayoutGuard.py` | 丧尸模式选择 UI 必须暂停时间/释放鼠标并保持 HUD 指定偏移；撤离抉择的模态租约只在宿主受理后才还，被拒时就地提示原因（B-01）。 |
 | `ZombieModeStarterEquipmentAndNpcUiGuard.py` | 开局保护三件套、补给终端头盔可见、服务 UI 重建不得重复加 Canvas。 |
 | `ZombieModeInsuranceExitGuard.py` | 失败保险结算条件。 |
 | `ZombieModeSafeZoneGuard.py` | 安全区部署时清空普通丧尸、Boss 移出边界、持续物理禁入，以及破隐与威胁压制生命周期。 |
@@ -44,7 +44,7 @@
 | `ZombieModeTemporaryNpcProtectionGuard.py` | 临时 NPC 保护（避免被原版 cleanup 误清理）。 |
 | `ZombieModeCashAndOriginalExtractionGuard.py` | 现金与原版撤离点的场景隔离 invariant。 |
 | `ZombieModeBeaconUnavailableReasonGuard.py` | 尸潮信标在撤离读条等互斥状态下必须显示准确不可用原因。 |
-| `ZombieModeCashPromptButtonLayoutGuard.py` | 现金投入弹窗底部确认/跳过/返回按钮必须固定在独立按钮栏。 |
+| `ZombieModeCashPromptButtonLayoutGuard.py` | 现金投入弹窗底部「返回 / 主操作」两颗按钮固定在独立按钮栏，主操作在最右、文案随金额改写，不再单挂「跳过」（B-26）。 |
 | `ZombieModeNpcHelperGuard.py` | NPC 服务 helper 注入流程。 |
 | `ZombieModeRewardCatalogGuard.py` | 奖励 catalog 与 L10n key 一致性（**不再核对具体数值**，避免阻挡平衡迭代）。 |
 | `ZombieModeExtractionFactoryGuard.py` | 撤离 NPC/Area 通过 `ModeExtractionPointFactory` 创建。 |

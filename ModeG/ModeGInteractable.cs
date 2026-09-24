@@ -44,11 +44,14 @@ namespace BossRush
         private const float CardPadX = 14f;
         private const float CardPadY = 12f;
         private const int CardRadius = 10;
-        /// <summary>选中卡片向 Accent 染色的比例。白字 12.6:1、次级字 6.8:1（线性亮度实算）。</summary>
-        private const float CardSelectedTint = 0.16f;
+        /// <summary>
+        /// 选中卡片向 WarningText（本模式的金色强调色）染色的比例（UI 共识对照审查 B-24：选中态统一金色描边，
+        /// 不再混第二种强调色 Accent）。0.10 时白字 14.6:1、次级字 7.2:1（线性亮度实算）。
+        /// </summary>
+        private const float CardSelectedTint = 0.10f;
         /// <summary>
         /// 卡片悬停提亮比例。不用 BossRushUI.GetHoverColor 的 0.22：那会把 16px 次级说明字压到 4.4:1，
-        /// 0.12 时常态卡 6.3:1、选中卡 4.7:1，都过正文 4.5:1。
+        /// 0.12 时常态卡 6.3:1、选中卡 4.9:1，都过正文 4.5:1。
         /// </summary>
         private const float CardHoverLift = 0.12f;
         private const float BadgeHeight = 24f;
@@ -71,8 +74,6 @@ namespace BossRush
         private Button[] _cardButtons;
         private Image[] _cardStrokes;
         private GameObject[] _cardBadges;
-        private Button _startButton;
-        private TextMeshProUGUI _startLabel;
         private ModeGEntryPreview _modalPreview;
         private ModBehaviour _entryHost;
         private ModeGModalCancelKey _cancelKey;
@@ -247,7 +248,8 @@ namespace BossRush
             _entryHost = host;
             _confirmed = false;
             _modalPreview = preview;
-            _selectedCandidateIndex = -1;
+            // 默认选中第一张契约（UI 共识对照审查 B-13）：打开就是能直接开打的状态，「立即迎战」不再先置灰。
+            _selectedCandidateIndex = 0;
 
             GameObject root = BossRushUI.CreateCanvasRoot("ModeG_ConfirmPage", BossRushUILayers.ModeGEntry, true).gameObject;
             UnityEngine.Object.DontDestroyOnLoad(root);
@@ -289,7 +291,7 @@ namespace BossRush
 
             // 徽记 + 标题同一行、整组居中（展示缓存提供徽记；缺失时标题单独居中）
             RectTransform emblemRect = CreateEmblem(st, EmblemSize);
-            cursor += PlaceTitleRow(st, emblemRect, cursor, L10n.T("宿命回响", "Fate Echo"), 34f,
+            cursor += PlaceTitleRow(st, emblemRect, cursor, L10n.T("宿命回响", "Fate Echo"), 32f,
                 BossRushUIColors.WarningText, ContentWidth, EmblemSize) + 8f;
 
             // 玩法说明：三句大白话——怎么打、敌人会怎样、能拿到什么。「决意」金色标出，和局内 HUD 同一个词。
@@ -332,8 +334,9 @@ namespace BossRush
                 L10n.T(
                     "选择本局的宿命契约  <size=14><color=#" + secondary + ">额外目标，不改变敌人强度和奖励件数</color></size>",
                     "Choose this run's Fate Contract  <size=14><color=#" + secondary + ">bonus goal; enemy strength and rewards stay the same</color></size>"),
-                18f, BossRushUIColors.TextPrimary), ContentWidth, 0f, cursor) + 8f;
+                20f, BossRushUIColors.TextPrimary), ContentWidth, 0f, cursor) + 8f;
             cursor += BuildContractCards(st, preview, cursor) + 10f;
+            RefreshContractCards();
 
             // 下一枚印章目标（契约图鉴进度）
             try
@@ -368,28 +371,24 @@ namespace BossRush
                     "Entry cost: 1 ticket + 1 Fate Echo relic. \"Not Now\" costs nothing."),
                 16f, BossRushUIColors.TextPrimary), ContentWidth, 0f, cursor) + 16f;
 
-            // 立即迎战（选好契约前不可点，按钮上直接写还差什么）/ 暂不挑战（免费退出，次级样式）。
+            // 暂不挑战（免费退出，次级样式，左）/ 立即迎战（本屏唯一主操作，最右；UI 共识对照审查 B-23）。
+            // 契约默认已选第一张，「立即迎战」打开就能点，不挂灰按钮（B-13）。
             // 主操作底色走 AccentFill（全 Mod 按钮口径，2026-09-23）：旧版是 Success 平涂绿，与 Mode H / Mode E 三套主操作色（UB-33）。
             float buttonY = -(cursor + ButtonHeight * 0.5f);
             float buttonX = (ButtonWidth + ButtonGap) * 0.5f;
-            Button startButton = ZombieModeUIHelper.CreateButton(
-                "Start", st, L10n.T("立即迎战", "Fight Now"),
-                new Vector2(0.5f, 1f), new Vector2(-buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
-                BossRushUIColors.AccentFill, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
-                () => ConfirmAndStart(host), true);
-            _startButton = startButton;
-            Transform startTextTransform = startButton.transform.Find("Text");
-            if (startTextTransform != null) _startLabel = startTextTransform.GetComponent<TextMeshProUGUI>();
-            RefreshStartButton();
-
             // 「放弃挑战」在局内是不可逆的弃局（ModeGAbandonPresenter）；这里只是免费退出、还会退回船票，
             // 所以不用危险色、也不叫放弃。次级样式：SurfaceRaised 底 + Stroke 描边（SurfaceRaised 对面板底只有 1.03:1）。
             Button cancelButton = ZombieModeUIHelper.CreateButton(
                 "Cancel", st, L10n.T("暂不挑战", "Not Now"),
-                new Vector2(0.5f, 1f), new Vector2(buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
+                new Vector2(0.5f, 1f), new Vector2(-buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
                 BossRushUIColors.SurfaceRaised, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
                 CloseModal, true);
             BossRushUIKit.StyleSecondaryButton(cancelButton);
+            ZombieModeUIHelper.CreateButton(
+                "Start", st, L10n.T("立即迎战", "Fight Now"),
+                new Vector2(0.5f, 1f), new Vector2(buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
+                BossRushUIColors.AccentFill, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
+                () => ConfirmAndStart(host), true);
             cursor += ButtonHeight + BottomPad;
 
             // 面板收到内容高度。子物体都挂在顶边上，改高度不会挪动它们。
@@ -575,7 +574,7 @@ namespace BossRush
         /// <summary>
         /// 一张契约卡：Card 档底图 + 描边（照 SkyIslandStoryPresentation.BuildChoice 的口径）。
         /// 名称左上、「已选」角标右上、说明在下。选中态由 <see cref="RefreshContractCards"/> 画：
-        /// 描边换 Accent、底色染一点 Accent、角标出现。navigation 设 None：点过之后 EventSystem 不再把它挂成
+        /// 描边换 WarningText、底色染一点 WarningText、角标出现（UI 制作共识第 6 节：选中统一金色描边）。navigation 设 None：点过之后 EventSystem 不再把它挂成
         /// 选中态，焦点移开时也不会出现一张「看起来还亮着」的卡。
         /// </summary>
         private RectTransform BuildContractCard(Transform parent, int index, ModeGFateContract.ContractDef def,
@@ -627,7 +626,7 @@ namespace BossRush
             return height;
         }
 
-        /// <summary>「√ 已选」角标：Accent 底 + 深字（GetButtonTextColor），单行不换行、不省略，宽度按字量。</summary>
+        /// <summary>「√ 已选」角标：WarningText 底 + 深字（GetButtonTextColor），单行不换行、不省略，宽度按字量。</summary>
         private static GameObject BuildSelectedBadge(Transform card)
         {
             string text = L10n.T("√ 已选", "√ Selected");
@@ -637,12 +636,12 @@ namespace BossRush
                 new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-CardPadX, -top),
                 new Vector2(80f, BadgeHeight), new Vector2(1f, 1f));
             Image fill = badge.AddComponent<Image>();
-            fill.color = BossRushUIColors.Accent;
+            fill.color = BossRushUIColors.WarningText;
             fill.raycastTarget = false;
             BossRushUI.ApplyPanelSkin(fill, 8, BossRushUISkinPart.Button);
-            TextMeshProUGUI label = ZombieModeUIHelper.CreateText("Label", badge.transform, text, 13f,
+            TextMeshProUGUI label = ZombieModeUIHelper.CreateText("Label", badge.transform, text, 14f,
                 Vector2.zero, new Vector2(80f, BadgeHeight), TextAlignmentOptions.Center,
-                BossRushUI.GetButtonTextColor(BossRushUIColors.Accent));
+                BossRushUI.GetButtonTextColor(BossRushUIColors.WarningText));
             label.enableAutoSizing = false;
             label.enableWordWrapping = false;
             label.overflowMode = TextOverflowModes.Overflow;
@@ -661,7 +660,7 @@ namespace BossRush
         {
             Color raised = BossRushUIColors.SurfaceRaised;
             if (!selected) return raised;
-            Color tinted = Color.Lerp(raised, BossRushUIColors.Accent, CardSelectedTint);
+            Color tinted = Color.Lerp(raised, BossRushUIColors.WarningText, CardSelectedTint);
             tinted.a = raised.a;
             return tinted;
         }
@@ -683,27 +682,10 @@ namespace BossRush
                 bool selected = i == _selectedCandidateIndex;
                 ApplyCardColors(_cardButtons[i], selected);
                 if (_cardStrokes != null && i < _cardStrokes.Length && _cardStrokes[i] != null)
-                    _cardStrokes[i].color = selected ? BossRushUIColors.Accent : BossRushUIColors.Stroke;
+                    _cardStrokes[i].color = selected ? BossRushUIColors.WarningText : BossRushUIColors.Stroke;
                 if (_cardBadges != null && i < _cardBadges.Length && _cardBadges[i] != null)
                     _cardBadges[i].SetActive(selected);
             }
-        }
-
-        /// <summary>
-        /// 没选契约时「立即迎战」置灰不可点，按钮上直接写还差哪一步（AGENTS §4.14：「还差什么」写明）；
-        /// 旧版可以先点，再弹一条被确认页挡住的提示。
-        /// </summary>
-        private void RefreshStartButton()
-        {
-            if (_startButton == null) return;
-            bool ready = _selectedCandidateIndex >= 0;
-            _startButton.interactable = ready;
-            if (_startLabel == null) return;
-            _startLabel.text = ready ? L10n.T("立即迎战", "Fight Now") : L10n.T("先选一个契约", "Pick a Contract");
-            // 标签色按按钮此刻的实际底色走 GetButtonTextColor（V16-2）：不可点时底色是 ColorBlock 的禁用色。
-            _startLabel.color = BossRushUI.GetButtonTextColor(ready
-                ? BossRushUIColors.AccentFill
-                : _startButton.colors.disabledColor);
         }
 
         #endregion
@@ -720,7 +702,6 @@ namespace BossRush
             {
                 _selectedCandidateIndex = index;
                 RefreshContractCards();
-                RefreshStartButton();
             }
             catch (Exception e)
             {
@@ -798,8 +779,6 @@ namespace BossRush
             _cardButtons = null;
             _cardStrokes = null;
             _cardBadges = null;
-            _startButton = null;
-            _startLabel = null;
             if (!wasConfirmed)
             {
                 // Map selection may already have charged the ticket; direct teleport has no
@@ -862,7 +841,8 @@ namespace BossRush
         private const float EmblemSize = 48f;
         private const float ButtonWidth = 240f;
         private const float ButtonHeight = 52f;
-        private const float ButtonGap = 20f;
+        /// <summary>危险键与取消键拉开的间距（UI 制作共识第 4 节「破坏性按钮与安全按钮拉开距离」，同共享确认框的 40）。</summary>
+        private const float ButtonGap = 40f;
         private const float BottomPad = 24f;
 
         private static ModeGAbandonPresenter _active;
@@ -925,8 +905,9 @@ namespace BossRush
             _modalRoot = root;
 
             // 与入场确认页同一套样式（2026-09-23 审美审查 UB-18 / owner 实测第 16 条复核 V16-3）：
-            // 近不透明底、徽记 + 标题一行、从顶边往下按内容排、分隔线、次级「继续战斗」+ 危险「确认放弃」；
+            // 近不透明底、徽记 + 标题一行、从顶边往下按内容排、分隔线、危险「确认放弃」+ 次级「继续战斗」；
             // 打开淡入、关闭淡出、ESC 等于「继续战斗」。旧版是一对平涂绿 / 红按钮，面板一帧弹出。
+            // 按钮左右照确认弹窗页型（UI 共识对照审查 B-23）：危险键在左、取消在右、中间拉开 40。
             GameObject surface = ZombieModeUIHelper.CreateModalSurface(
                 "ModeG_Abandon", root.transform, new Vector2(ModalWidth, ModalInitialHeight),
                 BossRushUIColors.DangerText);
@@ -954,18 +935,18 @@ namespace BossRush
 
             float buttonY = -(cursor + ButtonHeight * 0.5f);
             float buttonX = (ButtonWidth + ButtonGap) * 0.5f;
+            ZombieModeUIHelper.CreateButton(
+                "Abandon", st, L10n.T("确认放弃", "Abandon Run"),
+                new Vector2(0.5f, 1f), new Vector2(-buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
+                BossRushUIColors.Danger, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
+                ConfirmAbandon, true);
+
             Button keepButton = ZombieModeUIHelper.CreateButton(
                 "Keep", st, L10n.T("继续战斗", "Keep Fighting"),
-                new Vector2(0.5f, 1f), new Vector2(-buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
+                new Vector2(0.5f, 1f), new Vector2(buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
                 BossRushUIColors.SurfaceRaised, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
                 Close, true);
             BossRushUIKit.StyleSecondaryButton(keepButton);
-
-            ZombieModeUIHelper.CreateButton(
-                "Abandon", st, L10n.T("确认放弃", "Abandon Run"),
-                new Vector2(0.5f, 1f), new Vector2(buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
-                BossRushUIColors.Danger, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
-                ConfirmAbandon, true);
             cursor += ButtonHeight + BottomPad;
 
             surface.GetComponent<RectTransform>().sizeDelta = new Vector2(ModalWidth, Mathf.Ceil(cursor));

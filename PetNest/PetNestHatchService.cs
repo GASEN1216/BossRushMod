@@ -246,6 +246,18 @@ namespace BossRush
             return PetNestService.GetSouls(lineageKey) >= PetNestTuning.SoulsPerCondensedEgg;
         }
 
+        /// <summary>遗魂够数、能直接凝蛋的血脉条数（孵化页签徽标、交互菜单「孵化」项的显隐共用）。</summary>
+        internal static int CountCondensable()
+        {
+            int count = 0;
+            IList<PetNestLineageInfo> lineages = PetNestLineageCatalog.All;
+            for (int i = 0; i < lineages.Count; i++)
+            {
+                if (lineages[i] != null && CanCondense(lineages[i].LineageKey)) count++;
+            }
+            return count;
+        }
+
         /// <summary>
         /// 用遗魂定向凝成一枚该血脉的遗种蛋，直接孵化入巢（不产出实体蛋，
         /// 避免"凝出来的蛋放不进背包"这种半成品状态）。

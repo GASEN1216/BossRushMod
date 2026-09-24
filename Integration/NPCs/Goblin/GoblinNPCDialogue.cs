@@ -252,9 +252,6 @@ namespace BossRush
                 NPCDialogueSystem.ShowFarewell(GoblinAffinityConfig.NPC_ID, transform);
             }
             
-            // 隐藏好感度面板
-            AffinityUIManager.HideAffinityPanel();
-            
             // 等待指定时间（在此期间 isIdling=true 会阻止 GoblinMovement 的漫步决策）
             yield return new WaitForSeconds(stayDuration);
             

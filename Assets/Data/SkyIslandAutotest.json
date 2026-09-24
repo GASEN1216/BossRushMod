@@ -370,7 +370,7 @@
     {
       "id": "SKY_AUTO_BEACONS_ZHELING", "title": "折翎挑战：战斗体在他站立处出现、打赢写旗标、原地留下旧腰牌、挑战项不再挂",
       "stage": "both_beacons", "location": "EnemySpawn_F", "class": "auto", "checklist": ["2.10.9", "2.15.11", "2.15.34"], "budget": 150,
-      "actions": ["invincible:on", "teleport:EnemySpawn_F:3:0", "clear_nearby:45:20", "interact:resident:sky_zheling", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:0", "wait_panel:5", "shot:zheling_panel:ui", "choose_label:挑战旧航路守卫|Challenge the keeper of the old route", "wait_real:4", "kill_nearby:25", "wait_real:3", "kill_nearby:25", "wait_real:3", "assert:flag:ZhelingDefeated", "assert:object_present:EnemySpawn_F_Completed", "shot:zheling_badge:world", "teleport:Search_F:2:0", "clear_nearby:45:10", "interact:Search_F", "wait_panel:4", "assert:choice_absent:挑战旧航路守卫|Challenge the keeper of the old route", "shot:zheling_challenge_gone:ui"]
+      "actions": ["invincible:on", "teleport:EnemySpawn_F:3:0", "clear_nearby:45:20", "interact:resident:sky_zheling", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:0", "wait_panel:5", "shot:zheling_panel:ui", "choose_label:挑战旧航路守卫|Challenge the keeper of the old route", "wait_panel:3", "shot:zheling_confirm:ui", "assert:overflow_none", "choose_label:开打|Start the fight", "wait_real:4", "kill_nearby:25", "wait_real:3", "kill_nearby:25", "wait_real:3", "assert:flag:ZhelingDefeated", "assert:object_present:EnemySpawn_F_Completed", "shot:zheling_badge:world", "teleport:Search_F:2:0", "clear_nearby:45:10", "interact:Search_F", "wait_panel:4", "assert:choice_absent:挑战旧航路守卫|Challenge the keeper of the old route", "shot:zheling_challenge_gone:ui"]
     },
     {
       "id": "SKY_AUTO_STORM_ECHO_LOCKED", "title": "打过噬风、未敲钟：没有「引风」也不再挂首战项，正文说等归航钟响过",

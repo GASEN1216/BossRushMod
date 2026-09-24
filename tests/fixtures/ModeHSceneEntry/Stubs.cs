@@ -172,5 +172,6 @@ namespace BossRush
         private void AbortSetup(string reason,bool leases) { Aborts++;Failure=reason;CancelSceneReadyWait();ModeHEntry.CancelPendingEntry(); }
         private void FailSeasonResume(string reason) { Aborts++;Failure=reason;CancelSceneReadyWait();_restoredSeasonPending=true; }
         private void OpenRecoveryShell(string reason) { Failure=reason; }
+        private void ReconcileCashBetOnRestore() { } // 押钱账本对账（ModeHCashBetGuard 守接线）
     }
 }

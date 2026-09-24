@@ -162,6 +162,15 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 再锁一个槽之后还剩不剩未锁槽（硬约束 3：至少留一个可重铸的槽）。
+        /// LockSlot 的拒绝判据与锻造界面「挂不挂锁定按钮」共用这一份（UI 共识：能不能挂与点了会不会被拒同一判据）。
+        /// </summary>
+        public static bool LeavesUnlockedSlotAfterLock(Item item)
+        {
+            return GetUnlockedSlotCount(item) > 1;
+        }
+
         /// <summary>当前未被锁定的槽位数（= 一次重铸会重掷的槽数）。</summary>
         public static int GetUnlockedSlotCount(Item item)
         {
@@ -374,8 +383,8 @@ namespace BossRush
                 {
                     return Fail(result, L10n.T("该词缀槽已经锁定。", "That affix slot is already locked."));
                 }
-                // 至少留一个未锁槽，否则重铸永远无事可做
-                if (GetUnlockedSlotCount(item) <= 1)
+                // 至少留一个未锁槽，否则重铸永远无事可做（界面挂不挂「锁定」用同一判据）
+                if (!LeavesUnlockedSlotAfterLock(item))
                 {
                     return Fail(result, L10n.T("至少要留一个未锁定的词缀槽。",
                         "At least one affix slot must stay unlocked."));
@@ -415,7 +424,10 @@ namespace BossRush
             }
         }
 
-        /// <summary>解锁一个槽（免费，不消耗任何资源）。</summary>
+        /// <summary>
+        /// 解锁一个槽（免费，不消耗任何资源；锁定时花的熔石也不退，再锁要重新付）。
+        /// 界面上解锁走确认弹窗（2026-09-24 UI 共识对照审查 A-04），本方法不重复确认。
+        /// </summary>
         public static AffixForgeResult UnlockSlot(Item item, int slotIndex)
         {
             AffixForgeResult result = new AffixForgeResult();

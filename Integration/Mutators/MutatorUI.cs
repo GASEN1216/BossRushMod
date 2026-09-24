@@ -20,6 +20,9 @@
 //   - 悬停不再硬切：行底 0.1 秒过渡，详情卡 0.12 秒淡入并上浮 6px，并对齐到悬停的那一行。
 //     动效由每帧入口 Tick 推进（unscaled 时间；暂停菜单开着时 Tick 走抑制分支，动效自然停住），
 //     没有过渡在跑时是 O(1) 早返。
+//
+//   2026-09-24 UI 共识对照审查 A-36：详情不再只能悬停——点一行把说明固定住（鼠标移开也不收），再点一下收起；
+//   详情卡底部一行小字说明怎么固定 / 收起。固定的是行号，词条列表重建（新一局）时清掉。
 // ============================================================================
 
 using System;
@@ -104,6 +107,8 @@ namespace BossRush
         private static readonly List<Image> _rowBackgrounds = new List<Image>();
         private static readonly List<float> _rowWeights = new List<float>();
         private static int _hoveredIndex = -1;
+        /// <summary>点击固定的那一行（-1 = 没有固定）。鼠标离开行时详情退回这一行而不是收起。</summary>
+        private static int _pinnedIndex = -1;
         private static float _detailWeight;
         private static float _detailTarget;
         private static float _detailBaseY;
@@ -119,6 +124,7 @@ namespace BossRush
         public static void ShowBanner()
         {
             _cachedInfos.Clear();
+            _pinnedIndex = -1;
 
             var mutators = MutatorManager.GetActiveMutators();
             if (mutators == null || mutators.Count == 0) return;
@@ -150,6 +156,7 @@ namespace BossRush
             _cornerVisible = false;
             _cachedInfos.Clear();
             _hoveredIndex = -1;
+            _pinnedIndex = -1;
             DestroyCanvas();
         }
 
@@ -195,6 +202,11 @@ namespace BossRush
 
             EnsureCanvas();
             SetCanvasVisible(true);
+            // 抑制期间悬停被清掉了；固定的说明在界面回来时一起回来（O(1)，状态没变时 SetHoveredIndex 直接返回）
+            if (_pinnedIndex >= 0 && _hoveredIndex < 0)
+            {
+                SetHoveredIndex(_pinnedIndex);
+            }
             AnimateHover(Time.unscaledDeltaTime);
         }
 
@@ -206,6 +218,7 @@ namespace BossRush
             _cornerVisible = false;
             _cachedInfos.Clear();
             _hoveredIndex = -1;
+            _pinnedIndex = -1;
             DestroyCanvas();
         }
 
@@ -374,7 +387,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 用 EventTrigger 挂悬停回调。索引按值捕获，不能直接用循环变量。
+        /// 用 EventTrigger 挂悬停与点击回调。索引按值捕获，不能直接用循环变量。
+        /// 点击 = 固定 / 收起这一行的说明（A-36）；离开行时详情退回固定的那一行。
         /// </summary>
         private static void AttachHoverHandler(GameObject row, int index)
         {
@@ -393,10 +407,23 @@ namespace BossRush
             {
                 if (_hoveredIndex == exitIndex)
                 {
-                    SetHoveredIndex(-1);
+                    SetHoveredIndex(_pinnedIndex);
                 }
             });
             trigger.triggers.Add(exit);
+
+            EventTrigger.Entry click = new EventTrigger.Entry();
+            click.eventID = EventTriggerType.PointerClick;
+            int clickIndex = index;
+            click.callback.AddListener(delegate { TogglePinned(clickIndex); });
+            trigger.triggers.Add(click);
+        }
+
+        /// <summary>点一行：固定它的说明；再点同一行收起固定（鼠标还在行上，说明照常跟着悬停）。</summary>
+        private static void TogglePinned(int index)
+        {
+            _pinnedIndex = _pinnedIndex == index ? -1 : index;
+            SetHoveredIndex(index, true);
         }
 
         private static void BuildDetailPanel()
@@ -463,12 +490,12 @@ namespace BossRush
         /// 切换悬停行：只改目标状态与详情内容，过渡由 <see cref="AnimateHover"/> 在 Tick 里推进。
         /// 只在指针进出行时调用，不是每帧路径（正文测高也只在这里做一次）。
         /// </summary>
-        private static void SetHoveredIndex(int index)
+        private static void SetHoveredIndex(int index, bool force = false)
         {
             bool show = index >= 0 && index < _cachedInfos.Count;
             float target = show ? 1f : 0f;
-            // 抑制期间 Tick 每帧都会传 -1：状态没变就什么都不做，保持每帧 O(1)。
-            if (index == _hoveredIndex && _detailTarget == target)
+            // 抑制期间 Tick 每帧都会传 -1：状态没变就什么都不做，保持每帧 O(1)。固定 / 收起时强制刷新提示行。
+            if (!force && index == _hoveredIndex && _detailTarget == target)
             {
                 return;
             }
@@ -497,7 +524,12 @@ namespace BossRush
             float bodyHeight = 0f;
             if (_detailBodyText != null)
             {
-                _detailBodyText.text = info.Description;
+                // 底部一行小字告诉玩家说明能固定（A-36）：只能悬停时鼠标一动说明就没了
+                string hint = _pinnedIndex == index
+                    ? L10n.T("已固定 · 再点这一行收起", "Pinned · click this row again to unpin")
+                    : L10n.T("点这一行可以固定说明", "Click this row to pin the details");
+                _detailBodyText.text = info.Description + "\n<size=" + CategoryFontSize + "><color="
+                    + IntegrationUIFeedback.SecondaryHex + ">" + hint + "</color></size>";
                 bodyHeight = BossRushUI.MeasureTextHeight(_detailBodyText, DetailWidth - DetailPadding * 2f, 24f);
             }
 

@@ -63,7 +63,7 @@ namespace BossRush
                 _season.matchRoster = roster;
                 _selectedMatchCommandId = null;
                 _showLoadoutEditor = false;
-                _loadoutSection = _loadoutOptionPage = 0;
+                _loadoutSection = 1;
             }
 
             ModeHProfileDto selectedStarter =
@@ -827,6 +827,7 @@ namespace BossRush
                 bool won = report.winner == (int)ModeHMatchOutcome.PlayerVictory;
                 int rewardCandidates = ModeHVirtualStakeController.Settle(
                     _season, _season.preMatchSnapshot, report, odds, won);
+                SettleCashBetForMatch(won); // 押钱按本场输赢结算（至多一次，账本在 ModeHCashBetService）
 
                 // 真实押品结算：无 journal 时是 no-op（本场没押）。
                 // 失败**不重打这一场**——虚拟筹码已经结算过，重来会重复发奖；

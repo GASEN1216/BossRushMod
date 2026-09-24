@@ -54,11 +54,8 @@ namespace BossRush
                 // 创建统计信息
                 CreateStatsBar(bossPoolPanel.transform);
 
-                // 创建底部按钮
+                // 创建底部按钮（列表内容由 OpenBossPoolWindow 的 ShowBossPoolTab 填）
                 CreateBottomButtons(bossPoolPanel.transform);
-
-                // 填充 Boss 列表
-                PopulateBossList();
 
                 DevLog("[BossRush] Boss 池 UI 创建完成");
             }
@@ -117,12 +114,14 @@ namespace BossRush
                     btnText.fontSize = 22;
                 }
 
-                closeBtn.onClick.AddListener(() => CloseBossPoolWindow());
+                closeBtn.onClick.AddListener(() => SaveAndCloseBossPoolWindow());
             }
         }
 
         /// <summary>
-        /// 创建工具栏
+        /// 工具栏（A-28）：左边两个页签「出场 Boss / 无间炼狱因子」（分段按钮，选中态看得见），右边是当前页的列表头操作——
+        /// 开关页「全选 / 全不选」，因子页「全部恢复默认」（危险次级，点了先确认）。旧版一颗「无间炼狱因子」点了变「返回」、
+        /// 原「全选」位变「重置」，一点就复位全部因子、没有确认。按钮一律走共享按钮（质感层、音效、三态）。
         /// </summary>
         private void CreateToolbar(Transform parent)
         {
@@ -142,42 +141,29 @@ namespace BossRush
             toolbarRect.anchoredPosition = new Vector2(0f, -50f);
             toolbarRect.sizeDelta = new Vector2(0f, 45f);
 
-            Button buttonPrefab = GameplayDataSettings.UIPrefabs.Button;
-            if (buttonPrefab != null)
-            {
-                // 全选按钮
-                selectAllButton = UnityEngine.Object.Instantiate(buttonPrefab, toolbar.transform);
-                LayoutElement le1 = selectAllButton.gameObject.AddComponent<LayoutElement>();
-                le1.preferredWidth = 100f;
-                le1.preferredHeight = 35f;
-                selectAllButtonText = selectAllButton.GetComponentInChildren<TextMeshProUGUI>();
-                if (selectAllButtonText != null) selectAllButtonText.text = L10n.T("全选", "Select All");
-                selectAllButton.onClick.AddListener(() => OnSelectAllButtonClicked());
+            bossTabButton = CreateBossPoolToolbarButton(toolbar.transform, L10n.T("出场 Boss", "Boss Pool"), 120f, () => ShowBossPoolTab(false));
+            infiniteHellFactorButton = CreateBossPoolToolbarButton(toolbar.transform, L10n.T("无间炼狱因子", "Hell Factors"), 150f, () => ShowBossPoolTab(true));
 
-                // 全不选按钮
-                deselectAllButton = UnityEngine.Object.Instantiate(buttonPrefab, toolbar.transform);
-                LayoutElement le2 = deselectAllButton.gameObject.AddComponent<LayoutElement>();
-                le2.preferredWidth = 100f;
-                le2.preferredHeight = 35f;
-                TextMeshProUGUI txt2 = deselectAllButton.GetComponentInChildren<TextMeshProUGUI>();
-                if (txt2 != null) txt2.text = L10n.T("全不选", "Deselect All");
-                deselectAllButton.onClick.AddListener(() => DisableAllBosses());
+            GameObject spacer = new GameObject("Spacer");
+            spacer.transform.SetParent(toolbar.transform, false);
+            spacer.AddComponent<LayoutElement>().flexibleWidth = 1f;
 
-                // 分隔空间
-                GameObject spacer = new GameObject("Spacer");
-                spacer.transform.SetParent(toolbar.transform, false);
-                LayoutElement spacerLE = spacer.AddComponent<LayoutElement>();
-                spacerLE.flexibleWidth = 1f;
+            selectAllButton = CreateBossPoolToolbarButton(toolbar.transform, L10n.T("全选", "Select All"), 90f, EnableAllBosses);
+            deselectAllButton = CreateBossPoolToolbarButton(toolbar.transform, L10n.T("全不选", "Deselect All"), 90f, DisableAllBosses);
+            resetFactorsButton = CreateBossPoolToolbarButton(toolbar.transform, L10n.T("全部恢复默认", "Reset All"), 130f, RequestResetAllBossFactors);
+            IntegrationUIFeedback.StyleDangerSecondary(resetFactorsButton);
+        }
 
-                // 无间炼狱因子按钮（最右边）
-                infiniteHellFactorButton = UnityEngine.Object.Instantiate(buttonPrefab, toolbar.transform);
-                LayoutElement le3 = infiniteHellFactorButton.gameObject.AddComponent<LayoutElement>();
-                le3.preferredWidth = 160f;
-                le3.preferredHeight = 35f;
-                infiniteHellFactorButtonText = infiniteHellFactorButton.GetComponentInChildren<TextMeshProUGUI>();
-                if (infiniteHellFactorButtonText != null) infiniteHellFactorButtonText.text = L10n.T("无间炼狱因子", "Infinite Hell Factor");
-                infiniteHellFactorButton.onClick.AddListener(() => OnInfiniteHellFactorButtonClicked());
-            }
+        /// <summary>工具栏上的一颗次级按钮（共享按钮 + LayoutElement 定宽）。</summary>
+        private static Button CreateBossPoolToolbarButton(Transform parent, string label, float width, UnityEngine.Events.UnityAction onClick)
+        {
+            Button button = ZombieModeUIHelper.CreateButton("ToolbarButton", parent, label, new Vector2(0.5f, 0.5f), Vector2.zero,
+                new Vector2(width, 35f), BossRushUIColors.SurfaceRaised, 16f, new Vector2(width - 8f, 31f), onClick, true);
+            LayoutElement layout = button.gameObject.AddComponent<LayoutElement>();
+            layout.preferredWidth = width;
+            layout.preferredHeight = 35f;
+            BossRushUIKit.StyleSecondaryButton(button);
+            return button;
         }
 
         /// <summary>列表行底：Card 档圆角 + SurfaceRaised。开关行与因子行共用（UB-26）。</summary>
@@ -233,9 +219,13 @@ namespace BossRush
             bossPoolScrollRect.verticalNormalizedPosition = Mathf.Clamp01(normalizedPosition);
         }
 
-        /// <summary>丢掉对 Boss 池界面的全部引用（关闭淡出与卸载共用）。不销毁物体。</summary>
+        /// <summary>丢掉对 Boss 池界面的全部引用（关闭淡出与卸载共用）。不销毁物体。模态租约与取消键在这里一起还（A-43）。</summary>
         private void ReleaseBossPoolUIReferences()
         {
+            PetNestCancelKey cancelKey = bossPoolCanvas != null ? bossPoolCanvas.GetComponent<PetNestCancelKey>() : null;
+            if (cancelKey != null) cancelKey.Detach();
+            if (bossPoolModalLease != null) bossPoolModalLease.Release();
+            bossPoolModalLease = null;
             bossPoolCanvas = null;
             bossPoolPanel = null;
             bossPoolContent = null;
@@ -246,8 +236,8 @@ namespace BossRush
             selectAllButton = null;
             deselectAllButton = null;
             infiniteHellFactorButton = null;
-            selectAllButtonText = null;
-            infiniteHellFactorButtonText = null;
+            bossTabButton = null;
+            resetFactorsButton = null;
             isInfiniteHellFactorMode = false;
         }
     }

@@ -364,13 +364,43 @@ def check_lock_reject_feedback(errors):
     if "PrepareLockedMatch" not in body:
         errors.append("[Lock] LockLoadoutAndStartMatch 必须经 PrepareLockedMatch")
     prepare_fail = body.find("PrepareLockedMatch")
-    if prepare_fail >= 0 and "ShowMessage" not in body[prepare_fail:]:
+    tail = body[prepare_fail:] if prepare_fail >= 0 else ""
+    # 2026-09-24 起失败原因画在按钮带正上方（NotePageFailure + 重建当前页），不再走官方全局提示（UI 共识审查 B-11）
+    inline = "NotePageFailure(" in tail and "RouteUiForLifecycle(" in tail
+    if prepare_fail >= 0 and "ShowMessage" not in tail and not inline:
         errors.append("[Lock] 锁盘准备失败必须给玩家可见提示，只写 DevLog 在正式构建里等于静默")
+    if inline:
+        pages = read_text(os.path.join(MODEH_DIR, "ModeHUIPages.cs")) or ""
+        rows = read_text(os.path.join(MODEH_DIR, "ModeHUIPageRows.cs")) or ""
+        ui_flow = read_text(os.path.join(MODEH_DIR, "ModeHRuntimeModule_UiFlow.cs")) or ""
+        if "CreateFailureLine(surface, panelSize, content);" not in pages or "content.FailureText" not in rows:
+            errors.append("[Lock] 就地失败提示必须真的画出来（ModeHUIPages.Build → CreateFailureLine）")
+        if "content.FailureText = _pageFailureText;" not in ui_flow:
+            errors.append("[Lock] OpenPage 必须把就地失败提示交给页面")
     if "ResolveLockRejectReason" not in match_flow:
         errors.append("[Lock] 缺少 ResolveLockRejectReason（按原因分档的玩家文案）")
     # 不得把内部 reasonId 原文喷给玩家
     if re.search(r"ShowMessage\(\s*prepareFailure", match_flow):
         errors.append("[Lock] 不得把内部 reasonId 直接展示给玩家")
+
+
+def check_irreversible_confirms(src, errors):
+    """UI 共识审查 B-02 / B-03 / B-09（2026-09-24）：不可逆操作先过共享确认框，按钮不直接绑执行方法。"""
+    ui_flow = strip_cs_comments(src.get("ui_flow", ""))
+    settle = strip_cs_comments(src.get("settlement", ""))
+    pages = strip_cs_comments(src.get("match_pages", ""))
+    if "OnClick = AbandonSeasonFromRecovery," in ui_flow:
+        errors.append("[Confirm] 恢复壳「放弃本赛季」不得直接绑 AbandonSeasonFromRecovery（先确认，B-02）")
+    confirm = re.search(r"private void ConfirmAbandonSeasonFromRecovery\(\)\s*\{([\s\S]*?)\n        \}", ui_flow)
+    if not confirm or "BossRushConfirmDialog.Show(" not in confirm.group(1) \
+            or "Danger = true" not in confirm.group(1) or "OnConfirm = AbandonSeasonFromRecovery" not in confirm.group(1):
+        errors.append("[Confirm] 放弃赛季必须经 BossRushConfirmDialog（Danger）确认后才执行")
+    replace = re.search(r"Title = L10n\.T\(\"换掉「\"[\s\S]*?OnConfirm = delegate \{ ResolveScarOffer\(", settle)
+    if not replace or "Danger = true" not in replace.group(0):
+        errors.append("[Confirm] 战痕「换掉」必须先弹 Danger 确认再 ResolveScarOffer（B-09）")
+    lock = re.search(r"private void ConfirmRealStakeThenLock\(\)\s*\{([\s\S]*?)\n        \}", pages)
+    if not lock or "BossRushConfirmDialog.Show(" not in lock.group(1) or "OnConfirm = LockLoadoutAndStartMatch" not in lock.group(1):
+        errors.append("[Confirm] 押仓库物品锁盘必须先确认（B-03）")
 
 
 def check_digest_set_fields_exist(errors):
@@ -490,6 +520,11 @@ def main():
 
     check_injury_rest_recovery(errors)
     check_lock_reject_feedback(errors)
+    check_irreversible_confirms({
+        "ui_flow": read_text(os.path.join(MODEH_DIR, "ModeHRuntimeModule_UiFlow.cs")) or "",
+        "settlement": read_text(os.path.join(MODEH_DIR, "ModeHRuntimeModule_SettlementFlow.cs")) or "",
+        "match_pages": read_text(os.path.join(MODEH_DIR, "ModeHRuntimeModule_MatchPages.cs")) or "",
+    }, errors)
     check_digest_set_fields_exist(errors)
 
     if errors:

@@ -4,7 +4,10 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>码头和风铃集的航路图服务，使用作者已验证落点，手柄也能查看地图与切换光色。</summary>
+    /// <summary>
+    /// 码头和风铃集的航路图服务，使用作者已验证落点，手柄也能查看地图与换天色。
+    /// 「换一种天色看看群岛」对玩家开放（2026-09-24 owner 定，UI 共识对照审查 B-33）：只换景色，不拨时间。
+    /// </summary>
     public sealed class SkyIslandGuideInteractable : BossRushBuildingInteractableBase
     {
         private SkyIslandSession session;
@@ -61,7 +64,7 @@ namespace BossRush
             {
                 string key = lightingAction ? "BossRush_SkyIsland_Lighting" : "BossRush_SkyIsland_Guide";
                 LocalizationHelper.InjectLocalization(key, lightingAction
-                    ? L10n.T("欣赏下一时段的群岛光色", "View the next island lighting preset")
+                    ? L10n.T("换一种天色看看群岛", "See the isles under a different sky")
                     : L10n.T("展开晴岚群岛航路图", "Open the Qinglan chart"));
                 return key;
             }

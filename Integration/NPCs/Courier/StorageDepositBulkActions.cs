@@ -248,10 +248,11 @@ namespace BossRush
             try
             {
                 string countText = "<color=" + DepositDangerHex + ">" + itemCount + "</color>";
+                // 标题写成问句（A-38），正文只写后果，不重复问一遍
                 OriginalConfirmDialogueResult result = await OriginalConfirmDialogueAdapter.ExecuteOverActiveView(
-                    L10n.T("丢弃寄存物", "Discard Stored Items"),
-                    L10n.T("要丢弃全部 " + countText + " 件寄存物吗？\n丢弃后无法找回。",
-                        "Discard all " + countText + " stored items?\nThey cannot be recovered."),
+                    L10n.T("丢弃全部寄存物？", "Discard all stored items?"),
+                    L10n.T("一共 " + countText + " 件，丢弃后无法找回。",
+                        countText + " items in total. They cannot be recovered."),
                     L10n.T("全部丢弃", "Discard All"),
                     L10n.T("取消", "Cancel"),
                     true);

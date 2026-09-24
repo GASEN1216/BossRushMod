@@ -233,6 +233,37 @@ def check(sources):
             WORLD + " 的 ChallengeAvailable 没有问会话的挑战判据（双航标、距离、附近交战）：挂着的挑战项点了只回「当前无法开始」")
     require('session.CanBeginStoryChallenge("Storm", out reason)' in storm,
             WORLD + " 的 StormChoice 没有先问挑战判据")
+
+    # ---- 10) 不可逆动作先确认（2026-09-24 UI 共识对照审查 B-14 / B-15） ----
+    # 退单把这一单的进度作废；折翎 / 钟守是「和解 / 战胜」二选一，打赢就永久关掉和解线。
+    # 两者都先换到面板自己的确认页（UI 制作共识的确认页页型），不在选项回调里直接动手。
+    services = clean_source(sources[WORLD_SERVICES])
+    bounty = body_of(world, "private void BountyChoices(", "}") or ""
+    drop_at = bounty.find('L10n.T("退掉这一单 · "')
+    abandon_at = bounty.find("contract.TryAbandon(out message)")
+    confirm_at = bounty.find("ConfirmPage(", drop_at) if drop_at >= 0 else -1
+    require(drop_at >= 0 and 0 <= confirm_at < abandon_at,
+            WORLD + " 的退单没有先进确认页：「退掉这一单」一点就把这一单的进度作废（B-14）")
+    challenge = body_of(world, "private SkyIslandStoryPresentation.Choice Challenge(", "}") or ""
+    entry_at = challenge.find("return new SkyIslandStoryPresentation.Choice(label")
+    entry = challenge[entry_at:] if entry_at >= 0 else ""
+    require("ConfirmPage(" in entry and "BeginStoryChallenge" not in entry,
+            WORLD + " 的挑战项点下去就开打：和解 / 战胜二选一的结局要先进确认页（B-15）")
+    confirm_page = body_of(services, "private void ShowConfirmPage(", "}") or ""
+    require("presentation.ResetFocusOnNextShow();" in confirm_page and "reopen = back;" in confirm_page
+            and "AsSecondary(" in confirm_page,
+            WORLD_SERVICES + " 的确认页要：不继承上一页的键盘当前项（回车连按两下不能直接确认）、"
+                             "确认后回到上一页、「再想想」用次级色")
+
+    # ---- 11) 阅读页的栏目有选中态（B-32） ----
+    # 手记子页点一栏只换正文，旧版列表里看不出正文是哪一栏；Section 把当前栏标成 WarningText 行边。
+    for sub in ("private void OpenJournalPeople()", "private void OpenJournalIsles()"):
+        sub_body = body_of(world, sub, "}") or ""
+        require(sub_body.count("choices.Add(Section(choices,") == 3,
+                WORLD + " 的 " + sub + " 有栏目没走 Section：点了正文换了，列表里看不出正在看哪一栏（B-32）")
+    section = body_of(services, "private static SkyIslandStoryPresentation.Choice Section(", "}") or ""
+    require("SkyIslandStoryPresentation.MarkCurrent(group, choice);" in section,
+            WORLD_SERVICES + " 的 Section 没有标记当前栏（B-32）")
     return errors
 
 
@@ -295,6 +326,13 @@ def main():
         (WORLD, "locked.Add(SkyIslandFieldcraftRules.LockedLabel(recipe));",
                 "choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.LockedLabel(recipe), () => SkyIslandFieldcraftRules.LockedMessage(recipe)));"),
         (WORLD, "if (session.CanBeginStoryChallenge(id, out reason)) return true;", "return true;"),
+        # 2026-09-24 B-14 / B-15 / B-32：退单与二选一挑战绕过确认页 / 确认页继承键盘当前项 / 手记栏目没有选中态
+        (WORLD, "+ dropped, () => ConfirmPage(", "+ dropped, () => SkipConfirm("),
+        (WORLD, "return new SkyIslandStoryPresentation.Choice(label, () => ConfirmPage(ChallengeConfirmTitle(id),",
+                "return new SkyIslandStoryPresentation.Choice(label, () => session.BeginStoryChallenge(id) ? null : SkipConfirm(ChallengeConfirmTitle(id),"),
+        (WORLD_SERVICES, "            presentation.ResetFocusOnNextShow();\n", ""),
+        (WORLD, 'choices.Add(Section(choices, L10n.T("船员名册"', 'choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("船员名册"'),
+        (WORLD_SERVICES, "SkyIslandStoryPresentation.MarkCurrent(group, choice);", ""),
     ]
     for path, before, after in probes:
         if before not in sources[path]:

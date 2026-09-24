@@ -96,7 +96,7 @@ namespace BossRush
             Add(map, "Settle_AutoScarDeclined", "{0} 这次没有留下新战痕（战痕已满或重复），换成了名声 +1",
                 "{0} took no new scar this time (full or duplicate) and gained +1 fame instead");
             Add(map, "Button_Recon", "免费侦察一次", "Scout Once (Free)");
-            Add(map, "Button_LockIn", "锁盘", "Lock In");
+            Add(map, "Button_LockIn", "锁定并开打", "Lock in and start");
             Add(map, "Button_RingBell", "拍铃", "Ring the Bell");
             Add(map, "Button_Accept", "接受", "Accept");
             Add(map, "Button_Decline", "拒绝", "Decline");
@@ -723,9 +723,9 @@ namespace BossRush
         {
             // §22.1 冻结：入口页、模式说明与 ModeHInteractable 三处都必须显示这一行。
             Add(map, "RealStakeRiskNotice",
-                "本模式允许你押上真实仓库物品。失败会永久没收，唯一装备也不豁免。",
-                "This mode lets you stake real warehouse items. A loss confiscates them "
-                + "permanently, and your only copy of a piece of gear is not exempt.");
+                "押注押的是你的钱或背包里的东西：押你的选手赢，输了押上的归庄家。长期来看，庄家总是赢的。",
+                "Bets are your real money or backpack items: you back your fighter, and if it loses the house keeps the stake. "
+                + "In the long run the house always wins.");
 
             Add(map, "RealStake_Selector", "真实押品", "Real Stake");
             Add(map, "RealStake_NotSelected", "默认不押", "Not staked by default");

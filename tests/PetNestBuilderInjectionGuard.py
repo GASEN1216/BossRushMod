@@ -214,9 +214,18 @@ def check_interactable(errors):
 
     if "NPCInteractionGroupHelper.AddSubInteractable" not in code:
         errors.append("[菜单] 子选项必须走 AddSubInteractable")
-    for option in ["PetNestHatchInteractable", "PetNestExpeditionInteractable", "PetNestMuseumInteractable"]:
+    # 2026-09-24 交互重排：博物馆不再单挂一项（面板页签已有），孵化 / 远征按「当下有事可做」显隐
+    for option in ["PetNestHatchInteractable", "PetNestExpeditionInteractable"]:
         if option not in code:
             errors.append("[菜单] 缺少子选项: " + option)
+    # 显隐只在巢还不是交互主体时刷新：官方 InteractHUD 只在主体变化时重建选项，
+    # 菜单正显示时增删成员会让高亮项与实际交互目标错位（同 NurseInteractable 的治疗项）
+    refresh = re.search(r"private void RefreshOptionsWhenApproached\(\)[\s\S]{0,1200}?\n        \}", code)
+    if (refresh is None or "MasterInteractableAround == this" not in refresh.group(0)
+            or "RefreshOptionVisibility();" not in refresh.group(0)):
+        errors.append("[菜单] 子选项显隐只能在巢还不是交互主体时刷新")
+    if "RefreshOptionsWhenApproached();" not in code:
+        errors.append("[菜单] 宿主 IsInteractable 必须驱动子选项显隐（没有要做的不挂，§4.14）")
 
     # 子选项在 Start 里、base.Start() 之后建
     start = re.search(r"protected override void Start\(\)[\s\S]{0,900}?\n        \}", code)

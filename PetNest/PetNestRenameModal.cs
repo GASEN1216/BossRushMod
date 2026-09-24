@@ -16,6 +16,10 @@
 //
 // 2026-09-23 审美审查 UA-19 / UA-21：输入框改成圆角底 + Accent 描边（旧写法是没有 sprite 的直角亮青方框）；
 // 按钮改成「取消 / 恢复默认 / 确认」三颗，确认是唯一的 AccentFill 主按钮；回车提交、ESC 取消；关闭淡出。
+//
+// 2026-09-24 UI 共识对照审查 A-41：「恢复默认」只把血脉默认名填回输入框，不提交、不关窗——
+// 旧版一点就改名并关窗，和「确认」是两颗都会落档的按钮。现在只有「确认」（和回车）写名字；
+// 提交的正好是血脉默认名时按「没起名」存（服务层空名 = 默认名），换语言时名字跟着变。
 // ============================================================================
 
 using System;
@@ -39,6 +43,8 @@ namespace BossRush
         private bool _closing;
         private TMP_InputField _field;
         private string _petId;
+        /// <summary>这只崽的血脉默认名（没起名时显示的那个），「恢复默认」填回输入框用。</summary>
+        private string _defaultName;
         private Action _onClosed;
 
         /// <summary>
@@ -226,6 +232,8 @@ namespace BossRush
             _field.caretColor = BossRushUIColors.Accent;
             // 预填当前显示名：玩家改名多半是微调，不是从零打
             _field.text = PetNestService.GetPetDisplayName(pet);
+            // 默认名与面板同一个口径：拿一份只带血脉的记录问 GetPetDisplayName（不另写一遍取名规则）。
+            _defaultName = PetNestService.GetPetDisplayName(new PetNestPetRecord { id = pet.id, lineageKey = pet.lineageKey });
             // 回车提交（单行输入框的 onSubmit 只在回车时触发）
             _field.onSubmit.AddListener(delegate { Confirm(); });
             _field.ActivateInputField();
@@ -245,8 +253,11 @@ namespace BossRush
             bool ok;
             try
             {
-                ok = PetNestHatchService.TryRename(
-                    _petId, _field != null ? _field.text : null, out reason);
+                string name = _field != null ? _field.text : null;
+                // 提交的正好是默认名（多半刚点过「恢复默认」）：按「没起名」存，换语言时跟着血脉名变。
+                if (name != null && !string.IsNullOrEmpty(_defaultName)
+                    && string.Equals(name.Trim(), _defaultName, StringComparison.Ordinal)) name = null;
+                ok = PetNestHatchService.TryRename(_petId, name, out reason);
             }
             catch (Exception e)
             {
@@ -259,24 +270,15 @@ namespace BossRush
             CloseAndNotify();
         }
 
-        /// <summary>清空名字 = 恢复血脉默认名（服务层对空名的既有语义）。</summary>
+        /// <summary>
+        /// 「恢复默认」：只把血脉默认名填回输入框、光标回到框里，不提交、不关窗（A-41）；
+        /// 要不要用它，由玩家再点「确认」或按回车决定（确认时按「没起名」存，见 <see cref="Confirm"/>）。
+        /// </summary>
         private void ResetToDefault()
         {
-            if (_closing) return;
-            string reason = null;
-            bool ok;
-            try
-            {
-                ok = PetNestHatchService.TryRename(_petId, null, out reason);
-            }
-            catch (Exception e)
-            {
-                ok = false;
-                reason = "rename_failed:" + e.GetType().Name;
-            }
-
-            PetNestUIPages.NoteExternalFailure(ok, reason);
-            CloseAndNotify();
+            if (_closing || _field == null) return;
+            _field.text = _defaultName ?? string.Empty;
+            _field.ActivateInputField();
         }
 
         private void CloseAndNotify()

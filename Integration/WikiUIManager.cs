@@ -8,6 +8,8 @@
 //   - 目录页和正文页切换
 //   - 翻页功能
 //   - ESC 键处理
+// 2026-09-24 UI 共识对照审查 A-31…A-34、A-43：在线 Wiki 外链移出分类列表、放到目录页页眉（克隆「返回」按钮、
+//   同一位置）；空正文双语提示；条目名缩字下限 14；开关淡入淡出；输入走模态租约（ClaimModalInput）。
 // ============================================================================
 
 using System;
@@ -87,6 +89,12 @@ namespace BossRush
         private Button btnNextPage = null;
         private Button btnGoBack = null;
         private Button btnClose = null;
+        /// <summary>目录页页眉的「在线 Wiki」（克隆自 Btn_Back，同一位置；A-31）。为空时外链留在分类列表里兜底。</summary>
+        private Button btnOnlineWiki = null;
+        private TMP_Text txtOnlineWiki = null;
+        private ZombieModeUIHelper.ModalInputLease modalLease = null;
+        private Coroutine closeFade = null;
+        private CanvasGroup rootGroup = null;
 
         // ============================================================================
         // 分页状态
@@ -119,12 +127,15 @@ namespace BossRush
                     return;
                 }
 
+                StopCloseFade();
                 DisablePlayerInput();
                 uiRoot.SetActive(true);
                 IsUIOpen = true;
                 WikiContentManager.Instance.LoadCatalog();
                 ShowIndexPage();
                 SubscribeEscapeKey();
+                // 打开淡入（A-34）：书页是根画布，只淡不缩放
+                BossRushUI.PlayOpenAnimation(uiRoot);
             }
             catch (Exception e)
             {
@@ -138,10 +149,18 @@ namespace BossRush
 
             try
             {
-                if (uiRoot != null) uiRoot.SetActive(false);
+                // 先还输入、停听 ESC，再播 0.12 秒淡出（A-34）：动效不能变成输入延迟
                 IsUIOpen = false;
                 EnablePlayerInput();
                 UnsubscribeEscapeKey();
+                StopCloseFade();
+                // 打开时 PlayOpenAnimation 已在根上挂了 CanvasGroup；取不到或没有协程宿主就直接关
+                if (uiRoot != null && rootGroup == null) rootGroup = uiRoot.GetComponent<CanvasGroup>();
+                if (uiRoot != null && rootGroup != null && ModBehaviour.Instance != null && uiRoot.activeInHierarchy)
+                    closeFade = ModBehaviour.Instance.StartCoroutine(IntegrationUIFeedback.FadeOutAndDeactivate(
+                        rootGroup, uiRoot, BossRushUIKit.CloseSeconds));
+                else if (uiRoot != null)
+                    uiRoot.SetActive(false);
             }
             catch (Exception e)
             {
@@ -154,6 +173,7 @@ namespace BossRush
             WikiUIManager current = _instance;
             if (current == null) return;
             current.CloseUI();
+            current.StopCloseFade();
             current.UnsubscribeEscapeKey();
             current.EnablePlayerInput();
             if (current.uiRoot != null) UnityEngine.Object.Destroy(current.uiRoot);
@@ -316,6 +336,8 @@ namespace BossRush
                     txtArticleTitle.fontSizeMax = maxSize;
                 }
 
+                CreateOnlineWikiButton();
+
                 // 正文页文本
                 txtLeft = FindComponent<TMP_Text>(pageArticleLeft, "Txt_Left");
                 txtRight = FindComponent<TMP_Text>(pageArticleRight, "Txt_Right");
@@ -347,6 +369,32 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[WikiUI] 缓存节点异常: " + e.Message);
                 return false;
+            }
+        }
+
+        /// <summary>「在线 Wiki」（A-31）：克隆页眉 Btn_Back（同外观、同位置），在 BindButtonEvents 之前克隆所以不带「返回」回调。
+        /// 取不到 Btn_Back 或克隆失败就不建，外链留在分类列表里兜底。</summary>
+        private void CreateOnlineWikiButton()
+        {
+            if (btnGoBack == null) return;
+            try
+            {
+                GameObject clone = UnityEngine.Object.Instantiate(btnGoBack.gameObject, btnGoBack.transform.parent);
+                clone.name = "Btn_OnlineWiki";
+                txtOnlineWiki = clone.GetComponentInChildren<TMP_Text>(true);
+                btnOnlineWiki = clone.GetComponent<Button>();
+                btnOnlineWiki.onClick.RemoveAllListeners();
+                btnOnlineWiki.onClick.AddListener(() => Application.OpenURL(ExternalWikiUrl));
+                if (txtOnlineWiki == null) return;
+                txtOnlineWiki.enableWordWrapping = false;
+                txtOnlineWiki.fontSizeMax = txtOnlineWiki.fontSize > 0 ? txtOnlineWiki.fontSize : 18f;
+                txtOnlineWiki.fontSizeMin = 14f;
+                txtOnlineWiki.enableAutoSizing = true;
+            }
+            catch (Exception e)
+            {
+                btnOnlineWiki = null;
+                ModBehaviour.DevLog("[WikiUI] 在线 Wiki 按钮创建失败（外链留在分类列表里）: " + e.Message);
             }
         }
 
@@ -399,6 +447,9 @@ namespace BossRush
             if (btnNextPage != null) btnNextPage.gameObject.SetActive(showArticle);
             if (txtPageNumber != null) txtPageNumber.gameObject.SetActive(showArticle);
             if (btnGoBack != null) btnGoBack.gameObject.SetActive(showArticle);
+            // 页眉左上同一个位置：目录页是「在线 Wiki」，正文页是「返回」
+            if (btnOnlineWiki != null) btnOnlineWiki.gameObject.SetActive(showIndex);
+            if (txtOnlineWiki != null) txtOnlineWiki.text = L10n.T("在线 Wiki", "Online Wiki");
         }
 
         private void ShowIndexPage()
@@ -484,10 +535,10 @@ namespace BossRush
                 // 单行显示 + 自动缩字 + 溢出省略号，避免长标题换行显示丑
                 text.enableWordWrapping = false;
                 text.overflowMode = TextOverflowModes.Ellipsis;
-                // 保留 Prefab 字号作为最大值，允许缩到 10（满足绝大部分中文长标题）
+                // 保留 Prefab 字号作为最大值，最小缩到 14（A-33：旧值 10 在 1080p 下认不出字；再长就省略号）
                 float maxSize = text.fontSize > 0 ? text.fontSize : 16f;
                 text.enableAutoSizing = true;
-                text.fontSizeMin = 10f;
+                text.fontSizeMin = Mathf.Min(14f, maxSize);
                 text.fontSizeMax = maxSize;
             }
 
@@ -553,6 +604,9 @@ namespace BossRush
 
             foreach (var category in categories)
             {
+                // 外链不是分类（A-31）：有页眉「在线 Wiki」时不进列表；页眉按钮建不出来才留在这里兜底
+                if (category.Id == ExternalWikiCategoryId && btnOnlineWiki != null) continue;
+
                 var item = CreateListItem(categoryTemplate, categoryContainer,
                     "Category_" + category.Id, category.GetTitle());
 
@@ -662,7 +716,7 @@ namespace BossRush
         private void SetupContentWithTMPPaging(string content)
         {
             currentParsedContent = string.IsNullOrEmpty(content)
-                ? "[内容为空]"
+                ? L10n.T("这一篇还没写内容。", "This page has no content yet.")
                 : WikiContentManager.Instance.ParseMarkdown(content);
 
             // 统一排版属性
@@ -1059,16 +1113,26 @@ namespace BossRush
         // 输入控制
         // ============================================================================
 
+        /// <summary>模态租约（A-43）：时停、光标、输入占用与其它模态面板共用一个计数。幂等。</summary>
         private void DisablePlayerInput()
         {
-            try { if (uiRoot != null) InputManager.DisableInput(uiRoot); }
+            try { if (uiRoot != null && modalLease == null) modalLease = ZombieModeUIHelper.ClaimModalInput(uiRoot, "Wiki"); }
             catch (Exception e) { ModBehaviour.DevLog("[WikiUI] 禁用输入失败: " + e.Message); }
         }
 
         private void EnablePlayerInput()
         {
-            try { if (uiRoot != null) InputManager.ActiveInput(uiRoot); }
+            try { if (modalLease != null) modalLease.Release(); }
             catch (Exception e) { ModBehaviour.DevLog("[WikiUI] 启用输入失败: " + e.Message); }
+            modalLease = null;
+        }
+
+        /// <summary>停掉还没播完的关闭淡出，把书页恢复成完整可交互的样子（重开 / 卸载时）。</summary>
+        private void StopCloseFade()
+        {
+            if (closeFade != null && ModBehaviour.Instance != null) ModBehaviour.Instance.StopCoroutine(closeFade);
+            closeFade = null;
+            IntegrationUIFeedback.ResetFade(rootGroup);
         }
 
         // ============================================================================

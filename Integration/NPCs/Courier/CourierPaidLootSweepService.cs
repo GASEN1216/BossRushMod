@@ -349,9 +349,10 @@ namespace BossRush
             try
             {
                 OriginalConfirmDialogueResult result = await OriginalConfirmDialogueAdapter.Execute(
+                    L10n.T("现在打开上一批代收箱？", "Open your previous sweep crate now?"),
                     L10n.T(
-                        "阿稳这边还保留着上一批代收箱。\n是否现在打开箱子？",
-                        "Awen is still holding your previous sweep crate.\nOpen it now?"),
+                        "阿稳这边还保留着上一批代收箱。",
+                        "Awen is still holding your previous sweep crate."),
                     L10n.T("打开箱子", "Open Crate"),
                     L10n.T("取消", "Cancel"));
 
@@ -410,26 +411,34 @@ namespace BossRush
             string hl = SweepHighlightHex;
             string message = usePurification
                 ? L10n.T(
-                    "当前可扫箱子：<color=" + hl + ">" + plans.Count + "</color> 个\n本次费用：<color=" + hl + ">净化点 " + cost + "</color>\n阿稳会把场上的战利品统一整理进代收箱。\n确认开始扫箱？",
-                    "Sweepable lootboxes: <color=" + hl + ">" + plans.Count + "</color>\nCost: <color=" + hl + ">Purification " + cost + "</color>\nAwen will organize the battlefield loot into one pickup crate.\nStart sweep?")
+                    "当前可扫箱子：<color=" + hl + ">" + plans.Count + "</color> 个\n本次费用：<color=" + hl + ">净化点 " + cost + "</color>\n阿稳会把场上的战利品统一整理进代收箱。",
+                    "Sweepable lootboxes: <color=" + hl + ">" + plans.Count + "</color>\nCost: <color=" + hl + ">Purification " + cost + "</color>\nAwen will organize the battlefield loot into one pickup crate.")
                 : L10n.T(
-                    "当前可扫箱子：<color=" + hl + ">" + plans.Count + "</color> 个\n本次费用：<color=" + hl + ">￥" + cost + "</color>\n阿稳会把场上的战利品统一整理进代收箱。\n确认开始扫箱？",
-                    "Sweepable lootboxes: <color=" + hl + ">" + plans.Count + "</color>\nCost: <color=" + hl + ">$" + cost + "</color>\nAwen will organize the battlefield loot into one pickup crate.\nStart sweep?");
+                    "当前可扫箱子：<color=" + hl + ">" + plans.Count + "</color> 个\n本次费用：<color=" + hl + ">￥" + cost + "</color>\n阿稳会把场上的战利品统一整理进代收箱。",
+                    "Sweepable lootboxes: <color=" + hl + ">" + plans.Count + "</color>\nCost: <color=" + hl + ">$" + cost + "</color>\nAwen will organize the battlefield loot into one pickup crate.");
+            // 标题是问句（A-38），确认键写价钱（A-39，UI 共识「付费按钮写价钱」）
+            string price = usePurification
+                ? L10n.T("净化点 " + cost, "Purification " + cost)
+                : L10n.T("￥" + cost, "$" + cost);
+            string title = string.Format(L10n.T("让阿稳扫这 {0} 个箱子？", "Have Awen sweep these {0} crates?"), plans.Count);
+            string confirmText = L10n.T("扫箱 · ", "Sweep · ") + price;
 
             sweepPromptInProgress = true;
             int promptGeneration = serviceGeneration;
-            RunFreshSweepPromptAsync(npcTransform, message, promptGeneration).Forget();
+            RunFreshSweepPromptAsync(npcTransform, title, message, confirmText, promptGeneration).Forget();
             return true;
         }
 
-        private static async UniTaskVoid RunFreshSweepPromptAsync(Transform npcTransform, string message, int promptGeneration)
+        private static async UniTaskVoid RunFreshSweepPromptAsync(Transform npcTransform, string title, string message,
+            string confirmText, int promptGeneration)
         {
             bool promptOwnsState = false;
             try
             {
                 OriginalConfirmDialogueResult result = await OriginalConfirmDialogueAdapter.Execute(
+                    title,
                     message,
-                    L10n.T("确认扫箱", "Start Sweep"),
+                    confirmText,
                     L10n.T("取消", "Cancel"));
 
                 if (!TryClaimPromptState(npcTransform, promptGeneration, ref promptOwnsState))

@@ -218,5 +218,14 @@ namespace BossRush
         static void Stop() { Closed++; }
         public bool HasDetail { get { return !string.IsNullOrEmpty(_detailText.text); } }
         public IEnumerator Play() { return PlayRoutine(); }
+        // 汇总屏与收尾是纯表现（收牌、写汇总、按钮变「关闭」），这里只记下走了哪条路
+        public int Summaries;
+        void ShowSummary() { Summaries++; Finish(); }
+        void Finish() { _finished = true; }
+        public void SetPending(int count)
+        {
+            _pending = new List<PetNestExpeditionRecord>();
+            for (int i = 0; i < count; i++) _pending.Add(new PetNestExpeditionRecord { id = "trip" + i });
+        }
     }
 }

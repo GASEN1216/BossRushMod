@@ -42,6 +42,9 @@ namespace BossRush
         /// </summary>
         private bool _deferPageRoutes;
 
+        /// <summary>恢复壳里上一个操作的结果（取回押品成功 / 失败），下一次打开恢复壳时写在最上面。纯运行时。</summary>
+        private string _recoveryResultText;
+
         /// <summary>结算页上「已自动处理」的说明行，按奖励 operation 归属；换场自动作废。纯运行时。</summary>
         private readonly List<string> _settlementNotes = new List<string>();
         private string _settlementNotesOperationId;
@@ -189,6 +192,14 @@ namespace BossRush
             // 自动流程的中间相位不建页（名单、看盘、整备、赔率一闪而过），链条结束后统一路由一次
             if (_deferPageRoutes && IsPageLifecycle(lifecycle)) return;
 
+            // 押物品选择页盖在挂押注行的那几页上；离开这些相位（开打、转会、名人堂）就收起，不留到下一次
+            if (!IsItemBetPickerHost(lifecycle)) _showItemBetPicker = false;
+            if (_showItemBetPicker)
+            {
+                OpenPage(ModeHPage.ItemBet, BuildItemBetPickerPage());
+                return;
+            }
+
             switch (lifecycle)
             {
                 case ModeHLifecycle.Drafting:
@@ -242,6 +253,9 @@ namespace BossRush
         private void OpenPage(ModeHPage page, ModeHPageContent content)
         {
             if (_ui == null || _runState == null) return;
+            // 就地失败提示只画一次（审查 B-11）：谁建的页谁取走
+            if (content != null && !string.IsNullOrEmpty(_pageFailureText)) content.FailureText = _pageFailureText;
+            _pageFailureText = null;
             _ui.OpenPage(page, _runState.Lifecycle, _runState.RunId, content);
         }
 
@@ -489,6 +503,11 @@ namespace BossRush
                 && _runState.MatchIndex < ModeHConfig.SeasonMatchCount;
             page.Actions[0].Label = L10n.T(prefix + (nextIsMatch ? "Button_NextMatch" : "Button_Continue"));
             page.Actions[0].OnClick = delegate { RunAutoAdvance("next_match", archive); };
+            if (!nextIsMatch) return;
+            // 下一场押多少就在这一页定：页脚一排押注档，按钮上写着押多少（「下一场 · 押 5,000」）
+            AppendCashBetRow(page);
+            page.Actions[0].Label += DescribeStandingBetSuffix();
+            page.Actions[0].IsPrimary = true;
         }
 
         #endregion
@@ -510,6 +529,13 @@ namespace BossRush
                 ModeHStakeJournalDto journal = ModeHWarehouseStakeJournal.Export();
 
                 List<string> lines = ModeHRecoveryPanel.BuildLines(season, journal, technicalReasonId);
+                // 刚才在恢复壳里点的那一下结果如何，写在最上面（审查 B-11：旧版只走官方全局提示，可能被恢复壳盖住）
+                if (!string.IsNullOrEmpty(_recoveryResultText))
+                {
+                    lines.Insert(0, string.Empty);
+                    lines.Insert(0, _recoveryResultText);
+                    _recoveryResultText = null;
+                }
                 List<ModeHActionData> actions = BuildRecoveryActions(season);
                 // 证据不足时只读展示：允许看，不允许动资产（§22.4）
                 bool allowActions = ModeHWarehouseStakeJournal.IsSlotConsistent || journal == null;
@@ -608,13 +634,39 @@ namespace BossRush
                 actions.Add(new ModeHActionData
                 {
                     Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_AbandonSeason"),
-                    OnClick = AbandonSeasonFromRecovery,
+                    // 不可逆：先弹共享确认框写清后果（审查 B-02）；红描边红字、排最左由动作行统一处理（B-04）
+                    OnClick = ConfirmAbandonSeasonFromRecovery,
                     BypassReadOnly = true,
                     IsDanger = true,
                 });
             }
 
+            // 恒有一条出口（审查 B-10）：恢复壳现在占模态输入，只读或一个动作都没有时玩家不能被锁在这一页。
+            // 只收起面板、不动赛季与押品；回到鸭王杯入口会再打开它。
+            actions.Add(new ModeHActionData
+            {
+                Label = L10n.T("稍后处理", "Later"),
+                OnClick = HideRecoveryShell,
+                BypassReadOnly = true,
+                IsCancel = true,
+            });
             return actions;
+        }
+
+        /// <summary>放弃赛季前的确认（审查 B-02）：写清押品先原样还回仓库、这一季不再继续。</summary>
+        private void ConfirmAbandonSeasonFromRecovery()
+        {
+            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
+            {
+                Title = L10n.T("放弃本赛季？", "Abandon this season?"),
+                Body = L10n.T("这一场押的钱原样退回，旧档托管的仓库物品也还回仓库，然后结束这一季，之后可以重新开一季。",
+                    "Any money bet on this match is refunded and any storage items held from an old save go back to storage; then this season ends and you can start a new one."),
+                Warning = L10n.T("这一季没打完的场次、战绩与名声都不再继续。",
+                    "The remaining matches, results and fame of this season will not carry on."),
+                ConfirmLabel = L10n.T("放弃赛季", "Abandon season"),
+                Danger = true,
+                OnConfirm = AbandonSeasonFromRecovery,
+            });
         }
 
         /// <summary>磁盘上是否还有一份「活着但进行不下去」的赛季记录。</summary>
@@ -633,6 +685,7 @@ namespace BossRush
         /// </summary>
         private void AbandonSeasonFromRecovery()
         {
+            RefundCashBet("abandon_season");
             try
             {
                 ModeHStakeJournalDto journal = ModeHWarehouseStakeJournal.Active;
@@ -720,21 +773,13 @@ namespace BossRush
                 string failureReasonId;
                 if (ModeHRealStakeService.TryAbortReturn(runSeed, matchIndex, out failureReasonId))
                 {
-                    if (_owner != null)
-                    {
-                        _owner.ShowMessage(
-                            L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_ReturnEscrow_Done"));
-                    }
+                    _recoveryResultText = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_ReturnEscrow_Done");
                 }
                 else
                 {
                     ModBehaviour.CriticalLog("[ModeH] 恢复壳取回押品失败: "
                         + (failureReasonId != null ? failureReasonId : "unknown"));
-                    if (_owner != null)
-                    {
-                        _owner.ShowMessage(
-                            L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_ReturnEscrow_Failed"));
-                    }
+                    _recoveryResultText = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_ReturnEscrow_Failed");
                 }
                 // 重开恢复壳而不是留着旧内容：押品行与动作列表都要按新阶段重算，
                 // 成功后 EscrowCount 归零，这个按钮会自然消失。

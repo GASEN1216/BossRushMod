@@ -60,6 +60,13 @@ namespace BossRush
         /// 同一页刷新（由 ModeHUI.OpenPage 写入，调用方不用管）：只换内容，不播卡片与行的入场动画。
         /// </summary>
         internal bool Refresh;
+        /// <summary>
+        /// 一排分段按钮（UI 制作共识：同页并列选项做成分段，不堆进底部动作条）：
+        /// 页签式分页、下注档、免费侦察。AtTop 的排在页头下，其余排在动作带上方。见 ModeHUIPageRows.cs。
+        /// </summary>
+        public List<ModeHOptionRow> OptionRows = new List<ModeHOptionRow>();
+        /// <summary>刚才那一下为什么没成（锁盘被拒、押品被拒……）：红字画在按钮带正上方，就在点的地方（审查 B-11）。</summary>
+        public string FailureText;
     }
 
     /// <summary>一张卡片的只读数据。</summary>
@@ -92,6 +99,12 @@ namespace BossRush
         public Action OnClick;
         /// <summary>点击按钮文案。</summary>
         public string ActionLabel;
+        /// <summary>直接给的图标（押物品选择页的官方物品图标）；非空时优先于立绘键。</summary>
+        public Sprite Icon;
+        /// <summary>选中态（押物品选择页勾上的那几件）：金色描边 + 右上角角标。</summary>
+        public bool IsSelected;
+        /// <summary>选中角标的字；空时写「√ 已选」。</summary>
+        public string SelectedBadge;
     }
 
     /// <summary>一个底部动作按钮。</summary>
@@ -115,6 +128,8 @@ namespace BossRush
         /// 旧版把选中档画成禁用灰，看起来像「不能选」。
         /// </summary>
         public bool IsSelected;
+        /// <summary>整备选项选中时右上角角标的字；空时写「√ 已选」。首发 / 接力 / 已带上分开写，两个角标不再像多选（审查 B-08 / B-22）。</summary>
+        public string SelectedBadge;
         /// <summary>
         /// 是否无视恢复壳的只读置灰（`allowActions=false`）。
         ///
@@ -125,6 +140,11 @@ namespace BossRush
         /// 任何会**新增**资产风险的动作都不得使用这个旁路。
         /// </summary>
         public bool BypassReadOnly;
+        /// <summary>
+        /// 这颗是本页的「返回」（整备页、押物品选择页的「完成」，恢复壳的「稍后处理」）：ESC / 手柄取消等于点它。
+        /// 没有返回语义的页不标，ESC 照常交给官方暂停菜单（2026-09-24）。
+        /// </summary>
+        public bool IsCancel;
     }
 
     /// <summary>
@@ -161,6 +181,7 @@ namespace BossRush
             {
                 cursorY = CreateRealStakeNotice(surface, panelSize, cursorY);
             }
+            cursorY = CreateTopOptionRows(surface, panelSize, content, cursorY);
 
             switch (page)
             {
@@ -169,6 +190,7 @@ namespace BossRush
                     CreateChampionCards(surface, panelSize, content, cursorY);
                     break;
                 case ModeHPage.HallOfFame:
+                case ModeHPage.ItemBet:
                     CreateCardGrid(surface, panelSize, content, cursorY);
                     break;
                 case ModeHPage.Odds:
@@ -195,6 +217,8 @@ namespace BossRush
             {
                 CreateCompactRiskNotice(surface, panelSize, content);
             }
+            CreateFooterOptionRows(surface, panelSize, content);
+            CreateFailureLine(surface, panelSize, content);
             CreateActions(surface, panelSize, content);
         }
 
@@ -258,9 +282,11 @@ namespace BossRush
             return content.ShowRealStakeNotice && content.CompactRiskNotice;
         }
 
-        /// <summary>页脚风险行的下沿：有动作按钮时排在按钮带上面，否则贴面板底边。</summary>
+        /// <summary>页脚风险行的下沿：排在按钮带、失败提示与页脚分段行上面；都没有时贴面板底边。</summary>
         private static float GetCompactNoticeBottom(Vector2 panelSize, ModeHPageContent content)
         {
+            float stack = GetFooterStackTop(panelSize, content);
+            if (stack > 0f) return stack + 6f;
             return content.Actions.Count > 0 ? GetActionBandTop(panelSize, content) + 6f : CompactNoticeBottom;
         }
 
@@ -285,7 +311,11 @@ namespace BossRush
         /// </summary>
         private static float GetFloorReserve(Vector2 panelSize, ModeHPageContent content, float actionReserve)
         {
-            if (!HasCompactNotice(content)) return actionReserve;
+            // 动作带上方从下往上依次是：失败提示行 → 页脚分段行 → 页脚风险行（ModeHUIPageRows.GetFooterStackTop）
+            if (!HasCompactNotice(content))
+            {
+                return Mathf.Max(actionReserve, GetFooterStackTop(panelSize, content) + CardGap * 0.5f);
+            }
             return GetCompactNoticeBottom(panelSize, content) + CompactNoticeHeight + CardGap * 0.5f;
         }
 
@@ -406,14 +436,14 @@ namespace BossRush
             backing.raycastTarget = false;
             BossRushUI.ApplyFramedPanelSkin(backing, 10, BossRushUISkinPart.Card);
 
-            Sprite sprite = null;
-            if (!string.IsNullOrEmpty(data.PortraitKey))
+            Sprite sprite = data.Icon;
+            if (sprite == null && !string.IsNullOrEmpty(data.PortraitKey))
             {
                 sprite = CodexPortraitCache.GetPortrait(data.PortraitKey);
                 if (sprite == null) sprite = CodexPortraitCache.GetOfficialIcon(data.PortraitKey);
             }
             float inset = 12f;
-            Color tint = BossRushUIHero.ArtTint;
+            Color tint = data.Icon != null ? Color.white : BossRushUIHero.ArtTint;
             if (sprite == null)
             {
                 sprite = ModeHPresentationAssetCache.GetEmblemSprite();
@@ -526,21 +556,32 @@ namespace BossRush
                     startX + column * (cardWidth + CardGap),
                     topY - CardHeight * 0.5f - row * (CardHeight + CardGap));
 
-                Color accent = data.IsAnomaly
-                    ? BossRushUIColors.Warning
-                    : ModeHUI.ResolveRarityColor(data.GameQuality);
+                Color accent = data.IsSelected
+                    ? BossRushUIColors.WarningText
+                    : data.IsAnomaly
+                        ? BossRushUIColors.Warning
+                        : ModeHUI.ResolveRarityColor(data.GameQuality);
                 GameObject card = BossRushUI.CreateCard(
                     "ModeH_Card_" + i, host, position,
                     new Vector2(cardWidth, CardHeight),
                     BossRushUIColors.SurfaceRaised, accent, true);
 
+                if (data.IsSelected) AddSelectedBadge(card.transform, data.SelectedBadge);
+                // 有立绘键（名人堂冠军，审查 B-18）或物品图标时卡片顶上画一小块图，文字整体下移；立绘链与选人卡同一条
+                bool hasPortrait = !string.IsNullOrEmpty(data.PortraitKey) || data.Icon != null;
+                float shift = hasPortrait ? GridPortraitSize + 10f : 0f;
+                if (hasPortrait) CreatePortrait(card.transform, data, new Vector2(0f, -14f), GridPortraitSize);
                 // 标题 24 号配 40 高（至少 1.45×24+4≈39）：旧版 26 号塞 34 高，自动缩字缩到和副标题同级（UB-35）
                 CreateCardText(card.transform, "Title", data.Title, 24f,
-                    BossRushUIColors.TextPrimary, cardWidth, 134f, 40f);
+                    BossRushUIColors.TextPrimary, cardWidth, 134f - shift, 40f);
                 CreateCardText(card.transform, "Subtitle", data.Subtitle, 18f,
-                    BossRushUIColors.Accent, cardWidth, 90f, 30f);
+                    BossRushUIColors.Accent, cardWidth, 90f - shift, 30f);
+                // 正文下沿让开卡底的按钮（没有按钮时只留边距）
+                float bodyHeight = hasPortrait
+                    ? (52f - shift) + CardHeight * 0.5f - (data.OnClick != null ? 60f : 14f)
+                    : 136f;
                 CreateCardText(card.transform, "Body", data.Body, 17f,
-                    BossRushUIColors.TextSecondary, cardWidth, 52f, 136f);
+                    BossRushUIColors.TextSecondary, cardWidth, 52f - shift, bodyHeight);
                 if (!content.Refresh) BossRushUIEntranceAnimation.Play(card, 0.04f * Mathf.Min(i, MaxAnimatedRows), 0.26f, 14f);
 
                 if (data.OnClick == null) continue;
@@ -589,13 +630,14 @@ namespace BossRush
             float listTop;
             if (!string.IsNullOrEmpty(content.HeadlineValue))
             {
+                // 单行框高 ≥ 1.45×字号+4 再加共享的上下 2px 边距：18 号 → 34，17 号 → 32（审查 B-12：旧版都是 28）
                 CreateOddsText(surface, "ModeH_OddsHeadline", content.Headline, 18f,
-                    BossRushUIColors.TextSecondary, width, topY - 14f, 28f);
+                    BossRushUIColors.TextSecondary, width, topY - 17f, 34f);
                 CreateOddsText(surface, "ModeH_OddsValue", content.HeadlineValue, 46f,
-                    BossRushUIColors.WarningText, width, topY - 56f, 72f);
+                    BossRushUIColors.WarningText, width, topY - 62f, 72f);
                 CreateOddsText(surface, "ModeH_OddsNote", content.Body, 17f,
-                    BossRushUIColors.TextSecondary, width, topY - 106f, 28f);
-                listTop = topY - 132f;
+                    BossRushUIColors.TextSecondary, width, topY - 114f, 32f);
+                listTop = topY - 140f;
             }
             else
             {
@@ -604,6 +646,14 @@ namespace BossRush
                     BossRushUIColors.TextSecondary, width, topY - 36f, 72f);
                 note.enableWordWrapping = true;
                 listTop = topY - 84f;
+            }
+
+            // 押品选择器不可用（出击地图上仓库不存在，2026-09-24 起押注改押钱）时整块不画、赔率拆解占满宽：
+            // 不挂点不动的占位区（§4.14）
+            if (!content.RealStakeSelectorEnabled)
+            {
+                CreateLineList(surface, panelSize, content, listTop, float.PositiveInfinity, 0f, 0f, false);
+                return;
             }
 
             // 赔率拆解与押品选择器各占一列，长列表不能画到押品按钮底下。
@@ -966,6 +1016,8 @@ namespace BossRush
         {
             int count = content.Actions.Count;
             if (count == 0) return;
+            // 顺序（UI 制作共识第 4 节）：危险的次级操作排最左、与安全按钮拉开；主操作排最右；其余居中保持原序
+            List<ModeHActionData> actions = OrderActions(content.Actions);
 
             // 每行容量按**本页面板宽度**算，而不是写死一个数：结算页用的是更窄的
             // ReportPanelSize(1180)，同样 5 个按钮在主面板(1480)里放得下、在结算页就出框。
@@ -974,16 +1026,18 @@ namespace BossRush
             float usableWidth = panelSize.x - ModeHUI.SafeMargin * 2f;
             int fitPerRow = Mathf.Max(1, Mathf.FloorToInt((usableWidth + CardGap) / step));
             int perRow = Mathf.Min(count, Mathf.Min(fitPerRow, MaxSingleRowActions));
-            float startX = -((perRow - 1) * step) * 0.5f;
             float rowStride = ActionSize.y + CardGap;
-            int primary = ResolvePrimaryAction(content.Actions);
+            int primary = ResolvePrimaryAction(actions);
 
             for (int i = 0; i < count; i++)
             {
-                ModeHActionData action = content.Actions[i];
+                ModeHActionData action = actions[i];
                 if (action == null) continue;
                 int column = i % perRow;
                 int row = i / perRow;
+                // 末行按本行实际按钮数居中（审查 B-17：旧版按整行网格左对齐，末尾那颗落在最左边）
+                int inRow = Mathf.Min(perRow, count - row * perRow);
+                float startX = -((inRow - 1) * step) * 0.5f;
                 // 末行贴底，早先的行往上堆：最后一颗按钮永远在最容易够到的位置
                 int totalRows = (count + perRow - 1) / perRow;
                 float y = ModeHUI.SafeMargin + ActionSize.y * 0.5f
@@ -1031,6 +1085,8 @@ namespace BossRush
         /// <summary>卡片最窄宽度：再窄标题就折行折到不可读，宁可继续往下排。</summary>
         private const float CardMinWidth = 220f;
         private const float CardHeight = 300f;
+        /// <summary>卡片栅格里的小立绘（名人堂冠军）边长。</summary>
+        private const float GridPortraitSize = 72f;
 
         /// <summary>页头横幅：距面板顶边的内缩、圆角与插图焦点（原图从上往下 0.44 是两只鸭子的头与看台灯光之间）。</summary>
         private const float HeroInset = 10f;

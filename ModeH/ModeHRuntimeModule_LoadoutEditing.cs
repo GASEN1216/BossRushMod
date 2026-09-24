@@ -7,8 +7,8 @@ namespace BossRush
     {
         private string _selectedMatchCommandId;
         private bool _showLoadoutEditor;
-        private int _loadoutSection;
-        private int _loadoutOptionPage;
+        /// <summary>整备页当前分区：1 阵容 / 2 首发配装 / 3 接力配装 / 4 口令（页头下一排页签，审查 B-08）。</summary>
+        private int _loadoutSection = 1;
 
         private bool CanEditLoadout(ModeHMatchRosterDto roster)
         {
@@ -23,13 +23,15 @@ namespace BossRush
         /// 整备页的一行选项。<paramref name="selected"/> 为真时这一行画成选中卡（主色描边 + 「√ 已选」角标），
         /// 标签里不再拼行首「√ 」（审查 UB-11：选中与未选中只差一个字符）。
         /// </summary>
-        private void AddPreparationOption(ModeHPageContent page, string label, Action edit, bool selected = false)
+        private void AddPreparationOption(ModeHPageContent page, string label, Action edit, bool selected = false,
+            string selectedBadge = null)
         {
             ModeHMatchRosterDto owner = _season.matchRoster;
             page.PreparationOptions.Add(new ModeHActionData
             {
                 Label = label,
                 IsSelected = selected,
+                SelectedBadge = selectedBadge,
                 OnClick = delegate
                 {
                     if (!CanEditLoadout(owner)) return;
@@ -39,65 +41,70 @@ namespace BossRush
             });
         }
 
+        /// <summary>
+        /// 整备页（审查 B-08）：四个分区做成页头下的一排页签（阵容 / 首发配装 / 接力配装 / 口令），
+        /// 不再是「先进目录页、再点进分区、6 项一页翻页」；选项列表本身可以滚动，不分页。
+        /// 底栏只有一颗「完成」，回到赔率页。
+        /// </summary>
         private ModeHPageContent BuildLoadoutEditorPage()
         {
             ModeHPageContent page = new ModeHPageContent();
             page.Title = L10n.T("本场阵容、配装与口令", "Match roster, kits and command");
             ModeHMatchRosterDto roster = _season.matchRoster;
-            if (_loadoutSection == 0)
-            {
-                AddPreparationSection(page, 1, L10n.T("阵容与休息", "Roster and rest"));
-                AddPreparationSection(page, 2, L10n.T("首发配装：", "Starter kits: ")
-                    + ResolveProfileDisplayName(roster.matchStarterProfileId));
-                if (!string.IsNullOrEmpty(roster.matchRelayProfileId))
-                    AddPreparationSection(page, 3, L10n.T("接力配装：", "Relay kits: ")
-                        + ResolveProfileDisplayName(roster.matchRelayProfileId));
-                AddPreparationSection(page, 4, L10n.T("本场口令：", "Match command: ")
-                    + ResolveCommandDisplayName(_selectedMatchCommandId));
-            }
-            else if (_loadoutSection == 1) AddRosterOptions(page, roster);
+            bool hasRelay = !string.IsNullOrEmpty(roster.matchRelayProfileId);
+            if (_loadoutSection < 1 || _loadoutSection > 4 || (_loadoutSection == 3 && !hasRelay)) _loadoutSection = 1;
+
+            ModeHOptionRow tabs = new ModeHOptionRow();
+            tabs.AtTop = true;
+            AddSectionTab(tabs, roster, 1, L10n.T("阵容", "Roster"));
+            AddSectionTab(tabs, roster, 2, L10n.T("首发配装 ", "Starter kits ") + CountKits(roster.starterKitIds));
+            // 接力休息（单人出战）时没有接力配装可调：不挂这个页签（§4.14 不挂灰掉的占位项）
+            if (hasRelay) AddSectionTab(tabs, roster, 3, L10n.T("接力配装 ", "Relay kits ") + CountKits(roster.relayKitIds));
+            AddSectionTab(tabs, roster, 4, L10n.T("口令", "Command"));
+            page.OptionRows.Add(tabs);
+
+            if (_loadoutSection == 1) AddRosterOptions(page, roster);
             else if (_loadoutSection == 2) AddKitOptions(page,
                 FindSeasonProfile(roster.matchStarterProfileId), roster.starterKitIds);
             else if (_loadoutSection == 3) AddKitOptions(page,
                 FindSeasonProfile(roster.matchRelayProfileId), roster.relayKitIds);
             else AddCommandOptions(page, roster);
 
-            const int pageSize = 6;
-            int lastPage = Math.Max(0, (page.PreparationOptions.Count - 1) / pageSize);
-            _loadoutOptionPage = Math.Max(0, Math.Min(_loadoutOptionPage, lastPage));
-            int offset = _loadoutOptionPage * pageSize;
-            page.PreparationOptions = page.PreparationOptions.GetRange(offset,
-                Math.Min(pageSize, page.PreparationOptions.Count - offset));
-            if (_loadoutOptionPage > 0) AddPreparationPageAction(page, roster, -1, L10n.T("上一页", "Previous"));
-            if (_loadoutOptionPage < lastPage) AddPreparationPageAction(page, roster, 1, L10n.T("下一页", "Next"));
             page.Actions.Add(new ModeHActionData
             {
-                Label = _loadoutSection == 0 ? L10n.T("返回赔率预览", "Review odds") : L10n.T("返回整备", "Back to preparation"),
+                Label = L10n.T("完成", "Done"),
+                IsPrimary = true,
+                IsCancel = true, // ESC = 完成，回赔率页
                 OnClick = delegate
                 {
                     if (!CanEditLoadout(roster)) return;
-                    if (_loadoutSection == 0) _showLoadoutEditor = false;
-                    _loadoutSection = 0;
-                    _loadoutOptionPage = 0;
+                    _showLoadoutEditor = false;
+                    _loadoutSection = 1;
                     RouteUiForLifecycle(_runState.Lifecycle);
                 },
             });
             return page;
         }
 
-        private void AddPreparationSection(ModeHPageContent page, int section, string label)
+        /// <summary>「已带 n / 上限」：配装是多选，页签上直接写件数（审查 B-22）。</summary>
+        private static string CountKits(List<string> kits)
         {
-            AddPreparationOption(page, label, delegate { _loadoutSection = section; _loadoutOptionPage = 0; });
+            return (kits != null ? kits.Count : 0) + "/" + ModeHConfig.MaxKitsPerFighter;
         }
 
-        private void AddPreparationPageAction(ModeHPageContent page, ModeHMatchRosterDto roster, int delta, string label)
+        private void AddSectionTab(ModeHOptionRow tabs, ModeHMatchRosterDto roster, int section, string label)
         {
-            page.Actions.Add(new ModeHActionData { Label = label, OnClick = delegate
+            tabs.Options.Add(new ModeHActionData
             {
-                if (!CanEditLoadout(roster)) return;
-                _loadoutOptionPage += delta;
-                RouteUiForLifecycle(_runState.Lifecycle);
-            }});
+                Label = label,
+                IsSelected = _loadoutSection == section,
+                OnClick = delegate
+                {
+                    if (!CanEditLoadout(roster)) return;
+                    _loadoutSection = section;
+                    RouteUiForLifecycle(_runState.Lifecycle);
+                },
+            });
         }
 
         private void AddRosterOptions(ModeHPageContent page, ModeHMatchRosterDto roster)
@@ -119,7 +126,7 @@ namespace BossRush
                     }
                     roster.starterKitIds = BuildDefaultKitSelection(FindSeasonProfile(profileId));
                     roster.activeProfileId = profileId;
-                }, roster.matchStarterProfileId == id);
+                }, roster.matchStarterProfileId == id, L10n.T("√ 首发", "√ Starter"));
                 if (id == roster.matchStarterProfileId) continue;
                 AddPreparationOption(page, L10n.T("接力：", "Relay: ") + ResolveProfileDisplayName(id)
                     + "\n" + DescribeFighterState(FindSeasonProfile(id)), delegate
@@ -127,13 +134,13 @@ namespace BossRush
                     if (roster.matchRelayProfileId == profileId) return;
                     roster.matchRelayProfileId = profileId;
                     roster.relayKitIds = BuildDefaultKitSelection(FindSeasonProfile(profileId));
-                }, roster.matchRelayProfileId == id);
+                }, roster.matchRelayProfileId == id, L10n.T("√ 接力", "√ Relay"));
             }
             AddPreparationOption(page, L10n.T("接力休息，本场单人出战", "Rest relay; fight solo"), delegate
             {
                 roster.matchRelayProfileId = string.Empty;
                 roster.relayKitIds = new List<string>();
-            }, string.IsNullOrEmpty(roster.matchRelayProfileId));
+            }, string.IsNullOrEmpty(roster.matchRelayProfileId), L10n.T("√ 单人", "√ Solo"));
         }
 
         private void AddCommandOptions(ModeHPageContent page, ModeHMatchRosterDto roster)
@@ -180,7 +187,7 @@ namespace BossRush
                         if (selected.Count < ModeHConfig.MaxKitsPerFighter) selected.Add(choice.Spec.KitId);
                     }
                     selected.Sort(StringComparer.Ordinal);
-                }, selected.Contains(kit.Spec.KitId));
+                }, selected.Contains(kit.Spec.KitId), L10n.T("√ 已带上", "√ Equipped"));
             }
         }
 

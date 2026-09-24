@@ -1,8 +1,8 @@
 // ============================================================================
 // PetNestUI.cs - 遗种巢主面板（实施计划 步骤 10）
 // ============================================================================
-// 唯一一个会创建 canvas 的遗种巢界面文件（PetNestUIPages.cs 只在既有 surface 内
-// 摆内容，不碰 sortingOrder）。
+// 唯一一个会创建 canvas 的遗种巢界面文件（PetNestUIPages.cs / PetNestUINestPage.cs 只组装数据，
+// PetNestUILayout.cs 只在既有 surface 内摆内容，都不碰 sortingOrder）。
 //
 // 共享 UI 库纪律（AGENTS.md 4.14）：
 //   - sortingOrder 一律引用 BossRushUILayers 常量，禁裸数字；
@@ -13,10 +13,13 @@
 //
 // 惰性构建：面板只在玩家第一次交互时装配，关闭即销毁 canvas，不常驻。
 //
-// 2026-09-23 审美审查（UA-10 / 14–18 / 21–23）：卡片左侧画 Boss 立绘、博物馆改网格、
-// 分区标题独立样式、卡片可悬停 / 按下、真勾选框、动作条横排、ESC 关闭与关闭淡出、远征倒计时走表。
+// 2026-09-23 审美审查（UA-10 / 14–18 / 21–23）：立绘、博物馆网格、分区标题、可悬停的卡片、真勾选框、
+// ESC 关闭与关闭淡出、远征倒计时走表。
+// 2026-09-24 交互重排（owner：「一股脑把所有功能都做成按钮丢出来」）：巢页改成「列表 + 详情」两栏，
+// 其余页改成分区、按钮跟着它作用的那一行走；页签带待办数字；页眉加「说明」。两栏与分区的画法在 PetNestUILayout.cs。
 // 本文件底部另有两个各窗口共用的静态小件：立绘框（CreateIconFrame）、关闭淡出（FadeOutAndDestroy）；
 // ESC 组件 PetNestCancelKey 与异色流光 PetNestShinyTextShimmer 在 PetNestUIWidgets.cs。
+// 放生 / 亡命出发的确认走共享 BossRushConfirmDialog（本文件「确认弹窗」一节组装内容、挂 Anchor），不再自绘。
 // ============================================================================
 
 using System;
@@ -28,17 +31,15 @@ using UnityEngine.UI;
 namespace BossRush
 {
     /// <summary>遗种巢主面板。四页共用一个 canvas，切页只重画内容区。</summary>
-    internal sealed class PetNestUI : MonoBehaviour
+    internal sealed partial class PetNestUI : MonoBehaviour
     {
         #region 常量与状态
 
         private const string RootName = "BossRush_PetNestPanel";
         private static readonly Vector2 PanelSize = new Vector2(1180f, 760f);
-        private static readonly Vector2 CardSize = new Vector2(1080f, 140f);
 
         // 正文区（内容 + 动作条）的垂直预算。BodyTop 是面板局部坐标里正文顶边的 y。
-        // 旧写法把「有动作 = 412 / 无动作 = 572」两个数字直接写在 Refresh 里，
-        // 动作条条数一多就装不下；现在按条数分配，两个区共享同一份预算。
+        // 动作条按条数分配高度，两个区共享同一份预算。
         private const float BodyTop = 220f;
         private const float TotalBodyHeight = 572f;
         private const float ActionRowHeight = 56f;
@@ -47,10 +48,8 @@ namespace BossRush
         private const float MinActionAreaHeight = 72f;
         private const float MaxActionAreaHeight = 200f;
 
-        // 卡片左侧图框（UA-10）：104 见方、距左 22（让开最多三条身份色条）；有图时文字整体右移 IconColumn。
-        private const float IconSize = 104f;
-        private const float IconLeft = 22f;
-        private const float IconColumn = 112f;
+        /// <summary>分页内容区里一行的宽度（滚动内容的内宽）。</summary>
+        private const float ContentWidth = 1080f;
 
         // 博物馆网格（UA-17）：4 列 × 262 + 3 × 12 = 1084，正好是滚动内容的内宽。
         private const int GridColumns = 4;
@@ -73,10 +72,13 @@ namespace BossRush
         private Canvas _canvas;
         private Transform _contentRoot;
         private Transform _actionRoot;
+        private GameObject _actionDivider;
         private readonly Dictionary<PetNestUIPage, Button> _tabs = new Dictionary<PetNestUIPage, Button>();
+        private Button _helpButton;
         private ZombieModeUIHelper.ModalInputLease _modalLease;
         private PetNestCancelKey _cancelKey;
         private PetNestUIPage _page;
+        private bool _showHelp;
         private string _selectedPetId;
         private readonly List<GameObject> _spawned = new List<GameObject>();
         private readonly List<GameObject> _entranceTargets = new List<GameObject>();
@@ -85,11 +87,12 @@ namespace BossRush
         private bool _batchMode;
         private readonly HashSet<string> _batchSelection = new HashSet<string>();
 
-        // 同一页重绘时保住滚动位置：点出战 / 勾选之后列表跳回顶部，看起来就是「闪一下」。
+        // 同一页重绘时保住滚动位置：点选中 / 勾选之后列表跳回顶部，看起来就是「闪一下」。
         private bool _hasRendered;
         private PetNestUIPage _lastRenderedPage;
+        private bool _lastRenderedHelp;
 
-        // 远征页倒计时走表（UA-22）：只改在途卡片的正文，一秒一次，不整页重建。
+        // 倒计时走表（UA-22）：只改在途行 / 详情底栏的字，一秒一次，不整页重建。
         private readonly List<TextMeshProUGUI> _liveBodies = new List<TextMeshProUGUI>();
         private readonly List<Func<string>> _liveBodySources = new List<Func<string>>();
         private float _nextLiveTick;
@@ -123,6 +126,7 @@ namespace BossRush
                     _instance.Build();
                 }
                 _instance._page = page;
+                _instance._showHelp = false;
                 _instance.Refresh();
             }
             catch (Exception e)
@@ -187,9 +191,9 @@ namespace BossRush
 
         private void OnDestroy()
         {
-            // 子弹窗不能比宿主活得久，否则会留一个抢着 modal lease 的孤儿
+            // 子弹窗不能比宿主活得久，否则会留一个抢着 modal lease 的孤儿。
+            // 放生 / 亡命出发的共享确认框挂了 Anchor = 本宿主，宿主一没它就按「取消」收场（见 ShowConfirm）。
             PetNestRenameModal.Close();
-            PetNestReleaseConfirmModal.Close();
             ReleaseLease();
             if (_instance == this) _instance = null;
         }
@@ -222,19 +226,21 @@ namespace BossRush
             BuildHeader(surface.transform);
             BuildTabs(surface.transform);
 
-            // 内容区必须能滚动：巢容量上限 24、远征页 9 个档位按钮、博物馆的血脉卡 +
-            // 碑文都远超一屏。早先按固定 y 预算铺元素会静默截断——第 5 只之后的崽、
-            // 第三个远征目的地、整段纪念碑都会在 UI 上凭空消失。
+            // 分页内容区必须能滚动：远征的在途与派遣、孵化的蛋与遗魂账本、博物馆的血脉网格 + 碑文都远超一屏。
+            // 早先按固定 y 预算铺元素会静默截断——第三个远征目的地、整段纪念碑都会在 UI 上凭空消失。
             _contentRoot = CreateScrollList(
                 surface.transform, "Content", new Vector2(0f, 14f), new Vector2(1120f, 412f));
             _actionRoot = CreateScrollList(
                 surface.transform, "Actions", new Vector2(0f, -288f), new Vector2(1120f, 128f));
-            ZombieModeUIHelper.CreateSeparator("ActionDivider", surface.transform,
+            _actionDivider = ZombieModeUIHelper.CreateSeparator("ActionDivider", surface.transform,
                 new Vector2(0f, 0.5f), new Vector2(1f, 0.5f),
                 new Vector2(0f, -208f), 1f, BossRushUIColors.Divider);
 
+            // 巢页的两栏（PetNestUILayout.cs）：建好先藏着，巢页时才显示
+            BuildNestBody(surface.transform);
+
             _modalLease = ZombieModeUIHelper.ClaimModalInput(_canvas.gameObject, "PetNestPanel");
-            // ESC / 手柄取消 = 关闭（UA-21）；上面压着改名 / 放生 / 演出时让给它们
+            // ESC / 手柄取消 = 关闭（UA-21）；上面压着改名 / 放生 / 出发确认 / 演出时让给它们
             _cancelKey = PetNestCancelKey.Attach(_canvas.gameObject,
                 delegate { CloseAndPlayPendingReveal(); }, IsCoveredByChildWindow);
             BossRushUI.PlayOpenAnimation(surface);
@@ -243,7 +249,7 @@ namespace BossRush
         /// <summary>主面板上面还压着自家的弹窗或演出：ESC 该给它们。</summary>
         private static bool IsCoveredByChildWindow()
         {
-            return PetNestRenameModal.IsOpen || PetNestReleaseConfirmModal.IsOpen
+            return PetNestRenameModal.IsOpen || BossRushConfirmDialog.IsOpen
                 || PetNestHatchRevealView.IsOpen || PetNestExpeditionRevealView.IsOpen;
         }
 
@@ -252,10 +258,18 @@ namespace BossRush
             TextMeshProUGUI title = ZombieModeUIHelper.CreateText(
                 "Title", parent,
                 LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "SystemName"),
-                34f, new Vector2(-60f, 330f), new Vector2(1000f, 52f),
+                34f, new Vector2(-130f, 330f), new Vector2(860f, 52f),
                 TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
             title.fontStyle = FontStyles.Bold;
             BossRushUI.ApplyGameFont(title);
+
+            // 「说明」：系统介绍、出战、扩建、保底、远征风险、放生，原来散在巢页 24 张卡的下面（交互重排 #5）
+            _helpButton = ZombieModeUIHelper.CreateButton(
+                "Help", parent, L10n.T("说明", "Guide"),
+                new Vector2(0.5f, 0.5f), new Vector2(400f, 330f), new Vector2(110f, 44f),
+                BossRushUIColors.SurfaceRaised, 20f, new Vector2(100f, 40f),
+                delegate { _showHelp = !_showHelp; _batchMode = false; _batchSelection.Clear(); PetNestUIPages.ClearFailure(); Refresh(); }, true);
+            BossRushUIKit.StyleSecondaryButton(_helpButton);
 
             Button close = ZombieModeUIHelper.CreateButton(
                 "Close", parent, L10n.T("关闭", "Close"),
@@ -272,22 +286,43 @@ namespace BossRush
                 PetNestUIPage.Nest, PetNestUIPage.Hatch,
                 PetNestUIPage.Expedition, PetNestUIPage.Museum,
             };
-            string[] keys = { "Page_Nest", "Page_Hatch", "Page_Expedition", "Page_Museum" };
 
             for (int i = 0; i < pages.Length; i++)
             {
                 PetNestUIPage page = pages[i];
                 Button tab = ZombieModeUIHelper.CreateButton(
-                    "Tab_" + page, parent,
-                    LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + keys[i]),
+                    "Tab_" + page, parent, TabLabel(page),
                     new Vector2(0.5f, 0.5f),
                     new Vector2(-420f + i * 200f, 268f), new Vector2(190f, 44f),
                     BossRushUIColors.SurfaceRaised, 20f, new Vector2(180f, 40f),
-                    delegate { _page = page; _batchMode = false; _batchSelection.Clear(); PetNestUIPages.ClearFailure(); Refresh(); }, true);
+                    delegate { SwitchPage(page); }, true);
                 // 页签描一圈边：未选中的深底页签对面板底只有约 1.03:1，不描边就是几行浮着的字
                 BossRushUIKit.StyleSecondaryButton(tab);
                 _tabs[page] = tab;
             }
+        }
+
+        private static string TabLabel(PetNestUIPage page)
+        {
+            string key;
+            switch (page)
+            {
+                case PetNestUIPage.Hatch: key = "Page_Hatch"; break;
+                case PetNestUIPage.Expedition: key = "Page_Expedition"; break;
+                case PetNestUIPage.Museum: key = "Page_Museum"; break;
+                default: key = "Page_Nest"; break;
+            }
+            return LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + key);
+        }
+
+        private void SwitchPage(PetNestUIPage page)
+        {
+            _page = page;
+            _showHelp = false;
+            _batchMode = false;
+            _batchSelection.Clear();
+            PetNestUIPages.ClearFailure();
+            Refresh();
         }
 
         #endregion
@@ -298,129 +333,36 @@ namespace BossRush
         {
             try
             {
-                RectTransform contentRect = _contentRoot as RectTransform;
-                bool keepScroll = _hasRendered && _lastRenderedPage == _page && contentRect != null;
-                float previousScroll = keepScroll ? contentRect.anchoredPosition.y : 0f;
+                bool samePage = _hasRendered && _lastRenderedPage == _page && _lastRenderedHelp == _showHelp;
                 PruneBatchSelection();
-                ClearSpawned();
-                foreach (KeyValuePair<PetNestUIPage, Button> pair in _tabs)
-                {
-                    bool selected = pair.Key == _page;
-                    // 选中页签用 AccentFill（Accent 压深降饱和、走白字）：Accent 只用于描边与小字强调，
-                    // 不再整块平涂（2026-09-23 全 Mod 口径）
-                    Color color = selected ? BossRushUIColors.AccentFill : BossRushUIColors.SurfaceRaised;
-                    // 底色与标签色一起走共享入口；直接写 Image.color 会和 ColorTint 相乘，
-                    // 选中的页签反而比未选中的更暗。
-                    ZombieModeUIHelper.SetButtonBaseColor(pair.Value, color);
-                    TextMeshProUGUI label = pair.Value.GetComponentInChildren<TextMeshProUGUI>();
-                    if (label != null)
-                    {
-                        label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
-                    }
-                }
                 PetNestPageContent content = BuildPageContent();
                 if (content == null) return;
 
-                // 失败提示排在最前：不给反馈的话，巢满 / 写屏障 / 远征锁定这些失败
-                // 在界面上与"点歪了"完全无法区分
-                if (!string.IsNullOrEmpty(PetNestUIPages.LastFailureText))
-                {
-                    SpawnNotice(PetNestUIPages.LastFailureText, BossRushUIColors.DangerText);
-                }
-                if (!string.IsNullOrEmpty(content.Notice))
-                {
-                    SpawnNotice(content.Notice, BossRushUIColors.WarningText);
-                }
-                if (!string.IsNullOrEmpty(content.Body))
-                {
-                    SpawnLine(content.Body, 18f, BossRushUIColors.TextPrimary);
-                }
-                // 引导行在卡片之前（UA-14）
-                for (int i = 0; i < content.Header.Count; i++)
-                {
-                    SpawnLine(content.Header[i], 18f, BossRushUIColors.TextPrimary);
-                }
+                float[] scroll = samePage ? CaptureScroll() : null;
+                ClearSpawned();
+                RefreshHeader();
 
-                // 不再按 y 预算截断：内容区是滚动列表，全部铺出来
-                if (content.CardsAsGrid)
+                bool nest = content.Nest != null;
+                SetNestBodyVisible(nest);
+                _contentRoot.parent.gameObject.SetActive(!nest);
+                if (nest)
                 {
-                    SpawnGrid(content.Cards);
+                    _actionRoot.parent.gameObject.SetActive(false);
+                    _actionDivider.SetActive(false);
+                    RenderNest(content.Nest);
                 }
                 else
                 {
-                    for (int i = 0; i < content.Cards.Count; i++)
-                    {
-                        SpawnCard(content.Cards[i]);
-                    }
-                }
-                if (!string.IsNullOrEmpty(content.LinesHeader))
-                {
-                    SpawnSectionHeader(content.LinesHeader);
-                }
-                for (int i = 0; i < content.Lines.Count; i++)
-                {
-                    SpawnLine(content.Lines[i], 17f, BossRushUIColors.TextSecondary);
+                    RenderPage(content);
                 }
 
-                bool inlineActions = SpawnActions(content.Actions);
-
-                // 底部动作条按**实际条数**定高，剩下的全部还给内容区
-                // （owner 2026-09-20：「可选择的地方太小了而且中间有很多留白」）。
-                // 旧版无论一条还是九条都占 128px：一条时下面空一大截，
-                // 九条时挤在 128px 的小滚动窗里怎么都看不全。横排时固定一行。
-                RectTransform viewport = _contentRoot.parent.GetComponent<RectTransform>();
-                RectTransform actionViewport = _actionRoot.parent.GetComponent<RectTransform>();
-                bool hasActions = content.Actions.Count > 0;
-
-                float actionHeight = !hasActions
-                    ? 0f
-                    : (inlineActions
-                        ? MinActionAreaHeight
-                        : Mathf.Clamp(content.Actions.Count * ActionRowHeight + ActionPadding,
-                            MinActionAreaHeight, MaxActionAreaHeight));
-                float contentHeight = TotalBodyHeight - (hasActions ? actionHeight + ActionGap : 0f);
-
-                viewport.sizeDelta = new Vector2(1120f, contentHeight);
-                viewport.anchoredPosition = new Vector2(0f, BodyTop - contentHeight * 0.5f);
-
-                if (hasActions)
-                {
-                    actionViewport.sizeDelta = new Vector2(1120f, actionHeight);
-                    actionViewport.anchoredPosition = new Vector2(
-                        0f, BodyTop - contentHeight - ActionGap - actionHeight * 0.5f);
-                }
-
-                Transform divider = _contentRoot.parent.parent.Find("ActionDivider");
-                if (divider != null)
-                {
-                    RectTransform dividerRect = divider.GetComponent<RectTransform>();
-                    if (dividerRect != null)
-                    {
-                        dividerRect.anchoredPosition = new Vector2(
-                            0f, BodyTop - contentHeight - ActionGap * 0.5f);
-                    }
-                    divider.gameObject.SetActive(hasActions);
-                }
-                _actionRoot.parent.gameObject.SetActive(hasActions);
                 Canvas.ForceUpdateCanvases();
-                if (keepScroll)
-                {
-                    // 同页重绘（出战、勾选、放生后）：留在原来看的位置，按新内容高度夹住
-                    LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
-                    float maxScroll = Mathf.Max(0f, contentRect.rect.height - viewport.rect.height);
-                    contentRect.anchoredPosition = new Vector2(
-                        contentRect.anchoredPosition.x, Mathf.Clamp(previousScroll, 0f, maxScroll));
-                }
-                else
-                {
-                    _contentRoot.parent.GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
-                    // 切页才错峰入场；同页重绘（点选中 / 勾选）不重播，否则每点一下整页都在动
-                    if (contentRect != null) LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
-                    PlayCardEntrance();
-                }
-                _actionRoot.parent.GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
+                RestoreScroll(scroll);
+                // 切页才错峰入场；同页重绘（点选中 / 勾选）不重播，否则每点一下整页都在动
+                if (scroll == null) PlayCardEntrance();
                 _hasRendered = true;
                 _lastRenderedPage = _page;
+                _lastRenderedHelp = _showHelp;
                 _nextLiveTick = Time.unscaledTime + 1f;
             }
             catch (Exception e)
@@ -429,9 +371,91 @@ namespace BossRush
             }
         }
 
+        /// <summary>页签选中态 + 待办数字，「说明」按钮的字。</summary>
+        private void RefreshHeader()
+        {
+            foreach (KeyValuePair<PetNestUIPage, Button> pair in _tabs)
+            {
+                bool selected = pair.Key == _page && !_showHelp;
+                // 选中页签用 AccentFill（Accent 压深降饱和、走白字）：Accent 只用于描边与小字强调，
+                // 不再整块平涂（2026-09-23 全 Mod 口径）
+                Color color = selected ? BossRushUIColors.AccentFill : BossRushUIColors.SurfaceRaised;
+                // 底色与标签色一起走共享入口；直接写 Image.color 会和 ColorTint 相乘，
+                // 选中的页签反而比未选中的更暗。
+                ZombieModeUIHelper.SetButtonBaseColor(pair.Value, color);
+                TextMeshProUGUI label = pair.Value.GetComponentInChildren<TextMeshProUGUI>();
+                if (label != null)
+                {
+                    // 页签徽标（iOS 标签栏口径）：「孵化 ·2」= 有两件事能做，没事就只写名字
+                    label.text = TabLabel(pair.Key) + (PetNestUIPages.DescribeTabBadge(pair.Key) ?? string.Empty);
+                    label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
+                }
+            }
+            if (_helpButton != null)
+            {
+                TextMeshProUGUI help = _helpButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (help != null) help.text = _showHelp ? L10n.T("返回", "Back") : L10n.T("说明", "Guide");
+            }
+        }
+
+        /// <summary>分页（孵化 / 远征 / 博物馆 / 说明）：内容区 + 底部动作条。</summary>
+        private void RenderPage(PetNestPageContent content)
+        {
+            // 失败提示排在最前：不给反馈的话，巢满 / 写屏障 / 远征锁定这些失败
+            // 在界面上与"点歪了"完全无法区分
+            if (!string.IsNullOrEmpty(PetNestUIPages.LastFailureText))
+            {
+                SpawnLine(_contentRoot, PetNestUIPages.LastFailureText, 18f, BossRushUIColors.DangerText, ContentWidth);
+            }
+            if (!string.IsNullOrEmpty(content.Notice))
+            {
+                SpawnLine(_contentRoot, content.Notice, 18f, BossRushUIColors.WarningText, ContentWidth);
+            }
+            if (!string.IsNullOrEmpty(content.Body))
+            {
+                SpawnLine(_contentRoot, content.Body, 18f, BossRushUIColors.TextPrimary, ContentWidth);
+            }
+            if (content.CardsAsGrid) SpawnGrid(content.Cards);
+            for (int i = 0; i < content.Sections.Count; i++)
+            {
+                SpawnSection(_contentRoot, content.Sections[i], ContentWidth);
+            }
+
+            bool inlineActions = SpawnActions(content.Actions);
+
+            // 底部动作条按**实际条数**定高，剩下的全部还给内容区
+            // （owner 2026-09-20：「可选择的地方太小了而且中间有很多留白」）。横排时固定一行。
+            RectTransform viewport = _contentRoot.parent.GetComponent<RectTransform>();
+            RectTransform actionViewport = _actionRoot.parent.GetComponent<RectTransform>();
+            bool hasActions = content.Actions.Count > 0;
+
+            float actionHeight = !hasActions
+                ? 0f
+                : (inlineActions
+                    ? MinActionAreaHeight
+                    : Mathf.Clamp(content.Actions.Count * ActionRowHeight + ActionPadding,
+                        MinActionAreaHeight, MaxActionAreaHeight));
+            float contentHeight = TotalBodyHeight - (hasActions ? actionHeight + ActionGap : 0f);
+
+            viewport.sizeDelta = new Vector2(1120f, contentHeight);
+            viewport.anchoredPosition = new Vector2(0f, BodyTop - contentHeight * 0.5f);
+
+            if (hasActions)
+            {
+                actionViewport.sizeDelta = new Vector2(1120f, actionHeight);
+                actionViewport.anchoredPosition = new Vector2(
+                    0f, BodyTop - contentHeight - ActionGap - actionHeight * 0.5f);
+                RectTransform dividerRect = _actionDivider.GetComponent<RectTransform>();
+                dividerRect.anchoredPosition = new Vector2(0f, BodyTop - contentHeight - ActionGap * 0.5f);
+            }
+            _actionDivider.SetActive(hasActions);
+            _actionRoot.parent.gameObject.SetActive(hasActions);
+            _actionRoot.parent.GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
+        }
+
         /// <summary>
-        /// 远征页倒计时走表（UA-22）：一秒一次，只改在途卡片的正文；有一张到点就整页刷新一次去结算。
-        /// 没有走表的卡片时第一行就返回。模态租约把 timeScale 压到 0，所以用 unscaled 时间。
+        /// 倒计时走表（UA-22）：一秒一次，只改在途行与详情底栏的字；有一条到点就整页刷新一次去结算。
+        /// 没有走表的字时第一行就返回。模态租约把 timeScale 压到 0，所以用 unscaled 时间。
         /// </summary>
         private void Update()
         {
@@ -517,12 +541,13 @@ namespace BossRush
 
         private PetNestPageContent BuildPageContent()
         {
+            if (_showHelp) return PetNestUIPages.BuildHelpPage();
             switch (_page)
             {
                 case PetNestUIPage.Hatch:
                     return PetNestUIPages.BuildHatchPage(Refresh, OnHatched);
                 case PetNestUIPage.Expedition:
-                    return PetNestUIPages.BuildExpeditionPage(Refresh, ResolveSelectedPetId());
+                    return PetNestUIPages.BuildExpeditionPage(Refresh, ResolveDeparturePetId(), SelectPet);
                 case PetNestUIPage.Museum:
                     return PetNestUIPages.BuildMuseumPage();
                 default:
@@ -536,6 +561,7 @@ namespace BossRush
                     context.Release = OpenRelease;
                     context.SetBatchMode = SetBatchMode;
                     context.ToggleBatch = ToggleBatch;
+                    context.SendOnExpedition = SendOnExpedition;
                     return PetNestUIPages.BuildNestPage(context);
             }
         }
@@ -571,10 +597,17 @@ namespace BossRush
             for (int i = 0; i < stale.Count; i++) _batchSelection.Remove(stale[i]);
         }
 
-        /// <summary>选中一只崽作为远征目标。</summary>
+        /// <summary>选中一只崽（巢页详情、远征页的出发人选共用）。</summary>
         private void SelectPet(string petId)
         {
             _selectedPetId = petId;
+        }
+
+        /// <summary>巢页详情的「派去远征」：切到远征页，这只崽已经选好。</summary>
+        private void SendOnExpedition(string petId)
+        {
+            _selectedPetId = petId;
+            SwitchPage(PetNestUIPage.Expedition);
         }
 
         /// <summary>打开命名弹窗。关闭后刷新面板，让新名字立刻可见。</summary>
@@ -586,7 +619,7 @@ namespace BossRush
         /// <summary>打开放生确认弹窗（单只或批量）。关闭后刷新面板，让列表与遗魂账本立刻同步。</summary>
         private void OpenRelease(IList<string> petIds)
         {
-            PetNestReleaseConfirmModal.Open(petIds, Refresh);
+            ConfirmRelease(petIds, Refresh);
         }
 
         /// <summary>
@@ -633,6 +666,25 @@ namespace BossRush
                     return pets[i].id;
                 }
             }
+            return pets.Count > 0 && pets[0] != null ? pets[0].id : null;
+        }
+
+        /// <summary>
+        /// 远征页的出发人选：选中的崽能出发就用它，否则出战崽，否则第一只能出发的。
+        /// 不改 _selectedPetId——巢页里选着一只远征中的崽，远征页照样有人可派。
+        /// </summary>
+        private string ResolveDeparturePetId()
+        {
+            string reason;
+            PetNestPetRecord selected = PetNestService.TryGetPet(ResolveSelectedPetId());
+            if (selected != null && PetNestExpeditionService.CanDepart(selected, out reason)) return selected.id;
+            PetNestPetRecord deployed = PetNestService.DeployedPet;
+            if (deployed != null && PetNestExpeditionService.CanDepart(deployed, out reason)) return deployed.id;
+            List<PetNestPetRecord> pets = PetNestService.Pets;
+            for (int i = 0; i < pets.Count; i++)
+            {
+                if (pets[i] != null && PetNestExpeditionService.CanDepart(pets[i], out reason)) return pets[i].id;
+            }
             return null;
         }
 
@@ -642,6 +694,144 @@ namespace BossRush
         private void OnHatched(PetNestHatchResult result)
         {
             PetNestHatchRevealView.Play(result);
+        }
+
+        #endregion
+
+        #region 确认弹窗（放生 / 亡命出发）
+
+        /// <summary>
+        /// 放生确认（单只或批量）。2026-09-24 从自绘的放生确认框迁到共享 BossRushConfirmDialog（AGENTS §4.14），行为照旧：
+        ///   - petIds 里查不到的崽略过、去重，一只都查不到不弹空窗；
+        ///   - 名单用装饰名、最多点名 6 只（文案在 PetNestUINestPage.cs），单只异色崽的名字挂流光；稀有 / 出战单独一行黄字，
+        ///     「不可逆 + 不进纪念碑」黄字、返还遗魂绿字（审美审查 UA-20 的配色，用 token 转成的 hex）；
+        ///   - 确认只调服务层 TryReleasePets（单只也走它），失败原因经 NoteExternalFailure 回抛给面板；确认或取消都刷新面板。
+        /// </summary>
+        internal static void ConfirmRelease(IList<string> petIds, Action refresh)
+        {
+            List<PetNestPetRecord> pets = new List<PetNestPetRecord>();
+            if (petIds != null)
+            {
+                for (int i = 0; i < petIds.Count; i++)
+                {
+                    PetNestPetRecord pet = PetNestService.TryGetPet(petIds[i]);
+                    if (pet != null && !pets.Contains(pet)) pets.Add(pet);
+                }
+            }
+            if (pets.Count == 0) return;
+
+            List<string> ids = new List<string>();
+            for (int i = 0; i < pets.Count; i++) ids.Add(pets[i].id);
+            int refund = PetNestTuning.ReleaseSoulRefund * pets.Count;
+            BossRushConfirmDialog.Options options = new BossRushConfirmDialog.Options
+            {
+                Title = LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "Release_Title"),
+                Target = PetNestUIPages.DescribeReleaseTargets(pets),
+                Body = Colorize(PetNestUIPages.DescribeReleaseRareTargets(pets), BossRushUIColors.WarningText),
+                Warning = Colorize(LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "Release_Warn"),
+                        BossRushUIColors.WarningText)
+                    + "\n" + Colorize(L10n.T("返还遗魂 ", "Souls returned ") + "+" + refund
+                        + (pets.Count > 1 ? "（" + PetNestTuning.ReleaseSoulRefund + " × " + pets.Count + "）" : string.Empty),
+                        BossRushUIColors.SuccessText),
+                ConfirmLabel = LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "Release_Confirm"),
+                CancelLabel = LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "Release_Cancel"),
+                Danger = true,
+                OnConfirm = delegate
+                {
+                    string reason = null;
+                    bool ok;
+                    try
+                    {
+                        ok = PetNestService.TryReleasePets(ids, out reason);
+                    }
+                    catch (Exception e)
+                    {
+                        ok = false;
+                        reason = "release_failed:" + e.GetType().Name;
+                        ModBehaviour.DevLog("[PetNest] 放生失败: " + e.Message);
+                    }
+                    PetNestUIPages.NoteExternalFailure(ok, reason);
+                },
+            };
+            if (pets.Count == 1 && pets[0].shiny) options.DecorateTarget = PetNestShinyTextShimmer.Attach;
+            ShowConfirm(options, refresh);
+        }
+
+        /// <summary>
+        /// 亡命档出发确认。2026-09-24 从自绘的出发确认框迁到共享 BossRushConfirmDialog，行为照旧：
+        ///   - 崽查不到不弹空窗；写清谁、去哪、出发时固化的死亡率（红、20 号）、「回不来就只剩纪念碑」（黄）；
+        ///   - 确认只经 PetNestUIPages.TryDepartAndNote 调服务层 TryDepart，异常记 depart_failed，失败原因回抛给面板；
+        ///     确认或取消都刷新面板。
+        /// </summary>
+        internal static void ConfirmDepart(string petId, string destinationId, PetNestRiskTier tier, Action refresh)
+        {
+            PetNestPetRecord pet = PetNestService.TryGetPet(petId);
+            if (pet == null) return;
+            BossRushConfirmDialog.Options options = new BossRushConfirmDialog.Options
+            {
+                Title = L10n.T("确认亡命出发？", "Send on a desperate run?"),
+                Target = PetNestService.GetDecoratedPetName(pet) + L10n.T(" → ", " -> ")
+                    + PetNestLocalization.DescribeDestination(destinationId),
+                // 后果块底色是 DangerText（Danger 确认）：死亡率一行沿用它，真死说明单独改回黄字
+                Warning = "<size=20>" + LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "DeathRateLabel") + " "
+                        + PetNestLocalization.FormatPercent(PetNestExpeditionService.GetDeathRate(tier)) + "</size>\n"
+                    + Colorize(L10n.T("亡命档是真死：回不来，就只剩纪念碑上的名字。出发后不能召回。",
+                        "Desperate runs kill for real: if it doesn't come back, only its name remains on the memorial. It can't be recalled."),
+                        BossRushUIColors.WarningText),
+                ConfirmLabel = L10n.T("出发", "Depart"),
+                CancelLabel = L10n.T("再想想", "Not now"),
+                Danger = true,
+                OnConfirm = delegate
+                {
+                    try
+                    {
+                        PetNestUIPages.TryDepartAndNote(petId, destinationId, tier);
+                    }
+                    catch (Exception e)
+                    {
+                        PetNestUIPages.NoteExternalFailure(false, "depart_failed");
+                        ModBehaviour.DevLog("[PetNest] 亡命出发失败: " + e.Message);
+                    }
+                },
+            };
+            if (pet.shiny) options.DecorateTarget = PetNestShinyTextShimmer.Attach;
+            ShowConfirm(options, refresh);
+        }
+
+        /// <summary>
+        /// 遗种巢的确认一律走共享 BossRushConfirmDialog。层级用它默认的 ModalConfirm（3200），压在主面板
+        /// PetNestPanel（2100）与演出层 PetNestModal（3150）之上；模态租约与 ESC = 取消由共享框自己管。
+        /// Anchor 指向主面板宿主：面板被关掉 / 销毁（切图、dormant、卸载）时弹窗按「取消」收场，不留抢着租约的孤儿。
+        /// 确认或取消后刷新面板（原弹窗的 onClosed）；面板已经不在时不刷新。
+        /// </summary>
+        private static void ShowConfirm(BossRushConfirmDialog.Options options, Action refresh)
+        {
+            Action confirm = options.OnConfirm;
+            Action refreshIfOpen = delegate
+            {
+                if (refresh != null && _instance != null) refresh();
+            };
+            options.OnConfirm = delegate
+            {
+                try
+                {
+                    if (confirm != null) confirm();
+                }
+                finally
+                {
+                    refreshIfOpen();
+                }
+            };
+            options.OnCancel = refreshIfOpen;
+            options.Anchor = _instance != null ? _instance.gameObject : null;
+            BossRushConfirmDialog.Show(options);
+        }
+
+        /// <summary>给一段字包上 token 颜色（§4.14：富文本颜色用 token 转成的 hex）；空串原样返回（弹窗不画这一段）。</summary>
+        private static string Colorize(string text, Color color)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            return "<color=#" + ColorUtility.ToHtmlStringRGB(color) + ">" + text + "</color>";
         }
 
         #endregion
@@ -674,44 +864,33 @@ namespace BossRush
             go.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
         }
 
-        private void SpawnNotice(string text, Color color)
-        {
-            TextMeshProUGUI label = ZombieModeUIHelper.CreateText(
-                "Notice", _contentRoot, text, 18f,
-                Vector2.zero, new Vector2(1080f, 52f),
-                TextAlignmentOptions.Left, color);
-            BossRushUI.ApplyGameFont(label);
-            SetLayoutHeight(label.gameObject, BossRushUI.MeasureTextHeight(label, 1080f, 34f));
-            _spawned.Add(label.gameObject);
-        }
-
         /// <summary>
-        /// 正文行。字号梯度（UA-15）：页摘要 / 引导行 18 主色，账本 / 碑文 / 说明 17 次色；
-        /// 旧写法 19 / 20 / 24 挤在一起、区头也是 19 号次色，看不出层级。
+        /// 正文行。字号梯度（UA-15）：页摘要 / 失败 / 警示 18，区说明 16 次色。按实测高度撑开，不截断。
         /// </summary>
-        private void SpawnLine(string text, float fontSize, Color color)
+        private TextMeshProUGUI SpawnLine(Transform parent, string text, float fontSize, Color color, float width)
         {
             TextMeshProUGUI label = ZombieModeUIHelper.CreateText(
-                "Line", _contentRoot, text, fontSize,
-                Vector2.zero, new Vector2(1080f, 34f),
+                "Line", parent, text, fontSize,
+                Vector2.zero, new Vector2(width, 34f),
                 TextAlignmentOptions.Left, color);
             BossRushUI.ApplyGameFont(label);
-            SetLayoutHeight(label.gameObject, BossRushUI.MeasureTextHeight(label, 1080f, 30f));
+            SetLayoutHeight(label.gameObject, BossRushUI.MeasureTextHeight(label, width, 30f));
             _spawned.Add(label.gameObject);
+            return label;
         }
 
         /// <summary>
-        /// 分区标题（遗魂账本、纪念碑）：20 号粗体主色，上留 12 空白，下接一条分隔线（UA-15）。
+        /// 分区标题：20 号粗体主色，下接一条分隔线（UA-15）。
         /// 单行框高 34 ≥ 20×1.45+4，关了自动缩字也不会被 Ellipsis 整行清空。
         /// </summary>
-        private void SpawnSectionHeader(string text)
+        private void SpawnSectionHeader(Transform parent, string text, float width)
         {
             GameObject section = ZombieModeUIHelper.CreateRect(
-                "Section", _contentRoot, new Vector2(0.5f, 0.5f), new Vector2(1080f, 54f));
+                "Section", parent, new Vector2(0.5f, 0.5f), new Vector2(width, 50f));
             TextMeshProUGUI label = ZombieModeUIHelper.CreateText(
                 "SectionTitle", section.transform, text, 20f,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -29f), new Vector2(0f, 34f),
+                new Vector2(0f, -25f), new Vector2(0f, 34f),
                 TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
             label.fontStyle = FontStyles.Bold;
             label.enableAutoSizing = false;
@@ -722,212 +901,8 @@ namespace BossRush
             ZombieModeUIHelper.CreateSeparator("SectionRule", section.transform,
                 new Vector2(0f, 0f), new Vector2(1f, 0f),
                 new Vector2(0f, 4f), 2f, BossRushUIColors.Divider);
-            SetLayoutHeight(section, 54f);
+            SetLayoutHeight(section, 50f);
             _spawned.Add(section);
-        }
-
-        private void SpawnCard(PetNestCardData data)
-        {
-            if (data == null) return;
-
-            // 身份色条：炫彩画第一色、第二色两条；纯异色一条金色；
-            // 异色 + 炫彩 = 两条炫彩色 + 第三条金色标记（2026-09-23 复核第 7 项：旧写法金色把第一色顶掉了）。
-            Color chromaA, chromaB;
-            bool hasA = TryParseHexColor(data.ChromaHexA, out chromaA);
-            bool hasB = TryParseHexColor(data.ChromaHexB, out chromaB);
-            bool chroma = hasA && hasB;
-            Color accent = chroma
-                ? chromaA
-                : (data.Shiny
-                    ? BossRushUIColors.RarityLegendary
-                    : (data.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.Accent));
-
-            GameObject card = BossRushUI.CreateCard(
-                "Card", _contentRoot, Vector2.zero, CardSize,
-                BossRushUIColors.SurfaceRaised, accent, true);
-            SetLayoutHeight(card, CardSize.y);
-            _spawned.Add(card);
-            _entranceTargets.Add(card);
-
-            if (chroma)
-            {
-                AddIdentityRail(card.transform, "Card_Accent2", 8f, chromaB);
-                if (data.Shiny) AddIdentityRail(card.transform, "Card_ShinyMark", 13f, BossRushUIColors.RarityLegendary);
-            }
-
-            // 选中态用描边点出来（选中 = 远征 / 放生目标；批量模式下 = 已勾选），
-            // 否则玩家无从判断「作用在哪只」。描边是 CreateCard 建的 Stroke 子物体。
-            if (data.Selected)
-            {
-                Transform stroke = card.transform.Find("Stroke");
-                Image strokeImage = stroke != null ? stroke.GetComponent<Image>() : null;
-                if (strokeImage != null) strokeImage.color = BossRushUIColors.WarningText;
-            }
-
-            // 点卡片本身 = 选中 / 勾选。卡上的按钮在更上层，点按钮不会触发卡片。
-            // 走共享按钮入口（UA-16）：悬停向 Accent 微微提亮、按下压暗，带官方 hover / click 音效与按下回弹。
-            if (data.OnCardClick != null)
-            {
-                Image surface = card.GetComponent<Image>();
-                Button cardButton = card.AddComponent<Button>();
-                cardButton.targetGraphic = surface;
-                Navigation navigation = cardButton.navigation;
-                navigation.mode = Navigation.Mode.None;
-                cardButton.navigation = navigation;
-                Color rest = BossRushUIColors.SurfaceRaised;
-                ZombieModeUIHelper.ApplyButtonColors(cardButton, rest,
-                    Color.Lerp(rest, BossRushUIColors.Accent, 0.14f), rest);
-                cardButton.onClick.AddListener(new UnityEngine.Events.UnityAction(data.OnCardClick));
-            }
-
-            // 左侧立绘 / 图标（UA-10）：取不到就不画这一格，文字照旧从 24 起排
-            bool hasIcon = data.Icon != null;
-            if (hasIcon)
-            {
-                Color frameStroke = data.Shiny
-                    ? BossRushUIColors.RarityLegendary
-                    : (chroma ? chromaA : BossRushUIColors.Stroke);
-                CreateIconFrame(card.transform, "Portrait", data.Icon,
-                    new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(IconLeft, -18f),
-                    IconSize, frameStroke, data.IconLocked);
-            }
-
-            // 层级（UA-15）：标题 24 粗体主色 / 副标题 18 Accent / 正文 16 次色
-            TextMeshProUGUI title = ZombieModeUIHelper.CreateText(
-                "Title", card.transform, data.Title, 24f,
-                new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(24f, -18f), new Vector2(824f, 34f),
-                TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
-            title.rectTransform.pivot = new Vector2(0f, 1f);
-            title.margin = Vector4.zero;
-            title.fontStyle = FontStyles.Bold;
-            BossRushUI.ApplyGameFont(title);
-            ShiftForIcon(title.rectTransform, hasIcon);
-            // 异色的「小特效」：金字上走一道流光（owner 2026-09-20 / 09-22）
-            if (data.Shiny) PetNestShinyTextShimmer.Attach(title);
-
-            if (!string.IsNullOrEmpty(data.Subtitle))
-            {
-                TextMeshProUGUI subtitle = ZombieModeUIHelper.CreateText(
-                    "Subtitle", card.transform, data.Subtitle, 18f,
-                    new Vector2(0f, 1f), new Vector2(0f, 1f),
-                    new Vector2(24f, -54f), new Vector2(824f, 28f),
-                    TextAlignmentOptions.Left, BossRushUIColors.Accent);
-                subtitle.rectTransform.pivot = new Vector2(0f, 1f);
-                subtitle.margin = Vector4.zero;
-                BossRushUI.ApplyGameFont(subtitle);
-                ShiftForIcon(subtitle.rectTransform, hasIcon);
-            }
-
-            if (!string.IsNullOrEmpty(data.Body))
-            {
-                TextMeshProUGUI body = ZombieModeUIHelper.CreateText(
-                    "Body", card.transform, data.Body, 16f,
-                    new Vector2(0f, 1f), new Vector2(0f, 1f),
-                    new Vector2(24f, -86f), new Vector2(824f, 52f),
-                    TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
-                body.rectTransform.pivot = new Vector2(0f, 1f);
-                BossRushUI.ApplyGameFont(body);
-                ShiftForIcon(body.rectTransform, hasIcon);
-                float bodyWidth = hasIcon ? 824f - IconColumn : 824f;
-                float bodyHeight = BossRushUI.MeasureTextHeight(body, bodyWidth, 32f);
-                SetLayoutHeight(card, Mathf.Max(CardSize.y, 86f + bodyHeight + 18f));
-                if (data.LiveBody != null)
-                {
-                    _liveBodies.Add(body);
-                    _liveBodySources.Add(data.LiveBody);
-                }
-            }
-
-            if (data.Checkbox) CreateCheckbox(card.transform, data.Selected);
-
-            bool hasSecondary = !string.IsNullOrEmpty(data.SecondaryLabel);
-
-            // 卡片上的按钮一律是次级样式：深色底 + 描边（普通 Accent、危险 DangerText）。
-            // 旧写法每张崽卡都是一块实心青绿「设为出战」，十几张卡右侧整列都是色块（UA-23）。
-            if (!string.IsNullOrEmpty(data.ActionLabel))
-            {
-                bool enabled = data.OnClick != null;
-                Button action = ZombieModeUIHelper.CreateButton(
-                    "CardAction", card.transform, data.ActionLabel,
-                    new Vector2(1f, 0.5f),
-                    new Vector2(-114f, hasSecondary ? 26f : 0f),
-                    new Vector2(180f, hasSecondary ? 44f : 48f),
-                    enabled ? BossRushUIColors.SurfaceRaised : BossRushUIColors.Disabled,
-                    18f, new Vector2(170f, hasSecondary ? 40f : 44f),
-                    enabled ? new UnityEngine.Events.UnityAction(data.OnClick) : null,
-                    enabled);
-                if (enabled)
-                {
-                    AddButtonStroke(action, data.IsDanger ? BossRushUIColors.DangerText : BossRushUIColors.Accent);
-                }
-            }
-
-            if (hasSecondary)
-            {
-                Button secondary = ZombieModeUIHelper.CreateButton(
-                    "CardSecondary", card.transform, data.SecondaryLabel,
-                    new Vector2(1f, 0.5f), new Vector2(-114f, -26f), new Vector2(180f, 44f),
-                    data.OnSecondary != null ? BossRushUIColors.SurfaceRaised : BossRushUIColors.Disabled,
-                    17f, new Vector2(170f, 40f),
-                    data.OnSecondary != null ? new UnityEngine.Events.UnityAction(data.OnSecondary) : null,
-                    data.OnSecondary != null);
-                if (data.OnSecondary != null) BossRushUIKit.StyleSecondaryButton(secondary);
-            }
-        }
-
-        /// <summary>有图时把一段卡片文字右移 IconColumn、宽度减同样多（轴心在左上，左缘跟着走）。</summary>
-        private static void ShiftForIcon(RectTransform rect, bool hasIcon)
-        {
-            if (!hasIcon || rect == null) return;
-            rect.anchoredPosition = new Vector2(rect.anchoredPosition.x + IconColumn, rect.anchoredPosition.y);
-            rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Max(60f, rect.rect.width - IconColumn));
-        }
-
-        /// <summary>第二 / 第三条身份色条：与 CreateCard 的强调竖条同形，挨着排。</summary>
-        private static void AddIdentityRail(Transform card, string name, float x, Color color)
-        {
-            GameObject rail = ZombieModeUIHelper.CreateRect(
-                name, card,
-                new Vector2(0f, 0f), new Vector2(0f, 1f),
-                new Vector2(x, 0f), new Vector2(4f, -12f), new Vector2(0f, 0.5f));
-            Image railImage = rail.AddComponent<Image>();
-            railImage.color = color;
-            BossRushUI.ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
-            railImage.raycastTarget = false;
-        }
-
-        /// <summary>按钮描边（次级按钮的彩色轮廓）。共享按钮的底图是 8px 按钮档。</summary>
-        private static void AddButtonStroke(Button button, Color color)
-        {
-            Image image = button != null ? button.targetGraphic as Image : null;
-            if (image == null || image.transform.Find("Stroke") != null) return;
-            BossRushUI.ApplyPanelStroke(image, 8, BossRushUISkinPart.Button, color);
-        }
-
-        /// <summary>
-        /// 批量放生的勾选框（UA-18）：卡片右上角 26 见方，勾上 = Danger 底 + 白色「√」，没勾 = 深底 + 描边。
-        /// 不吃点击：点卡片本身就是勾选 / 取消。√ 是 GBK 收录字符。
-        /// </summary>
-        private static void CreateCheckbox(Transform card, bool ticked)
-        {
-            GameObject box = ZombieModeUIHelper.CreateRect(
-                "Checkbox", card, new Vector2(1f, 1f), new Vector2(1f, 1f),
-                new Vector2(-14f, -12f), new Vector2(26f, 26f), new Vector2(1f, 1f));
-            Image boxImage = box.AddComponent<Image>();
-            boxImage.color = ticked ? BossRushUIColors.Danger : BossRushUIColors.Surface;
-            boxImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(boxImage, 6, BossRushUISkinPart.Button);
-            BossRushUI.ApplyPanelStroke(boxImage, 6, BossRushUISkinPart.Button,
-                ticked ? BossRushUIColors.DangerText : BossRushUIColors.Stroke);
-            if (!ticked) return;
-            TextMeshProUGUI mark = ZombieModeUIHelper.CreateText(
-                "Tick", box.transform, "√", 18f,
-                Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero,
-                TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
-            mark.margin = Vector4.zero;
-            mark.fontStyle = FontStyles.Bold;
-            BossRushUI.ApplyGameFont(mark);
         }
 
         /// <summary>
@@ -1010,11 +985,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 底部动作按钮。**不截断**：远征页是 3 目的地 × 3 档位 = 9 个按钮，
-        /// 早先硬截断 6 个会让第三个目的地「极寒荒原」在整个游戏里不可达。
-        /// 动作区是滚动列表，多出来的往下排。
-        /// 不超过 4 条时横排右对齐（UA-23：旧写法三条横贯全宽的长条，像列表行不像按钮），
-        /// 危险操作排最左、与其余隔开 24；返回是否横排，供动作区定高。
+        /// 底部动作按钮。**不截断**：动作区是滚动列表，多出来的往下排。
+        /// 不超过 4 条时横排右对齐（UA-23），危险操作排最左、与其余隔开 24；返回是否横排，供动作区定高。
         /// </summary>
         private bool SpawnActions(List<PetNestActionData> actions)
         {
@@ -1037,16 +1009,16 @@ namespace BossRush
             int dangerCount = 0;
             for (int i = 0; i < actions.Count; i++)
             {
-                if (actions[i] != null && actions[i].IsDanger) { ordered.Add(actions[i]); dangerCount++; }
+                if (actions[i] != null && actions[i].IsDanger && !actions[i].IsPrimary) { ordered.Add(actions[i]); dangerCount++; }
             }
             for (int i = 0; i < actions.Count; i++)
             {
-                if (actions[i] != null && !actions[i].IsDanger) ordered.Add(actions[i]);
+                if (actions[i] != null && (!actions[i].IsDanger || actions[i].IsPrimary)) ordered.Add(actions[i]);
             }
             if (ordered.Count == 0) return false;
 
             GameObject row = ZombieModeUIHelper.CreateRect(
-                "ActionRow", _actionRoot, new Vector2(0.5f, 0.5f), new Vector2(1080f, InlineActionHeight));
+                "ActionRow", _actionRoot, new Vector2(0.5f, 0.5f), new Vector2(ContentWidth, InlineActionHeight));
             HorizontalLayoutGroup layout = row.AddComponent<HorizontalLayoutGroup>();
             layout.childAlignment = TextAnchor.MiddleRight;
             layout.spacing = InlineActionSpacing;
@@ -1059,7 +1031,7 @@ namespace BossRush
             _spawned.Add(row);
 
             bool gap = dangerCount > 0 && dangerCount < ordered.Count;
-            float available = 1080f - 8f - InlineActionSpacing * (ordered.Count - 1) - (gap ? InlineActionSpacing * 2f : 0f);
+            float available = ContentWidth - 8f - InlineActionSpacing * (ordered.Count - 1) - (gap ? InlineActionSpacing * 2f : 0f);
             float width = Mathf.Clamp(available / ordered.Count, InlineActionMinWidth, InlineActionMaxWidth);
             for (int i = 0; i < ordered.Count; i++)
             {
@@ -1073,28 +1045,41 @@ namespace BossRush
             return true;
         }
 
-        /// <summary>动作按钮：危险 = Danger 实心，其余一律次级（深底 + 描边），同一屏不堆色块。</summary>
+        /// <summary>
+        /// 动作按钮配色（§4.14 按钮口径）：主操作 AccentFill 实心（每屏最多一个）；主操作又是危险的（批量放生、亡命出发，
+        /// 后面还有一道确认）Danger 实心；危险但不是主操作的（详情里的「放生」）DangerText 描边的次级样式；其余一律次级。
+        /// </summary>
         private static Button CreateActionButton(Transform parent, string name, PetNestActionData action, Vector2 size)
         {
             bool enabled = action.Interactable && action.OnClick != null;
+            Color fill = action.IsPrimary
+                ? (action.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.AccentFill)
+                : BossRushUIColors.SurfaceRaised;
             Button button = ZombieModeUIHelper.CreateButton(
                 name, parent, action.Label,
                 new Vector2(0.5f, 0.5f), Vector2.zero, size,
-                action.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.SurfaceRaised,
-                18f, new Vector2(size.x - 20f, size.y - 4f),
+                fill, 18f, new Vector2(size.x - 20f, size.y - 4f),
                 action.OnClick != null ? new UnityEngine.Events.UnityAction(action.OnClick) : null,
                 enabled);
-            if (!action.IsDanger) BossRushUIKit.StyleSecondaryButton(button);
+            if (action.IsPrimary) return button;
+            if (!action.IsDanger)
+            {
+                BossRushUIKit.StyleSecondaryButton(button);
+                return button;
+            }
+            // 危险的次级按钮：红描边 + 红字（Apple 的 destructive 口径），深底不变，不做实心红块
+            AddButtonStroke(button, BossRushUIColors.DangerText);
+            TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>();
+            if (label != null) label.color = BossRushUIColors.DangerText;
             return button;
         }
 
-        private static bool TryParseHexColor(string hex, out Color color)
+        /// <summary>按钮描边（次级按钮的彩色轮廓）。共享按钮的底图是 8px 按钮档。</summary>
+        private static void AddButtonStroke(Button button, Color color)
         {
-            color = Color.white;
-            int r, g, b;
-            if (!PetNestChroma.TryParseHex(hex, out r, out g, out b)) return false;
-            color = new Color(r / 255f, g / 255f, b / 255f, 1f);
-            return true;
+            Image image = button != null ? button.targetGraphic as Image : null;
+            if (image == null || image.transform.Find("Stroke") != null) return;
+            BossRushUI.ApplyPanelStroke(image, 8, BossRushUISkinPart.Button, color);
         }
 
         #endregion

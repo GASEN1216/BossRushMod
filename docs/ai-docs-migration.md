@@ -281,3 +281,11 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 
 - 来源：owner 要求 UI / 交互 / 特效不要塑料感，本轮在共享层落地（`Common/UI/BossRushUIFeel.cs`、`Common/Effects/BossRushFxMaterials.cs`、`BossRushUIColors.AccentFill`）。长期规则写进 §4.14，守卫 `tests/BossRushUIFeelGuard.py` 登记进 §4.14 守卫列表。
 - 明细见 `FIX_TRACKER.md` 2026-09-23「全 Mod UI / 交互 / 特效」一节。
+
+## 2026-09-24 AGENTS §4.14 增加「交互骨架（UI 制作共识）」，新增 `docs/架构说明/UI制作共识.md`
+
+- 来源：owner 指出 UI「一股脑把所有功能都做成按钮丢出来」，遗种巢面板按主流交互重排（记录见 `docs/设计文档/遗种巢UI交互重排_2026-09-24.md`）；owner 点名鸭王杯入场选人页「干净」，要求沉淀成以后所有新 UI 都照做的共识。
+- 共识全文在 `docs/架构说明/UI制作共识.md`：页型选择、按钮归位、按钮层级、渐进披露、选择与状态、鸭王杯选人页的视觉拆解、反馈与空状态、交付前自检、待沉淀的共享件。§4.14 新增一条「交互骨架」写关键结论并指向全文。
+- 纳管：`docs/架构说明/` 默认 local-only，本文件在 `.gitignore` 单独放行（同 2026-09-22 两份设计提案的先例），其余架构说明仍 local-only。
+- 首轮对照审查（其他界面是否符合共识）放 `docs/代码审查/2026-09-24-UI共识对照审查.md`。
+- 同日追加：owner「全部修复」后确认弹窗抽成共享件 `Common/UI/BossRushConfirmDialog.cs`（第三个自绘确认框出现，按共识第 11 节抽取），§4.14「交互骨架」一句改为「确认一律走共享的 `BossRushConfirmDialog`，不再各写一份」；`UI制作共识.md` 第 11 节表格同步标「已共享」，并补 `ModeHUIPageRows`（正文选项行）一行。修复状态见审查报告第九节。

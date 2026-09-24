@@ -93,8 +93,17 @@ def main():
              r"[\s\S]{0,400}?AmmoViolated",
              "四种不可得分/违规状态已建模"),
             ("BuildFromModel",
-             r"BuildStatusText\(_module\.BuildHudModel\(\)\)",
-             "HUD 只消费 BuildHudModel 视图"),
+             r"ModeGHudModel model = _module\.BuildHudModel\(\);\s*"
+             r"string text = BuildStatusText\(model\);\s*SetProgressTarget\(model\);",
+             "HUD 只消费 BuildHudModel 视图（文字与进度条同一份快照）"),
+            # 2026-09-24 UI 共识对照审查 B-25：进度用进度条 + 数字。条长取两道门槛完成比的较小值，
+            # 与文字的向下取整同口径（条满不早于实际达标）；只有可得分状态才出现。
+            ("ObjectiveProgressBar",
+             r"private static bool TryGetObjectiveFill\(ModeGHudModel m, out float fill\)"
+             r"[\s\S]{0,700}?ModeGObjectiveState\.Active"
+             r"[\s\S]{0,300}?ModeGObjectiveState\.ThresholdsMet"
+             r"[\s\S]{0,500}?Mathf\.Min\(share, contribution\)",
+             "反制目标进度条只在可得分状态出现，条长取双门槛完成比的较小值"),
             ("FloorPercent",
              r"Mathf\.FloorToInt\(current \* 100f\)",
              "进度百分比向下取整（显示达标不早于实际达标）"),

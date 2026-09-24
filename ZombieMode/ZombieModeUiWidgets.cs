@@ -9,7 +9,8 @@
 //   - ZombieModeUiNudge：点了但做不成（净化点不够）时，按钮上方浮一行「还差 N 净化点」并横向抖一下。
 //     官方 Toast 画在官方 HUD 画布上，被 30000 层的遮罩压着，玩家看不见（UC-27）。
 //   - ZombieModeCardHover：奖励卡悬停时描边提亮（事件驱动，不逐帧）。
-//   - ZombieModeHudBar：HUD 上 4px 的读条，fillAmount 按 unscaled 时间 MoveTowards 过渡，与帧率无关。
+//   - ZombieModeClickableCard：撤离抉择与开局流派的整卡可点（2026-09-24 UI 共识对照审查 B-28）。
+//   - ZombieModeHudBar：HUD 上 4px 的圆头读条，长度按 unscaled 时间 MoveTowards 过渡，与帧率无关（B-30）。
 //   动效都走 unscaled 时间并过 BossRushUI.IsGamePaused() 门，播完 enabled = false。
 // ============================================================================
 
@@ -210,13 +211,45 @@ namespace BossRush
     }
 
     /// <summary>
-    /// HUD 读条：细轨 + Filled 填充。<see cref="SetTarget"/> 只记目标，<see cref="Tick"/> 由宿主的 Update 每帧调（O(1)、无分配）。
+    /// 整张卡当按钮（UI 制作共识第 7 节第 4 条，照 Mode H 选人卡 MakeCardClickable 的写法；UI 共识对照审查 B-28）：
+    /// 卡片底图就是按钮图（ColorBlock 绝对色、共享音效与按下回弹），悬停时描边提亮；卡里的按钮只是把「能点」说清楚，
+    /// 点它只触发它自己。卡片必须是 BossRushUI.CreateCard 建的（带名为 Stroke 的描边子物体）。
+    /// </summary>
+    internal static class ZombieModeClickableCard
+    {
+        internal static Button Make(GameObject card, UnityEngine.Events.UnityAction onClick)
+        {
+            Image image = card != null ? card.GetComponent<Image>() : null;
+            if (image == null || onClick == null)
+            {
+                return null;
+            }
+            Button button = card.AddComponent<Button>();
+            button.targetGraphic = image;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            ZombieModeUIHelper.SetButtonBaseColor(button, BossRushUIColors.SurfaceRaised);
+            button.onClick.AddListener(onClick);
+            Transform stroke = card.transform.Find("Stroke");
+            if (stroke != null)
+            {
+                ZombieModeCardHover.Attach(card, stroke.GetComponent<Image>());
+            }
+            return button;
+        }
+    }
+
+    /// <summary>
+    /// HUD 读条：细轨 + 圆头填充。<see cref="SetTarget"/> 只记目标，<see cref="Tick"/> 由宿主的 Update 每帧调（O(1)、无分配）。
     /// 读条跳得比较远（新一轮准备期从 0 回到满）时直接落位，不从 0 慢慢爬上去。
+    /// 填充长度由 anchorMax.x 驱动、走细条档圆角（UI 共识对照审查 B-30，照血猎追击状态卡 AnimateBar）：
+    /// Filled 配不了九宫格圆角，方头会戳出圆角轨道；几乎空的时候圆角细条会缩成一个点，干脆不画。
     /// </summary>
     internal sealed class ZombieModeHudBar
     {
         private const float UnitsPerSecond = 2.5f;
+        private const float MinVisibleFill = 0.02f;
         private readonly GameObject root;
+        private readonly RectTransform fillRect;
         private readonly Image fill;
         private float current;
         private float target;
@@ -231,16 +264,16 @@ namespace BossRush
             track.raycastTarget = false;
             BossRushUI.ApplyPanelSkin(track, 2, BossRushUISkinPart.Hairline);
 
-            GameObject fillObject = ZombieModeUIHelper.CreateRect("Fill", root.transform, Vector2.zero, Vector2.one,
-                Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+            GameObject fillObject = ZombieModeUIHelper.CreateRect("Fill", root.transform, Vector2.zero, new Vector2(0f, 1f),
+                Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
+            fillRect = fillObject.GetComponent<RectTransform>();
+            fillRect.offsetMin = Vector2.zero;
+            fillRect.offsetMax = Vector2.zero;
             fill = fillObject.AddComponent<Image>();
-            fill.sprite = BossRushUI.GetSolidSprite();
-            fill.type = Image.Type.Filled;
-            fill.fillMethod = Image.FillMethod.Horizontal;
-            fill.fillOrigin = (int)Image.OriginHorizontal.Left;
-            fill.fillAmount = 0f;
             fill.color = BossRushUIColors.Accent;
             fill.raycastTarget = false;
+            BossRushUI.ApplyPanelSkin(fill, 2, BossRushUISkinPart.Hairline);
+            fillObject.SetActive(false);
             root.SetActive(false);
         }
 
@@ -252,15 +285,13 @@ namespace BossRush
                 root.SetActive(show);
                 if (show)
                 {
-                    current = Mathf.Clamp01(value);
-                    fill.fillAmount = current;
+                    ApplyFill(Mathf.Clamp01(value));
                 }
             }
             target = Mathf.Clamp01(value);
             if (Mathf.Abs(target - current) > 0.5f)
             {
-                current = target;
-                fill.fillAmount = current;
+                ApplyFill(target);
             }
             if (fill.color != color)
             {
@@ -274,8 +305,18 @@ namespace BossRush
             {
                 return;
             }
-            current = Mathf.MoveTowards(current, target, UnitsPerSecond * unscaledDeltaTime);
-            fill.fillAmount = current;
+            ApplyFill(Mathf.MoveTowards(current, target, UnitsPerSecond * unscaledDeltaTime));
+        }
+
+        private void ApplyFill(float value)
+        {
+            current = value;
+            fillRect.anchorMax = new Vector2(value, 1f);
+            bool show = value > MinVisibleFill;
+            if (fill.gameObject.activeSelf != show)
+            {
+                fill.gameObject.SetActive(show);
+            }
         }
     }
 }

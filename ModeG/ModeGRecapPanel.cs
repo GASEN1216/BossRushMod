@@ -68,7 +68,7 @@ namespace BossRush
 
         /// <summary>
         /// 组装宿敌预告尾行（失败横幅与失败 recap 共用）。
-        /// written  -> 下局宿敌 &lt;Boss&gt; Rank N；
+        /// written  -> 下局宿敌 &lt;Boss&gt; N 阶（英文 Rank N）；
         /// blocked  -> 击杀者 &lt;Boss&gt; · 宿敌记录受版本保护，未变更；
         /// 其余     -> 未形成新宿敌。
         /// </summary>
@@ -80,7 +80,7 @@ namespace BossRush
                 {
                     return L10n.T("BossRush_ModeG_NextNemesis") + " "
                         + ModeGEncounterVariation.GetManagedBossDisplayName(attribution.bossKey)
-                        + " " + L10n.T("BossRush_ModeG_RankWord") + " " + attribution.rank;
+                        + " " + string.Format(L10n.T("BossRush_ModeG_RankWord"), attribution.rank);
                 }
                 if (attribution.storeBlocked && !string.IsNullOrEmpty(attribution.bossKey))
                 {
@@ -223,15 +223,17 @@ namespace BossRush
                 {
                     reward += "\n" + ModeGRichText.DangerTag + nemesisPreviewLine + "</color>";
                 }
-                cursor += PlaceSection(st, "RewardCard", 0, cursor, reward, 18f, BossRushUIColors.TextPrimary,
+                // 字号收四级（UI 共识对照审查 B-24）：标题 32 / 概要 20 / 奖励、三轴与按钮 16 / 纪录 14。
+                cursor += PlaceSection(st, "RewardCard", 0, cursor, reward, 16f, BossRushUIColors.TextPrimary,
                     victory ? BossRushUIColors.WarningText : BossRushUIColors.DangerText) + SectionGap;
 
                 // 卡 2：三轴本局尝试/破解计数 + 本局契约达成状态
                 string axes = ComposeAxisLines(module);
                 string contract = ComposeContractLine(module);
                 if (!string.IsNullOrEmpty(contract)) axes += "\n" + contract;
+                // 强调色只用本模式的金色与状态色（B-24）：三轴卡是中性信息，竖条用描边色，不再混一道薄荷绿。
                 cursor += PlaceSection(st, "AxesCard", 1, cursor, axes, 16f, BossRushUIColors.TextPrimary,
-                    BossRushUIColors.Accent) + SectionGap;
+                    BossRushUIColors.Stroke) + SectionGap;
 
                 // 卡 3：印章目标 + 图鉴 near-miss + 累计纪录（读 profile 累计数据；读不到的行跳过）
                 string records = JoinLines(ComposeSealLine(), ComposeCodexLine(), ComposeProfileLine());
@@ -247,7 +249,7 @@ namespace BossRush
                 Button closeButton = ZombieModeUIHelper.CreateButton(
                     "Close", st, closeLabel,
                     new Vector2(0.5f, 1f), new Vector2(0f, -(cursor + CloseButtonSize.y * 0.5f)), CloseButtonSize,
-                    BossRushUIColors.SurfaceRaised, 18f, CloseButtonSize - new Vector2(20f, 8f),
+                    BossRushUIColors.SurfaceRaised, 16f, CloseButtonSize - new Vector2(20f, 8f),
                     () => DismissActive(), true);
                 BossRushUIKit.StyleSecondaryButton(closeButton);
                 cursor += CloseButtonSize.y + PadBottom;
@@ -420,7 +422,10 @@ namespace BossRush
             return -1;
         }
 
-        /// <summary>三轴本局尝试/破解计数（尝试=该轴反制生效的波数；破解=该轴 Resolve 数）。</summary>
+        /// <summary>
+        /// 三轴本局遇上/破解计数（遇上=该轴反制生效的波数；破解=该轴决意数）。
+        /// 白话（UI 共识对照审查 B-25）：「距离回声：遇上 2 波 · 破解 1 次」，不再是「2 次尝试 · 1 次破解」。
+        /// </summary>
         private static string ComposeAxisLines(ModeGRuntimeModule module)
         {
             ModeGAdaptiveCombat adaptive = module.Adaptive;
@@ -431,14 +436,16 @@ namespace BossRush
             int ammoBreaks = adaptive != null ? adaptive.ResolveAmmo : 0;
             int attributeBreaks = adaptive != null ? adaptive.ResolveAttribute : 0;
 
-            string attemptsWord = " " + L10n.T("BossRush_ModeG_Axis_Attempts");
-            string breaksWord = " " + L10n.T("BossRush_ModeG_Axis_Breaks");
-            return L10n.T("BossRush_ModeG_AxisDistance") + ": " + distanceAttempts + attemptsWord
-                    + " · " + distanceBreaks + breaksWord
-                + "\n" + L10n.T("BossRush_ModeG_AxisAmmo") + ": " + ammoAttempts + attemptsWord
-                    + " · " + ammoBreaks + breaksWord
-                + "\n" + L10n.T("BossRush_ModeG_AxisAttribute") + ": " + attributeAttempts + attemptsWord
-                    + " · " + attributeBreaks + breaksWord;
+            return ComposeAxisLine("BossRush_ModeG_AxisDistance", distanceAttempts, distanceBreaks)
+                + "\n" + ComposeAxisLine("BossRush_ModeG_AxisAmmo", ammoAttempts, ammoBreaks)
+                + "\n" + ComposeAxisLine("BossRush_ModeG_AxisAttribute", attributeAttempts, attributeBreaks);
+        }
+
+        private static string ComposeAxisLine(string axisKey, int attempts, int breaks)
+        {
+            return L10n.T(axisKey) + L10n.T("：", ": ")
+                + string.Format(L10n.T("BossRush_ModeG_Axis_Attempts"), attempts)
+                + " · " + string.Format(L10n.T("BossRush_ModeG_Axis_Breaks"), breaks);
         }
 
         /// <summary>本局契约达成状态（终局进度快照评估）。</summary>

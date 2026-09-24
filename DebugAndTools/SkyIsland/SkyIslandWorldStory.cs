@@ -337,14 +337,18 @@ namespace BossRush
                     // 谢礼可能落在苇白身旁，也可能落在留言板旁（她不在时），不写「她脚边」。
                     L10n.T(" 已放在一旁）", " set down nearby)"));
             }));
-            choices.Add(new SkyIslandStoryPresentation.Choice(
-                L10n.T("退掉这一单 · ", "Drop this contract · ") + contract.Describe(), delegate
+            // 退单会把这一单的进度作废：放在列表末尾、次级色，点了先换到确认页（面板自己的换页，UI 共识对照审查 B-14）。
+            string dropped = contract.Describe();
+            choices.Add(SkyIslandStoryPresentation.AsSecondary(new SkyIslandStoryPresentation.Choice(
+                L10n.T("退掉这一单 · ", "Drop this contract · ") + dropped, () => ConfirmPage(
+                    L10n.T("退掉这一单？", "Drop this contract?"), DropContractWarning(dropped),
+                    L10n.T("确认退单", "Drop it"), delegate
             {
                 string message;
                 string reply = Refreshed(contract.TryAbandon(out message), message);
                 if (!contract.HasActive) story.LogTiming("contract_drop", null);
                 return reply;
-            }));
+            }, SkyIslandUiArt.GetScene("Search_B")))));
         }
 
         /// <summary>装置版委托的奖励落点：用标记自身位置，避免奖励箱压在玩家身上。</summary>
@@ -417,7 +421,7 @@ namespace BossRush
         }
         private SkyIslandStoryPresentation.Choice Challenge(string label, string id)
         {
-            return new SkyIslandStoryPresentation.Choice(label, delegate
+            Func<string> begin = delegate
             {
                 if (!session.BeginStoryChallenge(id))
                     return L10n.T("现在开不了：走近挑战地点，看看前置目标做完没有，或者等上一场仗打完。",
@@ -428,7 +432,10 @@ namespace BossRush
                 session.Announce(started, false);
                 story.LogTiming("challenge", id);
                 return started;
-            });
+            };
+            // 两个具名对手都是「和解 / 战胜」二选一：打赢就关掉和解线，开打前先换到确认页（UI 共识对照审查 B-15）。
+            return new SkyIslandStoryPresentation.Choice(label, () => ConfirmPage(ChallengeConfirmTitle(id),
+                ChallengeWarning(id), L10n.T("开打", "Start the fight"), begin, null));
         }
         /// <summary>
         /// 本次面板里**被隐藏的选项**留下的「下一步」。正文取第一条。
@@ -792,11 +799,11 @@ namespace BossRush
             if (BlockedByCombat()) return;
             reopen = delegate { OpenJournalPeople(); };
             var choices = new List<SkyIslandStoryPresentation.Choice>();
-            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("信鸽来信", "Pigeon letters"),
+            choices.Add(Section(choices, L10n.T("信鸽来信", "Pigeon letters"),
                 () => SkyIslandJournal.Letters(story.Current)));
-            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("船员名册", "Crew roster"),
+            choices.Add(Section(choices, L10n.T("船员名册", "Crew roster"),
                 () => SkyIslandJournal.Crew(story.Current)));
-            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("带在身上的纪念品", "Keepsakes you carry"),
+            choices.Add(Section(choices, L10n.T("带在身上的纪念品", "Keepsakes you carry"),
                 () => SkyIslandJournal.Keepsakes(story.Current)));
             choices.Add(BackToJournal());
             presentation.Show(L10n.T("群岛手记 · 来信与人", "Journal · letters and people"),
@@ -810,12 +817,12 @@ namespace BossRush
             if (BlockedByCombat()) return;
             reopen = delegate { OpenJournalIsles(); };
             var choices = new List<SkyIslandStoryPresentation.Choice>();
-            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("岛上的灯", "Lights on the isles"),
+            choices.Add(Section(choices, L10n.T("岛上的灯", "Lights on the isles"),
                 () => SkyIslandLights.Chapter(story.Current, SkyIslandSession.RegionLabel)));
-            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("群岛之物 · 用处", "What things are for"),
+            choices.Add(Section(choices, L10n.T("群岛之物 · 用处", "What things are for"),
                 () => SkyIslandJournal.Uses()));
             // 进度表退到这里：它是一张表，不该占着首页第一眼。
-            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("这一趟 · 旅程进度", "This run · journey progress"),
+            choices.Add(Section(choices, L10n.T("这一趟 · 旅程进度", "This run · journey progress"),
                 () => SkyIslandJournal.Overview(story.Current, story.Summary)));
             choices.Add(BackToJournal());
             presentation.Show(L10n.T("群岛手记 · 岛上的事", "Journal · about the isles"),

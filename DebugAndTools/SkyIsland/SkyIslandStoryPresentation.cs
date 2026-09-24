@@ -80,6 +80,8 @@ namespace BossRush
             internal int IconTypeId;
             internal bool MarkShortfall;
             internal bool Secondary;
+            /// <summary>阅读页里正文正在显示的那一栏：行边常亮 WarningText（见 <see cref="MarkCurrent"/>）。</summary>
+            internal bool Current;
         }
 
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Choice, ChoiceLook> looks =
@@ -101,6 +103,20 @@ namespace BossRush
             if (choice == null) return null;
             looks.GetOrCreateValue(choice).Secondary = true;
             return choice;
+        }
+
+        /// <summary>
+        /// 同一组栏目里只让 <paramref name="current"/> 常亮（2026-09-24 UI 共识对照审查 B-32：手记子页看不出正文是哪一栏）。
+        /// 选中态照 UI 制作共识第 6 节用 WarningText 行边，与键盘 / 悬停焦点的 Accent 分开；只改长相，行照挂、照可点。
+        /// </summary>
+        internal static void MarkCurrent(IList<Choice> group, Choice current)
+        {
+            for (int i = 0; group != null && i < group.Count; i++)
+            {
+                ChoiceLook look = LookOf(group[i]);
+                if (look != null) look.Current = false;
+            }
+            if (current != null) looks.GetOrCreateValue(current).Current = true;
         }
 
         private static ChoiceLook LookOf(Choice choice)
@@ -343,8 +359,19 @@ namespace BossRush
         private int navigateHeld;
         /// <summary>焦点行边的渐变秒数：重开面板恢复当前项时当帧落定（0），之后跟手的移动走 <see cref="ChoiceFocusFade"/>。</summary>
         private float focusFade = ChoiceFocusFade;
+        /// <summary>下一次建页不继承上一页的键盘当前项（确认页用，见 <see cref="ResetFocusOnNextShow"/>）。</summary>
+        private bool freshFocus;
 
         internal bool Visible { get { return canvas != null; } }
+
+        /// <summary>
+        /// 下一页不继承键盘当前项（UI 共识对照审查 B-14 / B-15 的确认页）：否则在「挑战」「退单」上按回车进确认页，
+        /// 焦点还停在同一行号上，再按一次回车就直接确认了。在按钮回调里调也有效：建页被推迟到回调结束，标记留到那时才用掉。
+        /// </summary>
+        internal void ResetFocusOnNextShow()
+        {
+            freshFocus = true;
+        }
 
         internal void Show(string title, string text, IList<Choice> choices)
         {
@@ -370,7 +397,8 @@ namespace BossRush
             bool reopening = canvas != null;
             // 3. 保留键盘的当前项：玩家正用 W/S + Enter 连着操作（接委托 → 交付），
             //    旧版每重开一次都丢焦点，下一次 Enter 只会「重新高亮第一项」，白白多按一下还跳回了顶上。
-            int previousSelected = reopening ? selected : -1;
+            int previousSelected = reopening && !freshFocus ? selected : -1;
+            freshFocus = false;
             // 4. 正文换了的重开，新正文淡入一下（UE-04）：整页当帧换掉时，眼睛找不到新的一句在哪。
             bool bodyChanged = reopening && !string.Equals(shownText, text, StringComparison.Ordinal);
             GameObject previousHideToken = hideToken;
@@ -850,7 +878,7 @@ namespace BossRush
             if (stroke != null)
             {
                 stroke.color = Color.white;
-                stroke.CrossFadeColor(BossRushUIColors.Stroke, 0f, true, true);
+                stroke.CrossFadeColor(RestStroke(index), 0f, true, true);
             }
             buttonStrokes.Add(stroke);
             Button button = rect.gameObject.AddComponent<Button>();

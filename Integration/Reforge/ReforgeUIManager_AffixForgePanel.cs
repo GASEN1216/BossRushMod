@@ -270,10 +270,40 @@ namespace BossRush
             widgets.DescText.enableAutoSizing = false;
             widgets.DescText.enableWordWrapping = true;
 
-            // ---- 锁定按钮（命名方法回调，不捕获 Item）----
+            // ---- 操作列：「已锁定」标签（不可点）+ 锁定 / 解锁按钮（A-04：已锁态不再是一点就解锁的按钮）----
+            GameObject actions = ZombieModeUIHelper.CreateRect(
+                "Actions",
+                row.transform,
+                new Vector2(0.5f, 0.5f),
+                new Vector2(AFFIX_LOCK_BUTTON_WIDTH, AFFIX_ROW_HEIGHT));
+            AddFixedLayoutElement(actions, AFFIX_LOCK_BUTTON_WIDTH, 0);
+            VerticalLayoutGroup actionLayout = actions.AddComponent<VerticalLayoutGroup>();
+            actionLayout.spacing = 4;
+            actionLayout.childAlignment = TextAnchor.MiddleCenter;
+            actionLayout.childControlWidth = true;
+            actionLayout.childControlHeight = true;
+            actionLayout.childForceExpandWidth = true;
+            actionLayout.childForceExpandHeight = false;
+
+            GameObject tagObj = ZombieModeUIHelper.CreateRect(
+                "LockedTag",
+                actions.transform,
+                new Vector2(0.5f, 0.5f),
+                new Vector2(AFFIX_LOCK_BUTTON_WIDTH, AFFIX_LOCKED_TAG_HEIGHT));
+            AddFixedLayoutElement(tagObj, AFFIX_LOCK_BUTTON_WIDTH, AFFIX_LOCKED_TAG_HEIGHT);
+            widgets.LockedTag = ZombieModeUIHelper.CreateTMPText(
+                tagObj,
+                L10n.T("已锁定", "Locked"),
+                AFFIX_LOCKED_TAG_FONT_SIZE,
+                TextAlignmentOptions.Center,
+                BossRushUIColors.WarningText);
+            widgets.LockedTag.enableWordWrapping = false;
+            tagObj.SetActive(false);
+
+            // 锁定 / 解锁共用一颗按钮（命名方法回调，不捕获 Item；按当前锁定状态分流）
             widgets.LockButton = ZombieModeUIHelper.CreateButton(
                 "LockButton",
-                row.transform,
+                actions.transform,
                 string.Empty,
                 new Vector2(0.5f, 0.5f),
                 Vector2.zero,

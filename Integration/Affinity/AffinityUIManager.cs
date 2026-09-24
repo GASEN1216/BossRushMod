@@ -2,8 +2,12 @@
 // AffinityUIManager.cs - 好感度UI管理器
 // ============================================================================
 // 模块说明：
-//   管理好感度相关的UI显示，包括好感度面板、变化动画、等级提升通知等。
+//   管理好感度相关的UI显示：好感变化浮字、等级提升通知。
 //   复用游戏原版UI组件和样式。
+//
+//   2026-09-24 UI 共识对照审查 A-35：删掉从未被打开过的「好感度面板」（ShowAffinityPanel / UpdateAffinityDisplay /
+//   CreateAffinityPanel / GetMainCanvas，全仓没有调用方；唯一的 HideAffinityPanel 调用在哥布林对话结束时隐藏一个
+//   不存在的面板）。好感度等级与进度由浮字下方那行「Lv.3 · 120/300」给出。
 //
 //   2026-09-23 审美审查 UD-39 / UD-41 / UD-42（owner 拍板：加分只给头顶浮字这类轻反馈，送礼三路反馈合一）：
 //   - 好感变化浮字挂在 NPC 头侧（世界坐标投到自建 HUD 画布），不再随手找第一个 Overlay 画布、放屏幕正中；
@@ -29,22 +33,9 @@ namespace BossRush
     /// </summary>
     public static class AffinityUIManager
     {
-        // UI状态
-        private static GameObject affinityPanel = null;
-        
-        // UI组件引用
-        private static TextMeshProUGUI levelText = null;
-        private static Image progressBar = null;
-        private static TextMeshProUGUI npcNameText = null;
-        
-        // 红心图标资源
+        // 红心图标资源（浮字用）
         private static Sprite heartSprite = null;
         private static bool heartSpriteLoaded = false;
-        
-        // UI配置
-        private const float PANEL_WIDTH = 320f;
-        private const float PANEL_HEIGHT = 104f;
-        private const float HEART_ICON_SIZE = 32f;
 
         // 好感变化浮字（UD-41）。锚点取 NPC 胸口高度、屏幕上向右偏一截：
         // 头顶正上方是官方对话气泡与爱心序列帧的位置，浮字放在侧边才不互相压。
@@ -65,69 +56,6 @@ namespace BossRush
         /// 同一只 NPC 接下来的事件直接命中。只在好感事件时用，不在每帧路径上；Cleanup 时清空。
         /// </summary>
         private static MonoBehaviour _interactionController;
-        
-        /// <summary>
-        /// 显示好感度面板
-        /// </summary>
-        public static void ShowAffinityPanel(string npcId, Transform parent)
-        {
-            if (string.IsNullOrEmpty(npcId)) return;
-            
-            // 如果面板已存在，只更新内容
-            if (affinityPanel != null)
-            {
-                UpdateAffinityDisplay(npcId);
-                affinityPanel.SetActive(true);
-                return;
-            }
-            
-            // 创建新面板
-            CreateAffinityPanel(parent);
-            UpdateAffinityDisplay(npcId);
-        }
-        
-        /// <summary>
-        /// 隐藏好感度面板
-        /// </summary>
-        public static void HideAffinityPanel()
-        {
-            if (affinityPanel != null)
-            {
-                affinityPanel.SetActive(false);
-            }
-        }
-        
-        /// <summary>
-        /// 更新好感度显示
-        /// </summary>
-        public static void UpdateAffinityDisplay(string npcId)
-        {
-            if (string.IsNullOrEmpty(npcId)) return;
-            
-            // 获取NPC配置
-            INPCAffinityConfig config = AffinityManager.GetNPCConfig(npcId);
-            
-            // 更新NPC名称
-            if (npcNameText != null && config != null)
-            {
-                npcNameText.text = config.DisplayName;
-            }
-            
-            // 更新等级文本
-            if (levelText != null)
-            {
-                int level = AffinityManager.GetLevel(npcId);
-                int maxLevel = config?.MaxLevel ?? AffinityConfig.DEFAULT_MAX_LEVEL;
-                levelText.text = L10n.T("好感度", "Affinity") + ": Lv." + level + "/" + maxLevel;
-            }
-            
-            // 更新进度条
-            if (progressBar != null)
-            {
-                float progress = AffinityManager.GetLevelProgress(npcId);
-                progressBar.fillAmount = progress;
-            }
-        }
         
         /// <summary>
         /// 显示好感度变化动画
@@ -416,137 +344,6 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 创建好感度面板
-        /// </summary>
-        private static void CreateAffinityPanel(Transform parent)
-        {
-            try
-            {
-                // 查找Canvas（优先使用游戏主Canvas）
-                Canvas canvas = GetMainCanvas();
-                if (canvas == null)
-                {
-                    ModBehaviour.DevLog("[AffinityUI] 无法找到Canvas，跳过创建面板");
-                    return;
-                }
-                
-                // 加载红心图标
-                LoadHeartSprite();
-                
-                // 创建面板
-                affinityPanel = new GameObject("AffinityPanel");
-                affinityPanel.transform.SetParent(canvas.transform, false);
-                
-                // 添加背景
-                Image bg = affinityPanel.AddComponent<Image>();
-                bg.color = BossRushUIColors.Surface;
-                bg.raycastTarget = false;
-                BossRushUI.ApplyFramedPanelSkin(bg, 12, BossRushUISkinPart.Card);
-                
-                // 设置位置和大小
-                RectTransform rect = affinityPanel.GetComponent<RectTransform>();
-                rect.anchorMin = new Vector2(0.5f, 0.85f);
-                rect.anchorMax = new Vector2(0.5f, 0.85f);
-                rect.sizeDelta = new Vector2(PANEL_WIDTH, PANEL_HEIGHT);
-                
-                // 创建红心图标
-                if (heartSprite != null)
-                {
-                    GameObject heartObj = new GameObject("HeartIcon");
-                    heartObj.transform.SetParent(affinityPanel.transform, false);
-                    Image heartIcon = heartObj.AddComponent<Image>();
-                    heartIcon.sprite = heartSprite;
-                    heartIcon.preserveAspect = true;
-                    heartIcon.raycastTarget = false;
-                    
-                    RectTransform heartRect = heartObj.GetComponent<RectTransform>();
-                    heartRect.anchorMin = new Vector2(0, 0.5f);
-                    heartRect.anchorMax = new Vector2(0, 0.5f);
-                    heartRect.pivot = new Vector2(0, 0.5f);
-                    heartRect.anchoredPosition = new Vector2(16f, 8f);
-                    heartRect.sizeDelta = new Vector2(HEART_ICON_SIZE, HEART_ICON_SIZE);
-                }
-                
-                // 创建NPC名称文本
-                GameObject nameObj = new GameObject("NpcName");
-                nameObj.transform.SetParent(affinityPanel.transform, false);
-                npcNameText = nameObj.AddComponent<TextMeshProUGUI>();
-                BossRushUI.ApplyGameFont(npcNameText);
-                npcNameText.fontSize = 20;
-                npcNameText.alignment = TextAlignmentOptions.Left;
-                npcNameText.color = BossRushUIColors.TextPrimary;
-                npcNameText.raycastTarget = false;
-                npcNameText.enableWordWrapping = false;
-                npcNameText.overflowMode = TextOverflowModes.Ellipsis;
-                
-                RectTransform nameRect = nameObj.GetComponent<RectTransform>();
-                nameRect.anchorMin = new Vector2(0, 0.55f);
-                nameRect.anchorMax = new Vector2(1, 0.90f);
-                nameRect.offsetMin = new Vector2(64f, 0f);
-                nameRect.offsetMax = new Vector2(-16f, 0f);
-                
-                // 创建等级文本（红心图标右侧）
-                GameObject levelObj = new GameObject("LevelText");
-                levelObj.transform.SetParent(affinityPanel.transform, false);
-                levelText = levelObj.AddComponent<TextMeshProUGUI>();
-                BossRushUI.ApplyGameFont(levelText);
-                levelText.fontSize = 16;
-                levelText.alignment = TextAlignmentOptions.Left;
-                levelText.color = BossRushUIColors.TextSecondary;
-                levelText.raycastTarget = false;
-                levelText.enableWordWrapping = false;
-                levelText.overflowMode = TextOverflowModes.Ellipsis;
-                
-                RectTransform levelRect = levelObj.GetComponent<RectTransform>();
-                levelRect.anchorMin = new Vector2(0, 0.28f);
-                levelRect.anchorMax = new Vector2(1, 0.55f);
-                // 如果有红心图标，文本向右偏移
-                float leftOffset = 64f;
-                levelRect.offsetMin = new Vector2(leftOffset, 0);
-                levelRect.offsetMax = new Vector2(-16f, 0);
-                
-                // 创建进度条背景
-                GameObject progressBgObj = new GameObject("ProgressBg");
-                progressBgObj.transform.SetParent(affinityPanel.transform, false);
-                Image progressBg = progressBgObj.AddComponent<Image>();
-                progressBg.color = BossRushUIColors.SurfaceRaised;
-                progressBg.raycastTarget = false;
-                BossRushUI.ApplyPanelSkin(progressBg, 3);
-                
-                RectTransform progressBgRect = progressBgObj.GetComponent<RectTransform>();
-                progressBgRect.anchorMin = new Vector2(0.05f, 0.12f);
-                progressBgRect.anchorMax = new Vector2(0.95f, 0.20f);
-                progressBgRect.offsetMin = Vector2.zero;
-                progressBgRect.offsetMax = Vector2.zero;
-                
-                // 创建进度条（使用粉红色，与红心呼应）
-                GameObject progressObj = new GameObject("ProgressBar");
-                progressObj.transform.SetParent(progressBgObj.transform, false);
-                progressBar = progressObj.AddComponent<Image>();
-                progressBar.color = new Color(1f, 0.4f, 0.5f, 1f);  // 粉红色
-                progressBar.raycastTarget = false;
-                // Filled 必须有 sprite：sprite 为 null 时 Image.OnPopulateMesh 会退回整块矩形，
-                // fillAmount 被完全忽略——好感度条会永远显示满格。
-                // 这里只能赋纯色底图，不能走 ApplyPanelSkin：那会把 type 改回 Sliced。
-                progressBar.sprite = BossRushUI.GetSolidSprite();
-                progressBar.type = Image.Type.Filled;
-                progressBar.fillMethod = Image.FillMethod.Horizontal;
-                
-                RectTransform progressRect = progressObj.GetComponent<RectTransform>();
-                progressRect.anchorMin = Vector2.zero;
-                progressRect.anchorMax = Vector2.one;
-                progressRect.offsetMin = Vector2.zero;
-                progressRect.offsetMax = Vector2.zero;
-                
-                ModBehaviour.DevLog("[AffinityUI] 好感度面板创建成功");
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[AffinityUI] 创建好感度面板失败: " + e.Message);
-            }
-        }
-        
-        /// <summary>
         /// 加载红心图标（从 broken_heart AssetBundle 中加载 heart_0）
         /// </summary>
         private static void LoadHeartSprite()
@@ -576,21 +373,12 @@ namespace BossRush
         /// </summary>
         public static void Cleanup()
         {
-            if (affinityPanel != null)
-            {
-                UnityEngine.Object.Destroy(affinityPanel);
-                affinityPanel = null;
-            }
             if (_floatCanvas != null)
             {
                 UnityEngine.Object.Destroy(_floatCanvas.gameObject);
                 _floatCanvas = null;
             }
             _interactionController = null;
-            levelText = null;
-            progressBar = null;
-            npcNameText = null;
-            _cachedCanvas = null;
         }
         
         /// <summary>
@@ -606,49 +394,6 @@ namespace BossRush
             heartSprite = null;
             
             ModBehaviour.DevLog("[AffinityUI] 场景切换，已清理UI资源");
-        }
-        
-        // 缓存的Canvas引用
-        private static Canvas _cachedCanvas = null;
-        
-        /// <summary>
-        /// 获取游戏主Canvas（带缓存）
-        /// </summary>
-        private static Canvas GetMainCanvas()
-        {
-            // 检查缓存是否有效
-            if (_cachedCanvas != null && _cachedCanvas.gameObject.activeInHierarchy)
-            {
-                return _cachedCanvas;
-            }
-            
-            // 尝试查找游戏的主Canvas
-            try
-            {
-                // 优先查找名为 "Canvas" 或 "MainCanvas" 的Canvas
-                Canvas[] canvases = UnityEngine.Object.FindObjectsOfType<Canvas>();
-                foreach (var canvas in canvases)
-                {
-                    if (canvas.renderMode == RenderMode.ScreenSpaceOverlay)
-                    {
-                        _cachedCanvas = canvas;
-                        return canvas;
-                    }
-                }
-                
-                // 回退：使用任意Canvas
-                if (canvases.Length > 0)
-                {
-                    _cachedCanvas = canvases[0];
-                    return canvases[0];
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[AffinityUI] 查找Canvas失败: " + e.Message);
-            }
-
-            return null;
         }
     }
 

@@ -11,8 +11,8 @@ namespace BossRush
     ///
     /// 冻结契约：
     /// - 使用 `BossRushUILayers.ModeHRecovery` 层（压住奖励揭晓层）；
-    /// - 显示前**先终止奖励揭晓层**，保留同一 modal lease，
-    ///   不允许背景页面继续接收按钮；
+    /// - 显示前**先终止奖励揭晓层**；显示期间占住模态输入租约（审查 B-10：旧版全屏遮罩挡点击、角色却还能跑），
+    ///   收起时释放；动作里恒有一颗「稍后处理」，玩家不会被锁在这一页；
     /// - 显示 report、技术中止、同场重开与 season reward operation；
     /// - txId、journal 阶段、库存核对与资产恢复操作**仅在真实资产路径存在时**显示，
     ///   无法证明安全时全部只读；
@@ -25,7 +25,13 @@ namespace BossRush
         private Canvas _canvas;
         private GameObject _root;
         private TextMeshProUGUI _body;
+        private RectTransform _bodyContent;
         private string _lastBody;
+        private ZombieModeUIHelper.ModalInputLease _lease;
+        /// <summary>ESC / 手柄取消 =「稍后处理」（标了 IsCancel 的那颗，2026-09-24）。</summary>
+        private PetNestCancelKey _cancelKey;
+        /// <summary>当前显示中的恢复壳（鸭王杯页面的 ESC 被它盖住时让出）。</summary>
+        private static ModeHRecoveryPanel _shown;
 
         #endregion
 
@@ -33,6 +39,9 @@ namespace BossRush
 
         /// <summary>恢复壳是否已显示。</summary>
         public bool IsVisible { get { return _root != null; } }
+
+        /// <summary>有没有任何一个恢复壳正显示着。</summary>
+        internal static bool AnyVisible { get { return _shown != null && _shown._root != null; } }
 
         #endregion
 
@@ -81,8 +90,41 @@ namespace BossRush
                     ? headline
                     : L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Recovery"),
                 ModeHUI.RecoverySize);
-            _body = ModeHUI.CreateBody(surface.transform, string.Empty, ModeHUI.RecoverySize, 0f);
+            _body = CreateScrollingBody(surface.transform);
+            // 全屏遮罩挡住了点击，就要同时挡住角色输入：占模态租约，收起时释放（审查 B-10）
+            _lease = ZombieModeUIHelper.ClaimModalInput(_root, "ModeHRecovery");
+            _shown = this;
             BossRushUI.PlayOpenAnimation(surface);
+        }
+
+        /// <summary>
+        /// 正文放进可滚动的区域（审查 B-10：旧版一整块自动缩字，战报与奖励一多字就被压得很小）。
+        /// 占用与 ModeHUI.CreateBody 相同的矩形；字号固定，按实测高度撑开内容。
+        /// </summary>
+        private TextMeshProUGUI CreateScrollingBody(Transform surface)
+        {
+            Vector2 size = ModeHUI.RecoverySize;
+            float top = size.y * 0.5f - ModeHUI.SafeMargin - 76f;
+            float bottom = -size.y * 0.5f + ModeHUI.SafeMargin + 96f;
+            float width = size.x - ModeHUI.SafeMargin * 2f;
+            GameObject viewport = ZombieModeUIHelper.CreateRect("ModeH_BodyScroll", surface,
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, (top + bottom) * 0.5f),
+                new Vector2(width, top - bottom), new Vector2(0.5f, 0.5f));
+            viewport.AddComponent<RectMask2D>();
+            ScrollRect scroll = viewport.AddComponent<ScrollRect>();
+            GameObject content = ZombieModeUIHelper.CreateRect("ModeH_Body", viewport.transform,
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-10f, 0f),
+                new Vector2(width - 20f, top - bottom), new Vector2(0.5f, 1f));
+            scroll.content = content.GetComponent<RectTransform>();
+            scroll.viewport = viewport.GetComponent<RectTransform>();
+            BossRushUI.ConfigureScrollRect(scroll);
+            _bodyContent = scroll.content;
+            TextMeshProUGUI text = ZombieModeUIHelper.CreateTMPText(
+                content, string.Empty, BodyFontSize, TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
+            text.enableAutoSizing = false;
+            text.fontSize = BodyFontSize;
+            BossRushUI.ApplyGameFont(text);
+            return text;
         }
 
         private void UpdateLines(IList<string> lines)
@@ -94,6 +136,11 @@ namespace BossRush
             if (string.Equals(joined, _lastBody, StringComparison.Ordinal)) return;
             _lastBody = joined;
             _body.text = joined;
+            if (_bodyContent != null)
+            {
+                float height = BossRushUI.MeasureTextHeight(_body, _bodyContent.rect.width, 32f);
+                _bodyContent.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
+            }
         }
 
         private static string[] ToArray(IList<string> lines)
@@ -121,7 +168,10 @@ namespace BossRush
                     UnityEngine.Object.Destroy(child.gameObject);
                 }
             }
+            SyncCancelKey(actions, allowActions);
             if (actions == null || actions.Count == 0) return;
+            // 危险的「放弃赛季」排最左、主操作「同场重开」排最右（UI 制作共识第 4 节）
+            actions = ModeHUIPages.OrderActions(actions);
 
             // 与 ModeHUIPages.CreateActions 同一纪律：超过每行上限就换行向上堆，
             // 绝不继续往两侧铺。恢复壳是**应急界面**——「取回押品」「结束赛季」这些
@@ -190,7 +240,8 @@ namespace BossRush
             {
                 AddGroupHeader(lines, L10n.T("技术中止", "Technical stop"));
                 lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_TechnicalAbort"));
-                lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_SameMatchRestart"));
+                // 正文只讲原因与后果，操作留给按钮（审查 B-20：旧版又写一遍按钮上的「同场重开，不判负」）
+                lines.Add(L10n.T("这不是你的错，不算输。", "This is not on you and does not count as a loss."));
             }
 
             if (season != null && season.runState != null)
@@ -337,7 +388,11 @@ namespace BossRush
             _root = null;
             _canvas = null;
             _body = null;
+            _bodyContent = null;
             _lastBody = null;
+            DetachCancelKey();
+            if (ReferenceEquals(_shown, this)) _shown = null;
+            ReleaseLease();
             if (immediate)
             {
                 UnityEngine.Object.Destroy(root);
@@ -349,8 +404,51 @@ namespace BossRush
 
         #endregion
 
+        /// <summary>ESC =「稍后处理」：只认可点的、标了 IsCancel 的那颗；共享确认框盖在上面时让给它。</summary>
+        private void SyncCancelKey(IList<ModeHActionData> actions, bool allowActions)
+        {
+            Action cancel = null;
+            for (int i = 0; actions != null && i < actions.Count; i++)
+            {
+                ModeHActionData action = actions[i];
+                if (action == null || !action.IsCancel || action.OnClick == null || !action.Interactable) continue;
+                if (!allowActions && !action.BypassReadOnly) continue;
+                cancel = action.OnClick;
+                break;
+            }
+            if (cancel == null || _root == null)
+            {
+                DetachCancelKey();
+                return;
+            }
+            _cancelKey = PetNestCancelKey.Attach(_root, cancel, () => BossRushConfirmDialog.IsOpen);
+        }
+
+        private void DetachCancelKey()
+        {
+            if (_cancelKey == null) return;
+            try { _cancelKey.Detach(); }
+            catch (Exception) { /* 画布已销毁：订阅随组件 OnDestroy 退掉 */ }
+            _cancelKey = null;
+        }
+
+        private void ReleaseLease()
+        {
+            try
+            {
+                if (_lease != null) _lease.Release();
+            }
+            catch (Exception)
+            {
+                // 释放失败也要丢引用，避免二次 Release
+            }
+            _lease = null;
+        }
+
         #region 布局常量
 
+        /// <summary>正文字号：固定，不自动缩（放不下就滚动）。</summary>
+        private const float BodyFontSize = 18f;
         private static readonly Vector2 ActionSize = new Vector2(260f, 56f);
         private const float ActionGap = 24f;
 

@@ -14,6 +14,10 @@
 // 翻面是 localScale.x 1→0 换面再 0→1（SmoothStep、暂停感知，不用随机数）；
 // 正面是崽的立绘 + 装饰名 + 结果色条（平安 SuccessText / 负伤 WarningText / 阵亡 DangerText，阵亡整卡压暗）；
 // 战利品是物品图标 + 名字；翻完最后一张**不自动收**，「跳过」变「关闭」，等玩家自己点（与孵化揭晓同口径）。
+//
+// 2026-09-24 UI 共识对照审查 A-40（CR-2026-09-24-002）：播放中点「跳过」或按 ESC 不再直接关窗——
+// 旧版把剩下的记录标成已翻就收工，哪只阵亡、负伤一张都没显示。现在跳到**一屏结果汇总**（每只一行：
+// 装饰名 · 结果 · 目的地 · 现金 / 战利品件数），再由「关闭」收起；一次翻两张以上的，翻完最后一张也收成这一屏。
 // ============================================================================
 
 using System;
@@ -70,6 +74,7 @@ namespace BossRush
         private GameObject _lootRow;
         private Button _skipButton;
         private TextMeshProUGUI _skipLabel;
+        private TextMeshProUGUI _summaryText;
         private List<PetNestExpeditionRecord> _pending;
         private bool _finished;
 
@@ -190,6 +195,15 @@ namespace BossRush
                 TextAlignmentOptions.Center, BossRushUIColors.TextSecondary);
             BossRushUI.ApplyGameFont(_detailText);
 
+            // 结果汇总（A-40）：标题与底部按钮之间整块，平时收着，跳过或翻完多张时才出现。
+            _summaryText = ZombieModeUIHelper.CreateText(
+                "Summary", surface.transform, string.Empty, 18f,
+                new Vector2(0f, -4f), new Vector2(740f, 360f),
+                TextAlignmentOptions.Top, BossRushUIColors.TextPrimary);
+            _summaryText.lineSpacing = 12f;
+            BossRushUI.ApplyGameFont(_summaryText);
+            _summaryText.gameObject.SetActive(false);
+
             _lootRow = ZombieModeUIHelper.CreateRect(
                 "LootRow", surface.transform, new Vector2(0.5f, 0.5f), new Vector2(760f, LootIconSize + 28f));
             _lootRow.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -130f);
@@ -201,7 +215,7 @@ namespace BossRush
             lootLayout.childForceExpandWidth = false;
             lootLayout.childForceExpandHeight = false;
 
-            // 跳过：一次派 6 只崽就是 13.5 秒全屏遮罩，没有跳过键是不可接受的。
+            // 跳过：一次派 6 只崽就是 13.5 秒全屏遮罩，没有跳过键是不可接受的。跳过 = 跳到结果汇总（A-40）。
             // 翻完最后一张之后它变成「关闭」（主操作 AccentFill），等玩家看完自己收（UA-13）。
             _skipButton = ZombieModeUIHelper.CreateButton(
                 "Skip", surface.transform, L10n.T("跳过", "Skip"),
@@ -217,7 +231,7 @@ namespace BossRush
             // 接管输入：遮罩盖住画面却不拦输入的话，玩家会在看不见的情况下
             // 摸到交互点、打开面板、走进战斗
             _modalLease = ZombieModeUIHelper.ClaimModalInput(_canvas.gameObject, "PetNestExpeditionReveal");
-            // ESC / 手柄取消 = 与按钮同一个入口（播放中跳过、翻完后关闭）
+            // ESC / 手柄取消 = 与按钮同一个入口（播放中跳到汇总、汇总 / 翻完后关闭）
             _cancelKey = PetNestCancelKey.Attach(_canvas.gameObject, OnSkipOrClose, null);
 
             BossRushUI.PlayOpenAnimation(surface);
@@ -266,21 +280,23 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 播放中 = 跳过：把还没翻的记录一次性标记为已翻，然后收工。结果早已落档，跳过只是不看动画。
-        /// 翻完之后 = 关闭。
+        /// 播放中 = 跳过：停掉翻牌，把还没翻的记录一次性标记为已翻，然后**跳到一屏结果汇总**（A-40），不关窗。
+        /// 结果早已落档，跳过只是不看动画。汇总 / 翻完之后 = 关闭。
         /// </summary>
         private void OnSkipOrClose()
         {
             if (!_finished)
             {
-                SkipAll();
+                SkipToSummary();
                 return;
             }
             CloseByPlayer();
         }
 
-        private void SkipAll()
+        private void SkipToSummary()
         {
+            // 翻牌协程连同它 yield 出去的翻面 / 等待一起停（本组件上只有这一个协程）。
+            StopAllCoroutines();
             try
             {
                 if (_pending != null)
@@ -297,7 +313,63 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[PetNest] 跳过翻牌失败: " + e.Message);
             }
-            CloseByPlayer();
+            ShowSummary();
+        }
+
+        /// <summary>收起翻牌，一屏列出这次全部结果；按钮变「关闭」，等玩家看完自己收。</summary>
+        private void ShowSummary()
+        {
+            if (_card != null) _card.SetActive(false);
+            ClearLoot();
+            SetText(_detailText, string.Empty);
+            if (_summaryText != null)
+            {
+                _summaryText.text = BuildSummary(_pending);
+                _summaryText.gameObject.SetActive(true);
+            }
+            Finish();
+        }
+
+        /// <summary>演出收尾：「跳过」变「关闭」，这一屏唯一的主操作（AccentFill）。</summary>
+        private void Finish()
+        {
+            _finished = true;
+            if (_skipLabel != null) _skipLabel.text = L10n.T("关闭", "Close");
+            if (_skipButton != null) ZombieModeUIHelper.SetButtonBaseColor(_skipButton, BossRushUIColors.AccentFill);
+        }
+
+        /// <summary>
+        /// 结果汇总：每只一行「装饰名  结果（结果色）  目的地 · 现金 · 战利品件数（次级色）」，有阵亡时末尾指到阵亡纪念碑。
+        /// 颜色走 token 转好的 hex；文案与翻牌正面同源（BuildCardTitle / DescribeOutcome / OutcomeColor）。
+        /// </summary>
+        private static string BuildSummary(List<PetNestExpeditionRecord> records)
+        {
+            string secondary = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextSecondary) + ">";
+            System.Text.StringBuilder text = new System.Text.StringBuilder();
+            bool anyDead = false;
+            for (int i = 0; records != null && i < records.Count; i++)
+            {
+                PetNestExpeditionRecord record = records[i];
+                if (record == null) continue;
+                if (text.Length > 0) text.Append('\n');
+                text.Append(BuildCardTitle(record)).Append("  <color=#")
+                    .Append(ColorUtility.ToHtmlStringRGB(OutcomeColor(record))).Append('>')
+                    .Append(DescribeOutcome(record)).Append("</color>  ")
+                    .Append(secondary).Append(PetNestLocalization.DescribeDestination(record.destinationId));
+                if (record.outcomeCash > 0L) text.Append(" · ").Append(L10n.T("现金", "Cash")).Append(" +").Append(record.outcomeCash);
+                int loot = record.outcomeLootTypeIds != null ? record.outcomeLootTypeIds.Count : 0;
+                if (loot > 0) text.Append(" · ").Append(L10n.T("战利品", "Loot")).Append(" ×").Append(loot);
+                text.Append("</color>");
+                anyDead |= record.outcomeDead;
+            }
+            if (anyDead)
+            {
+                text.Append("\n\n").Append(secondary)
+                    .Append(L10n.T("没有回来的崽记在巢里的「", "Those who never came back are listed on the nest's "))
+                    .Append(LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "Page_Memorial"))
+                    .Append(L10n.T("」页。", " page.")).Append("</color>");
+            }
+            return text.ToString();
         }
 
         private IEnumerator PlayRoutine()
@@ -326,9 +398,16 @@ namespace BossRush
             }
 
             // 最后一张**不自动收**（UA-13）：阵亡结果一闪就没了是最糟的体验。「跳过」变「关闭」，等玩家自己点。
-            _finished = true;
-            if (_skipLabel != null) _skipLabel.text = L10n.T("关闭", "Close");
-            if (_skipButton != null) ZombieModeUIHelper.SetButtonBaseColor(_skipButton, BossRushUIColors.AccentFill);
+            // 一次翻了两张以上：收成一屏汇总再等关闭（A-40），前面几张的结果不会只闪 1.4 秒就没了。
+            if (CountRecords(_pending) > 1) ShowSummary();
+            else Finish();
+        }
+
+        private static int CountRecords(List<PetNestExpeditionRecord> records)
+        {
+            int count = 0;
+            for (int i = 0; records != null && i < records.Count; i++) if (records[i] != null) count++;
+            return count;
         }
 
         /// <summary>与孵化演出同样使用暂停感知的表现时间，暂停不能消耗待翻卡片。</summary>

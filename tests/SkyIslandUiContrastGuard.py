@@ -382,10 +382,15 @@ def check(raw_sources):
             PANEL + " 的键盘当前项没有走同一个 FocusColor：悬停与键盘又会是两种样子")
     # 2026-09-23 审美审查 UE-17：行边的颜色改由 CanvasRenderer 渐变承担（Graphic 置白、渲染色落在 Stroke / Accent），
     # 与行底 ColorTint 同步 0.08 秒；终值与旧写法相同，复算照旧。
-    require("stroke.CrossFadeColor(focused ? BossRushUIColors.Accent : BossRushUIColors.Stroke, focusFade, true, true);" in focused,
+    require("stroke.CrossFadeColor(focused ? BossRushUIColors.Accent : RestStroke(index), focusFade, true, true);" in focused,
             PANEL + " 的焦点不再把行边换成 Accent：只靠行底提亮的话焦点行对常态行在亮底图上只有 2.13:1（审核 F-01）")
-    require("stroke.color = Color.white;" in choice and "stroke.CrossFadeColor(BossRushUIColors.Stroke, 0f, true, true);" in choice,
-            PANEL + " 的选项行边没有当帧落在 Stroke：Graphic 置白之后渲染色不落定，行边会是一圈白（守卫按 Stroke 复算）")
+    require("stroke.color = Color.white;" in choice and "stroke.CrossFadeColor(RestStroke(index), 0f, true, true);" in choice,
+            PANEL + " 的选项行边没有当帧落在常态色：Graphic 置白之后渲染色不落定，行边会是一圈白（守卫按 Stroke 复算）")
+    # 2026-09-24 UI 共识对照审查 B-32：常态行边默认仍是 Stroke（上面的复算照旧成立），只有阅读页里「正文正显示的那一栏」
+    # 换成更亮的 WarningText（UI 制作共识第 6 节的选中态），焦点照旧是 Accent。
+    rest = body_of(panel, "private Color RestStroke(int index)")
+    require("look != null && look.Current ? BossRushUIColors.WarningText : BossRushUIColors.Stroke" in rest,
+            PANEL + " 的 RestStroke 不再默认落在 Stroke：常态行边的对比度复算失效（或选中栏不再常亮 WarningText）")
     require("GetHoverColor(" not in select + focused + choice,
             PANEL + " 的选项又用回共享 GetHoverColor：向白 0.22 在半透明行底上不够非文本 3:1")
 
@@ -458,8 +463,10 @@ def main():
         (PANEL, "HeroTitleBandAlpha = 0.82f", "HeroTitleBandAlpha = 0.10f"),
         (PANEL, 'MakeRect(hero, "TitleBand"', 'MakeRect(hero, "Removed"'),
         (PANEL, "ChoiceFocusLift = 0.12f", "ChoiceFocusLift = 0.60f"),        # 焦点行抬太亮，标签读不清
-        (PANEL, "if (stroke != null) stroke.CrossFadeColor(focused ? BossRushUIColors.Accent : BossRushUIColors.Stroke, focusFade, true, true);", ""),
-        (PANEL, "stroke.CrossFadeColor(BossRushUIColors.Stroke, 0f, true, true);", ""),   # 行边渲染色不落定（白圈）
+        (PANEL, "if (stroke != null) stroke.CrossFadeColor(focused ? BossRushUIColors.Accent : RestStroke(index), focusFade, true, true);", ""),
+        (PANEL, "stroke.CrossFadeColor(RestStroke(index), 0f, true, true);", ""),   # 行边渲染色不落定（白圈）
+        (PANEL, "look != null && look.Current ? BossRushUIColors.WarningText : BossRushUIColors.Stroke",
+                "BossRushUIColors.Accent"),   # 常态行边不再是 Stroke
         (PANEL, "ZombieModeUIHelper.ApplyButtonColors(closeButton, BossRushUIColors.Surface,",
                 "ZombieModeUIHelper.ApplyButtonColors(closeButton, BossRushUIColors.SurfaceRaised,"),   # ESC 键帽换了底色
         (PANEL, "            rowColor.a = ChoiceRowAlpha;\n",

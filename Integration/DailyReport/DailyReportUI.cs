@@ -61,6 +61,12 @@ namespace BossRush
         private static readonly Color ButtonEdge = new Color(0.86f, 0.70f, 0.34f, 0.9f);
         /// <summary>富文本里的次要墨色（标签、注脚）。预先转好，不每次刷新拼。</summary>
         private static readonly string InkSoftHex = "#" + ColorUtility.ToHtmlStringRGB(PaperInkSoft);
+        /// <summary>
+        /// 纸面上的失败提示色（A-14）：共享的 DangerText 是给深色面板用的浅红，写在米色纸上几乎看不见；
+        /// 这里是压深的砖红，对纸面约 6:1（DailyReportPresentationGuard 复算）。
+        /// </summary>
+        private static readonly Color PaperInkDanger = new Color(0.60f, 0.16f, 0.12f, 1f);
+        private static readonly string InkDangerHex = "#" + ColorUtility.ToHtmlStringRGB(PaperInkDanger);
 
         #endregion
 
@@ -110,6 +116,10 @@ namespace BossRush
         private TextMeshProUGUI signInStatusText;
         private Button signInButton;
         private TextMeshProUGUI signInButtonText;
+        /// <summary>签过之后按钮收起，同一位置换成这行状态字（A-13：不留灰按钮）。</summary>
+        private TextMeshProUGUI signedTagText;
+        /// <summary>最近一次签到没受理的原因（A-14）；写在签到状态行第一行，重开报纸或签到成功时清掉。</summary>
+        private string signInFailure;
 
         private readonly List<Image> signInCells = new List<Image>();
         private readonly List<TextMeshProUGUI> signInCellLabels = new List<TextMeshProUGUI>();
@@ -187,6 +197,7 @@ namespace BossRush
             DailyReportService.TryRedeliverPendingMilestones();
             DailyReportService.TryRedeliverPendingBountyReward();
 
+            signInFailure = null;
             Refresh();
             DailyReportService.ConsumeIssueBanner();
 
@@ -264,11 +275,33 @@ namespace BossRush
                 L10n.T("下期结算", "Paid next issue"));
         }
 
+        /// <summary>
+        /// 数值块：标签 / 单位 / 注脚都落在正文档（22 × 82% ≈ 18），大号数字 200%。
+        /// 旧版 75% / 85% / 70% 三个百分比各算一级，加上各卡片 19 / 20 / 23 / 24 号，整版七级字号（A-16）。
+        /// </summary>
         private static string BuildValueBlock(string label, long value, string note)
         {
-            return "<size=75%><color=" + InkSoftHex + ">" + label + "</color></size>\n"
-                + "<size=200%><b>" + FormatCash(value) + "</b></size><size=85%> " + L10n.T("金", "cash") + "</size>\n"
-                + "<size=70%><color=" + InkSoftHex + ">" + note + "</color></size>";
+            return "<size=82%><color=" + InkSoftHex + ">" + label + "</color></size>\n"
+                + "<size=200%><b>" + FormatCash(value) + "</b></size><size=82%> " + L10n.T("金", "cash") + "</size>\n"
+                + "<size=82%><color=" + InkSoftHex + ">" + note + "</color></size>";
+        }
+
+        /// <summary>
+        /// 品质写名字不写数字（A-17）：1–6 用官方物品框的颜色名（DisplayQuality 的 White…Red），
+        /// 7 及以上官方没有颜色名，统一叫「顶级」。
+        /// </summary>
+        private static string QualityName(int quality)
+        {
+            switch (quality)
+            {
+                case 1: return L10n.T("白色", "White");
+                case 2: return L10n.T("绿色", "Green");
+                case 3: return L10n.T("蓝色", "Blue");
+                case 4: return L10n.T("紫色", "Purple");
+                case 5: return L10n.T("橙色", "Orange");
+                case 6: return L10n.T("红色", "Red");
+                default: return quality >= 7 ? L10n.T("顶级", "Top-tier") : L10n.T("普通", "Common");
+            }
         }
 
         /// <summary>千分位；固定用不变区域，免得系统区域把分隔符换成点或空格。</summary>
@@ -339,30 +372,41 @@ namespace BossRush
         {
             bool signed = DailyReportService.IsSignedToday;
 
+            // 签过就不留一颗灰按钮（A-13，UI 共识第 4 节）：按钮收起，同一位置换成「√ 今日已签」状态字。
             if (signInButton != null)
             {
                 signInButton.interactable = !signed;
+                if (signInButton.gameObject.activeSelf == signed) signInButton.gameObject.SetActive(!signed);
             }
-            if (signInButtonText != null)
+            if (signedTagText != null)
             {
-                signInButtonText.text = signed
-                    ? L10n.T("今日已签", "SIGNED")
-                    : L10n.T("签 到", "CHECK IN");
+                if (signedTagText.gameObject.activeSelf != signed) signedTagText.gameObject.SetActive(signed);
+                SetText(signedTagText, L10n.T("√ 今日已签 · 明天再来", "√ Checked in · come back tomorrow"));
+            }
+            if (signInButtonText != null && !signed)
+            {
+                signInButtonText.text = L10n.T("签 到", "CHECK IN");
             }
 
             int nextMilestone = FindNextMilestoneSlot(data);
             int pendingCount = data.PendingMilestones != null ? data.PendingMilestones.Count : 0;
+            string nextQuality = nextMilestone > 0
+                ? QualityName(DailyReportService.GetMilestoneQuality(data.PeriodIndex, nextMilestone))
+                : string.Empty;
             string milestoneLine = pendingCount > 0
                 ? L10n.T("待补发奖品 " + pendingCount + " 件，再次打开重试",
                     pendingCount + " prize(s) pending; reopen to retry")
                 : nextMilestone > 0
-                ? L10n.T("再签 " + (nextMilestone - data.PeriodSignedCount) + " 天：品质 "
-                    + DailyReportService.GetMilestoneQuality(data.PeriodIndex, nextMilestone),
-                    (nextMilestone - data.PeriodSignedCount) + " check-ins to Q"
-                    + DailyReportService.GetMilestoneQuality(data.PeriodIndex, nextMilestone))
+                ? L10n.T("再签 " + (nextMilestone - data.PeriodSignedCount) + " 天：领一件" + nextQuality + "奖品",
+                    (nextMilestone - data.PeriodSignedCount) + " more check-ins: " + nextQuality + " prize")
                 : L10n.T("本期奖励格已签满", "All reward slots signed");
 
-            SetText(signInStatusText, L10n.T(
+            // 签到没受理的原因写在状态行第一行（A-14）：官方横幅可能压在报纸下面，玩家看不见。
+            string failureLine = string.IsNullOrEmpty(signInFailure)
+                ? string.Empty
+                : "<color=" + InkDangerHex + ">" + signInFailure + "</color>\n";
+
+            SetText(signInStatusText, failureLine + L10n.T(
                 "第 " + data.PeriodIndex + " 期　" + data.PeriodSignedCount + "/"
                     + DailyReportTuning.DaysPerPeriod + "\n连续签到 " + data.Streak
                     + " 天　累计 " + data.TotalSignedDays + " 天\n" + milestoneLine,
@@ -455,16 +499,17 @@ namespace BossRush
             try
             {
                 DailyReportSignInResult result = DailyReportService.SignInAndClaim();
+                signInFailure = null;
 
                 switch (result.Outcome)
                 {
                     case DailyReportSignInOutcome.Success:
                         if (result.HitMilestone && result.MilestoneQuality > 0)
                         {
+                            string quality = QualityName(result.MilestoneQuality);
                             ShowBanner(L10n.T(
-                                "签到成功！品质 " + result.MilestoneQuality + " 奖品已寄往快递站",
-                                "Checked in! A quality-" + result.MilestoneQuality
-                                    + " reward was sent to your delivery point"));
+                                "签到成功！一件" + quality + "奖品已寄往快递站",
+                                "Checked in! " + quality + " reward sent to your delivery point"));
                         }
                         else
                         {
@@ -476,12 +521,14 @@ namespace BossRush
                         }
                         break;
 
+                    // 没受理的原因写进签到状态行（A-14），不再只走可能被报纸盖住的官方横幅
                     case DailyReportSignInOutcome.AlreadySigned:
-                        ShowBanner(L10n.T("今天已经签过了", "Already checked in today"));
+                        signInFailure = L10n.T("今天已经签过了，明天再来", "Already checked in today; come back tomorrow");
                         break;
 
                     case DailyReportSignInOutcome.PersistBlocked:
-                        ShowBanner(L10n.T("存档暂不可写，签到未受理", "Save is not writable; check-in refused"));
+                        signInFailure = L10n.T("存档暂时写不进去，这次没签上。合上报纸稍后再试",
+                            "The save can't be written right now; check-in didn't go through. Close the paper and try again later");
                         break;
                 }
 

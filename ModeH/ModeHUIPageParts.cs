@@ -202,7 +202,7 @@ namespace BossRush
             if (option.IsSelected)
             {
                 StyleSelectedButton(row, BossRushUIColors.Accent, BossRushUIColors.Accent);
-                right += AddSelectedBadge(row.transform) + 12f;
+                right += AddSelectedBadge(row.transform, option.SelectedBadge) + 12f;
             }
             else
             {
@@ -252,10 +252,10 @@ namespace BossRush
             }
         }
 
-        /// <summary>「√ 已选」角标：AccentFill 小底 + 按底色取字色，宽度按字量。返回角标宽度。</summary>
-        private static float AddSelectedBadge(Transform row)
+        /// <summary>「√ 已选」角标：AccentFill 小底 + 按底色取字色，宽度按字量。返回角标宽度。<paramref name="badgeText"/> 非空时用它（「√ 首发」「√ 已带上」）。</summary>
+        private static float AddSelectedBadge(Transform row, string badgeText)
         {
-            string text = L10n.T("√ 已选", "√ Selected");
+            string text = string.IsNullOrEmpty(badgeText) ? L10n.T("√ 已选", "√ Selected") : badgeText;
             GameObject badge = ZombieModeUIHelper.CreateRect("SelectedBadge", row,
                 new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-16f, -14f),
                 new Vector2(80f, SelectedBadgeHeight), new Vector2(1f, 1f));
@@ -301,19 +301,27 @@ namespace BossRush
             return forwardCount == 1 ? forward : -1;
         }
 
+        /// <summary>
+        /// 底色（UI 制作共识第 4 节，审查 B-04）：只有主操作是实心——主操作 AccentFill，主操作本身危险时 Danger；
+        /// 危险但不是主操作的（「放弃赛季」「退出本赛季」）不再是实心红块，走 StyleAction 的红描边红字，确认弹窗里那颗才实心。
+        /// </summary>
         internal static Color ResolveActionFill(ModeHActionData action, bool primary)
         {
             if (action == null || !action.Interactable) return BossRushUIColors.SurfaceRaised;
-            if (action.IsDanger) return BossRushUIColors.Danger;
-            if (primary) return BossRushUIColors.AccentFill;
+            if (primary) return action.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.AccentFill;
             return BossRushUIColors.SurfaceRaised;
         }
 
-        /// <summary>主 / 危险按钮保持实心；选中档染主色；其余次级（不可点的字换次级色）。恢复壳的动作行同一口径。</summary>
+        /// <summary>主操作保持实心；危险次级 = 深底 + 红描边 + 红字；选中档染主色；其余次级（不可点的字换次级色）。恢复壳的动作行同一口径。</summary>
         internal static void StyleAction(Button button, ModeHActionData action, bool primary)
         {
             if (button == null || action == null) return;
-            if (action.Interactable && (action.IsDanger || primary)) return;
+            if (action.Interactable && primary) return;
+            if (action.Interactable && action.IsDanger)
+            {
+                StyleOutlineButton(button, BossRushUIColors.DangerText);
+                return;
+            }
             if (action.Interactable && action.IsSelected)
             {
                 StyleSelectedButton(button, BossRushUIColors.Accent, BossRushUIColors.Accent);

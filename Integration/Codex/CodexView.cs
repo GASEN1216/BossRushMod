@@ -17,7 +17,11 @@
 //
 // 性能硬约束：
 //   - 仅打开、翻页、筛选、语言或已提交快照变化时重建；
-//     Update() 常态只有 Escape 与 O(1) 变化比较，无目录扫描或字符串拼接。
+//     Update() 常态只有 O(1) 变化比较，无目录扫描或字符串拼接。
+//
+// 输入（2026-09-24 UI 共识对照审查 A-43）：打开时占模态租约（ZombieModeUIHelper.ClaimModalInput，
+//   时停 + 光标 + 输入占用一处管），ESC / 手柄取消走 PetNestCancelKey（订官方 OnCancelEarly 并用掉事件）——
+//   旧版 Input.GetKeyDown(Escape) 不用掉官方取消事件，关面板的同时官方暂停菜单也会弹出来。
 //   - 立绘走 CodexPortraitCache 的 fail-open 三级占位链，缺图不阻断面板。
 // ============================================================================
 
@@ -48,6 +52,13 @@ namespace BossRush
         private const float PanelHeightRatio = 0.82f;
         private const float MinPanelHeight = 560f;
         private const float MaxPanelHeight = 880f;
+
+        // 字号四级（UI 共识第 7 节，A-20）：标题 28 / 名字与进度 17 / 正文 15 / 注脚 14。
+        private const float TitleFontSize = 28f;
+        private const float NameFontSize = 17f;
+        private const float BodyFontSize = 15f;
+        private const float NoteFontSize = 14f;
+        private const float FilterSegmentHeight = 30f;
 
         #endregion
 
@@ -100,8 +111,8 @@ namespace BossRush
         /// <summary>
         /// 静态缓存重置：销毁实例并清引用（宿主销毁 / Mod 卸载）。
         ///
-        /// **必须先走 Close()**：面板打开时占了 `InputManager.DisableInput(gameObject)`，
-        /// 只有 `Close()` 会 `ActiveInput` 还回去。直接 Destroy 绕过它的话，
+        /// **必须先走 Close()**：面板打开时占了模态租约（输入占用 + 时停），
+        /// 只有 `Close()` 会把租约还回去。直接 Destroy 绕过它的话，
         /// 宿主在面板开着时销毁会把玩家输入**永久**锁死，只能重启游戏。
         /// </summary>
         public static void ResetStaticCaches()
@@ -155,8 +166,12 @@ namespace BossRush
         private TextMeshProUGUI _progressText;
         private Image _progressFill;
         private RectTransform _progressTrack;
-        private Button _filterButton;
+        /// <summary>筛选分段（A-18）：「全部 / 待收集 · N」两颗并排，选中的一颗压 Accent 底 + WarningText 描边。</summary>
+        private Button _filterAllButton;
+        private Button _filterMissingButton;
         private TextMeshProUGUI _statusText;
+        private ZombieModeUIHelper.ModalInputLease _modalLease;
+        private PetNestCancelKey _cancelKey;
 
         private float _panelWidth;
         private float _panelHeight;
@@ -230,7 +245,7 @@ namespace BossRush
             }
         }
 
-        /// <summary>处理 Escape 与语言/已提交快照变化，稳定状态不重建。</summary>
+        /// <summary>处理语言/已提交快照变化，稳定状态不重建。ESC 走 PetNestCancelKey（OnCancel）。</summary>
         private void Update()
         {
             if (!_isOpen) return;
@@ -238,18 +253,18 @@ namespace BossRush
             // 仅比较语言与已提交快照；变化时才更新，平时不扫描目录或创建文本。
             if (_isChinese != L10n.IsChinese || !ReferenceEquals(_renderedData, CodexPersistence.Current))
                 RefreshAll();
+        }
 
-            if (Input.GetKeyDown(KeyCode.Escape))
+        /// <summary>ESC / 手柄取消：详情弹层开着时先收详情，再按一次才关面板。</summary>
+        private void OnCancel()
+        {
+            if (IsDetailOpen)
             {
-                // 详情弹层开着时 Escape 先收详情，再按一次才关面板
-                if (IsDetailOpen)
-                {
-                    HideDetail();
-                }
-                else
-                {
-                    Close();
-                }
+                HideDetail();
+            }
+            else
+            {
+                Close();
             }
         }
 
@@ -277,13 +292,14 @@ namespace BossRush
                 BossRushUIEntranceAnimation.Play(_backdropImage.gameObject, 0f, 0.15f, 0f);
             }
 
-            try
+            // 模态租约（A-43）：时停、光标、输入占用与其它模态面板共用一个计数，关闭时成对归还
+            if (_modalLease == null)
             {
-                InputManager.DisableInput(gameObject);
+                _modalLease = ZombieModeUIHelper.ClaimModalInput(gameObject, "Codex");
             }
-            catch (Exception)
+            if (_canvas != null)
             {
-                // 输入占用失败不阻断呈现
+                _cancelKey = PetNestCancelKey.Attach(_canvas.gameObject, OnCancel, IsCancelCovered);
             }
 
             RefreshAll();
@@ -306,14 +322,7 @@ namespace BossRush
             HideDetail();
 
             // 先还输入，再播淡出：动效绝不能变成输入延迟
-            try
-            {
-                InputManager.ActiveInput(gameObject);
-            }
-            catch (Exception)
-            {
-                // 输入释放失败不阻断关闭
-            }
+            ReleaseModalInput();
 
             if (_canvas != null)
             {
@@ -338,6 +347,34 @@ namespace BossRush
             {
                 ModBehaviour.DevLog(CodexTuning.LogPrefix + "图鉴面板已关闭");
             }
+        }
+
+        /// <summary>归还模态租约并停听取消键。幂等：Awake / OnDestroy / ResetStaticCaches 都会走到。</summary>
+        private void ReleaseModalInput()
+        {
+            if (_cancelKey != null)
+            {
+                _cancelKey.Detach();
+                _cancelKey = null;
+            }
+            try
+            {
+                if (_modalLease != null)
+                {
+                    _modalLease.Release();
+                }
+            }
+            catch (Exception)
+            {
+                // 输入释放失败不阻断关闭
+            }
+            _modalLease = null;
+        }
+
+        /// <summary>共享确认框压在上面时 ESC 让给它。</summary>
+        private static bool IsCancelCovered()
+        {
+            return BossRushConfirmDialog.IsOpen;
         }
 
         private void StopCloseFade()
@@ -474,7 +511,7 @@ namespace BossRush
                 "Title",
                 header.transform,
                 L10n.T("鸭皇图鉴", "Duckov Codex"),
-                28f,
+                TitleFontSize,
                 new Vector2(0f, 0f),
                 new Vector2(1f, 1f),
                 Vector2.zero,
@@ -547,7 +584,7 @@ namespace BossRush
                 "ProgressText",
                 row.transform,
                 string.Empty,
-                17f,
+                NameFontSize,
                 new Vector2(0f, 0.42f),
                 new Vector2(0.34f, 1f),
                 new Vector2(PanelSidePadding, 0f),
@@ -583,11 +620,16 @@ namespace BossRush
             BossRushUI.ApplyPanelSkin(_progressFill, 4, BossRushUISkinPart.ScrollHandle);
             _progressFill.raycastTarget = false;
 
-            _filterButton = CreateNavigationButton("Filter", row.transform, new Vector2(0f, 0f),
-                new Vector2(100f, 22f), new Vector2(164f, 30f), ToggleMissingFilter);
-            _statusText = ZombieModeUIHelper.CreateText("Status", row.transform, string.Empty, 14f,
-                new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(89f, 22f),
-                new Vector2(-218f, 34f), TextAlignmentOptions.Left, BossRushUIColors.TextSecondary);
+            // 筛选是两个视图之间切换，做成分段（A-18）而不是一颗改文案的开关按钮：
+            // 旧版按钮上写的是「点了会怎样」，看不出现在是哪种视图。
+            _filterAllButton = CreateNavigationButton("FilterAll", row.transform, new Vector2(0f, 0f),
+                new Vector2(PanelSidePadding + 44f, 22f), new Vector2(88f, FilterSegmentHeight), ShowAllEntries);
+            _filterMissingButton = CreateNavigationButton("FilterMissing", row.transform, new Vector2(0f, 0f),
+                new Vector2(PanelSidePadding + 88f + 6f + 64f, 22f), new Vector2(128f, FilterSegmentHeight), ShowMissingEntries);
+            // 状态注脚从分段右侧（左边距 246）排到进度条右沿
+            _statusText = ZombieModeUIHelper.CreateText("Status", row.transform, string.Empty, NoteFontSize,
+                new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(113f, 22f),
+                new Vector2(-266f, 34f), TextAlignmentOptions.Left, BossRushUIColors.TextSecondary);
             _statusText.raycastTarget = false;
 
             GameObject divider = ZombieModeUIHelper.CreateSeparator(
@@ -713,7 +755,7 @@ namespace BossRush
             Vector2 position, Vector2 size, UnityEngine.Events.UnityAction action)
         {
             Button button = ZombieModeUIHelper.CreateButton(name, parent, string.Empty, anchor, position, size,
-                BossRushUIColors.SurfaceRaised, 15f, size, action, true);
+                BossRushUIColors.SurfaceRaised, BodyFontSize, size, action, true);
             BossRushUIKit.StyleSecondaryButton(button);
             return button;
         }
@@ -775,8 +817,12 @@ namespace BossRush
                     : L10n.T("击杀自动记录 · 1 / 10 / 20 条与全收集解锁成就",
                         "Kills log automatically · Achievements at 1 / 10 / 20 entries and completion");
             }
-            SetButtonLabel(_filterButton, _onlyMissing
-                ? L10n.T("查看全部", "Show all") : L10n.T("只看待收集", "Show missing"));
+            SetButtonLabel(_filterAllButton, L10n.T("全部", "All"));
+            SetButtonLabel(_filterMissingButton, string.Format(L10n.T("待收集 · {0}", "Missing · {0}"),
+                Mathf.Max(0, total - unlocked)));
+            // 选中态：Accent 淡底 + WarningText 描边 + 粗体（共享口径，与 Boss 池页签同一份）
+            IntegrationUIFeedback.StyleSegment(_filterAllButton, !_onlyMissing);
+            IntegrationUIFeedback.StyleSegment(_filterMissingButton, _onlyMissing);
         }
 
         /// <summary>

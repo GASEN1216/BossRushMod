@@ -114,6 +114,11 @@ namespace BossRush
         private const float TextInsetY = 10f;
         /// <summary>正文 16、首行（模式名 · 幕波次）18，常驻 HUD 正文档（AGENTS §4.14 字号梯度）。</summary>
         private const float BodyFontSize = 16f;
+        /// <summary>反制目标进度条（UI 共识对照审查 B-25：进度用进度条 + 数字）：4 高圆头细条，压在卡片底边、文字下方留 8。</summary>
+        private const float BarHeight = 4f;
+        private const float BarGap = 8f;
+        /// <summary>显示值追目标值的速度（每秒走满条的倍数），与血猎追击状态卡同口径。</summary>
+        private const float BarSpeed = 1.5f;
 
         private readonly ModeGRuntimeModule _module;
         private readonly StringBuilder _builder = new StringBuilder(256);
@@ -121,6 +126,12 @@ namespace BossRush
         private GameObject _root;
         private RectTransform _cardRect;
         private TextMeshProUGUI _statusText;
+        private GameObject _barTrack;
+        private RectTransform _barFill;
+        private Image _barFillImage;
+        private float _barShown;
+        private float _barTarget;
+        private bool _barVisible;
         private string _lastText = string.Empty;
         private float _refreshTimer;
         private bool _disposed;
@@ -171,6 +182,7 @@ namespace BossRush
                     BossRushUIColors.TextPrimary);
                 _statusText.rectTransform.pivot = new Vector2(0f, 1f);
                 _statusText.richText = true;
+                CreateProgressBar(card.transform);
                 card.SetActive(false); // 第一次拿到文本再出现，不闪一张空卡
             }
             catch (Exception e)
@@ -178,6 +190,83 @@ namespace BossRush
                 ModBehaviour.DevLog("[ModeG] [WARNING] HUD Canvas 创建失败（降级无 HUD）: " + e.Message);
                 Dispose();
             }
+        }
+
+        /// <summary>
+        /// 细轨 + 圆头填充，长度由 anchorMax.x 驱动（Filled 配不了九宫格圆角，方头会戳出轨道；写法同血猎追击状态卡）。
+        /// 只在有可得分进度时出现（反制生效中的距离 / 属性轴），其余状态整条收起，卡片也不给它留高度。
+        /// </summary>
+        private void CreateProgressBar(Transform card)
+        {
+            float width = CardWidth - TextInsetLeft - TextInsetRight;
+            _barTrack = ZombieModeUIHelper.CreateRect("ModeG_ObjectiveTrack", card,
+                Vector2.zero, Vector2.zero, new Vector2(TextInsetLeft, TextInsetY),
+                new Vector2(width, BarHeight), Vector2.zero);
+            Image track = _barTrack.AddComponent<Image>();
+            track.color = BossRushUIColors.Divider;
+            track.raycastTarget = false;
+            BossRushUI.ApplyPanelSkin(track, 2, BossRushUISkinPart.Hairline);
+
+            GameObject fill = ZombieModeUIHelper.CreateRect("ModeG_ObjectiveFill", _barTrack.transform,
+                Vector2.zero, new Vector2(0f, 1f), Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
+            _barFill = fill.GetComponent<RectTransform>();
+            _barFill.offsetMin = Vector2.zero;
+            _barFill.offsetMax = Vector2.zero;
+            _barFillImage = fill.AddComponent<Image>();
+            _barFillImage.color = BossRushUIColors.WarningText;
+            _barFillImage.raycastTarget = false;
+            BossRushUI.ApplyPanelSkin(_barFillImage, 2, BossRushUISkinPart.Hairline);
+            fill.SetActive(false);
+            _barTrack.SetActive(false);
+        }
+
+        /// <summary>
+        /// 本波唯一目标的进度（0..1）：双门槛都要过，所以取两道门槛完成比的较小值，
+        /// 与文字里向下取整的百分比同一口径——条满不早于实际达标。没有可得分进度时返回 false。
+        /// </summary>
+        private static bool TryGetObjectiveFill(ModeGHudModel m, out float fill)
+        {
+            fill = 0f;
+            if (m.intermissionActive) return false;
+            if (m.axis != ModeGCounterAxis.Distance && m.axis != ModeGCounterAxis.Attribute) return false;
+            if (m.objectiveState != ModeGObjectiveState.Active
+                && m.objectiveState != ModeGObjectiveState.ThresholdsMet) return false;
+            float share = m.progress.shareTarget > 0f ? m.progress.share / m.progress.shareTarget : 1f;
+            float contribution = m.progress.contributionTarget > 0f
+                ? m.progress.contribution / m.progress.contributionTarget : 1f;
+            fill = Mathf.Clamp01(Mathf.Min(share, contribution));
+            return true;
+        }
+
+        /// <summary>4Hz 刷新时定目标值与颜色（双门槛达标换 SuccessText）；可见性变了就重新收卡片高度。</summary>
+        private void SetProgressTarget(ModeGHudModel m)
+        {
+            if (_barTrack == null) return;
+            float fill;
+            bool show = TryGetObjectiveFill(m, out fill);
+            _barTarget = show ? fill : 0f;
+            if (_barFillImage != null)
+            {
+                Color color = m.objectiveState == ModeGObjectiveState.ThresholdsMet
+                    ? BossRushUIColors.SuccessText : BossRushUIColors.WarningText;
+                if (_barFillImage.color != color) _barFillImage.color = color;
+            }
+            if (show == _barVisible) return;
+            _barVisible = show;
+            _barTrack.SetActive(show);
+            if (!show) _barShown = 0f;
+            FitCard();
+        }
+
+        /// <summary>每帧 O(1)：显示值按 unscaled 时间追目标值，追上之后不再写 RectTransform。</summary>
+        private void AnimateProgressBar()
+        {
+            if (!_barVisible || _barFill == null || Mathf.Approximately(_barShown, _barTarget)) return;
+            _barShown = Mathf.MoveTowards(_barShown, _barTarget, Time.unscaledDeltaTime * BarSpeed);
+            _barFill.anchorMax = new Vector2(_barShown, 1f);
+            // 圆角细条宽度小于两端圆角时会画成一个点，几乎空的时候干脆不画。
+            bool show = _barShown > 0.02f;
+            if (_barFill.gameObject.activeSelf != show) _barFill.gameObject.SetActive(show);
         }
 
         #endregion
@@ -200,6 +289,7 @@ namespace BossRush
             bool visible = !BossRushUI.IsOfficialHudHidden() && !BossRushUI.IsGamePaused();
             SetVisible(visible);
             if (!visible) return;
+            AnimateProgressBar();
 
             _refreshTimer += deltaTime;
             if (_refreshTimer < RefreshIntervalSeconds) return;
@@ -207,7 +297,9 @@ namespace BossRush
 
             try
             {
-                string text = BuildStatusText(_module.BuildHudModel());
+                ModeGHudModel model = _module.BuildHudModel();
+                string text = BuildStatusText(model);
+                SetProgressTarget(model);
                 if (!string.Equals(text, _lastText, StringComparison.Ordinal))
                 {
                     _lastText = text;
@@ -240,6 +332,7 @@ namespace BossRush
             if (!_cardRect.gameObject.activeSelf) _cardRect.gameObject.SetActive(true);
             float height = BossRushUI.MeasureTextHeight(_statusText,
                 CardWidth - TextInsetLeft - TextInsetRight, Mathf.Ceil(BodyFontSize * 1.45f) + 4f);
+            if (_barVisible) height += BarGap + BarHeight;
             _cardRect.sizeDelta = new Vector2(CardWidth, Mathf.Ceil(height + TextInsetY * 2f));
         }
 
@@ -340,8 +433,8 @@ namespace BossRush
                 : m.nemesisName);
             if (m.nemesisRank > 0)
             {
-                _builder.Append(' ').Append(L10n.T("BossRush_ModeG_RankWord"))
-                    .Append(' ').Append(m.nemesisRank);
+                // 「{0} 阶」/「Rank {0}」：中文界面不夹英文 Rank（UI 共识对照审查 B-25）。
+                _builder.Append(' ').Append(string.Format(L10n.T("BossRush_ModeG_RankWord"), m.nemesisRank));
             }
             _builder.Append("</color>");
             string temperament = ModeGAdaptiveCombat.GetTemperamentDisplayName(m.nemesisTemperament);
@@ -454,6 +547,10 @@ namespace BossRush
             _root = null;
             _cardRect = null;
             _statusText = null;
+            _barTrack = null;
+            _barFill = null;
+            _barFillImage = null;
+            _barVisible = false;
             _lastText = string.Empty;
         }
     }

@@ -1,5 +1,21 @@
 # CODE_REVIEW_FINDINGS.md — 已确认问题库
 
+<!-- BEGIN UI CONSENSUS AUDIT FINDINGS 2026-09-24 -->
+
+## 2026-09-24 UI 共识对照审查中确认的缺陷（均 Fixed / L1+L2，L3 待 owner）
+
+全文与其余 P2 / P3 在本地 `docs/代码审查/2026-09-24-UI共识对照审查.md`（口径 `docs/架构说明/UI制作共识.md`）。这里只登记主会话亲自核对过代码、会让玩家受损或卡住的四条。同日 owner「全部修复」，四条连同其余 P2 / P3 全部修完，修法见审查报告第九节与 `FIX_TRACKER.md` 同日「UI 共识全量修复」一节。
+
+| ID | 级别 | 问题与根因 | 位置 |
+| --- | --- | --- | --- |
+| CR-2026-09-24-001 | P1 | 词缀锻造已锁槽的按钮文案是状态「已锁定」，点击分支直接 `UnlockSlot`（免费、无确认），锁定时扣的熔石不退，误点即损失 | `Integration/Reforge/ReforgeUIManager_AffixForge.cs`（锁定按钮回调）、`Integration/AffixForge/AffixForgeSystem.cs`（`LockSlot` 扣熔石 / `UnlockSlot` 不退）；修：已锁槽改成不可点的「已锁定」标签 + 红描边「解锁」，点了先弹共享 `BossRushConfirmDialog` 写明熔石不退，确认回调再核对是同一件物品；守卫 `ReforgeUIFeelGuard` §7、`UIConsensusSystemPanelsGuard` |
+| CR-2026-09-24-002 | P1 | 远征翻牌播放中「跳过」/ ESC 走 `SkipAll`：剩余记录全部 `MarkRevealed` 后直接关窗，阵亡与负伤结果一张不显示、也不会再弹 | `PetNest/PetNestExpeditionRevealView.cs`（`OnSkipOrClose` / `SkipAll`）；修：跳过 / ESC 改走 `SkipToSummary`，剩余记录标记已翻后收成一屏汇总（阵亡红字）再由「关闭」收起；一次翻两张以上自然翻完也收汇总；守卫 `PetNestRevealIdempotencyGuard`，执行回归 `ManualSeptemberReview` 补多张汇总断言 |
+| CR-2026-09-24-003 | P1 | 丧尸撤离抉择按钮先 `RestoreInputState()` 还模态租约再调宿主；宿主拒绝（信标引导中、撤离区建不出）时页面不关，面板盖着而时间恢复、角色可动 | `ZombieMode/ZombieModeExtractionController.cs`（`ZombieModeExtractionOpportunityView` 按钮回调）；修：两颗按钮、两张卡、ESC 同走 `Choose`，宿主受理并收页时才还租约，被拒原因（新 key `Notify_ExtractionAreaFailed`）浮在「立即撤离」上方；守卫 `ZombieModeChoiceUiPauseAndLayoutGuard` |
+| CR-2026-09-24-004 | P1 | 鸭王杯恢复壳「放弃本赛季并结清押品」标 `IsDanger` 直接绑 `AbandonSeasonFromRecovery`，无确认，实心红与实心主色「同场重开」并排 | `ModeH/ModeHRuntimeModule_UiFlow.cs`（`BuildRecoveryActions`）、`ModeH/ModeHRecoveryPanel.cs`；修：放弃先弹 `BossRushConfirmDialog`（Danger，写明后果），恢复壳按钮改成红描边靠左、主操作靠右，恢复壳占模态租约并新增「稍后处理」；放弃时先退挂着的押金；守卫 `ModeHStructureGuard`，执行回归 `ModeHRecoverySecondReview` |
+
+<!-- END UI CONSENSUS AUDIT FINDINGS 2026-09-24 -->
+
+
 <!-- BEGIN AESTHETIC AUDIT FINDINGS 2026-09-23 -->
 
 ## 2026-09-23 UI / 交互 / 特效审美审查中确认的缺陷（均 Fixed / L1+L2，L3 待 owner）

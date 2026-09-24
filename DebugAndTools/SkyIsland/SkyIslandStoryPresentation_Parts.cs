@@ -49,7 +49,14 @@ namespace BossRush
             // 焦点指示物是行边（见 ChoiceFocusLift）：当前项 Accent，移走换回 Stroke。
             // 和行底的 ColorTint 同一个时长渐变（UE-17），不再边框「啪」地跳、底色却在慢慢变。
             Image stroke = index < buttonStrokes.Count ? buttonStrokes[index] : null;
-            if (stroke != null) stroke.CrossFadeColor(focused ? BossRushUIColors.Accent : BossRushUIColors.Stroke, focusFade, true, true);
+            if (stroke != null) stroke.CrossFadeColor(focused ? BossRushUIColors.Accent : RestStroke(index), focusFade, true, true);
+        }
+
+        /// <summary>行边的常态色：阅读页里正文正在显示的那一栏常亮 WarningText（B-32，见 MarkCurrent），其余 Stroke。</summary>
+        private Color RestStroke(int index)
+        {
+            ChoiceLook look = shownChoices != null && index >= 0 && index < shownChoices.Count ? LookOf(shownChoices[index]) : null;
+            return look != null && look.Current ? BossRushUIColors.WarningText : BossRushUIColors.Stroke;
         }
 
         /// <summary>焦点色：鼠标悬停与键盘当前项共用这一个。系数与 WCAG 实算见 <see cref="ChoiceFocusLift"/>。</summary>

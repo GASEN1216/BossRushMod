@@ -134,6 +134,32 @@ def main() -> int:
             if snippet not in class_text:
                 return fail(class_name + " missing shared pause/cursor/input handling: " + snippet)
 
+    # 2026-09-24 UI 共识对照审查 B-01（CR-2026-09-24-003）：撤离抉择的模态租约只在宿主受理后还。
+    # 旧版按钮回调先 RestoreInputState() 再调宿主；宿主拒绝（信标引导中、撤离点建不出来）时页面不关，
+    # 面板盖着但时间恢复、角色能动。现在两条路只走 Choose：先调宿主，受理时宿主经 ReleaseInput 收页；
+    # 拒绝时保留租约并就地提示原因。
+    extraction_view = extract_block(extraction_text, "public sealed class ZombieModeExtractionOpportunityView")
+    choose = extract_block(extraction_view, "private void Choose(bool extract)")
+    if not choose:
+        return fail("ZombieModeExtractionOpportunityView must route both choices through Choose(bool extract)")
+    host_calls = [choose.find("owner.StartZombieModeExtractionFromUi(runId)"),
+                  choose.find("owner.ContinueZombieModeAfterExtractionOpportunity(runId)")]
+    if min(host_calls) < 0:
+        return fail("Choose must call both host entry points")
+    for release in ["RestoreInputState()", "ReleaseInput()", "inputLease.Release()"]:
+        at = choose.find(release)
+        if 0 <= at < max(host_calls):
+            return fail("extraction choice must not release the modal lease before the host accepts: " + release)
+    if "refusalKey = owner.StartZombieModeExtractionFromUi(runId)" not in choose or "ZombieModeUiNudge.Flash(" not in choose:
+        return fail("a refused extraction must keep the page and show the host's reason in place")
+    card = extract_block(extraction_view, "private void CreateChoiceCard(")
+    if "RestoreInputState()" in card or "ReleaseInput()" in card:
+        return fail("extraction choice buttons must not release the modal lease themselves; go through Choose")
+    host_start = extract_block(extraction_text, "private string StartZombieModeExtraction(int runId)")
+    if 'return "BossRush_ZombieMode_Notify_ExtractionBeaconLocked";' not in host_start or \
+            'return "BossRush_ZombieMode_Notify_ExtractionAreaFailed";' not in host_start:
+        return fail("StartZombieModeExtraction must return the refusal reason to the page instead of a toast hidden under the modal")
+
     for snippet in [
         "new Vector2(24f, -294f)",
         "new Vector2(-408f, -24f)",

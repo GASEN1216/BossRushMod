@@ -79,7 +79,7 @@ By the official difficulty rating, lowest first:
 - **Blood Hunt** ★★★★★ — Naked + Ticket + Transponder. The hardest challenge
 
 ::: warning
-The Duck Cup may be relaxed to play, but it is the **only** place in the Mod that lets you stake real items from your stash, and a loss confiscates them permanently. Staking is entirely optional and you can play a full season without touching it. New players should stake nothing.
+The Duck Cup is relaxed to play, but it lets you bet money or backpack items: you back your fighter, a loss hands your stake to the house, and in the long run the house always wins. Nothing from your warehouse is ever staked. Betting is off by default and entirely optional, so you can play a full season without it. New players should not bet.
 :::
 
 ## Economy

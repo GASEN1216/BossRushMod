@@ -45,22 +45,22 @@ Six matches, all on the same rhythm:
 
 - A match lasts at most **180 seconds**. If you have not won by then, you lose. There is no extra time.
 - The opposition escalates every match. The first two cap at two enemies on the field at once; from match 3 the cap is three.
-- Between matches you press **at most one button**: "Next match" on the report page ("Continue" before a transfer window or after the final).
+- Between matches you press **at most one button**: "Next match" on the report page ("Continue" after the final). With a bet set, it reads "Next match · Bet 5,000" or "Next match · Bet 3 item(s)".
 - A **transfer window** opens after the settlement of **match 2** and **match 4**.
 - After match 6, your champion goes into the **Hall of Fame**.
 
 ### What Gets Decided For You
 
-Odds, bets and loadouts — the manager paperwork — are now handled with sensible defaults:
+Kits, orders and who opens — the manager paperwork — are handled with sensible defaults. Whether to bet, and whether to bet money or items, is up to you:
 
-- **No bet**: your virtual credits stay put, and **no real warehouse item is ever staked**.
+- **Bet**: **no bet** by default. To bet, pick an amount in the **Bet** row at the bottom of the page, or press **Bet items** to stake things from your backpack; see "Betting: Back Your Fighter" below.
 - **Kits**: the mode hands out its own gear; it has **nothing to do with your warehouse**. Reward kits you win are equipped automatically.
 - **Order**: your opening fighter's **signature order**; if it cannot be used this match, another usable order.
 - **Who opens**: your main fighter, unless it is injured and the relay is healthy — then the relay opens. An injured fighter that goes down again retires, so it waits in the relay seat instead and heals if it never has to step in.
 - The **scar** and **reward kit** on the report page are handled automatically too, and the page tells you what happened (see below).
 
 ::: tip
-You only see the old brief / loadout / odds pages in two cases: the automatic start was rejected (for example, no usable order this match), or a technical retry brought you back. There you can press "Start the match" to continue with the defaults, or "Adjust first" to change the roster, kits and order by hand or use the free scout.
+You only see the old brief / loadout / odds pages in two cases: the automatic start was rejected (for example, no usable order this match), or a technical retry brought you back. There you can press "Start the match" to continue with the defaults, use the free scout, or press "Adjust first" to change the roster, kits and order by hand (four tabs: Roster / Starter kits / Relay kits / Command, no paging). The same Bet row sits at the bottom.
 :::
 
 ### Transfer Windows
@@ -84,9 +84,12 @@ Each match rolls one ring condition. Rules apply equally to both sides:
 - **Open Field** — ranged rules: gun damage factor +15% for both teams.
 - **Residual Might** — gun and melee damage factors +20% for 8 seconds after each entry. Starters, relays and reinforcements have separate windows.
 
-### What the Odds Still Do
+### What the Odds Do
 
-The odds convert the public strength gap into x1 to x5 (the bigger the gap against you, the longer the shot). They are calculated even though you do not bet — **only wins at x3 or better earn a scar**, so the riskier the win, the more there is to keep.
+The odds convert the public strength gap into x1 to x5 (the bigger the gap against you, the longer the shot). They decide two things:
+
+- **What a bet pays back**: the longer the odds, the more a win pays; see "Betting: Back Your Fighter" below.
+- **Scars**: **only wins at x3 or better earn a scar**, so the riskier the win, the more there is to keep.
 
 ## The Bell: The One Thing You Actually Do
 
@@ -131,21 +134,60 @@ The report page handles it **automatically**:
 Likewise, the first **reward kit** on offer is claimed automatically and equipped by the default loadout.
 
 ::: tip
-If the automatic handling fails (for example, the save cannot be written for a moment), the report page falls back to the old manual buttons. Just press one.
+If the automatic handling fails (for example, the save cannot be written for a moment), the report page shows cards so you can choose yourself: keep the scar, replace one you already have (you are asked to confirm first, and the replaced scar does not come back), or decline the scar for fame. Reward kits work the same way: unlock one, or skip the kits for fame.
 :::
 
-## Real Stakes
+## Betting: Back Your Fighter
 
 ::: warning
-This mode lets you stake real warehouse items. A loss confiscates them permanently, and your only copy of a piece of gear is not exempt.
+Bets are your real money or backpack items: you back your fighter, and if it loses the house keeps the stake. In the long run the house always wins.
 :::
 
-That is the small line at the bottom of the pick page. **The normal flow never stakes any of your warehouse items**; a whole season leaves your warehouse untouched.
+That is the small line at the bottom of the pick page. You can bet **money** — your account balance; cash items in your backpack are never touched — or **items from your backpack**. **Nothing from your warehouse is ever staked**: matches are played on a raid map, and your warehouse only exists at the base.
 
-Items can only be staked by hand on the old loadout page that appears when the automatic start is rejected: at most 3 per match; a loss takes them **permanently**, including your only copy of a piece of gear; a win returns them all plus extra items of the same quality equal to the odds multiplier (x3 pays 3).
+- **Where**: the pick page, every match report (for the next match) and the fallback odds page all have a **Bet** row at the bottom: **No bet / Bet 1,000 / Bet 5,000 / Bet 20,000 / Bet items**.
+- **A money bet sets how much you bet on every match from now on**, until you change it. The default is no bet, and loading a save puts it back to no bet.
+- **An item bet covers the next match only**: **Bet items** opens a page of your backpack; tap an item to stake it, tap again to take it back, then press **Done** to return.
+- **You always bet on your own fighter winning that match.** The stake is taken, or the staked items recorded, only once the match locks in. If you are short on money or the items have left your backpack, that match simply has no bet; the report page says why, and the match goes ahead.
+
+### Betting Items
+
+- **What you can stake**: anything in your backpack, as many items and as valuable as you like. Only quest items (which the game will not even let you drop) and worthless items are left out. Containers can be staked too; the card says "with N inside", and a loss takes the contents as well.
+- **Value**: what a trader would pay, which is half the list price (attachments and container contents included, scaled by durability). Staking items is never better than selling them.
+- **Staked items are not taken up front**; they stay in your backpack during the match. **Lose** and the staked items are taken.
+- **Win** and you keep them, plus **prizes**:
+  - **Quality** follows your stake: the value-weighted average quality, so the pricey item decides. Stake a purple gun with a few bullets and the prizes are mostly purple.
+  - **Total value** follows the stake value and the odds: what a win pays back (see below) minus the stake value. The more valuable the stake and the longer the odds, the more the prizes are worth.
+  - **Count**: one prize per staked item, up to 6. Prizes go into your backpack, or drop at your feet if it is full.
+  - Whatever the prizes cannot cover exactly (for example, nothing of that quality fits the remaining value) is paid in money.
+- Leave staked items alone once the match starts: anything missing when you lose (moved, used or merged away) is charged from your balance at its value, down to zero. Anything merged into the same stack during the match is not part of the bet; only the staked amount is taken.
+
+### The Odds Reveal
+
+Once your bet is in, the match opens with a short "Odds are in" reveal: five odds cells from x1 to x5, each showing what a win pays back (for an item bet, roughly what the prizes are worth). The highlight sweeps across, slowing down, and stops on this match's odds. It is only a show and never blocks you.
+
+### What a Win Pays
+
+A win pays back stake × 0.92 ÷ the assumed win rate for that odds tier, **stake included**:
+
+- **x1** — assumed 85% to win, pays back about 1.08×
+- **x2** — assumed 70% to win, pays back about 1.31×
+- **x3** — assumed 55% to win, pays back about 1.67×
+- **x4** — assumed 42% to win, pays back about 2.19×
+- **x5** — assumed 30% to win, pays back about 3.06×
+
+For example, a 5,000 bet won at x3 pays back 8,360. A loss gives your stake to the house. Item bets use the value: items worth 5,000 won at x3 stay with you, plus prizes worth about 3,360.
+
+Over time you lose about 8 for every 100 you bet: the house always wins, which is what gambling is. If one tier's **actual** win rate (after 20 bets at that tier) comes out higher than the table, that tier's payout drops automatically.
+
+### Results, Interruptions and Refunds
+
+- The report page adds a line: "Bet: 5,000  won, paid 8,360" or "Bet: 5,000  lost, the house keeps it"; item bets read "Bet: 3 item(s) (worth 12,345)  won: you keep the items, plus prizes: ...", listing the prizes and any remainder paid in money.
+- **A bet stays with its match**: after a technical abort, a suspended season or quitting the game mid-match, that match is played again. The bet is **not refunded**; the rematch keeps it (the button reads "Bet placed: ...") and settles it on the rematch result. The rematch never counts as your loss, but quitting cannot turn a losing match into a fresh roll either.
+- Bets come back only when the season will not be played on: **Abandon this season** on the recovery page, or a new season finding a bet left over from the old one. For item bets, the items never left your backpack.
 
 ::: warning
-Before you stake, ask yourself one question: if these items were gone tomorrow, would I still want to play this save? Answer it first, then click.
+Before you bet, ask yourself one question: if this money were gone, would I still want to keep playing? You can finish a whole season without betting.
 :::
 
 ---
@@ -155,9 +197,9 @@ Before you stake, ask yourself one question: if these items were gone tomorrow, 
 Win the sixth match and your champion is inscribed in the **Hall of Fame**.
 
 - The Hall **persists across seasons** and holds exactly **32 seats**. When the thirty-third arrives, **the oldest record is pushed out**.
-- Each record carries the champion's name, archetype and temperament, signature order, that season's **best odds win** and **best credit win**, and their scar count and fame.
+- Each record is a card with the **champion's portrait**: name, archetype and temperament, plus one plain line — its signature call, the longest odds it won an upset at, its fame and how many scars it carries.
 - A champion with an anomaly is marked apart in the list.
-- The season wrap-up page shows you the current Hall directly, so you can see how many seats are left and who is about to be pushed out.
+- The season wrap-up page shows you the current Hall directly, so you can see how many seats are left and who is about to be pushed out. Its only button, **End season**, closes the season.
 
 Being pushed out is not a failure. It is what the rule was always going to do — names not lasting is the normal state of this place.
 
@@ -173,8 +215,8 @@ Being pushed out is not a failure. It is what the rule was always going to do �
 - **Do kills here count toward the Duck King Codex?** No. Your fighter landed the blow, not you.
 - **Can I reroll the candidates?** No. Closing and reopening the page changes nothing. Those five are the five.
 - **What happens after a season?** The season closes and your champion is recorded in the **Hall of Fame**. The Hall keeps only **32 places** — the 33rd entry pushes out the oldest one.
-- **Does a technical failure count as a loss?** No. The same match retries automatically, up to two times, without recording a defeat; press "Start the match" when you are back. Further failures suspend the season for recovery through the boat menu.
-- **My season is stuck and won't continue.** Interact with the boat and you get a recovery page instead of the usual entry. It can hand your staked items back, and it offers **Abandon this season and settle stakes** — that closes the stake ledger, clears the stuck season and lets you start a new one. Stakes are returned as they were; the season itself is gone.
+- **Does a technical failure count as a loss?** No. The same match retries automatically, up to two times, without recording a defeat; if you had a bet on, it is not refunded; the retry keeps it and settles it on the rematch result. Press "Start the match" when you are back. Further failures suspend the season for recovery through the boat menu.
+- **My season is stuck and won't continue.** Interact with the boat and you get a recovery page instead of the usual entry. **Abandon this season and settle the stake** first opens a confirmation that spells out what happens. Once you confirm, any bet still on the table comes back untouched (staked backpack items never left your backpack; any warehouse items an older save still holds in escrow go back too), the stuck season is cleared and you can start a new one; the season itself is gone. Not ready to decide? **Later** closes the page, and the boat entry opens it again.
 
 ::: tip
 This mode asks only two things of you: who goes into the ring, and when to ring that one bell. The rest is up to them.

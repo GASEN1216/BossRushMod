@@ -559,7 +559,7 @@ namespace BossRush
             try
             {
                 lighting.CyclePreset();
-                Status(L10n.T("天空岛光色 · ", "Sky Islands lighting · ") + lighting.PresetName, false);
+                Status(lighting.PlayerCaption, false);
             }
             catch (Exception e)
             {

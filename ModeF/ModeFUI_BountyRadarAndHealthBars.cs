@@ -419,24 +419,9 @@ namespace BossRush
 
             CleanupModeFBountyRadarUI();
 
-            GameObject root = new GameObject("ModeF_BountyRadarCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-            Canvas canvas = root.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = MODEF_BOUNTY_RADAR_CANVAS_ORDER;
-
-            CanvasScaler scaler = root.GetComponent<CanvasScaler>();
-            // screenMatchMode 原本显式写成 MatchWidthOrHeight，而 CanvasScaler 是随
-            // new GameObject(typeof(CanvasScaler)) 一起新建的，默认值本就是它，行为不变。
-            ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
-
-            GraphicRaycaster raycaster = root.GetComponent<GraphicRaycaster>();
-            raycaster.enabled = false;
-
-            RectTransform rootRect = root.GetComponent<RectTransform>();
-            rootRect.anchorMin = Vector2.zero;
-            rootRect.anchorMax = Vector2.one;
-            rootRect.offsetMin = Vector2.zero;
-            rootRect.offsetMax = Vector2.zero;
+            // 画布走共享 CreateCanvasRoot（UI 共识对照审查 B-31）：同一套 CanvasScaler 口径，射线关掉（雷达不接收点击）。
+            // 覆盖层画布的根 RectTransform 由 Canvas 自己铺满屏幕，不用再手写锚点。
+            GameObject root = BossRushUI.CreateCanvasRoot("ModeF_BountyRadarCanvas", MODEF_BOUNTY_RADAR_CANVAS_ORDER, false).gameObject;
 
             GameObject centerObject = new GameObject("Center", typeof(RectTransform));
             RectTransform centerRect = centerObject.GetComponent<RectTransform>();

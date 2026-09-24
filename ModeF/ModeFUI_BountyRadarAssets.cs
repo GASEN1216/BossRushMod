@@ -14,9 +14,10 @@ namespace BossRush
                     MODEF_BOUNTY_RADAR_REGULAR_SPRITE_PATH_LEGACY);
                 if (modeFBountyRadarRegularSprite == null)
                 {
+                    // 找不到贴图时的程序化兜底也走 token（B-31）：普通悬赏 DangerText、榜首 WarningText。
                     modeFBountyRadarRegularSprite = CreateModeFBountyRadarSprite(
-                        new Color(0.95f, 0.28f, 0.18f, 0.18f),
-                        new Color(1f, 0.72f, 0.32f, 0.95f),
+                        new Color(BossRushUIColors.DangerText.r, BossRushUIColors.DangerText.g, BossRushUIColors.DangerText.b, 0.18f),
+                        new Color(BossRushUIColors.DangerText.r, BossRushUIColors.DangerText.g, BossRushUIColors.DangerText.b, 0.95f),
                         0.22f,
                         0.40f);
                 }
@@ -35,8 +36,8 @@ namespace BossRush
                 if (modeFBountyRadarLeaderSprite == null)
                 {
                     modeFBountyRadarLeaderSprite = CreateModeFBountyRadarSprite(
-                        new Color(0.95f, 0.78f, 0.18f, 0.20f),
-                        new Color(1f, 0.93f, 0.55f, 1f),
+                        new Color(BossRushUIColors.WarningText.r, BossRushUIColors.WarningText.g, BossRushUIColors.WarningText.b, 0.20f),
+                        BossRushUIColors.WarningText,
                         0.18f,
                         0.44f);
                 }

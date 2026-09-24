@@ -86,6 +86,7 @@ namespace BossRush
                 // 仓库尚未就绪时由 journal 登记 deferred，关卡就绪后再补算可用性。
                 ModeHWarehouseStakeJournal.LoadPersisted(ModeHStakeJournalPersistence.LoadCurrent());
                 RestoreFromSaveIfPresent();
+                ReconcileCashBetOnRestore();
             }
             catch (Exception e)
             {
@@ -316,6 +317,7 @@ namespace BossRush
             _map = null;
             BeginNewRunSession();
             RestoreFromSaveIfPresent();
+            ReconcileCashBetOnRestore();
         }
 
         /// <summary>存在活动 Season 时重建内存 run owner（生成新的 owner token）。</summary>
@@ -513,6 +515,9 @@ namespace BossRush
             ModeHDeathSuppressionRegistry.ResetStaticCaches();
             ModeHCombatTelemetry.ResetStaticCaches();
             ModeHSpectatorLease.ResetStaticCaches();
+            ModeHBetRevealView.Stop();
+            ModeHCashBetService.ResetStaticCaches();
+            ModeHItemBetStake.ResetStaticCaches();
         }
 
         private static void LogFailure(string stage, Exception e)

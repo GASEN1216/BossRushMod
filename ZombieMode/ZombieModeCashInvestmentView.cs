@@ -77,18 +77,21 @@ namespace BossRush
     {
         // 2026-09-23 审美审查（UC-11 / UC-12 / UC-21 / UC-25 / UC-26 / UC-07）：
         // 旧版自带 14 色私有调色板（「返回」是危险色的红、确认悬停白字只有 3.05:1）、输入框靠两层直角方块拼边、「Max」写死英文。
-        // 现在颜色全走 token：确认是本屏唯一主操作（AccentFill），跳过 / 返回走共享次级样式；
+        // 现在颜色全走 token：确认是本屏唯一主操作（AccentFill），放在最右；返回走共享次级样式放左边；
         // 输入框走按钮档圆角底图 + 描边（超额时描边换 DangerText）；标题行不垫直角色条；ESC 等同「返回」。
+        // 2026-09-24 UI 共识对照审查 B-26：去掉「跳过（投入 0）」——金额默认 0，主按钮按金额改写成「不投入，直接出发」/「投入并出发」；
+        // 字号收成四级：标题 26 / 输入与预览 18 / 正文、标签与按钮 16 / 快捷键与错误 14。
         private ModBehaviour owner;
         private System.Action onConfirmed;
         private System.Action onCancelled;
-        private bool dispatched; // 防止 Confirm/Skip/Cancel 重入
+        private bool dispatched; // 防止 Confirm/Cancel 重入
         private ZombieModeUIHelper.ModalInputLease inputLease;
 
         private TMP_InputField amountField;
         private TextMeshProUGUI errorText;
         private TextMeshProUGUI previewText;
         private TextMeshProUGUI balanceText;
+        private TextMeshProUGUI confirmLabel;
         private Image inputFrame;
 
         public void Initialize(ModBehaviour newOwner, System.Action newOnConfirmed, System.Action newOnCancelled)
@@ -138,7 +141,7 @@ namespace BossRush
             titleText.fontStyle = FontStyles.Bold;
 
             balanceText = ZombieModeUIHelper.CreateText("Balance", panel.transform,
-                GetBalanceLabel(), 17,
+                GetBalanceLabel(), 16,
                 new Vector2(0.64f, 1f), new Vector2(1f, 1f),
                 new Vector2(-16f, -(headerH * 0.5f)), new Vector2(-32f, 40f),
                 TextAlignmentOptions.MidlineRight, BossRushUIColors.WarningText);
@@ -155,7 +158,7 @@ namespace BossRush
             // ── 正文说明 ──
             float bodyH = 64f;
             ZombieModeUIHelper.CreateText("Body", panel.transform,
-                L10n.T("BossRush_ZombieMode_CashPrompt_Body"), 15,
+                L10n.T("BossRush_ZombieMode_CashPrompt_Body"), 16,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -(yPos + bodyH * 0.5f)), new Vector2(-56f, bodyH),
                 TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
@@ -217,7 +220,7 @@ namespace BossRush
             // ── 预览条（带高亮背景） ──
             float previewH = 34f;
             Color success = BossRushUIColors.Success;
-            previewText = ZombieModeUIHelper.CreateHighlightBar("Preview", panel.transform, "", 16,
+            previewText = ZombieModeUIHelper.CreateHighlightBar("Preview", panel.transform, "", 18,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -(yPos + previewH * 0.5f)), new Vector2(-40f, previewH),
                 TextAlignmentOptions.Center, BossRushUIColors.SuccessText, new Color(success.r, success.g, success.b, 0.14f));
@@ -250,12 +253,11 @@ namespace BossRush
             buttonLayout.childForceExpandWidth = false;
             buttonLayout.childForceExpandHeight = false;
 
-            CreateActionButton(actionRow.transform, "Confirm",
-                L10n.T("BossRush_ZombieMode_CashPrompt_Confirm"), true, 0);
-            CreateActionButton(actionRow.transform, "SkipZero",
-                L10n.T("BossRush_ZombieMode_CashPrompt_SkipZero"), false, 1);
+            // 返回在左、主操作在右（布局组按子物体顺序从左到右排）。主按钮文案随金额改写，见 UpdatePreview。
             CreateActionButton(actionRow.transform, "Cancel",
                 L10n.T("BossRush_ZombieMode_CashPrompt_Cancel"), false, 2);
+            confirmLabel = CreateActionButton(actionRow.transform, "Confirm",
+                L10n.T("BossRush_ZombieMode_CashPrompt_SkipZero"), true, 0);
 
             BossRushUI.PlayOpenAnimation(panel);
             ModBehaviour.DevLog("[ZombieMode] 现金投入弹窗已创建底部操作按钮");
@@ -304,6 +306,10 @@ namespace BossRush
             if (inputFrame != null)
             {
                 inputFrame.color = affordable ? BossRushUIColors.Stroke : BossRushUIColors.DangerText;
+            }
+            if (confirmLabel != null)
+            {
+                confirmLabel.text = L10n.T(amount > 0L ? "BossRush_ZombieMode_CashPrompt_Confirm" : "BossRush_ZombieMode_CashPrompt_SkipZero");
             }
 
             if (errorText != null)
@@ -435,19 +441,19 @@ namespace BossRush
 
         /// <summary>
         /// 创建底部操作按钮。按钮所在行由 HorizontalLayoutGroup 负责排布。
-        /// 主操作（确认）用 AccentFill 实色，其余走共享次级样式；三态、音效与按下回弹都由共享入口派生。
+        /// 主操作（确认）用 AccentFill 实色，其余走共享次级样式；三态、音效与按下回弹都由共享入口派生。返回按钮的标签。
         /// </summary>
-        private void CreateActionButton(Transform parent, string name, string text, bool primary, int code)
+        private TextMeshProUGUI CreateActionButton(Transform parent, string name, string text, bool primary, int code)
         {
             int captured = code;
-            float btnW = 170f;
+            float btnW = primary ? 220f : 170f;
             float btnH = 44f;
             Button button = ZombieModeUIHelper.CreateButton(
                 name, parent, text,
                 new Vector2(0.5f, 0.5f),
                 Vector2.zero,
                 new Vector2(btnW, btnH),
-                primary ? BossRushUIColors.AccentFill : BossRushUIColors.SurfaceRaised, 17,
+                primary ? BossRushUIColors.AccentFill : BossRushUIColors.SurfaceRaised, 16,
                 new Vector2(btnW - 12f, btnH - 8f),
                 delegate { OnButton(captured); },
                 true);
@@ -467,6 +473,8 @@ namespace BossRush
             {
                 BossRushUIKit.StyleSecondaryButton(button);
             }
+            Transform label = button.transform.Find("Text");
+            return label != null ? label.GetComponent<TextMeshProUGUI>() : null;
         }
 
         /// <summary>

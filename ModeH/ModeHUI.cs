@@ -22,7 +22,9 @@ namespace BossRush
         /// <summary>转会窗口</summary>
         Transfer = 5,
         /// <summary>名人堂</summary>
-        HallOfFame = 6
+        HallOfFame = 6,
+        /// <summary>押背包物品的选择页（2026-09-24，从押注行进入，「完成」回原页）</summary>
+        ItemBet = 7
     }
 
     /// <summary>
@@ -64,6 +66,8 @@ namespace BossRush
         private GameObject _modalRoot;
 
         private ZombieModeUIHelper.ModalInputLease _modalLease;
+        /// <summary>本页的 ESC / 手柄取消（只在页上有「返回」动作时挂，见 SyncCancelKey）。</summary>
+        private PetNestCancelKey _cancelKey;
         private GameObject _modalInputToken;
         private ModeHPage _currentPage;
         private string _currentPageTitle;
@@ -768,8 +772,49 @@ namespace BossRush
 
             if (content != null) content.Refresh = refresh;
             ModeHUIPages.Build(page, surface.transform, size, content);
+            SyncCancelKey(content);
             if (refresh) RestoreScroll(surface, scroll);
             else BossRushUI.PlayOpenAnimation(surface);
+        }
+
+        /// <summary>
+        /// ESC / 手柄取消（2026-09-24）：本页有标了 IsCancel 的动作（整备页、押物品选择页的「完成」）就等于点它。
+        /// 没有返回语义的页（选人、看盘、赔率、结算、转会、名人堂）不接：那些页没有可退回的地方，
+        /// 吞掉 ESC 会让玩家在这里打不开官方暂停菜单；暂停菜单由官方 TimeScaleManager 压时间，盖在本页上无害。
+        /// 共享确认框或恢复壳盖在上面时让给它们。
+        /// </summary>
+        private void SyncCancelKey(ModeHPageContent content)
+        {
+            Action cancel = null;
+            if (content != null)
+            {
+                for (int i = 0; i < content.Actions.Count; i++)
+                {
+                    ModeHActionData action = content.Actions[i];
+                    if (action == null || !action.IsCancel || !action.Interactable || action.OnClick == null) continue;
+                    cancel = action.OnClick;
+                    break;
+                }
+            }
+            if (cancel == null || _modalRoot == null)
+            {
+                DetachCancelKey();
+                return;
+            }
+            _cancelKey = PetNestCancelKey.Attach(_modalRoot, cancel, IsCancelCovered);
+        }
+
+        private static bool IsCancelCovered()
+        {
+            return BossRushConfirmDialog.IsOpen || ModeHRecoveryPanel.AnyVisible;
+        }
+
+        private void DetachCancelKey()
+        {
+            if (_cancelKey == null) return;
+            try { _cancelKey.Detach(); }
+            catch (Exception) { /* 画布已销毁：订阅随组件 OnDestroy 退掉 */ }
+            _cancelKey = null;
         }
 
         /// <summary>记下旧页面里每个滚动区的位置（按层级顺序）。只在玩家点击时调用。</summary>
@@ -837,6 +882,7 @@ namespace BossRush
 
         private void ClosePage(bool immediate)
         {
+            DetachCancelKey();
             _currentPage = ModeHPage.None;
             _currentPageTitle = null;
             _modalSurface = null;

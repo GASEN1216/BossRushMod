@@ -233,7 +233,7 @@ namespace BossRush
     {
         internal static Color TextPrimary = Color.white, SurfaceRaised = new Color(.1f, .1f, .1f), Surface = new Color(.05f, .05f, .05f),
             Stroke = Color.white, Accent = Color.white, Divider = Color.white, TextSecondary = Color.white,
-            DangerText = new Color(1f, .61f, .59f);
+            DangerText = new Color(1f, .61f, .59f), WarningText = new Color(1f, .79f, .40f);
     }
     internal static class BossRushUI
     {

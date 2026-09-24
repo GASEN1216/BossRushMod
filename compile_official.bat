@@ -144,6 +144,7 @@ echo(Common\UI\BossRushUI.cs
 echo(Common\UI\BossRushUIAnimation.cs
 echo(Common\UI\BossRushUIFeel.cs
 echo(Common\UI\BossRushUIHero.cs
+echo(Common\UI\BossRushConfirmDialog.cs
 echo(Common\Effects\BossRushFxMaterials.cs
 echo(Common\Effects\BossRushFxKit.cs
 echo(Common\Effects\BossRushParticleTextures.cs
@@ -569,6 +570,11 @@ echo(ModeH\ModeHRuntimeModule_Recovery.cs
 echo(ModeH\ModeHRuntimeModule_SceneFlow.cs
 echo(ModeH\ModeHRuntimeModule_UiFlow.cs
 echo(ModeH\ModeHRuntimeModule_MatchFlow.cs
+echo(ModeH\ModeHRuntimeModule_MatchPages.cs
+echo(ModeH\ModeHRuntimeModule_BetFlow.cs
+echo(ModeH\ModeHCashBetService.cs
+echo(ModeH\ModeHItemBetStake.cs
+echo(ModeH\ModeHBetRevealView.cs
 echo(ModeH\ModeHRuntimeModule_CombatFlow.cs
 echo(ModeH\ModeHRuntimeModule_SettlementFlow.cs
 echo(ModeH\ModeHRuntimeModule_CombatProfiles.cs
@@ -587,6 +593,7 @@ echo(ModeH\ModeHTransferMarket.cs
 echo(ModeH\ModeHUI.cs
 echo(ModeH\ModeHUIPages.cs
 echo(ModeH\ModeHUIPageParts.cs
+echo(ModeH\ModeHUIPageRows.cs
 echo(ModeH\ModeHVirtualStakeController.cs
 echo(ModeH\ModeHWarehouseStakeJournal.cs
 echo(ModeH\ModeHWarehouseStakeJournalStorageBuffer.cs
@@ -992,7 +999,9 @@ echo(PetNest\PetNestInteractable.cs
 echo(PetNest\PetNestBuilder.cs
 echo(PetNest\PetNestBuilder_DataEventsAndRuntime.cs
 echo(PetNest\PetNestUIPages.cs
+echo(PetNest\PetNestUINestPage.cs
 echo(PetNest\PetNestUI.cs
+echo(PetNest\PetNestUILayout.cs
 echo(PetNest\PetNestUIWidgets.cs
 echo(PetNest\PetNestHatchRevealView.cs
 echo(PetNest\PetNestExpeditionRevealView.cs
@@ -1000,7 +1009,6 @@ echo(PetNest\PetNestCompanionHudView.cs
 echo(PetNest\PetNestMuseumStats.cs
 echo(PetNest\PetNestBaseIdleSpawner.cs
 echo(PetNest\PetNestRenameModal.cs
-echo(PetNest\PetNestReleaseConfirmModal.cs
 echo(PetNest\PetNestProgressionService.cs
 echo(PetNest\PetNestRuntimeModule.cs
 echo(PetNest\PetNestCompanionAgent.cs

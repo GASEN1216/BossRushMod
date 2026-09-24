@@ -8,8 +8,10 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     files = {name: clean_source((ROOT / "ModeH" / name).read_text(encoding="utf-8")) for name in [
         "ModeHRuntimeModule_LoadoutEditing.cs", "ModeHRuntimeModule_MatchFlow.cs",
-        "ModeHRuntimeModule_CombatFlow.cs", "ModeHUIPages.cs"]}
-    editor, flow, combat, ui = files.values()
+        "ModeHRuntimeModule_CombatFlow.cs", "ModeHUIPages.cs", "ModeHRuntimeModule_MatchPages.cs"]}
+    editor, match_flow, combat, ui, pages = files.values()
+    # 2026-09-24：赔率页组装从 MatchFlow 移到 MatchPages（MatchFlow 贴着行数预算）
+    flow = match_flow + pages
     required = [
         (flow, "_showLoadoutEditor = true;"), (flow, "return BuildLoadoutEditorPage();"),
         (editor, "ReferenceEquals(_season.matchRoster, roster)"),

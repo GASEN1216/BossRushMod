@@ -63,9 +63,12 @@ namespace BossRush
         private static Sprite modeFBountyRadarLeaderSprite = null;
         private static Sprite modeFBountyRadarGuideSprite = null;
         private static Sprite modeFBountyRadarArrowSprite = null;
-        private static readonly Color ModeFBountyRadarRegularColor = new Color(1f, 0.48f, 0.22f, 1f);
-        private static readonly Color ModeFBountyRadarLeaderColor = new Color(1f, 0.83f, 0.30f, 1f);
-        private static readonly Color ModeFBountyRadarDistancePanelColor = new Color(0.025f, 0.03f, 0.035f, 0.55f);
+        // 雷达配色走 token（UI 共识对照审查 B-31）：普通悬赏 DangerText、榜首 WarningText（与状态卡的红竖条、金进度条同色系），
+        // 距离底板是 Surface 压到 0.55。
+        private static readonly Color ModeFBountyRadarRegularColor = BossRushUIColors.DangerText;
+        private static readonly Color ModeFBountyRadarLeaderColor = BossRushUIColors.WarningText;
+        private static readonly Color ModeFBountyRadarDistancePanelColor = new Color(
+            BossRushUIColors.Surface.r, BossRushUIColors.Surface.g, BossRushUIColors.Surface.b, 0.55f);
 
         private struct ModeFBountyRadarTarget
         {
@@ -96,8 +99,9 @@ namespace BossRush
         }
 
         // 距离标签：榜首的写「首领 · 42m」，比普通目标宽一截（UB-24 把 9 号「首领」字并进来）。
-        private static readonly Vector2 ModeFBountyRadarLeaderLabelSize = new Vector2(100f, 22f);
-        private static readonly Vector2 ModeFBountyRadarRegularLabelSize = new Vector2(62f, 18f);
+        // 框高补足到 ≥ 字号×1.45+4（B-31）：旧的 22 / 18 比一行还矮，自动缩字会把 15 / 14 号压到下限 10 号。
+        private static readonly Vector2 ModeFBountyRadarLeaderLabelSize = new Vector2(100f, 26f);
+        private static readonly Vector2 ModeFBountyRadarRegularLabelSize = new Vector2(62f, 25f);
 
         // ====================================================================
         // 与 ModeE 血条名牌那套的关系：**保持两套独立，不要合并**

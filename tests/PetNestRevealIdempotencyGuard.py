@@ -108,6 +108,17 @@ def check_expedition_specific(errors):
     # 死亡率刻在牌面上
     if "record.deathRate" not in code:
         errors.append("[明示] 翻牌必须显示出发时固化的死亡率")
+    # 2026-09-24 UI 共识对照审查 A-40（CR-2026-09-24-002）：播放中「跳过」/ ESC 跳到一屏结果汇总，再由「关闭」收起。
+    # 旧版跳过把剩下的记录标成已翻就直接关窗，哪只阵亡、负伤一张都没显示。
+    skip = re.search(r"private void SkipToSummary\(\)[\s\S]*?\n        \}", code)
+    if skip is None or "MarkRevealed(" not in skip.group(0) or "ShowSummary();" not in skip.group(0) \
+            or "CloseByPlayer" in skip.group(0):
+        errors.append("[跳过] 跳过必须把剩下的记录标成已翻、再跳到结果汇总，不得直接关窗")
+    if not re.search(r"private void OnSkipOrClose\(\)[\s\S]*?if \(!_finished\)\s*\{\s*SkipToSummary\(\);\s*return;", code):
+        errors.append("[跳过] 播放中的「跳过」按钮与 ESC 必须走 SkipToSummary")
+    summary = re.search(r"private void ShowSummary\(\)[\s\S]*?\n        \}", code)
+    if summary is None or "BuildSummary(_pending)" not in summary.group(0) or "Finish();" not in summary.group(0):
+        errors.append("[跳过] 结果汇总必须列出这次全部记录，并把按钮换成「关闭」")
 
 
 def check_scene_stop(errors):

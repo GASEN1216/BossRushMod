@@ -41,7 +41,7 @@ The material for rolling affixes onto gear. Spent when you pick "Affix Forging" 
 - **Source**: Dingdang's shop (unlocks at affinity **Lv.10**, up to 5 per restock); about **8%** from arena Bosses,
   landing wherever that Boss's normal loot lands: the loot crate in standard arena and From Scratch,
   the ground in Infinite Hell, the body itself in Faction War and Blood Hunt
-- **Cost**: **1** stone per re-roll, **2** to lock a slot (unlocking is free)
+- **Cost**: **1** stone per re-roll, **2** to lock a slot (unlocking costs nothing, but lock stones are not refunded)
 - **Stack**: up to 20
 
 See the Affix Forging page.

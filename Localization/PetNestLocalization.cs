@@ -60,8 +60,8 @@ namespace BossRush
 
             // 命名弹窗（SystemDesc 对玩家承诺过"起个名字"，入口在 PetNestRenameModal）
             Add(map, "Rename_Title", "给它起个名字", "Name this cub");
-            Add(map, "Rename_Hint", "留空并点「用回血脉名」可以恢复默认称呼。",
-                "Leave it empty and pick \"Use bloodline name\" to restore the default.");
+            Add(map, "Rename_Hint", "点「用回血脉名」会把默认称呼填回框里，再点「就叫这个」确认。",
+                "\"Use bloodline name\" puts the default back in the box; then press \"Confirm\".");
             Add(map, "Rename_Confirm", "就叫这个", "Confirm");
             Add(map, "Rename_Reset", "用回血脉名", "Use bloodline name");
 

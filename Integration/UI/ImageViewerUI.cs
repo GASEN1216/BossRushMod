@@ -11,11 +11,16 @@
 //   - 打开：遮罩暗角 + 0.15 秒淡入，卡片走共享打开动画，标题 / 提示错峰淡入；
 //   - 关闭：0.12 秒淡出后再 SetActive(false)。本界面是复用的单例根，不能用 PlayCloseAndDestroy，
 //     淡出由自己的 Update 推进（unscaled 时间 + IsGamePaused 门），淡出中再次打开会直接取消淡出。
+//
+//   2026-09-24：ItemFactory.GetSprite 取不到图时的回退路径，旧写法每次都 AssetBundle.LoadFromFile、从不 Unload；
+//   Unity 不允许同一个 bundle 文件同时加载两份，第二次看同一张图就返回 null，只剩「图片暂不可用」占位。
+//   现在同一个 bundle 只打开一次并缓存（先查自己的缓存、再借别处已打开的同名 bundle、都没有才打开），
+//   Mod 卸载时经 ResetStaticCaches 释放（Unload(false)，不销毁已经取出来的图）。
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -67,6 +72,24 @@ namespace BossRush
         private Sprite currentSprite = null;
         private bool closing = false;
         private float closeElapsed = 0f;
+
+        // ============================================================================
+        // 回退路径的 bundle 与现造 Sprite 缓存（只在 ItemFactory.GetSprite 取不到图时用）
+        // ============================================================================
+
+        /// <summary>回退路径拿到的一个 bundle。Owned = 由本界面打开，卸载时归本界面 Unload；借别处的不动。</summary>
+        private sealed class FallbackBundle
+        {
+            internal AssetBundle Bundle;
+            internal bool Owned;
+        }
+
+        /// <summary>同一个 bundle 文件只打开一次：键是 bundle 文件的完整路径（大小写不敏感）。</summary>
+        private static readonly Dictionary<string, FallbackBundle> fallbackBundles =
+            new Dictionary<string, FallbackBundle>(StringComparer.OrdinalIgnoreCase);
+        /// <summary>从 Texture2D 现造的 Sprite：同一张图只造一次（旧写法每次打开都 Sprite.Create 一个新的）。</summary>
+        private static readonly Dictionary<string, Sprite> fallbackCreatedSprites =
+            new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
 
         // ============================================================================
         // 常量
@@ -405,7 +428,7 @@ namespace BossRush
                     return sprite;
                 }
 
-                // 尝试直接加载 AssetBundle
+                // 回退：自己在 Assets/items、Assets/ui 下找 bundle
                 string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
                 string modDir = Path.GetDirectoryName(assemblyLocation);
                 string bundlePath = Path.Combine(modDir, "Assets", "items", bundleName);
@@ -421,32 +444,23 @@ namespace BossRush
                     return null;
                 }
 
-                // 使用反射加载
-                Type assetBundleType = Type.GetType("UnityEngine.AssetBundle, UnityEngine.AssetBundleModule")
-                    ?? Type.GetType("UnityEngine.AssetBundle, UnityEngine");
-
-                if (assetBundleType == null) return null;
-
-                MethodInfo loadFromFile = assetBundleType.GetMethod("LoadFromFile", new Type[] { typeof(string) });
-                if (loadFromFile == null) return null;
-
-                object bundle = loadFromFile.Invoke(null, new object[] { bundlePath });
+                AssetBundle bundle = AcquireFallbackBundle(bundlePath, bundleName);
                 if (bundle == null) return null;
 
-                // 尝试加载 Sprite
-                MethodInfo loadAsset = assetBundleType.GetMethod("LoadAsset", new Type[] { typeof(string), typeof(Type) });
-                if (loadAsset != null)
-                {
-                    sprite = loadAsset.Invoke(bundle, new object[] { imageName, typeof(Sprite) }) as Sprite;
-                    if (sprite != null) return sprite;
+                // 尝试加载 Sprite（bundle 里原生的 Sprite 归 bundle 管，不进现造缓存）
+                sprite = bundle.LoadAsset<Sprite>(imageName);
+                if (sprite != null) return sprite;
 
-                    // 尝试加载 Texture2D 并转换
-                    Texture2D tex = loadAsset.Invoke(bundle, new object[] { imageName, typeof(Texture2D) }) as Texture2D;
-                    if (tex != null)
-                    {
-                        sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
-                        return sprite;
-                    }
+                // 尝试加载 Texture2D 并转换：同一张图只造一次
+                string createdKey = Path.GetFullPath(bundlePath) + "|" + imageName;
+                Sprite created;
+                if (fallbackCreatedSprites.TryGetValue(createdKey, out created) && created != null) return created;
+                Texture2D tex = bundle.LoadAsset<Texture2D>(imageName);
+                if (tex != null)
+                {
+                    sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+                    if (sprite != null) fallbackCreatedSprites[createdKey] = sprite;
+                    return sprite;
                 }
 
                 return null;
@@ -456,6 +470,39 @@ namespace BossRush
                 ModBehaviour.DevLog("[ImageViewer] 加载Sprite失败: " + e.Message);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// 回退路径拿 bundle，同一个文件只打开一次：先查自己的缓存；再借别处已经打开的同名 bundle
+        /// （ItemFactory、图鉴、成就图标都可能先开过，再 LoadFromFile 一次 Unity 会拒绝并返回 null）；
+        /// 都没有才经共享的 ResourceBundleLoader 打开，并记为本界面持有。
+        /// </summary>
+        private static AssetBundle AcquireFallbackBundle(string bundlePath, string bundleName)
+        {
+            string key = Path.GetFullPath(bundlePath);
+            FallbackBundle entry;
+            if (fallbackBundles.TryGetValue(key, out entry))
+            {
+                if (entry != null && entry.Bundle != null) return entry.Bundle;
+                // 借来的 bundle 被原主人 Unload 了（Unity 判空为真）：丢掉失效句柄，重新找
+                fallbackBundles.Remove(key);
+            }
+
+            AssetBundle bundle = ItemFactory.FindAlreadyLoadedAssetBundle(bundleName);
+            bool owned = false;
+            if (bundle == null)
+            {
+                bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
+                owned = bundle != null;
+            }
+            if (bundle == null)
+            {
+                ModBehaviour.DevLog("[ImageViewer] 打开 AssetBundle 失败: " + bundlePath);
+                return null;
+            }
+
+            fallbackBundles[key] = new FallbackBundle { Bundle = bundle, Owned = owned };
+            return bundle;
         }
 
         // ============================================================================
@@ -528,6 +575,43 @@ namespace BossRush
             _instance.CloseUI();
             Destroy(_instance.gameObject);
             _instance = null;
+        }
+
+        /// <summary>
+        /// Mod 卸载（IntegrationRuntimeHooks.CleanupIntegrationRuntimeOnDestroy）：先收掉看图器本身，再放掉回退缓存。
+        /// 本界面打开的 bundle 用 Unload(false)：只放 bundle 句柄，已经取出来的 Sprite / Texture 不跟着销毁，
+        /// 别处借这个 bundle 取出的资源也不会被连带清掉；借别处的 bundle 不动。现造的 Sprite 随看图器一起销毁。
+        /// </summary>
+        internal static void ResetStaticCaches()
+        {
+            try
+            {
+                Shutdown();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ImageViewer] 关闭看图器失败: " + e.Message);
+            }
+
+            foreach (FallbackBundle entry in fallbackBundles.Values)
+            {
+                if (entry == null || !entry.Owned || entry.Bundle == null) continue;
+                try
+                {
+                    entry.Bundle.Unload(false);
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[ImageViewer] 卸载 AssetBundle 失败: " + e.Message);
+                }
+            }
+            fallbackBundles.Clear();
+
+            foreach (Sprite created in fallbackCreatedSprites.Values)
+            {
+                if (created != null) Destroy(created);
+            }
+            fallbackCreatedSprites.Clear();
         }
     }
 }

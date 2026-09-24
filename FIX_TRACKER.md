@@ -1,5 +1,128 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+## 2026-09-24 第三轮：押背包物品不设限，赢了按押品的品质与价值发奖品（COMPAT / SCHEMA+）
+
+**起因**：owner：「押上的物品不要有限制，只是其品质和价钱会影响到再次给予其奖品的品质和价钱。」
+
+**改了什么**（设计与回退：`docs/设计文档/鸭王杯押钱_2026-09-24.md` 第 5、7 节）：
+- **押什么都不限**：去掉第二轮的「最多 6 件、估值合计 1,000–50,000、单件超过 50,000 不列、能卖的才列、装着东西的容器不列、只列 24 件」。只挡任务物品（`Sticky`，官方连丢都不让丢，收走会断任务）和估值为 0 的东西（换不出奖品）。容器能押，卡片写「连里面的 N 件」，估值与收走都连内容一起。选择页列出全部候选、可滚动。
+- **赢了发奖品**（原来是发「赔付减估值」的钱）：品质 = 押上物品按估值加权的平均品质（四舍五入，夹在 1–8，`ModeHItemBetEntry.PrizeQuality`）；总价值 = 「赔付 − 估值」（与押钱同一公式，长期回报不变）；件数 = 押上的件数，最多 6 件（`ModeHConfig.ItemBetMaxPrizeItems`，管的是发出来的奖品，免得背包塞爆）。`ModeHItemBetStake.PreparePrizes` 从共享 `BossRushQualityItemPool` 按品质挑价值落在每件目标值 50%–100% 的东西（种子确定），放不下就降一档品质；经 `ModeHRewardItemPool.TryInstantiate`（空壳门禁）实例化；凑不满的零头折成钱（账本 `prizeCash`，不超过「赔付 − 估值」）。
+- **至多发一次**：先备好奖品、账本记成才 `ItemUtilities.SendToPlayer(prize, true, false)` 发（进背包，满了落在脚下，不送仓库），账本没记成就销毁、下次重备。
+- 账本：押品条目多记品质（`typeId|数量|估值|品质|名字`），记录加 `prizes` / `prizeCash` 两个可选字段。开盘格子押物品时写「奖品约值 X」，结算页列出奖品与零头。
+- 百科 `mode__mode_h` 中英「押物品」一节改写。
+
+**替 owner 定的取舍（可回退）**：
+1. 任务物品仍然不能押：官方给它们打了 `Sticky`，连丢都不让丢，收走会让任务卡住。估值为 0 的东西不列：押了也换不出奖品。
+2. 奖品件数最多 6 件（押多少件都行，奖品封顶）；奖品品质按估值加权平均，不因赔率冷门额外升档（价值已经随赔率走）。
+3. 一件都挑不到（候选池空或都太贵）时整笔折成钱，结算页写明。
+
+**验证**：
+- `python tools/run_guards.py` 全量 664/664 PASS。`ModeHIsolationGuard.check_item_bet_stake` 改为放行「只在 `DeliverPrizes` 调一次 `SendToPlayer(prize, true, false)`、奖品只经共享候选池与实例化门禁」，禁直接 `InstantiateSync` / `SendToPlayerStorage`；`ModeHCashBetGuard` 改新的结算口径并钉「先备奖品 → 记账 → 发奖 / 销毁」顺序与奖品品质、价值来源（18 个内存变异探针）。落盘反向验证：发奖改送仓库、绕过实例化门禁，隔离守卫都转红。
+- 执行回归 `ModeHItemBetLedger` 补奖品品质（加权、夹范围、贵的说了算）、件数上限、折钱上限、2,000 万大额期望为负；落盘变异「品质改截断」「件数不封顶」都转红，按字节还原。全量 57/57 PASS（net10 两个照旧临时改 net8、按字节还原）。
+- Windows 正式构建 Build succeeded，`Build/BossRush.dll` 与游戏目录同为 `66D88972…`；提交前去掉 `AchievementView.cs` 一处行尾空格后重编，最终 `EFCDA758…`，已部署并核对；`check_dll_identifiers --expect absent` PASS。在线 Wiki 重建通过，Wiki 守卫与 `PlayerFacingGlyphGuard` 通过。
+- 证据级别 L1 + L2；**未实机**。挑奖品、实例化、发奖要真实物品表，只能实机看（设计文档第 8 节第 8、10、11 步）。
+
+## 2026-09-24 第二轮：押背包物品、押注跟着这一场走、鸭王杯 ESC、遗种巢确认框迁共享件、看图器重复加载（COMPAT / SCHEMA+）
+
+**起因**：上一节「UI 共识全量修复 + 鸭王杯押钱」交付时列了四件没做的（押背包物品、鸭王杯各页 ESC、看图器回退重复加载 bundle、遗种巢两个自写确认框没迁共享件）。owner：「没做的都做一下吧」。
+
+**押背包物品**（设计与回退：`docs/设计文档/鸭王杯押钱_2026-09-24.md` 第 5 节）：
+- 押注行加一颗「押物品」，打开 `ModeHPage.ItemBet` 卡片栅格（官方物品图标、名字 ×数量、估值；选中金边 + 「√ 已押上」；「完成」或 ESC 回原页）。一场最多 6 件、估值合计 1,000–50,000，只管下一场；选押钱档会清掉押物品。
+- 估值按官方商人收购口径 `GetTotalRawValue × 0.5`（`ModeHConfig.ItemBetValuePermille`）：按原价估的话押卖不上价的东西比卖掉划算。
+- 物品押上**不离开背包**（托管在内存里的物品会随崩溃消失）；赢了东西留着、另发「赔付减估值」，输了由 `ForfeitLocked` 收走仍在玩家身上的那几件，找不到的（官方背包键在看台上也能开）按估值从余额扣到 0 为止，堆叠被合并变多只扣回押上的数量；读档后按账本 typeId / 数量重新认领。
+- 新文件 `ModeH/ModeHItemBetStake.cs` 是 Mode H 玩家资产访问白名单的一条（`ModeHIsolationGuard.check_item_bet_stake`：只读背包、不生成不塞物品、收走只有一处且幂等）。账本加 `kind` / `items` / `charged` 三个可选字段（旧记录读出为押钱）。
+
+**押注跟着这一场走**（自查发现，设计文档第 6 节）：上一节的押钱在技术重试、恢复回落和 `TryReturnRealStakeOnAbort`（挂起 / 关停 / 切图中止，从暂停菜单回主菜单也会走到）都整额退押金，打输了退出重进等于免费重掷，长期回报高于 0.92。现在这些路径都不退，重锁时 `ReserveStandingCashBet` 先经 `ModeHCashBetService.ReservedFor` 沿用挂着的那一笔、按重打结果结算（§17.4「不判负」照旧）；只有恢复页放弃赛季、开新赛季对到上一季、F3 清理才退。
+
+**鸭王杯 ESC**：`ModeHActionData.IsCancel` 标出本页的「返回」（整备页与押物品页的「完成」、恢复壳的「稍后处理」），`ModeHUI` / `ModeHRecoveryPanel` 用 `PetNestCancelKey` 把 ESC 接到它；共享确认框或恢复壳盖在上面时让出。没有返回语义的页（选人、看盘、赔率、结算、转会、名人堂）不接：吞掉 ESC 会让玩家在这些页上打不开官方暂停菜单，而暂停菜单由官方 `TimeScaleManager` 压时间，盖在这些页上无害。
+
+**文案**：风险提示 `BossRush_ModeH_RealStakeRiskNotice` 改为「押的是你的钱或背包里的东西……输了押上的归庄家」（key 不变，`ModeHLocalizationGuard` 关键词同步）；Wiki `mode__mode_h`（押物品一节、中断与退回改写、FAQ 两条）与新手路线的押注提醒中英同步，在线站重建。
+
+**遗种巢两个确认框迁到共享件**：放生（含批量）与亡命出发改走 `BossRushConfirmDialog`（`PetNestUI.ConfirmRelease` / `ConfirmDepart` / `ShowConfirm`，Anchor 指向遗种巢主面板，面板关掉时确认框下一帧按取消收场），文案一字未改；删除 `PetNest/PetNestReleaseConfirmModal.cs` 与本轮新建未入库的 `PetNest/PetNestDepartConfirmModal.cs`（备份在本会话 scratchpad）并同步编译清单。给共享框加了一个可选字段 `DecorateTarget`（单只异色崽名字的流光），默认不变。与原来的差别：确认框层级从 `PetNestModal`（3150）抬到共享框默认的 `ModalConfirm`（3200），会压在揭晓演出之上，ESC 交给最上层。守卫 `PetNestUILayerGuard` 新增 `check_confirms`（Danger、服务调用只在 OnConfirm 里、失败回抛、Anchor、ESC 让位、目录下不得再有自绘 Confirm 类），8 条落盘反向验证。
+
+**看图器回退重复加载 bundle**：`ImageViewerUI` 回退路径每次反射 `LoadFromFile` 从不 Unload，同一个 bundle 第二次被 Unity 拒绝。改为按完整路径缓存（先查自己的缓存、再借 `ItemFactory` 已打开的同名 bundle、都没有才经共享 `ResourceBundleLoader` 打开），同一张图只造一次 Sprite；`ResetStaticCaches` 只卸自己打开的（`Unload(false)`），接到 `IntegrationRuntimeHooks` 的销毁路径。`ItemFactory.FindAlreadyLoadedAssetBundle` 改 internal 复用。守卫 `ResourceProductionGuard` 补四步顺序与卸载口径，7 条反向验证。这条回退只有 `ItemFactory` 取不到图时才走到，正常游玩触发不了，只有 L1/L2。
+
+**替 owner 定的取舍（可回退，回退办法见设计文档第 7 节）**：
+1. 押物品上限 6 件、合计 1,000–50,000，与押钱同一量级；只管一场（赢了不自动接着押同几件）。
+2. 输了时押上的东西找不到按估值扣钱，扣到 0 为止（不欠债）；余额不够抵的差额收不回，这是已知的残余口子，要专门在看台上开背包丢东西才能钻。
+3. 中断不退押注：真崩溃的玩家也要重打这一场来结清，但结果只由重打决定，不判负。
+
+**验证**：
+- `python tools/run_guards.py` 全量 664/664 PASS。`ModeHCashBetGuard` 重写（押物品、押注沿用，16 个内存变异探针）；`ModeHIsolationGuard` 登记白名单第四条并新增 `check_item_bet_stake`；`ModeHStructureGuard`、`ModeHLocalizationGuard` 同步。
+- 新执行回归夹具 `tests/fixtures/ModeHItemBetLedger`：从生产逐字抽取账本的押物品记账 / 结算 / 退回与赔付公式，钱包替身，核对押物品赢输退各动多少钱、扣钱不低于 0、校准只降不升、期望为负；三处落盘变异（退回动钱、赢了发全额、校准取 min）都转红，按字节还原。
+- `python tools/run_runtime_regressions.py` 57/57 PASS（`AuditModeLifecycle`、`NpcAuditFixes` 是 net10 夹具，本机临时改 net8 跑、跑完按字节还原）。`ModeHMarketAudit` 替身补 `IsCancel`。
+- Windows 正式构建 Build succeeded，`Build/BossRush.dll` 与游戏目录同为 `6568F87E…`；`check_dll_identifiers --expect absent` PASS。
+- `npm --prefix wiki-site run build` 通过；Wiki 守卫 15/15；`PlayerFacingGlyphGuard` 抓到维基里一个 U+2212 减号，已改成「减」。
+- 证据级别 L1 + L2；**未实机**。实机清单见设计文档第 8 节第 6–10 步与本轮交付回复（第 10 步的限制已被第三轮取消）。
+
+**没做的**：上一节列的四件都已做完。押钱赢率仍要实机跑够场次再调表。
+
+## 2026-09-24 UI 共识全量修复 + 鸭王杯押钱（COMPAT / SCHEMA+）
+
+**起因**：同日《UI 共识对照审查》（`docs/代码审查/2026-09-24-UI共识对照审查.md`）列出 A-01…A-43、B-01…B-34。owner：「那就全部修复吧」，并当场拍板四项待定：许愿台默认实名保持；重铸不加确认；鸭王杯押注「不是有意这样设计的」，改成玩家自己选押多少钱、「看比赛输赢，按赔率抽水」、总体下来玩家的钱慢慢往下掉；天空岛光色交互对玩家开放。
+
+**分工**：系统 / 集成类（A-01…A-39、A-43）与模式类（丧尸、宿命回响、血猎、天空岛、遗种巢 A-40/A-41）各一个修复代理；鸭王杯全部 B 条、共享确认框、押钱由主会话做；Wiki 正文一个代理。主会话复核三份报告后统一编译、跑全量守卫与执行回归。
+
+**修了什么**（逐条见审查报告第九节）：
+- 共享确认框 `Common/UI/BossRushConfirmDialog.cs`（新）：问句标题 + 对象 + 后果、左确认右取消、危险确认 Danger 实心、ESC = 取消、可挂 Anchor 随宿主关闭。用在词缀解锁、Boss 池重置、鸭王杯放弃赛季 / 战痕替换 / 押仓库物品锁盘；阿稳的官方确认框在不可逆模式下换共享 Danger 键。
+- 四条已核 P1（CR-2026-09-24-001…004）全部 Fixed：词缀解锁先确认、远征翻牌跳过收成汇总、丧尸撤离宿主受理后才还租约、鸭王杯放弃赛季先确认。
+- 系统类：重铸 / 词缀按钮写价钱、费用区两行、白话倾向；许愿台 / 日报 / 图鉴 / 成就字号收级、不挂灰按钮、状态标签代替灰按钮；Boss 池 ESC 与 × 同一出口（先存再关）、两页签；百科外链进页眉、淡入淡出；删好感面板死代码；成就 / 图鉴 / Boss 池 / 百科改走模态租约。
+- 模式类：丧尸现金投入去「跳过」、整卡可点、ESC = 继续战斗；宿命回响默认选中契约、「N 阶」、HUD 反制进度条；血猎雷达 token；天空岛退单 / 互斥挑战进确认子页、手记当前栏常亮。
+- 鸭王杯：侦察 / 押注进正文选项行（`ModeH/ModeHUIPageRows.cs`，新），就地失败行，Danger 只在主操作上实心；整备四页签不分页；战痕与整备奖励改卡片；恢复壳占模态租约 + 可滚动正文 + 「稍后处理」；零战报结算给「查看恢复选项」；名人堂「结束赛季」+ 立绘；看盘 / 赔率 / 选人页组装挪到 `ModeHRuntimeModule_MatchPages.cs`（新，MatchFlow 行数预算）。
+- **押钱**（设计与回退：`docs/设计文档/鸭王杯押钱_2026-09-24.md`）：仓库只在基地场景存在，原真实押品链在比赛里恒不可用，押品选择器不再画。改为押 0 / 1,000 / 5,000 / 20,000，锁盘落盘后从账户余额扣；赢了拿回 `押金 × 920 ÷ 假定胜率‰`（x1…x5 假定 85/70/55/42/30%），满 20 场后取 max(表, 实际胜率) 只降不升；技术中止、放弃赛季、切图中止原样退回。账本 `BossRush_ModeHCashBet_v1`（`ModeHCashBetService.cs`，新）照 `AchievementRewardJournal` 与现金快照同批落盘，Reserved → Settled / Refunded 至多一次；入场「开盘」揭晓 `ModeHBetRevealView.cs`（新，不挡操作，由宿主 Tick 驱动）。风险提示改押钱口径。赛季 DTO 不动。
+- Wiki：`mode__mode_h`（押注整节重写、结算 / 整备 / 恢复 FAQ）、`mode__mode_g`（默认选中、「N 阶」）、新手路线的押品警告；在线站速查框（`infobox.mts`）Mode H 的「你能做的 / 地图」两行按现行代码改。
+
+**兼容性**：COMPAT；押钱账本是新增本槽 typed 键（SCHEMA+，旧档读出无押注）；新增本地化 key `Notify_ExtractionAreaFailed`；风险提示 key 不变只改值。无 TypeID、无破坏性存档改动。新文件 6 个 .cs 均已登记编译清单（`ModeHUIPageRows`、`ModeHRuntimeModule_MatchPages`、`ModeHRuntimeModule_BetFlow`、`ModeHCashBetService`、`ModeHBetRevealView`、`BossRushConfirmDialog`）。
+
+**替 owner 定的取舍（好玩优先 / 主流口径，均可回退）**：
+1. 押钱档位、抽水 8%、假定胜率表、20 场校准门槛——都在 `ModeHConfig`，改表即回退；只关玩法把 `CashBetAmounts` 改成 `{ 0L }`。「玩家赢钱概率 40%」取决于实战胜率，需实机跑够场次看分档统计再调。
+2. 成就 / 图鉴 / 百科改走模态租约后，局内打开会停住游戏时间（与官方 ESC 暂停、遗种巢等面板一致）。回退：三处 `ClaimModalInput` 换回 `InputManager.DisableInput`。
+3. Boss 池一个都没勾时关不掉（ESC 也不行），统计行写明原因；× / ESC / Ctrl+F10 统一「先存再关」；切页签保留滚动位置。
+4. 日报品质 1–6 用官方物品框颜色名，7 及以上统一「顶级」。
+5. 丧尸撤离页两张卡对调（主操作在右）；开局流派页 ESC 只吃掉按键（必选、无取消）。
+6. 宿命回响选中态改金色；钟守「挑战守钟装置」同样加确认。
+7. 遗种巢一次翻两张以上自然翻完也收汇总；改名提交的名字等于默认名时存成「没起名」（换语言跟着变）。
+8. 放弃赛季的确认正文写明「押的钱原样退回，旧档托管的仓库物品也还回」。
+
+**验证**：
+- `python tools/run_guards.py` 全量 664/664 PASS。新增 `tests/UIConsensusSystemPanelsGuard.py`、`tests/ModeHCashBetGuard.py`（9 个内存变异探针）；`ModeHStructureGuard` 新增 `check_irreversible_confirms`（三处落盘反向验证转红、按字节还原）；`UILayoutReadabilityGuard` 的 Mode H 卡片断言改读「基准 - shift」并新增立绘分支几何（新探针转红）；`ModBehaviourInstanceClassificationGuard` 基线 Integration 263 → 266（百科淡出协程挂宿主 +3，分类文档同步）；其余十余个守卫由两个修复代理同步改写并做了落盘反向验证。
+- `python tools/run_runtime_regressions.py` 56/56 PASS（`AuditModeLifecycle`、`NpcAuditFixes` 是 net10 夹具，本机临时改 net8 跑通后按字节还原）。本轮同步：`ManualSeptemberReview` 抽取 `CountRecords` 并新增多张汇总断言；`AffixSelectionUI` 抽取 `FormatReforgeAmount`、按钮文案断言带价钱；Mode H 五个夹具与 `GameplayLogFixes` 补押钱钩子替身。
+- Windows 正式构建 Build succeeded，`Build/BossRush.dll` 与 `D:\software\steam\...\Mods\BossRush\BossRush.dll` 同为 `9FB5C190…`；`check_dll_identifiers --expect absent` PASS。
+- `npm --prefix wiki-site run build` 通过，Wiki 守卫 15/15。
+- 证据级别 L1 + L2；**未实机**。
+
+**没做的**（同日第二轮已全部做完，见上一节）：押背包物品（要另做托管，owner 说「或者直接砸钱也行」，本轮只做押钱）；鸭王杯各模态页没接 ESC（多数页没有「取消」语义，吞掉 ESC 会打不开暂停菜单，留实机看）；看图器回退路径重复加载 bundle（`ImageViewerUI.cs:433`，仍待实机）；遗种巢放生 / 亡命出发两个自写确认框没迁到共享件（共识文档已注明是先例，行为已守卫）。
+
+**文档**：审查报告第九节（修复状态与第八节去向）；`CODE_REVIEW_FINDINGS.md` CR-2026-09-24-001…004 → Fixed；押钱设计 `docs/设计文档/鸭王杯押钱_2026-09-24.md`；repowiki Mode H 专题（现行「押钱」一节）与架构设计补记；`docs/架构说明/UI制作共识.md` 确认弹窗改「已共享」；根 `AGENTS.md` §4.14 交互骨架一句、`docs/ai-docs-migration.md` 同步。
+
+## 2026-09-24 遗种巢 UI 交互重排：列表 + 详情、按钮跟着对象走（COMPAT）
+
+**起因**：owner「我们现在一股脑把所有功能都做成按钮丢出来，不符合最佳 UI 交互原则」，要求参照主流软件与 Apple 的交互口径给方案并实施。方案对照 Apple HIG（Split View / Sidebar、破坏性按钮远离安全按钮）、iOS 照片「选择」模式、宝可梦 HOME 的盒子 + 概要，以及仓库 §4.14。
+
+**诊断（8 条）与处理**：
+1. 每张崽卡挂「设为出战 / 改名」两颗按钮 + 五行正文 → 巢页改「列表 + 详情」，行上不放按钮，信息与操作进右栏详情（`PetNest/PetNestUINestPage.cs`、`PetNest/PetNestUILayout.cs`）。
+2. 「选中」是看不见的跨页隐式状态（远征页要「先回巢选」）→ 详情底栏「派去远征」带着崽跳到远征页；远征页自带「派谁去」头像小卡。
+3. 底栏混放单只操作与全局操作、红色实心放生常驻 → 详情底栏只放作用在当前崽上的操作：放生红描边红字靠左，「设为出战」是唯一 AccentFill；「不带崽出门」改成出战崽详情里的「取消出战」。
+4. 灰掉的占位按钮（不带崽出门、已出战、远征中、放生）→ 不挂，远征中的崽底栏写剩余时间。
+5. 捡漏背包 / 保底 / 扩建说明排在 24 张卡之后 → 出战席位格副行 + 出战崽详情 + 页眉「说明」页。
+6. 孵化页同血脉蛋各占一张卡、凝蛋按钮在底栏 → 按血脉合并「×N」；遗魂账本一行一条带进度条，够数的行内挂凝蛋。
+7. **亡命档（真死）点「出发」立即执行、没有确认** → 新增 `PetNest/PetNestDepartConfirmModal.cs`；远征页改一屏选完（目的地分段按钮默认落在契合的 + 风险档三列对比卡 + 一个「出发」），删掉三张目的地卡里一模一样的正文。
+8. NPC 交互菜单 4 项与面板页签重复 → 「孵化」「远征」按有事可做显隐（护士治疗项的同一模式，巢是交互主体时不改列表），博物馆项去掉。
+另：页签带待办数字（「孵化 ·2」）；碑文从一长串「·」改成分行。
+
+**兼容性**：COMPAT。服务层入口、存档、TypeID、本地化 key 都没动（`Release_Action`、`CondenseProgress`、`BossRush_PetNest_Interact_Museum` 三个 key 不再使用但保留）；`PetNestMuseumInteractable` 是运行时 AddComponent 的类型，不进存档或 bundle，删除安全。
+
+**决定（好玩优先 / 主流口径，可回退）**：远征目的地默认选中有元素契合的那个、风险档默认稳妥；选中态沿用 WarningText 描边；站在巢边孵完蛋后「孵化」菜单项要走开再回来才消失（为避开官方菜单中途增删错位，点它仍能打开孵化页）。回退：`git revert` 本次提交即可，数据层无迁移。
+
+**验证**：
+- `python tools/run_guards.py` 全量 662/662 PASS。改写 / 新增断言：`PetNestUILayerGuard`（画法与组装文件不建 canvas、亡命出发必须先弹确认、出战失败回写 NoteFailure）、`PetNestBuilderInjectionGuard`（子选项只在巢不是交互主体时刷新）、`UILayoutReadabilityGuard`（两栏间隔与安全边距、行文字避让按钮列与勾选框、单行框高，+3 个内存反向检查）、`PersistentHudVisibilityGuard` 登记新弹窗。反向验证：5 处生产代码人为破坏全部转红、按 sha256 还原。
+- `python tools/run_runtime_regressions.py --filter ContentTransactions` PASS（替身补 `AppendPetPicker`、血脉目录 `All`；抽取新增数据类）；`ManualSeptemberReview` PASS。
+- Windows 正式构建 Build succeeded，部署到 `D:\software\steam\...\Mods\BossRush\BossRush.dll`，sha256 与 `Build/` 一致（`54EBDF56…`，含下面「复核补修」），编译输出里 PetNest 文件零警告。
+- **复核补修（同日）**：交互菜单不在 Start 时算显隐（背包 / 仓库未就绪会把「孵化」误藏），巢不可用时不动子选项；已核对官方 `CA_Interact.SearchInteractableAround` 在选定主体前先调 `CheckInteractable`，玩家每次走近刷新一次。批量模式下远征中的崽不画勾选框；「说明」页放生一节标题改成「放生」；详情底栏走表只挂在还在路上的远征上（到点未结算时写「打开天灾远征页结算」，不再每秒整页重建）；底栏按钮量完宽度后重新打开自动缩字（避免长英文标签被 Ellipsis 清空）；危险次级按钮改红字。
+- 文档：设计与验收记录 `docs/设计文档/遗种巢UI交互重排_2026-09-24.md`；通用做法沉淀为 `docs/架构说明/UI制作共识.md`（`.gitignore` 放行），根 `AGENTS.md` §4.14 新增「交互骨架」一条指向它。
+- 其他界面对照共识的首轮审查（只审不改）：`docs/代码审查/2026-09-24-UI共识对照审查.md`，4 条已核 P1 登记为 CR-2026-09-24-001…004（同日已全部修复，见上一节「UI 共识全量修复」）。
+- 证据级别 L1 + L2；**未实机**。实机清单见 `docs/设计文档/遗种巢UI交互重排_2026-09-24.md` 第 7 节。
+
 ## 2026-09-23 玩家文案去「人机感」打磨（SAFE / COMPAT，纯文本）
 
 **起因**：owner「优化 mod 剧情、UI、物品 / 装备描述的文字，不要有人机感」，并追加「Wiki 正文一起改」。

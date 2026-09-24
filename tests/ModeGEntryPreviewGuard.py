@@ -8,7 +8,7 @@ ModeGEntryPreviewGuard — Mode G 入口 preview 守卫（规格 §20 第 4 条�
 - ExpirySeconds 冻结 300 秒；过期 preview 不进 Starting；
 - GetOrCreateModeGEntryPreview 对未过期 preview 原样复用（取消重开不刷契约候选）；
 - Entry 拒绝路径不写 Legacy 存档/BossFilter（静态禁止项）；
-- 确认页：未选契约时「立即迎战」不可点，取消是免费退出（不用危险色、不叫「放弃」）。
+- 确认页：打开即默认选中第一张契约，「立即迎战」不置灰、放最右；取消是免费退出（不用危险色、不叫「放弃」）。
 """
 import os
 import re
@@ -203,21 +203,24 @@ def main():
                 r".*?return presenter\.OpenConfirmPage\(host, preview\);",
                 interactable, re.DOTALL):
             errors.append("[AutomaticEntryPreflight] 自动入口未消费地图/展示/preview 完整预检")
-        # 2026-09-23 确认页重排：没选契约时「立即迎战」不可点（旧版能先点，再弹一条被确认页挡住的提示），
-        # 打开时就按未选状态置灰；取消是免费退出（CloseModal 退回预扣船票），不得用危险色或「放弃」字样——
+        # 2026-09-24 UI 共识对照审查 B-13 / B-23（取代 2026-09-23「未选契约时置灰」）：打开就默认选中第一张契约，
+        # 选中态当场画出来，「立即迎战」从不置灰（不挂灰按钮），并且是最右那颗；
+        # 取消是免费退出（CloseModal 退回预扣船票），不得用危险色或「放弃」字样——
         # 局内的「放弃挑战」（ModeGAbandonPresenter）才是不可逆弃局，两者叫同一个名字会吓退玩家。
         if not re.search(
-                r"private void RefreshStartButton\(\)[\s\S]*?bool ready = _selectedCandidateIndex >= 0;"
-                r"[\s\S]*?_startButton\.interactable = ready;",
-                interactable):
-            errors.append("[StartGatedOnSelection] 未选契约时「立即迎战」必须不可点")
-        if not re.search(
-                r"private bool OpenConfirmPage\(.*?RefreshStartButton\(\);"
+                r"private bool OpenConfirmPage\(.*?_selectedCandidateIndex = 0;"
+                r".*?BuildContractCards\(st, preview, cursor\)[^;]*;\s*RefreshContractCards\(\);"
                 r".*?ClaimModalInput\(root, \"ModeGConfirmPage\"\)",
                 interactable, re.DOTALL):
-            errors.append("[StartGatedAtOpen] 确认页打开时未按未选状态置灰「立即迎战」")
+            errors.append("[ContractDefaultSelected] 确认页打开时必须默认选中第一张契约并画出选中态")
+        start = re.search(r"CreateButton\(\s*\"Start\", st,(.*?)\);", interactable, re.DOTALL)
+        if not start or "ConfirmAndStart(host), true" not in start.group(1) \
+                or "new Vector2(buttonX, buttonY)" not in start.group(1) \
+                or "先选一个契约" in interactable or re.search(r"\.interactable\s*=", interactable):
+            errors.append("[StartNeverGreyed] 「立即迎战」必须始终可点且放在最右（buttonX），不得回到置灰占位")
         cancel = re.search(r"CreateButton\(\s*\"Cancel\", st,(.*?)\);", interactable, re.DOTALL)
         if not cancel or "CloseModal" not in cancel.group(1) \
+                or "new Vector2(-buttonX, buttonY)" not in cancel.group(1) \
                 or "Danger" in cancel.group(1) or "放弃" in cancel.group(1):
             errors.append("[CancelIsFreeExit] 确认页取消必须接 CloseModal，且不得用危险色或「放弃」字样")
 

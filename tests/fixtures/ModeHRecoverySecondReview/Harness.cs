@@ -9,8 +9,17 @@ namespace BossRush
         public ModeHResultTone ResultTone;
         public List<string> Lines = new List<string>();
         public List<ModeHActionData> Actions = new List<ModeHActionData>();
+        public List<ModeHCardData> Cards = new List<ModeHCardData>();
     }
-    internal class ModeHActionData { public string Label; public Action OnClick; }
+    internal class ModeHActionData { public string Label; public Action OnClick; public bool IsPrimary; }
+    // 2026-09-24：结算页的战痕 / 整备决定改成卡片
+    internal class ModeHCardData { public string Title, Subtitle, Body, ActionLabel; public Action OnClick; }
+    // 2026-09-24：替换战痕等不可逆操作先弹共享确认框；夹具里直接确认
+    internal sealed class BossRushConfirmDialog
+    {
+        internal sealed class Options { public string Title, Target, Body, Warning, ConfirmLabel, CancelLabel; public bool Danger; public Action OnConfirm, OnCancel; }
+        internal static void Show(Options options) { if (options != null && options.OnConfirm != null) options.OnConfirm(); }
+    }
     internal static class L10n
     {
         public static string T(string text) { return text; }
@@ -105,6 +114,10 @@ namespace BossRush
         public List<string> Events = new List<string>();
         public bool EscrowReturnSucceeds, ThrowOnMatchRelease, PersistResult = true;
         public int Routes, Persists, Suspends;
+        // 押钱（2026-09-24）：放弃赛季先退押金，结算页挂押注行；结构由 ModeHCashBetGuard 守，这里只记次数
+        public int CashRefunds;
+        private void RefundCashBet(string context) { CashRefunds++; }
+        private void AppendCashBetReportLine(ModeHPageContent page, ModeHMatchReportDto report) { }
         public bool CleanupKeptOwner = true;
         public bool CleanupOwnerExpected = true;
         public void InitHost()
@@ -144,6 +157,7 @@ namespace BossRush
         private bool TryPersistSeason(string reason, bool durable)
         { Persists++; if (!durable) throw new Exception("archive requires durable"); return PersistResult; }
         private void RequestSuspended(string reason) { Suspends++; }
+        private void OpenRecoveryShell(string reason) { }
         private void RouteAfterIntermission(ModeHMatchReportDto report) { Routes++; }
         public ModeHPageContent Page() { return BuildCompletedSettlementPageContent(); }
         public void Abandon() { AbandonSeasonFromRecovery(); }

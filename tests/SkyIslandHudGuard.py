@@ -485,9 +485,13 @@ def main():
             errors.append("导航回到中位时没有重新武装：松开再按会走不动")
     if dispose and "navigateHeld = 0;" not in dispose:
         errors.append("剧情面板 Dispose 没有复位导航按住状态")
-    if panel_show and ("int previousSelected = reopening ? selected : -1;" not in panel_show
+    # 2026-09-24 UI 共识对照审查 B-14 / B-15：确认页（退单、二选一挑战）用 ResetFocusOnNextShow 让下一页不继承当前项，
+    # 否则回车连按两下就把确认按掉了。标记只用一次（读完当场清掉），其余重开照旧保住当前项。
+    if panel_show and ("int previousSelected = reopening && !freshFocus ? selected : -1;" not in panel_show
+                       or "freshFocus = false;" not in panel_show
                        or "if (previousSelected >= 0) Select(previousSelected);" not in panel_show):
-        errors.append("选项回执引起的重开丢了键盘当前项：连着按 Enter 的玩家每次都被打回第一项")
+        errors.append("选项回执引起的重开丢了键盘当前项：连着按 Enter 的玩家每次都被打回第一项"
+                      "（只有确认页的 freshFocus 可以一次性地不继承）")
 
     # ---- 20. 世界提示字不每帧量距离、不反复重建 TMP ----
     late = need_body(hud, "private void LateUpdate()", "世界提示字每帧驱动")

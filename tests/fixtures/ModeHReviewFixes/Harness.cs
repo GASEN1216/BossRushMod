@@ -126,6 +126,14 @@ namespace BossRush
         private void RequestTechnicalRetry(string reason) { Failure = reason; }
         private void RequestExit(ModeHExitReason exit, string reason) { Exits++; }
         private void OpenRecoveryShell(string failure) { Failure = failure; }
+        // 2026-09-24：锁盘 / 押品被拒的原因画在按钮带上方（就地失败提示）
+        internal string PageFailure;
+        private void NotePageFailure(string text) { PageFailure = text; }
+        // 押钱账本（2026-09-24）由 ModeHCashBetGuard 守结构；这里只记下锁盘 / 退回 / 读档对账各走了几次
+        public int CashReserves, CashRefunds, CashReconciles;
+        private void ReserveStandingCashBet() { CashReserves++; }
+        private void RefundCashBet(string context) { CashRefunds++; }
+        private void ReconcileCashBetOnRestore() { CashReconciles++; }
         private void ReleaseRuntimeObjects() { Released++; }
         private void FinishSeason(string reason) { TryTransition(_runState.Lifecycle, ModeHLifecycle.SeasonEnded, reason); }
         private void OpenNextMatchBrief(string reason) { TryTransition(_runState.Lifecycle, ModeHLifecycle.MatchBrief, reason); }
