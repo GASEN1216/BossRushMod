@@ -34,6 +34,8 @@ using Duckov.UI;
 using UnityEngine.AI;
 using Duckov.ItemBuilders;
 
+using ItemValueCacheEntry = BossRush.WavesArenaRuntimeModule.ItemValueCacheEntry;
+
 namespace BossRush
 {
     /// <summary>
@@ -68,9 +70,6 @@ namespace BossRush
 
         // ============================================================================
 
-        private static InteractableLootbox _cachedLootBoxTemplateWithLoader = null;
-        private static InteractableLootbox _cachedDifficultyRewardLootBoxTemplate = null;
-        private static InteractableLootbox _cachedVictoryRewardVisualLootBoxTemplate = null;
         private VictoryRewardShadowCrateController _activeVictoryRewardShadowCrateController = null;
         private bool _difficultyRewardSpawnPositionOverrideActive = false;
         private Vector3 _difficultyRewardSpawnPositionOverride = Vector3.zero;
@@ -253,12 +252,65 @@ namespace BossRush
         // ============================================================================
         // 物品价值缓存系统 - 避免Boss死亡时同步实例化大量物品导致卡顿
         // ============================================================================
-        private static Dictionary<int, ItemValueCacheEntry> _itemValueCache = null;
-        private static bool _itemValueCacheInitialized = false;
-        private static bool _itemValueCacheInitializing = false;
-        private static List<int> _legacyBossLootCandidateIds = null;
-        private static Dictionary<int, List<int>> _legacyBossLootCandidateIdsByQuality = null;
-        private static bool _legacyBossLootCandidateCacheInitialized = false;
+        private static InteractableLootbox _cachedLootBoxTemplateWithLoader
+        {
+            get { return WavesArenaRuntimeModule.CachedLootBoxTemplateWithLoader; }
+            set { WavesArenaRuntimeModule.CachedLootBoxTemplateWithLoader = value; }
+        }
+
+        private static InteractableLootbox _cachedDifficultyRewardLootBoxTemplate
+        {
+            get { return WavesArenaRuntimeModule.CachedDifficultyRewardLootBoxTemplate; }
+            set { WavesArenaRuntimeModule.CachedDifficultyRewardLootBoxTemplate = value; }
+        }
+
+        private static InteractableLootbox _cachedVictoryRewardVisualLootBoxTemplate
+        {
+            get { return WavesArenaRuntimeModule.CachedVictoryRewardVisualLootBoxTemplate; }
+            set { WavesArenaRuntimeModule.CachedVictoryRewardVisualLootBoxTemplate = value; }
+        }
+
+        private static Dictionary<int, ItemValueCacheEntry> _itemValueCache
+        {
+            get { return WavesArenaRuntimeModule.ItemValueCache; }
+            set { WavesArenaRuntimeModule.ItemValueCache = value; }
+        }
+
+        private static bool _itemValueCacheInitialized
+        {
+            get { return WavesArenaRuntimeModule.ItemValueCacheInitialized; }
+            set { WavesArenaRuntimeModule.ItemValueCacheInitialized = value; }
+        }
+
+        private static bool _itemValueCacheInitializing
+        {
+            get { return WavesArenaRuntimeModule.ItemValueCacheInitializing; }
+            set { WavesArenaRuntimeModule.ItemValueCacheInitializing = value; }
+        }
+
+        private static List<int> _legacyBossLootCandidateIds
+        {
+            get { return WavesArenaRuntimeModule.LegacyBossLootCandidateIds; }
+            set { WavesArenaRuntimeModule.LegacyBossLootCandidateIds = value; }
+        }
+
+        private static Dictionary<int, List<int>> _legacyBossLootCandidateIdsByQuality
+        {
+            get { return WavesArenaRuntimeModule.LegacyBossLootCandidateIdsByQuality; }
+            set { WavesArenaRuntimeModule.LegacyBossLootCandidateIdsByQuality = value; }
+        }
+
+        private static bool _legacyBossLootCandidateCacheInitialized
+        {
+            get { return WavesArenaRuntimeModule.LegacyBossLootCandidateCacheInitialized; }
+            set { WavesArenaRuntimeModule.LegacyBossLootCandidateCacheInitialized = value; }
+        }
+
+        private static void ResetLootAndRewardsStaticCaches()
+        {
+            WavesArenaRuntimeModule.ResetLootAndRewardsStaticCaches();
+        }
+
 
         private void RegisterBossRandomLootTracking(CharacterMainControl character, int originalLootCount = 3, float spawnTimeOffset = 1f)
         {
@@ -434,15 +486,6 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 物品价值缓存条目
-        /// </summary>
-        private struct ItemValueCacheEntry
-        {
-            public int value;
-            public int quality;
-        }
-
-        /// <summary>
         /// 初始化物品价值缓存（异步，在后台分帧处理避免卡顿）
         /// </summary>
         private void InitializeItemValueCacheAsync()
@@ -543,7 +586,7 @@ namespace BossRush
         /// <summary>
         /// 从缓存获取物品价值信息
         /// </summary>
-        private bool TryGetCachedItemValue(int itemId, out int value, out int quality)
+        internal bool TryGetCachedItemValue(int itemId, out int value, out int quality)
         {
             ItemValueCacheEntry entry;
             if (_itemValueCache != null && _itemValueCache.TryGetValue(itemId, out entry))
@@ -564,7 +607,7 @@ namespace BossRush
             return idSet;
         }
 
-        private bool BuildGeneralBossLootCandidateIdSet(HashSet<int> idSet)
+        internal bool BuildGeneralBossLootCandidateIdSet(HashSet<int> idSet)
         {
             if (idSet == null)
             {

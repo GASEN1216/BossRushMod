@@ -13,3 +13,5 @@
 交叉复核另抽取 F3 的 TryReclaimAutotestItems / ClearAutotestSnapshotKey；物品收回器和计数器是可观测替身，仅验证门控顺序、短缺契约与失败留键，不声称测试了真实 Inventory/ES3。里程碑直接链接完整服务，核对 1–16 阶累计完整标价总额、故障重试、每帧/每阶实体预算，另验 15/16/32/33 阶数学边界及宿主 long 饱和。
 
 AutotestBuffer 子夹具另外逐字抽取实际 CountOwnedItems / CountBufferedItems / CountInInventory、ReclaimAutotestItems、RemoveOwnedItems / RemoveFromBuffer / RemoveFromInventory 与清键流程。官方 ItemTreeData 的 rootInstanceID / entries / Count 变量由小型数据替身表达；验证 Buffer 尾部新增奖励回收、原树与无关物品保留、部分堆叠、缺主角/背包、旧快照基线不足、SaveBuffer 和物理写失败留键。只验证生产算法与调用顺序，不声称执行了真实 Unity 或 ES3。
+
+RunOnly 清理子夹具逐字抽取 `ZombieModeRuntimeModule` 的登记、敌人 / 未知记录剪枝、单对象移除、RunId 失效及整局清理方法，并抽取宿主薄桥和 `ZombieModeRunOnlyRecord`；直接链接生产 `RunScopedRegistry.ForEachReverse`。Unity 对象替身模拟销毁后判空和 `Destroy`，宿主替身仅记录保险、效果、支援队列、事件索引、奖励 UI 与地图隔离清理动作。断言覆盖旧 RunId 拒绝登记、奖励 UI 死记录回收、对象单项移除、敌人与未知记录剪枝、失败及成功撤离清理顺序、反向回收、RunId 在记录回调前失效以及终局后账本清空；不模拟真实 Unity 场景切换与玩家存档。

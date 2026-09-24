@@ -2,46 +2,46 @@ using System.Collections.Generic;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class WavesArenaRuntimeModule
     {
-        private static void ResetLootAndRewardsStaticCaches()
+        internal static void ResetLootAndRewardsStaticCaches()
         {
-            _cachedLootBoxTemplateWithLoader = null;
-            _cachedDifficultyRewardLootBoxTemplate = null;
-            _cachedVictoryRewardVisualLootBoxTemplate = null;
+            CachedLootBoxTemplateWithLoader = null;
+            CachedDifficultyRewardLootBoxTemplate = null;
+            CachedVictoryRewardVisualLootBoxTemplate = null;
 
             // Quest tag 的反射缓存已收敛到共享的排除口径里，连同它一起复位。
             LootExcludeTagPolicy.ResetStaticCaches();
 
-            _enemyPresetsInitialized = false;
+            EnemyPresetsInitialized = false;
 
-            if (_itemValueCache != null)
+            if (ItemValueCache != null)
             {
-                _itemValueCache.Clear();
-                _itemValueCache = null;
+                ItemValueCache.Clear();
+                ItemValueCache = null;
             }
-            _itemValueCacheInitialized = false;
-            _itemValueCacheInitializing = false;
+            ItemValueCacheInitialized = false;
+            ItemValueCacheInitializing = false;
 
-            if (_legacyBossLootCandidateIds != null)
+            if (LegacyBossLootCandidateIds != null)
             {
-                _legacyBossLootCandidateIds.Clear();
-                _legacyBossLootCandidateIds = null;
+                LegacyBossLootCandidateIds.Clear();
+                LegacyBossLootCandidateIds = null;
             }
 
-            if (_legacyBossLootCandidateIdsByQuality != null)
+            if (LegacyBossLootCandidateIdsByQuality != null)
             {
-                foreach (KeyValuePair<int, List<int>> pair in _legacyBossLootCandidateIdsByQuality)
+                foreach (KeyValuePair<int, List<int>> pair in LegacyBossLootCandidateIdsByQuality)
                 {
                     if (pair.Value != null)
                     {
                         pair.Value.Clear();
                     }
                 }
-                _legacyBossLootCandidateIdsByQuality.Clear();
-                _legacyBossLootCandidateIdsByQuality = null;
+                LegacyBossLootCandidateIdsByQuality.Clear();
+                LegacyBossLootCandidateIdsByQuality = null;
             }
-            _legacyBossLootCandidateCacheInitialized = false;
+            LegacyBossLootCandidateCacheInitialized = false;
         }
     }
 }

@@ -14,7 +14,7 @@
 | P5 目录归位 | 未开始 | 天空岛迁移与注入占位清理 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-最近已提交：`e75ffee0`（P3 簇 2/5/6 与 P4 追加耦合点）；当前批次继续簇 2 Tick、生成器与预设状态、簇 5 Tick/暂停、簇 6 地图物件，已通过整树验证，下一动作是提交并继续簇 2 剩余奖励/生成业务。真实游戏目录尚未部署。
+最近已提交：`e81ff798`（P3 簇 2 Tick / 生成器 / 预设、簇 5 Tick / 暂停、簇 6 地图物件）；当前批次迁移 Arena 奖励缓存与前期波次排除、丧尸奖励准备时长 / RunOnly 清理及集成延迟初始化。本节证据随当前检查点提交归档；下一动作是继续簇 2 余下业务。真实游戏目录尚未部署。
 
 ## P0 基线（2026-09-24）
 
@@ -63,6 +63,13 @@
 - 簇 5：`ZombieModeRuntimeModule` 接管 `TickZombieMode`、暂停判据和 `unscaledTime` 时钟；宿主调度入口和旧暂停 API 作薄桥。13 条生产方法抽取断言覆盖控制器顺序、原 `deltaTime`、暂停冻结与恢复、不活动局复位；6 项结构守卫反向转红且逐字还原。其余奖励、临时 NPC、RunOnly 清理业务仍待迁。
 - 簇 6：地图克隆配置、生成协程、撤离点创建与场景初始化等待移至 `IntegrationRuntimeModule` 的 `BossRushIntegrationRuntimeModule_MapObjects.cs`；宿主保留地图生成、等待与完成后的挑战设置三个薄桥。共享出生点、传送器和跨模式场景协调仍在宿主。`IntegrationRuntimeModuleGuard` 在断开生产协程调用后转红并逐字还原。按原入口核对，Ground Zero 中地图生成与禁用刷怪器相对顺序未变。
 - 当前 L1/L2：全量守卫 679 PASS / 0 FAIL / 0 known-red；全量执行回归 66 PASS / 0 FAIL / 0 SKIP。首轮 `AuditModeLifecycle` 因预设池入模块而缺少夹具的 `EnemyPresetInfo` 替身，修补后定向与全量复跑通过。Arena 结构、异常、状态归属及清理守卫均做真实破坏转红和 SHA-256 逐字还原。编译清单 1,042 源，模块索引 47 模块，宿主 partial 178 文件 / 84,357 行，预算降至 178 / 84,400。隔离正式构建 `Build succeeded!`、Dev 标识缺席，SHA-256 `7CEFBBC162A8593BE9B15CEEE8D2F51FD556FC4540FE56F31121CFD1B1D536E2`；隔离 Dev 构建 `Build succeeded!`、标识在位，SHA-256 `8E34CD937000A5ABF72E40C3A83C44FF9220A2AA7A90C6E5B017A83DFFCF1F37`。两种 DLL 均与隔离发布副本哈希一致，72 bundle 清单通过。当前 `Build/BossRush.dll` 为 Dev；未启动游戏，未部署真实游戏目录，L3 待 owner。
+
+### 当前可恢复步骤：奖励、RunOnly 与延迟初始化（COMPAT）
+
+- Arena：`WavesArenaRuntimeModule` 接管前期波次强 Boss 排除、宝箱模板 / 物品价值 / 候选集静态缓存以及无间炼狱高品质奖励抽取；`ModBehaviour` 保留旧签名薄桥。多 Boss 刷怪点选择迁到 `Utilities/SpawnPositionHelper`，保持原三维距离与补足顺序；原有丧尸单点选择仍按 XZ 距离。`SpawnPositionPolicy` 与 `AuditModeLifecycle` 的定向执行回归、相关守卫及反向验证已通过。其他 Arena 刷怪、奖励与结算业务仍待迁。
+- Zombie：奖励准备时长选项、默认值与阶段门归 `ZombieModeRuntimeModule`；宿主和地图选择 UI 经薄桥调用。`AuditModeLifecycle` 覆盖 20 个选项、边界钳位、跨波次选值；相关守卫反向转红后按字节还原。RunOnly 记录注册、剪枝、局失效和逆序清理也归模块，旧宿主入口转发；清理动作、停协程、销毁对象的顺序保持。
+- Integration：`BossRushIntegrationRuntimeModule_DeferredBootstrap.cs` 接管延迟初始化的阶段状态与协程，宿主保留入口和回调绑定；基础物品、`EssentialContentReady`、配偶 / 建筑恢复、装备加载及场景占位符的顺序未改。`DeferredBootstrapGuard` 反向验证通过；五个旧路径守卫已按新生产文件定位并完成反向验证；整树守卫与回归均已通过。
+- 当前编译清单 1,044 源，宿主 partial 实测 177 文件 / 83,562 行，预算下调至 177 / 83,600。改动相关守卫 184 PASS / 0 FAIL；全量守卫 679 PASS / 0 FAIL / 0 known-red，修改的 RunOnly 守卫均反向转红并按字节恢复；全量执行回归 67 PASS / 0 FAIL / 0 SKIP；RunOnly 清理夹具直接抽取生产模块、记录与 `RunScopedRegistry` 验证反向回收及事件顺序。隔离正式构建 `Build succeeded!`、Dev 标识缺席，SHA-256 `2252254A5F47D05553A16B01076A9DBB049C5236DB191C16E3D5C9A7B153D221`；隔离 Dev 构建 `Build succeeded!`、标识在位，SHA-256 `FC4AD39ADEAC84DC0B93A96DCF133164542EF0A7DF3F1DB537EF983594BDB5B9`。两种 DLL 均与隔离发布副本哈希一致，72 bundle 清单通过。本节离线验证完成，真实游戏目录未动，L3 待 owner。
 
 ## P1 上下文治理（2026-09-24）
 

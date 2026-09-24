@@ -17,6 +17,8 @@ def read_effects() -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in EFFECT_PARTS)
 
 CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+BRIDGES = Path("ZombieMode/ZombieModeMapSelection.cs")
 WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
 
 
@@ -29,6 +31,8 @@ def main() -> int:
     models = MODELS.read_text(encoding="utf-8")
     effects = read_effects() if EFFECTS.exists() else ""
     cleanup = CLEANUP.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
+    bridges = BRIDGES.read_text(encoding="utf-8")
     waves = WAVES.read_text(encoding="utf-8")
 
     for token in [
@@ -58,12 +62,14 @@ def main() -> int:
     if "RegisterZombieModeRunOnlyObject(zombieModeRunState.RunId, ZombieModeRunOnlyObjectKind.EventListener, null, zombieModeOptionPlayerHealth, RemoveZombieModeOptionRuntimeEffects)" in effects:
         return fail("ZombieModeRewardCleanupGuard: option listener cleanup must not register full runtime cleanup")
 
-    remove_index = cleanup.find("RemoveZombieModeOptionRuntimeEffects();")
-    invalidate_index = cleanup.find("InvalidateZombieModeRun();")
+    remove_index = runtime_module.find("owner.RemoveZombieModeOptionRuntimeEffectsForRuntimeModule();")
+    invalidate_index = runtime_module.find("InvalidateZombieModeRun();")
     if remove_index < 0:
         return fail("ZombieModeRewardCleanupGuard: cleanup does not remove option runtime effects")
     if invalidate_index < 0 or remove_index > invalidate_index:
         return fail("ZombieModeRewardCleanupGuard: option cleanup must run before InvalidateZombieModeRun")
+    if "RemoveZombieModeOptionRuntimeEffects();" not in bridges:
+        return fail("ZombieModeRewardCleanupGuard: host compatibility bridge must preserve option effects cleanup")
 
     for token in [
         "HandleZombieModeOptionHealthHurt(runId, health, damageInfo, victim, marker);",

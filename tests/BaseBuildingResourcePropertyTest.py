@@ -22,11 +22,11 @@ def main():
     manifest = json.loads((ROOT / 'tools/resource_release_manifest.json').read_text(encoding='utf8'))
     assert len(profile['buildings']) == 4
     source_only = os.environ.get('BOSSRUSH_GUARD_SOURCE_ONLY') == '1'
-    bootstrap = clean_source((ROOT / 'Integration/IntegrationDeferredBootstrap.cs').read_text(encoding='utf8'))
+    bootstrap = clean_source((ROOT / 'Integration/BossRushIntegrationRuntimeModule_DeferredBootstrap.cs').read_text(encoding='utf8'))
     for entry in profile['buildings']:
         relative = 'Assets/buildings/' + entry['bundle']
         assert relative in manifest['bundles'], 'missing release entry: ' + relative
-        assert 'FactoryResourceLoading.RunSpecial(this, "' + relative + '"' in bootstrap, 'async bootstrap: ' + relative
+        assert 'FactoryResourceLoading.RunSpecial(_owner, "' + relative + '"' in bootstrap, 'async bootstrap: ' + relative
         path = ROOT / 'output/building_concepts' / entry['source']
         if not source_only:
             assert path.is_file(), 'missing production source: ' + str(path)

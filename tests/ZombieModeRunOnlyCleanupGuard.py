@@ -9,6 +9,7 @@ RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 MOD_BEHAVIOUR = Path("ModBehaviour.cs")
 MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
 ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
+BRIDGES = Path("ZombieMode/ZombieModeMapSelection.cs")
 
 
 def fail(message: str) -> int:
@@ -21,6 +22,7 @@ def main() -> int:
     cleanup_text = CLEANUP.read_text(encoding="utf-8")
     entry_text = ENTRY.read_text(encoding="utf-8")
     module_text = RUNTIME_MODULE.read_text(encoding="utf-8")
+    bridge_text = BRIDGES.read_text(encoding="utf-8")
     entry_flow_text = entry_text + "\n" + module_text
     mod_text = MOD_BEHAVIOUR.read_text(encoding="utf-8")
     mode_runtime_hooks_text = MODE_RUNTIME_HOOKS.read_text(encoding="utf-8")
@@ -39,16 +41,90 @@ def main() -> int:
 
     for snippet in [
         "RegisterZombieModeRunOnlyObject",
-        "StartZombieModeCoroutine",
         "InvalidateZombieModeRun()",
         "CleanupZombieModeRunOnlyState",
+        "ShouldSettleZombieModeFailureInsurance",
+        "RunScopedRegistry.ForEachReverse(",
+        "runState.RunOnlyObjects.Clear();",
+    ]:
+        if snippet not in module_text:
+            return fail("ZombieModeRunOnlyCleanupGuard: RuntimeModule cleanup missing snippet -> " + snippet)
+
+    for snippet in [
+        "StartZombieModeCoroutine",
         "CleanupZombieModeForSceneChange",
         "CleanupZombieModeOnDestroy",
         "zombieModeRunState.RunOnlyObjects.Clear();",
         "zombieModeEntryTransaction.Reset();",
     ]:
+        if snippet == "zombieModeRunState.RunOnlyObjects.Clear();":
+            continue
         if snippet not in cleanup_text:
-            return fail("ZombieModeRunOnlyCleanupGuard: cleanup missing snippet -> " + snippet)
+            return fail("ZombieModeRunOnlyCleanupGuard: host lifecycle cleanup missing snippet -> " + snippet)
+
+    host_cleanup = cleanup_text[cleanup_text.index("private void CleanupZombieModeRunOnlyState"):]
+    host_cleanup = host_cleanup[:host_cleanup.index("private bool ShouldSettleZombieModeFailureInsurance")]
+    if "zombieModeRuntimeModule.CleanupZombieModeRunOnlyState(reason, destroyGameObjects)" not in host_cleanup:
+        return fail("ZombieModeRunOnlyCleanupGuard: host cleanup compatibility entry must forward to RuntimeModule")
+
+    for signature, call in [
+        ("private void RegisterZombieModeRunOnlyObject(", "zombieModeRuntimeModule.RegisterZombieModeRunOnlyObject(runId, kind, gameObject, target, cleanupAction)"),
+        ("private void PruneZombieModeRunOnlyEnemyRecords(", "zombieModeRuntimeModule.PruneZombieModeRunOnlyEnemyRecords(runId)"),
+        ("private void RemoveZombieModeRunOnlyObjectRecord(", "zombieModeRuntimeModule.RemoveZombieModeRunOnlyObjectRecord(target)"),
+        ("private void PruneZombieModeUnknownRunOnlyRecords(", "zombieModeRuntimeModule.PruneZombieModeUnknownRunOnlyRecords()"),
+    ]:
+        start = cleanup_text.find(signature)
+        end = cleanup_text.find("\n        }", start)
+        if start < 0 or end < 0 or call not in cleanup_text[start:end]:
+            return fail("ZombieModeRunOnlyCleanupGuard: host RunOnly bridge missing -> " + signature)
+
+    cleanup_method = module_text[module_text.index("internal void CleanupZombieModeRunOnlyState"):]
+    cleanup_method = cleanup_method[:cleanup_method.index("internal bool ShouldRollbackZombieModeEntryResources")]
+    cleanup_order = [
+        "owner.SettleZombieModeFailureInsuranceForRuntimeModule(runState.RunId)",
+        "owner.RemoveZombieModeAttributeModifiersForRuntimeModule();",
+        "owner.RemoveZombieModeOptionRuntimeEffectsForRuntimeModule();",
+        "owner.CleanupZombieModeFortificationInteractionStateForRuntimeModule();",
+        "InvalidateZombieModeRun();",
+        "owner.ClearZombieModeSupportSpawnQueueForRuntimeModule();",
+        "RunScopedRegistry.ForEachReverse(",
+        "runState.RunOnlyObjects.Clear();",
+        "owner.ClearZombieModeEnemyInstanceIdsForRuntimeModule();",
+        "owner.ClearZombieModeRewardShellForRuntimeModule();",
+        "owner.RestoreZombieModeMapIsolationShellForRuntimeModule();",
+    ]
+    positions = [cleanup_method.find(token) for token in cleanup_order]
+    positions = [position for position in positions if position >= 0]
+    if len(positions) != len(cleanup_order) or positions != sorted(positions):
+        return fail("ZombieModeRunOnlyCleanupGuard: RuntimeModule cleanup order or RunId invalidation point changed")
+
+    for bridge in [
+        "SettleZombieModeFailureInsuranceShell(runId);",
+        "RemoveZombieModeAttributeModifiers();",
+        "RemoveZombieModeOptionRuntimeEffects();",
+        "CleanupZombieModeFortificationInteractionState();",
+        "ClearZombieModeSupportSpawnQueue();",
+        "ClearZombieModeEnemyInstanceIds();",
+        "ClearZombieModeRewardShell();",
+        "RestoreZombieModeMapIsolationShell();",
+    ]:
+        if bridge not in bridge_text:
+            return fail("ZombieModeRunOnlyCleanupGuard: owner compatibility helper missing -> " + bridge)
+
+    scene_cleanup = cleanup_text[cleanup_text.index("private void CleanupZombieModeForSceneChange"):]
+    scene_cleanup = scene_cleanup[:scene_cleanup.index("private void CleanupZombieModeOnDestroy")]
+    lifecycle_order = [
+        "LifecyclePhase = ZombieModeLifecyclePhase.Exiting;",
+        "RollbackZombieModeInventoryTransferShell();",
+        "CleanupZombieModeRunOnlyState(reason, true);",
+        "zombieModeRunState.ClearRuntime();",
+        "LifecyclePhase = ZombieModeLifecyclePhase.None;",
+        "zombieModeEntryTransaction.Reset();",
+    ]
+    lifecycle_positions = [scene_cleanup.find(token) for token in lifecycle_order]
+    lifecycle_positions = [position for position in lifecycle_positions if position >= 0]
+    if len(lifecycle_positions) != len(lifecycle_order) or lifecycle_positions != sorted(lifecycle_positions):
+        return fail("ZombieModeRunOnlyCleanupGuard: scene cleanup entry order changed")
 
     for snippet in [
         "GrantZombieModeBeacon(int runId)",

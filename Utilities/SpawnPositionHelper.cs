@@ -194,6 +194,111 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 从刷怪点数组中选取多个不在安全距离内的点，按距玩家由近到远排序
+        /// <para>用于多Boss同波生成时分配不重复的安全刷怪位置</para>
+        /// </summary>
+        internal static List<Vector3> FindMultipleSafeSpawnPoints(int count, Vector3[] spawnPoints, Vector3 playerPos, float minPlayerDistance)
+        {
+            var result = new List<Vector3>(count);
+            if (spawnPoints == null || spawnPoints.Length == 0 || count <= 0)
+            {
+                return result;
+            }
+
+            // 收集所有安全距离外的点，按距玩家由近到远排序
+            var safeCandidates = new List<(int idx, Vector3 pos, float distSqr)>();
+            var allByDistance = new List<(int idx, Vector3 pos, float distSqr)>(spawnPoints.Length);
+
+            for (int i = 0; i < spawnPoints.Length; i++)
+            {
+                float distSqr = (spawnPoints[i] - playerPos).sqrMagnitude;
+                allByDistance.Add((i, spawnPoints[i], distSqr));
+                if (distSqr >= minPlayerDistance * minPlayerDistance)
+                {
+                    safeCandidates.Add((i, spawnPoints[i], distSqr));
+                }
+            }
+
+            // 按距离由近到远排序
+            safeCandidates.Sort((a, b) => a.distSqr.CompareTo(b.distSqr));
+
+            var usedIndices = new HashSet<int>();
+
+            // 优先使用安全距离外的点
+            for (int i = 0; i < safeCandidates.Count && result.Count < count; i++)
+            {
+                result.Add(SnapToGround(safeCandidates[i].pos));
+                usedIndices.Add(safeCandidates[i].idx);
+            }
+
+            // 不够的话，从未使用的点中按距离由远到近补充
+            if (result.Count < count)
+            {
+                allByDistance.Sort((a, b) => b.distSqr.CompareTo(a.distSqr));
+                for (int i = 0; i < allByDistance.Count && result.Count < count; i++)
+                {
+                    if (!usedIndices.Contains(allByDistance[i].idx))
+                    {
+                        result.Add(SnapToGround(allByDistance[i].pos));
+                        usedIndices.Add(allByDistance[i].idx);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 从刷怪点列表中选取多个不在安全距离内的点（List版本）
+        /// </summary>
+        internal static List<Vector3> FindMultipleSafeSpawnPoints(int count, List<Vector3> spawnPoints, Vector3 playerPos, float minPlayerDistance)
+        {
+            var result = new List<Vector3>(count);
+            if (spawnPoints == null || spawnPoints.Count == 0 || count <= 0)
+            {
+                return result;
+            }
+
+            var safeCandidates = new List<(int idx, Vector3 pos, float distSqr)>();
+            var allByDistance = new List<(int idx, Vector3 pos, float distSqr)>(spawnPoints.Count);
+
+            for (int i = 0; i < spawnPoints.Count; i++)
+            {
+                float distSqr = (spawnPoints[i] - playerPos).sqrMagnitude;
+                allByDistance.Add((i, spawnPoints[i], distSqr));
+                if (distSqr >= minPlayerDistance * minPlayerDistance)
+                {
+                    safeCandidates.Add((i, spawnPoints[i], distSqr));
+                }
+            }
+
+            safeCandidates.Sort((a, b) => a.distSqr.CompareTo(b.distSqr));
+
+            var usedIndices = new HashSet<int>();
+
+            for (int i = 0; i < safeCandidates.Count && result.Count < count; i++)
+            {
+                result.Add(SnapToGround(safeCandidates[i].pos));
+                usedIndices.Add(safeCandidates[i].idx);
+            }
+
+            if (result.Count < count)
+            {
+                allByDistance.Sort((a, b) => b.distSqr.CompareTo(a.distSqr));
+                for (int i = 0; i < allByDistance.Count && result.Count < count; i++)
+                {
+                    if (!usedIndices.Contains(allByDistance[i].idx))
+                    {
+                        result.Add(SnapToGround(allByDistance[i].pos));
+                        usedIndices.Add(allByDistance[i].idx);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// 在 player 周围生成 ringCount 个等距候选点；首个能 NavMesh 落地 + 通过 minPlayerDistance 的点即返回。
         /// 用于场景没有任何预设刷怪点时的兜底。
         /// </summary>

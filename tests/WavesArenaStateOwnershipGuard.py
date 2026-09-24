@@ -13,6 +13,8 @@ LOOT_BRIDGE = clean_source((ROOT / "LootAndRewards/LootAndRewards.cs").read_text
 MODULE = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule.cs").read_text(encoding="utf-8-sig"))
 TICK = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_Tick.cs").read_text(encoding="utf-8-sig"))
 SPAWNERS = clean_source((ROOT / "WavesArena/WavesArenaSpawnerControl.cs").read_text(encoding="utf-8-sig"))
+STATIC_RESET = clean_source((ROOT / "LootAndRewards/LootAndRewardsStaticCacheReset.cs").read_text(encoding="utf-8-sig"))
+ARENA = clean_source((ROOT / "WavesArena/WavesArena.cs").read_text(encoding="utf-8-sig"))
 REGISTRATION = clean_source((ROOT / "ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8-sig"))
 
 
@@ -76,6 +78,26 @@ def main():
         raise AssertionError("spawner latch host bridge missing")
     if "internal sealed partial class WavesArenaRuntimeModule" not in SPAWNERS:
         raise AssertionError("spawner control must execute in arena module")
+    if "internal sealed partial class WavesArenaRuntimeModule" not in STATIC_RESET:
+        raise AssertionError("loot static cache reset must execute in arena module")
+    if "WavesArenaRuntimeModule.ResetLootAndRewardsStaticCaches();" not in LOOT_BRIDGE:
+        raise AssertionError("loot reset host entry must forward to arena module")
+    if "internal static readonly HashSet<string> EarlyWaveExcludedBosses" not in MODULE:
+        raise AssertionError("early-wave exclusion policy must belong to arena module")
+    if "wavesArenaRuntime.EnsureEarlyWavesNoStrongBoss();" not in ARENA:
+        raise AssertionError("early-wave reorder entry must forward to arena module")
+    for cache_name in (
+        "CachedLootBoxTemplateWithLoader",
+        "CachedDifficultyRewardLootBoxTemplate",
+        "CachedVictoryRewardVisualLootBoxTemplate",
+        "ItemValueCache",
+        "LegacyBossLootCandidateIds",
+        "LegacyBossLootCandidateIdsByQuality",
+    ):
+        if cache_name + " { get; set; }" not in MODULE:
+            raise AssertionError(cache_name + " must belong to the arena module")
+        if "WavesArenaRuntimeModule." + cache_name not in LOOT_BRIDGE:
+            raise AssertionError(cache_name + " host bridge missing")
     if "return wavesArenaRuntime.TickWavesArenaRuntime(deltaTime);" not in BRIDGE or "internal bool TickWavesArenaRuntime(float deltaTime)" not in TICK:
         raise AssertionError("arena timer tick must execute in arena module")
     for old_name, new_name in (

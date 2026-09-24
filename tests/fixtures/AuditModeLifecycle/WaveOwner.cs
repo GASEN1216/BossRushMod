@@ -5,9 +5,10 @@ namespace UnityEngine.SceneManagement {
  public static class SceneManager { public static int Handle=1; public static Scene GetActiveScene(){return new Scene{handle=Handle};} }
 }
 public sealed class Health { public bool IsDead; }
+public sealed class InteractableLootbox {}
 public sealed class CharacterMainControl { public static CharacterMainControl Main; public Health Health=new Health(); }
 namespace BossRush {
- public class EnemyPresetInfo {}
+ public class EnemyPresetInfo { public string name; }
  internal class SceneRuntimeContext {}
  internal abstract class BossRushRuntimeModuleBase {
   public abstract string ModuleName {get;}
@@ -17,11 +18,15 @@ namespace BossRush {
   public virtual void OnSceneLoaded(SceneRuntimeContext c){}
  }
  internal class InfiniteHellMilestoneDelivery { public void Tick(ModBehaviour o){} public void Enqueue(int t,UnityEngine.Vector3 v){} }
- public class ModBehaviour { public bool IsActive,IsModeDActive;public int ModeDWaveIndex;public void TickModeDIntegrity(float d){} }
+ public class ModBehaviour { public bool IsActive,IsModeDActive;public int ModeDWaveIndex;public void TickModeDIntegrity(float d){} public static void DevLog(string message){} }
  static class Program {
   static void Check(bool b,string s){if(!b)throw new Exception(s);Console.WriteLine("PASS "+s);}
   static void Main(){
    var host=new ModBehaviour{IsActive=true};var module=new WavesArenaRuntimeModule();module.OnAwake(host);
+   for(int i=0;i<22;i++)module.EnemyPresets.Add(new EnemyPresetInfo{name="normal"+i});
+   module.EnemyPresets[1].name="DragonDescendant";
+   module.EnsureEarlyWavesNoStrongBoss();
+   Check(module.EnemyPresets[1].name=="normal20"&&module.EnemyPresets[20].name=="DragonDescendant"&&module.EnemyPresets.Count==22,"early-wave strong boss moved without changing pool size");
    CharacterMainControl.Main=new CharacterMainControl();
    var old=WavesArenaRuntimeModule.CaptureValidity(host,true,true);Check(old(),"active current wave accepted");
    host.IsActive=false;Check(!old(),"ended run rejected");host.IsActive=true;

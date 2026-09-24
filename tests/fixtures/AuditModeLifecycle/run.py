@@ -20,6 +20,13 @@ def member(path, marker):
                 return raw[start:i+1]
     raise ValueError(marker)
 
+def declaration(path, marker):
+    raw=path.read_text(encoding='utf-8-sig')
+    start=raw.index(marker)
+    end=raw.index(';',start)+1
+    hashes[str(path.relative_to(ROOT))]=hashlib.sha256(path.read_bytes()).hexdigest()
+    return raw[start:end]
+
 hashes={}
 def execute(name, files, generated=''):
     out=OUT/name;out.mkdir(parents=True,exist_ok=True)
@@ -81,6 +88,144 @@ public partial class ModBehaviour { private ZombieModeRuntimeModule zombieModeRu
 '''+host_methods+'''\n}
 }'''
 execute('pause_clock',[HERE/'PauseClock.cs'],pause)
+duration_module=ROOT/'ZombieMode/ZombieModeRuntimeModule.cs'
+duration_host=ROOT/'ZombieMode/ZombieModeRewardPreparationDuration.cs'
+duration_bridge=ROOT/'ZombieMode/ZombieModeMapSelection.cs'
+duration_module_members='\n'.join([
+    declaration(duration_module,'private const int ZombieModePreparationDurationMinimumSeconds ='),
+    declaration(duration_module,'private const int ZombieModePreparationDurationMaximumSeconds ='),
+    declaration(duration_module,'private static readonly int[] ZombieModePreparationDurationOptions ='),
+    member(duration_module,'internal bool IsZombieModeRunValid(int runId)'),
+    member(duration_module,'internal int GetZombieModeSelectedPreparationDuration(int runId)'),
+    member(duration_module,'internal void OpenZombieModePreparationDurationEditor(int runId)'),
+    member(duration_module,'internal void SetZombieModePreparationDuration(int runId, int seconds)'),
+])
+duration_host_members='\n'.join(member(duration_host,signature) for signature in [
+    'public int GetZombieModeSelectedPreparationDuration(int runId)',
+    'public void OpenZombieModePreparationDurationEditor(int runId)',
+    'public void SetZombieModePreparationDuration(int runId, int seconds)',
+])
+duration_show_bridge=member(duration_bridge,'internal void ShowZombieModeRewardSelectionForRuntimeModule(')
+duration='''using System;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+namespace BossRush {
+public enum ZombieModeLifecyclePhase { None, InitializingRun, WaitingStarterChoice, Active }
+public enum ZombieModeCombatPhase { None, RewardSelection }
+internal static class ZombieModePhaseGuards { internal static bool IsActive(ZombieModeLifecyclePhase phase) { return phase == ZombieModeLifecyclePhase.Active; } }
+internal sealed class ZombieModeRewardNode { internal bool BossNode; }
+internal sealed class ZombieModeRunState {
+ internal int RunId; internal int SceneBuildIndex = -1; internal bool IsCleaningUp;
+ internal ZombieModeLifecyclePhase LifecyclePhase = ZombieModeLifecyclePhase.Active;
+ internal ZombieModeCombatPhase CombatPhase = ZombieModeCombatPhase.RewardSelection;
+ internal int SelectedPreparationDurationSeconds; internal ZombieModeRewardNode CurrentRewardNode;
+}
+internal static class ZombieModeTuning { internal const float PreparationCountdownSeconds = 45f; }
+internal sealed partial class ZombieModeRuntimeModule {
+ private ModBehaviour owner; private ZombieModeRunState runState;
+ internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState) { this.owner = owner; this.runState = runState; }
+'''+duration_module_members+'''
+}
+public partial class ModBehaviour {
+ private ZombieModeRuntimeModule zombieModeRuntimeModule;
+ internal bool RewardSelectionShown; internal int ShownRunId; internal bool ShownBossNode; internal bool ShownExpanded;
+ internal void AttachTestModule(ZombieModeRuntimeModule module) { zombieModeRuntimeModule = module; }
+ private void ShowZombieModeRewardSelection(int runId, bool bossNode, bool restEditorExpanded = false) {
+  RewardSelectionShown = true; ShownRunId = runId; ShownBossNode = bossNode; ShownExpanded = restEditorExpanded;
+ }
+'''+duration_show_bridge+'\n'+duration_host_members+'''
+}
+}
+namespace UnityEngine {
+ public static class Mathf { public static int RoundToInt(float value) { return (int)Math.Round(value); } public static int Clamp(int value, int min, int max) { return Math.Max(min, Math.Min(max, value)); } }
+}
+namespace UnityEngine.SceneManagement {
+ public struct Scene { public int buildIndex; }
+ public static class SceneManager { public static Scene ActiveScene; public static Scene GetActiveScene() { return ActiveScene; } }
+}
+public static class Program {
+ private static int checks;
+ private static void Check(bool value, string message) { checks++; if (!value) throw new Exception("FAIL " + message); Console.WriteLine("PASS " + message); }
+ public static void Main() {
+  var owner = new BossRush.ModBehaviour(); var state = new BossRush.ZombieModeRunState { RunId = 7, CurrentRewardNode = new BossRush.ZombieModeRewardNode { BossNode = true } };
+  var module = new BossRush.ZombieModeRuntimeModule(owner, state); owner.AttachTestModule(module);
+  Check(owner.GetZombieModeSelectedPreparationDuration(7) == 45, "unset run duration keeps the 45-second fallback");
+  Check(owner.GetZombieModeSelectedPreparationDuration(6) == 45, "stale run duration keeps the fallback");
+  state.SelectedPreparationDurationSeconds = 1;
+  Check(owner.GetZombieModeSelectedPreparationDuration(7) == 15, "stored duration clamps to the 15-second minimum");
+  state.SelectedPreparationDurationSeconds = 301;
+  Check(owner.GetZombieModeSelectedPreparationDuration(7) == 300, "stored duration clamps to the 300-second maximum");
+  state.SelectedPreparationDurationSeconds = 45;
+  for (int seconds = 15; seconds <= 300; seconds += 15) {
+   owner.RewardSelectionShown = false; owner.SetZombieModePreparationDuration(7, seconds);
+   Check(state.SelectedPreparationDurationSeconds == seconds && owner.RewardSelectionShown && owner.ShownRunId == 7 && owner.ShownBossNode && !owner.ShownExpanded,
+    "accepted option persists and redraws the current Boss node collapsed: " + seconds);
+  }
+  int previous = state.SelectedPreparationDurationSeconds; owner.RewardSelectionShown = false;
+  owner.SetZombieModePreparationDuration(7, 151);
+  Check(state.SelectedPreparationDurationSeconds == previous && !owner.RewardSelectionShown, "non-option duration is ignored");
+  owner.RewardSelectionShown = false; owner.OpenZombieModePreparationDurationEditor(7);
+  Check(owner.RewardSelectionShown && owner.ShownRunId == 7 && owner.ShownBossNode && owner.ShownExpanded, "editor opens for the current Boss reward node expanded");
+  owner.RewardSelectionShown = false; state.CurrentRewardNode = null; owner.OpenZombieModePreparationDurationEditor(7);
+  Check(!owner.RewardSelectionShown, "editor does not open without a reward node");
+  state.CurrentRewardNode = new BossRush.ZombieModeRewardNode { BossNode = false }; state.CombatPhase = BossRush.ZombieModeCombatPhase.None;
+  owner.OpenZombieModePreparationDurationEditor(7); owner.SetZombieModePreparationDuration(7, 60);
+  Check(!owner.RewardSelectionShown && state.SelectedPreparationDurationSeconds == previous, "editor and setter stay closed outside reward selection");
+  state.CombatPhase = BossRush.ZombieModeCombatPhase.RewardSelection; state.IsCleaningUp = true;
+  owner.SetZombieModePreparationDuration(7, 60); owner.OpenZombieModePreparationDurationEditor(7);
+  Check(!owner.RewardSelectionShown && state.SelectedPreparationDurationSeconds == previous, "cleaning-up run rejects editor and duration updates");
+  Console.WriteLine("AuditModeLifecycle preparation duration: " + checks + " PASS / 0 FAIL");
+ }
+}'''
+execute('preparation_duration',[],duration)
+models=ROOT/'ZombieMode/ZombieModeModels.cs'
+cleanup=ROOT/'ZombieMode/ZombieModeCleanup.cs'
+run_only_module=ROOT/'ZombieMode/ZombieModeRuntimeModule.cs'
+run_only_bridges=ROOT/'ZombieMode/ZombieModeMapSelection.cs'
+run_only_module_methods='\n'.join(member(run_only_module,m) for m in [
+    'internal void RegisterZombieModeRunOnlyObject(',
+    'internal void PruneZombieModeRunOnlyEnemyRecords(',
+    'internal void RemoveZombieModeRunOnlyObjectRecord(',
+    'internal void PruneZombieModeUnknownRunOnlyRecords()',
+    'internal void InvalidateZombieModeRun()',
+    'internal bool ShouldSettleZombieModeFailureInsurance(',
+    'internal void CleanupZombieModeRunOnlyState(',
+])
+run_only_host_methods='\n'.join(member(cleanup,m) for m in [
+    'private void RegisterZombieModeRunOnlyObject(',
+    'private void PruneZombieModeRunOnlyEnemyRecords(',
+    'private void RemoveZombieModeRunOnlyObjectRecord(',
+    'private void PruneZombieModeUnknownRunOnlyRecords()',
+    'private void InvalidateZombieModeRun()',
+    'private bool ShouldSettleZombieModeFailureInsurance(',
+    'private void CleanupZombieModeRunOnlyState(',
+])
+run_only_owner_bridges='\n'.join(member(run_only_bridges,m) for m in [
+    'internal void SettleZombieModeFailureInsuranceForRuntimeModule(',
+    'internal void RemoveZombieModeAttributeModifiersForRuntimeModule()',
+    'internal void RemoveZombieModeOptionRuntimeEffectsForRuntimeModule()',
+    'internal void CleanupZombieModeFortificationInteractionStateForRuntimeModule()',
+    'internal void ClearZombieModeSupportSpawnQueueForRuntimeModule()',
+    'internal void ClearZombieModeEnemyInstanceIdsForRuntimeModule()',
+    'internal void ClearZombieModeRewardShellForRuntimeModule()',
+    'internal void RestoreZombieModeMapIsolationShellForRuntimeModule()',
+])
+run_only='''using System;
+using System.Collections.Generic;
+using UnityEngine;
+namespace BossRush {
+'''+member(models,'public enum ZombieModeRunOnlyObjectKind')+'\n'+member(models,'public sealed class ZombieModeRunOnlyRecord')+'''
+internal sealed partial class ZombieModeRuntimeModule {
+ private static int nextRunId; private ModBehaviour owner; private ZombieModeRunState runState;
+ internal static int TestNextRunId { get { return nextRunId; } set { nextRunId = value; } }
+ internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState) { this.owner = owner; this.runState = runState; }
+'''+run_only_module_methods+'''
+}
+public partial class ModBehaviour {
+'''+run_only_owner_bridges+'\n'+run_only_host_methods+'''
+}
+}'''
+execute('runonly_cleanup',[HERE/'RunOnlyCleanup.cs',ROOT/'Utilities/RunScopedRegistry.cs'],run_only)
 execute('wave_owner',[HERE/'WaveOwner.cs',ROOT/'WavesArena/WavesArenaRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule.cs'])
 execute('milestone',[HERE/'Milestone.cs',ROOT/'LootAndRewards/InfiniteHellMilestoneDelivery.cs'])
 f3=ROOT/'DebugAndTools/F3GameplayValidationAutotestStory.cs'

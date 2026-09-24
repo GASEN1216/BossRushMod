@@ -10,8 +10,8 @@ SOURCES = {
         "private int CollectZombieModeRuntimeEnemyMarkers(",
     ),
     "PruneZombieModeRunOnlyEnemyRecords": (
-        Path("ZombieMode/ZombieModeCleanup.cs"),
-        "private void PruneZombieModeRunOnlyEnemyRecords(",
+        Path("ZombieMode/ZombieModeRuntimeModule.cs"),
+        "internal void PruneZombieModeRunOnlyEnemyRecords(",
     ),
     "RefreshZombieModeCommanderAuraTargets": (
         Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),

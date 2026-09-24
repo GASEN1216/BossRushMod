@@ -3,6 +3,8 @@ import sys
 
 
 CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+BRIDGES = Path("ZombieMode/ZombieModeMapSelection.cs")
 WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
@@ -32,8 +34,7 @@ def require(text: str, snippet: str, label: str) -> int:
     return 0
 
 
-def extract_cleanup_method(text: str) -> str:
-    marker = "private void CleanupZombieModeRunOnlyState"
+def extract_cleanup_method(text: str, marker: str) -> str:
     start = text.find(marker)
     if start < 0:
         return ""
@@ -57,6 +58,8 @@ def extract_cleanup_method(text: str) -> str:
 
 def main() -> int:
     cleanup = CLEANUP.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
+    bridges = BRIDGES.read_text(encoding="utf-8")
     waves = WAVES.read_text(encoding="utf-8")
     rewards = read_rewards()
     debug = DEBUG.read_text(encoding="utf-8")
@@ -64,23 +67,26 @@ def main() -> int:
 
     for snippet in [
         "ShouldSettleZombieModeFailureInsurance(reason)",
-        "SettleZombieModeFailureInsuranceShell(zombieModeRunState.RunId)",
+        "owner.SettleZombieModeFailureInsuranceForRuntimeModule(runState.RunId)",
         "reason != ZombieModeFailureReason.SuccessfulExtraction",
         "ZombieModeFailureReason.PlayerDeath",
         "ZombieModeFailureReason.ManualExit",
         "ZombieModeFailureReason.SceneSwitched",
         "ZombieModeFailureReason.UnexpectedSceneUnload",
     ]:
-        result = require(cleanup, snippet, "cleanup insurance gate")
+        result = require(runtime_module, snippet, "RuntimeModule cleanup insurance gate")
         if result:
             return result
 
-    cleanup_method = extract_cleanup_method(cleanup)
+    cleanup_method = extract_cleanup_method(runtime_module, "internal void CleanupZombieModeRunOnlyState")
     if not cleanup_method:
         return fail("ZombieModeInsuranceExitGuard: cannot extract CleanupZombieModeRunOnlyState")
 
-    if cleanup_method.find("SettleZombieModeFailureInsuranceShell(zombieModeRunState.RunId)") > cleanup_method.find("InvalidateZombieModeRun()"):
+    if cleanup_method.find("owner.SettleZombieModeFailureInsuranceForRuntimeModule(runState.RunId)") > cleanup_method.find("InvalidateZombieModeRun()"):
         return fail("ZombieModeInsuranceExitGuard: insurance settlement must run before run invalidation")
+
+    if "SettleZombieModeFailureInsuranceShell(runId);" not in bridges:
+        return fail("ZombieModeInsuranceExitGuard: RuntimeModule compatibility bridge must preserve the legacy settlement entry")
 
     if "SettleZombieModeFailureInsuranceShell(runId)" in waves:
         return fail("ZombieModeInsuranceExitGuard: death path must rely on unified cleanup insurance settlement")

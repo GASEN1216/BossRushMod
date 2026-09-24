@@ -15,7 +15,7 @@ REVERSE_BRIDGE = Path("Integration/ReverseScale/ReverseScaleRuntimeModuleHostBri
 REGISTRATION = Path("ModBehaviourRuntimeModules.cs")
 EQUIPMENT = Path("Integration/EquipmentContentRegistry.cs")
 SCENE = Path("Integration/BossRushIntegration_StartAndScene.cs")
-DEFERRED = Path("Integration/IntegrationDeferredBootstrap.cs")
+DEFERRED = Path("Integration/BossRushIntegrationRuntimeModule_DeferredBootstrap.cs")
 DEATH_PATCH = Path("Patches/Combat/CharacterOnDeadPatch.cs")
 LOOT = Path("LootAndRewards/LootAndRewardsSpecialLoot.cs")
 

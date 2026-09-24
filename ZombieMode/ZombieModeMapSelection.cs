@@ -227,5 +227,50 @@ namespace BossRush
             UpdateModeFFortificationHighlights();
         }
 
+        internal void ShowZombieModeRewardSelectionForRuntimeModule(int runId, bool bossNode, bool restEditorExpanded)
+        {
+            ShowZombieModeRewardSelection(runId, bossNode, restEditorExpanded);
+        }
+
+        internal void SettleZombieModeFailureInsuranceForRuntimeModule(int runId)
+        {
+            SettleZombieModeFailureInsuranceShell(runId);
+        }
+
+        internal void RemoveZombieModeAttributeModifiersForRuntimeModule()
+        {
+            RemoveZombieModeAttributeModifiers();
+        }
+
+        internal void RemoveZombieModeOptionRuntimeEffectsForRuntimeModule()
+        {
+            RemoveZombieModeOptionRuntimeEffects();
+        }
+
+        internal void CleanupZombieModeFortificationInteractionStateForRuntimeModule()
+        {
+            CleanupZombieModeFortificationInteractionState();
+        }
+
+        internal void ClearZombieModeSupportSpawnQueueForRuntimeModule()
+        {
+            ClearZombieModeSupportSpawnQueue();
+        }
+
+        internal void ClearZombieModeEnemyInstanceIdsForRuntimeModule()
+        {
+            ClearZombieModeEnemyInstanceIds();
+        }
+
+        internal void ClearZombieModeRewardShellForRuntimeModule()
+        {
+            ClearZombieModeRewardShell();
+        }
+
+        internal void RestoreZombieModeMapIsolationShellForRuntimeModule()
+        {
+            RestoreZombieModeMapIsolationShell();
+        }
+
     }
 }

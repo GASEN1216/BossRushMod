@@ -23,6 +23,15 @@ namespace BossRush
         private int runtimePauseRunId;
         private static int nextRunId;
         private const int InitialPurificationPoints = 0;
+        private const int ZombieModePreparationDurationMinimumSeconds = 15;
+        private const int ZombieModePreparationDurationMaximumSeconds = 300;
+        private static readonly int[] ZombieModePreparationDurationOptions =
+        {
+            15, 30, 45, 60, 75,
+            90, 105, 120, 135, 150,
+            165, 180, 195, 210, 225,
+            240, 255, 270, 285, 300
+        };
 
         public override string ModuleName
         {
@@ -616,6 +625,251 @@ namespace BossRush
             return phase == ZombieModeLifecyclePhase.InitializingRun ||
                    phase == ZombieModeLifecyclePhase.WaitingStarterChoice ||
                    ZombieModePhaseGuards.IsActive(phase);
+        }
+
+        internal int GetZombieModeSelectedPreparationDuration(int runId)
+        {
+            if (!IsZombieModeRunValid(runId))
+            {
+                return Mathf.RoundToInt(ZombieModeTuning.PreparationCountdownSeconds);
+            }
+
+            if (runState.SelectedPreparationDurationSeconds > 0)
+            {
+                return Mathf.Clamp(
+                    runState.SelectedPreparationDurationSeconds,
+                    ZombieModePreparationDurationMinimumSeconds,
+                    ZombieModePreparationDurationMaximumSeconds);
+            }
+
+            return Mathf.RoundToInt(ZombieModeTuning.PreparationCountdownSeconds);
+        }
+
+        internal void OpenZombieModePreparationDurationEditor(int runId)
+        {
+            if (!IsZombieModeRunValid(runId) ||
+                runState.CombatPhase != ZombieModeCombatPhase.RewardSelection ||
+                runState.CurrentRewardNode == null)
+            {
+                return;
+            }
+
+            owner.ShowZombieModeRewardSelectionForRuntimeModule(runId, runState.CurrentRewardNode.BossNode, true);
+        }
+
+        internal void SetZombieModePreparationDuration(int runId, int seconds)
+        {
+            if (!IsZombieModeRunValid(runId) || runState.CombatPhase != ZombieModeCombatPhase.RewardSelection)
+            {
+                return;
+            }
+
+            for (int i = 0; i < ZombieModePreparationDurationOptions.Length; i++)
+            {
+                if (ZombieModePreparationDurationOptions[i] != seconds)
+                {
+                    continue;
+                }
+
+                runState.SelectedPreparationDurationSeconds = seconds;
+                bool bossNode = runState.CurrentRewardNode != null && runState.CurrentRewardNode.BossNode;
+                owner.ShowZombieModeRewardSelectionForRuntimeModule(runId, bossNode, false);
+                return;
+            }
+        }
+
+        internal void RegisterZombieModeRunOnlyObject(int runId, ZombieModeRunOnlyObjectKind kind, GameObject gameObject, UnityEngine.Object target, Action cleanupAction)
+        {
+            if (runId <= 0 || runId != runState.RunId)
+            {
+                return;
+            }
+
+            if (kind == ZombieModeRunOnlyObjectKind.RewardUi)
+            {
+                for (int i = runState.RunOnlyObjects.Count; i-- > 0;)
+                {
+                    ZombieModeRunOnlyRecord existing = runState.RunOnlyObjects[i];
+                    if (existing != null &&
+                        existing.RunId == runId &&
+                        existing.Kind == ZombieModeRunOnlyObjectKind.RewardUi &&
+                        existing.GameObject == null &&
+                        existing.CleanupAction == null)
+                    {
+                        runState.RunOnlyObjects.RemoveAt(i);
+                    }
+                }
+            }
+
+            ZombieModeRunOnlyRecord record = new ZombieModeRunOnlyRecord();
+            record.RunId = runId;
+            record.Kind = kind;
+            record.GameObject = gameObject;
+            record.Target = target;
+            record.CleanupAction = cleanupAction;
+            runState.RunOnlyObjects.Add(record);
+        }
+
+        internal void PruneZombieModeRunOnlyEnemyRecords(int runId)
+        {
+            if (runId <= 0 || runState == null || runState.RunOnlyObjects.Count <= 0)
+            {
+                return;
+            }
+
+            for (int i = runState.RunOnlyObjects.Count; i-- > 0;)
+            {
+                ZombieModeRunOnlyRecord record = runState.RunOnlyObjects[i];
+                if (record == null)
+                {
+                    runState.RunOnlyObjects.RemoveAt(i);
+                    continue;
+                }
+
+                if (record.RunId != runId ||
+                    (record.Kind != ZombieModeRunOnlyObjectKind.Enemy && record.Kind != ZombieModeRunOnlyObjectKind.Boss))
+                {
+                    continue;
+                }
+
+                ZombieModeEnemyRuntimeMarker marker = record.Target as ZombieModeEnemyRuntimeMarker;
+                if (marker == null && record.GameObject != null)
+                {
+                    marker = record.GameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
+                    if (marker != null)
+                    {
+                        record.Target = marker;
+                    }
+                }
+
+                bool shouldPrune = record.GameObject == null ||
+                                   marker == null ||
+                                   marker.RunId != runId ||
+                                   marker.DeathSettled ||
+                                   marker.RemovedFromRuntime;
+                if (!shouldPrune)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    record.Cleanup(false);
+                }
+                catch (System.Exception e)
+                {
+                    ModBehaviour.DevLog("[ZombieMode] Run-only enemy prune failed: " + e.Message);
+                }
+
+                runState.RunOnlyObjects.RemoveAt(i);
+            }
+        }
+
+        internal void RemoveZombieModeRunOnlyObjectRecord(UnityEngine.Object target)
+        {
+            if (target == null || runState == null || runState.RunOnlyObjects == null)
+            {
+                return;
+            }
+
+            for (int i = runState.RunOnlyObjects.Count; i-- > 0;)
+            {
+                ZombieModeRunOnlyRecord record = runState.RunOnlyObjects[i];
+                if (record == null || (record.GameObject != target && record.Target != target))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    record.Cleanup(false);
+                }
+                catch (System.Exception e)
+                {
+                    ModBehaviour.DevLog("[ZombieMode] Run-only object record cleanup failed: " + e.Message);
+                }
+                runState.RunOnlyObjects.RemoveAt(i);
+            }
+        }
+
+        internal void PruneZombieModeUnknownRunOnlyRecords()
+        {
+            if (runState == null || runState.RunOnlyObjects == null)
+            {
+                return;
+            }
+
+            for (int i = runState.RunOnlyObjects.Count; i-- > 0;)
+            {
+                ZombieModeRunOnlyRecord record = runState.RunOnlyObjects[i];
+                if (record == null)
+                {
+                    runState.RunOnlyObjects.RemoveAt(i);
+                    continue;
+                }
+
+                if (record.Kind != ZombieModeRunOnlyObjectKind.Unknown ||
+                    record.GameObject != null ||
+                    record.Target != null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    record.Cleanup(false);
+                }
+                catch (System.Exception e)
+                {
+                    ModBehaviour.DevLog("[ZombieMode] prune run-only record cleanup 失败: " + e.Message);
+                }
+                runState.RunOnlyObjects.RemoveAt(i);
+            }
+        }
+
+        internal void InvalidateZombieModeRun()
+        {
+            nextRunId++;
+            if (runState.RunId > 0)
+            {
+                runState.RunId = -runState.RunId;
+            }
+            runState.IsCleaningUp = true;
+        }
+
+        internal bool ShouldSettleZombieModeFailureInsurance(ZombieModeFailureReason reason)
+        {
+            return reason != ZombieModeFailureReason.SuccessfulExtraction &&
+                   (reason == ZombieModeFailureReason.PlayerDeath ||
+                    reason == ZombieModeFailureReason.ManualExit ||
+                    reason == ZombieModeFailureReason.SceneSwitched ||
+                    reason == ZombieModeFailureReason.UnexpectedSceneUnload ||
+                    reason == ZombieModeFailureReason.Unknown);
+        }
+
+        internal void CleanupZombieModeRunOnlyState(ZombieModeFailureReason reason, bool destroyGameObjects)
+        {
+            if (ShouldSettleZombieModeFailureInsurance(reason))
+            {
+                owner.SettleZombieModeFailureInsuranceForRuntimeModule(runState.RunId);
+            }
+
+            owner.RemoveZombieModeAttributeModifiersForRuntimeModule();
+            owner.RemoveZombieModeOptionRuntimeEffectsForRuntimeModule();
+            owner.CleanupZombieModeFortificationInteractionStateForRuntimeModule();
+            InvalidateZombieModeRun();
+            owner.ClearZombieModeSupportSpawnQueueForRuntimeModule();
+
+            RunScopedRegistry.ForEachReverse(
+                runState.RunOnlyObjects,
+                record => record.Cleanup(destroyGameObjects),
+                (e, record) => ModBehaviour.DevLog("[ZombieMode] Run-only cleanup failed: " + reason.ToString() + " - " + e.Message));
+
+            runState.RunOnlyObjects.Clear();
+            // OnHurt/OnDead hot path 集合也在局结束时清掉（审查 §3.1）。
+            owner.ClearZombieModeEnemyInstanceIdsForRuntimeModule();
+            owner.ClearZombieModeRewardShellForRuntimeModule();
+            owner.RestoreZombieModeMapIsolationShellForRuntimeModule();
         }
 
         internal bool ShouldRollbackZombieModeEntryResources()

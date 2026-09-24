@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace BossRush
 {
     internal sealed partial class WavesArenaRuntimeModule : BossRushRuntimeModuleBase
@@ -9,6 +11,21 @@ namespace BossRush
         private static System.Reflection.FieldInfo _cachedCreatedField = null;
         private static bool _createdFieldCached = false;
         internal bool SpawnersDisabled { get; set; }
+        internal struct ItemValueCacheEntry
+        {
+            public int value;
+            public int quality;
+        }
+
+        internal static InteractableLootbox CachedLootBoxTemplateWithLoader { get; set; }
+        internal static InteractableLootbox CachedDifficultyRewardLootBoxTemplate { get; set; }
+        internal static InteractableLootbox CachedVictoryRewardVisualLootBoxTemplate { get; set; }
+        internal static System.Collections.Generic.Dictionary<int, ItemValueCacheEntry> ItemValueCache { get; set; }
+        internal static bool ItemValueCacheInitialized { get; set; }
+        internal static bool ItemValueCacheInitializing { get; set; }
+        internal static System.Collections.Generic.List<int> LegacyBossLootCandidateIds { get; set; }
+        internal static System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<int>> LegacyBossLootCandidateIdsByQuality { get; set; }
+        internal static bool LegacyBossLootCandidateCacheInitialized { get; set; }
         internal System.Collections.Generic.List<EnemyPresetInfo> EnemyPresets { get; set; } =
             new System.Collections.Generic.List<EnemyPresetInfo>();
         internal int EnemyPresetInitializationScanCount { get; set; }
@@ -44,6 +61,72 @@ namespace BossRush
         internal readonly System.Collections.Generic.List<int> InfiniteHellHighQualityFallbackScratch =
             new System.Collections.Generic.List<int>(128);
         internal bool InfiniteHellHighQualityItemPoolInitialized { get; set; }
+
+        #region 前期波次Boss排除
+
+        /// <summary>
+        /// 前期波次需要排除的强力 Boss 名称列表
+        /// 包括：口口口口、四骑士、龙裔遗族和焚天龙皇
+        /// </summary>
+        internal static readonly HashSet<string> EarlyWaveExcludedBosses = new HashSet<string>
+        {
+            "Cname_StormBoss1",    // 口口口口 或 四骑士
+            "Cname_StormBoss2",    // 口口口口 或 四骑士
+            "Cname_StormBoss3",    // 口口口口 或 四骑士
+            "Cname_StormBoss4",    // 口口口口 或 四骑士
+            "Cname_StormBoss5",    // 口口口口 或 四骑士
+            "DragonDescendant",    // 龙裔遗族
+            "boss_dragonking",     // 焚天龙皇
+        };
+
+        /// <summary>
+        /// 检查是否是前期波次需要排除的强力Boss
+        /// </summary>
+        private bool IsEarlyWaveExcludedBoss(string bossName)
+        {
+            if (string.IsNullOrEmpty(bossName)) return false;
+            return EarlyWaveExcludedBosses.Contains(bossName);
+        }
+
+        /// <summary>
+        /// 预处理：确保前20波不出现强力Boss
+        /// 在挑战开始时调用一次，将前20位中的强力Boss与后面的普通Boss交换
+        /// </summary>
+        internal void EnsureEarlyWavesNoStrongBoss()
+        {
+            if (EnemyPresets == null || EnemyPresets.Count <= 20) return;
+
+            int swapCount = 0;
+            int nextSwapTarget = 20; // 从第20位开始找可交换的普通Boss
+
+            for (int i = 0; i < 20 && i < EnemyPresets.Count; i++)
+            {
+                if (!IsEarlyWaveExcludedBoss(EnemyPresets[i].name)) continue;
+
+                // 找一个第10位之后的普通Boss来交换
+                while (nextSwapTarget < EnemyPresets.Count &&
+                       IsEarlyWaveExcludedBoss(EnemyPresets[nextSwapTarget].name))
+                {
+                    nextSwapTarget++;
+                }
+
+                if (nextSwapTarget >= EnemyPresets.Count) break; // 没有可交换的了
+
+                // 交换
+                var tmp = EnemyPresets[i];
+                EnemyPresets[i] = EnemyPresets[nextSwapTarget];
+                EnemyPresets[nextSwapTarget] = tmp;
+                nextSwapTarget++;
+                swapCount++;
+            }
+
+            if (swapCount > 0)
+            {
+                ModBehaviour.DevLog("[BossRush] 前20波强力Boss预处理完成，交换了 " + swapCount + " 个Boss");
+            }
+        }
+
+        #endregion
 
         internal static void ResetMilestones(ModBehaviour expectedOwner)
         {

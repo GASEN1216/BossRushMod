@@ -79,6 +79,8 @@ def main() -> int:
     drops = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
     rewards_text = read_rewards()
     cleanup = Path("ZombieMode/ZombieModeCleanup.cs")
+    runtime_module = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+    runtime_bridges = Path("ZombieMode/ZombieModeMapSelection.cs")
     inventory = Path("ZombieMode/ZombieModeInventoryTransfer.cs")
     map_iso = Path("ZombieMode/ZombieModeMapIsolation.cs")
     enemy_runtime = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
@@ -116,7 +118,7 @@ def main() -> int:
 
     # §1.3 — RunScopedRegistry.ForEachReverse 至少 5 处
     fer_count = 0
-    for path in [cleanup, map_iso, drops, inventory]:
+    for path in [cleanup, runtime_module, map_iso, drops, inventory]:
         if path.is_file():
             txt = path.read_text(encoding="utf-8")
             fer_count += txt.count("RunScopedRegistry.ForEachReverse")
@@ -184,7 +186,7 @@ def main() -> int:
     err = must_contain(wave, "TryGetZombieModeKnownEnemyMarker", "TryHandleZombieModeSafeZonePlayerAttack", "CancelZombieModeSafeZone(runId, \"PlayerAttack\");")
     if err:
         return fail(err)
-    err = must_contain(cleanup, "ClearZombieModeEnemyInstanceIds()")
+    err = must_contain(runtime_bridges, "ClearZombieModeEnemyInstanceIds();")
     if err:
         return fail(err)
     err = must_contain(cleanup, "UnregisterZombieModeEnemyInstanceId(owner)")

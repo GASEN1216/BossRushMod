@@ -1,7 +1,7 @@
 {
   "description": "D-1: production host partial ceiling; only lower after responsibilities move to module-owned types.",
-  "max_files": 178,
-  "max_total_lines": 84400,
+  "max_files": 177,
+  "max_total_lines": 83600,
   "allowed_files": [
     "Achievement/AchievementMedalItem.cs",
     "Achievement/AchievementRuntimeHooks.cs",
@@ -84,7 +84,6 @@
     "LootAndRewards/LootAndRewardsRandomBossLoot.cs",
     "LootAndRewards/LootAndRewardsRuntimeHooks.cs",
     "LootAndRewards/LootAndRewardsSpecialLoot.cs",
-    "LootAndRewards/LootAndRewardsStaticCacheReset.cs",
     "LootAndRewards/LootAndRewardsVictoryRewards.cs",
     "LootAndRewards/ModeEFLootboxTracker.cs",
     "ModBehaviour.cs",

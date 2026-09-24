@@ -39,71 +39,13 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        #region 前期波次Boss排除
+        private static HashSet<string> EarlyWaveExcludedBosses { get { return WavesArenaRuntimeModule.EarlyWaveExcludedBosses; } }
 
-        /// <summary>
-        /// 前期波次需要排除的强力 Boss 名称列表
-        /// 包括：口口口口、四骑士、龙裔遗族和焚天龙皇
-        /// </summary>
-        private static readonly HashSet<string> EarlyWaveExcludedBosses = new HashSet<string>
-        {
-            "Cname_StormBoss1",    // 口口口口 或 四骑士
-            "Cname_StormBoss2",    // 口口口口 或 四骑士
-            "Cname_StormBoss3",    // 口口口口 或 四骑士
-            "Cname_StormBoss4",    // 口口口口 或 四骑士
-            "Cname_StormBoss5",    // 口口口口 或 四骑士
-            "DragonDescendant",    // 龙裔遗族
-            "boss_dragonking",     // 焚天龙皇
-        };
-
-        /// <summary>
-        /// 检查是否是前期波次需要排除的强力Boss
-        /// </summary>
-        private bool IsEarlyWaveExcludedBoss(string bossName)
-        {
-            if (string.IsNullOrEmpty(bossName)) return false;
-            return EarlyWaveExcludedBosses.Contains(bossName);
-        }
-
-        /// <summary>
-        /// 预处理：确保前20波不出现强力Boss
-        /// 在挑战开始时调用一次，将前20位中的强力Boss与后面的普通Boss交换
-        /// </summary>
         private void EnsureEarlyWavesNoStrongBoss()
         {
-            if (enemyPresets == null || enemyPresets.Count <= 20) return;
-
-            int swapCount = 0;
-            int nextSwapTarget = 20; // 从第20位开始找可交换的普通Boss
-
-            for (int i = 0; i < 20 && i < enemyPresets.Count; i++)
-            {
-                if (!IsEarlyWaveExcludedBoss(enemyPresets[i].name)) continue;
-
-                // 找一个第10位之后的普通Boss来交换
-                while (nextSwapTarget < enemyPresets.Count &&
-                       IsEarlyWaveExcludedBoss(enemyPresets[nextSwapTarget].name))
-                {
-                    nextSwapTarget++;
-                }
-
-                if (nextSwapTarget >= enemyPresets.Count) break; // 没有可交换的了
-
-                // 交换
-                var tmp = enemyPresets[i];
-                enemyPresets[i] = enemyPresets[nextSwapTarget];
-                enemyPresets[nextSwapTarget] = tmp;
-                nextSwapTarget++;
-                swapCount++;
-            }
-
-            if (swapCount > 0)
-            {
-                DevLog("[BossRush] 前20波强力Boss预处理完成，交换了 " + swapCount + " 个Boss");
-            }
+            wavesArenaRuntime.EnsureEarlyWavesNoStrongBoss();
         }
 
-        #endregion
 
         public void StartNextWaveCountdown(bool showInitialBanner = true, bool suppressImmediateRepeatBanner = false)
         {

@@ -43,11 +43,14 @@ namespace BossRush
         public override void OnAwake(ModBehaviour owner)
         {
             _owner = owner;
+            _deferredBootstrapActions = owner.CreateIntegrationDeferredBootstrapActions();
         }
 
         public override void OnDestroy()
         {
             StopRuntimeStateMonitor();
+            CleanupDeferredIntegrationBootstrap();
+            _deferredBootstrapActions = null;
             CleanupRuntimeEvents();
             UnsubscribePurchaseEvents();
             UnsubscribeDragonBreathEffectEvent();

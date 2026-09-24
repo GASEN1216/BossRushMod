@@ -12,6 +12,7 @@ BOSS_CONTROLLER = Path("ZombieMode/ZombieModeBossController.cs")
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
 REWARD_CATALOG = Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs")
 REWARD_PREPARATION = Path("ZombieMode/ZombieModeRewardPreparationDuration.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 REWARD_SERVICES = Path("ZombieMode/ZombieModeRewardNpcServices.cs")
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 
@@ -19,6 +20,24 @@ LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 def fail(message: str) -> int:
     print("ZombieModePacingTuningGuard: FAIL - " + message)
     return 1
+
+
+def extract_method(text: str, marker: str) -> str:
+    start = text.find(marker)
+    if start < 0:
+        return ""
+    brace = text.find("{", start)
+    if brace < 0:
+        return ""
+    depth = 0
+    for index in range(brace, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:index + 1]
+    return ""
 
 
 def main() -> int:
@@ -31,6 +50,8 @@ def main() -> int:
     drops_text = DROPS.read_text(encoding="utf-8")
     reward_catalog_text = REWARD_CATALOG.read_text(encoding="utf-8")
     reward_preparation_text = REWARD_PREPARATION.read_text(encoding="utf-8")
+    runtime_module_text = RUNTIME_MODULE.read_text(encoding="utf-8")
+    host_bridge_text = Path("ZombieMode/ZombieModeMapSelection.cs").read_text(encoding="utf-8")
     reward_services_text = REWARD_SERVICES.read_text(encoding="utf-8")
     localization_text = LOCALIZATION.read_text(encoding="utf-8")
 
@@ -42,9 +63,46 @@ def main() -> int:
 
     if not (
         ": GetZombieModeSelectedPreparationDuration(runId);" in wave_text
-        and "ZombieModePreparationDurationMaximumSeconds = 300" in reward_preparation_text
+        and "ZombieModePreparationDurationMaximumSeconds = 300" in runtime_module_text
+        and "module.GetZombieModeSelectedPreparationDuration(runId)" in reward_preparation_text
     ):
         return fail("BeginZombieModePreparation must use the run-persistent player duration with a 45-second fallback")
+
+    for required in [
+        "internal int GetZombieModeSelectedPreparationDuration(int runId)",
+        "Mathf.RoundToInt(ZombieModeTuning.PreparationCountdownSeconds)",
+        "Mathf.Clamp(",
+        "ZombieModePreparationDurationMinimumSeconds",
+        "ZombieModePreparationDurationMaximumSeconds",
+        "internal void OpenZombieModePreparationDurationEditor(int runId)",
+        "internal void SetZombieModePreparationDuration(int runId, int seconds)",
+        "ZombieModePreparationDurationOptions[i] != seconds",
+        "runState.SelectedPreparationDurationSeconds = seconds;",
+    ]:
+        if required not in runtime_module_text:
+            return fail("preparation-duration runtime logic missing -> " + required)
+
+    host_methods = [
+        ("public int GetZombieModeSelectedPreparationDuration(int runId)",
+         "module.GetZombieModeSelectedPreparationDuration(runId)"),
+        ("public void OpenZombieModePreparationDurationEditor(int runId)",
+         "module.OpenZombieModePreparationDurationEditor(runId)"),
+        ("public void SetZombieModePreparationDuration(int runId, int seconds)",
+         "module.SetZombieModePreparationDuration(runId, seconds)"),
+    ]
+    for signature, forward in host_methods:
+        method = extract_method(reward_preparation_text, signature)
+        if not method or forward not in method:
+            return fail("legacy preparation-duration API must forward to RuntimeModule -> " + signature)
+        if "zombieModeRunState." in method or "ZombieModePreparationDurationOptions" in method:
+            return fail("legacy preparation-duration API must not retain state or option logic -> " + signature)
+
+    if "owner.ShowZombieModeRewardSelectionForRuntimeModule(runId, runState.CurrentRewardNode.BossNode, true);" not in runtime_module_text:
+        return fail("opening the duration editor must preserve the current reward node and expanded-editor flag")
+    if "owner.ShowZombieModeRewardSelectionForRuntimeModule(runId, bossNode, false);" not in runtime_module_text:
+        return fail("saving duration must preserve the current reward node and collapsed-editor flag")
+    if "ShowZombieModeRewardSelection(runId, bossNode, restEditorExpanded);" not in host_bridge_text:
+        return fail("RuntimeModule reward-selection bridge must preserve the existing UI arguments")
 
     if "zombieModeRunState.SelectedPreparationDurationSeconds = 0;" in wave_text:
         return fail("player-selected preparation duration must persist across waves")

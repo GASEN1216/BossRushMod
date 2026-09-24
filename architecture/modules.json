@@ -639,7 +639,7 @@
         "Integration/Dialogue/**/*.cs"
       ],
       "entry": "Integration/BossRushIntegration.cs",
-      "state_owner": "IntegrationRuntimeModule（商店库存、购买事件、恢复协程、龙息事件、地图克隆与撤离点）；ModBehaviour（共享出生点与跨模式场景协调等余项待迁）",
+      "state_owner": "IntegrationRuntimeModule（商店库存、购买事件、恢复协程、龙息事件、地图克隆、撤离点与延迟初始化）；ModBehaviour（共享出生点与跨模式场景协调等余项待迁）",
       "public_api": [
         "BossRushIntegration"
       ],

@@ -15,6 +15,7 @@ REWARD_PARTS = [
     Path("ZombieMode/ZombieModeRewardSelectionView.cs"),
     Path("ZombieMode/ZombieModeTemporaryNpcServiceView.cs"),
     Path("ZombieMode/ZombieModeRewardPreparationDuration.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule.cs"),
     Path("ZombieMode/ZombieModeBackpackJunkRecycle.cs"),
 ]
 

@@ -33,14 +33,14 @@ def main():
         bootstrap = source("Integration/EquipmentConfiguratorBootstrap.cs")
         reset = source("Integration/EquipmentFactoryStaticCacheReset.cs")
         item_registry = source("Integration/Items/ItemContentRegistry.cs")
-        deferred = source("Integration/IntegrationDeferredBootstrap.cs")
+        deferred = source("Integration/BossRushIntegrationRuntimeModule_DeferredBootstrap.cs")
         assert "ApplyRegisteredConfigurators(gunConfigurators, itemPrefab, baseName);" in factory
         assert "ApplyRegisteredConfigurators(equipmentConfigurators, itemPrefab, baseName);" in factory
         assert "if (indexes.TryGetValue(key, out index))" in factory
         assert "ordered[index] = configurator;" in factory
         assert "indexes.Add(key, ordered.Count);" in factory
         assert "EquipmentConfiguratorBootstrap.RegisterAll();" in item_registry
-        assert deferred.index("FactoryResourceLoading.InitializeItems(this, InitializeDynamicItems)") < deferred.index("EquipmentFactory.LoadAllEquipmentAsync(this)")
+        assert deferred.index("FactoryResourceLoading.InitializeItems(_owner, _deferredBootstrapActions.InitializeDynamicItems)") < deferred.index("EquipmentFactory.LoadAllEquipmentAsync(_owner)")
         for name in ("gunConfigurators", "gunConfiguratorIndexes", "equipmentConfigurators", "equipmentConfiguratorIndexes"):
             assert name + ".Clear();" in reset, name + " must clear at factory shutdown"
 

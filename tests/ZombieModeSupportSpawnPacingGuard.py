@@ -10,6 +10,8 @@ POLLUTION_PARTS = [
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+BRIDGES = Path("ZombieMode/ZombieModeMapSelection.cs")
 
 
 def fail(message: str) -> int:
@@ -25,6 +27,8 @@ def main() -> int:
     boss_text = BOSS.read_text(encoding="utf-8")
     pollution_text = read_pollution()
     cleanup_text = CLEANUP.read_text(encoding="utf-8")
+    runtime_module_text = RUNTIME_MODULE.read_text(encoding="utf-8")
+    bridge_text = BRIDGES.read_text(encoding="utf-8")
 
     required = [
         "QueueZombieModeSmallSplitSpawn(",
@@ -47,8 +51,17 @@ def main() -> int:
         if token in combined:
             return fail("support spawn still bypasses pacing queue: " + token)
 
-    if "ClearZombieModeSupportSpawnQueue();" not in cleanup_text:
-        return fail("cleanup must clear pending support spawn queue")
+    cleanup_start = runtime_module_text.find("internal void CleanupZombieModeRunOnlyState")
+    cleanup_end = runtime_module_text.find("internal bool ShouldRollbackZombieModeEntryResources", cleanup_start)
+    cleanup_body = runtime_module_text[cleanup_start:cleanup_end] if cleanup_start >= 0 and cleanup_end > cleanup_start else ""
+    clear_queue = cleanup_body.find("owner.ClearZombieModeSupportSpawnQueueForRuntimeModule();")
+    run_only_cleanup = cleanup_body.find("RunScopedRegistry.ForEachReverse(")
+    if clear_queue < 0 or run_only_cleanup < 0 or clear_queue > run_only_cleanup:
+        return fail("RuntimeModule cleanup must clear pending support spawns before run-only object callbacks")
+    if "ClearZombieModeSupportSpawnQueue();" not in bridge_text:
+        return fail("RuntimeModule compatibility bridge must clear pending support spawn queue")
+    if "zombieModeRuntimeModule.CleanupZombieModeRunOnlyState(reason, destroyGameObjects)" not in cleanup_text:
+        return fail("host cleanup entry must forward into RunOnly owner")
 
     print("ZombieModeSupportSpawnPacingGuard: PASS")
     return 0

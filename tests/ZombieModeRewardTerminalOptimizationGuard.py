@@ -13,6 +13,7 @@ REWARD_VIEWS = [
     Path("ZombieMode/ZombieModeTemporaryNpcServiceView.cs"),
 ]
 CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 
 
@@ -44,6 +45,7 @@ def main() -> int:
     npc_catalog = NPC_CATALOG.read_text(encoding="utf-8")
     rewards = "\n".join(path.read_text(encoding="utf-8") for path in REWARD_VIEWS)
     cleanup = CLEANUP.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
     localization = LOCALIZATION.read_text(encoding="utf-8")
 
     build_catalog = extract_method(catalog, "private List<ZombieModeRewardCatalogEntry> BuildZombieModeRewardCatalogEntries")
@@ -96,15 +98,19 @@ def main() -> int:
         if token not in localization:
             return fail("terminal subtitle localization missing -> " + token)
 
-    register = extract_method(cleanup, "private void RegisterZombieModeRunOnlyObject")
+    register = extract_method(runtime_module, "internal void RegisterZombieModeRunOnlyObject")
     for token in [
         "kind == ZombieModeRunOnlyObjectKind.RewardUi",
         "existing.GameObject == null",
         "existing.CleanupAction == null",
-        "zombieModeRunState.RunOnlyObjects.RemoveAt(i);",
+        "runState.RunOnlyObjects.RemoveAt(i);",
     ]:
         if token not in register:
             return fail("destroyed RewardUi record pruning missing -> " + token)
+
+    host_register = extract_method(cleanup, "private void RegisterZombieModeRunOnlyObject")
+    if "zombieModeRuntimeModule.RegisterZombieModeRunOnlyObject(runId, kind, gameObject, target, cleanupAction)" not in host_register:
+        return fail("host RunOnly registration entry must forward to its RuntimeModule owner")
 
     print("ZombieModeRewardTerminalOptimizationGuard: PASS")
     return 0
