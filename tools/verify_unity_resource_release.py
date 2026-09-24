@@ -47,10 +47,16 @@ def inspect(path):
             row['sprites'].append({'name':d.m_Name,'texture':texture.m_Name,'width':texture.m_Width,'height':texture.m_Height,
                 'rectWidth':d.m_Rect.width,'rectHeight':d.m_Rect.height,'pixelsPerUnit':d.m_PixelsToUnits})
     if path.name == 'production_icons':
-        from daily_report_art_contract import DAILY_REPORT_ALIAS, measure_chrome
+        from daily_report_art_contract import DAILY_REPORT_ALIAS, measure_chrome, measure_source_drift
         if DAILY_REPORT_ALIAS in env.container:
             layout = json.loads((ROOT/'Assets/Data/DailyReportLayout.json').read_text(encoding='utf8'))
-            row['daily_report_chrome'] = measure_chrome(env.container[DAILY_REPORT_ALIAS].read().image, layout)
+            sprite = env.container[DAILY_REPORT_ALIAS].read().image
+            row['daily_report_chrome'] = measure_chrome(sprite, layout)
+            raw = ROOT/'Assets/ui/DailyReport/daily_report_bg.png'
+            if raw.is_file():
+                from PIL import Image
+                with Image.open(raw) as image:
+                    row['daily_report_chrome']['source_drift'] = measure_source_drift(image, sprite)
     return row
 
 
@@ -87,9 +93,10 @@ def validate(row,name):
         for t in row['textures']:
             if t['format'] not in ('BC7','DXT5') or max(t['width'],t['height'])>budgets.get(t['name'],0):
                 errors.append('Production icon compression/size: '+t['name'])
-        from daily_report_art_contract import validate_chrome
+        from daily_report_art_contract import validate_chrome, validate_source_drift
         layout=json.loads((ROOT/'Assets/Data/DailyReportLayout.json').read_text(encoding='utf8'))
         errors.extend(validate_chrome(row.get('daily_report_chrome'), layout))
+        errors.extend(validate_source_drift((row.get('daily_report_chrome') or {}).get('source_drift')))
     if name=='energyshield_totem_model':
         if sum(m['triangles'] for m in row['meshes'])>40000: errors.append('Shield triangle budget > 40000')
         if len(row['meshes'])!=1: errors.append('Shield mesh contract changed')

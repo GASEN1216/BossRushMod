@@ -71,3 +71,35 @@ def validate_chrome(measured, layout, tolerance=4):
         return ['Daily report dynamic region coverage incomplete']
     return ['Daily report baked dynamic region: ' + row['name']
             for row in rows if row['max_delta'] > tolerance]
+
+
+#: 同源判据阈值。按打包口径（LANCZOS 缩到 Sprite 尺寸）比对，逐像素取 RGBA 通道最大差：
+#: 2026-09-24 实测同源包平均 0.25、超 16 级占 0.015%；版面下移 60 px 后没重打的旧包平均 10.2、占 20%。
+SOURCE_DRIFT_MAX_MEAN = 2.0
+SOURCE_DRIFT_MAX_OVER16 = 0.01
+
+
+def measure_source_drift(raw, sprite):
+    """正式 Sprite 与当前原图的整图差。动态区留白判据只量控件位置，
+    版面改了、原图重生成而包没重打时，旧底图的控件位恰好落在纯色上就会漏过；这里补上「包必须是当前原图打的」。"""
+    from PIL import Image, ImageChops
+    raw, sprite = raw.convert('RGBA'), sprite.convert('RGBA')
+    if raw.size != sprite.size:
+        raw = raw.resize(sprite.size, Image.Resampling.LANCZOS)
+    bands = ImageChops.difference(raw, sprite).split()
+    diff = bands[0]
+    for band in bands[1:]:
+        diff = ImageChops.lighter(diff, band)
+    histogram = diff.histogram()
+    total = float(sum(histogram))
+    return {'mean': sum(level * count for level, count in enumerate(histogram)) / total,
+            'over16': sum(histogram[17:]) / total}
+
+
+def validate_source_drift(drift):
+    if not drift:
+        return ['Daily report production Sprite was not compared with the current source image']
+    if drift['mean'] > SOURCE_DRIFT_MAX_MEAN or drift['over16'] > SOURCE_DRIFT_MAX_OVER16:
+        return ['Daily report production Sprite is stale (mean %.2f, over16 %.4f); rebuild production_icons'
+                % (drift['mean'], drift['over16'])]
+    return []

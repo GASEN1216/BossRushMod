@@ -14,6 +14,25 @@
 
 **L3 待 owner 实机**：丧尸模式安全区打开护士医疗终端，服务列表第一项应显示「治疗：恢复 50% 最大生命」（英文 "Heal: Restore 50% Max HP"），文字不溢出按钮；在缺血少于一半时购买应回满、缺血多于一半时回复最大生命的一半。
 
+## 2026-09-24 日报正式包没跟版面重打，底图与新版面错位（OPERATIONAL / SAFE）
+
+**现象**：`python tests/DailyReportArtPropertyTest.py` 在 fc7da8b8 上红，报 `button`、`legend_0…4`、`icon_gossip` 烤色。
+
+**根因（是包，不是底图，也不是判据）**：b2f98312 把签到卡、按钮、图例整体下移 60 px，状态行图标跟着下移；原图随后按新版面用生成器重出，但本机 `Assets/ui/production_icons` 还是 09-23 10:56 按旧版面打的包。实测：
+- 正式包里的底图按**旧**版面量，留白判据全过；按新版面量就是上面 7 个区域。
+- 当前原图按新版面以 0 容差全过；HEAD 的 `tools/gen_daily_report_ui.py` 重跑，底图与吉祥物逐字节一致，版面表内容一致（只差换行，已按原字节还原）。
+所以判据阈值不用动，底图也不用重画。
+
+**处置**：
+- 作者工程（`git status` 干净、Unity 与游戏都没运行）跑 `python tools/optimize_unity_resources.py --stage IconsBuild --output Build/resource-production-20260924-daily-report-relayout`：退出码 0，`BUILD PASS sprites=346`。新旧包 346 张贴图逐张比对，只有 `daily_report_bg` 变了，别名清单相同。
+- `production_icons`：`a75b0a30…41dc` 换成 **`031ee280…5055`**；游戏目录经 `tools/Deploy-ResourceBundles.ps1` 部署，部署前只有这一个包不一致、版面表已是新版，部署后 72 包 SHA-256 一致。旧包备份在本会话 scratchpad。
+- 作者工程的远端同时有 831d0ec「20260924」：它的日报底图与这次构建写进作者工程的底图是同一个 blob，另外只多了 18 段 `overridden: 0` 的 Android 平台块，不影响 Windows 构建。已把本次构建留下的 4 处改动存进作者工程的 stash，再快进到 831d0ec，工作区干净，包不用重打。
+- 补判据：留白判据只量控件位置，版面挪动后旧底图的控件位碰巧落在纯色上就会漏。`tools/daily_report_art_contract.py` 新增 `measure_source_drift` / `validate_source_drift`，按打包口径缩放后比对正式 Sprite 与当前原图；`tools/verify_unity_resource_release.py` 取数与判定都接上，属性测试补合成正反例与发布校验反例。实测阈值依据：同源包平均差 0.25、超 16 级占 0.015%；旧包平均差 10.2、占 20%；阈值取平均 2.0、占比 1%。这是收紧，不是放宽。
+
+**验证（L2）**：`python tools/run_guards.py --filter DailyReport` 3 PASS；`--changed-only` 3 PASS；`BaseBuildingResourcePropertyTest`、`UnityResourceBudgetPropertyTest` PASS；`python tools/verify_unity_resource_release.py` 72 包 0 错误。反向验证：旧包按字节换回仓库后属性测试转红，同源判据对旧包单独报 stale（平均 10.20、占比 0.2034）；按字节还原成 `031ee280…` 后转绿。
+
+**未验证（L3）**：没进游戏看日报。owner 看图清单：基地对「日报报箱」按交互键打开日报，看签到区。不合格的样子是：签到按钮、签到格或底部五个图例色块与底图上的卡片边框错开，或者卡片底边外露出按钮、图例的残影。
+
 ## 2026-09-24 合并 origin/main（b2f98312 续接人工复查与鸭王杯 F3 认证收尾）（OPERATIONAL）
 
 本地 fe122a36 与远端 b2f98312 各自从 25fe502a 出发，29 个文件重叠，4 个有冲突：

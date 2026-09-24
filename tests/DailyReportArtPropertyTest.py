@@ -7,7 +7,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
-from daily_report_art_contract import measure_chrome, validate_chrome
+from daily_report_art_contract import measure_chrome, validate_chrome, measure_source_drift, validate_source_drift
 
 
 def main():
@@ -30,6 +30,14 @@ def main():
     baked_errors = validate_chrome(measure_chrome(baked, layout), layout)
     assert any('icon_income' in error for error in baked_errors), '烤进底图的图标未被检测'
     assert validate_chrome(None, layout), '缺实际像素不能算通过'
+    # 2026-09-24：版面下移后原图重生成、包没重打，旧 Sprite 必须被同源判据拒绝，哪怕动态区碰巧还在纯色上。
+    paper = Image.new('RGBA', (400, 300), (250, 246, 237, 255))
+    ImageDraw.Draw(paper).rectangle((40, 40, 360, 200), fill=(226, 219, 205, 255))
+    moved = Image.new('RGBA', paper.size, (250, 246, 237, 255))
+    ImageDraw.Draw(moved).rectangle((40, 100, 360, 260), fill=(226, 219, 205, 255))
+    assert not validate_source_drift(measure_source_drift(paper, paper.resize((200, 150)))), '同源缩放不能误报'
+    assert validate_source_drift(measure_source_drift(paper, moved)), '版面挪动后的旧底图未被检测'
+    assert validate_source_drift(None), '没比对原图不能算通过'
 
     raw = ROOT / 'Assets/ui/DailyReport/daily_report_bg.png'
     bundle = ROOT / 'Assets/ui/production_icons'
@@ -44,10 +52,14 @@ def main():
     measured = release.get('daily_report_chrome')
     errors = validate_chrome(measured, layout)
     assert not errors, errors
+    assert not validate_source_drift(measured.get('source_drift')), measured.get('source_drift')
     assert not validate(release, 'production_icons'), '正式发布验证必须消费相同像素判据'
     bad_release = copy.deepcopy(release)
     bad_release['daily_report_chrome']['regions'][0]['max_delta'] = 30
     assert any('baked dynamic region' in error for error in validate(bad_release, 'production_icons'))
+    stale_release = copy.deepcopy(release)
+    stale_release['daily_report_chrome']['source_drift'] = {'mean': 10.2, 'over16': 0.2}
+    assert any('is stale' in error for error in validate(stale_release, 'production_icons'))
     print('DailyReportArtPropertyTest: PASS (raw + actual production Sprite, %d regions)' % len(measured['regions']))
     return 0
 

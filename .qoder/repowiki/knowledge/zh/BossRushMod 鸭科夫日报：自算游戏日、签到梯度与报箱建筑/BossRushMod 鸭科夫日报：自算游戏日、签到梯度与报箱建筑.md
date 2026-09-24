@@ -246,7 +246,7 @@ Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存�
 
 `COMPAT / OPERATIONAL`。当前报纸使用 `DailyReportLayoutTable` 固定版面，长正文在各自卡片内滚动。`CreateText` 将正文横向锚点伸展到视口后清零 `sizeDelta`，使宽度等于视口；纵向仍由 `ContentSizeFitter.PreferredSize` 按完整文本撑开，横向不启用尺寸拟合。这样英文换行也按可见宽度计算，不再保留旧固定宽度造成双倍宽度裁字。
 
-正式背景由 `ProductionIconCache` 优先借用 `production_icons` 中的 `assets/ui/dailyreport/daily_report_bg.png` Sprite，散图只是回退。底图修改须同步作者工程的 `Assets/ProductionIcons/` 输入、重新导入并重打正式包，不能只更新散图。底图仅保留固定装饰，签到格、按钮和图例色块由运行时绘制。共享判据 `tools/daily_report_art_contract.py` 按版面表检查这些区域，`DailyReportArtPropertyTest` 和正式包验证器都读取实际 Sprite 像素；缺资源或仅检查源码不能算发布资源通过。
+正式背景由 `ProductionIconCache` 优先借用 `production_icons` 中的 `assets/ui/dailyreport/daily_report_bg.png` Sprite，散图只是回退。底图修改须同步作者工程的 `Assets/ProductionIcons/` 输入、重新导入并重打正式包，不能只更新散图。底图仅保留固定装饰，签到格、按钮和图例色块由运行时绘制。共享判据 `tools/daily_report_art_contract.py` 按版面表检查这些区域，`DailyReportArtPropertyTest` 和正式包验证器都读取实际 Sprite 像素；缺资源或仅检查源码不能算发布资源通过。2026-09-24 起还要求正式 Sprite 与当前原图同源（`measure_source_drift`：按打包口径缩放后整图比对），改版面后只重出原图、没重打包会直接报 stale。
 
 ### 2026-09-23 人工复查（COMPAT / OPERATIONAL）
 
