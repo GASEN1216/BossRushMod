@@ -131,8 +131,8 @@ def check_module(errors):
     if boss_filter is None:
         errors.append("[File] 缺少 BossFilter/BossFilter.cs")
     elif not re.search(
-            r"private void InvalidateFilteredPresetsCache\(\)[\s\S]{0,600}?"
-            r"PetNestRuntime\.NotifyEnemyPresetsRefreshed\(\);", boss_filter):
+            r"internal void InvalidateFilteredPresetsCache\(\)[\s\S]{0,600}?"
+            r"owner\.PetNestRuntime\.NotifyEnemyPresetsRefreshed\(\);", boss_filter):
         errors.append("[目录时序] Boss 池过滤变化后未通知重建血脉目录")
 
     # 光有「填充后重建」还不够：InitializeEnemyPresets 的调用点全在进竞技场路径与

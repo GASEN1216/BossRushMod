@@ -2,7 +2,7 @@
 
 <cite>
 **本文引用的文件**
-- [Injection.cs](file://Injection/Injection.cs)
+- [ModBehaviour.cs](file://ModBehaviour.cs)
 - [HarmonyPatchGroupRegistrar.cs](file://Common/Infrastructure/HarmonyPatchGroupRegistrar.cs)
 - [IHarmonyPatchGroup.cs](file://Common/Infrastructure/IHarmonyPatchGroup.cs)
 - [BaseHubPatchGroup.cs](file://Patches/BaseHub/BaseHubPatchGroup.cs)
@@ -98,7 +98,7 @@ IAS --> HPG
 章节来源
 - [IHarmonyPatchGroup.cs:1-16](file://Common/Infrastructure/IHarmonyPatchGroup.cs#L1-L16)
 - [HarmonyPatchGroupRegistrar.cs:1-64](file://Common/Infrastructure/HarmonyPatchGroupRegistrar.cs#L1-L64)
-- [Injection.cs:1-23](file://Injection/Injection.cs#L1-L23)
+- [ModBehaviour.cs](file://ModBehaviour.cs)
 
 ## 架构总览
 整体采用“分组 + 补丁类”的组织方式：每个功能域（BaseHub、Combat、Death、Economy、UI、ItemStatsSystem）对应一个或多个 IHarmonyPatchGroup 实现，并在运行时由注册器统一管理。补丁类通过 Harmony 注解精确指向目标类型与方法，使用 Prefix/Postfix/Finalizer 完成前置检查、后置增强或异常兜底。

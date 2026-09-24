@@ -1670,57 +1670,6 @@ namespace BossRush
         }
 
 
-        /// <summary>
-        /// 计算敌人相对于玩家的方位（8个方向）
-        /// </summary>
-        private string GetDirectionFromPlayer(Vector3 enemyPos, Vector3 playerPos)
-        {
-            Vector3 direction = enemyPos - playerPos;
-            direction.y = 0; // 只考虑水平方向
-            direction.Normalize();
-
-            // 使用经过实际测量校准的地图北方（与小地图朝向一致）
-            // 根据 TeleportMonitor 记录推算：在 Level_DemoChallenge_Main 中，
-            // 向小地图“下方”移动对应世界坐标增量约为 (2.97, -0.88)，
-            // 因此小地图“北”(上) 对应的世界方向约为 (-2.97, 0.88) 归一化
-            // 从地图配置系统获取当前地图的北方向量
-            BossRushMapConfig currentMapConfig = GetCurrentMapConfig();
-            Vector3 mapNorth;
-            if (currentMapConfig != null)
-            {
-                mapNorth = currentMapConfig.mapNorth;
-            }
-            else
-            {
-                // 默认使用 DEMO 竞技场的北方向量
-                mapNorth = new Vector3(-0.959f, 0f, 0.284f);
-            }
-            mapNorth.Normalize();
-
-            float angle = Vector3.SignedAngle(mapNorth, direction, Vector3.up);
-
-            // 将角度转换为0-360度
-            if (angle < 0) angle += 360f;
-
-            // 8个方位划分（每个方位45度）
-            if (angle >= 337.5f || angle < 22.5f)
-                return "正北";
-            else if (angle >= 22.5f && angle < 67.5f)
-                return "东北";
-            else if (angle >= 67.5f && angle < 112.5f)
-                return "正东";
-            else if (angle >= 112.5f && angle < 157.5f)
-                return "东南";
-            else if (angle >= 157.5f && angle < 202.5f)
-                return "正南";
-            else if (angle >= 202.5f && angle < 247.5f)
-                return "西南";
-            else if (angle >= 247.5f && angle < 292.5f)
-                return "正西";
-            else // 292.5f - 337.5f
-                return "西北";
-        }
-
         public void ReturnToBossRushStart()
         {
             try

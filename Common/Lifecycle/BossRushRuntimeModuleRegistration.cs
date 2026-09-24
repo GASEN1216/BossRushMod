@@ -58,6 +58,11 @@ namespace BossRush
             // 而 host 按注册顺序回调，先注册的先 OnAwake。
             backMountainRuntime = new BackMountainRuntimeModule();
             runtimeModuleHost.Register(backMountainRuntime);
+
+            bossFilterRuntime = new BossFilterRuntimeModule(this);
+            runtimeModuleHost.Register(bossFilterRuntime);
+            uiAndSignsRuntime = new UIAndSignsRuntimeModule(this);
+            runtimeModuleHost.Register(uiAndSignsRuntime);
         }
 
         /// <summary>官方任务投影核心唯一运行时实例。</summary>
@@ -131,5 +136,8 @@ namespace BossRush
         /// 不得再次 new BackMountainRuntimeModule()。
         /// </summary>
         internal BackMountainRuntimeModule BackMountainRuntime { get { return backMountainRuntime; } }
+
+        private BossFilterRuntimeModule bossFilterRuntime;
+        private UIAndSignsRuntimeModule uiAndSignsRuntime;
     }
 }

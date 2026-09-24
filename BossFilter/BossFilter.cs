@@ -28,8 +28,15 @@ namespace BossRush
     /// <summary>
     /// Boss 池筛选模块
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class BossFilterRuntimeModule : BossRushRuntimeModuleBase
     {
+        private readonly ModBehaviour owner;
+        internal BossFilterRuntimeModule(ModBehaviour owner) { this.owner = owner; }
+        public override string ModuleName { get { return "BossFilter"; } }
+        public override void OnDestroy() { DestroyBossPoolUI(); }
+        internal Dictionary<string, bool> EnabledStates { get { return bossEnabledStates; } }
+        internal bool IsInitialized { get { return bossPoolFilterInitialized; } }
+
         #region Boss 池筛选字段
 
         /// <summary>Boss 启用状态字典 (key: boss name, value: enabled)</summary>
@@ -93,7 +100,7 @@ namespace BossRush
         /// 初始化 Boss 池筛选配置
         /// 应在 enemyPresets 初始化后调用
         /// </summary>
-        private void InitializeBossPoolFilter()
+        internal void InitializeBossPoolFilter()
         {
             if (bossPoolFilterInitialized)
             {
@@ -104,10 +111,10 @@ namespace BossRush
             {
                 bossEnabledStates.Clear();
 
-                // 从 enemyPresets 获取所有 Boss
-                if (enemyPresets != null && enemyPresets.Count > 0)
+                // 从宿主 enemyPresets 获取所有 Boss
+                if (owner.BossFilterEnemyPresets != null && owner.BossFilterEnemyPresets.Count > 0)
                 {
-                    foreach (var preset in enemyPresets)
+                    foreach (var preset in owner.BossFilterEnemyPresets)
                     {
                         if (preset == null || string.IsNullOrEmpty(preset.name))
                         {
@@ -120,9 +127,10 @@ namespace BossRush
                 }
 
                 // 从配置中加载禁用的 Boss
-                if (config != null && config.disabledBosses != null)
+                List<string> disabledBosses = owner.GetBossFilterDisabledBosses();
+                if (disabledBosses != null)
                 {
-                    foreach (string disabledBoss in config.disabledBosses)
+                    foreach (string disabledBoss in disabledBosses)
                     {
                         if (!string.IsNullOrEmpty(disabledBoss) && bossEnabledStates.ContainsKey(disabledBoss))
                         {
@@ -133,15 +141,16 @@ namespace BossRush
 
                 // 从配置中加载无间炼狱因子
                 bossInfiniteHellFactors.Clear();
-                if (config != null && config.bossInfiniteHellFactors != null)
+                Dictionary<string, float> savedFactors = owner.GetBossFilterSavedFactors();
+                if (savedFactors != null)
                 {
-                    foreach (var kv in config.bossInfiniteHellFactors)
+                    foreach (var kv in savedFactors)
                     {
                         bossInfiniteHellFactors[kv.Key] = kv.Value;
                     }
                 }
                 // 为没有配置的 Boss 设置默认因子（中 = 1.0）
-                foreach (var preset in enemyPresets)
+                foreach (var preset in owner.BossFilterEnemyPresets)
                 {
                     if (preset != null && !string.IsNullOrEmpty(preset.name) && !bossInfiniteHellFactors.ContainsKey(preset.name))
                     {
@@ -154,11 +163,11 @@ namespace BossRush
 
                 int enabledCount = bossEnabledStates.Count(kv => kv.Value);
                 int totalCount = bossEnabledStates.Count;
-                DevLog("[BossRush] Boss 池筛选初始化完成，已启用 " + enabledCount + "/" + totalCount + " 个 Boss");
+                ModBehaviour.DevLog("[BossRush] Boss 池筛选初始化完成，已启用 " + enabledCount + "/" + totalCount + " 个 Boss");
             }
             catch (Exception ex)
             {
-                DevLog("[BossRush] InitializeBossPoolFilter 失败: " + ex.Message);
+                ModBehaviour.DevLog("[BossRush] InitializeBossPoolFilter 失败: " + ex.Message);
             }
         }
 
@@ -205,7 +214,7 @@ namespace BossRush
         /// </summary>
         public List<EnemyPresetInfo> GetFilteredEnemyPresets()
         {
-            if (enemyPresets == null)
+            if (owner.BossFilterEnemyPresets == null)
             {
                 return new List<EnemyPresetInfo>();
             }
@@ -217,7 +226,7 @@ namespace BossRush
             }
 
             // 重新计算过滤后的列表
-            _filteredPresetsCache = enemyPresets.Where(preset =>
+            _filteredPresetsCache = owner.BossFilterEnemyPresets.Where(preset =>
                 preset != null &&
                 !string.IsNullOrEmpty(preset.name) &&
                 IsBossEnabled(preset.name)
@@ -231,7 +240,7 @@ namespace BossRush
         /// 标记过滤缓存为脏（需要重新计算）
         /// 在 Boss 启用状态变化时调用
         /// </summary>
-        private void InvalidateFilteredPresetsCache()
+        internal void InvalidateFilteredPresetsCache()
         {
             _filteredPresetsCacheDirty = true;
 
@@ -240,18 +249,18 @@ namespace BossRush
             // 这是唯一的咽喉点，覆盖初始化/单点开关/全开/全关/预设刷新五条路径。
             try
             {
-                if (PetNestRuntime != null) PetNestRuntime.NotifyEnemyPresetsRefreshed();
+                if (owner.PetNestRuntime != null) owner.PetNestRuntime.NotifyEnemyPresetsRefreshed();
                 // 图鉴目录的展示池同样源自这张过滤池，过滤一变目录必须跟着重建，
                 // 否则玩家在场内改了 Boss 池之后，图鉴条目仍停在旧快照上。
-                if (CodexRuntime != null) CodexRuntime.NotifyEnemyPresetsRefreshed();
+                if (owner.CodexRuntime != null) owner.CodexRuntime.NotifyEnemyPresetsRefreshed();
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] Boss 池过滤变化后刷新玩法目录失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] Boss 池过滤变化后刷新玩法目录失败: " + e.Message);
             }
         }
 
-        private void ResetBossPoolFilterStateForEnemyPresetRefresh()
+        internal void ResetBossPoolFilterStateForEnemyPresetRefresh()
         {
             bossPoolFilterInitialized = false;
             showBossPoolWindow = false;
@@ -296,53 +305,32 @@ namespace BossRush
         {
             try
             {
-                if (config == null)
-                {
-                    config = new BossRushConfig();
-                }
-
-                if (config.disabledBosses == null)
-                {
-                    config.disabledBosses = new List<string>();
-                }
-                else
-                {
-                    config.disabledBosses.Clear();
-                }
-
+                var disabledBosses = new List<string>();
                 foreach (var kv in bossEnabledStates)
                 {
                     if (!kv.Value)
                     {
-                        config.disabledBosses.Add(kv.Key);
+                        disabledBosses.Add(kv.Key);
                     }
                 }
 
                 // 同步无间炼狱因子
-                if (config.bossInfiniteHellFactors == null)
-                {
-                    config.bossInfiniteHellFactors = new Dictionary<string, float>();
-                }
-                else
-                {
-                    config.bossInfiniteHellFactors.Clear();
-                }
-
+                var savedFactors = new Dictionary<string, float>();
                 foreach (var kv in bossInfiniteHellFactors)
                 {
                     // 只保存非默认值（非1.0）的因子
                     if (!Mathf.Approximately(kv.Value, 1.0f))
                     {
-                        config.bossInfiniteHellFactors[kv.Key] = kv.Value;
+                        savedFactors[kv.Key] = kv.Value;
                     }
                 }
 
-                SaveConfigToFile();
-                DevLog("[BossRush] Boss 池配置已保存，禁用 " + config.disabledBosses.Count + " 个 Boss，自定义因子 " + config.bossInfiniteHellFactors.Count + " 个");
+                owner.SaveBossFilterConfiguration(disabledBosses, savedFactors);
+                ModBehaviour.DevLog("[BossRush] Boss 池配置已保存，禁用 " + disabledBosses.Count + " 个 Boss，自定义因子 " + savedFactors.Count + " 个");
             }
             catch (Exception ex)
             {
-                DevLog("[BossRush] SyncBossPoolToConfig 失败: " + ex.Message);
+                ModBehaviour.DevLog("[BossRush] SyncBossPoolToConfig 失败: " + ex.Message);
             }
         }
 
@@ -374,15 +362,15 @@ namespace BossRush
         /// </summary>
         public void OpenBossPoolWindow()
         {
-            // 如果 enemyPresets 为空，先初始化敌人预设列表
-            if (enemyPresets == null || enemyPresets.Count == 0)
+            // 如果 owner.BossFilterEnemyPresets 为空，先初始化敌人预设列表
+            if (owner.BossFilterEnemyPresets == null || owner.BossFilterEnemyPresets.Count == 0)
             {
-                DevLog("[BossRush] Boss 池窗口打开时 enemyPresets 为空，尝试初始化...");
-                InitializeEnemyPresets();
+                ModBehaviour.DevLog("[BossRush] Boss 池窗口打开时 owner.BossFilterEnemyPresets 为空，尝试初始化...");
+                owner.InitializeBossFilterEnemyPresets();
             }
 
             // 确保 Boss 池筛选已初始化
-            if (!bossPoolFilterInitialized && enemyPresets != null && enemyPresets.Count > 0)
+            if (!bossPoolFilterInitialized && owner.BossFilterEnemyPresets != null && owner.BossFilterEnemyPresets.Count > 0)
             {
                 InitializeBossPoolFilter();
             }
@@ -415,7 +403,7 @@ namespace BossRush
             }
 
             showBossPoolWindow = true;
-            DevLog("[BossRush] 打开 Boss 池配置窗口，当前 Boss 数量: " + (enemyPresets != null ? enemyPresets.Count : 0));
+            ModBehaviour.DevLog("[BossRush] 打开 Boss 池配置窗口，当前 Boss 数量: " + (owner.BossFilterEnemyPresets != null ? owner.BossFilterEnemyPresets.Count : 0));
         }
 
         /// <summary>
@@ -432,7 +420,7 @@ namespace BossRush
             }
 
             showBossPoolWindow = false;
-            DevLog("[BossRush] 关闭 Boss 池配置窗口");
+            ModBehaviour.DevLog("[BossRush] 关闭 Boss 池配置窗口");
         }
 
         /// <summary>
@@ -512,7 +500,7 @@ namespace BossRush
             bossFactorSelectors.Clear();
             ClearBossPoolContent();
 
-            if (enemyPresets == null || enemyPresets.Count == 0)
+            if (owner.BossFilterEnemyPresets == null || owner.BossFilterEnemyPresets.Count == 0)
             {
                 // 显示提示信息
                 GameObject tipObj = new GameObject("Tip");
@@ -529,7 +517,7 @@ namespace BossRush
             }
 
             // 为每个 Boss 创建因子选择器
-            foreach (var preset in enemyPresets)
+            foreach (var preset in owner.BossFilterEnemyPresets)
             {
                 if (preset == null || string.IsNullOrEmpty(preset.name)) continue;
                 CreateBossFactorSelector(preset);
@@ -937,7 +925,7 @@ namespace BossRush
             bossFactorSelectors.Clear();
             ClearBossPoolContent();
 
-            if (enemyPresets == null || enemyPresets.Count == 0)
+            if (owner.BossFilterEnemyPresets == null || owner.BossFilterEnemyPresets.Count == 0)
             {
                 // 显示提示信息
                 GameObject tipObj = new GameObject("Tip");
@@ -954,7 +942,7 @@ namespace BossRush
             }
 
             // 为每个 Boss 创建 Toggle
-            foreach (var preset in enemyPresets)
+            foreach (var preset in owner.BossFilterEnemyPresets)
             {
                 if (preset == null || string.IsNullOrEmpty(preset.name)) continue;
 
@@ -1088,7 +1076,7 @@ namespace BossRush
         /// <summary>
         /// 检测 Boss 池窗口快捷键（在 Update 中调用）
         /// </summary>
-        private void CheckBossPoolWindowHotkey()
+        internal void CheckBossPoolWindowHotkey()
         {
             // Ctrl+F10 打开/关闭 Boss 池配置窗口
             if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
@@ -1110,7 +1098,7 @@ namespace BossRush
         /// <summary>
         /// LateUpdate 中强制暂停和鼠标状态（在所有 Update 之后执行）
         /// </summary>
-        private void BossPoolLateUpdate()
+        internal void BossPoolLateUpdate()
         {
             if (showBossPoolWindow)
             {
@@ -1123,7 +1111,7 @@ namespace BossRush
         /// <summary>
         /// 销毁 Boss 池 UI
         /// </summary>
-        private void DestroyBossPoolUI()
+        internal void DestroyBossPoolUI()
         {
             if (bossPoolCanvas != null)
             {

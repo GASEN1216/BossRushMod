@@ -176,7 +176,6 @@
       "title": "安装、入口与所有地图",
       "sources": [
         "ModBehaviour.cs",
-        "Injection",
         "Integration/Config",
         "Integration/Constants",
         "MapSelection",

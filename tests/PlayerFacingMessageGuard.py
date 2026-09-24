@@ -37,7 +37,7 @@ def main():
     if ui is None:
         errors.append("[File] 缺少 UIAndSigns.cs")
     else:
-        m = re.search(r"private void ShowMessage_UIAndSigns\(string msg\)[\s\S]*?\n        \}", ui)
+        m = re.search(r"internal void ShowMessage_UIAndSigns\(string msg\)[\s\S]*?\n        \}", ui)
         if m is None:
             errors.append("[Message] 找不到 ShowMessage_UIAndSigns 方法体")
         else:

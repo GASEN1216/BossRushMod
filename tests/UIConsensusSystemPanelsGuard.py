@@ -112,7 +112,7 @@ def check_boss_pool(errors):
     if save_close.find("SyncBossPoolToConfig();") > save_close.find("CloseBossPoolWindow();"):
         errors.append("Boss 池：必须先保存再关（A-27）")
     title = body(ui, "private void CreateTitleBar(Transform parent)")
-    hotkey = body(core, "private void CheckBossPoolWindowHotkey()")
+    hotkey = body(core, "internal void CheckBossPoolWindowHotkey()")
     bottom = body(core, "private void CreateBottomButtons(Transform parent)")
     open_window = body(core, "public void OpenBossPoolWindow()")
     for name, text in (("×", title), ("Ctrl+F10", hotkey), ("保存并关闭", bottom)):

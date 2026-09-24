@@ -26,7 +26,6 @@
 | `audio` | 音频与 Boss BGM | `Audio/BossBgmCoordinator.cs` | `AGENTS.md` |
 | `boss-filter` | Boss 筛选 | `BossFilter/BossFilter.cs` | `AGENTS.md` |
 | `ui-signs` | 路牌与通用界面入口 | `UIAndSigns/BossRushInteractionScan.cs` | `AGENTS.md`、`Common/UI/AGENTS.md` |
-| `legacy-injection` | 旧注入占位 | `Injection/Injection.cs` | `AGENTS.md` |
 | `interactables` | 共享交互体 | `Interactables/BossRushBuildingInteractableBase.cs` | `AGENTS.md` |
 | `map-selection` | 地图选择 | `MapSelection/BossRushMapSelectionHelper.cs` | `AGENTS.md` |
 | `sky-island` | 天空岛正式地图、居民与剧情 | `DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs` | `AGENTS.md`、`DebugAndTools/SkyIsland/AGENTS.md`、`Common/UI/AGENTS.md` |

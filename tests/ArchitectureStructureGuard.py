@@ -897,22 +897,22 @@ def main() -> int:
     interaction_scan = UI_SIGNS_INTERACTION_SCAN.read_text(encoding="utf-8", errors="ignore")
     ui_signs_runtime_bridges = UI_SIGNS_RUNTIME_BRIDGES.read_text(encoding="utf-8", errors="ignore")
     for signature, required_tokens in {
-        "private IEnumerator FindInteractionTargets(int scanTimes)": [
+        "internal IEnumerator FindInteractionTargets(int scanTimes)": [
             "ScanAndInject();",
-            'DevLog("[BossRush] 场景扫描成功，已注入 BossRush 交互点，停止扫描。");',
+            'ModBehaviour.DevLog("[BossRush] 场景扫描成功，已注入 BossRush 交互点，停止扫描。");',
         ],
         "private bool ScanAndInject()": [
             "GetGameObjectPath(interact.gameObject);",
-            "TryInjectBaseHubBoatInteractable(boatInteract)",
+            "owner.TryInjectBaseHubBoatInteractable(boatInteract)",
         ],
-        "private string GetGameObjectPath(GameObject obj)": [
+        "internal string GetGameObjectPath(GameObject obj)": [
             'return "<null>";',
             'path = parent.name + "/" + path;',
         ],
         "private List<InteractableBase> GetGroupList(InteractableBase target)": [
             "BossRushEagerReflectionCache.InteractableBase_OtherInterablesInGroup",
         ],
-        "private bool InjectIntoInteractableBaseGroup(InteractableBase target)": [
+        "internal bool InjectIntoInteractableBaseGroup(InteractableBase target)": [
             "InjectIntoInteractableBaseGroup_UIAndSigns(target);",
         ],
     }.items():
@@ -931,6 +931,13 @@ def main() -> int:
     ]:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own interaction scan method anymore: " + forbidden)
+    for forwarded in (
+        "uiAndSignsRuntime.FindInteractionTargets(scanTimes)",
+        "uiAndSignsRuntime.GetGameObjectPath(obj)",
+        "uiAndSignsRuntime.InjectIntoInteractableBaseGroup(target)",
+    ):
+        if forwarded not in ui_signs_runtime_bridges:
+            return fail("ArchitectureStructureGuard: UIAndSigns host bridge missing module dispatch: " + forwarded)
 
     for signature, required_tokens in {
         "private void CreateRescueTeleportBubble()": [

@@ -479,7 +479,7 @@
         "BossFilter/**/*.cs"
       ],
       "entry": "BossFilter/BossFilter.cs",
-      "state_owner": "BossFilter",
+      "state_owner": "BossFilterRuntimeModule",
       "public_api": [
         "BossFilter"
       ],
@@ -502,7 +502,7 @@
         "UIAndSigns/**/*.cs"
       ],
       "entry": "UIAndSigns/BossRushInteractionScan.cs",
-      "state_owner": "BossRushInteractionScan",
+      "state_owner": "UIAndSignsRuntimeModule",
       "public_api": [
         "BossRushInteractionScan"
       ],
@@ -512,29 +512,6 @@
       "rules": [
         "AGENTS.md",
         "Common/UI/AGENTS.md"
-      ],
-      "depends_on": [
-        "host",
-        "common"
-      ]
-    },
-    {
-      "id": "legacy-injection",
-      "title": "旧注入占位",
-      "kind": "system",
-      "paths": [
-        "Injection/**/*.cs"
-      ],
-      "entry": "Injection/Injection.cs",
-      "state_owner": "Injection",
-      "public_api": [
-        "Injection"
-      ],
-      "data": [],
-      "tests": [],
-      "docs": [],
-      "rules": [
-        "AGENTS.md"
       ],
       "depends_on": [
         "host",

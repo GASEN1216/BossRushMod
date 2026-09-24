@@ -661,6 +661,7 @@ echo(ZombieMode\ZombieModeNpcCatalog.cs
 echo(ZombieMode\ZombieModeCashInvestmentView.cs
 echo(BossFilter\BossFilter.cs
 echo(BossFilter\BossFilterUi.cs
+echo(BossFilter\BossFilterHostBridge.cs
 echo(MapSelection\BossRushMapSelectionHelper.cs
 echo(MapSelection\MapThumbnailCache.cs
 echo(Integration\DragonDescendant\DragonDescendantConfig.cs
@@ -935,7 +936,6 @@ echo(Integration\ReverseScale\ReverseScaleEffectManager.cs
 echo(Integration\ReverseScale\ReverseScaleAbilityManager.cs
 echo(Integration\ReverseScale\ReverseScaleBootstrap.cs
 echo(Integration\ReverseScale\ReverseScaleFactory.cs
-echo(Injection\Injection.cs
 echo(Achievement\AchievementRuntimeModule.cs
 echo(Achievement\AchievementRuntimeHooks.cs
 echo(Achievement\BossRushAchievementDef.cs

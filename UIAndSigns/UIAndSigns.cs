@@ -39,8 +39,16 @@ namespace BossRush
     /// <summary>
     /// UI 和路牌系统模块
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class UIAndSignsRuntimeModule : BossRushRuntimeModuleBase
     {
+        private readonly ModBehaviour owner;
+        internal UIAndSignsRuntimeModule(ModBehaviour owner) { this.owner = owner; }
+        public override string ModuleName { get { return "UIAndSigns"; } }
+        internal string StatusMessage { get { return statusMessage; } set { statusMessage = value; } }
+        internal float MessageTimer { get { return messageTimer; } set { messageTimer = value; } }
+        internal BossRushSignInteractable SignInteract { get { return bossRushSignInteract; } set { bossRushSignInteract = value; } }
+        internal GameObject SignGameObject { get { return _bossRushSignGameObject; } set { _bossRushSignGameObject = value; } }
+
         #region UI 状态字段
         
         /// <summary>当前状态消息</summary>
@@ -101,11 +109,11 @@ namespace BossRush
                     }
                 }
                 
-                DevLog("[BossRush] RemoveRigidbodyAndSetTrigger: 已移除 " + rigidbodies.Length + " 个刚体，设置 " + colliders.Length + " 个 Collider 为 Trigger");
+                ModBehaviour.DevLog("[BossRush] RemoveRigidbodyAndSetTrigger: 已移除 " + rigidbodies.Length + " 个刚体，设置 " + colliders.Length + " 个 Collider 为 Trigger");
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [WARNING] RemoveRigidbodyAndSetTrigger 异常: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] [WARNING] RemoveRigidbodyAndSetTrigger 异常: " + e.Message);
             }
         }
         
@@ -146,7 +154,7 @@ namespace BossRush
                 GameObject existingTrashCan = GameObject.Find(trashCanName);
                 if (existingTrashCan != null)
                 {
-                    DevLog("[BossRush] CreateTrashCanNextToSignpost: 垃圾桶已存在，跳过创建");
+                    ModBehaviour.DevLog("[BossRush] CreateTrashCanNextToSignpost: 垃圾桶已存在，跳过创建");
                     _bossRushTrashCanGameObject = existingTrashCan;
                     return;
                 }
@@ -200,17 +208,17 @@ namespace BossRush
                 _bossRushTrashCanGameObject = trashCan;
                 
                 string positionDesc = placeOnRight ? "右边" : "前方";
-                DevLog("[BossRush] CreateTrashCanNextToSignpost: 成功创建垃圾桶（" + positionDesc + "），位置=" + trashCanPos);
+                ModBehaviour.DevLog("[BossRush] CreateTrashCanNextToSignpost: 成功创建垃圾桶（" + positionDesc + "），位置=" + trashCanPos);
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [ERROR] 创建垃圾桶失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] [ERROR] 创建垃圾桶失败: " + e.Message);
             }
         }
         
         #endregion
 
-        private void UpdateMessage_UIAndSigns()
+        internal void UpdateMessage_UIAndSigns()
         {
             if (messageTimer > 0)
             {
@@ -220,7 +228,7 @@ namespace BossRush
             }
         }
 
-        private void CreateRescueTeleportBubble_UIAndSigns()
+        internal void CreateRescueTeleportBubble_UIAndSigns()
         {
             try
             {
@@ -237,7 +245,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [ERROR] 创建救援传送气泡失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] [ERROR] 创建救援传送气泡失败: " + e.Message);
             }
         }
 
@@ -283,20 +291,20 @@ namespace BossRush
                 // 交互标记放在路牌中部（模型已向上偏移1米，所以这里用0）
                 teleport.interactMarkerOffset = new Vector3(0f, 0f, 0f);
 
-                DevLog("[BossRush] TryCreateRescueRoadsign: 成功创建传送路牌, 位置=" + signPos);
+                ModBehaviour.DevLog("[BossRush] TryCreateRescueRoadsign: 成功创建传送路牌, 位置=" + signPos);
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [ERROR] 创建传送路牌失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] [ERROR] 创建传送路牌失败: " + e.Message);
             }
         }
 
-        private void ShowMessage_UIAndSigns(string msg)
+        internal void ShowMessage_UIAndSigns(string msg)
         {
-            if (GameplayValidationSuppressNotifications) return;
+            if (owner.GameplayValidationSuppressNotifications) return;
             statusMessage = msg;
             messageTimer = 3f;
-            DevLog("[BossRush] UI提示: " + msg);
+            ModBehaviour.DevLog("[BossRush] UI提示: " + msg);
             
             // 官方公有静态入口，无需反射。
             //
@@ -310,7 +318,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [WARNING] 推送 UI 提示失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] [WARNING] 推送 UI 提示失败: " + e.Message);
             }
         }
         
@@ -319,7 +327,58 @@ namespace BossRush
         /// 单Boss模式：显示名字 + 方位
         /// 多Boss模式（同一波多个Boss同时刷新）：显示“已将你包围”提示，不显示方向
         /// </summary>
-        private void ShowEnemyBanner_UIAndSigns(string enemyName, Vector3 enemyPos, Vector3 playerPos, int currentEnemyIndexParam, int totalEnemiesParam, bool infiniteHellModeParam, int infiniteHellWaveIndexParam, int bossesPerWaveParam)
+        /// <summary>
+        /// 计算敌人相对于玩家的方位（8个方向）
+        /// </summary>
+        internal string GetDirectionFromPlayer(Vector3 enemyPos, Vector3 playerPos)
+        {
+            Vector3 direction = enemyPos - playerPos;
+            direction.y = 0; // 只考虑水平方向
+            direction.Normalize();
+
+            // 使用经过实际测量校准的地图北方（与小地图朝向一致）
+            // 根据 TeleportMonitor 记录推算：在 Level_DemoChallenge_Main 中，
+            // 向小地图“下方”移动对应世界坐标增量约为 (2.97, -0.88)，
+            // 因此小地图“北”(上) 对应的世界方向约为 (-2.97, 0.88) 归一化
+            // 从地图配置系统获取当前地图的北方向量
+            BossRushMapConfig currentMapConfig = ModBehaviour.GetCurrentMapConfig();
+            Vector3 mapNorth;
+            if (currentMapConfig != null)
+            {
+                mapNorth = currentMapConfig.mapNorth;
+            }
+            else
+            {
+                // 默认使用 DEMO 竞技场的北方向量
+                mapNorth = new Vector3(-0.959f, 0f, 0.284f);
+            }
+            mapNorth.Normalize();
+
+            float angle = Vector3.SignedAngle(mapNorth, direction, Vector3.up);
+
+            // 将角度转换为0-360度
+            if (angle < 0) angle += 360f;
+
+            // 8个方位划分（每个方位45度）
+            if (angle >= 337.5f || angle < 22.5f)
+                return "正北";
+            else if (angle >= 22.5f && angle < 67.5f)
+                return "东北";
+            else if (angle >= 67.5f && angle < 112.5f)
+                return "正东";
+            else if (angle >= 112.5f && angle < 157.5f)
+                return "东南";
+            else if (angle >= 157.5f && angle < 202.5f)
+                return "正南";
+            else if (angle >= 202.5f && angle < 247.5f)
+                return "西南";
+            else if (angle >= 247.5f && angle < 292.5f)
+                return "正西";
+            else // 292.5f - 337.5f
+                return "西北";
+        }
+
+        internal void ShowEnemyBanner_UIAndSigns(string enemyName, Vector3 enemyPos, Vector3 playerPos, int currentEnemyIndexParam, int totalEnemiesParam, bool infiniteHellModeParam, int infiniteHellWaveIndexParam, int bossesPerWaveParam)
         {
             try
             {
@@ -371,11 +430,11 @@ namespace BossRush
                 }
 
                 // 使用游戏的UI系统显示大横幅
-                ShowBigBanner(bannerText);
+                ShowBigBanner_UIAndSigns(bannerText);
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [ERROR] ShowEnemyBanner错误: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] [ERROR] ShowEnemyBanner错误: " + e.Message);
             }
         }
         
@@ -437,16 +496,16 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [WARNING] 调整 NotificationText 持续时间失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] [WARNING] 调整 NotificationText 持续时间失败: " + e.Message);
             }
         }
 
         /// <summary>
         /// 显示大横幅（使用游戏通知系统）
         /// </summary>
-        private void ShowBigBanner_UIAndSigns(string text)
+        internal void ShowBigBanner_UIAndSigns(string text)
         {
-            if (GameplayValidationSuppressNotifications) return;
+            if (owner.GameplayValidationSuppressNotifications) return;
             try
             {
                 string normalizedText = string.IsNullOrWhiteSpace(text) ? string.Empty : text.Trim();
@@ -466,7 +525,7 @@ namespace BossRush
                     && string.Equals(lastBigBannerText, normalizedText, StringComparison.Ordinal)
                     && now - lastBigBannerRealtime <= BIG_BANNER_DEDUP_WINDOW)
                 {
-                    DevLog("[BossRush] 跳过重复横幅: " + normalizedText);
+                    ModBehaviour.DevLog("[BossRush] 跳过重复横幅: " + normalizedText);
                     return;
                 }
 
@@ -475,18 +534,18 @@ namespace BossRush
                 EnsureNotificationDurationAtLeastTwoSeconds();
                 // 使用游戏的通知系统显示横幅
                 NotificationText.Push(text);
-                DevLog("[BossRush] 显示横幅: " + text);
+                ModBehaviour.DevLog("[BossRush] 显示横幅: " + text);
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [ERROR] ShowBigBanner错误: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] [ERROR] ShowBigBanner错误: " + e.Message);
             }
         }
 
         /// <summary>
         /// 在默认位置（DEMO挑战场景）创建路牌
         /// </summary>
-        private void TryCreateArenaDifficultyEntryPoint_UIAndSigns()
+        internal void TryCreateArenaDifficultyEntryPoint_UIAndSigns()
         {
             TryCreateArenaDifficultyEntryPoint_UIAndSigns(null);
         }
@@ -496,7 +555,7 @@ namespace BossRush
         /// 使用 EntityModelFactory 加载自定义模型，不再依赖场景模板
         /// </summary>
         /// <param name="customPosition">自定义位置，为 null 时使用默认位置（DEMO挑战场景）</param>
-        private void TryCreateArenaDifficultyEntryPoint_UIAndSigns(Vector3? customPosition)
+        internal void TryCreateArenaDifficultyEntryPoint_UIAndSigns(Vector3? customPosition)
         {
             try
             {
@@ -506,7 +565,7 @@ namespace BossRush
                 // Level_ChallengeSnow 场景：不创建路牌模型，但要创建隐形交互点和垃圾桶
                 if (isChallengeSnow)
                 {
-                    DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: Level_ChallengeSnow 场景，创建隐形交互点和垃圾桶");
+                    ModBehaviour.DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: Level_ChallengeSnow 场景，创建隐形交互点和垃圾桶");
                     CreateInvisibleEntryPointForChallengeSnow(customPosition);
                     return;
                 }
@@ -519,7 +578,7 @@ namespace BossRush
                 }
                 else
                 {
-                    BossRushMapConfig currentConfig = GetCurrentMapConfig();
+                    BossRushMapConfig currentConfig = ModBehaviour.GetCurrentMapConfig();
                     if (currentConfig != null && currentConfig.defaultSignPos.HasValue)
                     {
                         position = currentConfig.defaultSignPos.Value;
@@ -527,7 +586,7 @@ namespace BossRush
                     else
                     {
                         // 兜底：从配置系统获取当前地图的默认位置
-                        position = GetCurrentSceneDefaultPosition();
+                        position = ModBehaviour.GetCurrentSceneDefaultPosition();
                     }
                 }
                 string signName = "BossRush_Roadsign";
@@ -536,7 +595,7 @@ namespace BossRush
                 GameObject existingSign = GameObject.Find(signName);
                 if (existingSign != null)
                 {
-                    DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 路牌已存在，跳过创建");
+                    ModBehaviour.DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 路牌已存在，跳过创建");
                     // 尝试获取已有的交互组件
                     if (bossRushSignInteract == null)
                     {
@@ -570,11 +629,11 @@ namespace BossRush
                 
                 if (isFallback)
                 {
-                    DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 使用后备交互点（无自定义模型）");
+                    ModBehaviour.DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 使用后备交互点（无自定义模型）");
                 }
                 else
                 {
-                    DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 使用自定义路牌模型");
+                    ModBehaviour.DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 使用自定义路牌模型");
                     // 移除刚体，确保玩家可以穿过路牌
                     RemoveRigidbodyAndSetTrigger(sign);
                 }
@@ -600,19 +659,18 @@ namespace BossRush
                 _bossRushSignGameObject = sign;
                 
                 // [性能优化] 设置竞技场中心位置（用于限制清理和禁用范围）
-                _arenaCenter = signPos;
-                _arenaCenterSet = true;
+                owner.SetArenaCenterFromSign_UIAndSigns(signPos);
 
                 // 创建垃圾桶：DEMO 挑战地图放前方，其他地图放右边
                 bool placeTrashCanOnRight = (currentScene != "Level_DemoChallenge_1");
                 CreateTrashCanNextToSignpost(signPos, signRotation, placeTrashCanOnRight);
 
-                DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 成功创建路牌交互，位置=" + signPos);
-                DevLog("[BossRush] 已在 DEMO 挑战场景创建 BossRush 难度入口");
+                ModBehaviour.DevLog("[BossRush] TryCreateArenaDifficultyEntryPoint: 成功创建路牌交互，位置=" + signPos);
+                ModBehaviour.DevLog("[BossRush] 已在 DEMO 挑战场景创建 BossRush 难度入口");
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [ERROR] 创建 BossRush 难度入口失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] [ERROR] 创建 BossRush 难度入口失败: " + e.Message);
             }
         }
 
@@ -633,7 +691,7 @@ namespace BossRush
                 }
                 else
                 {
-                    BossRushMapConfig currentConfig = GetCurrentMapConfig();
+                    BossRushMapConfig currentConfig = ModBehaviour.GetCurrentMapConfig();
                     if (currentConfig != null && currentConfig.defaultSignPos.HasValue)
                     {
                         position = currentConfig.defaultSignPos.Value;
@@ -651,7 +709,7 @@ namespace BossRush
                 GameObject existingSign = GameObject.Find(signName);
                 if (existingSign != null)
                 {
-                    DevLog("[BossRush] CreateInvisibleEntryPointForChallengeSnow: 交互点已存在，跳过创建");
+                    ModBehaviour.DevLog("[BossRush] CreateInvisibleEntryPointForChallengeSnow: 交互点已存在，跳过创建");
                     if (bossRushSignInteract == null)
                     {
                         bossRushSignInteract = existingSign.GetComponent<BossRushSignInteractable>();
@@ -686,23 +744,22 @@ namespace BossRush
                 _bossRushSignGameObject = invisibleSign;
                 
                 // [性能优化] 设置竞技场中心位置（用于限制清理和禁用范围）
-                _arenaCenter = position;
-                _arenaCenterSet = true;
+                owner.SetArenaCenterFromSign_UIAndSigns(position);
                 
-                DevLog("[BossRush] CreateInvisibleEntryPointForChallengeSnow: 成功创建隐形交互点，位置=" + position);
+                ModBehaviour.DevLog("[BossRush] CreateInvisibleEntryPointForChallengeSnow: 成功创建隐形交互点，位置=" + position);
                 
                 // 在交互点右边创建垃圾桶（非 DEMO 地图统一放右边）
                 CreateTrashCanNextToSignpost(position, signRotation, true);;
                 
-                DevLog("[BossRush] CreateInvisibleEntryPointForChallengeSnow: 零度挑战地图初始化完成");
+                ModBehaviour.DevLog("[BossRush] CreateInvisibleEntryPointForChallengeSnow: 零度挑战地图初始化完成");
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [ERROR] CreateInvisibleEntryPointForChallengeSnow 失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] [ERROR] CreateInvisibleEntryPointForChallengeSnow 失败: " + e.Message);
             }
         }
 
-        private System.Collections.IEnumerator EnsureArenaEntryPointCreated_UIAndSigns()
+        internal System.Collections.IEnumerator EnsureArenaEntryPointCreated_UIAndSigns()
         {
             const string name = "BossRush_Roadsign";
             const float maxDuration = 30f;
@@ -741,28 +798,28 @@ namespace BossRush
                 catch {}
 
                 bool exists = (existing != null);
-                DevLog("[BossRush] EnsureArenaEntryPoint: 第 " + attempt + " 次检查, scene=" + sceneName + ", elapsed=" + elapsed + ", exists=" + exists + ", playerPos=" + playerPos);
+                ModBehaviour.DevLog("[BossRush] EnsureArenaEntryPoint: 第 " + attempt + " 次检查, scene=" + sceneName + ", elapsed=" + elapsed + ", exists=" + exists + ", playerPos=" + playerPos);
 
                 if (exists)
                 {
                     try
                     {
-                        DevLog("[BossRush] EnsureArenaEntryPoint: 已确认 BossRush_Roadsign 存在, 位置=" + existing.transform.position + ", 总尝试次数=" + attempt + ", elapsed=" + elapsed + " 秒");
+                        ModBehaviour.DevLog("[BossRush] EnsureArenaEntryPoint: 已确认 BossRush_Roadsign 存在, 位置=" + existing.transform.position + ", 总尝试次数=" + attempt + ", elapsed=" + elapsed + " 秒");
                     }
                     catch {}
                     yield break;
                 }
 
-                TryCreateArenaDifficultyEntryPoint();
+                TryCreateArenaDifficultyEntryPoint_UIAndSigns();
 
                 yield return new UnityEngine.WaitForSeconds(interval);
                 elapsed += interval;
             }
 
-            DevLog("[BossRush] EnsureArenaEntryPoint: 在 " + maxDuration + " 秒内未能创建 BossRush_Roadsign，放弃重试");
+            ModBehaviour.DevLog("[BossRush] EnsureArenaEntryPoint: 在 " + maxDuration + " 秒内未能创建 BossRush_Roadsign，放弃重试");
         }
 
-        private bool InjectIntoInteractableBaseGroup_UIAndSigns(InteractableBase target)
+        internal bool InjectIntoInteractableBaseGroup_UIAndSigns(InteractableBase target)
         {
             try
             {
@@ -799,7 +856,7 @@ namespace BossRush
                 // - 其它场景只注入一个默认 BossRush 选项（显示为“Boss Rush”），作为进入挑战地图的入口
                 string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
                 // 使用配置系统判断是否在有效的 BossRush 竞技场场景
-                if (IsCurrentSceneValidBossRushArena())
+                if (owner.IsCurrentSceneValidBossRushArena())
                 {
                     // 弹指可灭（每波 1 个Boss）
                     GameObject easyObj = new GameObject("BossRushOption_Easy");
@@ -828,7 +885,7 @@ namespace BossRush
                     list.Add(hardInteract);
 
                     // 注入是后台接线，不推玩家提示（旧版每次进竞技场都推一条单语提示、还念 GameObject 名，审美审查 UB-28）
-                    DevLog("[BossRush] 成功注入 BossRush 难度选项到 " + target.name + " 的列表中！");
+                    ModBehaviour.DevLog("[BossRush] 成功注入 BossRush 难度选项到 " + target.name + " 的列表中！");
                 }
                 else
                 {
@@ -846,7 +903,7 @@ namespace BossRush
 
                     list.Add(newInteract);
 
-                    DevLog("[BossRush] 成功注入 BossRush 选项到 " + target.name + " 的列表中！");
+                    ModBehaviour.DevLog("[BossRush] 成功注入 BossRush 选项到 " + target.name + " 的列表中！");
 
                     TryInjectModeHEntryOption(target, list);
                 }
@@ -854,7 +911,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [ERROR] 反射注入失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] [ERROR] 反射注入失败: " + e.Message);
                 return false;
             }
         }
@@ -876,7 +933,7 @@ namespace BossRush
             {
                 if (target == null || list == null) return;
 
-                bool enabled = IsModeHConfiguredEnabled();
+                bool enabled = owner.IsModeHConfiguredEnabled();
                 bool recoveryOnly = false;
                 try { recoveryOnly = ModeHRuntimeGates.IsRecoveryEntryAllowed(); }
                 catch (Exception) { recoveryOnly = false; }
@@ -896,11 +953,11 @@ namespace BossRush
                 ModeHInteractable modeH = obj.AddComponent<ModeHInteractable>();
                 list.Add(modeH);
 
-                DevLog("[ModeH] 已注入黑市鸭王杯入口到 " + target.name + " 的交互组");
+                ModBehaviour.DevLog("[ModeH] 已注入黑市鸭王杯入口到 " + target.name + " 的交互组");
             }
             catch (Exception e)
             {
-                DevLog("[ModeH] [WARNING] 入口注入失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeH] [WARNING] 入口注入失败: " + e.Message);
             }
         }
 
