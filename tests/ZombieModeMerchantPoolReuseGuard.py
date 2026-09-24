@@ -7,7 +7,7 @@ ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),

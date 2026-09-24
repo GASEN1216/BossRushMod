@@ -7,6 +7,7 @@ import sys
 
 
 SOURCES = [
+    Path("WavesArena/WavesArenaRuntimeModule_BossLootEvent.cs"),
     Path("LootAndRewards/LootAndRewards.cs"),
     Path("LootAndRewards/LootAndRewardsInfiniteHell.cs"),
     Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
@@ -21,7 +22,7 @@ def fail(message: str) -> int:
 
 def main() -> int:
     text = "\n".join(path.read_text(encoding="utf-8") for path in SOURCES if path.exists())
-    required = "StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(this, bossMain.transform.position, true));"
+    required = "owner.StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(owner, bossMain.transform.position, true));"
     if required not in text:
         return fail("ModeEOriginalLootSweepTrackingGuard: original Mode E/F lootboxes are not registered for sweep tracking")
 

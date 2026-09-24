@@ -9,7 +9,7 @@ WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -20,7 +20,7 @@ def read_rewards() -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
 
 DEBUG = Path("ZombieMode/ZombieModeDebug.cs")
-EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 
 
 def fail(message: str) -> int:
@@ -100,7 +100,7 @@ def main() -> int:
             return result
 
     for snippet in [
-        "CleanupZombieModeForSceneChange(ZombieModeFailureReason.SuccessfulExtraction)",
+        "owner.CleanupZombieModeForRuntimeModule(ZombieModeFailureReason.SuccessfulExtraction)",
     ]:
         result = require(extraction, snippet, "successful extraction cleanup")
         if result:

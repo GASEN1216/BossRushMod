@@ -5,7 +5,7 @@ import re
 import sys
 
 
-CATALOG = Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs")
+CATALOG = Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs")
 NPC_CATALOG = Path("ZombieMode/ZombieModeNpcCatalog.cs")
 # 2026-09-23 审美审查：奖励选择面板与终端服务面板从 ZombieModeRewards.cs（宿主 partial）拆到独立文件。
 REWARD_VIEWS = [
@@ -58,11 +58,11 @@ def main() -> int:
     cap_filter = extract_method(catalog, "private bool IsZombieModeRewardAtSelectionCap")
     for token in [
         "case ZombieModeRewardType.TempMerchant:",
-        "zombieModeRunState.GuaranteedMerchantPurchasePending",
+        "runState.GuaranteedMerchantPurchasePending",
         "case ZombieModeRewardType.TempNurse:",
-        'FindZombieModeTemporaryNpc("Nurse") != null',
+        'owner.FindZombieModeTemporaryNpcForRewardRuntimeModule("Nurse") != null',
         "case ZombieModeRewardType.HalfPricePaidRefresh:",
-        "zombieModeRunState.HalfPriceNextPaidRefresh",
+        "runState.HalfPriceNextPaidRefresh",
     ]:
         if token not in cap_filter:
             return fail("missing ineffective-repeat reward filter -> " + token)

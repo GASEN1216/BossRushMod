@@ -30,7 +30,7 @@ COMPILE = Path("compile_official.bat")
 # 每个调用点：文件 -> 该文件里 Create( 的场景参数必须命中的写法
 CALL_SITES = {
     Path("ModeF/ModeFExtraction.cs"): "MapPointSceneResolver.Resolve()",
-    Path("ZombieMode/ZombieModeExtractionController.cs"): "MapPointSceneResolver.Resolve()",
+    Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs"): "MapPointSceneResolver.Resolve()",
     Path("DebugAndTools/SkyIsland/SkyIslandPreludeFlow.cs"): "MapPointSceneResolver.Resolve(GroundZeroScene)",
 }
 
@@ -92,7 +92,7 @@ def main():
          "UnityEngine.SceneManagement.SceneManager.GetActiveScene().name"),
         (Path("DebugAndTools/SkyIsland/SkyIslandPreludeFlow.cs"),
          "MapPointSceneResolver.Resolve(GroundZeroScene)", "SceneManager.GetActiveScene().name"),
-        (Path("ZombieMode/ZombieModeExtractionController.cs"), "MapPointSceneResolver.Resolve()",
+        (Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs"), "MapPointSceneResolver.Resolve()",
          "SceneManager.GetActiveScene().name"),
         (RESOLVER, "SceneInfoCollection.GetSceneID(active.buildIndex)", "null"),
     )

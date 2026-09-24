@@ -2,7 +2,7 @@ from pathlib import Path
 import sys
 
 
-EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 USAGE = Path("Integration/Items/ZombieTideBeaconUsage.cs")
 
 
@@ -16,9 +16,9 @@ def main() -> int:
     usage = USAGE.read_text(encoding="utf-8")
 
     for token in [
-        "public string GetZombieModeBeaconUnavailableReasonKey()",
+        "internal string GetZombieModeBeaconUnavailableReasonKey()",
         "BossRush_ZombieMode_Notify_BeaconExtractionLocked",
-        "zombieModeRunState.ExtractionChanneling",
+        "runState.ExtractionChanneling",
     ]:
         if token not in extraction:
             return fail("missing centralized beacon unavailable reason -> " + token)

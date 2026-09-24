@@ -27,8 +27,10 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 GUARD = "ExtraBossDropDeferGuard"
 
-SPECIAL_LOOT = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewardsSpecialLoot.cs")
-RANDOM_BOSS_LOOT = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewardsRandomBossLoot.cs")
+SPECIAL_LOOT = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_SpecialLoot.cs")
+SPECIAL_LOOT_HOST = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewardsSpecialLoot.cs")
+SPECIAL_REWARD_PRODUCER = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_SpecialLoot.cs")
+RANDOM_BOSS_LOOT = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_BossLootEvent.cs")
 RANDOM_BOSS_LOOT_MODULE = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_RandomBossLoot.cs")
 LOOT_CORE = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_LootTracking.cs")
 LOOT_BRIDGE = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewards.cs")
@@ -88,7 +90,7 @@ def load(path, errors):
 def check_defer_predicate(errors):
     """判定必须存在，且显式覆盖无间炼狱。"""
     code = load(LOOT_CORE, errors)
-    bridge = load(SPECIAL_LOOT, errors)
+    bridge = load(SPECIAL_LOOT_HOST, errors)
     if code is None or bridge is None:
         return
 
@@ -127,6 +129,10 @@ def check_integrations_wired(errors):
     if "wavesArenaRuntime.FinalizeBossRushLootboxPathTracking(character);" not in bridge:
         errors.append("[接线] 宿主 Finalize 入口未转发至竞技场模块")
 
+    special_reward_producer = load(SPECIAL_REWARD_PRODUCER, errors)
+    if special_reward_producer is None:
+        return
+
     for name, (path, handler) in sorted(INTEGRATIONS.items()):
         code = load(path, errors)
         if code is None:
@@ -155,7 +161,7 @@ def check_integrations_wired(errors):
         # 进箱消费必须被 AddBossSpecialLootToLootboxCoroutine 调用
         if not re.search(
                 re.escape(handler) + r"\.TryConsumePendingBossRushLootboxDrop\s*\(\s*bossMain\s*,\s*inv\s*\)",
-                special):
+                special_reward_producer):
             errors.append(
                 "[接线] AddBossSpecialLootToLootboxCoroutine 未消费 {} 的 pending".format(name))
 
@@ -187,7 +193,7 @@ def check_infinite_hell_order(errors):
         return
 
     branch = re.search(
-        r"if \(infiniteHellMode\)\s*\{(.*?)\n                \}", code, flags=re.S)
+        r"if \(InfiniteHellMode\)\s*\{(.*?)\n                \}", code, flags=re.S)
     if branch is None:
         errors.append("[无间炼狱] 无法解析 infiniteHellMode 分支")
         return
@@ -318,6 +324,14 @@ def check_dragonking_marked(errors):
 
 def main():
     errors = []
+    host = load(SPECIAL_LOOT_HOST, errors)
+    if host is not None:
+        for bridge in (
+            "wavesArenaRuntime.ReturnPendingExtraLootToCharacterItem(bossMain);",
+            "wavesArenaRuntime.DropPendingExtraLootIntoWorld(bossMain);",
+        ):
+            if bridge not in host:
+                errors.append("[宿主桥] pending 额外掉落入口未转发到竞技场模块: " + bridge)
     check_defer_predicate(errors)
     check_integrations_wired(errors)
     check_infinite_hell_order(errors)

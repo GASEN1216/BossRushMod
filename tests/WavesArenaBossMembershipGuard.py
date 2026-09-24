@@ -24,7 +24,7 @@ import sys
 
 ARENA = Path("WavesArena/WavesArenaRuntimeModule_WaveDeaths.cs")
 HOST = Path("WavesArena/WavesArena.cs")
-LOOT = Path("LootAndRewards/LootAndRewardsRandomBossLoot.cs")
+LOOT = Path("WavesArena/WavesArenaRuntimeModule_BossLootEvent.cs")
 
 GATE = "IsCurrentWaveBossMember(bossMain)"
 

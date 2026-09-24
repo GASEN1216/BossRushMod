@@ -24,6 +24,7 @@ LOOT_PARTS = [
     Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
     Path("LootAndRewards/LootAndRewardsRandomBossLoot.cs"),
     Path("LootAndRewards/LootAndRewardsSpecialLoot.cs"),
+    Path("WavesArena/WavesArenaRuntimeModule_SpecialLoot.cs"),
 ]
 
 

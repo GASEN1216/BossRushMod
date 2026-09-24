@@ -172,7 +172,7 @@
         "LootAndRewards/**/*.cs"
       ],
       "entry": "LootAndRewards/InfiniteHellMilestoneDelivery.cs",
-      "state_owner": "InfiniteHellMilestoneDelivery",
+      "state_owner": "WavesArenaRuntimeModule（竞技场掉落与奖励状态）；InfiniteHellMilestoneDelivery（里程碑交付）",
       "public_api": [
         "LootAndRewards",
         "ModeEFLootboxTracker"

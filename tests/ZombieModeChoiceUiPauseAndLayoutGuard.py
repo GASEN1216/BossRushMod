@@ -13,7 +13,7 @@ ENTRY_PARTS = [
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -33,6 +33,7 @@ def read_entry() -> str:
 
 cash = Path("ZombieMode/ZombieModeCashInvestmentView.cs")
 extraction = Path("ZombieMode/ZombieModeExtractionController.cs")
+extraction_runtime = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 HUD = Path("ZombieMode/ZombieModeHudController.cs")
 UI_HELPER = Path("ZombieMode/ZombieModeUIHelper.cs")
 SHARED_UI = Path("Common/UI/BossRushUIFoundation.cs")
@@ -72,6 +73,7 @@ def main() -> int:
     rewards = read_rewards()
     cash_text = cash.read_text(encoding="utf-8")
     extraction_text = extraction.read_text(encoding="utf-8")
+    extraction_runtime_text = extraction_runtime.read_text(encoding="utf-8")
     hud = HUD.read_text(encoding="utf-8")
     helper = UI_HELPER.read_text(encoding="utf-8")
     shared = SHARED_UI.read_text(encoding="utf-8")
@@ -167,7 +169,7 @@ def main() -> int:
     card = extract_block(extraction_view, "private void CreateChoiceCard(")
     if "RestoreInputState()" in card or "ReleaseInput()" in card:
         return fail("extraction choice buttons must not release the modal lease themselves; go through Choose")
-    host_start = extract_block(extraction_text, "private string StartZombieModeExtraction(int runId)")
+    host_start = extract_block(extraction_runtime_text, "private string StartZombieModeExtraction(int runId)")
     if 'return "BossRush_ZombieMode_Notify_ExtractionBeaconLocked";' not in host_start or \
             'return "BossRush_ZombieMode_Notify_ExtractionAreaFailed";' not in host_start:
         return fail("StartZombieModeExtraction must return the refusal reason to the page instead of a toast hidden under the modal")

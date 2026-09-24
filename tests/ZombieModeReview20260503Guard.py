@@ -24,7 +24,7 @@ import sys
 
 REWARD_PARTS = [
     Path("ZombieMode/ZombieModeRewards.cs"),
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -87,7 +87,7 @@ def main() -> int:
     inventory = Path("ZombieMode/ZombieModeInventoryTransfer.cs")
     map_iso = Path("ZombieMode/ZombieModeMapIsolation.cs")
     enemy_runtime = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
-    extraction = Path("ZombieMode/ZombieModeExtractionController.cs")
+    extraction = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
     tracker = Path("Common/Stats/RuntimeStatModifierTracker.cs")
     spawn_core = Path("Utilities/EnemySpawnCore.cs")
     loot = Path("LootAndRewards/LootAndRewards.cs")

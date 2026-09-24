@@ -14,7 +14,7 @@
 | P5 目录归位 | 未开始 | 天空岛迁移与注入占位清理 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-最近已提交：`2c13bf8e`（P3 簇 2 波次与预设，簇 5 入场转存 / 敌人索引，簇 6 图鉴 / 生日蛋糕 / 出行）；下一动作是完成簇 2 掉落与奖励主体，簇 5 HUD 和簇 6 Integration 初始化叶子并行推进。真实游戏目录尚未部署。
+最近已提交：`fa942e4d`（P3 簇 2 随机掉落与龙系奖励，簇 5 污染 / HUD / Boss 控制器，簇 6 初始化 / 快递员）；下一动作是完成簇 2 胜利奖励与掉落事件漏斗，并继续簇 6 图鉴书库存。真实游戏目录尚未部署。
 
 ## P0 基线（2026-09-24）
 
@@ -87,6 +87,14 @@
 - 守卫按生产方法新位置收敛，修改的守卫经定点破坏转红、按字节还原。`BossRewardDelivery` 从龙系新生产文件抽取方法；`AirdropSecondReview` 替身匹配迁入模块的同一反射类型；`AffixCombat` 抽取丧尸污染模块的真实爆炸方法。首次全量回归分别因 `AffixCombat`、`AirdropSecondReview` 旧替身失配各有 1 FAIL；修正验证链后全量 69 PASS / 0 FAIL / 0 SKIP。全量守卫 680 PASS / 0 FAIL / 0 known-red。
 - 本批编译清单 1,069 源，索引 47 模块；宿主 partial 177 文件 / 74,535 行，预算从 177 / 80,400 下调到 177 / 74,600，预算破坏探针转红并按字节还原。隔离正式构建 `Build succeeded!`、Dev 标识缺席、DLL SHA-256 `85C1C36229CD2E7AF09802EDB332AB4BD041EC6642EB52E2A0C6457812EEC926`；隔离 Dev 构建 `Build succeeded!`、Dev 标识在位、SHA-256 `69142705B24716FA93C3AB568930EC38217854B07C67EE9D7B7A40B19AF625E2`。两种 DLL 与隔离发布副本哈希分别一致，72 个 bundle 清单通过。真实游戏目录未动，L3 待 owner。
 - 下一动作：继续簇 2 胜利奖励与掉落事件漏斗；簇 6 图鉴书库存叶子；随后主窗口推进簇 3 Mode D、簇 4 Mode E/F、簇 7 宿主收口。P4 §6 第 9 条、P5、P6 仍未完成。
+
+### 当前可恢复步骤：标准通关、Boss 掉落事件、撤离与奖励目录（进行中，COMPAT）
+
+- 簇 2：`WavesArenaRuntimeModule_VictoryRewards.cs` 接管标准通关两秒等待、虚影箱起落、Mode G 严格物化器入口与难度奖励箱生成；`WavesArenaRuntimeModule_BossLootEvent.cs` 接管 Boss 死前掉落分流与 Mode E/F 原生箱路径；`WavesArenaRuntimeModule_SpecialLoot.cs` 接管箱内专属奖励、Mode F 掠夺调整、额外掉落回退与无间炼狱世界投放。宿主原签名只转发；静态常量与 scratch 随生产方法迁走。旧随机数调用、Loader 等待、`finally` 清理以及无间炼狱先投放后 Finalize 的顺序保留。胜利奖励与掉落专题文档已更新。`OnPlayerDeathInBossRush` 的跨模式死亡收尾仍留宿主，簇 2 尚未完成。
+- 簇 5：丧尸撤离/信标/安全区业务已提取到 `ZombieModeRuntimeModule_Extraction.cs`，奖励目录与选择流程已提取到 `ZombieModeRuntimeModule_RewardCatalogAndSelection.cs`；旧 UI 入口保留桥。撤离叶子 20 项相关守卫与 20 项定点反向变异通过，奖励目录叶子 13 项核心守卫反向变异通过；`AuditModeLifecycle` 抽取生产方法验证结算时序。簇 5 尚有其余宿主业务。
+- 簇 6：图鉴书库存、注入与切档处理已提取到 `BossRushIntegrationRuntimeModule_CodexBook.cs`，宿主桥与守卫由叶子收尾。其余 Integration 宿主业务仍待提取。
+- 当前文件数为编译清单 1,075 源、47 模块；宿主 partial 177 文件 / 71,168 行，预算上限从 74,600 下调至 71,200 并做破坏转红/逐字还原。相关守卫的迁移锚点按新生产方法反向验证。全量守卫 680 PASS / 0 FAIL / 0 known-red；全量执行回归 69 PASS / 0 FAIL / 0 SKIP，其中 `AuditModeLifecycle` 已抽取迁移后的撤离成功结算与分发方法。隔离 Dev 构建 `Build succeeded!`、标识在位，SHA-256 `EEE1F5B474D15DE118AD6E09C47BECBD0BECBD377EA575ECDEE78A653A3C858B`；隔离正式构建 `Build succeeded!`、标识缺席，SHA-256 `2993084102D25D6241C3F9AD4350BD67471121A7540DA7C048BCDA9023354C38`。两种 DLL 均与隔离发布副本哈希一致，72 bundle 清单通过。真实游戏目录未动，L3 待 owner。
+- 下一动作：提交本批可恢复步骤；随后继续簇 2 跨模式死亡漏斗和簇 3 Mode D。P3 簇 3、4、7，P4 §6 第 9 条，P5 与 P6 均未完成。
 
 ## P1 上下文治理（2026-09-24）
 

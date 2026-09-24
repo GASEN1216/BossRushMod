@@ -17,7 +17,8 @@ EQUIPMENT = Path("Integration/EquipmentContentRegistry.cs")
 SCENE = Path("Integration/BossRushIntegration_StartAndScene.cs")
 DEFERRED = Path("Integration/BossRushIntegrationRuntimeModule_DeferredBootstrap.cs")
 DEATH_PATCH = Path("Patches/Combat/CharacterOnDeadPatch.cs")
-LOOT = Path("LootAndRewards/LootAndRewardsSpecialLoot.cs")
+LOOT = Path("WavesArena/WavesArenaRuntimeModule_SpecialLoot.cs")
+LOOT_HOST = Path("LootAndRewards/LootAndRewardsSpecialLoot.cs")
 
 
 def fail(message: str) -> int:
@@ -52,7 +53,7 @@ def ordered(source: str, snippets, label: str) -> int:
 
 def main() -> int:
     paths = (FLIGHT, FLIGHT_BRIDGE, FROST, FROST_BRIDGE, REVERSE, REVERSE_BRIDGE,
-             REGISTRATION, EQUIPMENT, SCENE, DEFERRED, DEATH_PATCH, LOOT)
+             REGISTRATION, EQUIPMENT, SCENE, DEFERRED, DEATH_PATCH, LOOT, LOOT_HOST)
     for path in paths:
         if not path.exists():
             return fail("missing source -> " + path.as_posix())
@@ -190,6 +191,8 @@ def main() -> int:
     if ("FrostmourneBlueBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);" not in source[LOOT] or
             "FrostmourneBlueBossDropHandler.TryConsumePendingAsWorldDrop(bossMain, position);" not in source[LOOT]):
         return fail("Frostmourne pending drop consumers were lost")
+    if "wavesArenaRuntime.AddBossSpecialLootToLootboxCoroutine(" not in source[LOOT_HOST]:
+        return fail("Frostmourne lootbox delivery bridge was lost")
 
     print("EquipmentBootstrapRuntimeModuleGuard: PASS")
     return 0

@@ -102,21 +102,21 @@ def validate(root):
                 return source[opening:index + 1]
         return ''
 
-    special = compact(read('LootAndRewards/LootAndRewardsSpecialLoot.cs'))
-    require('TryAddBackMountainSeedLoot(inv,bossMain);' in body(special, 'internalvoidReturnPendingExtraLootToCharacterItem('),
+    special = compact(read('WavesArena/WavesArenaRuntimeModule_SpecialLoot.cs'))
+    require('owner.TryAddBackMountainSeedLootForArena(inv,bossMain);' in body(special, 'internalvoidReturnPendingExtraLootToCharacterItem('),
             'SeedDrops: 官方箱路径（随机掉落关闭 / 未追踪 / 找不到模板）必须在 ReturnPendingExtraLootToCharacterItem 里投种子')
-    random_loot = compact(read('LootAndRewards/LootAndRewardsRandomBossLoot.cs'))
-    gate = random_loot.find('if(config==null||!config.enableRandomBossLoot){')
+    random_loot = compact(read('WavesArena/WavesArenaRuntimeModule_BossLootEvent.cs'))
+    gate = random_loot.find('if(!owner.IsRandomBossLootEnabledForArena()){')
     gate_body = body(random_loot[gate:], 'if(') if gate >= 0 else ''
     require('ReturnPendingExtraLootToCharacterItem(bossMain);' in gate_body,
             'SeedDrops: 「Boss掉落随机化」关闭分支必须走 ReturnPendingExtraLootToCharacterItem（种子与额外掉落进官方箱）')
     mode_ef = random_loot.find('if(allowModeEFIndependentLoot){')
     mode_ef_body = body(random_loot[mode_ef:], 'if(') if mode_ef >= 0 else ''
-    require('TryAddBackMountainSeedToCharacterItem(bossMain);return;' in mode_ef_body,
+    require('owner.TryAddBackMountainSeedToCharacterItemForArena(bossMain);return;' in mode_ef_body,
             'SeedDrops: Mode E/F 原生箱分支必须把种子放进 characterItem 再返回')
-    hell = random_loot.find('if(infiniteHellMode){')
+    hell = random_loot.find('if(InfiniteHellMode){')
     hell_body = body(random_loot[hell:], 'if(') if hell >= 0 else ''
-    require('TryDropBackMountainSeedIntoWorld(bossMain);FinalizeBossRushLootboxPathTracking(bossMain);' in hell_body,
+    require('owner.TryDropBackMountainSeedIntoWorldForArena(bossMain);FinalizeBossRushLootboxPathTracking(bossMain);' in hell_body,
             'SeedDrops: 无间炼狱没有箱子，种子必须在 Finalize 之前世界投放')
     integration_module = compact(read('Integration/BossRushIntegrationRuntimeModule_Initialization.cs'))
     require('injectedCount+=BackMountainItems.TryInjectSeedsIntoShop(shop,_owner);'

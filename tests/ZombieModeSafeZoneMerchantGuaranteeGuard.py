@@ -3,11 +3,11 @@ import sys
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
-EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -49,8 +49,8 @@ def main() -> int:
 
     for snippet in [
         "EnsureZombieModeSafeZoneMerchantTerminal(runId);",
-        "SpawnZombieModeTemporaryNpc(runId, \"Merchant\", false);",
-        "FindZombieModeTemporaryNpc(\"Merchant\") == null",
+        "owner.SpawnZombieModeTemporaryNpcForRuntimeModule(runId, \"Merchant\", false);",
+        "owner.FindZombieModeTemporaryNpcForRuntimeModule(\"Merchant\") == null",
     ]:
         result = require(extraction, snippet, "safe zone merchant binding")
         if result:

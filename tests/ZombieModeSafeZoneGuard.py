@@ -5,7 +5,7 @@ import sys
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 SAFE_ZONE = Path("ZombieMode/ZombieModeSafeZoneController.cs")
-EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 DEBUG_TOOLS = Path("DebugAndTools/DebugAndTools.cs")
@@ -104,21 +104,21 @@ def main() -> int:
             return result
 
     for snippet in [
-        "TickZombieModeSafeZone();",
-        "zombieModeRunState.LastSafeZoneTickTime = 0f;",
-        "zombieModeRunState.SafeZoneThreatSuppressed = false;",
+        "owner.TickZombieModeSafeZoneForRuntimeModule();",
+        "runState.LastSafeZoneTickTime = 0f;",
+        "runState.SafeZoneThreatSuppressed = false;",
         "CanUseZombieModePortableSafeZoneDevice",
         "TryUseZombieModePortableSafeZoneDevice",
         "ZombieModePhaseGuards.AllowsPortableSafeZoneDeployment",
         "ResetZombieModeSafeZoneForReplacement",
         "RemoveZombieModeSafeZoneRunOnlyRecord",
         # 战斗期部署替换主槽（波次结束随准备期清理消失，再生成带商人的正常区）。
-        "CreateZombieModeSafeZone(zombieModeRunState.RunId, false, true, true);",
+        "CreateZombieModeSafeZone(runState.RunId, false, true, true);",
         # 准备期部署写入独立副槽：不带商人、不回收主槽绑定的服务 NPC。
-        "CreateZombieModeSafeZone(zombieModeRunState.RunId, false, false, true, true);",
-        "ClearZombieModeEnemiesInsideActiveSafeZone(runId, \"CreateSafeZone\");",
+        "CreateZombieModeSafeZone(runState.RunId, false, false, true, true);",
+        "owner.ClearZombieModeEnemiesInsideActiveSafeZoneForRuntimeModule(runId, \"CreateSafeZone\");",
         # 准备期清理必须无条件清掉两个槽，不再保留任何便携区跨越波次边界。
-        "private void CleanupZombieModePreparationObjects(int runId)",
+        "internal void CleanupZombieModePreparationObjects(int runId)",
         "ClearZombieModePortableSafeZoneSlot();",
     ]:
         result = require(extraction, snippet, "safe zone lifecycle")

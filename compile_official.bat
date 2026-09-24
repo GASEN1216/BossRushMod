@@ -340,6 +340,7 @@ echo(Integration\BossRushIntegrationRuntimeModule.cs
 echo(Integration\BossRushIntegrationRuntimeModule_MapObjects.cs
 echo(Integration\BossRushIntegrationRuntimeModule_DeferredBootstrap.cs
 echo(Integration\BossRushIntegrationRuntimeModule_WikiBook.cs
+echo(Integration\BossRushIntegrationRuntimeModule_CodexBook.cs
 echo(Integration\BossRushIntegrationRuntimeModule_BirthdayCake.cs
 echo(Integration\BossRushIntegrationRuntimeModule_Travel.cs
 echo(Integration\BossRushIntegrationRuntimeModule_Initialization.cs
@@ -467,6 +468,9 @@ echo(WavesArena\WavesArenaRuntimeModule_LootTracking.cs
 echo(WavesArena\WavesArenaRuntimeModule_LootCleanup.cs
 echo(WavesArena\WavesArenaRuntimeModule_DragonLoot.cs
 echo(WavesArena\WavesArenaRuntimeModule_RandomBossLoot.cs
+echo(WavesArena\WavesArenaRuntimeModule_BossLootEvent.cs
+echo(WavesArena\WavesArenaRuntimeModule_SpecialLoot.cs
+echo(WavesArena\WavesArenaRuntimeModule_VictoryRewards.cs
 echo(WavesArena\WavesArenaRuntimeHooks.cs
 echo(WavesArena\BossRushEntryFlow.cs
 echo(WavesArena\WavesArenaEnemyMaintenance.cs
@@ -650,6 +654,8 @@ echo(ZombieMode\ZombieModeRuntimeModule_BossController.cs
 echo(ZombieMode\ZombieModeRuntimeModule_Pollution.cs
 echo(ZombieMode\ZombieModeRuntimeModule_PollutionSkills.cs
 echo(ZombieMode\ZombieModeRuntimeModule_PollutionTuning.cs
+echo(ZombieMode\ZombieModeRuntimeModule_RewardCatalogAndSelection.cs
+echo(ZombieMode\ZombieModeRuntimeModule_Extraction.cs
 echo(ZombieMode\ZombieModeRuntimeHooks.cs
 echo(ZombieMode\ZombieModeEntry.cs
 echo(ZombieMode\ZombieModeEntryDebt.cs

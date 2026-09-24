@@ -7,7 +7,7 @@ import sys
 
 BEACON_CONFIG = Path("Integration/Items/ZombieTideBeaconConfig.cs")
 BEACON_USAGE = Path("Integration/Items/ZombieTideBeaconUsage.cs")
-EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 
 
 def fail(message: str) -> int:

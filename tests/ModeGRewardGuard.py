@@ -34,6 +34,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REWARD = os.path.join(REPO_ROOT, "ModeG", "ModeGRewardTransaction.cs")
 SPAWN = os.path.join(REPO_ROOT, "ModeG", "ModeGSpawnTransaction.cs")
 ENTRY = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewardsVictoryRewards.cs")
+PRODUCER = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_VictoryRewards.cs")
 MATERIALIZER = os.path.join(REPO_ROOT, "LootAndRewards", "VictoryRewardShadowCrateController.cs")
 
 
@@ -56,6 +57,7 @@ def main():
     reward = read(REWARD, errors)
     spawn = read(SPAWN, errors)
     entry = read(ENTRY, errors)
+    producer = read(PRODUCER, errors)
     mat_file = read(MATERIALIZER, errors)
 
     if reward:
@@ -159,7 +161,7 @@ def main():
             if not re.search(pattern, haystack):
                 errors.append("[{}] 不满足: {}".format(name, desc))
 
-    if entry:
+    if producer:
         checks = [
             ("TryEntry",
              r"internal bool TryStartModeGRewardMaterialization_LootAndRewards\(",
@@ -175,8 +177,16 @@ def main():
              "Rewarding 死亡取消物化入口"),
         ]
         for name, pattern, desc in checks:
-            if not re.search(pattern, entry):
+            if not re.search(pattern, producer):
                 errors.append("[{}] 不满足: {}".format(name, desc))
+
+    if entry:
+        for bridge in (
+            "return wavesArenaRuntime.TryStartModeGRewardMaterialization_LootAndRewards(",
+            "wavesArenaRuntime.CancelModeGRewardMaterialization_LootAndRewards();",
+        ):
+            if bridge not in entry:
+                errors.append("[HostBridge] 旧入口未转发到竞技场模块: " + bridge)
 
     if mat_file:
         if not re.search(r"public sealed class ModeGRewardStrictMaterializer : MonoBehaviour",

@@ -9,6 +9,7 @@ import sys
 
 
 REWARD_SOURCES = [
+    Path("WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs"),
     Path("LootAndRewards/LootAndRewards.cs"),
     Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
 ]
@@ -28,7 +29,7 @@ def main() -> int:
         "private InteractableLootbox GetVictoryRewardVisualLootBoxTemplate_LootAndRewards()",
         'bool isDeliver = name.IndexOf("DeliverBox", StringComparison.OrdinalIgnoreCase) >= 0;',
         "InteractableLootbox visualPrefab = GetVictoryRewardVisualLootBoxTemplate_LootAndRewards();",
-        "controller.Initialize(this, main, visualPrefab, highQualityCount)",
+        "controller.Initialize(owner, main, visualPrefab, highQualityCount)",
         "VictoryRewardCrateHeroVisual.AttachToLootbox(lootbox, GetVictoryRewardVisualLootBoxTemplate_LootAndRewards());",
     ]
 

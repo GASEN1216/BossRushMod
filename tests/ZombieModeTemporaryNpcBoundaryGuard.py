@@ -5,7 +5,7 @@ import sys
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -34,7 +34,7 @@ def main() -> int:
     for token in [
         "private GameObject CreateZombieModeTemporaryServiceTerminal(",
         "private ZombieModeTemporaryNpc CreateZombieModeTemporaryNpcRecord(",
-        "SpawnZombieModeTemporaryNpc(runId, pendingTemporaryNpcServiceType, extractionOpportunity)",
+        "owner.SpawnZombieModeTemporaryNpcForRewardRuntimeModule(runId, pendingTemporaryNpcServiceType, extractionOpportunity)",
         "RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.TemporaryNpc",
         "record.ServiceState = CreateZombieModeNpcServiceState(serviceType, bossNodeStock, zombieModeRunState.ActiveSafeZoneActive)",
         "ZombieModeNpcCatalog.NormalWaveStock",

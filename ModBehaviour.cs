@@ -942,7 +942,7 @@ namespace BossRush
             return _cachedLootBoxTemplateWithLoader;
         }
 
-        private static InteractableLootbox GetDifficultyRewardLootBoxTemplate()
+        internal static InteractableLootbox GetDifficultyRewardLootBoxTemplate()
         {
             if (_cachedDifficultyRewardLootBoxTemplate != null)
             {

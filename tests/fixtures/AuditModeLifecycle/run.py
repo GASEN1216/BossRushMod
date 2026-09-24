@@ -344,6 +344,80 @@ public partial class ModBehaviour {
 }
 }'''
 execute('runonly_cleanup',[HERE/'RunOnlyCleanup.cs',ROOT/'Utilities/RunScopedRegistry.cs'],run_only)
+extraction_module=ROOT/'ZombieMode/ZombieModeRuntimeModule_Extraction.cs'
+extraction_methods='\n'.join(member(extraction_module,m) for m in [
+    'private void CompleteZombieModeExtractionSuccess(int runId)',
+    'private bool SettleZombieModeExtractionCashShell()',
+    'private bool TryDispatchZombieModeExtractionSuccess(CountDownArea area)',
+])
+extraction_fixture='''using System;
+using System.Collections.Generic;
+namespace BossRush {
+internal enum ZombieModeCombatPhase { ExtractionOpportunity, SuccessExit }
+internal enum ZombieModeFailureReason { SuccessfulExtraction }
+internal sealed class ZombieModeRunState {
+ internal int RunId = 7; internal bool ExtractionSuccessHandled; internal bool ExtractionChanneling = true;
+ internal bool BeaconChanneling = true; internal ZombieModeCombatPhase CombatPhase = ZombieModeCombatPhase.ExtractionOpportunity;
+ internal CountDownArea ActiveExtractionArea; internal long PurificationPoints = 41;
+}
+internal sealed class CountDownArea { internal Action<CountDownArea> onCountDownStopped; internal Action onCountDownSucceed; }
+internal static class ExtractionTrace { internal static readonly List<string> Events = new List<string>(); }
+internal static class L10n { internal static string T(string value) { return value; } internal static string T(string chinese, string english) { return chinese; } }
+internal static class NotificationText { internal static void Push(string value) { ExtractionTrace.Events.Add("notification:" + value); } }
+internal static class EconomyManager {
+ internal static bool Result; internal static bool Add(long amount) { ExtractionTrace.Events.Add("payout:" + amount); return Result; }
+}
+public partial class ModBehaviour {
+ internal void NotifyCampaignZombieExtracted() { ExtractionTrace.Events.Add("campaign"); }
+ internal void CleanupZombieModeForRuntimeModule(ZombieModeFailureReason reason) { ExtractionTrace.Events.Add("cleanup:" + reason); }
+ internal void ShowBigBanner(string text) { ExtractionTrace.Events.Add("banner:" + text); }
+ internal static void DevLog(string text) { }
+}
+internal sealed partial class ZombieModeRuntimeModule {
+ private readonly ModBehaviour owner; private readonly ZombieModeRunState runState;
+ internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState) { this.owner = owner; this.runState = runState; }
+ internal bool IsZombieModeRunValid(int runId) { return runId > 0 && runState.RunId == runId; }
+ private void TryReleaseZombieModeExtractionCountdownUi() { ExtractionTrace.Events.Add("release-countdown"); }
+ internal void ShowZombieModeExtractionOpportunityUi(int runId) { ExtractionTrace.Events.Add("show-opportunity"); }
+ private void TryNotifyZombieModeExtraction() { ExtractionTrace.Events.Add("notify-evacuated"); }
+ private void TryLoadBaseSceneAfterZombieModeExtraction() { ExtractionTrace.Events.Add("load-base"); }
+ internal void CompleteForTest(int runId) { CompleteZombieModeExtractionSuccess(runId); }
+'''+extraction_methods+'''
+}
+internal static class Program {
+ private static int checks;
+ private static void Check(bool condition, string label) { if (!condition) throw new Exception("AuditModeLifecycle extraction: " + label); checks++; }
+ private static int Index(string value) { return ExtractionTrace.Events.IndexOf(value); }
+ private static ZombieModeRuntimeModule NewModule(ModBehaviour owner, ZombieModeRunState state, Action<CountDownArea> stopped, Action success) {
+  state.ActiveExtractionArea = new CountDownArea { onCountDownStopped = stopped, onCountDownSucceed = success };
+  return new ZombieModeRuntimeModule(owner, state);
+ }
+ public static void Main() {
+  var owner = new ModBehaviour();
+  var successState = new ZombieModeRunState();
+  var successModule = NewModule(owner, successState, area => ExtractionTrace.Events.Add("stopped"), () => ExtractionTrace.Events.Add("success"));
+  EconomyManager.Result = true; ExtractionTrace.Events.Clear(); successModule.CompleteForTest(7);
+  Check(successState.PurificationPoints == 0 && successState.ExtractionSuccessHandled, "successful payout clears points and claims success once");
+  Check(Index("payout:41") < Index("campaign") && Index("campaign") < Index("stopped") && Index("stopped") < Index("success") && Index("success") < Index("cleanup:SuccessfulExtraction"), "payout, campaign, official callbacks, and cleanup keep their order");
+  int successEventCount = ExtractionTrace.Events.Count; successModule.CompleteForTest(7);
+  Check(ExtractionTrace.Events.Count == successEventCount, "duplicate success callback does not pay or clean twice");
+
+  var failedState = new ZombieModeRunState();
+  var failedModule = NewModule(owner, failedState, area => ExtractionTrace.Events.Add("stopped"), () => ExtractionTrace.Events.Add("success"));
+  EconomyManager.Result = false; ExtractionTrace.Events.Clear(); failedModule.CompleteForTest(7);
+  Check(failedState.PurificationPoints == 41 && !failedState.ExtractionSuccessHandled, "failed payout retains purification points and leaves success unclaimed");
+  Check(!failedState.ExtractionChanneling && !failedState.BeaconChanneling && failedState.CombatPhase == ZombieModeCombatPhase.ExtractionOpportunity, "failed payout returns to the extraction opportunity state");
+  Check(Index("release-countdown") >= 0 && Index("show-opportunity") > Index("release-countdown") && Index("campaign") < 0 && Index("cleanup:SuccessfulExtraction") < 0, "failed payout releases countdown and restores the choice without transitioning scenes");
+
+  var fallbackState = new ZombieModeRunState { PurificationPoints = 0 };
+  var fallbackModule = NewModule(owner, fallbackState, area => ExtractionTrace.Events.Add("stopped"), null);
+  ExtractionTrace.Events.Clear(); fallbackModule.CompleteForTest(7);
+  Check(Index("campaign") < Index("stopped") && Index("stopped") < Index("release-countdown") && Index("release-countdown") < Index("notify-evacuated") && Index("notify-evacuated") < Index("load-base") && Index("load-base") < Index("cleanup:SuccessfulExtraction"), "missing success listener uses the ordered manual evacuation and base-scene fallback before cleanup");
+  Console.WriteLine("AuditModeLifecycle extraction settlement: " + checks + " PASS / 0 FAIL");
+ }
+}
+}'''
+execute('extraction_settlement',[],extraction_fixture)
 hud_module=ROOT/'ZombieMode/ZombieModeRuntimeModule_Hud.cs'
 hud_constants='\n'.join(declaration(hud_module,m) for m in [
     'private const float ZombieModeHudRefreshInterval =',

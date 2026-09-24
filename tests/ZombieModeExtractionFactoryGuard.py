@@ -5,7 +5,7 @@ import sys
 FACTORY = Path("Utilities/ModeExtractionPointFactory.cs")
 COMPILE = Path("compile_official.bat")
 MODEF = Path("ModeF/ModeFExtraction.cs")
-ZOMBIE = Path("ZombieMode/ZombieModeExtractionController.cs")
+ZOMBIE = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 
 
 def fail(message: str) -> int:
@@ -86,7 +86,7 @@ def main() -> int:
         if token in modef:
             return fail("ZombieModeExtractionFactoryGuard: Mode F still owns duplicated extraction code -> " + token)
 
-    ensure_area = extract_method(zombie, "private void EnsureZombieModeExtractionArea")
+    ensure_area = extract_method(zombie, "internal void EnsureZombieModeExtractionArea")
     if not ensure_area:
         return fail("ZombieModeExtractionFactoryGuard: cannot extract EnsureZombieModeExtractionArea")
 

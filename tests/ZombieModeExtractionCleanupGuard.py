@@ -2,7 +2,7 @@ from pathlib import Path
 import sys
 
 
-ZOMBIE = Path("ZombieMode/ZombieModeExtractionController.cs")
+ZOMBIE = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 
 
 def fail(message: str) -> int:
@@ -41,19 +41,19 @@ def main() -> int:
 
     required = [
         "SettleZombieModeExtractionCashShell()",
-        "TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea)",
-        "CleanupZombieModeForSceneChange(ZombieModeFailureReason.SuccessfulExtraction);",
+        "TryDispatchZombieModeExtractionSuccess(runState.ActiveExtractionArea)",
+        "owner.CleanupZombieModeForRuntimeModule(ZombieModeFailureReason.SuccessfulExtraction);",
     ]
     for token in required:
         if token not in method:
             return fail("missing token -> " + token)
 
-    dispatch_index = method.find("TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea)")
-    cleanup_index = method.find("CleanupZombieModeForSceneChange(ZombieModeFailureReason.SuccessfulExtraction);")
+    dispatch_index = method.find("TryDispatchZombieModeExtractionSuccess(runState.ActiveExtractionArea)")
+    cleanup_index = method.find("owner.CleanupZombieModeForRuntimeModule(ZombieModeFailureReason.SuccessfulExtraction);")
     if cleanup_index < 0 or dispatch_index < 0 or cleanup_index < dispatch_index:
         return fail("cleanup must run after dispatch attempt in success path")
 
-    if "if (!TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea))" in method:
+    if "if (!TryDispatchZombieModeExtractionSuccess(runState.ActiveExtractionArea))" in method:
         return fail("cleanup must not be limited to dispatch failure only")
 
     print("ZombieModeExtractionCleanupGuard: PASS")

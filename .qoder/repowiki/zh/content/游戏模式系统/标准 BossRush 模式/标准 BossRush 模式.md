@@ -11,6 +11,9 @@
 - [WavesArenaRuntimeModule_LootCleanup.cs](file://WavesArena/WavesArenaRuntimeModule_LootCleanup.cs)
 - [WavesArenaRuntimeModule_DragonLoot.cs](file://WavesArena/WavesArenaRuntimeModule_DragonLoot.cs)
 - [WavesArenaRuntimeModule_RandomBossLoot.cs](file://WavesArena/WavesArenaRuntimeModule_RandomBossLoot.cs)
+- [WavesArenaRuntimeModule_BossLootEvent.cs](file://WavesArena/WavesArenaRuntimeModule_BossLootEvent.cs)
+- [WavesArenaRuntimeModule_SpecialLoot.cs](file://WavesArena/WavesArenaRuntimeModule_SpecialLoot.cs)
+- [WavesArenaRuntimeModule_VictoryRewards.cs](file://WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs)
 - [LootAndRewardsInfiniteHell.cs](file://LootAndRewards/LootAndRewardsInfiniteHell.cs)
 - [Config.cs](file://Config/Config.cs)
 - [BossFilter.cs](file://BossFilter/BossFilter.cs)
@@ -38,6 +41,9 @@ BossRush 相关代码集中在以下模块：
 - 掉落与奖励：LootAndRewards 系列负责 Boss 掉落、通关奖励箱、无间炼狱现金池与里程碑奖励。
 - 掉落候选目录、品质保底选择、奖励箱清理协程、龙裔与龙王专属奖励以及 Boss 掉落追踪状态由已注册的 `WavesArenaRuntimeModule` 持有；`LootAndRewards` 各分部保留旧调用入口并转发。候选目录仍按原协程每 20 个物品等待一帧；保底仍用原随机调用选档和选物；奖励箱仍待 Loader 填完再逆序清理；龙系收藏成就在成功入箱后登记；追踪事件仍在记录处理器后订阅，并在清理时退订。
 - 随机 Boss 奖励箱的反射元数据、候选/品质 scratch 与入箱调度同属竞技场模块；原宿主入口保留，随机事件的奖励箱路径复用这一份反射缓存。
+- 标准通关结算、虚影箱控制、Mode G 严格物化器入口与难度奖励箱生成由 `WavesArenaRuntimeModule_VictoryRewards.cs` 执行；宿主保留旧调用签名。虚影初始化失败时仍立即生成奖励箱，正常完成时仍落地并继续结算。
+- Boss 死前掉落事件由 `WavesArenaRuntimeModule_BossLootEvent.cs` 处理，宿主原事件委托转发。Mode E/F 继续保留官方掉落箱，无间炼狱先把待投物品送到世界再清理追踪，随机掉落仍按原门控与概率计算。
+- 奖励箱加载后的专属掉落、原版概率保底、Mode F 掠夺增减，以及额外掉落的官方箱回退和无间炼狱世界投放由 `WavesArenaRuntimeModule_SpecialLoot.cs` 执行；宿主保留原入口与种子注入桥，仍等待库存加载并在 `finally` 清理追踪。
 - 配置系统：Config 提供本地文件与 ModConfig 动态配置加载、保存与热更新。
 - Boss 筛选器：BossFilter 提供 Boss 池启用/禁用与无间炼狱权重因子编辑 UI。
 - 地图与刷怪点：通过配置系统获取当前场景刷怪点与默认路牌位置。

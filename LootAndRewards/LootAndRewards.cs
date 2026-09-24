@@ -59,15 +59,6 @@ namespace BossRush
         /// <summary>高品质最大值</summary>
         internal const int LOOT_HIGH_QUALITY_MAX = 8;
 
-        /// <summary>血量加成系数（每100血量增加的高品质概率，0.05即5%）</summary>
-        private const float LOOT_HEALTH_BONUS_RATE = 0.05f;
-
-        /// <summary>击杀时间加成系数（最快击杀时的最大加成，0.1即10%）</summary>
-        private const float LOOT_TIME_BONUS_RATE = 0.1f;
-
-        /// <summary>原版 Boss 战利品 Q5+ 保底的最小 Boss 最大生命值门槛</summary>
-        private const float LEGACY_BOSS_GUARANTEE_MIN_MAX_HEALTH = 250f;
-
         // ============================================================================
 
         private VictoryRewardShadowCrateController _activeVictoryRewardShadowCrateController
@@ -89,7 +80,7 @@ namespace BossRush
         /// <summary>
         /// 检查物品ID是否在掉落黑名单中
         /// </summary>
-        private static bool IsItemBlacklisted(int itemId)
+        internal static bool IsItemBlacklisted(int itemId)
         {
             return LootBlacklistRegistry.Contains(itemId);
         }
@@ -159,7 +150,6 @@ namespace BossRush
         {
             get { return wavesArenaRuntime.bossRushLootboxPathStaleBossScratch; }
         }
-        private readonly List<Item> modeFPlunderPenaltyScratch = new List<Item>();
         private List<int> legacyBossGuaranteeCandidateScratch
         {
             get { return wavesArenaRuntime.legacyBossGuaranteeCandidateScratch; }

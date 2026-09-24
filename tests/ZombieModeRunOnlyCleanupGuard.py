@@ -141,15 +141,15 @@ def main() -> int:
         if forbidden in entry_flow_text:
             return fail("ZombieModeRunOnlyCleanupGuard: reusable beacon must not be run-only cleanup -> " + forbidden)
 
-    extraction_text = Path("ZombieMode/ZombieModeExtractionController.cs").read_text(encoding="utf-8")
+    extraction_text = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs").read_text(encoding="utf-8")
     for snippet in [
         "CleanupZombieModePreparationObjects",
         "CancelZombieModeSafeZone",
-        "zombieModeRunState.ActiveSafeZoneActive = false;",
-        "zombieModeRunState.ActiveSafeZoneVisual = null;",
+        "runState.ActiveSafeZoneActive = false;",
+        "runState.ActiveSafeZoneVisual = null;",
         "DestroyZombieModeSafeZoneMapPoi();",
-        "zombieModeRunState.ActiveSafeZoneMapPoi = null;",
-        "zombieModeRunState.ActiveExtractionArea = null;",
+        "runState.ActiveSafeZoneMapPoi = null;",
+        "runState.ActiveExtractionArea = null;",
         "EvacuationCountdownUI.Release",
     ]:
         if snippet not in extraction_text:

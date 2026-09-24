@@ -5,7 +5,7 @@ import sys
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -41,8 +41,8 @@ def main() -> int:
 
     for token in [
         "private bool IsZombieModeRewardUnaffordable(ZombieModeRewardType rewardType)",
-        "GetZombieModeOptionTradeoffPurificationCost(rewardType)",
-        "zombieModeRunState.PurificationPoints < purificationCost",
+        "owner.GetZombieModeOptionTradeoffPurificationCostForRewardRuntimeModule(rewardType)",
+        "runState.PurificationPoints < purificationCost",
         "if (IsZombieModeRewardUnaffordable(rewardType))",
         "NotificationText.Push(L10n.T(\"BossRush_ZombieMode_Notify_RefreshNoPoints\"));",
     ]:

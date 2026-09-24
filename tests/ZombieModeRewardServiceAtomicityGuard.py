@@ -6,7 +6,7 @@ from cs_source_util import clean_source
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -123,17 +123,17 @@ def main() -> int:
     if not select_body:
         return fail("SelectZombieModeReward body not found")
     for snippet in [
-        "if (!ApplyZombieModeReward(rewardType))",
+        "if (!owner.ApplyZombieModeRewardForRewardRuntimeModule(rewardType))",
         "return;",
-        "zombieModeRunState.CurrentRewardNode = null;",
+        "runState.CurrentRewardNode = null;",
     ]:
         result = require(select_body, snippet, "reward selection success gate")
         if result:
             return result
     result = require_before(
         select_body,
-        "if (!ApplyZombieModeReward(rewardType))",
-        "zombieModeRunState.CurrentRewardNode = null;",
+        "if (!owner.ApplyZombieModeRewardForRewardRuntimeModule(rewardType))",
+        "runState.CurrentRewardNode = null;",
         "reward apply before consuming node")
     if result:
         return result

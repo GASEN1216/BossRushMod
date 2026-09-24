@@ -14,7 +14,9 @@ MODULE_RUNTIME_HOOKS_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule
 MODULE_MAP_OBJECTS_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_MapObjects.cs"
 MODULE_TRAVEL_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_Travel.cs"
 MODULE_INITIALIZATION_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_Initialization.cs"
+MODULE_CODEX_BOOK_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_CodexBook.cs"
 HOST_PATH = ROOT / "Integration/BossRushIntegration.cs"
+CODEX_BOOK_HOST_PATH = ROOT / "Integration/Codex/CodexBookItem.cs"
 LIFECYCLE_PATH = ROOT / "Integration/BossRushIntegration_StartAndScene.cs"
 MAP_HOST_PATH = ROOT / "Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"
 TRAVEL_HOST_PATH = ROOT / "Integration/BossRushIntegration_TravelAndSetup.cs"
@@ -76,8 +78,10 @@ def main():
     module_map_objects = clean_source(MODULE_MAP_OBJECTS_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_travel = clean_source(MODULE_TRAVEL_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_initialization = clean_source(MODULE_INITIALIZATION_PATH.read_text(encoding="utf-8", errors="ignore"))
-    module = module_core + "\n" + module_runtime_hooks + "\n" + module_map_objects + "\n" + module_travel + "\n" + module_initialization
+    module_codex_book = clean_source(MODULE_CODEX_BOOK_PATH.read_text(encoding="utf-8", errors="ignore"))
+    module = module_core + "\n" + module_runtime_hooks + "\n" + module_map_objects + "\n" + module_travel + "\n" + module_initialization + "\n" + module_codex_book
     host = clean_source(HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
+    codex_book_host = clean_source(CODEX_BOOK_HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
     lifecycle = clean_source(LIFECYCLE_PATH.read_text(encoding="utf-8", errors="ignore"))
     map_host = clean_source(MAP_HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
     travel_host = clean_source(TRAVEL_HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
@@ -94,6 +98,8 @@ def main():
         return fail("travel behavior must be a single partial declaration of the registered module type")
     if module_initialization.count("internal sealed partial class IntegrationRuntimeModule") != 1:
         return fail("initialization and content wiring must be a single partial declaration of the registered module type")
+    if module_codex_book.count("internal sealed partial class IntegrationRuntimeModule") != 1:
+        return fail("Codex Book stock behavior must be a single partial declaration of the registered module type")
     if "partial class ModBehaviour" in module:
         return fail("the runtime module source must not declare a ModBehaviour partial")
     if "private ModBehaviour _owner;" not in module or "_owner = owner;" not in method_body(module, "public override void OnAwake(ModBehaviour owner)"):
@@ -104,18 +110,30 @@ def main():
         "cachedBrickStoneStock", "injectedBrickStoneEntry", "integrationNextWarningLogTimes",
         "cachedIntegrationStockShops", "cachedIntegrationStockShopsSceneName",
         "_purchaseEventsSubscribed", "_dragonBreathEffectEventSubscribed", "_cachedMainCharForEffect",
-        "_runtimeStateMonitorCoroutine", "_item105PurchaseCount",
+        "_runtimeStateMonitorCoroutine", "_item105PurchaseCount", "cachedCodexBookStock",
+        "injectedCodexBookEntry", "_codexBookStockEventsSubscribed",
     )
     for field in owned_fields:
         if field not in module or field in host:
             return fail("IntegrationRuntimeModule must be the sole owner of " + field)
+    if "cachedCodexBookStock" in codex_book_host or "injectedCodexBookEntry" in codex_book_host:
+        return fail("Codex Book stock state must not remain in the host partial")
     if "private static int cachedTicketStock" not in module or "private static int cachedJournalStock" not in module or "private static int cachedBrickStoneStock" not in module:
         return fail("the save-backed stock cache fields must remain static")
+    if "private static int cachedCodexBookStock" not in module_codex_book or "private static StockShop.Entry injectedCodexBookEntry" not in module_codex_book:
+        return fail("Codex Book stock cache and entry reference must be private module-owned state")
 
+    stock_event_suffixes = {
+        "Ticket": "TicketStock",
+        "Journal": "JournalStock",
+        "BrickStone": "BrickStoneStock",
+        "CodexBook": "CodexBookStock",
+    }
     for name, flag in (
         ("Ticket", "_ticketStockEventsSubscribed"),
         ("Journal", "_journalStockEventsSubscribed"),
         ("BrickStone", "_brickStoneStockEventsSubscribed"),
+        ("CodexBook", "_codexBookStockEventsSubscribed"),
     ):
         subscribe = method_body(module, "internal void Subscribe" + name + "StockEvents()")
         unsubscribe = method_body(module, "internal void Unsubscribe" + name + "StockEvents()")
@@ -123,11 +141,56 @@ def main():
             return fail(name + " save event subscription must be idempotent and owned by the module")
         if not unsubscribe or "if (!" + flag + ") return;" not in unsubscribe or flag + " = false;" not in unsubscribe:
             return fail(name + " save event unsubscription must release only its recorded delegate")
-        suffix = "TicketStock" if name == "Ticket" else "JournalStock" if name == "Journal" else "BrickStoneStock"
+        suffix = stock_event_suffixes[name]
         if "SavesSystem.OnCollectSaveData += OnCollectSaveData_" + suffix not in subscribe:
             return fail(name + " OnCollectSaveData delegate must be subscribed by its module owner")
         if "SavesSystem.OnSetFile += OnSetFile_" + suffix not in subscribe:
             return fail(name + " OnSetFile delegate must be subscribed by its module owner")
+
+    codex_try_inject = method_body(module_codex_book, "internal bool TryInjectCodexBookIntoShop(StockShop shop)")
+    if require_order(codex_try_inject, [
+        "if (!IsBaseHubNormalMerchantShop(shop))", "foreach (StockShop.Entry entry in shop.entries)",
+        "if (alreadyExists)", "float priceFactor = 1f;", "int stockToSet = LoadCodexBookStockFromSave();",
+        "wrapped.CurrentStock = stockToSet;", "wrapped.Show = true;", "injectedCodexBookEntry = wrapped;",
+        "shop.entries.Insert(0, wrapped);",
+    ], "TryInjectCodexBookIntoShop"):
+        return fail("Codex Book injection must keep the base-hub filter, stock restore, visibility, and front insertion order")
+    for token in (
+        "itemEntry.typeID = CodexBookConfig.TYPE_ID;",
+        "itemEntry.maxStock = CodexBookConfig.DEFAULT_MAX_STOCK;",
+        "itemEntry.forceUnlock = true;", "itemEntry.priceFactor = priceFactor;",
+        "itemEntry.possibility = 1f;", "itemEntry.lockInDemo = false;",
+    ):
+        if token not in codex_try_inject:
+            return fail("Codex Book stock entry lost its frozen shop parameter: " + token)
+
+    codex_inject_shops = method_body(module_codex_book, "internal void InjectCodexBookIntoShops(string targetSceneName = null)")
+    if require_order(codex_inject_shops, [
+        "if (!_owner.IsCodexConfiguredEnabled())", "string currentScene = targetSceneName;",
+        "SceneManager.GetActiveScene().name", "if (currentScene != _owner.IntegrationBaseSceneName)",
+        "StockShop[] shops = ObjectCache.GetStockShops();", "for (int i = 0; i < shops.Length; i++)",
+        "TryInjectCodexBookIntoShop(shop)",
+    ], "InjectCodexBookIntoShops"):
+        return fail("Codex Book shop scan must preserve the dormant, scene, and shop iteration gates")
+
+    codex_load = method_body(module_codex_book, "private int LoadCodexBookStockFromSave()")
+    if require_order(codex_load, [
+        "if (cachedCodexBookStock >= 0)", "SavesSystem.KeyExisits(CodexBookConfig.STOCK_SAVE_KEY)",
+        "SavesSystem.Load<int>(CodexBookConfig.STOCK_SAVE_KEY)",
+        "cachedCodexBookStock = CodexBookConfig.DEFAULT_MAX_STOCK;",
+    ], "LoadCodexBookStockFromSave"):
+        return fail("Codex Book stock load must preserve the -1 cache sentinel, official API spelling, and default")
+
+    codex_save = method_body(module_codex_book, "private void OnCollectSaveData_CodexBookStock()")
+    if require_order(codex_save, [
+        "if (injectedCodexBookEntry != null)", "else if (cachedCodexBookStock >= 0)",
+        "stockToSave = cachedCodexBookStock;", "SavesSystem.Save<int>(CodexBookConfig.STOCK_SAVE_KEY, stockToSave);",
+        "cachedCodexBookStock = stockToSave;",
+    ], "OnCollectSaveData_CodexBookStock"):
+        return fail("Codex Book save must preserve the current or cached sold-out stock before updating the cache")
+    codex_set_file = method_body(module_codex_book, "private void OnSetFile_CodexBookStock()")
+    if require_order(codex_set_file, ["cachedCodexBookStock = -1;", "injectedCodexBookEntry = null;"], "OnSetFile_CodexBookStock"):
+        return fail("Codex Book OnSetFile must reset the stock cache and injected entry")
 
     cleanup = method_body(module, "internal void CleanupRuntimeEvents()")
     if require_order(cleanup, [
@@ -452,7 +515,7 @@ def main():
         "bossRushIntegrationRuntime.SubscribeJournalStockEvents();",
         "OnCollectSaveData_MedalStock;",
         "bossRushIntegrationRuntime.SubscribeBrickStoneStockEvents();",
-        "OnCollectSaveData_CodexBookStock;",
+        "bossRushIntegrationRuntime.SubscribeCodexBookStockEvents();",
         "OnSetFile_DeathWraith;",
     ], "Start_Integration")
     if error:
@@ -468,13 +531,21 @@ def main():
         "bossRushIntegrationRuntime.UnsubscribeJournalStockEvents();",
         "OnCollectSaveData_MedalStock;",
         "bossRushIntegrationRuntime.UnsubscribeBrickStoneStockEvents();",
-        "OnCollectSaveData_CodexBookStock;",
+        "bossRushIntegrationRuntime.UnsubscribeCodexBookStockEvents();",
         "OnSetFile_DeathWraith;",
     ], "OnDestroy_Integration")
     if error:
         return fail(error)
     if "SavesSystem.OnCollectSaveData += OnCollectSaveData_TicketStock;" in lifecycle or "SavesSystem.OnSetFile += OnSetFile_TicketStock;" in lifecycle:
         return fail("host must not own ticket stock delegates")
+    if "SavesSystem.OnCollectSaveData += OnCollectSaveData_CodexBookStock;" in lifecycle or "SavesSystem.OnSetFile += OnSetFile_CodexBookStock;" in lifecycle:
+        return fail("host must not own Codex Book stock delegates")
+    codex_try_bridge = method_body(codex_book_host, "internal bool TryInjectCodexBookIntoShop(StockShop shop)")
+    if "return bossRushIntegrationRuntime.TryInjectCodexBookIntoShop(shop);" not in codex_try_bridge:
+        return fail("the old Codex Book shop injection entry must remain a thin host compatibility bridge")
+    codex_inject_bridge = method_body(codex_book_host, "internal void InjectCodexBookIntoShops(string targetSceneName = null)")
+    if "bossRushIntegrationRuntime.InjectCodexBookIntoShops(targetSceneName);" not in codex_inject_bridge:
+        return fail("the old Codex Book scene injection entry must remain a thin host compatibility bridge")
     if "StockShop.OnItemPurchased += OnItemPurchased_Integration;" in lifecycle or "StockShop.OnItemPurchased -= OnItemPurchased_Integration;" in lifecycle:
         return fail("host must not own the purchase callback delegate")
     scene_loaded = method_body(lifecycle, "private void OnSceneLoaded_Integration(Scene scene, LoadSceneMode mode)")

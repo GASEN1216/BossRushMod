@@ -11,7 +11,7 @@ HUD_RUNTIME = Path("ZombieMode/ZombieModeRuntimeModule_Hud.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 BOSS_CONTROLLER = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
-REWARD_CATALOG = Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs")
+REWARD_CATALOG = Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs")
 REWARD_PREPARATION = Path("ZombieMode/ZombieModeRewardPreparationDuration.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 REWARD_SERVICES = Path("ZombieMode/ZombieModeRewardNpcServices.cs")
@@ -248,7 +248,7 @@ def main() -> int:
 
     for required in [
         "public int RemainingSelections = 1;",
-        "GetZombieModeBossRewardSelectionCount(zombieModeRunState.CurrentWave)",
+        "owner.GetZombieModeBossRewardSelectionCountForRewardRuntimeModule(runState.CurrentWave)",
         "IsZombieModeBossBonusRewardSelection",
         "KeepZombieModeBossBonusRewardEntries",
         "selectedNode.RemainingSelections = Mathf.Max(1, selectedNode.RemainingSelections - 1);",

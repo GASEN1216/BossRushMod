@@ -21,7 +21,7 @@ CLEANUP = ROOT / "ZombieMode/ZombieModeCleanup.cs"
 REWARDS = ROOT / "ZombieMode/ZombieModeRewards.cs"
 REWARD_PARTS = [
     REWARDS,
-    ROOT / "ZombieMode/ZombieModeRewardCatalogAndSelection.cs",
+    ROOT / "ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs",
     ROOT / "ZombieMode/ZombieModeRewardEffectsAndNpc.cs",
     ROOT / "ZombieMode/ZombieModeRewardItemGrants.cs",
     ROOT / "ZombieMode/ZombieModeRewardNpcServices.cs",
@@ -32,7 +32,7 @@ REWARD_PARTS = [
 ]
 ENTRY = ROOT / "ZombieMode/ZombieModeEntry.cs"
 CASH = ROOT / "ZombieMode/ZombieModeCashInvestmentView.cs"
-EXTRACTION = ROOT / "ZombieMode/ZombieModeExtractionController.cs"
+EXTRACTION = ROOT / "ZombieMode/ZombieModeRuntimeModule_Extraction.cs"
 UI_HELPER = ROOT / "ZombieMode/ZombieModeUIHelper.cs"
 Boss_CONTROLLER = ROOT / "ZombieMode/ZombieModeRuntimeModule_BossController.cs"
 BEACON_CONFIG = ROOT / "Integration/Items/ZombieTideBeaconConfig.cs"

@@ -6,7 +6,7 @@ from cs_source_util import clean_source
 
 REWARD_PARTS = [
     Path("ZombieMode/ZombieModeRewards.cs"),
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -60,7 +60,7 @@ def extract_method(text: str, name: str):
 def main() -> int:
     spawner = Path("ZombieMode/ZombieModeSpawner.cs").read_text(encoding="utf-8")
     spawn_core = Path("Utilities/EnemySpawnCore.cs").read_text(encoding="utf-8")
-    extraction = Path("ZombieMode/ZombieModeExtractionController.cs").read_text(encoding="utf-8")
+    extraction = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs").read_text(encoding="utf-8")
     isolation = Path("ZombieMode/ZombieModeMapIsolation.cs").read_text(encoding="utf-8")
     inventory_bridge = clean_source(Path("ZombieMode/ZombieModeInventoryTransfer.cs").read_text(encoding="utf-8"))
     runtime_module = clean_source(Path("ZombieMode/ZombieModeRuntimeModule_InventoryTransfer.cs").read_text(encoding="utf-8"))

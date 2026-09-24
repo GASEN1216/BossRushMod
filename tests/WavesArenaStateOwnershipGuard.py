@@ -11,6 +11,7 @@ HOST = clean_source((ROOT / "ModBehaviour.cs").read_text(encoding="utf-8-sig"))
 BRIDGE = clean_source((ROOT / "WavesArena/WavesArenaRuntimeHooks.cs").read_text(encoding="utf-8-sig"))
 LOOT_BRIDGE = clean_source((ROOT / "LootAndRewards/LootAndRewards.cs").read_text(encoding="utf-8-sig"))
 SPECIAL_LOOT_BRIDGE = clean_source((ROOT / "LootAndRewards/LootAndRewardsSpecialLoot.cs").read_text(encoding="utf-8-sig"))
+SPECIAL_LOOT_PRODUCER = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_SpecialLoot.cs").read_text(encoding="utf-8-sig"))
 MODULE = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule.cs").read_text(encoding="utf-8-sig"))
 TICK = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_Tick.cs").read_text(encoding="utf-8-sig"))
 SPAWNERS = clean_source((ROOT / "WavesArena/WavesArenaSpawnerControl.cs").read_text(encoding="utf-8-sig"))
@@ -30,6 +31,9 @@ LOOT_CLEANUP = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_LootClea
 DRAGON_LOOT = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_DragonLoot.cs").read_text(encoding="utf-8-sig"))
 RANDOM_LOOT = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_RandomBossLoot.cs").read_text(encoding="utf-8-sig"))
 RANDOM_LOOT_BRIDGE = clean_source((ROOT / "LootAndRewards/LootAndRewardsRandomBossLoot.cs").read_text(encoding="utf-8-sig"))
+BOSS_LOOT_EVENT = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_BossLootEvent.cs").read_text(encoding="utf-8-sig"))
+VICTORY_REWARD = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs").read_text(encoding="utf-8-sig"))
+VICTORY_BRIDGE = clean_source((ROOT / "LootAndRewards/LootAndRewardsVictoryRewards.cs").read_text(encoding="utf-8-sig"))
 START = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_Start.cs").read_text(encoding="utf-8-sig"))
 BOSS_START_HOST = clean_source((ROOT / "WavesArena/WavesArenaBossSpawning.cs").read_text(encoding="utf-8-sig"))
 REGISTRATION = clean_source((ROOT / "ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8-sig"))
@@ -287,6 +291,28 @@ def main():
             raise AssertionError("legacy quality guarantee must execute in arena module: " + method)
         if "wavesArenaRuntime." + method + "(" not in SPECIAL_LOOT_BRIDGE:
             raise AssertionError("legacy quality guarantee host entry must forward: " + method)
+    if "return wavesArenaRuntime.AddBossSpecialLootToLootboxCoroutine(" not in SPECIAL_LOOT_BRIDGE:
+        raise AssertionError("special Boss reward coroutine must forward to arena module")
+    for method in ("ReturnPendingExtraLootToCharacterItem", "DropPendingExtraLootIntoWorld"):
+        if "wavesArenaRuntime." + method + "(bossMain);" not in SPECIAL_LOOT_BRIDGE:
+            raise AssertionError("pending reward delivery host entry must forward: " + method)
+        if "internal void " + method + "(CharacterMainControl bossMain)" not in SPECIAL_LOOT_PRODUCER:
+            raise AssertionError("pending reward delivery must execute in arena module: " + method)
+    for token in (
+        "internal IEnumerator AddBossSpecialLootToLootboxCoroutine(",
+        "private readonly List<Item> modeFPlunderPenaltyScratch = new List<Item>();",
+        "if (useLegacyBossLootProbabilities && bossMaxHealth > LEGACY_BOSS_GUARANTEE_MIN_MAX_HEALTH)",
+        "ApplyModeFPlunderLootPenalty(inv, modeFPlunderLootPenaltyCount);",
+        "AddModeFPlunderLootBonus(inv, modeFPlunderLootBonusCount);",
+        "owner.TryAddBackMountainSeedLootForArena(inv, bossMain);",
+        "FinalizeBossRushLootboxPathTracking(bossMain);",
+        "owner.TryAddBackMountainSeedLootForArena(inv, bossMain);",
+        "FrostmourneBlueBossDropHandler.TryConsumePendingAsWorldDrop(bossMain, position);",
+    ):
+        if token not in SPECIAL_LOOT_PRODUCER:
+            raise AssertionError("special Boss reward gate, producer or cleanup trace missing: " + token)
+    if "modeFPlunderPenaltyScratch =" in LOOT_BRIDGE:
+        raise AssertionError("Mode F reward scratch must not remain on the host")
     for token in (
         "LegacyBossLootProbabilityModel.RollGuaranteeQuality(UnityEngine.Random.value)",
         "return bucket[UnityEngine.Random.Range(0, bucket.Count)];",
@@ -367,6 +393,24 @@ def main():
         raise AssertionError("random Boss reward generation must execute in arena module")
     if "wavesArenaRuntime.RandomizeBossLoot_LootAndRewards(bossMain, totalCount, killDuration," not in RANDOM_LOOT_BRIDGE:
         raise AssertionError("legacy random Boss reward entry must forward to arena module")
+    if "wavesArenaRuntime.OnBossBeforeSpawnLoot_LootAndRewards(bossMain, dmgInfo);" not in RANDOM_LOOT_BRIDGE:
+        raise AssertionError("Boss drop event delegate must forward to the arena module")
+    for token in (
+        "internal void OnBossBeforeSpawnLoot_LootAndRewards(CharacterMainControl bossMain, DamageInfo dmgInfo)",
+        "owner.IsModeFActive || owner.IsModeEActive",
+        "owner.TryAddBackMountainSeedToCharacterItemForArena(bossMain);",
+        "HandleBossDeath(bossMain, dmgInfo);",
+        "if (InfiniteHellMode)",
+        "owner.DropPendingExtraLootIntoWorld(bossMain);",
+        "owner.TryDropBackMountainSeedIntoWorldForArena(bossMain);",
+        "owner.IsRandomBossLootEnabledForArena()",
+        "RandomizeBossLoot_LootAndRewards(",
+        "ClearBossRandomLootTracking(bossMain);",
+    ):
+        if token not in BOSS_LOOT_EVENT:
+            raise AssertionError("Boss drop event gate, producer or cleanup trace missing: " + token)
+    if BOSS_LOOT_EVENT.index("owner.DropPendingExtraLootIntoWorld(bossMain);") > BOSS_LOOT_EVENT.index("FinalizeBossRushLootboxPathTracking(bossMain);", BOSS_LOOT_EVENT.index("if (InfiniteHellMode)")):
+        raise AssertionError("Infinite Hell pending rewards must be delivered before tracking is finalized")
     for token in (
         "bossRandomLootCandidateIdScratch = new List<int>(1024)",
         "bossRandomLootQualityScratch = new Dictionary<int, int>(1024)",
@@ -388,6 +432,35 @@ def main():
             raise AssertionError(cache_name + " must belong to the arena module")
         if "WavesArenaRuntimeModule." + cache_name not in LOOT_BRIDGE:
             raise AssertionError(cache_name + " host bridge missing")
+    for method in (
+        "OnAllEnemiesDefeated_LootAndRewards",
+        "StartVictoryRewardShadowCrate_LootAndRewards",
+        "CompleteVictoryRewardShadowCrate_LootAndRewards",
+        "NotifyVictoryRewardShadowCrateDisposed_LootAndRewards",
+        "TryStartModeGRewardMaterialization_LootAndRewards",
+        "CancelModeGRewardMaterialization_LootAndRewards",
+        "SpawnDifficultyRewardLootboxAtWorldPosition_LootAndRewards",
+        "SpawnDifficultyRewardLootboxFallback_LootAndRewards",
+    ):
+        if method + "(" not in VICTORY_REWARD or "wavesArenaRuntime." + method + "(" not in VICTORY_BRIDGE:
+            raise AssertionError("victory reward producer and legacy bridge must both exist: " + method)
+    for token in (
+        "owner.UnsubscribeArenaBossDeathsForArena();",
+        "owner.CheckClearAchievementsForArena();",
+        "owner.NotifyCourierBossRushCompleted();",
+        "owner.NotifyCampaignStandardCleared();",
+        "await UniTask.Delay(2000);",
+        "if (isVictoryCurrent()) CompleteVictoryRewardShadowCrate_LootAndRewards();",
+        "private ModeGRewardStrictMaterializer _activeModeGRewardMaterializer;",
+        "controller.Initialize(owner, main, visualPrefab, highQualityCount)",
+        "_activeVictoryRewardShadowCrateController.CompleteAndLand();",
+        "failureReason = \"TypeID 快照为空\";",
+        "owner.StartCoroutine(CleanupDifficultyRewardLootboxInventory_LootAndRewards(lootbox, highQualityCount));",
+    ):
+        if token not in VICTORY_REWARD:
+            raise AssertionError("victory reward state, materialization or cleanup trace missing: " + token)
+    if "private ModeGRewardStrictMaterializer _activeModeGRewardMaterializer;" in VICTORY_BRIDGE:
+        raise AssertionError("strict Mode G materializer state must not remain on the host")
     if "return wavesArenaRuntime.TickWavesArenaRuntime(deltaTime);" not in BRIDGE or "internal bool TickWavesArenaRuntime(float deltaTime)" not in TICK:
         raise AssertionError("arena timer tick must execute in arena module")
     for old_name, new_name in (

@@ -75,10 +75,10 @@ def check():
     for path, signature, statement in (
         ("Utilities/PlayerLifecycleRuntimeHooks.cs", "internal void RegisterPlayerLifecycleRuntimeEvents()", "Health.OnDead += CampaignObjectiveCollector.OnGlobalDead;"),
         ("Utilities/PlayerLifecycleRuntimeHooks.cs", "internal void RegisterPlayerLifecycleRuntimeEvents()", "Health.OnHurt += CampaignObjectiveCollector.OnGlobalHurt;"),
-        ("LootAndRewards/LootAndRewardsVictoryRewards.cs", "private async void OnAllEnemiesDefeated_LootAndRewards()", "NotifyCampaignStandardCleared();"),
+        ("WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs", "internal async void OnAllEnemiesDefeated_LootAndRewards()", "owner.NotifyCampaignStandardCleared();"),
         ("ModeD/ModeDWaves.cs", "private void OnModeDWaveComplete()", "NotifyCampaignModeDWaveComplete(modeDWaveIndex);"),
         ("ModeF/ModeFExtraction.cs", "private void OnModeFExtractionSuccess()", "NotifyCampaignModeFExtracted();"),
-        ("ZombieMode/ZombieModeExtractionController.cs", "private void CompleteZombieModeExtractionSuccess(", "NotifyCampaignZombieExtracted();"),
+        ("ZombieMode/ZombieModeRuntimeModule_Extraction.cs", "private void CompleteZombieModeExtractionSuccess(", "owner.NotifyCampaignZombieExtracted();"),
     ):
         require(path, signature, statement)
     return errors

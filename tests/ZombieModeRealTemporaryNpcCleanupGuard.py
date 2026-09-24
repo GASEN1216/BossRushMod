@@ -7,7 +7,7 @@ DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -18,7 +18,7 @@ def read_rewards() -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
 
 WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
-EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 
 
 def fail(message: str) -> int:
@@ -56,7 +56,7 @@ def main() -> int:
     result = require(waves, "RecycleZombieModeTemporaryRealNpcs(runId);", "wave cleanup wiring")
     if result:
         return result
-    result = require(extraction, "RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(runId);", "safe-zone cleanup wiring")
+    result = require(extraction, "owner.RecycleZombieModeSafeZoneBoundTemporaryRealNpcsForRuntimeModule(runId);", "safe-zone cleanup wiring")
     if result:
         return result
 

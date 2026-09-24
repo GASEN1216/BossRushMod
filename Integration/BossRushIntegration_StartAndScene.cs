@@ -107,8 +107,7 @@ namespace BossRush
             SavesSystem.OnCollectSaveData += OnCollectSaveData_MedalStock;
             SavesSystem.OnSetFile += OnSetFile_MedalStock;
             bossRushIntegrationRuntime.SubscribeBrickStoneStockEvents();
-            SavesSystem.OnCollectSaveData += OnCollectSaveData_CodexBookStock;
-            SavesSystem.OnSetFile += OnSetFile_CodexBookStock;
+            bossRushIntegrationRuntime.SubscribeCodexBookStockEvents();
             SavesSystem.OnSetFile += OnSetFile_DeathWraith;
 
             RegisterDragonSetEvents();
@@ -138,8 +137,7 @@ namespace BossRush
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_MedalStock;
             SavesSystem.OnSetFile -= OnSetFile_MedalStock;
             bossRushIntegrationRuntime.UnsubscribeBrickStoneStockEvents();
-            SavesSystem.OnCollectSaveData -= OnCollectSaveData_CodexBookStock;
-            SavesSystem.OnSetFile -= OnSetFile_CodexBookStock;
+            bossRushIntegrationRuntime.UnsubscribeCodexBookStockEvents();
             SavesSystem.OnSetFile -= OnSetFile_DeathWraith;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
             // 卸载前把内存中尚未写盘的亡魂列表刷一次，再解绑刷写回调，避免丢失死亡记录。

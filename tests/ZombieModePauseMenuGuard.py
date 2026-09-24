@@ -61,8 +61,8 @@ def main() -> int:
     if "PreparationTimer -= deltaTime" not in wave_text:
         return fail("ZombieModePauseMenuGuard: preparation countdown should consume the TickZombieMode deltaTime")
 
-    extraction_text = Path("ZombieMode/ZombieModeExtractionController.cs").read_text(encoding="utf-8")
-    if "float remaining = zombieModeRunState.BeaconChannelDuration" not in extraction_text:
+    extraction_text = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs").read_text(encoding="utf-8")
+    if "float remaining = runState.BeaconChannelDuration" not in extraction_text:
         return fail("ZombieModePauseMenuGuard: beacon channel should be remaining-time based")
     if "remaining -= Time.unscaledDeltaTime" not in extraction_text:
         return fail("ZombieModePauseMenuGuard: beacon/extraction countdown should decrement only when not paused")
