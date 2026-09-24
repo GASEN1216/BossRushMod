@@ -303,3 +303,10 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 - 删除：591 → 147。`superpowers/`、`视频策划/`、三个转发页（`代码审查/CODE_REVIEW*.md`、`协作/FIX_TRACKER.md`）、`AI使用提示词.md`、`项目全景文档.md`，全量审计的批次件，审美审查分报告，逐轮人工实测与 F3 诊断的中间轮次，截图，已落地的实施计划书，重复教程与重复设计稿。有同专题结论件的，引用改指结论件；没有的（如 `项目全景文档.md`）在 `FIX_TRACKER.md` 等历史台账里保留原文，不改写历史。
 - 内容：留下的教程、架构说明与设计稿逐篇对照代码改正（例：Mode F 回血数值、护士折扣档位、丧尸准备期与刷怪模型、日报签到奖励、物品 ID 表末尾与明细、Config 黑名单已 JSON 化、Hooks 约定与 §4.15 冲突处）；设计稿文首加状态行；报告加历史快照行；长期文档里的 `文件:行号` 改为「文件 + 符号名」。
 - 同步：全仓库引用改写（`AGENTS.md`、子系统 `AGENTS.md`、`CODE_REVIEW*.md`、`FIX_TRACKER.md`、`.qoder/repowiki/`、守卫与工具路径、26 个 `.cs` 的注释），`.gitignore` 放行行改为新路径（嵌套目录先放行父目录），`docs/AGENTS.md` 的「放哪里」表与 `docs/README.md` 重写。全量守卫 665/665 PASS。
+## 2026-09-24 模块解耦 P1：根规则迁出对照（SAFE / OPERATIONAL）
+
+- 原根 §3 子系统地图 → `MODULES.md` 生成表与保留的旧地图、`architecture/modules.json` 归属表；子目录规则清单仍在根 §3。
+- 原根 §4.14 UI 全文 → `Common/UI/AGENTS.md`，根 §4.14 留入口和四项总则。
+- 原根 §4.16 新增内容全文 → `Integration/AGENTS.md`「原根规则 §4.16」，根 §4.16 留四项要点。
+- 原根 §4.17 F3 与常驻 HUD 全文 → `DebugAndTools/AGENTS.md`，根 §4.17 留三项要点。
+- 根 §5、§7、§9、§11、§14 压缩为指针与要点；长期细则以原专项规则、`docs/contracts.md` 及相应守卫为准。§4.1 与 §4.3 标题、正文原样保留。前后数字见 `architecture/CONTEXT_BASELINE.md`。

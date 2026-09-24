@@ -44,7 +44,7 @@ BOUNTY = SKY + "SkyIslandBounty.cs"
 GNAT_BOUNTY = SKY + "SkyIslandSessionGnatBounty.cs"
 PANEL = SKY + "SkyIslandStoryPresentation.cs"
 MARKERS = SKY + "SkyIslandMapMarkers.cs"
-FINDINGS = "CODE_REVIEW_FINDINGS.md"
+FINDINGS = "archive/CODE_REVIEW_FINDINGS_2026-09.md"
 START = "Integration/BossRushIntegration_StartAndScene.cs"
 
 PATHS = [DIALOGUE, WORLD, BRIDGE, PRELUDE_QUEST, QUEST_CORE, QUEST_COMPONENTS, PANEL, START, FINDINGS, MARKERS, BOUNTY, GNAT_BOUNTY]

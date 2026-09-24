@@ -8,60 +8,21 @@
 
 ## 1. 项目概览
 
-《逃离鸭科夫》（Escape from Duckov）的大型 Unity Mod。以 BossRush 竞技场为起点，现在包含标准 BossRush 与无间炼狱、Mode D–H、末日丧尸模式、独立出击地图天空岛、剧情战役鸭王征程，以及自定义 Boss、装备、NPC、基地建筑、游戏内百科与在线 Wiki。
-
-- C# 7.3，命名空间统一 `BossRush`，运行在游戏内嵌的 Mono 与 Unity 主线程上。
-- 没有 `.csproj`：`compile_official.bat` 显式列出全部源码，直接调用 Roslyn `csc.dll`，引用本机游戏的 `Duckov_Data\Managed` 与创意工坊的 Harmony。只有装了游戏的 Windows 能真正编译。
-- 对官方游戏没有稳定 API，靠 Harmony 补丁、反射和官方类型强绑定。官方反编译源在 `鸭科夫源码/`，只读参考、不参与编译。
-- 质量保障四层：Windows 编译、`tests/` 的结构守卫与属性测试（CI 自动跑）、`tests/fixtures/` 的隔离执行回归、游戏内实机。前三层都过，不代表运行时正确。
-- 维护语言中文：文档、回复、提交信息默认中文。
+《逃离鸭科夫》（Escape from Duckov）的 Unity Mod，含 BossRush、Mode D–H、丧尸模式、天空岛、鸭王征程与内容集成。C# 7.3，命名空间 `BossRush`，运行于游戏内嵌 Mono 和 Unity 主线程。
+没有 `.csproj`；`compile_official.bat` 显式列源码，以本机游戏程序集与创意工坊 Harmony 真编译。官方反编译源 `鸭科夫源码/` 只读，不参与编译；Harmony、反射和官方类型需对照现码。
+质量证据分为 Windows 编译、`tests/` 守卫与属性测试、隔离回归、游戏内实机；前三者不能证明实机正确。维护语言、文档、回复与提交信息默认中文。
 
 ## 2. 常用命令
 
-在仓库根目录执行。AI 会话里编译要用 PowerShell 的 `&` 调**完整路径**：`cmd /c compile_official.bat` 和 `compile_dev.bat`（内部是相对路径 `call`）在沙箱下都会报「不是内部或外部命令」，那不是代码错误。
-
-```powershell
-& "$PWD\compile_official.bat"                                  # 正式构建，成功标志 Build succeeded!，并自动部署到游戏 Mod 目录
-$env:BOSSRUSH_DEV_BUILD = "1"; & "$PWD\compile_official.bat"   # Dev 构建：DevLog、F2–F12 调试热键、F3 验收套件（输出先有 [DEV] BOSSRUSH_DEV enabled）
-python tools/run_guards.py --changed-only                      # 与改动相关的守卫；去掉参数跑全量（run_guards.bat 等价）
-python tools/run_runtime_regressions.py --filter <名字>         # 隔离执行回归；--list 看全部
-python tools/verify_syntax.py --with-bcl                       # 没装游戏时的语法探针，不等于编译通过
-npm --prefix wiki-site run build                               # 改了 wiki-site/ 或 WikiContent/ 时
-```
-
-- `compile_official.bat` 自动探测 `GAME_PATH` 与 `WORKSHOP_PATH`，探测不到时显式设置；部署写 `%GAME_PATH%\Duckov_Data\Mods\BossRush\`。游戏开着时 DLL 与 bundle 被锁、copy 静默失败，部署后按实际游戏路径核对 SHA-256。`BOSSRUSH_NO_PAUSE=1` 跳过结尾的 pause。
-- 只想确认某个提交能编译、不碰游戏目录：在临时 worktree 上编，`GAME_PATH` 指向放了 `Duckov_Data\Managed` **拷贝**的临时目录（不要用 junction，PowerShell 5.1 递归删除会顺着删掉游戏 DLL）。
-- 交付部署用正式构建，不把 Dev 构建留在游戏目录。
-- 执行回归里依赖官方 DLL 的夹具需要能找到游戏程序集，环境变量见 `tests/AGENTS.md`。
-- 改 `.bat` 不要用 `sed -i`：`.bat` 必须是 CRLF（`.gitattributes`），换成 LF 后 cmd 会报与代码无关的怪错；`compile_official.bat` 的注释用 ASCII 标点（`chcp 65001` 下全角标点后的尾段会被当命令执行）。
+在仓库根目录用 PowerShell 的 `& "$PWD\compile_official.bat"` 正式构建；Dev 构建先设 `$env:BOSSRUSH_DEV_BUILD="1"`，再调同一完整路径。`cmd /c` 在沙箱下可能误报找不到命令。守卫：`python tools/run_guards.py --changed-only`（全量去参数）；回归：`python tools/run_runtime_regressions.py --filter <名字>`（全量去参数）；语法探针：`python tools/verify_syntax.py --with-bcl`；改 Wiki 时 `npm --prefix wiki-site run build`。
+构建自动探测 `GAME_PATH` / `WORKSHOP_PATH`，正式部署写游戏 Mod 目录；游戏锁文件时复制可能静默失败，按实际目标 SHA-256 核对。`BOSSRUSH_NO_PAUSE=1` 跳过等待。隔离构建的 `GAME_PATH` 指向游戏 Managed 的**拷贝**，不用 junction；交付部署用正式构建，不把 Dev DLL 留在游戏目录。依赖游戏 DLL 的夹具环境变量见 `tests/AGENTS.md`。
+`.bat` 保持 CRLF，修改勿用 `sed -i`；`compile_official.bat` 的注释用 ASCII 标点，避免 `chcp 65001` 下尾段被当命令执行。
 
 ## 3. 子系统地图
 
-| 路径 | 职责 | 专项规则 |
-| --- | --- | --- |
-| `ModBehaviour.cs`、`ModConfigApi.cs` | 主入口、全局状态、ModConfig API | 本文 §4.15 |
-| `WavesArena/` | 标准 BossRush 与无间炼狱波次 | |
-| `ModeD/`、`ModeE/`、`ModeF/` | 白手起家、划地为营、血猎追击 | |
-| `ModeG/` | 宿命回响：九波三幕、宿敌、契约 | |
-| `ModeH/` | 百战留痕（黑市鸭王杯）：经理人模式 | |
-| `ZombieMode/` | 末日丧尸模式，独立生命周期与奖励 | `ZombieMode/AGENTS.md` |
-| `Campaign/` | 鸭王征程：六章剧情契约，经全局采集器与少量 notify 漏斗挂到各模式，不重构模式代码 | |
-| `PetNest/`、`RandomEvents/` | 遗种巢（养崽）、局内随机事件 | |
-| `Integration/` | 物品、装备、NPC、商店、好感、婚姻、重铸、词缀锻造、图鉴、日报、竞技场后山、新武器与套装、天空岛物品 | `Integration/AGENTS.md` |
-| `DebugAndTools/` | 调试工具、F3 调试菜单与玩法验收；`SkyIsland/` 是天空岛运行时（正式内容）；`ArenaPrototype/` 是石堡等场景原型 | `DebugAndTools/SkyIsland/AGENTS.md` |
-| `Common/` | 共享特效、装备能力、数据解析、存档引擎、共享 UI 库 `Common/UI/BossRushUI.cs` | 本文 §4.14 |
-| `Utilities/` | 跨模块运行时 hooks、刷怪核心、场景门控、恢复监控 | `Utilities/AGENTS.md` |
-| `Patches/` | 跨模块 Harmony 补丁 | `Patches/AGENTS.md` |
-| `Config/`、`Localization/`、`LootAndRewards/` | 配置与数据注册、本地化注入、掉落与奖励 | |
-| `Achievement/`、`Audio/`、`BossFilter/`、`Interactables/`、`MapSelection/`、`UIAndSigns/` | 各自独立的小子系统 | |
-| `Injection/` | 旧注入逻辑的残留占位，实际逻辑已并入 `ModBehaviour` / `Integration` | |
-| `Assets/Data/`、`Assets/SpawnPoints/` | 进 git 的 JSON 数据表；其余 `Assets/`（bundle、图片、音效）local-only | |
-| `ArtSource/SkyIsland/`、`tools/` | 天空岛可重复生成的数据；生成器、构建与校验脚本 | |
-| `tests/` | 结构守卫、属性测试、执行回归夹具 | `tests/AGENTS.md` |
-| `WikiContent/`、`wiki-site/` | 游戏内百科正文（中英）、VitePress 在线 Wiki | `wiki-site/AGENTS.md` |
-| `docs/` | 架构说明、教程、参考表、设计稿、报告、契约，默认 local-only；目录见 `docs/README.md` | `docs/AGENTS.md` |
-| `.qoder/repowiki/` | 详细知识库（底子是 2026-08 的生成快照） | 本文 §4.13 |
-| `鸭科夫源码/` | 官方反编译源码，只读参考；grep 时排除或写明用途 | |
+模块职责、入口和规则文件见 `MODULES.md`；按任务运行 `python tools/task_context.py --module <id>`。
+专项规则：`Integration/AGENTS.md`、`Patches/AGENTS.md`、`Utilities/AGENTS.md`、`ZombieMode/AGENTS.md`、`DebugAndTools/AGENTS.md`、`DebugAndTools/SkyIsland/AGENTS.md`、`Common/UI/AGENTS.md`、`tests/AGENTS.md`、`docs/AGENTS.md`、`wiki-site/AGENTS.md`。
+官方反编译源 `鸭科夫源码/` 只读、不编译；`docs/` 与多数 `Assets/` 默认 local-only。
 
 ## 4. 硬规则
 
@@ -146,22 +107,10 @@ python tools/run_guards.py --filter OfficialCompileList
 
 ### 4.14 UI 走共享库与官方界面
 
-- Canvas `sortingOrder` 用 `BossRushUILayers` 常量；颜色用 `BossRushUIColors` token，遮罩用 `Backdrop`。
-- 面板、按钮、卡片底图走 `BossRushUI.ApplyPanelSkin`：卡片、分隔线、滚动滑块与细轨显式传 `BossRushUISkinPart`，`radius <= 3` 的细条程序化绘制（规格见 `docs/guides/BossRushUI_图集规格.md`）。深色面板要有边就调 `BossRushUI.ApplyPanelStroke`（描边色 `BossRushUIColors.Stroke`），或用 `ApplyFramedPanelSkin` 一次套上底图与描边——图集里烤进去的内描边会被深色 token 乘到看不见。
-- 按钮字色用 `BossRushUI.GetButtonTextColor(背景色)`，不写死；对比度按实际合成后的底色算，正文至少 4.5:1。游戏是 Linear 色彩空间，半透明在线性光里混合，复算按线性模型（`docs/contracts.md` §7.1），观感修复以实机截图取色为准。
-- 缓动只用 `BossRushUI.EaseOut`（位移）与 `BossRushUI.SmoothStep`（原地淡变），子元素错峰入场用 `BossRushUIEntranceAnimation`，不引入 DOTween 一类第三方依赖。走 unscaled 时间的表现层自带 `BossRushUI.IsGamePaused()` 门；常驻 HUD 跟随 `BossRushUI.IsOfficialHudHidden()`。
-- **质感层（2026-09-23，owner 验收「不要塑料感」）**：按钮一律经过 `ZombieModeUIHelper.ApplyButtonColors` / `SetButtonBaseColor`，面板与卡片一律经过 `ApplyPanelStroke`（或 `ApplyFramedPanelSkin`、`CreateCard`、`CreateModalSurface`），这样才拿得到共享层（`Common/UI/BossRushUIFeel.cs`）挂上的官方 `UI/hover`、`UI/click` 音效、按下回弹、外投影、顶边高光与描边置顶。手搓 `AddComponent<Button>()` 或裸 `Image` 当面板，等于绕开这一层。关闭用 `BossRushUIKit.PlayCloseAndDestroy`（先释放输入租约），手搓遮罩调 `BossRushUIKit.StyleBackdrop`。压在游戏世界上的 HUD 字用 `BossRushUIKit.ApplyWorldTextOutline`；`UI.Outline` / `UI.Shadow` 挂在 TMP 上无效。
-- **按钮配色口径**：主操作的整块填充用 `BossRushUIColors.AccentFill`，每屏最多一个；`Accent` 只做描边、强调竖条、焦点环、进度条、小字强调，不铺满整块按钮（owner 点名的「平涂薄荷绿」）；危险且不可逆用 `Danger`；其余是次级按钮（`BossRushUIKit.StyleSecondaryButton`）；`Success` 只表示「已完成 / 已达成」状态。富文本颜色用 token 预先转成的 hex，不写 `<color=red>` 一类纯色。
-- **程序化特效材质**一律用 `BossRushFxMaterials.Get(Alpha / Additive, 贴图)`（`Common/Effects/BossRushFxMaterials.cs`）。游戏里 `Shader.Find` 找不到 `Legacy Shaders/Particles/Additive`、`Particles/Additive`、`Particles/Alpha Blended`、`Mobile/Particles/*`、`Unlit/Color`、`Unlit/Transparent`，`Standard` 在 URP 下画不出来；各写一串回退链只会落到不发光的 `Sprites/Default` 或 alpha 失效的方片。
-- 字体用 `BossRushUI.ApplyGameFont` / `ZombieModeUIHelper.GetGameFont()`，新文本用 TMP（内置 Arial 渲染不了中文）；`CanvasScaler` 调 `ZombieModeUIHelper.ConfigureCanvasScaler`。
-- 玩家可见文本（含 `WikiContent/` 正文与随包数据表）**只能用 GBK 收录的符号**：官方字体是中文字体，★☆○●◎◇■□△▲※→←↑↓√Ⅰ① 一定有字形，Emoji、✓✗❄❌⚠、U+2212 减号、U+2022 圆点在游戏里是空白豆腐块（2026-09-19 实测）。判据与例外见 `tests/PlayerFacingGlyphGuard.py`；日志与只给人在编辑器里读的报告不受此限。
-- 能直接复用官方 prefab（`GameplayDataSettings.UIPrefabs.*`、克隆 `MapSelectionEntry` 等）就不用共享库重造。
-- 选项先判断再挂，不挂灰掉的占位项；「能不能挂」与「点了会不会被拒」共用同一份判据；同一页超过 3–4 项就分二级。列表页（合成配方、航务委托）例外：上限 6 项，且不带立绘。
-  付费服务照主流商店口径（2026-09-14 拍板）：没有要做的不挂；钱不够、还在冷却照挂，按钮上写明价钱或还要等几秒。剧情前置没到、已经做完、纯说明性的占位项一律不挂，「还差什么」进正文。
-- **交互骨架（UI 制作共识，2026-09-24，owner 要求新 UI 一律照做）**：全文 `docs/architecture/UI制作共识.md`。动手前先定页型——单决策页（样板：鸭王杯入场选人页）、列表 + 详情（遗种巢巢页）、分区任务清单（孵化页）、一屏表单（远征页）、确认弹窗，能用官方界面就不自绘。按钮跟着它作用的对象走：单对象操作进该对象的行内或详情底栏，批量「选择」 / 排序进列表头，页面结论放底栏最右，换视图用页签；不要每张卡挂几颗按钮，不要把单对象与全局操作混在一条动作条里，不要依赖看不见的跨页选中。危险操作进确认前是红描边红字、靠左、远离主操作，确认一律走共享的 `BossRushConfirmDialog`（`Common/UI/BossRushConfirmDialog.cs`），不再各写一份。列表行只放识别信息（图、名字、一行状态），说明进详情、「说明」页或空状态。「干净」照鸭王杯选人页：页头只有横幅 / 标题 + 一句引导，一页一个决定，数量有界不滚动，大留白，卡片整张可点，深色底 + 一种强调色，风险披露降成页脚小字，白话文案。交付前按该文第 10 节自检。
-- 叙事走官方对话（`DialogueManager.ShowDialogueSequenceBilingual` / `ShowMultipleChoiceBilingual`，长文案一句一屏），图鉴条目走官方 `NoteIndex`（我们的存档是权威，官方图鉴只做双向镜像）。镜像会随官方存档写进 `NoteIndexData`，2026-09-14 拍板接受为 §10「写入官方存档键」的例外（`docs/contracts.md` §7.1）。自绘面板只在官方给不了的能力上保留，理由写进文件头。跨局、一次性的持久剧情可以在 owner 明确授权后接 `Duckov.Quests`；已授权范围：**天空岛跨局主线**（2026-09-16：Jeff 序章 590001 加岛上三条 590011–590013，给予者是岛上居民，用官方 enum 之外的整数 5901–5903）与**鸭王征程六章**（2026-09-22：590101–590106，给予者官方 Jeff=1）。任务表按子系统各一份（`SkyIslandOfficialQuestTable`、`CampaignQuestTable`），投影核心只有 `Utilities/OfficialQuests/` 一份（唯一实例、四个 Harmony 补丁只装一次，守卫 `OfficialQuestProjectionGuard`），两者都以各自的 Mod 存档为权威，官方 Quest 只做 UI / 事件投影，并在保存快照中过滤自定义 ID。按出击刷新的岛内委托不接跨局 Quest（教程见 `docs/guides/官方任务系统接入教程.md`）。
-
-守卫：`BossRushUISharedLibraryGuard`、`BossRushUISkinLoaderGuard`、`BossRushUIFeelGuard`、`SkyIslandUiContrastGuard`、`SkyIslandOfficialApiReuseGuard`、`SkyIslandChoiceGateGuard`。
+- UI 规则全文在 `Common/UI/AGENTS.md`；共享库 `Common/UI/BossRushUI.cs`，优先复用官方界面。
+- 按钮质感走共享 `BossRushUIFeel`，按钮颜色用 `ZombieModeUIHelper` 入口；面板描边走 `ApplyPanelStroke` / `ApplyFramedPanelSkin`。
+- 主操作填充用 `BossRushUIColors.AccentFill`，`Accent` 只作强调；可见文字遵守 `PlayerFacingGlyphGuard`。
+- 新 UI 按 `docs/architecture/UI制作共识.md` 定页型与按钮归属；确认弹窗统一 `BossRushConfirmDialog`。
 
 ### 4.15 新子系统的状态归属与宿主 partial 预算
 
@@ -172,146 +121,60 @@ python tools/run_guards.py --filter OfficialCompileList
 
 ### 4.16 新增内容：可以加，但要接得上
 
-新物品、新系统、新 TypeID、`SCHEMA+` 的存档与配置扩展、重打 AssetBundle 都是正常开发手段，不需要事先申请；需要 owner 签字的只有 §10 的破坏性事项。要求在于做完整：
-
-- 每件内容写清「从哪来 / 拿来做什么（卖钱不算）/ 串到哪条系统线」。功能重叠的拉开定位，不为新增而新增。
-- 「有代码」不等于「拿得到」：零获取途径、入口没接线、配置器没登记，编译和守卫都查不出来。交付前从玩家入口读一遍到生产逻辑，能写成守卫或属性测试的写上。
-- 存档扩展走 `SCHEMA+`：新字段可选、旧档读出有合理默认值、掩码与版本同步。持久化复用 `Common/Lifecycle/BossRushSaveCoordinatorEngine` 与 `BossRushSlotJsonStore`，不再复制状态机。
-- 重打包会把作者工程当下的全部资产一起发出去：打包前确认作者工程里没有别人未完成的改动，打包与部署后按 `DebugAndTools/SkyIsland/AGENTS.md` §6 核对。
-- **贴图导入设置属于交付内容**：作者工程里的 `TextureImporter` 才决定玩家看到什么，PNG 多大不算数。物品 / 装备 / 图标 128–512（最多 512），立绘、横幅、海报最多 1024，并关掉 `crunchedCompression`（只压磁盘、不省显存，quality 50 在近距离看的图上是可见块状噪点）。口径与批量修正见 `tools/apply_unity_texture_policy.py`，守卫 `tests/UnityTextureImportPolicyGuard.py`。改完必须在 Unity 里重新导入并重打相关 bundle 才生效。
-- **头盔佩戴校准是资源契约**：EquipmentModel 根节点保持单位变换，校准写在网格子节点；官方挂载只清位置/旋转。轴向与盔壳定位逐件核对，不按整体 bounds 统一居中。数值唯一源 `tools/helmet_fit_profiles.json`，经 `tools/helmet_fit.py --sync` 和作者工程 `HelmetFitUtility` 应用；生成不能覆盖或重复烤入偏移，打包须校验与回读。新增/换网格同步校准表；专项规则见 `Integration/AGENTS.md`，守卫 `HelmetFitWiringGuard`、`HelmetFitPolicyPropertyTest`。
-- 作者工程与 Unity Editor 的路径不要写死：统一走 `tools/unity_project_path.py`（`BOSSRUSH_UNITY_PROJECT` / `BOSSRUSH_UNITY_EDITOR` 优先）。写死路径在工程搬家后会让「找不到就跳过」的守卫**静默变成永远 PASS**。
-- 交付记录里写的「本轮不加 TypeID / 不改存档 / 不重打包」只描述那一轮的范围，不是长期规则。
+- 新内容与 `SCHEMA+` 可以自主实现；每件内容要有获取途径、用途和系统接线。细则见 `Integration/AGENTS.md`「原根规则 §4.16」。
+- 存档扩展保留旧档默认值、掩码与版本，复用 `BossRushSaveCoordinatorEngine` 和 `BossRushSlotJsonStore`。
+- 资源重打前核对作者工程，贴图导入和头盔校准按 `Integration/AGENTS.md` 执行；作者工程路径由 `tools/unity_project_path.py` 解析。
+- 历史交付范围不是长期禁令；破坏性事项仍按 §10。
 
 ### 4.17 F3 验收用例与常驻 HUD
 
-F3 玩法验收只在 Dev 构建里存在（`BOSSRUSH_DEV_BUILD=1`），目标是把实机前能自动看的都收进报告，人工清单只留读报告与手感项。新增用例时：
-
-- **判据与取数分开**：判据写成 `#region 纯判据` 里的静态函数，只吃基本类型与小结构、返回 ok / reason / metrics，由执行回归逐字抽取运行（天空岛是 `tests/fixtures/SkyIslandValidationJudges`）；取数方法只读观测面（天空岛是 `SkyIslandSessionValidation.cs` 的属性）。物理、渲染、Harmony 这类离线造不出来的只做 L1 守卫，不硬凑执行回归。
-- **只读套件就是只读**：不写剧情与存档、不注册或写官方图鉴、不刷怪、不改强制夜里、不打补丁（`SkyIslandValidationSuiteGuard` 的禁用清单）。会改状态的检查进 Dev 演练套件：整文件 `#if BOSSRUSH_DEV`、独立按钮、复用专用测试档的开跑门、报告头 `read_only=false`、`finally` 还原、不写存档不收录；只读套件不得引用演练代码（`SkyIslandReadOnlySuiteDrillIsolationGuard`、`SkyIslandDrillNoPersistenceGuard`）。
-- **全自动实机回归是第三档**：入口只有「自动验收 + 完整待测清单」这一个按钮（不另加按钮）。主套件回到基地之后，它带着专用测试档经船点去天空岛，按步骤表 `Assets/Data/SkyIslandAutotest.json`（加步骤只改数据）瞬移、交互、刷怪、换语言、截图并做进程内像素检查，结果写进 `BossRushTestReports/<runId>/`（manifest.json、summary.md、shots/），由 AI 用 `tools/autotest_review.py` 读。只在 Dev 构建、只在专用测试档；**可以**写这个槽的天空岛剧情与背包，但必须先取快照，写入前过 `AutotestWriteAllowed`，收尾阶段与 `CompleteSession` 两道还原并复位语言、强制夜里、无敌、血量与时间流速，中途崩溃回基地按快照键恢复。只读套件与演练不得引用它（`F3AutotestOrchestratorGuard`、`SkyIslandAutotestTableGuard`）；换回正式构建后用 `python tools/check_dll_identifiers.py --expect absent` 实查 DLL。
-- **截图由 owner 看，AI 不读**（2026-09-15 owner 定：读图很耗 token）：
-  - AI 审阅结果时只读文字：`tools/autotest_review.py` 产出的 `review.md` / `review.json`、`summary.md`、`manifest.json` 里的断言与 metrics，以及 `Player.log` 里的 `[AUTOTEST]` 行。`shots/`、`thumbs/`、`sheets/` 里的图，owner 没有明确要求就一张都不读。
-  - 每次请 owner 跑 F3 时，同时给一份**看图清单**：步骤 id、截图或拼图的文件名、画面里看哪个位置、什么算不合格。清单按本轮改过的画面来列；跑完后如果有文字判断不了的红项或结果翻转，再补几条。owner 看完回报，结论的证据来源写「owner 目检」。
-  - 同一类视觉项反复要人看时，就改成进程内像素探针，把结论变成 manifest 里的数值（例：撤离环按环带覆盖率判定）。
-- **SKIP 不能吞缺陷**：先查「缺了会让这条用例永远 SKIP」的前提（资源在不在、补丁装没装、皮肤注入没有），再按场景条件（白天、场上没有目标）记 SKIP。
-- **用例 id 写字面量交给外壳**：`RunSyncCase` / `RunSkyIslandSync` / `RunSkyIslandCase` 一类外壳的第一个参数写字面量；新增外壳登记进 `tools/gameplay_coverage.py` 的 `CASE_RUNNERS`，用例登记进 `Assets/Data/GameplayCoverage.json`（`GameplayCoverageCaseRunnerGuard`）。要在基地看的（官方图鉴镜像、出击残留）挂主套件 `RunSuite`，不塞进岛内套件。
-- **常驻 HUD**（进局就一直在、不是玩家主动打开的）每帧入口同时经过 `BossRushUI.IsOfficialHudHidden()` 与 `BossRushUI.IsGamePaused()`，并登记进 `tests/PersistentHudVisibilityGuard.py`（它按语义核对判定与宿主驱动，不只查子串）。引用任何 UI 层级常量的文件都要在那里归类（常驻 / 排除 / 模态，写明理由）；画布层级不写字面量；`OnGUI` 同样登记。
+- F3、只读套件、Dev 演练和全自动实机回归的完整规则在 `DebugAndTools/AGENTS.md`；F3 只在 Dev 构建存在。
+- 截图由 owner 看，AI 只读文字报告；请 owner 实测时给步骤 id、文件名、画面位置与不合格条件。
+- 常驻 HUD 每帧经官方 HUD 显隐与暂停双门，并登记 `PersistentHudVisibilityGuard`。
 
 ## 5. 不可破坏的契约
 
-详细契约见 `docs/contracts.md`。进入代码前先识别这些兼容面：
-
-- TypeID、存档 key、`SavesSystem` key、配置 key。
-- `StreamingAssets/BossRushModConfig.txt` 的 JSON 配置格式。
-- `Assets/SpawnPoints/*.json` 地图刷新点格式与硬编码 fallback。
-- `WikiContent/catalog.tsv` 与 Wiki 正文索引；在线站导航 `wiki-site/docs/.vitepress/data/structure.mts` 与它一一对应（`WikiSiteStructureGuard`）。
-- 本地化 key，尤其 `BossRush_*` raw key。
-- AssetBundle 文件名、Prefab base name、`EquipmentFactory` / `ItemFactory` 命名规则。
-- Harmony 目标、`AccessTools` 字段、字符串反射绑定。数量随代码变化，以源码与逐类安装日志为准；官方更新后按 `docs/architecture/Harmony补丁契约稳定性.md` 复查。
-- 官方游戏行为：静默失败类陷阱（距离休眠、搜刮箱随机关闭、品质静默降级、空壳物品、暂停压 timeScale 等）见 `docs/contracts.md` §7.1。
-- 地图 `sceneName` / `sceneID`、场景传送坐标、NPC / 建筑字符串 ID。
-- 渲染路径：游戏跑在 URP Deferred 下，自研着色器必须带 `UniversalGBuffer` pass，缺了编译、守卫、判包全绿而玩家进游戏看不见（`docs/architecture/自研着色器与官方渲染管线约定.md`，闸门 `tools/verify_sky_island_bundle_shaders.py`）。
-- Python 守卫断言的结构约束。
+详细内容见 `docs/contracts.md`；改代码前识别：TypeID、存档 / `SavesSystem` / 配置 key 与 JSON 格式；`Assets/SpawnPoints/*.json` 和 fallback；`WikiContent/catalog.tsv` 与在线导航；本地化 key；AssetBundle / Prefab / Factory 命名；Harmony 目标、反射字段和官方静默失败行为；sceneName / sceneID、传送坐标与 NPC / 建筑字符串 ID；URP Deferred 的自研 shader `UniversalGBuffer` pass；Python 守卫的结构约束。任何相关改动先读对应专项规则、契约与实际调用点。
 
 ## 6. 兼容性分类
 
-变更说明、审查 finding、修复记录都标注以下分类之一或多项：
-
-| 分类 | 含义 | 例子 |
-| --- | --- | --- |
-| `SAFE` | 纯文档、注释、无行为代码整理，或静态证明无运行时变化 | AI 入口转发、文档索引 |
-| `COMPAT` | 向后兼容的功能 / 数据扩展 | 新增内容、新增可选配置且默认保持旧行为 |
-| `SCHEMA+` | 文件 / 配置 / 存档 schema 的向后兼容扩展 | JSON 增加可选字段、存档新增旗标位 |
-| `SCHEMA-` | schema 删除、重命名或语义改变 | 配置 key 改名、字段必填化 |
-| `WIRE+` | 与外部服务 / 游戏 API 的兼容扩展 | 飞书请求增加可选字段 |
-| `WIRE-` | 外部 API、协议、反射目标的破坏性改变 | Harmony 目标换方法、请求字段改名 |
-| `BREAKING` | 破坏存档、玩家现有配置、旧资源或旧工作流 | TypeID 复用、删除旧 key |
-| `OPERATIONAL` | 部署、构建、路径、密钥、人工流程变化 | 改构建脚本路径、改发布流程 |
-
-`SCHEMA-`、`WIRE-`、`BREAKING` 与高风险 `OPERATIONAL` 先拿 owner 明确确认（§10）。
+变更说明和审查记录标分类：`SAFE` 是文档、注释或静态证明无运行时变化；`COMPAT` 是向后兼容的功能 / 数据扩展；`SCHEMA+` 是向后兼容的文件、配置、存档 schema 扩展；`SCHEMA-` 是 schema 删除、改名或语义改变。
+`WIRE+` 是外部服务 / 游戏 API 兼容扩展；`WIRE-` 是外部 API、协议、反射目标破坏性改变；`BREAKING` 破坏存档、旧配置、资源或工作流；`OPERATIONAL` 涉及部署、构建、路径、密钥或人工流程。`SCHEMA-`、`WIRE-`、`BREAKING` 和高风险 `OPERATIONAL` 按 §10 先问 owner。
 
 ## 7. 工作方式
 
-- 先读实际代码、调用点、构建脚本和相关守卫再下结论。触及 TypeID、本地化、存档、配置、事件、Harmony / 反射、刷怪、模式状态机时，读对应专项文档与 `docs/contracts.md`。官方行为以 `鸭科夫源码/` 核实，不凭记忆。
-- 旧审查线索、日志片段、用户猜测是「未验证线索」，不是 confirmed bug；只能静态推断的结论写明「未运行验证」。
-- 工程原则（owner 定）：最小化修改、最大化复用、无性能问题、沿用仓库已验证的设计模式。「最小化修改」指不做与任务无关的重构、格式化、命名清洗或目录搬迁，**不是**限制完成任务所需的新增。
-- 先找能复用的：官方系统与 prefab，仓库现有管线（`ItemFactory` / `EquipmentFactory`、共享 UI、存档引擎、JSON 解析器、建筑交互体基类、刷怪核心）。不另起第二套状态、缓存、注册表、计时器或解析器。
-- 决策分三档：
-  - **自己定**：实现方式、复用哪条管线、守卫与测试怎么写、不破坏兼容的新增（新内容、新 TypeID、`COMPAT`、`SCHEMA+`）。
-  - **定了之后写明理由**：玩法与数值取舍。owner 授权拍板时按「好玩优先，其次离线可证、改动小、可回退」直接定，把决定、理由、回退办法写进交付报告与 `FIX_TRACKER.md`；没有授权又拿不准的，给出推荐方案并标 `Needs owner confirmation`。
-  - **先问**：§10 的全部事项。
-- 多个会话可能同时在本工作区写文件：动手前看 `git status`，只改、只暂存自己的文件，提交前再查一次。
+先读代码、调用点、构建脚本、守卫与专项规则，触及兼容面再读 `docs/contracts.md`；官方行为以 `鸭科夫源码/` 核实。历史审查、日志片段与猜测只是线索，未运行验证时明说。
+最小化相关改动、复用官方系统与仓库现有管线，不做无关重构；实施方式及 `COMPAT` / `SCHEMA+` 自己定，玩法数值按「好玩、可证、改动小、可回退」判断并记理由；§10 事项先问。
+多个会话可能共写工作区：动手前和提交前看 `git status`，只修改、暂存自己的文件。
 
 ## 8. 验证与如实交付
 
-代码改动的默认顺序：
-
-1. `python tools/run_guards.py --changed-only`（大改动跑全量）。
-2. Windows 编译（§2）。只做了语法探针时，写「语法通过，未正式编译」。
-3. 可隔离的逻辑跑或补执行回归：`python tools/run_runtime_regressions.py --filter <名字>`。
-4. 改了 `wiki-site/` 或 `WikiContent/`：`npm --prefix wiki-site run build`，再按 `wiki-site/AGENTS.md` 的检查项。
-5. 专题文档按 §4.13 更新。
-6. 运行时行为（UI、本地化、刷怪、事件泄漏、过图性能、Harmony / 反射是否命中）只能靠游戏内确认。
-
-证据分级。结论要标明级别，不能往上抬：
-
-- **L1 静态接线**：从玩家入口一路读到生产逻辑。
-- **L2 隔离回归**：守卫、执行回归、离线属性测试全绿。
-- **L3 实机**：真实游戏进程里跑出来的结果。
-
-「编译绿 + 守卫绿 + 部署成功」不能写成「已生效」「已验证可玩」。拿不到 L3 时，交付一份粒度到操作步骤的人工验证清单（按哪个键、看哪一行、什么算不合格）。没有实际采样时不宣称「无性能问题」。无法验证的，在回复、`FIX_TRACKER.md` 或交付文档里写明原因。
-
-纯文档改动至少确认引用路径存在、没有和其他规则冲突；改了脚本、守卫、资源路径或文档里的命令，按影响范围验证。
+代码改动依次跑相关守卫（大改动全量）、Windows 真编译、可隔离的执行回归；改 Wiki 再跑站点构建，改变专题时更新 `.qoder/repowiki/`，运行时行为留实机验证。语法探针只证明语法，不等于正式编译。
+证据分级：L1 为玩家入口到生产逻辑的静态接线；L2 为守卫、回归和离线属性测试；L3 为真实游戏进程。编译、守卫与部署成功不得写成「已生效 / 已验证可玩」。拿不到 L3 时给按键、观察位置和不合格条件的人工清单；未采样不宣称无性能问题，无法验证写明原因。
+纯文档至少核对引用路径与规则冲突；脚本、守卫、资源路径或文档命令按影响范围验证。
 
 ## 9. 审查、Findings 与修复台账
 
-- 审查方法：`CODE_REVIEW.md`；confirmed finding 库：`CODE_REVIEW_FINDINGS.md`；修复流水：`FIX_TRACKER.md`。旧路径 `docs/代码审查/CODE_REVIEW*.md`、`docs/协作/FIX_TRACKER.md` 的转发页已于 2026-09-24 删除。
-- findings 只记已确认的问题，未证实的放 UNVERIFIED / Seeded Leads；accepted、refuted、deferred 都写理由，避免重复排查。
-- 修 bug、回归、兼容问题后更新 `FIX_TRACKER.md`，回填 finding 的状态、验证方式与证据级别。
-- 根目录的 `AUDIT_*.md`、`FIXES_*.md` 是历史审计快照。2026-09-13 在 WSL 里生成、未入库的 `CODE_QUALITY_AUDIT_*`、`CODE_REVIEW_REPORT_*`、`SKY_ISLAND_AUDIT_*` 含编造的锚点与过期状态，引用前逐条复核。
+审查方法在 `CODE_REVIEW.md`，confirmed finding 在 `CODE_REVIEW_FINDINGS.md`，修复流水在 `FIX_TRACKER.md`；未证实线索只记 UNVERIFIED / Seeded Leads。修复后回填状态、理由、验证和证据级别。根 `AUDIT_*.md` / `FIXES_*.md` 是历史快照，引用前复核。
+每月 1 日把上月已闭环节按月整体归档到 `archive/`；正文只留最近 14 天索引与未闭环节，归档原文逐字保留。
 
 ## 10. 必须先得到 owner 明确同意的事
 
-- 删除、迁移、批量重写玩家数据或存档；存档与配置 schema 的破坏性变更（`SCHEMA-`、`BREAKING`）。
-- TypeID 复用、删除、回填；改已发布内容的 TypeID、存档 key、本地化 key。
-- 写入官方存档键或新增 `Duckov.Quests` 任务（卸载 Mod 后官方会对缺失的 id 报错）。官方图鉴 `NoteIndex` 的镜像已于 2026-09-14 拍板为例外；天空岛跨局主线（Jeff 序章 590001 + 岛上 590011–590013，自定义给予者 5901–5903）已于 2026-09-16 明确授权，鸭王征程六章（590101–590106，给予者官方 Jeff）已于 2026-09-22 明确授权，都采用 Mod 状态为权威并过滤官方 active / history / completed / ever-inspected 快照的方案（共享核心 `Utilities/OfficialQuests/`）。该授权不自动扩展到其它系统的新任务（§4.14）。
-- 公开 API、跨模块契约、外部协议的破坏性变更（`WIRE-`）；密钥、飞书与生图网关等外部服务配置。
-- `git push`、建 PR、创意工坊发布、改部署流水线或全局改造构建脚本。
-- 启动游戏做测试、读写玩家存档目录（实机由 owner 自己做）。
-- 经济数值的大幅改变（owner 已授权「好玩优先」拍板的范围除外）。
-- 游戏模式状态机大规模重构、Harmony / 反射绑定策略整体替换。
-- 大规模目录迁移、批量格式化、批量清理 catch。
-- 删除 git 之外的本地文件（`docs/`、`Assets/`、`skills/` 等不在 git 里，删了找不回来）。
+删除 / 迁移 / 批量重写玩家数据或存档；破坏性 schema / 兼容变更；TypeID 复用、删除、回填或改已发布 key；写官方存档键或加新 `Duckov.Quests` 任务；破坏公开 API / 外部协议；密钥与服务配置；`git push`、PR、创意工坊发布、部署流水线或全局构建改造；启动游戏、读写玩家存档；大幅改经济；模式状态机或 Harmony / 反射策略整体替换；大规模目录迁移、批量格式化 / 清理 catch；删除 git 外本地文件。
+已授权例外：官方 `NoteIndex` 镜像、天空岛任务 590001 / 590011–590013、鸭王征程任务 590101–590106，均以 Mod 状态为权威并过滤官方保存快照；授权不扩到其它新任务。已明确授权的当次工作不用重复问。
 
 ## 11. 不是规则来源的目录与文件
 
-- `鸭科夫源码/`：官方反编译源码，只读参考。
-- `Build/`：构建产物与旧审查快照（里面有旧版 `AGENTS.md` 副本，grep 时排除）；DLL、bundle、部署产物不进 git。
-- `.kiro/specs/`、`.claude/plans/`：历史计划与工具过程材料（原 `docs/superpowers/` 已于 2026-09-24 删除）。
-- `skills/`、`codex-skills/`：2026-03 至 04 的技能快照，没有工具会自动加载，内容大多过时（逐个状态见 `skills/README.md`）。
-- `.cunzhi-memory/`、`.claude/settings*.json`：工具私有记忆与本机权限配置。
-- `.qoder/better-harness*/`：工具过程材料；`.qoder/repowiki/` 是知识库（§4.13）。
-- `docs/飞书应用密钥.md`、`docs/AI生图API和密钥.md`：含密钥，不复制进回答、提交、PR 或其他文档。
+`鸭科夫源码/` 只读；`Build/` 为不进 git 的构建产物；`.kiro/specs/`、`.claude/plans/`、`.qoder/better-harness*/` 为过程材料，`.qoder/repowiki/` 是知识库。`skills/`、`codex-skills/` 为过时快照；`.cunzhi-memory/`、`.claude/settings*.json` 为工具私有配置。`docs/飞书应用密钥.md`、`docs/AI生图API和密钥.md` 含密钥，不复制进回答、提交或文档。
 
 ## 12. 提交
 
-- 只在用户明确要求时 `git commit`；`push` 与 PR 见 §10。
-- 提交信息用简短中文摘要（例：`修复售货机 UI 崩溃`），不用英文 conventional-commit。
-- 暂存路径限定到本次改的文件，不用 `git add -A` / `git add .`。同一文件里要拆开的改动，用 `git hash-object -w` + `git update-index --cacheinfo` 暂存，不改写工作区。
-- 提交前确认：新增 `.cs` 已进编译清单、TypeID 台账已更新；不带 `Build/`、DLL、bundle、密钥和别的会话正在写的文件。
+仅用户明确要求时提交；信息用简短中文，不用 conventional commit。只暂存本次路径，不用 `git add -A` / `git add .`；同文件拆改可用 `git hash-object -w` 加 `git update-index --cacheinfo`。提交前核对 `.cs` 清单、TypeID 台账及不带 `Build/`、DLL、bundle、密钥或别人的文件；push / PR 见 §10。
 
 ## 13. 文档纳管
 
-- `docs/`、`Assets/`（`Assets/Data/`、`Assets/SpawnPoints/` 除外）、`ArtSource/`（天空岛的数据与说明除外）默认 local-only。被守卫直接读取的文件在 `.gitignore` 里逐个放行；新增这类依赖时同步放行，否则 fresh clone 一跑守卫就红。
-- 仓库级规则只写在进 git 的文件里（本文、子系统 `AGENTS.md`、`CODE_REVIEW.md`、`docs/contracts.md`）。`docs/architecture/` 等本地文档里的关键结论，要在这些文件或守卫里有落点。
-- 规则文档里不写会过期的数字（守卫数、文件数、包体大小）；需要时写「以某命令输出为准」。每轮交付的范围与数字写在 `FIX_TRACKER.md` 或带日期的交付文档里，不写进本文。
+`docs/`、多数 `Assets/` 与 `ArtSource/` 默认 local-only；守卫直接读的文件须在 `.gitignore` 精确放行。仓库级规则仅放受跟踪的规则文件或 `docs/contracts.md`；本地 `docs/architecture/` 的关键结论应落到规则或守卫。规则文档不写易过期数字，交付数字写台账或带日期报告。
 
 ## 14. 变更记录（已迁出）
 
-2026-09-14 之前，本节按日期记录每轮交付的经验，逐渐长到四百多行。长期有效的规则已提炼进 §4、§7、§8 与子系统 `AGENTS.md`（天空岛的在 `DebugAndTools/SkyIsland/AGENTS.md`），官方 API 的静默失败类陷阱进了 `docs/contracts.md` §7.1；每轮的数字与明细原本就在 `FIX_TRACKER.md`。
-
-- 代码注释或旧报告里写「见 AGENTS §14」的，原文在提交 `00c8624` 的版本里：`git show 00c8624:AGENTS.md`。
-- 不再往本文追加变更记录：交付明细写 `FIX_TRACKER.md`，新发现的长期规则写进对应章节或子系统 `AGENTS.md`，AI 协作文档本身的调整记在 `docs/ai-docs-migration.md`。
-
-最后整理：2026-09-14。
+2026-09-14 前历史原文见 `git show 00c8624:AGENTS.md`；长期规则已进 §4、§7、§8 和子系统规则，数字与明细在 `FIX_TRACKER.md`。不再往本节追加，AI 文档调整记 `docs/ai-docs-migration.md`。
