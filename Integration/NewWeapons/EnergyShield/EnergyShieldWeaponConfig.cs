@@ -15,6 +15,11 @@ namespace BossRush
     /// </summary>
     public static class EnergyShieldWeaponConfig
     {
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterConfigurator("EnergyShieldWeaponConfig", (item, baseName) => { TryConfigure(item, baseName); });
+        }
+
         private static readonly NewWeaponTotemSpec Spec = new NewWeaponTotemSpec
         {
             TypeId = NewWeaponIds.EnergyShieldTypeId,

@@ -5,6 +5,7 @@ import sys
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 MOD_BEHAVIOUR = Path("ModBehaviour.cs")
 MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
 ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
@@ -19,6 +20,8 @@ def main() -> int:
     model_text = MODELS.read_text(encoding="utf-8")
     cleanup_text = CLEANUP.read_text(encoding="utf-8")
     entry_text = ENTRY.read_text(encoding="utf-8")
+    module_text = RUNTIME_MODULE.read_text(encoding="utf-8")
+    entry_flow_text = entry_text + "\n" + module_text
     mod_text = MOD_BEHAVIOUR.read_text(encoding="utf-8")
     mode_runtime_hooks_text = MODE_RUNTIME_HOOKS.read_text(encoding="utf-8")
     zombie_runtime_hooks_text = ZOMBIE_RUNTIME_HOOKS.read_text(encoding="utf-8")
@@ -51,7 +54,7 @@ def main() -> int:
         "GrantZombieModeBeacon(int runId)",
         "ItemUtilities.SendToPlayer(beacon, true, false);",
     ]:
-        if snippet not in entry_text:
+        if snippet not in module_text:
             return fail("ZombieModeRunOnlyCleanupGuard: beacon grant missing snippet -> " + snippet)
 
     for forbidden in [
@@ -59,7 +62,7 @@ def main() -> int:
         "CleanupZombieModeBeaconItem",
         "DestroyZombieModeRunOnlyBeaconItem",
     ]:
-        if forbidden in entry_text:
+        if forbidden in entry_flow_text:
             return fail("ZombieModeRunOnlyCleanupGuard: reusable beacon must not be run-only cleanup -> " + forbidden)
 
     extraction_text = Path("ZombieMode/ZombieModeExtractionController.cs").read_text(encoding="utf-8")

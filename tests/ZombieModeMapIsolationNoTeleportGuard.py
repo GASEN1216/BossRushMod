@@ -5,6 +5,7 @@ import sys
 
 
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 MAP_ISOLATION = Path("ZombieMode/ZombieModeMapIsolation.cs")
 
 
@@ -37,20 +38,25 @@ def extract_method(text: str, marker: str) -> str:
 
 def main() -> int:
     entry = ENTRY.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
     map_isolation = MAP_ISOLATION.read_text(encoding="utf-8")
 
-    wait_method = extract_method(entry, "private System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize")
+    wait_method = extract_method(runtime_module, "internal System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize")
     if not wait_method:
         return fail("target-scene wait coroutine not found")
     if "TeleportPlayerToCustomPosition" in wait_method:
         return fail("ZombieMode must not call BossRush custom-position teleport after map load")
 
-    init_method = extract_method(entry, "private bool InitializeZombieModeRunAfterMapLoaded")
+    host_wait = extract_method(entry, "private System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize")
+    if "module.WaitForZombieModeTargetSceneActiveThenInitialize(scene, customPos)" not in host_wait:
+        return fail("host target-scene coroutine must forward to RuntimeModule")
+
+    init_method = extract_method(runtime_module, "internal bool InitializeZombieModeRunAfterMapLoaded")
     if not init_method:
         return fail("InitializeZombieModeRunAfterMapLoaded not found")
 
-    collect_index = init_method.find("CollectZombieModeSpawnPoints(runId)")
-    isolation_index = init_method.find("ApplyZombieModeMapIsolationShell(runId)")
+    collect_index = init_method.find("owner.CollectZombieModeSpawnPointsForRuntimeModule(runId)")
+    isolation_index = init_method.find("owner.ApplyZombieModeMapIsolationForRuntimeModule(runId)")
     if collect_index < 0 or isolation_index < 0:
         return fail("initialization must collect spawn points and apply map isolation")
     if collect_index > isolation_index:

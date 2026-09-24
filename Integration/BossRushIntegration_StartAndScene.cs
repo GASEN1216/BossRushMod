@@ -96,23 +96,17 @@ namespace BossRush
             EnsureLanguageChangeSubscription();
             RegisterCustomWeaponRuntimeConfigs();
 
-            if (runtimeStateMonitorCoroutine == null)
-            {
-                runtimeStateMonitorCoroutine = StartCoroutine(MonitorLateRuntimeStateRestore());
-            }
+            bossRushIntegrationRuntime.StartRuntimeStateMonitor();
 
             SceneManager.sceneLoaded += OnSceneLoaded;
             SceneLoader.onAfterSceneInitialize += OnAfterSceneInitialize_Integration;
-            StockShop.OnItemPurchased += OnItemPurchased_Integration;
+            bossRushIntegrationRuntime.SubscribePurchaseEvents();
 
-            SavesSystem.OnCollectSaveData += OnCollectSaveData_TicketStock;
-            SavesSystem.OnSetFile += OnSetFile_TicketStock;
-            SavesSystem.OnCollectSaveData += OnCollectSaveData_JournalStock;
-            SavesSystem.OnSetFile += OnSetFile_JournalStock;
+            bossRushIntegrationRuntime.SubscribeTicketStockEvents();
+            bossRushIntegrationRuntime.SubscribeJournalStockEvents();
             SavesSystem.OnCollectSaveData += OnCollectSaveData_MedalStock;
             SavesSystem.OnSetFile += OnSetFile_MedalStock;
-            SavesSystem.OnCollectSaveData += OnCollectSaveData_BrickStoneStock;
-            SavesSystem.OnSetFile += OnSetFile_BrickStoneStock;
+            bossRushIntegrationRuntime.SubscribeBrickStoneStockEvents();
             SavesSystem.OnCollectSaveData += OnCollectSaveData_CodexBookStock;
             SavesSystem.OnSetFile += OnSetFile_CodexBookStock;
             SavesSystem.OnSetFile += OnSetFile_DeathWraith;
@@ -131,25 +125,19 @@ namespace BossRush
 
         void OnDestroy_Integration()
         {
-            if (runtimeStateMonitorCoroutine != null)
-            {
-                StopCoroutine(runtimeStateMonitorCoroutine);
-                runtimeStateMonitorCoroutine = null;
-            }
+            bossRushIntegrationRuntime.StopRuntimeStateMonitor();
 
             CleanupDeferredIntegrationBootstrap_Integration();
 
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SceneLoader.onAfterSceneInitialize -= OnAfterSceneInitialize_Integration;
-            StockShop.OnItemPurchased -= OnItemPurchased_Integration;
-            SavesSystem.OnCollectSaveData -= OnCollectSaveData_TicketStock;
-            SavesSystem.OnSetFile -= OnSetFile_TicketStock;
-            SavesSystem.OnCollectSaveData -= OnCollectSaveData_JournalStock;
-            SavesSystem.OnSetFile -= OnSetFile_JournalStock;
+            bossRushIntegrationRuntime.UnsubscribePurchaseEvents();
+            bossRushIntegrationRuntime.UnsubscribeDragonBreathEffectEvent();
+            bossRushIntegrationRuntime.UnsubscribeTicketStockEvents();
+            bossRushIntegrationRuntime.UnsubscribeJournalStockEvents();
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_MedalStock;
             SavesSystem.OnSetFile -= OnSetFile_MedalStock;
-            SavesSystem.OnCollectSaveData -= OnCollectSaveData_BrickStoneStock;
-            SavesSystem.OnSetFile -= OnSetFile_BrickStoneStock;
+            bossRushIntegrationRuntime.UnsubscribeBrickStoneStockEvents();
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_CodexBookStock;
             SavesSystem.OnSetFile -= OnSetFile_CodexBookStock;
             SavesSystem.OnSetFile -= OnSetFile_DeathWraith;
@@ -296,29 +284,7 @@ namespace BossRush
         /// </summary>
         private void OnItemPurchased_Integration(StockShop shop, Item item)
         {
-            try
-            {
-                if (shop == null || item == null) return;
-
-                // 仅在 BossRush 加油站中检测
-                if (ammoShop == null || shop != ammoShop) return;
-
-                // 检测是否购买了 ID 105 的物品
-                if (item.TypeID == 105)
-                {
-                    item105PurchaseCount++;
-
-                    // 达到 10 个时显示横幅提示
-                    if (item105PurchaseCount == 10)
-                    {
-                        ShowBigBanner(L10n.T("喂喂，你这家伙来这进货了是吗(*´·д·)?", "Hey, are you here to stock up? (*´·д·)?"));
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] [WARNING] 处理商店购买事件失败: " + e.Message);
-            }
+            bossRushIntegrationRuntime.HandleItemPurchased_Integration(shop, item);
         }
 
         private void ScheduleWishRewardPoolWarmup()
@@ -355,8 +321,8 @@ namespace BossRush
 
             if (isGameplayScene)
             {
-                StartCoroutine(DelayedRestoreReforgeDataForInventory());
-                StartCoroutine(DelayedSubscribeDragonBreathEvents());
+                StartCoroutine(bossRushIntegrationRuntime.DelayedRestoreReforgeDataForInventory());
+                StartCoroutine(bossRushIntegrationRuntime.DelayedSubscribeDragonBreathEvents());
             }
 
             SetupFlightTotemForScene(scene);
@@ -368,7 +334,7 @@ namespace BossRush
 
             if (isGameplayScene)
             {
-                StartCoroutine(DelayedApplyDragonGunAmmoOverride());
+                StartCoroutine(bossRushIntegrationRuntime.DelayedApplyDragonGunAmmoOverride());
             }
 
             if (!IsDeathWraithSystemEnabled())
@@ -569,187 +535,6 @@ namespace BossRush
             {
                 DevLog("[BossRush] [WARNING] OnSceneLoaded_Integration failed: scene=" + scene.name + ", " + e.Message);
             }
-        }
-
-        private System.Collections.IEnumerator DelayedRestoreReforgeDataForInventory()
-        {
-            // 等待玩家角色可用
-            float waitTime = 0f;
-            while (CharacterMainControl.Main == null && waitTime < 10f)
-            {
-                yield return new UnityEngine.WaitForSeconds(0.5f);
-                waitTime += 0.5f;
-            }
-
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null || player.CharacterItem == null) yield break;
-
-            Inventory inventory = player.CharacterItem.Inventory;
-            if (inventory == null) yield break;
-
-            int restored = 0;
-            try
-            {
-                foreach (Item item in inventory)
-                {
-                    if (item == null) continue;
-                    if (CustomItemRuntimeStateHelper.RestoreRuntimeState(item, "PlayerInventory"))
-                    {
-                        restored++;
-                    }
-                }
-
-                restored += RestoreRuntimeStateForSlots(player.CharacterItem, "CharacterSlots");
-                restored += RestoreRuntimeStateForHoldAgent(player.CurrentHoldItemAgent, "CurrentHoldItemAgent");
-
-                if (PlayerStorage.Inventory != null)
-                {
-                    foreach (Item item in PlayerStorage.Inventory)
-                    {
-                        if (item == null) continue;
-                        if (CustomItemRuntimeStateHelper.RestoreRuntimeState(item, "PlayerStorage"))
-                        {
-                            restored++;
-                        }
-                    }
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[Reforge] 主动恢复重铸数据异常: " + e.Message);
-            }
-
-            if (restored > 0)
-            {
-                DevLog("[Reforge] 场景切换后主动恢复了 " + restored + " 件物品的重铸数据");
-            }
-        }
-
-        private System.Collections.IEnumerator MonitorLateRuntimeStateRestore()
-        {
-            WaitForSeconds wait = new WaitForSeconds(0.5f);
-
-            while (true)
-            {
-                if (!CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))
-                {
-                    yield return wait;
-                    continue;
-                }
-
-                int restored = 0;
-
-                try
-                {
-                    CharacterMainControl player = CharacterMainControl.Main;
-                    if (player != null && player.CharacterItem != null)
-                    {
-                        restored += RestoreRuntimeStateForInventory(player.CharacterItem.Inventory, "PlayerInventoryMonitor");
-                        restored += RestoreRuntimeStateForSlots(player.CharacterItem, "CharacterSlotsMonitor");
-                        restored += RestoreRuntimeStateForHoldAgent(player.CurrentHoldItemAgent, "CurrentHoldItemMonitor");
-                    }
-
-                    restored += RestoreRuntimeStateForInventory(PlayerStorage.Inventory, "PlayerStorageMonitor");
-                }
-                catch (System.Exception e)
-                {
-                    DevLog("[Reforge] 运行时状态监控异常: " + e.Message);
-                }
-
-                if (restored > 0)
-                {
-                    DevLog("[Reforge] 监控协程补恢复了 " + restored + " 件延迟实例化物品");
-                }
-
-                yield return wait;
-            }
-        }
-
-        private static int RestoreRuntimeStateForInventory(Inventory inventory, string reason)
-        {
-            if (inventory == null)
-            {
-                return 0;
-            }
-
-            int restored = 0;
-            foreach (Item item in inventory)
-            {
-                if (item == null)
-                {
-                    continue;
-                }
-
-                bool shouldRestore =
-                    CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID) ||
-                    ReforgeDataPersistence.HasReforgeData(item);
-
-                if (!shouldRestore)
-                {
-                    continue;
-                }
-
-                if (CustomItemRuntimeStateHelper.RestoreRuntimeState(item, reason))
-                {
-                    restored++;
-                }
-            }
-
-            return restored;
-        }
-
-        private static int RestoreRuntimeStateForSlots(Item characterItem, string reason)
-        {
-            if (characterItem == null || characterItem.Slots == null)
-            {
-                return 0;
-            }
-
-            int restored = 0;
-            foreach (Slot slot in characterItem.Slots)
-            {
-                if (slot == null || slot.Content == null)
-                {
-                    continue;
-                }
-
-                Item item = slot.Content;
-                bool shouldRestore =
-                    CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID) ||
-                    ReforgeDataPersistence.HasReforgeData(item);
-
-                if (!shouldRestore)
-                {
-                    continue;
-                }
-
-                if (CustomItemRuntimeStateHelper.RestoreRuntimeState(item, reason + ":" + slot.Key))
-                {
-                    restored++;
-                }
-            }
-
-            return restored;
-        }
-
-        private static int RestoreRuntimeStateForHoldAgent(DuckovItemAgent holdAgent, string reason)
-        {
-            if (holdAgent == null || holdAgent.Item == null)
-            {
-                return 0;
-            }
-
-            Item item = holdAgent.Item;
-            bool shouldRestore =
-                CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID) ||
-                ReforgeDataPersistence.HasReforgeData(item);
-
-            if (!shouldRestore)
-            {
-                return 0;
-            }
-
-            return CustomItemRuntimeStateHelper.RestoreRuntimeState(item, reason) ? 1 : 0;
         }
 
         /// <summary>

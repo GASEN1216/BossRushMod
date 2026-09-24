@@ -9,7 +9,7 @@ from cs_source_util import clean_source
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COMPILE_LIST = os.path.join(REPO_ROOT, "compile_official.bat")
-REGISTRATION = os.path.join(REPO_ROOT, "Common", "Lifecycle", "BossRushRuntimeModuleRegistration.cs")
+REGISTRATION = os.path.join(REPO_ROOT, "ModBehaviourRuntimeModules.cs")
 
 BOSSES = (
     {
@@ -67,7 +67,7 @@ def read_source(relative_path, errors):
 def main():
     errors = []
     compile_list = read_source("compile_official.bat", errors)
-    registration = read_source("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs", errors)
+    registration = read_source("ModBehaviourRuntimeModules.cs", errors)
 
     for boss in BOSSES:
         module = boss["module"]

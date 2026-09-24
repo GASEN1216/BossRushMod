@@ -136,7 +136,7 @@ namespace BossRush
             {
                 ModBehaviour owner = ModBehaviour.Instance;
                 if (owner == null) return false;
-                return owner.HasCampaignBountyMark(victim);
+                return owner.ConsumeCampaignBountyMark(victim);
             }
             catch (Exception)
             {

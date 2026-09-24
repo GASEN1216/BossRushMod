@@ -14,11 +14,6 @@ namespace BossRush
     {
         private const int ZOMBIE_MODE_INITIAL_PURIFICATION_POINTS = 0;
 
-        private readonly ZombieModeRunState zombieModeRunState = new ZombieModeRunState();
-        private readonly ZombieModeEntryTransaction zombieModeEntryTransaction = new ZombieModeEntryTransaction();
-        private readonly Dictionary<string, int[]> zombieModeRewardCandidateCache = new Dictionary<string, int[]>();
-        private readonly List<int> zombieModeRewardSafeCandidateScratch = new List<int>();
-        private readonly HashSet<int> zombieModeOpaqueFilterLogIds = new HashSet<int>();
         private static readonly int[] ZombieModeMedicalExcludedTypeIds = { 1243, 1244, 1245, 1246 };
         private static readonly int[] ZombieModeMeleeExcludedTypeIds = { 1, 305, 343, 1095, 1096 };
         private static readonly string[] ZombieModeRewardTagAmmo = { "Ammo" };
@@ -39,8 +34,6 @@ namespace BossRush
         private static readonly string[] ZombieModeTagAliasesBodyArmor = { "Armor" };
         private static readonly string[] ZombieModeTagAliasesArmor = { "Armor", "Helmat", "Helmet" };
         private static readonly string[] ZombieModeTagAliasesHelmet = { "Helmat", "Helmet" };
-        private static int nextZombieModeRunId = 0;
-        private bool pendingZombieModeEntry = false;
 
         public bool IsZombieModeActive
         {
@@ -74,6 +67,8 @@ namespace BossRush
 
         private bool IsZombieModeStartupInProgress()
         {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) return module.IsZombieModeStartupInProgress();
             ZombieModeLifecyclePhase phase = zombieModeRunState.LifecyclePhase;
             return pendingZombieModeEntry ||
                    (ZombieModePhaseGuards.IsBeforeActive(phase) &&
@@ -82,9 +77,9 @@ namespace BossRush
 
         public bool CanStartZombieModeMapSelectionPhase1(out string failureReason)
         {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) return module.CanStartZombieModeMapSelectionPhase1(out failureReason);
             failureReason = null;
-            // Mode G 门控（加法分支）：丧尸模式最终入口额外拒绝 IsModeGEntryBlocked
-            // （= RunInProgress || late sink quarantine）；no-throw，未运行时条件恒 false。
             try
             {
                 if (ModeGRuntimeGates.IsModeGEntryBlocked)
@@ -94,163 +89,52 @@ namespace BossRush
                 }
             }
             catch { }
-
             if (IsZombieModeStartBlocked(out failureReason)) return false;
-
             return true;
         }
 
         public bool TryBeginZombieModeMapSelectionPhase1(out string failureReason)
         {
-            if (!CanStartZombieModeMapSelectionPhase1(out failureReason))
-            {
-                return false;
-            }
-
-            return TryBeginZombieModeMapSelectionShell();
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) return module.TryBeginZombieModeMapSelectionPhase1(out failureReason);
+            failureReason = null;
+            return false;
         }
 
         public void MarkZombieModeMapConfirmedPhase1()
         {
-            // 状态机：SelectingMap → Prechecking → CommittingResources → LoadingMap
-            if (!pendingZombieModeEntry)
-            {
-                return;
-            }
-
-            if (zombieModeRunState.LifecyclePhase != ZombieModeLifecyclePhase.SelectingMap)
-            {
-                return;
-            }
-
-            zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.Prechecking;
-            ZombieModeFailureReason precheckReason;
-            if (!TryRunZombieModePrechecks(out precheckReason))
-            {
-                FailZombieModeBeforeActive(precheckReason);
-                return;
-            }
-
-            zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.CommittingResources;
-            ZombieModeFailureReason commitReason;
-            if (!CommitZombieModeEntryResourcesShell(out commitReason))
-            {
-                FailZombieModeBeforeActive(commitReason);
-                return;
-            }
-
-            zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.LoadingMap;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.MarkZombieModeMapConfirmedPhase1();
         }
 
         public bool IsZombieModeMapLoadReadyPhase1()
         {
-            return pendingZombieModeEntry &&
-                   zombieModeRunState.LifecyclePhase == ZombieModeLifecyclePhase.LoadingMap &&
-                   ZombieModeMapSelectionHelper.HasPendingZombieEntry;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.IsZombieModeMapLoadReadyPhase1();
         }
 
         public void AbortZombieModeMapLoadPhase1(ZombieModeFailureReason reason)
         {
-            FailZombieModeBeforeActive(reason);
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.AbortZombieModeMapLoadPhase1(reason);
         }
 
         // 入场预检查（邀请函/其他模式互斥）。随身物品不阻止入场，入图后统一转入仓库。
         private bool TryRunZombieModePrechecks(out ZombieModeFailureReason reason)
         {
-            reason = ZombieModeFailureReason.None;
-            zombieModeEntryTransaction.BlockingMessages.Clear();
-
-            if (IsActive || IsModeDActive || IsBossRushArenaActive || IsModeEActive || IsModeFActive)
-            {
-                reason = ZombieModeFailureReason.AnotherBossRushLikeModeActive;
-                return false;
-            }
-
-            // 邀请函预检（Cost.Enough 在 ZombieModeMapSelectionHelper 已校验，这里再保险一次）
-            try
-            {
-                Duckov.Economy.Cost cost = ZombieModeMapSelectionHelper.CreateZombieModeCost();
-                if (!cost.Enough)
-                {
-                    reason = ZombieModeFailureReason.InvitationMissing;
-                    return false;
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] Precheck Cost 检查失败: " + e.Message);
-                reason = ZombieModeFailureReason.InvitationMissing;
-                return false;
-            }
-
-            return true;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) return module.TryRunZombieModePrechecks(out reason);
+            reason = ZombieModeFailureReason.InitializationFailed;
+            return false;
         }
 
         // 资源暂扣：丧尸模式自行提交邀请函与现金，地图选择条目只借用原版 UI 外观。
         private bool CommitZombieModeEntryResourcesShell(out ZombieModeFailureReason reason)
         {
-            reason = ZombieModeFailureReason.None;
-
-            // 再扣之前先把上一次入场失败欠下的现金/邀请函还清：这里经济一定可用（正准备扣款），
-            // 是除官方「经济加载完成」之外最自然的一个结账点（CR-2026-09-11-019）。
-            ZombieModeEntryDebt.TrySettleAll();
-
-            try
-            {
-                Duckov.Economy.Cost invitationCost = ZombieModeMapSelectionHelper.CreateZombieModeCost();
-                if (!Duckov.Economy.EconomyManager.IsEnough(invitationCost, true, true))
-                {
-                    reason = ZombieModeFailureReason.InvitationMissing;
-                    return false;
-                }
-
-                if (!Duckov.Economy.EconomyManager.Pay(invitationCost, true, true))
-                {
-                    reason = ZombieModeFailureReason.InvitationConsumeFailed;
-                    return false;
-                }
-
-                zombieModeEntryTransaction.InvitationTemporarilyHeld = true;
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] 邀请函扣除失败: " + e.Message);
-                reason = ZombieModeFailureReason.InvitationConsumeFailed;
-                return false;
-            }
-
-            long pendingCash = zombieModeRunState.PendingCashInvestment;
-            if (pendingCash > 0L)
-            {
-                try
-                {
-                    Duckov.Economy.Cost cashCost = new Duckov.Economy.Cost();
-                    cashCost.money = pendingCash;
-                    if (!Duckov.Economy.EconomyManager.IsEnough(cashCost, true, true))
-                    {
-                        reason = ZombieModeFailureReason.NotEnoughCash;
-                        return false;
-                    }
-
-                    if (!Duckov.Economy.EconomyManager.Pay(cashCost, true, true))
-                    {
-                        reason = ZombieModeFailureReason.CashWithdrawFailed;
-                        return false;
-                    }
-
-                    zombieModeEntryTransaction.CashTemporarilyHeld = true;
-                    zombieModeEntryTransaction.CashWithheldAmount = pendingCash;
-                    zombieModeRunState.ConfirmedCashInvested = pendingCash;
-                }
-                catch (System.Exception e)
-                {
-                    DevLog("[ZombieMode] 现金扣款失败: " + e.Message);
-                    reason = ZombieModeFailureReason.CashWithdrawFailed;
-                    return false;
-                }
-            }
-
-            return true;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) return module.CommitZombieModeEntryResourcesShell(out reason);
+            reason = ZombieModeFailureReason.InitializationFailed;
+            return false;
         }
 
         /// <summary>
@@ -260,235 +144,60 @@ namespace BossRush
         /// </summary>
         private void RefundZombieModeCashIfNeeded()
         {
-            if (!ShouldRollbackZombieModeEntryResources() || !zombieModeEntryTransaction.CashTemporarilyHeld) return;
-            if (!ZombieModeEntryDebt.RefundCash(zombieModeEntryTransaction.CashWithheldAmount)) return;
-            zombieModeEntryTransaction.CashTemporarilyHeld = false;
-            zombieModeEntryTransaction.CashWithheldAmount = 0L;
-            zombieModeRunState.ConfirmedCashInvested = 0L;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.RefundZombieModeCashIfNeeded();
         }
 
         public void CancelZombieModeMapSelectionPhase1()
         {
-            CancelZombieModeMapSelectionShell();
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.CancelZombieModeMapSelectionPhase1();
         }
 
         private bool ShouldPreserveZombieModeStartupForSceneLoad(Scene scene)
         {
-            if (!IsZombieModeStartupInProgress() || !ZombieModeMapSelectionHelper.HasPendingZombieEntry)
-            {
-                return false;
-            }
-
-            string targetSubScene = ZombieModeMapSelectionHelper.GetPendingTargetSubSceneName();
-            string targetMainScene = ZombieModeMapSelectionHelper.GetPendingMainSceneName();
-            if (scene.name.Contains("Loading") || scene.name.Contains("Menu"))
-            {
-                return true;
-            }
-
-            if (!string.IsNullOrEmpty(targetSubScene) && scene.name == targetSubScene)
-            {
-                return true;
-            }
-
-            if (!string.IsNullOrEmpty(targetMainScene) && scene.name == targetMainScene)
-            {
-                return true;
-            }
-
-            if (targetSubScene == "Level_StormZone_B0" && scene.name == "Level_StormZone_1")
-            {
-                return true;
-            }
-
-            if (targetSubScene == "Level_SnowMilitaryBase_ColdStorage" && scene.name == "Level_SnowMilitaryBase")
-            {
-                return true;
-            }
-
-            return false;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.ShouldPreserveZombieModeStartupForSceneLoad(scene);
         }
 
         private bool TryHandleZombieModePendingMapSceneLoaded(Scene scene, BossRushMapConfig loadedMapConfig)
         {
-            if (!ZombieModeMapSelectionHelper.HasPendingZombieEntry)
-            {
-                return false;
-            }
-
-            string targetSubScene = ZombieModeMapSelectionHelper.GetPendingTargetSubSceneName();
-            string targetMainScene = ZombieModeMapSelectionHelper.GetPendingMainSceneName();
-            Vector3? customPos = ZombieModeMapSelectionHelper.GetPendingCustomPosition();
-
-            if (scene.name.Contains("Loading") || scene.name.Contains("Menu") ||
-                (!string.IsNullOrEmpty(targetMainScene) && scene.name == targetMainScene))
-            {
-                DevLog("[ZombieMode] 检测到中间场景: " + scene.name + ", 保持 Phase 1 地图进入状态");
-                return true;
-            }
-
-            if (!string.IsNullOrEmpty(targetSubScene) && scene.name == targetSubScene)
-            {
-                ZombieModeMapSelectionHelper.MarkTargetSceneLoadStarted();
-                StartCoroutine(WaitForZombieModeTargetSceneActiveThenInitialize(scene, customPos));
-                return true;
-            }
-
-            if (targetSubScene == "Level_StormZone_B0" && scene.name == "Level_StormZone_1" && customPos.HasValue)
-            {
-                DevLog("[ZombieMode] 检测到风暴区地上场景，转入目标地下子场景");
-                StartCoroutine(ForceTeleportToSubScene(targetSubScene, customPos.Value));
-                return true;
-            }
-
-            if (targetSubScene == "Level_SnowMilitaryBase_ColdStorage" && scene.name == "Level_SnowMilitaryBase" && customPos.HasValue)
-            {
-                DevLog("[ZombieMode] 检测到雪地军事基地主场景，转入冷藏区子场景");
-                StartCoroutine(ForceTeleportToSubScene(targetSubScene, customPos.Value));
-                return true;
-            }
-
-            DevLog("[ZombieMode] 非目标场景: " + scene.name + "，取消 Phase 1 待处理进入状态");
-            RefundZombieModeInvitationIfNeeded();
-            RefundZombieModeCashIfNeeded();
-            CancelZombieModeMapSelectionPhase1();
-            ZombieModeMapSelectionHelper.ClearPendingZombieEntry();
-            return false;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.TryHandleZombieModePendingMapSceneLoaded(scene, loadedMapConfig);
         }
 
         private System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize(Scene scene, Vector3? customPos)
         {
-            const float maxWait = 30f;
-            const float interval = 0.1f;
-            float elapsed = 0f;
-            int attempt = 0;
-
-            while (elapsed < maxWait)
-            {
-                attempt++;
-                Scene activeScene = SceneManager.GetActiveScene();
-                bool sceneLoaded = scene.isLoaded;
-                bool activeMatches = activeScene.name == scene.name;
-                bool sceneLoaderDone = ReadSceneLoaderDoneWithWarning("ZombieModeTargetSceneInitialize");
-                bool levelInited = ReadLevelInitedWithWarning("ZombieModeTargetSceneInitialize");
-
-                if (sceneLoaded && activeMatches && sceneLoaderDone && levelInited)
-                {
-                    break;
-                }
-
-                if (attempt % 10 == 0)
-                {
-                    DevLog("[ZombieMode] 等待目标地图激活: target=" + scene.name
-                        + ", active=" + activeScene.name
-                        + ", sceneLoaded=" + sceneLoaded
-                        + ", sceneLoaderDone=" + sceneLoaderDone
-                        + ", levelInited=" + levelInited
-                        + ", elapsed=" + elapsed + "s");
-                }
-
-                yield return new WaitForSeconds(interval);
-                elapsed += interval;
-            }
-
-            Scene finalActiveScene = SceneManager.GetActiveScene();
-            if (!scene.isLoaded || finalActiveScene.name != scene.name)
-            {
-                DevLog("[ZombieMode] 初始化失败：目标地图未成为 ActiveScene, target=" + scene.name + ", active=" + finalActiveScene.name);
-                ZombieModeMapSelectionHelper.ClearPendingZombieEntry();
-                FailZombieModeBeforeActive(ZombieModeFailureReason.InitializationFailed);
-                yield break;
-            }
-
-            int runId = BeginZombieModeRunShell(scene.buildIndex, scene.name);
-            // 状态机推进：LoadingMap → InitializingRun（WaitingStarterChoice 由 InitializeZombieModeRunAfterMapLoaded 末尾设置）
-            zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.InitializingRun;
-            zombieModeRunState.CombatPhase = ZombieModeCombatPhase.None;
-            zombieModeRunState.PurificationPoints = ZOMBIE_MODE_INITIAL_PURIFICATION_POINTS;
-            if (zombieModeRunState.ConfirmedCashInvested > 0L)
-            {
-                // 100 现金 = 1 净化点数（向下取整）
-                zombieModeRunState.PurificationPoints = (int)System.Math.Min(
-                    int.MaxValue,
-                    zombieModeRunState.ConfirmedCashInvested / ZombieModeTuning.CashToPurificationRatio);
-            }
-
-            ZombieModeMapSelectionHelper.ClearPendingZombieEntry();
-            if (!InitializeZombieModeRunAfterMapLoaded(runId))
-            {
-                FailZombieModeBeforeActive(ZombieModeFailureReason.InitializationFailed);
-                yield break;
-            }
-
-            DevLog("[ZombieMode] 已进入目标地图: " + scene.name + "，等待初始流派选择");
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module == null) yield break;
+            System.Collections.IEnumerator routine = module.WaitForZombieModeTargetSceneActiveThenInitialize(scene, customPos);
+            while (routine.MoveNext()) yield return routine.Current;
         }
 
         private int BeginZombieModeRunShell(int sceneBuildIndex, string sceneName)
         {
-            int runId = ++nextZombieModeRunId;
-            long pendingCashInvestment = zombieModeRunState.PendingCashInvestment;
-            long confirmedCashInvested = zombieModeRunState.ConfirmedCashInvested;
-            if (confirmedCashInvested <= 0L && zombieModeEntryTransaction.CashTemporarilyHeld)
-            {
-                confirmedCashInvested = zombieModeEntryTransaction.CashWithheldAmount;
-            }
-            zombieModeRunState.ResetForNewRun(runId, sceneBuildIndex, sceneName);
-            zombieModeRunState.PendingCashInvestment = pendingCashInvestment;
-            zombieModeRunState.ConfirmedCashInvested = confirmedCashInvested;
-            zombieModeRunState.MapProfile = BuildZombieModeMapProfile(sceneBuildIndex, sceneName);
-            pendingZombieModeEntry = false;
-            return runId;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.BeginZombieModeRunShell(sceneBuildIndex, sceneName) : 0;
         }
 
         private ZombieModeMapProfile BuildZombieModeMapProfile(int sceneBuildIndex, string sceneName)
         {
-            ZombieModeMapProfile profile = new ZombieModeMapProfile();
-            profile.SceneId = sceneBuildIndex;
-            profile.SceneName = sceneName ?? string.Empty;
-
-            BossRushMapConfig mapConfig = GetCurrentMapConfig();
-            if (mapConfig != null)
-            {
-                int parsedSceneId;
-                if (int.TryParse(mapConfig.sceneID, out parsedSceneId))
-                {
-                    profile.SceneId = parsedSceneId;
-                }
-
-                profile.SceneName = mapConfig.sceneName ?? profile.SceneName;
-                profile.MainSceneName = mapConfig.sceneID == mapConfig.sceneName ? string.Empty : (mapConfig.sceneID ?? string.Empty);
-                profile.DisplayName = mapConfig.displayName ?? string.Empty;
-                profile.StaticSpawnPoints = mapConfig.modeESpawnPoints != null && mapConfig.modeESpawnPoints.Length > 0
-                    ? mapConfig.modeESpawnPoints
-                    : (mapConfig.spawnPoints ?? new Vector3[0]);
-                profile.CustomSpawnPos = mapConfig.customSpawnPos;
-            }
-
-            return profile;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.BuildZombieModeMapProfile(sceneBuildIndex, sceneName) : new ZombieModeMapProfile();
         }
 
         private bool IsZombieModeRunValid(int runId)
         {
-            if (runId <= 0 || zombieModeRunState.RunId != runId || zombieModeRunState.IsCleaningUp)
-            {
-                return false;
-            }
-
-            Scene scene = SceneManager.GetActiveScene();
-            if (zombieModeRunState.SceneBuildIndex >= 0 && scene.buildIndex != zombieModeRunState.SceneBuildIndex)
-            {
-                return false;
-            }
-
-            ZombieModeLifecyclePhase phase = zombieModeRunState.LifecyclePhase;
-            return phase == ZombieModeLifecyclePhase.InitializingRun ||
-                   phase == ZombieModeLifecyclePhase.WaitingStarterChoice ||
-                   ZombieModePhaseGuards.IsActive(phase);
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.IsZombieModeRunValid(runId);
         }
 
         private bool ShouldRollbackZombieModeEntryResources()
         {
-            return !zombieModeRunState.EntryResourcesFinalized && !zombieModeEntryTransaction.EntryResourcesFinalized;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null
+                ? module.ShouldRollbackZombieModeEntryResources()
+                : !zombieModeRunState.EntryResourcesFinalized && !zombieModeEntryTransaction.EntryResourcesFinalized;
         }
 
         private void TickZombieMode(float deltaTime)
@@ -530,10 +239,6 @@ namespace BossRush
         {
             return ZombieModeUIHelper.IsModalInputPaused || IsZombieModeGamePaused() || CameraMode.Active;
         }
-
-        private float zombieModeRuntimePausedDuration;
-        private float zombieModeRuntimePauseStartTime = -1f;
-        private int zombieModeRuntimePauseRunId;
 
         private void RefreshZombieModeRuntimePauseClock()
         {
@@ -588,85 +293,20 @@ namespace BossRush
 
         private bool InitializeZombieModeRunAfterMapLoaded(int runId)
         {
-            if (!IsZombieModeRunValid(runId))
-            {
-                return false;
-            }
-
-            zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.InitializingRun;
-            PrepareSoulCubePrefabCacheForZombieRun();
-            if (!PrepareZombieModeInventoryTransferShell(runId))
-            {
-                return false;
-            }
-
-            if (!CollectZombieModeSpawnPoints(runId))
-            {
-                DevLog("[ZombieMode] 初始化失败：未收集到有效刷怪点");
-                return false;
-            }
-
-            if (!ApplyZombieModeMapIsolationShell(runId))
-            {
-                return false;
-            }
-
-            EnsureCharacterPresetsCacheReady();
-            if (cachedCharacterPresets == null || !cachedCharacterPresets.ContainsKey("Cname_Zombie"))
-            {
-                DevLog("[ZombieMode] 初始化失败：缺少 Cname_Zombie 预设");
-                return false;
-            }
-
-            if (!InitializeZombieModeContainersShell(runId))
-            {
-                return false;
-            }
-
-            if (!GrantZombieModeBeacon(runId))
-            {
-                return false;
-            }
-
-            RegisterZombieModeEventListeners(runId);
-            CreateZombieModeHud(runId);
-            zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.WaitingStarterChoice;
-            ShowZombieModeStarterChoice(runId);
-            return true;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.InitializeZombieModeRunAfterMapLoaded(runId);
         }
 
         private bool GrantZombieModeBeacon(int runId)
         {
-            if (!IsZombieModeRunValid(runId))
-            {
-                return false;
-            }
-
-            try
-            {
-                ZombieTideBeaconConfig.EnsureRuntimeFallbackRegistrationShell();
-                Item beacon = ItemAssetsCollection.InstantiateSync(BossRushItemIds.ZombieTideBeacon);
-                if (beacon == null)
-                {
-                    return false;
-                }
-
-                ItemUtilities.SendToPlayer(beacon, true, false);
-                return true;
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] 发放尸潮信标失败: " + e.Message);
-                return false;
-            }
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.GrantZombieModeBeacon(runId);
         }
 
         private void FinalizeZombieModeEntryResources()
         {
-            zombieModeRunState.ZombieModeResourcesCommitted = true;
-            zombieModeRunState.EntryResourcesFinalized = true;
-            zombieModeEntryTransaction.EntryResourcesFinalized = true;
-            zombieModeEntryTransaction.InvitationTemporarilyHeld = false;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.FinalizeZombieModeEntryResources();
         }
 
         /// <summary>
@@ -675,53 +315,20 @@ namespace BossRush
         /// </summary>
         private void RefundZombieModeInvitationIfNeeded()
         {
-            if (!ShouldRollbackZombieModeEntryResources() || !zombieModeEntryTransaction.InvitationTemporarilyHeld) return;
-            if (!ZombieModeEntryDebt.RefundInvitation()) return;
-            zombieModeEntryTransaction.InvitationTemporarilyHeld = false;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.RefundZombieModeInvitationIfNeeded();
         }
 
         private void FailZombieModeBeforeActive(ZombieModeFailureReason reason)
         {
-            DevLog("[ZombieMode] Fail before Active: " + reason.ToString());
-            bool shouldReturnToBase = ShouldReturnToBaseAfterZombieModePreActiveFailure(reason);
-            RefundZombieModeInvitationIfNeeded();
-            RefundZombieModeCashIfNeeded();
-            CleanupZombieModeForSceneChange(reason);
-            if (!shouldReturnToBase)
-            {
-                return;
-            }
-
-            try
-            {
-                if (SceneLoader.Instance != null)
-                {
-                    Cysharp.Threading.Tasks.UniTaskExtensions.Forget(SceneLoader.Instance.LoadBaseScene(null, true));
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] [WARNING] Entry 失败回主场景失败: " + e.Message);
-            }
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.FailZombieModeBeforeActive(reason);
         }
 
         private bool ShouldReturnToBaseAfterZombieModePreActiveFailure(ZombieModeFailureReason reason)
         {
-            ZombieModeLifecyclePhase phase = zombieModeRunState.LifecyclePhase;
-            if (phase == ZombieModeLifecyclePhase.Prechecking ||
-                phase == ZombieModeLifecyclePhase.CommittingResources ||
-                phase == ZombieModeLifecyclePhase.LoadingMap)
-            {
-                return false;
-            }
-
-            if (phase == ZombieModeLifecyclePhase.InitializingRun ||
-                phase == ZombieModeLifecyclePhase.WaitingStarterChoice)
-            {
-                return true;
-            }
-
-            return false;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.ShouldReturnToBaseAfterZombieModePreActiveFailure(reason);
         }
 
         private int FindRandomItemTypeByTags(string[] requiredTags, int minQuality, int maxQuality)
@@ -1199,4 +806,5 @@ namespace BossRush
             DevLog("[ZombieMode] medical candidate fail-closed id=" + typeId + " reason=" + reason);
         }
     }
+
 }

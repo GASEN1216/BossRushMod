@@ -5,7 +5,7 @@
 //   - 全系统只有一个实例：由 ModBehaviour 持有并把**同一个引用**注册给
 //     BossRushRuntimeModuleHost；建筑、面板、掉落与场景回调都只能委托这份实例，
 //     禁止再次 new（照 Mode H 的写法；Mode G 的入口实例/host 实例分裂是反例，
-//     见 Common/Lifecycle/BossRushRuntimeModuleRegistration.cs 的注释）；
+//     见 ModBehaviourRuntimeModules.cs 的注释）；
 //   - 只复用 host 已有的六个回调，不新增全局 hook；
 //   - **petNestEnabled = false 时全系统 dormant**：不订阅存档、不建血脉目录、
 //     不 tick 协调器、不生成任何东西。开关是运行时可变的（ModConfig 单键回调），

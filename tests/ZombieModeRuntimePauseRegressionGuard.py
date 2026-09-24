@@ -27,10 +27,15 @@ def read_pollution() -> str:
 
 def main() -> int:
     entry_text = Path("ZombieMode/ZombieModeEntry.cs").read_text(encoding="utf-8")
+    module_text = Path("ZombieMode/ZombieModeRuntimeModule.cs").read_text(encoding="utf-8")
+    host_bridge_text = Path("ZombieMode/ZombieModeMapSelection.cs").read_text(encoding="utf-8")
     try:
-        require(entry_text, "private float zombieModeRuntimePausedDuration", "missing runtime paused-duration accumulator")
-        require(entry_text, "private float zombieModeRuntimePauseStartTime", "missing runtime pause-start timestamp")
-        require(entry_text, "private int zombieModeRuntimePauseRunId", "missing runtime pause run-id tracker")
+        require(module_text, "private float runtimePausedDuration;", "missing module-owned runtime paused-duration accumulator")
+        require(module_text, "private float runtimePauseStartTime = -1f;", "missing module-owned runtime pause-start timestamp")
+        require(module_text, "private int runtimePauseRunId;", "missing module-owned runtime pause run-id tracker")
+        require(host_bridge_text, "zombieModeRuntimeModule.RuntimePausedDuration", "host clock bridge must read module paused duration")
+        require(host_bridge_text, "zombieModeRuntimeModule.RuntimePauseStartTime", "host clock bridge must read module pause start")
+        require(host_bridge_text, "zombieModeRuntimeModule.RuntimePauseRunId", "host clock bridge must read module pause run id")
         require(entry_text, "private void RefreshZombieModeRuntimePauseClock()", "missing runtime pause clock refresh")
         require(entry_text, "internal float GetZombieModeRuntimeNow()", "missing runtime pause-adjusted clock")
         require(entry_text, "RefreshZombieModeRuntimePauseClock();", "TickZombieMode must refresh runtime pause clock")

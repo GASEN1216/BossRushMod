@@ -21,15 +21,17 @@ import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "tools"))
 
 from modeh_guard_util import read_text, strip_cs_comments  # noqa: E402
+from compile_list import read_compile_sources  # noqa: E402
 
 HELPER = os.path.join(REPO_ROOT, "MapSelection", "BossRushMapSelectionHelper.cs")
 ENTRY_FLOW = os.path.join(REPO_ROOT, "WavesArena", "BossRushEntryFlow.cs")
 INTEGRATION = os.path.join(REPO_ROOT, "Integration", "BossRushIntegration_StartAndScene.cs")
 TRAVEL = os.path.join(REPO_ROOT, "Integration", "BossRushIntegration_TravelAndSetup.cs")
 MAINTENANCE = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaEnemyMaintenance.cs")
-REGISTRATION = os.path.join(REPO_ROOT, "Common", "Lifecycle", "BossRushRuntimeModuleRegistration.cs")
+REGISTRATION = os.path.join(REPO_ROOT, "ModBehaviourRuntimeModules.cs")
 MODEH_ENTRY = os.path.join(REPO_ROOT, "ModeH", "ModeHEntry.cs")
 
 LEGACY_ENTRIES = [
@@ -176,7 +178,7 @@ def main():
 
     registration = read_text(REGISTRATION)
     if registration is None:
-        errors.append("[File] 缺少 Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+        errors.append("[File] 缺少 ModBehaviourRuntimeModules.cs")
     else:
         code = strip_cs_comments(registration)
         if not re.search(r"modeHRuntime = new ModeHRuntimeModule\(\);", code):
@@ -188,17 +190,12 @@ def main():
         if not re.search(r"internal ModeHRuntimeModule ModeHRuntime", code):
             errors.append("[Host] 缺少唯一实例只读门面")
 
-    # 全仓禁止二次 new ModeHRuntimeModule
-    for root, _dirs, files in os.walk(REPO_ROOT):
-        if any(part in root for part in (".git", "Build", "鸭科夫源码", "tests", "wiki-site")):
-            continue
-        for name in files:
-            if not name.endswith(".cs"):
-                continue
-            path = os.path.join(root, name)
-            code = strip_cs_comments(read_text(path) or "")
-            if "new ModeHRuntimeModule()" in code and name != "BossRushRuntimeModuleRegistration.cs":
-                errors.append("[Host] {} 出现二次 new ModeHRuntimeModule()".format(name))
+    # 以正式构建清单限定生产源码，避免 tmp 下的历史签出误报。
+    for rel in read_compile_sources():
+        path = os.path.join(REPO_ROOT, rel)
+        code = strip_cs_comments(read_text(path) or "")
+        if "new ModeHRuntimeModule()" in code and rel != "ModBehaviourRuntimeModules.cs":
+            errors.append("[Host] {} 出现二次 new ModeHRuntimeModule()".format(rel))
 
     # 旧模式入口只读两个门
     for rel, method in LEGACY_ENTRIES:

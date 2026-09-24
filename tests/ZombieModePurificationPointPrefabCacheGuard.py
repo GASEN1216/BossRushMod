@@ -7,6 +7,8 @@ import sys
 
 CONTROLLER = Path("ZombieMode/ZombiePurificationPointController.cs")
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeMapSelection.cs")
 
 
 def fail(message: str) -> int:
@@ -34,6 +36,8 @@ def extract_method(text: str, method_name: str) -> str:
 def main() -> int:
     controller = CONTROLLER.read_text(encoding="utf-8")
     entry = ENTRY.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
+    host_bridge = HOST_BRIDGE.read_text(encoding="utf-8")
 
     try_get = extract_method(controller, "TryGetSoulCubePrefab")
     if not try_get:
@@ -69,8 +73,10 @@ def main() -> int:
         if token not in controller:
             return fail("SoulCube cache prewarm missing token -> " + token)
 
-    if "PrepareSoulCubePrefabCacheForZombieRun();" not in entry:
-        return fail("ZombieMode initialization must prewarm the SoulCube prefab cache")
+    if "owner.PrepareSoulCubePrefabCacheForRuntimeModule();" not in runtime_module:
+        return fail("RuntimeModule initialization must request the SoulCube cache prewarm")
+    if "PrepareSoulCubePrefabCacheForZombieRun();" not in host_bridge:
+        return fail("host compatibility bridge must retain the SoulCube cache prewarm call")
 
     print("ZombieModePurificationPointPrefabCacheGuard: PASS")
     return 0

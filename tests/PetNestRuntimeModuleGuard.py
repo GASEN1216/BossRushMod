@@ -4,7 +4,7 @@ PetNestRuntimeModuleGuard — 遗种巢运行时模块守卫（实施计划 步�
 
 不变式：
 - 全系统只有一个 PetNestRuntimeModule 实例：只在
-  Common/Lifecycle/BossRushRuntimeModuleRegistration.cs 里 new 一次，
+  ModBehaviourRuntimeModules.cs 里 new 一次，
   存字段后把**同一个引用**注册给 host（Mode G 的实例分裂是反例）；
 - 只读门面 ModBehaviour.PetNestRuntime 存在；
 - 其余任何文件不得出现 `new PetNestRuntimeModule(`；
@@ -31,7 +31,7 @@ from petnest_guard_util import (  # noqa: E402
 )
 
 GUARD = "PetNestRuntimeModuleGuard"
-REGISTRATION = os.path.join("Common", "Lifecycle", "BossRushRuntimeModuleRegistration.cs")
+REGISTRATION = "ModBehaviourRuntimeModules.cs"
 
 
 def check_registration(errors):

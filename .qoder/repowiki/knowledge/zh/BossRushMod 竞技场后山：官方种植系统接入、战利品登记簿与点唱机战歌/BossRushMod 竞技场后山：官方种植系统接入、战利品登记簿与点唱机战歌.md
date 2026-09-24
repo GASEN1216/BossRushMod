@@ -181,7 +181,7 @@ source_files:
 | `LootAndRewards/LootAndRewardsSpecialLoot.cs` | +1 行 `TryAddBackMountainSeedLoot(inv, bossMain)`，接在掉落箱协程末尾（额外掉落，不顶掉既有战利品） |
 | `Integration/BossRushDynamicItemRegistry.cs` | 六件物品的 FallbackLoader 登记 |
 | `Integration/BossRushIntegration_StartAndScene.cs` | 本地化注入 + 早期建筑注入 |
-| `Common/Lifecycle/BossRushRuntimeModuleRegistration.cs` | 注册单实例，排在征程之后 |
+| `ModBehaviourRuntimeModules.cs` | 注册单实例，排在征程之后 |
 
 ## 7. 风险（必须实机验证）
 

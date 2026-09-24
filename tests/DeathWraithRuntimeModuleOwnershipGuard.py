@@ -98,7 +98,7 @@ def main() -> int:
     if "Integration\\DeathWraith\\DeathWraithRuntimeModuleHostBridge.cs" not in compile_text:
         return fail("compile_official.bat does not include " + BRIDGE)
 
-    registration = read_source("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+    registration = read_source("ModBehaviourRuntimeModules.cs")
     if registration.count("deathWraithRuntimeModule = new DeathWraithRuntimeModule();") != 1:
         return fail("runtime registration must create exactly one DeathWraith module instance")
     if registration.count("runtimeModuleHost.Register(deathWraithRuntimeModule);") != 1:

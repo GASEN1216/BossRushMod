@@ -19,6 +19,11 @@ namespace BossRush
     /// </summary>
     public static class SummonStaffWeaponConfig
     {
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterConfigurator("SummonStaffWeaponConfig", (item, baseName) => { TryConfigure(item, baseName); });
+        }
+
         /// <summary>文案单一来源：与右键技能共用同一个 Config 实例的属性。</summary>
         private static readonly SummonStaffConfig TextSource = new SummonStaffConfig();
 

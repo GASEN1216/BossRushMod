@@ -13,7 +13,7 @@ def main():
     runtime = read("DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs")
     session = read("DebugAndTools/SkyIsland/SkyIslandSession.cs")
     guide = read("DebugAndTools/SkyIsland/SkyIslandGuideInteractable.cs")
-    registration = read("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+    registration = read("ModBehaviourRuntimeModules.cs")
     errors = []
     for source, label, tokens in (
         (runtime, "船点 owner", ["owner.IsBaseHubBoatInteractable(candidate)",

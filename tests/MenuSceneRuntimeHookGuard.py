@@ -15,6 +15,10 @@ INTEGRATION_PARTS = [
 ALWAYS_ON_RUNTIME_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
 AFFINITY_RUNTIME = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
 EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
+INTEGRATION_RUNTIME_MODULES = [
+    Path("Integration/BossRushIntegrationRuntimeModule.cs"),
+    Path("Integration/BossRushIntegrationRuntimeModule_RuntimeHooks.cs"),
+]
 STEAM_ACHIEVEMENT_POPUP = Path("Achievement/SteamAchievementPopup.cs")
 BOOTSTRAP_FILES = [
     (
@@ -141,6 +145,9 @@ def main() -> int:
     integration_text = read_boss_rush_integration()
     always_on_runtime_text = ALWAYS_ON_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
     equipment_runtime_text = EQUIPMENT_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    integration_runtime_text = "\n".join(
+        path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_RUNTIME_MODULES
+    )
 
     if "IsGameplaySceneName" not in mod_text:
         return fail("missing stable gameplay scene-name helper")
@@ -197,6 +204,8 @@ def main() -> int:
     start_integration = extract_method(integration_text, "void Start_Integration()")
     if not start_integration:
         return fail("could not find Start_Integration")
+    if "bossRushIntegrationRuntime.StartRuntimeStateMonitor();" not in start_integration:
+        return fail("Integration runtime-state monitor must start at its original host lifecycle slot")
     if not has_recent_guard(
         start_integration,
         "StartCoroutine(FindInteractionTargets(5));",
@@ -206,9 +215,9 @@ def main() -> int:
         return fail("startup interaction scan should not run in menu/loading scenes")
 
     gameplay_hook_calls = [
-        "StartCoroutine(DelayedRestoreReforgeDataForInventory());",
-        "StartCoroutine(DelayedSubscribeDragonBreathEvents());",
-        "StartCoroutine(DelayedApplyDragonGunAmmoOverride());",
+        "StartCoroutine(bossRushIntegrationRuntime.DelayedRestoreReforgeDataForInventory());",
+        "StartCoroutine(bossRushIntegrationRuntime.DelayedSubscribeDragonBreathEvents());",
+        "StartCoroutine(bossRushIntegrationRuntime.DelayedApplyDragonGunAmmoOverride());",
     ]
     for call in gameplay_hook_calls:
         if not has_recent_guard(on_scene, call, "if (isGameplayScene)"):
@@ -239,10 +248,15 @@ def main() -> int:
         ):
             return fail("equipment delayed setup must be guarded in " + str(path))
 
-    monitor = extract_method(integration_text, "private System.Collections.IEnumerator MonitorLateRuntimeStateRestore")
+    destroy_integration = extract_method(integration_text, "void OnDestroy_Integration()")
+    if "bossRushIntegrationRuntime.StopRuntimeStateMonitor();" not in destroy_integration:
+        return fail("Integration runtime-state monitor must stop at its original host lifecycle slot")
+    monitor = extract_method(integration_runtime_text, "private System.Collections.IEnumerator MonitorLateRuntimeStateRestore")
     if not monitor:
         return fail("could not find MonitorLateRuntimeStateRestore")
-    guard_pos = monitor.find("if (!CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))")
+    if "private Coroutine _runtimeStateMonitorCoroutine;" not in integration_runtime_text:
+        return fail("runtime-state coroutine handle must be owned by IntegrationRuntimeModule")
+    guard_pos = monitor.find("if (!ModBehaviour.CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))")
     storage_pos = monitor.find("PlayerStorage.Inventory")
     if guard_pos < 0 or storage_pos < 0 or guard_pos > storage_pos:
         return fail("runtime-state monitor must skip player/storage checks outside gameplay scenes")

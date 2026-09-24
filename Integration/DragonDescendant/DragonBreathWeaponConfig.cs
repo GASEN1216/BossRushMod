@@ -23,6 +23,11 @@ namespace BossRush
     /// </summary>
     public static partial class DragonBreathWeaponConfig
     {
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterConfigurator("DragonBreathWeaponConfig", (item, baseName) => { TryConfigure(item, baseName); });
+        }
+
         // ========== 武器配置常量 ==========
 
         /// <summary>

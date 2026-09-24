@@ -14,7 +14,7 @@ SCRIPT_FIXTURES = (
     "ResourceProduction",
     "ManualSeptemberReview", "GardenHarvestNotice",
     "AffixSelectionUI", "ManualEquipmentRecovery", "AchievementIcons", "DynamicItemInitialization", "SkyIslandSceneReferenceBridge", "RandomEventsFailure", "RandomEventTempo",
-    "RuntimeOwnership", "BossFilterRuntime", "SharedModalInput", "NPCShopPayment", "ContentTransactions", "BackMountainLifecycle", "ModeGCombat", "CampaignPlayability", "BossRewardDelivery", "AffixCombat", "ContentSecondReview", "AirdropSecondReview",
+    "RuntimeOwnership", "BossFilterRuntime", "ModeRuntimeDispatch", "EquipmentConfiguratorRegistry", "SharedModalInput", "NPCShopPayment", "ContentTransactions", "BackMountainLifecycle", "ModeGCombat", "CampaignPlayability", "BossRewardDelivery", "AffixCombat", "ContentSecondReview", "AirdropSecondReview",
     "HarmonyBindingSecondReview", "ModeHReinforcementSecondReview", "modeh_effects",
     "ModeHThirdReviewFixes", "ModeHMarketAudit", "ModeHItemBetLedger", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes",
     "ContentBuildingOwnership", "BuildingRestoreCore", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",

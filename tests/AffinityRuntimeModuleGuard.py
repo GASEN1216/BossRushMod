@@ -11,7 +11,7 @@ from cs_source_util import clean_source
 ROOT = Path(__file__).resolve().parent.parent
 MODULE_PATH = ROOT / "Integration/Affinity/AffinityRuntimeHooks.cs"
 BRIDGE_PATH = ROOT / "Integration/Affinity/AffinityRuntimeModuleHostBridge.cs"
-REGISTRATION_PATH = ROOT / "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs"
+REGISTRATION_PATH = ROOT / "ModBehaviourRuntimeModules.cs"
 COMPILE_PATH = ROOT / "compile_official.bat"
 ALWAYS_ON_PATH = ROOT / "Utilities/AlwaysOnRuntimeHooks.cs"
 

@@ -79,6 +79,7 @@ def main():
         "Interactables/BossRushInteractables.cs": r"IsModeGEntryBlockedSafe\(\)",
         "WavesArena/WavesArenaEntryAndTeleport.cs": r"ModeGRuntimeGates\.IsModeGEntryBlocked",
         "ZombieMode/ZombieModeEntry.cs": r"ModeGRuntimeGates\.IsModeGEntryBlocked",
+        "ZombieMode/ZombieModeRuntimeModule.cs": r"ModeGRuntimeGates\.IsModeGEntryBlocked",
     }
     for rel, pattern in consumers.items():
         path = os.path.join(REPO_ROOT, rel.replace("/", os.sep))

@@ -34,6 +34,10 @@ source_files:
 
 ## 1. 系统概述
 
+### 2026-09-24 Mode F 悬赏闩归属（COMPAT）
+
+`ModeFRuntimeModule` 持有玩家悬赏击杀的 victim ID 与印记标志。`HasCampaignBountyMark` 现在是纯查询；全局死亡采集器在原采集点调用 `ConsumeCampaignBountyMark`，先消费与 victim 匹配的瞬时闩，再查询尚在字典中的印记。Mode F 的 OnDeadEvent 仍先写闩、再删除字典印记，随后 Health.OnDead 才到战役采集器；读错 victim 不清闩，匹配后只能消费一次。`CampaignPlayability` 链接生产 Mode F 模块与战役桥验证这些顺序，尚未实机。
+
 ### 2026-09-22 改由官方 Jeff 发放、换新故事《册子上的名字》（COMPAT / SCHEMA+ / WIRE+）
 
 **本节之后的旧内容凡提到「公告板」「自绘六章面板」「中间人」「名人堂 32 席」的，都已过时。**
@@ -196,7 +200,7 @@ Available。这样调整章节表不需要迁移存档，也不会出现「存�
 | `ZombieMode/ZombieModeExtractionController.cs` | +1 行 `NotifyCampaignZombieExtracted()`，**必须早于场景切换** |
 | `Integration/IntegrationDeferredBootstrap.cs` | +2 个 deferred 步骤（建筑注入、线索注册） |
 | `Integration/BossRushIntegration_StartAndScene.cs` | 本地化注入 + 早期建筑注入 |
-| `Common/Lifecycle/BossRushRuntimeModuleRegistration.cs` | 注册单实例，**必须排在后山之前** |
+| `ModBehaviourRuntimeModules.cs` | 注册单实例，**必须排在后山之前** |
 
 ## 6. 冻结契约
 

@@ -20,6 +20,11 @@ namespace BossRush
     /// </summary>
     public static class FlightTotemConfig
     {
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterConfigurator("FlightTotemConfig", (item, baseName) => { TryConfigure(item, baseName); });
+        }
+
         // ========== 物品基础名（用于匹配 AssetBundle 中的 Prefab）==========
         private const string FLIGHT_TOTEM_LV1_BASE = "FlightTotem_Lv1";
 

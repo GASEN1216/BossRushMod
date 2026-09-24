@@ -1,52 +1,20 @@
+using System.Collections.Generic;
+using UnityEngine;
+
 namespace BossRush
 {
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
         private bool TryBeginZombieModeMapSelectionShell()
         {
-            // Mode H 真实资产风险门（加法分支，设计提案 §24.3）：
-            // 注：本方法的姊妹判定 IsZombieModeStartBlocked 在本文件末尾。
-            // 只在存在未终结真实资产事务或风险未知时拒绝；no-throw，
-            // 新档/无 journal 时同步 ready 且不阻断，旧模式行为逐字不变。
-            try
-            {
-                if (!ModeHRuntimeGates.IsLegacyModeEntryAllowed())
-                {
-                    // 此前这里只有 DevLog，玩家侧完全静默：点了没反应，也不知道为什么
-                    ShowMessage(L10n.T(ModeHRuntimeGates.ResolveLegacyBlockedMessageKey()));
-                    DevLog("[ZombieMode] 地图选择被 Mode H 真实资产风险门拒绝");
-                    return false;
-                }
-            }
-            catch
-            {
-                // 门查询本身 no-throw；异常只表示未能判定，放行旧模式既有流程
-            }
-
-            if (IsAnyBossRushLikeModeActive() || IsZombieModeStartupInProgress())
-            {
-                return false;
-            }
-
-            pendingZombieModeEntry = true;
-            zombieModeEntryTransaction.Reset();
-            zombieModeRunState.PendingCashInvestment = 0L;
-            zombieModeRunState.ConfirmedCashInvested = 0L;
-            zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.SelectingMap;
-            return true;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.TryBeginMapSelectionShell();
         }
 
         private void CancelZombieModeMapSelectionShell()
         {
-            if (zombieModeRunState.LifecyclePhase == ZombieModeLifecyclePhase.SelectingMap)
-            {
-                zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.None;
-            }
-
-            pendingZombieModeEntry = false;
-            zombieModeRunState.PendingCashInvestment = 0L;
-            zombieModeRunState.ConfirmedCashInvested = 0L;
-            zombieModeEntryTransaction.Reset();
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.CancelMapSelectionShell();
         }
 
         /// <summary>
@@ -59,6 +27,9 @@ namespace BossRush
         /// </summary>
         private bool IsZombieModeStartBlocked(out string failureReason)
         {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) return module.IsZombieModeStartBlocked(out failureReason);
+
             failureReason = null;
             if (!ModeHRuntimeGates.IsLegacyModeEntryAllowed())
             {
@@ -71,6 +42,203 @@ namespace BossRush
                 return true;
             }
             return false;
+        }
+    }
+
+
+    /// <summary>
+    /// ZombieMode 旧 partial 的窄兼容面。活动状态对象在 Awake 接线后由唯一 RuntimeModule 持有；
+    /// 未注册的重复宿主仍用构造期备用对象完成旧有销毁路径。
+    /// </summary>
+    public partial class ModBehaviour
+    {
+        private ZombieModeRuntimeModule zombieModeRuntimeModule;
+        private ZombieModeRunState zombieModeUnattachedRunState = new ZombieModeRunState();
+        private ZombieModeEntryTransaction zombieModeUnattachedEntryTransaction = new ZombieModeEntryTransaction();
+        private Dictionary<string, int[]> zombieModeUnattachedRewardCandidateCache = new Dictionary<string, int[]>();
+        private List<int> zombieModeUnattachedRewardCandidateScratch = new List<int>();
+        private HashSet<int> zombieModeUnattachedOpaqueFilterLogIds = new HashSet<int>();
+        private bool zombieModeUnattachedPendingEntry;
+        private float zombieModeUnattachedRuntimePausedDuration;
+        private float zombieModeUnattachedRuntimePauseStartTime = -1f;
+        private int zombieModeUnattachedRuntimePauseRunId;
+
+        internal void AttachZombieModeRuntimeModule(ZombieModeRuntimeModule module)
+        {
+            if (module == null) return;
+            module.AdoptHostState(
+                zombieModeUnattachedRunState,
+                zombieModeUnattachedEntryTransaction,
+                zombieModeUnattachedRewardCandidateCache,
+                zombieModeUnattachedRewardCandidateScratch,
+                zombieModeUnattachedOpaqueFilterLogIds,
+                zombieModeUnattachedPendingEntry,
+                zombieModeUnattachedRuntimePausedDuration,
+                zombieModeUnattachedRuntimePauseStartTime,
+                zombieModeUnattachedRuntimePauseRunId);
+            zombieModeRuntimeModule = module;
+            zombieModeUnattachedRunState = null;
+            zombieModeUnattachedEntryTransaction = null;
+            zombieModeUnattachedRewardCandidateCache = null;
+            zombieModeUnattachedRewardCandidateScratch = null;
+            zombieModeUnattachedOpaqueFilterLogIds = null;
+        }
+
+        internal void DetachZombieModeRuntimeModule(ZombieModeRuntimeModule module)
+        {
+            if (!ReferenceEquals(zombieModeRuntimeModule, module)) return;
+            zombieModeUnattachedRunState = module.RunState;
+            zombieModeUnattachedEntryTransaction = module.EntryTransaction;
+            zombieModeUnattachedRewardCandidateCache = module.RewardCandidateCache;
+            zombieModeUnattachedRewardCandidateScratch = module.RewardCandidateScratch;
+            zombieModeUnattachedOpaqueFilterLogIds = module.OpaqueFilterLogIds;
+            zombieModeUnattachedPendingEntry = module.PendingEntry;
+            zombieModeUnattachedRuntimePausedDuration = module.RuntimePausedDuration;
+            zombieModeUnattachedRuntimePauseStartTime = module.RuntimePauseStartTime;
+            zombieModeUnattachedRuntimePauseRunId = module.RuntimePauseRunId;
+            zombieModeRuntimeModule = null;
+        }
+
+        private ZombieModeRunState zombieModeRunState
+        {
+            get { return zombieModeRuntimeModule != null ? zombieModeRuntimeModule.RunState : zombieModeUnattachedRunState; }
+        }
+
+        private ZombieModeEntryTransaction zombieModeEntryTransaction
+        {
+            get { return zombieModeRuntimeModule != null ? zombieModeRuntimeModule.EntryTransaction : zombieModeUnattachedEntryTransaction; }
+        }
+
+        private Dictionary<string, int[]> zombieModeRewardCandidateCache
+        {
+            get { return zombieModeRuntimeModule != null ? zombieModeRuntimeModule.RewardCandidateCache : zombieModeUnattachedRewardCandidateCache; }
+        }
+
+        private List<int> zombieModeRewardSafeCandidateScratch
+        {
+            get { return zombieModeRuntimeModule != null ? zombieModeRuntimeModule.RewardCandidateScratch : zombieModeUnattachedRewardCandidateScratch; }
+        }
+
+        private HashSet<int> zombieModeOpaqueFilterLogIds
+        {
+            get { return zombieModeRuntimeModule != null ? zombieModeRuntimeModule.OpaqueFilterLogIds : zombieModeUnattachedOpaqueFilterLogIds; }
+        }
+
+        private bool pendingZombieModeEntry
+        {
+            get { return zombieModeRuntimeModule != null ? zombieModeRuntimeModule.PendingEntry : zombieModeUnattachedPendingEntry; }
+            set
+            {
+                if (zombieModeRuntimeModule != null) zombieModeRuntimeModule.PendingEntry = value;
+                else zombieModeUnattachedPendingEntry = value;
+            }
+        }
+
+        private int nextZombieModeRunId
+        {
+            get { return ZombieModeRuntimeModule.NextRunId; }
+            set { ZombieModeRuntimeModule.NextRunId = value; }
+        }
+
+        private float zombieModeRuntimePausedDuration
+        {
+            get { return zombieModeRuntimeModule != null ? zombieModeRuntimeModule.RuntimePausedDuration : zombieModeUnattachedRuntimePausedDuration; }
+            set
+            {
+                if (zombieModeRuntimeModule != null) zombieModeRuntimeModule.RuntimePausedDuration = value;
+                else zombieModeUnattachedRuntimePausedDuration = value;
+            }
+        }
+
+        private float zombieModeRuntimePauseStartTime
+        {
+            get { return zombieModeRuntimeModule != null ? zombieModeRuntimeModule.RuntimePauseStartTime : zombieModeUnattachedRuntimePauseStartTime; }
+            set
+            {
+                if (zombieModeRuntimeModule != null) zombieModeRuntimeModule.RuntimePauseStartTime = value;
+                else zombieModeUnattachedRuntimePauseStartTime = value;
+            }
+        }
+
+        private int zombieModeRuntimePauseRunId
+        {
+            get { return zombieModeRuntimeModule != null ? zombieModeRuntimeModule.RuntimePauseRunId : zombieModeUnattachedRuntimePauseRunId; }
+            set
+            {
+                if (zombieModeRuntimeModule != null) zombieModeRuntimeModule.RuntimePauseRunId = value;
+                else zombieModeUnattachedRuntimePauseRunId = value;
+            }
+        }
+
+        internal bool IsZombieModeStartBlockedForRuntimeModule(out string failureReason)
+        {
+            return IsZombieModeStartBlocked(out failureReason);
+        }
+
+        internal System.Collections.IEnumerator ForceTeleportToSubSceneForRuntimeModule(string targetSubScene, Vector3 targetPosition)
+        {
+            return ForceTeleportToSubScene(targetSubScene, targetPosition);
+        }
+
+        internal bool ReadSceneLoaderDoneWithWarningForRuntimeModule(string context)
+        {
+            return ReadSceneLoaderDoneWithWarning(context);
+        }
+
+        internal bool ReadLevelInitedWithWarningForRuntimeModule(string context)
+        {
+            return ReadLevelInitedWithWarning(context);
+        }
+
+        internal void PrepareSoulCubePrefabCacheForRuntimeModule()
+        {
+            PrepareSoulCubePrefabCacheForZombieRun();
+        }
+
+        internal bool PrepareZombieModeInventoryTransferForRuntimeModule(int runId)
+        {
+            return PrepareZombieModeInventoryTransferShell(runId);
+        }
+
+        internal bool CollectZombieModeSpawnPointsForRuntimeModule(int runId)
+        {
+            return CollectZombieModeSpawnPoints(runId);
+        }
+
+        internal bool ApplyZombieModeMapIsolationForRuntimeModule(int runId)
+        {
+            return ApplyZombieModeMapIsolationShell(runId);
+        }
+
+        internal bool EnsureZombieModeCharacterPresetForRuntimeModule()
+        {
+            EnsureCharacterPresetsCacheReady();
+            return cachedCharacterPresets != null && cachedCharacterPresets.ContainsKey("Cname_Zombie");
+        }
+
+        internal bool InitializeZombieModeContainersForRuntimeModule(int runId)
+        {
+            return InitializeZombieModeContainersShell(runId);
+        }
+
+        internal void RegisterZombieModeEventListenersForRuntimeModule(int runId)
+        {
+            RegisterZombieModeEventListeners(runId);
+        }
+
+        internal void CreateZombieModeHudForRuntimeModule(int runId)
+        {
+            CreateZombieModeHud(runId);
+        }
+
+        internal void ShowZombieModeStarterChoiceForRuntimeModule(int runId)
+        {
+            ShowZombieModeStarterChoice(runId);
+        }
+
+        internal void CleanupZombieModeForRuntimeModule(ZombieModeFailureReason reason)
+        {
+            CleanupZombieModeForSceneChange(reason);
         }
     }
 }

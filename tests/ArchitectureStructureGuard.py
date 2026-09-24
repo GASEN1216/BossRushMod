@@ -52,7 +52,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/BossRushRuntimeModuleHost.cs",
     "Common/Lifecycle/BossRushRuntimeModuleBase.cs",
     "Common/Lifecycle/ArchitectureSentinelRuntimeModule.cs",
-    "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs",
+    "ModBehaviourRuntimeModules.cs",
     "Common/Infrastructure/HarmonyBindingSelfCheck.cs",
     "Utilities/AlwaysOnRuntimeHooks.cs",
     "Utilities/PlayerLifecycleRuntimeHooks.cs",
@@ -156,7 +156,7 @@ def main() -> int:
     if register_index < 0 or awake_index < 0 or register_index > awake_index:
         return fail("ArchitectureStructureGuard: RegisterRuntimeModules must run before runtimeModuleHost.OnAwake")
 
-    registration_text = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs").read_text(encoding="utf-8", errors="ignore")
+    registration_text = Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8", errors="ignore")
     if "runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing ArchitectureSentinelRuntimeModule")
     if "runtimeModuleHost.Register(new ModeDRuntimeModule());" not in registration_text:
@@ -175,7 +175,15 @@ def main() -> int:
         "AffinityRuntimeModule",
     ]:
         registration_token = "runtimeModuleHost.Register(new " + module_name + "());"
-        if module_name == "AffinityRuntimeModule":
+        if module_name == "WavesArenaRuntimeModule":
+            registration_token = "wavesArenaRuntime = new WavesArenaRuntimeModule();"
+            if "runtimeModuleHost.Register(wavesArenaRuntime);" not in registration_text:
+                return fail("ArchitectureStructureGuard: WavesArena must register its stored runtime instance")
+        elif module_name == "ModeFRuntimeModule":
+            registration_token = "modeFRuntime = new ModeFRuntimeModule();"
+            if "runtimeModuleHost.Register(modeFRuntime);" not in registration_text:
+                return fail("ArchitectureStructureGuard: Mode F must register its stored runtime instance")
+        elif module_name == "AffinityRuntimeModule":
             registration_token = "affinityRuntime = new AffinityRuntimeModule();"
         if registration_token not in registration_text:
             return fail("ArchitectureStructureGuard: runtime module registration missing " + module_name)

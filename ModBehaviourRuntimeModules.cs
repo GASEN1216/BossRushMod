@@ -19,9 +19,11 @@ namespace BossRush
             runtimeModuleHost.Register(new CommonNpcRuntimeModule());
             goblinNpcRuntime = new GoblinNpcRuntimeModule();
             runtimeModuleHost.Register(goblinNpcRuntime);
-            runtimeModuleHost.Register(new WavesArenaRuntimeModule());
+            wavesArenaRuntime = new WavesArenaRuntimeModule();
+            runtimeModuleHost.Register(wavesArenaRuntime);
             runtimeModuleHost.Register(new ModeERuntimeModule());
-            runtimeModuleHost.Register(new ModeFRuntimeModule());
+            modeFRuntime = new ModeFRuntimeModule();
+            runtimeModuleHost.Register(modeFRuntime);
             runtimeModuleHost.Register(new ZombieModeRuntimeModule());
             runtimeModuleHost.Register(new ModeGRuntimeModule());
 
@@ -69,6 +71,8 @@ namespace BossRush
             runtimeModuleHost.Register(setBonusRuntime);
             deathWraithRuntimeModule = new DeathWraithRuntimeModule();
             runtimeModuleHost.Register(deathWraithRuntimeModule);
+            bossRushIntegrationRuntime = new IntegrationRuntimeModule();
+            runtimeModuleHost.Register(bossRushIntegrationRuntime);
             affinityRuntime = new AffinityRuntimeModule();
             runtimeModuleHost.Register(affinityRuntime);
             weddingRuntime = new WeddingRuntimeModule();
@@ -88,6 +92,14 @@ namespace BossRush
             phantomWitchRuntimeModule = new PhantomWitchRuntimeModule();
             runtimeModuleHost.Register(phantomWitchRuntimeModule);
         }
+
+        /// <summary>官方任务投影核心唯一运行时实例。</summary>
+        private WavesArenaRuntimeModule wavesArenaRuntime;
+        private ModeFRuntimeModule modeFRuntime;
+        private IntegrationRuntimeModule bossRushIntegrationRuntime;
+
+        /// <summary>Mode F 当前注册的运行时实例。</summary>
+        internal ModeFRuntimeModule ModeFRuntime { get { return modeFRuntime; } }
 
         /// <summary>官方任务投影核心唯一运行时实例。</summary>
         private OfficialQuestRuntimeModule officialQuestRuntime;

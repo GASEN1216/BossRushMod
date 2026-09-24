@@ -1,11 +1,39 @@
 namespace BossRush
 {
-    internal sealed class WavesArenaRuntimeModule : BossRushRuntimeModuleBase
+    internal sealed partial class WavesArenaRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour owner;
         private static WavesArenaRuntimeModule current;
         private int waveGeneration;
         private InfiniteHellMilestoneDelivery milestoneDelivery;
+        internal bool WaitingForNextWave { get; set; }
+        internal float WaveCountdown { get; set; }
+        internal int LastWaveCountdownSeconds { get; set; } = -1;
+        internal float WaveIntegrityCheckTimer { get; set; }
+        internal float DaXingXingCleanTimer { get; set; }
+        internal int TotalEnemies { get; set; }
+        internal int DefeatedEnemies { get; set; }
+        internal string NextWaveBossName { get; set; }
+        internal int BossesPerWave { get; set; } = 1;
+        internal int BossesInCurrentWaveTotal { get; set; }
+        internal int BossesInCurrentWaveRemaining { get; set; }
+        internal readonly System.Collections.Generic.List<UnityEngine.MonoBehaviour> CurrentWaveBosses =
+            new System.Collections.Generic.List<UnityEngine.MonoBehaviour>();
+        internal bool InfiniteHellMode { get; set; }
+        internal int InfiniteHellWaveIndex { get; set; }
+        internal long InfiniteHellCashPool { get; set; }
+        // 已发放的最高里程碑阶数（每100波递进，0表示尚未发放任何里程碑奖励）
+        internal int InfiniteHellMilestoneRewardTier { get; set; }
+        internal long InfiniteHellWaveCashThisWave { get; set; }
+        internal readonly System.Collections.Generic.List<int> InfiniteHellHighQualityItemPool =
+            new System.Collections.Generic.List<int>(256);
+        internal readonly System.Collections.Generic.HashSet<int> InfiniteHellHighQualityCandidateIdScratch =
+            new System.Collections.Generic.HashSet<int>();
+        internal readonly System.Collections.Generic.List<int> InfiniteHellHighQualityPreferredScratch =
+            new System.Collections.Generic.List<int>(128);
+        internal readonly System.Collections.Generic.List<int> InfiniteHellHighQualityFallbackScratch =
+            new System.Collections.Generic.List<int>(128);
+        internal bool InfiniteHellHighQualityItemPoolInitialized { get; set; }
 
         internal static void ResetMilestones(ModBehaviour expectedOwner)
         {

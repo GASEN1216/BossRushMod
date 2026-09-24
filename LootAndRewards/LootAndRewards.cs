@@ -199,17 +199,61 @@ namespace BossRush
             FinalizeBossRushLootboxPathTracking(character);
         }
 
-        private bool infiniteHellMode = false;
-        private int infiniteHellWaveIndex = 0;
-        private long infiniteHellCashPool = 0L;
-        // 已发放的最高里程碑阶数（每100波递进，0表示尚未发放任何里程碑奖励）
-        private int infiniteHellMilestoneRewardTier = 0;
-        private long infiniteHellWaveCashThisWave = 0L;
-        private readonly List<int> infiniteHellHighQualityItemPool = new List<int>(256);
-        private readonly HashSet<int> infiniteHellHighQualityCandidateIdScratch = new HashSet<int>();
-        private readonly List<int> infiniteHellHighQualityPreferredScratch = new List<int>(128);
-        private readonly List<int> infiniteHellHighQualityFallbackScratch = new List<int>(128);
-        private bool infiniteHellHighQualityItemPoolInitialized = false;
+        private bool infiniteHellMode
+        {
+            get { return wavesArenaRuntime.InfiniteHellMode; }
+            set { wavesArenaRuntime.InfiniteHellMode = value; }
+        }
+
+        private int infiniteHellWaveIndex
+        {
+            get { return wavesArenaRuntime.InfiniteHellWaveIndex; }
+            set { wavesArenaRuntime.InfiniteHellWaveIndex = value; }
+        }
+
+        private long infiniteHellCashPool
+        {
+            get { return wavesArenaRuntime.InfiniteHellCashPool; }
+            set { wavesArenaRuntime.InfiniteHellCashPool = value; }
+        }
+
+        private int infiniteHellMilestoneRewardTier
+        {
+            get { return wavesArenaRuntime.InfiniteHellMilestoneRewardTier; }
+            set { wavesArenaRuntime.InfiniteHellMilestoneRewardTier = value; }
+        }
+
+        private long infiniteHellWaveCashThisWave
+        {
+            get { return wavesArenaRuntime.InfiniteHellWaveCashThisWave; }
+            set { wavesArenaRuntime.InfiniteHellWaveCashThisWave = value; }
+        }
+
+        private List<int> infiniteHellHighQualityItemPool
+        {
+            get { return wavesArenaRuntime.InfiniteHellHighQualityItemPool; }
+        }
+
+        private HashSet<int> infiniteHellHighQualityCandidateIdScratch
+        {
+            get { return wavesArenaRuntime.InfiniteHellHighQualityCandidateIdScratch; }
+        }
+
+        private List<int> infiniteHellHighQualityPreferredScratch
+        {
+            get { return wavesArenaRuntime.InfiniteHellHighQualityPreferredScratch; }
+        }
+
+        private List<int> infiniteHellHighQualityFallbackScratch
+        {
+            get { return wavesArenaRuntime.InfiniteHellHighQualityFallbackScratch; }
+        }
+
+        private bool infiniteHellHighQualityItemPoolInitialized
+        {
+            get { return wavesArenaRuntime.InfiniteHellHighQualityItemPoolInitialized; }
+            set { wavesArenaRuntime.InfiniteHellHighQualityItemPoolInitialized = value; }
+        }
 
         // ============================================================================
         // 物品价值缓存系统 - 避免Boss死亡时同步实例化大量物品导致卡顿

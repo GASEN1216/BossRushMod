@@ -7,6 +7,7 @@ import sys
 
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 
 
 def fail(message: str) -> int:
@@ -34,6 +35,7 @@ def extract_method_body(text: str, method_name: str) -> str:
 def main() -> int:
     spawner = SPAWNER.read_text(encoding="utf-8")
     entry = ENTRY.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
 
     collect_method = extract_method_body(spawner, "CollectZombieModeSpawnPoints")
     if not collect_method:
@@ -66,7 +68,7 @@ def main() -> int:
         "                    ? mapConfig.modeESpawnPoints\n"
         "                    : (mapConfig.spawnPoints ?? new Vector3[0]);"
     )
-    if profile_assignment not in entry:
+    if profile_assignment not in runtime_module:
         return fail("MapProfile must keep modeE points first and BossRush spawnPoints fallback")
 
     print("ZombieModeBossRushSpawnPointsOnlyGuard: PASS")

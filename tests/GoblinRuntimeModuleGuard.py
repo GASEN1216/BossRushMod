@@ -1,16 +1,17 @@
 """哥布林 RuntimeModule 单实例与宿主兼容桥守卫。"""
 from pathlib import Path
 import re
-import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
 from cs_source_util import clean_source
+sys.path.insert(0, str(ROOT / "tools"))
+from compile_list import read_compile_sources
 
 MODULE = Path("Integration/NPCs/Goblin/GoblinNPC.cs")
 BRIDGE = Path("Integration/NPCs/Goblin/GoblinNPCRuntimeModuleHostBridge.cs")
-REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+REGISTRATION = Path("ModBehaviourRuntimeModules.cs")
 
 
 def fail(message):
@@ -78,10 +79,7 @@ def main():
                 and "runtimeModuleHost.Register(goblinNpcRuntime);" in registration,
                 "RegisterRuntimeModules must store and register the same GoblinNpcRuntimeModule instance")
         new_sites = []
-        listed = subprocess.run(
-            ["git", "ls-files", "--", "*.cs"], cwd=ROOT,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-        source_paths = {ROOT / line for line in listed.stdout.splitlines()}
+        source_paths = {ROOT / line for line in read_compile_sources()}
         source_paths.update((module_path, bridge_path, registration_path))
         for path in source_paths:
             if not path.is_file():
@@ -92,7 +90,7 @@ def main():
         require(new_sites == [REGISTRATION.as_posix()],
                 "GoblinNpcRuntimeModule must have one creation site in registration; found: "
                 + ", ".join(sorted(new_sites)))
-    except (AssertionError, subprocess.CalledProcessError) as error:
+    except AssertionError as error:
         return fail(str(error))
 
     print("GoblinRuntimeModuleGuard: PASS (single owner + legacy forwarding + registered instance)")

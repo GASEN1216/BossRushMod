@@ -6,6 +6,7 @@ import sys
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 USAGE_FILES = [
     Path("ZombieMode/ZombieModeEntry.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule.cs"),
     # 入场回滚的退款文案 2026-09-12 随 CR-2026-09-11-019 从宿主 partial 移到模块自有类型
     # （AGENTS 4.15：新子系统的状态与算法放自己的类型里，宿主只留一行转发）。
     Path("ZombieMode/ZombieModeEntryDebt.cs"),

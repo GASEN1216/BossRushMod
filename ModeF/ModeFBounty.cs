@@ -22,8 +22,6 @@ namespace BossRush
         /// 因此战役侧无法再从 BountyMarksByCharacterId 查到已被移除的印记。
         /// 这个闩只在同一次死亡的这两个回调之间有效，由 instanceID 配对，读取即失效。
         /// </summary>
-        private int modeFLastPlayerBountyKillVictimId = 0;
-        private bool modeFLastPlayerBountyKillWasBounty = false;
 
         private bool modeFBountyLeaderDirty = false;
         private CharacterMainControl modeFBountyLeaderPreferred = null;
@@ -50,8 +48,12 @@ namespace BossRush
         /// </summary>
         private void LatchModeFPlayerBountyKill(int victimId, bool isBounty)
         {
-            modeFLastPlayerBountyKillVictimId = victimId;
-            modeFLastPlayerBountyKillWasBounty = isBounty;
+            if (modeFRuntime != null) modeFRuntime.LatchPlayerBountyKill(victimId, isBounty);
+        }
+
+        private bool HasModeFPlayerBountyKillLatch(int victimId)
+        {
+            return modeFRuntime != null && modeFRuntime.HasPlayerBountyKillLatch(victimId);
         }
 
         /// <summary>
@@ -60,19 +62,12 @@ namespace BossRush
         /// </summary>
         private bool ConsumeModeFPlayerBountyKillLatch(int victimId)
         {
-            if (modeFLastPlayerBountyKillVictimId == 0) return false;
-            if (modeFLastPlayerBountyKillVictimId != victimId) return false;
-
-            bool wasBounty = modeFLastPlayerBountyKillWasBounty;
-            modeFLastPlayerBountyKillVictimId = 0;
-            modeFLastPlayerBountyKillWasBounty = false;
-            return wasBounty;
+            return modeFRuntime != null && modeFRuntime.ConsumePlayerBountyKillLatch(victimId);
         }
 
         private void ResetModeFPlayerBountyKillLatch()
         {
-            modeFLastPlayerBountyKillVictimId = 0;
-            modeFLastPlayerBountyKillWasBounty = false;
+            if (modeFRuntime != null) modeFRuntime.ResetPlayerBountyKillLatch();
         }
 
         private bool ShouldUseModeFAbstractPlunderLootTracking()

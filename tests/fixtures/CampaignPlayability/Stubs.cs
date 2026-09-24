@@ -35,7 +35,8 @@ public class CharacterMainControl : UnityEngine.Object
     public bool IsMainCharacter;
     public bool isBossCharacter;
     public bool Marked;
-    public int GetInstanceID() { return 1; }
+    public int InstanceId = 1;
+    public int GetInstanceID() { return InstanceId; }
 }
 public enum Teams { player, wolf, middle }
 public static class Team
@@ -61,6 +62,13 @@ public struct DamageInfo
 
 namespace BossRush
 {
+    internal abstract class BossRushRuntimeModuleBase
+    {
+        public virtual string ModuleName { get { return "fixture"; } }
+        public virtual void OnAwake(ModBehaviour owner) { }
+        public virtual void OnDestroy() { }
+    }
+    internal static class ModeFStatusHud { internal static void Dispose() { } }
     public partial class ModBehaviour
     {
         public static ModBehaviour Instance;
@@ -72,7 +80,10 @@ namespace BossRush
         private bool campaignFinalBossActive;
         public bool IsCampaignConfiguredEnabled() { return true; }
         private void TickCampaignFinalBossAltar() { }
-        private bool ConsumeModeFPlayerBountyKillLatch(int id) { return false; }
+        private readonly ModeFRuntimeModule modeFRuntime = new ModeFRuntimeModule();
+        private bool HasModeFPlayerBountyKillLatch(int id) { return modeFRuntime.HasPlayerBountyKillLatch(id); }
+        private bool ConsumeModeFPlayerBountyKillLatch(int id) { return modeFRuntime.ConsumePlayerBountyKillLatch(id); }
+        public void LatchBountyForTest(int id, bool marked) { modeFRuntime.LatchPlayerBountyKill(id, marked); }
         public static void DevLog(string value) { }
         public static void CriticalLog(string key, string value) { }
         public void ShowMessage(string value) { }

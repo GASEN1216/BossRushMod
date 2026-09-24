@@ -134,7 +134,7 @@ echo(Common\Lifecycle\SceneRuntimeContext.cs
 echo(Common\Lifecycle\BossRushRuntimeModuleHost.cs
 echo(Common\Lifecycle\BossRushRuntimeModuleBase.cs
 echo(Common\Lifecycle\ArchitectureSentinelRuntimeModule.cs
-echo(Common\Lifecycle\BossRushRuntimeModuleRegistration.cs
+echo(ModBehaviourRuntimeModules.cs
 echo(Common\Lifecycle\BossRushSaveFileThrottle.cs
 echo(Common\Lifecycle\BossRushSaveCoordinatorEngine.cs
 echo(Common\Lifecycle\BossRushSlotJsonStore.cs
@@ -336,6 +336,8 @@ echo(DebugAndTools\F3GameplayValidationAutotestReport.cs
 echo(DebugAndTools\NPCTeleportUI.cs
 echo(Integration\BossRushDynamicItemRegistry.cs
 echo(Integration\BossRushIntegration.cs
+echo(Integration\BossRushIntegrationRuntimeModule.cs
+echo(Integration\BossRushIntegrationRuntimeModule_RuntimeHooks.cs
 echo(Integration\BossRushIntegration_StartAndScene.cs
 echo(Integration\IntegrationDeferredBootstrap.cs
 echo(Integration\BossRushIntegration_TravelAndSetup.cs
@@ -372,6 +374,7 @@ echo(Patches\AI\StaleAITaskCallbackPatch.cs
 echo(Patches\Compatibility\InteractableAwakeGroupInitializationPatch.cs
 echo(Patches\Compatibility\FowSmokeDestroyedRunnerPatch.cs
 echo(Integration\BirthdayCakeItem.cs
+echo(Integration\EquipmentConfiguratorBootstrap.cs
 echo(Integration\EquipmentFactory.cs
 echo(Integration\EquipmentFactory_ItemProcessing.cs
 echo(Integration\EquipmentFactoryStaticCacheReset.cs
@@ -965,6 +968,7 @@ echo(Audio\BossRushAudioHooks.cs
 echo(Audio\BossRushAudioManager.cs
 echo(DebugAndTools\InventoryInspector.cs
 echo(WavesArena\InfiniteHellCashMagnet.cs
+echo(WavesArena\WavesArenaCashMagnetHostBridge.cs
 echo(Integration\Wedding\NPCMarriageSystem.cs
 echo(Integration\Wedding\WeddingChapelInteractable.cs
 echo(Integration\Wedding\WeddingBuildingInjector.cs

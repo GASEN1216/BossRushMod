@@ -1,5 +1,5 @@
 using System;
-namespace UnityEngine { public struct Vector3 {} }
+namespace UnityEngine { public struct Vector3 {} public class MonoBehaviour {} }
 namespace UnityEngine.SceneManagement {
  public struct Scene { public int handle; }
  public static class SceneManager { public static int Handle=1; public static Scene GetActiveScene(){return new Scene{handle=Handle};} }

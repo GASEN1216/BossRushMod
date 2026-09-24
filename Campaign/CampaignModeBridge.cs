@@ -191,15 +191,29 @@ namespace BossRush
                 if (!modeFActive) return false;
                 if (boss == null) return false;
 
-                // 先读瞬时闩：ModeF 的 OnDeadEvent 已经在几行前把印记从字典里移除了，
-                // 此刻只有闩还记得这一杀带印记。命中即消费，避免重复计数。
-                if (ConsumeModeFPlayerBountyKillLatch(boss.GetInstanceID())) return true;
+                // 纯查询：消费由全局死亡采集器在原死亡回调位置显式触发。
+                if (HasModeFPlayerBountyKillLatch(boss.GetInstanceID())) return true;
 
                 if (modeFState == null || modeFState.BountyMarksByCharacterId == null) return false;
 
                 int marks;
                 if (!modeFState.BountyMarksByCharacterId.TryGetValue(boss.GetInstanceID(), out marks)) return false;
                 return marks > 0;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>死亡采集点显式消费 Mode F 闩，再读仍在名单里的印记。</summary>
+        internal bool ConsumeCampaignBountyMark(CharacterMainControl boss)
+        {
+            try
+            {
+                if (!modeFActive || boss == null) return false;
+                if (ConsumeModeFPlayerBountyKillLatch(boss.GetInstanceID())) return true;
+                return HasCampaignBountyMark(boss);
             }
             catch (Exception)
             {

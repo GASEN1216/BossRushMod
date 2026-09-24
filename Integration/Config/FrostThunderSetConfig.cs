@@ -18,6 +18,11 @@ namespace BossRush
 {
     public static class FrostThunderSetConfig
     {
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterConfigurator("FrostThunderSetConfig", (item, baseName) => { TryConfigure(item, baseName); });
+        }
+
         public const int FROST_HELMET_ID = 500053;
         public const int FROST_ARMOR_ID = 500054;
         public const int THUNDER_HELMET_ID = 500055;

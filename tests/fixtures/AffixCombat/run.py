@@ -28,6 +28,7 @@ def main():
     mutators = (ROOT / "Integration/Mutators/MutatorManager.cs").read_text(encoding="utf-8-sig")
     definitions = (ROOT / "Integration/Mutators/MutatorDefinitions.cs").read_text(encoding="utf-8-sig")
     models = (ROOT / "ZombieMode/ZombieModeModels.cs").read_text(encoding="utf-8-sig")
+    runtime_module = (ROOT / "ZombieMode/ZombieModeRuntimeModule.cs").read_text(encoding="utf-8-sig")
     volatile = definitions[definitions.index('Id = "explode_on_death"'):]
     callback = member(volatile, "OnApply = ctx =>")
     callback = callback[callback.index('{'):]
@@ -49,13 +50,23 @@ def main():
         generated += member(forge, signature) + "\n"
     generated += "} public static partial class AffixItemData {\n"
     generated += member(item_data, "public static AffixEquipMask GetEquipMask(") + "\n}}"
+    # Keep the exact production scheduling, pause/cancel, cleanup and pulse geometry methods,
+    # while excluding unrelated entry/lifecycle members that require the full game host.
+    generated += "\nnamespace BossRush { internal sealed class ZombieModeRuntimeModule {\n"
+    for signature in (
+        "internal static void DeferExplosion(",
+        "private static IEnumerator ExplosionNextFrame(",
+        "internal static void TriggerDoomPulse(",
+    ):
+        generated += member(runtime_module, signature) + "\n"
+    generated += "}}"
     generated = "using ItemStatsSystem;\n" + generated
     extracted = OUT / "ExplosionEntrypoints.cs"
     extracted.write_text(generated, encoding="utf-8")
     sources = [ROOT / "Integration/AffixForge" / name for name in (
         "AffixRuntimeService.cs", "AffixRuntimeService_Effects.cs", "AffixDefinitions.cs",
     )] + [ROOT / "Common/Stats/RuntimeStatModifierTracker.cs",
-          ROOT / "ZombieMode/ZombieModeRuntimeModule.cs", ROOT / "Utilities/RunScopedRegistry.cs",
+          ROOT / "Utilities/RunScopedRegistry.cs",
           HERE / "Program.cs", HERE / "Stubs.cs", extracted]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
     project += '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'

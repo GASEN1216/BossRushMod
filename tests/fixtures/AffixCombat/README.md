@@ -6,7 +6,9 @@
 
 直接链接完整 `AffixRuntimeService.cs`、`AffixRuntimeService_Effects.cs`、`AffixDefinitions.cs`、
 `Common/Stats/RuntimeStatModifierTracker.cs`，并以底层 Stat 替身验证三种 ModifierType、失败分支、移除和 owner 隔离；
-`ZombieModeRuntimeModule.cs` 与 `RunScopedRegistry.cs`。由装备变化与 Health 事件驱动真实词缀分发器。
+`ZombieModeRuntimeModule.cs` 中逐字抽取 `DeferExplosion`、`ExplosionNextFrame`、`TriggerDoomPulse` 三个生产方法，
+并直接链接 `RunScopedRegistry.cs`。夹具不编译模块中不相关的入场/场景成员，以免为宿主流程引入大批无关游戏类型替身。
+由装备变化与 Health 事件驱动真实词缀分发器。
 `run.py` 逐字提取共享变异的死亡分发/延迟方法和天降殉爆 OnApply、丧尸奖励爆炸/末日脉冲/区域爆炸入口，
 以及 `ZombieModeRunOnlyRecord`；不复写这些算法。
 

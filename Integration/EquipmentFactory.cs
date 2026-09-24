@@ -131,6 +131,41 @@ namespace BossRush
     /// </summary>
     public static partial class EquipmentFactory
     {
+        private static readonly List<Action<Item, string>> gunConfigurators = new List<Action<Item, string>>();
+        private static readonly Dictionary<string, int> gunConfiguratorIndexes = new Dictionary<string, int>(StringComparer.Ordinal);
+        private static readonly List<Action<Item, string>> equipmentConfigurators = new List<Action<Item, string>>();
+        private static readonly Dictionary<string, int> equipmentConfiguratorIndexes = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        public static void RegisterGunConfigurator(string key, Action<Item, string> configurator)
+        {
+            RegisterConfiguratorInOrder(key, configurator, gunConfigurators, gunConfiguratorIndexes);
+        }
+
+        public static void RegisterConfigurator(string key, Action<Item, string> configurator)
+        {
+            RegisterConfiguratorInOrder(key, configurator, equipmentConfigurators, equipmentConfiguratorIndexes);
+        }
+
+        private static void RegisterConfiguratorInOrder(string key, Action<Item, string> configurator,
+            List<Action<Item, string>> ordered, Dictionary<string, int> indexes)
+        {
+            if (string.IsNullOrEmpty(key)) throw new ArgumentException("Equipment configurator key is required", "key");
+            if (configurator == null) throw new ArgumentNullException("configurator");
+            int index;
+            if (indexes.TryGetValue(key, out index))
+            {
+                ordered[index] = configurator;
+                return;
+            }
+            indexes.Add(key, ordered.Count);
+            ordered.Add(configurator);
+        }
+
+        private static void ApplyRegisteredConfigurators(List<Action<Item, string>> ordered, Item item, string baseName)
+        {
+            for (int index = 0; index < ordered.Count; index++) ordered[index](item, baseName);
+        }
+
         // ========== 缓存字典 ==========
 
         // 已加载的模型缓存（TypeID -> ItemAgent）
@@ -678,7 +713,7 @@ namespace BossRush
                         if (equipType == EquipmentType.Gun)
                         {
                             // 武器处理
-                            DragonKingBossGunConfig.TryConfigure(itemPrefab, baseName);
+                            ApplyRegisteredConfigurators(gunConfigurators, itemPrefab, baseName);
                             ProcessGunItem(itemPrefab, baseName, modelAgent, gunSettingsByBaseName, buffsByPrefix, bulletsByPrefix);
                             loadedGuns[itemPrefab.TypeID] = itemPrefab;
                         }
@@ -703,36 +738,8 @@ namespace BossRush
                             loadedModels[itemPrefab.TypeID] = modelAgent;
                         }
 
-                        // 配置龙套装（设置本地化键和属性）
-                        DragonSetConfig.TryConfigure(itemPrefab, baseName);
-
-                        // 配置龙王套装（设置本地化键和属性）
-                        DragonKingSetConfig.TryConfigure(itemPrefab, baseName);
-
-                        // 配置 P1 冰霜/雷霆套装（真实资源主路径）
-                        FrostThunderSetConfig.TryConfigure(itemPrefab, baseName);
-
-                        // 配置天空岛头目 / 岛主的专属装备（500086-500089，bundle skyisland_boss_gear）
-                        SkyIslandBossGearConfig.TryConfigure(itemPrefab, baseName);
-
-                        // 配置飞行图腾（设置本地化键和属性）
-                        FlightTotemConfig.TryConfigure(itemPrefab, baseName);
-
-                        // 配置逆鳞图腾（设置本地化键和属性）
-                        ModBehaviour.TryConfigureReverseScale(itemPrefab, baseName);
-
-                        // 配置龙息武器（配件槽位、弹药类型、耐久度、标签）
-                        DragonBreathWeaponConfig.TryConfigure(itemPrefab, baseName);
-
-                        // 配置 P0 新武器（毒蛇匕首 / 召唤法杖 / 能量盾 / 冰霜长矛 / 雷电戒指）
-                        // 当 AssetBundle 提供了这五把武器的 prefab 时，让 LoadBundleInternal 也走 WeaponConfig.TryConfigure
-                        // 写入 Stats / 标签 / Buff，避免依赖 ItemFactory.loadedItems 这条只有
-                        // ItemFactory.LoadBundle 路径才会填充的缓存。
-                        ViperDaggerWeaponConfig.TryConfigure(itemPrefab, baseName);
-                        SummonStaffWeaponConfig.TryConfigure(itemPrefab, baseName);
-                        EnergyShieldWeaponConfig.TryConfigure(itemPrefab, baseName);
-                        FrostSpearWeaponConfig.TryConfigure(itemPrefab, baseName);
-                        ThunderRingWeaponConfig.TryConfigure(itemPrefab, baseName);
+                        // 各装备配置器在内容初始化时按旧顺序登记；工厂只执行登记结果。
+                        ApplyRegisteredConfigurators(equipmentConfigurators, itemPrefab, baseName);
 
                         // 注册到游戏物品系统
                         if (equipType == EquipmentType.MeleeWeapon)

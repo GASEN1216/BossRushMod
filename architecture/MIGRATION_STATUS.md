@@ -9,12 +9,12 @@
 | P0 基线 | 完成，`3323e33e` | 665 项全量守卫 PASS，59 项全量回归 PASS；隔离正式与 Dev 构建 PASS |
 | P1 上下文治理 | 完成，`adef32ef` | 根规则 180 行 / 17,329 B；台账 1,050 / 975 行；47 模块导航覆盖 1,020 源 |
 | P2 复用试点 | 完成，`403a09a4` | 词缀追踪器与建筑恢复核心；203 项相关守卫、60 项全量回归与两种隔离构建通过 |
-| P3 状态提取 | 进行中 | 簇 1 已提交；簇 6 的部分叶子已合入并完成整树离线验证，待提交；簇 2–5、簇 6 余项、簇 7 待做 |
-| P4 耦合点 | 提前并行 | §6 第 5、6、8 条已完成代码及离线验证，待提交；第 1、3、7 条待做 |
+| P3 状态提取 | 进行中 | 簇 1 已提交；簇 2 的现金磁铁与波次/无间状态、簇 5 入场主体和簇 6 商店 owner 子范围均已通过整树验证，待本批提交；其余待做 |
+| P4 耦合点 | 提前并行 | §6 第 5、6、8 条已提交；第 1、2、3、7 条已通过整树验证，待本批提交；第 9 条随簇 3、4 处理 |
 | P5 目录归位 | 未开始 | 天空岛迁移与注入占位清理 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-最近提交：`71b68f60`（P3 簇 1）。下一具体动作：提交已验证的簇 6 部分叶子与提前完成的 P4 耦合点，再顺序进入簇 2（WavesArena、LootAndRewards）。
+最近已提交：`74251963`（P3 簇 6 部分叶子与 P4 §6 第 5、6、8 条）；本批验证已完成，下一具体动作是按路径暂存并提交，再继续簇 2（WavesArena、LootAndRewards）剩余项。当前真实游戏目录尚未部署。
 
 ## P0 基线（2026-09-24）
 
@@ -36,13 +36,26 @@
 - 新 `BossFilterRuntime` 执行回归抽取生产筛选方法，覆盖配置、默认因子、缓存失效、两个目录刷新及两个 owner 隔离，1 PASS / 0 FAIL；人为令过滤判据恒真后按预期转红，原文件按 SHA-256 还原。`ModeGCombat` 1 PASS / 0 FAIL。六个相关结构守卫的真实调用锚点作破坏转红与逐字还原。
 - 用 Git 暂存区单独导出簇 1 快照（不含并行叶子改动）后，全量守卫 669 PASS / 0 FAIL / 0 known-red；预算 202 文件 / 103,052 行降为 198 文件 / 100,642 行，上限同步下调为 198 / 100,700。正式隔离构建 `Build succeeded!`、Dev 标识缺席、SHA-256 `6FA33504E00D1C1EEC30CE3D3507BDE0D628EF9EECB7AA38FF0B8D9089E22237`；Dev 隔离构建 `Build succeeded!`、Dev 标识在位、SHA-256 `D11C60E85A079C7DC5A6B289D44621DDEB7905430AA0966A109D463AE48DB4DB`。两者部署到隔离游戏根后的 SHA-256 都与构建副本一致，72 个 bundle 清单验证通过。未启动游戏，L3 待 owner。
 
-### 簇 6：Integration 部分叶子与提前完成的 P4 耦合点（待提交，COMPAT）
+### 簇 6：Integration 部分叶子与提前完成的 P4 耦合点（`74251963`，COMPAT）
 
 - 字段归属：DeathWraith、Bonus 套装、DragonKing / DragonDescendant / PhantomWitch、Wedding、WishFountain、FlightTotem / Frostmourne / ReverseScale、Goblin、Affinity 的状态由各自 RuntimeModule 或独立 owner 持有。原宿主公开签名保留薄桥；`BossRushRuntimeModuleRegistration` 装配顺序与 `AlwaysOnRuntimeHooks` 调度位置未改。`IntegrationDeferredBootstrap` 的阶段顺序未改。`BossRushIntegration_*` 等其余宿主 partial 尚未提取，簇 6 不得记为完成。
 - 生命周期：各叶子的事件订阅与退订、协程启动与停止、静态缓存重置按原入口迁移；死亡亡魂与套装的夹具覆盖 owner 隔离和清理。运行时轨迹仅经 L1/L2 静态与隔离验证，未启动游戏。
 - P4 §6 第 5 条：共享字体、CanvasScaler、模态租约、timeScale / Cursor 快照归 `Common/UI/BossRushUIFoundation`；丧尸帮助类只转发。两个消费者并存的租约夹具及反向验证通过。第 6 条：`ValidationHasActiveMode` 从 F3 partial 搬到正式可达的 `Utilities/ModeRuntimeHooks`；正式入口与 F3 均沿用同一判据。第 8 条：临时 NPC 商店创建者传入现金 / 净化点策略，通用交易仍按官方回调、交付、扣款 / 回滚顺序执行；生产方法抽取夹具验证两种支付和失败回滚。第 1、3、7 条待做。
 - 索引：`architecture/modules.json` 的 12 个 Integration owner / 入口同步改写，`MODULES.md` 由工具再生；`task_context.py --check` 报 47 模块 / 1,036 编译源。宿主 partial 由 198 文件 / 100,642 行降至 179 文件 / 86,974 行，预算下调为 179 / 87,000。实例分类表与守卫同步更新。
 - 验证：全量守卫 675 PASS / 0 FAIL / 0 known-red；修改或新增的守卫以真实破坏转红并逐字还原。全量执行回归 64 PASS / 0 FAIL（Harmony 指向创意工坊 `3588386576/0Harmony.dll`）；隔离正式构建 `Build succeeded!`，Dev 标识缺席，SHA-256 `7A0BAB42FD41CF9F5946E7E7AA662DA7056C5216D87796BAF8E369248EB1E91B`；隔离 Dev 构建 `Build succeeded!`，Dev 标识在位，SHA-256 `A903E60E8AE9AC9B94FE50A31CA5548F122194DA57FC9CD24F0069E5C9565EBB`。两种 DLL 的隔离部署哈希一致，72 个 bundle 清单核对通过。当前 `Build/BossRush.dll` 是 Dev，真实游戏目录尚未部署。
+
+### 簇 2、簇 5、簇 6 后续子范围（进行中，COMPAT）
+
+- 簇 2：`InfiniteHellCashMagnet.cs` 的飞行集合、计时器、缓冲与处理方法归 `WavesArenaRuntimeModule`；原 `UpdateCashMagnet` / `ClearCashMagnetState` 保留一行宿主转发，Mode D/E/F 与场景清理仍从原入口调用。波次倒计时、敌人数、每波 Boss 数与当前波 Boss 列表、无间炼狱现金池/里程碑/高品质候选缓冲、完整性自检与大兴兴清理计时器也由同一个已注册实例持有，原调用点暂经属性访问；新增归属守卫反向转红并逐字还原。宿主预算从 179 / 87,000 下调到 179 / 86,800；簇 2 其他波次与奖励 partial 尚未迁移。
+- 簇 5：`ZombieModeRuntimeModule` 已拥有局状态、入场事务、奖励候选缓存、待入场标记、暂停时钟和 run ID；宿主兼容桥在挂载时交接原引用，销毁时交还。入场门控、资源提交/退款、场景保留与等待、run 初始化及状态推进的 23 个方法体迁入模块；宿主保留公开兼容入口。未挂载备用分支补齐 Mode G 隔离门。8 个专项守卫做破坏转红、SHA-256 还原；`ZombieModeEntryDebt` 与链接模块生产爆炸方法的 `AffixCombat` 通过。Tick、暂停时钟及其余奖励/战斗/清理业务还在宿主，不记簇完成。
+- 簇 6：`IntegrationRuntimeModule` 已拥有商店扫描/缓存、船票、日志与砖石库存的静态缓存和存档订阅，以及购买计数/事件、状态监控与重铸恢复协程句柄、龙息持握事件 owner；旧宿主入口转发，原订阅槽位顺序不变。`IntegrationRuntimeModuleGuard`、`MenuSceneRuntimeHookGuard` 与 `ContentRegistryGuard`、`NPCShopPayment` 回归通过，修改的 owner 守卫反向转红且字节还原。地图克隆/撤离点、共享出生点、传送与跨模式场景编排、延迟 bootstrap 等余项待后续步骤，不记簇完成。
+
+### P4 后续耦合点（进行中，COMPAT）
+
+- §6 第 1 条：`Common/Lifecycle/BossRushRuntimeModuleRegistration.cs` 移到根 `ModBehaviourRuntimeModules.cs`；清单、预算、守卫及 repowiki 文件链接同步。定向守卫通过；15 个改路径守卫在移除注册内容的反向探针中均转红，字节还原。第 2 条：新增 `ModeRuntimeDispatch` 夹具，抽取生产 `TickModeRuntimeGroup`，验证共享刷怪后处理、Arena 早返与 E/F/G/Zombie/清理顺序及时间源；1 PASS；人为重复 F 调度后回归转红，源码哈希还原。
+- 第 3 条：Mode F 模块拥有悬赏击杀 victim 闩；`HasCampaignBountyMark` 纯查询，死亡采集器在原点显式消费。`CampaignPlayability` 直接链接生产 Mode F 模块，验证先写后删、错 victim 不消费、正确 victim 一次消费，1 PASS；新结构守卫反向转红、逐字还原。
+- 第 7 条：`EquipmentFactory` 改为按 key 原位替换的配置器登记，枪械前置配置与常规配置分开；各 Config 自行登记，`EquipmentConfiguratorBootstrap` 按旧顺序装配，Item 初始化先于装备加载。`DynamicItemInitialization`、`ManualEquipmentRecovery`、`EquipmentConfiguratorRegistry` 各 1 PASS；新守卫与夹具反向探针均转红并还原。
+- 本批完成后的整树证据（L1/L2）：全量守卫 679 PASS / 0 FAIL / 0 known-red；全量执行回归 66 PASS / 0 FAIL / 0 SKIP，初轮两项旧夹具替身失配已修并复跑。编译清单 1,040 源，模块索引 47 模块；宿主 partial 179 文件 / 85,427 行，预算 179 / 86,800。修正新文件空白行后复建：隔离正式构建 `Build succeeded!`、Dev 标识缺席，DLL SHA-256 `741AC9DA699A5BCB8C317793A7153E85C7FEBB5DDD66AB90CE8418F11AB55EDC`；隔离 Dev 构建 `Build succeeded!`、Dev 标识在位，DLL SHA-256 `58B20F3A55773DF6D06F79DC60201D053F85F8693982567F4409529D2B8F87E8`。两种 DLL 分别与隔离发布副本 SHA-256 一致，72 bundle 清单通过。`Build/BossRush.dll` 当前为 Dev；未启动游戏、未部署真实游戏目录，L3 待 owner。
 
 ## P1 上下文治理（2026-09-24）
 

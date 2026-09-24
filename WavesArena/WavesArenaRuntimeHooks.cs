@@ -4,6 +4,77 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
+        private bool waitingForNextWave
+        {
+            get { return wavesArenaRuntime.WaitingForNextWave; }
+            set { wavesArenaRuntime.WaitingForNextWave = value; }
+        }
+
+        private float waveCountdown
+        {
+            get { return wavesArenaRuntime.WaveCountdown; }
+            set { wavesArenaRuntime.WaveCountdown = value; }
+        }
+
+        private int lastWaveCountdownSeconds
+        {
+            get { return wavesArenaRuntime.LastWaveCountdownSeconds; }
+            set { wavesArenaRuntime.LastWaveCountdownSeconds = value; }
+        }
+
+        private float waveIntegrityCheckTimer
+        {
+            get { return wavesArenaRuntime.WaveIntegrityCheckTimer; }
+            set { wavesArenaRuntime.WaveIntegrityCheckTimer = value; }
+        }
+
+        private float daXingXingCleanTimer
+        {
+            get { return wavesArenaRuntime.DaXingXingCleanTimer; }
+            set { wavesArenaRuntime.DaXingXingCleanTimer = value; }
+        }
+
+        private int totalEnemies
+        {
+            get { return wavesArenaRuntime.TotalEnemies; }
+            set { wavesArenaRuntime.TotalEnemies = value; }
+        }
+
+        private int defeatedEnemies
+        {
+            get { return wavesArenaRuntime.DefeatedEnemies; }
+            set { wavesArenaRuntime.DefeatedEnemies = value; }
+        }
+
+        private string nextWaveBossName
+        {
+            get { return wavesArenaRuntime.NextWaveBossName; }
+            set { wavesArenaRuntime.NextWaveBossName = value; }
+        }
+
+        private int bossesPerWave
+        {
+            get { return wavesArenaRuntime.BossesPerWave; }
+            set { wavesArenaRuntime.BossesPerWave = value; }
+        }
+
+        private int bossesInCurrentWaveTotal
+        {
+            get { return wavesArenaRuntime.BossesInCurrentWaveTotal; }
+            set { wavesArenaRuntime.BossesInCurrentWaveTotal = value; }
+        }
+
+        private int bossesInCurrentWaveRemaining
+        {
+            get { return wavesArenaRuntime.BossesInCurrentWaveRemaining; }
+            set { wavesArenaRuntime.BossesInCurrentWaveRemaining = value; }
+        }
+
+        private System.Collections.Generic.List<MonoBehaviour> currentWaveBosses
+        {
+            get { return wavesArenaRuntime.CurrentWaveBosses; }
+        }
+
         internal bool TickWavesArenaRuntime(float deltaTime)
         {
             // Mode G 门控（加法分支）：Mode G Starting/Active/Rewarding/Exiting 时

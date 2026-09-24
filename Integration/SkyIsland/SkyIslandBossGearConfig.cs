@@ -24,6 +24,11 @@ namespace BossRush
 {
     public static class SkyIslandBossGearConfig
     {
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterConfigurator("SkyIslandBossGearConfig", (item, baseName) => { TryConfigure(item, baseName); });
+        }
+
         private const string LogPrefix = "[SkyIslandBossGear] ";
 
         /// <summary>官方物品 TypeID 都远小于这个数；克隆兜底只找官方装备（模型对齐官方挂点）。</summary>

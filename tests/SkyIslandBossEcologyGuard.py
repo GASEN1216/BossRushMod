@@ -67,6 +67,7 @@ PATHS = {
     "blacklist": "Config/LootBlacklistRegistry.cs",
     "registry": "Integration/BossRushDynamicItemRegistry.cs",
     "factory": "Integration/EquipmentFactory.cs",
+    "equipment_bootstrap": "Integration/EquipmentConfiguratorBootstrap.cs",
     "equipment_loc": "Localization/EquipmentLocalization.cs",
     "bat": "compile_official.bat",
     "world_json": "Assets/Data/SkyIsland/World.json",
@@ -412,7 +413,9 @@ def check(raw):
             "SkyIslandBossGearConfig.EnsureAllRegistered();", "装配期补齐克隆占位（bundle 缺失时物品不退化）")
     require(errors, body_of(hooks["Integration/SkyIsland/SkyIslandItems.cs"], "public static void RegisterConfigurators()"),
             "SkyIslandBossGearConfig.RegisterConfigurators();", "专属装备的物品配置器与岛上物品同一时点登记")
-    require(errors, code["factory"], "SkyIslandBossGearConfig.TryConfigure(itemPrefab, baseName);", "装备工厂配置链要配置专属装备")
+    require(errors, code["gear_config"], 'EquipmentFactory.RegisterConfigurator("SkyIslandBossGearConfig", (item, baseName) => { TryConfigure(item, baseName); });', "专属装备须自行登记配置器")
+    require(errors, code["equipment_bootstrap"], "SkyIslandBossGearConfig.RegisterEquipmentConfigurator();", "装配期须登记专属装备配置器")
+    require(errors, code["factory"], "ApplyRegisteredConfigurators(equipmentConfigurators, itemPrefab, baseName);", "装备工厂须执行已登记的专属装备配置器")
     require(errors, code["equipment_loc"], "SkyIslandBossGearConfig.InjectLocalization();", "专属装备本地化要挂进装备本地化总入口")
     configure = body_of(code["gear_config"], "private static void Configure(Item item, SkyIslandBossGearSpec spec, bool bindLoadedModel)")
     for token in ("item.Quality = spec.Quality;", "item.Value = SkyIslandItemRules.ValueOf(spec.TypeId);",

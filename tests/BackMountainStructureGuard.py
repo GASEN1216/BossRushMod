@@ -32,7 +32,7 @@ RAID_MEAL = Path("Integration/BackMountain/RaidMealService.cs")
 RAID_MEAL_USE = Path("Integration/BackMountain/RaidMealUsageBehavior.cs")
 UNLOCKS = Path("Integration/BackMountain/BackMountainUnlocks.cs")
 CONFIG_CONST = Path("Integration/BackMountain/BackMountainConfig.cs")
-REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+REGISTRATION = Path("ModBehaviourRuntimeModules.cs")
 SCENE = Path("Integration/BossRushIntegration_StartAndScene.cs")
 # 开关接线散在 Config.cs 与提取出去的白名单文件里（同一 partial 类，
 # 拆分只为 LargeFileBudgetGuard 的 1200 行预算），断言时合并来看。

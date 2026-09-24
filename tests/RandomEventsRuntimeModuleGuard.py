@@ -22,7 +22,7 @@ import re
 import sys
 
 MODULE = Path("RandomEvents/RandomEventsRuntimeModule.cs")
-REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+REGISTRATION = Path("ModBehaviourRuntimeModules.cs")
 DIRECTOR = Path("RandomEvents/RandomEventDirector.cs")
 
 

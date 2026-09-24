@@ -506,26 +506,14 @@ namespace BossRush
         private Vector3 demoChallengeStartPosition = Vector3.zero;
 
         // 单波生成模式
-        private bool waitingForNextWave = false;
-        private float waveCountdown = 0f;
-        private int lastWaveCountdownSeconds = -1;
-        private int totalEnemies = 0;
-        private int defeatedEnemies = 0;
-        private string nextWaveBossName = null;
         // 每波生成的Boss数量和当前波次的Boss列表
-        private int bossesPerWave = 1;
-        private int bossesInCurrentWaveTotal = 0;
-        private int bossesInCurrentWaveRemaining = 0;
-        private readonly List<MonoBehaviour> currentWaveBosses = new List<MonoBehaviour>();
         // 变异词条：单Boss模式回血用的临时列表（避免每帧分配）
         private readonly List<MonoBehaviour> _singleBossRegenList = new List<MonoBehaviour>(1);
         // 波次完整性自检计时器
-        private float waveIntegrityCheckTimer = 0f;
         private const float WaveIntegrityCheckInterval = 10f;
         // Mode E 独立自检计时器（Mode E 不激活 IsActive，需要单独计时）
         private float modeEIntegrityTimer = 0f;
         // 大兴兴清理定时器（只在 BossRush 进行期间启用）
-        private float daXingXingCleanTimer = 0f;
         private const float DaXingXingCleanInterval = 0.5f;
 
         // [性能优化] 角色缓存列表，避免每次清理时都调用 FindObjectsOfType

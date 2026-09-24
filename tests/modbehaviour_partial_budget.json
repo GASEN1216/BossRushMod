@@ -1,7 +1,7 @@
 {
   "description": "D-1: production host partial ceiling; only lower after responsibilities move to module-owned types.",
   "max_files": 179,
-  "max_total_lines": 87000,
+  "max_total_lines": 86800,
   "allowed_files": [
     "Achievement/AchievementMedalItem.cs",
     "Achievement/AchievementRuntimeHooks.cs",
@@ -10,7 +10,7 @@
     "BossFilter/BossFilterHostBridge.cs",
     "Campaign/CampaignFinalBoss.cs",
     "Campaign/CampaignModeBridge.cs",
-    "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs",
+    "ModBehaviourRuntimeModules.cs",
     "Config/Config.cs",
     "Config/ConfigAffixForge.cs",
     "Config/ConfigBackMountain.cs",
@@ -143,9 +143,9 @@
     "Utilities/Utilities.cs",
     "Utilities/ZombieSpawnSanitizer.cs",
     "WavesArena/BossRushEntryFlow.cs",
-    "WavesArena/InfiniteHellCashMagnet.cs",
     "WavesArena/WavesArena.cs",
     "WavesArena/WavesArenaBossSpawning.cs",
+    "WavesArena/WavesArenaCashMagnetHostBridge.cs",
     "WavesArena/WavesArenaEnemyMaintenance.cs",
     "WavesArena/WavesArenaEntryAndTeleport.cs",
     "WavesArena/WavesArenaRuntimeHooks.cs",

@@ -32,11 +32,12 @@ namespace BossRush
             CodexBookConfig.RegisterConfigurator();
             SkyIslandItems.RegisterConfigurators();
             SkyIslandNavInstrumentConfig.RegisterConfigurator();
-            ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);
+            ItemFactory.RegisterConfigurator(BossRushItemIds.AdventureJournal, OnAdventureJournalLoaded);
             ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
             ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);
             ItemFactory.RegisterConfigurator(PhantomWitchConfig.ReservedScytheTypeId, OnPhantomWitchScytheLoaded);
             NewWeaponItemConfigurators.RegisterAll();
+            EquipmentConfiguratorBootstrap.RegisterAll();
         }
     }
 }

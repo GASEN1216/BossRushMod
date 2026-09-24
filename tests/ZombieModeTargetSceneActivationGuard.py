@@ -11,6 +11,7 @@ import sys
 
 
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 
 
 def fail(message: str) -> int:
@@ -42,8 +43,13 @@ def extract_method(text: str, marker: str) -> str:
 
 def main() -> int:
     entry = ENTRY.read_text(encoding="utf-8")
+    module = RUNTIME_MODULE.read_text(encoding="utf-8")
 
-    handle = extract_method(entry, "private bool TryHandleZombieModePendingMapSceneLoaded")
+    host_handle = extract_method(entry, "private bool TryHandleZombieModePendingMapSceneLoaded")
+    if not host_handle or "module.TryHandleZombieModePendingMapSceneLoaded(scene, loadedMapConfig)" not in host_handle:
+        return fail("ZombieModeTargetSceneActivationGuard: host scene callback must forward to RuntimeModule")
+
+    handle = extract_method(module, "internal bool TryHandleZombieModePendingMapSceneLoaded")
     if not handle:
         return fail("ZombieModeTargetSceneActivationGuard: pending map scene handler not found")
 
@@ -59,7 +65,7 @@ def main() -> int:
     if init_call >= 0 and init_call < wait_call:
         return fail("ZombieModeTargetSceneActivationGuard: target branch initializes before active-scene wait")
 
-    wait_method = extract_method(entry, "private System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize")
+    wait_method = extract_method(module, "internal System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize")
     if not wait_method:
         return fail("ZombieModeTargetSceneActivationGuard: wait coroutine not found")
 

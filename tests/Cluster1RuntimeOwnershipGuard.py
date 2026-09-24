@@ -18,7 +18,7 @@ def require(condition, message, errors):
 
 def main():
     errors = []
-    registration = code("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+    registration = code("ModBehaviourRuntimeModules.cs")
     compile_list = (ROOT / "compile_official.bat").read_text(encoding="utf-8-sig")
     boss = code("BossFilter/BossFilter.cs")
     ui = code("UIAndSigns/UIAndSigns.cs")
