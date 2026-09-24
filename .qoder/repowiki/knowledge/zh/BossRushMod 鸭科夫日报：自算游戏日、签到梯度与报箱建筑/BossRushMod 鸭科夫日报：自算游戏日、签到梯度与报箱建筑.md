@@ -248,4 +248,10 @@ Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存�
 
 正式背景由 `ProductionIconCache` 优先借用 `production_icons` 中的 `assets/ui/dailyreport/daily_report_bg.png` Sprite，散图只是回退。底图修改须同步作者工程的 `Assets/ProductionIcons/` 输入、重新导入并重打正式包，不能只更新散图。底图仅保留固定装饰，签到格、按钮和图例色块由运行时绘制。共享判据 `tools/daily_report_art_contract.py` 按版面表检查这些区域，`DailyReportArtPropertyTest` 和正式包验证器都读取实际 Sprite 像素；缺资源或仅检查源码不能算发布资源通过。
 
+### 2026-09-23 人工复查（COMPAT / OPERATIONAL）
+
+日报底部不再放关闭按钮，ESC 完整交给官方 View 的取消流程。腾出的高度用于悬赏全文：悬赏区由 56 px 加高至 116 px，换行直接显示全部内容，不创建 ScrollRect；其他卡片长正文仍可滚动。状态四行各 85 px，图标与吉祥物均从独立 Sprite 绘制，正式底图不得残留旧图标。14 张日报图标的缺失散图按作者工程原件恢复，重打的 `production_icons` 同时包含新版底图与独立图标，实际 Sprite 像素判据覆盖 45 个留白区域。
+
+淡出曲线使用 0 到 1 的插值进度：官方 CanvasGroupFade 已经把目标 alpha 设为 0，反向曲线会导致关闭时先消失、再亮起。详细根因、验证与人工边界见 `.qoder/repowiki/zh/content/高级功能/日报悬赏欠款.md` 的同日人工复查章节。
+
 本轮 Sprite 别名、几何、导入预算及其余贴图载荷保持原值。离线取色不替代 owner 在游戏中检查描边、字体、滚轮及中英文末行。完整交付与复测见 `docs/testing/20260922人工实测复核修复记录.md`。

@@ -582,7 +582,7 @@ BossRushUI.ApplyPanelStroke(surface, 18, BossRushUISkinPart.Panel, BossRushUICol
 
 不按常驻 HUD 处理的：玩家主动打开或需要操作的界面（Mode G 回顾与入场、Mode H 模态 / 恢复 / 诊断页、遗种巢界面与弹窗、
 丧尸模态、征程面板、图鉴、许愿台、F3 菜单、天空岛剧情面板），它们由各自的打开 / 关闭流程管理；
-世界空间画布（基地船点招牌、桥口木牌）不是屏幕 HUD。Dev 专用自建试验场的状态行只登记、未改。
+桥口木牌等世界空间画布不是屏幕 HUD。基地船点独立招牌已在 2026-09-23 按 owner 要求移除，其文件也从世界画布排除清单移出。Dev 专用自建试验场的状态行只登记、未改。
 
 `tests/PersistentHudVisibilityGuard.py` 钉住：清单里每块 HUD 都经过两份判定并落到显隐、每帧入口有驱动，
 **全仓引用 HUD 层级常量的文件都必须归类**（常驻或写明理由的排除）——新加一块 HUD 忘了跟随，守卫会直接点名。

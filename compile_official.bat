@@ -990,6 +990,7 @@ echo(PetNest\PetNestExpeditionService.cs
 echo(PetNest\PetNestUIBridge.cs
 echo(PetNest\PetNestInteractable.cs
 echo(PetNest\PetNestBuilder.cs
+echo(PetNest\PetNestLamp.cs
 echo(PetNest\PetNestBuilder_DataEventsAndRuntime.cs
 echo(PetNest\PetNestUIPages.cs
 echo(PetNest\PetNestUI.cs
@@ -1111,6 +1112,7 @@ echo(Integration\BackMountain\BackMountainConfig.cs
 echo(Integration\BackMountain\BackMountainUnlocks.cs
 echo(Integration\BackMountain\BackMountainItems.cs
 echo(Integration\BackMountain\GardenSeedInjector.cs
+echo(Integration\BackMountain\GardenHarvestNoticePatch.cs
 echo(Integration\BackMountain\GardenSiteJudges.cs
 echo(Integration\BackMountain\GardenConstructionSite.cs
 echo(Integration\BackMountain\ShowcaseDisplayJudges.cs

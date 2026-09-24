@@ -28,7 +28,7 @@ namespace BossRush
             "MODE_D_LIFECYCLE", "MODE_D_MULTI_WAVE",
             "MODE_E_LIFECYCLE", "MODE_E_EXTRACTION",
             "MODE_F_LIFECYCLE", "MODE_F_BLOODFIRE", "MODE_F_BOUNTY", "MODE_F_EXTRACTION",
-            "MODE_G_LIFECYCLE", "MODE_G_NINE_WAVES", "MODE_H_FULL_SEASON", "MODE_H_FIRST_CERTIFICATION", "MODE_H_CACHE_HIT", "MODE_H_STARTER_KITS",
+            "MODE_G_LIFECYCLE", "MODE_G_NINE_WAVES", "MODE_H_FULL_SEASON", "MODE_H_PLAYER_ENTRY", "MODE_H_PLAYER_REENTRY", "MODE_H_STARTER_KITS",
             "MODE_H_ERROR_SWAP",
             "MODE_ZOMBIE_LIFECYCLE", "MODE_ZOMBIE_EXTRACTION", "BGM_OWNER_LEASES", "CAMPAIGN_FINAL_BOSS",
             "STANDARD_VICTORY_REWARD", "SCENE_CLICK_GATE",
@@ -54,11 +54,11 @@ namespace BossRush
             yield return RunIsolatedCase("MODE_G_LIFECYCLE", RunModeG);
             yield return VerifyArenaCleanup("CLEANUP_AFTER_MODE_G");
 
-            yield return RunIsolatedCase("MODE_H_FIRST_CERTIFICATION", RunModeHFirst);
+            yield return RunIsolatedCase("MODE_H_PLAYER_ENTRY", RunModeHFirstEntry);
             yield return VerifyArenaCleanup("CLEANUP_AFTER_MODE_H_FIRST");
 
-            yield return RunIsolatedCase("MODE_H_CACHE_HIT", RunModeHCached);
-            yield return VerifyArenaCleanup("CLEANUP_AFTER_MODE_H_CACHE");
+            yield return RunIsolatedCase("MODE_H_PLAYER_REENTRY", RunModeHRepeatedEntry);
+            yield return VerifyArenaCleanup("CLEANUP_AFTER_MODE_H_REENTRY");
 
             yield return RunIsolatedCase("MODE_ZOMBIE_LIFECYCLE", RunZombie);
             yield return VerifyArenaCleanup("CLEANUP_AFTER_ZOMBIE");
@@ -74,8 +74,8 @@ namespace BossRush
             yield return VerifyArenaCleanup("CLEANUP_AFTER_CAMPAIGN_FINAL");
         }
 
-        private IEnumerator RunModeHFirst() { return RunModeH(false); }
-        private IEnumerator RunModeHCached() { return RunModeH(true); }
+        private IEnumerator RunModeHFirstEntry() { return RunModeH(false); }
+        private IEnumerator RunModeHRepeatedEntry() { return RunModeH(true); }
 
         /// <summary>
         /// 用例隔离壳。共享执行栈捕获嵌套 MoveNext/Current 异常；

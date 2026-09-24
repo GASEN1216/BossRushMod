@@ -5,6 +5,10 @@ from pathlib import Path
 import json
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from cs_source_util import clean_source
+from ModeHOneClickFlowGuard import method_body, squeeze
+
 
 def text(path):
     return Path(path).read_text(encoding="utf-8", errors="ignore")
@@ -13,10 +17,13 @@ def text(path):
 def main():
     errors = []
     modeh = text("ModeH/ModeHRuntimeModule_SceneFlow.cs")
-    for token in ("TryUseCachedReport", "GetProductionStableKeys", "RequestCertificationCacheWrite",
-                  "_lastCertificationUsedCache", "StartCertification"):
-        if token not in modeh:
-            errors.append("ModeH 认证计划缺失: " + token)
+    start = squeeze(method_body(clean_source(modeh), "private void StartCertification()"))
+    for token in ("if (!_certification.TryUseReleaseCatalog())", "CreateDraftingSeason(_certification.Report);"):
+        if token not in start:
+            errors.append("ModeH 普通入口发布目录接线缺失: " + token)
+    for token in ("TryUseCachedReport", "RequestCertificationCacheWrite", "DriveCertification("):
+        if token in start:
+            errors.append("ModeH 普通入口不得依赖动态认证: " + token)
     if "ModeHPresetRegistry.ProductionKeys" in modeh:
         errors.append("ModeH 首次认证不得依赖尚未产生的 ProductionKeys")
 

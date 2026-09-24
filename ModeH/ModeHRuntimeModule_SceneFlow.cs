@@ -52,6 +52,7 @@ namespace BossRush
 
         /// <summary>认证协程句柄，用于关停时取消。</summary>
         private Coroutine _certificationRoutine;
+        private bool _certificationFromF3;
 
         // 原生 sceneLoaded 早于官方子场景传送结束。新开局/续赛共用这一个等待 owner。
         private Coroutine _sceneReadyRoutine;
@@ -402,40 +403,72 @@ namespace BossRush
                 return;
             }
 
-            // 首次进入时 ProductionKeys 尚未物化；认证输入必须来自静态生产目录。
-            // 有效缓存会把报告重新物化进注册表，因此仍需在双租约和地图审计之后命中。
-            if (_certification.TryUseCachedReport())
+            // 普通玩家入口在正式/Dev 构建完全相同；逐项认证只能由 F3 显式请求。
+            if (!_certification.TryUseReleaseCatalog())
             {
-                _lastCertificationUsedCache = true;
-                if (BlockSetupIfPersistedSeasonActive()) return;
-                CreateDraftingSeason(_certification.Report);
+                AbortSetup("release_catalog_unavailable", true);
                 return;
             }
+            if (BlockSetupIfPersistedSeasonActive()) return;
+            CreateDraftingSeason(_certification.Report);
+        }
 
+        internal bool CanRunCertificationFromF3(out string reason)
+        {
+            reason = null;
+            if (!ModBehaviour.DevModeEnabled || _owner == null || _shutdownCompleted || _commandsClosed
+                || _runState == null || _runState.Lifecycle != ModeHLifecycle.Drafting || _season == null
+                || _map == null || _arenaLease == null || !_arenaLease.IsActive
+                || _spectatorLease == null || !_spectatorLease.IsActive)
+            {
+                reason = L10n.T("请先进入鸭王杯并停在选人页", "Enter the Duck Cup and stay on the fighter selection page first");
+                return false;
+            }
+            if (_certificationFromF3 || _certificationRoutine != null)
+            { reason = L10n.T("鸭王杯逐项认证正在运行", "Duck Cup certification is already running"); return false; }
+            return true;
+        }
+
+        /// <summary>唯一调用方是 F3 验收页按钮；普通入场及自动验收均不调用。</summary>
+        internal bool StartCertificationFromF3(out string reason)
+        {
+            if (!F3GameplayValidationRunner.CanRunModeHCertification(_owner, out reason)) return false;
             List<string> keys = ModeHProfileRegistry.GetProductionStableKeys();
             if (keys == null || keys.Count == 0)
             {
-                AbortSetup("production_catalog_empty", true);
-                return;
+                reason = L10n.T("鸭王杯选手目录未就绪", "Duck Cup fighter catalog is not ready");
+                return false;
             }
-
+            ModeHProductionCertification certification = new ModeHProductionCertification();
+            _certification = certification;
+            _certificationFromF3 = true;
+            long ownerToken = _runState.OwnerToken;
+            int generation = _sceneGeneration;
             ModeHCertificationResult result = new ModeHCertificationResult();
-
-            // 认证要真刀真枪跑一遍生成/战斗/掉落，只能走协程；诊断层给玩家一个可取消的进度页
             try
             {
                 EnsureUi();
-                if (_ui != null) _ui.EnsureDiagnostics(CancelSetupFromDiagnostics);
+                if (_ui != null)
+                {
+                    // F3 已先关闭，才释放选人页的暂停租约，避免 F3 把 timeScale 再恢复成 0。
+                    _ui.ClosePage();
+                    _ui.EnsureDiagnostics(CancelSetupFromDiagnostics);
+                }
+                Coroutine routine = _owner.StartCoroutine(DriveCertification(keys, result, certification, ownerToken, generation));
+                if (_certificationFromF3 && ReferenceEquals(_certification, certification)) _certificationRoutine = routine;
+                return true;
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[ModeH] [WARNING] 认证诊断页创建失败: " + e.Message);
+                LogFailure("f3_certification_start", e);
+                RestorePlayerFlowAfterCertification(certification, ownerToken, generation);
+                reason = L10n.T("鸭王杯逐项认证未能启动", "Duck Cup certification could not start");
+                return false;
             }
-
-            _certificationRoutine = _owner.StartCoroutine(DriveCertification(keys, result));
         }
 
         internal bool LastCertificationUsedCache { get { return _lastCertificationUsedCache; } }
+        internal bool IsCertificationDiagnosticRunning { get { return _certificationFromF3; } }
 
         /// <summary>Dev 验收专用：把 Drafting 测试赛季归档成 None，再走正常关停。</summary>
         internal bool DebugFinishValidationSeason()
@@ -475,95 +508,81 @@ namespace BossRush
             }
         }
 
-        private IEnumerator DriveCertification(List<string> keys, ModeHCertificationResult result)
+        private IEnumerator DriveCertification(List<string> keys, ModeHCertificationResult result,
+            ModeHProductionCertification certification, long ownerToken, int generation)
         {
-            long ownerToken = _runState != null ? _runState.OwnerToken : 0L;
-            int generation = _sceneGeneration;
+            if (!_certificationFromF3 || !ModBehaviour.DevModeEnabled
+                || !ReferenceEquals(_certification, certification) || !IsCallbackStillValid(ownerToken, generation)) yield break;
             int shownFinishedKeys = -1;
-
-            IEnumerator inner = _certification.Run(keys, _map, result);
-            while (true)
+            ValidationCoroutineStack inner = new ValidationCoroutineStack(certification.Run(keys, _map, result));
+            try
             {
-                bool moveNext;
-                try
+                while (true)
                 {
-                    moveNext = inner.MoveNext();
-                }
-                catch (Exception e)
-                {
-                    LogFailure("certification", e);
-                    AbortSetup("certification_exception", true);
-                    yield break;
-                }
-                if (!moveNext) break;
-
-                // 认证期间玩家可能已经离场/切图：每帧比对 owner 与 generation
-                if (!IsCallbackStillValid(ownerToken, generation))
-                {
-                    yield break;
-                }
-                // 进度只在「又热完一位」时刷新：文字要拼模板，不必每帧重拼
-                if (_ui != null && result.FinishedKeys != shownFinishedKeys)
-                {
-                    shownFinishedKeys = result.FinishedKeys;
-                    try
+                    // 旧协程不能继续写新一次认证的共享兼容表，也不能在 finally 清掉新请求。
+                    if (!ReferenceEquals(_certification, certification) || !_certificationFromF3
+                        || !IsCallbackStillValid(ownerToken, generation)) yield break;
+                    bool moveNext;
+                    try { moveNext = inner.MoveNext(); }
+                    catch (Exception e)
                     {
+                        LogFailure("f3_certification", e);
+                        result.Completed = true;
+                        result.Passed = false;
+                        result.FailureReasonId = "certification_exception";
+                        break;
+                    }
+                    if (!moveNext) break;
+                    if (!IsCallbackStillValid(ownerToken, generation)) yield break;
+                    if (_ui != null && result.FinishedKeys != shownFinishedKeys)
+                    {
+                        shownFinishedKeys = result.FinishedKeys;
                         _ui.UpdateDiagnostics(DescribeCertificationProgress(result),
                             result.TotalKeys > 0 ? (float)result.FinishedKeys / result.TotalKeys : 0f);
                     }
-                    catch (Exception) { /* 诊断页失败不影响认证本身 */ }
+                    // 由共享栈驱动所有子认证并捕获其异常，仍透传叶子等待对象。
+                    yield return inner.Current;
                 }
-                // 必须把 inner.Current 透传出去：Run 内部是 `yield return CertifyKey(...)`，
-                // 即 yield 出子 IEnumerator 交给 Unity 协程调度器递归驱动。曾经在这里写死
-                // `yield return null`，子协程被创建但一次都没 MoveNext——逐 key 的生成、
-                // 阵营核对、受控击杀、RecordPassed/RecordRejected 全部没执行，
-                // 每个 key 都打出一条空原因的「认证拒绝」，_records 恒空，
-                // 门槛必然撞 MinProductionCandidateCount 失败 → Mode H 完全无法开局。
-                // Current 为 null 时语义与 `yield return null` 等价（等一帧），
-                // 所以每帧的 owner/generation 校验与诊断页刷新节奏不变。
-                yield return inner.Current;
+                if (!ReferenceEquals(_certification, certification) || !_certificationFromF3
+                    || !IsCallbackStillValid(ownerToken, generation)) yield break;
+                ModBehaviour.DevLog("[ModeH] F3_CERTIFICATION read_only=false save_writes=false passed="
+                    + result.Passed + " finished=" + result.FinishedKeys + "/" + result.TotalKeys
+                    + " reason=" + (result.FailureReasonId ?? "none"));
+                _owner.ShowMessage(result.Passed
+                    ? L10n.T("鸭王杯逐项认证通过，已返回选人页", "Duck Cup certification passed; returning to fighter selection")
+                    : L10n.T("鸭王杯逐项认证已结束，详情见日志；已返回选人页", "Duck Cup certification ended; see the log for details and select a fighter"));
             }
+            finally
+            {
+                try { inner.Dispose(); }
+                catch (Exception e) { LogFailure("f3_certification_dispose", e); }
+                RestorePlayerFlowAfterCertification(certification, ownerToken, generation);
+            }
+        }
 
+        private void RestorePlayerFlowAfterCertification(ModeHProductionCertification certification,
+            long ownerToken, int generation)
+        {
+            // 场景清理已取消并释放旧实例；迟到的旧 finally 不能碰当前实例/协程/诊断 UI。
+            if (!ReferenceEquals(_certification, certification) || !_certificationFromF3
+                || !IsCallbackStillValid(ownerToken, generation)) return;
+            _certificationFromF3 = false;
             _certificationRoutine = null;
-            if (!IsCallbackStillValid(ownerToken, generation)) yield break;
-
-            try { if (_ui != null) _ui.DestroyDiagnostics(); }
-            catch (Exception) { /* 销毁失败不阻断后续 */ }
-
-            if (!result.Completed || !result.Passed)
+            try { certification.Cancel(); }
+            catch (Exception e) { LogFailure("f3_certification_cleanup", e); }
+            // 诊断会暂时改兼容矩阵；恢复发布目录及原选人页，不写报告进玩家赛季/认证缓存。
+            _certification = new ModeHProductionCertification();
+            if (!_certification.TryUseReleaseCatalog())
             {
-                AbortSetup(result.FailureReasonId != null
-                    ? result.FailureReasonId
-                    : "certification_failed", true);
-                yield break;
+                RequestSuspended("f3_release_catalog_restore_failed");
+                return;
             }
-
-            try
-            {
-                ModeHPresetRegistry.MaterializeFromReport(result.Report);
-            }
-            catch (Exception e)
-            {
-                LogFailure("preset_materialize", e);
-                AbortSetup("preset_materialize_failed", true);
-                yield break;
-            }
-
-            string cacheError;
-            if (!ModeHSaveFlushCoordinator.RequestCertificationCacheWrite(
-                    result.Report, ModeHRuntimeGates.SlotGeneration, out cacheError))
-            {
-                // 缓存只负责下一次入场加速，不能让已通过的认证反过来阻断本局。
-                ModBehaviour.DevLog("[ModeH] [WARNING] 生产认证缓存写入失败，本局继续: "
-                    + (cacheError ?? "unknown"));
-            }
-
-            if (BlockSetupIfPersistedSeasonActive()) yield break;
-            CreateDraftingSeason(result.Report);
+            if (_ui != null) _ui.DestroyDiagnostics();
+            RouteUiForLifecycle(_runState.Lifecycle);
         }
 
         /// <summary>
-        /// 加载页进度行：「正在请选手上台热身（3/12）」。只读 result；UpdateDiagnostics 只在文字变化时写 TMP。
+        /// F3 逐项认证进度。只读 result；UpdateDiagnostics 只在文字变化时写 TMP。
         /// 旧写法在失败时直接把内部 reasonId 显示给玩家，失败原因现在只走中止提示（ResolveAbortMessageKey）。
         /// </summary>
         private static string DescribeCertificationProgress(ModeHCertificationResult result)
@@ -576,13 +595,16 @@ namespace BossRush
                 .Replace("{0}", current.ToString()).Replace("{1}", result.TotalKeys.ToString());
         }
 
-        /// <summary>诊断页的取消按钮：等同于一次带退款的安全离场。</summary>
+        /// <summary>取消 F3 认证，协程收尾回收诊断选手并恢复原选人页，不退出赛季或退票。</summary>
         private void CancelSetupFromDiagnostics()
         {
             try
             {
-                if (_certification != null) _certification.Cancel();
-                AbortSetup("player_cancelled_certification", true);
+                if (_certificationFromF3)
+                {
+                    if (_certification != null) _certification.Cancel();
+                    return;
+                }
             }
             catch (Exception e)
             {
@@ -881,6 +903,8 @@ namespace BossRush
         private void ReleaseRuntimeObjects()
         {
             CancelSceneReadyWait();
+            // 收尾不能让诊断协程的 finally 再打开选人页。
+            _certificationFromF3 = false;
             // 2. 停止生成队列与认证协程
             try
             {

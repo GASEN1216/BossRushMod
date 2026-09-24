@@ -9,15 +9,15 @@ namespace BossRush
     /// Mode H 生产兼容性认证（设计提案 §17.2、§19.3、§25.1）。
     ///
     /// 冻结契约：
-    /// - 在正式入口内、取得 arena isolation 与 spectator lease 之后运行，不是独立技术样机；
+    /// - 正式入口取得两个 lease 后只同步检查发布目录；动态诊断只允许 Dev 验收运行；
     /// - 每个 stable key 用同一审计 preset 的**两个独立 runtime clone**，一只 Teams.scav、
     ///   一只 Teams.wolf，按“逐帧创建、双方隔离、双向 Team.IsEnemy、自然索敌、受控伤害 ping、
     ///   逐只规范死亡、整批回收”固定顺序执行，因此不依赖另一个尚未认证的基准 key；
     /// - 认证角色只登记到独立 diagnostic owner，禁止生成 ModeHFighterDownToken、伤病、
     ///   战报、奖励或任何中途 Season 写入；
     /// - 每 key 15 秒、全池 180 秒上限，超时条目标 Rejected 并继续下一条；
-    /// - 报告带 game/mod/content 三签名，按四签名缓存到 HallOfFame envelope；
-    ///   缓存只跳过耗时的逐 key 诊断，绝不跳过两个 lease 与地图点位审计。
+    /// - 报告带 game/mod/content 三签名；F3 动态诊断只写日志，结束后恢复发布目录；
+    ///   旧缓存 API 为兼容保留，普通入场和 F3 认证均不读写动态认证缓存。
     /// </summary>
     internal sealed class ModeHProductionCertification
     {
@@ -209,6 +209,74 @@ namespace BossRush
 
         #endregion
 
+        /// <summary>
+        /// 正式入口只检查发布目录与当前官方 API。开发时的生成、受伤与口令采样不让玩家等。
+        /// 沿用原报告载体以兼容旧赛季；ReleaseSupported 和 release_contract_v1 明确区分静态支持与实测。
+        /// </summary>
+        internal bool TryUseReleaseCatalog()
+        {
+            string game, mod, error;
+            if (!ModeHCommandCompatibilityRegistry.EnsureValidated()
+                || !ModeHCanonicalDigest.TryGetGameBuildSignature(out game, out error)
+                || !ModeHCanonicalDigest.TryGetModBuildSignature(out mod, out error)) return false;
+            ModeHCommandCompatibilityRegistry.BindBuildSignature(
+                game, mod, ModeHContentCatalog.ContentCatalogSignature);
+            _records.Clear();
+            List<string> keys = ModeHProfileRegistry.GetProductionStableKeys();
+            List<ModeHEffectSpec> effects = new List<ModeHEffectSpec>(ModeHContentCatalog.EffectCatalog);
+            // EffectCatalog 只列口令；伤病/战痕由各自 Components 定义，必须一起装配。
+            List<ModeHInjurySpec> injuries = ModeHContentCatalog.Injuries;
+            for (int i = 0; injuries != null && i < injuries.Count; i++)
+                if (injuries[i] != null && injuries[i].Components != null) effects.AddRange(injuries[i].Components);
+            List<ModeHScarSpec> scars = ModeHContentCatalog.Scars;
+            for (int i = 0; scars != null && i < scars.Count; i++)
+                if (scars[i] != null && scars[i].Components != null) effects.AddRange(scars[i].Components);
+            for (int i = 0; keys != null && i < keys.Count; i++)
+            {
+                string key = keys[i];
+                if (!PassesStaticAudit(ResolveAuditedPreset(key), out error)) continue;
+                ModeHCommandCompatibilityRegistry.ClearStableKey(key);
+                for (int j = 0; effects != null && j < effects.Count; j++)
+                {
+                    ModeHEffectSpec effect = effects[j];
+                    if (effect == null || effect.SelfSettled) continue;
+                    ModeHCommandCompatibilityRegistry.RecordEffectStatus(key, effect.EffectId,
+                        IsReleaseControlPointAvailable(effect.ControlPointId)
+                            ? ModeHCommandCompatibilityStatus.ReleaseSupported
+                            : ModeHCommandCompatibilityStatus.Unavailable);
+                }
+                _records[key] = new ModeHPresetCertificationRecordDto
+                {
+                    stableKey = key,
+                    status = (int)ModeHCertificationStatus.Passed,
+                    failureReasonIds = new List<string>(),
+                    commandStatuses = BuildCommandStatuses(key),
+                    spawnTimelineDigest = "release_contract_v1",
+                    durationMs = 0,
+                };
+            }
+            _report = BuildReport();
+            if (!_report.overallPassed) return false;
+            ModeHPresetRegistry.MaterializeFromReport(_report);
+            return true;
+        }
+
+        private static bool IsReleaseControlPointAvailable(string controlPointId)
+        {
+            List<string> whitelist = ModeHContentCatalog.ControlPointWhitelist;
+            if (whitelist == null || !whitelist.Contains(controlPointId)) return false;
+            if (controlPointId == "setNoticedToTarget")
+                return typeof(AICharacterController).GetMethod("SetNoticedToTarget", new Type[] { typeof(DamageReceiver) }) != null;
+            if (controlPointId == "moveToPos")
+                return typeof(AICharacterController).GetMethod("MoveToPos", new Type[] { typeof(Vector3) }) != null;
+            System.Reflection.FieldInfo field = typeof(AICharacterController).GetField(controlPointId);
+            if (field == null || field.IsInitOnly) return false;
+            Type expected = controlPointId == "shootCanMove" ? typeof(bool)
+                : controlPointId == "skillCoolTimeRange" ? typeof(Vector2)
+                : controlPointId == "searchedEnemy" ? typeof(DamageReceiver) : typeof(float);
+            return field.FieldType == expected;
+        }
+
         #region 认证主流程
 
         /// <summary>
@@ -220,6 +288,14 @@ namespace BossRush
             ModeHCertificationResult result)
         {
             if (result == null) yield break;
+            // 动态认证只用于开发验收；正式入口从不生成诊断选手。
+            if (!ModBehaviour.DevModeEnabled)
+            {
+                result.Completed = true;
+                result.Passed = false;
+                result.FailureReasonId = "certification_dev_only";
+                yield break;
+            }
             result.Completed = false;
             result.Passed = false;
             result.TotalKeys = stableKeys != null ? stableKeys.Count : 0;
@@ -291,7 +367,7 @@ namespace BossRush
             ApplyReportToRegistries(_report);
 
             result.Completed = true;
-            result.Passed = _report != null && _report.overallPassed;
+            result.Passed = !_cancelled && _report != null && _report.overallPassed;
             result.Report = _report;
             if (!result.Passed && string.IsNullOrEmpty(result.FailureReasonId))
             {

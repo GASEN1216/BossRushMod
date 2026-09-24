@@ -351,13 +351,15 @@ def main():
 
     # ---- 13. 世界提示字走近才浮现，不用警示黄常亮 ----
     memorial = need_body(panel, "internal static GameObject Create(", "纪念物建造")
-    sign = need_body(module, "private void CreateSign(Transform boat)", "船点招牌建造")
+    # 2026-09-23 owner 复查：船点只保留官方交互组入口，不另建浮空文字。
+    if re.search(r"\b(?:CreateSign|CreateCanvasRoot|TextMeshProUGUI|SkyIslandDepartureSign)\b", module):
+        errors.append("船点不得重建天空岛浮空招牌：入口保留在官方船点交互组")
     # 2026-09-23 审美审查 UE-03：搜刮箱头顶的档次牌子也走近才浮现（旧写法 45 m 内常亮，一屏里每个箱子都顶着一行彩字）。
     loot_label = need_body(scavenging, "private static GameObject AttachLabel(Transform parent, SkyIslandLootTier tier)", "搜刮箱牌子建造")
     loot_color = need_body(scavenging, "internal static Color TierColor(SkyIslandLootTier tier)", "搜刮箱牌子字色")
     if loot_color and ("BossRushUIColors.WarningText" in loot_color or "BossRushUIColors.Success;" in loot_color):
         errors.append("搜刮箱牌子字色又借了警示黄或按钮底色 Success：档次按稀有度色区分")
-    for label, body in (("纪念物提示字", memorial), ("船点招牌", sign), ("搜刮箱牌子", loot_label)):
+    for label, body in (("纪念物提示字", memorial), ("搜刮箱牌子", loot_label)):
         if not body:
             continue
         if "SkyIslandProximityLabel.Attach(" not in body:

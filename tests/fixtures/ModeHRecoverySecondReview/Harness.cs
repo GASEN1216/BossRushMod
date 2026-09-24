@@ -94,7 +94,7 @@ namespace BossRush
         public ModeHRunState _runState;
         public ModeHSeasonRewardOperationDto _lastRewardOperation;
         public ModeHMatchReportDto _lastSettlementReport;
-        public bool _commandsClosed, _shutdownCompleted, _restoredSeasonPending, _seasonDirty;
+        public bool _commandsClosed, _shutdownCompleted, _restoredSeasonPending, _seasonDirty, _certificationFromF3;
         public object _map = new object(), _activeRewardRevealRoot = new object(), _certificationRoutine = new object();
         private int _sceneGeneration = 2;
         private float _leaseCheckAccumulator;

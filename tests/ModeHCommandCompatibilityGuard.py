@@ -119,7 +119,7 @@ def main():
     for token in ("RestoreCertificationEffects(", "ClearStableKey(record.stableKey)",
                   "record.status != (int)ModeHCertificationStatus.Passed",
                   "knownEffects.Contains(effect.entryId)", 'effect.entryKind != "effect"',
-                  "effect.status > (int)ModeHCommandCompatibilityStatus.ActionApplied",
+                  "effect.status > (int)ModeHCommandCompatibilityStatus.ReleaseSupported",
                   "effect.status == (int)ModeHCommandCompatibilityStatus.PartiallyVerified"):
         if token not in code:
             errors.append("[Registry] 缓存必须恢复合法逐 effect 证据: " + token)

@@ -41,7 +41,6 @@ namespace BossRush
         // 2026-09-23 第五轮按参考图 docs/testing/image-9.png 取色：纸面与底图生成器的 PAPER 同值
         // （底图缺席时的纯色兜底要和底图一个颜色），签到格是浅米色胶囊 / 深绿 / 暖黄，按钮是深金棕。
         private static readonly Color PaperBase = new Color(0.925f, 0.89f, 0.82f, 0.99f);
-        private static readonly Color PaperRaised = new Color(0.86f, 0.82f, 0.72f, 1f);
         private static readonly Color PaperInk = new Color(0.13f, 0.11f, 0.09f, 1f);
         private static readonly Color PaperInkSoft = new Color(0.34f, 0.30f, 0.25f, 1f);
         private static readonly Color CellEmpty = new Color(0.89f, 0.86f, 0.80f, 1f);
@@ -84,7 +83,6 @@ namespace BossRush
         private FadeGroup fadeGroup;
         private RectTransform panelRect;
         private RectTransform paperFrame;
-        private TextMeshProUGUI closeText;
         private readonly List<TextMeshProUGUI> legendLabels = new List<TextMeshProUGUI>();
         private float nextRefreshTime;
         private bool displayedChinese;
@@ -441,7 +439,6 @@ namespace BossRush
             SetText(incomeTitleText, L10n.T("今日收益", "TODAY'S INCOME"));
             SetText(statusTitleText, L10n.T("鸭科夫 · 今日状态", "DUCKOV · TODAY"));
             SetText(signInTitleText, L10n.T("今日签到", "CHECK-IN"));
-            SetText(closeText, L10n.T("合上报纸", "Close"));
             // 与 BuildLegend 的色块顺序一一对应
             string[] labels = { L10n.T("已签到", "Signed"), L10n.T("未签到", "Upcoming"),
                 L10n.T("今日可签", "Today"), L10n.T("★ 奖励格", "★ Reward"), L10n.T("奖励已领", "Claimed") };
@@ -492,25 +489,6 @@ namespace BossRush
             {
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[WARNING] 签到点击异常: " + e.Message);
             }
-        }
-
-        private void OnCloseClicked()
-        {
-            try
-            {
-                Close();
-            }
-            catch (Exception)
-            {
-                // 关闭失败不影响玩法
-            }
-        }
-
-        /// <summary>ESC / 取消键。</summary>
-        protected override void OnCancel()
-        {
-            base.OnCancel();
-            OnCloseClicked();
         }
 
         private static void ShowBanner(string text)
@@ -683,7 +661,9 @@ namespace BossRush
 
             SetPrivateInstanceField(canvasFade, "canvasGroup", canvasGroup);
             SetPrivateInstanceField(canvasFade, "showingCurve", AnimationCurve.EaseInOut(0f, 0f, 1f, 1f));
-            SetPrivateInstanceField(canvasFade, "hidingCurve", AnimationCurve.EaseInOut(0f, 1f, 1f, 0f));
+            // 官方 FadeTask 用曲线作为 Lerp(beginAlpha, targetAlpha, progress) 的进度。
+            // 淡出目标已经是 0；曲线仍须 0 -> 1，否则会先透明、再亮起、最后突然隐藏。
+            SetPrivateInstanceField(canvasFade, "hidingCurve", AnimationCurve.EaseInOut(0f, 0f, 1f, 1f));
             SetPrivateInstanceField(canvasFade, "fadeDuration", 0.18f);
             SetPrivateInstanceField(canvasFade, "manageBlockRaycast", true);
 

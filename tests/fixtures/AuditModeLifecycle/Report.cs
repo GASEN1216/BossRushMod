@@ -50,7 +50,7 @@ namespace BossRush
                 throw new Exception("Action evidence lost after report roundtrip");
             if (!ModeHCommandCompatibilityRegistry.IsCommandSelectable(key, "guard"))
                 throw new Exception("Field evidence lost after report roundtrip");
-            foreach (int invalid in new [] { -1, 4, 6, 999 })
+            foreach (int invalid in new [] { -1, 4, 7, 999 })
             {
                 statuses[0].effectStatuses.ForEach(e => e.status = invalid);
                 ModeHCommandCompatibilityRegistry.RestoreCertificationEffects(new List<ModeHPresetCertificationRecordDto> {

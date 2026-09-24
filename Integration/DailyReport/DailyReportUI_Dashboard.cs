@@ -21,7 +21,7 @@
 //   - 数值块不再滚动，标签 / 大号数字 / 注脚三级字号；卡片内正文在块内垂直居中。
 //
 // 硬约束：
-//   - 整版保持定高：短标题在块内 autoSize，长正文在各卡片内部滚动，避免丢行；
+//   - 整版保持定高：悬赏独占加高区域并完整换行，其余长正文在卡片内部滚动；
 //   - 颜色沿用 DailyReportUI.cs 顶部的纸面局部配色（底图用的就是这一组），不引入第二套 token；
 //   - 字体一律 ZombieModeUIHelper.CreateText + BossRushUI.ApplyGameFont（内置 Arial 渲染不了中文）；
 //   - 卡片投影烤在底图里，面板本身**不**走 ApplyPanelStroke / ApplyFramedPanelSkin，
@@ -123,7 +123,8 @@ namespace BossRush
             statsText = CreateIconText("Income", DailyReportLayoutTable.Get("incomeLeft"), 0f, 1f, 22f, PaperInk, "income", false);
             bountyText = CreateIconText("Bounty", DailyReportLayoutTable.Get("incomeRight"), 0f, 1f, 22f, PaperInk, "bounty", false);
 
-            headlineText = CreateIconText("Tip", DailyReportLayoutTable.Get("incomeTip"), 0f, 1f, 20f, PaperInk, "tip", true);
+            // 撤掉关闭按钮后，版面表把空出的高度给悬赏；全文直接显示，滚轮不再移动悬赏。
+            headlineText = CreateIconText("Tip", DailyReportLayoutTable.Get("incomeTip"), 0f, 1f, 20f, PaperInk, "tip", true, false);
             // 战绩表按两列排（DailyReportView.JoinColumns），18 号三行正好装进这块，不再露半行
             Rect note = DailyReportLayoutTable.Get("incomeNote");
             headlineBodyText = CreateText("IncomeNote", new Rect(note.x + 10f, note.y + 4f, note.width - 20f, note.height - 6f),
@@ -215,7 +216,6 @@ namespace BossRush
                 TextAlignmentOptions.Top, PaperInkSoft, true);
 
             BuildLegend();
-            BuildCloseButton();
         }
 
         private void BuildLegend()
@@ -253,29 +253,6 @@ namespace BossRush
             }
         }
 
-        private void BuildCloseButton()
-        {
-            Rect signin = DailyReportLayoutTable.Get("signin");
-            Rect closeRect = new Rect(
-                signin.x + signin.width - 176f,
-                signin.y + signin.height + 14f, 160f, 44f);
-
-            Button close = ZombieModeUIHelper.CreateButton(
-                "Close", panelRect, string.Empty,
-                new Vector2(0.5f, 0.5f),
-                DailyReportLayoutTable.ToAnchored(closeRect),
-                new Vector2(closeRect.width, closeRect.height),
-                PaperRaised, 19f, new Vector2(closeRect.width - 12f, closeRect.height - 8f),
-                OnCloseClicked, true);
-            if (close != null)
-            {
-                closeText = close.GetComponentInChildren<TextMeshProUGUI>();
-                BossRushUI.ApplyGameFont(closeText);
-                LockFontSize(closeText, 19f);
-                if (closeText != null) closeText.color = BossRushUI.GetButtonTextColor(PaperRaised);
-            }
-        }
-
         #endregion
 
         #region 摆位辅助
@@ -286,7 +263,7 @@ namespace BossRush
         /// 不该让底图脚本也知道。
         /// </summary>
         private TextMeshProUGUI CreateText(string name, Rect box, float topFraction, float bottomFraction,
-            float fontSize, TextAlignmentOptions alignment, Color color, bool wrap)
+            float fontSize, TextAlignmentOptions alignment, Color color, bool wrap, bool scrollBody = true)
         {
             Rect slice = new Rect(box.x, box.y + box.height * topFraction,
                 box.width, box.height * (bottomFraction - topFraction));
@@ -300,10 +277,10 @@ namespace BossRush
             text.fontSizeMin = Mathf.Min(18f, fontSize);
             text.fontSizeMax = fontSize;
             text.overflowMode = TextOverflowModes.Ellipsis;
-            if (wrap)
+            if (wrap) AllowWrap(text);
+            if (wrap && scrollBody)
             {
-                AllowWrap(text);
-                // 长悬赏、战绩和英文正文不能丢行：只在这张卡片内部滚动，保持整版版式。
+                // 战绩和英文正文在各自卡片内滚动，悬赏由独立加高区域容纳全文。
                 GameObject viewport = ZombieModeUIHelper.CreateRect(name + "Viewport", panelRect,
                     new Vector2(0.5f, 0.5f), new Vector2(slice.width, slice.height));
                 RectTransform viewRect = viewport.GetComponent<RectTransform>();
@@ -345,7 +322,16 @@ namespace BossRush
                 if (minimum == null) minimum = text.gameObject.AddComponent<LayoutElement>();
                 minimum.minHeight = slice.height;
             }
-            else text.enableWordWrapping = false;
+            else
+            {
+                text.enableWordWrapping = wrap;
+                if (wrap)
+                {
+                    // 中英悬赏保留所有行，长英文按整块缩至至少 16 号，不截断为省略号。
+                    text.fontSizeMin = 16f;
+                    text.overflowMode = TextOverflowModes.Overflow;
+                }
+            }
             text.raycastTarget = false;
             return text;
         }
@@ -355,7 +341,7 @@ namespace BossRush
         /// 图标取不到（包里没有这张图）就不画那一格，文字也不缩进——不退回汉字或灰方块。
         /// </summary>
         private TextMeshProUGUI CreateIconText(string name, Rect box, float topFraction, float bottomFraction,
-            float fontSize, Color color, string iconId, bool wrap)
+            float fontSize, Color color, string iconId, bool wrap, bool scrollBody = true)
         {
             float indent = 8f;
             Rect icon = DailyReportLayoutTable.GetIcon(iconId);
@@ -365,7 +351,7 @@ namespace BossRush
             }
             Rect inset = new Rect(box.x + indent, box.y, box.width - indent - 8f, box.height);
             return CreateText(name, inset, topFraction, bottomFraction, fontSize,
-                TextAlignmentOptions.Left, color, wrap);
+                TextAlignmentOptions.Left, color, wrap, scrollBody);
         }
 
         /// <summary>标题缎带上的文字：底图已经画好缎带，这里摆缎带头上的图标并写字。</summary>

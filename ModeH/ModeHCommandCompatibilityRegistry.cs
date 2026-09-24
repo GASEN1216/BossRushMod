@@ -16,6 +16,7 @@ namespace BossRush
     /// - 每个生产 stable key 至少 3 条通用口令达到 VerifiedBehavior 或 PartiallyVerified，
     ///   否则 IsModeHContentReady=false；
     /// - ReportOnly / Unavailable 不进入选择 UI 与赔率；未通过 effect 不进入候选卡文案。
+    /// - 正式入口可用发布契约的 ReleaseSupported；保留该来源，不冒充动态实测。
     /// </summary>
     public static class ModeHCommandCompatibilityRegistry
     {
@@ -331,7 +332,7 @@ namespace BossRush
                         ModeHBehaviorStatusDto effect = command.effectStatuses[k];
                         if (effect == null || effect.entryKind != "effect" || !knownEffects.Contains(effect.entryId)
                             || effect.status < (int)ModeHCommandCompatibilityStatus.Unknown
-                            || effect.status > (int)ModeHCommandCompatibilityStatus.ActionApplied
+                            || effect.status > (int)ModeHCommandCompatibilityStatus.ReleaseSupported
                             || effect.status == (int)ModeHCommandCompatibilityStatus.PartiallyVerified) continue;
                         RecordEffectStatus(record.stableKey, effect.entryId, (ModeHCommandCompatibilityStatus)effect.status);
                     }
@@ -375,11 +376,17 @@ namespace BossRush
 
             int passed = 0;
             int actionPassed = 0;
+            int releaseSupported = 0;
             int unavailable = 0;
             for (int i = 0; i < effectIds.Count; i++)
             {
                 ModeHCommandCompatibilityStatus status = GetEffectStatus(stableKey, effectIds[i]);
                 if (status == ModeHCommandCompatibilityStatus.VerifiedBehavior) passed++;
+                else if (status == ModeHCommandCompatibilityStatus.ReleaseSupported)
+                {
+                    passed++;
+                    releaseSupported++;
+                }
                 else if (status == ModeHCommandCompatibilityStatus.ActionApplied)
                 {
                     passed++;
@@ -390,6 +397,7 @@ namespace BossRush
 
             if (passed == effectIds.Count)
             {
+                if (releaseSupported > 0) return ModeHCommandCompatibilityStatus.ReleaseSupported;
                 // 全部分量都只有动作型证据时如实标成 ActionApplied，不冒充字段验证通过。
                 // finish 就是这一类：两条分量都是动作（searchedEnemy / setNoticedToTarget），
                 // 旧写法因此恒 ReportOnly，8 条通用口令实际只有 7 条能到玩家手里。
@@ -410,7 +418,8 @@ namespace BossRush
                 || status == ModeHCommandCompatibilityStatus.PartiallyVerified
                 // 动作型口令（finish）：动作已确认落地，只是不做字段保持验证。
                 // 排除它等于把一条实现完整、运行时也确实生效的口令永久藏起来。
-                || status == ModeHCommandCompatibilityStatus.ActionApplied;
+                || status == ModeHCommandCompatibilityStatus.ActionApplied
+                || status == ModeHCommandCompatibilityStatus.ReleaseSupported;
         }
 
         /// <summary>取一条口令的全部 effectId（ordinal 升序）。</summary>
@@ -486,15 +495,18 @@ namespace BossRush
                 {
                     return ModeHCommandCompatibilityStatus.VerifiedBehavior;
                 }
+                bool releaseSupported = false;
                 for (int i = 0; i < componentIds.Count; i++)
                 {
-                    if (GetEffectStatus(stableKey, componentIds[i])
-                        != ModeHCommandCompatibilityStatus.VerifiedBehavior)
+                    ModeHCommandCompatibilityStatus status = GetEffectStatus(stableKey, componentIds[i]);
+                    if (status == ModeHCommandCompatibilityStatus.ReleaseSupported) releaseSupported = true;
+                    else if (status != ModeHCommandCompatibilityStatus.VerifiedBehavior)
                     {
                         return ModeHCommandCompatibilityStatus.ReportOnly;
                     }
                 }
-                return ModeHCommandCompatibilityStatus.VerifiedBehavior;
+                return releaseSupported ? ModeHCommandCompatibilityStatus.ReleaseSupported
+                    : ModeHCommandCompatibilityStatus.VerifiedBehavior;
             }
 
             return GetEffectStatus(stableKey, entryId);
@@ -502,7 +514,7 @@ namespace BossRush
 
         /// <summary>
         /// 候选卡/选令文案只能由已通过的 effect 生成（§17.6.4）：
-        /// 返回该口令中状态为 VerifiedBehavior 的 effectId。
+        /// 返回该口令中已实测或发布契约支持的 effectId。
         /// </summary>
         public static List<string> GetVerifiedEffectIds(string stableKey, string commandId)
         {
@@ -511,7 +523,7 @@ namespace BossRush
             if (effectIds == null) return result;
             for (int i = 0; i < effectIds.Count; i++)
             {
-                if (GetEffectStatus(stableKey, effectIds[i]) == ModeHCommandCompatibilityStatus.VerifiedBehavior)
+                if (HasVerifiedBehavior(stableKey, effectIds[i]))
                 {
                     result.Add(effectIds[i]);
                 }
@@ -537,8 +549,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 通用行为查询：伤病/战痕/异常与 effect 共用同一张实测表，
-        /// 只有 VerifiedBehavior 才允许进入战斗结算与赔率（§17.5、§17.6.4）。
+        /// 通用行为查询：伤病/战痕/异常与 effect 共用兼容表。
+        /// 已实测或发布契约支持的行为可用于结算与赔率；保留旧方法名供调用方兼容。
         /// </summary>
         public static bool HasVerifiedBehavior(string stableKey, string behaviorId)
         {
@@ -547,8 +559,9 @@ namespace BossRush
             // ModeHInjuryAndScarSystem.IsEntryUsableForKey 逐分量查这一种），
             // 也可能是条目 ID（leg，HasVerifiedInjuryBehavior 查这一种），
             // 还可能是裸异常 ID（error，经自结算集合命中）。三种都要能答。
-            return GetBehaviorEntryStatus(stableKey, behaviorId)
-                == ModeHCommandCompatibilityStatus.VerifiedBehavior;
+            ModeHCommandCompatibilityStatus status = GetBehaviorEntryStatus(stableKey, behaviorId);
+            return status == ModeHCommandCompatibilityStatus.VerifiedBehavior
+                || status == ModeHCommandCompatibilityStatus.ReleaseSupported;
         }
 
         /// <summary>该 stable key 是否至少有一条伤病行为通过实测（敌方带伤分的前置）。</summary>

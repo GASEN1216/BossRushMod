@@ -453,7 +453,7 @@ namespace BossRush
 
         #region 通用
 
-        /// <summary>行为状态只有 VerifiedBehavior 才进入赔率；其余按 0 分处理。</summary>
+        /// <summary>已实测或发布契约支持的行为进入赔率；其余按 0 分处理。</summary>
         private static bool IsVerified(ModeHProfileDto profile, string behaviorId)
         {
             if (profile == null || string.IsNullOrEmpty(behaviorId)) return false;
@@ -464,7 +464,8 @@ namespace BossRush
                     ModeHBehaviorStatusDto status = profile.behaviorStatuses[i];
                     if (status == null) continue;
                     if (!string.Equals(status.entryId, behaviorId, StringComparison.Ordinal)) continue;
-                    return status.status == (int)ModeHCommandCompatibilityStatus.VerifiedBehavior;
+                    return status.status == (int)ModeHCommandCompatibilityStatus.VerifiedBehavior
+                        || status.status == (int)ModeHCommandCompatibilityStatus.ReleaseSupported;
                 }
             }
             // 没有实测记录时按 ReportOnly 处理（0 分），而不是乐观假定已验证

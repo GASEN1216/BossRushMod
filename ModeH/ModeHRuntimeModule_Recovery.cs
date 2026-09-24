@@ -52,8 +52,9 @@ namespace BossRush
             if (!ModeHWarehouseStakeJournal.IsSlotConsistent)
             { failure = "season_resume_assets_unresolved"; return false; }
             ModeHProductionCertification restoredCertification = new ModeHProductionCertification();
-            if (!restoredCertification.TryRestoreSeasonReport(_season.productionCertificationSnapshot))
-            { failure = "season_resume_certification_unavailable"; return false; }
+            // 续赛与普通新局同样走发布目录，不因 Dev 构建或旧动态报告要求玩家重新测试。
+            if (!restoredCertification.TryUseReleaseCatalog())
+            { failure = "season_resume_release_catalog_unavailable"; return false; }
             _certification = restoredCertification;
             return true;
         }

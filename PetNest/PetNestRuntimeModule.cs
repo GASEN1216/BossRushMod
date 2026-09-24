@@ -267,6 +267,8 @@ namespace BossRush
             if (UnityEngine.Time.unscaledTime < _nextBaseMaintenanceTime) return;
             if (LevelManager.Instance == null || !LevelManager.AfterInit
                 || CharacterMainControl.Main == null) return;
+            if (PetNestPetProxyBridge.HasCapacityBonus
+                && (PetProxy.PetInventory == null || PetProxy.PetInventory.Loading)) return;
 
             _nextBaseMaintenanceTime =
                 UnityEngine.Time.unscaledTime + BaseMaintenanceIntervalSeconds;

@@ -245,6 +245,19 @@ Mode H 的正式入口、五席试棚、三幕六战、虚拟整备与下注、�
 真实仓库 escrow/journal/清算、转会、名人堂、恢复与存档已接线。恢复按同场看盘重开，
 不支持快照位置上的局中续战。代码接线、隔离回归与编译不等于所有实机玩法已验收。
 
+**正式入场与开发认证（2026-09-23，COMPAT / SCHEMA+）。** 正式入口在地图与两种租约就绪后
+同步检查发布目录，直接进入选人页；正式版与 Dev 版的新局和续赛均采用相同入口。
+逐 key 生成、伤害与口令动态认证仅由 F3 专项按钮在专用测试档、选人页显式启动；
+完成、失败或取消后恢复原选人页与发布目录，不重抽候选、不写赛季或认证缓存。
+发布目录仍核对实际 preset 静态资格、官方控制点及既有候选/原型/口令数量门槛。
+`ModeHCommandCompatibilityStatus` 末尾追加 `ReleaseSupported=6`：表示发布能力支持，不是本局实测；
+旧 0–5 值及 DTO 字段不变，旧摘要不变，未知的 7 及以上继续拒绝。
+复用既有报告载体，静态记录标 `spawnTimelineDigest=release_contract_v1`、`durationMs=0`，
+不写动态认证缓存。该状态可用于口令、伤病/战痕与赔率，动态实测继续区分 VerifiedBehavior / ActionApplied。
+擂台 AI 复用本场存活对手扫描，仅给缺失/已死亡目标补 `searchedEnemy` 与警觉；
+保留有效目标，排除中立看台、inactive 选手与 ERROR 当前受控者。观战拍铃门在每场成功入场时重开，
+结算/中止关闭；HUD 与点击使用同一租约门。
+
 **擂台与敌军伤势（2026-09-18，COMPAT / WIRE+）。** owner 授权补全效果并允许玩法与数值调整。
 `ModeHMatchRules` 只管理实际入场的临时参赛者，所有规则双边生效；属性复用官方 Stat Modifier
 及共享 tracker，医疗限制通过实例 Health.OnHealthChange 递归门实现并对称退订，不新增 Harmony。
@@ -272,7 +285,7 @@ Mode H 的正式入口、五席试棚、三幕六战、虚拟整备与下注、�
 
 - `IsModeHRunOwnerActive`：当前唯一 Mode H runtime 是否持有 owner。
 - `IsModeHRiskScanReady`：当前槽的轻量持久风险头是否读取完成。
-- `IsModeHContentReady`：配置、资源、地图、候选池与口令兼容矩阵是否具备运行正式自检的条件。
+- `IsModeHContentReady`：配置、资源、地图、候选池与口令兼容矩阵是否具备发布目录检查的条件。
 - `IsModeHExternalAssetRiskBlocked`：是否存在未终结真实资产 journal/operation 或风险未知。
 - `IsModeHRecoveryOnlyBlocked`：是否存在 Season 恢复壳、late cleanup 或 slot barrier。
 
@@ -620,6 +633,11 @@ Breaking/Operational:
 `finalDamage` 的数据流，只插入观察调用，不改写伤害。缺失或失配明确诊断并跳过元素治疗；
 官方更新必须复验实际程序集 IL，不能回退为减免前因子占比估算。上下文只在主玩家启用相应
 套装时采集，按一次 Hurt 调用持有并由 Finalizer 清理，嵌套调用互不污染。
+
+收获提示 `GardenHarvestNoticePatch`（COMPAT / WIRE+）只匹配 `Crop.Harvest()` 内唯一的
+`Cost.Return(bool, bool, int, List<Item>) → UniTaskExtensions.Forget(UniTask)`，保留原交付与 Forget，
+在两者之间包装等待任务。发货正常完成后才提示名称、数量及仓库/马蜂自提点去向；失败继续由原
+Forget 观察。失配保留全部原 IL 并警告；切图、换槽、换主角、停用或卸载后不迟发通知。
 
 ## 7.1 官方游戏行为：静默失败类陷阱
 

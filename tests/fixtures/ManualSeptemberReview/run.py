@@ -50,7 +50,7 @@ def main():
             maps.append(data)
     (OUT / 'maps.json').write_text(json.dumps(maps), encoding='utf-8')
     linked = [ROOT / path for path in (
-        'PetNest/PetNestBaseIdleSpawner.cs', 'PetNest/PetNestCompanionRuntime.cs',
+        'PetNest/PetNestBaseIdleSpawner.cs', 'PetNest/PetNestCompanionRuntime.cs', 'PetNest/PetNestPetProxyBridge.cs',
         'ModeH/ModeHMapSupportRegistry.cs', 'Common/MapConfig/BossRushMapConfig.cs',
         'Integration/Codex/CodexSceneNames.cs')]
     files = linked + [OUT / 'Reveal.cs', OUT / 'ExpeditionReveal.cs', OUT / 'Combat.cs', HERE / 'Program.cs', HERE / 'Stubs.cs']

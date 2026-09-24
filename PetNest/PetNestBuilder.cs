@@ -285,6 +285,7 @@ namespace BossRush
                 modelInstance.name = "Model";
                 modelInstance.SetActive(true);
                 BuildingModelHelper.PrepareBaseBuildingModel(modelInstance);
+                PetNestLamp.Attach(modelInstance);
             }
             else
             {

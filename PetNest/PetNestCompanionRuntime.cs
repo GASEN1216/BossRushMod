@@ -89,6 +89,10 @@ namespace BossRush
             // 零常驻第一道闸：出战席位为空时连门控都不查
             PetNestPetRecord pet = PetNestService.DeployedPet;
             if (pet == null) return;
+            // sceneLoaded 早于官方主角、宠物与安全箱初始化；提前借席会被官方稍后的
+            // petCharacter 赋值覆盖，容量也可能挂到过图前的 CharacterItem 上。
+            // 留在现有重试窗口中，等完整关卡就绪后再创建随从。
+            if (!IsCompanionWorldReady()) return;
             // 本局已重伤退场：局中途换图也不能让它重新入场
             //（Downed 只在回基地由 RestoreDownedPetsOnReturnToBase 复位）
             if (pet.state == (int)PetNestPetState.Downed)
@@ -248,7 +252,8 @@ namespace BossRush
                 string yieldReason;
                 if (PetNestPetProxyBridge.TryBorrowSeat(_handle.Character, out yieldReason))
                 {
-                    PetNestPetProxyBridge.ApplyCapacityBonus(playerNow, ResolveCapacityBonus(pet));
+                    if (!PetNestPetProxyBridge.ApplyCapacityBonus(playerNow, ResolveCapacityBonus(pet)))
+                        PetNestPetProxyBridge.ReleaseSeat();
                 }
                 else
                 {
@@ -285,6 +290,7 @@ namespace BossRush
             {
                 if (owner == null) return false;
                 if (sceneGeneration != _sceneGeneration) return false;
+                if (!IsCompanionWorldReady()) return false;
                 CharacterMainControl current = CharacterMainControl.Main;
                 if (current == null || current != player) return false;
                 if (current.Health != null && current.Health.IsDead) return false;
@@ -295,6 +301,13 @@ namespace BossRush
             {
                 return false;
             }
+        }
+
+        private static bool IsCompanionWorldReady()
+        {
+            return !SceneLoader.IsSceneLoading && LevelManager.LevelInited && LevelManager.AfterInit
+                && CharacterMainControl.Main != null && CharacterMainControl.Main.CharacterItem != null
+                && PetProxy.PetInventory != null && !PetProxy.PetInventory.Loading;
         }
 
         /// <summary>

@@ -39,6 +39,8 @@ tells you what just opened.
 - With a seed in hand, open the garden's normal planting screen and the mod seeds are simply there
   in the list alongside the vanilla crops.
 - A plant takes about `20` real-time minutes to ripen and yields `2` per harvest.
+- **Harvests go directly to base storage**, for both vanilla and mod crops. They merge into existing stacks first. Once delivery finishes, a banner shows the harvested item, amount and where to collect it.
+- If storage is full, the harvest waits at **Package Pickup** in the base. Make room in storage, then select `Send to Storage` for the pending items there.
 - Same rule as vanilla crops: **it only grows while watered**. Watering is a tool on the planting screen and costs nothing; forget to water and progress stops.
 
 [warn] Seeds and the food you harvest are not trophies. They can't go on a rack and give no bonus.

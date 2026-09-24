@@ -225,11 +225,9 @@ namespace BossRush
             {
                 if (effect == null) continue;
                 bool starterVerified = starter != null && (!spec.IsSignature || starter.signatureCommandId == spec.CommandId)
-                    && !spec.RequiresRelayEntered && ModeHCommandCompatibilityRegistry.GetEffectStatus(starter.stableKey, effect.EffectId)
-                        == ModeHCommandCompatibilityStatus.VerifiedBehavior;
+                    && !spec.RequiresRelayEntered && ModeHCommandCompatibilityRegistry.HasVerifiedBehavior(starter.stableKey, effect.EffectId);
                 bool relayVerified = relay != null && (!spec.IsSignature || relay.signatureCommandId == spec.CommandId)
-                    && ModeHCommandCompatibilityRegistry.GetEffectStatus(relay.stableKey, effect.EffectId)
-                        == ModeHCommandCompatibilityStatus.VerifiedBehavior;
+                    && ModeHCommandCompatibilityRegistry.HasVerifiedBehavior(relay.stableKey, effect.EffectId);
                 if (!starterVerified && !relayVerified) continue;
                 string label = DescribeControlPoint(effect.ControlPointId);
                 if (string.IsNullOrEmpty(label)) continue;

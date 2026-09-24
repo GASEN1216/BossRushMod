@@ -74,20 +74,10 @@ namespace BossRush
 
         private IEnumerator RunModeG() { return RunModeGNineWaves(); }
 
-        private IEnumerator RunModeH(bool expectCache)
+        private IEnumerator RunModeH(bool fullSeason)
         {
-            string id = expectCache ? "MODE_H_CACHE_HIT" : "MODE_H_FIRST_CERTIFICATION";
+            string id = fullSeason ? "MODE_H_PLAYER_REENTRY" : "MODE_H_PLAYER_ENTRY";
             Stopwatch sw = Stopwatch.StartNew();
-            if (!expectCache)
-            {
-                string invalidateError;
-                if (!ModeHProductionCertification.InvalidateCache(out invalidateError))
-                {
-                    Record(id, "FAIL", sw.ElapsedMilliseconds, "cache_invalidated=false",
-                        "无法清除旧认证缓存:" + invalidateError);
-                    yield break;
-                }
-            }
             ModeHSupportedMap map;
             if (!ModeHEntry.ResolveTargetMap(SceneManager.GetActiveScene().name, out map) || map == null)
             {
@@ -96,47 +86,41 @@ namespace BossRush
             }
             BossRushMapSelectionHelper.FreezeModeHEntryIntent(map.SceneName, map.SceneId);
             _host.ModeHRuntime.OnSceneLoaded(new SceneRuntimeContext(SceneManager.GetActiveScene(), LoadSceneMode.Single));
-            float timeout = expectCache ? CaseTimeoutSeconds : ModeHTimeoutSeconds;
-            float deadline = Time.realtimeSinceStartup + timeout;
+            float deadline = Time.realtimeSinceStartup + CaseTimeoutSeconds;
+            bool sawDiagnostics = _host.ModeHRuntime.IsCertificationDiagnosticRunning;
             while (Time.realtimeSinceStartup < deadline && !ShouldAbort())
             {
+                sawDiagnostics |= _host.ModeHRuntime.IsCertificationDiagnosticRunning;
                 ModeHRunState state = _host.ModeHRuntime.RunState;
                 if (state != null && state.Lifecycle == ModeHLifecycle.Drafting) break;
-                // 认证已拒绝会清空状态并返基地，不再原地等满 180 秒。
-                if (!_host.ModeHRuntime.HasActiveRun || SceneLoader.IsSceneLoading
+                if ((!_host.ModeHRuntime.HasActiveRun && !_host.ModeHRuntime.IsSceneEntryPending) || SceneLoader.IsSceneLoading
                     || !string.Equals(SceneManager.GetActiveScene().name, map.SceneName, System.StringComparison.Ordinal)) break;
                 yield return null;
             }
             ModeHRunState finalState = _host.ModeHRuntime.RunState;
             bool drafting = finalState != null && finalState.Lifecycle == ModeHLifecycle.Drafting;
-            bool cacheMatch = _host.ModeHRuntime.LastCertificationUsedCache == expectCache;
-            if (expectCache)
+            Record(id, drafting && !sawDiagnostics ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
+                "drafting=" + drafting + ",dynamic_diagnostics=" + sawDiagnostics,
+                !drafting ? "player_entry_timeout_or_abort" : (sawDiagnostics ? "player_entry_started_diagnostics" : null));
+            if (fullSeason)
             {
                 if (drafting) yield return RunModeHStarterKits(map);
-                else Record("MODE_H_STARTER_KITS", "SKIP", 0L, string.Empty, "certified_drafting_not_ready");
-                // ERROR 完整互换实测（§17.6.5 的逐角色 smoke 挪到这里，owner 2026-09-03）
+                else Record("MODE_H_STARTER_KITS", "SKIP", 0L, string.Empty, "player_drafting_not_ready");
                 if (drafting) yield return RunModeHErrorSwap(map);
-                else Record("MODE_H_ERROR_SWAP", "SKIP", 0L, string.Empty, "certified_drafting_not_ready");
-            }
-            Record(id, drafting && cacheMatch ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
-                "drafting=" + drafting + ",cache=" + _host.ModeHRuntime.LastCertificationUsedCache,
-                drafting ? (cacheMatch ? null : "cache_expectation_mismatch") : "certification_timeout_or_abort");
-            if (expectCache)
-            {
+                else Record("MODE_H_ERROR_SWAP", "SKIP", 0L, string.Empty, "player_drafting_not_ready");
                 if (drafting) yield return RunModeHFullSeason();
-                else Record("MODE_H_FULL_SEASON", "SKIP", 0L, string.Empty, "certified_drafting_not_ready");
+                else Record("MODE_H_FULL_SEASON", "SKIP", 0L, string.Empty, "player_drafting_not_ready");
             }
-            bool archived = expectCache ? !_host.ModeHRuntime.HasActiveRun
+            bool archived = fullSeason ? !_host.ModeHRuntime.HasActiveRun
                 : drafting && _host.ModeHRuntime.DebugFinishValidationSeason();
             bool intentCleared = !BossRushMapSelectionHelper.HasPendingModeHEntryIntent();
-            Record(id + "_CLEANUP", drafting && cacheMatch && archived && intentCleared ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
-                "drafting=" + drafting + ",cache=" + _host.ModeHRuntime.LastCertificationUsedCache
-                    + ",cache_invalidated=" + (!expectCache)
+            Record(id + "_CLEANUP", drafting && !sawDiagnostics && archived && intentCleared ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
+                "drafting=" + drafting + ",dynamic_diagnostics=" + sawDiagnostics
                     + ",intent_cleared=" + intentCleared
                     + ",archived=" + archived + ",exit_reason=" + _host.ModeHRuntime.LastExitReasonId,
                 !intentCleared ? "entry_intent_not_consumed"
                     : (!archived ? "season_not_archived:" + ModeHSaveFlushCoordinator.LastError
-                    : (drafting ? (cacheMatch ? string.Empty : "cache_expectation_mismatch") : "certification_timeout_or_abort")));
+                    : (sawDiagnostics ? "player_entry_started_diagnostics" : string.Empty)));
             _host.ValidationSafeCleanup();
             yield return WaitSeconds(0.5f);
         }

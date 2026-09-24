@@ -81,6 +81,8 @@ source_files:
 
 ### 3.1 菜地：官方种植系统的接入成本极低
 
+2026-09-23 收获去向核查（SAFE）：原版与 Mod 作物都由官方 `Crop.Harvest` 送入基地仓库，优先并入已有堆栈，正常入库没有提示。满仓时到「马蜂自提点」的「待取件」列表领取，按钮叫「发送至仓库」（英文 `Package Pickup` / `Send to Storage`）。本机官方作物库的 23 条作物产量均为 1，后山三条产量为 2；本轮没有确认实际丢物，只补充玩家说明。详细调用链与异常边界见 `.qoder/repowiki/zh/content/高级功能/竞技场后山修复约定.md` 的同日核查记录。
+
 官方 `CropDatabase` 的两张表 `entries`（`List<CropInfo>`）与 `seedInfos`
 （`List<SeedInfo>`）都是 public，可以运行时直接追加。注入后官方种植 UI 会自动把
 我们的种子列进可选列表（`GardenViewCropSelector` 用 `CropDatabase.IsSeed` 过滤背包）。
@@ -290,3 +292,10 @@ Store 在 Save 已改官方缓存但回读失败时恢复此前 JSON，避免向
 ## 2026-09-17 满箱种子不丢失
 
 BackMountainSeedDrops 经共享 InteractableLootboxInventoryHelper.TryAddExtraItem 入箱：空位复用、满箱扩一格、失败回收未挂载实例，成功才记录掉落。龙裔/龙王专属奖励也复用该 helper，收藏在交付成功后记录。BossRewardDelivery 的满箱、容量失败、挂载前后异常和门控用例为 L2，原掉率与种植、出击餐数值不变；实际搜刮与收获待 L3。
+
+
+### 2026-09-23 收获完成横幅（COMPAT / WIRE+）
+
+owner 追加要求收获时提示玩家。`GardenHarvestNoticePatch` 对官方 `Crop.Harvest` 内唯一的 `Cost.Return → Forget` 调用插入任务观察，保持原发货、清格和异常链。正常完成后通过共享 `ShowBigBanner` 显示「已收获 名称 ×数量」与「请到基地仓库查看；满仓部分在马蜂自提点领取」，原版及 Mod 作物都适用。此前「一般没有提示」只描述官方原行为，现在由 Mod 补上。
+
+不订阅 `onHarvest`：该事件在异步发货完成前就可能触发。观察器只快照产品 ID、数量和 owner/主角/槽/场景，完成后现取本地化名称；不再读取已回收的 Crop。发货失败无成功横幅，切图、换槽、卸载及停用后的迟到任务不提示，原 Forget 仍消费异常。单次收获只追加一次提示，数字文案不会被共享横幅的静态去重吞掉。没有逐帧查询或新存档字段。

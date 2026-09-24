@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using BossRush.Utils;
-using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -16,17 +15,13 @@ namespace BossRush
         private SkyIslandOfficialQuestBridge quests;
         private SkyIslandDepartureInteractable departure;
         private List<InteractableBase> boatGroup;
-        private Canvas sign;
-        private TextMeshProUGUI signText;
-        private bool? signChinese;
         private bool subscribed;
         /// <summary>
         /// 「天空岛航路已开放」那条提示条**每进程只发一次**。
         ///
         /// 它以前跟着 <see cref="OnStartedLoading"/> 与「离开基地」两处复位，于是每撤离一次、
-        /// 走回码头就再念一遍；收齐十二封信要十二趟，这句话就念十二遍。招牌本身已经刻意收成
-        /// 「走近才浮现」（<see cref="SkyIslandProximityLabel"/>，见 CreateSign 的注释），
-        /// 常驻提示与那条取向相反。入口本身仍每次回基地重新挂（船点子场景会卸载），只有这句话不再重播。
+        /// 走回码头就再念一遍；收齐十二封信要十二趟，这句话就念十二遍。
+        /// 入口本身仍每次回基地重新挂（船点子场景会卸载），只有这句话不再重播。
         /// </summary>
         private bool announced;
         private bool bundleWarned;
@@ -135,7 +130,7 @@ namespace BossRush
                 return;
             }
             if (departure != null || attempts <= 0 || Time.unscaledTime < nextAttempt) return;
-            // 缺场景包时不挂船点选项、不立招牌、不发公告：与其让玩家点进去才失败，不如根本不出现这个入口。
+            // 缺场景包时不挂船点选项、不发公告，避免提供无法出发的入口。
             if (!SkyIslandRaidLease.IsBundleDeployed())
             {
                 attempts = 0;
@@ -158,7 +153,6 @@ namespace BossRush
                 departure = NPCInteractionGroupHelper.AddSubInteractable<SkyIslandDepartureInteractable>(
                     candidate.transform, "BossRush_SkyIsland_Departure", boatGroup, value => value.Bind(owner, prelude));
                 if (departure == null) continue;
-                CreateSign(candidate.transform);
                 if (!announced)
                 {
                     announced = true;
@@ -186,66 +180,12 @@ namespace BossRush
                 "[SkyIsland] 已找到基地船点但航路子交互注入失败，请检查交互分组注入。回到基地后会重试。");
         }
 
-        private void CreateSign(Transform boat)
-        {
-            if (sign != null) return;
-            sign = BossRushUI.CreateCanvasRoot("SkyIslandDepartureSign", BossRushUILayers.WorldOverlay, false);
-            sign.renderMode = RenderMode.WorldSpace;
-            sign.transform.SetParent(boat, false);
-            sign.transform.localPosition = new Vector3(0, 2.4f, 0);
-            sign.transform.localScale = Vector3.one * 0.006f;
-            RectTransform rect = sign.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(620, 130);
-            GameObject label = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-            label.transform.SetParent(sign.transform, false);
-            TextMeshProUGUI text = label.GetComponent<TextMeshProUGUI>();
-            BossRushUI.ApplyGameFont(text);
-            // 压在码头与亮地面上的世界字要有描边托住（2026-09-23 审美审查 UE-14），共享材质按字体一份。
-            BossRushUIKit.ApplyWorldTextOutline(text);
-            text.rectTransform.anchorMin = Vector2.zero;
-            text.rectTransform.anchorMax = Vector2.one;
-            text.rectTransform.offsetMin = text.rectTransform.offsetMax = Vector2.zero;
-            // 招牌不再是一块远远就亮着的黄字：主标题用正文色、副标题降一级，走近船点才浮现
-            // （SkyIslandProximityLabel）。远处靠官方交互标记与首次到基地时那条公告指路就够了，
-            // 常驻的浮空字正是网游式头顶标语的来源。
-            signText = text;
-            RefreshSignText();
-            text.fontSize = 34;
-            text.alignment = TextAlignmentOptions.Center;
-            text.color = BossRushUIColors.TextPrimary;
-            text.raycastTarget = false;
-            SkyIslandProximityLabel.Attach(sign.gameObject, 9f, 16f);
-        }
-
-        // 已有船点使 OnUpdate 提前返回；表现层只在语言变化时写一次原 TMP。
-        private void RefreshSignText()
-        {
-            if (signText == null) return;
-            bool chinese = L10n.IsChinese;
-            if (signChinese == chinese) return;
-            signText.text = L10n.T("天空岛 · 晴岚群岛", "Sky Islands · Qinglan") + "\n<size=62%><color=#" +
-                ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextSecondary) + ">" +
-                L10n.T("与船点互动即可出发", "Interact with the boat to depart") + "</color></size>";
-            signChinese = chinese;
-        }
-
-        public override void OnLateUpdate()
-        {
-            RefreshSignText();
-            if (sign != null && GameCamera.Instance != null && GameCamera.Instance.renderCamera != null)
-                sign.transform.rotation = GameCamera.Instance.renderCamera.transform.rotation;
-        }
-
         private void ClearEntry()
         {
             if (boatGroup != null && departure != null) boatGroup.Remove(departure);
             boatGroup = null;
             if (departure != null) UnityEngine.Object.Destroy(departure.gameObject);
             departure = null;
-            if (sign != null) UnityEngine.Object.Destroy(sign.gameObject);
-            sign = null;
-            signText = null;
-            signChinese = null;
         }
 
         public override void OnDestroy()
