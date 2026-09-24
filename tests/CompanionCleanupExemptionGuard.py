@@ -51,7 +51,7 @@ def main():
     # 大兴兴清理是历史上漏掉的那一条，单独钉住
     mb = read(os.path.join(ROOT, "ModBehaviour.cs"))
     if mb is not None:
-        start = mb.find("private void TryCleanNonBossRushDaXingXing()")
+        start = mb.find("internal void TryCleanNonBossRushDaXingXing()")
         if start < 0:
             errors.append("[Exempt] 找不到 TryCleanNonBossRushDaXingXing")
         else:

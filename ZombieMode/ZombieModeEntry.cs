@@ -202,29 +202,14 @@ namespace BossRush
 
         private void TickZombieMode(float deltaTime)
         {
-            if (!IsZombieModeActive)
-            {
-                ResetZombieModeRuntimePauseClock();
-                return;
-            }
-
-            RefreshZombieModeRuntimePauseClock();
-            if (IsZombieModeRuntimePaused())
-            {
-                return;
-            }
-
-            TickZombieModeWaveController(deltaTime);
-            TickZombieModeDropsAndPerformance(deltaTime);
-            TickZombieModeBossController(deltaTime);
-            TickZombieModeTemporaryNpcProtection();
-            UpdateModeFFortificationHighlights();
-            UpdateFortPlacementMode();
-            UpdateModeFRepairSelection();
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.TickZombieMode(deltaTime);
         }
 
         internal bool IsZombieModeGamePaused()
         {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) return module.IsZombieModeGamePaused();
             try
             {
                 return PauseMenu.Instance != null && PauseMenu.Instance.Shown;
@@ -237,58 +222,27 @@ namespace BossRush
 
         internal bool IsZombieModeRuntimePaused()
         {
-            return ZombieModeUIHelper.IsModalInputPaused || IsZombieModeGamePaused() || CameraMode.Active;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.IsZombieModeRuntimePaused()
+                : ZombieModeUIHelper.IsModalInputPaused || IsZombieModeGamePaused() || CameraMode.Active;
         }
 
         private void RefreshZombieModeRuntimePauseClock()
         {
-            int runId = zombieModeRunState.RunId;
-            if (runId <= 0)
-            {
-                ResetZombieModeRuntimePauseClock();
-                return;
-            }
-
-            if (zombieModeRuntimePauseRunId != runId)
-            {
-                zombieModeRuntimePauseRunId = runId;
-                zombieModeRuntimePausedDuration = 0f;
-                zombieModeRuntimePauseStartTime = -1f;
-            }
-
-            if (IsZombieModeRuntimePaused())
-            {
-                if (zombieModeRuntimePauseStartTime < 0f)
-                {
-                    zombieModeRuntimePauseStartTime = Time.unscaledTime;
-                }
-                return;
-            }
-
-            if (zombieModeRuntimePauseStartTime >= 0f)
-            {
-                zombieModeRuntimePausedDuration += Mathf.Max(0f, Time.unscaledTime - zombieModeRuntimePauseStartTime);
-                zombieModeRuntimePauseStartTime = -1f;
-            }
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.RefreshZombieModeRuntimePauseClock();
         }
 
         private void ResetZombieModeRuntimePauseClock()
         {
-            zombieModeRuntimePauseRunId = 0;
-            zombieModeRuntimePausedDuration = 0f;
-            zombieModeRuntimePauseStartTime = -1f;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.ResetZombieModeRuntimePauseClock();
         }
 
         internal float GetZombieModeRuntimeNow()
         {
-            float pausedDuration = zombieModeRuntimePausedDuration;
-            if (zombieModeRuntimePauseRunId == zombieModeRunState.RunId &&
-                zombieModeRuntimePauseStartTime >= 0f)
-            {
-                pausedDuration += Mathf.Max(0f, Time.unscaledTime - zombieModeRuntimePauseStartTime);
-            }
-
-            return Time.unscaledTime - pausedDuration;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeRuntimeNow() : Time.unscaledTime;
         }
 
         private bool InitializeZombieModeRunAfterMapLoaded(int runId)

@@ -1,7 +1,7 @@
 {
   "description": "D-1: production host partial ceiling; only lower after responsibilities move to module-owned types.",
-  "max_files": 179,
-  "max_total_lines": 86800,
+  "max_files": 178,
+  "max_total_lines": 84400,
   "allowed_files": [
     "Achievement/AchievementMedalItem.cs",
     "Achievement/AchievementRuntimeHooks.cs",
@@ -149,7 +149,6 @@
     "WavesArena/WavesArenaEnemyMaintenance.cs",
     "WavesArena/WavesArenaEntryAndTeleport.cs",
     "WavesArena/WavesArenaRuntimeHooks.cs",
-    "WavesArena/WavesArenaSpawnerControl.cs",
     "ZombieMode/ZombieModeBackpackJunkRecycle.cs",
     "ZombieMode/ZombieModeBossController.cs",
     "ZombieMode/ZombieModeCashInvestmentView.cs",

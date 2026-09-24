@@ -11,6 +11,8 @@ HOST = clean_source((ROOT / "ModBehaviour.cs").read_text(encoding="utf-8-sig"))
 BRIDGE = clean_source((ROOT / "WavesArena/WavesArenaRuntimeHooks.cs").read_text(encoding="utf-8-sig"))
 LOOT_BRIDGE = clean_source((ROOT / "LootAndRewards/LootAndRewards.cs").read_text(encoding="utf-8-sig"))
 MODULE = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule.cs").read_text(encoding="utf-8-sig"))
+TICK = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_Tick.cs").read_text(encoding="utf-8-sig"))
+SPAWNERS = clean_source((ROOT / "WavesArena/WavesArenaSpawnerControl.cs").read_text(encoding="utf-8-sig"))
 REGISTRATION = clean_source((ROOT / "ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8-sig"))
 
 
@@ -50,6 +52,32 @@ def main():
         raise AssertionError("legacy boss list reads must forward to the module")
     if "private readonly List<MonoBehaviour> currentWaveBosses" in HOST:
         raise AssertionError("the current wave boss list must not remain a host field")
+    for old_name, new_name in (
+        ("enemyPresets", "EnemyPresets"),
+        ("_enemyPresetInitializationScanCount", "EnemyPresetInitializationScanCount"),
+        ("minBossBaseHealth", "MinBossBaseHealth"),
+        ("maxBossBaseHealth", "MaxBossBaseHealth"),
+    ):
+        if new_name + " { get; set; }" not in MODULE:
+            raise AssertionError(new_name + " must belong to the arena module")
+        if "get { return wavesArenaRuntime." + new_name + "; }" not in BRIDGE:
+            raise AssertionError(old_name + " getter must forward to the arena owner")
+        if "set { wavesArenaRuntime." + new_name + " = value; }" not in BRIDGE:
+            raise AssertionError(old_name + " setter must forward to the arena owner")
+        if re.search(r"^\s*private\s+[^\n]+\s+" + re.escape(old_name) + r"\s*(?:=|;)", LOOT_BRIDGE, re.M):
+            raise AssertionError(old_name + " must not remain a loot host field")
+    if "internal static bool EnemyPresetsInitialized { get; set; }" not in MODULE:
+        raise AssertionError("enemy preset initialization flag must belong to the arena module")
+    if "WavesArenaRuntimeModule.EnemyPresetsInitialized" not in BRIDGE:
+        raise AssertionError("enemy preset initialization bridge missing")
+    if "internal bool SpawnersDisabled { get; set; }" not in MODULE:
+        raise AssertionError("spawner latch must belong to the arena module")
+    if "wavesArenaRuntime.SpawnersDisabled" not in HOST:
+        raise AssertionError("spawner latch host bridge missing")
+    if "internal sealed partial class WavesArenaRuntimeModule" not in SPAWNERS:
+        raise AssertionError("spawner control must execute in arena module")
+    if "return wavesArenaRuntime.TickWavesArenaRuntime(deltaTime);" not in BRIDGE or "internal bool TickWavesArenaRuntime(float deltaTime)" not in TICK:
+        raise AssertionError("arena timer tick must execute in arena module")
     for old_name, new_name in (
         ("infiniteHellMode", "InfiniteHellMode"),
         ("infiniteHellWaveIndex", "InfiniteHellWaveIndex"),

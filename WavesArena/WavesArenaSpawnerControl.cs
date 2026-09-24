@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class WavesArenaRuntimeModule
     {
         /// <summary>
         /// 禁用场景中的所有spawner
@@ -18,9 +18,9 @@ namespace BossRush
         ///   立即阻止刷怪（过图帧必须保证），但灯光重挂 + Destroy 大量 GameObject 这一帧尖峰
         ///   挪到跨帧协程，避免场景加载帧卡顿。
         /// </summary>
-        private void DisableAllSpawners()
+        internal void DisableAllSpawners()
         {
-            if (spawnersDisabled)
+            if (SpawnersDisabled)
             {
                 return;
             }
@@ -57,7 +57,7 @@ namespace BossRush
                             }
                             catch (Exception e)
                             {
-                                DevLog("[BossRush] [WARNING] DisableAllSpawners 标记 spawner created 失败: " + e.Message);
+                                ModBehaviour.DevLog("[BossRush] [WARNING] DisableAllSpawners 标记 spawner created 失败: " + e.Message);
                             }
                         }
 
@@ -66,17 +66,17 @@ namespace BossRush
                 }
 
                 // 立即置位：刷怪已被阻止，重复调用会直接返回；销毁是收尾清理，可异步。
-                spawnersDisabled = true;
-                DevLog("[BossRush] 已标记禁用 " + disabledCount + " 个 CharacterSpawnerRoot，销毁将分帧进行");
+                SpawnersDisabled = true;
+                ModBehaviour.DevLog("[BossRush] 已标记禁用 " + disabledCount + " 个 CharacterSpawnerRoot，销毁将分帧进行");
 
                 if (rootsToDestroy.Count > 0)
                 {
-                    StartCoroutine(DestroySpawnerRootsAcrossFrames(rootsToDestroy));
+                    owner.StartCoroutine(DestroySpawnerRootsAcrossFrames(rootsToDestroy));
                 }
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] 销毁spawner时出错: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] 销毁spawner时出错: " + e.Message);
             }
         }
 
@@ -114,7 +114,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    DevLog("[BossRush] [WARNING] DisableAllSpawners 保留灯光失败: " + e.Message);
+                    ModBehaviour.DevLog("[BossRush] [WARNING] DisableAllSpawners 保留灯光失败: " + e.Message);
                 }
 
                 try
@@ -124,7 +124,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    DevLog("[BossRush] [WARNING] DisableAllSpawners 销毁 spawner 失败: " + e.Message);
+                    ModBehaviour.DevLog("[BossRush] [WARNING] DisableAllSpawners 销毁 spawner 失败: " + e.Message);
                 }
 
                 processedInBatch++;
@@ -135,17 +135,17 @@ namespace BossRush
                 }
             }
 
-            DevLog("[BossRush] 分帧销毁完成：销毁 " + destroyedCount + " 个 CharacterSpawnerRoot，保留了 " + preservedLightsCount + " 个灯光");
+            ModBehaviour.DevLog("[BossRush] 分帧销毁完成：销毁 " + destroyedCount + " 个 CharacterSpawnerRoot，保留了 " + preservedLightsCount + " 个灯光");
         }
 
         /// <summary>
         /// 定期自检：如果当前波计数大于0但场上已没有任何由BossRush生成的存活Boss，则强制修正并推进波次
         /// </summary>
-        private void TryFixStuckWaveIfNoBossAlive()
+        internal void TryFixStuckWaveIfNoBossAlive()
         {
             try
             {
-                if (!IsActive)
+                if (!owner.IsActive)
                 {
                     return;
                 }
@@ -153,20 +153,20 @@ namespace BossRush
                 int aliveBossCount = 0;
                 bool hasWaveToCheck = false;
 
-                if (bossesPerWave > 1)
+                if (BossesPerWave > 1)
                 {
-                    if (bossesInCurrentWaveRemaining <= 0)
+                    if (BossesInCurrentWaveRemaining <= 0)
                     {
                         return;
                     }
 
-                    if (currentWaveBosses != null && currentWaveBosses.Count > 0)
+                    if (CurrentWaveBosses != null && CurrentWaveBosses.Count > 0)
                     {
                         hasWaveToCheck = true;
 
-                        for (int i = 0; i < currentWaveBosses.Count; i++)
+                        for (int i = 0; i < CurrentWaveBosses.Count; i++)
                         {
-                            MonoBehaviour boss = currentWaveBosses[i];
+                            MonoBehaviour boss = CurrentWaveBosses[i];
                             if (boss == null)
                             {
                                 continue;
@@ -182,7 +182,7 @@ namespace BossRush
                             }
                             catch (Exception e)
                             {
-                                DevLog("[BossRush] [WARNING] TryFixStuckWaveIfNoBossAlive 读取多Boss Health失败: " + e.Message);
+                                ModBehaviour.DevLog("[BossRush] [WARNING] TryFixStuckWaveIfNoBossAlive 读取多Boss Health失败: " + e.Message);
                             }
                         }
                     }
@@ -192,11 +192,11 @@ namespace BossRush
                     MonoBehaviour bossMb = null;
                     try
                     {
-                        bossMb = currentBoss as MonoBehaviour;
+                        bossMb = owner.CurrentBossForWavesArena as MonoBehaviour;
                     }
                     catch (Exception e)
                     {
-                        DevLog("[BossRush] [WARNING] TryFixStuckWaveIfNoBossAlive 读取当前Boss失败: " + e.Message);
+                        ModBehaviour.DevLog("[BossRush] [WARNING] TryFixStuckWaveIfNoBossAlive 读取当前Boss失败: " + e.Message);
                     }
 
                     if (bossMb == null)
@@ -216,7 +216,7 @@ namespace BossRush
                     }
                     catch (Exception e)
                     {
-                        DevLog("[BossRush] [WARNING] TryFixStuckWaveIfNoBossAlive 读取当前Boss Health失败: " + e.Message);
+                        ModBehaviour.DevLog("[BossRush] [WARNING] TryFixStuckWaveIfNoBossAlive 读取当前Boss Health失败: " + e.Message);
                     }
                 }
 
@@ -229,24 +229,24 @@ namespace BossRush
                 {
                     try
                     {
-                        DevLog("[BossRush] 自检：当前波没有任何存活 Boss，自动修正并推进下一波");
+                        ModBehaviour.DevLog("[BossRush] 自检：当前波没有任何存活 Boss，自动修正并推进下一波");
                     }
                     catch (Exception e)
                     {
                         UnityEngine.Debug.LogWarning("[BossRush] TryFixStuckWaveIfNoBossAlive 日志记录失败: " + e.Message);
                     }
 
-                    if (bossesPerWave > 1)
+                    if (BossesPerWave > 1)
                     {
-                        bossesInCurrentWaveRemaining = 0;
+                        BossesInCurrentWaveRemaining = 0;
                     }
 
-                    ProceedAfterWaveFinished();
+                    owner.ProceedAfterWaveFinished();
                 }
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [ERROR] TryFixStuckWaveIfNoBossAlive 错误: " + e.Message);
+                ModBehaviour.DevLog("[BossRush] [ERROR] TryFixStuckWaveIfNoBossAlive 错误: " + e.Message);
             }
         }
     }

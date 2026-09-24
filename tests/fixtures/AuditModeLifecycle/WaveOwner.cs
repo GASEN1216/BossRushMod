@@ -7,6 +7,7 @@ namespace UnityEngine.SceneManagement {
 public sealed class Health { public bool IsDead; }
 public sealed class CharacterMainControl { public static CharacterMainControl Main; public Health Health=new Health(); }
 namespace BossRush {
+ public class EnemyPresetInfo {}
  internal class SceneRuntimeContext {}
  internal abstract class BossRushRuntimeModuleBase {
   public abstract string ModuleName {get;}

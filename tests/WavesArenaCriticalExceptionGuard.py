@@ -62,9 +62,9 @@ def main() -> int:
 
     checks = [
         (arena, "private void HandleBossDeath(", "[BossRush] [ERROR] HandleBossDeath 错误: "),
-        (arena, "private void ProceedAfterWaveFinished()", "[BossRush] [ERROR] ProceedAfterWaveFinished 错误: "),
+        (arena, "internal void ProceedAfterWaveFinished()", "[BossRush] [ERROR] ProceedAfterWaveFinished 错误: "),
         (arena, "private void OnBossSpawnFailed(", "[BossRush] [ERROR] OnBossSpawnFailed 错误: "),
-        (spawner_control, "private void TryFixStuckWaveIfNoBossAlive()", "[BossRush] [ERROR] TryFixStuckWaveIfNoBossAlive 错误: "),
+        (spawner_control, "internal void TryFixStuckWaveIfNoBossAlive()", "[BossRush] [ERROR] TryFixStuckWaveIfNoBossAlive 错误: "),
     ]
     for text, signature, expected_log in checks:
         error = assert_logs_outer_exception(text, signature, expected_log)
@@ -74,10 +74,10 @@ def main() -> int:
     no_empty_checks = [
         (arena, "private void OnEnemyDiedWithDamageInfo("),
         (arena, "private void HandleBossDeath("),
-        (arena, "private void ProceedAfterWaveFinished()"),
+        (arena, "internal void ProceedAfterWaveFinished()"),
         (arena, "private void OnBossSpawnFailed("),
-        (spawner_control, "private void DisableAllSpawners()"),
-        (spawner_control, "private void TryFixStuckWaveIfNoBossAlive()"),
+        (spawner_control, "internal void DisableAllSpawners()"),
+        (spawner_control, "internal void TryFixStuckWaveIfNoBossAlive()"),
     ]
     for text, signature in no_empty_checks:
         error = assert_no_empty_catches(text, signature)

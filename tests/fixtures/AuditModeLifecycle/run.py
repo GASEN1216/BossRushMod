@@ -50,8 +50,37 @@ execute('respawn_owner',[HERE/'RespawnOwner.cs'],'using System; using UnityEngin
 cash='\n'.join(member(ROOT/'RandomEvents/RandomEventEffectsBridge_Loot.cs',m) for m in ['private async UniTaskVoid SpawnRandomEventCashPilesAsync(', 'private static void InvokeRandomEventCashCompletion('])
 cash=cash.replace('async UniTaskVoid','async System.Threading.Tasks.Task').replace('UniTask.Yield()','System.Threading.Tasks.Task.Yield()')
 execute('cash_owner',[HERE/'CashOwner.cs'],'using System; using UnityEngine; using UnityEngine.SceneManagement; using ItemStatsSystem; namespace BossRush { public partial class ModBehaviour {'+cash+'}}')
-pause='\n'.join(member(ROOT/'ZombieMode/ZombieModeEntry.cs',m) for m in ['internal bool IsZombieModeRuntimePaused()', 'private void RefreshZombieModeRuntimePauseClock()', 'private void ResetZombieModeRuntimePauseClock()', 'internal float GetZombieModeRuntimeNow()'])
-execute('pause_clock',[HERE/'PauseClock.cs'],'using UnityEngine; namespace BossRush { public partial class ModBehaviour {'+pause+'}}')
+runtime_module=ROOT/'ZombieMode/ZombieModeRuntimeModule.cs'
+entry=ROOT/'ZombieMode/ZombieModeEntry.cs'
+pause_methods='\n'.join(member(runtime_module,m) for m in [
+    'internal void TickZombieMode(float deltaTime)',
+    'internal bool IsZombieModeGamePaused()',
+    'internal bool IsZombieModeRuntimePaused()',
+    'internal void RefreshZombieModeRuntimePauseClock()',
+    'internal void ResetZombieModeRuntimePauseClock()',
+    'internal float GetZombieModeRuntimeNow()',
+])
+host_methods='\n'.join(member(entry,m) for m in [
+    'private void TickZombieMode(float deltaTime)',
+    'internal bool IsZombieModeGamePaused()',
+    'internal bool IsZombieModeRuntimePaused()',
+    'private void RefreshZombieModeRuntimePauseClock()',
+    'private void ResetZombieModeRuntimePauseClock()',
+    'internal float GetZombieModeRuntimeNow()',
+])
+pause='''using System; using UnityEngine; using Duckov.UI; namespace BossRush {
+internal enum ZombieModeLifecyclePhase { None, Active }
+internal static class ZombieModePhaseGuards { internal static bool IsRunActive(ZombieModeLifecyclePhase phase) { return phase == ZombieModeLifecyclePhase.Active; } }
+internal sealed class ZombieModeRunState { internal int RunId = 1; internal ZombieModeLifecyclePhase LifecyclePhase = ZombieModeLifecyclePhase.Active; }
+internal sealed partial class ZombieModeRuntimeModule {
+ private ModBehaviour owner; private ZombieModeRunState runState;
+ private float runtimePausedDuration; private float runtimePauseStartTime = -1f; private int runtimePauseRunId;
+ internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState) { this.owner = owner; this.runState = runState; }
+'''+pause_methods+'''\n}
+public partial class ModBehaviour { private ZombieModeRuntimeModule zombieModeRuntimeModule;
+'''+host_methods+'''\n}
+}'''
+execute('pause_clock',[HERE/'PauseClock.cs'],pause)
 execute('wave_owner',[HERE/'WaveOwner.cs',ROOT/'WavesArena/WavesArenaRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule.cs'])
 execute('milestone',[HERE/'Milestone.cs',ROOT/'LootAndRewards/InfiniteHellMilestoneDelivery.cs'])
 f3=ROOT/'DebugAndTools/F3GameplayValidationAutotestStory.cs'

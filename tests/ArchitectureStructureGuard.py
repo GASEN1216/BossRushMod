@@ -29,6 +29,7 @@ LOOT_RUNTIME_HOOKS = Path("LootAndRewards/LootAndRewardsRuntimeHooks.cs")
 GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
 MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
 WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
+WAVES_RUNTIME_TICK = Path("WavesArena/WavesArenaRuntimeModule_Tick.cs")
 WAVES_ENTRY_FLOW = Path("WavesArena/BossRushEntryFlow.cs")
 WAVES_ENEMY_MAINTENANCE = Path("WavesArena/WavesArenaEnemyMaintenance.cs")
 WAVES_SPAWNER_CONTROL = Path("WavesArena/WavesArenaSpawnerControl.cs")
@@ -72,6 +73,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Integration/Affinity/AffinityRuntimeModuleHostBridge.cs",
     "Audio/BossRushAudioHooks.cs",
     "LootAndRewards/LootAndRewardsRuntimeHooks.cs",
+    "WavesArena/WavesArenaRuntimeModule_Tick.cs",
     "Utilities/GameplayRuntimeHooks.cs",
     "Utilities/ModeRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
@@ -378,6 +380,7 @@ def main() -> int:
             return fail("ArchitectureStructureGuard: CleanupCashMagnetForSceneChange missing token: " + required)
 
     waves_hooks = WAVES_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    waves_runtime_tick = WAVES_RUNTIME_TICK.read_text(encoding="utf-8", errors="ignore")
     waves_entry_flow = WAVES_ENTRY_FLOW.read_text(encoding="utf-8", errors="ignore")
     waves_enemy_maintenance = WAVES_ENEMY_MAINTENANCE.read_text(encoding="utf-8", errors="ignore")
     waves_spawner_control = WAVES_SPAWNER_CONTROL.read_text(encoding="utf-8", errors="ignore")
@@ -425,9 +428,9 @@ def main() -> int:
             if required not in body:
                 return fail("ArchitectureStructureGuard: WavesArenaEnemyMaintenance missing token: " + required)
     for signature, required_tokens in {
-        "private void DisableAllSpawners()": [
+        "internal void DisableAllSpawners()": [
             "_cachedCreatedField = typeof(CharacterSpawnerRoot).GetField(\"created\"",
-            "spawnersDisabled = true;",
+            "SpawnersDisabled = true;",
         ],
         # 销毁 + 灯光保留已拆到跨帧协程（性能优化：避免单帧批量 Destroy 尖峰），
         # 行为不变，token 改在此方法体内校验。
@@ -435,10 +438,10 @@ def main() -> int:
             "Light[] lights = root.gameObject.GetComponentsInChildren<Light>(true);",
             "UnityEngine.Object.Destroy(root.gameObject);",
         ],
-        "private void TryFixStuckWaveIfNoBossAlive()": [
-            "bossesPerWave > 1",
-            "bossesInCurrentWaveRemaining = 0;",
-            "ProceedAfterWaveFinished();",
+        "internal void TryFixStuckWaveIfNoBossAlive()": [
+            "BossesPerWave > 1",
+            "BossesInCurrentWaveRemaining = 0;",
+            "owner.ProceedAfterWaveFinished();",
         ],
     }.items():
         body = extract_method_body(waves_spawner_control, signature)
@@ -454,7 +457,7 @@ def main() -> int:
         "private void ClearEnemiesForBossRush()",
         "private System.Collections.IEnumerator ContinuousClearEnemiesUntilWaveStart()",
         "private void DisableAllSpawners()",
-        "private void TryFixStuckWaveIfNoBossAlive()",
+        "internal void TryFixStuckWaveIfNoBossAlive()",
     ]:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own boss rush entry flow method anymore: " + forbidden)
@@ -491,13 +494,18 @@ def main() -> int:
     waves_tick_body = extract_method_body(waves_hooks, "internal bool TickWavesArenaRuntime(float deltaTime)")
     if not waves_tick_body:
         return fail("ArchitectureStructureGuard: WavesArenaRuntimeHooks missing TickWavesArenaRuntime wrapper")
+    if "return wavesArenaRuntime.TickWavesArenaRuntime(deltaTime);" not in waves_tick_body:
+        return fail("ArchitectureStructureGuard: WavesArena tick must delegate to its runtime module")
+    waves_tick_body = extract_method_body(waves_runtime_tick, "internal bool TickWavesArenaRuntime(float deltaTime)")
+    if not waves_tick_body:
+        return fail("ArchitectureStructureGuard: WavesArena runtime module missing TickWavesArenaRuntime")
     for required in [
-        "waitingForNextWave && waveCountdown > 0f",
-        "waveCountdown -= deltaTime;",
-        "GetWaveIntervalSeconds();",
-        "ShowNextWaveCountdownBanner(seconds);",
-        "SpawnNextEnemy();",
-        "TryFixStuckWaveIfNoBossAlive();",
+        "WaitingForNextWave && WaveCountdown > 0f",
+        "WaveCountdown -= deltaTime;",
+        "owner.GetWaveIntervalSeconds();",
+        "owner.ShowNextWaveCountdownBanner(seconds);",
+        "owner.SpawnNextEnemy();",
+        "owner.TryFixStuckWaveIfNoBossAlive();",
         "return true;",
         "return false;",
     ]:
@@ -507,11 +515,16 @@ def main() -> int:
     waves_cleanup_body = extract_method_body(waves_hooks, "internal void TickWavesArenaBossCleanupRuntime(float deltaTime)")
     if not waves_cleanup_body:
         return fail("ArchitectureStructureGuard: WavesArenaRuntimeHooks missing TickWavesArenaBossCleanupRuntime wrapper")
+    if "wavesArenaRuntime.TickWavesArenaBossCleanupRuntime(deltaTime);" not in waves_cleanup_body:
+        return fail("ArchitectureStructureGuard: WavesArena cleanup must delegate to its runtime module")
+    waves_cleanup_body = extract_method_body(waves_runtime_tick, "internal void TickWavesArenaBossCleanupRuntime(float deltaTime)")
+    if not waves_cleanup_body:
+        return fail("ArchitectureStructureGuard: WavesArena runtime module missing TickWavesArenaBossCleanupRuntime")
     for required in [
-        "daXingXingCleanTimer += deltaTime;",
-        "daXingXingCleanTimer >= DaXingXingCleanInterval",
-        "TryCleanNonBossRushDaXingXing();",
-        "daXingXingCleanTimer = 0f;",
+        "DaXingXingCleanTimer += deltaTime;",
+        "DaXingXingCleanTimer >= ModBehaviour.DaXingXingCleanInterval",
+        "owner.TryCleanNonBossRushDaXingXing();",
+        "DaXingXingCleanTimer = 0f;",
     ]:
         if required not in waves_cleanup_body:
             return fail("ArchitectureStructureGuard: TickWavesArenaBossCleanupRuntime missing token: " + required)

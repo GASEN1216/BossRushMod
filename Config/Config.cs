@@ -1069,7 +1069,7 @@ namespace BossRush
         /// 获取波次间隔时间（秒）
         /// </summary>
         /// <returns>波次间隔时间，范围 2-60 秒</returns>
-        private float GetWaveIntervalSeconds()
+        internal float GetWaveIntervalSeconds()
         {
             float value = 15f;
             if (config != null)

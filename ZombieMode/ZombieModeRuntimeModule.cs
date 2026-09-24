@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Duckov.Utilities;
+using Duckov.UI;
 using ItemStatsSystem;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -43,9 +44,6 @@ namespace BossRush
         internal List<int> RewardCandidateScratch { get { return rewardCandidateScratch; } }
         internal HashSet<int> OpaqueFilterLogIds { get { return opaqueFilterLogIds; } }
         internal bool PendingEntry { get { return pendingEntry; } set { pendingEntry = value; } }
-        internal float RuntimePausedDuration { get { return runtimePausedDuration; } set { runtimePausedDuration = value; } }
-        internal float RuntimePauseStartTime { get { return runtimePauseStartTime; } set { runtimePauseStartTime = value; } }
-        internal int RuntimePauseRunId { get { return runtimePauseRunId; } set { runtimePauseRunId = value; } }
         internal static int NextRunId { get { return nextRunId; } set { nextRunId = value; } }
 
         internal void AdoptHostState(
@@ -54,10 +52,7 @@ namespace BossRush
             Dictionary<string, int[]> rewardCandidateCache,
             List<int> rewardCandidateScratch,
             HashSet<int> opaqueFilterLogIds,
-            bool pendingEntry,
-            float runtimePausedDuration,
-            float runtimePauseStartTime,
-            int runtimePauseRunId)
+            bool pendingEntry)
         {
             this.runState = runState;
             this.entryTransaction = entryTransaction;
@@ -65,9 +60,96 @@ namespace BossRush
             this.rewardCandidateScratch = rewardCandidateScratch;
             this.opaqueFilterLogIds = opaqueFilterLogIds;
             this.pendingEntry = pendingEntry;
-            this.runtimePausedDuration = runtimePausedDuration;
-            this.runtimePauseStartTime = runtimePauseStartTime;
-            this.runtimePauseRunId = runtimePauseRunId;
+        }
+
+        internal void TickZombieMode(float deltaTime)
+        {
+            if (!ZombieModePhaseGuards.IsRunActive(runState.LifecyclePhase))
+            {
+                ResetZombieModeRuntimePauseClock();
+                return;
+            }
+
+            RefreshZombieModeRuntimePauseClock();
+            if (IsZombieModeRuntimePaused())
+            {
+                return;
+            }
+
+            owner.TickZombieModeWaveControllerForRuntimeModule(deltaTime);
+            owner.TickZombieModeDropsAndPerformanceForRuntimeModule(deltaTime);
+            owner.TickZombieModeBossControllerForRuntimeModule(deltaTime);
+            owner.TickZombieModeTemporaryNpcProtectionForRuntimeModule();
+            owner.UpdateModeFFortificationHighlightsForRuntimeModule();
+            owner.UpdateFortPlacementMode();
+            owner.UpdateModeFRepairSelection();
+        }
+
+        internal bool IsZombieModeGamePaused()
+        {
+            try
+            {
+                return PauseMenu.Instance != null && PauseMenu.Instance.Shown;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        internal bool IsZombieModeRuntimePaused()
+        {
+            return ZombieModeUIHelper.IsModalInputPaused || IsZombieModeGamePaused() || CameraMode.Active;
+        }
+
+        internal void RefreshZombieModeRuntimePauseClock()
+        {
+            int runId = runState.RunId;
+            if (runId <= 0)
+            {
+                ResetZombieModeRuntimePauseClock();
+                return;
+            }
+
+            if (runtimePauseRunId != runId)
+            {
+                runtimePauseRunId = runId;
+                runtimePausedDuration = 0f;
+                runtimePauseStartTime = -1f;
+            }
+
+            if (IsZombieModeRuntimePaused())
+            {
+                if (runtimePauseStartTime < 0f)
+                {
+                    runtimePauseStartTime = Time.unscaledTime;
+                }
+                return;
+            }
+
+            if (runtimePauseStartTime >= 0f)
+            {
+                runtimePausedDuration += Mathf.Max(0f, Time.unscaledTime - runtimePauseStartTime);
+                runtimePauseStartTime = -1f;
+            }
+        }
+
+        internal void ResetZombieModeRuntimePauseClock()
+        {
+            runtimePauseRunId = 0;
+            runtimePausedDuration = 0f;
+            runtimePauseStartTime = -1f;
+        }
+
+        internal float GetZombieModeRuntimeNow()
+        {
+            float pausedDuration = runtimePausedDuration;
+            if (runtimePauseRunId == runState.RunId && runtimePauseStartTime >= 0f)
+            {
+                pausedDuration += Mathf.Max(0f, Time.unscaledTime - runtimePauseStartTime);
+            }
+
+            return Time.unscaledTime - pausedDuration;
         }
 
         internal bool TryBeginMapSelectionShell()

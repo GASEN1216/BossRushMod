@@ -337,6 +337,7 @@ echo(DebugAndTools\NPCTeleportUI.cs
 echo(Integration\BossRushDynamicItemRegistry.cs
 echo(Integration\BossRushIntegration.cs
 echo(Integration\BossRushIntegrationRuntimeModule.cs
+echo(Integration\BossRushIntegrationRuntimeModule_MapObjects.cs
 echo(Integration\BossRushIntegrationRuntimeModule_RuntimeHooks.cs
 echo(Integration\BossRushIntegration_StartAndScene.cs
 echo(Integration\IntegrationDeferredBootstrap.cs
@@ -446,6 +447,7 @@ echo(WavesArena\WavesArena.cs
 echo(WavesArena\WavesArenaEntryAndTeleport.cs
 echo(WavesArena\WavesArenaBossSpawning.cs
 echo(WavesArena\WavesArenaRuntimeModule.cs
+echo(WavesArena\WavesArenaRuntimeModule_Tick.cs
 echo(WavesArena\WavesArenaRuntimeHooks.cs
 echo(WavesArena\BossRushEntryFlow.cs
 echo(WavesArena\WavesArenaEnemyMaintenance.cs

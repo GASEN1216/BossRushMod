@@ -453,7 +453,7 @@ namespace BossRush
         /// <summary>
         /// 生成下一个敌人（根据 bossesPerWave 支持单Boss或多Boss一波）
         /// </summary>
-        private void SpawnNextEnemy()
+        internal void SpawnNextEnemy()
         {
             // [DEBUG] 记录当前状态
             DevLog("[BossRush] SpawnNextEnemy 调用: bossesPerWave=" + bossesPerWave + ", currentEnemyIndex=" + currentEnemyIndex + ", totalEnemies=" + totalEnemies);

@@ -11,8 +11,11 @@ from cs_source_util import clean_source
 ROOT = Path(__file__).resolve().parent.parent
 MODULE_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule.cs"
 MODULE_RUNTIME_HOOKS_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_RuntimeHooks.cs"
+MODULE_MAP_OBJECTS_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_MapObjects.cs"
 HOST_PATH = ROOT / "Integration/BossRushIntegration.cs"
 LIFECYCLE_PATH = ROOT / "Integration/BossRushIntegration_StartAndScene.cs"
+MAP_HOST_PATH = ROOT / "Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"
+TRAVEL_HOST_PATH = ROOT / "Integration/BossRushIntegration_TravelAndSetup.cs"
 REGISTRATION_PATH = ROOT / "ModBehaviourRuntimeModules.cs"
 COMPILE_PATH = ROOT / "compile_official.bat"
 
@@ -68,10 +71,12 @@ def require_order(body, tokens, label):
 def main():
     module_core = clean_source(MODULE_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_runtime_hooks = clean_source(MODULE_RUNTIME_HOOKS_PATH.read_text(encoding="utf-8", errors="ignore"))
-    module = module_core + "\n" + module_runtime_hooks
+    module_map_objects = clean_source(MODULE_MAP_OBJECTS_PATH.read_text(encoding="utf-8", errors="ignore"))
+    module = module_core + "\n" + module_runtime_hooks + "\n" + module_map_objects
     host = clean_source(HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
     lifecycle = clean_source(LIFECYCLE_PATH.read_text(encoding="utf-8", errors="ignore"))
-    map_host = clean_source((ROOT / "Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs").read_text(encoding="utf-8", errors="ignore"))
+    map_host = clean_source(MAP_HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
+    travel_host = clean_source(TRAVEL_HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
     registration = clean_source(REGISTRATION_PATH.read_text(encoding="utf-8", errors="ignore"))
     compile_text = COMPILE_PATH.read_text(encoding="utf-8-sig", errors="ignore").replace("\\", "/")
 
@@ -79,6 +84,8 @@ def main():
         return fail("the dedicated IntegrationRuntimeModule core must retain its single registered base declaration")
     if module_runtime_hooks.count("internal sealed partial class IntegrationRuntimeModule") != 1:
         return fail("runtime hooks must be a single partial declaration of the registered module type")
+    if module_map_objects.count("internal sealed partial class IntegrationRuntimeModule") != 1:
+        return fail("map-object behavior must be a single partial declaration of the registered module type")
     if "partial class ModBehaviour" in module:
         return fail("the runtime module source must not declare a ModBehaviour partial")
     if "private ModBehaviour _owner;" not in module or "_owner = owner;" not in method_body(module, "public override void OnAwake(ModBehaviour owner)"):
@@ -175,6 +182,78 @@ def main():
     if "yield return _owner.IntegrationSharedWait05s;" not in delayed_dragon:
         return fail("dragon-breath delayed subscription must preserve the host's shared wait instance")
 
+    map_spawn = method_body(module_map_objects, "internal void SpawnBossRushMapObjects()")
+    if require_order(map_spawn, [
+        "if (_owner.IsModeEActive)", "GetMapCloneConfigs(currentScene)",
+        "_owner.StartCoroutine(SpawnMapObjectsAsync(configs));", "CreateBossRushExitForScene(currentScene);",
+    ], "SpawnBossRushMapObjects"):
+        return fail("map-object generation must keep the Mode E gate, async start, and exit creation order")
+    map_spawn_async = method_body(module_map_objects, "private System.Collections.IEnumerator SpawnMapObjectsAsync(List<MapObjectCloneConfig> configs)")
+    if require_order(map_spawn_async, [
+        "yield return new WaitForSeconds(0.3f);", "ObjectCache.GetSceneObjectsByType(typeof(Transform));",
+        "const int batchSize = 3;", "const float batchInterval = 0.016f;",
+        "CloneMapObjectFast(template, parentTransform, config);", "yield return new WaitForSeconds(batchInterval);",
+    ], "SpawnMapObjectsAsync"):
+        return fail("map-object clone coroutine must preserve its scan and frame-batch timing")
+    map_configs = method_body(module_map_objects, "private List<MapObjectCloneConfig> GetMapCloneConfigs(string sceneName)")
+    for token in (
+        'sceneName == "Level_GroundZero_1"', 'sceneName == "Level_HiddenWarehouse"',
+        '"BossRush_Barrier_84"', 'return configs;',
+    ):
+        if token not in map_configs:
+            return fail("map clone configuration data must remain module-owned -> " + token)
+
+    native_exit = method_body(module_map_objects, "private void CreateBossRushExit(Vector3 position, string exitName)")
+    if require_order(native_exit, [
+        "LevelManager.Instance.ExitCreator.exitPrefab", "DisableExitSmokeEffects(exit);",
+        "CreateSimpleExit(position, exitName);",
+    ], "CreateBossRushExit"):
+        return fail("native exit creation must retain smoke suppression and simple-exit fallback")
+    simple_exit = method_body(module_map_objects, "private void CreateSimpleExit(Vector3 position, string exitName)")
+    for token in (
+        "exit.AddComponent<BoxCollider>()", "exit.AddComponent<CountDownArea>()", "requiredExtrationTime", "NotifyEvacuated(info)",
+        "EvacuationCountdownUI.Request(area)", "EvacuationCountdownUI.Release(area)",
+    ):
+        if token not in simple_exit:
+            return fail("simple exit behavior must remain module-owned -> " + token)
+
+    wait_for_level = method_body(module_map_objects, "internal System.Collections.IEnumerator WaitForLevelInitializedThenSetup_Integration(Scene scene)")
+    if require_order(wait_for_level, [
+        "const float maxWait = 30f;", "const float interval = 0.1f;", "scene.isLoaded",
+        "ReadSceneLoaderDoneWithWarning(\"WaitForLevelInitializedThenSetup\")",
+        "ReadMainExistsWithWarning(\"WaitForLevelInitializedThenSetup\")",
+        "ReadCameraExistsWithWarning(\"WaitForLevelInitializedThenSetup\")",
+        "ReadLevelInitedWithWarning(\"WaitForLevelInitializedThenSetup\")",
+        "yield return new WaitForSeconds(interval);", "_owner.StartBossRushDemoChallengeSetupForScene(scene);",
+    ], "WaitForLevelInitializedThenSetup_Integration"):
+        return fail("level-ready polling must preserve its condition order, wait, and original setup handoff")
+    for signature, bridge in (
+        ("private void SpawnBossRushMapObjects()", "bossRushIntegrationRuntime.SpawnBossRushMapObjects();"),
+        ("private System.Collections.IEnumerator WaitForLevelInitializedThenSetup_Integration(Scene scene)", "return bossRushIntegrationRuntime.WaitForLevelInitializedThenSetup_Integration(scene);"),
+    ):
+        body = method_body(map_host, signature)
+        if not body or bridge not in body:
+            return fail("original map host entrypoint must remain a thin module bridge -> " + signature)
+    setup_bridge = method_body(map_host, "internal void StartBossRushDemoChallengeSetupForScene(Scene scene)")
+    if "StartCoroutine(SetupBossRushInDemoChallenge(scene));" not in setup_bridge:
+        return fail("level-ready module must hand off the setup coroutine through the narrow host bridge")
+    for name in (
+        "MapObjectCloneConfig", "GetMapCloneConfigs(", "CreateBossRushExit(",
+        "DisableExitSmokeEffects(", "CreateSimpleExit(",
+    ):
+        if name in travel_host or name in map_host:
+            return fail("map clone and exit business logic must not remain in host partials -> " + name)
+    ground_zero_setup = method_body(travel_host, "private System.Collections.IEnumerator SetupBossRushInGroundZero")
+    map_spawn_position = ground_zero_setup.find("SpawnBossRushMapObjects();")
+    if map_spawn_position < 0:
+        return fail("SetupBossRushInGroundZero must retain the map-object call site")
+    if require_order(ground_zero_setup[map_spawn_position:], [
+        "SpawnBossRushMapObjects();", "DisableAllSpawners();",
+        "StartCoroutine(ContinuousClearEnemiesUntilWaveStart());", "ClearEnemiesForBossRush();",
+        "SetCurrentMapSpawnPoints(currentSceneName);", "bossRushArenaActive = true;",
+    ], "SetupBossRushInGroundZero"):
+        return fail("ground-zero lifecycle must keep map objects ahead of spawner cleanup and preserve arena setup order")
+
     for signature, call in (
         ("private bool ReadMainExistsWithWarning(string context)", "ReadMainExistsWithWarning(context)"),
         ("private bool ReadLevelInitedWithWarning(string context)", "ReadLevelInitedWithWarning(context)"),
@@ -257,6 +336,8 @@ def main():
         return fail("compile_official.bat must include the runtime module source")
     if "Integration/BossRushIntegrationRuntimeModule_RuntimeHooks.cs" not in compile_text:
         return fail("compile_official.bat must include the extracted runtime-hooks partial")
+    if "Integration/BossRushIntegrationRuntimeModule_MapObjects.cs" not in compile_text:
+        return fail("compile_official.bat must include the extracted map-objects partial")
 
     print("IntegrationRuntimeModuleGuard: PASS（商店状态 owner、库存委托、兼容入口与原订阅顺序）")
     return 0

@@ -9,6 +9,8 @@ MODEF_FORT_PARTS = [
     Path("ModeF/ModeFItemUsageAndTriggers.cs"),
 ]
 ZOMBIE_ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ZOMBIE_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+ZOMBIE_BRIDGE = Path("ZombieMode/ZombieModeMapSelection.cs")
 
 
 def fail(message: str) -> int:
@@ -45,6 +47,8 @@ def extract_method(text: str, marker: str) -> str:
 def main() -> int:
     fort = read_modef_fortifications()
     zombie = ZOMBIE_ENTRY.read_text(encoding="utf-8")
+    zombie_module = ZOMBIE_MODULE.read_text(encoding="utf-8")
+    zombie_bridge = ZOMBIE_BRIDGE.read_text(encoding="utf-8")
 
     for token in [
         "private bool CanUseModeFortificationUtilities()",
@@ -66,13 +70,17 @@ def main() -> int:
         return fail("fortification highlights must run in Zombie Mode")
 
     tick_body_tokens = [
-        "UpdateModeFFortificationHighlights();",
-        "UpdateFortPlacementMode();",
-        "UpdateModeFRepairSelection();",
+        "owner.UpdateModeFFortificationHighlightsForRuntimeModule();",
+        "owner.UpdateFortPlacementMode();",
+        "owner.UpdateModeFRepairSelection();",
     ]
     for token in tick_body_tokens:
-        if token not in zombie:
+        if token not in zombie_module:
             return fail("ZombieMode tick must update fortification runtime -> " + token)
+    if "if (module != null) module.TickZombieMode(deltaTime);" not in zombie:
+        return fail("ZombieMode host tick must forward to RuntimeModule")
+    if "UpdateModeFFortificationHighlights();" not in zombie_bridge:
+        return fail("ZombieMode host bridge must preserve the fortification-highlight update")
 
     print("ZombieModeFortificationUsageGuard: PASS")
     return 0

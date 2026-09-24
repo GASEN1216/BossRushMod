@@ -101,6 +101,7 @@ REQUIRED_MODULE_SNIPPETS = [
     "internal int BeginZombieModeRunShell(int sceneBuildIndex, string sceneName)",
     "internal bool InitializeZombieModeRunAfterMapLoaded(int runId)",
     "internal void FinalizeZombieModeEntryResources()",
+    "internal void TickZombieMode(float deltaTime)",
     "ZombieModePhaseGuards.IsActive(phase)",
     "SceneManager.GetActiveScene()",
     "ZombieModeFailureReason.InitializationFailed",
@@ -140,7 +141,7 @@ def main() -> int:
         "zombieModeUnattachedRewardCandidateCache,",
         "zombieModeUnattachedRewardCandidateScratch,",
         "zombieModeUnattachedOpaqueFilterLogIds,",
-        "zombieModeUnattachedPendingEntry,",
+        "zombieModeUnattachedPendingEntry);",
         "zombieModeRuntimeModule.RunState : zombieModeUnattachedRunState",
         "zombieModeRuntimeModule.EntryTransaction : zombieModeUnattachedEntryTransaction",
     ]:
@@ -155,6 +156,7 @@ def main() -> int:
         "if (module != null) module.AbortZombieModeMapLoadPhase1(reason);",
         "return module != null && module.TryHandleZombieModePendingMapSceneLoaded(scene, loadedMapConfig);",
         "return module != null && module.InitializeZombieModeRunAfterMapLoaded(runId);",
+        "if (module != null) module.TickZombieMode(deltaTime);",
     ]:
         if snippet not in host_entry_text:
             return fail("ZombieModeStateModelGuard: host entry bridge missing module forward -> " + snippet)

@@ -183,7 +183,7 @@ namespace BossRush
             }
         }
 
-        private void ShowNextWaveCountdownBanner(int secondsInt)
+        internal void ShowNextWaveCountdownBanner(int secondsInt)
         {
             if (secondsInt < 1)
             {
@@ -566,7 +566,7 @@ namespace BossRush
         /// <summary>
         /// 当当前波所有Boss被击杀或因生成失败/异常被跳过时，推进到下一波或结束挑战
         /// </summary>
-        private void ProceedAfterWaveFinished()
+        internal void ProceedAfterWaveFinished()
         {
             try
             {

@@ -6,6 +6,16 @@ namespace BossRush
         private static WavesArenaRuntimeModule current;
         private int waveGeneration;
         private InfiniteHellMilestoneDelivery milestoneDelivery;
+        private static System.Reflection.FieldInfo _cachedCreatedField = null;
+        private static bool _createdFieldCached = false;
+        internal bool SpawnersDisabled { get; set; }
+        internal System.Collections.Generic.List<EnemyPresetInfo> EnemyPresets { get; set; } =
+            new System.Collections.Generic.List<EnemyPresetInfo>();
+        internal int EnemyPresetInitializationScanCount { get; set; }
+        internal float MinBossBaseHealth { get; set; } = 100f;
+        internal float MaxBossBaseHealth { get; set; } = 100f;
+        internal static bool EnemyPresetsInitialized { get; set; }
+
         internal bool WaitingForNextWave { get; set; }
         internal float WaveCountdown { get; set; }
         internal int LastWaveCountdownSeconds { get; set; } = -1;

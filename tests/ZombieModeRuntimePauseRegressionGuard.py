@@ -25,6 +25,24 @@ def read_pollution() -> str:
     return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
 
 
+def extract_method(text: str, marker: str) -> str:
+    start = text.find(marker)
+    if start < 0:
+        return ""
+    brace = text.find("{", start)
+    if brace < 0:
+        return ""
+    depth = 0
+    for index in range(brace, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:index + 1]
+    return ""
+
+
 def main() -> int:
     entry_text = Path("ZombieMode/ZombieModeEntry.cs").read_text(encoding="utf-8")
     module_text = Path("ZombieMode/ZombieModeRuntimeModule.cs").read_text(encoding="utf-8")
@@ -33,13 +51,54 @@ def main() -> int:
         require(module_text, "private float runtimePausedDuration;", "missing module-owned runtime paused-duration accumulator")
         require(module_text, "private float runtimePauseStartTime = -1f;", "missing module-owned runtime pause-start timestamp")
         require(module_text, "private int runtimePauseRunId;", "missing module-owned runtime pause run-id tracker")
-        require(host_bridge_text, "zombieModeRuntimeModule.RuntimePausedDuration", "host clock bridge must read module paused duration")
-        require(host_bridge_text, "zombieModeRuntimeModule.RuntimePauseStartTime", "host clock bridge must read module pause start")
-        require(host_bridge_text, "zombieModeRuntimeModule.RuntimePauseRunId", "host clock bridge must read module pause run id")
-        require(entry_text, "private void RefreshZombieModeRuntimePauseClock()", "missing runtime pause clock refresh")
-        require(entry_text, "internal float GetZombieModeRuntimeNow()", "missing runtime pause-adjusted clock")
-        require(entry_text, "RefreshZombieModeRuntimePauseClock();", "TickZombieMode must refresh runtime pause clock")
-        require(entry_text, "return Time.unscaledTime - pausedDuration;", "runtime clock must subtract paused duration")
+    except AssertionError as exc:
+        return fail(str(exc))
+
+    entry_tick = extract_method(entry_text, "private void TickZombieMode(float deltaTime)")
+    module_tick = extract_method(module_text, "internal void TickZombieMode(float deltaTime)")
+    if not entry_tick or "module.TickZombieMode(deltaTime)" not in entry_tick:
+        return fail("host TickZombieMode must forward the original deltaTime to RuntimeModule")
+    if not module_tick:
+        return fail("RuntimeModule TickZombieMode body not found")
+    tick_tokens = [
+        "if (!ZombieModePhaseGuards.IsRunActive(runState.LifecyclePhase))",
+        "ResetZombieModeRuntimePauseClock();",
+        "RefreshZombieModeRuntimePauseClock();",
+        "if (IsZombieModeRuntimePaused())",
+        "owner.TickZombieModeWaveControllerForRuntimeModule(deltaTime);",
+        "owner.TickZombieModeDropsAndPerformanceForRuntimeModule(deltaTime);",
+        "owner.TickZombieModeBossControllerForRuntimeModule(deltaTime);",
+        "owner.TickZombieModeTemporaryNpcProtectionForRuntimeModule();",
+        "owner.UpdateModeFFortificationHighlightsForRuntimeModule();",
+        "owner.UpdateFortPlacementMode();",
+        "owner.UpdateModeFRepairSelection();",
+    ]
+    tick_positions = [module_tick.find(token) for token in tick_tokens]
+    if any(position < 0 for position in tick_positions) or tick_positions != sorted(tick_positions):
+        return fail("RuntimeModule TickZombieMode must keep the active gate, pause return and controller order")
+    if "private float zombieModeRuntimePausedDuration" in host_bridge_text or "zombieModeUnattachedRuntimePausedDuration" in host_bridge_text:
+        return fail("pause-clock state must not remain in the host partial")
+
+    pause_method = extract_method(module_text, "internal bool IsZombieModeRuntimePaused()")
+    game_pause_method = extract_method(module_text, "internal bool IsZombieModeGamePaused()")
+    refresh_method = extract_method(module_text, "internal void RefreshZombieModeRuntimePauseClock()")
+    reset_method = extract_method(module_text, "internal void ResetZombieModeRuntimePauseClock()")
+    clock_method = extract_method(module_text, "internal float GetZombieModeRuntimeNow()")
+    try:
+        require(pause_method, "ZombieModeUIHelper.IsModalInputPaused || IsZombieModeGamePaused() || CameraMode.Active", "runtime pause sources must remain modal, game menu and photo mode")
+        require(game_pause_method, "PauseMenu.Instance != null && PauseMenu.Instance.Shown", "game pause must use the official pause menu state")
+        require(refresh_method, "Time.unscaledTime", "pause accumulator must use unscaled time")
+        require(refresh_method, "if (runtimePauseRunId != runId)", "pause clock must reset when run id changes")
+        require(refresh_method, "runtimePausedDuration += Mathf.Max(0f, Time.unscaledTime - runtimePauseStartTime);", "resume must subtract paused unscaled duration")
+        require(reset_method, "runtimePauseRunId = 0;", "inactive mode tick must reset clock run id")
+        require(reset_method, "runtimePausedDuration = 0f;", "inactive mode tick must reset paused duration")
+        require(reset_method, "runtimePauseStartTime = -1f;", "inactive mode tick must clear pause start")
+        require(clock_method, "return Time.unscaledTime - pausedDuration;", "runtime clock must subtract paused duration")
+        require(entry_text, "module.RefreshZombieModeRuntimePauseClock();", "host clock refresh compatibility entry must forward to module")
+        require(entry_text, "module.ResetZombieModeRuntimePauseClock();", "host clock reset compatibility entry must forward to module")
+        require(entry_text, "module.GetZombieModeRuntimeNow()", "host runtime clock API must forward to module")
+        require(entry_text, "module.IsZombieModeRuntimePaused()", "host pause API must forward to module")
+        require(entry_text, "module.IsZombieModeGamePaused()", "host game pause API must forward to module")
     except AssertionError as exc:
         return fail(str(exc))
 

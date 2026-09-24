@@ -329,6 +329,7 @@ namespace BossRush
 
         // Boss管理
         private MonoBehaviour currentBoss;  // CharacterMainControl
+        internal MonoBehaviour CurrentBossForWavesArena { get { return currentBoss; } }
         private MonoBehaviour playerCharacter;  // CharacterMainControl
         private static SpawnEgg cachedSpawnEggBehavior = null;
         private static CharacterRandomPreset eggSpawnPreset = null; // 记录下蛋所用的角色预设，清理敌人时保留这类鸭鸭
@@ -510,11 +511,11 @@ namespace BossRush
         // 变异词条：单Boss模式回血用的临时列表（避免每帧分配）
         private readonly List<MonoBehaviour> _singleBossRegenList = new List<MonoBehaviour>(1);
         // 波次完整性自检计时器
-        private const float WaveIntegrityCheckInterval = 10f;
+        internal const float WaveIntegrityCheckInterval = 10f;
         // Mode E 独立自检计时器（Mode E 不激活 IsActive，需要单独计时）
         private float modeEIntegrityTimer = 0f;
         // 大兴兴清理定时器（只在 BossRush 进行期间启用）
-        private const float DaXingXingCleanInterval = 0.5f;
+        internal const float DaXingXingCleanInterval = 0.5f;
 
         // [性能优化] 角色缓存列表，避免每次清理时都调用 FindObjectsOfType
         private static List<CharacterMainControl> _cachedCharacters = new List<CharacterMainControl>();
@@ -527,13 +528,11 @@ namespace BossRush
         private static readonly List<GameObject> _reusableDestroyList = new List<GameObject>(32);
 
         // [性能优化] 缓存 CharacterSpawnerRoot.created 字段的反射引用
-        private static System.Reflection.FieldInfo _cachedCreatedField = null;
-        private static bool _createdFieldCached = false;
 
         // Boss 掉落随机化相关
 
         // 是否已禁用spawner
-        private bool spawnersDisabled = false;
+        private bool spawnersDisabled { get { return wavesArenaRuntime.SpawnersDisabled; } set { wavesArenaRuntime.SpawnersDisabled = value; } }
 
         // [性能优化] 竞技场范围限制 - 以路牌为圆心的清理/禁用范围
         private const float ARENA_RADIUS = 500f; // 竞技场半径（米）
@@ -1397,7 +1396,7 @@ namespace BossRush
         /// 在 BossRush 期间清理任何非 BossRush 召唤的“大兴兴”Boss
         /// （用于屏蔽 DEMO 挑战地图自带的固定点刷“大兴兴”逻辑）
         /// </summary>
-        private void TryCleanNonBossRushDaXingXing()
+        internal void TryCleanNonBossRushDaXingXing()
         {
             try
             {

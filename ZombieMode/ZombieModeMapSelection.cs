@@ -59,9 +59,6 @@ namespace BossRush
         private List<int> zombieModeUnattachedRewardCandidateScratch = new List<int>();
         private HashSet<int> zombieModeUnattachedOpaqueFilterLogIds = new HashSet<int>();
         private bool zombieModeUnattachedPendingEntry;
-        private float zombieModeUnattachedRuntimePausedDuration;
-        private float zombieModeUnattachedRuntimePauseStartTime = -1f;
-        private int zombieModeUnattachedRuntimePauseRunId;
 
         internal void AttachZombieModeRuntimeModule(ZombieModeRuntimeModule module)
         {
@@ -72,10 +69,7 @@ namespace BossRush
                 zombieModeUnattachedRewardCandidateCache,
                 zombieModeUnattachedRewardCandidateScratch,
                 zombieModeUnattachedOpaqueFilterLogIds,
-                zombieModeUnattachedPendingEntry,
-                zombieModeUnattachedRuntimePausedDuration,
-                zombieModeUnattachedRuntimePauseStartTime,
-                zombieModeUnattachedRuntimePauseRunId);
+                zombieModeUnattachedPendingEntry);
             zombieModeRuntimeModule = module;
             zombieModeUnattachedRunState = null;
             zombieModeUnattachedEntryTransaction = null;
@@ -93,9 +87,6 @@ namespace BossRush
             zombieModeUnattachedRewardCandidateScratch = module.RewardCandidateScratch;
             zombieModeUnattachedOpaqueFilterLogIds = module.OpaqueFilterLogIds;
             zombieModeUnattachedPendingEntry = module.PendingEntry;
-            zombieModeUnattachedRuntimePausedDuration = module.RuntimePausedDuration;
-            zombieModeUnattachedRuntimePauseStartTime = module.RuntimePauseStartTime;
-            zombieModeUnattachedRuntimePauseRunId = module.RuntimePauseRunId;
             zombieModeRuntimeModule = null;
         }
 
@@ -138,36 +129,6 @@ namespace BossRush
         {
             get { return ZombieModeRuntimeModule.NextRunId; }
             set { ZombieModeRuntimeModule.NextRunId = value; }
-        }
-
-        private float zombieModeRuntimePausedDuration
-        {
-            get { return zombieModeRuntimeModule != null ? zombieModeRuntimeModule.RuntimePausedDuration : zombieModeUnattachedRuntimePausedDuration; }
-            set
-            {
-                if (zombieModeRuntimeModule != null) zombieModeRuntimeModule.RuntimePausedDuration = value;
-                else zombieModeUnattachedRuntimePausedDuration = value;
-            }
-        }
-
-        private float zombieModeRuntimePauseStartTime
-        {
-            get { return zombieModeRuntimeModule != null ? zombieModeRuntimeModule.RuntimePauseStartTime : zombieModeUnattachedRuntimePauseStartTime; }
-            set
-            {
-                if (zombieModeRuntimeModule != null) zombieModeRuntimeModule.RuntimePauseStartTime = value;
-                else zombieModeUnattachedRuntimePauseStartTime = value;
-            }
-        }
-
-        private int zombieModeRuntimePauseRunId
-        {
-            get { return zombieModeRuntimeModule != null ? zombieModeRuntimeModule.RuntimePauseRunId : zombieModeUnattachedRuntimePauseRunId; }
-            set
-            {
-                if (zombieModeRuntimeModule != null) zombieModeRuntimeModule.RuntimePauseRunId = value;
-                else zombieModeUnattachedRuntimePauseRunId = value;
-            }
         }
 
         internal bool IsZombieModeStartBlockedForRuntimeModule(out string failureReason)
@@ -240,5 +201,31 @@ namespace BossRush
         {
             CleanupZombieModeForSceneChange(reason);
         }
+
+        internal void TickZombieModeWaveControllerForRuntimeModule(float deltaTime)
+        {
+            TickZombieModeWaveController(deltaTime);
+        }
+
+        internal void TickZombieModeDropsAndPerformanceForRuntimeModule(float deltaTime)
+        {
+            TickZombieModeDropsAndPerformance(deltaTime);
+        }
+
+        internal void TickZombieModeBossControllerForRuntimeModule(float deltaTime)
+        {
+            TickZombieModeBossController(deltaTime);
+        }
+
+        internal void TickZombieModeTemporaryNpcProtectionForRuntimeModule()
+        {
+            TickZombieModeTemporaryNpcProtection();
+        }
+
+        internal void UpdateModeFFortificationHighlightsForRuntimeModule()
+        {
+            UpdateModeFFortificationHighlights();
+        }
+
     }
 }

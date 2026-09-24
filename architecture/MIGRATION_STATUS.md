@@ -9,12 +9,12 @@
 | P0 基线 | 完成，`3323e33e` | 665 项全量守卫 PASS，59 项全量回归 PASS；隔离正式与 Dev 构建 PASS |
 | P1 上下文治理 | 完成，`adef32ef` | 根规则 180 行 / 17,329 B；台账 1,050 / 975 行；47 模块导航覆盖 1,020 源 |
 | P2 复用试点 | 完成，`403a09a4` | 词缀追踪器与建筑恢复核心；203 项相关守卫、60 项全量回归与两种隔离构建通过 |
-| P3 状态提取 | 进行中 | 簇 1 已提交；簇 2 的现金磁铁与波次/无间状态、簇 5 入场主体和簇 6 商店 owner 子范围均已通过整树验证，待本批提交；其余待做 |
-| P4 耦合点 | 提前并行 | §6 第 5、6、8 条已提交；第 1、2、3、7 条已通过整树验证，待本批提交；第 9 条随簇 3、4 处理 |
+| P3 状态提取 | 进行中 | 簇 1 已完成；簇 2、5、6 完成多个可恢复子范围，簇 3、4、7 仍待做 |
+| P4 耦合点 | 提前并行 | §6 第 1–8 条已处理；第 9 条随簇 3、4 处理，第 10 条按计划保持 |
 | P5 目录归位 | 未开始 | 天空岛迁移与注入占位清理 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-最近已提交：`74251963`（P3 簇 6 部分叶子与 P4 §6 第 5、6、8 条）；本批验证已完成，下一具体动作是按路径暂存并提交，再继续簇 2（WavesArena、LootAndRewards）剩余项。当前真实游戏目录尚未部署。
+最近已提交：`e75ffee0`（P3 簇 2/5/6 与 P4 追加耦合点）；当前批次继续簇 2 Tick、生成器与预设状态、簇 5 Tick/暂停、簇 6 地图物件，已通过整树验证，下一动作是提交并继续簇 2 剩余奖励/生成业务。真实游戏目录尚未部署。
 
 ## P0 基线（2026-09-24）
 
@@ -56,6 +56,13 @@
 - 第 3 条：Mode F 模块拥有悬赏击杀 victim 闩；`HasCampaignBountyMark` 纯查询，死亡采集器在原点显式消费。`CampaignPlayability` 直接链接生产 Mode F 模块，验证先写后删、错 victim 不消费、正确 victim 一次消费，1 PASS；新结构守卫反向转红、逐字还原。
 - 第 7 条：`EquipmentFactory` 改为按 key 原位替换的配置器登记，枪械前置配置与常规配置分开；各 Config 自行登记，`EquipmentConfiguratorBootstrap` 按旧顺序装配，Item 初始化先于装备加载。`DynamicItemInitialization`、`ManualEquipmentRecovery`、`EquipmentConfiguratorRegistry` 各 1 PASS；新守卫与夹具反向探针均转红并还原。
 - 本批完成后的整树证据（L1/L2）：全量守卫 679 PASS / 0 FAIL / 0 known-red；全量执行回归 66 PASS / 0 FAIL / 0 SKIP，初轮两项旧夹具替身失配已修并复跑。编译清单 1,040 源，模块索引 47 模块；宿主 partial 179 文件 / 85,427 行，预算 179 / 86,800。修正新文件空白行后复建：隔离正式构建 `Build succeeded!`、Dev 标识缺席，DLL SHA-256 `741AC9DA699A5BCB8C317793A7153E85C7FEBB5DDD66AB90CE8418F11AB55EDC`；隔离 Dev 构建 `Build succeeded!`、Dev 标识在位，DLL SHA-256 `58B20F3A55773DF6D06F79DC60201D053F85F8693982567F4409529D2B8F87E8`。两种 DLL 分别与隔离发布副本 SHA-256 一致，72 bundle 清单通过。`Build/BossRush.dll` 当前为 Dev；未启动游戏、未部署真实游戏目录，L3 待 owner。
+
+### 簇 2、5、6 后续可恢复步骤（当前批次，COMPAT）
+
+- 簇 2 状态：`WavesArenaRuntimeModule` 新增敌人预设池、扫描次数、基础生命范围、会话初始化标记、刷怪器禁用闩及原反射缓存；宿主旧属性和入口保留转发。`WavesArenaSpawnerControl.cs` 改为模块 partial，禁用刷怪器本帧置位、分帧灯光保留和卡波修复方法体归模块；`WavesArenaRuntimeModule_Tick.cs` 执行倒计时、完整性检查、大兴兴清理 Tick，`WavesArenaRuntimeHooks.cs` 只作原调用点薄桥。原 `ModeRuntimeDispatch` 顺序与时间源未改。宿主当前波之外的刷怪、奖励业务仍在原 partial，簇 2 仍未完成。
+- 簇 5：`ZombieModeRuntimeModule` 接管 `TickZombieMode`、暂停判据和 `unscaledTime` 时钟；宿主调度入口和旧暂停 API 作薄桥。13 条生产方法抽取断言覆盖控制器顺序、原 `deltaTime`、暂停冻结与恢复、不活动局复位；6 项结构守卫反向转红且逐字还原。其余奖励、临时 NPC、RunOnly 清理业务仍待迁。
+- 簇 6：地图克隆配置、生成协程、撤离点创建与场景初始化等待移至 `IntegrationRuntimeModule` 的 `BossRushIntegrationRuntimeModule_MapObjects.cs`；宿主保留地图生成、等待与完成后的挑战设置三个薄桥。共享出生点、传送器和跨模式场景协调仍在宿主。`IntegrationRuntimeModuleGuard` 在断开生产协程调用后转红并逐字还原。按原入口核对，Ground Zero 中地图生成与禁用刷怪器相对顺序未变。
+- 当前 L1/L2：全量守卫 679 PASS / 0 FAIL / 0 known-red；全量执行回归 66 PASS / 0 FAIL / 0 SKIP。首轮 `AuditModeLifecycle` 因预设池入模块而缺少夹具的 `EnemyPresetInfo` 替身，修补后定向与全量复跑通过。Arena 结构、异常、状态归属及清理守卫均做真实破坏转红和 SHA-256 逐字还原。编译清单 1,042 源，模块索引 47 模块，宿主 partial 178 文件 / 84,357 行，预算降至 178 / 84,400。隔离正式构建 `Build succeeded!`、Dev 标识缺席，SHA-256 `7CEFBBC162A8593BE9B15CEEE8D2F51FD556FC4540FE56F31121CFD1B1D536E2`；隔离 Dev 构建 `Build succeeded!`、标识在位，SHA-256 `8E34CD937000A5ABF72E40C3A83C44FF9220A2AA7A90C6E5B017A83DFFCF1F37`。两种 DLL 均与隔离发布副本哈希一致，72 bundle 清单通过。当前 `Build/BossRush.dll` 为 Dev；未启动游戏，未部署真实游戏目录，L3 待 owner。
 
 ## P1 上下文治理（2026-09-24）
 

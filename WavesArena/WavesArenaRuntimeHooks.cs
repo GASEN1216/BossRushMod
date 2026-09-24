@@ -4,6 +4,36 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
+        private System.Collections.Generic.List<EnemyPresetInfo> enemyPresets
+        {
+            get { return wavesArenaRuntime.EnemyPresets; }
+            set { wavesArenaRuntime.EnemyPresets = value; }
+        }
+
+        private int _enemyPresetInitializationScanCount
+        {
+            get { return wavesArenaRuntime.EnemyPresetInitializationScanCount; }
+            set { wavesArenaRuntime.EnemyPresetInitializationScanCount = value; }
+        }
+
+        private float minBossBaseHealth
+        {
+            get { return wavesArenaRuntime.MinBossBaseHealth; }
+            set { wavesArenaRuntime.MinBossBaseHealth = value; }
+        }
+
+        private float maxBossBaseHealth
+        {
+            get { return wavesArenaRuntime.MaxBossBaseHealth; }
+            set { wavesArenaRuntime.MaxBossBaseHealth = value; }
+        }
+
+        private static bool _enemyPresetsInitialized
+        {
+            get { return WavesArenaRuntimeModule.EnemyPresetsInitialized; }
+            set { WavesArenaRuntimeModule.EnemyPresetsInitialized = value; }
+        }
+
         private bool waitingForNextWave
         {
             get { return wavesArenaRuntime.WaitingForNextWave; }
@@ -75,103 +105,24 @@ namespace BossRush
             get { return wavesArenaRuntime.CurrentWaveBosses; }
         }
 
+        private void DisableAllSpawners()
+        {
+            wavesArenaRuntime.DisableAllSpawners();
+        }
+
+        internal void TryFixStuckWaveIfNoBossAlive()
+        {
+            wavesArenaRuntime.TryFixStuckWaveIfNoBossAlive();
+        }
+
         internal bool TickWavesArenaRuntime(float deltaTime)
         {
-            // Mode G 门控（加法分支）：Mode G Starting/Active/Rewarding/Exiting 时
-            // 冻结并清零 Legacy 波次倒计时，绝不调用 SpawnNextEnemy（含波次完整性自检路径）。
-            // 查询 no-throw、默认 false；未运行时本分支不命中，后续逻辑逐字不变。
-            // 返回 false 保证后续 TickWavesArenaBossCleanupRuntime（大兴兴 owner-aware 清理）继续运行。
-            if (IsModeGRunInProgressSafe())
-            {
-                if (waitingForNextWave || waveCountdown > 0f || lastWaveCountdownSeconds >= 0)
-                {
-                    waitingForNextWave = false;
-                    waveCountdown = 0f;
-                    lastWaveCountdownSeconds = -1;
-                }
-                waveIntegrityCheckTimer = 0f;
-                return false;
-            }
-
-            // 单波模式倒计时
-            if (waitingForNextWave && waveCountdown > 0f)
-            {
-                // 如果 BossRush 已经结束（例如通关、玩家死亡等），则立即停止倒计时，防止继续刷"下一波将在 X 秒后开始"
-                if (!IsActive && !bossRushArenaActive)
-                {
-                    waitingForNextWave = false;
-                    waveCountdown = 0f;
-                    lastWaveCountdownSeconds = -1;
-                    return true;
-                }
-
-                waveCountdown -= deltaTime;
-
-                float interval = GetWaveIntervalSeconds();
-
-                // 显示倒计时（每秒更新一次）：仅大横幅
-                if (interval > 5f)
-                {
-                    int seconds = Mathf.CeilToInt(waveCountdown);
-                    if (seconds != lastWaveCountdownSeconds && seconds > 0)
-                    {
-                        bool firstTick = lastWaveCountdownSeconds < 0;
-                        lastWaveCountdownSeconds = seconds;
-
-                        // 只在倒计时开始与剩 3 秒各推一条：旧版每 5 秒一条，一段 15 秒休整连推 3 条（审美审查 UB-07）
-                        if (firstTick || seconds == 3)
-                        {
-                            ShowNextWaveCountdownBanner(seconds);
-                        }
-                    }
-                }
-
-                if (waveCountdown <= 0f)
-                {
-                    waitingForNextWave = false;
-                    lastWaveCountdownSeconds = -1;
-                    SpawnNextEnemy();
-                }
-            }
-
-            // 波次完整性自检：每隔一段时间检查当前波是否出现"没有任何存活Boss但计数未清零"的异常
-            if (IsActive)
-            {
-                if (!modeDActive)
-                {
-                    waveIntegrityCheckTimer += deltaTime;
-                    if (waveIntegrityCheckTimer >= WaveIntegrityCheckInterval)
-                    {
-                        waveIntegrityCheckTimer = 0f;
-                        TryFixStuckWaveIfNoBossAlive();
-                    }
-                }
-            }
-            else
-            {
-                waveIntegrityCheckTimer = 0f;
-            }
-
-            return false;
+            return wavesArenaRuntime.TickWavesArenaRuntime(deltaTime);
         }
 
         internal void TickWavesArenaBossCleanupRuntime(float deltaTime)
         {
-            // BossRush / 丧尸模式期间，定期清理任何非模式召唤的"大兴兴"Boss
-            // （DEMO 地图原生刷怪器可能在 DisableAllSpawners 之后仍有残留实例）
-            if (IsActive || bossRushArenaActive || IsZombieModeActive)
-            {
-                daXingXingCleanTimer += deltaTime;
-                if (daXingXingCleanTimer >= DaXingXingCleanInterval)
-                {
-                    daXingXingCleanTimer = 0f;
-                    TryCleanNonBossRushDaXingXing();
-                }
-            }
-            else
-            {
-                daXingXingCleanTimer = 0f;
-            }
+            wavesArenaRuntime.TickWavesArenaBossCleanupRuntime(deltaTime);
         }
 
         /// <summary>

@@ -5,6 +5,7 @@ import sys
 
 
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 ENTRY_PARTS = [
     ENTRY,
     Path("ZombieMode/ZombieModeEntry_StarterLoadout.cs"),
@@ -67,6 +68,7 @@ def extract_block(text: str, marker: str) -> str:
 
 def main() -> int:
     entry = read_entry()
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
     rewards = read_rewards()
     cash_text = cash.read_text(encoding="utf-8")
     extraction_text = extraction.read_text(encoding="utf-8")
@@ -104,11 +106,14 @@ def main() -> int:
     tick_method = extract_block(entry, "private void TickZombieMode(float deltaTime)")
     if not tick_method:
         return fail("TickZombieMode not found")
-    if "IsZombieModeRuntimePaused()" not in tick_method:
-        return fail("TickZombieMode must not advance ZombieMode timers while modal UI pauses time")
-    runtime_pause = extract_block(entry, "internal bool IsZombieModeRuntimePaused()")
+    if "module.TickZombieMode(deltaTime)" not in tick_method:
+        return fail("host TickZombieMode must forward to the module at the existing scheduler position")
+    module_tick = extract_block(runtime_module, "internal void TickZombieMode(float deltaTime)")
+    if "IsZombieModeRuntimePaused()" not in module_tick:
+        return fail("RuntimeModule TickZombieMode must not advance timers while modal UI pauses time")
+    runtime_pause = extract_block(runtime_module, "internal bool IsZombieModeRuntimePaused()")
     if "ZombieModeUIHelper.IsModalInputPaused" not in runtime_pause:
-        return fail("ZombieMode runtime pause helper must include modal UI pause")
+        return fail("RuntimeModule pause helper must include modal UI pause")
 
     late_update = extract_block(Path("ModBehaviour.cs").read_text(encoding="utf-8"), "void LateUpdate()")
     if not late_update:
