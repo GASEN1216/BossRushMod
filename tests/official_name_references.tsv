@@ -16,7 +16,7 @@
 #   直接嵌进句子会别扭时才另写（例如官方 `The Four Horsemen`，正文里写 `Four Horsemen`）。
 # - 「页面」逗号分隔，相对 WikiContent/<lang>/，省略 .md；写 `-` 表示只做第 1、3 条断言。
 #
-# 官方本地化表来源与刷新方式见 docs/官方本地化表/README.md。表找不到时 guard 自行 skip。
+# 官方本地化表来源与刷新方式见 docs/reference/official-localization/README.md。表找不到时 guard 自行 skip。
 
 Cname_Boss_Blue	???	???	=	=	equipment/equipment__frostmourne,equipment/equipment__overview,system__rewards_and_loot
 Cname_StormBoss5	口口口口	Koko Koko	=	=	boss/boss__overview,mode/mode__mode_a,mode/mode__mode_d

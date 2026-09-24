@@ -6,7 +6,7 @@
 //   动态订阅/退订官方静态事件，最后把事件按归因规则分发给各条词缀效果。
 //   具体效果实现在同名 partial 文件 AffixRuntimeService_Effects.cs。
 //
-// 硬约束（AGENTS 4.6 / 4.12 + docs/架构说明/事件订阅生命周期约定.md）：
+// 硬约束（AGENTS 4.6 / 4.12 + docs/architecture/事件订阅生命周期约定.md）：
 //   1. 只订这 6 个既有静态事件，零新增 Harmony patch、零新增反射绑定策略：
 //        结构事件（EnsureRuntime 时一次性挂上）
 //          CharacterMainControl.OnMainCharacterChangeHoldItemAgentEvent

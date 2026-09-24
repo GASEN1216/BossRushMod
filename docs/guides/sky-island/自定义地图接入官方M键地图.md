@@ -58,11 +58,17 @@ public bool noSignal;
 不依赖 URP 与游戏 DLL，而且用的就是导航面同一份权威几何——
 地图轮廓和玩家实际能走的地面**必然**一致，不会出现"图上有路、走不过去"。
 
-产物：
+产物（都在 `ArtSource/SkyIsland/` 下）：
 
-- `sky_island_minimap.png`：底图，全岛**暗灰剪影**，始终显示（就是"未探索"的样子）
-- `sky_island_minimap_<区域>.png` × 12：分区**彩色**图层，裁到各自的**方形**包围盒
+- `Minimap/sky_island_minimap.png`：底图，全岛**暗灰剪影**，始终显示（就是"未探索"的样子）
+- `Minimap/sky_island_minimap_<区域>.png` × 12（A–H、S1–S4）：分区**彩色**图层，裁到各自的**方形**包围盒
 - `Validation/sky_island_minimap.json`：世界范围、中心、每层的 `imageWorldSize` / `offset` / sha256
+
+**手绘上色（2026-09-10 起）**：`Minimap/Source/sky_island_minimap_art.png` 存在时，形状（alpha）照旧按几何画，
+颜色改取这张与投影逐像素对齐的手绘图，未探索底图取它去色压暗的版本。手绘图由 `tools/sky_island_minimap_art.py`
+（`reference` → `generate` → `align` 三步，需要生图网关）产出，同名 `.json` 记着投影与几何指纹，
+布局几何一变烘焙脚本就拒绝旧底图——重走手绘流程，或加 `--flat` 烘纯色版。
+烘焙脚本会顺手把贴图同步到作者工程（`--unity-project` 可指定，默认走 `tools/unity_project_path.py`）。
 
 桥面同时算进**两端**岛屿的图层，任一端去过就跟着上色，避免"两头亮着、中间断开"。
 
@@ -77,11 +83,11 @@ public bool noSignal;
 
 ### 2.3 重打包
 
-本机免费许可证**不能加 `-batchmode` / `-nographics`**，用普通 Editor：
+本机免费许可证**不能加 `-batchmode` / `-nographics`**，用普通 Editor。作者工程与 Unity.exe 路径走 `tools/unity_project_path.py`，不要写死：
 
 ```powershell
-$unityProject = 'D:\code\ykf\duckov_modding-main\UnityFiles\BossRush'
-$unityExe = 'C:\Program Files\Unity\Hub\Editor\2022.3.62f3\Editor\Unity.exe'
+$unityProject = python -c "import sys; sys.path.insert(0,'tools'); from unity_project_path import find_unity_project; print(find_unity_project())"
+$unityExe = python -c "import sys; sys.path.insert(0,'tools'); from unity_project_path import find_unity_editor; print(find_unity_editor())"
 $logPath = Join-Path $unityProject 'SkyIslandRaidExport\skyisland_raid_build.log'
 $a = @("-projectPath `"$unityProject`"", "-executeMethod BossRush.SkyIslandRaidBuilder.BuildAndExit", "-logFile `"$logPath`"") -join ' '
 Start-Process -FilePath $unityExe -ArgumentList $a -PassThru -Wait
@@ -221,10 +227,11 @@ private static bool SceneIdByBuildIndexPrefix(int buildIndex, ref string __resul
 | 用途 | 路径 |
 | --- | --- |
 | 烘焙脚本 | `tools/build_sky_island_minimap.py` |
+| 手绘底图 | `tools/sky_island_minimap_art.py` |
 | 场景构建器 | `<Unity 工程>/Assets/Editor/SkyIslandRaidBuilder.cs` |
 | 运行时分区迷雾 | `DebugAndTools/SkyIsland/SkyIslandMapFog.cs` |
 | 场景引用桥 | `DebugAndTools/SkyIsland/SkyIslandSceneReferenceBridge.cs` |
 | 离线对齐测试 | `tests/SkyIslandMiniMapLayerAlignmentPropertyTest.py` |
 | 守卫 | `tests/SkyIslandMiniMapGuard.py` |
 | 场景合同 | `ArtSource/SkyIsland/OFFICIAL_SCENE_CONTRACT.md` |
-| 打包环境说明 | `docs/制作教程/AI图片生成与Unity自动打包流程.md` |
+| 打包环境说明 | `docs/guides/AI图片生成与Unity自动打包流程.md` |

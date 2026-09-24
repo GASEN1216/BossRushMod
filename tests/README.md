@@ -73,7 +73,7 @@
 | `ZombieModeRealTemporaryNpcPaymentGuard.py` | 真人临时 NPC 的净化点支付隔离契约。 |
 | `ZombieModeRealTemporaryNpcCleanupGuard.py` | 真人临时 NPC 的 run cleanup 与追踪契约。 |
 | `ZombieModeRealTemporaryNpcUiCurrencyGuard.py` | 真人临时 NPC 的阿稳/商店 UI 必须显示净化点口径而不是现金。 |
-| `ZombieModeGoalExperienceGuard.py` | `docs/末日丧尸模式/末日丧尸模式_goal执行文档.md` 的玩家体验 P0/P1/P2 代码 invariant。 |
+| `ZombieModeGoalExperienceGuard.py` | `docs/design/zombie-mode/末日丧尸模式_goal执行文档.md` 的玩家体验 P0/P1/P2 代码 invariant。 |
 | `ZombieModeUIHelperGraphicCompositionGuard.py` | 运行时 UI helper 不得在同一对象叠加 `Image` 与 `TextMeshProUGUI`。 |
 | `ZombieModeProductionReadinessGuard.py` | 共享刷怪、掉落、Boss 状态 modifier、属性清理等生产化 invariant。 |
 | `ZombieModeReview20260503Guard.py` / `ZombieModeReviewFixGuard.py` | 2026-05-03 审查修复项，包含“物品不阻止入场、入图后转仓库/收件箱”契约，防止已确认代码债回归。 |
@@ -82,7 +82,7 @@
 
 ### 已删除（2026-05-01 修复）
 
-按当时的丧尸模式代码审查（原 `docs/项目可能的待修复问题/2026-05-01_丧尸模式代码审查.md`，该目录后来并入 `docs/代码审查/`）§四.4 的建议清理了 11 个：
+按当时的丧尸模式代码审查（原 `docs/项目可能的待修复问题/2026-05-01_丧尸模式代码审查.md`，该目录后来并入 `docs/reports/reviews/`）§四.4 的建议清理了 11 个：
 
 - `ZombieModePhase{1-5}*Guard.py`：5 个阶段重复守护，由 `ZombieModeStateModelGuard.py` 覆盖。
 - `ZombieModeReviewOptimizationGuard.py`：阶段性优化守护，整体已被本计划覆盖。

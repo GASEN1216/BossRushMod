@@ -2,7 +2,7 @@
 // DailyReportUI_Dashboard.cs - 日报面板的卡片式版面（DailyReportView 的 partial 续）
 // ============================================================================
 // owner 2026-09-20：「我想要把日报弄成和这个 100% 都一样的效果，而不是现在那样好丑都是文字。」
-// 参考图 docs/testing/image-9.png。
+// 参考图 docs/reference/images/日报UI参考图.png。
 //
 // 旧版是一条可滚动的报纸：整页只有分隔线和大段文字，信息全靠读。
 // 新版是仪表盘：一张**无字底图**（Assets/ui/DailyReport/daily_report_bg.png）画出

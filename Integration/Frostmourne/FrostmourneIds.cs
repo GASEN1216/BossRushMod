@@ -15,11 +15,6 @@ namespace BossRush
         public const int WeaponTypeId = 500041;
 
         /// <summary>
-        /// AssetBundle 路径（相对于 Mod 目录）
-        /// </summary>
-        public const string AssetBundlePath = "Assets/Equipment/frostmourne";
-
-        /// <summary>
         /// 武器 Prefab 名称
         /// </summary>
         public const string WeaponPrefabName = "Frostmourne_Item";

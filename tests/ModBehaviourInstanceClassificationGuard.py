@@ -5,7 +5,7 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DOC = ROOT / "docs/testing/2026-05-14-modbehaviour-instance-classification.md"
+DOC = ROOT / "docs/reference/2026-05-14-modbehaviour-instance-classification.md"
 
 EXCLUDE_DIRS = {
     ".codex_tmp",

@@ -164,7 +164,7 @@ namespace BossRush
             // 注：Health.OnHurt 在伤害已扣后触发（鸭科夫源码 Health.cs:418），
             // mod 层无法挡掉伤害，只能用 SetHealth 把吸收的部分加回去（heal-back 模式）。
             // 唯一原生替代是 Health.SetInvincible(true)，但是 0/1 全免无法做"吸收 N 点"。
-            // 见 docs/代码审查/2026-05-03_丧尸模式代码审查.md §4.1
+            // 见 docs/reports/reviews/2026-05-03_丧尸模式代码审查.md §4.1
             TryRestoreZombieModeFinalDamage(health, damageInfo, absorbedFinalDamage);
         }
 

@@ -52,7 +52,7 @@
 与 `Mural`/`Cloth` 同模式），首批接入悬钟石拱门、巨树带板根、悬浮水晶喷泉三件，各带 1024² 图集。
 全部作为非行走装饰，导航顶点保持 4037 未变。参数与踩坑见
 [TRIPO_SETTINGS.md](TRIPO_SETTINGS.md) 与
-[Tripo3D 建模接入与画风对齐教程](../../docs/制作教程/天空岛_Tripo3D建模接入与画风对齐教程.md)。
+[Tripo3D 建模接入与画风对齐教程](../../docs/guides/sky-island/天空岛_Tripo3D建模接入与画风对齐教程.md)。
 
 ## 重建顺序
 
@@ -70,7 +70,7 @@ tools/build_sky_island_art_preview.ps1                                  # 预览
 
 下表是**调色板与光照轮次**的验证结果（守卫 573 项为当时数量）。此后的云海造型重做与
 Tripo3D 接入是另外的轮次，其验证见
-[Tripo3D 建模接入与画风对齐教程](../../docs/制作教程/天空岛_Tripo3D建模接入与画风对齐教程.md)
+[Tripo3D 建模接入与画风对齐教程](../../docs/guides/sky-island/天空岛_Tripo3D建模接入与画风对齐教程.md)
 的验收清单一节。
 
 | 项目 | 结果 |

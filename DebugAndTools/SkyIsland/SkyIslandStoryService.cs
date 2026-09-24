@@ -244,7 +244,7 @@ namespace BossRush
         private readonly HashSet<string> timingSeen = new HashSet<string>(StringComparer.Ordinal);
 
         /// <summary>
-        /// 分段计时日志：给 owner 实机回填时长模型（`docs/制作教程/天空岛/天空岛_待人工验证清单.md` 的计时步骤）。
+        /// 分段计时日志：给 owner 实机回填时长模型（`docs/guides/sky-island/天空岛_待人工验证清单.md` 的计时步骤）。
         /// 只在事件上各记一行 `[SkyIsland] SKY_TIMING t=秒 ev=事件 id=对象`——进岛、落地、剧情动作被接受、首次到访、清场、
         /// 见闻、委托与服务、挑战开始、离岛——不在任何每帧路径上。时钟用 realtimeSinceStartup：读剧情、开背包与暂停的时间
         /// 都算进「这一段实际玩了多久」。走 Debug.Log 而不是 DevLog，正式构建里照样有。

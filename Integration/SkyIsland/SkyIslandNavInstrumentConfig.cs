@@ -1,7 +1,7 @@
 // ============================================================================
 // SkyIslandNavInstrumentConfig.cs - 失落的航向仪（Jeff 序章「云上的坐标」的交付物）
 // ============================================================================
-// TypeID 500103（台账见 docs/Bossrush使用物品ID表.md、docs/contracts.md §1 与 AGENTS.md §4.3）。
+// TypeID 500103（台账见 docs/reference/Bossrush使用物品ID表.md、docs/contracts.md §1 与 AGENTS.md §4.3）。
 //
 // 【从哪来】零号区的「断风游猎 · 守」倒下后，航向仪留在官方尸体箱里（SkyIslandPreludeFlow 在
 //   BeforeCharacterSpawnLootOnDead 把它塞进头目库存，由官方 InteractableLootbox 一起收进箱子）。

@@ -139,7 +139,7 @@ namespace BossRush
         /// <summary>
         /// 交单。**先送达再消费**：`deliver` 返回 false 时委托原样保留，
         /// 不能出现「单没了、谢礼也没有」——原设计明确要求奖励送达与状态推进分开
-        /// （`docs/制作教程/天空岛大地图_场景设计与制作教程.md` §11）。
+        /// （`docs/design/天空岛大地图_场景设计与制作教程.md` §11）。
         /// </summary>
         internal bool TryClaim(Func<SkyIslandLootTier, bool> deliver, out SkyIslandLootTier reward, out string message)
         {

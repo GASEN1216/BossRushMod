@@ -883,7 +883,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Medical", "医疗品", "Medical");
             InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Food", "食物", "Food");
             InjectZombieModeString("BossRush_ZombieMode_Npc_Merchant_Bait", "诱饵", "Bait");
-            InjectZombieModeString("BossRush_ZombieMode_Npc_NurseService_HealHalf", "治疗：恢复缺失生命 50%", "Heal: Restore 50% Missing HP");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_NurseService_HealHalf", "治疗：恢复 50% 最大生命", "Heal: Restore 50% Max HP");
             InjectZombieModeString("BossRush_ZombieMode_Npc_NurseService_HealFull", "完全治疗", "Full Heal");
             InjectZombieModeString("BossRush_ZombieMode_Npc_NurseService_Detox", "解毒", "Detox");
             InjectZombieModeString("BossRush_ZombieMode_Npc_NurseService_StopBleed", "止血", "Stop Bleeding");

@@ -128,7 +128,7 @@
 
 ### 3.4 导航索引
 
-- `architecture/modules.json`：唯一人工维护的归属表。每个模块：`id`、`title`、`kind`（host / mode / map / system / content / shared / devtools）、`paths`（glob，含散落的 `Config/ConfigXxx.cs`、`Localization/XxxLocalization.cs`、`Integration/Items/` 里的配置器）、`entry`、`state_owner`、`public_api`、`data`（`Assets/Data/*.json`）、`tests`（守卫前缀、夹具名）、`docs`（repowiki 与 `docs/架构说明/` 链接）、`rules`（适用的 AGENTS 文件）、`depends_on`（声明用于导航，不做机器强制）。
+- `architecture/modules.json`：唯一人工维护的归属表。每个模块：`id`、`title`、`kind`（host / mode / map / system / content / shared / devtools）、`paths`（glob，含散落的 `Config/ConfigXxx.cs`、`Localization/XxxLocalization.cs`、`Integration/Items/` 里的配置器）、`entry`、`state_owner`、`public_api`、`data`（`Assets/Data/*.json`）、`tests`（守卫前缀、夹具名）、`docs`（repowiki 与 `docs/architecture/` 链接）、`rules`（适用的 AGENTS 文件）、`depends_on`（声明用于导航，不做机器强制）。
 - `MODULES.md`（根目录）：由脚本生成的表，一模块一行：id、一句职责、入口、规则文件。手写说明放生成区之外。
 - `tools/task_context.py --module <id> [--task <一句话>]`：输出阅读顺序（根规则要点 → 模块规则 → 入口 → 公开接口 → 数据 → 相关守卫与夹具 → 专题文档），未知 id 非零退出；`--check` 校验：编译清单每个文件至少属于一个模块、每个 glob 至少命中一个文件、id 唯一、`MODULES.md` 生成区无漂移。
 - `tests/ModuleIndexGuard.py` 调 `--check`；反向验证：删一个 glob、改坏 `MODULES.md` 各转红一次再还原。
@@ -228,7 +228,7 @@
 | P3 状态提取 | §5 簇 1→7 | P2 | §5.3；每簇提交 |
 | P4 耦合点 | §6 | P3（第 4、5 条可在 P2 / P3 顺带做） | §6 退出判据；提交 |
 | P5 目录归位 | §7 | P4 | §7 判据；提交 |
-| P6 收口 | 预算按实际下调；`modules.json` 与 `MODULES.md` 对齐终态；repowiki 专题（§4.13）与 `docs/架构说明/` 相关篇更新；§3.1 后测；`FIX_TRACKER.md` 一节汇总；§9 交付报告；§11 清单；最终正式构建部署到真实游戏目录并核对 SHA-256（游戏须关闭，DLL 被锁则报告） | P5 | §0「完成的定义」 |
+| P6 收口 | 预算按实际下调；`modules.json` 与 `MODULES.md` 对齐终态；repowiki 专题（§4.13）与 `docs/architecture/` 相关篇更新；§3.1 后测；`FIX_TRACKER.md` 一节汇总；§9 交付报告；§11 清单；最终正式构建部署到真实游戏目录并核对 SHA-256（游戏须关闭，DLL 被锁则报告） | P5 | §0「完成的定义」 |
 
 检查点之间不停下来问；同一检查点内可以细分可恢复步骤。验证链坏了先修验证链，再继续。
 
@@ -258,7 +258,7 @@
 
 - `architecture/MIGRATION_STATUS.md`（受跟踪）每个可恢复步骤更新：当前检查点、已完成簇、下一具体动作、最近提交号、基线红项、未完成项。新窗口先 `git status` 与 `git log -5`，再从第一个未完成步骤继续。
 - 回退用 git：每个检查点一个提交，`git revert` 单个提交即可；绝不 `reset --hard`、`git clean` 或递归删除。不删 git 之外的本地文件。
-- 与 `docs/` 相关的改动：`docs/` 默认 local-only，本计划只改被 `.gitignore` 放行的文件（本文、研究记录、`docs/架构说明/UI制作共识.md`）与 `docs/ai-docs-migration.md`；需要新的受跟踪文档时放 `architecture/` 或 `archive/`。
+- 与 `docs/` 相关的改动：`docs/` 默认 local-only，本计划只改被 `.gitignore` 放行的文件（本文、研究记录、`docs/architecture/UI制作共识.md`）与 `docs/ai-docs-migration.md`；需要新的受跟踪文档时放 `architecture/` 或 `archive/`。
 
 ## 11. owner 实机清单（P6 生成）
 
@@ -277,7 +277,7 @@
 ## 12. 可复制到新窗口的启动指令
 
 ```text
-请执行 docs/设计提案/2026-09-22_BossRushMod模块解耦与上下文治理计划.md（2026-09-24 修订版）的全部内容，按第 8 节 P0–P6 连续推进到第 0 节「完成的定义」。
+请执行 docs/design/2026-09-22_BossRushMod模块解耦与上下文治理计划.md（2026-09-24 修订版）的全部内容，按第 8 节 P0–P6 连续推进到第 0 节「完成的定义」。
 
 授权范围：第 3 节上下文治理（根 AGENTS.md 瘦身但章节编号不动、台账按月归档到 archive/、新建 MODULES.md / architecture/modules.json / tools/task_context.py 与对应守卫、改 CLAUDE.md 的子目录清单）；第 4 节两个复用试点；第 5 节全部簇的宿主状态提取（保持第 2.4 节冻结的运行时轨迹）；第 6 节耦合点；第 7 节仅有的两处目录归位；对应的编译清单、守卫、夹具、覆盖表、repowiki 链接与专题文档更新；隔离游戏根的正式与 Dev 构建；最终正式构建部署到真实游戏目录并核对 SHA-256。
 我在你执行期间不提交。你按检查点 git commit（简短中文信息、逐个列出暂存路径），不 push、不建 PR。

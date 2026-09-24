@@ -1,6 +1,6 @@
 """Tripo 批量回收件对号工具。
 
-对应 docs/制作教程/天空岛_Tripo3D建模接入与画风对齐教程.md 的 §3.5（批量流水线）与 §11（自动命名不可信）。
+对应 docs/guides/sky-island/天空岛_Tripo3D建模接入与画风对齐教程.md 的 §3.5（批量流水线）与 §11（自动命名不可信）。
 
 Tripo3D 按图片内容自动起名，批量下载回来是 `bushes+3d+model.glb`、
 `floating+island+3d+model (2).glb` 这类名字，同一批里还会出现名字与内容对不上的件。

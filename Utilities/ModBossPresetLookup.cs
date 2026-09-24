@@ -17,7 +17,7 @@
 //   - Matches：preset 为 null 返回 false；否则 name 命中，或 displayName
 //           命中中文名 / 英文名之一即为真（三个条件的短路顺序也不变）。
 //
-// 分层：按 docs/架构说明/Hooks分层约定.md，跨模块复用的基础设施放 Utilities/。
+// 分层：按 docs/architecture/Hooks分层约定.md，跨模块复用的基础设施放 Utilities/。
 // ============================================================================
 
 using System.Collections.Generic;

@@ -33,30 +33,36 @@ BossRush选项修改方案.md
 # （文件不存在时 guard 是硬失败，不是 skip），不纳管会让 fresh clone 一跑 guard 就红，
 # 因此显式放行。新增此类「guard 依赖的文档」时必须同步加到这里。
 #
-# 反例（不要放行）：docs/官方本地化表/ 是游戏本体资产的快照，
+# 反例（不要放行）：docs/reference/official-localization/ 是游戏本体资产的快照，
 # tests/OfficialNameReferenceGuard.py 读不到时会自行 skip 而不是转红，所以不纳管。
 /docs/*
-# Cross-worktree migration plan and its research evidence only.
-!/docs/设计提案/
-/docs/设计提案/*
-!/docs/设计提案/2026-09-22_BossRushMod模块解耦与上下文治理计划.md
-!/docs/设计提案/2026-09-22_BossRushMod_GitHub架构对照与深审记录.md
-!/docs/testing/
-/docs/testing/*
-!/docs/testing/2026-05-14-final-runtime-smoke.md
-!/docs/testing/2026-05-14-modbehaviour-instance-classification.md
-!/docs/contracts.md
-!/docs/制作教程/
-/docs/制作教程/*
-!/docs/制作教程/便携安全区装置_Unity资源制作约定.md
-!/docs/制作教程/自定义地图接入官方M键地图.md
-!/docs/末日丧尸模式/
-/docs/末日丧尸模式/*
-!/docs/末日丧尸模式/末日丧尸模式_goal执行文档.md
+!/docs/architecture/
+/docs/architecture/*
 # UI 制作共识：根 AGENTS.md §4.14「交互骨架」指向它，owner 要求以后所有新 UI 照做，跨签出必须读得到。
-!/docs/架构说明/
-/docs/架构说明/*
-!/docs/架构说明/UI制作共识.md
+!/docs/architecture/UI制作共识.md
+!/docs/design/
+/docs/design/*
+# 跨 worktree 的解耦迁移计划与其取证记录。
+!/docs/design/2026-09-22_BossRushMod模块解耦与上下文治理计划.md
+!/docs/design/2026-09-22_BossRushMod_GitHub架构对照与深审记录.md
+!/docs/design/zombie-mode/
+/docs/design/zombie-mode/*
+!/docs/design/zombie-mode/末日丧尸模式_goal执行文档.md
+!/docs/guides/
+/docs/guides/*
+!/docs/guides/便携安全区装置_Unity资源制作约定.md
+!/docs/guides/sky-island/
+/docs/guides/sky-island/*
+!/docs/guides/sky-island/自定义地图接入官方M键地图.md
+!/docs/reference/
+/docs/reference/*
+!/docs/reference/2026-05-14-modbehaviour-instance-classification.md
+!/docs/reports/
+/docs/reports/*
+!/docs/reports/testing/
+/docs/reports/testing/*
+!/docs/reports/testing/2026-05-14-final-runtime-smoke.md
+!/docs/contracts.md
 
 # ArtSource/ 是 Unity 作者工程侧的素材归档（AI 原图、渲染预览、第三方模型包），
 # 不进游戏、不参与打包，默认 local-only，别把几十 MB 二进制压进仓库。

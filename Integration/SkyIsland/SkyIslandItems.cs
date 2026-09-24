@@ -1,7 +1,7 @@
 // ============================================================================
 // SkyIslandItems.cs - 天空岛（晴岚群岛）物品：纪念品、道具与岛上特产
 // ============================================================================
-// TypeID 500068-500082（台账见 docs/Bossrush使用物品ID表.md 与 AGENTS.md 4.3；常量在 Config/ConfigItemIds.cs）。
+// TypeID 500068-500082（台账见 docs/reference/Bossrush使用物品ID表.md 与 AGENTS.md 4.3；常量在 Config/ConfigItemIds.cs）。
 // 价值统一取 SkyIslandItemRules.ValueOf（配方经济与报告共用同一份数字）。
 //
 // 【零新增 bundle】与后山物品同一套克隆注册（形态照 Integration/BackMountain/BackMountainItems.cs）：

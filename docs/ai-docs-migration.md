@@ -2,11 +2,11 @@
 
 ## 2026-09-22 官方任务授权范围扩到鸭王征程（SAFE）
 
-根 `AGENTS.md` §4.14 与 §10 的 `Duckov.Quests` 授权文字改为「天空岛跨局主线 + 鸭王征程六章（590101–590106，给予者官方 Jeff）」，任务表按子系统各一份、投影核心只有 `Utilities/OfficialQuests/` 一份；`Utilities/AGENTS.md` 加 `OfficialQuests/` 职责边界；`docs/contracts.md` §7.1 加征程一行与 ID 保留段、§3.2 加 `chapterId` / `clueId` 冻结说明与基地侧目标口径；教程 `docs/制作教程/官方任务系统接入教程.md` 加 §12a「多客户端：共享投影核心」。
+根 `AGENTS.md` §4.14 与 §10 的 `Duckov.Quests` 授权文字改为「天空岛跨局主线 + 鸭王征程六章（590101–590106，给予者官方 Jeff）」，任务表按子系统各一份、投影核心只有 `Utilities/OfficialQuests/` 一份；`Utilities/AGENTS.md` 加 `OfficialQuests/` 职责边界；`docs/contracts.md` §7.1 加征程一行与 ID 保留段、§3.2 加 `chapterId` / `clueId` 冻结说明与基地侧目标口径；教程 `docs/guides/官方任务系统接入教程.md` 加 §12a「多客户端：共享投影核心」。
 
 ## 2026-09-20 头盔佩戴与装备尺寸口径统一（SAFE / OPERATIONAL）
 
-按实际官方挂载源码、两龙参考、源网格及 owner 雷霆试戴反馈，修正旧教程的底部原点、统一负 Y 偏移、bounds 约 0.8、根节点全部重置等错误。补充源网格轴向与盔壳中心的区别，Blender 标准化和 Editor 佩戴变换分开；唯一校准表为 `tools/helmet_fit_profiles.json`。同时纠正制作教程建议 600xxx ID 和“仅放包无需内容接线”的旧说法。更新两篇头盔护甲教程、Tripo 教程、模型绑定知识库、根/Integration AGENTS 与 contracts，统一入口为 `docs/制作教程/头盔佩戴与装备尺寸校准.md`。关键约束由入库规则和 HelmetFit 两项检查承载，不只留在 local-only 文档；第一阶段文档保留历史并注明 owner 确认及第二轮入口。
+按实际官方挂载源码、两龙参考、源网格及 owner 雷霆试戴反馈，修正旧教程的底部原点、统一负 Y 偏移、bounds 约 0.8、根节点全部重置等错误。补充源网格轴向与盔壳中心的区别，Blender 标准化和 Editor 佩戴变换分开；唯一校准表为 `tools/helmet_fit_profiles.json`。同时纠正制作教程建议 600xxx ID 和“仅放包无需内容接线”的旧说法。更新两篇头盔护甲教程、Tripo 教程、模型绑定知识库、根/Integration AGENTS 与 contracts，统一入口为 `docs/guides/头盔佩戴与装备尺寸校准.md`。关键约束由入库规则和 HelmetFit 两项检查承载，不只留在 local-only 文档；第一阶段文档保留历史并注明 owner 确认及第二轮入口。
 
 
 日期：2026-07-01  
@@ -25,12 +25,12 @@
 | `docs/代码审查/CODE_REVIEW.md` | 旧审查方法 | 内容迁移到根 `CODE_REVIEW.md`，旧路径转发 |
 | `docs/代码审查/CODE_REVIEW_FINDINGS.md` | 旧 confirmed findings | 迁移到根 `CODE_REVIEW_FINDINGS.md`，旧路径转发 |
 | `docs/协作/FIX_TRACKER.md` | 旧修复流水 | 迁移到根 `FIX_TRACKER.md`，旧路径转发 |
-| `docs/架构说明/*.md` | 专项架构约定 | 保留，AGENTS 索引 |
+| `docs/architecture/*.md` | 专项架构约定 | 保留，AGENTS 索引 |
 | `.kiro/specs/architecture-extensibility-refactor/*` | 历史重构 spec/plan | 保留为历史，不作为当前规则源 |
 | `.cunzhi-memory/*`、`.claude/*` | 工具私有记忆/计划/权限 | 不迁为 canonical；仅记录冲突/偏好 |
 | `skills/*/SKILL.md`、`codex-skills/*/SKILL.md` | 技能工作流 | 保留；与 AGENTS 冲突时以 AGENTS 为准 |
 | `docs/飞书应用密钥.md` | 本地敏感资料 | 未展开迁移；只记录不要提交/泄露 |
-| 大量 `docs/设计文档`、`docs/实现方案`、`docs/superpowers`、`docs/视频策划` | 设计稿、历史计划、内容策划 | 保留为参考，不作为协作规则 |
+| 大量 `docs/design`、`docs/design`、`docs/superpowers`、`docs/视频策划` | 设计稿、历史计划、内容策划 | 保留为参考，不作为协作规则 |
 
 ## 2. 保留并迁移的规则
 
@@ -86,7 +86,7 @@
 2. 最近目录的 `AGENTS.md`
 3. `docs/contracts.md`
 4. `CODE_REVIEW.md` / `CODE_REVIEW_FINDINGS.md` / `FIX_TRACKER.md`（审查或修复任务）
-5. `docs/架构说明/` 对应专项文档
+5. `docs/architecture/` 对应专项文档
 6. README / 项目全景文档
 7. 实际代码、构建脚本、guard
 
@@ -158,11 +158,11 @@
 
 ## 2026-09-08 天空岛制作方案引用口径（SAFE）
 
-新增[天空岛大地图制作教程](制作教程/天空岛大地图_场景设计与制作教程.md)时复核了已有地图和 NPC 资料。以下只记录旧文本与当前源码/守卫的口径差异，不修改运行时代码、数据表或既有守卫：
+新增[天空岛大地图制作教程](design/天空岛大地图_场景设计与制作教程.md)时复核了已有地图和 NPC 资料。以下只记录旧文本与当前源码/守卫的口径差异，不修改运行时代码、数据表或既有守卫：
 
-- [Hooks 分层约定](架构说明/Hooks分层约定.md)末尾 FAQ 将模块 Hook 描述为独立 `partial class ModBehaviour`，与根 `AGENTS.md` 第 4.15 节的新子系统状态归属要求冲突。天空岛按独立 RuntimeModule/Session 设计，宿主仅保留必要分发；旧示例不作为新增状态型 partial 的依据。
-- [捏脸 NPC 工具](制作教程/捏脸NPC工具.md)前部收益表仍列 `AICharacterController.MoveToPos()`；其后续章节及当前 [DuckNpcMovement](../Integration/NPCs/DuckNpc/DuckNpcMovement.cs)实际使用 `AI_PathControl + Seeker`，不引入战斗行为树。天空岛区分外观/交互实例与带官方 AI 的战斗实例，不把修改阵营当作敌人制作已经完成。
-- [捏脸 NPC 使用手册](制作教程/捏脸NPC使用手册.md)通用字段表允许 `scenes` 留空，仅适用于相应显式召唤场景；当前 [DuckNpcInvariantGuard](../tests/DuckNpcInvariantGuard.py)对永久 NPC 要求非空且已认可的场景名。天空岛永久蓝图须等真实场景接入及守卫同步后登记；不通过虚构 SpawnPoints 文件或放宽守卫绕过可达性要求。
+- [Hooks 分层约定](architecture/Hooks分层约定.md)末尾 FAQ 将模块 Hook 描述为独立 `partial class ModBehaviour`，与根 `AGENTS.md` 第 4.15 节的新子系统状态归属要求冲突。天空岛按独立 RuntimeModule/Session 设计，宿主仅保留必要分发；旧示例不作为新增状态型 partial 的依据。
+- [捏脸 NPC 工具](guides/捏脸NPC工具.md)前部收益表仍列 `AICharacterController.MoveToPos()`；其后续章节及当前 [DuckNpcMovement](../Integration/NPCs/DuckNpc/DuckNpcMovement.cs)实际使用 `AI_PathControl + Seeker`，不引入战斗行为树。天空岛区分外观/交互实例与带官方 AI 的战斗实例，不把修改阵营当作敌人制作已经完成。
+- [捏脸 NPC 使用手册](guides/捏脸NPC使用手册.md)通用字段表允许 `scenes` 留空，仅适用于相应显式召唤场景；当前 [DuckNpcInvariantGuard](../tests/DuckNpcInvariantGuard.py)对永久 NPC 要求非空且已认可的场景名。天空岛永久蓝图须等真实场景接入及守卫同步后登记；不通过虚构 SpawnPoints 文件或放宽守卫绕过可达性要求。
 
 Unity 作者工程 manifest 的 URP `17.0.3` 与本机缓存 `14.0.12` 的差异在既有可行性评估中已有记录，本次仍可见。新教程将实际编辑器解析版本/游戏材质兼容核对列为制作前置项，未据此宣称项目故障或执行升级。天空岛本身是未实装设计，不更新玩家 Wiki 或把拟建模块写成 repowiki 的当前实现。
 
@@ -180,7 +180,7 @@ Unity 作者工程 manifest 的 URP `17.0.3` 与本机缓存 `14.0.12` 的差异
 
 盘点结论：
 
-- 仓库里没有字面上的「不新增内容 / 不加 TypeID」长期禁令。这类说法来自三处：各轮交付记录（`FIX_TRACKER.md`、repowiki 天空岛文档的带日期小节、代码注释）对**那一轮**范围的描述，用 `rg` 单独搜到时像长期规则；`docs/天空岛全面优化提示词.md` 的「优先不新增 TypeID」；根 `AGENTS.md` §7 / §10 偏保守的通用条款（「不把产品 / 数值决策擅自定案」，以及与本项目无关的「计费 / 支付」「认证 / 权限模型」）。
+- 仓库里没有字面上的「不新增内容 / 不加 TypeID」长期禁令。这类说法来自三处：各轮交付记录（`FIX_TRACKER.md`、repowiki 天空岛文档的带日期小节、代码注释）对**那一轮**范围的描述，用 `rg` 单独搜到时像长期规则；`docs/prompts/天空岛全面优化提示词.md` 的「优先不新增 TypeID」；根 `AGENTS.md` §7 / §10 偏保守的通用条款（「不把产品 / 数值决策擅自定案」，以及与本项目无关的「计费 / 支付」「认证 / 权限模型」）。
 - 根 `AGENTS.md` 796 行，其中约 470 行是 §14 的按日期变更记录；编译调用还写 `cmd /c`（沙箱下失败），验证步骤还写 `python3 tests/*.py` 循环（与 `tests/AGENTS.md` 矛盾）；Claude 会话里 `CLAUDE.md` 只是文字转发，规则并不会自动进上下文。
 - `tests/README.md` 运行方式过时；`skills/` 下 8 个 bossrush 技能大多过时且没有工具加载，丧尸编排技能里有「每阶段停下来问」「未经批准不编译」这类闸门；`.cunzhi-memory/preferences.md` 的「不要生成测试脚本」与现行做法冲突；`docs/项目全景文档.md` 停在 08-27；`wiki-site/AGENTS.md` 有 5 处与代码不符。
 - repowiki 319 个文件中 231 个自 08-13 导入后未动，§4.13「每次变更必须同步、过时即未完成」无法做到也无法校验。
@@ -198,7 +198,7 @@ Unity 作者工程 manifest 的 URP `17.0.3` 与本机缓存 `14.0.12` 的差异
 仍需 owner 决定：
 
 1. `skills/`、`codex-skills/` 是删除、移出仓库目录，还是保留归档。
-2. `docs/架构说明/` 是否纳入 git（根规则引用了它，fresh clone 看不到）。
+2. `docs/architecture/` 是否纳入 git（根规则引用了它，fresh clone 看不到）。
 3. 根目录 2026-09-13 的五份 WSL 审查报告（未入库、内容不可靠）是否删除。
 
 ## 2026-09-14 全自动实机验收：F3 第三档（SAFE / OPERATIONAL）
@@ -271,7 +271,7 @@ Unity 作者工程 manifest 的 URP `17.0.3` 与本机缓存 `14.0.12` 的差异
 
 ## 2026-09-22 模块解耦计划补为完整迁移执行书（SAFE / OPERATIONAL）
 
-owner 要求全面审查计划，并使新窗口可一次授权后完成全部迁移。原计划末尾仍仅推荐 0/1A/1B，目标目录是示意；本次将范围改为全仓，补入逐域目标、精确文件/成员台账、M00–M15 连续检查点、工作区快照/合并/续接、完整验收及可复制启动指令。见 [执行计划](设计提案/2026-09-22_BossRushMod模块解耦与上下文治理计划.md) §7–12。
+owner 要求全面审查计划，并使新窗口可一次授权后完成全部迁移。原计划末尾仍仅推荐 0/1A/1B，目标目录是示意；本次将范围改为全仓，补入逐域目标、精确文件/成员台账、M00–M15 连续检查点、工作区快照/合并/续接、完整验收及可复制启动指令。见 [执行计划](design/2026-09-22_BossRushMod模块解耦与上下文治理计划.md) §7–12。
 
 复审核实的重点包括：Host 多阶段 Tick 与 early-return、G 每局核心、Campaign 消费 F 死亡闩、OfficialQuest 初始化顺序、内容分阶段装配、公共 UI 租约、目录空扫假绿、编译清单解析差异、正式/Dev 环境变量和 CI 分级协议。它们是执行计划的约束，不宣称已修生产代码或验证实机。
 
@@ -282,12 +282,12 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 - 来源：owner 要求 UI / 交互 / 特效不要塑料感，本轮在共享层落地（`Common/UI/BossRushUIFeel.cs`、`Common/Effects/BossRushFxMaterials.cs`、`BossRushUIColors.AccentFill`）。长期规则写进 §4.14，守卫 `tests/BossRushUIFeelGuard.py` 登记进 §4.14 守卫列表。
 - 明细见 `FIX_TRACKER.md` 2026-09-23「全 Mod UI / 交互 / 特效」一节。
 
-## 2026-09-24 AGENTS §4.14 增加「交互骨架（UI 制作共识）」，新增 `docs/架构说明/UI制作共识.md`
+## 2026-09-24 AGENTS §4.14 增加「交互骨架（UI 制作共识）」，新增 `docs/architecture/UI制作共识.md`
 
-- 来源：owner 指出 UI「一股脑把所有功能都做成按钮丢出来」，遗种巢面板按主流交互重排（记录见 `docs/设计文档/遗种巢UI交互重排_2026-09-24.md`）；owner 点名鸭王杯入场选人页「干净」，要求沉淀成以后所有新 UI 都照做的共识。
-- 共识全文在 `docs/架构说明/UI制作共识.md`：页型选择、按钮归位、按钮层级、渐进披露、选择与状态、鸭王杯选人页的视觉拆解、反馈与空状态、交付前自检、待沉淀的共享件。§4.14 新增一条「交互骨架」写关键结论并指向全文。
-- 纳管：`docs/架构说明/` 默认 local-only，本文件在 `.gitignore` 单独放行（同 2026-09-22 两份设计提案的先例），其余架构说明仍 local-only。
-- 首轮对照审查（其他界面是否符合共识）放 `docs/代码审查/2026-09-24-UI共识对照审查.md`。
+- 来源：owner 指出 UI「一股脑把所有功能都做成按钮丢出来」，遗种巢面板按主流交互重排（记录见 `docs/design/遗种巢UI交互重排_2026-09-24.md`）；owner 点名鸭王杯入场选人页「干净」，要求沉淀成以后所有新 UI 都照做的共识。
+- 共识全文在 `docs/architecture/UI制作共识.md`：页型选择、按钮归位、按钮层级、渐进披露、选择与状态、鸭王杯选人页的视觉拆解、反馈与空状态、交付前自检、待沉淀的共享件。§4.14 新增一条「交互骨架」写关键结论并指向全文。
+- 纳管：`docs/architecture/` 默认 local-only，本文件在 `.gitignore` 单独放行（同 2026-09-22 两份设计提案的先例），其余架构说明仍 local-only。
+- 首轮对照审查（其他界面是否符合共识）放 `docs/reports/reviews/2026-09-24-UI共识对照审查.md`。
 - 同日追加：owner「全部修复」后确认弹窗抽成共享件 `Common/UI/BossRushConfirmDialog.cs`（第三个自绘确认框出现，按共识第 11 节抽取），§4.14「交互骨架」一句改为「确认一律走共享的 `BossRushConfirmDialog`，不再各写一份」；`UI制作共识.md` 第 11 节表格同步标「已共享」，并补 `ModeHUIPageRows`（正文选项行）一行。修复状态见审查报告第九节。
 
 ## 2026-09-24 全面修订《模块解耦与上下文治理计划》
@@ -295,3 +295,11 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 - 来源：owner 要求审核 09-22 版计划是否可行、是否真省上下文、是否最好架构。审核结论：方向对，但全仓搬迁不减少读取字节且波及 468 个守卫文件、212 条夹具引用、1.16 万条 repowiki 链接；Frameworks/Contracts/Adapter 与 Roslyn/IL 分析器对单游戏单 DLL 的 Mod 是净负担；原 MIG-08 已由 `tools/compile_list.py`（29480ec0）落地；原 §9.2 的 `D:\sofrware` 是笔误。
 - 处理：主计划原地重写（同路径，约 95 KB 压到约三分之一）。新范围：上下文治理（根 AGENTS 瘦身但章节号不动、台账按月归档到 `archive/`、`MODULES.md` + `architecture/modules.json` + `tools/task_context.py`）、宿主状态提取（按目录 partial 占比排簇）、1A/1B 复用试点、耦合点表、只搬 `DebugAndTools/SkyIsland/` 与删 `Injection/`。研究记录只改开头的过期引用段。
 - 执行时会动到本文件：根 AGENTS §4.14 / §4.16 / §4.17 迁出后要在这里记「原 §x → 新位置」对照（主计划 §3.2）。
+
+## 2026-09-24 `docs/` 整理为英文标准目录（SAFE / OPERATIONAL）
+
+- 来源：owner 要求删掉无用 / 冗余 / 过期文档，留下的内容与代码一致、无矛盾，结构符合主流行业文档结构。owner 拍板：英文标准目录；删前整体打 zip 备份（仓库外 `D:\code\ykf\BossRushMod_docs_backup_2026-09-24.zip`，591 个文件）；历史过程记录「删过程件、留结论件」。
+- 结构：`architecture/`（原 `架构说明/`）、`guides/`（原 `制作教程/`，天空岛在 `guides/sky-island/`）、`reference/`（物品 ID 表、官方本地化表、参考图）、`design/`（原 `设计文档/`、`设计提案/`、`实现方案/`，丧尸在 `design/zombie-mode/`，未实现拓展在 `design/roadmap/`）、`reports/{reviews,testing,sky-island}/`（原 `代码审查/`、`testing/`、`测试分析/` 与根目录各轮天空岛报告）、`changelog/`、`prompts/`。`contracts.md`、`ai-docs-migration.md`、两份密钥文件路径不动。
+- 删除：591 → 147。`superpowers/`、`视频策划/`、三个转发页（`代码审查/CODE_REVIEW*.md`、`协作/FIX_TRACKER.md`）、`AI使用提示词.md`、`项目全景文档.md`，全量审计的批次件，审美审查分报告，逐轮人工实测与 F3 诊断的中间轮次，截图，已落地的实施计划书，重复教程与重复设计稿。有同专题结论件的，引用改指结论件；没有的（如 `项目全景文档.md`）在 `FIX_TRACKER.md` 等历史台账里保留原文，不改写历史。
+- 内容：留下的教程、架构说明与设计稿逐篇对照代码改正（例：Mode F 回血数值、护士折扣档位、丧尸准备期与刷怪模型、日报签到奖励、物品 ID 表末尾与明细、Config 黑名单已 JSON 化、Hooks 约定与 §4.15 冲突处）；设计稿文首加状态行；报告加历史快照行；长期文档里的 `文件:行号` 改为「文件 + 符号名」。
+- 同步：全仓库引用改写（`AGENTS.md`、子系统 `AGENTS.md`、`CODE_REVIEW*.md`、`FIX_TRACKER.md`、`.qoder/repowiki/`、守卫与工具路径、26 个 `.cs` 的注释），`.gitignore` 放行行改为新路径（嵌套目录先放行父目录），`docs/AGENTS.md` 的「放哪里」表与 `docs/README.md` 重写。全量守卫 665/665 PASS。

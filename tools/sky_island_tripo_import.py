@@ -384,7 +384,7 @@ def main():
         if wanted is not None and name not in wanted:
             continue
         # 先按平铺找（第一轮的目录形状），再递归找 face_<档>/ 子目录（第二轮起按
-        # face_limit 分档存放，见 docs/制作教程/天空岛_Tripo3D建模接入与画风对齐教程.md §3.5）。
+        # face_limit 分档存放，见 docs/guides/sky-island/天空岛_Tripo3D建模接入与画风对齐教程.md §3.5）。
         # 同名文件只认第一个，档位不同的重名件属于清单写错，不在这里兜底。
         exts = ('.glb', '.fbx', '.GLB', '.FBX')
         source = next((c for c in (glb_dir / (name + ext) for ext in exts) if c.is_file()), None)

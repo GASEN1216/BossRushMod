@@ -5,7 +5,7 @@
 // 只有入口总开关 dailyReportEnabled 走 Config/ConfigDailyReport.cs + ModConfig（第 1 层），
 // 其余数值一律在这里，owner 审定后单点改。
 //
-// 设计文档：docs/未来拓展/设计/P2-日报系统.md
+// 设计文档：docs/design/P2-日报系统.md
 // ============================================================================
 
 namespace BossRush

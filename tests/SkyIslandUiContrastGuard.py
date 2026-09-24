@@ -63,7 +63,7 @@ PANEL_BG_P99 = 0.747
 HERO_ART_WORST = 1.0
 SCENES = (("场景 p90", SCENE_P90), ("场景 p99", SCENE_P99), ("暗地形 0.20", DARK_TERRAIN))
 
-# 审核报告（docs/代码审查/2026-09-14-UI优化对照审核.md 第四节 F-01）复算表里「线性」一列：
+# 审核报告（docs/reports/reviews/2026-09-14-UI优化对照审核.md 第四节 F-01）复算表里「线性」一列：
 # 旧常量下大标题眉题（TextSecondary，峰值 0.72，压暗色 (0.02,0.03,0.04)）p90 = 2.13，普通字幕（TextPrimary）p90 = 3.95。
 # 旧版 sRGB 合成算出来是 5.95 / 11.02。
 MODEL_PINS = (

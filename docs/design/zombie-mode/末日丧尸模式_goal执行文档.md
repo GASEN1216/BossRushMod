@@ -1,5 +1,7 @@
 # 末日丧尸模式体验对齐 Implementation Plan
 
+> 历史快照（2026-05-03）：这是当时的体验对齐执行计划，P0/P1 已按本文修复并由 `tests/ZombieModeGoalExperienceGuard.py` 守住；之后丧尸模式又有大量改动（准备时长自选、压力刷怪、服务终端换真模型等，见 `末日丧尸模式设计文档.md` 文首），文中「当前代码真实行为」一节不再代表现状。本文保留是因为 `tests/ZombieModeWindowsVerificationScriptGuard.py` 读取本文并要求它提到 Windows 验证入口 `test_zombiemode_goal_windows.bat`；结论与修复状态以根目录 FIX_TRACKER.md / CODE_REVIEW_FINDINGS.md 为准。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 把末日丧尸模式从“代码里有完整循环”修到“玩家实际进游戏时入口、波次、奖励、撤离、UI 文案和低端机表现都与设计承诺一致”。

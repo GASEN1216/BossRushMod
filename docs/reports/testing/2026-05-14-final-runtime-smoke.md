@@ -1,5 +1,7 @@
 # 2026-05-14 Final Runtime Smoke Record
 
+> 历史快照（2026-05-14）：结论与修复状态以根目录 FIX_TRACKER.md / CODE_REVIEW_FINDINGS.md 为准。
+
 Conclusion: User-reported smoke passed after the 2026-05-14 21:01 deploy; latest log scan PASS with 0 BossRush-related error blocks.
 
 ## Current Deploy Baseline

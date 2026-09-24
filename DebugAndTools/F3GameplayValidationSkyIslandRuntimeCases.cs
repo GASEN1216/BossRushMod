@@ -167,7 +167,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// SKY_ENCOUNTER_CAP 的内容表半边：遭遇组 21、敌人 61；第三轮新增的 5 组都是自动组；
+        /// SKY_ENCOUNTER_CAP 的内容表半边：遭遇组与敌人总数对照 <see cref="ExpectedEncounterGroups"/> / <see cref="ExpectedEncounterEnemies"/>；第三轮新增的 5 组都是自动组；
         /// 码头 A 与风铃集 B 没有自动组（刻意的安全枢纽）。区域按「id 前缀」与「标记名第二段」两头认，任一头落在 A / B 都算。
         /// </summary>
         internal static bool JudgeEncounterTable(SkyIslandContentData content, out string metrics, out string reason)

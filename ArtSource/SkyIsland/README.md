@@ -15,7 +15,7 @@
 
 分类：COMPAT（新增独立场景资源）；OPERATIONAL（新增本地资源构建入口）。
 
-可编辑 Blender、FBX、Unity 场景位于作者工程 `D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/ArtSource/SkyIsland` 与 `Assets/SkyIsland`。**作者工程自 2026-09-10 起是独立的 git 仓库**（入库范围与提交时机见其根目录 `README.md`）：改了自研着色器、URP 工程设置、构建器，或重新导入 Tripo 模型、重新生成天空岛之后，要在作者工程那边单独提交，本仓库的提交不包含这些文件。本目录保留可重复生成的数据、报告与制作记录，生成器为 `tools/generate_sky_island.py`，布景与免费素材适配分别为 `tools/sky_island_dressing.py` / `tools/sky_island_nature_assets.py`。完整交付说明见 [实际交付与验收](../../docs/制作教程/天空岛/天空岛_实际交付与验收.md)。
+可编辑 Blender、FBX、Unity 场景位于作者工程 `D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/ArtSource/SkyIsland` 与 `Assets/SkyIsland`。**作者工程自 2026-09-10 起是独立的 git 仓库**（入库范围与提交时机见其根目录 `README.md`）：改了自研着色器、URP 工程设置、构建器，或重新导入 Tripo 模型、重新生成天空岛之后，要在作者工程那边单独提交，本仓库的提交不包含这些文件。本目录保留可重复生成的数据、报告与制作记录，生成器为 `tools/generate_sky_island.py`，布景与免费素材适配分别为 `tools/sky_island_dressing.py` / `tools/sky_island_nature_assets.py`。完整交付说明见 [实际交付与验收](../../docs/guides/sky-island/天空岛_实际交付与验收.md)。
 
 贴图由内置 imagegen 工具生成并复制到作者工程 `Assets/SkyIsland/Textures/`，不引用用户目录里的生成缓存。六张图为归航壁画、风纹织物、石面、草地、木板与鱼鳞瓦，均用于实际模型 UV 材质。完整提示词见 [image_prompts.txt](image_prompts.txt)。
 
@@ -23,7 +23,7 @@
 
 2026-09-09 的[画风对齐原版记录](VANILLA_GRADE.md)把材质语言归位到从游戏本体实测的原版色带（暖砂岩、赤陶瓦、黄绿草），奇幻感改由光照与自发光承担，并记录了光色/天空色重复硬编码在四处的同步陷阱。该轮不改可行走几何与导航。
 
-同日的 [Tripo3D 生成参数](TRIPO_SETTINGS.md) 记录逐件 `face_limit`、贴图分辨率分档与 Tripo 侧设置；完整链路（原版调色板实测方法、AI 建模输入图、Blender 规范化、材质与摆放接入、构建验证闸门）见[Tripo3D 建模接入与画风对齐教程](../../docs/制作教程/天空岛_Tripo3D建模接入与画风对齐教程.md)。
+同日的 [Tripo3D 生成参数](TRIPO_SETTINGS.md) 记录逐件 `face_limit`、贴图分辨率分档与 Tripo 侧设置；完整链路（原版调色板实测方法、AI 建模输入图、Blender 规范化、材质与摆放接入、构建验证闸门）见[Tripo3D 建模接入与画风对齐教程](../../docs/guides/sky-island/天空岛_Tripo3D建模接入与画风对齐教程.md)。
 
 最终场景是 12 座可达岛、15 条桥路；另有 10 个独立 FBX/Prefab 模型与 `SkyIsland_ModelKit.blend`。正式游戏包为 `Assets/arenas/sky_island_raid`，真实 Scene 是 `Assets/SkyIsland/SkyIslandRaid.unity`，已复制至本机游戏 Mod 目录。它经官方 `SceneLoader` 进入独立出击，创建自己的官方服务和玩家，基地场景会卸载。**这是唯一会被运行时加载的包**。
 

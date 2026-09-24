@@ -177,7 +177,7 @@ namespace BossRush
 
     /// <summary>
     /// 皮肤注入点。默认使用程序化生成的圆角九宫格；打好 UI 图集
-    /// （见 docs/制作教程/BossRushUI_图集规格.md）后在此注入即可全局换皮。
+    /// （见 docs/guides/BossRushUI_图集规格.md）后在此注入即可全局换皮。
     ///
     /// 【注入哪几张】<c>bossrush_ui_skin</c> 里六张：面板 / 卡片 / 按钮 / 悬停 / 分隔线 / 滚动滑块。
     /// 其中 <c>button_hover</c> **刻意不注入**：按钮三态走 <see cref="BossRushUI.GetHoverColor"/>

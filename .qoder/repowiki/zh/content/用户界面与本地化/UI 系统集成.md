@@ -240,7 +240,7 @@ UI->>Notify : "Push(text)"
 
 - **Canvas 层级表 `BossRushUILayers`**：全项目 sortingOrder 唯一事实源，严格递增。常规界面区（HudOverlay 1200 / Panel 2000 / Modal 3000 / ModalConfirm 3200 / Toast 4000）、ModeG 三档（900/940/950）、独立模式区（ZombieMode 28000~30500、婚礼过场 32000）。历史上 10~1001 与 28000~32000 两个孤岛的魔法数字已全部改为引用常量，其中成就界面（10→2000）、快递员确认框（10→3200）等低层级界面被抬入正确档位。
 - **设计 token `BossRushUIColors`**：遮罩统一 `Backdrop`，不再允许第二套 `(0,0,0,0.7)`；按钮态经 `ApplyButtonColors` 推导。
-- **程序化圆角九宫格 `ApplyPanelSkin`**：运行时生成、按半径缓存共享的圆角底图；将来换美术图集时通过 `BossRushUISkin` 注入，调用方零改动（规格见 `docs/制作教程/BossRushUI_图集规格.md`）。
+- **程序化圆角九宫格 `ApplyPanelSkin`**：运行时生成、按半径缓存共享的圆角底图；将来换美术图集时通过 `BossRushUISkin` 注入，调用方零改动（规格见 `docs/guides/BossRushUI_图集规格.md`）。
 - **字体**：`ApplyGameFont` / `GetLegacyChineseFont()` 统一取游戏字体，源码禁止再出现内置 Arial（渲染不了中文）；`CanvasScaler` 必须经 `ZombieModeUIHelper.ConfigureCanvasScaler` 配置。
 - **生命周期**：程序化贴图带 `HideFlags.DontSave`，由 `BossRushUI.ResetStaticCaches` 在 `ModBehaviour.OnDestroy` 路径显式销毁。
 - **变异词条 overlay**：`MutatorUI` 已从 IMGUI（OnGUI）迁为 uGUI Canvas（HudOverlay 层），由 `ModBehaviour.Update` 的 `Tick()` 驱动，抑制契约（判定早于显示、抑制期清悬停、异常按抑制处理）不变。2026-09-23 审美整改：字号按常驻 HUD 梯度（标题 / 计数 15、名字 16、分类 14、详情标题 18、正文 15，全部关自动缩字），分类色改 DangerText / SuccessText / WarningText，面板 Surface；悬停行底 0.1 秒 SmoothStep、详情卡 0.12 秒淡入上浮并对齐悬停行，动效由 `Tick` 推进（unscaled，抑制分支直接落终点）。

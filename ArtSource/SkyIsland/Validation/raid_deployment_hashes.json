@@ -495,7 +495,7 @@
     }
   },
   "resourceOptimization": {
-    "report": "docs/制作教程/20260920_Unity资源优化交付.md",
+    "report": "docs/reports/testing/20260920_资源生产化续作交付.md",
     "bundleCount": 68,
     "evidence": "Build/resource-optimization-20260920/release-validation.json",
     "previousLedger": "Build/resource-optimization-20260920/raid-deployment-before.json"

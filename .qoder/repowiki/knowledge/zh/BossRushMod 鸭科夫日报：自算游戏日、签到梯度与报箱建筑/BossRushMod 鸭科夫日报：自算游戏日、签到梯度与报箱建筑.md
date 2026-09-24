@@ -30,7 +30,7 @@ source_files:
 
 玩家在基地花 500 金建一个**报箱**建筑，此后每过一个游戏日（≈24 现实分钟）收到一期《鸭科夫日报》：昨日战绩被写成报纸新闻，附每日悬赏结果、签到墙、明日天气预报与趣味杂谈。
 
-设计文档：`docs/未来拓展/设计/P2-日报系统.md`。
+设计文档：`docs/design/P2-日报系统.md`。
 
 `dailyReportEnabled` 字段与旧键只为兼容保留；日报现属恒开默认内容，不再注册总开关。
 dormant 退订与清理路径仍保留供卸载和故障回落。
@@ -236,7 +236,7 @@ Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存�
 - 报纸复用官方 ScrollRect prefab 与共享滚动配置，正文/签到墙滚动、关闭固定下沿。刊头、栏目标题、图例和按钮均在刷新时取语言，只有打开且数值变化时更新；格子/按钮字色用共享对比度选择。下次奖励品质和欠发数量明确展示，卸载清理 View/Canvas。
 - 天气注明“明日此时（世界时间）”，固定天气单列；运势注明无加成。杂谈围绕补给、存储、快递和模式计数，移除没有对应玩法的地下室敲门与枪械卡壳暗示。
 
-证据与边界：真实 Service/Bounty/Content/StatsCollector/Codec 的隔离回归在 `tests/fixtures/ContentThirdReviewFixes/DailyReport/`；现金事务沿用 `ContentTransactions`，UI 颜色与接线由 `DailyReportPresentationGuard` 复算。字体、滚动、实际刷怪归属和帧耗仍需 L3，详见 `docs/代码审查/2026-09-18-鸭科夫日报生产复核.md`。
+证据与边界：真实 Service/Bounty/Content/StatsCollector/Codec 的隔离回归在 `tests/fixtures/ContentThirdReviewFixes/DailyReport/`；现金事务沿用 `ContentTransactions`，UI 颜色与接线由 `DailyReportPresentationGuard` 复算。字体、滚动、实际刷怪归属和帧耗仍需 L3，详见 `docs/reports/reviews/2026-09-19-鸭科夫日报生产复核.md`。
 
 ## 2026-09-19 复核补充
 
@@ -254,4 +254,4 @@ Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存�
 
 淡出曲线使用 0 到 1 的插值进度：官方 CanvasGroupFade 已经把目标 alpha 设为 0，反向曲线会导致关闭时先消失、再亮起。详细根因、验证与人工边界见 `.qoder/repowiki/zh/content/高级功能/日报悬赏欠款.md` 的同日人工复查章节。
 
-本轮 Sprite 别名、几何、导入预算及其余贴图载荷保持原值。离线取色不替代 owner 在游戏中检查描边、字体、滚轮及中英文末行。完整交付与复测见 `docs/testing/20260922人工实测复核修复记录.md`。
+本轮 Sprite 别名、几何、导入预算及其余贴图载荷保持原值。离线取色不替代 owner 在游戏中检查描边、字体、滚轮及中英文末行。完整交付与复测见 `docs/reports/testing/20260922人工实测复核修复记录.md`。

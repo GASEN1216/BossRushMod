@@ -8,7 +8,7 @@ FallbackItem，玩家背包里的蛋在重启后变成一块占位砖。因此�
 1. Integration/Items/ItemContentRegistry.cs 注册 configurator；
 2. Integration/BossRushDynamicItemRegistry.cs BuildPlans 登记按需注册计划；
 3. Integration/BossRushIntegration_StartAndScene.cs 挂本地化注入；
-4. docs/Bossrush使用物品ID表.md 与 AGENTS.md 台账登记 500059。
+4. docs/reference/Bossrush使用物品ID表.md 与 AGENTS.md 台账登记 500059。
 
 另外守：
 - TypeID 常量在 BossRushItemIds 里，禁止散落魔法数；
@@ -122,10 +122,10 @@ def check_ledger(errors):
         errors.append("[台账] BossRushItemIds 缺少 RelicEgg = 500059")
 
     # 物品 ID 表（docs 是 local-only，缺失只告警不判红）
-    table = read_text(repo_path("docs", "Bossrush使用物品ID表.md"))
+    table = read_text(repo_path("docs", "reference", "Bossrush使用物品ID表.md"))
     if table is not None:
         if EGG_TYPE_ID not in table:
-            errors.append("[台账] docs/Bossrush使用物品ID表.md 未登记 500059")
+            errors.append("[台账] docs/reference/Bossrush使用物品ID表.md 未登记 500059")
 
     agents = read_text(repo_path("AGENTS.md"))
     if agents is None:

@@ -59,7 +59,7 @@ namespace BossRush
     /// - 明确登记的套装/图腾/被动附伤不计分仍造成原伤害并可推进（豁免「主要输出全部不可计分」规则）；
     /// - 条目绑定 verification revision，游戏更新后必须重新验证并整体递增 revision。
     ///
-    /// TypeID 依据：docs/Bossrush使用物品ID表.md（500005 龙息、500034 焚皇断界戟、
+    /// TypeID 依据：docs/reference/Bossrush使用物品ID表.md（500005 龙息、500034 焚皇断界戟、
     /// 500041 霜之哀伤、500044 噬魂挽歌、500048 毒蛇匕首、500052 雷电戒指、500013 逆鳞；
     /// DragonSet = 500003+500004 套装被动，ThunderSet = 500055+500056 套装被动）。
     /// </summary>

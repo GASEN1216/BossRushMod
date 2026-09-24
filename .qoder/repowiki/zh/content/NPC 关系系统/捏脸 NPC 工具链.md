@@ -4,7 +4,7 @@
 
 `CR-2026-09-17-019` / `020` 均已修复（L1 / L2，待 L3），上轮 `013` / `014` 的任务接管与实体回收继续有效。婚姻成功变更后，`NPCMarriageSystem.BeginOperation` 捕获宿主、玩家、槽、场景 handle 和 registry 中的原 NPC 实例。每次成功的新结婚/离婚更新操作代际；继续视频、显示反馈和延迟回收前核对代际、身份及婚姻/跟随状态。旧操作失效时不回收新实例、不取消当前恢复请求；文字回退使用原角色销毁令牌。只新增一个静态数值代际，Unity 引用归该次异步操作持有，不写存档。
 
-`DialogueActorFactory.RefreshPresentation` 按复用 actor 实际 `NameKey` 注入当前语言名字；剧情入口补可用 portrait，资源缺失时保留原图，婚礼回忆复用也刷新名字。沿用同一 actor 和原 key，不另建身份或本地化键。`SkyIslandMarriage` 从真实送戒指/离婚入口覆盖上下文切换与同一实例重复关系操作，并用真实工厂覆盖两种 actor 创建顺序、两个居民及中英双向切换。Windows 正式隔离编译已通过；没有 L3、真实游戏部署或玩家数据操作。完整证据与 R-01～03 补验见 `docs/代码审查/2026-09-17-天空岛婚姻复审问题修复与验收.md`。
+`DialogueActorFactory.RefreshPresentation` 按复用 actor 实际 `NameKey` 注入当前语言名字；剧情入口补可用 portrait，资源缺失时保留原图，婚礼回忆复用也刷新名字。沿用同一 actor 和原 key，不另建身份或本地化键。`SkyIslandMarriage` 从真实送戒指/离婚入口覆盖上下文切换与同一实例重复关系操作，并用真实工厂覆盖两种 actor 创建顺序、两个居民及中英双向切换。Windows 正式隔离编译已通过；没有 L3、真实游戏部署或玩家数据操作。完整证据与 R-01～03 补验见 `docs/reports/sky-island/2026-09-17-天空岛婚姻复审问题修复与验收.md`。
 
 
 ## 2026-09-17 天空岛婚姻生命周期修复（COMPAT）
@@ -13,7 +13,7 @@
 
 `CR-2026-09-17-013` 已修：给予者实例被婚礼 / 送回家销毁后，现有桥撤销对应成功缓存，恢复有界重试并在同趟补到装置。`CR-2026-09-17-014` 已修：离婚先使异步请求失效、删除占位物，再调用 `PermanentDuckNpcModule.ReleaseDivorcedNpc` 回收真实实例并注销 registry。原 NPC 由其蓝图场景的后续 owner 恢复，天空岛居民不会在基地当普通居民重刷。
 
-婚姻与群岛存档 schema / ID 不变，双语对白读当前关系、地点和剧情。基地对话在切图、换槽、死亡、离婚或对象失活时取消；没有每帧全局搜索。`SkyIslandMarriage` / `SkyIslandStory` 回归及正式隔离编译为 L1 / L2，尚无 L3；实机操作见 `docs/代码审查/2026-09-17-天空岛婚姻剧情修复与验收.md`。
+婚姻与群岛存档 schema / ID 不变，双语对白读当前关系、地点和剧情。基地对话在切图、换槽、死亡、离婚或对象失活时取消；没有每帧全局搜索。`SkyIslandMarriage` / `SkyIslandStory` 回归及正式隔离编译为 L1 / L2，尚无 L3；实机操作见 `docs/reports/sky-island/2026-09-17-天空岛婚姻复审问题修复与验收.md`。
 
 
 <cite>
@@ -28,7 +28,7 @@
 - [AlwaysOnRuntimeHooks.cs](file://Utilities/AlwaysOnRuntimeHooks.cs)
 - [DeathWraithSpawnFlow.cs](file://Integration/DeathWraith/DeathWraithSpawnFlow.cs)
 - [ModeHArenaIsolationLease.cs](file://ModeH/ModeHArenaIsolationLease.cs)
-- `docs/制作教程/捏脸NPC工具.md`（本地制作资料）
+- `docs/guides/捏脸NPC工具.md`（本地制作资料）
 </cite>
 
 ## 目录
@@ -59,7 +59,7 @@
 `GameplayDataSettings.Prefabs.DefaultCharacterModel`。
 
 完整设计说明、官方 API 参照表、可捏参数区间与坑位清单见
-`docs/制作教程/捏脸NPC工具.md`（本地制作资料）。
+`docs/guides/捏脸NPC工具.md`（本地制作资料）。
 
 ## 与现有 NPC 的关系
 
@@ -248,7 +248,7 @@ Rigidbody（kinematic / detectCollisions）、根 `CapsuleCollider`（enabled、
 除一次性随机 NPC 外，本链路还支持**永久 NPC** —— 常驻、每个存档长相一致、
 接好感度/对话/送礼/婚姻，与羽织、叮当同一套系统。
 代码在 `Integration/NPCs/DuckNpc/Permanent/`，用法见
-[捏脸NPC使用手册](../../../../docs/制作教程/捏脸NPC使用手册.md)。
+[捏脸NPC使用手册](../../../../docs/guides/捏脸NPC使用手册.md)。
 
 **好感度那一整套零改动复用**：`AffinityManager`、`NPCDialogueSystem`、
 `NPCGiftSystem`、`NPCMarriageSystem` 及四个婚姻子交互的耦合面只有

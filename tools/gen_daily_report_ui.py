@@ -3,7 +3,7 @@
 
 owner 2026-09-20：「每日日报你能否生图弄一个和这个一样但是去掉文字的版本，
 我想要把日报弄成和这个 100% 都一样的效果，而不是现在那样好丑都是文字。」
-2026-09-22 / 09-23 又两轮：「总体差不多但还是有差距」。参考图 docs/testing/image-9.png。
+2026-09-22 / 09-23 又两轮：「总体差不多但还是有差距」。参考图 docs/reference/images/日报UI参考图.png。
 
 为什么不是「直接让模型出一整张底图」：
   文字要落进卡片里，就必须知道每张卡片的**精确矩形**。AI 出的图每次构图都不一样，
@@ -67,7 +67,7 @@ MASCOT = os.path.join(WORK, "mascot.png")                 # AI 原图（512，�
 ICON_RAW = os.path.join(WORK, "icons_raw")                # AI 原图缓存：存在就不再调网关（断点续跑）
 ICON_MANIFEST = os.path.join(WORK, "icons_manifest.json")
 STYLE_REF = os.path.join(WORK, "style_ref.png")
-REFERENCE = os.path.join(ROOT, "docs", "testing", "image-9.png")
+REFERENCE = os.path.join(ROOT, "docs", "reference", "images", "日报UI参考图.png")
 
 # 面板尺寸与 Integration/DailyReport/DailyReportUI.cs 的 PanelWidth / PanelHeight 一致
 W, H = 1333, 1013

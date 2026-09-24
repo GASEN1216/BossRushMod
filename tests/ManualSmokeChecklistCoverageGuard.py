@@ -63,7 +63,7 @@ def main() -> int:
     if missing:
         return fail("manual smoke checklist missing: " + ", ".join(missing))
 
-    smoke_note = Path("docs/testing/2026-05-14-final-runtime-smoke.md")
+    smoke_note = Path("docs/reports/testing/2026-05-14-final-runtime-smoke.md")
     if not smoke_note.exists():
         return fail("missing final runtime smoke template")
 

@@ -5,20 +5,27 @@
 ## 纳管
 
 - `docs/` 默认 local-only（`.gitignore` 的 `/docs/*`）。例外是被守卫直接读取的文档，在 `.gitignore` 里逐个放行；新增这类「守卫依赖的文档」时同步放行，否则 fresh clone 一跑守卫就红。当前放行清单以 `.gitignore` 为准（`docs/contracts.md` 在内）。
-- `docs/架构说明/` 等仍是 local-only。根 `AGENTS.md` 或子系统 `AGENTS.md` 引用它们时，关键结论要在 AGENTS 或守卫里有落点，不能只存在于本地文档。
+- `docs/architecture/` 等仍是 local-only。根 `AGENTS.md` 或子系统 `AGENTS.md` 引用它们时，关键结论要在 AGENTS 或守卫里有落点，不能只存在于本地文档。
 - 含密钥的本地文件（`飞书应用密钥.md`、`AI生图API和密钥.md`）不复制进回答、提交、公开文档或提示词。
 
 ## 放哪里
 
-| 内容 | 位置 |
-| --- | --- |
-| 长期有效的架构约定 | `docs/架构说明/` |
-| 外部契约、breaking 边界、TypeID 台账、官方 API 陷阱 | `docs/contracts.md`（守卫解析它的 §1） |
-| 制作教程；同一专题的交付与验收记录 | `docs/制作教程/`，交付记录放专题子目录（如 `制作教程/天空岛/`） |
-| 审查报告 | `docs/代码审查/`（按日期） |
-| 设计稿、提案 | `docs/设计文档/`、`docs/设计提案/` |
-| 可复用的长任务提示词 | `docs/` 根目录 |
-| AI 协作文档的变更与冲突记录 | `docs/ai-docs-migration.md` |
+目录按 Diátaxis 加「设计 / 报告 / 参考」的常见分法组织。目录名用英文，文件名保持中文。
+
+| 内容 | 位置 | 要求 |
+| --- | --- | --- |
+| 长期有效的架构约定与系统设计说明（explanation） | `docs/architecture/` | 与代码保持一致；只写文件与符号名，不写行号 |
+| 制作教程、操作手册、接线清单（tutorial / how-to） | `docs/guides/`，天空岛专项在 `docs/guides/sky-island/` | 步骤、命令、路径与当前代码和工具一致 |
+| 查表类资料：物品 ID 表、官方本地化表、分类表、参考图 | `docs/reference/` | 以代码为准，改代码时同步 |
+| 外部契约、breaking 边界、TypeID 台账、官方 API 陷阱 | `docs/contracts.md`（守卫解析它的 §1，路径不动） | 同上 |
+| 设计稿与提案 | `docs/design/`；末日丧尸在 `design/zombie-mode/`，未实现的拓展在 `design/roadmap/` | 文首写状态行：已实现 / 部分实现 / 未实现 / 已放弃 + 核对日期 |
+| 审查、测试、实机验收、交付评估的结论报告 | `docs/reports/reviews/`、`reports/testing/`、`reports/sky-island/`，文件名带日期 | 历史快照，文首注明；不追着代码改，但会误导的「现行做法」要标已过时 |
+| 版本记录 | `docs/changelog/` | |
+| 可复用的长任务提示词 | `docs/prompts/` | 现状数字写「以当前代码 / 命令输出为准」 |
+| AI 协作文档的变更与冲突记录 | `docs/ai-docs-migration.md` | |
+
+- 过程件不留：批次 csv / json、中间轮次、逐轮截图、实施计划书在结论写进报告、`FIX_TRACKER.md` 或 `CODE_REVIEW_FINDINGS.md` 后删除；每个专题只留结论件。
+- 一个专题的设计、报告分别进 `design/` 与 `reports/`，不再为单个专题建顶层目录。
 
 ## 写文档的规则
 

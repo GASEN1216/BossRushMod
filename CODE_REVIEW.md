@@ -1,6 +1,6 @@
 # CODE_REVIEW.md — BossRushMod 代码审查方法
 
-> 当前代码审查入口。旧路径 `docs/代码审查/CODE_REVIEW.md` 只做转发。规则背景见根目录 `AGENTS.md`。
+> 当前代码审查入口。规则背景见根目录 `AGENTS.md`。
 
 ## 1. 基本原则
 
@@ -53,14 +53,14 @@ CR-YYYY-MM-DD-NNN
 ## 6. 必查清单
 
 - 新增 `.cs`：`compile_official.bat` 命中。
-- 新 TypeID：`docs/contracts.md` §1、根 `AGENTS.md` 的 TypeID 台账、`docs/Bossrush使用物品ID表.md` 三处一致，没有回填空洞。
+- 新 TypeID：`docs/contracts.md` §1、根 `AGENTS.md` 的 TypeID 台账、`docs/reference/Bossrush使用物品ID表.md` 三处一致，没有回填空洞。
 - 新物品：配置器、`BossRushDynamicItemRegistry`、`item.Value`、掉落黑名单、获取途径（清单见 `Integration/AGENTS.md`）。
 - `DisplayNameRaw = "BossRush_*"`：有中英本地化注入并挂接。
 - 事件订阅：幂等 + 退订。
-- Harmony / 反射：目标仍存在；重载显式；官方更新后读 `docs/架构说明/Harmony补丁契约稳定性.md`。
+- Harmony / 反射：目标仍存在；重载显式；官方更新后读 `docs/architecture/Harmony补丁契约稳定性.md`。
 - 刷怪：生成后敌对性、距离休眠解除、恢复系统、Mode E/F 独立阵营不被破坏。
 - 自建伤害与爆炸：`canHurtSelf: false`、`isFromBuffOrEffect`、`fromWeaponItemID` 设置正确。
-- Config / Hooks：归位符合 `docs/架构说明/Config归位约定.md`、`docs/架构说明/Hooks分层约定.md`；新 ModConfig 键进了白名单。
+- Config / Hooks：归位符合 `docs/architecture/Config归位约定.md`、`docs/architecture/Hooks分层约定.md`；新 ModConfig 键进了白名单。
 - 存档：新增字段是 `SCHEMA+`（可选、旧档有默认值、掩码同步），落盘复用共享引擎。
 - ZombieMode：不接共享 mutator roll，不按性能档改变玩法，不破坏 run-only cleanup。
 - 防御式 catch：不批量删除；关键路径新增日志要低噪声。

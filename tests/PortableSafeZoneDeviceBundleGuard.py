@@ -6,7 +6,7 @@ import sys
 BUNDLE = Path("Assets/Items/portable_safe_zone_device")
 COMPILE_SCRIPT = Path("compile_official.bat")
 TEST_DEPLOY_SCRIPT = Path("test_bossrush_official.bat")
-CONTRACT_DOC = Path("docs/制作教程/便携安全区装置_Unity资源制作约定.md")
+CONTRACT_DOC = Path("docs/guides/便携安全区装置_Unity资源制作约定.md")
 
 MIN_BUNDLE_BYTES = 1024
 MAX_BUNDLE_BYTES = 512 * 1024

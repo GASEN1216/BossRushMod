@@ -4,7 +4,7 @@
 // 背景：
 //   Mod 与官方游戏之间没有稳定 API 边界，全部靠 [HarmonyPatch] 的字符串方法名
 //   动态绑定。官方更新改掉任一目标方法后，该补丁会静默不生效——功能无声死亡，
-//   日志无痕（见 docs/架构说明/Harmony补丁契约稳定性.md 的 F1/F4/F5 失败模式）。
+//   日志无痕（见 docs/architecture/Harmony补丁契约稳定性.md 的 F1/F4/F5 失败模式）。
 //
 //   Patches/ItemStatsSystem/ItemAssetsCollectionDynamicRegistrationPatch.cs 的
 //   EnsureCriticalPatchesApplied 已经给出了正确范式：声明规格 → 校验实际挂载 →

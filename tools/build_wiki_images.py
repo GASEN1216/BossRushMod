@@ -40,8 +40,8 @@ MANIFEST = os.path.join(REPO, "wiki-site", "scripts", "image-manifest.json")
 # 所以这一组只能照清单登记，不能靠扫 Assets/ 重建——否则重跑本工具会把 ui 组抹掉，
 # 留下一堆 WikiImageAssetGuard 判定为孤儿的 WebP 产物。
 UI_SIDECAR = os.path.join(REPO, "wiki-site", "scripts", "wiki-icons.json")
-LOC_ZH = os.path.join(REPO, "docs", "官方本地化表", "ChineseSimplified.csv")
-LOC_EN = os.path.join(REPO, "docs", "官方本地化表", "English.csv")
+LOC_ZH = os.path.join(REPO, "docs", "reference", "official-localization", "ChineseSimplified.csv")
+LOC_EN = os.path.join(REPO, "docs", "reference", "official-localization", "English.csv")
 
 WEBP_QUALITY = 82
 # 尺寸口径（2026-09-06 定）：**任何图都不得在页面上被放大显示**，

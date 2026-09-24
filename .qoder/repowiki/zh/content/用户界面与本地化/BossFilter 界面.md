@@ -373,4 +373,4 @@ BossFilter 界面通过清晰的 UI 分层与稳健的状态管理，提供了�
 - 面板与行底改走共享 token 与皮肤（`Surface` / `SurfaceRaised`，卡片档九宫格 + 描边），不再是中性灰直角条；勾选框用 TMP「√」`SuccessText`，关闭键为「×」。
 - 因子等级配色改为 token：`TextSecondary / SuccessText / TextPrimary / WarningText / DangerText`，旧的自建灰 / 绿 / 白 / 橙 / 红不再使用。
 - 打开走 `BossRush.BossRushUI.PlayOpenAnimation`、关闭走 `BossRushUIKit.PlayCloseAndDestroy`；滚动改 `ConfigureScrollRect`（统一灵敏度），切因子模式保住滚动位置。
-- 详情：本地 `docs/代码审查/2026-09-23-审美审查/fix_modesGEF_report.md`（UB-26 / UB-27）。
+- 详情：本地 `docs/reports/testing/2026-09-23-UI与特效审美-看图清单.md`（UB-26 / UB-27）。

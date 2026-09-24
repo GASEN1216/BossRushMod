@@ -1,7 +1,7 @@
 // ============================================================================
 // BackMountainItems.cs - 后山种子与出击餐物品
 // ============================================================================
-// TypeID 500062-500067（台账见 docs/Bossrush使用物品ID表.md 与 AGENTS.md 4.3）。
+// TypeID 500062-500067（台账见 docs/reference/Bossrush使用物品ID表.md 与 AGENTS.md 4.3）。
 //
 // 【零新增 bundle】没有专属模型，全部走克隆注册（形态照
 // Integration/Items/RelicEggConfig.cs 的 EnsureRuntimeRegistration）：

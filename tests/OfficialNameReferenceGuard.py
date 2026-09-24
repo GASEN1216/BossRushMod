@@ -13,7 +13,7 @@ the shipped official localization table and asserts both directions:
      back into player-facing copy).
 
 Table resolution order: $GAME_PATH (the repo's existing convention, see
-compile_official.bat) -> docs/官方本地化表/ snapshot -> skip.
+compile_official.bat) -> docs/reference/official-localization/ snapshot -> skip.
 
 Skipping is deliberate: the tables are base-game assets and are git-ignored
 (.gitignore /docs/*), so a fresh clone or CI has neither. A hard failure there
@@ -30,7 +30,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "tests" / "official_name_references.tsv"
 WIKI = ROOT / "WikiContent"
-SNAPSHOT = ROOT / "docs" / "官方本地化表"
+SNAPSHOT = ROOT / "docs" / "reference" / "official-localization"
 
 TABLES = {
     "zh": "ChineseSimplified.csv",
@@ -126,7 +126,7 @@ def main():
         return skip(
             "official localization tables not found, so nothing was verified. Set "
             "GAME_PATH to your Escape from Duckov install, or copy the tables into "
-            "docs/官方本地化表/ (see its README).")
+            "docs/reference/official-localization/ (see its README).")
 
     tables = {}
     for lang, filename in TABLES.items():

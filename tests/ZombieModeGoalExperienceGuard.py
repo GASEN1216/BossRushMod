@@ -1,6 +1,6 @@
 """ZombieModeGoalExperienceGuard: player-facing ZombieMode goal invariants.
 
-This guard covers the issues from docs/2026-05-03_末日丧尸模式_goal执行文档.md:
+This guard covers the issues from docs/design/zombie-mode/末日丧尸模式_goal执行文档.md:
 - wave completion must clear only the player safe-zone radius, not wipe all ambient zombies;
 - damage reduction must reduce ElementFactor_Physics instead of increasing it;
 - beacon and cash text must match actual behavior;

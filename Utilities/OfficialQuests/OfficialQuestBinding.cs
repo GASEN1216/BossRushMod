@@ -57,7 +57,7 @@ namespace BossRush
         /// <summary>可选：官方任务详情页「所需物品」栏显示的交付物（0 = 不显示）。纯展示。</summary>
         internal int RequiredItemId;
         internal int RequiredItemCount;
-        /// <summary>可选：官方完成面板按 Reward_Money 显示的金额（0 = 无）。真正发放见 <see cref="PayReward"/>。</summary>
+        /// <summary>可选：官方完成面板按 Reward_Money 显示的金额（0 = 无）。纯展示；真正发放由各客户端的交付事务负责。</summary>
         internal int RewardMoney;
         /// <summary>官方可接取页的门（顶掉 Quest.MeetsPrerequisit）。</summary>
         internal Func<bool> CanOffer;
@@ -73,7 +73,7 @@ namespace BossRush
         internal OfficialQuestCommit Accept;
         /// <summary>官方完成按钮 → 写 Mod 交付事实。必填；返回 false 则官方任务不进 history。</summary>
         internal OfficialQuestCommit Deliver;
-        /// <summary>可空：交付「从未交付变成已交付」那一拍调用一次（天空岛在这里发钱；征程为 null，发钱归交付事务）。</summary>
+        /// <summary>可空：交付「从未交付变成已交付」那一拍调用一次。现有客户端（天空岛、鸭王征程）都传 null，发钱与交付事实在各自的交付事务里一起提交；留给以后需要交付后单独发奖的客户端。</summary>
         internal Action PayReward;
         /// <summary>事实指纹：变化时刷新给予者标记。</summary>
         internal Func<int> StateStamp;

@@ -436,7 +436,7 @@ Intermission / TransferWindow / HallOfFame / Suspended`，**没有任何一条�
 - **押注跟着这一场走**（同日第二轮）：技术重试、恢复回落、挂起 / 关停 / 切图中止（`TryReturnRealStakeOnAbort`）都不退，重锁时经 `ModeHCashBetService.ReservedFor` 沿用挂着的那一笔、按重打结果结算；只有恢复页放弃赛季、开新赛季对到上一季、F3 清理才退。旧版一中断就整额退回，打输了强退重进等于免费重掷。
 - **押背包物品**（同日第二轮，第三轮去掉限制并改发奖品）：押注行「押物品」打开 `ModeHPage.ItemBet` 卡片栅格选背包里的东西，押什么、押几件都不限（只挡任务物品与估值为 0 的），估值 = 官方总价 × 0.5 的商人收购口径，只管下一场。物品侧 `ModeH/ModeHItemBetStake.cs` 是玩家资产访问白名单的一条：只读主角色背包，物品押上**不离开背包**；输了由 `ForfeitLocked` 收走仍在玩家身上的那几件，找不到的按估值从余额扣到 0 为止；赢了东西留着、另发奖品——品质 = 押品按估值加权的平均品质，总价值 = 「赔付 − 估值」，件数 = 押上件数（最多 6），从 `BossRushQualityItemPool` 挑、经 `ModeHRewardItemPool.TryInstantiate` 实例化，账本记成才 `SendToPlayer(prize, true, false)` 发，凑不满的折成钱；读档后按账本 typeId / 数量重新认领。账本同一本（`kind`、`items`、`charged`、`prizes`、`prizeCash`）。
 - ESC（同日第二轮）：页面动作可标 `IsCancel`（整备页与押物品页的「完成」、恢复壳的「稍后处理」），ESC 等于点它；没有返回语义的页不接 ESC，照常交给官方暂停菜单。
-- 守卫 `tests/ModeHCashBetGuard.py`、`tests/ModeHIsolationGuard.py`（`check_item_bet_stake`）；设计与回退见本地 `docs/设计文档/鸭王杯押钱_2026-09-24.md`。
+- 守卫 `tests/ModeHCashBetGuard.py`、`tests/ModeHIsolationGuard.py`（`check_item_bet_stake`）；设计与回退见本地 `docs/design/鸭王杯押钱_2026-09-24.md`。
 
 ## 真实仓库抵押（§22）
 
@@ -774,4 +774,4 @@ owner 人工实测第 6 条：「一进去就在跑什么契约」「选完武�
 - 选人页与结算页加 Mode H 横幅（共享组件 `Common/UI/BossRushUIHero.cs`）；结算页顶部大字显示胜 / 负 / 超时 / 弃赛（旧版 `Body` 在有逐行内容时不渲染，胜负从来没显示过）。
 - 按钮口径：每页至多一个 `AccentFill` 主按钮，不可逆操作 `Danger`，其余次级描边按钮；选人卡整张可点。同页刷新不重播打开动画、保住滚动位置。
 - 复核补缺：凑不出接力搭档时选人页有「退出本赛季」按钮（复用既有退出路径、不退船票）；热身文案不再写「只做这一次」；无报价的转会窗口自动关窗直进下一场（F3 `MODE_H_FULL_SEASON` 已接受这种情况）；12 位选手描述只写战斗代码真实实现的行为；打法标签改为「打持久战」「专收残血」。
-- 新文件 `ModeH/ModeHUIPageParts.cs`（从 `ModeHUIPages.cs` 拆出，行数预算）。详情：本地 `docs/代码审查/2026-09-23-审美审查/fix_modeH_report.md`。
+- 新文件 `ModeH/ModeHUIPageParts.cs`（从 `ModeHUIPages.cs` 拆出，行数预算）。详情：本地 `docs/reports/testing/2026-09-23-UI与特效审美-看图清单.md`。

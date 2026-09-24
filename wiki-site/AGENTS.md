@@ -159,7 +159,7 @@ grep -rho '<a class="i brs-eref"[^>]*><img[^>]*><strong>[^<]*' wiki-site/docs/.v
   16 件装备的 tier 现已齐全，其中龙裔 / 龙王套装、龙息、龙铳的值**不在代码或正文里**，
   是用 UnityPy 从 `Assets/Equipment/dragon_equipment`、`dragonking_equipment` 预制体的
   typetree 读出来的（`Quality` 字段）。改这几件的品质要重读预制体，别猜。
-- `物品 ID` 行抄自 `docs/Bossrush使用物品ID表.md`。
+- `物品 ID` 行抄自 `docs/reference/Bossrush使用物品ID表.md`。
   **那份表不在 git 里**（`.gitignore` 挡了 `/docs/*`），所以 CI 无法交叉校验，
   guard 也没法管——改 TypeID 时要人工同步这里，别指望有东西提醒你。
 

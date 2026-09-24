@@ -117,7 +117,7 @@ namespace BossRush
 
     /// <summary>
     /// 词缀锻造占用的 TypeID。与 Config/ConfigItemIds.cs 是同一个 partial class。
-    /// 台账见 docs/Bossrush使用物品ID表.md 与 AGENTS.md 4.3：严格递增、不复用、不回填。
+    /// 台账见 docs/reference/Bossrush使用物品ID表.md 与 AGENTS.md 4.3：严格递增、不复用、不回填。
     /// </summary>
     public static partial class BossRushItemIds
     {

@@ -1,7 +1,7 @@
 # DebugAndTools/SkyIsland/AGENTS.md — 天空岛（晴岚群岛）专项规则
 
 > 先读根目录 `AGENTS.md`。本文件只记天空岛独有的约束与踩过的坑。
-> 每轮的数字、包体大小、验证记录写在 `FIX_TRACKER.md`；设计稿、待拍板与人工验证清单在 `docs/天空岛_*.md`、`docs/制作教程/天空岛/`（local-only）。
+> 每轮的数字、包体大小、验证记录写在 `FIX_TRACKER.md`；设计稿、待拍板与人工验证清单在 `docs/reports/sky-island/天空岛_*.md`、`docs/guides/sky-island/`（local-only）。
 > 官方游戏 API 的静默失败类陷阱（刷怪距离休眠、搜刮箱随机关闭、品质静默降级等）全仓共用，收在 `docs/contracts.md` §7.1。
 
 ## 1. 范围
@@ -24,7 +24,7 @@
 - **L2 隔离回归**：守卫、执行回归、离线几何 / 导航 / 属性测试全绿。
 - **L3 实机**：真实游戏进程里跑出来的结果。
 
-编译绿 + 守卫绿 + 部署成功不等于「已生效」「实际可用」。离线能证的（几何可达、导航连通、落点复算、同点交互竞争、掉落池品质带）做成可重跑的属性测试；证不了的写进 `docs/制作教程/天空岛/天空岛_待人工验证清单.md`，粒度到按哪个键、看哪行 HUD、什么算不合格。`Assets/Data/GameplayCoverage.json` 里没跑过的用例不标 PASS。
+编译绿 + 守卫绿 + 部署成功不等于「已生效」「实际可用」。离线能证的（几何可达、导航连通、落点复算、同点交互竞争、掉落池品质带）做成可重跑的属性测试；证不了的写进 `docs/guides/sky-island/天空岛_待人工验证清单.md`，粒度到按哪个键、看哪行 HUD、什么算不合格。`Assets/Data/GameplayCoverage.json` 里没跑过的用例不标 PASS。
 
 ## 3. 内容设计
 
@@ -101,6 +101,6 @@ python tools/verify_sky_island_bundle_shaders.py
 ## 9. 相关文档
 
 - `ArtSource/SkyIsland/README.md`（资源与打包）、`OFFICIAL_SCENE_CONTRACT.md`（独立官方场景合同）、`NAVIGATION.md`（导航与重建顺序）。
-- `docs/架构说明/自研着色器与官方渲染管线约定.md`。
-- `docs/制作教程/天空岛/天空岛_待人工验证清单.md`：实机验收从这里开始。
-- `docs/制作教程/从零搭建自定义场景_Blender到Unity到Mod完整教程.md`：新增一张官方级 Mod 地图的完整流程。
+- `docs/architecture/自研着色器与官方渲染管线约定.md`。
+- `docs/guides/sky-island/天空岛_待人工验证清单.md`：实机验收从这里开始。
+- `docs/guides/从零搭建自定义场景_Blender到Unity到Mod完整教程.md`：新增一张官方级 Mod 地图的完整流程。

@@ -8,7 +8,7 @@
     因为网关的 GPT Image 系列不接受 background=transparent，且返回尺寸不受控
     （2.5-flare 实测：请求 1024x1024 实回 1536x1024）。模型名见 tools/imagegen_model.py。
   - 所有主体都必须反复点名 anthropomorphic DUCK：negative prompt 挡不住「鸭变人」，
-    这是 2026-08-29 实测结论，见 docs/制作教程/AI图片生成与Unity自动打包流程.md。
+    这是 2026-08-29 实测结论，见 docs/guides/AI图片生成与Unity自动打包流程.md。
 
 用法（需要网络出口，密钥见 docs/AI生图API和密钥.md）：
     export OPENAI_BASE_URL=... OPENAI_API_KEY=...

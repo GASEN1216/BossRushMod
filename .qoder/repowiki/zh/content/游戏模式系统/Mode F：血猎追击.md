@@ -379,4 +379,4 @@ Mode F 通过清晰的状态机驱动高压生存体验，结合悬赏系统与�
 - 横幅只保留阶段切换、榜首变更与胜负；颜色一律 token（得到 `SuccessText`、命火 / 金 `WarningText`、危险 `DangerText`），不再用纯红纯绿。
 - 击杀奖励气泡改为分段换行、收益用 `SuccessText`；赏金雷达字改用 TMP 距离场描边（`BossRushUIKit.ApplyWorldTextOutline`，旧的 `UI.Outline` 挂在 TMP 上无效），隐藏改淡出。
 - 放置预览与维修高亮改由 `ModeF/ModeFFortificationHologramFx.cs` 负责（旧预览着色器不支持透明，0.4 alpha 不生效，出来是实心纯色模型）。
-- 详情：本地 `docs/代码审查/2026-09-23-审美审查/fix_modesGEF_report.md`、`fix_vfxA_report.md`。
+- 详情：本地 `docs/reports/testing/2026-09-23-UI与特效审美-看图清单.md`、`fix_vfxA_report.md`。

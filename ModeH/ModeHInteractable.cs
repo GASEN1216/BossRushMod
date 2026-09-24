@@ -193,7 +193,7 @@ namespace BossRush
 
         /// <summary>
         /// Mode H 内解析宿主的唯一入口。集中一处便于单例引用分类守卫审计，
-        /// 也避免各处重复解析单例（`docs/testing/2026-05-14-modbehaviour-instance-classification.md`
+        /// 也避免各处重复解析单例（`docs/reference/2026-05-14-modbehaviour-instance-classification.md`
         /// 里 ModeH 的基线就是「只在一个解析器里取活动 mod 实例」）。
         /// 运行时模块的换档回调也走这里，不再自己取一次单例。
         /// </summary>

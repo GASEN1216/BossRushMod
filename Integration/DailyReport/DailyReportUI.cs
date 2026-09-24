@@ -38,7 +38,7 @@ namespace BossRush
     {
         #region 纸张配色（局部，不进共享 token）
 
-        // 2026-09-23 第五轮按参考图 docs/testing/image-9.png 取色：纸面与底图生成器的 PAPER 同值
+        // 2026-09-23 第五轮按参考图 docs/reference/images/日报UI参考图.png 取色：纸面与底图生成器的 PAPER 同值
         // （底图缺席时的纯色兜底要和底图一个颜色），签到格是浅米色胶囊 / 深绿 / 暖黄，按钮是深金棕。
         private static readonly Color PaperBase = new Color(0.925f, 0.89f, 0.82f, 0.99f);
         private static readonly Color PaperInk = new Color(0.13f, 0.11f, 0.09f, 1f);

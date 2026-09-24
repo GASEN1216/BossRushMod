@@ -212,12 +212,12 @@ def main():
         registered = re.search(r"已登记范围：`500001-(\d+)`", contracts.read_text(encoding="utf-8-sig"))
         if not registered or int(registered.group(1)) < max(NEW_IDS.values()) or (ledger and registered.group(1) != ledger.group(1)):
             errors.append("docs/contracts.md 的 TypeID 台账没有覆盖到 500082，或与 AGENTS.md §4.3 的登记上限不一致")
-    id_table = ROOT / "docs/Bossrush使用物品ID表.md"
+    id_table = ROOT / "docs/reference/Bossrush使用物品ID表.md"
     if id_table.exists():
         table_text = id_table.read_text(encoding="utf-8-sig")
         next_free = re.search(r"下一可用 ID：\*\*(\d+)\*\*", table_text)
         if "500073-500082" not in table_text or not next_free or not ledger or int(next_free.group(1)) != int(ledger.group(1)) + 1:
-            errors.append("docs/Bossrush使用物品ID表.md 缺批次三那一段（500073-500082），或「下一可用 ID」没有紧接登记上限")
+            errors.append("docs/reference/Bossrush使用物品ID表.md 缺批次三那一段（500073-500082），或「下一可用 ID」没有紧接登记上限")
 
     # ---- 3. 物品配置 ----
     for name in MATERIALS:

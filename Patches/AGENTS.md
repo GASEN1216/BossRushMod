@@ -1,6 +1,6 @@
 # Patches/AGENTS.md — Harmony 补丁专项规则
 
-> 先读根目录 `AGENTS.md`。官方 API 的静默失败类陷阱见 `docs/contracts.md` §7.1；官方游戏更新后的复查清单见 `docs/架构说明/Harmony补丁契约稳定性.md`（local-only）。
+> 先读根目录 `AGENTS.md`。官方 API 的静默失败类陷阱见 `docs/contracts.md` §7.1；官方游戏更新后的复查清单见 `docs/architecture/Harmony补丁契约稳定性.md`（local-only）。
 
 ## 职责边界
 

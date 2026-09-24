@@ -18,11 +18,6 @@ namespace BossRush
         public const int WeaponTypeId = 500034;
 
         /// <summary>
-        /// AssetBundle 路径（相对于 Mod 目录）
-        /// </summary>
-        public const string AssetBundlePath = "Assets/Equipment/fenhuang_halberd";
-
-        /// <summary>
         /// 武器 Prefab 名称
         /// </summary>
         public const string WeaponPrefabName = "FenHuangHalberd_Item";

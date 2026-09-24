@@ -5,7 +5,7 @@
 // 语义未变，仍是同一个 `public static partial class BossRushItemIds`
 // （遗种巢的 RelicEgg 在 Config/ConfigPetNest.cs 里，也是这个 partial 的一部分）。
 //
-// 台账见 docs/Bossrush使用物品ID表.md 与 AGENTS.md 4.3：
+// 台账见 docs/reference/Bossrush使用物品ID表.md 与 AGENTS.md 4.3：
 // TypeID 严格递增、不复用、不回填已删 ID。
 // ============================================================================
 

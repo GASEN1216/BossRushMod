@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Guard: UI 图集换皮加载器的 fail-open 契约、两个时序陷阱，以及六张图的分档接线。
 
-规格见 docs/制作教程/BossRushUI_图集规格.md。守这几件事：
+规格见 docs/guides/BossRushUI_图集规格.md。守这几件事：
 
   1. **fail-open**。bundle 缺失/加载失败一律不注入，程序化圆角皮肤继续工作。
      这与 Mode G 展示资源的 fail-closed 完全相反：那里缺资源就该拒绝进入，
