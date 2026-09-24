@@ -19,3 +19,4 @@ RunOnly 清理子夹具逐字抽取 `ZombieModeRuntimeModule` 的登记、敌人
 EnemyRuntime 子项逐字抽取 `ZombieModeRuntimeModule_EnemyRuntime` 的实例 ID / marker 索引与 marker 注册方法，并抽取原宿主入口、视觉复原 / 脚印释放 helper；RunId 和场景有效性门直接抽取模块生产方法。可观测 Unity 替身覆盖 stale RunId 在组件访问前早返、现有 marker 重用、marker 状态重置、比例恢复、脚印池释放、索引缓存命中 / fallback / unregister / clear，以及索引写入先于 RunOnly 清理登记；RunOnly owner 只用夹具记录登记时序并触发抽取自宿主的真实清理回调，真正 RunOnly Registry 行为仍由前述清理子夹具验证。该子项不模拟真实 AI、Unity 生命周期和游戏场景。
 
 Zombie HUD 子项逐字抽取 `ZombieModeRuntimeModule_Hud` 的创建、显隐状态更新、销毁、文本缓存与净化点滚动方法。Unity HUD component、宿主和 RunOnly 登记由可观测替身提供；断言覆盖过期 RunId 早返、创建与登记顺序、独立实例缓存、重复显隐/销毁幂等、文本变化才刷新，以及净化点正向累计、插值、稳定停止和减少路径。夹具不创建 TMP / Canvas，不证明真实画面排版与官方 HUD 隐藏的实机效果。
+撤离结算子项逐字抽取 `ZombieModeRuntimeModule_Extraction.cs` 的成功结算、净化点现金结算与官方 `CountDownArea` 成功事件分发方法。可观测替身验证现金失败时保留净化点并恢复撤离选择、现金成功后先通知战役再按停止 / 成功顺序派发并清理、成功回调重复到达不重复结算，以及缺少成功监听时按通知撤离、回基地、清理的顺序兜底；不模拟真实 `EconomyManager`、官方场景加载或 Unity 事件系统。
