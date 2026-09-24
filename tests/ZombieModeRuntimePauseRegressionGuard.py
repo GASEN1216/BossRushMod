@@ -5,8 +5,9 @@ import sys
 
 
 POLLUTION_PARTS = [
-    Path("ZombieMode/ZombieModePollution.cs"),
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_Pollution.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 
@@ -102,7 +103,7 @@ def main() -> int:
     except AssertionError as exc:
         return fail(str(exc))
 
-    boss_text = Path("ZombieMode/ZombieModeBossController.cs").read_text(encoding="utf-8")
+    boss_text = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs").read_text(encoding="utf-8")
     try:
         require(boss_text, "float now = GetZombieModeRuntimeNow();", "boss controller must use pause-adjusted runtime clock")
         require(boss_text, "instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow();", "boss lifecycle timestamps must use runtime clock")

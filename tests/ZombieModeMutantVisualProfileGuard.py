@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-POLLUTION = Path("ZombieMode/ZombieModePollution.cs")
+POLLUTION = Path("ZombieMode/ZombieModeRuntimeModule_Pollution.cs")
 RUNTIME = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
@@ -102,9 +102,9 @@ def main() -> int:
         "ParticleSystem",
         "renderer.transform.localScale = renderer.transform.localScale * visualScale",
     ]
-    visual_start = pollution.index("private void ApplyZombieModeMutationVisualIdentity")
-    visual_end = pollution.index("private void ApplyZombieModeSpecialKindTuning", visual_start)
-    visual_body = pollution[visual_start:visual_end]
+    visual_body = extract_method(pollution, "private void ApplyZombieModeMutationVisualIdentity")
+    if not visual_body:
+        return fail("mutation visual identity method body not found")
     for token in forbidden:
         if token in visual_body:
             return fail("forbidden visual implementation -> " + token)

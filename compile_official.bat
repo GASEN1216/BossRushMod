@@ -342,6 +342,7 @@ echo(Integration\BossRushIntegrationRuntimeModule_DeferredBootstrap.cs
 echo(Integration\BossRushIntegrationRuntimeModule_WikiBook.cs
 echo(Integration\BossRushIntegrationRuntimeModule_BirthdayCake.cs
 echo(Integration\BossRushIntegrationRuntimeModule_Travel.cs
+echo(Integration\BossRushIntegrationRuntimeModule_Initialization.cs
 echo(Integration\BossRushIntegrationRuntimeModule_RuntimeHooks.cs
 echo(Integration\BossRushIntegration_StartAndScene.cs
 echo(Integration\IntegrationDeferredBootstrap.cs
@@ -461,6 +462,11 @@ echo(WavesArena\WavesArenaRuntimeModule_WaveDeaths.cs
 echo(WavesArena\WavesArenaRuntimeModule_LootState.cs
 echo(WavesArena\WavesArenaRuntimeModule_Start.cs
 echo(WavesArena\WavesArenaRuntimeModule_EnemyMaintenance.cs
+echo(WavesArena\WavesArenaRuntimeModule_LootCatalog.cs
+echo(WavesArena\WavesArenaRuntimeModule_LootTracking.cs
+echo(WavesArena\WavesArenaRuntimeModule_LootCleanup.cs
+echo(WavesArena\WavesArenaRuntimeModule_DragonLoot.cs
+echo(WavesArena\WavesArenaRuntimeModule_RandomBossLoot.cs
 echo(WavesArena\WavesArenaRuntimeHooks.cs
 echo(WavesArena\BossRushEntryFlow.cs
 echo(WavesArena\WavesArenaEnemyMaintenance.cs
@@ -639,6 +645,11 @@ echo(ZombieMode\ZombieModeTuning.cs
 echo(ZombieMode\ZombieModeRuntimeModule.cs
 echo(ZombieMode\ZombieModeRuntimeModule_EnemyRuntime.cs
 echo(ZombieMode\ZombieModeRuntimeModule_InventoryTransfer.cs
+echo(ZombieMode\ZombieModeRuntimeModule_Hud.cs
+echo(ZombieMode\ZombieModeRuntimeModule_BossController.cs
+echo(ZombieMode\ZombieModeRuntimeModule_Pollution.cs
+echo(ZombieMode\ZombieModeRuntimeModule_PollutionSkills.cs
+echo(ZombieMode\ZombieModeRuntimeModule_PollutionTuning.cs
 echo(ZombieMode\ZombieModeRuntimeHooks.cs
 echo(ZombieMode\ZombieModeEntry.cs
 echo(ZombieMode\ZombieModeEntryDebt.cs
@@ -827,6 +838,7 @@ echo(Integration\NPCs\Common\NPCModuleRegistry.cs
 echo(Integration\NPCs\Common\CommonNpcRuntimeModule.cs
 echo(Integration\NPCs\Common\CommonNpcRuntimeHooks.cs
 echo(Integration\NPCs\Courier\CourierNPC.cs
+echo(Integration\NPCs\Courier\CourierNpcRuntimeModule.cs
 echo(Integration\NPCs\Courier\CourierNPCController.cs
 echo(Integration\NPCs\Courier\CourierMovement.cs
 echo(Integration\NPCs\Courier\CourierInteractables.cs

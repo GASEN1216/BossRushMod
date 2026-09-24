@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Duckov.Utilities;
+using BossLootBoxLoaderReflection = WavesArenaRuntimeModule.BossLootBoxLoaderReflection;
 
 namespace UnityEngine
 {
@@ -58,6 +59,8 @@ namespace Duckov.Utilities
         public void StartSetup() { SetupCalls++; }
     }
 }
+public static class WavesArenaRuntimeModule
+{
 public static class BossLootBoxLoaderReflection
 {
     public static Type LoaderEntryType = typeof(LootBoxLoader.Entry);
@@ -73,6 +76,7 @@ public static class BossLootBoxLoaderReflection
     public static FieldInfo ExcludeTagsField = typeof(LootBoxLoader).GetField("excludeTags");
     public static FieldInfo FixedItemsField = typeof(LootBoxLoader).GetField("fixedItems");
     public static FieldInfo FixedChanceField = typeof(LootBoxLoader).GetField("fixedChance");
+}
 }
 public static class RandomEventsTuning { public const string LogPrefix = "test"; }
 public partial class ModBehaviour

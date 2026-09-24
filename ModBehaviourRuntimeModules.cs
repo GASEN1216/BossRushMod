@@ -17,6 +17,8 @@ namespace BossRush
             runtimeModuleHost.Register(new SkyIslandRuntimeModule());
             runtimeModuleHost.Register(new AchievementRuntimeModule());
             runtimeModuleHost.Register(new CommonNpcRuntimeModule());
+            courierNpcRuntime = new CourierNpcRuntimeModule();
+            runtimeModuleHost.Register(courierNpcRuntime);
             goblinNpcRuntime = new GoblinNpcRuntimeModule();
             runtimeModuleHost.Register(goblinNpcRuntime);
             wavesArenaRuntime = new WavesArenaRuntimeModule();
@@ -95,6 +97,7 @@ namespace BossRush
 
         /// <summary>官方任务投影核心唯一运行时实例。</summary>
         private WavesArenaRuntimeModule wavesArenaRuntime;
+        private CourierNpcRuntimeModule courierNpcRuntime;
         private ModeFRuntimeModule modeFRuntime;
         private IntegrationRuntimeModule bossRushIntegrationRuntime;
 

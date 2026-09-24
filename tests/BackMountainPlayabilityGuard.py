@@ -103,7 +103,7 @@ def validate(root):
         return ''
 
     special = compact(read('LootAndRewards/LootAndRewardsSpecialLoot.cs'))
-    require('TryAddBackMountainSeedLoot(inv,bossMain);' in body(special, 'privatevoidReturnPendingExtraLootToCharacterItem('),
+    require('TryAddBackMountainSeedLoot(inv,bossMain);' in body(special, 'internalvoidReturnPendingExtraLootToCharacterItem('),
             'SeedDrops: 官方箱路径（随机掉落关闭 / 未追踪 / 找不到模板）必须在 ReturnPendingExtraLootToCharacterItem 里投种子')
     random_loot = compact(read('LootAndRewards/LootAndRewardsRandomBossLoot.cs'))
     gate = random_loot.find('if(config==null||!config.enableRandomBossLoot){')
@@ -118,10 +118,10 @@ def validate(root):
     hell_body = body(random_loot[hell:], 'if(') if hell >= 0 else ''
     require('TryDropBackMountainSeedIntoWorld(bossMain);FinalizeBossRushLootboxPathTracking(bossMain);' in hell_body,
             'SeedDrops: 无间炼狱没有箱子，种子必须在 Finalize 之前世界投放')
-    integration = compact(read('Integration/BossRushIntegration.cs'))
-    require('injectedCount+=BackMountainItems.TryInjectSeedsIntoShop(shop,this);'
-            in body(integration, 'internalintTryInjectAllBossRushItemsIntoShop('),
-            'SeedShop: 基地售货机注入管线必须挂上后山种子')
+    integration_module = compact(read('Integration/BossRushIntegrationRuntimeModule_Initialization.cs'))
+    require('injectedCount+=BackMountainItems.TryInjectSeedsIntoShop(shop,_owner);'
+            in body(integration_module, 'internalintTryInjectAllBossRushItemsIntoShop('),
+            'SeedShop: IntegrationRuntimeModule 的基地售货机注入管线必须挂上后山种子')
     shop = body(items, 'internalstaticintTryInjectSeedsIntoShop(')
     require('if(!inst.IsBaseHubNormalMerchantShop(shop))return0;' in shop and 'if(!inst.IsBackMountainConfiguredEnabled())return0;' in shop
             and 'if(!GardenSeedInjector.IsGardenAvailable())return0;' in shop and 'EnsureRuntimeRegistration(def.TypeId)' in shop,

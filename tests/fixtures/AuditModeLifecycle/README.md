@@ -17,3 +17,5 @@ AutotestBuffer 子夹具另外逐字抽取实际 CountOwnedItems / CountBuffered
 RunOnly 清理子夹具逐字抽取 `ZombieModeRuntimeModule` 的登记、敌人 / 未知记录剪枝、单对象移除、RunId 失效及整局清理方法，并抽取宿主薄桥和 `ZombieModeRunOnlyRecord`；直接链接生产 `RunScopedRegistry.ForEachReverse`。Unity 对象替身模拟销毁后判空和 `Destroy`，宿主替身仅记录保险、效果、支援队列、事件索引、奖励 UI 与地图隔离清理动作。断言覆盖旧 RunId 拒绝登记、奖励 UI 死记录回收、对象单项移除、敌人与未知记录剪枝、失败及成功撤离清理顺序、反向回收、RunId 在记录回调前失效以及终局后账本清空；不模拟真实 Unity 场景切换与玩家存档。
 
 EnemyRuntime 子项逐字抽取 `ZombieModeRuntimeModule_EnemyRuntime` 的实例 ID / marker 索引与 marker 注册方法，并抽取原宿主入口、视觉复原 / 脚印释放 helper；RunId 和场景有效性门直接抽取模块生产方法。可观测 Unity 替身覆盖 stale RunId 在组件访问前早返、现有 marker 重用、marker 状态重置、比例恢复、脚印池释放、索引缓存命中 / fallback / unregister / clear，以及索引写入先于 RunOnly 清理登记；RunOnly owner 只用夹具记录登记时序并触发抽取自宿主的真实清理回调，真正 RunOnly Registry 行为仍由前述清理子夹具验证。该子项不模拟真实 AI、Unity 生命周期和游戏场景。
+
+Zombie HUD 子项逐字抽取 `ZombieModeRuntimeModule_Hud` 的创建、显隐状态更新、销毁、文本缓存与净化点滚动方法。Unity HUD component、宿主和 RunOnly 登记由可观测替身提供；断言覆盖过期 RunId 早返、创建与登记顺序、独立实例缓存、重复显隐/销毁幂等、文本变化才刷新，以及净化点正向累计、插值、稳定停止和减少路径。夹具不创建 TMP / Canvas，不证明真实画面排版与官方 HUD 隐藏的实机效果。

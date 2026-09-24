@@ -5,10 +5,11 @@ import sys
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 WAVE_CONTROLLER = Path("ZombieMode/ZombieModeWaveController.cs")
-POLLUTION = Path("ZombieMode/ZombieModePollution.cs")
+POLLUTION = Path("ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs")
 HUD = Path("ZombieMode/ZombieModeHudController.cs")
+HUD_RUNTIME = Path("ZombieMode/ZombieModeRuntimeModule_Hud.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-BOSS_CONTROLLER = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS_CONTROLLER = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
 REWARD_CATALOG = Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs")
 REWARD_PREPARATION = Path("ZombieMode/ZombieModeRewardPreparationDuration.cs")
@@ -45,6 +46,7 @@ def main() -> int:
     wave_text = WAVE_CONTROLLER.read_text(encoding="utf-8")
     pollution_text = POLLUTION.read_text(encoding="utf-8")
     hud_text = HUD.read_text(encoding="utf-8")
+    hud_runtime_text = HUD_RUNTIME.read_text(encoding="utf-8")
     spawner_text = SPAWNER.read_text(encoding="utf-8")
     boss_controller_text = BOSS_CONTROLLER.read_text(encoding="utf-8")
     drops_text = DROPS.read_text(encoding="utf-8")
@@ -181,10 +183,10 @@ def main() -> int:
         if required not in wave_text:
             return fail("multi-Boss waves must settle all Bosses and preserve per-Boss drops -> " + required)
 
-    if "int total = GetZombieModeBossCountForWave(zombieModeRunState.CurrentWave);" not in hud_text:
+    if "int total = owner.GetZombieModeBossCountForWaveForHud(runState.CurrentWave);" not in hud_runtime_text:
         return fail("Boss HUD total must use the planned wave count while Bosses are still spawning")
 
-    if "int total = zombieModeRunState.CurrentWaveBossInstances.Count;" in hud_text:
+    if "int total = runState.CurrentWaveBossInstances.Count;" in hud_runtime_text:
         return fail("Boss HUD total must not grow incrementally with spawned instances")
 
     if "PeriodicSpawnIntervalSeconds" in text + wave_text:
@@ -225,12 +227,12 @@ def main() -> int:
         return fail("Boss cycle scaling must not increase Boss move speed")
 
     for required in [
-        "ZombieModeTuning.TitanShockwaveDamage * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave)",
-        "ZombieModeTuning.HunterDashDamage * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave)",
-        "ZombieModeTuning.CorruptorZoneDamagePerSecond * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave)",
-        "ZombieModeTuning.CorruptorPoisonPathDamagePerSecond * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave)",
-        "ZombieModeTuning.SplitterBossDeathDamage * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave)",
-        "ZombieModeTuning.CorruptorDeathCloudDamagePerSecond * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave)",
+        "ZombieModeTuning.TitanShockwaveDamage * owner.GetZombieModeBossDamageScaleForRuntimeModule(runState.CurrentWave)",
+        "ZombieModeTuning.HunterDashDamage * owner.GetZombieModeBossDamageScaleForRuntimeModule(runState.CurrentWave)",
+        "ZombieModeTuning.CorruptorZoneDamagePerSecond * owner.GetZombieModeBossDamageScaleForRuntimeModule(runState.CurrentWave)",
+        "ZombieModeTuning.CorruptorPoisonPathDamagePerSecond * owner.GetZombieModeBossDamageScaleForRuntimeModule(runState.CurrentWave)",
+        "ZombieModeTuning.SplitterBossDeathDamage * owner.GetZombieModeBossDamageScaleForRuntimeModule(runState.CurrentWave)",
+        "ZombieModeTuning.CorruptorDeathCloudDamagePerSecond * owner.GetZombieModeBossDamageScaleForRuntimeModule(runState.CurrentWave)",
     ]:
         if required not in boss_controller_text:
             return fail("Boss skill damage does not consume the displayed cycle multiplier -> " + required)

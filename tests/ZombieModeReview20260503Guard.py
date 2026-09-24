@@ -30,8 +30,9 @@ REWARD_PARTS = [
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
 ]
 POLLUTION_PARTS = [
-    Path("ZombieMode/ZombieModePollution.cs"),
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_Pollution.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 
@@ -71,7 +72,7 @@ def read_pollution() -> str:
 
 def main() -> int:
     spawner = Path("ZombieMode/ZombieModeSpawner.cs")
-    boss = Path("ZombieMode/ZombieModeBossController.cs")
+    boss = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
     models = Path("ZombieMode/ZombieModeModels.cs")
     tuning = Path("ZombieMode/ZombieModeTuning.cs")
     pollution_text = read_pollution()
@@ -148,7 +149,7 @@ def main() -> int:
         err = must_contain(models, "TickZombieMode" + kind + "State")
         if err:
             return fail(err + "（每个 SkillState 子类需要 override Tick）")
-    err = must_contain(boss, "instance.SkillState.Tick(this, instance, now)")
+    err = must_contain(boss, "instance.SkillState.Tick(owner, instance, now)")
     if err:
         return fail(err)
     # 旧 switch 主体已废

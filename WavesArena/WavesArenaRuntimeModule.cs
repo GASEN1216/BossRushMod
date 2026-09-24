@@ -187,6 +187,7 @@ namespace BossRush
         public override void OnDestroy()
         {
             waveGeneration++;
+            ReleaseBossRandomLootTrackingOnDestroy();
             if (current == this) current = null;
             milestoneDelivery = null;
             owner = null;

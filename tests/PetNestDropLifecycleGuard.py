@@ -108,22 +108,22 @@ def check_service(errors):
 
 
 def check_hook_site(errors):
-    text = read_text(repo_path("LootAndRewards", "LootAndRewards.cs"))
+    text = read_text(repo_path("WavesArena", "WavesArenaRuntimeModule_LootTracking.cs"))
     if text is None:
-        errors.append("[File] 缺少 LootAndRewards/LootAndRewards.cs")
+        errors.append("[File] 缺少 WavesArena/WavesArenaRuntimeModule_LootTracking.cs")
         return
     code = strip_cs_comments(text)
 
-    if code.count("PetNestDropService.TryTrack(this, character);") != 1:
+    if code.count("PetNestDropService.TryTrack(owner, character);") != 1:
         errors.append("[挂接] RegisterBossRandomLootTracking 必须且只能并联一次 TryTrack")
     if code.count("PetNestDropService.ClearTracking(character);") != 1:
         errors.append("[挂接] ClearBossRandomLootTracking 必须且只能并联一次 ClearTracking")
 
     # 挂接必须在正确的函数体内
-    register = re.search(r"private void RegisterBossRandomLootTracking\([\s\S]{0,3000}?\n        \}", code)
-    if register is None or "PetNestDropService.TryTrack(this, character);" not in register.group(0):
+    register = re.search(r"internal void RegisterBossRandomLootTracking\([\s\S]{0,3000}?\n        \}", code)
+    if register is None or "PetNestDropService.TryTrack(owner, character);" not in register.group(0):
         errors.append("[挂接] TryTrack 必须在 RegisterBossRandomLootTracking 体内")
-    clear = re.search(r"private void ClearBossRandomLootTracking\([\s\S]{0,3000}?\n        \}", code)
+    clear = re.search(r"internal void ClearBossRandomLootTracking\([\s\S]{0,3000}?\n        \}", code)
     if clear is None or "PetNestDropService.ClearTracking(character);" not in clear.group(0):
         errors.append("[挂接] ClearTracking 必须在 ClearBossRandomLootTracking 体内")
 

@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-SOURCE = Path("LootAndRewards/LootAndRewardsRandomBossLoot.cs")
+SOURCE = Path("WavesArena/WavesArenaRuntimeModule_RandomBossLoot.cs")
 
 
 def fail(message: str) -> int:
@@ -36,7 +36,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 def main() -> int:
     text = SOURCE.read_text(encoding="utf-8")
-    body = extract_method_body(text, "private void RandomizeBossLoot_LootAndRewards(")
+    body = extract_method_body(text, "internal void RandomizeBossLoot_LootAndRewards(")
     if body is None:
         return fail("missing RandomizeBossLoot_LootAndRewards body")
 

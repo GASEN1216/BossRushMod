@@ -12,6 +12,7 @@ SERVICE = Path("Integration/NPCs/Courier/CourierPaidLootSweepService.cs")
 SERVICE_DELIVERY = Path("Integration/NPCs/Courier/CourierPaidLootSweepDelivery.cs")
 COURIER = Path("Integration/NPCs/Courier/CourierNPC.cs")
 COURIER_NPC_SOURCES = [
+    Path("Integration/NPCs/Courier/CourierNpcRuntimeModule.cs"),
     COURIER,
     Path("Integration/NPCs/Courier/CourierNPCController.cs"),
     Path("Integration/NPCs/Courier/CourierMovement.cs"),
@@ -78,6 +79,10 @@ def main() -> int:
     destroy_method = extract_method(courier_text, "public void DestroyCourierNPC()")
     if "CourierPaidLootSweepService.ReleasePendingSweepResultToPlayer(true, false);" not in destroy_method:
         return fail("AwenPaidLootSweepFallbackGuard: courier destroy does not release pending sweep result")
+
+    destroy_bridge = extract_method(COURIER.read_text(encoding="utf-8"), "public void DestroyCourierNPC()")
+    if "courierNpcRuntime.DestroyCourierNPC();" not in destroy_bridge:
+        return fail("AwenPaidLootSweepFallbackGuard: host destroy entry does not forward to courier runtime owner")
 
     reset_method = extract_method(tracker_text, "private void ResetModeEFLootboxTrackerState()")
     if "CourierPaidLootSweepService.ReleasePendingSweepResultToPlayer(true, false);" not in reset_method:

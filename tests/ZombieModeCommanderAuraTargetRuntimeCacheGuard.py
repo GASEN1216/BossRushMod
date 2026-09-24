@@ -6,7 +6,7 @@ import sys
 
 RUNTIME = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
-SKILLS = Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs")
+SKILLS = Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs")
 
 
 def fail(message: str) -> int:

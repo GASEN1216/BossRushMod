@@ -8,6 +8,7 @@ import sys
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 USERS = [
     Path("ZombieMode/ZombieModeBossController.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs"),
     Path("ZombieMode/ZombieModeSpawner.cs"),
     Path("ZombieMode/ZombieModeWaveController.cs"),
 ]

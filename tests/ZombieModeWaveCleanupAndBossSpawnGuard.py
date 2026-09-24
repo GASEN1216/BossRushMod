@@ -7,7 +7,7 @@ import sys
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
 WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-BOSS = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 
 
@@ -69,7 +69,7 @@ def main() -> int:
     ]:
         if token not in boss:
             return fail("boss stuck recovery missing -> " + token)
-    hurt_start = boss.find("private void HandleZombieModeBossHurt(")
+    hurt_start = boss.find("internal void HandleZombieModeBossHurt(")
     if hurt_start < 0:
         return fail("boss hurt handler missing")
     hurt_end = boss.find("private ", hurt_start + 20)

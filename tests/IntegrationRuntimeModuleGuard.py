@@ -13,6 +13,7 @@ MODULE_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule.cs"
 MODULE_RUNTIME_HOOKS_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_RuntimeHooks.cs"
 MODULE_MAP_OBJECTS_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_MapObjects.cs"
 MODULE_TRAVEL_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_Travel.cs"
+MODULE_INITIALIZATION_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_Initialization.cs"
 HOST_PATH = ROOT / "Integration/BossRushIntegration.cs"
 LIFECYCLE_PATH = ROOT / "Integration/BossRushIntegration_StartAndScene.cs"
 MAP_HOST_PATH = ROOT / "Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"
@@ -74,7 +75,8 @@ def main():
     module_runtime_hooks = clean_source(MODULE_RUNTIME_HOOKS_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_map_objects = clean_source(MODULE_MAP_OBJECTS_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_travel = clean_source(MODULE_TRAVEL_PATH.read_text(encoding="utf-8", errors="ignore"))
-    module = module_core + "\n" + module_runtime_hooks + "\n" + module_map_objects + "\n" + module_travel
+    module_initialization = clean_source(MODULE_INITIALIZATION_PATH.read_text(encoding="utf-8", errors="ignore"))
+    module = module_core + "\n" + module_runtime_hooks + "\n" + module_map_objects + "\n" + module_travel + "\n" + module_initialization
     host = clean_source(HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
     lifecycle = clean_source(LIFECYCLE_PATH.read_text(encoding="utf-8", errors="ignore"))
     map_host = clean_source(MAP_HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
@@ -90,6 +92,8 @@ def main():
         return fail("map-object behavior must be a single partial declaration of the registered module type")
     if module_travel.count("internal sealed partial class IntegrationRuntimeModule") != 1:
         return fail("travel behavior must be a single partial declaration of the registered module type")
+    if module_initialization.count("internal sealed partial class IntegrationRuntimeModule") != 1:
+        return fail("initialization and content wiring must be a single partial declaration of the registered module type")
     if "partial class ModBehaviour" in module:
         return fail("the runtime module source must not declare a ModBehaviour partial")
     if "private ModBehaviour _owner;" not in module or "_owner = owner;" not in method_body(module, "public override void OnAwake(ModBehaviour owner)"):
@@ -147,6 +151,91 @@ def main():
         return fail("purchase counter state must live only in IntegrationRuntimeModule")
     if "get { return bossRushIntegrationRuntime.Item105PurchaseCount; }" not in host or "set { bossRushIntegrationRuntime.Item105PurchaseCount = value; }" not in host:
         return fail("the old purchase counter reset point must remain a module-backed compatibility property")
+
+    dynamic_init = method_body(module_initialization, "internal void InitializeDynamicItems_Integration()")
+    if require_order(dynamic_init, [
+        "if (_owner.IntegrationDynamicItemsInitialized)", "_owner.IntegrationDynamicItemsInitialized = true;",
+        "_owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry()",
+        "_owner.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();",
+        "int itemCount = ItemFactory.LoadedItemCount;", "AwenLootSweepTokenConfig.EnsureRuntimeRegistration();",
+        "ZombieTideInvitationConfig.EnsureRuntimeFallbackRegistrationShell();",
+        "ZombieTideBeaconConfig.EnsureRuntimeFallbackRegistrationShell();",
+        "PortableSafeZoneDeviceConfig.EnsureRuntimeFallbackRegistrationShell();",
+        "PeaceCharmRuntime.InitializeRuntime();",
+    ], "InitializeDynamicItems_Integration"):
+        return fail("dynamic item initialization must preserve its one-shot latch and original registration order")
+    if "dynamicItemsInitialized" in module or "private bool _integrationDynamicItemsInitialized" in module:
+        return fail("dynamic initialization latch must remain the existing host-owned static state")
+    if "get { return dynamicItemsInitialized; }" not in host or "set { dynamicItemsInitialized = value; }" not in host:
+        return fail("dynamic initialization must bridge the existing host one-shot latch without duplicating it")
+    if "bossRushIntegrationRuntime.InitializeDynamicItems_Integration();" not in method_body(host, "private void InitializeDynamicItems_Integration()"):
+        return fail("legacy dynamic item initializer must remain a thin module bridge")
+
+    ticket_localization = method_body(module_initialization, "internal static void InjectBossRushTicketLocalization_Integration(int ticketTypeId)")
+    if require_order(ticket_localization, [
+        "LocalizationInjector.InjectTicketLocalization(ticketTypeId);",
+        "ModBehaviour.DevLog(\"[BossRush] 船票本地化注入完成\");",
+    ], "InjectBossRushTicketLocalization_Integration"):
+        return fail("ticket localization must preserve the existing type id and completion log")
+    if "IntegrationRuntimeModule.InjectBossRushTicketLocalization_Integration(bossRushTicketTypeId);" not in method_body(host, "private static void InjectBossRushTicketLocalization_Integration()"):
+        return fail("legacy ticket localization entrypoint must forward the existing registered type id")
+    mode_f_localization = method_body(module_initialization, "internal static void InjectModeFItemLocalization()")
+    if require_order(mode_f_localization, [
+        "bool isChinese = L10n.IsChinese;",
+        "InjectModeFItemLoc(BloodhuntTransponderConfig.LOC_KEY_DISPLAY",
+        "InjectModeFItemLoc(FoldableCoverPackConfig.LOC_KEY_DISPLAY",
+        "InjectModeFItemLoc(ReinforcedRoadblockPackConfig.LOC_KEY_DISPLAY",
+        "InjectModeFItemLoc(BarbedWirePackConfig.LOC_KEY_DISPLAY",
+        "InjectModeFItemLoc(EmergencyRepairSprayConfig.LOC_KEY_DISPLAY",
+        "InjectModeFItemLoc(FateEchoRelicConfig.LOC_KEY_DISPLAY",
+    ], "InjectModeFItemLocalization"):
+        return fail("Mode F localization must resolve the current language and retain every configured item")
+    loc_helper = method_body(module_initialization, "internal static void InjectModeFItemLoc(")
+    for token in (
+        'LocalizationHelper.InjectLocalization(locKey, displayName);',
+        'LocalizationHelper.InjectLocalization(locKey + "_Desc", description);',
+        'LocalizationHelper.InjectLocalization("Item_" + typeId, displayName);',
+        'LocalizationHelper.InjectLocalization("Item_" + typeId + "_Desc", description);',
+        'LocalizationHelper.InjectLocalization(nameCN, displayName);',
+        'LocalizationHelper.InjectLocalization(nameEN, displayName);',
+    ):
+        if token not in loc_helper:
+            return fail("Mode F localization must preserve the existing localization key set -> " + token)
+    if "IntegrationRuntimeModule.InjectModeFItemLocalization();" not in method_body(host, "private static void InjectModeFItemLocalization()"):
+        return fail("legacy Mode F localization entrypoint must remain a thin module bridge")
+    if "IntegrationRuntimeModule.InjectModeFItemLoc(locKey, typeId, nameCN, nameEN, descCN, descEN, isChinese);" not in method_body(host, "private static void InjectModeFItemLoc("):
+        return fail("legacy Mode F localization helper must retain its signature as a thin module bridge")
+
+    weapon_configs = method_body(module_initialization, "internal void RegisterCustomWeaponRuntimeConfigs()")
+    if require_order(weapon_configs, [
+        "NewWeaponRuntime.RegisterRuntimeConfigs();",
+        "DragonBreathWeaponConfig.WEAPON_TYPE_ID", "DragonKingBossGunConfig.WeaponTypeId",
+        "FenHuangHalberdIds.WeaponTypeId", "FrostmourneIds.WeaponTypeId",
+        "PhantomWitchConfig.ReservedScytheTypeId",
+    ], "RegisterCustomWeaponRuntimeConfigs"):
+        return fail("custom weapon runtime registration must retain its configured type order")
+    if "bossRushIntegrationRuntime.RegisterCustomWeaponRuntimeConfigs();" not in method_body(host, "private void RegisterCustomWeaponRuntimeConfigs()"):
+        return fail("legacy weapon registration entrypoint must remain a thin module bridge")
+    for callback in ("FenHuangHalberd", "Frostmourne", "PhantomWitchScythe", "AdventureJournal"):
+        signature = "internal void On" + callback + "Loaded(Item itemPrefab)"
+        if not method_body(module_initialization, signature):
+            return fail("ItemFactory configurator callback must be owned by IntegrationRuntimeModule -> " + signature)
+        host_signature = "private void On" + callback + "Loaded(Item itemPrefab)"
+        if "bossRushIntegrationRuntime.On" + callback + "Loaded(itemPrefab);" not in method_body(host, host_signature):
+            return fail("old ItemFactory callback entrypoint must remain a thin module bridge -> " + host_signature)
+
+    all_shop_injection = method_body(module_initialization, "internal int TryInjectAllBossRushItemsIntoShop(StockShop shop)")
+    if require_order(all_shop_injection, [
+        "TryInjectBossRushTicketIntoShop(shop)", "TryInjectAdventureJournalIntoShop(shop)",
+        "_owner.TryInjectAchievementMedalIntoShop(shop)", "AwenCourierTokenConfig.TryInjectIntoShop(shop, _owner)",
+        "TryInjectBrickStoneIntoShop(shop)", "ZombieTideInvitationConfig.TryInjectIntoShop(shop, _owner)",
+        "FactionFlagConfig.TryInjectIntoShop(shop)", "BloodhuntTransponderConfig.TryInjectIntoShop(shop, _owner)",
+        "FateEchoRelicConfig.TryInjectIntoShop(shop, _owner)", "_owner.TryInjectCodexBookIntoShop(shop)",
+        "BackMountainItems.TryInjectSeedsIntoShop(shop, _owner)",
+    ], "TryInjectAllBossRushItemsIntoShop"):
+        return fail("shop aggregation must preserve item injection order and the module-owned bridge owner")
+    if "return bossRushIntegrationRuntime.TryInjectAllBossRushItemsIntoShop(shop);" not in method_body(host, "internal int TryInjectAllBossRushItemsIntoShop(StockShop shop)"):
+        return fail("legacy shop aggregation entrypoint must remain a thin module bridge")
 
     dragon_subscribe = method_body(module, "internal void SubscribeDragonBreathEffectEvent()")
     dragon_unsubscribe = method_body(module, "internal void UnsubscribeDragonBreathEffectEvent()")
@@ -348,6 +437,12 @@ def main():
             return fail(name + " shop scan business logic must live in the runtime module")
 
     start = method_body(lifecycle, "void Start_Integration()")
+    if require_order(start, [
+        "RefreshDeathWraithEventBindings_DeathWraith();", "ApplyDevModeRuntimeState();",
+        "InjectLocalization();", "EnsureLanguageChangeSubscription();",
+        "RegisterCustomWeaponRuntimeConfigs();", "bossRushIntegrationRuntime.StartRuntimeStateMonitor();",
+    ], "Start_Integration weapon configuration"):
+        return fail("custom weapon runtime registrations must keep their original Start order")
     error = require_order(start, [
         "bossRushIntegrationRuntime.StartRuntimeStateMonitor();",
         "SceneManager.sceneLoaded += OnSceneLoaded;",
@@ -407,6 +502,8 @@ def main():
         return fail("compile_official.bat must include the extracted map-objects partial")
     if "Integration/BossRushIntegrationRuntimeModule_Travel.cs" not in compile_text:
         return fail("compile_official.bat must include the extracted travel partial")
+    if "Integration/BossRushIntegrationRuntimeModule_Initialization.cs" not in compile_text:
+        return fail("compile_official.bat must include the initialization and content wiring partial")
 
     print("IntegrationRuntimeModuleGuard: PASS（商店状态 owner、库存委托、兼容入口与原订阅顺序）")
     return 0

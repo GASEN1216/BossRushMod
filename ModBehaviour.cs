@@ -904,7 +904,7 @@ namespace BossRush
             StartBossRush(interactionSource);
         }
 
-        private static InteractableLootbox GetLootBoxTemplateWithLoader()
+        internal static InteractableLootbox GetLootBoxTemplateWithLoader()
         {
             if (_cachedLootBoxTemplateWithLoader != null)
             {
@@ -1019,7 +1019,7 @@ namespace BossRush
             return _cachedDifficultyRewardLootBoxTemplate;
         }
 
-        private void ApplyLootBoxCoverSetting(InteractableLootbox lootbox, bool ignoreConfig = false)
+        internal void ApplyLootBoxCoverSetting(InteractableLootbox lootbox, bool ignoreConfig = false)
         {
             if (lootbox == null)
             {

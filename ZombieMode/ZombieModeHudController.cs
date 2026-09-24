@@ -20,33 +20,10 @@ namespace BossRush
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
         #region Zombie Mode HUD
-        /// <summary>
-        /// 创建丧尸模式 HUD 并注册为 Run-only 对象
-        /// </summary>
         private void CreateZombieModeHud(int runId)
         {
-            if (!IsZombieModeRunValid(runId))
-            {
-                return;
-            }
-
-            GameObject root = new GameObject("ZombieMode_Hud");
-            ZombieModeHudController controller = root.AddComponent<ZombieModeHudController>();
-            controller.Initialize(runId);
-            RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Hud, root, controller, null);
-        }
-
-        // HUD 富文本配色（审美审查 UC-04）：正文底色是 TextSecondary（标签），数值包成 TextPrimary，
-        // 标题行 20 号、模式名用 Accent；阶位 / 警示用 token 预先转好的 hex，不每帧拼。
-        private static readonly string ZombieModeHudValueOpen = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextPrimary) + ">";
-        private static readonly string ZombieModeHudAccentOpen = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.Accent) + ">";
-        private static readonly string ZombieModeHudWarningOpen = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.WarningText) + ">";
-        private static readonly string ZombieModeHudDangerOpen = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText) + ">";
-        private static readonly string ZombieModeHudSuccessOpen = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.SuccessText) + ">";
-
-        private static string ZombieModeHudValue(int value)
-        {
-            return ZombieModeHudValueOpen + value + "</color>";
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.CreateZombieModeHud(runId);
         }
 
         public string GetZombieModeHudMainText(int runId)
@@ -54,313 +31,144 @@ namespace BossRush
             return GetZombieModeHudMainText(runId, -1);
         }
 
-        /// <summary>主面板文本。<paramref name="shownPurification"/> 是 HUD 滚动中的显示值（&lt;0 时用真实值）。</summary>
         public string GetZombieModeHudMainText(int runId, int shownPurification)
         {
-            if (!IsZombieModeRunValid(runId))
-            {
-                return string.Empty;
-            }
-
-            string wave = string.Format(L10n.T("BossRush_ZombieMode_Hud_Wave"), zombieModeRunState.CurrentWave);
-            string pollution = string.Format(L10n.T("BossRush_ZombieMode_Hud_Pollution"), ZombieModeHudValue(zombieModeRunState.TotalPollution), GetZombieModePollutionTierText());
-            int purificationValue = shownPurification >= 0 ? shownPurification : zombieModeRunState.PurificationPoints;
-            // 数字等宽：滚动计数与跳变时整行不左右抖。
-            string purification = string.Format(L10n.T("BossRush_ZombieMode_Hud_PurificationPoints"), ZombieModeHudValueOpen + "<mspace=0.56em>" + purificationValue + "</mspace></color>");
-            string pressure = GetZombieModeHudPressureText();
-            string kills = string.Empty;
-            if (zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat && zombieModeRunState.CurrentWaveKillTarget > 0)
-            {
-                kills = string.Format(L10n.T("BossRush_ZombieMode_Hud_KillProgress"), ZombieModeHudValue(zombieModeRunState.CurrentWaveKills), ZombieModeHudValue(zombieModeRunState.CurrentWaveKillTarget));
-            }
-            else if (zombieModeRunState.CurrentWaveBossesRemaining > 0)
-            {
-                kills = GetZombieModeBossProgressText();
-            }
-
-            string result = "<size=20><b>" + ZombieModeHudAccentOpen + L10n.T("BossRush_ZombieMode_EntryName") + "</color>  " + ZombieModeHudValueOpen + wave + "</color></b></size>\n" + pollution + "\n" + purification;
-            if (!string.IsNullOrEmpty(pressure))
-            {
-                result += "\n" + pressure;
-            }
-            if (!string.IsNullOrEmpty(kills))
-            {
-                result += "\n" + kills;
-            }
-            result += "\n" + GetZombieModeNextBossText();
-            return result;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeHudMainText(runId, shownPurification) : string.Empty;
         }
 
         public string GetZombieModeNextWavePreviewText(int runId)
         {
-            if (!IsZombieModeRunValid(runId))
-            {
-                return string.Empty;
-            }
-
-            int nextWave = Mathf.Max(1, zombieModeRunState.CurrentWave + 1);
-            if (IsZombieModeBossWave(nextWave))
-            {
-                return string.Format(
-                    L10n.T("BossRush_ZombieMode_Reward_NextBossPreview"),
-                    nextWave,
-                    GetZombieModeWaveCycleIndex(nextWave) + 1,
-                    GetZombieModeBossCountForWave(nextWave),
-                    Mathf.RoundToInt(GetZombieModeBossHealthScale(nextWave) * 100f),
-                    Mathf.RoundToInt(GetZombieModeBossDamageScale(nextWave) * 100f),
-                    GetZombieModeWavePressureTarget(nextWave),
-                    Mathf.RoundToInt(GetZombieModeBossRewardScale(nextWave) * 100f));
-            }
-
-            return string.Format(
-                L10n.T("BossRush_ZombieMode_Reward_NextWavePreview"),
-                nextWave,
-                GetZombieModeWavePressureTarget(nextWave),
-                Mathf.RoundToInt(GetZombieModeWaveSpeedMultiplier(nextWave) * 100f),
-                GetZombieModeTideStageText(nextWave, false));
-        }
-
-        private string GetZombieModeHudPressureText()
-        {
-            if (!IsZombieModeAmbientZombieSpawnPhase(zombieModeRunState.CombatPhase))
-            {
-                return string.Empty;
-            }
-
-            bool preparation = zombieModeRunState.CombatPhase != ZombieModeCombatPhase.Combat;
-            int wave = GetZombieModePacingWave();
-            return string.Format(
-                L10n.T("BossRush_ZombieMode_Hud_Pressure"),
-                ZombieModeHudValue(zombieModeRunState.LivingNormalZombieCount),
-                ZombieModeHudValue(GetZombieModeAmbientPressureTarget()),
-                GetZombieModeTideStageText(wave, preparation));
-        }
-
-        private string GetZombieModeTideStageText(int wave, bool preparation)
-        {
-            if (preparation)
-            {
-                return L10n.T("BossRush_ZombieMode_Tide_Low");
-            }
-
-            if (IsZombieModeBossWave(wave))
-            {
-                return L10n.T("BossRush_ZombieMode_Tide_Boss");
-            }
-
-            switch (GetZombieModeNormalWaveStageIndex(wave))
-            {
-                case 0:
-                    return L10n.T("BossRush_ZombieMode_Tide_Low");
-                case 1:
-                    return L10n.T("BossRush_ZombieMode_Tide_Rising");
-                case 2:
-                    return L10n.T("BossRush_ZombieMode_Tide_High");
-                default:
-                    return L10n.T("BossRush_ZombieMode_Tide_Peak");
-            }
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeNextWavePreviewText(runId) : string.Empty;
         }
 
         public string GetZombieModeHudSafeZoneText(int runId)
         {
-            if (!IsZombieModeRunValid(runId))
-            {
-                return string.Empty;
-            }
-
-            if (!AnyZombieModeSafeZoneActive)
-            {
-                return string.Empty;
-            }
-
-            string inside = zombieModeRunState.PlayerInsideSafeZone
-                ? L10n.T("BossRush_ZombieMode_Hud_SafeZone_Inside")
-                : L10n.T("BossRush_ZombieMode_Hud_SafeZone_Outside");
-            // 旧版第二行恒为「安全区：有效」，面板显示本身就说明了这一点，删掉（审美审查 UC-23）。
-            // 战斗期部署的便携安全区没有准备倒计时，不显示恒为 0 的那一行。
-            if (zombieModeRunState.PreparationTimer <= 0f)
-            {
-                return inside;
-            }
-
-            string timer = string.Format(
-                L10n.T("BossRush_ZombieMode_Hud_PreparationTimer"),
-                Mathf.Max(0, Mathf.CeilToInt(zombieModeRunState.PreparationTimer)));
-            return inside + "\n" + timer;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeHudSafeZoneText(runId) : string.Empty;
         }
 
         public string GetZombieModeHudStageText(int runId)
         {
-            if (!IsZombieModeRunValid(runId))
-            {
-                return string.Empty;
-            }
-
-            string stage = GetZombieModeStageText();
-            string beacon = GetZombieModeBeaconHudText();
-            string extraction = GetZombieModeExtractionHudText();
-            string result = stage;
-            if (!string.IsNullOrEmpty(beacon))
-            {
-                result += "  ·  " + beacon;
-            }
-            if (!string.IsNullOrEmpty(extraction))
-            {
-                result += "  ·  " + ZombieModeHudWarningOpen + extraction + "</color>";
-            }
-            return result;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeHudStageText(runId) : string.Empty;
         }
 
-        /// <summary>
-        /// HUD 读条取数（插值与绘制在 ZombieModeHudController）。纯读，不改状态。
-        /// beaconFill &lt; 0 表示没在引导；引导起点在暂停时会顺延（见 ZombieModeBeaconChannelCoroutine），所以按墙钟算就是已引导时长。
-        /// </summary>
         internal void GetZombieModeHudBarState(int runId, out int kills, out int killTarget, out float beaconFill, out float preparationTimer)
         {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null)
+            {
+                module.GetZombieModeHudBarState(runId, out kills, out killTarget, out beaconFill, out preparationTimer);
+                return;
+            }
             kills = 0;
             killTarget = 0;
             beaconFill = -1f;
             preparationTimer = 0f;
-            if (!IsZombieModeRunValid(runId))
-            {
-                return;
-            }
-
-            if (zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat)
-            {
-                kills = zombieModeRunState.CurrentWaveKills;
-                killTarget = zombieModeRunState.CurrentWaveKillTarget;
-            }
-            if (zombieModeRunState.BeaconChanneling && zombieModeRunState.BeaconChannelDuration > 0f)
-            {
-                beaconFill = Mathf.Clamp01((Time.unscaledTime - zombieModeRunState.BeaconChannelStartTime) / zombieModeRunState.BeaconChannelDuration);
-            }
-            preparationTimer = zombieModeRunState.PreparationTimer;
         }
 
-        /// <summary>Boss 奖励节点的净化收益倍率（百分比）。奖励卡按它分描边档位（≥150% 用传说色）。</summary>
         public int GetZombieModeBossRewardPercent(int runId)
         {
-            return IsZombieModeRunValid(runId)
-                ? Mathf.RoundToInt(GetZombieModeBossRewardScale(zombieModeRunState.CurrentWave) * 100f)
-                : 100;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeBossRewardPercent(runId) : 100;
         }
-
-        // 安全区面板字色走 token（审美审查 UC-16）：区内 SuccessText、区外 WarningText；
-        // 最后几秒在 WarningText 与 TextPrimary 之间平滑呼吸（SmoothStep），由 HUD 每帧取色，不再 0.1 s 一跳的线性三角波。
-        private static readonly Color ZombieModeHudSafeZoneInactiveColor = BossRushUIColors.TextSecondary;
-        private static readonly Color ZombieModeHudSafeZoneInsideColor = BossRushUIColors.SuccessText;
-        private static readonly Color ZombieModeHudSafeZoneFlashTargetColor = BossRushUIColors.TextPrimary;
-        private static readonly Color ZombieModeHudSafeZoneOutsideColor = BossRushUIColors.WarningText;
 
         internal bool IsZombieModeHudSafeZoneWarning(int runId)
         {
-            return IsZombieModeRunValid(runId) && AnyZombieModeSafeZoneActive &&
-                   zombieModeRunState.PreparationTimer > 0f &&
-                   zombieModeRunState.PreparationTimer <= ZombieModeTuning.SafeZoneFlashStartSeconds;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.IsZombieModeHudSafeZoneWarning(runId);
         }
 
         public Color GetZombieModeHudSafeZoneColor(int runId)
         {
-            if (!IsZombieModeRunValid(runId) || !AnyZombieModeSafeZoneActive)
-            {
-                return ZombieModeHudSafeZoneInactiveColor;
-            }
-
-            if (IsZombieModeHudSafeZoneWarning(runId))
-            {
-                float flash = Mathf.PingPong(Time.unscaledTime / ZombieModeTuning.SafeZoneFlashCycleSeconds, 1f);
-                return Color.Lerp(
-                    ZombieModeHudSafeZoneOutsideColor,
-                    ZombieModeHudSafeZoneFlashTargetColor,
-                    BossRushUI.SmoothStep(flash));
-            }
-
-            return zombieModeRunState.PlayerInsideSafeZone
-                ? ZombieModeHudSafeZoneInsideColor
-                : ZombieModeHudSafeZoneOutsideColor;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeHudSafeZoneColor(runId) : BossRushUIColors.TextSecondary;
         }
 
-        private string GetZombieModeBossProgressText()
+        internal bool SetZombieModeHudVisibilityForRuntimeModule(ZombieModeHudController controller, bool hidden)
         {
-            int total = GetZombieModeBossCountForWave(zombieModeRunState.CurrentWave);
-            int defeated = Mathf.Max(0, total - zombieModeRunState.CurrentWaveBossesRemaining);
-            return string.Format(L10n.T("BossRush_ZombieMode_Hud_BossProgress"), ZombieModeHudValue(defeated), ZombieModeHudValue(total));
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.SetZombieModeHudVisibility(controller, hidden);
         }
 
-        private string GetZombieModeNextBossText()
+        internal void TickZombieModeHudForRuntimeModule(ZombieModeHudController controller, float deltaTime)
         {
-            int currentWave = Mathf.Max(0, zombieModeRunState.CurrentWave);
-            int wavesToBoss = 5 - (currentWave % 5);
-            if (wavesToBoss <= 1)
-            {
-                return ZombieModeHudWarningOpen + L10n.T("BossRush_ZombieMode_Hud_NextBossNow") + "</color>";
-            }
-
-            return string.Format(L10n.T("BossRush_ZombieMode_Hud_NextBoss"), ZombieModeHudValue(wavesToBoss));
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.TickZombieModeHud(controller, deltaTime);
         }
 
-        private string GetZombieModeBeaconHudText()
+        internal void CleanupZombieModeHudForRuntimeModule(ZombieModeHudController controller)
         {
-            if (zombieModeRunState.BeaconChanneling)
-            {
-                // 引导中不再让「信标可用」直接消失：显示剩余秒数，读条在阶段栏下沿（审美审查 UC-17）。
-                float remaining = Mathf.Max(0f, zombieModeRunState.BeaconChannelDuration - (Time.unscaledTime - zombieModeRunState.BeaconChannelStartTime));
-                return ZombieModeHudAccentOpen + string.Format(L10n.T("BossRush_ZombieMode_Hud_BeaconChanneling"), remaining) + "</color>";
-            }
-
-            return CanUseZombieModeBeacon()
-                ? ZombieModeHudSuccessOpen + L10n.T("BossRush_ZombieMode_Hud_BeaconReady") + "</color>"
-                : string.Empty;
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.CleanupZombieModeHud(controller);
         }
 
-        private string GetZombieModeExtractionHudText()
+        internal bool IsZombieModeAmbientZombieSpawnPhaseForHud(ZombieModeCombatPhase phase)
         {
-            if (zombieModeRunState.CombatPhase != ZombieModeCombatPhase.ExtractionOpportunity || zombieModeRunState.ActiveExtractionArea == null)
-            {
-                return string.Empty;
-            }
-
-            return L10n.T("BossRush_ZombieMode_Hud_ExtractionOpenHint");
+            return IsZombieModeAmbientZombieSpawnPhase(phase);
         }
 
-        private string GetZombieModePollutionTierText()
+        internal bool IsZombieModeBossWaveForHud(int wave)
         {
-            switch (zombieModeRunState.PollutionTier)
-            {
-                case 0:
-                    return L10n.T("BossRush_ZombieMode_Hud_PollutionTier_Base");
-                case 1:
-                    return ZombieModeHudWarningOpen + L10n.T("BossRush_ZombieMode_Hud_PollutionTier_I") + "</color>";
-                case 2:
-                    return ZombieModeHudWarningOpen + L10n.T("BossRush_ZombieMode_Hud_PollutionTier_II") + "</color>";
-                case 3:
-                    return ZombieModeHudWarningOpen + L10n.T("BossRush_ZombieMode_Hud_PollutionTier_III") + "</color>";
-                case 4:
-                    return ZombieModeHudWarningOpen + L10n.T("BossRush_ZombieMode_Hud_PollutionTier_IV") + "</color>";
-                default:
-                    return ZombieModeHudDangerOpen + L10n.T("BossRush_ZombieMode_Hud_PollutionTier_Critical") + "</color>";
-            }
+            return IsZombieModeBossWave(wave);
         }
 
-        private string GetZombieModeStageText()
+        internal int GetZombieModeWaveCycleIndexForHud(int wave)
         {
-            switch (zombieModeRunState.CombatPhase)
-            {
-                case ZombieModeCombatPhase.Settling:
-                    return L10n.T("BossRush_ZombieMode_Hud_StageSettling");
-                case ZombieModeCombatPhase.RewardSelection:
-                    return L10n.T("BossRush_ZombieMode_Hud_StageRewardSelection");
-                case ZombieModeCombatPhase.Preparation:
-                case ZombieModeCombatPhase.InitialPreparation:
-                    return L10n.T("BossRush_ZombieMode_Hud_StagePreparation");
-                case ZombieModeCombatPhase.ExtractionOpportunity:
-                    return L10n.T("BossRush_ZombieMode_Hud_StageExtractionOpportunity");
-                default:
-                    return L10n.T("BossRush_ZombieMode_Hud_StageBattle");
-            }
+            return GetZombieModeWaveCycleIndex(wave);
         }
 
+        internal int GetZombieModeBossCountForWaveForHud(int wave)
+        {
+            return GetZombieModeBossCountForWave(wave);
+        }
+
+        internal float GetZombieModeBossHealthScaleForHud(int wave)
+        {
+            return GetZombieModeBossHealthScale(wave);
+        }
+
+        internal float GetZombieModeBossDamageScaleForHud(int wave)
+        {
+            return GetZombieModeBossDamageScale(wave);
+        }
+
+        internal float GetZombieModeBossRewardScaleForHud(int wave)
+        {
+            return GetZombieModeBossRewardScale(wave);
+        }
+
+        internal int GetZombieModeWavePressureTargetForHud(int wave)
+        {
+            return GetZombieModeWavePressureTarget(wave);
+        }
+
+        internal float GetZombieModeWaveSpeedMultiplierForHud(int wave)
+        {
+            return GetZombieModeWaveSpeedMultiplier(wave);
+        }
+
+        internal int GetZombieModeNormalWaveStageIndexForHud(int wave)
+        {
+            return GetZombieModeNormalWaveStageIndex(wave);
+        }
+
+        internal int GetZombieModePacingWaveForHud()
+        {
+            return GetZombieModePacingWave();
+        }
+
+        internal int GetZombieModeAmbientPressureTargetForHud()
+        {
+            return GetZombieModeAmbientPressureTarget();
+        }
+
+        internal bool IsAnyZombieModeSafeZoneActiveForHud()
+        {
+            return AnyZombieModeSafeZoneActive;
+        }
         #endregion
     }
 
@@ -378,29 +186,18 @@ namespace BossRush
         private TextMeshProUGUI mainText;
         private TextMeshProUGUI safeZoneText;
         private TextMeshProUGUI stageText;
-        private string lastMainText;
-        private string lastSafeZoneText;
-        private string lastStageText;
-        private Color lastSafeZoneColor;
-        private bool hasLastSafeZoneColor;
-        private float nextRefreshTime;
-        private bool pauseMenuHidden;
         private ModBehaviour owner;
-        private const float REFRESH_INTERVAL = 0.1f;
-        private const float GainHoldSeconds = 1.0f;
-        private const float GainFadeSeconds = 0.3f;
 
         private ZombieModeHudBar killBar;
         private ZombieModeHudBar stageBar;
         private TextMeshProUGUI gainText;
         private CanvasGroup gainGroup;
-        private int lastActualPurification = -1;
-        private float shownPurificationValue;
-        private int shownPurification = -1;
-        private int pendingGain;
-        private float gainAge = 99f;
-        private float lastPreparationTimer;
-        private float preparationTotal;
+
+        internal bool HasMainText { get { return mainText != null; } }
+        internal bool HasSafeZoneText { get { return safeZoneText != null; } }
+        internal bool HasStageText { get { return stageText != null; } }
+        internal bool HasGainText { get { return gainText != null; } }
+        internal bool HasGainGroup { get { return gainGroup != null; } }
 
         public void Initialize(int runId)
         {
@@ -569,97 +366,81 @@ namespace BossRush
                 return;
             }
 
-            // 逐帧的只有 O(1) 的插值：读条、净化点滚动、安全区末段的呼吸取色；文字仍按 0.1 s 节流。
-            float deltaTime = Time.unscaledDeltaTime;
-            bool rolling = TickPurification(inst, deltaTime);
-            TickBars(inst, deltaTime);
-            if (safeZoneText != null && inst.IsZombieModeHudSafeZoneWarning(RunId))
-            {
-                SetSafeZoneColorIfChanged(inst.GetZombieModeHudSafeZoneColor(RunId));
-            }
+            inst.TickZombieModeHudForRuntimeModule(this, Time.unscaledDeltaTime);
+        }
 
-            if (!rolling && Time.unscaledTime < nextRefreshTime)
+        private void OnDestroy()
+        {
+            ModBehaviour inst = GetRuntimeOwner();
+            if (inst != null)
             {
-                return;
+                inst.CleanupZombieModeHudForRuntimeModule(this);
             }
-            nextRefreshTime = Time.unscaledTime + REFRESH_INTERVAL;
+        }
 
+        internal void SetMainText(string value, bool fitPanel)
+        {
             if (mainText != null)
             {
-                string previousMain = lastMainText;
-                SetTextIfChanged(mainText, inst.GetZombieModeHudMainText(RunId, shownPurification), ref lastMainText);
-                if (!ReferenceEquals(previousMain, lastMainText))
+                mainText.text = value ?? string.Empty;
+                if (fitPanel)
                 {
                     FitPanelHeight(mainText, 96f, 26f);
                 }
             }
+        }
 
+        internal void SetSafeZoneText(string value, bool fitPanel)
+        {
             if (safeZoneText != null)
             {
-                string previousSafeZone = lastSafeZoneText;
-                SetTextIfChanged(safeZoneText, inst.GetZombieModeHudSafeZoneText(RunId), ref lastSafeZoneText);
-                SetPanelVisible(safeZoneText, !string.IsNullOrEmpty(lastSafeZoneText));
-                SetSafeZoneColorIfChanged(inst.GetZombieModeHudSafeZoneColor(RunId));
-                if (!ReferenceEquals(previousSafeZone, lastSafeZoneText))
+                safeZoneText.text = value ?? string.Empty;
+                if (fitPanel)
                 {
                     FitPanelHeight(safeZoneText, 44f, 18f);
                 }
             }
+        }
 
+        internal void SetSafeZonePanelVisible(bool visible)
+        {
+            SetPanelVisible(safeZoneText, visible);
+        }
+
+        internal void SetSafeZoneColor(Color value)
+        {
+            if (safeZoneText != null)
+            {
+                safeZoneText.color = value;
+            }
+        }
+
+        internal void SetStageText(string value)
+        {
             if (stageText != null)
             {
-                SetTextIfChanged(stageText, inst.GetZombieModeHudStageText(RunId), ref lastStageText);
+                stageText.text = value ?? string.Empty;
             }
         }
 
-        /// <summary>
-        /// 净化点滚动计数（UC-04 / UC-18）：显示值按 unscaled 时间 MoveTowards 真实值，速度 max(20, |差|×6)/秒；
-        /// 增加时右上角浮「净化点 +N」，1 秒内的拾取合并成一个数，之后 0.3 秒淡出。返回是否仍在滚动。
-        /// </summary>
-        private bool TickPurification(ModBehaviour inst, float deltaTime)
+        internal void SetPurificationGainText(string value)
         {
-            int actual = inst.GetZombieModePurificationPoints(RunId);
-            if (lastActualPurification < 0)
+            if (gainText != null)
             {
-                lastActualPurification = actual;
-                shownPurificationValue = actual;
-                shownPurification = actual;
+                gainText.text = value ?? string.Empty;
             }
-            else if (actual != lastActualPurification)
-            {
-                if (actual > lastActualPurification && gainText != null)
-                {
-                    pendingGain = (gainAge < GainHoldSeconds + GainFadeSeconds ? pendingGain : 0) + (actual - lastActualPurification);
-                    gainAge = 0f;
-                    gainText.text = string.Format(L10n.T("BossRush_ZombieMode_Reward_PurificationPoints"), pendingGain);
-                }
-                lastActualPurification = actual;
-            }
-
-            if (gainGroup != null && gainAge < GainHoldSeconds + GainFadeSeconds)
-            {
-                gainAge += deltaTime;
-                gainGroup.alpha = 1f - BossRushUI.SmoothStep((gainAge - GainHoldSeconds) / GainFadeSeconds);
-            }
-
-            if (shownPurification == actual)
-            {
-                return false;
-            }
-            float speed = Mathf.Max(20f, Mathf.Abs(actual - shownPurificationValue) * 6f);
-            shownPurificationValue = Mathf.MoveTowards(shownPurificationValue, actual, speed * deltaTime);
-            shownPurification = Mathf.RoundToInt(shownPurificationValue);
-            return true;
         }
 
-        /// <summary>击杀进度读条 + 阶段栏下沿的信标引导 / 准备期倒计时读条（UC-04 / UC-17）。</summary>
-        private void TickBars(ModBehaviour inst, float deltaTime)
+        internal void SetPurificationGainAlpha(float alpha)
         {
-            int kills;
-            int killTarget;
-            float beaconFill;
-            float preparationTimer;
-            inst.GetZombieModeHudBarState(RunId, out kills, out killTarget, out beaconFill, out preparationTimer);
+            if (gainGroup != null)
+            {
+                gainGroup.alpha = alpha;
+            }
+        }
+
+        internal void TickBars(int kills, int killTarget, float beaconFill, float preparationTimer, float preparationTotal, float deltaTime)
+        {
             if (killBar != null)
             {
                 bool showKills = killTarget > 0;
@@ -667,16 +448,11 @@ namespace BossRush
                 killBar.Tick(deltaTime);
             }
 
-            // 准备期总时长没有存在状态里：倒计时往上跳（新一轮准备期）时记下起点。
-            if (preparationTimer > lastPreparationTimer + 0.5f)
-            {
-                preparationTotal = preparationTimer;
-            }
-            lastPreparationTimer = preparationTimer;
             if (stageBar == null)
             {
                 return;
             }
+
             if (beaconFill >= 0f)
             {
                 stageBar.SetTarget(true, beaconFill, BossRushUIColors.Accent);
@@ -691,35 +467,6 @@ namespace BossRush
                 stageBar.SetTarget(false, 0f, BossRushUIColors.Accent);
             }
             stageBar.Tick(deltaTime);
-        }
-
-        private static void SetTextIfChanged(TextMeshProUGUI target, string value, ref string lastValue)
-        {
-            string nextValue = value ?? string.Empty;
-            if (string.Equals(lastValue, nextValue, System.StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            lastValue = nextValue;
-            target.text = nextValue;
-        }
-
-        private void SetSafeZoneColorIfChanged(Color value)
-        {
-            if (safeZoneText == null)
-            {
-                return;
-            }
-
-            if (hasLastSafeZoneColor && lastSafeZoneColor == value)
-            {
-                return;
-            }
-
-            lastSafeZoneColor = value;
-            hasLastSafeZoneColor = true;
-            safeZoneText.color = value;
         }
 
         private static void SetPanelVisible(TextMeshProUGUI target, bool visible)
@@ -743,11 +490,11 @@ namespace BossRush
 
         private void SetPauseMenuHidden(bool hidden)
         {
-            if (pauseMenuHidden == hidden)
+            ModBehaviour inst = GetRuntimeOwner();
+            if (inst == null || !inst.SetZombieModeHudVisibilityForRuntimeModule(this, hidden))
             {
                 return;
             }
-            pauseMenuHidden = hidden;
             if (canvas != null)
             {
                 canvas.enabled = !hidden;

@@ -163,7 +163,7 @@ namespace BossRush
             // ── 数量 ──────────────────────────────────────────
             try
             {
-                FieldInfo randomCountField = BossLootBoxLoaderReflection.RandomCountField;
+                FieldInfo randomCountField = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.RandomCountField;
                 if (randomCountField != null)
                 {
                     randomCountField.SetValue(loader, new Vector2Int(count, count));
@@ -177,7 +177,7 @@ namespace BossRush
             // ── 品质均权 ──────────────────────────────────────
             try
             {
-                FieldInfo qualitiesField = BossLootBoxLoaderReflection.QualitiesField;
+                FieldInfo qualitiesField = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.QualitiesField;
                 if (qualitiesField != null)
                 {
                     Duckov.Utilities.RandomContainer<int> qualities =
@@ -204,7 +204,7 @@ namespace BossRush
 
             try
             {
-                FieldInfo tagsField = BossLootBoxLoaderReflection.TagsField;
+                FieldInfo tagsField = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.TagsField;
                 if (tagsField != null && tagsData != null && tagsData.AllTags != null)
                 {
                     Duckov.Utilities.RandomContainer<Duckov.Utilities.Tag> tagsContainer =
@@ -236,7 +236,7 @@ namespace BossRush
 
             try
             {
-                FieldInfo excludeTagsField = BossLootBoxLoaderReflection.ExcludeTagsField;
+                FieldInfo excludeTagsField = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.ExcludeTagsField;
                 if (excludeTagsField != null)
                 {
                     List<Duckov.Utilities.Tag> excludeList =
@@ -268,7 +268,7 @@ namespace BossRush
             // ── fixedItems 必须初始化：LootBoxLoader.Setup() 会裸读它，null 会 NRE ──
             try
             {
-                FieldInfo fixedItemsField = BossLootBoxLoaderReflection.FixedItemsField;
+                FieldInfo fixedItemsField = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.FixedItemsField;
                 if (fixedItemsField != null)
                 {
                     List<int> fixedItems = fixedItemsField.GetValue(loader) as List<int>;
@@ -280,7 +280,7 @@ namespace BossRush
                     fixedItems.Clear();
                 }
 
-                FieldInfo fixedChanceField = BossLootBoxLoaderReflection.FixedChanceField;
+                FieldInfo fixedChanceField = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.FixedChanceField;
                 if (fixedChanceField != null)
                 {
                     fixedChanceField.SetValue(loader, 0f);
@@ -314,8 +314,8 @@ namespace BossRush
         /// <summary>实际随机池按品质过滤，非空品质等权，同品质内物品等权。</summary>
         private bool FillRandomEventAirdropPool(Duckov.Utilities.LootBoxLoader loader, int qualityMin, int qualityMax)
         {
-            Type loaderEntryType = BossLootBoxLoaderReflection.LoaderEntryType;
-            FieldInfo randomPoolField = BossLootBoxLoaderReflection.RandomPoolField;
+            Type loaderEntryType = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.LoaderEntryType;
+            FieldInfo randomPoolField = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.RandomPoolField;
             if (loaderEntryType == null || randomPoolField == null)
             {
                 return false;
@@ -332,7 +332,7 @@ namespace BossRush
                 return false;
             }
 
-            FieldInfo entriesField = BossLootBoxLoaderReflection.RandomPoolEntriesField;
+            FieldInfo entriesField = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.RandomPoolEntriesField;
             if (entriesField == null)
             {
                 return false;
@@ -346,10 +346,10 @@ namespace BossRush
                 entriesList = newEntries as IList;
             }
 
-            Type entryType = BossLootBoxLoaderReflection.RandomPoolEntryType;
-            FieldInfo lootEntryItemIdField = BossLootBoxLoaderReflection.LootEntryItemIdField;
-            FieldInfo valueField = BossLootBoxLoaderReflection.RandomPoolEntryValueField;
-            FieldInfo weightField = BossLootBoxLoaderReflection.RandomPoolEntryWeightField;
+            Type entryType = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.RandomPoolEntryType;
+            FieldInfo lootEntryItemIdField = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.LootEntryItemIdField;
+            FieldInfo valueField = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.RandomPoolEntryValueField;
+            FieldInfo weightField = WavesArenaRuntimeModule.BossLootBoxLoaderReflection.RandomPoolEntryWeightField;
             if (entriesList == null || entryType == null ||
                 lootEntryItemIdField == null || valueField == null || weightField == null)
             {

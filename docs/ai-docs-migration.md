@@ -310,3 +310,7 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 - 原根 §4.16 新增内容全文 → `Integration/AGENTS.md`「原根规则 §4.16」，根 §4.16 留四项要点。
 - 原根 §4.17 F3 与常驻 HUD 全文 → `DebugAndTools/AGENTS.md`，根 §4.17 留三项要点。
 - 根 §5、§7、§9、§11、§14 压缩为指针与要点；长期细则以原专项规则、`docs/contracts.md` 及相应守卫为准。§4.1 与 §4.3 标题、正文原样保留。前后数字见 `architecture/CONTEXT_BASELINE.md`。
+
+## 2026-09-25 Integration 初始化归属修正（COMPAT）
+
+- `Integration/AGENTS.md` 原将自定义武器参数登记定位在宿主 `BossRushIntegration.cs`；P3 将实现迁到 `BossRushIntegrationRuntimeModule_Initialization.cs` 后，宿主同名方法只保留兼容转发，已同步修正规则中的生产入口。

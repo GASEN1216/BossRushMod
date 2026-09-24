@@ -13,6 +13,7 @@ INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
     Path("Integration/IntegrationDeferredBootstrap.cs"),
     Path("Integration/BossRushIntegrationRuntimeModule_DeferredBootstrap.cs"),
+    Path("Integration/BossRushIntegrationRuntimeModule_Initialization.cs"),
 ]
 ITEM_REGISTRY = Path("Integration/Items/ItemContentRegistry.cs")
 EQUIPMENT_REGISTRY = Path("Integration/EquipmentContentRegistry.cs")
@@ -164,7 +165,7 @@ def main() -> int:
     integration_item_order_error = require_ordered_tokens(
         integration_text,
         [
-            "RegisterItemContentConfigurators();",
+            "_owner.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();",
             "int itemCount = ItemFactory.LoadedItemCount;",
             "PeaceCharmRuntime.InitializeRuntime();",
         ],
@@ -173,7 +174,7 @@ def main() -> int:
         return fail(integration_item_order_error)
 
     for token in [
-        "RegisterItemContentConfigurators();",
+        "_owner.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();",
         "int itemCount = ItemFactory.LoadedItemCount;",
     ]:
         occurrence_error = require_exactly_once(integration_text, token, "ContentRegistryGuard: integration item bootstrap")

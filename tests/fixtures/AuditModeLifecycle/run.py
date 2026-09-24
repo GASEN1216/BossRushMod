@@ -27,6 +27,19 @@ def declaration(path, marker):
     hashes[str(path.relative_to(ROOT))]=hashlib.sha256(path.read_bytes()).hexdigest()
     return raw[start:end]
 
+def type_block(path, marker):
+    raw=path.read_text(encoding='utf-8-sig')
+    start=raw.index(marker)
+    opening=raw.index('{',start);depth=0
+    for i in range(opening,len(raw)):
+        if raw[i]=='{': depth+=1
+        elif raw[i]=='}':
+            depth-=1
+            if depth==0:
+                hashes[str(path.relative_to(ROOT))]=hashlib.sha256(path.read_bytes()).hexdigest()
+                return raw[start:i+1]
+    raise ValueError(marker)
+
 hashes={}
 def execute(name, files, generated=''):
     out=OUT/name;out.mkdir(parents=True,exist_ok=True)
@@ -331,6 +344,46 @@ public partial class ModBehaviour {
 }
 }'''
 execute('runonly_cleanup',[HERE/'RunOnlyCleanup.cs',ROOT/'Utilities/RunScopedRegistry.cs'],run_only)
+hud_module=ROOT/'ZombieMode/ZombieModeRuntimeModule_Hud.cs'
+hud_constants='\n'.join(declaration(hud_module,m) for m in [
+    'private const float ZombieModeHudRefreshInterval =',
+    'private const float ZombieModeHudGainHoldSeconds =',
+    'private const float ZombieModeHudGainFadeSeconds =',
+])
+hud_state=type_block(hud_module,'internal sealed class ZombieModeHudRuntimeState')
+hud_methods='\n'.join(member(hud_module,m) for m in [
+    'internal void CreateZombieModeHud(int runId)',
+    'internal bool SetZombieModeHudVisibility(ZombieModeHudController controller, bool hidden)',
+    'internal void CleanupZombieModeHud(ZombieModeHudController controller)',
+    'private ZombieModeHudRuntimeState GetZombieModeHudState(ZombieModeHudController controller)',
+    'private static bool SetZombieModeHudText(ref string lastValue, string value)',
+    'private bool TickZombieModeHudPurification(',
+])
+hud_field=declaration(hud_module,'private readonly Dictionary<int, ZombieModeHudRuntimeState> zombieModeHudStates =')
+hud_fixture='''using System;
+using System.Collections.Generic;
+using UnityEngine;
+namespace BossRush {
+'''+hud_state+'''
+internal sealed partial class ZombieModeRuntimeModule {
+ private ModBehaviour owner; private readonly int activeRunId;
+'''+hud_field+'\n'+hud_constants+'''
+ internal Action LastRunOnlyCleanup;
+ internal ZombieModeHudController LastCreatedController;
+ internal ZombieModeRuntimeModule(ModBehaviour owner, int activeRunId) { this.owner = owner; this.activeRunId = activeRunId; }
+ internal bool IsZombieModeRunValid(int runId) { return runId > 0 && runId == activeRunId; }
+ internal void RegisterZombieModeRunOnlyObject(int runId, ZombieModeRunOnlyObjectKind kind, GameObject root, UnityEngine.Object target, Action cleanupAction) {
+  LastCreatedController = target as ZombieModeHudController; LastRunOnlyCleanup = cleanupAction;
+  HudRuntimeTrace.Events.Add("register:" + kind.ToString());
+ }
+ internal int HudStateCount { get { return zombieModeHudStates.Count; } }
+ internal ZombieModeHudRuntimeState GetHudStateForTest(ZombieModeHudController controller) { return GetZombieModeHudState(controller); }
+ internal bool TickPurificationForTest(ZombieModeHudController controller, ZombieModeHudRuntimeState state, float deltaTime) { return TickZombieModeHudPurification(controller, state, controller.RunId, deltaTime); }
+ internal bool CacheMainTextForTest(ref string lastValue, string value) { return SetZombieModeHudText(ref lastValue, value); }
+'''+hud_methods+'''
+}
+}'''
+execute('hud_runtime',[HERE/'HudRuntime.cs'],hud_fixture)
 execute('wave_owner',[HERE/'WaveOwner.cs',ROOT/'WavesArena/WavesArenaRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule.cs'])
 execute('milestone',[HERE/'Milestone.cs',ROOT/'LootAndRewards/InfiniteHellMilestoneDelivery.cs'])
 f3=ROOT/'DebugAndTools/F3GameplayValidationAutotestStory.cs'

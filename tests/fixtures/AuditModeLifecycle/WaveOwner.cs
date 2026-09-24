@@ -8,6 +8,8 @@ public sealed class Health { public bool IsDead; }
 public sealed class InteractableLootbox {}
 public sealed class CharacterMainControl { public static CharacterMainControl Main; public Health Health=new Health(); }
 namespace BossRush {
+ // This fixture links only the arena generation owner; loot event cleanup has its own guard.
+ internal sealed partial class WavesArenaRuntimeModule { private void ReleaseBossRandomLootTrackingOnDestroy() {} }
  public class EnemyPresetInfo { public string name; }
  internal class SceneRuntimeContext {}
  internal abstract class BossRushRuntimeModuleBase {

@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 HOST = clean_source((ROOT / "ModBehaviour.cs").read_text(encoding="utf-8-sig"))
 BRIDGE = clean_source((ROOT / "WavesArena/WavesArenaRuntimeHooks.cs").read_text(encoding="utf-8-sig"))
 LOOT_BRIDGE = clean_source((ROOT / "LootAndRewards/LootAndRewards.cs").read_text(encoding="utf-8-sig"))
+SPECIAL_LOOT_BRIDGE = clean_source((ROOT / "LootAndRewards/LootAndRewardsSpecialLoot.cs").read_text(encoding="utf-8-sig"))
 MODULE = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule.cs").read_text(encoding="utf-8-sig"))
 TICK = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_Tick.cs").read_text(encoding="utf-8-sig"))
 SPAWNERS = clean_source((ROOT / "WavesArena/WavesArenaSpawnerControl.cs").read_text(encoding="utf-8-sig"))
@@ -23,6 +24,12 @@ BOSS_BRIDGE = clean_source((ROOT / "WavesArena/WavesArenaBossSpawning.cs").read_
 COUNTDOWN = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_Countdown.cs").read_text(encoding="utf-8-sig"))
 WAVE_DEATHS = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_WaveDeaths.cs").read_text(encoding="utf-8-sig"))
 LOOT_STATE = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_LootState.cs").read_text(encoding="utf-8-sig"))
+LOOT_CATALOG = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_LootCatalog.cs").read_text(encoding="utf-8-sig"))
+LOOT_TRACKING = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_LootTracking.cs").read_text(encoding="utf-8-sig"))
+LOOT_CLEANUP = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_LootCleanup.cs").read_text(encoding="utf-8-sig"))
+DRAGON_LOOT = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_DragonLoot.cs").read_text(encoding="utf-8-sig"))
+RANDOM_LOOT = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_RandomBossLoot.cs").read_text(encoding="utf-8-sig"))
+RANDOM_LOOT_BRIDGE = clean_source((ROOT / "LootAndRewards/LootAndRewardsRandomBossLoot.cs").read_text(encoding="utf-8-sig"))
 START = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_Start.cs").read_text(encoding="utf-8-sig"))
 BOSS_START_HOST = clean_source((ROOT / "WavesArena/WavesArenaBossSpawning.cs").read_text(encoding="utf-8-sig"))
 REGISTRATION = clean_source((ROOT / "ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8-sig"))
@@ -33,6 +40,8 @@ def main():
         raise AssertionError("arena module instance must be created once")
     if "runtimeModuleHost.Register(wavesArenaRuntime);" not in REGISTRATION:
         raise AssertionError("registered arena module must be the stored instance")
+    if "ReleaseBossRandomLootTrackingOnDestroy();" not in MODULE:
+        raise AssertionError("arena owner must release boss loot subscriptions on destroy")
     for old_name, new_name in (
         ("waitingForNextWave", "WaitingForNextWave"),
         ("waveCountdown", "WaveCountdown"),
@@ -248,13 +257,125 @@ def main():
         "bossRushLootboxPathStaleBossScratch", "legacyBossGuaranteeCandidateScratch",
         "legacyBossGuaranteeQualityBucketsScratch", "difficultyRewardPreferredScratch",
         "difficultyRewardFallbackHighQualityScratch", "difficultyRewardKeepScratch",
-        "lootNextWarningLogTimes", "_activeVictoryRewardShadowCrateController",
+        "_activeVictoryRewardShadowCrateController",
         "_difficultyRewardSpawnPositionOverrideActive", "_difficultyRewardSpawnPositionOverride",
     ):
         if not re.search(r"\b" + re.escape(name) + r"\s*=", LOOT_STATE):
             raise AssertionError("arena loot tracking or reward scratch must belong to module: " + name)
         if "wavesArenaRuntime." + name not in LOOT_BRIDGE:
             raise AssertionError("legacy loot access must forward to module: " + name)
+    if "lootNextWarningLogTimes =" not in LOOT_STATE:
+        raise AssertionError("loot warning rate limit state must belong to arena module")
+    if "lootNextWarningLogTimes.TryGetValue(key, out nextLogTime)" not in LOOT_CATALOG:
+        raise AssertionError("loot warning throttle must execute in arena module")
+    if "wavesArenaRuntime.LogLootWarningLimited(key, message, e);" not in LOOT_BRIDGE:
+        raise AssertionError("legacy loot warning entry must forward to arena module")
+    for method, forwarding in (
+        ("InitializeItemValueCacheAsync", "wavesArenaRuntime.InitializeItemValueCacheAsync();"),
+        ("TryGetCachedItemValue", "wavesArenaRuntime.TryGetCachedItemValue(itemId, out value, out quality);"),
+        ("BuildGeneralBossLootCandidateIdSet", "wavesArenaRuntime.BuildGeneralBossLootCandidateIdSet(idSet);"),
+        ("TryGetLegacyBossLootCandidates", "wavesArenaRuntime.TryGetLegacyBossLootCandidates(candidateIds, qualityBuckets);"),
+    ):
+        if method + "(" not in LOOT_CATALOG or forwarding not in LOOT_BRIDGE:
+            raise AssertionError("loot catalog method must execute in arena module: " + method)
+    for result_type, method in (
+        ("bool", "InventoryContainsItemAtLeastQuality"),
+        ("int", "GetLegacyBossGuaranteeTypeId"),
+        ("bool", "TryAddLegacyBossGuaranteeItem"),
+    ):
+        if "internal " + result_type + " " + method + "(" not in LOOT_CATALOG:
+            raise AssertionError("legacy quality guarantee must execute in arena module: " + method)
+        if "wavesArenaRuntime." + method + "(" not in SPECIAL_LOOT_BRIDGE:
+            raise AssertionError("legacy quality guarantee host entry must forward: " + method)
+    for token in (
+        "LegacyBossLootProbabilityModel.RollGuaranteeQuality(UnityEngine.Random.value)",
+        "return bucket[UnityEngine.Random.Range(0, bucket.Count)];",
+        "candidateIds.Clear();",
+        "ClearLegacyBossGuaranteeQualityBucketsScratch();",
+    ):
+        if token not in LOOT_CATALOG:
+            raise AssertionError("legacy quality guarantee chance, selection or cleanup changed: " + token)
+    for method in (
+        "LogBossLootInventory_LootAndRewards",
+        "CleanupDifficultyRewardLootboxInventory_LootAndRewards",
+        "ClearDifficultyRewardCleanupScratch",
+    ):
+        if method + "(" not in LOOT_CLEANUP or "wavesArenaRuntime." + method + "(" not in SPECIAL_LOOT_BRIDGE:
+            raise AssertionError("loot cleanup coroutine or scratch release must execute in arena module: " + method)
+    for token in (
+        "while (tries < maxTries && inv.Loading)",
+        "yield return new WaitForSeconds(0.1f);",
+        "for (int i = content.Count - 1; i >= 0; i--)",
+        "ClearDifficultyRewardCleanupScratch();",
+    ):
+        if token not in LOOT_CLEANUP:
+            raise AssertionError("loot cleanup wait, removal or finally trace missing: " + token)
+    for method in (
+        "RegisterBossRandomLootTracking",
+        "ClearBossRandomLootTracking",
+        "MarkBossRushLootboxPathTracking",
+        "FinalizeBossRushLootboxPathTracking",
+        "RefreshBossRushLootboxPathTrackingForTrackedBosses",
+    ):
+        if "internal void " + method + "(" not in LOOT_TRACKING:
+            raise AssertionError("arena module must own boss loot tracking action: " + method)
+        if "wavesArenaRuntime." + method + "(" not in LOOT_BRIDGE:
+            raise AssertionError("host loot tracking entry must forward: " + method)
+    for token in (
+        "PetNestDropService.TryTrack(owner, character);",
+        "AffixForgeStoneDropService.TryTrack(owner, character);",
+        "trackedBossLootHooks[character] = handler;",
+        "character.BeforeCharacterSpawnLootOnDead += handler;",
+        "character.BeforeCharacterSpawnLootOnDead -= handler;",
+        "RollbackBossRandomLootTrackingRegistration(character);",
+        "owner.ShouldTrackBossRushLootboxPathForArena()",
+        "owner.OnBossBeforeSpawnLootForArena(capturedCharacter, dmgInfo)",
+    ):
+        if token not in LOOT_TRACKING:
+            raise AssertionError("boss loot subscription or cleanup trace missing: " + token)
+    if "entry.Key.BeforeCharacterSpawnLootOnDead -= entry.Value;" not in LOOT_TRACKING or "trackedBossLootHooks.Clear();" not in LOOT_TRACKING:
+        raise AssertionError("arena owner destroy must unsubscribe every remaining boss loot handler")
+    if LOOT_TRACKING.index("trackedBossLootHooks[character] = handler;") > LOOT_TRACKING.index("character.BeforeCharacterSpawnLootOnDead += handler;"):
+        raise AssertionError("tracking handler must be saved before subscribing")
+    if "return config != null && config.enableRandomBossLoot && !infiniteHellMode && !modeEActive && !modeFActive;" not in LOOT_BRIDGE:
+        raise AssertionError("lootbox tracking gate must keep original configuration and mode checks")
+    if "return wavesArenaRuntime.ShouldDeferExtraBossDropToModPath(bossMain);" not in SPECIAL_LOOT_BRIDGE:
+        raise AssertionError("extra boss drop defer query must forward to arena module")
+    if "internal bool ShouldDeferExtraBossDropToModPath(CharacterMainControl bossMain)" not in LOOT_TRACKING or "if (InfiniteHellMode)" not in LOOT_TRACKING:
+        raise AssertionError("arena defer predicate must retain explicit Infinite Hell gate")
+    for method in (
+        "IsDragonDescendantBoss",
+        "IsDragonKingBoss",
+        "AddDragonDescendantLoot",
+        "AddDragonKingLoot",
+        "TryAddDragonKingLootItem",
+    ):
+        if method + "(" not in DRAGON_LOOT or "wavesArenaRuntime." + method + "(" not in SPECIAL_LOOT_BRIDGE:
+            raise AssertionError("dragon reward producer and host bridge must both exist: " + method)
+    for token in (
+        "EnsureDragonBossRewardPrefabLoaded(selectedTypeId, \"[DragonDescendant]\")",
+        "EnsureDragonBossRewardPrefabLoaded(typeId, \"[DragonKing]\")",
+        "InteractableLootboxInventoryHelper.TryAddExtraItem(inv, newItem)",
+        "AchievementTracker.OnCollectDragonDescendantLoot(selectedTypeId);",
+        "AchievementTracker.OnCollectDragonKingLoot(typeId);",
+    ):
+        if token not in DRAGON_LOOT:
+            raise AssertionError("dragon reward registration, delivery or collection trace missing: " + token)
+    if DRAGON_LOOT.index("InteractableLootboxInventoryHelper.TryAddExtraItem(inv, newItem)") > DRAGON_LOOT.index("AchievementTracker.OnCollectDragonDescendantLoot(selectedTypeId);"):
+        raise AssertionError("descendant collection must follow successful delivery")
+    if "internal void RandomizeBossLoot_LootAndRewards(" not in RANDOM_LOOT:
+        raise AssertionError("random Boss reward generation must execute in arena module")
+    if "wavesArenaRuntime.RandomizeBossLoot_LootAndRewards(bossMain, totalCount, killDuration," not in RANDOM_LOOT_BRIDGE:
+        raise AssertionError("legacy random Boss reward entry must forward to arena module")
+    for token in (
+        "bossRandomLootCandidateIdScratch = new List<int>(1024)",
+        "bossRandomLootQualityScratch = new Dictionary<int, int>(1024)",
+        "internal static class BossLootBoxLoaderReflection",
+        "owner.StartCoroutine(owner.AddBossSpecialLootToLootboxCoroutine(",
+        "owner.StartCoroutine(LogBossLootInventory_LootAndRewards(lootbox))",
+    ):
+        if token not in RANDOM_LOOT:
+            raise AssertionError("random Boss reward state, reflection or coroutine trace missing: " + token)
     for cache_name in (
         "CachedLootBoxTemplateWithLoader",
         "CachedDifficultyRewardLootBoxTemplate",

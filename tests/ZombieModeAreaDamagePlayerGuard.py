@@ -6,11 +6,12 @@ import sys
 
 
 POLLUTION_PARTS = [
-    Path("ZombieMode/ZombieModePollution.cs"),
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_Pollution.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 BOSS = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 WAVE = Path("ZombieMode/ZombieModeWaveController.cs")
 
 
@@ -46,6 +47,7 @@ def extract_method(text: str, method_name: str, signature_hint: str = "") -> str
 def main() -> int:
     pollution = read_pollution()
     boss = BOSS.read_text(encoding="utf-8")
+    boss_module = BOSS_MODULE.read_text(encoding="utf-8")
     wave = WAVE.read_text(encoding="utf-8")
 
     area_damage = extract_method(
@@ -97,14 +99,14 @@ def main() -> int:
         "SpawnZombieModeDeathCloud(runId, character, character.transform.position);",
         "runtime.Initialize(\n                runId,\n                source,",
     ]:
-        if token not in boss and token not in pollution:
+        if token not in boss and token not in boss_module and token not in pollution:
             return fail("death/corruptor area damage must pass its zombie source -> " + token)
 
     death_source_patterns = [
         r"DealZombieModeAreaDamageToPlayer\(\s*runId,\s*character,",
         r"DealZombieModeExplosionAreaDamage\(\s*runId,\s*character,",
     ]
-    if not any(re.search(pattern, boss) or re.search(pattern, pollution) for pattern in death_source_patterns):
+    if not any(re.search(pattern, boss) or re.search(pattern, boss_module) or re.search(pattern, pollution) for pattern in death_source_patterns):
         return fail("death area damage must pass character as source")
 
     print("ZombieModeAreaDamagePlayerGuard: PASS")

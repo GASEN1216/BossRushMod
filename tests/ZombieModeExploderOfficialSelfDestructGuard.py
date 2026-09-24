@@ -5,8 +5,8 @@ import sys
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
-POLLUTION = Path("ZombieMode/ZombieModePollution.cs")
-RUNTIME = Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs")
+POLLUTION = Path("ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs")
+RUNTIME = Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs")
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 
 
@@ -52,7 +52,7 @@ def main() -> int:
 
     death_body = extract_method_body(
         runtime,
-        "private void HandleZombieModeSpecialDeathEffects(int runId, ZombieModeEnemyRuntimeMarker marker, CharacterMainControl character)",
+        "internal void HandleZombieModeSpecialDeathEffects(int runId, ZombieModeEnemyRuntimeMarker marker, CharacterMainControl character)",
     )
     if death_body is None:
         return fail("missing HandleZombieModeSpecialDeathEffects body")

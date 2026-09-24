@@ -14,7 +14,7 @@ SOURCES = {
         "internal void PruneZombieModeRunOnlyEnemyRecords(",
     ),
     "RefreshZombieModeCommanderAuraTargets": (
-        Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+        Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
         "internal void RefreshZombieModeCommanderAuraTargets(",
     ),
     "KeepZombieModeEnemiesOutsideSafeZone": (

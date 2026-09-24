@@ -4,6 +4,7 @@
 **本文引用的文件**
 - [ModBehaviour.cs](file://ModBehaviour.cs)
 - [BossRushIntegration.cs](file://Integration/BossRushIntegration.cs)
+- [BossRushIntegrationRuntimeModule_Initialization.cs](file://Integration/BossRushIntegrationRuntimeModule_Initialization.cs)
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [LootAndRewards.cs](file://LootAndRewards/LootAndRewards.cs)
@@ -46,7 +47,7 @@ MB --> LR["LootAndRewards<br/>掉落与通关奖励"]
 MB --> AM["BossRushAchievementManager<br/>成就解锁/领取"]
 MB --> MAP["BossRushMapConfig<br/>地图配置模型"]
 MB --> REG["MapSpawnPointRegistry<br/>JSON 注册表"]
-MB --> INT["BossRushIntegration<br/>物品/商店/本地化"]
+MB --> INT["IntegrationRuntimeModule<br/>物品/商店/本地化"]
 MB --> UIHB["ModeEUiAndHealthBars<br/>血条/名称更新"]
 ```
 
@@ -58,7 +59,7 @@ MB --> UIHB["ModeEUiAndHealthBars<br/>血条/名称更新"]
 - [BossRushAchievementManager.cs:46-235](file://Achievement/BossRushAchievementManager.cs#L46-L235)
 - [BossRushMapConfig.cs:9-46](file://Common/MapConfig/BossRushMapConfig.cs#L9-L46)
 - [MapSpawnPointRegistry.cs:44-88](file://Common/MapConfig/MapSpawnPointRegistry.cs#L44-L88)
-- [BossRushIntegration.cs:439-491](file://Integration/BossRushIntegration.cs#L439-L491)
+- [BossRushIntegrationRuntimeModule_Initialization.cs](file://Integration/BossRushIntegrationRuntimeModule_Initialization.cs)
 - [ModeEUiAndHealthBars.cs:22-411](file://ModeE/ModeEUiAndHealthBars.cs#L22-L411)
 
 章节来源
@@ -69,7 +70,7 @@ MB --> UIHB["ModeEUiAndHealthBars<br/>血条/名称更新"]
 - 掉落与奖励：拦截 Boss 死亡掉落、随机品质加成、通关奖励箱、无间炼狱现金池与里程碑奖励。
 - 成就追踪：定义成就、解锁判定、奖励发放、存档持久化与事件广播。
 - 地图配置：从 JSON 加载地图的刷新点、默认路牌位置、北方向、排序等；提供查询接口。
-- 系统集成：动态物品初始化、商店注入、本地化注入、场景加载钩子。
+- 系统集成：`IntegrationRuntimeModule` 持有动态物品初始化、本地化注入、自定义武器运行时登记、配置回调和商店聚合注入；`BossRushIntegration.cs` 保留兼容入口与场景协调。
 - UI 与血条：玩家与目标名称、血条显示刷新、语言切换同步。
 
 章节来源
@@ -77,7 +78,7 @@ MB --> UIHB["ModeEUiAndHealthBars<br/>血条/名称更新"]
 - [LootAndRewards.cs:322-432](file://LootAndRewards/LootAndRewards.cs#L322-L432)
 - [BossRushAchievementManager.cs:46-235](file://Achievement/BossRushAchievementManager.cs#L46-L235)
 - [MapSpawnPointRegistry.cs:44-88](file://Common/MapConfig/MapSpawnPointRegistry.cs#L44-L88)
-- [BossRushIntegration.cs:439-491](file://Integration/BossRushIntegration.cs#L439-L491)
+- [BossRushIntegrationRuntimeModule_Initialization.cs](file://Integration/BossRushIntegrationRuntimeModule_Initialization.cs)
 - [ModeEUiAndHealthBars.cs:22-411](file://ModeE/ModeEUiAndHealthBars.cs#L22-L411)
 
 ## 架构总览
@@ -250,7 +251,7 @@ sequenceDiagram
 participant UI as "UI/血条"
 participant MB as "ModBehaviour"
 participant HB as "ModeEUiAndHealthBars"
-participant INT as "BossRushIntegration"
+participant INT as "IntegrationRuntimeModule"
 MB->>HB : 扫描/缓存 HealthBar
 MB->>INT : 注入物品本地化/商店条目
 UI->>HB : 请求刷新名称/图标
@@ -260,12 +261,12 @@ MB->>UI : 显示波次倒计时/提示横幅
 
 图表来源
 - [ModeEUiAndHealthBars.cs:22-411](file://ModeE/ModeEUiAndHealthBars.cs#L22-L411)
-- [BossRushIntegration.cs:439-491](file://Integration/BossRushIntegration.cs#L439-L491)
+- [BossRushIntegrationRuntimeModule_Initialization.cs](file://Integration/BossRushIntegrationRuntimeModule_Initialization.cs)
 - [WavesArena.cs:186-207](file://WavesArena/WavesArena.cs#L186-L207)
 
 章节来源
 - [ModeEUiAndHealthBars.cs:22-411](file://ModeE/ModeEUiAndHealthBars.cs#L22-L411)
-- [BossRushIntegration.cs:439-491](file://Integration/BossRushIntegration.cs#L439-L491)
+- [BossRushIntegrationRuntimeModule_Initialization.cs](file://Integration/BossRushIntegrationRuntimeModule_Initialization.cs)
 - [WavesArena.cs:186-207](file://WavesArena/WavesArena.cs#L186-L207)
 
 ## 依赖关系分析
@@ -311,7 +312,7 @@ LR --> REG
 - [WavesArenaBossSpawning.cs:117-251](file://WavesArena/WavesArenaBossSpawning.cs#L117-L251)
 - [LootAndRewards.cs:493-586](file://LootAndRewards/LootAndRewards.cs#L493-L586)
 - [ModBehaviour.cs:530-552](file://ModBehaviour.cs#L530-L552)
-- [BossRushIntegration.cs:65-81](file://Integration/BossRushIntegration.cs#L65-L81)
+- [BossRushIntegrationRuntimeModule_Initialization.cs](file://Integration/BossRushIntegrationRuntimeModule_Initialization.cs)
 - [LootAndRewards.cs:246-262](file://LootAndRewards/LootAndRewards.cs#L246-L262)
 
 ## 故障排查指南

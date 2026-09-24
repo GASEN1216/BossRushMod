@@ -7,6 +7,7 @@ MAP_ISOLATION = Path("ZombieMode/ZombieModeMapIsolation.cs")
 REGISTRY = Path("Integration/NPCs/Common/NPCModuleRegistry.cs")
 COURIER = Path("Integration/NPCs/Courier/CourierNPC.cs")
 COURIER_NPC_SOURCES = [
+    Path("Integration/NPCs/Courier/CourierNpcRuntimeModule.cs"),
     COURIER,
     Path("Integration/NPCs/Courier/CourierNPCController.cs"),
     Path("Integration/NPCs/Courier/CourierMovement.cs"),

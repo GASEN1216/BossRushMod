@@ -5,7 +5,8 @@ import sys
 
 
 BOSS = Path("ZombieMode/ZombieModeBossController.cs")
-RUNTIME = Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs")
+BOSS_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
+RUNTIME = Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs")
 
 
 def fail(message: str) -> int:
@@ -51,6 +52,7 @@ def extract_class_body(text: str, class_name: str, next_class_name: str) -> str 
 
 def main() -> int:
     boss = BOSS.read_text(encoding="utf-8-sig")
+    boss_module = BOSS_MODULE.read_text(encoding="utf-8-sig")
     runtime = RUNTIME.read_text(encoding="utf-8-sig")
 
     area_runtime = extract_class_body(boss, "ZombieModeAreaTickRuntime", "ZombieModeBossShieldRuntime")
@@ -72,7 +74,7 @@ def main() -> int:
     if "inst.TryApplyZombieModePlayerSlow(RuntimeRunId, slowPercent" in area_runtime:
         return fail("area tick runtime reverted to global player slow")
 
-    corruption_zone = extract_method_body(boss, "private void SpawnZombieModeCorruptionZone(")
+    corruption_zone = extract_method_body(boss_module, "private void SpawnZombieModeCorruptionZone(")
     if corruption_zone is None:
         return fail("missing SpawnZombieModeCorruptionZone body")
     for token in [
@@ -83,7 +85,7 @@ def main() -> int:
         if token not in corruption_zone:
             return fail("corruption zone no longer passes startup/slow tuning -> " + token)
 
-    slow_area = extract_method_body(runtime, "public void TryApplyZombieModePlayerSlowInArea(")
+    slow_area = extract_method_body(runtime, "internal void TryApplyZombieModePlayerSlowInArea(")
     if slow_area is None:
         return fail("missing TryApplyZombieModePlayerSlowInArea helper")
     for token in [

@@ -22,10 +22,10 @@ ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
 INVENTORY = Path("ZombieMode/ZombieModeInventoryTransfer.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 INVENTORY_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_InventoryTransfer.cs")
-POLLUTION = Path("ZombieMode/ZombieModePollution.cs")
+POLLUTION = Path("ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs")
 POLLUTION_PARTS = [
     POLLUTION,
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")

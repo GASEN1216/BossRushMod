@@ -6,7 +6,7 @@ import sys
 
 START_SOURCE = Path("Integration/BossRushIntegration_StartAndScene.cs")
 UNIFIED_REGISTRY_SOURCE = Path("Integration/BossRushDynamicItemRegistry.cs")
-LOOT_SOURCE = Path("LootAndRewards/LootAndRewardsSpecialLoot.cs")
+LOOT_SOURCE = Path("WavesArena/WavesArenaRuntimeModule_DragonLoot.cs")
 
 
 def fail(message: str) -> int:
@@ -68,11 +68,11 @@ def main() -> int:
     if "BossRushDynamicItemRegistry.EnsureRegistered(typeId);" not in ensure_block:
         return fail("drop fallback helper must call BossRushDynamicItemRegistry.EnsureRegistered(typeId)")
 
-    descendant_block = extract_block(loot_text, "private IEnumerator AddDragonDescendantLoot(Inventory inv)")
+    descendant_block = extract_block(loot_text, "internal IEnumerator AddDragonDescendantLoot(Inventory inv)")
     if "EnsureDragonBossRewardPrefabLoaded(selectedTypeId, \"[DragonDescendant]\")" not in descendant_block:
         return fail("dragon descendant drop path must ensure prefab before InstantiateSync")
 
-    king_block = extract_block(loot_text, "private bool TryAddDragonKingLootItem(Inventory inv, int typeId, string itemName)")
+    king_block = extract_block(loot_text, "internal bool TryAddDragonKingLootItem(Inventory inv, int typeId, string itemName)")
     if "EnsureDragonBossRewardPrefabLoaded(typeId, \"[DragonKing]\")" not in king_block:
         return fail("dragon king drop path must ensure prefab before InstantiateSync")
 

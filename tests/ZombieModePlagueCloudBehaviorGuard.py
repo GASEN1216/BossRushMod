@@ -5,7 +5,7 @@ import re
 import sys
 
 
-RUNTIME = Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs")
+RUNTIME = Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs")
 COMPONENTS = Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs")
 
 
@@ -103,7 +103,7 @@ def main() -> int:
         if token not in toxic_body:
             return fail("elite ToxicAura/Plague block missing cloud token -> " + token)
 
-    spawn_body = extract_method_body(runtime, "public void SpawnZombieModeDamageCloud(")
+    spawn_body = extract_method_body(runtime, "internal void SpawnZombieModeDamageCloud(")
     if spawn_body is None:
         return fail("missing SpawnZombieModeDamageCloud helper")
     for token in [

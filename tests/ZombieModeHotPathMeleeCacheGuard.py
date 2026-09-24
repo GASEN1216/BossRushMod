@@ -6,8 +6,9 @@ import sys
 
 
 POLLUTION_PARTS = [
-    Path("ZombieMode/ZombieModePollution.cs"),
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_Pollution.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 
@@ -45,7 +46,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 def main() -> int:
     text = read_pollution()
-    body = extract_method_body(text, "private bool IsZombieModeDamageFromMeleeWeapon(")
+    body = extract_method_body(text, "internal bool IsZombieModeDamageFromMeleeWeapon(")
     if body is None:
         return fail("ZombieModeHotPathMeleeCacheGuard: missing IsZombieModeDamageFromMeleeWeapon")
 
@@ -71,7 +72,7 @@ def main() -> int:
     if re.search(r"InstantiateSync\s*\(", helper_body):
         return fail("ZombieModeHotPathMeleeCacheGuard: melee cache helper must inspect prefabs, not instantiate items")
 
-    tag_body = extract_method_body(text, "private bool ItemHasZombieModeTag(")
+    tag_body = extract_method_body(text, "internal bool ItemHasZombieModeTag(")
     if tag_body is None:
         return fail("ZombieModeHotPathMeleeCacheGuard: missing ItemHasZombieModeTag helper")
 

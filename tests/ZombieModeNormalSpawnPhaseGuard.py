@@ -4,10 +4,10 @@ import sys
 
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 WAVE = Path("ZombieMode/ZombieModeWaveController.cs")
-BOSS = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 POLLUTION_PARTS = [
-    Path("ZombieMode/ZombieModePollution.cs"),
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_Pollution.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
@@ -122,12 +122,12 @@ def main() -> int:
         )
         require(
             boss,
-            "() => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat",
+            "() => runState.CombatPhase == ZombieModeCombatPhase.Combat",
             "splitter boss children must not spawn after combat phase leaves Combat",
         )
         require(
             pollution,
-            "() => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat",
+            "() => runState.CombatPhase == ZombieModeCombatPhase.Combat",
             "elite splitting affix children must not spawn after combat phase leaves Combat",
         )
         require(

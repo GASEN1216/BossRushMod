@@ -15,9 +15,10 @@ import sys
 
 SPAWN_CORE = Path("Utilities/EnemySpawnCore.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-BOSS = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 BOSS_PARTS = [
     BOSS,
+    Path("ZombieMode/ZombieModeBossController.cs"),
     Path("ZombieMode/ZombieModePlayerSlowRuntime.cs"),
 ]
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")

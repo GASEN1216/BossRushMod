@@ -14,7 +14,7 @@
 | P5 目录归位 | 未开始 | 天空岛迁移与注入占位清理 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-最近已提交：`c8abc536`（P3 簇 2 奖励缓存 / 前期排除，簇 5 奖励时长 / RunOnly 清理，簇 6 延迟初始化）；下一动作是继续簇 2 预设池与余下业务，簇 5、6 的独立叶子并行推进。真实游戏目录尚未部署。
+最近已提交：`2c13bf8e`（P3 簇 2 波次与预设，簇 5 入场转存 / 敌人索引，簇 6 图鉴 / 生日蛋糕 / 出行）；下一动作是完成簇 2 掉落与奖励主体，簇 5 HUD 和簇 6 Integration 初始化叶子并行推进。真实游戏目录尚未部署。
 
 ## P0 基线（2026-09-24）
 
@@ -78,6 +78,15 @@
 - 簇 6：Wiki Book 与生日蛋糕初始化状态归 `IntegrationRuntimeModule`，保留一次性 latch、原 TypeID / 资源 / 本地化 / 存档键；原 2 秒生日赠礼等待和 DebugGive 入口保持。`BirthdayCakeGift` 从生产协程抽取，已通过聚合执行回归，两个专项守卫做反向验证。出行叶子将准备轮询、落点计算、子场景传送器扫描与出生点配置解析归同一模块；`SetupBossRushInGroundZero` 编排 Mode D/E/F/G/H/Zombie，按 §2.2 保留宿主，`currentMapSpawnPoints` 仍由宿主兼容入口赋值。Travel 专项守卫和 `ModeHSceneEntry` 执行回归已通过反向验证。
 - 本批离线检查点：编译清单 1,057 源，模块索引 47 个模块；宿主 partial 177 文件 / 80,384 行，预算下调到 177 / 80,400。全量守卫 679 PASS / 0 FAIL / 0 known-red；全量执行回归 69 PASS / 0 FAIL（SKIP 0）。隔离正式构建 `Build succeeded!`、Dev 标识缺席、SHA-256 `7D5C5F881C4AA23F926403DC4A896657AC97CF8ADF6A450B5C48C01EA1F8E44E`；隔离 Dev 构建 `Build succeeded!`、标识在位、SHA-256 `D50D5CA925A3F3E164CB422A9193BC6C434A8EC5A5B6179C539BB9553C1F6CB5`。两种 DLL 与隔离发布副本哈希分别一致，72 个 bundle 清单通过。真实游戏目录未动，L3 待 owner。
 - 下一动作：完成簇 2 余下掉落与奖励主体；簇 5 的 HUD 叶子在本批提交后开始；簇 6 剩余 Integration partial 再逐片盘点。P3 簇 3、4、7，P4 §6 第 9 条，P5 与 P6 均未完成。
+
+### 当前可恢复步骤：随机掉落、污染、Boss 控制器与快递员（COMPAT）
+
+- 簇 2：已注册的 `WavesArenaRuntimeModule` 接管 Boss 掉落候选/价值缓存、品质保底、警告节流、难度奖励箱清理协程及 scratch、Boss 掉落事件追踪与退订、龙裔/龙王专属奖励、随机 Boss 奖励箱的反射缓存和候选缓冲。`LootAndRewards` 旧调用签名继续转发；随机事件奖励箱共用移入模块的反射字段，保底与龙系成就仍在成功入箱后投递。`OnBossBeforeSpawnLoot`、玩家死亡跨模式收尾、标准胜利与奖励箱演出等尚留宿主，不记簇完成。
+- 簇 5：HUD 控制、Boss 控制器及污染技能/词条主体迁入 `ZombieModeRuntimeModule` 的分片，旧入口只作兼容转发；污染模块按热路径与调参职责拆成三个低于 1,200 行的分片。Boss 控制器清理 Frenzy 修饰器及分裂刷怪仍从原调度位置进入。其余丧尸奖励、临时 NPC、波次控制及清理业务尚待迁移，不记簇完成。
+- 簇 6：物品商店注入和内容初始化方法迁入 `IntegrationRuntimeModule`，宿主旧入口保留；快递员 NPC 的实例、控制器与静态资源缓存归唯一 `CourierNpcRuntimeModule`，旧公开入口与只读状态属性转发。卸载仍先走 `DestroyCommonNPCs` 释放待领扫箱结果，再走模块逆序销毁。图鉴书商店库存等其他 Integration 宿主状态待续。
+- 守卫按生产方法新位置收敛，修改的守卫经定点破坏转红、按字节还原。`BossRewardDelivery` 从龙系新生产文件抽取方法；`AirdropSecondReview` 替身匹配迁入模块的同一反射类型；`AffixCombat` 抽取丧尸污染模块的真实爆炸方法。首次全量回归分别因 `AffixCombat`、`AirdropSecondReview` 旧替身失配各有 1 FAIL；修正验证链后全量 69 PASS / 0 FAIL / 0 SKIP。全量守卫 680 PASS / 0 FAIL / 0 known-red。
+- 本批编译清单 1,069 源，索引 47 模块；宿主 partial 177 文件 / 74,535 行，预算从 177 / 80,400 下调到 177 / 74,600，预算破坏探针转红并按字节还原。隔离正式构建 `Build succeeded!`、Dev 标识缺席、DLL SHA-256 `85C1C36229CD2E7AF09802EDB332AB4BD041EC6642EB52E2A0C6457812EEC926`；隔离 Dev 构建 `Build succeeded!`、Dev 标识在位、SHA-256 `69142705B24716FA93C3AB568930EC38217854B07C67EE9D7B7A40B19AF625E2`。两种 DLL 与隔离发布副本哈希分别一致，72 个 bundle 清单通过。真实游戏目录未动，L3 待 owner。
+- 下一动作：继续簇 2 胜利奖励与掉落事件漏斗；簇 6 图鉴书库存叶子；随后主窗口推进簇 3 Mode D、簇 4 Mode E/F、簇 7 宿主收口。P4 §6 第 9 条、P5、P6 仍未完成。
 
 ## P1 上下文治理（2026-09-24）
 

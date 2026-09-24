@@ -39,7 +39,8 @@ LOCALIZATION = Path("Localization/AffixForgeLocalization.cs")
 ITEM_DATA = AFFIX_DIR / "AffixItemData.cs"
 FORGE_SYSTEM = AFFIX_DIR / "AffixForgeSystem.cs"
 STONE_DROP = AFFIX_DIR / "AffixForgeStoneDropService.cs"
-LOOT_TRACKING = Path("LootAndRewards/LootAndRewards.cs")
+LOOT_TRACKING = Path("WavesArena/WavesArenaRuntimeModule_LootTracking.cs")
+LOOT_BRIDGE = Path("LootAndRewards/LootAndRewards.cs")
 DRAGON_KING = Path("Integration/DragonKing/DragonKingBoss.cs")
 
 PAIRED_EVENTS = (
@@ -74,7 +75,7 @@ def check_forge_stone_drop_wiring():
 
     挂接必须成对：龙王的离场与死亡两个清理点都要退订，否则 handler 会跨局残留。
     """
-    for path in (STONE_DROP, LOOT_TRACKING, DRAGON_KING):
+    for path in (STONE_DROP, LOOT_TRACKING, LOOT_BRIDGE, DRAGON_KING):
         if not path.is_file():
             return "找不到 " + path.as_posix()
 
@@ -85,8 +86,11 @@ def check_forge_stone_drop_wiring():
         return "AffixForgeStoneDropService 缺少 ClearTracking(CharacterMainControl)"
 
     shared = strip_comments(LOOT_TRACKING.read_text(encoding="utf-8", errors="ignore"))
-    if "AffixForgeStoneDropService.TryTrack(this, character);" not in shared:
+    if "AffixForgeStoneDropService.TryTrack(owner, character);" not in shared:
         return "共享刷怪路径 RegisterBossRandomLootTracking 必须并联熔石 TryTrack"
+    bridge = strip_comments(LOOT_BRIDGE.read_text(encoding="utf-8", errors="ignore"))
+    if "wavesArenaRuntime.RegisterBossRandomLootTracking(character, originalLootCount, spawnTimeOffset);" not in bridge:
+        return "宿主掉落追踪入口必须转发至竞技场模块"
 
     king = strip_comments(DRAGON_KING.read_text(encoding="utf-8", errors="ignore"))
     if "AffixForgeStoneDropService.TryTrack(owner, character);" not in king:

@@ -223,11 +223,13 @@ namespace BossRush
         internal bool Paused, FailScheduling;
         internal int Fallbacks;
         internal ZombieModeRunState zombieModeRunState = new ZombieModeRunState { RunId = 1 };
+        internal ZombieModeRuntimeModule zombieModeRuntimeModule;
         private float zombieModeOptionExplosionSkipLogTime;
-        private bool IsZombieModeRunValid(int id) { return id > 0 && id == zombieModeRunState.RunId && !zombieModeRunState.IsCleaningUp; }
+        internal ModBehaviour() { Instance = this; zombieModeRuntimeModule = new ZombieModeRuntimeModule(this); }
+        internal bool IsZombieModeRunValid(int id) { return id > 0 && id == zombieModeRunState.RunId && !zombieModeRunState.IsCleaningUp; }
         internal bool IsZombieModeRuntimePaused() { return Paused; }
         private float GetZombieModeRuntimeNow() { return Time.time; }
-        private void DealZombieModeAreaDamageToPlayer(int id, CharacterMainControl source, Vector3 origin, float radius, float damage) { Fallbacks++; }
+        internal void DealZombieModeAreaDamageToPlayer(int id, CharacterMainControl source, Vector3 origin, float radius, float damage) { Fallbacks++; }
         internal void OptionExplosion() { CreateZombieModeOptionExplosion(1, new Vector3(), 3, 25); }
         internal void DoomPulse(int stacks) { TriggerZombieModeDoomPulse(1, stacks); }
         internal readonly List<Coroutine> Pending = new List<Coroutine>();

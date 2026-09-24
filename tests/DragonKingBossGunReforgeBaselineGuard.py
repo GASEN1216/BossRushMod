@@ -5,7 +5,8 @@ import sys
 
 
 SOURCE = Path("Integration/DragonKing/Weapons/DragonKingBossGunRuntime.cs")
-INTEGRATION_SOURCE = Path("Integration/BossRushIntegration.cs")
+INTEGRATION_MODULE_SOURCE = Path("Integration/BossRushIntegrationRuntimeModule_Initialization.cs")
+INTEGRATION_HOST_SOURCE = Path("Integration/BossRushIntegration.cs")
 
 
 def fail(message: str) -> int:
@@ -13,9 +14,28 @@ def fail(message: str) -> int:
     return 1
 
 
+def method_body(source: str, signature: str) -> str:
+    start = source.find(signature)
+    if start < 0:
+        return ""
+    opening = source.find("{", start + len(signature))
+    if opening < 0:
+        return ""
+    depth = 0
+    for index in range(opening, len(source)):
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[opening + 1:index]
+    return ""
+
+
 def main() -> int:
     text = SOURCE.read_text(encoding="utf-8-sig")
-    integration_text = INTEGRATION_SOURCE.read_text(encoding="utf-8-sig")
+    integration_module_text = INTEGRATION_MODULE_SOURCE.read_text(encoding="utf-8-sig")
+    integration_host_text = INTEGRATION_HOST_SOURCE.read_text(encoding="utf-8-sig")
 
     forbidden = [
         "9.2f * profile.FireRateMult",
@@ -44,8 +64,12 @@ def main() -> int:
         if snippet not in text:
             return fail("missing reforge-safe baseline snippet -> " + snippet)
 
-    if "DragonKingBossGunRuntime.RefreshAmmoProfileAfterRuntimeRestore" not in integration_text:
-        return fail("DragonKing boss gun runtime restore hook is not registered")
+    registration = method_body(integration_module_text, "internal void RegisterCustomWeaponRuntimeConfigs()")
+    if "DragonKingBossGunRuntime.RefreshAmmoProfileAfterRuntimeRestore" not in registration:
+        return fail("DragonKing boss gun runtime restore hook is not registered by IntegrationRuntimeModule")
+    host_bridge = method_body(integration_host_text, "private void RegisterCustomWeaponRuntimeConfigs()")
+    if "bossRushIntegrationRuntime.RegisterCustomWeaponRuntimeConfigs();" not in host_bridge:
+        return fail("legacy weapon registration entrypoint must forward to IntegrationRuntimeModule")
 
     clear_scene_start = text.find("public static void ClearSceneCaches()")
     clear_ammo_start = text.find("private static void ClearAmmoProfileStateCaches()")

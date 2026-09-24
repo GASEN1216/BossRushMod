@@ -24,7 +24,8 @@ def member(source, signature):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     rewards = (ROOT / "ZombieMode/ZombieModeRewardTriggerEffects.cs").read_text(encoding="utf-8-sig")
-    skills = (ROOT / "ZombieMode/ZombieModePollution_RuntimeSkills.cs").read_text(encoding="utf-8-sig")
+    skills = (ROOT / "ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs").read_text(encoding="utf-8-sig")
+    skill_bridge = (ROOT / "ZombieMode/ZombieModePollution_RuntimeSkills.cs").read_text(encoding="utf-8-sig")
     mutators = (ROOT / "Integration/Mutators/MutatorManager.cs").read_text(encoding="utf-8-sig")
     definitions = (ROOT / "Integration/Mutators/MutatorDefinitions.cs").read_text(encoding="utf-8-sig")
     models = (ROOT / "ZombieMode/ZombieModeModels.cs").read_text(encoding="utf-8-sig")
@@ -35,7 +36,7 @@ def main():
     generated = 'using System; using System.Collections; using UnityEngine;\nnamespace BossRush { public sealed partial class ModBehaviour {\n'
     generated += member(rewards, "private void CreateZombieModeOptionExplosion(") + '\n'
     generated += member(rewards, "private void TriggerZombieModeDoomPulse(") + '\n'
-    generated += member(skills, "public void DealZombieModeExplosionAreaDamage(") + '\n}\n'
+    generated += member(skill_bridge, "public void DealZombieModeExplosionAreaDamage(") + '\n}\n'
     generated += 'internal static partial class MutatorManager {\n'
     generated += member(mutators, "private static void OnAnyCharacterDead(") + '\n'
     generated += member(mutators, "private static IEnumerator DispatchEnemyKilledNextFrame(") + '\n'
@@ -52,13 +53,19 @@ def main():
     generated += member(item_data, "public static AffixEquipMask GetEquipMask(") + "\n}}"
     # Keep the exact production scheduling, pause/cancel, cleanup and pulse geometry methods,
     # while excluding unrelated entry/lifecycle members that require the full game host.
-    generated += "\nnamespace BossRush { internal sealed class ZombieModeRuntimeModule {\n"
+    generated += "\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n"
+    generated += "private readonly ModBehaviour owner; private readonly ZombieModeRunState runState; "
+    generated += "internal ZombieModeRuntimeModule(ModBehaviour value) { owner = value; runState = value.zombieModeRunState; } "
+    generated += "private bool IsZombieModeRunValid(int runId) { return owner.IsZombieModeRunValid(runId); } "
+    generated += "private bool IsZombieModeRuntimePaused() { return owner.IsZombieModeRuntimePaused(); } "
+    generated += "private void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source, Vector3 origin, float radius, float damage) { owner.DealZombieModeAreaDamageToPlayer(runId, source, origin, radius, damage); }\n"
     for signature in (
         "internal static void DeferExplosion(",
         "private static IEnumerator ExplosionNextFrame(",
         "internal static void TriggerDoomPulse(",
     ):
         generated += member(runtime_module, signature) + "\n"
+    generated += member(skills, "internal void DealZombieModeExplosionAreaDamage(") + "\n"
     generated += "}}"
     generated = "using ItemStatsSystem;\n" + generated
     extracted = OUT / "ExplosionEntrypoints.cs"

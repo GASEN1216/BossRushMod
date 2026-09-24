@@ -34,7 +34,7 @@ ENTRY = ROOT / "ZombieMode/ZombieModeEntry.cs"
 CASH = ROOT / "ZombieMode/ZombieModeCashInvestmentView.cs"
 EXTRACTION = ROOT / "ZombieMode/ZombieModeExtractionController.cs"
 UI_HELPER = ROOT / "ZombieMode/ZombieModeUIHelper.cs"
-Boss_CONTROLLER = ROOT / "ZombieMode/ZombieModeBossController.cs"
+Boss_CONTROLLER = ROOT / "ZombieMode/ZombieModeRuntimeModule_BossController.cs"
 BEACON_CONFIG = ROOT / "Integration/Items/ZombieTideBeaconConfig.cs"
 LOCALIZATION = ROOT / "Localization/LocalizationInjector.cs"
 

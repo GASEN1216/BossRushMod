@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-RUNTIME = Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs")
+RUNTIME = Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs")
 COMPONENTS = Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs")
 
 

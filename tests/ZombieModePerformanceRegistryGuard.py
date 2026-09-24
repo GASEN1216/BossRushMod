@@ -4,7 +4,7 @@ import sys
 
 ZOMBIE_FILES = list(Path("ZombieMode").glob("*.cs"))
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
-BOSS = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 
 
 def fail(message: str) -> int:
@@ -43,7 +43,7 @@ def main() -> int:
     if "CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, false)" not in combined:
         return fail("ZombieModePerformanceRegistryGuard: runtime systems do not use shared marker collection")
 
-    if "CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, true)" not in boss:
+    if "owner.CollectZombieModeRuntimeEnemyMarkersForBossRuntimeModule(runId, bossEnemyMarkerScratch, true)" not in boss:
         return fail("ZombieModePerformanceRegistryGuard: boss shield does not use shared runtime marker collection")
 
     print("ZombieModePerformanceRegistryGuard: PASS")

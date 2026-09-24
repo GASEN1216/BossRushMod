@@ -25,14 +25,14 @@ def member(source, signature):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    source = (ROOT / 'LootAndRewards/LootAndRewardsSpecialLoot.cs').read_text(encoding='utf-8-sig')
+    source = (ROOT / 'WavesArena/WavesArenaRuntimeModule_DragonLoot.cs').read_text(encoding='utf-8-sig')
     methods = '\n'.join(member(source, signature) for signature in (
-        'private IEnumerator AddDragonDescendantLoot(Inventory inv)',
-        'private bool TryAddDragonKingLootItem(Inventory inv, int typeId, string itemName)',
+        'internal IEnumerator AddDragonDescendantLoot(Inventory inv)',
+        'internal bool TryAddDragonKingLootItem(Inventory inv, int typeId, string itemName)',
     ))
     extracted = OUT / 'DragonRewards.cs'
     extracted.write_text('using System; using System.Collections; using ItemStatsSystem; '
-                         'namespace BossRush { public partial class ModBehaviour {\n' + methods + '\n} }',
+                         'namespace BossRush { internal sealed partial class WavesArenaRuntimeModule {\n' + methods + '\n} }',
                          encoding='utf-8')
     sources = [ROOT / 'Utilities/InteractableLootboxInventoryHelper.cs',
                ROOT / 'Integration/BackMountain/BackMountainSeedDrops.cs',

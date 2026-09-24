@@ -209,7 +209,9 @@ def main() -> int:
         return fail("ZombieModeSafeZoneGuard: zombie stealth breaker must live in ZombieMode, not DevMode debug")
 
     hud = Path("ZombieMode/ZombieModeHudController.cs").read_text(encoding="utf-8")
-    if "zombieModeRunState.PreparationTimer > 0f &&" not in hud:
+    hud_runtime = Path("ZombieMode/ZombieModeRuntimeModule_Hud.cs").read_text(encoding="utf-8")
+    safe_zone_text = extract_method(hud_runtime, "public string GetZombieModeHudSafeZoneText(int runId)")
+    if "if (runState.PreparationTimer <= 0f)" not in safe_zone_text:
         return fail("ZombieModeSafeZoneGuard: combat portable safe zone must not flash as a zero-second preparation timer")
 
     print("ZombieModeSafeZoneGuard: PASS")
