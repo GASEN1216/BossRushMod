@@ -155,7 +155,7 @@ python tools/run_guards.py --filter OfficialCompileList
 - **程序化特效材质**一律用 `BossRushFxMaterials.Get(Alpha / Additive, 贴图)`（`Common/Effects/BossRushFxMaterials.cs`）。游戏里 `Shader.Find` 找不到 `Legacy Shaders/Particles/Additive`、`Particles/Additive`、`Particles/Alpha Blended`、`Mobile/Particles/*`、`Unlit/Color`、`Unlit/Transparent`，`Standard` 在 URP 下画不出来；各写一串回退链只会落到不发光的 `Sprites/Default` 或 alpha 失效的方片。
 - 字体用 `BossRushUI.ApplyGameFont` / `ZombieModeUIHelper.GetGameFont()`，新文本用 TMP（内置 Arial 渲染不了中文）；`CanvasScaler` 调 `ZombieModeUIHelper.ConfigureCanvasScaler`。
 - 玩家可见文本（含 `WikiContent/` 正文与随包数据表）**只能用 GBK 收录的符号**：官方字体是中文字体，★☆○●◎◇■□△▲※→←↑↓√Ⅰ① 一定有字形，Emoji、✓✗❄❌⚠、U+2212 减号、U+2022 圆点在游戏里是空白豆腐块（2026-09-19 实测）。判据与例外见 `tests/PlayerFacingGlyphGuard.py`；日志与只给人在编辑器里读的报告不受此限。
-- 能直接复用官方 prefab（`GameplayDataSettings.UIPrefabs.*`、克隆 `MapSelectionEntry` 等）就不用共享库重造。
+- 能直接复用官方 prefab（`GameplayDataSettings.UIPrefabs.*`、克隆 `MapSelectionEntry` 等）就不用共享库重造。官方 `UIPrefabs.ScrollRect` 的 content 自带竖排布局与自适应高度：往里手动摆位置的内容要先 `DestroyImmediate` 摘掉这两个组件，否则卡片被压成一列（2026-09-25 鸭王杯三页实测）。
 - 选项先判断再挂，不挂灰掉的占位项；「能不能挂」与「点了会不会被拒」共用同一份判据；同一页超过 3–4 项就分二级。列表页（合成配方、航务委托）例外：上限 6 项，且不带立绘。
   付费服务照主流商店口径（2026-09-14 拍板）：没有要做的不挂；钱不够、还在冷却照挂，按钮上写明价钱或还要等几秒。剧情前置没到、已经做完、纯说明性的占位项一律不挂，「还差什么」进正文。
 - **交互骨架（UI 制作共识，2026-09-24，owner 要求新 UI 一律照做）**：全文 `docs/architecture/UI制作共识.md`。动手前先定页型——单决策页（样板：鸭王杯入场选人页）、列表 + 详情（遗种巢巢页）、分区任务清单（孵化页）、一屏表单（远征页）、确认弹窗，能用官方界面就不自绘。按钮跟着它作用的对象走：单对象操作进该对象的行内或详情底栏，批量「选择」 / 排序进列表头，页面结论放底栏最右，换视图用页签；不要每张卡挂几颗按钮，不要把单对象与全局操作混在一条动作条里，不要依赖看不见的跨页选中。危险操作进确认前是红描边红字、靠左、远离主操作，确认一律走共享的 `BossRushConfirmDialog`（`Common/UI/BossRushConfirmDialog.cs`），不再各写一份。列表行只放识别信息（图、名字、一行状态），说明进详情、「说明」页或空状态。「干净」照鸭王杯选人页：页头只有横幅 / 标题 + 一句引导，一页一个决定，数量有界不滚动，大留白，卡片整张可点，深色底 + 一种强调色，风险披露降成页脚小字，白话文案。交付前按该文第 10 节自检。

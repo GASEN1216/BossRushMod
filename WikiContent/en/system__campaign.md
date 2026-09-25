@@ -137,12 +137,12 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 
 ### Jeff's new-content introductions
 
-Alongside the six campaign chapters, Jeff offers fourteen one-time introductions. Accept them at base, follow the quest log, then return and hand them in yourself. Acceptance, trial completion and hand-in survive reloading. These introductions pay no extra cash and do not change chapter order.
+Alongside the six campaign chapters, Jeff offers fourteen one-time introductions. They come **one at a time**: Jeff only hands you the next one after you turn in the current one. The garden and display introductions wait until campaign chapters 1 and 2 are turned in (which unlock the garden and the display bonus), without holding up the rest. Accept them at base, follow the quest log, then return and hand them in yourself. Acceptance, trial completion and hand-in survive reloading. These introductions pay no extra cash and do not change chapter order.
 
 - **Modes**: Bare Hands, Territory, Blood Hunt, Echo of Fate, Black Market Duck King Cup and Zombie mode. Each quest explains the entry items and preparation; starting a real run is enough, with no first-try victory required.
 - **Pet Nest and random events**: hatch or deploy a cub, or experience a random event in a supported mode.
 - **Sky Island gear**: obtain exclusive gear from an island boss and bring it to base in your backpack or wear it. Visiting the island alone does not count. The route still follows Coordinates Above the Clouds.
-- **Base facilities**: finish the garden, display a Mod trophy, and open the daily report to sign in once.
+- **Base facilities**: finish the garden, display a Boss trophy, and open the daily report to sign in once.
 - **Equipment growth**: return with gear carrying a real affix or a reforge record. The quests point you to the goblin.
 
 [tip] A finished trial stays in your active quests until you return to Jeff at base and press Complete. Existing cubs, built facilities and qualifying gear count; you do not have to start them over.

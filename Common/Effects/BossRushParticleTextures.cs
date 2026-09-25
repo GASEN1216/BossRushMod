@@ -7,8 +7,11 @@
 //   那正是「一团雾」「剪纸边」的来源。画师原样挪到这里，遗种巢改为转调本类（形状与像素逐字不变）。
 //
 // 口径：
-//   - 画师是纯函数：输入种类与边长，输出 Color32[]（RGB 恒白，只有 alpha 描形状）。
+//   - 画师是纯函数：输入种类与边长，输出 Color32[]（alpha 描形状；RGB 是明暗，除叶片外恒白）。
 //     颜色一律交给粒子的 startColor / 线的 colorGradient，所以一张贴图可以给任意颜色用；
+//     叶片的 RGB 带一层灰度明暗（主脉、侧脉、受光 / 背光两半），乘上顶点色后才不是一块平涂色片
+//     （2026-09-25 owner「绿色的塑料叶子」）。明暗在整张图上连续定义，形状外的像素也不是白色，
+//     生成 mip 时叶缘不会混进一圈白边；
 //   - 像素按 Texture2D.SetPixels32 的口径排列（行优先、左下原点），采样点取像素中心；
 //   - 所有形状在贴图边缘 alpha 归零，Clamp 采样不会出现硬边；
 //   - <see cref="Get"/> 懒加载、带 mip（屏上只有几到几十个像素，没有 mip 细线会闪），全 Mod 共享一份；
@@ -29,11 +32,11 @@ namespace BossRush
         GlowDot = 0,
         /// <summary>四主芒 + 四副芒的星光（闪光、星点）。</summary>
         Star = 1,
-        /// <summary>带高光的空心气泡。</summary>
+        /// <summary>薄壁气泡：中心近乎透明、一圈粗细不匀的细亮边、左上窗形高光 + 小亮点、右下一点反光。</summary>
         Bubble = 2,
         /// <summary>六瓣雪花。</summary>
         Snowflake = 3,
-        /// <summary>带叶脉的叶片。</summary>
+        /// <summary>竖直的叶片（叶尖朝上）：叶柄、微弯主脉、斜向侧脉、半透明叶缘，RGB 带明暗。</summary>
         Leaf = 4,
         /// <summary>带噪声边缘的烟缕（烟、雾、尘、暗影）。</summary>
         Wisp = 5,
@@ -49,7 +52,11 @@ namespace BossRush
         RuneInner = 10,
         /// <summary>条带：沿 U 恒亮、沿 V 柔边（拖尾 / 线按 Stretch 贴，头尾渐隐交给颜色梯度）。</summary>
         TrailStrip = 11,
-        Count = 12,
+        /// <summary>珍珠晶片：竖直柔边透镜形，细亮轮廓 + 中间一道珠光带 + 上部高光 + 四周淡柔光。</summary>
+        Pearl = 12,
+        /// <summary>水面涟漪：主细环 + 一圈更淡的回波，亮度沿圆周不均匀。</summary>
+        Ripple = 13,
+        Count = 14,
     }
 
     /// <summary>程序化粒子形状画师 + 全 Mod 共享的懒加载贴图缓存。</summary>
@@ -116,10 +123,19 @@ namespace BossRush
                 {
                     float x = (px + 0.5f) * inv - 1f;
                     float a = Mathf.Clamp01(Sample(kind, x, y));
-                    pixels[py * size + px] = new Color32(255, 255, 255, (byte)(a * 255f + 0.5f));
+                    // 明暗恒为 1 的形状写出 255，与只描 alpha 时逐字节相同
+                    byte l = (byte)(Mathf.Clamp01(SampleLuma(kind, x, y)) * 255f + 0.5f);
+                    pixels[py * size + px] = new Color32(l, l, l, (byte)(a * 255f + 0.5f));
                 }
             }
             return pixels;
+        }
+
+        /// <summary>单点明暗（写进 RGB 的灰度，sRGB）。只有叶片不是 1。</summary>
+        internal static float SampleLuma(BossRushParticleShape kind, float x, float y)
+        {
+            if (kind == BossRushParticleShape.Leaf) return LeafLuma(x, y);
+            return 1f;
         }
 
         /// <summary>单点 alpha。x、y 是以贴图中心为原点、边缘为 ±1 的坐标。</summary>
@@ -140,6 +156,8 @@ namespace BossRush
                 case BossRushParticleShape.RuneOuter: return RuneOuter(x, y, r);
                 case BossRushParticleShape.RuneInner: return RuneInner(x, y, r);
                 case BossRushParticleShape.TrailStrip: return TrailStrip(y);
+                case BossRushParticleShape.Pearl: return Pearl(x, y, r);
+                case BossRushParticleShape.Ripple: return Ripple(x, y, r);
                 default: return 0f;
             }
         }
@@ -176,14 +194,30 @@ namespace BossRush
         private static float Bubble(float x, float y, float r)
         {
             if (r >= 1f) return 0f;
-            float ring = Mathf.Exp(-Sq((r - 0.8f) / 0.07f));
-            float fill = r < 0.8f ? 0.08f + 0.1f * (r / 0.8f) : 0f;
-            // 左上一点高光，气泡才像气泡而不是圆圈
-            float hx = x + 0.3f;
-            float hy = y - 0.34f;
-            float highlight = 0.95f * Mathf.Exp(-Sq(Mathf.Sqrt(hx * hx + hy * hy) / 0.13f));
-            float edge = Mathf.Clamp01((1f - r) / 0.08f);
-            return (ring + fill + highlight) * edge;
+            // 2026-09-25 重画（owner：「蓝色的泡泡太塑料了」）：旧图是一圈 0.07 宽的均匀粗环 + 0.08–0.18 的内填充，
+            // 缩到十来个像素就是一枚实心感的圆圈。现在按薄膜画：
+            const float wall = 0.82f;
+            // 膜：中心几乎透明，只在贴近边缘处按 d^6 变厚（菲涅耳）
+            float d = r / wall;
+            float film = d < 1f ? 0.03f + 0.3f * Mathf.Pow(d, 6f) : 0f;
+            // 边：细亮线，沿圆周左上、右下亮，两侧暗——一圈粗细亮度处处相同的环正是塑料感的来源
+            float angle = Mathf.Atan2(y, x);
+            float rim = Mathf.Exp(-Sq((r - wall) / 0.045f))
+                * (0.45f + 0.55f * (0.5f + 0.5f * Mathf.Cos(2f * (angle - 2.3561945f))));
+            // 左上一条顺着圆周的窗形高光 + 旁边一粒小亮点（光源方向恒定，粒子不自转）
+            float hx = x + 0.33f;
+            float hy = y - 0.36f;
+            float along = (hx + hy) * 0.70710678f;
+            float across = (hx - hy) * 0.70710678f;
+            float window = Mathf.Exp(-(Sq(along / 0.15f) + Sq(across / 0.055f)));
+            float dx = x + 0.02f;
+            float dy = y - 0.56f;
+            float dot = 0.75f * Mathf.Exp(-(dx * dx + dy * dy) / Sq(0.05f));
+            // 右下内侧一小段反光弧
+            float bounce = 0.4f * Mathf.Exp(-Sq((r - 0.7f) / 0.05f))
+                * Mathf.Exp(-Sq(WrapAngle(angle + 0.7853982f) / 0.6f));
+            float edge = Mathf.Clamp01((1f - r) / 0.06f);
+            return Mathf.Clamp01(film + 0.7f * rim + window + dot + bounce) * edge;
         }
 
         private static float Snowflake(float x, float y, float r)
@@ -210,29 +244,64 @@ namespace BossRush
             return arms + core;
         }
 
+        // 叶片（2026-09-25 重画，owner：「绿色的塑料叶子」）：旧图叶轴斜 40°、一块等 alpha 的实心叶形，
+        // 只有主脉处 alpha 打折——暗地面上主脉是黑线、亮地面上是白线，颜色全靠一个顶点色，就是一片贴纸。
+        // 现在叶轴竖直（叶尖朝上，粒子按 X 轴压扁就是在绕主脉翻面）、叶形略不对称（主脉微弯）、
+        // 叶缘半透明；明暗写进 RGB（见 LeafLuma）。
+        private const float LeafBase = -0.70f;
+        private const float LeafTip = 0.92f;
+        private const float LeafHalfWidth = 0.40f;
+
+        /// <summary>叶片坐标：t 从叶基 0 到叶尖 1；dv 是到（微弯）主脉的横向距离；w 是该处半宽。</summary>
+        private static void LeafFrame(float x, float y, out float t, out float dv, out float w)
+        {
+            t = (y - LeafBase) / (LeafTip - LeafBase);
+            float tc = Mathf.Clamp01(t);
+            float midrib = 0.07f * Mathf.Sin(Mathf.PI * tc);
+            dv = x - midrib;
+            // 最宽处在离叶基约 40% 的地方；0.391 是 t^0.55 (1-t)^0.85 的峰值，归一化后峰值半宽 = LeafHalfWidth
+            w = LeafHalfWidth * Mathf.Pow(tc, 0.55f) * Mathf.Pow(1f - tc, 0.85f) / 0.391f;
+        }
+
         private static float Leaf(float x, float y)
         {
-            // 叶轴斜 40°，叶尖朝右上
-            const float c = 0.7660f; // cos 40°
-            const float s = 0.6428f; // sin 40°
-            float u = x * c + y * s;
-            float v = -x * s + y * c;
-            const float halfLength = 0.84f;
-            if (u < -halfLength)
+            float t, dv, w;
+            LeafFrame(x, y, out t, out dv, out w);
+            float blade = 0f;
+            if (t > 0f && t < 1f)
             {
-                // 叶柄
-                if (u > -0.97f && Mathf.Abs(v) < 0.035f) return 0.75f;
-                return 0f;
+                float av = Mathf.Abs(dv);
+                float body = Mathf.Clamp01((w - av) / 0.045f);
+                float q = Mathf.Clamp01(av / Mathf.Max(w, 0.02f));
+                // 叶缘比叶心薄：0.95 → 0.70
+                blade = body * (0.7f + 0.25f * (1f - q * q));
             }
-            if (u > halfLength) return 0f;
-            float t = u / halfLength;
-            float halfWidth = 0.36f * Mathf.Sqrt(Mathf.Max(0f, 1f - t * t)) * (1f - 0.2f * t);
-            float av = Mathf.Abs(v);
-            float body = Mathf.Clamp01((halfWidth - av) / 0.05f);
-            if (body <= 0f) return 0f;
-            float vein = av < 0.022f ? 0.55f : 1f;
-            float shade = 0.72f + 0.28f * (1f - av / Mathf.Max(halfWidth, 0.001f));
-            return body * vein * shade;
+            float stem = 0f;
+            if (y > -0.95f && y < LeafBase + 0.06f)
+            {
+                stem = 0.85f * Mathf.Clamp01((0.03f - Mathf.Abs(x)) / 0.015f) * Mathf.Clamp01((y + 0.95f) / 0.05f);
+            }
+            return Mathf.Max(blade, stem);
+        }
+
+        /// <summary>
+        /// 叶片明暗：左半受光 0.88、右半背光 0.72（叶片沿主脉微折）；主脉更亮、到叶尖变细变淡；
+        /// 侧脉斜向叶尖、往叶缘淡掉；叶尖略亮、叶缘略暗。整张图连续定义（形状外取叶缘的值），mip 不混白边。
+        /// </summary>
+        private static float LeafLuma(float x, float y)
+        {
+            float t, dv, w;
+            LeafFrame(x, y, out t, out dv, out w);
+            float tc = Mathf.Clamp01(t);
+            float av = Mathf.Abs(dv);
+            float q = Mathf.Clamp01(av / Mathf.Max(w, 0.02f));
+            float side = 0.72f + 0.16f * SmoothStep(-0.02f, 0.02f, -dv);
+            float shade = side * (0.9f + 0.1f * tc) * (1f - 0.14f * q * q * q);
+            float midrib = Mathf.Exp(-Sq(dv / 0.016f)) * (1f - 0.45f * tc);
+            float phase = (y - 1.1f * av) * 3.8f;
+            float veins = Mathf.Pow(0.5f + 0.5f * Mathf.Cos(2f * Mathf.PI * phase), 10f) * (1f - q)
+                * SmoothStep(0.06f, 0.2f, tc) * (1f - SmoothStep(0.82f, 1f, tc));
+            return Mathf.Clamp01(shade + 0.3f * midrib + 0.14f * veins);
         }
 
         private static float Wisp(float x, float y, float r)
@@ -324,6 +393,37 @@ namespace BossRush
             return Mathf.Exp(-Sq(ay / 0.42f)) * Mathf.Clamp01((1f - ay) / 0.12f);
         }
 
+        private static float Pearl(float x, float y, float r)
+        {
+            // 竖直的柔边透镜：两端收尖；中间一道珠光带、上部一粒高光、轮廓一道细亮边；四周一层很淡的柔光。
+            // 给加色用：本体只有 0.14 的底，亮的只是那道珠光带与轮廓——旧的「珍珠晶片」借的是镜屑那张
+            // 满实心的硬边菱形，半透明叠上去是一块块发灰的白片（2026-09-25）。
+            float t = y / 0.86f;
+            float tt = Mathf.Clamp01(1f - t * t);
+            float hw = 0.4f * Mathf.Pow(tt, 0.8f);
+            float ax = Mathf.Abs(x);
+            float body = Mathf.Clamp01((hw - ax) / 0.07f);
+            float across = ax / Mathf.Max(hw, 0.001f);
+            float sheen = Mathf.Exp(-Sq(across / 0.45f)) * tt;
+            float contour = Mathf.Abs(t) < 1f ? Mathf.Exp(-Sq((hw - ax) / 0.05f)) * tt : 0f;
+            float spec = 0.55f * Mathf.Exp(-(Sq(x + 0.05f) + Sq(y - 0.3f)) / Sq(0.09f));
+            float glow = r < 1f ? 0.2f * Sq(1f - r) : 0f;
+            return Mathf.Clamp01(body * (0.14f + 0.36f * sheen + spec) + 0.3f * contour + glow);
+        }
+
+        private static float Ripple(float x, float y, float r)
+        {
+            if (r >= 1f) return 0f;
+            // 主细环 + 内侧一圈更淡的回波，亮度沿圆周起伏（水面反光不会处处一样亮）；环内一层极淡的水光
+            float angle = Mathf.Atan2(y, x);
+            float wobble = 0.8f + 0.2f * Mathf.Sin(3f * angle + 1.3f) * Mathf.Sin(5f * angle + 0.4f);
+            float main = Mathf.Exp(-Sq((r - 0.84f) / 0.03f));
+            float echo = 0.36f * Mathf.Exp(-Sq((r - 0.68f) / 0.024f));
+            float sheen = r < 0.84f ? 0.05f * SmoothStep(0.4f, 0.84f, r) : 0f;
+            float edge = Mathf.Clamp01((1f - r) / 0.06f);
+            return Mathf.Clamp01(main * wobble + echo * (1.6f - wobble) + sheen) * edge;
+        }
+
         #endregion
 
         #region 数学
@@ -331,6 +431,20 @@ namespace BossRush
         private static float Sq(float v) { return v * v; }
 
         private static float Cube(float v) { return v * v * v; }
+
+        private static float SmoothStep(float edge0, float edge1, float v)
+        {
+            float t = Mathf.Clamp01((v - edge0) / (edge1 - edge0));
+            return t * t * (3f - 2f * t);
+        }
+
+        /// <summary>角度折回 (-π, π]。</summary>
+        private static float WrapAngle(float angle)
+        {
+            const float twoPi = Mathf.PI * 2f;
+            angle -= twoPi * Mathf.Floor((angle + Mathf.PI) / twoPi);
+            return angle;
+        }
 
         /// <summary>点到线段的距离。</summary>
         private static float SegmentDistance(float px, float py, float ax, float ay, float bx, float by)

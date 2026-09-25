@@ -70,6 +70,22 @@ namespace BossRush
         public List<ModeHCardData> PlayerFighters = new List<ModeHCardData>();
         public List<ModeHCardData> EnemyFighters = new List<ModeHCardData>();
         public List<ModeHItemIconData> RewardItems = new List<ModeHItemIconData>();
+        /// <summary>看盘页场次行下面一行小字（本场规则）；空表示不画。</summary>
+        public string MatchNote;
+        /// <summary>看盘页两列列头右侧的小字（合计战力）。</summary>
+        public string PlayerSideNote;
+        public string EnemySideNote;
+        /// <summary>整备选项的列数（1 = 整行；阵容页左首发右接力、配装两列），与每格高度（0 = 默认 112）。</summary>
+        public int PreparationColumns = 1;
+        public float PreparationRowHeight;
+        /// <summary>多列整备选项每列上方的小标题（「首发」「接力」）；空表示不画。</summary>
+        public List<string> PreparationHeaders = new List<string>();
+        /// <summary>
+        /// 同页刷新但卡片换了一批（选人页刷新候选）：面板不重播打开动画，只让新卡错峰升起。
+        /// </summary>
+        internal bool ReplayCardEntrance;
+        /// <summary>占位页（「准备参赛选手」）：下一页换进来时不重播面板打开动画，像同一块面板填上内容。</summary>
+        internal bool IsPlaceholder;
     }
 
     /// <summary>一张卡片的只读数据。</summary>
@@ -151,6 +167,9 @@ namespace BossRush
         /// 没有返回语义的页不标，ESC 照常交给官方暂停菜单（2026-09-24）。
         /// </summary>
         public bool IsCancel;
+        /// <summary>整备选项行首的物品图标（配装页的套装物品）；null 不画。</summary>
+        public Sprite Icon;
+        public int IconQuality;
     }
 
     /// <summary>
@@ -216,14 +235,8 @@ namespace BossRush
                     }
                     goto case ModeHPage.Settlement;
                 case ModeHPage.Settlement:
-                    cursorY = CreateRewardIcons(surface, panelSize, content, cursorY);
-                    CreateLineList(surface, panelSize, content, cursorY,
-                        content.Cards.Count > 0 ? 224f : float.PositiveInfinity);
-                    if (content.Cards.Count > 0)
-                    {
-                        // 战痕 offer 的二选一卡片挂在正文下方
-                        CreateCardGrid(surface, panelSize, content, cursorY - 248f, false);
-                    }
+                    // 奖品一排 → 按行数收高的战报单 → 战痕 / 整备的二选一卡片（ModeHUIFighterDetails.cs）
+                    CreateSettlementBody(surface, panelSize, content, cursorY);
                     break;
                 default:
                     ModeHUI.CreateBody(surface, content.Body, panelSize, 0f);
@@ -383,7 +396,7 @@ namespace BossRush
                     data.IsAnomaly ? BossRushUIColors.Warning : BossRushUIColors.Accent, true);
                 BuildChampionCard(card.transform, data, width, height, i);
                 // 五张卡错峰升起：只动 alpha 与位置，按钮从第一帧就能点（见 BossRushUIEntranceAnimation）
-                if (!content.Refresh) BossRushUIEntranceAnimation.Play(card, 0.05f * i, 0.28f, 18f);
+                if (!content.Refresh || content.ReplayCardEntrance) BossRushUIEntranceAnimation.Play(card, 0.05f * i, 0.28f, 18f);
             }
         }
 
@@ -928,6 +941,10 @@ namespace BossRush
                 rect.anchoredPosition = new Vector2(0f, topY - viewportHeight * 0.5f);
                 if (official.content != null)
                 {
+                    // 官方 prefab 的 content 自带竖排布局与自适应高度（图鉴同样要先摘，见 CodexView.EnsureGridLayout）。
+                    // 本页所有内容都是手动定位的：不摘的话卡片被压成一列小圆点、属性与装备挤在左边被裁掉
+                    // （2026-09-25 owner 实测赛前看盘 / 押物品 / 结算三页）。同帧还要写尺寸，只能 DestroyImmediate。
+                    StripLayoutControllers(official.content.gameObject);
                     official.content.anchorMin = official.content.anchorMax = official.content.pivot = new Vector2(0.5f, 1f);
                     official.content.anchoredPosition = new Vector2(-10f, 0f);
                     official.content.sizeDelta = new Vector2(rect.sizeDelta.x - 20f, contentHeight);
@@ -964,17 +981,23 @@ namespace BossRush
         private static void CreatePreparationOptions(Transform surface, Vector2 panelSize,
             ModeHPageContent content, float topY)
         {
-            const float rowHeight = 112f;
+            float rowHeight = content.PreparationRowHeight > 0f ? content.PreparationRowHeight : 112f;
+            int columns = Mathf.Clamp(content.PreparationColumns, 1, 3);
+            float width = panelSize.x - ModeHUI.SafeMargin * 2f - 40f;
+            float cellWidth = (width - (columns - 1) * CardGap) / columns;
+            // 一句当前选择的小结 + 多列时每列的小标题（ModeHUIPageParts.CreatePreparationHeaders）
+            topY = CreatePreparationHeaders(surface, panelSize, content, topY, columns, cellWidth);
             float height = topY + panelSize.y * 0.5f - GetFloorReserve(panelSize, content, GetActionBandReserve(panelSize, content));
             GameObject host = CreateScrollHost(surface, panelSize, topY, height,
-                Math.Max(height, content.PreparationOptions.Count * rowHeight));
+                Math.Max(height, (content.PreparationOptions.Count + columns - 1) / columns * rowHeight));
             RectTransform rect = host.GetComponent<RectTransform>();
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 1f);
             rect.anchoredPosition = new Vector2(-10f, 0f);
-            float width = panelSize.x - ModeHUI.SafeMargin * 2f - 40f;
             for (int i = 0; i < content.PreparationOptions.Count; i++)
             {
-                CreatePreparationRow(host.transform, content.PreparationOptions[i], i, width, rowHeight, !content.Refresh);
+                float x = -width * 0.5f + cellWidth * 0.5f + (i % columns) * (cellWidth + CardGap);
+                CreatePreparationRow(host.transform, content.PreparationOptions[i], i, cellWidth, rowHeight,
+                    !content.Refresh, x, i / columns);
             }
         }
 

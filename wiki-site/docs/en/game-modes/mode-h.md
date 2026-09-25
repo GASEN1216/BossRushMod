@@ -26,10 +26,10 @@ Once the map finishes loading, you can pick your fighter immediately, **includin
 On **the one and only pick page**:
 
 - Candidates are dealt once per season: **five fighters, one of each style** — Brawler, Shooter, Tank, Grinder and Closer.
-- Each card shows the fighter's **Codex portrait**, name, style and two or three plain sentences: how it fights, what it is good at, and what it is afraid of.
-- Press **"Send this one in"** on the fighter you like and **the match starts right away**.
-- Another candidate becomes your **relay automatically**: if your fighter goes down, the relay steps in. It prefers a different fighting style from your pick (a brawler with a shooter is more fun to watch), and only falls back to anyone who can fill a full six-match schedule.
-- The display order is fixed. **Closing the page and reopening it does not reroll anything**, so do not bother trying.
+- Each card shows the fighter's **Codex portrait**, name and style, with its stat bars and gear icons for this match underneath.
+- Click one card to choose your **starter**, then another to choose your **relay**: if the starter goes down, the relay steps in. Once both are set you go to the first match's brief. Picked the wrong starter? Click it again to unpick.
+- Not happy with the lineup? Press **"Refresh candidates"**, up to **3 times** a season; once your starter is locked, a refresh only swaps the others. The page swaps the fighters in place instead of closing and reopening.
+- **Closing the page and reopening it does not reroll anything**, and the refresh count sticks to the season, so leaving and coming back does not give you fresh refreshes.
 
 The three you did not take immediately draw a destination card each:
 
@@ -41,11 +41,11 @@ The three you did not take immediately draw a destination card each:
 
 Six matches, all on the same rhythm:
 
-**Entry → Watch them fight (ring the bell once if you like) → Report → "Next match"**
+**Match brief (size up both sides, pick a bet) → Start → Watch them fight (ring the bell once if you like) → Report → "Next match"**
 
 - A match lasts at most **180 seconds**. If you have not won by then, you lose. There is no extra time.
 - The opposition escalates every match. The first two cap at two enemies on the field at once; from match 3 the cap is three.
-- Between matches you press **at most one button**: "Next match" on the report page ("Continue" after the final). With a bet set, it reads "Next match · Bet 5,000" or "Next match · Bet 3 item(s)".
+- Between matches: press "Next match" on the report page ("Continue" after the final), look over both sides on the match brief, then press "Start the match". With a bet set, the button reads "Start the match · Bet 5,000" or "Start the match · Bet 3 item(s)".
 - A **transfer window** opens after the settlement of **match 2** and **match 4**.
 - After match 6, your champion goes into the **Hall of Fame**.
 
@@ -59,8 +59,17 @@ Kits, orders and who opens — the manager paperwork — are handled with sensib
 - **Who opens**: your main fighter, unless it is injured and the relay is healthy — then the relay opens. An injured fighter that goes down again retires, so it waits in the relay seat instead and heals if it never has to step in.
 - The **scar** and **reward kit** on the report page are handled automatically too, and the page tells you what happened (see below).
 
+### Match Brief
+
+Every match stops at the "Match Brief" page first, with both sides on one screen:
+
+- The top line shows **which match** it is and the **win payout multiplier**; the small line under it is this match's **arena rule**.
+- Your starter and relay are on the left, this match's opponents on the right. Each fighter gets one wide card: portrait, name and condition, a row of gear icons on the right, and eight stats underneath (HP, Damage, Speed, Range, Armor, Helmet, Crit, Power), drawn on the same scale for both sides. Each column header shows that side's **total power**.
+- Pick a bet in the **Bet** row at the bottom, then press **"Start the match"**.
+- To change the roster, kits or order yourself, press **"Adjust first"**. It opens the four tabs directly (Roster / Starter kits / Relay kits / Command): the Roster tab has starters on the left and relays on the right, and every kit shows its item icon. Press "Done" to go back to the matchup, then "Lock in and start".
+
 ::: tip
-You only see the old brief / loadout / odds pages in two cases: the automatic start was rejected (for example, no usable order this match), or a technical retry brought you back. There you can press "Start the match" to continue with the defaults, use the free scout, or press "Adjust first" to change the roster, kits and order by hand (four tabs: Roster / Starter kits / Relay kits / Command, no paging). The same Bet row sits at the bottom.
+The old "Briefing / recon" button is gone: the opponents' gear and stats are now right there on the matchup, so there is nothing left to scout for.
 :::
 
 ### Transfer Windows

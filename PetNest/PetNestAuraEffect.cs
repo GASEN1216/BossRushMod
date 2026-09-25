@@ -14,7 +14,7 @@
 //
 // 现在的做法（配方在 PetNestAuraRecipes.cs）：
 //   - 每种炫彩颜色对应一个**元素**（赤=龙息火焰、橙=锻火飞溅、黄=雷弧、绿=落叶孢子、
-//     青=霜花、蓝=水泡涟漪、紫=奥术环绕、白=圣光、黑=暗影、银=镜屑），搭配的第一色是主元素、
+//     青=霜花、蓝=水泡涟漪、紫=奥术环绕、白=珠光、黑=暗影、银=镜屑），搭配的第一色是主元素、
 //     第二色是一圈反向环绕的点缀，两色身份一眼能分开；
 //   - 异色：脚下两圈反向旋转的金色符文环 + 上升金星 + 身上的星芒闪光 + 头顶环绕的光冠 +
 //     一盏轻轻呼吸的暖金点光；带炫彩的异色再叠一层降强度的元素特效；
@@ -33,6 +33,10 @@
 //     吃官方 Bloom；官方火星材质 BulletHitSpark 的 _BaseColor 也是 (24, 6, 0.4) 这种 HDR 值。
 //   - 赤色的火焰直接克隆官方火 AK-47（TypeID 862）的 Smoke / Spark 粒子系统，用它们自己的
 //     官方材质（SmokeFireFX / SodaSoftParticle），与龙息武器同一来源，只改尺寸、速度与数量。
+//   - 例外（2026-09-25 owner「蓝白绿要精致一点，蓝色泡泡太塑料、绿色塑料叶子」）：蓝 / 白 / 绿三色
+//     （主元素与点缀）改用全 Mod 共享的形状贴图 + BossRushFxKit.GetShapeMaterial（底下是
+//     BossRushFxMaterials.Get 的 URP Particles/Unlit），见 SharedLook：薄壁气泡、珠光、孢子要真加色，
+//     叶片要带 RGB 明暗的半透明贴图；这些共享资源不归本实例所有，不登记、不销毁。
 //
 // 生命周期（AGENTS 4.6 / 4.12）：
 //   - 只有真的带炫彩或异色、且已激活入场的崽才会调 Attach（门控在 PetNestCompanionSpawner）；
@@ -40,8 +44,10 @@
 //   - 特效根挂在崽的角色根下：召回、换崽、远征、放生、倒地退场、切图、宿主清理都经
 //     CleanupOnce 先 Dispose，再销毁角色；就算角色被别的路径直接销毁，特效也作为子节点一起走；
 //   - 本组件自建的材质、贴图、网格全部登记在 _ownedAssets，OnDestroy 逐个销毁；
-//     没有任何静态缓存。每只崽入场时按需画 3–7 张 32–128 px 贴图（离线 .NET Framework 实测
-//     每张 0.3–2.7 ms，游戏内 Mono 未实测），只发生在入场那一帧，之后零分配；
+//     本组件没有静态缓存。每只崽入场时按需画 3–7 张 32–128 px 贴图（离线 .NET Framework 实测
+//     每张 0.3–2.7 ms，游戏内 Mono 未实测），只发生在入场那一帧，之后零分配；蓝白绿三色用的共享
+//     贴图 / 材质全 Mod 懒加载一次（BossRushParticleTextures / BossRushFxKit 的静态缓存，经
+//     BossRushUI.ResetStaticCaches 在 Mod 卸载路径销毁），之后的崽入场不再画图；
 //   - 只有异色需要 Update（符文环旋转、点光呼吸，O(1)）；纯炫彩崽组件 enabled=false，零脚本帧成本。
 // ============================================================================
 
@@ -81,7 +87,10 @@ namespace BossRush
 
         #region 亮度档
 
-        /// <summary>材质亮度档：Soft = 原色（暗影、寒雾、叶片），Bright = 2 倍，Hot = 3.4 倍（火星、星芒）。</summary>
+        /// <summary>
+        /// 本实例材质的亮度档：Soft = 原色（暗影、寒雾），Bright = 2 倍，Hot = 3.4 倍（火星、星芒）。
+        /// 蓝白绿三色的共享材质不走这里，倍数直接写在 SharedLook 的调用处。
+        /// </summary>
         internal enum Glow
         {
             Soft = 0,
@@ -357,6 +366,20 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 炫彩蓝 / 白 / 绿的材质：全 Mod 共享的形状贴图 + 共享材质（BossRushFxKit.GetShapeMaterial，
+        /// 底下是 BossRushFxMaterials.Get 的 URP Particles/Unlit），按 0.05 分档带亮度倍数。
+        /// 为什么这三色不走本实例的 Legacy 模板：薄壁气泡、珠光、孢子只该往画面上「加光」，
+        /// 而 Legacy Alpha Blended 没有加色版本——同一张薄壁气泡按半透明叠上去就是一枚发灰的实心圈
+        /// （2026-09-25 owner「蓝色的泡泡太塑料了」）。共享材质与贴图全 Mod 各一份，Mod 卸载路径统一销毁；
+        /// 本实例不登记、不销毁、也不改它们（颜色只走粒子顶点色）。URP 粒子着色器不可用时工厂退回半透明，
+        /// 两条都不可用时返回 null，对应发射器不建。
+        /// </summary>
+        private Material SharedLook(BossRushParticleShape shape, BossRushFxBlend blend, float gain)
+        {
+            return BossRushFxKit.GetShapeMaterial(shape, blend, gain);
+        }
+
+        /// <summary>
         /// 把「颜色 × 亮度倍数」换成着色器吃的原始 tint。legacy 粒子着色器自带 ×2 且 alpha 也 ×2，
         /// 所以写 (c·g/2, 0.5)；回落到 UI/Default、Sprites/Default 时没有 ×2，写 (c·g, 1)。
         /// </summary>
@@ -386,12 +409,13 @@ namespace BossRush
         /// <summary>
         /// 新建一个程序化发射器（Z 朝上），把所有默认参数改成安全值：
         /// 循环、不重力、零速度、单色、固定速率 0，由配方逐项覆盖。
-        /// 上限经 TakeBudget 扣预算；预算不足返回 null。
+        /// 上限经 TakeBudget 扣预算；材质缺失或预算不足返回 null（材质缺失时不扣预算）。
+        /// 所有发射器都从这里建：七色与异色经下面按「贴图 × 亮度档」取本实例材质的重载，
+        /// 蓝白绿三色直接传 <see cref="SharedLook"/> 取来的共享材质。
         /// </summary>
-        private ParticleSystem NewEmitter(string name, PetNestAuraTexture kind, Glow level,
+        private ParticleSystem NewEmitter(string name, Material material,
             int maxParticles, Vector3 localPosition, bool worldSpace)
         {
-            Material material = GetMaterial(kind, level);
             if (material == null) return null;
             int cap = TakeBudget(maxParticles);
             if (cap <= 0) return null;
@@ -445,6 +469,13 @@ namespace BossRush
 
             _systems.Add(ps);
             return ps;
+        }
+
+        /// <summary>按「贴图 × 亮度档」取本实例材质（Legacy 模板复制件，随崽销毁）再建发射器。</summary>
+        private ParticleSystem NewEmitter(string name, PetNestAuraTexture kind, Glow level,
+            int maxParticles, Vector3 localPosition, bool worldSpace)
+        {
+            return NewEmitter(name, GetMaterial(kind, level), maxParticles, localPosition, worldSpace);
         }
 
         private static void Life(ParticleSystem ps, float min, float max)
@@ -608,6 +639,211 @@ namespace BossRush
             ParticleSystem.SizeOverLifetimeModule size = ps.sizeOverLifetime;
             size.enabled = true;
             size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, from, 1f, to));
+        }
+
+        /// <summary>
+        /// 出生颜色在一条四色调色带上随机取（RandomColor：每颗粒子取带上随机一点，相邻两色之间连续过渡）。
+        /// 比「两色之间随机」自然：叶子是黄绿到深绿的一整段，珠光是粉 / 暖白 / 青 / 淡紫的一整段。
+        /// alpha 取首尾两色的 alpha。
+        /// </summary>
+        private static void TintPalette(ParticleSystem ps, Color a, Color b, Color c, Color d)
+        {
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[]
+                {
+                    new GradientColorKey(a, 0f),
+                    new GradientColorKey(b, 0.33f),
+                    new GradientColorKey(c, 0.67f),
+                    new GradientColorKey(d, 1f),
+                },
+                new GradientAlphaKey[]
+                {
+                    new GradientAlphaKey(a.a, 0f),
+                    new GradientAlphaKey(d.a, 1f),
+                });
+            ParticleSystem.MinMaxGradient palette = new ParticleSystem.MinMaxGradient(gradient);
+            palette.mode = ParticleSystemGradientMode.RandomColor;
+            ParticleSystem.MainModule main = ps.main;
+            main.startColor = palette;
+        }
+
+        /// <summary>
+        /// 生命期颜色：出生 / 中段（0.5）/ 消散三色，alpha 按 (时间, 值) 成对给（最多 8 对）。
+        /// 给需要「寿命里亮一下」「一出生就开始变淡」这类不是简单淡入淡出的配方用。
+        /// </summary>
+        private static void AlphaLife(ParticleSystem ps, Color start, Color middle, Color end,
+            params float[] timeAlpha)
+        {
+            int pairs = timeAlpha.Length / 2;
+            if (pairs < 2) return;
+            int count = Mathf.Min(pairs, 8);
+            GradientAlphaKey[] alpha = new GradientAlphaKey[count];
+            for (int i = 0; i < count; i++)
+            {
+                alpha[i] = new GradientAlphaKey(timeAlpha[i * 2 + 1], timeAlpha[i * 2]);
+            }
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[]
+                {
+                    new GradientColorKey(start, 0f),
+                    new GradientColorKey(middle, 0.5f),
+                    new GradientColorKey(end, 1f),
+                },
+                alpha);
+            ParticleSystem.ColorOverLifetimeModule color = ps.colorOverLifetime;
+            color.enabled = true;
+            color.color = new ParticleSystem.MinMaxGradient(gradient);
+        }
+
+        /// <summary>按 (时间, 值) 成对给关键帧；切线取相邻两帧连线的斜率（端点单侧），极值处自然放缓。</summary>
+        private static AnimationCurve Curve(params float[] timeValue)
+        {
+            int count = Mathf.Max(1, timeValue.Length / 2);
+            Keyframe[] keys = new Keyframe[count];
+            for (int i = 0; i < count; i++)
+            {
+                int prev = Mathf.Max(0, i - 1);
+                int next = Mathf.Min(count - 1, i + 1);
+                float dt = timeValue[next * 2] - timeValue[prev * 2];
+                float slope = dt > 1e-5f ? (timeValue[next * 2 + 1] - timeValue[prev * 2 + 1]) / dt : 0f;
+                keys[i] = new Keyframe(timeValue[i * 2], timeValue[i * 2 + 1], slope, slope);
+            }
+            return new AnimationCurve(keys);
+        }
+
+        /// <summary>
+        /// 正弦曲线 center + amplitude·sin(2π·cycles·t + phase)，t 是归一化寿命 [0,1]；
+        /// 每四分之一周期一帧、切线取解析导数（Hermite 插值下与正弦几乎重合）。
+        /// </summary>
+        private static AnimationCurve Wave(float center, float amplitude, float cycles, float phase)
+        {
+            int count = Mathf.Clamp(Mathf.CeilToInt(cycles * 4f) + 1, 3, 17);
+            Keyframe[] keys = new Keyframe[count];
+            float omega = 2f * Mathf.PI * cycles;
+            for (int i = 0; i < count; i++)
+            {
+                float t = i / (float)(count - 1);
+                float value = center + amplitude * Mathf.Sin(omega * t + phase);
+                float slope = amplitude * omega * Mathf.Cos(omega * t + phase);
+                keys[i] = new Keyframe(t, value, slope, slope);
+            }
+            return new AnimationCurve(keys);
+        }
+
+        /// <summary>
+        /// 分轴尺寸：宽度（公告板本地 X）给两条、每颗粒子在两条之间随机取；高度一条。
+        /// 薄片 / 叶片「绕长轴翻面」就是宽度一收一放——公告板始终正对镜头，这是不引入网格粒子的伪翻转，
+        /// 叠上 Z 轴自转后压扁方向跟着片子转。三轴用同一种曲线模式（TwoCurves），否则 Unity 报
+        /// 「curves must all be in the same mode」。
+        /// </summary>
+        private static void AxisSize(ParticleSystem ps, AnimationCurve widthA, AnimationCurve widthB,
+            AnimationCurve height)
+        {
+            ParticleSystem.SizeOverLifetimeModule size = ps.sizeOverLifetime;
+            size.enabled = true;
+            size.separateAxes = true;
+            size.x = new ParticleSystem.MinMaxCurve(1f, widthA, widthB);
+            size.y = new ParticleSystem.MinMaxCurve(1f, height, height);
+            size.z = new ParticleSystem.MinMaxCurve(1f, height, height);
+        }
+
+        // ---- 蓝白绿三色的色板与生命曲线（配方在 PetNestAuraRecipes.cs；主元素与点缀共用）----
+
+        /// <summary>自然叶色：黄绿 / 嫩绿 / 中绿 / 深绿一整段随机，只混进 12–15% 的调色板本色。</summary>
+        private static void TintFoliage(ParticleSystem ps, Color c, float alpha)
+        {
+            TintPalette(ps,
+                WithAlpha(Color.Lerp(new Color(0.72f, 0.84f, 0.3f), c, 0.12f), alpha),
+                WithAlpha(Color.Lerp(new Color(0.46f, 0.76f, 0.26f), c, 0.15f), alpha),
+                WithAlpha(Color.Lerp(new Color(0.28f, 0.6f, 0.23f), c, 0.15f), alpha),
+                WithAlpha(Color.Lerp(new Color(0.17f, 0.45f, 0.2f), c, 0.12f), alpha));
+        }
+
+        /// <summary>
+        /// 落叶的轨迹：下落速度在区间里随机；水平方向按正弦来回荡（两条相位错开的曲线之间随机，
+        /// 每片荡的方向与幅度都不同）；再绕崽慢慢转一点。线速度三轴同为 TwoCurves、轨道三轴同为常量
+        /// （同一组里曲线模式不一致 Unity 会报错）。
+        /// </summary>
+        private static void LeafDrift(ParticleSystem ps, float fallMin, float fallMax, float sway,
+            float cycles, float orbit)
+        {
+            ParticleSystem.VelocityOverLifetimeModule velocity = ps.velocityOverLifetime;
+            velocity.enabled = true;
+            velocity.space = ParticleSystemSimulationSpace.Local;
+            velocity.x = new ParticleSystem.MinMaxCurve(1f, Wave(0f, sway, cycles, 0f), Wave(0f, -sway, cycles, 0.9f));
+            velocity.y = new ParticleSystem.MinMaxCurve(1f, Wave(0f, 0.6f * sway, cycles, 1.6f),
+                Wave(0f, -0.6f * sway, cycles, 2.5f));
+            velocity.z = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Constant(0f, 1f, fallMin),
+                AnimationCurve.Constant(0f, 1f, fallMax));
+            velocity.orbitalX = new ParticleSystem.MinMaxCurve(0f);
+            velocity.orbitalY = new ParticleSystem.MinMaxCurve(0f);
+            velocity.orbitalZ = new ParticleSystem.MinMaxCurve(orbit);
+            velocity.radial = new ParticleSystem.MinMaxCurve(0f);
+        }
+
+        /// <summary>
+        /// 叶片的翻飞：绕视线轴来回摆（钟摆，约 ±65°/s、1.6 个来回，每片摆幅与相位在两条曲线之间随机），
+        /// 同时宽度 1 ↔ 0.22 收放像在绕主脉翻面（两条曲线频率不同，每片翻得不一样）。
+        /// </summary>
+        private static void LeafTumble(ParticleSystem ps)
+        {
+            ParticleSystem.MainModule main = ps.main;
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            ParticleSystem.RotationOverLifetimeModule rotation = ps.rotationOverLifetime;
+            rotation.enabled = true;
+            rotation.separateAxes = false;
+            rotation.z = new ParticleSystem.MinMaxCurve(1f, Wave(0f, 1.15f, 1.6f, 0f), Wave(0f, -1.15f, 1.6f, 1.3f));
+            AxisSize(ps, Wave(0.61f, 0.39f, 1.9f, 1.5708f), Wave(0.61f, 0.39f, 2.4f, 3.4f),
+                Curve(0f, 0.85f, 0.15f, 1f, 1f, 0.95f));
+        }
+
+        /// <summary>水色：浅水青 / 冰白 / 淡蓝紫 / 冰白一整段随机，只混进 10–20% 的调色板本色（饱和蓝直接上就是塑料蓝）。</summary>
+        private static void TintWater(ParticleSystem ps, Color c, float alpha)
+        {
+            TintPalette(ps,
+                WithAlpha(Color.Lerp(new Color(0.58f, 0.84f, 1f), c, 0.2f), alpha),
+                WithAlpha(Color.Lerp(new Color(0.8f, 0.93f, 1f), c, 0.14f), alpha),
+                WithAlpha(Color.Lerp(new Color(0.78f, 0.82f, 1f), c, 0.12f), alpha),
+                WithAlpha(Color.Lerp(new Color(0.88f, 0.96f, 1f), c, 0.1f), alpha));
+        }
+
+        /// <summary>
+        /// 气泡的一生：边升边胀（0.55 → 1），寿命最后约 8% 猛地再胀到 1.4、亮一下、消失——「啵」。
+        /// 颜色从带一点水蓝慢慢发白（升上去接住了光）。膜本身很淡，中段 alpha 只有 0.62–0.68。
+        /// </summary>
+        private static void BubbleLife(ParticleSystem ps)
+        {
+            ParticleSystem.SizeOverLifetimeModule size = ps.sizeOverLifetime;
+            size.enabled = true;
+            size.separateAxes = false;
+            size.size = new ParticleSystem.MinMaxCurve(1f,
+                Curve(0f, 0.55f, 0.55f, 0.84f, 0.88f, 1f, 0.94f, 1.16f, 1f, 1.4f));
+            AlphaLife(ps, new Color(0.8f, 0.9f, 1f), Color.white, Color.white,
+                0f, 0f, 0.1f, 0.62f, 0.84f, 0.68f, 0.93f, 1f, 1f, 0f);
+        }
+
+        /// <summary>珠母色：极淡的粉 / 暖白 / 青 / 淡紫一整段随机，本色占一半（白色本色时几乎看不出偏色，只在亮处泛一点）。</summary>
+        private static void TintNacre(ParticleSystem ps, Color c, float alpha)
+        {
+            TintPalette(ps,
+                WithAlpha(Color.Lerp(c, new Color(1f, 0.86f, 0.93f), 0.5f), alpha),
+                WithAlpha(Color.Lerp(c, new Color(1f, 0.96f, 0.9f), 0.5f), alpha),
+                WithAlpha(Color.Lerp(c, new Color(0.84f, 0.95f, 1f), 0.5f), alpha),
+                WithAlpha(Color.Lerp(c, new Color(0.92f, 0.88f, 1f), 0.5f), alpha));
+        }
+
+        /// <summary>
+        /// 珍珠晶片的光泽：绕长轴慢慢翻（宽度 1 → 0.3 → 1，两个半来回），正对镜头时最亮、侧过去变暗——
+        /// 宽度与亮度用同一组时间点，所以同步；颜色在寿命里从偏青转到偏粉（乘在出生色上，幅度很小）。
+        /// </summary>
+        private static void PearlSheen(ParticleSystem ps)
+        {
+            AnimationCurve width = Curve(0f, 1f, 0.2f, 0.3f, 0.4f, 1f, 0.6f, 0.3f, 0.8f, 1f, 1f, 0.45f);
+            AxisSize(ps, width, width, Curve(0f, 0.7f, 0.15f, 1f, 1f, 0.9f));
+            AlphaLife(ps, new Color(0.9f, 0.97f, 1f), Color.white, new Color(1f, 0.93f, 0.97f),
+                0f, 0f, 0.08f, 0.8f, 0.2f, 0.4f, 0.4f, 1f, 0.6f, 0.4f, 0.8f, 0.9f, 1f, 0f);
         }
 
         /// <summary>闪烁：尺寸在生命期里亮—暗—亮—灭两次，星光才有「一闪一闪」的节奏。</summary>

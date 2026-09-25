@@ -67,7 +67,6 @@ namespace BossRush
         private void DestroyUi()
         {
             CancelPreparedFighterPage();
-            _showReconDetails = false;
             _showItemBetPicker = false;
             _pageFailureText = null;
             try
@@ -189,7 +188,6 @@ namespace BossRush
             if (_commandsClosed) return;
             EnsureUi();
             if (_ui == null) return;
-            if (lifecycle != ModeHLifecycle.MatchBrief) _showReconDetails = false;
 
             // 离开恢复通道时收起恢复壳。DriveRecovery 会把 Recovering 推回同一场看盘，
             // 壳不收起来就会盖在新页面上（恢复壳不占模态输入，不收也不会锁死，但会挡视线）。
@@ -269,6 +267,8 @@ namespace BossRush
             // 就地失败提示只画一次（审查 B-11）：谁建的页谁取走
             if (content != null && !string.IsNullOrEmpty(_pageFailureText)) content.FailureText = _pageFailureText;
             _pageFailureText = null;
+            if (content != null && _replayCardEntrance) content.ReplayCardEntrance = true;
+            _replayCardEntrance = false;
             _ui.OpenPage(page, _runState.Lifecycle, _runState.RunId, content);
         }
 

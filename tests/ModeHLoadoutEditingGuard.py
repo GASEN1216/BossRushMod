@@ -26,7 +26,8 @@ def main():
         (combat, "ModeHCommandController.ResolveCommandOwner(lockedCommand, starter, commandRelay)"),
         (combat, "lockedCommand, commandOwner,"),
         (ui, "CreatePreparationOptions(surface, panelSize, content, cursorY)"),
-        (ui, "content.PreparationOptions.Count * rowHeight"),
+        # 2026-09-25：整备选项可分多列（阵容页左首发右接力、配装两列），滚动高度按行数 = 选项数 / 列数
+        (ui, "(content.PreparationOptions.Count + columns - 1) / columns * rowHeight"),
     ]
     missing = [token for source, token in required if token not in source]
     if missing:

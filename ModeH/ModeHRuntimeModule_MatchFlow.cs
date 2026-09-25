@@ -502,24 +502,6 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 侦察揭示的核心特质 ID -> 显示名。`coreTraitTags` 里混着底色（temperament）
-        /// 与怪癖（quirk）两类 ID，前缀不同，按已冻结的 ID 表判定该用哪个。
-        /// </summary>
-        private static string ResolveTraitDisplayName(string traitId)
-        {
-            if (string.IsNullOrEmpty(traitId)) return string.Empty;
-            string prefix = ModeHConfig.LocalizationKeyPrefix;
-            for (int i = 0; i < ModeHStableIds.AllTemperaments.Length; i++)
-            {
-                if (string.Equals(ModeHStableIds.AllTemperaments[i], traitId, StringComparison.Ordinal))
-                {
-                    return L10n.T(prefix + "Temperament_" + traitId);
-                }
-            }
-            return L10n.T(prefix + "Quirk_" + traitId);
-        }
-
-        /// <summary>
         /// 选人卡：图鉴立绘 + 名字 + 打法定位 + 两三句白话（`Fighter_&lt;id&gt;_Plain`）。
         /// 旧卡把「异常名 / 招牌口令名 / 传闻」三行术语拼在一起，玩家读不懂（2026-09-23 owner 实测）；
         /// 怪癖、异常与招牌口令的效果已经揉进白话里讲清楚。转会页复用同一张卡（去掉按钮）。
@@ -721,34 +703,6 @@ namespace BossRush
         #endregion
 
         #region 看盘与赔率页（内容组装）
-
-        /// <summary>
-        /// 免费侦察的**唯一生产调用点**。只在看盘页（MatchBrief）允许，
-        /// 因为揭示结果要在整备与下注之前对玩家可见才有决策价值。
-        ///
-        /// 侦察会改写 publicSummary 与 planDigest，属于赛季状态变更，必须落盘；
-        /// 落盘失败不回滚——TryApplyRecon 已经把结果写进内存中的 plan，
-        /// 这里再退回去反而会让「按钮点了没反应」，而侦察本身不涉及任何资产。
-        /// </summary>
-        private void ApplyRecon(string reconChoiceId)
-        {
-            if (_season == null || _runState == null) return;
-            if (_runState.Lifecycle != ModeHLifecycle.MatchBrief) return;
-
-            ModeHMatchPlanDto plan = _season.currentMatchPlan;
-            if (plan == null) return;
-
-            string failureReasonId;
-            if (!ModeHEncounterPlanner.TryApplyRecon(plan, reconChoiceId, out failureReasonId))
-            {
-                ModBehaviour.DevLog("[ModeH] 侦察未生效: "
-                    + (failureReasonId != null ? failureReasonId : "unknown"));
-                return;
-            }
-
-            TryPersistSeason("recon_applied");
-            RouteUiForLifecycle(_runState.Lifecycle);
-        }
 
         /// <summary>
         /// RosterLocked -> 第一场 MatchBrief。

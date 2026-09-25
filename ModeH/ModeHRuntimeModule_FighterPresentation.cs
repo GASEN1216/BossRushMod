@@ -15,6 +15,8 @@ namespace BossRush
         private ModeHLifecycle _preparedPagePhase;
         private int _preparedPageMatch, _preparedPageRefresh, _preparedPageGeneration;
         private bool _preparedPageComplete;
+        /// <summary>选人页刷新候选后原地换内容时，让新一批卡错峰升起一次（面板本身不重播打开动画）。纯运行时。</summary>
+        private bool _replayCardEntrance;
 
         /// <summary>首次装配预览每帧一名；同一页重绘只读已有预案，不重新创建物品树。</summary>
         private bool TryDeferPreparedFighterPage(ModeHLifecycle phase)
@@ -37,18 +39,30 @@ namespace BossRush
             _preparedPagePhase = phase;
             _preparedPageMatch = _runState.MatchIndex;
             _preparedPageRefresh = _draftRefreshCount;
-            ModeHPageContent loading = new ModeHPageContent
+            if (_ui != null && _ui.CurrentPage != ModeHPage.None)
             {
-                Title = L10n.T("准备参赛选手", "Preparing fighters"),
-                Body = L10n.T("正在准备装备与双方参数。", "Preparing equipment and matchup stats."),
-            };
-            loading.Actions.Add(new ModeHActionData
+                // 已经有一页开着（选人页点了刷新、结算页点了下一场）：原页留着、只挡点击，预案备好后原地换内容。
+                // 旧版先换成一张「准备参赛选手」再换回来，面板连播两次打开动画（2026-09-25 owner：刷新时整页像关掉又重开）
+                _ui.SetPageBusy(true);
+                _replayCardEntrance = phase == ModeHLifecycle.Drafting && _ui.CurrentPage == ModeHPage.Entry;
+            }
+            else
             {
-                Label = L10n.T("返回基地", "Return to base"),
-                IsCancel = true,
-                OnClick = delegate { RequestExit(ModeHExitReason.UserMapReturn, "spectator_exit"); },
-            });
-            OpenPage(ModeHPage.Brief, loading);
+                ModeHPageContent loading = new ModeHPageContent
+                {
+                    Title = L10n.T("准备参赛选手", "Preparing fighters"),
+                    Body = L10n.T("正在给选手换装备、量属性，马上就好。", "Getting the fighters geared up. One moment."),
+                    IsPlaceholder = true,
+                };
+                loading.Actions.Add(new ModeHActionData
+                {
+                    Label = L10n.T("返回基地", "Return to base"),
+                    IsCancel = true,
+                    OnClick = delegate { RequestExit(ModeHExitReason.UserMapReturn, "spectator_exit"); },
+                });
+                OpenPage(ModeHPage.Brief, loading);
+                _replayCardEntrance = false;
+            }
             _preparedPageRoutine = _owner.StartCoroutine(PrepareFighterPage(_preparedPageGeneration));
             return true;
         }
@@ -88,8 +102,10 @@ namespace BossRush
             }
             if (!IsPreparedPageCurrent(generation)) yield break;
             _preparedPageRoutine = null;
+            if (_ui != null) _ui.SetPageBusy(false);
             if (failed)
             {
+                _replayCardEntrance = false;
                 RequestTechnicalRetry("prepared_stats_missing");
                 yield break;
             }
@@ -127,6 +143,8 @@ namespace BossRush
             _preparedPageComplete = false;
             _preparedPageOwner = 0;
             if (routine != null && _owner != null) _owner.StopCoroutine(routine);
+            _replayCardEntrance = false;
+            if (routine != null && _ui != null) _ui.SetPageBusy(false);
         }
 
         private void FillFighterDetails(ModeHCardData card, ModeHPreparedFighterStats stats)

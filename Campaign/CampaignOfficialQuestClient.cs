@@ -200,11 +200,13 @@ namespace BossRush
                 NameKey = guide.NameKey,
                 DescriptionKey = guide.DescriptionKey,
                 RewardMoney = 0,
+                // 一条接一条：只有排到的那一条挂在杰夫的可接取页上（CampaignGuideTable.NextOfferableId）
                 CanOffer = () => CanWrite() && CampaignGuideTable.InBase()
-                    && !CampaignGuideTable.IsAccepted(id) && !CampaignGuideTable.IsCompleted(id),
+                    && !CampaignGuideTable.IsAccepted(id) && !CampaignGuideTable.IsCompleted(id)
+                    && string.Equals(CampaignGuideTable.NextOfferableId(GuidePrerequisiteMet), id, StringComparison.Ordinal),
                 CanDeliver = () => CanWrite() && CampaignGuideTable.InBase()
                     && CampaignGuideTable.IsAccepted(id) && CampaignGuideTable.IsExperienced(id) && !CampaignGuideTable.IsCompleted(id),
-                DeliverBlocked = () => L10n.T("先按提示完成一次体验，再回来交付。", "Follow the hint once, then come back to deliver."),
+                DeliverBlocked = () => L10n.T("还没去试过吧？照我说的试一次，再回来找我。", "Haven't tried it yet, have you? Give it a go the way I said, then come back."),
                 IsAccepted = () => CampaignGuideTable.IsAccepted(id) || CampaignGuideTable.IsCompleted(id),
                 IsDelivered = () => CampaignGuideTable.IsCompleted(id),
                 RewardPaid = () => CampaignGuideTable.IsCompleted(id),
@@ -220,7 +222,7 @@ namespace BossRush
                         TaskId = 1,
                         Done = () => CampaignGuideTable.IsExperienced(id) || CampaignGuideTable.IsCompleted(id),
                         Description = () => CampaignGuideTable.Describe(guide, CampaignGuideTable.IsExperienced(id)),
-                        ExtraHint = () => L10n.T("先体验一次新内容，完成后回基地找杰夫。", "Try the new content once, then return to Jeff.")
+                        ExtraHint = () => L10n.T("去试一次，回基地跟杰夫讲讲。", "Try it once, then tell Jeff about it back at base.")
                     }
                 },
                 Client = this,
@@ -232,7 +234,7 @@ namespace BossRush
             message = null;
             if (CanWrite() && CampaignGuideTable.InBase()
                 && !CampaignGuideTable.IsCompleted(guideId) && CampaignPersistence.TryAdvanceGuide(guideId, 1)) return true;
-            message = L10n.T("回基地找我接取；存档忙时稍后再试。", "Accept this at base; if saving is busy, try again shortly.");
+            message = L10n.T("回基地找我接就行。要是没接上，多半是存档正忙，过一会儿再来。", "Come find me at base to take this. If it didn't go through, the save is probably busy; try again in a moment.");
             return false;
         }
 
@@ -240,8 +242,21 @@ namespace BossRush
         {
             message = null;
             if (CanWrite() && CampaignGuideTable.InBase() && CampaignPersistence.TryAdvanceGuide(guideId, 3)) return true;
-            message = L10n.T("先完成提示里的体验，再回基地找我。", "Complete the trial in the hint, then return to me at base.");
+            message = L10n.T("先照我说的去试一次，回基地再来找我。", "Go try it the way I said first, then come see me at base.");
             return false;
+        }
+
+        /// <summary>
+        /// 引导的前置：菜地要鸭王征程第一章交付（解锁菜地工地），陈列要第二章交付（解锁陈列加成）；其余没有前置。
+        /// 读的是战役的设施解锁 token（战役关闭时一律未解锁，这两条就一直排在后面，不挡别的）。
+        /// </summary>
+        private static bool GuidePrerequisiteMet(string guideId)
+        {
+            if (string.Equals(guideId, CampaignGuideTable.Garden, StringComparison.Ordinal))
+                return CampaignFacilityUnlocks.IsTokenGranted(CampaignFacilityUnlocks.BuildTokenForChapter(1));
+            if (string.Equals(guideId, CampaignGuideTable.Trophy, StringComparison.Ordinal))
+                return CampaignFacilityUnlocks.IsTokenGranted(CampaignFacilityUnlocks.BuildTokenForChapter(2));
+            return true;
         }
 
         private static CampaignChapterState State(string chapterId)

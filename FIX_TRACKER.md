@@ -1,5 +1,24 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+## 2026-09-26 鸭王杯四页重排、刷新不闪、Jeff 引导一条接一条、崽炫彩蓝白绿精修（COMPAT / SAFE）
+
+**授权与范围**：owner 截图反馈 5 项 + 追加 1 项（看盘页布局乱、刷新整页闪、「战况 / 侦察」可去掉且整备页乱、结算页优化、崽蓝白绿炫彩塑料感、Jeff 剧情一次全放出来且文案有人机感）。不加 TypeID、不改存档 schema、不重打包；不提交 Git。
+
+**完成**：
+- 根因（看盘 / 押物品 / 结算三页全乱）：`ModeHUIPages.CreateScrollHost` 复用官方 `UIPrefabs.ScrollRect` 时没摘 content 自带的竖排布局与自适应高度，手动定位的卡片被压成一列小圆点、左半边被裁。现在实例化后 `StripLayoutControllers`（DestroyImmediate，同 `CodexView.EnsureGridLayout`）；规则补进 AGENTS §4.14。
+- 看盘页：场次 · 胜利返还倍率一行 + 本场规则一行小字；左右两列列头写合计战力、中缝 VS，每人一张横卡（立绘、名字、状态、右侧装备图标、下方八项属性格，双方同尺度，放得下两行四列用高卡，否则一行八列矮卡，再不够才滚动）。去掉「赛况 / 侦察」（owner 拍板）；「自己调整再开打」直接进整备页签，「完成」回对照页再锁盘。
+- 整备页：页签下一行写当前首发 / 接力 / 口令；阵容页左列首发、右列接力（含「接力休息」）；配装页两列、每格带官方物品图标与品质边。
+- 押物品页：整卡可点物品格，选中底色染主色、描边常亮主色 + 角标。结算页按内容估高，奖品一排居中，战报单按行数收高。
+- 刷新不闪：选人页刷新候选 / 结算点下一场时，已有页面原地盖透明挡板（`ModeHUI.SetPageBusy`），预案分帧备好后同页换内容，选人页新卡错峰升起一次；只有没开页面时才出「准备参赛选手」占位页，占位换正式页不重播面板打开动画。
+- Jeff 引导：同一时间只挂一条（`CampaignGuideTable.NextOfferableId`），交付后才挂下一条；菜地 / 陈列要征程第 1 / 2 章设施 token 才排进来，不挡后面的；旧档已同时接下的照常保留。14 条说明与接交提示改成杰夫当面对玩家说的话。
+- 崽炫彩（子代理）：蓝 = 薄壁气泡 + 双圈涟漪 + 拉丝水珠，白 = 细光尘 + 虹彩珍珠晶片翻面，绿 = 带叶脉明暗的自然色叶片钟摆飘落 + 柔光孢子；改走共享 `BossRushFxKit.GetShapeMaterial`。共享画师的 Bubble / Leaf 重画、新增 Pearl / Ripple，这两种形状全仓只有遗种巢在用；其余 10 种形状逐像素与 HEAD 相同。
+
+**取舍与回退**：侦察入口删除后 `TryApplyRecon` 与 reconChoices 数据保留（旧档已揭示结果、执行回归仍用），`ModeHReachabilityGuard` 不再要求生产调用方；回退即恢复 `AppendReconLinesAndActions` / `ApplyRecon` 与该守卫条目。引导链回退：删掉 `CanOffer` 里 `NextOfferableId` 那一条件。结算页收高回退：`ResolvePanelSize` 直接返回 `ReportPanelSize`。
+
+**验证（L2）**：全量守卫 669 PASS / 0 FAIL；执行回归 ModeH 10 个、ContentTransactions（新增引导链 4 条断言）、CampaignPlayability、ManualSeptemberReview 全 PASS（ModeHMarketAudit 补了阵容两列与本场规则小字断言）。Windows 正式构建 `Build succeeded!`（唯一原有 CS0649）；14 个 Dev 标识 absent；部署 DLL 与 `Build/` SHA-256 均为 `20D0234E30885DE383884BD48A8AE085ACBBB2154B3A889975054790583782A9`，72 包 SHA-256 一致。Wiki 构建通过，237 页 / 39,141 引用 0 缺失。`git diff --check` 通过。
+
+**L3 未做**：未启动游戏。owner 目检：看盘页两人 / 三敌是否一屏放下、属性格文字不重叠；选人页刷新时面板不关再开；整备页阵容两列对齐、配装图标；押物品页选中态；结算页高度；Jeff 任务页只挂一条、交付后出下一条；崽蓝白绿三色（清单见交付回复）。
+
 ## 2026-09-25 鸭王杯选人与押注、遗种成长、后山变身及 Jeff 引导（COMPAT / SCHEMA+ / WIRE+ / OPERATIONAL）
 
 **授权与范围**：owner 的 16 项需求；在本轮开始时已有的未提交实现上核对、修复和补齐，不提交 Git。官方 Wiki 生物页抓取为 `docs/reference/官方Wiki_Boss预制体_2026-09-25.json`（51 个 Boss 原始对象），当前鸭王杯候选查表见 `docs/reference/ModeH官方Boss预制体属性.md`。

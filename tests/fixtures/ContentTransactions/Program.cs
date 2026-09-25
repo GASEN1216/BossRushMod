@@ -423,10 +423,15 @@ class Program
         Check(old.acceptedGuides.Length == 0 && old.experiencedGuides.Length == 0 && old.completedGuides.Length == 0,
             "old campaign save defaults optional guide fields without changing chapter");
         const string id = CampaignGuideTable.ModeH;
+        // 一条接一条（2026-09-25）：表里第一条先发；前置没到的跳过、不挡后面的
+        Check(CampaignGuideTable.NextOfferableId(null) == CampaignGuideTable.ModeG, "first guide in table order is offered first");
+        Check(CampaignGuideTable.NextOfferableId(g => g != CampaignGuideTable.ModeG) == id,
+            "guide with unmet prerequisite is skipped without blocking later ones");
         Check(!CampaignPersistence.TryAdvanceGuide(id, 2) && !CampaignPersistence.TryAdvanceGuide(id, 3),
             "unaccepted guide cannot experience or deliver");
         Check(!CampaignPersistence.TryAdvanceGuide("unknown-guide", 1), "unknown guide id rejected");
         Check(CampaignPersistence.TryAdvanceGuide(id, 1), "guide acceptance persisted in campaign store");
+        Check(CampaignGuideTable.NextOfferableId(null) == null, "no new guide is offered while one is in progress");
         Check(!CampaignGuideTable.IsCompleted(id) && !CampaignGuideTable.IsExperienced(id), "acceptance does not complete objective");
         Check(!CampaignPersistence.TryAdvanceGuide(id, 3), "cannot deliver before objective");
         SetPrivate(typeof(CampaignPersistence), "_storeFaulted", true);
@@ -440,6 +445,7 @@ class Program
         copy.acceptedGuides[0] = "changed";
         Check(CampaignGuideTable.IsAccepted(id), "chapter transaction clone cannot mutate guide source arrays");
         Check(CampaignPersistence.TryAdvanceGuide(id, 3) && CampaignGuideTable.IsCompleted(id), "Jeff delivery completes guide");
+        Check(CampaignGuideTable.NextOfferableId(null) == CampaignGuideTable.ModeG, "next guide appears only after delivery");
         Check(CampaignPersistence.FlushPending(), "guide state flush succeeds");
         CampaignPersistence.ResetStaticCaches();
         Check(CampaignGuideTable.IsCompleted(id) && CampaignGuideTable.IsAccepted(id) && CampaignGuideTable.IsExperienced(id),

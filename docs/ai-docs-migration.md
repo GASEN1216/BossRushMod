@@ -312,3 +312,5 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 - 2026-09-25：依 owner 本轮明确请求，根 AGENTS §4.14 / §10 登记 Jeff 新内容引导授权 590201–590214，并明确引导与六章共用征程客户端；contracts 同步三态可选存档字段和任务范围，避免旧“只限天空岛/六章”规则与现代码冲突。
 
 - 2026-09-25：按 `compile_official.bat` 的 `if defined BOSSRUSH_DEV_BUILD` 补充正式构建命令口径：必须移除变量，设成 0 仍是 Dev；交付需再核 DLL 标识与部署哈希。
+
+- 2026-09-26：根 AGENTS §4.14「复用官方 prefab」一条补上官方 `UIPrefabs.ScrollRect` 的 content 自带竖排布局与自适应高度、手动摆位前必须 `DestroyImmediate` 摘掉（鸭王杯看盘 / 押物品 / 结算三页布局全乱的根因；图鉴 `CodexView.EnsureGridLayout` 早已这样做）。

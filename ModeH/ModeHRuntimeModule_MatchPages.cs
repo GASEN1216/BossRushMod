@@ -6,8 +6,9 @@
 // 赔率/整备页保留给主动调整阵容与口令，技术重试与续赛也返回赛前确认。
 //
 // 本轮按 UI 制作共识重排（审查 B-03 / B-06 / B-07 / B-11 / B-19 / B-21）：
-//   - 看盘页：免费侦察从底部动作条挪到页头下的一排分段按钮；底栏只留「看赔率、自己调整」（次级）与「开打」（主）；
-//     计划没排好时不挂灰掉的按钮；
+//   - 看盘页：底栏只留「自己调整再开打」（次级）与「开打」（主）；计划没排好时不挂灰掉的按钮。
+//     2026-09-25 owner 拍板去掉「赛况 / 侦察」：双方对照已经把敌方的装备与八项属性摆在明面上，
+//     另开一页看人数区间、再花一次侦察猜装备是多余的一步；本场规则改成场次行下面的一行小字；
 //   - 赔率页：下注档从底部动作条挪到动作带上方的一排分段按钮；底栏只留「调整阵容 / 配装 / 口令」与「锁定并开打」；
 //     押了仓库物品时，锁盘前先弹共享确认框，写清件数、最坏损失与胜利可得；
 //   - 锁盘 / 押品被拒的原因画在按钮带正上方（_pageFailureText），不再走官方全局提示。
@@ -22,7 +23,6 @@ namespace BossRush
     {
         /// <summary>刚才那一下为什么没成：下一次建页时画在按钮带上方，画一次就清掉。纯运行时。</summary>
         private string _pageFailureText;
-        private bool _showReconDetails;
 
         /// <summary>记下一条就地失败提示（下一次 OpenPage 取走）。</summary>
         private void NotePageFailure(string text)
@@ -83,30 +83,15 @@ namespace BossRush
                     return page;
                 }
             }
-            if (_showReconDetails)
-            {
-                AppendMatchPreview(page);
-                AppendReconLinesAndActions(page);
-                page.Actions.Add(new ModeHActionData
-                {
-                    Label = L10n.T("返回双方对照", "Back to matchup"),
-                    IsCancel = true,
-                    OnClick = delegate { _showReconDetails = false; RouteUiForLifecycle(_runState.Lifecycle); },
-                });
-                return page;
-            }
             AppendMatchSides(page);
+            page.MatchNote = DescribeMatchNote();
             page.Headline = L10n.T("胜利返还倍率", "Win payout multiplier");
             page.HeadlineValue = FormatPayoutMultiplier(_currentOddsQuote.Odds);
-            page.Actions.Add(new ModeHActionData
-            {
-                Label = L10n.T("赛况 / 侦察", "Briefing / recon"),
-                OnClick = delegate { _showReconDetails = true; RouteUiForLifecycle(_runState.Lifecycle); },
-            });
+            // 「自己调整」直接进整备页（阵容 / 配装 / 口令页签），「完成」回到双方对照页再锁定开打
             page.Actions.Add(new ModeHActionData
             {
                 Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_CustomSetup"),
-                OnClick = delegate { EnterLoadoutEditing(); },
+                OnClick = OpenLoadoutEditorFromBrief,
             });
             AppendCashBetRow(page);
             page.Actions.Add(new ModeHActionData
@@ -118,77 +103,18 @@ namespace BossRush
             return page;
         }
 
-        /// <summary>
-        /// 免费侦察的看盘页呈现（§17.5）。
-        ///
-        /// 此前 `ModeHEncounterPlanner.TryApplyRecon` 与四条 `reconChoices` 数据、
-        /// `Button_Recon` / `Recon_Consumed` 文案全都写好了，但**没有任何按钮调用它**，
-        /// 于是「每场一次免费侦察」这条设计在游戏里根本不存在：玩家只能盲押。
-        ///
-        /// 呈现口径：
-        /// - 未用过：页头下一排分段按钮「免费侦察一次：[a] [b] [c]」（审查 B-07：旧版是底部动作按钮，和「开打」挤在一起）；
-        /// - 已用过：只回显揭示了哪一项，不再出按钮（TryApplyRecon 自己也会以
-        ///   `recon_already_consumed` 拒绝，这里是让玩家看得见，而不是靠点了才知道）。
-        ///
-        /// `nameKey` 在 ThreatPlans.json 里存的是**完整** key（`BossRush_ModeH_Recon_*`），
-        /// 不要再拼 LocalizationKeyPrefix，否则会变成 BossRush_ModeH_BossRush_ModeH_xxx。
-        /// </summary>
-        private void AppendReconLinesAndActions(ModeHPageContent page)
+        /// <summary>看盘页「自己调整再开打」：进整备页并直接打开页签（旧版先落到一张与看盘页几乎一样的赔率页，还要再点一次）。</summary>
+        private void OpenLoadoutEditorFromBrief()
         {
-            if (page == null || _season == null) return;
-            ModeHMatchPlanDto plan = _season.currentMatchPlan;
-            if (plan == null) return;
-
-            if (!string.IsNullOrEmpty(plan.reconChoiceId))
+            if (_commandsClosed || _runState == null || _runState.Lifecycle != ModeHLifecycle.MatchBrief) return;
+            _showLoadoutEditor = true;
+            _loadoutSection = 1;
+            EnterLoadoutEditing();
+            if (_runState != null && _runState.Lifecycle != ModeHLifecycle.LoadoutEditing
+                && _runState.Lifecycle != ModeHLifecycle.OddsPreview)
             {
-                string line = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recon_Consumed");
-                string revealKey = plan.publicSummary != null ? plan.publicSummary.reconRevealKey : null;
-                if (!string.IsNullOrEmpty(revealKey))
-                {
-                    line += L10n.T("：", ": ") + L10n.T(revealKey);
-                }
-                // reconResult 是「成员顺序」「第二装备」两项的文本结果。
-                if (!string.IsNullOrEmpty(plan.reconResult) || plan.reconChoiceId == "current_injury")
-                {
-                    line += "　" + DescribeReconResult(plan);
-                }
-                // coreTraitTags（「隐藏坏习惯」那一项）此前**全仓零消费**：写进
-                // publicSummary 后再没人读，玩家消耗掉本场唯一一次侦察机会却什么都看不到。
-                // 旧存档的履历侦察仅回显，新的按钮不消费纯履历信息。
-                List<string> traits = plan.publicSummary != null
-                    ? plan.publicSummary.coreTraitTags : null;
-                if (traits != null && traits.Count > 0)
-                {
-                    for (int t = 0; t < traits.Count; t++)
-                    {
-                        if (string.IsNullOrEmpty(traits[t])) continue;
-                        line += (t == 0 ? "　" : "、") + ResolveTraitDisplayName(traits[t]);
-                    }
-                }
-                page.Lines.Add(line);
-                return;
+                _showLoadoutEditor = false;
             }
-
-            List<ModeHReconChoiceSpec> choices = ModeHContentCatalog.ReconChoices;
-            if (choices == null || choices.Count == 0) return;
-
-            ModeHOptionRow recon = new ModeHOptionRow();
-            recon.Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Recon");
-            recon.Caption = L10n.T("每场只能看一项，开打前有效。", "One peek per match, before the fight starts.");
-            recon.AtTop = true;
-            for (int i = 0; i < choices.Count; i++)
-            {
-                ModeHReconChoiceSpec choice = choices[i];
-                if (!ModeHEncounterPlanner.IsReconChoicePlayable(choice) || string.IsNullOrEmpty(choice.ReconChoiceId)) continue;
-                // 闭包不能捕获循环变量，否则按钮点下去都是最后一条（照 SelectSettlementReward 的写法）
-                string selectedReconId = choice.ReconChoiceId;
-                recon.Options.Add(new ModeHActionData
-                {
-                    Label = L10n.T(choice.NameKey),
-                    OnClick = delegate { ApplyRecon(selectedReconId); },
-                });
-            }
-            if (recon.Options.Count > 0) page.OptionRows.Add(recon);
         }
 
         /// <summary>
@@ -203,13 +129,17 @@ namespace BossRush
 
             ModeHProfileDto starter = FindSeasonProfile(roster.matchStarterProfileId);
             ModeHProfileDto relay = FindSeasonProfile(roster.matchRelayProfileId);
+            float playerPower = 0f;
+            float enemyPower = 0f;
             if (starter != null)
             {
                 ModeHCardData card = BuildProfileCard(starter, false);
                 card.Stats.Clear();
                 card.Equipment.Clear();
                 card.Subtitle = L10n.T("首发", "Starter") + " · " + DescribeFighterState(starter);
-                FillFighterDetails(card, GetPreparedFighterStats(starter, roster.starterKitIds));
+                ModeHPreparedFighterStats stats = GetPreparedFighterStats(starter, roster.starterKitIds);
+                FillFighterDetails(card, stats);
+                if (stats != null) playerPower += stats.Power;
                 page.PlayerFighters.Add(card);
             }
             if (relay != null)
@@ -218,7 +148,9 @@ namespace BossRush
                 card.Stats.Clear();
                 card.Equipment.Clear();
                 card.Subtitle = L10n.T("接力", "Relay") + " · " + DescribeFighterState(relay);
-                FillFighterDetails(card, GetPreparedFighterStats(relay, roster.relayKitIds));
+                ModeHPreparedFighterStats stats = GetPreparedFighterStats(relay, roster.relayKitIds);
+                FillFighterDetails(card, stats);
+                if (stats != null) playerPower += stats.Power;
                 page.PlayerFighters.Add(card);
             }
             ModeHMatchPlanDto plan = _season.currentMatchPlan;
@@ -231,10 +163,15 @@ namespace BossRush
                     Subtitle = L10n.T("敌方 " + (i + 1), "Opponent " + (i + 1)),
                     PortraitKey = key,
                 };
-                FillFighterDetails(card, GetPreparedEnemyStats(plan, i));
+                ModeHPreparedFighterStats stats = GetPreparedEnemyStats(plan, i);
+                FillFighterDetails(card, stats);
+                if (stats != null) enemyPower += stats.Power;
                 page.EnemyFighters.Add(card);
             }
             NormalizeFighterStatScales(page.PlayerFighters, page.EnemyFighters);
+            // 列头右侧的合计战力：一眼看出强弱，细节再看下面每个人的属性条
+            page.PlayerSideNote = L10n.T("合计战力 ", "Total power ") + FormatMoney((long)Math.Round(playerPower));
+            page.EnemySideNote = L10n.T("合计战力 ", "Total power ") + FormatMoney((long)Math.Round(enemyPower));
         }
 
         private static string DescribeKitNames(List<string> kitIds)
@@ -320,6 +257,14 @@ namespace BossRush
             // 押注：动作带上方一排分段按钮（审查 B-06 / B-19：旧版「下注 0 / 1 / 2」是底部动作按钮，和锁盘挤在一起）。
             // 2026-09-24 起押的是钱（ModeHCashBetService），与选人页、结算页同一排、同一个押注档
             AppendMatchSides(page);
+            if (page.PlayerFighters.Count > 0)
+            {
+                // 画成双方对照时与看盘页同一行：场次 · 胜利返还倍率（公开分、虚拟筹码只在拆解兜底页里有意义）
+                page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Label_Match").Replace("{0}", _runState.MatchIndex.ToString())
+                    + " / " + ModeHConfig.SeasonMatchCount;
+                page.Headline = L10n.T("胜利返还倍率", "Win payout multiplier");
+                page.MatchNote = DescribeMatchNote();
+            }
             AppendCashBetRow(page);
             if (_currentOddsQuote != null && ModeHCashBetService.StandingAmount > 0)
             {

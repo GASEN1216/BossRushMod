@@ -53,7 +53,7 @@ namespace BossRush
         { return effect != UnverifiedEffect; }
     }
 
-    internal sealed class ModeHResolvedKit { public ModeHKitSpec Spec; public bool Available = true; public int ResolvedQuality = 3; }
+    internal sealed class ModeHResolvedKit { public ModeHKitSpec Spec; public bool Available = true; public int ResolvedQuality = 3; public int ResolvedTypeId; }
     internal static class ModeHLoadoutKitRegistry
     {
         public static readonly List<ModeHResolvedKit> Kits = new List<ModeHResolvedKit>();
@@ -62,7 +62,7 @@ namespace BossRush
         public static List<ModeHResolvedKit> GetSelectableKits(List<string> ids, string archetype, string profile)
         { return Kits.Where(x => ids.Contains(x.Spec.KitId)).ToList(); }
     }
-    internal sealed class ModeHActionData { public string Label; public Action OnClick; public bool Interactable = true; public bool IsSelected; public bool IsPrimary; public string SelectedBadge; public bool IsCancel; }
+    internal sealed class ModeHActionData { public string Label; public Action OnClick; public bool Interactable = true; public bool IsSelected; public bool IsPrimary; public string SelectedBadge; public bool IsCancel; public object Icon; public int IconQuality; }
     // 2026-09-24：整备页的分区改成页头下的一排页签（ModeHOptionRow）
     internal sealed class ModeHOptionRow { public string Label, Caption; public bool AtTop; public List<ModeHActionData> Options = new List<ModeHActionData>(); }
     internal sealed class ModeHPageContent
@@ -71,6 +71,10 @@ namespace BossRush
         public List<string> Lines = new List<string>();
         public List<ModeHActionData> Actions = new List<ModeHActionData>(), PreparationOptions = new List<ModeHActionData>();
         public List<ModeHOptionRow> OptionRows = new List<ModeHOptionRow>();
+        // 2026-09-25：整备页阵容两列（首发 / 接力）、配装两列带图标
+        public int PreparationColumns = 1;
+        public float PreparationRowHeight;
+        public List<string> PreparationHeaders = new List<string>();
     }
     internal sealed class ModeHPreparedFighterStats { internal float Power; }
     internal sealed partial class ModeHRuntimeModule
@@ -89,7 +93,7 @@ namespace BossRush
         internal ModeHRuntimeModule(ModeHSeasonDto season) { _season = season; }
         internal bool Prepare(out string reason) { return EnsurePreparedMatchSelection(out reason); }
         internal ModeHPageContent Page() { return BuildLoadoutEditorPage(); }
-        internal ModeHPageContent Preview() { var p = new ModeHPageContent(); AppendMatchPreview(p); return p; }
+        internal string Note() { return DescribeMatchNote(); }
         internal int Score { get { return _currentOddsQuote.PlayerPublicScore; } }
         internal string Command { get { return _selectedMatchCommandId; } }
         private void RouteUiForLifecycle(ModeHLifecycle lifecycle) { }
@@ -161,12 +165,17 @@ namespace BossRush
             Check(runtime.Prepare(out error) && runtime.Score == score, "restored stale armor cannot improve score");
             var page = runtime.Page(); Check(page.OptionRows.Count == 1 && page.OptionRows[0].Options.Count == 4, "preparation has four section tabs");
             page.OptionRows[0].Options[0].OnClick();
-            var rosterPage = runtime.Page(); Check(rosterPage.PreparationOptions.Any(x => x.Label.Contains("Damaged Armor")), "roster shows actual injury");
+            var rosterPage = runtime.Page(); Check(rosterPage.PreparationOptions.Any(x => x != null && x.Label.Contains("Damaged Armor")), "roster shows actual injury");
+            Check(rosterPage.PreparationColumns == 2 && rosterPage.PreparationHeaders.Count == 2
+                && rosterPage.PreparationOptions.Count % 2 == 0, "roster lays starters and relays out as two aligned columns");
+            Check(rosterPage.PreparationOptions[rosterPage.PreparationOptions.Count - 1].Label.StartsWith("Rest the relay"),
+                "resting the relay sits at the bottom of the relay column");
             var stale = rosterPage.PreparationOptions.Last().OnClick;
             season.matchRoster = new ModeHMatchRosterDto { matchIndex = 1, matchRelayProfileId = "relay" };
             stale(); Check(season.matchRoster.matchRelayProfileId == "relay", "stale page cannot alter replacement roster");
-            var preview = runtime.Preview();
-            Check(preview.Lines.Any(x => x.Contains("2–2")) && preview.Lines.Any(x => x.Contains("core")), "brief shows enemy count and core warning");
+            // 2026-09-25：「赛况 / 侦察」页去掉，本场规则与高威胁核心提醒并成对照页上的一行小字
+            string note = runtime.Note();
+            Check(note != null && note.Contains("Narrow Cage") && note.Contains("heavy hitter"), "brief note shows the arena rule and core warning");
 
             var input = new ModeHOddsPlayerInput { Starter = starter, Relay = relay };
             var quote = ModeHOddsController.BuildQuote(input, plan);

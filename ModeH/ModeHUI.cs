@@ -71,6 +71,9 @@ namespace BossRush
         private GameObject _modalInputToken;
         private ModeHPage _currentPage;
         private string _currentPageTitle;
+        /// <summary>当前页是不是占位页，与当前面板尺寸（占位页换正式页时不重播打开动画）。</summary>
+        private bool _currentPagePlaceholder;
+        private Vector2 _currentPanelSize;
         private GameObject _modalSurface;
         private string _modalOwnerLabel;
 
@@ -795,13 +798,17 @@ namespace BossRush
             bool refresh = _modalRoot != null && _modalSurface != null && _currentPage == page
                 && content != null && string.Equals(_currentPageTitle, content.Title, StringComparison.Ordinal);
             List<float> scroll = refresh ? CaptureScroll(_modalSurface) : null;
+            Vector2 size = ModeHUIPages.ResolvePanelSize(page, content);
+            // 占位页（「准备参赛选手」）换成正式页、面板一样大：像同一块面板填上内容，不再关一下再开一下
+            bool fillPlaceholder = !refresh && _modalSurface != null && _currentPagePlaceholder && size == _currentPanelSize;
 
             EnsureModalRoot(lifecycle, runId);
             ClearModalContent();
             _currentPage = page;
             _currentPageTitle = content != null ? content.Title : null;
+            _currentPagePlaceholder = content != null && content.IsPlaceholder;
+            _currentPanelSize = size;
 
-            Vector2 size = page == ModeHPage.Settlement ? ReportPanelSize : MainPanelSize;
             GameObject surface = ZombieModeUIHelper.CreateModalSurface(
                 "ModeH_PageSurface", _modalRoot.transform, size, BossRushUIColors.Accent, createBackdrop: false);
             _modalSurface = surface;
@@ -810,7 +817,30 @@ namespace BossRush
             ModeHUIPages.Build(page, surface.transform, size, content);
             SyncCancelKey(content);
             if (refresh) RestoreScroll(surface, scroll);
-            else BossRushUI.PlayOpenAnimation(surface);
+            else if (!fillPlaceholder) BossRushUI.PlayOpenAnimation(surface);
+        }
+
+        /// <summary>
+        /// 当前页暂不接受点击（2026-09-25：选人页点了刷新、结算页点了下一场，新一批选手的预案还在分帧准备）。
+        /// 只在面板最上层盖一块透明挡板，不动按钮的可交互态——改 CanvasGroup 会让整页按钮一齐变灰，那又是一闪。
+        /// 下一次 OpenPage 换掉整块面板时挡板随旧面板销毁；取消准备时由调用方显式撤掉。
+        /// </summary>
+        public void SetPageBusy(bool busy)
+        {
+            if (_modalSurface == null) return;
+            Transform existing = _modalSurface.transform.Find("ModeH_BusyBlocker");
+            if (!busy)
+            {
+                if (existing != null) UnityEngine.Object.Destroy(existing.gameObject);
+                return;
+            }
+            if (existing != null) return;
+            GameObject blocker = ZombieModeUIHelper.CreateRect("ModeH_BusyBlocker", _modalSurface.transform,
+                Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+            Image image = blocker.AddComponent<Image>();
+            image.color = new Color(0f, 0f, 0f, 0f);
+            image.raycastTarget = true;
+            blocker.transform.SetAsLastSibling();
         }
 
         /// <summary>
@@ -921,6 +951,7 @@ namespace BossRush
             DetachCancelKey();
             _currentPage = ModeHPage.None;
             _currentPageTitle = null;
+            _currentPagePlaceholder = false;
             _modalSurface = null;
             // 输入不等动画：租约在淡出开始前就还回去
             if (_modalLease != null)

@@ -5,19 +5,22 @@
 // 位置以脚底为 0（PetNestAuraEffect.Build 已把特效根对齐到模型包围盒底边）。
 // 屏幕换算（默认相机 FOV 20°、臂长 45 m，1080p 约 68 px/m）：
 //   崽本体约 30 px 高；火星 / 光点 2–4 cm ≈ 2–3 px 的亮核（靠 HDR + Bloom 出光），
-//   星芒 5–9 cm、闪光 15–22 cm、雪花叶片 9–13 cm、异色符文环直径约 0.7 m ≈ 48 px。
+//   星芒 5–9 cm、闪光 15–22 cm、雪花 16–22 cm、异色符文环直径约 0.7 m ≈ 48 px。
+//   2026-09-25 起崽 Lv1 就有 0.62 倍官方体型（_unit 约 1.5–2.2）：蓝白绿三色按「相对崽身」重新定尺寸——
+//   气泡 4–8 cm、叶片 10–14 cm、珍珠晶片 5–7.5 cm（都还要再乘 _unit），不再是半个崽那么大的贴纸。
 //
 // 炫彩（两色 A、B）：
 //   A 决定主元素（下表），B 是一圈反向环绕崽身的点缀，用 B 自己的元素贴图与颜色——
-//   「黑白」= 升腾的暗影烟缕 + 一圈白色光点；「白黑」= 上升的圣光光点 + 一圈暗色烟缕。
+//   「黑白」= 升腾的暗影烟缕 + 一圈珍珠晶片；「白黑」= 珠光光尘与晶片 + 一圈暗色烟缕。
 //     赤 red    → 龙息火焰：克隆官方火 AK-47 的 Smoke（火舌）与 Spark（火星），与龙息武器同源
 //     橙 orange → 锻火飞溅：一阵阵向上喷、再被重力拉回的拉伸火花 + 慢慢飘起的余烬
 //     黄 yellow → 雷弧：身周一闪即逝的折线电弧 + 四溅的电火花 + 静电星点
-//     绿 green  → 落叶孢子：头顶飘落、打转摇摆的叶片 + 脚下升起的发光孢子
+//     绿 green  → 落叶孢子：头顶左右荡着落下、来回摆动翻面的自然色叶片 + 脚下升起的柔光孢子
 //     青 cyan   → 霜花：缓缓飘落旋转的六瓣雪花 + 冰晶闪烁 + 贴地的一层薄寒雾
-//     蓝 blue   → 水泡涟漪：摇摆上浮的气泡 + 脚下扩散的水面涟漪 + 溅起的水珠
+//     蓝 blue   → 水泡涟漪：抖动上浮、末尾「啵」地破掉的薄壁气泡 + 脚下的双圈细涟漪 + 脚边溅起的水珠
 //     紫 purple → 奥术环绕：带拖尾绕身旋转的星芒（一圈在转的法阵感）+ 升起的符光
-//     白 white  → 珠光：细小光尘 + 缓缓环绕的珍珠晶片 + 偶尔的星芒
+//     白 white  → 珠光：细小光尘 + 绕身翻转、带虹彩的珍珠晶片 + 偶尔的星芒
+//   蓝白绿三色用全 Mod 共享的贴图与材质（SharedLook），气泡 / 珠光 / 孢子是真加色，其余七色不变。
 //     黑 black  → 暗影：卷曲升腾的暗色烟缕（浅色地面上清楚）+ 一点淡紫余烬勾边（深色地面上也看得见）
 //     银 silver → 镜屑：身周一闪一闪的细碎亮片 + 旋转环绕的菱形镜屑
 // 异色（最豪华的一档）：脚下两圈反向旋转、轻轻呼吸的金色符文环；从环上升起的金色星光；
@@ -63,7 +66,7 @@ namespace BossRush
                 case "white": return PetNestAuraElement.Radiant;
                 case "black": return PetNestAuraElement.Umbra;
                 case "silver": return PetNestAuraElement.Glimmer;
-                // 调色板只增不改：将来新增的颜色在补专属元素之前，先用本色的圣光光点显示
+                // 调色板只增不改：将来新增的颜色在补专属元素之前，先用本色的珠光显示
                 default: return PetNestAuraElement.Radiant;
             }
         }
@@ -359,44 +362,54 @@ namespace BossRush
             }
         }
 
-        /// <summary>绿：落叶孢子。</summary>
+        /// <summary>
+        /// 绿：落叶孢子。2026-09-25 第二轮（owner：「绿色的塑料叶子」）。上一轮的问题：叶片按崽身高放大后
+        /// 有 30–45 cm（半个崽高）、一色荧光薄荷绿（调色板的绿提过饱和度）、Legacy 半透明下几乎不透明、
+        /// 只在屏幕平面里匀速自转——一张张贴纸。现在：
+        ///   - 叶片 10–14 cm：专门画的叶子（叶柄、微弯主脉、斜向侧脉、受光 / 背光两半、半透明叶缘，明暗在 RGB 里）；
+        ///     颜色在黄绿 / 嫩绿 / 中绿 / 深绿一整段里随机，调色板的绿只混 12–15%；
+        ///     下落时左右荡（正弦速度，每片方向幅度不同）、像钟摆一样来回摆而不是一直转，宽度一收一放像在翻面；
+        ///     寿命末尾略泛黄变暗再淡出；
+        ///   - 孢子：脚下升起的 1.4–2.6 cm 淡黄绿柔光点，加色，慢慢明灭。
+        /// </summary>
         private void BuildVerdant(Color c, float f)
         {
             float h = _height;
             float r = _radius;
             float u = _unit;
-            Color light = Color.Lerp(c, new Color(0.74f, 1f, 0.82f), 0.45f);
-            Color jade = new Color(0.10f, 0.48f, 0.27f);
 
-            // 叶片 16–22 cm（屏上约 11–15 px）：9–13 cm 时叶脉在 mip 3 以下糊成一个色点（VA-13）
-            ParticleSystem leaves = NewEmitter("VerdantLeaves", PetNestAuraTexture.Leaf, Glow.Soft,
-                Scaled(6, f), new Vector3(0f, h + 0.05f * u, 0f), true);
+            ParticleSystem leaves = NewEmitter("VerdantLeaves",
+                SharedLook(BossRushParticleShape.Leaf, BossRushFxBlend.Alpha, 1.1f),
+                Scaled(7, f), new Vector3(0f, h + 0.06f * u, 0f), true);
             if (leaves != null)
             {
-                ShapeCircle(leaves, r + 0.04f * u, 0.25f);
-                Life(leaves, 1.8f, 2.6f);
-                Size(leaves, 0.16f * u, 0.22f * u);
-                Velocity(leaves, -0.16f * u, -0.09f * u, 0.35f, 0f);
-                Noise(leaves, 0.045f * u, 0.45f);
-                RandomSpin(leaves, 38f);
-                Tint(leaves, c, light);
-                Fade(leaves, light, Color.white, jade, 0.14f, 0.76f);
-                Rate(leaves, 2.2f * f);
+                ShapeCircle(leaves, r + 0.04f * u, 0.35f);
+                Life(leaves, 2.1f, 2.9f);
+                Size(leaves, 0.1f * u, 0.14f * u);
+                LeafDrift(leaves, -0.2f * u, -0.13f * u, 0.2f * u, 1.5f, 0.2f);
+                Noise(leaves, 0.02f * u, 0.4f);
+                LeafTumble(leaves);
+                TintFoliage(leaves, c, 0.92f);
+                Fade(leaves, Color.white, Color.white, new Color(0.9f, 0.84f, 0.6f), 0.1f, 0.72f);
+                Rate(leaves, 2.4f * f);
                 Prewarm(leaves);
             }
 
-            ParticleSystem spores = NewEmitter("VerdantSpores", PetNestAuraTexture.GlowDot, Glow.Bright,
-                Scaled(13, f), new Vector3(0f, 0.05f * h, 0f), true);
+            ParticleSystem spores = NewEmitter("VerdantSpores",
+                SharedLook(BossRushParticleShape.GlowDot, BossRushFxBlend.Additive, 1.5f),
+                Scaled(12, f), new Vector3(0f, 0.04f * h, 0f), true);
             if (spores != null)
             {
                 ShapeCircle(spores, r, 1f);
-                Velocity(spores, 0.12f * u, 0.22f * u, 0f, 0f);
-                Noise(spores, 0.08f * u, 1.1f);
-                Life(spores, 1.2f, 1.9f);
-                Size(spores, 0.022f * u, 0.037f * u);
-                Tint(spores, light, c);
+                Velocity(spores, 0.06f * u, 0.14f * u, 0f, 0f);
+                Noise(spores, 0.06f * u, 0.9f);
+                Life(spores, 1.6f, 2.4f);
+                Size(spores, 0.014f * u, 0.026f * u);
+                Tint(spores, WithAlpha(Color.Lerp(new Color(0.86f, 1f, 0.6f), c, 0.15f), 0.85f),
+                    WithAlpha(Color.Lerp(new Color(0.7f, 0.95f, 0.45f), c, 0.2f), 0.75f));
                 Twinkle(spores);
-                Rate(spores, 7f * f);
+                Fade(spores, 0.12f, 0.7f);
+                Rate(spores, 6f * f);
                 Prewarm(spores);
             }
         }
@@ -455,58 +468,70 @@ namespace BossRush
             }
         }
 
-        /// <summary>蓝：水泡涟漪。</summary>
+        /// <summary>
+        /// 蓝：水泡涟漪。2026-09-25 第二轮（owner：「蓝色的泡泡太塑料了」）。上一轮的问题：气泡按崽身高放大后
+        /// 有 20–33 cm、饱和蓝、Legacy 半透明叠一圈 0.07 宽的均匀粗环 + 内填充——屏上是一枚枚实心感的蓝圈；
+        /// 匀速直线上浮，到点线性淡掉；「水珠」用的是四角星。现在：
+        ///   - 气泡 4–8 cm、加色：薄壁贴图（中心近乎透明、一圈粗细亮度不匀的细亮边、左上窗形高光 + 小亮点、
+        ///     右下一点反光），偏冷的浅水色（调色板的蓝只混 10–20%），出生略带水蓝、升上去发白；
+        ///     快频小幅抖着上浮、边升边胀，寿命最后 8% 猛地再胀一圈、亮一下、没了——「啵」；
+        ///   - 涟漪：双圈细环（主环 + 淡回波）贴地，先快后慢地扩开，一出生就开始变淡；
+        ///   - 水珠：脚边偶尔溅起两三颗极小的亮点，按速度拉成细水线再落回去。
+        /// </summary>
         private void BuildTide(Color c, float f)
         {
             float h = _height;
             float r = _radius;
             float u = _unit;
-            Color foam = Color.Lerp(c, new Color(0.70f, 0.9f, 1f), 0.45f);
-            Color deep = new Color(0.12f, 0.36f, 0.80f);
 
-            ParticleSystem bubbles = NewEmitter("TideBubbles", PetNestAuraTexture.Bubble, Glow.Soft,
-                Scaled(11, f), new Vector3(0f, 0.15f * h, 0f), true);
+            ParticleSystem bubbles = NewEmitter("TideBubbles",
+                SharedLook(BossRushParticleShape.Bubble, BossRushFxBlend.Additive, 1.3f),
+                Scaled(12, f), new Vector3(0f, 0.08f * h, 0f), true);
             if (bubbles != null)
             {
-                ShapeCircle(bubbles, 0.8f * r, 1f);
-                Velocity(bubbles, 0.12f * u, 0.22f * u, 0.4f, 0f);
-                Noise(bubbles, 0.035f * u, 0.6f);
-                Life(bubbles, 0.9f, 1.5f);
-                Size(bubbles, 0.09f * u, 0.15f * u);
-                Grow(bubbles, 0.6f, 1.05f);
-                Tint(bubbles, c, foam);
-                Fade(bubbles, foam, Color.white, deep, 0.16f, 0.72f);
-                Rate(bubbles, 6f * f);
+                ShapeCircle(bubbles, 0.75f * r, 1f);
+                Velocity(bubbles, 0.13f * u, 0.24f * u, 0.25f, 0f);
+                Noise(bubbles, 0.028f * u, 2.2f);
+                Life(bubbles, 1.1f, 1.8f);
+                Size(bubbles, 0.04f * u, 0.08f * u);
+                TintWater(bubbles, c, 0.9f);
+                BubbleLife(bubbles);
+                Rate(bubbles, 6.5f * f);
                 Prewarm(bubbles);
             }
 
-            ParticleSystem ripples = NewEmitter("TideRipples", PetNestAuraTexture.Ring, Glow.Bright,
+            ParticleSystem ripples = NewEmitter("TideRipples",
+                SharedLook(BossRushParticleShape.Ripple, BossRushFxBlend.Additive, 1.1f),
                 Scaled(3, f), new Vector3(0f, 0.05f, 0f), true);
             if (ripples != null)
             {
                 FlatOnGround(ripples);
-                ShapeCircle(ripples, 0.3f * r, 1f);
-                Life(ripples, 0.9f, 1.1f);
-                Size(ripples, 0.12f * u, 0.14f * u);
-                Grow(ripples, 1.1f, 4f);
-                Tint(ripples, WithAlpha(foam, 0.42f), WithAlpha(c, 0.32f));
-                Fade(ripples, 0.05f, 0.5f);
-                Rate(ripples, 1.4f * f);
+                ShapeCircle(ripples, 0.35f * r, 1f);
+                Life(ripples, 1.2f, 1.5f);
+                Size(ripples, 0.1f * u, 0.12f * u);
+                ParticleSystem.SizeOverLifetimeModule spread = ripples.sizeOverLifetime;
+                spread.enabled = true;
+                spread.size = new ParticleSystem.MinMaxCurve(1f, Curve(0f, 1f, 0.35f, 2.6f, 1f, 3.8f));
+                TintWater(ripples, c, 0.5f);
+                AlphaLife(ripples, Color.white, Color.white, Color.white,
+                    0f, 0f, 0.06f, 1f, 0.35f, 0.55f, 0.7f, 0.18f, 1f, 0f);
+                Rate(ripples, 1.2f * f);
             }
 
-            ParticleSystem drops = NewEmitter("TideDroplets", PetNestAuraTexture.Star, Glow.Bright,
-                Scaled(6, f), new Vector3(0f, 0.6f * h, 0f), true);
+            ParticleSystem drops = NewEmitter("TideDroplets",
+                SharedLook(BossRushParticleShape.GlowDot, BossRushFxBlend.Additive, 1.6f),
+                Scaled(6, f), new Vector3(0f, 0.03f * h, 0f), true);
             if (drops != null)
             {
-                ShapeCone(drops, 25f, 0.3f * r);
-                Speed(drops, 0.6f * u, 0.9f * u);
-                Gravity(drops, 0.7f);
-                Life(drops, 0.35f, 0.55f);
-                Size(drops, 0.03f * u, 0.045f * u);
-                Tint(drops, c, foam);
+                ShapeCone(drops, 28f, 0.35f * r);
+                Speed(drops, 0.5f * u, 0.8f * u);
+                Gravity(drops, 0.85f);
+                Life(drops, 0.3f, 0.45f);
+                Size(drops, 0.012f * u, 0.02f * u);
+                TintWater(drops, c, 0.9f);
                 Fade(drops, 0.02f, 0.7f);
-                RandomSpin(drops, 25f);
-                Bursts(drops, 0.8f, 2, 3, 0.7f * f + 0.1f);
+                Stretch(drops, 0.05f, 1f);
+                Bursts(drops, 0.9f, 2, 3, 0.55f * f + 0.1f);
             }
         }
 
@@ -549,55 +574,68 @@ namespace BossRush
             }
         }
 
-        /// <summary>白：圣光（也是未知颜色的兜底，用本色显示）。</summary>
+        /// <summary>
+        /// 白：珠光（也是未知颜色的兜底，用本色显示）。2026-09-25 第二轮（owner：蓝白绿要精致一点）。
+        /// 上一轮的问题：「珍珠晶片」借的是银色镜屑那张满实心的硬边菱形，Legacy 半透明下是一块块发灰的白片；
+        /// 光点 2–3.5 cm（放大后 4–8 cm）满 alpha 纯白，大星芒 7–10 cm。现在：
+        ///   - 光尘：身周空气里 1.2–2.2 cm 的细小加色光点，缓缓上飘、柔和明灭；
+        ///   - 珍珠晶片：专门画的柔边透镜形（细亮轮廓、中间一道珠光带、上部一粒高光、四周淡柔光），加色；
+        ///     每片在极淡的粉 / 暖白 / 青 / 淡紫里随机，寿命里再从偏青慢慢转到偏粉（虹彩）；
+        ///     绕身慢转、像薄片在翻，正对镜头那一下最亮；
+        ///   - 星芒：偶尔一颗、比上一轮小，只「闪一下」。
+        /// 本色占一半：白色时就是珠光，将来新增的颜色在补专属元素之前是本色的珠光。
+        /// </summary>
         private void BuildRadiant(Color c, float f)
         {
             float h = _height;
             float r = _radius;
             float u = _unit;
-            Color pearl = Color.Lerp(c, new Color(0.78f, 0.87f, 1f), 0.32f);
 
-            ParticleSystem motes = NewEmitter("RadiantMotes", PetNestAuraTexture.GlowDot, Glow.Bright,
-                Scaled(14, f), new Vector3(0f, 0.05f * h, 0f), true);
-            if (motes != null)
+            ParticleSystem dust = NewEmitter("RadiantDust",
+                SharedLook(BossRushParticleShape.GlowDot, BossRushFxBlend.Additive, 1.7f),
+                Scaled(14, f), new Vector3(0f, 0.45f * h, 0f), true);
+            if (dust != null)
             {
-                ShapeCircle(motes, r, 1f);
-                Velocity(motes, 0.12f * u, 0.22f * u, 0f, 0f);
-                Noise(motes, 0.06f * u, 0.9f);
-                Life(motes, 1.5f, 2.2f);
-                Size(motes, 0.022f * u, 0.035f * u);
-                Tint(motes, c, pearl);
-                Twinkle(motes);
-                Rate(motes, 7f * f);
-                Prewarm(motes);
+                ShapeSphere(dust, 1.05f * r, 0.5f);
+                Velocity(dust, 0.04f * u, 0.1f * u, 0f, 0f);
+                Noise(dust, 0.05f * u, 0.7f);
+                Life(dust, 1.8f, 2.6f);
+                Size(dust, 0.012f * u, 0.022f * u);
+                TintNacre(dust, c, 0.8f);
+                Twinkle(dust);
+                Fade(dust, 0.1f, 0.75f);
+                Rate(dust, 6f * f);
+                Prewarm(dust);
             }
 
-            ParticleSystem rays = NewEmitter("RadiantRays", PetNestAuraTexture.Shard, Glow.Soft,
-                Scaled(4, f), new Vector3(0f, 0.5f * h, 0f), false);
-            if (rays != null)
+            ParticleSystem flakes = NewEmitter("RadiantFlakes",
+                SharedLook(BossRushParticleShape.Pearl, BossRushFxBlend.Additive, 1.2f),
+                Scaled(5, f), new Vector3(0f, 0.5f * h, 0f), false);
+            if (flakes != null)
             {
-                ShapeCircle(rays, r + 0.06f * u, 0f);
-                Velocity(rays, 0.035f * u, 0.065f * u, 0.7f, 0f);
-                Life(rays, 1.2f, 1.8f);
-                Size(rays, 0.11f * u, 0.15f * u);
-                Tint(rays, WithAlpha(c, 0.5f), WithAlpha(pearl, 0.45f));
-                Fade(rays, 0.15f, 0.6f);
-                RandomSpin(rays, 24f);
-                Rate(rays, 1.8f * f);
-                Prewarm(rays);
+                ShapeCircle(flakes, r + 0.07f * u, 0f);
+                Velocity(flakes, 0.02f * u, 0.05f * u, 0.6f, 0f);
+                Life(flakes, 2f, 2.8f);
+                Size(flakes, 0.05f * u, 0.075f * u);
+                RandomSpin(flakes, 20f);
+                TintNacre(flakes, c, 0.85f);
+                PearlSheen(flakes);
+                Rate(flakes, 2f * f);
+                Prewarm(flakes);
             }
 
-            ParticleSystem glints = NewEmitter("RadiantGlints", PetNestAuraTexture.Star, Glow.Bright,
+            ParticleSystem glints = NewEmitter("RadiantGlints",
+                SharedLook(BossRushParticleShape.Star, BossRushFxBlend.Additive, 2f),
                 Scaled(3, f), new Vector3(0f, 0.55f * h, 0f), false);
             if (glints != null)
             {
                 ShapeSphere(glints, 0.8f * r, 0f);
-                Life(glints, 0.3f, 0.45f);
-                Size(glints, 0.07f * u, 0.1f * u);
+                Life(glints, 0.25f, 0.4f);
+                Size(glints, 0.045f * u, 0.065f * u);
                 RandomSpin(glints, 0f);
-                Tint(glints, Color.white, pearl);
+                TintNacre(glints, c, 1f);
                 Pop(glints);
-                Bursts(glints, 0.8f, 1, 1, 0.55f * f + 0.1f);
+                Bursts(glints, 1.1f, 1, 1, 0.5f * f + 0.1f);
             }
         }
 
@@ -692,6 +730,10 @@ namespace BossRush
             Color c2 = Color.Lerp(c, Color.white, 0.4f);
             PetNestAuraTexture kind = PetNestAuraTexture.GlowDot;
             Glow level = Glow.Hot;
+            // 蓝白绿三色走共享材质（见 SharedLook），不再按 kind / level 取本实例材质；取不到就不建
+            Material shared = null;
+            bool sharedLook = false;
+            bool nacre = false;
             float sizeMin = 0.035f;
             float sizeMax = 0.05f;
             bool trails = true;
@@ -714,12 +756,12 @@ namespace BossRush
                     c2 = new Color(1f, 0.98f, 0.8f);
                     break;
                 case PetNestAuraElement.Verdant:
-                    kind = PetNestAuraTexture.Leaf;
-                    level = Glow.Soft;
-                    sizeMin = 0.13f;
-                    sizeMax = 0.175f;
+                    // 绕身的一圈自然色叶片，来回摆、翻面（颜色与翻飞在下面按元素补）
+                    shared = SharedLook(BossRushParticleShape.Leaf, BossRushFxBlend.Alpha, 1.1f);
+                    sharedLook = true;
+                    sizeMin = 0.075f;
+                    sizeMax = 0.1f;
                     trails = false;
-                    spin = true;
                     break;
                 case PetNestAuraElement.Frost:
                     kind = PetNestAuraTexture.Snowflake;
@@ -730,10 +772,11 @@ namespace BossRush
                     spin = true;
                     break;
                 case PetNestAuraElement.Tide:
-                    kind = PetNestAuraTexture.Bubble;
-                    level = Glow.Soft;
-                    sizeMin = 0.09f;
-                    sizeMax = 0.13f;
+                    // 绕身的一圈薄壁气泡，加色、浅水色，末尾「啵」地破掉
+                    shared = SharedLook(BossRushParticleShape.Bubble, BossRushFxBlend.Additive, 1.25f);
+                    sharedLook = true;
+                    sizeMin = 0.04f;
+                    sizeMax = 0.065f;
                     trails = false;
                     break;
                 case PetNestAuraElement.Arcane:
@@ -760,20 +803,23 @@ namespace BossRush
                     spin = true;
                     break;
                 default:
-                    kind = PetNestAuraTexture.Star;
-                    level = Glow.Bright;
-                    sizeMin = 0.045f;
-                    sizeMax = 0.065f;
+                    // 白（与未知颜色）：绕身的一圈珍珠晶片，加色、珠母色、翻转时一亮一暗
+                    shared = SharedLook(BossRushParticleShape.Pearl, BossRushFxBlend.Additive, 1.2f);
+                    sharedLook = true;
+                    sizeMin = 0.04f;
+                    sizeMax = 0.055f;
                     trails = false;
-                    c2 = Color.Lerp(c, new Color(0.78f, 0.87f, 1f), 0.32f);
+                    nacre = true;
                     break;
             }
 
             float h = _height;
             float r = _radius;
             float u = _unit;
-            ParticleSystem ring = NewEmitter("Accent_" + element, kind, level,
-                Scaled(10, f), new Vector3(0f, 0.55f * h, 0f), false);
+            if (sharedLook && shared == null) return;
+            ParticleSystem ring = sharedLook
+                ? NewEmitter("Accent_" + element, shared, Scaled(10, f), new Vector3(0f, 0.55f * h, 0f), false)
+                : NewEmitter("Accent_" + element, kind, level, Scaled(10, f), new Vector3(0f, 0.55f * h, 0f), false);
             if (ring == null) return;
             ShapeCircle(ring, r + 0.14f * u, 0f);
             Velocity(ring, -0.02f * u, 0.04f * u, -1.7f, 0f);
@@ -785,6 +831,22 @@ namespace BossRush
             if (spin) RandomSpin(ring, 120f);
             if (element == PetNestAuraElement.Thunder) Twinkle(ring);
             if (trails) Trails(ring, 0.16f, 0.015f * u);
+            // 蓝白绿三色的点缀与主元素同一套颜色与生命曲线（覆盖上面的通用 Tint / Fade）
+            if (element == PetNestAuraElement.Tide)
+            {
+                TintWater(ring, c, 0.85f);
+                BubbleLife(ring);
+            }
+            else if (element == PetNestAuraElement.Verdant)
+            {
+                TintFoliage(ring, c, 0.9f);
+                LeafTumble(ring);
+            }
+            else if (nacre)
+            {
+                TintNacre(ring, c, 0.85f);
+                PearlSheen(ring);
+            }
             Prewarm(ring);
         }
 
