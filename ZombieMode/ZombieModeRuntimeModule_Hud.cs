@@ -362,7 +362,7 @@ namespace BossRush
                 return string.Empty;
             }
 
-            if (!owner.IsAnyZombieModeSafeZoneActiveForHud())
+            if (!AnyZombieModeSafeZoneActive)
             {
                 return string.Empty;
             }
@@ -449,14 +449,14 @@ namespace BossRush
 
         internal bool IsZombieModeHudSafeZoneWarning(int runId)
         {
-            return IsZombieModeRunValid(runId) && owner.IsAnyZombieModeSafeZoneActiveForHud() &&
+            return IsZombieModeRunValid(runId) && AnyZombieModeSafeZoneActive &&
                    runState.PreparationTimer > 0f &&
                    runState.PreparationTimer <= ZombieModeTuning.SafeZoneFlashStartSeconds;
         }
 
         public Color GetZombieModeHudSafeZoneColor(int runId)
         {
-            if (!IsZombieModeRunValid(runId) || !owner.IsAnyZombieModeSafeZoneActiveForHud())
+            if (!IsZombieModeRunValid(runId) || !AnyZombieModeSafeZoneActive)
             {
                 return ZombieModeHudSafeZoneInactiveColor;
             }

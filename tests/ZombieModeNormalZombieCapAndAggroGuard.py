@@ -133,7 +133,7 @@ def main() -> int:
     if not begin_prep:
         return fail("BeginZombieModePreparation not found")
     for token in [
-        "owner.CleanupZombieModeEnemiesNearPlayerSafeZoneForWaveRuntimeModule(runId, \"BeginPreparation\");",
+        "CleanupZombieModeEnemiesNearPlayerSafeZone(runId, \"BeginPreparation\");",
         "EnsureZombieModeAmbientZombiePopulation(runId);",
     ]:
         result = require(begin_prep, token, "preparation start must clear the immediate safe-zone radius and refill ambient zombies")
@@ -160,12 +160,12 @@ def main() -> int:
 
     result = require(
         complete_wave,
-        "owner.CleanupZombieModeEnemiesNearPlayerSafeZoneForWaveRuntimeModule(runId, \"CompleteWave\");",
+        "CleanupZombieModeEnemiesNearPlayerSafeZone(runId, \"CompleteWave\");",
         "wave completion must immediately clear only the player safe-zone radius")
     if result:
         return result
 
-    cleanup = extract_method(waves + spawner + models + Path("ZombieMode/ZombieModeCleanup.cs").read_text(encoding="utf-8"), "CleanupZombieModeEnemiesNearPlayerSafeZone")
+    cleanup = extract_method(Path("ZombieMode/ZombieModeSafeZoneController.cs").read_text(encoding="utf-8"), "CleanupZombieModeEnemiesNearPlayerSafeZone")
     if not cleanup:
         return fail("CleanupZombieModeEnemiesNearPlayerSafeZone not found")
     for token in [
@@ -204,7 +204,7 @@ def main() -> int:
     if not reconcile:
         return fail("ReconcileZombieModeLivingEnemyCounts not found")
     for token in [
-        "owner.CollectZombieModeRuntimeEnemyMarkersForWaveRuntimeModule(runId, waveEnemyMarkerScratch, true)",
+        "CollectZombieModeRuntimeEnemyMarkers(runId, waveEnemyMarkerScratch, true)",
         "!marker.IsBoss",
         "runState.LivingZombieCount = livingTotal;",
         "runState.LivingNormalZombieCount = livingNormal;",
@@ -284,7 +284,7 @@ def main() -> int:
     if result:
         return result
 
-    target = extract_method(rewards, "SetZombieModeEnemyTargetToMainPlayer")
+    target = extract_method(Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs").read_text(encoding="utf-8"), "SetZombieModeEnemyTargetToMainPlayer")
     for token in [
         "ai.searchedEnemy = main.mainDamageReceiver;",
         "ai.SetTarget(main.mainDamageReceiver.transform);",

@@ -21,7 +21,11 @@ namespace BossRush
             get { return ZombieModePhaseGuards.IsRunActive(runState.LifecyclePhase); }
         }
 
-        private bool AnyZombieModeSafeZoneActive
+        /// <summary>
+        /// 主槽（正常安全区，带商人）与副槽（准备期便携安全区，不带商人）任一激活。
+        /// 两槽只在准备期并存，下一波开始时一起清除。
+        /// </summary>
+        internal bool AnyZombieModeSafeZoneActive
         {
             get { return runState.ActiveSafeZoneActive || runState.PortableSafeZoneActive; }
         }
@@ -526,7 +530,7 @@ namespace BossRush
 
             ClearZombieModeExtractionOpportunityUi();
             TryReleaseZombieModeExtractionCountdownUi();
-            owner.ReleaseZombieModeSafeZoneThreatSuppressionForRuntimeModule();
+            ReleaseZombieModeSafeZoneThreatSuppression();
             owner.RecycleZombieModeSafeZoneBoundTemporaryNpcsForRuntimeModule(runId);
             owner.RecycleZombieModeSafeZoneBoundTemporaryRealNpcsForRuntimeModule(runId);
 
@@ -575,7 +579,7 @@ namespace BossRush
                 return;
             }
 
-            owner.ReleaseZombieModeSafeZoneThreatSuppressionForRuntimeModule();
+            ReleaseZombieModeSafeZoneThreatSuppression();
             owner.RecycleZombieModeSafeZoneBoundTemporaryNpcsForRuntimeModule(runId);
             owner.RecycleZombieModeSafeZoneBoundTemporaryRealNpcsForRuntimeModule(runId);
 
@@ -662,11 +666,11 @@ namespace BossRush
             {
                 EnsureZombieModeSafeZoneMerchantTerminal(runId);
             }
-            owner.TryRegisterZombieModeShootStealthBreakerForRuntimeModule(runId);
+            TryRegisterZombieModeShootStealthBreaker(runId);
             // 安全区启用必须立即建立干净边界：普通丧尸直接清除，Boss 只移出边界，
             // 后续由安全区 tick 持续执行物理禁入。
-            owner.ClearZombieModeEnemiesInsideActiveSafeZoneForRuntimeModule(runId, "CreateSafeZone");
-            owner.TickZombieModeSafeZoneForRuntimeModule();
+            ClearZombieModeEnemiesInsideActiveSafeZone(runId, "CreateSafeZone");
+            TickZombieModeSafeZone();
         }
 
         private void ResetZombieModeSafeZoneForReplacement(int runId, bool clearBoundServices)
@@ -676,7 +680,7 @@ namespace BossRush
                 return;
             }
 
-            owner.ReleaseZombieModeSafeZoneThreatSuppressionForRuntimeModule();
+            ReleaseZombieModeSafeZoneThreatSuppression();
             if (clearBoundServices)
             {
                 owner.RecycleZombieModeSafeZoneBoundTemporaryNpcsForRuntimeModule(runId);

@@ -3,7 +3,7 @@ using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
-    /// <summary>保留原 Integration 生命周期入口，并把配置器留在原工厂宿主。</summary>
+    /// <summary>保留原生命周期、本地化与公开配置器入口，转发到逆鳞运行时模块。</summary>
     public partial class ModBehaviour
     {
         private void InitializeReverseScaleSystem()
@@ -21,19 +21,19 @@ namespace BossRush
             reverseScaleRuntime.CleanupReverseScaleSystem();
         }
 
-        internal void InitializeReverseScaleItemFromRuntimeModule()
-        {
-            InitializeReverseScaleItem();
-        }
-
         internal void InjectReverseScaleLocalizationFromRuntimeModule()
         {
-            InjectReverseScaleLocalization();
+            reverseScaleRuntime.InjectReverseScaleLocalization();
         }
 
         internal static WaitForSeconds ReverseScaleSharedWait05sForRuntime
         {
             get { return sharedWait05s; }
         }
+        public static bool TryConfigureReverseScale(ItemStatsSystem.Item item, string baseName)
+        {
+            return ReverseScaleRuntimeModule.TryConfigureReverseScale(item, baseName);
+        }
+
     }
 }

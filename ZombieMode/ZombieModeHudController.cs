@@ -167,7 +167,7 @@ namespace BossRush
 
         internal bool IsAnyZombieModeSafeZoneActiveForHud()
         {
-            return AnyZombieModeSafeZoneActive;
+            return zombieModeRuntimeModule.AnyZombieModeSafeZoneActive;
         }
         #endregion
     }

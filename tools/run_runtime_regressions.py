@@ -19,8 +19,8 @@ SCRIPT_FIXTURES = (
     "ModeHThirdReviewFixes", "ModeHMarketAudit", "ModeHItemBetLedger", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes",
     "ContentBuildingOwnership", "BuildingRestoreCore", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
     "StoneOutpostSceneLease", "StoneOutpostMap", "EquipmentResourceScene", "SkyIslandStory", "SkyIslandDelivery", "SkyIslandOfficialContract", "SkyIslandEncounters", "SkyIslandLighting", "SkyIslandRaidLease", "SkyIslandLoot",
-    "SkyIslandMarriage", "SkyIslandHudPolicy", "SkyIslandDialogue", "SkyIslandInteraction", "ZombieModeEntryDebt", "PermanentDuckNpcDialogue", "RewardPoolReliability",
-    "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "ModeEFSpawnPreparation", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "WavesArenaPresetWeight", "BirthdayCakeGift",
+    "SkyIslandMarriage", "SkyIslandHudPolicy", "SkyIslandDialogue", "SkyIslandInteraction", "ZombieModeEntryDebt", "ZombieModeSafeZoneRuntime", "PermanentDuckNpcDialogue", "RewardPoolReliability",
+    "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "ModeEFSpawnPreparation", "ModeEFSpawnPostprocessScheduler", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {
     "ReviewSeptember": "ReviewSeptember.csproj",

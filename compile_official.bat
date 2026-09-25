@@ -426,6 +426,7 @@ echo(Utilities\EnemySpawnCore.cs
 echo(Utilities\ModeEFSpawnProfiler.cs
 echo(Utilities\ModeEFMerchantRuntime.cs
 echo(Utilities\ModeEFMerchantCatalog.cs
+echo(Utilities\ModeEFSpawnPostprocessScheduler.cs
 echo(Utilities\ModeEFSpawnPreparation.cs
 echo(Utilities\ZombieSpawnSanitizer.cs
 echo(Utilities\EnemyRecoveryMonitor.cs

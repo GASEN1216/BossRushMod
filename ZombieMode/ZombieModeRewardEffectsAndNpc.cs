@@ -1034,23 +1034,7 @@ namespace BossRush
 
         private void SetZombieModeEnemyTargetToMainPlayer(AICharacterController ai)
         {
-            if (ai == null)
-            {
-                return;
-            }
-
-            CharacterMainControl main = CharacterMainControl.Main;
-            if (main == null || main.mainDamageReceiver == null)
-            {
-                ai.searchedEnemy = null;
-                ai.noticed = false;
-                return;
-            }
-
-            ai.searchedEnemy = main.mainDamageReceiver;
-            ai.SetTarget(main.mainDamageReceiver.transform);
-            ai.SetNoticedToTarget(main.mainDamageReceiver);
-            ai.noticed = true;
+            ZombieModeRuntimeModule.SetZombieModeEnemyTargetToMainPlayer(ai);
         }
 
         private ZombieModeNpcServiceState CreateZombieModeNpcServiceState(string serviceType, bool bossNodeStock, bool safeZoneBound)

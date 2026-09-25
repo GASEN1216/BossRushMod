@@ -115,12 +115,12 @@ namespace BossRush
 
         internal void TickZombieModeSafeZoneForRuntimeModule()
         {
-            TickZombieModeSafeZone();
+            zombieModeRuntimeModule.TickZombieModeSafeZone();
         }
 
         internal void ReleaseZombieModeSafeZoneThreatSuppressionForRuntimeModule()
         {
-            ReleaseZombieModeSafeZoneThreatSuppression();
+            zombieModeRuntimeModule.ReleaseZombieModeSafeZoneThreatSuppression();
         }
 
         internal void RecycleZombieModeSafeZoneBoundTemporaryNpcsForRuntimeModule(int runId)
@@ -140,7 +140,7 @@ namespace BossRush
 
         internal void TryRegisterZombieModeShootStealthBreakerForRuntimeModule(int runId)
         {
-            TryRegisterZombieModeShootStealthBreaker(runId);
+            zombieModeRuntimeModule.TryRegisterZombieModeShootStealthBreaker(runId);
         }
 
         internal ZombieModeTemporaryNpc FindZombieModeTemporaryNpcForRuntimeModule(string serviceType)

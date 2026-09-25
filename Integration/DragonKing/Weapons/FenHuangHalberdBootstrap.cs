@@ -14,16 +14,16 @@ using UnityEngine.SceneManagement;
 namespace BossRush
 {
     /// <summary>
-    /// 焚皇断界戟系统启动模块 - 使用 partial class 扩展 ModBehaviour
+    /// 焚皇断界戟的初始化、场景重绑与清理归龙王运行时模块。
     /// </summary>
-    public partial class ModBehaviour
+    internal sealed partial class DragonKingRuntimeModule
     {
         // ========== 初始化 ==========
 
         /// <summary>
         /// 初始化焚皇断界戟系统（在 Start_Integration 中调用）
         /// </summary>
-        private void InitializeFenHuangHalberdSystem()
+        internal void InitializeFenHuangHalberdSystem()
         {
             try
             {
@@ -31,7 +31,7 @@ namespace BossRush
                 if (FenHuangComboManager.Instance == null)
                 {
                     GameObject comboObj = new GameObject("FenHuangComboManager");
-                    DontDestroyOnLoad(comboObj);
+                    UnityEngine.Object.DontDestroyOnLoad(comboObj);
                     comboObj.AddComponent<FenHuangComboManager>();
                     DevLog("[FenHuangHalberd] 连招管理器已创建");
                 }
@@ -40,7 +40,7 @@ namespace BossRush
                 if (FenHuangHalberdAbilityManager.Instance == null)
                 {
                     GameObject mgrObj = new GameObject("FenHuangHalberdAbilityManager");
-                    DontDestroyOnLoad(mgrObj);
+                    UnityEngine.Object.DontDestroyOnLoad(mgrObj);
                     mgrObj.AddComponent<FenHuangHalberdAbilityManager>();
                     DevLog("[FenHuangHalberd] 右键能力管理器已创建");
                 }
@@ -62,7 +62,7 @@ namespace BossRush
         /// <summary>
         /// 场景加载后设置焚皇断界戟系统
         /// </summary>
-        private void SetupFenHuangHalberdForScene(Scene scene)
+        internal void SetupFenHuangHalberdForScene(Scene scene)
         {
             try
             {
@@ -80,9 +80,9 @@ namespace BossRush
                 }
 
                 // 延迟注册/重新绑定能力到玩家角色
-                if (IsGameplaySceneName(scene.name))
+                if (ModBehaviour.IsGameplaySceneName(scene.name))
                 {
-                    StartCoroutine(DelayedSetupHalberdAbility());
+                    owner.StartCoroutine(DelayedSetupHalberdAbility());
                 }
             }
             catch (Exception e)
@@ -100,7 +100,7 @@ namespace BossRush
             float waitTime = 0f;
             while (CharacterMainControl.Main == null && waitTime < 15f)
             {
-                yield return sharedWait05s;
+                yield return ModBehaviour.FenHuangHalberdSharedWait05sForRuntime;
                 waitTime += 0.5f;
             }
 
@@ -147,7 +147,7 @@ namespace BossRush
         /// <summary>
         /// 清理焚皇断界戟系统
         /// </summary>
-        private void CleanupFenHuangHalberdSystem()
+        internal void CleanupFenHuangHalberdSystem()
         {
             try
             {
@@ -157,7 +157,7 @@ namespace BossRush
                 // 清理连招管理器
                 if (FenHuangComboManager.Instance != null)
                 {
-                    Destroy(FenHuangComboManager.Instance.gameObject);
+                    UnityEngine.Object.Destroy(FenHuangComboManager.Instance.gameObject);
                 }
 
                 // 清理龙焰印记

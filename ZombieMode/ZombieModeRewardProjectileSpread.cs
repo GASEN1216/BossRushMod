@@ -429,70 +429,7 @@ namespace BossRush
 
         internal void RefreshZombieModeGravityWellTargets(int runId, Vector3 origin, float radius, float pullStrength)
         {
-            if (!IsZombieModeRunValid(runId))
-            {
-                return;
-            }
-            if (radius <= 0f)
-            {
-                return;
-            }
-
-            CharacterMainControl player = CharacterMainControl.Main;
-            DamageReceiver playerDamageReceiver = player != null ? player.mainDamageReceiver : null;
-            float radiusSqr = radius * radius;
-            const float minPullDistance = 0.4f;
-            const float stopDistance = 0.35f;
-            float minPullDistanceSqr = minPullDistance * minPullDistance;
-            int count = CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, false);
-            if (count <= 0)
-            {
-                return;
-            }
-
-            for (int i = 0; i < zombieModeEnemyMarkerScratch.Count; i++)
-            {
-                ZombieModeEnemyRuntimeMarker marker = zombieModeEnemyMarkerScratch[i];
-                if (marker == null || marker.RunId != runId || marker.DeathSettled || marker.RemovedFromRuntime || marker.IsBoss)
-                {
-                    continue;
-                }
-
-                CharacterMainControl enemy = marker.Owner;
-                if (enemy == null)
-                {
-                    enemy = marker.GetComponent<CharacterMainControl>();
-                    marker.Owner = enemy;
-                }
-
-                if (enemy == null || enemy.transform == null)
-                {
-                    continue;
-                }
-
-                Vector3 delta = origin - enemy.transform.position;
-                delta.y = 0f;
-                float distanceSqr = delta.sqrMagnitude;
-                if (distanceSqr <= minPullDistanceSqr || distanceSqr > radiusSqr)
-                {
-                    continue;
-                }
-
-                float distance = Mathf.Sqrt(distanceSqr);
-                float stepDistance = Mathf.Min(distance - stopDistance, pullStrength);
-                Vector3 step = delta * (stepDistance / distance);
-                enemy.transform.position += step;
-
-                AICharacterController ai = GetZombieModeEnemyAI(enemy.gameObject, marker);
-                if (ai != null && playerDamageReceiver != null)
-                {
-                    ai.searchedEnemy = playerDamageReceiver;
-                    try { ai.SetTarget(playerDamageReceiver.transform); }
-                    catch (System.Exception e) { DevLog("[ZombieMode] 聚怪奖励更新索敌失败: " + e.Message); }
-                }
-            }
-
-            zombieModeEnemyMarkerScratch.Clear();
+            zombieModeRuntimeModule.RefreshZombieModeGravityWellTargets(runId, origin, radius, pullStrength);
         }
 
         private ZombieModeProjectileSpreadSnapshot CaptureZombieModeProjectileSpreadSnapshot(Item item)

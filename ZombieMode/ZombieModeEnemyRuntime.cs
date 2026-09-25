@@ -226,33 +226,27 @@ namespace BossRush
 
         private static AICharacterController GetZombieModeEnemyAI(GameObject enemyObject, ZombieModeEnemyRuntimeMarker marker)
         {
-            if (enemyObject == null)
-            {
-                return null;
-            }
+            return ZombieModeRuntimeModule.GetZombieModeEnemyAI(enemyObject, marker);
+        }
 
-            if (marker != null && marker.gameObject != enemyObject)
-            {
-                marker = null;
-            }
+        private bool ShouldSuppressZombieModeEnemyAggroForSafeZone()
+        {
+            return zombieModeRuntimeModule.ShouldSuppressZombieModeEnemyAggroForSafeZone();
+        }
 
-            AICharacterController ai = marker != null ? marker.CachedAI : null;
-            if (ai != null &&
-                ai.gameObject != null &&
-                ai.gameObject.activeInHierarchy &&
-                ai.transform != null &&
-                ai.transform.IsChildOf(enemyObject.transform))
-            {
-                return ai;
-            }
+        private bool TryMoveZombieModeEnemyOutsideSafeZone(GameObject enemyObject, ZombieModeEnemyRuntimeMarker marker, bool suppressThreat)
+        {
+            return zombieModeRuntimeModule.TryMoveZombieModeEnemyOutsideSafeZone(enemyObject, marker, suppressThreat);
+        }
 
-            ai = enemyObject.GetComponentInChildren<AICharacterController>();
-            if (marker != null)
-            {
-                marker.CachedAI = ai;
-            }
+        private void SetZombieModeEnemyThreatSuppressed(GameObject enemyObject, ZombieModeEnemyRuntimeMarker marker, bool suppressed)
+        {
+            zombieModeRuntimeModule.SetZombieModeEnemyThreatSuppressed(enemyObject, marker, suppressed);
+        }
 
-            return ai;
+        private bool ShouldZombieModeEnemyAggroPlayerNow()
+        {
+            return zombieModeRuntimeModule.ShouldZombieModeEnemyAggroPlayerNow();
         }
     }
 }

@@ -1,7 +1,7 @@
 {
   "description": "D-1: production host partial ceiling; only lower after responsibilities move to module-owned types.",
-  "max_files": 147,
-  "max_total_lines": 43264,
+  "max_files": 143,
+  "max_total_lines": 41426,
   "allowed_files": [
     "Achievement/AchievementMedalItem.cs",
     "Achievement/AchievementRuntimeHooks.cs",
@@ -55,7 +55,6 @@
     "Integration/DragonDescendant/DragonDescendantBoss_ModeGAdapter.cs",
     "Integration/DragonDescendant/DragonDescendantRuntimeModuleHostBridge.cs",
     "Integration/DragonKing/DragonKingRuntimeModuleHostBridge.cs",
-    "Integration/DragonKing/Weapons/FenHuangHalberdBootstrap.cs",
     "Integration/EquipmentContentRegistry.cs",
     "Integration/EquipmentRuntimeHooks.cs",
     "Integration/FlightTotem/FlightTotemRuntimeModuleHostBridge.cs",
@@ -70,8 +69,6 @@
     "Integration/NPCs/Nurse/NurseNPC.cs",
     "Integration/NewWeapons/Common/NewWeaponBootstrap.cs",
     "Integration/PhantomWitch/PhantomWitchRuntimeModuleHostBridge.cs",
-    "Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs",
-    "Integration/ReverseScale/ReverseScaleFactory.cs",
     "Integration/ReverseScale/ReverseScaleRuntimeModuleHostBridge.cs",
     "Integration/Wedding/WeddingHostCompatibilityBridge.cs",
     "Integration/WikiBookItem.cs",
@@ -146,7 +143,6 @@
     "ZombieMode/ZombieModeRewardTriggerEffects.cs",
     "ZombieMode/ZombieModeRewards.cs",
     "ZombieMode/ZombieModeRuntimeHooks.cs",
-    "ZombieMode/ZombieModeSafeZoneController.cs",
     "ZombieMode/ZombieModeSpawner.cs",
     "ZombieMode/ZombieModeWaveController.cs",
     "ZombieMode/ZombiePurificationPointController.cs"

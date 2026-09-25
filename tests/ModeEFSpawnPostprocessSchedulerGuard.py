@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 SPAWN_CORE = Path("Utilities/EnemySpawnCore.cs")
@@ -24,7 +25,25 @@ def require(text: str, needle: str, message: str) -> int | None:
 
 
 def main() -> int:
-    spawn_core = SPAWN_CORE.read_text(encoding="utf-8")
+    host = clean_source(SPAWN_CORE.read_text(encoding="utf-8"))
+    scheduler = clean_source(Path("Utilities/ModeEFSpawnPostprocessScheduler.cs").read_text(encoding="utf-8"))
+    registration = clean_source(Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8"))
+    spawn_core = host + "\n" + scheduler
+    for text, statement in (
+        (registration, "BindSpawnPostprocessServices();"),
+        (host, "spawnPostprocess.BindServices(modeDItemPool.MaterializeNextSharedModeEnemyEquipmentPlanStep,"),
+        (host, "spawnPostprocess.ClearModeEFSpawnPostprocessScheduler();"),
+        (host, "spawnPostprocess.TickModeEFSpawnPostprocessScheduler();"),
+        (scheduler, "this.materializeEquipmentStep = materializeEquipmentStep;"),
+        (scheduler, "this.applyBossStatMultiplier = applyBossStatMultiplier;"),
+        (scheduler, "this.registerBossLoot = registerBossLoot;"),
+        (scheduler, "this.cleanupEquipmentPlan = cleanupEquipmentPlan;"),
+        (scheduler, "this.clearBossLoot = clearBossLoot;"),
+    ):
+        if statement not in text:
+            return fail("shared scheduler wiring missing -> " + statement)
+    if host.count("new ModeEFSpawnPostprocessScheduler()") != 1 or "Queue<ModeEFSpawnPostprocessJob>" in host:
+        return fail("host must delegate to exactly one scheduler owner")
     runtime = MODE_RUNTIME.read_text(encoding="utf-8")
     battle = MODEE_BATTLE.read_text(encoding="utf-8")
     startup = MODEE_STARTUP.read_text(encoding="utf-8")
@@ -41,14 +60,14 @@ def main() -> int:
         (spawn_core, "private const int MODE_EF_SPAWN_POSTPROCESS_MAX_STEPS_PER_TICK = 8;", "spawn core must cap per-tick postprocess work"),
         (spawn_core, "private const int MODE_EF_SPAWN_POSTPROCESS_SPRINT_MAX_STEPS_PER_TICK = 16;", "spawn core sprint path must still keep a finite per-tick budget"),
         (spawn_core, "private readonly Queue<ModeEFSpawnPostprocessJob> modeEFSpawnPostprocessQueue", "spawn core must keep the shared Mode E/F postprocess queue"),
-        (spawn_core, "private void TickModeEFSpawnPostprocessScheduler()", "spawn core must expose the shared postprocess tick"),
-        (spawn_core, "private UniTask<EnemySpawnCoreResult> ScheduleModeEFSpawnPostprocessAsync(", "spawn core must enqueue deferred postprocess work"),
+        (spawn_core, "internal void TickModeEFSpawnPostprocessScheduler()", "spawn core must expose the shared postprocess tick"),
+        (spawn_core, "internal UniTask<EnemySpawnCoreResult> ScheduleModeEFSpawnPostprocessAsync(", "spawn core must enqueue deferred postprocess work"),
         (spawn_core, "HasModeEFSpawnPostprocessSprintPressure(currentFrame)", "spawn core must detect when jobs enter the final sprint window"),
         (spawn_core, "GetModeEFSpawnPostprocessJobStepBudget(job, currentFrame)", "spawn core must switch to the last-5-frame sprint budget per job"),
         (spawn_core, "deadlineFrame = queuedFrame + MODE_EF_SPAWN_POSTPROCESS_SOFT_DEADLINE_FRAMES", "spawn core must stamp each deferred job with the shared 60-frame soft deadline"),
         (spawn_core, "InvokeSpawnCoreCommitCallback(job.onCommit, job.context)", "spawn core final commit must invoke the shared commit callback"),
         (spawn_core, "Func<EnemySpawnContext, bool> onCommit = null", "spawn core public/internal signatures must keep the commit callback hook"),
-        (spawn_core, "return await ScheduleModeEFSpawnPostprocessAsync(", "ordinary Boss deferred path must await the shared scheduler"),
+        (spawn_core, "return await spawnPostprocess.ScheduleModeEFSpawnPostprocessAsync(", "ordinary Boss deferred path must await the shared scheduler"),
         (spawn_core, "public EnemySpawnCoreOptions options;", "postprocess job must carry the SpawnCore options for gate parity"),
         (spawn_core, "EnemySpawnCoreOptions options)", "scheduler signature must take options explicitly (no default) so future defer call sites cannot silently drop hold semantics"),
         (spawn_core, "options = options,", "scheduler enqueue must forward options into the job"),

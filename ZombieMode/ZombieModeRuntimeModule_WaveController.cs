@@ -113,7 +113,7 @@ namespace BossRush
                 !IsZombieModeSafeZoneCancellingWeapon(damageInfo) ||
                 victim == null ||
                 !AnyZombieModeSafeZoneActive ||
-                !owner.IsZombieModePlayerInsideActiveSafeZoneForWaveRuntimeModule() ||
+                !IsZombieModePlayerInsideActiveSafeZone() ||
                 !ZombieModePhaseGuards.AllowsSafeZone(runState.CombatPhase))
             {
                 return;
@@ -298,7 +298,7 @@ namespace BossRush
             runState.BeaconChannelStartTime = 0f;
             runState.ExtractionChanneling = false;
             CreateZombieModeSafeZone(runId);
-            owner.CleanupZombieModeEnemiesNearPlayerSafeZoneForWaveRuntimeModule(runId, "BeginPreparation");
+            CleanupZombieModeEnemiesNearPlayerSafeZone(runId, "BeginPreparation");
             EnsureZombieModeAmbientZombiePopulation(runId);
             if (extractionOpportunity)
             {
@@ -321,7 +321,7 @@ namespace BossRush
 
             if (AnyZombieModeSafeZoneActive)
             {
-                owner.TickZombieModeSafeZoneForRuntimeModule();
+                TickZombieModeSafeZone();
             }
 
             if (ZombieModePhaseGuards.IsCombatRunning(runState.CombatPhase))
@@ -367,7 +367,7 @@ namespace BossRush
             runState.BeaconChannelStartTime = 0f;
             runState.ExtractionChanneling = false;
             runState.CombatPhase = ZombieModeCombatPhase.Combat;
-            owner.ReleaseZombieModeSafeZoneThreatSuppressionForRuntimeModule();
+            ReleaseZombieModeSafeZoneThreatSuppression();
             owner.SpawnPendingZombieModeEliteSquadForWaveRuntimeModule(runId);
 
             if (IsZombieModeBossWave(runState.CurrentWave))
@@ -523,7 +523,7 @@ namespace BossRush
 
         private void ReconcileZombieModeLivingEnemyCounts(int runId)
         {
-            int livingTotal = owner.CollectZombieModeRuntimeEnemyMarkersForWaveRuntimeModule(runId, waveEnemyMarkerScratch, true);
+            int livingTotal = CollectZombieModeRuntimeEnemyMarkers(runId, waveEnemyMarkerScratch, true);
             int livingNormal = 0;
             for (int i = 0; i < waveEnemyMarkerScratch.Count; i++)
             {
@@ -821,7 +821,7 @@ namespace BossRush
             }
 
             runState.CombatPhase = ZombieModeCombatPhase.Settling;
-            owner.CleanupZombieModeEnemiesNearPlayerSafeZoneForWaveRuntimeModule(runId, "CompleteWave");
+            CleanupZombieModeEnemiesNearPlayerSafeZone(runId, "CompleteWave");
             owner.RecycleZombieModeTemporaryNpcsForWaveRuntimeModule(runId);
             owner.RecycleZombieModeTemporaryRealNpcsForWaveRuntimeModule(runId);
             bool bossNode = IsZombieModeBossWave(runState.CurrentWave);

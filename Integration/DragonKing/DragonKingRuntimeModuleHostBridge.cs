@@ -321,5 +321,25 @@ namespace BossRush
                 : null;
         }
 
+        private void InitializeFenHuangHalberdSystem()
+        {
+            dragonKingRuntimeModule.InitializeFenHuangHalberdSystem();
+        }
+
+        private void SetupFenHuangHalberdForScene(UnityEngine.SceneManagement.Scene scene)
+        {
+            dragonKingRuntimeModule.SetupFenHuangHalberdForScene(scene);
+        }
+
+        private void CleanupFenHuangHalberdSystem()
+        {
+            dragonKingRuntimeModule.CleanupFenHuangHalberdSystem();
+        }
+
+        internal static WaitForSeconds FenHuangHalberdSharedWait05sForRuntime
+        {
+            get { return sharedWait05s; }
+        }
+
     }
 }

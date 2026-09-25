@@ -17,7 +17,7 @@ import sys
 
 ROOT = Path(".")
 WAVE = ROOT / "ZombieMode/ZombieModeRuntimeModule_WaveController.cs"
-CLEANUP = ROOT / "ZombieMode/ZombieModeCleanup.cs"
+CLEANUP = ROOT / "ZombieMode/ZombieModeSafeZoneController.cs"
 REWARDS = ROOT / "ZombieMode/ZombieModeRewards.cs"
 REWARD_PARTS = [
     REWARDS,
@@ -101,7 +101,7 @@ def main() -> int:
         return fail("StartZombieModeWave must not wipe ambient zombies")
     if "CleanupZombieModeCombatEnemiesForWaveEnd(runId" in complete_wave:
         return fail("CompleteZombieModeWave must not wipe ambient zombies")
-    if "owner.CleanupZombieModeEnemiesNearPlayerSafeZoneForWaveRuntimeModule(runId, \"CompleteWave\");" not in complete_wave:
+    if "CleanupZombieModeEnemiesNearPlayerSafeZone(runId, \"CompleteWave\");" not in complete_wave:
         return fail("CompleteZombieModeWave must clear only the player safe-zone radius before reward/prep")
 
     damage_case = re.search(

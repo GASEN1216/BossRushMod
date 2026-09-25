@@ -4,8 +4,8 @@ from pathlib import Path
 import sys
 
 
-GRAVITY = Path("ZombieMode/ZombieModeRewardProjectileSpread.cs")
-TRIGGERS = Path("ZombieMode/ZombieModeRewardTriggerEffects.cs")
+GRAVITY = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
+TRIGGERS = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 SAFE_ZONE = Path("ZombieMode/ZombieModeSafeZoneController.cs")
 RECOVERY = Path("Utilities/EnemyRecoveryMonitor.cs")
 
@@ -68,7 +68,7 @@ def main() -> int:
     if result:
         return result
 
-    nearest = extract_method_body(trigger_text, "private CharacterMainControl TryFindZombieModeNearestEnemyTarget(")
+    nearest = extract_method_body(trigger_text, "internal CharacterMainControl TryFindZombieModeNearestEnemyTarget(")
     if nearest is None:
         return fail("missing TryFindZombieModeNearestEnemyTarget body")
     result = require_owner_cache(nearest, "TryFindZombieModeNearestEnemyTarget")

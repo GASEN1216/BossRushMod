@@ -28,8 +28,8 @@ BOOTSTRAP_FILES = [
     ),
     (
         Path("Integration/DragonKing/Weapons/FenHuangHalberdBootstrap.cs"),
-        "private void SetupFenHuangHalberdForScene",
-        "StartCoroutine(DelayedSetupHalberdAbility());",
+        "internal void SetupFenHuangHalberdForScene",
+        "owner.StartCoroutine(DelayedSetupHalberdAbility());",
     ),
     (
         Path("Integration/Frostmourne/FrostmourneBootstrap.cs"),
@@ -38,8 +38,8 @@ BOOTSTRAP_FILES = [
     ),
     (
         Path("Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs"),
-        "private void SetupPhantomWitchScytheForScene",
-        "StartCoroutine(DelayedSetupPhantomWitchScytheAbility());",
+        "internal void SetupPhantomWitchScytheForScene",
+        "owner.StartCoroutine(DelayedSetupPhantomWitchScytheAbility());",
     ),
 ]
 PER_FRAME_MANAGER_METHODS = [
@@ -236,10 +236,7 @@ def main() -> int:
         method = extract_method(text, signature)
         if not method:
             return fail("could not find bootstrap method -> " + str(path))
-        scene_guard = "ModBehaviour.IsGameplaySceneName(scene.name)" if path in (
-            Path("Integration/FlightTotem/FlightTotemBootstrap.cs"),
-            Path("Integration/Frostmourne/FrostmourneBootstrap.cs"),
-        ) else "IsGameplaySceneName(scene.name)"
+        scene_guard = "ModBehaviour.IsGameplaySceneName(scene.name)"
         if not has_recent_guard(
             method,
             delayed_call,

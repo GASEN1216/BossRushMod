@@ -29,74 +29,7 @@ namespace BossRush
 
         private void CleanupZombieModeEnemiesNearPlayerSafeZone(int runId, string reason)
         {
-            if (!IsZombieModeRunValid(runId))
-            {
-                return;
-            }
-
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null)
-            {
-                return;
-            }
-
-            Vector3 center = player.transform.position;
-            float radius = ZombieModeTuning.SafeZoneRadius;
-            int count = CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, false);
-            if (count <= 0)
-            {
-                return;
-            }
-
-            int cleaned = 0;
-            for (int i = 0; i < zombieModeEnemyMarkerScratch.Count; i++)
-            {
-                ZombieModeEnemyRuntimeMarker marker = zombieModeEnemyMarkerScratch[i];
-                if (marker == null || marker.RunId != runId || marker.IsBoss || marker.DeathSettled || marker.RemovedFromRuntime)
-                {
-                    continue;
-                }
-
-                Vector3 delta = marker.transform.position - center;
-                delta.y = 0f;
-                if (delta.sqrMagnitude > radius * radius)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    marker.RemovedFromRuntime = true;
-                    CharacterMainControl owner = marker.Owner;
-                    if (owner == null)
-                    {
-                        owner = marker.GetComponent<CharacterMainControl>();
-                    }
-                    UnregisterZombieModeEnemyInstanceId(owner);
-                    zombieModeRunState.LivingZombieCount = Mathf.Max(0, zombieModeRunState.LivingZombieCount - 1);
-                    zombieModeRunState.LivingNormalZombieCount = Mathf.Max(0, zombieModeRunState.LivingNormalZombieCount - 1);
-
-                    GameObject enemyObject = marker.gameObject;
-                    if (enemyObject != null)
-                    {
-                        // Destroy 会延迟到帧尾；先停用 AI，避免其在同帧继续执行并访问已失效状态。
-                        enemyObject.SetActive(false);
-                        Destroy(enemyObject);
-                    }
-                    cleaned++;
-                }
-                catch (System.Exception e)
-                {
-                    DevLog("[ZombieMode] safe-zone enemy cleanup failed: " + reason + " - " + e.Message);
-                }
-            }
-
-            zombieModeEnemyMarkerScratch.Clear();
-            PruneZombieModeRunOnlyEnemyRecords(runId);
-            if (cleaned > 0)
-            {
-                DevLog("[ZombieMode] safe-zone cleanup " + reason + ": removed " + cleaned + " nearby enemies");
-            }
+            zombieModeRuntimeModule.CleanupZombieModeEnemiesNearPlayerSafeZone(runId, reason);
         }
 
         /// <summary>
@@ -106,75 +39,7 @@ namespace BossRush
         /// </summary>
         private void ClearZombieModeEnemiesInsideActiveSafeZone(int runId, string reason)
         {
-            if (!IsZombieModeRunValid(runId) || !AnyZombieModeSafeZoneActive)
-            {
-                return;
-            }
-
-            int count = CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, true);
-            if (count <= 0)
-            {
-                return;
-            }
-
-            int removed = 0;
-            int ejectedBosses = 0;
-            for (int i = 0; i < zombieModeEnemyMarkerScratch.Count; i++)
-            {
-                ZombieModeEnemyRuntimeMarker marker = zombieModeEnemyMarkerScratch[i];
-                if (marker == null ||
-                    marker.RunId != runId ||
-                    marker.DeathSettled ||
-                    marker.RemovedFromRuntime ||
-                    !IsZombieModePositionInsideActiveSafeZone(marker.transform.position))
-                {
-                    continue;
-                }
-
-                if (marker.IsBoss)
-                {
-                    if (TryMoveZombieModeEnemyOutsideSafeZone(marker.gameObject, marker, true))
-                    {
-                        ejectedBosses++;
-                    }
-                    continue;
-                }
-
-                try
-                {
-                    marker.RemovedFromRuntime = true;
-                    CharacterMainControl owner = marker.Owner;
-                    if (owner == null)
-                    {
-                        owner = marker.GetComponent<CharacterMainControl>();
-                    }
-
-                    UnregisterZombieModeEnemyInstanceId(owner);
-                    UnregisterEnemyRecovery(owner);
-                    zombieModeRunState.LivingZombieCount = Mathf.Max(0, zombieModeRunState.LivingZombieCount - 1);
-                    zombieModeRunState.LivingNormalZombieCount = Mathf.Max(0, zombieModeRunState.LivingNormalZombieCount - 1);
-                    if (marker.gameObject != null)
-                    {
-                        marker.gameObject.SetActive(false);
-                        Destroy(marker.gameObject);
-                    }
-                    removed++;
-                }
-                catch (System.Exception e)
-                {
-                    DevLog("[ZombieMode] safe-zone deployment cleanup failed: " + reason + " - " + e.Message);
-                }
-            }
-
-            zombieModeEnemyMarkerScratch.Clear();
-            PruneZombieModeRunOnlyEnemyRecords(runId);
-            if (removed > 0 || ejectedBosses > 0)
-            {
-                DevLog(
-                    "[ZombieMode] safe-zone deployment " + reason +
-                    ": removed=" + removed +
-                    ", ejectedBosses=" + ejectedBosses);
-            }
+            zombieModeRuntimeModule.ClearZombieModeEnemiesInsideActiveSafeZone(runId, reason);
         }
 
         private Coroutine StartZombieModeCoroutine(IEnumerator routine, int runId)

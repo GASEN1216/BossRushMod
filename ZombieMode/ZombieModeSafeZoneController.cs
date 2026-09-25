@@ -2,38 +2,29 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
         private bool zombieModeShootStealthBreakerRegistered;
 
         /// <summary>
-        /// 主槽（正常安全区，带商人）与副槽（准备期便携安全区，不带商人）任一激活。
-        /// 两槽只在准备期并存，下一波开始时一起清除。
+        /// 按原节流更新玩家位置、两槽禁入边界与仇恨抑制。
         /// </summary>
-        private bool AnyZombieModeSafeZoneActive
+        internal void TickZombieModeSafeZone()
         {
-            get
-            {
-                return zombieModeRunState.ActiveSafeZoneActive || zombieModeRunState.PortableSafeZoneActive;
-            }
-        }
-
-        private void TickZombieModeSafeZone()
-        {
-            if (!IsZombieModeActive ||
+            if (!ZombieModePhaseGuards.IsRunActive(runState.LifecyclePhase) ||
                 !AnyZombieModeSafeZoneActive ||
-                !ZombieModePhaseGuards.AllowsSafeZone(zombieModeRunState.CombatPhase))
+                !ZombieModePhaseGuards.AllowsSafeZone(runState.CombatPhase))
             {
                 ReleaseZombieModeSafeZoneThreatSuppression();
                 return;
             }
 
-            if (Time.unscaledTime - zombieModeRunState.LastSafeZoneTickTime < ZombieModeTuning.SafeZoneTickIntervalSeconds)
+            if (Time.unscaledTime - runState.LastSafeZoneTickTime < ZombieModeTuning.SafeZoneTickIntervalSeconds)
             {
                 return;
             }
 
-            zombieModeRunState.LastSafeZoneTickTime = Time.unscaledTime;
+            runState.LastSafeZoneTickTime = Time.unscaledTime;
             UpdateZombieModeSafeZonePlayerPresence();
             UpdateZombieModeSafeZoneVisual();
             // 抑制判定必须先于物理禁入：弹出本身不得附带去仇恨，否则玩家在区外时
@@ -42,22 +33,22 @@ namespace BossRush
             KeepZombieModeEnemiesOutsideSafeZone(shouldSuppress);
             if (shouldSuppress)
             {
-                zombieModeRunState.SafeZoneThreatSuppressed = shouldSuppress;
+                runState.SafeZoneThreatSuppressed = shouldSuppress;
                 SuppressZombieModeSafeZoneThreats();
             }
             else
             {
                 ReleaseZombieModeSafeZoneThreatSuppression();
-                zombieModeRunState.SafeZoneThreatSuppressed = shouldSuppress;
+                runState.SafeZoneThreatSuppressed = shouldSuppress;
             }
         }
 
         private void UpdateZombieModeSafeZonePlayerPresence()
         {
-            zombieModeRunState.PlayerInsideSafeZone = IsZombieModePlayerInsideActiveSafeZone();
+            runState.PlayerInsideSafeZone = IsZombieModePlayerInsideActiveSafeZone();
         }
 
-        private bool IsZombieModePlayerInsideActiveSafeZone()
+        internal bool IsZombieModePlayerInsideActiveSafeZone()
         {
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null || !AnyZombieModeSafeZoneActive)
@@ -93,15 +84,15 @@ namespace BossRush
         {
             return IsPositionInsideZombieModeSafeZoneSlot(
                        position,
-                       zombieModeRunState.ActiveSafeZoneActive,
-                       zombieModeRunState.ActiveSafeZoneCenter,
-                       zombieModeRunState.ActiveSafeZoneRadius,
+                       runState.ActiveSafeZoneActive,
+                       runState.ActiveSafeZoneCenter,
+                       runState.ActiveSafeZoneRadius,
                        0f) ||
                    IsPositionInsideZombieModeSafeZoneSlot(
                        position,
-                       zombieModeRunState.PortableSafeZoneActive,
-                       zombieModeRunState.PortableSafeZoneCenter,
-                       zombieModeRunState.PortableSafeZoneRadius,
+                       runState.PortableSafeZoneActive,
+                       runState.PortableSafeZoneCenter,
+                       runState.PortableSafeZoneRadius,
                        0f);
         }
 
@@ -121,25 +112,25 @@ namespace BossRush
             float padding = ZombieModeTuning.SafeZoneEnemyExclusionPadding;
             if (IsPositionInsideZombieModeSafeZoneSlot(
                     position,
-                    zombieModeRunState.ActiveSafeZoneActive,
-                    zombieModeRunState.ActiveSafeZoneCenter,
-                    zombieModeRunState.ActiveSafeZoneRadius,
+                    runState.ActiveSafeZoneActive,
+                    runState.ActiveSafeZoneCenter,
+                    runState.ActiveSafeZoneRadius,
                     padding))
             {
-                center = zombieModeRunState.ActiveSafeZoneCenter;
-                radius = zombieModeRunState.ActiveSafeZoneRadius;
+                center = runState.ActiveSafeZoneCenter;
+                radius = runState.ActiveSafeZoneRadius;
                 return true;
             }
 
             if (IsPositionInsideZombieModeSafeZoneSlot(
                     position,
-                    zombieModeRunState.PortableSafeZoneActive,
-                    zombieModeRunState.PortableSafeZoneCenter,
-                    zombieModeRunState.PortableSafeZoneRadius,
+                    runState.PortableSafeZoneActive,
+                    runState.PortableSafeZoneCenter,
+                    runState.PortableSafeZoneRadius,
                     padding))
             {
-                center = zombieModeRunState.PortableSafeZoneCenter;
-                radius = zombieModeRunState.PortableSafeZoneRadius;
+                center = runState.PortableSafeZoneCenter;
+                radius = runState.PortableSafeZoneRadius;
                 return true;
             }
 
@@ -148,11 +139,11 @@ namespace BossRush
             return false;
         }
 
-        private bool ShouldSuppressZombieModeEnemyAggroForSafeZone()
+        internal bool ShouldSuppressZombieModeEnemyAggroForSafeZone()
         {
             return AnyZombieModeSafeZoneActive &&
                    IsZombieModePlayerInsideActiveSafeZone() &&
-                   ZombieModePhaseGuards.AllowsSafeZone(zombieModeRunState.CombatPhase);
+                   ZombieModePhaseGuards.AllowsSafeZone(runState.CombatPhase);
         }
 
         /// <summary>
@@ -166,9 +157,9 @@ namespace BossRush
                 return;
             }
 
-            for (int i = 0; i < zombieModeRunState.RunOnlyObjects.Count; i++)
+            for (int i = 0; i < runState.RunOnlyObjects.Count; i++)
             {
-                ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
+                ZombieModeRunOnlyRecord record = runState.RunOnlyObjects[i];
                 if (record == null ||
                     (record.Kind != ZombieModeRunOnlyObjectKind.Enemy && record.Kind != ZombieModeRunOnlyObjectKind.Boss) ||
                     record.GameObject == null)
@@ -213,7 +204,7 @@ namespace BossRush
         /// 将进入安全区的丧尸立即推出边界。安全区的物理禁入与隐匿仇恨是两条独立规则：
         /// 即使玩家已经取消保护，安全区仍然不能成为丧尸的站位区域。
         /// </summary>
-        private bool TryMoveZombieModeEnemyOutsideSafeZone(
+        internal bool TryMoveZombieModeEnemyOutsideSafeZone(
             GameObject enemyObject,
             ZombieModeEnemyRuntimeMarker marker,
             bool suppressThreat)
@@ -289,7 +280,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] safe-zone enemy ejection SetPosition failed: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] safe-zone enemy ejection SetPosition failed: " + e.Message);
                 enemyTransform.position = destination;
             }
 
@@ -299,10 +290,10 @@ namespace BossRush
 
         private void SuppressZombieModeSafeZoneThreats()
         {
-            zombieModeRunState.SafeZoneThreatSuppressed = true;
-            for (int i = 0; i < zombieModeRunState.RunOnlyObjects.Count; i++)
+            runState.SafeZoneThreatSuppressed = true;
+            for (int i = 0; i < runState.RunOnlyObjects.Count; i++)
             {
-                ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
+                ZombieModeRunOnlyRecord record = runState.RunOnlyObjects[i];
                 if (record == null ||
                     (record.Kind != ZombieModeRunOnlyObjectKind.Enemy && record.Kind != ZombieModeRunOnlyObjectKind.Boss) ||
                     record.GameObject == null)
@@ -324,17 +315,17 @@ namespace BossRush
             }
         }
 
-        private void ReleaseZombieModeSafeZoneThreatSuppression()
+        internal void ReleaseZombieModeSafeZoneThreatSuppression()
         {
-            if (!zombieModeRunState.SafeZoneThreatSuppressed)
+            if (!runState.SafeZoneThreatSuppressed)
             {
                 return;
             }
 
-            zombieModeRunState.SafeZoneThreatSuppressed = false;
-            for (int i = 0; i < zombieModeRunState.RunOnlyObjects.Count; i++)
+            runState.SafeZoneThreatSuppressed = false;
+            for (int i = 0; i < runState.RunOnlyObjects.Count; i++)
             {
-                ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
+                ZombieModeRunOnlyRecord record = runState.RunOnlyObjects[i];
                 if (record == null ||
                     (record.Kind != ZombieModeRunOnlyObjectKind.Enemy && record.Kind != ZombieModeRunOnlyObjectKind.Boss) ||
                     record.GameObject == null)
@@ -356,7 +347,7 @@ namespace BossRush
             }
         }
 
-        private void SetZombieModeEnemyThreatSuppressed(GameObject enemyObject, ZombieModeEnemyRuntimeMarker marker, bool suppressed)
+        internal void SetZombieModeEnemyThreatSuppressed(GameObject enemyObject, ZombieModeEnemyRuntimeMarker marker, bool suppressed)
         {
             if (enemyObject == null)
             {
@@ -387,7 +378,7 @@ namespace BossRush
                 ai.noticed = false;
                 // 释放路径以这个开关早退。任何来源的逐敌抑制都必须记账，
                 // 否则被抑制的敌人再也不会恢复追击。
-                zombieModeRunState.SafeZoneThreatSuppressed = true;
+                runState.SafeZoneThreatSuppressed = true;
                 return;
             }
 
@@ -405,14 +396,14 @@ namespace BossRush
             }
         }
 
-        private bool ShouldZombieModeEnemyAggroPlayerNow()
+        internal bool ShouldZombieModeEnemyAggroPlayerNow()
         {
-            return zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat ||
+            return runState.CombatPhase == ZombieModeCombatPhase.Combat ||
                    (AnyZombieModeSafeZoneActive &&
                     !IsZombieModePlayerInsideActiveSafeZone());
         }
 
-        private void TryRegisterZombieModeShootStealthBreaker(int runId)
+        internal void TryRegisterZombieModeShootStealthBreaker(int runId)
         {
             if (!IsZombieModeRunValid(runId) || zombieModeShootStealthBreakerRegistered)
             {
@@ -423,19 +414,171 @@ namespace BossRush
             zombieModeShootStealthBreakerRegistered = true;
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.EventListener, null, null, delegate
             {
-                try { ItemAgent_Gun.OnMainCharacterShootEvent -= OnZombieModeMainCharacterShoot; } catch (System.Exception e) { DevLog("[ZombieMode] 解绑 OnMainCharacterShootEvent 失败: " + e.Message); }
+                try { ItemAgent_Gun.OnMainCharacterShootEvent -= OnZombieModeMainCharacterShoot; } catch (System.Exception e) { ModBehaviour.DevLog("[ZombieMode] 解绑 OnMainCharacterShootEvent 失败: " + e.Message); }
                 zombieModeShootStealthBreakerRegistered = false;
             });
         }
 
         private void OnZombieModeMainCharacterShoot(ItemAgent_Gun gunAgent)
         {
-            if (!IsZombieModeActive)
+            if (!ZombieModePhaseGuards.IsRunActive(runState.LifecyclePhase))
             {
                 return;
             }
 
             UpdateZombieModeSafeZonePlayerPresence();
+        }
+
+        private System.Action<CharacterMainControl> unregisterEnemyRecovery;
+
+        internal void BindEnemyRecoveryUnregister(System.Action<CharacterMainControl> unregister)
+        {
+            unregisterEnemyRecovery = unregister;
+        }
+
+        internal void CleanupZombieModeEnemiesNearPlayerSafeZone(int runId, string reason)
+        {
+            if (!IsZombieModeRunValid(runId))
+            {
+                return;
+            }
+
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null)
+            {
+                return;
+            }
+
+            Vector3 center = player.transform.position;
+            float radius = ZombieModeTuning.SafeZoneRadius;
+            int count = CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, false);
+            if (count <= 0)
+            {
+                return;
+            }
+
+            int cleaned = 0;
+            for (int i = 0; i < zombieModeEnemyMarkerScratch.Count; i++)
+            {
+                ZombieModeEnemyRuntimeMarker marker = zombieModeEnemyMarkerScratch[i];
+                if (marker == null || marker.RunId != runId || marker.IsBoss || marker.DeathSettled || marker.RemovedFromRuntime)
+                {
+                    continue;
+                }
+
+                Vector3 delta = marker.transform.position - center;
+                delta.y = 0f;
+                if (delta.sqrMagnitude > radius * radius)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    marker.RemovedFromRuntime = true;
+                    CharacterMainControl owner = marker.Owner;
+                    if (owner == null)
+                    {
+                        owner = marker.GetComponent<CharacterMainControl>();
+                    }
+                    UnregisterZombieModeEnemyInstanceId(owner);
+                    runState.LivingZombieCount = Mathf.Max(0, runState.LivingZombieCount - 1);
+                    runState.LivingNormalZombieCount = Mathf.Max(0, runState.LivingNormalZombieCount - 1);
+
+                    GameObject enemyObject = marker.gameObject;
+                    if (enemyObject != null)
+                    {
+                        // Destroy 会延迟到帧尾；先停用 AI，避免其在同帧继续执行并访问已失效状态。
+                        enemyObject.SetActive(false);
+                        UnityEngine.Object.Destroy(enemyObject);
+                    }
+                    cleaned++;
+                }
+                catch (System.Exception e)
+                {
+                    ModBehaviour.DevLog("[ZombieMode] safe-zone enemy cleanup failed: " + reason + " - " + e.Message);
+                }
+            }
+
+            zombieModeEnemyMarkerScratch.Clear();
+            PruneZombieModeRunOnlyEnemyRecords(runId);
+            if (cleaned > 0)
+            {
+                ModBehaviour.DevLog("[ZombieMode] safe-zone cleanup " + reason + ": removed " + cleaned + " nearby enemies");
+            }
+        }
+
+        internal void ClearZombieModeEnemiesInsideActiveSafeZone(int runId, string reason)
+        {
+            if (!IsZombieModeRunValid(runId) || !AnyZombieModeSafeZoneActive)
+            {
+                return;
+            }
+
+            int count = CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, true);
+            if (count <= 0)
+            {
+                return;
+            }
+
+            int removed = 0;
+            int ejectedBosses = 0;
+            for (int i = 0; i < zombieModeEnemyMarkerScratch.Count; i++)
+            {
+                ZombieModeEnemyRuntimeMarker marker = zombieModeEnemyMarkerScratch[i];
+                if (marker == null ||
+                    marker.RunId != runId ||
+                    marker.DeathSettled ||
+                    marker.RemovedFromRuntime ||
+                    !IsZombieModePositionInsideActiveSafeZone(marker.transform.position))
+                {
+                    continue;
+                }
+
+                if (marker.IsBoss)
+                {
+                    if (TryMoveZombieModeEnemyOutsideSafeZone(marker.gameObject, marker, true))
+                    {
+                        ejectedBosses++;
+                    }
+                    continue;
+                }
+
+                try
+                {
+                    marker.RemovedFromRuntime = true;
+                    CharacterMainControl owner = marker.Owner;
+                    if (owner == null)
+                    {
+                        owner = marker.GetComponent<CharacterMainControl>();
+                    }
+
+                    UnregisterZombieModeEnemyInstanceId(owner);
+                    unregisterEnemyRecovery(owner);
+                    runState.LivingZombieCount = Mathf.Max(0, runState.LivingZombieCount - 1);
+                    runState.LivingNormalZombieCount = Mathf.Max(0, runState.LivingNormalZombieCount - 1);
+                    if (marker.gameObject != null)
+                    {
+                        marker.gameObject.SetActive(false);
+                        UnityEngine.Object.Destroy(marker.gameObject);
+                    }
+                    removed++;
+                }
+                catch (System.Exception e)
+                {
+                    ModBehaviour.DevLog("[ZombieMode] safe-zone deployment cleanup failed: " + reason + " - " + e.Message);
+                }
+            }
+
+            zombieModeEnemyMarkerScratch.Clear();
+            PruneZombieModeRunOnlyEnemyRecords(runId);
+            if (removed > 0 || ejectedBosses > 0)
+            {
+                ModBehaviour.DevLog(
+                    "[ZombieMode] safe-zone deployment " + reason +
+                    ": removed=" + removed +
+                    ", ejectedBosses=" + ejectedBosses);
+            }
         }
     }
 

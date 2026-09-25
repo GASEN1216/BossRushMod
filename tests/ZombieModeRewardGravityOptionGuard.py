@@ -23,6 +23,7 @@ EFFECT_PARTS = [
     Path("ZombieMode/ZombieModeRewardProjectileSpread.cs"),
     Path("ZombieMode/ZombieModeRewardRuntimeModifiers.cs"),
     Path("ZombieMode/ZombieModeRewardTriggerEffects.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs"),
 ]
 
 

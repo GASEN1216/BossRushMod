@@ -11,7 +11,6 @@ namespace BossRush
 {
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        private readonly List<ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkerScratch = new List<ZombieModeEnemyRuntimeMarker>();
         private static readonly string[] ZombieModeDropTagWeapon = { "Weapon" };
         private static readonly string[] ZombieModeDropTagArmor = { "Armor" };
         private static readonly string[] ZombieModeDropTagAmmo = { "Ammo" };
@@ -23,53 +22,7 @@ namespace BossRush
             List<ZombieModeEnemyRuntimeMarker> results,
             bool includeBosses)
         {
-            if (results == null)
-            {
-                return 0;
-            }
-
-            results.Clear();
-            if (!IsZombieModeRunValid(runId))
-            {
-                return 0;
-            }
-
-            for (int i = 0; i < zombieModeRunState.RunOnlyObjects.Count; i++)
-            {
-                ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
-                if (record == null || record.RunId != runId)
-                {
-                    continue;
-                }
-
-                if (record.Kind != ZombieModeRunOnlyObjectKind.Enemy &&
-                    (!includeBosses || record.Kind != ZombieModeRunOnlyObjectKind.Boss))
-                {
-                    continue;
-                }
-
-                ZombieModeEnemyRuntimeMarker marker = record.Target as ZombieModeEnemyRuntimeMarker;
-                if (marker == null && record.GameObject != null)
-                {
-                    marker = record.GameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
-                    if (marker != null)
-                    {
-                        record.Target = marker;
-                    }
-                }
-
-                if (marker == null ||
-                    marker.RunId != runId ||
-                    marker.DeathSettled ||
-                    marker.RemovedFromRuntime)
-                {
-                    continue;
-                }
-
-                results.Add(marker);
-            }
-
-            return results.Count;
+            return zombieModeRuntimeModule.CollectZombieModeRuntimeEnemyMarkers(runId, results, includeBosses);
         }
 
         private bool InitializeZombieModeContainersShell(int runId)

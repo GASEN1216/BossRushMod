@@ -265,5 +265,25 @@ namespace BossRush
                 ? await phantomWitchRuntimeModule.PrepareManagedPhantomWitchAsync(position, context)
                 : null;
         }
+        private void InitializePhantomWitchScytheSystem()
+        {
+            phantomWitchRuntimeModule.InitializePhantomWitchScytheSystem();
+        }
+
+        private void SetupPhantomWitchScytheForScene(UnityEngine.SceneManagement.Scene scene)
+        {
+            phantomWitchRuntimeModule.SetupPhantomWitchScytheForScene(scene);
+        }
+
+        private void CleanupPhantomWitchScytheSystem()
+        {
+            phantomWitchRuntimeModule.CleanupPhantomWitchScytheSystem();
+        }
+
+        internal static WaitForSeconds PhantomWitchScytheSharedWait05sForRuntime
+        {
+            get { return sharedWait05s; }
+        }
+
     }
 }

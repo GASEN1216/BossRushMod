@@ -11,6 +11,7 @@ Reason:
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 SOURCE = Path("Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs")
@@ -44,13 +45,13 @@ def extract_block(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = clean_source(SOURCE.read_text(encoding="utf-8"))
 
     field = "private static bool phantomWitchScytheSharedAssetReferenceHeld = false;"
     if field not in text:
         return fail("PhantomWitchScytheSharedAssetReferenceGuard: missing shared asset reference state field")
 
-    init_block = extract_block(text, "private void InitializePhantomWitchScytheSystem()")
+    init_block = extract_block(text, "internal void InitializePhantomWitchScytheSystem()")
     if not init_block:
         return fail("PhantomWitchScytheSharedAssetReferenceGuard: missing InitializePhantomWitchScytheSystem block")
 
@@ -63,7 +64,7 @@ def main() -> int:
         if token not in init_block:
             return fail(f"PhantomWitchScytheSharedAssetReferenceGuard: init missing {token}")
 
-    cleanup_block = extract_block(text, "private void CleanupPhantomWitchScytheSystem()")
+    cleanup_block = extract_block(text, "internal void CleanupPhantomWitchScytheSystem()")
     if not cleanup_block:
         return fail("PhantomWitchScytheSharedAssetReferenceGuard: missing CleanupPhantomWitchScytheSystem block")
 

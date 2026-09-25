@@ -36,7 +36,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 def main() -> int:
     text = SOURCE.read_text(encoding="utf-8-sig")
-    body = extract_method_body(text, "private bool TryMoveZombieModeEnemyOutsideSafeZone(")
+    body = extract_method_body(text, "internal bool TryMoveZombieModeEnemyOutsideSafeZone(")
     if body is None:
         return fail("missing TryMoveZombieModeEnemyOutsideSafeZone body")
 

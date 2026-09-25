@@ -329,46 +329,7 @@ namespace BossRush
 
         private CharacterMainControl TryFindZombieModeNearestEnemyTarget(int runId, CharacterMainControl exclude, float radius)
         {
-            CharacterMainControl result = null;
-            float bestSqr = radius * radius;
-            int count = CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, false);
-            if (count <= 0)
-            {
-                return null;
-            }
-
-            CharacterMainControl main = CharacterMainControl.Main;
-            Vector3 origin = exclude != null ? exclude.transform.position : (main != null ? main.transform.position : Vector3.zero);
-            for (int i = 0; i < zombieModeEnemyMarkerScratch.Count; i++)
-            {
-                ZombieModeEnemyRuntimeMarker marker = zombieModeEnemyMarkerScratch[i];
-                if (marker == null || marker.RunId != runId || marker.DeathSettled || marker.RemovedFromRuntime)
-                {
-                    continue;
-                }
-
-                CharacterMainControl enemy = marker.Owner;
-                if (enemy == null)
-                {
-                    enemy = marker.GetComponent<CharacterMainControl>();
-                    marker.Owner = enemy;
-                }
-
-                if (enemy == null || enemy == exclude)
-                {
-                    continue;
-                }
-
-                float sqr = (enemy.transform.position - origin).sqrMagnitude;
-                if (sqr < bestSqr)
-                {
-                    bestSqr = sqr;
-                    result = enemy;
-                }
-            }
-
-            zombieModeEnemyMarkerScratch.Clear();
-            return result;
+            return zombieModeRuntimeModule.TryFindZombieModeNearestEnemyTarget(runId, exclude, radius);
         }
 
         private bool TrySpawnZombieModePlayerSupportProjectile(Vector3 origin, Vector3 direction, float damageFactor, float distanceFactor)

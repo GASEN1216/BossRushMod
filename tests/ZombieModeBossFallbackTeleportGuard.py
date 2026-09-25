@@ -22,7 +22,7 @@ def main() -> int:
         "owner.TryGetNearestZombieModeMapSpawnPositionToPlayerForBossRuntimeModule(out target)",
         "SpawnPositionHelper.TrySampleNavMesh(",
         "if (!TryResolveZombieModeBossFallbackPosition(instance, out target))",
-        "owner.SetZombieModeEnemyTargetToMainPlayerForBossRuntimeModule(ai);",
+        "SetZombieModeEnemyTargetToMainPlayer(ai);",
     ]
     for token in required_tokens:
         if token not in text:

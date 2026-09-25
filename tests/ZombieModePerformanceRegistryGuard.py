@@ -3,7 +3,7 @@ import sys
 
 
 ZOMBIE_FILES = list(Path("ZombieMode").glob("*.cs"))
-DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
+DROPS = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 
 
@@ -22,8 +22,8 @@ def main() -> int:
 
     for token in [
         "private readonly List<ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkerScratch",
-        "private int CollectZombieModeRuntimeEnemyMarkers(",
-        "zombieModeRunState.RunOnlyObjects",
+        "internal int CollectZombieModeRuntimeEnemyMarkers(",
+        "runState.RunOnlyObjects",
         "ZombieModeRunOnlyObjectKind.Enemy",
         "ZombieModeRunOnlyObjectKind.Boss",
         "record.Target as ZombieModeEnemyRuntimeMarker",
@@ -43,7 +43,7 @@ def main() -> int:
     if "CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, false)" not in combined:
         return fail("ZombieModePerformanceRegistryGuard: runtime systems do not use shared marker collection")
 
-    if "owner.CollectZombieModeRuntimeEnemyMarkersForBossRuntimeModule(runId, bossEnemyMarkerScratch, true)" not in boss:
+    if "CollectZombieModeRuntimeEnemyMarkers(runId, bossEnemyMarkerScratch, true)" not in boss:
         return fail("ZombieModePerformanceRegistryGuard: boss shield does not use shared runtime marker collection")
 
     print("ZombieModePerformanceRegistryGuard: PASS")

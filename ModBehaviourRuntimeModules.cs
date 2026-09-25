@@ -27,6 +27,7 @@ namespace BossRush
             wavesArenaRuntime = new WavesArenaRuntimeModule();
             runtimeModuleHost.Register(wavesArenaRuntime);
             BindModeDItemPoolQueries();
+            BindSpawnPostprocessServices();
             var modeEFSpawnPreparation = new ModeEFSpawnPreparation(ModeERuntimeModule.ModeEAvailableFactions,
                 () => modeERuntime.ModeEPlayerFaction,
                 position => modeDRuntime.GenerateFallbackSpawnPointsAroundPlayer(position), ShowMessage);
@@ -38,7 +39,9 @@ namespace BossRush
                 GetBossRushTicketTypeId, () => config != null && config.enableRandomBossLoot,
                 () => IsZombieModeActive, () => zombieModeRunState.RunId, RegisterZombieModeRunOnlyObject);
             runtimeModuleHost.Register(modeFRuntime);
-            runtimeModuleHost.Register(new ZombieModeRuntimeModule());
+            var zombieRuntime = new ZombieModeRuntimeModule();
+            zombieRuntime.BindEnemyRecoveryUnregister(UnregisterEnemyRecovery);
+            runtimeModuleHost.Register(zombieRuntime);
             runtimeModuleHost.Register(new ModeGRuntimeModule());
 
             // Mode H 只允许一个实例：先创建并保存到 ModBehaviour 字段，再把**同一个引用**

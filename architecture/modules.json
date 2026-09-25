@@ -101,12 +101,18 @@
         "Utilities/**/*.cs"
       ],
       "entry": "Utilities/ModeRuntimeHooks.cs",
-      "state_owner": "OfficialQuestRuntimeModule",
+      "state_owner": "OfficialQuestRuntimeModule / ModeEFSpawnPreparation / ModeEFMerchantCatalog / ModeEFMerchantRuntime / ModeEFSpawnPostprocessScheduler",
       "public_api": [
         "ModeRuntimeHooks"
       ],
       "data": [],
-      "tests": [],
+      "tests": [
+        "tests/ArchitectureStructureGuard.py",
+        "tests/ModeEFSpawnPostprocessSchedulerGuard.py",
+        "tests/fixtures/ModeEFSpawnPreparation",
+        "tests/fixtures/ModeEFSpawnPostprocessScheduler",
+        "tests/fixtures/ModeEFMerchantCatalog"
+      ],
       "docs": [],
       "rules": [
         "AGENTS.md",
@@ -331,7 +337,8 @@
       ],
       "data": [],
       "tests": [
-        "tests/ZombieMode*Guard.py"
+        "tests/ZombieMode*Guard.py",
+        "tests/fixtures/ZombieModeSafeZoneRuntime"
       ],
       "docs": [],
       "rules": [
@@ -932,7 +939,8 @@
       "data": [],
       "tests": [
         "tests/DragonKing*Guard.py",
-        "tests/ManagedBossRuntimeModuleOwnershipGuard.py"
+        "tests/ManagedBossRuntimeModuleOwnershipGuard.py",
+        "tests/fixtures/EquipmentBootstrapOwners"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/项目概览/核心功能特性/装备与物品系统/套装效果系统/龙王套装效果.md"
@@ -992,7 +1000,8 @@
       "data": [],
       "tests": [
         "tests/PhantomWitch*Guard.py",
-        "tests/ManagedBossRuntimeModuleOwnershipGuard.py"
+        "tests/ManagedBossRuntimeModuleOwnershipGuard.py",
+        "tests/fixtures/EquipmentBootstrapOwners"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/自定义 Boss 系统/幽灵女巫 Boss.md"
@@ -1164,7 +1173,8 @@
       "data": [],
       "tests": [
         "tests/ReverseScale*Guard.py",
-        "tests/EquipmentBootstrapRuntimeModuleGuard.py"
+        "tests/EquipmentBootstrapRuntimeModuleGuard.py",
+        "tests/fixtures/EquipmentBootstrapOwners"
       ],
       "docs": [],
       "rules": [

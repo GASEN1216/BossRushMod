@@ -3,6 +3,7 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 
 COMPILE = Path("compile_official.bat")
@@ -158,7 +159,7 @@ def main() -> int:
     if register_index < 0 or awake_index < 0 or register_index > awake_index:
         return fail("ArchitectureStructureGuard: RegisterRuntimeModules must run before runtimeModuleHost.OnAwake")
 
-    registration_text = Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8", errors="ignore")
+    registration_text = clean_source(Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8", errors="ignore"))
     if "runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing ArchitectureSentinelRuntimeModule")
     if (
@@ -192,6 +193,14 @@ def main() -> int:
             registration_token = "modeFRuntime = new ModeFRuntimeModule();"
             if "runtimeModuleHost.Register(modeFRuntime);" not in registration_text:
                 return fail("ArchitectureStructureGuard: Mode F must register its stored runtime instance")
+        elif module_name == "ZombieModeRuntimeModule":
+            registration_token = "var zombieRuntime = new ZombieModeRuntimeModule();"
+            binding = "zombieRuntime.BindEnemyRecoveryUnregister(UnregisterEnemyRecovery);"
+            register = "runtimeModuleHost.Register(zombieRuntime);"
+            if binding not in registration_text or register not in registration_text:
+                return fail("ArchitectureStructureGuard: Zombie runtime must bind recovery and register the same instance")
+            if registration_text.index(binding) > registration_text.index(register):
+                return fail("ArchitectureStructureGuard: Zombie recovery must bind before registration")
         elif module_name == "AffinityRuntimeModule":
             registration_token = "affinityRuntime = new AffinityRuntimeModule();"
         if registration_token not in registration_text:

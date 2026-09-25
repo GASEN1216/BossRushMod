@@ -6,8 +6,8 @@ import sys
 
 SOURCES = {
     "CollectZombieModeRuntimeEnemyMarkers": (
-        Path("ZombieMode/ZombieModeDropsAndPerformance.cs"),
-        "private int CollectZombieModeRuntimeEnemyMarkers(",
+        Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs"),
+        "internal int CollectZombieModeRuntimeEnemyMarkers(",
     ),
     "PruneZombieModeRunOnlyEnemyRecords": (
         Path("ZombieMode/ZombieModeRuntimeModule.cs"),
@@ -27,7 +27,7 @@ SOURCES = {
     ),
     "ReleaseZombieModeSafeZoneThreatSuppression": (
         Path("ZombieMode/ZombieModeSafeZoneController.cs"),
-        "private void ReleaseZombieModeSafeZoneThreatSuppression()",
+        "internal void ReleaseZombieModeSafeZoneThreatSuppression()",
     ),
     "MonitorZombieModeEnemyRecovery": (
         Path("Utilities/EnemyRecoveryMonitor.cs"),

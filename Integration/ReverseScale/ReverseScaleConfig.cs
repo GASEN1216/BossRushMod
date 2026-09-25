@@ -18,7 +18,7 @@ namespace BossRush
     {
         public static void RegisterEquipmentConfigurator()
         {
-            EquipmentFactory.RegisterConfigurator("ReverseScaleConfig", (item, baseName) => { ModBehaviour.TryConfigureReverseScale(item, baseName); });
+            EquipmentFactory.RegisterConfigurator("ReverseScaleConfig", (item, baseName) => { ReverseScaleRuntimeModule.TryConfigureReverseScale(item, baseName); });
         }
 
         // 单例实例

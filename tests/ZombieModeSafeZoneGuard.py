@@ -63,16 +63,21 @@ def main() -> int:
         if result:
             return result
 
+    if "internal sealed partial class ZombieModeRuntimeModule" not in safe_zone or "partial class ModBehaviour" in safe_zone:
+        return fail("safe-zone state and event owner must belong to the runtime module")
+    if "runState.ActiveSafeZoneActive || runState.PortableSafeZoneActive" not in extraction:
+        return fail("both safe-zone slots must use the module run state")
+
     for snippet in [
         "TickZombieModeSafeZone",
-        "Time.unscaledTime - zombieModeRunState.LastSafeZoneTickTime",
+        "Time.unscaledTime - runState.LastSafeZoneTickTime",
         "ZombieModeTuning.SafeZoneTickIntervalSeconds",
         "UpdateZombieModeSafeZonePlayerPresence",
         "SuppressZombieModeSafeZoneThreats",
         "ReleaseZombieModeSafeZoneThreatSuppression",
         "SetZombieModeEnemyThreatSuppressed",
-        "zombieModeRunState.PlayerInsideSafeZone = IsZombieModePlayerInsideActiveSafeZone();",
-        "zombieModeRunState.SafeZoneThreatSuppressed = shouldSuppress",
+        "runState.PlayerInsideSafeZone = IsZombieModePlayerInsideActiveSafeZone();",
+        "runState.SafeZoneThreatSuppressed = shouldSuppress",
         "AICharacterController",
         "marker.SuppressedForceTraceDistance = ai.forceTracePlayerDistance;",
         "marker.HasSuppressedForceTraceDistance = true;",
@@ -89,7 +94,6 @@ def main() -> int:
         "TryMoveZombieModeEnemyOutsideSafeZone",
         # 主槽（正常安全区）与副槽（准备期便携区）任一激活都必须驱动物理禁入。
         "if (!AnyZombieModeSafeZoneActive)",
-        "zombieModeRunState.ActiveSafeZoneActive || zombieModeRunState.PortableSafeZoneActive",
         # 抑制判定必须先于弹出，且弹出只能沿用该判定结果，不得自行去仇恨。
         "bool shouldSuppress = ShouldSuppressZombieModeEnemyAggroForSafeZone();\n            KeepZombieModeEnemiesOutsideSafeZone(shouldSuppress);",
         "TryResolveZombieModeSafeZoneExclusionSlot(enemyTransform.position, out slotCenter, out slotRadius)",
@@ -104,7 +108,7 @@ def main() -> int:
             return result
 
     for snippet in [
-        "owner.TickZombieModeSafeZoneForRuntimeModule();",
+        "TickZombieModeSafeZone();",
         "runState.LastSafeZoneTickTime = 0f;",
         "runState.SafeZoneThreatSuppressed = false;",
         "CanUseZombieModePortableSafeZoneDevice",
@@ -116,7 +120,7 @@ def main() -> int:
         "CreateZombieModeSafeZone(runState.RunId, false, true, true);",
         # 准备期部署写入独立副槽：不带商人、不回收主槽绑定的服务 NPC。
         "CreateZombieModeSafeZone(runState.RunId, false, false, true, true);",
-        "owner.ClearZombieModeEnemiesInsideActiveSafeZoneForRuntimeModule(runId, \"CreateSafeZone\");",
+        "ClearZombieModeEnemiesInsideActiveSafeZone(runId, \"CreateSafeZone\");",
         # 准备期清理必须无条件清掉两个槽，不再保留任何便携区跨越波次边界。
         "internal void CleanupZombieModePreparationObjects(int runId)",
         "ClearZombieModePortableSafeZoneSlot();",
@@ -135,7 +139,7 @@ def main() -> int:
             return fail("safe-zone NPC recycle must remove its run-only record before destroying the object")
 
     for snippet in [
-        "owner.TickZombieModeSafeZoneForRuntimeModule();",
+        "TickZombieModeSafeZone();",
         "if (AnyZombieModeSafeZoneActive)",
         "CleanupZombieModePreparationObjects(runId);",
     ]:
@@ -151,7 +155,7 @@ def main() -> int:
 
     for snippet in [
         "TryHandleZombieModeSafeZonePlayerAttack",
-        "!owner.IsZombieModePlayerInsideActiveSafeZoneForWaveRuntimeModule()",
+        "!IsZombieModePlayerInsideActiveSafeZone()",
         "ZombieModePhaseGuards.AllowsSafeZone(runState.CombatPhase)",
         "CancelZombieModeSafeZone(runId, \"PlayerAttack\");",
         # 只有枪械/近战直伤取消安全区：手雷、投掷物与玩家来源的奖励弹道不算。

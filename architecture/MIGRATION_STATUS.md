@@ -14,7 +14,7 @@
 | P5 目录归位 | 未完成 | 注入占位已随簇 1 删除；天空岛迁移待做 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-续接基点：`d50c7e82`（提取共用商人预设与分类目录）。2026-09-25 继续完成共用商人实体、FlightTotem 工厂与内容注册，下一动作是共享生成与后处理、丧尸安全区及装备初始化余项。最新提交号以 `git log -1` 为准。真实游戏目录尚未部署。
+续接基点：`c55ecf02`（提取共享商人实体并归位装备注册）。2026-09-25 继续完成共享生成后处理、丧尸安全区与三个装备初始化归位；下一动作是扫箱运行时、共享战斗生成与登记、丧尸奖励和集成余项。最新提交号以 `git log -1` 为准。真实游戏目录尚未部署。
 
 ## P0 基线（2026-09-24）
 
@@ -160,6 +160,15 @@
 - 反向验证：共享商人及预算 6 次、FlightTotem 6 次、内容注册 9 个守卫探针加 1 个执行探针，均在预期判据转红并按 SHA-256 原字节恢复。证据分别为 `Build/migration/merchant-runtime-negative.json`、`flight-totem-negative.json`、`integration-content-registration/negative-results.json`。商人反向副本首轮缺 Mode H 夹具数据，在基线阶段失败；补齐 7 份生产 JSON 后重跑通过，没有修改判据。
 - Windows 正式/Dev 隔离构建均 `Build succeeded!`，72 bundle 哈希清单通过。正式 SHA-256 `6942700BD265EFBFFD66CC97D5E7BE53A8325DD37C878539D751EE05D72C6DC5`，Dev SHA-256 `524BAAD88D7744FA8E3FCA8A054A24B2B091676DC5677C8DFCCCA2E94DC467AF`；各自与隔离部署副本一致，14 个 Dev 标识 absent/present 通过。当前 Build 为 Dev，真实游戏目录尚未部署。
 - L3 待 owner：E/F 商人生成期间退出再进入，确认旧商人不会覆盖新局；打开分类商店后退出，观察商人/交互残留与贝壳余额。飞行图腾手持、离手、切图并重新装备，检查能力与资源恢复；切换中英文并打开装备/天空岛物品，检查 raw key。迟到实体残留、重复扣款、能力卸下后继续运行、缺失本地化均不合格。簇 4 共享战斗生成与后处理、簇 5/6 余项及 P5/P6 仍未完成。
+
+## 2026-09-25 继续执行：生成后处理、丧尸安全区与装备初始化（COMPAT）
+
+- `Utilities/ModeEFSpawnPostprocessScheduler` 接管后处理队列、逐步配装、倍率、提交和失败清理；宿主只持一个实例并在原 Tick/Clear 位置转发，注册阶段绑定原配装与掉落操作。10 个方法体在依赖限定名替换后与前一提交一致。60 帧期限、最后 5 帧加速、8/16 步上限、实时时钟预算和冻结提交门保持。
+- 丧尸安全区控制、两类清敌、射击监听和敌人 marker/AI/空间查询归同一 `ZombieModeRuntimeModule`，Extraction/Wave/Boss/HUD 在原位置直调模块。23 个搬移方法体归一化后完全一致；恢复注销在注册前显式绑定。逆鳞工厂及大镰、焚皇断界戟初始化归各自现有模块，旧 API 转发，静态资源闩、半秒等待、15 秒上限和清理次序保持。
+- 宿主 partial 降至 143 文件 / 41,426 行，预算同步下调；编译清单 1,104 源、47 模块索引通过。L2 全量守卫 680 PASS / 0 FAIL / 0 known-red；全量执行回归 75 PASS / 0 FAIL / 0 SKIP。新增三个夹具分别直接执行生产后处理、安全区与装备初始化逻辑，覆盖跨 owner、失效局、对象销毁、缓存与预算边界、事件退订、重入和清理顺序。
+- root 的 7 次反向探针、Zombie 的 15 个守卫 + 4 个执行探针、装备的 8 个守卫 + 4 个执行探针均在预期断言转红，并按 SHA-256 原字节恢复。证据在 `Build/migration/postprocess-negative.json`、`zombie-safezone-negative.json`、`zombie-safezone-parity.json`、`equipment-bootstrap-owners/negative-results.json`。架构守卫首次因旧注册写法报红，按新实例的绑定/注册顺序更新；正式编译首次揭示可选参数方法组不匹配，改为显式 lambda 保持原默认参数后通过。
+- Windows 正式/Dev 隔离构建均 `Build succeeded!`，两次 72 bundle 哈希清单通过。正式 SHA-256 `9120DEC485E857F8BA84FBE9BF9CB3FCCDCFCF50AC98673AF9D934323977AA34`；Dev SHA-256 `042EB6F3772C759C169EF51BFBAF80FA81249B3C824DC1EF39C852170BA97D0E`。两者分别与隔离部署副本一致，14 个 Dev 标识 absent/present 通过。当前 Build 为 Dev；真实游戏目录尚未部署。
+- L3 待 owner：分别在 E/F 生成过程中退出再进入，观察配装、激活与迟到敌人；丧尸准备阶段部署双安全区，玩家进出并射击，观察敌人驱逐与追击恢复；装备逆鳞、大镰和焚皇断界戟，离手、切图后重装备。生成卡死或重复提交、Boss 被当普通丧尸销毁、旧监听继续响应、能力重绑缺失或重复均不合格。本批仍是 P3/P4 中间检查点。
 
 ## 未完成项
 

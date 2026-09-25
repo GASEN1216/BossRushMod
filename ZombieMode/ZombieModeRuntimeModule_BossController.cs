@@ -481,7 +481,7 @@ namespace BossRush
         {
             if (!IsZombieModeRunValid(runId)) return;
 
-            owner.CollectZombieModeRuntimeEnemyMarkersForBossRuntimeModule(runId, bossEnemyMarkerScratch, true);
+            CollectZombieModeRuntimeEnemyMarkers(runId, bossEnemyMarkerScratch, true);
             float radiusSqr = ZombieModeTuning.ShielderGroupShieldRadius * ZombieModeTuning.ShielderGroupShieldRadius;
             for (int i = 0; i < bossEnemyMarkerScratch.Count; i++)
             {
@@ -578,11 +578,11 @@ namespace BossRush
             instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow();
             instance.Lifecycle.LastHurtTime = GetZombieModeRuntimeNow();
             ZombieModeEnemyRuntimeMarker marker = EnsureZombieModeBossMarker(instance);
-            AICharacterController ai = owner.GetZombieModeEnemyAIForBossRuntimeModule(boss.gameObject, marker);
+            AICharacterController ai = GetZombieModeEnemyAI(boss.gameObject, marker);
             CharacterMainControl main = CharacterMainControl.Main;
             if (ai != null && main != null)
             {
-                owner.SetZombieModeEnemyTargetToMainPlayerForBossRuntimeModule(ai);
+                SetZombieModeEnemyTargetToMainPlayer(ai);
                 ai.noticed = true;
             }
             ModBehaviour.DevLog("[ZombieMode] Boss stuck fallback teleport: " + instance.Kind.ToString());

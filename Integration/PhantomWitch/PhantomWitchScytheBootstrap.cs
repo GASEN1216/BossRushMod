@@ -18,9 +18,9 @@ using ItemStatsSystem;
 namespace BossRush
 {
     /// <summary>
-    /// 幽灵女巫大镰系统启动模块 - 使用 partial class 扩展 ModBehaviour
+    /// 幽灵女巫大镰的初始化、场景重绑与资源引用归幽灵女巫运行时模块。
     /// </summary>
-    public partial class ModBehaviour
+    internal sealed partial class PhantomWitchRuntimeModule
     {
         private static bool phantomWitchScytheSharedAssetReferenceHeld = false;
 
@@ -29,7 +29,7 @@ namespace BossRush
         /// <summary>
         /// 初始化幽灵女巫大镰系统（在 Start_Integration 中调用）
         /// </summary>
-        private void InitializePhantomWitchScytheSystem()
+        internal void InitializePhantomWitchScytheSystem()
         {
             try
             {
@@ -46,7 +46,7 @@ namespace BossRush
                 if (PhantomWitchScytheAbilityManager.Instance == null)
                 {
                     GameObject mgrObj = new GameObject("PhantomWitchScytheAbilityManager");
-                    DontDestroyOnLoad(mgrObj);
+                    UnityEngine.Object.DontDestroyOnLoad(mgrObj);
                     mgrObj.AddComponent<PhantomWitchScytheAbilityManager>();
                     DevLog("[PhantomWitchScythe] 右键能力管理器已创建");
                 }
@@ -65,7 +65,7 @@ namespace BossRush
         /// <summary>
         /// 场景加载后设置幽灵女巫大镰系统
         /// </summary>
-        private void SetupPhantomWitchScytheForScene(Scene scene)
+        internal void SetupPhantomWitchScytheForScene(Scene scene)
         {
             try
             {
@@ -77,9 +77,9 @@ namespace BossRush
                     abilityMgr.OnSceneChanged();
                 }
 
-                if (IsGameplaySceneName(scene.name))
+                if (ModBehaviour.IsGameplaySceneName(scene.name))
                 {
-                    StartCoroutine(DelayedSetupPhantomWitchScytheAbility());
+                    owner.StartCoroutine(DelayedSetupPhantomWitchScytheAbility());
                 }
             }
             catch (Exception e)
@@ -96,7 +96,7 @@ namespace BossRush
             float waitTime = 0f;
             while (CharacterMainControl.Main == null && waitTime < 15f)
             {
-                yield return sharedWait05s;
+                yield return ModBehaviour.PhantomWitchScytheSharedWait05sForRuntime;
                 waitTime += 0.5f;
             }
 
@@ -140,7 +140,7 @@ namespace BossRush
         /// <summary>
         /// 清理幽灵女巫大镰系统
         /// </summary>
-        private void CleanupPhantomWitchScytheSystem()
+        internal void CleanupPhantomWitchScytheSystem()
         {
             try
             {

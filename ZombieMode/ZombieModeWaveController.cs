@@ -120,7 +120,7 @@ namespace BossRush
 
         internal bool IsZombieModePlayerInsideActiveSafeZoneForWaveRuntimeModule()
         {
-            return IsZombieModePlayerInsideActiveSafeZone();
+            return zombieModeRuntimeModule.IsZombieModePlayerInsideActiveSafeZone();
         }
 
         internal void HandleZombieModeOptionHealthHurtForWaveRuntimeModule(

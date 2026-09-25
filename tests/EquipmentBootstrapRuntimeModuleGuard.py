@@ -12,7 +12,13 @@ FLIGHT_BRIDGE = Path("Integration/FlightTotem/FlightTotemRuntimeModuleHostBridge
 FROST = Path("Integration/Frostmourne/FrostmourneBootstrap.cs")
 FROST_BRIDGE = Path("Integration/Frostmourne/FrostmourneRuntimeModuleHostBridge.cs")
 REVERSE = Path("Integration/ReverseScale/ReverseScaleBootstrap.cs")
+REVERSE_FACTORY = Path("Integration/ReverseScale/ReverseScaleFactory.cs")
+REVERSE_CONFIG = Path("Integration/ReverseScale/ReverseScaleConfig.cs")
 REVERSE_BRIDGE = Path("Integration/ReverseScale/ReverseScaleRuntimeModuleHostBridge.cs")
+SCYTHE = Path("Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs")
+SCYTHE_BRIDGE = Path("Integration/PhantomWitch/PhantomWitchRuntimeModuleHostBridge.cs")
+HALBERD = Path("Integration/DragonKing/Weapons/FenHuangHalberdBootstrap.cs")
+HALBERD_BRIDGE = Path("Integration/DragonKing/DragonKingRuntimeModuleHostBridge.cs")
 REGISTRATION = Path("ModBehaviourRuntimeModules.cs")
 EQUIPMENT = Path("Integration/EquipmentContentRegistry.cs")
 SCENE = Path("Integration/BossRushIntegration_StartAndScene.cs")
@@ -54,6 +60,7 @@ def ordered(source: str, snippets, label: str) -> int:
 
 def main() -> int:
     paths = (FLIGHT, FLIGHT_FACTORY, FLIGHT_BRIDGE, FROST, FROST_BRIDGE, REVERSE, REVERSE_BRIDGE,
+             REVERSE_FACTORY, REVERSE_CONFIG, SCYTHE, SCYTHE_BRIDGE, HALBERD, HALBERD_BRIDGE,
              REGISTRATION, EQUIPMENT, SCENE, DEFERRED, DEATH_PATCH, LOOT, LOOT_HOST)
     for path in paths:
         if not path.exists():
@@ -68,7 +75,7 @@ def main() -> int:
     for type_name, module_path, bridge_path, field_name, label in module_specs:
         module_text = source[module_path]
         bridge_text = source[bridge_path]
-        declaration = "internal sealed " + ("partial " if type_name == "FlightTotemRuntimeModule" else "")
+        declaration = "internal sealed " + ("partial " if type_name in ("FlightTotemRuntimeModule", "ReverseScaleRuntimeModule") else "")
         if declaration + "class " + type_name + " : BossRushRuntimeModuleBase" not in module_text:
             return fail(label + " bootstrap must be owned by its RuntimeModule")
         if "public partial class ModBehaviour" in module_text:
@@ -142,11 +149,25 @@ def main() -> int:
     rc = ordered(reverse_initialize, (
         "ensureManagerInstance: () => ReverseScaleAbilityManager.EnsureInstance()",
         "ensureEffectManagerInstance: () => ReverseScaleEffectManager.EnsureInstance()",
-        "initializeItem: () => _owner.InitializeReverseScaleItemFromRuntimeModule()",
-        "injectLocalization: () => _owner.InjectReverseScaleLocalizationFromRuntimeModule()",
+        "initializeItem: () => InitializeReverseScaleItem()",
+        "injectLocalization: () => InjectReverseScaleLocalization()",
     ), "ReverseScale initialization")
     if rc:
         return rc
+    reverse_factory = source[REVERSE_FACTORY]
+    if "internal sealed partial class ReverseScaleRuntimeModule" not in reverse_factory or "partial class ModBehaviour" in reverse_factory:
+        return fail("ReverseScale factory state must belong to its existing module")
+    if "private bool reverseScaleInitialized = false;" not in reverse_factory:
+        return fail("ReverseScale initialization latch must stay instance owned")
+    rc = ordered(method_body(reverse_factory, "private void InitializeReverseScaleItem()"),
+                 ("if (reverseScaleInitialized) return;", "reverseScaleInitialized = true;"), "ReverseScale item initialization")
+    if rc:
+        return rc
+    if "ReverseScaleRuntimeModule.TryConfigureReverseScale(item, baseName);" not in source[REVERSE_CONFIG]:
+        return fail("ReverseScale registration must target the module configurator")
+    reverse_compatibility = method_body(source[REVERSE_BRIDGE], "public static bool TryConfigureReverseScale(")
+    if "return ReverseScaleRuntimeModule.TryConfigureReverseScale(item, baseName);" not in reverse_compatibility:
+        return fail("ReverseScale published configurator must preserve its compatibility forward")
     reverse_setup = method_body(reverse_text, "internal void SetupReverseScaleForScene(Scene scene)")
     if ("if (ModBehaviour.IsGameplaySceneName(scene.name))" not in reverse_setup or
             "delayedCheckEquipment: DelayedCheckReverseScaleEquipment," not in reverse_setup or
@@ -169,6 +190,45 @@ def main() -> int:
         "FrostmourneAction.CleanupAllSummonedZombies();",
         "FrostmourneBlueBossDropHandler.Cleanup();",
     ), "Frostmourne cleanup")
+    if rc:
+        return rc
+
+    for path, bridge, module_name, field, label, coroutine, wait in (
+        (SCYTHE, SCYTHE_BRIDGE, "PhantomWitchRuntimeModule", "phantomWitchRuntimeModule", "PhantomWitchScythe",
+         "DelayedSetupPhantomWitchScytheAbility", "PhantomWitchScytheSharedWait05sForRuntime"),
+        (HALBERD, HALBERD_BRIDGE, "DragonKingRuntimeModule", "dragonKingRuntimeModule", "FenHuangHalberd",
+         "DelayedSetupHalberdAbility", "FenHuangHalberdSharedWait05sForRuntime"),
+    ):
+        module = source[path]
+        if "internal sealed partial class " + module_name not in module or "partial class ModBehaviour" in module:
+            return fail(label + " bootstrap must belong to its existing content module")
+        for verb, parameters, arguments in (("Initialize", "", ""), ("Setup", "UnityEngine.SceneManagement.Scene scene", "scene"), ("Cleanup", "", "")):
+            method = verb + label + ("ForScene" if verb == "Setup" else "System")
+            declaration = "private void " + method + "(" + parameters + ")"
+            expected = declaration + "{" + field + "." + method + "(" + arguments + ");}"
+            if "".join(method_body(source[bridge], declaration).split()) != "".join(expected.split()):
+                return fail(label + " host entry must be a thin forward -> " + method)
+        setup = method_body(module, "internal void Setup" + label + "ForScene(Scene scene)")
+        rc = ordered(setup, ("if (ModBehaviour.IsGameplaySceneName(scene.name))", "owner.StartCoroutine(" + coroutine + "());"), label + " scene gate")
+        if rc:
+            return rc
+        delayed = method_body(module, "private IEnumerator " + coroutine + "()")
+        for token in ("while (CharacterMainControl.Main == null && waitTime < 15f)",
+                      "yield return ModBehaviour." + wait + ";", "waitTime += 0.5f;",
+                      "if (!mgr.IsAbilityEnabled)", "mgr.RegisterAbility(player);", "mgr.RebindToCharacter(player);"):
+            if token not in delayed:
+                return fail(label + " polling/rebind contract missing -> " + token)
+        if source[REGISTRATION].count(field + " = new " + module_name + "();") != 1 or source[REGISTRATION].count("runtimeModuleHost.Register(" + field + ");") != 1:
+            return fail(label + " must use the already registered module instance")
+    rc = ordered(method_body(source[SCYTHE], "internal void CleanupPhantomWitchScytheSystem()"), (
+        "PhantomWitchCurseSweatVfx.UnregisterGlobalHook();", "PhantomWitchScytheAbilityManager.CleanupStatic();",
+        "PhantomWitchScytheBossDropHandler.Cleanup();", "PhantomWitchCurseRealmVisual.ClearCache();",
+        "PhantomWitchAssetManager.ClearCache();"), "PhantomWitchScythe cleanup")
+    if rc:
+        return rc
+    rc = ordered(method_body(source[HALBERD], "internal void CleanupFenHuangHalberdSystem()"), (
+        "FenHuangHalberdAbilityManager.CleanupStatic();", "UnityEngine.Object.Destroy(FenHuangComboManager.Instance.gameObject);",
+        "DragonFlameMarkTracker.ClearAll();"), "FenHuangHalberd cleanup")
     if rc:
         return rc
 

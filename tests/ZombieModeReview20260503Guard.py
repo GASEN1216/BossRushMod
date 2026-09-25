@@ -205,7 +205,7 @@ def main() -> int:
     err = must_contain(runtime_bridges, "ClearZombieModeEnemyInstanceIds();")
     if err:
         return fail(err)
-    err = must_contain(cleanup, "UnregisterZombieModeEnemyInstanceId(owner)")
+    err = must_contain(Path("ZombieMode/ZombieModeSafeZoneController.cs"), "UnregisterZombieModeEnemyInstanceId(owner)")
     if err:
         return fail(err)
 

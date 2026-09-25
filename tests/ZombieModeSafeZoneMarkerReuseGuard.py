@@ -39,10 +39,10 @@ def main() -> int:
     text = SOURCE.read_text(encoding="utf-8-sig")
     spawner_text = SPAWNER.read_text(encoding="utf-8-sig")
     keep = extract_method_body(text, "private void KeepZombieModeEnemiesOutsideSafeZone(bool suppressThreat)")
-    eject = extract_method_body(text, "private bool TryMoveZombieModeEnemyOutsideSafeZone(")
+    eject = extract_method_body(text, "internal bool TryMoveZombieModeEnemyOutsideSafeZone(")
     suppress = extract_method_body(text, "private void SuppressZombieModeSafeZoneThreats()")
-    release = extract_method_body(text, "private void ReleaseZombieModeSafeZoneThreatSuppression()")
-    setter = extract_method_body(text, "private void SetZombieModeEnemyThreatSuppressed(")
+    release = extract_method_body(text, "internal void ReleaseZombieModeSafeZoneThreatSuppression()")
+    setter = extract_method_body(text, "internal void SetZombieModeEnemyThreatSuppressed(")
     prepare = extract_method_body(spawner_text, "private void PrepareZombieModeSpawnedEnemy(")
 
     if keep is None:
@@ -58,7 +58,7 @@ def main() -> int:
     if prepare is None:
         return fail("missing PrepareZombieModeSpawnedEnemy body")
 
-    signature = "private void SetZombieModeEnemyThreatSuppressed(GameObject enemyObject, ZombieModeEnemyRuntimeMarker marker, bool suppressed)"
+    signature = "internal void SetZombieModeEnemyThreatSuppressed(GameObject enemyObject, ZombieModeEnemyRuntimeMarker marker, bool suppressed)"
     if signature not in text:
         return fail("threat suppression helper should accept cached marker")
 

@@ -14,7 +14,7 @@ using BossRush.Common.Equipment;
 namespace BossRush
 {
     /// <summary>逆鳞 bootstrap 入口的唯一运行时 owner。</summary>
-    internal sealed class ReverseScaleRuntimeModule : BossRushRuntimeModuleBase
+    internal sealed partial class ReverseScaleRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour _owner;
 
@@ -41,8 +41,8 @@ namespace BossRush
                 config: ReverseScaleConfig.Instance,
                 ensureManagerInstance: () => ReverseScaleAbilityManager.EnsureInstance(),
                 ensureEffectManagerInstance: () => ReverseScaleEffectManager.EnsureInstance(),
-                initializeItem: () => _owner.InitializeReverseScaleItemFromRuntimeModule(),
-                injectLocalization: () => _owner.InjectReverseScaleLocalizationFromRuntimeModule()
+                initializeItem: () => InitializeReverseScaleItem(),
+                injectLocalization: () => InjectReverseScaleLocalization()
             );
         }
 
