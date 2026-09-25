@@ -43,7 +43,7 @@ def require(body: str, snippet: str) -> int | None:
 def main() -> int:
     text = SOURCE.read_text(encoding="utf-8-sig")
 
-    dead_body = extract_method_body(text, "private void HandleZombieModeOptionHealthDead(")
+    dead_body = extract_method_body(text, "internal void HandleZombieModeOptionHealthDead(")
     if dead_body is None:
         return fail("missing HandleZombieModeOptionHealthDead body")
     if dead_body.count("CharacterMainControl.Main") != 1:

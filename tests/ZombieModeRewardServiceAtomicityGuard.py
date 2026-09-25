@@ -123,7 +123,7 @@ def main() -> int:
     if not select_body:
         return fail("SelectZombieModeReward body not found")
     for snippet in [
-        "if (!owner.ApplyZombieModeRewardForRewardRuntimeModule(rewardType))",
+        "if (!ApplyZombieModeReward(rewardType))",
         "return;",
         "runState.CurrentRewardNode = null;",
     ]:
@@ -132,14 +132,14 @@ def main() -> int:
             return result
     result = require_before(
         select_body,
-        "if (!owner.ApplyZombieModeRewardForRewardRuntimeModule(rewardType))",
+        "if (!ApplyZombieModeReward(rewardType))",
         "runState.CurrentRewardNode = null;",
         "reward apply before consuming node")
     if result:
         return result
 
     for snippet in [
-        "private bool ApplyZombieModeReward(ZombieModeRewardType rewardType)",
+        "internal bool ApplyZombieModeReward(ZombieModeRewardType rewardType)",
         "private bool GrantZombieModeRandomMeleeReward(bool bossNode)",
         "private bool GrantZombieModeRandomGunWithAmmoReward(bool bossNode)",
         "private bool GrantZombieModeAmmoSupplyReward()",
@@ -218,7 +218,7 @@ def main() -> int:
         if result:
             return result
 
-    full_cleanup = extract_method_body(drops, "private void RecycleZombieModeTemporaryRealNpcs(int runId)")
+    full_cleanup = extract_method_body(drops, "internal void RecycleZombieModeTemporaryRealNpcs(int runId)")
     if not full_cleanup:
         return fail("full real NPC cleanup body not found")
     result = require_before(
@@ -233,7 +233,7 @@ def main() -> int:
     # 安全区绑定的回收路径改为经 run-only 记录清理：RemoveZombieModeRunOnlyObjectRecord
     # 会执行注册时挂上的 CloseZombieModeTemporaryRealNpcServices 回调（见下方注册断言），
     # 同时清掉指向已销毁 NPC 的失效记录。契约不变——服务必须在销毁之前关闭。
-    safe_zone_cleanup = extract_method_body(drops, "private void RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(int runId)")
+    safe_zone_cleanup = extract_method_body(drops, "internal void RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(int runId)")
     if not safe_zone_cleanup:
         return fail("safe-zone real NPC cleanup body not found")
     result = require_before(

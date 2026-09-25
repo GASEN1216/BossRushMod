@@ -37,17 +37,6 @@ namespace BossRush
         /// <summary>已完成生成（成功或失败）的计数</summary>
         private int modeESpawnResolved = 0;
 
-        /// <summary>Mode E 专用的虚拟 CharacterSpawnerRoot，用于让 BossLiveMapMod 检测到 Mode E 生成的敌人</summary>
-        private CharacterSpawnerRoot modeEVirtualSpawnerRoot = null;
-
-        /// <summary>虚拟 SpawnerRoot 中已登记的 Mode E 敌人，避免重复 AddCreatedCharacter。</summary>
-        private readonly HashSet<CharacterMainControl> modeESpawnerRootRegisteredEnemies = new HashSet<CharacterMainControl>();
-
-        private static FieldInfo modeESpawnerRootCreatedCharactersField = null;
-        private static PropertyInfo modeESpawnerRootCreatedCharactersProperty = null;
-        private static bool modeESpawnerRootCreatedCharactersAccessorCached = false;
-        private static bool modeESpawnerRootCreatedCharactersAccessorMissingLogged = false;
-
         /// <summary>Mode E 中是否已生成龙裔遗族（全局限制最多1个）</summary>
         internal bool modeEDragonDescendantSpawned = false;
 

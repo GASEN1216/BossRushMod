@@ -67,7 +67,7 @@ def main() -> int:
 
     for snippet in [
         "ShouldSettleZombieModeFailureInsurance(reason)",
-        "owner.SettleZombieModeFailureInsuranceForRuntimeModule(runState.RunId)",
+        "SettleZombieModeFailureInsuranceShell(runState.RunId)",
         "reason != ZombieModeFailureReason.SuccessfulExtraction",
         "ZombieModeFailureReason.PlayerDeath",
         "ZombieModeFailureReason.ManualExit",
@@ -82,7 +82,7 @@ def main() -> int:
     if not cleanup_method:
         return fail("ZombieModeInsuranceExitGuard: cannot extract CleanupZombieModeRunOnlyState")
 
-    if cleanup_method.find("owner.SettleZombieModeFailureInsuranceForRuntimeModule(runState.RunId)") > cleanup_method.find("InvalidateZombieModeRun()"):
+    if cleanup_method.find("SettleZombieModeFailureInsuranceShell(runState.RunId)") > cleanup_method.find("InvalidateZombieModeRun()"):
         return fail("ZombieModeInsuranceExitGuard: insurance settlement must run before run invalidation")
 
     if "SettleZombieModeFailureInsuranceShell(runId);" not in bridges:
@@ -107,9 +107,9 @@ def main() -> int:
             return result
 
     for snippet in [
-        "zombieModeRunState.PurificationPoints = 0;",
-        "zombieModeRunState.InsuranceState.Reset();",
-        "runId <= 0 || zombieModeRunState.RunId != runId",
+        "runState.PurificationPoints = 0;",
+        "runState.InsuranceState.Reset();",
+        "runId <= 0 || runState.RunId != runId",
         "CollectZombieModeTopLevelPlayerItems()",
         "PlayerStorage.Push(item, true)",
     ]:
@@ -117,7 +117,7 @@ def main() -> int:
         if result:
             return result
 
-    insurance_method_start = rewards.find("private void SettleZombieModeFailureInsuranceShell")
+    insurance_method_start = rewards.find("internal void SettleZombieModeFailureInsuranceShell")
     insurance_method = rewards[insurance_method_start:rewards.find("private List<Item> CollectZombieModeInsuranceCandidates", insurance_method_start)]
     if "IsZombieModeRunValid(runId)" in insurance_method:
         return fail("ZombieModeInsuranceExitGuard: insurance settlement must not depend on active scene validity")

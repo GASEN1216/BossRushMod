@@ -136,9 +136,9 @@ def main() -> int:
             return fail("ZombieModeReviewFixGuard: missing throttled NPC state/tuning -> " + token)
 
     for token in [
-        "Time.unscaledTime - zombieModeRunState.LastTemporaryNpcProtectionTickTime",
+        "Time.unscaledTime - runState.LastTemporaryNpcProtectionTickTime",
         "ZombieModeTuning.TemporaryNpcProtectionTickIntervalSeconds",
-        "zombieModeRunState.LastTemporaryNpcProtectionTickTime = Time.unscaledTime;",
+        "runState.LastTemporaryNpcProtectionTickTime = Time.unscaledTime;",
     ]:
         if token not in rewards:
             return fail("ZombieModeReviewFixGuard: temporary NPC protection is not throttled -> " + token)

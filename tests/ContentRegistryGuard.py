@@ -181,10 +181,18 @@ def main() -> int:
         if occurrence_error:
             return fail(occurrence_error)
 
+    initialization_code = clean_source(Path("Integration/BossRushIntegrationRuntimeModule_Initialization.cs").read_text(encoding="utf-8-sig"))
+    initializer_start = initialization_code.index("internal void InitializeDynamicItems_Integration()")
+    initializer_open = initialization_code.index("{", initializer_start)
+    initializer_end, initializer_depth = initializer_open + 1, 1
+    while initializer_depth:
+        initializer_depth += (initialization_code[initializer_end] == "{") - (initialization_code[initializer_end] == "}")
+        initializer_end += 1
+    initialization_body = initialization_code[initializer_open + 1:initializer_end - 1]
     integration_item_order_error = require_ordered_tokens(
-        integration_text,
+        initialization_body,
         [
-            "_owner.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();",
+            "EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();",
             "int itemCount = ItemFactory.LoadedItemCount;",
             "PeaceCharmRuntime.InitializeRuntime();",
         ],
@@ -193,10 +201,10 @@ def main() -> int:
         return fail(integration_item_order_error)
 
     for token in [
-        "_owner.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();",
+        "EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();",
         "int itemCount = ItemFactory.LoadedItemCount;",
     ]:
-        occurrence_error = require_exactly_once(integration_text, token, "ContentRegistryGuard: integration item bootstrap")
+        occurrence_error = require_exactly_once(initialization_body, token, "ContentRegistryGuard: integration item bootstrap")
         if occurrence_error:
             return fail(occurrence_error)
 

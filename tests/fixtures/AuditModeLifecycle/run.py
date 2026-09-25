@@ -161,7 +161,7 @@ public partial class ModBehaviour {
 execute('transfer',[HERE/'Transfer.cs',ROOT/'Utilities/RunScopedRegistry.cs'],transfer)
 source=ROOT/'ZombieMode/ZombieModeRewardTriggerEffects.cs'
 execute('projectile',[HERE/'Projectile.cs'],
-    'using UnityEngine; using ItemStatsSystem; using Duckov.Utilities; namespace BossRush { public partial class ModBehaviour {'+member(source,'private bool TrySpawnZombieModePlayerSupportProjectile(')+'}}')
+    'using UnityEngine; using ItemStatsSystem; using Duckov.Utilities; namespace BossRush { internal sealed partial class ZombieModeRuntimeModule {'+member(source,'private bool TrySpawnZombieModePlayerSupportProjectile(')+'}}')
 prod=ROOT/'ModeH/ModeHProductionCertification.cs'
 writer='using System.Collections.Generic; namespace BossRush { internal sealed class ProductionStatusWriter {'+member(prod,'private void AppendEntryStatus(')+' internal void Capture(List<ModeHCommandCertificationStatusDto>s,string k,string e){AppendEntryStatus(s,k,e);} }}'
 execute('report',[HERE/'Report.cs']+[ROOT/p for p in ['Common/Data/BossRushJsonValue.cs','Common/Data/JsonDataRegistry.cs','Utilities/SimpleJsonHelper.cs','ModeH/ModeHConfig.cs','ModeH/ModeHStateModel.cs','ModeH/ModeHStateDtos.cs','ModeH/ModeHContentModels.cs','ModeH/ModeHCanonicalDigest.cs','ModeH/ModeHContentCatalog.cs','ModeH/ModeHContentCatalogParsers.cs','ModeH/ModeHCommandCompatibilityRegistry.cs']],writer)

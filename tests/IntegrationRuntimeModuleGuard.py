@@ -221,9 +221,9 @@ def main():
 
     dynamic_init = method_body(module_initialization, "internal void InitializeDynamicItems_Integration()")
     if require_order(dynamic_init, [
-        "if (_owner.IntegrationDynamicItemsInitialized)", "_owner.IntegrationDynamicItemsInitialized = true;",
-        "_owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry()",
-        "_owner.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();",
+        "if (DynamicItemsInitialized)", "DynamicItemsInitialized = true;",
+        "EnsureBossRushTicketItemRegisteredForDynamicRegistry()",
+        "EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();",
         "int itemCount = ItemFactory.LoadedItemCount;", "AwenLootSweepTokenConfig.EnsureRuntimeRegistration();",
         "ZombieTideInvitationConfig.EnsureRuntimeFallbackRegistrationShell();",
         "ZombieTideBeaconConfig.EnsureRuntimeFallbackRegistrationShell();",
@@ -232,9 +232,9 @@ def main():
     ], "InitializeDynamicItems_Integration"):
         return fail("dynamic item initialization must preserve its one-shot latch and original registration order")
     if "dynamicItemsInitialized" in module or "private bool _integrationDynamicItemsInitialized" in module:
-        return fail("dynamic initialization latch must remain the existing host-owned static state")
-    if "get { return dynamicItemsInitialized; }" not in host or "set { dynamicItemsInitialized = value; }" not in host:
-        return fail("dynamic initialization must bridge the existing host one-shot latch without duplicating it")
+        return fail("dynamic initialization latch must remain a single module-owned static state")
+    if "get { return IntegrationRuntimeModule.DynamicItemsInitialized; }" not in host or "set { IntegrationRuntimeModule.DynamicItemsInitialized = value; }" not in host:
+        return fail("dynamic initialization host entry must bridge the module one-shot latch without duplicating it")
     if "bossRushIntegrationRuntime.InitializeDynamicItems_Integration();" not in method_body(host, "private void InitializeDynamicItems_Integration()"):
         return fail("legacy dynamic item initializer must remain a thin module bridge")
 

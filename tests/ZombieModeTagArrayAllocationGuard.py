@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeRewards.cs")
 HOT_FILES = [
     Path("ZombieMode/ZombieModeEntry_StarterLoadout.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),

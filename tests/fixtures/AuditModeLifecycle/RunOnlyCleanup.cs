@@ -28,6 +28,14 @@ namespace BossRush
         internal readonly List<ZombieModeRunOnlyRecord> RunOnlyObjects = new List<ZombieModeRunOnlyRecord>();
     }
 
+    internal sealed partial class ZombieModeRuntimeModule
+    {
+        private void SettleZombieModeFailureInsuranceShell(int runId) { owner.SettleZombieModeFailureInsuranceForRuntimeModule(runId); }
+        private void RemoveZombieModeAttributeModifiers() { owner.RemoveZombieModeAttributeModifiersForRuntimeModule(); }
+        private void RemoveZombieModeOptionRuntimeEffects() { owner.RemoveZombieModeOptionRuntimeEffectsForRuntimeModule(); }
+        private void ClearZombieModeRewardShell() { owner.ClearZombieModeRewardShellForRuntimeModule(); }
+    }
+
     public partial class ModBehaviour
     {
         private ZombieModeRuntimeModule zombieModeRuntimeModule;

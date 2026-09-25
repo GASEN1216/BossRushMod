@@ -38,7 +38,7 @@ def main() -> int:
     text = SOURCE.read_text(encoding="utf-8-sig")
     hurt_body = extract_method_body(
         text,
-        "private void HandleZombieModeOptionHealthHurt(",
+        "internal void HandleZombieModeOptionHealthHurt(",
     )
     if hurt_body is None:
         return fail("missing HandleZombieModeOptionHealthHurt body")

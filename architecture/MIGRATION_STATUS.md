@@ -14,7 +14,7 @@
 | P5 目录归位 | 未完成 | 注入占位已随簇 1 删除；天空岛迁移待做 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-续接基点：`c55ecf02`（提取共享商人实体并归位装备注册）。2026-09-25 继续完成共享生成后处理、丧尸安全区与三个装备初始化归位；下一动作是扫箱运行时、共享战斗生成与登记、丧尸奖励和集成余项。最新提交号以 `git log -1` 为准。真实游戏目录尚未部署。
+续接基点：`aa1368df`（提取生成后处理并归位安全区与装备初始化）。2026-09-25 继续完成扫箱运行时、E/F 虚拟 spawner、丧尸奖励和集成叶子归位；下一动作是共享刷怪核心、丧尸生成与地图隔离、随机事件桥，再收口 E/F 共享阵营生成与根宿主。最新提交号以 `git log -1` 为准。真实游戏目录尚未部署。
 
 ## P0 基线（2026-09-24）
 
@@ -169,6 +169,16 @@
 - root 的 7 次反向探针、Zombie 的 15 个守卫 + 4 个执行探针、装备的 8 个守卫 + 4 个执行探针均在预期断言转红，并按 SHA-256 原字节恢复。证据在 `Build/migration/postprocess-negative.json`、`zombie-safezone-negative.json`、`zombie-safezone-parity.json`、`equipment-bootstrap-owners/negative-results.json`。架构守卫首次因旧注册写法报红，按新实例的绑定/注册顺序更新；正式编译首次揭示可选参数方法组不匹配，改为显式 lambda 保持原默认参数后通过。
 - Windows 正式/Dev 隔离构建均 `Build succeeded!`，两次 72 bundle 哈希清单通过。正式 SHA-256 `9120DEC485E857F8BA84FBE9BF9CB3FCCDCFCF50AC98673AF9D934323977AA34`；Dev SHA-256 `042EB6F3772C759C169EF51BFBAF80FA81249B3C824DC1EF39C852170BA97D0E`。两者分别与隔离部署副本一致，14 个 Dev 标识 absent/present 通过。当前 Build 为 Dev；真实游戏目录尚未部署。
 - L3 待 owner：分别在 E/F 生成过程中退出再进入，观察配装、激活与迟到敌人；丧尸准备阶段部署双安全区，玩家进出并射击，观察敌人驱逐与追击恢复；装备逆鳞、大镰和焚皇断界戟，离手、切图后重装备。生成卡死或重复提交、Boss 被当普通丧尸销毁、旧监听继续响应、能力重绑缺失或重复均不合格。本批仍是 P3/P4 中间检查点。
+
+## 2026-09-25 继续执行：扫箱、虚拟 spawner、丧尸奖励与集成叶子（COMPAT）
+
+- `LootAndRewards/AwenLootSweepRuntime` 接管扫箱查询、200ms 缓存、计数、失败提示节流与 runner；根注册处绑定原会话、Courier、投递与通知操作。`Utilities/ModeEFVirtualSpawnerRegistry` 接管虚拟 root、已登记敌人集和原静态反射缓存；E/F 绑定同一实例，F 直接登记/注销，E 的原位置清理。22 个扫箱方法与 6 个 spawner 方法体归一化等价；20 次有效 Boss 死亡发令牌、退款参数、反射目标与重复登记顺序保持。
+- 丧尸奖励、掉落与性能辅助、候选/tag 缓存、临时 NPC 和发放辅助的 203 个方法归同一 `ZombieModeRuntimeModule`。原消费位置直调模块，临时 NPC 通过根装配的 prefab resolver 与 Courier 交互动作接入；未增加默认非空委托。4 个消费方模块文件在去除宿主限定后等价，11 个已迁文件中的独立组件尾部逐字一致。
+- Nurse 状态归唯一注册的 `NurseNpcRuntimeModule`，后山种子归已有 BackMountain 模块，船票与动态初始化状态归 Integration 模块；Mutator 流程和 Mode G 托管角色的共用算法分别归 `MutatorModeFlow`、`ModeGManagedCharacterService`。29 个方法体及共享商店源文件归一化等价。静态闩、标签/注册/卸载、随机调用数、异步失效清理顺序保持；专题与模块索引同步。
+- 宿主 partial 降至 129 文件 / 33,649 行，预算同步下调；编译清单 1,110 源、47 模块索引通过。全量执行回归 79 PASS / 0 FAIL / 0 SKIP；新增四个夹具分别覆盖扫箱、虚拟 spawner、丧尸奖励与集成叶子，既有运行时归属、爆炸、弹道和种子奖励夹具同步连接生产逻辑。全量守卫 682 PASS / 0 FAIL / 0 known-red；首轮 34 个红项均为迁移后旧定位与旧预算，按实际 owner/调用点适配，BackMountain 扫描范围改为官方编译清单定义的生产集合。
+- 反向验证：扫箱 7 次、虚拟 spawner 4 次、预算 2 次、Integration 14 个守卫 + 5 个行为探针、Zombie 31 个守卫的 34 个探针 + 6 个行为探针均在预期判据转红并按 SHA-256 原字节恢复。证据在 `Build/migration/loot-sweep-negative.json`、`virtual-spawner-negative.json`、`rewards-loot-budget-negative.json`、`integration-leaves/negative-results.json`、`zombie-reward-guards-negative.json`、`zombie-reward-guards-remaining-negative.json`、`zombie-reward-runtime-negative.json`。
+- Windows 最终正式/Dev 隔离构建均 `Build succeeded!`，两次 72 bundle 清单通过；正式 SHA-256 `BFE1B3CF57C1017BF79D3B4583CA49B5314234BEA83607CBF18D2569A8BB0101`，Dev SHA-256 `DD8277292017D8AE0ACE8CAC19BFE6736F4B5795D3B062053875219F89243765`。两者分别与隔离部署副本一致，14 个 Dev 标识 absent/present 通过。当前 Build 为正式配置；真实游戏目录尚未部署。前三次正式编译中前两次揭示遗留私有桥缺失，按原语义补回 Mode D 候选过滤、Nurse 调试只读属性与 Mode G 激活/玩家增益兼容入口，第三次及最终两种构建均通过。
+- L3 待 owner：在 E/F 击杀满扫箱令牌条件后使用阿稳扫箱，检查有效尸体、投递与失败退款；退出再入观察地图敌人登记。丧尸局购买奖励、使用医疗并切图，观察临时 NPC 回收、扣点/退款与散射效果。基地接近羽织并交互，击杀相关 Boss 检查种子掉落；中英切换后检查船票与 Mutator 显示。重复登记/计数、旧局继续发放、重复或漏退、NPC/事件残留、异步角色未清理均不合格。本批仍是 P3/P4 中间检查点。
 
 ## 未完成项
 

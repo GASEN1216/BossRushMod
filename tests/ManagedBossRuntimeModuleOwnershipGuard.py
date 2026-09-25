@@ -147,14 +147,14 @@ def main():
         errors.append("[DeathCallback] PhantomWitch 未保留实例捕获死亡回调")
 
     # 共享托管生成器必须只有真实 host 实现，runtime bridge 只能转交，不能自递归。
-    dd_adapter = read_source("Integration/DragonDescendant/DragonDescendantBoss_ModeGAdapter.cs", errors)
+    dd_adapter = read_source("Integration/ModeGManagedCharacterService.cs", errors)
     if dd_adapter:
         helper_signatures = (
             "internal static bool IsManagedOwnerValid(ManagedBossSpawnContext ctx)",
-            "internal async UniTask<CharacterMainControl> CreateModeGManagedCharacterAsync(",
-            "internal void BeginActivateModeGManagedCharacter(CharacterMainControl character)",
-            "internal void CompleteActivateModeGManagedCharacter(CharacterMainControl character)",
-            "internal void CleanupModeGManagedCharacter(CharacterMainControl character,",
+            "internal static async UniTask<CharacterMainControl> CreateModeGManagedCharacterAsync(",
+            "internal static void BeginActivateModeGManagedCharacter(CharacterMainControl character)",
+            "internal static void CompleteActivateModeGManagedCharacter(ModBehaviour owner, CharacterMainControl character)",
+            "internal static void CleanupModeGManagedCharacter(ModBehaviour owner, CharacterMainControl character,",
         )
         for signature in helper_signatures:
             if signature not in dd_adapter:

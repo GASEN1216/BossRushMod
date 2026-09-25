@@ -344,7 +344,7 @@ namespace BossRush
 
         internal bool TryInjectBossRushTicketIntoShop(StockShop shop)
         {
-            if (_owner.IntegrationBossRushTicketTypeId <= 0 || !IsBaseHubNormalMerchantShop(shop))
+            if (BossRushTicketTypeId <= 0 || !IsBaseHubNormalMerchantShop(shop))
             {
                 return false;
             }
@@ -352,7 +352,7 @@ namespace BossRush
             bool alreadyExists = false;
             foreach (StockShop.Entry entry in shop.entries)
             {
-                if (entry != null && entry.ItemTypeID == _owner.IntegrationBossRushTicketTypeId)
+                if (entry != null && entry.ItemTypeID == BossRushTicketTypeId)
                 {
                     alreadyExists = true;
                     injectedTicketEntry = entry;
@@ -366,7 +366,7 @@ namespace BossRush
             }
 
             StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
-            itemEntry.typeID = _owner.IntegrationBossRushTicketTypeId;
+            itemEntry.typeID = BossRushTicketTypeId;
             itemEntry.maxStock = TICKET_DEFAULT_MAX_STOCK;
             itemEntry.forceUnlock = true;
             itemEntry.priceFactor = 1f;
@@ -506,7 +506,7 @@ namespace BossRush
 
         internal void InjectBossRushTicketIntoShops_Integration(string targetSceneName = null)
         {
-            if (_owner.IntegrationBossRushTicketTypeId <= 0)
+            if (BossRushTicketTypeId <= 0)
             {
                 ModBehaviour.DevLog("[BossRush] BossRush 船票 TypeID 未初始化，跳过商店注入");
                 return;
@@ -641,7 +641,7 @@ namespace BossRush
                     ModBehaviour.DevLog("[BossRush] ShopScan: scene=" + sceneName + ", isNpcShop=" + isNpcShop + ", merchantID=" + merchantId + ", goName=" + goName + ", displayName=" + displayName + ", isTargetShop=" + isTargetShop);
                 }
 
-                ModBehaviour.DevLog("[BossRush] ShopScan summary: total=" + totalCount + ", npcShops=" + npcShopCount + ", nonNpcShops=" + nonNpcShopCount + ", targetShops=" + targetShopCount + ", added=" + addedCount + ", TypeID=" + _owner.IntegrationBossRushTicketTypeId);
+                ModBehaviour.DevLog("[BossRush] ShopScan summary: total=" + totalCount + ", npcShops=" + npcShopCount + ", nonNpcShops=" + nonNpcShopCount + ", targetShops=" + targetShopCount + ", added=" + addedCount + ", TypeID=" + BossRushTicketTypeId);
             }
             catch (Exception e)
             {

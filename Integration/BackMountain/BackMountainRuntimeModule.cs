@@ -40,7 +40,7 @@ using Saves;
 namespace BossRush
 {
     /// <summary>竞技场后山运行时模块。宿主六回调的唯一落点。</summary>
-    internal sealed class BackMountainRuntimeModule : BossRushRuntimeModuleBase
+    internal sealed partial class BackMountainRuntimeModule : BossRushRuntimeModuleBase
     {
         #region 状态
 

@@ -9,9 +9,9 @@ using UnityEngine.Events;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
-        private const int ZombieModeLifestealChanceCapPercent = 50;
+        internal const int ZombieModeLifestealChanceCapPercent = 50;
 
         private sealed class ZombieModeProjectileSpreadSnapshot
         {

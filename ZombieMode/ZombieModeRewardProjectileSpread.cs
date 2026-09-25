@@ -13,7 +13,7 @@ using UnityEngine.Events;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
         private void RebuildZombieModeProjectileSpreadState()
         {
@@ -56,13 +56,13 @@ namespace BossRush
             float currentShotAngle = shotAngleStat.Value;
             int shotCount = Mathf.Max(1, Mathf.RoundToInt(currentShotCount));
             float shotAngle = Mathf.Max(0f, currentShotAngle);
-            if (zombieModeRunState.OptionRuntime.ProjectileTridentStacks > 0)
+            if (runState.OptionRuntime.ProjectileTridentStacks > 0)
             {
                 shotCount = Mathf.Max(shotCount, 3);
                 shotAngle = Mathf.Max(shotAngle, 8f);
             }
 
-            if (zombieModeRunState.OptionRuntime.ProjectileShotgunSprayStacks > 0)
+            if (runState.OptionRuntime.ProjectileShotgunSprayStacks > 0)
             {
                 shotCount = Mathf.Max(shotCount, 5);
                 shotAngle = Mathf.Max(shotAngle, 18f);
@@ -88,7 +88,7 @@ namespace BossRush
                 return false;
             }
 
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             float now = GetZombieModeRuntimeNow();
             if (now - options.LastProjectileTrailDamageTime < 0.06f)
             {
@@ -163,7 +163,7 @@ namespace BossRush
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[ZombieMode] spread hold listener swap failed: " + e.Message);
+                    ModBehaviour.DevLog("[ZombieMode] spread hold listener swap failed: " + e.Message);
                 }
             }
 
@@ -173,13 +173,13 @@ namespace BossRush
 
         private void OnZombieModeSpreadHoldAgentChanged(DuckovItemAgent newAgent)
         {
-            if (!IsZombieModeActive)
+            if (!ZombieModePhaseGuards.IsRunActive(runState.LifecyclePhase))
             {
                 return;
             }
 
-            if (zombieModeRunState.OptionRuntime.ProjectileTridentStacks <= 0 &&
-                zombieModeRunState.OptionRuntime.ProjectileShotgunSprayStacks <= 0)
+            if (runState.OptionRuntime.ProjectileTridentStacks <= 0 &&
+                runState.OptionRuntime.ProjectileShotgunSprayStacks <= 0)
             {
                 return;
             }
@@ -214,7 +214,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] spread stat apply failed: " + statName + ", " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] spread stat apply failed: " + statName + ", " + e.Message);
             }
         }
 
@@ -245,13 +245,13 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] spread percent stat apply failed: " + statName + ", " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] spread percent stat apply failed: " + statName + ", " + e.Message);
             }
         }
 
         private void StartZombieModeBattlefieldAreaRuntimeIfNeeded(int runId)
         {
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             if (!IsZombieModeRunValid(runId) ||
                 (options.BattlefieldPurgeAuraStacks <= 0 && options.BattlefieldCurseTrapStacks <= 0) ||
                 options.BattlefieldAreaRuntimeStarted)
@@ -260,7 +260,7 @@ namespace BossRush
             }
 
             options.BattlefieldAreaRuntimeStarted = true;
-            StartZombieModeCoroutine(ZombieModeBattlefieldAreaCoroutine(runId), runId);
+            owner.StartZombieModeCoroutineForRuntimeModule(ZombieModeBattlefieldAreaCoroutine(runId), runId);
         }
 
         private IEnumerator ZombieModeBattlefieldAreaCoroutine(int runId)
@@ -268,8 +268,8 @@ namespace BossRush
             float nextAuraTime = GetZombieModeRuntimeNow() + 2.5f;
             float nextTrapTime = GetZombieModeRuntimeNow() + 10f;
             while (IsZombieModeRunValid(runId) &&
-                   (zombieModeRunState.OptionRuntime.BattlefieldPurgeAuraStacks > 0 ||
-                    zombieModeRunState.OptionRuntime.BattlefieldCurseTrapStacks > 0))
+                   (runState.OptionRuntime.BattlefieldPurgeAuraStacks > 0 ||
+                    runState.OptionRuntime.BattlefieldCurseTrapStacks > 0))
             {
                 if (IsZombieModeRuntimePaused())
                 {
@@ -277,7 +277,7 @@ namespace BossRush
                     continue;
                 }
 
-                ZombieModeCombatPhase phase = zombieModeRunState.CombatPhase;
+                ZombieModeCombatPhase phase = runState.CombatPhase;
                 bool allowedPhase = phase == ZombieModeCombatPhase.InitialPreparation ||
                                     phase == ZombieModeCombatPhase.Preparation ||
                                     phase == ZombieModeCombatPhase.ExtractionOpportunity ||
@@ -296,7 +296,7 @@ namespace BossRush
                 }
 
                 float now = GetZombieModeRuntimeNow();
-                int auraStacks = Mathf.Min(2, zombieModeRunState.OptionRuntime.BattlefieldPurgeAuraStacks);
+                int auraStacks = Mathf.Min(2, runState.OptionRuntime.BattlefieldPurgeAuraStacks);
                 if (auraStacks > 0 && now >= nextAuraTime)
                 {
                     float auraRadius = auraStacks >= 2 ? 4.5f : 3.2f;
@@ -305,7 +305,7 @@ namespace BossRush
                     nextAuraTime = now + (auraStacks >= 2 ? 2f : 3f);
                 }
 
-                int trapStacks = Mathf.Min(2, zombieModeRunState.OptionRuntime.BattlefieldCurseTrapStacks);
+                int trapStacks = Mathf.Min(2, runState.OptionRuntime.BattlefieldCurseTrapStacks);
                 if (trapStacks > 0 && now >= nextTrapTime)
                 {
                     Vector3 origin = player.transform.position + GetZombieModePlayerModelForward(player) *
@@ -326,7 +326,7 @@ namespace BossRush
                 yield return null;
             }
 
-            zombieModeRunState.OptionRuntime.BattlefieldAreaRuntimeStarted = false;
+            runState.OptionRuntime.BattlefieldAreaRuntimeStarted = false;
         }
 
         private static Vector3 GetZombieModePlayerModelForward(CharacterMainControl player)
@@ -356,7 +356,7 @@ namespace BossRush
 
         private void StartZombieModeBattlefieldGravityRuntimeIfNeeded(int runId)
         {
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             if (!IsZombieModeRunValid(runId) ||
                 (options.BattlefieldBlackHoleStacks <= 0 && options.BattlefieldGravityDragStacks <= 0) ||
                 options.BattlefieldGravityRuntimeStarted)
@@ -365,15 +365,15 @@ namespace BossRush
             }
 
             options.BattlefieldGravityRuntimeStarted = true;
-            StartZombieModeCoroutine(ZombieModeBattlefieldGravityCoroutine(runId), runId);
+            owner.StartZombieModeCoroutineForRuntimeModule(ZombieModeBattlefieldGravityCoroutine(runId), runId);
         }
 
         private IEnumerator ZombieModeBattlefieldGravityCoroutine(int runId)
         {
             float nextWellTime = GetZombieModeRuntimeNow() + 4f;
             while (IsZombieModeRunValid(runId) &&
-                   (zombieModeRunState.OptionRuntime.BattlefieldBlackHoleStacks > 0 ||
-                    zombieModeRunState.OptionRuntime.BattlefieldGravityDragStacks > 0))
+                   (runState.OptionRuntime.BattlefieldBlackHoleStacks > 0 ||
+                    runState.OptionRuntime.BattlefieldGravityDragStacks > 0))
             {
                 if (IsZombieModeRuntimePaused())
                 {
@@ -381,7 +381,7 @@ namespace BossRush
                     continue;
                 }
 
-                ZombieModeCombatPhase phase = zombieModeRunState.CombatPhase;
+                ZombieModeCombatPhase phase = runState.CombatPhase;
                 bool allowedPhase = phase == ZombieModeCombatPhase.InitialPreparation ||
                                     phase == ZombieModeCombatPhase.Preparation ||
                                     phase == ZombieModeCombatPhase.ExtractionOpportunity ||
@@ -402,7 +402,7 @@ namespace BossRush
                 float now = GetZombieModeRuntimeNow();
                 if (now >= nextWellTime)
                 {
-                    ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+                    ZombieModeOptionRuntimeState options = runState.OptionRuntime;
                     float radius = options.BattlefieldBlackHoleStacks > 0 ? 5.5f : 4.5f;
                     float duration = options.BattlefieldBlackHoleStacks > 0 ? 4.5f : 3.2f;
                     float pullStrength = options.BattlefieldGravityDragStacks > 0 ? 2.4f : 1.4f;
@@ -424,13 +424,10 @@ namespace BossRush
                 yield return null;
             }
 
-            zombieModeRunState.OptionRuntime.BattlefieldGravityRuntimeStarted = false;
+            runState.OptionRuntime.BattlefieldGravityRuntimeStarted = false;
         }
 
-        internal void RefreshZombieModeGravityWellTargets(int runId, Vector3 origin, float radius, float pullStrength)
-        {
-            zombieModeRuntimeModule.RefreshZombieModeGravityWellTargets(runId, origin, radius, pullStrength);
-        }
+
 
         private ZombieModeProjectileSpreadSnapshot CaptureZombieModeProjectileSpreadSnapshot(Item item)
         {
@@ -469,7 +466,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] spread snapshot failed: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] spread snapshot failed: " + e.Message);
                 return null;
             }
         }

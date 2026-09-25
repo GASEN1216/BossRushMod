@@ -106,7 +106,7 @@ namespace BossRush
             modeEDragonKingSpawned = false;
             modeEWolfBossCount = 0;
             modeEWolfBossAssigned = 0;
-            modeESpawnerRootRegisteredEnemies.Clear();
+            virtualSpawnerRegistry.ClearRegisteredEnemies();
             modeEIntegrityTimer = 0f;
 
             spawnPreparation.Reset(clearSpawnAllocation, clearSpawnerCache);

@@ -48,21 +48,21 @@ def main() -> int:
     for token in [
         "private UnityEngine.Events.UnityAction<Health> zombieModeOptionPlayerHealthChangeHandler;",
         "private bool zombieModeOptionRuntimeCleanupRegistered;",
-        "private void RemoveZombieModeOptionRuntimeEffects()",
+        "internal void RemoveZombieModeOptionRuntimeEffects()",
         "private void UnregisterZombieModeOptionPlayerHealthListener()",
         "RuntimeStatModifierTracker.RemoveAll",
         "GuardianShieldRecords",
         "OnHealthChange.RemoveListener",
         "UnregisterZombieModeOptionPlayerHealthListener",
-        "zombieModeRunState.OptionRuntime.Reset();",
+        "runState.OptionRuntime.Reset();",
     ]:
         if token not in effects:
             return fail("ZombieModeRewardCleanupGuard: effects missing cleanup token -> " + token)
 
-    if "RegisterZombieModeRunOnlyObject(zombieModeRunState.RunId, ZombieModeRunOnlyObjectKind.EventListener, null, zombieModeOptionPlayerHealth, RemoveZombieModeOptionRuntimeEffects)" in effects:
+    if "RegisterZombieModeRunOnlyObject(runState.RunId, ZombieModeRunOnlyObjectKind.EventListener, null, zombieModeOptionPlayerHealth, RemoveZombieModeOptionRuntimeEffects)" in effects:
         return fail("ZombieModeRewardCleanupGuard: option listener cleanup must not register full runtime cleanup")
 
-    remove_index = runtime_module.find("owner.RemoveZombieModeOptionRuntimeEffectsForRuntimeModule();")
+    remove_index = runtime_module.find("RemoveZombieModeOptionRuntimeEffects();")
     invalidate_index = runtime_module.find("InvalidateZombieModeRun();")
     if remove_index < 0:
         return fail("ZombieModeRewardCleanupGuard: cleanup does not remove option runtime effects")
@@ -72,8 +72,8 @@ def main() -> int:
         return fail("ZombieModeRewardCleanupGuard: host compatibility bridge must preserve option effects cleanup")
 
     for token in [
-        "owner.HandleZombieModeOptionHealthHurtForWaveRuntimeModule(runId, health, damageInfo, victim, marker);",
-        "owner.HandleZombieModeOptionHealthDeadForWaveRuntimeModule(runId, health, damageInfo, character, marker);",
+        "HandleZombieModeOptionHealthHurt(runId, health, damageInfo, victim, marker);",
+        "HandleZombieModeOptionHealthDead(runId, health, damageInfo, character, marker);",
     ]:
         if token not in waves:
             return fail("ZombieModeRewardCleanupGuard: wave controller missing option hook -> " + token)

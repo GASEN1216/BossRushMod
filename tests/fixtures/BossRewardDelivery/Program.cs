@@ -10,6 +10,7 @@ internal static class Program
     private static void Reset()
     {
         UnityEngine.Random.value = 0f; Item.ThrowOnDrop = false;
+        UnityEngine.Random.ValueCalls = 0; UnityEngine.Random.RangeCalls = 0; UnityEngine.Random.SphereCalls = 0;
         BackMountainItems.Registered = true; BackMountainUnlocks.Unlocked = true;
         ItemAssetsCollection.Last = null; ItemAssetsCollection.Creates = 0;
         ItemAssetsCollection.ReturnNull = false;
@@ -33,6 +34,8 @@ internal static class Program
             Check(inv.Content.Count == 9 && inv.Content[8].TypeID == seeds[i], "full box lost seed: " + bosses[i]);
             Check(inv.Capacity == 9 && inv.Growths == 1 && inv.Content[0] == first, "extra reward replaced original loot");
             Check(!ItemAssetsCollection.Last.Destroyed, "delivered seed destroyed");
+            Check(UnityEngine.Random.ValueCalls == 1 && UnityEngine.Random.RangeCalls == 0 && UnityEngine.Random.SphereCalls == 0,
+                "box seed changed random consumption");
         }
         Reset(); var hole = Full(); hole.Content[3] = null;
         owner.Seed(hole, "king");
@@ -57,6 +60,7 @@ internal static class Program
             BackMountainItems.Registered = gate != 2; UnityEngine.Random.value = gate == 3 ? .26f : 0f;
             owner.Seed(Full(), gate == 4 ? "ordinary" : "king");
             Check(ItemAssetsCollection.Creates == 0, "seed bypassed existing gate: " + gate);
+            Check(UnityEngine.Random.ValueCalls == (gate == 0 || gate == 1 || gate == 4 ? 0 : 1), "seed gate changed random count: " + gate);
         }
         owner.Enabled = true;
         Reset(); ItemAssetsCollection.ReturnNull = true; owner.Seed(Full(), "king");
@@ -80,6 +84,8 @@ internal static class Program
         Check(ItemAssetsCollection.Last != null && ItemAssetsCollection.Last.TypeID == 500064 && ItemAssetsCollection.Last.Dropped
             && ItemAssetsCollection.Last.DropPosition.x == 3 && ItemAssetsCollection.Last.DropPosition.z == 4 && !ItemAssetsCollection.Last.Destroyed,
             "infinite hell seed must drop at the boss body");
+        Check(UnityEngine.Random.ValueCalls == 1 && UnityEngine.Random.RangeCalls == 1 && UnityEngine.Random.SphereCalls == 1,
+            "world seed changed random consumption");
         for (int gate = 0; gate < 5; gate++)
         {
             Reset(); owner.Enabled = gate != 0; BackMountainUnlocks.Unlocked = gate != 1;

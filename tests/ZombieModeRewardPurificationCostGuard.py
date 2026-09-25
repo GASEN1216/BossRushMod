@@ -41,7 +41,7 @@ def main() -> int:
 
     for token in [
         "private bool IsZombieModeRewardUnaffordable(ZombieModeRewardType rewardType)",
-        "owner.GetZombieModeOptionTradeoffPurificationCostForRewardRuntimeModule(rewardType)",
+        "GetZombieModeOptionTradeoffPurificationCost(rewardType)",
         "runState.PurificationPoints < purificationCost",
         "if (IsZombieModeRewardUnaffordable(rewardType))",
         "NotificationText.Push(L10n.T(\"BossRush_ZombieMode_Notify_RefreshNoPoints\"));",
@@ -62,7 +62,7 @@ def main() -> int:
         if token not in effects:
             return fail("option reward apply path must spend purification cost before applying effects -> " + token)
 
-    if "zombieModeRunState.PurificationPoints = Mathf.Max(0, zombieModeRunState.PurificationPoints - purificationCost);" in effects:
+    if "runState.PurificationPoints = Mathf.Max(0, runState.PurificationPoints - purificationCost);" in effects:
         return fail("purification-cost tradeoff must not silently clamp to zero")
 
     print("ZombieModeRewardPurificationCostGuard: PASS")

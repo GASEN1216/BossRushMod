@@ -29,7 +29,7 @@ def generate():
     bridge = (ROOT / "Integration/Wedding/WeddingModBehaviourBridge.cs").read_text(encoding="utf-8-sig")
     wedding_runtime = (ROOT / "Integration/Wedding/WeddingRuntimeModule.cs").read_text(encoding="utf-8-sig")
     module = (ROOT / "Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcModule.cs").read_text(encoding="utf-8-sig")
-    drop_method = member(drops, "private void CleanupZombieModeExpiredDropCandidates(bool forceWaveCleanup)")
+    drop_method = member(drops, "internal void CleanupZombieModeExpiredDropCandidates(bool forceWaveCleanup)")
     assert "private ModBehaviour _owner;" in wedding_runtime
     wedding_members = ["private ModBehaviour _owner;"]
     for name in ("permanentSpouseRestoreGeneration", "permanentSpouseRestoreRequest"):
@@ -44,7 +44,7 @@ def generate():
     body = "\n".join(wedding_members).replace("async UniTaskVoid", "async Task")
     force = member(module, "internal static async UniTask<CharacterMainControl> ForceSpawnAtAsync(")
     force = force.replace("async UniTask<CharacterMainControl>", "async Task<CharacterMainControl>")
-    generated = ("using System; using System.Threading.Tasks;\npublic partial class ModBehaviour {\n" + drop_method
+    generated = ("using System; using System.Threading.Tasks;\ninternal sealed partial class ZombieModeRuntimeModule {\n" + drop_method
                  + "\n}\ninternal sealed partial class WeddingRuntimeModule {\n" + body
                  + "\n}\npublic partial class PermanentDuckNpcModule {\n" + force + "\n}\n")
     target = ROOT / "Build/runtime-ownership-fixture"

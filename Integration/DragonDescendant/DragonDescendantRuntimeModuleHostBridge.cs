@@ -149,6 +149,19 @@ namespace BossRush
     /// <summary>保留龙裔遗族旧入口，并将实例逻辑转交唯一运行模块。</summary>
     public partial class ModBehaviour
     {
+        internal static bool IsManagedOwnerValid(ManagedBossSpawnContext context) { return ModeGManagedCharacterService.IsManagedOwnerValid(context); }
+        internal UniTask<CharacterMainControl> CreateModeGManagedCharacterAsync(
+            CharacterRandomPreset preset, Vector3 position, ManagedBossSpawnContext context,
+            string runtimeNameKey, string runtimePresetName)
+        { return ModeGManagedCharacterService.CreateModeGManagedCharacterAsync(preset, position, context, runtimeNameKey, runtimePresetName); }
+        internal void BeginActivateModeGManagedCharacter(CharacterMainControl character) { ModeGManagedCharacterService.BeginActivateModeGManagedCharacter(character); }
+        internal void CompleteActivateModeGManagedCharacter(CharacterMainControl character) { ModeGManagedCharacterService.CompleteActivateModeGManagedCharacter(this, character); }
+        internal void CleanupModeGManagedCharacter(CharacterMainControl character, string runtimeNameKey, string runtimePresetName, string logTag)
+        { ModeGManagedCharacterService.CleanupModeGManagedCharacter(this, character, runtimeNameKey, runtimePresetName, logTag); }
+        internal static void DestroyManagedCharacterQuiet(CharacterMainControl character) { ModeGManagedCharacterService.DestroyManagedCharacterQuiet(character); }
+        private static bool HasModeGPlayerAuthoredBuff(CharacterMainControl character) { return ModeGManagedCharacterService.HasModeGPlayerAuthoredBuff(character); }
+        private void ActivateModeGManagedCharacter(CharacterMainControl character) { ModeGManagedCharacterService.ActivateModeGManagedCharacter(this, character); }
+
         private DragonDescendantRuntimeModule dragonDescendantRuntimeModule;
 
         internal void AttachDragonDescendantRuntimeModule(DragonDescendantRuntimeModule module) { dragonDescendantRuntimeModule = module; }

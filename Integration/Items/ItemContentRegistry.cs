@@ -1,6 +1,6 @@
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class IntegrationRuntimeModule
     {
         private void RegisterItemContentConfigurators()
         {

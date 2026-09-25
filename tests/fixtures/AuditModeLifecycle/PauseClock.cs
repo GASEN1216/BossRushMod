@@ -22,6 +22,12 @@ namespace BossRush
 {
     public static class ZombieModeUIHelper { public static bool IsModalInputPaused; }
 
+    internal sealed partial class ZombieModeRuntimeModule
+    {
+        private void TickZombieModeDropsAndPerformance(float deltaTime) { owner.TickZombieModeDropsAndPerformanceForRuntimeModule(deltaTime); }
+        private void TickZombieModeTemporaryNpcProtection() { owner.TickZombieModeTemporaryNpcProtectionForRuntimeModule(); }
+    }
+
     public partial class ModBehaviour
     {
         internal readonly List<string> TickOrder = new List<string>();

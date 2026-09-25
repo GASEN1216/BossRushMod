@@ -7,6 +7,7 @@ BossRush mode rolls a mutator at run start.
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 DEFINITIONS = Path("Integration/Mutators/MutatorDefinitions.cs")
@@ -25,7 +26,8 @@ def fail(message: str) -> int:
 def main() -> int:
     definitions = DEFINITIONS.read_text(encoding="utf-8")
     manager = MANAGER.read_text(encoding="utf-8")
-    runtime_bridge = RUNTIME_BRIDGE.read_text(encoding="utf-8")
+    runtime_bridge = clean_source(RUNTIME_BRIDGE.read_text(encoding="utf-8"))
+    runtime_flow = clean_source(Path("Integration/Mutators/MutatorModeFlow.cs").read_text(encoding="utf-8"))
     waves = WAVES.read_text(encoding="utf-8")
     loot = LOOT.read_text(encoding="utf-8")
     config = Path("Config/Config.cs").read_text(encoding="utf-8")
@@ -76,7 +78,7 @@ def main() -> int:
         if snippet not in manager:
             return fail("manager missing mode-filter snippet -> " + snippet)
 
-    if "MutatorManager.RollAndApply(player, count, null, modeTag);" not in runtime_bridge:
+    if "MutatorManager.RollAndApply(player, count, null, modeTag);" not in runtime_flow:
         return fail("runtime bridge must pass modeTag into RollAndApply")
     if 'owner.TryRollMutatorsForArena(InfiniteHellMode ? "InfiniteHell" : "BossRush");' not in waves:
         return fail("standard BossRush mutators must pass an explicit modeTag")
@@ -96,7 +98,7 @@ def main() -> int:
         return fail("mutator count minimum must stay at 1")
     if "private const int MutatorCountMax = 10;" not in config:
         return fail("mutator count maximum must stay at 10")
-    if "ClampMutatorCount" not in config or "ClampMutatorCount(config.mutatorCount)" not in runtime_bridge:
+    if "ClampMutatorCount" not in config or "Mathf.Clamp(requestedCount, minimumCount, maximumCount)" not in runtime_flow or "MutatorCountMin, MutatorCountMax" not in runtime_bridge:
         return fail("mutator count clamps must use the shared 1-10 helper")
 
     # Mutators must NOT touch loot box quality / quantity / type anymore.

@@ -101,7 +101,7 @@
         "Utilities/**/*.cs"
       ],
       "entry": "Utilities/ModeRuntimeHooks.cs",
-      "state_owner": "OfficialQuestRuntimeModule / ModeEFSpawnPreparation / ModeEFMerchantCatalog / ModeEFMerchantRuntime / ModeEFSpawnPostprocessScheduler",
+      "state_owner": "OfficialQuestRuntimeModule / ModeEFSpawnPreparation / ModeEFMerchantCatalog / ModeEFMerchantRuntime / ModeEFSpawnPostprocessScheduler / ModeEFVirtualSpawnerRegistry",
       "public_api": [
         "ModeRuntimeHooks"
       ],
@@ -111,7 +111,9 @@
         "tests/ModeEFSpawnPostprocessSchedulerGuard.py",
         "tests/fixtures/ModeEFSpawnPreparation",
         "tests/fixtures/ModeEFSpawnPostprocessScheduler",
-        "tests/fixtures/ModeEFMerchantCatalog"
+        "tests/fixtures/ModeEFMerchantCatalog",
+        "tests/ModeEFVirtualSpawnerRegistryGuard.py",
+        "tests/fixtures/ModeEFVirtualSpawnerRegistry"
       ],
       "docs": [],
       "rules": [
@@ -178,13 +180,16 @@
         "LootAndRewards/**/*.cs"
       ],
       "entry": "LootAndRewards/InfiniteHellMilestoneDelivery.cs",
-      "state_owner": "WavesArenaRuntimeModule（竞技场掉落与奖励状态）；InfiniteHellMilestoneDelivery（里程碑交付）",
+      "state_owner": "WavesArenaRuntimeModule（竞技场掉落与奖励状态）；InfiniteHellMilestoneDelivery（里程碑交付）；AwenLootSweepRuntime（扫箱计数、缓存与 runner）",
       "public_api": [
         "LootAndRewards",
         "ModeEFLootboxTracker"
       ],
       "data": [],
-      "tests": [],
+      "tests": [
+        "tests/AwenLootSweepCachedCanUseGuard.py",
+        "tests/fixtures/AwenLootSweepRuntime"
+      ],
       "docs": [],
       "rules": [
         "AGENTS.md"
@@ -338,7 +343,8 @@
       "data": [],
       "tests": [
         "tests/ZombieMode*Guard.py",
-        "tests/fixtures/ZombieModeSafeZoneRuntime"
+        "tests/fixtures/ZombieModeSafeZoneRuntime",
+        "tests/fixtures/ZombieModeRewardRuntime"
       ],
       "docs": [],
       "rules": [
@@ -646,7 +652,7 @@
         "Integration/Dialogue/**/*.cs"
       ],
       "entry": "Integration/BossRushIntegration.cs",
-      "state_owner": "IntegrationRuntimeModule（商店库存、购买事件、恢复协程、龙息事件、地图克隆、撤离点、延迟初始化、扩展本地化与装备加载后配置）；ModBehaviour（共享出生点与跨模式场景协调等余项待迁）",
+      "state_owner": "IntegrationRuntimeModule（商店库存、购买事件、恢复协程、龙息事件、地图克隆、撤离点、延迟初始化、扩展本地化、装备加载后配置与动态船票注册）；ModBehaviour（共享出生点与跨模式场景协调等余项待迁）",
       "public_api": [
         "BossRushIntegration"
       ],
@@ -670,7 +676,7 @@
         "Integration/NPCs/**/*.cs"
       ],
       "entry": "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
-      "state_owner": "CommonNpcRuntimeModule, GoblinNpcRuntimeModule",
+      "state_owner": "CommonNpcRuntimeModule, CourierNpcRuntimeModule, GoblinNpcRuntimeModule, NurseNpcRuntimeModule",
       "public_api": [
         "CommonNpcRuntimeHooks",
         "GoblinNpcRuntimeModule"
@@ -1253,7 +1259,7 @@
         "Integration/Mutators/**/*.cs"
       ],
       "entry": "Integration/Mutators/MutatorDefinitions.cs",
-      "state_owner": "MutatorDefinitions",
+      "state_owner": "MutatorDefinitions / MutatorManager / MutatorModeFlow",
       "public_api": [
         "MutatorDefinitions"
       ],

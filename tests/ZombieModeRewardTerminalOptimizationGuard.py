@@ -60,7 +60,7 @@ def main() -> int:
         "case ZombieModeRewardType.TempMerchant:",
         "runState.GuaranteedMerchantPurchasePending",
         "case ZombieModeRewardType.TempNurse:",
-        'owner.FindZombieModeTemporaryNpcForRewardRuntimeModule("Nurse") != null',
+        'FindZombieModeTemporaryNpc("Nurse") != null',
         "case ZombieModeRewardType.HalfPricePaidRefresh:",
         "runState.HalfPriceNextPaidRefresh",
     ]:

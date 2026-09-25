@@ -138,8 +138,8 @@ def main() -> int:
     unregister_index = dead.find("UnregisterZombieModeEnemyInstanceId(character);")
     stars_index = dead.find("SpawnZombieModeDeathStars(runId, character.transform.position, pointValue, starCount);")
     drop_index = min(
-        (idx for idx in [dead.find("owner.TrySpawnZombieModeBossDropForWaveRuntimeModule(runId, marker, character.transform.position);"),
-                         dead.find("owner.TrySpawnZombieModeEnemyDropForWaveRuntimeModule(runId, marker, character.transform.position);")] if idx >= 0),
+        (idx for idx in [dead.find("TrySpawnZombieModeBossDrop(runId, marker, character.transform.position);"),
+                         dead.find("TrySpawnZombieModeEnemyDrop(runId, marker, character.transform.position);")] if idx >= 0),
         default=-1,
     )
     if (

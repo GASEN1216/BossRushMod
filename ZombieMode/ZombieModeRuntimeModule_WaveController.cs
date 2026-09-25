@@ -75,7 +75,7 @@ namespace BossRush
             {
                 TryHandleZombieModeSafeZonePlayerAttack(runId, damageInfo, victim);
                 ApplyZombieModeEnemyHurtAffixes(runId, health, damageInfo, marker);
-                owner.HandleZombieModeOptionHealthHurtForWaveRuntimeModule(runId, health, damageInfo, victim, marker);
+                HandleZombieModeOptionHealthHurt(runId, health, damageInfo, victim, marker);
                 if (marker.IsBoss)
                 {
                     HandleZombieModeBossHurt(runId, marker, victim);
@@ -230,7 +230,7 @@ namespace BossRush
             // 官方 Health.Hurt 的致死顺序是 OnDead -> SetActive(false) -> OnHurt。
             // 必须在 DeathSettled 和 hot-path marker 注销前处理，否则致死一击不会取消安全区。
             TryHandleZombieModeSafeZonePlayerAttack(runId, damageInfo, character);
-            owner.HandleZombieModeOptionHealthDeadForWaveRuntimeModule(runId, health, damageInfo, character, marker);
+            HandleZombieModeOptionHealthDead(runId, health, damageInfo, character, marker);
             marker.DeathSettled = true;
             // 一旦 DeathSettled 就从 hot path 集合移除——后续技能命中尸体不会重新进入 marker 路径。
             UnregisterZombieModeEnemyInstanceId(character);
@@ -249,7 +249,7 @@ namespace BossRush
             {
                 HandleZombieModeBossDefeated(runId, marker, character);
                 HandleZombieModeBossDeathEffects(runId, marker, character);
-                owner.TrySpawnZombieModeBossDropForWaveRuntimeModule(runId, marker, character.transform.position);
+                TrySpawnZombieModeBossDrop(runId, marker, character.transform.position);
                 if (runState.CombatPhase == ZombieModeCombatPhase.Combat &&
                     runState.CurrentWaveBossesRemaining <= 0)
                 {
@@ -268,7 +268,7 @@ namespace BossRush
                 HandleZombieModeSpecialDeathEffects(runId, marker, character);
             }
 
-            owner.TrySpawnZombieModeEnemyDropForWaveRuntimeModule(runId, marker, character.transform.position);
+            TrySpawnZombieModeEnemyDrop(runId, marker, character.transform.position);
             runState.CurrentWaveKills++;
             if (runState.CombatPhase == ZombieModeCombatPhase.Combat &&
                 runState.CurrentWaveKillTarget > 0 &&
@@ -355,7 +355,7 @@ namespace BossRush
 
             CleanupZombieModePreparationObjects(runId);
             // 普通散落物在玩家完成奖励选择和休整后、下一波正式开始时清理；Boss 奖励箱由清理函数保留。
-            owner.CleanupZombieModeExpiredDropCandidatesForWaveRuntimeModule(true);
+            CleanupZombieModeExpiredDropCandidates(true);
             runState.CurrentWave++;
             runState.CurrentWaveKills = 0;
             runState.CurrentWaveBossInstances.Clear();
@@ -368,7 +368,7 @@ namespace BossRush
             runState.ExtractionChanneling = false;
             runState.CombatPhase = ZombieModeCombatPhase.Combat;
             ReleaseZombieModeSafeZoneThreatSuppression();
-            owner.SpawnPendingZombieModeEliteSquadForWaveRuntimeModule(runId);
+            SpawnPendingZombieModeEliteSquad(runId);
 
             if (IsZombieModeBossWave(runState.CurrentWave))
             {
@@ -822,15 +822,15 @@ namespace BossRush
 
             runState.CombatPhase = ZombieModeCombatPhase.Settling;
             CleanupZombieModeEnemiesNearPlayerSafeZone(runId, "CompleteWave");
-            owner.RecycleZombieModeTemporaryNpcsForWaveRuntimeModule(runId);
-            owner.RecycleZombieModeTemporaryRealNpcsForWaveRuntimeModule(runId);
+            RecycleZombieModeTemporaryNpcs(runId);
+            RecycleZombieModeTemporaryRealNpcs(runId);
             bool bossNode = IsZombieModeBossWave(runState.CurrentWave);
             if (bossNode)
             {
                 runState.PollutionFromNatural++;
             }
 
-            if (!owner.TryGiveZombieModeWaveClearHealingItemForWaveRuntimeModule())
+            if (!TryGiveZombieModeWaveClearHealingItem())
             {
                 ModBehaviour.DevLog("[ZombieMode] 波次结束治疗补给发放失败");
             }

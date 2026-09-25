@@ -10,6 +10,8 @@ TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 ENTRY_PARTS = [
     ENTRY,
     Path("ZombieMode/ZombieModeEntry_StarterLoadout.cs"),
+    Path("ZombieMode/ZombieModeRewards.cs"),
+    Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
 ]
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
@@ -71,7 +73,7 @@ def main() -> int:
 
     for snippet in [
         "TryGiveZombieModeStarterGuaranteedHealingItems()",
-        "TryGiveRandomItemByTagsTimes(ZombieModeRewardTagsMedicMedicalHealing",
+        "TryGiveRandomItemByTagsTimes(ZombieModeRuntimeModule.ZombieModeRewardTagsMedicMedicalHealing",
         "IsZombieModeRewardCandidateAllowed",
         "ZombieModeMedicalExcludedTypeIds",
         "AdvancedDebuffMode",
@@ -91,9 +93,9 @@ def main() -> int:
     if not protection:
         return fail("GrantZombieModeStarterProtectionSet helper missing")
     for snippet in [
-        "TryGiveRandomItemByTags(ZombieModeRewardTagBodyArmor",
-        "TryGiveRandomItemByTags(ZombieModeRewardTagHelmet",
-        "TryGiveRandomItemByTags(ZombieModeRewardTagHeadset",
+        "TryGiveRandomItemByTags(ZombieModeRuntimeModule.ZombieModeRewardTagBodyArmor",
+        "TryGiveRandomItemByTags(ZombieModeRuntimeModule.ZombieModeRewardTagHelmet",
+        "TryGiveRandomItemByTags(ZombieModeRuntimeModule.ZombieModeRewardTagHeadset",
     ]:
         if snippet not in protection:
             return fail("starter protection helper missing gear grant: " + snippet)
@@ -106,13 +108,13 @@ def main() -> int:
     if '"BodyArmor"' not in aliases or "return ZombieModeTagAliasesBodyArmor;" not in aliases:
         return fail("starter body armor lookup must stay body-armor only")
 
-    if "private Tag FindZombieModeTagByName(" not in entry:
+    if "internal Tag FindZombieModeTagByName(" not in entry:
         return fail("single-tag resolver must remain for ZombieMode melee tag checks")
-    resolver = extract_block(entry, "private Tag FindZombieModeTagByName(")
+    resolver = extract_block(entry, "internal Tag FindZombieModeTagByName(")
     if "GetZombieModeTagAliases(tagName)" not in resolver:
         return fail("single-tag resolver must share ZombieMode tag aliases")
 
-    candidates = extract_block(entry, "private int[] GetZombieModeRewardCandidateIds(")
+    candidates = extract_block(entry, "internal int[] GetZombieModeRewardCandidateIds(")
     if not candidates:
         return fail("GetZombieModeRewardCandidateIds helper missing")
     if "ResolveZombieModeTags(requiredTags[i])" not in candidates:
@@ -122,7 +124,7 @@ def main() -> int:
     if "filter.requireTags = tags;" in candidates:
         return fail("reward candidate lookup must not pass merged aliases as one requireTags array")
     dedupe_helper = extract_block(entry, "private void AddZombieModeRewardCandidates(")
-    if "!zombieModeRewardSafeCandidateScratch.Contains(candidates[i])" not in (candidates + dedupe_helper):
+    if "!rewardCandidateScratch.Contains(candidates[i])" not in (candidates + dedupe_helper):
         return fail("reward candidate lookup must de-duplicate OR-merged tag results")
 
     service_view = extract_block(rewards, "public sealed class ZombieModeTemporaryNpcServiceView")

@@ -49,8 +49,8 @@ def main() -> int:
 
     for snippet in [
         "EnsureZombieModeSafeZoneMerchantTerminal(runId);",
-        "owner.SpawnZombieModeTemporaryNpcForRuntimeModule(runId, \"Merchant\", false);",
-        "owner.FindZombieModeTemporaryNpcForRuntimeModule(\"Merchant\") == null",
+        "SpawnZombieModeTemporaryNpc(runId, \"Merchant\", false);",
+        "FindZombieModeTemporaryNpc(\"Merchant\") == null",
     ]:
         result = require(extraction, snippet, "safe zone merchant binding")
         if result:
@@ -59,12 +59,12 @@ def main() -> int:
     for snippet in [
         "case ZombieModeRewardType.TempMerchant:",
         "GrantZombieModeMerchantPurchaseGuarantee();",
-        "zombieModeRunState.GuaranteedMerchantPurchasePending = true;",
-        "zombieModeRunState.GuaranteedMerchantPurchaseMinQuality = 6;",
+        "runState.GuaranteedMerchantPurchasePending = true;",
+        "runState.GuaranteedMerchantPurchaseMinQuality = 6;",
         "TryPurchaseZombieModeGuaranteedMerchantStockFromPool(",
         "for (int quality = maxQuality; quality >= minQuality; quality--)",
-        "zombieModeRunState.GuaranteedMerchantPurchasePending = false;",
-        "zombieModeRunState.GuaranteedMerchantPurchaseMinQuality = 0;",
+        "runState.GuaranteedMerchantPurchasePending = false;",
+        "runState.GuaranteedMerchantPurchaseMinQuality = 0;",
     ]:
         result = require(rewards, snippet, "merchant guarantee flow")
         if result:

@@ -178,7 +178,7 @@ def main() -> int:
         "SpawnZombieModeBossWaveAsync(runId, runState.CurrentWaveBossesRemaining).Forget();",
         "runState.CurrentWaveBossesRemaining = Mathf.Max(0, runState.CurrentWaveBossesRemaining - 1);",
         "runState.CurrentWaveBossesRemaining <= 0",
-        "owner.TrySpawnZombieModeBossDropForWaveRuntimeModule(runId, marker, character.transform.position);",
+        "TrySpawnZombieModeBossDrop(runId, marker, character.transform.position);",
     ]:
         if required not in wave_text:
             return fail("multi-Boss waves must settle all Bosses and preserve per-Boss drops -> " + required)
@@ -241,7 +241,7 @@ def main() -> int:
         "BossLootboxMinItemsBase + cycle * ZombieModeTuning.BossLootboxItemsPerCycle",
         "BossLootboxMaxItemsBase + cycle * ZombieModeTuning.BossLootboxItemsPerCycle",
         "BossLootboxMinQualityBase + cycle / ZombieModeTuning.BossLootboxMinQualityCycleStep",
-        "Mathf.Clamp(5 + zombieModeRunState.PollutionTier + cycle, minQuality, 8)",
+        "Mathf.Clamp(5 + runState.PollutionTier + cycle, minQuality, 8)",
     ]:
         if required not in drops_text:
             return fail("Boss lootbox does not grow by Boss cycle -> " + required)
@@ -256,7 +256,7 @@ def main() -> int:
         if required not in text + reward_catalog_text:
             return fail("later Boss nodes must grant the extra combat reward selection -> " + required)
 
-    if "GetZombieModeBossRewardScale(zombieModeRunState.CurrentWave)" not in reward_services_text:
+    if "GetZombieModeBossRewardScale(runState.CurrentWave)" not in reward_services_text:
         return fail("Boss reward-node purification option does not scale by Boss cycle")
 
     if '"下一波 {0}：压力 {1} | 非 Boss 移速 {2}% | {3}"' not in localization_text:

@@ -34,8 +34,6 @@ def main():
     callback = member(volatile, "OnApply = ctx =>")
     callback = callback[callback.index('{'):]
     generated = 'using System; using System.Collections; using UnityEngine;\nnamespace BossRush { public sealed partial class ModBehaviour {\n'
-    generated += member(rewards, "private void CreateZombieModeOptionExplosion(") + '\n'
-    generated += member(rewards, "private void TriggerZombieModeDoomPulse(") + '\n'
     generated += member(skill_bridge, "public void DealZombieModeExplosionAreaDamage(") + '\n}\n'
     generated += 'internal static partial class MutatorManager {\n'
     generated += member(mutators, "private static void OnAnyCharacterDead(") + '\n'
@@ -58,6 +56,10 @@ def main():
     generated += "internal ZombieModeRuntimeModule(ModBehaviour value) { owner = value; runState = value.zombieModeRunState; } "
     generated += "private bool IsZombieModeRunValid(int runId) { return owner.IsZombieModeRunValid(runId); } "
     generated += "private bool IsZombieModeRuntimePaused() { return owner.IsZombieModeRuntimePaused(); } "
+    generated += "private float zombieModeOptionExplosionSkipLogTime; private float GetZombieModeRuntimeNow() { return Time.time; } "
+    generated += "internal void OptionExplosion() { CreateZombieModeOptionExplosion(1, new Vector3(), 3, 25); } internal void DoomPulse(int stacks) { TriggerZombieModeDoomPulse(1, stacks); } "
+    generated += member(rewards, "private void CreateZombieModeOptionExplosion(") + '\n'
+    generated += member(rewards, "private void TriggerZombieModeDoomPulse(") + '\n'
     generated += "private void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source, Vector3 origin, float radius, float damage) { owner.DealZombieModeAreaDamageToPlayer(runId, source, origin, radius, damage); }\n"
     for signature in (
         "internal static void DeferExplosion(",

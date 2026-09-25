@@ -485,8 +485,8 @@ namespace BossRush
 
         // 无间炼狱模式状态
 
-        private static bool dynamicItemsInitialized = false;
-        private static int bossRushTicketTypeId = -1;
+        private static bool dynamicItemsInitialized { get { return IntegrationRuntimeModule.DynamicItemsInitialized; } set { IntegrationRuntimeModule.DynamicItemsInitialized = value; } }
+        private static int bossRushTicketTypeId { get { return IntegrationRuntimeModule.BossRushTicketTypeId; } set { IntegrationRuntimeModule.BossRushTicketTypeId = value; } }
 
         // BossRush 进入 DEMO 挑战场景的来源标记
         private static bool bossRushArenaPlanned = false;  // 通过 BossRush 启动的 DEMO 挑战加载已发起但尚未完成

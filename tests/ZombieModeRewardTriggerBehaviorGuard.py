@@ -72,8 +72,8 @@ def main() -> int:
 
     hurt_handler = extract_between(
         effects,
-        "private void HandleZombieModeOptionHealthHurt",
-        "private void HandleZombieModeOptionHealthDead",
+        "internal void HandleZombieModeOptionHealthHurt",
+        "internal void HandleZombieModeOptionHealthDead",
     )
     if not hurt_handler:
         return fail("ZombieModeRewardTriggerBehaviorGuard: missing health hurt option handler")

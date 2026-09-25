@@ -15,7 +15,7 @@ using BossRush.Utils;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
         public void OpenZombieModeTemporaryNpcServiceUi(int runId, string serviceType)
         {
@@ -38,22 +38,22 @@ namespace BossRush
                     continue;
                 }
 
-                Destroy(existingViews[i].gameObject);
+                UnityEngine.Object.Destroy(existingViews[i].gameObject);
             }
 
             GameObject root = new GameObject("ZombieMode_TemporaryNpcServiceUi_" + serviceType);
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.RewardUi, root, root, null);
             ZombieModeTemporaryNpcServiceView view = root.AddComponent<ZombieModeTemporaryNpcServiceView>();
-            view.Initialize(runId, this, serviceType);
+            view.Initialize(runId, owner, serviceType);
         }
 
-        private ZombieModeTemporaryNpc FindZombieModeTemporaryNpc(string serviceType)
+        internal ZombieModeTemporaryNpc FindZombieModeTemporaryNpc(string serviceType)
         {
-            for (int i = 0; i < zombieModeRunState.TemporaryNpcs.Count; i++)
+            for (int i = 0; i < runState.TemporaryNpcs.Count; i++)
             {
-                ZombieModeTemporaryNpc npc = zombieModeRunState.TemporaryNpcs[i];
+                ZombieModeTemporaryNpc npc = runState.TemporaryNpcs[i];
                 if (npc != null &&
-                    zombieModeRunState.TemporaryNpcs[i].ServiceState != null &&
+                    runState.TemporaryNpcs[i].ServiceState != null &&
                     string.Equals(npc.ServiceType, serviceType, System.StringComparison.Ordinal))
                 {
                     return npc;
@@ -71,7 +71,7 @@ namespace BossRush
                 return new ZombieModeNpcCatalog.MerchantStockEntry[0];
             }
 
-            return npc.ServiceState.BossNodeStock || zombieModeRunState.CurrentWave > 0 && IsZombieModeBossWave(zombieModeRunState.CurrentWave)
+            return npc.ServiceState.BossNodeStock || runState.CurrentWave > 0 && IsZombieModeBossWave(runState.CurrentWave)
                 ? ZombieModeNpcCatalog.BossNodeStock
                 : ZombieModeNpcCatalog.NormalWaveStock;
         }
@@ -180,14 +180,14 @@ namespace BossRush
                 return false;
             }
 
-            if (zombieModeRunState.GuaranteedMerchantPurchasePending)
+            if (runState.GuaranteedMerchantPurchasePending)
             {
-                int guaranteedMinQuality = Mathf.Max(entry.GrantMinQuality, zombieModeRunState.GuaranteedMerchantPurchaseMinQuality);
-                int guaranteedMaxQuality = Mathf.Max(entry.GrantMaxQuality, zombieModeRunState.GuaranteedMerchantPurchaseMinQuality);
+                int guaranteedMinQuality = Mathf.Max(entry.GrantMinQuality, runState.GuaranteedMerchantPurchaseMinQuality);
+                int guaranteedMaxQuality = Mathf.Max(entry.GrantMaxQuality, runState.GuaranteedMerchantPurchaseMinQuality);
                 if (TryGiveZombieModeMerchantAmmoForEquippedWeapon(entry, guaranteedMinQuality, guaranteedMaxQuality))
                 {
-                    zombieModeRunState.GuaranteedMerchantPurchasePending = false;
-                    zombieModeRunState.GuaranteedMerchantPurchaseMinQuality = 0;
+                    runState.GuaranteedMerchantPurchasePending = false;
+                    runState.GuaranteedMerchantPurchaseMinQuality = 0;
                     return true;
                 }
             }
@@ -238,13 +238,13 @@ namespace BossRush
         {
             if (entry == null ||
                 string.IsNullOrEmpty(entry.GrantTag) ||
-                !zombieModeRunState.GuaranteedMerchantPurchasePending)
+                !runState.GuaranteedMerchantPurchasePending)
             {
                 return false;
             }
 
-            int maxQuality = Mathf.Min(entry.GrantMaxQuality, zombieModeRunState.GuaranteedMerchantPurchaseMinQuality);
-            maxQuality = Mathf.Max(maxQuality, zombieModeRunState.GuaranteedMerchantPurchaseMinQuality);
+            int maxQuality = Mathf.Min(entry.GrantMaxQuality, runState.GuaranteedMerchantPurchaseMinQuality);
+            maxQuality = Mathf.Max(maxQuality, runState.GuaranteedMerchantPurchaseMinQuality);
             int minQuality = Mathf.Max(entry.GrantMinQuality, 1);
             if (maxQuality < minQuality)
             {
@@ -266,8 +266,8 @@ namespace BossRush
                     continue;
                 }
 
-                zombieModeRunState.GuaranteedMerchantPurchasePending = false;
-                zombieModeRunState.GuaranteedMerchantPurchaseMinQuality = 0;
+                runState.GuaranteedMerchantPurchasePending = false;
+                runState.GuaranteedMerchantPurchaseMinQuality = 0;
                 return true;
             }
 
@@ -305,7 +305,7 @@ namespace BossRush
                 return new int[0];
             }
 
-            return GetModeEMerchantCategoryPoolIds(suffix);
+            return owner.GetModeEMerchantCategoryPoolIds(suffix);
         }
 
         public bool TryUseZombieModeNurseService(int runId, string serviceType, int serviceIndex)
@@ -435,7 +435,7 @@ namespace BossRush
 
         private float GetZombieModeNpcServicePriceMultiplier()
         {
-            return ZombieModeNpcCatalog.GetPollutionPriceMultiplier(zombieModeRunState.TotalPollution);
+            return ZombieModeNpcCatalog.GetPollutionPriceMultiplier(runState.TotalPollution);
         }
 
         private bool TryGiveZombieModeItemToPlayerOrDrop(int typeId)
@@ -467,7 +467,7 @@ namespace BossRush
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[ZombieMode] reward item DestroyTree 失败: " + e.Message);
+                    ModBehaviour.DevLog("[ZombieMode] reward item DestroyTree 失败: " + e.Message);
                 }
                 return false;
             }
@@ -489,7 +489,7 @@ namespace BossRush
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[ZombieMode] SendToPlayerCharacterInventory 失败: " + e.Message);
+                    ModBehaviour.DevLog("[ZombieMode] SendToPlayerCharacterInventory 失败: " + e.Message);
                 }
 
                 if (sent)
@@ -500,20 +500,20 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 Vector3 dropPosition = player != null
                     ? player.transform.position + Vector3.up * 0.3f
-                    : (zombieModeRunState.ActiveSafeZoneActive ? zombieModeRunState.ActiveSafeZoneCenter + Vector3.up * 0.3f : Vector3.up * 0.3f);
+                    : (runState.ActiveSafeZoneActive ? runState.ActiveSafeZoneCenter + Vector3.up * 0.3f : Vector3.up * 0.3f);
                 item.Drop(dropPosition, true, UnityEngine.Random.insideUnitSphere.normalized, 20f);
                 return true;
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] reward item deliver failed: " + logContext + ", " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] reward item deliver failed: " + logContext + ", " + e.Message);
                 try
                 {
                     item.DestroyTree();
                 }
                 catch (System.Exception destroyEx)
                 {
-                    DevLog("[ZombieMode] reward item DestroyTree 失败: " + destroyEx.Message);
+                    ModBehaviour.DevLog("[ZombieMode] reward item DestroyTree 失败: " + destroyEx.Message);
                 }
 
                 return false;
@@ -523,24 +523,24 @@ namespace BossRush
         private void GrantZombieModeFallbackPurificationReward(string reason, int points)
         {
             points = Mathf.Max(1, points);
-            zombieModeRunState.PurificationPoints += points;
+            runState.PurificationPoints += points;
             NotificationText.Push(string.Format(
                 L10n.T("BossRush_ZombieMode_Notify_RewardFallbackPurification"),
                 points));
-            DevLog("[ZombieMode] Reward fallback purification: " + reason + ", points=" + points);
+            ModBehaviour.DevLog("[ZombieMode] Reward fallback purification: " + reason + ", points=" + points);
         }
 
-        private int CalculateZombieModePurificationRewardPoints(bool bossNode)
+        internal int CalculateZombieModePurificationRewardPoints(bool bossNode)
         {
             int basePoints = bossNode ? ZombieModeTuning.InstantPurificationBossBase : ZombieModeTuning.InstantPurificationNormalBase;
-            int pollutionBonus = (bossNode ? 25 : 10) * zombieModeRunState.TotalPollution;
+            int pollutionBonus = (bossNode ? 25 : 10) * runState.TotalPollution;
             float rewardScale = bossNode
-                ? GetZombieModeBossRewardScale(zombieModeRunState.CurrentWave)
+                ? GetZombieModeBossRewardScale(runState.CurrentWave)
                 : 1f;
             return Mathf.Max(1, Mathf.FloorToInt((basePoints + pollutionBonus) * rewardScale));
         }
 
-        private void ClearZombieModeRewardShell()
+        internal void ClearZombieModeRewardShell()
         {
             if (zombieModeRewardUiRoot != null)
             {

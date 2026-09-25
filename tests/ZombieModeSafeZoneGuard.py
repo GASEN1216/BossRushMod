@@ -131,8 +131,8 @@ def main() -> int:
 
     drops = Path("ZombieMode/ZombieModeDropsAndPerformance.cs").read_text(encoding="utf-8")
     for signature in [
-        "private void RecycleZombieModeSafeZoneBoundTemporaryNpcs(int runId)",
-        "private void RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(int runId)",
+        "internal void RecycleZombieModeSafeZoneBoundTemporaryNpcs(int runId)",
+        "internal void RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(int runId)",
     ]:
         body = extract_method(drops, signature)
         if not body or "RemoveZombieModeRunOnlyObjectRecord(npc.GameObject);" not in body:

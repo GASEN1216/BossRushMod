@@ -531,8 +531,8 @@ namespace BossRush
             ClearZombieModeExtractionOpportunityUi();
             TryReleaseZombieModeExtractionCountdownUi();
             ReleaseZombieModeSafeZoneThreatSuppression();
-            owner.RecycleZombieModeSafeZoneBoundTemporaryNpcsForRuntimeModule(runId);
-            owner.RecycleZombieModeSafeZoneBoundTemporaryRealNpcsForRuntimeModule(runId);
+            RecycleZombieModeSafeZoneBoundTemporaryNpcs(runId);
+            RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(runId);
 
             DestroyZombieModeActiveExtractionArea();
 
@@ -580,8 +580,8 @@ namespace BossRush
             }
 
             ReleaseZombieModeSafeZoneThreatSuppression();
-            owner.RecycleZombieModeSafeZoneBoundTemporaryNpcsForRuntimeModule(runId);
-            owner.RecycleZombieModeSafeZoneBoundTemporaryRealNpcsForRuntimeModule(runId);
+            RecycleZombieModeSafeZoneBoundTemporaryNpcs(runId);
+            RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(runId);
 
             if (runState.ActiveSafeZoneVisual != null)
             {
@@ -683,8 +683,8 @@ namespace BossRush
             ReleaseZombieModeSafeZoneThreatSuppression();
             if (clearBoundServices)
             {
-                owner.RecycleZombieModeSafeZoneBoundTemporaryNpcsForRuntimeModule(runId);
-                owner.RecycleZombieModeSafeZoneBoundTemporaryRealNpcsForRuntimeModule(runId);
+                RecycleZombieModeSafeZoneBoundTemporaryNpcs(runId);
+                RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(runId);
             }
 
             GameObject oldVisual = runState.ActiveSafeZoneVisual;
@@ -773,9 +773,9 @@ namespace BossRush
                 return;
             }
 
-            if (owner.FindZombieModeTemporaryNpcForRuntimeModule("Merchant") == null)
+            if (FindZombieModeTemporaryNpc("Merchant") == null)
             {
-                owner.SpawnZombieModeTemporaryNpcForRuntimeModule(runId, "Merchant", false);
+                SpawnZombieModeTemporaryNpc(runId, "Merchant", false);
             }
         }
 

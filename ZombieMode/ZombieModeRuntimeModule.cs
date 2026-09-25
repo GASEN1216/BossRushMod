@@ -88,9 +88,9 @@ namespace BossRush
             }
 
             owner.TickZombieModeWaveControllerForRuntimeModule(deltaTime);
-            owner.TickZombieModeDropsAndPerformanceForRuntimeModule(deltaTime);
+            TickZombieModeDropsAndPerformance(deltaTime);
             owner.TickZombieModeBossControllerForRuntimeModule(deltaTime);
-            owner.TickZombieModeTemporaryNpcProtectionForRuntimeModule();
+            TickZombieModeTemporaryNpcProtection();
             owner.UpdateModeFFortificationHighlightsForRuntimeModule();
             owner.UpdateFortPlacementMode();
             owner.UpdateModeFRepairSelection();
@@ -853,11 +853,11 @@ namespace BossRush
         {
             if (ShouldSettleZombieModeFailureInsurance(reason))
             {
-                owner.SettleZombieModeFailureInsuranceForRuntimeModule(runState.RunId);
+                SettleZombieModeFailureInsuranceShell(runState.RunId);
             }
 
-            owner.RemoveZombieModeAttributeModifiersForRuntimeModule();
-            owner.RemoveZombieModeOptionRuntimeEffectsForRuntimeModule();
+            RemoveZombieModeAttributeModifiers();
+            RemoveZombieModeOptionRuntimeEffects();
             owner.CleanupZombieModeFortificationInteractionStateForRuntimeModule();
             InvalidateZombieModeRun();
             owner.ClearZombieModeSupportSpawnQueueForRuntimeModule();
@@ -870,7 +870,7 @@ namespace BossRush
             runState.RunOnlyObjects.Clear();
             // OnHurt/OnDead hot path 集合也在局结束时清掉（审查 §3.1）。
             owner.ClearZombieModeEnemyInstanceIdsForRuntimeModule();
-            owner.ClearZombieModeRewardShellForRuntimeModule();
+            ClearZombieModeRewardShell();
             owner.RestoreZombieModeMapIsolationShellForRuntimeModule();
         }
 
@@ -910,7 +910,7 @@ namespace BossRush
                 return false;
             }
 
-            if (!owner.InitializeZombieModeContainersForRuntimeModule(runId))
+            if (!InitializeZombieModeContainersShell(runId))
             {
                 return false;
             }

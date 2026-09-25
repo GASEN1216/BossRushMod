@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeRewards.cs")
 
 
 def fail(message: str) -> int:
@@ -38,9 +38,9 @@ def main() -> int:
     if "FindRandomItemTypeByTags(null" in fallback or "requiredTags = null" in fallback:
         return fail("filtered fallback must retain the requested tags")
 
-    if "ZombieModeMedicalExcludedTypeIds" not in text[text.index("private bool IsZombieModeRewardCandidateAllowed"):]:
+    if "ZombieModeMedicalExcludedTypeIds" not in text[text.index("internal bool IsZombieModeRewardCandidateAllowed"):]:
         return fail("medical IDs are not scoped to the candidate allowance check")
-    if "ZombieModeMeleeExcludedTypeIds" not in text[text.index("private bool IsZombieModeRewardCandidateAllowed"):]:
+    if "ZombieModeMeleeExcludedTypeIds" not in text[text.index("internal bool IsZombieModeRewardCandidateAllowed"):]:
         return fail("melee IDs are not scoped to the candidate allowance check")
 
     print("ZombieModeRewardContextFilterGuard: PASS")

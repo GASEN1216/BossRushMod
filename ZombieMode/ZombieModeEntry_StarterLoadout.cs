@@ -62,7 +62,7 @@ namespace BossRush
                 bool grantedAny = false;
                 if (loadout == ZombieModeStarterLoadout.Melee)
                 {
-                    bool coreGranted = TryGiveRandomItemByTags(ZombieModeRewardTagMeleeWeapon, 1, ZombieModeTuning.StarterMaxQuality);
+                    bool coreGranted = TryGiveRandomItemByTags(ZombieModeRuntimeModule.ZombieModeRewardTagMeleeWeapon, 1, ZombieModeTuning.StarterMaxQuality);
                     if (!coreGranted)
                     {
                         DevLog("[ZombieMode] 近战开局失败：缺少可发放近战武器");
@@ -77,15 +77,15 @@ namespace BossRush
                         return false;
                     }
 
-                    int medical = guaranteedHealing + TryGiveRandomItemByTagsTimes(ZombieModeRewardTagsMedicMedicalHealing, 1, 3, 3);
+                    int medical = guaranteedHealing + TryGiveRandomItemByTagsTimes(ZombieModeRuntimeModule.ZombieModeRewardTagsMedicMedicalHealing, 1, 3, 3);
                     grantedAny |= medical > 0;
-                    grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRewardTagFood, 1, 3, 3) > 0;
-                    grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRewardTagDrink, 1, 3, 2) > 0;
+                    grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRuntimeModule.ZombieModeRewardTagFood, 1, 3, 3) > 0;
+                    grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRuntimeModule.ZombieModeRewardTagDrink, 1, 3, 2) > 0;
                     zombieModeRunState.StarterAmmoCaliber = string.Empty;
                 }
                 else if (loadout == ZombieModeStarterLoadout.Gunner)
                 {
-                    int gunTypeId = FindRandomItemTypeByTags(ZombieModeRewardTagGun, 1, ZombieModeTuning.StarterMaxQuality);
+                    int gunTypeId = FindRandomItemTypeByTags(ZombieModeRuntimeModule.ZombieModeRewardTagGun, 1, ZombieModeTuning.StarterMaxQuality);
                     bool gunGranted = false;
                     if (gunTypeId > 0)
                     {
@@ -130,9 +130,9 @@ namespace BossRush
                         return false;
                     }
 
-                    grantedAny |= (guaranteedHealing + TryGiveRandomItemByTagsTimes(ZombieModeRewardTagsMedicMedicalHealing, 1, 3, 1)) > 0;
-                    grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRewardTagFood, 1, 3, 2) > 0;
-                    grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRewardTagDrink, 1, 3, 1) > 0;
+                    grantedAny |= (guaranteedHealing + TryGiveRandomItemByTagsTimes(ZombieModeRuntimeModule.ZombieModeRewardTagsMedicMedicalHealing, 1, 3, 1)) > 0;
+                    grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRuntimeModule.ZombieModeRewardTagFood, 1, 3, 2) > 0;
+                    grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRuntimeModule.ZombieModeRewardTagDrink, 1, 3, 1) > 0;
                 }
 
                 if (!GrantZombieModeStarterProtectionSet())
@@ -152,9 +152,9 @@ namespace BossRush
 
         private bool GrantZombieModeStarterProtectionSet()
         {
-            bool armorGranted = TryGiveRandomItemByTags(ZombieModeRewardTagBodyArmor, 1, ZombieModeTuning.StarterMaxQuality);
-            bool helmetGranted = TryGiveRandomItemByTags(ZombieModeRewardTagHelmet, 1, ZombieModeTuning.StarterMaxQuality);
-            bool headsetGranted = TryGiveRandomItemByTags(ZombieModeRewardTagHeadset, 1, ZombieModeTuning.StarterMaxQuality);
+            bool armorGranted = TryGiveRandomItemByTags(ZombieModeRuntimeModule.ZombieModeRewardTagBodyArmor, 1, ZombieModeTuning.StarterMaxQuality);
+            bool helmetGranted = TryGiveRandomItemByTags(ZombieModeRuntimeModule.ZombieModeRewardTagHelmet, 1, ZombieModeTuning.StarterMaxQuality);
+            bool headsetGranted = TryGiveRandomItemByTags(ZombieModeRuntimeModule.ZombieModeRewardTagHeadset, 1, ZombieModeTuning.StarterMaxQuality);
 
             if (!armorGranted)
             {
@@ -187,97 +187,7 @@ namespace BossRush
 
         private bool TryGiveZombieModeStarterGuaranteedHealingItem()
         {
-            return TryGiveRandomItemByTags(ZombieModeRewardTagHealing, 1, ZombieModeTuning.StarterMaxQuality);
-        }
-
-        private bool TryGiveZombieModeWaveClearHealingItem()
-        {
-            return TryGiveRandomItemByTags(ZombieModeRewardTagHealing, 1, ZombieModeTuning.StarterMaxQuality);
-        }
-
-        private int TryGiveRandomItemByTagsTimes(string[] requiredTags, int minQuality, int maxQuality, int times)
-        {
-            int success = 0;
-            for (int i = 0; i < times; i++)
-            {
-                if (TryGiveRandomItemByTags(requiredTags, minQuality, maxQuality))
-                {
-                    success++;
-                }
-            }
-            return success;
-        }
-
-        private string TryReadZombieModeItemCaliber(Item item)
-        {
-            if (item == null)
-            {
-                return string.Empty;
-            }
-
-            try
-            {
-                if (item.Constants == null)
-                {
-                    return string.Empty;
-                }
-                string caliber = item.Constants.GetString("Caliber", null);
-                return caliber ?? string.Empty;
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] 弹药 caliber 读取失败: " + e.Message);
-            }
-            return string.Empty;
-        }
-
-        private bool TryGiveZombieModeStarterAmmo(string caliber, int totalCount)
-        {
-            return TryGiveZombieModeAmmo(caliber, totalCount, 1, 2);
-        }
-
-        private bool TryGiveZombieModeAmmo(string caliber, int totalCount, int minQuality, int maxQuality)
-        {
-            try
-            {
-                ItemFilter filter = new ItemFilter();
-                Tag[] ammoTags = ResolveZombieModeTags(ZombieModeRewardTagAmmo);
-                if (ammoTags == null || ammoTags.Length <= 0)
-                {
-                    ammoTags = ResolveZombieModeTags(ZombieModeRewardTagBullet);
-                }
-                filter.requireTags = ammoTags;
-                filter.minQuality = minQuality;
-                filter.maxQuality = maxQuality;
-                filter.caliber = caliber ?? string.Empty;
-
-                int[] candidates = ItemAssetsCollection.Search(filter);
-                if (candidates == null || candidates.Length <= 0)
-                {
-                    return false;
-                }
-
-                int chosenTypeId = PickZombieModeStrictQualityCandidate(candidates, minQuality, maxQuality);
-                if (chosenTypeId <= 0)
-                {
-                    return false;
-                }
-
-                Item ammoItem = ItemAssetsCollection.InstantiateSync(chosenTypeId);
-                if (ammoItem == null)
-                {
-                    return false;
-                }
-
-                try { ammoItem.StackCount = totalCount; } catch (System.Exception e) { DevLog("[ZombieMode] ammoItem.StackCount 设置失败: " + e.Message); }
-                ItemUtilities.SendToPlayer(ammoItem, true, true);
-                return true;
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] 发放起始弹药失败: " + e.Message);
-                return false;
-            }
+            return TryGiveRandomItemByTags(ZombieModeRuntimeModule.ZombieModeRewardTagHealing, 1, ZombieModeTuning.StarterMaxQuality);
         }
 
         /// <summary>
@@ -287,18 +197,18 @@ namespace BossRush
         /// </summary>
         internal Sprite GetZombieModeStarterIcon(ZombieModeStarterLoadout loadout)
         {
-            return GetZombieModeTagIcon(loadout == ZombieModeStarterLoadout.Melee ? ZombieModeRewardTagMeleeWeapon : ZombieModeRewardTagGun);
+            return GetZombieModeTagIcon(loadout == ZombieModeStarterLoadout.Melee ? ZombieModeRuntimeModule.ZombieModeRewardTagMeleeWeapon : ZombieModeRuntimeModule.ZombieModeRewardTagGun);
         }
 
         internal Sprite GetZombieModeRewardIcon(ZombieModeRewardType rewardType)
         {
             switch (rewardType)
             {
-                case ZombieModeRewardType.RandomMeleeWeapon: return GetZombieModeTagIcon(ZombieModeRewardTagMeleeWeapon);
-                case ZombieModeRewardType.RandomGunWithAmmo: return GetZombieModeTagIcon(ZombieModeRewardTagGun);
-                case ZombieModeRewardType.AmmoSupply: return GetZombieModeTagIcon(ZombieModeRewardTagBullet);
-                case ZombieModeRewardType.MedicalSupply: return GetZombieModeTagIcon(ZombieModeRewardTagsMedicMedicalHealing);
-                case ZombieModeRewardType.ArmorOrHelmet: return GetZombieModeTagIcon(ZombieModeRewardTagBodyArmor);
+                case ZombieModeRewardType.RandomMeleeWeapon: return GetZombieModeTagIcon(ZombieModeRuntimeModule.ZombieModeRewardTagMeleeWeapon);
+                case ZombieModeRewardType.RandomGunWithAmmo: return GetZombieModeTagIcon(ZombieModeRuntimeModule.ZombieModeRewardTagGun);
+                case ZombieModeRewardType.AmmoSupply: return GetZombieModeTagIcon(ZombieModeRuntimeModule.ZombieModeRewardTagBullet);
+                case ZombieModeRewardType.MedicalSupply: return GetZombieModeTagIcon(ZombieModeRuntimeModule.ZombieModeRewardTagsMedicMedicalHealing);
+                case ZombieModeRewardType.ArmorOrHelmet: return GetZombieModeTagIcon(ZombieModeRuntimeModule.ZombieModeRewardTagBodyArmor);
                 case ZombieModeRewardType.PortableSafeZoneDevice: return GetZombieModeTypeIcon(PortableSafeZoneDeviceConfig.TYPE_ID);
                 case ZombieModeRewardType.FortificationPack: return GetZombieModeTypeIcon(ReinforcedRoadblockPackConfig.TYPE_ID);
                 default: return null;
@@ -346,23 +256,7 @@ namespace BossRush
             }
         }
 
-        private bool TryGiveRandomItemByTags(string[] requiredTags, int minQuality, int maxQuality)
-        {
-            int typeId = FindRandomItemTypeByTags(requiredTags, minQuality, maxQuality);
-            if (typeId <= 0)
-            {
-                return false;
-            }
 
-            Item item = ItemAssetsCollection.InstantiateSync(typeId);
-            if (item == null)
-            {
-                return false;
-            }
-
-            ItemUtilities.SendToPlayer(item, false, false);
-            return true;
-        }
     }
 
     public sealed class ZombieModeStarterChoiceView : MonoBehaviour

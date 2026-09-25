@@ -10,20 +10,20 @@ namespace BossRush
     {
         internal void InitializeDynamicItems_Integration()
         {
-            if (_owner.IntegrationDynamicItemsInitialized)
+            if (DynamicItemsInitialized)
             {
                 return;
             }
-            _owner.IntegrationDynamicItemsInitialized = true;
+            DynamicItemsInitialized = true;
 
             try
             {
-                if (!_owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry())
+                if (!EnsureBossRushTicketItemRegisteredForDynamicRegistry())
                 {
                     ModBehaviour.DevLog("[BossRush] BossRush 船票按需注册失败，继续加载其他动态物品");
                 }
 
-                ModBehaviour.DevLog("[BossRush] BossRush 船票注册检查完成，BossRushTicketTypeId=" + _owner.IntegrationBossRushTicketTypeId);
+                ModBehaviour.DevLog("[BossRush] BossRush 船票注册检查完成，BossRushTicketTypeId=" + BossRushTicketTypeId);
             }
             catch (Exception e)
             {
@@ -34,7 +34,7 @@ namespace BossRush
             try
             {
                 // 注册物品配置器（必须在 LoadAllItems 之前）
-                _owner.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();
+                EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();
 
                 int itemCount = ItemFactory.LoadedItemCount;
                 if (itemCount > 0)

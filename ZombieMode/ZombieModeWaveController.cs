@@ -189,6 +189,12 @@ namespace BossRush
             return GetZombieModeBossKindForIndex(bossIndex);
         }
 
+        internal Cysharp.Threading.Tasks.UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieForWaveRuntimeModule(
+            int runId, Vector3 position, ZombieModeEnemyKind forcedEnemyKind, bool forceEnemyKind, Func<bool> isSpawnPhaseStillAllowed)
+        {
+            return TrySpawnZombieModeNormalZombieAsync(runId, position, forcedEnemyKind, forceEnemyKind, isSpawnPhaseStillAllowed);
+        }
+
         internal Cysharp.Threading.Tasks.UniTask<CharacterMainControl> TrySpawnZombieModeBossForWaveRuntimeModule(
             int runId,
             Vector3 position,

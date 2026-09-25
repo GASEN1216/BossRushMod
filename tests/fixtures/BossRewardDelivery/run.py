@@ -36,6 +36,7 @@ def main():
                          encoding='utf-8')
     sources = [ROOT / 'Utilities/InteractableLootboxInventoryHelper.cs',
                ROOT / 'Integration/BackMountain/BackMountainSeedDrops.cs',
+               ROOT / 'Integration/BackMountain/BackMountainSeedDropsHostBridge.cs',
                HERE / 'Program.cs', HERE / 'Stubs.cs', extracted]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
     project += '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'

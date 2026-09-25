@@ -27,7 +27,7 @@ namespace BossRush
             runState.CombatPhase = ZombieModeCombatPhase.RewardSelection;
             EnsureZombieModeRewardNode(bossNode);
             // 同一节点内的刷新 / 追加选择 / 休息时长：面板原地重排，不重建遮罩与输入租约（审美审查 UC-08）。
-            owner.ShowZombieModeRewardSelectionPresentationForRuntimeModule(runId, restEditorExpanded);
+            ShowZombieModeRewardSelectionPresentationForRuntimeModule(runId, restEditorExpanded);
         }
 
         private void EnsureZombieModeRewardNode(bool bossNode)
@@ -233,7 +233,7 @@ namespace BossRush
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.StarterReroll, ZombieModeRewardCategory.Equipment, 10);
 
             AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.PurificationPoints, ZombieModeRewardCategory.Economy, 25);
-            if (owner.HasZombieModeRecyclableBackpackJunkForRewardRuntimeModule())
+            if (HasZombieModeRecyclableBackpackJunk())
             {
                 // 主动提高出现率，让玩家能稳定获得清理背包与换取局内点数的途径。
                 AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.RecycleBackpackJunk, ZombieModeRewardCategory.Economy, 40);
@@ -321,10 +321,10 @@ namespace BossRush
             float currentBonus = 0f;
             if (category == ZombieModeRewardCategory.Attribute)
             {
-                string attributeKey = owner.GetZombieModeAttributeKeyForRewardRuntimeModule(rewardType);
+                string attributeKey = GetZombieModeAttributeKey(rewardType);
                 if (!string.IsNullOrEmpty(attributeKey) && runState.AttributeBonuses.TryGetValue(attributeKey, out currentBonus))
                 {
-                    if (currentBonus >= owner.GetZombieModeAttributeCapForRewardRuntimeModule(rewardType))
+                    if (currentBonus >= GetZombieModeAttributeCap(rewardType))
                     {
                         weight = Mathf.Max(1, Mathf.FloorToInt(weight * 0.2f));
                     }
@@ -345,13 +345,13 @@ namespace BossRush
                 case ZombieModeRewardType.TempMerchant:
                     return runState.GuaranteedMerchantPurchasePending;
                 case ZombieModeRewardType.TempNurse:
-                    return owner.FindZombieModeTemporaryNpcForRewardRuntimeModule("Nurse") != null;
+                    return FindZombieModeTemporaryNpc("Nurse") != null;
                 case ZombieModeRewardType.TempGoblinNpc:
-                    return owner.FindZombieModeTemporaryRealNpcForRewardRuntimeModule("Goblin") != null;
+                    return FindZombieModeTemporaryRealNpc("Goblin") != null;
                 case ZombieModeRewardType.TempNurseNpc:
-                    return owner.FindZombieModeTemporaryRealNpcForRewardRuntimeModule("NurseNpc") != null;
+                    return FindZombieModeTemporaryRealNpc("NurseNpc") != null;
                 case ZombieModeRewardType.TempCourierNpc:
-                    return owner.FindZombieModeTemporaryRealNpcForRewardRuntimeModule("Courier") != null;
+                    return FindZombieModeTemporaryRealNpc("Courier") != null;
                 case ZombieModeRewardType.HalfPricePaidRefresh:
                     return runState.HalfPriceNextPaidRefresh;
             }
@@ -372,7 +372,7 @@ namespace BossRush
                 case ZombieModeRewardType.TriggerLifesteal:
                 case ZombieModeRewardType.TriggerLifestealMedium:
                 case ZombieModeRewardType.TriggerLifestealLarge:
-                    return options.TriggerLifestealChancePercent + owner.GetZombieModeLifestealRewardChanceGainForRuntimeModule(rewardType) > owner.GetZombieModeLifestealChanceCapForRewardRuntimeModule();
+                    return options.TriggerLifestealChancePercent + GetZombieModeLifestealRewardChanceGain(rewardType) > ZombieModeLifestealChanceCapPercent;
                 case ZombieModeRewardType.TriggerCritBurst:
                     return options.TriggerCritBurstStacks >= 3;
                 case ZombieModeRewardType.TriggerPurificationSiphon:
@@ -424,7 +424,7 @@ namespace BossRush
 
         private bool IsZombieModeRewardUnaffordable(ZombieModeRewardType rewardType)
         {
-            int purificationCost = owner.GetZombieModeOptionTradeoffPurificationCostForRewardRuntimeModule(rewardType);
+            int purificationCost = GetZombieModeOptionTradeoffPurificationCost(rewardType);
             return purificationCost > 0 && runState.PurificationPoints < purificationCost;
         }
 
@@ -892,7 +892,7 @@ namespace BossRush
                     return "[" + L10n.T("BossRush_ZombieMode_RewardCat_Economy") + "] " +
                         string.Format(
                             L10n.T("BossRush_ZombieMode_Reward_PurificationPoints"),
-                            owner.CalculateZombieModePurificationRewardPointsForRewardRuntimeModule(bossNode));
+                            CalculateZombieModePurificationRewardPoints(bossNode));
                 case ZombieModeRewardType.Heal:
                     return FormatZombieModeRewardDisplay("BossRush_ZombieMode_RewardCat_Economy", "BossRush_ZombieMode_Reward_Heal");
                 case ZombieModeRewardType.RecycleBackpackJunk:
@@ -1071,8 +1071,8 @@ namespace BossRush
 
             bool extractionOpportunity = selectedNode != null && selectedNode.BossNode;
             bool bonusSelection = IsZombieModeBossBonusRewardSelection(selectedNode);
-            string pendingTemporaryNpcServiceType = owner.GetZombieModePendingTemporaryNpcServiceTypeForRewardRuntimeModule(rewardType);
-            if (!owner.ApplyZombieModeRewardForRewardRuntimeModule(rewardType))
+            string pendingTemporaryNpcServiceType = GetZombieModePendingTemporaryNpcServiceType(rewardType);
+            if (!ApplyZombieModeReward(rewardType))
             {
                 NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_RewardDeliveryFailed"));
                 return;
@@ -1089,7 +1089,7 @@ namespace BossRush
             runState.CurrentRewardNode = null;
             runState.FreeRefreshesRemainingCurrentNode = 0;
             runState.PaidRefreshIndexCurrentNode = 0;
-            owner.ClearZombieModeRewardShellForRuntimeModule();
+            ClearZombieModeRewardShell();
             if (extractionOpportunity)
             {
                 owner.BeginZombieModeExtractionOpportunityForRewardRuntimeModule(runId);
@@ -1102,20 +1102,20 @@ namespace BossRush
             if (!string.IsNullOrEmpty(pendingTemporaryNpcServiceType) &&
                 !string.Equals(pendingTemporaryNpcServiceType, "Merchant", System.StringComparison.Ordinal))
             {
-                owner.SpawnZombieModeTemporaryNpcForRewardRuntimeModule(runId, pendingTemporaryNpcServiceType, extractionOpportunity);
+                SpawnZombieModeTemporaryNpc(runId, pendingTemporaryNpcServiceType, extractionOpportunity);
             }
 
             if (rewardType == ZombieModeRewardType.TempGoblinNpc)
             {
-                owner.SpawnZombieModeTemporaryRealNpcForRewardRuntimeModule(runId, "Goblin");
+                SpawnZombieModeTemporaryRealNpc(runId, "Goblin");
             }
             else if (rewardType == ZombieModeRewardType.TempNurseNpc)
             {
-                owner.SpawnZombieModeTemporaryRealNpcForRewardRuntimeModule(runId, "NurseNpc");
+                SpawnZombieModeTemporaryRealNpc(runId, "NurseNpc");
             }
             else if (rewardType == ZombieModeRewardType.TempCourierNpc)
             {
-                owner.SpawnZombieModeTemporaryRealNpcForRewardRuntimeModule(runId, "Courier");
+                SpawnZombieModeTemporaryRealNpc(runId, "Courier");
             }
         }
 

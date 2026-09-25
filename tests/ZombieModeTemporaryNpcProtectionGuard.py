@@ -55,7 +55,7 @@ def main() -> int:
         if result:
             return result
 
-    if "owner.TickZombieModeTemporaryNpcProtectionForRuntimeModule();" not in runtime_module:
+    if "TickZombieModeTemporaryNpcProtection();" not in runtime_module:
         return fail("ZombieModeTemporaryNpcProtectionGuard: runtime module must schedule temporary NPC protection")
     if "if (module != null) module.TickZombieMode(deltaTime);" not in entry:
         return fail("ZombieModeTemporaryNpcProtectionGuard: host tick must forward to RuntimeModule")

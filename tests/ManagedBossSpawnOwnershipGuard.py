@@ -16,6 +16,7 @@ ManagedBossSpawnOwnershipGuard — 托管 Boss 所有权守卫（规格 §20 第
 import os
 import re
 import sys
+from cs_source_util import clean_source
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -71,8 +72,7 @@ def main():
                 errors.append("[FailureCleanup] {} catch 分支缺少托管清理".format(rel))
 
     # 3. Create → 冻结 → Configure 硬顺序（共享 helper 位于龙裔 adapter）
-    dd_adapter = adapter_contents.get(
-        "Integration/DragonDescendant/DragonDescendantBoss_ModeGAdapter.cs", "")
+    dd_adapter = clean_source(read(os.path.join(REPO_ROOT, "Integration", "ModeGManagedCharacterService.cs"), errors))
     if dd_adapter:
         create_body = dd_adapter
         i_register = create_body.find("stagingBossRegistered = state.RegisterStagingBoss(character.Health, character);")

@@ -13,9 +13,9 @@ using UnityEngine.Events;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
-        private void HandleZombieModeOptionHealthHurt(
+        internal void HandleZombieModeOptionHealthHurt(
             int runId,
             Health health,
             DamageInfo damageInfo,
@@ -26,7 +26,7 @@ namespace BossRush
                 health == null ||
                 victim == null ||
                 marker == null ||
-                marker.RunId != zombieModeRunState.RunId ||
+                marker.RunId != runState.RunId ||
                 marker.DeathSettled ||
                 marker.RemovedFromRuntime)
             {
@@ -41,7 +41,7 @@ namespace BossRush
                 return;
             }
 
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             if (options.TriggerLifestealChancePercent > 0)
             {
                 int chance = Mathf.Min(ZombieModeLifestealChanceCapPercent, options.TriggerLifestealChancePercent);
@@ -122,7 +122,7 @@ namespace BossRush
             }
         }
 
-        private void HandleZombieModeOptionHealthDead(
+        internal void HandleZombieModeOptionHealthDead(
             int runId,
             Health health,
             DamageInfo damageInfo,
@@ -133,7 +133,7 @@ namespace BossRush
                 health == null ||
                 victim == null ||
                 marker == null ||
-                marker.RunId != zombieModeRunState.RunId)
+                marker.RunId != runState.RunId)
             {
                 return;
             }
@@ -145,7 +145,7 @@ namespace BossRush
                 return;
             }
 
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             if (options.TriggerPurificationSiphonStacks > 0)
             {
                 int stacks = Mathf.Min(2, options.TriggerPurificationSiphonStacks);
@@ -205,12 +205,12 @@ namespace BossRush
                 if (now - zombieModeOptionExplosionSkipLogTime >= 5f)
                 {
                     zombieModeOptionExplosionSkipLogTime = now;
-                    DevLog("[ZombieMode] option explosion skipped: ExplosionManager unavailable");
+                    ModBehaviour.DevLog("[ZombieMode] option explosion skipped: ExplosionManager unavailable");
                 }
                 return;
             }
 
-            ZombieModeRuntimeModule.DeferExplosion(this, zombieModeRunState, runId,
+            ZombieModeRuntimeModule.DeferExplosion(owner, runState, runId,
                 () => IsZombieModeRunValid(runId), () =>
             {
                 try
@@ -232,30 +232,30 @@ namespace BossRush
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[ZombieMode] option explosion failed: " + e.Message);
+                    ModBehaviour.DevLog("[ZombieMode] option explosion failed: " + e.Message);
                 }
             });
         }
 
         private void StartZombieModeAmmoRainIfNeeded(int runId)
         {
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             if (!IsZombieModeRunValid(runId) || options.BattlefieldAmmoRainStacks <= 0 || options.AmmoRainCoroutineStarted)
             {
                 return;
             }
 
             options.AmmoRainCoroutineStarted = true;
-            StartZombieModeCoroutine(ZombieModeAmmoRainCoroutine(runId), runId);
+            owner.StartZombieModeCoroutineForRuntimeModule(ZombieModeAmmoRainCoroutine(runId), runId);
         }
 
         private IEnumerator ZombieModeAmmoRainCoroutine(int runId)
         {
-            int stacks = Mathf.Min(2, zombieModeRunState.OptionRuntime.BattlefieldAmmoRainStacks);
+            int stacks = Mathf.Min(2, runState.OptionRuntime.BattlefieldAmmoRainStacks);
             float nextGrantDelay = stacks >= 2 ? 35f : 45f;
             float countdownRemaining = nextGrantDelay;
             float previousNow = GetZombieModeRuntimeNow();
-            while (IsZombieModeRunValid(runId) && zombieModeRunState.OptionRuntime.BattlefieldAmmoRainStacks > 0)
+            while (IsZombieModeRunValid(runId) && runState.OptionRuntime.BattlefieldAmmoRainStacks > 0)
             {
                 float now = GetZombieModeRuntimeNow();
                 float deltaTime = Mathf.Max(0f, now - previousNow);
@@ -267,7 +267,7 @@ namespace BossRush
                     continue;
                 }
 
-                ZombieModeCombatPhase phase = zombieModeRunState.CombatPhase;
+                ZombieModeCombatPhase phase = runState.CombatPhase;
                 bool allowedPhase = phase == ZombieModeCombatPhase.InitialPreparation ||
                                     phase == ZombieModeCombatPhase.Preparation ||
                                     phase == ZombieModeCombatPhase.ExtractionOpportunity ||
@@ -278,7 +278,7 @@ namespace BossRush
                     continue;
                 }
 
-                stacks = Mathf.Min(2, zombieModeRunState.OptionRuntime.BattlefieldAmmoRainStacks);
+                stacks = Mathf.Min(2, runState.OptionRuntime.BattlefieldAmmoRainStacks);
                 nextGrantDelay = stacks >= 2 ? 35f : 45f;
                 countdownRemaining = Mathf.Min(countdownRemaining, nextGrantDelay);
                 int amount = stacks >= 2
@@ -297,8 +297,8 @@ namespace BossRush
 
         private void GrantZombieModeAmmoRainSupply(int amount)
         {
-            string caliber = !string.IsNullOrEmpty(zombieModeRunState.StarterAmmoCaliber)
-                ? zombieModeRunState.StarterAmmoCaliber
+            string caliber = !string.IsNullOrEmpty(runState.StarterAmmoCaliber)
+                ? runState.StarterAmmoCaliber
                 : string.Empty;
             if (!string.IsNullOrEmpty(caliber) && TryGiveZombieModeStarterAmmo(caliber, amount))
             {
@@ -327,10 +327,7 @@ namespace BossRush
             runtime.Apply(marker.RunId, slowPercent, duration);
         }
 
-        private CharacterMainControl TryFindZombieModeNearestEnemyTarget(int runId, CharacterMainControl exclude, float radius)
-        {
-            return zombieModeRuntimeModule.TryFindZombieModeNearestEnemyTarget(runId, exclude, radius);
-        }
+
 
         private bool TrySpawnZombieModePlayerSupportProjectile(Vector3 origin, Vector3 direction, float damageFactor, float distanceFactor)
         {

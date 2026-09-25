@@ -2,6 +2,13 @@ namespace BossRush
 {
     internal sealed partial class ModeFRuntimeModule : BossRushRuntimeModuleBase
     {
+        private ModeEFVirtualSpawnerRegistry virtualSpawnerRegistry;
+
+        internal void BindVirtualSpawnerRegistry(ModeEFVirtualSpawnerRegistry registry)
+        {
+            virtualSpawnerRegistry = registry;
+        }
+
         // Mode F 状态
         internal bool modeFActive = false;
         internal ModeFState modeFState = new ModeFState();

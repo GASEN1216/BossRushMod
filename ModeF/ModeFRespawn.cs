@@ -378,7 +378,7 @@ namespace BossRush
             CleanupModeESharedRuntimeForModeFBoss(boss, faction);
             modeE.TrackModeEAliveEnemy(boss, faction);
             owner.RegisterModeDEnemyRecoveryAnchor(boss, anchorPosition);
-            modeE.RegisterModeEEnemyToSpawnerRoot(boss);
+            virtualSpawnerRegistry.RegisterModeEEnemyToSpawnerRoot(boss);
             modeE.RegisterModeEEnemyDeath(boss);
         }
 
@@ -405,7 +405,7 @@ namespace BossRush
             }
 
             modeE.modeEPendingAggroTraceDistance.Remove(boss);
-            modeE.UnregisterModeEEnemyFromSpawnerRoot(boss);
+            virtualSpawnerRegistry.UnregisterModeEEnemyFromSpawnerRoot(boss);
             owner.UnregisterEnemyRecoveryForArena(boss);
             modeE.UntrackModeEAliveEnemy(boss, faction);
             modeFBossAiControllers.Remove(boss);

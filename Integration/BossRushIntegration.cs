@@ -37,12 +37,17 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour
     {
-        internal int IntegrationBossRushTicketTypeId { get { return bossRushTicketTypeId; } }
+        internal bool EnsureItemContentConfiguratorsRegisteredForDynamicRegistry() { return bossRushIntegrationRuntime.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry(); }
+        internal bool EnsureBossRushTicketItemRegisteredForDynamicRegistry() { return bossRushIntegrationRuntime.EnsureBossRushTicketItemRegisteredForDynamicRegistry(); }
+        internal bool EnsureBirthdayCakeItemRegisteredForDynamicRegistry() { return bossRushIntegrationRuntime.EnsureBirthdayCakeItemRegisteredForDynamicRegistry(); }
+        internal bool EnsureAdventureJournalItemRegisteredForDynamicRegistry() { return bossRushIntegrationRuntime.EnsureAdventureJournalItemRegisteredForDynamicRegistry(); }
+
+        internal int IntegrationBossRushTicketTypeId { get { return IntegrationRuntimeModule.BossRushTicketTypeId; } }
         internal string IntegrationBaseSceneName { get { return BaseSceneName; } }
         internal bool IntegrationDynamicItemsInitialized
         {
-            get { return dynamicItemsInitialized; }
-            set { dynamicItemsInitialized = value; }
+            get { return IntegrationRuntimeModule.DynamicItemsInitialized; }
+            set { IntegrationRuntimeModule.DynamicItemsInitialized = value; }
         }
         // ModBehaviour 的旧重置点仍通过此兼容属性写入模块状态。
         private int item105PurchaseCount

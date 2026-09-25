@@ -355,6 +355,7 @@ echo(Integration\Mutators\MutatorDefinitions.cs
 echo(Integration\Mutators\MutatorManager.cs
 echo(Integration\Mutators\MutatorUI.cs
 echo(Integration\Mutators\MutatorRuntimeBridge.cs
+echo(Integration\Mutators\MutatorModeFlow.cs
 echo(Integration\ZombieModeIntegration.cs
 echo(Integration\DeathWraith\DeathWraithSystem.cs
 echo(Integration\DeathWraith\DeathWraithRuntimeModuleHostBridge.cs
@@ -427,6 +428,7 @@ echo(Utilities\ModeEFSpawnProfiler.cs
 echo(Utilities\ModeEFMerchantRuntime.cs
 echo(Utilities\ModeEFMerchantCatalog.cs
 echo(Utilities\ModeEFSpawnPostprocessScheduler.cs
+echo(Utilities\ModeEFVirtualSpawnerRegistry.cs
 echo(Utilities\ModeEFSpawnPreparation.cs
 echo(Utilities\ZombieSpawnSanitizer.cs
 echo(Utilities\EnemyRecoveryMonitor.cs
@@ -494,6 +496,7 @@ echo(LootAndRewards\LootAndRewardsRuntimeHooks.cs
 echo(LootAndRewards\VictoryRewardShadowCrateController.cs
 echo(LootAndRewards\VictoryRewardCrateFx.cs
 echo(LootAndRewards\ModeEFLootboxTracker.cs
+echo(LootAndRewards\AwenLootSweepRuntime.cs
 echo(Interactables\BossRushBuildingInteractableBase.cs
 echo(Interactables\BossRushInteractables.cs
 echo(Interactables\BossRushLootboxInteractables.cs
@@ -744,6 +747,7 @@ echo(Integration\DragonDescendant\DragonDescendantRuntimeModuleHostBridge.cs
 echo(Integration\DragonDescendant\DragonDescendantBoss_RuntimeAndCleanup.cs
 echo(Integration\DragonDescendant\DragonDescendantBossStaticCacheReset.cs
 echo(Integration\DragonDescendant\DragonDescendantBoss_ModeGAdapter.cs
+echo(Integration\ModeGManagedCharacterService.cs
 echo(Integration\DragonDescendant\DragonBreathConfig.cs
 echo(Integration\DragonDescendant\DragonBreathBuffHandler.cs
 echo(Integration\DragonDescendant\DragonBreathWeaponConfig.cs
@@ -900,6 +904,7 @@ echo(Integration\NPCs\Courier\StorageDepositSingleRetrieve.cs
 echo(Integration\NPCs\Courier\StorageDepositInventoryQuickDeposit.cs
 echo(Integration\NPCs\Courier\StorageDepositBulkActions.cs
 echo(Integration\NPCs\Nurse\NurseNPC.cs
+echo(Integration\NPCs\Nurse\NurseNPCRuntimeModuleHostBridge.cs
 echo(Integration\NPCs\Nurse\NurseNPCController.cs
 echo(Integration\NPCs\Nurse\NurseMovement.cs
 echo(Integration\NPCs\Nurse\NurseHealingService.cs
@@ -1214,6 +1219,7 @@ echo(Integration\BackMountain\RaidMealUsageBehavior.cs
 echo(Integration\BackMountain\RaidMealService.cs
 echo(Integration\BackMountain\JukeboxTrackInjector.cs
 echo(Integration\BackMountain\BackMountainSeedDrops.cs
+echo(Integration\BackMountain\BackMountainSeedDropsHostBridge.cs
 echo(Integration\BackMountain\ShowcaseService.cs
 echo(Integration\BackMountain\ShowcaseInteractable.cs
 echo(Integration\BackMountain\ShowcaseBuildingBuilder.cs

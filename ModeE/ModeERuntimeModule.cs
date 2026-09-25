@@ -2,6 +2,13 @@ namespace BossRush
 {
     internal sealed partial class ModeERuntimeModule : BossRushRuntimeModuleBase
     {
+        private ModeEFVirtualSpawnerRegistry virtualSpawnerRegistry;
+
+        internal void BindVirtualSpawnerRegistry(ModeEFVirtualSpawnerRegistry registry)
+        {
+            virtualSpawnerRegistry = registry;
+        }
+
         private ModBehaviour modeEHost;
         private float modeEIntegrityTimer;
         private ModeDRuntimeModule modeD;

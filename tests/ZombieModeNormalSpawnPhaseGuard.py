@@ -132,7 +132,7 @@ def main() -> int:
         )
         require(
             rewards,
-            "() => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat",
+            "() => runState.CombatPhase == ZombieModeCombatPhase.Combat",
             "elite squad reward spawns must keep checking Combat phase through the await",
         )
     except AssertionError as exc:

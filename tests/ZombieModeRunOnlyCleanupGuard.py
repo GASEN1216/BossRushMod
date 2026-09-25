@@ -81,16 +81,16 @@ def main() -> int:
     cleanup_method = module_text[module_text.index("internal void CleanupZombieModeRunOnlyState"):]
     cleanup_method = cleanup_method[:cleanup_method.index("internal bool ShouldRollbackZombieModeEntryResources")]
     cleanup_order = [
-        "owner.SettleZombieModeFailureInsuranceForRuntimeModule(runState.RunId)",
-        "owner.RemoveZombieModeAttributeModifiersForRuntimeModule();",
-        "owner.RemoveZombieModeOptionRuntimeEffectsForRuntimeModule();",
+        "SettleZombieModeFailureInsuranceShell(runState.RunId)",
+        "RemoveZombieModeAttributeModifiers();",
+        "RemoveZombieModeOptionRuntimeEffects();",
         "owner.CleanupZombieModeFortificationInteractionStateForRuntimeModule();",
         "InvalidateZombieModeRun();",
         "owner.ClearZombieModeSupportSpawnQueueForRuntimeModule();",
         "RunScopedRegistry.ForEachReverse(",
         "runState.RunOnlyObjects.Clear();",
         "owner.ClearZombieModeEnemyInstanceIdsForRuntimeModule();",
-        "owner.ClearZombieModeRewardShellForRuntimeModule();",
+        "ClearZombieModeRewardShell();",
         "owner.RestoreZombieModeMapIsolationShellForRuntimeModule();",
     ]
     positions = [cleanup_method.find(token) for token in cleanup_order]

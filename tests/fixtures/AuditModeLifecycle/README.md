@@ -6,6 +6,8 @@
 
 入口：`python tools/run_runtime_regressions.py --filter AuditModeLifecycle`。所有结果仅 L2。
 
+奖励执行迁移后，支援弹 builder 在 `ZombieModeRuntimeModule` 中直接执行；Tick 的掉落 / NPC 和 RunOnly 的奖励清理边界由模块替身记录，原顺序判据继续覆盖模块内部直接调用。
+
 2026-09-22 补充：逐字抽取 Mode E 商人、Mode F 补位及金鸭雨现金生产方法，受控工厂覆盖旧请求的 null / fault / success 和后继请求交错；仅将 UniTask 返回类型与 Yield 换为 Task，其余方法体不改。商人构建/失败、补位结案和现金完成回调以可观测替身记录调用，验证旧任务不消费新局计数、不关闭新商人经济、不投放迟到现金。丧尸转存回归直接执行 RuntimeModule 生产方法，覆盖库存顺序、装备槽引用去重、仓库满与缺失时的收件箱回退、Reforge 同步/序列化/保存/销毁顺序、反向回滚、重复调用，以及第二件保存失败时先撤候选副本再返还原物；认证 owner 增加迟到失败与当前失败对照。
 
 2026-09-25 Mode E 提取后，商人生产方法直接在 `ModeEFMerchantRuntime` 替身中执行，`ModBehaviour` 只提供静态日志替身。抽取入口跟随生产方法访问级别，不从兼容转发复制业务逻辑；既有迟到、失败与后继请求交错断言保持。

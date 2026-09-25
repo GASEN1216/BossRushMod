@@ -495,8 +495,11 @@ namespace BossRush
         }
     }
 
-    public partial class ModBehaviour
+    internal sealed partial class IntegrationRuntimeModule
     {
+        internal static bool DynamicItemsInitialized { get; set; }
+        internal static int BossRushTicketTypeId { get; set; } = -1;
+
         internal bool EnsureItemContentConfiguratorsRegisteredForDynamicRegistry()
         {
             RegisterItemContentConfigurators();
@@ -507,9 +510,9 @@ namespace BossRush
         {
             if (BossRushDynamicItemRegistry.HasRegisteredPrefabWithoutEnsuring(BossRushItemIds.BossRushTicket))
             {
-                if (bossRushTicketTypeId <= 0)
+                if (BossRushTicketTypeId <= 0)
                 {
-                    bossRushTicketTypeId = BossRushItemIds.BossRushTicket;
+                    BossRushTicketTypeId = BossRushItemIds.BossRushTicket;
                 }
                 return true;
             }
@@ -523,21 +526,21 @@ namespace BossRush
 
                 if (!File.Exists(bundlePath))
                 {
-                    DevLog("[BossRushDynamicItemRegistry] 未找到 bossrush_ticket AssetBundle: " + bundlePath);
+                    ModBehaviour.DevLog("[BossRushDynamicItemRegistry] 未找到 bossrush_ticket AssetBundle: " + bundlePath);
                     return false;
                 }
 
                 bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (bundle == null)
                 {
-                    DevLog("[BossRushDynamicItemRegistry] AssetBundle.LoadFromFile 失败: " + bundlePath);
+                    ModBehaviour.DevLog("[BossRushDynamicItemRegistry] AssetBundle.LoadFromFile 失败: " + bundlePath);
                     return false;
                 }
 
                 UnityEngine.Object[] assets = ResourceBundleLoader.LoadAllAssets<UnityEngine.Object>(bundle);
                 if (assets == null || assets.Length == 0)
                 {
-                    DevLog("[BossRushDynamicItemRegistry] bossrush_ticket AssetBundle 中未找到任何资源");
+                    ModBehaviour.DevLog("[BossRushDynamicItemRegistry] bossrush_ticket AssetBundle 中未找到任何资源");
                     return false;
                 }
 
@@ -564,20 +567,20 @@ namespace BossRush
                     if (itemPrefab.TypeID == BossRushItemIds.BossRushTicket)
                     {
                         targetRegistered = true;
-                        bossRushTicketTypeId = itemPrefab.TypeID;
+                        BossRushTicketTypeId = itemPrefab.TypeID;
                     }
-                    else if (bossRushTicketTypeId <= 0 && itemPrefab.TypeID > 0)
+                    else if (BossRushTicketTypeId <= 0 && itemPrefab.TypeID > 0)
                     {
-                        bossRushTicketTypeId = itemPrefab.TypeID;
+                        BossRushTicketTypeId = itemPrefab.TypeID;
                     }
                 }
 
-                DevLog("[BossRushDynamicItemRegistry] bossrush_ticket 按需注册完成：Item=" + itemCount + ", BossRushTicketTypeId=" + bossRushTicketTypeId);
+                ModBehaviour.DevLog("[BossRushDynamicItemRegistry] bossrush_ticket 按需注册完成：Item=" + itemCount + ", BossRushTicketTypeId=" + BossRushTicketTypeId);
                 return targetRegistered || BossRushDynamicItemRegistry.HasRegisteredPrefabWithoutEnsuring(BossRushItemIds.BossRushTicket);
             }
             catch (Exception e)
             {
-                DevLog("[BossRushDynamicItemRegistry] bossrush_ticket 按需注册失败: " + e.Message);
+                ModBehaviour.DevLog("[BossRushDynamicItemRegistry] bossrush_ticket 按需注册失败: " + e.Message);
                 return false;
             }
             finally

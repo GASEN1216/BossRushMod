@@ -24,10 +24,16 @@ namespace BossRush
             runtimeModuleHost.Register(courierNpcRuntime);
             goblinNpcRuntime = new GoblinNpcRuntimeModule();
             runtimeModuleHost.Register(goblinNpcRuntime);
+            nurseNpcRuntime = new NurseNpcRuntimeModule();
+            runtimeModuleHost.Register(nurseNpcRuntime);
             wavesArenaRuntime = new WavesArenaRuntimeModule();
             runtimeModuleHost.Register(wavesArenaRuntime);
             BindModeDItemPoolQueries();
             BindSpawnPostprocessServices();
+            BindAwenLootSweepRuntime();
+            var modeEFVirtualSpawnerRegistry = new ModeEFVirtualSpawnerRegistry();
+            modeERuntime.BindVirtualSpawnerRegistry(modeEFVirtualSpawnerRegistry);
+            modeFRuntime.BindVirtualSpawnerRegistry(modeEFVirtualSpawnerRegistry);
             var modeEFSpawnPreparation = new ModeEFSpawnPreparation(ModeERuntimeModule.ModeEAvailableFactions,
                 () => modeERuntime.ModeEPlayerFaction,
                 position => modeDRuntime.GenerateFallbackSpawnPointsAroundPlayer(position), ShowMessage);
@@ -41,6 +47,7 @@ namespace BossRush
             runtimeModuleHost.Register(modeFRuntime);
             var zombieRuntime = new ZombieModeRuntimeModule();
             zombieRuntime.BindEnemyRecoveryUnregister(UnregisterEnemyRecovery);
+            zombieRuntime.BindZombieModeTemporaryNpcServices(ResolveZombieModeTemporaryNpcPrefab, courierNpcRuntime.AddCourierInteraction);
             runtimeModuleHost.Register(zombieRuntime);
             runtimeModuleHost.Register(new ModeGRuntimeModule());
 
@@ -108,6 +115,21 @@ namespace BossRush
             runtimeModuleHost.Register(dragonDescendantRuntimeModule);
             phantomWitchRuntimeModule = new PhantomWitchRuntimeModule();
             runtimeModuleHost.Register(phantomWitchRuntimeModule);
+        }
+
+        private UnityEngine.GameObject ResolveZombieModeTemporaryNpcPrefab(string kind)
+        {
+            switch (kind)
+            {
+                case "Goblin":
+                    return goblinNpcRuntime.LoadGoblinAssetBundle() ? goblinNpcRuntime.GoblinPrefab : null;
+                case "Nurse":
+                    return NurseNpcRuntimeModule.GetPrefabForRuntime();
+                case "Courier":
+                    return courierNpcRuntime.LoadCourierAssetBundle() ? CourierNpcRuntimeModule.CourierPrefab : null;
+                default:
+                    return null;
+            }
         }
 
         /// <summary>官方任务投影核心唯一运行时实例。</summary>

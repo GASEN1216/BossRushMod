@@ -22,7 +22,7 @@ COURIER_NPC_SOURCES = [
 
 def read_courier_npc_sources() -> str:
     return "\n".join(path.read_text(encoding="utf-8") for path in COURIER_NPC_SOURCES)
-TRACKER = Path("LootAndRewards/ModeEFLootboxTracker.cs")
+TRACKER = Path("LootAndRewards/AwenLootSweepRuntime.cs")
 CLOSE_AND_CLEANUP = Path("Integration/NPCs/Courier/CourierService_CloseAndCleanup.cs")
 
 

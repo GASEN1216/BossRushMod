@@ -34,7 +34,7 @@ def main() -> int:
             return fail("battlefield gravity should not pause/resume by performance tier -> " + token)
 
     for token in [
-        "StartZombieModeBattlefieldGravityRuntimeIfNeeded(zombieModeRunState.RunId);",
+        "StartZombieModeBattlefieldGravityRuntimeIfNeeded(runState.RunId);",
         "if (!IsZombieModeRunValid(runId) ||",
         "while (IsZombieModeRunValid(runId)",
         "if (inst == null || inst.ZombieModeCurrentRunId != runId)",
