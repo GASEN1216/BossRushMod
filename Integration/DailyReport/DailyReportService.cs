@@ -279,7 +279,9 @@ namespace BossRush
 
                 candidate.CarrySeconds = nextCarry;
                 candidate.PendingIssueBanner = true;
-                if (!Persist(candidate))
+                // Store 接受后 DTO 已推进；物理写盘失败只能重试同一批数据，不能再结算一天。
+                // 先消费运行时余数，再请求 IO，官方采集回调也只能看见新天对应的余数。
+                if (!DailyReportPersistence.Store(candidate.Clone()))
                 {
                     // 退避后再试，并且**不**置 _pendingIssueBanner：横幅由成功路径负责，
                     // 在这里置位会让出刊提示每个退避周期重弹一次。
@@ -295,6 +297,8 @@ namespace BossRush
                 lock (_lock) { _carrySeconds = nextCarry; }
                 _rolloverCount += settled;
                 _pendingIssueBanner = true;
+
+                DailyReportSaveCoordinator.RequestFlush();
 
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "跨天结算完成，当前第 "
                     + candidate.DayIndex + " 天，本期已签 " + candidate.PeriodSignedCount + " 格");

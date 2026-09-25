@@ -158,9 +158,10 @@ That is the small line at the bottom of the pick page. You can bet **money** —
 - **Win** and you keep them, plus **prizes**:
   - **Quality** follows your stake: the value-weighted average quality, so the pricey item decides. Stake a purple gun with a few bullets and the prizes are mostly purple.
   - **Total value** follows the stake value and the odds: what a win pays back (see below) minus the stake value. The more valuable the stake and the longer the odds, the more the prizes are worth.
-  - **Count**: one prize per staked item, up to 6. Prizes go into your backpack, or drop at your feet if it is full.
+  - **Count**: one prize per staked item, up to 6. Prizes go into your backpack. If it is full, undelivered prizes are kept pending and arrive automatically once you make room, including after reloading.
   - Whatever the prizes cannot cover exactly (for example, nothing of that quality fits the remaining value) is paid in money.
 - Leave staked items alone once the match starts: anything missing when you lose (moved, used or merged away) is charged from your balance at its value, down to zero. Anything merged into the same stack during the match is not part of the bet; only the staked amount is taken.
+- The bet stays open until all prizes arrive, so you cannot place another bet while delivery is pending. Delivered prizes are not sent again. If an older save cannot identify the exact item you staked, it is treated as missing; another item of the same type is never taken in its place.
 
 ### The Odds Reveal
 

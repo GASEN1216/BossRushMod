@@ -146,6 +146,7 @@ namespace BossRush
             try
             {
                 ModeHSaveFlushCoordinator.Tick();
+                ModeHCashBetService.Tick();
                 OnUpdateInternal(deltaTime, unscaledDeltaTime);
             }
             catch (Exception e)

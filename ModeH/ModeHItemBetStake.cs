@@ -9,26 +9,27 @@
 // 和没有估值的东西（押了也换不出奖品）。
 //
 // Mode H 玩家资产访问白名单的一条（ModeHIsolationGuard 按文件放行 Inventory 符号）：
-//   - 只读主角色背包（CharacterItem.Inventory）列出能押的物品；不碰仓库、不碰物品树存档；
-//   - 押上的物品**不离开背包**：锁盘只记下引用与估值、品质快照，比赛期间原地不动；
+//   - 从主角色背包（CharacterItem.Inventory）列出能押的物品；不依赖出击图中不存在的仓库；
+//   - 押上的物品**不离开背包**：锁盘盖持久身份，记录引用、估值和品质；身份随主角物品树与账本同存；
 //   - 输了才收走：只 Detach + DestroyTree 仍在玩家身上的那几件；被挪走、用掉、合并掉的部分按估值
 //     记成「找不到」，由账本从余额里扣（扣到 0 为止）；堆叠被合并变多时只扣回押上的数量；
 //   - 赢了：押上的东西一件不动，另发奖品。奖品从共享的品质候选池（BossRushQualityItemPool，全表按品质、
 //     过掉落黑名单）按押上物品的加权品质挑，经 ModeHRewardItemPool.TryInstantiate（空壳门禁）实例化，
-//     账本记成之后才用 ItemUtilities.SendToPlayer(prize, true, false) 发进背包（满了落在脚下，不送仓库）；
-//     账本没记成就把备好的奖品销毁，下次结算重新备；
+//     先把奖品身份与清单记成可恢复计划，再用 SendToPlayerCharacterInventory(prize, true) 不合并地发进背包；
+//     满包或投递失败保留欠账；已到账凭据、主角物品树与剩余义务同存，全部完成后才结清现金与统计；
 //   - 退回：物品一件不动，只丢掉引用。
 // 为什么不先拿走托管：比赛在出击地图上打，托管在内存里的物品会随进程崩溃消失；原地押上的物品崩溃后
-// 仍在官方存档里，最坏是玩家少输一次，而不是丢东西（§22「证据不足时优先保护资产」）。
+// 仍在官方存档里；收走和交付则必须与账本一起采集快照，防止恢复到互不对应的资产与结算状态。
 // 为什么结算时还要核对：官方背包键不看 InputManager 的输入禁用（CharacterInputControl.OnUIInventoryInput），
 // 看台上也能打开背包把押上的东西挪走。
-// 读档后内存引用没了：按账本记下的 typeId / 数量从背包里重新认领（RebindFromLedger），认领不到的同样按估值扣钱。
+// 读档后内存引用没了：只按 TypeID + 持久身份唯一认领；旧记录缺身份或身份重复都不猜，沿用缺失估值补偿。
 // 估值按官方商人收购口径（ModeHConfig.ItemBetValuePermille），押物品不会比卖掉更划算。
 // ============================================================================
 
 using System;
 using System.Collections.Generic;
 using ItemStatsSystem;
+using Saves;
 using UnityEngine;
 
 namespace BossRush
@@ -50,6 +51,9 @@ namespace BossRush
     /// <summary>押背包物品的物品侧。全部入口 no-throw，只在 Unity 主线程调用。</summary>
     internal static class ModeHItemBetStake
     {
+        // 官方 ItemTreeData 会复制 Variables；Unity GetInstanceID 只在本进程内有效，不能进恢复账本。
+        internal const string IdentityKey = "BossRush_ModeHBetIdentity";
+
         private sealed class LockedEntry
         {
             public Item Item;
@@ -95,6 +99,51 @@ namespace BossRush
             if (item == null || character == null || item.IsBeingDestroyed) return false;
             try { return ReferenceEquals(item.GetCharacterItem(), character); }
             catch (Exception) { return false; }
+        }
+
+        internal static bool CanSnapshotPlayer()
+        {
+            Item character = PlayerCharacterItem();
+            return !SavesSystem.IsSaving && SavesSystem.CurrentSlot >= 0
+                && character != null && !character.IsBeingDestroyed && character.Inventory != null;
+        }
+
+        /// <summary>仅采集主角物品树；出击图没有 PlayerStorage，不能使用要求基地仓库的资产门。</summary>
+        internal static bool CollectPlayerSnapshot(int slot)
+        {
+            if (SavesSystem.CurrentSlot != slot || !CanSnapshotPlayer()) return false;
+            try { PlayerCharacterItem().Save("MainCharacterItemData"); return true; }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeH] 押物品资产快照顺延: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>每次锁盘重新盖章，旧凭据不会认领下一次押注。读取时从不补造身份。</summary>
+        private static string StampIdentity(Item item)
+        {
+            string identity = Guid.NewGuid().ToString("N");
+            item.SetString(IdentityKey, identity, true);
+            if (!string.Equals(item.GetString(IdentityKey, string.Empty), identity, StringComparison.Ordinal))
+                throw new InvalidOperationException("item_bet_identity_write_failed");
+            return identity;
+        }
+
+        private static Item FindIdentity(List<Item> pool, ModeHItemBetEntry entry, out bool ambiguous)
+        {
+            ambiguous = false;
+            if (string.IsNullOrEmpty(entry.Identity)) return null;
+            Item match = null;
+            for (int i = 0; i < pool.Count; i++)
+            {
+                Item item = pool[i];
+                if (item == null || item.IsBeingDestroyed || item.TypeID != entry.TypeId
+                    || !string.Equals(item.GetString(IdentityKey, string.Empty), entry.Identity, StringComparison.Ordinal)) continue;
+                if (match != null) { ambiguous = true; return null; }
+                match = item;
+            }
+            return match;
         }
 
         /// <summary>
@@ -328,6 +377,7 @@ namespace BossRush
                 for (int i = 0; i < _selected.Count; i++)
                 {
                     Item item = _selected[i];
+                    string identity = StampIdentity(item);
                     LockedEntry entry = new LockedEntry
                     {
                         Item = item, TypeId = item.TypeID, Count = CountOf(item), Value = ValueOf(item),
@@ -338,6 +388,7 @@ namespace BossRush
                     entries.Add(new ModeHItemBetEntry
                     {
                         TypeId = entry.TypeId, Count = entry.Count, Value = entry.Value, Quality = entry.Quality, Name = entry.Name,
+                        Identity = identity,
                     });
                 }
                 return true;
@@ -354,8 +405,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 读档后（内存引用没了）按账本从背包里重新认领本场押上的物品：同 typeId、数量够的优先整组相等的一件。
-        /// 认领不到的留空，输了时按估值扣钱。已经有引用时不动。
+        /// 读档后只按随物品保存的唯一身份认领。数量变化由收走路径处理，绝不用同型号物品顶替。
+        /// 旧账本没有身份、身份重复或认领不到的留空，输了时走既有的缺失估值补偿。已有本场引用时不动。
         /// </summary>
         internal static void RebindFromLedger(List<ModeHItemBetEntry> entries)
         {
@@ -366,14 +417,7 @@ namespace BossRush
             try
             {
                 Item character = PlayerCharacterItem();
-                Inventory backpack = character != null ? character.Inventory : null;
-                if (backpack != null)
-                {
-                    foreach (Item item in backpack)
-                    {
-                        if (item != null && !item.IsBeingDestroyed) pool.Add(item);
-                    }
-                }
+                if (character != null) pool = character.GetAllChildren(false, false);
             }
             catch (Exception e)
             {
@@ -383,14 +427,8 @@ namespace BossRush
             {
                 ModeHItemBetEntry entry = entries[i];
                 if (entry == null) continue;
-                Item match = null;
-                for (int j = 0; j < pool.Count; j++)
-                {
-                    Item candidate = pool[j];
-                    if (candidate.TypeID != entry.TypeId || CountOf(candidate) < entry.Count) continue;
-                    if (match == null || CountOf(candidate) == entry.Count) match = candidate;
-                    if (CountOf(candidate) == entry.Count) break;
-                }
+                bool ambiguous;
+                Item match = FindIdentity(pool, entry, out ambiguous);
                 if (match != null) pool.Remove(match);
                 _locked.Add(new LockedEntry
                 {
@@ -450,6 +488,25 @@ namespace BossRush
         #endregion
 
         #region 奖品（赢了）
+
+        /// <summary>把实际可生成的奖品固定成可恢复计划；试生成物不交付，由这里负责清理。</summary>
+        internal static List<ModeHItemBetEntry> PreparePrizePlan(long budget, int quality, int slots,
+            long runSeed, string txKey, out long prizeValue, out string summary)
+        {
+            List<Item> prizes = PreparePrizes(budget, quality, slots, runSeed, txKey, out prizeValue, out summary);
+            List<ModeHItemBetEntry> plan = new List<ModeHItemBetEntry>();
+            try
+            {
+                for (int i = 0; i < prizes.Count; i++)
+                {
+                    Item item = prizes[i];
+                    plan.Add(new ModeHItemBetEntry { TypeId = item.TypeID, Count = CountOf(item), Value = ValueOf(item),
+                        Quality = QualityOf(item), Name = NameOf(item), Identity = Guid.NewGuid().ToString("N") });
+                }
+                return plan;
+            }
+            finally { DiscardPrizes(prizes); }
+        }
 
         /// <summary>
         /// 备好奖品（实例化、不发）：共 <paramref name="slots"/> 件，每件的目标价值是「剩下的奖品价值 ÷ 剩下的件数」，
@@ -537,25 +594,55 @@ namespace BossRush
             }
         }
 
-        /// <summary>账本记成之后发奖品：进背包，满了落在脚下（出击地图上没有仓库，不送仓库）。</summary>
-        internal static void DeliverPrizes(List<Item> prizes)
+        /// <summary>
+        /// 交付固定计划，返回未到账的条目。仅进背包且不合并：空间不足时留欠账，不能把不随存档保存的落地物算到账。
+        /// 已在角色物品树中的同一凭据只确认一次，覆盖送达后通知异常与回执写入重试。
+        /// </summary>
+        internal static List<ModeHItemBetEntry> DeliverPrizes(List<ModeHItemBetEntry> prizes)
         {
+            List<ModeHItemBetEntry> remaining = new List<ModeHItemBetEntry>();
+            Item character = PlayerCharacterItem();
+            List<Item> pool = character != null ? character.GetAllChildren(false, false) : new List<Item>();
             for (int i = 0; prizes != null && i < prizes.Count; i++)
             {
-                Item prize = prizes[i];
-                if (prize == null) continue;
+                ModeHItemBetEntry entry = prizes[i];
+                bool ambiguous;
+                if (FindIdentity(pool, entry, out ambiguous) != null) continue;
+                if (ambiguous || string.IsNullOrEmpty(entry.Identity) || !CanSnapshotPlayer()
+                    || character.Inventory.GetFirstEmptyPosition() < 0)
+                {
+                    remaining.Add(entry);
+                    continue;
+                }
+                Item prize = null;
                 try
                 {
-                    ItemUtilities.SendToPlayer(prize, true, false);
+                    string failure;
+                    prize = ModeHRewardItemPool.TryInstantiate(entry.TypeId, out failure);
+                    if (prize != null)
+                    {
+                        prize.StackCount = entry.Count;
+                        prize.SetString(IdentityKey, entry.Identity, true);
+                        if (prize.GetString(IdentityKey, string.Empty) != entry.Identity)
+                            throw new InvalidOperationException("item_prize_identity_write_failed");
+                        ItemUtilities.SendToPlayerCharacterInventory(prize, true);
+                    }
                 }
                 catch (Exception e)
                 {
-                    ModBehaviour.DevLog("[ModeH] [WARNING] 押物品奖品发放失败: " + e.Message);
+                    ModBehaviour.DevLog("[ModeH] 押物品奖品送达异常，核对实物后保留欠账: " + e.Message);
+                }
+                if (IsOnPlayer(prize, character)) pool.Add(prize);
+                else
+                {
+                    remaining.Add(entry);
+                    ModeHRewardItemPool.DestroyUngranted(prize);
                 }
             }
+            return remaining;
         }
 
-        /// <summary>账本没记成：销毁备好的奖品（还没交给玩家），下次结算重新备。</summary>
+        /// <summary>清理尚未交付的试生成奖品；真正的交付由已保存的计划驱动。</summary>
         internal static void DiscardPrizes(List<Item> prizes)
         {
             for (int i = 0; prizes != null && i < prizes.Count; i++) ModeHRewardItemPool.DestroyUngranted(prizes[i]);

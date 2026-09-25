@@ -18,6 +18,8 @@ namespace BossRush
         public static string T(string zh, string en) { return zh; }
     }
 
+    internal static class ModeHItemBetStake { internal static bool CanSnapshotPlayer() { return true; } }
+
     internal static partial class ModeHCashBetService
     {
         /// <summary>校准统计（生产里是账本 Current 的只读副本）。</summary>
@@ -30,6 +32,7 @@ namespace BossRush
 
         internal sealed partial class CashBetJournal
         {
+            private bool _itemSnapshotRequired;
             internal sealed class MemoryStore
             {
                 public ModeHCashBetRecord Current = new ModeHCashBetRecord();

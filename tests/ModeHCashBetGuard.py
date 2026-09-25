@@ -12,8 +12,8 @@ ModeHCashBetGuard — 鸭王杯「押钱 / 押背包物品」的结构与数值�
 2. 校准只能让赔付变少：假定胜率取 max(表, 实际胜率)，不得取 min。
 3. 资金顺序：先把账本排进队列再动钱；钱没按预期变就把账本撤回；扣押金只从账户余额扣（不碰背包现金物品）。
 4. 结算至多一次：只结算状态为 Reserved 且 runId / matchIndex 对得上的那一笔；退回同样只认 Reserved。
-5. 押物品：记账时不动钱；赢了发奖品，凑不满的折成钱且不超过「赔付 − 估值」；奖品先备好、账本记成才发，
-   记不成就销毁（至多发一次）；输了扣的钱不超过余额；退回不动钱。
+5. 押物品：记账时不动钱；赢了发奖品，凑不满的折成钱且不超过「赔付 − 估值」；先记录可恢复的固定计划，
+   计划、实物/剩余义务、现金结清可恢复，未送达不销账；输了扣的钱不超过余额；退回不动钱。
 6. 押注跟着这一场走：技术重试、恢复回落、挂起 / 关停 / 切图中止都不退，重锁时先沿用挂着的那一笔
    （旧版一中断就整额退回，打输了强退重进等于重掷）；只有放弃赛季、开新赛季对到上一季、F3 清理才退。
 7. 接线：锁盘落盘成功后、生成之前下注；本场结算处结算；读档与开新赛季时对账；
@@ -42,9 +42,12 @@ def read(rel):
         return handle.read()
 
 
+sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
+from cs_source_util import clean_source
+
+
 def strip_comments(code):
-    code = re.sub(r"/\*.*?\*/", "", code, flags=re.S)
-    return re.sub(r"//[^\n]*", "", code)
+    return clean_source(code)
 
 
 def body(code, signature):
@@ -184,13 +187,33 @@ def check(sources):
             "[接线] 锁盘落盘成功后、生成之前下注")
     need(src["combat"], "SettleCashBetForMatch(won);", "[接线] 本场分出胜负处必须结算押注")
     settle_flow = body(bet, "private void SettleReservedBet(ModeHCashBetRecord record, bool won)")
-    need(settle_flow, "ModeHItemBetStake.ForfeitLocked()", "[接线] 押物品输了要收走押上的东西")
-    ordered(settle_flow, ["ModeHItemBetStake.PreparePrizes(", "ModeHCashBetService.TrySettle(",
-                          "ModeHItemBetStake.DeliverPrizes(prizes);", "ModeHItemBetStake.DiscardPrizes(prizes);"],
-            "[物品] 奖品先备好、账本记成才发、记不成就销毁（至多发一次）")
-    need(settle_flow, "ModeHItemBetEntry.PrizeQuality(entries)", "[物品] 奖品品质跟押上的东西走")
-    need(settle_flow, "ModeHCashBetService.ComputePayout(record.amount, record.odds) - record.amount",
-         "[物品] 奖品总价值跟估值和赔率走")
+    need(settle_flow, "ModeHCashBetService.TrySettleItems(", "[接线] 实物结算必须走可恢复计划")
+    item_settle = body(service, "internal bool TrySettleItems(string runId, int matchIndex, bool won, long runSeed)")
+    need(item_settle, "ModeHItemBetStake.ForfeitLocked()", "[接线] 押物品输了要收走押上的东西")
+    ordered(item_settle, ["ModeHItemBetStake.PreparePrizePlan(", "Commit(previous, plan, 0L, out reason)",
+                         "ModeHItemBetStake.DeliverPrizes(pending)", "_store.Store(candidate)",
+                         "_coordinator.RequestFlush(out error, true)", "bool settled = TrySettle("],
+            "[物品] 固定计划先入账，实物与剩余义务同存，再结清现金和统计")
+    need(item_settle, "ModeHItemBetEntry.PrizeQuality(entries)", "[物品] 奖品品质跟押上的东西走")
+    need(item_settle, "ComputePayout(previous.amount, previous.odds) - previous.amount", "[物品] 奖品价值跟估值和赔率走")
+    need(item_settle, "if (previous.itemSettlement == 0)", "[物品] 已准备计划不得重掷")
+    need(item_settle, "previous.itemSettlement == 1", "[物品] 重试只读已记录的输赢")
+    need(item_settle, "candidate.missingValue = ModeHItemBetStake.ForfeitLocked();", "[物品] 缺失估值也必须可恢复")
+    need(item_settle, "if (candidate.pendingItems == previous.pendingItems) return false;", "[物品] 未送达保留义务")
+    need(item_settle, "if (!CanMoveMoney(out reason) || !ModeHItemBetStake.CanSnapshotPlayer()) return false;",
+         "[物品] 收走或交付前必须先确认写入边界与主角就绪")
+    need(reserve_items, "_itemSnapshotRequired = true;", "[物品] 锁盘身份必须与背包同存")
+    need(refund, "if (previous.kind == KindItems && previous.itemSettlement != 0) return false;",
+         "[物品] 放弃赛季不得抹掉已确定输赢的交付义务")
+    collect = body(service, "private bool CollectCash()")
+    ordered(collect, ["if (_staging) return false;", "ModeHItemBetStake.CollectPlayerSnapshot(_slot)",
+                      "if (!_cashSnapshotRequired) return true;"], "[物品] 官方采集必须先过 staging 与资产快照门")
+    need(commit, "_cashSnapshotRequired |= delta != 0;", "[现金] 零金额计划不能抹掉此前未保存的钱包义务")
+    need(service, "return _cashSnapshotRequired || _itemSnapshotRequired;", "[物品] pending 已入缓存后仍保留资产采集义务")
+    reconcile = body(bet, "private void ReconcileCashBetOnRestore()")
+    ordered(reconcile, ["record.itemSettlement != 0", "SettleReservedBet(record, record.itemSettlement == 1);", "if (!sameRun)"],
+            "[恢复] 无活动赛季时也要先偿还已确定的实物欠账")
+    need(src["module"], "ModeHCashBetService.Tick();", "[恢复] 宿主必须驱动欠账与 IO 重试")
     module = src["module"]
     if module.count("RestoreFromSaveIfPresent();\n") and module.count("ReconcileCashBetOnRestore();") < 2:
         errors.append("[接线] 两处读档恢复之后都要对账挂着的押注")
@@ -226,8 +249,8 @@ def main():
         ("service", "return Commit(previous, candidate, 0, out failureReasonId);",
          "return Commit(previous, candidate, -value, out failureReasonId);"),
         ("service", "delta = won ? Math.Max(0L, Math.Min(winCash, gross - previous.amount)) : 0L;", "delta = won ? gross : 0L;"),
-        ("bet", "                if (prizes != null) ModeHItemBetStake.DeliverPrizes(prizes);\n", ""),
-        ("bet", "ModeHItemBetEntry.PrizeQuality(entries)", "ModeHConfig.MaxGameQuality"),
+        ("service", "candidate.pendingItems = ModeHItemBetEntry.Encode(ModeHItemBetStake.DeliverPrizes(pending));", "candidate.pendingItems = string.Empty;"),
+        ("service", "ModeHItemBetEntry.PrizeQuality(entries)", "ModeHConfig.MaxGameQuality"),
         ("service", "long delta = previous.kind == KindItems ? 0L : previous.amount;", "long delta = previous.amount;"),
         ("module", "ModeHCashBetService.ResetStaticCaches();", ""),
         ("module", "ModeHItemBetStake.ResetStaticCaches();", ""),
@@ -235,10 +258,14 @@ def main():
          "        private void TryReturnRealStakeOnAbort(string context)\n        {\n            RefundCashBet(\"abort_\" + context);\n"),
         ("bet", "            if (carried != null)\n            {\n                // 押注跟着这一场走",
          "            if (false)\n            {\n                // 押注跟着这一场走"),
-        ("bet", "                    lossCharge = ModeHItemBetStake.ForfeitLocked();\n", ""),
+        ("service", "candidate.missingValue = ModeHItemBetStake.ForfeitLocked();", "candidate.missingValue = 0L;"),
+        ("service", "if (_itemSnapshotRequired && !ModeHItemBetStake.CollectPlayerSnapshot(_slot)) return false;", ""),
+        ("service", "if (previous.itemSettlement == 0)", "if (true)"),
+        ("service", "_cashSnapshotRequired |= delta != 0;", "_cashSnapshotRequired = delta != 0;"),
+        ("module", "ModeHCashBetService.Tick();", ""),
     ]
     for key, before, after in probes:
-        if before not in sources[key]:
+        if sources[key].count(before) != 1:
             errors.append("[探针] 锚点失效：%s %r" % (FILES[key], before))
             continue
         mutated = dict(sources)

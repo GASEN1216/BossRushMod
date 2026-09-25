@@ -129,8 +129,10 @@ Dev 专用测试档的 `BossRush_Validation_AutotestSnapshot_v1` 保持 version=
 `EconomyManager.Instance` 已随场景销毁（`Add` 返回 false）、`ItemAssetsCollection.InstantiateSync`
 可能因资源未就绪返回 null，只靠当前对象重试会随对象一起消失。
 纪律：写入后回读核对；结账**先到账再销账**（销账失败只会重发，绝不吞玩家的钱物）；
-邀请函逐张推进，中途资源掉线时剩余张数留在账上。结账点是官方
-`EconomyManager.OnEconomyManagerLoaded`（命名方法、幂等订阅、随模块销毁退订）与每次入场扣款之前。
+邀请函逐张推进，中途资源或接收方掉线时剩余张数留在账上。实例化成功不等于送达：先确认角色或完整仓库就绪，
+再核对角色物品树、仓库、有效拾取代理或官方 Buffer 内同实例 ID 的树回执。投递前失败保留欠账，
+投递后通知异常已有回执则不重发。结账点是官方 `EconomyManager.OnEconomyManagerLoaded`、
+`LevelManager.OnAfterLevelInitialized`（命名方法、幂等订阅、随模块销毁成对退订）与每次入场扣款之前。
 由 `tests/ZombieModeEntryDebtGuard.py` 与执行回归 `tests/fixtures/ZombieModeEntryDebt` 守卫。
 
 Breaking:
@@ -294,7 +296,7 @@ Mode H 的正式入口、五席试棚、三幕六战、虚拟整备与下注、�
 三个 Mode H key 均不存在时，轻量扫描同步得到 ready 且 unblocked。
 `OnSetFile` 后按新 `slotGeneration` 重新读取风险头，I/O 异常时最终模式入口 fail-closed 并提供重试。
 
-**存档键（SCHEMA+）。** 三个 typed key 全部已实现：
+**赛季与旧仓库押品存档键（SCHEMA+）。** 三个 typed key 全部已实现：
 
 - `BossRush_ModeH_Season_v1`
 - `BossRush_ModeH_HallOfFame_v1`
@@ -309,6 +311,25 @@ envelope 带 `schemaVersion`、`gameBuildSignature`、`modBuildSignature`、
 按 ID 幂等插入、读回后再标记完成，上限 32 条。
 删档清空对应 cache、pending barrier、recovery shell、owner/token、presentation 引用与 slot generation。
 
+**押钱 / 押背包物品账本（2026-09-25，COMPAT / SCHEMA+）。** 独立冻结 key
+`BossRush_ModeHCashBet_v1`，用 `Save<string>` 保存 JSON，复用 `BossRushSlotJsonStore` 与
+`BossRushSaveCoordinatorEngine`。当前 `schemaVersion=2`，兼容 v1；更高版本与损坏数据仍进写屏障。
+v1 新字段缺省为未准备结算、无待交付项、缺失估值 0，下一次正常写入才升级；不迁移或删除旧 key。
+
+- 押品编码追加第六列身份，旧五列可读；每次锁盘给实际押品的 Variables 写
+  `BossRush_ModeHBetIdentity`，只按 TypeID + 唯一身份恢复。身份缺失或重复时不认领同型号替代品，
+  沿用原有缺失估值补偿。主角物品树经官方 `Save("MainCharacterItemData")` 采集，随账本同批保存；不依赖基地仓库。
+- 追加 `itemSettlement`（0 未准备 / 1 赢 / 2 输）、`pendingItems`、`missingValue`。
+  先接受固定输赢与奖品计划，再保存实物与剩余义务，全部实物完成后才结清现金与统计。
+  失败保持 Reserved；恢复、放弃或开新季都不能退款或覆盖已经准备的实物结算。
+- 奖品仅通过官方 `SendToPlayerCharacterInventory(prize, true)` 不合并地入包；满包时保留欠账，
+  不把无法随主角快照保存的落地物当成持久交付。身份回执防止已入包奖品重发；缺失估值与收走后的树同存，
+  重启不得再次扣同一笔。宿主驱动共享保存重试，待交付最多每秒尝试一次，无待交付时只做常量时间检查。
+- 金额变更仍与 `EconomyData` 快照同批保存；零金额计划不能清掉之前尚未完成的现金快照义务。
+  实物或钱包变更期间关闭采集门，避免通知重入保存半完成的账本。
+
+结构守卫 `ModeHCashBetGuard` / `ModeHIsolationGuard`，故障恢复执行回归 `SaveFailureRecovery`。
+
 **战痕选择凭据（2026-09-06，COMPAT）。** 复用现有 `appliedEventTokenIds` 保存
 `scar_offered|<operationId>|<scarId>` 与 `scar_resolved|<operationId>|<scarId>`，不新增字段、
 key 或 schemaVersion，不改变 canonical digest 算法。归属由持久 report / operation 恢复；
@@ -320,11 +341,13 @@ key 或 schemaVersion，不改变 canonical digest 算法。归属由持久 repo
 才能还原虚拟预约、清理旧锁盘并重新选择；失败保留快照与恢复入口。零件选择同样检查历史
 journal；已提交结果不得转成退款重打，已退款的旧场不得标记为新场押品。
 
-**玩家资产边界。** 只有三条白名单路径可以触碰玩家真实资产：
+**玩家资产边界。** 白名单按 `ModeHIsolationGuard` 的实际职责限制：
 `ModeHEntry.TryRefundPrepaidTicket()`（唯一退款实现点）、
 `ModeHLoadoutKitApplicator`（只访问 owner 标记且 inactive 的临时选手实例）、
-以及 `ModeHWarehouseStakeJournal`（唯一真实仓库写入者，经
-`ModeHInventoryPersistenceBridge` 落地）。其余 Mode H 文件不得出现
+`ModeHWarehouseStakeJournal`（唯一真实仓库写入者，经 `ModeHInventoryPersistenceBridge` 落地），
+以及 `ModeHItemBetStake`（背包押品身份、收走、奖品交付与主角物品快照，不碰仓库）。
+旧仓库物品树的规范化与恢复仍归 `ModeHItemTreeNormalizer` / `ModeHItemTreeRestoration`。
+其余 Mode H 文件不得出现
 `Inventory`、`PlayerStorage` 或玩家 `ItemTreeData` 任一符号。
 `ModeHSeasonRewardService` 与 `ModeHRewardTransaction` 都在白名单之外：
 前者只发虚拟套装/名声，后者只生成不可变结果计划并经 journal 提交。
@@ -537,9 +560,11 @@ mod 程序集改名/重构就会让老档读不回来。
 单 key 整存门面的状态机同样共享：`Common/Lifecycle/BossRushSlotJsonStore.cs`（征程 / 图鉴 / 日报三者共用）。
 
 所有状态变化必须先修改 `DailyReportData.Clone()` 候选副本，只有 `Store` 接受后才替换
-权威内存状态并向 UI 返回成功；签到、跨日、里程碑、悬赏种子、未读提示和补发路径都遵守
-同一规则。跨日悬赏先把完成结果作为“待发债务”随 rollover 落档，再触碰官方经济，最后以
-第二次候选提交标记领取；写盘失败时 UI 不得显示成功。
+权威内存状态；签到、跨日、里程碑、悬赏种子、未读提示和补发路径都遵守同一规则。
+跨日计时以 **Store 接受**为推进边界：接受后立即消费对应的 `_carrySeconds`，再请求物理保存；
+写盘失败由协调器重试同一份状态，不能让已消费的一天再次推进。Store 拒绝则保留计时并退避重试。
+跨日悬赏先把完成结果作为“待发债务”随 rollover 提交，再触碰官方经济，最后以第二次候选提交标记领取。
+面向玩家的领取入口仍保留物理保存失败反馈，不因为跨日计时修复而把硬写失败显示为成功。
 
 **DTO 扁平化是契约的一部分。** 里程碑领取用位掩码 `periodClaimedMask` 而不是 token 列表，
 往期数据用定长编码而不是嵌套对象；这是发布后冻结的存档字段面，不因解析器升级而改。

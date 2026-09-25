@@ -32,6 +32,10 @@ internal static class Program
         NotificationText.Reset();
         ItemAssetsCollection.Reset();
         ItemUtilities.Reset();
+        CharacterMainControl.Main = new CharacterMainControl { CharacterItem = new Item { Inventory = new Inventory() } };
+        PlayerStorage.Instance = new PlayerStorage { Initialized = true };
+        PlayerStorage.Inventory = new Inventory(); PlayerStorage.Loading = false;
+        PlayerStorageBuffer.Instance = new object(); PlayerStorage.IncomingItemBuffer.Clear();
         ModBehaviour.ResetLogs();
     }
 
@@ -148,11 +152,16 @@ internal static class Program
         Check(ItemUtilities.Delivered.Count == 0, "nothing was delivered while assets were missing");
         Check(ZombieModeEntryDebt.ReadInvitations() == 1, "the unpaid invitation is booked in the ledger");
 
-        // 实例造出来了但送达抛异常：按已发放处理，不重复发（否则会凭空多一张）。
+        // 送达前抛异常：实例由退款方法清理，欠账必须保留。
         ResetAll();
         ItemUtilities.ThrowOnSend = true;
-        Check(ZombieModeEntryDebt.RefundInvitation(), "a delivery exception after instantiation counts as delivered");
-        Check(ZombieModeEntryDebt.ReadInvitations() == 0, "a delivery exception does not book a duplicate invitation");
+        Check(ZombieModeEntryDebt.RefundInvitation(), "a failed delivery is booked for later recovery");
+        Check(ZombieModeEntryDebt.ReadInvitations() == 1 && ItemUtilities.Delivered.Count == 0,
+            "a pre-delivery exception keeps the invitation owed");
+        Check(ItemAssetsCollection.Created[0] == null, "unowned failed-delivery instance is destroyed with its GameObject");
+        ItemUtilities.ThrowOnSend = false;
+        Check(ZombieModeEntryDebt.TrySettleInvitations() && ItemUtilities.Delivered.Count == 1
+            && ZombieModeEntryDebt.ReadInvitations() == 0, "delivery recovery repays the invitation exactly once");
     }
 
     // ---- 8. 邀请函：逐张结账，中途失败剩下的仍在账上 ----
@@ -212,7 +221,7 @@ internal static class Program
         ZombieModeEntryDebt.Attach();
         ZombieModeEntryDebt.Attach();
         ZombieModeEntryDebt.Attach();
-        Check(EconomyManager.SubscriberCount == 1, "attaching is idempotent");
+        Check(EconomyManager.SubscriberCount == 1 && LevelManager.SubscriberCount == 1, "both subscriptions are idempotent");
 
         EconomyManager.Available = false;
         ZombieModeEntryDebt.RefundCash(4200L);
@@ -222,7 +231,7 @@ internal static class Program
         Check(ZombieModeEntryDebt.ReadCash() == 0L, "the ledger is cleared by the broadcast");
 
         ZombieModeEntryDebt.ResetStaticCaches();
-        Check(EconomyManager.SubscriberCount == 0, "teardown unsubscribes");
+        Check(EconomyManager.SubscriberCount == 0 && LevelManager.SubscriberCount == 0, "teardown unsubscribes both readiness events");
         ZombieModeEntryDebt.ResetStaticCaches();
         Check(EconomyManager.SubscriberCount == 0, "teardown is idempotent");
 
@@ -232,6 +241,42 @@ internal static class Program
         EconomyManager.Available = true;
         EconomyManager.RaiseLoaded();
         Check(ZombieModeEntryDebt.ReadCash() == 100L, "a detached ledger is not settled by the broadcast");
+    }
+
+    private static void InvitationDeliveryReceipts()
+    {
+        foreach (ItemUtilities.Destination target in new[] { ItemUtilities.Destination.Backpack,
+            ItemUtilities.Destination.Storage, ItemUtilities.Destination.Buffer, ItemUtilities.Destination.Ground })
+        {
+            ResetAll(); ItemUtilities.Target = target; ItemUtilities.ThrowAfterSend = true;
+            Check(ZombieModeEntryDebt.RefundInvitation() && ZombieModeEntryDebt.ReadInvitations() == 0,
+                "post-transfer exception uses actual delivery receipt: " + target);
+            ZombieModeEntryDebt.TrySettleInvitations();
+            Check(ItemUtilities.Delivered.Count == 1, "confirmed receipt never creates duplicate invitation: " + target);
+        }
+        ResetAll(); ItemUtilities.Target = ItemUtilities.Destination.BrokenGround;
+        Check(ZombieModeEntryDebt.RefundInvitation() && ZombieModeEntryDebt.ReadInvitations() == 1,
+            "pickup agent without interactable is not a delivered invitation");
+        Check(ItemAssetsCollection.Created[0] == null, "failed pickup creation cleans up owned item");
+
+        ResetAll(); ZombieModeEntryDebt.Attach();
+        CharacterMainControl.Main = null; PlayerStorage.Instance = null; PlayerStorage.Inventory = null;
+        PlayerStorageBuffer.Instance = null;
+        Check(ZombieModeEntryDebt.RefundInvitation() && ItemAssetsCollection.Instantiated == 0,
+            "receiver gate defers before creating an item while scene is loading");
+        EconomyManager.RaiseLoaded();
+        Check(ZombieModeEntryDebt.ReadInvitations() == 1, "economy Awake does not clear invitation before player is ready");
+        CharacterMainControl.Main = new CharacterMainControl { CharacterItem = new Item { Inventory = new Inventory() } };
+        LevelManager.RaiseReady();
+        Check(ItemUtilities.Delivered.Count == 1 && ZombieModeEntryDebt.ReadInvitations() == 0,
+            "level-ready event repays debt left by earlier economy Awake");
+
+        ResetAll(); ZombieModeEntryDebt.OweInvitation(3); ItemUtilities.FailAfter = 1;
+        Check(!ZombieModeEntryDebt.TrySettleInvitations() && ZombieModeEntryDebt.ReadInvitations() == 2
+            && ItemUtilities.Delivered.Count == 1, "partial sending failure only acknowledges the delivered invitation");
+        ItemUtilities.FailAfter = -1;
+        Check(ZombieModeEntryDebt.TrySettleInvitations() && ItemUtilities.Delivered.Count == 3
+            && ZombieModeEntryDebt.ReadInvitations() == 0, "remaining invitations recover after delivery becomes available");
     }
 
     private static int Main()
@@ -248,6 +293,7 @@ internal static class Program
             InvitationSettlesOneAtATime();
             DebtsAreIndependent();
             SubscriptionLifecycle();
+            InvitationDeliveryReceipts();
         }
         catch (Exception e)
         {

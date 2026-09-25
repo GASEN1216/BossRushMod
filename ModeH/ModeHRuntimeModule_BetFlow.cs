@@ -10,7 +10,7 @@
 //     输了收走押上的东西；
 //   - **押注跟着这一场走**：技术中止、挂起、退游戏重进都不退，重打这一场时沿用、按重打的结果结算
 //     （旧版一中断就整额退回，打输了强退重进等于重掷）。只有这一季不再打了才原样退回：恢复页放弃赛季、
-//     开新赛季时发现上一季挂着的押注、F3 验收清理。
+//     开新赛季时发现上一季挂着的押注、F3 验收清理。已确定输赢的实物结算继续履约，不按中止退款。
 // 同一个 partial 类，拆开只为单文件行数预算。
 // ============================================================================
 
@@ -135,6 +135,16 @@ namespace BossRush
                 return;
             }
             ModeHCashBetRecord record = ModeHCashBetService.Current;
+            if (record != null && record.kind == ModeHCashBetService.KindItems
+                && record.status == ModeHCashBetService.StatusReserved && record.itemSettlement != 0
+                && record.matchIndex == report.matchIndex && record.runId == _runState.RunId)
+            {
+                page.Lines.Add(record.itemSettlement == 1
+                    ? L10n.T("押注已赢，奖品正在补发；请留出背包空位，结算记录会保留到全部到账。",
+                        "Bet won. Prizes are pending; make room in your backpack. The bet stays open until delivery completes.")
+                    : L10n.T("押注结算正在等待保存，稍后会自动重试。", "Your bet settlement is waiting to be saved and will retry automatically."));
+                return;
+            }
             if (record == null || record.status != ModeHCashBetService.StatusSettled
                 || record.matchIndex != report.matchIndex
                 || !string.Equals(record.runId, _runState.RunId, StringComparison.Ordinal)) return;
@@ -354,48 +364,18 @@ namespace BossRush
             SettleReservedBet(CarriedBetForCurrentMatch(), won);
         }
 
-        /// <summary>
-        /// 结算挂着的一笔。押物品输了先收走押上的东西（读档后按账本认领），找不到的部分交给账本从余额扣；
-        /// 押物品赢了先备好奖品（实例化、不发），账本记成才发，没记成就销毁、下次结算重新备——奖品至多发一次。
-        /// 账本记成才丢掉引用（没记成时收走的结果已缓存，下次结算不会再收一遍）。
-        /// </summary>
+        /// <summary>实物结算交给账本保存计划、资产与剩余交付义务，重试沿用同一个结果。</summary>
         private void SettleReservedBet(ModeHCashBetRecord record, bool won)
         {
             if (record == null || record.status != ModeHCashBetService.StatusReserved) return;
-            long lossCharge = 0;
-            long winCash = 0;
-            string prizeSummary = string.Empty;
-            List<Item> prizes = null;
-            bool items = record.kind == ModeHCashBetService.KindItems;
-            if (items)
+            if (record.kind == ModeHCashBetService.KindItems)
             {
-                List<ModeHItemBetEntry> entries = ModeHItemBetEntry.Decode(record.items);
-                ModeHItemBetStake.RebindFromLedger(entries);
-                if (!won)
-                {
-                    lossCharge = ModeHItemBetStake.ForfeitLocked();
-                }
-                else
-                {
-                    // 奖品：品质 = 押上物品的加权品质，总价值 = 赔付 − 估值，件数 = 押上的件数（有上限），凑不满的折成钱
-                    long budget = Math.Max(0L, ModeHCashBetService.ComputePayout(record.amount, record.odds) - record.amount);
-                    long prizeValue;
-                    prizes = ModeHItemBetStake.PreparePrizes(budget, ModeHItemBetEntry.PrizeQuality(entries),
-                        ModeHItemBetEntry.PrizeSlots(entries), _runState != null ? _runState.RunSeed : 0L,
-                        record.runId + "|" + record.matchIndex, out prizeValue, out prizeSummary);
-                    winCash = Math.Max(0L, budget - prizeValue);
-                }
+                ModeHCashBetService.TrySettleItems(record.runId, record.matchIndex, won,
+                    _runState != null ? _runState.RunSeed : 0L);
+                return;
             }
             long payout;
-            if (ModeHCashBetService.TrySettle(record.runId, record.matchIndex, won, lossCharge, winCash, prizeSummary, out payout))
-            {
-                if (prizes != null) ModeHItemBetStake.DeliverPrizes(prizes);
-                if (items) ModeHItemBetStake.ReleaseLocked();
-            }
-            else if (prizes != null)
-            {
-                ModeHItemBetStake.DiscardPrizes(prizes);
-            }
+            ModeHCashBetService.TrySettle(record.runId, record.matchIndex, won, 0L, 0L, string.Empty, out payout);
         }
 
         /// <summary>这一季不再打了（放弃赛季、上一季的押注、F3 清理）：原样退回挂着的押注，并告诉玩家。</summary>
@@ -423,6 +403,11 @@ namespace BossRush
             {
                 ModeHCashBetRecord record = ModeHCashBetService.Current;
                 if (record == null || record.status != ModeHCashBetService.StatusReserved) return;
+                if (record.kind == ModeHCashBetService.KindItems && record.itemSettlement != 0)
+                {
+                    SettleReservedBet(record, record.itemSettlement == 1);
+                    return;
+                }
                 bool sameRun = _runState != null && string.Equals(record.runId, _runState.RunId, StringComparison.Ordinal);
                 if (!sameRun)
                 {
