@@ -539,6 +539,7 @@ echo(ModeH\ModeHContentModels.cs
 echo(ModeH\ModeHControlPointHarness.cs
 echo(ModeH\ModeHDeathSuppressionRegistry.cs
 echo(ModeH\ModeHDraftController.cs
+echo(ModeH\ModeHDraftRefreshLedger.cs
 echo(ModeH\ModeHEncounterPlanner.cs
 echo(ModeH\ModeHEntry.cs
 echo(ModeH\ModeHEventRouter.cs

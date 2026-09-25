@@ -17,6 +17,9 @@ FILES = {
     "content": "ModeH/ModeHUIPages.cs",
     "details": "ModeH/ModeHRuntimeModule_FighterPresentation.cs",
     "ledger": "ModeH/ModeHCashBetService.cs",
+    "refresh_ledger": "ModeH/ModeHDraftRefreshLedger.cs",
+    "module": "ModeH/ModeHRuntimeModule.cs",
+    "season": "ModeH/ModeHRuntimeModule_SeasonFlow.cs",
 }
 
 
@@ -77,6 +80,20 @@ def check(sources):
     need(refresh, "_draftRefreshCount >= DraftMaxRefreshes", "刷新必须核对预算")
     need(refresh, "merged.Add(locked);", "刷新保留锁定对象")
     need(refresh, "string.Equals(candidate.profileId, _draftPrimaryProfileId, StringComparison.Ordinal)", "刷新必须排除首发重复")
+    # 刷新次数跟着这一季走（2026-09-25）：独立 key 按 runId 记，退出重进不能重新给满三次；
+    # 先记次数再落赛季，同一次 SaveFile 一起写盘；模块销毁退订。
+    ordered(refresh, ["ModeHDraftRefreshLedger.UsedFor(_runState.RunId)", "_draftRefreshCount++;",
+                      "ModeHDraftRefreshLedger.Record(_runState.RunId, _draftRefreshCount);",
+                      'TryPersistSeason("draft_refresh");'], "刷新先读已用次数，再记账，再落赛季")
+    need(src["refresh_ledger"], "StorageKey = \"BossRush_ModeHDraftRefresh_v1\"", "刷新次数用独立 typed key（赛季 DTO 进摘要不能加字段）")
+    need(src["refresh_ledger"], "string.Equals(data.RunId, runId, StringComparison.Ordinal)", "刷新次数只认本季 runId")
+    need(body("module", "internal static void ResetModeHStaticCaches()"), "ModeHDraftRefreshLedger.ResetStaticCaches();",
+         "模块销毁必须退订刷新次数的存档事件")
+    # 首发可取消重选；五席无解且刷新用完时挂出退出，不把玩家困在选人页
+    need(pick, "_draftPrimaryProfileId = null;", "再点首发必须能取消首发")
+    need(pick, "_draftDeadEndRunId = _runState.RunId;", "无解时必须挂出退出本赛季")
+    need(body("season", "private bool HasAnyViableDraftPair()"), "CanConstructFullSeason(contract, assignments, out reason)",
+         "无解判定必须走同一条六场可行性门")
     draft = body("match", "private ModeHPageContent BuildDraftPageContent()")
     if "AppendCashBetRow(" in draft:
         errors.append("选人页不得提前下注")
@@ -144,6 +161,12 @@ PROBES = [
     ("draw", "TextAlignmentOptions.BottomRight", "TextAlignmentOptions.Center"),
     ("ledger", "plan.prizeItems = plan.pendingItems;", "plan.prizeItems = string.Empty;"),
     ("details", "ModeHItemBetEntry.Decode(record.prizeItems)", "ModeHItemBetEntry.Decode(record.pendingItems)"),
+    ("match", "                ModeHDraftRefreshLedger.Record(_runState.RunId, _draftRefreshCount);\n", ""),
+    ("match", "            _draftRefreshCount = Math.Max(_draftRefreshCount, ModeHDraftRefreshLedger.UsedFor(_runState.RunId));\n            if (_draftRefreshCount >= DraftMaxRefreshes) return;\n", ""),
+    ("module", "            ModeHDraftRefreshLedger.ResetStaticCaches();\n", ""),
+    ("refresh_ledger", "string.Equals(data.RunId, runId, StringComparison.Ordinal)", "true"),
+    ("match", "                    _draftPrimaryProfileId = null;\n                    RouteUiForLifecycle", "                    RouteUiForLifecycle"),
+    ("match", "                        _draftDeadEndRunId = _runState.RunId;\n", ""),
 ]
 
 

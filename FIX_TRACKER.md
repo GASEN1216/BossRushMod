@@ -18,8 +18,9 @@
 **追补（同日，提交前复核）**：
 - 结算页「选手 · 名声 N」只在名声大于 0 时显示（第 7 条「少放文字」的尾巴）。
 - 第 2 条「进鸭王杯地图选择器时的横幅也去掉」：上面只去了地图卡右侧的预览大图，交互进入时 `ModeHInteractable.ShowRiskNotice` 推的风险提示横幅还在，一并删除；§22.1 的风险披露保留在选人页页脚（`CompactRiskNotice`），`ModeHLocalizationGuard` 的引用清单同步改为 UIPages + Localization 两处。回退：恢复 `OpenEntryFlow` 里的调用与守卫清单。
-- 已知口子（未修，记账）：选人页刷新次数 `_draftRefreshCount` 只在内存里，退出重进走恢复后会重新给 3 次；候选名单本身已落盘不会重抽。要堵需要独立 typed 存档键（赛季 DTO 进摘要不能加字段）。
-- 验证（L2）：全量守卫 669 PASS / 0 FAIL；执行回归 64 PASS / 0 FAIL（需私有 .NET 10 SDK 与 `BOSSRUSH_HARMONY_DLL`，缺环境时会有 5 个夹具报 NETSDK1045 / 缺 Harmony，不是代码失败）；正式构建通过，14 个 Dev 标识 absent，`git diff --check` 通过；部署 DLL 与 Build SHA-256 均为 `efbe2691653cd07f4dfab651cc13642e1ed340a2854974973ffb3fe985d1c778`（取代上面的哈希）。
+- 已修（第二轮追补，SCHEMA+）：选人页刷新次数原来只在内存里，退出重进走恢复后又给满 3 次（候选名单已落盘，等于无限重抽）。新增独立 key `BossRush_ModeHDraftRefresh_v1`（`ModeH/ModeHDraftRefreshLedger.cs`，共享 `BossRushSlotJsonStore`，按 runId 记已用次数，旧档读作 0；先记次数再落赛季；模块销毁退订）。回退：删掉三处调用，key 留着无害。
+- 已修（同轮）：首发一旦选中就不能取消；若他和其余四人都凑不出六场且刷新用完，玩家会卡死在选人页。现在再点首发即取消重选；接力被拒时若五席里任意一对都排不满赛季且刷新已用完，挂出原有「退出本赛季」（`HasAnyViableDraftPair`，同一条签约 / 分流 / 六场可行性门）。`ModeHPrematchPresentationGuard` 补对应断言与 6 个变异探针（均按预期转红）。
+- 验证（L2）：全量守卫 669 PASS / 0 FAIL；执行回归 64 PASS / 0 FAIL（需私有 .NET 10 SDK 与 `BOSSRUSH_HARMONY_DLL`，缺环境时会有 5 个夹具报 NETSDK1045 / 缺 Harmony，不是代码失败）；正式构建通过，14 个 Dev 标识 absent，`git diff --check` 通过；部署 DLL 与 Build SHA-256 均为 `cd7bc505a88a783e0b6ea917c017a4597436cd1c942b54bb4a3a2da9e86cae41`（第二轮追补后重建，取代上面的哈希）。
 
 **L3 未做**：未启动游戏、读取玩家存档或实机截图；没有实测帧耗时。逐项操作及不合格判据见总报告与三个专项报告。owner 重点验证：锁首发后可刷新三次并自行选接力；赛前全槽属性与实装相符；动画结束才开战；穿戴押品按身份结算；随机场地可走、投降/退出和终局回基地；三色崽外观与装备/成长；三种收成果实 30 秒变身、生命不跳变、结束/过图恢复；Jeff 接取/体验/交付分别持久化。
 

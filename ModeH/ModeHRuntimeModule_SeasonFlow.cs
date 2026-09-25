@@ -365,6 +365,29 @@ namespace BossRush
             });
         }
 
+        /// <summary>当前五席里是否还有任意一对能签约并排满六场（只在接力被拒时调用，最多 20 对）。</summary>
+        private bool HasAnyViableDraftPair()
+        {
+            List<ModeHProfileDto> profiles = _season != null ? _season.profiles : null;
+            if (profiles == null || _runState == null) return false;
+            for (int i = 0; i < profiles.Count; i++)
+            {
+                for (int j = 0; j < profiles.Count; j++)
+                {
+                    if (i == j || profiles[i] == null || profiles[j] == null) continue;
+                    ModeHContractDto contract;
+                    List<ModeHEchoAssignmentDto> assignments;
+                    string reason;
+                    if (ModeHDraftController.TrySignContracts(profiles, profiles[i].profileId, profiles[j].profileId,
+                            out contract, out reason)
+                        && ModeHDraftController.TryAssignEchoDestinations(_runState.RunSeed, profiles, contract,
+                            out assignments, out reason)
+                        && CanConstructFullSeason(contract, assignments, out reason)) return true;
+                }
+            }
+            return false;
+        }
+
         /// <summary>
         /// 选人页的「退出本赛季」：复用已有的 Drafting → None 冻结边与赛季终局的退出路径
         /// （与 Dev 验收收场 DebugFinishValidationSeason 同一序列：先转相位、再 durable 落盘、再 RequestExit(SeasonComplete)），

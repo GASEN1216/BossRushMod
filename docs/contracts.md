@@ -311,6 +311,10 @@ envelope 带 `schemaVersion`、`gameBuildSignature`、`modBuildSignature`、
 按 ID 幂等插入、读回后再标记完成，上限 32 条。
 删档清空对应 cache、pending barrier、recovery shell、owner/token、presentation 引用与 slot generation。
 
+**选人页刷新次数（2026-09-25，SCHEMA+）。** 独立冻结 key `BossRush_ModeHDraftRefresh_v1`，
+`Save<string>` 存 `schemaVersion|已用次数|runId`（`ModeH/ModeHDraftRefreshLedger.cs`，复用 `BossRushSlotJsonStore`）。
+只认当前赛季 runId；旧档无此 key 读作 0 次；更高版本或损坏进写屏障、只读不写。赛季 DTO 不动。
+
 **押钱 / 押背包物品账本（2026-09-25，COMPAT / SCHEMA+）。** 独立冻结 key
 `BossRush_ModeHCashBet_v1`，用 `Save<string>` 保存 JSON，复用 `BossRushSlotJsonStore` 与
 `BossRushSaveCoordinatorEngine`。当前 `schemaVersion=3`，兼容 v1/v2；新增可选 `prizeItems` 保存完整奖品图标清单，旧档缺省为空。更高版本与损坏数据仍进写屏障。

@@ -404,6 +404,9 @@ namespace BossRush
 
             if (_season == null) return page;
             EnsureDraftCandidates();
+            // 刷新次数跟着这一季走（独立 key），退出重进不会重新给满三次
+            if (_runState != null)
+                _draftRefreshCount = Math.Max(_draftRefreshCount, ModeHDraftRefreshLedger.UsedFor(_runState.RunId));
 
             bool hasPrimary = !string.IsNullOrEmpty(_draftPrimaryProfileId);
             bool hasRelay = !string.IsNullOrEmpty(_draftRelayProfileId);
@@ -430,11 +433,14 @@ namespace BossRush
                     if (profile == null) continue;
                     bool selected = string.Equals(profile.profileId, _draftPrimaryProfileId, StringComparison.Ordinal)
                         || string.Equals(profile.profileId, _draftRelayProfileId, StringComparison.Ordinal);
-                    bool selectable = !hasRelay
-                        && (!hasPrimary || !string.Equals(profile.profileId, _draftPrimaryProfileId, StringComparison.Ordinal));
-                    string action = !hasPrimary
-                        ? L10n.T("选首发", "Choose starter")
-                        : L10n.T("选接力", "Choose relay");
+                    bool isPrimary = string.Equals(profile.profileId, _draftPrimaryProfileId, StringComparison.Ordinal);
+                    // 首发卡再点一次 = 取消首发重选：选错人或首发凑不出搭档时不会卡死在这一页
+                    bool selectable = !hasRelay;
+                    string action = isPrimary
+                        ? L10n.T("取消首发", "Unpick starter")
+                        : !hasPrimary
+                            ? L10n.T("选首发", "Choose starter")
+                            : L10n.T("选接力", "Choose relay");
                     ModeHCardData card = BuildProfileCard(profile, selectable, selected, action);
                     if (selected) card.SelectedBadge = L10n.T("√ 首发锁定", "√ Starter locked");
                     page.Cards.Add(card);
@@ -597,9 +603,16 @@ namespace BossRush
                     return;
                 }
 
-                // 首发已锁定，第二次点击明确选择接力；首发卡本身不可再次点击。
-                if (string.Equals(_draftPrimaryProfileId, picked.profileId, StringComparison.Ordinal)
-                    || !string.IsNullOrEmpty(_draftRelayProfileId)) return;
+                if (!string.IsNullOrEmpty(_draftRelayProfileId)) return;
+                // 再点首发 = 取消首发，回到「先选首发」
+                if (string.Equals(_draftPrimaryProfileId, picked.profileId, StringComparison.Ordinal))
+                {
+                    _draftPrimaryProfileId = null;
+                    RouteUiForLifecycle(_runState.Lifecycle);
+                    return;
+                }
+
+                // 首发已锁定，第二次点击明确选择接力。
 
                 ModeHContractDto contract;
                 string failureReasonId;
@@ -620,6 +633,12 @@ namespace BossRush
                 if (!viable)
                 {
                     if (_owner != null) _owner.ShowMessage(L10n.T("这组搭档无法排满赛季，请换一名接力。", "This pair cannot fill the season; choose another relay."));
+                    // 五人怎么搭都凑不出六场、刷新也用完了：挂出「退出本赛季」（V6-1），不让玩家困在这一页
+                    if (_draftRefreshCount >= DraftMaxRefreshes && !HasAnyViableDraftPair())
+                    {
+                        _draftDeadEndRunId = _runState.RunId;
+                        RouteUiForLifecycle(_runState.Lifecycle);
+                    }
                     return;
                 }
 
@@ -646,6 +665,8 @@ namespace BossRush
             if (_commandsClosed || _season == null || _runState == null
                 || _runState.Lifecycle != ModeHLifecycle.Drafting
                 || _draftRefreshCount >= DraftMaxRefreshes) return;
+            _draftRefreshCount = Math.Max(_draftRefreshCount, ModeHDraftRefreshLedger.UsedFor(_runState.RunId));
+            if (_draftRefreshCount >= DraftMaxRefreshes) return;
             try
             {
                 List<ModeHProfileDto> candidates;
@@ -686,6 +707,8 @@ namespace BossRush
                     if (candidates[i] != null) _season.draftCandidateProfileIds.Add(candidates[i].profileId);
                 }
                 _draftRefreshCount++;
+                // 先记次数再落赛季：同一次 SaveFile 把两份一起写盘
+                ModeHDraftRefreshLedger.Record(_runState.RunId, _draftRefreshCount);
                 TryPersistSeason("draft_refresh");
                 RouteUiForLifecycle(_runState.Lifecycle);
             }
