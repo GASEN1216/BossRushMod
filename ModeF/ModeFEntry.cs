@@ -24,7 +24,7 @@ namespace BossRush
             modeFState.RuntimeSessionToken = 0;
         }
 
-        private bool IsModeFSessionStillValid(int sessionToken, int relatedScene)
+        internal bool IsModeFSessionStillValid(int sessionToken, int relatedScene)
         {
             if (sessionToken <= 0)
             {

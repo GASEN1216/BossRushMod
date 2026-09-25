@@ -26,7 +26,7 @@ namespace BossRush
         private readonly List<Vector3> reusableSpawnCandidates = new List<Vector3>();
         private readonly List<EnemyPresetInfo> modeFRespawnBossPresetScratch = new List<EnemyPresetInfo>();
 
-        private Teams ResolveModeFBossCombatTeam(Teams requestedFaction, EnemyPresetInfo preset, Vector3 spawnPos)
+        internal Teams ResolveModeFBossCombatTeam(Teams requestedFaction, EnemyPresetInfo preset, Vector3 spawnPos)
         {
             if (IsValidModeFCombatFaction(requestedFaction))
             {
@@ -461,7 +461,7 @@ namespace BossRush
             }
         }
 
-        private void RegisterModeFBoss(CharacterMainControl boss)
+        internal void RegisterModeFBoss(CharacterMainControl boss)
         {
             try
             {

@@ -5,6 +5,9 @@ namespace BossRush
         private ModBehaviour owner;
         private static ModeDRuntimeModule current;
         private int generation;
+        internal bool IsActive { get { return modeDActive; } }
+        internal System.Collections.Generic.IReadOnlyList<EnemyPresetInfo> MinionPresets { get { return modeDMinionPool; } }
+        internal static System.Collections.Generic.IReadOnlyDictionary<string, CharacterRandomPreset> CharacterPresets { get { return cachedCharacterPresets; } }
         internal bool modeDActive;
         internal int modeDWaveIndex;
         internal readonly System.Collections.Generic.List<CharacterMainControl> modeDCurrentWaveEnemies =

@@ -1,6 +1,6 @@
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         internal void TickModeERuntime(float deltaTime)
         {
@@ -9,7 +9,7 @@ namespace BossRush
                 UpdateModeEPlayerNameTag();
 
                 modeEIntegrityTimer += deltaTime;
-                if (modeEIntegrityTimer >= WaveIntegrityCheckInterval)
+                if (modeEIntegrityTimer >= ModBehaviour.WaveIntegrityCheckInterval)
                 {
                     modeEIntegrityTimer = 0f;
                     ModeEIntegrityCheck();

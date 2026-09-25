@@ -258,7 +258,7 @@ namespace BossRush
             if (dragonDescendantRuntimeModule != null) dragonDescendantRuntimeModule.CleanupCancelledDragonDescendant(character);
         }
 
-        private bool IsDragonDescendantPreset(EnemyPresetInfo preset)
+        internal bool IsDragonDescendantPreset(EnemyPresetInfo preset)
         {
             return dragonDescendantRuntimeModule != null && dragonDescendantRuntimeModule.IsDragonDescendantPreset(preset);
         }

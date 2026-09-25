@@ -39,10 +39,10 @@ def main() -> int:
 
     for snippet in [
         "GetModeEMerchantCategories",
-        'if (medTag == null) medTag = FindTagByNameInInit("Medical");',
-        'if (medTag == null) medTag = FindTagByNameInInit("Consumable");',
-        'if (medTag == null) medTag = FindTagByNameInInit("Healing");',
-        'Duckov.Utilities.Tag injectorTag = FindTagByNameInInit("Injector");',
+        'if (medTag == null) medTag = equipment.FindTagByNameInInit("Medical");',
+        'if (medTag == null) medTag = equipment.FindTagByNameInInit("Consumable");',
+        'if (medTag == null) medTag = equipment.FindTagByNameInInit("Healing");',
+        'Duckov.Utilities.Tag injectorTag = equipment.FindTagByNameInInit("Injector");',
         "ModeESearchItemsMultiTag",
     ]:
         result = require(modee, snippet, "Mode E merchant reference contract")

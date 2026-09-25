@@ -15,7 +15,7 @@ using HarmonyLib;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         /// <summary>
         /// Mode E 入场分段耗时统计器，仅在开发模式下输出关键阶段耗时。
@@ -30,7 +30,7 @@ namespace BossRush
 
             public ModeEStartupProfiler(string scope, string detail = null)
             {
-                enabled = DevModeEnabled && ModeEStartupProfilingEnabled;
+                enabled = ModBehaviour.DevModeEnabled && ModBehaviour.ModeEStartupProfilingEnabled;
                 if (!enabled)
                 {
                     return;
@@ -39,7 +39,7 @@ namespace BossRush
                 this.scope = string.IsNullOrEmpty(detail) ? scope : scope + " [" + detail + "]";
                 startTime = Time.realtimeSinceStartup;
                 lastCheckpointTime = startTime;
-                DevLog("[ModeE] [Profile] " + this.scope + " begin");
+                ModBehaviour.DevLog("[ModeE] [Profile] " + this.scope + " begin");
             }
 
             public void Mark(string stageName)
@@ -50,7 +50,7 @@ namespace BossRush
                 }
 
                 float now = Time.realtimeSinceStartup;
-                DevLog("[ModeE] [Profile] " + scope + " | " + stageName + ": +" + ((now - lastCheckpointTime) * 1000f).ToString("F1") + " ms");
+                ModBehaviour.DevLog("[ModeE] [Profile] " + scope + " | " + stageName + ": +" + ((now - lastCheckpointTime) * 1000f).ToString("F1") + " ms");
                 lastCheckpointTime = now;
             }
 
@@ -63,7 +63,7 @@ namespace BossRush
 
                 completed = true;
                 float now = Time.realtimeSinceStartup;
-                DevLog("[ModeE] [Profile] " + scope + " | " + status + " | total=" + ((now - startTime) * 1000f).ToString("F1") + " ms");
+                ModBehaviour.DevLog("[ModeE] [Profile] " + scope + " | " + status + " | total=" + ((now - startTime) * 1000f).ToString("F1") + " ms");
             }
         }
 
@@ -79,7 +79,7 @@ namespace BossRush
             modeESessionToken = 0;
         }
 
-        private void ResetModeESharedRuntimeState(bool clearSpawnAllocation, bool clearSpawnerCache, bool stopWarmupCoroutine)
+        internal void ResetModeESharedRuntimeState(bool clearSpawnAllocation, bool clearSpawnerCache, bool stopWarmupCoroutine)
         {
             CleanupModeELotteryAndHiringRuntime();
 
@@ -90,7 +90,7 @@ namespace BossRush
             modeEAliveEnemies.Clear();
             modeEAliveEnemySet.Clear();
             ClearModeEBossRegenCache();
-            ClearModeEFSpawnPostprocessScheduler();
+            modeEHost.ClearModeEFSpawnPostprocessScheduler();
             modeEAliveEnemyFactionMap.Clear();
             modeEFactionDeathCount.Clear();
             modeEFactionAliveMap.Clear();
@@ -125,7 +125,7 @@ namespace BossRush
             {
                 if (modeEStartupWarmupCoroutine != null)
                 {
-                    StopCoroutine(modeEStartupWarmupCoroutine);
+                    modeEHost.StopCoroutine(modeEStartupWarmupCoroutine);
                     modeEStartupWarmupCoroutine = null;
                 }
 
@@ -135,7 +135,7 @@ namespace BossRush
             CleanupModeEVirtualSpawnerRoot();
             ClearPendingBossAggroQueue();
             ResetModeERespawnRuntimeState();
-            ResetModeEFLootboxTrackerState();
+            modeEHost.ResetModeEFLootboxTrackerState();
         }
 
         internal bool IsModeESessionStillValid(int sessionToken, int relatedScene)
@@ -158,7 +158,7 @@ namespace BossRush
         {
             if (modeFSessionToken > 0)
             {
-                return IsModeFSessionStillValid(modeFSessionToken, modeFRelatedScene);
+                return modeEHost.IsModeFSessionStillValid(modeFSessionToken, modeFRelatedScene);
             }
 
             if (modeESessionToken > 0)
@@ -166,13 +166,13 @@ namespace BossRush
                 return IsModeESessionStillValid(modeESessionToken, modeESessionRelatedScene);
             }
 
-            return modeEActive || modeFActive;
+            return modeEActive || modeEHost.IsModeFActive;
         }
 
         /// <summary>
         /// 在进入 Mode E 前预热重初始化逻辑，尽量把首帧卡顿摊到前置等待阶段。
         /// </summary>
-        private void ScheduleModeEStartupWarmup(string reason)
+        internal void ScheduleModeEStartupWarmup(string reason)
         {
             try
             {
@@ -184,16 +184,16 @@ namespace BossRush
 
                 if (modeEStartupWarmupCoroutine != null)
                 {
-                    StopCoroutine(modeEStartupWarmupCoroutine);
+                    modeEHost.StopCoroutine(modeEStartupWarmupCoroutine);
                     modeEStartupWarmupCoroutine = null;
                 }
 
                 modeEStartupWarmupSceneName = sceneName;
-                modeEStartupWarmupCoroutine = StartCoroutine(PrepareModeEStartupCoroutine(sceneName, reason));
+                modeEStartupWarmupCoroutine = modeEHost.StartCoroutine(PrepareModeEStartupCoroutine(sceneName, reason));
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] ScheduleModeEStartupWarmup failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] ScheduleModeEStartupWarmup failed: " + e.Message);
             }
         }
 
@@ -205,11 +205,11 @@ namespace BossRush
             }
         }
 
-        private void StopModeEStartupWarmupIfPending()
+        internal void StopModeEStartupWarmupIfPending()
         {
             if (modeEStartupWarmupCoroutine != null)
             {
-                StopCoroutine(modeEStartupWarmupCoroutine);
+                modeEHost.StopCoroutine(modeEStartupWarmupCoroutine);
                 modeEStartupWarmupCoroutine = null;
             }
 
@@ -227,7 +227,7 @@ namespace BossRush
             catch (Exception e)
             {
                 profiler.Complete("failed");
-                DevLog("[ModeE] [ERROR] " + errorContext + " failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] " + errorContext + " failed: " + e.Message);
                 ClearModeEStartupWarmupCoroutine(sceneName);
                 return false;
             }
@@ -275,7 +275,7 @@ namespace BossRush
             yield return null;
 
             if (!TryRunModeEStartupWarmupStep(
-                TryPrewarmModeDGlobalItemPool,
+                equipment.TryPrewarmModeDGlobalItemPool,
                 profiler,
                 "TryPrewarmModeDGlobalItemPool",
                 "PrepareModeEStartup.TryPrewarmModeDGlobalItemPool",
@@ -296,7 +296,7 @@ namespace BossRush
             }
             yield return null;
 
-            yield return StartCoroutine(WarmModeEMerchantCachesAsync());
+            yield return modeEHost.StartCoroutine(WarmModeEMerchantCachesAsync());
             profiler.Mark("WarmModeEMerchantCachesAsync");
             yield return null;
 
@@ -345,7 +345,7 @@ namespace BossRush
                     {
                         // 随机营旗：从可用阵营池中随机选择
                         Teams randomFaction = ModeEAvailableFactions[UnityEngine.Random.Range(0, ModeEAvailableFactions.Length)];
-                        DevLog("[ModeE] 检测到随机营旗 (TypeID=" + typeId + ")，随机分配阵营: " + randomFaction);
+                        ModBehaviour.DevLog("[ModeE] 检测到随机营旗 (TypeID=" + typeId + ")，随机分配阵营: " + randomFaction);
                         return (randomFaction, item);
                     }
 
@@ -353,7 +353,7 @@ namespace BossRush
                     Teams assignedFaction;
                     if (modeEFactionFlagMap.TryGetValue(typeId, out assignedFaction))
                     {
-                        DevLog("[ModeE] 检测到指定营旗 (TypeID=" + typeId + ")，阵营: " + assignedFaction);
+                        ModBehaviour.DevLog("[ModeE] 检测到指定营旗 (TypeID=" + typeId + ")，阵营: " + assignedFaction);
                         return (assignedFaction, item);
                     }
                 }
@@ -362,7 +362,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] DetectFactionFlag 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] DetectFactionFlag 失败: " + e.Message);
                 return (null, null);
             }
         }
@@ -370,11 +370,11 @@ namespace BossRush
         /// <summary>
         /// 消耗（销毁）指定的营旗物品
         /// </summary>
-        private bool TryConsumeModeEntryItem(Item item, string modeTag, string itemLabel)
+        internal bool TryConsumeModeEntryItem(Item item, string modeTag, string itemLabel)
         {
             if (item == null)
             {
-                DevLog("[" + modeTag + "] [WARNING] " + itemLabel + " 为 null，跳过消耗");
+                ModBehaviour.DevLog("[" + modeTag + "] [WARNING] " + itemLabel + " 为 null，跳过消耗");
                 return false;
             }
 
@@ -382,12 +382,12 @@ namespace BossRush
             {
                 item.Detach();
                 item.DestroyTree();
-                DevLog("[" + modeTag + "] " + itemLabel + "已消耗");
+                ModBehaviour.DevLog("[" + modeTag + "] " + itemLabel + "已消耗");
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[" + modeTag + "] [WARNING] 消耗" + itemLabel + "失败: " + e.Message);
+                ModBehaviour.DevLog("[" + modeTag + "] [WARNING] 消耗" + itemLabel + "失败: " + e.Message);
                 return false;
             }
         }
@@ -428,7 +428,7 @@ namespace BossRush
 
             if (!string.IsNullOrEmpty(reason))
             {
-                DevLog("[ModeE] 启动验证通过，结束回滚监控: " + reason);
+                ModBehaviour.DevLog("[ModeE] 启动验证通过，结束回滚监控: " + reason);
             }
 
             ResetModeEStartupRecoveryState();
@@ -452,7 +452,7 @@ namespace BossRush
                 Item characterItem = main != null ? main.CharacterItem : null;
                 if (characterItem == null)
                 {
-                    DevLog("[ModeE] [WARNING] 无法捕获启动前物资快照：玩家或 CharacterItem 为空");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 无法捕获启动前物资快照：玩家或 CharacterItem 为空");
                     snapshot = null;
                     return false;
                 }
@@ -485,7 +485,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] 捕获启动前物资快照失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] 捕获启动前物资快照失败: " + e.Message);
                 snapshot = null;
                 return false;
             }
@@ -500,7 +500,7 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null || player.transform == null)
                 {
-                    DevLog("[ModeE] [WARNING] 无法记录启动前玩家位置：玩家或 transform 为空");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 无法记录启动前玩家位置：玩家或 transform 为空");
                     return false;
                 }
 
@@ -509,7 +509,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] 记录启动前玩家位置失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] 记录启动前玩家位置失败: " + e.Message);
                 playerPosition = Vector3.zero;
                 return false;
             }
@@ -525,7 +525,7 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null || player.transform == null)
                 {
-                    DevLog("[ModeE] [WARNING] 恢复启动前玩家位置失败：玩家或 transform 为空");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 恢复启动前玩家位置失败：玩家或 transform 为空");
                     return false;
                 }
 
@@ -545,7 +545,7 @@ namespace BossRush
                 }
                 catch (Exception setPositionEx)
                 {
-                    DevLog("[ModeE] [WARNING] 恢复玩家位置时 SetPosition 失败，改用 transform.position: " + setPositionEx.Message);
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 恢复玩家位置时 SetPosition 失败，改用 transform.position: " + setPositionEx.Message);
                     player.transform.position = playerPosition;
                 }
 
@@ -553,7 +553,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] 恢复启动前玩家位置失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] 恢复启动前玩家位置失败: " + e.Message);
                 return false;
             }
             finally
@@ -566,7 +566,7 @@ namespace BossRush
                     }
                     catch (Exception e)
                     {
-                        DevLog("[ModeE] [WARNING] 恢复玩家位置后还原 CharacterController 状态失败: " + e.Message);
+                        ModBehaviour.DevLog("[ModeE] [WARNING] 恢复玩家位置后还原 CharacterController 状态失败: " + e.Message);
                     }
                 }
             }
@@ -576,7 +576,7 @@ namespace BossRush
         {
             if (startupInventorySnapshot == null)
             {
-                DevLog("[ModeE] [WARNING] 启动物资回滚失败：快照为空");
+                ModBehaviour.DevLog("[ModeE] [WARNING] 启动物资回滚失败：快照为空");
                 return false;
             }
 
@@ -586,7 +586,7 @@ namespace BossRush
                 Item characterItem = main != null ? main.CharacterItem : null;
                 if (characterItem == null)
                 {
-                    DevLog("[ModeE] [WARNING] 启动物资回滚失败：玩家或 CharacterItem 为空");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 启动物资回滚失败：玩家或 CharacterItem 为空");
                     return false;
                 }
 
@@ -647,7 +647,7 @@ namespace BossRush
                     catch (Exception e)
                     {
                         rollbackSucceeded = false;
-                        DevLog("[ModeE] [WARNING] 回滚启动新增物品时 Detach 失败: " + e.Message);
+                        ModBehaviour.DevLog("[ModeE] [WARNING] 回滚启动新增物品时 Detach 失败: " + e.Message);
                     }
 
                     try
@@ -658,16 +658,16 @@ namespace BossRush
                     catch (Exception e)
                     {
                         rollbackSucceeded = false;
-                        DevLog("[ModeE] [WARNING] 回滚启动新增物品时 DestroyTree 失败: " + e.Message);
+                        ModBehaviour.DevLog("[ModeE] [WARNING] 回滚启动新增物品时 DestroyTree 失败: " + e.Message);
                     }
                 }
 
-                DevLog("[ModeE] 启动失败时已回滚新增物品数量: " + removedCount);
+                ModBehaviour.DevLog("[ModeE] 启动失败时已回滚新增物品数量: " + removedCount);
                 return rollbackSucceeded;
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] 启动物资回滚失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] 启动物资回滚失败: " + e.Message);
                 return false;
             }
         }
@@ -677,7 +677,7 @@ namespace BossRush
             typeId = -1;
             if (flagItem == null)
             {
-                DevLog("[ModeE] [WARNING] 启动前营旗引用为空，已取消启动");
+                ModBehaviour.DevLog("[ModeE] [WARNING] 启动前营旗引用为空，已取消启动");
                 return false;
             }
 
@@ -689,11 +689,11 @@ namespace BossRush
                     return true;
                 }
 
-                DevLog("[ModeE] [WARNING] 启动前营旗 TypeID 非法: " + typeId);
+                ModBehaviour.DevLog("[ModeE] [WARNING] 启动前营旗 TypeID 非法: " + typeId);
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] 读取营旗 TypeID 失败，已取消启动以避免吞旗: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] 读取营旗 TypeID 失败，已取消启动以避免吞旗: " + e.Message);
             }
 
             return false;
@@ -706,10 +706,10 @@ namespace BossRush
                 return false;
             }
 
-            bool refunded = TryGiveItemToPlayerOrDrop(typeId, L10n.T("营旗", "Faction Flag"), false);
+            bool refunded = modeEHost.TryGiveItemToPlayerOrDrop(typeId, L10n.T("营旗", "Faction Flag"), false);
             if (!refunded)
             {
-                DevLog("[ModeE] [WARNING] 返还营旗失败: typeId=" + typeId);
+                ModBehaviour.DevLog("[ModeE] [WARNING] 返还营旗失败: typeId=" + typeId);
             }
 
             return refunded;
@@ -719,7 +719,7 @@ namespace BossRush
         {
             if (!modeEStartupRecoveryArmed)
             {
-                DevLog("[ModeE] [WARNING] 启动失败，但未找到可用的回滚上下文: " + reason);
+                ModBehaviour.DevLog("[ModeE] [WARNING] 启动失败，但未找到可用的回滚上下文: " + reason);
                 return false;
             }
 
@@ -730,7 +730,7 @@ namespace BossRush
             bool hasPlayerPosition = modeEStartupHasPlayerPosition;
             Vector3 startupPlayerPosition = modeEStartupPlayerPosition;
 
-            DevLog("[ModeE] [WARNING] " + reason + "，开始回滚启动现场");
+            ModBehaviour.DevLog("[ModeE] [WARNING] " + reason + "，开始回滚启动现场");
             StopModeEStartupWarmupIfPending();
             ResetModeEStartupRecoveryState();
 
@@ -743,7 +743,7 @@ namespace BossRush
             }
             catch (Exception cleanupException)
             {
-                DevLog("[ModeE] [WARNING] 启动失败后的 EndModeE 清理异常: " + cleanupException.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] 启动失败后的 EndModeE 清理异常: " + cleanupException.Message);
             }
 
             bool restoredPlayerPosition = !hasPlayerPosition || TryRestoreModeEStartupPlayerPosition(startupPlayerPosition);
@@ -769,10 +769,10 @@ namespace BossRush
                 englishMessage = "Faction Battle start failed. Player position restore, startup rollback, and faction flag refund were attempted, but some recovery steps failed. Check the log.";
             }
 
-            ShowMessage(L10n.T(chineseMessage, englishMessage));
+            modeEHost.ShowMessage(L10n.T(chineseMessage, englishMessage));
         }
 
-        private System.Collections.IEnumerator WaitForModeEStartupVerification(Action<bool> onCompleted)
+        internal System.Collections.IEnumerator WaitForModeEStartupVerification(Action<bool> onCompleted)
         {
             bool verified = false;
 
@@ -837,8 +837,8 @@ namespace BossRush
                 {
                     // 被拒的成因有两种：扫描本身失败（可自愈）与确有未结算押品。
                     // 先给一次重试机会，再按真实成因取文案，别把读档出错说成「你有笔账没结」。
-                    ShowMessage(L10n.T(ModeHRuntimeGates.ResolveLegacyBlockedMessageKey()));
-                    DevLog("[BossRush] 入口被 Mode H 真实资产风险门拒绝");
+                    modeEHost.ShowMessage(L10n.T(ModeHRuntimeGates.ResolveLegacyBlockedMessageKey()));
+                    ModBehaviour.DevLog("[BossRush] 入口被 Mode H 真实资产风险门拒绝");
                     return false;
                 }
             }
@@ -857,10 +857,10 @@ namespace BossRush
                 ResetModeEStartupRecoveryState();
 
                 // 互斥保护：Mode D 已激活时不启动 Mode E
-                if (modeDActive)
+                if (modeD.IsActive)
                 {
                     profileStatus = "skipped: ModeD active";
-                    DevLog("[ModeE] Mode D 已激活，跳过 Mode E 启动");
+                    ModBehaviour.DevLog("[ModeE] Mode D 已激活，跳过 Mode E 启动");
                     return false;
                 }
 
@@ -870,17 +870,17 @@ namespace BossRush
                 if (!faction.HasValue || flagItem == null)
                 {
                     profileStatus = "skipped: no faction flag";
-                    DevLog("[ModeE] 未检测到营旗，不启动 Mode E");
+                    ModBehaviour.DevLog("[ModeE] 未检测到营旗，不启动 Mode E");
                     return false;
                 }
 
                 // 检查裸装条件（复用 Mode D 的裸装检测）
-                if (!IsPlayerNaked())
+                if (!modeEHost.IsPlayerNaked())
                 {
                     profiler.Mark("IsPlayerNaked");
                     profileStatus = "skipped: player not naked";
-                    DevLog("[ModeE] 玩家不满足裸装条件，拒绝启动");
-                    ShowMessage(L10n.T(
+                    ModBehaviour.DevLog("[ModeE] 玩家不满足裸装条件，拒绝启动");
+                    modeEHost.ShowMessage(L10n.T(
                         "划地为营模式需要裸装入场！请清空所有装备后重试。",
                         "Faction Battle requires naked entry! Please remove all equipment."
                     ));
@@ -890,7 +890,7 @@ namespace BossRush
                 if (!TryCaptureModeEStartupPlayerPosition(out startupPlayerPosition))
                 {
                     profileStatus = "failed: player position capture failed";
-                    ShowMessage(L10n.T(
+                    modeEHost.ShowMessage(L10n.T(
                         "划地为营模式启动失败：无法记录玩家当前位置。",
                         "Faction Battle start failed: unable to capture the player's current position."
                     ));
@@ -900,7 +900,7 @@ namespace BossRush
                 if (!CaptureModeEStartupInventorySnapshot(out startupInventorySnapshot))
                 {
                     profileStatus = "failed: snapshot capture failed";
-                    ShowMessage(L10n.T(
+                    modeEHost.ShowMessage(L10n.T(
                         "划地为营模式启动失败：无法建立启动回滚快照。",
                         "Faction Battle start failed: unable to capture the startup rollback snapshot."
                     ));
@@ -912,7 +912,7 @@ namespace BossRush
                 if (!TryGetModeEStartupFlagTypeId(flagItem, out consumedFlagTypeId))
                 {
                     profileStatus = "failed: flag type lookup failed";
-                    ShowMessage(L10n.T(
+                    modeEHost.ShowMessage(L10n.T(
                         "划地为营模式启动失败：营旗数据异常，已取消消耗。",
                         "Faction Battle start failed: the faction flag data is invalid, so it was not consumed."
                     ));
@@ -921,7 +921,7 @@ namespace BossRush
                 if (!ConsumeFactionFlag(flagItem))
                 {
                     profileStatus = "failed: flag consume failed";
-                    ShowMessage(L10n.T(
+                    modeEHost.ShowMessage(L10n.T(
                         "划地为营模式启动失败：营旗消耗异常。",
                         "Faction Battle start failed: unable to consume the faction flag."
                     ));
@@ -944,7 +944,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] TryStartModeE 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] TryStartModeE 失败: " + e.Message);
                 if (modeEStartupRecoveryArmed)
                 {
                     HandleModeEStartupFailureRecovery("TryStartModeE 异常: " + e.Message);
@@ -961,20 +961,15 @@ namespace BossRush
         /// <summary>
         /// 启动 Mode E 模式
         /// </summary>
-        private bool StartModeE(Teams faction)
+        internal bool StartModeE(Teams faction)
         {
             ModeEStartupProfiler profiler = new ModeEStartupProfiler("StartModeE", faction.ToString());
             try
             {
-                DevLog("[ModeE] 启动 Mode E 模式，阵营: " + faction);
+                ModBehaviour.DevLog("[ModeE] 启动 Mode E 模式，阵营: " + faction);
 
                 // 清理可能从无间炼狱残留的状态，避免 InfiniteHellCashMagnet/UI 提示误激活
-                infiniteHellMode = false;
-                infiniteHellWaveIndex = 0;
-                infiniteHellCashPool = 0L;
-                infiniteHellMilestoneRewardTier = 0;
-                infiniteHellWaveCashThisWave = 0L;
-                ClearCashMagnetState();
+                modeEHost.ResetArenaForModeD();
 
                 modeEActive = true;
                 int modeESessionToken = BeginModeESession();
@@ -986,7 +981,7 @@ namespace BossRush
                 ResetModeEUiCaches();
                 modeEPlayerFaction = faction;
                 InitializeModeELotteryAndHiringRuntime();
-                ClearEnemyRecoveryMonitorState();
+                modeEHost.ClearModeDEnemyRecoveryState();
 
                 // 重置龙裔/龙王全局限制标记
                 modeEDragonDescendantSpawned = false;
@@ -1007,11 +1002,11 @@ namespace BossRush
                     if (faction != Teams.player)
                     {
                         player.SetTeam(faction);
-                        DevLog("[ModeE] 玩家阵营已设置为: " + faction);
+                        ModBehaviour.DevLog("[ModeE] 玩家阵营已设置为: " + faction);
                     }
                     else
                     {
-                        DevLog("[ModeE] 爷的营旗：玩家保持 player 阵营，所有Boss均为敌对");
+                        ModBehaviour.DevLog("[ModeE] 爷的营旗：玩家保持 player 阵营，所有Boss均为敌对");
                     }
                 }
                 profiler.Mark("SetupPlayerFaction");
@@ -1030,7 +1025,7 @@ namespace BossRush
                 profiler.Mark("EnsureModeEFSpawnPoolsReady");
 
                 // 前置构建全局掉落池（避免战斗中首次调用时卡顿）
-                EnsureModeDGlobalItemPool();
+                equipment.EnsureModeDGlobalItemPool();
                 profiler.Mark("EnsureModeDGlobalItemPool");
 
                 // Mode E 不激活 BossRush 运行时状态（IsActive 保持 false）
@@ -1047,7 +1042,7 @@ namespace BossRush
                 profiler.Mark("TeleportPlayerToSafePosition");
 
                 // 发放初始装备（复用 Mode D 的 Starter Kit）
-                GivePlayerStarterKit();
+                equipment.GivePlayerStarterKit();
 
                 // 零度挑战地图：额外发放保暖装备（头盔 ID:1312 + 护甲 ID:1307）
                 ModeEGiveColdWeatherGear();
@@ -1059,11 +1054,11 @@ namespace BossRush
                 }
                 profiler.Mark("GiveLoadout");
 
-                CaptureModeEFLootboxBaseline();
+                modeEHost.CaptureModeEFLootboxBaseline();
                 profiler.Mark("CaptureLootboxBaseline");
 
                 // 应用变异词条（必须先于任何 Boss 生成，敌人增益才能稳定作用到首批特殊 Boss）
-                TryRollMutatorsForMode("ModeE");
+                modeEHost.TryRollMutatorsForArena("ModeE");
                 profiler.Mark("RollMutators");
 
                 // 一次性生成所有阵营的 Boss（UniTaskVoid fire-and-forget，抑制 CS4014 警告）
@@ -1079,14 +1074,14 @@ namespace BossRush
                 #pragma warning restore CS4014
 
                 // 在玩家出生点生成快递员阿稳（站在原地不移动）
-                SpawnCourierNPC();
+                modeEHost.SpawnCourierNPC();
                 profiler.Mark("SpawnCourier");
 
-                ShowMessage(L10n.T(
+                modeEHost.ShowMessage(L10n.T(
                     "划地为营模式已激活！阵营：" + GetFactionDisplayName(faction),
                     "Faction Battle activated! Faction: " + faction.ToString()
                 ));
-                ShowBigBanner(L10n.T(
+                modeEHost.ShowBigBanner(L10n.T(
                     "欢迎来到 <color=red>划地为营</color>！",
                     "Welcome to <color=red>Faction Battle</color>!"
                 ));
@@ -1097,14 +1092,14 @@ namespace BossRush
             catch (Exception e)
             {
                 profiler.Complete("failed");
-                DevLog("[ModeE] [ERROR] StartModeE 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] StartModeE 失败: " + e.Message);
                 try
                 {
                     EndModeE(false);
                 }
                 catch (Exception cleanupException)
                 {
-                    DevLog("[ModeE] [WARNING] StartModeE 失败后的清理异常: " + cleanupException.Message);
+                    ModBehaviour.DevLog("[ModeE] [WARNING] StartModeE 失败后的清理异常: " + cleanupException.Message);
                 }
                 return false;
             }

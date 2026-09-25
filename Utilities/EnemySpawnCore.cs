@@ -110,55 +110,6 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        private sealed class ModeEFSpawnProfiler
-        {
-            private readonly bool enabled;
-            private readonly string scope;
-            private readonly float startTime;
-            private float lastCheckpointTime;
-            private bool completed;
-
-            public ModeEFSpawnProfiler(string scope, string detail = null)
-            {
-                enabled = DevModeEnabled && ModeEFSpawnProfilingEnabled;
-                if (!enabled)
-                {
-                    return;
-                }
-
-                this.scope = string.IsNullOrEmpty(detail) ? scope : scope + " [" + detail + "]";
-                startTime = Time.realtimeSinceStartup;
-                lastCheckpointTime = startTime;
-                DevLog("[ModeE/F] [Profile] " + this.scope + " begin");
-            }
-
-            public void Mark(string stageName)
-            {
-                if (!enabled || completed)
-                {
-                    return;
-                }
-
-                float now = Time.realtimeSinceStartup;
-                DevLog("[ModeE/F] [Profile] " + scope + " | " + stageName + ": +" +
-                    ((now - lastCheckpointTime) * 1000f).ToString("F1") + " ms");
-                lastCheckpointTime = now;
-            }
-
-            public void Complete(string status = "completed")
-            {
-                if (!enabled || completed)
-                {
-                    return;
-                }
-
-                completed = true;
-                float now = Time.realtimeSinceStartup;
-                DevLog("[ModeE/F] [Profile] " + scope + " | " + status + " | total=" +
-                    ((now - startTime) * 1000f).ToString("F1") + " ms");
-            }
-        }
-
         private sealed class ModeEFSpawnPostprocessJob
         {
             public EnemySpawnContext context;
@@ -230,7 +181,7 @@ namespace BossRush
             }
         }
 
-        private void ClearModeEFSpawnPostprocessScheduler()
+        internal void ClearModeEFSpawnPostprocessScheduler()
         {
             while (modeEFSpawnPostprocessQueue.Count > 0)
             {
@@ -583,7 +534,7 @@ namespace BossRush
         /// <param name="skipDragonKing">Mode E 用：重试时跳过龙王预设</param>
         /// <param name="skipBossRushLootTracking">跳过 BossRush 随机掉落追踪；独立模式复用 Boss 刷怪但自管掉落时必须开启。</param>
         /// <param name="normalizeDamageMultiplier">是否执行 Mode D 的伤害倍率归一化。</param>
-        private void SpawnEnemyCore(
+        internal void SpawnEnemyCore(
             EnemyPresetInfo preset,
             Vector3 position,
             bool isBoss,

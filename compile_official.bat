@@ -422,6 +422,7 @@ echo(Utilities\ManagedBossSpawnContracts.cs
 echo(Utilities\ModBossPresetLookup.cs
 echo(Utilities\SpawnedEnemyActivationHelper.cs
 echo(Utilities\EnemySpawnCore.cs
+echo(Utilities\ModeEFSpawnProfiler.cs
 echo(Utilities\ZombieSpawnSanitizer.cs
 echo(Utilities\EnemyRecoveryMonitor.cs
 echo(Utilities\GameplayRuntimeHooks.cs
@@ -518,9 +519,17 @@ echo(ModeE\ModeEStartup.cs
 echo(ModeE\ModeELifecycle.cs
 echo(ModeE\ModeEIntegrityAndHelpers.cs
 echo(ModeE\ModeERuntimeModule.cs
+echo(ModeE\ModeEHostBridge.cs
 echo(ModeE\ModeERuntimeHooks.cs
 echo(ModeE\ModeEMerchant.cs
 echo(ModeE\ModeEMerchantSupportClasses.cs
+echo(ModeE\ModeEShellSession.cs
+echo(ModeE\ModeEShellTransactions.cs
+echo(ModeE\ModeEShopInteractable.cs
+echo(ModeE\ModeEMerchantSellAllUI.cs
+echo(ModeE\ModeEPetSpawner.cs
+echo(ModeE\ModeEMerchantSellAllUI_ShopViewSetup.cs
+echo(ModeE\ModeEMerchantSellAllUI_Layout.cs
 echo(ModeE\ModeELotteryAndHiring.cs
 echo(ModeE\ModeESpawnAllocation.cs
 echo(ModeE\ModeEBattle.cs

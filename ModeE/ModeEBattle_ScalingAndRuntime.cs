@@ -11,10 +11,10 @@ using Duckov.UI.DialogueBubbles;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         /// <summary>设置商人生命值为 999999，防止被误杀</summary>
-        private void SetModeEMerchantHealth(CharacterMainControl character)
+        internal void SetModeEMerchantHealth(CharacterMainControl character)
         {
             try
             {
@@ -29,7 +29,7 @@ namespace BossRush
                         float delta = 999999f - maxHealthStat.Value;
                         if (delta > 0)
                         {
-                            Modifier mod = new Modifier(ModifierType.Add, delta, this);
+                            Modifier mod = new Modifier(ModifierType.Add, delta, modeEHost);
                             maxHealthStat.AddModifier(mod);
                         }
                     }
@@ -39,12 +39,12 @@ namespace BossRush
                 if (character.Health != null)
                 {
                     character.Health.SetHealth(character.Health.MaxHealth);
-                    DevLog("[ModeE] 商人生命值已设置: " + character.Health.MaxHealth);
+                    ModBehaviour.DevLog("[ModeE] 商人生命值已设置: " + character.Health.MaxHealth);
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] 设置商人生命值失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] 设置商人生命值失败: " + e.Message);
             }
         }
 
@@ -104,7 +104,7 @@ namespace BossRush
         /// <summary>
         /// 注册敌人死亡事件，触发按阵营的动态缩放
         /// </summary>
-        private void RegisterModeEEnemyDeath(CharacterMainControl enemy)
+        internal void RegisterModeEEnemyDeath(CharacterMainControl enemy)
         {
             try
             {
@@ -131,11 +131,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] RegisterModeEEnemyDeath 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] RegisterModeEEnemyDeath 失败: " + e.Message);
             }
         }
 
-        private void UnregisterModeEEnemyDeath(CharacterMainControl enemy)
+        internal void UnregisterModeEEnemyDeath(CharacterMainControl enemy)
         {
             if (object.ReferenceEquals(enemy, null))
             {
@@ -185,7 +185,7 @@ namespace BossRush
                     }
 
                     capturedEnemy.dropBoxOnDead = false;
-                    DevLog("[ModeE] 同阵营Boss死亡，阻止掉落战利品箱子: " + capturedEnemy.gameObject.name);
+                    ModBehaviour.DevLog("[ModeE] 同阵营Boss死亡，阻止掉落战利品箱子: " + capturedEnemy.gameObject.name);
                 };
 
                 modeEEnemyLootHandlers[enemy] = handler;
@@ -193,11 +193,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] RegisterModeEEnemyLootHandler 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] RegisterModeEEnemyLootHandler 失败: " + e.Message);
             }
         }
 
-        private void UnregisterModeEEnemyLootHandler(CharacterMainControl enemy)
+        internal void UnregisterModeEEnemyLootHandler(CharacterMainControl enemy)
         {
             if (object.ReferenceEquals(enemy, null))
             {
@@ -231,7 +231,7 @@ namespace BossRush
             Stat stat = characterItem.GetStat(statName);
             if (stat == null) return null;
 
-            Modifier mod = new Modifier(ModifierType.Add, stat.BaseValue * percent, this);
+            Modifier mod = new Modifier(ModifierType.Add, stat.BaseValue * percent, modeEHost);
             stat.AddModifier(mod);
 
             return mod;
@@ -355,7 +355,7 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null || player.transform == null)
                 {
-                    DevLog("[ModeE] [WARNING] ShowModeEPlayerGrowthBubble: 玩家或 transform 为 null");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] ShowModeEPlayerGrowthBubble: 玩家或 transform 为 null");
                     return;
                 }
 
@@ -364,15 +364,15 @@ namespace BossRush
                     totalBonusPercent.ToString("F1", CultureInfo.InvariantCulture) + "%";
 
                 DialogueBubblesManager.Show(bubbleText, player.transform, 2.5f, false, false, -1f, 3f);
-                DevLog("[ModeE] 显示玩家成长气泡: " + bubbleText);
+                ModBehaviour.DevLog("[ModeE] 显示玩家成长气泡: " + bubbleText);
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] ShowModeEPlayerGrowthBubble 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] ShowModeEPlayerGrowthBubble 失败: " + e.Message);
             }
         }
 
-        private void RemoveModeEScalingModifiers(CharacterMainControl enemy)
+        internal void RemoveModeEScalingModifiers(CharacterMainControl enemy)
         {
             if (object.ReferenceEquals(enemy, null))
             {
@@ -434,7 +434,7 @@ namespace BossRush
             UnregisterModeEEnemyDeath(enemy);
             UnregisterModeEEnemyLootHandler(enemy);
             UnregisterModeEEnemyFromSpawnerRoot(enemy);
-            UnregisterEnemyRecovery(enemy);
+            modeEHost.UnregisterEnemyRecoveryForArena(enemy);
             modeEPendingAggroTraceDistance.Remove(enemy);
             RemoveModeEScalingModifiers(enemy);
             modeEEnemyScalingStates.Remove(enemy);
@@ -510,7 +510,7 @@ namespace BossRush
             snapshot.Frame = Time.frameCount;
             snapshot.CallbackSequence = modeEShellDeathCallbackSequence;
 
-            DevLog("[ModeE/Shell] death snapshot frame=" + snapshot.Frame +
+            ModBehaviour.DevLog("[ModeE/Shell] death snapshot frame=" + snapshot.Frame +
                 ", order=" + snapshot.CallbackSequence +
                 ", playerAlive=" + snapshot.PlayerAliveAtSnapshot +
                 ", claimed=true, kind=" + snapshot.RewardKind);
@@ -538,7 +538,7 @@ namespace BossRush
             if (!snapshot.Claimed) return;
             try
             {
-                if (!modeEShellEconomyAvailable || modeFActive || !snapshot.PlayerAliveAtSnapshot ||
+                if (!modeEShellEconomyAvailable || modeEHost.IsModeFActive || !snapshot.PlayerAliveAtSnapshot ||
                     !IsCurrentModeEShellSession(
                         snapshot.SessionToken,
                         snapshot.SceneBuildIndex,
@@ -595,7 +595,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE/Shell] reward settlement isolated failure: " + e.Message);
+                ModBehaviour.DevLog("[ModeE/Shell] reward settlement isolated failure: " + e.Message);
             }
         }
 
@@ -654,14 +654,14 @@ namespace BossRush
                 }
 
                 int deathCount = modeEFactionDeathCount[enemyFaction];
-                DevLog("[ModeE] 阵营 " + enemyFaction + " 单位阵亡，累计死亡: " + deathCount);
+                ModBehaviour.DevLog("[ModeE] 阵营 " + enemyFaction + " 单位阵亡，累计死亡: " + deathCount);
 
                 // 标记该阵营需要延迟缩放（不立即执行，等批量定时器触发）
                 modeEPendingScalingFactions.Add(enemyFaction);
 
                 // 累计击杀计数，每10次自动发放挑衅烟雾弹
                 CheckRespawnItemAutoGrant();
-                RegisterModeEFBossDeathForSweepToken();
+                modeEHost.RegisterModeEFBossDeathForSweepToken();
 
                 // 敌方阵营 Boss 保留原掉落内容，但要补挂 BossRush 箱子交互与追踪标记。
                 if (enemyFaction != modeEPlayerFaction)
@@ -670,17 +670,17 @@ namespace BossRush
                     {
                         if (hasDeathPos)
                         {
-                            StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(this, deathPosition, true));
+                            modeEHost.StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(modeEHost, deathPosition, true));
                         }
                     }
                     catch {}
                 }
 
-                FinalizeBossRushLootboxPathTracking(enemy);
+                arena.FinalizeBossRushLootboxPathTracking(enemy);
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] OnModeEEnemyDeath 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] OnModeEEnemyDeath 失败: " + e.Message);
             }
             finally
             {
@@ -722,7 +722,7 @@ namespace BossRush
             try
             {
                 int factionDeathCount = GetModeEFactionDeathCount(faction);
-                DevLog("[ModeE] 应用阵营缩放: " + faction + " 死亡计数=" + factionDeathCount);
+                ModBehaviour.DevLog("[ModeE] 应用阵营缩放: " + faction + " 死亡计数=" + factionDeathCount);
 
                 // [P4] 使用阵营独立列表，只遍历该阵营的存活单位
                 List<CharacterMainControl> factionList = GetFactionAliveList(faction);
@@ -772,7 +772,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] ApplyFactionDeathScaling 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] ApplyFactionDeathScaling 失败: " + e.Message);
             }
         }
 
@@ -790,7 +790,7 @@ namespace BossRush
         /// <summary>
         /// 获取或创建 Mode E 专用的虚拟 CharacterSpawnerRoot
         /// BossLiveMapMod 通过遍历 CharacterSpawnerRoot.CreatedCharacters 来发现敌人，
-        /// Mode E 的敌人通过 SpawnEnemyCore 直接生成，不经过游戏原版 spawner 系统，
+        /// Mode E 的敌人通过 modeEHost.SpawnEnemyCore 直接生成，不经过游戏原版 spawner 系统，
         /// 因此需要创建一个虚拟的 CharacterSpawnerRoot 来注册这些敌人
         /// </summary>
         private CharacterSpawnerRoot GetOrCreateModeESpawnerRoot()
@@ -804,11 +804,11 @@ namespace BossRush
                 modeEVirtualSpawnerRoot = spawnerObj.AddComponent<CharacterSpawnerRoot>();
                 // This virtual root is only a registry bridge; keep Update/Init from entering the vanilla spawn pipeline.
                 modeEVirtualSpawnerRoot.enabled = false;
-                DevLog("[ModeE] 创建虚拟 CharacterSpawnerRoot 用于 BossLiveMapMod 集成");
+                ModBehaviour.DevLog("[ModeE] 创建虚拟 CharacterSpawnerRoot 用于 BossLiveMapMod 集成");
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] 创建虚拟 CharacterSpawnerRoot 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] 创建虚拟 CharacterSpawnerRoot 失败: " + e.Message);
             }
 
             return modeEVirtualSpawnerRoot;
@@ -846,7 +846,7 @@ namespace BossRush
                         !modeESpawnerRootCreatedCharactersAccessorMissingLogged)
                     {
                         modeESpawnerRootCreatedCharactersAccessorMissingLogged = true;
-                        DevLog("[ModeE] [WARNING] 未找到虚拟 SpawnerRoot 的 createdCharacters/CreatedCharacters 访问器");
+                        ModBehaviour.DevLog("[ModeE] [WARNING] 未找到虚拟 SpawnerRoot 的 createdCharacters/CreatedCharacters 访问器");
                     }
                 }
 
@@ -862,7 +862,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] 获取虚拟 SpawnerRoot CreatedCharacters 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] 获取虚拟 SpawnerRoot CreatedCharacters 失败: " + e.Message);
             }
 
             return null;
@@ -901,7 +901,7 @@ namespace BossRush
         /// 从虚拟 CharacterSpawnerRoot 中移除敌人，防止 CreatedCharacters 列表无限膨胀
         /// 通过反射获取 CreatedCharacters 列表（无公开 Remove API）
         /// </summary>
-        private void UnregisterModeEEnemyFromSpawnerRoot(CharacterMainControl character)
+        internal void UnregisterModeEEnemyFromSpawnerRoot(CharacterMainControl character)
         {
             try
             {
@@ -918,7 +918,7 @@ namespace BossRush
         /// 将 Mode E 生成的敌人注册到虚拟 CharacterSpawnerRoot，
         /// 使 BossLiveMapMod 能通过标准流程检测到这些敌人
         /// </summary>
-        private void RegisterModeEEnemyToSpawnerRoot(CharacterMainControl character)
+        internal void RegisterModeEEnemyToSpawnerRoot(CharacterMainControl character)
         {
             try
             {
@@ -937,7 +937,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] RegisterModeEEnemyToSpawnerRoot 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] RegisterModeEEnemyToSpawnerRoot 失败: " + e.Message);
             }
         }
 
@@ -966,12 +966,12 @@ namespace BossRush
                     }
                     modeEVirtualSpawnerRoot = null;
                     modeESpawnerRootRegisteredEnemies.Clear();
-                    DevLog("[ModeE] 已清理虚拟 CharacterSpawnerRoot");
+                    ModBehaviour.DevLog("[ModeE] 已清理虚拟 CharacterSpawnerRoot");
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] CleanupModeEVirtualSpawnerRoot 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] CleanupModeEVirtualSpawnerRoot 失败: " + e.Message);
             }
         }
 
@@ -992,11 +992,11 @@ namespace BossRush
                 if (character.Team == modeEPlayerFaction) return;
 
                 ApplyStatBoostPercent(character, "MaxHealth", 0.5f, true);
-                DevLog("[ModeE] 基础血量提升: " + character.gameObject.name + " HP × 1.5");
+                ModBehaviour.DevLog("[ModeE] 基础血量提升: " + character.gameObject.name + " HP × 1.5");
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] ApplyModeEBaseHealthBoost 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] ApplyModeEBaseHealthBoost 失败: " + e.Message);
             }
         }
 
@@ -1010,8 +1010,8 @@ namespace BossRush
         /// </summary>
         private EnemyPresetInfo GetAllFactionMinionPreset()
         {
-            if (modeDMinionPool == null || modeDMinionPool.Count == 0) return null;
-            return modeDMinionPool[UnityEngine.Random.Range(0, modeDMinionPool.Count)];
+            if (modeD.MinionPresets == null || modeD.MinionPresets.Count == 0) return null;
+            return modeD.MinionPresets[UnityEngine.Random.Range(0, modeD.MinionPresets.Count)];
         }
 
         /// <summary>
@@ -1025,11 +1025,11 @@ namespace BossRush
                 ApplyStatBoostPercent(character, "MaxHealth", 1.5f, true);
                 ApplyStatBoostPercent(character, "GunDamageMultiplier", 1.5f, false);
                 ApplyStatBoostPercent(character, "MeleeDamageMultiplier", 1.5f, false);
-                DevLog("[ModeE] BEAR阵营属性提升: " + character.gameObject.name + " HP/Dmg × 2.5");
+                ModBehaviour.DevLog("[ModeE] BEAR阵营属性提升: " + character.gameObject.name + " HP/Dmg × 2.5");
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] ApplyBearFactionStatBoost 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] ApplyBearFactionStatBoost 失败: " + e.Message);
             }
         }
 
@@ -1053,7 +1053,7 @@ namespace BossRush
                 if (stat == null) return;
 
                 float boostAmount = stat.BaseValue * percent;
-                Modifier mod = new Modifier(ModifierType.Add, boostAmount, this);
+                Modifier mod = new Modifier(ModifierType.Add, boostAmount, modeEHost);
                 stat.AddModifier(mod);
 
                 if (syncHealth)

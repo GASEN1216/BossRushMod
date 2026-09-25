@@ -15,7 +15,7 @@ using HarmonyLib;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         #region Mode E 自检机制
 
@@ -67,7 +67,7 @@ namespace BossRush
                     catch (Exception e)
                     {
                         // Unity 已销毁对象，无法读取 Team —— 从所有阵营列表中暴力移除
-                        DevLog("[ModeE] [WARNING] 自检时读取敌人阵营失败，改为全量清理: index=" + i + ", " + e.Message);
+                        ModBehaviour.DevLog("[ModeE] [WARNING] 自检时读取敌人阵营失败，改为全量清理: index=" + i + ", " + e.Message);
                         CleanupModeEEnemyRuntimeState(enemy);
                         }
 
@@ -77,12 +77,12 @@ namespace BossRush
 
                 if (removedCount > 0)
                 {
-                    DevLog("[ModeE] 自检清理了 " + removedCount + " 个已死亡/已销毁的敌人引用");
+                    ModBehaviour.DevLog("[ModeE] 自检清理了 " + removedCount + " 个已死亡/已销毁的敌人引用");
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] ModeEIntegrityCheck 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] ModeEIntegrityCheck 失败: " + e.Message);
             }
         }
 
@@ -101,7 +101,7 @@ namespace BossRush
             modeEBossRegenCacheDirty = false;
         }
 
-        private List<MonoBehaviour> GetModeEBossRegenCache()
+        internal List<MonoBehaviour> GetModeEBossRegenCache()
         {
             if (!modeEBossRegenCacheDirty)
             {
@@ -126,7 +126,7 @@ namespace BossRush
         /// 零度挑战地图专用：发放保暖装备（头盔 + 护甲）
         /// 仅在 Level_ChallengeSnow 场景下生效，硬编码物品ID
         /// </summary>
-        private void ModeEGiveColdWeatherGear()
+        internal void ModeEGiveColdWeatherGear()
         {
             try
             {
@@ -137,7 +137,7 @@ namespace BossRush
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null) return;
 
-                DevLog("[ModeE] 零度挑战地图：发放保暖装备...");
+                ModBehaviour.DevLog("[ModeE] 零度挑战地图：发放保暖装备...");
 
                 // 头盔 ID:1312
                 Item helmet = ItemAssetsCollection.InstantiateSync(1312);
@@ -145,7 +145,7 @@ namespace BossRush
                 {
                     bool equipped = main.CharacterItem.TryPlug(helmet, true, null, 0);
                     if (!equipped) ItemUtilities.SendToPlayerCharacterInventory(helmet, false);
-                    DevLog("[ModeE] 发放保暖头盔: " + helmet.DisplayName);
+                    ModBehaviour.DevLog("[ModeE] 发放保暖头盔: " + helmet.DisplayName);
                 }
 
                 // 护甲 ID:1307
@@ -154,12 +154,12 @@ namespace BossRush
                 {
                     bool equipped = main.CharacterItem.TryPlug(armor, true, null, 0);
                     if (!equipped) ItemUtilities.SendToPlayerCharacterInventory(armor, false);
-                    DevLog("[ModeE] 发放保暖护甲: " + armor.DisplayName);
+                    ModBehaviour.DevLog("[ModeE] 发放保暖护甲: " + armor.DisplayName);
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] ModeEGiveColdWeatherGear 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] ModeEGiveColdWeatherGear 失败: " + e.Message);
             }
         }
 
@@ -173,7 +173,7 @@ namespace BossRush
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null) return;
 
-                DevLog("[ModeE] 独狼阵营：发放专属补给物品...");
+                ModBehaviour.DevLog("[ModeE] 独狼阵营：发放专属补给物品...");
 
                 // 发放3个 id=881 的物品
                 for (int i = 0; i < 3; i++)
@@ -182,7 +182,7 @@ namespace BossRush
                     if (item881 != null)
                     {
                         ItemUtilities.SendToPlayerCharacterInventory(item881, false);
-                        DevLog("[ModeE] 独狼补给：发放物品 881 - " + item881.DisplayName);
+                        ModBehaviour.DevLog("[ModeE] 独狼补给：发放物品 881 - " + item881.DisplayName);
                     }
                 }
 
@@ -193,13 +193,13 @@ namespace BossRush
                     if (item660 != null)
                     {
                         ItemUtilities.SendToPlayerCharacterInventory(item660, false);
-                        DevLog("[ModeE] 独狼补给：发放物品 660 - " + item660.DisplayName);
+                        ModBehaviour.DevLog("[ModeE] 独狼补给：发放物品 660 - " + item660.DisplayName);
                     }
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] ModeEGiveLoneWolfSupplies 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] ModeEGiveLoneWolfSupplies 失败: " + e.Message);
             }
         }
 
@@ -486,7 +486,7 @@ namespace BossRush
         /// <summary>
         /// 将敌人登记为 Mode E 运行时存活对象，避免重复加入全局/阵营列表。
         /// </summary>
-        private void TrackModeEAliveEnemy(CharacterMainControl enemy, Teams faction)
+        internal void TrackModeEAliveEnemy(CharacterMainControl enemy, Teams faction)
         {
             if (enemy == null)
             {
@@ -507,7 +507,7 @@ namespace BossRush
         /// <summary>
         /// 从 Mode E 运行时存活对象登记中移除敌人。
         /// </summary>
-        private void UntrackModeEAliveEnemy(CharacterMainControl enemy, Teams? faction = null)
+        internal void UntrackModeEAliveEnemy(CharacterMainControl enemy, Teams? faction = null)
         {
             if (object.ReferenceEquals(enemy, null))
             {

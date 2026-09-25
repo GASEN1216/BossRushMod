@@ -4,7 +4,16 @@ from pathlib import Path
 import sys
 
 
-SUPPORT = Path("ModeE/ModeEMerchantSupportClasses.cs")
+SUPPORT = (
+    Path("ModeE/ModeEMerchantSupportClasses.cs"),
+    Path("ModeE/ModeEShellSession.cs"),
+    Path("ModeE/ModeEShellTransactions.cs"),
+    Path("ModeE/ModeEShopInteractable.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI.cs"),
+    Path("ModeE/ModeEPetSpawner.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_ShopViewSetup.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_Layout.cs"),
+)
 HARMONY = Path("ModeE/ModeEHarmonyPatch.cs")
 MERCHANT = Path("ModeE/ModeEMerchant.cs")
 MODE_E = Path("ModeE/ModeE.cs")
@@ -34,7 +43,7 @@ def extract_method(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    support = SUPPORT.read_text(encoding="utf-8")
+    support = "\n".join(path.read_text(encoding="utf-8") for path in SUPPORT)
     harmony = HARMONY.read_text(encoding="utf-8")
     merchant = MERCHANT.read_text(encoding="utf-8")
     mode_e = MODE_E.read_text(encoding="utf-8")
@@ -50,7 +59,7 @@ def main() -> int:
         "modeEOwnedShopTombstones",
         "modeEMerchantShops",
         "modeEShellEconomyAvailable",
-        "modeFActive",
+        "modeEHost.IsModeFActive",
         "modeEActive",
         "VerifyModeEShellPatchInstallation()",
         "IsCurrentModeEShellUiBinding(shop, uiBindingID)",

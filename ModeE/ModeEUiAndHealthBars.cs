@@ -15,7 +15,7 @@ using HarmonyLib;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         // ====================================================================
         // 与 ModeF 血条名牌那套的关系（读之前先看这段，别急着合并）
@@ -97,7 +97,7 @@ namespace BossRush
             }
 
             modeENextUiWarningLogTime = Time.unscaledTime + MODEE_UI_WARNING_LOG_INTERVAL;
-            DevLog("[ModeE] [WARNING] " + message + (e != null ? ": " + e.Message : string.Empty));
+            ModBehaviour.DevLog("[ModeE] [WARNING] " + message + (e != null ? ": " + e.Message : string.Empty));
         }
 
         private static MethodInfo GetModeERefreshCharacterIconMethod()

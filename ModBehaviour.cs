@@ -525,7 +525,6 @@ namespace BossRush
         // 波次完整性自检计时器
         internal const float WaveIntegrityCheckInterval = 10f;
         // Mode E 独立自检计时器（Mode E 不激活 IsActive，需要单独计时）
-        private float modeEIntegrityTimer = 0f;
         // 大兴兴清理定时器（只在 BossRush 进行期间启用）
         internal const float DaXingXingCleanInterval = 0.5f;
 

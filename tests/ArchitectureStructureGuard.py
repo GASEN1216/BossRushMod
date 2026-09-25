@@ -184,6 +184,10 @@ def main() -> int:
             registration_token = "wavesArenaRuntime = new WavesArenaRuntimeModule();"
             if "runtimeModuleHost.Register(wavesArenaRuntime);" not in registration_text:
                 return fail("ArchitectureStructureGuard: WavesArena must register its stored runtime instance")
+        elif module_name == "ModeERuntimeModule":
+            registration_token = "private readonly ModeERuntimeModule modeERuntime = new ModeERuntimeModule();"
+            if "runtimeModuleHost.Register(modeERuntime);" not in registration_text:
+                return fail("ArchitectureStructureGuard: Mode E must register its stored runtime owner")
         elif module_name == "ModeFRuntimeModule":
             registration_token = "modeFRuntime = new ModeFRuntimeModule();"
             if "runtimeModuleHost.Register(modeFRuntime);" not in registration_text:
@@ -549,7 +553,7 @@ def main() -> int:
     for required in [
         "UpdateModeEPlayerNameTag();",
         "modeEIntegrityTimer += deltaTime;",
-        "modeEIntegrityTimer >= WaveIntegrityCheckInterval",
+        "modeEIntegrityTimer >= ModBehaviour.WaveIntegrityCheckInterval",
         "ModeEIntegrityCheck();",
         "ModeEScalingBatchUpdate();",
         "modeEIntegrityTimer = 0f;",
@@ -1250,9 +1254,10 @@ def main() -> int:
         module_text = Path(module_path).read_text(encoding="utf-8", errors="ignore")
         if 'get { return "' + module_name + '"; }' not in module_text:
             return fail("ArchitectureStructureGuard: runtime module shell missing module name: " + module_name)
-        if "private ModBehaviour owner;" not in module_text:
+        owner_field = "modeEHost" if module_name == "ModeE" else "owner"
+        if "private ModBehaviour " + owner_field + ";" not in module_text:
             return fail("ArchitectureStructureGuard: runtime module shell must keep owner reference: " + module_name)
-        if "owner = null;" not in module_text:
+        if owner_field + " = null;" not in module_text:
             return fail("ArchitectureStructureGuard: runtime module shell must clear owner on destroy: " + module_name)
 
     scene_gate = Path("Utilities/SceneRuntimeGate.cs").read_text(encoding="utf-8", errors="ignore")

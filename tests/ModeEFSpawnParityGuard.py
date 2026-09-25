@@ -61,7 +61,7 @@ def main() -> int:
     phases = MODEF_PHASES.read_text(encoding="utf-8")
     respawn_f = MODEF_RESPAWN.read_text(encoding="utf-8")
 
-    allocate_body = extract_method_body(allocation, "private void AllocateSpawnPoints")
+    allocate_body = extract_method_body(allocation, "internal void AllocateSpawnPoints")
     if allocate_body is None:
         return fail("missing AllocateSpawnPoints body")
 

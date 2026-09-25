@@ -34,8 +34,8 @@ def main() -> int:
     rewards = read_rewards()
 
     for snippet in [
-        "private List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>> GetModeEMerchantCategories(",
-        "private List<int> ModeESearchItemsMultiTag(",
+        "internal List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>> GetModeEMerchantCategories(",
+        "internal List<int> ModeESearchItemsMultiTag(",
         "private static readonly Dictionary<string, int[]> modeEMerchantCategoryItemCache",
         "private static readonly HashSet<int> modeEMedicalShopExcludedIds",
         "internal int[] GetModeEMerchantCategoryPoolIds(",

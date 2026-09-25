@@ -55,7 +55,7 @@ def main() -> int:
         ("public EnemySpawnContext context;", "spawn core result must expose context"),
         ("public string failureReason;", "spawn core result must expose failure reason"),
         ("public EnemyPresetInfo actualPreset;", "spawn core result must expose actual preset"),
-        ("private void SpawnEnemyCore(", "legacy SpawnEnemyCore wrapper must remain for existing callers"),
+        ("internal void SpawnEnemyCore(", "legacy SpawnEnemyCore wrapper must remain for existing callers"),
         ("SpawnEnemyCoreFireAndForgetAsync(", "legacy wrapper must stay fire-and-forget"),
         ("private async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync", "internal spawn core must be awaitable"),
         ("const int maxAttempts = 5;", "spawn core retry count must stay 5"),
@@ -71,7 +71,7 @@ def main() -> int:
         if result is not None:
             return result
 
-    wrapper = extract_method_body(text, "private void SpawnEnemyCore")
+    wrapper = extract_method_body(text, "internal void SpawnEnemyCore")
     if wrapper is None:
         return fail("missing legacy SpawnEnemyCore wrapper")
     result = forbid(wrapper, "async void", "legacy wrapper must not be async void")

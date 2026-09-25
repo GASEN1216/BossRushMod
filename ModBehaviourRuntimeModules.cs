@@ -2,6 +2,8 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
+        private readonly ModeERuntimeModule modeERuntime = new ModeERuntimeModule();
+
         private void RegisterRuntimeModules()
         {
             runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());
@@ -24,7 +26,8 @@ namespace BossRush
             wavesArenaRuntime = new WavesArenaRuntimeModule();
             runtimeModuleHost.Register(wavesArenaRuntime);
             BindModeDItemPoolQueries();
-            runtimeModuleHost.Register(new ModeERuntimeModule());
+            modeERuntime.BindSharedServices(modeDRuntime, wavesArenaRuntime);
+            runtimeModuleHost.Register(modeERuntime);
             modeFRuntime = new ModeFRuntimeModule();
             runtimeModuleHost.Register(modeFRuntime);
             runtimeModuleHost.Register(new ZombieModeRuntimeModule());

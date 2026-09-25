@@ -4,7 +4,16 @@ from pathlib import Path
 import sys
 
 
-SUPPORT = Path("ModeE/ModeEMerchantSupportClasses.cs")
+SUPPORT = (
+    Path("ModeE/ModeEMerchantSupportClasses.cs"),
+    Path("ModeE/ModeEShellSession.cs"),
+    Path("ModeE/ModeEShellTransactions.cs"),
+    Path("ModeE/ModeEShopInteractable.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI.cs"),
+    Path("ModeE/ModeEPetSpawner.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_ShopViewSetup.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_Layout.cs"),
+)
 MODE_E = Path("ModeE/ModeE.cs")
 HARMONY = Path("ModeE/ModeEHarmonyPatch.cs")
 
@@ -15,7 +24,7 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
-    support = SUPPORT.read_text(encoding="utf-8")
+    support = "\n".join(path.read_text(encoding="utf-8") for path in SUPPORT)
     mode_e = MODE_E.read_text(encoding="utf-8")
     combined = support + "\n" + mode_e + "\n" + HARMONY.read_text(encoding="utf-8")
 

@@ -64,7 +64,7 @@ def main() -> int:
     if "GetFilteredEnemyPresets()" not in mode_e_body:
         return fail("ModeDEFBossFilterGuard: ModeE faction boss cache does not use filtered boss presets")
 
-    if "modeDMinionPool" not in mode_e_body:
+    if "modeD.MinionPresets" not in mode_e_body:
         return fail("ModeDEFBossFilterGuard: ModeE minion pool handling unexpectedly changed")
 
     mode_f_body = extract_method_body(mode_f_text, "private EnemyPresetInfo GetRandomModeFRespawnBossPreset()")

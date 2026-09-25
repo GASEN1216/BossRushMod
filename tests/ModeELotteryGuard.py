@@ -5,7 +5,16 @@ import sys
 
 
 FEATURE = Path("ModeE/ModeELotteryAndHiring.cs")
-SUPPORT = Path("ModeE/ModeEMerchantSupportClasses.cs")
+SUPPORT = (
+    Path("ModeE/ModeEMerchantSupportClasses.cs"),
+    Path("ModeE/ModeEShellSession.cs"),
+    Path("ModeE/ModeEShellTransactions.cs"),
+    Path("ModeE/ModeEShopInteractable.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI.cs"),
+    Path("ModeE/ModeEPetSpawner.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_ShopViewSetup.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_Layout.cs"),
+)
 COMPILE = Path("compile_official.bat")
 
 
@@ -34,7 +43,7 @@ def extract_method(text: str, signature: str) -> str:
 
 def main() -> int:
     feature = FEATURE.read_text(encoding="utf-8")
-    support = SUPPORT.read_text(encoding="utf-8")
+    support = "\n".join(path.read_text(encoding="utf-8") for path in SUPPORT)
     compile_text = COMPILE.read_text(encoding="utf-8")
 
     if "ModeE\\ModeELotteryAndHiring.cs" not in compile_text:

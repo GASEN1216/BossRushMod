@@ -55,7 +55,7 @@ def main() -> int:
     entry = MODEF_ENTRY.read_text(encoding="utf-8")
     respawn = MODEF_RESPAWN.read_text(encoding="utf-8")
 
-    ensure_body = extract_method_body(battle, "private void EnsureModeEFSpawnPoolsReady")
+    ensure_body = extract_method_body(battle, "internal void EnsureModeEFSpawnPoolsReady")
     if ensure_body is None:
         return fail("missing EnsureModeEFSpawnPoolsReady")
     for needle, message in (

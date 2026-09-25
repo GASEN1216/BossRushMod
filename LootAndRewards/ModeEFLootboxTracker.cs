@@ -57,7 +57,7 @@ namespace BossRush
             return false;
         }
 
-        private void ResetModeEFLootboxTrackerState()
+        internal void ResetModeEFLootboxTrackerState()
         {
             CancelAwenLootSweep(true);
             CourierPaidLootSweepService.ReleasePendingSweepResultToPlayer(true, false);

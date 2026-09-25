@@ -274,7 +274,7 @@ namespace BossRush
             if (dragonKingRuntimeModule != null) dragonKingRuntimeModule.CleanupCancelledDragonKing(character, releaseAssetReference);
         }
 
-        private bool IsDragonKingPreset(EnemyPresetInfo preset)
+        internal bool IsDragonKingPreset(EnemyPresetInfo preset)
         {
             return dragonKingRuntimeModule != null && dragonKingRuntimeModule.IsDragonKingPreset(preset);
         }

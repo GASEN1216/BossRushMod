@@ -69,7 +69,7 @@ def main() -> int:
     if "onFailed:" not in single_body or "ResolveModeESpawnAttempt(" not in single_body:
         return fail("ModeESpawnFailureResolutionGuard: failed spawns do not resolve the attempt")
 
-    verify_body = extract_method_body(mode_e_text, "private System.Collections.IEnumerator WaitForModeEStartupVerification")
+    verify_body = extract_method_body(mode_e_text, "internal System.Collections.IEnumerator WaitForModeEStartupVerification")
     if verify_body is None:
         return fail("ModeESpawnFailureResolutionGuard: missing WaitForModeEStartupVerification body")
     if "modeESpawnResolved > 0" in verify_body:

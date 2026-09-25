@@ -66,12 +66,12 @@ namespace BossRush
     /// Mode E（划地为营）：多阵营沙盒混战模式
     /// <para>玩家裸装+营旗入场，分配阵营，Boss一次性生成，按个人基线层数动态缩放</para>
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         #region Mode E 状态变量
 
         /// <summary>是否处于 Mode E 模式</summary>
-        private bool modeEActive = false;
+        internal bool modeEActive = false;
 
         /// <summary>玩家被分配的阵营</summary>
         private Teams modeEPlayerFaction = Teams.player;
@@ -80,7 +80,7 @@ namespace BossRush
         private int modeESessionSerial = 0;
 
         /// <summary>当前有效的 Mode E 会话令牌。</summary>
-        private int modeESessionToken = 0;
+        internal int modeESessionToken = 0;
 
         /// <summary>贝壳经济整局代号。只在整局初始化/失效时递增。</summary>
         private long modeEShellSessionGeneration = 0L;
@@ -217,13 +217,13 @@ namespace BossRush
         private FieldInfo modeEShellViewMerchantNameTextField;
 
         /// <summary>当前所有存活的 Mode E 敌人（跨阵营）</summary>
-        private readonly List<CharacterMainControl> modeEAliveEnemies = new List<CharacterMainControl>();
+        internal readonly List<CharacterMainControl> modeEAliveEnemies = new List<CharacterMainControl>();
 
         /// <summary>Mode E 结束清理快照复用列表，避免结束时按敌人数量分配数组。</summary>
         private readonly List<CharacterMainControl> modeEEndCleanupEnemyScratch = new List<CharacterMainControl>(32);
 
         /// <summary>Mode E 存活敌人的去重集合，避免重复注册导致列表和扫描路径膨胀。</summary>
-        private readonly HashSet<CharacterMainControl> modeEAliveEnemySet = new HashSet<CharacterMainControl>();
+        internal readonly HashSet<CharacterMainControl> modeEAliveEnemySet = new HashSet<CharacterMainControl>();
 
         /// <summary>BossRegen 专用缓存，避免变异词条开启时每帧重建存活列表。</summary>
         private readonly List<MonoBehaviour> modeEBossRegenCache = new List<MonoBehaviour>(32);
@@ -283,7 +283,7 @@ namespace BossRush
         #region Mode E 配置
 
         /// <summary>Mode E 可用阵营池（排除 player/middle/all）</summary>
-        private static readonly Teams[] ModeEAvailableFactions = new Teams[]
+        internal static readonly Teams[] ModeEAvailableFactions = new Teams[]
         {
             Teams.scav,   // 拾荒者
             Teams.usec,   // USEC雇佣兵

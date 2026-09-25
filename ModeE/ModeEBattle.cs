@@ -27,7 +27,7 @@ namespace BossRush
     /// <summary>
     /// Mode E Boss 生成与动态难度缩放模块
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         #region Mode E 战斗管理字段
 
@@ -49,10 +49,10 @@ namespace BossRush
         private static bool modeESpawnerRootCreatedCharactersAccessorMissingLogged = false;
 
         /// <summary>Mode E 中是否已生成龙裔遗族（全局限制最多1个）</summary>
-        private bool modeEDragonDescendantSpawned = false;
+        internal bool modeEDragonDescendantSpawned = false;
 
         /// <summary>Mode E 中是否已生成龙王（全局限制最多1个）</summary>
-        private bool modeEDragonKingSpawned = false;
+        internal bool modeEDragonKingSpawned = false;
 
         #endregion
 
@@ -93,9 +93,9 @@ namespace BossRush
 
         private void BuildModeEFactionPresetCaches()
         {
-            List<EnemyPresetInfo> filteredBossPool = GetFilteredEnemyPresets();
+            List<EnemyPresetInfo> filteredBossPool = modeEHost.GetFilteredEnemyPresets();
             int bossPoolCount = filteredBossPool != null ? filteredBossPool.Count : 0;
-            int minionPoolCount = modeDMinionPool != null ? modeDMinionPool.Count : 0;
+            int minionPoolCount = modeD.MinionPresets != null ? modeD.MinionPresets.Count : 0;
             if (modeEFactionPresetCachesBuilt &&
                 object.ReferenceEquals(modeECachedBossPoolSource, filteredBossPool) &&
                 modeECachedBossPoolCount == bossPoolCount &&
@@ -114,25 +114,25 @@ namespace BossRush
                 for (int i = 0; i < filteredBossPool.Count; i++)
                 {
                     EnemyPresetInfo boss = filteredBossPool[i];
-                    if (boss == null || string.IsNullOrEmpty(boss.name) || IsDragonKingPreset(boss))
+                    if (boss == null || string.IsNullOrEmpty(boss.name) || modeEHost.IsDragonKingPreset(boss))
                     {
                         continue;
                     }
 
                     Teams faction = (Teams)boss.team;
                     GetOrCreateModeEPresetList(modeEBossPoolByFaction, faction).Add(boss);
-                    if (!IsDragonDescendantPreset(boss))
+                    if (!modeEHost.IsDragonDescendantPreset(boss))
                     {
                         GetOrCreateModeEPresetList(modeEBossPoolByFactionWithoutDragonDescendant, faction).Add(boss);
                     }
                 }
             }
 
-            if (modeDMinionPool != null)
+            if (modeD.MinionPresets != null)
             {
-                for (int i = 0; i < modeDMinionPool.Count; i++)
+                for (int i = 0; i < modeD.MinionPresets.Count; i++)
                 {
-                    EnemyPresetInfo minion = modeDMinionPool[i];
+                    EnemyPresetInfo minion = modeD.MinionPresets[i];
                     if (minion == null || string.IsNullOrEmpty(minion.name))
                     {
                         continue;
@@ -153,22 +153,22 @@ namespace BossRush
             modeEFactionPresetCachesBuilt = true;
         }
 
-        private void EnsureModeEFSpawnPoolsReady(string sourceTag)
+        internal void EnsureModeEFSpawnPoolsReady(string sourceTag)
         {
             try
             {
-                InitializeEnemyPresets();
+                arena.InitializeEnemyPresets();
                 InitializeModeDEnemyPools();
                 BuildModeEFactionPresetCaches();
 
-                if (VerboseStartupDebugLogsEnabled)
+                if (ModBehaviour.VerboseStartupDebugLogsEnabled)
                 {
-                    DevLog("[ModeE/F] 生成池缓存已就绪: " + sourceTag);
+                    ModBehaviour.DevLog("[ModeE/F] 生成池缓存已就绪: " + sourceTag);
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeE/F] [WARNING] 生成池缓存预热失败(" + sourceTag + "): " + e.Message);
+                ModBehaviour.DevLog("[ModeE/F] [WARNING] 生成池缓存预热失败(" + sourceTag + "): " + e.Message);
             }
         }
 
@@ -236,7 +236,7 @@ namespace BossRush
                 return ModeEShellRewardKind.PromotedBoss;
             }
 
-            DevLog("[ModeE/Shell] final preset reward classification unavailable: " +
+            ModBehaviour.DevLog("[ModeE/Shell] final preset reward classification unavailable: " +
                 (finalPreset.name ?? "<unnamed>"));
             return ModeEShellRewardKind.None;
         }
@@ -260,11 +260,11 @@ namespace BossRush
                         modeESessionRelatedScene) ||
                     modeESpawnAllocation == null)
                 {
-                    DevLog("[ModeE] ModeESpawnAllBosses: no active map mode or spawn allocation");
+                    ModBehaviour.DevLog("[ModeE] ModeESpawnAllBosses: no active map mode or spawn allocation");
                     return;
                 }
 
-                DevLog("[ModeE] 开始分批生成所有阵营 Boss...");
+                ModBehaviour.DevLog("[ModeE] 开始分批生成所有阵营 Boss...");
                 BuildModeEFactionPresetCaches();
 
                 // 重置生成计数
@@ -308,7 +308,7 @@ namespace BossRush
                 if (wolfBossPool != null)
                 {
                     modeEWolfBossCount = wolfBossPool.Count;
-                    DevLog("[ModeE] 狼阵营可用 Boss 预设数量: " + modeEWolfBossCount);
+                    ModBehaviour.DevLog("[ModeE] 狼阵营可用 Boss 预设数量: " + modeEWolfBossCount);
                 }
 
                 // 分批生成：每个boss之间让出足够时间，分散到多帧执行，避免低端机卡顿
@@ -346,11 +346,11 @@ namespace BossRush
                     }
                 }
 
-                DevLog("[ModeE] Boss 生成任务已全部下发，预期总数: " + modeETotalSpawnExpected);
+                ModBehaviour.DevLog("[ModeE] Boss 生成任务已全部下发，预期总数: " + modeETotalSpawnExpected);
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] ModeESpawnAllBosses 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] ModeESpawnAllBosses 失败: " + e.Message);
             }
         }
 
@@ -469,7 +469,7 @@ namespace BossRush
                         if (bossPreset != null)
                         {
                             modeEWolfBossAssigned++;
-                            DevLog("[ModeE] 狼阵营出Boss (" + modeEWolfBossAssigned + "/" + modeEWolfBossCount + "): " + bossPreset.displayName);
+                            ModBehaviour.DevLog("[ModeE] 狼阵营出Boss (" + modeEWolfBossAssigned + "/" + modeEWolfBossCount + "): " + bossPreset.displayName);
                         }
                     }
 
@@ -481,7 +481,7 @@ namespace BossRush
                         {
                             // 小怪提升为 Boss：isBoss 保持 true（走 Boss 配装流程），标记需要克隆预设
                             isMinionPromotedToBoss = true;
-                            DevLog("[ModeE] 狼阵营Boss已刷完，出小怪(提升为Boss): " + bossPreset.displayName);
+                            ModBehaviour.DevLog("[ModeE] 狼阵营Boss已刷完，出小怪(提升为Boss): " + bossPreset.displayName);
                         }
                     }
                 }
@@ -494,7 +494,7 @@ namespace BossRush
                 // 第2优先：该阵营没有 Boss（非狼阵营）或狼阵营连小怪都没有，从该阵营的小怪池补充（提升为Boss）
                 if (bossPreset == null)
                 {
-                    DevLog("[ModeE] 阵营 " + faction + " 无匹配Boss，尝试小怪池");
+                    ModBehaviour.DevLog("[ModeE] 阵营 " + faction + " 无匹配Boss，尝试小怪池");
                     bossPreset = GetMinionPresetForFaction(faction);
                     if (bossPreset != null)
                     {
@@ -505,7 +505,7 @@ namespace BossRush
                 // BEAR阵营兜底：原版游戏无 bear 预设，从全阵营小怪池随机抽取
                 if (bossPreset == null && faction == Teams.bear)
                 {
-                    DevLog("[ModeE] bear 阵营无匹配预设，从全阵营小怪池兜底");
+                    ModBehaviour.DevLog("[ModeE] bear 阵营无匹配预设，从全阵营小怪池兜底");
                     bossPreset = GetAllFactionMinionPreset();
                     if (bossPreset != null)
                     {
@@ -517,13 +517,13 @@ namespace BossRush
                 // 不从全局 Boss 池抽取，避免混入其他阵营的 Boss 导致阵营混乱
                 if (bossPreset == null)
                 {
-                    DevLog("[ModeE] [WARNING] 阵营 " + faction + " 无任何匹配预设（Boss池+小怪池均为空），跳过该刷怪点");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 阵营 " + faction + " 无任何匹配预设（Boss池+小怪池均为空），跳过该刷怪点");
                     ResolveModeESpawnAttemptIfCounted(spawnAttemptCounted);
                     return;
                 }
 
                 // 记录龙裔标记（龙皇在 Mode E 中已被完全排除，无需追踪）
-                isThisDragonDescendant = IsDragonDescendantPreset(bossPreset);
+                isThisDragonDescendant = modeEHost.IsDragonDescendantPreset(bossPreset);
                 if (isThisDragonDescendant)
                 {
                     modeEDragonDescendantSpawned = true;
@@ -535,24 +535,24 @@ namespace BossRush
                 Vector3 modeEPlayerPos = modeEPlayer != null ? modeEPlayer.transform.position : Vector3.zero;
                 float spawnDistSqr = (spawnPoint - modeEPlayerPos).sqrMagnitude;
                 Vector3 spawnPos;
-                if (spawnDistSqr < SPAWN_SAFE_DISTANCE_SQR)
+                if (spawnDistSqr < (SpawnPositionHelper.DefaultSafeDistance * SpawnPositionHelper.DefaultSafeDistance))
                 {
                     // 先尝试本阵营的刷怪点
                     List<Vector3> factionPoints;
                     if (modeESpawnAllocation != null && modeESpawnAllocation.TryGetValue(faction, out factionPoints) && factionPoints.Count > 0)
                     {
-                        spawnPos = FindNearestSafeSpawnPoint(factionPoints, modeEPlayerPos);
+                        spawnPos = SpawnPositionHelper.FindNearestSafeSpawnPoint(factionPoints, modeEPlayerPos);
                     }
                     else
                     {
                         // 本阵营无可用点，回退到所有刷怪点
                         Vector3[] allModeEPoints = GetModeEFlattenedSpawnPoints();
-                        spawnPos = FindNearestSafeSpawnPoint(allModeEPoints, modeEPlayerPos);
+                        spawnPos = SpawnPositionHelper.FindNearestSafeSpawnPoint(allModeEPoints, modeEPlayerPos);
                     }
                 }
                 else
                 {
-                    spawnPos = GetSafeBossSpawnPosition(spawnPoint);
+                    spawnPos = SpawnPositionHelper.SnapToGround(spawnPoint);
                 }
 
                 if (countSpawnAttemptImmediately)
@@ -563,7 +563,7 @@ namespace BossRush
 
                 Teams capturedFaction = faction;
 
-                // skipDragonDescendant：防止 SpawnEnemyCore 重试时意外生成额外的龙裔
+                // skipDragonDescendant：防止 modeEHost.SpawnEnemyCore 重试时意外生成额外的龙裔
                 // skipDragonKing：Mode E 完全排除龙皇，始终跳过
                 bool skipDragon = !isThisDragonDescendant;
                 bool skipKing = true; // Mode E 完全排除龙皇
@@ -571,12 +571,12 @@ namespace BossRush
                 // 捕获龙裔标记，用于生成失败时回退
                 bool capturedIsDD = isThisDragonDescendant;
 
-                DevLog("[ModeE] 阵营 " + faction + " 生成: " + bossPreset.displayName + " (预设team=" + bossPreset.team + ", isBoss=" + isBoss + ", promoted=" + isMinionPromotedToBoss + ")");
+                ModBehaviour.DevLog("[ModeE] 阵营 " + faction + " 生成: " + bossPreset.displayName + " (预设team=" + bossPreset.team + ", isBoss=" + isBoss + ", promoted=" + isMinionPromotedToBoss + ")");
 
                 // 捕获小怪提升标记，传递给生成回调
                 bool capturedPromoted = isMinionPromotedToBoss;
 
-                SpawnEnemyCore(
+                modeEHost.SpawnEnemyCore(
                     bossPreset,
                     spawnPos,
                     isBoss,
@@ -594,11 +594,11 @@ namespace BossRush
                         if (capturedIsDD)
                         {
                             modeEDragonDescendantSpawned = false;
-                            DevLog("[ModeE] 龙裔遗族生成失败，回退全局标记");
+                            ModBehaviour.DevLog("[ModeE] 龙裔遗族生成失败，回退全局标记");
                         }
 
                         ResolveModeESpawnAttempt();
-                        DevLog("[ModeE] 生成失败结案: resolved=" + modeESpawnResolved + "/" + modeETotalSpawnExpected);
+                        ModBehaviour.DevLog("[ModeE] 生成失败结案: resolved=" + modeESpawnResolved + "/" + modeETotalSpawnExpected);
                     },
                     waveIndex: 1,
                     skipDragonDescendant: skipDragon,
@@ -616,21 +616,21 @@ namespace BossRush
                 if (reservedDragonDescendantSlot)
                 {
                     modeEDragonDescendantSpawned = false;
-                    DevLog("[ModeE] 龙裔遗族同步生成异常，回退全局标记");
+                    ModBehaviour.DevLog("[ModeE] 龙裔遗族同步生成异常，回退全局标记");
                 }
 
                 ResolveModeESpawnAttemptIfCounted(spawnAttemptCounted);
-                DevLog("[ModeE] [ERROR] SpawnSingleModeEBoss 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] SpawnSingleModeEBoss 失败: " + e.Message);
             }
         }
 
-        private void SyncModeEDragonDescendantSpawnFlag(bool reservedDragonDescendantSlot, EnemyPresetInfo actualPreset, string modeTag)
+        internal void SyncModeEDragonDescendantSpawnFlag(bool reservedDragonDescendantSlot, EnemyPresetInfo actualPreset, string modeTag)
         {
-            bool actualIsDragonDescendant = IsDragonDescendantPreset(actualPreset);
+            bool actualIsDragonDescendant = modeEHost.IsDragonDescendantPreset(actualPreset);
             if (reservedDragonDescendantSlot && !actualIsDragonDescendant)
             {
                 modeEDragonDescendantSpawned = false;
-                DevLog("[" + modeTag + "] 龙裔候选在重试后替换为普通Boss，已回退龙裔占位标记");
+                ModBehaviour.DevLog("[" + modeTag + "] 龙裔候选在重试后替换为普通Boss，已回退龙裔占位标记");
                 return;
             }
 
@@ -656,14 +656,14 @@ namespace BossRush
                 }
 
                 character = ctx.character;
-                bool isModeFRun = modeFActive && !modeEActive;
+                bool isModeFRun = modeEHost.IsModeFActive && !modeEActive;
                 if (character == null)
                 {
                     return false;
                 }
 
                 Teams runtimeFaction = isModeFRun
-                    ? ResolveModeFBossCombatTeam(faction, ctx.preset, ctx.position)
+                    ? modeEHost.ResolveModeFBossCombatTeam(faction, ctx.preset, ctx.position)
                     : faction;
                 Teams trackedFaction = runtimeFaction;
 
@@ -688,14 +688,14 @@ namespace BossRush
                         presetLease = character.gameObject.AddComponent<ModeECharacterPresetLease>();
                     }
                     presetLease.Assign(customPreset);
-                    DevLog("[ModeE] 已克隆预设并设置 aiCombatFactor=1"
+                    ModBehaviour.DevLog("[ModeE] 已克隆预设并设置 aiCombatFactor=1"
                         + ((promotedToBoss || isModeFRun) ? ", showName=true" : "")
                         + ": " + ctx.preset.displayName);
                 }
 
                 if (isModeFRun && ctx.preset != null)
                 {
-                    SetModeFBossDisplayName(character, ctx.preset.displayName, runtimeFaction);
+                    modeEHost.SetModeFBossDisplayName(character, ctx.preset.displayName, runtimeFaction);
                 }
 
                 // 命名
@@ -705,7 +705,7 @@ namespace BossRush
                 // 对于龙裔/龙王：CreateCharacterAsync 使用的是 Cname_Boss_Red 基础预设（team=scav），
                 // 但 EnemyPresetInfo.team 记录的是 wolf，所以 SetTeam 是必要的
                 character.SetTeam(runtimeFaction);
-                DevLog("[ModeE] 敌人阵营已设置: " + ctx.preset.displayName + " -> " + runtimeFaction + " (预设team=" + ctx.preset.team + ")");
+                ModBehaviour.DevLog("[ModeE] 敌人阵营已设置: " + ctx.preset.displayName + " -> " + runtimeFaction + " (预设team=" + ctx.preset.team + ")");
 
                 // Mode E AI：不主动设置目标，让 AI 自然感知范围内的敌人后再开打
                 // 不设置 forceTracePlayerDistance，不设置初始 searchedEnemy
@@ -763,7 +763,7 @@ namespace BossRush
                     scalingState.rewardSessionGeneration > 0L;
                 modeEEnemyScalingStates[character] = scalingState;
                 TrackModeEAliveEnemy(character, trackedFaction);
-                RegisterEnemyRecoveryAnchor(character, ctx.position);
+                modeEHost.RegisterModeDEnemyRecoveryAnchor(character, ctx.position);
 
                 // 注册到虚拟 CharacterSpawnerRoot，使 BossLiveMapMod 能检测到
                 RegisterModeEEnemyToSpawnerRoot(character);
@@ -777,18 +777,18 @@ namespace BossRush
                 }
                 if (isModeFRun)
                 {
-                    RegisterModeFBoss(character);
+                    modeEHost.RegisterModeFBoss(character);
                 }
 
                 // 更新生成计数
                 ResolveModeESpawnAttempt();
                 MarkModeEStartupBossSpawned();
-                DevLog("[ModeE] 生成结案: resolved=" + modeESpawnResolved + "/" + modeETotalSpawnExpected);
+                ModBehaviour.DevLog("[ModeE] 生成结案: resolved=" + modeESpawnResolved + "/" + modeETotalSpawnExpected);
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] OnModeEEnemySpawned 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] OnModeEEnemySpawned 失败: " + e.Message);
                 try
                 {
                     if (character != null)
@@ -798,7 +798,7 @@ namespace BossRush
                 }
                 catch (Exception cleanupEx)
                 {
-                    DevLog("[ModeE] [WARNING] OnModeEEnemySpawned 失败后清理异常: " + cleanupEx.Message);
+                    ModBehaviour.DevLog("[ModeE] [WARNING] OnModeEEnemySpawned 失败后清理异常: " + cleanupEx.Message);
                 }
 
                 return false;
@@ -814,7 +814,7 @@ namespace BossRush
                     return;
                 }
 
-                bool isDragonDescendant = IsDragonDescendantPreset(ctx.preset);
+                bool isDragonDescendant = modeEHost.IsDragonDescendantPreset(ctx.preset);
                 bool isBearPromotedMinion = faction == Teams.bear && promotedToBoss;
                 if (!isDragonDescendant && !isBearPromotedMinion)
                 {
@@ -822,7 +822,7 @@ namespace BossRush
                 }
 
                 InitializeModeDItemPools();
-                EnsureModeDGlobalItemPool();
+                equipment.EnsureModeDGlobalItemPool();
 
                 float lootHealth = 100f;
                 try
@@ -840,16 +840,16 @@ namespace BossRush
 
                 int virtualWave = promotedToBoss ? 5 : 10;
                 bool preserveBossArmor = !promotedToBoss;
-                EquipEnemyForModeD(character, virtualWave, lootHealth, preserveBossArmor);
+                equipment.EquipEnemyForModeD(character, virtualWave, lootHealth, preserveBossArmor);
 
-                DevLog("[ModeE] 已应用白手起家式随机掉落: " + character.gameObject.name
+                ModBehaviour.DevLog("[ModeE] 已应用白手起家式随机掉落: " + character.gameObject.name
                     + " (dragonDescendant=" + isDragonDescendant
                     + ", bearPromotedMinion=" + isBearPromotedMinion
                     + ", virtualWave=" + virtualWave + ")");
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] 应用白手起家式随机掉落失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] 应用白手起家式随机掉落失败: " + e.Message);
             }
         }
 

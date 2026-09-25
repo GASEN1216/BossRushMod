@@ -26,7 +26,7 @@ using TMPro;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         // ====================================================================
         // Mode E 神秘商人字段
@@ -76,7 +76,7 @@ namespace BossRush
         /// <summary>
         /// 异步生成神秘商人 NPC，注入分类商店交互选项
         /// </summary>
-        private async UniTaskVoid SpawnModeEMerchant(
+        internal async UniTaskVoid SpawnModeEMerchant(
             int modeFSessionToken = 0,
             int modeFRelatedScene = -1,
             int modeESessionToken = 0,
@@ -98,7 +98,7 @@ namespace BossRush
 
                 if (merchantPreset == null)
                 {
-                    DevLog("[ModeE] [ERROR] 未找到任何商人预设，跳过神秘商人生成");
+                    ModBehaviour.DevLog("[ModeE] [ERROR] 未找到任何商人预设，跳过神秘商人生成");
                     if (modeESessionToken > 0)
                     {
                         FailModeEShellMerchantBuild(null, "merchant preset unavailable");
@@ -109,7 +109,7 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null)
                 {
-                    DevLog("[ModeE] [ERROR] 玩家实例为空，跳过神秘商人生成");
+                    ModBehaviour.DevLog("[ModeE] [ERROR] 玩家实例为空，跳过神秘商人生成");
                     if (modeESessionToken > 0)
                     {
                         FailModeEShellMerchantBuild(null, "merchant player unavailable");
@@ -135,7 +135,7 @@ namespace BossRush
                 }
                 if (character == null)
                 {
-                    DevLog("[ModeE] [ERROR] CreateCharacterAsync 返回空，神秘商人生成失败");
+                    ModBehaviour.DevLog("[ModeE] [ERROR] CreateCharacterAsync 返回空，神秘商人生成失败");
                     if (modeESessionToken > 0)
                     {
                         FailModeEShellMerchantBuild(null, "merchant character creation failed");
@@ -159,7 +159,7 @@ namespace BossRush
                     }
                     catch { }
 
-                    DevLog("[ModeE] 商人生成完成时模式已结束或场景已切换，已放弃该实例");
+                    ModBehaviour.DevLog("[ModeE] 商人生成完成时模式已结束或场景已切换，已放弃该实例");
                     return;
                 }
 
@@ -179,14 +179,14 @@ namespace BossRush
                 // 设置商人生命值为 999999
                 SetModeEMerchantHealth(character);
 
-                DevLog("[ModeE] 神秘商人 NPC 生成成功，阵营: " + character.Team);
+                ModBehaviour.DevLog("[ModeE] 神秘商人 NPC 生成成功，阵营: " + character.Team);
 
                 // 注入分类商店交互选项
                 BuildModeEMerchantShop(character.gameObject);
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] SpawnModeEMerchant 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] SpawnModeEMerchant 失败: " + e.Message);
                 if (!isRequestCurrent())
                 {
                     if (spawnedCharacter != null) UnityEngine.Object.Destroy(spawnedCharacter.gameObject);
@@ -242,7 +242,7 @@ namespace BossRush
                 {
                     if (requireVerified)
                     {
-                        DevLog("[ModeE/Shell] 商店 merchantID/accountAvaliable 反射字段缺失");
+                        ModBehaviour.DevLog("[ModeE/Shell] 商店 merchantID/accountAvaliable 反射字段缺失");
                     }
                     return !requireVerified;
                 }
@@ -260,7 +260,7 @@ namespace BossRush
                              shop.AccountAvaliable;
                 if (!valid)
                 {
-                    DevLog("[ModeE/Shell] 商店 merchantID/accountAvaliable 设置回读失败: " +
+                    ModBehaviour.DevLog("[ModeE/Shell] 商店 merchantID/accountAvaliable 设置回读失败: " +
                         merchantID);
                 }
                 return valid;
@@ -269,7 +269,7 @@ namespace BossRush
             {
                 if (requireVerified)
                 {
-                    DevLog("[ModeE/Shell] 商店身份设置异常: " + merchantID + ", " + e.Message);
+                    ModBehaviour.DevLog("[ModeE/Shell] 商店身份设置异常: " + merchantID + ", " + e.Message);
                 }
                 return !requireVerified;
             }
@@ -301,13 +301,13 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] 动态分类商店初始化失败: "
+                ModBehaviour.DevLog("[ModeE] [WARNING] 动态分类商店初始化失败: "
                     + stableMerchantId + ", " + e.Message);
                 try {
                     shopObject.SetActive(false);
                     UnityEngine.Object.Destroy(shopObject);
                 } catch (Exception cleanupException) {
-                    DevLog("[ModeE] [WARNING] 动态分类商店失败清理异常: " + cleanupException.Message);
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 动态分类商店失败清理异常: " + cleanupException.Message);
                 }
                 return null;
             }
@@ -320,7 +320,7 @@ namespace BossRush
         /// </summary>
         private void BuildModeEMerchantShop(GameObject npcGo)
         {
-            bool shellMode = modeEActive && !modeFActive;
+            bool shellMode = modeEActive && !modeEHost.IsModeFActive;
             try
             {
                 if (shellMode && !BeginModeEShellMerchantGeneration("merchant create/rebuild"))
@@ -333,7 +333,7 @@ namespace BossRush
                 InteractableBase mainInteract = npcGo.GetComponentInChildren<InteractableBase>(true);
                 if (mainInteract == null)
                 {
-                    DevLog("[ModeE] [WARNING] 商人 NPC 上未找到 InteractableBase，无法注入商店");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 商人 NPC 上未找到 InteractableBase，无法注入商店");
                     if (shellMode)
                     {
                         FailModeEShellMerchantBuild(npcGo, "merchant interactable missing");
@@ -346,7 +346,7 @@ namespace BossRush
                 if (origShop != null)
                 {
                     UnityEngine.Object.Destroy(origShop);
-                    DevLog("[ModeE] 已移除商人原版 StockShop");
+                    ModBehaviour.DevLog("[ModeE] 已移除商人原版 StockShop");
                 }
 
                 // 保存商人主交互引用，用于 Harmony patch 识别
@@ -363,7 +363,7 @@ namespace BossRush
                 var field = BossRushEagerReflectionCache.InteractableBase_OtherInterablesInGroup;
                 if (field == null)
                 {
-                    DevLog("[ModeE] [ERROR] 未找到 otherInterablesInGroup 反射字段");
+                    ModBehaviour.DevLog("[ModeE] [ERROR] 未找到 otherInterablesInGroup 反射字段");
                     if (shellMode)
                     {
                         FailModeEShellMerchantBuild(npcGo, "merchant interaction group contract missing");
@@ -413,7 +413,7 @@ namespace BossRush
                 var tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
                 if (tagsData == null)
                 {
-                    DevLog("[ModeE] [WARNING] 无法获取 TagsData");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 无法获取 TagsData");
                     if (shellMode)
                     {
                         FailModeEShellMerchantBuild(npcGo, "merchant tags unavailable");
@@ -442,7 +442,7 @@ namespace BossRush
                         int removedCount = allIds.RemoveAll(id => modeEMedicalShopExcludedIds.Contains(id));
                         if (allIds.Count == 0) continue;
                         if (removedCount > 0)
-                            DevLog("[ModeE] 医疗品商店已排除 " + removedCount + " 个黑名单物品");
+                            ModBehaviour.DevLog("[ModeE] 医疗品商店已排除 " + removedCount + " 个黑名单物品");
                     }
 
                     // 创建子 GameObject 挂载商店和交互
@@ -509,7 +509,7 @@ namespace BossRush
                     groupList.Add(interact);
 
                     totalItems += allIds.Count;
-                    DevLog("[ModeE] 商店分类 " + locKey + ": " + allIds.Count + " 个物品");
+                    ModBehaviour.DevLog("[ModeE] 商店分类 " + locKey + ": " + allIds.Count + " 个物品");
                 }
 
                 // ============================================================
@@ -572,9 +572,9 @@ namespace BossRush
                     }
 
                     int modeFItemCount = 0;
-                    if (modeFActive)
+                    if (modeEHost.IsModeFActive)
                     {
-                        modeFItemCount = TryInjectModeFItemsIntoMerchantShop(otherShop);
+                        modeFItemCount = ModBehaviour.TryInjectModeFItemsIntoMerchantShop(otherShop);
                     }
 
                     // itemInstances 预缓存在末尾由协程统一异步分帧执行
@@ -585,10 +585,10 @@ namespace BossRush
                     groupList.Add(otherInteract);
 
                     totalItems += otherItemIds.Length + modeFItemCount;
-                    DevLog("[ModeE] 商店分类 其他: " + otherItemIds.Length + " 个物品");
+                    ModBehaviour.DevLog("[ModeE] 商店分类 其他: " + otherItemIds.Length + " 个物品");
                 }
 
-                DevLog("[ModeE] 分类商店注入完成，共 " + (categories.Count + 1) + " 个分类，" + totalItems + " 个商品");
+                ModBehaviour.DevLog("[ModeE] 分类商店注入完成，共 " + (categories.Count + 1) + " 个分类，" + totalItems + " 个商品");
 
                 if (shellMode)
                 {
@@ -602,12 +602,12 @@ namespace BossRush
                 else
                 {
                     // Mode F 保留旧预热；贝壳经济从不写入或拥有官方 itemInstances。
-                    StartCoroutine(CacheAllModeFShopItemInstancesAsync());
+                    modeEHost.StartCoroutine(CacheAllModeFShopItemInstancesAsync());
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] BuildModeEMerchantShop 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] BuildModeEMerchantShop 失败: " + e.Message);
                 if (shellMode)
                 {
                     FailModeEShellMerchantBuild(npcGo, "merchant build failed");
@@ -622,7 +622,7 @@ namespace BossRush
         /// <summary>
         /// 根据 Tag 搜索所有可用物品ID（品质1及以上）
         /// </summary>
-        private CharacterRandomPreset GetModeEMerchantPreset()
+        internal CharacterRandomPreset GetModeEMerchantPreset()
         {
             try
             {
@@ -633,9 +633,9 @@ namespace BossRush
 
                 CharacterRandomPreset merchantPreset = null;
 
-                if (cachedCharacterPresets != null && cachedCharacterPresets.Count > 0)
+                if (ModeDRuntimeModule.CharacterPresets != null && ModeDRuntimeModule.CharacterPresets.Count > 0)
                 {
-                    foreach (var kvp in cachedCharacterPresets)
+                    foreach (var kvp in ModeDRuntimeModule.CharacterPresets)
                     {
                         string nameKey = kvp.Key;
                         if (string.IsNullOrEmpty(nameKey)) continue;
@@ -648,7 +648,7 @@ namespace BossRush
 
                     if (merchantPreset == null)
                     {
-                        foreach (var kvp in cachedCharacterPresets)
+                        foreach (var kvp in ModeDRuntimeModule.CharacterPresets)
                         {
                             string nameKey = kvp.Key;
                             if (string.IsNullOrEmpty(nameKey)) continue;
@@ -734,12 +734,12 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] GetModeEMerchantPreset 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] GetModeEMerchantPreset 失败: " + e.Message);
                 return null;
             }
         }
 
-        private List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>> GetModeEMerchantCategories(Duckov.Utilities.GameplayDataSettings.TagsData tagsData)
+        internal List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>> GetModeEMerchantCategories(Duckov.Utilities.GameplayDataSettings.TagsData tagsData)
         {
             var categories = new List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>>();
             if (tagsData == null)
@@ -752,13 +752,13 @@ namespace BossRush
                     new List<Duckov.Utilities.Tag> { tagsData.Gun },
                     "BossRush_ModeE_Shop_Gun", "Gun"));
 
-            Duckov.Utilities.Tag meleeTag = FindTagByNameInInit("MeleeWeapon");
+            Duckov.Utilities.Tag meleeTag = equipment.FindTagByNameInInit("MeleeWeapon");
             if (meleeTag != null)
                 categories.Add(System.Tuple.Create(
                     new List<Duckov.Utilities.Tag> { meleeTag },
                     "BossRush_ModeE_Shop_Melee", "Melee"));
 
-            Duckov.Utilities.Tag accessoryTag = FindTagByNameInInit("Accessory");
+            Duckov.Utilities.Tag accessoryTag = equipment.FindTagByNameInInit("Accessory");
             if (accessoryTag != null)
                 categories.Add(System.Tuple.Create(
                     new List<Duckov.Utilities.Tag> { accessoryTag },
@@ -784,15 +784,15 @@ namespace BossRush
                     new List<Duckov.Utilities.Tag> { tagsData.Backpack },
                     "BossRush_ModeE_Shop_Backpack", "Backpack"));
 
-            Duckov.Utilities.Tag totemTag = FindTagByNameInInit("Totem");
+            Duckov.Utilities.Tag totemTag = equipment.FindTagByNameInInit("Totem");
             if (totemTag != null)
                 categories.Add(System.Tuple.Create(
                     new List<Duckov.Utilities.Tag> { totemTag },
                     "BossRush_ModeE_Shop_Totem", "Totem"));
 
-            Duckov.Utilities.Tag maskTag = FindTagByNameInInit("Mask");
-            if (maskTag == null) maskTag = FindTagByNameInInit("FaceMask");
-            Duckov.Utilities.Tag headsetTag = FindTagByNameInInit("Headset");
+            Duckov.Utilities.Tag maskTag = equipment.FindTagByNameInInit("Mask");
+            if (maskTag == null) maskTag = equipment.FindTagByNameInInit("FaceMask");
+            Duckov.Utilities.Tag headsetTag = equipment.FindTagByNameInInit("Headset");
             var faceWearTags = new List<Duckov.Utilities.Tag>();
             if (maskTag != null) faceWearTags.Add(maskTag);
             if (headsetTag != null) faceWearTags.Add(headsetTag);
@@ -801,14 +801,14 @@ namespace BossRush
                     faceWearTags,
                     "BossRush_ModeE_Shop_Mask", "Mask"));
 
-            Duckov.Utilities.Tag medTag = FindTagByNameInInit("Medic");
-            if (medTag == null) medTag = FindTagByNameInInit("Medical");
-            if (medTag == null) medTag = FindTagByNameInInit("Consumable");
-            if (medTag == null) medTag = FindTagByNameInInit("Healing");
+            Duckov.Utilities.Tag medTag = equipment.FindTagByNameInInit("Medic");
+            if (medTag == null) medTag = equipment.FindTagByNameInInit("Medical");
+            if (medTag == null) medTag = equipment.FindTagByNameInInit("Consumable");
+            if (medTag == null) medTag = equipment.FindTagByNameInInit("Healing");
             if (medTag != null)
             {
                 var medTags = new List<Duckov.Utilities.Tag> { medTag };
-                Duckov.Utilities.Tag injectorTag = FindTagByNameInInit("Injector");
+                Duckov.Utilities.Tag injectorTag = equipment.FindTagByNameInInit("Injector");
                 if (injectorTag != null)
                 {
                     medTags.Add(injectorTag);
@@ -818,7 +818,7 @@ namespace BossRush
                     "BossRush_ModeE_Shop_Medical", "Medical"));
             }
 
-            Duckov.Utilities.Tag foodTag = FindTagByNameInInit("Food");
+            Duckov.Utilities.Tag foodTag = equipment.FindTagByNameInInit("Food");
             if (foodTag != null)
                 categories.Add(System.Tuple.Create(
                     new List<Duckov.Utilities.Tag> { foodTag },
@@ -863,7 +863,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] PrewarmModeEMerchantCaches failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] PrewarmModeEMerchantCaches failed: " + e.Message);
             }
         }
 
@@ -931,12 +931,12 @@ namespace BossRush
                 filter.minQuality = 1;
                 filter.maxQuality = 99;
                 int[] results = ItemAssetsCollection.Search(filter);
-                DevLog("[ModeE] ModeESearchItems Tag=" + tag.name + " 找到 " + (results != null ? results.Length : 0) + " 个物品");
+                ModBehaviour.DevLog("[ModeE] ModeESearchItems Tag=" + tag.name + " 找到 " + (results != null ? results.Length : 0) + " 个物品");
                 return results;
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] ModeESearchItems 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] ModeESearchItems 失败: " + e.Message);
                 return null;
             }
         }
@@ -948,7 +948,7 @@ namespace BossRush
         /// <summary>
         /// 根据多个 Tag 搜索物品ID，合并结果（并集去重）
         /// </summary>
-        private List<int> ModeESearchItemsMultiTag(List<Duckov.Utilities.Tag> tags, Duckov.Utilities.Tag[] excludeTags)
+        internal List<int> ModeESearchItemsMultiTag(List<Duckov.Utilities.Tag> tags, Duckov.Utilities.Tag[] excludeTags)
         {
             string cacheKey = BuildModeEMerchantCategoryCacheKey(tags, excludeTags);
             int[] cachedIds;
@@ -1016,7 +1016,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] GetModeEMerchantCategoryPoolIds 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] GetModeEMerchantCategoryPoolIds 失败: " + e.Message);
             }
 
             return new int[0];
@@ -1084,7 +1084,7 @@ namespace BossRush
                 }
             }
 
-            DevLog("[ModeE] 所有商店物品实例异步预缓存完成");
+            ModBehaviour.DevLog("[ModeE] 所有商店物品实例异步预缓存完成");
         }
 
         // ====================================================================
@@ -1094,7 +1094,7 @@ namespace BossRush
         /// <summary>
         /// 清理 Mode E 神秘商人 NPC 及所有分类商店引用
         /// </summary>
-        private void CleanupModeEMerchant()
+        internal void CleanupModeEMerchant()
         {
             try
             {
@@ -1116,7 +1116,7 @@ namespace BossRush
                             UnityEngine.Object.Destroy(shop.gameObject);
                         }
                     },
-                    (e, shop) => DevLog("[ModeE] [WARNING] 清理商店子物体失败: " + e.Message));
+                    (e, shop) => ModBehaviour.DevLog("[ModeE] [WARNING] 清理商店子物体失败: " + e.Message));
                 modeEMerchantShops.Clear();
                 modeEMerchantMainInteract = null;
 
@@ -1134,11 +1134,11 @@ namespace BossRush
                     modeEMerchantNPC = null;
                 }
 
-                DevLog("[ModeE] 神秘商人已清理");
+                ModBehaviour.DevLog("[ModeE] 神秘商人已清理");
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] CleanupModeEMerchant 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] CleanupModeEMerchant 失败: " + e.Message);
             }
         }
 

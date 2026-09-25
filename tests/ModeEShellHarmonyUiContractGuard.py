@@ -4,7 +4,16 @@ from pathlib import Path
 import sys
 
 
-SUPPORT = Path("ModeE/ModeEMerchantSupportClasses.cs")
+SUPPORT = (
+    Path("ModeE/ModeEMerchantSupportClasses.cs"),
+    Path("ModeE/ModeEShellSession.cs"),
+    Path("ModeE/ModeEShellTransactions.cs"),
+    Path("ModeE/ModeEShopInteractable.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI.cs"),
+    Path("ModeE/ModeEPetSpawner.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_ShopViewSetup.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_Layout.cs"),
+)
 HARMONY = Path("ModeE/ModeEHarmonyPatch.cs")
 MERCHANT = Path("ModeE/ModeEMerchant.cs")
 GLOBAL_SAMPLE_PATCH = Path("Patches/Economy/StockShopGetItemInstanceDirectPatch.cs")
@@ -34,7 +43,7 @@ def extract_method(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    support = SUPPORT.read_text(encoding="utf-8")
+    support = "\n".join(path.read_text(encoding="utf-8") for path in SUPPORT)
     harmony = HARMONY.read_text(encoding="utf-8")
     merchant = MERCHANT.read_text(encoding="utf-8")
     global_sample_patch = GLOBAL_SAMPLE_PATCH.read_text(encoding="utf-8")
@@ -196,7 +205,7 @@ def main() -> int:
         if token not in identity:
             return fail("merchant identity must be read back -> " + token)
 
-    spawn = extract_method(merchant, "private async UniTaskVoid SpawnModeEMerchant(")
+    spawn = extract_method(merchant, "internal async UniTaskVoid SpawnModeEMerchant(")
     for reason in [
         '"merchant preset unavailable"',
         '"merchant player unavailable"',

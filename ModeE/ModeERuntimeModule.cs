@@ -1,8 +1,23 @@
 namespace BossRush
 {
-    internal sealed class ModeERuntimeModule : BossRushRuntimeModuleBase
+    internal sealed partial class ModeERuntimeModule : BossRushRuntimeModuleBase
     {
-        private ModBehaviour owner;
+        private ModBehaviour modeEHost;
+        private float modeEIntegrityTimer;
+        private ModeDRuntimeModule modeD;
+        private ModeDItemPool equipment;
+        private WavesArenaRuntimeModule arena;
+
+        internal void BindSharedServices(ModeDRuntimeModule modeD, WavesArenaRuntimeModule arena)
+        {
+            this.modeD = modeD;
+            this.equipment = modeD.ItemPool;
+            this.arena = arena;
+        }
+
+        private void InitializeModeDItemPools() { equipment.InitializeModeDItemPools(equipment.FindTagByName); }
+        private void InitializeModeDEnemyPools() { modeD.InitializeModeDEnemyPools(arena.EnemyPresets, arena.GetLocalizedCharacterName); }
+
 
         public override string ModuleName
         {
@@ -11,18 +26,18 @@ namespace BossRush
 
         public override void OnAwake(ModBehaviour owner)
         {
-            this.owner = owner;
+            this.modeEHost = owner;
         }
 
         public override void OnDestroy()
         {
-            if (owner != null)
+            if (modeEHost != null)
             {
-                owner.DestroyModeEShellRuntimeState();
+                DestroyModeEShellRuntimeState();
             }
             // 静态缓存兜底清理：Mode E 商人相关缓存
-            ModBehaviour.ResetModeEMerchantStaticCaches();
-            owner = null;
+            ResetModeEMerchantStaticCaches();
+            modeEHost = null;
         }
     }
 }

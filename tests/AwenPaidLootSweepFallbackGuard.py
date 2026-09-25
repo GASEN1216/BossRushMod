@@ -84,7 +84,7 @@ def main() -> int:
     if "courierNpcRuntime.DestroyCourierNPC();" not in destroy_bridge:
         return fail("AwenPaidLootSweepFallbackGuard: host destroy entry does not forward to courier runtime owner")
 
-    reset_method = extract_method(tracker_text, "private void ResetModeEFLootboxTrackerState()")
+    reset_method = extract_method(tracker_text, "internal void ResetModeEFLootboxTrackerState()")
     if "CourierPaidLootSweepService.ReleasePendingSweepResultToPlayer(true, false);" not in reset_method:
         return fail("AwenPaidLootSweepFallbackGuard: Mode E/F tracker reset does not release pending sweep result")
 

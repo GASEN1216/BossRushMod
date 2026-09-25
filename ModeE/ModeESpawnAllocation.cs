@@ -27,12 +27,12 @@ namespace BossRush
     /// <summary>
     /// Mode E 刷怪点分配模块
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         #region Mode E 刷怪点分配数据
 
         /// <summary>阵营 → 刷怪点列表的映射</summary>
-        private Dictionary<Teams, List<Vector3>> modeESpawnAllocation;
+        internal Dictionary<Teams, List<Vector3>> modeESpawnAllocation;
 
         /// <summary>扁平化后的全图刷怪点缓存，供 Mode E/Mode F 复用，避免重复遍历字典拼列表。</summary>
         private Vector3[] modeEFlattenedSpawnPoints;
@@ -41,8 +41,8 @@ namespace BossRush
         private static readonly Vector3[] EmptyModeESpawnPoints = new Vector3[0];
 
         /// <summary>缓存的原地图刷怪点位置（在 DisableAllSpawners 销毁 spawner 之前扫描并缓存）</summary>
-        private Vector3[] modeECachedSpawnerPositions;
-        private string modeECachedSpawnerSceneName;
+        internal Vector3[] modeECachedSpawnerPositions;
+        internal string modeECachedSpawnerSceneName;
 
         #endregion
 
@@ -163,7 +163,7 @@ namespace BossRush
             modeEFlattenedSpawnPoints = flattenedPoints;
         }
 
-        private Vector3[] GetModeEFlattenedSpawnPoints()
+        internal Vector3[] GetModeEFlattenedSpawnPoints()
         {
             if (modeEFlattenedSpawnPoints != null)
             {
@@ -186,14 +186,14 @@ namespace BossRush
         /// 玩家阵营优先分配距离玩家最近的刷怪点
         /// 特殊：爷的营旗（player阵营）不参与分配，所有刷怪点分给5个NPC阵营
         /// </summary>
-        private void AllocateSpawnPoints()
+        internal void AllocateSpawnPoints()
         {
             try
             {
-                bool logEnabled = VerboseStartupDebugLogsEnabled;
+                bool logEnabled = ModBehaviour.VerboseStartupDebugLogsEnabled;
                 if (logEnabled)
                 {
-                    DevLog("[ModeE] 开始分配刷怪点（轮询模式）...");
+                    ModBehaviour.DevLog("[ModeE] 开始分配刷怪点（轮询模式）...");
                 }
 
                 // 初始化分配映射（始终为5个NPC阵营分配）
@@ -205,13 +205,13 @@ namespace BossRush
 
                 // 优先使用当前地图配置的 Mode E 专用刷怪点
                 Vector3[] spawnPoints = null;
-                BossRushMapConfig mapConfig = GetCurrentMapConfig();
+                BossRushMapConfig mapConfig = ModBehaviour.GetCurrentMapConfig();
                 if (mapConfig != null && mapConfig.modeESpawnPoints != null && mapConfig.modeESpawnPoints.Length > 0)
                 {
                     spawnPoints = mapConfig.modeESpawnPoints;
                     if (logEnabled)
                     {
-                        DevLog("[ModeE] 使用地图配置的 Mode E 专用刷怪点，数量: " + spawnPoints.Length);
+                        ModBehaviour.DevLog("[ModeE] 使用地图配置的 Mode E 专用刷怪点，数量: " + spawnPoints.Length);
                     }
                 }
 
@@ -221,7 +221,7 @@ namespace BossRush
                     spawnPoints = ScanMapSpawnerPositions();
                     if (logEnabled)
                     {
-                        DevLog("[ModeE] 无自定义刷怪点配置，兜底使用原地图 spawner 位置");
+                        ModBehaviour.DevLog("[ModeE] 无自定义刷怪点配置，兜底使用原地图 spawner 位置");
                     }
                 }
 
@@ -231,15 +231,15 @@ namespace BossRush
                     CharacterMainControl player = CharacterMainControl.Main;
                     if (player != null)
                     {
-                        spawnPoints = GenerateFallbackSpawnPointsAroundPlayer(player.transform.position);
+                        spawnPoints = modeD.GenerateFallbackSpawnPointsAroundPlayer(player.transform.position);
                         if (logEnabled)
                         {
-                            DevLog("[ModeE] 使用玩家位置生成的备用刷怪点");
+                            ModBehaviour.DevLog("[ModeE] 使用玩家位置生成的备用刷怪点");
                         }
                     }
                     else
                     {
-                        DevLog("[ModeE] [ERROR] 无刷怪点且无法获取玩家位置");
+                        ModBehaviour.DevLog("[ModeE] [ERROR] 无刷怪点且无法获取玩家位置");
                         return;
                     }
                 }
@@ -247,7 +247,7 @@ namespace BossRush
                 int factionCount = ModeEAvailableFactions.Length;
                 if (logEnabled)
                 {
-                    DevLog("[ModeE] 原始刷怪点数量: " + spawnPoints.Length + ", 阵营数: " + factionCount);
+                    ModBehaviour.DevLog("[ModeE] 原始刷怪点数量: " + spawnPoints.Length + ", 阵营数: " + factionCount);
                 }
 
                 // ========== 第1步：获取玩家位置 ==========
@@ -270,7 +270,7 @@ namespace BossRush
 
                 if (logEnabled)
                 {
-                    DevLog("[ModeE] 间隔过滤后剩余刷怪点: " + filtered.Count);
+                    ModBehaviour.DevLog("[ModeE] 间隔过滤后剩余刷怪点: " + filtered.Count);
                 }
 
                 int estimatedPointsPerFaction = factionCount > 0
@@ -301,7 +301,7 @@ namespace BossRush
                     Array.Copy(ModeEAvailableFactions, orderedFactions, factionCount);
                     if (logEnabled)
                     {
-                        DevLog("[ModeE] 爷的营旗模式：所有刷怪点分配给 " + factionCount + " 个NPC阵营");
+                        ModBehaviour.DevLog("[ModeE] 爷的营旗模式：所有刷怪点分配给 " + factionCount + " 个NPC阵营");
                     }
                 }
                 else
@@ -351,13 +351,13 @@ namespace BossRush
                 {
                     foreach (var kvp in modeESpawnAllocation)
                     {
-                        DevLog("[ModeE] 阵营 " + kvp.Key + " 分配 " + kvp.Value.Count + " 个刷怪点");
+                        ModBehaviour.DevLog("[ModeE] 阵营 " + kvp.Key + " 分配 " + kvp.Value.Count + " 个刷怪点");
                     }
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] AllocateSpawnPoints 失败: " + e.Message + "\n" + e.StackTrace);
+                ModBehaviour.DevLog("[ModeE] [ERROR] AllocateSpawnPoints 失败: " + e.Message + "\n" + e.StackTrace);
             }
         }
 
@@ -368,36 +368,36 @@ namespace BossRush
         /// 优先使用 BossRushMapConfig.modeEPlayerSpawnPos 自定义落点，
         /// 无自定义配置时兜底从地图出生点中选出离所有Boss最远的点
         /// </summary>
-        private void TeleportPlayerToSafePosition()
+        internal void TeleportPlayerToSafePosition()
         {
             try
             {
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null)
                 {
-                    DevLog("[ModeE] [WARNING] TeleportPlayerToSafePosition: 玩家为 null");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] TeleportPlayerToSafePosition: 玩家为 null");
                     return;
                 }
 
                 Vector3 bestPos = player.transform.position;
 
                 // 优先使用地图配置的 Mode E 独狼玩家落点
-                BossRushMapConfig mapConfig = GetCurrentMapConfig();
+                BossRushMapConfig mapConfig = ModBehaviour.GetCurrentMapConfig();
                 if (mapConfig != null && mapConfig.modeEPlayerSpawnPos.HasValue)
                 {
                     bestPos = mapConfig.modeEPlayerSpawnPos.Value;
-                    DevLog("[ModeE] 使用地图配置的 Mode E 独狼玩家落点: " + bestPos);
+                    ModBehaviour.DevLog("[ModeE] 使用地图配置的 Mode E 独狼玩家落点: " + bestPos);
                 }
                 else
                 {
                     // 兜底：从地图出生点中选出离所有Boss最远的点
-                    DevLog("[ModeE] 无自定义独狼落点配置，兜底使用远离Boss的安全位置");
+                    ModBehaviour.DevLog("[ModeE] 无自定义独狼落点配置，兜底使用远离Boss的安全位置");
 
                     // 收集所有已分配给NPC阵营的刷怪点（即Boss会出现的位置）
                     Vector3[] bossSpawnPoints = GetModeEFlattenedSpawnPoints();
                     if (bossSpawnPoints.Length == 0)
                     {
-                        DevLog("[ModeE] [WARNING] TeleportPlayerToSafePosition: 无刷怪点数据，跳过传送");
+                        ModBehaviour.DevLog("[ModeE] [WARNING] TeleportPlayerToSafePosition: 无刷怪点数据，跳过传送");
                         return;
                     }
 
@@ -430,11 +430,11 @@ namespace BossRush
                         }
 
                         float bestMinDist = bestMinDistSq > 0f ? Mathf.Sqrt(bestMinDistSq) : 0f;
-                        DevLog("[ModeE] 从 " + modeECachedSpawnerPositions.Length + " 个地图出生点中选出安全位置，距最近Boss " + bestMinDist.ToString("F1") + "m");
+                        ModBehaviour.DevLog("[ModeE] 从 " + modeECachedSpawnerPositions.Length + " 个地图出生点中选出安全位置，距最近Boss " + bestMinDist.ToString("F1") + "m");
                     }
                     else
                     {
-                        DevLog("[ModeE] [WARNING] 地图出生点缓存为空，玩家保持原位");
+                        ModBehaviour.DevLog("[ModeE] [WARNING] 地图出生点缓存为空，玩家保持原位");
                     }
                 }
 
@@ -447,16 +447,16 @@ namespace BossRush
 
                 // 执行传送
                 player.transform.position = bestPos;
-                DevLog("[ModeE] 爷的营旗：玩家已传送到安全位置 " + bestPos);
+                ModBehaviour.DevLog("[ModeE] 爷的营旗：玩家已传送到安全位置 " + bestPos);
 
-                ShowMessage(L10n.T(
+                modeEHost.ShowMessage(L10n.T(
                     "你已被传送到安全区域，准备好迎战所有阵营的Boss吧！",
                     "You've been teleported to a safe zone. Prepare to fight all faction bosses!"
                 ));
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] TeleportPlayerToSafePosition 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] TeleportPlayerToSafePosition 失败: " + e.Message);
             }
         }
 
@@ -474,7 +474,7 @@ namespace BossRush
         {
             try
             {
-                bool logEnabled = VerboseStartupDebugLogsEnabled;
+                bool logEnabled = ModBehaviour.VerboseStartupDebugLogsEnabled;
                 string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
                 if (modeECachedSpawnerPositions != null &&
                     modeECachedSpawnerPositions.Length > 0 &&
@@ -482,7 +482,7 @@ namespace BossRush
                 {
                     if (logEnabled)
                     {
-                        DevLog("[ModeE] PreCacheMapSpawnerPositions: reuse cached positions for current scene, count=" + modeECachedSpawnerPositions.Length);
+                        ModBehaviour.DevLog("[ModeE] PreCacheMapSpawnerPositions: reuse cached positions for current scene, count=" + modeECachedSpawnerPositions.Length);
                     }
                     return;
                 }
@@ -494,7 +494,7 @@ namespace BossRush
                     modeECachedSpawnerSceneName = null;
                     if (logEnabled)
                     {
-                        DevLog("[ModeE] PreCacheMapSpawnerPositions: 未找到任何 CharacterSpawnerRoot");
+                        ModBehaviour.DevLog("[ModeE] PreCacheMapSpawnerPositions: 未找到任何 CharacterSpawnerRoot");
                     }
                     return;
                 }
@@ -520,7 +520,7 @@ namespace BossRush
                         }
                         if (logEnabled)
                         {
-                            DevLog("[ModeE] PreCacheMapSpawnerPositions: spawner[" + i + "] 提取了 " + pointsComponent.points.Count + " 个实际出生点");
+                            ModBehaviour.DevLog("[ModeE] PreCacheMapSpawnerPositions: spawner[" + i + "] 提取了 " + pointsComponent.points.Count + " 个实际出生点");
                         }
                     }
                     else
@@ -531,7 +531,7 @@ namespace BossRush
                             positions.Add(spawners[i].transform.position);
                             if (logEnabled)
                             {
-                                DevLog("[ModeE] PreCacheMapSpawnerPositions: spawner[" + i + "] 无 Points 组件，使用根对象位置兜底");
+                                ModBehaviour.DevLog("[ModeE] PreCacheMapSpawnerPositions: spawner[" + i + "] 无 Points 组件，使用根对象位置兜底");
                             }
                         }
                     }
@@ -541,12 +541,12 @@ namespace BossRush
                 modeECachedSpawnerSceneName = modeECachedSpawnerPositions != null ? currentSceneName : null;
                 if (logEnabled)
                 {
-                    DevLog("[ModeE] PreCacheMapSpawnerPositions: 缓存了 " + positions.Count + " 个实际出生点");
+                    ModBehaviour.DevLog("[ModeE] PreCacheMapSpawnerPositions: 缓存了 " + positions.Count + " 个实际出生点");
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] PreCacheMapSpawnerPositions 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] PreCacheMapSpawnerPositions 失败: " + e.Message);
                 modeECachedSpawnerPositions = null;
                 modeECachedSpawnerSceneName = null;
             }
@@ -557,7 +557,7 @@ namespace BossRush
         /// </summary>
         private Vector3[] ScanMapSpawnerPositions()
         {
-                bool logEnabled = VerboseStartupDebugLogsEnabled;
+                bool logEnabled = ModBehaviour.VerboseStartupDebugLogsEnabled;
             // 优先使用预缓存的位置（在 DisableAllSpawners 销毁 spawner 之前缓存的）
             string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             if (modeECachedSpawnerPositions != null &&
@@ -566,7 +566,7 @@ namespace BossRush
             {
                 if (logEnabled)
                 {
-                    DevLog("[ModeE] ScanMapSpawnerPositions: 使用预缓存的 " + modeECachedSpawnerPositions.Length + " 个出生点");
+                    ModBehaviour.DevLog("[ModeE] ScanMapSpawnerPositions: 使用预缓存的 " + modeECachedSpawnerPositions.Length + " 个出生点");
                 }
                 return modeECachedSpawnerPositions;
             }
@@ -579,7 +579,7 @@ namespace BossRush
                 {
                     if (logEnabled)
                     {
-                        DevLog("[ModeE] ScanMapSpawnerPositions: 未找到任何 CharacterSpawnerRoot（可能已被销毁）");
+                        ModBehaviour.DevLog("[ModeE] ScanMapSpawnerPositions: 未找到任何 CharacterSpawnerRoot（可能已被销毁）");
                     }
                     return null;
                 }
@@ -611,13 +611,13 @@ namespace BossRush
 
                 if (logEnabled)
                 {
-                    DevLog("[ModeE] ScanMapSpawnerPositions: 实时扫描到 " + positions.Count + " 个出生点");
+                    ModBehaviour.DevLog("[ModeE] ScanMapSpawnerPositions: 实时扫描到 " + positions.Count + " 个出生点");
                 }
                 return positions.Count > 0 ? positions.ToArray() : null;
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] ScanMapSpawnerPositions 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] ScanMapSpawnerPositions 失败: " + e.Message);
                 return null;
             }
         }

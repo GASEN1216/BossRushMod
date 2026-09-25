@@ -19,7 +19,7 @@ namespace BossRush
     /// <summary>
     /// Mode E 刷怪消耗品使用效果模块
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         #region Mode E 刷怪消耗品字段
 
@@ -62,7 +62,7 @@ namespace BossRush
 
         private readonly Queue<CharacterMainControl> modeEPendingAggroQueue = new Queue<CharacterMainControl>();
 
-        private readonly Dictionary<CharacterMainControl, float> modeEPendingAggroTraceDistance
+        internal readonly Dictionary<CharacterMainControl, float> modeEPendingAggroTraceDistance
             = new Dictionary<CharacterMainControl, float>();
 
         private bool modeEAggroQueueRunning = false;
@@ -189,27 +189,27 @@ namespace BossRush
                 smokeItem = ItemAssetsCollection.InstantiateSync(MODE_E_SMOKE_GRENADE_TYPE_ID);
                 if (smokeItem == null)
                 {
-                    DevLog("[ModeE] [WARNING] 无法实例化原版烟雾弹(" + MODE_E_SMOKE_GRENADE_TYPE_ID + ")，跳过VFX");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 无法实例化原版烟雾弹(" + MODE_E_SMOKE_GRENADE_TYPE_ID + ")，跳过VFX");
                     return null;
                 }
 
                 Skill_Grenade skillGrenade = smokeItem.GetComponentInChildren<Skill_Grenade>();
                 if (skillGrenade == null)
                 {
-                    DevLog("[ModeE] [WARNING] 原版烟雾弹(" + MODE_E_SMOKE_GRENADE_TYPE_ID + ")无 Skill_Grenade 组件");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 原版烟雾弹(" + MODE_E_SMOKE_GRENADE_TYPE_ID + ")无 Skill_Grenade 组件");
                     return null;
                 }
 
                 Grenade grenadePfb = skillGrenade.grenadePfb;
                 if (grenadePfb == null)
                 {
-                    DevLog("[ModeE] [WARNING] 原版烟雾弹(" + MODE_E_SMOKE_GRENADE_TYPE_ID + ") Skill_Grenade.grenadePfb 为 null");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 原版烟雾弹(" + MODE_E_SMOKE_GRENADE_TYPE_ID + ") Skill_Grenade.grenadePfb 为 null");
                     return null;
                 }
 
                 if (grenadePfb.createOnExlode == null)
                 {
-                    DevLog("[ModeE] [WARNING] Grenade.createOnExlode 为 null，无烟雾效果");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] Grenade.createOnExlode 为 null，无烟雾效果");
                     return null;
                 }
 
@@ -227,7 +227,7 @@ namespace BossRush
                 }
                 catch (Exception destroyEx)
                 {
-                    DevLog("[ModeE] [WARNING] 清理原版烟雾弹临时物体失败: " + destroyEx.Message);
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 清理原版烟雾弹临时物体失败: " + destroyEx.Message);
                 }
             }
         }
@@ -257,12 +257,12 @@ namespace BossRush
 
                 Vector3 playerPos = player.transform.position;
                 UnityEngine.Object.Instantiate(smokeVfxPrefab, playerPos, Quaternion.identity);
-                DevLog("[ModeE] 已在玩家位置实例化原版烟雾效果(FowSmoke)");
+                ModBehaviour.DevLog("[ModeE] 已在玩家位置实例化原版烟雾效果(FowSmoke)");
             }
             catch (Exception e)
             {
                 // VFX 播放失败不影响核心逻辑
-                DevLog("[ModeE] [WARNING] PlaySmokeVFX 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] PlaySmokeVFX 失败: " + e.Message);
             }
         }
 
@@ -312,7 +312,7 @@ namespace BossRush
             {
                 if (showFailureFeedback)
                 {
-                    ShowMessage(L10n.T(
+                    modeEHost.ShowMessage(L10n.T(
                         "该物品只能在划地为营模式中使用！",
                         "This item can only be used in Faction Battle mode!"
                     ));
@@ -324,7 +324,7 @@ namespace BossRush
             {
                 if (showFailureFeedback)
                 {
-                    ShowMessage(L10n.T(
+                    modeEHost.ShowMessage(L10n.T(
                         "Boss 仍在赶来，稍后再使用！",
                         "Bosses are still spawning. Try again shortly!"
                     ));
@@ -387,12 +387,12 @@ namespace BossRush
             {
                 if (points == null || points.Count == 0)
                 {
-                    DevLog("[ModeE] RespawnBossesAtPoints: 刷怪点列表为空，跳过");
+                    ModBehaviour.DevLog("[ModeE] RespawnBossesAtPoints: 刷怪点列表为空，跳过");
                     if (profiler != null) profiler.Complete("failed: no points");
                     return;
                 }
 
-                DevLog("[ModeE] 开始重生Boss，刷怪点数量: " + points.Count);
+                ModBehaviour.DevLog("[ModeE] 开始重生Boss，刷怪点数量: " + points.Count);
                 if (profiler != null) profiler.Mark("BeginDispatch");
 
                 for (int i = 0; i < points.Count; i++)
@@ -421,12 +421,12 @@ namespace BossRush
                     }
                 }
 
-                DevLog("[ModeE] Boss 重生任务完成");
+                ModBehaviour.DevLog("[ModeE] Boss 重生任务完成");
                 if (profiler != null) profiler.Complete("success");
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] RespawnBossesAtPoints 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] RespawnBossesAtPoints 失败: " + e.Message);
                 if (profiler != null) profiler.Complete("failed: exception");
             }
             finally
@@ -450,11 +450,11 @@ namespace BossRush
                 // 检查刷怪点分配数据
                 if (modeESpawnAllocation == null)
                 {
-                    ShowMessage(L10n.T(
+                    modeEHost.ShowMessage(L10n.T(
                         "刷怪点数据异常，无法使用！",
                         "Spawn point data error, cannot use!"
                     ));
-                    DevLog("[ModeE] UseTauntSmoke: modeESpawnAllocation 为 null");
+                    ModBehaviour.DevLog("[ModeE] UseTauntSmoke: modeESpawnAllocation 为 null");
                     return;
                 }
 
@@ -462,11 +462,11 @@ namespace BossRush
                 List<Vector3> nearestPoints = GetNearestSpawnPoints(10);
                 if (nearestPoints.Count == 0)
                 {
-                    ShowMessage(L10n.T(
+                    modeEHost.ShowMessage(L10n.T(
                         "无可用刷怪点！",
                         "No available spawn points!"
                     ));
-                    DevLog("[ModeE] UseTauntSmoke: 无可用刷怪点");
+                    ModBehaviour.DevLog("[ModeE] UseTauntSmoke: 无可用刷怪点");
                     return;
                 }
 
@@ -476,19 +476,19 @@ namespace BossRush
                     return;
                 }
 
-                DevLog("[ModeE] 使用挑衅烟雾弹，将在 " + respawnCount + " 个最近刷怪点重生Boss");
+                ModBehaviour.DevLog("[ModeE] 使用挑衅烟雾弹，将在 " + respawnCount + " 个最近刷怪点重生Boss");
 
                 // 播放烟雾VFX
                 PlaySmokeVFX();
 
-                ShowBigBanner(L10n.T(
+                modeEHost.ShowBigBanner(L10n.T(
                     "<color=yellow>挑衅烟雾弹</color> 已激活！<color=red>" + respawnCount + "</color> 个Boss正在赶来...",
                     "<color=yellow>Taunt Smoke</color> activated! <color=red>" + respawnCount + "</color> Bosses incoming..."
                 ));
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] UseTauntSmoke 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] UseTauntSmoke 失败: " + e.Message);
             }
         }
 
@@ -503,11 +503,11 @@ namespace BossRush
                 // 检查刷怪点分配数据
                 if (modeESpawnAllocation == null)
                 {
-                    ShowMessage(L10n.T(
+                    modeEHost.ShowMessage(L10n.T(
                         "刷怪点数据异常，无法使用！",
                         "Spawn point data error, cannot use!"
                     ));
-                    DevLog("[ModeE] UseChaosDetonator: modeESpawnAllocation 为 null");
+                    ModBehaviour.DevLog("[ModeE] UseChaosDetonator: modeESpawnAllocation 为 null");
                     return;
                 }
 
@@ -515,11 +515,11 @@ namespace BossRush
                 List<Vector3> allPoints = GetAllSpawnPoints();
                 if (allPoints.Count == 0)
                 {
-                    ShowMessage(L10n.T(
+                    modeEHost.ShowMessage(L10n.T(
                         "无可用刷怪点！",
                         "No available spawn points!"
                     ));
-                    DevLog("[ModeE] UseChaosDetonator: 无可用刷怪点");
+                    ModBehaviour.DevLog("[ModeE] UseChaosDetonator: 无可用刷怪点");
                     return;
                 }
 
@@ -529,19 +529,19 @@ namespace BossRush
                     return;
                 }
 
-                DevLog("[ModeE] 使用混沌引爆器，将在全图 " + respawnCount + " 个刷怪点重生Boss");
+                ModBehaviour.DevLog("[ModeE] 使用混沌引爆器，将在全图 " + respawnCount + " 个刷怪点重生Boss");
 
                 // 播放烟雾VFX
                 PlaySmokeVFX();
 
-                ShowBigBanner(L10n.T(
+                modeEHost.ShowBigBanner(L10n.T(
                     "<color=red>混沌引爆器</color> 已引爆！全图 <color=red>" + respawnCount + "</color> 个Boss正在涌来...",
                     "<color=red>Chaos Detonator</color> activated! <color=red>" + respawnCount + "</color> Bosses spawning across the map..."
                 ));
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] UseChaosDetonator 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] UseChaosDetonator 失败: " + e.Message);
             }
         }
 
@@ -597,7 +597,7 @@ namespace BossRush
             return modeEAggroTargetScratch;
         }
 
-        private bool TryForceActivateModeEEnemy(CharacterMainControl enemy, out bool wokeInactiveEnemy)
+        internal bool TryForceActivateModeEEnemy(CharacterMainControl enemy, out bool wokeInactiveEnemy)
         {
             wokeInactiveEnemy = false;
             if (!IsValidModeEEnemyTarget(enemy))
@@ -622,7 +622,7 @@ namespace BossRush
                 }
                 catch (Exception unregisterEx)
                 {
-                    DevLog("[ModeE] [WARNING] 取消玩家距离休眠注册失败: " + unregisterEx.Message);
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 取消玩家距离休眠注册失败: " + unregisterEx.Message);
                 }
 
                 try
@@ -631,7 +631,7 @@ namespace BossRush
                 }
                 catch (Exception sleepEx)
                 {
-                    DevLog("[ModeE] [WARNING] 唤醒休眠Boss失败: " + sleepEx.Message);
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 唤醒休眠Boss失败: " + sleepEx.Message);
                 }
 
                 if (!enemyObject.activeSelf)
@@ -647,14 +647,14 @@ namespace BossRush
 
                 if (MODE_E_LOG_PER_ENEMY_WAKE && wasInactive)
                 {
-                    DevLog("[ModeE] 已强制激活远距离休眠Boss: " + enemyObject.name);
+                    ModBehaviour.DevLog("[ModeE] 已强制激活远距离休眠Boss: " + enemyObject.name);
                 }
 
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] TryForceActivateModeEEnemy 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] TryForceActivateModeEEnemy 失败: " + e.Message);
                 return false;
             }
         }
@@ -767,7 +767,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] ProcessPendingBossAggroQueue failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] ProcessPendingBossAggroQueue failed: " + e.Message);
             }
             finally
             {
@@ -822,7 +822,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [WARNING] ForceBossAggroToPlayer 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [WARNING] ForceBossAggroToPlayer 失败: " + e.Message);
                 return false;
             }
         }
@@ -834,7 +834,7 @@ namespace BossRush
                 return;
             }
 
-            DevLog(
+            ModBehaviour.DevLog(
                 "[ModeE] Boss仇恨批处理 #" + batchIndex +
                 ": handled=" + processedCount +
                 ", woke=" + wokeInactiveCount +
@@ -877,7 +877,7 @@ namespace BossRush
                 if (nearbyEnemies.Count == 0)
                 {
                     // 使用横幅提示玩家
-                    ShowBigBanner(L10n.T(
+                    modeEHost.ShowBigBanner(L10n.T(
                         "<color=yellow>猎王响哨</color>：50米内没有可被引来的敌对Boss！",
                         "<color=yellow>Bosscall Whistle</color>: No enemy Bosses within 50 meters to provoke!"
                     ));
@@ -888,7 +888,7 @@ namespace BossRush
                 if (affected <= 0)
                 {
                     // 使用横幅提示玩家
-                    ShowBigBanner(L10n.T(
+                    modeEHost.ShowBigBanner(L10n.T(
                         "<color=yellow>猎王响哨</color>：敌对Boss未能锁定你为目标！",
                         "<color=yellow>Bosscall Whistle</color>: Enemy Bosses failed to lock onto you!"
                     ));
@@ -896,15 +896,15 @@ namespace BossRush
                 }
 
                 PlaySmokeVFX();
-                ShowMessage(L10n.T("Boss 将按每秒10只分批苏醒并追击你。", "Bosses will wake and aggro in batches of 10 per second."));
-                ShowBigBanner(L10n.T(
+                modeEHost.ShowMessage(L10n.T("Boss 将按每秒10只分批苏醒并追击你。", "Bosses will wake and aggro in batches of 10 per second."));
+                modeEHost.ShowBigBanner(L10n.T(
                     "<color=yellow>猎王响哨</color>已吹响！附近 <color=red>" + affected + "</color> 名敌对Boss正朝你袭来！",
                     "<color=yellow>Bosscall Whistle</color> blown! <color=red>" + affected + "</color> nearby enemy Bosses are coming for you!"
                 ));
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] UseBosscallWhistle 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] UseBosscallWhistle 失败: " + e.Message);
             }
         }
 
@@ -916,7 +916,7 @@ namespace BossRush
                 if (allEnemies.Count == 0)
                 {
                     // 使用横幅提示玩家
-                    ShowBigBanner(L10n.T(
+                    modeEHost.ShowBigBanner(L10n.T(
                         "<color=red>血狩烽火</color>：当前没有可被引来的敌对Boss！",
                         "<color=red>Bloodhunt Beacon</color>: There are no enemy Bosses to provoke right now!"
                     ));
@@ -927,7 +927,7 @@ namespace BossRush
                 if (affected <= 0)
                 {
                     // 使用横幅提示玩家
-                    ShowBigBanner(L10n.T(
+                    modeEHost.ShowBigBanner(L10n.T(
                         "<color=red>血狩烽火</color>：敌对Boss未能锁定你为目标！",
                         "<color=red>Bloodhunt Beacon</color>: Enemy Bosses failed to lock onto you!"
                     ));
@@ -935,15 +935,15 @@ namespace BossRush
                 }
 
                 PlaySmokeVFX();
-                ShowMessage(L10n.T("Boss 将按每秒10只分批苏醒并追击你。", "Bosses will wake and aggro in batches of 10 per second."));
-                ShowBigBanner(L10n.T(
+                modeEHost.ShowMessage(L10n.T("Boss 将按每秒10只分批苏醒并追击你。", "Bosses will wake and aggro in batches of 10 per second."));
+                modeEHost.ShowBigBanner(L10n.T(
                     "<color=red>血狩烽火</color>已点燃！全图 <color=red>" + affected + "</color> 名敌对Boss都将你视作首要猎物！",
                     "<color=red>Bloodhunt Beacon</color> ignited! <color=red>" + affected + "</color> enemy Bosses across the map now hunt you first!"
                 ));
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] UseAllKingsBanner 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] UseAllKingsBanner 失败: " + e.Message);
             }
         }
 
@@ -964,7 +964,7 @@ namespace BossRush
                 if (!modeEActive) return;
 
                 modeERespawnKillCounter++;
-                DevLog("[ModeE] Boss击杀计数: " + modeERespawnKillCounter);
+                ModBehaviour.DevLog("[ModeE] Boss击杀计数: " + modeERespawnKillCounter);
 
                 // 每10次击杀发放一个挑衅烟雾弹
                 if (modeERespawnKillCounter % 10 == 0)
@@ -981,27 +981,27 @@ namespace BossRush
                             if (player != null)
                             {
                                 tauntSmoke.Drop(player, true);
-                                DevLog("[ModeE] 背包已满，挑衅烟雾弹掉落在玩家位置");
+                                ModBehaviour.DevLog("[ModeE] 背包已满，挑衅烟雾弹掉落在玩家位置");
                             }
                         }
 
-                        DevLog("[ModeE] 自动发放挑衅烟雾弹（累计击杀: " + modeERespawnKillCounter + "）");
+                        ModBehaviour.DevLog("[ModeE] 自动发放挑衅烟雾弹（累计击杀: " + modeERespawnKillCounter + "）");
 
                         // 使用横幅提示
-                        ShowBigBanner(L10n.T(
+                        modeEHost.ShowBigBanner(L10n.T(
                             "击杀 <color=yellow>" + modeERespawnKillCounter + "</color> 个Boss！获得 <color=yellow>挑衅烟雾弹</color> ×1",
                             "Killed <color=yellow>" + modeERespawnKillCounter + "</color> Bosses! Received <color=yellow>Taunt Smoke</color> ×1"
                         ));
                     }
                     else
                     {
-                        DevLog("[ModeE] [WARNING] 自动发放挑衅烟雾弹失败：ItemAssetsCollection.InstantiateSync 返回 null");
+                        ModBehaviour.DevLog("[ModeE] [WARNING] 自动发放挑衅烟雾弹失败：ItemAssetsCollection.InstantiateSync 返回 null");
                     }
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] CheckRespawnItemAutoGrant 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] CheckRespawnItemAutoGrant 失败: " + e.Message);
             }
         }
 

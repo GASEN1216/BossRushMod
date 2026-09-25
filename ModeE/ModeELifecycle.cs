@@ -15,7 +15,7 @@ using HarmonyLib;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         /// <summary>
         /// 在玩家头顶显示阵营气泡（"阵营：xxx"）
@@ -27,7 +27,7 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null || player.transform == null)
                 {
-                    DevLog("[ModeE] [WARNING] ShowFactionBubble: 玩家或 transform 为 null");
+                    ModBehaviour.DevLog("[ModeE] [WARNING] ShowFactionBubble: 玩家或 transform 为 null");
                     return;
                 }
 
@@ -36,11 +36,11 @@ namespace BossRush
 
                 // 使用游戏原版 DialogueBubblesManager 显示气泡，时长 3 秒
                 DialogueBubblesManager.Show(bubbleText, player.transform, 2.5f, false, false, -1f, 3f);
-                DevLog("[ModeE] 显示阵营气泡: " + bubbleText);
+                ModBehaviour.DevLog("[ModeE] 显示阵营气泡: " + bubbleText);
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] ShowFactionBubble 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] ShowFactionBubble 失败: " + e.Message);
             }
         }
 
@@ -56,7 +56,7 @@ namespace BossRush
         {
             metrics = string.Empty;
             reason = null;
-            if (!DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
+            if (!ModBehaviour.DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
             if (!modeEActive)
             {
                 reason = "mode_e_not_active";
@@ -72,7 +72,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [Validation] 读取收尾前阵营失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [Validation] 读取收尾前阵营失败: " + e.Message);
             }
 
             try
@@ -98,7 +98,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [Validation] 读取收尾后阵营失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [Validation] 读取收尾后阵营失败: " + e.Message);
             }
 
             int enemiesAfter = modeEAliveEnemies.Count;
@@ -120,7 +120,7 @@ namespace BossRush
             {
                 if (!modeEActive) return;
 
-                DevLog("[ModeE] 结束 Mode E 模式");
+                ModBehaviour.DevLog("[ModeE] 结束 Mode E 模式");
 
                 // 先置 modeEActive = false，防止后续 Hurt() 触发的 OnModeEEnemyDeath
                 // 回调中再对即将死亡的敌人执行无意义的 ApplyFactionDeathScaling
@@ -128,13 +128,13 @@ namespace BossRush
                 CleanupModeELotteryAndHiringRuntime();
                 InvalidateAndResetModeEShellSession("EndModeE");
                 InvalidateModeESession();
-                ClearEnemyRecoveryMonitorState();
+                modeEHost.ClearModeDEnemyRecoveryState();
                 ClearPendingBossAggroQueue();
                 RemoveModeEPlayerScalingModifiers();
                 modeEPlayerLastHitKillCount = 0;
 
                 // 清理变异词条（覆盖正常通关 / 玩家死亡 / 手动退出）
-                ClearMutatorsForMode("ModeE");
+                modeEHost.ClearModeDMutators("ModeE");
 
                 // 恢复玩家阵营
                 try
@@ -143,12 +143,12 @@ namespace BossRush
                     if (player != null)
                     {
                         player.SetTeam(Teams.player);
-                        DevLog("[ModeE] 玩家阵营已恢复为 player");
+                        ModBehaviour.DevLog("[ModeE] 玩家阵营已恢复为 player");
                     }
                 }
                 catch (Exception e)
                 {
-                    DevLog("[ModeE] [WARNING] 恢复玩家阵营失败: " + e.Message);
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 恢复玩家阵营失败: " + e.Message);
                 }
 
                 CleanupModeEPlayerNameTag();
@@ -176,7 +176,7 @@ namespace BossRush
                             }
                             catch (Exception e)
                             {
-                                DevLog("[ModeE] [WARNING] 结束模式时读取敌人阵营失败: index=" + i + ", " + e.Message);
+                                ModBehaviour.DevLog("[ModeE] [WARNING] 结束模式时读取敌人阵营失败: index=" + i + ", " + e.Message);
                             }
 
                             // 阻止掉落战利品箱子（模式结束清理，不应产生掉落物）
@@ -195,7 +195,7 @@ namespace BossRush
                     }
                     catch (Exception e)
                     {
-                        DevLog("[ModeE] [WARNING] 结束模式时清理敌人失败: index=" + i + ", " + e.Message);
+                        ModBehaviour.DevLog("[ModeE] [WARNING] 结束模式时清理敌人失败: index=" + i + ", " + e.Message);
                     }
                 }
                 modeEEndCleanupEnemyScratch.Clear();
@@ -204,7 +204,7 @@ namespace BossRush
                 CleanupModeEMerchant();
 
                 // 清理快递员阿稳 NPC
-                DestroyCourierNPC();
+                modeEHost.DestroyCourierNPC();
 
                 // 重置所有状态（modeEActive 已在清理前置为 false）
                 ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: true, stopWarmupCoroutine: true);
@@ -217,7 +217,7 @@ namespace BossRush
 
                 if (showEndMessage)
                 {
-                    ShowMessage(L10n.T(
+                    modeEHost.ShowMessage(L10n.T(
                         "划地为营模式已结束！",
                         "Faction Battle ended!"
                     ));
@@ -225,7 +225,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE] [ERROR] EndModeE 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeE] [ERROR] EndModeE 失败: " + e.Message);
             }
         }
     }

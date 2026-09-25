@@ -4,7 +4,16 @@ from pathlib import Path
 import sys
 
 
-SUPPORT = Path("ModeE/ModeEMerchantSupportClasses.cs")
+SUPPORT = (
+    Path("ModeE/ModeEMerchantSupportClasses.cs"),
+    Path("ModeE/ModeEShellSession.cs"),
+    Path("ModeE/ModeEShellTransactions.cs"),
+    Path("ModeE/ModeEShopInteractable.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI.cs"),
+    Path("ModeE/ModeEPetSpawner.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_ShopViewSetup.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_Layout.cs"),
+)
 MODE_E = Path("ModeE/ModeE.cs")
 LIFECYCLE = Path("ModeE/ModeELifecycle.cs")
 RUNTIME = Path("ModeE/ModeERuntimeModule.cs")
@@ -35,7 +44,7 @@ def extract_method(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    support = SUPPORT.read_text(encoding="utf-8")
+    support = "\n".join(path.read_text(encoding="utf-8") for path in SUPPORT)
     mode_e = MODE_E.read_text(encoding="utf-8")
     lifecycle = LIFECYCLE.read_text(encoding="utf-8")
     runtime = RUNTIME.read_text(encoding="utf-8")

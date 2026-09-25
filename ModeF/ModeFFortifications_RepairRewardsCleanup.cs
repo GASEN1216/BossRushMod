@@ -420,7 +420,7 @@ namespace BossRush
             }
         }
 
-        private bool TryGiveItemToPlayerOrDrop(int typeId, string displayName, bool showRewardBubble = true, bool allowWorldDrop = true)
+        internal bool TryGiveItemToPlayerOrDrop(int typeId, string displayName, bool showRewardBubble = true, bool allowWorldDrop = true)
         {
             Item item = null;
             try
