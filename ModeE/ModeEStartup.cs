@@ -109,17 +109,7 @@ namespace BossRush
             modeESpawnerRootRegisteredEnemies.Clear();
             modeEIntegrityTimer = 0f;
 
-            if (clearSpawnAllocation)
-            {
-                modeESpawnAllocation = null;
-                modeEFlattenedSpawnPoints = null;
-            }
-
-            if (clearSpawnerCache)
-            {
-                modeECachedSpawnerPositions = null;
-                modeECachedSpawnerSceneName = null;
-            }
+            spawnPreparation.Reset(clearSpawnAllocation, clearSpawnerCache);
 
             if (stopWarmupCoroutine)
             {

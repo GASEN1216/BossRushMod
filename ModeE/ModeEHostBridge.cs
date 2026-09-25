@@ -306,20 +306,14 @@ namespace BossRush
         internal void TickModeERuntime(float deltaTime)
         { modeERuntime.TickModeERuntime(deltaTime); }
 
-        private Dictionary<Teams, List<Vector3>> modeESpawnAllocation { get { return modeERuntime.modeESpawnAllocation; } set { modeERuntime.modeESpawnAllocation = value; } }
+        private Dictionary<Teams, List<Vector3>> modeESpawnAllocation { get { return modeERuntime.modeESpawnAllocation; } }
 
-        private Vector3[] modeECachedSpawnerPositions { get { return modeERuntime.modeECachedSpawnerPositions; } set { modeERuntime.modeECachedSpawnerPositions = value; } }
+        private Vector3[] modeECachedSpawnerPositions { get { return modeERuntime.modeECachedSpawnerPositions; } }
 
-        private string modeECachedSpawnerSceneName { get { return modeERuntime.modeECachedSpawnerSceneName; } set { modeERuntime.modeECachedSpawnerSceneName = value; } }
+        private string modeECachedSpawnerSceneName { get { return modeERuntime.modeECachedSpawnerSceneName; } }
 
         private Vector3[] GetModeEFlattenedSpawnPoints()
         { return modeERuntime.GetModeEFlattenedSpawnPoints(); }
-
-        private void AllocateSpawnPoints()
-        { modeERuntime.AllocateSpawnPoints(); }
-
-        private void TeleportPlayerToSafePosition()
-        { modeERuntime.TeleportPlayerToSafePosition(); }
 
         public void PreCacheMapSpawnerPositions()
         { modeERuntime.PreCacheMapSpawnerPositions(); }

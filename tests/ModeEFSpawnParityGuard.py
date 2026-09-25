@@ -2,9 +2,10 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
-MODEE_ALLOCATION = Path("ModeE/ModeESpawnAllocation.cs")
+MODEE_ALLOCATION = Path("Utilities/ModeEFSpawnPreparation.cs")
 MODEE_BATTLE = Path("ModeE/ModeEBattle.cs")
 MODEE_RESPAWN = Path("ModeE/ModeERespawnItems.cs")
 MODEF_PHASES = Path("ModeF/ModeFPhases.cs")
@@ -55,11 +56,33 @@ def require_ordered(text: str, needles: list[str], message: str) -> int | None:
 
 
 def main() -> int:
-    allocation = MODEE_ALLOCATION.read_text(encoding="utf-8")
-    battle = MODEE_BATTLE.read_text(encoding="utf-8")
-    respawn_e = MODEE_RESPAWN.read_text(encoding="utf-8")
-    phases = MODEF_PHASES.read_text(encoding="utf-8")
-    respawn_f = MODEF_RESPAWN.read_text(encoding="utf-8")
+    def read_source(path):
+        return clean_source(Path(path).read_text(encoding="utf-8"))
+
+    allocation = read_source(MODEE_ALLOCATION)
+    registration = read_source("ModBehaviourRuntimeModules.cs")
+    mode_e = read_source("ModeE/ModeESpawnAllocation.cs")
+    mode_f = read_source("ModeF/ModeFEntry.cs")
+    reset = read_source("ModeE/ModeEStartup.cs")
+    for text, needle in (
+        (allocation, "internal sealed class ModeEFSpawnPreparation"),
+        (registration, "modeERuntime.BindSharedServices(modeDRuntime, wavesArenaRuntime, modeEFSpawnPreparation);"),
+        (registration, "modeFRuntime.BindSharedServices(modeDRuntime, modeERuntime, wavesArenaRuntime, modeEFSpawnPreparation,"),
+        (registration, "() => modeERuntime.ModeEPlayerFaction"),
+        (mode_e, "spawnPreparation.AllocateSpawnPoints();"),
+        (mode_f, "spawnPreparation.AllocateSpawnPoints();"),
+        (reset, "spawnPreparation.Reset(clearSpawnAllocation, clearSpawnerCache);"),
+        (read_source("ModeE/ModeERuntimeModule.cs"), "this.spawnPreparation = spawnPreparation;"),
+        (read_source("ModeF/ModeFRuntimeModule.cs"), "this.spawnPreparation = spawnPreparation;"),
+    ):
+        if needle not in text:
+            return fail("shared E/F spawn preparation wiring missing -> " + needle)
+    if registration.count("new ModeEFSpawnPreparation(") != 1:
+        return fail("E/F must share exactly one spawn preparation instance")
+    battle = read_source(MODEE_BATTLE)
+    respawn_e = read_source(MODEE_RESPAWN)
+    phases = read_source(MODEF_PHASES)
+    respawn_f = read_source(MODEF_RESPAWN)
 
     allocate_body = extract_method_body(allocation, "internal void AllocateSpawnPoints")
     if allocate_body is None:

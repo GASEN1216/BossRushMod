@@ -1,5 +1,7 @@
 # Mode E：划地为营
 
+2026-09-25 核对：地图 spawner 扫描、10 米间距过滤、阵营分配、扁平化缓存与安全传送已迁入 [ModeEFSpawnPreparation.cs](file://Utilities/ModeEFSpawnPreparation.cs)。宿主创建一个实例并绑定 E/F；`ModeESpawnAllocation.cs` 只保留 Mode E 兼容入口。下文算法描述沿用，方法实体以共享服务为准；分配与场景缓存仍按原参数分别清理。
+
 <cite>
 **本文引用的文件**
 - [ModeE.cs](file://ModeE/ModeE.cs)
@@ -33,7 +35,7 @@ Mode E 的核心代码集中在 ModeE 目录下，围绕“状态与生命周期
 ```mermaid
 graph TB
 A["ModeE.cs<br/>模式状态/会话/缓存"] --> B["ModeEBattle.cs<br/>Boss生成/动态缩放"]
-A --> C["ModeESpawnAllocation.cs<br/>刷怪点扫描与分配"]
+A --> C["ModeEFSpawnPreparation.cs<br/>共享刷怪点扫描与分配"]
 A --> D["ModeEMerchant.cs<br/>神秘商人/分类商店"]
 A --> E["ModeELotteryAndHiring.cs<br/>抽奖/Boss雇佣"]
 A --> F["FactionFlagConfig.cs<br/>营旗配置/本地化/商店注入"]

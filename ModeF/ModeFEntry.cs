@@ -320,12 +320,12 @@ namespace BossRush
                 profiler.Mark("SubscribeDragonBreath");
 
                 // 分配刷怪点（复用 Mode E 逻辑）
-                modeE.PreCacheMapSpawnerPositions();
-                modeE.AllocateSpawnPoints();
+                spawnPreparation.PreCacheMapSpawnerPositions();
+                spawnPreparation.AllocateSpawnPoints();
                 profiler.Mark("AllocateSpawnPoints");
 
                 // 传送玩家到安全位置
-                modeE.TeleportPlayerToSafePosition();
+                spawnPreparation.TeleportPlayerToSafePosition();
                 profiler.Mark("TeleportPlayer");
 
                 // 发放初始装备（复用 Mode D 的 Starter Kit）

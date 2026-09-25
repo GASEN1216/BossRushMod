@@ -26,9 +26,12 @@ namespace BossRush
             wavesArenaRuntime = new WavesArenaRuntimeModule();
             runtimeModuleHost.Register(wavesArenaRuntime);
             BindModeDItemPoolQueries();
-            modeERuntime.BindSharedServices(modeDRuntime, wavesArenaRuntime);
+            var modeEFSpawnPreparation = new ModeEFSpawnPreparation(ModeERuntimeModule.ModeEAvailableFactions,
+                () => modeERuntime.ModeEPlayerFaction,
+                position => modeDRuntime.GenerateFallbackSpawnPointsAroundPlayer(position), ShowMessage);
+            modeERuntime.BindSharedServices(modeDRuntime, wavesArenaRuntime, modeEFSpawnPreparation);
             runtimeModuleHost.Register(modeERuntime);
-            modeFRuntime.BindSharedServices(modeDRuntime, modeERuntime, wavesArenaRuntime,
+            modeFRuntime.BindSharedServices(modeDRuntime, modeERuntime, wavesArenaRuntime, modeEFSpawnPreparation,
                 GetBossRushTicketTypeId, () => config != null && config.enableRandomBossLoot,
                 () => IsZombieModeActive, () => zombieModeRunState.RunId, RegisterZombieModeRunOnlyObject);
             runtimeModuleHost.Register(modeFRuntime);

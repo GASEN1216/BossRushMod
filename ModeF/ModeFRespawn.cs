@@ -69,14 +69,14 @@ namespace BossRush
         private bool TryGetModeFAllocatedFactionForPosition(Vector3 spawnPos, out Teams faction)
         {
             faction = Teams.middle;
-            if (modeE.modeESpawnAllocation == null || modeE.modeESpawnAllocation.Count <= 0)
+            if (spawnPreparation.SpawnAllocation == null || spawnPreparation.SpawnAllocation.Count <= 0)
             {
                 return false;
             }
 
             bool found = false;
             float bestDistanceSqr = float.MaxValue;
-            foreach (var kvp in modeE.modeESpawnAllocation)
+            foreach (var kvp in spawnPreparation.SpawnAllocation)
             {
                 if (!IsValidModeFCombatFaction(kvp.Key) || kvp.Value == null)
                 {
@@ -906,7 +906,7 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 Vector3 playerPos = player != null ? player.transform.position : Vector3.zero;
 
-                Vector3[] allSpawnPoints = modeE.GetModeEFlattenedSpawnPoints();
+                Vector3[] allSpawnPoints = spawnPreparation.GetModeEFlattenedSpawnPoints();
                 float effectiveMinDist = Mathf.Max(minDistance, 15f);
 
                 if (allSpawnPoints.Length <= 0)

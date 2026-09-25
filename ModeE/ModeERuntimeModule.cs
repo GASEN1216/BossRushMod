@@ -6,13 +6,15 @@ namespace BossRush
         private float modeEIntegrityTimer;
         private ModeDRuntimeModule modeD;
         private ModeDItemPool equipment;
+        private ModeEFSpawnPreparation spawnPreparation;
         private WavesArenaRuntimeModule arena;
 
-        internal void BindSharedServices(ModeDRuntimeModule modeD, WavesArenaRuntimeModule arena)
+        internal void BindSharedServices(ModeDRuntimeModule modeD, WavesArenaRuntimeModule arena, ModeEFSpawnPreparation spawnPreparation)
         {
             this.modeD = modeD;
             this.equipment = modeD.ItemPool;
             this.arena = arena;
+            this.spawnPreparation = spawnPreparation;
         }
 
         private void InitializeModeDItemPools() { equipment.InitializeModeDItemPools(equipment.FindTagByName); }

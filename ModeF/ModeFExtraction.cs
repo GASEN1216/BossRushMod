@@ -349,7 +349,7 @@ namespace BossRush
                 return SpawnPositionHelper.SnapToGround(extractionPos);
             }
 
-            Vector3[] fallbackSpawnPoints = modeE.GetModeEFlattenedSpawnPoints();
+            Vector3[] fallbackSpawnPoints = spawnPreparation.GetModeEFlattenedSpawnPoints();
             if (TryFindModeFPointFromCandidates(fallbackSpawnPoints, 30f, out extractionPos))
             {
                 ModBehaviour.DevLog("[ModeF] [WARNING] 公共 NPC 点池为空，回退使用刷怪点池生成撤离点: " + extractionPos);

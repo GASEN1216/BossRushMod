@@ -18,6 +18,7 @@ namespace BossRush
 
         private ModeDRuntimeModule modeD;
         private ModeDItemPool equipment;
+        private ModeEFSpawnPreparation spawnPreparation;
         private ModeERuntimeModule modeE;
         private WavesArenaRuntimeModule arena;
         private System.Func<int> getTicketTypeId;
@@ -26,7 +27,7 @@ namespace BossRush
         private System.Func<int> getZombieRunId;
         private System.Action<int, ZombieModeRunOnlyObjectKind, UnityEngine.GameObject, UnityEngine.Object, System.Action> registerZombieRunOnly;
 
-        internal void BindSharedServices(ModeDRuntimeModule modeD, ModeERuntimeModule modeE, WavesArenaRuntimeModule arena,
+        internal void BindSharedServices(ModeDRuntimeModule modeD, ModeERuntimeModule modeE, WavesArenaRuntimeModule arena, ModeEFSpawnPreparation spawnPreparation,
             System.Func<int> getTicketTypeId, System.Func<bool> useRandomBossLoot,
             System.Func<bool> isZombieModeActive, System.Func<int> getZombieRunId,
             System.Action<int, ZombieModeRunOnlyObjectKind, UnityEngine.GameObject, UnityEngine.Object, System.Action> registerZombieRunOnly)
@@ -35,6 +36,7 @@ namespace BossRush
             this.equipment = modeD.ItemPool;
             this.modeE = modeE;
             this.arena = arena;
+            this.spawnPreparation = spawnPreparation;
             this.getTicketTypeId = getTicketTypeId;
             this.useRandomBossLoot = useRandomBossLoot;
             this.isZombieModeActive = isZombieModeActive;

@@ -423,6 +423,7 @@ echo(Utilities\ModBossPresetLookup.cs
 echo(Utilities\SpawnedEnemyActivationHelper.cs
 echo(Utilities\EnemySpawnCore.cs
 echo(Utilities\ModeEFSpawnProfiler.cs
+echo(Utilities\ModeEFSpawnPreparation.cs
 echo(Utilities\ZombieSpawnSanitizer.cs
 echo(Utilities\EnemyRecoveryMonitor.cs
 echo(Utilities\GameplayRuntimeHooks.cs
