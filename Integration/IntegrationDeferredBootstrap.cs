@@ -44,7 +44,7 @@ namespace BossRush
                 SetupPhantomWitchScytheForScene = SetupPhantomWitchScytheForScene,
                 SetupNewWeaponsForScene = SetupNewWeaponsForScene,
                 InjectAchievementMedalIntoShops = InjectAchievementMedalIntoShops,
-                ScheduleWishRewardPoolWarmup = ScheduleWishRewardPoolWarmup,
+                ScheduleWishRewardPoolWarmup = bossRushIntegrationRuntime.ScheduleWishRewardPoolWarmup,
             };
         }
     }

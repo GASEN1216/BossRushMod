@@ -14,6 +14,7 @@ import sys
 
 MODE_D = Path("ModeD/ModeD.cs")
 MODE_D_EQUIPMENT = Path("ModeD/ModeDEquipment.cs")
+ITEM_POOL = Path("ModeD/ModeDItemPool.cs")
 
 
 def fail(message: str) -> int:
@@ -46,9 +47,17 @@ def extract_method_body(text: str, signature: str) -> str | None:
 def main() -> int:
     mode_d_text = MODE_D.read_text(encoding="utf-8")
     equipment_text = MODE_D_EQUIPMENT.read_text(encoding="utf-8")
+    item_pool_text = ITEM_POOL.read_text(encoding="utf-8")
+
+    host_init = extract_method_body(mode_d_text, "private void InitializeModeDItemPools()")
+    if host_init is None or "modeDItemPool.InitializeModeDItemPools(FindTagByName);" not in host_init:
+        return fail("ModeDEquipmentPoolGuard: Mode D/E/F entry does not initialize shared item pool")
+    host_accessory = extract_method_body(equipment_text, "private void InitializeAccessoryPool()")
+    if host_accessory is None or "InitializeAccessoryPool(FindTagByName);" not in host_accessory:
+        return fail("ModeDEquipmentPoolGuard: accessory entry does not use shared item pool")
 
     exclude_body = extract_method_body(
-        mode_d_text,
+        item_pool_text,
         "private List<Duckov.Utilities.Tag> BuildModeDEquipmentPoolExcludeTags(",
     )
     if exclude_body is None:
@@ -76,8 +85,8 @@ def main() -> int:
             )
 
     init_body = extract_method_body(
-        mode_d_text,
-        "private void InitializeModeDItemPools()",
+        item_pool_text,
+        "internal void InitializeModeDItemPools(",
     )
     if init_body is None:
         return fail("ModeDEquipmentPoolGuard: missing InitializeModeDItemPools body")
@@ -92,7 +101,7 @@ def main() -> int:
             "ModeDEquipmentPoolGuard: InitializeModeDItemPools does not use BuildModeDEquipmentPoolExcludeTags(tagsData)"
         )
 
-    if "private static void AddDistinctItemIds(List<int> targetPool, int[] ids)" not in mode_d_text:
+    if "private static void AddDistinctItemIds(List<int> targetPool, int[] ids)" not in item_pool_text:
         return fail("ModeDEquipmentPoolGuard: missing AddDistinctItemIds helper")
 
     if "AddRange(ids)" in init_body:
@@ -118,8 +127,8 @@ def main() -> int:
         )
 
     accessory_body = extract_method_body(
-        equipment_text,
-        "private void InitializeAccessoryPool()",
+        item_pool_text,
+        "internal void InitializeAccessoryPool(",
     )
     if accessory_body is None:
         return fail("ModeDEquipmentPoolGuard: missing InitializeAccessoryPool body")
@@ -131,7 +140,7 @@ def main() -> int:
 
     if "AddDistinctItemIds(modeDAccessoryPool, accessoryIds);" not in accessory_body:
         return fail(
-            "ModeDEquipmentPoolGuard: accessory pool does not use AddDistinctItemIds(modeDAccessoryPool, accessoryIds)"
+            "ModeDEquipmentPoolGuard: accessory pool does not use AddDistinctItemIds on the shared item pool"
         )
 
     print("ModeDEquipmentPoolGuard: PASS")

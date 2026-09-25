@@ -76,7 +76,7 @@ def main() -> int:
     models = Path("ZombieMode/ZombieModeModels.cs")
     tuning = Path("ZombieMode/ZombieModeTuning.cs")
     pollution_text = read_pollution()
-    wave = Path("ZombieMode/ZombieModeWaveController.cs")
+    wave = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
     drops = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
     rewards_text = read_rewards()
     cleanup = Path("ZombieMode/ZombieModeCleanup.cs")

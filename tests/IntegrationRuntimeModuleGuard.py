@@ -15,6 +15,7 @@ MODULE_MAP_OBJECTS_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_M
 MODULE_TRAVEL_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_Travel.cs"
 MODULE_INITIALIZATION_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_Initialization.cs"
 MODULE_CODEX_BOOK_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_CodexBook.cs"
+MODULE_SCENE_LIFECYCLE_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_SceneLifecycle.cs"
 HOST_PATH = ROOT / "Integration/BossRushIntegration.cs"
 CODEX_BOOK_HOST_PATH = ROOT / "Integration/Codex/CodexBookItem.cs"
 LIFECYCLE_PATH = ROOT / "Integration/BossRushIntegration_StartAndScene.cs"
@@ -79,7 +80,8 @@ def main():
     module_travel = clean_source(MODULE_TRAVEL_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_initialization = clean_source(MODULE_INITIALIZATION_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_codex_book = clean_source(MODULE_CODEX_BOOK_PATH.read_text(encoding="utf-8", errors="ignore"))
-    module = module_core + "\n" + module_runtime_hooks + "\n" + module_map_objects + "\n" + module_travel + "\n" + module_initialization + "\n" + module_codex_book
+    module_scene_lifecycle = clean_source(MODULE_SCENE_LIFECYCLE_PATH.read_text(encoding="utf-8", errors="ignore"))
+    module = module_core + "\n" + module_runtime_hooks + "\n" + module_map_objects + "\n" + module_travel + "\n" + module_initialization + "\n" + module_codex_book + "\n" + module_scene_lifecycle
     host = clean_source(HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
     codex_book_host = clean_source(CODEX_BOOK_HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
     lifecycle = clean_source(LIFECYCLE_PATH.read_text(encoding="utf-8", errors="ignore"))
@@ -100,6 +102,8 @@ def main():
         return fail("initialization and content wiring must be a single partial declaration of the registered module type")
     if module_codex_book.count("internal sealed partial class IntegrationRuntimeModule") != 1:
         return fail("Codex Book stock behavior must be a single partial declaration of the registered module type")
+    if module_scene_lifecycle.count("internal sealed partial class IntegrationRuntimeModule") != 1:
+        return fail("scene lifecycle scheduling must be a single partial declaration of the registered module type")
     if "partial class ModBehaviour" in module:
         return fail("the runtime module source must not declare a ModBehaviour partial")
     if "private ModBehaviour _owner;" not in module or "_owner = owner;" not in method_body(module, "public override void OnAwake(ModBehaviour owner)"):
@@ -548,6 +552,8 @@ def main():
         return fail("the old Codex Book scene injection entry must remain a thin host compatibility bridge")
     if "StockShop.OnItemPurchased += OnItemPurchased_Integration;" in lifecycle or "StockShop.OnItemPurchased -= OnItemPurchased_Integration;" in lifecycle:
         return fail("host must not own the purchase callback delegate")
+    if "private void OnItemPurchased_Integration(StockShop shop, Item item)" in lifecycle:
+        return fail("unused host purchase callback bridge must be removed after module ownership")
     scene_loaded = method_body(lifecycle, "private void OnSceneLoaded_Integration(Scene scene, LoadSceneMode mode)")
     if require_order(scene_loaded, [
         "StartCoroutine(bossRushIntegrationRuntime.DelayedRestoreReforgeDataForInventory());",
@@ -555,6 +561,40 @@ def main():
         "StartCoroutine(bossRushIntegrationRuntime.DelayedApplyDragonGunAmmoOverride());",
     ], "OnSceneLoaded_Integration"):
         return fail("scene lifecycle must start the extracted integration routines in the original order")
+    common_npc_gate = scene_loaded.find("if (ShouldSpawnCommonNPCsInScene(scene.name))")
+    common_npc_schedule = scene_loaded.find("bossRushIntegrationRuntime.ScheduleDelayedSpawnCommonNPCsInNormalMode(scene.name);")
+    if common_npc_gate < 0 or common_npc_schedule < common_npc_gate:
+        return fail("normal-scene common NPC spawn must retain its host scene gate and schedule the module coroutine")
+    if "StartCoroutine(DelayedSpawnCommonNPCsInNormalMode(scene.name))" in scene_loaded:
+        return fail("OnSceneLoaded_Integration must schedule delayed common NPC work through IntegrationRuntimeModule")
+    if "System.Collections.IEnumerator DelayedSpawnCommonNPCsInNormalMode(string sceneName)" in lifecycle:
+        return fail("delayed common NPC readiness coroutine must be module-owned")
+    npc_bridge = method_body(lifecycle, "internal void SpawnCommonNPCsForIntegrationRuntimeModule(string context)")
+    if "SpawnCommonNPCs(context);" not in npc_bridge:
+        return fail("runtime module common NPC dispatch must use the existing host compatibility bridge")
+
+    wish_warmup = method_body(module_scene_lifecycle, "internal void ScheduleWishRewardPoolWarmup()")
+    if "_owner.StartCoroutine(WishFountainService.WarmupWishRewardPoolAfterDelay());" not in wish_warmup:
+        return fail("wish reward pool warmup must be scheduled by the IntegrationRuntimeModule owner")
+    npc_schedule = method_body(module_scene_lifecycle, "internal void ScheduleDelayedSpawnCommonNPCsInNormalMode(string sceneName)")
+    if "_owner.StartCoroutine(DelayedSpawnCommonNPCsInNormalMode(sceneName));" not in npc_schedule:
+        return fail("the IntegrationRuntimeModule must own the delayed common NPC coroutine scheduling")
+    npc_coroutine = method_body(module_scene_lifecycle, "private IEnumerator DelayedSpawnCommonNPCsInNormalMode(string sceneName)")
+    if require_order(npc_coroutine, [
+        "const float maxWait = 10f;",
+        "const float interval = 0.2f;",
+        "while (elapsed < maxWait)",
+        "ReadMainExistsWithWarning(\"DelayedSpawnCommonNPCsInNormalMode\")",
+        "ReadLevelInitedWithWarning(\"DelayedSpawnCommonNPCsInNormalMode\")",
+        "yield return new WaitForSeconds(interval);",
+        "yield return new WaitForSeconds(0.5f);",
+        "ReadActiveSceneNameWithWarning(\"DelayedSpawnCommonNPCsInNormalMode\")",
+        "if (currentScene != sceneName)",
+        "_owner.ShouldSuppressBaseNpcSpawnForCurrentMode()",
+        "_owner.SpawnCommonNPCsForIntegrationRuntimeModule(\"普通模式场景初始化完成\");",
+        "_owner.ScheduleRestoreFollowingSpouse(sceneName, \"普通模式场景初始化完成\");",
+    ], "delayed common NPC coroutine"):
+        return fail("delayed common NPC coroutine must preserve readiness, scene, mode, spawn and spouse-restore order")
 
     if registration.count("bossRushIntegrationRuntime = new IntegrationRuntimeModule();") != 1:
         return fail("host must create one IntegrationRuntimeModule instance")
@@ -575,6 +615,8 @@ def main():
         return fail("compile_official.bat must include the extracted travel partial")
     if "Integration/BossRushIntegrationRuntimeModule_Initialization.cs" not in compile_text:
         return fail("compile_official.bat must include the initialization and content wiring partial")
+    if "Integration/BossRushIntegrationRuntimeModule_SceneLifecycle.cs" not in compile_text:
+        return fail("compile_official.bat must include the scene lifecycle scheduling partial")
 
     print("IntegrationRuntimeModuleGuard: PASS（商店状态 owner、库存委托、兼容入口与原订阅顺序）")
     return 0

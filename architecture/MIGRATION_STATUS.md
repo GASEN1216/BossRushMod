@@ -9,12 +9,12 @@
 | P0 基线 | 完成，`3323e33e` | 665 项全量守卫 PASS，59 项全量回归 PASS；隔离正式与 Dev 构建 PASS |
 | P1 上下文治理 | 完成，`adef32ef` | 根规则 180 行 / 17,329 B；台账 1,050 / 975 行；47 模块导航覆盖 1,020 源 |
 | P2 复用试点 | 完成，`403a09a4` | 词缀追踪器与建筑恢复核心；203 项相关守卫、60 项全量回归与两种隔离构建通过 |
-| P3 状态提取 | 进行中 | 簇 1 已完成；簇 2、5、6 完成多个可恢复子范围，簇 3、4、7 仍待做 |
+| P3 状态提取 | 进行中 | 簇 1 已完成；簇 3 Mode D 主体已迁出；簇 2、5、6 完成多个可恢复子范围，簇 4、7 与共享调用收口仍待做 |
 | P4 耦合点 | 提前并行 | §6 第 1–8 条已处理；第 9 条随簇 3、4 处理，第 10 条按计划保持 |
 | P5 目录归位 | 未开始 | 天空岛迁移与注入占位清理 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-最近已提交：`9667fdb9`（P3 簇 2 通关与掉落事件，簇 5 撤离 / 奖励目录，簇 6 图鉴书库存）；下一动作是簇 3 Mode D 共用物品池与宿主状态提取。真实游戏目录尚未部署。
+续接基点：`5df5fbc0`（补齐撤离回归与迁移记录）。2026-09-25 新窗口已接续原线程未提交改动，完成 Mode D 主体与共用配装服务；丧尸波次控制和 Integration 场景生命周期的遗留提取进入同一验证树。下一动作是簇 4 Mode E/F 及簇 5、6 余项。最新提交号以 `git log -1` 为准。真实游戏目录尚未部署。
 
 ## P0 基线（2026-09-24）
 
@@ -110,6 +110,14 @@
 - 报箱与遗种巢各持一个 `BuildingRestoreCore`；核心承担两帧等待、请求合并、等待后场景句柄读取、Unity 假 null、实例 ID 缓存、取消与 `finally`。两个构建器仍提供身份、修复判据、装配与管理器存在判据，原清理时序保持。新 `BuildingRestoreCore` 执行回归覆盖两个 owner、等待期间切图、重复请求、取消与旧请求迟到收尾、销毁对象、单个装配异常后的重试；`ContentBuildingOwnership` 继续通过。相关覆盖表与两篇 repowiki 专题已更新。
 - `--changed-only` 守卫 203 PASS / 0 FAIL；五个修改的守卫均作破坏转红并按 SHA-256 验证原字节还原。首次全量回归 57 PASS / 3 FAIL，原因是三个夹具随生产追踪器链接的同名记录替身重复定义；删除替身后全量 60 PASS / 0 FAIL。基线红项 0，SKIP 0。结果留在忽略的 `Build/runtime-regressions/`，P2 副本留在 `Build/migration/`。
 - 隔离正式构建 `Build succeeded!`，Dev 标识缺席，DLL SHA-256 `4786D683A6781F73BDCCC16F89FC9AFD9F2F33E2947B0FFE8E902435AEE67388`，与隔离部署副本一致。隔离 Dev 构建 `Build succeeded!`，Dev 标识在位，SHA-256 `B1FD48544858D15C20649E2D202C8859770B8403307FF9B92C97D27D065C8AAF`，与隔离部署副本一致；两次均通过 72 bundle 清单。未启动游戏，L3 待 owner。
+
+## 2026-09-25 新窗口续接：Mode D 主体与共享配装（COMPAT）
+
+- `ModeDRuntimeModule` 的同一注册实例接管启停、敌池扫描、预设选择、波次生成、死亡结案、完整性检查、自动下一波及路牌状态。`ModeDItemPool` 接管 D/E/F 共用配装、分帧物化计划、末次武器、品质分桶和全局掉落；装配时只绑定原候选目录及配置、征程、候选过滤查询。`ModeEntryInventory` 承接三种模式共用的裸装 / 背包检查。保留旧 API、跨模式入场协调及原 D/Arena 共用完整性时钟，后者随簇 4/7 收口，不改变调度位置。
+- 续接树包含原线程留下的 `ZombieModeRuntimeModule_WaveController` 和 `BossRushIntegrationRuntimeModule_SceneLifecycle` 提取。Mode D 与上述叶子的实际业务方法都已登记编译清单。编译清单 1,088 源、导航 47 模块；宿主 partial 从上一检查点 177 文件 / 71,168 行降到 175 文件 / 65,411 行，预算同步降到实测值。
+- L2：全量执行回归 69 PASS / 0 FAIL / 0 SKIP。`AuditModeLifecycle` 增加直接链接的 Mode D 波次结案覆盖，验证迟到结果拒绝、等齐生成、活敌阻塞、死敌清理与完成幂等；稀疏副本去掉等齐生成的判断后在对应断言失败，生产文件 SHA-256 按字节还原。12 项本窗口涉及的守卫完成定点破坏转红和字节还原。`LatestPlayerLogRegressionGuard` 首次破坏未触及其 token / 顺序判据而保持绿，改用破坏登记参数后转红；未修改断言求红。反向验证记录在忽略的 `Build/migration/continue-moded-negative.json` 与 `continue-moded-runtime-negative.json`。
+- 全量守卫首轮 678 PASS / 2 FAIL，分别为 partial 清单未下调和配装计划仍按宿主私有类型定位；同步真实新结构后全量复跑 680 PASS / 0 FAIL / 0 known-red。编译清单、模块索引、GameplayCoverage、repowiki 引用检查通过。正式和 Dev 隔离 Windows 构建均 `Build succeeded!`，72 bundle 清单通过；正式 Dev 标识缺席，SHA-256 `2692C1DBE7C81EC431E2CCEFFF29EB2A2B2D59C9BA4CDD56609CE56B903E8F6F`；Dev 标识在位，SHA-256 `F584F3FBAC5DECA1ABDA3074C54B2247FA9F9D8DD5314399CD82BB132F625489`。两种 DLL 各自与隔离部署副本哈希一致，当前 `Build/BossRush.dll` 为正式配置。
+- 未取得本轮 L3。Mode D 验收：从路牌进入白手起家，开始首波并完成一波，观察敌人数、击杀后下一波入口及自动倒计时；生成中退出再重入，观察是否有迟到敌人 / 奖励；死亡退出后回基地再进入 E/F，检查开局枪械、弹药及医疗品。生成未结案却推进、敌人不敌对、重复结算、跨局实体残留或共享配装缺失均不合格。
 
 ## 未完成项
 

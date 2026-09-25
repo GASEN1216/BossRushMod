@@ -12,7 +12,7 @@ POLLUTION_PARTS = [
 ]
 BOSS = Path("ZombieMode/ZombieModeBossController.cs")
 BOSS_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
-WAVE = Path("ZombieMode/ZombieModeWaveController.cs")
+WAVE = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 
 
 def fail(message: str) -> int:
@@ -82,6 +82,8 @@ def main() -> int:
         return fail("safe zone player attack handler not found")
     if "damageInfo.isFromBuffOrEffect" not in stealth_break:
         return fail("safe zone player attack handler must ignore internal effect/self-source damage")
+    if "owner.IsZombieModePlayerInsideActiveSafeZoneForWaveRuntimeModule()" not in stealth_break:
+        return fail("safe zone attack cancellation must query the host player-presence bridge")
 
     runtime = boss[boss.find("public sealed class ZombieModeAreaTickRuntime"):]
     for token in [

@@ -8,7 +8,7 @@ import sys
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
+WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 RECOVERY = Path("Utilities/EnemyRecoveryMonitor.cs")
 REWARD_PARTS = [
@@ -95,8 +95,8 @@ def main() -> int:
     if not pressure_target:
         return fail("GetZombieModeAmbientPressureTarget not found")
     for token in [
-        "CurrentWaveKillTarget - zombieModeRunState.CurrentWaveKills",
-        "GetZombieModePreparationPressureTarget(zombieModeRunState.CurrentWave + 1)",
+        "CurrentWaveKillTarget - runState.CurrentWaveKills",
+        "GetZombieModePreparationPressureTarget(runState.CurrentWave + 1)",
         "remainingToKill * ZombieModeTuning.NormalWavePressurePerRemainingKill",
         "target = Mathf.Min(target, ebbTarget);",
         "return GetZombieModePreparationPressureTarget(pacingWave);",
@@ -122,8 +122,8 @@ def main() -> int:
     if not tick:
         return fail("TickZombieModeWaveController not found")
     for token in [
-        "TickZombieModeAmbientZombiePressure(zombieModeRunState.RunId, deltaTime);",
-        "ZombieModePhaseGuards.AllowsBeacon(zombieModeRunState.CombatPhase)",
+        "TickZombieModeAmbientZombiePressure(runState.RunId, deltaTime);",
+        "ZombieModePhaseGuards.AllowsBeacon(runState.CombatPhase)",
     ]:
         result = require(tick, token, "preparation phases must continue maintaining ambient zombies")
         if result:
@@ -133,7 +133,7 @@ def main() -> int:
     if not begin_prep:
         return fail("BeginZombieModePreparation not found")
     for token in [
-        "CleanupZombieModeEnemiesNearPlayerSafeZone(runId, \"BeginPreparation\");",
+        "owner.CleanupZombieModeEnemiesNearPlayerSafeZoneForWaveRuntimeModule(runId, \"BeginPreparation\");",
         "EnsureZombieModeAmbientZombiePopulation(runId);",
     ]:
         result = require(begin_prep, token, "preparation start must clear the immediate safe-zone radius and refill ambient zombies")
@@ -144,7 +144,7 @@ def main() -> int:
     if not ambient_tick:
         return fail("TickZombieModeAmbientZombiePressure not found")
     for token in [
-        "IsZombieModeAmbientZombieSpawnPhase(zombieModeRunState.CombatPhase)",
+        "IsZombieModeAmbientZombieSpawnPhase(runState.CombatPhase)",
         "ReconcileZombieModeLivingEnemyCounts(runId);",
         "SpawnZombieModeWaveAcrossMapAsync(runId, spawnCount, false).Forget();",
     ]:
@@ -160,7 +160,7 @@ def main() -> int:
 
     result = require(
         complete_wave,
-        "CleanupZombieModeEnemiesNearPlayerSafeZone(runId, \"CompleteWave\");",
+        "owner.CleanupZombieModeEnemiesNearPlayerSafeZoneForWaveRuntimeModule(runId, \"CompleteWave\");",
         "wave completion must immediately clear only the player safe-zone radius")
     if result:
         return result
@@ -204,11 +204,11 @@ def main() -> int:
     if not reconcile:
         return fail("ReconcileZombieModeLivingEnemyCounts not found")
     for token in [
-        "CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, true)",
+        "owner.CollectZombieModeRuntimeEnemyMarkersForWaveRuntimeModule(runId, waveEnemyMarkerScratch, true)",
         "!marker.IsBoss",
-        "zombieModeRunState.LivingZombieCount = livingTotal;",
-        "zombieModeRunState.LivingNormalZombieCount = livingNormal;",
-        "zombieModeEnemyMarkerScratch.Clear();",
+        "runState.LivingZombieCount = livingTotal;",
+        "runState.LivingNormalZombieCount = livingNormal;",
+        "waveEnemyMarkerScratch.Clear();",
     ]:
         result = require(reconcile, token, "periodic pressure must repair stale living counters without allocations")
         if result:
@@ -219,7 +219,7 @@ def main() -> int:
         return fail("TryGetNextZombieModeMapSpawnPosition not found")
     result = require(
         next_position,
-        "return TryGetZombieModeReliableSpawnPosition(out position);",
+        "return owner.TryGetZombieModeReliableSpawnPositionForWaveRuntimeModule(out position);",
         "map pressure spawns must reuse the reliable shared selector")
     if result:
         return result
@@ -280,7 +280,7 @@ def main() -> int:
             return result
 
     dead = extract_method(waves, "HandleZombieModeHealthDead")
-    result = require(dead, "zombieModeRunState.LivingNormalZombieCount = Mathf.Max(0, zombieModeRunState.LivingNormalZombieCount - 1);", "normal zombie death must free a cap slot")
+    result = require(dead, "runState.LivingNormalZombieCount = Mathf.Max(0, runState.LivingNormalZombieCount - 1);", "normal zombie death must free a cap slot")
     if result:
         return result
 

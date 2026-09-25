@@ -29,7 +29,7 @@ POLLUTION_PARTS = [
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-WAVE = Path("ZombieMode/ZombieModeWaveController.cs")
+WAVE = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
@@ -112,11 +112,13 @@ def main() -> int:
 
     for token, text, label in [
         ("PruneZombieModeRunOnlyEnemyRecords", cleanup, "run-only enemy pruning helper"),
-        ("PruneZombieModeRunOnlyEnemyRecords(runId);", wave, "death pruning call"),
         ("PruneZombieModeRunOnlyEnemyRecords(runId);", cleanup, "runtime cleanup pruning call"),
     ]:
         if token not in text:
             return fail("ZombieModeReviewFixGuard: missing " + label + " -> " + token)
+    death_handler = extract_method(wave, "HandleZombieModeHealthDead")
+    if death_handler is None or death_handler.count("PruneZombieModeRunOnlyEnemyRecords(runId);") != 2:
+        return fail("ZombieModeReviewFixGuard: boss and normal death paths must both prune run-only enemy records")
 
     for token in [
         "RecycleZombieModeFarEnemiesForPerformance",

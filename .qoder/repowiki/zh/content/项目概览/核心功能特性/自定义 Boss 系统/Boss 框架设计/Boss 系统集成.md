@@ -5,6 +5,7 @@
 - [ModBehaviour.cs](file://ModBehaviour.cs)
 - [BossRushIntegration.cs](file://Integration/BossRushIntegration.cs)
 - [BossRushIntegrationRuntimeModule_Initialization.cs](file://Integration/BossRushIntegrationRuntimeModule_Initialization.cs)
+- [BossRushIntegrationRuntimeModule_SceneLifecycle.cs](file://Integration/BossRushIntegrationRuntimeModule_SceneLifecycle.cs)
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
 - [LootAndRewards.cs](file://LootAndRewards/LootAndRewards.cs)
@@ -70,7 +71,7 @@ MB --> UIHB["ModeEUiAndHealthBars<br/>血条/名称更新"]
 - 掉落与奖励：拦截 Boss 死亡掉落、随机品质加成、通关奖励箱、无间炼狱现金池与里程碑奖励。
 - 成就追踪：定义成就、解锁判定、奖励发放、存档持久化与事件广播。
 - 地图配置：从 JSON 加载地图的刷新点、默认路牌位置、北方向、排序等；提供查询接口。
-- 系统集成：`IntegrationRuntimeModule` 持有动态物品初始化、本地化注入、自定义武器运行时登记、配置回调和商店聚合注入；`BossRushIntegration.cs` 保留兼容入口与场景协调。
+- 系统集成：`IntegrationRuntimeModule` 持有动态物品初始化、本地化注入、自定义武器运行时登记、配置回调、商店聚合注入、许愿奖励池预热调度与普通模式公共 NPC 延迟生成协程；`BossRushIntegration_StartAndScene.cs` 保留生命周期和跨模式场景协调，并在原场景分支中调度模块协程。
 - UI 与血条：玩家与目标名称、血条显示刷新、语言切换同步。
 
 章节来源
@@ -79,6 +80,7 @@ MB --> UIHB["ModeEUiAndHealthBars<br/>血条/名称更新"]
 - [BossRushAchievementManager.cs:46-235](file://Achievement/BossRushAchievementManager.cs#L46-L235)
 - [MapSpawnPointRegistry.cs:44-88](file://Common/MapConfig/MapSpawnPointRegistry.cs#L44-L88)
 - [BossRushIntegrationRuntimeModule_Initialization.cs](file://Integration/BossRushIntegrationRuntimeModule_Initialization.cs)
+- [BossRushIntegrationRuntimeModule_SceneLifecycle.cs](file://Integration/BossRushIntegrationRuntimeModule_SceneLifecycle.cs)
 - [ModeEUiAndHealthBars.cs:22-411](file://ModeE/ModeEUiAndHealthBars.cs#L22-L411)
 
 ## 架构总览

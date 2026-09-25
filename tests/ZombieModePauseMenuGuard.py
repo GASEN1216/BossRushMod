@@ -55,7 +55,7 @@ def main() -> int:
     if not re.search(r"canvas\.enabled\s*=\s*!hidden", hud_text):
         return fail("ZombieModePauseMenuGuard: HUD canvas is not disabled when PauseMenu is shown")
 
-    wave_text = Path("ZombieMode/ZombieModeWaveController.cs").read_text(encoding="utf-8")
+    wave_text = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs").read_text(encoding="utf-8")
     if "PreparationTimer -= Time.unscaledDeltaTime" in wave_text:
         return fail("ZombieModePauseMenuGuard: preparation countdown bypasses caller pause gate")
     if "PreparationTimer -= deltaTime" not in wave_text:

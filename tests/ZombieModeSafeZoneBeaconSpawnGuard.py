@@ -6,7 +6,7 @@ MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
-WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
+WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 
 
 def fail(message):
@@ -84,7 +84,7 @@ def main():
     )
     require(
         waves,
-        "zombieModeRunState.NextSpawnPointIndex = 0;",
+        "runState.NextSpawnPointIndex = 0;",
         "wave start must reset the map-point round-robin index",
     )
     require(

@@ -5,7 +5,7 @@ import sys
 
 
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
-WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
+WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
@@ -43,10 +43,10 @@ def main() -> int:
         return fail("expired candidates must check ownership even between throttled pickup scans")
     if "ownedItem.InInventory != null || ownedItem.PluggedIntoSlot != null" not in cleanup[rescan:destroy]:
         return fail("pre-destroy ownership protection must cover inventory and equipped slots")
-    cleanup_token = "CleanupZombieModeExpiredDropCandidates(true);"
+    cleanup_token = "owner.CleanupZombieModeExpiredDropCandidatesForWaveRuntimeModule(true);"
     if cleanup_token not in waves:
         return fail("next wave start does not force ordinary drop cleanup")
-    start_index = waves.index("private void StartZombieModeWave")
+    start_index = waves.index("internal void StartZombieModeWave")
     complete_index = waves.index("private void CompleteZombieModeWave")
     if waves.find(cleanup_token, start_index, complete_index) < 0:
         return fail("ordinary drop cleanup is not at next wave start")

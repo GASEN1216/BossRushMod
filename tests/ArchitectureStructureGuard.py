@@ -7,7 +7,7 @@ import sys
 
 COMPILE = Path("compile_official.bat")
 MOD = Path("ModBehaviour.cs")
-MODED_WAVES = Path("ModeD/ModeDWaves.cs")
+MODED_WAVES = Path("ModeD/ModeDRuntimeModule_Waves.cs")
 MODED_RUNTIME_MODULE = Path("ModeD/ModeDRuntimeModule.cs")
 ALWAYS_ON_RUNTIME_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
 PLAYER_LIFECYCLE_RUNTIME_HOOKS = Path("Utilities/PlayerLifecycleRuntimeHooks.cs")
@@ -161,8 +161,11 @@ def main() -> int:
     registration_text = Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8", errors="ignore")
     if "runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing ArchitectureSentinelRuntimeModule")
-    if "runtimeModuleHost.Register(new ModeDRuntimeModule());" not in registration_text:
-        return fail("ArchitectureStructureGuard: runtime module registration missing ModeDRuntimeModule")
+    if (
+        "private readonly ModeDRuntimeModule modeDRuntime = new ModeDRuntimeModule();" not in registration_text
+        or "runtimeModuleHost.Register(modeDRuntime);" not in registration_text
+    ):
+        return fail("ArchitectureStructureGuard: registered Mode D runtime is not the host state owner")
     if "runtimeModuleHost.Register(new DebugToolsRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing DebugToolsRuntimeModule")
     if "runtimeModuleHost.Register(new AchievementRuntimeModule());" not in registration_text:
@@ -191,7 +194,7 @@ def main() -> int:
             return fail("ArchitectureStructureGuard: runtime module registration missing " + module_name)
 
     mode_d_runtime_module = MODED_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
-    if "owner.TickModeDIntegrity(deltaTime);" not in mode_d_runtime_module:
+    if "TickModeDIntegrity(deltaTime);" not in mode_d_runtime_module:
         return fail("ArchitectureStructureGuard: ModeDRuntimeModule must route Mode D integrity ticking through owner wrapper")
 
     mode_d_waves = MODED_WAVES.read_text(encoding="utf-8", errors="ignore")

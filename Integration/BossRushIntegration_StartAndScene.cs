@@ -276,20 +276,6 @@ namespace BossRush
             ObjectCache.ResetStaticCaches();
         }
 
-        /// <summary>
-        /// 商店购买事件处理：检测玩家是否大量购买 ID 105 物品（进货行为）
-        /// 仅在 BossRush 加油站（ammoShop）中生效
-        /// </summary>
-        private void OnItemPurchased_Integration(StockShop shop, Item item)
-        {
-            bossRushIntegrationRuntime.HandleItemPurchased_Integration(shop, item);
-        }
-
-        private void ScheduleWishRewardPoolWarmup()
-        {
-            StartCoroutine(WishFountainService.WarmupWishRewardPoolAfterDelay());
-        }
-
         private void OnSceneLoaded_Integration(Scene scene, LoadSceneMode mode)
         {
             DevLog("[BossRush] scene loaded: " + scene.name);
@@ -518,7 +504,7 @@ namespace BossRush
 
                     if (ShouldSpawnCommonNPCsInScene(scene.name))
                     {
-                        StartCoroutine(DelayedSpawnCommonNPCsInNormalMode(scene.name));
+                        bossRushIntegrationRuntime.ScheduleDelayedSpawnCommonNPCsInNormalMode(scene.name);
                     }
 
                     ScheduleRestoreFollowingSpouse(scene.name, "NormalSceneLoaded");
@@ -535,52 +521,9 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 普通模式下延迟生成公共NPC
-        /// 等待场景完全初始化后再生成，确保地面碰撞体等已加载
-        /// </summary>
-        private System.Collections.IEnumerator DelayedSpawnCommonNPCsInNormalMode(string sceneName)
+        internal void SpawnCommonNPCsForIntegrationRuntimeModule(string context)
         {
-            // 等待场景完全加载
-            const float maxWait = 10f;
-            const float interval = 0.2f;
-            float elapsed = 0f;
-
-            while (elapsed < maxWait)
-            {
-                bool mainExists = ReadMainExistsWithWarning("DelayedSpawnCommonNPCsInNormalMode");
-                bool levelInited = ReadLevelInitedWithWarning("DelayedSpawnCommonNPCsInNormalMode");
-
-                if (mainExists && levelInited)
-                {
-                    break;
-                }
-
-                yield return new WaitForSeconds(interval);
-                elapsed += interval;
-            }
-
-            // 额外等待确保场景物理碰撞体已加载
-            yield return new WaitForSeconds(0.5f);
-
-            // 再次检查是否仍在目标场景（玩家可能已切换场景）
-            string currentScene = ReadActiveSceneNameWithWarning("DelayedSpawnCommonNPCsInNormalMode");
-
-            if (currentScene != sceneName)
-            {
-                DevLog("[NPCSpawn] 场景已切换，取消普通模式公共NPC生成");
-                yield break;
-            }
-
-            // 检查是否已进入 BossRush 模式（玩家可能在等待期间启动了 BossRush）
-            if (ShouldSuppressBaseNpcSpawnForCurrentMode())
-            {
-                DevLog("[NPCSpawn] 已进入 BossRush 模式，跳过普通模式公共NPC生成");
-                yield break;
-            }
-
-            SpawnCommonNPCs("普通模式场景初始化完成");
-            ScheduleRestoreFollowingSpouse(sceneName, "普通模式场景初始化完成");
+            SpawnCommonNPCs(context);
         }
 
     }

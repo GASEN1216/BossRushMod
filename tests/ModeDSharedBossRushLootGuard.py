@@ -52,7 +52,7 @@ def main() -> int:
         if snippet not in text:
             return fail("ModeDSharedBossRushLootGuard: missing snippet -> " + snippet)
 
-    equip_body = extract_method_body(text, "public void EquipEnemyForModeD(CharacterMainControl enemy, int waveIndex, float enemyHealth, bool isBoss = false)")
+    equip_body = extract_method_body(text, "internal void EquipEnemyForModeD(CharacterMainControl enemy, int waveIndex, float enemyHealth, bool isBoss = false)")
     if equip_body is None:
         return fail("ModeDSharedBossRushLootGuard: missing EquipEnemyForModeD body")
 

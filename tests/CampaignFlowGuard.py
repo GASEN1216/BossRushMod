@@ -27,8 +27,10 @@ def check():
             errors.append(f"{path} / {signature}: 缺少 {statement}")
 
     runtime = "Campaign/CampaignRuntimeModule.cs"
-    require("ModeD/ModeDEquipment_StarterKit.cs", "private void GivePlayerStarterKit()",
-            "if (UnityEngine.Random.value > 0.6f || (modeDActive && IsCampaignConfiguredEnabled() && CampaignObjectiveTracker.NeedsMeleeStarterKit())) { GiveRandomMeleeWeapon(main); }")
+    require("ModeD/ModeDEquipment_StarterKit.cs", "internal void GivePlayerStarterKit()",
+            "if (UnityEngine.Random.value > 0.6f || needsMeleeStarterKit()) { GiveRandomMeleeWeapon(main); }")
+    require("ModeD/ModeDEquipmentHostBridge.cs", "private void BindModeDItemPoolQueries()",
+            "() => modeDActive && IsCampaignConfiguredEnabled() && CampaignObjectiveTracker.NeedsMeleeStarterKit(),")
     require("Campaign/CampaignBoardInteractable.cs", "protected override void OnInteractCompleted()", "ModBehaviour.Instance.ShowMessage(L10n.T(")
     require("Campaign/CampaignBoardBuilder.cs", "private void InitCampaignBoardBuilding(bool isEarlyInit)", "if (presence == CampaignBoardPresence.Unknown)")
     require(runtime, "public override void OnSceneLoaded(", "CampaignObjectiveTracker.ResetSession();")
@@ -76,7 +78,7 @@ def check():
         ("Utilities/PlayerLifecycleRuntimeHooks.cs", "internal void RegisterPlayerLifecycleRuntimeEvents()", "Health.OnDead += CampaignObjectiveCollector.OnGlobalDead;"),
         ("Utilities/PlayerLifecycleRuntimeHooks.cs", "internal void RegisterPlayerLifecycleRuntimeEvents()", "Health.OnHurt += CampaignObjectiveCollector.OnGlobalHurt;"),
         ("WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs", "internal async void OnAllEnemiesDefeated_LootAndRewards()", "owner.NotifyCampaignStandardCleared();"),
-        ("ModeD/ModeDWaves.cs", "private void OnModeDWaveComplete()", "NotifyCampaignModeDWaveComplete(modeDWaveIndex);"),
+        ("ModeD/ModeDRuntimeModule_Waves.cs", "internal void OnModeDWaveComplete()", "NotifyCampaignModeDWaveComplete(modeDWaveIndex);"),
         ("ModeF/ModeFExtraction.cs", "private void OnModeFExtractionSuccess()", "NotifyCampaignModeFExtracted();"),
         ("ZombieMode/ZombieModeRuntimeModule_Extraction.cs", "private void CompleteZombieModeExtractionSuccess(", "owner.NotifyCampaignZombieExtracted();"),
     ):

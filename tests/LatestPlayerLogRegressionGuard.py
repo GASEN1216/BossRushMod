@@ -93,7 +93,7 @@ def main() -> int:
     if not (0 <= scheduler_at < waves_at):
         errors.append("共享刷怪后处理队列仍被 WavesArena early-return 门控")
 
-    mode_d_waves = read("ModeD/ModeDWaves.cs")
+    mode_d_waves = read("ModeD/ModeDRuntimeModule_Waves.cs")
     for token in ("Team.IsEnemy(Teams.player, character.Team)",
                   "character.SetTeam(Teams.wolf)", "confirmedHostile",
                   "modeDCurrentWaveEnemies.Add(character)"):
@@ -103,8 +103,8 @@ def main() -> int:
             < mode_d_waves.find("modeDCurrentWaveEnemies.Add(character)")):
         errors.append("Mode D 必须在登记本波敌人前完成敌对性修正")
 
-    mode_d = read("ModeD/ModeD.cs")
-    for token in ("CleanupModeDWaveEnemiesOnExit()", "UnregisterEnemyRecovery(enemy)",
+    mode_d = read("ModeD/ModeDRuntimeModule_Lifecycle.cs")
+    for token in ("CleanupModeDWaveEnemiesOnExit()", "owner.UnregisterEnemyRecoveryForArena(enemy)",
                   "enemy.dropBoxOnDead = false", "Destroy(enemy.gameObject)"):
         if token not in mode_d:
             errors.append("Mode D 退出实体清理缺失: " + token)

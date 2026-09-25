@@ -9,6 +9,9 @@ import sys
 
 MODED = Path("ModeD/ModeD.cs")
 EQUIPMENT = Path("ModeD/ModeDEquipment.cs")
+ITEM_POOL = Path("ModeD/ModeDItemPool.cs")
+ITEM_POOL_QUALITY = Path("ModeD/ModeDItemPool_Quality.cs")
+RUNTIME = Path("ModeD/ModeDRuntimeModule.cs")
 
 
 def fail(message: str) -> int:
@@ -41,6 +44,14 @@ def extract_method_body(text: str, signature: str) -> str | None:
 def main() -> int:
     mode_d_text = MODED.read_text(encoding="utf-8")
     equipment_text = EQUIPMENT.read_text(encoding="utf-8")
+    item_pool_text = ITEM_POOL.read_text(encoding="utf-8")
+    quality_text = ITEM_POOL_QUALITY.read_text(encoding="utf-8")
+    runtime_text = RUNTIME.read_text(encoding="utf-8")
+
+    if "internal readonly ModeDItemPool ItemPool = new ModeDItemPool();" not in runtime_text:
+        return fail("ModeDLegacyPerformanceGuard: Mode D runtime does not own the shared item pool service")
+    if "return modeDRuntime.ItemPool;" not in mode_d_text:
+        return fail("ModeDLegacyPerformanceGuard: host bridge does not use the registered Mode D pool")
 
     required_mode_d_snippets = [
         "modeDArmortPoolByQuality",
@@ -58,29 +69,35 @@ def main() -> int:
     ]
 
     for snippet in required_mode_d_snippets:
-        if snippet not in mode_d_text:
+        if snippet not in item_pool_text:
             return fail("ModeDLegacyPerformanceGuard: missing ModeD bucket cache snippet -> " + snippet)
 
-    required_equipment_snippets = [
+    for bucket in ("Armort", "Helmet", "Ammo", "Medical", "Totem", "Mask", "Accessory"):
+        if "readonly Dictionary<int, List<int>> modeD" + bucket + "PoolByQuality" not in item_pool_text:
+            return fail("ModeDLegacyPerformanceGuard: item pool does not own " + bucket + " bucket")
+
+    for snippet in (
         "modeDAccessoryPoolByQuality",
         "RebuildModeDQualityBuckets(modeDAccessoryPool, modeDAccessoryPoolByQuality);",
-        "TryGetRandomItemByExactQualityBucket(",
-        "modeDAmmoPoolByQuality",
-    ]
+    ):
+        if snippet not in item_pool_text:
+            return fail("ModeDLegacyPerformanceGuard: missing shared item pool cache -> " + snippet)
 
-    for snippet in required_equipment_snippets:
+    for snippet in ("TryGetRandomItemByExactQualityBucket(", "modeDAmmoPoolByQuality"):
         if snippet not in equipment_text:
             return fail("ModeDLegacyPerformanceGuard: missing ModeDEquipment bucket usage snippet -> " + snippet)
 
     exact_quality_body = extract_method_body(
-        equipment_text,
-        "private int TryGetRandomItemByExactQualityBucket(",
+        quality_text,
+        "internal int TryGetRandomItemByExactQualityBucket(",
     )
     if exact_quality_body is None:
         return fail("ModeDLegacyPerformanceGuard: missing exact-quality bucket helper body")
 
     if "GetMetaData" in exact_quality_body:
         return fail("ModeDLegacyPerformanceGuard: exact-quality helper still scans metadata at runtime")
+    if "internal sealed partial class ModeDItemPool" not in equipment_text or "TryGetRandomItemByExactQualityBucket(modeDAmmoPoolByQuality," not in equipment_text:
+        return fail("ModeDLegacyPerformanceGuard: equipment path bypasses the shared quality helper")
 
     ammo_body = extract_method_body(
         equipment_text,

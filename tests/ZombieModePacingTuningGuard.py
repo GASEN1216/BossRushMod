@@ -4,7 +4,7 @@ import sys
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
-WAVE_CONTROLLER = Path("ZombieMode/ZombieModeWaveController.cs")
+WAVE_CONTROLLER = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 POLLUTION = Path("ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs")
 HUD = Path("ZombieMode/ZombieModeHudController.cs")
 HUD_RUNTIME = Path("ZombieMode/ZombieModeRuntimeModule_Hud.cs")
@@ -106,7 +106,7 @@ def main() -> int:
     if "ShowZombieModeRewardSelection(runId, bossNode, restEditorExpanded);" not in host_bridge_text:
         return fail("RuntimeModule reward-selection bridge must preserve the existing UI arguments")
 
-    if "zombieModeRunState.SelectedPreparationDurationSeconds = 0;" in wave_text:
+    if "runState.SelectedPreparationDurationSeconds = 0;" in wave_text:
         return fail("player-selected preparation duration must persist across waves")
 
     for required in [
@@ -167,7 +167,7 @@ def main() -> int:
         "ZombieModeTuning.WaveSpeedMultiplierStart +",
         "Mathf.Max(0, wave - 1) * ZombieModeTuning.WaveSpeedMultiplierPerWave",
         "ZombieModeTuning.WaveSpeedMultiplierMaximum",
-        "zombieModeRunState.CurrentWaveBossesRemaining = GetZombieModeBossCountForWave(zombieModeRunState.CurrentWave);",
+        "runState.CurrentWaveBossesRemaining = GetZombieModeBossCountForWave(runState.CurrentWave);",
         "return ZombieModeTuning.BossWaveCountBase +",
         "GetZombieModeWaveCycleIndex(wave) * ZombieModeTuning.BossWaveCountPerCycle;",
     ]:
@@ -175,10 +175,10 @@ def main() -> int:
             return fail("wave controller does not consume tidal pacing curve -> " + required)
 
     for required in [
-        "SpawnZombieModeBossWaveAsync(runId, zombieModeRunState.CurrentWaveBossesRemaining).Forget();",
-        "zombieModeRunState.CurrentWaveBossesRemaining = Mathf.Max(0, zombieModeRunState.CurrentWaveBossesRemaining - 1);",
-        "zombieModeRunState.CurrentWaveBossesRemaining <= 0",
-        "TrySpawnZombieModeBossDrop(runId, marker, character.transform.position);",
+        "SpawnZombieModeBossWaveAsync(runId, runState.CurrentWaveBossesRemaining).Forget();",
+        "runState.CurrentWaveBossesRemaining = Mathf.Max(0, runState.CurrentWaveBossesRemaining - 1);",
+        "runState.CurrentWaveBossesRemaining <= 0",
+        "owner.TrySpawnZombieModeBossDropForWaveRuntimeModule(runId, marker, character.transform.position);",
     ]:
         if required not in wave_text:
             return fail("multi-Boss waves must settle all Bosses and preserve per-Boss drops -> " + required)

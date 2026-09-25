@@ -12,7 +12,7 @@ namespace BossRush
             officialQuestRuntime = new OfficialQuestRuntimeModule();
             runtimeModuleHost.Register(officialQuestRuntime);
 
-            runtimeModuleHost.Register(new ModeDRuntimeModule());
+            runtimeModuleHost.Register(modeDRuntime);
             runtimeModuleHost.Register(new DebugToolsRuntimeModule());
             runtimeModuleHost.Register(new SkyIslandRuntimeModule());
             runtimeModuleHost.Register(new AchievementRuntimeModule());
@@ -23,6 +23,7 @@ namespace BossRush
             runtimeModuleHost.Register(goblinNpcRuntime);
             wavesArenaRuntime = new WavesArenaRuntimeModule();
             runtimeModuleHost.Register(wavesArenaRuntime);
+            BindModeDItemPoolQueries();
             runtimeModuleHost.Register(new ModeERuntimeModule());
             modeFRuntime = new ModeFRuntimeModule();
             runtimeModuleHost.Register(modeFRuntime);
@@ -96,6 +97,7 @@ namespace BossRush
         }
 
         /// <summary>官方任务投影核心唯一运行时实例。</summary>
+        private readonly ModeDRuntimeModule modeDRuntime = new ModeDRuntimeModule();
         private WavesArenaRuntimeModule wavesArenaRuntime;
         private CourierNpcRuntimeModule courierNpcRuntime;
         private ModeFRuntimeModule modeFRuntime;

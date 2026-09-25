@@ -10,6 +10,7 @@
 // ============================================================================
 
 using System;
+using SharedModeEnemyEquipmentMaterializationPlan = BossRush.ModeDItemPool.SharedModeEnemyEquipmentMaterializationPlan;
 using System.Collections.Generic;
 using UnityEngine;
 using Cysharp.Threading.Tasks;

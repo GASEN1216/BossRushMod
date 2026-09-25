@@ -8,6 +8,7 @@ import sys
 
 
 MODED_WAVES = Path("ModeD/ModeDWaves.cs")
+MODED_SELECTION = Path("ModeD/ModeDRuntimeModule_Selection.cs")
 MODEE_BATTLE = Path("ModeE/ModeEBattle.cs")
 MODEF_RESPAWN = Path("ModeF/ModeFRespawn.cs")
 
@@ -41,6 +42,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 def main() -> int:
     mode_d_text = MODED_WAVES.read_text(encoding="utf-8")
+    mode_d_selection = MODED_SELECTION.read_text(encoding="utf-8")
     mode_e_text = MODEE_BATTLE.read_text(encoding="utf-8")
     mode_f_text = MODEF_RESPAWN.read_text(encoding="utf-8")
 
@@ -48,7 +50,11 @@ def main() -> int:
     if mode_d_body is None:
         return fail("ModeDEFBossFilterGuard: missing ModeD GetRandomBossPreset body")
 
-    if "GetFilteredEnemyPresets()" not in mode_d_body:
+    if "modeDRuntime.GetRandomBossPreset()" not in mode_d_body:
+        return fail("ModeDEFBossFilterGuard: ModeD boss picker does not call its runtime owner")
+
+    mode_d_production = extract_method_body(mode_d_selection, "internal EnemyPresetInfo GetRandomBossPreset()")
+    if mode_d_production is None or "owner.GetFilteredEnemyPresets()" not in mode_d_production:
         return fail("ModeDEFBossFilterGuard: ModeD GetRandomBossPreset does not use filtered boss presets")
 
     mode_e_body = extract_method_body(mode_e_text, "private void BuildModeEFactionPresetCaches()")

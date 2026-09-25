@@ -3,7 +3,7 @@ import sys
 
 
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-WAVE = Path("ZombieMode/ZombieModeWaveController.cs")
+WAVE = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 POLLUTION_PARTS = [
     Path("ZombieMode/ZombieModeRuntimeModule_Pollution.cs"),
@@ -112,12 +112,12 @@ def main() -> int:
 
         require(
             wave,
-            "() => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat",
+            "() => runState.CombatPhase == ZombieModeCombatPhase.Combat",
             "combat wave spawns must pass a combat-phase predicate",
         )
         require(
             wave,
-            "() => IsZombieModeAmbientZombieSpawnPhase(zombieModeRunState.CombatPhase)",
+            "() => IsZombieModeAmbientZombieSpawnPhase(runState.CombatPhase)",
             "ambient map spawns must pass the ambient-phase predicate through the await",
         )
         require(

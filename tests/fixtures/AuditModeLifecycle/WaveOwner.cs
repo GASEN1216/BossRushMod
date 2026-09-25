@@ -1,16 +1,24 @@
 using System;
-namespace UnityEngine { public struct Vector3 {} public class MonoBehaviour {} }
+namespace UnityEngine { public struct Vector3 {} public class MonoBehaviour {} public class Coroutine {} }
 namespace UnityEngine.SceneManagement {
  public struct Scene { public int handle; }
  public static class SceneManager { public static int Handle=1; public static Scene GetActiveScene(){return new Scene{handle=Handle};} }
 }
+namespace ItemStatsSystem { public sealed class Item {} }
 public sealed class Health { public bool IsDead; }
 public sealed class InteractableLootbox {}
+public sealed class CharacterRandomPreset {}
 public sealed class CharacterMainControl { public static CharacterMainControl Main; public Health Health=new Health(); }
 namespace BossRush {
  // This fixture links only the arena generation owner; loot event cleanup has its own guard.
  internal sealed partial class WavesArenaRuntimeModule { private void ReleaseBossRandomLootTrackingOnDestroy() {} }
  public class EnemyPresetInfo { public string name; }
+ internal sealed class ModeDItemPool {}
+ internal sealed partial class ModeDRuntimeModule {
+  internal int CompletionCalls;
+  private void TickModeDIntegrity(float deltaTime) {}
+  private void OnModeDWaveComplete() { CompletionCalls++; modeDWaveCompletePending=true; }
+ }
  internal class SceneRuntimeContext {}
  internal abstract class BossRushRuntimeModuleBase {
   public abstract string ModuleName {get;}
@@ -40,11 +48,20 @@ namespace BossRush {
    host.IsActive=false;var victory=WavesArenaRuntimeModule.CaptureValidity(host,false,false);Check(victory(),"victory continuation allowed with inactive combat");
    UnityEngine.SceneManagement.SceneManager.Handle++;Check(!victory(),"victory rejected after scene change");
    victory=WavesArenaRuntimeModule.CaptureValidity(host,false,false);module.OnDestroy();Check(!victory(),"host cleanup invalidates continuation");
-   var modeD=new ModeDRuntimeModule();modeD.OnAwake(host);host.IsModeDActive=true;host.ModeDWaveIndex=1;
+   var modeD=new ModeDRuntimeModule();modeD.OnAwake(host);modeD.modeDActive=true;modeD.modeDWaveIndex=1;
+   host.IsModeDActive=false;host.ModeDWaveIndex=99;
    var oldD=ModeDRuntimeModule.CaptureValidity(host,true);Check(oldD(),"Mode D current dispatch accepted");
-   ModeDRuntimeModule.Invalidate(host);host.IsModeDActive=false;Check(!oldD(),"Mode D ended queue rejected before next dispatch");
-   host.IsModeDActive=true;host.ModeDWaveIndex=1;var nextD=ModeDRuntimeModule.CaptureValidity(host,true);
+   ModeDRuntimeModule.Invalidate(host);modeD.modeDActive=false;Check(!oldD(),"Mode D ended queue rejected before next dispatch");
+   modeD.modeDActive=true;modeD.modeDWaveIndex=1;var nextD=ModeDRuntimeModule.CaptureValidity(host,true);
    Check(!oldD()&&nextD(),"Mode D reused wave 1 rejects old callbacks and automatic-next-wave task");
+   modeD.modeDExpectedEnemiesInCurrentWave=2;
+   modeD.ResolveModeDSpawnCount(99);Check(modeD.modeDSpawnResolvedInCurrentWave==0,"late Mode D spawn cannot settle the current wave");
+   modeD.ResolveModeDSpawnCount(1);Check(modeD.CompletionCalls==0,"empty Mode D wave waits for every spawn result");
+   var survivor=new CharacterMainControl();modeD.modeDCurrentWaveEnemies.Add(survivor);
+   modeD.ResolveModeDSpawnCount(1);Check(modeD.CompletionCalls==0,"resolved Mode D wave waits for living enemies");
+   survivor.Health.IsDead=true;modeD.TryResolveModeDWaveComplete();
+   Check(modeD.CompletionCalls==1&&modeD.modeDCurrentWaveEnemies.Count==0,"dead Mode D enemy is pruned before completing a fully resolved wave");
+   modeD.TryResolveModeDWaveComplete();Check(modeD.CompletionCalls==1,"pending Mode D completion is idempotent");
    modeD.OnSceneLoaded(new SceneRuntimeContext());Check(!nextD(),"Mode D same-scene reload invalidates queued work");
    nextD=ModeDRuntimeModule.CaptureValidity(host,true);modeD.OnDestroy();Check(!nextD(),"Mode D runtime destruction invalidates queued work");
   }

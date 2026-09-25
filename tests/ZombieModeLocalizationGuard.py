@@ -14,7 +14,7 @@ USAGE_FILES = [
     Path("ZombieMode/ZombieModeMapSelectionHelper.cs"),
     Path("ZombieMode/ZombieModeHudController.cs"),
     Path("ZombieMode/ZombieModeRuntimeModule_Hud.cs"),
-    Path("ZombieMode/ZombieModeWaveController.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs"),
     Path("ZombieMode/ZombieModeExtractionController.cs"),
     Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs"),
     Path("ZombieMode/ZombieModeRewards.cs"),

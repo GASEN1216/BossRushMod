@@ -458,7 +458,7 @@ internal sealed partial class ZombieModeRuntimeModule {
 }
 }'''
 execute('hud_runtime',[HERE/'HudRuntime.cs'],hud_fixture)
-execute('wave_owner',[HERE/'WaveOwner.cs',ROOT/'WavesArena/WavesArenaRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule.cs'])
+execute('wave_owner',[HERE/'WaveOwner.cs',ROOT/'WavesArena/WavesArenaRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule_WaveResolution.cs'])
 execute('milestone',[HERE/'Milestone.cs',ROOT/'LootAndRewards/InfiniteHellMilestoneDelivery.cs'])
 f3=ROOT/'DebugAndTools/F3GameplayValidationAutotestStory.cs'
 f3methods='\n'.join(member(f3,m) for m in ['private static bool TryReclaimAutotestItems(', 'private bool ClearAutotestSnapshotKey()'])

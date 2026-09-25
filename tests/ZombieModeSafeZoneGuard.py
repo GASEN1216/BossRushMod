@@ -6,7 +6,7 @@ MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 SAFE_ZONE = Path("ZombieMode/ZombieModeSafeZoneController.cs")
 EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
-WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
+WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 DEBUG_TOOLS = Path("DebugAndTools/DebugAndTools.cs")
 
@@ -135,7 +135,7 @@ def main() -> int:
             return fail("safe-zone NPC recycle must remove its run-only record before destroying the object")
 
     for snippet in [
-        "TickZombieModeSafeZone();",
+        "owner.TickZombieModeSafeZoneForRuntimeModule();",
         "if (AnyZombieModeSafeZoneActive)",
         "CleanupZombieModePreparationObjects(runId);",
     ]:
@@ -151,8 +151,8 @@ def main() -> int:
 
     for snippet in [
         "TryHandleZombieModeSafeZonePlayerAttack",
-        "!IsZombieModePlayerInsideActiveSafeZone()",
-        "ZombieModePhaseGuards.AllowsSafeZone(zombieModeRunState.CombatPhase)",
+        "!owner.IsZombieModePlayerInsideActiveSafeZoneForWaveRuntimeModule()",
+        "ZombieModePhaseGuards.AllowsSafeZone(runState.CombatPhase)",
         "CancelZombieModeSafeZone(runId, \"PlayerAttack\");",
         # 只有枪械/近战直伤取消安全区：手雷、投掷物与玩家来源的奖励弹道不算。
         "!IsZombieModeSafeZoneCancellingWeapon(damageInfo)",

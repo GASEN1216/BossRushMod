@@ -339,6 +339,7 @@ echo(Integration\BossRushIntegration.cs
 echo(Integration\BossRushIntegrationRuntimeModule.cs
 echo(Integration\BossRushIntegrationRuntimeModule_MapObjects.cs
 echo(Integration\BossRushIntegrationRuntimeModule_DeferredBootstrap.cs
+echo(Integration\BossRushIntegrationRuntimeModule_SceneLifecycle.cs
 echo(Integration\BossRushIntegrationRuntimeModule_WikiBook.cs
 echo(Integration\BossRushIntegrationRuntimeModule_CodexBook.cs
 echo(Integration\BossRushIntegrationRuntimeModule_BirthdayCake.cs
@@ -492,9 +493,20 @@ echo(Interactables\BossRushInteractables.cs
 echo(Interactables\BossRushLootboxInteractables.cs
 echo(Interactables\BossRushReturnInteractable.cs
 echo(ModeD\ModeD.cs
+echo(ModeD\ModeDItemPool.cs
+echo(ModeD\ModeDItemPool_Quality.cs
 echo(ModeD\ModeDStaticCacheReset.cs
 echo(ModeD\ModeDRuntimeModule.cs
+echo(ModeD\ModeDRuntimeModule_EnemyPools.cs
+echo(ModeD\ModeDRuntimeModule_Interactables.cs
+echo(ModeD\ModeDRuntimeModule_Selection.cs
+echo(ModeD\ModeDRuntimeModule_AutoNext.cs
+echo(ModeD\ModeDRuntimeModule_WaveResolution.cs
+echo(ModeD\ModeDRuntimeModule_Waves.cs
+echo(ModeD\ModeDRuntimeModule_Lifecycle.cs
+echo(Utilities\ModeEntryInventory.cs
 echo(ModeD\ModeDEquipment.cs
+echo(ModeD\ModeDEquipmentHostBridge.cs
 echo(ModeD\ModeDEquipment_StarterKit.cs
 echo(ModeD\ModeDWaves.cs
 echo(ModeD\ModeDInteractables.cs
@@ -671,6 +683,7 @@ echo(ZombieMode\ZombieModeBossController.cs
 echo(ZombieMode\ZombieModePlayerSlowRuntime.cs
 echo(ZombieMode\ZombieModeSpawner.cs
 echo(ZombieMode\ZombieModeWaveController.cs
+echo(ZombieMode\ZombieModeRuntimeModule_WaveController.cs
 echo(ZombieMode\ZombieModeEnemyRuntime.cs
 echo(ZombieMode\ZombieModeRewards.cs
 echo(ZombieMode\ZombieModeRewardSelectionView.cs

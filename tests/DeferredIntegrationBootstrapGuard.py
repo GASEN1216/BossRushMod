@@ -8,6 +8,7 @@ DEFERRED_MODULE = Path("Integration/BossRushIntegrationRuntimeModule_DeferredBoo
 RUNTIME_MODULE = Path("Integration/BossRushIntegrationRuntimeModule.cs")
 WIKI_BOOK_MODULE = Path("Integration/BossRushIntegrationRuntimeModule_WikiBook.cs")
 BIRTHDAY_CAKE_MODULE = Path("Integration/BossRushIntegrationRuntimeModule_BirthdayCake.cs")
+SCENE_LIFECYCLE_MODULE = Path("Integration/BossRushIntegrationRuntimeModule_SceneLifecycle.cs")
 
 
 def fail(message: str) -> int:
@@ -52,11 +53,13 @@ def main() -> int:
     runtime_text = RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
     wiki_book_module_text = WIKI_BOOK_MODULE.read_text(encoding="utf-8", errors="ignore")
     birthday_cake_module_text = BIRTHDAY_CAKE_MODULE.read_text(encoding="utf-8", errors="ignore")
+    scene_lifecycle_module_text = SCENE_LIFECYCLE_MODULE.read_text(encoding="utf-8", errors="ignore")
 
     for token in [
         "Integration\\IntegrationDeferredBootstrap.cs",
         "Integration\\BossRushIntegrationRuntimeModule_DeferredBootstrap.cs",
         "Integration\\BossRushIntegrationRuntimeModule_BirthdayCake.cs",
+        "Integration\\BossRushIntegrationRuntimeModule_SceneLifecycle.cs",
     ]:
         if token not in compile_text:
             return fail("compile list missing -> " + token)
@@ -146,7 +149,7 @@ def main() -> int:
         "SetupPhantomWitchScytheForScene = SetupPhantomWitchScytheForScene",
         "SetupNewWeaponsForScene = SetupNewWeaponsForScene",
         "InjectAchievementMedalIntoShops = InjectAchievementMedalIntoShops",
-        "ScheduleWishRewardPoolWarmup = ScheduleWishRewardPoolWarmup",
+        "ScheduleWishRewardPoolWarmup = bossRushIntegrationRuntime.ScheduleWishRewardPoolWarmup",
     ]:
         if token not in actions_factory:
             return fail("private host callback binding missing -> " + token)
@@ -161,6 +164,10 @@ def main() -> int:
     ):
         if token in actions_factory:
             return fail("Birthday Cake stateful work must execute on its IntegrationRuntimeModule owner -> " + token)
+
+    warmup_scheduler = extract_method(scene_lifecycle_module_text, "internal void ScheduleWishRewardPoolWarmup()")
+    if "_owner.StartCoroutine(WishFountainService.WarmupWishRewardPoolAfterDelay());" not in warmup_scheduler:
+        return fail("Wish Reward Pool warmup callback must be owned and scheduled by IntegrationRuntimeModule")
 
     module_lifecycle = extract_method(runtime_text, "public override void OnAwake(ModBehaviour owner)")
     if "_deferredBootstrapActions = owner.CreateIntegrationDeferredBootstrapActions();" not in module_lifecycle:

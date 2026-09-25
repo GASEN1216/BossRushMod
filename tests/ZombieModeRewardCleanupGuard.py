@@ -19,7 +19,7 @@ def read_effects() -> str:
 CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 BRIDGES = Path("ZombieMode/ZombieModeMapSelection.cs")
-WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
+WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 
 
 def fail(message: str) -> int:
@@ -72,8 +72,8 @@ def main() -> int:
         return fail("ZombieModeRewardCleanupGuard: host compatibility bridge must preserve option effects cleanup")
 
     for token in [
-        "HandleZombieModeOptionHealthHurt(runId, health, damageInfo, victim, marker);",
-        "HandleZombieModeOptionHealthDead(runId, health, damageInfo, character, marker);",
+        "owner.HandleZombieModeOptionHealthHurtForWaveRuntimeModule(runId, health, damageInfo, victim, marker);",
+        "owner.HandleZombieModeOptionHealthDeadForWaveRuntimeModule(runId, health, damageInfo, character, marker);",
     ]:
         if token not in waves:
             return fail("ZombieModeRewardCleanupGuard: wave controller missing option hook -> " + token)

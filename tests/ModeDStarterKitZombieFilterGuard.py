@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 SOURCE = Path("ModeD/ModeDEquipment_StarterKit.cs")
@@ -31,12 +32,19 @@ def extract_method(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    source = SOURCE.read_text(encoding="utf-8")
+    source = clean_source(SOURCE.read_text(encoding="utf-8"))
+    bridge = clean_source(Path("ModeD/ModeDEquipmentHostBridge.cs").read_text(encoding="utf-8"))
+    registration = clean_source(Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8"))
+    pool = clean_source(Path("ModeD/ModeDItemPool.cs").read_text(encoding="utf-8"))
+    if "isStarterCandidateAllowed = starterCandidateAllowed;" not in extract_method(pool, "internal void BindQueries("):
+        return fail("item pool must retain the injected starter candidate predicate")
+    if "IsZombieModeRewardCandidateAllowed);" not in bridge or "BindModeDItemPoolQueries();" not in registration:
+        return fail("starter filter must bind to the original candidate predicate during module registration")
     for token in [
         'SharedStarterMedicalRequiredTags = { "Healing" }',
         'SharedStarterMeleeRequiredTags = { "MeleeWeapon" }',
         "SharedStarterMedicalFallbackIds = { 401, 402, 403 }",
-        "IsZombieModeRewardCandidateAllowed",
+        "isStarterCandidateAllowed",
         "GetStarterMeleePool",
         "SelectAllowedStarterFallbackItemId",
     ]:
@@ -54,7 +62,7 @@ def main() -> int:
         return fail("medical hardcoded fallback must use the same filter")
 
     fallback = extract_method(source, "private int SelectAllowedStarterFallbackItemId(")
-    if "IsZombieModeRewardCandidateAllowed" not in fallback:
+    if "isStarterCandidateAllowed" not in fallback:
         return fail("medical fallback helper must enforce Zombie exclusions")
 
     print("ModeDStarterKitZombieFilterGuard: PASS")

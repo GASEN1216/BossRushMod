@@ -52,8 +52,8 @@ def main() -> int:
         return fail("ModeDHealthOnlyPrefillLootGuard: missing health-only bonus-factor helper")
 
     required_helper_snippets = [
-        "minBossBaseHealth",
-        "maxBossBaseHealth",
+        "lootCatalog.MinBossBaseHealth",
+        "lootCatalog.MaxBossBaseHealth",
         "Mathf.InverseLerp",
     ]
     for snippet in required_helper_snippets:

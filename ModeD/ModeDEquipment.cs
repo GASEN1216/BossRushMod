@@ -30,18 +30,15 @@ namespace BossRush
     /// <summary>
     /// Mode D 装备发放和敌人配装模块
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeDItemPool
     {
         #region Mode D 装备系统字段
 
         /// <summary>保存发放的武器引用，用于后续给弹药</summary>
-        private Item lastGivenWeapon = null;
 
         /// <summary>Mode D 全局物品池（静态缓存）</summary>
-        private static List<int> modeDGlobalItemPool = null;
 
         /// <summary>Mode D 全局物品池是否已初始化</summary>
-        private static bool modeDGlobalItemPoolInitialized = false;
 
         #endregion
 
@@ -50,60 +47,18 @@ namespace BossRush
         /// <summary>
         /// 按品质范围随机选择物品（优化版：有限随机抽样，无列表分配）
         /// </summary>
-        private int GetRandomItemByQuality(List<int> pool, int minQuality, int maxQuality)
-        {
-            // P1-11: 先检查空池
-            if (pool == null || pool.Count == 0)
-            {
-                return 0;
-            }
-
-            try
-            {
-                // P1-11 优化：使用有限随机抽样代替分配 filtered List
-                // 最多尝试 30 次，如果都找不到符合品质的，就直接返回随机的一个
-                const int MAX_QUALITY_ATTEMPTS = 30;
-
-                for (int attempt = 0; attempt < MAX_QUALITY_ATTEMPTS; attempt++)
-                {
-                    int id = pool[UnityEngine.Random.Range(0, pool.Count)];
-                    try
-                    {
-                        var meta = ItemAssetsCollection.GetMetaData(id);
-                        if (meta.quality >= minQuality && meta.quality <= maxQuality)
-                        {
-                            return id;
-                        }
-                    }
-                    catch {}
-                }
-
-                // 没有找到符合品质要求的，随机返回一个
-                return pool[UnityEngine.Random.Range(0, pool.Count)];
-            }
-            catch
-            {
-                return pool.Count > 0 ? pool[0] : 0;
-            }
-        }
 
         private bool ShouldUseLegacyModeDStyleEnemyLootQualityDistribution()
         {
-            return config != null && config.useLegacyBossLootProbabilities;
+            return useLegacyLoot();
         }
 
-        private const float BossRushStyleCrownWeightScale = 0.1f;
-
-        private float ComputeModeDStyleEnemyLootBonusFactor(int qualityLevel)
-        {
-            return Mathf.InverseLerp(1f, 6f, Mathf.Clamp(qualityLevel, 1, 6));
-        }
 
         private float ComputeModeDStyleEnemyLootBonusFactorFromHealth(float enemyHealth)
         {
             float clampedHealth = Mathf.Max(0f, enemyHealth);
-            float refMin = minBossBaseHealth;
-            float refMax = maxBossBaseHealth;
+            float refMin = lootCatalog.MinBossBaseHealth;
+            float refMax = lootCatalog.MaxBossBaseHealth;
 
             if (refMax > refMin && refMin > 0f)
             {
@@ -113,91 +68,8 @@ namespace BossRush
             return Mathf.Clamp01((clampedHealth - 100f) / 1000f);
         }
 
-        private int RollLegacyDesiredQualityForModeDStyleEnemyLoot(int qualityLevel, int minQuality, int maxQuality)
-        {
-            int clampedMin = Mathf.Clamp(minQuality, 1, 8);
-            int clampedMax = Mathf.Clamp(maxQuality, clampedMin, 8);
-            if (clampedMin >= clampedMax)
-            {
-                return clampedMin;
-            }
 
-            LegacyBossLootQualityDistribution distribution =
-                LegacyBossLootProbabilityModel.BuildDistribution(ComputeModeDStyleEnemyLootBonusFactor(qualityLevel));
 
-            double totalProbability = 0.0;
-            for (int q = clampedMin; q <= clampedMax; q++)
-            {
-                totalProbability += distribution.GetProbabilityForQuality(q);
-            }
-
-            if (totalProbability <= 0.0)
-            {
-                return UnityEngine.Random.Range(clampedMin, clampedMax + 1);
-            }
-
-            double roll = UnityEngine.Random.value * totalProbability;
-            for (int q = clampedMin; q <= clampedMax; q++)
-            {
-                roll -= distribution.GetProbabilityForQuality(q);
-                if (roll <= 0.0)
-                {
-                    return q;
-                }
-            }
-
-            return clampedMax;
-        }
-
-        private int TryGetRandomItemByExactQualityBucket(Dictionary<int, List<int>> poolByQuality, int exactQuality)
-        {
-            if (poolByQuality == null)
-            {
-                return 0;
-            }
-
-            int clampedQuality = Mathf.Clamp(exactQuality, 1, 8);
-            List<int> bucket;
-            if (!poolByQuality.TryGetValue(clampedQuality, out bucket) || bucket == null || bucket.Count == 0)
-            {
-                return 0;
-            }
-
-            return bucket[UnityEngine.Random.Range(0, bucket.Count)];
-        }
-
-        private int PickBossRushStyleBucketItemId(List<int> bucket)
-        {
-            if (bucket == null || bucket.Count == 0)
-            {
-                return 0;
-            }
-
-            float totalWeight = 0f;
-            for (int i = 0; i < bucket.Count; i++)
-            {
-                int id = bucket[i];
-                totalWeight += (id == 1254) ? BossRushStyleCrownWeightScale : 1f;
-            }
-
-            if (totalWeight <= 0f)
-            {
-                return bucket[UnityEngine.Random.Range(0, bucket.Count)];
-            }
-
-            float roll = UnityEngine.Random.value * totalWeight;
-            for (int i = 0; i < bucket.Count; i++)
-            {
-                int id = bucket[i];
-                roll -= (id == 1254) ? BossRushStyleCrownWeightScale : 1f;
-                if (roll <= 0f)
-                {
-                    return id;
-                }
-            }
-
-            return bucket[bucket.Count - 1];
-        }
 
         private bool TryCreateBossRushStyleInventoryLootItemForSharedModes(float enemyHealth, out Item item)
         {
@@ -208,7 +80,7 @@ namespace BossRush
             if (ShouldUseLegacyModeDStyleEnemyLootQualityDistribution())
             {
                 List<int> candidateIds = new List<int>();
-                if (!TryGetLegacyBossLootCandidates(candidateIds, qualityBuckets))
+                if (!lootCatalog.TryGetLegacyBossLootCandidates(candidateIds, qualityBuckets))
                 {
                     return false;
                 }
@@ -237,13 +109,13 @@ namespace BossRush
                 return item != null;
             }
 
-            HashSet<int> dynamicIds = BuildGeneralBossLootCandidateIdSet();
+            HashSet<int> dynamicIds = lootCatalog.BuildGeneralBossLootCandidateIdSet();
             if (dynamicIds.Count <= 0)
             {
                 return false;
             }
 
-            BuildLegacyBossLootQualityBucketsFromIds(dynamicIds, qualityBuckets);
+            lootCatalog.BuildLegacyBossLootQualityBucketsFromIds(dynamicIds, qualityBuckets);
             int quality = PickBossRushStyleQualityByNonLegacyWeights(bonusFactor, qualityBuckets, 1, 8);
             if (quality <= 0)
             {
@@ -266,144 +138,18 @@ namespace BossRush
             return item != null;
         }
 
-        private int PickBossRushStyleQualityByLegacyDistribution(
-            LegacyBossLootQualityDistribution distribution,
-            Dictionary<int, List<int>> qualityBuckets,
-            int minQuality,
-            int maxQuality)
-        {
-            double totalWeight = 0.0;
-            for (int quality = minQuality; quality <= maxQuality; quality++)
-            {
-                List<int> bucket;
-                if (!qualityBuckets.TryGetValue(quality, out bucket) || bucket == null || bucket.Count == 0)
-                {
-                    continue;
-                }
 
-                totalWeight += distribution.GetProbabilityForQuality(quality);
-            }
-
-            if (totalWeight <= 0.0)
-            {
-                return 0;
-            }
-
-            double roll = UnityEngine.Random.value * totalWeight;
-            for (int quality = minQuality; quality <= maxQuality; quality++)
-            {
-                List<int> bucket;
-                if (!qualityBuckets.TryGetValue(quality, out bucket) || bucket == null || bucket.Count == 0)
-                {
-                    continue;
-                }
-
-                roll -= distribution.GetProbabilityForQuality(quality);
-                if (roll <= 0.0)
-                {
-                    return quality;
-                }
-            }
-
-            return 0;
-        }
-
-        private int PickBossRushStyleQualityByNonLegacyWeights(
-            float bonusFactor,
-            Dictionary<int, List<int>> qualityBuckets,
-            int minQuality,
-            int maxQuality)
-        {
-            float highChance = Mathf.Clamp01(bonusFactor);
-            float lowTotalWeight = 1f - highChance;
-            float[] qualityWeights = new float[9];
-
-            for (int quality = 1; quality <= 4; quality++)
-            {
-                qualityWeights[quality] = lowTotalWeight * 0.25f;
-            }
-
-            qualityWeights[5] = highChance * 0.4f;
-            qualityWeights[6] = highChance * 0.3f;
-            qualityWeights[7] = highChance * 0.2f;
-            qualityWeights[8] = highChance * 0.1f;
-
-            float totalWeight = 0f;
-            for (int quality = minQuality; quality <= maxQuality; quality++)
-            {
-                List<int> bucket;
-                if (!qualityBuckets.TryGetValue(quality, out bucket) || bucket == null || bucket.Count == 0)
-                {
-                    continue;
-                }
-
-                totalWeight += qualityWeights[quality];
-            }
-
-            if (totalWeight <= 0f)
-            {
-                return 0;
-            }
-
-            float roll = UnityEngine.Random.value * totalWeight;
-            for (int quality = minQuality; quality <= maxQuality; quality++)
-            {
-                List<int> bucket;
-                if (!qualityBuckets.TryGetValue(quality, out bucket) || bucket == null || bucket.Count == 0)
-                {
-                    continue;
-                }
-
-                roll -= qualityWeights[quality];
-                if (roll <= 0f)
-                {
-                    return quality;
-                }
-            }
-
-            return 0;
-        }
 
         /// <summary>
         /// Mode D 配件池（Accessory Tag）
         /// </summary>
-        private readonly List<int> modeDAccessoryPool = new List<int>();
-        private readonly Dictionary<int, List<int>> modeDAccessoryPoolByQuality = CreateModeDQualityBuckets();
 
         /// <summary>
         /// 初始化配件池（包含游戏所有配件）
         /// </summary>
         private void InitializeAccessoryPool()
         {
-            try
-            {
-                modeDAccessoryPool.Clear();
-                ClearModeDQualityBuckets(modeDAccessoryPoolByQuality);
-
-                // 通过名字查找配件 Tag
-                Duckov.Utilities.Tag accessoryTag = FindTagByName("Accessory");
-                if (accessoryTag == null)
-                {
-                    DevLog("[ModeD] 未找到 Accessory Tag，跳过配件池初始化");
-                    return;
-                }
-
-                ItemFilter filter = default(ItemFilter);
-                filter.requireTags = new Duckov.Utilities.Tag[] { accessoryTag };
-                filter.minQuality = 1;
-                filter.maxQuality = 8; // 包含所有品质
-                int[] accessoryIds = ItemAssetsCollection.Search(filter);
-
-                AddDistinctItemIds(modeDAccessoryPool, accessoryIds);
-
-                RebuildModeDQualityBuckets(modeDAccessoryPool, modeDAccessoryPoolByQuality);
-
-                DevLog("[ModeD] 配件池初始化完成，数量: " + modeDAccessoryPool.Count);
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeD] [ERROR] InitializeAccessoryPool 失败: " + e.Message);
-            }
+            InitializeAccessoryPool(FindTagByName);
         }
 
         /// <summary>
@@ -433,7 +179,7 @@ namespace BossRush
                             Item replaced;
                             if (slot.Plug(accessory, out replaced))
                             {
-                                DevLog("[ModeD] 安装配件: " + accessory.DisplayName + " 到 " + slot.DisplayName);
+                                ModBehaviour.DevLog("[ModeD] 安装配件: " + accessory.DisplayName + " 到 " + slot.DisplayName);
 
                                 // 销毁被替换的配件（如果有）
                                 if (replaced != null)
@@ -454,7 +200,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] TryFillSlotWithRandomAccessory 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] TryFillSlotWithRandomAccessory 失败: " + e.Message);
             }
         }
 
@@ -466,13 +212,13 @@ namespace BossRush
         /// <param name="waveIndex">当前波次</param>
         /// <param name="enemyHealth">敌人血量（用于决定装备品质）</param>
         /// <param name="isBoss">是否为Boss（Boss保留原有头盔和护甲）</param>
-        public void EquipEnemyForModeD(CharacterMainControl enemy, int waveIndex, float enemyHealth, bool isBoss = false)
+        internal void EquipEnemyForModeD(CharacterMainControl enemy, int waveIndex, float enemyHealth, bool isBoss = false)
         {
             try
             {
                 if (enemy == null) return;
 
-                DevLog("[ModeD] 为敌人配装: wave=" + waveIndex + ", health=" + enemyHealth);
+                ModBehaviour.DevLog("[ModeD] 为敌人配装: wave=" + waveIndex + ", health=" + enemyHealth);
 
                 // 根据血量和波次计算品质等级（1-6）
                 int qualityLevel = CalculateQualityLevel(waveIndex, enemyHealth);
@@ -529,7 +275,7 @@ namespace BossRush
 
                 if (keepOriginalMeleeSetup)
                 {
-                    DevLog("[ModeD] 检测到近战/宠物型敌人，保留原始武器配置，仅追加掉落");
+                    ModBehaviour.DevLog("[ModeD] 检测到近战/宠物型敌人，保留原始武器配置，仅追加掉落");
 
                     // 只有有背包的敌人才追加掉落
                     if (hasInventory)
@@ -558,7 +304,7 @@ namespace BossRush
                     }
                     else
                     {
-                        DevLog("[ModeD] 敌人无背包，跳过追加掉落");
+                        ModBehaviour.DevLog("[ModeD] 敌人无背包，跳过追加掉落");
                     }
 
                     return;
@@ -618,7 +364,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] EquipEnemyForModeD 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] EquipEnemyForModeD 失败: " + e.Message);
             }
         }
 
@@ -626,7 +372,7 @@ namespace BossRush
         /// Mode E/F 普通 Boss 的隐藏配装计划。
         /// 只记录决策与剩余步骤，不在建计划阶段实例化物品。
         /// </summary>
-        private sealed class SharedModeEnemyEquipmentMaterializationPlan
+        internal sealed class SharedModeEnemyEquipmentMaterializationPlan
         {
             public int qualityLevel;
             public float enemyHealth;
@@ -646,7 +392,7 @@ namespace BossRush
             public SharedModeEnemyEquipmentPlanPhase phase;
         }
 
-        private enum SharedModeEnemyEquipmentPlanPhase
+        internal enum SharedModeEnemyEquipmentPlanPhase
         {
             ClearInventory = 0,
             ExtraSharedLoot = 1,
@@ -661,7 +407,7 @@ namespace BossRush
             Completed = 10,
         }
 
-        private SharedModeEnemyEquipmentMaterializationPlan CreateSharedModeEnemyEquipmentMaterializationPlan(
+        internal SharedModeEnemyEquipmentMaterializationPlan CreateSharedModeEnemyEquipmentMaterializationPlan(
             CharacterMainControl enemy,
             int waveIndex,
             float enemyHealth,
@@ -774,12 +520,12 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] CreateSharedModeEnemyEquipmentMaterializationPlan 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] CreateSharedModeEnemyEquipmentMaterializationPlan 失败: " + e.Message);
                 return null;
             }
         }
 
-        private bool MaterializeNextSharedModeEnemyEquipmentPlanStep(
+        internal bool MaterializeNextSharedModeEnemyEquipmentPlanStep(
             CharacterMainControl enemy,
             SharedModeEnemyEquipmentMaterializationPlan plan)
         {
@@ -950,7 +696,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] MaterializeNextSharedModeEnemyEquipmentPlanStep 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] MaterializeNextSharedModeEnemyEquipmentPlanStep 失败: " + e.Message);
                 return true;
             }
         }
@@ -1004,7 +750,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] TryCreatePendingSharedModeWeapon 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] TryCreatePendingSharedModeWeapon 失败: " + e.Message);
                 return false;
             }
         }
@@ -1048,7 +794,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] TryAddNextSharedModeWeaponAttachment 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] TryAddNextSharedModeWeaponAttachment 失败: " + e.Message);
                 return true;
             }
         }
@@ -1076,13 +822,13 @@ namespace BossRush
                     {
                         UnityEngine.Object.Destroy(plan.pendingWeapon.gameObject);
                         plan.pendingWeapon = null;
-                        DevLog("[ModeD] [WARNING] 敌人武器装备失败且无背包，已销毁武器");
+                        ModBehaviour.DevLog("[ModeD] [WARNING] 敌人武器装备失败且无背包，已销毁武器");
                     }
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] TryEquipPendingSharedModeWeapon 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] TryEquipPendingSharedModeWeapon 失败: " + e.Message);
             }
         }
 
@@ -1138,7 +884,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] TryAddPendingSharedModeWeaponPrimaryAmmo 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] TryAddPendingSharedModeWeaponPrimaryAmmo 失败: " + e.Message);
             }
         }
 
@@ -1176,7 +922,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] TryAddPendingSharedModeWeaponSecondaryAmmo 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] TryAddPendingSharedModeWeaponSecondaryAmmo 失败: " + e.Message);
             }
         }
 
@@ -1188,7 +934,7 @@ namespace BossRush
             }
         }
 
-        private void CleanupSharedModeEnemyEquipmentMaterializationPlan(SharedModeEnemyEquipmentMaterializationPlan plan)
+        internal void CleanupSharedModeEnemyEquipmentMaterializationPlan(SharedModeEnemyEquipmentMaterializationPlan plan)
         {
             try
             {
@@ -1202,7 +948,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [WARNING] CleanupSharedModeEnemyEquipmentMaterializationPlan 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [WARNING] CleanupSharedModeEnemyEquipmentMaterializationPlan 失败: " + e.Message);
             }
         }
 
@@ -1237,7 +983,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] TryGiveSpecificMeleeWeaponToEnemy 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] TryGiveSpecificMeleeWeaponToEnemy 失败: " + e.Message);
             }
         }
 
@@ -1300,7 +1046,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] TryMaterializeNextModeDInventoryLootItem 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] TryMaterializeNextModeDInventoryLootItem 失败: " + e.Message);
                 return false;
             }
         }
@@ -1367,11 +1113,11 @@ namespace BossRush
                 }
                 catch {}
 
-                DevLog("[ModeD] 背包填充完成，物品数量: " + finalCount);
+                ModBehaviour.DevLog("[ModeD] 背包填充完成，物品数量: " + finalCount);
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] FillEnemyInventoryForModeD 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] FillEnemyInventoryForModeD 失败: " + e.Message);
             }
         }
 
@@ -1534,7 +1280,7 @@ namespace BossRush
                     {
                         // 背包也不存在，销毁武器防止泄漏
                         UnityEngine.Object.Destroy(weapon.gameObject);
-                        DevLog("[ModeD] [WARNING] 敌人武器装备失败且无背包，已销毁武器");
+                        ModBehaviour.DevLog("[ModeD] [WARNING] 敌人武器装备失败且无背包，已销毁武器");
                         return;
                     }
                 }
@@ -1586,11 +1332,11 @@ namespace BossRush
                     }
                 }
 
-                DevLog("[ModeD] 敌人装备武器: " + weapon.DisplayName);
+                ModBehaviour.DevLog("[ModeD] 敌人装备武器: " + weapon.DisplayName);
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] GiveEnemyEquippedWeapon 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] GiveEnemyEquippedWeapon 失败: " + e.Message);
             }
         }
 
@@ -1654,7 +1400,7 @@ namespace BossRush
                             bool isHelmetOrArmorSlot = slotKey == "Helmat" || slotKey == "Armor";
                             if (isHelmetOrArmorSlot)
                             {
-                                DevLog("[ModeD] 保留Boss头盔/护甲槽: " + slotKey);
+                                ModBehaviour.DevLog("[ModeD] 保留Boss头盔/护甲槽: " + slotKey);
                                 continue; // 跳过此槽位
                             }
                         }
@@ -1667,7 +1413,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] ClearEnemyInventory 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] ClearEnemyInventory 失败: " + e.Message);
             }
         }
 
