@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    执行回归把中间产物重定向到 Build/runtime-regressions/<夹具>/obj（-p:BaseIntermediateOutputPath），SDK 的默认排除只认那个目录。
+    编辑器的设计时构建会在夹具目录里另生成 obj/Debug/**/AssemblyInfo.cs，被默认的 **/*.cs 收进来就报 CS0579「特性重复」，
+    与代码无关却让整组回归转红（2026-09-25）。这里把夹具本地的 obj/ 与 bin/ 一并排除。
+  -->
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**;bin/**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

@@ -752,9 +752,9 @@ internal static class Program
             && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandSmokeFan) == SkyIslandFieldBuff.Fan
             && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandCloudmossVeil) == SkyIslandFieldBuff.None
             && SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Soothe).Length > 0, "the zapper and the fan are used on the isles; the veil only has to be carried");
-        Check(SkyIslandFieldcraftRules.IsNight(19) && SkyIslandFieldcraftRules.IsNight(23.5) && SkyIslandFieldcraftRules.IsNight(4.99)
-            && !SkyIslandFieldcraftRules.IsNight(5) && !SkyIslandFieldcraftRules.IsNight(12) && !SkyIslandFieldcraftRules.IsNight(18.99)
-            && SkyIslandFieldcraftRules.IsNight(-1) && !SkyIslandFieldcraftRules.IsNight(double.NaN), "night is 19:00 to 05:00 (official nightStart)");
+        Check(SkyIslandFieldcraftRules.IsNight(22) && SkyIslandFieldcraftRules.IsNight(23.5) && SkyIslandFieldcraftRules.IsNight(5.99)
+            && !SkyIslandFieldcraftRules.IsNight(6) && !SkyIslandFieldcraftRules.IsNight(12) && !SkyIslandFieldcraftRules.IsNight(21.99)
+            && SkyIslandFieldcraftRules.IsNight(-1) && !SkyIslandFieldcraftRules.IsNight(double.NaN), "night is 22:00 to 06:00 (official runtime nightStart)");
         // 内容批次四：判夜收成一个口径（SkyIslandNight），夜风的入口只是转交，逐点一致。
         for (double hour = -3; hour <= 27; hour += 0.125)
             Check(SkyIslandFieldcraftRules.IsNight(hour) == SkyIslandNight.IsNight(hour), "wind night follows the one night rule: " + hour);

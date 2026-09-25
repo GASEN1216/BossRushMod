@@ -28,7 +28,7 @@ Found on seven Sky Islands chiefs, plus the Galebreaker Warden in Jeff's prelude
 - **Mirror Guest** (chief, Mirrorwater Temple, **night only**): drops the Mirrorgrain Plate **30%** of the time, nothing the other 70%.
 - **Galebreaker Ranger (Chaser / Stalker / Warden)** (chiefs, the three return relay platforms: K1 Hanging Root Wood, K2 Fallen Star Workshop, K3 Windsong Boardwalk): the Chaser wears the Galebreaker Mantle, the Stalker carries the Galebreaker Pack and the Warden wears the Galebreaker Hood; each leaves its own piece behind **40%** of the time, nothing the other 60%. Completing the set means beating all three.
 - **Jeff's prelude (Ground Zero)**: the Galebreaker Warden guarding the lost navigation instrument uses the same profile and has a **40%** chance to drop the Galebreaker Hood.
-- "Night" means 19:00 to 05:00 game time: by day you will only find followers at Frogsong Pool and Mirrorwater Temple, and the chief only comes out when you approach at night.
+- "Night" means 22:00 to 06:00 game time: by day you will only find followers at Frogsong Pool and Mirrorwater Temple, and the chief only comes out when you approach at night.
 - The piece that drops comes at **full durability**.
 - Never in any random pool (island crates, Wish Fountain, daily sign-in, boss loot crates). These chiefs are the only source.
 

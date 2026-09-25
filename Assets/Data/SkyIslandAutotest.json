@@ -6,10 +6,10 @@
     { "id": "landing", "title": "落地", "when": "landing" },
     { "id": "real", "title": "测试档真实状态", "when": "real" },
     { "id": "new_save", "title": "新档", "when": "story", "apply": ["reset"] },
-    { "id": "both_beacons", "title": "双航标", "when": "story", "apply": ["clear:D", "clear:D_02", "clear:G", "clear:G_02", "story:RepairWindBeacon", "story:RepairStarLamp", "story:FindPlantingRecord"] },
+    { "id": "both_beacons", "title": "双航标", "when": "story", "apply": ["story:AcceptPrelude", "story:RecoverPreludeInstrument", "story:UnlockRoute", "story:AcceptBeaconQuest", "clear:D", "clear:D_02", "clear:G", "clear:G_02", "story:RepairWindBeacon", "story:RepairStarLamp", "story:FindPlantingRecord", "story:DeliverBeaconQuest", "story:AcceptBellCourtQuest"] },
     { "id": "storm_slain", "title": "打过噬风、未敲钟", "when": "story", "apply": ["story:StormSlain"] },
-    { "id": "bell_ready", "title": "钟守已放行、未敲钟", "when": "story", "apply": ["story:ReconcileBellKeeper"] },
-    { "id": "ending", "title": "结局档", "when": "story", "apply": ["story:RingHomecomingBell"] },
+    { "id": "bell_ready", "title": "钟守已放行、未敲钟", "when": "story", "apply": ["story:ReconcileBellKeeper", "story:AcceptHomecomingQuest"] },
+    { "id": "ending", "title": "结局档", "when": "story", "apply": ["story:RingHomecomingBell", "story:DeliverHomecomingQuest", "story:DeliverBellCourtQuest"] },
     { "id": "ending_lamps", "title": "结局档 + 七盏风晶灯", "when": "story", "apply": ["lamp:Light_E", "lamp:Light_F", "lamp:Light_G", "lamp:Light_H", "lamp:Light_S2", "lamp:Light_S3", "lamp:Light_S4"] },
     { "id": "alt_language", "title": "换语言复拍", "when": "alt_language" },
     { "id": "base_after", "title": "回基地之后", "when": "base_after" }
@@ -154,7 +154,7 @@
     {
       "id": "SKY_AUTO_REAL_NIGHT_GNATS", "title": "夜里云蚋看不看得见：刷一群后不等就连拍它们从 8–14 m 外飞近（这时还没贴到主角身上）；围上来后主角横移 5 m 再拍原地那团；帧时间与可见度",
       "stage": "real", "location": "PlayerSpawn", "class": "shot", "checklist": ["2.13.1", "2.17.3", "M_SKY_ISLAND_13"], "budget": 70,
-      "actions": ["teleport:PlayerSpawn:0:0", "night:on:3", "spawn_gnats:6:0", "assert:gnats_alive_ge:1", "shot:gnats_night:world", "assert:visible_min:gnat:0.2", "burst:gnats_incoming:world:6:0.15", "wait_real:3", "teleport:PlayerSpawn:5:0:0.3", "shot:gnats_left_behind:world", "assert:visible_min:gnat:0.2", "burst:gnats_motion:world:4:0.25", "frame:5", "assert:case:SKY_GNAT_RUNTIME", "night:restore:1"]
+      "actions": ["teleport:PlayerSpawn:0:0", "night:on:3", "spawn_gnats:6:0:ahead", "assert:gnats_alive_ge:1", "shot:gnats_night:world", "assert:visible_min:gnat:0.2", "burst:gnats_incoming:world:6:0.15", "wait_real:3", "teleport:PlayerSpawn:5:0:0.3", "shot:gnats_left_behind:world", "assert:visible_min:gnat:0.2", "burst:gnats_motion:world:4:0.25", "frame:5", "assert:case:SKY_GNAT_RUNTIME", "night:restore:1"]
     },
     {
       "id": "SKY_AUTO_REAL_FIRE_SMOKE", "title": "夜里码头灶火与烟的截图",
@@ -209,7 +209,7 @@
     {
       "id": "SKY_AUTO_REAL_BOSS_SICKLE", "title": "头目 / 岛主 R3：青穗梯田 C 组带队是穗镰、斗笠 / 蓑衣甲 / 谷囊在身上；打到七成半开闸冲泥（泥圈物体）并朝谷仓喊人（字幕）；贴身等镰扫圈；采帧时间；单独击杀读尸体箱，再清随从与喊来的帮手",
       "stage": "real", "location": "EnemySpawn_C", "class": "auto", "checklist": ["2.22.1", "2.22.2", "2.22.5", "2.22.7", "2.22.14", "M_SKY_ISLAND_17"], "budget": 150,
-      "actions": ["invincible:on", "kill_nearby:600", "reset_encounter:C", "teleport:EnemySpawn_C:-9:5", "wait_boss:sickle:30", "wait_real:1.5", "shot:sickle_spawned:world", "assert:boss_alive:sickle:60", "frame:5", "assert:profile_ok", "boss_hurt:sickle:0.75:10", "wait_object:SkyIslandMudPatch:4", "wait_caption:穗镰朝谷仓吆喝了一声|Grain Sickle hollers toward the barn:8", "shot:sickle_mud:world", "approach_boss:sickle:2", "wait_object:SkyIslandSickleSweep:8", "shot:sickle_sweep:world", "loot_boss:sickle:6", "kill_nearby:80", "wait_real:2", "kill_nearby:80", "wait_real:2", "assert:boss_alive:sickle:80:false", "shot:sickle_down:world"]
+      "actions": ["invincible:on", "kill_nearby:600", "reset_encounter:C", "teleport:EnemySpawn_C:9:5", "wait_boss:sickle:30", "wait_real:1.5", "shot:sickle_spawned:world", "assert:boss_alive:sickle:60", "frame:5", "assert:profile_ok", "boss_hurt:sickle:0.75:10", "wait_object:SkyIslandMudPatch:4", "wait_caption:穗镰朝谷仓吆喝了一声|Grain Sickle hollers toward the barn:8", "shot:sickle_mud:world", "approach_boss:sickle:2", "wait_object:SkyIslandSickleSweep:8", "shot:sickle_sweep:world", "loot_boss:sickle:6", "kill_nearby:80", "wait_real:2", "kill_nearby:80", "wait_real:2", "assert:boss_alive:sickle:80:false", "shot:sickle_down:world"]
     },
     {
       "id": "SKY_AUTO_REAL_BOSS_LISTENER", "title": "头目 R3：听雨洞 S3 带队是听雨人；站在洞口一带经 Dev 钩子记满规则要的枪数（feed_shots:need，替代真开枪；戴着静听耳罩时翻倍），等身边落石圈与字幕；单独击杀读尸体箱",
@@ -425,7 +425,7 @@
     {
       "id": "SKY_AUTO_END_JOURNAL", "title": "结局后手记「群岛之物」页：噬风之核、晴岚风晶、风晶碎片三行分别写着引风与回响遗存（在滚动区外，读 TMP 全文实判）（「岛上的灯」页挪到七盏灯点完之后看）",
       "stage": "ending", "location": "Search_A", "class": "shot", "checklist": ["2.17.15", "2.14.11"], "budget": 50,
-      "actions": ["teleport:Search_A:1.6:0", "interact:Search_A", "wait_panel:4", "choose_label:翻阅群岛手记|Open the archipelago journal", "wait_panel:3", "choose:1", "wait_panel:3", "choose_label:群岛之物|What things are for", "wait_real:0.6", "shot:journal_things:ui", "assert:overflow_none", "assert:body_contains:结局后是鸣风栈道「引风」的钥匙|the key for calling the wind on Windsong Boardwalk", "assert:body_contains:结局后在鸣风栈道烧一块引风|burn one on Windsong Boardwalk to call the Windeater's echo", "assert:body_contains:回响遗存里还回来三片|the echo's cache gives three back"]
+      "actions": ["teleport:Search_A:1.6:0", "interact:Search_A", "wait_panel:4", "choose_label:翻阅群岛手记|Open the archipelago journal", "wait_panel:3", "choose:1", "wait_panel:3", "choose_label:群岛之物|What things are for", "wait_real:0.6", "shot:journal_things:ui", "assert:overflow_none", "assert:body_contains:结局后是鸣风栈道「引风」的钥匙|the key for calling the wind on Windsong Boardwalk", "assert:body_contains:结局后可在鸣风栈道烧一块来「引风」|burn one on Windsong Boardwalk to call the Windeater's echo", "assert:body_contains:回响遗存里还回来三片|the echo's cache gives three back"]
     },
     {
       "id": "SKY_AUTO_END_RECALL", "title": "结局档用晴岚航徽拉缆绳：人回到码头出生点，这一趟第二次被拒",
@@ -470,7 +470,7 @@
     {
       "id": "SKY_AUTO_ALT_JOURNAL", "title": "换语言重看码头装置、群岛手记六页与渡口工台：长标题折行、正文滚动、不出框；「群岛之物」里引风三行、云蚋三件与头目装备的英文句、「这一趟」的岛主与头目计数实判",
       "stage": "alt_language", "location": "Search_A", "class": "shot", "checklist": ["2.14.29", "2.10.14", "2.11.15", "2.12.15", "2.13.20", "2.15.20", "2.17.16", "2.19.15", "M_SKY_ISLAND_09"], "budget": 120,
-      "actions": ["teleport:Search_A:1.6:0", "interact:Search_A", "wait_panel:4", "shot:dock_panel_alt:ui", "assert:overflow_none", "choose_label:翻阅群岛手记|Open the archipelago journal", "wait_panel:3", "shot:journal_alt:ui", "assert:overflow_none", "choose:1", "wait_panel:3", "shot:journal_isles_alt:ui", "assert:overflow_none", "choose_label:岛上的灯|Lights on the isles", "wait_real:0.6", "shot:journal_lights_alt:ui", "assert:overflow_none", "assert:body_contains:岛上的灯|Lights on the isles", "choose_label:群岛之物|What things are for", "wait_real:0.6", "shot:journal_things_alt:ui", "assert:overflow_none", "assert:body_contains:结局后在鸣风栈道烧一块引风|burn one on Windsong Boardwalk to call the Windeater's echo", "assert:body_contains:结局后是鸣风栈道「引风」的钥匙|the key for calling the wind on Windsong Boardwalk", "assert:body_contains:回响遗存里还回来三片|the echo's cache gives three back", "assert:body_contains:云苔纱笠|Cloudmoss Veil", "assert:body_contains:风晶灭蚊灯|Windcrystal Gnat Zapper", "assert:body_contains:药烟蒲扇|Remedy-Smoke Fan", "assert:body_contains:残星匠首掉的头盔|the Starforge Foreman's helmet", "choose_label:这一趟|This run", "wait_real:0.6", "shot:journal_progress_alt:ui", "assert:overflow_none", "assert:body_contains:岛主与头目|island lords and chiefs", "choose_label:返回手记|Back to the journal", "wait_real:0.6", "choose_label:来信与人|Letters and people", "wait_panel:3", "choose_label:信鸽来信|Pigeon letters", "wait_real:0.6", "shot:journal_letters_alt:ui", "assert:overflow_none", "choose_label:船员名册|Crew roster", "wait_real:0.6", "shot:journal_crew_alt:ui", "assert:overflow_none", "choose_label:带在身上的纪念品|Keepsakes you carry", "wait_real:0.6", "shot:journal_keepsakes_alt:ui", "assert:overflow_none", "close_panel", "interact:Search_A", "wait_panel:4", "choose_label:渡口工台|Dock workbench", "wait_panel:3", "shot:dock_craft_alt:ui", "assert:overflow_none", "assert:choice_present:制作 风晶灭蚊灯|Make Windcrystal Gnat Zapper"]
+      "actions": ["teleport:Search_A:1.6:0", "interact:Search_A", "wait_panel:4", "shot:dock_panel_alt:ui", "assert:overflow_none", "choose_label:翻阅群岛手记|Open the archipelago journal", "wait_panel:3", "shot:journal_alt:ui", "assert:overflow_none", "choose:1", "wait_panel:3", "shot:journal_isles_alt:ui", "assert:overflow_none", "choose_label:岛上的灯|Lights on the isles", "wait_real:0.6", "shot:journal_lights_alt:ui", "assert:overflow_none", "assert:body_contains:岛上的灯|Lights on the isles", "choose_label:群岛之物|What things are for", "wait_real:0.6", "shot:journal_things_alt:ui", "assert:overflow_none", "assert:body_contains:结局后可在鸣风栈道烧一块来「引风」|burn one on Windsong Boardwalk to call the Windeater's echo", "assert:body_contains:结局后是鸣风栈道「引风」的钥匙|the key for calling the wind on Windsong Boardwalk", "assert:body_contains:回响遗存里还回来三片|the echo's cache gives three back", "assert:body_contains:云苔纱笠|Cloudmoss Veil", "assert:body_contains:风晶灭蚊灯|Windcrystal Gnat Zapper", "assert:body_contains:药烟蒲扇|Remedy-Smoke Fan", "assert:body_contains:残星匠首掉的头盔|the Starforge Foreman's helmet", "choose_label:这一趟|This run", "wait_real:0.6", "shot:journal_progress_alt:ui", "assert:overflow_none", "assert:body_contains:岛主与头目|island lords and chiefs", "choose_label:返回手记|Back to the journal", "wait_real:0.6", "choose_label:来信与人|Letters and people", "wait_panel:3", "choose_label:信鸽来信|Pigeon letters", "wait_real:0.6", "shot:journal_letters_alt:ui", "assert:overflow_none", "choose_label:船员名册|Crew roster", "wait_real:0.6", "shot:journal_crew_alt:ui", "assert:overflow_none", "choose_label:带在身上的纪念品|Keepsakes you carry", "wait_real:0.6", "shot:journal_keepsakes_alt:ui", "assert:overflow_none", "close_panel", "interact:Search_A", "wait_panel:4", "choose_label:渡口工台|Dock workbench", "wait_panel:3", "shot:dock_craft_alt:ui", "assert:overflow_none", "assert:choice_present:制作 风晶灭蚊灯|Make Windcrystal Gnat Zapper"]
     },
     {
       "id": "SKY_AUTO_ALT_BRIEFS_WEST", "title": "换语言逐个打开码头、风铃集与西线见闻点（A_02 / B_02 / C / C_02 / D / D_02 / S1 / S2）：一句导语不出框、不折成三行以上；灶台与药臼的英文配方按钮；受伤时悬根林邮袋处挂得出苔药",
@@ -507,10 +507,10 @@
         "dialogue_choose:2",
         "wait_dialogue_typed:10",
         "shot:dialogue_alt_line3:ui:Dialogue",
-        "assert:dialogue_line_contains:观星手|stargazer up on|悬根林的风标底下蹲着个猎首|huntmaster crouches|断风游猎|Galebreaker Ranger holds",
         "dialogue_advance:0.4",
         "wait_dialogue_typed:10",
         "shot:dialogue_alt_line4:ui:Dialogue",
+        "assert:dialogue_line_contains:观星手|stargazer up on|悬根林的风标底下蹲着个猎首|huntmaster crouches|断风游猎|Galebreaker Ranger holds",
         "dialogue_advance:30",
         "wait_dialogue_typed:10",
         "shot:dialogue_alt_choice:ui:Dialogue",

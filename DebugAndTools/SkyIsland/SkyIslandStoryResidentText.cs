@@ -37,9 +37,14 @@ namespace BossRush
                     "Route quests are taken and turned in on the island. When I stay home, the Windchime Market board has them under Route quests.\n");
             if (!data.Has(SkyIslandStoryFlag.BeaconQuestDelivered))
             {
+                bool accepted = data.Has(SkyIslandStoryFlag.BeaconQuestAccepted);
+                // 灯亮了但没接单：先说「接」再说「交」，不能先催交、再说「你还没接」（2026-09-25 F3 英文复拍读出的前后矛盾）。
                 string progress = data.BothBeacons
-                    ? L10n.T("两盏灯都亮了！这单还没交呢，交完再去码头找浮舟接下一单。\n",
-                        "Both lamps are lit! Turn in the beacon quest first, then Fuzhou has the next quest at the dock.\n")
+                    ? (accepted
+                        ? L10n.T("两盏灯都亮了！这单还没交呢，交完再去码头找浮舟接下一单。\n",
+                            "Both lamps are lit! Turn in the beacon quest first, then Fuzhou has the next quest at the dock.\n")
+                        : L10n.T("两盏灯都亮了！这单你还没接，先在岛上的「航路任务」里接下再交。交完去码头找浮舟接下一单。\n",
+                            "Both lamps are lit! You haven't taken the beacon quest yet, so accept it under Route quests and turn it in. Then Fuzhou has the next quest at the dock.\n"))
                     : data.Has(SkyIslandStoryFlag.WindBeacon)
                         ? L10n.T("西边风标修好了，还差东边残星工坊那盏星灯。点亮了回来跟我说一声。\n",
                             "The west beacon is repaired. The east star lamp at Fallen Star Workshop still needs work. Come tell me once it burns.\n")
@@ -48,7 +53,7 @@ namespace BossRush
                                 "The east star lamp is lit. The west beacon in Hanging Root Wood still needs work. Come tell me once it is fixed.\n")
                             : L10n.T("西边悬根林那支风标，东边残星工坊那盏星灯，都得修。两头一亮，双航标门自己就开。\n",
                                 "The west beacon in Hanging Root Wood and the east star lamp at Fallen Star Workshop both need fixing. Light both ends and the twin-beacon gate opens itself.\n");
-                if (!data.Has(SkyIslandStoryFlag.BeaconQuestAccepted))
+                if (!accepted && !data.BothBeacons)
                     progress += L10n.T("这单你还没接呢，先在岛上的「航路任务」里接一下。\n",
                         "You haven't taken this one yet. Accept it under Route quests on the island first.\n");
                 return greeting + progress + L10n.T("在岛上找我接、找我交。我不在的时候，风铃集委托板上也有「航路任务」。\n",

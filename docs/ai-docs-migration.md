@@ -1,5 +1,10 @@
 # AI 协作文档收敛迁移记录
 
+## 2026-09-25 天空岛判夜口径改正（SAFE）
+
+- `DebugAndTools/SkyIsland/AGENTS.md` 与 `docs/contracts.md` §7.1 的「夜是 19–5 点」与官方运行时不符（F3 实机读 `TimeOfDayController` 为 22 / 6，反编译初值 19 / 5 被 prefab 覆盖），随代码改为 22–6、夜里约 8 分钟，并写明以实机读数为准、不照抄反编译初值。
+- `tests/AGENTS.md` 补记 `tests/fixtures/Directory.Build.props` 排除夹具本地 `obj/`、`bin/`。
+
 ## 2026-09-22 官方任务授权范围扩到鸭王征程（SAFE）
 
 根 `AGENTS.md` §4.14 与 §10 的 `Duckov.Quests` 授权文字改为「天空岛跨局主线 + 鸭王征程六章（590101–590106，给予者官方 Jeff）」，任务表按子系统各一份、投影核心只有 `Utilities/OfficialQuests/` 一份；`Utilities/AGENTS.md` 加 `OfficialQuests/` 职责边界；`docs/contracts.md` §7.1 加征程一行与 ID 保留段、§3.2 加 `chapterId` / `clueId` 冻结说明与基地侧目标口径；教程 `docs/guides/官方任务系统接入教程.md` 加 §12a「多客户端：共享投影核心」。

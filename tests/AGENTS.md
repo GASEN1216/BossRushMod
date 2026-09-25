@@ -34,7 +34,7 @@ python tools/run_runtime_regressions.py --jobs 1          # 串行排查
 
 - 入口显式登记 `tests/fixtures/` 下的工程，聚合结果；日志与 `results.json` 写入 `Build/runtime-regressions/`。新增夹具要同步入口清单，并在夹具 README 里写清「真实生产逻辑」与「宿主替身」的边界。
 - 需要本机 .NET SDK。依赖官方程序集的夹具这样找 DLL：`GAME_PATH`（游戏根目录；不设时读 Windows 编译生成的 `Build/BossRush.rsp`）；Harmony 类夹具另读 `BOSSRUSH_GAME_MANAGED`、`BOSSRUSH_HARMONY_DLL`。报「缺少官方 DLL」是环境没配好，不能据此宣称通过，也不算代码失败。
-- 只用聚合入口跑，不要在夹具目录里直接 `dotnet run`：会留下 `bin/obj`，聚合执行器随后报 CS0579 特性重复。
+- 只用聚合入口跑，不要在夹具目录里直接 `dotnet run`：会留下 `bin/obj`。`tests/fixtures/Directory.Build.props` 已把夹具本地的 `obj/`、`bin/` 排除出编译（编辑器的设计时构建也会生成 `obj/Debug`，2026-09-25 曾让整组回归报 CS0579 特性重复）；自带 `Directory.Build.props` 的夹具（如 F3ValidationExecution）不继承它，仍要守这条。
 - 中文断言名在输出里可能是乱码，按栈帧 `Program.cs:line N` 核对是哪一条。
 
 Wiki 导航另跑 `npm --prefix wiki-site run test:navigation`，构建后的链接检查见 `wiki-site/AGENTS.md`。

@@ -19,6 +19,7 @@
 """
 import copy
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -41,6 +42,9 @@ BOSS_KINDS = ("storm", "foreman", "stargazer", "roothunter", "waylayer", "sickle
               "windhunter_chaser", "windhunter_stalker", "windhunter_warden")
 # 只有带档案的头目 / 岛主有专属掉落与贴身动作：噬风不走这些（没有 SkyIslandBossProfile）。
 PROFILED_BOSS_KINDS = tuple(kind for kind in BOSS_KINDS if kind != "storm")
+# 与 SkyIslandSessionAutotest.TryTeleportFooting 同口径：绕一圈的半径（TeleportJitter）；主角胶囊半径按 0.3 m 外扩。
+TELEPORT_JITTER = 1.2
+TELEPORT_RADIUS = 0.3
 WORLD_ALIASES = {"gnat", "ground_ring", "gather_glow", "echo_ring"}
 DYNAMIC_PREFIXES = ("制作 ", "Make ", "还不会做 ", "Not yet: ")
 LABEL_ASSERTS = {"choice_present", "choice_absent", "body_contains", "body_absent", "caption_contains", "objective_contains",
@@ -51,7 +55,7 @@ VERB_ARGS = {
     "wait_real": [NUM], "wait_panel": [NUM, ("true", "false")], "wait_dialogue": [NUM, ("true", "false")], "wait_dialogue_typed": [NUM],
     "wait_quiet": [NUM, ("true", "false")], "dialogue_advance": [NUM], "dialogue_choose": [INT, NUM], "choose": [INT, NUM],
     "hover": [INT], "clear_nearby": [NUM, NUM], "kill_nearby": [NUM, NUM], "invincible": [("on", "off", "restore")],
-    "night": [("on", "off", "restore"), NUM], "set_health": [NUM], "spawn_gnats": [INT, NUM], "echo_hurt": [NUM, NUM],
+    "night": [("on", "off", "restore"), NUM], "set_health": [NUM], "spawn_gnats": [INT, NUM, ("ahead",)], "echo_hurt": [NUM, NUM],
     "frame": [NUM], "use_compass": [], "click_close": [], "close_panel": [], "open_map": [], "close_view": [],
     "open_modeg_confirm": [], "close_modeg_confirm": [], "reachability": [], "encounter_cap": [],
     "wait_boss": [BOSS_KINDS, NUM, ("optional",)], "boss_hurt": [BOSS_KINDS, NUM, NUM],
@@ -157,6 +161,9 @@ def load_context():
     ctx["encounters"] = set(encounters)
     geometry = json.loads(read(GEOMETRY))
     ctx["markers"] = {row["name"] for row in geometry.get("markers", []) if isinstance(row, dict) and row.get("name")} | set(encounters.values())
+    ctx["marker_pos"] = {row["name"]: row["position"] for row in geometry.get("markers", [])
+                         if isinstance(row, dict) and row.get("name") and isinstance(row.get("position"), list)}
+    ctx["boxes"] = [row for row in geometry.get("collisionBoxes", []) if isinstance(row, dict) and "center" in row and "size" in row]
     arrays = {name: re.findall(r'"([^"]*)"', body) for name, body in re.findall(r"string\[\]\s+(\w+)\s*=\s*\{([^}]*)\}", sky["SkyIslandResidents.cs"])}
     ids = next((values for values in arrays.values() if values and all(v.startswith("sky_") for v in values)), [])
     marks = arrays.get("Markers", [])
@@ -212,6 +219,31 @@ class Checker:
         if text:
             self.err("%s：文字「%s」的中英写法都不在天空岛生产文案里（写错字的话岛上那一步白跑）" % (where, text))
 
+    def teleport_footing(self, where, name, offsets):
+        """落点不能整圈埋进实体：生产 TryTeleportFooting 先吸原位、再绕八个方向 1.2 m，全被碰撞盒占着就记 target_ground_missing。
+        2026-09-25 F3：镰爪一步的偏移落进梯田小屋，自 09-16 起每轮都红在瞬移上。这里按几何表的碰撞盒（轴对齐）离线复算。"""
+        pos = self.ctx.get("marker_pos", {}).get(name)
+        if pos is None or not all(is_num(v) for v in offsets[:2]):
+            return
+        dx = float(offsets[0]) if offsets else 0.0
+        dz = float(offsets[1]) if len(offsets) > 1 else 0.0
+        x, y, z = pos[0] + dx, pos[1], pos[2] + dz
+
+        def occupied(px, pz):
+            for box in self.ctx.get("boxes", []):
+                (cx, cy, cz), (sx, sy, sz) = box["center"], box["size"]
+                if (abs(px - cx) <= sx / 2 + TELEPORT_RADIUS and abs(pz - cz) <= sz / 2 + TELEPORT_RADIUS
+                        and cy - sy / 2 <= y + 1.8 and cy + sy / 2 >= y):
+                    return box.get("name", "?")
+            return None
+
+        probes = [(x, z)] + [(x + math.cos(i * math.pi / 4) * TELEPORT_JITTER, z + math.sin(i * math.pi / 4) * TELEPORT_JITTER)
+                             for i in range(8)]
+        blockers = [occupied(px, pz) for px, pz in probes]
+        if all(blockers):
+            self.err("%s：瞬移落点 (%.1f, %.1f) 连同一圈 %.1f m 都在实体里（%s），岛上会记 target_ground_missing"
+                     % (where, x, z, TELEPORT_JITTER, blockers[0]))
+
     def marker(self, where, name):
         if name not in self.ctx["markers"]:
             self.err("%s：标记 %s 不在场景几何表（%s 的 markers）里" % (where, name, GEOMETRY))
@@ -252,6 +284,7 @@ class Checker:
         elif verb == "teleport":
             self.marker(where, a0)
             self.positional(where, args[1:], [NUM, NUM, NUM])
+            self.teleport_footing(where, a0, args[1:])
             return a0
         elif verb == "teleport_view":
             # 取景瞬移：目标可以是标记，也可以是生产代码建出来的物体（SkyIslandGather_A2）。
@@ -637,6 +670,7 @@ PROBES = (
     ("对话关键句的文字写错", replace_action("SKY_AUTO_END_BELLKEEPER", "assert:dialogue_line_contains:它会回来找你|it will come looking for you",
                                     "assert:dialogue_line_contains:它会回来找您|it will come looking for us")),
     ("重置的遭遇组 id 写错", replace_action("SKY_AUTO_REAL_BOSS_ROOTHUNTER", "reset_encounter:D", "reset_encounter:DX")),
+    ("瞬移落点整圈埋进实体", replace_action("SKY_AUTO_REAL_BOSS_SICKLE", "teleport:EnemySpawn_C:9:5", "teleport:EnemySpawn_C:-9:5")),
 )
 
 

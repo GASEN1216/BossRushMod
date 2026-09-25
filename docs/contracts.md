@@ -726,7 +726,7 @@ Forget 观察。失配保留全部原 IL 并警告；切图、换槽、换主角
   `SceneLoader.LoadScene` 同步拒绝时 `LoadFinished` 立刻为 true，等待场景的循环必须看它。
 - `DialogueBubblesManager.Show` 在 manager 缺席，或无可复用气泡且 prefab 缺失时，正常完成 UniTask 而不显示。异常也会进入返回任务，`Forget` 没有同步抛错不代表发送成功。
   天空岛只发送非交互、正时长气泡：主线程调用后正常展示必定跨帧；已完成任务只消费一次结果并拒绝记账，挂起的请求用异常观察回调消费一次。该判断依赖官方当前 `Show` / `ShowTask` 合同；官方更新时需复核，计数不是像素可见性证据。
-- 岛上判夜 19–5（`SkyIslandNight.StartHour / EndHour`），刻意等于官方 `TimeOfDayController` 的 `nightStart = 19 / morningStart = 5`（官方 Volume 与敌人夜间感知同相）；仍只经 `SkyIslandLighting.ClockHours()` 读 `GameClock`，不读 `AtNight`。官方改这两个值要跟着改（Dev 只读用例 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机比对）。
+- 岛上判夜 22–6（`SkyIslandNight.StartHour / EndHour`），刻意等于官方 `TimeOfDayController` 运行时的 `nightStart = 22 / morningStart = 6`（官方 Volume 与敌人夜间感知同相；反编译源字段初值 19 / 5 会被 `LevelManagerPrefab` 序列化值覆盖，2026-09-25 F3 实机读出）；仍只经 `SkyIslandLighting.ClockHours()` 读 `GameClock`，不读 `AtNight`。官方改这两个值要跟着改（Dev 只读用例 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机比对）。
 - `SceneLoader.LoadBaseScene` 恒传 `clickToConinue: true`（`<LoadBaseScene>d__47` IL 实查）：基地读完后停在「点击继续」，等 `clicked` 的循环没有超时；进等待前先 `SetActive(true)` 点击接收器 `pointerClickEventRecevier` 并把 `clicked` 复位。
   无人值守的流程要在接收器激活后调 `NotifyPointerClick`，否则玩法代码发起的返基地（Mode F / 丧尸撤离）会一直停在加载屏。卡加载时先看 `SceneLoader.LoadingComment`，官方每个等待点都写了一句（如 `Wait for click...`）。
 - `Duckov.Quests` 接天空岛跨局主线（任务表 `SkyIslandOfficialQuestTable`，2026-09-16 授权）与鸭王征程六章（任务表 `CampaignQuestTable`，2026-09-22 owner 授权）；投影核心只有 `Utilities/OfficialQuests/` 一份：

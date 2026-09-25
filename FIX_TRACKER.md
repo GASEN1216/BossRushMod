@@ -1,5 +1,26 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+## 2026-09-25 F3 实机报告红项修复 + F3 逐图进场（COMPAT / SAFE / OPERATIONAL）
+
+**授权与范围**：owner 读完 F3 报告（runId `20260925_044506_391`，`51d2f0e6` Dev 构建）后说「全部修复确保没问题就提交」「云蚋能看到不用调」「拓展 F3 在所有地图选择器里的地图进行测试」。三个待拍板项按推荐方案定：夜长随官方缩到约 8 分钟；苇白前后矛盾的催单顺手修；手记改成「烧一块来「引风」」。回退：`SkyIslandNight` 三个常量、两段台词各一处，改回即可，不涉及存档。
+
+**报告结论**：基地与模式 1–7 阶段 182 项全过（含当日鸭王杯押物品、日报、丧尸邀请函修复）；测试档剧情 / 环境 / 物品 / 金钱还原 PASS；`Player.log` 没有 BossRush 异常（DuckMarket 16、MoveBlackMarket 8、官方 `GamingConsole.Load` 1）。9 条红全在天空岛，逐条定性见 `CODE_REVIEW_FINDINGS.md` 同日 CR-2026-09-25-006 至 013。
+
+**完成**：
+- 生产：判夜 19–5 → 22–6（官方 prefab 运行时值）；天空岛导航图关 `enableNavmeshCutting`，门封锁丢失的重封计数 + 10 秒限频日志；苇白「灯亮未接单」只说先接；浮舟十盏灯英文合回两屏；手记措辞。
+- 验收数据 / 判据：镰爪瞬移偏移改 `9:5`；云蚋改刷在瞄准方向 ±15°（表现与门槛不动）；剧情阶段补齐序章与三条岛上任务的接 / 交，苇白情报断言挪到第 4 句；两处手记断言跟文案；`SKY_NIGHT_BOUNDARY_OFFICIAL` 补记 `official_dawn`。
+- 新守卫口径：`SkyIslandAutotestTableGuard` 按几何表碰撞盒离线复算瞬移落点（+1 条反向检查）；`SkyIslandGateNavigationPropertyTest` 钉住关切割那一行；SkyIslandMarriageTextRegression 加「未接单不催交」。
+- **F3 逐图进场**（新）：主套件 6/7 之后按地图选择器清单（9 张，含两个子场景）逐张从基地进场 → 核对 → 回基地，用例 `MAP_TOUR_<场景>` + `MAP_TOUR_ALL`，登记进 `GameplayCoverage.json` 的 ENTRY；判据 `F3GameplayValidationMapTourJudges.cs` + 执行回归 `F3MapTourJudges`（40 条，反向验证：删掉导航判定即红，还原后 SHA-256 一致）。M_ENTRY_02 人工项只留移动、打怪手感与画面。
+- 测试基建：`tests/fixtures/Directory.Build.props` 排除夹具本地 `obj/`、`bin/`（编辑器设计时构建生成的 `obj/Debug` 让整组回归 CS0579）；原有 20 个未跟踪的夹具 `obj/` 目录没删，挪到会话 scratchpad 备份。
+
+**验证**：
+- 全量守卫 663 PASS；2 红是 `BaseBuildingResourcePropertyTest` / `DailyReportArtPropertyTest` 在本机 Python 3.13 缺 `UnityPy`（导入即失败，与本轮无关，09-22 同类环境缺口）。
+- 执行回归 61 / 61 PASS（其中 5 个用 09-25 留下的私有 .NET 10 SDK 与 `BOSSRUSH_HARMONY_DLL` / `BOSSRUSH_GAME_MANAGED` 跑）。
+- Dev 构建与正式构建均 `Build succeeded!`（唯一警告是原有 CS0649）；`check_dll_identifiers --expect absent` PASS；游戏目录已换回**正式构建**，DLL SHA-256 `6E741FF4…22C7` 与 `Build/` 一致。Wiki 构建、237 页链接检查、Wiki 守卫通过。
+- 离线逐屏复算（临时探针，已删）：苇白英文结局 + 七灯阶段 7 屏、情报在第 4 屏；浮舟第 6 屏是星工装备。
+
+**L3 未做**：本轮没有启动游戏。owner 说不必再跑一轮；下次跑 F3 时看这几项：`SKY_GATE_REACHABILITY` 应 `gate_locked_blocked=1/1` 且 `Player.log` 无 `lost and re-applied`；`SKY_NIGHT_BOUNDARY_OFFICIAL` PASS 并读 `official_dawn`；`MAP_TOUR_*` 九张的 `points / grounded / nav` 与 `player_to_spawn_m`——导航阈值 3 m、传送阈值 4 m 是按生产逻辑定的，没实机标定，首轮若有个别刷新点红，先看 reason 里列出的点号再决定改数据还是改阈值。
+
 ## 2026-09-25 全仓审查六项修复与提交（COMPAT / SCHEMA+ / SAFE / OPERATIONAL）
 
 **授权与范围**：用户“全部修复确保没问题就提交 commit”。基线 `ab5bb292` 上确认的 2 项 P1、4 项 P2 全部修复；未证实线索不伪装为 confirmed bug。详见 `CODE_REVIEW_FINDINGS.md` 同日六项及本地 `docs/reports/testing/2026-09-25_full_audit_fixes.md`。

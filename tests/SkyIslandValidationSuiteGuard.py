@@ -80,7 +80,8 @@ MUTATING_MEMBERS = (
     ("RearmPigeonIfStoryLetterWaiting", "重新武装信鸽"), ("ReadLetter", "打开读信面板"),
     ("ShowMultipleChoiceBilingual", "弹官方对话"), ("ShowDialogueSequenceBilingual", "弹官方对话"),
     ("ForceEndDialogue", "结束别人的对话"), ("SetHealth", "改主角血量"), ("AddListener", "订阅事件"),
-    ("DevSpawnAround", "Dev 演练：刷云蚋"), ("DevSyntheticShot", "Dev 演练：登记合成弹道"),
+    ("DevSpawnAround", "Dev 演练：刷云蚋"), ("DevSpawnAhead", "Dev 演练：朝前刷云蚋"),
+    ("DevSyntheticShot", "Dev 演练：登记合成弹道"),
     ("DevKillOne", "Dev 演练：打死云蚋"), ("DevMotorStats", "Dev 演练入口"),
     # 2026-09-14 B 轮：噬风·回响。引风会预留并烧掉风晶、让遭遇 owner 开战；回响倒下会发箱子、记本趟清场。
     ("TryBeginStormEcho", "引风：烧风晶并开战"), ("StormEchoChoice", "打开引风选项"),

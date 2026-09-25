@@ -44,7 +44,7 @@
 
 ## 4. 运行时规则
 
-- **判夜只有一个口径**：`SkyIslandNight` + `SkyIslandLighting.ClockHours()`。没有 `GameClock` 实例时 `TimeOfDay` 恒为 00:00 且不抛异常；不要用官方 `TimeOfDayController.AtNight`。夜是 19–5 点，刻意等于官方 `TimeOfDayController` 的 `nightStart / morningStart`（官方 Volume 与敌人夜间感知同相）；一昼夜约 24 现实分钟、夜里约 10 分钟（`clockTimeScale = 60`），写夜间内容先按这个算（`SkyIslandMosquitoGuard`）。
+- **判夜只有一个口径**：`SkyIslandNight` + `SkyIslandLighting.ClockHours()`。没有 `GameClock` 实例时 `TimeOfDay` 恒为 00:00 且不抛异常；不要用官方 `TimeOfDayController.AtNight`。夜是 22–6 点，刻意等于官方 `TimeOfDayController` 运行时的 `nightStart / morningStart`（官方 Volume 与敌人夜间感知同相；反编译源的字段初值 19 / 5 会被 `LevelManagerPrefab` 序列化值覆盖，官方数值以 F3 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机读数为准，不照抄反编译初值）；一昼夜约 24 现实分钟、夜里约 8 分钟（`clockTimeScale = 60`），写夜间内容先按这个算（`SkyIslandMosquitoGuard`）。
 - **玩法计时走游戏时间**（撤离读秒、救援），暂停菜单与拍照模式会冻结它；表现层可以走 unscaled，但暂停时停推进。
 - **常驻 HUD 跟随官方 HUD 显隐**（`BossRushUI.IsOfficialHudHidden()`），右上角卡片排在官方「操作说明」提示栈下沿之下（`BossRushUI.GetTopRightHudTop`）。
 - **当前区域按脚下地面判定**（`COL_Ground_{区域}` 碰撞体），不按离地标的距离。场景包的 `POI_` 节点数不等于区域数，可完成量一律取地面切分出的区域表。

@@ -310,6 +310,8 @@ echo(DebugAndTools\F3GameplayValidationScenes.cs
 echo(DebugAndTools\F3GameplayValidationStages.cs
 echo(DebugAndTools\F3GameplayValidationModes.cs
 echo(DebugAndTools\F3GameplayValidationDiagnostics.cs
+echo(DebugAndTools\F3GameplayValidationMapTour.cs
+echo(DebugAndTools\F3GameplayValidationMapTourJudges.cs
 echo(DebugAndTools\F3GameplayValidationRandomEvents.cs
 echo(DebugAndTools\F3GameplayValidationCodex.cs
 echo(DebugAndTools\F3GameplayValidationPersistence.cs

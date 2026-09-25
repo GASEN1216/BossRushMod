@@ -534,6 +534,10 @@ namespace BossRush
                 if (!_operationSucceeded) SkipRemainingArenaCases("arena_runtime_not_ready");
                 else yield return RunArenaStages();
             }
+
+            // 地图选择器里的每一张图各进一次（不依赖 DEMO 竞技场，进不了竞技场也照跑）。
+            SetStage("6/7 地图选择器逐图进场");
+            yield return RunMapTour();
         }
 
         private IEnumerator RunFinalChecks()

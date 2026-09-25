@@ -13,15 +13,17 @@ namespace BossRush
         /// <summary>
         /// 返回基地必须走官方完整入口，不能单独加载 Base_SceneV2 子场景。
         /// 加载任务结束后仍需核对目标场景、玩家、相机和初始化，才可记 PASS。
+        /// <paramref name="expectedScene"/> 缺省是 DEMO 竞技场；逐图进场（MAP_TOUR_*）传地图配置的运行时场景名。
         /// </summary>
         private IEnumerator LoadScene(string sceneId, string caseId, bool clickToContinue = false,
-            bool returnToBase = false)
+            bool returnToBase = false, string expectedScene = null)
         {
             Stopwatch sw = Stopwatch.StartNew();
             _operationSucceeded = false;
             _operationReason = null;
             _lastSceneClicksFed = 0;
-            string expectedScene = returnToBase ? BaseSceneNameForValidation() : _host.GetArenaSceneName();
+            if (returnToBase) expectedScene = BaseSceneNameForValidation();
+            else if (expectedScene == null) expectedScene = _host.GetArenaSceneName();
             WriteRaw("SCENE_BEGIN | " + caseId + " | target=" + expectedScene
                 + ",entry=" + (returnToBase ? "LoadBaseScene" : sceneId));
 

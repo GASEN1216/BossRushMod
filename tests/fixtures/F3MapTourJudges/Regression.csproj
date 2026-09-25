@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
+    <LangVersion>7.3</LangVersion><Nullable>disable</Nullable><ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>Regression</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- 生产纯判据原样链接：不复制、不改写（run.py 先核它不引用 Unity）。 -->
+    <Compile Include="../../../DebugAndTools/F3GameplayValidationMapTourJudges.cs" Link="Production/F3GameplayValidationMapTourJudges.cs" />
+  </ItemGroup>
+</Project>

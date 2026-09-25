@@ -675,7 +675,7 @@ namespace BossRush
             if (!data.Has(SkyIslandStoryFlag.StarLamp)) return string.Empty;
             if (SkyIslandLights.AllLit(data))
                 return L10n.T("\n十盏灯都亮着了。夜里看得清回码头的路，我也少操点心。",
-                            "\nAll ten lamps are lit. You can see the way to the dock at night. Less worrying for me.");
+                            "\nAll ten lamps are lit. You can see the way to the dock at night, so I worry less.");
             return L10n.T("\n星灯一亮，熔晶炉就能烧了。攒五片碎晶，拿到我工台熔成整块，点一盏灯，夜风就吹不透。",
                             "\nWith the star lamp lit, the crystal furnace burns again. Fuse five shards at my bench, light a lamp, and the night wind won't get through.");
         }

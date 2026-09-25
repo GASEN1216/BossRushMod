@@ -44,6 +44,7 @@ internal static class SkyIslandMarriageTextRegression
                 check(!string.IsNullOrEmpty(line) && (cn || !Cjk(line)),"Weibai context has current-language text");
                 check(stage!=5 || line.Contains(cn?"还没交":"Turn in the beacon quest first"),"both repaired: hand-in before next quest");
                 check(stage!=4 || line.Contains(cn?"还没接":"haven't taken"),"late acceptance after repairs is explained");
+                check(stage!=4 || !line.Contains(cn?"还没交":"Turn in the beacon quest first"),"not accepted yet: never urges a hand-in before saying it was not taken");
                 check(stage!=6 || line.Contains(cn?"钟庭之争":"Bell Court Standoff"),"after hand-in: Fuzhou's next quest is named");
                 check(island || line.Contains(cn?"岛上接":"on the island"),"home does not claim to accept island quests");
                 check(before==SkyIslandStoryCodec.Encode(story.Current),"Weibai dialogue does not mutate progress");
