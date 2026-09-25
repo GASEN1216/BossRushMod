@@ -3,6 +3,7 @@ namespace BossRush
     public partial class ModBehaviour
     {
         private readonly ModeERuntimeModule modeERuntime = new ModeERuntimeModule();
+        private ModeEFMerchantCatalog modeEFMerchantCatalog;
 
         private void RegisterRuntimeModules()
         {
@@ -29,7 +30,9 @@ namespace BossRush
             var modeEFSpawnPreparation = new ModeEFSpawnPreparation(ModeERuntimeModule.ModeEAvailableFactions,
                 () => modeERuntime.ModeEPlayerFaction,
                 position => modeDRuntime.GenerateFallbackSpawnPointsAroundPlayer(position), ShowMessage);
-            modeERuntime.BindSharedServices(modeDRuntime, wavesArenaRuntime, modeEFSpawnPreparation);
+            modeEFMerchantCatalog = new ModeEFMerchantCatalog(() => ModeDRuntimeModule.CharacterPresets,
+                modeDRuntime.ItemPool.FindTagByNameInInit);
+            modeERuntime.BindSharedServices(modeDRuntime, wavesArenaRuntime, modeEFSpawnPreparation, modeEFMerchantCatalog);
             runtimeModuleHost.Register(modeERuntime);
             modeFRuntime.BindSharedServices(modeDRuntime, modeERuntime, wavesArenaRuntime, modeEFSpawnPreparation,
                 GetBossRushTicketTypeId, () => config != null && config.enableRandomBossLoot,

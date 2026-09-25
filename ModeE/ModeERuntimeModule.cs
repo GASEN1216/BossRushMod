@@ -7,14 +7,16 @@ namespace BossRush
         private ModeDRuntimeModule modeD;
         private ModeDItemPool equipment;
         private ModeEFSpawnPreparation spawnPreparation;
+        private ModeEFMerchantCatalog merchantCatalog;
         private WavesArenaRuntimeModule arena;
 
-        internal void BindSharedServices(ModeDRuntimeModule modeD, WavesArenaRuntimeModule arena, ModeEFSpawnPreparation spawnPreparation)
+        internal void BindSharedServices(ModeDRuntimeModule modeD, WavesArenaRuntimeModule arena, ModeEFSpawnPreparation spawnPreparation, ModeEFMerchantCatalog merchantCatalog)
         {
             this.modeD = modeD;
             this.equipment = modeD.ItemPool;
             this.arena = arena;
             this.spawnPreparation = spawnPreparation;
+            this.merchantCatalog = merchantCatalog;
         }
 
         private void InitializeModeDItemPools() { equipment.InitializeModeDItemPools(equipment.FindTagByName); }

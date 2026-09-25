@@ -87,9 +87,6 @@ namespace BossRush
         private List<MonoBehaviour> GetModeEBossRegenCache()
         { return modeERuntime.GetModeEBossRegenCache(); }
 
-        private void ModeEGiveColdWeatherGear()
-        { modeERuntime.ModeEGiveColdWeatherGear(); }
-
         public string GetModeEFactionSuffix(Teams faction)
         { return modeERuntime.GetModeEFactionSuffix(faction); }
 
@@ -143,19 +140,19 @@ namespace BossRush
         { return modeERuntime.SpawnModeEMerchant(modeFSessionToken, modeFRelatedScene, modeESessionToken, modeESessionRelatedScene); }
 
         private CharacterRandomPreset GetModeEMerchantPreset()
-        { return modeERuntime.GetModeEMerchantPreset(); }
+        { return modeEFMerchantCatalog.GetModeEMerchantPreset(); }
 
         private List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>> GetModeEMerchantCategories(Duckov.Utilities.GameplayDataSettings.TagsData tagsData)
-        { return modeERuntime.GetModeEMerchantCategories(tagsData); }
+        { return modeEFMerchantCatalog.GetModeEMerchantCategories(tagsData); }
 
         internal void PrewarmModeEMerchantCaches()
-        { modeERuntime.PrewarmModeEMerchantCaches(); }
+        { modeEFMerchantCatalog.PrewarmModeEMerchantCaches(); }
 
         private List<int> ModeESearchItemsMultiTag(List<Duckov.Utilities.Tag> tags, Duckov.Utilities.Tag[] excludeTags)
-        { return modeERuntime.ModeESearchItemsMultiTag(tags, excludeTags); }
+        { return modeEFMerchantCatalog.ModeESearchItemsMultiTag(tags, excludeTags); }
 
         internal int[] GetModeEMerchantCategoryPoolIds(string suffix)
-        { return modeERuntime.GetModeEMerchantCategoryPoolIds(suffix); }
+        { return modeEFMerchantCatalog.GetModeEMerchantCategoryPoolIds(suffix); }
 
         private void CleanupModeEMerchant()
         { modeERuntime.CleanupModeEMerchant(); }

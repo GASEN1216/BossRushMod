@@ -66,7 +66,7 @@ def main() -> int:
     reset = read_source("ModeE/ModeEStartup.cs")
     for text, needle in (
         (allocation, "internal sealed class ModeEFSpawnPreparation"),
-        (registration, "modeERuntime.BindSharedServices(modeDRuntime, wavesArenaRuntime, modeEFSpawnPreparation);"),
+        (registration, "modeERuntime.BindSharedServices(modeDRuntime, wavesArenaRuntime, modeEFSpawnPreparation, modeEFMerchantCatalog);"),
         (registration, "modeFRuntime.BindSharedServices(modeDRuntime, modeERuntime, wavesArenaRuntime, modeEFSpawnPreparation,"),
         (registration, "() => modeERuntime.ModeEPlayerFaction"),
         (mode_e, "spawnPreparation.AllocateSpawnPoints();"),
