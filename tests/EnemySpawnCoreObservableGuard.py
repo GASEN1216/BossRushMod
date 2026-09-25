@@ -1,7 +1,9 @@
 """Guard: SpawnEnemyCore must expose observable internal completion without changing legacy callers."""
 
 from pathlib import Path
+import re
 import sys
+from cs_source_util import clean_source
 
 
 SOURCE = Path("Utilities/EnemySpawnCore.cs")
@@ -47,7 +49,34 @@ def forbid(text: str, needle: str, message: str) -> int | None:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = clean_source(SOURCE.read_text(encoding="utf-8"))
+    host = clean_source(Path("Utilities/EnemySpawnHostBridge.cs").read_text(encoding="utf-8"))
+    registration = clean_source(Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8"))
+    if "internal sealed class EnemySpawnRuntime" not in text or "partial class ModBehaviour" in text:
+        return fail("the production spawn algorithm must belong to EnemySpawnRuntime")
+    binding = extract_method_body(host, "private void BindSpawnPostprocessServices()")
+    if binding is None or binding.count("new EnemySpawnRuntime(spawnPostprocess)") != 1:
+        return fail("host must bind one spawn runtime to the existing postprocess scheduler")
+    for name in ("BindPresetQueries", "BindSpecialBossServices", "BindEquipmentServices", "BindOwnedEnemyTracking"):
+        if "enemySpawnRuntime." + name + "(" not in binding:
+            return fail("missing runtime dependency binding: " + name)
+    if registration.count("BindSpawnPostprocessServices();") != 1:
+        return fail("spawn services must bind exactly once in module registration")
+    parameters = "preset, position, isBoss, isActiveCheck, "
+    common = ("waveIndex, skipDragonDescendant, skipDragonKing, applyEquipment, applyBossMultiplier, "
+              "directPreset, skipBossRushLootTracking, normalizeDamageMultiplier, deferActivationUntilNextFrame, onCommit")
+    compact = lambda value: re.sub(r"\s+", "", value or "")
+    for signature, expected in (
+        ("internal void SpawnEnemyCore(", "{enemySpawnRuntime.SpawnEnemyCore(" + parameters + "onSpawned, onFailed, " + common + ");}"),
+        ("internal UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync(", "{return enemySpawnRuntime.SpawnEnemyCoreInternalAsync(" + parameters + common + ", options);}"),
+        ("internal void EnsureCharacterPresetsCacheReady()", "{modeDRuntime.EnsureCharacterPresetsCacheReady();}"),
+    ):
+        if compact(extract_method_body(host, signature)) != compact(expected):
+            return fail("legacy spawn bridge changed or disconnected: " + signature)
+    for statement in ("get { return EnemySpawnRuntime.ManagedBossSpawnDispatcher; }",
+                      "set { EnemySpawnRuntime.ManagedBossSpawnDispatcher = value; }"):
+        if statement not in host:
+            return fail("managed dispatcher alias must retain the same static slot")
 
     for needle, message in (
         ("internal sealed class EnemySpawnCoreResult", "spawn core result object must exist"),

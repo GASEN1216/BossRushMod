@@ -402,9 +402,9 @@ namespace BossRush
                     return;
                 }
 
-                CharacterMainControl zombie = await owner.TrySpawnZombieModeNormalZombieForWaveRuntimeModule(
+                CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(
                     runId,
-                    owner.GetZombieModeSpawnPositionForWaveRuntimeModule(),
+                    GetZombieModeSpawnPosition(),
                     isSpawnPhaseStillAllowed: () => runState.CombatPhase == ZombieModeCombatPhase.Combat);
                 if (zombie == null &&
                     adjustKillTargetOnFailure &&
@@ -432,8 +432,8 @@ namespace BossRush
                     return;
                 }
 
-                ZombieModeBossKind kind = owner.GetZombieModeBossKindForWaveRuntimeModule(i);
-                CharacterMainControl boss = await owner.TrySpawnZombieModeBossForWaveRuntimeModule(runId, owner.GetZombieModeBossSpawnPositionForWaveRuntimeModule(i), kind);
+                ZombieModeBossKind kind = GetZombieModeBossKindForIndex(i);
+                CharacterMainControl boss = await TrySpawnZombieModeBossAsync(runId, GetZombieModeBossSpawnPosition(i), kind);
                 if (!IsZombieModeRunValid(runId) || runState.CombatPhase != ZombieModeCombatPhase.Combat) return;
                 if (boss == null)
                 {
@@ -754,7 +754,7 @@ namespace BossRush
                     continue;
                 }
 
-                CharacterMainControl zombie = await owner.TrySpawnZombieModeNormalZombieForWaveRuntimeModule(
+                CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(
                     runId,
                     spawnPosition,
                     isSpawnPhaseStillAllowed: () => IsZombieModeAmbientZombieSpawnPhase(runState.CombatPhase));
@@ -777,7 +777,7 @@ namespace BossRush
 
         private bool TryGetNextZombieModeMapSpawnPosition(out Vector3 position)
         {
-            return owner.TryGetZombieModeReliableSpawnPositionForWaveRuntimeModule(out position);
+            return TryGetZombieModeReliableSpawnPosition(out position);
         }
 
         private void HandleZombieModeBossDefeated(int runId, ZombieModeEnemyRuntimeMarker marker, CharacterMainControl character)
@@ -844,7 +844,7 @@ namespace BossRush
             float remaining = ZombieModeTuning.SettlementMaxWaitSeconds;
             while (IsZombieModeRunValid(runId) && runState.CombatPhase == ZombieModeCombatPhase.Settling)
             {
-                if (!owner.HasZombieModePendingPurificationStarsForWaveRuntimeModule())
+                if (!HasZombieModePendingPurificationStars())
                 {
                     break;
                 }
@@ -856,7 +856,7 @@ namespace BossRush
 
                 if (remaining <= 0f)
                 {
-                    owner.ForceCollectZombieModePendingPurificationStarsForWaveRuntimeModule(runId);
+                    ForceCollectZombieModePendingPurificationStars(runId);
                     break;
                 }
 
@@ -868,7 +868,7 @@ namespace BossRush
                 yield break;
             }
 
-            owner.ForceCollectZombieModePendingPurificationStarsForWaveRuntimeModule(runId);
+            ForceCollectZombieModePendingPurificationStars(runId);
             ShowZombieModeRewardSelection(runId, bossNode);
         }
 
@@ -907,7 +907,7 @@ namespace BossRush
                 Vector3 offset = starCount > 1
                     ? Quaternion.Euler(0f, 360f * i / starCount, 0f) * Vector3.forward * 0.4f
                     : Vector3.zero;
-                if (owner.CreateZombieModePurificationPointForWaveRuntimeModule(runId, position + offset, value))
+                if (CreateZombieModePurificationPoint(runId, position + offset, value))
                 {
                     created++;
                 }

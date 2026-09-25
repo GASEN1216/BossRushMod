@@ -28,7 +28,7 @@ using Duckov.Scenes;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class RandomEventsRuntimeModule
     {
         // ====================================================================
         // E1 空投补给：奖励箱
@@ -50,10 +50,10 @@ namespace BossRush
             InteractableLootbox lootbox = null;
             try
             {
-                InteractableLootbox prefab = GetLootBoxTemplateWithLoader();
+                InteractableLootbox prefab = ModBehaviour.GetLootBoxTemplateWithLoader();
                 if (prefab == null)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 未找到 Lootbox 模板，空投取消");
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 未找到 Lootbox 模板，空投取消");
                     return null;
                 }
 
@@ -83,18 +83,18 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱本地库存创建失败: " + e.Message);
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱本地库存创建失败: " + e.Message);
                     throw;
                 }
 
                 // registerSweepTracking 传 false：空投不进扫箱令口径。
                 try
                 {
-                    BossRushLootboxUtility.DecorateLootbox(lootbox, this, false, true);
+                    BossRushLootboxUtility.DecorateLootbox(lootbox, _owner, false, true);
                 }
                 catch (Exception e)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱外观装饰失败: " + e.Message);
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱外观装饰失败: " + e.Message);
                 }
 
                 try
@@ -103,7 +103,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱迁移场景失败: " + e.Message);
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱迁移场景失败: " + e.Message);
                 }
 
                 Duckov.Utilities.LootBoxLoader loader = null;
@@ -117,7 +117,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱 LootBoxLoader 获取失败: " + e.Message);
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱 LootBoxLoader 获取失败: " + e.Message);
                 }
 
                 if (loader != null)
@@ -136,7 +136,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 创建空投箱失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 创建空投箱失败: " + e.Message);
                 if (lootbox != null) UnityEngine.Object.Destroy(lootbox.gameObject);
                 return null;
             }
@@ -171,7 +171,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱数量设置失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱数量设置失败: " + e.Message);
             }
 
             // ── 品质均权 ──────────────────────────────────────
@@ -195,7 +195,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱品质设置失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱品质设置失败: " + e.Message);
             }
 
             // ── tag 白名单 / 黑名单 ───────────────────────────
@@ -212,7 +212,7 @@ namespace BossRush
                     if (tagsContainer != null && tagsContainer.entries != null)
                     {
                         tagsContainer.entries.Clear();
-                        List<Duckov.Utilities.Tag> tagExclude = BuildGeneralLootExcludeTags(tagsData, true);
+                        List<Duckov.Utilities.Tag> tagExclude = _owner.BuildGeneralLootExcludeTags(tagsData, true);
                         // AllTags 是 ReadOnlyCollection<Tag>（官方只读视图），不能隐式转 List。
                         // 这里只做顺序遍历，用 IList 接口接住即可，避免多余拷贝。
                         System.Collections.Generic.IList<Duckov.Utilities.Tag> allTags = tagsData.AllTags;
@@ -231,7 +231,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱 tag 设置失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱 tag 设置失败: " + e.Message);
             }
 
             try
@@ -246,12 +246,12 @@ namespace BossRush
                         excludeList = new List<Duckov.Utilities.Tag>();
                         excludeTagsField.SetValue(loader, excludeList);
                     }
-                    MergeGeneralLootExcludeTags(excludeList, tagsData);
+                    _owner.MergeGeneralLootExcludeTags(excludeList, tagsData);
                 }
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱排除 tag 设置失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱排除 tag 设置失败: " + e.Message);
             }
 
             // ── 随机池 ────────────────────────────────────────
@@ -262,7 +262,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱随机池设置失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱随机池设置失败: " + e.Message);
             }
 
             // ── fixedItems 必须初始化：LootBoxLoader.Setup() 会裸读它，null 会 NRE ──
@@ -288,7 +288,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱 fixedItems 初始化失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱 fixedItems 初始化失败: " + e.Message);
             }
 
             // ── 落地填充：EnsureLocalInventory 之后 Inventory 直接返回引用，
@@ -297,7 +297,7 @@ namespace BossRush
             {
                 if (!hasRandomPool)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱没有有效品质候选，跳过填充");
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱没有有效品质候选，跳过填充");
                     return;
                 }
                 loader.randomFromPool = true;
@@ -307,7 +307,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱填充失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱填充失败: " + e.Message);
             }
         }
 
@@ -358,7 +358,7 @@ namespace BossRush
 
             // 先清模板池：候选为空或元数据失效时不能退回不受限制的原池。
             entriesList.Clear();
-            HashSet<int> candidates = BuildGeneralBossLootCandidateIdSet();
+            HashSet<int> candidates = _owner.BuildRandomEventLootCandidateIdsForRuntime();
             if (candidates == null || candidates.Count == 0)
             {
                 return false;
@@ -371,7 +371,7 @@ namespace BossRush
             {
                 try
                 {
-                    if (IsItemBlacklisted(id))
+                    if (ModBehaviour.IsItemBlacklisted(id))
                     {
                         continue;
                     }
@@ -464,7 +464,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投落地表现失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投落地表现失败: " + e.Message);
             }
 
             if (onLanded != null)
@@ -472,7 +472,7 @@ namespace BossRush
                 try { onLanded(); }
                 catch (Exception e)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投落地回调失败: " + e.Message);
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投落地回调失败: " + e.Message);
                 }
             }
         }
@@ -499,7 +499,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 金鸭雨调度失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 金鸭雨调度失败: " + e.Message);
                 InvokeRandomEventCashCompletion(onCompleted, Mathf.Max(1, pileCount), 0);
             }
         }
@@ -522,7 +522,7 @@ namespace BossRush
                 for (int i = 0; i < piles; i++)
                 {
                     // 切图后剩余堆一律作废，避免把钱撒到下一张图
-                    if (this == null || (isStillValid != null && !isStillValid())
+                    if (_owner == null || (isStillValid != null && !isStillValid())
                         || SceneManager.GetActiveScene().buildIndex != sceneBuildIndex)
                     {
                         return;
@@ -535,7 +535,7 @@ namespace BossRush
                     }
                     catch (Exception e)
                     {
-                        DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 现金实例化失败: " + e.Message);
+                        ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 现金实例化失败: " + e.Message);
                     }
 
                     if (cash == null)
@@ -543,7 +543,7 @@ namespace BossRush
                         continue;
                     }
 
-                    if (this == null || (isStillValid != null && !isStillValid())
+                    if (_owner == null || (isStillValid != null && !isStillValid())
                         || SceneManager.GetActiveScene().buildIndex != sceneBuildIndex)
                     {
                         try { cash.DestroyTree(); } catch (Exception) { }
@@ -576,7 +576,7 @@ namespace BossRush
                     }
                     catch (Exception e)
                     {
-                        DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 现金落地失败: " + e.Message);
+                        ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 现金落地失败: " + e.Message);
                         try { cash.DestroyTree(); } catch (Exception) { }
                     }
 
@@ -585,11 +585,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 金鸭雨生成失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 金鸭雨生成失败: " + e.Message);
             }
             finally
             {
-                if (this != null && (isStillValid == null || isStillValid()))
+                if (_owner != null && (isStillValid == null || isStillValid()))
                     InvokeRandomEventCashCompletion(onCompleted, piles, spawned);
             }
         }
@@ -600,7 +600,7 @@ namespace BossRush
             try { callback(requested, spawned); }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 金鸭雨完成回调失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 金鸭雨完成回调失败: " + e.Message);
             }
         }
     }

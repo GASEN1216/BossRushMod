@@ -41,6 +41,7 @@ public class DeathEvent
     public void AddListener(Action<DamageInfo> handler) { handlers += handler; }
     public void RemoveListener(Action<DamageInfo> handler) { handlers -= handler; }
     public void Invoke() { if (handlers != null) handlers(new DamageInfo()); }
+    public Action<DamageInfo> Snapshot() { return handlers; }
 }
 
 namespace BossRush
@@ -50,6 +51,7 @@ namespace BossRush
         private static int _playbackGeneration;
         private static CancellationTokenSource _playbackCancellation;
         public static CancellationToken ObservedToken;
+        internal static void ResetStaticCaches() { InvalidatePlayback(); }
         public static Task PlayFinalBossPrologueAsync()
         {
             ObservedToken = PlaybackToken();
@@ -71,34 +73,60 @@ namespace BossRush
         public void StopBossBGM(string key, CharacterMainControl owner) { }
         public void PlayStinger(string key) { }
     }
+    internal static class TaskExtensions
+    {
+        internal static void Forget(this Task task) { }
+    }
     public partial class ModBehaviour
     {
-        private CharacterMainControl campaignFinalBossInstance;
-        private int campaignFinalBossRunId, campaignFinalBossDeathPresentationCount;
-        private bool campaignFinalBossSpawnResolved;
-        private UnityEngine.GameObject campaignFinalBossAltar;
-        private float campaignAltarRetryAt;
-        public bool Arena, ModeBusy, NonWaveRequested;
+        public static bool DevModeEnabled = true;
+        public bool Arena, NonWaveRequested;
+        public bool ModeBusy { get { return modeGActive; } set { modeGActive = value; } }
         public int ClearedLoot;
         public TaskCompletionSource<CharacterMainControl> SpawnResult;
-        public bool FinalActive { get { return campaignFinalBossActive; } }
-        private bool IsCampaignArenaSceneCached() { return Arena; }
-        private bool IsAnyGameplayModeActiveForCampaign() { return ModeBusy; }
-        private UnityEngine.Vector3 ResolveCampaignFinalBossSpawnPosition() { return new UnityEngine.Vector3(); }
-        private void ApplyCampaignFinalBossVariant(CharacterMainControl boss) { }
+        public bool FinalActive { get { return IsCampaignFinalBossActive; } }
+        public int ArenaQueryCount;
+        public bool IsCurrentSceneValidBossRushArena() { ArenaQueryCount++; return Arena; }
         private void ClearBossRandomLootTracking(CharacterMainControl boss) { ClearedLoot++; }
-        private Task<CharacterMainControl> SpawnPhantomWitch(UnityEngine.Vector3 position, bool notify,
+        private void ApplyBossStatMultiplier(CharacterMainControl boss, float multiplier) { }
+        internal Task<CharacterMainControl> SpawnPhantomWitch(UnityEngine.Vector3 position, bool notify,
             bool defer, PhantomWitchDeathPresentation presentation, float scale, bool isNonWaveSpawn = false)
         {
             NonWaveRequested = isNonWaveSpawn;
             return SpawnResult.Task;
         }
-        public Task BeginSpawn()
+        public Task BeginSpawn() { return campaignRuntime.BeginSpawn(); }
+        public Task BeginPrologue() { return campaignRuntime.BeginPrologue(); }
+    }
+    internal sealed class CampaignOfficialQuestClient { internal void ClearPending() { } internal void UnregisterAll() { } }
+    internal static class CampaignSaveCoordinator
+    {
+        internal static void TryFlushOnHostDestroy() { }
+        internal static void ShutdownSubscription() { }
+        internal static void ResetStaticCaches() { }
+    }
+    internal static class CampaignHud { internal static void ResetStaticCaches() { } }
+    internal sealed partial class CampaignRuntimeModule : BossRushRuntimeModuleBase
+    {
+        private ModBehaviour _owner;
+        private bool _bootstrapped;
+        private int _sceneGeneration;
+        private CampaignOfficialQuestClient _questClient;
+        internal int SceneGeneration { get { return _sceneGeneration; } }
+        internal bool IsEnabled { get { return _owner != null && _owner.IsCampaignConfiguredEnabled(); } }
+        private void ShutdownIfEnabledTurnedOff() { }
+        private void EnsureBootstrapped() { }
+        private static void LogFailure(string stage, Exception error) { throw new Exception(stage, error); }
+        internal CampaignRuntimeModule(ModBehaviour owner) { _owner = owner; }
+        internal void TickCampaignFinalBossAltar() { }
+        private UnityEngine.Vector3 ResolveCampaignFinalBossSpawnPosition() { return new UnityEngine.Vector3(); }
+        private void ApplyCampaignFinalBossVariant(CharacterMainControl boss) { }
+        internal Task BeginSpawn()
         {
             campaignFinalBossActive = true;
             return StartCampaignFinalBossAsync(++campaignFinalBossRunId);
         }
-        public Task BeginPrologue()
+        internal Task BeginPrologue()
         {
             campaignFinalBossActive = true;
             return StartCampaignFinalBossPrologueThenSpawnAsync(++campaignFinalBossRunId);
@@ -125,9 +153,22 @@ internal static class FinalBossRegression
         check(!owner.CanStartCampaignFinalBoss(), "ready chapter rejects final summon through actual interaction gate");
         CampaignProgressService.State = CampaignChapterState.ContractActive;
         check(owner.CanStartCampaignFinalBoss(), "active final contract can summon");
+        int sceneQueries = owner.ArenaQueryCount;
+        check(owner.CanStartCampaignFinalBoss() && owner.ArenaQueryCount == sceneQueries,
+            "same module scene generation reuses arena query");
+        owner.CampaignRuntime.OnSceneLoaded(new SceneRuntimeContext());
+        check(owner.CampaignRuntime.SceneGeneration == 1 && owner.CanStartCampaignFinalBoss()
+            && owner.ArenaQueryCount == sceneQueries + 1, "scene dispatch invalidates the module arena cache once");
         CharacterMainControl.Main.Health.IsDead = true;
         check(!owner.CanStartCampaignFinalBoss(), "dead player cannot summon");
         CharacterMainControl.Main.Health.IsDead = false;
+
+        owner.StartCampaignFinalBoss();
+        check(owner.IsCampaignFinalBossActive && !owner.NonWaveRequested,
+            "original host start bridge arms the module before the prologue wait");
+        owner.CleanupCampaignFinalBoss(true);
+        check(!owner.IsCampaignFinalBossActive && CampaignDialoguePlayer.ObservedToken.IsCancellationRequested,
+            "original cleanup bridge cancels the same module run");
 
         Task prologue = owner.BeginPrologue();
         CancellationToken oldToken = CampaignDialoguePlayer.ObservedToken;
@@ -172,8 +213,14 @@ internal static class FinalBossRegression
         live = Boss(); successor.SetResult(live); successorRun.GetAwaiter().GetResult();
         // Model the mandatory Unity scene teardown, then the host's existing scene cleanup.
         UnityEngine.Object.Destroy(live.gameObject);
-        owner.CleanupCampaignFinalBoss(false);
+        owner.CampaignRuntime.OnSceneLoaded(new SceneRuntimeContext());
         check(!owner.FinalActive && owner.CanStartCampaignFinalBoss(), "scene destruction permits another challenge");
+
+        var isolatedOwner = new ModBehaviour { Arena = true };
+        isolatedOwner.StartCampaignFinalBoss();
+        check(isolatedOwner.IsCampaignFinalBossActive && !owner.IsCampaignFinalBossActive,
+            "separate hosts do not share final boss ownership state");
+        isolatedOwner.CleanupCampaignFinalBoss(true);
 
         CampaignObjectiveTracker.ResetSession();
         CampaignProgressService.Notifications = 0;
@@ -181,9 +228,21 @@ internal static class FinalBossRegression
         successor = owner.SpawnResult = new TaskCompletionSource<CharacterMainControl>();
         successorRun = owner.BeginSpawn();
         live = Boss(); successor.SetResult(live); successorRun.GetAwaiter().GetResult();
-        live.Health.OnDeadEvent.Invoke(); live.Health.OnDeadEvent.Invoke();
+        Action<DamageInfo> capturedDeath = live.Health.OnDeadEvent.Snapshot();
+        capturedDeath(new DamageInfo()); capturedDeath(new DamageInfo());
         check(CampaignProgressService.Notifications == 1 && !CampaignObjectiveTracker.IsArmed
-            && !owner.FinalActive && live != null && live.Health.OnDeadEvent.Count == 0,
+            && !owner.FinalActive && live != null && live.Health.OnDeadEvent.Count == 0
+            && owner.CampaignFinalBossDeathPresentationCount == 1,
             "victory completes once, releases tracking, and leaves corpse to normal loot");
+
+        var destroyedOwner = new ModBehaviour { Arena = true };
+        var pendingAtDestroy = destroyedOwner.SpawnResult = new TaskCompletionSource<CharacterMainControl>();
+        Task destroyRun = destroyedOwner.BeginSpawn();
+        destroyedOwner.CampaignRuntime.OnDestroy();
+        UnityEngine.Object.Destroy(destroyedOwner);
+        var destroyLate = Boss(); pendingAtDestroy.SetResult(destroyLate); destroyRun.GetAwaiter().GetResult();
+        check(destroyedOwner == null && destroyLate == null && destroyedOwner.ClearedLoot == 1
+            && !destroyedOwner.IsCampaignFinalBossActive,
+            "module destruction keeps original host for late spawn loot cleanup and destroy");
     }
 }

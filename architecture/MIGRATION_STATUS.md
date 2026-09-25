@@ -14,7 +14,7 @@
 | P5 目录归位 | 未完成 | 注入占位已随簇 1 删除；天空岛迁移待做 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-续接基点：`aa1368df`（提取生成后处理并归位安全区与装备初始化）。2026-09-25 继续完成扫箱运行时、E/F 虚拟 spawner、丧尸奖励和集成叶子归位；下一动作是共享刷怪核心、丧尸生成与地图隔离、随机事件桥，再收口 E/F 共享阵营生成与根宿主。最新提交号以 `git log -1` 为准。真实游戏目录尚未部署。
+续接基点：`02e18fd2`（归位扫箱与丧尸奖励并提取虚拟刷怪登记）。2026-09-25 已继续完成共享生成核心与恢复服务、丧尸生成与地图隔离、随机事件效果和征程终局归位；下一动作是成就、Mode G 入口、E/F 共享阵营生成与根宿主收口。最新提交号以 `git log -1` 为准。真实游戏目录尚未部署。
 
 ## P0 基线（2026-09-24）
 
@@ -179,6 +179,16 @@
 - 反向验证：扫箱 7 次、虚拟 spawner 4 次、预算 2 次、Integration 14 个守卫 + 5 个行为探针、Zombie 31 个守卫的 34 个探针 + 6 个行为探针均在预期判据转红并按 SHA-256 原字节恢复。证据在 `Build/migration/loot-sweep-negative.json`、`virtual-spawner-negative.json`、`rewards-loot-budget-negative.json`、`integration-leaves/negative-results.json`、`zombie-reward-guards-negative.json`、`zombie-reward-guards-remaining-negative.json`、`zombie-reward-runtime-negative.json`。
 - Windows 最终正式/Dev 隔离构建均 `Build succeeded!`，两次 72 bundle 清单通过；正式 SHA-256 `BFE1B3CF57C1017BF79D3B4583CA49B5314234BEA83607CBF18D2569A8BB0101`，Dev SHA-256 `DD8277292017D8AE0ACE8CAC19BFE6736F4B5795D3B062053875219F89243765`。两者分别与隔离部署副本一致，14 个 Dev 标识 absent/present 通过。当前 Build 为正式配置；真实游戏目录尚未部署。前三次正式编译中前两次揭示遗留私有桥缺失，按原语义补回 Mode D 候选过滤、Nurse 调试只读属性与 Mode G 激活/玩家增益兼容入口，第三次及最终两种构建均通过。
 - L3 待 owner：在 E/F 击杀满扫箱令牌条件后使用阿稳扫箱，检查有效尸体、投递与失败退款；退出再入观察地图敌人登记。丧尸局购买奖励、使用医疗并切图，观察临时 NPC 回收、扣点/退款与散射效果。基地接近羽织并交互，击杀相关 Boss 检查种子掉落；中英切换后检查船票与 Mutator 显示。重复登记/计数、旧局继续发放、重复或漏退、NPC/事件残留、异步角色未清理均不合格。本批仍是 P3/P4 中间检查点。
+
+## 2026-09-25 继续执行：共享生成、恢复、丧尸生成、随机事件与征程（COMPAT）
+
+- `EnemySpawnRuntime` 接管完整生成算法；`EnemySpawnHostBridge` 保留原入口与静态 dispatcher 转发，注册时绑定原预设、特殊 Boss、配装和归属服务。预设缓存就绪方法归原缓存 owner Mode D。6 个方法体归一化等价；5 次随机回退、原等待、提交时机、取消后清理与共享后处理实例保持。
+- `EnemyRecoveryMonitor` 成为独立服务，持有原恢复状态、缓存和计时器，接管即时与延迟生成位置验证；丧尸及 Arena 各自枚举敌人并引用同一 monitor。原 27 个方法体等价，模式优先级、时间源、下坠/静止判据、冷却、保血、物理清零和阵营仇恨策略保持；根装配窄查询与策略，Tick/Clear 原位置只转发。
+- 丧尸剩余生成、初始装备、地图隔离、净化点与现金投资的 65 个方法归既有模块；5 个完整消费者和 3 处组件边界等价，移除 5 个业务宿主 partial。RandomEvents 的 33 个效果方法归原注册模块。Campaign 的 25 个方法、11 个状态归原注册模块，保留终局 API；异步工厂入口捕获原宿主，保留原 `this` 在宿主销毁后对迟到对象清理的寿命，新增真实 OnDestroy 与迟到生成回收用例。
+- 宿主 partial 为 121 文件 / 27,142 行，预算同步下调；编译清单 1,116 源、47 模块索引通过。全量守卫 685 PASS / 0 FAIL / 0 known-red；全量执行回归 84 PASS / 0 FAIL。新夹具覆盖完整生成核心、恢复服务、随机事件效果、丧尸生成和初始装备；Campaign 既有夹具扩展到 196 个判据。Audit 和后处理夹具按真实新 owner 接线。
+- 反向验证：生成核心 8 次、恢复 17 次、预算 2 次、RandomEvents 15 次、Campaign 18 次、Zombie 的 19 个守卫/26 个探针与两个执行夹具/14 个探针均在预期判据转红，并按 SHA-256 原字节恢复。证据见 `Build/migration/spawn-core-negative.json`、`recovery-owner-negative.json`、`spawn-recovery-budget-negative.json`、`random-event-owners/`、`campaign-owners/` 和 `zombie-remainder-*.json`。恢复反向初轮仅因预期错误文本与实际错误文本不一致中止，实际变异已转红；修正报告判据后完成，无生产改动。
+- Windows 正式/Dev 隔离构建均 `Build succeeded!`，两次 72 bundle 哈希清单通过；正式 SHA-256 `571774A6C361120D7EFB353B35D60338ABDA4A6E6D053CCF3E4852DB970AFCB7`，Dev SHA-256 `B50AA395AEA33B97DA4E8E80704F90A1948D64D92359DF688C05C9638D57EBF6`。两者分别与隔离部署副本一致，14 个 Dev 标识 absent/present 通过；当前 Build 为 Dev。真实游戏目录尚未部署。
+- L3 待 owner：标准模式、D/E/F 和丧尸各进入一局，检查刷怪、敌对性、卡位恢复后血量与追击；生成期间退出再入，检查迟到角色和旧局奖励。丧尸进入/退出检查初始装备、原版 NPC/地图隔离和现金结算；触发随机效果与征程终局后切图，检查迟到 Boss 回收。重复生成/提交、回血重置、Boss 被普通丧尸远距策略拉走、旧局继续改写新局或卸载后角色残留均不合格。本批仍是 P3/P4 中间检查点。
 
 ## 未完成项
 

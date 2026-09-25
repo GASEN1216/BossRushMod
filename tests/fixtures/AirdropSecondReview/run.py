@@ -31,7 +31,7 @@ if __name__ == "__main__":
     (OUT / "Production.cs").write_text(
         "using System; using System.Collections; using System.Collections.Generic; "
         "using System.Reflection; using UnityEngine; using ItemStatsSystem;\n"
-        "public partial class ModBehaviour {\n" + "\n".join(methods) + "\n}\n", encoding="utf-8")
+        "internal sealed partial class RandomEventsRuntimeModule {\n" + "\n".join(methods) + "\n}\n", encoding="utf-8")
     (OUT / "source.sha256.txt").write_text(hashlib.sha256(path.read_bytes()).hexdigest(), encoding="utf-8")
     result = subprocess.call(["dotnet", "build", str(HERE / "Airdrop.csproj"), "--configuration", "Release", "--nologo",
                               "-p:BaseIntermediateOutputPath=" + str(OUT / "obj") + "/",

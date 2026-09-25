@@ -424,6 +424,7 @@ echo(Utilities\ManagedBossSpawnContracts.cs
 echo(Utilities\ModBossPresetLookup.cs
 echo(Utilities\SpawnedEnemyActivationHelper.cs
 echo(Utilities\EnemySpawnCore.cs
+echo(Utilities\EnemySpawnHostBridge.cs
 echo(Utilities\ModeEFSpawnProfiler.cs
 echo(Utilities\ModeEFMerchantRuntime.cs
 echo(Utilities\ModeEFMerchantCatalog.cs
@@ -432,6 +433,7 @@ echo(Utilities\ModeEFVirtualSpawnerRegistry.cs
 echo(Utilities\ModeEFSpawnPreparation.cs
 echo(Utilities\ZombieSpawnSanitizer.cs
 echo(Utilities\EnemyRecoveryMonitor.cs
+echo(Utilities\EnemyRecoveryHostBridge.cs
 echo(Utilities\GameplayRuntimeHooks.cs
 echo(Utilities\ModeRuntimeHooks.cs
 echo(Utilities\SpawnPositionHelper.cs
@@ -472,6 +474,7 @@ echo(WavesArena\WavesArenaRuntimeModule_WaveDeaths.cs
 echo(WavesArena\WavesArenaRuntimeModule_LootState.cs
 echo(WavesArena\WavesArenaRuntimeModule_Start.cs
 echo(WavesArena\WavesArenaRuntimeModule_EnemyMaintenance.cs
+echo(WavesArena\WavesArenaRuntimeModule_Recovery.cs
 echo(WavesArena\WavesArenaRuntimeModule_LootCatalog.cs
 echo(WavesArena\WavesArenaRuntimeModule_LootTracking.cs
 echo(WavesArena\WavesArenaRuntimeModule_LootCleanup.cs
@@ -679,6 +682,7 @@ echo(ZombieMode\ZombieModeModels.cs
 echo(ZombieMode\ZombieModeTuning.cs
 echo(ZombieMode\ZombieModeRuntimeModule.cs
 echo(ZombieMode\ZombieModeRuntimeModule_EnemyRuntime.cs
+echo(ZombieMode\ZombieModeRuntimeModule_Recovery.cs
 echo(ZombieMode\ZombieModeRuntimeModule_InventoryTransfer.cs
 echo(ZombieMode\ZombieModeRuntimeModule_Hud.cs
 echo(ZombieMode\ZombieModeRuntimeModule_BossController.cs
@@ -1158,6 +1162,7 @@ echo(RandomEvents\RandomEventEffectsBridge_Loot.cs
 echo(RandomEvents\RandomEventEffectsBridge_Spawn.cs
 echo(RandomEvents\RandomEventHud.cs
 echo(RandomEvents\RandomEventsRuntimeModule.cs
+echo(RandomEvents\RandomEventsRuntimeModuleHostBridge.cs
 echo(Config\ConfigAffixForge.cs
 echo(Integration\AffixForge\AffixDefinitions.cs
 echo(Integration\AffixForge\AffixItemData.cs
@@ -1204,6 +1209,7 @@ echo(Campaign\CampaignFinalBoss.cs
 echo(Campaign\CampaignFinalBossFx.cs
 echo(Localization\CampaignLocalization.cs
 echo(Campaign\CampaignRuntimeModule.cs
+echo(Campaign\CampaignRuntimeModuleHostBridge.cs
 echo(Config\ConfigBackMountain.cs
 echo(Integration\BackMountain\BackMountainConfig.cs
 echo(Integration\BackMountain\BackMountainUnlocks.cs

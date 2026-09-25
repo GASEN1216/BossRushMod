@@ -191,37 +191,12 @@ namespace BossRush
 
         private static void RestoreZombieModeVisualScale(ZombieModeEnemyRuntimeMarker marker)
         {
-            if (marker == null || marker.VisualScaleRecords == null)
-            {
-                return;
-            }
-
-            for (int i = marker.VisualScaleRecords.Count - 1; i >= 0; i--)
-            {
-                ZombieModeVisualScaleRecord record = marker.VisualScaleRecords[i];
-                try
-                {
-                    if (record != null && record.Target != null)
-                    {
-                        record.Target.localScale = record.OriginalScale;
-                    }
-                }
-                catch { }
-            }
-            marker.VisualScaleRecords.Clear();
+            ZombieModeRuntimeModule.RestoreZombieModeVisualScale(marker);
         }
 
         private static void ReleaseZombieModeFootMarker(ZombieModeEnemyRuntimeMarker marker)
         {
-            if (marker == null || marker.VisualFootMarker == null)
-            {
-                return;
-            }
-
-            GameObject visual = marker.VisualFootMarker;
-            marker.VisualFootMarker = null;
-            marker.VisualFootMarkerFallbackApplied = false;
-            ZombieModeFootMarkerPool.Release(visual);
+            ZombieModeRuntimeModule.ReleaseZombieModeFootMarker(marker);
         }
 
         private static AICharacterController GetZombieModeEnemyAI(GameObject enemyObject, ZombieModeEnemyRuntimeMarker marker)

@@ -69,7 +69,7 @@ def main() -> int:
     rewards = read_rewards()
 
     try:
-        spawn_normal = extract_method(spawner, "private async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync")
+        spawn_normal = extract_method(spawner, "internal async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync")
         if not spawn_normal:
             return fail("cannot extract TrySpawnZombieModeNormalZombieAsync")
 

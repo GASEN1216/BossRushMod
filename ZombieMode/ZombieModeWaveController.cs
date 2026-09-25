@@ -250,5 +250,50 @@ namespace BossRush
         {
             return CreateZombieModePurificationPoint(runId, position, value);
         }
+        private bool CollectZombieModeSpawnPoints(int runId)
+        {
+            return zombieModeRuntimeModule.CollectZombieModeSpawnPoints(runId);
+        }
+
+        private Vector3 GetZombieModeSpawnPosition()
+        {
+            return zombieModeRuntimeModule.GetZombieModeSpawnPosition();
+        }
+
+        private bool TryGetZombieModeReliableSpawnPosition(out Vector3 position)
+        {
+            return zombieModeRuntimeModule.TryGetZombieModeReliableSpawnPosition(out position);
+        }
+
+        private bool TryGetNearestZombieModeMapSpawnPositionToPlayer(out Vector3 position)
+        {
+            return zombieModeRuntimeModule.TryGetNearestZombieModeMapSpawnPositionToPlayer(out position);
+        }
+
+        private Cysharp.Threading.Tasks.UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync(
+            int runId,
+            Vector3 position,
+            ZombieModeEnemyKind forcedEnemyKind = ZombieModeEnemyKind.Normal,
+            bool forceEnemyKind = false,
+            System.Func<bool> isSpawnPhaseStillAllowed = null)
+        {
+            return zombieModeRuntimeModule.TrySpawnZombieModeNormalZombieAsync(runId, position, forcedEnemyKind, forceEnemyKind, isSpawnPhaseStillAllowed);
+        }
+
+        private Cysharp.Threading.Tasks.UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync(int runId, Vector3 position, ZombieModeBossKind kind)
+        {
+            return zombieModeRuntimeModule.TrySpawnZombieModeBossAsync(runId, position, kind);
+        }
+
+        private ZombieModeBossKind GetZombieModeBossKindForIndex(int bossIndex)
+        {
+            return zombieModeRuntimeModule.GetZombieModeBossKindForIndex(bossIndex);
+        }
+
+        private Vector3 GetZombieModeBossSpawnPosition(int bossIndex)
+        {
+            return zombieModeRuntimeModule.GetZombieModeBossSpawnPosition(bossIndex);
+        }
+
     }
 }

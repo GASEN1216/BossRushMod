@@ -101,9 +101,10 @@
         "Utilities/**/*.cs"
       ],
       "entry": "Utilities/ModeRuntimeHooks.cs",
-      "state_owner": "OfficialQuestRuntimeModule / ModeEFSpawnPreparation / ModeEFMerchantCatalog / ModeEFMerchantRuntime / ModeEFSpawnPostprocessScheduler / ModeEFVirtualSpawnerRegistry",
+      "state_owner": "OfficialQuestRuntimeModule / ModeEFSpawnPreparation / ModeEFMerchantCatalog / ModeEFMerchantRuntime / ModeEFSpawnPostprocessScheduler / ModeEFVirtualSpawnerRegistry / EnemySpawnRuntime / EnemyRecoveryMonitor",
       "public_api": [
-        "ModeRuntimeHooks"
+        "ModeRuntimeHooks",
+        "EnemySpawnRuntime"
       ],
       "data": [],
       "tests": [
@@ -113,7 +114,11 @@
         "tests/fixtures/ModeEFSpawnPostprocessScheduler",
         "tests/fixtures/ModeEFMerchantCatalog",
         "tests/ModeEFVirtualSpawnerRegistryGuard.py",
-        "tests/fixtures/ModeEFVirtualSpawnerRegistry"
+        "tests/fixtures/ModeEFVirtualSpawnerRegistry",
+        "tests/EnemySpawnCoreObservableGuard.py",
+        "tests/fixtures/EnemySpawnRuntime",
+        "tests/EnemyRecoveryOwnershipGuard.py",
+        "tests/fixtures/EnemyRecoveryRuntime"
       ],
       "docs": [],
       "rules": [
@@ -344,7 +349,9 @@
       "tests": [
         "tests/ZombieMode*Guard.py",
         "tests/fixtures/ZombieModeSafeZoneRuntime",
-        "tests/fixtures/ZombieModeRewardRuntime"
+        "tests/fixtures/ZombieModeRewardRuntime",
+        "tests/fixtures/ZombieModeSpawnRuntime",
+        "tests/fixtures/ZombieModeStarterRuntime"
       ],
       "docs": [],
       "rules": [
@@ -373,7 +380,9 @@
         "Assets/Data/Campaign/**/*.json"
       ],
       "tests": [
-        "tests/Campaign*Guard.py"
+        "tests/Campaign*Guard.py",
+        "tests/CampaignRuntimeOwnershipGuard.py",
+        "tests/fixtures/CampaignPlayability"
       ],
       "docs": [],
       "rules": [
@@ -424,7 +433,8 @@
       ],
       "data": [],
       "tests": [
-        "tests/RandomEvents*Guard.py"
+        "tests/RandomEvents*Guard.py",
+        "tests/fixtures/RandomEventEffectsOwners"
       ],
       "docs": [],
       "rules": [

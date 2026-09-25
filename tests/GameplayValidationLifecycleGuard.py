@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """第五轮实机回归：成功消费入场意图、真实整备、场景/迟到 Boss 订阅回收。"""
 from pathlib import Path
+from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
 errors = []
 
 
 def read(path):
-    return (ROOT / path).read_text(encoding='utf-8-sig')
+    return clean_source((ROOT / path).read_text(encoding='utf-8-sig'))
 
 
 scene = read('ModeH/ModeHRuntimeModule_SceneFlow.cs')
@@ -35,8 +36,8 @@ hooks = read('Integration/IntegrationRuntimeHooks.cs')
 if not (0 <= hooks.find('AffixForgeStoneDropService.ClearAllTracking();') < hooks.find('OnSceneLoaded_Integration(scene, mode)')):
     errors.append('Integration 场景回调必须先回收旧词缀熔石掉落订阅')
 campaign = read('Campaign/CampaignFinalBoss.cs')
-for variable in ['boss', 'campaignFinalBossInstance']:
-    clear = campaign.find('ClearBossRandomLootTracking(' + variable + ');')
+for variable, receiver in [('boss', 'campaignOwner'), ('campaignFinalBossInstance', '_owner')]:
+    clear = campaign.find(receiver + '.ClearCampaignBossRandomLootTrackingForRuntime(' + variable + ');')
     destroy = campaign.find('UnityEngine.Object.Destroy(' + variable + '.gameObject)', clear)
     if clear < 0 or destroy < clear or destroy - clear > 200:
         errors.append('终章主动销毁/迟到生成必须先回收掉落订阅: ' + variable)

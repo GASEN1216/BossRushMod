@@ -34,6 +34,7 @@ namespace BossRush
         private void RemoveZombieModeAttributeModifiers() { owner.RemoveZombieModeAttributeModifiersForRuntimeModule(); }
         private void RemoveZombieModeOptionRuntimeEffects() { owner.RemoveZombieModeOptionRuntimeEffectsForRuntimeModule(); }
         private void ClearZombieModeRewardShell() { owner.ClearZombieModeRewardShellForRuntimeModule(); }
+        internal void RestoreZombieModeMapIsolationShell() { owner.Trace.Add("restore-isolation"); }
     }
 
     public partial class ModBehaviour
@@ -56,7 +57,6 @@ namespace BossRush
         private void ClearZombieModeSupportSpawnQueue() { Trace.Add("clear-support"); }
         private void ClearZombieModeEnemyInstanceIds() { Trace.Add("clear-enemy-ids"); }
         private void ClearZombieModeRewardShell() { Trace.Add("clear-reward"); }
-        private void RestoreZombieModeMapIsolationShell() { Trace.Add("restore-isolation"); }
 
         internal static void DevLog(string message) { }
 

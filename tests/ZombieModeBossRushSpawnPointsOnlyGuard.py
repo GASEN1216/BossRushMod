@@ -3,11 +3,13 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeMapSelection.cs")
 
 
 def fail(message: str) -> int:
@@ -36,12 +38,23 @@ def main() -> int:
     spawner = SPAWNER.read_text(encoding="utf-8")
     entry = ENTRY.read_text(encoding="utf-8")
     runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
+    bridges = clean_source(HOST_BRIDGE.read_text(encoding="utf-8"))
+    for name, statement in [
+        ("GetZombieModeCachedSpawnerPositionsForRuntimeModule", "return modeECachedSpawnerPositions;"),
+        ("GetZombieModeCachedSpawnerSceneNameForRuntimeModule", "return modeECachedSpawnerSceneName;"),
+    ]:
+        bridge = extract_method_body(bridges, name)
+        if not bridge or bridge[bridge.index("{"):].split() != ("{ " + statement + " }").split():
+            return fail("cached map point query must retain its original host source -> " + name)
+    cache_fallback = extract_method_body(clean_source(spawner), "TryPopulateZombieModeSpawnPointsFromCachedOriginalSpawnerPositions")
+    if cache_fallback.count("owner.GetZombieModeCachedSpawnerPositionsForRuntimeModule()") != 3 or cache_fallback.count("owner.GetZombieModeCachedSpawnerSceneNameForRuntimeModule()") != 1:
+        return fail("cached map point fallback must retain the original array and scene query order/count")
 
     collect_method = extract_method_body(spawner, "CollectZombieModeSpawnPoints")
     if not collect_method:
         return fail("CollectZombieModeSpawnPoints not found")
 
-    if "zombieModeRunState.MapProfile.StaticSpawnPoints" not in collect_method:
+    if "runState.MapProfile.StaticSpawnPoints" not in collect_method:
         return fail("spawn collection must read ZombieModeMapProfile.StaticSpawnPoints")
     if "TryPopulateZombieModeSpawnPointsFromCachedOriginalSpawnerPositions" not in collect_method:
         return fail("spawn collection must reuse cached original spawner positions before giving up")

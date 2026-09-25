@@ -273,5 +273,11 @@ namespace BossRush
             RestoreZombieModeMapIsolationShell();
         }
 
+
+        internal Vector3[] GetZombieModeCachedSpawnerPositionsForRuntimeModule() { return modeECachedSpawnerPositions; }
+        internal string GetZombieModeCachedSpawnerSceneNameForRuntimeModule() { return modeECachedSpawnerSceneName; }
+        internal void ResetZombieModeOriginalSpawnerStateForRuntimeModule() { spawnersDisabled = false; }
+        internal void DisableZombieModeOriginalSpawnersForRuntimeModule() { DisableAllSpawners(); }
+        internal void RegisterZombieModeEnemyRecoveryAnchorForRuntimeModule(CharacterMainControl enemy, Vector3 anchor) { RegisterEnemyRecoveryAnchor(enemy, anchor); }
     }
 }

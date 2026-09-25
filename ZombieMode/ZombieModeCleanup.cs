@@ -61,15 +61,7 @@ namespace BossRush
             return coroutine;
         }
 
-        private async UniTask<bool> WaitForZombieModeRuntimeResumeAsync(int runId)
-        {
-            while (IsZombieModeRunValid(runId) && IsZombieModeRuntimePaused())
-            {
-                await UniTask.Yield();
-            }
 
-            return IsZombieModeRunValid(runId);
-        }
 
         private void InvalidateZombieModeRun()
         {

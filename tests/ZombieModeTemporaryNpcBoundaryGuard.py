@@ -59,6 +59,7 @@ def check_runtime_binding() -> int:
         var zombieRuntime = new ZombieModeRuntimeModule();
         zombieRuntime.BindEnemyRecoveryUnregister(UnregisterEnemyRecovery);
         zombieRuntime.BindZombieModeTemporaryNpcServices(ResolveZombieModeTemporaryNpcPrefab, courierNpcRuntime.AddCourierInteraction);
+        BindEnemyRecoveryServices(zombieRuntime);
         runtimeModuleHost.Register(zombieRuntime);
         runtimeModuleHost.Register(new ModeGRuntimeModule());
     """)

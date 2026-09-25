@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
         private const string ZOMBIE_MODE_NORMAL_PRESET_NAME = "Cname_Zombie";
         private readonly Dictionary<long, List<ZombieModeSpawnPoint>> zombieModeSpawnPointDedupGrid =
@@ -13,34 +13,34 @@ namespace BossRush
 
         // 注：本模式之前自维护的"丧尸预设缓存字段 + Resources.FindObjectsOfTypeAll 查找方法"
         // 已删除（审查 §1.1）。SpawnEnemyCore 通过共享的 cachedCharacterPresets 自动 fallback；
-        // 入口处调用 EnsureCharacterPresetsCacheReady() 确保字典就绪。
+        // 入口处调用 owner.EnsureCharacterPresetsCacheReady() 确保字典就绪。
 
-        private bool CollectZombieModeSpawnPoints(int runId)
+        internal bool CollectZombieModeSpawnPoints(int runId)
         {
             if (!IsZombieModeRunValid(runId))
             {
                 return false;
             }
 
-            zombieModeRunState.SpawnPoints.Clear();
+            runState.SpawnPoints.Clear();
             ResetZombieModeSpawnPointDedupGrid();
-            if (zombieModeRunState.MapProfile != null)
+            if (runState.MapProfile != null)
             {
-                AddZombieModeSpawnPointArray(zombieModeRunState.MapProfile.StaticSpawnPoints, false);
+                AddZombieModeSpawnPointArray(runState.MapProfile.StaticSpawnPoints, false);
             }
 
-            if (zombieModeRunState.SpawnPoints.Count <= 0)
+            if (runState.SpawnPoints.Count <= 0)
             {
                 TryPopulateZombieModeSpawnPointsFromCachedOriginalSpawnerPositions();
             }
 
-            DevLog("[ZombieMode] 收集刷怪点: " + zombieModeRunState.SpawnPoints.Count);
-            zombieModeRunState.EffectiveSpawnPoints.Clear();
-            for (int i = 0; i < zombieModeRunState.SpawnPoints.Count; i++)
+            ModBehaviour.DevLog("[ZombieMode] 收集刷怪点: " + runState.SpawnPoints.Count);
+            runState.EffectiveSpawnPoints.Clear();
+            for (int i = 0; i < runState.SpawnPoints.Count; i++)
             {
-                zombieModeRunState.EffectiveSpawnPoints.Add(zombieModeRunState.SpawnPoints[i]);
+                runState.EffectiveSpawnPoints.Add(runState.SpawnPoints[i]);
             }
-            return zombieModeRunState.SpawnPoints.Count > 0;
+            return runState.SpawnPoints.Count > 0;
         }
 
         private void ResetZombieModeSpawnPointDedupGrid()
@@ -51,18 +51,18 @@ namespace BossRush
 
         private void TryPopulateZombieModeSpawnPointsFromCachedOriginalSpawnerPositions()
         {
-            if (modeECachedSpawnerPositions == null || modeECachedSpawnerPositions.Length <= 0)
+            if (owner.GetZombieModeCachedSpawnerPositionsForRuntimeModule() == null || owner.GetZombieModeCachedSpawnerPositionsForRuntimeModule().Length <= 0)
             {
                 return;
             }
 
             string currentSceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            if (!string.Equals(modeECachedSpawnerSceneName, currentSceneName, System.StringComparison.Ordinal))
+            if (!string.Equals(owner.GetZombieModeCachedSpawnerSceneNameForRuntimeModule(), currentSceneName, System.StringComparison.Ordinal))
             {
                 return;
             }
 
-            AddZombieModeSpawnPointArray(modeECachedSpawnerPositions, false);
+            AddZombieModeSpawnPointArray(owner.GetZombieModeCachedSpawnerPositionsForRuntimeModule(), false);
         }
 
         private void AddZombieModeSpawnPointArray(Vector3[] points, bool virtualPoint)
@@ -92,7 +92,7 @@ namespace BossRush
             }
 
             ZombieModeSpawnPoint spawnPoint = new ZombieModeSpawnPoint(snapped, virtualPoint);
-            zombieModeRunState.SpawnPoints.Add(spawnPoint);
+            runState.SpawnPoints.Add(spawnPoint);
             RegisterZombieModeSpawnPointDedupCell(spawnPoint);
         }
 
@@ -147,7 +147,7 @@ namespace BossRush
             return ((long)cellX << 32) ^ (uint)cellZ;
         }
 
-        private Vector3 GetZombieModeSpawnPosition()
+        internal Vector3 GetZombieModeSpawnPosition()
         {
             Vector3 reliablePosition;
             if (TryGetZombieModeReliableSpawnPosition(out reliablePosition))
@@ -155,16 +155,16 @@ namespace BossRush
                 return reliablePosition;
             }
 
-            if (zombieModeRunState.SpawnPoints.Count <= 0)
+            if (runState.SpawnPoints.Count <= 0)
             {
                 CharacterMainControl main = CharacterMainControl.Main;
                 return main != null ? main.transform.position : Vector3.zero;
             }
 
-            return zombieModeRunState.SpawnPoints[0].Position;
+            return runState.SpawnPoints[0].Position;
         }
 
-        private bool TryGetZombieModeReliableSpawnPosition(out Vector3 position)
+        internal bool TryGetZombieModeReliableSpawnPosition(out Vector3 position)
         {
             CharacterMainControl main = CharacterMainControl.Main;
             if (main != null && TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position))
@@ -190,12 +190,12 @@ namespace BossRush
             return false;
         }
 
-        private bool TryGetNearestZombieModeMapSpawnPositionToPlayer(out Vector3 position)
+        internal bool TryGetNearestZombieModeMapSpawnPositionToPlayer(out Vector3 position)
         {
             position = Vector3.zero;
-            List<ZombieModeSpawnPoint> points = zombieModeRunState.EffectiveSpawnPoints.Count > 0
-                ? zombieModeRunState.EffectiveSpawnPoints
-                : zombieModeRunState.SpawnPoints;
+            List<ZombieModeSpawnPoint> points = runState.EffectiveSpawnPoints.Count > 0
+                ? runState.EffectiveSpawnPoints
+                : runState.SpawnPoints;
             if (points == null || points.Count <= 0)
             {
                 return false;
@@ -210,7 +210,7 @@ namespace BossRush
             float bestFallbackDistanceSqr = float.MaxValue;
             int bestPreferredIndex = -1;
             int bestFallbackIndex = -1;
-            int startIndex = Mathf.Abs(zombieModeRunState.NextSpawnPointIndex) % points.Count;
+            int startIndex = Mathf.Abs(runState.NextSpawnPointIndex) % points.Count;
             for (int offset = 0; offset < points.Count; offset++)
             {
                 int index = (startIndex + offset) % points.Count;
@@ -248,7 +248,7 @@ namespace BossRush
             }
 
             position = points[bestIndex].Position;
-            zombieModeRunState.NextSpawnPointIndex = (bestIndex + 1) % points.Count;
+            runState.NextSpawnPointIndex = (bestIndex + 1) % points.Count;
             return true;
         }
 
@@ -265,8 +265,8 @@ namespace BossRush
             float minPlayerDistance,
             out Vector3 resolved)
         {
-            int startIndex = Mathf.Abs(zombieModeRunState.NextSpawnPointIndex) % 12;
-            zombieModeRunState.NextSpawnPointIndex = (startIndex + 1) % 12;
+            int startIndex = Mathf.Abs(runState.NextSpawnPointIndex) % 12;
+            runState.NextSpawnPointIndex = (startIndex + 1) % 12;
             return SpawnPositionHelper.TryFindAroundPlayer(
                 playerPos,
                 ringCount: 12,
@@ -302,7 +302,7 @@ namespace BossRush
                 navMeshSampleRadius: ZombieModeTuning.SpawnPointNavMeshSampleRadius);
         }
 
-        private async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync(
+        internal async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync(
             int runId,
             Vector3 position,
             ZombieModeEnemyKind forcedEnemyKind = ZombieModeEnemyKind.Normal,
@@ -345,7 +345,7 @@ namespace BossRush
                 }
 
                 // 入口确保 cachedCharacterPresets 已构建（避免依赖 Mode D 先初始化，§1.1）。
-                EnsureCharacterPresetsCacheReady();
+                owner.EnsureCharacterPresetsCacheReady();
 
                 bool abortedByPause = false;
                 UniTaskCompletionSource<CharacterMainControl> tcs = new UniTaskCompletionSource<CharacterMainControl>();
@@ -356,7 +356,7 @@ namespace BossRush
                     baseHealth = 100f,
                 };
 
-                SpawnEnemyCore(
+                owner.SpawnEnemyCore(
                     info,
                     position,
                     isBoss: false,
@@ -386,18 +386,18 @@ namespace BossRush
                         zombie.gameObject.name = "ZombieMode_NormalZombie_Run" + runId;
                         releaseSpawnSlot();
                         ZombieModeEnemyRuntimeMarker marker = RegisterZombieModeEnemyRuntimeShell(runId, zombie, false, ZombieModeBossKind.Titan, -1, enemyKind, specialKind, eliteAffixes);
-                        SanitizeBossRushZombieSpawn(zombie, "ZombieModeNormal");
+                        owner.SanitizeBossRushZombieSpawn(zombie, "ZombieModeNormal");
                         PrepareZombieModeSpawnedEnemy(zombie, marker, ZombieModeTuning.NormalZombieForceTraceDistance);
                         ApplyZombieModeEnemyTuning(zombie, marker);
-                        zombieModeRunState.LivingZombieCount++;
-                        zombieModeRunState.LivingNormalZombieCount++;
+                        runState.LivingZombieCount++;
+                        runState.LivingNormalZombieCount++;
                         // 地图预设点可能落在玩家刚部署的安全区内；生成完成时再次执行边界禁入，
                         // 避免等到下一次 0.2 秒安全区 tick 才处理。
                         TryMoveZombieModeEnemyOutsideSafeZone(
                             zombie.gameObject,
                             marker,
                             ShouldSuppressZombieModeEnemyAggroForSafeZone());
-                        RegisterEnemyRecoveryAnchor(zombie, zombie.transform.position);
+                        owner.RegisterZombieModeEnemyRecoveryAnchorForRuntimeModule(zombie, zombie.transform.position);
                         tcs.TrySetResult(zombie);
                     },
                     onFailed: () =>
@@ -434,23 +434,23 @@ namespace BossRush
                 return false;
             }
 
-            int activeOrPending = zombieModeRunState.LivingNormalZombieCount + zombieModeRunState.PendingNormalZombieSpawns;
+            int activeOrPending = runState.LivingNormalZombieCount + runState.PendingNormalZombieSpawns;
             if (activeOrPending >= ZombieModeTuning.MaxNormalZombieCount)
             {
                 return false;
             }
 
-            zombieModeRunState.PendingNormalZombieSpawns++;
+            runState.PendingNormalZombieSpawns++;
             return true;
         }
 
         private void ReleaseZombieModeNormalSpawnSlot(int runId)
         {
             if (!IsZombieModeRunValid(runId)) return;
-            zombieModeRunState.PendingNormalZombieSpawns = Mathf.Max(0, zombieModeRunState.PendingNormalZombieSpawns - 1);
+            runState.PendingNormalZombieSpawns = Mathf.Max(0, runState.PendingNormalZombieSpawns - 1);
         }
 
-        private async UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync(int runId, Vector3 position, ZombieModeBossKind kind)
+        internal async UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync(int runId, Vector3 position, ZombieModeBossKind kind)
         {
             while (true)
             {
@@ -465,7 +465,7 @@ namespace BossRush
                 }
 
                 // 入口确保 cachedCharacterPresets 已构建（§1.1）。
-                EnsureCharacterPresetsCacheReady();
+                owner.EnsureCharacterPresetsCacheReady();
 
                 bool abortedByPause = false;
                 UniTaskCompletionSource<CharacterMainControl> tcs = new UniTaskCompletionSource<CharacterMainControl>();
@@ -476,7 +476,7 @@ namespace BossRush
                     baseHealth = 180f,
                 };
 
-                SpawnEnemyCore(
+                owner.SpawnEnemyCore(
                     info,
                     position,
                     isBoss: true,
@@ -494,10 +494,10 @@ namespace BossRush
 
                         boss.gameObject.name = "ZombieMode_Boss_" + kind.ToString() + "_Run" + runId;
                         ZombieModeEnemyRuntimeMarker bossMarker = RegisterZombieModeEnemyRuntimeShell(runId, boss, true, kind, GetZombieModeBossPointValue(kind));
-                        SanitizeBossRushZombieSpawn(boss, "ZombieModeBoss");
+                        owner.SanitizeBossRushZombieSpawn(boss, "ZombieModeBoss");
                         PrepareZombieModeSpawnedEnemy(boss, bossMarker, 180f);
                         ApplyZombieModeBossTuning(boss, kind, bossMarker);
-                        zombieModeRunState.LivingZombieCount++;
+                        runState.LivingZombieCount++;
 
                         ZombieModeBossInstance instance = new ZombieModeBossInstance();
                         instance.Character = boss;
@@ -507,13 +507,13 @@ namespace BossRush
                         instance.Lifecycle.LastKnownPosition = boss.transform.position;
                         instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow();
                         instance.Lifecycle.LastHurtTime = GetZombieModeRuntimeNow();
-                        zombieModeRunState.CurrentWaveBossInstances.Add(instance);
+                        runState.CurrentWaveBossInstances.Add(instance);
                         RegisterZombieModeBossRuntime(runId, boss, kind);
                         TryMoveZombieModeEnemyOutsideSafeZone(
                             boss.gameObject,
                             bossMarker,
                             ShouldSuppressZombieModeEnemyAggroForSafeZone());
-                        RegisterEnemyRecoveryAnchor(boss, boss.transform.position);
+                        owner.RegisterZombieModeEnemyRecoveryAnchorForRuntimeModule(boss, boss.transform.position);
                         tcs.TrySetResult(boss);
                     },
                     onFailed: () => tcs.TrySetResult(null),
@@ -537,7 +537,7 @@ namespace BossRush
                 return;
             }
 
-            try { Destroy(character.gameObject); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy paused spawn candidate failed: " + e.Message); }
+            try { UnityEngine.Object.Destroy(character.gameObject); } catch (System.Exception e) { ModBehaviour.DevLog("[ZombieMode] Destroy paused spawn candidate failed: " + e.Message); }
         }
 
         private void PrepareZombieModeSpawnedEnemy(CharacterMainControl enemy, ZombieModeEnemyRuntimeMarker marker, float forceTraceDistance)
@@ -560,7 +560,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] Team.IsEnemy 校验失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] Team.IsEnemy 校验失败: " + e.Message);
             }
 
             if (enemy.Health != null)
@@ -597,30 +597,30 @@ namespace BossRush
             ZombieModeBossKind.Corruptor
         };
 
-        private ZombieModeBossKind GetZombieModeBossKindForIndex(int bossIndex)
+        internal ZombieModeBossKind GetZombieModeBossKindForIndex(int bossIndex)
         {
-            int offset = Mathf.Max(0, zombieModeRunState.CurrentWave / 5 - 1);
+            int offset = Mathf.Max(0, runState.CurrentWave / 5 - 1);
             return s_zombieModeBossKindOrder[(offset + bossIndex) % s_zombieModeBossKindOrder.Length];
         }
 
-        private Vector3 GetZombieModeBossSpawnPosition(int bossIndex)
+        internal Vector3 GetZombieModeBossSpawnPosition(int bossIndex)
         {
-            if (zombieModeRunState.SpawnPoints.Count <= 0)
+            if (runState.SpawnPoints.Count <= 0)
             {
                 return GetZombieModeSpawnPosition();
             }
 
-            int index = Mathf.Abs(zombieModeRunState.CurrentWave + bossIndex) % zombieModeRunState.SpawnPoints.Count;
-            Vector3 candidate = zombieModeRunState.SpawnPoints[index].Position;
+            int index = Mathf.Abs(runState.CurrentWave + bossIndex) % runState.SpawnPoints.Count;
+            Vector3 candidate = runState.SpawnPoints[index].Position;
             Vector3 resolvedCandidate;
-            if (!TryResolveZombieModeSpawnPoint(candidate, zombieModeRunState.SpawnPoints[index].VirtualPoint, out resolvedCandidate))
+            if (!TryResolveZombieModeSpawnPoint(candidate, runState.SpawnPoints[index].VirtualPoint, out resolvedCandidate))
             {
                 return GetZombieModeSpawnPosition();
             }
             candidate = resolvedCandidate;
-            for (int i = 0; i < zombieModeRunState.CurrentWaveBossInstances.Count; i++)
+            for (int i = 0; i < runState.CurrentWaveBossInstances.Count; i++)
             {
-                ZombieModeBossInstance existing = zombieModeRunState.CurrentWaveBossInstances[i];
+                ZombieModeBossInstance existing = runState.CurrentWaveBossInstances[i];
                 if (existing == null || existing.Character == null)
                 {
                     continue;
@@ -642,11 +642,11 @@ namespace BossRush
             // 入门数值表收口在 ZombieModeTuning.GetBossKind（见审查 §1.2）。
             BossKindTuning tuning = ZombieModeTuning.GetBossKind(kind);
             int baseValue = Random.Range(tuning.PointMin, tuning.PointMax + 1);
-            int pollutionSteps = Mathf.FloorToInt(zombieModeRunState.TotalPollution / 10f);
+            int pollutionSteps = Mathf.FloorToInt(runState.TotalPollution / 10f);
             float multiplier = Mathf.Min(
                 1f + pollutionSteps * ZombieModeTuning.PurificationPollutionScalePerStep,
                 ZombieModeTuning.PurificationPollutionScaleMax);
-            multiplier *= GetZombieModeBossRewardScale(zombieModeRunState.CurrentWave);
+            multiplier *= GetZombieModeBossRewardScale(runState.CurrentWave);
             return Mathf.Max(1, Mathf.FloorToInt(baseValue * multiplier));
         }
 
@@ -658,8 +658,8 @@ namespace BossRush
             }
 
             BossKindTuning tuning = ZombieModeTuning.GetBossKind(kind);
-            float healthMultiplier = tuning.HealthMultiplier * GetZombieModeBossHealthScale(zombieModeRunState.CurrentWave);
-            float damageMultiplier = tuning.DamageMultiplier * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave);
+            float healthMultiplier = tuning.HealthMultiplier * GetZombieModeBossHealthScale(runState.CurrentWave);
+            float damageMultiplier = tuning.DamageMultiplier * GetZombieModeBossDamageScale(runState.CurrentWave);
             float scaleMultiplier = tuning.ScaleMultiplier;
             float speedMultiplier = tuning.SpeedMultiplier;
 
@@ -690,6 +690,16 @@ namespace BossRush
             // 简化 5-case switch 为字符串拼接（审查 §2.4）。L10n key 由
             // LocalizationInjector 注册，5 个 BossRush_ZombieMode_Boss_<Kind> 全部存在。
             return L10n.T("BossRush_ZombieMode_Boss_" + kind.ToString());
+        }
+
+        private async UniTask<bool> WaitForZombieModeRuntimeResumeAsync(int runId)
+        {
+            while (IsZombieModeRunValid(runId) && IsZombieModeRuntimePaused())
+            {
+                await UniTask.Yield();
+            }
+
+            return IsZombieModeRunValid(runId);
         }
     }
 }

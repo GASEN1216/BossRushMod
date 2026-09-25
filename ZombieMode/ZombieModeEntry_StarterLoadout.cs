@@ -10,9 +10,9 @@ using UnityEngine.UI;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
-        private void ShowZombieModeStarterChoice(int runId)
+        internal void ShowZombieModeStarterChoice(int runId)
         {
             if (!IsZombieModeRunValid(runId))
             {
@@ -22,13 +22,13 @@ namespace BossRush
             GameObject root = new GameObject("ZombieMode_StarterChoice");
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.RewardUi, root, root, null);
             ZombieModeStarterChoiceView view = root.AddComponent<ZombieModeStarterChoiceView>();
-            view.Initialize(runId, this);
-            DevLog("[ZombieMode] 初始流派选择 UI 已创建: runId=" + runId);
+            view.Initialize(runId, owner);
+            ModBehaviour.DevLog("[ZombieMode] 初始流派选择 UI 已创建: runId=" + runId);
         }
 
         public void SelectZombieModeStarterLoadout(int runId, ZombieModeStarterLoadout loadout)
         {
-            if (!IsZombieModeRunValid(runId) || zombieModeRunState.LifecyclePhase != ZombieModeLifecyclePhase.WaitingStarterChoice)
+            if (!IsZombieModeRunValid(runId) || runState.LifecyclePhase != ZombieModeLifecyclePhase.WaitingStarterChoice)
             {
                 return;
             }
@@ -39,13 +39,13 @@ namespace BossRush
                 return;
             }
 
-            zombieModeRunState.StarterLoadout = loadout;
+            runState.StarterLoadout = loadout;
             FinalizeZombieModeEntryResources();
-            zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.Active;
-            zombieModeRunState.CombatPhase = ZombieModeCombatPhase.InitialPreparation;
+            runState.LifecyclePhase = ZombieModeLifecyclePhase.Active;
+            runState.CombatPhase = ZombieModeCombatPhase.InitialPreparation;
             UnlockZombieModeContainersForActiveRun(runId);
             BeginZombieModePreparation(runId, true, false);
-            ShowBigBanner(L10n.T("BossRush_ZombieMode_Banner_Started"));
+            owner.ShowBigBanner(L10n.T("BossRush_ZombieMode_Banner_Started"));
         }
 
         // Melee = 近战×1（品质≤5）+ 医疗品×5 + 食物×3 + 饮料×2
@@ -65,7 +65,7 @@ namespace BossRush
                     bool coreGranted = TryGiveRandomItemByTags(ZombieModeRuntimeModule.ZombieModeRewardTagMeleeWeapon, 1, ZombieModeTuning.StarterMaxQuality);
                     if (!coreGranted)
                     {
-                        DevLog("[ZombieMode] 近战开局失败：缺少可发放近战武器");
+                        ModBehaviour.DevLog("[ZombieMode] 近战开局失败：缺少可发放近战武器");
                         return false;
                     }
 
@@ -73,7 +73,7 @@ namespace BossRush
                     int guaranteedHealing = TryGiveZombieModeStarterGuaranteedHealingItems();
                     if (guaranteedHealing < 2)
                     {
-                        DevLog("[ZombieMode] 近战开局失败：保底回血道具不足");
+                        ModBehaviour.DevLog("[ZombieMode] 近战开局失败：保底回血道具不足");
                         return false;
                     }
 
@@ -81,7 +81,7 @@ namespace BossRush
                     grantedAny |= medical > 0;
                     grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRuntimeModule.ZombieModeRewardTagFood, 1, 3, 3) > 0;
                     grantedAny |= TryGiveRandomItemByTagsTimes(ZombieModeRuntimeModule.ZombieModeRewardTagDrink, 1, 3, 2) > 0;
-                    zombieModeRunState.StarterAmmoCaliber = string.Empty;
+                    runState.StarterAmmoCaliber = string.Empty;
                 }
                 else if (loadout == ZombieModeStarterLoadout.Gunner)
                 {
@@ -95,7 +95,7 @@ namespace BossRush
                             string caliber = TryReadZombieModeItemCaliber(gun);
                             if (!string.IsNullOrEmpty(caliber))
                             {
-                                zombieModeRunState.StarterAmmoCaliber = caliber;
+                                runState.StarterAmmoCaliber = caliber;
                             }
                             ItemUtilities.SendToPlayer(gun, false, false);
                             gunGranted = true;
@@ -105,7 +105,7 @@ namespace BossRush
 
                     if (!gunGranted)
                     {
-                        DevLog("[ZombieMode] 枪械开局失败：缺少可发放枪械");
+                        ModBehaviour.DevLog("[ZombieMode] 枪械开局失败：缺少可发放枪械");
                         return false;
                     }
 
@@ -113,20 +113,20 @@ namespace BossRush
                     bool ammoGranted = false;
                     if (ammoCount > 0)
                     {
-                        ammoGranted = TryGiveZombieModeStarterAmmo(zombieModeRunState.StarterAmmoCaliber, ammoCount);
+                        ammoGranted = TryGiveZombieModeStarterAmmo(runState.StarterAmmoCaliber, ammoCount);
                         grantedAny |= ammoGranted;
                     }
 
                     if (!ammoGranted)
                     {
-                        DevLog("[ZombieMode] 枪械开局失败：缺少匹配或通用弹药");
+                        ModBehaviour.DevLog("[ZombieMode] 枪械开局失败：缺少匹配或通用弹药");
                         return false;
                     }
 
                     int guaranteedHealing = TryGiveZombieModeStarterGuaranteedHealingItems();
                     if (guaranteedHealing < 2)
                     {
-                        DevLog("[ZombieMode] 枪械开局失败：保底回血道具不足");
+                        ModBehaviour.DevLog("[ZombieMode] 枪械开局失败：保底回血道具不足");
                         return false;
                     }
 
@@ -137,7 +137,7 @@ namespace BossRush
 
                 if (!GrantZombieModeStarterProtectionSet())
                 {
-                    DevLog("[ZombieMode] 开局防具发放失败：缺少护甲/头盔/耳机候选物品");
+                    ModBehaviour.DevLog("[ZombieMode] 开局防具发放失败：缺少护甲/头盔/耳机候选物品");
                     return false;
                 }
 
@@ -145,7 +145,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] 发放初始流派失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] 发放初始流派失败: " + e.Message);
                 return false;
             }
         }
@@ -158,15 +158,15 @@ namespace BossRush
 
             if (!armorGranted)
             {
-                DevLog("[ZombieMode] 开局护甲发放失败");
+                ModBehaviour.DevLog("[ZombieMode] 开局护甲发放失败");
             }
             if (!helmetGranted)
             {
-                DevLog("[ZombieMode] 开局头盔发放失败");
+                ModBehaviour.DevLog("[ZombieMode] 开局头盔发放失败");
             }
             if (!headsetGranted)
             {
-                DevLog("[ZombieMode] 开局耳机发放失败");
+                ModBehaviour.DevLog("[ZombieMode] 开局耳机发放失败");
             }
 
             return armorGranted && helmetGranted && headsetGranted;
@@ -238,7 +238,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] 取界面图标失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] 取界面图标失败: " + e.Message);
             }
             return null;
         }

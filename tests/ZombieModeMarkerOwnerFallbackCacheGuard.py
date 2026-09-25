@@ -7,7 +7,7 @@ import sys
 GRAVITY = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 TRIGGERS = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 SAFE_ZONE = Path("ZombieMode/ZombieModeSafeZoneController.cs")
-RECOVERY = Path("Utilities/EnemyRecoveryMonitor.cs")
+RECOVERY = Path("ZombieMode/ZombieModeRuntimeModule_Recovery.cs")
 
 
 def fail(message: str) -> int:
@@ -88,7 +88,7 @@ def main() -> int:
         if snippet not in safe_zone:
             return fail("KeepZombieModeEnemiesOutsideSafeZone missing owner cache snippet -> " + snippet)
 
-    recovery = extract_method_body(recovery_text, "private void MonitorZombieModeEnemyRecovery(")
+    recovery = extract_method_body(recovery_text, "internal void MonitorZombieModeEnemyRecovery(")
     if recovery is None:
         return fail("missing MonitorZombieModeEnemyRecovery body")
     recovery_required = [

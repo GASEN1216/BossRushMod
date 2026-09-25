@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
         private static readonly string[] ZombieModeOriginalExtractionExcludedNamePrefixes =
         {
@@ -18,21 +18,21 @@ namespace BossRush
         private readonly Dictionary<int, bool> zombieModeOriginalExtractionActiveStateByObjectId = new Dictionary<int, bool>();
         private readonly List<OriginalCharacterIsolationRecord> zombieModeDisabledOriginalCharacterRecords = new List<OriginalCharacterIsolationRecord>();
 
-        private bool ApplyZombieModeMapIsolationShell(int runId)
+        internal bool ApplyZombieModeMapIsolationShell(int runId)
         {
             if (!IsZombieModeRunValid(runId))
             {
                 return false;
             }
 
-            PreCacheMapSpawnerPositions();
+            owner.PreCacheMapSpawnerPositions();
             DisableZombieModeOriginalSpawners(runId);
             DisableZombieModeOriginalExtractionPoints(runId);
             DisableZombieModeOriginalCharacters();
             return true;
         }
 
-        private void RestoreZombieModeMapIsolationShell()
+        internal void RestoreZombieModeMapIsolationShell()
         {
             RestoreZombieModeOriginalCharacters();
             RestoreZombieModeOriginalSpawners();
@@ -61,25 +61,25 @@ namespace BossRush
                         }
                         catch (Exception e)
                         {
-                            DevLog("[ZombieMode] [WARNING] 恢复原版撤离点 SetActive 失败: " + e.Message);
+                            ModBehaviour.DevLog("[ZombieMode] [WARNING] 恢复原版撤离点 SetActive 失败: " + e.Message);
                         }
                     });
                 },
                 out usedExitCreatorSnapshot,
                 out disabledIds);
 
-            if (zombieModeRunState.MapProfile != null)
+            if (runState.MapProfile != null)
             {
-                zombieModeRunState.MapProfile.DisabledExtractionAreaIds = disabledIds;
+                runState.MapProfile.DisabledExtractionAreaIds = disabledIds;
             }
 
-            DevLog("[ZombieMode] 已禁用原版撤离点: " + disabledIds.Length
+            ModBehaviour.DevLog("[ZombieMode] 已禁用原版撤离点: " + disabledIds.Length
                 + " (source=" + (usedExitCreatorSnapshot ? "ExitCreator" : "fallback") + ")");
         }
 
         private bool ShouldSkipZombieModeOriginalExtractionArea(CountDownArea area)
         {
-            return zombieModeRunState.ActiveExtractionArea != null && area == zombieModeRunState.ActiveExtractionArea;
+            return runState.ActiveExtractionArea != null && area == runState.ActiveExtractionArea;
         }
 
         private void RestoreZombieModeOriginalExtractionPoints()
@@ -90,26 +90,26 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ZombieMode] [WARNING] 恢复原版撤离点失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] [WARNING] 恢复原版撤离点失败: " + e.Message);
             }
-            if (zombieModeRunState.MapProfile != null)
+            if (runState.MapProfile != null)
             {
-                zombieModeRunState.MapProfile.DisabledExtractionAreaIds = new int[0];
+                runState.MapProfile.DisabledExtractionAreaIds = new int[0];
             }
         }
 
         private void DisableZombieModeOriginalSpawners(int runId)
         {
             // 这里直接复用 BossRush 进图时的原版刷怪器清理逻辑，避免 ZombieMode 再维护一套不一致的软隔离分支。
-            spawnersDisabled = false;
-            DisableAllSpawners();
-            DevLog("[ZombieMode] 已复用 BossRush 进图逻辑清理原版刷怪器");
+            owner.ResetZombieModeOriginalSpawnerStateForRuntimeModule();
+            owner.DisableZombieModeOriginalSpawnersForRuntimeModule();
+            ModBehaviour.DevLog("[ZombieMode] 已复用 BossRush 进图逻辑清理原版刷怪器");
         }
 
         private void RestoreZombieModeOriginalSpawners()
         {
             // BossRush 同源逻辑会直接销毁原版 CharacterSpawnerRoot；这里只重置标志，允许下次新场景重新扫描。
-            spawnersDisabled = false;
+            owner.ResetZombieModeOriginalSpawnerStateForRuntimeModule();
         }
 
         private void DisableZombieModeOriginalCharacters()
@@ -117,7 +117,7 @@ namespace BossRush
             int disabledCount = OriginalCharacterIsolationHelper.Disable(
                 zombieModeDisabledOriginalCharacterRecords,
                 ShouldSkipZombieModeOriginalCharacter);
-            DevLog("[ZombieMode] 已隔离原版角色: disabled=" + disabledCount
+            ModBehaviour.DevLog("[ZombieMode] 已隔离原版角色: disabled=" + disabledCount
                 + ", tracked=" + zombieModeDisabledOriginalCharacterRecords.Count);
         }
 
@@ -129,7 +129,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ZombieMode] [WARNING] 恢复原版角色失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] [WARNING] 恢复原版角色失败: " + e.Message);
             }
         }
 
@@ -169,7 +169,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] [WARNING] Team.IsEnemy 检查失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] [WARNING] Team.IsEnemy 检查失败: " + e.Message);
             }
 
             if (IsZombieModeRetainedNeutralWhitelisted(character))
@@ -186,7 +186,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] [WARNING] INPCController 检查失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] [WARNING] INPCController 检查失败: " + e.Message);
             }
 
             try
@@ -198,7 +198,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] [WARNING] NPCInteractableBase 检查失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] [WARNING] NPCInteractableBase 检查失败: " + e.Message);
             }
 
             try
@@ -210,7 +210,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] [WARNING] DuckovDialogueActor 检查失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] [WARNING] DuckovDialogueActor 检查失败: " + e.Message);
             }
 
             try
@@ -222,7 +222,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] [WARNING] StockShop 检查失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] [WARNING] StockShop 检查失败: " + e.Message);
             }
 
             try
@@ -234,12 +234,12 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] [WARNING] IMerchant 检查失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] [WARNING] IMerchant 检查失败: " + e.Message);
             }
 
             try
             {
-                if (NPCModuleRegistry.ShouldSpawnAnyInScene(this, SceneManager.GetActiveScene().name))
+                if (NPCModuleRegistry.ShouldSpawnAnyInScene(owner, SceneManager.GetActiveScene().name))
                 {
                     WeddingNpcResidentMarker weddingMarker = character.GetComponentInChildren<WeddingNpcResidentMarker>(true);
                     if (weddingMarker != null && !string.IsNullOrEmpty(weddingMarker.NpcId) && weddingMarker.NpcId != "__detached__")
@@ -250,7 +250,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] [WARNING] WeddingNpcResidentMarker 检查失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] [WARNING] WeddingNpcResidentMarker 检查失败: " + e.Message);
             }
 
             return false;
@@ -258,12 +258,12 @@ namespace BossRush
 
         private bool IsZombieModeRetainedNeutralWhitelisted(CharacterMainControl character)
         {
-            if (character == null || zombieModeRunState.MapProfile == null)
+            if (character == null || runState.MapProfile == null)
             {
                 return false;
             }
 
-            string[] whitelist = zombieModeRunState.MapProfile.RetainedNeutralWhitelistTypes;
+            string[] whitelist = runState.MapProfile.RetainedNeutralWhitelistTypes;
             if (whitelist == null || whitelist.Length <= 0)
             {
                 return false;

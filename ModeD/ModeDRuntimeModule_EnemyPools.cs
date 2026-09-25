@@ -235,5 +235,41 @@ namespace BossRush
             }
         }
 
+        internal void EnsureCharacterPresetsCacheReady()
+        {
+            if (cachedCharacterPresets != null && cachedCharacterPresets.Count > 0)
+            {
+                return;
+            }
+
+            try
+            {
+                CharacterRandomPreset[] allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
+                if (allPresets == null || allPresets.Length == 0)
+                {
+                    return;
+                }
+
+                if (cachedCharacterPresets == null)
+                {
+                    cachedCharacterPresets = new System.Collections.Generic.Dictionary<string, CharacterRandomPreset>();
+                }
+
+                for (int i = 0; i < allPresets.Length; i++)
+                {
+                    CharacterRandomPreset preset = allPresets[i];
+                    if (preset == null || string.IsNullOrEmpty(preset.nameKey)) continue;
+                    if (WavesArenaRuntimeModule.IsRuntimeCharacterPresetClone(preset)) continue;
+                    if (!cachedCharacterPresets.ContainsKey(preset.nameKey))
+                    {
+                        cachedCharacterPresets[preset.nameKey] = preset;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[SpawnCore] EnsureCharacterPresetsCacheReady 失败: " + e.Message);
+            }
+        }
     }
 }

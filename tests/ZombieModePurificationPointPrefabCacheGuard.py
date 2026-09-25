@@ -67,13 +67,13 @@ def main() -> int:
 
     for token in [
         "private static void PrewarmSoulCubePrefabCache()",
-        "private void PrepareSoulCubePrefabCacheForZombieRun()",
+        "internal void PrepareSoulCubePrefabCacheForZombieRun()",
         "PrewarmSoulCubePrefabCache();",
     ]:
         if token not in controller:
             return fail("SoulCube cache prewarm missing token -> " + token)
 
-    if "owner.PrepareSoulCubePrefabCacheForRuntimeModule();" not in runtime_module:
+    if "PrepareSoulCubePrefabCacheForZombieRun();" not in runtime_module:
         return fail("RuntimeModule initialization must request the SoulCube cache prewarm")
     if "PrepareSoulCubePrefabCacheForZombieRun();" not in host_bridge:
         return fail("host compatibility bridge must retain the SoulCube cache prewarm call")

@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
@@ -8,6 +9,7 @@ SAFE_ZONE = Path("ZombieMode/ZombieModeSafeZoneController.cs")
 EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeMapSelection.cs")
 DEBUG_TOOLS = Path("DebugAndTools/DebugAndTools.cs")
 
 
@@ -47,6 +49,12 @@ def main() -> int:
     waves = WAVES.read_text(encoding="utf-8")
     spawner = SPAWNER.read_text(encoding="utf-8")
     debug_tools = DEBUG_TOOLS.read_text(encoding="utf-8")
+    anchor_bridge = extract_method(
+        clean_source(HOST_BRIDGE.read_text(encoding="utf-8")),
+        "internal void RegisterZombieModeEnemyRecoveryAnchorForRuntimeModule(")
+    if not anchor_bridge or anchor_bridge[anchor_bridge.index("{"):].split() != (
+            "{ RegisterEnemyRecoveryAnchor(enemy, anchor); }").split():
+        return fail("ZombieModeSafeZoneGuard: recovery anchor bridge must preserve the original single call")
 
     for snippet in [
         "public float LastSafeZoneTickTime;",
@@ -199,8 +207,8 @@ def main() -> int:
         "if (ShouldSuppressZombieModeEnemyAggroForSafeZone())",
         "SetZombieModeEnemyThreatSuppressed(enemy.gameObject, marker, true);",
         "TryMoveZombieModeEnemyOutsideSafeZone(",
-        "RegisterEnemyRecoveryAnchor(zombie, zombie.transform.position);",
-        "RegisterEnemyRecoveryAnchor(boss, boss.transform.position);",
+        "owner.RegisterZombieModeEnemyRecoveryAnchorForRuntimeModule(zombie, zombie.transform.position);",
+        "owner.RegisterZombieModeEnemyRecoveryAnchorForRuntimeModule(boss, boss.transform.position);",
     ]:
         result = require(spawner, snippet, "spawn aggro suppression")
         if result:

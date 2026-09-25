@@ -1,12 +1,10 @@
 // ============================================================================
-// RandomEventEffectsBridge.cs — 随机事件「鸭生无常」的 ModBehaviour 桥（查询 / 播报 / 天气 / 特效 / 声音）
+// RandomEventEffectsBridge.cs — 随机事件模块（查询 / 播报 / 天气 / 特效 / 声音）
 // ============================================================================
 // 模块职责：
-//   随机事件的事件实现类（RandomEventCatalog*.cs）是普通 internal 类，拿不到
-//   ModBehaviour 的 private 基建（GetDirectionFromPlayer / infiniteHellMode /
-//   _cachedCharacters / SpawnEnemyCoreInternalAsync / GetLootBoxTemplateWithLoader ...）。
-//   本文件是 `public partial class ModBehaviour`，把这些能力收口成一组 internal 方法，
-//   事件层只经这些方法触碰宿主，绝不自己反射、绝不自己新增 Harmony patch。
+//   RandomEventsRuntimeModule 承接真实流程，复用宿主的角色缓存、场景和音效入口。
+//   RandomEventsRuntimeModuleHostBridge 保留事件目录使用的旧入口与窄依赖转发。
+//   事件层仍经这些入口访问模块，反射缓存与 Harmony 策略保持原实现。
 //
 // 硬约束（AGENTS 4.5 / 4.6 / 4.7 / 4.12 / 4.14）：
 //   1. 零新增 Harmony patch、零新增反射绑定策略；只复用既有缓存与既有静态 API。
@@ -33,21 +31,20 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class RandomEventsRuntimeModule
     {
         // ====================================================================
         // 局状态查询
         // ====================================================================
 
         /// <summary>
-        /// 当前是否处于无间炼狱局。infiniteHellMode 是 private 字段且没有任何公开门面，
-        /// 只能在本 partial 桥里读，事件层只经本方法消费（仅用于空投品质上限分档）。
+        /// 当前是否处于无间炼狱局；经宿主只读入口获取，供空投品质上限分档。
         /// </summary>
         internal bool IsRandomEventInfiniteHellRun()
         {
             try
             {
-                return infiniteHellMode;
+                return _owner.RandomEventInfiniteHellForRuntime;
             }
             catch (Exception)
             {
@@ -60,11 +57,11 @@ namespace BossRush
         {
             try
             {
-                return GetCurrentSceneSpawnPoints();
+                return _owner.GetCurrentSceneSpawnPoints();
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 读取场景刷新点失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 读取场景刷新点失败: " + e.Message);
                 return null;
             }
         }
@@ -110,7 +107,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 解析事件落点失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 解析事件落点失败: " + e.Message);
                 return basePos;
             }
         }
@@ -135,14 +132,14 @@ namespace BossRush
             try
             {
                 // 事件期间怪是动态刷出来的，必须真刷新才能补挂到新怪身上。
-                RefreshCharacterCache();
+                _owner.RefreshRandomEventCharacterCacheForRuntime();
 
                 CharacterMainControl main = null;
                 try { main = CharacterMainControl.Main; } catch (Exception) { }
 
-                for (int i = 0; i < _cachedCharacters.Count; i++)
+                for (int i = 0; i < _owner.RandomEventCachedCharactersForRuntime.Count; i++)
                 {
-                    CharacterMainControl c = _cachedCharacters[i];
+                    CharacterMainControl c = _owner.RandomEventCachedCharactersForRuntime[i];
                     if (c == null || c == main)
                     {
                         continue;
@@ -174,7 +171,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 收集事件增益目标失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 收集事件增益目标失败: " + e.Message);
             }
         }
 
@@ -192,11 +189,11 @@ namespace BossRush
 
             try
             {
-                ShowBigBanner(text);
+                _owner.ShowBigBanner(text);
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 事件横幅播报失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 事件横幅播报失败: " + e.Message);
             }
         }
 
@@ -214,7 +211,7 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player != null)
                 {
-                    string direction = L10n.Direction(GetDirectionFromPlayer(worldPos, player.transform.position));
+                    string direction = L10n.Direction(_owner.GetRandomEventDirectionForRuntime(worldPos, player.transform.position));
                     if (!string.IsNullOrEmpty(direction))
                     {
                         text = eventName + " · " + direction;
@@ -223,7 +220,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 解析事件方位失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 解析事件方位失败: " + e.Message);
             }
 
             ShowRandomEventBanner(text);
@@ -262,7 +259,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 强制天气失败，已跳过天气支线: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 强制天气失败，已跳过天气支线: " + e.Message);
                 prevForce = false;
                 prevValue = Duckov.Weathers.Weather.Sunny;
                 return false;
@@ -282,7 +279,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 还原强制天气失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 还原强制天气失败: " + e.Message);
             }
         }
 
@@ -311,7 +308,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 制造 AI 声源失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 制造 AI 声源失败: " + e.Message);
             }
         }
 
@@ -350,7 +347,7 @@ namespace BossRush
 
             try
             {
-                string modPath = GetModPath();
+                string modPath = ModBehaviour.GetModPath();
                 if (string.IsNullOrEmpty(modPath))
                 {
                     return;
@@ -364,11 +361,11 @@ namespace BossRush
                     return;
                 }
 
-                PlaySoundEffect(full);
+                _owner.PlaySoundEffect(full);
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 播放事件音效失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 播放事件音效失败: " + e.Message);
             }
         }
 

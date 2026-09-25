@@ -30,8 +30,8 @@ SOURCES = {
         "internal void ReleaseZombieModeSafeZoneThreatSuppression()",
     ),
     "MonitorZombieModeEnemyRecovery": (
-        Path("Utilities/EnemyRecoveryMonitor.cs"),
-        "private void MonitorZombieModeEnemyRecovery(",
+        Path("ZombieMode/ZombieModeRuntimeModule_Recovery.cs"),
+        "internal void MonitorZombieModeEnemyRecovery(",
     ),
     "ClearZombieModeTemporaryNpcThreatTargets": (
         Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),

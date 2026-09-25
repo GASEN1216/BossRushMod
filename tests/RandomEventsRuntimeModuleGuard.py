@@ -20,6 +20,9 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+from compile_list import read_compile_sources
 
 MODULE = Path("RandomEvents/RandomEventsRuntimeModule.cs")
 REGISTRATION = Path("ModBehaviourRuntimeModules.cs")
@@ -32,8 +35,7 @@ def fail(message):
 
 
 def strip_comments(text):
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    return re.sub(r"//[^\n]*", "", text)
+    return clean_source(text)
 
 
 def main():
@@ -58,9 +60,8 @@ def main():
 
     # ---- 2) 全仓库只有一次 new ----
     news = []
-    for path in Path(".").rglob("*.cs"):
-        if any(part in {".git", "Build", "tmp", "output", "outputs", "鸭科夫源码"} for part in path.parts):
-            continue
+    for source in read_compile_sources():
+        path = Path(source)
         text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
         news += [path.as_posix()] * len(
             re.findall(r"new\s+RandomEventsRuntimeModule\s*\(", text))

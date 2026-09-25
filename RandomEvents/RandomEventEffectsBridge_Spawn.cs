@@ -36,7 +36,7 @@ using ItemStatsSystem;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class RandomEventsRuntimeModule
     {
         // ====================================================================
         // E3 Boss 乱入
@@ -65,7 +65,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss 调度失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss 调度失败: " + e.Message);
                 if (onFailed != null)
                 {
                     try { onFailed(); } catch (Exception) { }
@@ -85,7 +85,7 @@ namespace BossRush
                 // 标准 BossRush 不经过 Mode D/E/Zombie 的预设缓存初始化路径。
                 // 事件目录拿到的是稳定 nameKey，SpawnCore 随后仍要从该缓存解析官方 preset；
                 // 未在这里准备会出现“目录有条目但实体查找失败”的实机空转。
-                EnsureCharacterPresetsCacheReady();
+                _owner.EnsureCharacterPresetsCacheReady();
 
                 // options 只设「非本波生成」这一项，其余保持 Legacy 默认：乱入 Boss 照常
                 // 吃当局变异词条与掉落追踪，与在场敌人口径一致。
@@ -93,7 +93,7 @@ namespace BossRush
                 // 为什么必须设：抽中三个自定义 Boss 时 SpawnCore 会路由到它们的专用生成器，
                 // 而那些生成器会写波次身份容器。本文件头部承诺「绝不写入任何波次容器」，
                 // 但写入发生在生成器体内，桥自己挡不住——只能经 options 告诉它们别登记。
-                EnemySpawnCoreResult result = await SpawnEnemyCoreInternalAsync(
+                EnemySpawnCoreResult result = await _owner.SpawnEnemyCoreInternalAsync(
                     preset,
                     position,
                     true,
@@ -108,7 +108,7 @@ namespace BossRush
                 if (result == null || !result.success || result.context == null || result.context.character == null)
                 {
                     string reason = result != null ? result.failureReason : "结果为空";
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss 生成失败: " + reason);
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss 生成失败: " + reason);
                     if (onFailed != null)
                     {
                         try { onFailed(); } catch (Exception) { }
@@ -130,13 +130,13 @@ namespace BossRush
                     try { onSpawned(boss); }
                     catch (Exception e)
                     {
-                        DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss 登记失败: " + e.Message);
+                        ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss 登记失败: " + e.Message);
                     }
                 }
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 乱入 Boss 生成异常: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 乱入 Boss 生成异常: " + e.Message);
                 if (onFailed != null)
                 {
                     try { onFailed(); } catch (Exception) { }
@@ -163,18 +163,18 @@ namespace BossRush
             {
                 if (PetNestCompanionAgent.IsCompanionCharacter(character))
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "敌对性安全网豁免遗种巢随从");
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "敌对性安全网豁免遗种巢随从");
                 }
                 else if (!Team.IsEnemy(Teams.player, character.Team))
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "检测到非敌对乱入 Boss (team=" + character.Team
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "检测到非敌对乱入 Boss (team=" + character.Team
                         + ")，强制设为 Teams.wolf");
                     character.SetTeam(Teams.wolf);
                 }
             }
             catch (Exception teamEx)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 强制乱入 Boss 阵营失败: " + teamEx.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 强制乱入 Boss 阵营失败: " + teamEx.Message);
             }
 
             try
@@ -187,11 +187,11 @@ namespace BossRush
 
             try
             {
-                RegisterEnemyRecoveryAnchor(character, position);
+                _owner.RegisterRandomEventRecoveryAnchorForRuntime(character, position);
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss 恢复锚点注册失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss 恢复锚点注册失败: " + e.Message);
             }
 
             return true;
@@ -211,11 +211,11 @@ namespace BossRush
 
             try
             {
-                UnregisterEnemyRecovery(boss);
+                _owner.UnregisterRandomEventRecoveryForRuntime(boss);
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss 恢复监控退订失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss 恢复监控退订失败: " + e.Message);
             }
 
             // 乱入者若是龙裔/女巫这类自带 BGM 的自定义 Boss，生成时取过一份 owner 租约。
@@ -234,7 +234,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss BGM 租约释放失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss BGM 租约释放失败: " + e.Message);
             }
 
             try
@@ -246,7 +246,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 销毁乱入 Boss 失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 销毁乱入 Boss 失败: " + e.Message);
             }
         }
 
@@ -273,7 +273,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 鸭群巡游调度失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 鸭群巡游调度失败: " + e.Message);
                 InvokeRandomEventSpawnCompletion(onCompleted, Mathf.Max(0, count), 0, "鸭群巡游");
             }
         }
@@ -291,7 +291,7 @@ namespace BossRush
             try
             {
                 SpawnEgg behavior = null;
-                try { behavior = cachedSpawnEggBehavior; } catch (Exception) { }
+                try { behavior = _owner.RandomEventSpawnEggBehaviorForRuntime; } catch (Exception) { }
 
                 if (behavior == null)
                 {
@@ -301,7 +301,7 @@ namespace BossRush
                         if (all != null && all.Length > 0)
                         {
                             behavior = all[0];
-                            cachedSpawnEggBehavior = behavior;
+                            _owner.RandomEventSpawnEggBehaviorForRuntime = behavior;
                         }
                     }
                     catch (Exception) { }
@@ -309,13 +309,13 @@ namespace BossRush
 
                 if (behavior == null || behavior.spawnCharacter == null)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "未找到官方 SpawnEgg 预设，鸭群巡游静默跳过");
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "未找到官方 SpawnEgg 预设，鸭群巡游静默跳过");
                     return;
                 }
 
                 // 清怪逻辑靠 characterPreset == eggSpawnPreset 做豁免，必须写。
                 // 不还原：它本来就是全局缓存，音频 hooks 的 reset 路径统一清空。
-                try { eggSpawnPreset = behavior.spawnCharacter; } catch (Exception) { }
+                try { _owner.RandomEventEggSpawnPresetForRuntime = behavior.spawnCharacter; } catch (Exception) { }
 
                 int sceneBuildIndex = SceneManager.GetActiveScene().buildIndex;
                 Vector3 dir = forward.sqrMagnitude < 0.0001f ? Vector3.forward : forward.normalized;
@@ -337,7 +337,7 @@ namespace BossRush
                     }
                     catch (Exception e)
                     {
-                        DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 生成巡游鸭失败: " + e.Message);
+                        ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 生成巡游鸭失败: " + e.Message);
                     }
 
                     if (duck == null)
@@ -360,7 +360,7 @@ namespace BossRush
                     try { SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(duck); }
                     catch (Exception e)
                     {
-                        DevLog(RandomEventsTuning.LogPrefix
+                        ModBehaviour.DevLog(RandomEventsTuning.LogPrefix
                             + "[WARNING] 解除巡游鸭距离休眠失败: " + e.Message);
                     }
 
@@ -376,7 +376,7 @@ namespace BossRush
                         try { onSpawned(duck); }
                         catch (Exception e)
                         {
-                            DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 巡游鸭登记失败: " + e.Message);
+                            ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 巡游鸭登记失败: " + e.Message);
                         }
                     }
 
@@ -387,7 +387,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 鸭群巡游生成异常: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 鸭群巡游生成异常: " + e.Message);
             }
             finally
             {
@@ -405,7 +405,7 @@ namespace BossRush
             try { callback(requested, spawned); }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] " + label + "完成回调失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] " + label + "完成回调失败: " + e.Message);
             }
         }
 
@@ -418,7 +418,7 @@ namespace BossRush
         {
             try
             {
-                return GetModeEMerchantPreset() != null;
+                return _owner.GetRandomEventMerchantPresetForRuntime() != null;
             }
             catch (Exception)
             {
@@ -442,7 +442,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 神秘商人调度失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 神秘商人调度失败: " + e.Message);
                 if (onFailed != null)
                 {
                     try { onFailed(); } catch (Exception) { }
@@ -459,10 +459,10 @@ namespace BossRush
             CharacterMainControl character = null;
             try
             {
-                CharacterRandomPreset preset = GetModeEMerchantPreset();
+                CharacterRandomPreset preset = _owner.GetRandomEventMerchantPresetForRuntime();
                 if (preset == null)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 未找到商人预设，神秘商人取消");
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 未找到商人预设，神秘商人取消");
                     if (onFailed != null) onFailed();
                     return;
                 }
@@ -474,7 +474,7 @@ namespace BossRush
                 character = await preset.CreateCharacterAsync(position, facing, sceneBuildIndex, null, false);
                 if (character == null)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人角色创建失败");
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人角色创建失败");
                     if (onFailed != null) onFailed();
                     return;
                 }
@@ -487,14 +487,14 @@ namespace BossRush
                 }
 
                 try { character.SetTeam(Teams.player); } catch (Exception) { }
-                try { SetModeEMerchantHealth(character); } catch (Exception) { }
+                try { _owner.SetRandomEventMerchantHealthForRuntime(character); } catch (Exception) { }
                 try { character.gameObject.name = "RndEvt_Merchant"; } catch (Exception) { }
                 // 解除官方距离休眠：不解的话玩家跑远再回来，商人会被
                 // SetActiveByPlayerDistance 每帧 SetActive(false) 关掉，看起来像凭空消失。
                 try { SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(character); }
                 catch (Exception e)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix
                         + "[WARNING] 解除商人距离休眠失败: " + e.Message);
                 }
 
@@ -517,13 +517,13 @@ namespace BossRush
                     try { onSpawned(character, shop); }
                     catch (Exception e)
                     {
-                        DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人登记失败: " + e.Message);
+                        ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人登记失败: " + e.Message);
                     }
                 }
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 神秘商人生成异常: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 神秘商人生成异常: " + e.Message);
                 DespawnRandomEventMerchant(character, null);
                 if (onFailed != null)
                 {
@@ -549,7 +549,7 @@ namespace BossRush
                 InteractableBase mainInteract = npcGo.GetComponentInChildren<InteractableBase>(true);
                 if (mainInteract == null)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人身上没有 InteractableBase，放弃注入商店");
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人身上没有 InteractableBase，放弃注入商店");
                     return null;
                 }
 
@@ -601,7 +601,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人商店身份设置失败: " + e.Message);
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人商店身份设置失败: " + e.Message);
                     UnityEngine.Object.Destroy(shopObj);
                     return null;
                 }
@@ -632,7 +632,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人交互组注入失败: " + e.Message);
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人交互组注入失败: " + e.Message);
                 }
 
                 shopObj.SetActive(true);
@@ -643,7 +643,7 @@ namespace BossRush
                     System.Reflection.FieldInfo merchantField = BossRushEagerReflectionCache.StockShop_MerchantID;
                     if (merchantField == null)
                     {
-                        DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人稳定身份字段不可用，放弃生成");
+                        ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人稳定身份字段不可用，放弃生成");
                         UnityEngine.Object.Destroy(shopObj);
                         return null;
                     }
@@ -653,7 +653,7 @@ namespace BossRush
                     int filled = FillRandomEventMerchantEntries(shop);
                     if (filled == 0)
                     {
-                        DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人商店无可售商品，放弃生成");
+                        ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人商店无可售商品，放弃生成");
                         UnityEngine.Object.Destroy(shopObj);
                         return null;
                     }
@@ -676,7 +676,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人初始库存复位失败: " + e.Message);
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人初始库存复位失败: " + e.Message);
                     UnityEngine.Object.Destroy(shopObj);
                     return null;
                 }
@@ -684,7 +684,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 构建商人商店失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 构建商人商店失败: " + e.Message);
                 return null;
             }
         }
@@ -704,7 +704,7 @@ namespace BossRush
 
                 Duckov.Utilities.Tag[] emptyExclude = new Duckov.Utilities.Tag[0];
                 List<Tuple<List<Duckov.Utilities.Tag>, string, string>> categories =
-                    GetModeEMerchantCategories(tagsData);
+                    _owner.GetRandomEventMerchantCategoriesForRuntime(tagsData);
                 if (categories == null)
                 {
                     return 0;
@@ -725,7 +725,7 @@ namespace BossRush
                         continue;
                     }
 
-                    List<int> ids = ModeESearchItemsMultiTag(cat.Item1, emptyExclude);
+                    List<int> ids = _owner.SearchRandomEventMerchantItemsForRuntime(cat.Item1, emptyExclude);
                     if (ids == null)
                     {
                         continue;
@@ -742,13 +742,13 @@ namespace BossRush
                 // 1 件随机高品质彩头
                 try
                 {
-                    HashSet<int> candidates = BuildGeneralBossLootCandidateIdSet();
+                    HashSet<int> candidates = _owner.BuildRandomEventLootCandidateIdsForRuntime();
                     if (candidates != null && candidates.Count > 0)
                     {
                         List<int> highQuality = new List<int>();
                         foreach (int id in candidates)
                         {
-                            if (written.Contains(id) || IsItemBlacklisted(id))
+                            if (written.Contains(id) || ModBehaviour.IsItemBlacklisted(id))
                             {
                                 continue;
                             }
@@ -771,12 +771,12 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人高品质彩头挑选失败: " + e.Message);
+                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人高品质彩头挑选失败: " + e.Message);
                 }
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人商品填充失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人商品填充失败: " + e.Message);
             }
 
             return added;
@@ -787,7 +787,7 @@ namespace BossRush
         {
             try
             {
-                if (shop == null || shop.entries == null || written.Contains(typeId) || IsItemBlacklisted(typeId))
+                if (shop == null || shop.entries == null || written.Contains(typeId) || ModBehaviour.IsItemBlacklisted(typeId))
                 {
                     return false;
                 }
@@ -833,7 +833,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 关闭商人商店 UI 失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 关闭商人商店 UI 失败: " + e.Message);
             }
 
             try
@@ -845,7 +845,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 销毁商人商店失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 销毁商人商店失败: " + e.Message);
             }
 
             try
@@ -857,7 +857,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 销毁商人失败: " + e.Message);
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 销毁商人失败: " + e.Message);
             }
         }
     }

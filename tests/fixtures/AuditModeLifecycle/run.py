@@ -71,6 +71,8 @@ enemy_module_methods='\n'.join(member(enemy_module,m) for m in [
     'internal void UnregisterZombieModeEnemyInstanceId(CharacterMainControl character)',
     'internal void ClearZombieModeEnemyInstanceIds()',
     'internal ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(',
+    'internal static void RestoreZombieModeVisualScale(',
+    'internal static void ReleaseZombieModeFootMarker(',
 ])
 enemy_host_methods='\n'.join(member(enemy_runtime,m) for m in [
     'internal bool IsZombieModeKnownEnemy(CharacterMainControl character)',
@@ -176,7 +178,7 @@ respawn=member(ROOT/'ModeF/ModeFRespawn.cs','private async UniTaskVoid RespawnMo
 execute('respawn_owner',[HERE/'RespawnOwner.cs'],'using System; using UnityEngine; namespace BossRush { internal sealed partial class ModeFRuntimeModule {'+respawn+'}}')
 cash='\n'.join(member(ROOT/'RandomEvents/RandomEventEffectsBridge_Loot.cs',m) for m in ['private async UniTaskVoid SpawnRandomEventCashPilesAsync(', 'private static void InvokeRandomEventCashCompletion('])
 cash=cash.replace('async UniTaskVoid','async System.Threading.Tasks.Task').replace('UniTask.Yield()','System.Threading.Tasks.Task.Yield()')
-execute('cash_owner',[HERE/'CashOwner.cs'],'using System; using UnityEngine; using UnityEngine.SceneManagement; using ItemStatsSystem; namespace BossRush { public partial class ModBehaviour {'+cash+'}}')
+execute('cash_owner',[HERE/'CashOwner.cs'],'using System; using UnityEngine; using UnityEngine.SceneManagement; using ItemStatsSystem; namespace BossRush { internal sealed partial class RandomEventsRuntimeModule {'+cash+'}}')
 runtime_module=ROOT/'ZombieMode/ZombieModeRuntimeModule.cs'
 entry=ROOT/'ZombieMode/ZombieModeEntry.cs'
 pause_methods='\n'.join(member(runtime_module,m) for m in [
@@ -330,6 +332,7 @@ run_only_owner_bridges='\n'.join(member(run_only_bridges,m) for m in [
     'internal void ClearZombieModeRewardShellForRuntimeModule()',
     'internal void RestoreZombieModeMapIsolationShellForRuntimeModule()',
 ])
+run_only_owner_bridges+='\n'+member(ROOT/'ZombieMode/ZombieModeEntry.cs','private void RestoreZombieModeMapIsolationShell()')
 run_only='''using System;
 using System.Collections.Generic;
 using UnityEngine;

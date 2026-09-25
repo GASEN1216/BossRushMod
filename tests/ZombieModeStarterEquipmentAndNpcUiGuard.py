@@ -78,7 +78,7 @@ def main() -> int:
         "ZombieModeMedicalExcludedTypeIds",
         "AdvancedDebuffMode",
         "int ammoCount = ZombieModeTuning.StarterGunnerExtraAmmoCount;",
-        "ammoGranted = TryGiveZombieModeStarterAmmo(zombieModeRunState.StarterAmmoCaliber, ammoCount);",
+        "ammoGranted = TryGiveZombieModeStarterAmmo(runState.StarterAmmoCaliber, ammoCount);",
     ]:
         if snippet not in entry:
             return fail("starter loadout missing medical/ammo safety contract -> " + snippet)

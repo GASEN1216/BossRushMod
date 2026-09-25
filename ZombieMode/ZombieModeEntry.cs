@@ -265,6 +265,90 @@ namespace BossRush
             return module != null && module.ShouldReturnToBaseAfterZombieModePreActiveFailure(reason);
         }
 
+        private void ShowZombieModeStarterChoice(int runId)
+        {
+            zombieModeRuntimeModule.ShowZombieModeStarterChoice(runId);
+        }
+
+        public void SelectZombieModeStarterLoadout(int runId, ZombieModeStarterLoadout loadout)
+        {
+            zombieModeRuntimeModule.SelectZombieModeStarterLoadout(runId, loadout);
+        }
+
+        internal Sprite GetZombieModeStarterIcon(ZombieModeStarterLoadout loadout)
+        {
+            return zombieModeRuntimeModule.GetZombieModeStarterIcon(loadout);
+        }
+
+        internal Sprite GetZombieModeRewardIcon(ZombieModeRewardType rewardType)
+        {
+            return zombieModeRuntimeModule.GetZombieModeRewardIcon(rewardType);
+        }
+
+        internal Sprite GetZombieModeMerchantIcon(ZombieModeNpcCatalog.MerchantStockEntry entry)
+        {
+            return zombieModeRuntimeModule.GetZombieModeMerchantIcon(entry);
+        }
+
+        private bool ApplyZombieModeMapIsolationShell(int runId)
+        {
+            return zombieModeRuntimeModule.ApplyZombieModeMapIsolationShell(runId);
+        }
+
+        private void RestoreZombieModeMapIsolationShell()
+        {
+            zombieModeRuntimeModule.RestoreZombieModeMapIsolationShell();
+        }
+
+        private void PrepareSoulCubePrefabCacheForZombieRun()
+        {
+            zombieModeRuntimeModule.PrepareSoulCubePrefabCacheForZombieRun();
+        }
+
+        private bool CreateZombieModePurificationPoint(int runId, Vector3 position, int value)
+        {
+            return zombieModeRuntimeModule.CreateZombieModePurificationPoint(runId, position, value);
+        }
+
+        private bool HasZombieModePendingPurificationStars()
+        {
+            return zombieModeRuntimeModule.HasZombieModePendingPurificationStars();
+        }
+
+        private void ForceCollectZombieModePendingPurificationStars(int runId)
+        {
+            zombieModeRuntimeModule.ForceCollectZombieModePendingPurificationStars(runId);
+        }
+
+        public void CollectZombieModePurificationPoint(int runId, int value, GameObject pointObject, ZombiePurificationStar starRecord)
+        {
+            zombieModeRuntimeModule.CollectZombieModePurificationPoint(runId, value, pointObject, starRecord);
+        }
+
+        public bool ConfigureZombieModePendingCashInvestment(long requestedAmount, out string failureReasonKey)
+        {
+            return zombieModeRuntimeModule.ConfigureZombieModePendingCashInvestment(requestedAmount, out failureReasonKey);
+        }
+
+        public long GetZombieModePendingCashInvestment()
+        {
+            return zombieModeRuntimeModule.GetZombieModePendingCashInvestment();
+        }
+
+        public int PreviewZombieModeInitialPurificationPoints()
+        {
+            return zombieModeRuntimeModule.PreviewZombieModeInitialPurificationPoints();
+        }
+
+        public void ShowZombieModeCashInvestmentPrompt(System.Action onConfirmed, System.Action onCancelled = null)
+        {
+            zombieModeRuntimeModule.ShowZombieModeCashInvestmentPrompt(onConfirmed, onCancelled);
+        }
+
+
+
+
+
     }
 
 }

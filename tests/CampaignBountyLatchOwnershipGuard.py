@@ -41,10 +41,10 @@ def main():
         assert "modeFRuntime = new ModeFRuntimeModule();" in registration
         assert "runtimeModuleHost.Register(modeFRuntime);" in registration
         query = body(campaign, "internal bool HasCampaignBountyMark(CharacterMainControl boss)")
-        assert "HasModeFPlayerBountyKillLatch(boss.GetInstanceID())" in query
-        assert "ConsumeModeFPlayerBountyKillLatch" not in query
+        assert "_owner.HasCampaignBountyKillLatchForRuntime(boss.GetInstanceID())" in query
+        assert "ConsumeCampaignBountyKillLatchForRuntime" not in query
         consume = body(campaign, "internal bool ConsumeCampaignBountyMark(CharacterMainControl boss)")
-        first = consume.index("ConsumeModeFPlayerBountyKillLatch(boss.GetInstanceID())")
+        first = consume.index("_owner.ConsumeCampaignBountyKillLatchForRuntime(boss.GetInstanceID())")
         second = consume.index("HasCampaignBountyMark(boss)")
         assert first < second
         collection = body(collector, "private static bool HasBountyMark(CharacterMainControl victim)")

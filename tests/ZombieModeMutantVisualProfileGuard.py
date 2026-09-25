@@ -144,8 +144,8 @@ def main() -> int:
             return fail("CustomFace rollback must isolate every restore step -> " + token)
 
     register = extract_method(runtime_module, "internal ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(")
-    restore_scale_idx = register.find("owner.RestoreZombieModeVisualScaleForRuntimeModule(marker)")
-    release_marker_idx = register.find("owner.ReleaseZombieModeFootMarkerForRuntimeModule(marker)")
+    restore_scale_idx = register.find("RestoreZombieModeVisualScale(marker)")
+    release_marker_idx = register.find("ReleaseZombieModeFootMarker(marker)")
     clear_marker_idx = register.find("marker.VisualFootMarkerFallbackApplied = false")
     if min(restore_scale_idx, release_marker_idx, clear_marker_idx) < 0 or not (
             restore_scale_idx < release_marker_idx < clear_marker_idx):

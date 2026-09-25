@@ -216,9 +216,9 @@ def main() -> int:
             return fail("late-wave elite/special weights must keep growing without a probability cap -> " + required)
 
     for required in [
-        "tuning.HealthMultiplier * GetZombieModeBossHealthScale(zombieModeRunState.CurrentWave)",
-        "tuning.DamageMultiplier * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave)",
-        "multiplier *= GetZombieModeBossRewardScale(zombieModeRunState.CurrentWave);",
+        "tuning.HealthMultiplier * GetZombieModeBossHealthScale(runState.CurrentWave)",
+        "tuning.DamageMultiplier * GetZombieModeBossDamageScale(runState.CurrentWave)",
+        "multiplier *= GetZombieModeBossRewardScale(runState.CurrentWave);",
     ]:
         if required not in spawner_text:
             return fail("Boss body or kill reward does not scale by Boss cycle -> " + required)

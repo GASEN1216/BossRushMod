@@ -16,8 +16,8 @@ def main() -> int:
     compile_text = COMPILE.read_text(encoding="utf-8")
 
     required_tokens = [
-        "spawnersDisabled = false;",
-        "DisableAllSpawners();",
+        "owner.ResetZombieModeOriginalSpawnerStateForRuntimeModule();",
+        "owner.DisableZombieModeOriginalSpawnersForRuntimeModule();",
         "RestoreZombieModeOriginalSpawners()",
         "INPCController",
         "NPCInteractableBase",

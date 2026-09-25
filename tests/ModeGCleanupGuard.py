@@ -31,6 +31,7 @@ ModeGCleanupGuard — Mode G 清理守卫（规格 §20 第 29 条）。
 import os
 import re
 import sys
+from cs_source_util import clean_source
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNTIME_PARTS = [
@@ -42,6 +43,7 @@ STATE = os.path.join(REPO_ROOT, "ModeG", "ModeGStateModel.cs")
 TELEMETRY = os.path.join(REPO_ROOT, "ModeG", "ModeGCombatTelemetry.cs")
 MODBEHAVIOUR = os.path.join(REPO_ROOT, "ModBehaviour.cs")
 RECOVERY = os.path.join(REPO_ROOT, "Utilities", "EnemyRecoveryMonitor.cs")
+RECOVERY_BRIDGE = os.path.join(REPO_ROOT, "Utilities", "EnemyRecoveryHostBridge.cs")
 
 
 def read(path, errors):
@@ -66,6 +68,7 @@ def main():
     telemetry = read(TELEMETRY, errors)
     host = read(MODBEHAVIOUR, errors)
     recovery = read(RECOVERY, errors)
+    recovery_bridge = read(RECOVERY_BRIDGE, errors)
 
     if state:
         # 九种终局枚举冻结（None + 9）
@@ -194,9 +197,11 @@ def main():
             errors.append("[OnDestroyOrder] PrepareHostDestroy 不在其他清理之前")
 
     if recovery:
-        if not re.search(r"ModeGRuntimeGates\.IsModeGRunInProgress", recovery):
-            errors.append("[NpcSuppression] EnemyRecoveryMonitor 未读 IsModeGRunInProgress")
-        if "IsModeGEntryBlocked" in recovery:
+        if "modeGRunActive = getModeGRunActive();" not in clean_source(recovery):
+            errors.append("[NpcSuppression] EnemyRecoveryMonitor 未读注入的运行状态")
+        if "() => ModeGRuntimeGates.IsModeGRunInProgress" not in clean_source(recovery_bridge):
+            errors.append("[NpcSuppressionBinding] 恢复服务未绑定 IsModeGRunInProgress")
+        if "IsModeGEntryBlocked" in recovery + recovery_bridge:
             errors.append("[NpcSuppressionNoEntryBlocked] NPC 侧引用 IsModeGEntryBlocked")
 
     if errors:

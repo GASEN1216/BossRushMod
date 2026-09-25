@@ -23,6 +23,9 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+from compile_list import read_compile_sources
 
 MODULE = Path("Campaign/CampaignRuntimeModule.cs")
 PROGRESS = Path("Campaign/CampaignProgressService.cs")
@@ -61,8 +64,7 @@ def fail(message):
 
 
 def strip_comments(text):
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    return re.sub(r"//[^\n]*", "", text)
+    return clean_source(text)
 
 
 def main():
@@ -91,9 +93,8 @@ def main():
         return fail(REGISTRATION.as_posix() + " 缺少只读门面 CampaignRuntime")
 
     news = []
-    for path in Path(".").rglob("*.cs"):
-        if any(part in {".git", "Build", "tmp", "output", "outputs", "鸭科夫源码"} for part in path.parts):
-            continue
+    for source_path in read_compile_sources(Path("compile_official.bat")):
+        path = Path(source_path)
         text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
         news += [path.as_posix()] * len(
             re.findall(r"new\s+CampaignRuntimeModule\s*\(", text))

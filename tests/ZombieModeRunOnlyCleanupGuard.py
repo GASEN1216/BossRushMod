@@ -91,7 +91,7 @@ def main() -> int:
         "runState.RunOnlyObjects.Clear();",
         "owner.ClearZombieModeEnemyInstanceIdsForRuntimeModule();",
         "ClearZombieModeRewardShell();",
-        "owner.RestoreZombieModeMapIsolationShellForRuntimeModule();",
+        "RestoreZombieModeMapIsolationShell();",
     ]
     positions = [cleanup_method.find(token) for token in cleanup_order]
     positions = [position for position in positions if position >= 0]

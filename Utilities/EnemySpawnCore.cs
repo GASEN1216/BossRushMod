@@ -105,66 +105,101 @@ namespace BossRush
         public bool SuppressWaveBossRegistration = false;
     }
 
-    /// <summary>
-    /// 通用敌人生成核心方法（Mode D / Mode E 共用）
-    /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    // 共享生成算法由一个实例执行；宿主只装配查询、动作与原调度入口。
+    internal sealed class EnemySpawnRuntime
     {
-        private readonly ModeEFSpawnPostprocessScheduler spawnPostprocess = new ModeEFSpawnPostprocessScheduler();
+        internal delegate UniTask<CharacterMainControl> DescendantSpawner(
+            Vector3 position, bool isChildProtectionSummon, bool notifyBossRushOnFailure,
+            bool deferActivationUntilNextFrame, bool isNonWaveSpawn, Func<bool> isActiveCheck);
+        internal delegate UniTask<CharacterMainControl> SpecialBossSpawner(
+            Vector3 position, bool notifyBossRushOnFailure,
+            bool deferActivationUntilNextFrame, bool isNonWaveSpawn, Func<bool> isActiveCheck);
 
-        private void BindSpawnPostprocessServices()
+        private readonly ModeEFSpawnPostprocessScheduler spawnPostprocess;
+        private Func<Dictionary<string, CharacterRandomPreset>> characterPresets;
+        private Func<EnemyPresetInfo> GetRandomBossPreset;
+        private Func<EnemyPresetInfo> GetRandomMinionPreset;
+        private Func<bool> isDragonDescendantSpawned;
+        private Func<bool> isDragonKingSpawned;
+        private Func<EnemyPresetInfo, bool> IsDragonDescendantPreset;
+        private Func<EnemyPresetInfo, bool> IsDragonKingPreset;
+        private Func<EnemyPresetInfo, bool> IsPhantomWitchPreset;
+        private Func<EnemyPresetInfo, bool> IsManagedBossPreset;
+        private DescendantSpawner SpawnDragonDescendant;
+        private SpecialBossSpawner SpawnDragonKing;
+        private SpecialBossSpawner SpawnPhantomWitch;
+        private Action<CharacterMainControl> CleanupCancelledDragonDescendant;
+        private Action<CharacterMainControl> CleanupCancelledDragonKing;
+        private Action<CharacterMainControl> CleanupFailedPhantomWitchSpawn;
+        private Action<CharacterMainControl> NormalizeDamageMultiplier;
+        private Action<CharacterMainControl, int, float, bool> EquipEnemyForModeD;
+        private Func<CharacterMainControl, int, float, bool, SharedModeEnemyEquipmentMaterializationPlan> CreateSharedModeEnemyEquipmentMaterializationPlan;
+        private Action<CharacterMainControl> ApplyBossStatMultiplier;
+        private Action<CharacterMainControl, int> RegisterBossRandomLootTracking;
+        private Func<EnemyPresetInfo, bool> IsDaXingXingPreset;
+        private Func<HashSet<CharacterMainControl>> ownedDaXingXing;
+        private Dictionary<string, CharacterRandomPreset> cachedCharacterPresets { get { return characterPresets(); } }
+        private bool modeEDragonDescendantSpawned { get { return isDragonDescendantSpawned(); } }
+        private bool modeEDragonKingSpawned { get { return isDragonKingSpawned(); } }
+        private HashSet<CharacterMainControl> bossRushOwnedDaXingXing { get { return ownedDaXingXing(); } }
+
+        internal EnemySpawnRuntime(ModeEFSpawnPostprocessScheduler postprocess)
         {
-            spawnPostprocess.BindServices(modeDItemPool.MaterializeNextSharedModeEnemyEquipmentPlanStep,
-                character => ApplyBossStatMultiplier(character),
-                (character, count) => wavesArenaRuntime.RegisterBossRandomLootTracking(character, count),
-                modeDItemPool.CleanupSharedModeEnemyEquipmentMaterializationPlan,
-                wavesArenaRuntime.ClearBossRandomLootTracking);
+            spawnPostprocess = postprocess;
         }
 
-        /// <summary>
-        /// 确保 cachedCharacterPresets 字典已经构建（审查 §1.1）。
-        /// ZombieMode 入口路径调用此方法以避免依赖 Mode D 先初始化；
-        /// 调用一次为 O(N) 扫描，缓存后再次调用直接返回。
-        /// </summary>
-        internal void EnsureCharacterPresetsCacheReady()
+        internal void BindPresetQueries(
+            Func<Dictionary<string, CharacterRandomPreset>> characterPresets,
+            Func<EnemyPresetInfo> randomBoss, Func<EnemyPresetInfo> randomMinion,
+            Func<bool> descendantSpawned, Func<bool> kingSpawned)
         {
-            if (cachedCharacterPresets != null && cachedCharacterPresets.Count > 0)
-            {
-                return;
-            }
-
-            try
-            {
-                CharacterRandomPreset[] allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
-                if (allPresets == null || allPresets.Length == 0)
-                {
-                    return;
-                }
-
-                if (cachedCharacterPresets == null)
-                {
-                    cachedCharacterPresets = new System.Collections.Generic.Dictionary<string, CharacterRandomPreset>();
-                }
-
-                for (int i = 0; i < allPresets.Length; i++)
-                {
-                    CharacterRandomPreset preset = allPresets[i];
-                    if (preset == null || string.IsNullOrEmpty(preset.nameKey)) continue;
-                    if (IsRuntimeCharacterPresetClone(preset)) continue;
-                    if (!cachedCharacterPresets.ContainsKey(preset.nameKey))
-                    {
-                        cachedCharacterPresets[preset.nameKey] = preset;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[SpawnCore] EnsureCharacterPresetsCacheReady 失败: " + e.Message);
-            }
+            this.characterPresets = characterPresets;
+            GetRandomBossPreset = randomBoss;
+            GetRandomMinionPreset = randomMinion;
+            isDragonDescendantSpawned = descendantSpawned;
+            isDragonKingSpawned = kingSpawned;
         }
 
-        internal void ClearModeEFSpawnPostprocessScheduler() { spawnPostprocess.ClearModeEFSpawnPostprocessScheduler(); }
-        private void TickModeEFSpawnPostprocessScheduler() { spawnPostprocess.TickModeEFSpawnPostprocessScheduler(); }
+        internal void BindSpecialBossServices(
+            Func<EnemyPresetInfo, bool> descendant, Func<EnemyPresetInfo, bool> king,
+            Func<EnemyPresetInfo, bool> witch, Func<EnemyPresetInfo, bool> managed,
+            DescendantSpawner spawnDescendant, SpecialBossSpawner spawnKing, SpecialBossSpawner spawnWitch,
+            Action<CharacterMainControl> cleanupDescendant, Action<CharacterMainControl> cleanupKing,
+            Action<CharacterMainControl> cleanupWitch)
+        {
+            IsDragonDescendantPreset = descendant;
+            IsDragonKingPreset = king;
+            IsPhantomWitchPreset = witch;
+            IsManagedBossPreset = managed;
+            SpawnDragonDescendant = spawnDescendant;
+            SpawnDragonKing = spawnKing;
+            SpawnPhantomWitch = spawnWitch;
+            CleanupCancelledDragonDescendant = cleanupDescendant;
+            CleanupCancelledDragonKing = cleanupKing;
+            CleanupFailedPhantomWitchSpawn = cleanupWitch;
+        }
+
+        internal void BindEquipmentServices(
+            Action<CharacterMainControl> normalize,
+            Action<CharacterMainControl, int, float, bool> equip,
+            Func<CharacterMainControl, int, float, bool, SharedModeEnemyEquipmentMaterializationPlan> createPlan,
+            Action<CharacterMainControl> applyMultiplier,
+            Action<CharacterMainControl, int> registerLoot)
+        {
+            NormalizeDamageMultiplier = normalize;
+            EquipEnemyForModeD = equip;
+            CreateSharedModeEnemyEquipmentMaterializationPlan = createPlan;
+            ApplyBossStatMultiplier = applyMultiplier;
+            RegisterBossRandomLootTracking = registerLoot;
+        }
+
+        internal void BindOwnedEnemyTracking(
+            Func<EnemyPresetInfo, bool> isDaXingXing,
+            Func<HashSet<CharacterMainControl>> owned)
+        {
+            IsDaXingXingPreset = isDaXingXing;
+            ownedDaXingXing = owned;
+        }
 
         /// <summary>
         /// 通用敌人生成核心方法
@@ -265,7 +300,7 @@ namespace BossRush
                 }
                 catch (Exception callbackEx)
                 {
-                    DevLog("[SpawnCore] [WARNING] 生成成功回调执行异常: " + callbackEx.Message);
+                    ModBehaviour.DevLog("[SpawnCore] [WARNING] 生成成功回调执行异常: " + callbackEx.Message);
                     InvokeSpawnCoreFailureCallback(onFailed, "成功回调异常");
                 }
                 return;
@@ -331,7 +366,7 @@ namespace BossRush
                         }
                         if (currentPreset == null)
                         {
-                            DevLog("[SpawnCore] 预设为空, attempt=" + attempt);
+                            ModBehaviour.DevLog("[SpawnCore] 预设为空, attempt=" + attempt);
                             continue;
                         }
 
@@ -341,24 +376,24 @@ namespace BossRush
                         bool isRetry = (currentPreset != originalPreset);
                         if (isRetry && (skipDragonDescendant || modeEDragonDescendantSpawned) && IsDragonDescendantPreset(currentPreset))
                         {
-                            DevLog("[SpawnCore] 重试跳过龙裔遗族（已达上限）");
+                            ModBehaviour.DevLog("[SpawnCore] 重试跳过龙裔遗族（已达上限）");
                             currentPreset = null;
                             continue;
                         }
                         if (isRetry && (skipDragonKing || modeEDragonKingSpawned) && IsDragonKingPreset(currentPreset))
                         {
-                            DevLog("[SpawnCore] 重试跳过龙王（已达上限）");
+                            ModBehaviour.DevLog("[SpawnCore] 重试跳过龙王（已达上限）");
                             currentPreset = null;
                             continue;
                         }
                         if (isRetry && IsPhantomWitchPreset(currentPreset))
                         {
-                            DevLog("[SpawnCore] 重试跳过幽灵女巫（同一波次不重复）");
+                            ModBehaviour.DevLog("[SpawnCore] 重试跳过幽灵女巫（同一波次不重复）");
                             currentPreset = null;
                             continue;
                         }
 
-                        DevLog("[SpawnCore] 生成敌人: " + currentPreset.displayName + " (isBoss=" + isBoss + ", attempt=" + attempt + ")");
+                        ModBehaviour.DevLog("[SpawnCore] 生成敌人: " + currentPreset.displayName + " (isBoss=" + isBoss + ", attempt=" + attempt + ")");
 
                         int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
                         CharacterMainControl character = null;
@@ -372,7 +407,7 @@ namespace BossRush
                             var managedDispatcher = ManagedBossSpawnDispatcher;
                             if (managedDispatcher == null)
                             {
-                                DevLog("[SpawnCore] [ERROR] 传入托管 Boss 上下文但 ManagedBossSpawnDispatcher 未接线，fail-closed");
+                                ModBehaviour.DevLog("[SpawnCore] [ERROR] 传入托管 Boss 上下文但 ManagedBossSpawnDispatcher 未接线，fail-closed");
                                 return EnemySpawnCoreResult.Failed("托管生成契约未接线", currentPreset);
                             }
 
@@ -388,7 +423,7 @@ namespace BossRush
                             }
                             catch (Exception managedEx)
                             {
-                                DevLog("[SpawnCore] 托管 Boss 生成异常: " + managedEx.Message);
+                                ModBehaviour.DevLog("[SpawnCore] 托管 Boss 生成异常: " + managedEx.Message);
                                 character = null;
                             }
 
@@ -418,7 +453,7 @@ namespace BossRush
                             }
                             catch (Exception dragonEx)
                             {
-                                DevLog("[SpawnCore] 龙裔遗族生成异常: " + dragonEx.Message);
+                                ModBehaviour.DevLog("[SpawnCore] 龙裔遗族生成异常: " + dragonEx.Message);
                                 currentPreset = null;
                                 continue;
                             }
@@ -437,7 +472,7 @@ namespace BossRush
                             }
                             catch (Exception kingEx)
                             {
-                                DevLog("[SpawnCore] 龙王生成异常: " + kingEx.Message);
+                                ModBehaviour.DevLog("[SpawnCore] 龙王生成异常: " + kingEx.Message);
                                 currentPreset = null;
                                 continue;
                             }
@@ -456,7 +491,7 @@ namespace BossRush
                             }
                             catch (Exception witchEx)
                             {
-                                DevLog("[SpawnCore] 幽灵女巫生成异常: " + witchEx.Message);
+                                ModBehaviour.DevLog("[SpawnCore] 幽灵女巫生成异常: " + witchEx.Message);
                                 currentPreset = null;
                                 continue;
                             }
@@ -472,7 +507,7 @@ namespace BossRush
 
                             if (targetPreset == null)
                             {
-                                DevLog("[SpawnCore] 未找到预设: " + currentPreset.name);
+                                ModBehaviour.DevLog("[SpawnCore] 未找到预设: " + currentPreset.name);
                                 currentPreset = null;
                                 continue;
                             }
@@ -483,7 +518,7 @@ namespace BossRush
                             }
                             catch (Exception createEx)
                             {
-                                DevLog("[SpawnCore] 生成敌人异常: " + createEx.Message);
+                                ModBehaviour.DevLog("[SpawnCore] 生成敌人异常: " + createEx.Message);
                                 currentPreset = null;
                                 continue;
                             }
@@ -491,7 +526,7 @@ namespace BossRush
 
                         if (character == null)
                         {
-                            DevLog("[SpawnCore] 生成敌人失败: " + (currentPreset != null ? currentPreset.displayName : "null"));
+                            ModBehaviour.DevLog("[SpawnCore] 生成敌人失败: " + (currentPreset != null ? currentPreset.displayName : "null"));
                             currentPreset = null;
                             continue;
                         }
@@ -516,10 +551,10 @@ namespace BossRush
                                 }
                                 catch (Exception destroyEx)
                                 {
-                                    DevLog("[SpawnCore] [WARNING] 模式结束时销毁特殊生成敌人失败: " + destroyEx.Message);
+                                    ModBehaviour.DevLog("[SpawnCore] [WARNING] 模式结束时销毁特殊生成敌人失败: " + destroyEx.Message);
                                 }
 
-                                DevLog("[SpawnCore] 模式已结束，销毁特殊生成的敌人");
+                                ModBehaviour.DevLog("[SpawnCore] 模式已结束，销毁特殊生成的敌人");
                                 return EnemySpawnCoreResult.Failed("模式结束", currentPreset);
                             }
 
@@ -567,14 +602,14 @@ namespace BossRush
                                     }
                                     catch (Exception destroyOnCommitEx)
                                     {
-                                        DevLog("[SpawnCore] [WARNING] 特殊Boss提交失败后销毁异常: " + destroyOnCommitEx.Message);
+                                        ModBehaviour.DevLog("[SpawnCore] [WARNING] 特殊Boss提交失败后销毁异常: " + destroyOnCommitEx.Message);
                                     }
 
                                     return EnemySpawnCoreResult.Failed("提交回调失败", currentPreset);
                                 }
                             }
 
-                            DevLog("[SpawnCore] 敌人生成成功: " + currentPreset.displayName);
+                            ModBehaviour.DevLog("[SpawnCore] 敌人生成成功: " + currentPreset.displayName);
                             return EnemySpawnCoreResult.Succeeded(ctx, currentPreset);
                         }
                         else
@@ -588,7 +623,7 @@ namespace BossRush
                             if (!isActiveCheck())
                             {
                                 UnityEngine.Object.Destroy(character.gameObject);
-                                DevLog("[SpawnCore] 模式已结束，销毁生成的敌人");
+                                ModBehaviour.DevLog("[SpawnCore] 模式已结束，销毁生成的敌人");
                                 return EnemySpawnCoreResult.Failed("模式结束", currentPreset);
                             }
 
@@ -664,12 +699,12 @@ namespace BossRush
                                     }
 
                                     RegisterBossRandomLootTracking(character, originalLootCount);
-                                    DevLog("[SpawnCore] 已注册 Boss 掉落追踪: " + currentPreset.displayName
+                                    ModBehaviour.DevLog("[SpawnCore] 已注册 Boss 掉落追踪: " + currentPreset.displayName
                                         + " (原始掉落数量=" + originalLootCount + ")");
                                 }
                                 catch (Exception lootTrackEx)
                                 {
-                                    DevLog("[SpawnCore] [WARNING] 注册 Boss 掉落追踪失败: " + lootTrackEx.Message);
+                                    ModBehaviour.DevLog("[SpawnCore] [WARNING] 注册 Boss 掉落追踪失败: " + lootTrackEx.Message);
                                 }
                             }
 
@@ -688,30 +723,30 @@ namespace BossRush
                                 if (!ModeEFSpawnPostprocessScheduler.InvokeSpawnCoreCommitCallback(onCommit, ctx))
                                 {
                                     UnityEngine.Object.Destroy(character.gameObject);
-                                    DevLog("[SpawnCore] 提交回调失败，销毁普通Boss: " + currentPreset.displayName);
+                                    ModBehaviour.DevLog("[SpawnCore] 提交回调失败，销毁普通Boss: " + currentPreset.displayName);
                                     return EnemySpawnCoreResult.Failed("提交回调失败", currentPreset);
                                 }
                             }
 
-                            DevLog("[SpawnCore] 敌人生成成功: " + currentPreset.displayName);
+                            ModBehaviour.DevLog("[SpawnCore] 敌人生成成功: " + currentPreset.displayName);
                             return EnemySpawnCoreResult.Succeeded(ctx, currentPreset);
                         }
                     }
                     catch (Exception e)
                     {
-                        DevLog("[SpawnCore] [ERROR] 尝试失败: " + e.Message);
+                        ModBehaviour.DevLog("[SpawnCore] [ERROR] 尝试失败: " + e.Message);
                         currentPreset = null;
                     }
                 }
 
-                DevLog("[SpawnCore] [ERROR] 多次尝试仍然失败");
+                ModBehaviour.DevLog("[SpawnCore] [ERROR] 多次尝试仍然失败");
 
                 // 所有重试均失败，调用失败回调（用于 Mode D 波次计数兜底等）
                 return EnemySpawnCoreResult.Failed("重试耗尽", currentPreset);
             }
             catch (Exception e)
             {
-                DevLog("[SpawnCore] [ERROR] SpawnEnemyCore 异常: " + e.Message);
+                ModBehaviour.DevLog("[SpawnCore] [ERROR] SpawnEnemyCore 异常: " + e.Message);
 
                 // 异常情况也调用失败回调，确保调用方计数不会卡住
                 return EnemySpawnCoreResult.Failed("主流程异常", preset);
@@ -735,7 +770,7 @@ namespace BossRush
             catch (Exception trackEx)
             {
                 string presetName = preset != null ? preset.displayName : "null";
-                DevLog("[SpawnCore] [WARNING] 标记大兴兴归属失败: " + presetName + ", " + trackEx.Message);
+                ModBehaviour.DevLog("[SpawnCore] [WARNING] 标记大兴兴归属失败: " + presetName + ", " + trackEx.Message);
             }
         }
 
@@ -752,7 +787,7 @@ namespace BossRush
             }
             catch (Exception callbackEx)
             {
-                DevLog("[SpawnCore] [WARNING] 失败回调执行异常 (" + reason + "): " + callbackEx.Message);
+                ModBehaviour.DevLog("[SpawnCore] [WARNING] 失败回调执行异常 (" + reason + "): " + callbackEx.Message);
             }
         }
     }

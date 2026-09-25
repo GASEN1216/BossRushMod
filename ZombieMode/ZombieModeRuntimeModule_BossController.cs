@@ -339,7 +339,7 @@ namespace BossRush
 
         private async UniTask SpawnZombieModeSplitterChildAsync(int runId, Vector3 position, float scale)
         {
-            CharacterMainControl zombie = await owner.TrySpawnZombieModeNormalZombieForRuntimeModule(
+            CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(
                 runId,
                 position,
                 ZombieModeEnemyKind.Normal,

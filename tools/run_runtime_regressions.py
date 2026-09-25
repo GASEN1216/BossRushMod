@@ -19,8 +19,8 @@ SCRIPT_FIXTURES = (
     "ModeHThirdReviewFixes", "ModeHMarketAudit", "ModeHItemBetLedger", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes", "IntegrationLeafOwners",
     "ContentBuildingOwnership", "BuildingRestoreCore", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
     "StoneOutpostSceneLease", "StoneOutpostMap", "EquipmentResourceScene", "SkyIslandStory", "SkyIslandDelivery", "SkyIslandOfficialContract", "SkyIslandEncounters", "SkyIslandLighting", "SkyIslandRaidLease", "SkyIslandLoot",
-    "SkyIslandMarriage", "SkyIslandHudPolicy", "SkyIslandDialogue", "SkyIslandInteraction", "ZombieModeEntryDebt", "ZombieModeSafeZoneRuntime", "ZombieModeRewardRuntime", "PermanentDuckNpcDialogue", "RewardPoolReliability",
-    "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "ModeEFSpawnPreparation", "ModeEFSpawnPostprocessScheduler", "ModeEFVirtualSpawnerRegistry", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "AwenLootSweepRuntime", "WavesArenaPresetWeight", "BirthdayCakeGift",
+    "SkyIslandMarriage", "SkyIslandHudPolicy", "SkyIslandDialogue", "SkyIslandInteraction", "ZombieModeEntryDebt", "ZombieModeSafeZoneRuntime", "ZombieModeRewardRuntime", "ZombieModeSpawnRuntime", "ZombieModeStarterRuntime", "PermanentDuckNpcDialogue", "RewardPoolReliability",
+    "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "EnemySpawnRuntime", "EnemyRecoveryRuntime", "RandomEventEffectsOwners", "ModeEFSpawnPreparation", "ModeEFSpawnPostprocessScheduler", "ModeEFVirtualSpawnerRegistry", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "AwenLootSweepRuntime", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {
     "ReviewSeptember": "ReviewSeptember.csproj",

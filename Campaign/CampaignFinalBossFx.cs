@@ -6,7 +6,7 @@
 //     开战那一帧直接 Destroy；全剧最后一战的入口长得像白模，Boss 出场也没有任何召唤表现。
 //   - 冠军之影的「绯红染色」对官方 SodaCharacter 写的是 _BaseColor，多半无效，终章 Boss 和普通幽灵女巫
 //     几乎长得一样；反过来直接把 (0.85,0.15,0.2) 写进 _Tint 又会把整张贴图压成一片暗红。
-//   CampaignFinalBoss.cs 是 ModBehaviour 的 partial（宿主行数预算已顶格），表现逻辑收在这里，宿主各留一行调用。
+//   CampaignFinalBoss.cs 归 CampaignRuntimeModule，独立表现逻辑仍收在这里，由决战编排调用。
 //
 // 口径：
 //   - 召唤石的几何仍是程序化方块（没有找到可靠的官方祭坛道具预制体可以离线确认），材质换成官方画风的

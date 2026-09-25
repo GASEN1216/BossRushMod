@@ -78,7 +78,7 @@ def main() -> int:
         "character.GetComponentInChildren<DuckovDialogueActor>(true)",
         "character.GetComponentInChildren<Duckov.Economy.StockShop>(true)",
         "character.GetComponentInChildren<IMerchant>(true)",
-        "NPCModuleRegistry.ShouldSpawnAnyInScene(this, SceneManager.GetActiveScene().name)",
+        "NPCModuleRegistry.ShouldSpawnAnyInScene(owner, SceneManager.GetActiveScene().name)",
         "character.GetComponentInChildren<WeddingNpcResidentMarker>(true)",
     ]:
         if snippet not in map_isolation_text:

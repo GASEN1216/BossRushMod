@@ -1,6 +1,10 @@
 # Boss 生成系统
 
+2026-09-25：共享生成主体归 [EnemySpawnCore.cs](file://Utilities/EnemySpawnCore.cs) 中的 `EnemySpawnRuntime`；[EnemySpawnHostBridge.cs](file://Utilities/EnemySpawnHostBridge.cs) 只装配窄查询/动作并保留原宿主入口。普通与特殊 Boss 仍走原分支和等待顺序，Mode G 的静态 dispatcher 由旧属性转到同一静态槽位；预设缓存就绪方法归 [Mode D 敌池模块](file://ModeD/ModeDRuntimeModule_EnemyPools.cs)。生成运行时与后处理队列有独立执行回归，游戏内异步/AI/资源表现仍需实测。
+
 2026-09-25：生成后处理队列和逐帧预算归 [ModeEFSpawnPostprocessScheduler.cs](file://Utilities/ModeEFSpawnPostprocessScheduler.cs) 的单一实例。宿主在原 Tick/Clear 位置转发，配装步进、倍率和掉落清理由注册阶段显式绑定；60 帧软期限、最后 5 帧加速、8/16 步上限、时间源、提交门及清理顺序保持。
+
+2026-09-25：即时和延迟位置校验已归 [EnemyRecoveryMonitor.cs](file://Utilities/EnemyRecoveryMonitor.cs) 的同一恢复服务，`WavesArenaBossSpawning.cs` 保留旧入口。标准模式的单 Boss / 多 Boss 枚举在 [恢复适配片段](file://WavesArena/WavesArenaRuntimeModule_Recovery.cs)；原调用顺序、每秒巡检、候选缓存、保血与恢复冷却保持。服务由 [宿主装配桥](file://Utilities/EnemyRecoveryHostBridge.cs) 绑定模式策略，相关执行夹具覆盖完整生产恢复逻辑。
 
 > 2026-09-25 迁移注：波次状态与倒计时由 `WavesArenaRuntimeModule` 持有，实际逻辑分别见 [倒计时](file://WavesArena/WavesArenaRuntimeModule_Countdown.cs)、[死亡与推波](file://WavesArena/WavesArenaRuntimeModule_WaveDeaths.cs)、[Boss 选择与重试生成](file://WavesArena/WavesArenaRuntimeModule_BossSpawning.cs)、[掉落状态](file://WavesArena/WavesArenaRuntimeModule_LootState.cs)。`WavesArena.cs`、`WavesArenaBossSpawning.cs` 保留兼容入口；下面旧流程图中的类名按原设计语义理解。
 

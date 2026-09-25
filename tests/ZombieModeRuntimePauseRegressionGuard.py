@@ -129,7 +129,7 @@ def main() -> int:
     except AssertionError as exc:
         return fail(str(exc))
 
-    cleanup_text = Path("ZombieMode/ZombieModeCleanup.cs").read_text(encoding="utf-8")
+    cleanup_text = Path("ZombieMode/ZombieModeSpawner.cs").read_text(encoding="utf-8")
     try:
         require(cleanup_text, "private async UniTask<bool> WaitForZombieModeRuntimeResumeAsync(int runId)", "missing shared async-spawn pause wait helper")
         require(cleanup_text, "while (IsZombieModeRunValid(runId) && IsZombieModeRuntimePaused())", "async-spawn pause wait must hold while runtime is paused")
@@ -139,8 +139,8 @@ def main() -> int:
 
     spawner_text = Path("ZombieMode/ZombieModeSpawner.cs").read_text(encoding="utf-8")
     try:
-        require(spawner_text, "private async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync", "normal zombie async spawn must be awaitable")
-        require(spawner_text, "private async UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync", "boss async spawn must be awaitable")
+        require(spawner_text, "internal async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync", "normal zombie async spawn must be awaitable")
+        require(spawner_text, "internal async UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync", "boss async spawn must be awaitable")
         require(spawner_text, "await WaitForZombieModeRuntimeResumeAsync(runId)", "async spawns must wait for ZombieMode runtime pause")
         require(spawner_text, "abortedByPause", "async spawns must abort and retry if pause starts while SpawnEnemyCore is mid-flight")
     except AssertionError as exc:

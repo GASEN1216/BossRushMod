@@ -9,7 +9,7 @@ OUT = ROOT / "Build/runtime-regressions/ModeEFSpawnPostprocessScheduler"
 OUT.mkdir(parents=True, exist_ok=True)
 source = (ROOT / "Utilities/EnemySpawnCore.cs").read_text(encoding="utf-8")
 contracts = OUT / "Contracts.cs"
-contracts.write_text(source[:source.index("    public partial class ModBehaviour")] + "}\n", encoding="utf-8")
+contracts.write_text(source[:source.index("    internal sealed class EnemySpawnRuntime")] + "}\n", encoding="utf-8")
 sources = [ROOT / "Utilities/ModeEFSpawnPostprocessScheduler.cs", ROOT / "Utilities/ModeEFSpawnProfiler.cs", contracts, HERE / "Program.cs"]
 includes = "".join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in sources)
 project = OUT / "Regression.csproj"

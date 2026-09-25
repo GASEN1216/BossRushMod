@@ -28,3 +28,5 @@ Zombie HUD 子项逐字抽取 `ZombieModeRuntimeModule_Hud` 的创建、显隐�
 撤离结算子项逐字抽取 `ZombieModeRuntimeModule_Extraction.cs` 的成功结算、净化点现金结算与官方 `CountDownArea` 成功事件分发方法。可观测替身验证现金失败时保留净化点并恢复撤离选择、现金成功后先通知战役再按停止 / 成功顺序派发并清理、成功回调重复到达不重复结算，以及缺少成功监听时按通知撤离、回基地、清理的顺序兜底；不模拟真实 `EconomyManager`、官方场景加载或 Unity 事件系统。
 
 2026-09-25 共享商人运行时：生产 Spawn 方法用显式装配策略验证迟到请求；另抽取生产 Cleanup 与物品预热方法并链接真实 RunScopedRegistry，覆盖逆序销毁、共享商店列表清理、贝壳策略先退役、重复清理、8 次尝试分帧，以及预热中销毁旧商店、换入后继列表时的快照边界。替身模拟 GameObject 销毁连带组件和 Unity 判空，未验证真实 StockShop 生命周期或实机帧耗。
+
+2026-09-25 后续归属：视觉复原与脚印释放 helper 从 `ZombieModeRuntimeModule_EnemyRuntime.cs` 抽取真实模块方法，宿主入口仍按生产薄桥接通；RunOnly 的地图隔离恢复动作由模块替身记录，旧宿主恢复入口抽取 `ZombieModeEntry.cs` 的真实转发。地图隔离内部行为由专用夹具负责，本套件继续约束清理顺序。

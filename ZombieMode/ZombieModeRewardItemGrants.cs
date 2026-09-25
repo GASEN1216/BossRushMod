@@ -380,9 +380,9 @@ namespace BossRush
                     return;
                 }
 
-                await owner.TrySpawnZombieModeNormalZombieForWaveRuntimeModule(
+                await TrySpawnZombieModeNormalZombieAsync(
                     runId,
-                    owner.GetZombieModeSpawnPositionForWaveRuntimeModule(),
+                    GetZombieModeSpawnPosition(),
                     ZombieModeEnemyKind.Elite,
                     true,
                     () => runState.CombatPhase == ZombieModeCombatPhase.Combat);

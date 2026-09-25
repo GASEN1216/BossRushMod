@@ -54,7 +54,7 @@ def main() -> int:
         return fail("ordinary drop cleanup still runs at wave settlement")
 
     for token in [
-        "TryResolveZombieModeSpawnPoint(candidate, zombieModeRunState.SpawnPoints[index].VirtualPoint",
+        "TryResolveZombieModeSpawnPoint(candidate, runState.SpawnPoints[index].VirtualPoint",
         "return GetZombieModeSpawnPosition();",
     ]:
         if token not in spawner:

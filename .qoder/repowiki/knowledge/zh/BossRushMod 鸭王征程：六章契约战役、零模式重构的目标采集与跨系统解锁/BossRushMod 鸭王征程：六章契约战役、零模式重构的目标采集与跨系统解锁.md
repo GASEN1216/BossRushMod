@@ -15,6 +15,8 @@ source_files:
     - Campaign/CampaignObjectiveCollector.cs
     - Campaign/CampaignProgressService.cs
     - Campaign/CampaignModeBridge.cs
+    - Campaign/CampaignRuntimeModule.cs
+    - Campaign/CampaignRuntimeModuleHostBridge.cs
     - Campaign/CampaignAssetCache.cs
     - Campaign/CampaignNoteBridge.cs
     - Campaign/CampaignDialoguePlayer.cs
@@ -33,6 +35,10 @@ source_files:
 ---
 
 ## 1. 系统概述
+
+### 2026-09-25 终章与模式观察归运行时模块（COMPAT）
+
+`CampaignFinalBoss.cs`、`CampaignModeBridge.cs` 的真实业务与实例状态归同一 `CampaignRuntimeModule` partial；`CampaignRuntimeModuleHostBridge.cs` 保留原宿主方法和只读入口。模式状态仍从原权威字段即时读取，悬赏消费、场景代数、生成编号和清理顺序保持。生成方法在 await 前捕获原宿主，确保模块 `OnDestroy` 置空 `_owner` 后仍能回收迟到 Boss；不增加新模块或全局订阅。`CampaignPlayability` 直接链接宿主桥与模式业务，执行真实终章、场景和销毁路径；状态归属与薄桥由 `CampaignRuntimeOwnershipGuard` 守住。详见 [交付专题](file://.qoder/repowiki/zh/content/高级功能/鸭王征程交付.md)。
 
 ### 2026-09-24 Mode F 悬赏闩归属（COMPAT）
 
@@ -88,7 +94,8 @@ source_files:
 | `CampaignObjectiveTracker.cs` | 单局目标追踪，**完全不落盘**；武装/计数/计时/失败判定 |
 | `CampaignObjectiveCollector.cs` | `Health.OnDead/OnHurt` 命名 handler，热路径零分配；近战与悬赏印记判定 |
 | `CampaignProgressService.cs` | 状态机核心：状态推导、接约/放弃/交付、奖励与 token 授予 |
-| `CampaignModeBridge.cs` | `partial ModBehaviour`：直读五个模式的私有状态 + 4 个 notify 漏斗 + 每帧 tick |
+| `CampaignModeBridge.cs` | `CampaignRuntimeModule` partial：持有模式 / 波次观察状态，经宿主窄入口读取各模式权威状态，处理 4 个 notify 漏斗与每帧 tick |
+| `CampaignRuntimeModuleHostBridge.cs` | 原宿主方法、验证 getter 和模式门禁入口薄转发到同一模块；即时提供原宿主依赖 |
 | `CampaignNoteBridge.cs` | 线索接入官方 NoteIndex；**两边都写**（列表 + 字典），fail-open |
 | `CampaignDialoguePlayer.cs` | 交付剧情 + 终章冠军独白：复用 `DialogueManager` 与官方对话 UI 的原生立绘位。**两个说话人各有独立 actor 宿主 GameObject**——`DialogueActorFactory` 的缓存按 GameObject 索引，`Create` 命中缓存时会忽略传入的 actorId/nameKey/portrait，共用宿主会让冠军顶着中间人的名字和立绘说话 |
 | `CampaignBoardBuilder.cs` | 公告板建筑注入（照日报报箱：反射 BuildingInfo、dormant 契约、老档幽灵防护） |
@@ -104,13 +111,13 @@ source_files:
 
 1. **全局 Health 采集器**（零侵入）：`CampaignObjectiveCollector` 由
    `Utilities/PlayerLifecycleRuntimeHooks.cs` 转发官方静态事件，与日报、图鉴同一条管线。
-2. **partial 状态桥轮询**（零侵入）：`CampaignModeBridge` 是 `partial ModBehaviour`，
-   因此能直读 `modeDActive`、`modeEActive`、`modeFState`、`zombieModeRunState`、
-   `currentEnemyIndex` 这些私有字段。整数比较的每帧成本可忽略。
+2. **模块状态轮询**（零侵入）：`CampaignModeBridge` 归现有 `CampaignRuntimeModule`，
+   经宿主只读入口即时读取 `modeDActive`、`modeEActive`、`modeFState`、`zombieModeRunState`、
+   `currentEnemyIndex`，不缓存模式字段的可写副本。
 3. **胜利/撤离漏斗**：四处各插一行 `NotifyCampaign*`，位置见 §5。
 
-**标准竞技场没有 `currentWave` 字段**：它记的是 `currentEnemyIndex`（当前第几个敌人）
-与 `bossesPerWave`，波次要现算，口径与 `WavesArena.cs` 的 `completedWave` 一致。
+**标准竞技场没有 `currentWave` 字段**：`currentEnemyIndex` 是已完成波数，当前波次为它加一；
+不再除以 `bossesPerWave`，口径与实际波次完成回调一致。
 
 #### 武装时机（2026-09-03 修正，CR-2026-09-03-011）
 

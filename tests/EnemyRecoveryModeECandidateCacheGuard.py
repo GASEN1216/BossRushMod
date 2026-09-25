@@ -49,7 +49,7 @@ def main() -> int:
         if required not in text:
             return fail(f"EnemyRecoveryModeECandidateCacheGuard: missing Mode E candidate cache invariant -> {required}")
 
-    clear_body = extract_method_body(text, "private void ClearEnemyRecoveryMonitorState()")
+    clear_body = extract_method_body(text, "internal void ClearEnemyRecoveryMonitorState()")
     if clear_body is None:
         return fail("EnemyRecoveryModeECandidateCacheGuard: missing ClearEnemyRecoveryMonitorState body")
     for required in (

@@ -871,7 +871,7 @@ namespace BossRush
             // OnHurt/OnDead hot path 集合也在局结束时清掉（审查 §3.1）。
             owner.ClearZombieModeEnemyInstanceIdsForRuntimeModule();
             ClearZombieModeRewardShell();
-            owner.RestoreZombieModeMapIsolationShellForRuntimeModule();
+            RestoreZombieModeMapIsolationShell();
         }
 
         internal bool ShouldRollbackZombieModeEntryResources()
@@ -887,19 +887,19 @@ namespace BossRush
             }
 
             runState.LifecyclePhase = ZombieModeLifecyclePhase.InitializingRun;
-            owner.PrepareSoulCubePrefabCacheForRuntimeModule();
+            PrepareSoulCubePrefabCacheForZombieRun();
             if (!PrepareZombieModeInventoryTransfer(runId))
             {
                 return false;
             }
 
-            if (!owner.CollectZombieModeSpawnPointsForRuntimeModule(runId))
+            if (!CollectZombieModeSpawnPoints(runId))
             {
                 ModBehaviour.DevLog("[ZombieMode] 初始化失败：未收集到有效刷怪点");
                 return false;
             }
 
-            if (!owner.ApplyZombieModeMapIsolationForRuntimeModule(runId))
+            if (!ApplyZombieModeMapIsolationShell(runId))
             {
                 return false;
             }
@@ -923,7 +923,7 @@ namespace BossRush
             owner.RegisterZombieModeEventListenersForRuntimeModule(runId);
             owner.CreateZombieModeHudForRuntimeModule(runId);
             runState.LifecyclePhase = ZombieModeLifecyclePhase.WaitingStarterChoice;
-            owner.ShowZombieModeStarterChoiceForRuntimeModule(runId);
+            ShowZombieModeStarterChoice(runId);
             return true;
         }
 

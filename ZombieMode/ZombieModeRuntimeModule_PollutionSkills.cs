@@ -61,7 +61,7 @@ namespace BossRush
 
         internal async Cysharp.Threading.Tasks.UniTask SpawnZombieModeSmallSplitAsync(int runId, Vector3 position)
         {
-            CharacterMainControl zombie = await owner.TrySpawnZombieModeNormalZombieForRuntimeModule(
+            CharacterMainControl zombie = await TrySpawnZombieModeNormalZombieAsync(
                 runId,
                 position,
                 ZombieModeEnemyKind.Normal,

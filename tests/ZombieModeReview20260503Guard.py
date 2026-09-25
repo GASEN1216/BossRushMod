@@ -103,7 +103,11 @@ def main() -> int:
     err = must_contain(spawner, "EnsureCharacterPresetsCacheReady()")
     if err:
         return fail(err)
-    err = must_contain(spawn_core, "EnsureCharacterPresetsCacheReady")
+    err = must_contain(Path("ModeD/ModeDRuntimeModule_EnemyPools.cs"), "internal void EnsureCharacterPresetsCacheReady()")
+    if err:
+        return fail(err)
+    err = must_contain(Path("Utilities/EnemySpawnHostBridge.cs"),
+        "internal void EnsureCharacterPresetsCacheReady() { modeDRuntime.EnsureCharacterPresetsCacheReady(); }")
     if err:
         return fail(err)
     # SpawnEnemyCore 调用方不再传 directPreset

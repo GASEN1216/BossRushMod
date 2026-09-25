@@ -1,9 +1,8 @@
 // ============================================================================
 // CampaignModeBridge.cs - 战役与五个既有模式之间的桥
 // ============================================================================
-// 这是「对模式代码零重构」的关键：战役不改任何模式的状态机，只做两件事——
-//   1. 作为 partial ModBehaviour **直接读**各模式的私有运行状态（同一个类，天然可见）；
-//   2. 在五条胜利/撤离漏斗上各插一行 NotifyCampaign*，把「这一局赢了」告诉战役。
+// 模式识别、波次观察与通知归 CampaignRuntimeModule；各模式的权威状态
+// 经宿主只读入口即时查询，胜利 / 撤离漏斗沿用原 NotifyCampaign* 薄桥。
 //
 // 【为什么是轮询 + 漏斗两种，而不是统一订阅】
 //   波次推进、模式开局这类状态没有现成事件，各模式的状态机也不该为战役新增事件
@@ -11,7 +10,7 @@
 //   而「通关 / 撤离成功」是一次性的、有明确落点的，插一行漏斗比轮询可靠得多。
 //
 // 【所有入口在战役未启用时必须零成本早返】
-//   ModBehaviour.Update 每帧都会走到 TickCampaignModeBridge，
+//   CampaignRuntimeModule.OnUpdate 每帧走到 TickCampaignModeBridge，
 //   开关关闭时它必须是一次 bool 判断就返回。
 // ============================================================================
 
@@ -19,7 +18,7 @@ using System;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class CampaignRuntimeModule
     {
 
         #region 轮询状态
@@ -40,7 +39,7 @@ namespace BossRush
         /// </summary>
         internal void TickCampaignModeBridge(float deltaTime)
         {
-            if (!IsCampaignConfiguredEnabled()) return;
+            if (!_owner.IsCampaignConfiguredEnabled()) return;
 
             try
             {
@@ -108,26 +107,26 @@ namespace BossRush
             {
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null || main.Health == null || main.Health.IsDead) return null;
-                if (modeGActive) return null;
-                if (modeEActive) return CampaignContentCatalog.ModeModeE;
-                if (modeFActive) return CampaignContentCatalog.ModeModeF;
-                if (modeDActive) return CampaignContentCatalog.ModeModeD;
+                if (_owner.CampaignModeGActiveForRuntime) return null;
+                if (_owner.CampaignModeEActiveForRuntime) return CampaignContentCatalog.ModeModeE;
+                if (_owner.CampaignModeFActiveForRuntime) return CampaignContentCatalog.ModeModeF;
+                if (_owner.CampaignModeDActiveForRuntime) return CampaignContentCatalog.ModeModeD;
 
                 // 用丧尸模式自己的权威判据（IsZombieModeActive 用的就是它），
                 // 而不是 LifecyclePhase != None：后者从 SelectingMap 就为真，
                 // 那会让第 5 章在**玩家还在基地点地图选择界面**时就武装。
-                if (zombieModeRunState != null
-                    && ZombieModePhaseGuards.IsRunActive(zombieModeRunState.LifecyclePhase))
+                if (_owner.CampaignZombieRunForRuntime != null
+                    && ZombieModePhaseGuards.IsRunActive(_owner.CampaignZombieRunForRuntime.LifecyclePhase))
                 {
                     return CampaignContentCatalog.ModeZombie;
                 }
 
-                // 必须带上 IsActive：bossRushArenaActive 从进场就为真，而开波要等玩家去点路牌，
-                // 「已进竞技场、还没开波」是一个可以任意长的一等状态。只看 bossRushArenaActive
-                // 会让第 1 章的无伤目标在大厅里挨一下伤就被判死，且胜利后（IsActive 已复位、
-                // bossRushArenaActive 仍为真）追踪还赖着不走。
-                // Mode D 也会置 IsActive，但它在上面 :109 已先行 return，不会落到这一支。
-                if (bossRushArenaActive && IsActive && !infiniteHellMode)
+                // 必须带上 _owner.IsActive：_owner.CampaignArenaActiveForRuntime 从进场就为真，而开波要等玩家去点路牌，
+                // 「已进竞技场、还没开波」是一个可以任意长的一等状态。只看 _owner.CampaignArenaActiveForRuntime
+                // 会让第 1 章的无伤目标在大厅里挨一下伤就被判死，且胜利后（_owner.IsActive 已复位、
+                // _owner.CampaignArenaActiveForRuntime 仍为真）追踪还赖着不走。
+                // Mode D 也会置 _owner.IsActive，但它在上面 :109 已先行 return，不会落到这一支。
+                if (_owner.CampaignArenaActiveForRuntime && _owner.IsActive && !_owner.CampaignInfiniteHellForRuntime)
                 {
                     return CampaignContentCatalog.ModeStandard;
                 }
@@ -144,7 +143,7 @@ namespace BossRush
         /// <summary>
         /// 当前模式的波次号。没有波次概念的模式返回 0。
         ///
-        /// 标准竞技场没有 currentWave 字段：它记的是「第几个敌人」（currentEnemyIndex）
+        /// 标准竞技场没有 currentWave 字段：它记的是「第几个敌人」（_owner.CampaignEnemyIndexForRuntime）
         /// 与每波 Boss 数（bossesPerWave），波次要现算——口径与 WavesArena 里
         /// completedWave 的算法一致。
         /// </summary>
@@ -152,25 +151,25 @@ namespace BossRush
         {
             try
             {
-                if (modeDActive) return ModeDWaveIndex;
+                if (_owner.CampaignModeDActiveForRuntime) return _owner.ModeDWaveIndex;
 
                 // 与 ResolveCampaignCurrentMode 同一判据，两处必须一致，
                 // 否则会出现「模式解析成标准、波次号却报丧尸的」错配。
-                if (zombieModeRunState != null
-                    && ZombieModePhaseGuards.IsRunActive(zombieModeRunState.LifecyclePhase))
+                if (_owner.CampaignZombieRunForRuntime != null
+                    && ZombieModePhaseGuards.IsRunActive(_owner.CampaignZombieRunForRuntime.LifecyclePhase))
                 {
-                    return zombieModeRunState.CurrentWave;
+                    return _owner.CampaignZombieRunForRuntime.CurrentWave;
                 }
 
-                if (bossRushArenaActive)
+                if (_owner.CampaignArenaActiveForRuntime)
                 {
-                    if (infiniteHellMode) return infiniteHellWaveIndex;
-                    // currentEnemyIndex 本身就是**已完成波数**：它只在
+                    if (_owner.CampaignInfiniteHellForRuntime) return _owner.CampaignInfiniteHellWaveForRuntime;
+                    // _owner.CampaignEnemyIndexForRuntime 本身就是**已完成波数**：它只在
                     // WavesArena.ProceedAfterWaveFinished（本波全部 Boss 阵亡时）自增一次，
                     // 与 bossesPerWave 无关。此前又除了一次 bossesPerWave，
                     // 多 Boss 难度下第 1 章「前 2 波无伤」实际被放大成「前 6 波无伤」。
                     // +1 是把 0 基的已完成数换算成 1 基的当前波次。
-                    return currentEnemyIndex + 1;
+                    return _owner.CampaignEnemyIndexForRuntime + 1;
                 }
 
                 return 0;
@@ -188,16 +187,16 @@ namespace BossRush
         {
             try
             {
-                if (!modeFActive) return false;
+                if (!_owner.CampaignModeFActiveForRuntime) return false;
                 if (boss == null) return false;
 
                 // 纯查询：消费由全局死亡采集器在原死亡回调位置显式触发。
-                if (HasModeFPlayerBountyKillLatch(boss.GetInstanceID())) return true;
+                if (_owner.HasCampaignBountyKillLatchForRuntime(boss.GetInstanceID())) return true;
 
-                if (modeFState == null || modeFState.BountyMarksByCharacterId == null) return false;
+                if (_owner.CampaignModeFStateForRuntime == null || _owner.CampaignModeFStateForRuntime.BountyMarksByCharacterId == null) return false;
 
                 int marks;
-                if (!modeFState.BountyMarksByCharacterId.TryGetValue(boss.GetInstanceID(), out marks)) return false;
+                if (!_owner.CampaignModeFStateForRuntime.BountyMarksByCharacterId.TryGetValue(boss.GetInstanceID(), out marks)) return false;
                 return marks > 0;
             }
             catch (Exception)
@@ -211,8 +210,8 @@ namespace BossRush
         {
             try
             {
-                if (!modeFActive || boss == null) return false;
-                if (ConsumeModeFPlayerBountyKillLatch(boss.GetInstanceID())) return true;
+                if (!_owner.CampaignModeFActiveForRuntime || boss == null) return false;
+                if (_owner.ConsumeCampaignBountyKillLatchForRuntime(boss.GetInstanceID())) return true;
                 return HasCampaignBountyMark(boss);
             }
             catch (Exception)
@@ -228,11 +227,11 @@ namespace BossRush
         /// <summary>标准竞技场通关。由 OnAllEnemiesDefeated_LootAndRewards 调用。</summary>
         internal void NotifyCampaignStandardCleared()
         {
-            if (!IsCampaignConfiguredEnabled()) return;
+            if (!_owner.IsCampaignConfiguredEnabled()) return;
             try
             {
                 // 无间炼狱不算标准通关
-                if (infiniteHellMode) return;
+                if (_owner.CampaignInfiniteHellForRuntime) return;
                 CampaignObjectiveTracker.EnsureArmedFor(CampaignContentCatalog.ModeStandard);
                 CampaignObjectiveTracker.ReportStandardClear();
             }
@@ -245,7 +244,7 @@ namespace BossRush
         /// <summary>白手起家完成一波。由 OnModeDWaveComplete 调用。</summary>
         internal void NotifyCampaignModeDWaveComplete(int waveIndex)
         {
-            if (!IsCampaignConfiguredEnabled()) return;
+            if (!_owner.IsCampaignConfiguredEnabled()) return;
             try
             {
                 CampaignObjectiveTracker.EnsureArmedFor(CampaignContentCatalog.ModeModeD);
@@ -260,7 +259,7 @@ namespace BossRush
         /// <summary>血猎追击撤离成功。由 OnModeFExtractionSuccess 调用。</summary>
         internal void NotifyCampaignModeFExtracted()
         {
-            if (!IsCampaignConfiguredEnabled()) return;
+            if (!_owner.IsCampaignConfiguredEnabled()) return;
             try
             {
                 CampaignObjectiveTracker.EnsureArmedFor(CampaignContentCatalog.ModeModeF);
@@ -275,7 +274,7 @@ namespace BossRush
         /// <summary>末日丧尸撤离成功。由 CompleteZombieModeExtractionSuccess 调用。</summary>
         internal void NotifyCampaignZombieExtracted()
         {
-            if (!IsCampaignConfiguredEnabled()) return;
+            if (!_owner.IsCampaignConfiguredEnabled()) return;
             try
             {
                 CampaignObjectiveTracker.EnsureArmedFor(CampaignContentCatalog.ModeZombie);

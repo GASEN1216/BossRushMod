@@ -121,8 +121,8 @@ namespace BossRush
             marker.CommanderAuraTargetRuntime = null;
             marker.SuppressedForceTraceDistance = 0f;
             marker.HasSuppressedForceTraceDistance = false;
-            owner.RestoreZombieModeVisualScaleForRuntimeModule(marker);
-            owner.ReleaseZombieModeFootMarkerForRuntimeModule(marker);
+            RestoreZombieModeVisualScale(marker);
+            ReleaseZombieModeFootMarker(marker);
             marker.VisualIdentityApplied = false;
             marker.VisualScaleApplied = false;
             marker.VisualFaceApplied = false;
@@ -139,7 +139,7 @@ namespace BossRush
                 isBoss ? ZombieModeRunOnlyObjectKind.Boss : ZombieModeRunOnlyObjectKind.Enemy,
                 marker.gameObject,
                 marker,
-                () => owner.ReleaseZombieModeFootMarkerForRuntimeModule(marker));
+                () => ReleaseZombieModeFootMarker(marker));
             return marker;
         }
 
@@ -361,6 +361,41 @@ namespace BossRush
 
             zombieModeEnemyMarkerScratch.Clear();
             return result;
+        }
+
+        internal static void RestoreZombieModeVisualScale(ZombieModeEnemyRuntimeMarker marker)
+        {
+            if (marker == null || marker.VisualScaleRecords == null)
+            {
+                return;
+            }
+
+            for (int i = marker.VisualScaleRecords.Count - 1; i >= 0; i--)
+            {
+                ZombieModeVisualScaleRecord record = marker.VisualScaleRecords[i];
+                try
+                {
+                    if (record != null && record.Target != null)
+                    {
+                        record.Target.localScale = record.OriginalScale;
+                    }
+                }
+                catch { }
+            }
+            marker.VisualScaleRecords.Clear();
+        }
+
+        internal static void ReleaseZombieModeFootMarker(ZombieModeEnemyRuntimeMarker marker)
+        {
+            if (marker == null || marker.VisualFootMarker == null)
+            {
+                return;
+            }
+
+            GameObject visual = marker.VisualFootMarker;
+            marker.VisualFootMarker = null;
+            marker.VisualFootMarkerFallbackApplied = false;
+            ZombieModeFootMarkerPool.Release(visual);
         }
     }
 }

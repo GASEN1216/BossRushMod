@@ -25,10 +25,10 @@ def require(text: str, needle: str, message: str) -> int | None:
 
 
 def main() -> int:
-    host = clean_source(SPAWN_CORE.read_text(encoding="utf-8"))
+    host = clean_source(Path("Utilities/EnemySpawnHostBridge.cs").read_text(encoding="utf-8"))
     scheduler = clean_source(Path("Utilities/ModeEFSpawnPostprocessScheduler.cs").read_text(encoding="utf-8"))
     registration = clean_source(Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8"))
-    spawn_core = host + "\n" + scheduler
+    spawn_core = clean_source(SPAWN_CORE.read_text(encoding="utf-8")) + "\n" + scheduler
     for text, statement in (
         (registration, "BindSpawnPostprocessServices();"),
         (host, "spawnPostprocess.BindServices(modeDItemPool.MaterializeNextSharedModeEnemyEquipmentPlanStep,"),

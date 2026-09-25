@@ -182,91 +182,13 @@ namespace BossRush
         /// 校验并修正Boss位置（生成后调用，防止Boss卡在地下）
         /// </summary>
         private void ValidateAndFixBossPosition(CharacterMainControl boss)
-        {
-            if (boss == null) return;
-
-            try
-            {
-                Vector3 currentPos = boss.transform.position;
-
-                bool needsRecovery = false;
-                string reason = null;
-
-                Vector3 groundAlignedPos;
-                if (TryResolveGroundAlignedPosition(currentPos, 8f, 5f, out groundAlignedPos))
-                {
-                    if (groundAlignedPos.y - currentPos.y >= 0.75f)
-                    {
-                        needsRecovery = true;
-                        reason = "spawn_below_ground";
-                    }
-                }
-                else
-                {
-                    EnemyRecoveryState recoveryState;
-                    if (enemyRecoveryStates.TryGetValue(boss, out recoveryState) &&
-                        recoveryState.hasExcludedAnchorPosition &&
-                        recoveryState.excludedAnchorPosition.y - currentPos.y >= 6f)
-                    {
-                        needsRecovery = true;
-                        reason = "spawn_void";
-                    }
-                }
-
-                if (!needsRecovery)
-                {
-                    return;
-                }
-
-                CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null)
-                {
-                    return;
-                }
-
-                EnemyRecoveryState state;
-                if (!enemyRecoveryStates.TryGetValue(boss, out state))
-                {
-                    state = new EnemyRecoveryState
-                    {
-                        lastSamplePosition = currentPos,
-                        lastMovedTime = Time.time,
-                        lastRecoveryTime = -4f,
-                        excludedAnchorPosition = currentPos,
-                        hasExcludedAnchorPosition = true,
-                        continuousFallSamples = 0
-                    };
-                }
-
-                Vector3 recoveredPos;
-                if (TryRecoverEnemyToNearestSpawnPoint(boss, state, main, reason, null, out recoveredPos))
-                {
-                    state.lastMovedTime = Time.time;
-                    state.lastRecoveryTime = Time.time;
-                    state.lastSamplePosition = recoveredPos;
-                    enemyRecoveryStates[boss] = state;
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] ValidateAndFixBossPosition 异常: " + e.Message);
-            }
-        }
+        { enemyRecoveryMonitor.ValidateAndFixBossPosition(boss); }
 
         /// <summary>
         /// 延迟校验Boss位置的协程（给地形加载留出时间）
         /// </summary>
         private IEnumerator DelayedBossPositionValidation(CharacterMainControl boss, float delay)
-        {
-            if (boss == null) yield break;
-
-            yield return new WaitForSeconds(delay);
-
-            if (boss != null && boss.gameObject != null)
-            {
-                ValidateAndFixBossPosition(boss);
-            }
-        }
+        { return enemyRecoveryMonitor.DelayedBossPositionValidation(boss, delay); }
 
         internal void SpawnNextEnemy() { wavesArenaRuntime.SpawnNextEnemy(); }
         internal void OnAllEnemiesDefeatedForArena() { OnAllEnemiesDefeated(); }

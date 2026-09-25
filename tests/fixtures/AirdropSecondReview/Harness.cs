@@ -83,13 +83,22 @@ public partial class ModBehaviour
 {
     public HashSet<int> Candidates = new HashSet<int>();
     public HashSet<int> Blacklist = new HashSet<int>();
-    private HashSet<int> BuildGeneralBossLootCandidateIdSet() { return Candidates; }
-    private bool IsItemBlacklisted(int id) { return Blacklist.Contains(id); }
-    private static void DevLog(string message) { }
-    private List<Tag> BuildGeneralLootExcludeTags(GameplayDataSettings.TagsData data, bool extra) { return new List<Tag>(); }
-    private void MergeGeneralLootExcludeTags(List<Tag> tags, GameplayDataSettings.TagsData data) { }
+    private static ModBehaviour current;
+    private readonly RandomEventsRuntimeModule runtime;
+    public ModBehaviour() { current = this; runtime = new RandomEventsRuntimeModule(this); }
+    internal HashSet<int> BuildRandomEventLootCandidateIdsForRuntime() { return Candidates; }
+    internal static bool IsItemBlacklisted(int id) { return current.Blacklist.Contains(id); }
+    internal static void DevLog(string message) { }
+    internal List<Tag> BuildGeneralLootExcludeTags(GameplayDataSettings.TagsData data, bool extra) { return new List<Tag>(); }
+    internal void MergeGeneralLootExcludeTags(List<Tag> tags, GameplayDataSettings.TagsData data) { }
     public void Configure(LootBoxLoader loader, int count, int min, int max)
-    { ConfigureRandomEventAirdropLoader(loader, count, min, max); }
+    { runtime.Configure(loader, count, min, max); }
+}
+internal sealed partial class RandomEventsRuntimeModule
+{
+    private readonly ModBehaviour _owner;
+    internal RandomEventsRuntimeModule(ModBehaviour owner) { _owner = owner; }
+    internal void Configure(LootBoxLoader loader, int count, int min, int max) { ConfigureRandomEventAirdropLoader(loader, count, min, max); }
 }
 public static class Program
 {

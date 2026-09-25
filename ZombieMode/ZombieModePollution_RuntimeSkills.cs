@@ -135,7 +135,7 @@ namespace BossRush
             if (module != null) module.DealZombieModeExplosionAreaDamage(runId, source, origin, radius, damage, canHurtSelf);
         }
 
-        // Normal spawn remains on the host because it owns the scene coroutine integration.
+        // Compatibility entry for callers outside the Zombie runtime module.
         internal Cysharp.Threading.Tasks.UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieForRuntimeModule(
             int runId,
             Vector3 position,

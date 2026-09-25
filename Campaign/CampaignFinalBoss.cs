@@ -2,7 +2,7 @@
 // CampaignFinalBoss.cs - 终章「冠军之影」决战编排
 // ============================================================================
 // 零新增 3D 资产：复用现有自定义 Boss 的公开生成 API，生成后叠三层改造——
-//   数值倍率（ApplyBossStatMultiplier）+ 体型放大 + MaterialPropertyBlock 染色。
+//   数值倍率（_owner.ApplyCampaignBossStatMultiplierForRuntime）+ 体型放大 + MaterialPropertyBlock 染色。
 // 官方 preset 在生成流程里已被克隆过一份，改 nameKey 只影响这一只，不污染 Boss 池。
 //
 // 复用女巫的 isNonWaveSpawn，不写标准竞技场追踪；仍要求场上没有其它模式，
@@ -19,7 +19,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class CampaignRuntimeModule
     {
         #region 状态
 
@@ -78,7 +78,7 @@ namespace BossRush
         /// <summary>
         /// 当前场景是不是竞技场，按场景代数缓存。
         ///
-        /// 【为什么要缓存】IsCurrentSceneValidBossRushArena 内部走
+        /// 【为什么要缓存】_owner.IsCurrentSceneValidBossRushArena 内部走
         /// SceneManager.GetActiveScene().name，**每次调用分配一个托管字符串**。
         /// 召唤石维护是每帧路径，直接调它等于每帧产生垃圾（AGENTS.md 4.12）。
         /// 场景只在 OnSceneLoaded 时变，用模块的 scene generation 做失效键即可。
@@ -87,12 +87,12 @@ namespace BossRush
         {
             try
             {
-                CampaignRuntimeModule runtime = CampaignRuntime;
+                CampaignRuntimeModule runtime = _owner.CampaignRuntime;
                 int generation = runtime != null ? runtime.SceneGeneration : 0;
                 if (generation != campaignArenaSceneGeneration)
                 {
                     campaignArenaSceneGeneration = generation;
-                    campaignArenaSceneIsValid = IsCurrentSceneValidBossRushArena();
+                    campaignArenaSceneIsValid = _owner.IsCurrentSceneValidBossRushArena();
                 }
                 return campaignArenaSceneIsValid;
             }
@@ -110,19 +110,19 @@ namespace BossRush
         {
             try
             {
-                if (bossRushArenaActive) return true;
-                if (modeDActive) return true;
-                if (modeEActive) return true;
-                if (modeFActive) return true;
+                if (_owner.CampaignArenaActiveForRuntime) return true;
+                if (_owner.CampaignModeDActiveForRuntime) return true;
+                if (_owner.CampaignModeEActiveForRuntime) return true;
+                if (_owner.CampaignModeFActiveForRuntime) return true;
                 // 宿命回响也在竞技场里跑并自己刷 Boss，漏了它决战就会和它抢场地
-                if (modeGActive) return true;
-                if (zombieModeRunState != null
-                    && zombieModeRunState.LifecyclePhase != ZombieModeLifecyclePhase.None)
+                if (_owner.CampaignModeGActiveForRuntime) return true;
+                if (_owner.CampaignZombieRunForRuntime != null
+                    && _owner.CampaignZombieRunForRuntime.LifecyclePhase != ZombieModeLifecyclePhase.None)
                 {
                     return true;
                 }
                 // 黑市鸭王杯同样占用竞技场（玩家在看台，场上是签约的斗士）
-                ModeHRuntimeModule modeH = ModeHRuntime;
+                ModeHRuntimeModule modeH = _owner.ModeHRuntime;
                 if (modeH != null && modeH.RunState != null
                     && modeH.RunState.Lifecycle != ModeHLifecycle.None)
                 {
@@ -196,7 +196,7 @@ namespace BossRush
         /// </summary>
         private bool ShouldCampaignFinalBossAltarExist()
         {
-            if (!IsCampaignConfiguredEnabled()) return false;
+            if (!_owner.IsCampaignConfiguredEnabled()) return false;
             if (campaignFinalBossActive) return false;
 
             CampaignChapterDef def = CampaignProgressService.GetActiveChapterDef();
@@ -227,11 +227,11 @@ namespace BossRush
 
                 campaignFinalBossAltar.AddComponent<CampaignFinalBossInteractable>();
 
-                DevLog(CampaignTuning.LogPrefix + "决战召唤石已生成");
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "决战召唤石已生成");
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "[WARNING] 召唤石生成失败: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 召唤石生成失败: " + e.Message);
                 if (campaignFinalBossAltar != null) UnityEngine.Object.Destroy(campaignFinalBossAltar);
                 campaignFinalBossAltar = null;
             }
@@ -257,7 +257,7 @@ namespace BossRush
             {
                 campaignFinalBossActive = false;
                 campaignFinalBossSpawnResolved = false;
-                DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战启动失败: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战启动失败: " + e.Message);
             }
         }
 
@@ -285,7 +285,7 @@ namespace BossRush
             catch (OperationCanceledException) { return; }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战独白异常: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战独白异常: " + e.Message);
             }
 
             // 独白期间玩家可能已经死亡或切了场景：那时 CleanupCampaignFinalBoss
@@ -293,7 +293,7 @@ namespace BossRush
             // 也不要重置任何标志——收尾已经做过了。
             if (runId != campaignFinalBossRunId)
             {
-                DevLog(CampaignTuning.LogPrefix + "决战已在独白期间中止，放弃生成");
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "决战已在独白期间中止，放弃生成");
                 return;
             }
 
@@ -302,7 +302,7 @@ namespace BossRush
 
         internal bool DebugStartCampaignFinalBossForValidation()
         {
-            if (!DevModeEnabled || campaignFinalBossActive || !IsCampaignArenaSceneCached()) return false;
+            if (!ModBehaviour.DevModeEnabled || campaignFinalBossActive || !IsCampaignArenaSceneCached()) return false;
             campaignFinalBossDeathPresentationCount = 0;
             campaignFinalBossActive = true;
             campaignFinalBossSpawnResolved = false;
@@ -313,9 +313,11 @@ namespace BossRush
 
         private async UniTask StartCampaignFinalBossAsync(int runId)
         {
+            // 卸载会清掉模块的 _owner；迟到生成仍需原宿主回收掉落追踪，再销毁 Boss。
+            ModBehaviour campaignOwner = _owner;
             try
             {
-                ShowMessage(L10n.T("冠军之影现身了……", "The Shadow of the Champion appears..."));
+                campaignOwner.ShowMessage(L10n.T("冠军之影现身了……", "The Shadow of the Champion appears..."));
 
                 Vector3 position = ResolveCampaignFinalBossSpawnPosition();
                 CampaignFinalBossFx.PlaySummonBurst(position);   // 召唤爆发与生成并行，不改时序
@@ -324,7 +326,7 @@ namespace BossRush
                 // 那会在没有波次的情况下推进它的状态机
                 // 体型倍率必须在生成时传入，不能生成后再改 localScale：
                 // localScale 会缩放碰撞体，而属性/AI 初始化会缓存碰撞器半径。
-                CharacterMainControl boss = await SpawnPhantomWitch(
+                CharacterMainControl boss = await campaignOwner.SpawnPhantomWitch(
                     position, false, false, PhantomWitchDeathPresentation.CampaignFinal,
                     CampaignTuning.FinalBossScale, isNonWaveSpawn: true);
 
@@ -333,17 +335,17 @@ namespace BossRush
                 // 它会变成一只没人记账的强化女巫留在场上。
                 if (runId != campaignFinalBossRunId)
                 {
-                    DevLog(CampaignTuning.LogPrefix + "决战已在生成期间中止，销毁迟到的 Boss");
+                    ModBehaviour.DevLog(CampaignTuning.LogPrefix + "决战已在生成期间中止，销毁迟到的 Boss");
                     if (boss != null)
                     {
                         try
                         {
-                            ClearBossRandomLootTracking(boss);
+                            campaignOwner.ClearCampaignBossRandomLootTrackingForRuntime(boss);
                             UnityEngine.Object.Destroy(boss.gameObject);
                         }
                         catch (Exception e)
                         {
-                            DevLog(CampaignTuning.LogPrefix + "[WARNING] 销毁迟到的决战 Boss 失败: " + e.Message);
+                            ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 销毁迟到的决战 Boss 失败: " + e.Message);
                         }
                     }
                     return;
@@ -355,7 +357,7 @@ namespace BossRush
                 {
                     campaignFinalBossInstance = boss;
                     CleanupCampaignFinalBoss(true);
-                    ShowMessage(L10n.T("决战没能开打，等会儿再试", "The showdown didn't start. Try again."));
+                    campaignOwner.ShowMessage(L10n.T("决战没能开打，等会儿再试", "The showdown didn't start. Try again."));
                     return;
                 }
 
@@ -371,7 +373,7 @@ namespace BossRush
             catch (Exception e)
             {
                 if (runId == campaignFinalBossRunId) CleanupCampaignFinalBoss(true);
-                DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战生成异常: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战生成异常: " + e.Message);
             }
         }
 
@@ -380,7 +382,7 @@ namespace BossRush
         {
             CharacterMainControl main = CharacterMainControl.Main;
             if (main == null) throw new InvalidOperationException("campaign_player_unavailable");
-            Vector3[] points = GetCurrentSceneSpawnPoints();
+            Vector3[] points = _owner.GetCurrentSceneSpawnPoints();
             if (points != null && points.Length > 0)
                 return SpawnPositionHelper.FindNearestSafeSpawnPoint(points, main.transform.position, 8f);
             Vector3 position;
@@ -404,14 +406,14 @@ namespace BossRush
             // 1) 数值：在 Boss 自身倍率之上再叠战役倍率
             try
             {
-                ApplyBossStatMultiplier(boss, CampaignTuning.FinalBossStatMultiplier);
+                _owner.ApplyCampaignBossStatMultiplierForRuntime(boss, CampaignTuning.FinalBossStatMultiplier);
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战数值倍率失败: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战数值倍率失败: " + e.Message);
             }
 
-            // 2) 体型：已由 SpawnPhantomWitch 的 extraModelScale 在碰撞器缓存之前应用，
+            // 2) 体型：已由 _owner.SpawnPhantomWitch 的 extraModelScale 在碰撞器缓存之前应用，
             //    这里不再二次缩放（事后改 localScale 会让碰撞体与模型口径不一致）。
 
             // 3) 影的外观：_Tint 属性块乘冷红（不碰 sharedMaterial、不碰捏脸部件）+ 跟随的烟缕与符文环，
@@ -431,7 +433,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战变体名失败: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战变体名失败: " + e.Message);
             }
         }
 
@@ -448,8 +450,8 @@ namespace BossRush
             campaignFinalBossDeathPresentationCount++;
             try
             {
-                DevLog(CampaignTuning.LogPrefix + "冠军之影已被击败");
-                ShowMessage(L10n.T("冠军之影倒下了", "The Shadow of the Champion is down"));
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "冠军之影已被击败");
+                _owner.ShowMessage(L10n.T("冠军之影倒下了", "The Shadow of the Champion is down"));
 
                 CampaignObjectiveTracker.ReportFinalBossKill();
                 BossRushAudioManager.Instance?.StopBossBGM(
@@ -458,7 +460,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战结算异常: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战结算异常: " + e.Message);
             }
             finally
             {
@@ -488,8 +490,8 @@ namespace BossRush
                 }
                 if (IsAnyGameplayModeActiveForCampaign())
                 {
-                    DevLog(CampaignTuning.LogPrefix + "检测到既有模式启动，决战主动让路");
-                    ShowMessage(L10n.T("决战已中止（有其他模式开始）", "Showdown aborted (another mode started)"));
+                    ModBehaviour.DevLog(CampaignTuning.LogPrefix + "检测到既有模式启动，决战主动让路");
+                    _owner.ShowMessage(L10n.T("决战已中止（有其他模式开始）", "Showdown aborted (another mode started)"));
                     CleanupCampaignFinalBoss(true);
                     return;
                 }
@@ -498,7 +500,7 @@ namespace BossRush
                 // 被别的系统清掉）。死亡回调不会再来，必须自己收尾。
                 if (campaignFinalBossSpawnResolved && campaignFinalBossInstance == null)
                 {
-                    DevLog(CampaignTuning.LogPrefix + "决战 Boss 已不在场，自动收尾");
+                    ModBehaviour.DevLog(CampaignTuning.LogPrefix + "决战 Boss 已不在场，自动收尾");
                     CleanupCampaignFinalBoss(false);
                 }
             }
@@ -534,7 +536,7 @@ namespace BossRush
                     {
                         try
                         {
-                            ClearBossRandomLootTracking(campaignFinalBossInstance);
+                            _owner.ClearCampaignBossRandomLootTrackingForRuntime(campaignFinalBossInstance);
                             UnityEngine.Object.Destroy(campaignFinalBossInstance.gameObject);
                         }
                         catch (Exception e)
@@ -548,7 +550,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战清理异常: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战清理异常: " + e.Message);
             }
             finally
             {
@@ -591,7 +593,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "[WARNING] 复位终章追踪失败: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 复位终章追踪失败: " + e.Message);
             }
         }
 

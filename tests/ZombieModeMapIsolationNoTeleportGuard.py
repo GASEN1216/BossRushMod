@@ -55,8 +55,8 @@ def main() -> int:
     if not init_method:
         return fail("InitializeZombieModeRunAfterMapLoaded not found")
 
-    collect_index = init_method.find("owner.CollectZombieModeSpawnPointsForRuntimeModule(runId)")
-    isolation_index = init_method.find("owner.ApplyZombieModeMapIsolationForRuntimeModule(runId)")
+    collect_index = init_method.find("CollectZombieModeSpawnPoints(runId)")
+    isolation_index = init_method.find("ApplyZombieModeMapIsolationShell(runId)")
     if collect_index < 0 or isolation_index < 0:
         return fail("initialization must collect spawn points and apply map isolation")
     if collect_index > isolation_index:
@@ -68,8 +68,8 @@ def main() -> int:
     if not disable_method:
         return fail("DisableZombieModeOriginalSpawners not found")
     for snippet in [
-        "spawnersDisabled = false;",
-        "DisableAllSpawners();",
+        "owner.ResetZombieModeOriginalSpawnerStateForRuntimeModule();",
+        "owner.DisableZombieModeOriginalSpawnersForRuntimeModule();",
         "已复用 BossRush 进图逻辑清理原版刷怪器",
     ]:
         if snippet not in disable_method:
