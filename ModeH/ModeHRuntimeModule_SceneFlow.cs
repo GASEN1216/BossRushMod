@@ -116,6 +116,15 @@ namespace BossRush
 
         private ModeHSeasonRewardOperationDto _lastRewardOperation;
 
+        /// <summary>选人页两步选择的临时状态：首发锁定后只刷新其余席位。</summary>
+        private string _draftPrimaryProfileId;
+        private string _draftRelayProfileId;
+        private int _draftRefreshCount;
+        private const int DraftMaxRefreshes = 3;
+
+        /// <summary>押注开盘揭晓期间暂缓生成战场，动画结束后由宿主 tick 继续。</summary>
+        private bool _waitingForBetReveal;
+
         #endregion
 
         #region 场景到达
@@ -286,6 +295,10 @@ namespace BossRush
             _recoveryDriveStateSequence = -1;
             _leaseCheckAccumulator = 0f;
             _errorSwapInputYielded = false;
+            _waitingForBetReveal = false;
+            _draftPrimaryProfileId = null;
+            _draftRelayProfileId = null;
+            _draftRefreshCount = 0;
             _seasonDirty = false;
             _selectedVirtualStake = 0;
             _currentOddsQuote = null;
@@ -330,6 +343,24 @@ namespace BossRush
                 string runId = ComposeRunId(sceneName, _sceneGeneration);
                 long runSeed = ComposeRunSeed(runId);
                 _runState = new ModeHRunState(runId, runSeed, sceneName, _sceneGeneration);
+                // 每局从已登记的真实刷怪点中抽取可走的擂台位置。抽取在场景
+                // ready 后执行，NavMesh 不可用或没有可达组合时安全退出。
+                ModeHSupportedMap runMap;
+                string mapVariantReason;
+                if (ModeHMapSupportRegistry.TryCreateRunVariant(
+                        _map, runSeed, out runMap, out mapVariantReason) && runMap != null)
+                {
+                    _map = runMap;
+                    if (!string.IsNullOrEmpty(mapVariantReason))
+                    {
+                        ModBehaviour.DevLog("[ModeH] 擂台随机点位回退: " + mapVariantReason);
+                    }
+                }
+                else
+                {
+                    AbortSetup(mapVariantReason ?? "map_no_safe_arena", true);
+                    return;
+                }
                 // 上一季挂着没结的押金（崩在比赛中、换过档）原样退回：新赛季的 runId 不同
                 ReconcileCashBetOnRestore();
                 ModeHRuntimeGates.SetRunOwnerActive(true);
@@ -894,6 +925,8 @@ namespace BossRush
                 LogFailure("shutdown_stage_season", e);
             }
 
+            _preparedStats.Clear();
+            _preparedOutfits.Clear();
             _season = null;
             _map = null;
             _runState = null;
@@ -950,6 +983,7 @@ namespace BossRush
 
             _leaseCheckAccumulator = 0f;
             _errorSwapInputYielded = false;
+            _waitingForBetReveal = false;
         }
 
         #endregion

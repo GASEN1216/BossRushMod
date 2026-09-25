@@ -176,14 +176,13 @@ def check_structure(planner_src, matchflow_src):
     need(collect_src, 'for (int count = skeleton.MinUnits; count <= skeleton.MaxUnits; count++)',
          '人数必须逐档判定，不能只判最小人数')
 
-    # 选人页一次点击即签约（2026-09-23 owner：「只弄一个选择武将的页面，选完后就开始」）。
-    # 旧版「先点主将、再点替补、再点一次取消」的两步选秀已经没有了，这里改钉新语义：
-    # 点中的就是主将，接力按展示顺序自动配；每一位候选搭档都要过同一条签约 / 分流 / 六场可行性门，
-    # 一个都凑不出来就停在选人页提示重进，绝不签下一对死局。
-    need(pick_src, 'ModeHDraftController.TrySignContracts( _season.profiles, profileId, partner.profileId,',
-         '点中的选手必须作为主将签约，搭档按候选逐个试')
-    need(pick_src, 'viable = CanConstructFullSeason(contract, assignments, out failureReasonId);',
-         '每一位候选搭档都要过六场可行性门')
+    # 选人页两步锁定（2026-09-25）：第一次只锁首发，第二次由玩家明确选择接力；
+    # 首发一旦锁定不得被刷新替换。两人组合仍必须过同一条签约 / 分流 / 六场可行性门，
+    # 防止玩家手动挑出无法排满赛季的死局。
+    need(pick_src, '_draftPrimaryProfileId = picked.profileId;',
+         '第一次点击必须只锁定首发，不自动替玩家选接力')
+    need(pick_src, 'ModeHDraftController.TrySignContracts( _season.profiles, _draftPrimaryProfileId, picked.profileId,',
+         '第二次点击必须用玩家选定的首发与接力签约')
     need(pick_src, 'CanConstructFullSeason(contract, assignments, out failureReasonId)',
          '签约前仍要过六场可行性门')
     gate = pick_src.find('if (!viable)')
@@ -206,10 +205,10 @@ for before, after in [
      'corridor, condition, null, out probe)) continue;'),
     ('for (int count = skeleton.MinUnits; count <= skeleton.MaxUnits; count++)',
      'for (int count = skeleton.MinUnits; count <= skeleton.MinUnits; count++)'),
-    ('viable = CanConstructFullSeason(contract, assignments, out failureReasonId);',
-     'viable = true;'),
+    ('!CanConstructFullSeason(contract, assignments, out failureReasonId)',
+     'false'),
     ('if (!viable)', 'if (false)'),
-    ('_season.profiles, profileId, partner.profileId,', '_season.profiles, partner.profileId, profileId,'),
+    ('_season.profiles, _draftPrimaryProfileId, picked.profileId,', '_season.profiles, picked.profileId, _draftPrimaryProfileId,'),
 ]:
     in_planner = before in planner
     if not in_planner and before not in matchflow:

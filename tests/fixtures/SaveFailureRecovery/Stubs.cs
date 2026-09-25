@@ -130,6 +130,7 @@ namespace ItemStatsSystem
         public bool IsBeingDestroyed { get { return Destroyed; } }
         public UnityEngine.Sprite Icon;
         public Item Parent;
+        public object PluggedIntoSlot;
         public Inventory Inventory;
         public readonly Dictionary<string, string> Variables = new Dictionary<string, string>();
         public Item() { gameObject.Components.Add(this); }

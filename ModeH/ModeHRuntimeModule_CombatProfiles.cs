@@ -8,6 +8,12 @@ namespace BossRush
 {
     internal sealed partial class ModeHRuntimeModule
     {
+        private List<string> BuildDefaultKitSelection(ModeHProfileDto profile)
+        {
+            // 全槽基础配装在选人前冻结；手动 kit 仅作为覆盖，不再默认固定装备。
+            return new List<string>();
+        }
+
         private void ReplaceSeasonProfile(ModeHProfileDto snapshot)
         {
             if (snapshot == null || _season == null || _season.profiles == null) return;
@@ -467,6 +473,15 @@ namespace BossRush
                 {
                     failureReasonId = result.FailureReasonId ?? "reinforcement_spawn_failed";
                     yield break;
+                }
+
+                for (int i = 0; i < tx.EnemyHandles.Count; i++)
+                {
+                    ModeHSpawnHandle handle = tx.EnemyHandles[i];
+                    int index = _season.currentMatchPlan.enemyStableKeys.IndexOf(handle.StableKey);
+                    handle.ProfileId = "enemy|" + index;
+                    if (!ApplyPreparedOutfit(handle, GetPreparedEnemyOutfit(_season.currentMatchPlan, index), null, out failureReasonId))
+                        yield break;
                 }
 
                 try

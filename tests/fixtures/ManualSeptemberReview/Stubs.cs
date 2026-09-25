@@ -65,6 +65,11 @@ namespace UnityEngine
         public float x,y,z;
         public Vector3(float x,float y,float z) { this.x=x;this.y=y;this.z=z; }
         public static Vector3 zero { get { return new Vector3(); } }
+        public static Vector3 up { get { return new Vector3(0,1,0); } }
+        public static Vector3 down { get { return new Vector3(0,-1,0); } }
+        public float sqrMagnitude { get { return x*x+y*y+z*z; } }
+        public static Vector3 operator -(Vector3 a,Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
+        public static Vector3 operator *(Vector3 a,float b) { return new Vector3(a.x*b,a.y*b,a.z*b); }
         public static Vector3 operator +(Vector3 a,Vector3 b) { return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z); }
         public static Vector3 operator /(Vector3 a,float b) { return new Vector3(a.x/b,a.y/b,a.z/b); }
         public static float Distance(Vector3 a,Vector3 b) { return (float)Math.Sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)+(a.z-b.z)*(a.z-b.z)); }
@@ -75,7 +80,22 @@ namespace UnityEngine
     public class Coroutine { }
     public class Sprite { }
     public static class Time { public static float unscaledTime=1, unscaledDeltaTime=.5f; }
-    public static class Mathf { public static int RoundToInt(float f) { return (int)Math.Round(f); } }
+    public static class Mathf
+    {
+        public const float PI=(float)Math.PI;
+        public static float Abs(float f) { return Math.Abs(f); }
+        public static float Max(float a,float b) { return Math.Max(a,b); }
+        public static float Sin(float f) { return (float)Math.Sin(f); }
+        public static float Cos(float f) { return (float)Math.Cos(f); }
+        public static int RoundToInt(float f) { return (int)Math.Round(f); }
+    }
+    public enum QueryTriggerInteraction { Ignore }
+    public static class Physics
+    {
+        public static bool Blocked;
+        public static bool CheckCapsule(Vector3 a,Vector3 b,float r,int mask,QueryTriggerInteraction q) { return Blocked; }
+        public static bool Linecast(Vector3 a,Vector3 b,int mask,QueryTriggerInteraction q) { return Blocked; }
+    }
 }
 namespace UnityEngine.SceneManagement { public struct Scene { public string name; } public static class SceneManager { public static Scene GetActiveScene() { return new Scene(); } } }
 namespace Duckov.Scenes { public static class MultiSceneCore { public static string MainSceneID="main"; } }
@@ -192,6 +212,7 @@ namespace BossRush
     class PetNestCompanionHandle { public CharacterMainControl Character; public bool Activated; public int Cleanups; }
     static class PetNestCompanionSpawner
     {
+        internal static void RefreshProgression(PetNestCompanionHandle handle, PetNestPetRecord pet) { }
         public static Vector3 StagingOffset,SpawnOffset;
         public static readonly Queue<TaskCompletionSource<PetNestCompanionHandle>> Requests=new Queue<TaskCompletionSource<PetNestCompanionHandle>>();
         public static int Activated;
@@ -286,6 +307,49 @@ namespace BossRush
         {
             _pending = new List<PetNestExpeditionRecord>();
             for (int i = 0; i < count; i++) _pending.Add(new PetNestExpeditionRecord { id = "trip" + i });
+        }
+    }
+}
+
+namespace Duckov.Utilities
+{
+    public static class GameplayDataSettings
+    { public static class Layers { public static int wallLayerMask=1,halfObsticleLayer=2; } }
+}
+// 官方 AI_PathControl 使用 A* Seeker，生产采样和 ABPath 原样链接；这里只控制导航结果。
+public class AstarPath
+{
+    private static readonly AstarPath Instance = new AstarPath();
+    public static bool Available = true, Reachable = true, Detour, Scanning;
+    public static AstarPath active { get { return Available ? Instance : null; } }
+    public bool isScanning { get { return Scanning; } }
+    public Pathfinding.NNInfo GetNearest(Vector3 raw, Pathfinding.NNConstraint constraint)
+    { return new Pathfinding.NNInfo { position = raw, node = Available ? new Pathfinding.GraphNode { Walkable = true } : null }; }
+    public static void StartPath(Pathfinding.ABPath path) { path.Started = true; }
+}
+namespace Pathfinding
+{
+    public sealed class GraphNode { public bool Walkable; }
+    public sealed class NNConstraint { public static readonly NNConstraint Walkable = new NNConstraint(); }
+    public struct NNInfo { public Vector3 position; public GraphNode node; }
+    public enum PathCompleteState { NotCalculated, Complete, Partial, Error }
+    public sealed class ABPath
+    {
+        public static int Claims;
+        public bool error, Started;
+        public PathCompleteState CompleteState;
+        public List<Vector3> vectorPath;
+        private Vector3 a, b;
+        public static ABPath Construct(Vector3 from, Vector3 to, object callback)
+        { return new ABPath { a = from, b = to }; }
+        public void Claim(object owner) { Claims++; }
+        public void Release(object owner) { Claims--; }
+        public void BlockUntilCalculated()
+        {
+            if (!Started) throw new InvalidOperationException("path never started");
+            CompleteState = AstarPath.Reachable ? PathCompleteState.Complete : PathCompleteState.Partial;
+            vectorPath = AstarPath.Detour ? new List<Vector3> { a, a + new Vector3(200,0,0), b }
+                : new List<Vector3> { a, b };
         }
     }
 }

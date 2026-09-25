@@ -14,10 +14,9 @@
 //   官方种植系统按 `SeedInfo.itemTypeID` 认种子、按 `CropInfo.resultNormal` 发产物，
 //   两边都是 int 而不是带 KV 的实例。共用一个号会让三种作物互相顶掉。
 //
-// 【出击餐为什么不是普通 Buff 物品】
-//   官方 Buff 不跨场景（CharacterBuffManager 没有存档，角色每场景重建）。
-//   所以「吃了下一局生效」必须落存档：食用时经 RaidMealService 登记，
-//   下一局 LevelInitialized 时再挂 Modifier。详见 RaidMealService。
+// 【即时变身与旧档餐食】
+//   三种收成由 BackMountainBossMorphService 即时提供对应 Boss 形态，持续 30 秒。
+//   不改真实装备或生命，不跨场景。RaidMealService 仅负责旧档已登记餐食的兑现与清理。
 // ============================================================================
 
 using System;
@@ -38,13 +37,13 @@ namespace BossRush
         /// <summary>幽魂孢子（幽灵女巫掉落，种出幽影蘑菇）。</summary>
         public const int PhantomSpore = 500064;
 
-        /// <summary>龙息果（出击餐：下一局攻击提升）。</summary>
+        /// <summary>龙息果（局内食用：30 秒龙裔变身）。</summary>
         public const int DragonFruit = 500065;
 
-        /// <summary>焚心椒（出击餐：下一局移速与换弹提升）。</summary>
+        /// <summary>焚心椒（30 秒焚天龙皇变身）。</summary>
         public const int EmberChili = 500066;
 
-        /// <summary>幽影蘑菇（出击餐：下一局减伤）。</summary>
+        /// <summary>幽影蘑菇（30 秒幽灵女巫变身）。</summary>
         public const int PhantomMushroom = 500067;
     }
 
@@ -115,23 +114,20 @@ namespace BossRush
 
                 Make(BossRushItemIds.DragonFruit, "BossRush_DragonFruit", "BossRush_DragonFruit",
                     "龙息果", "Dragonbreath Fruit",
-                    "基地食用：下次出击枪械与近战伤害 +10%，持续到撤离或阵亡。只保留一份餐，后吃的覆盖先吃的。",
-                    "Eat at base: +10% gun and melee damage next raid, until extraction or death. "
-                    + "Only one meal can be prepared; eating another replaces it.",
+                    "食用后化身龙裔 30 秒：枪械和近战伤害 +30%，免疫火焰，攻击时向前喷吐龙息（8 米，每 0.8 秒最多一次，24 火焰伤害）。血量仍是自己的，装备保留。",
+                    "Take the Dragon Descendant's form for 30 seconds: +30% gun and melee damage, fire immunity, and an 8m fire breath when attacking (24 fire damage, 0.8s cooldown). Keep your own health and gear.",
                     "dragon_fruit", 2400, 5, false),
 
                 Make(BossRushItemIds.EmberChili, "BossRush_EmberChili", "BossRush_EmberChili",
                     "焚心椒", "Emberheart Chili",
-                    "基地食用：下次出击移动速度 +8%、换弹增益 +10%，持续到撤离或阵亡。只保留一份餐，后吃的覆盖先吃的。",
-                    "Eat at base: +8% movement speed and +10% reload speed gain next raid, until extraction or death. "
-                    + "Only one meal can be prepared; eating another replaces it.",
+                    "食用后化身焚天龙皇 30 秒：枪械伤害 +15%、近战伤害 +50%，免疫火焰，攻击触发周围 6 米焰爆（36 火焰伤害，每 1.2 秒最多一次）。血量仍是自己的，装备保留。",
+                    "Take the Ember Dragon King's form for 30 seconds: +15% gun and +50% melee damage, fire immunity, and a 6m flame burst when attacking (36 fire damage, 1.2s cooldown). Keep your own health and gear.",
                     "ember_chili", 2400, 5, false),
 
                 Make(BossRushItemIds.PhantomMushroom, "BossRush_PhantomMushroom", "BossRush_PhantomMushroom",
                     "幽影蘑菇", "Umbral Mushroom",
-                    "基地食用：下次出击受到的物理伤害 -10%，持续到撤离或阵亡。只保留一份餐，后吃的覆盖先吃的。",
-                    "Eat at base: -10% physical damage taken next raid, until extraction or death. "
-                    + "Only one meal can be prepared; eating another replaces it.",
+                    "食用后化身持镰的幽灵女巫 30 秒：近战伤害 +40%、移动速度 +20%，攻击触发前方 5 米、120 度镰斩（32 物理伤害，每 0.65 秒最多一次）。血量仍是自己的，装备保留。",
+                    "Take the scythe-wielding Phantom Witch's form for 30 seconds: +40% melee damage and +20% movement speed. Attacks trigger a 5m, 120-degree scythe sweep (32 physical damage, 0.65s cooldown). Keep your own health and gear.",
                     "phantom_mushroom", 2400, 5, false)
             };
         }

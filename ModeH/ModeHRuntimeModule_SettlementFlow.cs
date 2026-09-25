@@ -74,7 +74,8 @@ namespace BossRush
             }
 
             ModeHProfileDto rewardOwner = operation != null ? FindSeasonProfile(operation.rewardProfileId) : null;
-            if (rewardOwner != null) page.Lines.Add(ResolveProfileDisplayName(rewardOwner.profileId)
+            // 名声为 0 时这一行只是噪声（2026-09-25 owner：结算页少放文字）
+            if (rewardOwner != null && rewardOwner.fameDisplayCount > 0) page.Lines.Add(ResolveProfileDisplayName(rewardOwner.profileId)
                 + L10n.T(" · 名声：", " · Fame: ") + rewardOwner.fameDisplayCount);
             // 战痕候选先于整备呈现：它是不可逆的，且满三条时要玩家指名替换哪一条。
             // 此前这一步在 BeginMatchSettlement 里被替玩家做掉了，结算页只字不提。

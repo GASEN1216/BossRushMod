@@ -8,3 +8,5 @@
 - 物品身份、收走、奖品交付与存档失败恢复由 [SaveFailureRecovery](../SaveFailureRecovery/README.md) 链接真实生产代码、隔离官方宿主后做 L2 回归；本夹具聚焦数值与金融记账。真实官方物品表、存档文件和游戏内交付仍需实机。
 
 只用聚合入口跑：`python tools/run_runtime_regressions.py --filter ModeHItemBetLedger`。
+
+2026-09-25：追加逐字抽取的账本 JSON 编解码回归，核对 schema 1/2 缺省兼容、schema 3 完整奖品清单在交付完成后仍保留、拒绝未来 schema；共享 JSON 解析与转义链接生产源码。

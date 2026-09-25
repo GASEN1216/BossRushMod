@@ -35,7 +35,7 @@ namespace BossRush
     ///
     /// 本类不访问 CharacterMainControl.Main、PlayerStorage 或玩家 ItemTreeData。
     /// </summary>
-    public static class ModeHLoadoutKitRegistry
+    public static partial class ModeHLoadoutKitRegistry
     {
         #region 状态
 

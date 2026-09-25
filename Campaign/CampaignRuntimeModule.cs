@@ -27,6 +27,7 @@ namespace BossRush
         private ModBehaviour _owner;
         private int _sceneGeneration;
         private bool _bootstrapped;
+        private float _guidePollRemaining;
         /// <summary>官方任务客户端（六章投影到杰夫的任务页）。唯一 owner 是本模块。</summary>
         private CampaignOfficialQuestClient _questClient;
 
@@ -121,6 +122,8 @@ namespace BossRush
                     _owner.CleanupCampaignFinalBoss(false);
                 }
 
+                _guidePollRemaining = 0f;
+
                 if (!IsEnabled)
                 {
                     ShutdownIfEnabledTurnedOff();
@@ -158,6 +161,7 @@ namespace BossRush
                 {
                     _owner.TickCampaignModeBridge(deltaTime);
                 }
+                TickGuideCompletions(unscaledDeltaTime);
                 CampaignHud.Tick();
                 CampaignProgressService.RetryPendingObjectives(unscaledDeltaTime);
                 CampaignSaveCoordinator.Tick();
@@ -201,6 +205,19 @@ namespace BossRush
             {
                 LogFailure("destroy", e);
             }
+        }
+
+        #endregion
+
+        #region 一次性新内容引导
+
+        private void TickGuideCompletions(float elapsed)
+        {
+            if (_owner == null || CampaignPersistence.HasWriteBarrier || CampaignPersistence.IsStoreFaulted) return;
+            _guidePollRemaining -= elapsed;
+            if (_guidePollRemaining > 0f) return;
+            _guidePollRemaining = 0.5f;
+            CampaignGuideFacts.ObserveAccepted(_owner);
         }
 
         #endregion

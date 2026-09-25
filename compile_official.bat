@@ -554,6 +554,11 @@ echo(ModeH\ModeHLoadoutKitApplicator.cs
 echo(ModeH\ModeHLoadoutKitRegistry.cs
 echo(ModeH\ModeHMapSupportRegistry.cs
 echo(ModeH\ModeHOddsController.cs
+echo(ModeH\ModeHOfficialBossAttributes.cs
+echo(ModeH\ModeHRuntimeModule_FighterPresentation.cs
+echo(ModeH\ModeHUIFighterDetails.cs
+echo(ModeH\ModeHRuntimeModule_PreparedLoadouts.cs
+echo(ModeH\ModeHLoadoutKitRegistry_Prepared.cs
 echo(ModeH\ModeHPresentationAssetCache.cs
 echo(ModeH\ModeHPresetRegistry.cs
 echo(ModeH\ModeHProductionCertification.cs
@@ -977,6 +982,7 @@ echo(Integration\WishFountain\WishFountainBuilder.cs
 echo(Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs
 echo(PetNest\PetNestModels.cs
 echo(PetNest\PetNestTuning.cs
+echo(PetNest\PetNestGrowth.cs
 echo(PetNest\PetNestChroma.cs
 echo(PetNest\PetNestAuraEffect.cs
 echo(PetNest\PetNestAuraRecipes.cs
@@ -1097,6 +1103,8 @@ echo(Campaign\CampaignTuning.cs
 echo(Campaign\CampaignModels.cs
 echo(Campaign\CampaignFacilityUnlocks.cs
 echo(Campaign\CampaignPersistence.cs
+echo(Campaign\CampaignGuideTable.cs
+echo(Campaign\CampaignGuideFacts.cs
 echo(Campaign\CampaignSaveCoordinator.cs
 echo(Campaign\CampaignContentCatalog.cs
 echo(Campaign\CampaignQuestTable.cs
@@ -1119,6 +1127,7 @@ echo(Localization\CampaignLocalization.cs
 echo(Campaign\CampaignRuntimeModule.cs
 echo(Config\ConfigBackMountain.cs
 echo(Integration\BackMountain\BackMountainConfig.cs
+echo(Integration\BackMountain\BackMountainBossMorphService.cs
 echo(Integration\BackMountain\BackMountainUnlocks.cs
 echo(Integration\BackMountain\BackMountainItems.cs
 echo(Integration\BackMountain\GardenSeedInjector.cs

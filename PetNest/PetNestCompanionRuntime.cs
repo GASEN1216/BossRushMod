@@ -24,6 +24,13 @@ namespace BossRush
         #region 状态
 
         private static PetNestCompanionHandle _handle;
+
+        internal static void RefreshProgression(PetNestPetRecord pet)
+        {
+            if (pet == null || !string.Equals(ActiveCompanionPetId, pet.id, StringComparison.Ordinal)) return;
+            PetNestCompanionSpawner.RefreshProgression(_handle, pet);
+        }
+
         private static string _deployedPetId;
         private static int _sceneGeneration = -1;
         private static bool _spawnInFlight;

@@ -77,6 +77,12 @@ namespace BossRush
                 "册子翻到我们那一页了，就差你签。带装备和船票进竞技场，别带其它模式的信物，也别去点路牌。身边会立起一块报名石，按住它，守擂的那个就来，赢了名字就是我们的。",
                 "Our page is open, all it needs is your name. Take gear and a ticket into the arena, leave the other modes' tokens at home, and don't touch the sign. A sign-up stone comes up beside you. Hold it, the one holding the ring answers, and if you win the name is ours.");
 
+            foreach (CampaignGuideTable.Definition guide in CampaignGuideTable.Definitions)
+            {
+                map[guide.NameKey] = L10n.T(guide.NameCN, guide.NameEN);
+                map[guide.DescriptionKey] = L10n.T(guide.HintCN, guide.HintEN);
+            }
+
             LocalizationHelper.InjectLocalizations(map);
         }
 

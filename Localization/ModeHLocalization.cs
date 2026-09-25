@@ -399,6 +399,8 @@ namespace BossRush
             Add(map, "Odds_EnemyCount", "公开人数上限", "Disclosed Count");
             Add(map, "Odds_EnemyCore", "高威胁核心", "High-threat Core");
             Add(map, "Odds_EnemySynergy", "协同", "Synergy");
+            Add(map, "Odds_EnemyOfficialAttributes", "敌方装备实力", "Opponent equipped power");
+            Add(map, "Odds_PlayerOfficialAttributes", "我方装备实力", "Your equipped power");
             Add(map, "Odds_EnemyStatus", "公开状态", "Disclosed Status");
 
             Add(map, "Stake_Credits", "虚拟筹码", "Virtual Credits");

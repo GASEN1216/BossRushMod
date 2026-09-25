@@ -183,7 +183,7 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 - **Clues**: one per chapter, written into the game's own **notes**. They are the six lines of the
   ledger. Unlocked entries stay readable forever.
 - **Arena Backyard**, one per chapter for the first three:
-  - Chapter 1 → **the garden**: the base's garden site opens; pay Shovel ×1 and Poop ×9 to build it. You get a starter pack of seeds, the base vendor sells more and the three mod Bosses drop them; what you grow is your raid meal
+  - Chapter 1 → **the garden**: the base's garden site opens; pay Shovel ×1 and Poop ×9 to build it. You get a starter pack of seeds, the base vendor sells more and the three mod Bosses drop them; eat the harvest during combat for 30 seconds in its matching Boss form
   - Chapter 2 → **the display bonus**: put Boss trophies on the official weapon display rack or on a dummy, each one raises your max health
   - Chapter 3 → **jukebox battle tracks**: the base jukebox picks up the mod's own music
   - Chapters 4 through 6 unlock no backyard facility; they pay in cash, clues and ending
@@ -208,3 +208,17 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
   down; your progress is safe either way. Quests now come from Jeff, and old progress carries over.
 - **What happens across save slots?** Campaign progress follows the **save slot**, so each save
   runs its own campaign.
+
+## Jeff's new-content introductions
+
+Alongside the six campaign chapters, Jeff offers fourteen one-time introductions. Accept them at base, follow the quest log, then return and hand them in yourself. Acceptance, trial completion and hand-in survive reloading. These introductions pay no extra cash and do not change chapter order.
+
+- **Modes**: Bare Hands, Territory, Blood Hunt, Echo of Fate, Black Market Duck King Cup and Zombie mode. Each quest explains the entry items and preparation; starting a real run is enough, with no first-try victory required.
+- **Pet Nest and random events**: hatch or deploy a cub, or experience a random event in a supported mode.
+- **Sky Island gear**: obtain exclusive gear from an island boss and bring it to base in your backpack or wear it. Visiting the island alone does not count. The route still follows Coordinates Above the Clouds.
+- **Base facilities**: finish the garden, display a Mod trophy, and open the daily report to sign in once.
+- **Equipment growth**: return with gear carrying a real affix or a reforge record. The quests point you to the goblin.
+
+::: tip
+A finished trial stays in your active quests until you return to Jeff at base and press Complete. Existing cubs, built facilities and qualifying gear count; you do not have to start them over.
+:::

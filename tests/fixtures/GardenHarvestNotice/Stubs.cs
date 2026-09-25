@@ -112,6 +112,7 @@ namespace ItemStatsSystem
     }
     public static class ItemAssetsCollection
     {
+        public static Item GetPrefab(int id) { return BossRush.BackMountainItems.Ready ? new Item() : null; }
         internal static readonly Dictionary<int, ItemMetaData> Metadata = new Dictionary<int, ItemMetaData>();
         internal static bool ThrowOnRead;
         public static ItemMetaData GetMetaData(int typeId)
@@ -146,5 +147,17 @@ namespace BossRush
     {
         public static bool IsChinese;
         public static string T(string chinese, string english) { return IsChinese ? chinese : english; }
+    }
+}
+
+namespace Duckov.UI { public static class NotificationText { public static void Push(string text) { } } }
+namespace BossRush
+{
+    internal static class BackMountainItems
+    {
+        internal sealed class Definition { internal bool IsSeed; }
+        internal static bool Ready = true;
+        internal static Definition GetDefinition(int id) { return id >= 500062 && id <= 500067 ? new Definition { IsSeed = id < 500065 } : null; }
+        internal static bool EnsureRuntimeRegistration(int id) { return Ready; }
     }
 }

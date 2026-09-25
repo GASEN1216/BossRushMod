@@ -359,4 +359,23 @@ namespace BossRush
         public const string GunDamageMultiplier = "GunDamageMultiplier", MeleeDamageMultiplier = "MeleeDamageMultiplier",
             RunSpeed = "RunSpeed", WalkSpeed = "WalkSpeed", ReloadSpeedGain = "ReloadSpeedGain", ElementFactorPhysics = "ElementFactor_Physics", MaxHealth = "MaxHealth";
     }
+    // 本夹具只隔离使用动作成功/拒绝/异常，不模拟变身行为。
+    // 完整生产变身、装备与碰撞器回归见 BackMountainMorph。
+    internal static class BackMountainBossMorphService
+    {
+        internal static bool Reject, Throw;
+        internal static int Started;
+        internal static void Clear() { }
+        internal static bool CanUse { get { return !SceneLoader.IsSceneLoading; } }
+        internal static bool TryBegin(int typeId, ModBehaviour owner)
+        {
+            if (Throw) throw new InvalidOperationException("injected morph failure");
+            if (Reject || !CanUse) return false;
+            if (typeId != BossRushItemIds.DragonFruit && typeId != BossRushItemIds.EmberChili
+                && typeId != BossRushItemIds.PhantomMushroom) return false;
+            Started++; return true;
+        }
+    }
 }
+
+internal static class SceneLoader { internal static bool IsSceneLoading; }

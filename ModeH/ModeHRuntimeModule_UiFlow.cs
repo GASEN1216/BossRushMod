@@ -42,6 +42,12 @@ namespace BossRush
         /// </summary>
         private bool _deferPageRoutes;
 
+        /// <summary>
+        /// 是否由玩家在赛前看盘页明确点了「开打」。选人、结算后的自动推进只负责
+        /// 把下一场准备到 MatchBrief，不能跳过双方参数与押注页面。
+        /// </summary>
+        private bool _allowBriefToLoadout;
+
         /// <summary>恢复壳里上一个操作的结果（取回押品成功 / 失败），下一次打开恢复壳时写在最上面。纯运行时。</summary>
         private string _recoveryResultText;
 
@@ -60,6 +66,10 @@ namespace BossRush
 
         private void DestroyUi()
         {
+            CancelPreparedFighterPage();
+            _showReconDetails = false;
+            _showItemBetPicker = false;
+            _pageFailureText = null;
             try
             {
                 if (_ui != null) _ui.DestroyAll();
@@ -179,6 +189,7 @@ namespace BossRush
             if (_commandsClosed) return;
             EnsureUi();
             if (_ui == null) return;
+            if (lifecycle != ModeHLifecycle.MatchBrief) _showReconDetails = false;
 
             // 离开恢复通道时收起恢复壳。DriveRecovery 会把 Recovering 推回同一场看盘，
             // 壳不收起来就会盖在新页面上（恢复壳不占模态输入，不收也不会锁死，但会挡视线）。
@@ -200,6 +211,8 @@ namespace BossRush
                 return;
             }
 
+            if (TryDeferPreparedFighterPage(lifecycle)) return;
+
             switch (lifecycle)
             {
                 case ModeHLifecycle.Drafting:
@@ -218,7 +231,7 @@ namespace BossRush
                 case ModeHLifecycle.RelayPending:
                     // 战斗期只留观战 HUD，模态页必须关掉（它会暂停输入）
                     _ui.ClosePage();
-                    _ui.EnsureHud(OnBellPressed);
+                    _ui.EnsureHud(OnBellPressed, OnSurrenderPressed, OnSpectatorExitPressed);
                     _ui.SetBellCommand(ResolveCommandDisplayName(ResolveLockedCommandId()),
                         ResolveLockedCommandPlain());
                     break;
@@ -336,6 +349,7 @@ namespace BossRush
                 EnsureMatchPlan();
                 if (_runState == null || _season == null || _season.currentMatchPlan == null
                     || _runState.Lifecycle != ModeHLifecycle.MatchBrief) return;
+                if (!_allowBriefToLoadout) return;
                 EnterLoadoutEditing();
             }
 
@@ -347,8 +361,18 @@ namespace BossRush
             // 正常流程从不押真实物品：兜底页上勾过的押品格不能被这条链静默带进锁盘
             ModeHRealStakeService.ClearSelection();
             string prepareFailure;
-            if (EnsurePreparedMatchSelection(out prepareFailure)) ApplyAutoRosterDefaults();
+            if (!EnsurePreparedMatchSelection(out prepareFailure)) return;
             LockLoadoutAndStartMatch();
+        }
+
+        /// <summary>赛前看盘页的唯一开打入口：玩家看完双方参数并选好押注后才进入整备。</summary>
+        private void StartMatchFromBrief()
+        {
+            if (_commandsClosed || _runState == null || _runState.Lifecycle != ModeHLifecycle.MatchBrief)
+                return;
+            _allowBriefToLoadout = true;
+            try { RunAutoAdvance("brief_start", null); }
+            finally { _allowBriefToLoadout = false; }
         }
 
         /// <summary>
@@ -455,7 +479,6 @@ namespace BossRush
                 // 万一这次没落到盘上就崩了，读档回来 operation 仍是 Offered，这里会原样再领一次，结果相同。
                 // 「下一场」归档时 CompleteSettlementAndRoute 会做 durable 落盘。
                 TryPersistSeason("reward_auto_selected");
-                AddSettlementNote(L10n.T(prefix + "Settle_AutoKit").Replace("{0}", L10n.T(prefix + "Kit_" + kitId)));
             }
             catch (Exception e)
             {
@@ -487,6 +510,8 @@ namespace BossRush
         {
             if (page == null || _runState == null || _runState.Lifecycle != ModeHLifecycle.Intermission) return;
             ModeHMatchReportDto report = FindLatestPendingReport();
+            ModeHSeasonRewardOperationDto reward = FindRewardOperation(report != null ? report.seasonRewardOperationId : null);
+            AppendUnlockedKitIcon(page, reward);
             if (report != null && _settlementNotes.Count > 0 && string.Equals(
                     report.seasonRewardOperationId, _settlementNotesOperationId, StringComparison.Ordinal))
             {
@@ -504,9 +529,7 @@ namespace BossRush
             page.Actions[0].Label = L10n.T(prefix + (nextIsMatch ? "Button_NextMatch" : "Button_Continue"));
             page.Actions[0].OnClick = delegate { RunAutoAdvance("next_match", archive); };
             if (!nextIsMatch) return;
-            // 下一场押多少就在这一页定：页脚一排押注档，按钮上写着押多少（「下一场 · 押 5,000」）
-            AppendCashBetRow(page);
-            page.Actions[0].Label += DescribeStandingBetSuffix();
+            // 下一场先展示双方参数，再选择本场押注；战报页只负责领取与继续。
             page.Actions[0].IsPrimary = true;
         }
 

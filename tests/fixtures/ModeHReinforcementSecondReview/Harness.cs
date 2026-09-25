@@ -45,7 +45,7 @@ namespace BossRush
     internal sealed class ModeHSpawnHandle
     {
         public Character Character; public Health Health; public Teams Team;
-        public string StableKey; public int PlanSlotIndex; public bool Activated; public int Recycles;
+        public string ProfileId; public string StableKey; public int PlanSlotIndex; public bool Activated; public int Recycles;
     }
     internal sealed class ModeHSpawnDiagnostics
     {
@@ -182,6 +182,9 @@ namespace BossRush
         internal int Retries, Settlements; internal bool ThrowRegister;
         internal ModeHRuntimeModule(int last = 1) { _combatControl.Configure(last); _combatTelemetry = _combatControl._telemetry; }
         private static int ResolveEnemyBatchIndex(ModeHMatchPlanDto plan, int i) { return plan.enemyBatchIndices[i]; }
+        private object GetPreparedEnemyOutfit(ModeHMatchPlanDto plan, int index) { return new object(); }
+        private bool ApplyPreparedOutfit(ModeHSpawnHandle handle, object outfit, string injury, out string reason)
+        { reason=null; if (handle.Activated || string.IsNullOrEmpty(handle.ProfileId)) throw new Exception("outfit must precede activation and have owner"); return true; }
         private static ModeHParticipantRef BuildParticipant(ModeHSpawnHandle h, string p, bool e, int i, bool r) { return new ModeHParticipantRef { Character = h.Character, PlanSlotIndex = i }; }
         private void RegisterParticipant(ModeHSpawnHandle h, ModeHParticipantRef r) { if (ThrowRegister) throw new InvalidOperationException("register"); }
         private void RefreshBattleSnapshotContext() { } private void AttachAndPersistBattleSnapshot(string s) { }

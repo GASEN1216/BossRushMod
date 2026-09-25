@@ -63,13 +63,21 @@ def main():
     for signature in (
             'internal bool TryReserveItems(string runId, int matchIndex, int odds, long value, string items, out string failureReasonId)',
             'internal bool TrySettle(string runId, int matchIndex, bool won, long lossCharge, long winCash, string prizes, out long payout)',
-            'internal bool TryRefund(string context, out long refunded)'):
+            'internal bool TryRefund(string context, out long refunded)',
+            'private static int ReadSchema(string json)',
+            'private static int ReadCompatibleSchema(string json)',
+            'private static ModeHCashBetRecord Decode(string json)',
+            'private static bool TryGetLong(BossRushJsonValue root, string key, out long value)',
+            'private static void ReadTier(BossRushJsonValue root, string key, long[] target)',
+            'private static string Encode(ModeHCashBetRecord record)',
+            'private static string JoinTier(long[] values)'):
         code += member(service, signature) + '\n'
     code += '}\n}\n}\n'
     extracted = OUT / 'Production.cs'
     extracted.write_text(code, encoding='utf-8')
 
-    files = [extracted, HERE / 'Program.cs', HERE / 'Stubs.cs']
+    files = [extracted, HERE / 'Program.cs', HERE / 'Stubs.cs',
+             ROOT / 'Common/Data/BossRushJsonValue.cs', ROOT / 'Utilities/SimpleJsonHelper.cs']
     project = ('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
                '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'
                '<EnableDefaultCompileItems>false</EnableDefaultCompileItems><Nullable>disable</Nullable>'

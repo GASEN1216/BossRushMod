@@ -32,6 +32,8 @@ namespace BossRush
 
         internal sealed partial class CashBetJournal
         {
+            internal static string SaveRecord(ModeHCashBetRecord record) { return Encode(record); }
+            internal static ModeHCashBetRecord LoadRecord(string json) { return Decode(json); }
             private bool _itemSnapshotRequired;
             internal sealed class MemoryStore
             {

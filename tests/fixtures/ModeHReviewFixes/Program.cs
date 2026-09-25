@@ -19,6 +19,8 @@ internal static class Program
         ModeHRuntimeGates.IsModeHCombatFrameActive = false; ModeHRuntimeGates.SlotGeneration = 1;
         ModeHWarehouseStakeJournal.Active = null; ModeHWarehouseStakeJournal.IsSlotConsistent = true;
         UnityEngine.Time.frameCount++;
+        ModeHBetRevealView.IsPlaying = false;
+        ModeHMapSupportRegistry.Variant = null;
     }
     private static ModeHRuntimeModule Runtime(ModeHLifecycle lifecycle, int match = 6)
     {
@@ -46,6 +48,17 @@ internal static class Program
         Reset(); var run = Runtime(ModeHLifecycle.OddsPreview, 1); run.Lock();
         Check(run.Started == 1 && run.Failure == null, "stake barriers followed by lock actually reach spawn");
         Check(Saves.SavesSystem.PhysicalWrites == 5, "four journal writes and lock barrier are durable");
+        Reset();
+        var animated = Runtime(ModeHLifecycle.OddsPreview, 1);
+        animated._ui = new ModeHUI();
+        ModeHBetRevealView.IsPlaying = true;
+        animated.Lock();
+        Check(animated.Started == 0 && animated._waitingForBetReveal && animated._ui.Closed == 1,
+            "active bet reveal closes prematch page and blocks spawning");
+        animated.Lock();
+        Check(animated.CashReserves == 1 && animated.Started == 0,
+            "repeated confirmation during reveal cannot reserve or spawn twice");
+        ModeHBetRevealView.IsPlaying = false;
         string error;
         Check(!ModeHSaveFlushCoordinator.RequestSeasonWrite(run._season, out error), "ordinary writes still throttle");
         UnityEngine.Time.frameCount++; ModeHSaveFlushCoordinator.Tick();
@@ -128,6 +141,7 @@ internal static class Program
         BossRushMapSelectionHelper.Generation = 7; BossRushMapSelectionHelper.SceneName = "arena";
         Check(run.Scene("unrelated") && run._resumeScenePending, "unrelated scene callback cannot consume intent");
         Check(!run.Current(original._runState.OwnerToken, 1, 7), "old owner cannot complete async resume");
+        ModeHMapSupportRegistry.Variant = ModeHMapSupportRegistry.Map;
         Check(run.Scene("arena") && !run._restoredSeasonPending && !run._resumeScenePending, "target scene consumes current resume");
         Check(run._runState.Lifecycle == ModeHLifecycle.MatchBrief && run.MatchResets == 1, "after leases resume same match with reservation reset");
         Check(ModeHArenaIsolationLease.Acquired == 1 && ModeHSpectatorLease.Acquired == 1, "both leases acquired");

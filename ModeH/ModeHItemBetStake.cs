@@ -5,8 +5,7 @@
 // 这里是押物品的物品侧，账本（押了什么、按什么赔、输赢统计）仍记在同一本押钱账本里。
 //
 // owner（第三轮）：「押上的物品不要有限制，只是其品质和价钱会影响到再次给予其奖品的品质和价钱」。
-// 所以押什么、押几件、押多贵都不限，只挡两类：任务物品（Sticky，官方连丢都不让丢，收走会断任务）
-// 和没有估值的东西（押了也换不出奖品）。
+// 2026-09-25 owner明确要求任何物品与穿戴装备均可押；零估值物品可押但不产生凭空利润。
 //
 // Mode H 玩家资产访问白名单的一条（ModeHIsolationGuard 按文件放行 Inventory 符号）：
 //   - 从主角色背包（CharacterItem.Inventory）列出能押的物品；不依赖出击图中不存在的仓库；
@@ -44,6 +43,7 @@ namespace BossRush
         public int Quality;
         public Sprite Icon;
         public bool Selected;
+        public bool Equipped;
         /// <summary>是装着东西的容器时里面有几件（押了连里面的一起押）。</summary>
         public int Contents;
     }
@@ -147,7 +147,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 能不能押：押什么都行，只挡任务物品（Sticky：官方连丢都不让丢，收走会断任务）和没有估值的东西。
+        /// 能不能押：任何有效物品都可押，包括穿戴、Sticky及零估值物品。
         /// 装着东西的容器也能押，估值连里面的一起算，输了连里面的一起收走（选择页写明「连里面的」）。
         /// </summary>
         private static bool IsBettable(Item item)
@@ -155,8 +155,7 @@ namespace BossRush
             if (item == null || item.IsBeingDestroyed) return false;
             try
             {
-                if (item.Sticky) return false;
-                return ValueOf(item) > 0;
+                return item.TypeID > 0;
             }
             catch (Exception)
             {
@@ -216,11 +215,16 @@ namespace BossRush
             {
                 PruneSelection();
                 Item character = PlayerCharacterItem();
-                Inventory backpack = character != null ? character.Inventory : null;
-                if (backpack == null) return result;
+                // GetAllChildren(false, true) 同时包含背包直系物品与所有已装备槽位。
+                // 旧实现只枚举 CharacterItem.Inventory，穿在身上的头盔、护甲、背包、面具、耳机
+                // 因而永远不会出现在押注页，和“什么都能押”不符；不递归容器内部，避免把容器和
+                // 容器里的内容重复列出（容器仍按整棵物品树估值并一并承担风险）。
+                if (character == null) return result;
                 List<Item> items = new List<Item>();
-                foreach (Item item in backpack)
+                List<Item> owned = character.GetAllChildren(false, true);
+                for (int i = 0; i < owned.Count; i++)
                 {
+                    Item item = owned[i];
                     if (IsBettable(item)) items.Add(item);
                 }
                 items.Sort(delegate (Item a, Item b)
@@ -243,6 +247,7 @@ namespace BossRush
                         Quality = QualityOf(item),
                         Icon = icon,
                         Selected = selected,
+                        Equipped = item.PluggedIntoSlot != null,
                         Contents = ContentCountOf(item),
                     });
                 }
@@ -293,18 +298,19 @@ namespace BossRush
                     return true;
                 }
                 Item character = PlayerCharacterItem();
-                Inventory backpack = character != null ? character.Inventory : null;
                 Item found = null;
-                if (backpack != null)
+                if (character != null)
                 {
-                    foreach (Item item in backpack)
+                    List<Item> owned = character.GetAllChildren(false, true);
+                    for (int i = 0; i < owned.Count; i++)
                     {
+                        Item item = owned[i];
                         if (item != null && item.GetInstanceID() == key) { found = item; break; }
                     }
                 }
                 if (found == null || !IsBettable(found))
                 {
-                    failureText = L10n.T("这件已经不在背包里了。", "That item is no longer in your backpack.");
+                    failureText = L10n.T("这件已经不在身上了。", "That item is no longer on your character.");
                     return false;
                 }
                 _selected.Add(found);
@@ -371,7 +377,7 @@ namespace BossRush
                 PruneSelection();
                 if (_selected.Count == 0)
                 {
-                    failureText = L10n.T("勾上的物品都不在背包里了，这一场没押。", "The items you picked are no longer in your backpack; no bet this match.");
+                    failureText = L10n.T("勾上的物品都不在身上了，这一场没押。", "The items you picked are no longer on your character; no bet this match.");
                     return false;
                 }
                 for (int i = 0; i < _selected.Count; i++)
@@ -417,7 +423,7 @@ namespace BossRush
             try
             {
                 Item character = PlayerCharacterItem();
-                if (character != null) pool = character.GetAllChildren(false, false);
+                if (character != null) pool = character.GetAllChildren(true, true);
             }
             catch (Exception e)
             {
@@ -602,7 +608,7 @@ namespace BossRush
         {
             List<ModeHItemBetEntry> remaining = new List<ModeHItemBetEntry>();
             Item character = PlayerCharacterItem();
-            List<Item> pool = character != null ? character.GetAllChildren(false, false) : new List<Item>();
+            List<Item> pool = character != null ? character.GetAllChildren(true, true) : new List<Item>();
             for (int i = 0; prizes != null && i < prizes.Count; i++)
             {
                 ModeHItemBetEntry entry = prizes[i];

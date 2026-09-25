@@ -39,7 +39,7 @@ tells you what just opened.
 - With a seed in hand, open the garden's normal planting screen and the mod seeds are simply there
   in the list alongside the vanilla crops.
 - A plant takes about `20` real-time minutes to ripen and yields `2` per harvest.
-- **Harvests go directly to base storage**, for both vanilla and mod crops. They merge into existing stacks first. Once delivery finishes, a banner shows the harvested item, amount and where to collect it.
+- **The three backyard crops go to your backpack first**, then base storage if the backpack is full. Vanilla crops still go straight to storage. Items merge into existing stacks first; a completion banner shows the item, amount and collection route.
 - If storage is full, the harvest waits at **Package Pickup** in the base. Make room in storage, then select `Send to Storage` for the pending items there.
 - Same rule as vanilla crops: **it only grows while watered**. Watering is a tool on the planting screen and costs nothing; forget to water and progress stops.
 
@@ -76,22 +76,19 @@ tells you what just opened.
 - Two tracks so far: `Dragon Elegy` and `Umbral Corridors`. Switching language updates their titles without duplicating tracks.
 - Mod tracks always go after the vanilla ones, so nothing you already had shifts position in the list.
 
-### How raid meals work
+### Eating your harvest
 
-Raid meals are the Backyard's signature mechanic, and there are only three rules:
+All three harvests can be eaten at base or during a raid. Each immediately grants its matching Boss form for **30 seconds**:
 
-- **Eat it in the base.** You can't eat one mid-run; the eat option is unavailable out there,
-  so you can't waste one by accident.
-- **It applies to your next run.** Nothing happens when you eat it; the effect goes on at the start
-  of the next run you leave the base for.
-- **It lasts one run.** Moving between areas during the same raid keeps the effect. Extraction or death ends it; it does not carry into the next raid.
+- **Dragonbreath Fruit: Dragon Descendant.** Wear its armor, gain `+30%` gun and melee damage and fire immunity. Attacks breathe flame in an 8m, roughly 70-degree cone: 24 fire damage, at most once every 0.8s.
+- **Emberheart Chili: Ember Dragon King.** Wear its armor, gain `+15%` gun damage, `+50%` melee damage and fire immunity. Attacks burst into flame in a 6m circle: 36 fire damage, at most once every 1.2s.
+- **Umbral Mushroom: Phantom Witch.** Take its full ghostly form with a scythe, `+40%` melee damage and `+20%` movement speed. Attacks sweep a 5m, 120-degree arc: 32 physical damage, at most once every 0.65s.
 
-Two more that catch people out:
+Both shooting and melee trigger these abilities. Allies and targets behind walls are excluded. **Your current health, maximum health and actual gear remain your own.** Only appearance and combat bonuses change temporarily.
 
-- **Only one meal can be pending at a time.** Eating two doesn't stack: the second one **replaces**
-  the first, and the first has already been consumed. Pick one and eat only that.
-- **You can safely quit after eating.** The record is saved, so the meal still counts when you come
-  back tomorrow and head out.
+- Wait for the current form to end before eating another harvest.
+- Pausing stops the timer. Expiration, death and scene changes restore your appearance. Forms do not persist between runs.
+- Meals already prepared in an older version still apply their original bonuses on the next run. Newly eaten harvests transform you immediately.
 
 ### Seeds and food
 
@@ -101,13 +98,11 @@ Two more that catch people out:
 - **Ember Seed** — from the Skyburner Dragon Lord, grows Emberheart Chili
 - **Phantom Spore** — from the Phantom Witch, grows Umbral Mushroom
 
-**Raid meals** (harvested from the Garden, 2 per harvest)
+**Boss-form harvests** (harvested from the Garden, 2 per harvest)
 
-- **Dragonbreath Fruit** — `+10%` gun and melee damage on your next run
-- **Emberheart Chili** — `+8%` move speed and `+10%` reload speed gain on your next run
-- **Umbral Mushroom** — `-10%` physical damage taken on your next run
-
-[tip] Chili adds to your equipment's reload speed gain. With no other reload bonuses, reload time is about `9.1%` shorter.
+- **Dragonbreath Fruit** — Dragon Descendant: forward fire breath, balanced damage bonuses and fire immunity
+- **Emberheart Chili** — Ember Dragon King: close-range flame burst, melee damage and fire immunity
+- **Umbral Mushroom** — Phantom Witch: a full ghostly body and scythe, quick sweeps and movement speed
 
 ### Questions you might have
 
@@ -116,9 +111,9 @@ Two more that catch people out:
 - **Will the rack take my gear?** It keeps the item until you move it off. The rack is base storage: nothing on it goes on raids or gets lost on death.
 - **Do two copies of the same item count twice?** No. One of each kind counts.
 - **What if I display more than 8?** Only the best 8 by quality count, and eight is exactly what earns the extra `+5%`.
-- **Can I eat a raid meal during a run?** No, only in the base.
-- **Does a meal expire if I don't go out?** No. The record sits there until you actually start a run.
-- **Can I eat two different meals at once?** No, only the last one you ate is kept.
+- **Can I eat all three harvests during a run?** Yes. Each transforms you immediately for 30 seconds.
+- **Can I eat before deploying?** New harvests act immediately and end on scene changes. Eat when needed. Meals prepared in an older version still apply on your next run.
+- **Can I stack two forms?** No. Wait for the current transformation to end before eating another harvest.
 - **Are Boss drops the only way to get seeds?** No. You get a starter pack when the Garden opens,
   and the base vendor always stocks them after that. Boss drops are a free bonus.
 - **Can I turn the whole Backyard off?** There's no such switch; it's default content. Just don't

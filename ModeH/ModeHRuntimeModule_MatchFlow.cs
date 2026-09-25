@@ -25,6 +25,15 @@ namespace BossRush
         {
             if (_ui != null) _ui.ApplyHudVisibility(); // 观战 HUD 跟随官方界面与暂停收起，刷怪期也要（见 ModeHUI）
             ModeHBetRevealView.Tick(); // 押钱「开盘」揭晓走表（没在播时 O(1) 早返）
+            // 押注揭晓是开战前的确认动画：锁盘已完成、赔率已冻结，但战场生成要等
+            // 动画落点与短暂停留结束，避免敌我已经开打时大面板仍挡住视野。
+            if (_waitingForBetReveal && !_commandsClosed && !ModeHBetRevealView.IsPlaying
+                && !BossRushUI.IsGamePaused())
+            {
+                _waitingForBetReveal = false;
+                if (_runState != null && _runState.Lifecycle == ModeHLifecycle.LoadoutLocked)
+                    StartMatchSpawning();
+            }
             if (_commandsClosed) return;
             if (_runState == null) return;
             if (_restoredSeasonPending || _resumeScenePending) return;
@@ -313,6 +322,56 @@ namespace BossRush
             AttachAndPersistBattleSnapshot("bell_committed");
         }
 
+        /// <summary>观战 HUD 的投降按钮：确认后把本场记为玩家主动弃赛，沿用统一结算与押注流程。</summary>
+        private void OnSurrenderPressed()
+        {
+            if (_commandsClosed || _runState == null || _combatTelemetry == null
+                || _runState.Lifecycle != ModeHLifecycle.MatchFighting) return;
+            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
+            {
+                Title = L10n.T("确认投降？", "Surrender this match?"),
+                Body = L10n.T("本场会按弃赛判负，押注与伤病照常结算。", "This match will be recorded as a forfeit; bets and injuries are settled normally."),
+                Warning = L10n.T("投降后不能撤回。", "You cannot undo a surrender."),
+                ConfirmLabel = L10n.T("投降", "Surrender"),
+                Danger = true,
+                OnConfirm = ClaimPlayerSurrender,
+                Anchor = _ui != null ? _ui.HudAnchor : null,
+            });
+        }
+
+        private void ClaimPlayerSurrender()
+        {
+            if (_commandsClosed || _runState == null || _combatTelemetry == null
+                || _runState.Lifecycle != ModeHLifecycle.MatchFighting) return;
+            if (!_combatTelemetry.TryClaimDefeatByCowardice("player_surrender")) return;
+            // TickActiveCombat 会在下一帧观察 CAS 结果并进入 MatchSettling，避免在按钮回调
+            // 内重入状态机、同时保证押注、战报、真实押品仍走同一条结算链。
+        }
+
+        /// <summary>观战 HUD 的退出按钮：离开当前场景并保留赛季恢复记录。</summary>
+        private void OnSpectatorExitPressed()
+        {
+            if (_commandsClosed || _runState == null
+                || (_runState.Lifecycle != ModeHLifecycle.MatchFighting
+                    && _runState.Lifecycle != ModeHLifecycle.RelayPending)) return;
+            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
+            {
+                Title = L10n.T("退出鸭王杯？", "Exit the cup?"),
+                Body = L10n.T("本场会保留为中断状态，回到鸭王杯入口后可以继续。", "This match will be kept as interrupted; return to the cup entrance to continue."),
+                Warning = L10n.T("未完成的押注不会被重复扣除。", "The pending bet will not be charged again."),
+                ConfirmLabel = L10n.T("退出", "Exit"),
+                Danger = true,
+                OnConfirm = ExitFromSpectator,
+                Anchor = _ui != null ? _ui.HudAnchor : null,
+            });
+        }
+
+        private void ExitFromSpectator()
+        {
+            if (_commandsClosed || _runState == null || !IsCombatLifecycle(_runState.Lifecycle)) return;
+            RequestExit(ModeHExitReason.UserMapReturn, "spectator_exit");
+        }
+
         /// <summary>拍铃失败的玩家可见提示。提示失败不得影响比赛流程。</summary>
         private void ShowBellFailureMessage(string failureReasonId)
         {
@@ -333,20 +392,34 @@ namespace BossRush
 
         /// <summary>
         /// 入口页 = 唯一的选人页（2026-09-23 owner：「只弄一个选择武将的页面，选完后就开始」）。
-        /// 五张大卡，点「选他出战」即签下主将、自动配接力并一路开打（OnDraftPick → RunAutoAdvance）。
+        /// 首发和接力分别由玩家选择；两席锁定后进入赛前对照页。
         /// </summary>
         private ModeHPageContent BuildDraftPageContent()
         {
             ModeHPageContent page = new ModeHPageContent();
             page.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Entry");
-            // §22.1：真实押品没有开关，进入模式即知情同意，入口页必须固定披露风险。
-            // 选人页按默认值开打、从不押真实物品，所以披露放在页脚，不再占顶部红条。
+            // 真实押品风险仍在入口页页脚披露；单场押注留到每场开打前的看盘/赔率页。
             page.ShowRealStakeNotice = true;
             page.CompactRiskNotice = true;
 
             if (_season == null) return page;
-
             EnsureDraftCandidates();
+
+            bool hasPrimary = !string.IsNullOrEmpty(_draftPrimaryProfileId);
+            bool hasRelay = !string.IsNullOrEmpty(_draftRelayProfileId);
+            if (!hasPrimary)
+            {
+                page.Body = L10n.T("先选一名首发，再选一名接力。", "Choose a starter, then choose a relay.");
+            }
+            else if (!hasRelay)
+            {
+                page.Body = L10n.T("首发已锁定：再选一名接力。首发不会随刷新改变。",
+                    "Starter locked: choose a relay. Refreshing will keep the starter.");
+            }
+            else
+            {
+                page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Summary_Draft");
+            }
 
             List<ModeHProfileDto> profiles = _season.profiles;
             if (profiles != null)
@@ -355,12 +428,29 @@ namespace BossRush
                 {
                     ModeHProfileDto profile = profiles[i];
                     if (profile == null) continue;
-                    page.Cards.Add(BuildProfileCard(profile));
+                    bool selected = string.Equals(profile.profileId, _draftPrimaryProfileId, StringComparison.Ordinal)
+                        || string.Equals(profile.profileId, _draftRelayProfileId, StringComparison.Ordinal);
+                    bool selectable = !hasRelay
+                        && (!hasPrimary || !string.Equals(profile.profileId, _draftPrimaryProfileId, StringComparison.Ordinal));
+                    string action = !hasPrimary
+                        ? L10n.T("选首发", "Choose starter")
+                        : L10n.T("选接力", "Choose relay");
+                    ModeHCardData card = BuildProfileCard(profile, selectable, selected, action);
+                    if (selected) card.SelectedBadge = L10n.T("√ 首发锁定", "√ Starter locked");
+                    page.Cards.Add(card);
                 }
             }
+            NormalizeFighterStatScales(page.Cards);
 
-            page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Summary_Draft");
-            AppendCashBetRow(page); // 押钱（2026-09-24）：选人时顺手定「每场押多少」，默认不押
+            if (!hasRelay && _draftRefreshCount < DraftMaxRefreshes)
+            {
+                int left = DraftMaxRefreshes - _draftRefreshCount;
+                page.Actions.Add(new ModeHActionData
+                {
+                    Label = L10n.T("刷新候选（剩 " + left + " 次）", "Refresh candidates (" + left + " left)"),
+                    OnClick = RefreshDraftCandidates,
+                });
+            }
             AppendDraftLeaveAction(page);
             return page;
         }
@@ -429,20 +519,45 @@ namespace BossRush
         /// 怪癖、异常与招牌口令的效果已经揉进白话里讲清楚。转会页复用同一张卡（去掉按钮）。
         /// 立绘键是 stableKey（= 官方 preset nameKey = 鸭皇图鉴条目键）。
         /// </summary>
-        private ModeHCardData BuildProfileCard(ModeHProfileDto profile)
+        private ModeHCardData BuildProfileCard(ModeHProfileDto profile,
+            bool selectable = true, bool selected = false, string actionLabel = null)
         {
             string prefix = ModeHConfig.LocalizationKeyPrefix;
             ModeHCardData card = new ModeHCardData();
             card.Title = L10n.T(prefix + "Fighter_" + profile.profileId);
             card.Subtitle = L10n.T(prefix + "Archetype_" + profile.archetypeId + "_Plain");
-            card.ActionLabel = L10n.T(prefix + "Button_Sign");
+            card.ActionLabel = actionLabel != null ? actionLabel : L10n.T(prefix + "Button_Sign");
             card.IsAnomaly = !string.IsNullOrEmpty(profile.anomalyId);
             card.PortraitKey = profile.stableKey;
             card.Body = ResolveFighterPlainDescription(profile);
+            FillFighterDetails(card, GetPreparedFighterStats(profile));
+            card.IsSelected = selected;
 
-            string signedId = profile.profileId;
-            card.OnClick = delegate { OnDraftPick(signedId); };
+            if (selectable)
+            {
+                string signedId = profile.profileId;
+                card.OnClick = delegate { OnDraftPick(signedId); };
+            }
             return card;
+        }
+
+        /// <summary>选人卡显示官方 Wiki 快照的关键数值，帮助玩家在押注前比较候选人。</summary>
+        private static string DescribeOfficialBossAttributes(string stableKey)
+        {
+            ModeHOfficialBossAttribute attribute;
+            if (!ModeHOfficialBossAttributeCatalog.TryGet(stableKey, out attribute) || attribute == null)
+                return string.Empty;
+            string cn = "属性 生命 " + attribute.Health
+                + " 伤害 x" + (attribute.DamageMultiplierMilli / 1000f).ToString("0.##")
+                + " 移速 x" + (attribute.MoveSpeedFactorMilli / 1000f).ToString("0.##")
+                + " 枪距 x" + (attribute.GunDistanceMultiplierMilli / 1000f).ToString("0.##")
+                + " 视距 " + attribute.SightDistance;
+            string en = "Stats HP " + attribute.Health
+                + " DMG x" + (attribute.DamageMultiplierMilli / 1000f).ToString("0.##")
+                + " SPD x" + (attribute.MoveSpeedFactorMilli / 1000f).ToString("0.##")
+                + " Range x" + (attribute.GunDistanceMultiplierMilli / 1000f).ToString("0.##")
+                + " Sight " + attribute.SightDistance;
+            return L10n.T(cn, en);
         }
 
         /// <summary>
@@ -459,11 +574,9 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 选人点击：一次点击就定下出战选手，并按展示顺序自动配一位能组成完整六场的搭档做接力，
-        /// 随即一路推到开打（RosterLocked → 看盘 → 整备 → 按默认值锁盘 → 入场，见 RunAutoAdvance）。
-        /// 签约、落选分流与六场可行性仍走原有三道门，规则不在这里另写一份。
-        /// 搭档优先挑与主将打法不同的（近战配远程更好看），都不行再放宽到任意一位。
-        /// 每次点击都重新校验 lifecycle，避免过期页面推进状态。
+        /// 选人点击采用两步锁定：第一次只锁首发，第二次明确选接力后才签约并推进赛季。
+        /// 刷新按钮只替换未锁定席位，首发对象保留；签约与六场可行性仍走原有控制器。
+        /// 每次点击都重新校验 lifecycle，避免玩家使用过期页面推进状态。
         /// </summary>
         private void OnDraftPick(string profileId)
         {
@@ -472,49 +585,51 @@ namespace BossRush
 
             try
             {
-                ModeHProfileDto main = FindSeasonProfile(profileId);
-                if (main == null) return;
+                ModeHProfileDto picked = FindSeasonProfile(profileId);
+                if (picked == null) return;
 
-                ModeHContractDto contract = null;
-                List<ModeHEchoAssignmentDto> assignments = null;
-                string failureReasonId = null;
-                bool viable = false;
-                for (int pass = 0; pass < 2 && !viable; pass++)
+                // 第一次点击只锁定首发；不签约、不自动替玩家选接力。
+                if (string.IsNullOrEmpty(_draftPrimaryProfileId))
                 {
-                    for (int i = 0; _season.profiles != null && i < _season.profiles.Count && !viable; i++)
-                    {
-                        ModeHProfileDto partner = _season.profiles[i];
-                        if (partner == null || string.Equals(partner.profileId, profileId, StringComparison.Ordinal)) continue;
-                        if (pass == 0 && string.Equals(partner.archetypeId, main.archetypeId, StringComparison.Ordinal)) continue;
-                        if (!ModeHDraftController.TrySignContracts(
-                                _season.profiles, profileId, partner.profileId,
-                                out contract, out failureReasonId)) continue;
-                        if (!ModeHDraftController.TryAssignEchoDestinations(
-                                _runState.RunSeed, _season.profiles, contract,
-                                out assignments, out failureReasonId)) continue;
-                        viable = CanConstructFullSeason(contract, assignments, out failureReasonId);
-                    }
-                }
-
-                if (!viable)
-                {
-                    // 对手池是「认证池减去这五名候选」：五种搭配都凑不出六场，只能退出重进重抽。
-                    if (_owner != null) _owner.ShowMessage(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Draft_NoViablePair"));
-                    ModBehaviour.DevLog("[ModeH] 选人后找不到能组成六场的搭档: "
-                        + (failureReasonId != null ? failureReasonId : "unknown"));
-                    _draftDeadEndRunId = _runState.RunId; // 选人页挂出「退出本赛季」（V6-1）
+                    _draftPrimaryProfileId = picked.profileId;
+                    _draftRelayProfileId = null;
                     RouteUiForLifecycle(_runState.Lifecycle);
                     return;
                 }
 
+                // 首发已锁定，第二次点击明确选择接力；首发卡本身不可再次点击。
+                if (string.Equals(_draftPrimaryProfileId, picked.profileId, StringComparison.Ordinal)
+                    || !string.IsNullOrEmpty(_draftRelayProfileId)) return;
+
+                ModeHContractDto contract;
+                string failureReasonId;
+                if (!ModeHDraftController.TrySignContracts(
+                        _season.profiles, _draftPrimaryProfileId, picked.profileId,
+                        out contract, out failureReasonId))
+                {
+                    if (_owner != null) _owner.ShowMessage(L10n.T("这名选手不能组成有效搭档。", "These two fighters cannot form a valid pair."));
+                    return;
+                }
+
+                List<ModeHEchoAssignmentDto> assignments;
+                bool viable = ModeHDraftController.TryAssignEchoDestinations(
+                    _runState.RunSeed, _season.profiles, contract,
+                    out assignments, out failureReasonId);
+                if (viable && !CanConstructFullSeason(contract, assignments, out failureReasonId))
+                    viable = false;
+                if (!viable)
+                {
+                    if (_owner != null) _owner.ShowMessage(L10n.T("这组搭档无法排满赛季，请换一名接力。", "This pair cannot fill the season; choose another relay."));
+                    return;
+                }
+
+                _draftRelayProfileId = picked.profileId;
                 _season.contract = contract;
                 _season.echoAssignments = assignments;
-
                 RunAutoAdvance("champion_picked", delegate
                 {
                     if (TryTransition(ModeHLifecycle.Drafting, ModeHLifecycle.RosterLocked, "contracts_signed"))
                     {
-                        // 早期恢复子表要求 roster 快照有效，这里是一个显式落盘点
                         TryPersistSeason("roster_locked");
                     }
                 });
@@ -522,6 +637,61 @@ namespace BossRush
             catch (Exception e)
             {
                 LogFailure("draft_pick", e);
+            }
+        }
+
+        /// <summary>重抽未锁定席位，最多三次；首发一旦选定始终保留在候选列表中。</summary>
+        private void RefreshDraftCandidates()
+        {
+            if (_commandsClosed || _season == null || _runState == null
+                || _runState.Lifecycle != ModeHLifecycle.Drafting
+                || _draftRefreshCount >= DraftMaxRefreshes) return;
+            try
+            {
+                List<ModeHProfileDto> candidates;
+                string failureReasonId;
+                long seed = unchecked(_runState.RunSeed + (long)(_draftRefreshCount + 1) * 7919L);
+                if (!ModeHDraftController.TryBuildDraft(
+                        seed, ModeHProfileRegistry.ProductionCatalog,
+                        out candidates, out failureReasonId)
+                    || candidates == null || candidates.Count == 0)
+                {
+                    if (_owner != null) _owner.ShowMessage(L10n.T("这次刷新没有可用候选。", "No candidates were available for this refresh."));
+                    return;
+                }
+
+                if (!string.IsNullOrEmpty(_draftPrimaryProfileId))
+                {
+                    ModeHProfileDto locked = FindSeasonProfile(_draftPrimaryProfileId);
+                    List<ModeHProfileDto> merged = new List<ModeHProfileDto>();
+                    if (locked != null) merged.Add(locked);
+                    for (int i = 0; i < candidates.Count && merged.Count < ModeHConfig.DraftCandidateCount; i++)
+                    {
+                        ModeHProfileDto candidate = candidates[i];
+                        if (candidate == null || string.Equals(candidate.profileId, _draftPrimaryProfileId, StringComparison.Ordinal)) continue;
+                        merged.Add(candidate);
+                    }
+                    if (merged.Count < ModeHConfig.DraftCandidateCount)
+                    {
+                        if (_owner != null) _owner.ShowMessage(L10n.T("刷新后候选不足，保留当前名单。", "The refreshed list was incomplete; keeping the current lineup."));
+                        return;
+                    }
+                    candidates = merged;
+                }
+
+                _season.profiles = candidates;
+                _season.draftCandidateProfileIds = new List<string>();
+                for (int i = 0; i < candidates.Count; i++)
+                {
+                    if (candidates[i] != null) _season.draftCandidateProfileIds.Add(candidates[i].profileId);
+                }
+                _draftRefreshCount++;
+                TryPersistSeason("draft_refresh");
+                RouteUiForLifecycle(_runState.Lifecycle);
+            }
+            catch (Exception e)
+            {
+                LogFailure("draft_refresh", e);
             }
         }
 
@@ -890,6 +1060,14 @@ namespace BossRush
                     return;
                 }
                 ReserveStandingCashBet(); // 锁盘成功才扣押金；钱不够这一场就不押，比赛照打
+                if (ModeHBetRevealView.IsPlaying)
+                {
+                    _waitingForBetReveal = true;
+                    // LoadoutLocked 没有独立页面路由；先收掉赔率页并释放模态输入，
+                    // 揭晓动画才能独占视线且不把旧按钮留在其下方。
+                    if (_ui != null) _ui.ClosePage();
+                    return;
+                }
                 StartMatchSpawning();
             }
             catch (Exception e)

@@ -48,8 +48,8 @@ assert pick.index('CanConstructFullSeason(contract, assignments, out failureReas
 (PROD/'ModeHLocalization.cs').write_bytes((ROOT/'Localization/ModeHLocalization.cs').read_bytes())
 extra='using System; using System.Collections.Generic; namespace BossRush { internal sealed partial class ModeHRuntimeModule {\n'
 for file, signatures in {
- 'ModeHRuntimeModule_CombatFlow.cs': ['private bool EnsurePreparedMatchSelection(', 'private List<string> BuildDefaultKitSelection('],
- 'ModeHRuntimeModule_CombatProfiles.cs': ['private ModeHProfileDto FindSeasonProfile(', 'private static IList<string> FilterKitsForInjury(', 'private static string ResolveCommandDisplayName('],
+ 'ModeHRuntimeModule_CombatFlow.cs': ['private bool EnsurePreparedMatchSelection('],
+ 'ModeHRuntimeModule_CombatProfiles.cs': ['private List<string> BuildDefaultKitSelection(', 'private ModeHProfileDto FindSeasonProfile(', 'private static IList<string> FilterKitsForInjury(', 'private static string ResolveCommandDisplayName('],
 }.items():
  for signature in signatures:extra+=method((ROOT/'ModeH'/file).read_text(encoding='utf-8-sig'),signature)+'\n'
 extra+='} internal static class ModeHCommandController {\n'

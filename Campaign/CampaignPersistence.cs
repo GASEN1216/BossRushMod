@@ -42,6 +42,10 @@ namespace BossRush
         public CampaignChapterRecord[] chapters;
         public string[] grantedTokens;
         public string[] unlockedClues;
+        /// <summary>一次性新内容引导已完成的稳定 ID（SCHEMA+，旧档缺失时按空集）。</summary>
+        public string[] completedGuides;
+        public string[] acceptedGuides;
+        public string[] experiencedGuides;
         public long lastUpdatedTicks;
     }
 
@@ -50,7 +54,10 @@ namespace BossRush
     {
         #region 常量
 
-        /// <summary>当前 schema 版本。改动 DTO 结构必须同步递增并想清楚老档怎么办。</summary>
+        /// <summary>
+        /// 当前 schema 版本。completedGuides 是可选扩展字段，保持 v1 以便旧战役档继续可读；
+        /// JsonUtility 缺字段时按空数组处理，不改变既有章节 / token 的语义。
+        /// </summary>
         internal const int CurrentSchemaVersion = 1;
 
         #endregion
@@ -127,6 +134,41 @@ namespace BossRush
             return _store.FlushPending();
         }
 
+        /// <summary>引导三态独立持久化：接取、体验目标、回基地交付。</summary>
+        internal static bool IsGuideCompleted(string id) { return ContainsGuide(Current != null ? Current.completedGuides : null, id); }
+        internal static bool IsGuideAccepted(string id) { return ContainsGuide(Current != null ? Current.acceptedGuides : null, id); }
+        internal static bool IsGuideExperienced(string id) { return ContainsGuide(Current != null ? Current.experiencedGuides : null, id); }
+
+        private static bool ContainsGuide(string[] values, string id)
+        {
+            if (values == null || string.IsNullOrEmpty(id)) return false;
+            for (int i = 0; i < values.Length; i++)
+                if (string.Equals(values[i], id, StringComparison.Ordinal)) return true;
+            return false;
+        }
+
+        internal static bool TryAdvanceGuide(string id, int stage)
+        {
+            if (CampaignGuideTable.Find(id) == null || HasWriteBarrier || IsStoreFaulted) return false;
+            CampaignSaveData current = Current;
+            if (current == null || stage < 1 || stage > 3) return false;
+            if (stage > 1 && !IsGuideAccepted(id)) return false;
+            if (stage == 3 && !IsGuideExperienced(id)) return false;
+            string[] previous = stage == 1 ? current.acceptedGuides
+                : (stage == 2 ? current.experiencedGuides : current.completedGuides);
+            if (ContainsGuide(previous, id)) return true;
+            // 不在 Current 上先改后写：写屏障/序列化失败也不能把内存事实提前变成已完成。
+            CampaignSaveData copy = CampaignProgressService.CloneSaveData(current);
+            List<string> values = previous != null ? new List<string>(previous) : new List<string>();
+            values.Add(id);
+            if (stage == 1) copy.acceptedGuides = values.ToArray();
+            else if (stage == 2) copy.experiencedGuides = values.ToArray();
+            else copy.completedGuides = values.ToArray();
+            if (!Store(copy)) return false;
+            CampaignSaveCoordinator.RequestFlush();
+            return true;
+        }
+
         #endregion
 
         #region 编解码与绑定钩子
@@ -139,6 +181,9 @@ namespace BossRush
             data.chapters = new CampaignChapterRecord[0];
             data.grantedTokens = new string[0];
             data.unlockedClues = new string[0];
+            data.completedGuides = new string[0];
+            data.acceptedGuides = new string[0];
+            data.experiencedGuides = new string[0];
             data.lastUpdatedTicks = 0L;
             return data;
         }
@@ -181,6 +226,9 @@ namespace BossRush
                 if (decoded.chapters == null) decoded.chapters = new CampaignChapterRecord[0];
                 if (decoded.grantedTokens == null) decoded.grantedTokens = new string[0];
                 if (decoded.unlockedClues == null) decoded.unlockedClues = new string[0];
+                if (decoded.completedGuides == null) decoded.completedGuides = new string[0];
+                if (decoded.acceptedGuides == null) decoded.acceptedGuides = new string[0];
+                if (decoded.experiencedGuides == null) decoded.experiencedGuides = new string[0];
                 return decoded;
             }
             catch (Exception)

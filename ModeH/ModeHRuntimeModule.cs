@@ -462,7 +462,16 @@ namespace BossRush
 
             ModeHRuntimeGates.SetRunOwnerActive(false);
 
-            // 关停清掉了内存里的 _season/_runState，但磁盘上那份可能仍是活动 lifecycle。
+            // 鸭王杯结束或玩家从观战 HUD 主动退出后，统一回到基地，避免把玩家留在
+            // 已解除隔离租约的出击图里。正常地图返回事件不重复触发，只有明确的结束/按钮路径调用。
+            if (reason == ModeHExitReason.SeasonComplete
+                || string.Equals(reasonId, "spectator_exit", StringComparison.Ordinal))
+            {
+                try { if (_owner != null) _owner.SafeExitFromModeH(); }
+                catch (Exception e) { LogFailure("safe_exit_base", e); }
+            }
+
+            // 关停清掉了内存里的 _season/_runState，但磁盘上那份可能仍是活动 lifecycle.
             // 不把 recovery-only 闸立回去，玩家回基地就能直接开新赛季，
             // CreateDraftingSeason 会把中断的赛季整份覆盖掉。
             try
@@ -514,6 +523,7 @@ namespace BossRush
             ModeHRealStakeService.ResetStaticCaches();
             ModeHPresetRegistry.ResetStaticCaches();
             ModeHDeathSuppressionRegistry.ResetStaticCaches();
+            ModeHOfficialBossAttributeCatalog.ResetStaticCaches();
             ModeHCombatTelemetry.ResetStaticCaches();
             ModeHSpectatorLease.ResetStaticCaches();
             ModeHBetRevealView.Stop();

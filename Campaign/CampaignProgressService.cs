@@ -494,7 +494,7 @@ namespace BossRush
             }
         }
 
-        private static CampaignSaveData CloneSaveData(CampaignSaveData source)
+        internal static CampaignSaveData CloneSaveData(CampaignSaveData source)
         {
             CampaignSaveData copy = new CampaignSaveData();
             copy.schemaVersion = source.schemaVersion;
@@ -515,6 +515,14 @@ namespace BossRush
                 ? (string[])source.grantedTokens.Clone() : new string[0];
             copy.unlockedClues = source.unlockedClues != null
                 ? (string[])source.unlockedClues.Clone() : new string[0];
+            // 一次性新内容引导与章节状态共用同一份 CampaignSaveData；章节推进复制快照时
+            // 必须保留引导标记，否则玩家完成引导后交付章节会把它们静默抹掉。
+            copy.completedGuides = source.completedGuides != null
+                ? (string[])source.completedGuides.Clone() : new string[0];
+            copy.acceptedGuides = source.acceptedGuides != null
+                ? (string[])source.acceptedGuides.Clone() : new string[0];
+            copy.experiencedGuides = source.experiencedGuides != null
+                ? (string[])source.experiencedGuides.Clone() : new string[0];
             return copy;
         }
 

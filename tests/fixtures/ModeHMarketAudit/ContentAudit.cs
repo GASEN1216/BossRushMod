@@ -72,6 +72,7 @@ namespace BossRush
         public List<ModeHActionData> Actions = new List<ModeHActionData>(), PreparationOptions = new List<ModeHActionData>();
         public List<ModeHOptionRow> OptionRows = new List<ModeHOptionRow>();
     }
+    internal sealed class ModeHPreparedFighterStats { internal float Power; }
     internal sealed partial class ModeHRuntimeModule
     {
         private bool _commandsClosed;
@@ -80,6 +81,11 @@ namespace BossRush
         private string _starterDisplayName, _relayDisplayName;
         private int _selectedVirtualStake;
         private ModeHOddsQuote _currentOddsQuote;
+        internal bool PreparedStatsAvailable;
+        private ModeHPreparedFighterStats GetPreparedFighterStats(ModeHProfileDto profile, IList<string> kits)
+        { return PreparedStatsAvailable && profile != null ? new ModeHPreparedFighterStats { Power = 100f } : null; }
+        private ModeHPreparedFighterStats GetPreparedEnemyStats(ModeHMatchPlanDto plan, int index)
+        { return PreparedStatsAvailable ? new ModeHPreparedFighterStats { Power = 100f } : null; }
         internal ModeHRuntimeModule(ModeHSeasonDto season) { _season = season; }
         internal bool Prepare(out string reason) { return EnsurePreparedMatchSelection(out reason); }
         internal ModeHPageContent Page() { return BuildLoadoutEditorPage(); }
@@ -129,7 +135,14 @@ namespace BossRush
                 contract = new ModeHContractDto { contractMainProfileId = "starter", contractSubProfileId = "relay" },
                 currentMatchPlan = plan, virtualStakeCredits = 6 };
             var runtime = new ModeHRuntimeModule(season); string error;
+            Check(!runtime.Prepare(out error) && error == "prepared_stats_missing", "missing outfit stats cannot produce a playable quote");
+            runtime.PreparedStatsAvailable = true;
             Check(runtime.Prepare(out error), "preparation succeeds: " + error);
+            Check(season.matchRoster.starterKitIds.Count == 0 && season.matchRoster.relayKitIds.Count == 0,
+                "random prepared outfit is not overwritten by fixed starter kits");
+            season.matchRoster.starterKitIds.Add("Armor");
+            season.matchRoster.relayKitIds.Add("Armor");
+            Check(runtime.Prepare(out error), "manual overrides can be prepared");
             Check(!season.matchRoster.starterKitIds.Contains("Armor") && season.matchRoster.relayKitIds.Contains("Armor"), "disabled armor removed only from injured fighter");
             Check(runtime.Command != "handoff", "starter never defaults to unreachable command");
             var commandPageOwner = runtime.Page();

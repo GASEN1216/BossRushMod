@@ -98,6 +98,18 @@ namespace BossRush
             input.StarterKitIds = _season.matchRoster.starterKitIds;
             input.RelayKitIds = _season.matchRoster.relayKitIds;
             input.CommandId = commandId;
+            ModeHPreparedFighterStats starterStats = GetPreparedFighterStats(selectedStarter, input.StarterKitIds);
+            ModeHPreparedFighterStats relayStats = GetPreparedFighterStats(selectedRelay, input.RelayKitIds);
+            if (starterStats == null || (selectedRelay != null && relayStats == null))
+            { failureReasonId = "prepared_stats_missing"; return false; }
+            input.PlayerPower = starterStats.Power + (relayStats != null ? relayStats.Power * 0.8f : 0f);
+            for (int i = 0; i < _season.currentMatchPlan.enemyStableKeys.Count; i++)
+            {
+                ModeHPreparedFighterStats enemyStats = GetPreparedEnemyStats(_season.currentMatchPlan, i);
+                if (enemyStats == null) { failureReasonId = "enemy_stats_missing"; return false; }
+                input.EnemyPower += enemyStats.Power;
+            }
+
             _currentOddsQuote = ModeHOddsController.BuildQuote(input, _season.currentMatchPlan);
             if (_currentOddsQuote == null)
             {
@@ -108,25 +120,6 @@ namespace BossRush
             _selectedVirtualStake = ModeHVirtualStakeController.ClampStake(
                 _selectedVirtualStake, _season.virtualStakeCredits);
             return true;
-        }
-        private List<string> BuildDefaultKitSelection(ModeHProfileDto profile)
-        {
-            List<string> selected = new List<string>();
-            if (profile == null) return selected;
-
-            List<ModeHResolvedKit> available = ModeHLoadoutKitRegistry.GetSelectableKits(
-                _season.unlockedKitIds, profile.archetypeId, profile.profileId);
-            HashSet<string> usedSlots = new HashSet<string>(StringComparer.Ordinal);
-            for (int i = 0; i < available.Count && selected.Count < ModeHConfig.MaxKitsPerFighter; i++)
-            {
-                ModeHResolvedKit kit = available[i];
-                if (kit == null || kit.Spec == null || !kit.Available) continue;
-                string slot = kit.Spec.ReplaceSlot != null ? kit.Spec.ReplaceSlot : string.Empty;
-                if (!usedSlots.Add(slot)) continue;
-                selected.Add(kit.Spec.KitId);
-            }
-            selected.Sort(StringComparer.Ordinal);
-            return selected;
         }
         private void SelectVirtualStake(int stake)
         {
@@ -309,6 +302,17 @@ namespace BossRush
 
             _activeFighterHandle = _spawnTransaction.FighterHandles[0];
             _activeFighterHandle.ProfileId = starter.profileId;
+            if (!ApplyPreparedOutfit(_activeFighterHandle, GetPreparedProfileOutfit(starter), starter.injuryId, out failureReasonId))
+            { AbortMatchSpawning(failureReasonId ?? "starter_outfit_failed"); yield break; }
+            for (int i = 0; i < _spawnTransaction.EnemyHandles.Count; i++)
+            {
+                ModeHSpawnHandle enemyHandle = _spawnTransaction.EnemyHandles[i];
+                int index = _season.currentMatchPlan.enemyStableKeys.IndexOf(enemyHandle.StableKey);
+                enemyHandle.ProfileId = "enemy|" + index;
+                if (!ApplyPreparedOutfit(enemyHandle, GetPreparedEnemyOutfit(_season.currentMatchPlan, index), null, out failureReasonId))
+                { AbortMatchSpawning(failureReasonId ?? "enemy_outfit_failed"); yield break; }
+            }
+
             if (!ModeHLoadoutKitApplicator.TryApply(
                     _activeFighterHandle, FilterKitsForInjury(locked.starterKitIds, starter.injuryId),
                     out _activeKitApplication, out failureReasonId))
@@ -656,6 +660,9 @@ namespace BossRush
 
             ModeHSpawnHandle handle = _relaySpawnTransaction.FighterHandles[0];
             handle.ProfileId = relay.profileId;
+            if (!ApplyPreparedOutfit(handle, GetPreparedProfileOutfit(relay), relay.injuryId, out failureReasonId))
+            { AbortMatchSpawning(failureReasonId ?? "relay_outfit_failed"); yield break; }
+
             if (!ModeHLoadoutKitApplicator.TryApply(
                     handle,
                     FilterKitsForInjury(_season.currentLoadoutLock.relayKitIds, relay.injuryId),

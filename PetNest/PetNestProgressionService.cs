@@ -3,7 +3,7 @@
 // ============================================================================
 // 设计稿只写了两句机制（「等级/天赋以 Modifier 形式加 PetCapcity」「满级后成年体不再成长」），
 // 数值由 owner 2026-08-29 拍板：Lv10 封顶、每级 100 exp 线性，
-// 经验来源＝进局存活归巢 +10 / 随从击杀 +2（单局封顶 +30）/ 远征存活按风险档
+// 经验来源＝进局存活归巢 +20 / 随从击杀 +4 起（每 100 MaxHealth 加 1，单局封顶 +80）/ 远征存活按风险档
 // 15 / 30 / 60（PetNestTuning.PetExpExpeditionSurvive{Safe|Rough|Desperate}）。
 // 等级的回报有两条，都走既有管线、都不占新存档字段：
 //   每 3 级给玩家 +1 格捡漏背包（PetNestCompanionRuntime.ResolveCapacityBonus），
@@ -235,11 +235,24 @@ namespace BossRush
                     return;
                 }
 
-                AddExp(pet, PetNestTuning.PetExpPerCompanionKill);
+                // 击杀经验沿用基础值，并按受害者实际 MaxHealth 加成：官方 Boss / 精英
+                // 的预制体属性自然带来更高回报，小怪不会因数量刷满等级。
+                int killExp = ResolveKillExp(health);
+                int remainingCap = PetNestTuning.PetExpCompanionKillRunCap - _runKillExpGranted;
+                if (remainingCap <= 0)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    _countedVictims.Remove(health);
+                    return;
+                }
+                if (killExp > remainingCap) killExp = remainingCap;
+                int oldLevel = pet.level;
+                AddExp(pet, killExp);
                 // 战斗中只入队，物理落盘由协调器在基地统一触发
                 if (PetNestService.StageCommit())
                 {
-                    _runKillExpGranted += PetNestTuning.PetExpPerCompanionKill;
+                    _runKillExpGranted += killExp;
+                    if (pet.level != oldLevel) PetNestCompanionRuntime.RefreshProgression(pet);
                 }
                 else _countedVictims.Remove(health);
             }
@@ -248,6 +261,16 @@ namespace BossRush
                 PetNestPersistenceAccess.AbortTransaction();
                 _countedVictims.Remove(health);
                 ModBehaviour.DevLog("[PetNest] 随从击杀经验结算失败: " + e.Message);
+            }
+        }
+
+        private static int ResolveKillExp(Health victim)
+        {
+            try { return PetNestGrowth.KillExperience(victim != null ? victim.MaxHealth : 0f); }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] 读取击杀目标血量失败，使用基础经验: " + e.Message);
+                return PetNestTuning.PetExpPerCompanionKill;
             }
         }
 

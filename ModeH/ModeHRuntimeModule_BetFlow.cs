@@ -1,11 +1,11 @@
 // ============================================================================
 // ModeHRuntimeModule_BetFlow.cs - 鸭王杯押注的流程接线（2026-09-24 owner 拍板）
 // ============================================================================
-// 账本与赔付口径在 ModeHCashBetService.cs，押背包物品的物品侧在 ModeHItemBetStake.cs；
+// 账本与赔付口径在 ModeHCashBetService.cs，押背包/穿戴物品的物品侧在 ModeHItemBetStake.cs；
 // 这里只把它们接进鸭王杯的页面与状态机：
-//   - 选人页、结算页（下一场）、兜底赔率页的页脚一排「押注」：不押 / 1,000 / 5,000 / 20,000 / 押物品；
-//     押钱选的是「接下来每场押多少」，默认不押，读档回到不押；押物品点开一页选背包里的东西，只管下一场；
-//   - 锁盘成功后扣押金或记下押上的物品（钱不够、东西不在就这一场不押，写一句原因，比赛照打），入场播「开盘」；
+//   - 赛前双方对照页与赔率页下方一排「押注」：不押 / 1,000 / 5,000 / 20,000 / 押物品；
+//     押钱选的是「接下来每场押多少」，默认不押，读档回到不押；押物品可选背包、容器和穿戴物品，只管下一场；
+//   - 锁盘成功后扣押金或记下押上的物品（钱不够、东西不在就这一场不押，写一句原因，比赛照打），开盘动画结束才开战；
 //   - 本场分出胜负时按赔率结算：押物品赢了东西留着、另发奖品（品质跟押上的东西走、总价值跟估值和赔率走），
 //     输了收走押上的东西；
 //   - **押注跟着这一场走**：技术中止、挂起、退游戏重进都不退，重打这一场时沿用、按重打的结果结算
@@ -26,7 +26,7 @@ namespace BossRush
         /// <summary>这一场为什么没押成（钱不够、东西不在、上一笔没结清），结算页写出来。纯运行时。</summary>
         private string _cashBetSkipNote;
         private int _cashBetSkipMatchIndex = -1;
-        /// <summary>押物品选择页开着（盖在选人 / 看盘 / 赔率 / 结算页上，「完成」回原页）。</summary>
+        /// <summary>押物品选择页开着（盖在赛前对照 / 赔率页上，「完成」回原页）。</summary>
         private bool _showItemBetPicker;
 
         #region 页面：押注行
@@ -109,6 +109,12 @@ namespace BossRush
             return amount.ToString("N0", CultureInfo.InvariantCulture);
         }
 
+        internal static string FormatPayoutMultiplier(int odds)
+        {
+            return "x" + (ModeHCashBetService.ComputePayout(1000000L, odds) / 1000000d)
+                .ToString("0.00", CultureInfo.InvariantCulture);
+        }
+
         /// <summary>「5,000」或「3 件物品（估值 12,345）」。</summary>
         private static string DescribeRecordStake(ModeHCashBetRecord record)
         {
@@ -151,10 +157,10 @@ namespace BossRush
             string head = L10n.T("押注：", "Bet: ") + DescribeRecordStake(record) + L10n.T("　", "  ");
             if (record.kind == ModeHCashBetService.KindItems)
             {
-                page.Lines.Add(head + (record.payout > 0
-                    ? L10n.T("赢了，东西留着，另得奖品：", "won: you keep the items, plus prizes: ")
-                        + (string.IsNullOrEmpty(record.prizes) ? L10n.T("（奖品池这会儿取不到，全折成钱）", "(prize pool unavailable, paid in money)") : record.prizes)
-                        + (record.prizeCash > 0 ? L10n.T("，零头折成 ", "; the remainder paid as ") + FormatMoney(record.prizeCash) : string.Empty)
+                if (record.itemSettlement == 1 || record.payout > 0) AppendPrizeIcons(page, record);
+                page.Lines.Add(head + (record.itemSettlement == 1 || record.payout > 0
+                    ? L10n.T("押品保留", "stake kept")
+                        + (record.prizeCash > 0 ? L10n.T("，零头折成 ", "; remainder paid as ") + FormatMoney(record.prizeCash) : string.Empty)
                     : L10n.T("输了，押上的东西归庄家", "lost: the house takes the items")
                         + (record.charged > 0
                             ? L10n.T("；有的找不到了，按估值从余额扣了 " + FormatMoney(record.charged),
@@ -184,7 +190,6 @@ namespace BossRush
         {
             switch (lifecycle)
             {
-                case ModeHLifecycle.Drafting:
                 case ModeHLifecycle.RosterLocked:
                 case ModeHLifecycle.MatchBrief:
                 case ModeHLifecycle.LoadoutEditing:
@@ -204,26 +209,24 @@ namespace BossRush
         private ModeHPageContent BuildItemBetPickerPage()
         {
             ModeHPageContent page = new ModeHPageContent();
-            page.Title = L10n.T("押背包里的物品", "Bet items from your backpack");
+            page.Title = L10n.T("选择押注物品", "Choose your stake");
             List<ModeHItemBetCandidate> candidates = ModeHItemBetStake.ListCandidates();
             int selectedCount = ModeHItemBetStake.SelectedCount;
             if (candidates.Count == 0)
             {
-                page.Body = L10n.T("背包里没有能押的东西（任务物品和不值钱的东西押不了）。",
-                    "Nothing in your backpack can be bet (quest items and worthless items are excluded).");
+                page.Body = L10n.T("身上暂时没有物品。", "You are not carrying any items.");
             }
             else if (selectedCount > 0)
             {
-                page.Body = L10n.T("已押上 " + selectedCount + " 件，估值合计 " + FormatMoney(ModeHItemBetStake.SelectedValue)
-                    + "。赢了东西留着，另得奖品：品质跟押上的东西走，总价值跟估值和赔率走；输了归庄家。",
+                page.Body = L10n.T("已选 " + selectedCount + " 件 · 估值 " + FormatMoney(ModeHItemBetStake.SelectedValue)
+                    + "。赢了保留物品并获奖，输了押品归庄家。",
                     selectedCount + " item(s) picked, worth " + FormatMoney(ModeHItemBetStake.SelectedValue)
-                    + ". Win: keep them plus prizes whose quality follows your items and whose value follows their worth and the odds. Lose: the house takes them.");
+                    + ". Win: keep them and earn prizes. Lose: the house takes your stake.");
             }
             else
             {
-                page.Body = L10n.T("点一件押上，再点取下，押多少都行。估值按商人收购价算；押的东西越好、越值钱，赢了给的奖品品质越高、越值钱。",
-                    "Tap an item to bet it, tap again to take it back; bet as much as you like. Value is what a trader would pay; "
-                    + "the better and pricier your stake, the better and pricier the prizes.");
+                page.Body = L10n.T("背包和穿戴都可选。点选押上，再点取消；容器连同内容一起押。",
+                    "Choose carried or equipped items. Tap to select or clear. Containers include their contents.");
             }
             for (int i = 0; i < candidates.Count; i++)
             {
@@ -231,8 +234,10 @@ namespace BossRush
                 int key = candidate.Key;
                 page.Cards.Add(new ModeHCardData
                 {
-                    Title = candidate.Name + (candidate.Count > 1 ? " ×" + candidate.Count.ToString(CultureInfo.InvariantCulture) : string.Empty),
-                    Subtitle = L10n.T("估值 ", "Worth ") + FormatMoney(candidate.Value)
+                    Title = candidate.Name,
+                    Count = candidate.Count,
+                    Subtitle = (candidate.Equipped ? L10n.T("穿戴 · ", "Equipped · ") : string.Empty)
+                        + L10n.T("估值 ", "Worth ") + FormatMoney(candidate.Value)
                         + (candidate.Contents > 0
                             ? L10n.T("（连里面的 " + candidate.Contents + " 件）", " (with " + candidate.Contents + " inside)")
                             : string.Empty),

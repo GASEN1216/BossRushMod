@@ -9,7 +9,7 @@
 // 旧实现为什么廉价（已整段替换，不再继承 RingParticleEffect）：
 //   - 霜雾 / 腾云驾雾那套配方：0.85 m 的圆形渐变粒子、六个发射器、LateUpdate 每帧再手撒一颗，
 //     密度随帧率走；材质 _TintColor 写成白色，legacy 粒子着色器里等于 alpha 再翻一倍；
-//   - 挂在角色根上、尺寸按成年角色调，而崽的模型只有 0.25–0.4 倍——雾比崽大三倍；
+//   - 挂在角色根上、尺寸按成年角色调，而旧崽的模型只有 0.25–0.4 倍——雾比崽大三倍；
 //   - 炫彩两层只差颜色，十种颜色看起来是同一团雾。
 //
 // 现在的做法（配方在 PetNestAuraRecipes.cs）：
@@ -66,7 +66,7 @@ namespace BossRush
         /// <summary>异色带炫彩时，炫彩层的强度倍率（速率与上限一起乘）。</summary>
         internal const float ChromaUnderShinyIntensity = 0.6f;
 
-        /// <summary>配方按这个身高调参（0.4 倍缩放的官方角色大约这么高）。</summary>
+        /// <summary>配方的历史标尺；所有距离乘实际模型身高 / 此标尺，随成长同步放大。</summary>
         private const float NominalPetHeight = 0.45f;
         private const float MinPetHeight = 0.25f;
         private const float MaxPetHeight = 1.2f;

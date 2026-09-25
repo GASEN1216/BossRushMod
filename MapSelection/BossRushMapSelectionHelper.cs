@@ -620,14 +620,37 @@ namespace BossRush
             }
 
             string displayName = GetBossRushEntryDisplayName(mapConfig);
-            if (!string.IsNullOrEmpty(mapConfig.previewImageName))
+            // 鸭王杯地图选择只保留官方地图卡片与地点名，不再在右侧铺一张模式横幅；
+            // 其它 BossRush 入口继续沿用配置里的预览图。
+            if (pendingEntryKind != BossRushPendingEntryKind.ModeH
+                && !string.IsNullOrEmpty(mapConfig.previewImageName))
             {
                 UpdateEntryThumbnailWithImage(uiEntry, mapConfig.previewImageName);
+            }
+            else if (pendingEntryKind == BossRushPendingEntryKind.ModeH)
+            {
+                ClearEntryFullScreenImage(uiEntry);
             }
 
             string templateName = template != null && template.gameObject != null ? template.gameObject.name : "null";
             string parentName = targetParent != null ? targetParent.name : "null";
             ModBehaviour.DevLog("[BossRush] 创建地图条目: " + displayName + " (sceneID=" + mapConfig.sceneID + ", 模板=" + templateName + ", 容器=" + parentName + ")");
+        }
+
+        /// <summary>清除 MapSelectionEntry 私有横幅字段，避免 Mode H 选择地点时遮住地图列表。</summary>
+        private static void ClearEntryFullScreenImage(MapSelectionEntry entry)
+        {
+            if (entry == null) return;
+            try
+            {
+                FieldInfo imageField = typeof(MapSelectionEntry).GetField(
+                    "fullScreenImage", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (imageField != null) imageField.SetValue(entry, null);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] 清除鸭王杯地图横幅失败: " + e.Message);
+            }
         }
 
         /// <summary>

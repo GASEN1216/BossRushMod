@@ -17,7 +17,7 @@
 //     青 cyan   → 霜花：缓缓飘落旋转的六瓣雪花 + 冰晶闪烁 + 贴地的一层薄寒雾
 //     蓝 blue   → 水泡涟漪：摇摆上浮的气泡 + 脚下扩散的水面涟漪 + 溅起的水珠
 //     紫 purple → 奥术环绕：带拖尾绕身旋转的星芒（一圈在转的法阵感）+ 升起的符光
-//     白 white  → 圣光：缓缓升起、一闪一闪的光点 + 竖直光束 + 偶尔的星芒
+//     白 white  → 珠光：细小光尘 + 缓缓环绕的珍珠晶片 + 偶尔的星芒
 //     黑 black  → 暗影：卷曲升腾的暗色烟缕（浅色地面上清楚）+ 一点淡紫余烬勾边（深色地面上也看得见）
 //     银 silver → 镜屑：身周一闪一闪的细碎亮片 + 旋转环绕的菱形镜屑
 // 异色（最豪华的一档）：脚下两圈反向旋转、轻轻呼吸的金色符文环；从环上升起的金色星光；
@@ -365,26 +365,27 @@ namespace BossRush
             float h = _height;
             float r = _radius;
             float u = _unit;
-            Color light = Color.Lerp(c, new Color(0.85f, 1f, 0.45f), 0.5f);
+            Color light = Color.Lerp(c, new Color(0.74f, 1f, 0.82f), 0.45f);
+            Color jade = new Color(0.10f, 0.48f, 0.27f);
 
             // 叶片 16–22 cm（屏上约 11–15 px）：9–13 cm 时叶脉在 mip 3 以下糊成一个色点（VA-13）
             ParticleSystem leaves = NewEmitter("VerdantLeaves", PetNestAuraTexture.Leaf, Glow.Soft,
                 Scaled(6, f), new Vector3(0f, h + 0.05f * u, 0f), true);
             if (leaves != null)
             {
-                ShapeCircle(leaves, r + 0.06f * u, 1f);
+                ShapeCircle(leaves, r + 0.04f * u, 0.25f);
                 Life(leaves, 1.8f, 2.6f);
                 Size(leaves, 0.16f * u, 0.22f * u);
-                Gravity(leaves, 0.025f);
-                Noise(leaves, 0.18f * u, 0.7f);
-                RandomSpin(leaves, 140f);
+                Velocity(leaves, -0.16f * u, -0.09f * u, 0.35f, 0f);
+                Noise(leaves, 0.045f * u, 0.45f);
+                RandomSpin(leaves, 38f);
                 Tint(leaves, c, light);
-                Fade(leaves, 0.12f, 0.8f);
+                Fade(leaves, light, Color.white, jade, 0.14f, 0.76f);
                 Rate(leaves, 2.2f * f);
                 Prewarm(leaves);
             }
 
-            ParticleSystem spores = NewEmitter("VerdantSpores", PetNestAuraTexture.GlowDot, Glow.Hot,
+            ParticleSystem spores = NewEmitter("VerdantSpores", PetNestAuraTexture.GlowDot, Glow.Bright,
                 Scaled(13, f), new Vector3(0f, 0.05f * h, 0f), true);
             if (spores != null)
             {
@@ -392,8 +393,8 @@ namespace BossRush
                 Velocity(spores, 0.12f * u, 0.22f * u, 0f, 0f);
                 Noise(spores, 0.08f * u, 1.1f);
                 Life(spores, 1.2f, 1.9f);
-                Size(spores, 0.03f * u, 0.048f * u);
-                Tint(spores, new Color(0.8f, 1f, 0.5f), c);
+                Size(spores, 0.022f * u, 0.037f * u);
+                Tint(spores, light, c);
                 Twinkle(spores);
                 Rate(spores, 7f * f);
                 Prewarm(spores);
@@ -460,20 +461,21 @@ namespace BossRush
             float h = _height;
             float r = _radius;
             float u = _unit;
-            Color foam = Color.Lerp(c, new Color(0.6f, 0.9f, 1f), 0.5f);
+            Color foam = Color.Lerp(c, new Color(0.70f, 0.9f, 1f), 0.45f);
+            Color deep = new Color(0.12f, 0.36f, 0.80f);
 
-            ParticleSystem bubbles = NewEmitter("TideBubbles", PetNestAuraTexture.Bubble, Glow.Bright,
+            ParticleSystem bubbles = NewEmitter("TideBubbles", PetNestAuraTexture.Bubble, Glow.Soft,
                 Scaled(11, f), new Vector3(0f, 0.15f * h, 0f), true);
             if (bubbles != null)
             {
                 ShapeCircle(bubbles, 0.8f * r, 1f);
-                Velocity(bubbles, 0.22f * u, 0.36f * u, 0f, 0f);
-                Noise(bubbles, 0.1f * u, 1.5f);
+                Velocity(bubbles, 0.12f * u, 0.22f * u, 0.4f, 0f);
+                Noise(bubbles, 0.035f * u, 0.6f);
                 Life(bubbles, 0.9f, 1.5f);
-                Size(bubbles, 0.05f * u, 0.09f * u);
+                Size(bubbles, 0.09f * u, 0.15f * u);
                 Grow(bubbles, 0.6f, 1.05f);
                 Tint(bubbles, c, foam);
-                Fade(bubbles, 0.1f, 0.86f);
+                Fade(bubbles, foam, Color.white, deep, 0.16f, 0.72f);
                 Rate(bubbles, 6f * f);
                 Prewarm(bubbles);
             }
@@ -486,13 +488,13 @@ namespace BossRush
                 ShapeCircle(ripples, 0.3f * r, 1f);
                 Life(ripples, 0.9f, 1.1f);
                 Size(ripples, 0.12f * u, 0.14f * u);
-                Grow(ripples, 0.8f, 3.2f);
-                Tint(ripples, WithAlpha(foam, 0.7f), WithAlpha(c, 0.6f));
+                Grow(ripples, 1.1f, 4f);
+                Tint(ripples, WithAlpha(foam, 0.42f), WithAlpha(c, 0.32f));
                 Fade(ripples, 0.05f, 0.5f);
                 Rate(ripples, 1.4f * f);
             }
 
-            ParticleSystem drops = NewEmitter("TideDroplets", PetNestAuraTexture.GlowDot, Glow.Hot,
+            ParticleSystem drops = NewEmitter("TideDroplets", PetNestAuraTexture.Star, Glow.Bright,
                 Scaled(6, f), new Vector3(0f, 0.6f * h, 0f), true);
             if (drops != null)
             {
@@ -501,9 +503,9 @@ namespace BossRush
                 Gravity(drops, 0.7f);
                 Life(drops, 0.35f, 0.55f);
                 Size(drops, 0.03f * u, 0.045f * u);
-                Tint(drops, foam, Color.white);
+                Tint(drops, c, foam);
                 Fade(drops, 0.02f, 0.7f);
-                Stretch(drops, 0.06f, 1f);
+                RandomSpin(drops, 25f);
                 Bursts(drops, 0.8f, 2, 3, 0.7f * f + 0.1f);
             }
         }
@@ -553,9 +555,9 @@ namespace BossRush
             float h = _height;
             float r = _radius;
             float u = _unit;
-            Color warm = Color.Lerp(c, new Color(1f, 0.93f, 0.7f), 0.35f);
+            Color pearl = Color.Lerp(c, new Color(0.78f, 0.87f, 1f), 0.32f);
 
-            ParticleSystem motes = NewEmitter("RadiantMotes", PetNestAuraTexture.GlowDot, Glow.Hot,
+            ParticleSystem motes = NewEmitter("RadiantMotes", PetNestAuraTexture.GlowDot, Glow.Bright,
                 Scaled(14, f), new Vector3(0f, 0.05f * h, 0f), true);
             if (motes != null)
             {
@@ -563,28 +565,29 @@ namespace BossRush
                 Velocity(motes, 0.12f * u, 0.22f * u, 0f, 0f);
                 Noise(motes, 0.06f * u, 0.9f);
                 Life(motes, 1.5f, 2.2f);
-                Size(motes, 0.03f * u, 0.05f * u);
-                Tint(motes, c, warm);
+                Size(motes, 0.022f * u, 0.035f * u);
+                Tint(motes, c, pearl);
                 Twinkle(motes);
                 Rate(motes, 7f * f);
                 Prewarm(motes);
             }
 
-            ParticleSystem rays = NewEmitter("RadiantRays", PetNestAuraTexture.GlowDot, Glow.Bright,
-                Scaled(4, f), new Vector3(0f, 0.1f * h, 0f), true);
+            ParticleSystem rays = NewEmitter("RadiantRays", PetNestAuraTexture.Shard, Glow.Soft,
+                Scaled(4, f), new Vector3(0f, 0.5f * h, 0f), false);
             if (rays != null)
             {
-                ShapeCircle(rays, 0.7f * r, 1f);
-                Velocity(rays, 0.5f * u, 0.7f * u, 0f, 0f);
-                Life(rays, 0.5f, 0.8f);
-                Size(rays, 0.03f * u, 0.05f * u);
-                Tint(rays, WithAlpha(c, 0.5f), WithAlpha(warm, 0.45f));
+                ShapeCircle(rays, r + 0.06f * u, 0f);
+                Velocity(rays, 0.035f * u, 0.065f * u, 0.7f, 0f);
+                Life(rays, 1.2f, 1.8f);
+                Size(rays, 0.11f * u, 0.15f * u);
+                Tint(rays, WithAlpha(c, 0.5f), WithAlpha(pearl, 0.45f));
                 Fade(rays, 0.15f, 0.6f);
-                Stretch(rays, 0.35f, 1f);
-                Rate(rays, 2.5f * f);
+                RandomSpin(rays, 24f);
+                Rate(rays, 1.8f * f);
+                Prewarm(rays);
             }
 
-            ParticleSystem glints = NewEmitter("RadiantGlints", PetNestAuraTexture.Star, Glow.Hot,
+            ParticleSystem glints = NewEmitter("RadiantGlints", PetNestAuraTexture.Star, Glow.Bright,
                 Scaled(3, f), new Vector3(0f, 0.55f * h, 0f), false);
             if (glints != null)
             {
@@ -592,9 +595,9 @@ namespace BossRush
                 Life(glints, 0.3f, 0.45f);
                 Size(glints, 0.07f * u, 0.1f * u);
                 RandomSpin(glints, 0f);
-                Tint(glints, Color.white, warm);
+                Tint(glints, Color.white, pearl);
                 Pop(glints);
-                Bursts(glints, 0.5f, 1, 1, 0.6f * f + 0.1f);
+                Bursts(glints, 0.8f, 1, 1, 0.55f * f + 0.1f);
             }
         }
 
@@ -728,9 +731,9 @@ namespace BossRush
                     break;
                 case PetNestAuraElement.Tide:
                     kind = PetNestAuraTexture.Bubble;
-                    level = Glow.Bright;
-                    sizeMin = 0.05f;
-                    sizeMax = 0.08f;
+                    level = Glow.Soft;
+                    sizeMin = 0.09f;
+                    sizeMax = 0.13f;
                     trails = false;
                     break;
                 case PetNestAuraElement.Arcane:
@@ -757,7 +760,12 @@ namespace BossRush
                     spin = true;
                     break;
                 default:
-                    c2 = Color.Lerp(c, new Color(1f, 0.93f, 0.7f), 0.35f);
+                    kind = PetNestAuraTexture.Star;
+                    level = Glow.Bright;
+                    sizeMin = 0.045f;
+                    sizeMax = 0.065f;
+                    trails = false;
+                    c2 = Color.Lerp(c, new Color(0.78f, 0.87f, 1f), 0.32f);
                     break;
             }
 

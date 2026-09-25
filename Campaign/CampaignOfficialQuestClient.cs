@@ -60,6 +60,12 @@ namespace BossRush
                 OfficialQuestBinding binding = BuildBinding(def);
                 if (binding != null) projection.Register(binding);
             }
+            IList<CampaignGuideTable.Definition> guides = CampaignGuideTable.Definitions;
+            for (int i = 0; i < guides.Count; i++)
+            {
+                OfficialQuestBinding binding = BuildGuideBinding(guides[i]);
+                if (binding != null) projection.Register(binding);
+            }
             _registered = true;
         }
 
@@ -106,9 +112,7 @@ namespace BossRush
             }
         }
 
-        public void BeginTick()
-        {
-        }
+        public void BeginTick() { }
 
         public void EndTick(bool dirty)
         {
@@ -182,6 +186,62 @@ namespace BossRush
                 };
             }
             return binding;
+        }
+
+        private OfficialQuestBinding BuildGuideBinding(CampaignGuideTable.Definition guide)
+        {
+            if (guide == null) return null;
+            string id = guide.Id;
+            return new OfficialQuestBinding
+            {
+                QuestId = guide.QuestId,
+                GiverId = CampaignQuestTable.JeffGiverId,
+                ObjectName = "BossRush_Campaign_Guide_Quest_" + guide.QuestId,
+                NameKey = guide.NameKey,
+                DescriptionKey = guide.DescriptionKey,
+                RewardMoney = 0,
+                CanOffer = () => CanWrite() && CampaignGuideTable.InBase()
+                    && !CampaignGuideTable.IsAccepted(id) && !CampaignGuideTable.IsCompleted(id),
+                CanDeliver = () => CanWrite() && CampaignGuideTable.InBase()
+                    && CampaignGuideTable.IsAccepted(id) && CampaignGuideTable.IsExperienced(id) && !CampaignGuideTable.IsCompleted(id),
+                DeliverBlocked = () => L10n.T("先按提示完成一次体验，再回来交付。", "Follow the hint once, then come back to deliver."),
+                IsAccepted = () => CampaignGuideTable.IsAccepted(id) || CampaignGuideTable.IsCompleted(id),
+                IsDelivered = () => CampaignGuideTable.IsCompleted(id),
+                RewardPaid = () => CampaignGuideTable.IsCompleted(id),
+                Accept = (out string message) => AcceptGuide(id, out message),
+                Deliver = (out string message) => DeliverGuide(id, out message),
+                PayReward = null,
+                StateStamp = () => CampaignGuideTable.IsCompleted(id) ? 3
+                    : (CampaignGuideTable.IsExperienced(id) ? 2 : (CampaignGuideTable.IsAccepted(id) ? 1 : 0)),
+                Tasks = new OfficialQuestTaskBinding[]
+                {
+                    new OfficialQuestTaskBinding
+                    {
+                        TaskId = 1,
+                        Done = () => CampaignGuideTable.IsExperienced(id) || CampaignGuideTable.IsCompleted(id),
+                        Description = () => CampaignGuideTable.Describe(guide, CampaignGuideTable.IsExperienced(id)),
+                        ExtraHint = () => L10n.T("先体验一次新内容，完成后回基地找杰夫。", "Try the new content once, then return to Jeff.")
+                    }
+                },
+                Client = this,
+            };
+        }
+
+        private bool AcceptGuide(string guideId, out string message)
+        {
+            message = null;
+            if (CanWrite() && CampaignGuideTable.InBase()
+                && !CampaignGuideTable.IsCompleted(guideId) && CampaignPersistence.TryAdvanceGuide(guideId, 1)) return true;
+            message = L10n.T("回基地找我接取；存档忙时稍后再试。", "Accept this at base; if saving is busy, try again shortly.");
+            return false;
+        }
+
+        private bool DeliverGuide(string guideId, out string message)
+        {
+            message = null;
+            if (CanWrite() && CampaignGuideTable.InBase() && CampaignPersistence.TryAdvanceGuide(guideId, 3)) return true;
+            message = L10n.T("先完成提示里的体验，再回基地找我。", "Complete the trial in the hint, then return to me at base.");
+            return false;
         }
 
         private static CampaignChapterState State(string chapterId)

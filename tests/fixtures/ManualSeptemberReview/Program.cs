@@ -19,6 +19,7 @@ class Program
     static void Delay() { UniTask.Delays.Dequeue().SetResult(true); }
     static void Main(string[] args)
     {
+        CheckPreparedMatch();
         var owner=new ModBehaviour();
         var attacker=new CharacterMainControl { IsMainCharacter=true,Team=Teams.scav };
         var victim=new CharacterMainControl { Team=Teams.scav };
@@ -270,6 +271,37 @@ class Program
             "exception after buffer commit finishes detachment without duplicating item");
         PlayerStorage.ThrowAfterAccept=false;
         PetNestPetProxyBridge.ResetStaticCaches();
+    }
+    static void CheckPreparedMatch()
+    {
+        Check(PreparedOdds.ComputePreparedPowerEdge(100,100)==0,"equal power has neutral edge");
+        int previous=-101;
+        for(int power=1;power<=1000;power++)
+        {
+            int edge=PreparedOdds.ComputePreparedPowerEdge(power,150);
+            Check(edge>=previous,"stronger player never raises odds");previous=edge;
+            Check(edge==-PreparedOdds.ComputePreparedPowerEdge(150,power),"swapping sides reverses edge");
+        }
+        var points=new[]{new Vector3(0,0,0),new Vector3(8,0,0),new Vector3(-8,0,0),new Vector3(0,0,8),new Vector3(0,0,-8),new Vector3(14,0,12)};
+        var source=new ModeHSupportedMap{SceneName="test",SceneId="test",ArenaSpawnPoints=points,RandomCandidatePoints=points};
+        ModeHSupportedMap variant,again;string reason;
+        Check(ModeHMapSupportRegistry.TryCreateRunVariant(source,42,out variant,out reason),"open navigable arena succeeds");
+        Check(ModeHMapSupportRegistry.TryCreateRunVariant(source,42,out again,out reason)&&Same(variant.PlayerSpawnPos,again.PlayerSpawnPos),"same seed restores same arena");
+        Check(Vector3.Distance(variant.SpectatorPos,variant.ArenaCenter)>=15,"spectator follows random arena");
+        Check(variant.StagingPos.y<variant.ArenaCenter.y-200,"staging follows random arena underground");
+        AstarPath.Available=false;
+        Check(!ModeHMapSupportRegistry.TryCreateRunVariant(source,42,out again,out reason)&&again==null,"missing official A-star graph cannot fall back to unchecked points");
+        AstarPath.Available=true;AstarPath.Reachable=false;
+        Check(!ModeHMapSupportRegistry.TryCreateRunVariant(source,42,out again,out reason),"partial paths rejected");
+        AstarPath.Reachable=true;AstarPath.Detour=true;
+        Check(!ModeHMapSupportRegistry.TryCreateRunVariant(source,42,out again,out reason),"long detours rejected");
+        AstarPath.Detour=false;Physics.Blocked=true;
+        Check(!ModeHMapSupportRegistry.TryCreateRunVariant(source,42,out again,out reason),"obstructed landing rejected");
+        Physics.Blocked=false;
+        AstarPath.Scanning=true;
+        Check(!ModeHMapSupportRegistry.TryCreateRunVariant(source,42,out again,out reason), "scanning official graph is not ready for selection");
+        AstarPath.Scanning=false;
+        Check(Pathfinding.ABPath.Claims==0, "all successful and rejected A-star paths release pool claims");
     }
     static Vector3 Point(JsonElement e) { var a=e.EnumerateArray().Select(x=>x.GetSingle()).ToArray();return new Vector3(a[0],a[1],a[2]); }
     static bool Same(Vector3 a,Vector3 b) { return Vector3.Distance(a,b)<.001f; }

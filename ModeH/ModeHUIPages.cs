@@ -67,6 +67,9 @@ namespace BossRush
         public List<ModeHOptionRow> OptionRows = new List<ModeHOptionRow>();
         /// <summary>刚才那一下为什么没成（锁盘被拒、押品被拒……）：红字画在按钮带正上方，就在点的地方（审查 B-11）。</summary>
         public string FailureText;
+        public List<ModeHCardData> PlayerFighters = new List<ModeHCardData>();
+        public List<ModeHCardData> EnemyFighters = new List<ModeHCardData>();
+        public List<ModeHItemIconData> RewardItems = new List<ModeHItemIconData>();
     }
 
     /// <summary>一张卡片的只读数据。</summary>
@@ -105,6 +108,9 @@ namespace BossRush
         public bool IsSelected;
         /// <summary>选中角标的字；空时写「√ 已选」。</summary>
         public string SelectedBadge;
+        public List<ModeHStatData> Stats = new List<ModeHStatData>();
+        public List<ModeHItemIconData> Equipment = new List<ModeHItemIconData>();
+        public int Count = 1;
     }
 
     /// <summary>一个底部动作按钮。</summary>
@@ -190,16 +196,27 @@ namespace BossRush
                     CreateChampionCards(surface, panelSize, content, cursorY);
                     break;
                 case ModeHPage.HallOfFame:
-                case ModeHPage.ItemBet:
                     CreateCardGrid(surface, panelSize, content, cursorY);
+                    break;
+                case ModeHPage.ItemBet:
+                    CreateItemBetGrid(surface, panelSize, content, cursorY);
                     break;
                 case ModeHPage.Odds:
                     if (content.PreparationOptions.Count > 0)
                         CreatePreparationOptions(surface, panelSize, content, cursorY);
+                    else if (content.PlayerFighters.Count > 0)
+                        CreateMatchComparison(surface, panelSize, content, cursorY);
                     else CreateOddsPage(surface, panelSize, content, cursorY);
                     break;
                 case ModeHPage.Brief:
+                    if (content.PlayerFighters.Count > 0)
+                    {
+                        CreateMatchComparison(surface, panelSize, content, cursorY);
+                        break;
+                    }
+                    goto case ModeHPage.Settlement;
                 case ModeHPage.Settlement:
+                    cursorY = CreateRewardIcons(surface, panelSize, content, cursorY);
                     CreateLineList(surface, panelSize, content, cursorY,
                         content.Cards.Count > 0 ? 224f : float.PositiveInfinity);
                     if (content.Cards.Count > 0)
@@ -373,7 +390,7 @@ namespace BossRush
         private static void BuildChampionCard(Transform card, ModeHCardData data, float width, float height, int index)
         {
             float inner = width - ChampionCardPadding * 2f;
-            float portrait = Mathf.Min(inner, height * 0.40f);
+            float portrait = Mathf.Min(inner, height * (data.Stats.Count > 0 ? 0.13f : 0.40f));
             float y = -ChampionCardPadding;
             CreatePortrait(card, data, new Vector2(0f, y), portrait);
             y -= portrait + 10f;
@@ -389,8 +406,12 @@ namespace BossRush
                 ? ChampionCardPadding + ChampionButtonHeight + 8f
                 : ChampionCardPadding;
             float bodyHeight = Mathf.Max(ChampionRoleHeight, height + y - bottom);
-            CreateChampionText(card, "Body", data.Body, 17f, BossRushUIColors.TextSecondary,
+            if (data.Stats.Count > 0)
+                CreateFighterMeasurements(card, data, inner, y, bodyHeight, true);
+            else CreateChampionText(card, "Body", data.Body, 17f, BossRushUIColors.TextSecondary,
                 TextAlignmentOptions.TopLeft, inner, y, bodyHeight);
+
+            if (data.IsSelected) AddSelectedBadge(card, data.SelectedBadge);
 
             if (data.OnClick == null) return;
             UnityEngine.Events.UnityAction pick = new UnityEngine.Events.UnityAction(data.OnClick);
@@ -1092,7 +1113,7 @@ namespace BossRush
         private const float HeroInset = 10f;
         private const int HeroRadius = 10;
         private const float HeroFocusY = 0.44f;
-        private const float EntryHeroHeight = 150f;
+        private const float EntryHeroHeight = 100f;
         private const float ResultHeroHeight = 140f;
         /// <summary>结算页胜负大字：40 号。</summary>
         private const float ResultFontSize = 40f;

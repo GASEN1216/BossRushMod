@@ -26,3 +26,7 @@
 属性挂载为替身，不证明 Unity 界面布局；可见按钮接线由 `BackMountainStructureGuard` 钉住。
 
 2026-09-18 征程增补：目标全部完成的入队失败事实由真实 `CampaignProgressService` 保留；局内追踪 Reset 后仍能重试，同帧重复通知不重复完成，已达标不可被放弃，切槽丢弃旧槽的未入队事实。Boss 清理、面板关闭和对话取消在本夹具中是宿主替身；终章异步与取消生命周期由 `CampaignPlayability` 覆盖。只验证本进程保留并补交事实，不承诺进程在写入失败期间崩溃还能恢复这条未持久化事件。
+
+2026-09-25：链接 CampaignGuideTable 并执行引导三态事务（旧档默认、接取前拒绝、体验不等于交付、写失败不污染当前缓存、克隆保留数组、重读不丢进度）。BackMountain 变身仍是宿主替身，不模拟其外观/物理。
+
+2026-09-25 三形态扩展：后山 UsageBehavior 统一转到即时 MorphService；本夹具的变身宿主只控制成功/拒绝/异常，验证消费与补偿事务，不再将它伪装为 RaidMealService 登记。真实三形态外观、属性、碰撞和清理见 BackMountainMorph。BackMountainLifecycle 仍逐字链接旧 RaidMealService，验证旧档已预备餐食兑现、过区重挂与局末清理。

@@ -298,3 +298,13 @@ CampaignObjectiveCollector 只把正 finalDamage 计为受伤，避免官方零�
 终章生成编号隔离旧成功/旧异常，返回无 Health/已死亡产物也回收。落点复用关卡点和 `SpawnPositionHelper`，召唤石采样至多每秒一次。程序化公告板复用现有 URP shader，召唤石 2026-09-23 起首选 `SodaCraft/SodaCharacter`（浮动自转的晶体、自发光、呼吸点光、余烬，开战时 0.5 秒缩没，表现与退场在 `Campaign/CampaignFinalBossFx.cs`），纹理、sprite、材质与染色工具归 `CampaignAssetCache` 的现有账本；没有另建缓存或调度器。
 
 执行证据：`CampaignPlayability`、`ContentTransactions`；结构接线：`CampaignFlowGuard`。新增内容必须同时维护 JSON、硬编码 fallback 与签名校验，不能承诺只改 JSON 即热扩展。详细范围、失败记录与实机清单见 `docs/reports/reviews/2026-09-22-鸭王征程重设计交付.md`。离线结果不证明实战难度、物理/渲染或帧时间。
+
+### 2026-09-25 新内容 Jeff 入门指引（COMPAT / SCHEMA+ / WIRE+）
+
+`CampaignGuideTable` 定义 590201–590214 十四条一次性引导，覆盖 Mode D–H、丧尸、遗种、随机事件、天空岛 Boss 装备、菜地、陈列、词缀、重铸与日报。仍由同一 CampaignOfficialQuestClient 注册到共享 OfficialQuestProjection，不增加补丁 owner，不改六章任务身份。玩家入口是基地 Jeff 的官方任务页。
+
+权威仍为 CampaignPersistence，acceptedGuides / experiencedGuides / completedGuides 分别表示接取、体验达标和手动交付。全部为可选数组，旧档缺失默认空集；完成观察不能直接投影为已交付。所有写入复制当前 DTO 后经共享 Store 入队，拒写时不提前改活对象。章节补偿式事务 CloneSaveData 同时复制三数组。
+
+只在基地接/交；采集器 CampaignGuideFacts 只处理已接未达标项，每半秒读各系统既有事实。模式任务要求开始真实战斗，鸭王杯通过 IsMatchInProgress 排除选人/押注阶段；装备任务只在基地按真实玩家物品树核对，进过天空岛本身不算拿到装备。词缀必须至少一个非空槽；孵出的旧崽和已建设施允许补认。无全场景扫描、无官方 Quest 存档孤儿 ID。
+
+L1 接线与 L2 存档事务已覆盖；14 条官方页面接取/重载/回基地交付及中英切换仍待 L3。

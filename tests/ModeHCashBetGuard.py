@@ -30,6 +30,7 @@ FILES = {
     "service": "ModeH/ModeHCashBetService.cs",
     "bet": "ModeH/ModeHRuntimeModule_BetFlow.cs",
     "match": "ModeH/ModeHRuntimeModule_MatchFlow.cs",
+    "match_pages": "ModeH/ModeHRuntimeModule_MatchPages.cs",
     "combat": "ModeH/ModeHRuntimeModule_CombatFlow.cs",
     "module": "ModeH/ModeHRuntimeModule.cs",
     "scene": "ModeH/ModeHRuntimeModule_SceneFlow.cs",
@@ -221,10 +222,15 @@ def check(sources):
     need(reset, "ModeHCashBetService.ResetStaticCaches();", "[生命周期] 模块销毁要退订押钱账本的存档事件并清缓存（§4.6）")
     need(reset, "ModeHItemBetStake.ResetStaticCaches();", "[生命周期] 模块销毁要丢掉押物品的引用（§4.6）")
     need(src["scene"], "ReconcileCashBetOnRestore();", "[接线] 开新赛季时对账上一季挂着的押注")
-    need(body(src["match"], "private ModeHPageContent BuildDraftPageContent()"), "AppendCashBetRow(page);",
-         "[页面] 选人页要挂押注行")
-    need(body(src["ui_flow"], "private void DecorateSettlementPage(ModeHPageContent page)"), "AppendCashBetRow(page);",
-         "[页面] 结算页（下一场）要挂押注行")
+    draft_page = body(src["match"], "private ModeHPageContent BuildDraftPageContent()")
+    forbid(draft_page, "AppendCashBetRow(page);",
+           "[页面] 选人页不显示单场押注选择，押注应放在每场开打前页面")
+    need(body(src["match_pages"], "private ModeHPageContent BuildBriefPageContent()"), "AppendCashBetRow(page);",
+         "[页面] 每场开打前的看盘页要挂押注行")
+    need(body(src["match_pages"], "private ModeHPageContent BuildOddsPageContent()"), "AppendCashBetRow(page);",
+         "[页面] 赔率页要挂押注行")
+    forbid(body(src["ui_flow"], "private void DecorateSettlementPage(ModeHPageContent page)"), "AppendCashBetRow(page);",
+           "[页面] 结算页不得提前押尚未显示双方属性的下一场；押注只在赛前页")
     need(lock_bet, "ModeHBetRevealView.Play(amount, odds, false);", "[页面] 押钱成了要播「开盘」揭晓")
     need(body(bet, "private void ReserveItemBet(int odds)"), "ModeHBetRevealView.Play(value, odds, true);",
          "[页面] 押物品成了要播「开盘」揭晓")

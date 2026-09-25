@@ -25,7 +25,7 @@
 //   赢了物品留着，另发奖品：奖品的品质 = 押上物品按估值加权的平均品质，奖品的总价值 = 「赔付 − 估值」，
 //   件数 = 押上的件数（最多 ItemBetMaxPrizeItems），凑不满的价值折成钱；输了收走押上的物品，找不到的按估值从余额扣。
 //   结算先固定计划，再同批保存实物与剩余义务，全部交付后才结清现金与统计；满包保留欠账，每秒最多重试一次。
-//   schemaVersion=2 接受旧 v1，新增字段缺省安全；旧记录没有物品身份时不认领同型号替代品。
+//   schemaVersion=3 接受旧 v1/v2，奖品图标清单缺省为空；旧记录没有物品身份时不认领同型号替代品。
 // ============================================================================
 
 using System;
@@ -55,6 +55,8 @@ namespace BossRush
         public long charged;
         /// <summary>押物品赢了发的奖品（「名字 ×n、名字」，给结算页看）。</summary>
         public string prizes = string.Empty;
+        /// <summary>完整奖品计划，交付完成后仍保留 TypeID 与数量供结算图标展示（v3 可选字段）。</summary>
+        public string prizeItems = string.Empty;
         /// <summary>押物品赢了、奖品凑不满的价值折成的钱。</summary>
         public long prizeCash;
         /// <summary>实物结算进度：0 未准备 / 1 赢 / 2 输。旧档缺省为 0；结果一旦准备就不再重算。</summary>
@@ -255,7 +257,7 @@ namespace BossRush
             List<ModeHItemBetEntry> entries, out string failureReasonId)
         {
             failureReasonId = null;
-            if (value <= 0 || entries == null || entries.Count == 0)
+            if (value < 0 || entries == null || entries.Count == 0)
             {
                 failureReasonId = "item_bet_empty";
                 return false;
@@ -378,7 +380,7 @@ namespace BossRush
             {
                 _store = new BossRushSlotJsonStore<ModeHCashBetRecord>(new BossRushSlotJsonStoreSpec<ModeHCashBetRecord>
                 {
-                    StorageKey = StorageKey, SchemaVersion = 2, LogPrefix = "[ModeH] ", DisplayName = "鸭王杯押钱账本",
+                    StorageKey = StorageKey, SchemaVersion = 3, LogPrefix = "[ModeH] ", DisplayName = "鸭王杯押钱账本",
                     CreateDefault = () => new ModeHCashBetRecord(), Encode = Encode, Decode = Decode,
                     ReadSchemaVersion = ReadCompatibleSchema, NotifySlotChanged = OnSlotChanged,
                     BeforeCollectSaveData = CollectCash,
@@ -418,6 +420,7 @@ namespace BossRush
                 candidate.items = string.Empty;
                 candidate.charged = 0;
                 candidate.prizes = string.Empty;
+                candidate.prizeItems = string.Empty;
                 candidate.prizeCash = 0;
                 candidate.itemSettlement = 0;
                 candidate.pendingItems = string.Empty;
@@ -451,6 +454,7 @@ namespace BossRush
                 candidate.items = items ?? string.Empty;
                 candidate.charged = 0;
                 candidate.prizes = string.Empty;
+                candidate.prizeItems = string.Empty;
                 candidate.prizeCash = 0;
                 candidate.itemSettlement = 0;
                 candidate.pendingItems = string.Empty;
@@ -485,6 +489,7 @@ namespace BossRush
                             ModeHItemBetEntry.PrizeQuality(entries), ModeHItemBetEntry.PrizeSlots(entries),
                             runSeed, previous.runId + "|" + previous.matchIndex, out prizeValue, out summary);
                         plan.pendingItems = ModeHItemBetEntry.Encode(prizes);
+                        plan.prizeItems = plan.pendingItems;
                         plan.prizes = summary;
                         plan.prizeCash = Math.Max(0L, budget - prizeValue);
                     }
@@ -714,14 +719,14 @@ namespace BossRush
             private static int ReadCompatibleSchema(string json)
             {
                 int version = ReadSchema(json);
-                // v1 的新增字段都有安全默认值；只在下次正常写入时升级。高版本仍由共享 store 拒写。
-                return version == 1 ? 2 : version;
+                // 旧版缺奖品图标清单仍可正常结算；只在下次正常写入时升级。
+                return version == 1 || version == 2 ? 3 : version;
             }
 
             private static ModeHCashBetRecord Decode(string json)
             {
                 BossRushJsonValue root; string error;
-                if (!BossRushJsonParser.TryParse(json, out root, out error) || ReadCompatibleSchema(json) != 2) return null;
+                if (!BossRushJsonParser.TryParse(json, out root, out error) || ReadCompatibleSchema(json) != 3) return null;
                 ModeHCashBetRecord record = new ModeHCashBetRecord();
                 string runId;
                 if (root.TryGetString("runId", out runId)) record.runId = runId ?? string.Empty;
@@ -740,6 +745,8 @@ namespace BossRush
                 if (root.TryGetString("pendingItems", out pending)) record.pendingItems = pending ?? string.Empty;
                 string prizes;
                 if (root.TryGetString("prizes", out prizes)) record.prizes = prizes ?? string.Empty;
+                string prizeItems;
+                if (root.TryGetString("prizeItems", out prizeItems)) record.prizeItems = prizeItems ?? string.Empty;
                 if (root.TryGetInt("kind", out value)) record.kind = value;
                 string items;
                 if (root.TryGetString("items", out items)) record.items = items ?? string.Empty;
@@ -777,7 +784,7 @@ namespace BossRush
             private static string Encode(ModeHCashBetRecord record)
             {
                 // 金额与统计写成字符串：共享 JSON 解析器的整数读取是 int，押注统计与金额要 long
-                StringBuilder sb = new StringBuilder("{\"schemaVersion\":2,\"runId\":\"");
+                StringBuilder sb = new StringBuilder("{\"schemaVersion\":3,\"runId\":\"");
                 SimpleJsonHelper.EscapeString(sb, record.runId ?? string.Empty);
                 sb.Append("\",\"matchIndex\":").Append(record.matchIndex.ToString(CultureInfo.InvariantCulture));
                 sb.Append(",\"odds\":").Append(record.odds.ToString(CultureInfo.InvariantCulture));
@@ -791,6 +798,8 @@ namespace BossRush
                 sb.Append("\",\"prizeCash\":\"").Append(record.prizeCash.ToString(CultureInfo.InvariantCulture));
                 sb.Append("\",\"prizes\":\"");
                 SimpleJsonHelper.EscapeString(sb, record.prizes ?? string.Empty);
+                sb.Append("\",\"prizeItems\":\"");
+                SimpleJsonHelper.EscapeString(sb, record.prizeItems ?? string.Empty);
                 sb.Append("\",\"itemSettlement\":").Append(record.itemSettlement.ToString(CultureInfo.InvariantCulture));
                 sb.Append(",\"missingValue\":\"").Append(record.missingValue.ToString(CultureInfo.InvariantCulture));
                 sb.Append("\",\"pendingItems\":\"");

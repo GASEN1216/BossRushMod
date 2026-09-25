@@ -36,6 +36,7 @@ static class Program
     static void Reset()
     {
         if (module != null) module.OnDestroy(); module = null;
+        BackMountainBossMorphService.Reject = BackMountainBossMorphService.Throw = false; BackMountainBossMorphService.Started = 0;
         RaidMealService.ResetStaticCaches(); ShowcaseService.ResetStaticCaches(); GardenSeedInjector.ResetStaticCaches();
         ShowcaseDisplayScanner.ResetStaticCaches(); GardenConstructionSite.ResetStaticCaches(); ShowcaseTrophyCatalog.ResetStaticCaches();
         CampaignBaseObjectives.Providers.Clear(); DialogueManager.IsDialogueActive = false; BossRushUI.Hidden = BossRushUI.Paused = false;
@@ -98,15 +99,15 @@ static class Program
         var use = meal.GetComponent<RaidMealUsageBehavior>();
         foreach (int count in new[] { 1, 20 })
         {
-            meal.StackCount = count; SavesSystem.IsSaving = true;
-            Check(use.CanBeUsed(meal, null), "transient save cannot bypass compensation");
+            meal.StackCount = count; BackMountainBossMorphService.Reject = true;
+            Check(use.CanBeUsed(meal, null), "resource refusal reaches compensation");
             use.Use(meal); meal.StackCount--;
             Check(meal.StackCount == count, "official finish retains failed meal including full stack");
-            SavesSystem.IsSaving = false; use.Use(meal); meal.StackCount--;
+            BackMountainBossMorphService.Reject = false; use.Use(meal); meal.StackCount--;
             Check(meal.StackCount == count - 1, "success consumes exactly one");
         }
         LevelManager.Instance.IsBaseLevel = false;
-        Check(!use.CanBeUsed(meal, null), "cannot eat during raid");
+        Check(use.CanBeUsed(meal, null), "can transform during raid");
     }
     static void MealLifecycle()
     {

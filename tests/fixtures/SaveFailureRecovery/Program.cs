@@ -253,11 +253,11 @@ class Program
             && ModeHItemBetEntry.Decode(ModeHCashBetService.Current.items)[0].Identity == string.Empty,
             "literal v1 save defaults new recovery fields without inventing identities");
         long refund; Check(ModeHCashBetService.TryRefund("old", out refund), "v1 remains writable through compatible upgrade");
-        Check(SavedBet().GetInt("schemaVersion", -1) == 2, "normal write upgrades recovery schema to v2");
-        Reset(); SavesSystem.Cache[BetKey] = "{\"schemaVersion\":3}";
+        Check(SavedBet().GetInt("schemaVersion", -1) == 3, "normal write upgrades recovery schema to v3");
+        Reset(); SavesSystem.Cache[BetKey] = "{\"schemaVersion\":4}";
         string reason;
         Check(!ModeHCashBetService.TryReserve("run", 1, 3, 1000, out reason)
-            && (string)SavesSystem.Cache[BetKey] == "{\"schemaVersion\":3}", "unknown future schema is never overwritten");
+            && (string)SavesSystem.Cache[BetKey] == "{\"schemaVersion\":4}", "unknown future schema is never overwritten");
     }
 
     static int Main()

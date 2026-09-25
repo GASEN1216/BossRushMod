@@ -80,6 +80,9 @@ namespace BossRush
         private TextMeshProUGUI _hudRelay;
         private TextMeshProUGUI _hudEnemies;
         private Button _bellButton;
+        private Button _surrenderButton;
+        internal GameObject HudAnchor { get { return _hudRoot; } }
+        private Button _exitButton;
         private Image _bellStroke;
         private Image _bellBadge;
         private Image _bellBadgeRing;
@@ -143,7 +146,7 @@ namespace BossRush
         /// 创建观战 HUD。挂 `GraphicRaycaster` 让拍铃按钮可点，
         /// 但**不**调用会暂停时间的 `ClaimModalInput`——角色输入由 spectator lease 阻断。
         /// </summary>
-        public void EnsureHud(Action onRingBell)
+        public void EnsureHud(Action onRingBell, Action onSurrender, Action onExit)
         {
             if (_hudRoot != null) return;
 
@@ -187,7 +190,38 @@ namespace BossRush
             _timerTone = -1;
 
             CreateBellButton(onRingBell);
+            CreateSpectatorActions(onSurrender, onExit);
             BossRushUI.PlayOpenAnimation(_hudRoot);
+        }
+
+        /// <summary>观战期右侧的投降与退出：小型次级按钮，不遮挡中央战场。</summary>
+        private void CreateSpectatorActions(Action onSurrender, Action onExit)
+        {
+            float x = -SpectatorActionMargin - SpectatorActionSize.x * 0.5f;
+            _surrenderButton = ZombieModeUIHelper.CreateButton(
+                "ModeH_Surrender", _hudRoot.transform,
+                L10n.T("投降", "Surrender"),
+                new Vector2(1f, 0.5f), new Vector2(x, SpectatorActionGap * 0.5f),
+                SpectatorActionSize, BossRushUIColors.SurfaceRaised, 17f,
+                new Vector2(SpectatorActionSize.x - 16f, SpectatorActionSize.y - 8f),
+                onSurrender != null ? new UnityEngine.Events.UnityAction(onSurrender) : null,
+                onSurrender != null);
+            BossRushUIKit.StyleSecondaryButton(_surrenderButton);
+            Image surrenderImage = _surrenderButton != null ? _surrenderButton.targetGraphic as Image : null;
+            if (surrenderImage != null)
+                BossRushUI.ApplyPanelStroke(surrenderImage, 8, BossRushUISkinPart.Button, BossRushUIColors.DangerText);
+            TextMeshProUGUI surrenderLabel = _surrenderButton != null ? _surrenderButton.GetComponentInChildren<TextMeshProUGUI>() : null;
+            if (surrenderLabel != null) surrenderLabel.color = BossRushUIColors.DangerText;
+
+            _exitButton = ZombieModeUIHelper.CreateButton(
+                "ModeH_SpectatorExit", _hudRoot.transform,
+                L10n.T("退出", "Exit"),
+                new Vector2(1f, 0.5f), new Vector2(x, -SpectatorActionGap * 0.5f),
+                SpectatorActionSize, BossRushUIColors.SurfaceRaised, 17f,
+                new Vector2(SpectatorActionSize.x - 16f, SpectatorActionSize.y - 8f),
+                onExit != null ? new UnityEngine.Events.UnityAction(onExit) : null,
+                onExit != null);
+            BossRushUIKit.StyleSecondaryButton(_exitButton);
         }
 
         private TextMeshProUGUI CreateHudLine(Transform parent, string name, float offsetY, float width)
@@ -584,6 +618,8 @@ namespace BossRush
             _hudRelay = null;
             _hudEnemies = null;
             _bellButton = null;
+            _surrenderButton = null;
+            _exitButton = null;
             _bellStroke = null;
             _bellBadge = null;
             _bellBadgeRing = null;
@@ -1025,6 +1061,10 @@ namespace BossRush
         internal static readonly Vector2 RecoverySize = new Vector2(1280f, 780f);
         /// <summary>HUD 左边距（计时区的顶边距）。</summary>
         internal const float StatusMargin = 24f;
+        /// <summary>观战操作按钮尺寸与右侧间距。</summary>
+        internal static readonly Vector2 SpectatorActionSize = new Vector2(148f, 48f);
+        internal const float SpectatorActionGap = 64f;
+        internal const float SpectatorActionMargin = 28f;
         /// <summary>模态页四周安全边距。</summary>
         internal const float SafeMargin = 48f;
 

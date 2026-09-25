@@ -9,10 +9,11 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
+    "PetNestGrowth", "ModeHPreparedEquipment",
     "AuditCoreParsing", "AuditModeLifecycle", "AuditCombatSeptember", "NpcAuditFixes",
     "ModeHSceneEntry", "ModeHPlayerFlow",
     "ResourceProduction",
-    "ManualSeptemberReview", "GardenHarvestNotice",
+    "ManualSeptemberReview", "GardenHarvestNotice", "BackMountainMorph",
     "AffixSelectionUI", "ManualEquipmentRecovery", "AchievementIcons", "DynamicItemInitialization", "SkyIslandSceneReferenceBridge", "RandomEventsFailure", "RandomEventTempo",
     "RuntimeOwnership", "ContentTransactions", "BackMountainLifecycle", "ModeGCombat", "CampaignPlayability", "BossRewardDelivery", "AffixCombat", "ContentSecondReview", "AirdropSecondReview",
     "HarmonyBindingSecondReview", "ModeHReinforcementSecondReview", "modeh_effects",

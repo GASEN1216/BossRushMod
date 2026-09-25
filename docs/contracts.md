@@ -65,7 +65,7 @@ Mode G 冻结 key：
 
 鸭王征程 / 竞技场后山 冻结 key（M0 起）：
 
-- `BossRush_Campaign_Progress_v1` — 章节进度、契约状态、线索解锁、已授予 token
+- `BossRush_Campaign_Progress_v1` — 章节进度、契约状态、线索解锁、已授予 token；2026-09-25 `SCHEMA+` 追加可选 `acceptedGuides` / `experiencedGuides` / `completedGuides` 一次性新内容引导 ID 数组，分别表示接取 / 已体验 / 已向 Jeff 交付；缺字段按空数组读取，`schemaVersion` 保持 1 以兼容旧档。
 - `BossRush_BackMountain_Showcase_v1`（2026-09-22 `SCHEMA+`：新增可选 `sourceVersion`，缺失 = 1 老登记簿、2 = 官方枪械展示架 / 假人实摆；`schemaVersion` 保持 1，升版会让老档被 `EnsureLoaded` 永久写保护；语义改为「官方陈列柜里现在摆着的 Mod 战利品」，老登记簿只在基地找到官方柜时被覆盖） — 展示柜收藏
 - `BossRush_BackMountain_RaidMeal_v1` — 出击餐待生效登记
 - `BossRush_BackMountain_GardenRatchet_v1` — 槽位级 `bool`，由
@@ -313,7 +313,7 @@ envelope 带 `schemaVersion`、`gameBuildSignature`、`modBuildSignature`、
 
 **押钱 / 押背包物品账本（2026-09-25，COMPAT / SCHEMA+）。** 独立冻结 key
 `BossRush_ModeHCashBet_v1`，用 `Save<string>` 保存 JSON，复用 `BossRushSlotJsonStore` 与
-`BossRushSaveCoordinatorEngine`。当前 `schemaVersion=2`，兼容 v1；更高版本与损坏数据仍进写屏障。
+`BossRushSaveCoordinatorEngine`。当前 `schemaVersion=3`，兼容 v1/v2；新增可选 `prizeItems` 保存完整奖品图标清单，旧档缺省为空。更高版本与损坏数据仍进写屏障。
 v1 新字段缺省为未准备结算、无待交付项、缺失估值 0，下一次正常写入才升级；不迁移或删除旧 key。
 
 - 押品编码追加第六列身份，旧五列可读；每次锁盘给实际押品的 Variables 写
@@ -740,7 +740,7 @@ Forget 观察。失配保留全部原 IL 并警告；切图、换槽、换主角
   | `590013` 归航钟 | 钟守 `5903`（缺席时 `Search_H` 钟庭装置） | `HomecomingQuestAccepted` / `HomecomingQuestDelivered` |
 
   区间 5900–5949 归 BossRush 的自定义给予者（官方 UI 不显示给予者名，`Quest.Compare` 只做整数减法，`GetAllQuestsByQuestGiverID` 只做相等比较）。
-  BossRush 保留任务 ID 段：`590001`–`590099` 天空岛入口、`590011`–`590013` 岛上主线、`590101`–`590106` 鸭王征程六章；下一可用 `590107`。征程六章的奖金由 `CampaignProgressService.TryDeliver` 的补偿式事务发放（官方奖励行只展示 `def.RewardCash`，`PayReward = null`），线索与设施 token 同一事务；官方 UI 没有「放弃任务」入口，`TryAbandonContract` 只留 Dev 演练。
+  BossRush 保留任务 ID 段：`590001`–`590099` 天空岛入口、`590011`–`590013` 岛上主线、`590101`–`590106` 鸭科夫征程六章、`590201`–`590214` 新内容一次性引导；章节下一可用 `590107`。征程六章的奖金由 `CampaignProgressService.TryDeliver` 的补偿式事务发放（官方奖励行只展示 `def.RewardCash`，`PayReward = null`），线索与设施 token 同一事务；引导任务以 `acceptedGuides` / `experiencedGuides` / `completedGuides` 为权威，不发现金，2026-09-25 owner 明确授权挂 Jeff，接取和交付均限基地；官方 UI 没有「放弃任务」入口，`TryAbandonContract` 只留 Dev 演练。
   运行时向官方 `QuestCollection` 注册 prefab，接取、任务日志、目标完成通知与交付按钮均走官方 `QuestManager` / `Quest` / `Task` / `QuestGiverView`；岛上三条只在岛上接、岛上交，返航后仍留在官方任务日志里。
   `BossRush_SkyIsland_Story_v1` 仍是唯一权威；官方 `GenerateSaveData` / `SetupSaveData` 快照会剥离这些 ID 的 active、history、completed、ever-inspected 记录（`Quest.SaveData.questGiverID` 随整条记录一起剥掉，卸载后不留野枚举值），
   加载后从 Mod 事实重建官方投影，保证卸载后 `"Quest"/"Data"` 没有孤儿 ID；`completedQuests` 的残留还会把 `IsQuestAvaliable` 永久钉死，所以四类一个都不能少。

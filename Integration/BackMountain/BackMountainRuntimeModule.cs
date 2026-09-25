@@ -203,6 +203,7 @@ namespace BossRush
             {
                 ShutdownSubscriptions();
                 UnregisterCampaignProviders();
+                BackMountainBossMorphService.Clear();
                 RaidMealService.ResetStaticCaches();
                 GardenSeedInjector.ResetStaticCaches();
                 GardenConstructionSite.ResetStaticCaches();
@@ -323,6 +324,7 @@ namespace BossRush
             try
             {
                 // 关掉开关也要摘掉已生效的加成，否则它们会一直挂在角色身上
+                BackMountainBossMorphService.Clear();
                 RaidMealService.ClearForRun();
                 ShowcaseService.ClearBonuses();
                 ShowcaseDisplayScanner.ClearSubscriptions();
@@ -410,7 +412,8 @@ namespace BossRush
                 if (IsBaseScene())
                 {
                     // 回基地：上一局的出击餐加成随角色一起作废（登记已在进局时消费）
-                    RaidMealService.ClearForRun();
+                    BackMountainBossMorphService.Clear();
+                RaidMealService.ClearForRun();
                 }
                 else
                 {
@@ -441,6 +444,7 @@ namespace BossRush
             try
             {
                 ShowcaseDisplayScanner.ClearSubscriptions();
+                BackMountainBossMorphService.Clear();
                 RaidMealService.ClearForRun();
                 ShowcaseService.NotifySlotChanged();
                 // 展示柜**建筑条目**必须从官方长寿表里摘掉并复位注入闸：

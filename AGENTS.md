@@ -31,7 +31,7 @@ npm --prefix wiki-site run build                               # 改了 wiki-sit
 
 - `compile_official.bat` 自动探测 `GAME_PATH` 与 `WORKSHOP_PATH`，探测不到时显式设置；部署写 `%GAME_PATH%\Duckov_Data\Mods\BossRush\`。游戏开着时 DLL 与 bundle 被锁、copy 静默失败，部署后按实际游戏路径核对 SHA-256。`BOSSRUSH_NO_PAUSE=1` 跳过结尾的 pause。
 - 只想确认某个提交能编译、不碰游戏目录：在临时 worktree 上编，`GAME_PATH` 指向放了 `Duckov_Data\Managed` **拷贝**的临时目录（不要用 junction，PowerShell 5.1 递归删除会顺着删掉游戏 DLL）。
-- 交付部署用正式构建，不把 Dev 构建留在游戏目录。
+- 交付部署用正式构建，不把 Dev 构建留在游戏目录。正式构建前用 `Remove-Item Env:BOSSRUSH_DEV_BUILD -ErrorAction SilentlyContinue` 清除当前进程的变量；脚本按是否定义判定，设成 `0` 也会启用 Dev。
 - 执行回归里依赖官方 DLL 的夹具需要能找到游戏程序集，环境变量见 `tests/AGENTS.md`。
 - 改 `.bat` 不要用 `sed -i`：`.bat` 必须是 CRLF（`.gitattributes`），换成 LF 后 cmd 会报与代码无关的怪错；`compile_official.bat` 的注释用 ASCII 标点（`chcp 65001` 下全角标点后的尾段会被当命令执行）。
 
@@ -159,7 +159,7 @@ python tools/run_guards.py --filter OfficialCompileList
 - 选项先判断再挂，不挂灰掉的占位项；「能不能挂」与「点了会不会被拒」共用同一份判据；同一页超过 3–4 项就分二级。列表页（合成配方、航务委托）例外：上限 6 项，且不带立绘。
   付费服务照主流商店口径（2026-09-14 拍板）：没有要做的不挂；钱不够、还在冷却照挂，按钮上写明价钱或还要等几秒。剧情前置没到、已经做完、纯说明性的占位项一律不挂，「还差什么」进正文。
 - **交互骨架（UI 制作共识，2026-09-24，owner 要求新 UI 一律照做）**：全文 `docs/architecture/UI制作共识.md`。动手前先定页型——单决策页（样板：鸭王杯入场选人页）、列表 + 详情（遗种巢巢页）、分区任务清单（孵化页）、一屏表单（远征页）、确认弹窗，能用官方界面就不自绘。按钮跟着它作用的对象走：单对象操作进该对象的行内或详情底栏，批量「选择」 / 排序进列表头，页面结论放底栏最右，换视图用页签；不要每张卡挂几颗按钮，不要把单对象与全局操作混在一条动作条里，不要依赖看不见的跨页选中。危险操作进确认前是红描边红字、靠左、远离主操作，确认一律走共享的 `BossRushConfirmDialog`（`Common/UI/BossRushConfirmDialog.cs`），不再各写一份。列表行只放识别信息（图、名字、一行状态），说明进详情、「说明」页或空状态。「干净」照鸭王杯选人页：页头只有横幅 / 标题 + 一句引导，一页一个决定，数量有界不滚动，大留白，卡片整张可点，深色底 + 一种强调色，风险披露降成页脚小字，白话文案。交付前按该文第 10 节自检。
-- 叙事走官方对话（`DialogueManager.ShowDialogueSequenceBilingual` / `ShowMultipleChoiceBilingual`，长文案一句一屏），图鉴条目走官方 `NoteIndex`（我们的存档是权威，官方图鉴只做双向镜像）。镜像会随官方存档写进 `NoteIndexData`，2026-09-14 拍板接受为 §10「写入官方存档键」的例外（`docs/contracts.md` §7.1）。自绘面板只在官方给不了的能力上保留，理由写进文件头。跨局、一次性的持久剧情可以在 owner 明确授权后接 `Duckov.Quests`；已授权范围：**天空岛跨局主线**（2026-09-16：Jeff 序章 590001 加岛上三条 590011–590013，给予者是岛上居民，用官方 enum 之外的整数 5901–5903）与**鸭王征程六章**（2026-09-22：590101–590106，给予者官方 Jeff=1）。任务表按子系统各一份（`SkyIslandOfficialQuestTable`、`CampaignQuestTable`），投影核心只有 `Utilities/OfficialQuests/` 一份（唯一实例、四个 Harmony 补丁只装一次，守卫 `OfficialQuestProjectionGuard`），两者都以各自的 Mod 存档为权威，官方 Quest 只做 UI / 事件投影，并在保存快照中过滤自定义 ID。按出击刷新的岛内委托不接跨局 Quest（教程见 `docs/guides/官方任务系统接入教程.md`）。
+- 叙事走官方对话（`DialogueManager.ShowDialogueSequenceBilingual` / `ShowMultipleChoiceBilingual`，长文案一句一屏），图鉴条目走官方 `NoteIndex`（我们的存档是权威，官方图鉴只做双向镜像）。镜像会随官方存档写进 `NoteIndexData`，2026-09-14 拍板接受为 §10「写入官方存档键」的例外（`docs/contracts.md` §7.1）。自绘面板只在官方给不了的能力上保留，理由写进文件头。跨局、一次性的持久剧情可以在 owner 明确授权后接 `Duckov.Quests`；已授权范围：**天空岛跨局主线**（2026-09-16：Jeff 序章 590001 加岛上三条 590011–590013，给予者是岛上居民，用官方 enum 之外的整数 5901–5903）、**鸭王征程六章**（2026-09-22：590101–590106，给予者官方 Jeff=1）与**新内容一次性引导**（2026-09-25：590201–590214，给予者官方 Jeff=1）。任务表分别为 `SkyIslandOfficialQuestTable`、`CampaignQuestTable` 与 `CampaignGuideTable`，后两者共用征程客户端；投影核心只有 `Utilities/OfficialQuests/` 一份（唯一实例、四个 Harmony 补丁只装一次，守卫 `OfficialQuestProjectionGuard`），各客户端都以各自的 Mod 存档为权威，官方 Quest 只做 UI / 事件投影，并在保存快照中过滤自定义 ID。按出击刷新的岛内委托不接跨局 Quest（教程见 `docs/guides/官方任务系统接入教程.md`）。
 
 守卫：`BossRushUISharedLibraryGuard`、`BossRushUISkinLoaderGuard`、`BossRushUIFeelGuard`、`SkyIslandUiContrastGuard`、`SkyIslandOfficialApiReuseGuard`、`SkyIslandChoiceGateGuard`。
 
@@ -275,7 +275,7 @@ F3 玩法验收只在 Dev 构建里存在（`BOSSRUSH_DEV_BUILD=1`），目标�
 
 - 删除、迁移、批量重写玩家数据或存档；存档与配置 schema 的破坏性变更（`SCHEMA-`、`BREAKING`）。
 - TypeID 复用、删除、回填；改已发布内容的 TypeID、存档 key、本地化 key。
-- 写入官方存档键或新增 `Duckov.Quests` 任务（卸载 Mod 后官方会对缺失的 id 报错）。官方图鉴 `NoteIndex` 的镜像已于 2026-09-14 拍板为例外；天空岛跨局主线（Jeff 序章 590001 + 岛上 590011–590013，自定义给予者 5901–5903）已于 2026-09-16 明确授权，鸭王征程六章（590101–590106，给予者官方 Jeff）已于 2026-09-22 明确授权，都采用 Mod 状态为权威并过滤官方 active / history / completed / ever-inspected 快照的方案（共享核心 `Utilities/OfficialQuests/`）。该授权不自动扩展到其它系统的新任务（§4.14）。
+- 写入官方存档键或新增 `Duckov.Quests` 任务（卸载 Mod 后官方会对缺失的 id 报错）。官方图鉴 `NoteIndex` 的镜像已于 2026-09-14 拍板为例外；天空岛跨局主线（Jeff 序章 590001 + 岛上 590011–590013，自定义给予者 5901–5903）已于 2026-09-16 明确授权，鸭王征程六章（590101–590106，给予者官方 Jeff）已于 2026-09-22 明确授权，都采用 Mod 状态为权威并过滤官方 active / history / completed / ever-inspected 快照的方案（共享核心 `Utilities/OfficialQuests/`）。2026-09-25 owner 明确授权新模式与内容的 Jeff 一次性引导（`590201`–`590214`，`CampaignGuideTable`），复用同一投影与快照过滤，Mod 状态为权威。该授权不自动扩展到其它系统的新任务（§4.14）。
 - 公开 API、跨模块契约、外部协议的破坏性变更（`WIRE-`）；密钥、飞书与生图网关等外部服务配置。
 - `git push`、建 PR、创意工坊发布、改部署流水线或全局改造构建脚本。
 - 启动游戏做测试、读写玩家存档目录（实机由 owner 自己做）。

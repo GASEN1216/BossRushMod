@@ -46,7 +46,7 @@ class Program
         ItemAssetsCollection.MissingPrefabId = ItemAssetsCollection.InstantiateCalls = 0;
         PetNestBaseIdleSpawner.DeployNotifications = PetNestCompanionRuntime.Cleanups = 0;
         PetNestUIPages.DepartCardRequests = 0;
-        RaidMealService.Reject = RaidMealService.Throw = false; RaidMealService.Registered = 0;
+        BackMountainBossMorphService.Reject = BackMountainBossMorphService.Throw = false; BackMountainBossMorphService.Started = 0;
         DailyReportPersistence.Current = new DailyReportData { BountyCompleted = true, BountyKindId = "bounty", BountyDayIndex = 1 };
         DailyReportPersistence.ResetStaticCaches();
     }
@@ -299,25 +299,27 @@ class Program
     static void Meals()
     {
         var behavior = new RaidMealUsageBehavior();
+        foreach (int typeId in new[] { BossRushItemIds.DragonFruit, BossRushItemIds.EmberChili, BossRushItemIds.PhantomMushroom })
         foreach (int count in new[] { 1, 20 })
         {
-            Reset(); var item = new Item { TypeID = 500065, StackCount = count };
-            Check(behavior.CanBeUsed(item, null), "meal starts at stack " + count);
-            SavesSystem.IsSaving = true; FinishOfficialUse(behavior, item);
-            Check(item.StackCount == count && RaidMealService.Registered == 0,
-                "saving begins before official second gate; meal preserved at stack " + count);
-            SavesSystem.IsSaving = false; FinishOfficialUse(behavior, item);
-            Check(item.StackCount == count - 1 && RaidMealService.Registered == 1,
-                "meal retry registers once and official framework consumes one at stack " + count);
+            Reset(); var item = new Item { TypeID = typeId, StackCount = count };
+            Check(behavior.CanBeUsed(item, null), "harvest starts at stack " + count);
+            BackMountainBossMorphService.Reject = true; FinishOfficialUse(behavior, item);
+            Check(item.StackCount == count && BackMountainBossMorphService.Started == 0,
+                "resource failure preserves harvest at stack " + count);
+            BackMountainBossMorphService.Reject = false; FinishOfficialUse(behavior, item);
+            Check(item.StackCount == count - 1 && BackMountainBossMorphService.Started == 1,
+                "morph retry starts once and official framework consumes one at stack " + count);
         }
-        Reset(); var failed = new Item { TypeID = 500065 }; RaidMealService.Reject = true;
+        Reset(); var failed = new Item { TypeID = 500065 }; BackMountainBossMorphService.Reject = true;
         FinishOfficialUse(behavior, failed);
-        Check(failed.StackCount == 1, "meal registration refusal is compensated");
-        RaidMealService.Reject = false; RaidMealService.Throw = true; FinishOfficialUse(behavior, failed);
-        Check(failed.StackCount == 1, "meal registration exception is compensated");
+        Check(failed.StackCount == 1, "morph refusal is compensated");
+        BackMountainBossMorphService.Reject = false; BackMountainBossMorphService.Throw = true; FinishOfficialUse(behavior, failed);
+        Check(failed.StackCount == 1, "morph exception is compensated");
         LevelManager.Instance.IsBaseLevel = false;
-        Check(!behavior.CanBeUsed(failed, null), "non-base meal remains unavailable at action start");
+        Check(behavior.CanBeUsed(failed, null), "harvest can be eaten outside base");
     }
+
     static PetNestExpeditionRecord PendingEgg(string id, string petId)
     {
         return new PetNestExpeditionRecord
@@ -414,9 +416,44 @@ class Program
         SavesSystem.IsSaving = false;
         Check(ShowcaseService.ApplyDisplaySnapshot(new[] { 200 }, true) && ShowcaseService.DisplayedCount == 1, "snapshot applies once saving is done");
     }
+    static void CampaignGuideLifecycle()
+    {
+        Reset(); PrepareCampaign();
+        CampaignSaveData old = CampaignPersistence.Current;
+        Check(old.acceptedGuides.Length == 0 && old.experiencedGuides.Length == 0 && old.completedGuides.Length == 0,
+            "old campaign save defaults optional guide fields without changing chapter");
+        const string id = CampaignGuideTable.ModeH;
+        Check(!CampaignPersistence.TryAdvanceGuide(id, 2) && !CampaignPersistence.TryAdvanceGuide(id, 3),
+            "unaccepted guide cannot experience or deliver");
+        Check(!CampaignPersistence.TryAdvanceGuide("unknown-guide", 1), "unknown guide id rejected");
+        Check(CampaignPersistence.TryAdvanceGuide(id, 1), "guide acceptance persisted in campaign store");
+        Check(!CampaignGuideTable.IsCompleted(id) && !CampaignGuideTable.IsExperienced(id), "acceptance does not complete objective");
+        Check(!CampaignPersistence.TryAdvanceGuide(id, 3), "cannot deliver before objective");
+        SetPrivate(typeof(CampaignPersistence), "_storeFaulted", true);
+        Check(!CampaignPersistence.TryAdvanceGuide(id, 2) && !CampaignGuideTable.IsExperienced(id), "failed objective write preserves live facts");
+        SetPrivate(typeof(CampaignPersistence), "_storeFaulted", false);
+        Check(CampaignPersistence.TryAdvanceGuide(id, 2) && CampaignGuideTable.IsExperienced(id)
+            && !CampaignGuideTable.IsCompleted(id), "trial ready remains separate from Jeff delivery");
+        Check(CampaignPersistence.TryAdvanceGuide(id, 2) && CampaignPersistence.Current.experiencedGuides.Length == 1,
+            "repeated observation is idempotent");
+        CampaignSaveData copy = CampaignProgressService.CloneSaveData(CampaignPersistence.Current);
+        copy.acceptedGuides[0] = "changed";
+        Check(CampaignGuideTable.IsAccepted(id), "chapter transaction clone cannot mutate guide source arrays");
+        Check(CampaignPersistence.TryAdvanceGuide(id, 3) && CampaignGuideTable.IsCompleted(id), "Jeff delivery completes guide");
+        Check(CampaignPersistence.FlushPending(), "guide state flush succeeds");
+        CampaignPersistence.ResetStaticCaches();
+        Check(CampaignGuideTable.IsCompleted(id) && CampaignGuideTable.IsAccepted(id) && CampaignGuideTable.IsExperienced(id),
+            "accepted objective and delivered survive save reload");
+        int quest = CampaignGuideTable.FirstQuestId;
+        foreach (CampaignGuideTable.Definition def in CampaignGuideTable.Definitions)
+            Check(def.QuestId == quest++ && !string.IsNullOrEmpty(def.HintCN) && !string.IsNullOrEmpty(def.HintEN),
+                "guide has unique contiguous quest identity and both language instructions " + def.Id);
+        Check(quest - 1 == CampaignGuideTable.LastQuestId, "guide id ledger reaches final task");
+    }
+
     static void Main()
     {
-        CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
+        CampaignGuideLifecycle(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
         ManualChromaAndDurations();
         PityGuarantees();
         PetNestLifecycleRepairs();

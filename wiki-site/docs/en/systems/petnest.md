@@ -61,7 +61,9 @@ If an egg's bloodline can no longer be identified after a game update, the syste
 ### Deployment slot
 - **One cub per run.** Set it as "deployed" in the nest; it does **not** take an inventory slot.
 - The system spawns it beside you on entry. It follows you and finds its own targets.
-- Its damage is a bonus on top. It earns its keep with pressure and finishing blows.
+- Its damage is a bonus on top. It earns its keep with pressure and finishing blows; the source preset's base multiplier keeps bloodlines distinct before the companion safety cap.
+
+The cub only scales its visual root, never its collider. At level 1 its body is **62%** of the official base model (**64%** for Dragon King). Each level adds **5%** of its hatch size, reaching about **90%** of the base model at level 10 (**93%** for Dragon King).
 
 ### Scavenging backpack
 The slots go onto the **official pet backpack**: when the deployed cub joins a BossRush-family raid (the three standard difficulties, From Scratch, Faction War, Blood Hunt), the official pet backpack gets **+4 slots**, with further slots from levels, endowments and the Lazy temperament. Open the pet backpack during the raid to see them; they do not apply in the base or in normal raids, and are removed if the cub is carried off. The nest page shows how many slots the current deployed cub adds.
@@ -127,11 +129,13 @@ Returning empty-handed still awards survival experience; dying awards neither ex
 Cubs grow by working with you, capping at level 10 ("Adult"), after which they stop growing.
 
 - **Experience**:
-  - Deploying a cub and coming home alive: **+10** (a cub carried out wounded still counts; the scar is already the price)
-  - Each of its own kills: **+2**, capped at **+30** per run
+  - Deploying a cub and coming home alive: **+20** (a cub carried out wounded still counts; the scar is already the price)
+  - Each of its own kills: **4**, plus **1 per 100 actual max health** of the victim (up to **16** total per kill), capped at **80** kill experience per run
   - Surviving a Disaster Expedition, by tier: Safe **+15**, Rough **+30**, Desperate **+60**
 - **100 experience per level**, capped at level 10.
-- **Combat growth** — each level above level 1 adds +6% max health and +5% to both gun and melee damage multipliers. At level 10, level bonuses total +54% max health and +45% to each damage multiplier, applied alongside endowments, temperament and scars.
+- **Bloodline baseline** — 20% of the source boss character damage multiplier, bounded to 0.12-0.28. This is a character stat, not a share of final damage or DPS: weapons, fire rate and AI still matter. Custom bloodlines use their boss's base health and signature equipment.
+- **Combat growth** — each level above level 1 adds +6% max health and +8% to both gun and melee damage multipliers. At level 10, level bonuses total +54% max health and +72% to each damage multiplier, applied alongside endowments, temperament and scars.
+- **Mid-raid growth** — a committed level-up immediately updates combat bonuses and visual size, preserving the current health fraction. The nest detail page shows the health, damage and size bonuses provided by levels.
 - **Backpack growth** — +1 pet-backpack slot at levels 3 / 6 / 9, so +3 at max, stacking with the deployment bonus, endowment slots and temperament slots.
 - The index records the highest level reached for each bloodline.
 

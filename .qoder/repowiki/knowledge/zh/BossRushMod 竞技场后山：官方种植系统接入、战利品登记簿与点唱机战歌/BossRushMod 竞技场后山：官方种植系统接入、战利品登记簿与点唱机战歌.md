@@ -1,4 +1,6 @@
 ---
+
+**2026-09-25 现行说明：三种收成均为即时 30 秒 Boss 变身；本文早于该日期的“基地吃、下一局生效”只记录旧设计，现仅用于兼容已预备餐食。当前外观、数值与生命周期见文末三形态小节。**
 kind: gameplay_system
 name: BossRushMod 竞技场后山：官方种植系统接入、战利品登记簿与点唱机战歌
 category: gameplay_system
@@ -22,6 +24,7 @@ source_files:
     - Integration/BackMountain/ShowcaseInteractable.cs
     - Integration/BackMountain/ShowcaseBuildingBuilder.cs
     - Integration/BackMountain/BackMountainRuntimeModule.cs
+    - Integration/BackMountain/BackMountainBossMorphService.cs
     - Config/ConfigBackMountain.cs
     - Localization/BackMountainLocalization.cs
     - tests/BackMountainStructureGuard.py
@@ -69,7 +72,8 @@ source_files:
 | `BackMountainUnlocks.cs` | 解锁读侧：现查征程契约（**不缓存**）、幂等订阅实时事件、UnlockAll 旁路 |
 | `BackMountainItems.cs` | 六件物品（种子×3 + 出击餐×3）定义表、克隆兜底注册、本地化、出击餐使用行为挂载 |
 | `GardenSeedInjector.cs` | 往官方 `CropDatabase.entries/seedInfos` 幂等注入作物与种子；棘轮策略 |
-| `RaidMealService.cs` | 出击餐：食用登记（存档）→ 下局挂 Modifier → 局末 `RemoveAll` |
+| `RaidMealService.cs` | 旧档已预备出击餐的兼容读取、挂 Modifier 与局末清理 |
+| `BackMountainBossMorphService.cs` | 三种新食用统一即时 30 秒 Boss 变身，保留玩家生命、装备与碰撞 |
 | `RaidMealUsageBehavior.cs` | `UsageBehavior` 子类，只在基地可用 |
 | `JukeboxTrackInjector.cs` | 往官方 `BaseBGMSelector.entries` 幂等追加 mod 战歌 |
 | `BackMountainSeedDrops.cs` | `partial ModBehaviour`：三个自定义 Boss 的种子掉落，接在掉落箱协程末尾 |
@@ -101,7 +105,7 @@ source_files:
 **为什么占六个 TypeID 而不是像遗种蛋那样一个号 + KV**：官方按 `SeedInfo.itemTypeID`
 认种子、按 `CropInfo.resultNormal` 发产物，两边都是裸 int，认不了 KV。
 
-### 3.2 出击餐：官方 Buff 不跨场景
+### 3.2 旧档出击餐兼容：官方 Buff 不跨场景
 
 `CharacterBuffManager` 没有存档，角色对象每场景重建，在基地吃下的 Buff 进图就没了。
 所以「出击前吃、下一局生效」必须落存档：食用时登记一条待生效记录，下一局
@@ -155,15 +159,17 @@ source_files:
 | 500062 | DragonSeed | 龙裔之种 | 龙裔遗族掉落（25%），种出龙息果 |
 | 500063 | EmberSeed | 龙皇焰种 | 焚天龙皇掉落（25%），种出焚心椒 |
 | 500064 | PhantomSpore | 幽魂孢子 | 幽灵女巫掉落（25%），种出幽影蘑菇 |
-| 500065 | DragonFruit | 龙息果 | 出击餐：下一局枪械与近战伤害 +10% |
-| 500066 | EmberChili | 焚心椒 | 出击餐：下一局移速 +8%、换弹 +10% |
-| 500067 | PhantomMushroom | 幽影蘑菇 | 出击餐：下一局物理受伤倍率 -10% |
+| 500065 | DragonFruit | 龙息果 | 局内食用：30 秒龙裔 Boss 外观变身，保留玩家血量与装备 |
+| 500066 | EmberChili | 焚心椒 | 即时 30 秒龙皇形态：焰爆、近战强化与火免 |
+| 500067 | PhantomMushroom | 幽影蘑菇 | 即时 30 秒女巫形态：完整幽灵与镰刀、快速镰斩与移速 |
 
 全部走克隆兜底注册（零新增 bundle，照 `RelicEggConfig`），并登记进
 `BossRushDynamicItemRegistry`——漏登记会让重启后它们退化成官方 FallbackItem。
 自定义 cropID 为字符串 `BossRush_Crop_<seedTypeId>`，不占 TypeID 序列。
 
-本轮保留既有数值，具体手感仍需 L3；数值单点在 `RaidMealService` / `ShowcaseService` 的常量。
+三种收成都走 `BackMountainBossMorphService`，模型替换结束后按计时恢复玩家默认模型；变身不改玩家
+装备树和生命，只有旧档已预备餐食走兼容兑现。具体手感仍需 L3；三形态数值在 `BackMountainBossMorphService.TryGetProfile`，
+旧档餐食与展示加成分别仍在 `RaidMealService` / `ShowcaseService` 的常量。
 
 ## 5. 冻结契约
 
@@ -299,3 +305,15 @@ BackMountainSeedDrops 经共享 InteractableLootboxInventoryHelper.TryAddExtraIt
 owner 追加要求收获时提示玩家。`GardenHarvestNoticePatch` 对官方 `Crop.Harvest` 内唯一的 `Cost.Return → Forget` 调用插入任务观察，保持原发货、清格和异常链。正常完成后通过共享 `ShowBigBanner` 显示「已收获 名称 ×数量」与「请到基地仓库查看；满仓部分在马蜂自提点领取」，原版及 Mod 作物都适用。此前「一般没有提示」只描述官方原行为，现在由 Mod 补上。
 
 不订阅 `onHarvest`：该事件在异步发货完成前就可能触发。观察器只快照产品 ID、数量和 owner/主角/槽/场景，完成后现取本地化名称；不再读取已回收的 Crop。发货失败无成功横幅，切图、换槽、卸载及停用后的迟到任务不提示，原 Forget 仍消费异常。单次收获只追加一次提示，数字文案不会被共享横幅的静态去重吞掉。没有逐帧查询或新存档字段。
+
+### 2026-09-25 三形态收成与收获入口（COMPAT / WIRE+）
+
+上文「所有作物进仓」是此前行为。现对官方 Harvest 唯一 Return(false, false, 1, null) 的第二个 bool 插入按作物类型的判断：后山三种产物优先进背包，放不下沿官方仓库/快递；官方原作物不变。Harvest 前缀先验证后山产物注册与 prefab，资源未就绪则保留成熟作物而非清格。发货仍只有一次，原 Forget 消费异常，提示仅在发货完成后出现。临时背包 / 满仓行为仍须实机。
+
+三种收成都由 `BackMountainBossMorphService` 即时变身 30 秒，共用一份角色 owner、计时和退出清理。龙息果为龙裔真实盔甲，枪械/近战 +30%、火免，8 米前方约 70 度龙息，24 火伤/0.8 秒；焚心椒为龙皇真实盔甲，枪械 +15%、近战 +50%、火免，6 米全周焰爆，36 火伤/1.2 秒；幽影蘑菇为 `Cname_Ghost` 模型（只把模型子节点放大到女巫配置的 2 倍）和正式镰刀 500044 纯外观，近战 +40%、跑/走 +20%，5 米前方 120 度镰斩，32 物理伤/0.65 秒。真实射击和近战事件均只排队，下一次 Update 结算；过滤友军、墙遮挡并按 Health 去重。
+
+女巫完整模型与镰刀复用已有资源：镰刀 Handheld prefab 在 inactive staging 下克隆，禁用外观克隆的 MonoBehaviour/Collider，再挂 RightHandSocket，复用 PrepareRuntimeHoldAgentVisual 修复渲染。玩家真实武器继续运行，只隐藏 renderer，临时手势退出后恢复；装备/持握变化事件安排一次延迟刷新。官方 SetCharacterModel/OnMainCharacterSetted 会改写根与受击 CapsuleCollider，特别 Ghost 可能禁用受击，因此切换前快照 enabled/radius/height/center，切换后立即全部还原。无需新资源包，不把 Boss AI 或装备词条绑到玩家。
+
+CharacterItem、装备树、当前和最大生命保持原样。计时用 deltaTime，暂停不扣时；到时、死亡、换主角、过图、停用和卸载均移除临时 modifier 与订阅，正常主角恢复原捏脸。变身期间拒绝重复食用，资源缺失或使用失败补偿官方扣量。旧档已经登记的出击餐仍由 RaidMealService 按原表兑现、结束时清理，新食用不再写这条存档。Jeff 的提示同步为携带收成并在战斗中食用，避免切图立即浪费形态。
+
+两项专属守卫与收获执行夹具覆盖 L1/L2 接线、任务顺序和缺资源保护；变身的模型挂点、龙息物理判定和真实收成数量仍属 L3 待验。
