@@ -7,6 +7,7 @@ from cs_source_util import clean_source
 
 
 FLIGHT = Path("Integration/FlightTotem/FlightTotemBootstrap.cs")
+FLIGHT_FACTORY = Path("Integration/FlightTotem/FlightTotemFactory.cs")
 FLIGHT_BRIDGE = Path("Integration/FlightTotem/FlightTotemRuntimeModuleHostBridge.cs")
 FROST = Path("Integration/Frostmourne/FrostmourneBootstrap.cs")
 FROST_BRIDGE = Path("Integration/Frostmourne/FrostmourneRuntimeModuleHostBridge.cs")
@@ -52,7 +53,7 @@ def ordered(source: str, snippets, label: str) -> int:
 
 
 def main() -> int:
-    paths = (FLIGHT, FLIGHT_BRIDGE, FROST, FROST_BRIDGE, REVERSE, REVERSE_BRIDGE,
+    paths = (FLIGHT, FLIGHT_FACTORY, FLIGHT_BRIDGE, FROST, FROST_BRIDGE, REVERSE, REVERSE_BRIDGE,
              REGISTRATION, EQUIPMENT, SCENE, DEFERRED, DEATH_PATCH, LOOT, LOOT_HOST)
     for path in paths:
         if not path.exists():
@@ -67,7 +68,8 @@ def main() -> int:
     for type_name, module_path, bridge_path, field_name, label in module_specs:
         module_text = source[module_path]
         bridge_text = source[bridge_path]
-        if "internal sealed class " + type_name + " : BossRushRuntimeModuleBase" not in module_text:
+        declaration = "internal sealed " + ("partial " if type_name == "FlightTotemRuntimeModule" else "")
+        if declaration + "class " + type_name + " : BossRushRuntimeModuleBase" not in module_text:
             return fail(label + " bootstrap must be owned by its RuntimeModule")
         if "public partial class ModBehaviour" in module_text:
             return fail(label + " bootstrap source still declares a host partial")
@@ -103,9 +105,28 @@ def main() -> int:
     rc = ordered(flight_initialize, (
         "ensureManagerInstance: () => FlightAbilityManager.EnsureInstance()",
         "ensureEffectManagerInstance: () => FlightTotemEffectManager.EnsureInstance()",
-        "initializeItem: () => _owner.InitializeFlightTotemItemFromRuntimeModule()",
-        "injectLocalization: () => _owner.InjectFlightTotemLocalizationFromRuntimeModule()",
+        "initializeItem: () => InitializeFlightTotemItem()",
+        "injectLocalization: () => InjectFlightTotemLocalization()",
     ), "FlightTotem initialization")
+    if rc:
+        return rc
+    flight_factory = source[FLIGHT_FACTORY]
+    if "internal sealed partial class FlightTotemRuntimeModule" not in flight_factory or \
+            "partial class ModBehaviour" in flight_factory:
+        return fail("FlightTotem item state and configuration must be owned by its RuntimeModule")
+    for field in ("private bool flightTotemInitialized = false;",
+                  "private int flightTotemTypeId = FlightConfig.TotemTypeIdBase;",
+                  "private Item flightTotemPrefab = null;"):
+        if field not in flight_factory or field in source[FLIGHT_BRIDGE]:
+            return fail("FlightTotem factory state has lost its single module owner -> " + field)
+    for obsolete_bridge in ("InitializeFlightTotemItemFromRuntimeModule", "InjectFlightTotemLocalizationFromRuntimeModule"):
+        if obsolete_bridge in flight_text or obsolete_bridge in source[FLIGHT_BRIDGE]:
+            return fail("FlightTotem initialization must not bounce through the host -> " + obsolete_bridge)
+    rc = ordered(method_body(flight_factory, "private void InitializeFlightTotemItem()"), (
+        "if (flightTotemInitialized) return;", "flightTotemInitialized = true;",
+        'EquipmentFactory.LoadBundle("flight_totem")', "flightTotemPrefab = GetLoadedFlightTotem();",
+        "ConfigureFlightTotemEquipment(flightTotemPrefab);",
+    ), "FlightTotem item initialization")
     if rc:
         return rc
     flight_setup = method_body(flight_text, "internal void SetupFlightTotemForScene(Scene scene)")

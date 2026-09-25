@@ -377,7 +377,7 @@ namespace BossRush
 
                 // 生成神秘商人 NPC
                 #pragma warning disable CS4014
-                modeE.SpawnModeEMerchant(modeFSessionToken, relatedScene);
+                merchantRuntime.SpawnModeEMerchant(modeFSessionToken, relatedScene);
                 #pragma warning restore CS4014
                 profiler.Mark("ScheduleMerchant");
 

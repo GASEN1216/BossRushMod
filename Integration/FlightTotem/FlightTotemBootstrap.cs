@@ -14,7 +14,7 @@ using BossRush.Common.Equipment;
 namespace BossRush
 {
     /// <summary>飞行图腾 bootstrap 入口的唯一运行时 owner。</summary>
-    internal sealed class FlightTotemRuntimeModule : BossRushRuntimeModuleBase
+    internal sealed partial class FlightTotemRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour _owner;
 
@@ -41,8 +41,8 @@ namespace BossRush
                 config: FlightConfig.Instance,
                 ensureManagerInstance: () => FlightAbilityManager.EnsureInstance(),
                 ensureEffectManagerInstance: () => FlightTotemEffectManager.EnsureInstance(),
-                initializeItem: () => _owner.InitializeFlightTotemItemFromRuntimeModule(),
-                injectLocalization: () => _owner.InjectFlightTotemLocalizationFromRuntimeModule()
+                initializeItem: () => InitializeFlightTotemItem(),
+                injectLocalization: () => InjectFlightTotemLocalization()
             );
         }
 

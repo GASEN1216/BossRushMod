@@ -2,7 +2,7 @@
 
 2026-09-25 核对：地图 spawner 扫描、10 米间距过滤、阵营分配、扁平化缓存与安全传送已迁入 [ModeEFSpawnPreparation.cs](file://Utilities/ModeEFSpawnPreparation.cs)。宿主创建一个实例并绑定 E/F；`ModeESpawnAllocation.cs` 只保留 Mode E 兼容入口。下文算法描述沿用，方法实体以共享服务为准；分配与场景缓存仍按原参数分别清理。
 
-商人分类实现同日迁入 [ModeEFMerchantCatalog.cs](file://Utilities/ModeEFMerchantCatalog.cs)：E/F、丧尸商店和随机事件共用预设、分类与商品缓存，分帧预热和医疗品排除顺序保留；`ModeEMerchant.cs` 继续负责生成与商店装配。
+商人分类实现同日迁入 [ModeEFMerchantCatalog.cs](file://Utilities/ModeEFMerchantCatalog.cs)：E/F、丧尸商店和随机事件共用预设、分类与商品缓存，分帧预热和医疗品排除顺序保留；[ModeEFMerchantRuntime.cs](file://Utilities/ModeEFMerchantRuntime.cs) 持有共享 NPC/商店列表并负责生成、装配与清理，`ModeEMerchant.cs` 提供贝壳和交互策略，Mode F 直接使用同一实例。
 
 <cite>
 **本文引用的文件**

@@ -17,7 +17,25 @@ namespace BossRush {
   public Task<CharacterMainControl> CreateCharacterAsync(UnityEngine.Vector3 p,UnityEngine.Vector3 d,int s,object a,bool b){Pending=new TaskCompletionSource<CharacterMainControl>();return Pending.Task;}
  }
  public class ModBehaviour { public static void DevLog(string s) {} }
- internal sealed partial class ModeERuntimeModule {
+ internal sealed partial class ModeEFMerchantRuntime {
+  private sealed class SpawnPolicy {
+   public Func<int,int,int,int,bool> IsSpawnSessionValid;
+   public Func<bool> ShellEconomyAvailable, VerifyShellPatchInstallation;
+   public Action<string,bool> SetShellEconomyUnavailable;
+   public Func<int> PlayerFaction;
+   public Action<CharacterMainControl> SetMerchantHealth;
+  }
+  private readonly SpawnPolicy policy;
+  public ModeEFMerchantRuntime(){
+   policy=new SpawnPolicy {
+    IsSpawnSessionValid=IsModeEOrModeFSpawnSessionStillValid,
+    ShellEconomyAvailable=()=>modeEShellEconomyAvailable,
+    VerifyShellPatchInstallation=VerifyModeEShellPatchInstallation,
+    SetShellEconomyUnavailable=SetModeEShellEconomyUnavailable,
+    PlayerFaction=()=>modeEPlayerFaction,
+    SetMerchantHealth=SetModeEMerchantHealth
+   };
+  }
   private CharacterMainControl modeEMerchantNPC;
   private bool modeEShellEconomyAvailable=true;
   private int modeEPlayerFaction=1,session=1;
@@ -38,7 +56,7 @@ namespace BossRush {
   static void Check(bool b,string s){if(!b)throw new Exception(s);Console.WriteLine("PASS "+s);}
   public static async Task Main(){
    foreach(string outcome in new[]{"null","fault","success"}){
-    var owner=new ModeERuntimeModule();var first=owner.Begin(1);var oldRequest=owner.Preset.Pending;
+    var owner=new ModeEFMerchantRuntime();var first=owner.Begin(1);var oldRequest=owner.Preset.Pending;
     var second=owner.Begin(2);var current=new CharacterMainControl();owner.Preset.Pending.SetResult(current);await second;
     var stale=new CharacterMainControl();
     if(outcome=="fault")oldRequest.SetException(new InvalidOperationException("factory failed"));else oldRequest.SetResult(outcome=="null"?null:stale);
@@ -47,7 +65,7 @@ namespace BossRush {
     if(outcome=="success")Check(stale.gameObject.Destroyed,"stale successful merchant recycled");
    }
    foreach(bool fault in new[]{false,true}){
-    var owner=new ModeERuntimeModule();var task=owner.Begin(1);
+    var owner=new ModeEFMerchantRuntime();var task=owner.Begin(1);
     if(fault)owner.Preset.Pending.SetException(new InvalidOperationException());else owner.Preset.Pending.SetResult(null);
     await task;Check(owner.Failures==1,"current merchant failure still closes unavailable economy "+fault);
    }

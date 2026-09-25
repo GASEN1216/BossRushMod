@@ -17,6 +17,7 @@ namespace BossRush
             this.arena = arena;
             this.spawnPreparation = spawnPreparation;
             this.merchantCatalog = merchantCatalog;
+            BindMerchantRuntime();
         }
 
         private void InitializeModeDItemPools() { equipment.InitializeModeDItemPools(equipment.FindTagByName); }

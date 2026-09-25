@@ -8,7 +8,7 @@
 
 2026-09-22 补充：逐字抽取 Mode E 商人、Mode F 补位及金鸭雨现金生产方法，受控工厂覆盖旧请求的 null / fault / success 和后继请求交错；仅将 UniTask 返回类型与 Yield 换为 Task，其余方法体不改。商人构建/失败、补位结案和现金完成回调以可观测替身记录调用，验证旧任务不消费新局计数、不关闭新商人经济、不投放迟到现金。丧尸转存回归直接执行 RuntimeModule 生产方法，覆盖库存顺序、装备槽引用去重、仓库满与缺失时的收件箱回退、Reforge 同步/序列化/保存/销毁顺序、反向回滚、重复调用，以及第二件保存失败时先撤候选副本再返还原物；认证 owner 增加迟到失败与当前失败对照。
 
-2026-09-25 Mode E 提取后，商人生产方法直接在 `ModeERuntimeModule` 替身中执行，`ModBehaviour` 只提供静态日志替身。抽取入口跟随生产方法访问级别，不从兼容转发复制业务逻辑；既有迟到、失败与后继请求交错断言保持。
+2026-09-25 Mode E 提取后，商人生产方法直接在 `ModeEFMerchantRuntime` 替身中执行，`ModBehaviour` 只提供静态日志替身。抽取入口跟随生产方法访问级别，不从兼容转发复制业务逻辑；既有迟到、失败与后继请求交错断言保持。
 
 Mode F 补位提取后，`RespawnModeFBossAsync` 直接在 `ModeFRuntimeModule` 替身中执行，宿主与共享 Mode E 依赖由用例在构造时显式传入。受控工厂、会话检查和登记结果仍用可观测替身；原有旧请求 null/fault/failure/success 不消费新局计数与预留位的断言不变。
 
@@ -24,3 +24,5 @@ EnemyRuntime 子项逐字抽取 `ZombieModeRuntimeModule_EnemyRuntime` 的实例
 
 Zombie HUD 子项逐字抽取 `ZombieModeRuntimeModule_Hud` 的创建、显隐状态更新、销毁、文本缓存与净化点滚动方法。Unity HUD component、宿主和 RunOnly 登记由可观测替身提供；断言覆盖过期 RunId 早返、创建与登记顺序、独立实例缓存、重复显隐/销毁幂等、文本变化才刷新，以及净化点正向累计、插值、稳定停止和减少路径。夹具不创建 TMP / Canvas，不证明真实画面排版与官方 HUD 隐藏的实机效果。
 撤离结算子项逐字抽取 `ZombieModeRuntimeModule_Extraction.cs` 的成功结算、净化点现金结算与官方 `CountDownArea` 成功事件分发方法。可观测替身验证现金失败时保留净化点并恢复撤离选择、现金成功后先通知战役再按停止 / 成功顺序派发并清理、成功回调重复到达不重复结算，以及缺少成功监听时按通知撤离、回基地、清理的顺序兜底；不模拟真实 `EconomyManager`、官方场景加载或 Unity 事件系统。
+
+2026-09-25 共享商人运行时：生产 Spawn 方法用显式装配策略验证迟到请求；另抽取生产 Cleanup 与物品预热方法并链接真实 RunScopedRegistry，覆盖逆序销毁、共享商店列表清理、贝壳策略先退役、重复清理、8 次尝试分帧，以及预热中销毁旧商店、换入后继列表时的快照边界。替身模拟 GameObject 销毁连带组件和 Unity 判空，未验证真实 StockShop 生命周期或实机帧耗。

@@ -20,6 +20,7 @@ namespace BossRush
         private ModeDItemPool equipment;
         private ModeEFSpawnPreparation spawnPreparation;
         private ModeERuntimeModule modeE;
+        private ModeEFMerchantRuntime merchantRuntime;
         private WavesArenaRuntimeModule arena;
         private System.Func<int> getTicketTypeId;
         private System.Func<bool> useRandomBossLoot;
@@ -35,6 +36,7 @@ namespace BossRush
             this.modeD = modeD;
             this.equipment = modeD.ItemPool;
             this.modeE = modeE;
+            this.merchantRuntime = modeE.MerchantRuntime;
             this.arena = arena;
             this.spawnPreparation = spawnPreparation;
             this.getTicketTypeId = getTicketTypeId;

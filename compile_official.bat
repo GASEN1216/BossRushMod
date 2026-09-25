@@ -339,6 +339,7 @@ echo(Integration\BossRushIntegration.cs
 echo(Integration\BossRushIntegrationRuntimeModule.cs
 echo(Integration\BossRushIntegrationRuntimeModule_MapObjects.cs
 echo(Integration\BossRushIntegrationRuntimeModule_DeferredBootstrap.cs
+echo(Integration\BossRushIntegrationRuntimeModule_ContentRegistration.cs
 echo(Integration\BossRushIntegrationRuntimeModule_SceneLifecycle.cs
 echo(Integration\BossRushIntegrationRuntimeModule_WikiBook.cs
 echo(Integration\BossRushIntegrationRuntimeModule_CodexBook.cs
@@ -423,6 +424,7 @@ echo(Utilities\ModBossPresetLookup.cs
 echo(Utilities\SpawnedEnemyActivationHelper.cs
 echo(Utilities\EnemySpawnCore.cs
 echo(Utilities\ModeEFSpawnProfiler.cs
+echo(Utilities\ModeEFMerchantRuntime.cs
 echo(Utilities\ModeEFMerchantCatalog.cs
 echo(Utilities\ModeEFSpawnPreparation.cs
 echo(Utilities\ZombieSpawnSanitizer.cs

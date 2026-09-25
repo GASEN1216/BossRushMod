@@ -135,7 +135,7 @@ def main() -> int:
     if "enemy.Health.Hurt" in mode_e_lifecycle:
         errors.append("Mode E 模式结束不得通过 Hurt 触发死亡副作用")
 
-    merchant = read("ModeE/ModeEMerchant.cs")
+    merchant = read("Utilities/ModeEFMerchantRuntime.cs")
     helper_start = merchant.find("private StockShop CreateConfiguredModeEMerchantShop(")
     helper_end = merchant.find("\n        private ", helper_start + 1)
     helper = merchant[helper_start:helper_end] if helper_start >= 0 and helper_end > helper_start else ""

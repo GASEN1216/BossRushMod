@@ -21,8 +21,18 @@ def main():
         "internal static void ApplyGun(Item item) { ApplyRegisteredConfigurators(gunConfigurators, item, \"gun\"); }"
         "internal static void ApplyGeneral(Item item) { ApplyRegisteredConfigurators(equipmentConfigurators, item, \"general\"); }"
         "}}", encoding="utf-8")
+    registration = (ROOT / "Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs").read_text(encoding="utf-8-sig")
+    start = registration.index("internal void LoadEquipmentContent()")
+    opening = registration.index("{", start)
+    end, depth = opening + 1, 1
+    while depth:
+        depth += (registration[end] == "{") - (registration[end] == "}")
+        end += 1
+    bootstrap = OUT / "ProductionBootstrap.cs"
+    bootstrap.write_text("using System; namespace BossRush { internal sealed class IntegrationRuntimeModule {\n" +
+                         registration[start:end] + "\n}}", encoding="utf-8")
     includes = "".join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />'
-                       for p in (generated, HERE / "Program.cs"))
+                       for p in (generated, bootstrap, HERE / "Program.cs", HERE / "EquipmentBootstrapProbe.cs"))
     project = OUT / "EquipmentConfiguratorRegistry.csproj"
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
                        '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'

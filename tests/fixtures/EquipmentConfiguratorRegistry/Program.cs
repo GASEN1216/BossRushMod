@@ -26,6 +26,7 @@ namespace BossRush
             try { EquipmentFactory.RegisterConfigurator("", (item, name) => { }); }
             catch (ArgumentException) { badKeyRejected = true; }
             Check(badKeyRejected, "empty registration key rejected");
+            EquipmentBootstrapProbe.Run();
             Console.WriteLine("EquipmentConfiguratorRegistry: PASS");
         }
     }

@@ -57,7 +57,7 @@ need("string sceneId = MapPointSceneResolver.Resolve(GroundZeroScene);" in marke
      "仪器地图标记的场景参数必须走共享解析（官方要的是场景表 ID，不是 Unity 场景名）")
 need("return SkyIslandPreludeFlow.DepartureNameKey;" in runtime, "船点交互须使用统一稳定 key")
 need("return SkyIslandPreludeFlow.InstrumentNameKey;" in prelude, "仪器交互须使用统一稳定 key")
-integration = clean_source((ROOT / "Integration/BossRushIntegration_StartAndScene.cs").read_text(encoding="utf-8-sig"))
+integration = clean_source((ROOT / "Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs").read_text(encoding="utf-8-sig"))
 need("SkyIslandPreludeFlow.InjectLocalizations();" in integration, "统一语言注入链必须调用序章入口")
 print("SkyIslandLiveLocalizationGuard: " + ("FAIL\n" + "\n".join(errors) if errors else "PASS"))
 raise SystemExit(bool(errors))

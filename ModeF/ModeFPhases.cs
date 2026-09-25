@@ -692,7 +692,7 @@ namespace BossRush
                 CleanupAllModeFortifications();
 
                 // 清理商人和快递员
-                modeE.CleanupModeEMerchant();
+                merchantRuntime.CleanupModeEMerchant();
                 owner.DestroyCourierNPC();
 
                 // 清理龙息Buff处理器

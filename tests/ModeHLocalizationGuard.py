@@ -5,7 +5,7 @@ ModeHLocalizationGuard — Mode H 本地化守卫（设计提案 §23.2、§26.1
 不变式：
 - 本地化只有一个 source of truth：Localization/ModeHLocalization.cs；
   不得新建 LocalizationKeys.json 或第二套 parser/registry；
-- 接线点是 Integration/BossRushIntegration_StartAndScene.cs 的
+- 接线点是 Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs 的
   InjectLocalization_Extra_Integration()，显式调用 ModeHLocalization.Inject()；
   不得误写到 LocalizationInjector；
 - 所有 BossRush_ModeH_ raw key 都必须有中英注入（一律走 L10n.T(cn, en)）；
@@ -26,7 +26,7 @@ from modeh_guard_util import read_text, strip_cs_comments  # noqa: E402
 MODEH_DIR = os.path.join(REPO_ROOT, "ModeH")
 LOCALIZATION = os.path.join(REPO_ROOT, "Localization", "ModeHLocalization.cs")
 INJECTION_SITE = os.path.join(
-    REPO_ROOT, "Integration", "BossRushIntegration_StartAndScene.cs")
+    REPO_ROOT, "Integration", "BossRushIntegrationRuntimeModule_ContentRegistration.cs")
 LOCALIZATION_INJECTOR = os.path.join(REPO_ROOT, "Localization", "LocalizationInjector.cs")
 
 PREFIX = "BossRush_ModeH_"
@@ -184,11 +184,11 @@ def main():
     # 接线点
     site = read_text(INJECTION_SITE)
     if site is None:
-        errors.append("[Wiring] 缺少 Integration/BossRushIntegration_StartAndScene.cs")
+        errors.append("[Wiring] 缺少 Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs")
     else:
         site_code = strip_cs_comments(site)
         extra = re.search(
-            r"private void InjectLocalization_Extra_Integration\(\)[\s\S]*?\n        \}", site_code)
+            r"internal void InjectLocalization_Extra_Integration\(\)[\s\S]*?\n        \}", site_code)
         if not extra:
             errors.append("[Wiring] 未找到 InjectLocalization_Extra_Integration()")
         elif "ModeHLocalization.Inject();" not in extra.group(0):

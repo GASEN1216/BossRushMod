@@ -14,7 +14,7 @@
 | P5 目录归位 | 未完成 | 注入占位已随簇 1 删除；天空岛迁移待做 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-续接基点：`5e7da9f2`（提取 E/F 共享刷怪准备服务）。2026-09-25 继续完成共用商人目录与缓存，下一动作是商人实体、共享生成与后处理收口，以及簇 2、5、6 余项。最新提交号以 `git log -1` 为准。真实游戏目录尚未部署。
+续接基点：`d50c7e82`（提取共用商人预设与分类目录）。2026-09-25 继续完成共用商人实体、FlightTotem 工厂与内容注册，下一动作是共享生成与后处理、丧尸安全区及装备初始化余项。最新提交号以 `git log -1` 为准。真实游戏目录尚未部署。
 
 ## P0 基线（2026-09-24）
 
@@ -151,6 +151,15 @@
 - L2 全量守卫 680 PASS / 0 FAIL / 0 known-red；全量执行回归 71 PASS / 0 FAIL / 0 SKIP。新回归直接链接生产服务，验证预设回退与已销毁缓存重选、共用缓存、返回副本、排除条件、原分类顺序和逐类预热帧。3 个修改守卫及执行回归共 5 次反向探针按预期转红，SHA-256 原字节恢复；移除分类缓存清理会在重新搜索断言失败。记录在 `Build/migration/merchant-catalog-negative.json`。
 - Windows 正式/Dev 隔离构建均 `Build succeeded!`，72 bundle 清单通过；正式 SHA-256 `26CC5CFC3782FBD4A59091DC09FAAA04652368DAD98612E68080D5CF23CAD931`，Dev SHA-256 `2DCBFA4FEC37831D40EF31EDDAFBF667B7237AD06B837F42D8C3C23DBBD11751`。两者分别与隔离部署副本一致，Dev 标识 absent/present 通过；当前 Build 为 Dev，真实游戏目录未部署。
 - L3 待 owner：打开 E/F 分类商店、丧尸局内商店及随机事件商店，核对武器/医疗品/面部装备分类和商品；关店重开、切图后重开。分类缺失、医疗品排除失效或旧场景预设报错均不合格。本步只完成共享目录，簇 4 仍未闭环。
+
+## 2026-09-25 继续执行：共享商人实体与内容注册（COMPAT）
+
+- `Utilities/ModeEFMerchantRuntime` 接管共用商人 NPC、主交互和商店列表、异步生成、StockShop 身份装配、8 次尝试分帧预热及逆序清理。E 在绑定时提供贝壳事务、会话判据、交互和专属商品策略；F 持有同一实例并直接生成/清理。E 贝壳逻辑访问同一商店列表，退役与销毁顺序不变。7 个生产算法方法对照前一提交，在依赖名与策略调用展开后逐个一致；保留原异步迟到拒绝、场景校验和商店身份回读。
+- FlightTotem 工厂的 3 个状态字段与加载/配置/本地化实体归已有 `FlightTotemRuntimeModule`，删除两个无外部调用方的宿主反调。初始化闩、独立 owner、半秒等待两次与清理位置保持。`BossRushIntegrationRuntimeModule_ContentRegistration` 接管扩展本地化和装备后加载配置，原宿主入口转发，配置器及本地化调用顺序保持；专题和模块索引已更新。
+- 宿主 partial 为 147 文件 / 43,264 行，预算降至实测值并移除 FlightTotemFactory 旧条目；编译清单 1,103 源，导航 47 模块。L2 全量守卫 680 PASS / 0 FAIL / 0 known-red；全量执行回归 72 PASS / 0 FAIL / 0 SKIP。商人回归抽取共享生产 Spawn/Cleanup/预热方法，验证迟到结果、共享列表清理、贝壳先退役、重复清理、对象销毁与预热快照；FlightTotem 新夹具直接链接生产模块和能力 helper；装备加载夹具覆盖重复初始化与各失败边界。
+- 反向验证：共享商人及预算 6 次、FlightTotem 6 次、内容注册 9 个守卫探针加 1 个执行探针，均在预期判据转红并按 SHA-256 原字节恢复。证据分别为 `Build/migration/merchant-runtime-negative.json`、`flight-totem-negative.json`、`integration-content-registration/negative-results.json`。商人反向副本首轮缺 Mode H 夹具数据，在基线阶段失败；补齐 7 份生产 JSON 后重跑通过，没有修改判据。
+- Windows 正式/Dev 隔离构建均 `Build succeeded!`，72 bundle 哈希清单通过。正式 SHA-256 `6942700BD265EFBFFD66CC97D5E7BE53A8325DD37C878539D751EE05D72C6DC5`，Dev SHA-256 `524BAAD88D7744FA8E3FCA8A054A24B2B091676DC5677C8DFCCCA2E94DC467AF`；各自与隔离部署副本一致，14 个 Dev 标识 absent/present 通过。当前 Build 为 Dev，真实游戏目录尚未部署。
+- L3 待 owner：E/F 商人生成期间退出再进入，确认旧商人不会覆盖新局；打开分类商店后退出，观察商人/交互残留与贝壳余额。飞行图腾手持、离手、切图并重新装备，检查能力与资源恢复；切换中英文并打开装备/天空岛物品，检查 raw key。迟到实体残留、重复扣款、能力卸下后继续运行、缺失本地化均不合格。簇 4 共享战斗生成与后处理、簇 5/6 余项及 P5/P6 仍未完成。
 
 ## 未完成项
 

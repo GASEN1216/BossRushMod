@@ -17,10 +17,12 @@ INTEGRATION_PARTS = [
 ]
 ITEM_REGISTRY = Path("Integration/Items/ItemContentRegistry.cs")
 EQUIPMENT_REGISTRY = Path("Integration/EquipmentContentRegistry.cs")
+CONTENT_REGISTRATION = Path("Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs")
 
 ITEM_COMPILE_SOURCES = [
     "Integration/Items/ItemContentRegistry.cs",
     "Integration/EquipmentContentRegistry.cs",
+    "Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs",
 ]
 
 ITEM_REGISTRATION_CALLS = [
@@ -76,6 +78,7 @@ EQUIPMENT_TOKENS = [
     "Item frostmourne = ItemFactory.GetLoadedItem(FrostmourneIds.WeaponTypeId);",
     'FrostmourneWeaponConfig.TryConfigure(frostmourne, "Frostmourne");',
     'DevLog("[BossRush] 绑定霜之哀伤模型失败: " + e.Message);',
+    "NewWeaponRuntime.ConfigureAfterLoad();",
     "InitializeFlightTotemSystem();",
     "InitializeReverseScaleSystem();",
     "InitializeFenHuangHalberdSystem();",
@@ -145,8 +148,24 @@ def main() -> int:
         return fail("ContentRegistryGuard: missing equipment registry file: " + str(EQUIPMENT_REGISTRY))
 
     item_text = ITEM_REGISTRY.read_text(encoding="utf-8", errors="ignore")
-    equipment_text = EQUIPMENT_REGISTRY.read_text(encoding="utf-8", errors="ignore")
+    equipment_host_text = EQUIPMENT_REGISTRY.read_text(encoding="utf-8", errors="ignore")
+    registration_text = CONTENT_REGISTRATION.read_text(encoding="utf-8-sig")
+    equipment_text = registration_text + equipment_host_text
     from cs_source_util import clean_source
+    registration_code = clean_source(registration_text)
+    if "internal sealed partial class IntegrationRuntimeModule" not in registration_code or "partial class ModBehaviour" in registration_code:
+        return fail("ContentRegistryGuard: content registration must belong to IntegrationRuntimeModule")
+    for host_text, method_name in (
+        (Path("Integration/BossRushIntegration_StartAndScene.cs").read_text(encoding="utf-8-sig"), "InjectLocalization_Extra_Integration"),
+        (equipment_host_text, "LoadEquipmentContent"),
+    ):
+        compact = "".join(clean_source(host_text).split())
+        signature = "privatevoid" + method_name + "()"
+        expected = signature + "{bossRushIntegrationRuntime." + method_name + "();}"
+        if expected not in compact:
+            return fail("ContentRegistryGuard: host entry must forward directly to module -> " + method_name)
+        if "internal void " + method_name + "()" not in registration_code:
+            return fail("ContentRegistryGuard: module missing production entry -> " + method_name)
     if "DragonKingBossGunRuntime.WarmupProjectileCache();" in clean_source(equipment_text):
         return fail("ContentRegistryGuard: equipment registry must not start equipment-specific warmup")
 

@@ -246,7 +246,7 @@ def main():
             errors.append("掉落黑名单（JSON）缺 %d" % value)
     if "SkyIslandItems.RegisterConfigurators();" not in read("Integration/Items/ItemContentRegistry.cs"):
         errors.append("物品配置器没有登记（只注册不配置）")
-    if "SkyIslandItems.InjectLocalization();" not in read("Integration/BossRushIntegration_StartAndScene.cs"):
+    if "SkyIslandItems.InjectLocalization();" not in read("Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs"):
         errors.append("物品名没有注入本地化（游戏里会显示 *BossRush_SkyIsland_...*）")
     if "SkyIslandItems.ResetStaticCaches();" not in read("DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs"):
         errors.append("SkyIslandItems 的静态缓存没有生命周期 owner")

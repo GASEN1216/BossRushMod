@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 SUPPORT = (
@@ -48,6 +49,21 @@ def main() -> int:
     merchant = MERCHANT.read_text(encoding="utf-8")
     mode_e = MODE_E.read_text(encoding="utf-8")
     combined = support + "\n" + harmony + "\n" + merchant + "\n" + mode_e
+
+    for path, statement in (
+        ("ModeE/ModeEMerchant.cs", "IsSpawnSessionValid = IsModeEOrModeFSpawnSessionStillValid,"),
+        ("ModeE/ModeEMerchant.cs", "IsModeEActive = () => modeEActive,"),
+        ("ModeE/ModeEMerchant.cs", "IsModeFActive = () => modeEHost.IsModeFActive,"),
+        ("ModeE/ModeEMerchant.cs", "RegisterShellMerchantShop = RegisterModeEShellMerchantShop,"),
+        ("ModeE/ModeEMerchant.cs", "return merchantRuntime.Shops;"),
+        ("ModeE/ModeERuntimeModule.cs", "BindMerchantRuntime();"),
+        ("ModeF/ModeFRuntimeModule.cs", "this.merchantRuntime = modeE.MerchantRuntime;"),
+        ("ModeF/ModeFEntry.cs", "merchantRuntime.SpawnModeEMerchant(modeFSessionToken, relatedScene);"),
+        ("ModeF/ModeFPhases.cs", "merchantRuntime.CleanupModeEMerchant();"),
+        ("Utilities/ModeEFMerchantRuntime.cs", "bool shellMode = policy.IsModeEActive() && !policy.IsModeFActive();"),
+    ):
+        if statement not in clean_source(Path(path).read_text(encoding="utf-8")):
+            return fail("shared merchant policy wiring missing: " + path + " -> " + statement)
 
     required = [
         "internal enum ModeEShellShopPatchDisposition",
