@@ -7,7 +7,7 @@ MODEF_ENTRY = Path("ModeF/ModeFEntry.cs")
 MODEF_RESPAWN = Path("ModeF/ModeFRespawn.cs")
 MODEF_PHASES = Path("ModeF/ModeFPhases.cs")
 MODEE_BATTLE = Path("ModeE/ModeEBattle.cs")
-MOD_BEHAVIOUR = Path("ModBehaviour.cs")
+MOD_BEHAVIOUR = Path("ModeF/ModeFHostBridge.cs")
 PHANTOM = Path("Integration/PhantomWitch/PhantomWitchAbilityController.cs")
 PHANTOM_SCHEDULER = Path("Integration/PhantomWitch/PhantomWitchAbilityController_PackageScheduler.cs")
 

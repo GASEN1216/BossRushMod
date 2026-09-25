@@ -4,7 +4,7 @@
 
 直接链接生产章节目录、实际 `Chapters.json`、共享 JSON 解析器、目标追踪器、死亡/受伤采集器、模式桥与 NoteIndex 桥。覆盖六章完成路径、无伤边界、近战契约的开局工具判据、友军/中立与非玩家击杀过滤、暂停、计数封顶、待交付不重新武装、死亡/换局复位和图鉴双向修复。零伤害用例依据官方 `Health.Hurt`：即使 `finalDamage` 为零，仍发出 `Health.OnHurt`。
 
-Mode F 闩回归直接链接生产 `ModeFRuntimeModule` 与战役模式桥，验证印记先写后删、纯查询不消费、victim 身份匹配和一次性消费；模块宿主服务由替身提供。
+Mode F 闩回归直接链接生产 `ModeFRuntimeModule_BountyLatch.cs` 与战役模式桥，验证印记先写后删、纯查询不消费、victim 身份匹配和一次性消费；场景、装备和 HUD 等模块依赖不进入该夹具。
 
 每次运行从当前 `CampaignFinalBoss.cs` 抽取门禁、独白到生成、生成、死亡和清理方法，从 `CampaignDialoguePlayer.cs` 抽取取消方法，仅把异步载体 UniTask 换成 Task。覆盖取消独白不生成、后继对话使用新 token、工厂迟到成功回收、旧请求异常不取消新请求、让路退订、场景销毁后可重打、胜利只完成一次。对象替身模拟 Unity 已销毁等于 null 和 GameObject 销毁连带组件；测试必须经过这条销毁路径。
 

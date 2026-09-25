@@ -100,7 +100,7 @@ def main() -> int:
     if result is not None:
         return result
 
-    scan_modef = extract_method_body(modef_ui, "private void ScanAndCacheModeFHealthBars")
+    scan_modef = extract_method_body(modef_ui, "internal void ScanAndCacheModeFHealthBars")
     if scan_modef is None:
         return fail("missing ScanAndCacheModeFHealthBars")
     result = forbid(scan_modef, "modeFHealthBarCacheByTargetId.Clear();", "Mode F scan fallback must not clear the registration cache")

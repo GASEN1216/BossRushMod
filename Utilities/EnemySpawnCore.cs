@@ -635,7 +635,7 @@ namespace BossRush
         /// </summary>
         internal static Func<EnemyPresetInfo, Vector3, object, bool, UniTask<ManagedBossPrepareResult>> ManagedBossSpawnDispatcher;
 
-        private async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync(
+        internal async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync(
             EnemyPresetInfo preset,
             Vector3 position,
             bool isBoss,

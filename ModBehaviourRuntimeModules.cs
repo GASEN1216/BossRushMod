@@ -28,7 +28,9 @@ namespace BossRush
             BindModeDItemPoolQueries();
             modeERuntime.BindSharedServices(modeDRuntime, wavesArenaRuntime);
             runtimeModuleHost.Register(modeERuntime);
-            modeFRuntime = new ModeFRuntimeModule();
+            modeFRuntime.BindSharedServices(modeDRuntime, modeERuntime, wavesArenaRuntime,
+                GetBossRushTicketTypeId, () => config != null && config.enableRandomBossLoot,
+                () => IsZombieModeActive, () => zombieModeRunState.RunId, RegisterZombieModeRunOnlyObject);
             runtimeModuleHost.Register(modeFRuntime);
             runtimeModuleHost.Register(new ZombieModeRuntimeModule());
             runtimeModuleHost.Register(new ModeGRuntimeModule());
@@ -103,7 +105,7 @@ namespace BossRush
         private readonly ModeDRuntimeModule modeDRuntime = new ModeDRuntimeModule();
         private WavesArenaRuntimeModule wavesArenaRuntime;
         private CourierNpcRuntimeModule courierNpcRuntime;
-        private ModeFRuntimeModule modeFRuntime;
+        private readonly ModeFRuntimeModule modeFRuntime = new ModeFRuntimeModule();
         private IntegrationRuntimeModule bossRushIntegrationRuntime;
 
         /// <summary>Mode F 当前注册的运行时实例。</summary>

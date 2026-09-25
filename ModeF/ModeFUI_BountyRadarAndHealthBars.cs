@@ -10,7 +10,7 @@ using Duckov.UI.DialogueBubbles;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         private void MarkModeFPlayerNameTagDirty()
         {
@@ -88,7 +88,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] EnsureModeFBossNameTag failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] EnsureModeFBossNameTag failed: " + e.Message);
             }
         }
 
@@ -196,11 +196,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] RefreshModeFActorNameText failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] RefreshModeFActorNameText failed: " + e.Message);
             }
         }
 
-        private HealthBar FindModeFHealthBar(Health health)
+        internal HealthBar FindModeFHealthBar(Health health)
         {
             if (health == null)
             {
@@ -924,7 +924,7 @@ namespace BossRush
             ForceRefreshModeFHealthBarName(healthBar);
         }
 
-        private HealthBar FindModeFPlayerHealthBar(Health health)
+        internal HealthBar FindModeFPlayerHealthBar(Health health)
         {
             if (health == null)
             {

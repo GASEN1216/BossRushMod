@@ -10,6 +10,8 @@
 
 2026-09-25 Mode E 提取后，商人生产方法直接在 `ModeERuntimeModule` 替身中执行，`ModBehaviour` 只提供静态日志替身。抽取入口跟随生产方法访问级别，不从兼容转发复制业务逻辑；既有迟到、失败与后继请求交错断言保持。
 
+Mode F 补位提取后，`RespawnModeFBossAsync` 直接在 `ModeFRuntimeModule` 替身中执行，宿主与共享 Mode E 依赖由用例在构造时显式传入。受控工厂、会话检查和登记结果仍用可观测替身；原有旧请求 null/fault/failure/success 不消费新局计数与预留位的断言不变。
+
 补查的 Mode D 直接链接真实 `ModeDRuntimeModule` 与 `ModeDRuntimeModule_WaveResolution`，验证退出、重开同号波次、同场景重载和销毁均失效旧闭包，以及迟到结案拒绝、等齐生成结果、活敌阻止结算、死敌清除与重复结算门。Tick 和完成效果由可观测替身提供；实际队列消费点由 `ModeDAsyncOwnerGuard` 检查。丧尸拍照直接抽取统一暂停门及暂停时钟方法，以基本 Time/CameraMode 替身验证拍照暂停与恢复，不模拟实际阶段 UI 或敌人 AI。
 
 交叉复核另抽取 F3 的 TryReclaimAutotestItems / ClearAutotestSnapshotKey；物品收回器和计数器是可观测替身，仅验证门控顺序、短缺契约与失败留键，不声称测试了真实 Inventory/ES3。里程碑直接链接完整服务，核对 1–16 阶累计完整标价总额、故障重试、每帧/每阶实体预算，另验 15/16/32/33 阶数学边界及宿主 long 饱和。

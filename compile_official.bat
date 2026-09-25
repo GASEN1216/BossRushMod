@@ -541,6 +541,8 @@ echo(ModeE\ModeERespawnItems.cs
 echo(ModeE\RespawnItemUsage.cs
 echo(ModeF\ModeFModels.cs
 echo(ModeF\ModeFRuntimeModule.cs
+echo(ModeF\ModeFRuntimeModule_BountyLatch.cs
+echo(ModeF\ModeFHostBridge.cs
 echo(ModeF\ModeFRuntimeHooks.cs
 echo(ModeF\ModeFEntry.cs
 echo(ModeF\ModeFPhases.cs

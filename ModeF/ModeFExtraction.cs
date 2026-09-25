@@ -8,7 +8,7 @@ using ItemStatsSystem;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         #region Mode F 撤离与结算
 
@@ -44,11 +44,11 @@ namespace BossRush
                     modeFExtractionMapMarker.Color = BossRushUIColors.SuccessText;   // 旧值 (0.2,1,0.2) 荧光绿，和官方地图标记不是一套（UB-25）
                     modeFExtractionMapMarker.ScaleFactor = 1.5f;
                 }
-                DevLog("[ModeF] 撤离点地图标记已创建: " + position);
+                ModBehaviour.DevLog("[ModeF] 撤离点地图标记已创建: " + position);
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] 创建撤离点地图标记失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] 创建撤离点地图标记失败: " + e.Message);
             }
         }
 
@@ -81,12 +81,12 @@ namespace BossRush
                     out usedExitCreatorSnapshot,
                     out _);
 
-                DevLog("[ModeF] 已清除 " + cleared + " 个原始撤离点"
+                ModBehaviour.DevLog("[ModeF] 已清除 " + cleared + " 个原始撤离点"
                     + " (source=" + (usedExitCreatorSnapshot ? "ExitCreator" : "fallback") + ")");
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] ClearOriginalExtractionPoints 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] ClearOriginalExtractionPoints 失败: " + e.Message);
             }
         }
 
@@ -97,11 +97,11 @@ namespace BossRush
                 int restored = OriginalExtractionPointIsolationHelper.Restore(
                     modeFDisabledOriginalExtractionObjects,
                     modeFOriginalExtractionActiveStateByObjectId);
-                DevLog("[ModeF] 已恢复 " + restored + " 个原始撤离点");
+                ModBehaviour.DevLog("[ModeF] 已恢复 " + restored + " 个原始撤离点");
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] RestoreOriginalExtractionPoints 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] RestoreOriginalExtractionPoints 失败: " + e.Message);
             }
         }
 
@@ -113,13 +113,13 @@ namespace BossRush
         /// <summary>
         /// 生成最终撤离点
         /// </summary>
-        private void SpawnFinalExtractionPoint()
+        internal void SpawnFinalExtractionPoint()
         {
             try
             {
                 if (modeFState.ExtractionPointSpawned)
                 {
-                    DevLog("[ModeF] 撤离点已生成，跳过");
+                    ModBehaviour.DevLog("[ModeF] 撤离点已生成，跳过");
                     return;
                 }
 
@@ -152,7 +152,7 @@ namespace BossRush
                 ModeExtractionPointResult result = ModeExtractionPointFactory.CreateExtractionPoint(request);
                 if (result == null || result.GameObject == null || result.CountDownArea == null)
                 {
-                    DevLog("[ModeF] [ERROR] 最终撤离点创建失败");
+                    ModBehaviour.DevLog("[ModeF] [ERROR] 最终撤离点创建失败");
                     return;
                 }
 
@@ -163,11 +163,11 @@ namespace BossRush
                 // 在地图上创建撤离点标记
                 CreateModeFExtractionMapMarker(extractionPos);
 
-                DevLog("[ModeF] 最终撤离点已生成: " + extractionPos);
+                ModBehaviour.DevLog("[ModeF] 最终撤离点已生成: " + extractionPos);
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] SpawnFinalExtractionPoint 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] SpawnFinalExtractionPoint 失败: " + e.Message);
             }
         }
 
@@ -197,7 +197,7 @@ namespace BossRush
         internal bool DebugTriggerModeFExtractionForValidation(out string reason)
         {
             reason = null;
-            if (!DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
+            if (!ModBehaviour.DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
             if (!modeFActive || modeFState == null || !modeFState.IsActive)
             {
                 reason = "mode_f_not_active";
@@ -230,7 +230,7 @@ namespace BossRush
         /// 撤离成功处理。
         /// 当前悬赏奖励逐件直接复用共享高品质奖励池，并写入寄存/缓冲，不额外追加 Mode F 专属的 >=6 二次过滤。
         /// </summary>
-        private void OnModeFExtractionSuccess()
+        internal void OnModeFExtractionSuccess()
         {
             bool exitAttempted = false;
             try
@@ -242,14 +242,14 @@ namespace BossRush
 
                 int marks = modeFState.PlayerBountyMarks;
                 int storedUtilityRewards = DeliverModeFPendingUtilityRewardsToStorage();
-                DevLog("[ModeF] 撤离成功！玩家印记: " + marks);
+                ModBehaviour.DevLog("[ModeF] 撤离成功！玩家印记: " + marks);
 
                 // 通知战役契约（未启用时零成本早返）。必须在 ExitModeF 之前：
                 // 退出会把 modeFActive 置回 false，之后武装判定就认不出这是 Mode F 了。
-                NotifyCampaignModeFExtracted();
+                owner.NotifyCampaignModeFExtracted();
                 if (storedUtilityRewards > 0)
                 {
-                    DevLog("[ModeF] 撤离结算：已将 " + storedUtilityRewards + " 个待发工事补给送入寄存/缓冲");
+                    ModBehaviour.DevLog("[ModeF] 撤离结算：已将 " + storedUtilityRewards + " 个待发工事补给送入寄存/缓冲");
                 }
 
                 if (marks > 0)
@@ -262,7 +262,7 @@ namespace BossRush
                         Item reward = null;
                         try
                         {
-                            int rewardTypeId = GetRandomInfiniteHellHighQualityRewardTypeID();
+                            int rewardTypeId = arena.GetRandomInfiniteHellHighQualityRewardTypeID();
                             if (rewardTypeId <= 0) continue;
 
                             reward = ItemAssetsCollection.InstantiateSync(rewardTypeId);
@@ -281,12 +281,12 @@ namespace BossRush
                                         PlayerStorageBuffer.Buffer.Add(rewardData);
                                         reward.DestroyTree();
                                         storageRewards++;
-                                        DevLog("[ModeF] [WARNING] PlayerStorage.Push 失败，已回退直写寄存缓冲");
+                                        ModBehaviour.DevLog("[ModeF] [WARNING] PlayerStorage.Push 失败，已回退直写寄存缓冲");
                                     }
                                     catch (Exception fallbackEx)
                                     {
                                         failedRewards++;
-                                        DevLog("[ModeF] [ERROR] 撤离奖励写入寄存失败: " + fallbackEx.Message);
+                                        ModBehaviour.DevLog("[ModeF] [ERROR] 撤离奖励写入寄存失败: " + fallbackEx.Message);
                                         try { reward.DestroyTree(); } catch { }
                                     }
                                 }
@@ -294,7 +294,7 @@ namespace BossRush
                         }
                         catch (Exception rewardEx)
                         {
-                            DevLog("[ModeF] [WARNING] 撤离奖励处理异常: " + rewardEx.Message);
+                            ModBehaviour.DevLog("[ModeF] [WARNING] 撤离奖励处理异常: " + rewardEx.Message);
                             if (reward != null)
                             {
                                 SafeRuntime.Run("ModeF extraction reward destroy after failure", reward.DestroyTree);
@@ -305,18 +305,18 @@ namespace BossRush
                     ClearModeFStorageNotificationQueue(prePushCount);
                     SafeRuntime.Run("ModeF extraction storage buffer save", PlayerStorageBuffer.SaveBuffer);
 
-                    ShowBigBanner(L10n.T(
-                        RichSuccessTag + "血猎追击胜利！</color> 已向寄存点发送 " + storageRewards + " 件悬赏奖励",
-                        RichSuccessTag + "Bloodhunt Victory!</color> " + storageRewards + " bounty rewards sent to storage"
+                    owner.ShowBigBanner(L10n.T(
+                        ModBehaviour.RichSuccessTag + "血猎追击胜利！</color> 已向寄存点发送 " + storageRewards + " 件悬赏奖励",
+                        ModBehaviour.RichSuccessTag + "Bloodhunt Victory!</color> " + storageRewards + " bounty rewards sent to storage"
                     ));
 
-                    DevLog("[ModeF] 寄存点奖励发放: storage=" + storageRewards + ", failed=" + failedRewards);
+                    ModBehaviour.DevLog("[ModeF] 寄存点奖励发放: storage=" + storageRewards + ", failed=" + failedRewards);
                 }
                 else
                 {
-                    ShowBigBanner(L10n.T(
-                        RichSuccessTag + "血猎追击胜利！</color> 你成功撤离了",
-                        RichSuccessTag + "Bloodhunt Victory!</color> You successfully extracted"
+                    owner.ShowBigBanner(L10n.T(
+                        ModBehaviour.RichSuccessTag + "血猎追击胜利！</color> 你成功撤离了",
+                        ModBehaviour.RichSuccessTag + "Bloodhunt Victory!</color> You successfully extracted"
                     ));
                 }
 
@@ -326,13 +326,13 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] OnModeFExtractionSuccess 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] OnModeFExtractionSuccess 失败: " + e.Message);
             }
             finally
             {
                 if (!exitAttempted && modeFActive)
                 {
-                    try { ExitModeF(); } catch (Exception exitEx) { DevLog("[ModeF] [ERROR] OnModeFExtractionSuccess 强制退出失败: " + exitEx.Message); }
+                    try { ExitModeF(); } catch (Exception exitEx) { ModBehaviour.DevLog("[ModeF] [ERROR] OnModeFExtractionSuccess 强制退出失败: " + exitEx.Message); }
                 }
             }
         }
@@ -342,23 +342,23 @@ namespace BossRush
             string sceneName = SceneManager.GetActiveScene().name;
             Vector3 extractionPos;
 
-            Vector3[] preferredPoints = GetSharedCommonNPCSpawnPointsForScene(sceneName);
+            Vector3[] preferredPoints = ModBehaviour.GetSharedCommonNPCSpawnPointsForScene(sceneName);
             if (TryFindModeFPointFromCandidates(preferredPoints, 30f, out extractionPos))
             {
-                DevLog("[ModeF] 使用公共 NPC 点池生成撤离点: " + extractionPos);
-                return GetSafeBossSpawnPosition(extractionPos);
+                ModBehaviour.DevLog("[ModeF] 使用公共 NPC 点池生成撤离点: " + extractionPos);
+                return SpawnPositionHelper.SnapToGround(extractionPos);
             }
 
-            Vector3[] fallbackSpawnPoints = GetModeEFlattenedSpawnPoints();
+            Vector3[] fallbackSpawnPoints = modeE.GetModeEFlattenedSpawnPoints();
             if (TryFindModeFPointFromCandidates(fallbackSpawnPoints, 30f, out extractionPos))
             {
-                DevLog("[ModeF] [WARNING] 公共 NPC 点池为空，回退使用刷怪点池生成撤离点: " + extractionPos);
-                return GetSafeBossSpawnPosition(extractionPos);
+                ModBehaviour.DevLog("[ModeF] [WARNING] 公共 NPC 点池为空，回退使用刷怪点池生成撤离点: " + extractionPos);
+                return SpawnPositionHelper.SnapToGround(extractionPos);
             }
 
             extractionPos = FindSpawnPointAwayFromPlayer(30f);
-            DevLog("[ModeF] [WARNING] 未找到白名单撤离点，回退到通用远离玩家点位: " + extractionPos);
-            return GetSafeBossSpawnPosition(extractionPos);
+            ModBehaviour.DevLog("[ModeF] [WARNING] 未找到白名单撤离点，回退到通用远离玩家点位: " + extractionPos);
+            return SpawnPositionHelper.SnapToGround(extractionPos);
         }
 
         private bool TryFindModeFPointFromCandidates(Vector3[] candidatePoints, float preferredMinDistance, out Vector3 selectedPoint)
@@ -429,7 +429,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] ClearModeFStorageNotificationQueue 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] ClearModeFStorageNotificationQueue 失败: " + e.Message);
             }
         }
 
@@ -450,7 +450,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] TryNotifyModeFExtraction 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] TryNotifyModeFExtraction 失败: " + e.Message);
             }
         }
 
@@ -460,7 +460,7 @@ namespace BossRush
             {
                 if (SceneLoader.Instance == null)
                 {
-                    DevLog("[ModeF] [WARNING] TryLoadBaseSceneAfterModeFExtraction: SceneLoader.Instance 为 null");
+                    ModBehaviour.DevLog("[ModeF] [WARNING] TryLoadBaseSceneAfterModeFExtraction: SceneLoader.Instance 为 null");
                     return;
                 }
 
@@ -468,7 +468,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] TryLoadBaseSceneAfterModeFExtraction 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] TryLoadBaseSceneAfterModeFExtraction 失败: " + e.Message);
             }
         }
 

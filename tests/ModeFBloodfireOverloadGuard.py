@@ -157,7 +157,7 @@ def main() -> int:
         if result is not None:
             return result
 
-    exit_body = extract_method_body(phases, "private void ExitModeF(bool showEndMessage = true)")
+    exit_body = extract_method_body(phases, "internal void ExitModeF(bool showEndMessage = true)")
     if exit_body is None or "EndModeFBloodfireOverload(false);" not in exit_body:
         return fail("ExitModeF must clear overload state and modifiers")
 

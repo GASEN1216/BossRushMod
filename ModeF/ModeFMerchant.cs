@@ -4,7 +4,7 @@ using Duckov.Economy;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         #region Mode F 商人
 
@@ -26,7 +26,7 @@ namespace BossRush
             try
             {
                 ModBehaviour inst = ModBehaviour.Instance;
-                if (inst == null || !inst.modeFActive || shop == null || shop.entries == null)
+                if (inst == null || !inst.IsModeFActive || shop == null || shop.entries == null)
                 {
                     return 0;
                 }

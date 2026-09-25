@@ -9,7 +9,7 @@ using Duckov.UI;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         private bool PlaceModeFortification(FortificationType type, Vector3 position, Quaternion rotation, GameObject existingPreview = null)
         {
@@ -26,7 +26,7 @@ namespace BossRush
                 FortDef def = FortDef.Get(type);
                 if (def == null)
                 {
-                    DevLog("[ModeF] [WARNING] Unknown fortification type: " + type);
+                    ModBehaviour.DevLog("[ModeF] [WARNING] Unknown fortification type: " + type);
                     return false;
                 }
                 string prefabName = def.PrefabName;
@@ -38,7 +38,7 @@ namespace BossRush
                     if (fortObj == null || fortObj.GetComponentInChildren<Renderer>(true) == null)
                     {
                         if (fortObj != null) UnityEngine.Object.Destroy(fortObj);
-                        DevLog("[ModeF] [WARNING] Failed to create fortification model, falling back to runtime geometry: " + prefabName);
+                        ModBehaviour.DevLog("[ModeF] [WARNING] Failed to create fortification model, falling back to runtime geometry: " + prefabName);
                         fortObj = CreateFallbackModeFFortification(type, position, rotation);
                         if (fortObj == null)
                         {
@@ -140,10 +140,10 @@ namespace BossRush
                 Physics.SyncTransforms();
 
                 modeFState.ActiveFortifications[marker.FortificationId] = marker;
-                if (IsZombieModeActive && zombieModeRunState.RunId > 0)
+                if (isZombieModeActive() && getZombieRunId() > 0)
                 {
-                    RegisterZombieModeRunOnlyObject(
-                        zombieModeRunState.RunId,
+                    registerZombieRunOnly(
+                        getZombieRunId(),
                         ZombieModeRunOnlyObjectKind.Fortification,
                         fortObj,
                         marker,
@@ -159,14 +159,14 @@ namespace BossRush
                 }
 
                 string typeName = GetFortificationTypeName(type);
-                DevLog("[ModeF] [PLACE] " + typeName
+                ModBehaviour.DevLog("[ModeF] [PLACE] " + typeName
                     + " | reusedPreview=" + reusedPreview
                     + " | pos=" + position
                     + " | renderers=" + fortObj.GetComponentsInChildren<Renderer>(true).Length
                     + " | hp=" + marker.LastKnownHealth + "/" + marker.MaxHealth);
                 if ((FortDef.Get(type)?.IsHalfObstacle ?? false))
                 {
-                    DevLog("[ModeF] [HALF] " + typeName + GetModeFFortificationColliderDebugText(fortObj));
+                    ModBehaviour.DevLog("[ModeF] [HALF] " + typeName + GetModeFFortificationColliderDebugText(fortObj));
                 }
                 ClearFortPlacementPreviewMaterialCache();
                 ShowModeFRewardBubble(typeName + L10n.T("已部署", " deployed"));
@@ -174,7 +174,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] PlaceModeFortification failed: " + e.Message + "\n" + e.StackTrace);
+                ModBehaviour.DevLog("[ModeF] [ERROR] PlaceModeFortification failed: " + e.Message + "\n" + e.StackTrace);
                 try
                 {
                     if (fortObj != null)
@@ -281,7 +281,7 @@ namespace BossRush
 
             if (overlapBufferExceeded)
             {
-                DevLog("[ModeF] [WARNING] Fortification placement overlap buffer exceeded, blocking placement defensively");
+                ModBehaviour.DevLog("[ModeF] [WARNING] Fortification placement overlap buffer exceeded, blocking placement defensively");
                 return true;
             }
 
@@ -768,7 +768,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] EnsureModeFFortificationWallCollider failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] EnsureModeFFortificationWallCollider failed: " + e.Message);
             }
         }
 
@@ -776,7 +776,7 @@ namespace BossRush
         /// ★低端机优化：原本为每个工事创建独立 ModeF_CharacterBlocker 子对象的逻辑已合并到 WallCollider。
         /// 此函数现在只做清理：销毁已存在的 ModeF_CharacterBlocker 子对象（兼容池化复用和存档升级）。
         /// </summary>
-        private void EnsureModeFFortificationCharacterBlocker(GameObject fortObj)
+        internal void EnsureModeFFortificationCharacterBlocker(GameObject fortObj)
         {
             if (fortObj == null)
             {
@@ -793,7 +793,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] EnsureModeFFortificationCharacterBlocker cleanup failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] EnsureModeFFortificationCharacterBlocker cleanup failed: " + e.Message);
             }
         }
 

@@ -10,7 +10,7 @@ using Duckov.UI.DialogueBubbles;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         #region Mode F UI 与提示
 
@@ -110,7 +110,7 @@ namespace BossRush
         // 本文件不保存原始文本（没有 BaseText 表）、节流放在 ScanAndCacheModeFHealthBars(force)
         // 而不是 Find 里、失败走空 catch 而非限流日志，并且额外挂着悬赏后缀缓存与赏金雷达节流。
         // 详细差异清单见 ModeEUiAndHealthBars.cs 顶部注释。
-        private void ResetModeFUiCaches()
+        internal void ResetModeFUiCaches()
         {
             modeFCachedPlayerName = null;
             modeFNextPlayerNameRefreshTime = 0f;
@@ -222,7 +222,7 @@ namespace BossRush
             return false;
         }
 
-        private void ScanAndCacheModeFHealthBars(bool force = false)
+        internal void ScanAndCacheModeFHealthBars(bool force = false)
         {
             if (!force && Time.unscaledTime < modeFNextHealthBarLookupTime)
             {
@@ -246,8 +246,8 @@ namespace BossRush
             }
 
             return chinese
-                ? RichWarningTag + "悬赏" + marks + "</color>"
-                : RichWarningTag + "Bounty " + marks + "</color>";
+                ? ModBehaviour.RichWarningTag + "悬赏" + marks + "</color>"
+                : ModBehaviour.RichWarningTag + "Bounty " + marks + "</color>";
         }
 
         private string BuildModeFMarkSuffix(int marks)
@@ -317,20 +317,20 @@ namespace BossRush
                 string contextEn;
                 if (TryConsumeModeFLeaderChangeContext(out contextZh, out contextEn))
                 {
-                    ShowBigBanner(L10n.T(
+                    owner.ShowBigBanner(L10n.T(
                         contextZh + " " + markTextZh,
                         contextEn + " " + markTextEn
                     ));
                 }
                 else
                 {
-                    ShowBigBanner(L10n.T(
-                        RichWarningTag + leaderName + "</color> 成为悬赏榜首！ " + markTextZh,
-                        RichWarningTag + leaderName + "</color> is now the Bounty Leader! " + markTextEn
+                    owner.ShowBigBanner(L10n.T(
+                        ModBehaviour.RichWarningTag + leaderName + "</color> 成为悬赏榜首！ " + markTextZh,
+                        ModBehaviour.RichWarningTag + leaderName + "</color> is now the Bounty Leader! " + markTextEn
                     ));
                 }
 
-                DevLog("[ModeF] 榜首切换: " + leaderName + " (marks=" + marks + ")");
+                ModBehaviour.DevLog("[ModeF] 榜首切换: " + leaderName + " (marks=" + marks + ")");
             }
             catch { }
         }
@@ -348,11 +348,11 @@ namespace BossRush
                 string victimName = GetModeFActorDisplayName(victim, false);
                 int growthValue = Mathf.RoundToInt(growthPercent * 100f);
 
-                ShowBigBanner(L10n.T(
-                    RichWarningTag + killerName + "</color> 啃噬了 " + RichDangerTag + victimName
-                        + "</color> 的命火！" + RichWarningTag + "最大生命与火力 +" + growthValue + "%</color>",
-                    RichWarningTag + killerName + "</color> devoured " + RichDangerTag + victimName
-                        + "</color> and stole its life! " + RichWarningTag + "Max HP and firepower +" + growthValue + "%</color>"
+                owner.ShowBigBanner(L10n.T(
+                    ModBehaviour.RichWarningTag + killerName + "</color> 啃噬了 " + ModBehaviour.RichDangerTag + victimName
+                        + "</color> 的命火！" + ModBehaviour.RichWarningTag + "最大生命与火力 +" + growthValue + "%</color>",
+                    ModBehaviour.RichWarningTag + killerName + "</color> devoured " + ModBehaviour.RichDangerTag + victimName
+                        + "</color> and stole its life! " + ModBehaviour.RichWarningTag + "Max HP and firepower +" + growthValue + "%</color>"
                 ));
             }
             catch { }
@@ -386,7 +386,7 @@ namespace BossRush
             string previousName = modeFCachedPlayerName;
             try
             {
-                string steamName = TryGetSteamPersonaName();
+                string steamName = ModBehaviour.TryGetSteamPersonaName();
                 modeFCachedPlayerName = !string.IsNullOrEmpty(steamName)
                     ? steamName
                     : L10n.T("我", "Me");

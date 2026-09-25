@@ -79,7 +79,7 @@ def check():
         ("Utilities/PlayerLifecycleRuntimeHooks.cs", "internal void RegisterPlayerLifecycleRuntimeEvents()", "Health.OnHurt += CampaignObjectiveCollector.OnGlobalHurt;"),
         ("WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs", "internal async void OnAllEnemiesDefeated_LootAndRewards()", "owner.NotifyCampaignStandardCleared();"),
         ("ModeD/ModeDRuntimeModule_Waves.cs", "internal void OnModeDWaveComplete()", "NotifyCampaignModeDWaveComplete(modeDWaveIndex);"),
-        ("ModeF/ModeFExtraction.cs", "private void OnModeFExtractionSuccess()", "NotifyCampaignModeFExtracted();"),
+        ("ModeF/ModeFExtraction.cs", "internal void OnModeFExtractionSuccess()", "NotifyCampaignModeFExtracted();"),
         ("ZombieMode/ZombieModeRuntimeModule_Extraction.cs", "private void CompleteZombieModeExtractionSuccess(", "owner.NotifyCampaignZombieExtracted();"),
     ):
         require(path, signature, statement)

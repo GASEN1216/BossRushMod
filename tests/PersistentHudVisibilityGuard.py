@@ -85,7 +85,7 @@ PERSISTENT = (
     ("ModeF/ModeFStatusHud.cs", None, "internal static void Tick(ModeFState state, float maxCharge)",
      "_canvas.enabled = visible;",
      ("call", "ModeF/ModeFPhases.cs", "ModeFStatusHud.Tick(modeFState, MODEF_BLOODFIRE_MAX_CHARGE);",
-      "private void TickModeF(float deltaTime)", ["try"], "", 2),
+      "internal void TickModeF(float deltaTime)", ["try"], "", 2),
      "Mode F 状态卡"),
     ("ModeF/ModeFUI_BountyRadarAndHealthBars.cs", None, "private bool IsModeFBountyRadarSuppressedByOverlay()",
      "return true;",

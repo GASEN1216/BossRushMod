@@ -8,7 +8,7 @@ using ItemStatsSystem.Stats;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         #region Mode F 悬赏系统
 
@@ -48,31 +48,31 @@ namespace BossRush
         /// </summary>
         private void LatchModeFPlayerBountyKill(int victimId, bool isBounty)
         {
-            if (modeFRuntime != null) modeFRuntime.LatchPlayerBountyKill(victimId, isBounty);
+            LatchPlayerBountyKill(victimId, isBounty);
         }
 
-        private bool HasModeFPlayerBountyKillLatch(int victimId)
+        internal bool HasModeFPlayerBountyKillLatch(int victimId)
         {
-            return modeFRuntime != null && modeFRuntime.HasPlayerBountyKillLatch(victimId);
+            return HasPlayerBountyKillLatch(victimId);
         }
 
         /// <summary>
         /// 读取并清掉印记闩。只有 instanceID 与闩上记录一致才算命中，
         /// 避免把上一次死亡的结果错记到另一个 Boss 身上。
         /// </summary>
-        private bool ConsumeModeFPlayerBountyKillLatch(int victimId)
+        internal bool ConsumeModeFPlayerBountyKillLatch(int victimId)
         {
-            return modeFRuntime != null && modeFRuntime.ConsumePlayerBountyKillLatch(victimId);
+            return ConsumePlayerBountyKillLatch(victimId);
         }
 
         private void ResetModeFPlayerBountyKillLatch()
         {
-            if (modeFRuntime != null) modeFRuntime.ResetPlayerBountyKillLatch();
+            ResetPlayerBountyKillLatch();
         }
 
         private bool ShouldUseModeFAbstractPlunderLootTracking()
         {
-            return config != null && config.enableRandomBossLoot;
+            return useRandomBossLoot();
         }
 
         private void MarkModeFBountyLeaderDirty(CharacterMainControl preferredLeader = null)
@@ -102,14 +102,14 @@ namespace BossRush
         /// 生成悬赏名单（第二阶段开始时调用）
         /// 当前规则：所有存活 Boss 初始都获得 1 层印记
         /// </summary>
-        private void GenerateBountyList()
+        internal void GenerateBountyList()
         {
             try
             {
                 List<CharacterMainControl> alive = modeFState.ActiveBosses;
                 if (alive == null || alive.Count == 0)
                 {
-                    DevLog("[ModeF] GenerateBountyList: 无存活 Boss");
+                    ModBehaviour.DevLog("[ModeF] GenerateBountyList: 无存活 Boss");
                     return;
                 }
 
@@ -140,12 +140,12 @@ namespace BossRush
                 ApplyModeFPhasePressure();
                 MarkModeFBountyLeaderDirty();
                 RefreshModeFBountyLeaderIfDirty();
-                DevLog("[ModeF] [BOUNTY] allAliveMarked=" + total);
-                DevLog("[ModeF] 悬赏名单已生成: " + total + "/" + total + " 个 Boss 被标记");
+                ModBehaviour.DevLog("[ModeF] [BOUNTY] allAliveMarked=" + total);
+                ModBehaviour.DevLog("[ModeF] 悬赏名单已生成: " + total + "/" + total + " 个 Boss 被标记");
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] GenerateBountyList 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] GenerateBountyList 失败: " + e.Message);
             }
         }
 
@@ -171,7 +171,7 @@ namespace BossRush
                     modeFState.BountyMarksByCharacterId.Remove(victimId);
                     MarkModeFHealthBarNamesDirty();
 
-                    DevLog("[ModeF] Boss 继承印记: killer=" + killer.gameObject.name + " +" + victimMarks + " (总计=" + (killerMarks + victimMarks) + ")");
+                    ModBehaviour.DevLog("[ModeF] Boss 继承印记: killer=" + killer.gameObject.name + " +" + victimMarks + " (总计=" + (killerMarks + victimMarks) + ")");
 
                     // Boss 成长按战胜目标的印记数结算，每层印记提供 5% 生命/伤害成长。
                     float growthPercent = 0.05f * victimMarks;
@@ -188,14 +188,14 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] OnModeFBossKilledByBoss 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] OnModeFBossKilledByBoss 失败: " + e.Message);
             }
         }
 
         /// <summary>
         /// Boss 被玩家击杀时的处理
         /// </summary>
-        private void OnModeFBossKilledByPlayer(CharacterMainControl victim)
+        internal void OnModeFBossKilledByPlayer(CharacterMainControl victim)
         {
             try
             {
@@ -211,7 +211,7 @@ namespace BossRush
                     modeFState.PlayerBountyMarks += 1;
                     MarkModeFHealthBarNamesDirty();
                     MarkModeFPlayerNameTagDirty();
-                    DevLog("[ModeF] 玩家获得 +1 悬赏印记 (总计=" + modeFState.PlayerBountyMarks + ")");
+                    ModBehaviour.DevLog("[ModeF] 玩家获得 +1 悬赏印记 (总计=" + modeFState.PlayerBountyMarks + ")");
                 }
 
                 // 官方死亡序列里 Health.OnDeadEvent（本函数所在链）先于 Health.OnDead 触发，
@@ -247,7 +247,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] OnModeFBossKilledByPlayer 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] OnModeFBossKilledByPlayer 失败: " + e.Message);
             }
         }
 
@@ -266,7 +266,7 @@ namespace BossRush
         internal bool DebugAwardModeFBountyMarkForValidation(out string reason)
         {
             reason = null;
-            if (!DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
+            if (!ModBehaviour.DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
             if (!modeFActive || modeFState == null || !modeFState.IsActive)
             {
                 reason = "mode_f_not_active";
@@ -361,7 +361,7 @@ namespace BossRush
                     if (hpDelta > 0)
                     {
                         float oldMaxHp = maxHealthStat.Value;
-                        newHpMod = new Modifier(ModifierType.Add, hpDelta, this);
+                        newHpMod = new Modifier(ModifierType.Add, hpDelta, owner);
                         maxHealthStat.AddModifier(newHpMod);
 
                         // 当前血量同步提升
@@ -381,7 +381,7 @@ namespace BossRush
                     float gunDelta = gunDmgStat.BaseValue * totalGrowth;
                     if (gunDelta > 0)
                     {
-                        newGunMod = new Modifier(ModifierType.Add, gunDelta, this);
+                        newGunMod = new Modifier(ModifierType.Add, gunDelta, owner);
                         gunDmgStat.AddModifier(newGunMod);
                     }
                 }
@@ -393,7 +393,7 @@ namespace BossRush
                     float meleeDelta = meleeDmgStat.BaseValue * totalGrowth;
                     if (meleeDelta > 0)
                     {
-                        newMeleeMod = new Modifier(ModifierType.Add, meleeDelta, this);
+                        newMeleeMod = new Modifier(ModifierType.Add, meleeDelta, owner);
                         meleeDmgStat.AddModifier(newMeleeMod);
                     }
                 }
@@ -402,7 +402,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] ApplyModeFBossGrowth 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] ApplyModeFBossGrowth 失败: " + e.Message);
             }
         }
 
@@ -448,7 +448,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] RemoveModeFBossGrowthModifiers failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] RemoveModeFBossGrowthModifiers failed: " + e.Message);
             }
 
             modeFBossModifiers.Remove(boss);
@@ -475,11 +475,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] CompareAndSwapEquipment 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] CompareAndSwapEquipment 失败: " + e.Message);
             }
         }
 
-        private bool TryHandleModeFBossPreLootPlunder(CharacterMainControl killer, CharacterMainControl victim)
+        internal bool TryHandleModeFBossPreLootPlunder(CharacterMainControl killer, CharacterMainControl victim)
         {
             try
             {
@@ -509,7 +509,7 @@ namespace BossRush
                 if (!ShouldUseModeFAbstractPlunderLootTracking())
                 {
                     CompareAndSwapEquipment(killer, victim);
-                    DevLog("[ModeF] Boss 预掠夺已执行即时换装，但当前关闭了随机掉落，跳过抽象战利品继承");
+                    ModBehaviour.DevLog("[ModeF] Boss 预掠夺已执行即时换装，但当前关闭了随机掉落，跳过抽象战利品继承");
                     return true;
                 }
 
@@ -528,7 +528,7 @@ namespace BossRush
                     AddModeFBossCarriedHighQualityLootCount(killer, totalTransferredCount);
                 }
 
-                DevLog("[ModeF] Boss 高品质战利品转移: killer="
+                ModBehaviour.DevLog("[ModeF] Boss 高品质战利品转移: killer="
                     + killer.gameObject.name
                     + ", victim=" + victim.gameObject.name
                     + ", physicalQ6+=" + physicalHighQualityCount
@@ -539,7 +539,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] TryHandleModeFBossPreLootPlunder 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] TryHandleModeFBossPreLootPlunder 失败: " + e.Message);
                 return false;
             }
         }
@@ -641,7 +641,7 @@ namespace BossRush
             }
         }
 
-        private int ConsumeModeFBossCarriedHighQualityLootCount(CharacterMainControl boss)
+        internal int ConsumeModeFBossCarriedHighQualityLootCount(CharacterMainControl boss)
         {
             if (boss == null)
             {
@@ -672,7 +672,7 @@ namespace BossRush
             modeFBossPendingHighQualityLootPenaltyCounts[bossId] = existing + count;
         }
 
-        private int ConsumeModeFBossPendingHighQualityLootPenaltyCount(CharacterMainControl boss)
+        internal int ConsumeModeFBossPendingHighQualityLootPenaltyCount(CharacterMainControl boss)
         {
             if (boss == null)
             {
@@ -734,11 +734,11 @@ namespace BossRush
                 {
                     if (TrySwapModeFItemsBetweenCharacters(killer, victim, victimItem, killerItem, lootDropPosition))
                     {
-                        DevLog("[ModeF] Boss 换装 [" + slotTag + "]: Q" + killerQuality + " -> Q" + victimQuality);
+                        ModBehaviour.DevLog("[ModeF] Boss 换装 [" + slotTag + "]: Q" + killerQuality + " -> Q" + victimQuality);
                     }
                     else
                     {
-                        DevLog("[ModeF] [WARNING] Boss 换装失败 [" + slotTag + "]，已保持原装备");
+                        ModBehaviour.DevLog("[ModeF] [WARNING] Boss 换装失败 [" + slotTag + "]，已保持原装备");
                     }
                 }
             }
@@ -762,7 +762,7 @@ namespace BossRush
                 {
                     if (!TrySwapModeFItemsBetweenCharacters(killer, victim, victimGun, killerGun, lootDropPosition))
                     {
-                        DevLog("[ModeF] [WARNING] Boss 换枪失败，已保持原装备");
+                        ModBehaviour.DevLog("[ModeF] [WARNING] Boss 换枪失败，已保持原装备");
                         return;
                     }
 
@@ -770,7 +770,7 @@ namespace BossRush
                     // 补满弹匣
                     RefillModeFBossGunAndAmmo(killer, victimGun, lootDropPosition, !HasModeFCompatibleAmmo(killer, victimGun));
 
-                    DevLog("[ModeF] Boss 换枪: Q" + killerQuality + " -> Q" + victimQuality);
+                    ModBehaviour.DevLog("[ModeF] Boss 换枪: Q" + killerQuality + " -> Q" + victimQuality);
                 }
             }
             catch { }

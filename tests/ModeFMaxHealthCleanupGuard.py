@@ -56,7 +56,7 @@ def main() -> int:
     if not remove_index < max_index < clamp_index:
         return fail("cleanup order must be remove Modifier -> read restored maximum -> clamp current health")
 
-    exit_body = extract_method_body(phases, "private void ExitModeF(bool showEndMessage = true)")
+    exit_body = extract_method_body(phases, "internal void ExitModeF(bool showEndMessage = true)")
     if exit_body is None:
         return fail("missing ExitModeF")
     if "CleanupModeFPlayerMaxHealthGrowth();" not in exit_body:

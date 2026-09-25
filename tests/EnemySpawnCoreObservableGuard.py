@@ -57,7 +57,7 @@ def main() -> int:
         ("public EnemyPresetInfo actualPreset;", "spawn core result must expose actual preset"),
         ("internal void SpawnEnemyCore(", "legacy SpawnEnemyCore wrapper must remain for existing callers"),
         ("SpawnEnemyCoreFireAndForgetAsync(", "legacy wrapper must stay fire-and-forget"),
-        ("private async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync", "internal spawn core must be awaitable"),
+        ("internal async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync", "internal spawn core must be awaitable"),
         ("const int maxAttempts = 5;", "spawn core retry count must stay 5"),
         ("await UniTask.Yield();", "ordinary spawn path must keep the existing yield"),
         ("SpawnDragonDescendant(", "dragon descendant path must remain in shared spawn core"),
@@ -89,7 +89,7 @@ def main() -> int:
         if result is not None:
             return result
 
-    internal_body = extract_method_body(text, "private async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync")
+    internal_body = extract_method_body(text, "internal async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync")
     if internal_body is None:
         return fail("missing internal awaitable body")
     for needle, message in (

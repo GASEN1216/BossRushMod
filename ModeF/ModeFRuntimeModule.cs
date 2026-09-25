@@ -1,39 +1,50 @@
 namespace BossRush
 {
-    internal sealed class ModeFRuntimeModule : BossRushRuntimeModuleBase
+    internal sealed partial class ModeFRuntimeModule : BossRushRuntimeModuleBase
     {
+        // Mode F 状态
+        internal bool modeFActive = false;
+        internal ModeFState modeFState = new ModeFState();
+        public bool IsModeFActive { get { return modeFActive; } }
+        public bool IsModeFPreparationPhase
+        {
+            get
+            {
+                return modeFActive &&
+                       modeFState != null &&
+                       modeFState.CurrentPhase == ModeFPhase.Preparation;
+            }
+        }
+
+        private ModeDRuntimeModule modeD;
+        private ModeDItemPool equipment;
+        private ModeERuntimeModule modeE;
+        private WavesArenaRuntimeModule arena;
+        private System.Func<int> getTicketTypeId;
+        private System.Func<bool> useRandomBossLoot;
+        private System.Func<bool> isZombieModeActive;
+        private System.Func<int> getZombieRunId;
+        private System.Action<int, ZombieModeRunOnlyObjectKind, UnityEngine.GameObject, UnityEngine.Object, System.Action> registerZombieRunOnly;
+
+        internal void BindSharedServices(ModeDRuntimeModule modeD, ModeERuntimeModule modeE, WavesArenaRuntimeModule arena,
+            System.Func<int> getTicketTypeId, System.Func<bool> useRandomBossLoot,
+            System.Func<bool> isZombieModeActive, System.Func<int> getZombieRunId,
+            System.Action<int, ZombieModeRunOnlyObjectKind, UnityEngine.GameObject, UnityEngine.Object, System.Action> registerZombieRunOnly)
+        {
+            this.modeD = modeD;
+            this.equipment = modeD.ItemPool;
+            this.modeE = modeE;
+            this.arena = arena;
+            this.getTicketTypeId = getTicketTypeId;
+            this.useRandomBossLoot = useRandomBossLoot;
+            this.isZombieModeActive = isZombieModeActive;
+            this.getZombieRunId = getZombieRunId;
+            this.registerZombieRunOnly = registerZombieRunOnly;
+        }
+
+        private void InitializeModeDItemPools() { equipment.InitializeModeDItemPools(equipment.FindTagByName); }
+
         private ModBehaviour owner;
-        private int lastPlayerBountyKillVictimId;
-        private bool lastPlayerBountyKillWasBounty;
-
-        internal void LatchPlayerBountyKill(int victimId, bool isBounty)
-        {
-            lastPlayerBountyKillVictimId = victimId;
-            lastPlayerBountyKillWasBounty = isBounty;
-        }
-
-        internal bool HasPlayerBountyKillLatch(int victimId)
-        {
-            return lastPlayerBountyKillVictimId != 0
-                && lastPlayerBountyKillVictimId == victimId
-                && lastPlayerBountyKillWasBounty;
-        }
-
-        internal bool ConsumePlayerBountyKillLatch(int victimId)
-        {
-            if (lastPlayerBountyKillVictimId == 0) return false;
-            if (lastPlayerBountyKillVictimId != victimId) return false;
-            bool wasBounty = lastPlayerBountyKillWasBounty;
-            ResetPlayerBountyKillLatch();
-            return wasBounty;
-        }
-
-        internal void ResetPlayerBountyKillLatch()
-        {
-            lastPlayerBountyKillVictimId = 0;
-            lastPlayerBountyKillWasBounty = false;
-        }
-
         public override string ModuleName
         {
             get { return "ModeF"; }

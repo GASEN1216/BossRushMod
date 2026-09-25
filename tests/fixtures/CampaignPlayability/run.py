@@ -52,7 +52,7 @@ def main():
         "Campaign/CampaignContentCatalog.cs", "Campaign/CampaignObjectiveTracker.cs",
         "Campaign/CampaignObjectiveCollector.cs", "Campaign/CampaignFacilityUnlocks.cs",
         "Campaign/CampaignModeBridge.cs", "Campaign/CampaignNoteBridge.cs",
-        "ModeF/ModeFRuntimeModule.cs",
+        "ModeF/ModeFRuntimeModule_BountyLatch.cs",
         "Common/Data/BossRushJsonValue.cs", "Utilities/SimpleJsonHelper.cs",
         "ModeH/ModeHCanonicalDigest.cs", "ModeH/ModeHSeedStream.cs",
     )] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "FinalBossRegression.cs", extracted]

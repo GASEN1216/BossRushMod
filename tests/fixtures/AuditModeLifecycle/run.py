@@ -171,7 +171,7 @@ execute('ownership',[HERE/'Ownership.cs'],'using System; using UnityEngine; name
 merchant=member(ROOT/'ModeE/ModeEMerchant.cs','internal async UniTaskVoid SpawnModeEMerchant(').replace('async UniTaskVoid','async System.Threading.Tasks.Task')
 execute('merchant_owner',[HERE/'MerchantOwner.cs'],'using System; using UnityEngine; namespace BossRush { internal sealed partial class ModeERuntimeModule {'+merchant+'}}')
 respawn=member(ROOT/'ModeF/ModeFRespawn.cs','private async UniTaskVoid RespawnModeFBossAsync(').replace('async UniTaskVoid','async System.Threading.Tasks.Task')
-execute('respawn_owner',[HERE/'RespawnOwner.cs'],'using System; using UnityEngine; namespace BossRush { public partial class ModBehaviour {'+respawn+'}}')
+execute('respawn_owner',[HERE/'RespawnOwner.cs'],'using System; using UnityEngine; namespace BossRush { internal sealed partial class ModeFRuntimeModule {'+respawn+'}}')
 cash='\n'.join(member(ROOT/'RandomEvents/RandomEventEffectsBridge_Loot.cs',m) for m in ['private async UniTaskVoid SpawnRandomEventCashPilesAsync(', 'private static void InvokeRandomEventCashCompletion('])
 cash=cash.replace('async UniTaskVoid','async System.Threading.Tasks.Task').replace('UniTask.Yield()','System.Threading.Tasks.Task.Yield()')
 execute('cash_owner',[HERE/'CashOwner.cs'],'using System; using UnityEngine; using UnityEngine.SceneManagement; using ItemStatsSystem; namespace BossRush { public partial class ModBehaviour {'+cash+'}}')

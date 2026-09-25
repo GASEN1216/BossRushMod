@@ -346,20 +346,6 @@ namespace BossRush
         private readonly HashSet<CharacterMainControl> bossRushOwnedDaXingXing = new HashSet<CharacterMainControl>();
         // 状态
         public bool IsActive { get; private set; }
-        // Mode F 状态
-        private bool modeFActive = false;
-        private ModeFState modeFState = new ModeFState();
-        public bool IsModeFActive { get { return modeFActive; } }
-        public bool IsModeFPreparationPhase
-        {
-            get
-            {
-                return modeFActive &&
-                       modeFState != null &&
-                       modeFState.CurrentPhase == ModeFPhase.Preparation;
-            }
-        }
-
         private void SetBossRushRuntimeActive(bool active)
         {
             IsActive = active;

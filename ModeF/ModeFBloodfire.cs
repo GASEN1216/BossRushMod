@@ -11,7 +11,7 @@ namespace BossRush
     /// Mode F 命火过载：生命成长顶到上限后，溢出成长转为命火充能，满值进入一段
     /// “强化换风险”的过载窗口——火力与移速提升，代价是双倍失血与官方烧伤。
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         #region 命火过载常量
 
@@ -29,7 +29,7 @@ namespace BossRush
 
         #region 命火过载状态
 
-        private readonly List<BossRushStatModifierRecord> modeFBloodfireModifiers =
+        internal readonly List<BossRushStatModifierRecord> modeFBloodfireModifiers =
             new List<BossRushStatModifierRecord>();
 
         #endregion
@@ -110,15 +110,15 @@ namespace BossRush
                 }
                 else
                 {
-                    DevLog("[ModeF] [WARNING] 命火过载无法获取官方 Burn Buff");
+                    ModBehaviour.DevLog("[ModeF] [WARNING] 命火过载无法获取官方 Burn Buff");
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] 命火过载施加烧伤失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] 命火过载施加烧伤失败: " + e.Message);
             }
 
-            DevLog("[ModeF] 命火过载开始: duration=" + MODEF_BLOODFIRE_OVERLOAD_DURATION
+            ModBehaviour.DevLog("[ModeF] 命火过载开始: duration=" + MODEF_BLOODFIRE_OVERLOAD_DURATION
                 + ", gun/melee=+40%, move=+15%, bleed=x2");
             return true;
         }
@@ -127,9 +127,9 @@ namespace BossRush
             CharacterMainControl player, string statName, float percent)
         {
             if (!RuntimeStatModifierTracker.TryAdd(
-                player, statName, percent, this, modeFBloodfireModifiers, "ModeF Bloodfire"))
+                player, statName, percent, owner, modeFBloodfireModifiers, "ModeF Bloodfire"))
             {
-                DevLog("[ModeF] [WARNING] 命火过载缺少 Stat 或 Modifier 施加失败: " + statName);
+                ModBehaviour.DevLog("[ModeF] [WARNING] 命火过载缺少 Stat 或 Modifier 施加失败: " + statName);
             }
         }
 
@@ -165,7 +165,7 @@ namespace BossRush
 
             if (wasActive)
             {
-                DevLog("[ModeF] 命火过载结束，命火=" + modeFState.BloodfireCharge.ToString("F0"));
+                ModBehaviour.DevLog("[ModeF] 命火过载结束，命火=" + modeFState.BloodfireCharge.ToString("F0"));
             }
         }
 
@@ -178,7 +178,7 @@ namespace BossRush
         internal bool DebugValidateModeFBloodfire(out string metrics)
         {
             metrics = string.Empty;
-            if (!DevModeEnabled) return false;
+            if (!ModBehaviour.DevModeEnabled) return false;
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null || player.CharacterItem == null) return false;
 

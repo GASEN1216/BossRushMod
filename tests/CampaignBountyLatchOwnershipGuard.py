@@ -29,7 +29,7 @@ def body(text, signature):
 
 def main():
     try:
-        module = source("ModeF/ModeFRuntimeModule.cs")
+        module = source("ModeF/ModeFRuntimeModule_BountyLatch.cs")
         bounty = source("ModeF/ModeFBounty.cs")
         campaign = source("Campaign/CampaignModeBridge.cs")
         collector = source("Campaign/CampaignObjectiveCollector.cs")
@@ -53,7 +53,8 @@ def main():
         consume_latch = body(module, "internal bool ConsumePlayerBountyKillLatch(int victimId)")
         assert "lastPlayerBountyKillVictimId != victimId" in consume_latch
         assert "ResetPlayerBountyKillLatch();" in consume_latch
-        assert re.search(r"if\s*\(modeFRuntime\s*!=\s*null\)\s*modeFRuntime\.ResetPlayerBountyKillLatch\(\);", bounty)
+        reset = body(bounty, "private void ResetModeFPlayerBountyKillLatch()")
+        assert re.fullmatch(r"\s*ResetPlayerBountyKillLatch\(\);\s*", reset)
     except (AssertionError, ValueError) as error:
         print("CampaignBountyLatchOwnershipGuard: FAIL - " + str(error))
         return 1

@@ -1,6 +1,6 @@
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         internal void TickModeFRuntime(float deltaTime)
         {
@@ -20,7 +20,7 @@ namespace BossRush
                 }
                 catch (System.Exception ex)
                 {
-                    DevLog("[ModeF] 场景切换清理异常: " + ex.Message);
+                    ModBehaviour.DevLog("[ModeF] 场景切换清理异常: " + ex.Message);
                 }
             }
         }
