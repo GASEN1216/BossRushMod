@@ -2,6 +2,12 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## CR-2026-09-26-001 — 船票 owner 迁移后地图费用读回旧 ID（P1，已修复，COMPAT）
+
+触发：地图选择创建传送费用时，`BossRushMapSelectionHelper.GetBossRushTicketTypeId` 仍通过 `typeof(ModBehaviour).GetField("bossRushTicketTypeId")` 查询；该成员在迁移后成为转发属性，反射恒取不到字段。注册已得到 500001 时仍退回 868，费用查询、票数检查和相关退款查询因此使用错误物品 ID。
+
+修复：查询直接读取唯一注册 owner `IntegrationRuntimeModule.BossRushTicketTypeId`，保留正 ID 判断、未注册的 868 回退及防崩路径，不新增缓存或第二份状态。`IntegrationLeafOwners` 逐字执行生产注册、查询与 Cost 构造；修复前实跑命中 `map ticket lookup lost registered runtime owner ID`，修复后通过。新增断言覆盖 500001、未注册回退、备用正 ID、再次注册刷新、零现金且一张票。证据：`Build/migration/p6-ticket-before.log`、`p6-ticket-after.log`，级别 L1/L2；真实船点扣票/取消/退款仍由 `architecture/MIGRATION_ACCEPTANCE.md` 的 M_ENTRY_01–03 实机验收。
+
 ## 归档索引
 
 - 2026-09-21—22 全仓范围审计阶段记录（SAFE / OPERATIONAL；未修代码） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`

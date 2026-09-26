@@ -2,6 +2,14 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-09-26 模块解耦 P0–P6 离线完成（SAFE / COMPAT / OPERATIONAL，L3 待验收）
+
+检查点 `3323e33e`、`adef32ef`、`403a09a4`、P3/P4 至 `cae48e91`、P5 `6409a0f4`，本节所在提交完成 P6。宿主 202 文件 / 103,052 行降至 58 / 20,114；47 模块覆盖 1,091 编译源；自动导入 38,854 → 17,783 B。完整成员样本中四类源码读量上升，未宣称普遍降本；逐文件后测见 `architecture/CONTEXT_BASELINE.md`。
+
+修复 `CR-2026-09-26-001`：票 ID 字段迁属性后地图 GetField 失效，改读注册 owner；生产注册/费用回归先红后绿。最终 697 全量守卫 PASS（0 新红/基线红）、95 全量回归 PASS（0 FAIL），Windows 正式/Dev 构建、14 Dev 标识、72 bundle 哈希通过；P5 42 + 29 项结构变异命中原断言并按字节/SHA 恢复。历史与最终证据路径、全部检查点、两种构建 SHA 见 `architecture/MIGRATION_STATUS.md`。
+
+最终正式部署到真实游戏目录，源/目标 SHA-256 一致：`47F26AD82B1E67BFE1ECB0C728A8E97B40EBA80745790694B54AA7AD184A88B3`，Dev 标识 absent。未启动游戏或读写玩家存档；实机清单 `architecture/MIGRATION_ACCEPTANCE.md` 全部 MANUAL_PENDING，含 G 第二局、跨模式/异常退出、自然撤离、共享 UI、装备/建筑和 F3 看图项。没有 L3 或性能采样结论。
+
 ## 归档索引
 
 - 2026-09-17 天空岛导航优化后全面复审 → `archive/FIX_TRACKER_2026-09.md`

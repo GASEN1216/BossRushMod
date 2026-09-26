@@ -30,7 +30,7 @@
 | `map-selection` | 地图选择 | `MapSelection/BossRushMapSelectionHelper.cs` | `AGENTS.md` |
 | `sky-island` | 天空岛正式地图、居民与剧情 | `SkyIsland/SkyIslandRuntimeModule.cs` | `AGENTS.md`、`SkyIsland/AGENTS.md`、`Common/UI/AGENTS.md` |
 | `devtools` | F3、调试与场景原型 | `DebugAndTools/F3GameplayValidationRunner.cs` | `AGENTS.md`、`DebugAndTools/AGENTS.md`、`Common/UI/AGENTS.md` |
-| `integration-core` | 物品、装备工厂与集成生命周期 | `Integration/BossRushIntegration.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `integration-core` | 物品、装备工厂与集成生命周期 | `Integration/BossRushIntegrationRuntimeModule.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `npcs` | NPC 与建筑内容 | `Integration/IntegrationHostCompatibility.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `items` | 物品内容注册 | `Integration/Items/AwenDepositTokenConfig.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `affinity` | 好感与商店 | `Integration/Affinity/AffinityRuntimeHooks.cs` | `AGENTS.md`、`Integration/AGENTS.md` |

@@ -37,6 +37,7 @@ def main():
     registry_path = ROOT / "Integration/BossRushDynamicItemRegistry.cs"
     init_path = ROOT / "Integration/BossRushIntegrationRuntimeModule_Initialization.cs"
     host_path = ROOT / "Integration/BossRushIntegration.cs"
+    map_path = ROOT / "MapSelection/BossRushMapSelectionHelper.cs"
     registry = block(registry_path.read_text(encoding="utf-8-sig"), "internal sealed partial class IntegrationRuntimeModule")
     initializer = block(init_path.read_text(encoding="utf-8-sig"), "internal void InitializeDynamicItems_Integration()")
     bridges = "\n".join(block(host_path.read_text(encoding="utf-8-sig"), "internal bool " + name + "()") for name in (
@@ -44,7 +45,12 @@ def main():
         "EnsureBirthdayCakeItemRegisteredForDynamicRegistry", "EnsureAdventureJournalItemRegisteredForDynamicRegistry"))
     generated = OUT / "TicketProduction.cs"
     generated.write_text("using System; using System.IO; using UnityEngine; using ItemStatsSystem; using BossRush.Utils; namespace BossRush {\n" + registry + "\ninternal sealed partial class IntegrationRuntimeModule {\n" + initializer + "\n}\npublic partial class ModBehaviour {\n" + bridges + "\n}}", encoding="utf-8")
-    sources = linked + [generated, HERE / "Program.cs", HERE / "Stubs.cs"]
+    map_source = map_path.read_text(encoding="utf-8-sig")
+    map_methods = "\n".join(block(map_source, signature) for signature in (
+        "public static int GetBossRushTicketTypeId()", "public static Cost CreateBossRushCost()"))
+    map_generated = OUT / "MapTicketProduction.cs"
+    map_generated.write_text("using System; using System.Reflection; using Duckov.Economy; namespace BossRush { public static class BossRushMapSelectionHelper {\n" + map_methods + "\n}}", encoding="utf-8")
+    sources = linked + [generated, map_generated, HERE / "Program.cs", HERE / "Stubs.cs"]
     includes = "".join('<Compile Include="' + escape(str(path), {'"': '&quot;'}) + '" />' for path in sources)
     project = OUT / "Regression.csproj"
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
@@ -52,7 +58,7 @@ def main():
                        '<EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>' +
                        includes + '</ItemGroup></Project>', encoding="utf-8")
     (OUT / "production-sha256.json").write_text(json.dumps({path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
-                                                          for path in linked + [registry_path, init_path, host_path]}, indent=2), encoding="utf-8")
+                                                          for path in linked + [registry_path, init_path, host_path, map_path]}, indent=2), encoding="utf-8")
     return subprocess.call(["dotnet", "run", "--project", str(project), "--configuration", "Release"], cwd=ROOT)
 
 

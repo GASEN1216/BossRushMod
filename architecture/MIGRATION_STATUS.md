@@ -9,12 +9,12 @@
 | P0 基线 | 完成，`3323e33e` | 665 项全量守卫 PASS，59 项全量回归 PASS；隔离正式与 Dev 构建 PASS |
 | P1 上下文治理 | 完成，`adef32ef` | 根规则 180 行 / 17,329 B；台账 1,050 / 975 行；47 模块导航覆盖 1,020 源 |
 | P2 复用试点 | 完成，`403a09a4` | 词缀追踪器与建筑恢复核心；203 项相关守卫、60 项全量回归与两种隔离构建通过 |
-| P3 状态提取 | 完成（本批收口） | 宿主 58 文件 / 20,114 行；模式/系统状态归模块，生命周期、装配和跨模式入场协调保留 |
+| P3 状态提取 | 完成，终态 `cae48e91` | 宿主 58 文件 / 20,114 行；模式/系统状态归模块，生命周期、装配和跨模式入场协调保留 |
 | P4 耦合点 | 完成 | §6 第 1、3–9 条已处理；第 2、10 条按计划保持，同步回归通过 |
-| P5 目录归位 | 完成（本批） | 天空岛 99 源与规则归位；697 守卫、14 项相关回归、两种隔离构建通过 |
-| P6 收口 | 进行中 | 后测、全量验证、交付报告与最终正式部署 |
+| P5 目录归位 | 完成，`6409a0f4` | 天空岛 99 源与规则归位；697 守卫、14 项相关回归、两种隔离构建通过 |
+| P6 收口 | 离线完成（本节所在提交） | 后测、实机清单、697 守卫、95 回归、两种构建及正式真实部署已完成；L3 待 owner |
 
-续接基点：`cae48e91`。P3/P4 已收口，宿主 58 文件 / 20,114 行。P5 目录归位及离线验证完成，接着执行 P6 后测、总报告与最终正式部署。真实游戏目录尚未部署。
+当前结论：P0–P6 离线完成，实机待验收。宿主 58 文件 / 20,114 行，正式 DLL 已部署真实游戏目录并核对 SHA-256。下文历史检查点保留当时的未完成说明，当前状态以本表及末节 P6 为准。P6 提交号用 `git log -1 -- architecture/MIGRATION_STATUS.md` 查询；最后的用户交付同时列出该号。
 
 ## P0 基线（2026-09-24）
 
@@ -239,6 +239,53 @@
 - Windows 正式/Dev 隔离构建均成功，两种配置分别通过 72 bundle SHA 核验、14 个 Dev 标识 absent/present 检查及隔离部署 SHA 一致性。正式 SHA-256 `1DBEC086A8ABDB8BCAC48E88E01ACB7DBCB181BCEC8D35549A93EAAB41EEC2B9`；Dev SHA-256 `A728B21D72040BF02737FCE9CA3F3BBA327A98C4A074971B5E0D4CD4D736E48B`。证据为 `p5-release.log`、`p5-dev.log`、`p5-builds.json`。当前 Build 为 Dev。
 - L1/L2 完成，未启动游戏；L3 留待 owner 实机验收。
 
-## 未完成项
+## P6 最终交付（2026-09-26，SAFE / COMPAT / OPERATIONAL）
 
-P6 后测、最终交付报告/实机清单、全量验收与正式真实部署仍待完成；L3 由 owner 验收。
+P0–P6 的代码、文档、守卫与离线验证工作已完成；游戏内验收仍为 MANUAL_PENDING。没有启动游戏、读取玩家存档、推送或发布。
+
+### 检查点与验证总览
+
+| 检查点 | 提交 | 守卫 / 回归证据 |
+| --- | --- | --- |
+| P0 | `3323e33e` | 修复验证链后 665 全量守卫 / 59 全量回归 PASS；原红项与修复过程见本文件 P0 |
+| P1 | `adef32ef` | 668 全量守卫 PASS；无生产代码改动，沿用 P0 的 59 项回归；规则/台账/索引反向通过 |
+| P2 | `403a09a4` | 203 相关守卫 / 60 全量回归 PASS；两项共享实现及反向通过 |
+| P3、P4 | `71b68f60` 至 `cae48e91` | 各簇的提交、owner、等价/反向与两种构建记录见前文；终态 697 全量守卫 / 95 全量回归 PASS |
+| P5 | `6409a0f4` | 697 全量守卫 / 13 天空岛 + 1 F3 回归 PASS；42 + 29 项独立副本结构变异全部命中原断言并恢复 |
+| P6 | 本节所在提交 | 修复最终入口审查发现的票 ID 问题后，697 全量守卫 / 95 全量回归 PASS；正式、Dev 与最终正式真实部署完成 |
+
+最终守卫：697 PASS / 0 NEW-FAIL / 0 KNOWN-RED；最终执行回归：95 PASS / 0 FAIL。聚合器没有单列 SKIP 计数，未将 L3 未执行项目计为 PASS。最终日志为 `Build/migration/p6-final-guards.log`、`p6-final-runtime.log`、`p6-final-runtime.json`。未使用 source-only 降级验证。P5 反向证据为 `sky-island-p5-prefix-new-1790392928108843400/delivery.json` 与 `p5-shared-negative-prep/execution/evidence.json`、`final-verification.json`。
+
+### 最终修复与审查
+
+- `CR-2026-09-26-001`：船票字段早已迁为宿主转发属性，地图费用仍用 GetField，已注册 500001 时错误退回 868。改为直接读 `IntegrationRuntimeModule.BossRushTicketTypeId`，保持正值判定、868 回退、现金为零及一张票语义。新增生产方法回归先转红再修复转绿，并覆盖备用正 ID 与重新注册刷新；随后重跑最终全量及两种构建。修前 `p6-*.log` 的首轮绿色结果不替代 `p6-final-*`。
+- 扩展反射审计核对宿主迁出的字段/属性/方法名及精确字符串；除已修船票外未发现第二个 confirmed 残留。arena planned 的反射已指向模块真实私有 static 字段。审计记录 `p6-host-reflection-audit.md` 明确区分修前 DLL 元数据和修后源码。
+- `modules.json`、MODULES、宿主/生命周期/hooks 专题已同步；补 22 组现有专题导航。四篇 local-only 架构文档按当前 owner/路径更新并核对引用，见 `p6-docs-audit.md`。没有将这些本地文件强行纳管。
+- 建筑人工用例修正退役事实：旧公告板/旧展示柜恢复并指引，报箱/遗种巢验证当前建造功能。实机清单经过独立入口审查，修正基地船点、G 完整一局加第二局、H 选图加载链、百科物品入口及 manifest 小写 file 路径。
+
+### 前后度量
+
+| 指标 | P0 前测 | P6 终态 |
+| --- | ---: | ---: |
+| 宿主 partial 文件 / 行数 | 202 / 103,052 | 58 / 20,114 |
+| 宿主预算上限 | 202 / 103,200 | 58 / 20,114 |
+| 编译源码 / 导航模块 | 1,020 / 47 | 1,091 / 47 |
+| 自动导入 CLAUDE + AGENTS | 38,854 B | 17,783 B |
+| 根 AGENTS 行数 / 字节 | 317 / 38,493 B | 180 / 17,315 B |
+
+宿主减少 144 个 partial 文件、82,938 行；自动导入减少 21,071 B。固定成员样本的源码读量没有普遍下降：日报 79,714 → 132,702 B、天空岛 130,056 → 130,042 B、商店 136,815 → 202,917 B、武器 79,874 → 173,779 B、Mode F 96,641 → 188,723 B。完整兼容载体和新的 owner/绑定文件都计入，不能用薄桥行数抵扣迁出实现。五组限定目录导航演练均无需全仓检索，前测同样为否；原成员迁移审计使用过全仓检索。规则字节与逐文件映射见 `architecture/CONTEXT_BASELINE.md`，未测实际 token、未换算 token 百分比。
+
+### Windows 构建与真实部署
+
+- 最终隔离正式 SHA-256：`07A6BB1E9EB21BEEFDDE052CAA40BE2F09A5BAAF2A7A9596CF85452C21ECBA97`。
+- 最终隔离 Dev SHA-256：`140B1181F5ED1A010C4CE35A317C094725DE6B387F83552D6FFFD0E6703A9DF7`。
+- 两种配置均为 Windows 真编译，日志出现 Build succeeded；各自通过 14 个 Dev 标识 absent/present、72 bundle 清单 SHA 核对，隔离部署 DLL 与构建输出一致。记录：`p6-final-builds.json`、`p6-final-release.log`、`p6-final-dev.log`。
+- 最后再次以正式配置构建并部署：`D:\software\steam\steamapps\common\Escape from Duckov\Duckov_Data\Mods\BossRush\BossRush.dll`。
+- 交付正式 DLL SHA-256：`47F26AD82B1E67BFE1ECB0C728A8E97B40EBA80745790694B54AA7AD184A88B3`；`Build/BossRush.dll` 与真实部署目标逐字节哈希一致，两份均检查 14 个 Dev 标识全部 absent。72 bundles 核对通过。记录：`p6-final-deploy.log`、`p6-final-deployment.json`。
+- 部署前游戏进程未运行；原目标 DLL 已备份于 `D:\code\ykf\BossRushMod\Build\migration\p6-deployment-before-20260926-114204`。本轮未启动游戏。隔离目录的最后一次产物是 Dev，真实游戏目录与根 Build 的交付产物均为正式。
+
+### 交付范围与待实机项
+
+L1 静态接线、L2 守卫/隔离执行与 Windows 构建已完成；L3 尚未执行。完整 owner 清单为 `architecture/MIGRATION_ACCEPTANCE.md`，覆盖真实模式入场/奖励/退出、G 第二局、跨模式和异常清理、天空岛/征程、NPC支付、装备卸下/死亡/切图、建筑恢复、共享 UI 和 Dev F3。55 个显式人工 ID（展开范围与装备组后 91 个）及 4 个自动截图主名已核对；所有实机结果保持 MANUAL_PENDING，截图由 owner 目检，AI 只读文字报告。未进行性能采样，不宣称无性能问题。
+
+P0–P6 无剩余离线步骤；剩余为上述 L3 验收以及后续是否继续降低代表任务源码阅读量的取舍。没有把已实现的宿主预算收敛宣称为所有任务的上下文成本降低。

@@ -1,6 +1,6 @@
 # BossRushMod 模块解耦、复用体系与上下文治理计划
 
-日期：2026-09-22 初稿；2026-09-24 全面修订（修订记录见 §13）。状态：待新窗口执行。分类：本文 `SAFE`；执行内容按检查点标 `COMPAT` / `OPERATIONAL`。研究依据见 [GitHub 架构对照与深审记录](2026-09-22_BossRushMod_GitHub架构对照与深审记录.md)。
+日期：2026-09-22 初稿；2026-09-24 全面修订（修订记录见 §13）。状态：P0–P6 离线完成，实机待验收（2026-09-26）；当前交付、后测与待实机步骤见 `architecture/MIGRATION_STATUS.md`、`architecture/CONTEXT_BASELINE.md`、`architecture/MIGRATION_ACCEPTANCE.md`。分类：本文 `SAFE`；执行内容按检查点标 `COMPAT` / `OPERATIONAL`。研究依据见 [GitHub 架构对照与深审记录](2026-09-22_BossRushMod_GitHub架构对照与深审记录.md)。
 
 ## 0. 新窗口从这里开始
 

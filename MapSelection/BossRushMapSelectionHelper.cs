@@ -131,16 +131,11 @@ namespace BossRush
         /// </summary>
         public static int GetBossRushTicketTypeId()
         {
-            // 通过反射获取 ModBehaviour 中的 bossRushTicketTypeId
+            // 船票注册状态由 Integration 模块持有，读取当前实际注册的 ID。
             try
             {
-                FieldInfo field = typeof(ModBehaviour).GetField("bossRushTicketTypeId", 
-                    BindingFlags.NonPublic | BindingFlags.Static);
-                if (field != null)
-                {
-                    int typeId = (int)field.GetValue(null);
-                    return typeId > 0 ? typeId : 868; // 默认回退到 868
-                }
+                int typeId = IntegrationRuntimeModule.BossRushTicketTypeId;
+                return typeId > 0 ? typeId : 868; // 默认回退到 868
             }
             catch (Exception e)
             {

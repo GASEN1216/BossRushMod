@@ -1541,13 +1541,13 @@
       "manual": [
         {
           "id": "M_CONTENT_BUILDINGS_01",
-          "steps": "先运行 python tests/fixtures/ContentBuildingOwnership/run.py 与 python tools/run_runtime_regressions.py --filter BuildingRestoreCore 并保存日志；再冷启动加载已建报箱、征程公告板、后山展示柜和遗种巢的专用旧档，从各建筑交互入口打开功能。",
-          "expected": "夹具证明真实反射工具、宿主桥与恢复核心的离线时序，不视作 Unity PASS；实机四类建筑均在场景早期恢复，无缺 prefab、重复建筑或失效交互。未实测本条保持 MANUAL_PENDING。"
+          "steps": "先运行 python tools/run_runtime_regressions.py --filter ContentBuildingOwnership 与 python tools/run_runtime_regressions.py --filter BuildingRestoreCore 并保存日志（前者由聚合器调用 tests/fixtures/ContentBuildingOwnership/run.py）；再冷启动加载已有报箱、征程公告板、旧展示柜和遗种巢的专用旧档：报箱打开日报，遗种巢打开当前功能，退役公告板与旧展示柜显示迁移指引。",
+          "expected": "夹具证明真实反射工具、宿主桥与恢复核心的离线时序，不视作 Unity PASS；四类旧建筑均恢复，无缺 prefab、重复建筑或失效交互；旧公告板指向杰夫，旧展示柜指向官方枪械展示架/假人。未实测本条保持 MANUAL_PENDING。"
         },
         {
           "id": "M_CONTENT_BUILDINGS_02",
-          "steps": "在专用档基地从建造 UI 摆放、旋转、拆除并重建四类建筑；检查报箱借用模型的材质和碰撞，再切换展示柜解锁状态不同的两个槽位，返回基地并退出重进。",
-          "expected": "建造 ID、造价、条件和上限保持原契约；模型材质与碰撞正常，重绘不重复，事件和恢复协程随原宿主清理；新槽不继承旧槽展示柜门控或建筑实例。该路径必须实机记录，夹具不能替代。"
+          "steps": "在专用档基地从官方建造 UI 摆放、旋转、拆除并重建现行报箱与遗种巢；检查报箱模型的材质和碰撞，再切换两个测试槽，返回基地并退出重进；同时复核旧公告板与旧展示柜恢复及指引，它们不应重新出现在新建菜单。",
+          "expected": "现行建造 ID、造价、条件和上限保持原契约；模型材质与碰撞正常，重绘不重复，事件和恢复协程随原 owner 清理；新槽不继承旧槽建筑实例。退役建筑仅恢复旧实例与迁移指引。该路径保持 MANUAL_PENDING，夹具不能替代。"
         }
       ]
     },

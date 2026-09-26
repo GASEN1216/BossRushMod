@@ -3,6 +3,16 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
+namespace Duckov.Economy
+{
+    public struct Cost
+    {
+        public long money;
+        public ItemEntry[] items;
+        public struct ItemEntry { public int id; public long amount; }
+    }
+}
+
 namespace Cysharp.Threading.Tasks
 {
     [AsyncMethodBuilder(typeof(UniTaskMethodBuilder<>))]

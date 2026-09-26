@@ -21,7 +21,10 @@
         "tests/fixtures/HostMapArenaOwners",
         "tests/fixtures/HostUtilityOwners"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/架构设计/运行时模块系统.md",
+        ".qoder/repowiki/zh/content/架构设计/生命周期管理.md"
+      ],
       "rules": [
         "AGENTS.md"
       ],
@@ -35,13 +38,15 @@
         "Config/**/*.cs"
       ],
       "entry": "Config/Config.cs",
-      "state_owner": "Config",
+      "state_owner": "ModBehaviour.BossRushConfig（运行时参数）；各 Config/Tuning（模块常量）",
       "public_api": [
-        "Config"
+        "ModBehaviour 的配置转发与 ModConfigApi"
       ],
       "data": [],
       "tests": [],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/配置与部署/配置管理/配置系统架构.md"
+      ],
       "rules": [
         "AGENTS.md"
       ],
@@ -79,7 +84,7 @@
         "Common/**/*.cs"
       ],
       "entry": "Common/Lifecycle/BossRushRuntimeModuleHost.cs",
-      "state_owner": "ArchitectureSentinelRuntimeModule",
+      "state_owner": "BossRushRuntimeModuleHost（生命周期列表）；BossRushUIKit（字体与模态租约）；其余共享服务按各自 owner 持有状态",
       "public_api": [
         "BossRushRuntimeModuleHost"
       ],
@@ -129,7 +134,10 @@
         "tests/fixtures/ModeEFEnemyRegistry",
         "tests/fixtures/SteamPlatformInfo"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/工具与调试/运行时钩子.md",
+        ".qoder/repowiki/zh/content/游戏模式系统/标准 BossRush 模式/Boss 生成系统.md"
+      ],
       "rules": [
         "AGENTS.md",
         "Utilities/AGENTS.md"
@@ -152,7 +160,9 @@
       ],
       "data": [],
       "tests": [],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/项目概览/技术架构概览/Harmony 代码注入系统.md"
+      ],
       "rules": [
         "AGENTS.md",
         "Patches/AGENTS.md"
@@ -179,7 +189,10 @@
         "tests/ArenaHostRemainderOwnershipGuard.py",
         "tests/fixtures/ArenaHostRemainder"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/标准 BossRush 模式/标准 BossRush 模式.md",
+        ".qoder/repowiki/zh/content/游戏模式系统/标准 BossRush 模式/无间炼狱模式.md"
+      ],
       "rules": [
         "AGENTS.md"
       ],
@@ -206,7 +219,9 @@
         "tests/AwenLootSweepCachedCanUseGuard.py",
         "tests/fixtures/AwenLootSweepRuntime"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/标准 BossRush 模式/无间炼狱模式.md"
+      ],
       "rules": [
         "AGENTS.md"
       ],
@@ -231,7 +246,9 @@
       "tests": [
         "tests/ModeD*Guard.py"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/Mode D：白手起家.md"
+      ],
       "rules": [
         "AGENTS.md"
       ],
@@ -256,7 +273,9 @@
       "tests": [
         "tests/ModeE*Guard.py"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/Mode E：划地为营.md"
+      ],
       "rules": [
         "AGENTS.md"
       ],
@@ -282,7 +301,9 @@
       "tests": [
         "tests/ModeF*Guard.py"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/Mode F：血猎追击.md"
+      ],
       "rules": [
         "AGENTS.md"
       ],
@@ -336,7 +357,9 @@
       "tests": [
         "tests/ModeH*Guard.py"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/Mode H：百战留痕（黑市鸭王杯）.md"
+      ],
       "rules": [
         "AGENTS.md",
         "Common/UI/AGENTS.md"
@@ -367,7 +390,9 @@
         "tests/fixtures/ZombieModeStarterRuntime",
         "tests/fixtures/ZombieModeHostOwners"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/僵尸模式.md"
+      ],
       "rules": [
         "AGENTS.md",
         "ZombieMode/AGENTS.md",
@@ -398,7 +423,9 @@
         "tests/CampaignRuntimeOwnershipGuard.py",
         "tests/fixtures/CampaignPlayability"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/鸭王征程交付.md"
+      ],
       "rules": [
         "AGENTS.md"
       ],
@@ -423,7 +450,9 @@
       "tests": [
         "tests/PetNest*Guard.py"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/遗种巢系统.md"
+      ],
       "rules": [
         "AGENTS.md",
         "Common/UI/AGENTS.md"
@@ -450,7 +479,9 @@
         "tests/RandomEvents*Guard.py",
         "tests/fixtures/RandomEventEffectsOwners"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/局内随机事件系统.md"
+      ],
       "rules": [
         "AGENTS.md"
       ],
@@ -477,7 +508,9 @@
         "tests/AchievementRuntimeOwnershipGuard.py",
         "tests/fixtures/AchievementRuntime"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/成就系统.md"
+      ],
       "rules": [
         "AGENTS.md"
       ],
@@ -528,7 +561,9 @@
       ],
       "data": [],
       "tests": [],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/标准 BossRush 模式/波次管理系统/Boss池管理.md"
+      ],
       "rules": [
         "AGENTS.md"
       ],
@@ -575,7 +610,9 @@
       ],
       "data": [],
       "tests": [],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/架构设计/内容建筑模块归属.md"
+      ],
       "rules": [
         "AGENTS.md"
       ],
@@ -622,13 +659,17 @@
         "SkyIslandRuntimeModule"
       ],
       "data": [
-        "Assets/Data/SkyIsland/**/*.json"
+        "Assets/Data/SkyIsland*.json"
       ],
       "tests": [
         "tests/SkyIsland*Guard.py",
+        "tests/SkyIsland*PropertyTest.py",
         "tests/fixtures/SkyIsland*"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/天空岛剧情与持久化.md",
+        ".qoder/repowiki/zh/content/游戏模式系统/天空岛生产复核与交付前置.md"
+      ],
       "rules": [
         "AGENTS.md",
         "SkyIsland/AGENTS.md",
@@ -658,7 +699,9 @@
         "tests/F3*Guard.py",
         "tests/fixtures/F3*"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/工具与调试/调试工具.md"
+      ],
       "rules": [
         "AGENTS.md",
         "DebugAndTools/AGENTS.md",
@@ -680,14 +723,20 @@
         "Integration/UI/**/*.cs",
         "Integration/Dialogue/**/*.cs"
       ],
-      "entry": "Integration/BossRushIntegration.cs",
-      "state_owner": "IntegrationRuntimeModule（商店库存、购买事件、恢复协程、龙息事件、地图克隆、撤离点、延迟初始化、扩展本地化、装备加载后配置与动态船票注册）；ModBehaviour（共享出生点与跨模式场景协调等余项待迁）",
+      "entry": "Integration/BossRushIntegrationRuntimeModule.cs",
+      "state_owner": "IntegrationRuntimeModule（库存、购买事件、恢复协程、内容注册、地图对象、加油站与场景资源）；ModBehaviour 仅保留生命周期分发、显式装配及跨模式入场协调",
       "public_api": [
-        "BossRushIntegration"
+        "IntegrationRuntimeModule",
+        "IntegrationHostCompatibility（旧宿主签名）"
       ],
       "data": [],
-      "tests": [],
-      "docs": [],
+      "tests": [
+        "tests/IntegrationRuntimeModuleGuard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/装备与物品系统/装备框架与工厂系统/工厂核心架构.md",
+        ".qoder/repowiki/zh/content/架构设计/内容建筑模块归属.md"
+      ],
       "rules": [
         "AGENTS.md",
         "Integration/AGENTS.md"
@@ -860,7 +909,9 @@
       "tests": [
         "tests/WishFountainRuntimeModuleGuard.py"
       ],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/许愿台系统.md"
+      ],
       "rules": [
         "AGENTS.md",
         "Integration/AGENTS.md"
@@ -1064,7 +1115,9 @@
       ],
       "data": [],
       "tests": [],
-      "docs": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/装备与物品系统/自定义武器系统/自定义武器系统.md"
+      ],
       "rules": [
         "AGENTS.md",
         "Integration/AGENTS.md"

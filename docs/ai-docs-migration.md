@@ -321,3 +321,10 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 - 编译清单、模块索引和生成导航、当前规则、守卫、夹具、工具及 repowiki 定位引用同步。历史台账、归档和前测中的旧路径保留其历史含义。
 - 复核发现原计划 §7 所称 `tools/gameplay_coverage.py` 的天空岛特殊分域深度逻辑已经不存在；现工具直接按顶级目录分域，因此仅改覆盖表的源目录与受影响消费者，不增加分域特例。
 - `F3AutotestOrchestratorGuard` 的递归扫描显式纳入新目录；守卫路径修改均以独立副本的真实生产结构变异证明仍命中原断言。验证与交付记录见 `architecture/MIGRATION_STATUS.md`。
+
+## 2026-09-26 模块解耦 P6：终态与验收口径（SAFE / COMPAT / OPERATIONAL）
+
+- 模块索引修正 Integration 实际 owner/入口与 Config 参数归属，补 22 组现有专题导航；生成 MODULES.md。宿主终态、生命周期和 hook 专题同步，四篇 local-only 架构文档按当前 owner/路径更新。
+- architecture/CONTEXT_BASELINE.md 保留原样本并追踪真实 owner：自动导入链下降，四类完整文件源码阅读量上升。未把字节换算为 token，也未用薄桥文件冒充迁出实现。
+- architecture/MIGRATION_ACCEPTANCE.md 使用现有人工与 F3 ID，明确报告路径、截图文件主名、观察位置和不合格条件。覆盖表的两条内容建筑步骤按退役事实修正：旧公告板/展示柜恢复并指引，现行报箱/遗种巢走建造功能。
+- 交付审查发现宿主字段迁属性后地图费用仍用 GetField 取票 ID，已通过生产注册/费用回归复现并修复；记录为 CR-2026-09-26-001。最终构建、部署、离线证据与 L3 待测边界汇总在 architecture/MIGRATION_STATUS.md。
