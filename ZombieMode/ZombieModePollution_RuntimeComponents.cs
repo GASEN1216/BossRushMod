@@ -50,6 +50,8 @@ namespace BossRush
         private float dashEndTime;
         private bool dashStarted;
         private bool stopped;
+        private float impactRadius;
+        private float impactDamage;
 
         public void Initialize(
             int newRunId,
@@ -57,9 +59,13 @@ namespace BossRush
             Vector3 newTargetPosition,
             float newDashDistance,
             float startupSeconds,
-            float newDashDuration)
+            float newDashDuration,
+            float newImpactRadius = 0f,
+            float newImpactDamage = 0f)
         {
             source = newSource;
+            impactRadius = newImpactRadius;
+            impactDamage = newImpactDamage;
             targetPosition = newTargetPosition;
             dashDistance = Mathf.Max(0.5f, newDashDistance);
             dashDuration = Mathf.Max(0.05f, newDashDuration);
@@ -96,6 +102,7 @@ namespace BossRush
             if (Time.unscaledTime >= dashEndTime)
             {
                 StopDashVelocity();
+                FinishImpact(inst);
                 ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);
                 return;
             }
@@ -106,6 +113,17 @@ namespace BossRush
         protected override void OnRuntimeStopping(ModBehaviour inst, bool expired)
         {
             StopDashVelocity();
+            // 掉帧跨过结束帧时仍结算已经开始的突进；换局与死亡取消不补伤害。
+            if (expired && dashStarted && !ShouldCancelDash()) FinishImpact(inst);
+        }
+
+        private void FinishImpact(ModBehaviour inst)
+        {
+            if (inst == null || impactDamage <= 0f) return;
+            float damage = impactDamage;
+            impactDamage = 0f;
+            inst.TryExecuteZombieModeTelegraphedAreaDamage(RuntimeRunId, source,
+                source.transform.position, impactRadius, damage);
         }
 
         private void OnDestroy()

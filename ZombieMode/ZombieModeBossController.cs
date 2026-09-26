@@ -56,6 +56,7 @@ namespace BossRush
                 instance.Lifecycle.LastHurtTime = GetZombieModeRuntimeNow();
                 instance.SkillState = CreateZombieModeBossSkillState(kind);
                 instance.SkillState.Reset(now, boss.transform.localScale.x);
+                ZombieModeBossVisuals.Attach(this, instance);
                 break;
             }
         }
@@ -170,6 +171,7 @@ namespace BossRush
             if (now >= titan.NextShockwaveTime)
             {
                 titan.NextShockwaveTime = now + ZombieModeTuning.TitanShockwaveCooldownSeconds;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 StartZombieModeTelegraphedAreaDamage(
                     runId,
                     boss,
@@ -183,6 +185,7 @@ namespace BossRush
             {
                 titan.NextDamageReductionTime = now + ZombieModeTuning.TitanDamageReductionCooldownSeconds;
                 titan.DamageReductionActive = true;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 titan.DamageReductionEndTime = now
                     + ZombieModeTuning.TitanDamageReductionStartupSeconds
                     + ZombieModeTuning.TitanDamageReductionDurationSeconds;
@@ -200,18 +203,17 @@ namespace BossRush
             if (now >= hunter.NextDashTime)
             {
                 hunter.NextDashTime = now + ZombieModeTuning.HunterDashCooldownSeconds;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_HunterDash"));
-                Vector3 target = Vector3.MoveTowards(boss.transform.position, player.transform.position, ZombieModeTuning.HunterDashDistance);
-                target.y = boss.transform.position.y;
-                boss.transform.position = target;
-                StartZombieModeTelegraphedAreaDamage(
-                    runId,
-                    boss,
-                    player.transform.position,
+                GameObject telegraph = CreateZombieModeFlatZoneVisual(
+                    "ZombieMode_HunterDashTelegraph", boss.transform.position,
+                    ZombieModeTuning.HunterDashRadius, 0.02f, ZombieModeBossVisuals.GetAccent(instance.Kind));
+                ZombieModeSprinterDashRuntime dash = telegraph.AddComponent<ZombieModeSprinterDashRuntime>();
+                dash.Initialize(runId, boss, player.transform.position,
+                    ZombieModeTuning.HunterDashDistance, ZombieModeTuning.HunterDashStartupSeconds, 0.18f,
                     ZombieModeTuning.HunterDashRadius,
-                    ZombieModeTuning.HunterDashDamage * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave),
-                    ZombieModeTuning.HunterDashStartupSeconds,
-                    L10n.T("BossRush_ZombieMode_BossSkill_HunterDash"));
+                    ZombieModeTuning.HunterDashDamage * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave));
+                RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, telegraph, dash, null);
             }
         }
 
@@ -224,6 +226,7 @@ namespace BossRush
             if (now >= splitter.NextSummonTime)
             {
                 splitter.NextSummonTime = now + ZombieModeTuning.SplitterBossSummonCooldownSeconds;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_SplitterSummon"));
                 for (int i = 0; i < ZombieModeTuning.SplitterBossSummonCount; i++)
                 {
@@ -242,6 +245,7 @@ namespace BossRush
             if (now >= shielder.NextSelfShieldTime)
             {
                 shielder.NextSelfShieldTime = now + ZombieModeTuning.ShielderSelfShieldCooldownSeconds;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_ShielderSelfShield"));
                 if (boss.Health != null)
                 {
@@ -260,6 +264,7 @@ namespace BossRush
             if (now >= shielder.NextGroupShieldTime)
             {
                 shielder.NextGroupShieldTime = now + ZombieModeTuning.ShielderGroupShieldCooldownSeconds;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_ShielderGroupShield"));
                 ApplyZombieModeBossShieldPulse(runId, boss.transform.position);
             }
@@ -275,6 +280,7 @@ namespace BossRush
             if (now >= corruptor.NextZoneTime && player != null)
             {
                 corruptor.NextZoneTime = now + ZombieModeTuning.CorruptorZoneCooldownSeconds;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 SpawnZombieModeCorruptionZone(runId, boss, player.transform.position);
                 boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_CorruptorZone"));
             }

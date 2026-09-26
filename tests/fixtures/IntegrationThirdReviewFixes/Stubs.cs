@@ -5,7 +5,23 @@ using Pathfinding;
 
 namespace UnityEngine
 {
-    public class Object { public static implicit operator bool(Object o) { return !object.ReferenceEquals(o, null); } }
+    public class Object
+    {
+        public bool Destroyed;
+        public static implicit operator bool(Object o) { return o != null; }
+        public static bool operator ==(Object a, Object b)
+        { bool an = ReferenceEquals(a, null) || a.Destroyed; bool bn = ReferenceEquals(b, null) || b.Destroyed; return an || bn ? an && bn : ReferenceEquals(a, b); }
+        public static bool operator !=(Object a, Object b) { return !(a == b); }
+        public override bool Equals(object o) { return ReferenceEquals(this, o); }
+        public override int GetHashCode() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
+        public static void Destroy(Object o)
+        {
+            if (ReferenceEquals(o, null)) return;
+            o.Destroyed = true;
+            GameObject go = o as GameObject;
+            if (!ReferenceEquals(go, null)) go.DestroyComponents();
+        }
+    }
     public struct Vector2
     {
         public float x, y;
@@ -19,6 +35,7 @@ namespace UnityEngine
         public float x, y, z;
         public Vector3(float a, float b, float c) { x = a; y = b; z = c; }
         public static Vector3 zero { get { return new Vector3(); } }
+        public static Vector3 forward { get { return new Vector3(0,0,1); } }
         public static Vector3 up { get { return new Vector3(0, 1, 0); } }
         public float sqrMagnitude { get { return x * x + y * y + z * z; } }
         public Vector3 normalized { get { return this * (1f / (float)Math.Sqrt(Math.Max(sqrMagnitude, 0.00001f))); } }
@@ -28,12 +45,14 @@ namespace UnityEngine
         public static float Distance(Vector3 a, Vector3 b) { return (float)Math.Sqrt((a - b).sqrMagnitude); }
     }
     public struct Color { }
-    public class Transform : Object { public Vector3 position; }
+    public class Transform : Object { public Vector3 position; public Vector3 forward = new Vector3(0,0,1); public Quaternion rotation; }
+    public struct Quaternion { public static Quaternion LookRotation(Vector3 direction, Vector3 up) { return new Quaternion(); } }
     public class GameObject : Object
     {
         public string name = "Probe";
         public bool activeSelf = true;
         public Transform transform = new Transform();
+        internal void DestroyComponents() { activeSelf = false; foreach (var p in parts.Values) p.Destroyed = true; }
         private Dictionary<Type, MonoBehaviour> parts = new Dictionary<Type, MonoBehaviour>();
         public T GetComponent<T>() where T : MonoBehaviour { MonoBehaviour p; return parts.TryGetValue(typeof(T), out p) ? (T)p : null; }
         public T AddComponent<T>() where T : MonoBehaviour, new() { T p = new T(); p.gameObject = this; parts[typeof(T)] = p; return p; }
@@ -47,7 +66,7 @@ namespace UnityEngine
         public Transform transform { get { return gameObject.transform; } }
         public T GetComponent<T>() where T : MonoBehaviour { return gameObject.GetComponent<T>(); }
     }
-    public static class Time { public static float time; }
+    public static class Time { public static float time, unscaledTime; }
     public static class Random
     {
         public static Vector2 insideUnitCircle { get { return new Vector2(1, 0); } }
@@ -56,6 +75,7 @@ namespace UnityEngine
     public static class Mathf
     {
         public static float Sqrt(float a) { return (float)Math.Sqrt(a); }
+        public static float Min(float a, float b) { return Math.Min(a, b); }
         public static float Max(float a, float b) { return Math.Max(a, b); }
         public static float Clamp(float v, float a, float b) { return Math.Max(a, Math.Min(v, b)); }
     }
@@ -101,12 +121,15 @@ public class CharacterMainControl : UnityEngine.Object
     public static CharacterMainControl Main;
     public bool IsMainCharacter = true;
     public Transform transform = new Transform();
-    public Vector3 LastMove;
+    public Vector3 LastMove, LastForce;
+    public object Component;
+    public void SetForceMoveVelocity(Vector3 force) { LastForce = force; }
     public Health Health;
     public Movement movementControl = new Movement();
     public CharacterRandomPreset characterPreset = new CharacterRandomPreset();
     public Item Helmet, Armor;
-    public T GetComponent<T>() where T : class { return null; }
+    public T GetComponent<T>() where T : class { return Component as T; }
+    public void PopText(string text) { }
     public void SetMoveInput(Vector3 value) { LastMove = value; }
     public void SetAimPoint(Vector3 value) { }
     public void SetPosition(Vector3 value) { transform.position = value; }
@@ -157,7 +180,8 @@ public partial class Health : MonoBehaviour
     public bool invincible, isDead, isZombie, CanDieIfNotRaidMap = true, Hidden = true;
     public bool IsMainCharacterHealth { get { return Owner != null && LevelManager.Instance.MainCharacter == Owner; } }
     public bool IsDead { get { return isDead; } }
-    public float CurrentHealth = 1000, BodyArmor, HeadArmor;
+    public float CurrentHealth { get; set; } = 1000;
+    public float BodyArmor, HeadArmor;
     public Teams team = Teams.player;
     public Item item;
     public CharacterMainControl Owner;

@@ -1300,14 +1300,12 @@ namespace BossRush
             }
         }
 
-        private void ApplyZombieModeEnemyHurtAffixes(
-            int runId,
+        internal void ApplyZombieModeEnemyDefense(
             Health health,
-            DamageInfo damageInfo,
+            ref DamageInfo damageInfo,
             ZombieModeEnemyRuntimeMarker marker)
         {
-            if (!IsZombieModeRunValid(runId) ||
-                health == null ||
+            if (health == null ||
                 damageInfo.fromCharacter == null ||
                 marker == null ||
                 marker.EnemyKind != ZombieModeEnemyKind.Elite)
@@ -1320,15 +1318,7 @@ namespace BossRush
                 ZombieModeShieldedAffixRuntime shield = marker.ShieldedAffix;
                 if (shield != null)
                 {
-                    float dmg = damageInfo.damageValue;
-                    if (shield.AbsorbDamage(ref dmg))
-                    {
-                        float absorbed = damageInfo.damageValue - dmg;
-                        if (absorbed > 0f && health.CurrentHealth > 0f)
-                        {
-                            health.SetHealth(Mathf.Min(health.MaxHealth, health.CurrentHealth + absorbed));
-                        }
-                    }
+                    shield.AbsorbDamage(ref damageInfo.finalDamage);
                 }
             }
 
@@ -1336,11 +1326,7 @@ namespace BossRush
                 damageInfo.fromCharacter.IsMainCharacter &&
                 !IsZombieModeDamageFromMeleeWeapon(damageInfo))
             {
-                float restore = Mathf.Max(0f, damageInfo.damageValue * (1f - ZombieModeTuning.StalwartRangedDamageMultiplier));
-                if (restore > 0f && health.CurrentHealth > 0f)
-                {
-                    health.SetHealth(Mathf.Min(health.MaxHealth, health.CurrentHealth + restore));
-                }
+                damageInfo.finalDamage *= ZombieModeTuning.StalwartRangedDamageMultiplier;
             }
 
             if (marker.EliteAffixes.Contains(ZombieModeEliteAffix.Adaptive) &&
@@ -1369,11 +1355,7 @@ namespace BossRush
                     }
                     if (marker.AdaptiveMeleeActive)
                     {
-                        float reduced = damageInfo.damageValue * ZombieModeTuning.AdaptiveAffixReductionPercent;
-                        if (reduced > 0f && health.CurrentHealth > 0f)
-                        {
-                            health.SetHealth(Mathf.Min(health.MaxHealth, health.CurrentHealth + reduced));
-                        }
+                        damageInfo.finalDamage *= 1f - ZombieModeTuning.AdaptiveAffixReductionPercent;
                     }
                 }
                 else
@@ -1391,11 +1373,7 @@ namespace BossRush
                     }
                     if (marker.AdaptiveRangedActive)
                     {
-                        float reduced = damageInfo.damageValue * ZombieModeTuning.AdaptiveAffixReductionPercent;
-                        if (reduced > 0f && health.CurrentHealth > 0f)
-                        {
-                            health.SetHealth(Mathf.Min(health.MaxHealth, health.CurrentHealth + reduced));
-                        }
+                        damageInfo.finalDamage *= 1f - ZombieModeTuning.AdaptiveAffixReductionPercent;
                     }
                 }
             }

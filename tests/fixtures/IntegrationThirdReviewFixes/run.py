@@ -57,7 +57,26 @@ def main():
     visuals = (ROOT / "Integration/Bonus/SetBonusVisuals.cs").read_text(encoding="utf-8-sig")
     generated += "namespace BossRush { public partial class ModBehaviour {\n"
     generated += member(visuals, "private static float GetSetBonusElementDamagePortion(")
-    generated += member(visuals, "internal bool HasSetBonusElementHealing") + "}}\n"
+    generated += member(visuals, "internal bool HasSetBonusElementHealing")
+    boss = (ROOT / "ZombieMode/ZombieModeBossController.cs").read_text(encoding="utf-8-sig")
+    for signature in ("public float AbsorbZombieModeBossFinalDamage(",
+                      "public float ApplyZombieModeShielderAuraFinalDamageReduction(",
+                      "private bool TryApplyZombieModeShielderAuraReduction(",
+                      "private ZombieModeBossInstance FindZombieModeBossInstanceFor("):
+        generated += member(boss, signature)
+    pollution = (ROOT / "ZombieMode/ZombieModePollution.cs").read_text(encoding="utf-8-sig")
+    components = (ROOT / "ZombieMode/ZombieModePollution_RuntimeComponents.cs").read_text(encoding="utf-8-sig")
+    generated += member(pollution, "internal void ApplyZombieModeEnemyDefense(")
+    generated += "}\n" + member(boss, "public sealed class ZombieModeBossShieldRuntime")
+    generated += member(components, "public sealed class ZombieModeShieldedAffixRuntime")
+    generated += member(boss, "public abstract class ZombieModeTimedRunScopedRuntime")
+    generated += member(components, "public sealed class ZombieModeSprinterDashRuntime") + "}\n"
+    tuning = (ROOT / "ZombieMode/ZombieModeTuning.cs").read_text(encoding="utf-8-sig")
+    generated += "namespace BossRush { public static class ZombieModeTuning {"
+    for name in ("TitanDamageReductionPercent", "ShielderAuraRadius", "ShielderAuraDamageReductionPercent",
+                 "StalwartRangedDamageMultiplier", "AdaptiveAffixReductionPercent", "AdaptiveAffixDurationSeconds", "AdaptiveAffixHitThreshold"):
+        generated += re.search(r"public const (?:float|int) " + name + r" = [0-9.]+f?;", tuning).group(0)
+    generated += "}}"
     generated_path = OUT / "OfficialAndHelpers.cs"
     generated_path.write_text(generated, encoding="utf-8")
     sources = [ROOT / "Integration/NPCs/DuckNpc/DuckNpcMovement.cs",
@@ -65,7 +84,8 @@ def main():
                ROOT / "Integration/Bonus/SetBonusDamageObservation.cs",
                official / "AI_PathControl.cs", official / "ElementFactor.cs",
                official / "ElementTypes.cs", official / "DamageTypes.cs",
-               HERE / "Stubs.cs", HERE / "Program.cs", generated_path]
+               ROOT / "ZombieMode/ZombieModeDamageRuntime.cs",
+               HERE / "ZombieBossCases.cs", HERE / "Stubs.cs", HERE / "Program.cs", generated_path]
     sdk = subprocess.check_output(["dotnet", "--list-sdks"], text=True).strip().splitlines()[-1]
     compiler = Path(sdk[sdk.index("[") + 1:sdk.index("]")]) / sdk.split()[0] / "Roslyn/bincore/csc.dll"
     framework = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Microsoft.NET/Framework64/v4.0.30319"
@@ -91,7 +111,8 @@ def main():
             '/out:"' + str(official_exe) + '"', '/r:"' + str(harmony) + '"']
     args += ['/r:"' + str(path) + '"' for path in sorted(managed.glob("*.dll"))]
     args += ['"' + str(ROOT / "Integration/Bonus/SetBonusDamageObservation.cs") + '"',
-             '"' + str(HERE / "OfficialIlCheck.cs") + '"']
+             '"' + str(HERE / "OfficialIlCheck.cs") + '"',
+             '"' + str(ROOT / "ZombieMode/ZombieModeDamageRuntime.cs") + '"']
     response = OUT / "official-il-compile.rsp"
     response.write_text("\n".join(args), encoding="utf-8-sig")
     game_core = managed / "TeamSoda.Duckov.Core.dll"

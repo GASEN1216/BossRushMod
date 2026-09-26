@@ -15,7 +15,7 @@
   §3.2  Hunter Frenzy / Player Slow / Reward Attribute 改用 PercentageAdd（去除 stat.BaseValue * percent 模式）
   §3.3  共享 disk mesh visual（s_zoneDiskMesh + CreateZombieModeFlatZoneVisual）
   §3.7  静态数组替代每帧 new （s_zombieModeBossKindOrder / s_zombieModeSpecialKindOrder）
-  §4.1  RestoreZombieModeFinalDamageReduction 加架构债注释
+  §4.1  Boss 护盾/减伤在官方死亡判定前消费（2026-09-26 修复原补血债务）
   §4.2  ExplosionManager.CreateExplosion 接入（DealZombieModeExplosionAreaDamage）
 """
 
@@ -221,10 +221,9 @@ def main() -> int:
         if needle not in pollution_text:
             return fail("missing in ZombieMode pollution partials: " + needle)
 
-    # §4.1 — 架构债注释
-    err = must_contain(wave, "Health.cs:418", "heal-back 模式")
-    if err:
-        return fail(err)
+    # §4.1 — 旧补血路径不能穿透致命一击；详细接线由 BossPresentationGuard 与真实 Hurt 回归覆盖。
+    from ZombieModeBossPresentationGuard import main as check_boss_contract
+    check_boss_contract()
 
     # §4.2 — ExplosionManager 接入
     for needle in ("DealZombieModeExplosionAreaDamage", "ExplosionManager.CreateExplosion"):

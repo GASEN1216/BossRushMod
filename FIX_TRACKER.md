@@ -9428,3 +9428,15 @@ Lv.2 的钻石、Lv.4 的冷淬液、Lv.7 的钻石戒指三处一并改为
 最终验证：649 guards / 52 regressions 全绿，960 源 Windows 正式编译成功；DLL `40CCD683E27FD9F8524C3FF7E46A49B2F6893AE7F3CF3B6D553AD320363F3CD3`，14 个 Dev 标识缺席。正式目标 `D:\sofrware\steam\steamapps\common\Escape from Duckov\Duckov_Data\Mods\BossRush` 共 531 个文件与源一致，72 包三端 SHA 一致且部署包实际读取通过。35 个日报动态区域留白，其余图标纹理/别名/几何保持；霜冠根/子节点姿态已回读。各反向验证预期转红后按字节恢复。日志和回退备份见 `Build/manual-fix-20260922/`；天空岛部署记录已同步。
 
 未运行游戏或访问玩家存档，L3 待 owner 按报告 R01–R17 清单验收。第三分类/立绘方式、全玩法跨模式边界、任意 RGB 和画面满意度仍保留产品口径差距，未把 12 项修复写成 17 项全部验收。未提交、推送或发布创意工坊。
+
+## 2026-09-26 丧尸模式 Boss 表现、击杀图鉴与完整链路（COMPAT / WIRE+ / SAFE）
+
+- 修复 CR-2026-09-26-111～113：护盾/减伤提前到死亡前，以实际 finalDamage 单次消费；极速追猎从预警前瞬移改为先预警后真实冲刺、实际落点结算；五类 Boss 增加独立轮廓、技能脉冲、官方姓名血条，跟随官方 modelRoot。
+- 复用共享 FX 材质/粒子、已有冲刺组件与既有 Health.Hurt 补丁，不新建宿主 partial。实例装甲与发光缝各一网格，粒子上限 20，暂停/死亡/旧 run/销毁路径清理。新增两源文件已进 CRLF 正式编译清单；宿主引用计数与归类随新增入口同步。
+- 图鉴生产代码未改：五类 marker、玩家归属、普通丧尸过滤与实例去重已有链路可靠性证据；本轮复查采集→入队→回基地 flush，仍需真实槽重启确认。没有改 TypeID、图鉴 key、存档 schema 或经济参数。
+- L2：丧尸 151 guards 全绿；IntegrationThirdReviewFixes 新增 34 条断言并保持原 127 条通过，ContentThirdReviewFixes、ZombieModeEntryDebt、SaveFailureRecovery 通过。11 次反向拒绝检查按字节还原。双语 Wiki 独立构建通过，导航 80 条，237 页 / 39,145 引用零缺失。
+- Windows 正式编译使用独立 `17b1d360` 基线 + 本轮生产改动快照，Managed 使用真实拷贝；产物 `Build/zombie-audit-20260926/source/Build/BossRush.dll`，SHA-256 `CBDC36E1C7B57FCF047FF99091FC89820497D0B1B386BF641AFB68ABB161A6F6`，14 个 Dev 标识全部缺席。未覆盖实际游戏目录；独立快照不包含其它会话新功能，不视作全仓集成产物。
+- 取舍与回退：沿原伤害/距离/冷却，Hunter 复用既有移动链；外形用代码轮廓避免增加加载与资源管线，可独立撤去 Attach/Pulse 和编译条目；冲刺可独立撤去接线与可选 impact 参数，不影响图鉴与防御。防御回退会恢复致死漏盾缺陷。
+- L3 未做：未启动游戏、未访问玩家存档、未读取游戏截图。外形是否帅、技能是否易读、墙体碰撞、同屏帧耗、回基地及重启的图鉴、连续两局清理，交 owner 按 [完整报告的步骤与看图表](docs/reports/reviews/2026-09-26_丧尸模式Boss与完整链路审查.md) 验收。没有提交、推送或发布。
+
+本专题最终全量门禁：672 PASS / 0 FAIL / 0 KNOWN-RED，diff --check 通过；编译所用本轮生产源码与当前工作区 SHA 一致，两份丧尸 Wiki 生成页也逐字节一致。证据归档于 `Build/zombie-audit-20260926/`。

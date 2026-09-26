@@ -13,8 +13,28 @@ namespace BossRush
     public sealed class ModBehaviour
     {
         public static ModBehaviour Instance { get { return null; } }
+        public void ApplyZombieModeEnemyDefense(Health health, ref DamageInfo info, ZombieModeEnemyRuntimeMarker marker) { }
+        public bool IsZombieModeActive { get { return false; } }
+        public int ZombieModeCurrentRunId { get { return 0; } }
+        public bool TryGetZombieModeKnownEnemyMarker(CharacterMainControl target, out ZombieModeEnemyRuntimeMarker marker) { marker = null; return false; }
+        public float AbsorbZombieModeBossFinalDamage(CharacterMainControl target, ZombieModeEnemyRuntimeMarker marker, float damage) { return 0; }
+        public float ApplyZombieModeShielderAuraFinalDamageReduction(CharacterMainControl target, float damage) { return 0; }
         public bool HasSetBonusElementHealing { get { return false; } }
         public static void CriticalLog(string key, string message) { Console.WriteLine(key + ": " + message); }
+    }
+}
+namespace BossRush
+{
+    public sealed class ZombieModeEnemyRuntimeMarker
+    {
+        public int RunId;
+        public bool IsBoss, DeathSettled, RemovedFromRuntime;
+        public ZombieModeBossShieldRuntime AllyShield;
+    }
+    public sealed class ZombieModeBossShieldRuntime
+    {
+        public bool IsShieldActive() { return false; }
+        public float AbsorbDamage(float damage) { return 0; }
     }
 }
 internal static class OfficialIlCheck
@@ -44,6 +64,14 @@ internal static class OfficialIlCheck
             new object[] { instructions })).ToList();
         if (!SetBonusDamageObservation.IsSupported || transformed.Count != instructions.Count + 5)
             throw new Exception("Official IL was not transformed exactly once");
+        var defended = ZombieModeDamageRuntime.InjectBeforeHealthLoss(transformed).ToList();
+        if (defended.Count != transformed.Count + 3)
+            throw new Exception("Zombie defense must inject exactly once into installed official IL");
+        var defenseFirst = ZombieModeDamageRuntime.InjectBeforeHealthLoss(instructions).ToList();
+        int otherFactor, otherSum; string otherFailure;
+        if (!SetBonusDamageObservation.TryFindObservationPoint(defenseFirst, out otherFactor, out otherSum, out otherFailure))
+            throw new Exception("Zombie defense must coexist in either transpiler order: " + otherFailure);
+        Console.WriteLine("PASS: installed official Health.Hurt zombie defense before health loss, both transpiler orders");
         File.WriteAllLines("installed-game-hurt-observed-il.txt", transformed.Select((c, i) => i + ": " + c));
         Console.WriteLine("PASS: installed " + typeof(Health).Assembly.GetName().Name
             + " Health.Hurt original IL matched (factor=" + factor + ", sum=" + sum

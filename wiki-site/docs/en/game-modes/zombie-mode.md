@@ -210,6 +210,16 @@ Boss Waves appear every 5 waves. There are 5 Boss types. Each drops **8** purifi
 - **Shielder** — HP Mult: ×28; Dmg Mult: ×1.3; Scale: ×1.3; Speed: ×0.9; Traits: Self shield + group shield aura
 - **Corruptor** — HP Mult: ×26; Dmg Mult: ×1.2; Scale: ×1.4; Speed: ×1.0; Traits: Ground corruption zones + poison trail
 
+### Appearance and Codex
+
+- **Titan**: heavy dark shoulder armor and a three-pronged crown with ember-orange seams; fortify brightens the seams.
+- **Hunter**: crimson twin back blades and forward claws; frenzy accelerates its energy ring.
+- **Splitter**: a purple crystal spine fan with staggered shards; summoning triggers a pulse.
+- **Shielder**: three cyan shield plates and a hexagonal ring; an active shield brightens the ring and seams.
+- **Corruptor**: toxic-green branching antlers and back spines; casting a corruption zone releases a pulse.
+
+All five use official nameplates. Your own kills count as separate Emperor Codex entries; ordinary zombies, split offspring, companion kills and environmental kills do not unlock Boss entries. Progress is queued during combat and saved after returning to base. Use the Emperor Codex item to check kill totals.
+
 ### Boss Abilities
 
 **Titan**:
@@ -217,7 +227,7 @@ Boss Waves appear every 5 waves. There are 5 Boss types. Each drops **8** purifi
 - **Fortify**: 40% damage reduction, 4s duration, 20s cooldown
 
 **Hunter**:
-- **Dash**: Teleports 15m toward player, 3.5m radius dealing 40 damage, 5s cooldown
+- **Dash**: Shows a startup warning, then dashes toward the locked player position up to 15m; deals 40 damage within 3.5m of its actual landing position, 5s cooldown
 - **Frenzy**: Triggers below 30% HP — +50% attack speed, +30% move speed, size increase, lasts 15s
 
 **Splitter**:

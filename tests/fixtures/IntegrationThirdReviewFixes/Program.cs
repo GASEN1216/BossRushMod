@@ -260,6 +260,8 @@ internal static class Program
     }
     private static int Main()
     {
+        ZombieBossCases.Run();
+
         try { TestMovement(); TestDamage(); Console.WriteLine("PASS IntegrationThirdReviewFixes: " + checks + " checks"); return 0; }
         catch (Exception e) { Console.Error.WriteLine(e); return 1; }
     }

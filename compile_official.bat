@@ -635,6 +635,8 @@ echo(ZombieMode\ZombieModePollution.cs
 echo(ZombieMode\ZombieModePollution_RuntimeSkills.cs
 echo(ZombieMode\ZombieModePollution_RuntimeComponents.cs
 echo(ZombieMode\ZombieModeBossController.cs
+echo(ZombieMode\ZombieModeDamageRuntime.cs
+echo(ZombieMode\ZombieModeBossVisuals.cs
 echo(ZombieMode\ZombieModePlayerSlowRuntime.cs
 echo(ZombieMode\ZombieModeSpawner.cs
 echo(ZombieMode\ZombieModeWaveController.cs

@@ -68,6 +68,13 @@ namespace BossRush
             return true;
         }
 
+        [HarmonyTranspiler]
+        private static System.Collections.Generic.IEnumerable<CodeInstruction> Transpiler(
+            System.Collections.Generic.IEnumerable<CodeInstruction> instructions)
+        {
+            return ZombieModeDamageRuntime.InjectBeforeHealthLoss(instructions);
+        }
+
         [HarmonyFinalizer]
         private static Exception Finalizer(Exception __exception, bool __state)
         {
