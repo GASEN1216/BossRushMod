@@ -53,7 +53,7 @@ NPC：
 - [从零搭建自定义场景：Blender → Unity → Mod](guides/从零搭建自定义场景_Blender到Unity到Mod完整教程.md)：首次做场景从这里开始
 - [自建场景原型试用：石砌遗迹与石堡前哨](guides/石堡前哨独立场景试用.md)
 
-天空岛（专项规则在 `DebugAndTools/SkyIsland/AGENTS.md`，资源侧数据在 [ArtSource/SkyIsland/](../ArtSource/SkyIsland/README.md)）：
+天空岛（专项规则在 `SkyIsland/AGENTS.md`，资源侧数据在 [ArtSource/SkyIsland/](../ArtSource/SkyIsland/README.md)）：
 
 - [天空岛：实际交付与验收](guides/sky-island/天空岛_实际交付与验收.md)：当前实现总览
 - [天空岛待人工验证清单](guides/sky-island/天空岛_待人工验证清单.md)：**实机验收从这里开始**

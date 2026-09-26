@@ -35,7 +35,7 @@ ACTIONS = "DebugAndTools/F3GameplayValidationAutotestActions.cs"
 DRILL = "DebugAndTools/F3GameplayValidationSkyIslandDrill.cs"
 CAPTURE = "DebugAndTools/F3GameplayValidationAutotestCapture.cs"
 TABLE = "Assets/Data/SkyIslandAutotest.json"
-RULES = "DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs"
+RULES = "SkyIsland/SkyIslandFieldcraftRules.cs"
 
 
 def method_body(code, signature):

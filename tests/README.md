@@ -103,7 +103,7 @@
 - `ManagedBossSpawnOwnershipGuard.py`、`DragonKingChildSpawnCancellationGuard.py`：Mode G 托管 Boss 的 lease 所有权与龙王子代取消契约。
 - `MapSelectionInjectionReuseGuard.py`：BossRush 与 Zombie 都用 `MapSelectionEntryInjectionHelper`。
 - `EnemyRecoveryHealthPreservationGuard.py`：敌人卡住回收时不要重置生命值。
-- `SkyIsland*Guard.py` / `SkyIsland*PropertyTest.py`：天空岛，说明见 `DebugAndTools/SkyIsland/AGENTS.md`。
+- `SkyIsland*Guard.py` / `SkyIsland*PropertyTest.py`：天空岛，说明见 `SkyIsland/AGENTS.md`。
 - `Wiki*Guard.py`：在线 Wiki 站点，说明见 `wiki-site/AGENTS.md` §7。
 
 ---

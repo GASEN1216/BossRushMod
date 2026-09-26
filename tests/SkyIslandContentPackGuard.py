@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cs_source_util import clean_source  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
-SKY = ROOT / "DebugAndTools" / "SkyIsland"
+SKY = ROOT / "SkyIsland"
 
 
 def read(rel):
@@ -82,17 +82,17 @@ def main():
                 return
             position = found
 
-    world = clean_source(read("DebugAndTools/SkyIsland/SkyIslandWorldStory.cs"))
-    service = clean_source(read("DebugAndTools/SkyIsland/SkyIslandStoryService.cs"))
-    rules = clean_source(read("DebugAndTools/SkyIsland/SkyIslandStoryRules.cs"))
-    residents = clean_source(read("DebugAndTools/SkyIsland/SkyIslandResidents.cs"))
-    letters = clean_source(read("DebugAndTools/SkyIsland/SkyIslandLetters.cs"))
-    puzzles = clean_source(read("DebugAndTools/SkyIsland/SkyIslandPuzzles.cs"))
-    journal = clean_source(read("DebugAndTools/SkyIsland/SkyIslandJournal.cs"))
-    item_rules = clean_source(read("DebugAndTools/SkyIsland/SkyIslandItemRules.cs"))
-    crate = clean_source(read("DebugAndTools/SkyIsland/SkyIslandRewardCrate.cs"))
-    markers = clean_source(read("DebugAndTools/SkyIsland/SkyIslandMapMarkers.cs"))
-    session = clean_source(read("DebugAndTools/SkyIsland/SkyIslandSession.cs"))
+    world = clean_source(read("SkyIsland/SkyIslandWorldStory.cs"))
+    service = clean_source(read("SkyIsland/SkyIslandStoryService.cs"))
+    rules = clean_source(read("SkyIsland/SkyIslandStoryRules.cs"))
+    residents = clean_source(read("SkyIsland/SkyIslandResidents.cs"))
+    letters = clean_source(read("SkyIsland/SkyIslandLetters.cs"))
+    puzzles = clean_source(read("SkyIsland/SkyIslandPuzzles.cs"))
+    journal = clean_source(read("SkyIsland/SkyIslandJournal.cs"))
+    item_rules = clean_source(read("SkyIsland/SkyIslandItemRules.cs"))
+    crate = clean_source(read("SkyIsland/SkyIslandRewardCrate.cs"))
+    markers = clean_source(read("SkyIsland/SkyIslandMapMarkers.cs"))
+    session = clean_source(read("SkyIsland/SkyIslandSession.cs"))
     items = clean_source(read("Integration/SkyIsland/SkyIslandItems.cs"))
     compass = clean_source(read("Integration/SkyIsland/SkyIslandCompassUsage.cs"))
     layout = json.loads(read("ArtSource/SkyIsland/layout.json"))
@@ -101,9 +101,9 @@ def main():
 
     # ---- 0. 登记：编译清单、本地化守卫、隔离回归 ----
     bat = read("compile_official.bat")
-    for rel in ("DebugAndTools\\SkyIsland\\SkyIslandLetters.cs", "DebugAndTools\\SkyIsland\\SkyIslandPuzzles.cs",
-                "DebugAndTools\\SkyIsland\\SkyIslandCrew.cs", "DebugAndTools\\SkyIsland\\SkyIslandJournal.cs",
-                "DebugAndTools\\SkyIsland\\SkyIslandItemRules.cs", "Integration\\SkyIsland\\SkyIslandItems.cs",
+    for rel in ("SkyIsland\\SkyIslandLetters.cs", "SkyIsland\\SkyIslandPuzzles.cs",
+                "SkyIsland\\SkyIslandCrew.cs", "SkyIsland\\SkyIslandJournal.cs",
+                "SkyIsland\\SkyIslandItemRules.cs", "Integration\\SkyIsland\\SkyIslandItems.cs",
                 "Integration\\SkyIsland\\SkyIslandCompassUsage.cs"):
         if "echo(" + rel not in bat:
             errors.append("编译清单缺 " + rel)
@@ -114,7 +114,7 @@ def main():
             errors.append("SkyIslandLocalizationGuard.FILES 缺 " + name)
     csproj = read("tests/fixtures/SkyIslandStory/Regression.csproj")
     for name in ("SkyIslandLetters.cs", "SkyIslandPuzzles.cs", "SkyIslandCrew.cs", "SkyIslandJournal.cs", "SkyIslandItemRules.cs"):
-        if "DebugAndTools/SkyIsland/" + name not in csproj:
+        if "SkyIsland/" + name not in csproj:
             errors.append("隔离回归没有链接 " + name + "（纯逻辑没人执行）")
     suite_guard = read("tests/SkyIslandValidationSuiteGuard.py")
     for member in ("RecordNote", "UseCompass"):
@@ -193,7 +193,7 @@ def main():
             errors.append("谜题 %s 的旗标 %s 与它解开后的收录动作写下的 %s 不一致" % (key, flag, expected))
 
     # ---- 4. 群岛手记 ----
-    point_text = clean_source(read("DebugAndTools/SkyIsland/SkyIslandPointText.cs"))
+    point_text = clean_source(read("SkyIsland/SkyIslandPointText.cs"))
     point_keys = set(re.findall(r'case "(Search_[A-Z0-9_]+)": return', point_text.split("internal static string Name(", 1)[1]
                                 .split("private bool BlockedByCombat", 1)[0]))
     chapter_keys = re.findall(r'"(Search_[A-Z0-9_]+)"', journal.split("internal static readonly string[][] Chapters", 1)[1]
@@ -248,7 +248,7 @@ def main():
         errors.append("物品配置器没有登记（只注册不配置）")
     if "SkyIslandItems.InjectLocalization();" not in read("Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs"):
         errors.append("物品名没有注入本地化（游戏里会显示 *BossRush_SkyIsland_...*）")
-    if "SkyIslandItems.ResetStaticCaches();" not in read("DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs"):
+    if "SkyIslandItems.ResetStaticCaches();" not in read("SkyIsland/SkyIslandRuntimeModule.cs"):
         errors.append("SkyIslandItems 的静态缓存没有生命周期 owner")
     give = need_body(items, "internal static bool TryGive(int typeId, bool toStorage, Func<bool> recordGrant, Func<bool> rollbackGrant = null)", "物品发放")
     ordered(give, ["ItemAssetsCollection.GetPrefab(typeId) == null", "ItemAssetsCollection.InstantiateSync(typeId);",
@@ -289,7 +289,7 @@ def main():
         require(side, 'yield return "%s";' % key, "结局后要圈未拿到的支线物证")
     if apply.count("step into the green ring to extract") != 2:
         errors.append("航标广场撤离提示的英文要带「站进绿环即可撤离」那半句（R-7）")
-    controls = read("DebugAndTools/SkyIsland/SkyIslandControls.cs")
+    controls = read("SkyIsland/SkyIslandControls.cs")
     if "敲响归航钟后钟庭的绿环" in controls or "After the Homecoming Bell rings, the green ring" in controls:
         errors.append("F3 面板说明仍是布局 v1 的撤离口径（R-8）")
     objective = need_body(rules, "internal static string Objective(SkyIslandStoryData data)", "目标句")
@@ -297,11 +297,11 @@ def main():
         errors.append("结局目标句要写上两处航标广场出口（R-8）")
     heights = sorted({int(round(island["height"])) for island in layout["islands"]})
     expected_line = "y = " + " / ".join(str(h) for h in heights)
-    if expected_line not in read("DebugAndTools/SkyIsland/SkyIslandExplosionObstaclePatch.cs"):
+    if expected_line not in read("SkyIsland/SkyIslandExplosionObstaclePatch.cs"):
         errors.append("爆炸遮挡补丁注释里的岛面高度与布局表不一致，应为「%s」（R-8）" % expected_line)
 
     # ---- 8. 蛙鸣池完成的声场回馈：文案所说的蛙声必须有真实入口，且只在已修复的近域夜间播放。 ----
-    ambience = clean_source(read("DebugAndTools/SkyIsland/SkyIslandAmbience.cs"))
+    ambience = clean_source(read("SkyIsland/SkyIslandAmbience.cs"))
     build_ambience = need_body(ambience, "internal SkyIslandAmbience(GameObject root)", "环境 owner 装配")
     require(build_ambience, "AddFrogPool(root);", "蛙声方法存在但没有从环境 owner 创建，玩家永远听不到")
     frog_pool = need_body(ambience, "private void AddFrogPool(GameObject map)", "蛙鸣池发声体")
@@ -321,7 +321,7 @@ def main():
     require(squash(read("tools/gen_sky_island_sfx.py")), '"frog_chorus.wav": 5.0', "蛙声必须登记可复现生成与音频校验")
 
     # CR-2026-09-12-020：应时的信同趟连送——规则只有一处，且只对「有前置」的信成立。
-    letters_src = squash(clean_source(read("DebugAndTools/SkyIsland/SkyIslandLetters.cs")))
+    letters_src = squash(clean_source(read("SkyIsland/SkyIslandLetters.cs")))
     require(letters_src, "internal static SkyIslandLetter NextSameRaidFor(SkyIslandStoryData data)",
             "同趟连送的规则必须收在 SkyIslandLetters 里（纯逻辑，隔离回归能执行）")
     require(letters_src, "next.Requires != SkyIslandStoryFlag.None ? next : null",

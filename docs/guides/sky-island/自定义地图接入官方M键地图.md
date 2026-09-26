@@ -98,7 +98,7 @@ Start-Process -FilePath $unityExe -ArgumentList $a -PassThru -Wait
 
 ### 2.4 运行时只做一件事
 
-`DebugAndTools/SkyIsland/SkyIslandMapFog.cs`：按存档里的 `visitedRegions` 逐个翻 `hide`。
+`SkyIsland/SkyIslandMapFog.cs`：按存档里的 `visitedRegions` 逐个翻 `hide`。
 装配时刷一次（老档进来时已到访的区域直接是彩色的），之后每新到访一个区域再刷一次。
 
 图层靠 **sprite 名字**认领（`sky_island_minimap_<区域>`），**不靠列表下标**——
@@ -229,8 +229,8 @@ private static bool SceneIdByBuildIndexPrefix(int buildIndex, ref string __resul
 | 烘焙脚本 | `tools/build_sky_island_minimap.py` |
 | 手绘底图 | `tools/sky_island_minimap_art.py` |
 | 场景构建器 | `<Unity 工程>/Assets/Editor/SkyIslandRaidBuilder.cs` |
-| 运行时分区迷雾 | `DebugAndTools/SkyIsland/SkyIslandMapFog.cs` |
-| 场景引用桥 | `DebugAndTools/SkyIsland/SkyIslandSceneReferenceBridge.cs` |
+| 运行时分区迷雾 | `SkyIsland/SkyIslandMapFog.cs` |
+| 场景引用桥 | `SkyIsland/SkyIslandSceneReferenceBridge.cs` |
 | 离线对齐测试 | `tests/SkyIslandMiniMapLayerAlignmentPropertyTest.py` |
 | 守卫 | `tests/SkyIslandMiniMapGuard.py` |
 | 场景合同 | `ArtSource/SkyIsland/OFFICIAL_SCENE_CONTRACT.md` |

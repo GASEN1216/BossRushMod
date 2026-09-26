@@ -1,4 +1,4 @@
-# DebugAndTools/SkyIsland/AGENTS.md — 天空岛（晴岚群岛）专项规则
+# SkyIsland/AGENTS.md — 天空岛（晴岚群岛）专项规则
 
 > 先读根目录 `AGENTS.md`。本文件只记天空岛独有的约束与踩过的坑。
 > 每轮的数字、包体大小、验证记录写在 `FIX_TRACKER.md`；设计稿、待拍板与人工验证清单在 `docs/reports/sky-island/天空岛_*.md`、`docs/guides/sky-island/`（local-only）。
@@ -6,11 +6,11 @@
 
 ## 1. 范围
 
-天空岛是从基地船点进入的**独立出击地图**：经官方 `SceneLoader` 切图，基地场景卸载，普通构建即可进入。代码从原型期起放在 `DebugAndTools/` 下，但它是正式内容，不要按目录名当调试代码处理。
+天空岛是从基地船点进入的**独立出击地图**：经官方 `SceneLoader` 切图，基地场景卸载，普通构建即可进入。正式运行时位于 `SkyIsland/`；F3 入口位于 `DebugAndTools/`，普通构建保留完整地图内容。
 
 | 位置 | 内容 |
 | --- | --- |
-| `DebugAndTools/SkyIsland/` | 入口 `SkyIslandRuntimeModule`、切图租约 `SkyIslandRaidLease`、会话 `SkyIslandSession*`、剧情（纯规则 `SkyIslandStoryRules`，存档 `SkyIslandStoryService` / `SkyIslandStoryCodec`）、遭遇、搜刮、采集、居民服务、云蚋、HUD 与面板 |
+| `SkyIsland/` | 入口 `SkyIslandRuntimeModule`、切图租约 `SkyIslandRaidLease`、会话 `SkyIslandSession*`、剧情（纯规则 `SkyIslandStoryRules`，存档 `SkyIslandStoryService` / `SkyIslandStoryCodec`）、遭遇、搜刮、采集、居民服务、云蚋、HUD 与面板 |
 | `Integration/SkyIsland/` | 岛上物品的注册与使用行为 |
 | `DebugAndTools/F3GameplayValidationSkyIsland*.cs` | 岛内只读 F3 验收套件（Dev 构建） |
 | `ArtSource/SkyIsland/`、`tools/generate_sky_island*.py`、`tools/sky_island_*.py` | 布局、导航、小地图等可重复生成的数据与生成器 |

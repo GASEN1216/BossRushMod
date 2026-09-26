@@ -36,7 +36,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cs_source_util import clean_source  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
-SKY = "DebugAndTools/SkyIsland/"
+SKY = "SkyIsland/"
 STRING = r'"(?:[^"\\]|\\.)*"'
 NEW_FILES = ("SkyIslandNight.cs", "SkyIslandMosquitoRules.cs", "SkyIslandGnats.cs", "SkyIslandGnatProjectilePatch.cs",
              "SkyIslandHearthFx.cs")
@@ -151,7 +151,7 @@ def main():
     bat_raw = (ROOT / "compile_official.bat").read_bytes()
     bat = bat_raw.decode("utf-8", errors="replace")
     for name in NEW_FILES:
-        if "echo(DebugAndTools\\SkyIsland\\%s" % name not in bat:
+        if "echo(SkyIsland\\%s" % name not in bat:
             errors.append("编译清单缺 %s（新增 .cs 不登记就静默不参与编译）" % name)
     if bat_raw.count(b"\n") != bat_raw.count(b"\r\n"):
         errors.append("compile_official.bat 混进了 LF 换行（cmd 会把行尾拆坏，报与代码无关的错）")
@@ -171,9 +171,9 @@ def main():
             errors.append("SkyIslandLocalizationGuard.FILES 缺 %s（玩家可见文案没人查中英成对）" % name)
     story_proj = read("tests/fixtures/SkyIslandStory/Regression.csproj").replace("\\", "/")
     for name in ("SkyIslandNight.cs", "SkyIslandMosquitoRules.cs"):
-        if "DebugAndTools/SkyIsland/" + name not in story_proj:
+        if "SkyIsland/" + name not in story_proj:
             errors.append("隔离回归 SkyIslandStory 没有链接 %s（云蚋规则没人执行）" % name)
-    if "DebugAndTools/SkyIsland/SkyIslandNight.cs" not in read("tests/fixtures/SkyIslandLighting/Regression.csproj").replace("\\", "/"):
+    if "SkyIsland/SkyIslandNight.cs" not in read("tests/fixtures/SkyIslandLighting/Regression.csproj").replace("\\", "/"):
         errors.append("隔离回归 SkyIslandLighting 没有链接 SkyIslandNight.cs（光照与判夜的等价没人执行）")
     if "SkyIslandNight." not in clean_source(read("tests/fixtures/SkyIslandLighting/Program.cs")):
         errors.append("隔离回归 SkyIslandLighting 没有断言判夜口径")
@@ -225,7 +225,7 @@ def main():
         if not re.search(pattern, source):
             errors.append("%s 没有走唯一判夜口径 SkyIslandNight.IsNight / SkyIslandLighting.ClockHours" % label)
     clock_reads = 0
-    for path in sorted((ROOT / "DebugAndTools/SkyIsland").glob("*.cs")) + sorted((ROOT / "Integration/SkyIsland").glob("*.cs")):
+    for path in sorted((ROOT / "SkyIsland").glob("*.cs")) + sorted((ROOT / "Integration/SkyIsland").glob("*.cs")):
         code = clean_source(path.read_text(encoding="utf-8-sig"))
         if re.search(r"\bAtNight\b", code):
             errors.append("%s 用了官方 AtNight（判夜只经 SkyIslandNight：AtNight 依赖场景里的 controller 实例、分段私有、纯规则夹具测不了）" % path.name)
@@ -235,7 +235,7 @@ def main():
             errors.append("%s 直接读了 GameClock.TimeOfDay：钟点只许经 SkyIslandLighting.ClockHours() 读" % path.name)
     if clock_reads != 1:
         errors.append("GameClock.TimeOfDay 全岛应只读一次（ClockHours），实际 %d 处" % clock_reads)
-    for path in sorted((ROOT / "DebugAndTools/SkyIsland").glob("*.cs")):
+    for path in sorted((ROOT / "SkyIsland").glob("*.cs")):
         if path.name == "SkyIslandNight.cs":
             continue
         stack = []

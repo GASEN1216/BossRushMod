@@ -104,9 +104,9 @@ PERSISTENT = (
      ("call", "Campaign/CampaignRuntimeModule.cs", "CampaignHud.Tick();",
       "public override void OnUpdate(float deltaTime, float unscaledDeltaTime)", ["try"], "", 2),
      "征程契约追踪条"),
-    ("DebugAndTools/SkyIsland/SkyIslandHud.cs", None, "internal void Tick(float unscaledDelta, bool suppressed)",
+    ("SkyIsland/SkyIslandHud.cs", None, "internal void Tick(float unscaledDelta, bool suppressed)",
      "rootGroup.alpha = visibility;",
-     ("call", "DebugAndTools/SkyIsland/SkyIslandSession.cs", "hud.Tick(Time.unscaledDeltaTime, HudSuppressed())",
+     ("call", "SkyIsland/SkyIslandSession.cs", "hud.Tick(Time.unscaledDeltaTime, HudSuppressed())",
       "private void Update()", [], "if (hud != null)", 1),
      "天空岛右上卡片、区域大标题与字幕"),
 )
@@ -115,7 +115,7 @@ PERSISTENT = (
 EXCLUDED = {
     "Integration/WishFountain/WishFountainUI.cs":
         "许愿台是玩家主动打开的界面，只借 HudOverlay 当宿主层（HOST_TOPMOST_SORTING_ORDER）",
-    "DebugAndTools/SkyIsland/SkyIslandGates.cs":
+    "SkyIsland/SkyIslandGates.cs":
         "桥口木牌：世界空间文字（WorldOverlay）",
     "DebugAndTools/ArenaPrototype/ArenaPrototypeControls.cs":
         "Dev 专用自建试验场的状态行：只在 Dev 构建出现，本轮只登记不改（见报告第三节待办）",
@@ -135,7 +135,7 @@ MODAL = {
     "BossFilter/BossFilterUi.cs": "Boss 筛选界面（Panel）：玩家主动打开",
     "DebugAndTools/F3DebugCheatMenuUi.cs": "F3 调试菜单（Modal）：Dev 构建里玩家主动打开",
     "DebugAndTools/NPCTeleportUI.cs": "NPC 传送调试界面（Panel）：玩家主动打开",
-    "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs": "天空岛剧情面板（Modal）：交互打开，注册官方 HUD 隐藏令牌",
+    "SkyIsland/SkyIslandStoryPresentation.cs": "天空岛剧情面板（Modal）：交互打开，注册官方 HUD 隐藏令牌",
     "Integration/Codex/CodexView.cs": "图鉴界面（Panel）：玩家主动打开",
     "Integration/Codex/CodexView_Grid.cs": "图鉴详情确认弹窗（ModalConfirm）",
     "Integration/DailyReport/DailyReportUI.cs": "日报界面（Panel）：玩家主动打开",

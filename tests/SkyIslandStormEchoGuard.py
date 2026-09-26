@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cs_source_util import clean_source  # noqa: E402
 
-SKY = "DebugAndTools/SkyIsland/"
+SKY = "SkyIsland/"
 RULES = SKY + "SkyIslandStoryRules.cs"
 ECHO_RULES = SKY + "SkyIslandStormEchoRules.cs"
 ECHO_REWARD = SKY + "SkyIslandStormEchoReward.cs"
@@ -119,7 +119,7 @@ def check(sources):
     # ---- 0. 登记 ----
     for name in ("SkyIslandStormEchoRules.cs", "SkyIslandStormEchoReward.cs", "SkyIslandSessionEcho.cs",
                  "SkyIslandWorldStoryEcho.cs", "SkyIslandSessionLabels.cs"):
-        if "echo(DebugAndTools\\SkyIsland\\" + name not in sources[BAT]:
+        if "echo(SkyIsland\\" + name not in sources[BAT]:
             errors.append("编译清单缺 " + name + "（新增 .cs 不登记就静默不参与编译）")
         if '"%s"' % name not in sources[L10N_GUARD]:
             errors.append("SkyIslandLocalizationGuard.FILES 缺 " + name)
@@ -127,7 +127,7 @@ def check(sources):
                           (JUDGES_CSPROJ, ("SkyIslandStormEchoRules.cs", "SkyIslandStormEchoReward.cs")),
                           (ENCOUNTERS_CSPROJ, ("SkyIslandStormEchoRules.cs",))):
         for name in names:
-            if "DebugAndTools/SkyIsland/" + name not in sources[csproj]:
+            if "SkyIsland/" + name not in sources[csproj]:
                 errors.append(csproj + " 没有链接 " + name + "（回响的纯规则没人执行）")
     for member in ("TryBeginStormEcho", "StormEchoChoice", "OnStormEchoDefeated", "RecordStormEchoCleared", "CreateWithGoods"):
         if '("%s",' % member not in sources[SUITE_GUARD]:

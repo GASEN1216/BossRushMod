@@ -3,7 +3,7 @@ from pathlib import Path
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = {name: f'DebugAndTools/SkyIsland/SkyIsland{name}.cs'
+FILES = {name: f'SkyIsland/SkyIsland{name}.cs'
          for name in ('Session', 'SessionFooting', 'RaidLease', 'Rendering', 'Lighting', 'SearchPoint', 'Controls')}
 
 
@@ -68,7 +68,7 @@ def main():
                 errors.append(f'{FILES[name]}: 缺少 {token}')
     # 2026-09-14 实机：在岛上直接退游戏，模块 OnDestroy 仍派发返航，销毁途中切场景、点亮黑幕报错（两局 Player.log 都有）。
     # 退游戏只走会话清理（进度由 CloseOrRetain 落盘）；游戏还开着时 Mod 被卸载才送人回基地。订阅必须成对退订。
-    module_path = 'DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs'
+    module_path = 'SkyIsland/SkyIslandRuntimeModule.cs'
     module = clean_source((ROOT / module_path).read_text(encoding='utf-8-sig'))
     destroy = module.split('public override void OnDestroy()', 1)[1] if 'public override void OnDestroy()' in module else ''
     for token, why in (('Application.quitting += OnApplicationQuitting;', '没有订阅 Application.quitting'),
@@ -152,10 +152,10 @@ def main():
     for token in ('new SkyIslandMap(', 'ClaimModalInput', 'Cursor.lockState', 'Time.timeScale ='):
         if token in session:
             errors.append('天空岛不得重建自绘地图或接管模态状态：' + token)
-    if (ROOT / 'DebugAndTools/SkyIsland/SkyIslandMap.cs').exists():
+    if (ROOT / 'SkyIsland/SkyIslandMap.cs').exists():
         errors.append('自绘旅程图已废弃，不得重新引入')
     # F6 曾经是自绘地图的开合键；官方地图不需要 Mod 处理输入，残留按键说明没删干净。
-    runtime_module = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs').read_text(encoding='utf-8-sig'))
+    runtime_module = clean_source((ROOT / 'SkyIsland/SkyIslandRuntimeModule.cs').read_text(encoding='utf-8-sig'))
     for name, text in (('Session', session), ('RuntimeModule', runtime_module)):
         if 'KeyCode.F6' in text:
             errors.append(name + ' 仍在处理 F6，官方地图由玩家自己的地图键开合')
@@ -163,7 +163,7 @@ def main():
     if host.index('StoneOutpostSceneLease.IsResourceScene(scene)') > host.index('PrepareSceneRuntimeForLoad()'):
         errors.append('资源 Scene 必须在正式关卡清理前过滤')
     # 天空岛正式包是完整独立 Raid 关卡，必须走正常关卡状态重置；旧的资源预览租约已删除，不得复活。
-    if 'SkyIslandSceneLease' in host or (ROOT / 'DebugAndTools/SkyIsland/SkyIslandSceneLease.cs').exists():
+    if 'SkyIslandSceneLease' in host or (ROOT / 'SkyIsland/SkyIslandSceneLease.cs').exists():
         errors.append('天空岛资源预览租约已废弃，不得重新引入')
     for path in ('DebugAndTools/ArenaPrototype/ArenaPrototypeSession.cs', 'DebugAndTools/F3GameplayValidationRunner.cs'):
         if 'GetComponent<SkyIslandSession>() != null' not in clean_source((ROOT / path).read_text(encoding='utf-8-sig')):

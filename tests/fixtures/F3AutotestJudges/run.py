@@ -2,7 +2,7 @@
 
 抽取对象（整份 `#if BOSSRUSH_DEV`，只去掉首尾那一对包裹，行号保持不变）：
 - `DebugAndTools/F3GameplayValidationAutotestJudges.cs` 与 `F3GameplayValidationAutotestModels.cs`：纯判据与步骤表模型；
-- `DebugAndTools/SkyIsland/SkyIslandStoryServiceAutotest.cs`：剧情存档门面的 Dev 入口（与链接的生产 SkyIslandStoryService 同一个 partial）。
+- `SkyIsland/SkyIslandStoryServiceAutotest.cs`：剧情存档门面的 Dev 入口（与链接的生产 SkyIslandStoryService 同一个 partial）。
 
 **不要**给整个工程定义 BOSSRUSH_DEV：别的生产文件里的 Dev 区块引用 Unity，这里只有显式逐字抽出的文件进 Dev 口径。
 Judges 的代码部分（剥掉注释与字符串字面量之后）一旦出现 Unity 标识，这里当场失败——那一份的全部意义就是能离线执行。
@@ -21,7 +21,7 @@ ROOT = HERE.parents[2]
 OUT = ROOT / 'Build' / 'runtime-regressions' / 'F3AutotestJudges'
 JUDGES = 'DebugAndTools/F3GameplayValidationAutotestJudges.cs'
 MODELS = 'DebugAndTools/F3GameplayValidationAutotestModels.cs'
-STORY_AUTOTEST = 'DebugAndTools/SkyIsland/SkyIslandStoryServiceAutotest.cs'
+STORY_AUTOTEST = 'SkyIsland/SkyIslandStoryServiceAutotest.cs'
 FORBIDDEN = ('UnityEngine', 'Mathf.', 'GameObject', 'Transform', 'Texture2D')
 
 sys.path.insert(0, str(ROOT / 'tests'))

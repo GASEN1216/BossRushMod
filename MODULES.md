@@ -28,7 +28,7 @@
 | `ui-signs` | 路牌与通用界面入口 | `UIAndSigns/BossRushInteractionScan.cs` | `AGENTS.md`、`Common/UI/AGENTS.md` |
 | `interactables` | 共享交互体 | `Interactables/BossRushBuildingInteractableBase.cs` | `AGENTS.md` |
 | `map-selection` | 地图选择 | `MapSelection/BossRushMapSelectionHelper.cs` | `AGENTS.md` |
-| `sky-island` | 天空岛正式地图、居民与剧情 | `DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs` | `AGENTS.md`、`DebugAndTools/SkyIsland/AGENTS.md`、`Common/UI/AGENTS.md` |
+| `sky-island` | 天空岛正式地图、居民与剧情 | `SkyIsland/SkyIslandRuntimeModule.cs` | `AGENTS.md`、`SkyIsland/AGENTS.md`、`Common/UI/AGENTS.md` |
 | `devtools` | F3、调试与场景原型 | `DebugAndTools/F3GameplayValidationRunner.cs` | `AGENTS.md`、`DebugAndTools/AGENTS.md`、`Common/UI/AGENTS.md` |
 | `integration-core` | 物品、装备工厂与集成生命周期 | `Integration/BossRushIntegration.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `npcs` | NPC 与建筑内容 | `Integration/IntegrationHostCompatibility.cs` | `AGENTS.md`、`Integration/AGENTS.md` |

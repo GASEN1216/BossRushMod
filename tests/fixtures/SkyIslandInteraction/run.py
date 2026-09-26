@@ -18,7 +18,7 @@ import subprocess
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 OUT = ROOT / "Build/runtime-regressions/SkyIslandInteraction"
-SKY = "DebugAndTools/SkyIsland/"
+SKY = "SkyIsland/"
 
 
 def member(source, signature):

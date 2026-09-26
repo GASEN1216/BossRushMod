@@ -26,11 +26,11 @@ sys.path.insert(0, str(ROOT / "tests"))
 from cs_source_util import clean_source  # noqa: E402
 
 GENERATOR = "tools/generate_sky_island.py"
-RING = "DebugAndTools/SkyIsland/SkyIslandGroundRing.cs"
-STORM = "DebugAndTools/SkyIsland/SkyIslandStormBoss.cs"
-FORGE = "DebugAndTools/SkyIsland/SkyIslandBossForge.cs"
+RING = "SkyIsland/SkyIslandGroundRing.cs"
+STORM = "SkyIsland/SkyIslandStormBoss.cs"
+FORGE = "SkyIsland/SkyIslandBossForge.cs"
 CAPTURE = "DebugAndTools/F3GameplayValidationAutotestCapture.cs"
-SKY_DIR = "DebugAndTools/SkyIsland"
+SKY_DIR = "SkyIsland"
 CLEARANCE = 0.03
 
 

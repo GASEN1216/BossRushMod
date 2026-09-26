@@ -37,8 +37,8 @@ NEW_IDS = {
 MATERIALS = ("SkyIslandCloudmossFiber", "SkyIslandGreenearSheaf", "SkyIslandDriftwood", "SkyIslandBrassScrap",
              "SkyIslandWindcrystalShard", "SkyIslandStardust", "SkyIslandQinglanWindcrystal")
 CONSUMABLES = {"SkyIslandWindLantern": "Lantern", "SkyIslandWindwardIncense": "Incense", "SkyIslandQinglanCharm": "Charm"}
-NEW_SOURCES = ("DebugAndTools\\SkyIsland\\SkyIslandFieldcraftRules.cs", "DebugAndTools\\SkyIsland\\SkyIslandGathering.cs",
-               "DebugAndTools\\SkyIsland\\SkyIslandFieldcraft.cs", "Integration\\SkyIsland\\SkyIslandFieldcraftUsage.cs")
+NEW_SOURCES = ("SkyIsland\\SkyIslandFieldcraftRules.cs", "SkyIsland\\SkyIslandGathering.cs",
+               "SkyIsland\\SkyIslandFieldcraft.cs", "Integration\\SkyIsland\\SkyIslandFieldcraftUsage.cs")
 
 
 def read(rel):
@@ -98,15 +98,15 @@ def main():
                 return
             position = found
 
-    rules_raw = read("DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs")
+    rules_raw = read("SkyIsland/SkyIslandFieldcraftRules.cs")
     rules = clean_source(rules_raw)
-    gathering = clean_source(read("DebugAndTools/SkyIsland/SkyIslandGathering.cs"))
-    fieldcraft = clean_source(read("DebugAndTools/SkyIsland/SkyIslandFieldcraft.cs"))
+    gathering = clean_source(read("SkyIsland/SkyIslandGathering.cs"))
+    fieldcraft = clean_source(read("SkyIsland/SkyIslandFieldcraft.cs"))
     usage = clean_source(read("Integration/SkyIsland/SkyIslandFieldcraftUsage.cs"))
-    world = clean_source(read("DebugAndTools/SkyIsland/SkyIslandWorldStory.cs"))
+    world = clean_source(read("SkyIsland/SkyIslandWorldStory.cs"))
     items = clean_source(read("Integration/SkyIsland/SkyIslandItems.cs"))
-    item_rules = clean_source(read("DebugAndTools/SkyIsland/SkyIslandItemRules.cs"))
-    session_raw = read("DebugAndTools/SkyIsland/SkyIslandSession.cs")
+    item_rules = clean_source(read("SkyIsland/SkyIslandItemRules.cs"))
+    session_raw = read("SkyIsland/SkyIslandSession.cs")
     layout = json.loads(read("ArtSource/SkyIsland/layout.json"))
     author_markers = {m["id"] for m in layout["markers"]}
 
@@ -119,13 +119,13 @@ def main():
     for name in ("SkyIslandFieldcraftRules.cs", "SkyIslandGathering.cs", "SkyIslandFieldcraft.cs"):
         if '"%s"' % name not in l10n_guard:
             errors.append("SkyIslandLocalizationGuard.FILES 缺 " + name)
-    if "DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs" not in read("tests/fixtures/SkyIslandStory/Regression.csproj"):
+    if "SkyIsland/SkyIslandFieldcraftRules.cs" not in read("tests/fixtures/SkyIslandStory/Regression.csproj"):
         errors.append("隔离回归没有链接 SkyIslandFieldcraftRules.cs（纯规则没人执行）")
     suite_guard = read("tests/SkyIslandValidationSuiteGuard.py")
     for member in ("Harvest", "Craft", "UseConsumable", "OpenCrafting", "CraftChoice"):
         if '("%s",' % member not in suite_guard:
             errors.append("F3 只读守卫的写入口名单缺 " + member)
-    if "SkyIslandFieldcraft.ResetStaticCaches();" not in clean_source(read("DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs")):
+    if "SkyIslandFieldcraft.ResetStaticCaches();" not in clean_source(read("SkyIsland/SkyIslandRuntimeModule.cs")):
         errors.append("SkyIslandFieldcraft 的静态引用没有模块销毁 owner")
     tuning = clean_source(read("ZombieMode/ZombieModeTuning.cs"))
     for constant, literal in (("StaminaRecoverRate", "StaminaRecoverRate"), ("EnergyCost", "EnergyCost")):
@@ -302,7 +302,7 @@ def main():
                       "SkyIslandInventoryTransaction.TryReserve(", "if (disposed || !session.IsReady) return false;",
                       "material.Commit();", "material.Dispose();", "inventoryBusy = false;"],
             "蛙卵扣材料复用预留事务：防重入、预留后复核会话、提交或归还并释放占用")
-    transaction = clean_source(read("DebugAndTools/SkyIsland/SkyIslandInventoryTransaction.cs"))
+    transaction = clean_source(read("SkyIsland/SkyIslandInventoryTransaction.cs"))
     require(need_body(transaction, "internal void Commit()", "材料提交"),
             "if (entry.Take == entry.Count) DestroyUnowned(entry.Item);", "整堆提交销毁未归属原件，不留孤儿物品")
     require(need_body(transaction, "internal static void DestroyUnowned(Item item)", "原件清理"),

@@ -86,28 +86,28 @@ def main():
                 return
             position = found
 
-    lights_raw = read("DebugAndTools/SkyIsland/SkyIslandLights.cs")
+    lights_raw = read("SkyIsland/SkyIslandLights.cs")
     lights = clean_source(lights_raw)
-    rules = clean_source(read("DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs"))
-    fieldcraft = clean_source(read("DebugAndTools/SkyIsland/SkyIslandFieldcraft.cs"))
-    world = clean_source(read("DebugAndTools/SkyIsland/SkyIslandWorldStory.cs"))
-    service = clean_source(read("DebugAndTools/SkyIsland/SkyIslandStoryService.cs"))
-    services = clean_source(read("DebugAndTools/SkyIsland/SkyIslandServices.cs"))
-    boss = clean_source(read("DebugAndTools/SkyIsland/SkyIslandStormBoss.cs"))
-    journal = clean_source(read("DebugAndTools/SkyIsland/SkyIslandJournal.cs"))
-    item_rules = clean_source(read("DebugAndTools/SkyIsland/SkyIslandItemRules.cs"))
-    letters = clean_source(read("DebugAndTools/SkyIsland/SkyIslandLetters.cs"))
+    rules = clean_source(read("SkyIsland/SkyIslandFieldcraftRules.cs"))
+    fieldcraft = clean_source(read("SkyIsland/SkyIslandFieldcraft.cs"))
+    world = clean_source(read("SkyIsland/SkyIslandWorldStory.cs"))
+    service = clean_source(read("SkyIsland/SkyIslandStoryService.cs"))
+    services = clean_source(read("SkyIsland/SkyIslandServices.cs"))
+    boss = clean_source(read("SkyIsland/SkyIslandStormBoss.cs"))
+    journal = clean_source(read("SkyIsland/SkyIslandJournal.cs"))
+    item_rules = clean_source(read("SkyIsland/SkyIslandItemRules.cs"))
+    letters = clean_source(read("SkyIsland/SkyIslandLetters.cs"))
     items = clean_source(read("Integration/SkyIsland/SkyIslandItems.cs"))
-    gnats = clean_source(read("DebugAndTools/SkyIsland/SkyIslandGnats.cs"))
+    gnats = clean_source(read("SkyIsland/SkyIslandGnats.cs"))
     layout = json.loads(read("ArtSource/SkyIsland/layout.json"))
     author_markers = {m["id"] for m in layout["markers"]}
 
     # ---- 0. 登记 ----
-    if "echo(DebugAndTools\\SkyIsland\\SkyIslandLights.cs" not in read("compile_official.bat"):
+    if "echo(SkyIsland\\SkyIslandLights.cs" not in read("compile_official.bat"):
         errors.append("编译清单缺 SkyIslandLights.cs（新增 .cs 不登记就静默不参与编译）")
     if '"SkyIslandLights.cs"' not in read("tests/SkyIslandLocalizationGuard.py"):
         errors.append("SkyIslandLocalizationGuard.FILES 缺 SkyIslandLights.cs")
-    if "DebugAndTools/SkyIsland/SkyIslandLights.cs" not in read("tests/fixtures/SkyIslandStory/Regression.csproj"):
+    if "SkyIsland/SkyIslandLights.cs" not in read("tests/fixtures/SkyIslandStory/Regression.csproj"):
         errors.append("隔离回归没有链接 SkyIslandLights.cs（岛上的灯没人执行）")
     suite_guard = read("tests/SkyIslandValidationSuiteGuard.py")
     for member in ("LightLamp", "LightChoice", "PackedMeal"):
@@ -189,9 +189,9 @@ def main():
     if squash("if (buff == SkyIslandFieldBuff.Meal)") not in use_consumable or "session.Services.PackedMeal()" not in use_consumable:
         errors.append("便当那一顿要在 UseConsumable 里交给归航菜服务（PackedMeal）")
     # 头目 / 岛主的专属装备不是岛上的克隆物品（不进 AllTypeIds，走装备 bundle 注册），但同样要在「群岛之物」写清岛上用处，并真有接线。
-    boss_rules = clean_source(read("DebugAndTools/SkyIsland/SkyIslandBossRules.cs"))
+    boss_rules = clean_source(read("SkyIsland/SkyIslandBossRules.cs"))
     boss_gear = re.findall(r"BossRushItemIds\.(\w+)", boss_rules.split("internal static readonly int[] AllGearTypeIds", 1)[-1].split("};", 1)[0])
-    boss_uses = squash(clean_source(read("DebugAndTools/SkyIsland/SkyIslandFieldcraftBossGear.cs")))
+    boss_uses = squash(clean_source(read("SkyIsland/SkyIslandFieldcraftBossGear.cs")))
     if len(boss_gear) != 17 or set(boss_gear) & set(all_names):
         errors.append("专属装备表没解析全或混进了岛上物品表：%r" % boss_gear)
     for token, why in (("SkyIslandBossRules.StarworksPiecesWorn(", "星工两件套要现读主角的头盔 / 护甲 / 背包三槽"),
@@ -215,7 +215,7 @@ def main():
 
     # ---- 2. 岛上的灯 ----
     # 三张文案表已拆进 SkyIslandPointText.cs（纯静态查表，WorldStory 卡在 1200 行预算上）。
-    point_text = clean_source(read("DebugAndTools/SkyIsland/SkyIslandPointText.cs"))
+    point_text = clean_source(read("SkyIsland/SkyIslandPointText.cs"))
     point_keys = set(re.findall(r'case "(Search_[A-Z0-9_]+)": return',
                                 point_text.split("internal static string Name(", 1)[1]
                                 .split("internal static string Brief(", 1)[0]))
@@ -289,7 +289,7 @@ def main():
     for body, label in ((people, "来信与人"), (isles, "岛上的事")):
         require(body, "BackToJournal()", "手记子页「" + label + "」没有返回项，进去就出不来（页脚已删，只剩 ESC 整个关掉）")
     # 20 处见闻必须真的接进官方图鉴，不能只是从手记里删掉了事。
-    bridge = read("DebugAndTools/SkyIsland/SkyIslandNoteBridge.cs")
+    bridge = read("SkyIsland/SkyIslandNoteBridge.cs")
     for token, why in (
         ("NoteIndex.SetNoteDynamic(note)", "官方按 key 查条目靠字典"),
         ("notes.Add(note)", "图鉴界面列条目走 notes 列表，只 SetNoteDynamic 的话一条也看不见"),
@@ -381,11 +381,11 @@ def main():
             errors.append(why + "（缺「%s」）" % token)
 
     # ---- 8. 晴岚航徽：拉缆绳回码头（2026-09-11 拍板） ----
-    if "echo(DebugAndTools\\SkyIsland\\SkyIslandSessionRecall.cs" not in read("compile_official.bat"):
+    if "echo(SkyIsland\\SkyIslandSessionRecall.cs" not in read("compile_official.bat"):
         errors.append("编译清单缺 SkyIslandSessionRecall.cs")
     if '("TryRecallToDock",' not in suite_guard:
         errors.append("F3 只读守卫的写入口名单缺 TryRecallToDock（它会搬动玩家）")
-    recall = clean_source(read("DebugAndTools/SkyIsland/SkyIslandSessionRecall.cs"))
+    recall = clean_source(read("SkyIsland/SkyIslandSessionRecall.cs"))
     require(need_body(recall, "internal bool RecallAvailable", "拉缆绳可用性"), "!recallUsed", "航徽的缆绳每趟只能拉一次")
     ordered(need_body(recall, "internal bool TryRecallToDock(out string message)", "拉缆绳回码头"),
             ["if (!RecallAvailable)", "if (!CanOpenStoryPanel(out reason))", "VerifyGround(playerSpawn);",

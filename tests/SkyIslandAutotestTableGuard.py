@@ -35,7 +35,7 @@ CHECKLIST = "docs/guides/sky-island/天空岛_待人工验证清单.md"
 COVERAGE = "Assets/Data/GameplayCoverage.json"
 GEOMETRY = "ArtSource/SkyIsland/Validation/sky_island_geometry.json"
 WORLD = "Assets/Data/SkyIsland/World.json"
-SKY_DIR = "DebugAndTools/SkyIsland"
+SKY_DIR = "SkyIsland"
 
 BOSS_KINDS = ("storm", "foreman", "stargazer", "roothunter", "waylayer", "sickle", "listener", "piper", "mirror",
               "windhunter_chaser", "windhunter_stalker", "windhunter_warden")

@@ -99,7 +99,8 @@ BossRushMod/
 ├── Campaign/                          鸭王征程
 ├── PetNest/  RandomEvents/            遗种巢、局内随机事件
 ├── Integration/                       物品、装备、NPC、商店、好感、婚姻、重铸、图鉴、日报、后山……
-├── DebugAndTools/                     调试工具与 F3 验收；SkyIsland/ 是天空岛运行时
+├── SkyIsland/                         天空岛正式运行时
+├── DebugAndTools/                     调试工具与 F3 验收
 ├── Common/  Utilities/  Patches/      共享库、跨模块基础设施、Harmony 补丁
 ├── Config/  Localization/  LootAndRewards/  Achievement/  Audio/
 ├── BossFilter/  Interactables/  MapSelection/  UIAndSigns/

@@ -19,7 +19,7 @@ from pathlib import Path
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
-SKY = "DebugAndTools/SkyIsland/"
+SKY = "SkyIsland/"
 
 
 def body_of(source, signature):
@@ -263,7 +263,7 @@ def main():
 
     # ---- CR-2026-09-10-028：英文术语与语法 ----
     literal = re.compile(r'"(?:\\.|[^"\\\n])*"')
-    sources = sorted((ROOT / "DebugAndTools/SkyIsland").glob("*.cs")) + [
+    sources = sorted((ROOT / "SkyIsland").glob("*.cs")) + [
         ROOT / "DebugAndTools/F3GameplayValidationRunner.cs"]
     for path in sources:
         for value in literal.findall(clean_source(path.read_text(encoding="utf-8-sig"))):

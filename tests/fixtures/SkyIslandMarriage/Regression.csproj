@@ -6,7 +6,7 @@
   <ItemGroup>
     <Compile Include="$(MarriageGeneratedSource)" />
     <Compile Include="../../../Integration/Dialogue/DialogueActorFactory.cs" Link="Production/DialogueActorFactory.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandResidentInteractable.cs" Link="Production/SkyIslandResidentInteractable.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandSessionQuestBridge.cs" Link="Production/SkyIslandSessionQuestBridge.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandResidentInteractable.cs" Link="Production/SkyIslandResidentInteractable.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandSessionQuestBridge.cs" Link="Production/SkyIslandSessionQuestBridge.cs" />
   </ItemGroup>
 </Project>

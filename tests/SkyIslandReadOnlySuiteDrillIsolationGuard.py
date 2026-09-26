@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """岛内只读验收不得引用 Dev 演练代码（2026-09-14）。
 
-Dev 演练套件（`DebugAndTools/F3GameplayValidationSkyIslandDrill.cs` + `DebugAndTools/SkyIsland/SkyIslandGnatsDrill.cs`）
+Dev 演练套件（`DebugAndTools/F3GameplayValidationSkyIslandDrill.cs` + `SkyIsland/SkyIslandGnatsDrill.cs`）
 会改这趟出击的状态：强制夜里、刷云蚋、给躲闪状态机登记合成弹道、打死一只、压主角血量、弹官方对话。
 它能被接受，全靠三件事：只在 Dev 构建里存在、只经独立按钮进入、报告头如实写 `read_only=false`。
 
@@ -27,11 +27,11 @@ READ_ONLY = (
     "DebugAndTools/F3GameplayValidationSkyIsland.cs",
     "DebugAndTools/F3GameplayValidationSkyIslandCases.cs",
     "DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs",
-    "DebugAndTools/SkyIsland/SkyIslandSessionValidation.cs",
+    "SkyIsland/SkyIslandSessionValidation.cs",
 )
 DRILL_FILES = (
     "DebugAndTools/F3GameplayValidationSkyIslandDrill.cs",
-    "DebugAndTools/SkyIsland/SkyIslandGnatsDrill.cs",
+    "SkyIsland/SkyIslandGnatsDrill.cs",
 )
 DRILL_SYMBOL = re.compile(
     r"\b(?:SkyIslandDrillCaseIds|TryStartSkyIslandDrill|RunSkyIslandDrill\w*|_skyIslandDrill|CountLooseLootForDrill"

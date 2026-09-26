@@ -21,7 +21,7 @@
 ## 3. 子系统地图
 
 模块职责、入口和规则文件见 `MODULES.md`；按任务运行 `python tools/task_context.py --module <id>`。
-专项规则：`Integration/AGENTS.md`、`Patches/AGENTS.md`、`Utilities/AGENTS.md`、`ZombieMode/AGENTS.md`、`DebugAndTools/AGENTS.md`、`DebugAndTools/SkyIsland/AGENTS.md`、`Common/UI/AGENTS.md`、`tests/AGENTS.md`、`docs/AGENTS.md`、`wiki-site/AGENTS.md`。
+专项规则：`Integration/AGENTS.md`、`Patches/AGENTS.md`、`Utilities/AGENTS.md`、`ZombieMode/AGENTS.md`、`DebugAndTools/AGENTS.md`、`SkyIsland/AGENTS.md`、`Common/UI/AGENTS.md`、`tests/AGENTS.md`、`docs/AGENTS.md`、`wiki-site/AGENTS.md`。
 官方反编译源 `鸭科夫源码/` 只读、不编译；`docs/` 与多数 `Assets/` 默认 local-only。
 
 ## 4. 硬规则

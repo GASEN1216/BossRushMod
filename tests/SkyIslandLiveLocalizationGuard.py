@@ -8,7 +8,7 @@ import re
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
-SKY = ROOT / "DebugAndTools/SkyIsland"
+SKY = ROOT / "SkyIsland"
 errors = []
 
 

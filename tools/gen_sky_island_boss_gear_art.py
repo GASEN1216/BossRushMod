@@ -10,7 +10,7 @@
    图标与模型出自同一张概念图：玩家在背包里看到的，和 Boss 身上穿的是同一件。
 
 不并进 tools/gen_sky_island_item_icons.py：那份清单被 SkyIslandFieldcraftGuard 钉成与岛上十八件物品一一对应。
-图标文件名与 DebugAndTools/SkyIsland/SkyIslandBossRules.cs 的 GearSpecs.IconName 一一对应；Assets/ 与 output/ 都不进 git。
+图标文件名与 SkyIsland/SkyIslandBossRules.cs 的 GearSpecs.IconName 一一对应；Assets/ 与 output/ 都不进 git。
 
 用法（需要网络出口；密钥只从环境变量 OPENAI_BASE_URL / OPENAI_API_KEY 读，来源见 docs/AI生图API和密钥.md，
 不要写进脚本、命令行或日志）：

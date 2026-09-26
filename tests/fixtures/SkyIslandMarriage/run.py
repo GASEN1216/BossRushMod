@@ -22,13 +22,13 @@ def member(source, signature):
     assert end, signature
     return source[hit.start():opening + end.end()]
 
-paths = ['DebugAndTools/SkyIsland/SkyIslandOfficialQuestGivers.cs',
+paths = ['SkyIsland/SkyIslandOfficialQuestGivers.cs',
          'Integration/Wedding/WeddingModBehaviourBridge.cs',
          'Integration/IntegrationHostCompatibility.cs',
          'Integration/Wedding/WeddingRuntimeModule.cs',
          'Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcModule.cs',
          'Integration/Wedding/NPCMarriageSystem.cs',
-         'DebugAndTools/SkyIsland/SkyIslandResidentDialogue.cs',
+         'SkyIsland/SkyIslandResidentDialogue.cs',
          'Integration/Dialogue/DialogueActorFactory.cs']
 givers, bridge, host_bridge, wedding_runtime, permanent, marriage, dialogue, factory = [(ROOT / path).read_text(encoding='utf-8-sig') for path in paths]
 fields = []

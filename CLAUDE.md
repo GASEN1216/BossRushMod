@@ -6,4 +6,4 @@
 
 开工先运行 `python tools/task_context.py --module <id>`；id 见 `MODULES.md`。
 
-子目录另有专项规则：在 `Integration/`、`Patches/`、`Utilities/`、`ZombieMode/`、`DebugAndTools/`、`DebugAndTools/SkyIsland/`、`Common/UI/`、`tests/`、`docs/`、`wiki-site/` 下工作时，先读该目录的 `AGENTS.md`。
+子目录另有专项规则：在 `Integration/`、`Patches/`、`Utilities/`、`ZombieMode/`、`DebugAndTools/`、`SkyIsland/`、`Common/UI/`、`tests/`、`docs/`、`wiki-site/` 下工作时，先读该目录的 `AGENTS.md`。

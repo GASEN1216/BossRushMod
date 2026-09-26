@@ -8,7 +8,7 @@
 `run.py` 把两份整份 `#if BOSSRUSH_DEV` 的生产文件去掉首尾包裹（行号不变）写进 `Build/runtime-regressions/F3AutotestJudges/gen/`：
 
 - `DebugAndTools/F3GameplayValidationAutotestJudges.cs`：步骤表模型与校验、剧情阶段推进、快照编码、线性对比度 / 可见度 / 溢出判据、结果与报告；
-- `DebugAndTools/SkyIsland/SkyIslandStoryServiceAutotest.cs`：剧情存档门面的 Dev 入口（与链接的生产 `SkyIslandStoryService` 同一个 partial）。
+- `SkyIsland/SkyIslandStoryServiceAutotest.cs`：剧情存档门面的 Dev 入口（与链接的生产 `SkyIslandStoryService` 同一个 partial）。
 
 工程**不定义** BOSSRUSH_DEV（别的生产文件里的 Dev 区块引用 Unity）。Judges 剥掉注释与字符串字面量之后若出现 `UnityEngine`、`Mathf.`、`GameObject`、`Transform`、`Texture2D`，`run.py` 当场失败；
 扫描器自带小自检，防止清洗把代码一起抹掉而恒绿。

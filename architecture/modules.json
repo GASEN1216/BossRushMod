@@ -614,9 +614,9 @@
       "title": "天空岛正式地图、居民与剧情",
       "kind": "map",
       "paths": [
-        "DebugAndTools/SkyIsland/**/*.cs"
+        "SkyIsland/**/*.cs"
       ],
-      "entry": "DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs",
+      "entry": "SkyIsland/SkyIslandRuntimeModule.cs",
       "state_owner": "SkyIslandRuntimeModule",
       "public_api": [
         "SkyIslandRuntimeModule"
@@ -631,7 +631,7 @@
       "docs": [],
       "rules": [
         "AGENTS.md",
-        "DebugAndTools/SkyIsland/AGENTS.md",
+        "SkyIsland/AGENTS.md",
         "Common/UI/AGENTS.md"
       ],
       "depends_on": [

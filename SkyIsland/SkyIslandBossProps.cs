@@ -3,7 +3,7 @@
 // ============================================================================
 // 七位新 Boss 的招式都由这几样拼出来，不另起第二套（残星匠首与瞭台观星手 R1 已实机验过，原样不动）：
 // - 可以打的轻量接收体（根桩、倒影）：配方照供能桩 / 云蚋——先失活，伤害接收体层非触发球 + 运动学刚体 +
-//   DamageReceiver（useSimpleHealth）+ HealthSimpleBase，再激活；死亡看 activeSelf（DebugAndTools/SkyIsland/AGENTS.md §4）。
+//   DamageReceiver（useSimpleHealth）+ HealthSimpleBase，再激活；死亡看 activeSelf（SkyIsland/AGENTS.md §4）。
 // - 倒影：把角色此刻的蒙皮网格烤成静态网格，不克隆角色（克隆会把身上的装备 Item / ItemAgent 一起复制出来）。
 // - 玩家减速：官方 WalkSpeed / RunSpeed 的 PercentageAdd（RuntimeStatModifierTracker；官方只有这两个与 Moveability 是移动 stat，
 //   "MoveSpeed" 是动画参数）。到时、出圈、Boss 倒下、销毁都要摘。

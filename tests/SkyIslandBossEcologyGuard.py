@@ -30,7 +30,7 @@ from pathlib import Path
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parent.parent
-SKY = "DebugAndTools/SkyIsland/"
+SKY = "SkyIsland/"
 
 PATHS = {
     "rules": SKY + "SkyIslandBossRules.cs",

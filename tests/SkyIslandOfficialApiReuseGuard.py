@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cs_source_util import clean_source
 
-SKY = "DebugAndTools/SkyIsland/"
+SKY = "SkyIsland/"
 DIALOGUE = SKY + "SkyIslandResidentDialogue.cs"
 WORLD = SKY + "SkyIslandWorldStory.cs"
 BRIDGE = SKY + "SkyIslandNoteBridge.cs"

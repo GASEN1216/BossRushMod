@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cs_source_util import clean_source
 
-SKY = "DebugAndTools/SkyIsland/"
+SKY = "SkyIsland/"
 WORLD = SKY + "SkyIslandWorldStory.cs"
 RULES = SKY + "SkyIslandStoryRules.cs"
 # 2026-09-14 B 轮：噬风·回响的「引风」选项与它点下去那一次（选项接线与会话接线各在一个 partial 文件里）。

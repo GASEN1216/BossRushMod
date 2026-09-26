@@ -4,7 +4,7 @@
 2026-09-23 实测的失明案例：`tools/verify_syntax.py` 自带一套 `echo(...\\.cs` 正则，
 吃不下清单里残留的 `^` 续行写法（`echo(A.cs ^` + 下一行缩进的 `B.cs ^` …）。
 cmd 会把这几行拼成一条 echo，写进响应文件后 csc 按空白切参数，所以**正式构建照常
-编译**；但探针把 `echo(DebugAndTools\\SkyIsland\\SkyIslandJournal.cs ^` 整行丢掉了，
+编译**；但探针把 `echo(SkyIsland\\SkyIslandJournal.cs ^` 整行丢掉了，
 该文件因此从来没被离线语法检查过——探针既不报错，也不显示 979 与 980 的差。
 
 本 guard 钉三件事：

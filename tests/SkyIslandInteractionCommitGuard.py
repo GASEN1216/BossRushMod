@@ -9,7 +9,7 @@ import sys
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
-SKY = "DebugAndTools/SkyIsland/"
+SKY = "SkyIsland/"
 PANEL = SKY + "SkyIslandStoryPresentation.cs"
 WORLD = SKY + "SkyIslandWorldStory.cs"
 SERVICES = SKY + "SkyIslandServices.cs"

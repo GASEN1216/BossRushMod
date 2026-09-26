@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def source(name):
-    return clean_source((ROOT / 'DebugAndTools/SkyIsland' / name).read_text(encoding='utf-8'))
+    return clean_source((ROOT / 'SkyIsland' / name).read_text(encoding='utf-8'))
 
 
 def main():

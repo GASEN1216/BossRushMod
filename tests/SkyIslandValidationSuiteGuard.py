@@ -31,7 +31,7 @@ BACKSLASH = chr(92)
 SUITE = "DebugAndTools/F3GameplayValidationSkyIsland.cs"
 CASES = "DebugAndTools/F3GameplayValidationSkyIslandCases.cs"
 RUNTIME = "DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs"
-SURFACE = "DebugAndTools/SkyIsland/SkyIslandSessionValidation.cs"
+SURFACE = "SkyIsland/SkyIslandSessionValidation.cs"
 
 # `Inspect` 的 CJK 码位区间。C# 那边写成整数常量而不是字面汉字或 \u 转义，是因为后两者
 # 在文件被按非 UTF-8 读写、或经过会折反斜杠的工具时会静默变形，而这条断言完全靠
@@ -226,10 +226,10 @@ def main():
     surface = read(SURFACE)
     runner = read("DebugAndTools/F3GameplayValidationRunner.cs")
     mode_gate = read("Utilities/ModeRuntimeHooks.cs")
-    island_prelude = read("DebugAndTools/SkyIsland/SkyIslandPreludeFlow.cs")
-    island_givers = read("DebugAndTools/SkyIsland/SkyIslandOfficialQuestGivers.cs")
+    island_prelude = read("SkyIsland/SkyIslandPreludeFlow.cs")
+    island_givers = read("SkyIsland/SkyIslandOfficialQuestGivers.cs")
     execution = read("DebugAndTools/F3GameplayValidationExecution.cs")
-    session = read("DebugAndTools/SkyIsland/SkyIslandSession.cs")
+    session = read("SkyIsland/SkyIslandSession.cs")
     bat = (ROOT / "compile_official.bat").read_text(encoding="utf-8", errors="ignore")
     errors = []
 

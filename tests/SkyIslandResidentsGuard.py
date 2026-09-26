@@ -7,9 +7,9 @@ from cs_source_util import clean_source
 ROOT = Path(__file__).resolve().parents[1]
 DATA = json.loads((ROOT / 'Assets/Data/DuckNpcs.json').read_text(encoding='utf-8-sig'))
 NPCS = {row['id']: row for row in DATA['npcs']}
-SOURCE = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandResidents.cs').read_text(encoding='utf-8-sig'))
-INTERACT = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandResidentInteractable.cs').read_text(encoding='utf-8-sig'))
-SESSION = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandSession.cs').read_text(encoding='utf-8-sig'))
+SOURCE = clean_source((ROOT / 'SkyIsland/SkyIslandResidents.cs').read_text(encoding='utf-8-sig'))
+INTERACT = clean_source((ROOT / 'SkyIsland/SkyIslandResidentInteractable.cs').read_text(encoding='utf-8-sig'))
+SESSION = clean_source((ROOT / 'SkyIsland/SkyIslandSession.cs').read_text(encoding='utf-8-sig'))
 errors = []
 
 for npc_id in ['sky_qinghe', 'sky_weibai', 'sky_fuzhou', 'sky_miantai', 'sky_zheling', 'sky_bellkeeper']:
@@ -50,7 +50,7 @@ if 'SkyIslandResidentInteractable.AttachPermanent(npc, blueprint.id);' not in mo
     errors.append('永久 NPC 装配（含婚后恢复）没有接回航路剧情')
 if 'new SkyIslandResidents' not in SESSION or '.Dispose()' not in SESSION:
     errors.append('天空岛会话未接居民创建/清理')
-bridge = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandSceneReferenceBridge.cs').read_text(encoding='utf-8-sig'))
+bridge = clean_source((ROOT / 'SkyIsland/SkyIslandSceneReferenceBridge.cs').read_text(encoding='utf-8-sig'))
 def constant(source, name):
     match = re.search(r'const\s+string\s+' + name + r'\s*=\s*"([^"\r\n]+)"\s*;', source)
     return match.group(1) if match else None

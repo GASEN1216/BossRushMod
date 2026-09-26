@@ -21,18 +21,18 @@ def method(source, signature):
     raise ValueError(signature)
 
 OUT.mkdir(parents=True, exist_ok=True)
-source_path = ROOT / "DebugAndTools/SkyIsland/SkyIslandPreludeFlow.cs"
+source_path = ROOT / "SkyIsland/SkyIslandPreludeFlow.cs"
 source = source_path.read_text(encoding="utf-8-sig")
 methods = [method(source, signature) for signature in
            ("private bool EnsureStory()", "private void CloseStory()", "internal void Schedule()",
             "private bool ShouldRunObjective()")]
 generated = OUT / "PreludeGenerated.cs"
 # 导航只抽取真正决定地图/罗盘目标的生产迭代器，不在替身里另写任务状态树。
-marker_path = ROOT / "DebugAndTools/SkyIsland/SkyIslandMapMarkers.cs"
+marker_path = ROOT / "SkyIsland/SkyIslandMapMarkers.cs"
 marker_source = marker_path.read_text(encoding="utf-8-sig")
 marker_methods = [method(marker_source, signature) for signature in
                   ("internal static IEnumerable<string> ObjectiveTargets(", "internal static IEnumerable<string> SideTargets(")]
-world_path = ROOT / "DebugAndTools/SkyIsland/SkyIslandWorldStory.cs"
+world_path = ROOT / "SkyIsland/SkyIslandWorldStory.cs"
 world_source = world_path.read_text(encoding="utf-8-sig")
 # 掩码和初始化值也来自生产文件；否则生产删掉一项，测试还在用自己的正确常量会假绿。
 import re

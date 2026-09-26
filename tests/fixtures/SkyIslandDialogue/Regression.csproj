@@ -5,6 +5,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../../Integration/Dialogue/DialogueManager.cs" Link="DialogueManager.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandResidentDialogue.cs" Link="SkyIslandResidentDialogue.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandResidentDialogue.cs" Link="SkyIslandResidentDialogue.cs" />
   </ItemGroup>
 </Project>

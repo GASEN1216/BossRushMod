@@ -8,6 +8,6 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Stubs.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandOfficialContract.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandOfficialContract.cs" />
   </ItemGroup>
 </Project>

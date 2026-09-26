@@ -29,7 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LAYOUT = ROOT / "ArtSource/SkyIsland/layout.json"
 GENERATOR = ROOT / "tools/generate_sky_island.py"
-STORY_SERVICE = ROOT / "DebugAndTools/SkyIsland/SkyIslandStoryService.cs"
+STORY_SERVICE = ROOT / "SkyIsland/SkyIslandStoryService.cs"
 
 RAY_UP = 0.25      # SkyIslandSession.Update：player.position + up * 0.25
 RAY_LENGTH = 1.4   # 向下 1.4 m

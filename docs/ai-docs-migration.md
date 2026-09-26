@@ -314,3 +314,10 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 ## 2026-09-25 Integration 初始化归属修正（COMPAT）
 
 - `Integration/AGENTS.md` 原将自定义武器参数登记定位在宿主 `BossRushIntegration.cs`；P3 将实现迁到 `BossRushIntegrationRuntimeModule_Initialization.cs` 后，宿主同名方法只保留兼容转发，已同步修正规则中的生产入口。
+
+## 2026-09-26 模块解耦 P5：天空岛正式目录归位（SAFE / OPERATIONAL）
+
+- `DebugAndTools/SkyIsland/` 的 99 个 C# 与专项 `AGENTS.md` 迁到顶级 `SkyIsland/`；97 个源码字节不变，另外两个只更新规则路径注释。命名空间、资源名、存档键与正式/Dev 条件保持。
+- 编译清单、模块索引和生成导航、当前规则、守卫、夹具、工具及 repowiki 定位引用同步。历史台账、归档和前测中的旧路径保留其历史含义。
+- 复核发现原计划 §7 所称 `tools/gameplay_coverage.py` 的天空岛特殊分域深度逻辑已经不存在；现工具直接按顶级目录分域，因此仅改覆盖表的源目录与受影响消费者，不增加分域特例。
+- `F3AutotestOrchestratorGuard` 的递归扫描显式纳入新目录；守卫路径修改均以独立副本的真实生产结构变异证明仍命中原断言。验证与交付记录见 `architecture/MIGRATION_STATUS.md`。

@@ -25,9 +25,9 @@ COMPONENTS = CORE_DIR + "OfficialQuestComponents.cs"
 LOCATOR = CORE_DIR + "OfficialQuestGiverLocator.cs"
 MODULE = CORE_DIR + "OfficialQuestRuntimeModule.cs"
 REGISTRATION = "ModBehaviourRuntimeModules.cs"
-SKY_BRIDGE = "DebugAndTools/SkyIsland/SkyIslandOfficialQuestBridge.cs"
-SKY_GIVERS = "DebugAndTools/SkyIsland/SkyIslandOfficialQuestGivers.cs"
-SKY_PRELUDE = "DebugAndTools/SkyIsland/SkyIslandPreludeFlow.cs"
+SKY_BRIDGE = "SkyIsland/SkyIslandOfficialQuestBridge.cs"
+SKY_GIVERS = "SkyIsland/SkyIslandOfficialQuestGivers.cs"
+SKY_PRELUDE = "SkyIsland/SkyIslandPreludeFlow.cs"
 COMPILE = "compile_official.bat"
 PATHS = (BINDING, CORE, COMPONENTS, LOCATOR, MODULE, REGISTRATION, SKY_BRIDGE, SKY_GIVERS, SKY_PRELUDE, COMPILE)
 
@@ -109,7 +109,7 @@ def check(sources, tree):
             MODULE + " 核心 Tick 之前不得有任何早退门：岛上会话在不在、征程开没开都必须照跑（0.25 秒节流在核心内）")
     require("if (disposed || Time.unscaledTime < nextTick) return;" in core and "private const float TickInterval = 0.25f;" in core,
             CORE + " 缺 0.25 秒节流")
-    require("quests.Tick()" not in tree.get("DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs", ""),
+    require("quests.Tick()" not in tree.get("SkyIsland/SkyIslandRuntimeModule.cs", ""),
             "天空岛模块不得再自己 Tick 任务桥：驱动只在核心模块")
 
     # ---- 4) Harmony 只装一次，且都在核心 ----

@@ -99,7 +99,8 @@ BossRushMod/
 ├── Campaign/                          Duck King Campaign
 ├── PetNest/  RandomEvents/            PetNest, random events
 ├── Integration/                       items, gear, NPCs, shops, affinity, marriage, reforge, codex, daily, backyard…
-├── DebugAndTools/                     debug tools and F3 validation; SkyIsland/ is the Sky Islands runtime
+├── SkyIsland/                         Sky Island production runtime
+├── DebugAndTools/                     Debug tools and F3 validation
 ├── Common/  Utilities/  Patches/      shared libraries, cross-module infrastructure, Harmony patches
 ├── Config/  Localization/  LootAndRewards/  Achievement/  Audio/
 ├── BossFilter/  Interactables/  MapSelection/  UIAndSigns/

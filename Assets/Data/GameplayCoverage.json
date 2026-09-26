@@ -6,7 +6,7 @@
       "id": "SKY_ISLAND",
       "title": "天空岛独立出击与晴岚群岛故事",
       "sources": [
-        "DebugAndTools/SkyIsland",
+        "SkyIsland",
         "Integration/SkyIsland",
         "Assets/Data/SkyIsland"
       ],

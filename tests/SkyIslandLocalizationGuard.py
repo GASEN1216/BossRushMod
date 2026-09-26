@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
-SKY = ROOT / "DebugAndTools" / "SkyIsland"
+SKY = ROOT / "SkyIsland"
 
 # 玩家可见文案所在的文件。新增有玩家文案的文件必须登记进来。
 FILES = [

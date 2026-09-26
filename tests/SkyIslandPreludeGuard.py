@@ -15,7 +15,7 @@ from pathlib import Path
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
-SKY = "DebugAndTools/SkyIsland/"
+SKY = "SkyIsland/"
 PRELUDE = SKY + "SkyIslandPreludeFlow.cs"
 QUEST = SKY + "SkyIslandOfficialQuestBridge.cs"
 TABLE = SKY + "SkyIslandOfficialQuestTable.cs"
@@ -307,9 +307,9 @@ def main():
         (CODEC, "PreludeInstrumentRecovered) && !data.Has(SkyIslandStoryFlag.PreludeAccepted", "PreludeInstrumentRecovered) && false"),
         (SERVICE, "TryBackfillIslandQuests(changed ? candidate : Current", "TryBackfillIslandQuests(null"),
         (START, "SkyIslandOfficialQuestTable.InjectLocalizations();", ""),
-        (COMPILE, "echo(DebugAndTools\\SkyIsland\\SkyIslandOfficialQuestTable.cs", ""),
-        (COMPILE, "echo(DebugAndTools\\SkyIsland\\SkyIslandOfficialQuestGivers.cs", ""),
-        (CSPROJ, '<Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandOfficialQuestTable.cs" Link="Production/SkyIslandOfficialQuestTable.cs" />', ""),
+        (COMPILE, "echo(SkyIsland\\SkyIslandOfficialQuestTable.cs", ""),
+        (COMPILE, "echo(SkyIsland\\SkyIslandOfficialQuestGivers.cs", ""),
+        (CSPROJ, '<Compile Include="../../../SkyIsland/SkyIslandOfficialQuestTable.cs" Link="Production/SkyIslandOfficialQuestTable.cs" />', ""),
     )
     for path, before, after in probes:
         if before not in sources[path]:

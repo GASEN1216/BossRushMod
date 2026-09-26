@@ -5,6 +5,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandCaptionQueue.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandCaptionQueue.cs" />
   </ItemGroup>
 </Project>

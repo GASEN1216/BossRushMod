@@ -35,12 +35,12 @@ def main():
         "PetNest/PetNestPersistence.cs": [r"CollectPendingAssets\(out assetError\)[\s\S]*?_bundle.FlushPending\(\)"],
         # 天空岛纪念品（CR-2026-09-11-017）：发放前必须先立实物快照义务，落盘时四样官方资产
         # 与剧情手记进同一批；否则「已记账、物品未持久化」会在跨重启窗口里吞掉纪念品。
-        "DebugAndTools/SkyIsland/SkyIslandWorldStory.cs": [
+        "SkyIsland/SkyIslandWorldStory.cs": [
             # 负判 + 失败跳过 + 之后才发放：只核对顺序不够，快照检查必须是**承重**的。
             r"if \(!story.RequireAssetSnapshot\(all\[i\]\.NoteId, out snapshotError\)\)[\s\S]{0,400}?continue;"
             r"[\s\S]*?SkyIslandItems.TryGive\(",
         ],
-        "DebugAndTools/SkyIsland/SkyIslandStoryService.cs": [
+        "SkyIsland/SkyIslandStoryService.cs": [
             r'CharacterItem.Save\("MainCharacterItemData"\)', r'Inventory.Save\("PlayerStorage"\)',
             r"PlayerStorageBuffer.SaveBuffer\(\)", r'SavesSystem.Save<float>\("MainCharacterHealth"',
             r"assetSnapshotRequired = true;",
@@ -53,7 +53,7 @@ def main():
             r"if \(RaidHeldCosts\)[\s\S]{0,200}?raidHeldNotes.Add\(noteId\);[\s\S]{0,40}?return true;",
             r"if \(!raidHeldNotes.Contains\(id\)\) kept.Add\(id\);",
         ],
-        "DebugAndTools/SkyIsland/SkyIslandSession.cs": [
+        "SkyIsland/SkyIslandSession.cs": [
             r"story.RaidHeldCosts = true;",
             r'story.SettleRaidHeld\(reason == "raid_unloaded"\)[\s\S]{0,200}?SkyIslandStorySaveRecovery.CloseOrRetain\(story\)',
         ],
