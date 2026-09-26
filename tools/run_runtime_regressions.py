@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
     "AuditCoreParsing", "AuditModeLifecycle", "AuditCombatSeptember", "NpcAuditFixes", "GoblinRuntimeModule",
     "ModeHSceneEntry", "ModeHPlayerFlow", "AchievementRuntime", "ArenaHostRemainder", "ModeGEntryOwners", "AudioRuntime",
-    "ResourceProduction", "ZombieModeHostOwners",
+    "ResourceProduction", "ZombieModeHostOwners", "ModeEFEnemyRegistry", "SteamPlatformInfo",
     "ManualSeptemberReview", "GardenHarvestNotice",
     "AffixSelectionUI", "ManualEquipmentRecovery", "AchievementIcons", "DynamicItemInitialization", "SkyIslandSceneReferenceBridge", "RandomEventsFailure", "RandomEventTempo",
     "RuntimeOwnership", "BossFilterRuntime", "ModeRuntimeDispatch", "EquipmentConfiguratorRegistry", "SharedModalInput", "NPCShopPayment", "ContentTransactions", "BackMountainLifecycle", "ModeGCombat", "CampaignPlayability", "BossRewardDelivery", "AffixCombat", "ContentSecondReview", "AirdropSecondReview",

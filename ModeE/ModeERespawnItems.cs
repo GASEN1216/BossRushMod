@@ -62,7 +62,7 @@ namespace BossRush
 
         private readonly Queue<CharacterMainControl> modeEPendingAggroQueue = new Queue<CharacterMainControl>();
 
-        internal readonly Dictionary<CharacterMainControl, float> modeEPendingAggroTraceDistance
+        private readonly Dictionary<CharacterMainControl, float> modeEPendingAggroTraceDistance
             = new Dictionary<CharacterMainControl, float>();
 
         private bool modeEAggroQueueRunning = false;
@@ -658,6 +658,9 @@ namespace BossRush
                 return false;
             }
         }
+
+        internal void RemovePendingModeEAggroTarget(CharacterMainControl enemy)
+        { modeEPendingAggroTraceDistance.Remove(enemy); }
 
         private void ClearPendingBossAggroQueue()
         {

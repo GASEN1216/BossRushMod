@@ -26,6 +26,8 @@ namespace BossRush
     {
         // ========== 性能优化：共享 WaitForSeconds 缓存（供所有 partial class 使用） ==========
 
+        internal static string TryGetSteamPersonaName() { return SteamPlatformInfo.TryGetSteamPersonaName(); }
+
         private static readonly WaitForSeconds sharedWait01s = new WaitForSeconds(0.1f);
         private static readonly WaitForSeconds sharedWait05s = new WaitForSeconds(0.5f);
         private static readonly WaitForSeconds sharedWait1s = new WaitForSeconds(1f);

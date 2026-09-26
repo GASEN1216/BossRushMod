@@ -81,13 +81,9 @@ namespace BossRush
         private ModeEPlayerScalingState modeEPlayerScalingState = null;
         private Item modeEPlayerScalingItem = null;
 
-        /// <summary>缓存死亡事件句柄，避免对象复用或重复注册导致 UnityEvent 持续膨胀。</summary>
-        private readonly Dictionary<CharacterMainControl, UnityAction<DamageInfo>> modeEEnemyDeathHandlers
-            = new Dictionary<CharacterMainControl, UnityAction<DamageInfo>>();
 
-        /// <summary>缓存掉落拦截句柄，确保 Mode E 结束或对象复用时可以对称取消订阅。</summary>
-        private readonly Dictionary<CharacterMainControl, Action<DamageInfo>> modeEEnemyLootHandlers
-            = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
+
+
 
         /// <summary>需要延迟批量缩放的阵营集合（死亡时记录，定时批量应用）</summary>
         private readonly HashSet<Teams> modeEPendingScalingFactions = new HashSet<Teams>();
@@ -105,64 +101,10 @@ namespace BossRush
         /// 注册敌人死亡事件，触发按阵营的动态缩放
         /// </summary>
         internal void RegisterModeEEnemyDeath(CharacterMainControl enemy)
-        {
-            try
-            {
-                if (enemy == null)
-                {
-                    return;
-                }
-
-                UnregisterModeEEnemyDeath(enemy);
-
-                Health health = enemy.GetComponent<Health>();
-                if (health != null)
-                {
-                    CharacterMainControl capturedEnemy = enemy;
-                    UnityAction<DamageInfo> handler = null;
-                    handler = (dmgInfo) =>
-                    {
-                        UnregisterModeEEnemyDeath(capturedEnemy);
-                        OnModeEEnemyDeath(capturedEnemy, dmgInfo);
-                    };
-                    modeEEnemyDeathHandlers[enemy] = handler;
-                    health.OnDeadEvent.AddListener(handler);
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ModeE] [ERROR] RegisterModeEEnemyDeath 失败: " + e.Message);
-            }
-        }
+        { enemyRegistry.RegisterModeEEnemyDeath(enemy); }
 
         internal void UnregisterModeEEnemyDeath(CharacterMainControl enemy)
-        {
-            if (object.ReferenceEquals(enemy, null))
-            {
-                return;
-            }
-
-            UnityAction<DamageInfo> handler;
-            if (!modeEEnemyDeathHandlers.TryGetValue(enemy, out handler))
-            {
-                return;
-            }
-
-            try
-            {
-                if (!(enemy == null))
-                {
-                    Health health = enemy.GetComponent<Health>();
-                    if (health != null)
-                    {
-                        health.OnDeadEvent.RemoveListener(handler);
-                    }
-                }
-            }
-            catch { }
-
-            modeEEnemyDeathHandlers.Remove(enemy);
-        }
+        { enemyRegistry.UnregisterModeEEnemyDeath(enemy); }
 
         private void RegisterModeEEnemyLootHandler(CharacterMainControl enemy, Teams faction)
         {
@@ -188,8 +130,7 @@ namespace BossRush
                     ModBehaviour.DevLog("[ModeE] 同阵营Boss死亡，阻止掉落战利品箱子: " + capturedEnemy.gameObject.name);
                 };
 
-                modeEEnemyLootHandlers[enemy] = handler;
-                enemy.BeforeCharacterSpawnLootOnDead += handler;
+                enemyRegistry.AttachLootHandler(enemy, handler);
             }
             catch (Exception e)
             {
@@ -198,29 +139,7 @@ namespace BossRush
         }
 
         internal void UnregisterModeEEnemyLootHandler(CharacterMainControl enemy)
-        {
-            if (object.ReferenceEquals(enemy, null))
-            {
-                return;
-            }
-
-            Action<DamageInfo> handler;
-            if (!modeEEnemyLootHandlers.TryGetValue(enemy, out handler))
-            {
-                return;
-            }
-
-            try
-            {
-                if (!(enemy == null))
-                {
-                    enemy.BeforeCharacterSpawnLootOnDead -= handler;
-                }
-            }
-            catch { }
-
-            modeEEnemyLootHandlers.Remove(enemy);
-        }
+        { enemyRegistry.UnregisterModeEEnemyLootHandler(enemy); }
 
         private Modifier AddModeEScalingModifier(CharacterMainControl character, string statName, float percent)
         {
@@ -604,7 +523,7 @@ namespace BossRush
         /// [性能优化] 死亡时只记录计数和标记脏阵营，不立即遍历应用缩放
         /// 缩放由 ModeEScalingBatchUpdate() 定时批量执行
         /// </summary>
-        private void OnModeEEnemyDeath(CharacterMainControl enemy, DamageInfo damageInfo)
+        internal void OnModeEEnemyDeath(CharacterMainControl enemy, DamageInfo damageInfo)
         {
             ModeEShellRewardSnapshot rewardSnapshot = new ModeEShellRewardSnapshot();
             try
@@ -734,7 +653,7 @@ namespace BossRush
                     if (enemy == null || enemy.gameObject == null)
                     {
                         // 清理无效引用
-                        factionList.RemoveAt(i);
+                        enemyRegistry.RemoveFactionSlotAt(faction, i);
                         CleanupModeEEnemyRuntimeState(enemy, faction);
                         continue;
                     }

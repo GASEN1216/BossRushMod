@@ -376,10 +376,10 @@ namespace BossRush
 
             Teams faction = boss.Team;
             CleanupModeESharedRuntimeForModeFBoss(boss, faction);
-            modeE.TrackModeEAliveEnemy(boss, faction);
+            enemyRegistry.TrackModeEAliveEnemy(boss, faction);
             owner.RegisterModeDEnemyRecoveryAnchor(boss, anchorPosition);
             virtualSpawnerRegistry.RegisterModeEEnemyToSpawnerRoot(boss);
-            modeE.RegisterModeEEnemyDeath(boss);
+            enemyRegistry.RegisterModeEEnemyDeath(boss);
         }
 
         private void CleanupModeESharedRuntimeForModeFBoss(CharacterMainControl boss, Teams? faction = null)
@@ -393,8 +393,8 @@ namespace BossRush
             {
                 if (!(boss == null))
                 {
-                    modeE.UnregisterModeEEnemyDeath(boss);
-                    modeE.UnregisterModeEEnemyLootHandler(boss);
+                    enemyRegistry.UnregisterModeEEnemyDeath(boss);
+                    enemyRegistry.UnregisterModeEEnemyLootHandler(boss);
                     modeE.RemoveModeEScalingModifiers(boss);
 
                 }
@@ -404,10 +404,10 @@ namespace BossRush
                 ModBehaviour.DevLog("[ModeF] [WARNING] 清理ModeE共享运行时失败: " + cleanupEx.Message);
             }
 
-            modeE.modeEPendingAggroTraceDistance.Remove(boss);
+            modeE.RemovePendingModeEAggroTarget(boss);
             virtualSpawnerRegistry.UnregisterModeEEnemyFromSpawnerRoot(boss);
             owner.UnregisterEnemyRecoveryForArena(boss);
-            modeE.UntrackModeEAliveEnemy(boss, faction);
+            enemyRegistry.UntrackModeEAliveEnemy(boss, faction);
             modeFBossAiControllers.Remove(boss);
         }
 

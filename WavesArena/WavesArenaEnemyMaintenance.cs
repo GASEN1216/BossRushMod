@@ -30,7 +30,7 @@ namespace BossRush
         internal bool ArenaCenterSetForCleanup { get { return WavesArenaRuntimeModule.ArenaCenterSet; } }
         internal Vector3 ArenaCenterForCleanup { get { return WavesArenaRuntimeModule.ArenaCenter; } }
         internal CharacterRandomPreset ArenaEggSpawnPreset { get { return BossRushAudioRuntimeService.EggSpawnPreset; } }
-        internal bool IsModeETrackedEnemyForArena(CharacterMainControl enemy) { return modeEAliveEnemySet.Contains(enemy); }
+        internal bool IsModeETrackedEnemyForArena(CharacterMainControl enemy) { return modeEFEnemyRegistry.IsTracked(enemy); }
         internal bool IsDeathWraithCharacterForArena(CharacterMainControl enemy)
         {
             return IsDeathWraithCharacter_DeathWraith(enemy);

@@ -1,7 +1,7 @@
 {
   "description": "D-1: production host partial ceiling; only lower after responsibilities move to module-owned types.",
-  "max_files": 75,
-  "max_total_lines": 21255,
+  "max_files": 74,
+  "max_total_lines": 21139,
   "allowed_files": [
     "Achievement/AchievementRuntimeHooks.cs",
     "Audio/BossRushAudioHooks.cs",
@@ -65,7 +65,6 @@
     "Utilities/GameplayRuntimeHooks.cs",
     "Utilities/ModeRuntimeHooks.cs",
     "Utilities/PlayerLifecycleRuntimeHooks.cs",
-    "Utilities/SteamHelper.cs",
     "Utilities/Utilities.cs",
     "Utilities/ZombieSpawnSanitizer.cs",
     "WavesArena/BossRushEntryFlow.cs",

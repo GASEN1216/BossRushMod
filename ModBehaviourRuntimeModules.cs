@@ -4,6 +4,7 @@ namespace BossRush
     {
         private readonly ModeERuntimeModule modeERuntime = new ModeERuntimeModule();
         private ModeEFMerchantCatalog modeEFMerchantCatalog;
+        private readonly ModeEFEnemyRegistry modeEFEnemyRegistry = new ModeEFEnemyRegistry();
         private ModeEFEnemySpawnRuntime modeEFEnemySpawnRuntime;
         private AchievementRuntimeModule achievementRuntime;
         private readonly BossRushAudioRuntimeService audioRuntime = new BossRushAudioRuntimeService();
@@ -57,6 +58,9 @@ namespace BossRush
                 IsDragonKingPreset, IsDragonDescendantPreset, wavesArenaRuntime.InitializeEnemyPresets,
                 () => modeDRuntime.InitializeModeDEnemyPools(wavesArenaRuntime.EnemyPresets, wavesArenaRuntime.GetLocalizedCharacterName));
             modeEFEnemySpawnRuntime.BindSpawnCallbacks(modeERuntime.IsModeEOrModeFSpawnSessionStillValid, modeERuntime.OnModeEEnemySpawned);
+            modeEFEnemyRegistry.BindDeathCallback(modeERuntime.OnModeEEnemyDeath);
+            modeERuntime.BindEnemyRegistry(modeEFEnemyRegistry);
+            modeFRuntime.BindEnemyRegistry(modeEFEnemyRegistry);
             modeERuntime.BindEnemySpawnRuntime(modeEFEnemySpawnRuntime);
             modeFRuntime.BindEnemySpawnRuntime(modeEFEnemySpawnRuntime);
             modeEFMerchantCatalog = new ModeEFMerchantCatalog(() => ModeDRuntimeModule.CharacterPresets,

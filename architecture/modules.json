@@ -101,7 +101,7 @@
         "Utilities/**/*.cs"
       ],
       "entry": "Utilities/ModeRuntimeHooks.cs",
-      "state_owner": "OfficialQuestRuntimeModule / ModeEFSpawnPreparation / ModeEFMerchantCatalog / ModeEFMerchantRuntime / ModeEFSpawnPostprocessScheduler / ModeEFVirtualSpawnerRegistry / EnemySpawnRuntime / EnemyRecoveryMonitor / ModeEFEnemySpawnRuntime",
+      "state_owner": "OfficialQuestRuntimeModule / ModeEFSpawnPreparation / ModeEFMerchantCatalog / ModeEFMerchantRuntime / ModeEFSpawnPostprocessScheduler / ModeEFVirtualSpawnerRegistry / EnemySpawnRuntime / EnemyRecoveryMonitor / ModeEFEnemySpawnRuntime / ModeEFEnemyRegistry / SteamPlatformInfo",
       "public_api": [
         "ModeRuntimeHooks",
         "EnemySpawnRuntime"
@@ -120,7 +120,11 @@
         "tests/EnemyRecoveryOwnershipGuard.py",
         "tests/fixtures/EnemyRecoveryRuntime",
         "tests/ModeEFEnemySpawnOwnershipGuard.py",
-        "tests/fixtures/ModeEFEnemySpawnRuntime"
+        "tests/fixtures/ModeEFEnemySpawnRuntime",
+        "tests/ModeEFEnemyRegistryOwnershipGuard.py",
+        "tests/SteamPlatformInfoOwnershipGuard.py",
+        "tests/fixtures/ModeEFEnemyRegistry",
+        "tests/fixtures/SteamPlatformInfo"
       ],
       "docs": [],
       "rules": [

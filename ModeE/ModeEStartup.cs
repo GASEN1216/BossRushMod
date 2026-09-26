@@ -87,17 +87,17 @@ namespace BossRush
             RemoveModeEPlayerScalingModifiers();
 
             modeEPlayerFaction = Teams.player;
-            modeEAliveEnemies.Clear();
-            modeEAliveEnemySet.Clear();
+            enemyRegistry.ClearAliveEnemies();
+            enemyRegistry.ClearAliveEnemySet();
             ClearModeEBossRegenCache();
             modeEHost.ClearModeEFSpawnPostprocessScheduler();
-            modeEAliveEnemyFactionMap.Clear();
+            enemyRegistry.ClearFactionLookup();
             modeEFactionDeathCount.Clear();
-            modeEFactionAliveMap.Clear();
+            enemyRegistry.ClearFactionAliveLists();
             modeEEnemyScalingStates.Clear();
             modeEPlayerLastHitKillCount = 0;
-            modeEEnemyDeathHandlers.Clear();
-            modeEEnemyLootHandlers.Clear();
+            enemyRegistry.ClearDeathHandlers();
+            enemyRegistry.ClearLootHandlers();
             modeEPendingScalingFactions.Clear();
             modeEScalingBatchTimer = 0f;
             spawnRuntime.ResetSpawnTracking();

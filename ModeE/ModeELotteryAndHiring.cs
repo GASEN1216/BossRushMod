@@ -781,7 +781,7 @@ namespace BossRush
 
             CharacterMainControl character = state.Character;
             Teams trackedFaction;
-            if (!modeEAliveEnemyFactionMap.TryGetValue(character, out trackedFaction))
+            if (!enemyRegistry.TryGetTrackedFaction(character, out trackedFaction))
             {
                 trackedFaction = state.Faction;
             }

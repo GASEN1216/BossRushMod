@@ -14,7 +14,7 @@
 | P5 目录归位 | 未完成 | 注入占位已随簇 1 删除；天空岛迁移待做 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-续接基点：`bc489b28`（归位竞技场余项与成就音效和宿命入口）。2026-09-26 E/F 共享生成、Integration/Zombie 薄桥归并已完成验证，当前提交包含这一步。下一步执行已在独立副本预演的 E/F 共享登记提取，再收口根宿主状态与余下薄桥；Integration 生命周期/跨模式入场协调按计划 §2.2 保留原槽位，独立算法另行归位。真实游戏目录尚未部署。
+续接基点：`1b937e6c`（归位共享阵营生成并合并内容与丧尸宿主桥）。2026-09-26 E/F 共享生成、Integration/Zombie 薄桥归并已完成验证，当前正执行 E/F 共享登记与 Steam 查询 owner 收口，尚未提交；随后收口根宿主状态与余下薄桥；Integration 生命周期/跨模式入场协调按计划 §2.2 保留原槽位，独立算法另行归位。真实游戏目录尚未部署。
 ## P0 基线（2026-09-24）
 
 - 启动前 `git status --short --branch` 为干净的 `main...origin/main`。构建依赖：本机 .NET SDK 8.0.302、游戏 `D:\software\steam\steamapps\common\Escape from Duckov`、Harmony 创意工坊 DLL。隔离游戏根在忽略的 `Build/migration/isolated-game/`，其中 `Duckov_Data/Managed` 为真实游戏 DLL 的文件副本；未接触真实游戏 Mod 目录。
@@ -208,6 +208,16 @@
 - 反向验证：E/F 16 个方法等价、16 次结构/执行探针；根共享守卫和两项预算共 16 次；Integration 18 个结构探针与 15 个执行探针均命中预期断言并按字节/SHA-256 恢复。证据为 `ef-spawn-negative.json`、`ef-bridges-shared-negative.json`、`integration-host-negative.json`，均在 `Build/migration/`。Zombie 的 41 个修改守卫与新 ownership 守卫已完成 52 次真实源码结构变异，另有 12 次执行变异；全部在预期断言转红并按字节/SHA-256 恢复后回绿。证据见 `zombie-host-consolidation/negative-semantic-{first,last,ownership}.json` 与 `negative-fixture.json`；先前路径缺失探针仅记路径读取验证，不计结构反向。388 个宿主成员逐项对照、四个混装文件独立组件按字节对照均无意外差异，见同目录 `equivalence-manifest.json`。
 - Windows 最终正式/Dev 隔离构建均 `Build succeeded!`，两次 72 bundle 清单与 14 个 Dev 标识 absent/present 通过。正式 SHA-256 `64F75BE2AA64978ECEEF22B7BF86138ABF8C6B81E72C044BDB152C943078E0AE`；Dev SHA-256 `3B8D42DADD4E4E4C4156E25AD172ED87F7761914F4F9C95D3FB04778B3F72A9F`，分别与隔离部署副本一致（`ef-bridges-final-builds.json`）。当前 Build 为 Dev；真实游戏目录尚未部署。
 - L3 待 owner：E/F 各开局并观察初始 Boss、狼阵营预设、龙裔唯一性与 F 死亡补位；生成期间退出再入，检查旧局回调是否污染新局。打开日报并关闭/重开，切图后再打开；丧尸在选图、加载、准备、撤离和卸载路径观察状态交接。重复敌人、丢失补位、重复 view、已销毁 Canvas 复用、启动债务丢失、协程或 UI 残留均不合格。本批仍是 P3/P4 中间检查点。
+
+## 2026-09-26 继续执行：E/F 共享登记与 Steam 查询 owner（COMPAT）
+
+- 新 `ModeEFEnemyRegistry` 接管活敌列表、去重集合、阵营查询/列表、回血缓存及死亡/掉落订阅字典，E/F 绑定同一实例。11 个旧方法体等价；E 的同阵营禁掉落策略留原模块，注册字典及订阅两句归共享 owner。F 仍通过明确动作清理 E 残留缩放和入局状态，原直接仇恨字典 Remove 改为同一步动作。重置顺序及公开旧 List 的对象身份保留。
+- `SteamPlatformInfo` 接管原 static 反射缓存与一次性日志状态；旧入口在 Utilities 宿主薄桥转发。两方法体仅 DevLog 限定名改变。
+- 新执行夹具 `ModeEFEnemyRegistry` 27 条断言、`SteamPlatformInfo` 13 条断言；全量守卫 694 PASS / 0 FAIL / 0 known-red，全量回归 93 PASS / 0 FAIL；1,095 源和 47 模块索引通过。宿主预算下调到 74 文件 / 21,139 行。证据为 `Build/migration/ef-registry-full-guards.log` 与 `ef-registry-full-runtime.json`。
+- 13 个方法归一化等价；20 个结构、预算及真实执行探针均命中预期断言转红，按字节/SHA-256 恢复后回绿，见 `Build/migration/ef-registry-negative.json`。首次缓存探针已在更早的缓存断言失败，修正报告预期文本后完成，未修改测试求红。
+- Windows 最终正式/Dev 隔离构建均通过，两次 72 bundle 清单、14 个 Dev 标识 absent/present 与隔离部署 SHA 一致。正式 SHA-256 `1093719AB8182471C9D3890EDFF813E623C0FE0E9C220CC8B8E3C5E222FE4926`；Dev SHA-256 `BD050E60A2C0B441B94D3838B2077F0C42E9C6B5CFDF7442A10253A3DC45105C`，见 `Build/migration/ef-registry-final-builds.json`。当前 Build 为 Dev；真实游戏目录尚未部署。
+- L3 待 owner：E/F 各开局、击杀、退出再入，观察敌人登记、阵营掉落、回血与死亡补位；E 同阵营禁掉落切换应即时生效。检查 Steam 昵称在首选/兼容平台环境下显示；重复敌人、重复掉落/回调、跨局残留与缓存旧昵称均不合格。本批仍是 P3/P4 中间检查点。
+- 预演脚本 `Build/migration/extract_ef_registry.py` 已执行，不可重跑；当前原 Goblin bin/obj 仍不动。P5 只读映射在 `Build/migration/sky-island-p5-readonly/`，Integration P6 实机清单在 `Build/migration/integration-owner-smoke.md`。
 
 ## 未完成项
 

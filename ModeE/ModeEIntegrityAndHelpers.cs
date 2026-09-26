@@ -35,7 +35,7 @@ namespace BossRush
                     CharacterMainControl enemy = modeEAliveEnemies[i];
                     if (object.ReferenceEquals(enemy, null))
                     {
-                        modeEAliveEnemies.RemoveAt(i);
+                        enemyRegistry.RemoveNullAliveSlotAt(i);
                         MarkModeEBossRegenCacheDirty();
                         removedCount++;
                         continue;
@@ -91,36 +91,13 @@ namespace BossRush
         #region Mode E 辅助方法
 
         private void MarkModeEBossRegenCacheDirty()
-        {
-            modeEBossRegenCacheDirty = true;
-        }
+        { enemyRegistry.MarkModeEBossRegenCacheDirty(); }
 
         private void ClearModeEBossRegenCache()
-        {
-            modeEBossRegenCache.Clear();
-            modeEBossRegenCacheDirty = false;
-        }
+        { enemyRegistry.ClearModeEBossRegenCache(); }
 
         internal List<MonoBehaviour> GetModeEBossRegenCache()
-        {
-            if (!modeEBossRegenCacheDirty)
-            {
-                return modeEBossRegenCache;
-            }
-
-            modeEBossRegenCache.Clear();
-            for (int i = 0; i < modeEAliveEnemies.Count; i++)
-            {
-                CharacterMainControl boss = modeEAliveEnemies[i];
-                if (boss != null)
-                {
-                    modeEBossRegenCache.Add(boss);
-                }
-            }
-
-            modeEBossRegenCacheDirty = false;
-            return modeEBossRegenCache;
-        }
+        { return enemyRegistry.GetModeEBossRegenCache(); }
 
         /// <summary>
         /// 零度挑战地图专用：发放保暖装备（头盔 + 护甲）
@@ -453,106 +430,31 @@ namespace BossRush
         /// 将敌人添加到阵营独立存活列表
         /// </summary>
         private void AddToFactionAliveList(Teams faction, CharacterMainControl enemy)
-        {
-            List<CharacterMainControl> list;
-            if (!modeEFactionAliveMap.TryGetValue(faction, out list))
-            {
-                list = new List<CharacterMainControl>(8);
-                modeEFactionAliveMap[faction] = list;
-            }
-
-            list.Add(enemy);
-        }
+        { enemyRegistry.AddToFactionAliveList(faction, enemy); }
 
         /// <summary>
         /// 从阵营独立存活列表中移除敌人
         /// </summary>
         private void RemoveFromFactionAliveList(Teams faction, CharacterMainControl enemy)
-        {
-            List<CharacterMainControl> list;
-            if (modeEFactionAliveMap.TryGetValue(faction, out list))
-            {
-                for (int i = list.Count - 1; i >= 0; i--)
-                {
-                    if (object.ReferenceEquals(list[i], enemy))
-                    {
-                        list.RemoveAt(i);
-                        break;
-                    }
-                }
-            }
-        }
+        { enemyRegistry.RemoveFromFactionAliveList(faction, enemy); }
 
         /// <summary>
         /// 将敌人登记为 Mode E 运行时存活对象，避免重复加入全局/阵营列表。
         /// </summary>
         internal void TrackModeEAliveEnemy(CharacterMainControl enemy, Teams faction)
-        {
-            if (enemy == null)
-            {
-                return;
-            }
-
-            if (!modeEAliveEnemySet.Add(enemy))
-            {
-                return;
-            }
-
-            modeEAliveEnemies.Add(enemy);
-            modeEAliveEnemyFactionMap[enemy] = faction;
-            AddToFactionAliveList(faction, enemy);
-            MarkModeEBossRegenCacheDirty();
-        }
+        { enemyRegistry.TrackModeEAliveEnemy(enemy, faction); }
 
         /// <summary>
         /// 从 Mode E 运行时存活对象登记中移除敌人。
         /// </summary>
         internal void UntrackModeEAliveEnemy(CharacterMainControl enemy, Teams? faction = null)
-        {
-            if (object.ReferenceEquals(enemy, null))
-            {
-                return;
-            }
-
-            bool removedFromSet = modeEAliveEnemySet.Remove(enemy);
-            bool removedFromList = modeEAliveEnemies.Remove(enemy);
-            if (removedFromSet || removedFromList)
-            {
-                MarkModeEBossRegenCacheDirty();
-            }
-
-            Teams trackedFaction;
-            if (!faction.HasValue && modeEAliveEnemyFactionMap.TryGetValue(enemy, out trackedFaction))
-            {
-                faction = trackedFaction;
-            }
-
-            modeEAliveEnemyFactionMap.Remove(enemy);
-
-            if (faction.HasValue)
-            {
-                RemoveFromFactionAliveList(faction.Value, enemy);
-                return;
-            }
-
-            foreach (KeyValuePair<Teams, List<CharacterMainControl>> kvp in modeEFactionAliveMap)
-            {
-                RemoveFromFactionAliveList(kvp.Key, enemy);
-            }
-        }
+        { enemyRegistry.UntrackModeEAliveEnemy(enemy, faction); }
 
         /// <summary>
         /// 获取指定阵营的存活敌人列表（只读访问，用于缩放遍历）
         /// </summary>
         private List<CharacterMainControl> GetFactionAliveList(Teams faction)
-        {
-            List<CharacterMainControl> list;
-            if (modeEFactionAliveMap.TryGetValue(faction, out list))
-            {
-                return list;
-            }
-            return null;
-        }
+        { return enemyRegistry.GetFactionAliveList(faction); }
 
         #endregion
 

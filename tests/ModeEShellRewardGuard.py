@@ -118,7 +118,7 @@ def main() -> int:
         if forbidden in reward_formula:
             return fail("Boss reward must not use hard-coded health tiers -> " + forbidden)
 
-    death = extract_method(scaling, "private void OnModeEEnemyDeath(")
+    death = extract_method(scaling, "internal void OnModeEEnemyDeath(")
     if not death:
         return fail("missing OnModeEEnemyDeath")
     if "CaptureAndClaimModeEShellRewardSnapshot" not in death:

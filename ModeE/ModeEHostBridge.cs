@@ -31,7 +31,7 @@ namespace BossRush
 
         private List<CharacterMainControl> modeEAliveEnemies { get { return modeERuntime.modeEAliveEnemies; } }
 
-        private HashSet<CharacterMainControl> modeEAliveEnemySet { get { return modeERuntime.modeEAliveEnemySet; } }
+
 
         private static Teams[] ModeEAvailableFactions { get { return ModeERuntimeModule.ModeEAvailableFactions; } }
 
@@ -277,7 +277,7 @@ namespace BossRush
             long uiBindingID)
         { return modeERuntime.IsCurrentModeEShellGateEvent(evt, shop, uiBindingID); }
 
-        private Dictionary<CharacterMainControl, float> modeEPendingAggroTraceDistance { get { return modeERuntime.modeEPendingAggroTraceDistance; } }
+
 
         internal bool CanQueryUseModeERespawnItem()
         { return modeERuntime.CanQueryUseModeERespawnItem(); }
