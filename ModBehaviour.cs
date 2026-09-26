@@ -807,6 +807,8 @@ namespace BossRush
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             if (StoneOutpostSceneLease.IsResourceScene(scene)) return;
+            if (BossRushMapSelectionHelper.ShouldIgnoreAuxiliarySceneLoad(scene, mode,
+                bossRushArenaPlanned || bossRushArenaActive)) return;
             PrepareSceneRuntimeForLoad();
 
             // 场景切换时清理好感度系统UI缓存

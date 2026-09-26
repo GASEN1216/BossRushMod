@@ -33,6 +33,13 @@ namespace BossRush
 
             while (elapsed < maxWait)
             {
+                // LevelInited 早于官方最终落点/出场动画；加载期间不抢写位置，也不消耗就绪超时。
+                var entryCore = MultiSceneCore.Instance;
+                if (SceneLoader.IsSceneLoading || (entryCore != null && entryCore.IsLoading))
+                {
+                    yield return null;
+                    continue;
+                }
                 bool mainExists = ReadMainExistsWithWarning("TeleportPlayerToCustomPosition");
                 bool levelInited = ReadLevelInitedWithWarning("TeleportPlayerToCustomPosition");
 
@@ -69,7 +76,7 @@ namespace BossRush
                     // Mode E 跳过传送，直接进入 SetupBossRushInGroundZero
                     Vector3 finalPosition = targetPosition;
 
-                    if (!isModeEEntry)
+                    if (!isModeEEntry && !BossRushInitialSpawn.HasArrived(targetPosition))
                     {
                     // [修复] 使用 RaycastAll 找到最接近配置 Y 坐标的地面点（1m，防止卡到屋顶）
                     Vector3 rayStart = targetPosition + Vector3.up * 1f;

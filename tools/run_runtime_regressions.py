@@ -9,7 +9,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
-    "PetNestGrowth", "ModeHPreparedEquipment",
+    "PetNestGrowth", "ModeHPreparedEquipment", "EntryAndReforgeCompatibility",
     "AuditCoreParsing", "AuditModeLifecycle", "AuditCombatSeptember", "NpcAuditFixes",
     "ModeHSceneEntry", "ModeHPlayerFlow",
     "ResourceProduction",

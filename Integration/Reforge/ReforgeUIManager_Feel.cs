@@ -11,7 +11,7 @@
 //       涨跌倾向的概率与额外费用挪到滑块旁的白话标签（RefreshTendencyLabel）。
 //     - UD-24 属性行固定：两步确认（第一次点进入待确认：行底 Accent 淡色 + 「再点一次固定」，2 秒内再点才扣），
 //       常态左侧一道 Accent 细条表示能点，冷淬液计数下方一行说明；成功播 UI/confirm、行底金色闪一下。
-//     - UD-25 重铸揭晓：变化的行按顺序闪一下（涨 SuccessText、跌 DangerText、触顶 RarityLegendary + UI/pop），
+//     - UD-25 重铸揭晓：变化的行按顺序闪一下（增益 SuccessText、减益 DangerText、最优边界 RarityLegendary + UI/pop），
 //       数值从 1.15 倍 EaseOut 回落。
 //     - UD-29 词缀揭晓：新词缀行依次淡入，描边短暂换成稀有度色后回到 Stroke，抽到稀有播 UI/level_up。
 //     - UD-30 图标兜底：退官方物品图标（ItemAssetsCollection 元数据），取不到就不画那一格，不再顶一个菱形字符。
@@ -81,7 +81,7 @@ namespace BossRush
             public string Key;
             public PropertyType Type;
             public int Ordinal;
-            public bool Up;
+            public bool Beneficial;
             public bool AtMax;
         }
 
@@ -195,9 +195,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 涨跌倾向滑块的白话标签（A-03）：旧版「正负极性倾向 / 偏向正面 (+20)」是内部术语，概率与额外费用又写在远处的费用区。
-        /// 现在滑块旁边直接写「数值偏涨：涨 70% · 另加 1,234」；居中时「数值涨跌各半 · 不加钱」。
-        /// 「涨」是数值变大，不等于变好（后坐力涨了是坏事），所以只写涨跌、不写好坏。
+        /// 倾向按收益方向显示，和重铸计算、结果颜色共用官方属性极性。
+        /// 后坐力降低属于增益；未知极性的第三方属性仍按数值增减。
         /// </summary>
         private static void RefreshTendencyLabel()
         {
@@ -210,7 +209,7 @@ namespace BossRush
             int cost = GetTendencyCost();
             if (Mathf.Abs(up - 0.5f) < 0.001f)
             {
-                tendencyText.text = L10n.T("数值涨跌各半 · 不加钱", "Values rise or fall 50/50 · no extra cost");
+                tendencyText.text = L10n.T("增益减益各半 · 不加钱", "Benefit or penalty 50/50 · no extra cost");
                 return;
             }
 
@@ -218,8 +217,8 @@ namespace BossRush
             string chance = FormatReforgePercent(leansUp ? up : 1f - up);
             string extra = FormatReforgeAmount(cost);
             string body = leansUp
-                ? string.Format(L10n.T("数值偏涨：涨 {0} · 另加 {1}", "Leans up: {0} rise · +{1} cost"), chance, extra)
-                : string.Format(L10n.T("数值偏跌：跌 {0} · 另加 {1}", "Leans down: {0} fall · +{1} cost"), chance, extra);
+                ? string.Format(L10n.T("偏向增益：增益 {0} · 另加 {1}", "Favors benefits: {0} benefit · +{1} cost"), chance, extra)
+                : string.Format(L10n.T("偏向减益：减益 {0} · 另加 {1}", "Favors penalties: {0} penalty · +{1} cost"), chance, extra);
             tendencyText.text = "<color=" + (leansUp ? IntegrationUIFeedback.SuccessHex : IntegrationUIFeedback.WarningHex) + ">"
                 + body + "</color>";
         }
@@ -425,19 +424,21 @@ namespace BossRush
         // UD-25 重铸结果逐行揭晓
         // ============================================================================
 
-        /// <summary>ShowPropertyChanges 里每一条变化的属性登记一次；触顶判据与 Max 标签同一个（IsValueAtUpperBound）。</summary>
+        /// <summary>逐行登记收益与最佳边界；负极性属性在下限才算最优。</summary>
         private static void QueueReforgeReveal(string key, PropertyType propType, int entryOrdinal, float newValue, float diff)
         {
             float prefabValue;
-            bool atMax = diff > 0f
+            bool atMax = ReforgeSystem.IsBeneficialChange(key, diff)
                 && TryGetCachedPrefabValue(key, propType, entryOrdinal, out prefabValue)
-                && ReforgeSystem.IsValueAtUpperBound(key, prefabValue, newValue);
+                && (diff > 0f
+                    ? ReforgeSystem.IsValueAtUpperBound(key, prefabValue, newValue)
+                    : ReforgeSystem.IsValueAtLowerBound(key, prefabValue, newValue));
             pendingRevealRows.Add(new ReforgeRevealRow
             {
                 Key = key,
                 Type = propType,
                 Ordinal = entryOrdinal,
-                Up = diff > 0f,
+                Beneficial = ReforgeSystem.IsBeneficialChange(key, diff),
                 AtMax = atMax
             });
         }
@@ -449,7 +450,7 @@ namespace BossRush
 
         /// <summary>
         /// 详情面板重建完之后（RefreshUIAfterReforgeDelayed 末尾）按显示顺序逐行揭晓：
-        /// 每行间隔 0.06 秒，行底闪一下（涨 SuccessText / 跌 DangerText / 触顶 RarityLegendary 并播 UI/pop），
+        /// 每行间隔 0.06 秒，行底闪一下（增益 SuccessText / 减益 DangerText / 最优边界 RarityLegendary 并播 UI/pop），
         /// 数值从 1.15 倍 EaseOut 回落。挂在重建之后，才不会被整页 Setup 刷掉。
         /// </summary>
         private static void PlayQueuedReforgeReveal()
@@ -502,7 +503,7 @@ namespace BossRush
 
                     Color flashColor = row.AtMax
                         ? BossRushUIColors.RarityLegendary
-                        : (row.Up ? BossRushUIColors.SuccessText : BossRushUIColors.DangerText);
+                        : (row.Beneficial ? BossRushUIColors.SuccessText : BossRushUIColors.DangerText);
                     fx.Flash(flashColor, REVEAL_FLASH_ALPHA, REVEAL_FLASH_SECONDS, order * REVEAL_ROW_STAGGER,
                         valueText != null ? valueText.transform : null,
                         row.AtMax ? IntegrationUIFeedback.SoundPop : null);

@@ -91,6 +91,7 @@ namespace BossRush
         public static bool TryCreateRunVariant(ModeHSupportedMap source,long seed,out ModeHSupportedMap result,out string reason) { result=source;reason=null;return source!=null; }
         public static bool TryGetMap(string name,out ModeHSupportedMap map) { map=Map;return map!=null && map.SceneName==name; }
     }
+    public static class BossRushInitialSpawn { public static bool Arrived; public static bool HasArrived(Vector3 p) { return Arrived; } }
     public class BossRushMapConfig { public Vector3? customSpawnPos; }
     public static class BossRushMapSelectionHelper
     {

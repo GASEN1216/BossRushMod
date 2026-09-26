@@ -673,6 +673,7 @@ echo(ZombieMode\ZombieModeCashInvestmentView.cs
 echo(BossFilter\BossFilter.cs
 echo(BossFilter\BossFilterUi.cs
 echo(MapSelection\BossRushMapSelectionHelper.cs
+echo(MapSelection\BossRushInitialSpawn.cs
 echo(MapSelection\MapThumbnailCache.cs
 echo(Integration\DragonDescendant\DragonDescendantConfig.cs
 echo(Integration\DragonDescendant\DragonDescendantAbilities.cs

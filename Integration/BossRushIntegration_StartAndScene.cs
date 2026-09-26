@@ -386,7 +386,8 @@ namespace BossRush
                     return;
                 }
 
-                if (loadedMapConfig != null && !loadedMapConfig.customSpawnPos.HasValue)
+                if (loadedMapConfig != null && !loadedMapConfig.customSpawnPos.HasValue
+                    && (!bossRushArenaPlanned || BossRushMapSelectionHelper.IsPendingTargetScene(scene.name)))
                 {
                     if (bossRushArenaPlanned)
                     {

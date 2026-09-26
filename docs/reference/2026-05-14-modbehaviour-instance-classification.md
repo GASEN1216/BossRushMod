@@ -3,7 +3,7 @@
 ## Baseline
 
 - Command: `rg -n "ModBehaviour\\.Instance" --glob "*.cs"`
-- Raw matches: 410
+- Raw matches: 411
 - Current event-bus pilot: achievement popup notification only.
 - Guard evidence: `BossRushEventBusLifecycleGuard.py` PASS; `LongTermGoalNonGoalGuard.py` still blocks broad `EventBus`, `IGameWorldProbe`, and `IBossRushEventSubscriber` abstractions.
 
@@ -29,7 +29,7 @@
 | `Campaign/` | 12 | notification + gameplay state | 2026-09-22 −4：公告板自绘面板退役（CampaignBoardView 删除，征程改由官方 Jeff 发放；官方任务客户端持模块引用，不用 Instance）。2026-09-18 +1：切槽主动取消终章生成并回收 Boss，防旧槽异步结果进入新槽。2026-08-30 新增。鸭王征程用它做三件事：玩家可见通知（`ShowMessage`：接约/交付/线索到手）、开关与波次查询（采集器与桥读活动模式状态）、以及公告板面板的宿主。2026-09-03 +1：终章冠军独白拿不到对话 actor 时的飘字兜底（`PlayFinalBossPrologueAsync`），与既有交付剧情的兜底同款。全部属 Keep 类别——契约状态机本来就长在 `ModBehaviour` 的 partial 上（`CampaignModeBridge`），走事件总线反而要把私有模式状态再导出一遍。 |
 | `Audio/` | 9 | candidate notification + Unity owner | Audio manager uses `ModBehaviour.Instance` as the component host and sound playback bridge. It is a later candidate for a narrow audio service, not a broad event bus. 2026-08-30 +1：`BossBgmCoordinator` 经它播 stinger（复用既有 `PlaySoundEffect`，不另起音频通道）。 |
 | `Patches/` | 8 | patch entrypoint / Unity owner | Harmony patches need the current mod singleton to route base-game callbacks into the mod. `MagicBlendInitializationOrderPatch` additionally uses it as a coroutine owner while waiting for the official `MagicBlending.Start()` initialization, then replays the same state entry. |
-| `MapSelection/` | 3 | gameplay command | Map selection must call active mod entry/exit state. |
+| `MapSelection/` | 4 | gameplay command | Map selection must call active mod entry/exit state; confirmed initial spawn reuses the same entry-mode decision before player destruction. |
 | `ModeG/` | 4 | gameplay state / Unity owner | Mode G uses the live mod instance for entry, presentation and managed runtime ownership; these calls stay direct to preserve the run transaction boundary. |
 | `ModeH/` | 1 |
 | `RandomEvents/` | 5 | gameplay command / Unity owner | Mode H 场内交互只在一个解析器里取活动 mod 实例，其余路径复用捕获的 host，保持入口事务边界。 |
