@@ -4,12 +4,13 @@ Guard: Mode D / E / F 的 Boss 选取链路必须走 BossFilter 过滤接口，
 """
 
 from pathlib import Path
+from cs_source_util import clean_source
 import sys
 
 
 MODED_WAVES = Path("ModeD/ModeDWaves.cs")
 MODED_SELECTION = Path("ModeD/ModeDRuntimeModule_Selection.cs")
-MODEE_BATTLE = Path("ModeE/ModeEBattle.cs")
+MODEE_BATTLE = Path("Utilities/ModeEFEnemySpawnRuntime.cs")
 MODEF_RESPAWN = Path("ModeF/ModeFRespawn.cs")
 
 
@@ -41,10 +42,10 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 
 def main() -> int:
-    mode_d_text = MODED_WAVES.read_text(encoding="utf-8")
-    mode_d_selection = MODED_SELECTION.read_text(encoding="utf-8")
-    mode_e_text = MODEE_BATTLE.read_text(encoding="utf-8")
-    mode_f_text = MODEF_RESPAWN.read_text(encoding="utf-8")
+    mode_d_text = clean_source(MODED_WAVES.read_text(encoding="utf-8"))
+    mode_d_selection = clean_source(MODED_SELECTION.read_text(encoding="utf-8"))
+    mode_e_text = clean_source(MODEE_BATTLE.read_text(encoding="utf-8"))
+    mode_f_text = clean_source(MODEF_RESPAWN.read_text(encoding="utf-8"))
 
     mode_d_body = extract_method_body(mode_d_text, "private EnemyPresetInfo GetRandomBossPreset()")
     if mode_d_body is None:
@@ -57,14 +58,14 @@ def main() -> int:
     if mode_d_production is None or "owner.GetFilteredEnemyPresets()" not in mode_d_production:
         return fail("ModeDEFBossFilterGuard: ModeD GetRandomBossPreset does not use filtered boss presets")
 
-    mode_e_body = extract_method_body(mode_e_text, "private void BuildModeEFactionPresetCaches()")
+    mode_e_body = extract_method_body(mode_e_text, "internal void BuildModeEFactionPresetCaches()")
     if mode_e_body is None:
         return fail("ModeDEFBossFilterGuard: missing ModeE BuildModeEFactionPresetCaches body")
 
     if "GetFilteredEnemyPresets()" not in mode_e_body:
         return fail("ModeDEFBossFilterGuard: ModeE faction boss cache does not use filtered boss presets")
 
-    if "modeD.MinionPresets" not in mode_e_body:
+    if "MinionPresets" not in mode_e_body:
         return fail("ModeDEFBossFilterGuard: ModeE minion pool handling unexpectedly changed")
 
     mode_f_body = extract_method_body(mode_f_text, "private EnemyPresetInfo GetRandomModeFRespawnBossPreset()")

@@ -30,7 +30,7 @@ REWARD_PARTS = [
     ROOT / "ZombieMode/ZombieModeRewardSelectionView.cs",
     ROOT / "ZombieMode/ZombieModeTemporaryNpcServiceView.cs",
 ]
-ENTRY = ROOT / "ZombieMode/ZombieModeEntry.cs"
+ENTRY = ROOT / "ZombieMode/ZombieModeEntryHostBridge.cs"
 CASH = ROOT / "ZombieMode/ZombieModeCashInvestmentView.cs"
 EXTRACTION = ROOT / "ZombieMode/ZombieModeRuntimeModule_Extraction.cs"
 UI_HELPER = ROOT / "ZombieMode/ZombieModeUIHelper.cs"

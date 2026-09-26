@@ -32,7 +32,7 @@ for token in ['GetStarterKitIds()', 'ModeHPresetRegistry.GetAuditedPreset',
               'item.InInventory != character.Inventory', 'equipped.TypeID != kit.ResolvedTypeId']:
     if token not in kits:
         errors.append('H 整备验收缺少实际角色/库存/迟到回收约束: ' + token)
-hooks = read('Integration/IntegrationRuntimeHooks.cs')
+hooks = read('Integration/BossRushIntegration.cs')
 if not (0 <= hooks.find('AffixForgeStoneDropService.ClearAllTracking();') < hooks.find('OnSceneLoaded_Integration(scene, mode)')):
     errors.append('Integration 场景回调必须先回收旧词缀熔石掉落订阅')
 campaign = read('Campaign/CampaignFinalBoss.cs')

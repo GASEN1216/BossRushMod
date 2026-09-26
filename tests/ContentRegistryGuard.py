@@ -3,6 +3,8 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
+from ArchitectureStructureGuard import extract_method_body
 
 
 COMPILE = Path("compile_official.bat")
@@ -10,18 +12,16 @@ INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration.cs"),
     Path("Integration/BossRushIntegration_StartAndScene.cs"),
     Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
-    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
-    Path("Integration/IntegrationDeferredBootstrap.cs"),
     Path("Integration/BossRushIntegrationRuntimeModule_DeferredBootstrap.cs"),
     Path("Integration/BossRushIntegrationRuntimeModule_Initialization.cs"),
 ]
 ITEM_REGISTRY = Path("Integration/Items/ItemContentRegistry.cs")
-EQUIPMENT_REGISTRY = Path("Integration/EquipmentContentRegistry.cs")
+EQUIPMENT_REGISTRY = Path("Integration/BossRushIntegration.cs")
 CONTENT_REGISTRATION = Path("Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs")
 
 ITEM_COMPILE_SOURCES = [
     "Integration/Items/ItemContentRegistry.cs",
-    "Integration/EquipmentContentRegistry.cs",
+    "Integration/BossRushIntegration.cs",
     "Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs",
 ]
 
@@ -112,7 +112,7 @@ def normalize_slashes(text: str) -> str:
 
 
 def read_boss_rush_integration() -> str:
-    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_PARTS)
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in dict.fromkeys(INTEGRATION_PARTS))
 
 
 def require_ordered_tokens(text: str, tokens: list[str], label: str) -> str | None:
@@ -136,7 +136,7 @@ def require_exactly_once(text: str, token: str, label: str) -> str | None:
 
 def main() -> int:
     compile_text = normalize_slashes(COMPILE.read_text(encoding="utf-8", errors="ignore"))
-    integration_text = read_boss_rush_integration()
+    integration_text = clean_source(read_boss_rush_integration())
 
     missing_compile = [path for path in ITEM_COMPILE_SOURCES if path not in compile_text]
     if missing_compile:
@@ -150,8 +150,23 @@ def main() -> int:
     item_text = ITEM_REGISTRY.read_text(encoding="utf-8", errors="ignore")
     equipment_host_text = EQUIPMENT_REGISTRY.read_text(encoding="utf-8", errors="ignore")
     registration_text = CONTENT_REGISTRATION.read_text(encoding="utf-8-sig")
-    equipment_text = registration_text + equipment_host_text
-    from cs_source_util import clean_source
+    equipment_host_code = clean_source(equipment_host_text)
+    equipment_members = []
+    # The compatibility carrier now shares a file with these four registry
+    # methods. Inspect the methods themselves, excluding unrelated forwarding
+    # methods from the exactly-once assertions.
+    for method in EQUIPMENT_METHODS:
+        signature = "private void " + method + "()"
+        body = extract_method_body(equipment_host_code, signature)
+        if not body:
+            return fail("ContentRegistryGuard: missing equipment method body: " + method)
+        start = equipment_host_code.index(signature)
+        opening = equipment_host_code.index("{", start)
+        equipment_members.append(equipment_host_code[start:opening + len(body)])
+        start = integration_text.index(signature)
+        opening = integration_text.index("{", start)
+        integration_text = integration_text[:start] + integration_text[opening + len(body):]
+    equipment_text = clean_source(registration_text) + "\n".join(equipment_members)
     registration_code = clean_source(registration_text)
     if "internal sealed partial class IntegrationRuntimeModule" not in registration_code or "partial class ModBehaviour" in registration_code:
         return fail("ContentRegistryGuard: content registration must belong to IntegrationRuntimeModule")

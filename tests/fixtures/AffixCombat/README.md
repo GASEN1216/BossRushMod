@@ -13,6 +13,7 @@
 以及 `ZombieModeRunOnlyRecord`；不复写这些算法。
 
 奖励执行迁移后，奖励爆炸与末日脉冲入口也直接编入 `ZombieModeRuntimeModule`，原宿主实例继续作为爆炸协程 owner 传递。
+宿主归并后，区域爆炸兼容入口 `DealZombieModeExplosionAreaDamage` 从 `ZombieModeCombatHostBridge.cs` 逐字抽取；实际爆炸业务仍来自 `ZombieModeRuntimeModule_PollutionSkills.cs`。
 
 核对原爆炸不漏目标、追加效果离开原事件栈、来源过滤、天降殉爆保留伤己风险，
 以及死亡、换装、切图、context/局失效、宿主关停后旧伤害作废。暂停等待与恢复、三次末日脉冲的

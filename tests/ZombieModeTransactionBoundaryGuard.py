@@ -13,11 +13,11 @@ import re
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 STARTER_LOADOUT = Path("ZombieMode/ZombieModeEntry_StarterLoadout.cs")
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
-CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(msg: str) -> int:

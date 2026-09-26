@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 ENTRY_PARTS = [
     ENTRY,
@@ -38,7 +38,7 @@ HUD = Path("ZombieMode/ZombieModeHudController.cs")
 UI_HELPER = Path("ZombieMode/ZombieModeUIHelper.cs")
 SHARED_UI = Path("Common/UI/BossRushUIFoundation.cs")
 MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
-ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
+ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:

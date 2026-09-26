@@ -16,9 +16,9 @@ EFFECT_PARTS = [
 def read_effects() -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in EFFECT_PARTS)
 
-CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
-BRIDGES = Path("ZombieMode/ZombieModeMapSelection.cs")
+BRIDGES = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 
 

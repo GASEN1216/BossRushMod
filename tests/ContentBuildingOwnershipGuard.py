@@ -33,8 +33,8 @@ def wedding_compatibility_errors(wedding_bridge, repaint_module):
 
 
 def main():
-    bridge = read("Integration/ContentBuildingBridges.cs")
-    wedding_bridge = read("Integration/Wedding/WeddingHostCompatibilityBridge.cs")
+    bridge = read("Integration/IntegrationHostCompatibility.cs")
+    wedding_bridge = read("Integration/IntegrationHostCompatibility.cs")
     repaint_module = read("Integration/Wedding/WeddingBuildingInjector_DataEventsAndRuntime.cs")
     helper = read("Common/Buildings/BuildingInjectionHelper.cs")
     models = read("Common/Buildings/BuildingModelHelper.cs")

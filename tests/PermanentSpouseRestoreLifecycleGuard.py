@@ -5,7 +5,7 @@ from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
 BRIDGE = "Integration/Wedding/WeddingModBehaviourBridge.cs"
-HOST_BRIDGE = "Integration/Wedding/WeddingHostCompatibilityBridge.cs"
+HOST_BRIDGE = "Integration/IntegrationHostCompatibility.cs"
 RUNTIME = "Integration/Wedding/WeddingRuntimeModule.cs"
 MODULE = "Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcModule.cs"
 

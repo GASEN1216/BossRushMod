@@ -8,9 +8,9 @@ MODEF_FORT_PARTS = [
     Path("ModeF/ModeFFortifications_RepairRewardsCleanup.cs"),
     Path("ModeF/ModeFItemUsageAndTriggers.cs"),
 ]
-ZOMBIE_ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ZOMBIE_ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 ZOMBIE_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
-ZOMBIE_BRIDGE = Path("ZombieMode/ZombieModeMapSelection.cs")
+ZOMBIE_BRIDGE = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:

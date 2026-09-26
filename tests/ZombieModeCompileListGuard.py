@@ -7,16 +7,16 @@ COMPILE = Path("compile_official.bat")
 REQUIRED_FILES = [
     "ZombieMode\\ZombieModeModels.cs",
     "ZombieMode\\ZombieModeTuning.cs",
-    "ZombieMode\\ZombieModeEntry.cs",
-    "ZombieMode\\ZombieModeMapSelection.cs",
+    "ZombieMode\\ZombieModeRuntimeModule.cs",
+    "ZombieMode\\ZombieModeRuntimeModule_HostLifecycle.cs",
+    "ZombieMode\\ZombieModeEntryHostBridge.cs",
     "ZombieMode\\ZombieModeMapSelectionHelper.cs",
-    "ZombieMode\\ZombieModeInventoryTransfer.cs",
     "ZombieMode\\ZombieModeMapIsolation.cs",
     "ZombieMode\\ZombieModeSpawner.cs",
-    "ZombieMode\\ZombieModeWaveController.cs",
+    "ZombieMode\\ZombieModeCombatHostBridge.cs",
     "ZombieMode\\ZombieModeEnemyRuntime.cs",
     "ZombieMode\\ZombieModeRewards.cs",
-    "ZombieMode\\ZombieModeRewardCatalogAndSelection.cs",
+    "ZombieMode\\ZombieModeRewardHostBridge.cs",
     "ZombieMode\\ZombieModeRewardEffectsAndNpc.cs",
     "ZombieMode\\ZombieModeRewardItemGrants.cs",
     "ZombieMode\\ZombieModeRewardNpcServices.cs",
@@ -34,8 +34,6 @@ REQUIRED_FILES = [
     "ZombieMode\\ZombieModeUiWidgets.cs",
     "ZombieMode\\ZombieModeRewardSelectionView.cs",
     "ZombieMode\\ZombieModeTemporaryNpcServiceView.cs",
-    "ZombieMode\\ZombieModeCleanup.cs",
-    "ZombieMode\\ZombieModeDebug.cs",
     "Integration\\Items\\ZombieTideInvitationConfig.cs",
     "Integration\\Items\\ZombieTideInvitationUsage.cs",
     "Integration\\Items\\ZombieTideBeaconConfig.cs",
@@ -56,12 +54,17 @@ def main() -> int:
     if missing:
         return fail("ZombieModeCompileListGuard: missing compile entries: " + ", ".join(missing))
 
-    model_index = text.find("ZombieMode\\ZombieModeModels.cs")
-    tuning_index = text.find("ZombieMode\\ZombieModeTuning.cs")
-    entry_index = text.find("ZombieMode\\ZombieModeEntry.cs")
-    cleanup_index = text.find("ZombieMode\\ZombieModeCleanup.cs")
-    if not (0 <= model_index < tuning_index < entry_index < cleanup_index):
-        return fail("ZombieModeCompileListGuard: ZombieMode compile order is unsafe")
+    ordered = [
+        "ZombieModeModels.cs", "ZombieModeTuning.cs", "ZombieModeRuntimeModule.cs",
+        "ZombieModeEntryHostBridge.cs", "ZombieModeCombatHostBridge.cs",
+        "ZombieModeRewardHostBridge.cs", "ZombieModeRuntimeModule_HostLifecycle.cs",
+    ]
+    positions = [text.find("ZombieMode\\" + name) for name in ordered]
+    if min(positions) < 0 or positions != sorted(positions) or len(set(positions)) != len(ordered):
+        return fail("ZombieModeCompileListGuard: state, runtime, host bridges and lifecycle compile order changed")
+    for name in ordered:
+        if text.count("ZombieMode\\" + name) != 1:
+            return fail("ZombieModeCompileListGuard: duplicate compile entry -> " + name)
 
     print("ZombieModeCompileListGuard: PASS")
     return 0

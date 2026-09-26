@@ -4,11 +4,12 @@ import sys
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
-HOST_BRIDGE = Path("ZombieMode/ZombieModeMapSelection.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 MOD_BEHAVIOUR = Path("ModBehaviour.cs")
 MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
-ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
+ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+HOST_LIFECYCLE = Path("ZombieMode/ZombieModeRuntimeModule_HostLifecycle.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 
 REQUIRED_MODEL_SNIPPETS = [
@@ -117,6 +118,7 @@ def main() -> int:
     model_text = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
     entry_text = ENTRY.read_text(encoding="utf-8")
     bridge_text = HOST_BRIDGE.read_text(encoding="utf-8")
+    lifecycle_text = HOST_LIFECYCLE.read_text(encoding="utf-8")
     host_entry_text = entry_text + "\n" + bridge_text
     mod_text = MOD_BEHAVIOUR.read_text(encoding="utf-8")
     mode_runtime_hooks_text = MODE_RUNTIME_HOOKS.read_text(encoding="utf-8")
@@ -145,8 +147,8 @@ def main() -> int:
         "zombieModeRuntimeModule.RunState : zombieModeUnattachedRunState",
         "zombieModeRuntimeModule.EntryTransaction : zombieModeUnattachedEntryTransaction",
     ]:
-        if snippet not in bridge_text:
-            return fail("ZombieModeStateModelGuard: runtime-module state bridge missing snippet -> " + snippet)
+        if snippet not in lifecycle_text:
+            return fail("ZombieModeStateModelGuard: lifecycle state owner missing snippet -> " + snippet)
     if "private readonly ZombieModeRunState zombieModeRunState" in host_entry_text:
         return fail("ZombieModeStateModelGuard: ModBehaviour still owns the active ZombieModeRunState field")
     for snippet in [

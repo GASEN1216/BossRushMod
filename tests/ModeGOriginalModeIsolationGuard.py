@@ -78,7 +78,7 @@ def main():
     consumers = {
         "Interactables/BossRushInteractables.cs": r"IsModeGEntryBlockedSafe\(\)",
         "WavesArena/WavesArenaEntryAndTeleport.cs": r"ModeGRuntimeGates\.IsModeGEntryBlocked",
-        "ZombieMode/ZombieModeEntry.cs": r"ModeGRuntimeGates\.IsModeGEntryBlocked",
+        "ZombieMode/ZombieModeEntryHostBridge.cs": r"ModeGRuntimeGates\.IsModeGEntryBlocked",
         "ZombieMode/ZombieModeRuntimeModule.cs": r"ModeGRuntimeGates\.IsModeGEntryBlocked",
     }
     for rel, pattern in consumers.items():

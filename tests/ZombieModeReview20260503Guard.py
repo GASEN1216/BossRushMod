@@ -79,12 +79,12 @@ def main() -> int:
     wave = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
     drops = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
     rewards_text = read_rewards()
-    cleanup = Path("ZombieMode/ZombieModeCleanup.cs")
+    cleanup = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
     runtime_module = Path("ZombieMode/ZombieModeRuntimeModule.cs")
     runtime_module_enemy = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
     runtime_module_inventory = Path("ZombieMode/ZombieModeRuntimeModule_InventoryTransfer.cs")
-    runtime_bridges = Path("ZombieMode/ZombieModeMapSelection.cs")
-    inventory = Path("ZombieMode/ZombieModeInventoryTransfer.cs")
+    runtime_bridges = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+    inventory = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
     map_iso = Path("ZombieMode/ZombieModeMapIsolation.cs")
     enemy_runtime = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
     extraction = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
@@ -194,7 +194,7 @@ def main() -> int:
                        "internal void ClearZombieModeEnemyInstanceIds()")
     if err:
         return fail(err)
-    err = must_contain(enemy_runtime,
+    err = must_contain(Path("ZombieMode/ZombieModeCombatHostBridge.cs"),
                        "module.IsZombieModeKnownEnemy(character)",
                        "module.TryGetZombieModeKnownEnemyMarker(character, out marker)",
                        "module.RegisterZombieModeEnemyInstanceId(character, marker)",

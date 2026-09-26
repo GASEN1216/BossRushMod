@@ -7,7 +7,7 @@ from cs_source_util import clean_source
 
 SPAWN_CORE = Path("Utilities/EnemySpawnCore.cs")
 MODE_RUNTIME = Path("Utilities/ModeRuntimeHooks.cs")
-MODEE_BATTLE = Path("ModeE/ModeEBattle.cs")
+MODEE_BATTLE = Path("Utilities/ModeEFEnemySpawnRuntime.cs")
 MODEE_STARTUP = Path("ModeE/ModeEStartup.cs")
 MODEF_RESPAWN = Path("ModeF/ModeFRespawn.cs")
 MODED_EQUIPMENT = Path("ModeD/ModeDEquipment.cs")
@@ -44,11 +44,11 @@ def main() -> int:
             return fail("shared scheduler wiring missing -> " + statement)
     if host.count("new ModeEFSpawnPostprocessScheduler()") != 1 or "Queue<ModeEFSpawnPostprocessJob>" in host:
         return fail("host must delegate to exactly one scheduler owner")
-    runtime = MODE_RUNTIME.read_text(encoding="utf-8")
-    battle = MODEE_BATTLE.read_text(encoding="utf-8")
-    startup = MODEE_STARTUP.read_text(encoding="utf-8")
-    respawn_f = MODEF_RESPAWN.read_text(encoding="utf-8")
-    equipment = MODED_EQUIPMENT.read_text(encoding="utf-8")
+    runtime = clean_source(MODE_RUNTIME.read_text(encoding="utf-8"))
+    battle = clean_source(MODEE_BATTLE.read_text(encoding="utf-8"))
+    startup = clean_source(MODEE_STARTUP.read_text(encoding="utf-8"))
+    respawn_f = clean_source(MODEF_RESPAWN.read_text(encoding="utf-8"))
+    equipment = clean_source(MODED_EQUIPMENT.read_text(encoding="utf-8"))
 
     for text, needle, message in (
         (spawn_core, "private const int MODE_EF_SPAWN_POSTPROCESS_SOFT_DEADLINE_FRAMES = 60;", "spawn core must preserve the shared 60-frame soft deadline"),

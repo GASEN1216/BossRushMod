@@ -1,20 +1,181 @@
-using Cysharp.Threading.Tasks;
-using ItemStatsSystem.Stats;
-using ItemStatsSystem;
-using Duckov.Utilities;
-using Duckov.Buffs;
 using System.Collections;
-// ============================================================================
-// ZombieModeRewardCatalogAndSelection.cs - 丧尸模式奖励候选与选择宿主兼容桥
-// ============================================================================
-
-using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
+using ItemStatsSystem;
+using ItemStatsSystem.Stats;
 using UnityEngine;
+using UnityEngine.AI;
+using System;
+using System.Collections.Generic;
+using Duckov.Utilities;
+using Duckov.UI;
+using TMPro;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using Duckov.MiniMaps;
+using Duckov.Scenes;
+using Duckov.Economy;
+using ItemStatsSystem.Data;
+using ItemStatsSystem.Items;
+using Duckov.Buffs;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    public partial class ModBehaviour
     {
+        // ZombieModeHudController.cs
+        #region Zombie Mode HUD
+        private void CreateZombieModeHud(int runId)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.CreateZombieModeHud(runId);
+        }
+
+        public string GetZombieModeHudMainText(int runId)
+        {
+            return GetZombieModeHudMainText(runId, -1);
+        }
+
+        public string GetZombieModeHudMainText(int runId, int shownPurification)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeHudMainText(runId, shownPurification) : string.Empty;
+        }
+
+        public string GetZombieModeNextWavePreviewText(int runId)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeNextWavePreviewText(runId) : string.Empty;
+        }
+
+        public string GetZombieModeHudSafeZoneText(int runId)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeHudSafeZoneText(runId) : string.Empty;
+        }
+
+        public string GetZombieModeHudStageText(int runId)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeHudStageText(runId) : string.Empty;
+        }
+
+        internal void GetZombieModeHudBarState(int runId, out int kills, out int killTarget, out float beaconFill, out float preparationTimer)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null)
+            {
+                module.GetZombieModeHudBarState(runId, out kills, out killTarget, out beaconFill, out preparationTimer);
+                return;
+            }
+            kills = 0;
+            killTarget = 0;
+            beaconFill = -1f;
+            preparationTimer = 0f;
+        }
+
+        public int GetZombieModeBossRewardPercent(int runId)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeBossRewardPercent(runId) : 100;
+        }
+
+        internal bool IsZombieModeHudSafeZoneWarning(int runId)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.IsZombieModeHudSafeZoneWarning(runId);
+        }
+
+        public Color GetZombieModeHudSafeZoneColor(int runId)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null ? module.GetZombieModeHudSafeZoneColor(runId) : BossRushUIColors.TextSecondary;
+        }
+
+        internal bool SetZombieModeHudVisibilityForRuntimeModule(ZombieModeHudController controller, bool hidden)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null && module.SetZombieModeHudVisibility(controller, hidden);
+        }
+
+        internal void TickZombieModeHudForRuntimeModule(ZombieModeHudController controller, float deltaTime)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.TickZombieModeHud(controller, deltaTime);
+        }
+
+        internal void CleanupZombieModeHudForRuntimeModule(ZombieModeHudController controller)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.CleanupZombieModeHud(controller);
+        }
+
+        internal bool IsZombieModeAmbientZombieSpawnPhaseForHud(ZombieModeCombatPhase phase)
+        {
+            return IsZombieModeAmbientZombieSpawnPhase(phase);
+        }
+
+        internal bool IsZombieModeBossWaveForHud(int wave)
+        {
+            return IsZombieModeBossWave(wave);
+        }
+
+        internal int GetZombieModeWaveCycleIndexForHud(int wave)
+        {
+            return GetZombieModeWaveCycleIndex(wave);
+        }
+
+        internal int GetZombieModeBossCountForWaveForHud(int wave)
+        {
+            return GetZombieModeBossCountForWave(wave);
+        }
+
+        internal float GetZombieModeBossHealthScaleForHud(int wave)
+        {
+            return GetZombieModeBossHealthScale(wave);
+        }
+
+        internal float GetZombieModeBossDamageScaleForHud(int wave)
+        {
+            return GetZombieModeBossDamageScale(wave);
+        }
+
+        internal float GetZombieModeBossRewardScaleForHud(int wave)
+        {
+            return GetZombieModeBossRewardScale(wave);
+        }
+
+        internal int GetZombieModeWavePressureTargetForHud(int wave)
+        {
+            return GetZombieModeWavePressureTarget(wave);
+        }
+
+        internal float GetZombieModeWaveSpeedMultiplierForHud(int wave)
+        {
+            return GetZombieModeWaveSpeedMultiplier(wave);
+        }
+
+        internal int GetZombieModeNormalWaveStageIndexForHud(int wave)
+        {
+            return GetZombieModeNormalWaveStageIndex(wave);
+        }
+
+        internal int GetZombieModePacingWaveForHud()
+        {
+            return GetZombieModePacingWave();
+        }
+
+        internal int GetZombieModeAmbientPressureTargetForHud()
+        {
+            return GetZombieModeAmbientPressureTarget();
+        }
+
+        internal bool IsAnyZombieModeSafeZoneActiveForHud()
+        {
+            return zombieModeRuntimeModule.AnyZombieModeSafeZoneActive;
+        }
+        #endregion
+
+        // ZombieModeRewardCatalogAndSelection.cs
         private void ShowZombieModeRewardSelection(int runId, bool bossNode, bool restEditorExpanded = false)
         {
             ZombieModeRuntimeModule module = zombieModeRuntimeModule;
@@ -494,5 +655,27 @@ namespace BossRush
         {
             return zombieModeRuntimeModule.CollectZombieModeRuntimeEnemyMarkers(runId, results, includeBosses);
         }
+
+        // ZombieModeRewardPreparationDuration.cs
+        public int GetZombieModeSelectedPreparationDuration(int runId)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            return module != null
+                ? module.GetZombieModeSelectedPreparationDuration(runId)
+                : Mathf.RoundToInt(ZombieModeTuning.PreparationCountdownSeconds);
+        }
+
+        public void OpenZombieModePreparationDurationEditor(int runId)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.OpenZombieModePreparationDurationEditor(runId);
+        }
+
+        public void SetZombieModePreparationDuration(int runId, int seconds)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.SetZombieModePreparationDuration(runId, seconds);
+        }
+
     }
 }

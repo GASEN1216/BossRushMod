@@ -821,15 +821,7 @@ namespace BossRush
 
         #region Mode E BEAR阵营兜底
 
-        /// <summary>
-        /// 从全阵营小怪池随机抽取一个预设（不限阵营过滤）
-        /// 用于 bear 阵营兜底（原版游戏无 bear 预设）
-        /// </summary>
-        private EnemyPresetInfo GetAllFactionMinionPreset()
-        {
-            if (modeD.MinionPresets == null || modeD.MinionPresets.Count == 0) return null;
-            return modeD.MinionPresets[UnityEngine.Random.Range(0, modeD.MinionPresets.Count)];
-        }
+
 
         /// <summary>
         /// BEAR阵营专属属性提升：血量和伤害提升150%（最终为原始值的 2.5 倍）

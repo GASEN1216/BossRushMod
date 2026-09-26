@@ -56,7 +56,7 @@ def main():
     # The actual production helper and ownership predicate are included, too.
     visuals_path = ROOT / "Integration/Bonus/SetBonusVisuals.cs"
     visuals = visuals_path.read_text(encoding="utf-8-sig")
-    bridge_path = ROOT / "Integration/Bonus/SetBonusRuntimeHostBridge.cs"
+    bridge_path = ROOT / "Integration/IntegrationHostCompatibility.cs"
     bridge = bridge_path.read_text(encoding="utf-8-sig")
     generated += "namespace BossRush { internal partial class SetBonusRuntimeModule {\n"
     generated += member(visuals, "private static float GetSetBonusElementDamagePortion(")

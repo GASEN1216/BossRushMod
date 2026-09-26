@@ -15,19 +15,7 @@ using ItemStatsSystem;
 
 namespace BossRush
 {
-    /// <summary>Wiki Book 的旧宿主入口，转发给集成运行时 owner。</summary>
-    public partial class ModBehaviour
-    {
-        private void InitializeWikiBookItem()
-        {
-            bossRushIntegrationRuntime.InitializeWikiBookItem();
-        }
 
-        private void InjectWikiBookLocalization()
-        {
-            bossRushIntegrationRuntime.InjectWikiBookLocalization();
-        }
-    }
     
     // ============================================================================
     // WikiBookUsageBehavior - Wiki Book 使用行为

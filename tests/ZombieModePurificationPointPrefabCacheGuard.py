@@ -6,9 +6,9 @@ import sys
 
 
 CONTROLLER = Path("ZombieMode/ZombiePurificationPointController.cs")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
-HOST_BRIDGE = Path("ZombieMode/ZombieModeMapSelection.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:

@@ -40,8 +40,8 @@ LEGACY_ENTRIES = [
     ("ModeF/ModeFEntry.cs", "TryStartModeF"),
     ("ModeG/ModeGEntry.cs", "TryStartModeG"),
     ("WavesArena/WavesArenaEntryAndTeleport.cs", "StartBossRush_WavesArena"),
-    ("ZombieMode/ZombieModeEntry.cs", "CanStartZombieModeMapSelectionPhase1"),
-    ("ZombieMode/ZombieModeMapSelection.cs", "TryBeginZombieModeMapSelectionShell"),
+    ("ZombieMode/ZombieModeEntryHostBridge.cs", "CanStartZombieModeMapSelectionPhase1"),
+    ("ZombieMode/ZombieModeEntryHostBridge.cs", "TryBeginZombieModeMapSelectionShell"),
 ]
 
 FORBIDDEN_IN_LEGACY = [
@@ -52,12 +52,12 @@ FORBIDDEN_IN_LEGACY = [
 
 # 允许把风险门判定委托给同一 partial class 里的具名 helper，但**必须**指明 helper 名与
 # 它所在的文件，且那个文件仍要被本 guard 逐字检查到 IsLegacyModeEntryAllowed。
-# 起因：ZombieMode/ZombieModeEntry.cs 已顶到 large_file_existing_allowlist 的行数上限，
+# 起因：ZombieMode/ZombieModeEntryHostBridge.cs 已顶到 large_file_existing_allowlist 的行数上限，
 # 无法再容纳「区分扫描失败与真实押品风险」所需的分支。
 LEGACY_GATE_DELEGATES = {
-    "ZombieMode/ZombieModeEntry.cs": (
+    "ZombieMode/ZombieModeEntryHostBridge.cs": (
         "IsZombieModeStartBlocked",
-        "ZombieMode/ZombieModeMapSelection.cs",
+        "ZombieMode/ZombieModeEntryHostBridge.cs",
     ),
 }
 

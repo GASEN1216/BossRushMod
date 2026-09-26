@@ -10,7 +10,7 @@ USERS = [
     Path("ZombieMode/ZombieModeBossController.cs"),
     Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs"),
     Path("ZombieMode/ZombieModeSpawner.cs"),
-    Path("ZombieMode/ZombieModeWaveController.cs"),
+    Path("ZombieMode/ZombieModeCombatHostBridge.cs"),
 ]
 
 

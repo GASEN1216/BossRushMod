@@ -43,8 +43,8 @@ if __name__ == "__main__":
             ("Integration/Wedding/WeddingBuildingInjector.cs", "private bool RefreshWeddingBuildingPresence()"),
         ],
         "internal partial class ModBehaviour": [
-            ("Integration/Wedding/WeddingHostCompatibilityBridge.cs", "public void InitWeddingBuilding()"),
-            ("Integration/Wedding/WeddingHostCompatibilityBridge.cs", "internal void TryInitializeWeddingBuildingEarly()"),
+            ("Integration/IntegrationHostCompatibility.cs", "public void InitWeddingBuilding()"),
+            ("Integration/IntegrationHostCompatibility.cs", "internal void TryInitializeWeddingBuildingEarly()"),
         ],
     }
     parts = ["using System; using System.Collections; using System.Collections.Generic; using System.Reflection; using UnityEngine; namespace BossRush {"]

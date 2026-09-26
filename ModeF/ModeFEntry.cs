@@ -311,7 +311,7 @@ namespace BossRush
 
                 // 初始化物品池和敌人池（复用 Mode D 逻辑）
                 InitializeModeDItemPools();
-                modeE.EnsureModeEFSpawnPoolsReady("StartModeF");
+                spawnRuntime.EnsureModeEFSpawnPoolsReady("StartModeF");
                 equipment.EnsureModeDGlobalItemPool();
                 profiler.Mark("WarmPools");
 
@@ -371,7 +371,7 @@ namespace BossRush
 
                 // 一次性生成所有 Boss（复用 Mode E 逻辑）
                 #pragma warning disable CS4014
-                modeE.ModeESpawnAllBosses(modeFSessionToken, relatedScene);
+                spawnRuntime.ModeESpawnAllBosses(modeFSessionToken, relatedScene);
                 #pragma warning restore CS4014
                 profiler.Mark("ScheduleBosses");
 

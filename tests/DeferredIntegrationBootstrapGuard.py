@@ -3,7 +3,7 @@ import sys
 
 COMPILE = Path("compile_official.bat")
 START_AND_SCENE = Path("Integration/BossRushIntegration_StartAndScene.cs")
-DEFERRED_HOST = Path("Integration/IntegrationDeferredBootstrap.cs")
+DEFERRED_HOST = Path("Integration/BossRushIntegration.cs")
 DEFERRED_MODULE = Path("Integration/BossRushIntegrationRuntimeModule_DeferredBootstrap.cs")
 RUNTIME_MODULE = Path("Integration/BossRushIntegrationRuntimeModule.cs")
 WIKI_BOOK_MODULE = Path("Integration/BossRushIntegrationRuntimeModule_WikiBook.cs")
@@ -56,7 +56,7 @@ def main() -> int:
     scene_lifecycle_module_text = SCENE_LIFECYCLE_MODULE.read_text(encoding="utf-8", errors="ignore")
 
     for token in [
-        "Integration\\IntegrationDeferredBootstrap.cs",
+        "Integration\\BossRushIntegration.cs",
         "Integration\\BossRushIntegrationRuntimeModule_DeferredBootstrap.cs",
         "Integration\\BossRushIntegrationRuntimeModule_BirthdayCake.cs",
         "Integration\\BossRushIntegrationRuntimeModule_SceneLifecycle.cs",

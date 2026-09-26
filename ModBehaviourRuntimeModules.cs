@@ -4,6 +4,7 @@ namespace BossRush
     {
         private readonly ModeERuntimeModule modeERuntime = new ModeERuntimeModule();
         private ModeEFMerchantCatalog modeEFMerchantCatalog;
+        private ModeEFEnemySpawnRuntime modeEFEnemySpawnRuntime;
         private AchievementRuntimeModule achievementRuntime;
         private readonly BossRushAudioRuntimeService audioRuntime = new BossRushAudioRuntimeService();
 
@@ -51,6 +52,13 @@ namespace BossRush
             var modeEFSpawnPreparation = new ModeEFSpawnPreparation(ModeERuntimeModule.ModeEAvailableFactions,
                 () => modeERuntime.ModeEPlayerFaction,
                 position => modeDRuntime.GenerateFallbackSpawnPointsAroundPlayer(position), ShowMessage);
+            modeEFEnemySpawnRuntime = new ModeEFEnemySpawnRuntime(modeEFSpawnPreparation, enemySpawnRuntime);
+            modeEFEnemySpawnRuntime.BindPresetQueries(GetFilteredEnemyPresets, () => modeDRuntime.MinionPresets,
+                IsDragonKingPreset, IsDragonDescendantPreset, wavesArenaRuntime.InitializeEnemyPresets,
+                () => modeDRuntime.InitializeModeDEnemyPools(wavesArenaRuntime.EnemyPresets, wavesArenaRuntime.GetLocalizedCharacterName));
+            modeEFEnemySpawnRuntime.BindSpawnCallbacks(modeERuntime.IsModeEOrModeFSpawnSessionStillValid, modeERuntime.OnModeEEnemySpawned);
+            modeERuntime.BindEnemySpawnRuntime(modeEFEnemySpawnRuntime);
+            modeFRuntime.BindEnemySpawnRuntime(modeEFEnemySpawnRuntime);
             modeEFMerchantCatalog = new ModeEFMerchantCatalog(() => ModeDRuntimeModule.CharacterPresets,
                 modeDRuntime.ItemPool.FindTagByNameInInit);
             modeERuntime.BindSharedServices(modeDRuntime, wavesArenaRuntime, modeEFSpawnPreparation, modeEFMerchantCatalog);

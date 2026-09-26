@@ -12,7 +12,7 @@ def fail(msg: str) -> int:
 def main() -> int:
     mod_text = Path("ModBehaviour.cs").read_text(encoding="utf-8")
     mode_runtime_text = Path("Utilities/ModeRuntimeHooks.cs").read_text(encoding="utf-8")
-    zombie_runtime_text = Path("ZombieMode/ZombieModeRuntimeHooks.cs").read_text(encoding="utf-8")
+    zombie_runtime_text = Path("ZombieMode/ZombieModeEntryHostBridge.cs").read_text(encoding="utf-8")
     if "TickModeRuntimeGroup(Time.deltaTime, Time.unscaledDeltaTime)" not in mod_text:
         return fail("ZombieModeTimeAxisGuard: ModBehaviour.Update 未传递 Time.unscaledDeltaTime 到 mode runtime group")
     if "TickZombieModeRuntime(unscaledDeltaTime);" not in mode_runtime_text:

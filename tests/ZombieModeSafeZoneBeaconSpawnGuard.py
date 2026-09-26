@@ -5,7 +5,7 @@ from pathlib import Path
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 
 

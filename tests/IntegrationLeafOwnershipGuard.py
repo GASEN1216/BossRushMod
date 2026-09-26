@@ -35,7 +35,7 @@ def ordered(source, tokens, name):
 
 def main():
     nurse = read("Integration/NPCs/Nurse/NurseNPC.cs")
-    host = read("Integration/NPCs/Nurse/NurseNPCRuntimeModuleHostBridge.cs")
+    host = read("Integration/IntegrationHostCompatibility.cs")
     assert "partial class ModBehaviour" not in nurse, "nurse state returned to host"
     assert "internal sealed class NurseNpcRuntimeModule : BossRushRuntimeModuleBase" in nurse
     for token in ("private GameObject nurseNPCInstance = null;", "private NurseNPCController nurseController = null;",
@@ -57,7 +57,7 @@ def main():
     assert "internal sealed partial class BackMountainRuntimeModule" in seed and "partial class ModBehaviour" not in seed
     ordered(body(seed, "private Item TryRollBackMountainSeed("), ["_owner.IsBackMountainConfiguredEnabled()", "BackMountainUnlocks.IsFacilityUnlocked", "ResolveBackMountainSeedTypeId", "if (seedTypeId <= 0)", "UnityEngine.Random.value", "BackMountainItems.EnsureRuntimeRegistration", "ItemAssetsCollection.InstantiateSync"], "seed gate/roll")
     assert "private const float BackMountainSeedDropChance = 0.25f;" in seed
-    seed_host = read("Integration/BackMountain/BackMountainSeedDropsHostBridge.cs")
+    seed_host = read("Integration/IntegrationHostCompatibility.cs")
     for name, args in (("TryAddBackMountainSeedLoot", "inv, bossMain"), ("TryAddBackMountainSeedToCharacterItem", "bossMain"), ("TryDropBackMountainSeedIntoWorld", "bossMain")):
         assert compact(body(seed_host, "private void " + name + "(")) == compact("backMountainRuntime." + name + "(" + args + ");"), "seed bridge disconnected: " + name
 
@@ -79,7 +79,7 @@ def main():
     managed = read("Integration/ModeGManagedCharacterService.cs")
     assert "internal static class ModeGManagedCharacterService" in managed and "partial class ModBehaviour" not in managed
     ordered(body(managed, "internal static void CleanupModeGManagedCharacter("), ["state.UnregisterStagingBoss", "state.UnregisterTrackedBoss", "owner.UnregisterDragonDescendantEnemyRecovery", "owner.ClearDragonDescendantBossRandomLootTracking", "owner.FinalizeDragonDescendantBossRushLootboxPathTracking", "BossCleanupHelpers.DestroyRuntimePreset", "DestroyManagedCharacterQuiet"], "managed cleanup")
-    managed_host = read("Integration/DragonDescendant/DragonDescendantRuntimeModuleHostBridge.cs")
+    managed_host = read("Integration/IntegrationHostCompatibility.cs")
     for name in ("CreateModeGManagedCharacterAsync", "BeginActivateModeGManagedCharacter", "CompleteActivateModeGManagedCharacter", "CleanupModeGManagedCharacter", "DestroyManagedCharacterQuiet", "HasModeGPlayerAuthoredBuff", "ActivateModeGManagedCharacter"):
         assert "ModeGManagedCharacterService." + name + "(" in managed_host, "managed bridge disconnected: " + name
     print("IntegrationLeafOwnershipGuard: PASS")

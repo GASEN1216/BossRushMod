@@ -9,7 +9,7 @@ SAFE_ZONE = Path("ZombieMode/ZombieModeSafeZoneController.cs")
 EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-HOST_BRIDGE = Path("ZombieMode/ZombieModeMapSelection.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 DEBUG_TOOLS = Path("DebugAndTools/DebugAndTools.cs")
 
 

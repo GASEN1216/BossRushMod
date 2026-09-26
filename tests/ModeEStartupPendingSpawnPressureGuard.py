@@ -5,10 +5,11 @@ the delayed opening spawn sequence.
 """
 
 from pathlib import Path
+from cs_source_util import clean_source
 import sys
 
 
-SOURCE = Path("ModeE/ModeEBattle.cs")
+SOURCE = Path("Utilities/ModeEFEnemySpawnRuntime.cs")
 
 
 def fail(message: str) -> int:
@@ -39,13 +40,13 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 
 def main() -> int:
-    battle_text = SOURCE.read_text(encoding="utf-8")
+    battle_text = clean_source(SOURCE.read_text(encoding="utf-8"))
 
     spawn_all_body = extract_method_body(battle_text, "public async UniTaskVoid ModeESpawnAllBosses")
     if spawn_all_body is None:
         return fail("ModeEStartupPendingSpawnPressureGuard: missing ModeESpawnAllBosses body")
 
-    single_body = extract_method_body(battle_text, "private void SpawnSingleModeEBoss")
+    single_body = extract_method_body(battle_text, "internal void SpawnSingleModeEBoss")
     if single_body is None:
         return fail("ModeEStartupPendingSpawnPressureGuard: missing SpawnSingleModeEBoss body")
 

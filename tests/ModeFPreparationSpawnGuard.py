@@ -1,12 +1,13 @@
 """Guard: Mode F must keep initial spawning and continuous replacement spawning."""
 
 from pathlib import Path
+from cs_source_util import clean_source
 
 
 MODEF_ENTRY = Path("ModeF/ModeFEntry.cs")
 MODEF_RESPAWN = Path("ModeF/ModeFRespawn.cs")
 MODEF_PHASES = Path("ModeF/ModeFPhases.cs")
-MODEE_BATTLE = Path("ModeE/ModeEBattle.cs")
+MODEE_BATTLE = Path("Utilities/ModeEFEnemySpawnRuntime.cs")
 MOD_BEHAVIOUR = Path("ModeF/ModeFHostBridge.cs")
 PHANTOM = Path("Integration/PhantomWitch/PhantomWitchAbilityController.cs")
 PHANTOM_SCHEDULER = Path("Integration/PhantomWitch/PhantomWitchAbilityController_PackageScheduler.cs")
@@ -28,12 +29,12 @@ def forbid(text, needle, message):
 
 
 def main():
-    entry = MODEF_ENTRY.read_text(encoding="utf-8")
-    respawn = MODEF_RESPAWN.read_text(encoding="utf-8")
-    battle = MODEE_BATTLE.read_text(encoding="utf-8")
-    mod = MOD_BEHAVIOUR.read_text(encoding="utf-8")
-    phantom = PHANTOM.read_text(encoding="utf-8")
-    phantom_scheduler = PHANTOM_SCHEDULER.read_text(encoding="utf-8")
+    entry = clean_source(MODEF_ENTRY.read_text(encoding="utf-8"))
+    respawn = clean_source(MODEF_RESPAWN.read_text(encoding="utf-8"))
+    battle = clean_source(MODEE_BATTLE.read_text(encoding="utf-8"))
+    mod = clean_source(MOD_BEHAVIOUR.read_text(encoding="utf-8"))
+    phantom = clean_source(PHANTOM.read_text(encoding="utf-8"))
+    phantom_scheduler = clean_source(PHANTOM_SCHEDULER.read_text(encoding="utf-8"))
 
     require(entry, "ModeESpawnAllBosses(modeFSessionToken, relatedScene);", "Mode F initial spawn must keep the existing Mode E spawn path")
     forbid(entry, "MODEF_INITIAL_BOSS_SPAWN_LIMIT", "Mode F fix must not add an initial spawn count cap")
@@ -56,7 +57,7 @@ def main():
         "if (!modeFActive || modeFPendingRespawnCount <= 0 || modeFRespawnInFlightCount > 0)",
         "Mode F continuous replacement spawning must retain active, pending, and single-flight gates")
     require(
-        MODEF_PHASES.read_text(encoding="utf-8"),
+        clean_source(MODEF_PHASES.read_text(encoding="utf-8")),
         "case ModeFPhase.Bounty:\n                        modeFState.PhaseDuration = MODEF_BOUNTY_DURATION;\n                        GenerateBountyList();\n                        TryFulfillModeFPendingRespawns();",
         "Mode F phase transition should retain a harmless pending-respawn recovery tick")
 

@@ -14,7 +14,7 @@ REWARD_PARTS = [
     # 结构断言照旧覆盖它们。
     Path("ZombieMode/ZombieModeRewardSelectionView.cs"),
     Path("ZombieMode/ZombieModeTemporaryNpcServiceView.cs"),
-    Path("ZombieMode/ZombieModeRewardPreparationDuration.cs"),
+    Path("ZombieMode/ZombieModeRewardHostBridge.cs"),
     Path("ZombieMode/ZombieModeRuntimeModule.cs"),
     Path("ZombieMode/ZombieModeBackpackJunkRecycle.cs"),
 ]

@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 
-SOURCE = Path("Integration/NPCs/Courier/CourierNPC.cs")
+SOURCE = Path("Integration/IntegrationHostCompatibility.cs")
 COURIER_NPC_SOURCES = [
     SOURCE,
     Path("Integration/NPCs/Courier/CourierNPCController.cs"),

@@ -376,4 +376,4 @@ Boss BGM 由 `BossBgmCoordinator` 按 `(bossKey, owner)` 持有：同曲多 Boss
 
 `CampaignFinalBoss` 在生成编号失配的迟到分支与主动 destroyBoss 清理分支，先 `ClearBossRandomLootTracking` 再 Destroy；自然死亡不提前解除掉落回调。配合 Integration 场景订阅回收，避免最后一只 Boss 被销毁后静态熔石追踪留到下次刷怪。第六轮 `BossRushValidation_20260902_140735_794.log` 已实机确认终章 death_presentations=1、bgm_owners=0，最终熔石及其它被测订阅全部归零。H 重访不再抢占终章；主动中止/迟到生成故障注入仍独立保留。
 
-章节来源：`Campaign/CampaignFinalBoss.cs`、`ModeH/ModeHRuntimeModule_SceneFlow.cs`、`Integration/IntegrationRuntimeHooks.cs`。
+章节来源：`Campaign/CampaignFinalBoss.cs`、`ModeH/ModeHRuntimeModule_SceneFlow.cs`、`Integration/BossRushIntegration.cs`。

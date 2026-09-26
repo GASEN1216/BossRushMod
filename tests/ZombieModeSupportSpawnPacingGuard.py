@@ -4,15 +4,15 @@ from pathlib import Path
 
 
 BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
-BOSS_HOST = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS_HOST = Path("ZombieMode/ZombieModeCombatHostBridge.cs")
 POLLUTION_PARTS = [
     Path("ZombieMode/ZombieModeRuntimeModule_Pollution.cs"),
     Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
-CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
-BRIDGES = Path("ZombieMode/ZombieModeMapSelection.cs")
+BRIDGES = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:

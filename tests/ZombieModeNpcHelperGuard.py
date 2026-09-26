@@ -2,10 +2,10 @@ from pathlib import Path
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 MAP_ISOLATION = Path("ZombieMode/ZombieModeMapIsolation.cs")
 REGISTRY = Path("Integration/NPCs/Common/NPCModuleRegistry.cs")
-COURIER = Path("Integration/NPCs/Courier/CourierNPC.cs")
+COURIER = Path("Integration/IntegrationHostCompatibility.cs")
 COURIER_NPC_SOURCES = [
     Path("Integration/NPCs/Courier/CourierNpcRuntimeModule.cs"),
     COURIER,
@@ -25,7 +25,6 @@ INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration.cs"),
     Path("Integration/BossRushIntegration_StartAndScene.cs"),
     Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
-    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
 ]
 
 

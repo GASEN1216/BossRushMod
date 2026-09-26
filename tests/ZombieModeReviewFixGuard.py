@@ -18,8 +18,8 @@ import sys
 ZOMBIE_FILES = list(Path("ZombieMode").glob("*.cs"))
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
-INVENTORY = Path("ZombieMode/ZombieModeInventoryTransfer.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+INVENTORY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 INVENTORY_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_InventoryTransfer.cs")
 POLLUTION = Path("ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs")
@@ -48,7 +48,7 @@ def read_rewards() -> str:
 def read_pollution() -> str:
     return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
 
-CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:
@@ -229,7 +229,7 @@ def main() -> int:
         bridge = extract_method(inventory, name)
         if bridge is None or call not in bridge:
             return fail("ZombieModeReviewFixGuard: host compatibility bridge must forward to runtime module -> " + name)
-    runtime_bridge = clean_source(Path("ZombieMode/ZombieModeMapSelection.cs").read_text(encoding="utf-8"))
+    runtime_bridge = clean_source(Path("ZombieMode/ZombieModeEntryHostBridge.cs").read_text(encoding="utf-8"))
     prepare_bridge = extract_method(runtime_bridge, "PrepareZombieModeInventoryTransferForRuntimeModule")
     if prepare_bridge is None or "module.PrepareZombieModeInventoryTransfer(runId)" not in prepare_bridge:
         return fail("ZombieModeReviewFixGuard: map-selection runtime bridge must forward to module transfer owner")

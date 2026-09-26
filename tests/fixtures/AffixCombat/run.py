@@ -25,7 +25,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     rewards = (ROOT / "ZombieMode/ZombieModeRewardTriggerEffects.cs").read_text(encoding="utf-8-sig")
     skills = (ROOT / "ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs").read_text(encoding="utf-8-sig")
-    skill_bridge = (ROOT / "ZombieMode/ZombieModePollution_RuntimeSkills.cs").read_text(encoding="utf-8-sig")
+    skill_bridge = (ROOT / "ZombieMode/ZombieModeCombatHostBridge.cs").read_text(encoding="utf-8-sig")
     mutators = (ROOT / "Integration/Mutators/MutatorManager.cs").read_text(encoding="utf-8-sig")
     definitions = (ROOT / "Integration/Mutators/MutatorDefinitions.cs").read_text(encoding="utf-8-sig")
     models = (ROOT / "ZombieMode/ZombieModeModels.cs").read_text(encoding="utf-8-sig")

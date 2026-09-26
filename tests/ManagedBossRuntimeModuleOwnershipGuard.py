@@ -72,7 +72,7 @@ def main():
     for boss in BOSSES:
         module = boss["module"]
         files = [(path, read_source(path, errors)) for path in boss["files"]]
-        bridge = read_source(boss["bridge"], errors)
+        bridge = read_source(boss["bridge"], errors) + read_source("Integration/IntegrationHostCompatibility.cs", errors)
 
         for path, source in files:
             if source and not re.search(
@@ -116,7 +116,7 @@ def main():
             errors.append("[UniqueRegistration] {} 必须先创建并只注册一次".format(module))
 
     # DragonDescendantAbilities 和旧外部调用点仍使用公开嵌套类型。
-    dd_bridge = read_source("Integration/DragonDescendant/DragonDescendantRuntimeModuleHostBridge.cs", errors)
+    dd_bridge = read_source("Integration/IntegrationHostCompatibility.cs", errors)
     dd_abilities = read_source("Integration/DragonDescendant/DragonDescendantAbilities.cs", errors)
     if dd_bridge and not re.search(r"public class OriginalWeaponData\s*\{", dd_bridge):
         errors.append("[NestedTypeCompatibility] ModBehaviour.OriginalWeaponData 公共嵌套类型丢失")

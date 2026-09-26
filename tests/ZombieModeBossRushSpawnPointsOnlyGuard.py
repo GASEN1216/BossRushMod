@@ -7,9 +7,9 @@ from cs_source_util import clean_source
 
 
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
-HOST_BRIDGE = Path("ZombieMode/ZombieModeMapSelection.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:

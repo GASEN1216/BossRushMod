@@ -5,7 +5,7 @@ import re
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 ENTRY_PARTS = [
     ENTRY,

@@ -6,6 +6,7 @@ from cs_source_util import clean_source
 
 
 RUNTIME = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
+HOST = Path("ZombieMode/ZombieModeCombatHostBridge.cs")
 MODULE = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 
@@ -38,6 +39,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 
 def main() -> int:
+    host = clean_source(HOST.read_text(encoding="utf-8-sig"))
     runtime = clean_source(RUNTIME.read_text(encoding="utf-8-sig"))
     module = clean_source(MODULE.read_text(encoding="utf-8-sig"))
     waves = clean_source(WAVES.read_text(encoding="utf-8-sig"))
@@ -62,7 +64,7 @@ def main() -> int:
         "private readonly System.Collections.Generic.HashSet<int> zombieModeEnemyInstanceIds",
         "private readonly System.Collections.Generic.Dictionary<int, ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkersByInstanceId",
     ]:
-        if field in runtime:
+        if field in runtime or field in host:
             return fail("marker indexes must have one owner in ZombieModeRuntimeModule -> " + field)
 
     for method, forward in [
@@ -73,7 +75,7 @@ def main() -> int:
         ("ClearZombieModeEnemyInstanceIds", "module.ClearZombieModeEnemyInstanceIds()"),
         ("RegisterZombieModeEnemyRuntimeShell", "module.RegisterZombieModeEnemyRuntimeShell("),
     ]:
-        if forward not in runtime:
+        if forward not in host:
             return fail("host compatibility bridge must forward marker state to RuntimeModule -> " + method)
 
     register = extract_method_body(module, "internal ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(")

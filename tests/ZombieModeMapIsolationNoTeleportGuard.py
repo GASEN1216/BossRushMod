@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 MAP_ISOLATION = Path("ZombieMode/ZombieModeMapIsolation.cs")
 

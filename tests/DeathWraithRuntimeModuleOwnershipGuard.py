@@ -11,7 +11,7 @@ LEAF_FILES = [
     "Integration/DeathWraith/DeathWraithSpawnFlow.cs",
     "Integration/DeathWraith/DeathWraithSystem.cs",
 ]
-BRIDGE = "Integration/DeathWraith/DeathWraithRuntimeModuleHostBridge.cs"
+BRIDGE = "Integration/IntegrationHostCompatibility.cs"
 
 
 def fail(message: str) -> int:
@@ -95,7 +95,7 @@ def main() -> int:
             return fail("host compatibility bridge missing entrypoint -> " + token)
 
     compile_text = (ROOT / "compile_official.bat").read_text(encoding="utf-8-sig")
-    if "Integration\\DeathWraith\\DeathWraithRuntimeModuleHostBridge.cs" not in compile_text:
+    if "Integration\\IntegrationHostCompatibility.cs" not in compile_text:
         return fail("compile_official.bat does not include " + BRIDGE)
 
     registration = read_source("ModBehaviourRuntimeModules.cs")

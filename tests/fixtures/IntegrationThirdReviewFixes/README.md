@@ -2,7 +2,7 @@
 
 对应 CR-2026-09-06-012 / 013 / 014 / 016，分类 `COMPAT`。
 
-运行：`python tests/fixtures/IntegrationThirdReviewFixes/run.py`。
+运行：`python tools/run_runtime_regressions.py --filter IntegrationThirdReviewFixes`。
 所有编译、依赖副本、哈希与 IL 证据写入 `Build/integration-third-review-fixture/`，不启动游戏、不访问玩家存档、不部署。
 
 需要 Windows、.NET SDK、本机游戏的 Harmony 和 Managed 程序集；可通过
@@ -27,3 +27,5 @@
 .NET 8 又与该安装的旧 Harmony 反射 API 不兼容。因此真实游戏程序集一层如实仅验证 IL，
 执行行为由完整官方方法体与真实 Harmony 的兼容宿主完成。仍需实机验证聊天/驻留/跟随体感、
 游戏加载时补丁绑定日志与元素回血显示。
+
+2026-09-26 宿主载体同步：宿主 `HasSetBonusElementHealing` getter 从当前 `IntegrationHostCompatibility.cs` 提取，套装模块与真实 Harmony 观察逻辑保持原生产源。

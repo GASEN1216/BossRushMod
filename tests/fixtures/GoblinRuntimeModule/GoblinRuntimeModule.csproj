@@ -8,7 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../../Integration/NPCs/Goblin/GoblinNPC.cs" />
-    <Compile Include="../../../Integration/NPCs/Goblin/GoblinNPCRuntimeModuleHostBridge.cs" />
+    <Compile Include="../../../Build/runtime-regressions/GoblinRuntimeModule/Host.cs" />
     <Compile Include="Stubs.cs" />
     <Compile Include="Program.cs" />
   </ItemGroup>

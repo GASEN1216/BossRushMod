@@ -7,7 +7,7 @@ scope:
 source_files:
     - ModBehaviour.cs
     - ModConfigApi.cs
-    - ZombieMode/ZombieModeEntry.cs
+    - ZombieMode/ZombieModeEntryHostBridge.cs
     - Achievement/AchievementEntryUI.cs
     - Achievement/AchievementIconLoader.cs
     - Achievement/AchievementMedalConfig.cs
@@ -29,7 +29,7 @@ source_files:
 |---|---|
 | `ModBehaviour.cs` | 模组单例入口，集中声明并调用 `DevLog` / `LogError`，是绝大多数模块的日志出口 |
 | `ModConfigApi.cs` | 提供 `ModConfigAPI` 安全封装，其内部 `DevLog` 带 `Conditional("BOSSRUSH_DEV")`，转发到 `ModBehaviour.DevLog` |
-| `ZombieMode/ZombieModeEntry.cs` | 定义局部 `DevLogOnceZombieModeOpaqueFilterFailure`，体现“一次性日志”模式 |
+| `ZombieMode/ZombieModeEntryHostBridge.cs` | 定义局部 `DevLogOnceZombieModeOpaqueFilterFailure`，体现“一次性日志”模式 |
 | `Achievement/*` | 成就子系统大量使用 `ModBehaviour.DevLog` / `LogError` 记录 AssetBundle/Sprite 加载流程 |
 | `Utilities/Utilities.cs` | 工具类中对 Boss 数值倍率调整过程输出详细 DevLog |
 

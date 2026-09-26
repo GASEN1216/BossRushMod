@@ -408,7 +408,7 @@ namespace BossRush
                     //   - 注册到 modeEAliveEnemies 和 modeEFactionAliveMap
                     //   - 注册死亡事件（OnModeEEnemyDeath）
                     //   - 应用当前阵营死亡缩放倍率
-                    SpawnSingleModeEBoss(
+                    spawnRuntime.SpawnSingleModeEBoss(
                         faction,
                         points[i],
                         modeESessionToken: modeESessionToken,

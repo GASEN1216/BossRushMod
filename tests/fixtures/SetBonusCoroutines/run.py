@@ -9,6 +9,10 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 OUT = ROOT / 'Build/set-bonus-coroutines'
 
+import sys
+sys.path.insert(0, str(ROOT / "tests"))
+from integration_host_source import materialize_host
+
 
 def member(source, signature):
     start = source.index(signature)
@@ -25,6 +29,7 @@ def member(source, signature):
 
 if __name__ == '__main__':
     OUT.mkdir(parents=True, exist_ok=True)
+    materialize_host(ROOT, OUT / "SetBonusHost.cs", "SetBonusRuntimeHostBridge")
     # Keep the lethal OnDead -> trailing OnHurt contract executable in the
     # linked fixture and fail fast if a future edit moves the dead guard below
     # any effectful operation in the four production consumers.

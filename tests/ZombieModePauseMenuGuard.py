@@ -5,8 +5,8 @@ import sys
 
 
 POLLUTION_PARTS = [
-    Path("ZombieMode/ZombieModePollution.cs"),
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeCombatHostBridge.cs"),
+    Path("ZombieMode/ZombieModeCombatHostBridge.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 
@@ -21,7 +21,7 @@ def read_pollution() -> str:
 
 
 def main() -> int:
-    entry_text = Path("ZombieMode/ZombieModeEntry.cs").read_text(encoding="utf-8")
+    entry_text = Path("ZombieMode/ZombieModeEntryHostBridge.cs").read_text(encoding="utf-8")
     module_text = Path("ZombieMode/ZombieModeRuntimeModule.cs").read_text(encoding="utf-8")
     if "internal bool IsZombieModeGamePaused()" not in entry_text or "internal bool IsZombieModeGamePaused()" not in module_text:
         return fail("ZombieModePauseMenuGuard: missing shared PauseMenu pause helper")

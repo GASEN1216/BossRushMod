@@ -205,7 +205,7 @@ Available。这样调整章节表不需要迁移存档，也不会出现「存�
 | `ModeD/ModeDWaves.cs` | +1 行 `NotifyCampaignModeDWaveComplete(modeDWaveIndex)` |
 | `ModeF/ModeFExtraction.cs` | +1 行 `NotifyCampaignModeFExtracted()`，**必须在 ExitModeF 之前** |
 | `ZombieMode/ZombieModeExtractionController.cs` | +1 行 `NotifyCampaignZombieExtracted()`，**必须早于场景切换** |
-| `Integration/IntegrationDeferredBootstrap.cs` | +2 个 deferred 步骤（建筑注入、线索注册） |
+| `Integration/BossRushIntegration.cs` | +2 个 deferred 步骤（建筑注入、线索注册） |
 | `Integration/BossRushIntegration_StartAndScene.cs` | 本地化注入 + 早期建筑注入 |
 | `ModBehaviourRuntimeModules.cs` | 注册单实例，**必须排在后山之前** |
 
@@ -257,7 +257,7 @@ stinger 在终章受抑制，确保最终文案、`RunVictory` 与 stinger 各�
 
 `CampaignFinalBoss` 在生成编号失配的迟到分支与主动 destroyBoss 清理分支，先 `ClearBossRandomLootTracking` 再 Destroy；自然死亡不提前解除掉落回调。配合 Integration 场景订阅回收，避免最后一只 Boss 被销毁后静态熔石追踪留到下次刷怪。第六轮 `BossRushValidation_20260902_140735_794.log` 已实机确认终章 death_presentations=1、bgm_owners=0，最终熔石及其它被测订阅全部归零。H 重访不再抢占终章；主动中止/迟到生成故障注入仍独立保留。
 
-章节来源：`Campaign/CampaignFinalBoss.cs`、`ModeH/ModeHRuntimeModule_SceneFlow.cs`、`Integration/IntegrationRuntimeHooks.cs`。
+章节来源：`Campaign/CampaignFinalBoss.cs`、`ModeH/ModeHRuntimeModule_SceneFlow.cs`、`Integration/BossRushIntegration.cs`。
 
 ## 2026-09-04 审核修复
 
@@ -283,7 +283,7 @@ SavesSystem 内存里从不落盘。现新增独立的 `_saveFilePending`（欠�
 
 ## 2026-09-06 建筑注入器归属收口（D-1）
 
-`SAFE / COMPAT`。报箱、征程公告板、后山展示柜、遗种巢的建筑实现分别归 `DailyReportMailboxBuilder`、`CampaignBoardBuilder`、`ShowcaseBuildingBuilder`、`PetNestBuilder` 四个模块类型，各自持有创建它的 `ModBehaviour _owner`。原有 init、early、restore、notes、slot-change、cleanup 入口保留在 `Integration/ContentBuildingBridges.cs` 薄转发；同一宿主内复用模块实例，既有场景装配顺序、事件退订、恢复协程和清理义务不变。
+`SAFE / COMPAT`。报箱、征程公告板、后山展示柜、遗种巢的建筑实现分别归 `DailyReportMailboxBuilder`、`CampaignBoardBuilder`、`ShowcaseBuildingBuilder`、`PetNestBuilder` 四个模块类型，各自持有创建它的 `ModBehaviour _owner`。原有 init、early、restore、notes、slot-change、cleanup 入口保留在 `Integration/IntegrationHostCompatibility.cs` 薄转发；同一宿主内复用模块实例，既有场景装配顺序、事件退订、恢复协程和清理义务不变。
 
 官方建筑反射绑定共用 `Common/Buildings/BuildingInjectionHelper.cs`，包括查询失败结果的一次解析缓存。模型包围盒、shader 与碰撞体工具共用 `Common/Buildings/BuildingModelHelper.cs`；报箱经 owner 的只读模型属性借许愿台现有缓存，加载/卸载仍归许愿台。基地重绘保留唯一 ModBehaviour 协程，由模块显式请求。没有更改建筑 ID、prefab 名、造价、建造条件或官方存档格式。
 

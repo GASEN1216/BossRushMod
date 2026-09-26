@@ -3,13 +3,14 @@ import sys
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
-CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+LIFECYCLE = Path("ZombieMode/ZombieModeRuntimeModule_HostLifecycle.cs")
+CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 MOD_BEHAVIOUR = Path("ModBehaviour.cs")
 MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
-ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
-BRIDGES = Path("ZombieMode/ZombieModeMapSelection.cs")
+ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+BRIDGES = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:
@@ -20,6 +21,7 @@ def fail(message: str) -> int:
 def main() -> int:
     model_text = MODELS.read_text(encoding="utf-8")
     cleanup_text = CLEANUP.read_text(encoding="utf-8")
+    lifecycle_text = LIFECYCLE.read_text(encoding="utf-8")
     entry_text = ENTRY.read_text(encoding="utf-8")
     module_text = RUNTIME_MODULE.read_text(encoding="utf-8")
     bridge_text = BRIDGES.read_text(encoding="utf-8")
@@ -59,8 +61,8 @@ def main() -> int:
     ]:
         if snippet == "zombieModeRunState.RunOnlyObjects.Clear();":
             continue
-        if snippet not in cleanup_text:
-            return fail("ZombieModeRunOnlyCleanupGuard: host lifecycle cleanup missing snippet -> " + snippet)
+        if snippet not in lifecycle_text:
+            return fail("ZombieModeRunOnlyCleanupGuard: lifecycle owner cleanup missing snippet -> " + snippet)
 
     host_cleanup = cleanup_text[cleanup_text.index("private void CleanupZombieModeRunOnlyState"):]
     host_cleanup = host_cleanup[:host_cleanup.index("private bool ShouldSettleZombieModeFailureInsurance")]
@@ -111,8 +113,8 @@ def main() -> int:
         if bridge not in bridge_text:
             return fail("ZombieModeRunOnlyCleanupGuard: owner compatibility helper missing -> " + bridge)
 
-    scene_cleanup = cleanup_text[cleanup_text.index("private void CleanupZombieModeForSceneChange"):]
-    scene_cleanup = scene_cleanup[:scene_cleanup.index("private void CleanupZombieModeOnDestroy")]
+    scene_cleanup = lifecycle_text[lifecycle_text.index("internal void CleanupZombieModeForSceneChange"):]
+    scene_cleanup = scene_cleanup[:scene_cleanup.index("internal void CleanupZombieModeOnDestroy")]
     lifecycle_order = [
         "LifecyclePhase = ZombieModeLifecyclePhase.Exiting;",
         "RollbackZombieModeInventoryTransferShell();",

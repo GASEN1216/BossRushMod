@@ -55,8 +55,8 @@ def execute(name, files, generated=''):
 
 transfer_module=ROOT/'ZombieMode/ZombieModeRuntimeModule.cs'
 transfer_inventory_module=ROOT/'ZombieMode/ZombieModeRuntimeModule_InventoryTransfer.cs'
-transfer_host=ROOT/'ZombieMode/ZombieModeInventoryTransfer.cs'
-transfer_bridge=ROOT/'ZombieMode/ZombieModeMapSelection.cs'
+transfer_host=ROOT/'ZombieMode/ZombieModeEntryHostBridge.cs'
+transfer_bridge=ROOT/'ZombieMode/ZombieModeEntryHostBridge.cs'
 enemy_runtime=ROOT/'ZombieMode/ZombieModeEnemyRuntime.cs'
 enemy_module=ROOT/'ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs'
 enemy_module_fields='\n'.join(declaration(enemy_module,m) for m in [
@@ -74,7 +74,7 @@ enemy_module_methods='\n'.join(member(enemy_module,m) for m in [
     'internal static void RestoreZombieModeVisualScale(',
     'internal static void ReleaseZombieModeFootMarker(',
 ])
-enemy_host_methods='\n'.join(member(enemy_runtime,m) for m in [
+enemy_host_methods='\n'.join(member(ROOT/'ZombieMode/ZombieModeCombatHostBridge.cs',m) for m in [
     'internal bool IsZombieModeKnownEnemy(CharacterMainControl character)',
     'internal bool TryGetZombieModeKnownEnemyMarker(CharacterMainControl character, out ZombieModeEnemyRuntimeMarker marker)',
     'internal void RegisterZombieModeEnemyInstanceId(CharacterMainControl character)',
@@ -180,7 +180,7 @@ cash='\n'.join(member(ROOT/'RandomEvents/RandomEventEffectsBridge_Loot.cs',m) fo
 cash=cash.replace('async UniTaskVoid','async System.Threading.Tasks.Task').replace('UniTask.Yield()','System.Threading.Tasks.Task.Yield()')
 execute('cash_owner',[HERE/'CashOwner.cs'],'using System; using UnityEngine; using UnityEngine.SceneManagement; using ItemStatsSystem; namespace BossRush { internal sealed partial class RandomEventsRuntimeModule {'+cash+'}}')
 runtime_module=ROOT/'ZombieMode/ZombieModeRuntimeModule.cs'
-entry=ROOT/'ZombieMode/ZombieModeEntry.cs'
+entry=ROOT/'ZombieMode/ZombieModeEntryHostBridge.cs'
 pause_methods='\n'.join(member(runtime_module,m) for m in [
     'internal void TickZombieMode(float deltaTime)',
     'internal bool IsZombieModeGamePaused()',
@@ -211,8 +211,8 @@ public partial class ModBehaviour { private ZombieModeRuntimeModule zombieModeRu
 }'''
 execute('pause_clock',[HERE/'PauseClock.cs'],pause)
 duration_module=ROOT/'ZombieMode/ZombieModeRuntimeModule.cs'
-duration_host=ROOT/'ZombieMode/ZombieModeRewardPreparationDuration.cs'
-duration_bridge=ROOT/'ZombieMode/ZombieModeMapSelection.cs'
+duration_host=ROOT/'ZombieMode/ZombieModeRewardHostBridge.cs'
+duration_bridge=ROOT/'ZombieMode/ZombieModeEntryHostBridge.cs'
 duration_module_members='\n'.join([
     declaration(duration_module,'private const int ZombieModePreparationDurationMinimumSeconds ='),
     declaration(duration_module,'private const int ZombieModePreparationDurationMaximumSeconds ='),
@@ -301,9 +301,9 @@ public static class Program {
 }'''
 execute('preparation_duration',[],duration)
 models=ROOT/'ZombieMode/ZombieModeModels.cs'
-cleanup=ROOT/'ZombieMode/ZombieModeCleanup.cs'
+cleanup=ROOT/'ZombieMode/ZombieModeEntryHostBridge.cs'
 run_only_module=ROOT/'ZombieMode/ZombieModeRuntimeModule.cs'
-run_only_bridges=ROOT/'ZombieMode/ZombieModeMapSelection.cs'
+run_only_bridges=ROOT/'ZombieMode/ZombieModeEntryHostBridge.cs'
 run_only_module_methods='\n'.join(member(run_only_module,m) for m in [
     'internal void RegisterZombieModeRunOnlyObject(',
     'internal void PruneZombieModeRunOnlyEnemyRecords(',
@@ -332,7 +332,7 @@ run_only_owner_bridges='\n'.join(member(run_only_bridges,m) for m in [
     'internal void ClearZombieModeRewardShellForRuntimeModule()',
     'internal void RestoreZombieModeMapIsolationShellForRuntimeModule()',
 ])
-run_only_owner_bridges+='\n'+member(ROOT/'ZombieMode/ZombieModeEntry.cs','private void RestoreZombieModeMapIsolationShell()')
+run_only_owner_bridges+='\n'+member(ROOT/'ZombieMode/ZombieModeEntryHostBridge.cs','private void RestoreZombieModeMapIsolationShell()')
 run_only='''using System;
 using System.Collections.Generic;
 using UnityEngine;

@@ -10,7 +10,7 @@ FILES = {
     "builder": "Integration/WishFountain/WishFountainBuilder.cs",
     "events": "Integration/WishFountain/WishFountainBuilder_DataEventsAndRuntime.cs",
     "ui": "Integration/WishFountain/WishFountainUIBridge.cs",
-    "host": "Integration/WishFountain/WishFountainHostCompatibilityBridge.cs",
+    "host": "Integration/IntegrationHostCompatibility.cs",
 }
 
 

@@ -9,7 +9,7 @@ MODEF_FORT_PARTS = [
     Path("ModeF/ModeFFortifications_RepairRewardsCleanup.cs"),
     Path("ModeF/ModeFItemUsageAndTriggers.cs"),
 ]
-ZOMBIE_CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+ZOMBIE_CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:
@@ -88,7 +88,7 @@ def main() -> int:
     modef_fort = read_modef_fortifications()
     zombie_cleanup = ZOMBIE_CLEANUP.read_text(encoding="utf-8")
     zombie_runtime_module = Path("ZombieMode/ZombieModeRuntimeModule.cs").read_text(encoding="utf-8")
-    zombie_bridges = Path("ZombieMode/ZombieModeMapSelection.cs").read_text(encoding="utf-8")
+    zombie_bridges = Path("ZombieMode/ZombieModeEntryHostBridge.cs").read_text(encoding="utf-8")
 
     for snippet in [
         "private static bool TryClaimPromptState(Transform npcTransform, int promptGeneration, ref bool promptOwnsState)",

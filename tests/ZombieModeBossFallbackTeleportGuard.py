@@ -5,7 +5,7 @@ import sys
 
 
 BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
-HOST = Path("ZombieMode/ZombieModeBossController.cs")
+HOST = Path("ZombieMode/ZombieModeCombatHostBridge.cs")
 
 
 def fail(message: str) -> int:

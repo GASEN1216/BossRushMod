@@ -8,12 +8,12 @@ COMPILE = Path("compile_official.bat")
 REGISTRY = Path("Integration/BossRushDynamicItemRegistry.cs")
 PATCH = Path("Patches/ItemStatsSystem/ItemAssetsCollectionDynamicRegistrationPatch.cs")
 ALWAYS_ON_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
-EQUIPMENT_REGISTRY = Path("Integration/EquipmentContentRegistry.cs")
+EQUIPMENT_REGISTRY = Path("Integration/BossRushIntegration.cs")
 CONTENT_REGISTRATION = Path("Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs")
 START = Path("Integration/BossRushIntegration_StartAndScene.cs")
-WIKI_BOOK_HOST = Path("Integration/WikiBookItem.cs")
+WIKI_BOOK_HOST = Path("Integration/BossRushIntegration.cs")
 WIKI_BOOK_RUNTIME = Path("Integration/BossRushIntegrationRuntimeModule_WikiBook.cs")
-BIRTHDAY_CAKE_HOST = Path("Integration/BirthdayCakeItem.cs")
+BIRTHDAY_CAKE_HOST = Path("Integration/BossRushIntegration.cs")
 BIRTHDAY_CAKE_RUNTIME = Path("Integration/BossRushIntegrationRuntimeModule_BirthdayCake.cs")
 LOOT = Path("WavesArena/WavesArenaRuntimeModule_DragonLoot.cs")
 PHANTOM = Path("Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs")
@@ -223,7 +223,7 @@ def main() -> int:
         expected_bridge = "".join((signature + "{" + target + "}").split())
         if compact_bridge != expected_bridge:
             return fail("WikiBook host compatibility entry must be a thin module forward -> " + signature)
-    if "public class WikiBookUsageBehavior : UsageBehavior" not in wiki_book_host:
+    if "public class WikiBookUsageBehavior : UsageBehavior" not in Path("Integration/WikiBookItem.cs").read_text(encoding="utf-8"):
         return fail("WikiBook usage behavior must remain attached to the existing item flow")
 
     if "private const int BIRTHDAY_CAKE_TYPE_ID = BossRushItemIds.BirthdayCake;" not in birthday_cake_runtime:

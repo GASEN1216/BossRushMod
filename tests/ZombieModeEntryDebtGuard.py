@@ -32,7 +32,7 @@ sys.path.insert(0, str(ROOT / 'tests'))
 from cs_source_util import clean_source
 
 LEDGER = 'ZombieMode/ZombieModeEntryDebt.cs'
-ENTRY = 'ZombieMode/ZombieModeEntry.cs'
+ENTRY = 'ZombieMode/ZombieModeEntryHostBridge.cs'
 MODULE = 'ZombieMode/ZombieModeRuntimeModule.cs'
 MANIFEST = 'compile_official.bat'
 RUNNER = 'tools/run_runtime_regressions.py'

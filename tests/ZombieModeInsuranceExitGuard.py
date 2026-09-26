@@ -2,10 +2,10 @@ from pathlib import Path
 import sys
 
 
-CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
-BRIDGES = Path("ZombieMode/ZombieModeMapSelection.cs")
-WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
+BRIDGES = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+WAVES = Path("ZombieMode/ZombieModeCombatHostBridge.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
@@ -19,7 +19,7 @@ REWARD_PARTS = [
 def read_rewards() -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
 
-DEBUG = Path("ZombieMode/ZombieModeDebug.cs")
+DEBUG = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 
 

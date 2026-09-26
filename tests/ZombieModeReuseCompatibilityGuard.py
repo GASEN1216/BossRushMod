@@ -12,8 +12,8 @@ REWARD_PARTS = [
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
 ]
 POLLUTION_PARTS = [
-    Path("ZombieMode/ZombieModePollution.cs"),
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeCombatHostBridge.cs"),
+    Path("ZombieMode/ZombieModeCombatHostBridge.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 
@@ -62,7 +62,7 @@ def main() -> int:
     spawn_core = Path("Utilities/EnemySpawnCore.cs").read_text(encoding="utf-8")
     extraction = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs").read_text(encoding="utf-8")
     isolation = Path("ZombieMode/ZombieModeMapIsolation.cs").read_text(encoding="utf-8")
-    inventory_bridge = clean_source(Path("ZombieMode/ZombieModeInventoryTransfer.cs").read_text(encoding="utf-8"))
+    inventory_bridge = clean_source(Path("ZombieMode/ZombieModeEntryHostBridge.cs").read_text(encoding="utf-8"))
     runtime_module = clean_source(Path("ZombieMode/ZombieModeRuntimeModule_InventoryTransfer.cs").read_text(encoding="utf-8"))
     rewards = read_rewards()
     pollution = read_pollution()

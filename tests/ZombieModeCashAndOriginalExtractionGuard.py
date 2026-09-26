@@ -4,7 +4,7 @@ import sys
 
 COMPILE = Path("compile_official.bat")
 COMPILE_GUARD = Path("tests/ZombieModeCompileListGuard.py")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 MAP_SELECTION = Path("ZombieMode/ZombieModeMapSelectionHelper.cs")
 MAP_ISOLATION = Path("ZombieMode/ZombieModeMapIsolation.cs")
 EXTRACTION_HELPER = Path("Utilities/OriginalExtractionPointIsolationHelper.cs")

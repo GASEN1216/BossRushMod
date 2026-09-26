@@ -336,6 +336,8 @@ echo(DebugAndTools\F3GameplayValidationAutotestReport.cs
 echo(DebugAndTools\NPCTeleportUI.cs
 echo(Integration\BossRushDynamicItemRegistry.cs
 echo(Integration\BossRushIntegration.cs
+echo(Integration\IntegrationHostCompatibility.cs
+echo(Integration\DailyReport\DailyReportRuntimeModule_UI.cs
 echo(Integration\BossRushIntegrationRuntimeModule.cs
 echo(Integration\BossRushIntegrationRuntimeModule_MapObjects.cs
 echo(Integration\BossRushIntegrationRuntimeModule_DeferredBootstrap.cs
@@ -348,18 +350,13 @@ echo(Integration\BossRushIntegrationRuntimeModule_Travel.cs
 echo(Integration\BossRushIntegrationRuntimeModule_Initialization.cs
 echo(Integration\BossRushIntegrationRuntimeModule_RuntimeHooks.cs
 echo(Integration\BossRushIntegration_StartAndScene.cs
-echo(Integration\IntegrationDeferredBootstrap.cs
 echo(Integration\BossRushIntegration_TravelAndSetup.cs
-echo(Integration\BossRushIntegration_MapObjectsAndDragonBreath.cs
 echo(Integration\Mutators\MutatorDefinitions.cs
 echo(Integration\Mutators\MutatorManager.cs
 echo(Integration\Mutators\MutatorUI.cs
-echo(Integration\Mutators\MutatorRuntimeBridge.cs
 echo(Integration\Mutators\MutatorModeFlow.cs
 echo(Integration\Mutators\MutatorBossRegenRuntime.cs
-echo(Integration\ZombieModeIntegration.cs
 echo(Integration\DeathWraith\DeathWraithSystem.cs
-echo(Integration\DeathWraith\DeathWraithRuntimeModuleHostBridge.cs
 echo(Integration\DeathWraith\DeathWraithRecording.cs
 echo(Integration\DeathWraith\DeathWraithOriginalDeadBodyBridge.cs
 echo(Integration\DeathWraith\DeathWraithSpawnFlow.cs
@@ -384,14 +381,10 @@ echo(Patches\Compatibility\MagicBlendInitializationOrderPatch.cs
 echo(Patches\AI\StaleAITaskCallbackPatch.cs
 echo(Patches\Compatibility\InteractableAwakeGroupInitializationPatch.cs
 echo(Patches\Compatibility\FowSmokeDestroyedRunnerPatch.cs
-echo(Integration\BirthdayCakeItem.cs
 echo(Integration\EquipmentConfiguratorBootstrap.cs
 echo(Integration\EquipmentFactory.cs
 echo(Integration\EquipmentFactory_ItemProcessing.cs
 echo(Integration\EquipmentFactoryStaticCacheReset.cs
-echo(Integration\EquipmentContentRegistry.cs
-echo(Integration\EquipmentRuntimeHooks.cs
-echo(Integration\IntegrationRuntimeHooks.cs
 echo(Integration\EquipmentHelper.cs
 echo(Integration\EquipmentHelperIcon.cs
 echo(Integration\Bonus\DragonSetBonus.cs
@@ -406,7 +399,6 @@ echo(Integration\Bonus\FrostMistEffect.cs
 echo(Integration\Bonus\SetBonusVisuals.cs
 echo(Integration\Bonus\SetBonusFx.cs
 echo(Integration\Bonus\SetBonusDamageObservation.cs
-echo(Integration\ContentBuildingBridges.cs
 echo(Integration\Bonus\SetBonusBossDropHandler.cs
 echo(Integration\Bonus\SetBonusPlaceholderRegistry.cs
 echo(Integration\Config\DragonSetConfig.cs
@@ -432,6 +424,7 @@ echo(Utilities\ModeEFMerchantCatalog.cs
 echo(Utilities\ModeEFSpawnPostprocessScheduler.cs
 echo(Utilities\ModeEFVirtualSpawnerRegistry.cs
 echo(Utilities\ModeEFSpawnPreparation.cs
+echo(Utilities\ModeEFEnemySpawnRuntime.cs
 echo(Utilities\ZombieSpawnSanitizer.cs
 echo(Utilities\EnemyRecoveryMonitor.cs
 echo(Utilities\EnemyRecoveryHostBridge.cs
@@ -687,6 +680,10 @@ echo(ModeF\ModeFMerchant.cs
 echo(ZombieMode\ZombieModeModels.cs
 echo(ZombieMode\ZombieModeTuning.cs
 echo(ZombieMode\ZombieModeRuntimeModule.cs
+echo(ZombieMode\ZombieModeEntryHostBridge.cs
+echo(ZombieMode\ZombieModeCombatHostBridge.cs
+echo(ZombieMode\ZombieModeRewardHostBridge.cs
+echo(ZombieMode\ZombieModeRuntimeModule_HostLifecycle.cs
 echo(ZombieMode\ZombieModeRuntimeModule_EnemyRuntime.cs
 echo(ZombieMode\ZombieModeRuntimeModule_Recovery.cs
 echo(ZombieMode\ZombieModeRuntimeModule_InventoryTransfer.cs
@@ -697,21 +694,14 @@ echo(ZombieMode\ZombieModeRuntimeModule_PollutionSkills.cs
 echo(ZombieMode\ZombieModeRuntimeModule_PollutionTuning.cs
 echo(ZombieMode\ZombieModeRuntimeModule_RewardCatalogAndSelection.cs
 echo(ZombieMode\ZombieModeRuntimeModule_Extraction.cs
-echo(ZombieMode\ZombieModeRuntimeHooks.cs
-echo(ZombieMode\ZombieModeEntry.cs
 echo(ZombieMode\ZombieModeEntryDebt.cs
 echo(ZombieMode\ZombieModeEntry_StarterLoadout.cs
-echo(ZombieMode\ZombieModeMapSelection.cs
 echo(ZombieMode\ZombieModeMapSelectionHelper.cs
-echo(ZombieMode\ZombieModeInventoryTransfer.cs
 echo(ZombieMode\ZombieModeMapIsolation.cs
-echo(ZombieMode\ZombieModePollution.cs
-echo(ZombieMode\ZombieModePollution_RuntimeSkills.cs
 echo(ZombieMode\ZombieModePollution_RuntimeComponents.cs
 echo(ZombieMode\ZombieModeBossController.cs
 echo(ZombieMode\ZombieModePlayerSlowRuntime.cs
 echo(ZombieMode\ZombieModeSpawner.cs
-echo(ZombieMode\ZombieModeWaveController.cs
 echo(ZombieMode\ZombieModeRuntimeModule_WaveController.cs
 echo(ZombieMode\ZombieModeEnemyRuntime.cs
 echo(ZombieMode\ZombieModeRewards.cs
@@ -719,8 +709,6 @@ echo(ZombieMode\ZombieModeRewardSelectionView.cs
 echo(ZombieMode\ZombieModeTemporaryNpcServiceView.cs
 echo(ZombieMode\ZombieModeZoneVisuals.cs
 echo(ZombieMode\ZombieModeUiWidgets.cs
-echo(ZombieMode\ZombieModeRewardCatalogAndSelection.cs
-echo(ZombieMode\ZombieModeRewardPreparationDuration.cs
 echo(ZombieMode\ZombieModeRewardEffectsAndNpc.cs
 echo(ZombieMode\ZombieModeBackpackJunkRecycle.cs
 echo(ZombieMode\ZombieModeRewardItemGrants.cs
@@ -737,8 +725,6 @@ echo(ZombieMode\ZombieModeSafeZoneController.cs
 echo(ZombieMode\ZombieModeExtractionController.cs
 echo(ZombieMode\ZombieModeHudController.cs
 echo(ZombieMode\ZombieModeUIHelper.cs
-echo(ZombieMode\ZombieModeCleanup.cs
-echo(ZombieMode\ZombieModeDebug.cs
 echo(ZombieMode\ZombieModeNpcCatalog.cs
 echo(ZombieMode\ZombieModeCashInvestmentView.cs
 echo(BossFilter\BossFilter.cs
@@ -755,7 +741,6 @@ echo(Integration\DragonDescendant\DragonDescendantAbilities_CollisionAndIce.cs
 echo(Integration\DragonDescendant\DragonDescendantBoss.cs
 echo(Integration\DragonDescendant\DragonDescendantRuntimeModuleHostBridge.cs
 echo(Integration\DragonDescendant\DragonDescendantBoss_RuntimeAndCleanup.cs
-echo(Integration\DragonDescendant\DragonDescendantBossStaticCacheReset.cs
 echo(Integration\DragonDescendant\DragonDescendantBoss_ModeGAdapter.cs
 echo(Integration\ModeGManagedCharacterService.cs
 echo(Integration\DragonDescendant\DragonBreathConfig.cs
@@ -833,7 +818,6 @@ echo(Integration\Frostmourne\FrostmourneSwingFx.cs
 echo(Integration\Frostmourne\FrostmourneAction.cs
 echo(Integration\Frostmourne\FrostmourneAbilityManager.cs
 echo(Integration\Frostmourne\FrostmourneBootstrap.cs
-echo(Integration\Frostmourne\FrostmourneRuntimeModuleHostBridge.cs
 echo(Integration\NewWeapons\Common\NewWeaponIds.cs
 echo(Integration\NewWeapons\Common\NewWeaponEquipState.cs
 echo(Integration\NewWeapons\Common\NewWeaponConfiguratorCore.cs
@@ -844,7 +828,6 @@ echo(Integration\NewWeapons\Common\NewWeaponFx.cs
 echo(Integration\NewWeapons\Common\NewWeaponSwingFx.cs
 echo(Integration\NewWeapons\Common\NewWeaponMeleeFx.cs
 echo(Integration\NewWeapons\Common\NewWeaponBossDropHandler.cs
-echo(Integration\NewWeapons\Common\NewWeaponBootstrap.cs
 echo(Integration\NewWeapons\Common\NewWeaponPlaceholderRegistry.cs
 echo(Integration\NewWeapons\ViperDagger\ViperDaggerConfig.cs
 echo(Integration\NewWeapons\ViperDagger\ViperDaggerWeaponConfig.cs
@@ -865,7 +848,6 @@ echo(Integration\NewWeapons\ThunderRing\ThunderRingRuntime.cs
 echo(Integration\FlightTotem\FlightConfig.cs
 echo(Integration\FlightTotem\FlightTotemFactory.cs
 echo(Integration\FlightTotem\FlightTotemBootstrap.cs
-echo(Integration\FlightTotem\FlightTotemRuntimeModuleHostBridge.cs
 echo(Integration\FlightTotem\FlightAbilityManager.cs
 echo(Integration\FlightTotem\FlightTotemEffectManager.cs
 echo(Integration\FlightTotem\FlightCloudEffect.cs
@@ -885,8 +867,6 @@ echo(Integration\Utils\NPCInteractionGroupHelper.cs
 echo(Integration\Utils\NPCCommonUtils.cs
 echo(Integration\NPCs\Common\NPCModuleRegistry.cs
 echo(Integration\NPCs\Common\CommonNpcRuntimeModule.cs
-echo(Integration\NPCs\Common\CommonNpcRuntimeHooks.cs
-echo(Integration\NPCs\Courier\CourierNPC.cs
 echo(Integration\NPCs\Courier\CourierNpcRuntimeModule.cs
 echo(Integration\NPCs\Courier\CourierNPCController.cs
 echo(Integration\NPCs\Courier\CourierMovement.cs
@@ -896,7 +876,6 @@ echo(Integration\NPCs\Courier\OriginalConfirmDialogueAdapter.cs
 echo(Integration\NPCs\Courier\CourierPaidLootSweepService.cs
 echo(Integration\NPCs\Courier\CourierPaidLootSweepDelivery.cs
 echo(Integration\NPCs\Goblin\GoblinNPC.cs
-echo(Integration\NPCs\Goblin\GoblinNPCRuntimeModuleHostBridge.cs
 echo(Integration\NPCs\Goblin\GoblinNPCController.cs
 echo(Integration\NPCs\Goblin\GoblinNPCAnimation.cs
 echo(Integration\NPCs\Goblin\GoblinNPCDialogue.cs
@@ -914,7 +893,6 @@ echo(Integration\NPCs\Courier\StorageDepositSingleRetrieve.cs
 echo(Integration\NPCs\Courier\StorageDepositInventoryQuickDeposit.cs
 echo(Integration\NPCs\Courier\StorageDepositBulkActions.cs
 echo(Integration\NPCs\Nurse\NurseNPC.cs
-echo(Integration\NPCs\Nurse\NurseNPCRuntimeModuleHostBridge.cs
 echo(Integration\NPCs\Nurse\NurseNPCController.cs
 echo(Integration\NPCs\Nurse\NurseMovement.cs
 echo(Integration\NPCs\Nurse\NurseHealingService.cs
@@ -1010,7 +988,6 @@ echo(Integration\Affinity\Systems\NPCDialogueSystem.cs
 echo(Integration\Affinity\Systems\NPCShopSystem.cs
 echo(Integration\Affinity\Systems\NPCAffinityInteractionHelper.cs
 echo(Integration\Affinity\AffinityRuntimeHooks.cs
-echo(Integration\Affinity\AffinityRuntimeModuleHostBridge.cs
 echo(Integration\Affinity\Interactables\NPCInteractableBase.cs
 echo(Integration\Affinity\Interactables\NPCGiftInteractable.cs
 echo(Integration\Affinity\Interactables\NPCShopInteractable.cs
@@ -1027,7 +1004,6 @@ echo(Integration\ReverseScale\ReverseScaleConfig.cs
 echo(Integration\ReverseScale\ReverseScaleEffectManager.cs
 echo(Integration\ReverseScale\ReverseScaleAbilityManager.cs
 echo(Integration\ReverseScale\ReverseScaleBootstrap.cs
-echo(Integration\ReverseScale\ReverseScaleRuntimeModuleHostBridge.cs
 echo(Integration\ReverseScale\ReverseScaleFactory.cs
 echo(Achievement\AchievementRuntimeModule.cs
 echo(Achievement\AchievementRuntimeHooks.cs
@@ -1055,7 +1031,6 @@ echo(Integration\Wedding\WeddingBuildingInjector.cs
 echo(Integration\Wedding\WeddingBuildingInjector_DataEventsAndRuntime.cs
 echo(Integration\Wedding\WeddingModBehaviourBridge.cs
 echo(Integration\Wedding\WeddingRuntimeModule.cs
-echo(Integration\Wedding\WeddingHostCompatibilityBridge.cs
 echo(Integration\WishFountain\WishFountainService.cs
 echo(Integration\WishFountain\WishFountainConfigAndValidation.cs
 echo(Integration\WishFountain\WishFountainRewardPoolBuild.cs
@@ -1070,7 +1045,6 @@ echo(Integration\WishFountain\WishFountainUIBridge.cs
 echo(Integration\WishFountain\WishFountainRewardAnimationView.cs
 echo(Integration\WishFountain\WishFountainRewardAnimationView_Reveal.cs
 echo(Integration\WishFountain\WishFountainRuntimeModule.cs
-echo(Integration\WishFountain\WishFountainHostCompatibilityBridge.cs
 echo(Integration\WishFountain\WishFountainBuilder.cs
 echo(Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs
 echo(PetNest\PetNestModels.cs
@@ -1133,7 +1107,6 @@ echo(Integration\DailyReport\DailyReportLayoutTable.cs
 echo(Integration\DailyReport\DailyReportBackground.cs
 echo(Integration\DailyReport\DailyReportUI.cs
 echo(Integration\DailyReport\DailyReportUI_Dashboard.cs
-echo(Integration\DailyReport\DailyReportUIBridge.cs
 echo(Integration\DailyReport\DailyReportMailboxBuilder.cs
 echo(Integration\DailyReport\DailyReportMailboxRuntime.cs
 echo(Integration\DailyReport\DailyReportRuntimeModule.cs
@@ -1182,7 +1155,6 @@ echo(Integration\AffixForge\AffixTriggerFeedback.cs
 echo(Integration\AffixForge\AffixRuntimeTicker.cs
 echo(Integration\AffixForge\AffixBuffFactory.cs
 echo(Integration\AffixForge\GoblinAffixForgeInteractable.cs
-echo(Integration\AffixForge\AffixForgeHostCleanup.cs
 echo(Integration\Reforge\ReforgeUIManager_AffixForge.cs
 echo(Integration\Reforge\ReforgeUIManager_AffixForgePanel.cs
 echo(Localization\AffixForgeLocalization.cs
@@ -1232,7 +1204,6 @@ echo(Integration\BackMountain\RaidMealUsageBehavior.cs
 echo(Integration\BackMountain\RaidMealService.cs
 echo(Integration\BackMountain\JukeboxTrackInjector.cs
 echo(Integration\BackMountain\BackMountainSeedDrops.cs
-echo(Integration\BackMountain\BackMountainSeedDropsHostBridge.cs
 echo(Integration\BackMountain\ShowcaseService.cs
 echo(Integration\BackMountain\ShowcaseInteractable.cs
 echo(Integration\BackMountain\ShowcaseBuildingBuilder.cs

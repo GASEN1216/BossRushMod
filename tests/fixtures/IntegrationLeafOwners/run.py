@@ -9,6 +9,10 @@ ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
 OUT = ROOT / "Build/runtime-regressions/IntegrationLeafOwners"
 
+import sys
+sys.path.insert(0, str(ROOT / "tests"))
+from integration_host_source import materialize_host
+
 
 def block(source, signature):
     assert source.count(signature) == 1, signature
@@ -25,11 +29,11 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     linked = [ROOT / path for path in (
         "Integration/NPCs/Nurse/NurseNPC.cs",
-        "Integration/NPCs/Nurse/NurseNPCRuntimeModuleHostBridge.cs",
         "Integration/Mutators/MutatorModeFlow.cs",
-        "Integration/Mutators/MutatorRuntimeBridge.cs",
         "Integration/ModeGManagedCharacterService.cs",
     )]
+    linked += [materialize_host(ROOT, OUT / "NurseHost.cs", "NurseNPCRuntimeModuleHostBridge", "using UnityEngine;"),
+               materialize_host(ROOT, OUT / "MutatorHost.cs", "MutatorRuntimeBridge")]
     registry_path = ROOT / "Integration/BossRushDynamicItemRegistry.cs"
     init_path = ROOT / "Integration/BossRushIntegrationRuntimeModule_Initialization.cs"
     host_path = ROOT / "Integration/BossRushIntegration.cs"

@@ -100,12 +100,7 @@ namespace BossRush
             modeEEnemyLootHandlers.Clear();
             modeEPendingScalingFactions.Clear();
             modeEScalingBatchTimer = 0f;
-            modeETotalSpawnExpected = 0;
-            modeESpawnResolved = 0;
-            modeEDragonDescendantSpawned = false;
-            modeEDragonKingSpawned = false;
-            modeEWolfBossCount = 0;
-            modeEWolfBossAssigned = 0;
+            spawnRuntime.ResetSpawnTracking();
             virtualSpawnerRegistry.ClearRegisteredEnemies();
             modeEIntegrityTimer = 0f;
 
@@ -254,7 +249,7 @@ namespace BossRush
             yield return null;
 
             if (!TryRunModeEStartupWarmupStep(
-                BuildModeEFactionPresetCaches,
+                spawnRuntime.BuildModeEFactionPresetCaches,
                 profiler,
                 "BuildModeEFactionPresetCaches",
                 "PrepareModeEStartup.BuildModeEFactionPresetCaches",
@@ -803,7 +798,7 @@ namespace BossRush
                     {
                         HandleModeEStartupFailureRecovery(
                             "Mode E 启动验证超时，未检测到任何成功生成的Boss (resolved="
-                            + modeESpawnResolved + "/" + modeETotalSpawnExpected + ")");
+                            + spawnRuntime.SpawnResolved + "/" + spawnRuntime.TotalSpawnExpected + ")");
                     }
                 }
             }
@@ -974,8 +969,8 @@ namespace BossRush
                 modeEHost.ClearModeDEnemyRecoveryState();
 
                 // 重置龙裔/龙王全局限制标记
-                modeEDragonDescendantSpawned = false;
-                modeEDragonKingSpawned = false;
+                spawnRuntime.DragonDescendantSpawned = false;
+                spawnRuntime.DragonKingSpawned = false;
 
                 // 初始化各阵营死亡计数
                 for (int i = 0; i < ModeEAvailableFactions.Length; i++)
@@ -1011,7 +1006,7 @@ namespace BossRush
                 // 初始化物品池和敌人池（复用 Mode D 逻辑）
                 InitializeModeDItemPools();
                 profiler.Mark("InitializeModeDItemPools");
-                EnsureModeEFSpawnPoolsReady("StartModeE");
+                spawnRuntime.EnsureModeEFSpawnPoolsReady("StartModeE");
                 profiler.Mark("EnsureModeEFSpawnPoolsReady");
 
                 // 前置构建全局掉落池（避免战斗中首次调用时卡顿）
@@ -1053,7 +1048,7 @@ namespace BossRush
 
                 // 一次性生成所有阵营的 Boss（UniTaskVoid fire-and-forget，抑制 CS4014 警告）
                 #pragma warning disable CS4014
-                ModeESpawnAllBosses(modeESessionToken: modeESessionToken, modeESessionRelatedScene: relatedScene);
+                spawnRuntime.ModeESpawnAllBosses(modeESessionToken: modeESessionToken, modeESessionRelatedScene: relatedScene);
                 profiler.Mark("ScheduleBosses");
                 #pragma warning restore CS4014
 

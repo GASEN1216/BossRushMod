@@ -3,9 +3,9 @@ import sys
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
-HOST_BRIDGE = Path("ZombieMode/ZombieModeMapSelection.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,

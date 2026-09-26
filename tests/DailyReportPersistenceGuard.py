@@ -51,7 +51,7 @@ REQUIRED_SOURCES = [
     Path("Integration/DailyReport/DailyReportBounty.cs"),
     Path("Integration/DailyReport/DailyReportInteractable.cs"),
     Path("Integration/DailyReport/DailyReportUI.cs"),
-    Path("Integration/DailyReport/DailyReportUIBridge.cs"),
+    Path("Integration/DailyReport/DailyReportRuntimeModule_UI.cs"),
     Path("Integration/DailyReport/DailyReportMailboxBuilder.cs"),
     Path("Integration/DailyReport/DailyReportMailboxRuntime.cs"),
     Path("Config/ConfigDailyReport.cs"),

@@ -7,6 +7,10 @@ ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
 OUT = ROOT / "Build/boss-reward-delivery"
 
+import sys
+sys.path.insert(0, str(ROOT / "tests"))
+from integration_host_source import materialize_host
+
 
 def member(source, signature):
     assert source.count(signature) == 1, signature
@@ -36,7 +40,7 @@ def main():
                          encoding='utf-8')
     sources = [ROOT / 'Utilities/InteractableLootboxInventoryHelper.cs',
                ROOT / 'Integration/BackMountain/BackMountainSeedDrops.cs',
-               ROOT / 'Integration/BackMountain/BackMountainSeedDropsHostBridge.cs',
+               materialize_host(ROOT, OUT / "SeedHost.cs", "BackMountainSeedDropsHostBridge", "using ItemStatsSystem;"),
                HERE / 'Program.cs', HERE / 'Stubs.cs', extracted]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
     project += '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'

@@ -14,7 +14,7 @@
 | P5 目录归位 | 未完成 | 注入占位已随簇 1 删除；天空岛迁移待做 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-续接基点：`43586c68`（归位共享生成恢复与丧尸征程运行逻辑）。2026-09-26 已完成根 Arena 余项、成就、音效与 Mode G 入口归位；下一动作是 E/F 共享阵营生成、根宿主残余业务与模块薄桥归并。最新提交号以 `git log -1` 为准。真实游戏目录尚未部署。
+续接基点：`bc489b28`（归位竞技场余项与成就音效和宿命入口）。2026-09-26 E/F 共享生成、Integration/Zombie 薄桥归并已完成验证，当前提交包含这一步。下一步执行已在独立副本预演的 E/F 共享登记提取，再收口根宿主状态与余下薄桥；Integration 生命周期/跨模式入场协调按计划 §2.2 保留原槽位，独立算法另行归位。真实游戏目录尚未部署。
 ## P0 基线（2026-09-24）
 
 - 启动前 `git status --short --branch` 为干净的 `main...origin/main`。构建依赖：本机 .NET SDK 8.0.302、游戏 `D:\software\steam\steamapps\common\Escape from Duckov`、Harmony 创意工坊 DLL。隔离游戏根在忽略的 `Build/migration/isolated-game/`，其中 `Duckov_Data/Managed` 为真实游戏 DLL 的文件副本；未接触真实游戏 Mod 目录。
@@ -198,6 +198,16 @@
 - 反向验证：Arena/根余项 19 次及预算 2 次；Achievement 12 个守卫 + 12 个执行探针；Audio 9 个守卫 + 14 个执行探针；Mode G 24 个外部探针与 HUD 47 个内置探针均在预期判据转红，独立副本按字节/SHA-256 恢复后全绿。证据分别为 `host-remainder-negative.json`、`host-remainder-budget-negative.json`、`achievement-negative.json`、`audio-negative.json` 与 `modeg-entry-owners/mutation-results.json`，均在 `Build/migration/`。Arena 反向末项最初因读取 CRLF 锚点规范化失败，未变异生产；改为原字节读取后完成。
 - Windows 最终正式/Dev 隔离构建均 `Build succeeded!`，两次 72 bundle 清单与 14 个 Dev 标识 absent/present 通过。正式 SHA-256 `7135F99FBCACC2DC2FC29F899B1D75FEF1241D6CE37E254053331EBF4E9BB9B7`；Dev SHA-256 `A75FD76AC1D60FB2AB6EAA1A06D5639E5271FBA4240D053D9A1665D2D8A43821`，分别与隔离部署副本一致。初次正式编译发现 F3 仍调用 StartModeGRuntime，保留原签名桥后通过。当前 Build 为 Dev；真实游戏目录尚未部署。
 - L3 待 owner：标准与无间模式观察敌对性、清场、奖励箱与回血；打开成就页并触发成就和商店勋章补货；播放战斗/胜利/彩蛋声音后切图；Mode G 连续两局并在生成中离场，使用既有 F3 `MODE_G_NINE_WAVES` 检查九波推进与终态。迟到角色残留、重复订阅/奖励、成就漏记、声音重复、Mode G 第二局停滞或退款不一致均不合格。本批仍是 P3/P4 中间检查点。
+
+## 2026-09-26 继续执行：E/F 共享生成与宿主薄桥归并（COMPAT）
+
+- `ModeEFEnemySpawnRuntime` 持有原阵营预设缓存、失效标记、生成计数和龙裔/龙王占位，E/F 绑定同一实例。16 方法归一化等价；原候选次序、随机次数、800/500 ms 等待、提交与失败计数、旧局迟到结果拒绝保持。E 专属贝壳奖励分类与生成提交仍在 E 模块；共享登记与 E 专属副作用的边界继续处理。
+- Integration 的 34 个宿主 partial 归并为 4 个：两份核心/兼容载体与两份待收口场景流程。30 个迁入宿主块无初始化字段，四个建筑仍在原 getter 懒创建；同文件独立组件正文保持。日报 view 和开关判断归原 DailyReportRuntimeModule，旧入口传入当时配置值。新载体 400/1,192 行，未抬大文件预算。
+- Zombie 的 15 个宿主文件归并为 Entry/Combat/Reward 三份薄桥，原四个独立组件留在原文件。`ZombieModeHostLifecycle` 持有构造期备用状态和模块 attach/detach 转交，未创建第二个 RuntimeModule、未提前 OnAwake；原启动协程归注册模块并捕获原 coroutine owner，保留卸载后迟到 StopCoroutine 的宿主寿命。归并初版超过新文件 1,200 行预算，已按职责拆为三份 840/832/681 行。
+- 编译清单 1,094 源、47 模块；宿主 partial 实测 75 文件 / 21,255 行，预算同步下调。全量守卫 692 PASS / 0 FAIL / 0 known-red。全量回归初跑 90 PASS / 1 FAIL，仅 AffixCombat 仍读已删除的技能桥；改到真实 CombatHostBridge 后单项通过，最终逐夹具证据 91 PASS / 0 FAIL（`Build/migration/ef-bridges-final-runtime.json`）。本批新执行判据：共享生成 37、日报 UI 16、丧尸宿主 owner 117；AuditModeLifecycle 的 F 重生替身同步到真实共享 owner，原旧局回调断言通过。
+- 反向验证：E/F 16 个方法等价、16 次结构/执行探针；根共享守卫和两项预算共 16 次；Integration 18 个结构探针与 15 个执行探针均命中预期断言并按字节/SHA-256 恢复。证据为 `ef-spawn-negative.json`、`ef-bridges-shared-negative.json`、`integration-host-negative.json`，均在 `Build/migration/`。Zombie 的 41 个修改守卫与新 ownership 守卫已完成 52 次真实源码结构变异，另有 12 次执行变异；全部在预期断言转红并按字节/SHA-256 恢复后回绿。证据见 `zombie-host-consolidation/negative-semantic-{first,last,ownership}.json` 与 `negative-fixture.json`；先前路径缺失探针仅记路径读取验证，不计结构反向。388 个宿主成员逐项对照、四个混装文件独立组件按字节对照均无意外差异，见同目录 `equivalence-manifest.json`。
+- Windows 最终正式/Dev 隔离构建均 `Build succeeded!`，两次 72 bundle 清单与 14 个 Dev 标识 absent/present 通过。正式 SHA-256 `64F75BE2AA64978ECEEF22B7BF86138ABF8C6B81E72C044BDB152C943078E0AE`；Dev SHA-256 `3B8D42DADD4E4E4C4156E25AD172ED87F7761914F4F9C95D3FB04778B3F72A9F`，分别与隔离部署副本一致（`ef-bridges-final-builds.json`）。当前 Build 为 Dev；真实游戏目录尚未部署。
+- L3 待 owner：E/F 各开局并观察初始 Boss、狼阵营预设、龙裔唯一性与 F 死亡补位；生成期间退出再入，检查旧局回调是否污染新局。打开日报并关闭/重开，切图后再打开；丧尸在选图、加载、准备、撤离和卸载路径观察状态交接。重复敌人、丢失补位、重复 view、已销毁 Canvas 复用、启动债务丢失、协程或 UI 残留均不合格。本批仍是 P3/P4 中间检查点。
 
 ## 未完成项
 

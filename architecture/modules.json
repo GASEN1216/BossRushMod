@@ -101,7 +101,7 @@
         "Utilities/**/*.cs"
       ],
       "entry": "Utilities/ModeRuntimeHooks.cs",
-      "state_owner": "OfficialQuestRuntimeModule / ModeEFSpawnPreparation / ModeEFMerchantCatalog / ModeEFMerchantRuntime / ModeEFSpawnPostprocessScheduler / ModeEFVirtualSpawnerRegistry / EnemySpawnRuntime / EnemyRecoveryMonitor",
+      "state_owner": "OfficialQuestRuntimeModule / ModeEFSpawnPreparation / ModeEFMerchantCatalog / ModeEFMerchantRuntime / ModeEFSpawnPostprocessScheduler / ModeEFVirtualSpawnerRegistry / EnemySpawnRuntime / EnemyRecoveryMonitor / ModeEFEnemySpawnRuntime",
       "public_api": [
         "ModeRuntimeHooks",
         "EnemySpawnRuntime"
@@ -118,7 +118,9 @@
         "tests/EnemySpawnCoreObservableGuard.py",
         "tests/fixtures/EnemySpawnRuntime",
         "tests/EnemyRecoveryOwnershipGuard.py",
-        "tests/fixtures/EnemyRecoveryRuntime"
+        "tests/fixtures/EnemyRecoveryRuntime",
+        "tests/ModeEFEnemySpawnOwnershipGuard.py",
+        "tests/fixtures/ModeEFEnemySpawnRuntime"
       ],
       "docs": [],
       "rules": [
@@ -345,7 +347,7 @@
         "ZombieMode/**/*.cs"
       ],
       "entry": "ZombieMode/ZombieModeRuntimeModule.cs",
-      "state_owner": "ZombieModeRuntimeModule",
+      "state_owner": "ZombieModeRuntimeModule / ZombieModeHostLifecycle",
       "public_api": [
         "ZombieModeRuntimeModule"
       ],
@@ -355,7 +357,8 @@
         "tests/fixtures/ZombieModeSafeZoneRuntime",
         "tests/fixtures/ZombieModeRewardRuntime",
         "tests/fixtures/ZombieModeSpawnRuntime",
-        "tests/fixtures/ZombieModeStarterRuntime"
+        "tests/fixtures/ZombieModeStarterRuntime",
+        "tests/fixtures/ZombieModeHostOwners"
       ],
       "docs": [],
       "rules": [
@@ -694,7 +697,7 @@
       "paths": [
         "Integration/NPCs/**/*.cs"
       ],
-      "entry": "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
+      "entry": "Integration/IntegrationHostCompatibility.cs",
       "state_owner": "CommonNpcRuntimeModule, CourierNpcRuntimeModule, GoblinNpcRuntimeModule, NurseNpcRuntimeModule",
       "public_api": [
         "CommonNpcRuntimeHooks",
@@ -1047,7 +1050,7 @@
       "paths": [
         "Integration/NewWeapons/**/*.cs"
       ],
-      "entry": "Integration/NewWeapons/Common/NewWeaponBootstrap.cs",
+      "entry": "Integration/IntegrationHostCompatibility.cs",
       "state_owner": "NewWeaponBootstrap",
       "public_api": [
         "NewWeaponBootstrap"

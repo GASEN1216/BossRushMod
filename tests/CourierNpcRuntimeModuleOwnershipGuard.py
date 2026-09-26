@@ -7,7 +7,7 @@ from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parent.parent
 MODULE = "Integration/NPCs/Courier/CourierNpcRuntimeModule.cs"
-BRIDGE = "Integration/NPCs/Courier/CourierNPC.cs"
+BRIDGE = "Integration/IntegrationHostCompatibility.cs"
 
 
 def read_source(relative_path: str) -> str:

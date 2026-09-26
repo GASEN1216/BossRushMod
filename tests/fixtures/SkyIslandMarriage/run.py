@@ -24,7 +24,7 @@ def member(source, signature):
 
 paths = ['DebugAndTools/SkyIsland/SkyIslandOfficialQuestGivers.cs',
          'Integration/Wedding/WeddingModBehaviourBridge.cs',
-         'Integration/Wedding/WeddingHostCompatibilityBridge.cs',
+         'Integration/IntegrationHostCompatibility.cs',
          'Integration/Wedding/WeddingRuntimeModule.cs',
          'Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcModule.cs',
          'Integration/Wedding/NPCMarriageSystem.cs',

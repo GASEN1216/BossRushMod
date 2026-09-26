@@ -1534,7 +1534,7 @@
       "title": "内容建筑共享反射、恢复核心、宿主归属与模型复用",
       "sources": [
         "Common/Buildings",
-        "Integration/ContentBuildingBridges.cs"
+        "Integration/IntegrationHostCompatibility.cs"
       ],
       "automatic": [],
       "wiki": [],

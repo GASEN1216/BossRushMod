@@ -45,9 +45,9 @@ def extract_method(text: str, marker: str) -> str:
 
 
 def main() -> int:
-    entry_text = Path("ZombieMode/ZombieModeEntry.cs").read_text(encoding="utf-8")
+    entry_text = Path("ZombieMode/ZombieModeEntryHostBridge.cs").read_text(encoding="utf-8")
     module_text = Path("ZombieMode/ZombieModeRuntimeModule.cs").read_text(encoding="utf-8")
-    host_bridge_text = Path("ZombieMode/ZombieModeMapSelection.cs").read_text(encoding="utf-8")
+    host_bridge_text = Path("ZombieMode/ZombieModeEntryHostBridge.cs").read_text(encoding="utf-8")
     try:
         require(module_text, "private float runtimePausedDuration;", "missing module-owned runtime paused-duration accumulator")
         require(module_text, "private float runtimePauseStartTime = -1f;", "missing module-owned runtime pause-start timestamp")

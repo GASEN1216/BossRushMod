@@ -20,11 +20,11 @@ ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
 UI_SIGNS_INTERACTION_SCAN = Path("UIAndSigns/BossRushInteractionScan.cs")
 UI_SIGNS_RUNTIME_BRIDGES = Path("UIAndSigns/UIAndSignsRuntimeBridges.cs")
 COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule.cs")
-COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
-EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
-INTEGRATION_RUNTIME_HOOKS = Path("Integration/IntegrationRuntimeHooks.cs")
+COMMON_NPC_RUNTIME_HOOKS = Path("Integration/IntegrationHostCompatibility.cs")
+EQUIPMENT_RUNTIME_HOOKS = Path("Integration/IntegrationHostCompatibility.cs")
+INTEGRATION_RUNTIME_HOOKS = Path("Integration/BossRushIntegration.cs")
 AFFINITY_RUNTIME_HOOKS = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
-AFFINITY_RUNTIME_HOST_BRIDGE = Path("Integration/Affinity/AffinityRuntimeModuleHostBridge.cs")
+AFFINITY_RUNTIME_HOST_BRIDGE = Path("Integration/IntegrationHostCompatibility.cs")
 AUDI0_RUNTIME_HOOKS = Path("Audio/BossRushAudioHooks.cs")
 LOOT_RUNTIME_HOOKS = Path("LootAndRewards/LootAndRewardsRuntimeHooks.cs")
 GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
@@ -36,17 +36,16 @@ WAVES_ENEMY_MAINTENANCE = Path("WavesArena/WavesArenaRuntimeModule_EnemyMaintena
 WAVES_SPAWNER_CONTROL = Path("WavesArena/WavesArenaSpawnerControl.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
 MODEF_RUNTIME_HOOKS = Path("ModeF/ModeFRuntimeHooks.cs")
-ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
+ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration.cs"),
     Path("Integration/BossRushIntegration_StartAndScene.cs"),
     Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
-    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
 ]
 
 
 def read_boss_rush_integration() -> str:
-    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_PARTS)
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in dict.fromkeys(INTEGRATION_PARTS))
 
 REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/IBossRushRuntimeModule.cs",
@@ -67,11 +66,9 @@ REQUIRED_COMPILE_SOURCES = [
     "UIAndSigns/BossRushInteractionScan.cs",
     "UIAndSigns/UIAndSignsRuntimeBridges.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeModule.cs",
-    "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
-    "Integration/EquipmentRuntimeHooks.cs",
-    "Integration/IntegrationRuntimeHooks.cs",
+    "Integration/IntegrationHostCompatibility.cs",
+    "Integration/BossRushIntegration.cs",
     "Integration/Affinity/AffinityRuntimeHooks.cs",
-    "Integration/Affinity/AffinityRuntimeModuleHostBridge.cs",
     "Audio/BossRushAudioHooks.cs",
     "LootAndRewards/LootAndRewardsRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule_Tick.cs",
@@ -87,7 +84,7 @@ REQUIRED_COMPILE_SOURCES = [
     "ModeF/ModeFRuntimeModule.cs",
     "ModeF/ModeFRuntimeHooks.cs",
     "ZombieMode/ZombieModeRuntimeModule.cs",
-    "ZombieMode/ZombieModeRuntimeHooks.cs",
+    "ZombieMode/ZombieModeEntryHostBridge.cs",
     "Utilities/RuntimeScope.cs",
     "Utilities/SceneRuntimeGate.cs",
 ]

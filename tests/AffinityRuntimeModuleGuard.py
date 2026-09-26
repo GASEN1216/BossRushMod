@@ -10,7 +10,7 @@ from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parent.parent
 MODULE_PATH = ROOT / "Integration/Affinity/AffinityRuntimeHooks.cs"
-BRIDGE_PATH = ROOT / "Integration/Affinity/AffinityRuntimeModuleHostBridge.cs"
+BRIDGE_PATH = ROOT / "Integration/IntegrationHostCompatibility.cs"
 REGISTRATION_PATH = ROOT / "ModBehaviourRuntimeModules.cs"
 COMPILE_PATH = ROOT / "compile_official.bat"
 ALWAYS_ON_PATH = ROOT / "Utilities/AlwaysOnRuntimeHooks.cs"
@@ -188,7 +188,7 @@ def main():
         return fail("AffinityRuntimeModule must register after DeathWraith and before Wedding")
     for path in (
         "Integration/Affinity/AffinityRuntimeHooks.cs",
-        "Integration/Affinity/AffinityRuntimeModuleHostBridge.cs",
+        "Integration/IntegrationHostCompatibility.cs",
     ):
         if path not in compile_text:
             return fail("compile_official.bat must include " + path)

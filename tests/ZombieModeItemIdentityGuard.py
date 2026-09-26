@@ -19,7 +19,6 @@ INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration.cs"),
     Path("Integration/BossRushIntegration_StartAndScene.cs"),
     Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
-    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
 ]
 ITEM_CONTENT_REGISTRY = Path("Integration/Items/ItemContentRegistry.cs")
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")

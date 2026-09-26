@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 from compile_list import read_compile_sources
 
 MODULE = Path("Integration/NPCs/Goblin/GoblinNPC.cs")
-BRIDGE = Path("Integration/NPCs/Goblin/GoblinNPCRuntimeModuleHostBridge.cs")
+BRIDGE = Path("Integration/IntegrationHostCompatibility.cs")
 REGISTRATION = Path("ModBehaviourRuntimeModules.cs")
 
 

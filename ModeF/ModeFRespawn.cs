@@ -767,7 +767,7 @@ namespace BossRush
                     return;
                 }
 
-                modeE.EnsureModeEFSpawnPoolsReady("ModeF.RespawnModeFBoss");
+                spawnRuntime.EnsureModeEFSpawnPoolsReady("ModeF.RespawnModeFBoss");
                 profiler.Mark("EnsureSpawnPools");
                 Vector3 spawnPos = FindSpawnPointAwayFromPlayer(50f);
                 profiler.Mark("ResolveSpawnPoint");
@@ -783,7 +783,7 @@ namespace BossRush
                 selectedDragonDescendant = owner.IsDragonDescendantPreset(preset);
                 if (selectedDragonDescendant)
                 {
-                    modeE.modeEDragonDescendantSpawned = true;
+                    spawnRuntime.DragonDescendantSpawned = true;
                 }
                 profiler.Mark("PickPreset");
 
@@ -807,7 +807,7 @@ namespace BossRush
                 {
                     if (selectedDragonDescendant)
                     {
-                        modeE.modeEDragonDescendantSpawned = false;
+                        spawnRuntime.DragonDescendantSpawned = false;
                     }
 
                     string reason = result != null ? result.failureReason : "null result";
@@ -827,7 +827,7 @@ namespace BossRush
                 if (!IsModeFSessionStillValid(modeFSessionToken, relatedScene)) return;
                 if (selectedDragonDescendant)
                 {
-                    modeE.modeEDragonDescendantSpawned = false;
+                    spawnRuntime.DragonDescendantSpawned = false;
                 }
 
                 profiler.Complete("failed: exception");
@@ -841,18 +841,18 @@ namespace BossRush
             {
                 if (ctx == null || ctx.character == null)
                 {
-                    if (selectedDragonDescendant) modeE.modeEDragonDescendantSpawned = false;
+                    if (selectedDragonDescendant) spawnRuntime.DragonDescendantSpawned = false;
                     return false;
                 }
 
                 EnemyPresetInfo spawnedPreset = ctx.preset;
                 if (spawnedPreset == null)
                 {
-                    if (selectedDragonDescendant) modeE.modeEDragonDescendantSpawned = false;
+                    if (selectedDragonDescendant) spawnRuntime.DragonDescendantSpawned = false;
                     return false;
                 }
 
-                modeE.SyncModeEDragonDescendantSpawnFlag(selectedDragonDescendant, spawnedPreset, "ModeF");
+                spawnRuntime.SyncModeEDragonDescendantSpawnFlag(selectedDragonDescendant, spawnedPreset, "ModeF");
 
                 if (ctx.character.characterPreset != null)
                 {
@@ -892,7 +892,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[ModeF] [WARNING] Failed to configure respawned boss: " + e.Message);
                 if (selectedDragonDescendant)
                 {
-                    modeE.modeEDragonDescendantSpawned = false;
+                    spawnRuntime.DragonDescendantSpawned = false;
                 }
 
                 return false;
@@ -935,7 +935,7 @@ namespace BossRush
 
         private EnemyPresetInfo GetRandomModeFRespawnBossPreset()
         {
-            modeE.EnsureModeEFSpawnPoolsReady("ModeF.GetRandomModeFRespawnBossPreset");
+            spawnRuntime.EnsureModeEFSpawnPoolsReady("ModeF.GetRandomModeFRespawnBossPreset");
 
             List<EnemyPresetInfo> filteredBossPool = owner.GetFilteredEnemyPresets();
             if (filteredBossPool == null || filteredBossPool.Count == 0)
@@ -962,7 +962,7 @@ namespace BossRush
                     continue;
                 }
 
-                if (modeE.modeEDragonDescendantSpawned && owner.IsDragonDescendantPreset(preset))
+                if (spawnRuntime.DragonDescendantSpawned && owner.IsDragonDescendantPreset(preset))
                 {
                     continue;
                 }

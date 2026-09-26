@@ -5,7 +5,7 @@ import sys
 
 
 HELPER = Path("Utilities/RunScopedRegistry.cs")
-ZOMBIE_CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+ZOMBIE_CLEANUP = Path("ZombieMode/ZombieModeRuntimeModule_HostLifecycle.cs")
 ZOMBIE_RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 
 

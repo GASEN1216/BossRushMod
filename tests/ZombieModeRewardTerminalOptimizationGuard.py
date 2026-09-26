@@ -12,7 +12,7 @@ REWARD_VIEWS = [
     Path("ZombieMode/ZombieModeRewardSelectionView.cs"),
     Path("ZombieMode/ZombieModeTemporaryNpcServiceView.cs"),
 ]
-CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 

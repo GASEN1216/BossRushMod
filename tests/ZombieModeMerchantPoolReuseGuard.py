@@ -4,7 +4,7 @@ from cs_source_util import clean_source
 
 
 MODEE = Path("Utilities/ModeEFMerchantCatalog.cs")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,

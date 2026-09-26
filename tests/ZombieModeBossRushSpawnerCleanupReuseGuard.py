@@ -6,7 +6,7 @@ from cs_source_util import clean_source
 
 
 MAP_ISOLATION = Path("ZombieMode/ZombieModeMapIsolation.cs")
-HOST_BRIDGE = Path("ZombieMode/ZombieModeMapSelection.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:

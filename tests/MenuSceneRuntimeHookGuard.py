@@ -10,11 +10,10 @@ INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration.cs"),
     Path("Integration/BossRushIntegration_StartAndScene.cs"),
     Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
-    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
 ]
 ALWAYS_ON_RUNTIME_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
 AFFINITY_RUNTIME = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
-EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
+EQUIPMENT_RUNTIME_HOOKS = Path("Integration/IntegrationHostCompatibility.cs")
 INTEGRATION_RUNTIME_MODULES = [
     Path("Integration/BossRushIntegrationRuntimeModule.cs"),
     Path("Integration/BossRushIntegrationRuntimeModule_RuntimeHooks.cs"),
@@ -106,7 +105,7 @@ def fail(message: str) -> int:
 
 
 def read_boss_rush_integration() -> str:
-    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_PARTS)
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in dict.fromkeys(INTEGRATION_PARTS))
 
 
 def extract_method(text: str, signature: str) -> str:

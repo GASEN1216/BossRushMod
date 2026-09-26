@@ -327,18 +327,4 @@ namespace BossRush
         }
     }
 
-    /// <summary>图鉴商店注入的宿主兼容桥。</summary>
-    public partial class ModBehaviour
-    {
-        internal bool TryInjectCodexBookIntoShop(StockShop shop)
-        {
-            return bossRushIntegrationRuntime.TryInjectCodexBookIntoShop(shop);
-        }
-
-        internal void InjectCodexBookIntoShops(string targetSceneName = null)
-        {
-            bossRushIntegrationRuntime.InjectCodexBookIntoShops(targetSceneName);
-        }
-
-}
 }

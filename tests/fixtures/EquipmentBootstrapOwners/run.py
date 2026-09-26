@@ -9,6 +9,10 @@ ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
 OUT = ROOT / "Build/runtime-regressions/EquipmentBootstrapOwners"
 
+import sys
+sys.path.insert(0, str(ROOT / "tests"))
+from integration_host_source import materialize_host
+
 
 def block(source, signature):
     start = source.index(signature)
@@ -25,7 +29,7 @@ def main():
     linked = [
         ROOT / "Integration/ReverseScale/ReverseScaleFactory.cs",
         ROOT / "Integration/ReverseScale/ReverseScaleBootstrap.cs",
-        ROOT / "Integration/ReverseScale/ReverseScaleRuntimeModuleHostBridge.cs",
+        materialize_host(ROOT, OUT / "ReverseHost.cs", "ReverseScaleRuntimeModuleHostBridge", "using UnityEngine; using UnityEngine.SceneManagement;"),
         ROOT / "Integration/ReverseScale/ReverseScaleConfig.cs",
         ROOT / "Common/Equipment/AbilitySystemHelper.cs",
         ROOT / "Common/Equipment/EquipmentAbilityConfig.cs",
@@ -37,7 +41,7 @@ def main():
         ("DragonKing", "Weapons/FenHuangHalberdBootstrap", "DragonKingRuntimeModuleHostBridge", "DragonKingRuntimeModule", "FenHuangHalberd", "FenHuangHalberdSharedWait05sForRuntime"),
     ):
         path = ROOT / ("Integration/" + folder + "/" + bootstrap + ".cs")
-        bridge_path = ROOT / ("Integration/" + folder + "/" + bridge + ".cs")
+        bridge_path = ROOT / "Integration/IntegrationHostCompatibility.cs"
         extracted += [path, bridge_path]
         body = block(path.read_text(encoding="utf-8-sig"), "internal sealed partial class " + module)
         bridge_source = bridge_path.read_text(encoding="utf-8-sig")

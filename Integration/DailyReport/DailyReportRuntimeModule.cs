@@ -15,7 +15,7 @@ using System;
 namespace BossRush
 {
     /// <summary>日报运行时模块。宿主回调的唯一落点。</summary>
-    internal sealed class DailyReportRuntimeModule : BossRushRuntimeModuleBase
+    internal sealed partial class DailyReportRuntimeModule : BossRushRuntimeModuleBase
     {
         #region 状态
 

@@ -10,23 +10,23 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class DailyReportRuntimeModule
     {
         private DailyReportView dailyReportView;
 
         /// <summary>打开《鸭科夫日报》面板。报箱交互与调试菜单都走这里。</summary>
-        public void OpenDailyReportUI()
+        internal void OpenDailyReportUI(bool configuredEnabled)
         {
-            if (!IsDailyReportConfiguredEnabled())
+            if (!configuredEnabled)
             {
-                DevLog(DailyReportTuning.LogPrefix + "开关已关闭，忽略打开请求");
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "开关已关闭，忽略打开请求");
                 return;
             }
 
             EnsureDailyReportView();
             if (dailyReportView == null)
             {
-                DevLog(DailyReportTuning.LogPrefix + "无法创建日报面板");
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "无法创建日报面板");
                 return;
             }
 
@@ -34,7 +34,7 @@ namespace BossRush
         }
 
         /// <summary>幂等创建面板实例。</summary>
-        private void EnsureDailyReportView()
+        internal void EnsureDailyReportView()
         {
             if (dailyReportView != null) return;
 
@@ -43,7 +43,7 @@ namespace BossRush
                 : null;
             if (parent == null)
             {
-                DevLog(DailyReportTuning.LogPrefix + "GameplayUIManager 不存在，无法创建日报面板");
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "GameplayUIManager 不存在，无法创建日报面板");
                 return;
             }
 

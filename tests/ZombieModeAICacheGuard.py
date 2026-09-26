@@ -11,7 +11,7 @@ SAFE_ZONE = Path("ZombieMode/ZombieModeSafeZoneController.cs")
 GRAVITY = RUNTIME_MODULE
 TEMP_NPC = Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs")
 BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
-BOSS_HOST = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS_HOST = Path("ZombieMode/ZombieModeCombatHostBridge.cs")
 
 
 def fail(message: str) -> int:

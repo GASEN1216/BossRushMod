@@ -12,7 +12,7 @@ from cs_source_util import clean_source
 
 DEFINITIONS = Path("Integration/Mutators/MutatorDefinitions.cs")
 MANAGER = Path("Integration/Mutators/MutatorManager.cs")
-RUNTIME_BRIDGE = Path("Integration/Mutators/MutatorRuntimeBridge.cs")
+RUNTIME_BRIDGE = Path("Integration/IntegrationHostCompatibility.cs")
 WAVES = Path("WavesArena/WavesArenaRuntimeModule_Start.cs")
 WAVES_HOST = Path("WavesArena/WavesArenaBossSpawning.cs")
 LOOT = Path("LootAndRewards/LootAndRewardsRandomBossLoot.cs")

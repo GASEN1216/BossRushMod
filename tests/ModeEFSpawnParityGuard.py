@@ -6,7 +6,7 @@ from cs_source_util import clean_source
 
 
 MODEE_ALLOCATION = Path("Utilities/ModeEFSpawnPreparation.cs")
-MODEE_BATTLE = Path("ModeE/ModeEBattle.cs")
+MODEE_BATTLE = Path("Utilities/ModeEFEnemySpawnRuntime.cs")
 MODEE_RESPAWN = Path("ModeE/ModeERespawnItems.cs")
 MODEF_PHASES = Path("ModeF/ModeFPhases.cs")
 MODEF_RESPAWN = Path("ModeF/ModeFRespawn.cs")

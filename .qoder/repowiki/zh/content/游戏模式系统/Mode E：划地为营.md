@@ -403,3 +403,10 @@ Mode E/F 为运行时角色克隆的 `CharacterRandomPreset` 由挂在角色对�
 
 
 2026-09-22 审计修复（COMPAT，L1，未实机）：商人创建 null / exception 续体在失败清理前核捕获 session，过期请求只回收自己返回的角色，不销毁新局商人。Boss 失败结案与重刷 finally 同样只可释放自己的 session。击杀成长气泡按当前语言解析。为保持文件行数预算，SetModeEMerchantHealth 原样移至 `ModeEBattle_ScalingAndRuntime.cs`，行为未变。
+
+
+### E/F 共享生成归属（2026-09-26）
+
+阵营 Boss/小怪缓存、狼阵营分配计数、生成预计数与完成数、龙裔/龙王占位及分批生成现归 `Utilities/ModeEFEnemySpawnRuntime.cs`。根装配把同一实例交给 E/F，并复用既有 `ModeEFSpawnPreparation` 与 `EnemySpawnRuntime`；Mode F 的初始生成、池预热和龙裔占位不再通过 Mode E 字段。筛选池、原 D 小怪池、会话有效性与 E 提交登记通过窄委托绑定。
+
+分批顺序仍按玩家距离排序，原 800/500 ms 等待、生成前预计数、随机调用次数、失败回退和重试后最终预设检查保持。E 的贝壳奖励分类与敌人登记仍由 E 模块负责，并查询共享服务的缓存；本次尚未把其余 E/F 共享登记完整提取。执行证据见 `tests/fixtures/ModeEFEnemySpawnRuntime/`，不代表实机帧耗时已验证。

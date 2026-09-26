@@ -10,7 +10,7 @@ from cs_source_util import clean_source
 SERVICE = Path("Integration/NPCs/Courier/CourierPaidLootSweepService.cs")
 # 2026-09-23：结果物品回到玩家手里的那一段按 AGENTS §4.15 原样拆到同一 partial 的新文件，断言针对整个类。
 SERVICE_DELIVERY = Path("Integration/NPCs/Courier/CourierPaidLootSweepDelivery.cs")
-COURIER = Path("Integration/NPCs/Courier/CourierNPC.cs")
+COURIER = Path("Integration/IntegrationHostCompatibility.cs")
 COURIER_NPC_SOURCES = [
     Path("Integration/NPCs/Courier/CourierNpcRuntimeModule.cs"),
     COURIER,

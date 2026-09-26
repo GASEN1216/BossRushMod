@@ -43,22 +43,22 @@ namespace BossRush
 
         public List<CharacterMainControl> ModeEAliveEnemies { get { return modeERuntime.ModeEAliveEnemies; } }
 
-        private bool modeEDragonDescendantSpawned { get { return modeERuntime.modeEDragonDescendantSpawned; } set { modeERuntime.modeEDragonDescendantSpawned = value; } }
+        private bool modeEDragonDescendantSpawned { get { return modeEFEnemySpawnRuntime.DragonDescendantSpawned; } set { modeEFEnemySpawnRuntime.DragonDescendantSpawned = value; } }
 
-        private bool modeEDragonKingSpawned { get { return modeERuntime.modeEDragonKingSpawned; } set { modeERuntime.modeEDragonKingSpawned = value; } }
+        private bool modeEDragonKingSpawned { get { return modeEFEnemySpawnRuntime.DragonKingSpawned; } set { modeEFEnemySpawnRuntime.DragonKingSpawned = value; } }
 
         private void EnsureModeEFSpawnPoolsReady(string sourceTag)
-        { modeERuntime.EnsureModeEFSpawnPoolsReady(sourceTag); }
+        { modeEFEnemySpawnRuntime.EnsureModeEFSpawnPoolsReady(sourceTag); }
 
         public UniTaskVoid ModeESpawnAllBosses(
             int modeFSessionToken = 0,
             int modeFRelatedScene = -1,
             int modeESessionToken = 0,
             int modeESessionRelatedScene = -1)
-        { return modeERuntime.ModeESpawnAllBosses(modeFSessionToken, modeFRelatedScene, modeESessionToken, modeESessionRelatedScene); }
+        { return modeEFEnemySpawnRuntime.ModeESpawnAllBosses(modeFSessionToken, modeFRelatedScene, modeESessionToken, modeESessionRelatedScene); }
 
         private void SyncModeEDragonDescendantSpawnFlag(bool reservedDragonDescendantSlot, EnemyPresetInfo actualPreset, string modeTag)
-        { modeERuntime.SyncModeEDragonDescendantSpawnFlag(reservedDragonDescendantSlot, actualPreset, modeTag); }
+        { modeEFEnemySpawnRuntime.SyncModeEDragonDescendantSpawnFlag(reservedDragonDescendantSlot, actualPreset, modeTag); }
 
         private void SetModeEMerchantHealth(CharacterMainControl character)
         { modeERuntime.SetModeEMerchantHealth(character); }
