@@ -1,5 +1,15 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+## 2026-09-26 天空岛敌人与 Boss 按原版参照提升 50%（COMPAT）
+
+owner 指定生物 Wiki 的原版属性作为参照、要求整体提升 50%，并明确包含 Boss。固定 15 个原版参照覆盖 11 个自动头目 / 岛主、折翎、守钟装置、噬风与回响及普通精英；普通敌怪用各自官方底模。血量、伤害、移动、弹速、射程、感知乘 1.5，散布、反应和射击延迟除 1.5。Boss 近战以 Wiki 通用伤害为参照，普通敌怪保留官方独立近战基准。游戏难度照常生效，装备、护甲、技能机制、经验与掉落保持原配置。
+
+基准在 `SkyIslandCombatBalance`，档案明确 `VanillaPresetId`；`SkyIslandCombatPreset` 只在创建前写克隆。删除 EnemyTiers / BossForge 的旧倍率，重试不复利、原版资源不变。零号区序章的断风游猎·守同样提前准备基准（375 血），独立生成入口与岛内共享规则。
+
+验证（L2）：干净 worktree 仅应用本次改动后，相关源码守卫 89 PASS / 0 FAIL，2 项外部制品检查按 source-only 标 PARTIAL；Windows 正式编译成功（既有 RuntimeGate CS0649），临时游戏副本的自动部署未成功，不用于替换实际游戏 DLL。四组执行回归全部通过：SkyIslandEncounters 773、SkyIslandStory 54612、SkyIslandValidationJudges 156、F3AutotestJudges 330 条断言。15 项 Wiki 守卫、中英 Wiki 构建、80 项导航、237 页 / 39145 引用检查通过，0 缺失 / 0 锚点错误。新 / 修改守卫的 6 项变异在临时副本逐次转红并按字节还原转绿，包含注释掉序章强化。未启动游戏或读取玩家存档；L3 待实机，不把离线结果当成实战保证。
+
+数值速查：匠首 1200、猎首 675、穗镰 915、观星手 600、截信人 255、听雨人 450、蚋笛翁 240、镜中客 330、断风追 / 伏 / 守 339 / 285 / 375、折翎 622.5、守钟装置 480、噬风及回响 3000、普通精英 270（均为基础血量）。完整 Wiki 快照进 `tests/fixtures/SkyIslandEncounters/VanillaCombatReference.json`，回退调整统一倍率或恢复本次修改前的档案和装配代码，不迁移玩家存档。
+
 <!-- BEGIN JEFF FRUIT TRACKER 2026-09-26 -->
 
 ## 2026-09-26 Jeff 任务、菜地收获与三形态生产链审查（COMPAT / WIRE+ / OPERATIONAL）

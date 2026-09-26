@@ -76,6 +76,7 @@ namespace UnityEngine
         public static Vector3 up { get { return new Vector3(0,1,0); } }
         public static Vector3 down { get { return new Vector3(0,-1,0); } }
         public static Vector3 forward { get { return new Vector3(0,0,1); } }
+        public static Vector3 left { get { return new Vector3(-1,0,0); } }
         public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z); }
         public static Vector3 operator -(Vector3 a, Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
         public static Vector3 operator *(Vector3 a, float b) { return new Vector3(a.x*b,a.y*b,a.z*b); }
@@ -104,11 +105,11 @@ namespace UnityEngine
         { hit = new RaycastHit { point = p + Vector3.down * 2, transform = Ground }; return true; }
         public static bool CheckCapsule(Vector3 a, Vector3 b, float radius, int mask, QueryTriggerInteraction ignore) { return false; }
     }
-    public static class Time { public static float time; }
+    public static class Time { public static float time; public static float unscaledTime { get { return time; } } }
     public static class Resources { public static T[] FindObjectsOfTypeAll<T>() { return (T[])(object)new[] { CharacterRandomPreset.Source }; } }
     public static class Debug { public static void LogWarning(string value) { } }
 }
-namespace Duckov.Utilities { public static class GameplayDataSettings { public static class Layers { public static int wallLayerMask = 2; } } }
+namespace Duckov.Utilities { public static class GameplayDataSettings { public static class Layers { public struct Mask { public int value; } public static Mask groundLayerMask = new Mask { value = 1 }; public static int wallLayerMask = 2; } } }
 namespace Pathfinding
 {
     public struct GraphMask { }
@@ -159,9 +160,13 @@ public class CharacterMainControl : UnityEngine.Component
 }
 public class CharacterRandomPreset : UnityEngine.Object
 {
+    public float health, damageMultiplier, moveSpeedFactor, bulletSpeedMultiplier, gunDistanceMultiplier, gunScatterMultiplier, gunCritRateGain, nightVisionAbility, aiCombatFactor, sightDistance, hearingAbility, reactionTime, shootDelay, nightReactionTimeFactor, meleeDamageMultiplier;
+    public bool setMeleeDamageMultiplier;
+    public int exp;
+    public string nameKey;
     public bool isBoss, isZombie, dropBoxOnDead, setActiveByPlayerDistance;
     public Teams team;
-    internal static CharacterRandomPreset Source = new CharacterRandomPreset { name="Scav", team=Teams.scav };
+    internal static CharacterRandomPreset Source = new CharacterRandomPreset { name="Scav", nameKey="Cname_Scav", team=Teams.scav, health=45f, damageMultiplier=0.9f, moveSpeedFactor=1f, meleeDamageMultiplier=1f, bulletSpeedMultiplier=0.75f, gunDistanceMultiplier=1f, gunScatterMultiplier=0.65f, nightVisionAbility=0.5f, aiCombatFactor=1f, sightDistance=17f, hearingAbility=1f, reactionTime=0.5f, shootDelay=0.2f, nightReactionTimeFactor=1.5f, exp=20 };
     internal static readonly List<CharacterRandomPreset> Clones = new List<CharacterRandomPreset>();
     internal static readonly List<CharacterMainControl> Created = new List<CharacterMainControl>();
     internal static TaskCompletionSource<CharacterMainControl> Block;
@@ -172,6 +177,7 @@ public class CharacterRandomPreset : UnityEngine.Object
     {
         if (Block != null) return Block.Task;
         CharacterMainControl character = CharacterMainControl.Create(!MissingHealth); character.transform.position = point;
+        if (character.Health != null) character.Health.MaxHealth = character.Health.CurrentHealth = health;
         Created.Add(character); return Task.FromResult(character);
     }
 }

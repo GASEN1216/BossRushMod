@@ -29,6 +29,7 @@
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStormEchoRules.cs" Link="Production/SkyIslandStormEchoRules.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStormEchoReward.cs" Link="Production/SkyIslandStormEchoReward.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandBossRules.cs" Link="Production/SkyIslandBossRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandCombatBalance.cs" Link="Production/SkyIslandCombatBalance.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandChatterLines.cs" Link="Production/SkyIslandChatterLines.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
     <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />

@@ -7,7 +7,7 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>
-    /// COMPAT：区域接近生成，沿用官方装备、伤害、经验；地图拥有角色、preset 与战利品。
+    /// COMPAT：区域接近生成，沿用官方装备与经验，战斗基础属性按原版参照提升 50%；地图拥有角色、preset 与战利品。
     ///
     /// 刷新口径（2026-09-09 可玩性复审后定）：
     /// - **自动组按出击刷新**：每次进岛都会重新生成，出击图应当每趟都有风险。
@@ -445,7 +445,8 @@ namespace BossRush
                     // 夜限定带队白天不刷：位置留着，玩家夜里走近时再补（SkyIslandBossForge.LeadWaitsForNight）。
                     if (LeadWaiting(encounter, i)) continue;
                     Vector3 point = FindGround(encounter.Marker, i);
-                    CharacterRandomPreset clone = UnityEngine.Object.Instantiate(sources[PresetIndex(encounter.Id, i)]);
+                    CharacterRandomPreset source = sources[PresetIndex(encounter.Id, i)];
+                    CharacterRandomPreset clone = UnityEngine.Object.Instantiate(source);
                     clone.name = "BossRush_SkyIsland_" + encounter.Id;
                     // 正式独立出击沿用官方 CharacterMainControl.OnDead 箱子、经验与魂语义。
                     clone.dropBoxOnDead = true;
@@ -455,6 +456,8 @@ namespace BossRush
                     try
                     {
                         // 在途 preset 仅由当前 async 栈拥有，场景退出无权提前销毁。
+                        SkyIslandEnemyTier tier = encounter.Definition.TierFor(i);
+                        SkyIslandCombatPreset.Apply(clone, source, encounter.Id, i, tier);
                         created = await clone.CreateCharacterAsync(point, Vector3.forward, -1, null, false);
                         if (created == null) throw new InvalidOperationException("官方角色创建失败");
                         SkyIslandEnemyLife life = created.gameObject.AddComponent<SkyIslandEnemyLife>();
@@ -470,7 +473,6 @@ namespace BossRush
                         created.SetTeam(Teams.wolf);
                         // 断风游猎（SkyIslandBossRules.IsRivalFaction）整组换成另一阵营：官方 Team.IsEnemy 下与玩家、与岛上其余敌人都敌对。
                         if (encounter.RivalFaction) created.SetTeam(Teams.bear);
-                        SkyIslandEnemyTier tier = encounter.Definition.TierFor(i);
                         SkyIslandEnemyTiers.ApplyAi(ai, tier);
                         ApplyIdentity(created, encounter, i, tier);
                         // 头顶气泡：头目 / 岛主 / 具名对手在身份层里挂过自己的台词组件，噬风按人设不说话；
@@ -503,7 +505,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 身份层：具名剧情对手保留自己的脸与名字（只吃数值），其余按档次装饰。
+        /// 身份层：具名剧情对手保留自己的脸与名字（数值已在克隆 preset 上准备），其余按档次装饰。
         /// 噬风的相位编排挂在带队者身上，死亡回调由它自己派发，不与清场记账争 owner。
         /// </summary>
         private void ApplyIdentity(CharacterMainControl created, Encounter encounter, int index, SkyIslandEnemyTier tier)

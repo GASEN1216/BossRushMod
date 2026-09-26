@@ -1,5 +1,4 @@
 using System;
-using ItemStatsSystem;
 using UnityEngine;
 
 namespace BossRush
@@ -7,8 +6,8 @@ namespace BossRush
     /// <summary>
     /// COMPAT：把官方拾荒者 preset 改造成天空岛自己的敌人档次。
     ///
-    /// 三层都是**可失败的装饰**，任一失败都不影响这场战斗能不能打完（口径同战役终章 Boss）：
-    /// 1. 数值：只改 `CharacterItem` 上的 stat，伤害倍率封顶 3；
+    /// 外观与身份都是**可失败的装饰**，任一失败都不影响这场战斗能不能打完（口径同战役终章 Boss）：
+    /// 基础数值在创建角色前由 SkyIslandCombatPreset 按 Wiki ×1.5 准备；
     /// 2. 外观：只缩放 `characterModel`，**不动角色 transform**——碰撞体与导航半径保持官方口径，
     ///    体型变化不会带来物理/寻路成本或穿模；
     /// 3. 染色：走 `MaterialPropertyBlock`，绝不碰 `sharedMaterial`（会污染同款所有敌人）。
@@ -20,43 +19,11 @@ namespace BossRush
         private static readonly int BaseColorProperty = Shader.PropertyToID("_BaseColor");
         private static MaterialPropertyBlock colorBlock;
 
-        /// <summary>
-        /// 血量倍率。**必须随档次严格递增**：折翎（Champion，单挑 count=1）曾经是 2.2，
-        /// 比守航标的断风游猎（Elite 2.6，还带一名随从共 3.6）还软，主线高潮反而降级。
-        /// 现在 4.5 让单挑略高于守卫组；钟守是 Champion + 2 名随从，合计 6.5。
-        /// 噬风从 18 降到 13：相位从 2 次加到 4 次后，靠编排而不是血条长度制造压力。
-        /// </summary>
-        internal static float HealthMultiplier(SkyIslandEnemyTier tier)
-        {
-            if (tier == SkyIslandEnemyTier.Storm) return 13f;
-            if (tier == SkyIslandEnemyTier.Champion) return 4.5f;
-            if (tier == SkyIslandEnemyTier.Elite) return 2.6f;
-            return 1f;
-        }
-
-        /// <summary>伤害倍率与官方 Boss 口径一致，封顶 3；同样必须随档次递增，具名对手不得弱于精英。</summary>
-        internal static float DamageMultiplier(SkyIslandEnemyTier tier)
-        {
-            if (tier == SkyIslandEnemyTier.Storm) return 1.8f;
-            if (tier == SkyIslandEnemyTier.Champion) return 1.55f;
-            if (tier == SkyIslandEnemyTier.Elite) return 1.35f;
-            return 1f;
-        }
-
         /// <summary>只作用于模型，不改碰撞体。具名剧情对手保持原体型。</summary>
         internal static float ModelScale(SkyIslandEnemyTier tier)
         {
             if (tier == SkyIslandEnemyTier.Storm) return 1.9f;
             if (tier == SkyIslandEnemyTier.Elite) return 1.18f;
-            return 1f;
-        }
-
-        /// <summary>反应速度只给精英以上提升，普通敌人保持官方手感；与血量/伤害一样随档次递增。</summary>
-        internal static float ReactionSpeedup(SkyIslandEnemyTier tier)
-        {
-            if (tier == SkyIslandEnemyTier.Storm) return 1.7f;
-            if (tier == SkyIslandEnemyTier.Champion) return 1.45f;
-            if (tier == SkyIslandEnemyTier.Elite) return 1.3f;
             return 1f;
         }
 
@@ -98,7 +65,7 @@ namespace BossRush
 
         /// <summary>
         /// 把档次应用到已创建的角色。preset 已由生成流程克隆过，改它不会污染官方角色池。
-        /// `Champion` 只吃数值与 AI：折翎和钟守有自己的脸和名字，染色与放大会毁掉他们的辨识度。
+        /// `Champion` 只接身份与 AI 追踪距离：折翎和钟守有自己的脸和名字，染色与放大会毁掉他们的辨识度。
         /// </summary>
         internal static void Apply(CharacterMainControl character, SkyIslandEnemyTier tier)
         {
@@ -111,16 +78,13 @@ namespace BossRush
             if (decorate && tier != SkyIslandEnemyTier.Scav)
                 ApplyName(character, tier, NameKey(tier), NameCn(tier), NameEn(tier));
             if (tier == SkyIslandEnemyTier.Scav) return;
-            ApplyStats(character, tier);
             if (!decorate) return;
             ApplyModelScale(character, tier);
             ApplyTint(character, tier);
         }
 
         /// <summary>
-        /// 数值层是**乘法**（血量 `*=`、反应时间 `/=`），重复施加会复利：
-        /// 噬风的 18 倍血跑两遍就是 324 倍。用角色身上的一次性标记挡住重入，
-        /// 将来补位重生 / 重新绑定档次时也不会悄悄叠上去。
+        /// 一次性标记挡住重复挂身份和外观。战斗数值已在克隆 preset 上准备，不在这里叠加。
         /// </summary>
         private static bool MarkApplied(CharacterMainControl character)
         {
@@ -133,12 +97,11 @@ namespace BossRush
             return true;
         }
 
-        /// <summary>具名剧情对手：数值走 `Champion`，名字用角色自己的。</summary>
+        /// <summary>具名剧情对手：名字用角色自己的，数值已在生成前准备。</summary>
         internal static void ApplyStoryChampion(CharacterMainControl character, string id, string nameCn, string nameEn)
         {
             if (character == null || !MarkApplied(character)) return;
             ApplyName(character, SkyIslandEnemyTier.Champion, "BossRush_SkyIsland_Foe_" + id, nameCn, nameEn);
-            ApplyStats(character, SkyIslandEnemyTier.Champion);
         }
 
         /// <summary>
@@ -165,26 +128,6 @@ namespace BossRush
                 if (tier != SkyIslandEnemyTier.Scav) character.characterPreset.showName = true;
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandEnemy] 变体名失败：" + e.Message); }
-        }
-
-        private static void ApplyStats(CharacterMainControl character, SkyIslandEnemyTier tier)
-        {
-            try
-            {
-                Item item = character.CharacterItem;
-                if (item == null) return;
-                float health = HealthMultiplier(tier);
-                Stat maxHealth = item.GetStat("MaxHealth".GetHashCode());
-                if (maxHealth != null) maxHealth.BaseValue *= health;
-                // 先改上限再同步当前血量，否则角色以旧血量出场。
-                if (character.Health != null) character.Health.SetHealth(character.Health.MaxHealth);
-                float damage = Mathf.Min(DamageMultiplier(tier), 3f);
-                Stat gun = item.GetStat("GunDamageMultiplier".GetHashCode());
-                if (gun != null) gun.BaseValue *= damage;
-                Stat melee = item.GetStat("MeleeDamageMultiplier".GetHashCode());
-                if (melee != null) melee.BaseValue *= damage;
-            }
-            catch (Exception e) { Debug.LogWarning("[SkyIslandEnemy] 数值倍率失败：" + e.Message); }
         }
 
         private static void ApplyModelScale(CharacterMainControl character, SkyIslandEnemyTier tier)
@@ -254,7 +197,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// AI 参数：反应时间越短反应越快，因此用除法；和官方 Boss 倍率写法一致。
+        /// AI 追踪距离保持天空岛布局口径；反应与射击延迟由生成前的基准统一设置。
         ///
         /// 用**独立**的标记组件，不能和 <see cref="SkyIslandEnemyTierMark"/> 共用：
         /// `AICharacterController` 常常就挂在角色本体上，共用一个标记会让先跑的
@@ -272,11 +215,7 @@ namespace BossRush
             try
             {
                 ai.forceTracePlayerDistance = TraceDistance(tier);
-                float speedup = ReactionSpeedup(tier);
-                if (Mathf.Approximately(speedup, 1f)) return;
-                ai.baseReactionTime /= speedup;
-                ai.reactionTime /= speedup;
-                ai.shootDelay /= speedup;
+
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandEnemy] AI 调参失败：" + e.Message); }
         }

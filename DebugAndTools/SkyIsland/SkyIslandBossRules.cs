@@ -78,7 +78,8 @@ namespace BossRush
         internal string NoteId;
         /// <summary>DuckNpcs.json 的捏脸蓝图 id；空表示沿用底模 preset 的脸。</summary>
         internal string FaceId;
-        internal float Health, Damage, Reaction, Scale;
+        internal string VanillaPresetId;
+        internal float Scale;
         internal SkyIslandBossGearPiece[] Gear;
         /// <summary>「这一趟没掉专属装备」的权重：岛主为 0（必出一件），头目大于 0。</summary>
         internal int NoDropWeight;
@@ -122,7 +123,7 @@ namespace BossRush
         internal const string WindhunterStalkerNote = "Chief_WindhunterStalker";
         internal const string WindhunterWardenNote = "Chief_WindhunterWarden";
 
-        /// <summary>有效血量排序用的参考穿甲：官方护甲公式 2/(clamp(护甲-穿甲)+2)。</summary>
+        /// <summary>有效血量估算用的参考穿甲：官方护甲公式 2/(clamp(护甲-穿甲)+2)。</summary>
         internal const double ReferencePierce = 2.0;
 
         /// <summary>玩家逃出一个预警圈所需的最低速度（米/秒）。与噬风同一条判据：必须 ≤ 5.5（正常跑动可达）。</summary>
@@ -450,7 +451,7 @@ namespace BossRush
             {
                 EncounterId = "G", Index = 0, Kind = SkyIslandBossKind.Foreman, Tier = SkyIslandEnemyTier.Lord, Id = "Foreman",
                 NameKey = "BossRush_SkyIsland_Lord_Foreman", NoteId = ForemanNote, FaceId = "skyboss_foreman",
-                Health = 7.0f, Damage = 1.65f, Reaction = 1.55f, Scale = 1.12f, NoDropWeight = 0,
+                VanillaPresetId = "EnemyPreset_Boss_Alex", Scale = 1.12f, NoDropWeight = 0,
                 Gear = new[]
                 {
                     Piece("Helmat", BossRushItemIds.SkyIslandStarbrassVisorHelm, 35),
@@ -467,7 +468,7 @@ namespace BossRush
             {
                 EncounterId = "S4", Index = 0, Kind = SkyIslandBossKind.Stargazer, Tier = SkyIslandEnemyTier.Chief, Id = "Stargazer",
                 NameKey = "BossRush_SkyIsland_Chief_Stargazer", NoteId = StargazerNote, FaceId = "skyboss_stargazer",
-                Health = 3.4f, Damage = 1.45f, Reaction = 1.38f, Scale = 1.0f, NoDropWeight = 70,
+                VanillaPresetId = "EnemyPreset_Boss_3Shot", Scale = 1.0f, NoDropWeight = 70,
                 Gear = new[] { Piece("Helmat", BossRushItemIds.SkyIslandStargazerLensHelm, 30) }
             },
             // 【五栏】小环境：D 悬根林 · 风标底下的大根树林地，树根间到处是能钻人的根洞
@@ -479,7 +480,7 @@ namespace BossRush
             {
                 EncounterId = "D", Index = 0, Kind = SkyIslandBossKind.RootHunter, Tier = SkyIslandEnemyTier.Lord, Id = "RootHunter",
                 NameKey = "BossRush_SkyIsland_Lord_RootHunter", NoteId = RootHunterNote, FaceId = "skyboss_roothunter",
-                Health = 6.2f, Damage = 1.6f, Reaction = 1.5f, Scale = 1.08f, NoDropWeight = 0,
+                VanillaPresetId = "EnemyPreset_Boss_Hunter", Scale = 1.08f, NoDropWeight = 0,
                 Gear = new[]
                 {
                     Piece("FaceMask", BossRushItemIds.SkyIslandRootweaveMask, 35),
@@ -496,7 +497,7 @@ namespace BossRush
             {
                 EncounterId = "S2", Index = 0, Kind = SkyIslandBossKind.Waylayer, Tier = SkyIslandEnemyTier.Chief, Id = "Waylayer",
                 NameKey = "BossRush_SkyIsland_Chief_Waylayer", NoteId = WaylayerNote, FaceId = "skyboss_waylayer",
-                Health = 3.2f, Damage = 1.4f, Reaction = 1.4f, Scale = 1.0f, NoDropWeight = 70,
+                VanillaPresetId = "EnemyPreset_Boss_Speedy", Scale = 1.0f, NoDropWeight = 70,
                 Gear = new[] { Piece("Backpack", BossRushItemIds.SkyIslandOldMailbag, 30) }
             },
             // 【五栏】小环境：C 青穗梯田 · 水车渠与谷仓之间，一层层的田埂和闸口
@@ -508,7 +509,7 @@ namespace BossRush
             {
                 EncounterId = "C", Index = 0, Kind = SkyIslandBossKind.Sickle, Tier = SkyIslandEnemyTier.Lord, Id = "Sickle",
                 NameKey = "BossRush_SkyIsland_Lord_Sickle", NoteId = SickleNote, FaceId = "skyboss_sickle",
-                Health = 6.6f, Damage = 1.62f, Reaction = 1.52f, Scale = 1.14f, NoDropWeight = 0,
+                VanillaPresetId = "EnemyPreset_Boss_Tagilla", Scale = 1.14f, NoDropWeight = 0,
                 Gear = new[]
                 {
                     Piece("Helmat", BossRushItemIds.SkyIslandGreenearStrawHat, 35),
@@ -525,7 +526,7 @@ namespace BossRush
             {
                 EncounterId = "S3", Index = 0, Kind = SkyIslandBossKind.Listener, Tier = SkyIslandEnemyTier.Chief, Id = "Listener",
                 NameKey = "BossRush_SkyIsland_Chief_Listener", NoteId = ListenerNote, FaceId = "skyboss_listener",
-                Health = 3.6f, Damage = 1.42f, Reaction = 1.36f, Scale = 1.0f, NoDropWeight = 70,
+                VanillaPresetId = "EnemyPreset_Boss_Grenade", Scale = 1.0f, NoDropWeight = 70,
                 Gear = new[] { Piece("Headset", BossRushItemIds.SkyIslandRainhushEarmuffs, 30) }
             },
             // 【五栏】小环境：S1 蛙鸣池 · 夜里的池边，云蚋贴着水面打转
@@ -537,7 +538,7 @@ namespace BossRush
             {
                 EncounterId = "S1", Index = 0, Kind = SkyIslandBossKind.Piper, Tier = SkyIslandEnemyTier.Chief, Id = "Piper",
                 NameKey = "BossRush_SkyIsland_Chief_Piper", NoteId = PiperNote, FaceId = "skyboss_piper",
-                Health = 3.0f, Damage = 1.38f, Reaction = 1.34f, Scale = 1.0f, NoDropWeight = 70, NightOnly = true,
+                VanillaPresetId = "EnemyPreset_Boss_Fly", Scale = 1.0f, NoDropWeight = 70, NightOnly = true,
                 Gear = new[] { Piece("FaceMask", BossRushItemIds.SkyIslandMossgauzeMask, 30) }
             },
             // 【五栏】小环境：F 镜水寺 · 夜里的镜池与大殿之间，池面把人影照得一清二楚
@@ -549,7 +550,7 @@ namespace BossRush
             {
                 EncounterId = "F", Index = 0, Kind = SkyIslandBossKind.Mirror, Tier = SkyIslandEnemyTier.Chief, Id = "Mirror",
                 NameKey = "BossRush_SkyIsland_Chief_Mirror", NoteId = MirrorNote, FaceId = "skyboss_mirror",
-                Health = 3.6f, Damage = 1.48f, Reaction = 1.42f, Scale = 1.04f, NoDropWeight = 70, NightOnly = true,
+                VanillaPresetId = "EnemyPreset_Boss_Vida", Scale = 1.04f, NoDropWeight = 70, NightOnly = true,
                 Gear = new[] { Piece("Armor", BossRushItemIds.SkyIslandMirrorgrainPlate, 30) }
             },
             // 【五栏】小环境：K1 西北回程捷径的中继平台，桥面窄、两头通风
@@ -561,7 +562,7 @@ namespace BossRush
             {
                 EncounterId = "K1_Relay", Index = 0, Kind = SkyIslandBossKind.Windhunter, Tier = SkyIslandEnemyTier.Chief, Id = "WindhunterChaser",
                 NameKey = "BossRush_SkyIsland_Chief_WindhunterChaser", NoteId = WindhunterChaserNote, FaceId = "skyboss_windhunter_chaser",
-                Health = 3.0f, Damage = 1.44f, Reaction = 1.42f, Scale = 1.0f, NoDropWeight = 60, RivalFaction = true, Variant = WindhunterChaser,
+                VanillaPresetId = "EnemyPreset_Boss_Speedy_Ice", Scale = 1.0f, NoDropWeight = 60, RivalFaction = true, Variant = WindhunterChaser,
                 Gear = new[] { Piece("Armor", BossRushItemIds.SkyIslandWindbreakMantle, 40) }
             },
             // 【五栏】小环境：K2 东侧回程捷径的中继平台，平台边缘有掩体
@@ -573,7 +574,7 @@ namespace BossRush
             {
                 EncounterId = "K2_Relay", Index = 0, Kind = SkyIslandBossKind.Windhunter, Tier = SkyIslandEnemyTier.Chief, Id = "WindhunterStalker",
                 NameKey = "BossRush_SkyIsland_Chief_WindhunterStalker", NoteId = WindhunterStalkerNote, FaceId = "skyboss_windhunter_stalker",
-                Health = 3.0f, Damage = 1.44f, Reaction = 1.42f, Scale = 1.0f, NoDropWeight = 60, RivalFaction = true, Variant = WindhunterStalker,
+                VanillaPresetId = "EnemyPreset_Boss_Deng", Scale = 1.0f, NoDropWeight = 60, RivalFaction = true, Variant = WindhunterStalker,
                 Gear = new[] { Piece("Backpack", BossRushItemIds.SkyIslandWindbreakPack, 40) }
             },
             // 【五栏】小环境：K3 中央回程捷径的中继平台，离风铃集最近
@@ -585,7 +586,7 @@ namespace BossRush
             {
                 EncounterId = "K3_Relay", Index = 0, Kind = SkyIslandBossKind.Windhunter, Tier = SkyIslandEnemyTier.Chief, Id = "WindhunterWarden",
                 NameKey = "BossRush_SkyIsland_Chief_WindhunterWarden", NoteId = WindhunterWardenNote, FaceId = "skyboss_windhunter_warden",
-                Health = 3.0f, Damage = 1.44f, Reaction = 1.42f, Scale = 1.0f, NoDropWeight = 60, RivalFaction = true, Variant = WindhunterWarden,
+                VanillaPresetId = "EnemyPreset_Boss_BALeader", Scale = 1.0f, NoDropWeight = 60, RivalFaction = true, Variant = WindhunterWarden,
                 Gear = new[] { Piece("Helmat", BossRushItemIds.SkyIslandWindbreakHood, 40) }
             }
         };
@@ -825,7 +826,7 @@ namespace BossRush
             return 2.0 / (Math.Max(0.0, Math.Min(999.0, armor - pierce)) + 2.0);
         }
 
-        /// <summary>按参考穿甲折算的有效血量倍率：血量倍率 ÷ 身甲减伤系数。档次排序用它，而不是只看血量倍率。</summary>
+        /// <summary>按参考穿甲折算的有效血量：Wiki 基础血量 × 1.5 ÷ 身甲减伤系数。</summary>
         internal static double EffectiveHealth(SkyIslandBossProfile profile)
         {
             if (profile == null) return 0.0;
@@ -836,7 +837,8 @@ namespace BossRush
                     SkyIslandBossGearSpec spec = GearSpec(profile.Gear[i].TypeId);
                     if (spec != null && spec.StatKey == "BodyArmor") bodyArmor += spec.StatValue;
                 }
-            return profile.Health / ArmorFactor(bodyArmor, ReferencePierce);
+            return SkyIslandCombatBalance.Find(profile.VanillaPresetId).Health * SkyIslandCombatBalance.Multiplier
+                / ArmorFactor(bodyArmor, ReferencePierce);
         }
 
         /// <summary>这份存档是否已经打倒过这位头目 / 岛主（首杀手记在不在）。只管首杀字幕与手记进度，不影响刷新与掉落。</summary>

@@ -515,6 +515,8 @@ namespace BossRush
                 clone.name = "BossRush_SkyIslandPrelude_Galebreaker";
                 clone.dropBoxOnDead = true;
                 clone.setActiveByPlayerDistance = false;
+                // 序章与岛内的守共用基准；Forge 只装身份、装备与招式，数值必须在官方创建前准备。
+                SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief);
                 position = GroundPoint(position);
                 created = await clone.CreateCharacterAsync(position, Vector3.left, -1, null, false);
                 if (created == null) throw new InvalidOperationException("官方角色创建失败");

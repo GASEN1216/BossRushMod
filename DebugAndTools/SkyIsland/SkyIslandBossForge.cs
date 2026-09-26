@@ -38,7 +38,7 @@ namespace BossRush
     ///
     /// 五层都是**可失败的装饰**（口径同 <see cref="SkyIslandEnemyTiers"/>），任一失败都不影响这场战斗能不能打完：
     /// 1. 名字、血条名与 Boss 图标（改克隆 preset，不污染官方角色池）；
-    /// 2. 数值与反应（乘法，<see cref="SkyIslandBossMark"/> 挡重入）；
+    /// 2. 数值与反应已由 SkyIslandCombatPreset 在生成前按 Wiki ×1.5 准备；
     /// 3. 配装事务（照 Mode H 装配器：先问 prefab、换下来的官方随机装备销毁、任一件失败整批回收）；
     /// 4. 只缩放 `characterModel`，不动角色 transform（碰撞体与导航半径保持官方口径）；
     /// 5. 专属掉落组件与招式控制器。
@@ -65,8 +65,6 @@ namespace BossRush
             }
             created.gameObject.AddComponent<SkyIslandBossMark>();
             ApplyIdentity(created, profile);
-            ApplyStats(created, profile);
-            ApplyReaction(created, profile);
             if (!string.IsNullOrEmpty(profile.FaceId)) SkyIslandResidents.ApplyBattleFace(created, profile.FaceId);
             string reason;
             if (!TryEquip(created, profile, out reason))
@@ -117,42 +115,6 @@ namespace BossRush
                     BossRushEagerReflectionCache.CharacterRandomPreset_CharacterIconType.SetValue(preset, CharacterIconTypes.boss);
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 名字与图标失败：" + e.Message); }
-        }
-
-        private static void ApplyStats(CharacterMainControl created, SkyIslandBossProfile profile)
-        {
-            try
-            {
-                Item item = created.CharacterItem;
-                if (item == null) return;
-                Stat maxHealth = item.GetStat("MaxHealth".GetHashCode());
-                if (maxHealth != null) maxHealth.BaseValue *= profile.Health;
-                // 先改上限再同步当前血量，否则角色以旧血量出场。
-                if (created.Health != null) created.Health.SetHealth(created.Health.MaxHealth);
-                float damage = Mathf.Min(profile.Damage, 3f);
-                Stat gun = item.GetStat("GunDamageMultiplier".GetHashCode());
-                if (gun != null) gun.BaseValue *= damage;
-                Stat melee = item.GetStat("MeleeDamageMultiplier".GetHashCode());
-                if (melee != null) melee.BaseValue *= damage;
-            }
-            catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 数值倍率失败：" + e.Message); }
-        }
-
-        /// <summary>
-        /// 反应速度。遭遇 owner 在分派前已按档次跑过 `SkyIslandEnemyTiers.ApplyAi`：新档次的反应倍率走默认分支（1），
-        /// 追踪距离取精英以上的 85 米，所以这里只乘档案自己的倍率，不会复利。
-        /// </summary>
-        private static void ApplyReaction(CharacterMainControl created, SkyIslandBossProfile profile)
-        {
-            try
-            {
-                AICharacterController ai = created.GetComponentInChildren<AICharacterController>();
-                if (ai == null || Mathf.Approximately(profile.Reaction, 1f)) return;
-                ai.baseReactionTime /= profile.Reaction;
-                ai.reactionTime /= profile.Reaction;
-                ai.shootDelay /= profile.Reaction;
-            }
-            catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] AI 调参失败：" + e.Message); }
         }
 
         private static void ApplyScale(CharacterMainControl created, SkyIslandBossProfile profile)

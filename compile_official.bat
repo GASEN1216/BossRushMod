@@ -226,6 +226,8 @@ echo(DebugAndTools\SkyIsland\SkyIslandMapFog.cs
 echo(DebugAndTools\SkyIsland\SkyIslandRewardCrate.cs
 echo(DebugAndTools\SkyIsland\SkyIslandScavenging.cs
 echo(DebugAndTools\SkyIsland\SkyIslandEnemyTier.cs
+echo(DebugAndTools\SkyIsland\SkyIslandCombatBalance.cs
+echo(DebugAndTools\SkyIsland\SkyIslandCombatPreset.cs
 echo(DebugAndTools\SkyIsland\SkyIslandEnemyTiers.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStormBoss.cs
 echo(DebugAndTools\SkyIsland\SkyIslandBounty.cs
