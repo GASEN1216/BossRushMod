@@ -201,8 +201,8 @@ Available。这样调整章节表不需要迁移存档，也不会出现「存�
 | 文件 | 改动 |
 | --- | --- |
 | `Utilities/PlayerLifecycleRuntimeHooks.cs` | ±2 行订阅/退订采集器 |
-| `LootAndRewards/LootAndRewardsVictoryRewards.cs` | +1 行 `NotifyCampaignStandardCleared()` |
-| `ModeD/ModeDWaves.cs` | +1 行 `NotifyCampaignModeDWaveComplete(modeDWaveIndex)` |
+| `LootAndRewards/LootAndRewards.cs` | +1 行 `NotifyCampaignStandardCleared()` |
+| `ModeD/ModeD.cs` | +1 行 `NotifyCampaignModeDWaveComplete(modeDWaveIndex)` |
 | `ModeF/ModeFExtraction.cs` | +1 行 `NotifyCampaignModeFExtracted()`，**必须在 ExitModeF 之前** |
 | `ZombieMode/ZombieModeExtractionController.cs` | +1 行 `NotifyCampaignZombieExtracted()`，**必须早于场景切换** |
 | `Integration/BossRushIntegration.cs` | +2 个 deferred 步骤（建筑注入、线索注册） |

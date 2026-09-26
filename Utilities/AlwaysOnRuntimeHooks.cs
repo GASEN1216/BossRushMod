@@ -217,7 +217,7 @@ namespace BossRush
 
                 try
                 {
-                    _mapSpawnRegistry.Initialize(modPath);
+                    BossRushMapRuntime.Initialize(modPath);
                 }
                 catch (System.Exception e)
                 {

@@ -17,7 +17,10 @@
         "ModConfigApi"
       ],
       "data": [],
-      "tests": [],
+      "tests": [
+        "tests/fixtures/HostMapArenaOwners",
+        "tests/fixtures/HostUtilityOwners"
+      ],
       "docs": [],
       "rules": [
         "AGENTS.md"
@@ -101,7 +104,7 @@
         "Utilities/**/*.cs"
       ],
       "entry": "Utilities/ModeRuntimeHooks.cs",
-      "state_owner": "OfficialQuestRuntimeModule / ModeEFSpawnPreparation / ModeEFMerchantCatalog / ModeEFMerchantRuntime / ModeEFSpawnPostprocessScheduler / ModeEFVirtualSpawnerRegistry / EnemySpawnRuntime / EnemyRecoveryMonitor / ModeEFEnemySpawnRuntime / ModeEFEnemyRegistry / SteamPlatformInfo",
+      "state_owner": "OfficialQuestRuntimeModule / ModeEFSpawnPreparation / ModeEFMerchantCatalog / ModeEFMerchantRuntime / ModeEFSpawnPostprocessScheduler / ModeEFVirtualSpawnerRegistry / EnemySpawnRuntime / EnemyRecoveryMonitor / ModeEFEnemySpawnRuntime / ModeEFEnemyRegistry / SteamPlatformInfo, BossStatScaling, BossRushWaitCache, ZombieSpawnSanitizer",
       "public_api": [
         "ModeRuntimeHooks",
         "EnemySpawnRuntime"
@@ -589,7 +592,7 @@
         "MapSelection/**/*.cs"
       ],
       "entry": "MapSelection/BossRushMapSelectionHelper.cs",
-      "state_owner": "BossRushMapSelectionHelper",
+      "state_owner": "BossRushMapSelectionHelper, BossRushMapRuntime",
       "public_api": [
         "BossRushMapSelectionHelper"
       ],

@@ -780,7 +780,7 @@ namespace BossRush
         {
             try
             {
-                FieldInfo field = typeof(ModBehaviour).GetField("bossRushArenaPlanned", 
+                FieldInfo field = typeof(WavesArenaRuntimeModule).GetField("bossRushArenaPlanned",
                     BindingFlags.NonPublic | BindingFlags.Static);
                 if (field != null)
                 {

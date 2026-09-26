@@ -43,7 +43,7 @@ def main():
     assert "coroutineHost.StartCoroutine(enemyRecoveryMonitor.DelayedBossPositionValidation(character, 0.5f));" in body,"original coroutine host and delay must survive module teardown"
     assert "enemyRecoveryMonitor.RegisterEnemyRecoveryAnchor(character, position);" in body,"spawn must register anchor with shared recovery service"
     assert "BindSpawnPostprocessServices();\n            BindArenaSpawnServices();" in registration,"legacy spawn services bind at the original module assembly phase"
-    bindings=read("WavesArena/WavesArenaBossSpawning.cs")
+    bindings=read("WavesArena/WavesArena.cs")
     for statement in ("wavesArenaRuntime.BindLegacySpawnServices(", "wavesArenaRuntime.BindLootBoxPolicies(() => config != null, () => config.lootBoxBlocksBullets);"):
         assert statement in bindings,"Arena dependencies must bind explicitly: "+statement
     for statement in (

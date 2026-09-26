@@ -21,6 +21,8 @@ using ItemStatsSystem;
 using ItemStatsSystem.Items;
 using Duckov.Utilities;
 
+using SharedModeEnemyEquipmentMaterializationPlan = BossRush.ModeDItemPool.SharedModeEnemyEquipmentMaterializationPlan;
+
 namespace BossRush
 {
     /// <summary>
@@ -29,6 +31,8 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        #region ModeD
+
         #region Mode D 状态变量
         
         private bool modeDActive { get { return modeDRuntime.modeDActive; } set { modeDRuntime.modeDActive = value; } }
@@ -190,6 +194,88 @@ namespace BossRush
         internal void ClearModeDEnemyRecoveryState() { ClearEnemyRecoveryMonitorState(); }
         internal void ClearModeDMutators(string mode) { ClearMutatorsForMode(mode); }
         internal void InitializeModeDEnemyPoolsForRuntime() { InitializeModeDEnemyPools(); }
+
+        #endregion
+
+        #endregion
+
+        #region ModeDStaticCacheReset
+
+        private static void ResetModeDStaticCaches()
+        {
+            ModeDRuntimeModule.ResetStaticCaches();
+        }
+
+        #endregion
+
+        #region ModeDEquipmentHostBridge
+
+        private void BindModeDItemPoolQueries()
+        {
+            modeDItemPool.BindQueries(wavesArenaRuntime,
+                () => config != null && config.useLegacyBossLootProbabilities,
+                () => modeDActive && IsCampaignConfiguredEnabled() && CampaignObjectiveTracker.NeedsMeleeStarterKit(),
+                IsZombieModeRewardCandidateAllowed);
+        }
+
+        private void GivePlayerStarterKit() { modeDItemPool.GivePlayerStarterKit(); }
+        private Duckov.Utilities.Tag FindTagByName(string tagName) { return modeDItemPool.FindTagByName(tagName); }
+        private void TryPrewarmModeDGlobalItemPool() { modeDItemPool.TryPrewarmModeDGlobalItemPool(); }
+        private void EnsureModeDGlobalItemPool() { modeDItemPool.EnsureModeDGlobalItemPool(); }
+        public void EquipEnemyForModeD(CharacterMainControl enemy, int waveIndex, float enemyHealth, bool isBoss = false)
+        { modeDItemPool.EquipEnemyForModeD(enemy, waveIndex, enemyHealth, isBoss); }
+        internal Item CreateRandomGlobalItemForModeD(int minQ, int maxQ) { return modeDItemPool.CreateRandomGlobalItemForModeD(minQ, maxQ); }
+        internal Item CreateRandomGlobalItemForModeD(int minQ, int maxQ, float enemyHealth) { return modeDItemPool.CreateRandomGlobalItemForModeD(minQ, maxQ, enemyHealth); }
+        private SharedModeEnemyEquipmentMaterializationPlan CreateSharedModeEnemyEquipmentMaterializationPlan(CharacterMainControl enemy, int waveIndex, float enemyHealth, bool isBoss)
+        { return modeDItemPool.CreateSharedModeEnemyEquipmentMaterializationPlan(enemy, waveIndex, enemyHealth, isBoss); }
+        private bool MaterializeNextSharedModeEnemyEquipmentPlanStep(CharacterMainControl enemy, SharedModeEnemyEquipmentMaterializationPlan plan)
+        { return modeDItemPool.MaterializeNextSharedModeEnemyEquipmentPlanStep(enemy, plan); }
+        private void CleanupSharedModeEnemyEquipmentMaterializationPlan(SharedModeEnemyEquipmentMaterializationPlan plan)
+        { modeDItemPool.CleanupSharedModeEnemyEquipmentMaterializationPlan(plan); }
+
+        #endregion
+
+        #region ModeDWaves
+
+        public bool ModeDStartNextWave() { return modeDRuntime.ModeDStartNextWave(); }
+        internal void TickModeDIntegrity(float deltaTime) { modeDRuntime.TickModeDIntegrity(deltaTime); }
+        internal void OnModeDWaveComplete() { modeDRuntime.OnModeDWaveComplete(); }
+        private void NormalizeDamageMultiplier(CharacterMainControl character) { modeDRuntime.NormalizeDamageMultiplier(character); }
+        private EnemyPresetInfo GetRandomBossPreset() { return modeDRuntime.GetRandomBossPreset(); }
+        private EnemyPresetInfo GetRandomMinionPreset() { return modeDRuntime.GetRandomMinionPreset(); }
+        private Vector3[] GenerateFallbackSpawnPointsAroundPlayer(Vector3 position, int pointCount = 10, float minRadius = 8f, float maxRadius = 15f)
+        { return modeDRuntime.GenerateFallbackSpawnPointsAroundPlayer(position, pointCount, minRadius, maxRadius); }
+
+        // 保持 D / Arena 在原调度位置共用完整性时钟的语义。
+        internal float ModeDIntegrityCheckTimer { get { return waveIntegrityCheckTimer; } set { waveIntegrityCheckTimer = value; } }
+        internal int ModeDConfiguredEnemiesPerWave { get { return config != null ? config.modeDEnemiesPerWave : 0; } }
+        internal void ShowModeDEnemyBanner(string name, Vector3 position, Vector3 playerPosition, int current, int total, bool infinite, int wave, int bosses)
+        { ShowEnemyBanner_UIAndSigns(name, position, playerPosition, current, total, infinite, wave, bosses); }
+        internal void SpawnModeDEnemyCore(EnemyPresetInfo preset, Vector3 position, bool isBoss, Func<bool> isActiveCheck,
+            Action<EnemySpawnContext> onSpawned, Action onFailed, int waveIndex)
+        { SpawnEnemyCore(preset, position, isBoss, isActiveCheck, onSpawned, onFailed, waveIndex); }
+        internal void RegisterModeDEnemyRecoveryAnchor(CharacterMainControl enemy, Vector3 anchor) { RegisterEnemyRecoveryAnchor(enemy, anchor); }
+        internal void CheckModeDFlawlessAchievementForRuntime() { CheckModeDFlawlessAchievement(); }
+        internal void CheckModeDClearAchievementsForRuntime() { CheckModeDClearAchievements(); }
+
+        #endregion
+
+        #region ModeDInteractables
+
+        public void SetupSignForModeD() { modeDRuntime.SetupSignForModeD(bossRushSignInteract); }
+        public void ShowModeDNextWaveOption() { modeDRuntime.ShowModeDNextWaveOption(); }
+        public void HideModeDNextWaveOption() { modeDRuntime.HideModeDNextWaveOption(); }
+        public void ClearAllBossRushLootboxes() { modeDRuntime.ClearAllBossRushLootboxes(); }
+        public void ClearEmptyBossRushLootboxes() { modeDRuntime.ClearEmptyBossRushLootboxes(); }
+
+        #endregion
+
+        #region ModeDGlobalLootStaticCacheReset
+
+        private static void ResetModeDGlobalLootStaticCaches()
+        {
+            ModeDItemPool.ResetGlobalLootStaticCaches();
+        }
 
         #endregion
     }

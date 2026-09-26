@@ -10,7 +10,7 @@ REGISTRATION = Path('ModBehaviourRuntimeModules.cs')
 HOST = Path('ModBehaviour.cs')
 CLEANUP = Path('Utilities/AlwaysOnRuntimeHooks.cs')
 RANDOM = Path('RandomEvents/RandomEventsRuntimeModuleHostBridge.cs')
-ARENA = Path('WavesArena/WavesArenaEnemyMaintenance.cs')
+ARENA = Path('WavesArena/WavesArena.cs')
 
 
 def read(path):

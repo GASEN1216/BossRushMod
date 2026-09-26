@@ -50,7 +50,7 @@ def main() -> int:
     if not block:
         return fail("VictoryRewardShadowCrateFlowGuard: missing OnAllEnemiesDefeated_LootAndRewards block")
 
-    host = Path("LootAndRewards/LootAndRewardsVictoryRewards.cs").read_text(encoding="utf-8")
+    host = Path("LootAndRewards/LootAndRewards.cs").read_text(encoding="utf-8")
     if "wavesArenaRuntime.OnAllEnemiesDefeated_LootAndRewards();" not in host:
         return fail("VictoryRewardShadowCrateFlowGuard: legacy victory entry does not forward to the arena module")
 

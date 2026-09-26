@@ -20,10 +20,6 @@ BOOTSTRAP = Path("Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs")
 LOOT_PARTS = [
     Path("LootAndRewards/LootAndRewards.cs"),
     Path("WavesArena/WavesArenaRuntimeModule_LootTracking.cs"),
-    Path("LootAndRewards/LootAndRewardsInfiniteHell.cs"),
-    Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
-    Path("LootAndRewards/LootAndRewardsRandomBossLoot.cs"),
-    Path("LootAndRewards/LootAndRewardsSpecialLoot.cs"),
     Path("WavesArena/WavesArenaRuntimeModule_SpecialLoot.cs"),
 ]
 

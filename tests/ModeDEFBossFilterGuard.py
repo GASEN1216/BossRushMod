@@ -8,7 +8,7 @@ from cs_source_util import clean_source
 import sys
 
 
-MODED_WAVES = Path("ModeD/ModeDWaves.cs")
+MODED_WAVES = Path("ModeD/ModeD.cs")
 MODED_SELECTION = Path("ModeD/ModeDRuntimeModule_Selection.cs")
 MODEE_BATTLE = Path("Utilities/ModeEFEnemySpawnRuntime.cs")
 MODEF_RESPAWN = Path("ModeF/ModeFRespawn.cs")

@@ -10,7 +10,7 @@ import json
 import sys
 
 
-SOURCE = Path("ModBehaviour.cs")
+SOURCE = Path("MapSelection/BossRushMapRuntime.cs")
 REGISTRY = Path("Common/MapConfig/MapSpawnPointRegistry.cs")
 SPAWN_POINTS_DIR = Path("Assets/SpawnPoints")
 
@@ -54,7 +54,10 @@ def extract_block(text: str, signature: str) -> str:
 
 def main() -> int:
     text = SOURCE.read_text(encoding="utf-8")
-    block = extract_block(text, "public static BossRushMapConfig[] GetAllMapConfigs()")
+    bridge = extract_block(Path("ModBehaviour.cs").read_text(encoding="utf-8"), "public static BossRushMapConfig[] GetAllMapConfigs()")
+    if "return BossRushMapRuntime.GetAllMapConfigs();" not in bridge:
+        return fail("host must forward map enumeration to the map owner")
+    block = extract_block(text, "internal static BossRushMapConfig[] GetAllMapConfigs()")
     if not block:
         return fail("missing GetAllMapConfigs block")
 

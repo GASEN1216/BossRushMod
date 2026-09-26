@@ -1,11 +1,11 @@
 # Boss生成失败处理
 
-> 2026-09-25 迁移注：波次状态与倒计时由 `WavesArenaRuntimeModule` 持有，实际逻辑分别见 [倒计时](file://WavesArena/WavesArenaRuntimeModule_Countdown.cs)、[死亡与推波](file://WavesArena/WavesArenaRuntimeModule_WaveDeaths.cs)、[Boss 选择与重试生成](file://WavesArena/WavesArenaRuntimeModule_BossSpawning.cs)、[掉落状态](file://WavesArena/WavesArenaRuntimeModule_LootState.cs)。`WavesArena.cs`、`WavesArenaBossSpawning.cs` 保留兼容入口；下面旧流程图中的类名按原设计语义理解。
+> 2026-09-25 迁移注：波次状态与倒计时由 `WavesArenaRuntimeModule` 持有，实际逻辑分别见 [倒计时](file://WavesArena/WavesArenaRuntimeModule_Countdown.cs)、[死亡与推波](file://WavesArena/WavesArenaRuntimeModule_WaveDeaths.cs)、[Boss 选择与重试生成](file://WavesArena/WavesArenaRuntimeModule_BossSpawning.cs)、[掉落状态](file://WavesArena/WavesArenaRuntimeModule_LootState.cs)。`WavesArena.cs` 保留兼容入口；下面旧流程图中的类名按原设计语义理解。
 
 <cite>
 **本文引用的文件**
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [EnemySpawnCore.cs](file://Utilities/EnemySpawnCore.cs)
 - [ModBehaviour.cs](file://ModBehaviour.cs)
 - [ZombieModeSpawner.cs](file://ZombieMode/ZombieModeSpawner.cs)
@@ -33,7 +33,7 @@ Boss 生成失败处理涉及三个层次：
 
 ```mermaid
 graph TB
-A["波次调度<br/>WavesArena.cs"] --> B["生成入口<br/>WavesArenaBossSpawning.cs"]
+A["波次调度<br/>WavesArena.cs"] --> B["生成入口<br/>WavesArena.cs"]
 B --> C["单Boss生成<br/>SpawnBossWithVerificationAsync"]
 B --> D["多Boss批量生成<br/>SpawnMultipleBossesWithVerificationAsync"]
 C --> E["通用生成核心<br/>SpawnEnemyAtPositionAsync / EnemySpawnCore"]
@@ -43,13 +43,13 @@ E --> F["失败统一处理<br/>OnBossSpawnFailed"]
 
 图表来源
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [ModBehaviour.cs:1002-1206](file://ModBehaviour.cs#L1002-L1206)
 - [EnemySpawnCore.cs:594-800](file://Utilities/EnemySpawnCore.cs#L594-L800)
 
 章节来源
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [ModBehaviour.cs:1002-1206](file://ModBehaviour.cs#L1002-L1206)
 - [EnemySpawnCore.cs:594-800](file://Utilities/EnemySpawnCore.cs#L594-L800)
 
@@ -63,7 +63,7 @@ E --> F["失败统一处理<br/>OnBossSpawnFailed"]
 
 章节来源
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [ModBehaviour.cs:1002-1206](file://ModBehaviour.cs#L1002-L1206)
 - [EnemySpawnCore.cs:594-800](file://Utilities/EnemySpawnCore.cs#L594-L800)
 
@@ -104,7 +104,7 @@ end
 
 图表来源
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [ModBehaviour.cs:1002-1206](file://ModBehaviour.cs#L1002-L1206)
 - [EnemySpawnCore.cs:594-800](file://Utilities/EnemySpawnCore.cs#L594-L800)
 
@@ -141,8 +141,8 @@ Proceed --> End
 - 资源加载失败：CharacterRandomPreset.CreateCharacterAsync 或特殊Boss专用生成方法抛异常。处理：捕获异常并记录堆栈；在核心层设置 currentPreset=null 以触发下一次随机重试；超过最大尝试次数后返回失败。
 
 章节来源
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [ModBehaviour.cs:1002-1206](file://ModBehaviour.cs#L1002-L1206)
 - [EnemySpawnCore.cs:618-746](file://Utilities/EnemySpawnCore.cs#L618-L746)
 
@@ -174,11 +174,11 @@ T1 --> |否| Fail["调用 OnBossSpawnFailed 或推进波次"]
 ```
 
 图表来源
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [EnemySpawnCore.cs:618-746](file://Utilities/EnemySpawnCore.cs#L618-L746)
 
 章节来源
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [EnemySpawnCore.cs:618-746](file://Utilities/EnemySpawnCore.cs#L618-L746)
 
 ### 指数退避算法评估
@@ -188,7 +188,7 @@ T1 --> |否| Fail["调用 OnBossSpawnFailed 或推进波次"]
 - 建议：如需增强鲁棒性，可在重试间隔上引入指数增长（例如 200ms * 2^(attempt-1)），并结合抖动（jitter）避免同步峰值。
 
 章节来源
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 
 ### 异常处理与日志记录最佳实践
 - 生成入口：捕获所有异常并记录堆栈，确保上层能感知失败并继续重试或降级。
@@ -213,7 +213,7 @@ T1 --> |否| Fail["调用 OnBossSpawnFailed 或推进波次"]
   - 特殊Boss分支：关注专用生成方法的异常日志，识别资源或配置问题。
 
 章节来源
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [ModBehaviour.cs:1002-1206](file://ModBehaviour.cs#L1002-L1206)
 
 ## 依赖关系分析
@@ -224,7 +224,7 @@ T1 --> |否| Fail["调用 OnBossSpawnFailed 或推进波次"]
 
 ```mermaid
 graph LR
-WA["WavesArena.cs"] --> WB["WavesArenaBossSpawning.cs"]
+WA["WavesArena.cs"] --> WB["WavesArena.cs"]
 WB --> MB["ModBehaviour.cs"]
 MB --> EC["EnemySpawnCore.cs"]
 EC --> OB["OnBossSpawnFailed (WavesArena.cs)"]
@@ -232,13 +232,13 @@ EC --> OB["OnBossSpawnFailed (WavesArena.cs)"]
 
 图表来源
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [ModBehaviour.cs:1002-1206](file://ModBehaviour.cs#L1002-L1206)
 - [EnemySpawnCore.cs:594-800](file://Utilities/EnemySpawnCore.cs#L594-L800)
 
 章节来源
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [ModBehaviour.cs:1002-1206](file://ModBehaviour.cs#L1002-L1206)
 - [EnemySpawnCore.cs:594-800](file://Utilities/EnemySpawnCore.cs#L594-L800)
 
@@ -253,7 +253,7 @@ EC --> OB["OnBossSpawnFailed (WavesArena.cs)"]
 
 章节来源
 - [EnemySpawnCore.cs:198-248](file://Utilities/EnemySpawnCore.cs#L198-L248)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 
 ## 故障排查指南
 - 常见问题定位：
@@ -270,7 +270,7 @@ EC --> OB["OnBossSpawnFailed (WavesArena.cs)"]
   - 增加重试间隔或最大重试次数，提升鲁棒性。
 
 章节来源
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [ModBehaviour.cs:1002-1206](file://ModBehaviour.cs#L1002-L1206)
 
 ## 结论

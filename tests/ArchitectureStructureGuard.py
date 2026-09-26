@@ -26,10 +26,10 @@ INTEGRATION_RUNTIME_HOOKS = Path("Integration/BossRushIntegration.cs")
 AFFINITY_RUNTIME_HOOKS = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
 AFFINITY_RUNTIME_HOST_BRIDGE = Path("Integration/IntegrationHostCompatibility.cs")
 AUDI0_RUNTIME_HOOKS = Path("Audio/BossRushAudioHooks.cs")
-LOOT_RUNTIME_HOOKS = Path("LootAndRewards/LootAndRewardsRuntimeHooks.cs")
+LOOT_RUNTIME_HOOKS = Path("LootAndRewards/LootAndRewards.cs")
 GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
 MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
-WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
+WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArena.cs")
 WAVES_RUNTIME_TICK = Path("WavesArena/WavesArenaRuntimeModule_Tick.cs")
 WAVES_ENTRY_FLOW = Path("WavesArena/BossRushEntryFlow.cs")
 WAVES_ENEMY_MAINTENANCE = Path("WavesArena/WavesArenaRuntimeModule_EnemyMaintenance.cs")
@@ -70,12 +70,12 @@ REQUIRED_COMPILE_SOURCES = [
     "Integration/BossRushIntegration.cs",
     "Integration/Affinity/AffinityRuntimeHooks.cs",
     "Audio/BossRushAudioHooks.cs",
-    "LootAndRewards/LootAndRewardsRuntimeHooks.cs",
+    "LootAndRewards/LootAndRewards.cs",
     "WavesArena/WavesArenaRuntimeModule_Tick.cs",
     "Utilities/GameplayRuntimeHooks.cs",
     "Utilities/ModeRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
-    "WavesArena/WavesArenaRuntimeHooks.cs",
+    "WavesArena/WavesArena.cs",
     "WavesArena/BossRushEntryFlow.cs",
     "WavesArena/WavesArenaRuntimeModule_EnemyMaintenance.cs",
     "WavesArena/WavesArenaSpawnerControl.cs",
@@ -168,7 +168,7 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: runtime module registration missing DebugToolsRuntimeModule")
     if "achievementRuntime = new AchievementRuntimeModule();" not in registration_text or "runtimeModuleHost.Register(achievementRuntime);" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing AchievementRuntimeModule")
-    if "runtimeModuleHost.Register(new CommonNpcRuntimeModule());" not in registration_text:
+    if "commonNpcRuntime = new CommonNpcRuntimeModule();" not in registration_text or "runtimeModuleHost.Register(commonNpcRuntime);" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing CommonNpcRuntimeModule")
     for module_name in [
         "WavesArenaRuntimeModule",
@@ -247,7 +247,7 @@ def main() -> int:
     for required in [
         "string modPath = GetModPath();",
         "EntityModelFactory.Initialize(modPath);",
-        "_mapSpawnRegistry.Initialize(modPath);",
+        "BossRushMapRuntime.Initialize(modPath);",
         "InitializeAffinitySystem();",
     ]:
         if required not in always_on_deferred_body:

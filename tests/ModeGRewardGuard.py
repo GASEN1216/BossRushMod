@@ -33,7 +33,7 @@ import sys
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REWARD = os.path.join(REPO_ROOT, "ModeG", "ModeGRewardTransaction.cs")
 SPAWN = os.path.join(REPO_ROOT, "ModeG", "ModeGSpawnTransaction.cs")
-ENTRY = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewardsVictoryRewards.cs")
+ENTRY = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewards.cs")
 PRODUCER = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_VictoryRewards.cs")
 MATERIALIZER = os.path.join(REPO_ROOT, "LootAndRewards", "VictoryRewardShadowCrateController.cs")
 

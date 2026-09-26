@@ -33,7 +33,7 @@ namespace BossRush
         private readonly BossRushRuntimeModuleHost runtimeModuleHost = new BossRushRuntimeModuleHost();
 
         // 地图刷新点注册表（JSON 数据源）
-        private static readonly MapSpawnPointRegistry _mapSpawnRegistry = new MapSpawnPointRegistry();
+        private readonly BossRushMapRuntime mapRuntime = new BossRushMapRuntime();
 
         // ============================================================================
         // BossRush map config runtime data
@@ -41,7 +41,7 @@ namespace BossRush
         // ============================================================================
 
         // 当前地图使用的刷新点（根据场景动态选择）
-        private Vector3[] currentMapSpawnPoints = null;
+
 
         // ============================================================================
         // BossRush 地图配置查询方法
@@ -51,115 +51,56 @@ namespace BossRush
         /// 根据运行时场景名获取地图配置
         /// </summary>
         public static BossRushMapConfig GetMapConfigBySceneName(string sceneName)
-        {
-            if (string.IsNullOrEmpty(sceneName)) return null;
-            return _mapSpawnRegistry.TryGet(sceneName);
-        }
+        { return BossRushMapRuntime.GetMapConfigBySceneName(sceneName); }
 
         /// <summary>
         /// 根据加载用场景ID获取地图配置
         /// </summary>
         public static BossRushMapConfig GetMapConfigBySceneID(string sceneID)
-        {
-            if (string.IsNullOrEmpty(sceneID)) return null;
-
-            // 优先从注册表遍历查找（按 sceneID 匹配）
-            foreach (var config in _mapSpawnRegistry.All())
-            {
-                if (config.sceneID == sceneID)
-                {
-                    return config;
-                }
-            }
-
-            return null;
-        }
+        { return BossRushMapRuntime.GetMapConfigBySceneID(sceneID); }
 
         /// <summary>
         /// 获取当前场景的地图配置
         /// </summary>
         public static BossRushMapConfig GetCurrentMapConfig()
-        {
-            string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            return GetMapConfigBySceneName(currentScene);
-        }
+        { return BossRushMapRuntime.GetCurrentMapConfig(); }
 
         /// <summary>
         /// 获取所有地图配置
         /// </summary>
         public static BossRushMapConfig[] GetAllMapConfigs()
-        {
-            return _mapSpawnRegistry.All().ToArray();
-        }
+        { return BossRushMapRuntime.GetAllMapConfigs(); }
 
         /// <summary>
         /// 检查指定场景是否是有效的 BossRush 竞技场场景
         /// </summary>
         public bool IsValidBossRushArenaScene(string sceneName)
-        {
-            return GetMapConfigBySceneName(sceneName) != null;
-        }
+        { return mapRuntime.IsValidBossRushArenaScene(sceneName); }
 
         /// <summary>
         /// 检查当前场景是否是有效的 BossRush 竞技场场景
         /// </summary>
         public bool IsCurrentSceneValidBossRushArena()
-        {
-            return GetCurrentMapConfig() != null;
-        }
+        { return mapRuntime.IsCurrentSceneValidBossRushArena(); }
 
         /// <summary>
         /// 获取指定场景的刷新点
         /// </summary>
         public static Vector3[] GetSpawnPointsForScene(string sceneName)
-        {
-            BossRushMapConfig mapConfig = GetMapConfigBySceneName(sceneName);
-            return mapConfig != null ? mapConfig.spawnPoints : null;
-        }
+        { return BossRushMapRuntime.GetSpawnPointsForScene(sceneName); }
 
         /// <summary>
         /// 公共 NPC 共享的刷新/漫步点池。
         /// Mode E 和普通模式优先复用快递员普通模式点位；其他 BossRush 相关模式使用地图 Boss 刷新点池。
         /// </summary>
         public static Vector3[] GetSharedCommonNPCSpawnPointsForScene(string sceneName)
-        {
-            ModBehaviour mod = Instance;
-            if (mod != null && mod.ShouldUseBossRushCommonNPCSpawnPoints(sceneName))
-            {
-                return GetSpawnPointsForScene(sceneName);
-            }
-
-            Vector3[] normalModePoints = NPCSpawnConfig.GetCourierNormalModeSpawnPoints(sceneName);
-            if (normalModePoints != null && normalModePoints.Length > 0)
-            {
-                return normalModePoints;
-            }
-
-            return GetSpawnPointsForScene(sceneName);
-        }
+        { ModBehaviour mod = Instance; return CommonNpcRuntimeModule.GetSharedCommonNPCSpawnPointsForScene(sceneName, mod != null ? mod.commonNpcRuntime : null); }
 
         /// <summary>
         /// 当前是否应让公共 NPC 使用 BossRush 地图刷怪点池。
         /// </summary>
         public bool ShouldUseBossRushCommonNPCSpawnPoints(string sceneName = null)
-        {
-            if (UsesArenaSupportNpcPlacement())
-            {
-                return false;
-            }
-
-            if (!IsActive && !IsModeDActive && !IsBossRushArenaActive)
-            {
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(sceneName))
-            {
-                sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            }
-
-            return IsValidBossRushArenaScene(sceneName);
-        }
+        { return commonNpcRuntime.ShouldUseBossRushCommonNPCSpawnPoints(sceneName); }
 
         /// <summary>
         /// BossRush 激活且非 Mode E 时，仅随机刷新一个支援型公共 NPC。
@@ -173,61 +114,20 @@ namespace BossRush
         /// 获取当前场景的刷新点
         /// </summary>
         public Vector3[] GetCurrentSceneSpawnPoints()
-        {
-            // 优先使用动态设置的刷新点
-            if (currentMapSpawnPoints != null && currentMapSpawnPoints.Length > 0)
-            {
-                return currentMapSpawnPoints;
-            }
-
-            BossRushMapConfig mapConfig = GetCurrentMapConfig();
-            return mapConfig != null ? mapConfig.spawnPoints : null;
-        }
+        { return mapRuntime.GetCurrentSceneSpawnPoints(); }
 
         /// <summary>
         /// 获取当前场景的默认传送位置（用于玩家传送、路牌位置等）
         /// 优先使用 customSpawnPos，其次使用 defaultSignPos，最后使用 DEMO 竞技场默认位置
         /// </summary>
         public static Vector3 GetCurrentSceneDefaultPosition()
-        {
-            BossRushMapConfig mapConfig = GetCurrentMapConfig();
-            if (mapConfig != null)
-            {
-                // 优先使用自定义传送位置
-                if (mapConfig.customSpawnPos.HasValue)
-                {
-                    return mapConfig.customSpawnPos.Value;
-                }
-                // 其次使用默认路牌位置
-                if (mapConfig.defaultSignPos.HasValue)
-                {
-                    return mapConfig.defaultSignPos.Value;
-                }
-            }
-            // 兜底：DEMO 竞技场默认位置
-            return new Vector3(235.48f, -7.99f, 202.41f);
-        }
+        { return BossRushMapRuntime.GetCurrentSceneDefaultPosition(); }
 
         /// <summary>
         /// 获取指定场景的默认传送位置
         /// </summary>
         public static Vector3 GetDefaultPositionForScene(string sceneName)
-        {
-            BossRushMapConfig mapConfig = GetMapConfigBySceneName(sceneName);
-            if (mapConfig != null)
-            {
-                if (mapConfig.customSpawnPos.HasValue)
-                {
-                    return mapConfig.customSpawnPos.Value;
-                }
-                if (mapConfig.defaultSignPos.HasValue)
-                {
-                    return mapConfig.defaultSignPos.Value;
-                }
-            }
-            // 兜底：DEMO 竞技场默认位置
-            return new Vector3(235.48f, -7.99f, 202.41f);
-        }
+        { return BossRushMapRuntime.GetDefaultPositionForScene(sceneName); }
 
         // 公共方法：获取竞技场场景名称（DEMO竞技场，保留兼容）
         public string GetArenaSceneName()
@@ -259,52 +159,7 @@ namespace BossRush
 
         // 配置当前BossRush模式（支持无间炼狱标记）
         public void ConfigureBossRushMode(int bossesPerWave, bool useInfiniteHell)
-        {
-            // [DEBUG] 记录传入参数
-            DevLog("[BossRush] ConfigureBossRushMode 调用: 传入 bossesPerWave=" + bossesPerWave + ", useInfiniteHell=" + useInfiniteHell + ", 当前 this.bossesPerWave=" + this.bossesPerWave);
-
-            if (bossesPerWave < 1)
-            {
-                bossesPerWave = 1;
-            }
-
-            infiniteHellMode = useInfiniteHell;
-
-            // 无间炼狱模式下优先使用配置文件中的每波 Boss 数
-            if (infiniteHellMode && config != null && config.infiniteHellBossesPerWave > 0)
-            {
-                this.bossesPerWave = config.infiniteHellBossesPerWave;
-                DevLog("[BossRush] ConfigureBossRushMode: 无间炼狱模式，使用配置值 this.bossesPerWave=" + this.bossesPerWave);
-            }
-            else
-            {
-                this.bossesPerWave = bossesPerWave;
-                DevLog("[BossRush] ConfigureBossRushMode: 普通模式，设置 this.bossesPerWave=" + this.bossesPerWave);
-            }
-
-            // 重置无间炼狱进度状态
-            if (infiniteHellMode)
-            {
-                infiniteHellWaveIndex = 0;
-                infiniteHellCashPool = 0L;
-                infiniteHellMilestoneRewardTier = 0;
-
-                try
-                {
-                    if (bossRushSignInteract != null)
-                    {
-                        bossRushSignInteract.AddAmmoRefillOption();
-                    }
-                }
-                catch {}
-            }
-
-            try
-            {
-                DevLog("[BossRush] 已设置每波Boss数量: " + this.bossesPerWave + (infiniteHellMode ? " (无间炼狱)" : string.Empty));
-            }
-            catch {}
-        }
+        { wavesArenaRuntime.ConfigureBossRushMode(bossesPerWave, useInfiniteHell); }
 
         private void EnsureAmmoShop()
         {
@@ -312,20 +167,7 @@ namespace BossRush
         }
 
         public void ShowAmmoShop()
-        {
-            try
-            {
-                // 每次打开加油站时重置 ID 105 购买计数
-                item105PurchaseCount = 0;
-
-                EnsureAmmoShop();
-                if (ammoShop != null)
-                {
-                    ammoShop.ShowUI();
-                }
-            }
-            catch {}
-        }
+        { bossRushIntegrationRuntime.ShowAmmoShop(); }
 
         // Boss管理
         private MonoBehaviour currentBoss
@@ -334,7 +176,7 @@ namespace BossRush
             set { wavesArenaRuntime.CurrentBoss = value; }
         }
         internal MonoBehaviour CurrentBossForWavesArena { get { return currentBoss; } }
-        private MonoBehaviour playerCharacter;  // CharacterMainControl
+        private MonoBehaviour playerCharacter { get { return wavesArenaRuntime.PlayerCharacter; } set { wavesArenaRuntime.PlayerCharacter = value; } }
         private int currentEnemyIndex
         {
             get { return wavesArenaRuntime.CurrentEnemyIndex; }
@@ -343,27 +185,9 @@ namespace BossRush
         // 记录由 BossRush 自己生成的“大兴兴”Boss，用于区分原版 DEMO 地图刷出的同名 Boss
         private HashSet<CharacterMainControl> bossRushOwnedDaXingXing { get { return wavesArenaRuntime.OwnedDaXingXing; } }
         // 状态
-        public bool IsActive { get; private set; }
+        public bool IsActive { get { return wavesArenaRuntime != null && wavesArenaRuntime.IsActive; } }
         private void SetBossRushRuntimeActive(bool active)
-        {
-            IsActive = active;
-            ClearEnemyRecoveryMonitorState();
-
-            // [Bug修复] BossRush开始时确保订阅龙息Buff处理器
-            // 无论玩家手上拿什么武器，龙裔遗族Boss的龙息都应该能触发龙焰灼烧
-            if (active)
-            {
-                DragonBreathBuffHandler.Subscribe();
-            }
-
-            // 模式结束时清理变异词条和现金磁铁飞行状态
-            if (!active)
-            {
-                MutatorManager.RemoveAll();
-                MutatorUI.HideAll();
-                ClearCashMagnetState();
-            }
-        }
+        { wavesArenaRuntime.SetBossRushRuntimeActive(active); }
 
         // UI提示（字段定义已移动到 UIAndSigns 部分类中）
 
@@ -394,20 +218,11 @@ namespace BossRush
             return SceneRuntimeGate.CanRunGameplayRuntimeNow(sceneName);
         }
 
-        private static int _staticCanRunFrame = -1;
-        private static bool _staticCanRunResult;
+
+
 
         internal static bool CanRunGameplayRuntimeCached()
-        {
-            int frame = Time.frameCount;
-            if (frame != _staticCanRunFrame)
-            {
-                _staticCanRunFrame = frame;
-                _staticCanRunResult = SceneRuntimeGate.CanRunGameplayRuntimeNow(
-                    SceneManager.GetActiveScene().name);
-            }
-            return _staticCanRunResult;
-        }
+        { return SceneRuntimeGate.CanRunGameplayRuntimeCached(); }
 
         internal static bool ShouldRunGameplaySceneRuntimeHooks(string sceneName)
         {
@@ -415,45 +230,10 @@ namespace BossRush
         }
 
         internal bool IsBaseHubBoatInteractable(InteractableBase interactable)
-        {
-            if (interactable == null || interactable.gameObject == null)
-            {
-                return false;
-            }
-
-            if (interactable is BossRushInteractable)
-            {
-                return false;
-            }
-
-            string sceneName = string.Empty;
-            try { sceneName = interactable.gameObject.scene.name; } catch { }
-            if (!IsBaseHubSceneName(sceneName))
-            {
-                return false;
-            }
-
-            string goName = interactable.gameObject.name ?? string.Empty;
-            bool isMainInteract = goName == "Interact" || interactable.interactableGroup;
-            bool isSubInteract = goName.Contains("_");
-            if (!isMainInteract || isSubInteract)
-            {
-                return false;
-            }
-
-            string path = GetGameObjectPath(interactable.gameObject);
-            return path.IndexOf("Boat", StringComparison.OrdinalIgnoreCase) >= 0;
-        }
+        { return uiAndSignsRuntime.IsBaseHubBoatInteractable(interactable); }
 
         internal bool TryInjectBaseHubBoatInteractable(InteractableBase interactable)
-        {
-            if (!IsBaseHubBoatInteractable(interactable))
-            {
-                return false;
-            }
-
-            return InjectIntoInteractableBaseGroup(interactable);
-        }
+        { return uiAndSignsRuntime.TryInjectBaseHubBoatInteractable(interactable); }
 
         // DevMode 仅保留源码硬编码开关，不再暴露给玩家配置。
         // 常规源码默认保持 false；本地开发调试请使用 compile_dev.bat 注入 BOSSRUSH_DEV。
@@ -471,13 +251,9 @@ namespace BossRush
             }
         }
 
-        // 保留的婚姻系统测试面板（仅 DevMode）
-        private bool marriageTestUIVisible = false;
-        private Rect marriageTestWindowRect = new Rect(430f, 40f, 560f, 760f);
-        private Vector2 marriageTestLogScroll = Vector2.zero;
-        private string marriageTestLog = "";
 
-        private StockShop ammoShop;
+
+
 
         // 手动维护的掉落黑名单（不希望进入 Boss 掉落 / 通关奖励池的物品 ID）
 
@@ -487,8 +263,8 @@ namespace BossRush
         private static int bossRushTicketTypeId { get { return IntegrationRuntimeModule.BossRushTicketTypeId; } set { IntegrationRuntimeModule.BossRushTicketTypeId = value; } }
 
         // BossRush 进入 DEMO 挑战场景的来源标记
-        private static bool bossRushArenaPlanned = false;  // 通过 BossRush 启动的 DEMO 挑战加载已发起但尚未完成
-        private static bool bossRushArenaActive = false;   // 当前 DEMO 挑战场景是否处于 BossRush 控制之下
+        private static bool bossRushArenaPlanned { get { return WavesArenaRuntimeModule.ArenaPlanned; } set { WavesArenaRuntimeModule.ArenaPlanned = value; } }  // 通过 BossRush 启动的 DEMO 挑战加载已发起但尚未完成
+        private static bool bossRushArenaActive { get { return WavesArenaRuntimeModule.ArenaActive; } set { WavesArenaRuntimeModule.ArenaActive = value; } }   // 当前 DEMO 挑战场景是否处于 BossRush 控制之下
 
         /// <summary>
         /// 竞技场是否激活（通关后仍为true，直到离开场景）
@@ -892,52 +668,7 @@ namespace BossRush
 
 
         public void ReturnToBossRushStart()
-        {
-            try
-            {
-                CharacterMainControl main = null;
-                try
-                {
-                    main = CharacterMainControl.Main;
-                }
-                catch {}
-
-                if (main == null)
-                {
-                    try
-                    {
-                        main = playerCharacter as CharacterMainControl;
-                    }
-                    catch {}
-                }
-
-                if (main == null)
-                {
-                    DevLog("[BossRush] ReturnToBossRushStart: 无法找到玩家角色");
-                    return;
-                }
-
-                Vector3 targetPos = demoChallengeStartPosition;
-                if (targetPos == Vector3.zero)
-                {
-                    targetPos = main.transform.position;
-                }
-
-                try
-                {
-                    main.SetPosition(targetPos);
-                    DevLog("[BossRush] ReturnToBossRushStart: 使用 SetPosition 将玩家传送回 BossRush 起始位置 " + targetPos);
-                }
-                catch (Exception e)
-                {
-                    DevLog("[BossRush] ReturnToBossRushStart: SetPosition 出错: " + e.Message + "，改用 transform.position");
-                    main.transform.position = targetPos;
-                }
-
-                ShowMessage(L10n.T("已返回出生点", "Returned to spawn point"));
-            }
-            catch {}
-        }
+        { wavesArenaRuntime.ReturnToBossRushStart(); }
     }
 
     public class EnemyPresetInfo

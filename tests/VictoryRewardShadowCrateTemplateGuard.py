@@ -11,7 +11,7 @@ import sys
 REWARD_SOURCES = [
     Path("WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs"),
     Path("LootAndRewards/LootAndRewards.cs"),
-    Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
+    Path("LootAndRewards/LootAndRewards.cs"),
 ]
 VISUAL_SOURCE = Path("LootAndRewards/VictoryRewardShadowCrateController.cs")
 

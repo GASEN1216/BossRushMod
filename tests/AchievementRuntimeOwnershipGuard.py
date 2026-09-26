@@ -57,7 +57,8 @@ def main():
             'achievementRuntime.BindRuntimeQueries(() => IsActive, () => modeDRuntime.IsActive, () => wavesArenaRuntime.InfiniteHellMode, () => wavesArenaRuntime.BossesPerWave, () => config != null, () => config.achievementHotkey);',
             'achievementRuntime.BindMedalShopQueries(IsBaseHubNormalMerchantShop, BaseSceneName);',
             'runtimeModuleHost.Register(achievementRuntime);',
-            'runtimeModuleHost.Register(new CommonNpcRuntimeModule());'],
+            'commonNpcRuntime = new CommonNpcRuntimeModule();',
+            'runtimeModuleHost.Register(commonNpcRuntime);'],
             'same achievement instance must bind original live queries before registration at its original slot')
         assert registration.count('new AchievementRuntimeModule()') == 1, 'achievement runtime must be constructed once'
         assert 'InitializeAchievementRuntime' not in method(runtime, 'public override void OnAwake('), 'OnAwake must not initialize achievement early'

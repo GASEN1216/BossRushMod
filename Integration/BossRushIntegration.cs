@@ -56,7 +56,7 @@ namespace BossRush
             set { bossRushIntegrationRuntime.Item105PurchaseCount = value; }
         }
 
-        internal bool IsIntegrationAmmoShop(StockShop shop) { return ammoShop != null && shop == ammoShop; }
+        internal bool IsIntegrationAmmoShop(StockShop shop) { return bossRushIntegrationRuntime.IsIntegrationAmmoShop(shop); }
 
         internal WaitForSeconds IntegrationSharedWait05s { get { return sharedWait05s; } }
 

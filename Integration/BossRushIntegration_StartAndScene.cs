@@ -395,20 +395,7 @@ namespace BossRush
                             CleanupPhantomWitchTrackedStateOnArenaExit();
                         }
 
-                        try
-                        {
-                            System.Type notifType = typeof(NotificationText);
-                            System.Reflection.FieldInfo pendingField = notifType.GetField("pendingTexts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-                            if (pendingField != null)
-                            {
-                                System.Collections.Generic.Queue<string> q = pendingField.GetValue(null) as System.Collections.Generic.Queue<string>;
-                                if (q != null)
-                                {
-                                    q.Clear();
-                                }
-                            }
-                        }
-                        catch { }
+                        uiAndSignsRuntime.ClearPendingNotifications();
 
                         SetBossRushRuntimeActive(false);
                         bossRushArenaActive = false;
@@ -417,22 +404,7 @@ namespace BossRush
                         DestroyCommonNPCs("LeaveBossRushScene");
                         spawnersDisabled = false;
 
-                        try
-                        {
-                            if (ammoShop != null)
-                            {
-                                try
-                                {
-                                    if (ammoShop.gameObject != null)
-                                    {
-                                        UnityEngine.Object.Destroy(ammoShop.gameObject);
-                                    }
-                                }
-                                catch { }
-                                ammoShop = null;
-                            }
-                        }
-                        catch { }
+                        bossRushIntegrationRuntime.CleanupAmmoShop();
 
                         Health.OnDead -= OnEnemyDiedWithDamageInfo;
 

@@ -399,8 +399,8 @@ def main():
         return fail("legacy ForceTeleportToSubScene entrypoint must forward to the module")
 
     set_spawn_host = method_body(travel_host, "private void SetCurrentMapSpawnPoints(string sceneName)")
-    if "currentMapSpawnPoints = bossRushIntegrationRuntime.ResolveMapSpawnPointsForScene(sceneName);" not in set_spawn_host:
-        return fail("legacy spawn-point entrypoint must keep its shared host state while delegating config resolution")
+    if "mapRuntime.SetCurrentMapSpawnPoints(bossRushIntegrationRuntime.ResolveMapSpawnPointsForScene(sceneName));" not in set_spawn_host:
+        return fail("legacy spawn-point entrypoint must update the map owner after resolving config")
     spawn_resolver = method_body(module_travel, "internal Vector3[] ResolveMapSpawnPointsForScene(string sceneName)")
     if not spawn_resolver or "ModBehaviour.GetMapConfigBySceneName(sceneName)" not in spawn_resolver or "return mapConfig.spawnPoints;" not in spawn_resolver:
         return fail("spawn-point config resolution must live in IntegrationRuntimeModule")

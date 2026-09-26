@@ -12,6 +12,7 @@ namespace BossRush
 
 namespace UnityEngine
 {
+    public static class Time { public static int frameCount; }
     public class GameObject
     {
         public string name;
@@ -57,6 +58,7 @@ namespace UnityEngine.SceneManagement
     public struct Scene
     {
         internal SceneState State;
+        public string name { get { return State == null ? null : State.Path; } }
         public string path { get { return State == null ? null : State.Path; } }
         public bool isLoaded { get { return State != null && State.Loaded; } }
         public int handle { get { return State == null ? 0 : State.GetHashCode(); } }
@@ -65,6 +67,7 @@ namespace UnityEngine.SceneManagement
     }
     public static class SceneManager
     {
+        public static Scene GetActiveScene() { return Scenes.Count == 0 ? new Scene() : Scenes[0]; }
         private static readonly List<Scene> Scenes = new List<Scene>();
         public static AsyncOperation PendingUnload;
         public static int sceneCount { get { return Scenes.Count; } }

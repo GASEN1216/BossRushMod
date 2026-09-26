@@ -24,7 +24,7 @@ def main():
     registration = read("ModBehaviourRuntimeModules.cs")
     zombie = read("ZombieMode/ZombieModeRuntimeModule_Recovery.cs")
     arena = read("WavesArena/WavesArenaRuntimeModule_Recovery.cs")
-    validation = read("WavesArena/WavesArenaBossSpawning.cs")
+    validation = read("WavesArena/WavesArena.cs")
     assert "internal sealed class EnemyRecoveryMonitor" in core and "partial class ModBehaviour" not in core, "recovery algorithm must belong to independent owner"
     for mode_type in ("ZombieModeEnemyRuntimeMarker", "ZombieModeTuning", "ModeGRuntimeGates", "ModBehaviour.Instance"):
         assert mode_type not in core, "recovery core must receive mode policy: " + mode_type
@@ -67,7 +67,10 @@ def main():
         assert compact(extract_method_body(validation, signature)) == compact("{" + call + "}"), "spawn validation must share recovery state"
     hooks = read("Utilities/GameplayRuntimeHooks.cs")
     assert "UpdateEnemyRecoveryMonitor();" in hooks and "ClearEnemyRecoveryMonitorState();" in hooks, "original Tick/cleanup hooks required"
-    assert "ClearEnemyRecoveryMonitorState();" in read("ModBehaviour.cs"), "original destroy cleanup required"
+    activation = extract_method_body(read("WavesArena/WavesArenaRuntimeModule_HostState.cs"), "internal void SetBossRushRuntimeActive(")
+    assert "clearEnemyRecoveryMonitorState();" in activation, "original activation cleanup required"
+    assert "wavesArenaRuntime.SetBossRushRuntimeActive(active);" in read("ModBehaviour.cs"), "activation must reach the Arena owner"
+    assert "() => uiAndSignsRuntime.SignInteract, ClearEnemyRecoveryMonitorState);" in read("ModBehaviourRuntimeModules.cs"), "Arena must use the original shared recovery cleanup"
     print("EnemyRecoveryOwnershipGuard: PASS")
     return 0
 

@@ -246,17 +246,7 @@ namespace BossRush
 
             // 6. 创建 BossRush 交互点（优先使用配置的位置，否则使用玩家位置偏移）
             BossRushMapConfig currentMapConfig = GetMapConfigBySceneName(currentSceneName);
-            Vector3 signPosition;
-            if (currentMapConfig != null && currentMapConfig.defaultSignPos.HasValue)
-            {
-                signPosition = currentMapConfig.defaultSignPos.Value;
-                DevLog("[BossRush] SetupBossRushInGroundZero: 使用配置的交互点位置: " + signPosition);
-            }
-            else
-            {
-                signPosition = playerPosition + new Vector3(-2f, 0f, 1f);
-                DevLog("[BossRush] SetupBossRushInGroundZero: 使用玩家位置偏移: " + signPosition);
-            }
+            Vector3 signPosition = BossRushMapRuntime.ResolveArenaSignPosition(currentMapConfig, playerPosition);
             TryCreateArenaDifficultyEntryPoint(signPosition);
             DevLog("[BossRush] SetupBossRushInGroundZero: 已创建 BossRush 交互点，位置=" + signPosition);
 
@@ -289,7 +279,7 @@ namespace BossRush
         /// </summary>
         private void SetCurrentMapSpawnPoints(string sceneName)
         {
-            currentMapSpawnPoints = bossRushIntegrationRuntime.ResolveMapSpawnPointsForScene(sceneName);
+            mapRuntime.SetCurrentMapSpawnPoints(bossRushIntegrationRuntime.ResolveMapSpawnPointsForScene(sceneName));
         }
 
         internal System.Collections.IEnumerator TeleportPlayerToCustomPositionForIntegration(Vector3 targetPosition)

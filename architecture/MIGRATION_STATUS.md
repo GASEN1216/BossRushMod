@@ -9,12 +9,13 @@
 | P0 基线 | 完成，`3323e33e` | 665 项全量守卫 PASS，59 项全量回归 PASS；隔离正式与 Dev 构建 PASS |
 | P1 上下文治理 | 完成，`adef32ef` | 根规则 180 行 / 17,329 B；台账 1,050 / 975 行；47 模块导航覆盖 1,020 源 |
 | P2 复用试点 | 完成，`403a09a4` | 词缀追踪器与建筑恢复核心；203 项相关守卫、60 项全量回归与两种隔离构建通过 |
-| P3 状态提取 | 进行中 | 簇 1 已完成；Mode D、Mode E、Mode F 主体已迁出；簇 2、5、6 完成多个可恢复子范围，共享调用及根宿主收口仍待做 |
-| P4 耦合点 | 提前并行 | §6 第 1–8 条已处理；第 9 条随簇 3、4 处理，第 10 条按计划保持 |
+| P3 状态提取 | 完成（本批收口） | 宿主 58 文件 / 20,114 行；模式/系统状态归模块，生命周期、装配和跨模式入场协调保留 |
+| P4 耦合点 | 完成 | §6 第 1、3–9 条已处理；第 2、10 条按计划保持，同步回归通过 |
 | P5 目录归位 | 未完成 | 注入占位已随簇 1 删除；天空岛迁移待做 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-续接基点：`1b937e6c`（归位共享阵营生成并合并内容与丧尸宿主桥）。2026-09-26 E/F 共享生成、Integration/Zombie 薄桥归并已完成验证，当前正执行 E/F 共享登记与 Steam 查询 owner 收口，尚未提交；随后收口根宿主状态与余下薄桥；Integration 生命周期/跨模式入场协调按计划 §2.2 保留原槽位，独立算法另行归位。真实游戏目录尚未部署。
+续接基点：`f051bb2f`（归位共享敌人登记与平台昵称查询）。当前批已完成根宿主状态收口及 Mode D / Loot / Arena 薄桥归并，697 守卫、95 回归与正式/Dev 隔离构建通过，待提交后执行 P5。宿主预算已达到 ≤60 文件目标。Integration 生命周期/跨模式入场协调按计划 §2.2 保留原槽位。真实游戏目录尚未部署。
+
 ## P0 基线（2026-09-24）
 
 - 启动前 `git status --short --branch` 为干净的 `main...origin/main`。构建依赖：本机 .NET SDK 8.0.302、游戏 `D:\software\steam\steamapps\common\Escape from Duckov`、Harmony 创意工坊 DLL。隔离游戏根在忽略的 `Build/migration/isolated-game/`，其中 `Duckov_Data/Managed` 为真实游戏 DLL 的文件副本；未接触真实游戏 Mod 目录。
@@ -219,6 +220,16 @@
 - L3 待 owner：E/F 各开局、击杀、退出再入，观察敌人登记、阵营掉落、回血与死亡补位；E 同阵营禁掉落切换应即时生效。检查 Steam 昵称在首选/兼容平台环境下显示；重复敌人、重复掉落/回调、跨局残留与缓存旧昵称均不合格。本批仍是 P3/P4 中间检查点。
 - 预演脚本 `Build/migration/extract_ef_registry.py` 已执行，不可重跑；当前原 Goblin bin/obj 仍不动。P5 只读映射在 `Build/migration/sky-island-p5-readonly/`，Integration P6 实机清单在 `Build/migration/integration-owner-smoke.md`。
 
+## 2026-09-26 继续执行：根宿主收口与余下薄桥（COMPAT）
+
+- `BossRushMapRuntime` 持有原 static 地图注册表和每 owner 当前刷新点；原地图顺序、SceneID 查询、集合身份与坐标优先级保持。公共 NPC 点位策略归 `CommonNpcRuntimeModule`，四个实时查询由根装配。Arena 持有标准激活状态、玩家缓存与原 static planned/active 标记，接管配置、返程与返回交互点创建；地图选择器对私有 planned 字段的反射跟随新 owner，字段名和策略保持。
+- 加油站创建、身份查询、计数重置及离场/玩家死亡两条清理归 Integration；死亡路径原日志边界保持。共享倍率与等待缓存归独立类型，场景帧缓存归 `SceneRuntimeGate`；丧尸特例留在丧尸模块，共享 sanitizer 接受策略且保持两次查询的时点。通知反射清理与船点过滤归 UIAndSigns，婚姻调试字段原样归已有 Dev 文件。
+- Mode D 6 → 1、Loot 7 → 1、Arena 7 → 3 个宿主 partial；独立 interactable、loot enum/target 留原位，readonly sweep 初始化器保持。保留的长宿主方法已逐项复核：生命周期/官方事件、跨模式入场协调、模块装配、参数/兼容转发或 Dev 演练；`ModeHEntry.cs` 中支付事务为独立类型，并非宿主状态。列表见 `Build/migration/host-terminal-long-methods.json`。Integration Start/Destroy/Scene 与 GroundZero、Teleport 的模式门仍在原槽位。
+- 宿主 58 文件 / 20,114 行；编译 1,091 源，47 模块索引通过。全量守卫 697 PASS / 0 FAIL / 0 known-red；全量执行回归 95 PASS / 0 FAIL。`HostMapArenaOwners` 85 条断言、`HostUtilityOwners` 74 条，`EquipmentResourceScene` 增补同帧采样与下一帧刷新。末次返回交互点提取为相同正文和玩家字段 owner 置换，补接线反向及正式/Dev 构建。证据为 `host-terminal-final-guards.log`、`host-terminal-final-runtime.json`，均在 `Build/migration/`。
+- 等价及反向：根 29 方法/清理块在限定 owner 置换后等价，数据和日志字面量保持（`host-terminal-parity.json`）；根 15 个探针和末次 4 个增量/预算探针均按预期转红、原字节/SHA 还原回绿。Mode D/Loot 13 个原块及两个独立类型文件原字节相等，20 个守卫/22 次变异；Arena 88 成员、5 个原类体等价，7 守卫/7 变异。地图/Arena 6 个结构 + 22 个执行变异；工具 8 个结构 + 16 个执行变异均命中预期断言并恢复。证据在 `mode-d-loot-host/`、`waves-arena-host-consolidation/`、`host-map-arena-owners/`、`host-utility-owners/`。归并后 root 继续提取的加油站与返回点单列，未冒充整文件终态字节不变。
+- Windows 最终正式/Dev 隔离构建通过，两次 72 bundle 清单与 14 个 Dev 标识 absent/present 通过。正式 SHA-256 `33956709FAEFEA2AAAF6160DF6F0BE60085D910C1F735B8BC02074923A153166`；Dev SHA-256 `71904F429A280F901C459C48AE30020F36258691A8510B9ECCB28F2D7AD52670`；各自与隔离部署副本一致（`host-terminal-final-builds.json`）。首次编译揭示两处旧 ammoShop 调用点，已迁身份查询和带原日志的死亡清理，随后编译通过。当前 Build 为 Dev，真实游戏目录尚未部署。
+- L3 待 owner：依次进入标准/无间/D/E/F/丧尸，检查出生点、返回交互点、公共 NPC、加油站与敌人倍率；死亡或离场后再次进入，检查旧商店/角色是否残留；菜单与加载场景观察界面/能力暂停。重复商店或事件、计数未重置、阵营特例丢失、返回点错误、加载帧仍执行业务均不合格。没有游戏进程或性能采样证据。
+
 ## 未完成项
 
-P3–P6 尚未完成；不能据此宣称离线迁移完成或实机通过。
+P5 天空岛目录归位与 P6 后测、最终交付报告/实机清单、正式真实部署仍待完成；L3 由 owner 验收。

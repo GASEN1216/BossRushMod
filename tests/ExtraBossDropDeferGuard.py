@@ -28,7 +28,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GUARD = "ExtraBossDropDeferGuard"
 
 SPECIAL_LOOT = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_SpecialLoot.cs")
-SPECIAL_LOOT_HOST = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewardsSpecialLoot.cs")
+SPECIAL_LOOT_HOST = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewards.cs")
 SPECIAL_REWARD_PRODUCER = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_SpecialLoot.cs")
 RANDOM_BOSS_LOOT = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_BossLootEvent.cs")
 RANDOM_BOSS_LOOT_MODULE = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_RandomBossLoot.cs")
@@ -266,7 +266,7 @@ def check_prefab_fallback_returns_pending(errors):
 def check_every_finalize_has_a_sink(errors):
     """
     总不变式：`FinalizeBossRushLootboxPathTracking` 会撤销 pending，
-    所以在 `LootAndRewardsRandomBossLoot.cs` 里**每一处** Finalize 之前，
+    所以在 `LootAndRewards.cs` 里**每一处** Finalize 之前，
     都必须先给 pending 一个去处——要么还回 characterItem（官方箱还会建），
     要么世界掉落（官方箱不会建）。
     唯一豁免：`AddBossSpecialLootToLootboxCoroutine` 的 finally——

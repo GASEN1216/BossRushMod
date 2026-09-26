@@ -6,6 +6,21 @@ namespace BossRush
 {
     internal static class SceneRuntimeGate
     {
+        private static int _staticCanRunFrame = -1;
+        private static bool _staticCanRunResult;
+
+        internal static bool CanRunGameplayRuntimeCached()
+        {
+            int frame = UnityEngine.Time.frameCount;
+            if (frame != _staticCanRunFrame)
+            {
+                _staticCanRunFrame = frame;
+                _staticCanRunResult = SceneRuntimeGate.CanRunGameplayRuntimeNow(
+                    UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+            }
+            return _staticCanRunResult;
+        }
+
         internal const string StoneOutpostResourceScenePath = "Assets/StoneOutpost/StoneOutpost.unity";
         private const string BaseRootSceneName = "Base";
         private const string BaseSceneName = "Base_SceneV2";

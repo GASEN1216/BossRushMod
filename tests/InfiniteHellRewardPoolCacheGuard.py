@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-SOURCE = Path("LootAndRewards/LootAndRewardsInfiniteHell.cs")
+SOURCE = Path("LootAndRewards/LootAndRewards.cs")
 FIELDS_SOURCE = Path("LootAndRewards/LootAndRewards.cs")
 MODULE_SOURCE = Path("WavesArena/WavesArenaRuntimeModule_RewardPool.cs")
 

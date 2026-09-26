@@ -112,7 +112,7 @@ def main() -> int:
 
     if clear_block.find("if (owner.IsDeathWraithCharacterForArena(c))") > clear_block.find("_reusableDestroyList.Add(c.gameObject);"):
         return fail("DeathWraithBossRushClearGuard: Death Wraith guard must run before destroy-list collection")
-    host = Path("WavesArena/WavesArenaEnemyMaintenance.cs").read_text(encoding="utf-8")
+    host = Path("WavesArena/WavesArena.cs").read_text(encoding="utf-8")
     if "return IsDeathWraithCharacter_DeathWraith(enemy);" not in host:
         return fail("DeathWraithBossRushClearGuard: host query bridge must reach Death Wraith owner")
 

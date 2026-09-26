@@ -33,7 +33,7 @@ def extract_method(text: str, signature: str) -> str:
 
 def main() -> int:
     source = clean_source(SOURCE.read_text(encoding="utf-8"))
-    bridge = clean_source(Path("ModeD/ModeDEquipmentHostBridge.cs").read_text(encoding="utf-8"))
+    bridge = clean_source(Path("ModeD/ModeD.cs").read_text(encoding="utf-8"))
     registration = clean_source(Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8"))
     pool = clean_source(Path("ModeD/ModeDItemPool.cs").read_text(encoding="utf-8"))
     if "isStarterCandidateAllowed = starterCandidateAllowed;" not in extract_method(pool, "internal void BindQueries("):

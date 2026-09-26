@@ -9,3 +9,6 @@ Unity GameObject/Component/Scene 事件、Item 槽位和角色字段为显式替
 运行：`python tools/run_runtime_regressions.py --filter EquipmentResourceScene`。
 
 修复前直接执行旧生产装备回调：27 条断言、10 条失败；修复后预期全部通过。原失败证据为 `Build/equipment_resource_scene_before.log`。
+# 场景门控缓存补充
+
+直接编译生产 `SceneRuntimeGate`，验证同帧共用一次场景采样、下一帧刷新，以及菜单/加载门切换。场景与帧计数由替身控制，不代表游戏进程验证。

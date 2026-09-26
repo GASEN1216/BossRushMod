@@ -32,6 +32,47 @@ namespace BossRush
             ModBehaviour.DevLog("[BossRush] 场景扫描结束（未找到合适的注入点）。");
         }
 
+        internal bool IsBaseHubBoatInteractable(InteractableBase interactable)
+        {
+            if (interactable == null || interactable.gameObject == null)
+            {
+                return false;
+            }
+
+            if (interactable is BossRushInteractable)
+            {
+                return false;
+            }
+
+            string sceneName = string.Empty;
+            try { sceneName = interactable.gameObject.scene.name; } catch { }
+            if (!SceneRuntimeGate.IsBaseHubSceneName(sceneName))
+            {
+                return false;
+            }
+
+            string goName = interactable.gameObject.name ?? string.Empty;
+            bool isMainInteract = goName == "Interact" || interactable.interactableGroup;
+            bool isSubInteract = goName.Contains("_");
+            if (!isMainInteract || isSubInteract)
+            {
+                return false;
+            }
+
+            string path = GetGameObjectPath(interactable.gameObject);
+            return path.IndexOf("Boat", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        internal bool TryInjectBaseHubBoatInteractable(InteractableBase interactable)
+        {
+            if (!IsBaseHubBoatInteractable(interactable))
+            {
+                return false;
+            }
+
+            return InjectIntoInteractableBaseGroup_UIAndSigns(interactable);
+        }
+
         private bool ScanAndInject()
         {
             bool anyInjected = false;

@@ -4,7 +4,7 @@
 **本文引用的文件**
 - [ModBehaviour.cs](file://ModBehaviour.cs)
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [DragonDescendantBoss.cs](file://Integration/DragonDescendant/DragonDescendantBoss.cs)
 - [DragonDescendantBoss_RuntimeAndCleanup.cs](file://Integration/DragonDescendant/DragonDescendantBoss_RuntimeAndCleanup.cs)
 - [DragonKingBoss.cs](file://Integration/DragonKing/DragonKingBoss.cs)
@@ -40,7 +40,7 @@ Boss 生命周期由“波次编排”“Boss 具体实现”“运行时基础�
 
 ```mermaid
 graph TB
-A["波次编排<br/>WavesArena.cs / WavesArenaBossSpawning.cs"] --> B["Boss 生成入口<br/>ModBehaviour.cs"]
+A["波次编排<br/>WavesArena.cs / WavesArena.cs"] --> B["Boss 生成入口<br/>ModBehaviour.cs"]
 B --> C["龙裔遗族控制器<br/>DragonDescendantBoss.cs + RuntimeAndCleanup.cs"]
 B --> D["龙王控制器<br/>DragonKingBoss.cs"]
 B --> E["运行时缓存<br/>ObjectCache.cs"]
@@ -51,7 +51,7 @@ A --> H["波次计数/死亡事件/推进逻辑"]
 
 图表来源
 - [WavesArena.cs:108-184](file://WavesArena/WavesArena.cs#L108-L184)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
 - [ModBehaviour.cs:1176-1198](file://ModBehaviour.cs#L1176-L1198)
 - [DragonDescendantBoss.cs:61-235](file://Integration/DragonDescendant/DragonDescendantBoss.cs#L61-L235)
 - [DragonKingBoss.cs:209-371](file://Integration/DragonKing/DragonKingBoss.cs#L209-L371)
@@ -59,7 +59,7 @@ A --> H["波次计数/死亡事件/推进逻辑"]
 
 章节来源
 - [WavesArena.cs:108-184](file://WavesArena/WavesArena.cs#L108-L184)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
 - [ModBehaviour.cs:1176-1198](file://ModBehaviour.cs#L1176-L1198)
 - [ObjectCache.cs:150-159](file://Common/Infrastructure/ObjectCache.cs#L150-L159)
 
@@ -73,7 +73,7 @@ A --> H["波次计数/死亡事件/推进逻辑"]
 
 章节来源
 - [WavesArena.cs:555-641](file://WavesArena/WavesArena.cs#L555-L641)
-- [WavesArenaBossSpawning.cs:117-201](file://WavesArena/WavesArenaBossSpawning.cs#L117-L201)
+- [WavesArena.cs:117-201](file://WavesArena/WavesArena.cs#L117-L201)
 - [DragonDescendantBoss.cs:61-235](file://Integration/DragonDescendant/DragonDescendantBoss.cs#L61-L235)
 - [DragonKingBoss.cs:209-371](file://Integration/DragonKing/DragonKingBoss.cs#L209-L371)
 - [ObjectCache.cs:150-159](file://Common/Infrastructure/ObjectCache.cs#L150-L159)
@@ -109,7 +109,7 @@ WA->>WA : HandleBossDeath()/ProceedAfterWaveFinished()
 
 图表来源
 - [WavesArena.cs:108-184](file://WavesArena/WavesArena.cs#L108-L184)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
 - [DragonDescendantBoss.cs:61-235](file://Integration/DragonDescendant/DragonDescendantBoss.cs#L61-L235)
 - [DragonKingBoss.cs:209-371](file://Integration/DragonKing/DragonKingBoss.cs#L209-L371)
 - [ObjectCache.cs:150-159](file://Common/Infrastructure/ObjectCache.cs#L150-L159)
@@ -211,13 +211,13 @@ WA->>WA : HandleBossDeath()/ProceedAfterWaveFinished()
 - [WavesArena.cs:108-184](file://WavesArena/WavesArena.cs#L108-L184)
 - [WavesArena.cs:213-346](file://WavesArena/WavesArena.cs#L213-L346)
 - [WavesArena.cs:348-506](file://WavesArena/WavesArena.cs#L348-L506)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
 
 章节来源
 - [WavesArena.cs:108-184](file://WavesArena/WavesArena.cs#L108-L184)
 - [WavesArena.cs:213-346](file://WavesArena/WavesArena.cs#L213-L346)
 - [WavesArena.cs:348-506](file://WavesArena/WavesArena.cs#L348-L506)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
 
 ### 预设查找与装备集成细节
 - 预设查找：优先通过 nameKey 精确匹配（如 Cname_Boss_Red），其次名称模糊匹配，最终回退到 ??? 预设；结果被缓存以避免重复扫描。
@@ -286,7 +286,7 @@ MB --> OC
 - [DragonDescendantBoss.cs:262-426](file://Integration/DragonDescendant/DragonDescendantBoss.cs#L262-L426)
 - [DragonDescendantBoss.cs:357-380](file://Integration/DragonDescendant/DragonDescendantBoss.cs#L357-L380)
 - [DragonKingBoss.cs:77-110](file://Integration/DragonKing/DragonKingBoss.cs#L77-L110)
-- [WavesArenaBossSpawning.cs:525-661](file://WavesArena/WavesArenaBossSpawning.cs#L525-L661)
+- [WavesArena.cs:525-661](file://WavesArena/WavesArena.cs#L525-L661)
 
 ## 故障排查指南
 - 生成失败
@@ -303,7 +303,7 @@ MB --> OC
 
 章节来源
 - [WavesArena.cs:509-549](file://WavesArena/WavesArena.cs#L509-L549)
-- [WavesArenaBossSpawning.cs:253-341](file://WavesArena/WavesArenaBossSpawning.cs#L253-L341)
+- [WavesArena.cs:253-341](file://WavesArena/WavesArena.cs#L253-L341)
 - [DragonKingBoss.cs:559-634](file://Integration/DragonKing/DragonKingBoss.cs#L559-L634)
 - [DragonDescendantBoss.cs:357-380](file://Integration/DragonDescendant/DragonDescendantBoss.cs#L357-L380)
 

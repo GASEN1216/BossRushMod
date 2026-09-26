@@ -30,7 +30,7 @@ FACTORY = Path("Integration/EquipmentFactory.cs")
 CONFIG = Path("Integration/Config/FrostThunderSetConfig.cs")
 SET_LOOT = Path("Integration/Bonus/SetBonusBossDropHandler.cs")
 ON_DEAD_PATCH = Path("Patches/Combat/CharacterOnDeadPatch.cs")
-SPECIAL_LOOT = Path("LootAndRewards/LootAndRewardsSpecialLoot.cs")
+SPECIAL_LOOT = Path("LootAndRewards/LootAndRewards.cs")
 GOBLIN = Path("Integration/Affinity/NPCs/GoblinAffinityConfig.cs")
 
 

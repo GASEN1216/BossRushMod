@@ -14,8 +14,8 @@ DEFINITIONS = Path("Integration/Mutators/MutatorDefinitions.cs")
 MANAGER = Path("Integration/Mutators/MutatorManager.cs")
 RUNTIME_BRIDGE = Path("Integration/IntegrationHostCompatibility.cs")
 WAVES = Path("WavesArena/WavesArenaRuntimeModule_Start.cs")
-WAVES_HOST = Path("WavesArena/WavesArenaBossSpawning.cs")
-LOOT = Path("LootAndRewards/LootAndRewardsRandomBossLoot.cs")
+WAVES_HOST = Path("WavesArena/WavesArena.cs")
+LOOT = Path("LootAndRewards/LootAndRewards.cs")
 
 
 def fail(message: str) -> int:

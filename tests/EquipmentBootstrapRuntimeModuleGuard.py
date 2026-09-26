@@ -25,7 +25,7 @@ SCENE = Path("Integration/BossRushIntegration_StartAndScene.cs")
 DEFERRED = Path("Integration/BossRushIntegrationRuntimeModule_DeferredBootstrap.cs")
 DEATH_PATCH = Path("Patches/Combat/CharacterOnDeadPatch.cs")
 LOOT = Path("WavesArena/WavesArenaRuntimeModule_SpecialLoot.cs")
-LOOT_HOST = Path("LootAndRewards/LootAndRewardsSpecialLoot.cs")
+LOOT_HOST = Path("LootAndRewards/LootAndRewards.cs")
 
 
 def fail(message: str) -> int:

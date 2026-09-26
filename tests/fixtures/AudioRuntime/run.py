@@ -39,7 +39,7 @@ def main():
     first_register = register.index('runtimeModuleHost.Register(')
     binding = register[register.index('{') + 1:first_register]
     random = read('RandomEvents/RandomEventsRuntimeModuleHostBridge.cs')
-    arena = read('WavesArena/WavesArenaEnemyMaintenance.cs')
+    arena = read('WavesArena/WavesArena.cs')
     bridges = '\n'.join((member(random, 'internal SpawnEgg RandomEventSpawnEggBehaviorForRuntime'),
                          member(random, 'internal CharacterRandomPreset RandomEventEggSpawnPresetForRuntime'),
                          member(arena, 'internal CharacterRandomPreset ArenaEggSpawnPreset')))

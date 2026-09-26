@@ -29,7 +29,7 @@ def check():
     runtime = "Campaign/CampaignRuntimeModule.cs"
     require("ModeD/ModeDEquipment_StarterKit.cs", "internal void GivePlayerStarterKit()",
             "if (UnityEngine.Random.value > 0.6f || needsMeleeStarterKit()) { GiveRandomMeleeWeapon(main); }")
-    require("ModeD/ModeDEquipmentHostBridge.cs", "private void BindModeDItemPoolQueries()",
+    require("ModeD/ModeD.cs", "private void BindModeDItemPoolQueries()",
             "() => modeDActive && IsCampaignConfiguredEnabled() && CampaignObjectiveTracker.NeedsMeleeStarterKit(),")
     require("Campaign/CampaignBoardInteractable.cs", "protected override void OnInteractCompleted()", "ModBehaviour.Instance.ShowMessage(L10n.T(")
     require("Campaign/CampaignBoardBuilder.cs", "private void InitCampaignBoardBuilding(bool isEarlyInit)", "if (presence == CampaignBoardPresence.Unknown)")

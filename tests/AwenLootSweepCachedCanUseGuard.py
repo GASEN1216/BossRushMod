@@ -40,7 +40,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 def main() -> int:
     text = clean_source(SOURCE.read_text(encoding="utf-8"))
-    host = clean_source(Path("LootAndRewards/ModeEFLootboxTracker.cs").read_text(encoding="utf-8"))
+    host = clean_source(Path("LootAndRewards/LootAndRewards.cs").read_text(encoding="utf-8"))
     registration = clean_source(Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8"))
     if host.count("new AwenLootSweepRuntime()") != 1 or "private int modeEFBossDeathGrantCounter" in host:
         return fail("AwenLootSweepCachedCanUseGuard: host must delegate state to one sweep runtime")

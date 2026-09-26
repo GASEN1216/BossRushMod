@@ -100,17 +100,6 @@ namespace BossRush
         }
     }
 
-    /// <summary>
-    /// Mode D 路牌交互扩展
-    /// <para>管理 Mode D 模式下路牌的交互选项</para>
-    /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
-    {
-        public void SetupSignForModeD() { modeDRuntime.SetupSignForModeD(bossRushSignInteract); }
-        public void ShowModeDNextWaveOption() { modeDRuntime.ShowModeDNextWaveOption(); }
-        public void HideModeDNextWaveOption() { modeDRuntime.HideModeDNextWaveOption(); }
-        public void ClearAllBossRushLootboxes() { modeDRuntime.ClearAllBossRushLootboxes(); }
-        public void ClearEmptyBossRushLootboxes() { modeDRuntime.ClearEmptyBossRushLootboxes(); }
-    }
+
 }
 

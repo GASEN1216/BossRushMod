@@ -17,10 +17,6 @@ import sys
 SOURCES = [
     Path("WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs"),
     Path("LootAndRewards/LootAndRewards.cs"),
-    Path("LootAndRewards/LootAndRewardsInfiniteHell.cs"),
-    Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
-    Path("LootAndRewards/LootAndRewardsRandomBossLoot.cs"),
-    Path("LootAndRewards/LootAndRewardsSpecialLoot.cs"),
 ]
 
 

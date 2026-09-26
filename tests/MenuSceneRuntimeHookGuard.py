@@ -263,11 +263,14 @@ def main() -> int:
     update_guard = update.find("if (!runGameplaySceneHooks)")
     equipment_runtime_tick = update.find("TickEquipmentAbilityRuntime();")
     always_on_runtime_tick = update.find("TickAlwaysOnRuntime();")
-    cached_helper = extract_method(mod_text, "internal static bool CanRunGameplayRuntimeCached")
+    cached_bridge = extract_method(mod_text, "internal static bool CanRunGameplayRuntimeCached")
+    if "return SceneRuntimeGate.CanRunGameplayRuntimeCached();" not in cached_bridge:
+        return fail("host frame-cache bridge must call the shared scene gate")
+    cached_helper = extract_method(scene_gate_text, "internal static bool CanRunGameplayRuntimeCached")
     if not cached_helper:
         return fail("could not find frame-cached gameplay runtime helper")
     for token in [
-        "int frame = Time.frameCount;",
+        "int frame = UnityEngine.Time.frameCount;",
         "if (frame != _staticCanRunFrame)",
         "SceneRuntimeGate.CanRunGameplayRuntimeNow(",
     ]:

@@ -7,7 +7,7 @@
 - [BossRushIntegrationRuntimeModule_Initialization.cs](file://Integration/BossRushIntegrationRuntimeModule_Initialization.cs)
 - [BossRushIntegrationRuntimeModule_SceneLifecycle.cs](file://Integration/BossRushIntegrationRuntimeModule_SceneLifecycle.cs)
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [LootAndRewards.cs](file://LootAndRewards/LootAndRewards.cs)
 - [BossRushAchievementManager.cs](file://Achievement/BossRushAchievementManager.cs)
 - [BossRushMapConfig.cs](file://Common/MapConfig/BossRushMapConfig.cs)
@@ -55,7 +55,7 @@ MB --> UIHB["ModeEUiAndHealthBars<br/>血条/名称更新"]
 图表来源
 - [ModBehaviour.cs:598-797](file://ModBehaviour.cs#L598-L797)
 - [WavesArena.cs:108-506](file://WavesArena/WavesArena.cs#L108-L506)
-- [WavesArenaBossSpawning.cs:17-693](file://WavesArena/WavesArenaBossSpawning.cs#L17-L693)
+- [WavesArena.cs:17-693](file://WavesArena/WavesArena.cs#L17-L693)
 - [LootAndRewards.cs:322-432](file://LootAndRewards/LootAndRewards.cs#L322-L432)
 - [BossRushAchievementManager.cs:46-235](file://Achievement/BossRushAchievementManager.cs#L46-L235)
 - [BossRushMapConfig.cs:9-46](file://Common/MapConfig/BossRushMapConfig.cs#L9-L46)
@@ -113,7 +113,7 @@ WA->>WA : StartNextWaveCountdown() 或 OnAllEnemiesDefeated()
 
 图表来源
 - [WavesArena.cs:108-506](file://WavesArena/WavesArena.cs#L108-L506)
-- [WavesArenaBossSpawning.cs:346-693](file://WavesArena/WavesArenaBossSpawning.cs#L346-L693)
+- [WavesArena.cs:346-693](file://WavesArena/WavesArena.cs#L346-L693)
 - [LootAndRewards.cs:322-432](file://LootAndRewards/LootAndRewards.cs#L322-L432)
 - [MapSpawnPointRegistry.cs:44-88](file://Common/MapConfig/MapSpawnPointRegistry.cs#L44-L88)
 
@@ -146,11 +146,11 @@ End -- 否 --> Clear["通关流程"]
 
 图表来源
 - [WavesArena.cs:108-506](file://WavesArena/WavesArena.cs#L108-L506)
-- [WavesArenaBossSpawning.cs:346-693](file://WavesArena/WavesArenaBossSpawning.cs#L346-L693)
+- [WavesArena.cs:346-693](file://WavesArena/WavesArena.cs#L346-L693)
 
 章节来源
 - [WavesArena.cs:108-506](file://WavesArena/WavesArena.cs#L108-L506)
-- [WavesArenaBossSpawning.cs:17-693](file://WavesArena/WavesArenaBossSpawning.cs#L17-L693)
+- [WavesArena.cs:17-693](file://WavesArena/WavesArena.cs#L17-L693)
 
 ### 掉落系统与通关奖励
 - 掉落拦截：在 Boss 死亡前挂接 BeforeCharacterSpawnLootOnDead，统一收集原始掉落数量与时间戳。
@@ -239,7 +239,7 @@ Query --> Use["波次生成/默认路牌/中心点设置"]
 - 共享刷新点：在非 Arena 支援放置模式下，公共 NPC 可复用 BossRush 地图刷怪点池，保证行为一致性。
 
 章节来源
-- [WavesArenaBossSpawning.cs:346-356](file://WavesArena/WavesArenaBossSpawning.cs#L346-L356)
+- [WavesArena.cs:346-356](file://WavesArena/WavesArena.cs#L346-L356)
 - [WavesArena.cs:446-506](file://WavesArena/WavesArena.cs#L446-L506)
 - [ModBehaviour.cs:120-161](file://ModBehaviour.cs#L120-L161)
 
@@ -311,7 +311,7 @@ LR --> REG
 - 竞技场范围：基于地图配置设置中心点与半径，限制清理与禁用范围，提高大规模战斗稳定性。
 
 章节来源
-- [WavesArenaBossSpawning.cs:117-251](file://WavesArena/WavesArenaBossSpawning.cs#L117-L251)
+- [WavesArena.cs:117-251](file://WavesArena/WavesArena.cs#L117-L251)
 - [LootAndRewards.cs:493-586](file://LootAndRewards/LootAndRewards.cs#L493-L586)
 - [ModBehaviour.cs:530-552](file://ModBehaviour.cs#L530-L552)
 - [BossRushIntegrationRuntimeModule_Initialization.cs](file://Integration/BossRushIntegrationRuntimeModule_Initialization.cs)
@@ -325,7 +325,7 @@ LR --> REG
 - 商店注入失败：确认 BaseHub 场景与 MerchantID；检查动态物品 TypeID 是否初始化；查看注入日志与库存持久化。
 
 章节来源
-- [WavesArenaBossSpawning.cs:346-693](file://WavesArena/WavesArenaBossSpawning.cs#L346-L693)
+- [WavesArena.cs:346-693](file://WavesArena/WavesArena.cs#L346-L693)
 - [LootAndRewards.cs:322-432](file://LootAndRewards/LootAndRewards.cs#L322-L432)
 - [BossRushAchievementManager.cs:244-349](file://Achievement/BossRushAchievementManager.cs#L244-L349)
 - [ModeEUiAndHealthBars.cs:22-411](file://ModeE/ModeEUiAndHealthBars.cs#L22-L411)

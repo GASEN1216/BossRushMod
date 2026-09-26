@@ -6,6 +6,7 @@ namespace BossRush
         private ModeEFMerchantCatalog modeEFMerchantCatalog;
         private readonly ModeEFEnemyRegistry modeEFEnemyRegistry = new ModeEFEnemyRegistry();
         private ModeEFEnemySpawnRuntime modeEFEnemySpawnRuntime;
+        private CommonNpcRuntimeModule commonNpcRuntime;
         private AchievementRuntimeModule achievementRuntime;
         private readonly BossRushAudioRuntimeService audioRuntime = new BossRushAudioRuntimeService();
 
@@ -29,7 +30,10 @@ namespace BossRush
                 () => config != null, () => config.achievementHotkey);
             achievementRuntime.BindMedalShopQueries(IsBaseHubNormalMerchantShop, BaseSceneName);
             runtimeModuleHost.Register(achievementRuntime);
-            runtimeModuleHost.Register(new CommonNpcRuntimeModule());
+            commonNpcRuntime = new CommonNpcRuntimeModule();
+            commonNpcRuntime.BindSpawnPointQueries(UsesArenaSupportNpcPlacement, () => IsActive,
+                () => modeDRuntime.IsActive, () => IsBossRushArenaActive);
+            runtimeModuleHost.Register(commonNpcRuntime);
             courierNpcRuntime = new CourierNpcRuntimeModule();
             runtimeModuleHost.Register(courierNpcRuntime);
             goblinNpcRuntime = new GoblinNpcRuntimeModule();
@@ -37,6 +41,8 @@ namespace BossRush
             nurseNpcRuntime = new NurseNpcRuntimeModule();
             runtimeModuleHost.Register(nurseNpcRuntime);
             wavesArenaRuntime = new WavesArenaRuntimeModule();
+            wavesArenaRuntime.BindHostStateServices(() => config != null ? (int?)config.infiniteHellBossesPerWave : null,
+                () => uiAndSignsRuntime.SignInteract, ClearEnemyRecoveryMonitorState);
             runtimeModuleHost.Register(wavesArenaRuntime);
             BindModeDItemPoolQueries();
             BindSpawnPostprocessServices();

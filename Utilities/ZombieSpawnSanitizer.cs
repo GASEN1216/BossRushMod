@@ -3,8 +3,15 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed class ZombieSpawnSanitizer
     {
+        private readonly Func<CharacterMainControl, bool> ShouldKeepBossRushZombieSelfDestructionSkill;
+
+        internal ZombieSpawnSanitizer(Func<CharacterMainControl, bool> shouldKeepSelfDestructionSkill)
+        {
+            ShouldKeepBossRushZombieSelfDestructionSkill = shouldKeepSelfDestructionSkill;
+        }
+
         private const string ZombieBoomAttachmentTypeName = "AISpecialAttachment_BoomCar";
         private const string ZombieSelfDestructionSkillTypeName = "Skill_Grenade";
 
@@ -22,7 +29,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ZombieSpawnSanitizer] Sanitize failed (" + spawnOwner + "): " + e.Message);
+                ModBehaviour.DevLog("[ZombieSpawnSanitizer] Sanitize failed (" + spawnOwner + "): " + e.Message);
             }
         }
 
@@ -61,11 +68,11 @@ namespace BossRush
                 try
                 {
                     attachment.enabled = false;
-                    Destroy(attachment);
+                    UnityEngine.Object.Destroy(attachment);
                 }
                 catch (Exception destroyEx)
                 {
-                    DevLog("[ZombieSpawnSanitizer] Destroy boom attachment failed (" + spawnOwner + "): " + destroyEx.Message);
+                    ModBehaviour.DevLog("[ZombieSpawnSanitizer] Destroy boom attachment failed (" + spawnOwner + "): " + destroyEx.Message);
                 }
             }
         }
@@ -112,27 +119,15 @@ namespace BossRush
                 if (skillInstance != null)
                 {
                     skillInstance.enabled = false;
-                    Destroy(skillInstance.gameObject);
+                    UnityEngine.Object.Destroy(skillInstance.gameObject);
                 }
             }
             catch (Exception destroyEx)
             {
-                DevLog("[ZombieSpawnSanitizer] Destroy self-destruction skill failed (" + spawnOwner + "): " + destroyEx.Message);
+                ModBehaviour.DevLog("[ZombieSpawnSanitizer] Destroy self-destruction skill failed (" + spawnOwner + "): " + destroyEx.Message);
             }
         }
 
-        private static bool ShouldKeepBossRushZombieSelfDestructionSkill(CharacterMainControl character)
-        {
-            if (character == null || character.gameObject == null)
-            {
-                return false;
-            }
 
-            ZombieModeEnemyRuntimeMarker marker = character.GetComponent<ZombieModeEnemyRuntimeMarker>();
-            return marker != null &&
-                !marker.IsBoss &&
-                marker.EnemyKind == ZombieModeEnemyKind.Special &&
-                marker.SpecialKind == ZombieModeSpecialKind.OfficialExploder;
-        }
     }
 }

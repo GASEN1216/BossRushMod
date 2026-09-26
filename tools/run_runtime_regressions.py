@@ -9,6 +9,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
+    "HostMapArenaOwners", "HostUtilityOwners",
     "AuditCoreParsing", "AuditModeLifecycle", "AuditCombatSeptember", "NpcAuditFixes", "GoblinRuntimeModule",
     "ModeHSceneEntry", "ModeHPlayerFlow", "AchievementRuntime", "ArenaHostRemainder", "ModeGEntryOwners", "AudioRuntime",
     "ResourceProduction", "ZombieModeHostOwners", "ModeEFEnemyRegistry", "SteamPlatformInfo",
