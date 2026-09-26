@@ -1,6 +1,6 @@
 # Mod 简介
 
-## 所以……BossRush Mod 到底是啥？
+## 所以……「BossRush · 晴岚群岛」到底是啥？
 
 简单来说：一个把 Escape from Duckov 变成 Boss 竞技场的大型 Mod。从创意工坊一键订阅，进去就是干。
 

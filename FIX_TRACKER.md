@@ -1,5 +1,17 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+## 2026-09-26 点唱机曲目响度、天空岛常驻 BGM、模组更名与网址、v2.3.0 日志并版（COMPAT / SCHEMA+ / OPERATIONAL）
+
+**点唱机「放不出来」**：owner 反馈后山点唱机的 Mod 音乐像是没有。结论（L2）：两首文件都已部署，游戏自带 FMOD 2.3.8 按官方 `CustomSFXCallback` 的 mode 0x10202 离线实测都能解码播放；问题是它们直接复用了 Boss 战的程序化氛围循环，约 -25 LUFS，比官方点唱机曲目（-12.3 LUFS）小 13 dB，在基地环境声里几乎听不见；另外点唱机要交付征程第三章才解锁。处理：点唱机改放 -16 LUFS 的 ogg 副本，并新增第三首天空岛主题曲「晴岚群岛」；作者名改为按语言取用（`authorEn`，SCHEMA+）；Boss 战循环本身不动。
+
+**天空岛常驻 BGM**：`BgmTracks.json` 新增可选 `sceneTracks`（SCHEMA+）；`BossBgmCoordinator` 加场景租约层（`AcquireSceneBgm` / `ReleaseSceneBgm`，按 owner 实例 id + 场景 handle 校验），Boss 曲起播时让位、`StopBossBgm` 先接回场景曲；`SkyIslandAmbience` 构造时获取、Dispose（撤离 / 倒下 / 清理三条路径都会走）时释放。曲目由 owner 提供的 ryw.mp3 转成 `Assets/Sounds/BGM/sky_island_theme.ogg`（-16 LUFS）：FMOD 把这份 mp3 的时长读成 69.3 秒（实际 34.4 秒），直接循环会每遍空白半首，转 ogg 后读数 34.388 秒。守卫 `BossBgmCoordinatorGuard` 新增 6–8 条（接回场景曲、复位先撤租约、天空岛获取 / 释放、场景曲只许 ogg / wav），三处人为破坏均转红、按字节还原后转绿。
+
+**模组更名与网址**：显示名改为「BossRush · 晴岚群岛」（英文 BossRush · Qinglan Archipelago）：README、Wiki 站名 / 页脚 / 首页 / RSS、游戏内百科目录页标题、仓库与游戏目录两份 info.ini（游戏目录那份保留 version 2.2.5）。`name = BossRush`、命名空间、存档与本地化 key 不变。在线 Wiki 统一为 https://bossrushmod.pages.dev/ ：`seo.mts` 的 `siteUrl()` 默认返回它，Cloudflare 构建从此生成 sitemap / canonical / RSS；VitePress base 保留 `DEPLOY_TARGET` 分支，GitHub Pages 副本继续可用（要停掉需改 workflow，待 owner 定）。
+
+**v2.3.0 并版**：v2.3.0 改为「尚未发布」，并入 v2.2.5 之后全部玩家可见改动（中英）；catalog 标题「v2.3.0（即将发布）」。另见同日「焚天龙铳去掉白色光效」条目。
+
+**验证**：全量守卫 673 PASS；后山执行回归 2 PASS；Wiki 构建、237 页链接检查、导航回归通过；Windows 正式构建 Build succeeded 并部署，DLL / 曲目 / 曲目表 / 百科哈希与仓库一致，`check_dll_identifiers --expect absent` PASS。**未实机（L3 待 owner）**：进天空岛是否起播并循环、打完 Boss 是否接回、撤离后是否停；点唱机三首是否都能选到、响度是否合适（需第三章已交付）。ryw.mp3 的作者经 owner 确认为「洛克王国」，点唱机署名已改（英文 Roco Kingdom）。
+
 ## 2026-09-26 天空岛敌人与 Boss 按原版参照提升 50%（COMPAT）
 
 owner 指定生物 Wiki 的原版属性作为参照、要求整体提升 50%，并明确包含 Boss。固定 15 个原版参照覆盖 11 个自动头目 / 岛主、折翎、守钟装置、噬风与回响及普通精英；普通敌怪用各自官方底模。血量、伤害、移动、弹速、射程、感知乘 1.5，散布、反应和射击延迟除 1.5。Boss 近战以 Wiki 通用伤害为参照，普通敌怪保留官方独立近战基准。游戏难度照常生效，装备、护甲、技能机制、经验与掉落保持原配置。
@@ -23,6 +35,28 @@ owner 指定生物 Wiki 的原版属性作为参照、要求整体提升 50%，�
 **边界**：JeffQuestFlow 的 Campaign 持久化和宿主为适配器，真实事务由 ContentTransactions 覆盖；四条岛任务在新夹具只验证 ID 共存，岛上玩法用原专项回归。L3 未做，不宣称任务 UI、模型/物理、实际收成数量或性能已实机通过。游戏启动/玩家存档按 AGENTS §10 交 owner，剩余动作已给逐项判据。
 
 <!-- END JEFF FRUIT TRACKER 2026-09-26 -->
+
+## 2026-09-26 焚天龙铳所有弹药去掉那层很白的光效（COMPAT）
+
+**授权与范围**：owner 原话「焚天龙铳所有弹药都不要加那个很白的光效，太塑料了」。只去掉白光这一层：不改伤害、弹道、射速、弹匣等数值，不削其他特效，不加 TypeID、不改存档 / 配置、不重打包；不提交 Git；按分工未跑 `compile_official.bat`（另有会话统一编译部署）。
+
+**根因**：
+- 龙铳 profile 引用的 `Fx_DragonGun_*` 拖尾 / 命中 / 爆炸预制体从没打进 `Assets/boss/dragonking`（UnityPy 列包确认只有龙王 7 个 prefab；`Player.log` 实录 `预制体不存在: Fx_DragonGun_SMG_Trail`），每发都落到 `DragonKingAssetManager` 的后备。后备配色 `GetEffectColor` 默认 `Color.white`：冲锋 / 突击 / 重型 / 狙击 / 霰弹 / 马格南 / 箭矢七种弹药每发都挂一团 0.6–0.8 m、α 0.8 的白色加色软圆光团（每秒 8 粒叠加，中心烧成纯白）+ 一盏白色点光源（强度 2、半径 1.5 m）+ 旋转器。2026-09-23 VB-29.1 之前这颗后备球用 Standard 材质、URP 下画不出来，只剩白灯；VB-29.1 把它换成看得见的加色光团，白光才变得这么显眼。
+- 烟花弹自己的程序化特效也叠了白：弹壳拖尾头部 `Lerp(white, 色, 0.2)`（80% 白）、分裂火星拖尾 65% 白、终点火花起始色一半取白，绽放中间还有一层 3 团 0.35–0.6 m、(1, 0.95, 0.8) 的近白闪光 `BloomFlash`。
+
+**完成**：
+- `Integration/DragonKing/DragonKingAssetManager.cs`：`GetEffectColor` 改为 `TryGetEffectColor`，默认分支返回 false；两个 `CreateFallbackEffect` 在建 GameObject 之前对未登记名字返回 null，`AddFallbackVisuals` 对未登记名字不加任何东西。龙王 Boss 各 prefab 与能量弹 PWS 的专属配色（青色）照旧。七种弹药从此每发少建一个 GameObject + 粒子 + 点光源 + 旋转器。
+- `Integration/DragonKing/Weapons/DragonKingBossGunProjectileAgent.cs`：烟花拖尾、拖尾火星、终点火花只用这一发的调色板色（渐变只管淡出），删掉 `hotColor` 与整层 `BloomFlash`（字段、创建、播放）；绽放剩 72 粒调色板火花 + 暖色光晕。终点火花的淡出渐变改在 `Initialize` 建一次，不再每次 `Play` 分配。
+- 守卫：新增 `tests/DragonKingBossGunNoWhiteGlowGuard.py`（后备不许退回白色、龙铳登记的后备色不许近白、龙铳弹体 / 拖尾 / 命中 / 绽放 / 地面区代码里不许有 Lerp 到白 / WithAlpha(white) / 纯白字面量 / hotColor / BloomFlash，烟花仍用自身调色板色）；`tests/DragonKingBossGunFireworkActivationStaggerGuard.py` 去掉对 `flashEmission` 3 连发的断言（该层按 owner 要求删除，防回归改由新守卫钉住），光晕与 72 粒火花断言保留。
+- repowiki：`.qoder/repowiki/zh/content/自定义 Boss 系统/焚天龙皇 Boss/武器系统/龙皇炮系统.md`「特效管理系统」补一条。WikiContent 没有描述这层白光的句子，未改。
+
+**每个弹种仍有可见弹体**：15 种主弹都用官方基底弹体（`BulletRed`：红色 Lazer 拖尾 + 红色自发光小球；预热未完成时是 `BulletSMG` 橙色曳光，按 profile.Scale 缩放），本次没动。冲锋 / 突击 / 重型 / 狙击 / 霰弹 / 马格南 / 箭矢只剩这层基底弹体；火箭、糖果另有官方火焰拖尾；冰刃另有青色拖尾；烟花另有调色板色拖尾；能量保留青色光团；粪便、雪球、纳米本来就只有基底弹体。没有弹种因此变成看不见，所以没有改用主色补画。
+
+**取舍与回退**：能量弹 PWS 的青色后备光团 (0.2, 0.95, 1) 算它自己的弹体色，保留；冰刃冰屑起始色 (0.9–0.95, 1, 1) 是冰色渐变的高光端，保留；烟花绽放的暖色光晕 (1, 0.8, 0.5)→调色板 30% 保留。七种弹药的 `Fx_DragonGun_*` 名字留在 profile 里：以后真把这些 prefab 打进包就会直接用上；缺包时什么都不画。回退：`TryGetEffectColor` 默认分支改回 `color = Color.white; return true;`，烟花三处 startColor 改回带白、恢复 `BloomFlash` 块，并同步两条守卫。
+
+**验证（L1 / L2）**：`python tools/run_guards.py --changed-only` 400 个中 397 PASS，另 3 个（`SkyIslandWikiParityGuard` / `WikiSiteStructureGuard` / `ZombieModeMutantWikiGuard`）是另一会话同时在重生成 `wiki-site/docs` 时读到缺页，单跑复核三者均 PASS；`--filter DragonKing` 33/33 PASS，`LargeFileBudgetGuard`、`RepowikiReferenceGuard`、`StaticCacheLifecycleGuard`、`OfficialCompileListFileExistenceGuard` PASS。新守卫与改过的守卫在临时副本上做了 9 项反向验证（后备默认改回白、去掉配色门、加回 hotColor、终点火花起始色改回白、能量色改成近白、删掉烟花拖尾头部色、加回 BloomFlash、点光源改回白、光晕齐射改掉），全部红在预期断言上，按字节还原后绿，工作区文件 SHA-256 未变。`python tools/verify_syntax.py --with-bcl` 语法层零错误。另用现有 `Build/BossRush.rsp`（去掉 `BOSSRUSH_DEV`、`/out` 指向会话临时目录、引用本机游戏 `Duckov_Data\Managed`）直接调 Roslyn 编译，退出码 0、只有既有 CS0649，未部署、未碰游戏目录——正式构建与部署仍以统一编译会话为准。
+
+**L3 未做（未实机）**：需要 owner 进游戏看，清单见交付回复（冲锋 / 突击 / 重型 / 狙击 / 霰弹 / 马格南 / 箭矢的弹体周围和脚下不再有白色光团和白色照亮；烟花弹壳拖尾头部、火星、终点火花是彩色而不是白芯，绽放中心不再发白；能量弹青色光团与冰刃拖尾照旧）。
 
 <!-- BEGIN SKY RELEASE TRACKER 2026-09-26 -->
 
@@ -9484,6 +9518,7 @@ Lv.2 的钻石、Lv.4 的冷淬液、Lv.7 的钻石戒指三处一并改为
 最终验证：649 guards / 52 regressions 全绿，960 源 Windows 正式编译成功；DLL `40CCD683E27FD9F8524C3FF7E46A49B2F6893AE7F3CF3B6D553AD320363F3CD3`，14 个 Dev 标识缺席。正式目标 `D:\sofrware\steam\steamapps\common\Escape from Duckov\Duckov_Data\Mods\BossRush` 共 531 个文件与源一致，72 包三端 SHA 一致且部署包实际读取通过。35 个日报动态区域留白，其余图标纹理/别名/几何保持；霜冠根/子节点姿态已回读。各反向验证预期转红后按字节恢复。日志和回退备份见 `Build/manual-fix-20260922/`；天空岛部署记录已同步。
 
 未运行游戏或访问玩家存档，L3 待 owner 按报告 R01–R17 清单验收。第三分类/立绘方式、全玩法跨模式边界、任意 RGB 和画面满意度仍保留产品口径差距，未把 12 项修复写成 17 项全部验收。未提交、推送或发布创意工坊。
+
 
 ## 2026-09-26 丧尸模式 Boss 表现、击杀图鉴与完整链路（COMPAT / WIRE+ / SAFE）
 

@@ -6,7 +6,8 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>COMPAT：地图会话独占的空间音效与装置反馈；集中距离调度，不控制碰撞或剧情。</summary>
+    /// <summary>COMPAT：地图会话独占的空间音效与装置反馈；集中距离调度，不控制碰撞或剧情。
+    /// 整趟循环的背景音乐走 BossBgmCoordinator 的场景常驻层（sceneTracks.SkyIsland），本类只负责按会话获取与释放租约。</summary>
     internal sealed class SkyIslandAmbience : IDisposable
     {
         private sealed class Device
@@ -31,6 +32,7 @@ namespace BossRush
         private float nextDistanceCheck;
         private bool disposed, audioWarning;
         private Vector3 playerPosition;
+        private readonly GameObject bgmOwner;
 
         internal SkyIslandAmbience(GameObject root)
         {
@@ -48,6 +50,9 @@ namespace BossRush
             Add(root, "Search_C", (int)SkyIslandStoryFlag.PlantingDelivered, new Color(.98f, .70f, .52f), null, 65f);
             Add(root, "Search_H", (int)SkyIslandStoryFlag.Ending, new Color(1f, .88f, .57f), null, 6f);
             AddFrogPool(root);
+            // 场景常驻 BGM：会话开始即起播并循环，Boss 曲结束后由协调器接回；没配曲目或文件缺失时什么也不做
+            bgmOwner = root;
+            BossBgmCoordinator.AcquireSceneBgm(BossBgmScenes.SkyIsland, bgmOwner);
         }
 
         /// <summary>只有一个无灯、无碰撞的池边发声体；夜里修复繁育水域后，近处才会发声。</summary>
@@ -223,6 +228,7 @@ namespace BossRush
         {
             if (disposed) return;
             disposed = true;
+            BossBgmCoordinator.ReleaseSceneBgm(bgmOwner);
             foreach (Device device in devices)
             {
                 Stop(device);

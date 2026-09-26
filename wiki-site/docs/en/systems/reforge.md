@@ -3,7 +3,7 @@
 For the full achievement list, see the "Achievement List" page.
 
 ## Overview
-- The Reforge system allows you to re-randomize equipment stats, serving as the core equipment progression mechanic in BossRush Mod.
+- The Reforge system allows you to re-randomize equipment stats, serving as the core equipment progression mechanic in this mod.
 - Accessed through Dingdang (the goblin artisan)'s Reforge service.
 
 ::: tip

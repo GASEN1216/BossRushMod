@@ -27,7 +27,21 @@ namespace BossRush
         public string musicName;
         public string musicNameEn;
         public string author;
+        // 可选英文作者名（SCHEMA+）：缺省时两种语言都显示 author
+        public string authorEn;
         public string file;
+    }
+
+    /// <summary>
+    /// 场景常驻 BGM 条目（SCHEMA+，2026-09-26）：某张图整趟循环的背景音乐，
+    /// Boss 战 BGM 起播时让位，Boss 曲停下后自动接回。sceneKey 见 BossBgmScenes。
+    /// </summary>
+    [Serializable]
+    internal class BossBgmSceneEntry
+    {
+        public string sceneKey;
+        public string file;
+        public bool loop = true;
     }
 
     /// <summary>
@@ -40,6 +54,7 @@ namespace BossRush
         public BossBgmTrackEntry[] bossTracks;
         public BossBgmStingerEntry[] stingers;
         public BossBgmJukeboxEntry[] jukebox;
+        public BossBgmSceneEntry[] sceneTracks;
 
         internal static bool TryParse(string json, out BossBgmTrackTable table, out string error)
         {
@@ -55,9 +70,11 @@ namespace BossRush
             List<BossRushJsonValue> bossRows;
             List<BossRushJsonValue> stingerRows;
             List<BossRushJsonValue> jukeboxRows;
+            List<BossRushJsonValue> sceneRows;
             if (!TryReadRows(root, "bossTracks", out bossRows, out error)
                 || !TryReadRows(root, "stingers", out stingerRows, out error)
-                || !TryReadRows(root, "jukebox", out jukeboxRows, out error)) return false;
+                || !TryReadRows(root, "jukebox", out jukeboxRows, out error)
+                || !TryReadRows(root, "sceneTracks", out sceneRows, out error)) return false;
 
             List<BossBgmTrackEntry> bosses = new List<BossBgmTrackEntry>();
             foreach (BossRushJsonValue row in bossRows)
@@ -90,7 +107,19 @@ namespace BossRush
                     || !row.TryGetString("file", out entry.file)) continue;
                 row.TryGetString("author", out entry.author);
                 row.TryGetString("musicNameEn", out entry.musicNameEn);
+                row.TryGetString("authorEn", out entry.authorEn);
                 music.Add(entry);
+            }
+
+            List<BossBgmSceneEntry> scenes = new List<BossBgmSceneEntry>();
+            foreach (BossRushJsonValue row in sceneRows)
+            {
+                if (row == null || row.Kind != BossRushJsonKind.Object) continue;
+                BossBgmSceneEntry entry = new BossBgmSceneEntry();
+                if (!row.TryGetString("sceneKey", out entry.sceneKey)
+                    || !row.TryGetString("file", out entry.file)) continue;
+                if (row.GetProperty("loop") != null && !row.TryGetBool("loop", out entry.loop)) continue;
+                scenes.Add(entry);
             }
 
             table = new BossBgmTrackTable();
@@ -98,6 +127,7 @@ namespace BossRush
             table.bossTracks = bosses.ToArray();
             table.stingers = events.ToArray();
             table.jukebox = music.ToArray();
+            table.sceneTracks = scenes.ToArray();
             error = null;
             return true;
         }

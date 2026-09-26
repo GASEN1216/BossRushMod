@@ -234,8 +234,12 @@ fork 的 scoped 样式里还留着七个 `--vp-*`，**不要逐条改写**（改
   zh-CN ⇄ en 的 hreflang。
 - `feed.mts`：`buildEnd` 生成 `dist/feed.xml`，条目是 catalog 里的每个版本页，日期取版本页
   「发布日期」小节，没写才退回 git 提交时间。
-- 绝对地址前缀由 `seo.mts` 的 `siteUrl()` 决定：GitHub Pages 默认；换域名设 `SITE_URL` 环境变量；
-  `DEPLOY_TARGET=cloudflare` 又没设 `SITE_URL` 时，sitemap / canonical / hreflang / RSS 一并省略。
+- 正式站是 **https://bossrushmod.pages.dev/**（Cloudflare Pages，构建环境设 `DEPLOY_TARGET=cloudflare`，base 为 `/`）。
+  默认 base `/BossRushMod/` 只服务 `.github/workflows/deploy.yml` 仍在发布的 GitHub Pages 副本与本地构建。
+  游戏内「在线 Wiki」按钮（`Integration/WikiUIManager.cs` 的 `ExternalWikiUrl`）与 README 指向同一个地址，改域名时三处一起改。
+- 绝对地址前缀由 `seo.mts` 的 `siteUrl()` 决定：默认返回正式站 `WIKI_HOME_URL`，与本次构建的 base 无关，
+  所以两种 base 的构建都出 sitemap / canonical / hreflang / RSS，且都指向正式站（GitHub Pages 副本的 canonical 指回正式站）；
+  换域名设 `SITE_URL` 环境变量（含 base）。
 
 ## 4.10 实体链接的悬停预览（WikiRefPreview）
 

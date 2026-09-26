@@ -1,18 +1,18 @@
-# BossRushMod for Escape from Duckov
+# BossRush · Qinglan Archipelago for Escape from Duckov
 
 **English** | **[中文](README.md)**
 
 <p align="center">
-  <img src="preview.png" alt="BossRush Mod Preview" width="400">
+  <img src="preview.png" alt="BossRush · Qinglan Archipelago preview" width="400">
 </p>
 
 [![Steam Workshop](https://img.shields.io/badge/Steam%20Workshop-3612465423-blue?logo=steam)](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 [![Game](https://img.shields.io/badge/Game-Escape%20from%20Duckov-orange)](https://store.steampowered.com/app/3167020)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A large gameplay mod for Escape from Duckov. It started as a BossRush arena and now includes eight game modes, a standalone raid map, original bosses and gear, NPC relationship lines, a story campaign, base buildings, and a long list of runtime stability fixes.
+**BossRush · Qinglan Archipelago** (Chinese name: BossRush · 晴岚群岛) is a large gameplay mod for Escape from Duckov; the mod id, namespace and repository are still `BossRush` / `BossRushMod`. It started as a BossRush arena and now includes eight game modes, a standalone raid map, original bosses and gear, NPC relationship lines, a story campaign, base buildings, and a long list of runtime stability fixes.
 
-- **Player docs**: [online wiki](https://gasen1216.github.io/BossRushMod/) (same text as the in-game wiki, Chinese and English)
+- **Player docs**: [online wiki](https://bossrushmod.pages.dev/) (same text as the in-game wiki, Chinese and English)
 - **Subscribe**: [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 - **Contributing / AI collaboration**: read [AGENTS.md](AGENTS.md) first (written in Chinese)
 

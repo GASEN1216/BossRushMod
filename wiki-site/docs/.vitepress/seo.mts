@@ -8,7 +8,7 @@
  *   decoratePage()  — transformPageData：从正文抽第一段做 description；
  *                     把「编辑此页」应指向的源文件路径写进 frontmatter.editSource。
  *   headFor()       — transformHead：OG / Twitter 卡片、canonical、zh-CN ⇄ en 的 hreflang。
- *   siteUrl()       — 绝对地址前缀。GitHub Pages 是默认；换域名用 SITE_URL 环境变量。
+ *   siteUrl()       — 绝对地址前缀。默认是正式站 WIKI_HOME_URL；换域名用 SITE_URL 环境变量。
  *
  * 为什么编辑链接要绕一圈 frontmatter：themeConfig.editLink.pattern 是个在**浏览器里**
  * 执行的函数（VitePress 把它序列化进站点数据），拿不到 Node 侧的映射表；
@@ -25,12 +25,23 @@ import { entryIdOfRoute, MOD_ROOT } from '../../scripts/entry-map.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-/** 站点绝对地址（含 base，以 / 结尾）。取不到域名时返回 null，绝对地址类标签随之省略。 */
-export function siteUrl(base: string): string | null {
+/**
+ * 在线 Wiki 的正式地址：Cloudflare Pages，根路径部署（构建时 DEPLOY_TARGET=cloudflare，base 为 /）。
+ * 游戏内百科的「在线 Wiki」按钮（Integration/WikiUIManager.cs 的 ExternalWikiUrl）与 README 指向同一个地址。
+ */
+export const WIKI_HOME_URL = 'https://bossrushmod.pages.dev/'
+
+/**
+ * 站点绝对地址（以 / 结尾），sitemap / canonical / hreflang / og:url / RSS 共用。
+ *
+ * 不再跟着本次构建的 base 走：GitHub Pages 流水线仍在出 /BossRushMod/ 子路径的副本，
+ * 那份副本的 canonical 也指回正式站，搜索引擎只收录一份。
+ * 换域名时设 SITE_URL 环境变量（含 base）覆盖。
+ */
+export function siteUrl(_base?: string): string {
   const env = process.env.SITE_URL?.trim()
   if (env) return env.replace(/\/*$/, '/')
-  if (process.env.DEPLOY_TARGET === 'cloudflare') return null
-  return 'https://gasen1216.github.io' + base
+  return WIKI_HOME_URL
 }
 
 export interface PageRoute {

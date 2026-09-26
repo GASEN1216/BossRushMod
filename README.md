@@ -1,18 +1,18 @@
-# BossRushMod for Escape from Duckov
+# BossRush · 晴岚群岛（Escape from Duckov Mod）
 
 **中文** | **[English](README_EN.md)**
 
 <p align="center">
-  <img src="preview.png" alt="BossRush Mod Preview" width="400">
+  <img src="preview.png" alt="BossRush · 晴岚群岛 预览" width="400">
 </p>
 
 [![Steam Workshop](https://img.shields.io/badge/Steam%20Workshop-3612465423-blue?logo=steam)](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 [![Game](https://img.shields.io/badge/Game-Escape%20from%20Duckov-orange)](https://store.steampowered.com/app/3167020)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-《逃离鸭科夫》（Escape from Duckov）的综合玩法 Mod。以 BossRush 竞技场为起点，现在有八种游戏模式、一张独立出击地图、原创 Boss 与装备、NPC 关系线、剧情战役、基地建筑，以及大量运行时稳定性修复。
+**BossRush · 晴岚群岛** 是《逃离鸭科夫》（Escape from Duckov）的综合玩法 Mod（Mod 标识、命名空间与仓库名仍是 `BossRush` / `BossRushMod`）。以 BossRush 竞技场为起点，现在有八种游戏模式、一张独立出击地图、原创 Boss 与装备、NPC 关系线、剧情战役、基地建筑，以及大量运行时稳定性修复。
 
-- **玩家文档**：[在线 Wiki](https://gasen1216.github.io/BossRushMod/)（与游戏内百科同一份正文，中英双语）
+- **玩家文档**：[在线 Wiki](https://bossrushmod.pages.dev/)（与游戏内百科同一份正文，中英双语）
 - **订阅**：[Steam 创意工坊](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 - **参与开发 / AI 协作**：先读 [AGENTS.md](AGENTS.md)
 

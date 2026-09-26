@@ -61,7 +61,7 @@ export function writeChangelogFeed(siteConfig: SiteConfig): void {
     const link = `${url}changelog/v${v}`
     return [
       '    <item>',
-      `      <title>BossRush Mod v${v}</title>`,
+      `      <title>BossRush · 晴岚群岛 v${v}</title>`,
       `      <link>${link}</link>`,
       `      <guid isPermaLink="true">${link}</guid>`,
       date ? `      <pubDate>${date}</pubDate>` : '',
@@ -76,9 +76,9 @@ export function writeChangelogFeed(siteConfig: SiteConfig): void {
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">',
     '  <channel>',
-    '    <title>BossRush Wiki · 更新日志</title>',
+    '    <title>BossRush · 晴岚群岛 Wiki · 更新日志</title>',
     `    <link>${url}changelog/</link>`,
-    '    <description>Escape from Duckov — BossRush Mod 每个版本改了什么</description>',
+    '    <description>逃离鸭科夫 Mod「BossRush · 晴岚群岛」每个版本改了什么</description>',
     '    <language>zh-CN</language>',
     `    <atom:link href="${url}feed.xml" rel="self" type="application/rss+xml" />`,
     ...items,

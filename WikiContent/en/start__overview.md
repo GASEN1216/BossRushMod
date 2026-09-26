@@ -1,6 +1,6 @@
 ## Mod Overview
 
-### What Is BossRush Mod?
+### What Is BossRush · Qinglan Archipelago?
 
 A massive content expansion for Escape from Duckov (Steam Workshop). What started as a Boss arena grew into a full content pack: 8 modes, arena Bosses, the Sky Islands, NPC companions, gear progression, and an achievement system.
 

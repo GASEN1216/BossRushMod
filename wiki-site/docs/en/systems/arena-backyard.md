@@ -85,7 +85,7 @@ If you recorded trophies in the old self-built "Trophy Showcase": that cabinet i
 
 - Once unlocked, mod battle tracks are appended to the base jukebox's playlist, sitting alongside
   the vanilla songs for you to pick from.
-- Two tracks so far: `Dragon Elegy` and `Umbral Corridors`. Switching language updates their titles without duplicating tracks.
+- Three tracks so far: `Dragon Elegy`, `Umbral Corridors` and the Sky Islands theme `Qinglan Archipelago`. Switching language updates their titles without duplicating tracks.
 - Mod tracks always go after the vanilla ones, so nothing you already had shifts position in the list.
 
 ## Eating your harvest

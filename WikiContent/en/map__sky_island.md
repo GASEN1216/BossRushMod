@@ -31,6 +31,7 @@ Departing and returning work exactly like any other map: loading ends on the usu
 - Extraction points are drawn on the ground as a **glowing ring**: teal at the dock, always open; a green ring appears on the Hanging Root Wood plaza once its wind beacon is lit, another on the Fallen Star Workshop plaza once its star lamp is lit, and one at the Bell Court as soon as both beacons are lit (no need to ring the bell first). The ring is exactly the trigger area: stand inside it for **3 seconds** to return, with the same countdown ring as the game's own extraction points. Leaving cancels the countdown; opening an official screen such as your backpack, the pause menu or photo mode **freezes** it rather than resetting it.
 - **Extraction is the only way out**: no screen lets you return on the spot. You have to walk into an extraction ring and hold it for 3 seconds. Open extraction points are marked on the game's own map, a notice pops up once whenever a new one opens, and the map also circles where your current objective is. Once both beacons burn and the Windeater is still out there, the eye of the storm on Windsong Boardwalk gets a lighter circle as an optional challenge; after the bell has rung, side-path evidence you have not collected yet is circled the same way.
 - Leaving with side content unfinished is fine; you can come back later.
+- The Sky Islands theme "Qinglan Archipelago" loops in the background for the whole trip, at your in-game music volume; it stops when you extract, fall or quit.
 
 ### The first stretch
 

@@ -314,3 +314,5 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 - 2026-09-25：按 `compile_official.bat` 的 `if defined BOSSRUSH_DEV_BUILD` 补充正式构建命令口径：必须移除变量，设成 0 仍是 Dev；交付需再核 DLL 标识与部署哈希。
 
 - 2026-09-26：根 AGENTS §4.14「复用官方 prefab」一条补上官方 `UIPrefabs.ScrollRect` 的 content 自带竖排布局与自适应高度、手动摆位前必须 `DestroyImmediate` 摘掉（鸭王杯看盘 / 押物品 / 结算三页布局全乱的根因；图鉴 `CodexView.EnsureGridLayout` 早已这样做）。
+
+- 2026-09-26：在线 Wiki 正式地址定为 https://bossrushmod.pages.dev/（owner 原话「我们的网址是 https://bossrushmod.pages.dev/」）。`wiki-site/AGENTS.md` §4.9 随 `seo.mts` 的 `siteUrl()` 改写：默认返回正式站、与 base 无关，Cloudflare 构建不再省略 sitemap / canonical / RSS，GitHub Pages 副本的 canonical 指回正式站；README 链接同步。模组显示名改为「BossRush · 晴岚群岛」（英文 BossRush · Qinglan Archipelago），Mod 标识 `name = BossRush`、命名空间与各类 key 不变。

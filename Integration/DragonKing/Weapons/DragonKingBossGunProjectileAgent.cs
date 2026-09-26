@@ -103,8 +103,14 @@ namespace BossRush
                 shape.shapeType = ParticleSystemShapeType.Sphere;
                 shape.radius = 0.035f;
 
+                // 颜色只走 startColor（烟花调色板色），这里只管淡出，不再从白色过渡（2026-09-26 owner：不要白色光效）。
                 var colorOverLifetime = particles.colorOverLifetime;
                 colorOverLifetime.enabled = true;
+                Gradient fade = new Gradient();
+                fade.SetKeys(
+                    new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                    new GradientAlphaKey[] { new GradientAlphaKey(0.86f, 0f), new GradientAlphaKey(0.45f, 0.45f), new GradientAlphaKey(0f, 1f) });
+                colorOverLifetime.color = fade;
 
                 var renderer = particles.GetComponent<ParticleSystemRenderer>();
                 renderer.renderMode = ParticleSystemRenderMode.Stretch;
@@ -121,14 +127,7 @@ namespace BossRush
                 gameObject.SetActive(true);
 
                 var main = particles.main;
-                main.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(Color.white, 0.9f), WithAlpha(color, 0.82f));
-
-                Gradient gradient = new Gradient();
-                gradient.SetKeys(
-                    new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(color, 0.45f), new GradientColorKey(color, 1f) },
-                    new GradientAlphaKey[] { new GradientAlphaKey(0.86f, 0f), new GradientAlphaKey(0.45f, 0.45f), new GradientAlphaKey(0f, 1f) });
-                var colorOverLifetime = particles.colorOverLifetime;
-                colorOverLifetime.color = gradient;
+                main.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(color, 0.9f), WithAlpha(color, 0.82f));
 
                 particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 particles.Play(true);
@@ -160,7 +159,6 @@ namespace BossRush
         private sealed class FireworkBloomEffectHandle : MonoBehaviour
         {
             private ParticleSystem burst;
-            private ParticleSystem flash;
             private ParticleSystem halo;
             private float releaseTime;
             private int poolGeneration;
@@ -200,42 +198,9 @@ namespace BossRush
                 burstRenderer.velocityScale = 0.22f;
                 burstRenderer.sharedMaterial = GetOrCreateFireworkMaterial();
 
-                GameObject flashObject = new GameObject("BloomFlash");
-                flashObject.transform.SetParent(transform);
-                flashObject.transform.localPosition = Vector3.zero;
-                flashObject.transform.localRotation = Quaternion.identity;
-                flash = flashObject.AddComponent<ParticleSystem>();
-                var flashMain = flash.main;
-                flashMain.loop = false;
-                flashMain.duration = 0.05f;
-                // VB-16：3 团 0.35–0.6 m 的软圆闪光、0.08–0.12 s（旧的是 10 个 0.22–0.48 m 的白方片）。
-                flashMain.startLifetime = new ParticleSystem.MinMaxCurve(0.08f, 0.12f);
-                flashMain.startSpeed = new ParticleSystem.MinMaxCurve(0f, 0.4f);
-                flashMain.startSize = new ParticleSystem.MinMaxCurve(0.35f, 0.6f);
-                flashMain.simulationSpace = ParticleSystemSimulationSpace.World;
-                flashMain.maxParticles = 4;
-
-                var flashEmission = flash.emission;
-                flashEmission.rateOverTime = 0;
-                flashEmission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 3) });
-
-                var flashShape = flash.shape;
-                flashShape.shapeType = ParticleSystemShapeType.Sphere;
-                flashShape.radius = 0.03f;
-
-                var flashFade = flash.colorOverLifetime;
-                flashFade.enabled = true;
-                Gradient flashGradient = new Gradient();
-                flashGradient.SetKeys(
-                    new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-                    new GradientAlphaKey[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0f, 1f) });
-                flashFade.color = flashGradient;
-
-                var flashRenderer = flash.GetComponent<ParticleSystemRenderer>();
-                flashRenderer.renderMode = ParticleSystemRenderMode.Billboard;
-                flashRenderer.sharedMaterial = GetOrCreateFireworkMaterial();
-
-                // 外面再罩一层 0.9 m、α 0.25 的暖色光晕：读作「一团光炸开」，而不是几颗亮点。
+                // 2026-09-26 owner：不要白色光效。原来这里还有一层 3 团 0.35–0.6 m、近白 (1, 0.95, 0.8) 的软圆闪光，
+                // 叠在调色板火花上面，整团绽放中心发白；已删掉，绽放只剩调色板火花与下面这层暖色光晕。
+                // 再罩一层 0.9 m、α 0.25 的暖色光晕：读作「一团光炸开」，而不是几颗亮点。
                 GameObject haloObject = new GameObject("BloomHalo");
                 haloObject.transform.SetParent(transform);
                 haloObject.transform.localPosition = Vector3.zero;
@@ -285,15 +250,11 @@ namespace BossRush
                 var burstColorOverLifetime = burst.colorOverLifetime;
                 burstColorOverLifetime.color = burstGradient;
 
-                var flashMain = flash.main;
-                flashMain.startColor = WithAlpha(new Color(1f, 0.95f, 0.8f), 0.95f);
                 var haloMain = halo.main;
                 haloMain.startColor = WithAlpha(Color.Lerp(new Color(1f, 0.8f, 0.5f), colorA, 0.3f), 0.25f);
                 burst.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-                flash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 halo.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 burst.Play(true);
-                flash.Play(true);
                 halo.Play(true);
                 releaseTime = Time.time + 1.35f;
             }
@@ -686,8 +647,9 @@ namespace BossRush
         private GameObject CreateFireworkTrail()
         {
             bool spark = secondaryProjectile;
+            // 拖尾与拖尾火星只用这一发自己的调色板色。2026-09-26 owner：不要白色光效——旧版头部先 Lerp 到白
+            // （弹壳 80% 白、火星 65% 白），每条拖尾前端都是一截白热芯。
             Color color = ResolveFireworkColor(spark ? projectileIndex : shotId, spark);
-            Color hotColor = Color.Lerp(Color.white, color, spark ? 0.35f : 0.2f);
 
             GameObject trailObject = new GameObject(spark ? "DragonGun_FireworkSparkTrailFx" : "DragonGun_FireworkShellTrailFx");
             trailObject.transform.SetParent(transform);
@@ -698,7 +660,7 @@ namespace BossRush
             trail.time = spark ? 0.58f : 0.46f;
             trail.startWidth = spark ? 0.11f : 0.22f;
             trail.endWidth = 0.018f;
-            trail.startColor = WithAlpha(hotColor, spark ? 0.92f : 0.98f);
+            trail.startColor = WithAlpha(color, spark ? 0.92f : 0.98f);
             trail.endColor = WithAlpha(color, 0f);
             trail.sharedMaterial = GetOrCreateTrailMaterial();
             trail.numCornerVertices = 4;
@@ -712,7 +674,7 @@ namespace BossRush
             main.startLifetime = spark ? new ParticleSystem.MinMaxCurve(0.18f, 0.36f) : new ParticleSystem.MinMaxCurve(0.26f, 0.5f);
             main.startSpeed = spark ? new ParticleSystem.MinMaxCurve(0.25f, 0.9f) : new ParticleSystem.MinMaxCurve(0.08f, 0.45f);
             main.startSize = spark ? new ParticleSystem.MinMaxCurve(0.025f, 0.07f) : new ParticleSystem.MinMaxCurve(0.04f, 0.11f);
-            main.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(hotColor, 0.88f), WithAlpha(color, 0.72f));
+            main.startColor = new ParticleSystem.MinMaxGradient(WithAlpha(color, 0.88f), WithAlpha(color, 0.72f));
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = spark ? 36 : 28;
 
@@ -724,11 +686,12 @@ namespace BossRush
             shape.shapeType = ParticleSystemShapeType.Sphere;
             shape.radius = spark ? 0.035f : 0.055f;
 
+            // 颜色已在 startColor 里，这里只管淡出（白色色键 = 不再染色）。
             var colorOverLifetime = ps.colorOverLifetime;
             colorOverLifetime.enabled = true;
             Gradient gradient = new Gradient();
             gradient.SetKeys(
-                new GradientColorKey[] { new GradientColorKey(hotColor, 0f), new GradientColorKey(color, 0.45f), new GradientColorKey(color, 1f) },
+                new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
                 new GradientAlphaKey[] { new GradientAlphaKey(0.86f, 0f), new GradientAlphaKey(0.52f, 0.45f), new GradientAlphaKey(0f, 1f) });
             colorOverLifetime.color = gradient;
 
@@ -882,7 +845,7 @@ namespace BossRush
             return DragonKingFxShared.Soft(BossRushFxBlend.Additive);
         }
 
-        /// <summary>烟花火花、闪光与光晕：加色软圆（共享工厂）。</summary>
+        /// <summary>烟花火花与光晕：加色软圆（共享工厂）。</summary>
         private static Material GetOrCreateFireworkMaterial()
         {
             return DragonKingFxShared.Soft(BossRushFxBlend.Additive);

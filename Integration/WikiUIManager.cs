@@ -457,7 +457,8 @@ namespace BossRush
             isOnArticlePage = false;
             SetPageVisibility(showIndex: true, showArticle: false);
 
-            if (txtArticleTitle != null) txtArticleTitle.text = "Boss Rush";
+            // 目录页页眉显示模组名（标题框自动缩字 + 省略号，长名放得下）
+            if (txtArticleTitle != null) txtArticleTitle.text = L10n.T("BossRush · 晴岚群岛", "BossRush · Qinglan Archipelago");
 
             var categories = WikiContentManager.Instance.GetCategories();
             currentCategoryId = ResolveContentCategoryId(categories);
