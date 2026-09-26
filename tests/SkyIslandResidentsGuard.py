@@ -23,9 +23,13 @@ for npc_id in ['sky_qinghe', 'sky_weibai', 'sky_fuzhou', 'sky_miantai', 'sky_zhe
         errors.append(npc_id + ' 缺少固化外观')
     if not row.get('invincible') or row.get('team') != 'player':
         errors.append(npc_id + ' 剧情实例必须友好且无敌，战斗实例单独生成')
-    if npc_id in ('sky_qinghe', 'sky_weibai'):
-        if not row.get('isPermanent') or not row.get('permanent', {}).get('marriedDialogues'):
-            errors.append(npc_id + ' 必须接永久关系与既有婚姻')
+    permanent = row.get('permanent', {})
+    if not row.get('isPermanent') or not permanent.get('marriedDialogues'):
+        errors.append(npc_id + ' 必须接永久关系与既有婚姻')
+    if not permanent.get('positiveTags') and not permanent.get('positiveItemTypeIds'):
+        errors.append(npc_id + ' 必须有玩家可使用的礼物偏好')
+    if permanent.get('dailyChatAffinity', 0) != 30:
+        errors.append(npc_id + ' 必须沿用每日聊天 +30 的共享规则')
 
 for token in ['await DuckNpcSpawner.SpawnAsync', 'PermanentDuckNpcModule.AttachPermanentParts',
               'PermanentDuckNpcRegistry.RegisterInstance', 'AffinityManager.IsMarriedToPlayer',
@@ -40,6 +44,7 @@ for token in ['await DuckNpcSpawner.SpawnAsync', 'PermanentDuckNpcModule.AttachP
 if 'callback(npcId, speaker)' not in INTERACT or 'valid()' not in INTERACT:
     errors.append('剧情交互必须检查会话 owner 后调用故事入口')
 for token in ['NPCInteractionGroupHelper.AddSubInteractable(owner.transform, "IslandStoryOption", group,',
+              'if (npc == null || SkyIslandResidents.MarkerOf(id) == null) return;',
               'component.TalkPermanent, component.CanTalkPermanent', 'session.TalkToResident(id, target)',
               'story.DescribeNpc(id, true, false)', 'homeDialogue.Dispose()',
               'story.IsCurrentSlot', 'SceneLoader.IsSceneLoading']:
@@ -50,6 +55,14 @@ if 'SkyIslandResidentInteractable.AttachPermanent(npc, blueprint.id);' not in mo
     errors.append('永久 NPC 装配（含婚后恢复）没有接回航路剧情')
 if 'new SkyIslandResidents' not in SESSION or '.Dispose()' not in SESSION:
     errors.append('天空岛会话未接居民创建/清理')
+encounters = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandEncounters.cs').read_text(encoding='utf-8-sig'))
+raid_started = re.search(r'internal bool WasStartedThisRaid\(string id\)\s*\{([^}]+)\}', encounters)
+if raid_started is None or not re.fullmatch(
+        r'\s*Encounter encounter = Find\(id\);\s*return encounter != null && encounter.Started;\s*',
+        raid_started.group(1)):
+    errors.append('折翎关系恢复必须区分本趟 Started 与旧档投影的 Cleared')
+if 'residents.SetVisible("sky_zheling", encounters == null || !encounters.WasStartedThisRaid("Zheling"));' not in SESSION:
+    errors.append('折翎只在本趟挑战后休整，不得按持久战败位永久隐藏')
 bridge = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandSceneReferenceBridge.cs').read_text(encoding='utf-8-sig'))
 def constant(source, name):
     match = re.search(r'const\s+string\s+' + name + r'\s*=\s*"([^"\r\n]+)"\s*;', source)

@@ -94,8 +94,8 @@ namespace BossRush
                         text.Append(L10n.T("听说折翎肯坐下来谈了。我把寺里那封回信也带回来了，他接过去的时候，手一直在抖。",
                             "I hear Zheling agreed to sit down and talk. I brought back the reply from the temple too. His hands wouldn't stop shaking when he took it."));
                     else if (data.Has(SkyIslandStoryFlag.ZhelingDefeated))
-                        text.Append(L10n.T("路是通了，可寺里没人收信了。我把那封信压在他留下的旧腰牌旁边，风会替我送到的。",
-                            "The road is open, but there is no one at the temple to take the letter now. I weighed it down beside the old badge he left; the wind will deliver it for me."));
+                        text.Append(L10n.T("路是通了。折翎退下休整时，我把那封信压在他留下的旧腰牌旁边；等他回来，就能亲手收到了。",
+                            "The road is open. While Zheling rested, I weighed the letter down beside his old badge; he can take it himself when he returns."));
                     else
                         text.Append(L10n.T("镜水寺那条路还封着吗？写给折翎的那封信，我一直没敢送。",
                             "Is the Mirrorwater Temple road still closed? I've got a letter for Zheling I never dared deliver."));

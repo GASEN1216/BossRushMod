@@ -264,6 +264,8 @@ namespace BossRush
 
         // ---- 蚋笛翁 ----
         internal const float FluteInterval = 9f;
+        /// <summary>打断后需要更久重新运气，奖励玩家主动抓住吹笛窗口。</summary>
+        internal const float FluteInterruptedCooldown = 13.5f;
         /// <summary>吹笛要站定这么久（官方 AI 暂停）：这一下里打掉它 <see cref="FluteInterruptDamage"/> 点血，笛声就断了。</summary>
         internal const float FluteChannel = 1.0f;
         internal const float FluteInterruptDamage = 8f;

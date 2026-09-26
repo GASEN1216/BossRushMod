@@ -10,7 +10,7 @@ Three regular NPC companions have their own services and personality, alongside 
 
 ## Sky Islands Residents
 
-The Qinglan Archipelago has its own residents, including Qinghe, Weibai, Fuzhou and the islanders involved in its side stories. Qinghe and Weibai have separate affinity and marriage progression; see Sky Islands · Qinglan Archipelago for their services, visits and quests. The locations below describe Dingdang, Yuori and Awen.
+The Qinglan Archipelago has six residents: Qinghe, Weibai, Fuzhou, Miantai, Zheling and the Silent Bell Keeper. All six support daily chat, gifts, affinity and marriage, using the existing level-10 affinity, Wedding Chapel, Diamond Ring and single-spouse rules. See Sky Islands · Qinglan Archipelago for their services, gift preferences, visits and quests. After a challenge, Zheling rests for that raid; you can continue building the relationship on your next visit. The locations below describe Dingdang, Yuori and Awen.
 
 ## Affinity System
 

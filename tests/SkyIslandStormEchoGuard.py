@@ -218,8 +218,18 @@ def check(sources):
                       "if (echo && !Aborted())", "Detonate(PulseWaves - 1);"],
             "回响的风眼在预警开始时钉住，三波之后在原地再响一声（半径同最后一波，间隔同首战）")
     forbid(routine, "Time.time + 0.45f", "波间隔要读 WaveGap，不许再写字面量")
+    no_ring = body_of(routine, squash("if (ring == null || !ring.enabled)")) or ""
+    for token in ("Destroy(warning)", "pulsing = false;", "yield break;"):
+        require(no_ring, token, "没有地面预警圈时必须取消本轮伤害并收掉灯")
+    warning = need_body(BOSS, "private LineRenderer CreateWarningRing()", "风暴预警圈")
+    require(warning, "SkyIslandGroundRing.Create(null, eyeOrigin + Vector3.up * SkyIslandGroundRing.GroundLift)",
+            "没有地图父节点时仍然用锁定的世界坐标画圈")
+    forbid(warning, "SkyIslandGroundRing.Create(boss.transform", "预警圈不能随本体追人")
+    light = need_body(BOSS, "private GameObject CreateWarningLight()", "风暴预警光")
+    require(light, "go.transform.position = eyeOrigin + Vector3.up * 1.2f;", "预警光必须与风眼同点")
+    forbid(light, "SetParent(boss.transform,", "预警光不能随本体追人")
     detonate = need_body(BOSS, "private void Detonate(int wave)", "风暴脉冲")
-    require(detonate, "Vector3 origin = echo ? eyeOrigin : boss.transform.position;", "回响的圆心钉在风眼，首战照旧每波重读本体位置")
+    require(detonate, "Vector3 origin = eyeOrigin;", "首战与回响的伤害都钉在预警风眼，不能追着玩家挪圆心")
     require(detonate, "damage.damageValue = SkyIslandFieldcraftRules.StormPulseDamage(PulseDamage, SkyIslandFieldcraft.StormWarded);",
             "晴岚护符对回响同样减伤（同一个 Detonate）")
     for token in ("SetHealth(", "BaseValue", "HealthMultiplier("):
@@ -325,7 +335,8 @@ def main():
         (SESSION_ECHO, "if (crystal != null) crystal.Dispose();", "if (crystal != null) { }"),
         (SESSION_ECHO, "stormEchoCleared = true;", "stormEchoCleared = true; story.RecordEncounterCleared(id);"),
         (ECHO_RULES, 'internal const string EncounterId = "StormEcho";', 'internal const string EncounterId = "Storm";'),
-        (BOSS, "Vector3 origin = echo ? eyeOrigin : boss.transform.position;", "Vector3 origin = boss.transform.position;"),
+        (BOSS, "if (ring == null || !ring.enabled)\n            {", "if (false)\n            {"),
+        (BOSS, "Vector3 origin = eyeOrigin;", "Vector3 origin = boss.transform.position;"),
         (BOSS, "                try { Detonate(PulseWaves - 1); }", "                try { }"),
         (BOSS, "float waveUntil = Time.time + WaveGap;", "float waveUntil = Time.time + 0.45f;"),
         (ECHO_REWARD, "new SkyIslandYield(BossRushItemIds.SkyIslandHomecomingBento, 1)", "new SkyIslandYield(BossRushItemIds.SkyIslandDeepVaultKey, 1)"),

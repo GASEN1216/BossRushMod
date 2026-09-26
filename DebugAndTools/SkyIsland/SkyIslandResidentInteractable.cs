@@ -53,7 +53,7 @@ namespace BossRush
         /// <summary>普通生成、婚后恢复共用。回调取当前会话，不把岛上旧 owner 带到基地。</summary>
         internal static void AttachPermanent(CharacterMainControl npc, string id)
         {
-            if (npc == null || (id != "sky_qinghe" && id != "sky_weibai")) return;
+            if (npc == null || SkyIslandResidents.MarkerOf(id) == null) return;
             PermanentDuckNpcInteractable owner = npc.GetComponentInChildren<PermanentDuckNpcInteractable>(true);
             if (owner == null || owner.transform.Find("IslandStoryOption") != null) return;
             var group = NPCInteractionGroupHelper.GetOrCreateGroupList(owner, "[SkyIslandResidents]");

@@ -138,7 +138,7 @@ namespace BossRush
                 // 苇白的委托早有留言板兜底，这里给晴禾补上同一条纪律。`mealUsed` 是单次布尔，不会双领。
                 case "Search_C": MealChoice(choices);
                     CraftChoice(choices, SkyIslandCraftStation.Stove); break;
-                // 眠苔的药臼与苔药：她不是永久居民，但生成可能失败；悬根林的见闻点就在她站位旁 14 米，两样一起兜底。
+                // 眠苔的药臼与苔药：婚后离岛或生成失败时，悬根林的见闻点就在她站位旁 14 米，两样一起兜底。
                 // **服务和合成台必须成对兜底**：只兜药臼的话，眠苔没生成出来的那一趟玩家连唯一的付费回血都没有，
                 // 而星苔药膏恰恰要在她的药臼上做——等于把"回血"这条线整条掐断。浮舟（码头装置）、
                 // 晴禾（菜畦）都是服务 + 合成台一起兜的，这里补齐同一条纪律。
@@ -424,8 +424,12 @@ namespace BossRush
             Func<string> begin = delegate
             {
                 if (!session.BeginStoryChallenge(id))
-                    return L10n.T("现在开不了：走近挑战地点，看看前置目标做完没有，或者等上一场仗打完。",
+                {
+                    string reason;
+                    session.CanBeginStoryChallenge(id, out reason);
+                    return reason ?? L10n.T("现在开不了：走近挑战地点，看看前置目标做完没有，或者等上一场仗打完。",
                         "Can't start yet: get closer to the site, check the prerequisites are done, and let the last fight finish.");
+                }
                 presentation.Dispose();
                 // 面板已经收起，回执写不回正文（SetBodyText 见正文已销毁直接返回）：改走字幕，否则面板一关就没了下文。
                 string started = L10n.T("挑战开始", "The challenge begins");
@@ -592,7 +596,7 @@ namespace BossRush
                 Beacon("Search_C", L10n.T("晴禾的归航菜畦", "Qinghe's homecoming garden"), BossRushUIColors.Success);
             if (story.Current.Has(SkyIslandStoryFlag.StormSlain))
                 Beacon("Search_E", L10n.T("风眼已散 · 航路重开", "The eye is gone · the lanes reopen"), BossRushUIColors.Accent);
-            // 折翎被战胜后剧情体不再露面（见 SkyIslandSession 的 SetVisible），原地留下旧腰牌。
+            // 折翎被战胜后本趟休整（见 SkyIslandSession 的 SetVisible），原地留下旧腰牌，下次出击恢复本人。
             // 走的是同一条「按持久 flag 重建」的路子，跨局重进仍在。
             if (story.Current.Has(SkyIslandStoryFlag.ZhelingDefeated))
                 Beacon("EnemySpawn_F", L10n.T("折翎的旧腰牌", "Zheling's old badge"), BossRushUIColors.Accent, ZhelingBadgeText);
@@ -605,7 +609,7 @@ namespace BossRush
         }
         /// <summary>
         /// 折翎旧腰牌（纪念物）的面板正文。Wiki 承诺「他倒下时留下的旧腰牌写着『航路交给你』，钟守认这份物证」，
-        /// 而折翎战败后剧情体不再露面，<c>DescribeNpc("sky_zheling")</c> 里那句刻字再也没有入口；
+        /// 而折翎战败后本趟剧情体休整，<c>DescribeNpc("sky_zheling")</c> 里那句刻字再也没有入口；
         /// 纪念物以前只显示旅程摘要，玩家从头到尾读不到这块腰牌上写了什么、为什么钟守认它。
         /// </summary>
         private string ZhelingBadgeText()

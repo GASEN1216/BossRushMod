@@ -46,6 +46,9 @@ internal static class SkyIslandBossRulesRegression
         Drops(check);
         Tiers(check);
         Telegraphs(check);
+        check(SkyIslandBossRules.FluteInterruptedCooldown > SkyIslandBossRules.FluteInterval
+            && SkyIslandBossRules.FluteInterruptedCooldown <= SkyIslandBossRules.FluteInterval * 2f,
+            "boss piper: interrupt rewards a longer recovery window without removing repeat pressure");
         Geometry(check);
         Gear(check);
         Crafting(check);

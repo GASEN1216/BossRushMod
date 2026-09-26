@@ -299,6 +299,27 @@ def check(raw):
             "ItemAssetsCollection.GetPrefab(typeId) == null", "补一件之前先问 prefab")
 
     # ---- 4. 招式控制器 ----
+    ring = body_of(code["forge"], "internal static LineRenderer CreateGroundRing(")
+    disabled = body_of(ring, "if (!line.enabled)")
+    require(errors, disabled, "UnityEngine.Object.Destroy(line.gameObject);", "材质不可用的预警圈必须回收")
+    require(errors, disabled, "throw new InvalidOperationException(", "材质不可用时必须拒绝招式，不许无预警结算")
+    starfire = body_of(code["foreman"], "private IEnumerator StarfireRoutine(")
+    require(errors, starfire, "if (i >= lines.Count || lines[i] == null) continue;",
+            "星焰只有成功画出预警圈的点才可结算伤害")
+    sweep = body_of(code["sickle"], "private IEnumerator SweepRoutine()")
+    ordered(errors, sweep, ["Vector3 sweepOrigin = boss.transform.position;", "aiControl.Pause();",
+                           "SkyIslandBossForge.CreateGroundRing(context.Root, sweepOrigin)",
+                           "SkyIslandBossForge.Detonate(boss, sweepOrigin, SkyIslandBossRules.SweepRadius"],
+            "穗镰镰扫要站定并锁定与预警一致的结算圆心")
+    if sweep is None or sweep.count("ResumeSweepAi();") != 2:
+        errors.append("穗镰镰扫预警失败和正常/中止收尾都必须恢复AI")
+    flute = body_of(code["piper"], "private IEnumerator FluteRoutine(")
+    interrupted = body_of(flute, "if (interrupted)")
+    require(errors, interrupted, "EndFlute(SkyIslandBossRules.FluteInterruptedCooldown);",
+            "打断引蚋笛必须走奖励冷却，不能比正常吹笛更快重来")
+    require(errors, code["rules"], "internal const float FluteInterruptedCooldown = 13.5f;",
+            "打断引蚋笛奖励13.5秒冷却，高于正常9秒")
+
     binder = body_of(code["forge"], "private static void BindController(")
     for kind, (key, type_name) in CONTROLLERS.items():
         ordered(errors, binder, ["case SkyIslandBossKind.%s:" % kind, "AddComponent<%s>().Bind(created, profile, context);" % type_name, "break;"],
@@ -333,6 +354,11 @@ def check(raw):
     wear = body_of(code["props"], "internal static void WearSoftPiece(CharacterMainControl boss, DamageInfo damage, string slotKey, int typeId)")
     for token in ("damage.crit <= 0", "damage.damageType == DamageTypes.realDamage", "damage.ignoreArmor", "damage.armorBreak"):
         require(errors, wear, token, "面罩 / 耳机磨耐久要照官方磨头盔的口径（暴击、非真实伤害、不无视护甲、按 armorBreak）")
+    decoy_part = body_of(code["props"], "private static void AddDecoyPart(")
+    require(errors, decoy_part, "BossRushFxMaterials.Get(BossRushFxBlend.Alpha, texture != null ? texture : Texture2D.whiteTexture)",
+            "倒影必须真正使用透明混合，不能只给不透明本体材质写alpha")
+    require(errors, decoy_part, "renderer.sharedMaterials = ghostMaterials;", "倒影必须挂接透明材质")
+    require(errors, decoy_part, "new Vector4(tint.r, tint.g, tint.b, tint.a) * 0.5f", "倒影Legacy透明调色必须补偿2倍系数")
     decoy = body_of(code["props"], "internal static GameObject CreateDecoy(")
     require(errors, decoy, "skin.BakeMesh(mesh, true);", "倒影把蒙皮网格烤成静态网格")
     if decoy is None or "Instantiate(" in decoy:
@@ -435,6 +461,12 @@ def load():
 def reverse_probes(raw):
     """在内存里把关键接线改坏，确认守卫会红。锚点失效也算红（写法变了要同步这里）。"""
     probes = (
+        ("sickle", "SkyIslandBossForge.Detonate(boss, sweepOrigin, SkyIslandBossRules.SweepRadius", "SkyIslandBossForge.Detonate(boss, boss.transform.position, SkyIslandBossRules.SweepRadius", "镰扫追着本体移动圆心"),
+        ("props", "renderer.sharedMaterials = ghostMaterials;", "renderer.sharedMaterials = materials;", "倒影改回不透明本体材质"),
+        ("forge", "if (!line.enabled)", "if (false)", "预警材质失败仍施放伤害"),
+        ("foreman", "if (i >= lines.Count || lines[i] == null) continue;", "", "星焰没画出圈仍结算伤害"),
+        ("piper", "EndFlute(SkyIslandBossRules.FluteInterruptedCooldown);", "EndFlute(SkyIslandBossRules.FluteInterval * 0.5f);", "打断笛声反而加快下一次"),
+        ("rules", "FluteInterruptedCooldown = 13.5f", "FluteInterruptedCooldown = 4.5f", "打断冷却比正常更短"),
         ("encounters", "if (SkyIslandBossForge.TryApply(created, encounter.Id, index, BossContext())) return;", "", "拆掉身份层分派"),
         ("encounters", "if (LeadWaiting(encounter, i)) continue;", "", "夜限定带队白天也刷"),
         ("encounters", "if (encounter.RivalFaction) created.SetTeam(Teams.bear);", "", "断风游猎不换阵营"),

@@ -322,11 +322,6 @@
       "actions": ["invincible:on", "teleport:Search_H:2:0", "clear_nearby:60:20", "interact:Search_H", "wait_panel:4", "assert:choice_absent:敲响归航钟|Ring the Homecoming Bell", "assert:body_contains:钟守不信航路安全|The Bell Keeper doubts the lanes are safe", "shot:bell_court_beacons:ui"]
     },
     {
-      "id": "SKY_AUTO_BEACONS_BOARDWALK", "title": "双航标、噬风未打：装置上挂「直面云海里的那阵风」，栈道起大风（起风说明字幕每趟只发一次，真实状态段的夜风那步已经发过）",
-      "stage": "both_beacons", "location": "Search_E", "class": "auto", "checklist": ["2.11.13", "M_SKY_ISLAND_05"], "budget": 60,
-      "actions": ["invincible:on", "teleport:Search_E:2:0", "clear_nearby:60:20", "interact:Search_E", "wait_panel:4", "assert:choice_present:直面云海里的那阵风|Face the wind", "shot:boardwalk_storm_choice:ui", "close_panel", "wait_real:1", "assert:wind_gale:true"]
-    },
-    {
       "id": "SKY_AUTO_BEACONS_QINGHE", "title": "交还种植记录之后再跟晴禾说话，那一项不再挂",
       "stage": "both_beacons", "location": "POI_B", "class": "auto", "checklist": ["2.15.10"], "budget": 100,
       "actions": ["teleport:POI_B:2.5:0", "interact:resident:sky_qinghe", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:0", "wait_panel:5", "choose_label:交还种植记录|Return the planting record", "wait_real:1", "assert:flag:PlantingDelivered", "close_panel", "interact:resident:sky_qinghe", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:0", "wait_panel:5", "assert:choice_absent:交还种植记录|Return the planting record", "shot:qinghe_after_delivery:ui"]
@@ -371,6 +366,11 @@
       "id": "SKY_AUTO_BEACONS_ZHELING", "title": "折翎挑战：战斗体在他站立处出现、打赢写旗标、原地留下旧腰牌、挑战项不再挂",
       "stage": "both_beacons", "location": "EnemySpawn_F", "class": "auto", "checklist": ["2.10.9", "2.15.11", "2.15.34"], "budget": 150,
       "actions": ["invincible:on", "teleport:EnemySpawn_F:3:0", "clear_nearby:45:20", "interact:resident:sky_zheling", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:0", "wait_panel:5", "shot:zheling_panel:ui", "choose_label:挑战旧航路守卫|Challenge the keeper of the old route", "wait_panel:3", "shot:zheling_confirm:ui", "assert:overflow_none", "choose_label:开打|Start the fight", "wait_real:4", "kill_nearby:25", "wait_real:3", "kill_nearby:25", "wait_real:3", "assert:flag:ZhelingDefeated", "assert:object_present:EnemySpawn_F_Completed", "shot:zheling_badge:world", "teleport:Search_F:2:0", "clear_nearby:45:10", "interact:Search_F", "wait_panel:4", "assert:choice_absent:挑战旧航路守卫|Challenge the keeper of the old route", "shot:zheling_challenge_gone:ui"]
+    },
+    {
+      "id": "SKY_AUTO_BEACONS_BOARDWALK", "title": "双航标首战：从装置正常选择直面噬风开战，控血触发首相后测预警环带可见与固定风眼；清场核对剧情结果（强制控血只作辅助证据，正常反应窗口需实打）",
+      "stage": "both_beacons", "location": "Search_E", "class": "auto", "checklist": ["2.11.13", "M_SKY_ISLAND_05"], "budget": 130,
+      "actions": ["invincible:on", "teleport:Search_E:2:0", "clear_nearby:60:20", "interact:Search_E", "wait_panel:4", "assert:choice_present:直面云海里的那阵风|Face the wind", "shot:boardwalk_storm_choice:ui", "assert:wind_gale:true", "choose_label:直面云海里的那阵风|Face the wind", "wait_boss:storm:30", "teleport:POI_E:-4:-6", "boss_hurt:storm:0.75:15", "wait_object:SkyIslandStormWarningRing:5", "shot:storm_warning_ring:world", "assert:visible_min:echo_ring:0.5", "assert:object_static:SkyIslandStormWarningRing:0.3", "burst:storm_waves:world:5:0.3", "kill_nearby:600", "wait_real:2", "assert:flag:StormSlain"]
     },
     {
       "id": "SKY_AUTO_STORM_ECHO_LOCKED", "title": "打过噬风、未敲钟：没有「引风」也不再挂首战项，正文说等归航钟响过",
@@ -736,7 +736,7 @@
     { "checklist": "2.15.31", "class": "manual", "reason": "好不好玩：尸体箱跟着敌人涨之后产出多不多是平衡取舍，不是缺陷判据" },
     { "checklist": "2.15.32", "class": "auto", "evidence": ["SKY_BOUNTY_GATING"] },
     { "checklist": "2.15.33", "class": "shot", "evidence": ["SKY_AUTO_REAL_RESIDENT_TALK"] },
-    { "checklist": "2.15.34", "class": "shot", "evidence": ["SKY_AUTO_REAL_RESIDENT_TALK", "SKY_AUTO_REAL_SERVICES", "SKY_AUTO_NEW_QINGHE_MEAL", "SKY_AUTO_BEACONS_ZHELING", "SKY_AUTO_BELL_OFFERED"], "reason": "六张立绘都在居民功能面板上（SkyIslandWorldStory.cs:215-217，208 px 见 SkyIslandStoryPresentation.cs:163）：苇白 resident_panel、眠苔 miantai_full_health、浮舟 fuzhou_panel_refit、晴禾 qinghe_no_meal、折翎 zheling_panel、钟守 bellkeeper_panel（钟守放行后、敲钟前拍，SKY_AUTO_BELL_OFFERED；结局后没有可办的事，不再问「我想办点事」、不开空面板）；浮舟逐句台词与归航船名册不是立绘面板，已从本行撤出" },
+    { "checklist": "2.15.34", "class": "shot", "evidence": ["SKY_AUTO_REAL_RESIDENT_TALK", "SKY_AUTO_REAL_SERVICES", "SKY_AUTO_NEW_QINGHE_MEAL", "SKY_AUTO_BEACONS_ZHELING", "SKY_AUTO_BELL_OFFERED"], "reason": "六张立绘都在居民功能面板上（SkyIslandWorldStory.cs:215-217，208 px 见 SkyIslandStoryPresentation.cs:163）：苇白 resident_panel、眠苔 miantai_full_health、浮舟 fuzhou_panel_refit、晴禾 qinghe_no_meal、折翎 zheling_panel、钟守 bellkeeper_panel（钟守放行后、敲钟前拍，SKY_AUTO_BELL_OFFERED；结局后剧情办事分组没有待办，不再问「我想办点事」、不开空剧情面板；每日聊天、送礼与婚姻仍在共享关系入口）；浮舟逐句台词与归航船名册不是立绘面板，已从本行撤出" },
     { "checklist": "2.15.35", "class": "shot", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
     { "checklist": "2.15.36", "class": "shot", "evidence": ["SKY_AUTO_REAL_PIGEON_LETTER"] },
     { "checklist": "2.15.37", "class": "shot", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
@@ -886,6 +886,10 @@
     { "checklist": "2.23.15", "class": "auto", "evidence": ["offline:tools/check_dll_identifiers.py"], "reason": "换回正式构建由 AI 在读完结果目录后执行并实查 DLL" },
     { "checklist": "M_SKY_ISLAND_16", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_ROOTHUNTER", "SKY_AUTO_REAL_BOSS_WAYLAYER"], "reason": "绊索与伏击的躲闪手感、截信人后撤抓空与追逃、跨出击掉率照原步骤看；配装、立桩、伏击字幕、劫包、尸体箱与帧时间自动" },
     { "checklist": "M_SKY_ISLAND_17", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_SICKLE", "SKY_AUTO_REAL_BOSS_LISTENER", "SKY_AUTO_REAL_BOSS_PIPER"], "reason": "泥地与镰扫手感、真开枪落石、打断笛声与跨出击掉率照原步骤看；开闸喊人、镰扫圈、落石圈、夜里补刷与招蚋、尸体箱自动" },
-    { "checklist": "M_SKY_ISLAND_18", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_MIRROR", "SKY_AUTO_REAL_BOSS_GALEBREAKERS"], "reason": "倒影吸准星、冲步躲闪、两派互打与跨出击掉率照原步骤看；夜里补刷、换位圈与倒影、三位冲锋线、尸体箱自动" }
+    { "checklist": "M_SKY_ISLAND_18", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_MIRROR", "SKY_AUTO_REAL_BOSS_GALEBREAKERS"], "reason": "倒影吸准星、冲步躲闪、两派互打与跨出击掉率照原步骤看；夜里补刷、换位圈与倒影、三位冲锋线、尸体箱自动" },
+    { "checklist": "M_SKY_ISLAND_19", "class": "manual", "reason": "六位真实菜单与送礼交还的交互手感逐人记录；SKY_RESIDENTS 只读装配不能代替实际点击，自动套件不写好感/婚姻。" },
+    { "checklist": "M_SKY_ISLAND_20", "class": "manual", "reason": "求婚交互手感、婚礼声音与文字过场完整性由六份单配偶测试进度逐人验收；自动套件不写婚姻存档。" },
+    { "checklist": "M_SKY_ISLAND_21", "class": "manual", "reason": "读档后配偶菜单、跟随与服务兜底的交互手感须实际往返确认；自动套件不写婚姻或切换关系存档。" },
+    { "checklist": "M_SKY_ISLAND_22", "class": "manual", "reason": "剧情复归与取消、中断后的交互手感需正常操作确认；自动套件不改婚姻或替玩家离婚，不以装配通过代替恢复成功。" }
   ]
 }

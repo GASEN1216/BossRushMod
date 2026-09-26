@@ -357,6 +357,8 @@ namespace BossRush
             {
                 for (int i = 0; i < points.Count; i++)
                 {
+                    // 创建预警中途失败时，后续点没有画出圈，不能悄悄结算伤害。
+                    if (i >= lines.Count || lines[i] == null) continue;
                     // catch 子句体内不能 yield return（CS1631）：这里只记账。
                     // 星焰是真的爆炸：留官方火球；三圈齐落只震第一发（VB-21）。
                     try

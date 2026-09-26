@@ -7,8 +7,8 @@ u"""R-12 离线复算：噬风的风暴圈要多快才逃得出，以及噬风·
 模型（写明假设，结论只到 L2）：
 - 玩家在圈心被预警，立刻沿直线往外跑，速度 vp；官方爆炸没有距离衰减，第 k 波在 t_k = 预警 + k × 间隔 时引爆，
   玩家离圆心必须超过 R_k 才不吃伤害；
-- **首战**：`Detonate` 每一波重读本体当前位置，本体沿同一直线以 vb 追人（最坏情况：正对着追）。
-  需要的速度 vp(vb) = vb + max_k R_k / t_k（R-12：纸面上的 5 m/s 只在本体不追人时成立）；
+- **首战与回响**：`Detonate` 每波都读预警开始时锁定的风眼；即使本体沿同一直线以 vb 追人，
+  需要的速度仍为 vp = max_k R_k / t_k，不随 vb 变化（2026-09-26 修复首战移动圆心）；
 - **回响**：圆心钉在预警开始时的位置，三波之后在原地再响一声（半径同最后一波、再晚一个间隔）。
   需要的速度 vp = max(max_k R_k / t_k, R_last / t_echo)，与本体追不追人无关；
 - 忽略地形、墙体遮挡（墙挡得住这一击，只会让逃圈更容易）与玩家转向、加速的时间。
@@ -16,7 +16,7 @@ u"""R-12 离线复算：噬风的风暴圈要多快才逃得出，以及噬风·
 判据：
 1. 解析式与逐帧模拟（dt = 0.005 s，二分求最低速度）一致；
 2. 对 0–8 m/s 的每一种追人速度，回响需要的速度都不高于首战（「回响不许比首战更难逃圈」）；
-3. 回响需要的速度与本体追人速度无关（圆心钉住了），且不高于首战的纸面上限 5.5 m/s（与 SkyIslandContentExpansionGuard 同一条线）；
+3. 首战与回响需要的速度都与本体追人速度无关（圆心钉住了），且不高于正常跑动上限 5.5 m/s（与 SkyIslandContentExpansionGuard 同一条线）；
 4. 回响那一声的半径不超过最后一波、时间晚于最后一波。
 
 破坏探针：圆心改回跟着本体、回响那一声半径放大、回响那一声提前到最后一波同时——判据都必须红。
@@ -68,8 +68,10 @@ def read_model(source=BOSS):
         "waves": int(const(r"internal const int PulseWaves = (\d+);", "PulseWaves", source)),
         "gap": const(r"internal const float WaveGap = ([\d.]+)f;", "WaveGap", source),
         "step": const(r"return PulseRadius \+ wave \* ([\d.]+)f;", "RadiusForWave 的每波增量", source),
-        # 首战与回响的圆心取法都从 Detonate 读：回响钉在 eyeOrigin、首战读本体位置。
-        "echo_anchored": "Vector3 origin = echo ? eyeOrigin : boss.transform.position;" in squashed,
+        # 两种战斗共用锁定圆心；移回旧三目也必须被首战判据抓住。
+        "first_anchored": "Vector3 origin = eyeOrigin;" in squashed,
+        "echo_anchored": ("Vector3 origin = eyeOrigin;" in squashed
+                          or "Vector3 origin = echo ? eyeOrigin : boss.transform.position;" in squashed),
         # 回响那一声：循环之后在原地再引爆最后一波的半径（时间 = 循环结束 = 预警 + 波数 × 间隔）。
         "echo_wave": "if (echo && !Aborted()) { try { Detonate(PulseWaves - 1); }" in squashed,
         "echo_wave_index": None,
@@ -92,14 +94,14 @@ def waves(model, echo):
 def analytic(model, echo, chase):
     need = 0.0
     for time, radius, anchored_row in waves(model, echo):
-        follows = not (echo and model["echo_anchored"])
+        follows = not model["echo_anchored" if echo else "first_anchored"]
         need = max(need, radius / time + (chase if follows else 0.0))
     return need
 
 
 def simulate_escapes(model, echo, chase, speed, dt=0.005):
     """逐帧：玩家从圆心沿 +x 以 speed 跑；本体从圆心以 chase 追（不越过玩家）。每一波引爆时核对是否已经在圈外。"""
-    anchored = echo and model["echo_anchored"]
+    anchored = model["echo_anchored" if echo else "first_anchored"]
     schedule = sorted(waves(model, echo))
     player, boss, t, index = 0.0, 0.0, 0.0, 0
     while index < len(schedule):
@@ -133,6 +135,8 @@ def simulated(model, echo, chase):
 
 def violations(model):
     errors = []
+    if not model["first_anchored"]:
+        errors.append("首战的圆心没有钉在风眼：预警后追逐不能把安全区卷回伤害")
     if not model["echo_anchored"]:
         errors.append("回响的圆心没有钉在风眼（Detonate 仍读本体位置）：追人时回响和首战一样难逃")
     if not model["echo_wave"] or model["echo_wave_index"] is None:
@@ -148,6 +152,8 @@ def violations(model):
     for chase in CHASE_SPEEDS:
         first = analytic(model, False, chase)
         echo = analytic(model, True, chase)
+        if abs(first - base) > 1e-6 or first > SPEED_CAP + 1e-9:
+            errors.append("首战逃圈速度随追逐改变或超出正常跑动上限：追%.1f，需要%.2f m/s" % (chase, first))
         if echo > first + 1e-6:
             errors.append("本体追人 %.1f m/s 时回响要 %.2f m/s，比首战的 %.2f m/s 更难逃" % (chase, echo, first))
         if abs(echo - base) > 1e-6:
@@ -168,8 +174,10 @@ def main():
 
     # 破坏探针：前三条改源码再读模型，最后一条直接改模型
     probes = {
-        "圆心改回跟着本体": BOSS.replace("Vector3 origin = echo ? eyeOrigin : boss.transform.position;",
+        "圆心改回跟着本体": BOSS.replace("Vector3 origin = eyeOrigin;",
                                    "Vector3 origin = boss.transform.position;", 1),
+        "只给回响锁定圆心": BOSS.replace("Vector3 origin = eyeOrigin;",
+                                   "Vector3 origin = echo ? eyeOrigin : boss.transform.position;", 1),
         "回响那一声找不到或不是最后一波": BOSS.replace("try { Detonate(PulseWaves - 1); }", "try { Detonate(PulseWaves + 1); }", 1),
         "回响那一声提前到最后一波同时": BOSS.replace("                float waveUntil = Time.time + WaveGap;\n",
                                           "                if (wave + 1 == PulseWaves) break;\n                float waveUntil = Time.time + WaveGap;\n", 1),
@@ -187,7 +195,7 @@ def main():
         raise SystemExit(1)
     table = " / ".join("追%.1f→首战%.2f·回响%.2f" % (c, analytic(model, False, c), analytic(model, True, c)) for c in (0.0, 1.5, 3.0, 4.5))
     print("PASS SkyIslandStormEchoEscapePropertyTest（第一圈 %.1f m / 预警 %.1f s / 间隔 %.2f s；需要的逃圈速度 m/s：%s；"
-          "解析式与逐帧模拟一致；4 个破坏探针被拒）" % (model["radius"], model["telegraph"], model["gap"], table))
+          "解析式与逐帧模拟一致；5 个破坏探针被拒）" % (model["radius"], model["telegraph"], model["gap"], table))
 
 
 if __name__ == "__main__":

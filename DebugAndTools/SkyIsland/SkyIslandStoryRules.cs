@@ -465,8 +465,8 @@ namespace BossRush
             switch (flag)
             {
                 case SkyIslandStoryFlag.ZhelingDefeated:
-                    return L10n.T("折翎停下战斗，将旧腰牌留在路旁：『航路交给你。』镜水寺的路已开放。",
-                        "Zheling breaks off the fight and leaves his old badge by the road: 'The route is yours now.' The Mirrorwater Temple road is open.");
+                    return L10n.T("折翎停下战斗，将旧腰牌留在路旁：『航路交给你。』镜水寺的路已开放。他先退下休整，下次来仍可找他。",
+                        "Zheling breaks off the fight and leaves his old badge by the road: 'The route is yours now.' The Mirrorwater Temple road is open. He rests for this visit; you can meet him again next trip.");
                 case SkyIslandStoryFlag.BellKeeperDefeated:
                     return L10n.T("失控的守钟装置停下。钟守望向亮着的航标：『那就让钟声，为归来的人响一次。』",
                         "The runaway bell engine stops. The Bell Keeper looks out at the lit beacons: 'Then let the bell ring once, for the ones coming home.'");

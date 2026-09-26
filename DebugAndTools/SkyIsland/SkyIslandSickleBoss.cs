@@ -55,6 +55,7 @@ namespace BossRush
         private Health health;
         private SkyIslandBossProfile profile;
         private SkyIslandBossContext context;
+        private BossAIController aiControl;
         private SkyIslandPlayerSlow slow;
         private readonly List<MudPatch> mudPatches = new List<MudPatch>();
         private LineRenderer sweepRing;
@@ -83,6 +84,8 @@ namespace BossRush
             hatEquipped = !SkyIslandBossForge.PieceBroken(character.GetHelmatItem(), BossRushItemIds.SkyIslandGreenearStrawHat);
             raincoatEquipped = !SkyIslandBossForge.PieceBroken(character.GetArmorItem(), BossRushItemIds.SkyIslandStrawRaincoat);
             slow = new SkyIslandPlayerSlow("SkyIslandSickleMud");
+            try { aiControl = new BossAIController(character, "SkyIslandSickle"); }
+            catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 穗镰停手控制失败，镰扫仍锁定落点：" + e.Message); }
             sweepReadyAt = Time.time + SkyIslandBossRules.SweepCooldown * 0.5f;
             health.OnDeadEvent.AddListener(OnDead);
             subscribed = true;
@@ -261,9 +264,13 @@ namespace BossRush
         private IEnumerator SweepRoutine()
         {
             sweeping = true;
+            Vector3 sweepOrigin = boss.transform.position;
+            // 镰扫需要站稳蓄力：圈追着本体走会让近战玩家退不出去，泥地中尤其不公平。
+            try { if (aiControl != null) aiControl.Pause(); }
+            catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 穗镰镰扫停手失败：" + e.Message); }
             try
             {
-                sweepRing = SkyIslandBossForge.CreateGroundRing(context.Root, boss.transform.position);
+                sweepRing = SkyIslandBossForge.CreateGroundRing(context.Root, sweepOrigin);
                 sweepRing.gameObject.name = SweepRingName;
                 SkyIslandBossForge.SetRing(sweepRing, SkyIslandBossRules.SweepRadius, 0f, SweepTint);
             }
@@ -276,6 +283,7 @@ namespace BossRush
             {
                 // 没有预警就不出手（口径同瞭台观星手的标记圈）。
                 sweeping = false;
+                ResumeSweepAi();
                 sweepReadyAt = Time.time + SkyIslandBossRules.SweepCooldown;
                 yield break;
             }
@@ -292,8 +300,8 @@ namespace BossRush
             float started = Time.time;
             while (Time.time - started < telegraph && !Aborted())
             {
-                // 圈跟着它走：它还在追人，只有退开才躲得掉。
-                SkyIslandBossForge.PlaceRing(sweepRing, context.Root, boss.transform.position);
+                // 锁定范围，不随本体位移把已退开的玩家重新卷入。
+                SkyIslandBossForge.PlaceRing(sweepRing, context.Root, sweepOrigin);
                 SkyIslandBossForge.SetRing(sweepRing, SkyIslandBossRules.SweepRadius, Mathf.Clamp01((Time.time - started) / telegraph), SweepTint);
                 yield return null;
             }
@@ -303,14 +311,22 @@ namespace BossRush
                 // 镰扫不是爆炸：不冒官方火球，只留余波圈与扬尘（VB-21）。
                 try
                 {
-                    SkyIslandBossForge.Detonate(boss, boss.transform.position, SkyIslandBossRules.SweepRadius, SkyIslandBossRules.SweepDamage,
+                    SkyIslandBossForge.Detonate(boss, sweepOrigin, SkyIslandBossRules.SweepRadius, SkyIslandBossRules.SweepDamage,
                         false, SkyIslandImpactFx.BossShake, SweepTint);
                 }
                 catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 穗镰镰扫失败：" + e.Message); }
             }
             DestroySweepRing();
             sweeping = false;
+            ResumeSweepAi();
             sweepReadyAt = Time.time + SkyIslandBossRules.SweepCooldown;
+        }
+
+        private void ResumeSweepAi()
+        {
+            if (finished || boss == null || health == null || health.IsDead) return;
+            try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(CharacterMainControl.Main); }
+            catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 穗镰镰扫恢复失败：" + e.Message); }
         }
 
         // ====================================================================
@@ -390,6 +406,7 @@ namespace BossRush
             finished = true;
             Cleanup();
             slow = null;
+            aiControl = null;
             context = null;
             profile = null;
             boss = null;

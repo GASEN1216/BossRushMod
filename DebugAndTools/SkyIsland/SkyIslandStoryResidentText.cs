@@ -3,6 +3,26 @@ namespace BossRush
     /// <summary>COMPAT：婚姻与地点只改变说话方式；进度仍读同一份故事，不增加存档状态。</summary>
     internal sealed partial class SkyIslandStoryService
     {
+        private static string OtherResidentHomeLine(string id)
+        {
+            switch (id)
+            {
+                case "sky_fuzhou":
+                    return L10n.T("回来了，先把脚歇稳。岛上的整备和合成仍在码头渡口工台；我留家时，钟庭之争也在那里接交。",
+                        "You are home. Rest your feet. Repairs and crafting are still at the island dock workbench; when I stay home, take and turn in The Bell Court Standoff there too.");
+                case "sky_miantai":
+                    return L10n.T("我在家陪你。回岛要用苔药或药臼，就去悬根林的药材装置，东西都留在那儿。",
+                        "I am here with you. For moss remedies or the mortar on the island, use the herb station in Hanging Root Wood. The supplies are still there.");
+                case "sky_zheling":
+                    return L10n.T("这次守的是咱们的家。岛上的旧事，回镜水寺装置前再了结；家里不比刀枪。",
+                        "This time I am guarding our home. Settle the old island matters at the Mirrorwater Temple device; there is no fighting at home.");
+                case "sky_bellkeeper":
+                    return L10n.T("（他写下：我留在家，钟仍在岛上。归航钟任务去归航钟庭装置接交，敲钟也在那里。）",
+                        "(He writes: I stay home, but the bell remains on the island. Take and turn in the Homecoming Bell quest at the Bell Court device, and ring the bell there.)");
+                default: return null;
+            }
+        }
+
         private static string QingheStoryLine(SkyIslandStoryData data, bool married, bool onIsland)
         {
             string greeting = !married ? string.Empty : onIsland

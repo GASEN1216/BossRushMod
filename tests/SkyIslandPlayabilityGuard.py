@@ -187,8 +187,12 @@ def main():
     forbid(ring, "共享圆环", "line.material =")
     need(ring, "共享圆环", "line.sharedMaterial = material;",
          "UnityEngine.Object.Destroy(shared);")
-    need(boss, "噬风预警圈", "SkyIslandGroundRing.Create(boss.transform",
-         "SkyIslandGroundRing.SetShape(line, radius,")
+    warning = boss.split("private LineRenderer CreateWarningRing()", 1)[1].split("private void SetRing(", 1)[0]
+    need(warning, "噬风预警圈锁定风眼",
+         "SkyIslandGroundRing.Create(map, map.InverseTransformPoint(eyeOrigin)",
+         "SkyIslandGroundRing.Create(null, eyeOrigin + Vector3.up * SkyIslandGroundRing.GroundLift)")
+    forbid(warning, "噬风预警圈", "SkyIslandGroundRing.Create(boss.transform")
+    need(boss, "噬风判定半径", "SkyIslandGroundRing.SetShape(line, radius,")
     if "internal static void ResetStaticCaches() { SkyIslandGroundRing.ResetStaticCaches(); }" not in boss:
         errors.append("噬风的静态复位必须委托给共享圆环，避免两处各留一份材质")
 

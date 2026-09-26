@@ -882,14 +882,14 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 风力 0 无风 / 1 微风 / 2 大风。夜里 +1、站在桥上（含中继平台）+1、噬风将至（双航标已亮而噬风未散）时栈道与桥上再 +1，封顶 2。
-        /// 白天在主岛上永远无风——夜风是「晚上出门要准备」，不是「随时在掉东西」。
+        /// 风力 0 无风 / 1 微风 / 2 大风。普通夜风与桥风各 +1；噬风将至或回响在场时，栈道与桥上直接为大风。
+        /// 其余主岛白天无风。十灯只消除普通夜风，不消除噬风；随身的噬风之核仍可把大风降为微风。
         /// </summary>
         internal static int WindLevel(bool night, bool onBridge, bool onBoardwalk, bool stormPending)
         {
+            if (stormPending && (onBoardwalk || onBridge)) return 2;
             int level = night ? 1 : 0;
             if (onBridge) level++;
-            if (stormPending && (onBoardwalk || onBridge)) level++;
             return level > 2 ? 2 : level;
         }
 

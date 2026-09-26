@@ -23,8 +23,13 @@ paths = ['DebugAndTools/SkyIsland/SkyIslandOfficialQuestGivers.cs',
          'Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcModule.cs',
          'Integration/Wedding/NPCMarriageSystem.cs',
          'DebugAndTools/SkyIsland/SkyIslandResidentDialogue.cs',
-         'Integration/Dialogue/DialogueActorFactory.cs']
-givers, bridge, permanent, marriage, dialogue, factory = [(ROOT / path).read_text(encoding='utf-8-sig') for path in paths]
+         'Integration/Dialogue/DialogueActorFactory.cs',
+         'DebugAndTools/SkyIsland/SkyIslandResidents.cs',
+         'DebugAndTools/SkyIsland/SkyIslandEncounters.cs',
+         'DebugAndTools/SkyIsland/SkyIslandOfficialQuestTable.cs',
+         'DebugAndTools/SkyIsland/SkyIslandSession.cs',
+         'DebugAndTools/SkyIsland/SkyIslandWorldStory.cs']
+givers, bridge, permanent, marriage, dialogue, factory, residents, encounters, quest_table, session, world = [(ROOT / path).read_text(encoding='utf-8-sig') for path in paths]
 fields = []
 for name in ('FallbackAttemptLimit', 'attached', 'fallbackDone', 'fallbackAttempts'):
     found = re.findall(r'^        private [^\n]*\b' + name + r'\b[^\n]*;', givers, re.M)
@@ -52,6 +57,15 @@ marriage_methods = [member(marriage, signature) for signature in (
 # 仅异步返回类型适配；入口、捕获时点、每个 await 及所有收尾/反馈逻辑逐字运行。
 source += 'public static partial class NPCMarriageSystem {\n' + '\n'.join(marriage_fields + marriage_methods).replace('async UniTaskVoid', 'async Task') + '\n}\n'
 source += 'internal static partial class ActorReuseRegression {\n' + member(dialogue, 'private static IDialogueActor EnsureActor(') + '\n}\n}\n'
+resident_ids = re.search(r'        private static readonly string\[\] Ids = \{.*?\};', residents, re.S).group(0)
+resident_markers = re.search(r'        private static readonly string\[\] Markers = \{[^;]+;', residents).group(0)
+source += 'namespace BossRush { internal sealed partial class SkyIslandResidents {\n' + resident_ids + '\n' + resident_markers + '\n' + member(residents, 'internal static string MarkerOf(') + '\ninternal static string[] AllIds { get { return (string[])Ids.Clone(); } }\n} }\n'
+source += 'namespace BossRush { internal sealed partial class SkyIslandEncounters {\n' + member(encounters, 'private Encounter Find(') + '\n' + member(encounters, 'internal bool WasStartedThisRaid(') + '\n} }\n'
+giver_fields = re.findall(r'^        internal const int (?:WeibaiGiverId|FuzhouGiverId|BellKeeperGiverId) = \d+;', quest_table, re.M)
+assert len(giver_fields) == 3
+source += 'namespace BossRush { internal static partial class SkyIslandOfficialQuestTable {\n' + '\n'.join(giver_fields) + '\n' + '\n'.join(member(quest_table, sig) for sig in ('internal static int GiverIdOfResident(', 'internal static string ResidentOfGiver(', 'internal static string FallbackMarkerOfGiver(')) + '\n} }\n'
+source += 'namespace BossRush { internal sealed partial class SkyIslandSession {\n' + '\n'.join(member(session, sig) for sig in ('internal bool BeginStoryChallenge(', 'internal bool CanBeginStoryChallenge(', 'private static bool TryChallengeOutcome(')) + '\n} }\n'
+source += 'namespace BossRush { internal sealed partial class SkyIslandWorldStory {\n' + '\n'.join(member(world, sig) for sig in ('private void ZhelingChoices(', 'private bool ChallengeAvailable(', 'private SkyIslandStoryPresentation.Choice Challenge(')) + '\n} }\n'
 OUT.mkdir(parents=True, exist_ok=True)
 generated = OUT / 'Production.cs'
 generated.write_text(source, encoding='utf-8')

@@ -526,6 +526,11 @@ namespace BossRush
         internal string DescribeNpc(string id, bool married = false, bool onIsland = true, bool weibaiAway = false)
         {
             SkyIslandStoryData data = Current;
+            if (married && !onIsland && id != "sky_qinghe" && id != "sky_weibai")
+            {
+                string home = OtherResidentHomeLine(id);
+                if (home != null) return home + "\n" + CurrentObjective;
+            }
             switch (id)
             {
                 // 居民台词随进度与收到的信变化：信鸽送来的信大多是写给他们的（SkyIslandLetters），收下之后当面会提一句。
@@ -597,8 +602,8 @@ namespace BossRush
                         ? L10n.T("\n老人还替我擦着寺里的钟。等灯都亮了，我就回去喝他那杯茶。",
                             "\nThe old sweeper still polishes the temple bell for me. Once the lamps are lit, I'll join him for tea.")
                         : string.Empty) + ZhelingFrogLine(data)
-                    : L10n.T("旧腰牌上刻着：『航路交给你。』",
-                            "The old badge reads: 'The route is yours now.'"))
+                    : L10n.T("上次是我输了。伤养好了，路不会再拦。旧腰牌上刻着：『航路交给你。』",
+                            "You won our last fight. I have recovered, and I will not bar the road again. The old badge reads: 'The route is yours now.'"))
                 : L10n.T("那场风灾，我不想再见第二回。带旧信和航路图来谈，或者正面打赢我。",
                             "I won't let that storm happen again. Bring the old letter and route chart, or face me in a fight.");
         }

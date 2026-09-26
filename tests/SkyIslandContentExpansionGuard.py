@@ -697,8 +697,8 @@ def check_session_ownership():
     # 两个条件延迟不同——最后一名倒下的那一帧 IsBusy 就转 false，而持久 flag 要等
     # encounters.Tick（0.25 s 节流）提交并被存档接受；存档有写屏障时 flag 永远落不下来，
     # 那就是持久可见（CR-2026-09-09-013）。
-    assert 'residents.SetVisible("sky_zheling", !ZhelingDefeated && !HasStoryChallengeStarted("Zheling"));' in session, \
-        'A defeated Zheling must not walk back as a talkable resident'
+    assert 'residents.SetVisible("sky_zheling", encounters == null || !encounters.WasStartedThisRaid("Zheling"));' in session, \
+        'Zheling must rest after combat this raid and return for relationships on the next raid'
     assert 'IsStoryChallengeActive("Zheling")' not in session.split('residents.SetVisible("sky_zheling"', 1)[1].split(';', 1)[0], \
         'Zheling visibility must not depend on the frame-latency IsBusy query'
     enc_src = source('SkyIslandEncounters.cs')

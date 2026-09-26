@@ -11,7 +11,7 @@ A massive content expansion for Escape from Duckov (Steam Workshop). What starte
 - **3 Custom Arena Bosses** — Dragon Descendant, Skyburner Dragon Lord, Phantom Witch (unique skills + exclusive drops)
 - **3 Regular NPC Companions** — Dingdang (Smith), Yuori (Nurse), Awen (Courier)
 - **37 Custom Equipment Pieces** (sets counted piece by piece) — 20 regular weapons, totems and armor pieces, plus 17 Sky Islands wearable pieces; see Equipment Overview for sources
-- **Sky Islands Residents & Adventures** — Island quests, per-expedition commissions, lords and chiefs, gathering and crafting, and affinity and marriage with Qinghe and Weibai
+- **Sky Islands Residents & Adventures** — Island quests, per-expedition commissions, lords and chiefs, gathering and crafting, and affinity and marriage with all six residents
 - **Custom Items** — Consumables, mode-exclusive props, functional items, forge stones, relic eggs, raid meals
 - **A Story Campaign** — Duck King Campaign: six chapters from Jeff that string the existing modes into one arena registration book, one line per chapter
 - **Base Buildings** — Wedding Chapel, Dust-Covered StarWish Fountain, PetNest, Daily mailbox; the garden, weapon rack and jukebox are vanilla buildings

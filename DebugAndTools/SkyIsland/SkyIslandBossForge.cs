@@ -310,6 +310,12 @@ namespace BossRush
         internal static LineRenderer CreateGroundRing(Transform root, Vector3 world)
         {
             LineRenderer line = SkyIslandGroundRing.Create(root, LocalOf(root, world));
+            // GroundRing 找不到材质时返回 disabled 的线；不能把非空组件误当成已画出的预警。
+            if (!line.enabled)
+            {
+                UnityEngine.Object.Destroy(line.gameObject);
+                throw new InvalidOperationException("头目预警圈材质不可用");
+            }
             line.gameObject.name = "SkyIslandBossRing";
             try { SkyIslandBossRingFx.Attach(line); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 预警圈填充失败（只剩描边）：" + e.Message); }

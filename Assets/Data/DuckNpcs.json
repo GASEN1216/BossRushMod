@@ -402,7 +402,7 @@
     },
     {
       "id": "sky_fuzhou",
-      "isPermanent": false,
+      "isPermanent": true,
       "displayNameKey": "",
       "faceMode": "json",
       "faceJson": "{\"savedSetting\":true,\"headSetting\":{\"mainColor\":{\"r\":0.67,\"g\":0.65,\"b\":0.48,\"a\":1.0},\"headScaleOffset\":0.05,\"foreheadHeight\":0.07,\"foreheadRound\":0.86},\"hairID\":7,\"hairInfo\":{\"radius\":0,\"color\":{\"r\":0.72,\"g\":0.41,\"b\":0.17,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"eyeID\":3,\"eyeInfo\":{\"radius\":0.23,\"color\":{\"r\":0.13,\"g\":0.28,\"b\":0.35,\"a\":1.0},\"height\":0.089,\"heightOffset\":0,\"scale\":1.35,\"twist\":0,\"distanceAngle\":49.575,\"leftRightAngle\":0},\"eyebrowID\":2,\"eyebrowInfo\":{\"radius\":0.23,\"color\":{\"r\":0,\"g\":0,\"b\":0,\"a\":1.0},\"height\":0.075,\"heightOffset\":0.089,\"scale\":1,\"twist\":0,\"distanceAngle\":41.184,\"leftRightAngle\":0},\"mouthID\":5,\"mouthInfo\":{\"radius\":0.23,\"color\":{\"r\":1,\"g\":0.534,\"b\":0.401,\"a\":1.0},\"height\":0.037,\"heightOffset\":0,\"scale\":0.82,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"tailID\":2,\"tailInfo\":{\"radius\":0,\"color\":{\"r\":0.72,\"g\":0.41,\"b\":0.17,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"footID\":1,\"footInfo\":{\"radius\":0,\"color\":{\"r\":1,\"g\":0.403,\"b\":0.203,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"wingID\":1,\"wingInfo\":{\"radius\":0,\"color\":{\"r\":0.72,\"g\":0.41,\"b\":0.17,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0}}",
@@ -418,11 +418,159 @@
       "wanderRadius": 2.5,
       "scenes": [
         "SkyIslandRaid"
-      ]
+      ],
+      "permanent": {
+        "displayNameCn": "浮舟",
+        "displayNameEn": "Fuzhou",
+        "dailyChatAffinity": 30,
+        "positiveTags": [
+          "Tools"
+        ],
+        "positiveItemTypeIds": [
+          500075,
+          500076
+        ],
+        "negativeItemTypeIds": [],
+        "positiveBubbles": [
+          {
+            "cn": "这料结实，正好补船。记着你的心意了。",
+            "en": "Solid material. Just right for the boat. I appreciate it."
+          }
+        ],
+        "negativeBubbles": [
+          {
+            "cn": "心意收到了，这件暂时用不上。",
+            "en": "Thank you for thinking of me. I have no use for this right now."
+          }
+        ],
+        "normalBubbles": [
+          {
+            "cn": "收下了，谢谢你。",
+            "en": "Thank you. I will keep it."
+          }
+        ],
+        "dialogues": {
+          "greeting": [
+            {
+              "minLevel": 0,
+              "lines": [
+                {
+                  "cn": "绳结别松，船才能稳。手边缺浮木和残铜片。",
+                  "en": "Keep the knots tight and the boat steady. I can use driftwood and brass scrap."
+                }
+              ]
+            },
+            {
+              "minLevel": 5,
+              "lines": [
+                {
+                  "cn": "船还要修，话可以慢慢说。",
+                  "en": "The boat needs work. We have time to talk."
+                }
+              ]
+            },
+            {
+              "minLevel": 10,
+              "lines": [
+                {
+                  "cn": "今天不赶潮，陪你坐一会儿。",
+                  "en": "No tide to chase today. I will sit with you a while."
+                }
+              ]
+            }
+          ],
+          "idle": [
+            {
+              "cn": "风急就多绕一道绳，急着赶路最容易出事。",
+              "en": "In a strong wind, add another loop. Rushing is how accidents happen."
+            }
+          ],
+          "afterGift": [
+            {
+              "cn": "这份心意，我记着。",
+              "en": "I will remember your kindness."
+            }
+          ],
+          "levelUp": [
+            {
+              "cn": "与你相处，越来越自在了。",
+              "en": "I feel more at ease with you now."
+            }
+          ],
+          "farewell": [
+            {
+              "cn": "走多远都行，记得咱们一起回来。",
+              "en": "We can go as far as we like, as long as we come home together."
+            }
+          ],
+          "alreadyGifted": [
+            {
+              "cn": "今天已经收到你的礼物了。",
+              "en": "You have already given me a gift today."
+            }
+          ],
+          "alreadyGiftedPositive": [
+            {
+              "cn": "今天这份够了，你也留些给自己。",
+              "en": "That is plenty for today. Keep some for yourself."
+            }
+          ],
+          "alreadyGiftedNormal": [
+            {
+              "cn": "礼物收好了，今天不必再送。",
+              "en": "Your gift is safe. No need for another today."
+            }
+          ],
+          "alreadyGiftedNegative": [
+            {
+              "cn": "今天就先这样吧。",
+              "en": "Let us leave it there for today."
+            }
+          ]
+        },
+        "marriedDialogues": {
+          "dialogue_greeting_married": [
+            {
+              "cn": "回来了。鞋晾门口，我给你留了个干燥的地方。",
+              "en": "You are back. Leave your boots by the door; I kept a dry spot for you."
+            }
+          ],
+          "dialogue_idle_married": [
+            {
+              "cn": "风急就多绕一道绳，急着赶路最容易出事。",
+              "en": "In a strong wind, add another loop. Rushing is how accidents happen."
+            }
+          ],
+          "dialogue_farewell_married": [
+            {
+              "cn": "走多远都行，记得咱们一起回来。",
+              "en": "We can go as far as we like, as long as we come home together."
+            }
+          ],
+          "dialogue_after_gift_married": [
+            {
+              "cn": "有你记挂着，真好。",
+              "en": "It is good to know you are thinking of me."
+            }
+          ],
+          "gift_positive_married": [
+            {
+              "cn": "这料结实，正好补船。记着你的心意了。",
+              "en": "Solid material. Just right for the boat. I appreciate it."
+            }
+          ],
+          "gift_normal_married": [
+            {
+              "cn": "我收好了。下回也给你带一份。",
+              "en": "I will keep it safe. Next time I will bring something for you too."
+            }
+          ]
+        }
+      }
     },
     {
       "id": "sky_miantai",
-      "isPermanent": false,
+      "isPermanent": true,
       "displayNameKey": "",
       "faceMode": "json",
       "faceJson": "{\"savedSetting\":true,\"headSetting\":{\"mainColor\":{\"r\":0.54,\"g\":0.65,\"b\":0.39,\"a\":1.0},\"headScaleOffset\":-0.02,\"foreheadHeight\":0.07,\"foreheadRound\":0.86},\"hairID\":7,\"hairInfo\":{\"radius\":0,\"color\":{\"r\":0.24,\"g\":0.39,\"b\":0.18,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"eyeID\":3,\"eyeInfo\":{\"radius\":0.23,\"color\":{\"r\":0.13,\"g\":0.28,\"b\":0.35,\"a\":1.0},\"height\":0.089,\"heightOffset\":0,\"scale\":1.35,\"twist\":0,\"distanceAngle\":49.575,\"leftRightAngle\":0},\"eyebrowID\":2,\"eyebrowInfo\":{\"radius\":0.23,\"color\":{\"r\":0,\"g\":0,\"b\":0,\"a\":1.0},\"height\":0.075,\"heightOffset\":0.089,\"scale\":1,\"twist\":0,\"distanceAngle\":41.184,\"leftRightAngle\":0},\"mouthID\":5,\"mouthInfo\":{\"radius\":0.23,\"color\":{\"r\":1,\"g\":0.534,\"b\":0.401,\"a\":1.0},\"height\":0.037,\"heightOffset\":0,\"scale\":0.82,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"tailID\":2,\"tailInfo\":{\"radius\":0,\"color\":{\"r\":0.24,\"g\":0.39,\"b\":0.18,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"footID\":1,\"footInfo\":{\"radius\":0,\"color\":{\"r\":1,\"g\":0.403,\"b\":0.203,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"wingID\":1,\"wingInfo\":{\"radius\":0,\"color\":{\"r\":0.24,\"g\":0.39,\"b\":0.18,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0}}",
@@ -440,11 +588,157 @@
       "wanderRadius": 2.5,
       "scenes": [
         "SkyIslandRaid"
-      ]
+      ],
+      "permanent": {
+        "displayNameCn": "眠苔",
+        "displayNameEn": "Miantai",
+        "dailyChatAffinity": 30,
+        "positiveTags": [],
+        "positiveItemTypeIds": [
+          500072,
+          500073
+        ],
+        "negativeItemTypeIds": [],
+        "positiveBubbles": [
+          {
+            "cn": "干净，没受潮。正合用。",
+            "en": "Clean and dry. Just what I needed."
+          }
+        ],
+        "negativeBubbles": [
+          {
+            "cn": "心意收到了，这件暂时用不上。",
+            "en": "Thank you for thinking of me. I have no use for this right now."
+          }
+        ],
+        "normalBubbles": [
+          {
+            "cn": "收下了，谢谢你。",
+            "en": "Thank you. I will keep it."
+          }
+        ],
+        "dialogues": {
+          "greeting": [
+            {
+              "minLevel": 0,
+              "lines": [
+                {
+                  "cn": "手伸过来，先看伤。云苔纤维和星苔药膏有富余再带给我。",
+                  "en": "Let me see your hands first. Spare cloudmoss fiber and starmoss salve are welcome."
+                }
+              ]
+            },
+            {
+              "minLevel": 5,
+              "lines": [
+                {
+                  "cn": "又把袖口划破了。坐下，别乱动。",
+                  "en": "Torn your sleeve again. Sit still."
+                }
+              ]
+            },
+            {
+              "minLevel": 10,
+              "lines": [
+                {
+                  "cn": "今天没受伤？那就留下陪我分药。",
+                  "en": "No injuries today? Stay and help me sort the remedies."
+                }
+              ]
+            }
+          ],
+          "idle": [
+            {
+              "cn": "药要分清，伤口和蚊子不是一回事。",
+              "en": "Sort the remedies carefully. Wounds and gnat bites need different care."
+            }
+          ],
+          "afterGift": [
+            {
+              "cn": "这份心意，我记着。",
+              "en": "I will remember your kindness."
+            }
+          ],
+          "levelUp": [
+            {
+              "cn": "与你相处，越来越自在了。",
+              "en": "I feel more at ease with you now."
+            }
+          ],
+          "farewell": [
+            {
+              "cn": "药箱带着，人要完整地回来。",
+              "en": "Take the medicine kit, and come back in one piece."
+            }
+          ],
+          "alreadyGifted": [
+            {
+              "cn": "今天已经收到你的礼物了。",
+              "en": "You have already given me a gift today."
+            }
+          ],
+          "alreadyGiftedPositive": [
+            {
+              "cn": "今天这份够了，你也留些给自己。",
+              "en": "That is plenty for today. Keep some for yourself."
+            }
+          ],
+          "alreadyGiftedNormal": [
+            {
+              "cn": "礼物收好了，今天不必再送。",
+              "en": "Your gift is safe. No need for another today."
+            }
+          ],
+          "alreadyGiftedNegative": [
+            {
+              "cn": "今天就先这样吧。",
+              "en": "Let us leave it there for today."
+            }
+          ]
+        },
+        "marriedDialogues": {
+          "dialogue_greeting_married": [
+            {
+              "cn": "回来就好。先让我看看有没有新伤。",
+              "en": "You are home. Let me check for fresh wounds first."
+            }
+          ],
+          "dialogue_idle_married": [
+            {
+              "cn": "药要分清，伤口和蚊子不是一回事。",
+              "en": "Sort the remedies carefully. Wounds and gnat bites need different care."
+            }
+          ],
+          "dialogue_farewell_married": [
+            {
+              "cn": "药箱带着，人要完整地回来。",
+              "en": "Take the medicine kit, and come back in one piece."
+            }
+          ],
+          "dialogue_after_gift_married": [
+            {
+              "cn": "有你记挂着，真好。",
+              "en": "It is good to know you are thinking of me."
+            }
+          ],
+          "gift_positive_married": [
+            {
+              "cn": "干净，没受潮。正合用。",
+              "en": "Clean and dry. Just what I needed."
+            }
+          ],
+          "gift_normal_married": [
+            {
+              "cn": "我收好了。下回也给你带一份。",
+              "en": "I will keep it safe. Next time I will bring something for you too."
+            }
+          ]
+        }
+      }
     },
     {
       "id": "sky_zheling",
-      "isPermanent": false,
+      "isPermanent": true,
       "displayNameKey": "",
       "faceMode": "json",
       "faceJson": "{\"savedSetting\":true,\"headSetting\":{\"mainColor\":{\"r\":0.19,\"g\":0.27,\"b\":0.42,\"a\":1.0},\"headScaleOffset\":0.08,\"foreheadHeight\":0.07,\"foreheadRound\":0.86},\"hairID\":7,\"hairInfo\":{\"radius\":0,\"color\":{\"r\":0.87,\"g\":0.9,\"b\":0.9,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"eyeID\":3,\"eyeInfo\":{\"radius\":0.23,\"color\":{\"r\":0.13,\"g\":0.28,\"b\":0.35,\"a\":1.0},\"height\":0.089,\"heightOffset\":0,\"scale\":1.35,\"twist\":0,\"distanceAngle\":49.575,\"leftRightAngle\":0},\"eyebrowID\":2,\"eyebrowInfo\":{\"radius\":0.23,\"color\":{\"r\":0,\"g\":0,\"b\":0,\"a\":1.0},\"height\":0.075,\"heightOffset\":0.089,\"scale\":1,\"twist\":0,\"distanceAngle\":41.184,\"leftRightAngle\":0},\"mouthID\":5,\"mouthInfo\":{\"radius\":0.23,\"color\":{\"r\":1,\"g\":0.534,\"b\":0.401,\"a\":1.0},\"height\":0.037,\"heightOffset\":0,\"scale\":0.82,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"tailID\":2,\"tailInfo\":{\"radius\":0,\"color\":{\"r\":0.87,\"g\":0.9,\"b\":0.9,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"footID\":1,\"footInfo\":{\"radius\":0,\"color\":{\"r\":1,\"g\":0.403,\"b\":0.203,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"wingID\":1,\"wingInfo\":{\"radius\":0,\"color\":{\"r\":0.87,\"g\":0.9,\"b\":0.9,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0}}",
@@ -460,11 +754,158 @@
       "wanderRadius": 2.5,
       "scenes": [
         "SkyIslandRaid"
-      ]
+      ],
+      "permanent": {
+        "displayNameCn": "折翎",
+        "displayNameEn": "Zheling",
+        "dailyChatAffinity": 30,
+        "positiveTags": [
+          "Weapon"
+        ],
+        "positiveItemTypeIds": [
+          500071
+        ],
+        "negativeItemTypeIds": [],
+        "positiveBubbles": [
+          {
+            "cn": "合我心意。我会好好用。",
+            "en": "Well chosen. I will put it to good use."
+          }
+        ],
+        "negativeBubbles": [
+          {
+            "cn": "心意收到了，这件暂时用不上。",
+            "en": "Thank you for thinking of me. I have no use for this right now."
+          }
+        ],
+        "normalBubbles": [
+          {
+            "cn": "收下了，谢谢你。",
+            "en": "Thank you. I will keep it."
+          }
+        ],
+        "dialogues": {
+          "greeting": [
+            {
+              "minLevel": 0,
+              "lines": [
+                {
+                  "cn": "路归路，人归人。你肯坐下，我也能听。热饭和趁手的兵器，我都珍惜。",
+                  "en": "The road is one matter; you are another. Sit down and I will listen. I value a hot meal and a dependable weapon."
+                }
+              ]
+            },
+            {
+              "minLevel": 5,
+              "lines": [
+                {
+                  "cn": "脚步我认得，不用再报名字。",
+                  "en": "I know your footsteps. No need to give your name."
+                }
+              ]
+            },
+            {
+              "minLevel": 10,
+              "lines": [
+                {
+                  "cn": "灯有人守了。今天，我先陪你。",
+                  "en": "Someone else can watch the lamp. Today I will stay with you."
+                }
+              ]
+            }
+          ],
+          "idle": [
+            {
+              "cn": "旧事不必替我扛。把眼前的路走稳就好。",
+              "en": "You do not have to carry my past. Keep your footing on the road ahead."
+            }
+          ],
+          "afterGift": [
+            {
+              "cn": "这份心意，我记着。",
+              "en": "I will remember your kindness."
+            }
+          ],
+          "levelUp": [
+            {
+              "cn": "与你相处，越来越自在了。",
+              "en": "I feel more at ease with you now."
+            }
+          ],
+          "farewell": [
+            {
+              "cn": "这回不拦你。累了就回来，我在。",
+              "en": "I will not bar your way. Come home when you are tired. I will be here."
+            }
+          ],
+          "alreadyGifted": [
+            {
+              "cn": "今天已经收到你的礼物了。",
+              "en": "You have already given me a gift today."
+            }
+          ],
+          "alreadyGiftedPositive": [
+            {
+              "cn": "今天这份够了，你也留些给自己。",
+              "en": "That is plenty for today. Keep some for yourself."
+            }
+          ],
+          "alreadyGiftedNormal": [
+            {
+              "cn": "礼物收好了，今天不必再送。",
+              "en": "Your gift is safe. No need for another today."
+            }
+          ],
+          "alreadyGiftedNegative": [
+            {
+              "cn": "今天就先这样吧。",
+              "en": "Let us leave it there for today."
+            }
+          ]
+        },
+        "marriedDialogues": {
+          "dialogue_greeting_married": [
+            {
+              "cn": "你回来了。门没闩，一直给你留着。",
+              "en": "You are back. I left the door unlatched for you."
+            }
+          ],
+          "dialogue_idle_married": [
+            {
+              "cn": "旧事不必替我扛。把眼前的路走稳就好。",
+              "en": "You do not have to carry my past. Keep your footing on the road ahead."
+            }
+          ],
+          "dialogue_farewell_married": [
+            {
+              "cn": "这回不拦你。累了就回来，我在。",
+              "en": "I will not bar your way. Come home when you are tired. I will be here."
+            }
+          ],
+          "dialogue_after_gift_married": [
+            {
+              "cn": "有你记挂着，真好。",
+              "en": "It is good to know you are thinking of me."
+            }
+          ],
+          "gift_positive_married": [
+            {
+              "cn": "合我心意。我会好好用。",
+              "en": "Well chosen. I will put it to good use."
+            }
+          ],
+          "gift_normal_married": [
+            {
+              "cn": "我收好了。下回也给你带一份。",
+              "en": "I will keep it safe. Next time I will bring something for you too."
+            }
+          ]
+        }
+      }
     },
     {
       "id": "sky_bellkeeper",
-      "isPermanent": false,
+      "isPermanent": true,
       "displayNameKey": "",
       "faceMode": "json",
       "faceJson": "{\"savedSetting\":true,\"headSetting\":{\"mainColor\":{\"r\":0.54,\"g\":0.42,\"b\":0.24,\"a\":1.0},\"headScaleOffset\":0.15,\"foreheadHeight\":0.07,\"foreheadRound\":0.86},\"hairID\":7,\"hairInfo\":{\"radius\":0,\"color\":{\"r\":0.29,\"g\":0.26,\"b\":0.19,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"eyeID\":3,\"eyeInfo\":{\"radius\":0.23,\"color\":{\"r\":0.13,\"g\":0.28,\"b\":0.35,\"a\":1.0},\"height\":0.089,\"heightOffset\":0,\"scale\":1.1,\"twist\":0,\"distanceAngle\":49.575,\"leftRightAngle\":0},\"eyebrowID\":2,\"eyebrowInfo\":{\"radius\":0.23,\"color\":{\"r\":0,\"g\":0,\"b\":0,\"a\":1.0},\"height\":0.075,\"heightOffset\":0.089,\"scale\":1,\"twist\":0,\"distanceAngle\":41.184,\"leftRightAngle\":0},\"mouthID\":5,\"mouthInfo\":{\"radius\":0.23,\"color\":{\"r\":1,\"g\":0.534,\"b\":0.401,\"a\":1.0},\"height\":0.037,\"heightOffset\":0,\"scale\":0.82,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"tailID\":2,\"tailInfo\":{\"radius\":0,\"color\":{\"r\":0.29,\"g\":0.26,\"b\":0.19,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"footID\":1,\"footInfo\":{\"radius\":0,\"color\":{\"r\":1,\"g\":0.403,\"b\":0.203,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"wingID\":1,\"wingInfo\":{\"radius\":0,\"color\":{\"r\":0.29,\"g\":0.26,\"b\":0.19,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0}}",
@@ -480,7 +921,154 @@
       "wanderRadius": 2.5,
       "scenes": [
         "SkyIslandRaid"
-      ]
+      ],
+      "permanent": {
+        "displayNameCn": "无声钟守",
+        "displayNameEn": "Silent Bell Keeper",
+        "dailyChatAffinity": 30,
+        "positiveTags": [],
+        "positiveItemTypeIds": [
+          500076,
+          500078,
+          500079
+        ],
+        "negativeItemTypeIds": [],
+        "positiveBubbles": [
+          {
+            "cn": "（他轻轻点头，把礼物放进贴身的小盒。）",
+            "en": "(He nods and puts your gift in the little box he keeps close.)"
+          }
+        ],
+        "negativeBubbles": [
+          {
+            "cn": "（他点头收下，在铜牌上写下：谢谢。）",
+            "en": "(He accepts it with a nod and writes: Thank you.)"
+          }
+        ],
+        "normalBubbles": [
+          {
+            "cn": "（他点头收下，在铜牌上写下：谢谢。）",
+            "en": "(He accepts it with a nod and writes: Thank you.)"
+          }
+        ],
+        "dialogues": {
+          "greeting": [
+            {
+              "minLevel": 0,
+              "lines": [
+                {
+                  "cn": "（他在铜片上写下：坐。带残铜片、星屑或晴岚风晶来，都能用。）",
+                  "en": "(He writes on a brass sheet: Sit. Brass scrap, stardust or Qinglan windcrystal can all be used.)"
+                }
+              ]
+            },
+            {
+              "minLevel": 5,
+              "lines": [
+                {
+                  "cn": "（他把身旁的椅子往你这边挪了挪。）",
+                  "en": "(He moves the chair beside him a little closer to you.)"
+                }
+              ]
+            },
+            {
+              "minLevel": 10,
+              "lines": [
+                {
+                  "cn": "（他写道：听见你的脚步，就不必等钟声了。）",
+                  "en": "(He writes: Your footsteps are enough. I no longer need to wait for the bell.)"
+                }
+              ]
+            }
+          ],
+          "idle": [
+            {
+              "cn": "（他擦净铜牌，留下一小块给你写字。）",
+              "en": "(He polishes the brass plate and leaves a small space for your words.)"
+            }
+          ],
+          "afterGift": [
+            {
+              "cn": "（他点头，把今天收到的礼物仔细收好。）",
+              "en": "(He nods and carefully puts away today's gift.)"
+            }
+          ],
+          "levelUp": [
+            {
+              "cn": "（他点头，把今天收到的礼物仔细收好。）",
+              "en": "(He nods and carefully puts away today's gift.)"
+            }
+          ],
+          "farewell": [
+            {
+              "cn": "（他握了一下你的手，指向牌上的字：我等你。）",
+              "en": "(He squeezes your hand and points to the words on the plate: I will wait for you.)"
+            }
+          ],
+          "alreadyGifted": [
+            {
+              "cn": "（他点头，把今天收到的礼物仔细收好。）",
+              "en": "(He nods and carefully puts away today's gift.)"
+            }
+          ],
+          "alreadyGiftedPositive": [
+            {
+              "cn": "（他点头，把今天收到的礼物仔细收好。）",
+              "en": "(He nods and carefully puts away today's gift.)"
+            }
+          ],
+          "alreadyGiftedNormal": [
+            {
+              "cn": "（他点头，把今天收到的礼物仔细收好。）",
+              "en": "(He nods and carefully puts away today's gift.)"
+            }
+          ],
+          "alreadyGiftedNegative": [
+            {
+              "cn": "（他点头，把今天收到的礼物仔细收好。）",
+              "en": "(He nods and carefully puts away today's gift.)"
+            }
+          ]
+        },
+        "marriedDialogues": {
+          "dialogue_greeting_married": [
+            {
+              "cn": "（门边的铜牌写着：欢迎回家。旁边留了你的名字。）",
+              "en": "(The brass plate by the door reads: Welcome home. Your name is written beside it.)"
+            }
+          ],
+          "dialogue_idle_married": [
+            {
+              "cn": "（他擦净铜牌，留下一小块给你写字。）",
+              "en": "(He polishes the brass plate and leaves a small space for your words.)"
+            }
+          ],
+          "dialogue_farewell_married": [
+            {
+              "cn": "（他握了一下你的手，指向牌上的字：我等你。）",
+              "en": "(He squeezes your hand and points to the words on the plate: I will wait for you.)"
+            }
+          ],
+          "dialogue_after_gift_married": [
+            {
+              "cn": "（他轻握你的手，在铜牌上写下：谢谢。）",
+              "en": "(He holds your hand and writes: Thank you.)"
+            }
+          ],
+          "gift_positive_married": [
+            {
+              "cn": "（他轻轻点头，把礼物放进贴身的小盒。）",
+              "en": "(He nods and puts your gift in the little box he keeps close.)"
+            }
+          ],
+          "gift_normal_married": [
+            {
+              "cn": "（他把礼物放好，写道：有你就好。）",
+              "en": "(He puts the gift away and writes: I am glad you are here.)"
+            }
+          ]
+        }
+      }
     },
     {
       "id": "skyboss_foreman",

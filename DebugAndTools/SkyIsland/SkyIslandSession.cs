@@ -666,16 +666,10 @@ namespace BossRush
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Scavenging);
             if (residents != null)
             {
-                // 折翎被战胜后不再露面：战斗实例用的就是他自己的脸和名字，若照旧放回剧情体，
-                // 玩家会看到刚打死的人站在自己的尸体和掉落箱旁边，头顶还挂着「聊聊航路」。
-                // 原地改留一块旧腰牌（SkyIslandWorldStory 按持久 flag 重建）。
-                //
-                // 判据用「本局是否打响过」这**一个**事实源，不再是「不在战斗中 且 持久 flag 已落」：
-                // 后者的两个条件延迟不同——最后一名倒下的那一帧 IsBusy 就转 false，而 flag 要等
-                // encounters.Tick（0.25 s 节流）提交并被存档接受，中间那段窗口他会站回尸体旁；
-                // 存档有写屏障时 flag 永远落不下来，那就是持久可见（CR-2026-09-09-013）。
-                // 钟守不同：战斗对象是「失控的守钟装置」，人本来就该活着，照旧只在战斗中隐藏。
-                residents.SetVisible("sky_zheling", !ZhelingDefeated && !HasStoryChallengeStarted("Zheling"));
+                // 折翎开战后本趟退下休整，避免最后一名倒下与剧情落盘之间的空窗、尸体和交互体重叠。
+                // 下一次出击恢复本人：胜负事实只开路，不永久剥夺聊天、送礼与婚姻入口；旧战败档同样恢复。
+                // 钟守的战斗对象是守钟装置，本人照旧只在战斗中隐藏。
+                residents.SetVisible("sky_zheling", encounters == null || !encounters.WasStartedThisRaid("Zheling"));
                 residents.SetVisible("sky_bellkeeper", !IsStoryChallengeActive("BellKeeper"));
                 // 活人感：头顶气泡 + 说话时停下脚步。自己节流，说话与否的四道门都在 SkyIslandChatter。
                 residents.Tick(player.transform.position, story == null ? null : story.Current);
@@ -1084,6 +1078,18 @@ namespace BossRush
             SkyIslandStoryAction outcome;
             if (TryChallengeOutcome(id, out outcome)) SkyIslandStoryRules.CanApply(story.Current, outcome, out reason);
             if (id == "Zheling" && story.Current.ZhelingResolved) return false;
+            // 随行配偶由婚姻 owner 持有，居民显隐不会隐藏他；先送回家再挑战，避免同名友敌同时在场。
+            if (id == "Zheling" && AffinityManager.IsMarriedToPlayer("sky_zheling")
+                && AffinityManager.IsSpouseFollowingPlayer("sky_zheling"))
+            {
+                CharacterMainControl spouse = PermanentDuckNpcRegistry.GetInstance("sky_zheling");
+                if (spouse != null && player != null && spouse.gameObject.scene == player.gameObject.scene)
+                {
+                    reason = L10n.T("折翎正陪你同行，先让他回家，再来挑战旧航路守卫。",
+                        "Zheling is travelling with you. Send him home before challenging the keeper of the old route.");
+                    return false;
+                }
+            }
             if (id == "BellKeeper" && (!story.Current.BothBeacons || story.Current.BellKeeperResolved)) return false;
             // 噬风循着重新亮起的两盏灯而来：双航标是它到场的唯一前置，击败后不再出现。
             if (id == "Storm" && (!story.Current.BothBeacons || story.Current.StormResolved)) return false;

@@ -164,18 +164,18 @@ namespace BossRush
             return encounter != null && encounter.Started && !encounter.Cleared && !encounter.AllDead;
         }
 
-        /// <summary>
-        /// 本局是否已经打响过这一组（含正在打、已打完、以及存档事实带来的一次性关闭）。
-        ///
-        /// 具名剧情对手的「剧情体该不该露面」必须用它，不能用 <see cref="IsBusy"/> 加持久 flag：
-        /// 那是两个**延迟不同**的派生条件——最后一名倒下的那一帧 `IsBusy` 就转 false，
-        /// 而持久 flag 要等下一次 <see cref="Tick"/>（0.25 s 节流）跑完 `cleared()` 并被存档接受；
-        /// 中间这段窗口刚打死的人会站回自己的尸体旁，写屏障期间更是永远回不去。
-        /// </summary>
+        /// <summary>已在本趟开始，或被持久剧情判为已结束；用于挑战/清场查询。</summary>
         internal bool HasStarted(string id)
         {
             Encounter encounter = Find(id);
             return encounter != null && (encounter.Started || encounter.Cleared);
+        }
+
+        /// <summary>只认本趟真正开战；旧档已完成带来的 Cleared 不能让居民永久隐藏。</summary>
+        internal bool WasStartedThisRaid(string id)
+        {
+            Encounter encounter = Find(id);
+            return encounter != null && encounter.Started;
         }
 
         /// <summary>

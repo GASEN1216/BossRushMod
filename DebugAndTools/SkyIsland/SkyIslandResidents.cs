@@ -111,7 +111,7 @@ namespace BossRush
             chatter.TrySay(speaker, ResidentBubbleHeight, SkyIslandChatterLines.Resident(speakerId, story));
         }
 
-        /// <summary>只在语言变化时更新现有名字登记，含隐藏居民及本会话持有的两位永久居民。</summary>
+        /// <summary>只在语言变化时更新现有名字登记，含隐藏居民及本会话持有的永久居民。</summary>
         private void RefreshLocalizedNames()
         {
             bool chinese = L10n.IsChinese;
@@ -290,7 +290,7 @@ namespace BossRush
                 && npc.GetComponentInChildren<SkyIslandResidentInteractable>(true) != null;
         }
 
-        /// <summary>某位居民此刻是否被剧情隐藏（折翎战败后不再露面）。只读。</summary>
+        /// <summary>某位居民此刻是否被剧情隐藏（折翎开战后本趟休整，下次出击恢复）。只读。</summary>
         internal bool IsHidden(string id) { return hidden.Contains(id); }
 
         /// <summary>把在岛且未隐藏的居民身上的交互体追加进 <paramref name="into"/>。只读，给 F3 交互竞争用例补上居民。</summary>

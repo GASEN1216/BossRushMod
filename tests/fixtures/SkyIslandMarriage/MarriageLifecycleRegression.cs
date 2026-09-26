@@ -19,7 +19,7 @@ internal static class MarriageLifecycleRegression
     }
     internal static void Run(Func<string,CharacterMainControl> create, Func<bool,SkyIslandSession> reset, Action<bool,string> check)
     {
-        foreach (string id in new[] { "sky_qinghe", "sky_weibai", "goblin", "nurse" })
+        foreach (string id in new[] { "sky_qinghe", "sky_weibai", "sky_fuzhou", "sky_miantai", "sky_zheling", "sky_bellkeeper", "goblin", "nurse" })
         foreach (bool married in new[] { false, true })
         {
             reset(false); var npc = create(id); Register(id, npc);
@@ -64,7 +64,7 @@ internal static class MarriageLifecycleRegression
             }
         }
 
-        foreach (string id in new[] { "sky_qinghe", "sky_weibai" })
+        foreach (string id in SkyIslandResidents.AllIds)
         {
             // Same object, scene, slot and final relationship: only operation generation distinguishes the two weddings.
             reset(false); var npc = create(id); Register(id, npc);
