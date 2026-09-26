@@ -665,8 +665,9 @@ Breaking/Operational:
 
 收获提示 `GardenHarvestNoticePatch`（COMPAT / WIRE+）只匹配 `Crop.Harvest()` 内唯一的
 `Cost.Return(bool, bool, int, List<Item>) → UniTaskExtensions.Forget(UniTask)`，保留原交付与 Forget，
-在两者之间包装等待任务。发货正常完成后才提示名称、数量及仓库/马蜂自提点去向；失败继续由原
-Forget 观察。失配保留全部原 IL 并警告；切图、换槽、换主角、停用或卸载后不迟发通知。
+在两者之间包装等待任务。对三种后山果实，验证 prefab 后仅将 Return 的第二个 bool 改为优先进背包；
+官方作物仍进仓库。发货正常完成后才提示名称、数量及对应去向；失败继续由原 Forget 观察。
+失配保留全部原 IL 并警告；切图、换槽、换主角、停用或卸载后不迟发通知。
 
 ## 7.1 官方游戏行为：静默失败类陷阱
 
@@ -674,6 +675,20 @@ Forget 观察。失配保留全部原 IL 并警告；切图、换槽、换主角
 
 下面每条都能在反编译源（`鸭科夫源码/`）里核实，而编译和 guard 都查不出来。共同点是**不报错**，表现只是「功能不工作」。
 写到相关 API 时先对照这里；发现新的同类行为就追加一条，并写明核实位置。
+
+**食用、收获与攻击事件（2026-09-26 核对）**
+
+- `CA_UseItem.OnFinish` 在 `Item.Use(characterController)` 后无条件减 `StackCount`；
+  `UsageUtilities.Use` 又会重新检查 `CanBeUsed`，失败时根本不调用 `OnUse`。只在 OnUse 内补偿，
+  覆盖不了读条期间失效。后山果实前缀在 OnFinish 扣量入口重新验证实际主玩家/场景/使用资格；
+  门通过但 TryBegin 失败仍沿原 Count KV 预补。其它物品照官方流程。
+- `CharacterMainControl.Attack` 即使 `StartAction` 拒绝也会发 `OnAttackEvent`；需要成功近战的效果
+  应监听同一角色的 `CA_Attack.OnAttack`（在 OnStart 内触发），并对原 action 实例退订。
+- `Cost.Return` 的异步状态机不在当前反编译文本中。实际官方 DLL 显示：按 MaxStackCount 分堆，
+  背包路线调用 `SendToPlayerCharacterInventory`，成功跳过仓库，失败由 Return 继续调用
+  `SendToPlayerStorage`；后者经 `PlayerStorage.Push` 合堆/空格，余量序列化进入 `IncomingItemBuffer`。
+  Harvest 在 Return().Forget() 后清格，所以成功提示必须等发货任务完成。只读 DLL 契约检查在
+  `tests/fixtures/JeffQuestFlow/OfficialAssemblyContract.cs`，真实收获数量仍需实机验证。
 
 **生成与激活**
 

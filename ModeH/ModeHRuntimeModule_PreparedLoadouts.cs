@@ -38,6 +38,22 @@ namespace BossRush
                 || _runState.Lifecycle == ModeHLifecycle.ErrorRecoveryPending); }
         }
 
+        /// <summary>Jeff 的「看完一场」只读既有战报；选人、开战与技术重试都不算完成。</summary>
+        internal bool HasCompletedMatch
+        {
+            get
+            {
+                if (_runState == null || _season == null || _season.matchReports == null) return false;
+                for (int i = 0; i < _season.matchReports.Count; i++)
+                {
+                    ModeHMatchReportDto report = _season.matchReports[i];
+                    if (report != null && (report.reportStatus == (int)ModeHMatchReportStatus.SettledPendingArchive
+                        || report.reportStatus == (int)ModeHMatchReportStatus.Archived)) return true;
+                }
+                return false;
+            }
+        }
+
         private List<ModeHResolvedKit> GetPreparedOutfit(string key, long seed)
         {
             string identity = seed + "|" + key;

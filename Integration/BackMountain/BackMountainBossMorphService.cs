@@ -118,6 +118,7 @@ namespace BossRush
         private readonly HashSet<Health> _damaged = new HashSet<Health>();
         private readonly Collider[] _hits = new Collider[32];
         private CharacterMainControl _character;
+        private CA_Attack _attackAction;
         private ModBehaviour _owner;
         private CharacterModel _model;
         private BackMountainBossMorphProfile _profile;
@@ -172,7 +173,9 @@ namespace BossRush
                 _damageMask = LayerMask.GetMask("Character", "DamageReceiver");
                 _wallMask = Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask;
                 _character.OnShootEvent += OnAttack;
-                _character.OnAttackEvent += OnAttack;
+                // CharacterMainControl.OnAttackEvent 在 StartAction 失败时也会发；只认近战动作真正开始。
+                _attackAction = _character.attackAction;
+                if (_attackAction != null) _attackAction.OnAttack += OnMeleeAttack;
                 _character.OnHoldAgentChanged += OnHoldChanged;
                 CharacterMainControl.OnMainCharacterSlotContentChangedEvent += OnEquipmentChanged;
                 _subscribed = true;
@@ -279,6 +282,7 @@ namespace BossRush
             if (_active && character == _character) _refreshEquipment = true;
         }
         private void OnHoldChanged(DuckovItemAgent agent) { if (_active) _refreshEquipment = true; }
+        private void OnMeleeAttack() { OnAttack(null); }
         private void OnAttack(DuckovItemAgent agent)
         {
             if (_active && !BossRushUI.IsGamePaused() && Time.time >= _nextAbility)
@@ -357,9 +361,10 @@ namespace BossRush
                 if (_character != null)
                 {
                     _character.OnShootEvent -= OnAttack;
-                    _character.OnAttackEvent -= OnAttack;
                     _character.OnHoldAgentChanged -= OnHoldChanged;
                 }
+                if (_attackAction != null) _attackAction.OnAttack -= OnMeleeAttack;
+                _attackAction = null;
                 CharacterMainControl.OnMainCharacterSlotContentChangedEvent -= OnEquipmentChanged;
                 _subscribed = false;
             }

@@ -304,7 +304,8 @@ namespace BossRush
             CampaignChapterState state = State(chapterId);
             bool armed = Armed(chapterId);
             CampaignObjectiveProgress progress = armed ? CampaignQuestTable.FindProgress(CampaignObjectiveTracker.Progress, objective) : null;
-            bool baseFact = objective.IsBaseScope && CampaignBaseObjectives.IsDone(objective.Kind);
+            bool baseFact = state == CampaignChapterState.Completed
+                || (objective.IsBaseScope && CampaignBaseObjectives.IsDone(objective.Kind));
             return CampaignQuestTable.DescribeObjective(objective, progress, IsSettled(state), baseFact);
         }
 

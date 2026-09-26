@@ -293,7 +293,7 @@ class Program
     static void FinishOfficialUse(RaidMealUsageBehavior behavior, Item item)
     {
         // UsageUtilities.Use rechecks each behavior; CA_UseItem.OnFinish decrements regardless.
-        if (behavior.CanBeUsed(item, null)) behavior.Use(item, null);
+        if (behavior.CanBeUsed(item, CharacterMainControl.Main)) behavior.Use(item, CharacterMainControl.Main);
         item.StackCount--;
     }
     static void Meals()
@@ -303,7 +303,7 @@ class Program
         foreach (int count in new[] { 1, 20 })
         {
             Reset(); var item = new Item { TypeID = typeId, StackCount = count };
-            Check(behavior.CanBeUsed(item, null), "harvest starts at stack " + count);
+            Check(behavior.CanBeUsed(item, CharacterMainControl.Main), "harvest starts at stack " + count);
             BackMountainBossMorphService.Reject = true; FinishOfficialUse(behavior, item);
             Check(item.StackCount == count && BackMountainBossMorphService.Started == 0,
                 "resource failure preserves harvest at stack " + count);
@@ -317,7 +317,7 @@ class Program
         BackMountainBossMorphService.Reject = false; BackMountainBossMorphService.Throw = true; FinishOfficialUse(behavior, failed);
         Check(failed.StackCount == 1, "morph exception is compensated");
         LevelManager.Instance.IsBaseLevel = false;
-        Check(behavior.CanBeUsed(failed, null), "harvest can be eaten outside base");
+        Check(behavior.CanBeUsed(failed, CharacterMainControl.Main), "harvest can be eaten outside base");
     }
 
     static PetNestExpeditionRecord PendingEgg(string id, string petId)

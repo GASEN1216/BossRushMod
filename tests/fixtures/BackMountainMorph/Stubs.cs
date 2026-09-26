@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using ItemStatsSystem;
+using BossRush;
 using ItemStatsSystem.Stats;
 using UnityEngine;
 
@@ -240,8 +241,10 @@ namespace ItemStatsSystem
         public void FinishLikeOfficial(Item item)
         {
             // UsageUtilities.Use rechecks the gate; CA_UseItem.OnFinish then always decrements.
-            // Failure compensation is tested only when this gate is still true and OnUse actually runs.
-            if (CanBeUsed(item, null)) OnUse(item, null);
+            // The production prefix must run before the official second eligibility check.
+            if (item.GetComponent<RaidMealUsageBehavior>() == null) item.gameObject.Components.Add(this);
+            if (!BackMountainFruitUseFinishPatch.Prefix(new CA_UseItem { characterController = CharacterMainControl.Main }, item)) return;
+            if (CanBeUsed(item, CharacterMainControl.Main)) OnUse(item, CharacterMainControl.Main);
             item.StackCount--;
         }
     }
@@ -290,6 +293,7 @@ public class Health : Component
 public class CharacterMainControl : Component
 {
     public static CharacterMainControl Main;
+    public CA_Attack attackAction = new CA_Attack();
     public Item CharacterItem;
     public Health Health;
     public CharacterModel characterModel;
@@ -307,11 +311,13 @@ public class CharacterMainControl : Component
     public static event Action<CharacterMainControl, ItemStatsSystem.Items.Slot> OnMainCharacterSlotContentChangedEvent
     { add { equipmentChanged += value; } remove { equipmentChanged -= value; } }
     public int ShootSubscribers { get { return shoot == null ? 0 : shoot.GetInvocationList().Length; } }
-    public int AttackSubscribers { get { return attack == null ? 0 : attack.GetInvocationList().Length; } }
+    public int AttackSubscribers { get { return attackAction.Subscribers; } }
+    public int AttackInputSubscribers { get { return attack == null ? 0 : attack.GetInvocationList().Length; } }
     public int HoldSubscribers { get { return holdChanged == null ? 0 : holdChanged.GetInvocationList().Length; } }
     public static int EquipmentSubscribers { get { return equipmentChanged == null ? 0 : equipmentChanged.GetInvocationList().Length; } }
     public void Shoot() { if (shoot != null) shoot(null); }
-    public void Attack() { if (attack != null) attack(null); }
+    public void Attack() { attackAction.Started(); AttackRejected(); }
+    public void AttackRejected() { if (attack != null) attack(null); }
     public void HoldChanged() { if (holdChanged != null) holdChanged(CurrentHoldItemAgent); }
     public void EquipmentChanged() { if (equipmentChanged != null) equipmentChanged(this, null); }
     public void SetCharacterModel(CharacterModel model)
@@ -393,4 +399,20 @@ namespace BossRush
         }
     }
     public static class RaidMealService { public static bool RegisterMeal(int typeId) { throw new InvalidOperationException("New consumption must not register old meals"); } }
+}
+
+// Attributes only; signature/IL binding is separately checked against the installed game DLL.
+namespace HarmonyLib
+{
+    [AttributeUsage(AttributeTargets.Class)] public sealed class HarmonyPatch : Attribute
+    { public HarmonyPatch(Type type, string method) { } }
+    [AttributeUsage(AttributeTargets.Method)] public sealed class HarmonyPrefix : Attribute { }
+}
+public class CA_UseItem { public CharacterMainControl characterController; }
+
+public class CA_Attack
+{
+    public event Action OnAttack;
+    public int Subscribers { get { return OnAttack == null ? 0 : OnAttack.GetInvocationList().Length; } }
+    public void Started() { if (OnAttack != null) OnAttack(); }
 }

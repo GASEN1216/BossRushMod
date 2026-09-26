@@ -1,5 +1,22 @@
 # CODE_REVIEW_FINDINGS.md — 已确认问题库
 
+<!-- BEGIN JEFF FRUIT AUDIT 2026-09-26 -->
+
+## 2026-09-26 Jeff 任务与菜地果实链路（4 项 Fixed / L1+L2，L3 待验）
+
+结合官方反编译源与本机 DLL 审查 24 个任务 ID（Jeff 21、岛上 3）、收获路线与三种变身。完整接线、验证边界和人工步骤见 [审查报告](docs/reports/reviews/2026-09-26-Jeff任务与果实生产审查.md)。编号 201 起区分同日并发专题。
+
+| ID | 等级 / 分类 | 确认问题与修复 | 验证 / 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-26-201 | P1 / COMPAT / WIRE+ | 官方食用二次 CanBeUsed 失败不进 OnUse，但 OnFinish 仍扣数量，旧补偿漏掉读条期间失效。果实专用前缀在扣量入口复查主玩家/场景/资格，原 OnUse 启动失败补偿保留。 | Fixed / L1+L2。真实前缀与服务覆盖三果实 1/20 堆叠、死亡/切图/停用/场景消失/已有变身；DLL 核对方法字段。 |
+| CR-2026-09-26-202 | P2 / COMPAT | 官方 OnAttackEvent 即使近战 StartAction 被拒也发，导致果实能力被无效输入触发。改订阅原 CA_Attack.OnAttack，保存同一 action 引用并退订。 | Fixed / L1+L2。成功近战有能力，无效输入无能力；恢复/生命周期回归通过。 |
+| CR-2026-09-26-203 | P2 / COMPAT | ReadyToDeliver 只表示局内目标结算，正文却给未建菜地/未摆战利品标“已达成”。基地正文仅认 baseFact，历史 Completed 由客户端传完成事实。 | Fixed / L1+L2。中英目标、缺设施拒交、补齐可交及历史不反转；交付门原本正确。 |
+| CR-2026-09-26-204 | P2 / COMPAT | 鸭王杯“看完一场”使用 IsMatchInProgress，刚开战就达成。只读 HasCompletedMatch 改查当前已有已结算/已归档战报。 | Fixed / L1+L2。真实属性提取执行，未结算拒绝，正常结算达成；不新增存档或改经济数值。 |
+
+没有把官方异步发货的理论异常当作已发生丢物。背包失败转仓、满仓转自提已核对实际 IL，物品数量/画面仍待 L3；不以隔离宿主替身冒充 Unity 或 Harmony 已生效。
+
+<!-- END JEFF FRUIT AUDIT 2026-09-26 -->
+
 ## 2026-09-25 F3 实机报告（runId 20260925_044506_391）复核：4 项生产缺陷 + 4 项验收数据 / 判据问题（均 Fixed / L1+L2，L3 待下一轮 F3）
 
 证据来源：owner 在 `51d2f0e6` Dev 构建上跑的 F3（主套件 327 过 / 9 红，全在天空岛；岛内全自动 79 / 6 / 1）。基地与各模式 1–7 阶段 182 项全过；`Player.log` 的异常全部来自 DuckMarket、MoveBlackMarket 与官方 `GamingConsole.Load`。

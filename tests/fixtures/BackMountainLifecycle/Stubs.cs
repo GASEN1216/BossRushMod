@@ -6,6 +6,16 @@ using UnityEngine;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
 
+// Attribute/owner adapters only; Harmony detours are not executed by this lifecycle fixture.
+namespace HarmonyLib
+{
+    [AttributeUsage(AttributeTargets.Class)]
+    public sealed class HarmonyPatch : Attribute { public HarmonyPatch(Type type, string method) { } }
+    [AttributeUsage(AttributeTargets.Method)]
+    public sealed class HarmonyPrefix : Attribute { }
+}
+public class CA_UseItem { public CharacterMainControl characterController; }
+
 namespace UnityEngine
 {
     public class Object
@@ -204,7 +214,7 @@ namespace ItemStatsSystem
         public abstract DisplaySettingsData DisplaySettings { get; }
         public abstract bool CanBeUsed(Item item, object user);
         protected abstract void OnUse(Item item, object user);
-        public void Use(Item item) { if (CanBeUsed(item, null)) OnUse(item, null); }
+        public void Use(Item item) { if (CanBeUsed(item, CharacterMainControl.Main)) OnUse(item, CharacterMainControl.Main); }
     }
 }
 namespace Duckov.Crops

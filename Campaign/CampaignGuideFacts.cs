@@ -31,7 +31,7 @@ namespace BossRush
                         case CampaignGuideTable.Zombie: done = owner.ResolveCampaignCurrentMode() == CampaignContentCatalog.ModeZombie; break;
                         case CampaignGuideTable.ModeG: done = ModeGRuntimeGates.IsModeGRunInProgress; break;
                         case CampaignGuideTable.ModeH:
-                            done = owner.ModeHRuntime != null && owner.ModeHRuntime.IsMatchInProgress;
+                            done = owner.ModeHRuntime != null && owner.ModeHRuntime.HasCompletedMatch;
                             break;
                         case CampaignGuideTable.PetNest: done = PetNestService.PetCount > 0 || PetNestCompanionRuntime.HasCompanion; break;
                         case CampaignGuideTable.RandomEvents:

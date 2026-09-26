@@ -5,10 +5,11 @@
 //
 // 三种收成都立即变身为对应 Boss。RaidMealService 仅保留旧档已预备餐食兑现。
 //
-// CA_UseItem.OnFinish 无条件扣数量。失败时预补一份，抵消紧随其后的官方扣减。
+// CA_UseItem.OnFinish 无条件扣数量。前缀拦住读条期间失效；OnUse 内失败预补抵消扣减。
 // ============================================================================
 
 using System;
+using HarmonyLib;
 using ItemStatsSystem;
 
 namespace BossRush
@@ -34,7 +35,7 @@ namespace BossRush
         {
             try
             {
-                if (item == null) return false;
+                if (item == null || user == null || !ReferenceEquals(user, CharacterMainControl.Main)) return false;
                 ModBehaviour owner = ModBehaviour.Instance;
                 if (owner == null || !owner.IsBackMountainConfiguredEnabled()) return false;
                 BackMountainItems.Definition def = BackMountainItems.GetDefinition(item.TypeID);
@@ -61,7 +62,8 @@ namespace BossRush
                 if (item == null) return;
 
                 ModBehaviour owner = ModBehaviour.Instance;
-                registered = owner != null && owner.IsBackMountainConfiguredEnabled()
+                registered = ReferenceEquals(user, CharacterMainControl.Main)
+                    && owner != null && owner.IsBackMountainConfiguredEnabled()
                     && BackMountainBossMorphService.TryBegin(item.TypeID, owner);
                 if (!registered)
                     Duckov.UI.NotificationText.Push(
@@ -80,6 +82,33 @@ namespace BossRush
                     item.SetInt("Count", item.StackCount + 1, true);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// 官方 UsageUtilities.Use 会重新检查 CanBeUsed；失败时不会进入 OnUse，
+    /// CA_UseItem.OnFinish 却仍会扣数量。在扣量入口拦住失效的果实使用，覆盖读条期间变身/死亡/切图。
+    /// OnUpdateAction 随后仍会 StopAction，正常归还手持物；其它物品不受影响。
+    /// </summary>
+    [HarmonyPatch(typeof(CA_UseItem), "OnFinish")]
+    internal static class BackMountainFruitUseFinishPatch
+    {
+        [HarmonyPrefix]
+        internal static bool Prefix(CA_UseItem __instance, Item ___item)
+        {
+            if (___item == null) return true;
+            BackMountainItems.Definition def = BackMountainItems.GetDefinition(___item.TypeID);
+            if (def == null || def.IsSeed) return true;
+            RaidMealUsageBehavior usage = ___item.GetComponent<RaidMealUsageBehavior>();
+            if (__instance != null && LevelManager.Instance != null && usage != null
+                && usage.CanBeUsed(___item, __instance.characterController)) return true;
+            try
+            {
+                Duckov.UI.NotificationText.Push(L10n.T("当前无法变身；收成未消耗",
+                    "You cannot morph right now; the harvest was not consumed."));
+            }
+            catch (Exception) { }
+            return false;
         }
     }
 }

@@ -29,7 +29,10 @@ def main():
     assert 'CanWrite() && CampaignGuideTable.InBase() && CampaignPersistence.TryAdvanceGuide(guideId, 3)' in client, 'stale delivery callback needs same gate'
     assert 'main.CharacterItem.GetAllChildren(true, true)' in facts, 'equipment objective must examine owned equipment'
     assert 'SkyIslandBossRules.GearSpec(item.TypeID) != null' in facts, 'visiting island does not prove gear'
-    assert 'owner.ModeHRuntime.IsMatchInProgress' in facts, 'selecting fighters is not a started match'
+    assert 'owner.ModeHRuntime.HasCompletedMatch' in facts, 'guide requires a completed match, not merely starting combat'
+    match = read('ModeH/ModeHRuntimeModule_PreparedLoadouts.cs')
+    assert 'report.reportStatus == (int)ModeHMatchReportStatus.SettledPendingArchive' in match
+    assert 'report.reportStatus == (int)ModeHMatchReportStatus.Archived' in match
     assert 'foreach (CampaignGuideTable.Definition guide in CampaignGuideTable.Definitions)' in loc
     print('CampaignGuideLifecycleGuard: PASS')
 

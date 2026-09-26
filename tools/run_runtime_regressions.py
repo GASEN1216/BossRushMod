@@ -13,7 +13,7 @@ SCRIPT_FIXTURES = (
     "AuditCoreParsing", "AuditModeLifecycle", "AuditCombatSeptember", "NpcAuditFixes",
     "ModeHSceneEntry", "ModeHPlayerFlow",
     "ResourceProduction",
-    "ManualSeptemberReview", "GardenHarvestNotice", "BackMountainMorph",
+    "ManualSeptemberReview", "GardenHarvestNotice", "BackMountainMorph", "JeffQuestFlow",
     "AffixSelectionUI", "ManualEquipmentRecovery", "AchievementIcons", "DynamicItemInitialization", "SkyIslandSceneReferenceBridge", "RandomEventsFailure", "RandomEventTempo",
     "RuntimeOwnership", "ContentTransactions", "BackMountainLifecycle", "ModeGCombat", "CampaignPlayability", "BossRewardDelivery", "AffixCombat", "ContentSecondReview", "AirdropSecondReview",
     "HarmonyBindingSecondReview", "ModeHReinforcementSecondReview", "modeh_effects",

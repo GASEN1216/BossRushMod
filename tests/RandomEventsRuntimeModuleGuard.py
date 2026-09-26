@@ -20,6 +20,7 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 MODULE = Path("RandomEvents/RandomEventsRuntimeModule.cs")
 REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
@@ -32,8 +33,7 @@ def fail(message):
 
 
 def strip_comments(text):
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    return re.sub(r"//[^\n]*", "", text)
+    return clean_source(text)
 
 
 def main():
@@ -57,9 +57,10 @@ def main():
         return fail(REGISTRATION.as_posix() + " 缺少只读门面 RandomEventsRuntime")
 
     # ---- 2) 全仓库只有一次 new ----
+    # 隔离夹具中的同名宿主替身不进入游戏编译；单实例约束覆盖全部生产源码。
     news = []
     for path in Path(".").rglob("*.cs"):
-        if any(part in {".git", "Build", "tmp", "output", "outputs", "鸭科夫源码"} for part in path.parts):
+        if any(part in {".git", "Build", "tmp", "output", "outputs", "鸭科夫源码", "tests"} for part in path.parts):
             continue
         text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
         news += [path.as_posix()] * len(

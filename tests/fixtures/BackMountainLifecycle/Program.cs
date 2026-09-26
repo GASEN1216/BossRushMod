@@ -100,14 +100,14 @@ static class Program
         foreach (int count in new[] { 1, 20 })
         {
             meal.StackCount = count; BackMountainBossMorphService.Reject = true;
-            Check(use.CanBeUsed(meal, null), "resource refusal reaches compensation");
+            Check(use.CanBeUsed(meal, CharacterMainControl.Main), "resource refusal reaches compensation");
             use.Use(meal); meal.StackCount--;
             Check(meal.StackCount == count, "official finish retains failed meal including full stack");
             BackMountainBossMorphService.Reject = false; use.Use(meal); meal.StackCount--;
             Check(meal.StackCount == count - 1, "success consumes exactly one");
         }
         LevelManager.Instance.IsBaseLevel = false;
-        Check(use.CanBeUsed(meal, null), "can transform during raid");
+        Check(use.CanBeUsed(meal, CharacterMainControl.Main), "can transform during raid");
     }
     static void MealLifecycle()
     {

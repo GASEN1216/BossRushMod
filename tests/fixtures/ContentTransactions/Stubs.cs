@@ -117,6 +117,7 @@ namespace ItemStatsSystem
     public class Slot { public Item Content; }
     public class Item
     {
+        public T GetComponent<T>() where T : class { return null; }
         public int TypeID = 500059, MaxStackCount = 20, Quality;
         public string Lineage = "test";
         public bool Destroyed, FailSaveOnce, IsFallback, Stackable = true;
@@ -337,3 +338,12 @@ namespace BossRush
 static class SceneLoader { public static bool IsSceneLoading; }
 
 namespace BossRush { static class BossRushItemIds { public const int DragonFruit = 500065, EmberChili = 500066, PhantomMushroom = 500067; } }
+
+// Attributes only; signature/IL binding is separately checked against the installed game DLL.
+namespace HarmonyLib
+{
+    [AttributeUsage(AttributeTargets.Class)] public sealed class HarmonyPatch : Attribute
+    { public HarmonyPatch(Type type, string method) { } }
+    [AttributeUsage(AttributeTargets.Method)] public sealed class HarmonyPrefix : Attribute { }
+}
+class CA_UseItem { public CharacterMainControl characterController; }

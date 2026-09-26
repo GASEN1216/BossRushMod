@@ -1,5 +1,19 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+<!-- BEGIN JEFF FRUIT TRACKER 2026-09-26 -->
+
+## 2026-09-26 Jeff 任务、菜地收获与三形态生产链审查（COMPAT / WIRE+ / OPERATIONAL）
+
+**范围**：owner 要求结合官方源码完整审查。覆盖 Jeff 21 条及岛上 3 条投影任务、六章采集/交付/存档、14 引导、菜地注册/发货、果实消费/属性/攻击/恢复。保留工作区其他会话修改；未启动游戏、未读取玩家存档。审查完成后 owner 明确授权检查无误后提交，仅提交本专题代码、回归与文档。完整 [审查报告与 J01–M04 人工清单](docs/reports/reviews/2026-09-26-Jeff任务与果实生产审查.md)。
+
+**修复**：CR-2026-09-26-201–204。果实 OnFinish 前缀覆盖食用二次门关闭仍扣量；近战能力只听 CA_Attack 成功事件；基地目标不再被 ReadyToDeliver 误标已完成；鸭王杯引导读取已结算/已归档战报。无新任务/TypeID/schema、无数值取舍；一条接一条和旧档状态保持原设计。收获原流程只验明，不复制发货或存档引擎。
+
+**验证**：全量 672 守卫通过，10 组相关执行回归通过（变身服务/前缀 1001、后山生命周期 176、征程玩法 187、JeffQuestFlow 234 及只读 DLL 契约等）；8 个隔离反向探针在预期断言转红并按字节恢复。Windows 正式构建成功、14 个 Dev 标识 absent，Build/部署 DLL SHA-256 一致：`9DBABAFF501B56B30F858561055B79A041A18DE85C4B7716458CA873D5F90E48`；固定副本和来源收据保存在 Build/jeff-reviewed-BossRush.dll 与 Build/jeff-review-receipt.json。此为共享工作区构建；完整证据和夹具边界见报告。相关 diff --check 通过。
+
+**边界**：JeffQuestFlow 的 Campaign 持久化和宿主为适配器，真实事务由 ContentTransactions 覆盖；四条岛任务在新夹具只验证 ID 共存，岛上玩法用原专项回归。L3 未做，不宣称任务 UI、模型/物理、实际收成数量或性能已实机通过。游戏启动/玩家存档按 AGENTS §10 交 owner，剩余动作已给逐项判据。
+
+<!-- END JEFF FRUIT TRACKER 2026-09-26 -->
+
 ## 2026-09-26 鸭王杯四页重排、刷新不闪、Jeff 引导一条接一条、崽炫彩蓝白绿精修（COMPAT / SAFE）
 
 **授权与范围**：owner 截图反馈 5 项 + 追加 1 项（看盘页布局乱、刷新整页闪、「战况 / 侦察」可去掉且整备页乱、结算页优化、崽蓝白绿炫彩塑料感、Jeff 剧情一次全放出来且文案有人机感）。不加 TypeID、不改存档 schema、不重打包；不提交 Git。

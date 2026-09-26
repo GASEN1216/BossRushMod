@@ -22,7 +22,8 @@ def main():
     for token in ('character.SetCharacterModel(_model); RestoreCollision();', '_character.SetCharacterModel(null);',
                   '_remaining -= Time.deltaTime;', 'if (BossRushUI.IsGamePaused()) return;',
                   'RuntimeStatModifierTracker.RemoveAll(_modifiers, "BossFruit");',
-                  '_character.OnShootEvent -= OnAttack;', '_character.OnAttackEvent -= OnAttack;',
+                  '_character.OnShootEvent -= OnAttack;', '_attackAction.OnAttack -= OnMeleeAttack;',
+                  '_attackAction = _character.attackAction;', '_attackAction.OnAttack += OnMeleeAttack;',
                   '_character.OnHoldAgentChanged -= OnHoldChanged;',
                   'CharacterMainControl.OnMainCharacterSlotContentChangedEvent -= OnEquipmentChanged;',
                   'private void OnDestroy() { Restore(); }',
@@ -42,6 +43,10 @@ def main():
     usage = read('Integration/BackMountain/RaidMealUsageBehavior.cs')
     assert 'BackMountainBossMorphService.TryBegin(item.TypeID, owner)' in usage and 'RaidMealService.RegisterMeal(' not in usage
     assert 'BackMountainBossMorphService.CanUse;' in usage and 'IsBaseLevel' not in usage
+    assert '[HarmonyPatch(typeof(CA_UseItem), "OnFinish")]' in usage
+    assert 'usage.CanBeUsed(___item, __instance.characterController)' in usage
+    assert 'ReferenceEquals(user, CharacterMainControl.Main)' in usage
+    assert '_character.OnAttackEvent +=' not in morph, 'rejected attack input must not release an ability'
     assert module.count('BackMountainBossMorphService.Clear();') >= 2, 'shutdown and unload must release morph'
     assert '[HarmonyPrefix] internal static bool EnsureHarvestProduct' in harvest
     assert 'BackMountainItems.EnsureRuntimeRegistration(productId)' in harvest

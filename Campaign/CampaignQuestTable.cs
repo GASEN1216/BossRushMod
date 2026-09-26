@@ -108,7 +108,7 @@ namespace BossRush
             if (def.IsBaseScope)
             {
                 text = L10n.T("基地：", "Base: ") + text;
-                return settled || baseFact ? text + L10n.T("（已达成）", " (done)") : text;
+                return baseFact ? text + L10n.T("（已达成）", " (done)") : text;
             }
             if (settled) return text + L10n.T("（已达成）", " (done)");
             if (progress == null || progress.Def != def) return text;

@@ -167,11 +167,11 @@ internal static class Program
         {
             FixtureWorld.Reset(); int id = FixtureWorld.Fruits[i];
             var usage = FixtureWorld.Usage(); Item fruit = FixtureWorld.Item(id, 2);
-            Check(usage.CanBeUsed(fruit, null), id + " edible outside base");
+            Check(usage.CanBeUsed(fruit, FixtureWorld.Player), id + " edible outside base");
             usage.FinishLikeOfficial(fruit);
             Check(fruit.StackCount == 1, id + " exactly one consumed");
             Check(BackMountainBossMorphService.IsActive && !BackMountainBossMorphService.CanUse, id + " active prevents stacking");
-            Check(!usage.CanBeUsed(fruit, null), id + " UI rejects duplicate");
+            Check(!usage.CanBeUsed(fruit, FixtureWorld.Player), id + " UI rejects duplicate");
             Check(!BackMountainBossMorphService.TryBegin(id, FixtureWorld.Owner) && fruit.StackCount == 1,
                 id + " duplicate service startup rejected");
             var p = FixtureWorld.Player;
@@ -242,15 +242,51 @@ internal static class Program
             Check(GameObject.All.All(g => g == null || !g.name.StartsWith("model-") || !g.name.EndsWith("(Clone)")), "failed model clone destroyed");
         }
         FixtureWorld.Reset(); var ui = FixtureWorld.Usage();
-        foreach (int id in new[] { 500062, 500063, 500064, 123, 0 }) Check(!ui.CanBeUsed(FixtureWorld.Item(id), null), "inedible ID " + id);
+        foreach (int id in new[] { 500062, 500063, 500064, 123, 0 }) Check(!ui.CanBeUsed(FixtureWorld.Item(id), FixtureWorld.Player), "inedible ID " + id);
         Check(!BackMountainBossMorphService.TryBegin(123, FixtureWorld.Owner), "unknown profile rejected");
         ObjectCache.Presets = null;
         Check(!BackMountainBossMorphService.TryBegin(500065, FixtureWorld.Owner), "missing preset cache rejected");
         FixtureWorld.Reset(); FixtureWorld.Owner.ConfiguredEnabled = false;
-        Check(!ui.CanBeUsed(FixtureWorld.Item(500065), null) && !BackMountainBossMorphService.TryBegin(500065, FixtureWorld.Owner), "disabled owner rejects use");
+        Check(!ui.CanBeUsed(FixtureWorld.Item(500065), FixtureWorld.Player) && !BackMountainBossMorphService.TryBegin(500065, FixtureWorld.Owner), "disabled owner rejects use");
         FixtureWorld.Reset(); UObject.Destroy(FixtureWorld.Owner.gameObject);
         Check(!BackMountainBossMorphService.TryBegin(500065, FixtureWorld.Owner), "destroyed owner is fake null");
     }
+    private static void RecheckedEligibility()
+    {
+        foreach (int id in FixtureWorld.Fruits)
+        {
+            foreach (int count in new[] { 1, 20 })
+            {
+                Action[] invalidate = {
+                    () => FixtureWorld.Player.Health.IsDead = true,
+                    () => SceneLoader.IsSceneLoading = true,
+                    () => FixtureWorld.Owner.ConfiguredEnabled = false,
+                    () => LevelManager.Instance = null,
+                    () => Check(BackMountainBossMorphService.TryBegin(id, FixtureWorld.Owner), "competing form started")
+                };
+                foreach (Action action in invalidate)
+                {
+                    FixtureWorld.Reset(); var fruit = FixtureWorld.Item(id, count); var usage = FixtureWorld.Usage();
+                    Check(usage.CanBeUsed(fruit, FixtureWorld.Player), "eligible at start of use timer");
+                    action();
+                    usage.FinishLikeOfficial(fruit);
+                    Check(fruit.StackCount == count, "changed eligibility preserves fruit " + id + " count " + count);
+                }
+            }
+            FixtureWorld.Reset(); var player = FixtureWorld.Player;
+            var edible = FixtureWorld.Item(id); var behavior = FixtureWorld.Usage();
+            Check(!behavior.CanBeUsed(edible, null) && !behavior.CanBeUsed(edible, new CharacterMainControl()),
+                "only the consuming main character can morph");
+            Check(BackMountainBossMorphService.TryBegin(id, FixtureWorld.Owner), "attack input regression starts form");
+            player.AttackRejected(); FixtureWorld.Tick(0.01f);
+            Check(Physics.Overlaps == 0, "rejected melee action cannot trigger fruit ability");
+            Check(player.AttackInputSubscribers == 0 && player.attackAction.Subscribers == 1,
+                "listen to successful melee action instead of unconditional input event");
+            player.Attack(); FixtureWorld.Tick(0.01f);
+            Check(Physics.Overlaps == 1, "successful melee action triggers fruit ability");
+        }
+    }
+
     private static void TimersAndOwnership()
     {
         foreach (int id in FixtureWorld.Fruits)
@@ -359,7 +395,7 @@ internal static class Program
     {
         try
         {
-            FormsAndConsumption(); RejectionAndRollback(); TimersAndOwnership(); Combat(); EquipmentRefresh();
+            FormsAndConsumption(); RejectionAndRollback(); RecheckedEligibility(); TimersAndOwnership(); Combat(); EquipmentRefresh();
             FixtureWorld.Reset(); BackMountainBossMorphService.Clear();
             Console.WriteLine("BackMountainMorph: " + checks + " assertions PASS"); return 0;
         }
