@@ -1,5 +1,6 @@
 """Mod 角色换到主场景后仍必须解除子场景的距离休眠登记。"""
 from pathlib import Path
+from cs_source_util import clean_source
 
 
 def main():
@@ -13,8 +14,8 @@ def main():
     if "characterObject.scene.buildIndex" in helper or "FindObjectsOfType" in helper:
         print("SpawnedEnemyActivationGuard: FAIL 不得用主场景索引代替登记索引，或扫描整图角色")
         return 1
-    for path in ("Utilities/EnemySpawnCore.cs", "ModBehaviour.cs", "ModeH/ModeHSpawnBridge.cs"):
-        if "SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep" not in Path(path).read_text(encoding="utf-8"):
+    for path in ("Utilities/EnemySpawnCore.cs", "WavesArena/WavesArenaRuntimeModule_LegacySpawn.cs", "ModeH/ModeHSpawnBridge.cs"):
+        if "SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep" not in clean_source(Path(path).read_text(encoding="utf-8")):
             print("SpawnedEnemyActivationGuard: FAIL 激活路径未接保护: " + path)
             return 1
     print("SpawnedEnemyActivationGuard: PASS")

@@ -4,9 +4,12 @@ namespace BossRush
     {
         private readonly ModeERuntimeModule modeERuntime = new ModeERuntimeModule();
         private ModeEFMerchantCatalog modeEFMerchantCatalog;
+        private AchievementRuntimeModule achievementRuntime;
+        private readonly BossRushAudioRuntimeService audioRuntime = new BossRushAudioRuntimeService();
 
         private void RegisterRuntimeModules()
         {
+            audioRuntime.BindRuntimeQueries(() => playerCharacter, () => info.path);
             runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());
 
             // 官方任务投影核心单实例纪律：先存字段，再把**同一个引用**注册给 host。
@@ -18,7 +21,12 @@ namespace BossRush
             runtimeModuleHost.Register(modeDRuntime);
             runtimeModuleHost.Register(new DebugToolsRuntimeModule());
             runtimeModuleHost.Register(new SkyIslandRuntimeModule());
-            runtimeModuleHost.Register(new AchievementRuntimeModule());
+            achievementRuntime = new AchievementRuntimeModule();
+            achievementRuntime.BindRuntimeQueries(() => IsActive, () => modeDRuntime.IsActive,
+                () => wavesArenaRuntime.InfiniteHellMode, () => wavesArenaRuntime.BossesPerWave,
+                () => config != null, () => config.achievementHotkey);
+            achievementRuntime.BindMedalShopQueries(IsBaseHubNormalMerchantShop, BaseSceneName);
+            runtimeModuleHost.Register(achievementRuntime);
             runtimeModuleHost.Register(new CommonNpcRuntimeModule());
             courierNpcRuntime = new CourierNpcRuntimeModule();
             runtimeModuleHost.Register(courierNpcRuntime);
@@ -30,6 +38,12 @@ namespace BossRush
             runtimeModuleHost.Register(wavesArenaRuntime);
             BindModeDItemPoolQueries();
             BindSpawnPostprocessServices();
+            BindArenaSpawnServices();
+            mutatorBossRegenRuntime.BindArenaQueries(() => IsActive, () => wavesArenaRuntime.BossesPerWave,
+                () => wavesArenaRuntime.CurrentBoss, () => wavesArenaRuntime.CurrentWaveBosses);
+            mutatorBossRegenRuntime.BindModeDQueries(() => modeDRuntime.IsActive, () => modeDRuntime.modeDCurrentWaveEnemies);
+            mutatorBossRegenRuntime.BindModeEQueries(() => modeERuntime.IsModeEActive, () => modeERuntime.ModeEAliveEnemies, modeERuntime.GetModeEBossRegenCache);
+            mutatorBossRegenRuntime.BindModeFQueries(() => modeFRuntime.IsModeFActive, () => modeFActiveBossSet, modeFRuntime.GetModeFBossRegenCache);
             BindAwenLootSweepRuntime();
             var modeEFVirtualSpawnerRegistry = new ModeEFVirtualSpawnerRegistry();
             modeERuntime.BindVirtualSpawnerRegistry(modeEFVirtualSpawnerRegistry);

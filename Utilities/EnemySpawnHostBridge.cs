@@ -33,7 +33,7 @@ namespace BossRush
                 modeDItemPool.EquipEnemyForModeD, modeDItemPool.CreateSharedModeEnemyEquipmentMaterializationPlan,
                 character => ApplyBossStatMultiplier(character),
                 (character, count) => wavesArenaRuntime.RegisterBossRandomLootTracking(character, count));
-            enemySpawnRuntime.BindOwnedEnemyTracking(IsDaXingXingPreset, () => bossRushOwnedDaXingXing);
+            enemySpawnRuntime.BindOwnedEnemyTracking(wavesArenaRuntime.IsDaXingXingPreset, () => wavesArenaRuntime.OwnedDaXingXing);
         }
 
         internal void EnsureCharacterPresetsCacheReady() { modeDRuntime.EnsureCharacterPresetsCacheReady(); }

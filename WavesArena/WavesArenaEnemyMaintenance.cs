@@ -20,16 +20,16 @@ namespace BossRush
         }
 
         internal void RefreshCharacterCacheForArena() { RefreshCharacterCache(); }
-        internal List<CharacterMainControl> ArenaCharacterCache { get { return _cachedCharacters; } }
+        internal List<CharacterMainControl> ArenaCharacterCache { get { return WavesArenaRuntimeModule.CharacterCache; } }
         internal bool ArenaCharacterCacheNeedsRefresh
         {
-            get { return _characterCacheNeedsRefresh; }
-            set { _characterCacheNeedsRefresh = value; }
+            get { return WavesArenaRuntimeModule.CharacterCacheNeedsRefresh; }
+            set { WavesArenaRuntimeModule.CharacterCacheNeedsRefresh = value; }
         }
-        internal List<GameObject> ArenaReusableDestroyList { get { return _reusableDestroyList; } }
-        internal bool ArenaCenterSetForCleanup { get { return _arenaCenterSet; } }
-        internal Vector3 ArenaCenterForCleanup { get { return _arenaCenter; } }
-        internal CharacterRandomPreset ArenaEggSpawnPreset { get { return eggSpawnPreset; } }
+        internal List<GameObject> ArenaReusableDestroyList { get { return WavesArenaRuntimeModule.ReusableDestroyList; } }
+        internal bool ArenaCenterSetForCleanup { get { return WavesArenaRuntimeModule.ArenaCenterSet; } }
+        internal Vector3 ArenaCenterForCleanup { get { return WavesArenaRuntimeModule.ArenaCenter; } }
+        internal CharacterRandomPreset ArenaEggSpawnPreset { get { return BossRushAudioRuntimeService.EggSpawnPreset; } }
         internal bool IsModeETrackedEnemyForArena(CharacterMainControl enemy) { return modeEAliveEnemySet.Contains(enemy); }
         internal bool IsDeathWraithCharacterForArena(CharacterMainControl enemy)
         {

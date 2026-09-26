@@ -79,7 +79,7 @@ PERSISTENT = (
     ("ModeG/ModeGHUD.cs", None, "public void Update(float deltaTime)",
      "SetVisible(visible);",
      ("call", "ModeG/ModeGEntry.cs", "modeGHUD.Update(deltaTime);",
-      "private void UpdateModeG(float deltaTime)", ["try"], "if (modeGHUD != null)", 1),
+      "internal void UpdateModeG(float deltaTime)", ["try"], "if (modeGHUD != null)", 1),
      "Mode G 状态文本"),
     # 2026-09-23 审美审查 UB-06：取代每 15 秒一条的阶段横幅的常驻状态卡（左上，Hud 层）
     ("ModeF/ModeFStatusHud.cs", None, "internal static void Tick(ModeFState state, float maxCharge)",
@@ -278,6 +278,16 @@ def host_errors(label, drive, read):
     return errors
 
 
+MODEG_DRIVE_CHAIN = (
+    ("call", "ModeG/ModeGEntryHostBridge.cs", "modeGEntryRuntime.UpdateModeG(deltaTime);",
+     "private void UpdateModeG(float deltaTime)", [], "if (modeGEntryRuntime != null)", 0),
+    ("call", "Utilities/ModeRuntimeHooks.cs", "UpdateModeG(deltaTime);",
+     "internal bool TickModeRuntimeGroup(float deltaTime, float unscaledDeltaTime)", [], "", 1),
+    ("call", "ModBehaviour.cs", "if (TickModeRuntimeGroup(Time.deltaTime, Time.unscaledDeltaTime))",
+     "void Update()", [], "", 1),
+)
+
+
 def check(read, layer_files, canvas_files, ongui_files):
     """read(rel) -> 清洗过的源码或 None；三个 dict 都是 {相对路径: 原文}。返回错误清单。"""
     errors = []
@@ -301,6 +311,10 @@ def check(read, layer_files, canvas_files, ongui_files):
             errors += host_errors(label, drive, read)
         elif not re.search(drive[1], source):
             errors.append("%s 靠 Unity 的 Update 驱动，但 %s 里找不到 MonoBehaviour 声明" % (label, rel))
+
+    # Mode G 的服务并非注册模块，HUD 必须沿原宿主 tick 链逐层到达。
+    for drive in MODEG_DRIVE_CHAIN:
+        errors += host_errors("Mode G 状态文本完整驱动链", drive, read)
 
     listed = {entry[0] for entry in PERSISTENT}
     for rel in sorted(layer_files):
@@ -407,6 +421,11 @@ def main():
             expect_red("拆掉 %s 的 %s" % (label, token), {rel: source.replace(token, "false")})
         probes += 1
         expect_red("拆掉 %s 的显隐落点 %s" % (label, effect), {rel: source.replace(effect, ";")})
+
+    for drive in MODEG_DRIVE_CHAIN:
+        _, rel, call, _, _, _, _ = drive
+        probes += 1
+        expect_red("拆掉 Mode G 驱动链 " + rel, {rel: read_from({})(rel).replace(call, ";")})
 
     semantic = [
         ("① 词条浮层的闸门改成 suppressed = false", "Integration/Mutators/MutatorUI.cs",

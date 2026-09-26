@@ -195,7 +195,7 @@ namespace BossRush
                 InteractableLootbox[] all = Resources.FindObjectsOfTypeAll<InteractableLootbox>();
                 if (all == null || all.Length <= 0)
                 {
-                    return ModBehaviour.GetDifficultyRewardLootBoxTemplate();
+                    return GetDifficultyRewardLootBoxTemplate();
                 }
 
                 InteractableLootbox preferredBag = null;
@@ -270,7 +270,7 @@ namespace BossRush
 
             if (CachedVictoryRewardVisualLootBoxTemplate == null)
             {
-                CachedVictoryRewardVisualLootBoxTemplate = ModBehaviour.GetDifficultyRewardLootBoxTemplate();
+                CachedVictoryRewardVisualLootBoxTemplate = GetDifficultyRewardLootBoxTemplate();
             }
 
             return CachedVictoryRewardVisualLootBoxTemplate;
@@ -291,7 +291,7 @@ namespace BossRush
             _activeVictoryRewardShadowCrateController = null;
 
             CharacterMainControl main = TryGetMainCharacterForVictoryRewardShadowCrate_LootAndRewards();
-            InteractableLootbox prefab = ModBehaviour.GetDifficultyRewardLootBoxTemplate();
+            InteractableLootbox prefab = GetDifficultyRewardLootBoxTemplate();
             InteractableLootbox visualPrefab = GetVictoryRewardVisualLootBoxTemplate_LootAndRewards();
 
             if (main == null || prefab == null)
@@ -552,7 +552,7 @@ namespace BossRush
                     pos += Vector3.up * 0.1f;
                 }
 
-                InteractableLootbox prefab = ModBehaviour.GetDifficultyRewardLootBoxTemplate();
+                InteractableLootbox prefab = GetDifficultyRewardLootBoxTemplate();
                 if (prefab == null)
                 {
                     ModBehaviour.DevLog("[BossRush] SpawnDifficultyRewardLootbox: 未找到 Lootbox 模板，无法生成通关奖励箱");
@@ -615,7 +615,7 @@ namespace BossRush
                 // 根据配置决定是否让通关奖励箱作为子弹掩体
                 try
                 {
-                    owner.ApplyLootBoxCoverSetting(lootbox, true);
+                    ApplyLootBoxCoverSetting(lootbox, true);
                 }
                 catch (Exception e)
                 {

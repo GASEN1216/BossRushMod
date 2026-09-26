@@ -217,7 +217,7 @@ def check_exemptions(errors):
         if mcode.count("bool isPet = false;") < 2:
             errors.append("[兼容] 不得删除既有的 isPet 字面量（DeathWraith guard 依赖它的顺序）")
 
-    host = read_text(repo_path("ModBehaviour.cs"))
+    host = read_text(repo_path("WavesArena/WavesArenaRuntimeModule_LegacySpawn.cs"))
     if host is None:
         errors.append("[File] 缺少 ModBehaviour.cs")
     else:

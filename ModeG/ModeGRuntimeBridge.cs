@@ -8,7 +8,7 @@ namespace BossRush
     /// <summary>
     /// Mode G 运行时桥接：Boss 池快照、managed 生成入口、生成位置、竞技场准备和波横幅。
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeGEntryRuntime
     {
         internal ModeGBossSnapshot CreateModeGBossSnapshot()
         {
@@ -54,7 +54,7 @@ namespace BossRush
                     {
                         if (!ReferenceEquals(existingOfficial, info))
                         {
-                            DevLog("[ModeG] official stable key 对应多个 preset 引用，拒绝快照: " + info.name);
+                            ModBehaviour.DevLog("[ModeG] official stable key 对应多个 preset 引用，拒绝快照: " + info.name);
                             return null;
                         }
                         continue;
@@ -80,20 +80,20 @@ namespace BossRush
                 if (snapshot.officialKeys.Count
                     < ModeGOfficialBossEligibilityRegistry.MinimumProductionOfficialBossCount)
                 {
-                    DevLog("[ModeG] 当前过滤 Boss 池没有可用的官方 Boss key，拒绝创建快照");
+                    ModBehaviour.DevLog("[ModeG] 当前过滤 Boss 池没有可用的官方 Boss key，拒绝创建快照");
                     return null;
                 }
                 if (snapshot.officialKeys.Count
                     < ModeGOfficialBossEligibilityRegistry.OfficialPoolReplicationTarget)
                 {
-                    DevLog("[ModeG] 官方 Boss 池仅有 " + snapshot.officialKeys.Count
+                    ModBehaviour.DevLog("[ModeG] 官方 Boss 池仅有 " + snapshot.officialKeys.Count
                         + " 个唯一 key；本局波次将按 seed 从已有 key 随机复用至编排目标 6 个槽位");
                 }
                 return snapshot;
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [ERROR] CreateModeGBossSnapshot 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [ERROR] CreateModeGBossSnapshot 异常: " + e.Message);
                 return null;
             }
         }
@@ -131,7 +131,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [ERROR] SpawnModeGManagedBossAsync 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [ERROR] SpawnModeGManagedBossAsync 异常: " + e.Message);
                 return null;
             }
         }
@@ -168,7 +168,7 @@ namespace BossRush
                     if (TrySelectModeGFormation(source, playerPos, waveIndex, count,
                         ModeGPlanVariant.Split, splitSpec, false, out positions))
                     {
-                        DevLog("[ModeG] " + variant + " 几何不足，已在同一 verified 点集降级 Split");
+                        ModBehaviour.DevLog("[ModeG] " + variant + " 几何不足，已在同一 verified 点集降级 Split");
                         return positions;
                     }
                 }
@@ -176,7 +176,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [ERROR] GetModeGSpawnPositions 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [ERROR] GetModeGSpawnPositions 异常: " + e.Message);
                 return null;
             }
         }
@@ -287,19 +287,19 @@ namespace BossRush
                 Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
                 if (spawnPoints == null || spawnPoints.Length == 0)
                 {
-                    DevLog("[ModeG] [ERROR] 竞技场准备失败：verified 地图没有刷新点");
+                    ModBehaviour.DevLog("[ModeG] [ERROR] 竞技场准备失败：verified 地图没有刷新点");
                     return false;
                 }
                 InitializeItemValueCacheAsync();
                 TryCreateArenaDifficultyEntryPoint();
-                BossRushSignInteractable sign = FindObjectOfType<BossRushSignInteractable>();
+                BossRushSignInteractable sign = UnityEngine.Object.FindObjectOfType<BossRushSignInteractable>();
                 if (sign != null) sign.AddAmmoRefillOption();
                 bossRushArenaActive = true;
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [ERROR] PrepareModeGArenaRuntime 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [ERROR] PrepareModeGArenaRuntime 异常: " + e.Message);
                 return false;
             }
         }
@@ -313,7 +313,7 @@ namespace BossRush
                 DisableAllSpawners();
                 if (!spawnersDisabled)
                 {
-                    DevLog("[ModeG] [ERROR] 竞技场提交失败：原生刷怪器未进入禁用状态");
+                    ModBehaviour.DevLog("[ModeG] [ERROR] 竞技场提交失败：原生刷怪器未进入禁用状态");
                     return false;
                 }
                 ClearEnemiesForBossRush();
@@ -321,7 +321,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [ERROR] CommitModeGArenaEntry 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [ERROR] CommitModeGArenaEntry 异常: " + e.Message);
                 return false;
             }
         }
@@ -361,7 +361,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [WARNING] ShowModeGWaveBanner 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [WARNING] ShowModeGWaveBanner 异常: " + e.Message);
             }
         }
     }

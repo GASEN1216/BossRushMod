@@ -335,15 +335,13 @@ namespace BossRush
         }
         internal MonoBehaviour CurrentBossForWavesArena { get { return currentBoss; } }
         private MonoBehaviour playerCharacter;  // CharacterMainControl
-        private static SpawnEgg cachedSpawnEggBehavior = null;
-        private static CharacterRandomPreset eggSpawnPreset = null; // 记录下蛋所用的角色预设，清理敌人时保留这类鸭鸭
         private int currentEnemyIndex
         {
             get { return wavesArenaRuntime.CurrentEnemyIndex; }
             set { wavesArenaRuntime.CurrentEnemyIndex = value; }
         }
         // 记录由 BossRush 自己生成的“大兴兴”Boss，用于区分原版 DEMO 地图刷出的同名 Boss
-        private readonly HashSet<CharacterMainControl> bossRushOwnedDaXingXing = new HashSet<CharacterMainControl>();
+        private HashSet<CharacterMainControl> bossRushOwnedDaXingXing { get { return wavesArenaRuntime.OwnedDaXingXing; } }
         // 状态
         public bool IsActive { get; private set; }
         private void SetBossRushRuntimeActive(bool active)
@@ -507,7 +505,7 @@ namespace BossRush
         // 单波生成模式
         // 每波生成的Boss数量和当前波次的Boss列表
         // 变异词条：单Boss模式回血用的临时列表（避免每帧分配）
-        private readonly List<MonoBehaviour> _singleBossRegenList = new List<MonoBehaviour>(1);
+        private readonly MutatorBossRegenRuntime mutatorBossRegenRuntime = new MutatorBossRegenRuntime();
         // 波次完整性自检计时器
         internal const float WaveIntegrityCheckInterval = 10f;
         // Mode E 独立自检计时器（Mode E 不激活 IsActive，需要单独计时）
@@ -515,14 +513,9 @@ namespace BossRush
         internal const float DaXingXingCleanInterval = 0.5f;
 
         // [性能优化] 角色缓存列表，避免每次清理时都调用 FindObjectsOfType
-        private static List<CharacterMainControl> _cachedCharacters = new List<CharacterMainControl>();
-        private static bool _characterCacheNeedsRefresh = true;
         // [性能优化] 缓存定时刷新计时器，用于捕获动态生成的敌人
-        private static float _characterCacheRefreshTimer = 0f;
-        private const float CharacterCacheRefreshInterval = 10f; // 每 10 秒强制刷新一次缓存（从 5f 优化为 10f）
 
         // [性能优化] 复用的销毁列表，避免每次清理时分配新的 List
-        private static readonly List<GameObject> _reusableDestroyList = new List<GameObject>(32);
 
         // [性能优化] 缓存 CharacterSpawnerRoot.created 字段的反射引用
 
@@ -533,52 +526,13 @@ namespace BossRush
 
         // [性能优化] 竞技场范围限制 - 以路牌为圆心的清理/禁用范围
         internal const float ARENA_RADIUS = 500f; // 竞技场半径（米）
-        private static Vector3 _arenaCenter = Vector3.zero; // 竞技场中心位置（路牌位置）
-        private static bool _arenaCenterSet = false; // 是否已设置竞技场中心
 
         /// <summary>
         /// 根据地图配置设置竞技场中心位置
         /// 在禁用 spawner 和清理敌人之前调用，确保范围限制生效
         /// </summary>
         private void SetArenaCenterFromMapConfig(string sceneName)
-        {
-            try
-            {
-                BossRushMapConfig mapConfig = GetMapConfigBySceneName(sceneName);
-                if (mapConfig != null)
-                {
-                    // 优先使用默认路牌位置，其次使用自定义传送位置
-                    if (mapConfig.defaultSignPos.HasValue)
-                    {
-                        _arenaCenter = mapConfig.defaultSignPos.Value;
-                    }
-                    else if (mapConfig.customSpawnPos.HasValue)
-                    {
-                        _arenaCenter = mapConfig.customSpawnPos.Value;
-                    }
-                    else if (mapConfig.spawnPoints != null && mapConfig.spawnPoints.Length > 0)
-                    {
-                        // 兜底：使用刷新点的中心位置
-                        Vector3 sum = Vector3.zero;
-                        for (int i = 0; i < mapConfig.spawnPoints.Length; i++)
-                        {
-                            sum += mapConfig.spawnPoints[i];
-                        }
-                        _arenaCenter = sum / mapConfig.spawnPoints.Length;
-                    }
-                    _arenaCenterSet = true;
-                    DevLog("[BossRush] 已设置竞技场中心: " + _arenaCenter + " (场景=" + sceneName + ", 半径=" + ARENA_RADIUS + "m)");
-                }
-                else
-                {
-                    DevLog("[BossRush] 未找到场景 " + sceneName + " 的地图配置，范围限制未启用");
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] SetArenaCenterFromMapConfig 出错: " + e.Message);
-            }
-        }
+        { wavesArenaRuntime.SetArenaCenterFromMapConfig(sceneName); }
 
         void Awake()
         {
@@ -649,57 +603,7 @@ namespace BossRush
             }
 
             // 变异词条：Boss 回血 Tick
-            if (MutatorManager.BossRegenEnabled)
-            {
-                if (IsActive)
-                {
-                    if (bossesPerWave > 1)
-                    {
-                        MutatorManager.TickBossRegen(Time.deltaTime, currentWaveBosses);
-                    }
-                    else if (currentBoss != null)
-                    {
-                        // 复用静态临时列表避免每帧分配
-                        _singleBossRegenList.Clear();
-                        _singleBossRegenList.Add(currentBoss);
-                        MutatorManager.TickBossRegen(Time.deltaTime, _singleBossRegenList);
-                    }
-                }
-                if (modeDActive && modeDCurrentWaveEnemies.Count > 0)
-                {
-                    // Mode D：把当前波次所有存活敌人都喂给 BossRegen
-                    // （Mode D 的"敌人"逻辑上都是 Boss 池里的角色，回血一致处理）
-                    _singleBossRegenList.Clear();
-                    for (int i = 0; i < modeDCurrentWaveEnemies.Count; i++)
-                    {
-                        CharacterMainControl boss = modeDCurrentWaveEnemies[i];
-                        if (boss != null) _singleBossRegenList.Add(boss);
-                    }
-                    if (_singleBossRegenList.Count > 0)
-                    {
-                        MutatorManager.TickBossRegen(Time.deltaTime, _singleBossRegenList);
-                    }
-                }
-                else if (modeEActive && ModeEAliveEnemies != null && ModeEAliveEnemies.Count > 0)
-                {
-                    // Mode E：所有阵营的 Boss 都回血（设计上对称，所有阵营吃同一条规则）
-                    List<MonoBehaviour> modeERegenCache = GetModeEBossRegenCache();
-                    if (modeERegenCache.Count > 0)
-                    {
-                        MutatorManager.TickBossRegen(Time.deltaTime, modeERegenCache);
-                    }
-                }
-                else if (modeFActive && modeFActiveBossSet.Count > 0)
-                {
-                    // Mode F：HashSet 转列表喂入。Mode F 已经在用 BleedRateMultiplier，
-                    // 这里再补 BossRegen 让两个环境规则词条都能在血猎模式生效
-                    List<MonoBehaviour> modeFRegenCache = GetModeFBossRegenCache();
-                    if (modeFRegenCache.Count > 0)
-                    {
-                        MutatorManager.TickBossRegen(Time.deltaTime, modeFRegenCache);
-                    }
-                }
-            }
+            mutatorBossRegenRuntime.Tick();
 
             if (f3DebugCheatMenuVisible)
             {
@@ -890,161 +794,13 @@ namespace BossRush
         }
 
         internal static InteractableLootbox GetLootBoxTemplateWithLoader()
-        {
-            if (_cachedLootBoxTemplateWithLoader != null)
-            {
-                return _cachedLootBoxTemplateWithLoader;
-            }
-
-            try
-            {
-                var all = Resources.FindObjectsOfTypeAll<InteractableLootbox>();
-                if (all != null)
-                {
-                    for (int i = 0; i < all.Length; i++)
-                    {
-                        var box = all[i];
-                        if (box == null)
-                        {
-                            continue;
-                        }
-
-                        var loader = box.GetComponent<Duckov.Utilities.LootBoxLoader>();
-                        if (loader != null)
-                        {
-                            _cachedLootBoxTemplateWithLoader = box;
-                            DevLog("[BossRush] 发现带 LootBoxLoader 的 Lootbox 模板: " + box.name);
-                            break;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                DevLog("[BossRush] 查找 LootBoxLoader 模板失败: " + ex.Message);
-            }
-
-            return _cachedLootBoxTemplateWithLoader;
-        }
+        { return WavesArenaRuntimeModule.GetLootBoxTemplateWithLoader(); }
 
         internal static InteractableLootbox GetDifficultyRewardLootBoxTemplate()
-        {
-            if (_cachedDifficultyRewardLootBoxTemplate != null)
-            {
-                try
-                {
-                    DevLog("[BossRush] 使用缓存的通关奖励 Lootbox 模板: " + _cachedDifficultyRewardLootBoxTemplate.name);
-                }
-                catch {}
-                return _cachedDifficultyRewardLootBoxTemplate;
-            }
-
-            try
-            {
-                var all = Resources.FindObjectsOfTypeAll<InteractableLootbox>();
-                if (all != null)
-                {
-                    string mainName = null;
-                    if (_cachedLootBoxTemplateWithLoader != null)
-                    {
-                        mainName = _cachedLootBoxTemplateWithLoader.name;
-                        if (!string.IsNullOrEmpty(mainName) && mainName.EndsWith("(Clone)", StringComparison.Ordinal))
-                        {
-                            mainName = mainName.Substring(0, mainName.Length - "(Clone)".Length);
-                        }
-                    }
-
-                    for (int i = 0; i < all.Length; i++)
-                    {
-                        var box = all[i];
-                        if (box == null)
-                        {
-                            continue;
-                        }
-
-                        var loader = box.GetComponent<Duckov.Utilities.LootBoxLoader>();
-                        if (loader == null)
-                        {
-                            continue;
-                        }
-
-                        _cachedDifficultyRewardLootBoxTemplate = box;
-                        DevLog("[BossRush] 发现用于通关奖励的 Lootbox 模板: " + box.name);
-                        break;
-                    }
-
-                    if (_cachedDifficultyRewardLootBoxTemplate == null)
-                    {
-                        for (int i = 0; i < all.Length; i++)
-                        {
-                            var box = all[i];
-                            if (box == null)
-                            {
-                                continue;
-                            }
-
-                            _cachedDifficultyRewardLootBoxTemplate = box;
-                            DevLog("[BossRush] 通关奖励未找到专用 Lootbox 模板，退回使用: " + box.name);
-                            break;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                DevLog("[BossRush] 查找通关奖励 Lootbox 模板失败: " + ex.Message);
-            }
-
-            // 如果没有找到不同的，就退回到 Boss 掉落使用的模板
-            if (_cachedDifficultyRewardLootBoxTemplate == null)
-            {
-                _cachedDifficultyRewardLootBoxTemplate = GetLootBoxTemplateWithLoader();
-            }
-
-            return _cachedDifficultyRewardLootBoxTemplate;
-        }
+        { return WavesArenaRuntimeModule.GetDifficultyRewardLootBoxTemplate(); }
 
         internal void ApplyLootBoxCoverSetting(InteractableLootbox lootbox, bool ignoreConfig = false)
-        {
-            if (lootbox == null)
-            {
-                return;
-            }
-
-            if (!ignoreConfig)
-            {
-                if (config == null || config.lootBoxBlocksBullets)
-                {
-                    return;
-                }
-            }
-
-            try
-            {
-                Collider selfCol = lootbox.GetComponent<Collider>();
-                if (selfCol != null && !selfCol.isTrigger)
-                {
-                    selfCol.isTrigger = true;
-                }
-
-                Collider[] childCols = lootbox.GetComponentsInChildren<Collider>(true);
-                if (childCols != null)
-                {
-                    for (int i = 0; i < childCols.Length; i++)
-                    {
-                        Collider c = childCols[i];
-                        if (c != null && !c.isTrigger)
-                        {
-                            c.isTrigger = true;
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] ApplyLootBoxCoverSetting 失败: " + e.Message);
-            }
-        }
+        { wavesArenaRuntime.ApplyLootBoxCoverSetting(lootbox, ignoreConfig); }
 
         /// <summary>
         /// 开始Boss Rush模式
@@ -1065,559 +821,40 @@ namespace BossRush
         /// 在指定位置生成敌人（使用CharacterRandomPreset）
         /// 返回生成的角色，如果失败返回 null
         /// </summary>
-        private async UniTask<CharacterMainControl> SpawnEnemyAtPositionAsync(EnemyPresetInfo preset, Vector3 position, Func<bool> isActiveCheck = null)
-        {
-            try
-            {
-                if (isActiveCheck != null && !isActiveCheck()) return null;
-                // 检查是否是龙裔遗族Boss，使用专门的生成方法
-                if (IsDragonDescendantPreset(preset))
-                {
-                    // 龙裔遗族使用独立生成逻辑，等待生成完成并返回结果
-                    var dragonBoss = await SpawnDragonDescendant(
-                        position,
-                        isChildProtectionSummon: false,
-                        notifyBossRushOnFailure: false,
-                        isActiveCheck: isActiveCheck);
-                    MutatorManager.ApplyToEnemy(dragonBoss);
-                    return dragonBoss;
-                }
-
-                // 检查是否是龙王Boss，使用专门的生成方法
-                if (IsDragonKingPreset(preset))
-                {
-                    // 龙王使用独立生成逻辑
-                    var dragonKing = await SpawnDragonKing(position, notifyBossRushOnFailure: false, isActiveCheck: isActiveCheck);
-                    MutatorManager.ApplyToEnemy(dragonKing);
-                    return dragonKing;
-                }
-
-                // 检查是否是幽灵女巫Boss，使用专门的生成方法
-                if (IsPhantomWitchPreset(preset))
-                {
-                    var phantomWitch = await SpawnPhantomWitch(position, notifyBossRushOnFailure: false, isActiveCheck: isActiveCheck);
-                    MutatorManager.ApplyToEnemy(phantomWitch);
-                    return phantomWitch;
-                }
-
-                // 查找所有CharacterRandomPreset（从Resources中查找）
-                var allPresets = ObjectCache.GetCharacterPresets();
-                CharacterRandomPreset targetPreset = null;
-
-                // 优先通过本地化键（nameKey）精确匹配预设
-                foreach (var p in allPresets)
-                {
-                    if (p == null)
-                    {
-                        continue;
-                    }
-
-                    if (!string.IsNullOrEmpty(p.nameKey) && p.nameKey == preset.name)
-                    {
-                        targetPreset = p;
-                        DevLog("[BossRush] 找到匹配的预设: " + p.name + " (nameKey=" + p.nameKey + ")");
-                        break;
-                    }
-                }
-
-                // 如果没找到精确匹配，找同阵营且会显示名字的预设（强敌）
-                if (targetPreset == null)
-                {
-                    foreach (var p in allPresets)
-                    {
-                        if (p == null)
-                        {
-                            continue;
-                        }
-
-                        if (!p.showName)
-                        {
-                            continue;
-                        }
-
-                        var presetTeam = GetPresetTeam(p);
-                        if (presetTeam == preset.team)
-                        {
-                            targetPreset = p;
-                            DevLog("[BossRush] 使用同阵营强敌预设: " + p.name + " (nameKey=" + p.nameKey + ")");
-                            break;
-                        }
-                    }
-                }
-
-                if (targetPreset == null)
-                {
-                    DevLog("[BossRush] 未找到合适的CharacterRandomPreset");
-                    return null;
-                }
-
-                // 使用CharacterRandomPreset的CreateCharacterAsync方法生成敌人
-                Vector3 dir = Vector3.forward;
-                // 先生成非激活状态，以便修改属性
-                int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
-                var character = await targetPreset.CreateCharacterAsync(position, dir, relatedScene, null, false);
-                if (isActiveCheck != null && !isActiveCheck())
-                {
-                    if (character != null) UnityEngine.Object.Destroy(character.gameObject);
-                    return null;
-                }
-
-                if (character == null)
-                {
-                    DevLog("[BossRush] 生成敌人失败");
-                    return null;
-                }
-
-                // 海岛更新后，部分 Boss 预设的 team 变为 Teams.middle（中立），
-                // 导致 Team.IsEnemy(player, middle)==false：玩家无法对其造成伤害、AI 强制追踪被忽略，
-                // Boss 永不死亡 → 波次无法推进。此处兜底：若生成的 Boss 对玩家非敌对，
-                // 强制改为 Teams.wolf（与龙王/龙裔 Boss 阵营一致，Mode E/F 走独立生成路径不受影响）。
-                try
-                {
-                    // 遗种巢随从豁免（防御性不变式）：随从走自家生成桥
-                    // PetNestCompanionSpawner，正常不会经过这条标准生成路径；
-                    // 万一将来有人把生成改道到这里，安全网也不能把玩家方随从改成敌对。
-                    if (PetNestCompanionAgent.IsCompanionCharacter(character))
-                    {
-                        DevLog("[BossRush] 敌对性安全网豁免遗种巢随从");
-                    }
-                    else if (!Team.IsEnemy(Teams.player, character.Team))
-                    {
-                        DevLog("[BossRush] 检测到非敌对 Boss (team=" + character.Team + ")，强制设为 Teams.wolf");
-                        character.SetTeam(Teams.wolf);
-                    }
-                }
-                catch (Exception teamEx)
-                {
-                    DevLog("[BossRush] 强制 Boss 阵营失败: " + teamEx.Message);
-                }
-
-                currentBoss = character;
-                character.gameObject.name = "BossRush_" + preset.displayName;
-
-                // 标记由 BossRush 自己生成的大兴兴 Boss，后续清理时保留
-                try
-                {
-                    if (IsDaXingXingPreset(preset))
-                    {
-                        if (bossRushOwnedDaXingXing != null && !bossRushOwnedDaXingXing.Contains(character))
-                        {
-                            bossRushOwnedDaXingXing.Add(character);
-                        }
-                    }
-                }
-                catch {}
-
-                // 无间炼狱：在角色生成后按当前波次进行生命值和伤害强化
-                if (infiniteHellMode)
-                {
-                    ApplyInfiniteHellScaling(character, preset);
-                }
-
-                // 应用全局 Boss 数值倍率（所有模式生效）
-                ApplyBossStatMultiplier(character);
-
-                // 多Boss模式下，将本次生成的敌人加入当前波列表，便于统一统计死亡
-                if (bossesPerWave > 1)
-                {
-                    if (currentWaveBosses != null && !currentWaveBosses.Contains(character))
-                    {
-                        currentWaveBosses.Add(character);
-                    }
-                }
-
-                // 激活敌人
-                character.gameObject.SetActive(true);
-                SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(character);
-
-                // 应用变异词条效果到新生成的敌人
-                MutatorManager.ApplyToEnemy(character);
-
-                // 记录 Boss 生成时间和原始掉落数量（用于掉落随机化）
-                try
-                {
-                    if (character != null)
-                    {
-                        int originalLootCount = 0;
-                        if (character.CharacterItem != null && character.CharacterItem.Inventory != null)
-                        {
-                            // 记录原始库存大小作为基础掉落规模参考
-                            originalLootCount = 3; // 默认基础掉落数量
-                        }
-                        RegisterBossRandomLootTracking(character, originalLootCount);
-
-                        DevLog("[BossRush] 记录 Boss 生成信息并订阅掉落事件 - 时间: " + Time.time + ", 原始掉落数量: " + originalLootCount);
-                    }
-                }
-                catch (Exception recordEx)
-                {
-                    DevLog("[BossRush] 记录 Boss 生成信息失败: " + recordEx.Message);
-                }
-
-                // 强制设置 AI 仇恨到玩家
-                // 设置 forceTracePlayerDistance 为较大值，确保远距离生成的敌人也会追踪玩家
-                var main = CharacterMainControl.Main;
-                if (main != null)
-                {
-                    var ai = character.GetComponentInChildren<AICharacterController>();
-                    if (ai != null && main.mainDamageReceiver != null)
-                    {
-                        // 设置强制追踪距离为 500，确保无论多远都会追踪玩家
-                        ai.forceTracePlayerDistance = 500f;
-                        ai.searchedEnemy = main.mainDamageReceiver;
-                        ai.SetTarget(main.mainDamageReceiver.transform);
-                        ai.SetNoticedToTarget(main.mainDamageReceiver);
-                        ai.noticed = true;
-                    }
-                }
-
-                // 延迟校验Boss位置，防止低配玩家地形加载慢导致Boss卡在地下
-                StartCoroutine(DelayedBossPositionValidation(character, 0.5f));
-                RegisterEnemyRecoveryAnchor(character, position);
-
-                DevLog("[BossRush] 成功生成敌人: " + preset.displayName + " at " + position);
-
-                return character;
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] SpawnEnemyAtPositionAsync 错误: " + e.Message + "\n" + e.StackTrace);
-                return null;
-            }
-        }
+        private UniTask<CharacterMainControl> SpawnEnemyAtPositionAsync(EnemyPresetInfo preset, Vector3 position, Func<bool> isActiveCheck = null)
+        { return wavesArenaRuntime.SpawnEnemyAtPositionAsync(preset, position, isActiveCheck); }
 
         /// <summary>
         /// 对无间炼狱模式下生成的Boss应用按波次递增的生命值与伤害强化
         /// </summary>
         private void ApplyInfiniteHellScaling(CharacterMainControl character, EnemyPresetInfo preset)
-        {
-            if (character == null)
-            {
-                return;
-            }
-
-            try
-            {
-                // 每波提升 2%：第 1 波为 1.00，第 2 波为 1.02，以此类推
-                float scale = 1f + 0.02f * Mathf.Max(0, infiniteHellWaveIndex);
-
-                // 1. 提升 MaxHealth
-                try
-                {
-                    var item = character.CharacterItem;
-                    if (item != null)
-                    {
-                        Stat hpStat = null;
-                        try
-                        {
-                            hpStat = item.GetStat("MaxHealth");
-                        }
-                        catch {}
-
-                        if (hpStat != null)
-                        {
-                            hpStat.BaseValue *= scale;
-                        }
-                    }
-                }
-                catch {}
-
-                try
-                {
-                    if (character.Health != null)
-                    {
-                        // 让当前血量等于新的最大生命
-                        character.Health.SetHealth(character.Health.MaxHealth);
-                    }
-                }
-                catch {}
-
-                // 2. 提升攻击伤害（枪械与近战）
-                try
-                {
-                    var item = character.CharacterItem;
-                    if (item != null)
-                    {
-                        Stat gunDmg = null;
-                        Stat meleeDmg = null;
-
-                        try { gunDmg = item.GetStat("GunDamageMultiplier"); } catch {}
-                        try { meleeDmg = item.GetStat("MeleeDamageMultiplier"); } catch {}
-
-                        if (gunDmg != null)
-                        {
-                            gunDmg.BaseValue *= scale;
-                        }
-                        if (meleeDmg != null)
-                        {
-                            meleeDmg.BaseValue *= scale;
-                        }
-                    }
-                }
-                catch {}
-            }
-            catch {}
-        }
+        { wavesArenaRuntime.ApplyInfiniteHellScaling(character, preset); }
 
         /// <summary>
         /// 判断预设是否为“大兴兴”Boss（通过显示名或内部名称粗略匹配）
         /// </summary>
         private bool IsDaXingXingPreset(EnemyPresetInfo preset)
-        {
-            if (preset == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                if (!string.IsNullOrEmpty(preset.displayName) && (preset.displayName.Contains("大兴兴") || preset.displayName.Contains("小兴兴")))
-                {
-                    return true;
-                }
-
-                if (!string.IsNullOrEmpty(preset.name))
-                {
-                    if (preset.name.IndexOf("daxing", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        return true;
-                    }
-                }
-            }
-            catch {}
-
-            return false;
-        }
+        { return wavesArenaRuntime.IsDaXingXingPreset(preset); }
 
         /// <summary>
         /// 在 BossRush 期间清理任何非 BossRush 召唤的“大兴兴”Boss
         /// （用于屏蔽 DEMO 挑战地图自带的固定点刷“大兴兴”逻辑）
         /// </summary>
         internal void TryCleanNonBossRushDaXingXing()
-        {
-            try
-            {
-                // [性能优化] 使用缓存的角色列表，避免每次都调用 FindObjectsOfType
-                // 只有 DEMO 地图才需要定时刷新缓存（因为只有 DEMO 地图有原生大兴兴 spawner）
-                // 其他地图只在场景加载时刷新一次即可
-                string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                bool isDemoMap = (currentScene == "Level_DemoChallenge_1");
-
-                // [性能优化] 范围限制参数
-                bool useRangeLimit = _arenaCenterSet;
-                float radiusSq = ARENA_RADIUS * ARENA_RADIUS;
-
-                _characterCacheRefreshTimer += DaXingXingCleanInterval;
-                if (_characterCacheNeedsRefresh || (isDemoMap && _characterCacheRefreshTimer >= CharacterCacheRefreshInterval))
-                {
-                    RefreshCharacterCache();
-                    _characterCacheRefreshTimer = 0f;
-                }
-
-                // 清理缓存中已销毁的引用
-                _cachedCharacters.RemoveAll(c => c == null);
-
-                if (_cachedCharacters.Count == 0)
-                {
-                    return;
-                }
-
-                CharacterMainControl main = null;
-                try
-                {
-                    main = CharacterMainControl.Main;
-                }
-                catch {}
-
-                // 清理 bossRushOwnedDaXingXing 中已经被销毁的引用
-                // [性能优化] 使用 RemoveWhere 替代创建临时 List，减少 GC 压力
-                try
-                {
-                    if (bossRushOwnedDaXingXing != null && bossRushOwnedDaXingXing.Count > 0)
-                    {
-                        bossRushOwnedDaXingXing.RemoveWhere(owned => owned == null);
-                    }
-                }
-                catch {}
-
-                foreach (var c in _cachedCharacters)
-                {
-                    if (c == null)
-                    {
-                        continue;
-                    }
-
-                    // 跳过遗种巢随从：它是玩家方单位，只是沿用了官方 preset 的身份
-                    // （clone 不改 nameKey，DisplayName 仍是「大兴兴」），会命中下面的
-                    // 名字匹配。全仓四条 Destroy 扫描里另外三条都做了这个豁免，
-                    // 漏掉这一条会让该血脉的崽入场即被销毁并循环重生。
-                    if (PetNestCompanionAgent.IsCompanionCharacter(c))
-                    {
-                        continue;
-                    }
-
-                    // 跳过玩家角色
-                    bool isMain = false;
-                    try
-                    {
-                        if (main != null && c == main)
-                        {
-                            isMain = true;
-                        }
-                        else
-                        {
-                            isMain = CharacterMainControlExtensions.IsMainCharacter(c);
-                        }
-                    }
-                    catch {}
-
-                    if (isMain)
-                    {
-                        continue;
-                    }
-
-                    bool isDaXing = false;
-                    try
-                    {
-                        CharacterRandomPreset preset = c.characterPreset;
-                        if (preset != null)
-                        {
-                            string displayName = null;
-                            try
-                            {
-                                displayName = preset.DisplayName;
-                            }
-                            catch {}
-
-                            if (!string.IsNullOrEmpty(displayName) && (displayName.Contains("大兴兴") || displayName.Contains("小兴兴")))
-                            {
-                                isDaXing = true;
-                            }
-                            else
-                            {
-                                string key = null;
-                                try
-                                {
-                                    key = preset.nameKey;
-                                }
-                                catch {}
-
-                                if (!string.IsNullOrEmpty(key))
-                                {
-                                    if (key.IndexOf("daxing", StringComparison.OrdinalIgnoreCase) >= 0)
-                                    {
-                                        isDaXing = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch {}
-
-                    if (!isDaXing)
-                    {
-                        continue;
-                    }
-
-                    // BossRush 自己生成的大兴兴：保留
-                    bool isOwnedByBossRush = false;
-                    try
-                    {
-                        if (bossRushOwnedDaXingXing != null && bossRushOwnedDaXingXing.Contains(c))
-                        {
-                            isOwnedByBossRush = true;
-                        }
-                    }
-                    catch {}
-
-                    if (isOwnedByBossRush)
-                    {
-                        continue;
-                    }
-
-                    // Mode G owner 查询（加法分支）：Mode G 通过 staging preset/exact Character/
-                    // committed handle 登记的本局角色必须保留，只删除真正外来实例。
-                    // 查询默认 false、no-throw、O(1)；未启用 Mode G 时注册表为空且恒 false。
-                    bool isOwnedByModeG = false;
-                    try
-                    {
-                        isOwnedByModeG = ModeGRuntimeGates.IsDaXingXingOwnedByModeG(c);
-                    }
-                    catch
-                    {
-                        isOwnedByModeG = false;
-                    }
-
-                    if (isOwnedByModeG)
-                    {
-                        continue;
-                    }
-
-                    // [性能优化] 范围检查：只清理竞技场范围内的大兴兴
-                    if (useRangeLimit && c.transform != null)
-                    {
-                        float distSq = (c.transform.position - _arenaCenter).sqrMagnitude;
-                        if (distSq > radiusSq)
-                        {
-                            continue; // 超出范围，跳过
-                        }
-                    }
-
-                    // 其余所有大兴兴都视为 DEMO 地图原生刷出的 BossRush 外来 Boss，直接清除
-                    try
-                    {
-                        DevLog("[BossRush] 清理非 BossRush 源的大兴兴: goName=" + c.gameObject.name +
-                               ", presetKey=" + (c.characterPreset != null ? c.characterPreset.nameKey : "<null>") +
-                               ", scene=" + c.gameObject.scene.name +
-                               ", pos=" + c.transform.position);
-                    }
-                    catch {}
-
-                    try
-                    {
-                        UnityEngine.Object.Destroy(c.gameObject);
-                    }
-                    catch {}
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] TryCleanNonBossRushDaXingXing 出错: " + e.Message);
-            }
-        }
+        { wavesArenaRuntime.TryCleanNonBossRushDaXingXing(); }
 
         /// <summary>
         /// [性能优化] 刷新角色缓存列表
         /// 场景加载时立即刷新，之后每隔一段时间定时刷新以捕获动态生成的敌人
         /// </summary>
         private void RefreshCharacterCache()
-        {
-            try
-            {
-                var characters = UnityEngine.Object.FindObjectsOfType<CharacterMainControl>();
-                _cachedCharacters.Clear();
-                if (characters != null)
-                {
-                    _cachedCharacters.AddRange(characters);
-                }
-                _characterCacheNeedsRefresh = false;
-                DevLog("[BossRush] 角色缓存已刷新，共 " + _cachedCharacters.Count + " 个角色");
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] RefreshCharacterCache 出错: " + e.Message);
-            }
-        }
+        { WavesArenaRuntimeModule.RefreshCharacterCache(); }
 
         /// <summary>
         /// 获取CharacterRandomPreset的Team（直接访问public字段）
         /// </summary>
         private int GetPresetTeam(CharacterRandomPreset preset)
-        {
-            if (preset == null) return 0;
-            // team是public字段，直接访问
-            return (int)preset.team;
-        }
+        { return wavesArenaRuntime.GetPresetTeam(preset); }
 
 
         private void TryCreateReturnInteractable()

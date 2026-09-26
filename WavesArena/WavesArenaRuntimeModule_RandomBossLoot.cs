@@ -153,7 +153,7 @@ namespace BossRush
 
                 if (prefab == null)
                 {
-                    prefab = ModBehaviour.GetLootBoxTemplateWithLoader();
+                    prefab = GetLootBoxTemplateWithLoader();
                 }
 
                 if (prefab == null)
@@ -212,7 +212,7 @@ namespace BossRush
                     // 根据配置决定是否让掉落箱作为子弹掩体
                     try
                     {
-                        owner.ApplyLootBoxCoverSetting(lootbox);
+                        ApplyLootBoxCoverSetting(lootbox);
                     }
                     catch (Exception e)
                     {

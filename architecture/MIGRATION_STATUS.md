@@ -14,8 +14,7 @@
 | P5 目录归位 | 未完成 | 注入占位已随簇 1 删除；天空岛迁移待做 |
 | P6 收口 | 未开始 | 全量验证、交付报告、最终正式部署 |
 
-续接基点：`02e18fd2`（归位扫箱与丧尸奖励并提取虚拟刷怪登记）。2026-09-25 已继续完成共享生成核心与恢复服务、丧尸生成与地图隔离、随机事件效果和征程终局归位；下一动作是成就、Mode G 入口、E/F 共享阵营生成与根宿主收口。最新提交号以 `git log -1` 为准。真实游戏目录尚未部署。
-
+续接基点：`43586c68`（归位共享生成恢复与丧尸征程运行逻辑）。2026-09-26 已完成根 Arena 余项、成就、音效与 Mode G 入口归位；下一动作是 E/F 共享阵营生成、根宿主残余业务与模块薄桥归并。最新提交号以 `git log -1` 为准。真实游戏目录尚未部署。
 ## P0 基线（2026-09-24）
 
 - 启动前 `git status --short --branch` 为干净的 `main...origin/main`。构建依赖：本机 .NET SDK 8.0.302、游戏 `D:\software\steam\steamapps\common\Escape from Duckov`、Harmony 创意工坊 DLL。隔离游戏根在忽略的 `Build/migration/isolated-game/`，其中 `Duckov_Data/Managed` 为真实游戏 DLL 的文件副本；未接触真实游戏 Mod 目录。
@@ -189,6 +188,16 @@
 - 反向验证：生成核心 8 次、恢复 17 次、预算 2 次、RandomEvents 15 次、Campaign 18 次、Zombie 的 19 个守卫/26 个探针与两个执行夹具/14 个探针均在预期判据转红，并按 SHA-256 原字节恢复。证据见 `Build/migration/spawn-core-negative.json`、`recovery-owner-negative.json`、`spawn-recovery-budget-negative.json`、`random-event-owners/`、`campaign-owners/` 和 `zombie-remainder-*.json`。恢复反向初轮仅因预期错误文本与实际错误文本不一致中止，实际变异已转红；修正报告判据后完成，无生产改动。
 - Windows 正式/Dev 隔离构建均 `Build succeeded!`，两次 72 bundle 哈希清单通过；正式 SHA-256 `571774A6C361120D7EFB353B35D60338ABDA4A6E6D053CCF3E4852DB970AFCB7`，Dev SHA-256 `B50AA395AEA33B97DA4E8E80704F90A1948D64D92359DF688C05C9638D57EBF6`。两者分别与隔离部署副本一致，14 个 Dev 标识 absent/present 通过；当前 Build 为 Dev。真实游戏目录尚未部署。
 - L3 待 owner：标准模式、D/E/F 和丧尸各进入一局，检查刷怪、敌对性、卡位恢复后血量与追击；生成期间退出再入，检查迟到角色和旧局奖励。丧尸进入/退出检查初始装备、原版 NPC/地图隔离和现金结算；触发随机效果与征程终局后切图，检查迟到 Boss 回收。重复生成/提交、回血重置、Boss 被普通丧尸远距策略拉走、旧局继续改写新局或卸载后角色残留均不合格。本批仍是 P3/P4 中间检查点。
+
+## 2026-09-26 继续执行：Arena 余项、成就、音效与 Mode G 入口（COMPAT）
+
+- 根宿主 10 个生成、地图角色缓存与掉落模板方法归 Arena，8 个字段归该模块；原 static / instance 寿命保持。生成 await 前捕获原协程宿主，迟到结果继续走原清理。根回血 if 块归 MutatorBossRegenRuntime，仍在原 Update 槽执行，Arena 与 D/E/F 分支、时间源与缓存顺序保持。10 方法与回血块归一化等价。
+- Achievement 的触发、勋章商店和 Tick 归同一原注册模块；15 个旧入口只转发。原 Awake 初始化、Integration 勋章订阅/退订和清理顺序保持，模块 OnDestroy 只兜底。Audio 四个入口转发到独立服务，五个缓存保持 static；官方非 void 与兼容 void 的反射返回策略保持。
+- Mode G EntryRuntime 接管 33 方法、5 个实例状态与 4 个静态状态，六组窄委托保留原即时查询；24 个旧桥保留。注册 shell 与每局 new 核心仍分别存在，core/HUD/RunContext 指向同一局；第二局不复用已 Dispose 核心。33 方法归一等价，未迁 preview、静态 PrepareHostDestroy 和纯事务区域字节一致。
+- 宿主 partial 为 117 文件 / 23,387 行，预算同步下调；编译清单 1,123 源、47 模块索引通过。最终全量守卫 689 PASS / 0 FAIL / 0 known-red；全量回归 88 PASS / 0 FAIL，结果见 `Build/migration/host-remainder-first-full-regressions.json`。新增 ArenaHostRemainder 39、AudioRuntime 129、ModeGEntryOwners 217 个执行判据；AchievementRuntime 覆盖真实模块与根接线。全量回归后只调整注册期窄查询绑定的位置以保持 Zombie 连续装配序列、恢复 Mode G 未迁区域换行；相关守卫与入口回归随后通过。
+- 反向验证：Arena/根余项 19 次及预算 2 次；Achievement 12 个守卫 + 12 个执行探针；Audio 9 个守卫 + 14 个执行探针；Mode G 24 个外部探针与 HUD 47 个内置探针均在预期判据转红，独立副本按字节/SHA-256 恢复后全绿。证据分别为 `host-remainder-negative.json`、`host-remainder-budget-negative.json`、`achievement-negative.json`、`audio-negative.json` 与 `modeg-entry-owners/mutation-results.json`，均在 `Build/migration/`。Arena 反向末项最初因读取 CRLF 锚点规范化失败，未变异生产；改为原字节读取后完成。
+- Windows 最终正式/Dev 隔离构建均 `Build succeeded!`，两次 72 bundle 清单与 14 个 Dev 标识 absent/present 通过。正式 SHA-256 `7135F99FBCACC2DC2FC29F899B1D75FEF1241D6CE37E254053331EBF4E9BB9B7`；Dev SHA-256 `A75FD76AC1D60FB2AB6EAA1A06D5639E5271FBA4240D053D9A1665D2D8A43821`，分别与隔离部署副本一致。初次正式编译发现 F3 仍调用 StartModeGRuntime，保留原签名桥后通过。当前 Build 为 Dev；真实游戏目录尚未部署。
+- L3 待 owner：标准与无间模式观察敌对性、清场、奖励箱与回血；打开成就页并触发成就和商店勋章补货；播放战斗/胜利/彩蛋声音后切图；Mode G 连续两局并在生成中离场，使用既有 F3 `MODE_G_NINE_WAVES` 检查九波推进与终态。迟到角色残留、重复订阅/奖励、成就漏记、声音重复、Mode G 第二局停滞或退款不一致均不合格。本批仍是 P3/P4 中间检查点。
 
 ## 未完成项
 

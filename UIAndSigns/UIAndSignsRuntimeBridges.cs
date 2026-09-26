@@ -17,8 +17,7 @@ namespace BossRush
         internal WaitForSeconds UIAndSignsSharedWait1s { get { return sharedWait1s; } }
         internal void SetArenaCenterFromSign_UIAndSigns(Vector3 position)
         {
-            _arenaCenter = position;
-            _arenaCenterSet = true;
+            WavesArenaRuntimeModule.SetArenaCenterFromSign(position);
         }
         private string GetDirectionFromPlayer(Vector3 enemyPos, Vector3 playerPos)
         {

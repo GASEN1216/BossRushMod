@@ -94,7 +94,7 @@ namespace BossRush
                 if (DaXingXingCleanTimer >= ModBehaviour.DaXingXingCleanInterval)
                 {
                     DaXingXingCleanTimer = 0f;
-                    owner.TryCleanNonBossRushDaXingXing();
+                    TryCleanNonBossRushDaXingXing();
                 }
             }
             else

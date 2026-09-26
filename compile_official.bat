@@ -356,6 +356,7 @@ echo(Integration\Mutators\MutatorManager.cs
 echo(Integration\Mutators\MutatorUI.cs
 echo(Integration\Mutators\MutatorRuntimeBridge.cs
 echo(Integration\Mutators\MutatorModeFlow.cs
+echo(Integration\Mutators\MutatorBossRegenRuntime.cs
 echo(Integration\ZombieModeIntegration.cs
 echo(Integration\DeathWraith\DeathWraithSystem.cs
 echo(Integration\DeathWraith\DeathWraithRuntimeModuleHostBridge.cs
@@ -469,6 +470,9 @@ echo(WavesArena\WavesArenaRuntimeModule_RewardPool.cs
 echo(WavesArena\WavesArenaRuntimeModule_EnemyPresets.cs
 echo(WavesArena\WavesArenaRuntimeModule_InfiniteHellCompletion.cs
 echo(WavesArena\WavesArenaRuntimeModule_BossSpawning.cs
+echo(WavesArena\WavesArenaRuntimeModule_LegacySpawn.cs
+echo(WavesArena\WavesArenaRuntimeModule_CharacterRegistry.cs
+echo(WavesArena\WavesArenaRuntimeModule_LootTemplates.cs
 echo(WavesArena\WavesArenaRuntimeModule_Countdown.cs
 echo(WavesArena\WavesArenaRuntimeModule_WaveDeaths.cs
 echo(WavesArena\WavesArenaRuntimeModule_LootState.cs
@@ -560,6 +564,8 @@ echo(ModeF\ModeFPhases.cs
 echo(ModeF\ModeFBloodfire.cs
 echo(ModeF\ModeFBounty.cs
 echo(ModeG\ModeGEntry.cs
+echo(ModeG\ModeGEntryRuntimeServices.cs
+echo(ModeG\ModeGEntryHostBridge.cs
 echo(ModeG\ModeGAvailability.cs
 echo(ModeG\ModeGDeterministicRandom.cs
 echo(ModeG\ModeGStateModel.cs
@@ -1038,6 +1044,7 @@ echo(Achievement\AchievementView.cs
 echo(Achievement\AchievementMedalConfig.cs
 echo(Achievement\AchievementMedalItem.cs
 echo(Audio\BossRushAudioHooks.cs
+echo(Audio\BossRushAudioRuntimeService.cs
 echo(Audio\BossRushAudioManager.cs
 echo(DebugAndTools\InventoryInspector.cs
 echo(WavesArena\InfiniteHellCashMagnet.cs

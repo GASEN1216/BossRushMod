@@ -34,7 +34,11 @@ def main():
         assert re.fullmatch(r'(?:return)?randomEventsRuntime\.'+name+r'\([^;{}]*\);',compact),'host bridge disconnected: '+name
     collect=body(source,'CollectEventBuffTargets')
     ordered(collect,['_owner.RefreshRandomEventCharacterCacheForRuntime()', '_owner.RandomEventCachedCharactersForRuntime.Count', 'c.Health.IsDead', 'Team.IsEnemy', 'PetNestCompanionAgent.IsCompanionCharacter', 'buffer.Add(c)'],'buff target cache')
-    assert 'get { return _cachedCharacters; }' in host and 'RefreshCharacterCache();' in host,'shared character cache disconnected'
+    assert 'get { return WavesArenaRuntimeModule.CharacterCache; }' in host and 'WavesArenaRuntimeModule.RefreshCharacterCache();' in host,'shared character cache disconnected'
+    for statement in ('get { return BossRushAudioRuntimeService.CachedSpawnEggBehavior; }',
+                      'set { BossRushAudioRuntimeService.CachedSpawnEggBehavior = value; }',
+                      'set { BossRushAudioRuntimeService.EggSpawnPreset = value; }'):
+        assert statement in host,'parade must share original Audio egg caches: '+statement
     ordered(body(source,'TryApplyRandomEventForcedWeather'),['prevForce = inst.ForceWeather;', 'prevValue = inst.ForceWeatherValue;', 'WeatherManager.SetForceWeather(true, weather);'],'weather capture')
     assert 'WeatherManager.SetForceWeather(prevForce, prevValue);' in body(source,'RestoreRandomEventForcedWeather'),'weather restore disconnected'
     intruder=body(source,'SpawnRandomEventIntruderBossAsync')

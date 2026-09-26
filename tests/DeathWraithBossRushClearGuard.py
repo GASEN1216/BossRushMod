@@ -4,6 +4,7 @@ Guard: BossRush enemy cleanup must not remove active Death Wraiths.
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 ENEMY_MAINTENANCE_SOURCE = Path("WavesArena/WavesArenaRuntimeModule_EnemyMaintenance.cs")
@@ -64,7 +65,7 @@ def require_before(block: str, required: str, later: str, message: str) -> int:
 
 
 def main() -> int:
-    enemy_maintenance_text = ENEMY_MAINTENANCE_SOURCE.read_text(encoding="utf-8")
+    enemy_maintenance_text = clean_source(ENEMY_MAINTENANCE_SOURCE.read_text(encoding="utf-8"))
     death_text = read_death_wraith_sources()
 
     helper_block = extract_block(
@@ -109,7 +110,7 @@ def main() -> int:
     if result != 0:
         return result
 
-    if clear_block.find("if (owner.IsDeathWraithCharacterForArena(c))") > clear_block.find("owner.ArenaReusableDestroyList.Add(c.gameObject);"):
+    if clear_block.find("if (owner.IsDeathWraithCharacterForArena(c))") > clear_block.find("_reusableDestroyList.Add(c.gameObject);"):
         return fail("DeathWraithBossRushClearGuard: Death Wraith guard must run before destroy-list collection")
     host = Path("WavesArena/WavesArenaEnemyMaintenance.cs").read_text(encoding="utf-8")
     if "return IsDeathWraithCharacter_DeathWraith(enemy);" not in host:

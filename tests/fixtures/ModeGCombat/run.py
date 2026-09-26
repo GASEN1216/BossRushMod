@@ -39,7 +39,7 @@ def main():
     generated += member(sources["ModeGCleanupController.cs"], "public static class ModeGLateCleanupSink") + "\n"
     generated += "public static partial class ModeGEncounterVariation {\n"
     generated += member(sources["ModeGEncounterVariation.cs"], "public static UnityEngine.Vector2[] GetSpawnOffsets(") + "\n}\n"
-    generated += "public partial class ModBehaviour {\n"
+    generated += "internal sealed partial class ModeGEntryRuntime {\n"
     generated += member(sources["ModeGRuntimeBridge.cs"], "private static bool TrySelectModeGFormation(") + "\n"
     generated += member(sources["ModeGRuntimeBridge.cs"], "private static bool TrySelectModeGSeparatedPoints(") + "\n}\n"
     hud = sources["ModeGHUD.cs"]

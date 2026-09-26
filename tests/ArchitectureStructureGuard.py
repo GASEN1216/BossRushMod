@@ -169,7 +169,7 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: registered Mode D runtime is not the host state owner")
     if "runtimeModuleHost.Register(new DebugToolsRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing DebugToolsRuntimeModule")
-    if "runtimeModuleHost.Register(new AchievementRuntimeModule());" not in registration_text:
+    if "achievementRuntime = new AchievementRuntimeModule();" not in registration_text or "runtimeModuleHost.Register(achievementRuntime);" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing AchievementRuntimeModule")
     if "runtimeModuleHost.Register(new CommonNpcRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing CommonNpcRuntimeModule")
@@ -377,15 +377,18 @@ def main() -> int:
     if not gameplay_scene_prepare_body:
         return fail("ArchitectureStructureGuard: GameplayRuntimeHooks missing PrepareSceneRuntimeForLoad wrapper")
     for required in [
-        "_characterCacheNeedsRefresh = true;",
-        "_characterCacheRefreshTimer = 0f;",
-        "_arenaCenterSet = false;",
+        "WavesArenaRuntimeModule.PrepareSceneCharacterCacheForLoad();",
         "ObjectCache.RefreshIfNeeded();",
     ]:
         if required not in gameplay_scene_prepare_body:
             return fail("ArchitectureStructureGuard: PrepareSceneRuntimeForLoad missing token: " + required)
 
     gameplay_cash_cleanup_body = extract_method_body(gameplay_hooks, "internal void CleanupCashMagnetForSceneChange()")
+    character_registry = clean_source(Path("WavesArena/WavesArenaRuntimeModule_CharacterRegistry.cs").read_text(encoding="utf-8"))
+    character_prepare = extract_method_body(character_registry, "internal static void PrepareSceneCharacterCacheForLoad()")
+    if "".join(character_prepare.split()) != "{_characterCacheNeedsRefresh=true;_characterCacheRefreshTimer=0f;_arenaCenterSet=false;}":
+        return fail("ArchitectureStructureGuard: character registry must preserve scene invalidation order")
+
     if not gameplay_cash_cleanup_body:
         return fail("ArchitectureStructureGuard: GameplayRuntimeHooks missing CleanupCashMagnetForSceneChange wrapper")
     for required in [
@@ -428,8 +431,8 @@ def main() -> int:
         ],
         "internal void ClearEnemiesForBossRush()": [
             "ClearEnemiesForBossRush: 开始清理",
-            "owner.ArenaReusableDestroyList.Clear();",
-            "owner.ArenaCenterSetForCleanup",
+            "_reusableDestroyList.Clear();",
+            "_arenaCenterSet",
         ],
         "internal IEnumerator ContinuousClearEnemiesUntilWaveStart()": [
             "ContinuousClearEnemiesUntilWaveStart: 协程已启动",
@@ -539,7 +542,7 @@ def main() -> int:
     for required in [
         "DaXingXingCleanTimer += deltaTime;",
         "DaXingXingCleanTimer >= ModBehaviour.DaXingXingCleanInterval",
-        "owner.TryCleanNonBossRushDaXingXing();",
+        "TryCleanNonBossRushDaXingXing();",
         "DaXingXingCleanTimer = 0f;",
     ]:
         if required not in waves_cleanup_body:
@@ -891,14 +894,14 @@ def main() -> int:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own marriage test debug method anymore: " + forbidden)
 
-    audio_runtime_hooks = AUDI0_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    audio_runtime_hooks = clean_source(Path("Audio/BossRushAudioRuntimeService.cs").read_text(encoding="utf-8", errors="ignore"))
     for signature, required_tokens in {
         "public void TrySpawnEggForPlayer()": [
             "TryPlayNgmSound();",
             "SpawnEgg behavior = null;",
             "egg.Init(",
         ],
-        "private void TryPlayNgmSound()": [
+        "internal void TryPlayNgmSound()": [
             'Path.Combine(baseDir, "Assets")',
             'Path.Combine(baseDir, "ngm.mp3")',
         ],
@@ -1007,12 +1010,12 @@ def main() -> int:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own UIAndSigns bridge method anymore: " + forbidden)
 
-    achievement_runtime_module = ACHIEVEMENT_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
-    if "owner.TickAchievementRuntime(deltaTime, unscaledDeltaTime);" not in achievement_runtime_module:
-        return fail("ArchitectureStructureGuard: AchievementRuntimeModule must route update through owner wrapper")
+    achievement_runtime_module = clean_source(ACHIEVEMENT_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore"))
+    if "TickAchievementRuntime(deltaTime, unscaledDeltaTime);" not in extract_method_body(achievement_runtime_module, "public override void OnUpdate("):
+        return fail("ArchitectureStructureGuard: AchievementRuntimeModule must execute its own update")
 
     achievement_hooks = ACHIEVEMENT_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
-    achievement_init_body = extract_method_body(achievement_hooks, "internal void InitializeAchievementRuntime()")
+    achievement_init_body = extract_method_body(achievement_runtime_module, "private void InitializeAchievementRuntimeCore()")
     if not achievement_init_body:
         return fail("ArchitectureStructureGuard: AchievementRuntimeHooks missing InitializeAchievementRuntime wrapper")
     for required in [
@@ -1023,18 +1026,18 @@ def main() -> int:
         if required not in achievement_init_body:
             return fail("ArchitectureStructureGuard: InitializeAchievementRuntime missing token: " + required)
 
-    achievement_tick_body = extract_method_body(achievement_hooks, "internal void TickAchievementRuntime(float deltaTime, float unscaledDeltaTime)")
+    achievement_tick_body = extract_method_body(achievement_runtime_module, "internal void TickAchievementRuntime(float deltaTime, float unscaledDeltaTime)")
     if not achievement_tick_body:
         return fail("ArchitectureStructureGuard: AchievementRuntimeHooks missing TickAchievementRuntime wrapper")
     for required in [
-        "config.achievementHotkey",
+        "getAchievementHotkey()",
         "Duckov.UI.View.ActiveView == null",
         "AchievementView.Instance.Toggle();",
     ]:
         if required not in achievement_tick_body:
             return fail("ArchitectureStructureGuard: TickAchievementRuntime missing token: " + required)
 
-    achievement_cleanup_body = extract_method_body(achievement_hooks, "internal void CleanupAchievementRuntime()")
+    achievement_cleanup_body = extract_method_body(achievement_runtime_module, "private void CleanupAchievementRuntimeCore()")
     if not achievement_cleanup_body:
         return fail("ArchitectureStructureGuard: AchievementRuntimeHooks missing CleanupAchievementRuntime wrapper")
     for required in [

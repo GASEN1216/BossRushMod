@@ -11,10 +11,10 @@ namespace BossRush
         {
             try
             {
-                owner.RefreshCharacterCacheForArena();
-                owner.ArenaCharacterCache.RemoveAll(c => c == null);
+                RefreshCharacterCache();
+                _cachedCharacters.RemoveAll(c => c == null);
 
-                if (owner.ArenaCharacterCache.Count == 0)
+                if (_cachedCharacters.Count == 0)
                 {
                     ModBehaviour.DevLog("[BossRush] ForceKillAllEnemies: 没有找到任何角色");
                     return;
@@ -25,7 +25,7 @@ namespace BossRush
 
                 int killedCount = 0;
 
-                foreach (var c in owner.ArenaCharacterCache)
+                foreach (var c in _cachedCharacters)
                 {
                     if (c == null) continue;
 
@@ -109,7 +109,7 @@ namespace BossRush
                     }
                 }
 
-                owner.ArenaCharacterCacheNeedsRefresh = true;
+                _characterCacheNeedsRefresh = true;
                 ModBehaviour.DevLog("[BossRush] ForceKillAllEnemies: 已杀死 " + killedCount + " 个敌人");
             }
             catch (Exception e)
@@ -127,19 +127,19 @@ namespace BossRush
         {
             try
             {
-                if (owner.ArenaCharacterCacheNeedsRefresh || owner.ArenaCharacterCache.Count == 0)
+                if (_characterCacheNeedsRefresh || _cachedCharacters.Count == 0)
                 {
-                    owner.RefreshCharacterCacheForArena();
+                    RefreshCharacterCache();
                 }
 
-                owner.ArenaCharacterCache.RemoveAll(c => c == null);
+                _cachedCharacters.RemoveAll(c => c == null);
 
-                if (owner.ArenaCharacterCache.Count == 0)
+                if (_cachedCharacters.Count == 0)
                 {
                     return;
                 }
 
-                ModBehaviour.DevLog("[BossRush] ClearEnemiesForBossRush: 开始清理，缓存角色数=" + owner.ArenaCharacterCache.Count + ", 竞技场中心已设置=" + owner.ArenaCenterSetForCleanup);
+                ModBehaviour.DevLog("[BossRush] ClearEnemiesForBossRush: 开始清理，缓存角色数=" + _cachedCharacters.Count + ", 竞技场中心已设置=" + _arenaCenterSet);
 
                 CharacterMainControl main = null;
                 try
@@ -149,12 +149,12 @@ namespace BossRush
                 catch {}
 
                 int clearedCount = 0;
-                owner.ArenaReusableDestroyList.Clear();
+                _reusableDestroyList.Clear();
 
-                bool useRangeLimit = owner.ArenaCenterSetForCleanup;
+                bool useRangeLimit = _arenaCenterSet;
                 float radiusSq = ModBehaviour.ARENA_RADIUS * ModBehaviour.ARENA_RADIUS;
 
-                foreach (var c in owner.ArenaCharacterCache)
+                foreach (var c in _cachedCharacters)
                 {
                     if (c == null)
                     {
@@ -246,7 +246,7 @@ namespace BossRush
 
                     if (useRangeLimit && c.transform != null)
                     {
-                        float distSq = (c.transform.position - owner.ArenaCenterForCleanup).sqrMagnitude;
+                        float distSq = (c.transform.position - _arenaCenter).sqrMagnitude;
                         if (distSq > radiusSq)
                         {
                             continue;
@@ -255,11 +255,11 @@ namespace BossRush
 
                     if (c.gameObject != null)
                     {
-                        owner.ArenaReusableDestroyList.Add(c.gameObject);
+                        _reusableDestroyList.Add(c.gameObject);
                     }
                 }
 
-                foreach (var go in owner.ArenaReusableDestroyList)
+                foreach (var go in _reusableDestroyList)
                 {
                     if (go != null)
                     {
@@ -270,7 +270,7 @@ namespace BossRush
 
                 if (clearedCount > 0)
                 {
-                    owner.ArenaCharacterCacheNeedsRefresh = true;
+                    _characterCacheNeedsRefresh = true;
                     ModBehaviour.DevLog("[BossRush] ClearEnemiesForBossRush: 已清理 " + clearedCount + " 个敌人");
                 }
             }
@@ -289,7 +289,7 @@ namespace BossRush
         {
             ModBehaviour.DevLog("[BossRush] ContinuousClearEnemiesUntilWaveStart: 协程已启动");
 
-            owner.RefreshCharacterCacheForArena();
+            RefreshCharacterCache();
 
             int loopCount = 0;
             const int MAX_SPAWNER_DISABLE_ATTEMPTS = 5;
@@ -307,8 +307,8 @@ namespace BossRush
                     DisableAllSpawners();
                 }
 
-                owner.RefreshCharacterCacheForArena();
-                int enemyCount = owner.ArenaCharacterCache.Count;
+                RefreshCharacterCache();
+                int enemyCount = _cachedCharacters.Count;
                 ClearEnemiesForBossRush();
 
                 if (loopCount <= 5 || loopCount % 10 == 0)

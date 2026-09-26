@@ -178,7 +178,7 @@ namespace BossRush
                     position = FindNearestSafeSpawnPoint(spawnPoints, retryPlayerPos);
                 }
 
-                spawnedBoss = await owner.SpawnEnemyAtPositionForArenaAsync(preset, position, isSpawnCurrent);
+                spawnedBoss = await SpawnEnemyAtPositionAsync(preset, position, isSpawnCurrent);
                 if (!isSpawnCurrent()) return;
                 if (spawnedBoss != null)
                 {
@@ -237,7 +237,7 @@ namespace BossRush
 
                 try
                 {
-                    spawnResult = await owner.SpawnEnemyAtPositionForArenaAsync(info.preset, info.position, isSpawnCurrent);
+                    spawnResult = await SpawnEnemyAtPositionAsync(info.preset, info.position, isSpawnCurrent);
                 }
                 catch (Exception e)
                 {
@@ -300,7 +300,7 @@ namespace BossRush
                     CharacterMainControl retryResult = null;
                     try
                     {
-                        retryResult = await owner.SpawnEnemyAtPositionForArenaAsync(failedInfo.preset, newPos, isSpawnCurrent);
+                        retryResult = await SpawnEnemyAtPositionAsync(failedInfo.preset, newPos, isSpawnCurrent);
                     }
                     catch (Exception e)
                     {

@@ -107,10 +107,10 @@ namespace BossRush
         { randomEventsRuntime.SpawnRandomEventCashPiles(center, totalCash, pileCount, radius, onCompleted, isStillValid); }
 
         internal bool RandomEventInfiniteHellForRuntime { get { return infiniteHellMode; } }
-        internal SpawnEgg RandomEventSpawnEggBehaviorForRuntime { get { return cachedSpawnEggBehavior; } set { cachedSpawnEggBehavior = value; } }
-        internal CharacterRandomPreset RandomEventEggSpawnPresetForRuntime { set { eggSpawnPreset = value; } }
-        internal IReadOnlyList<CharacterMainControl> RandomEventCachedCharactersForRuntime { get { return _cachedCharacters; } }
-        internal void RefreshRandomEventCharacterCacheForRuntime() { RefreshCharacterCache(); }
+        internal SpawnEgg RandomEventSpawnEggBehaviorForRuntime { get { return BossRushAudioRuntimeService.CachedSpawnEggBehavior; } set { BossRushAudioRuntimeService.CachedSpawnEggBehavior = value; } }
+        internal CharacterRandomPreset RandomEventEggSpawnPresetForRuntime { set { BossRushAudioRuntimeService.EggSpawnPreset = value; } }
+        internal IReadOnlyList<CharacterMainControl> RandomEventCachedCharactersForRuntime { get { return WavesArenaRuntimeModule.CharacterCache; } }
+        internal void RefreshRandomEventCharacterCacheForRuntime() { WavesArenaRuntimeModule.RefreshCharacterCache(); }
         internal string GetRandomEventDirectionForRuntime(Vector3 position, Vector3 playerPosition) { return GetDirectionFromPlayer(position, playerPosition); }
         internal HashSet<int> BuildRandomEventLootCandidateIdsForRuntime() { return BuildGeneralBossLootCandidateIdSet(); }
         internal void RegisterRandomEventRecoveryAnchorForRuntime(CharacterMainControl character, Vector3 position) { RegisterEnemyRecoveryAnchor(character, position); }

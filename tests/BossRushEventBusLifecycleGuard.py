@@ -9,7 +9,7 @@ BUS = Path("Common/Events/BossRushEventBus.cs")
 COMPILE = Path("compile_official.bat")
 ALWAYS_ON = Path("Utilities/AlwaysOnRuntimeHooks.cs")
 ACHIEVEMENT_MANAGER = Path("Achievement/BossRushAchievementManager.cs")
-ACHIEVEMENT_RUNTIME = Path("Achievement/AchievementRuntimeHooks.cs")
+ACHIEVEMENT_RUNTIME = Path("Achievement/AchievementRuntimeModule.cs")
 NON_GOAL = Path("tests/LongTermGoalNonGoalGuard.py")
 
 

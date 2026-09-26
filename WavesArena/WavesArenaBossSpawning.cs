@@ -203,5 +203,16 @@ namespace BossRush
             return SpawnEnemyAtPositionAsync(preset, position, isSpawnCurrent);
         }
 
+        private void BindArenaSpawnServices()
+        {
+            wavesArenaRuntime.BindLegacySpawnServices(IsDragonDescendantPreset, IsDragonKingPreset, IsPhantomWitchPreset,
+                (position, child, notify, active) => SpawnDragonDescendant(position, isChildProtectionSummon: child,
+                    notifyBossRushOnFailure: notify, isActiveCheck: active),
+                (position, notify, active) => SpawnDragonKing(position, notifyBossRushOnFailure: notify, isActiveCheck: active),
+                (position, notify, active) => SpawnPhantomWitch(position, notifyBossRushOnFailure: notify, isActiveCheck: active),
+                character => ApplyBossStatMultiplier(character));
+            wavesArenaRuntime.BindLootBoxPolicies(() => config != null, () => config.lootBoxBlocksBullets);
+        }
+
     }
 }

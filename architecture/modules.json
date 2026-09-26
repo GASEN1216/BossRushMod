@@ -166,7 +166,9 @@
       ],
       "data": [],
       "tests": [
-        "tests/WavesArena*Guard.py"
+        "tests/WavesArena*Guard.py",
+        "tests/ArenaHostRemainderOwnershipGuard.py",
+        "tests/fixtures/ArenaHostRemainder"
       ],
       "docs": [],
       "rules": [
@@ -288,13 +290,15 @@
         "ModeG/**/*.cs"
       ],
       "entry": "ModeG/ModeGRuntimeModule.cs",
-      "state_owner": "ModeGRuntimeModule",
+      "state_owner": "ModeGRuntimeModule / ModeGEntryRuntime",
       "public_api": [
         "ModeGRuntimeModule"
       ],
       "data": [],
       "tests": [
-        "tests/ModeG*Guard.py"
+        "tests/ModeG*Guard.py",
+        "tests/ModeGEntryOwnershipGuard.py",
+        "tests/fixtures/ModeGEntryOwners"
       ],
       "docs": [],
       "rules": [
@@ -459,7 +463,9 @@
       ],
       "data": [],
       "tests": [
-        "tests/Achievement*Guard.py"
+        "tests/Achievement*Guard.py",
+        "tests/AchievementRuntimeOwnershipGuard.py",
+        "tests/fixtures/AchievementRuntime"
       ],
       "docs": [],
       "rules": [
@@ -478,14 +484,17 @@
         "Audio/**/*.cs"
       ],
       "entry": "Audio/BossBgmCoordinator.cs",
-      "state_owner": "BossBgmCoordinator",
+      "state_owner": "BossRushAudioManager / BossRushAudioRuntimeService",
       "public_api": [
         "BossBgmCoordinator"
       ],
       "data": [
         "Assets/Data/Audio/**/*.json"
       ],
-      "tests": [],
+      "tests": [
+        "tests/AudioRuntimeOwnershipGuard.py",
+        "tests/fixtures/AudioRuntime"
+      ],
       "docs": [],
       "rules": [
         "AGENTS.md"
@@ -1269,13 +1278,14 @@
         "Integration/Mutators/**/*.cs"
       ],
       "entry": "Integration/Mutators/MutatorDefinitions.cs",
-      "state_owner": "MutatorDefinitions / MutatorManager / MutatorModeFlow",
+      "state_owner": "MutatorDefinitions / MutatorManager / MutatorModeFlow / MutatorBossRegenRuntime",
       "public_api": [
         "MutatorDefinitions"
       ],
       "data": [],
       "tests": [
-        "tests/Mutators*Guard.py"
+        "tests/Mutators*Guard.py",
+        "tests/fixtures/ArenaHostRemainder"
       ],
       "docs": [],
       "rules": [

@@ -51,8 +51,7 @@ namespace BossRush
 
             bossRushIntegrationRuntime.SubscribeTicketStockEvents();
             bossRushIntegrationRuntime.SubscribeJournalStockEvents();
-            SavesSystem.OnCollectSaveData += OnCollectSaveData_MedalStock;
-            SavesSystem.OnSetFile += OnSetFile_MedalStock;
+            achievementRuntime.SubscribeMedalStockEvents();
             bossRushIntegrationRuntime.SubscribeBrickStoneStockEvents();
             bossRushIntegrationRuntime.SubscribeCodexBookStockEvents();
             SavesSystem.OnSetFile += OnSetFile_DeathWraith;
@@ -81,8 +80,7 @@ namespace BossRush
             bossRushIntegrationRuntime.UnsubscribeDragonBreathEffectEvent();
             bossRushIntegrationRuntime.UnsubscribeTicketStockEvents();
             bossRushIntegrationRuntime.UnsubscribeJournalStockEvents();
-            SavesSystem.OnCollectSaveData -= OnCollectSaveData_MedalStock;
-            SavesSystem.OnSetFile -= OnSetFile_MedalStock;
+            achievementRuntime.UnsubscribeMedalStockEvents();
             bossRushIntegrationRuntime.UnsubscribeBrickStoneStockEvents();
             bossRushIntegrationRuntime.UnsubscribeCodexBookStockEvents();
             SavesSystem.OnSetFile -= OnSetFile_DeathWraith;

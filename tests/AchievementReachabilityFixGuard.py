@@ -7,7 +7,7 @@ import sys
 TRACKER = Path("Achievement/AchievementTracker.cs")
 MANAGER = Path("Achievement/BossRushAchievementManager.cs")
 TRIGGERS = Path("Achievement/AchievementTriggers.cs")
-RUNTIME = Path("Achievement/AchievementRuntimeHooks.cs")
+RUNTIME = Path("Achievement/AchievementRuntimeModule.cs")
 DRAGON_KING = Path("Integration/DragonKing/DragonKingBoss.cs")
 WAVES = Path("WavesArena/WavesArenaRuntimeModule_WaveDeaths.cs")
 WAVES_HOST = Path("WavesArena/WavesArena.cs")
@@ -105,7 +105,7 @@ def main() -> int:
 
     for snippet in [
         "private readonly HashSet<CharacterMainControl> achievementCountedBossKills",
-        "private bool CheckBossKillAchievementsOnce(CharacterMainControl bossMain, string bossTypeOverride = null)",
+        "internal bool CheckBossKillAchievementsOnce(CharacterMainControl bossMain, string bossTypeOverride = null)",
         "private void ResetAchievementBossKillTracking()",
         "BossRushAchievementManager.CheckCompletionistAchievement();",
     ]:
