@@ -31,6 +31,8 @@
 
 **同日追加（owner 拍板后）**：`Consumable` → 官方 `Drink`（晴禾、小满）；匠首过热热浪（`CreateHeatShimmer`）与穗镰泥面流动（`SkyIslandMudFlow`），共享材质与粒子、不重打包（真折射需自研着色器 + 重打包，作者工程有他人未完成资产，未做）；新文件 `SkyIslandChampionMoves.cs`（已登记编译清单）给折翎「三刀封路」、守钟装置「钟鸣」，逃圈 1.8 / 4.0 / 5.31 m/s 均 ≤ 5.5；新守卫 `SkyIslandChampionMovesGuard`。全量守卫 676 PASS / 0 FAIL，天空岛回归 13 PASS，正式构建已部署（DLL SHA-256 `07C7F709…F45CA`，音效 / 数据 / Wiki 逐项一致，Dev 标识 absent；部署含当时共享工作区其它会话未提交改动）。回退：删 `BindChampionMoves` 两处调用、`overheatShimmer`、`SkyIslandMudFlow.Attach` 即可，无存档影响。
 
+**同日追加·重打包（owner 批准）**：没有重打场景包 `sky_island_raid`（作者工程 Sky Island 目录有他人 57 处未提交改动），改为新建独立小包 `Assets/ui/skyisland_fx`（21,531 B，SHA-256 `d80936f5…0e65`）：作者工程 `Assets/SkyIsland/Fx/` 热浪折射 `HeatHaze` 与泥面流动 `MudFlow` 两个透明 `UniversalForward` 着色器 + 材质、`SkyIslandFxBundleBuilder`；运行时 `SkyIslandFxAssets`（新文件，与音效类一起从 `SkyIslandImpactFx.cs` 原样拆出守 1200 行预算）一次性加载，缺包 / 不受支持 / 管线没开 Opaque Texture 时退回粒子版；`compile_official.bat` 部署段；守卫 `SkyIslandFxBundleGuard`（外部制品）。全量守卫 677 PASS / 0 FAIL，回归 13 PASS，已部署（DLL `b8a3a626…c6c9`）。回退：删 `CreateHeatHaze` / `TryUseFlowMaterial` 调用或删包即回到粒子版。
+
 ## 2026-09-26 点唱机曲目响度、天空岛常驻 BGM、模组更名与网址、v2.3.0 日志并版（COMPAT / SCHEMA+ / OPERATIONAL）
 
 **点唱机「放不出来」**：owner 反馈后山点唱机的 Mod 音乐像是没有。结论（L2）：两首文件都已部署，游戏自带 FMOD 2.3.8 按官方 `CustomSFXCallback` 的 mode 0x10202 离线实测都能解码播放；问题是它们直接复用了 Boss 战的程序化氛围循环，约 -25 LUFS，比官方点唱机曲目（-12.3 LUFS）小 13 dB，在基地环境声里几乎听不见；另外点唱机要交付征程第三章才解锁。处理：点唱机改放 -16 LUFS 的 ogg 副本，并新增第三首天空岛主题曲「晴岚群岛」；作者名改为按语言取用（`authorEn`，SCHEMA+）；Boss 战循环本身不动。

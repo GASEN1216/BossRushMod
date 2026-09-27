@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SKY = ROOT / "DebugAndTools" / "SkyIsland"
 FILES = {
     "fx": SKY / "SkyIslandImpactFx.cs",
+    "assets": SKY / "SkyIslandFxAssets.cs",
     "forge": SKY / "SkyIslandBossForge.cs",
     "foreman": SKY / "SkyIslandForemanBoss.cs",
     "root": SKY / "SkyIslandRootHunterBoss.cs",
@@ -72,7 +73,8 @@ def ordered(errors, haystack, needles, message):
 
 def check(code):
     errors = []
-    fx, forge, gen = code["fx"], code["forge"], code["gen"]
+    # 音效与特效资源在 2026-09-27 拆到 SkyIslandFxAssets.cs：两份一起当「表现层」查。
+    fx, forge, gen = code["fx"] + "\n" + code.get("assets", ""), code["forge"], code["gen"]
 
     # 1. 生成表与播放表一一对应
     files = re.search(r"privatestaticreadonlystring\[\]Files=\{([^}]*)\}", squash(fx))
@@ -144,8 +146,8 @@ def load():
 
 def reverse_checks(code):
     probes = [
-        ("fx", '"boss_defeat.wav"', '"boss_death.wav"'),
-        ("fx", "if (now < nextAllowed[index]) return;", ""),
+        ("assets", '"boss_defeat.wav"', '"boss_death.wav"'),
+        ("assets", "if (now < nextAllowed[index]) return;", ""),
         ("fx", "if (flashes.Count >= FlashCap) return;", ""),
         ("forge", "SkyIslandBossSfx.Play(root, SkyIslandBossCue.Telegraph, world);", ""),
         ("forge", "tint, 0, !blast);", "tint, 0, true);"),

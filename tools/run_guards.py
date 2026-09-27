@@ -51,6 +51,7 @@ EXTERNAL_ARTIFACT_GUARDS = {
     "ModeGPresentationAssetGuard.py", "ModeHPresentationAssetGuard.py",
     "PortableSafeZoneDeviceBundleGuard.py", "BaseBuildingResourcePropertyTest.py",
     "DailyReportArtPropertyTest.py",
+    "SkyIslandFxBundleGuard.py",
 }
 
 

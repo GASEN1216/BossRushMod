@@ -256,6 +256,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandBossRules.cs
 echo(DebugAndTools\SkyIsland\SkyIslandBossForge.cs
 echo(DebugAndTools\SkyIsland\SkyIslandBossVoice.cs
 echo(DebugAndTools\SkyIsland\SkyIslandChampionMoves.cs
+echo(DebugAndTools\SkyIsland\SkyIslandFxAssets.cs
 echo(DebugAndTools\SkyIsland\SkyIslandBossLoot.cs
 echo(DebugAndTools\SkyIsland\SkyIslandForemanBoss.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStargazerChief.cs
@@ -1340,6 +1341,18 @@ if %BUILD_EXIT_CODE% EQU 0 (
             ) else (
                 echo Deployed Mode G presentation bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui
             )
+        )
+        rem Sky Island runtime fx bundle: heat haze refraction and mud flow materials. Missing bundle falls back to particles.
+        if exist "Assets\ui\skyisland_fx" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui"
+            copy /Y "Assets\ui\skyisland_fx" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\skyisland_fx" >nul 2>nul
+            if errorlevel 1 (
+                echo WARNING: Sky Island fx bundle deploy failed.
+            ) else (
+                echo Deployed Sky Island fx bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui
+            )
+        ) else (
+            echo WARNING: Sky Island fx bundle missing at Assets\ui\skyisland_fx; heat haze and mud flow use particle fallback.
         )
         rem Achievement bundle and high-resolution PNG overrides.
         if exist "Assets\achievement" (

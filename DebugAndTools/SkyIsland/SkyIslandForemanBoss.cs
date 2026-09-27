@@ -50,7 +50,7 @@ namespace BossRush
         private Modifier headShield, bodyShield, overheatModifier;
         private GameObject overheatGlow;
         private Light overheatLight;
-        private ParticleSystem overheatSteam, overheatShimmer;
+        private ParticleSystem overheatSteam, overheatShimmer, overheatHaze;
         private int receiverLayer, phase, casts;
         private float nextTick, nextCastAt, overheatUntil;
         private bool subscribed, casting, overheated, finished;
@@ -445,6 +445,13 @@ namespace BossRush
                     overheatSteam = CreateOverheatSteam(overheatGlow.transform);
                     // 背上再冒一股往上抖的热浪（2026-09-27）：灰白蒸汽读「在散热」，抖动的暖光读「烫」。
                     overheatShimmer = SkyIslandImpactFx.CreateHeatShimmer(overheatGlow.transform);
+                    // 管线给了不透明场景色时再叠一层真正的折射热浪（skyisland_fx）；没有就只剩上面的粒子版。
+                    overheatHaze = SkyIslandImpactFx.CreateHeatHaze(overheatGlow.transform);
+                }
+                if (overheatHaze != null)
+                {
+                    if (on) overheatHaze.Play(true);
+                    else overheatHaze.Stop(true, ParticleSystemStopBehavior.StopEmitting);
                 }
                 if (overheatShimmer != null)
                 {
@@ -574,6 +581,7 @@ namespace BossRush
             overheatLight = null;
             overheatSteam = null;
             overheatShimmer = null;
+            overheatHaze = null;
         }
 
         private void OnDestroy()
