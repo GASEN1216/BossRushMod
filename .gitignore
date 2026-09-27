@@ -108,6 +108,8 @@ prepare_release_local.bat
 prepare_wish_config_local.bat
 /tests/bin
 /tests/obj
+/tests/fixtures/*/bin/
+/tests/fixtures/*/obj/
 __pycache__/
 *.pyc
 /.kiro
