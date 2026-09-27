@@ -69,6 +69,13 @@ namespace UnityEngine
         public Transform Find(string value) { foreach (Transform child in children) if (child.gameObject.name == value) return child; return null; }
         public bool IsChildOf(Transform value) { return this == value || (parent != null && parent.IsChildOf(value)); }
     }
+    /// <summary>替身：天空岛倒下回执只把颜色当参数透传，不参与判定。</summary>
+    public struct Color
+    {
+        public float r, g, b, a;
+        public Color(float r, float g, float b, float a) { this.r = r; this.g = g; this.b = b; this.a = a; }
+    }
+
     public struct Vector3
     {
         public float x, y, z;
@@ -236,6 +243,10 @@ namespace BossRush
     }
     internal static class SkyIslandBossForge
     {
+        internal static UnityEngine.Color DefeatTint(SkyIslandBossProfile profile) { return new UnityEngine.Color(1f, 0.8f, 0.5f, 1f); }
+        /// <summary>替身：具名对手专属招式是纯战斗表现层，这里只记下挂给了谁。</summary>
+        internal static readonly List<string> ChampionMoves = new List<string>();
+        internal static void BindChampionMoves(CharacterMainControl created, string championId, SkyIslandBossContext context) { ChampionMoves.Add(championId); }
         internal static void BindVoice(CharacterMainControl created, SkyIslandBossProfile profile,
             string championId, SkyIslandBossContext context)
         {
@@ -316,5 +327,15 @@ namespace Duckov.UI.DialogueBubbles
             LastRequest = new TaskCompletionSource<bool>();
             return LastRequest.Task;
         }
+    }
+}
+
+namespace BossRush
+{
+    /// <summary>替身：纯表现层，只计次数（具名剧情对手倒下时 SkyIslandBossVoice 调一次）。</summary>
+    internal static class SkyIslandImpactFx
+    {
+        internal static int DefeatBursts;
+        internal static void DefeatBurst(UnityEngine.Transform root, UnityEngine.Vector3 at, UnityEngine.Color tint) { DefeatBursts++; }
     }
 }

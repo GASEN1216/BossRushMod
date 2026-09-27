@@ -133,6 +133,7 @@ namespace BossRush
             int target = PhaseForFraction(Mathf.Clamp01(health.CurrentHealth / max));
             if (target <= phase || pulsing) return;
             phase = target;
+            SkyIslandImpactFx.PhaseBurst(boss.transform.parent, boss.transform.position, RingTint);
             EnterPhase();
         }
 
@@ -181,6 +182,7 @@ namespace BossRush
             {
                 warning = CreateWarningLight();
                 ring = CreateWarningRing();
+                SkyIslandBossSfx.Play(boss.transform.parent, SkyIslandBossCue.Telegraph, eyeOrigin);
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 预警表现失败：" + e.Message); }
             warningObject = warning;
@@ -349,6 +351,7 @@ namespace BossRush
         {
             if (finished) return;
             finished = true;
+            if (boss != null) SkyIslandImpactFx.DefeatBurst(boss.transform.parent, boss.transform.position, RingTint);
             if (echo)
                 Announce("回响散了。风晶烧过的地方落下一箱东西。",
                     "The echo breaks apart. Where the windcrystal burned, a cache drops.", false);

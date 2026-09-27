@@ -16,6 +16,21 @@
 
 <!-- END JEFF FRUIT REAUDIT TRACKER 2026-09-27 -->
 
+## 2026-09-27 天空岛发版复审：Boss 光与声回执、苇白礼物标签、Wiki 对账（COMPAT / SAFE）
+
+**范围**：owner 要求发版前对天空岛做 Wiki 逐条对账、内容可达性、六居民好感婚姻、Boss 质感与可玩性五向复审。上一轮（09-26）已覆盖机制与关系链，本轮只补新问题；结论见 CODE_REVIEW_FINDINGS CR-2026-09-27-001–004，报告 `docs/reports/sky-island/天空岛_发版复审_2026-09-27.md`（local-only）。
+
+**改动**：
+- Boss 光与声（CR-002）：`tools/gen_sky_island_sfx.py` 新增 `boss_telegraph / impact / shatter / phase / defeat.wav`（产物在 local-only 的 `Assets/Sounds/SkyIsland`，由正式编译脚本整树部署）；`SkyIslandImpactFx.cs`（`SkyIslandBossSfx` / `Flash` / `PhaseBurst` / `DefeatBurst` / `SpawnWave`），接线 `SkyIslandBossForge`、`SkyIslandForemanBoss`、`SkyIslandRootHunterBoss`、`SkyIslandSickleBoss`、`SkyIslandStormBoss`、`SkyIslandWindhunterChief`、`SkyIslandMirrorChief`、`SkyIslandBossVoice`。回退：删除这些调用与新类即可，无存档影响。
+- 苇白 / 浮舟礼物标签 `Tools` → 官方 `Tool`（CR-001）。回退：改回即恢复旧（失效）行为，无存档影响。
+- 目标卡「先清守卫」提示（CR-004），`SkyIslandStoryRules` 抽出与 `TryApply` 共用的判据。
+- Wiki 夜风一句中英同步（CR-003），「岛上的敌人」补一句蓄力音 / 换阶段 / 倒下回执说明。
+- 新守卫 `tests/SkyIslandBossFeedbackGuard.py`、`tests/DuckNpcGiftTagGuard.py`；`tests/fixtures/SkyIslandEncounters/Stubs.cs` 补 `Color` / `DefeatTint` / `SkyIslandImpactFx` 替身。repowiki《天空岛头目战斗与资源》新增「光与声的回执」。
+
+**验证**：`--filter SkyIsland` 49 PASS；全量守卫 673 PASS / 2 FAIL（`EmptyCatchGuard` 指向 `ZombieMode/ZombieModeMapSelectionHelper.cs`、`ZombieModeMutantWikiGuard` 生成页，均为另一会话正在改的丧尸模式文件，本轮未碰；Wiki 站点重建后后者转绿）；天空岛执行回归 13 PASS；Windows 正式编译 Build succeeded（隔离 GAME_PATH，未部署，既有 RuntimeGate CS0649）；`npm --prefix wiki-site run build` 成功、Wiki 守卫 15 PASS。无 L3：未启动游戏、未读存档、未部署。
+
+**同日追加（owner 拍板后）**：`Consumable` → 官方 `Drink`（晴禾、小满）；匠首过热热浪（`CreateHeatShimmer`）与穗镰泥面流动（`SkyIslandMudFlow`），共享材质与粒子、不重打包（真折射需自研着色器 + 重打包，作者工程有他人未完成资产，未做）；新文件 `SkyIslandChampionMoves.cs`（已登记编译清单）给折翎「三刀封路」、守钟装置「钟鸣」，逃圈 1.8 / 4.0 / 5.31 m/s 均 ≤ 5.5；新守卫 `SkyIslandChampionMovesGuard`。全量守卫 676 PASS / 0 FAIL，天空岛回归 13 PASS，正式构建已部署（DLL SHA-256 `07C7F709…F45CA`，音效 / 数据 / Wiki 逐项一致，Dev 标识 absent；部署含当时共享工作区其它会话未提交改动）。回退：删 `BindChampionMoves` 两处调用、`overheatShimmer`、`SkyIslandMudFlow.Attach` 即可，无存档影响。
+
 ## 2026-09-26 点唱机曲目响度、天空岛常驻 BGM、模组更名与网址、v2.3.0 日志并版（COMPAT / SCHEMA+ / OPERATIONAL）
 
 **点唱机「放不出来」**：owner 反馈后山点唱机的 Mod 音乐像是没有。结论（L2）：两首文件都已部署，游戏自带 FMOD 2.3.8 按官方 `CustomSFXCallback` 的 mode 0x10202 离线实测都能解码播放；问题是它们直接复用了 Boss 战的程序化氛围循环，约 -25 LUFS，比官方点唱机曲目（-12.3 LUFS）小 13 dB，在基地环境声里几乎听不见；另外点唱机要交付征程第三章才解锁。处理：点唱机改放 -16 LUFS 的 ogg 副本，并新增第三首天空岛主题曲「晴岚群岛」；作者名改为按语言取用（`authorEn`，SCHEMA+）；Boss 战循环本身不动。

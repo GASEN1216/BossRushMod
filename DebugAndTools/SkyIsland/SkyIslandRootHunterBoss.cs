@@ -161,6 +161,7 @@ namespace BossRush
             int target = SkyIslandBossRules.PhaseFor(Mathf.Clamp01(health.CurrentHealth / max), SkyIslandBossRules.RootHunterAmbushThresholds);
             if (target <= phase) return;
             phase = target;
+            SkyIslandImpactFx.PhaseBurst(context.Root, boss.transform.position, AmbushTint);
             int index = PickHollow();
             if (index >= 0) StartCoroutine(AmbushRoutine(hollows[index]));
         }

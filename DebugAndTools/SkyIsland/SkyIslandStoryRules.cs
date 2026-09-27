@@ -333,14 +333,14 @@ namespace BossRush
                         "The Bell Keeper looks out over the cloud sea: 'They heard it. All of them.'"); break;
                 case SkyIslandStoryAction.RepairWindBeacon:
                     flag = SkyIslandStoryFlag.WindBeacon;
-                    if (!source.EncounterCleared("D") || !source.EncounterCleared("D_02"))
+                    if (!WindBeaconGuardsCleared(source))
                         required = L10n.T("先清除悬根林风标与林间道路两处威胁。",
                             "Clear both threats first: the Hanging Root Wood beacon and the woodland path.");
                     message = L10n.T("风标重新转向云海。风铃集的西侧风铃亮了，回程绳桥可以重新系牢。",
                         "The wind beacon turns back toward the cloud sea. The west chimes of Windchime Market are lit, and the rope bridge home can be lashed tight again."); break;
                 case SkyIslandStoryAction.RepairStarLamp:
                     flag = SkyIslandStoryFlag.StarLamp;
-                    if (!source.EncounterCleared("G") || !source.EncounterCleared("G_02"))
+                    if (!StarLampGuardsCleared(source))
                         required = L10n.T("先清除残星工坊星灯与检修通道两处威胁。",
                             "Clear both threats first: the Fallen Star Workshop lamp and the maintenance passage.");
                     message = L10n.T("星灯亮起，旧穹顶映出归航的方向。风铃集的东侧风铃有了回应。",
@@ -508,6 +508,27 @@ namespace BossRush
             }
         }
 
+        /// <summary>修风标的前置：风标守卫与林间道路两组都清过。目标卡与 RepairWindBeacon 的拒绝共用这一份判据。</summary>
+        internal static bool WindBeaconGuardsCleared(SkyIslandStoryData source)
+        {
+            return source != null && source.EncounterCleared("D") && source.EncounterCleared("D_02");
+        }
+
+        /// <summary>修星灯的前置：星灯守卫与检修通道两组都清过。目标卡与 RepairStarLamp 的拒绝共用这一份判据。</summary>
+        internal static bool StarLampGuardsCleared(SkyIslandStoryData source)
+        {
+            return source != null && source.EncounterCleared("G") && source.EncounterCleared("G_02");
+        }
+
+        /// <summary>
+        /// 目标卡上航标的小尾巴：守卫没清完时写「先清守卫」。新玩家此前要走到装置面板才知道要先打，
+        /// 首趟常见「站在风标台前按了没反应」（可玩性评估 5.1）。
+        /// </summary>
+        private static string GuardsHint(bool cleared)
+        {
+            return cleared ? string.Empty : L10n.T("（先清守卫）", " (clear the guards first)");
+        }
+
         internal static string Objective(SkyIslandStoryData data)
         {
             string questStep = SkyIslandOfficialQuestTable.NextContactObjective(data);
@@ -523,10 +544,10 @@ namespace BossRush
                 return L10n.T("恢复两端航标：", "Restore both beacons: ") +
                     (data.Has(SkyIslandStoryFlag.WindBeacon)
                         ? L10n.T("风标已亮", "wind beacon lit")
-                        : L10n.T("悬根林风标", "Hanging Root Wood beacon")) + " / " +
+                        : L10n.T("悬根林风标", "Hanging Root Wood beacon") + GuardsHint(WindBeaconGuardsCleared(data))) + " / " +
                     (data.Has(SkyIslandStoryFlag.StarLamp)
                         ? L10n.T("星灯已亮", "star lamp lit")
-                        : L10n.T("残星工坊星灯", "Fallen Star Workshop lamp"));
+                        : L10n.T("残星工坊星灯", "Fallen Star Workshop lamp") + GuardsHint(StarLampGuardsCleared(data)));
             if (!data.BellKeeperResolved)
                 return L10n.T("双航标已亮 · 经鸣风栈道前往归航钟庭 · 和解或战胜钟守",
                     "Both beacons lit · cross Windsong Boardwalk to the Bell Court · reconcile with or defeat the Bell Keeper") +

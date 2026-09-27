@@ -115,6 +115,7 @@ namespace BossRush
                 {
                     // 一拍里跨过几档也只开一次闸（口径同残星匠首的供能桩）。
                     phase = target;
+                    SkyIslandImpactFx.PhaseBurst(context.Root, boss.transform.position, SweepTint);
                     if (playerAlive) OpenSluice(player);
                 }
             }
@@ -196,6 +197,8 @@ namespace BossRush
                 }
                 // 漫开之后是一块看得见的泥：圈内铺满暗泥色，圈压到 0.6（VB-22；此前只剩一圈棕色细线，泥本身看不见）。
                 SkyIslandBossForge.SetPatch(patch.Ring, SkyIslandBossRules.MudRadius, MudTint, MudSurface);
+                // 泥面在流（2026-09-27）：一圈圈往外推的湿光涟漪 + 冒泡，纯表现，挂在泥圈上随它收起。
+                SkyIslandMudFlow.Attach(patch.Ring, context.Root, patch.Center, SkyIslandBossRules.MudRadius);
                 patch.Steady = true;
                 mudPatches[i] = patch;
             }

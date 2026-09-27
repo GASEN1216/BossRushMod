@@ -65,7 +65,7 @@
         "displayNameEn": "Xiao Man",
         "dailyChatAffinity": 30,
         "positiveTags": [
-          "Consumable",
+          "Drink",
           "Food"
         ],
         "positiveItemTypeIds": [],
@@ -187,7 +187,7 @@
         "displayNameEn": "Qinghe",
         "dailyChatAffinity": 30,
         "positiveTags": [
-          "Consumable",
+          "Drink",
           "Food"
         ],
         "positiveItemTypeIds": [],
@@ -306,7 +306,7 @@
         "displayNameEn": "Weibai",
         "dailyChatAffinity": 30,
         "positiveTags": [
-          "Tools"
+          "Tool"
         ],
         "positiveItemTypeIds": [],
         "negativeItemTypeIds": [],
@@ -424,7 +424,7 @@
         "displayNameEn": "Fuzhou",
         "dailyChatAffinity": 30,
         "positiveTags": [
-          "Tools"
+          "Tool"
         ],
         "positiveItemTypeIds": [
           500075,

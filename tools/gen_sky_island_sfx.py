@@ -15,7 +15,10 @@ RATE = 32000
 OUT = Path(__file__).resolve().parents[1] / "Assets/Sounds/SkyIsland"
 DURATIONS = {"island_wind.wav": 8.0, "wind_chimes.wav": 4.0,
              "homecoming_bell.wav": 7.0, "device_awake.wav": 2.5, "gnat_buzz.wav": 1.0,
-             "frog_chorus.wav": 5.0}
+             "frog_chorus.wav": 5.0,
+             # 头目 / 岛主招式的一次性回执（SkyIslandBossSfx）：蓄力、落地、桩碎、换阶段、倒下。
+             "boss_telegraph.wav": 0.8, "boss_impact.wav": 0.9, "boss_shatter.wav": 0.7,
+             "boss_phase.wav": 1.6, "boss_defeat.wav": 2.4}
 # 无缝循环：不做首尾淡出，校验「接缝处的跳变不大于文件内部最大的相邻采样跳变」。
 # 云蚋的嗡声全场只有一个共享发声体循环播放（SkyIslandGnats），接缝处一顿就是每秒一次的咔哒。
 LOOPS = {"gnat_buzz.wav"}
@@ -53,6 +56,47 @@ def frog_chorus(t):
     return value
 
 
+def boss_telegraph(t, seconds, noise):
+    # 蓄力：一条从 196 Hz 滑到 392 Hz 的暖色长音越来越响，外面裹一层风声；最后 0.1 秒收掉，落地声接在后面。
+    swell = min(1.0, t * 40) * (t / seconds) ** 1.6
+    f0, f1 = 196.0, 392.0
+    phase = math.tau * (f0 * t + (f1 - f0) * t * t / (2 * seconds))
+    tone = math.sin(phase) + .45 * math.sin(2 * phase) + .2 * math.sin(3 * phase)
+    return swell * (tone + 1.4 * noise)
+
+
+def boss_impact(t, noise):
+    # 落地：90 Hz 滑到 42 Hz 的闷响（胸口那一下）+ 一团快速衰减的低通噪声（扬尘）+ 起手一声短促的咔。
+    glide = 42 + 48 * math.exp(-t * 9)
+    phase = math.tau * (42 * t + 48 * (1 - math.exp(-t * 9)) / 9)
+    thump = math.sin(phase) * math.exp(-t * 6.5) * min(1.0, t * 900)
+    dust = noise * 3.2 * math.exp(-t * 11) * min(1.0, t * 600)
+    click = math.sin(math.tau * 1800 * t) * math.exp(-t * 90) * .35 * min(1.0, t * 2000)
+    return thump * (1.0 + .2 * (glide / 90)) + dust + click
+
+
+def boss_shatter(t, rng):
+    # 桩碎：星铜片那种短促的金属叮当（非谐分音、衰减快）+ 碎屑的噼啪。
+    ring = bell(t, 1318.5, 6.0) * .7 + bell(t - .045, 1760, 7.5) * .45 + bell(t - .11, 987.8, 5.0) * .35
+    crackle = (rng.uniform(-1, 1) if rng.random() < .35 else 0.0) * math.exp(-t * 16) * min(1.0, t * 800)
+    return ring + crackle * .9
+
+
+def boss_phase(t, noise):
+    # 换阶段：一记低沉的锣（110 / 165 Hz）+ 由弱到强再退的风涌。
+    gong = bell(t, 110, 1.1) * .9 + bell(t - .06, 164.8, 1.4) * .5
+    surge = noise * 2.4 * math.sin(math.pi * min(1.0, t / 1.2)) ** 2
+    return gong + surge
+
+
+def boss_defeat(t):
+    # 倒下：一条从 330 Hz 落到 110 Hz 的叹息音，接一声渐远的钟。
+    fall = 330 * math.exp(-t * .95)
+    phase = math.tau * 330 * (1 - math.exp(-t * .95)) / .95
+    sigh = (math.sin(phase) + .35 * math.sin(2 * phase)) * math.exp(-t * 1.6) * min(1.0, t * 60) * (.6 + .4 * fall / 330)
+    return sigh * .8 + bell(t - .35, 196, .9) * .75 + bell(t - .35, 293.7, 1.2) * .3
+
+
 def generate(name, seconds):
     rng = random.Random(20260908)
     low = 0.0
@@ -72,6 +116,19 @@ def generate(name, seconds):
             value = gnat_buzz(t)
         elif name == "frog_chorus.wav":
             value = frog_chorus(t)
+        elif name == "boss_telegraph.wav":
+            low = low * .9 + rng.uniform(-1, 1) * .1
+            value = boss_telegraph(t, seconds, low)
+        elif name == "boss_impact.wav":
+            low = low * .82 + rng.uniform(-1, 1) * .18
+            value = boss_impact(t, low)
+        elif name == "boss_shatter.wav":
+            value = boss_shatter(t, rng)
+        elif name == "boss_phase.wav":
+            low = low * .94 + rng.uniform(-1, 1) * .06
+            value = boss_phase(t, low)
+        elif name == "boss_defeat.wav":
+            value = boss_defeat(t)
         else:
             value = sum(bell(t - delay, freq, 2.0) * .12 for delay, freq in
                         ((0, 523.25), (.22, 659.25), (.44, 783.99), (.66, 1046.5)))

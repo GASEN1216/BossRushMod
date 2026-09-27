@@ -5339,6 +5339,23 @@ Mode G 本轮收尾补证（2026-09-18）：最终专项守卫37 PASS、生产�
 
 图鉴复核：五个 `zombie_boss_*` key、主角亲手击杀、杂兵过滤、实例去重、回基地 flush 与持久化链未发现新增确认缺陷；`ContentThirdReviewFixes`、`SaveFailureRecovery` 通过。未修改图鉴生产代码，不能将隔离回归写成实机重启后已保存。独立 Windows 正式构建通过，未部署实际游戏目录；并行改动应整合后另作正式交付。
 
+## 2026-09-27 天空岛发版复审（Wiki 对账、可达性、居民、Boss 质感）
+
+分类：COMPAT / SAFE；修复完成，L1+L2，L3 待 owner。详见本地报告 `docs/reports/sky-island/天空岛_发版复审_2026-09-27.md`。
+
+| ID | 等级 / 分类 | 已确认根因与影响 | 修复 / 验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-27-001 | P2 / COMPAT | `Assets/Data/DuckNpcs.json` 苇白、浮舟 `positiveTags` 写 `"Tools"`；官方 Tag 名是 `Tool`（官方本地化键 `Tag_Tool`，没有 `Tag_Tools`），`NPCGiftSystem.HasPositiveTag` 按 Tag 资产 `.name` 精确比对。苇白没有按 TypeID 的喜好兜底，于是「苇白喜欢工具」从未兑现、任何礼物都拿不到 +80；浮舟靠 500075/500076 兜底，工具类同样失效 | Fixed：两处改 `Tool`；新守卫 `DuckNpcGiftTagGuard`（永久 NPC 喜好标签必须是官方 Tag、每位至少一条能命中），反向验证：还原 `Tools` 后两条断言转红、按 SHA 还原转绿。Tag 资产名等于本地化键后缀是按 Weapon / Food / Helmat 的既有用法推断，实机送一件官方工具验证（清单 M-02） |
+| CR-2026-09-27-002 | P2 / COMPAT | 天空岛全部头目 / 岛主招式没有音效（`DebugAndTools/SkyIsland` 下只有环境音与云蚋调 `PostCustomSFX`）；走 `ExplosionFxTypes.custom` 的镰扫、落石、换位、冲步、伏击、绊索落地无声；结算无光；换阶段与倒下只有字幕 | Fixed：`gen_sky_island_sfx.py` 新增 5 种程序化音效；`SkyIslandImpactFx` 新增 `SkyIslandBossSfx`、`Flash`、`PhaseBurst`、`DefeatBurst`；Forge / 四位多阶段 Boss / 噬风 / 断风 / 镜中客 / 匠首 / 具名对手接线。判定一字未动。新守卫 `SkyIslandBossFeedbackGuard`（9 个内置反向探针）。观感与帧耗时待实机 |
+| CR-2026-09-27-003 | P3 / SAFE | Wiki「白天在岛上是无风的」与 `SkyIslandFieldcraftRules.WindLevel` 不符：桥与中继平台白天也有微风，双航标后噬风未散时白天同样大风 | Fixed：中英同步改写；`SkyIslandWikiParityGuard` PASS |
+| CR-2026-09-27-004 | P3 / COMPAT | 目标卡「恢复两端航标」不提示要先清守卫，新玩家站在风标台前按了没反应才知道（09-10 可玩性评估 5.1） | Fixed：航标未清守卫时加「（先清守卫）」，判据 `WindBeaconGuardsCleared / StarLampGuardsCleared` 与 `TryApply` 的拒绝共用；SkyIslandStory 执行回归 PASS |
+
+复核后不成立 / 未改：
+- Wiki「口口口口」不是占位符，是官方 preset `EnemyPreset_Boss_Island_Koukou` 的原名。
+- Wiki 噬风「预警约一秒半」对应 `PulseTelegraph = 1.4f`，带「约」字，判一致。
+- 晴禾与另一位 NPC 的 `positiveTags` 含 `Consumable`（官方无此 Tag），各有 `Food` 或 TypeID 兜底、不影响可送礼；登记为 `DuckNpcGiftTagGuard.KNOWN_NOOP` 既有债务，未改行为。
+- 内容可达性（18 件岛物 + 航向仪、17 件装备、11 配方、4 委托、4 谜题、12 信、20 见闻、名册、主线四任务与三处缺席兜底）未发现新的 P0/P1（L1）。
+
 ## 2026-09-27 丧尸模式 Boss 表现、官方计数与补丁隔离复审
 
 分类：COMPAT / WIRE+；L1+L2 + Windows 正式编译，L3 待 owner。详见 [复审报告](docs/reports/reviews/2026-09-27_丧尸模式Boss表现与链路复审.md)。同日 001–004 已被其他会话占用，本专题从 101 起。

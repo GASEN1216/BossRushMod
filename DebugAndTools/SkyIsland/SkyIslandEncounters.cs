@@ -515,6 +515,7 @@ namespace BossRush
                 SkyIslandResidents.ApplyBattleFace(created, "sky_zheling");
                 SkyIslandEnemyTiers.ApplyStoryChampion(created, "zheling", "折翎", "Zheling");
                 SkyIslandBossForge.BindVoice(created, null, "zheling", BossContext());
+                SkyIslandBossForge.BindChampionMoves(created, "zheling", BossContext());
                 return;
             }
             if (encounter.Id == "BellKeeper" && index == 0)
@@ -522,6 +523,7 @@ namespace BossRush
                 SkyIslandResidents.ApplyBattleFace(created, "sky_bellkeeper");
                 SkyIslandEnemyTiers.ApplyStoryChampion(created, "bellkeeper", "失控的守钟装置", "Runaway Bell Engine");
                 SkyIslandBossForge.BindVoice(created, null, "bellkeeper", BossContext());
+                SkyIslandBossForge.BindChampionMoves(created, "bellkeeper", BossContext());
                 return;
             }
             // 头目 / 岛主（SkyIslandBossRules 档案按「遭遇 id + 位次」查）：名字、数值、配装、掉落与招式控制器由 Forge 一次做完；

@@ -13,11 +13,23 @@
 //   2. Play：结算时在原地放一圈「先闪一下、再扩到 1.08 R 淡出」的余波圈（判定此刻已经结算完）+ 圈沿扬尘。
 //   3. Streak / Puff / Shatter / Splash / Sparks：风痕、扬尘团、桩碎、泥点、电火花。
 //
+// 2026-09-27 发版复审补「光 + 声」两层（此前所有头目招式都是哑的、结算没有光）：
+//   4. Flash：结算、桩碎处一盏 0.3 s 内退掉的暖色点光（同时至多 4 盏，URP 逐像素光有上限就不再加）。
+//   5. PhaseBurst / DefeatBurst：换阶段与倒下的回执（一圈慢扩的地面波 + 火花 + 光 + 轻震 + 音效）。
+//   7. HeatShimmer / SkyIslandMudFlow：匠首过热时背上一股往上抖的热浪、穗镰漫开的泥面一圈圈往外流的涟漪与冒泡。
+//      都用共享材质与粒子，不引入自研着色器（真正的折射扭曲要带 UniversalGBuffer 的着色器并重打包场景包）。
+//   6. SkyIslandBossSfx：蓄力、落地、桩碎、换阶段、倒下五种一次性音效（tools/gen_sky_island_sfx.py 程序化生成，
+//      走官方 PostCustomSFX，与岛上环境音同一条路），同一种 0.08 s 内只响一次，45 m 外不播。
+//
 // 粒子全部走三个世界空间的共享发射器（扬尘 / 碎屑 / 火花），挪到位置再 Emit 一次：已发出的粒子留在世界里，
 // 不随发射器移动。只在真的有招式结算时懒建（AGENTS §4.12），没有 Boss 战时零成本；数量有上限。
 // 材质走全 Mod 共享工厂 BossRushFxMaterials（软圆 / 本文件的软边带 / 软边圆盘）。
 // ============================================================================
 
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
 using UnityEngine;
 
 namespace BossRush
@@ -39,6 +51,11 @@ namespace BossRush
 
         private static ParticleSystem dust, chips, sparks;
         private static Texture2D bandTexture, discTexture;
+        /// <summary>同时亮着的结算闪光上限：噬风一轮三波 + 三圈星焰也只点得出这么多盏。</summary>
+        private const int FlashCap = 4;
+        private static readonly List<Light> flashes = new List<Light>(FlashCap);
+        /// <summary>闪光往琥珀色偏一点：天空岛的画风基准是暖琥珀色带，冷色招式的光也不该是冷白。</summary>
+        private static readonly Color FlashWarm = new Color(1f, 0.78f, 0.50f, 1f);
 
         /// <summary>圈沿扬尘颗数：随半径长、有上下限（半径 2 m 16 颗，6 m 起 48 颗封顶）。</summary>
         internal static int DustFor(float radius)
@@ -52,11 +69,23 @@ namespace BossRush
         /// </summary>
         internal static void Play(Transform root, Vector3 origin, float radius, Color tint, int dustCount)
         {
+            Play(root, origin, radius, tint, dustCount, false);
+        }
+
+        /// <param name="thump">
+        /// 补一声落地闷响。官方火球（ExplosionFxTypes.normal）自带爆炸声，走火球的招式传 false；
+        /// 走 custom（镰扫、落石、换位、冲步、伏击）的招式传 true——否则它们落地是无声的。
+        /// </param>
+        internal static void Play(Transform root, Vector3 origin, float radius, Color tint, int dustCount, bool thump)
+        {
             if (radius <= 0f) return;
             try
             {
                 SkyIslandImpactRingFade.Spawn(root, origin, radius, tint);
                 EmitDust(root, origin, radius, dustCount > 0 ? dustCount : DustFor(radius), 1f);
+                // 光跟判定半径走：小招 1.8、6 m 以上的风暴 2.6；光照范围约两倍半径、封顶 14 m。
+                Flash(root, origin, Mathf.Clamp(radius * 2.2f, 3f, 14f), tint, radius >= 6f ? 2.6f : 1.8f, 0.32f);
+                if (thump) SkyIslandBossSfx.Play(root, SkyIslandBossCue.Impact, origin);
             }
             catch (System.Exception e)
             {
@@ -88,8 +117,71 @@ namespace BossRush
                 SkyIslandImpactRingFade.SpawnBurst(root, ground, 0.9f, 1.6f, tint);
                 EmitDust(root, ground, 0.6f, 8, 0.6f);
                 Shake(at, ShatterShake);
+                Flash(root, at, 3.5f, tint, 1.6f, 0.25f);
+                SkyIslandBossSfx.Play(root, SkyIslandBossCue.Shatter, at);
             }
             catch (System.Exception e) { Debug.LogWarning("[SkyIslandBoss] 碎裂表现失败：" + e.Message); }
+        }
+
+        /// <summary>
+        /// 换阶段的回执（岛主血线跨档、噬风换相位）：脚下一圈 0.55 s 慢扩到 6.5 m 的地面波、胸口一把火花、
+        /// 一盏 0.5 s 退掉的光、轻震和一记低锣。之前只有一句字幕，打得正紧时读不到「它变了」。
+        /// </summary>
+        internal static void PhaseBurst(Transform root, Vector3 at, Color tint)
+        {
+            try
+            {
+                SkyIslandImpactRingFade.SpawnWave(root, at, 1.2f, 6.5f, tint, 0.55f, 0.6f, 0.15f);
+                Sparks(root, at + Vector3.up * 1.2f, tint, 16);
+                EmitDust(root, at, 1.2f, 18, 0.8f);
+                Flash(root, at, 9f, tint, 3f, 0.5f);
+                Shake(at, 0.4f);
+                SkyIslandBossSfx.Play(root, SkyIslandBossCue.Phase, at);
+            }
+            catch (System.Exception e) { Debug.LogWarning("[SkyIslandBoss] 换阶段表现失败：" + e.Message); }
+        }
+
+        /// <summary>
+        /// 头目 / 岛主倒下的回执：一圈 0.7 s 扩到 4.5 m 的地面波、一团扬尘、一把火花、0.9 s 退掉的光、轻震和一声落下去的钟。
+        /// 之前倒下只有字幕，和普通拾荒者倒地看不出区别。
+        /// </summary>
+        internal static void DefeatBurst(Transform root, Vector3 at, Color tint)
+        {
+            try
+            {
+                SkyIslandImpactRingFade.SpawnWave(root, at, 0.8f, 4.5f, tint, 0.7f, 0.5f, 0.12f);
+                EmitDust(root, at, 1f, 28, 1f);
+                Sparks(root, at + Vector3.up * 1f, tint, 20);
+                Flash(root, at, 7f, tint, 2.4f, 0.9f);
+                Shake(at, 0.3f);
+                SkyIslandBossSfx.Play(root, SkyIslandBossCue.Defeat, at);
+            }
+            catch (System.Exception e) { Debug.LogWarning("[SkyIslandBoss] 倒下表现失败：" + e.Message); }
+        }
+
+        /// <summary>
+        /// 一盏立刻亮起、<paramref name="seconds"/> 内退掉的点光（复用 <see cref="SkyIslandLightFade"/>，灭了自毁）。
+        /// 同时至多 <see cref="FlashCap"/> 盏：URP 逐像素光有上限，多出来的直接不点，不挤掉场景灯。
+        /// </summary>
+        internal static void Flash(Transform root, Vector3 at, float range, Color tint, float intensity, float seconds)
+        {
+            try
+            {
+                for (int i = flashes.Count - 1; i >= 0; i--) if (flashes[i] == null) flashes.RemoveAt(i);
+                if (flashes.Count >= FlashCap) return;
+                GameObject go = new GameObject("SkyIslandImpactFlash");
+                if (root != null) go.transform.SetParent(root, true);
+                go.transform.position = at + Vector3.up * 0.8f;
+                Light light = go.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.color = Color.Lerp(tint, FlashWarm, 0.35f);
+                light.range = range;
+                light.intensity = intensity;
+                light.shadows = LightShadows.None;
+                flashes.Add(light);
+                SkyIslandLightFade.FadeTo(light, 0f, seconds, true);
+            }
+            catch (System.Exception e) { Debug.LogWarning("[SkyIslandBoss] 闪光失败：" + e.Message); }
         }
 
         /// <summary>泥点：脚下溅起几粒（穗镰的泥地）。</summary>
@@ -367,16 +459,67 @@ namespace BossRush
             grow.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, from, 1f, to));
         }
 
+        /// <summary>
+        /// 热浪：一股往上窜、被噪声推得左右发抖的淡琥珀加色粒子（匠首过热）。不是真折射，靠「抖动的半透明暖光」读出热气；
+        /// 挂在调用方给的父物体上、随它销毁，只在调用方 Play 时发射。材质不可用时返回 null。
+        /// </summary>
+        internal static ParticleSystem CreateHeatShimmer(Transform parent)
+        {
+            Material material = BossRushFxMaterials.Get(BossRushFxBlend.Additive);
+            if (material == null || parent == null) return null;
+            GameObject go = new GameObject("HeatShimmer");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(0f, 0.1f, 0f);
+            go.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+            ParticleSystem ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            ParticleSystem.MainModule main = ps.main;
+            main.playOnAwake = false;
+            main.loop = true;
+            main.maxParticles = 40;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.55f, 0.85f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(1.8f, 2.6f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.35f, 0.7f);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.startColor = new Color(1f, 0.72f, 0.42f, 1f);
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            ParticleSystem.EmissionModule emission = ps.emission;
+            emission.enabled = true;
+            emission.rateOverTime = 26f;
+            ParticleSystem.ShapeModule shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 8f;
+            shape.radius = 0.28f;
+            ParticleSystem.NoiseModule noise = ps.noise;
+            noise.enabled = true;
+            noise.strength = 0.9f;
+            noise.frequency = 2.4f;
+            noise.scrollSpeed = 1.6f;
+            noise.damping = true;
+            SetFade(ps, Color.white, new Color(1f, 0.85f, 0.7f, 1f), 0.16f, 0.2f);
+            SetGrow(ps, 0.7f, 1.8f);
+            ParticleSystemRenderer renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return ps;
+        }
+
         /// <summary>由 SkyIslandBossForge.ResetStaticCaches（SkyIslandRuntimeModule.OnDestroy）调用：收掉共享发射器与程序化贴图。</summary>
         internal static void ResetStaticCaches()
         {
-            if (dust != null) Object.Destroy(dust.gameObject);
-            if (chips != null) Object.Destroy(chips.gameObject);
-            if (sparks != null) Object.Destroy(sparks.gameObject);
+            if (dust != null) UnityEngine.Object.Destroy(dust.gameObject);
+            if (chips != null) UnityEngine.Object.Destroy(chips.gameObject);
+            if (sparks != null) UnityEngine.Object.Destroy(sparks.gameObject);
             dust = chips = sparks = null;
+            for (int i = 0; i < flashes.Count; i++) if (flashes[i] != null) UnityEngine.Object.Destroy(flashes[i].gameObject);
+            flashes.Clear();
+            SkyIslandBossSfx.ResetStaticCaches();
             // 贴图带 HideAndDontSave，切场景不会自动回收。材质由 BossRushFxMaterials 持有，这里不碰。
-            if (bandTexture != null) Object.Destroy(bandTexture);
-            if (discTexture != null) Object.Destroy(discTexture);
+            if (bandTexture != null) UnityEngine.Object.Destroy(bandTexture);
+            if (discTexture != null) UnityEngine.Object.Destroy(discTexture);
             bandTexture = null;
             discTexture = null;
         }
@@ -540,8 +683,8 @@ namespace BossRush
 
         private LineRenderer ring, fill;
         private float radius, endRadius, age, flashWidth, spreadWidth;
+        private float flashSeconds = FlashSeconds, spreadSeconds = SpreadSeconds, alphaScale = 1f;
         private Color tint;
-        private bool burst;
 
         internal static void Spawn(Transform root, Vector3 origin, float radius, Color tint)
         {
@@ -562,7 +705,32 @@ namespace BossRush
             fade.endRadius = to;
             fade.flashWidth = 0.35f;
             fade.spreadWidth = 0.12f;
-            fade.burst = true;
+            fade.flashSeconds = 0f;
+            fade.spreadSeconds = 0.2f;
+            fade.Step(0f);
+        }
+
+        /// <summary>慢一点、宽一点的地面波（换阶段、倒下）：从 <paramref name="from"/> 用 <paramref name="seconds"/> 秒扩到 <paramref name="to"/> 米。</summary>
+        internal static void SpawnWave(Transform root, Vector3 origin, float from, float to, Color tint, float seconds,
+            float startWidth, float endWidth)
+        {
+            SpawnWave(root, origin, from, to, tint, seconds, startWidth, endWidth, 1f, true);
+        }
+
+        /// <param name="alpha">整圈不透明度倍率（泥面涟漪这类只该隐约看见的波用 0.3 左右）。</param>
+        /// <param name="withFill">圈内那块地要不要跟着亮一下；涟漪不要，否则整块泥会一闪一闪。</param>
+        internal static void SpawnWave(Transform root, Vector3 origin, float from, float to, Color tint, float seconds,
+            float startWidth, float endWidth, float alpha, bool withFill)
+        {
+            SkyIslandImpactRingFade fade = Build(root, origin, from, tint);
+            if (fade == null) return;
+            fade.endRadius = to;
+            fade.flashWidth = startWidth;
+            fade.spreadWidth = endWidth;
+            fade.flashSeconds = 0f;
+            fade.spreadSeconds = Mathf.Max(0.05f, seconds);
+            fade.alphaScale = Mathf.Clamp01(alpha);
+            if (withFill) fade.fill = SkyIslandImpactFx.CreateDisc(fade.transform);
             fade.Step(0f);
         }
 
@@ -586,8 +754,8 @@ namespace BossRush
         /// <returns>播完了没有。</returns>
         private bool Step(float t)
         {
-            float flash = burst ? 0f : FlashSeconds;
-            float spread = burst ? 0.2f : SpreadSeconds;
+            float flash = flashSeconds;
+            float spread = spreadSeconds;
             float r, width, alpha;
             Color hot = Color.Lerp(tint, Color.white, 0.35f);
             Color color;
@@ -607,12 +775,12 @@ namespace BossRush
                 alpha = 1f - BossRushUI.SmoothStep(k);
                 color = Color.Lerp(hot, tint, k);
             }
-            color.a = alpha;
+            color.a = alpha * alphaScale;
             SkyIslandGroundRing.SetShape(ring, r, width, color);
             if (fill != null)
             {
                 // 圈内那块地亮一下再退：最亮 0.3，随余波一起淡掉。
-                float fillAlpha = 0.3f * (t < flash ? 1f : 1f - BossRushUI.SmoothStep(Mathf.Clamp01((t - flash) / spread)));
+                float fillAlpha = 0.3f * alphaScale * (t < flash ? 1f : 1f - BossRushUI.SmoothStep(Mathf.Clamp01((t - flash) / spread)));
                 SkyIslandImpactFx.SetDisc(fill, radius, new Color(tint.r, tint.g, tint.b, fillAlpha));
             }
             return t >= flash + spread;
@@ -680,6 +848,54 @@ namespace BossRush
             Color tail = new Color(tint.r, tint.g, tint.b, 0.25f * (1f - eased));
             line.startColor = tail;
             line.endColor = head;
+        }
+    }
+
+    /// <summary>
+    /// 穗镰漫开之后的泥面「在流」：挂在泥圈物体上，每 0.8 s 从中心往外推一圈隐约的湿光涟漪、顺手冒两粒泥泡。
+    /// 泥圈收起（淡出后自毁）时它跟着没了；暂停时 deltaTime 为 0，不推进。判定照旧只看泥圈半径。
+    /// </summary>
+    internal sealed class SkyIslandMudFlow : MonoBehaviour
+    {
+        private const float Interval = 0.8f;
+        private const float RippleSeconds = 1.6f;
+        private static readonly Color Sheen = new Color(0.62f, 0.52f, 0.36f, 1f);
+        private static readonly Color Bubble = new Color(0.30f, 0.22f, 0.13f, 0.9f);
+
+        private Transform root;
+        private Vector3 center;
+        private float radius, timer;
+        private int beat;
+
+        internal static void Attach(LineRenderer patch, Transform root, Vector3 center, float radius)
+        {
+            if (patch == null || radius <= 0f || patch.GetComponent<SkyIslandMudFlow>() != null) return;
+            SkyIslandMudFlow flow = patch.gameObject.AddComponent<SkyIslandMudFlow>();
+            flow.root = root;
+            flow.center = center;
+            flow.radius = radius;
+            flow.timer = Interval * 0.5f;
+        }
+
+        private void Update()
+        {
+            timer += Time.deltaTime;
+            if (timer < Interval) return;
+            timer -= Interval;
+            beat++;
+            try
+            {
+                SkyIslandImpactRingFade.SpawnWave(root, center, radius * 0.25f, radius * 0.92f, Sheen, RippleSeconds, 0.2f, 0.05f, 0.32f, false);
+                float angle = beat * 2.39996f;
+                float distance = radius * (0.25f + 0.45f * ((beat * 0.618f) % 1f));
+                Vector3 at = center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
+                SkyIslandImpactFx.Splash(root, at, Bubble, 2);
+            }
+            catch (System.Exception e)
+            {
+                enabled = false;
+                Debug.LogWarning("[SkyIslandBoss] 泥面流动失败（泥地照常减速）：" + e.Message);
+            }
         }
     }
 
@@ -753,6 +969,110 @@ namespace BossRush
             if (to > 0.001f) return;
             if (destroyWhenDark) Destroy(gameObject);
             else target.enabled = false;
+        }
+    }
+
+    /// <summary>头目 / 岛主招式的五种一次性音效（文件由 tools/gen_sky_island_sfx.py 生成，随 Assets/Sounds 树部署）。</summary>
+    internal enum SkyIslandBossCue
+    {
+        Telegraph = 0,
+        Impact = 1,
+        Shatter = 2,
+        Phase = 3,
+        Defeat = 4,
+        /// <summary>失控的守钟装置敲响的那一下：复用岛上的归航钟声（同一口钟）。</summary>
+        Toll = 5
+    }
+
+    /// <summary>
+    /// 头目 / 岛主招式音效。正式构建不引用 FMOD：与 <see cref="SkyIslandAmbience"/> 同一套 `AudioManager.PostCustomSFX` 反射绑定。
+    /// 发声体是几只挂在地图根下的空物体，挪到位置再播（官方把事件挂在物体上做 3D 定位），轮流用，
+    /// 免得挪走正在响的那只。同一种音效 0.08 s 内只响一次（三圈星焰齐落只响一声），45 m 外不播。
+    /// 文件缺失或绑定失败只记一次警告，招式照打。静态状态由 <see cref="SkyIslandImpactFx.ResetStaticCaches"/> 收。
+    /// </summary>
+    internal static class SkyIslandBossSfx
+    {
+        private const int EmitterCount = 6;
+        private const float MinInterval = 0.08f;
+        private const float AudibleRange = 45f;
+        private static readonly string[] Files =
+        {
+            "boss_telegraph.wav", "boss_impact.wav", "boss_shatter.wav", "boss_phase.wav", "boss_defeat.wav",
+            "homecoming_bell.wav"
+        };
+        private static readonly float[] nextAllowed = new float[Files.Length];
+        private static readonly bool[] present = new bool[Files.Length];
+        private static readonly GameObject[] emitters = new GameObject[EmitterCount];
+        private static MethodInfo post;
+        private static string directory;
+        private static bool resolved, warned;
+        private static int next;
+
+        internal static void Play(Transform root, SkyIslandBossCue cue, Vector3 at)
+        {
+            int index = (int)cue;
+            if (index < 0 || index >= Files.Length) return;
+            try
+            {
+                float now = Time.time;
+                if (now < nextAllowed[index]) return;
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main == null || (main.transform.position - at).sqrMagnitude > AudibleRange * AudibleRange) return;
+                if (!Resolve() || !present[index]) return;
+                GameObject emitter = Emitter(root);
+                if (emitter == null) return;
+                nextAllowed[index] = now + MinInterval;
+                emitter.transform.position = at + Vector3.up;
+                post.Invoke(null, new object[] { Path.Combine(directory, Files[index]), emitter, false });
+            }
+            catch (Exception e) { Warn(e.Message); }
+        }
+
+        private static bool Resolve()
+        {
+            if (resolved) return post != null;
+            resolved = true;
+            post = typeof(Duckov.AudioManager).GetMethod("PostCustomSFX", BindingFlags.Public | BindingFlags.Static,
+                null, new[] { typeof(string), typeof(GameObject), typeof(bool) }, null);
+            directory = Path.Combine(ModBehaviour.GetModPath(), "Assets", "Sounds", "SkyIsland");
+            for (int i = 0; i < Files.Length; i++) present[i] = File.Exists(Path.Combine(directory, Files[i]));
+            if (post == null) Warn("官方 PostCustomSFX 入口缺失");
+            return post != null;
+        }
+
+        private static GameObject Emitter(Transform root)
+        {
+            int slot = next;
+            next = (next + 1) % EmitterCount;
+            GameObject emitter = emitters[slot];
+            if (emitter == null)
+            {
+                emitter = new GameObject("SkyIslandBossSfx_" + slot);
+                if (root != null) emitter.transform.SetParent(root, true);
+                emitters[slot] = emitter;
+            }
+            return emitter.activeInHierarchy ? emitter : null;
+        }
+
+        private static void Warn(string message)
+        {
+            if (warned) return;
+            warned = true;
+            Debug.LogWarning("[SkyIslandBoss] 招式音效不可用（招式照打）：" + message);
+        }
+
+        internal static void ResetStaticCaches()
+        {
+            for (int i = 0; i < emitters.Length; i++)
+            {
+                if (emitters[i] != null) UnityEngine.Object.Destroy(emitters[i]);
+                emitters[i] = null;
+            }
+            for (int i = 0; i < nextAllowed.Length; i++) nextAllowed[i] = 0f;
+            resolved = false;
+            warned = false;
+            post = null;
+            next = 0;
         }
     }
 }

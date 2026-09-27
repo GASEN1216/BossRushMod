@@ -50,7 +50,7 @@ namespace BossRush
         private Modifier headShield, bodyShield, overheatModifier;
         private GameObject overheatGlow;
         private Light overheatLight;
-        private ParticleSystem overheatSteam;
+        private ParticleSystem overheatSteam, overheatShimmer;
         private int receiverLayer, phase, casts;
         private float nextTick, nextCastAt, overheatUntil;
         private bool subscribed, casting, overheated, finished;
@@ -114,6 +114,7 @@ namespace BossRush
                 if (target > phase)
                 {
                     phase = target;
+                    SkyIslandImpactFx.PhaseBurst(context.Root, boss.transform.position, StarfireTint);
                     DeployPylons();
                 }
             }
@@ -442,6 +443,13 @@ namespace BossRush
                     overheatLight.range = 4f;
                     overheatLight.shadows = LightShadows.None;
                     overheatSteam = CreateOverheatSteam(overheatGlow.transform);
+                    // 背上再冒一股往上抖的热浪（2026-09-27）：灰白蒸汽读「在散热」，抖动的暖光读「烫」。
+                    overheatShimmer = SkyIslandImpactFx.CreateHeatShimmer(overheatGlow.transform);
+                }
+                if (overheatShimmer != null)
+                {
+                    if (on) overheatShimmer.Play(true);
+                    else overheatShimmer.Stop(true, ParticleSystemStopBehavior.StopEmitting);
                 }
                 SkyIslandLightFade.FadeTo(overheatLight, on ? 3.5f : 0f, 0.2f, false);
                 if (overheatSteam == null) return;
@@ -517,12 +525,14 @@ namespace BossRush
             if (helmEquipped && !helmBrokenAnnounced && HelmBroken())
             {
                 helmBrokenAnnounced = true;
+                SkyIslandImpactFx.Shatter(context.Root, boss.transform.position + Vector3.up * 1.8f, boss.transform.position, StarfireTint);
                 Announce("星铜护目盔被打穿了，匠首的星焰没了准头，一次只落一处。",
                     "The starbrass visor is shot through. The Foreman's starfire loses its aim and lands one ring at a time.", false);
             }
             if (harnessEquipped && !harnessBrokenAnnounced && HarnessBroken())
             {
                 harnessBrokenAnnounced = true;
+                SkyIslandImpactFx.Shatter(context.Root, boss.transform.position + Vector3.up * 1.2f, boss.transform.position, PylonTint);
                 if (pylons.Count > 0) ApplyShield(true);
                 Announce("星炉背甲的接头被打坏了，供能桩只能给它一半的护甲。",
                     "The furnace harness couplings are wrecked. The pylons can only give it half the plating now.", false);
@@ -563,6 +573,7 @@ namespace BossRush
             overheatGlow = null;
             overheatLight = null;
             overheatSteam = null;
+            overheatShimmer = null;
         }
 
         private void OnDestroy()
