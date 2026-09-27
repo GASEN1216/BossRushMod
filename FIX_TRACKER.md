@@ -2,6 +2,24 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+<!-- BEGIN PRODUCTION AND BOSS FIX TRACKER 2026-09-27 -->
+
+## 2026-09-27 生产就绪审计与 Boss 设计修复（COMPAT / OPERATIONAL）
+
+**范围**：owner「全部修复」UI / 特效 / Boss 审核结论，并续完成 `CODE_REVIEW_FINDINGS.md`「2026-09-27 生产就绪全面审计」。402–405 的修复由另一轮工作留在工作区，本轮逐项复核 diff 后接手验证；406 由本轮龙裔配置补齐闭环。
+
+**Boss（UVB-01–06）**：`Utilities/BossSkillDamageRules.cs`（翻滚豁免 + Stat 比值倍率）；龙王 `DragonKingAbilityController*`、`DragonKingConfig`；龙裔 `DragonDescendantAbilities*`、`DragonDescendantConfig`、`DragonDescendantRocketMarker`；幽灵女巫 `PhantomWitchAbilityController*`、`PhantomWitchConfig`、`PhantomWitchBoss*`、`PhantomWitchBossCurseRealmRuntime`；丧尸 `ZombieModeTuning`、`ZombieModeModels`、`ZombieModeRuntimeModule_BossController`。数值取舍：火箭弹 1.6 m / 10 伤（有预警可躲后提高代价）；女巫硬直 0.35–0.7 s；丧尸不封顶 Boss 数以免改经济，改为 0.9 s 全局起手间隔。
+
+**特效 / UI（UVB-07）**：`FenHuangComboPatchesAndFx`、`ZombieModeRewardTriggerEffects`、`DragonKingShockwaveEffect`、`AchievementEntryUI`。
+
+**审计 402–406**：见 `CODE_REVIEW_FINDINGS.md` 同日表。守卫随结构同步：`AssetSnapshotBoundaryGuard`、`OfficialQuestProjectionGuard` 锚点更新并反向验证；`ModBehaviourInstanceClassificationGuard` 基线 269/412（新增音效改走既有入口，未再抬高）。
+
+**文档**：玩家 Wiki 中英（龙王、龙裔、女巫、Boss 攻略）与 repowiki 四篇 Boss 文档追加 2026-09-27 小节。
+
+**验证**：完整守卫 711/711；隔离回归 108/108（Harmony 三项设环境变量补跑）；`npm --prefix wiki-site run build` 通过；Windows 正式构建 exit 0，部署 `Mods/BossRush/BossRush.dll` SHA-256 `EEC6C46F421A349BC168E2B75A383C63E8B9EF1CAA48633EAA3C17959E8D54C6` 与 Build 一致，73 包资源校验通过。L3 未执行：翻滚穿招、预警时长与硬直手感、冠军之影技能伤害 ×1.6、丧尸多 Boss 节奏、新拖尾与渐变观感、序章/任务奖励/亡魂的断电重开，按续审报告 L3 步骤实机。
+
+<!-- END PRODUCTION AND BOSS FIX TRACKER 2026-09-27 -->
+
 <!-- BEGIN WIKI CONTENT AUDIT TRACKER 2026-09-27 -->
 
 ## 2026-09-27 WikiContent 对照最新代码全面审校（SAFE）

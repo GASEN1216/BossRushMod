@@ -90,6 +90,7 @@ namespace BossRush
                 }
             }
             currentPackageIndex = 0;
+            ResetPackageBag();
             LogSkillState("PhaseTransition", "before ResumeAI", target);
             ResumeAI(target);
 
@@ -116,6 +117,7 @@ namespace BossRush
 
             float scaledRadius = PhantomWitchConfig.BossCurseRealmRadius * radiusScale;
             float warningStartedAt = Time.time;
+            PlaySkillWindupCue();
             GameObject warningCircle = CreateCurseRealmWarningCircle(
                 groundPoint,
                 scaledRadius,

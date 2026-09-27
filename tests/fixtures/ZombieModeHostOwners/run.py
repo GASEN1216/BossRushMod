@@ -73,7 +73,7 @@ def main():
     generated += cache_field + "\n" + member(visuals, "internal static void ResetStaticCaches()")
     generated += "\n}}\n"
     (OUT / "Production.cs").write_text(generated, encoding="utf-8")
-    production_files = [ROOT / "ZombieMode/ZombieModeRuntimeModule_HostLifecycle.cs", ROOT / "Utilities/RunScopedRegistry.cs"]
+    production_files = [ROOT / "ZombieMode/ZombieModeRuntimeModule_HostLifecycle.cs", ROOT / "ZombieMode/ZombieModeRunCoroutine.cs", ROOT / "Utilities/RunScopedRegistry.cs"]
     for p in production_files:
         HASHES[str(p.relative_to(ROOT))] = hashlib.sha256(p.read_bytes()).hexdigest()
     (OUT / "production-source-sha256.json").write_text(json.dumps(HASHES, indent=2), encoding="utf-8")

@@ -49,7 +49,8 @@ namespace BossRush
         public const float BaseHealth = 800f;
         
         /// <summary>
-        /// 伤害倍率
+        /// 枪械/近战伤害倍率 Stat 的刷怪基线。龙王的枪在初始化时被销毁，技能伤害取下面各技能常量；
+        /// 这个值只作为比值基线：全局 Boss 倍率把 Stat 乘上去后，技能伤害按「当前 Stat / 基线」同步放大。
         /// </summary>
         public const float DamageMultiplier = 0.3f;
         
@@ -165,6 +166,18 @@ namespace BossRush
         /// 倒计时光圈开始时间（蓄力结束前多少秒显示光圈）
         /// </summary>
         public const float DashCountdownRingTime = 0.3f;
+
+        /// <summary>
+        /// 二阶段第二段冲刺的起手预警（秒）：落地后停顿、转向并亮倒计时光圈，再冲出去。
+        /// 此前第二段紧贴第一段瞬发，没有可读的起手。
+        /// </summary>
+        public const float DashSecondSegmentWindup = 0.3f;
+
+        /// <summary>
+        /// 大招（冲刺、太阳舞、以太长矛）期间常规扫射停火的兜底时长（秒）。
+        /// 技能正常结束会立即恢复射击；技能协程被外部中断时最多停这么久。
+        /// </summary>
+        public const float SkillHoldFireMaxSeconds = 12f;
         
         /// <summary>
         /// 冲刺速度（单位/秒）- 使用 SetForceMoveVelocity
@@ -210,26 +223,8 @@ namespace BossRush
         
         // ========== 太阳舞参数 ==========
         
-        /// <summary>
-        /// 太阳舞光束数量
-        /// </summary>
-        public const int SunDanceBeamCount = 6;
-        
-        /// <summary>
-        /// 太阳舞旋转速度（度/秒）
-        /// </summary>
-        public const float SunDanceRotationSpeed = 30f;
-        
-        /// <summary>
-        /// 太阳舞波数
-        /// </summary>
-        public const int SunDanceWaveCount = 3;
-        
-        /// <summary>
-        /// 太阳舞波偏移角度（度）
-        /// </summary>
-        public const float SunDanceWaveOffset = 20f;
-        
+        // 光束数量、转速、波数与伤害 tick 由 SunBeamGroupPrefab 与 SunBeamDamageTrigger 决定，这里不再保留对应常量。
+
         /// <summary>
         /// 太阳舞每tick伤害
         /// </summary>
@@ -239,11 +234,6 @@ namespace BossRush
         /// 太阳舞持续时间（秒）
         /// </summary>
         public const float SunDanceDuration = 5f;
-
-        /// <summary>
-        /// 太阳舞伤害tick间隔（秒）
-        /// </summary>
-        public const float SunDanceTickInterval = 0.2f;
 
         /// <summary>
         /// 太阳舞弹幕方向数量（360度均分）
@@ -303,6 +293,12 @@ namespace BossRush
         /// 以太长矛预警时间（秒）
         /// </summary>
         public const float EtherealLanceWarningDuration = 1.0f;
+
+        /// <summary>
+        /// 以太长矛每波画完最后一条线后再等多久齐射（秒）。最后一条线落在玩家实时位置，
+        /// 原先只剩 0.1 s 反应；加上这段后每条线至少有 0.4 s 预警。
+        /// </summary>
+        public const float EtherealLanceFinalGrace = 0.3f;
         
         /// <summary>
         /// 以太长矛速度（单位/秒）

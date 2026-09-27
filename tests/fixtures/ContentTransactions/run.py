@@ -25,7 +25,7 @@ def method(path, signature):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    extracted = "using System; using System.Collections.Generic; namespace BossRush { internal static partial class DailyReportService {\n"
+    extracted = "using System; using System.Collections.Generic; using ItemStatsSystem; namespace BossRush { internal static partial class DailyReportService {\n"
     for signature in ("internal static void TryRedeliverPendingBountyReward()", "private static bool Persist(DailyReportData data)", "internal static long GetPendingBountyCash(DailyReportData data)"):
         extracted += method("Integration/DailyReport/DailyReportService.cs", signature) + "\n"
     extracted += "}\ninternal static partial class DailyReportPersistence {\n"
@@ -46,11 +46,14 @@ def main():
         extracted += method("PetNest/PetNestUIPages.cs", signature) + "\n"
     extracted += "internal static partial class PetNestUIPages {\n"
     extracted += method("PetNest/PetNestUIPages.cs", "internal static PetNestPageContent BuildExpeditionPage(")
-    extracted += "}}"
+    extracted += "}\ninternal static partial class OfficialQuestProjection {\n"
+    extracted += method("Utilities/OfficialQuests/OfficialQuestProjection.cs", "internal static bool TryCommitDelivery(") + "\n}}"
     (OUT / "Extracted.cs").write_text(extracted, encoding="utf-8")
     linked = [
         "Campaign/CampaignProgressService.cs", "Campaign/CampaignModels.cs",
         "Campaign/CampaignPersistence.cs", "Campaign/CampaignSaveCoordinator.cs", "Campaign/CampaignGuideTable.cs",
+        "Utilities/OfficialQuests/OfficialQuestBinding.cs", "Utilities/OfficialQuests/OfficialQuestItems.cs",
+        "Utilities/OfficialQuests/OfficialQuestItemRules.cs", "SkyIsland/SkyIslandInventoryTransaction.cs",
         "Integration/DailyReport/DailyReportSaveCoordinator.cs",
         "Integration/BackMountain/RaidMealUsageBehavior.cs",
         "Integration/BackMountain/ShowcaseService.cs",
@@ -66,7 +69,7 @@ def main():
         "PetNestExpeditionService",
         # 2026-09-20：孵化 roll 与显示名都要用炫彩调色板（纯数据、无 Unity 依赖）
         "PetNestChroma")]
-    paths = [ROOT / p for p in linked] + [HERE / "Program.cs", HERE / "Stubs.cs", OUT / "Extracted.cs"]
+    paths = [ROOT / p for p in linked] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "QuestDeliveryRegression.cs", OUT / "Extracted.cs"]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0067</NoWarn></PropertyGroup><ItemGroup>'
     project += "".join('<Compile Include="' + xml.escape(str(p), {'"': '&quot;'}) + '" />' for p in paths)
     project += "</ItemGroup></Project>"

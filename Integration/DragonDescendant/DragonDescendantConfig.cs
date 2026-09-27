@@ -35,36 +35,26 @@ namespace BossRush
         /// 每多少发子弹触发一次火箭弹
         /// </summary>
         public const int BulletsPerRocket = 10;
+        // 火箭弹没有飞行弹体（锁点 + 地面预警 + 落点爆炸），不再保留飞行速度、射程常量。
         
         /// <summary>
-        /// 火箭弹飞行速度
+        /// 火箭弹爆炸伤害（2026-09-27 由 5 提到 10：改成有预警、可走位躲开的落点炸弹后，躲不开要有代价）
         /// </summary>
-        public const float RocketSpeed = 25f;
-        
+        public const float RocketExplosionDamage = 10f;
+
         /// <summary>
-        /// 火箭弹最大飞行距离
+        /// 火箭弹落点的固定爆炸范围（米），预警环与伤害共用。
+        /// 2026-09-27 由 1 m 提到 1.6 m：配合预警成为读得出的走位压力，而不是贴脚下的小爆点。
         /// </summary>
-        public const float RocketMaxDistance = 50f;
-        
+        public const float RocketExplosionRadius = 1.6f;
+
         /// <summary>
-        /// 火箭弹直接命中伤害
-        /// </summary>
-        public const float RocketDirectDamage = 5f;
-        
-        /// <summary>
-        /// 火箭弹爆炸伤害
-        /// </summary>
-        public const float RocketExplosionDamage = 5f;
-        
-        /// <summary>
-        /// 火箭弹爆炸范围（基础1m，如果Boss在范围内会动态扩大到 distToBoss+0.5m）
-        /// </summary>
-        public const float RocketExplosionRadius = 1f;
-        
-        /// <summary>
-        /// 火箭弹爆炸触发距离（玩家距离Boss小于此值时才会爆炸）
+        /// 火箭弹触发距离：凑满 BulletsPerRocket 发时，玩家距离 Boss 不超过此值才锁定落点
         /// </summary>
         public const float RocketBossDamageRadius = 5f;
+
+        /// <summary>火箭锁点到爆炸的游戏时间（秒）；与龙王冲刺前摇同为 0.8 秒，留出走位窗口。</summary>
+        public const float RocketTelegraphSeconds = 0.8f;
         
         // ========== 燃烧弹配置 ==========
 

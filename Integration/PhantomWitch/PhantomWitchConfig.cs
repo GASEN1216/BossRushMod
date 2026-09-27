@@ -3,7 +3,8 @@
 // ============================================================================
 // 模块说明：
 //   定义幽灵女巫Boss的所有可配置参数
-//   近战核心：闪现贴身 + 诅咒范围技 + 镰刀重斩 + 二阶段召唤
+//   近战核心：追踪瞬移斩 + 安魂弧 + 亡魂两段斩 + 诅咒领域 + 残局召唤；三阶段瞬移斩后追一记重斩
+//   出招：每阶段一个战术包袋，袋内随机抽、不连出同一招，抽完重装（包的出现次数仍按阶段序列）
 // ============================================================================
 
 namespace BossRush
@@ -111,13 +112,6 @@ namespace BossRush
         public const float BlinkTrackedTelegraphDuration = 2f;
         public const float BlinkTrackedFlashLeadDuration = 0.1f;
 
-        // ========== 诅咒范围技参数 ==========
-
-        public const float CurseAuraWindup = 0.45f;
-        public const float CurseAuraRecovery = 0.1f;
-        public const float CurseAuraRadius = 3.5f;
-        public const float CurseAuraDamage = 12f;
-
         // ========== 镰刀横扫参数 ==========
 
         public const float ScytheSweepWindup = 0.35f;
@@ -127,27 +121,30 @@ namespace BossRush
         public const float ScytheSweepHalfAngle = 85f;
         public const float ScytheSweepForwardOffset = 1.15f;
 
-        // ========== 镰刀重斩参数 ==========
+        // ========== 出手后硬直（读招成功后的输出窗口） ==========
+        // 2026-09-27：此前主力招式结算后立刻 ResumeAI，躲开也拿不到安全输出期。硬直期间 Boss 停在原地、完全可见。
 
-        public const float HeavyScytheSlashWindup = 0.5f;
-        public const float HeavyScytheSlashRecovery = 0.1f;
+        public const float TrackedStrikeRecovery = 0.4f;
+        public const float RequiemArcRecovery = 0.35f;
+        public const float WraithTrailRecovery = 0.5f;
+
+        // ========== 残喘重斩（三阶段瞬移斩后的追击） ==========
+        // 瞬移斩落地后原地蓄力、扇形预警，再砍一记大范围重斩；砍完硬直最长，是三阶段主要的输出窗口。
+
+        public const float HeavyScytheSlashWindup = 0.6f;
+        public const float HeavyScytheSlashRecovery = 0.7f;
         public const float HeavyScytheSlashDamage = 30f;
         public const float HeavyScytheSlashRadius = 3.6f;
         public const float HeavyScytheSlashHalfAngle = 65f;
         public const float HeavyScytheSlashForwardOffset = 1.35f;
-        public const float HeavySlashBlinkMinDistance = 1.8f;
-        public const float HeavySlashBlinkMaxDistance = 3.6f;
 
         // ========== Boss 诅咒领域参数（镰刀右键技能） ==========
+        // 领域是持续地面区域：按官方 ZoneDamage 口径不吃翻滚豁免，靠 CurseRealmWarningDuration 的预警圈走出去。
 
-        public const float BossCurseRealmWindup = 0.5f;
-        public const float BossCurseRealmRecovery = 0.1f;
         public const float BossCurseRealmRadius = 4.5f;
         public const float BossCurseRealmDuration = 4f;
         public const float BossCurseRealmDamagePerTick = 15f;
         public const float BossCurseRealmDamageInterval = 0.5f;
-        public const float BossCurseRealmTeleportMinDist = 1.4f;
-        public const float BossCurseRealmTeleportMaxDist = 2.5f;
         public const float CurseRealmWarningDuration = 1.05f;
         public const float CurseRealmWarningMinRadius = 0.4f;
         public const float CurseRealmPhase3RadiusScale = 0.8f;

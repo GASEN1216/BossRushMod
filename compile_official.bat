@@ -416,6 +416,7 @@ echo(Integration\Config\FrostThunderSetConfig.cs
 echo(Utilities\Utilities.cs
 echo(Utilities\BossRushWaitCache.cs
 echo(Utilities\BossStatScaling.cs
+echo(Utilities\BossSkillDamageRules.cs
 echo(Utilities\AlwaysOnRuntimeHooks.cs
 echo(Utilities\PlayerLifecycleRuntimeHooks.cs
 echo(Utilities\EntityModelFactory.cs
@@ -695,6 +696,7 @@ echo(ZombieMode\ZombieModeEntryHostBridge.cs
 echo(ZombieMode\ZombieModeCombatHostBridge.cs
 echo(ZombieMode\ZombieModeRewardHostBridge.cs
 echo(ZombieMode\ZombieModeRuntimeModule_HostLifecycle.cs
+echo(ZombieMode\ZombieModeRunCoroutine.cs
 echo(ZombieMode\ZombieModeRuntimeModule_EnemyRuntime.cs
 echo(ZombieMode\ZombieModeRuntimeModule_Recovery.cs
 echo(ZombieMode\ZombieModeRuntimeModule_InventoryTransfer.cs
@@ -748,6 +750,7 @@ echo(MapSelection\BossRushMapRuntime.cs
 echo(MapSelection\MapThumbnailCache.cs
 echo(MapSelection\BossRushInitialSpawn.cs
 echo(Integration\DragonDescendant\DragonDescendantConfig.cs
+echo(Integration\DragonDescendant\DragonDescendantRocketMarker.cs
 echo(Integration\DragonDescendant\DragonDescendantAbilities.cs
 echo(Integration\DragonDescendant\DragonDescendantAbilities_ProjectilesAndGrenades.cs
 echo(Integration\DragonDescendant\DragonDescendantAbilities_ResurrectionAndPhase.cs

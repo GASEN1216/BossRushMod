@@ -379,6 +379,9 @@ namespace BossRush
                 return 0;
             }
 
+            // 全局 Boss 倍率 / 决战倍率乘在近战 Stat 上，技能常量按同一比值放大
+            damage *= ResolveSkillDamageScale();
+
             Vector3 forward = ResolveAttackForward(target);
             Vector3 origin = bossCharacter.transform.position + forward * Mathf.Max(0f, forwardOffset);
             int hitCount = Physics.OverlapSphereNonAlloc(

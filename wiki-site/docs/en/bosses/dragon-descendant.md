@@ -34,7 +34,7 @@ After revival it enters a frenzied state with a completely new rhythm:
 - Damage multiplier increased to 1.1x
 - Contact damage now procs on touch
 - Incendiary frequency increased to every 1 second
-- Fixed attack loop: **10 straight shots → 0.5s rush → 30-shot fan sweep (60° arc, 3 seconds) → repeat**
+- Fixed attack loop: **10 straight shots → 0.3s dust-kicking windup → 0.5s rush → 30-shot fan sweep (60° arc, 3 seconds) → repeat**
 - Glowing aura around its body
 - **Ice Vulnerability**: After taking cumulative ice damage equal to 10% of max HP, it's slowed for 10 seconds
 

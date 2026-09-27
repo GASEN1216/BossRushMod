@@ -27,6 +27,8 @@ namespace BossRush
         /// <summary>奖金与 Completed 必须同批采集；物理写失败或节流后仍保留采集义务。</summary>
         private static bool _cashSnapshotRequired;
         private static string _cashError;
+        private static bool _questDeliveryActive;
+        private static Func<bool> _questAssetCollector;
 
         private static readonly BossRushSaveCoordinatorEngine _engine =
             new BossRushSaveCoordinatorEngine(new Source(), true);
@@ -53,6 +55,8 @@ namespace BossRush
 
         internal static bool CollectPendingCash()
         {
+            if (_questDeliveryActive) return false;
+            if (_questAssetCollector != null && !_questAssetCollector()) return false;
             bool required;
             lock (_lock) { required = _cashSnapshotRequired; }
             if (!required) return true;
@@ -75,6 +79,26 @@ namespace BossRush
 
         #region 对外入口
 
+        internal static bool BeginQuestDelivery(Func<bool> collectAssets, out string message)
+        {
+            message = L10n.T("上次交付还在保存，请稍后重试。", "The previous delivery is still saving. Please try again shortly.");
+            if (_questDeliveryActive || _questAssetCollector != null || collectAssets == null ||
+                SavesSystem.IsSaving || CampaignPersistence.HasWriteBarrier || CampaignPersistence.IsStoreFaulted) return false;
+            _questAssetCollector = collectAssets;
+            _questDeliveryActive = true;
+            message = null;
+            return true;
+        }
+
+        internal static void EndQuestDelivery(bool committed)
+        {
+            if (!_questDeliveryActive) return;
+            _questDeliveryActive = false;
+            if (!committed) _questAssetCollector = null;
+            // 回滚已先恢复提交物和实物；成功则与完成事实一起采集，任何失败都保留原协调器的义务。
+            RequestFlush();
+        }
+
         internal static void EnsureSubscribed()
         {
             CampaignPersistence.EnsureSubscribed();
@@ -95,6 +119,8 @@ namespace BossRush
         /// <summary>切档 / 删档：清空 deferred 状态与现金义务。</summary>
         internal static void NotifySlotChanged()
         {
+            _questDeliveryActive = false;
+            _questAssetCollector = null;
             _engine.NotifySlotChanged();
             lock (_lock)
             {
@@ -106,12 +132,14 @@ namespace BossRush
         /// <summary>宿主 tick：重试被推迟的批次。未 deferred 时 O(1) 早返。</summary>
         internal static void Tick()
         {
+            if (!CampaignPersistence.TryRecoverFaultedStore()) return;
             _engine.Tick();
         }
 
         /// <summary>宿主销毁时尽力提交一次（绕过基地闸与每帧闸）；失败只记录，不抛出。</summary>
         internal static bool TryFlushOnHostDestroy()
         {
+            if (!CampaignPersistence.TryRecoverFaultedStore()) return false;
             return _engine.TryFlushOnHostDestroy();
         }
 
@@ -121,6 +149,8 @@ namespace BossRush
 
         internal static void ResetStaticCaches()
         {
+            _questDeliveryActive = false;
+            _questAssetCollector = null;
             ShutdownSubscription();
             _engine.Reset();
             lock (_lock)
@@ -142,7 +172,7 @@ namespace BossRush
 
             public bool IsStoreFaulted { get { return CampaignPersistence.IsStoreFaulted; } }
 
-            public bool HasSnapshotObligation { get { lock (_lock) { return _cashSnapshotRequired; } } }
+            public bool HasSnapshotObligation { get { lock (_lock) { return _cashSnapshotRequired || _questAssetCollector != null; } } }
 
             public string LastError { get { return CampaignPersistence.LastError; } }
 
@@ -161,6 +191,7 @@ namespace BossRush
 
             public void OnPhysicalSaveSucceeded()
             {
+                _questAssetCollector = null;
                 lock (_lock)
                 {
                     _cashSnapshotRequired = false;

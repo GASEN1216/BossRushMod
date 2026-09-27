@@ -40,12 +40,32 @@ namespace BossRush
         private static readonly WaitForSeconds waitPhase1PackageInterval = new WaitForSeconds(PhantomWitchConfig.Phase1PackageInterval);
         private static readonly WaitForSeconds waitPhase2PackageInterval = new WaitForSeconds(PhantomWitchConfig.Phase2PackageInterval);
         private static readonly WaitForSeconds waitPhase3PackageInterval = new WaitForSeconds(PhantomWitchConfig.Phase3PackageInterval);
+        private static readonly WaitForSeconds waitTrackedStrikeRecovery = new WaitForSeconds(PhantomWitchConfig.TrackedStrikeRecovery);
+        private static readonly WaitForSeconds waitRequiemArcRecovery = new WaitForSeconds(PhantomWitchConfig.RequiemArcRecovery);
+        private static readonly WaitForSeconds waitWraithTrailRecovery = new WaitForSeconds(PhantomWitchConfig.WraithTrailRecovery);
+        private static readonly WaitForSeconds waitHeavyScytheSlashWindup = new WaitForSeconds(PhantomWitchConfig.HeavyScytheSlashWindup);
+        private static readonly WaitForSeconds waitHeavyScytheSlashRecovery = new WaitForSeconds(PhantomWitchConfig.HeavyScytheSlashRecovery);
         private static FieldInfo attackAnimationHoldAgentField;
         private static bool attackAnimationHoldAgentFieldCached;
 
         public PhantomWitchPhase CurrentPhase { get; private set; } = PhantomWitchPhase.Phase1;
 
         private int currentPackageIndex = 0;
+
+        /// <summary>
+        /// 战术包袋：当前阶段序列里还没抽到的下标。袋内随机抽、不连出同一招，抽空重装；
+        /// 每招出现次数仍按阶段序列（P2 侧翼压制两次），只是顺序不再能背板。
+        /// </summary>
+        private readonly List<int> packageBag = new List<int>(8);
+        private PhantomWitchAttackPackageType[] packageBagSource;
+        private PhantomWitchAttackPackageType lastDrawnPackageType;
+        private bool hasLastDrawnPackage;
+
+        /// <summary>
+        /// 刷怪时（全局 Boss 倍率之前）近战伤害倍率 Stat 的基础值；0 表示未知，技能伤害不缩放。
+        /// 全局 Boss 倍率与鸭王征程决战倍率都乘在这个 Stat 上，技能按「当前 / 基线」同步放大。
+        /// </summary>
+        private float skillDamageStatBaseline = 0f;
         private PhantomWitchPhase pendingTransitionTargetPhase = PhantomWitchPhase.Phase1;
         private CharacterMainControl bossCharacter;
         private Health bossHealth;

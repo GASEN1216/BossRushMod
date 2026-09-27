@@ -109,6 +109,9 @@ namespace BossRush
         {
             if (!hasTargetPosition || playerCharacter == null || IsPlayerDead()) return false;
 
+            // 翻滚中穿过弹幕不结算、弹体也不消耗，与官方 Projectile 的 Dashing 豁免一致
+            if (BossSkillDamageRules.IsDodging(playerCharacter)) return false;
+
             // 性能优化：使用sqrMagnitude避免开方运算
             // 使用配置中的常量
             float hitRadius = DragonKingConfig.ProjectileHitRadius;
@@ -137,10 +140,14 @@ namespace BossRush
             // 玩家已死亡时跳过伤害，避免对不活跃对象操作
             if (IsPlayerDead()) return;
 
+            // 翻滚无敌：技能弹、冲撞、长矛、光束都按官方口径豁免（BossSkillDamageRules）
+            if (BossSkillDamageRules.IsDodging(playerCharacter)) return;
+
             try
             {
                 DamageInfo dmgInfo = new DamageInfo(bossCharacter);
-                dmgInfo.damageValue = damage;
+                // 全局 Boss 倍率乘在枪械伤害 Stat 上，技能常量按同一比值放大
+                dmgInfo.damageValue = damage * BossSkillDamageRules.ResolveGunDamageScale(bossCharacter, DragonKingConfig.DamageMultiplier);
                 // 设置伤害点位置（玩家身体中心），这样伤害数字才能正确显示
                 // 使用配置中的常量
                 dmgInfo.damagePoint = playerCharacter.transform.position + Vector3.up * DragonKingConfig.DamagePointHeightOffset;
@@ -517,7 +524,39 @@ namespace BossRush
 
                 if (secondDistance > 0.5f)
                 {
+                    // 第二段起手：落地停顿、转向并亮倒计时光圈，方向在起手开始时锁定（DashSecondSegmentWindup）
+                    UpdatePlayerReference();
+                    if (playerCharacter != null)
+                    {
+                        secondTargetPos = playerCharacter.transform.position;
+                        secondTargetPos.y = bossCharacter.transform.position.y;
+                        Vector3 relocked = secondTargetPos - bossCharacter.transform.position;
+                        relocked.y = 0f;
+                        if (relocked.sqrMagnitude > 0.25f)
+                        {
+                            secondDashDir = relocked;
+                        }
+                    }
                     secondDashDir = secondDashDir.normalized;
+                    bossCharacter.transform.rotation = Quaternion.LookRotation(secondDashDir);
+                    ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_DashCharge);
+                    GameObject secondRing = CreateCountdownRing(bossCharacter.transform.position, DragonKingConfig.DashSecondSegmentWindup);
+                    float windupElapsed = 0f;
+                    while (windupElapsed < DragonKingConfig.DashSecondSegmentWindup && bossCharacter != null)
+                    {
+                        windupElapsed += Time.deltaTime;
+                        yield return null;
+                    }
+                    if (secondRing != null)
+                    {
+                        UntrackActiveEffect(secondRing);
+                        ReturnDashCountdownRing(secondRing);
+                    }
+                    if (bossCharacter == null)
+                    {
+                        yield break;
+                    }
+
                     ModBehaviour.DevLog($"[DragonKing] 开始第二段冲刺！方向={secondDashDir} 距离={secondDistance}");
 
                     // 强制转向第二段冲刺方向
@@ -659,6 +698,9 @@ namespace BossRush
         private bool CheckDashCollision()
         {
             if (bossCharacter == null || playerCharacter == null) return false;
+
+            // 翻滚穿过冲刺路线不算撞上，冲刺继续向前
+            if (BossSkillDamageRules.IsDodging(playerCharacter)) return false;
 
             // 性能优化：使用sqrMagnitude避免开方运算
             const float collisionRadius = 1.5f;

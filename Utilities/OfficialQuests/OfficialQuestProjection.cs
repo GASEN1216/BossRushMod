@@ -52,7 +52,7 @@ namespace BossRush
             internal OfficialQuestBinding Binding;
             internal Quest Prefab;
             internal GameObject PrefabRoot;
-            internal bool Blocked, CollisionReported;
+            internal bool Blocked, CollisionReported, Delivering;
             internal QuestManager CleanedFreshManager;
             internal int CleanedFreshSlot = int.MinValue;
             internal float NextRegistrationAttempt;
@@ -215,6 +215,11 @@ namespace BossRush
                 return false;
             }
             OfficialQuestBinding binding = entry.Binding;
+            if (entry.Delivering)
+            {
+                reason = L10n.T("这次交付正在处理。", "This delivery is being processed.");
+                return false;
+            }
             if (!binding.CanDeliver())
             {
                 reason = binding.DeliverBlocked != null ? binding.DeliverBlocked() : null;
@@ -225,24 +230,60 @@ namespace BossRush
             // 发奖只认「这一拍从未交付变成已交付」：读档重建投影走的是 ForceComplete，不经过这里，也就不会再发一次。
             if (binding.IsDelivered()) return binding.Deliver(out reason);
 
-            // 顺序：先把奖励物生成好、再把要交的物品整份预留，最后才提交客户端事务（发钱 / 写事实）。
-            // 任何一步不成都原样退回：预留归还原槽，生成的奖励物销毁，玩家不会白交东西，也不会拿到半份奖励。
+            // 整个可回滚区间禁止客户端采集/落盘。物品全部就位后才提交事实，收尾再同批采集资产。
             var rewards = new List<Item>();
             OfficialQuestItemReservation reservation = null;
+            OfficialQuestRewardReservation delivered = null;
+            bool begun = false, committed = false;
+            entry.Delivering = true;
             try
             {
+                bool inboxOnly = binding.RewardsToInbox != null && binding.RewardsToInbox();
+                int slot = binding.Client.Slot;
+                if (binding.BeginDelivery == null || binding.EndDelivery == null || !OfficialQuestItems.CanCollectAssets(inboxOnly))
+                {
+                    reason = L10n.T("交付暂时无法保存，请稍后重试。", "The delivery cannot be saved yet. Please try again shortly.");
+                    return false;
+                }
                 if (!OfficialQuestItems.TryCreate(binding.RewardItems, rewards, out reason)) return false;
+                if (!binding.BeginDelivery(OfficialQuestItems.AssetCollector(inboxOnly), out reason)) return false;
+                begun = true;
                 if (!OfficialQuestItems.TryReserve(binding.Submissions, out reservation, out reason)) return false;
-                if (!binding.Deliver(out reason)) return false;
+                if (!OfficialQuestItems.TryGive(rewards, inboxOnly, out delivered, out reason)) return false;
+                if (binding.Client.Slot != slot)
+                {
+                    reason = L10n.T("存档槽已改变，请重新打开任务。", "The save slot changed. Reopen the quest.");
+                    return false;
+                }
+                try { committed = binding.Deliver(out reason); }
+                catch (Exception e)
+                {
+                    reason = L10n.T("交付未完成，请稍后重试。", "The delivery did not finish. Please try again shortly.");
+                    ModBehaviour.DevLog("[OfficialQuest] 交付通知异常: " + e.Message);
+                }
+                // 客户端可能已接受完成事实，只是末尾通知抛错；此时不能回滚已经属于玩家的奖品。
+                committed = committed || binding.IsDelivered();
+                if (!committed) return false;
                 if (reservation != null) reservation.Commit();
-                OfficialQuestItems.Give(rewards);
+                if (delivered != null) delivered.Commit();
                 if (binding.PayReward != null) binding.PayReward();
+                if (inboxOnly && rewards.Count > 0)
+                    Duckov.UI.NotificationText.Push(L10n.T("任务奖品已寄往基地的待领取区。", "Quest rewards have been sent to the base collection buffer."));
                 return true;
             }
             finally
             {
-                if (reservation != null) reservation.Dispose();
-                OfficialQuestItems.Discard(rewards);
+                try
+                {
+                    if (delivered != null) delivered.Dispose();
+                    if (reservation != null) reservation.Dispose();
+                    OfficialQuestItems.Discard(rewards);
+                }
+                finally
+                {
+                    try { if (begun) binding.EndDelivery(committed); }
+                    finally { entry.Delivering = false; }
+                }
             }
         }
 

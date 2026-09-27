@@ -107,6 +107,7 @@ namespace BossRush
 
         private OfficialQuestBinding BuildBinding(SkyIslandOfficialQuestDefinition def)
         {
+            SkyIslandStoryService deliveryStory = null;
             var binding = new OfficialQuestBinding
             {
                 QuestId = def.QuestId, GiverId = def.GiverId, ObjectName = def.ObjectName,
@@ -124,6 +125,28 @@ namespace BossRush
                 Deliver = def.Deliver != null
                     ? new OfficialQuestCommit(def.Deliver.Invoke)
                     : new OfficialQuestCommit((out string message) => DefaultCommit(def.DeliveredFlag, def.DeliverAction, out message, def.RewardMoney)),
+                BeginDelivery = (Func<bool> collectAssets, out string message) =>
+                {
+                    bool onIsland;
+                    SkyIslandStoryService value = SkyIslandOfficialQuestStory.Resolve(host, out onIsland);
+                    message = L10n.T("晴岚任务尚未就绪。", "The Qinglan quest is not ready yet.");
+                    if (value == null || !value.BeginOfficialDelivery(collectAssets, out message)) return false;
+                    deliveryStory = value;
+                    return true;
+                },
+                EndDelivery = committed =>
+                {
+                    // 交付通知可能触发切图；收尾必须释放原门面，不能重新解析另一个 story。
+                    SkyIslandStoryService value = deliveryStory;
+                    deliveryStory = null;
+                    if (value != null) value.EndOfficialDelivery(committed);
+                },
+                RewardsToInbox = () =>
+                {
+                    bool onIsland;
+                    SkyIslandOfficialQuestStory.Resolve(host, out onIsland);
+                    return onIsland;
+                },
                 PayReward = null, // 奖金由交付事务与故事事实一起提交。
                 StateStamp = () => { SkyIslandStoryData data = CurrentData(); return data == null ? 0 : data.flags; },
                 Client = this,

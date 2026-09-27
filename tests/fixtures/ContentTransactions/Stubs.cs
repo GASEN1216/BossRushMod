@@ -7,7 +7,28 @@ using Saves;
 
 namespace UnityEngine
 {
-    static class Time { public static int frameCount; }
+    public class Object
+    {
+        public bool Destroyed;
+        public static bool operator ==(Object a, Object b)
+        {
+            bool an = ReferenceEquals(a, null) || a.Destroyed, bn = ReferenceEquals(b, null) || b.Destroyed;
+            return an || bn ? an == bn : ReferenceEquals(a, b);
+        }
+        public static bool operator !=(Object a, Object b) { return !(a == b); }
+        public override bool Equals(object value) { return ReferenceEquals(this, value); }
+        public override int GetHashCode() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
+        public static void Destroy(Object value)
+        {
+            if (ReferenceEquals(value, null)) return;
+            value.Destroyed = true;
+            GameObject go = value as GameObject;
+            if (!ReferenceEquals(go, null)) foreach (Object child in go.Children) Destroy(child);
+        }
+    }
+    public class GameObject : Object { public readonly List<Object> Children = new List<Object>(); }
+    static class Debug { public static void LogWarning(string value) { } }
+    static class Time { public static int frameCount; public static float unscaledTime; }
     // 2026-09-23：遗种巢卡片数据带一张图（PetNestCardData.Icon，UA-10）；事务逻辑不碰它，替身只要能编译。
     class Sprite { }
     static class Random { public static float value = 0; public static int Range(int min, int max) { return min; } }
@@ -32,6 +53,7 @@ namespace Saves
         public static List<Dictionary<string, object>> History = new List<Dictionary<string, object>>();
         public static event Action OnCollectSaveData, OnSetFile, OnSaveDeleted;
         public static void Collect() { OnCollectSaveData?.Invoke(); }
+        public static void SetFile(int slot) { CurrentSlot = slot; Cache.Clear(); OnSetFile?.Invoke(); }
         public static bool KeyExisits(string key) { return Cache.ContainsKey(key); }
         public static T Load<T>(string key)
         {
@@ -88,18 +110,57 @@ static class ItemUtilities
 {
     public static List<Item> Delivered = new List<Item>();
     public static void SendToPlayer(Item item) { Delivered.Add(item); }
+    public static bool ThrowBeforePack, ThrowBeforeBuffer, ThrowAfterBuffer;
+    public static Action DuringDelivery;
+    public static bool SendToPlayerCharacter(Item item, bool dontMerge)
+    {
+        if (ThrowBeforePack) throw new InvalidOperationException("pack unavailable");
+        bool added = CharacterMainControl.Main.CharacterItem.Inventory.AddItem(item);
+        if (DuringDelivery != null) DuringDelivery();
+        return added;
+    }
+    public static void SendToPlayer(Item item, bool dontMerge, bool storage)
+    {
+        if (!SendToPlayerCharacter(item, dontMerge))
+        {
+            if (storage) SendToPlayerStorage(item, false);
+            else item.Drop(CharacterMainControl.Main, true);
+        }
+    }
+    public static void SendToPlayerStorage(Item item, bool directToBuffer)
+    {
+        if (ThrowBeforeBuffer) throw new InvalidOperationException("buffer unavailable");
+        if (!directToBuffer && PlayerStorage.Inventory != null && PlayerStorage.Inventory.AddItem(item)) return;
+        PlayerStorage.IncomingItemBuffer.Add(ItemStatsSystem.Data.ItemTreeData.FromItem(item));
+        item.Detach(); item.DestroyTree();
+        if (DuringDelivery != null) DuringDelivery();
+        if (ThrowAfterBuffer) throw new InvalidOperationException("buffer notification failed");
+    }
 }
 class Health { public float CurrentHealth = 100, MaxHealth = 100; public void SetHealth(float health) { CurrentHealth = health; } }
 class CharacterMainControl { public static CharacterMainControl Main; public Item CharacterItem; public Health Health = new Health(); }
 class PlayerStorage
 {
+    public static readonly List<ItemStatsSystem.Data.ItemTreeData> IncomingItemBuffer = new List<ItemStatsSystem.Data.ItemTreeData>();
     public static PlayerStorage Instance = new PlayerStorage(); public static bool Loading;
     public static Inventory Inventory; public bool HasInitialized() { return true; }
 }
 class PlayerStorageBuffer
 {
     public static PlayerStorageBuffer Instance = new PlayerStorageBuffer();
-    public static void SaveBuffer() { SavesSystem.Save("Courier", 0); }
+    public static void SaveBuffer()
+    {
+        SavesSystem.Save("Courier", 0);
+        SavesSystem.Save("PlayerStorage_Buffer", new List<ItemStatsSystem.Data.ItemTreeData>(PlayerStorage.IncomingItemBuffer));
+    }
+}
+namespace ItemStatsSystem.Data
+{
+    public class ItemTreeData
+    {
+        public int rootInstanceID, RootTypeID, Count;
+        public static ItemTreeData FromItem(Item item) { return new ItemTreeData { rootInstanceID = item.GetInstanceID(), RootTypeID = item.TypeID, Count = item.StackCount }; }
+    }
 }
 namespace ItemStatsSystem
 {
@@ -113,14 +174,19 @@ namespace ItemStatsSystem
         public static Item InstantiateSync(int id) { InstantiateCalls++; return FailInstantiate ? null : new Item { TypeID = id, Lineage = null, IsFallback = id == MissingPrefabId }; }
         public static ItemMetaData GetMetaData(int id) { return new ItemMetaData { id = id, quality = id >= 200 ? 8 : 5 }; }
     }
-    struct ItemMetaData { public int id, quality; }
+    struct ItemMetaData { public int id, quality; public string DisplayName { get { return "#" + id; } } }
     public class Slot { public Item Content; }
-    public class Item
+    public class Item : UnityEngine.Object
     {
         public T GetComponent<T>() where T : class { return null; }
         public int TypeID = 500059, MaxStackCount = 20, Quality;
         public string Lineage = "test";
-        public bool Destroyed, FailSaveOnce, IsFallback, Stackable = true;
+        public bool FailSaveOnce, IsFallback, Stackable = true;
+        private static int nextId;
+        private readonly int instanceId = ++nextId;
+        public bool IsBeingDestroyed { get { return Destroyed; } }
+        public object PluggedIntoSlot;
+        public AgentUtilities AgentUtilities;
         public Inventory InInventory, Inventory;
         public List<Slot> Slots;
         int count = 1;
@@ -131,25 +197,51 @@ namespace ItemStatsSystem
         {
             if (FailSaveOnce) { FailSaveOnce = false; throw new InvalidOperationException("injected item failure"); }
             SavesSystem.Save(key, Inventory != null ? Inventory.Count : 0);
+            SavesSystem.Save(key + "_counts", Inventory != null ? Inventory.Counts() : new Dictionary<int, int>());
         }
         public void DestroyTree() { Destroyed = true; }
+        public int GetInstanceID() { return instanceId; }
+        public void Detach() { if (InInventory != null) InInventory.RemoveItem(this); PluggedIntoSlot = null; AgentUtilities = null; }
+        internal void Drop(CharacterMainControl player, bool random) { AgentUtilities = new AgentUtilities { ActiveAgent = new object() }; }
+        public void Combine(Item other) { int take = Math.Min(MaxStackCount - StackCount, other.StackCount); StackCount += take; other.StackCount -= take; }
     }
+    public class AgentUtilities { public object ActiveAgent; }
     public class Inventory : IEnumerable<Item>
     {
+        public int Capacity = 64;
+        public bool Reject;
+        public Action<Item> AfterAdd, AfterRemove;
         public Dictionary<int, Item> Items = new Dictionary<int, Item>();
+        public List<Item> Content
+        {
+            get
+            {
+                int length = 0; foreach (int key in Items.Keys) length = Math.Max(length, key + 1);
+                var list = new List<Item>(); for (int i = 0; i < length; i++) list.Add(GetItemAt(i)); return list;
+            }
+        }
         public int Count { get { return Items.Count; } }
         public int GetIndex(Item item) { foreach (var p in Items) if (ReferenceEquals(p.Value, item)) return p.Key; return -1; }
         public bool RemoveAt(int index, out Item item)
         {
             if (!Items.TryGetValue(index, out item)) return false;
-            Items.Remove(index); item.InInventory = null; return true;
+            Items.Remove(index); item.InInventory = null; if (AfterRemove != null) AfterRemove(item); return true;
         }
         public bool AddAt(Item item, int index)
         {
-            if (Items.ContainsKey(index)) return false;
-            Items[index] = item; item.InInventory = this; return true;
+            if (Reject || Items.ContainsKey(index) || index >= Capacity) return false;
+            Items[index] = item; item.InInventory = this; if (AfterAdd != null) AfterAdd(item); return true;
         }
-        public void Save(string key) { SavesSystem.Save(key, Count); }
+        public Item GetItemAt(int index) { Item item; return Items.TryGetValue(index, out item) ? item : null; }
+        public bool AddItem(Item item) { for (int i = 0; i < Capacity; i++) if (!Items.ContainsKey(i)) return AddAt(item, i); return false; }
+        public bool RemoveItem(Item item) { Item ignored; return RemoveAt(GetIndex(item), out ignored); }
+        public Dictionary<int, int> Counts()
+        {
+            var counts = new Dictionary<int, int>();
+            foreach (Item item in Items.Values) if (item != null) { int before; counts.TryGetValue(item.TypeID, out before); counts[item.TypeID] = before + item.StackCount; }
+            return counts;
+        }
+        public void Save(string key) { SavesSystem.Save(key, Count); SavesSystem.Save(key + "_counts", Counts()); }
         public IEnumerator<Item> GetEnumerator() { return Items.Values.GetEnumerator(); }
         IEnumerator IEnumerable.GetEnumerator() { return GetEnumerator(); }
     }
@@ -164,6 +256,12 @@ namespace ItemStatsSystem
 }
 namespace BossRush
 {
+    internal struct SkyIslandIngredient { internal int TypeId, Count; internal SkyIslandIngredient(int id, int count) { TypeId = id; Count = count; } }
+    internal static class BossRushDynamicItemRegistry
+    {
+        internal static bool IsBossRushDynamicItemType(int id) { return false; }
+        internal static bool EnsureRegistered(int id) { return true; }
+    }
     class ModBehaviour
     {
         public static bool DevModeEnabled = true;
@@ -266,7 +364,6 @@ namespace BossRush
         public static string ReadLineage(Item item) { return item.Lineage; }
         public static bool TryStampLineage(Item item, string lineage) { if (FailStamp) return false; item.Lineage = lineage; return true; }
     }
-    static class BossRushDynamicItemRegistry { public static void EnsureRegistered(int id) { } }
     static class PetNestProgressionService { public static void AddExp(PetNestPetRecord pet, int exp) { pet.exp += exp; } }
     static class PetNestDownedHandler { public static void AppendScar(PetNestPetRecord pet, string id, string reason) { } }
     static class BossRushAchievementManager

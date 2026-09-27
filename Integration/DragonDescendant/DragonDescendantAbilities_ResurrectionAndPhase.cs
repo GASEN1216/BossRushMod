@@ -377,18 +377,23 @@ namespace BossRush
 
                 var item = bossCharacter.CharacterItem;
 
+                // 刷怪时全局 Boss 倍率已乘在 Stat 上；二阶段按「当前 / 一阶段基线」保留这份倍率，
+                // 不再直接赋值覆盖（此前进二阶段会把全局倍率清掉）
+                float gunCarry = BossSkillDamageRules.ResolveGunDamageScale(bossCharacter, DragonDescendantConfig.DamageMultiplier);
+                float meleeCarry = BossSkillDamageRules.ResolveMeleeDamageScale(bossCharacter, DragonDescendantConfig.DamageMultiplier);
+
                 // 设置枪械伤害倍率
                 var gunDmgStat = item.GetStat("GunDamageMultiplier");
                 if (gunDmgStat != null)
                 {
-                    gunDmgStat.BaseValue = DragonDescendantConfig.Phase2DamageMultiplier;
+                    gunDmgStat.BaseValue = DragonDescendantConfig.Phase2DamageMultiplier * gunCarry;
                 }
 
                 // 设置近战伤害倍率
                 var meleeDmgStat = item.GetStat("MeleeDamageMultiplier");
                 if (meleeDmgStat != null)
                 {
-                    meleeDmgStat.BaseValue = DragonDescendantConfig.Phase2DamageMultiplier;
+                    meleeDmgStat.BaseValue = DragonDescendantConfig.Phase2DamageMultiplier * meleeCarry;
                 }
 
                 ModBehaviour.DevLog("[DragonDescendant] 二阶段伤害倍率已应用: " + DragonDescendantConfig.Phase2DamageMultiplier);

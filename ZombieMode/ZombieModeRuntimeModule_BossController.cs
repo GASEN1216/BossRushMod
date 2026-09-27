@@ -152,13 +152,24 @@ namespace BossRush
         // Boss 技能使用独立 L10n key。玩家看到的是技能起手，而不是只有 Boss 名。
         // ====================================================================
 
+        /// <summary>
+        /// 同场多 Boss 的伤害技能节流：窗口空着就占用并返回 true；被占用时返回 false，
+        /// 调用方不消耗自己的冷却，下一帧再试。只管有伤害判定的起手（震波、冲刺、腐蚀圈），护盾与召唤不受限。
+        /// </summary>
+        private bool TryClaimZombieModeBossSkillWindow(float now)
+        {
+            if (now < runState.NextBossSkillWindowTime) return false;
+            runState.NextBossSkillWindowTime = now + ZombieModeTuning.BossSkillGlobalSpacingSeconds;
+            return true;
+        }
+
         internal void TickZombieModeTitanState(ZombieModeTitanState titan, ZombieModeBossInstance instance, float now)
         {
             CharacterMainControl boss = instance != null ? instance.Character : null;
             if (boss == null) return;
             int runId = runState.RunId;
 
-            if (now >= titan.NextShockwaveTime)
+            if (now >= titan.NextShockwaveTime && TryClaimZombieModeBossSkillWindow(now))
             {
                 titan.NextShockwaveTime = now + ZombieModeTuning.TitanShockwaveCooldownSeconds;
                 ZombieModeBossVisuals.Pulse(instance.Marker);
@@ -190,7 +201,7 @@ namespace BossRush
             if (boss == null || player == null) return;
             int runId = runState.RunId;
 
-            if (now >= hunter.NextDashTime)
+            if (now >= hunter.NextDashTime && TryClaimZombieModeBossSkillWindow(now))
             {
                 hunter.NextDashTime = now + ZombieModeTuning.HunterDashCooldownSeconds;
                 ZombieModeBossVisuals.Pulse(instance.Marker);
@@ -267,7 +278,7 @@ namespace BossRush
             CharacterMainControl player = CharacterMainControl.Main;
             int runId = runState.RunId;
 
-            if (now >= corruptor.NextZoneTime && player != null)
+            if (now >= corruptor.NextZoneTime && player != null && TryClaimZombieModeBossSkillWindow(now))
             {
                 corruptor.NextZoneTime = now + ZombieModeTuning.CorruptorZoneCooldownSeconds;
                 ZombieModeBossVisuals.Pulse(instance.Marker);

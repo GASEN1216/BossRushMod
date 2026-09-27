@@ -377,3 +377,10 @@ Boss BGM 由 `BossBgmCoordinator` 按 `(bossKey, owner)` 持有：同曲多 Boss
 `CampaignFinalBoss` 在生成编号失配的迟到分支与主动 destroyBoss 清理分支，先 `ClearBossRandomLootTracking` 再 Destroy；自然死亡不提前解除掉落回调。配合 Integration 场景订阅回收，避免最后一只 Boss 被销毁后静态熔石追踪留到下次刷怪。第六轮 `BossRushValidation_20260902_140735_794.log` 已实机确认终章 death_presentations=1、bgm_owners=0，最终熔石及其它被测订阅全部归零。H 重访不再抢占终章；主动中止/迟到生成故障注入仍独立保留。
 
 章节来源：`Campaign/CampaignFinalBoss.cs`、`ModeH/ModeHRuntimeModule_SceneFlow.cs`、`Integration/BossRushIntegration.cs`。
+
+## 2026-09-27 自制技能的翻滚豁免与数值倍率
+
+- 共享口径在 [BossSkillDamageRules.cs](file://Utilities/BossSkillDamageRules.cs)。官方子弹、爆炸、近战在目标 `Dashing` 时跳过伤害，自制技能对齐：瞬发命中（投射物、冲撞、一次性范围斩）调用 `IsDodging` 豁免；持续地面区域（龙王岩浆、女巫诅咒领域、丧尸 Corruptor 毒区）按官方 `ZoneDamage` 口径不豁免。
+- 全局 Boss 倍率与鸭王征程决战倍率乘在 `GunDamageMultiplier` / `MeleeDamageMultiplier` Stat 上；自制技能不走官方武器管线，改为按「当前 Stat / 刷怪基线」放大（`ResolveGunDamageScale` / `ResolveMeleeDamageScale`，夹在 0.1–5）。龙王、龙裔以各自 Config 的 `DamageMultiplier` 为基线；幽灵女巫在全局倍率之前读基线并交给控制器（普通与 Mode G 两条刷怪路径）。
+- 龙裔二阶段不再直接覆盖伤害 Stat，保留全局倍率。
+- 丧尸模式同场多 Boss 的伤害技能起手按 `BossSkillGlobalSpacingSeconds` 错开（`TryClaimZombieModeBossSkillWindow`），Boss 数量与奖励不变；Hunter 冲刺起手 0.3 → 0.45 s。

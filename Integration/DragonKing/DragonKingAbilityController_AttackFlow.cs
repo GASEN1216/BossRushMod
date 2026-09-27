@@ -486,8 +486,13 @@ namespace BossRush
         /// </summary>
         private IEnumerator ExecuteAttack(DragonKingAttackType attackType)
         {
-            // 【修改】不再在技能开始时停止射击，只有转阶段时才停止
-            // Boss在释放技能时继续射击
+            // 弹幕类技能（棱彩弹、永恒彩虹）期间保留常规扫射；
+            // 带地面预警的大招（冲刺、太阳舞、以太长矛）期间停火，让玩家专心读这一招。
+            bool holdFire = IsHoldFireAttack(attackType);
+            if (holdFire)
+            {
+                customShotsHeldUntil = Time.time + DragonKingConfig.SkillHoldFireMaxSeconds;
+            }
 
             switch (attackType)
             {
@@ -525,8 +530,18 @@ namespace BossRush
                     break;
             }
 
-            // 【修改】不再在技能结束时恢复射击，射击始终保持运行
-            // 只有转阶段时才控制射击的停止和恢复
+            if (holdFire)
+            {
+                customShotsHeldUntil = 0f;
+            }
+        }
+
+        private static bool IsHoldFireAttack(DragonKingAttackType attackType)
+        {
+            return attackType == DragonKingAttackType.Dash
+                || attackType == DragonKingAttackType.SunDance
+                || attackType == DragonKingAttackType.EtherealLance
+                || attackType == DragonKingAttackType.EtherealLance2;
         }
 
         /// <summary>
@@ -629,8 +644,8 @@ namespace BossRush
 
             while (isCustomShootingActive && bossCharacter != null && CurrentPhase != DragonKingPhase.Dead)
             {
-                // 转阶段或孩儿护我期间暂停射击但不退出循环
-                if (CurrentPhase == DragonKingPhase.Transitioning || isInChildProtection)
+                // 转阶段、孩儿护我或大招停火期间暂停射击但不退出循环
+                if (CurrentPhase == DragonKingPhase.Transitioning || isInChildProtection || Time.time < customShotsHeldUntil)
                 {
                     yield return wait01s;
                     continue;

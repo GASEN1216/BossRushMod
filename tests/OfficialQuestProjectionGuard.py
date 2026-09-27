@@ -32,8 +32,11 @@ SKY_GIVERS = "SkyIsland/SkyIslandOfficialQuestGivers.cs"
 SKY_PRELUDE = "SkyIsland/SkyIslandPreludeFlow.cs"
 SKY_TABLE = "SkyIsland/SkyIslandOfficialQuestTable.cs"
 SKY_ITEM_RULES = "SkyIsland/SkyIslandItemRules.cs"
+CAMPAIGN_SAVE = "Campaign/CampaignSaveCoordinator.cs"
+CAMPAIGN_CLIENT = "Campaign/CampaignOfficialQuestClient.cs"
+SKY_SAVE = "SkyIsland/SkyIslandStoryService.cs"
 COMPILE = "compile_official.bat"
-PATHS = (BINDING, CORE, COMPONENTS, LOCATOR, MODULE, ITEMS, ITEM_RULES, REGISTRATION, SKY_BRIDGE, SKY_GIVERS, SKY_PRELUDE, SKY_TABLE, SKY_ITEM_RULES, COMPILE)
+PATHS = (BINDING, CORE, COMPONENTS, LOCATOR, MODULE, ITEMS, ITEM_RULES, REGISTRATION, SKY_BRIDGE, SKY_GIVERS, SKY_PRELUDE, SKY_TABLE, SKY_ITEM_RULES, CAMPAIGN_SAVE, CAMPAIGN_CLIENT, SKY_SAVE, COMPILE)
 
 HARMONY_TARGETS = (
     "HarmonyPatch(typeof(Quest), nameof(Quest.MeetsPrerequisit))",
@@ -162,7 +165,7 @@ def check(sources, tree):
         ("entry.CleanedFreshSlot == slot", "空白槽的官方列表清理必须按任务管理器与槽位缓存"),
         ("bool slotChanged = slot != state.LastSlot", "换槽没有先按新槽整清再重建"),
         ("if (slotChanged) { ClearProjection(entry, manager);", "换槽没有先按新槽整清再重建"),
-        ("internal bool Blocked, CollisionReported;", "ID 冲突 / 注册失败必须按条目 fail-closed，不能整核心停摆"),
+        ("internal bool Blocked, CollisionReported, Delivering;", "ID 冲突 / 注册失败和交付重入必须按条目 fail-closed"),
         ("if (binding.IsDelivered()) return binding.Deliver(out reason);", "已交付的重试必须只补事实，不能再收物品或发奖"),
         ("if (!binding.CanDeliver())", "交付必须先验客户端的门"),
         ("if (reservation != null) reservation.Dispose();", "交付失败时提交物必须归还"),
@@ -189,12 +192,15 @@ def check(sources, tree):
     ordered(unregister_client, "flags.Add(Owns(entries[i]));", "Release(owned[i], flags[i]);",
             CORE + " 撤销客户端时必须先冻结每条所有权再清")
     delivery = core.split("internal static bool TryCommitDelivery(", 1)[1].split("private static void ApplyRequiredItem(", 1)[0]
-    # 先验门 → 跳过已交付 → 备好奖励 → 预留提交物 → 客户端提交 → 收走提交物 → 发奖励物 → 单独发奖回调
-    steps = ("if (!binding.CanDeliver())", "if (binding.IsDelivered()) return binding.Deliver(out reason);",
+    # 交付的可回滚窗口必须先冻结客户端采集，实物就位后提交事实，最后统一采集资产。
+    steps = ("if (entry.Delivering)", "if (!binding.CanDeliver())", "if (binding.IsDelivered()) return binding.Deliver(out reason);",
              "OfficialQuestItems.TryCreate(binding.RewardItems, rewards, out reason)",
+             "binding.BeginDelivery(OfficialQuestItems.AssetCollector(inboxOnly), out reason)",
              "OfficialQuestItems.TryReserve(binding.Submissions, out reservation, out reason)",
-             "if (!binding.Deliver(out reason)) return false;", "reservation.Commit();",
-             "OfficialQuestItems.Give(rewards);", "binding.PayReward();")
+             "OfficialQuestItems.TryGive(rewards, inboxOnly, out delivered, out reason)",
+             "binding.Client.Slot != slot", "committed = binding.Deliver(out reason)",
+             "reservation.Commit();", "delivered.Commit();", "binding.PayReward();",
+             "delivered.Dispose();", "reservation.Dispose();", "binding.EndDelivery(committed)")
     for first, second in zip(steps, steps[1:]):
         ordered(delivery, first, second, CORE + " 交付事务顺序错误：" + first + " 必须在 " + second + " 之前")
     submission_tasks = core.split("private static void AppendSubmissionTasks(", 1)[1].split("private static string DescribeSubmission(", 1)[0] if "private static void AppendSubmissionTasks(" in core else ""
@@ -203,6 +209,21 @@ def check(sources, tree):
     require("ItemAssetsCollection.GetPrefab(typeId)" in items and "InstantiateSync(typeId)" in items, ITEMS + " 生成奖励前必须先确认 prefab（官方缺资源时返回空壳）")
     ordered(items, "ItemAssetsCollection.GetPrefab(typeId)", "InstantiateSync(typeId)", ITEMS + " 必须先查 prefab 再实例化")
     require("SkyIslandInventoryTransaction.TryReserve(" in items, ITEMS + " 提交物必须走既有背包事务，不另写第二套扣物品")
+    for token in ("SendToPlayerCharacter(item, true)", "SendToPlayerStorage(item, true)",
+                  "HasBufferReceipt(instanceId, typeId)", "rootInstanceID == receipt.InstanceId",
+                  "receipt.Item.Detach()", "PlayerStorageBuffer.SaveBuffer()", "if (!inboxOnly)"):
+        require(token in clean_source(items), ITEMS + " 缺精确回滚 / 出击寄存 / 资产采集契约：" + token)
+    for token in ("BeginDelivery = CampaignSaveCoordinator.BeginQuestDelivery", "EndDelivery = CampaignSaveCoordinator.EndQuestDelivery"):
+        require(clean_source(sources[CAMPAIGN_CLIENT]).count(token) == 2, CAMPAIGN_CLIENT + " 章节与引导均须接交付门：" + token)
+    for token in ("BeginOfficialDelivery", "EndOfficialDelivery", "RewardsToInbox"):
+        require(token in sky_bridge, SKY_BRIDGE + " 缺岛上交付事务接线：" + token)
+    for path, active, collector in ((CAMPAIGN_SAVE, "_questDeliveryActive", "_questAssetCollector"),
+                                     (SKY_SAVE, "officialDeliveryActive", "officialQuestAssetCollector")):
+        owner = clean_source(sources[path])
+        cash = owner.split("bool CollectPendingCash()", 1)[1].split("#endregion", 1)[0]
+        ordered(cash, active, collector + "()", path + " 资产采集前必须检查交付门")
+        ordered(cash, collector + "()", 'SavesSystem.Save', path + " 现金采集前必须先取得实物快照")
+        require(collector + " != null" in owner.split("HasSnapshotObligation", 1)[1], path + " 资产采集义务须保留到物理落盘成功")
 
     # ---- 7) 组件：官方 Task / Reward 基类、只带整数回查、读档无声采样 ----
     for token, why in (
@@ -261,6 +282,11 @@ def main():
     tree = production_sources()
     errors = check(sources, tree)
     probes = (
+        (CORE, "if (entry.Delivering)", "if (false)"),
+        (CORE, "binding.EndDelivery(committed)", "binding.EndDelivery(false)"),
+        (CORE, "if (!OfficialQuestItems.TryGive(rewards, inboxOnly, out delivered, out reason)) return false;", ""),
+        (ITEMS, "SendToPlayerCharacter(item, true)", "SendToPlayerCharacter(item, false)"),
+        (CAMPAIGN_CLIENT, "BeginDelivery = CampaignSaveCoordinator.BeginQuestDelivery", "BeginDelivery = null"),
         (MODULE, "if (projection != null) projection.Tick();",
          "if (owner_session_exists_stub()) return;\n            if (projection != null) projection.Tick();"),
         (REGISTRATION, "officialQuestRuntime = new OfficialQuestRuntimeModule();\n            runtimeModuleHost.Register(officialQuestRuntime);\n", ""),
@@ -283,7 +309,7 @@ def main():
         (CORE, "data.everInspectedQuest.Remove(id)", "false"),
         (CORE, "if (!OwnsRegisteredQuest(entry.Binding.QuestId)) continue;", ""),
         (CORE, "entry.Prefab.gameObject.name == entry.Binding.ObjectName", "true"),
-        (CORE, "internal bool Blocked, CollisionReported;", "internal bool CollisionReported;"),
+        (CORE, "internal bool Blocked, CollisionReported, Delivering;", "internal bool CollisionReported, Delivering;"),
         (CORE, "if (slotChanged) { ClearProjection(entry, manager);", "if (false) {"),
         (CORE, "if (!client.Ready) continue;\n                // 先按新槽整清", "// 先按新槽整清"),
         (CORE, "flags.Add(Owns(entries[i]));", "flags.Add(true);"),

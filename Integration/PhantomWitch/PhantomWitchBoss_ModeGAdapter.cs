@@ -23,6 +23,7 @@ namespace BossRush
                 character.gameObject.name = "BossRush_ModeG_PhantomWitch";
                 character.transform.localScale = Vector3.one * PhantomWitchConfig.BossModelScale;
                 SetupPhantomWitchAttributes(character);
+                float skillDamageStatBaseline = BossSkillDamageRules.ReadMeleeDamageStatBase(character);
                 ApplyBossStatMultiplier(character);
                 EquipPhantomWitchWeapon(character);
 
@@ -51,6 +52,7 @@ namespace BossRush
                         BeginActivateModeGManagedCharacter(capturedCharacter);
                         capturedControllerObject.SetActive(true);
                         capturedController.Initialize(capturedCharacter, position);
+                        capturedController.SetSkillDamageStatBaseline(skillDamageStatBaseline);
                         // 激活前绑定托管辅助契约（规格 §20 第 16 条）：随从激活前原子提交，
                         // 父 owner/child handle 语义，迟到 ticket 不写 Legacy 单例。
                         capturedController.BindModeGAuxiliaryContract(

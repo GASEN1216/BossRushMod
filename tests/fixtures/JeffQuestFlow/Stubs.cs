@@ -250,6 +250,27 @@ namespace BossRush
         internal void Commit() { if (Committed || Disposed) return; Committed = true; foreach (var p in Plan) OfficialQuestItems.Backpack[p.TypeId] -= p.Count; }
         public void Dispose() { Disposed = true; OfficialQuestItems.Disposed++; }
     }
+    // Persistence is exercised with the real coordinator in ContentTransactions.
+    internal static class CampaignSaveCoordinator
+    {
+        internal static bool BeginQuestDelivery(Func<bool> collect, out string reason) { reason = null; return true; }
+        internal static void EndQuestDelivery(bool committed) { }
+    }
+    internal sealed class OfficialQuestRewardReservation : IDisposable
+    {
+        internal readonly List<OfficialQuestItemStack> Items = new List<OfficialQuestItemStack>();
+        private bool committed;
+        internal void Commit() { committed = true; }
+        public void Dispose()
+        {
+            if (committed) return;
+            foreach (var item in Items)
+            {
+                OfficialQuestItems.Backpack[item.TypeId] -= item.Count;
+                OfficialQuestItems.Given.Remove(item);
+            }
+        }
+    }
     internal static class OfficialQuestItems
     {
         internal static Dictionary<int,int> Backpack = new Dictionary<int,int>();
@@ -274,10 +295,19 @@ namespace BossRush
             foreach (var r in rewards) { created.Add(new ItemStatsSystem.Item { TypeID = r.TypeId, Count = r.Count }); Created++; }
             return true;
         }
-        internal static void Give(List<ItemStatsSystem.Item> created)
+        internal static bool CanCollectAssets(bool inboxOnly) { return true; }
+        internal static Func<bool> AssetCollector(bool inboxOnly) { return () => true; }
+        internal static bool TryGive(List<ItemStatsSystem.Item> created, bool inboxOnly,
+            out OfficialQuestRewardReservation delivered, out string reason)
         {
-            foreach (var item in created) { Given.Add(new OfficialQuestItemStack(item.TypeID, item.Count)); int n; Backpack.TryGetValue(item.TypeID, out n); Backpack[item.TypeID] = n + item.Count; }
-            created.Clear();
+            delivered = new OfficialQuestRewardReservation(); reason = null;
+            foreach (var item in created)
+            {
+                var stack = new OfficialQuestItemStack(item.TypeID, item.Count);
+                Given.Add(stack); delivered.Items.Add(stack);
+                int n; Backpack.TryGetValue(item.TypeID, out n); Backpack[item.TypeID] = n + item.Count;
+            }
+            return true;
         }
         internal static void Discard(List<ItemStatsSystem.Item> created) { Discarded += created.Count; created.Clear(); }
     }

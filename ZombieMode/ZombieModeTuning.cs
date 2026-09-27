@@ -271,6 +271,10 @@ namespace BossRush
             public const float DamageScalePerCycle = 0.12f;
             public const float DamageScaleMaximum = 1.8f;
 
+            // 同场多 Boss 的伤害技能起手至少错开这么久（秒）。晚周目每周目多一只 Boss，
+            // 各自独立冷却时震波、冲刺、腐蚀圈可能同一瞬间压下来；错开后仍在同一波里全部出招，只是不同帧起手。
+            public const float BossSkillGlobalSpacingSeconds = 0.9f;
+
             // Titan
             public const float TitanShockwaveRadius = 6f;
             public const float TitanShockwaveDamage = 60f;
@@ -286,7 +290,8 @@ namespace BossRush
             public const float HunterDashDamage = 40f;
             public const float HunterDashRadius = 3.5f;
             public const float HunterDashCooldownSeconds = 5f;
-            public const float HunterDashStartupSeconds = 0.3f;
+            // 2026-09-27 由 0.3 提到 0.45：40 伤的冲刺至少留出 0.4 s 以上的起手，与其余 Boss 技能的预警口径一致
+            public const float HunterDashStartupSeconds = 0.45f;
             public const float HunterFrenzyHpThreshold = 0.30f;
             public const float HunterFrenzyAttackSpeedBonus = 0.50f;
             public const float HunterFrenzyMoveSpeedBonus = 0.30f;
@@ -616,6 +621,8 @@ namespace BossRush
         public const float TitanDamageReductionDurationSeconds = Boss.TitanDamageReductionDurationSeconds;
         public const float TitanDamageReductionCooldownSeconds = Boss.TitanDamageReductionCooldownSeconds;
         public const float TitanDamageReductionStartupSeconds = Boss.TitanDamageReductionStartupSeconds;
+
+        public const float BossSkillGlobalSpacingSeconds = Boss.BossSkillGlobalSpacingSeconds;
 
         // Boss - Hunter
         public const float HunterDashDistance = Boss.HunterDashDistance;

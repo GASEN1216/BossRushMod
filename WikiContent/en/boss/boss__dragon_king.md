@@ -14,7 +14,7 @@ Skyburner Dragon Lord is the strongest custom boss in this mod. It hovers in the
 ### Attack Skills
 
 #### Continuous Fire
-Constantly fires straight projectiles from its chest: no magazine, no reload, no pauses.
+Fires straight projectiles from its chest with no magazine or reload. It holds fire during the ground-telegraphed moves (Charge, Solar Dance, Phantom Spear) so you can focus on that one attack; it keeps shooting during Prismatic Bolt and Rainbow Ring.
 - Phase 1: 1 shot per 0.1s, ±2m offset toward the target
 - Phase 2: 2 shots per 0.1s, ±4m offset
 - 15 damage, 10% crit rate, 1.5x crit multiplier
@@ -29,7 +29,8 @@ Rapidly fires prismatic bolts in a spiral pattern, one bolt per 0.1 seconds for 
 - 0.8 second windup then high-speed charge at the player (speed 25)
 - Warning ring appears on the ground during the last 0.3 seconds of windup. Move sideways as soon as you see it
 - 30 damage on hit, leaves a magma trail (5 damage per 0.5s, 1m radius, lasts 3s)
-- **Phase 2 charges twice in a row**. The second windup is only 0.3 seconds, so dodging the first one doesn't mean you're safe
+- **Phase 2 charges twice in a row**: after the first charge it turns in place and shows a 0.3-second countdown ring, then charges at where you were. Dodging the first one doesn't mean you're safe
+- Rolling through a charge, a prismatic bolt or a spear takes no damage; the magma trail is lingering ground damage and rolling doesn't stop it
 
 #### Solar Dance
 - 1.5 second ground warning appears 2-3m near the player
@@ -41,7 +42,7 @@ Rapidly fires prismatic bolts in a spiral pattern, one bolt per 0.1 seconds for 
 - Trail deals 5 damage, lasts 8 seconds
 
 #### Phantom Spear
-- Phase 1: 3 waves of 10 spears each, with warning lines (about 1s), then fire in both directions, 25 damage each at speed 40
+- Phase 1: 3 waves of 10 spears each, warning lines drawn one by one (about 1.3s per wave; even the last line gives at least 0.4s to react), then fire in both directions, 25 damage each at speed 40
 - Phase 2 upgrade: 4 waves of 16 spears each, wider coverage, 0.5s warning then one-sided fire
 
 ### Combat Phases

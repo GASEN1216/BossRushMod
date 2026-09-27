@@ -300,6 +300,9 @@ namespace BossRush
                 // 设置Boss属性
                 SetupPhantomWitchAttributes(character);
 
+                // 全局倍率乘上去之前记下近战 Stat 基线，自制技能按「当前 / 基线」同步放大（决战倍率同理）
+                float skillDamageStatBaseline = BossSkillDamageRules.ReadMeleeDamageStatBase(character);
+
                 // 应用全局Boss数值倍率
                 ApplyBossStatMultiplier(character);
 
@@ -319,6 +322,7 @@ namespace BossRush
                 GameObject controllerGO = new GameObject("PhantomWitch_AbilityController");
                 abilities = controllerGO.AddComponent<PhantomWitchAbilityController>();
                 abilities.Initialize(character, position);
+                abilities.SetSkillDamageStatBaseline(skillDamageStatBaseline);
                 phantomWitchInstances[character] = abilities;
                 phantomWitchDeathPresentations[character] = deathPresentation;
 

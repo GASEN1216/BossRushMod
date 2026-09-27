@@ -89,13 +89,16 @@ namespace BossRush
     public partial class ModBehaviour : UnityEngine.Object
     {
         internal int Starts, Stops;
-        internal bool NullCoroutine, ThrowOnStop;
+        internal bool NullCoroutine, ThrowOnStop, ThrowOnStart;
         internal Action OnStart;
         internal Coroutine LastStopped;
         public Coroutine StartCoroutine(IEnumerator routine)
         {
             Starts++; if (OnStart != null) OnStart();
-            return NullCoroutine ? null : new Coroutine { Routine = routine };
+            if (ThrowOnStart) throw new InvalidOperationException("start injected failure");
+            // Unity 在 StartCoroutine 返回前执行到第一个 yield；同步结束时没有活跃句柄。
+            if (NullCoroutine || !routine.MoveNext()) return null;
+            return new Coroutine { Routine = routine };
         }
         public void StopCoroutine(Coroutine coroutine)
         {

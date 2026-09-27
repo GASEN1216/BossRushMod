@@ -15,6 +15,29 @@ namespace BossRush
 {
     public partial class DragonDescendantAbilityController : MonoBehaviour
     {
+        /// <summary>二阶段冲刺起手：原地蓄力这么久再冲（秒）。</summary>
+        private const float Phase2DashWindupSeconds = 0.3f;
+        private static readonly WaitForSeconds waitPhase2DashWindup = new WaitForSeconds(Phase2DashWindupSeconds);
+        private static readonly Color Phase2DashDustColor = new Color(0.36f, 0.3f, 0.26f, 0.55f);
+        private static readonly Color Phase2DashSparkColor = new Color(1f, 0.46f, 0.14f, 1f);
+
+        /// <summary>二阶段冲刺起手的视听提示：脚下扬尘 + 火星 + 蓄力声。纯表现，失败不影响冲刺。</summary>
+        private void PlayPhase2DashCue()
+        {
+            try
+            {
+                if (bossCharacter == null) return;
+                Vector3 feet = bossCharacter.transform.position;
+                BossRushFxKit.PlayBurst(feet, BossRushFxKit.Dust(Phase2DashDustColor, 10));
+                BossRushFxKit.PlayBurst(feet + Vector3.up * 0.4f, BossRushFxKit.Sparks(Phase2DashSparkColor, 14));
+                PlayDragonCue(DragonKingConfig.Sound_DashCharge);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonDescendant] [WARNING] 二阶段冲刺起手提示失败: " + e.Message);
+            }
+        }
+
         /// <summary>
         /// 追逐玩家协程 - 二阶段行为循环
         /// 循环：停止射击 -> 冲刺 -> 扇形射击 -> 重复
@@ -71,6 +94,11 @@ namespace BossRush
                 yield return StartCoroutine(FireLinearBullets(dirToPlayer, 10, 0.1f));
 
                 // ========== 阶段2：高速冲刺0.5秒 ==========
+                // 起手：原地扬尘 + 蓄力声，再冲出去（此前只靠跑动姿态提示，嘈杂场面里读不出来）
+                PlayPhase2DashCue();
+                yield return waitPhase2DashWindup;
+                if (!isEnraged || bossCharacter == null) yield break;
+
                 ModBehaviour.DevLog("[DragonDescendant] 阶段2：高速冲刺");
                 SetMoveability(10f);
 

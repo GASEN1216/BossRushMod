@@ -4,6 +4,7 @@ namespace BossRush
 {
     /// <summary>接取 / 交付提交：把 Mod 事实落下，失败时给玩家一句原因。</summary>
     internal delegate bool OfficialQuestCommit(out string message);
+    internal delegate bool OfficialQuestDeliveryBegin(Func<bool> collectAssets, out string message);
 
     /// <summary>
     /// 一条投影到官方 <c>Duckov.Quests</c> 的 Task。全部是无参委托：事实源由客户端自己在闭包里解析，
@@ -94,6 +95,11 @@ namespace BossRush
         internal OfficialQuestCommit Accept;
         /// <summary>官方完成按钮 → 写 Mod 交付事实。必填；返回 false 则官方任务不进 history。</summary>
         internal OfficialQuestCommit Deliver;
+        /// <summary>冻结客户端采集/落盘，直到提交物、现金、实物与完成事实全部就绪；采集义务保留到物理保存成功。</summary>
+        internal OfficialQuestDeliveryBegin BeginDelivery;
+        internal Action<bool> EndDelivery;
+        /// <summary>出击中的一次性奖品寄往官方待领取区，不为任务发奖提前保存整趟背包战利品。</summary>
+        internal Func<bool> RewardsToInbox;
         /// <summary>可空：交付「从未交付变成已交付」那一拍调用一次。现有客户端（天空岛、鸭王征程）都传 null，发钱与交付事实在各自的交付事务里一起提交；留给以后需要交付后单独发奖的客户端。</summary>
         internal Action PayReward;
         /// <summary>事实指纹：变化时刷新给予者标记。</summary>

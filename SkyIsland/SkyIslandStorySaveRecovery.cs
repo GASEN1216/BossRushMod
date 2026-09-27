@@ -30,6 +30,20 @@ namespace BossRush
             Debug.LogWarning("[SkyIsland] 离岛进度保存推迟，已保留记录并等待官方存档完成。");
         }
 
+        /// <summary>同槽序章重开时转交原门面，保留内存事实、写屏障和重试义务；始终只有一个 owner。</summary>
+        internal static SkyIslandStoryService TakeCurrent()
+        {
+            foreach (SkyIslandStorySaveRecovery recovery in UnityEngine.Object.FindObjectsOfType<SkyIslandStorySaveRecovery>(true))
+            {
+                if (recovery.story == null || !recovery.story.IsCurrentSlot) continue;
+                SkyIslandStoryService value = recovery.story;
+                recovery.story = null;
+                Destroy(recovery.gameObject);
+                return value;
+            }
+            return null;
+        }
+
         private void Update()
         {
             if (story == null || Time.unscaledTime < retryAt) return;

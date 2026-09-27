@@ -66,16 +66,22 @@ The Phantom Witch cycles between true stealth, semi-stealth, and visible states:
 
 [warn] Be wary at one curse stack. If you eat another from a Curse Realm or the Harass minion while already cursed, reaching three stacks means you probably can't escape the next attack.
 
-### Tactical Package Rotation
+### Tactical Packages
+
+Each phase has a fixed bag of moves. She draws from it at random, never repeats the same move back to back, and refills the bag once it's empty. How often each move appears is unchanged; the order just can't be memorized.
 
 #### Phase 1 (interval 1.2s)
-Tracked Teleport → Requiem Arc → Wraith Trail
+Tracked Teleport, Requiem Arc and Wraith Trail once each
 
 #### Phase 2 (interval 0.85s)
-Tracked Teleport → Requiem + Trail Combo → Curse Realm → Tracked Teleport
+Tracked Teleport twice; Requiem + Trail Combo and Curse Realm once each
 
 #### Phase 3 (interval 1.1s)
-Short Drift → Undead Summon → Curse Realm → Minion Retreat
+Last Breath, Undead Summon, Curse Realm and Minion Retreat once each. Last Breath is a Tracked Teleport followed by a cone warning and a wide heavy slash
+
+### Openings After Attacks
+After Tracked Teleport, Requiem Arc and Wraith Trail she stands still for about 0.35–0.5s; the Last Breath heavy slash leaves the longest opening (about 0.7s). That's your window to hit back.
+You can roll through Tracked Teleport, Requiem Arc, Wraith Trail and the heavy slash. Curse Realm is lingering ground damage; rolling doesn't stop it, so walk out of the warning ring.
 
 ### Drops
 

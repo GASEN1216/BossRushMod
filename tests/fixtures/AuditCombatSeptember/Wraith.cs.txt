@@ -128,9 +128,7 @@ class DeathWraithRuntimeModule
     private Dictionary<uint, CharacterMainControl> activeWraithsByRaidId = new Dictionary<uint, CharacterMainControl>();
     private Dictionary<CharacterMainControl, uint> activeWraithRaidIdByCharacter = new Dictionary<CharacterMainControl, uint>();
     private List<DeadBodySpawnContext_DeathWraith> pendingDeadBodySpawnContexts = new List<DeadBodySpawnContext_DeathWraith>();
-    private object _deathWraithListCache;
-    private bool _deathWraithListDirty;
-    private float _deathWraithListDirtySince;
+    /* WRAITH_PERSISTENCE_FIELDS */
     public DeathWraithRuntimeModule(ModBehaviour owner) { this.owner = owner; }
     public bool Pending => spawningWraithRaidIds.Contains(7);
     public int Active => activeWraithsByRaidId.Count;

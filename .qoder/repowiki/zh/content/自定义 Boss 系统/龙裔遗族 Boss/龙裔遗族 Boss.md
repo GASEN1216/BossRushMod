@@ -291,3 +291,10 @@ AC --> DBub["DialogueBubblesManager"]
   - 调整弹幕密度与爆炸范围以适应不同设备；减少非必要日志输出。
   - 合理使用预缓存与对象池，避免频繁实例化与销毁。
   - 在低端设备上降低特效复杂度或关闭部分可视化反馈。
+
+## 2026-09-27 火箭弹与冲刺起手
+
+- 火箭弹不再在玩家脚下瞬间结算：凑满 `BulletsPerRocket` 且玩家在 `RocketBossDamageRadius` 内时锁定落点，[DragonDescendantRocketMarker.cs](file://Integration/DragonDescendant/DragonDescendantRocketMarker.cs) 画贴地预警（边界为真实半径、填充随蓄力长满），`RocketTelegraphSeconds` 0.8 s 后在落点走官方爆炸（翻滚豁免随官方）。半径 1 → 1.6 m、伤害 5 → 10。死亡、复活、切图、换阵营或脱战时 `CanCompleteRocket` 取消爆炸与预警。
+- 删去无弹体后不再使用的 `RocketSpeed`、`RocketMaxDistance`、`RocketDirectDamage`。
+- 二阶段冲刺前原地蓄力 0.3 s，脚下扬尘 + 火星 + 蓄力声（`PlayPhase2DashCue`）。
+- 冲撞伤害遵守翻滚豁免并按全局倍率放大；二阶段伤害 Stat 改为乘法保留全局倍率。

@@ -7,6 +7,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks;
 using ItemStatsSystem;
 using Duckov.UI.DialogueBubbles;
@@ -30,8 +31,11 @@ namespace BossRush
             }
         }
 
+        private static readonly WaitForSeconds waitRocketTelegraph = new WaitForSeconds(DragonDescendantConfig.RocketTelegraphSeconds);
+
         /// <summary>
-        /// 发射火箭弹 - 简化版：只有玩家距离Boss小于2m时才在玩家位置爆炸
+        /// 发射火箭弹：玩家在 Boss 身边（RocketBossDamageRadius）时，锁定玩家此刻的落点，
+        /// 地面亮 RocketTelegraphSeconds 的预警圈后在落点爆炸。走开就能躲，翻滚豁免走官方爆炸口径。
         /// </summary>
         private void LaunchRocket()
         {
@@ -44,38 +48,13 @@ namespace BossRush
 
                 // Mode E 脱战距离检查
                 if (IsPlayerOutOfLeashRange()) return;
-                Vector3 explosionPos = playerCharacter.transform.position;
+                Vector3 lockedPos = playerCharacter.transform.position;
 
-                // 检查玩家是否在Boss 2米范围内，只有在范围内才爆炸
-                float distToBoss = Vector3.Distance(explosionPos, bossCharacter.transform.position);
-                bool shouldExplode = distToBoss <= DragonDescendantConfig.RocketBossDamageRadius;
+                float triggerRadius = DragonDescendantConfig.RocketBossDamageRadius;
+                Vector3 toBoss = lockedPos - bossCharacter.transform.position;
+                if (toBoss.sqrMagnitude > triggerRadius * triggerRadius) return;
 
-                ModBehaviour.DevLog("[DragonDescendant] 火箭弹检测: 玩家位置: " + explosionPos +
-                    ", Boss距离: " + distToBoss + "m, 是否爆炸: " + shouldExplode);
-
-                // 只有玩家在Boss附近时才创建爆炸
-                if (!shouldExplode) return;
-
-                // 创建爆炸
-                if (LevelManager.Instance != null && LevelManager.Instance.ExplosionManager != null)
-                {
-                    DamageInfo dmgInfo = new DamageInfo(bossCharacter);
-                    dmgInfo.damageValue = DragonDescendantConfig.RocketExplosionDamage;
-                    dmgInfo.isExplosion = true;
-                    dmgInfo.AddElementFactor(ElementTypes.fire, 1f);
-
-                    // 注意：原版ExplosionManager只处理normal和flash类型的特效
-                    LevelManager.Instance.ExplosionManager.CreateExplosion(
-                        explosionPos,
-                        DragonDescendantConfig.RocketExplosionRadius,
-                        dmgInfo,
-                        ExplosionFxTypes.normal,
-                        1f,
-                        true
-                    );
-
-                    ModBehaviour.DevLog("[DragonDescendant] 火箭弹爆炸创建成功，范围: " + DragonDescendantConfig.RocketExplosionRadius);
-                }
+                StartCoroutine(RocketStrikeRoutine(lockedPos));
             }
             catch (Exception e)
             {
@@ -83,6 +62,76 @@ namespace BossRush
             }
         }
 
+        private IEnumerator RocketStrikeRoutine(Vector3 lockedPos)
+        {
+            LevelManager level = LevelManager.Instance;
+            int sceneHandle = SceneManager.GetActiveScene().handle;
+            if (!CanCompleteRocket(level, sceneHandle)) yield break;
+            GameObject marker = null;
+            bool fired = false;
+            try
+            {
+                try
+                {
+                    marker = DragonDescendantRocketMarker.Create(lockedPos, DragonDescendantConfig.RocketExplosionRadius,
+                        DragonDescendantConfig.RocketTelegraphSeconds, this, level, sceneHandle);
+                    PlayDragonCue(DragonKingConfig.Sound_LanceWarning);
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] 火箭弹预警圈创建失败: " + e.Message);
+                }
+
+                yield return waitRocketTelegraph;
+
+                if (!CanCompleteRocket(level, sceneHandle)) yield break;
+                if (level.ExplosionManager == null) yield break;
+
+                try
+                {
+                    DamageInfo dmgInfo = new DamageInfo(bossCharacter);
+                    dmgInfo.damageValue = DragonDescendantConfig.RocketExplosionDamage
+                        * BossSkillDamageRules.ResolveGunDamageScale(bossCharacter, DragonDescendantConfig.DamageMultiplier);
+                    dmgInfo.isExplosion = true;
+                    dmgInfo.AddElementFactor(ElementTypes.fire, 1f);
+
+                    // 注意：原版ExplosionManager只处理normal和flash类型的特效
+                    level.ExplosionManager.CreateExplosion(
+                        lockedPos,
+                        DragonDescendantConfig.RocketExplosionRadius,
+                        dmgInfo,
+                        ExplosionFxTypes.normal,
+                        1f,
+                        true
+                    );
+                    fired = true;
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] 火箭弹爆炸失败: " + e.Message);
+                }
+            }
+            finally
+            {
+                if (!fired && marker != null) Destroy(marker);
+            }
+        }
+
+        /// <summary>龙裔技能提示音（火箭预警、二阶段冲刺起手）的唯一宿主音效入口。</summary>
+        private static void PlayDragonCue(string soundPath)
+        {
+            ModBehaviour.Instance?.PlaySoundEffect(soundPath);
+        }
+
+        /// <summary>延迟攻击与预警共用有效性门；死亡、停用、换阵营、脱战或切图后不能留下旧攻击。</summary>
+        internal bool CanCompleteRocket(LevelManager level, int sceneHandle)
+        {
+            return isActiveAndEnabled && bossCharacter != null && bossHealth != null && !bossHealth.IsDead &&
+                playerCharacter != null && playerCharacter.Health != null && !playerCharacter.Health.IsDead &&
+                ReferenceEquals(playerCharacter, CharacterMainControl.Main) && !isResurrecting &&
+                !SceneLoader.IsSceneLoading && level != null && ReferenceEquals(level, LevelManager.Instance) &&
+                SceneManager.GetActiveScene().handle == sceneHandle && !IsPlayerAlly() && !IsPlayerOutOfLeashRange();
+        }
 
         // ========== 燃烧弹逻辑 ==========
 

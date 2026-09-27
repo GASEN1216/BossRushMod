@@ -382,7 +382,69 @@ namespace BossRush
             ctx.fromWeaponItemID = 0;
             ctx.firstFrameCheck = false;
             bullet.Init(ctx);
+
+            // 支援弹直接克隆玩家当前子弹，飞出去看不出跟普通弹有区别；
+            // 挂一条轻量主题色拖尾做区分（丧尸奖励里弹道类词条的强调色，ProjectileMod 类目统一是这个薄荷青）。
+            Color supportTrailColor = GetZombieModeRewardAccentColor(ZombieModeRewardType.ProjectileRicochet);
+            ZombieModeSupportProjectileTrailFx.Attach(bullet.transform, supportTrailColor);
             return true;
+        }
+    }
+
+    /// <summary>
+    /// 支援弹体的主题色拖尾：挂在拖尾子物体自己身上，而不是弹体上。
+    /// 弹体来自共享 <c>BulletPool</c>（见 BulletPool.OnBulletRelease），命中或超距后弹体会被
+    /// SetActive(false) 放回池子复用给下一发普通子弹——子物体的激活状态跟着父物体走，
+    /// 这里的 OnDisable 会先随父物体一起触发，借机清空并销毁自己，
+    /// 不会让主题拖尾残留到下一次这颗弹体对象被复用为普通子弹的时候。
+    /// </summary>
+    internal sealed class ZombieModeSupportProjectileTrailFx : MonoBehaviour
+    {
+        private TrailRenderer trail;
+
+        internal static void Attach(Transform bulletTransform, Color themeColor)
+        {
+            if (bulletTransform == null)
+            {
+                return;
+            }
+
+            Material material = BossRushFxKit.GetShapeMaterial(
+                BossRushParticleShape.TrailStrip, BossRushFxBlend.Additive, BossRushFxKit.GainBright);
+            if (material == null)
+            {
+                return; // 找不到可用着色器就不挂，别画不发光的方片
+            }
+
+            GameObject trailObj = new GameObject("ZombieMode_SupportTrail");
+            trailObj.transform.SetParent(bulletTransform, false);
+            trailObj.transform.localPosition = Vector3.zero;
+
+            TrailRenderer trail = trailObj.AddComponent<TrailRenderer>();
+            trail.time = 0.16f;
+            trail.widthMultiplier = 0.10f;
+            trail.widthCurve = AnimationCurve.Linear(0f, 1f, 1f, 0f); // 头宽尾尖
+            trail.minVertexDistance = 0.03f;
+            trail.numCapVertices = 2;
+            trail.numCornerVertices = 2;
+            trail.sharedMaterial = material; // 共享材质，不能用 .material（会各自复制一份）
+            trail.startColor = themeColor;
+            Color end = themeColor;
+            end.a = 0f;
+            trail.endColor = end;
+            trail.emitting = true;
+
+            ZombieModeSupportProjectileTrailFx disposer = trailObj.AddComponent<ZombieModeSupportProjectileTrailFx>();
+            disposer.trail = trail;
+        }
+
+        private void OnDisable()
+        {
+            if (trail != null)
+            {
+                trail.Clear();
+            }
+            Destroy(gameObject);
         }
     }
 }

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using ItemStatsSystem;
+using ItemStatsSystem.Data;
+using Saves;
 using UnityEngine;
 
 namespace BossRush
@@ -24,6 +26,48 @@ namespace BossRush
         {
             if (transaction != null) transaction.Dispose();
             transaction = null;
+        }
+    }
+
+    /// <summary>本次新生成奖品的可回滚投递。未合堆的原件或官方 Buffer 收据都能在同一调用栈内精确撤销。</summary>
+    internal sealed class OfficialQuestRewardReservation : IDisposable
+    {
+        private sealed class Receipt
+        {
+            internal Item Item;
+            internal int InstanceId, TypeId;
+        }
+
+        private readonly List<Receipt> receipts = new List<Receipt>();
+        private bool committed;
+
+        internal void Track(Item item)
+        {
+            receipts.Add(new Receipt { Item = item, InstanceId = item.GetInstanceID(), TypeId = item.TypeID });
+        }
+
+        internal void Commit() { committed = true; }
+
+        public void Dispose()
+        {
+            if (!committed)
+            {
+                for (int r = receipts.Count - 1; r >= 0; r--)
+                {
+                    Receipt receipt = receipts[r];
+                    // 官方 Push 可能已销毁原件，再在通知里抛错；只移除该原件产生的缓冲收据。
+                    List<ItemTreeData> buffer = PlayerStorage.IncomingItemBuffer;
+                    if (buffer != null)
+                        for (int i = buffer.Count - 1; i >= 0; i--)
+                            if (buffer[i] != null && buffer[i].rootInstanceID == receipt.InstanceId && buffer[i].RootTypeID == receipt.TypeId)
+                                buffer.RemoveAt(i);
+                    if (receipt.Item == null || receipt.Item.IsBeingDestroyed) continue;
+                    try { receipt.Item.Detach(); }
+                    catch (Exception e) { ModBehaviour.DevLog("[OfficialQuest] 奖励回滚通知异常: " + e.Message); }
+                    SkyIslandInventoryTransaction.DestroyUnowned(receipt.Item);
+                }
+            }
+            receipts.Clear();
         }
     }
 
@@ -134,25 +178,75 @@ namespace BossRush
             }
         }
 
-        /// <summary>交付已提交后发放：背包优先，放不下走官方仓库，仓库满了进自提缓存。发出去的从列表移走。</summary>
-        internal static void Give(List<Item> created)
+        /// <summary>准备回滚所需的原件/收据后投递。此时客户端仍冻结采集，失败不会消费任务资格。</summary>
+        internal static bool TryGive(List<Item> created, bool inboxOnly, out OfficialQuestRewardReservation delivered, out string reason)
         {
-            if (created == null) return;
-            for (int i = created.Count - 1; i >= 0; i--)
+            delivered = new OfficialQuestRewardReservation();
+            reason = null;
+            if (created == null) return true;
+            for (int i = 0; i < created.Count; i++)
             {
                 Item item = created[i];
-                created.RemoveAt(i);
-                if (item == null) continue;
-                try { ItemUtilities.SendToPlayer(item, false, true); }
-                catch (Exception e)
+                if (item != null)
                 {
-                    // 官方交付后的回调抛错时物品多半已经到手：有归属就按已送出算，绝不销毁
-                    if (SkyIslandInventoryTransaction.HasOwner(item) || item.IsBeingDestroyed || item.StackCount <= 0) continue;
-                    Debug.LogWarning("[OfficialQuest] 奖励物品入包失败，改寄仓库：" + e.Message);
-                    try { ItemUtilities.SendToPlayerStorage(item, false); }
-                    catch (Exception storage) { Debug.LogWarning("[OfficialQuest] 奖励物品寄存失败：" + storage.Message); }
+                    delivered.Track(item);
+                    if (TryPlace(item, inboxOnly)) continue;
                 }
+                reason = L10n.T("奖励暂时无法送达，这次交付没有扣除物品，请稍后再试。",
+                    "The reward cannot be delivered yet. No hand-in items were consumed. Please try again shortly.");
+                return false;
             }
+            return true;
+        }
+
+        private static bool TryPlace(Item item, bool inboxOnly)
+        {
+            int instanceId = item.GetInstanceID(), typeId = item.TypeID;
+            if (!inboxOnly)
+            {
+                // 事务内禁合堆，防止 Combine 的回调在来源扣量前抛错，令整份奖品无法精确回滚。
+                try { ItemUtilities.SendToPlayerCharacter(item, true); }
+                catch (Exception e) { ModBehaviour.DevLog("[OfficialQuest] 奖励入包通知异常: " + e.Message); }
+                if (SkyIslandInventoryTransaction.HasOwner(item)) return true;
+                try { if (PlayerStorage.Inventory != null) PlayerStorage.Inventory.AddItem(item); }
+                catch (Exception e) { ModBehaviour.DevLog("[OfficialQuest] 奖励入库通知异常: " + e.Message); }
+                if (SkyIslandInventoryTransaction.HasOwner(item)) return true;
+            }
+            try { ItemUtilities.SendToPlayerStorage(item, true); }
+            catch (Exception e) { ModBehaviour.DevLog("[OfficialQuest] 奖励寄存通知异常: " + e.Message); }
+            return SkyIslandInventoryTransaction.HasOwner(item) || SkyIslandInventoryTransaction.HasBufferReceipt(instanceId, typeId);
+        }
+
+        internal static bool CanCollectAssets(bool inboxOnly)
+        {
+            if (SavesSystem.CurrentSlot < 0 || SavesSystem.IsSaving || PlayerStorageBuffer.Instance == null || PlayerStorage.IncomingItemBuffer == null) return false;
+            if (inboxOnly) return true;
+            CharacterMainControl player = CharacterMainControl.Main;
+            return player != null && player.CharacterItem != null && player.Health != null &&
+                PlayerStorage.Instance != null && PlayerStorage.Instance.HasInitialized() && !PlayerStorage.Loading && PlayerStorage.Inventory != null;
+        }
+
+        /// <summary>由客户端共享保存引擎调用；只在整笔交付完成后采集，不自行 SaveFile，也不写入不同槽。</summary>
+        internal static Func<bool> AssetCollector(bool inboxOnly)
+        {
+            int slot = SavesSystem.CurrentSlot;
+            return () =>
+            {
+                try
+                {
+                    if (SavesSystem.CurrentSlot != slot || !CanCollectAssets(inboxOnly)) return false;
+                    if (!inboxOnly)
+                    {
+                        CharacterMainControl player = CharacterMainControl.Main;
+                        player.CharacterItem.Save("MainCharacterItemData");
+                        SavesSystem.Save<float>("MainCharacterHealth", player.Health.CurrentHealth);
+                        PlayerStorage.Inventory.Save("PlayerStorage");
+                    }
+                    PlayerStorageBuffer.SaveBuffer();
+                    return true;
+                }
+                catch (Exception) { return false; }
+            };
         }
 
         /// <summary>交付没成：销毁预先生成、还没发出去的奖励物。</summary>

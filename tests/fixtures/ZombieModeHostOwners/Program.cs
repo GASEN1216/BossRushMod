@@ -100,7 +100,7 @@ internal static class Program
         state.IsCleaningUp = true; Check(host.StartRun(Routine(), 5) == null, "cleanup blocks start"); state.IsCleaningUp = false;
         SceneManager.Current = new Scene { buildIndex = 7 }; Check(host.StartRun(Routine(), 5) == null, "wrong scene blocks start"); SceneManager.Current = new Scene { buildIndex = 3 };
         host.NullCoroutine = true; Check(host.StartRun(Routine(), 5) == null && state.RunOnlyObjects.Count == 0, "null Unity handle not registered"); host.NullCoroutine = false;
-        host.OnStart = () => Check(state.RunOnlyObjects.Count == 0, "Unity start precedes registry insertion");
+        host.OnStart = () => Check(state.RunOnlyObjects.Count == 1, "registry owns the routine before Unity's synchronous first step");
         var coroutine = host.StartRun(Routine(), 5);
         Check(coroutine != null && state.RunOnlyObjects.Count == 1 && state.RunOnlyObjects[0].Kind == ZombieModeRunOnlyObjectKind.Coroutine, "successful start registered once");
         var record = state.RunOnlyObjects[0]; module.OnDestroy(); UnityEngine.Object.Destroy(host);
@@ -110,6 +110,66 @@ internal static class Program
         var faultHost = new ModBehaviour(); Attach(faultHost); faultHost.State.RunId = 8; faultHost.State.LifecyclePhase = ZombieModeLifecyclePhase.Active;
         faultHost.StartRun(Routine(), 8); faultHost.ThrowOnStop = true;
         faultHost.State.RunOnlyObjects[0].Cleanup(true); Check(faultHost.Stops == 1, "StopCoroutine failure contained");
+        CoroutineCompletion();
+    }
+
+    private sealed class DisposableProbe : IEnumerator, IDisposable
+    {
+        internal int Steps, Disposals;
+        internal bool Throws;
+        public object Current { get { return null; } }
+        public bool MoveNext() { Steps++; if (Throws) throw new InvalidOperationException("nested iterator failure"); return Steps < 2; }
+        public void Reset() { throw new NotSupportedException(); }
+        public void Dispose() { Disposals++; }
+    }
+    private static IEnumerator Empty() { yield break; }
+    private static IEnumerator ReentrantExit(ModBehaviour host) { host.SceneCleanup(ZombieModeFailureReason.SceneSwitched); yield return null; }
+    private static void CoroutineCompletion()
+    {
+        var host = new ModBehaviour(); Attach(host);
+        host.State.RunId = 81; host.State.LifecyclePhase = ZombieModeLifecyclePhase.Active;
+        for (int i = 0; i < 512; i++)
+        {
+            var coroutine = host.StartRun(Routine(), 81);
+            Check(coroutine != null && host.State.RunOnlyObjects.Count == 1, "one active coroutine has one cleanup record");
+            Check(!coroutine.Routine.MoveNext() && host.State.RunOnlyObjects.Count == 0, "completion releases the run record " + i);
+        }
+        Check(host.StartRun(Empty(), 81) == null && host.State.RunOnlyObjects.Count == 0, "synchronous completion leaves no record");
+        object token = new object();
+        var child = new DisposableProbe();
+        var nested = host.StartRun(Tokens(token, child), 81);
+        Check(ReferenceEquals(nested.Routine.Current, token), "Unity yield token is preserved");
+        Check(nested.Routine.MoveNext() && child.Steps == 1, "nested iterator is actually advanced");
+        Check(nested.Routine.MoveNext() && child.Disposals == 1, "completed child is disposed once before the parent continues");
+        Check(!nested.Routine.MoveNext() && host.State.RunOnlyObjects.Count == 0, "nested completion removes only the root record");
+
+        child = new DisposableProbe();
+        nested = host.StartRun(Tokens(token, child), 81);
+        nested.Routine.MoveNext();
+        child.Throws = true;
+        bool threw = false;
+        try { nested.Routine.MoveNext(); } catch (InvalidOperationException) { threw = true; }
+        Check(threw && child.Disposals == 1 && host.State.RunOnlyObjects.Count == 0, "nested failure unwinds the root and its registry record");
+
+        child = new DisposableProbe();
+        var cancelled = host.StartRun(child, 81);
+        host.State.RunOnlyObjects[0].Cleanup(false);
+        Check(child.Disposals == 1 && !cancelled.Routine.MoveNext() && host.State.RunOnlyObjects.Count == 0,
+            "explicit cleanup disposes even when native StopCoroutine does not dispose iterators");
+        host.ThrowOnStart = true;
+        child = new DisposableProbe();
+        Check(host.StartRun(child, 81) == null && child.Disposals == 1 && host.State.RunOnlyObjects.Count == 0,
+            "start failure releases the unstarted iterator and record");
+        host.ThrowOnStart = false;
+
+        var first = host.StartRun(Routine(), 81);
+        var second = host.StartRun(Routine(), 81);
+        host.SceneCleanup(ZombieModeFailureReason.SceneSwitched);
+        Check(host.State.RunOnlyObjects.Count == 0 && !first.Routine.MoveNext() && !second.Routine.MoveNext(),
+            "bulk cleanup can traverse every record while cancellation disposes routines");
+        host.State.RunId = 82; host.State.LifecyclePhase = ZombieModeLifecyclePhase.Active;
+        Check(host.StartRun(ReentrantExit(host), 82) == null && host.State.RunOnlyObjects.Count == 0,
+            "a first-step reentrant scene exit cannot publish an orphan coroutine");
     }
     private static IEnumerator Tokens(object first, IEnumerator second) { yield return first; yield return second; yield return null; }
     private static void BossVisualCache()

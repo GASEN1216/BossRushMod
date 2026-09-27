@@ -238,6 +238,10 @@ namespace BossRush
         // 真正的 ES3 序列化延后到游戏的官方存档点（OnCollectSaveData / 场景切换 / 去抖 tick），
         // 避免在死亡那一帧同步反序列化 + 序列化整张含完整物品树的列表（抬回去动画卡顿主因）。
         private List<WraithInfo> _deathWraithListCache;        // 内存中的权威副本；null 表示尚未从存档加载
+        // 读取失败不是空档；新增死亡与移除意向独立保留，读通原列表后再合并。
+        private readonly List<WraithInfo> _deathWraithPendingAppends = new List<WraithInfo>();
+        private readonly HashSet<uint> _deathWraithPendingRemovals = new HashSet<uint>();
+        private float _deathWraithReadRetryAt, _deathWraithSaveRetryAt;
         private bool _deathWraithListDirty;                    // 是否有未写入 ES3 的改动
         private float _deathWraithListDirtySince = -1f;        // 变脏的时刻（用于去抖）
         // 去抖延迟设得较长：正常流程下游戏在撤离/切场景时触发 OnCollectSaveData 会先把列表刷掉
@@ -308,6 +312,9 @@ namespace BossRush
             // 切换存档槽：丢弃内存缓存，下次访问时从新槽位重新加载，避免跨槽串档。
             // 不在此 flush——OnSetFile 发生在切槽时，旧槽的内容应已通过官方存档点写过。
             _deathWraithListCache = null;
+            _deathWraithPendingAppends.Clear();
+            _deathWraithPendingRemovals.Clear();
+            _deathWraithReadRetryAt = _deathWraithSaveRetryAt = 0f;
             _deathWraithListDirty = false;
             _deathWraithListDirtySince = -1f;
         }

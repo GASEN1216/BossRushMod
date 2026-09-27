@@ -691,7 +691,8 @@ namespace BossRush
                 {
                     SetIconVisible(true);
                     iconImage.texture = tex;
-                    iconImage.color = grayscale ? new Color(0.4f, 0.4f, 0.4f, 1f) : Color.white;
+                    // 锁定变暗改用共享库的禁用态 token，不再写死字面量颜色（AGENTS §4.14）
+                    iconImage.color = grayscale ? BossRushUIColors.Disabled : Color.white;
                 }
                 else
                 {

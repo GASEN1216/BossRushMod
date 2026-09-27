@@ -411,8 +411,10 @@ namespace BossRush
                     }
                 }
 
+                // 淡入淡出的时序不变（仍是 CalculateAlpha 那套半径公式）；色相随半径推进做出「烧过去」的层次，
+                // 不再整段生命周期只有 waveColor 一种颜色线性淡入淡出。
                 float alpha = CalculateAlpha(wave.currentRadius);
-                Color color = waveColor;
+                Color color = EvaluateWaveColor(Mathf.Clamp01(wave.currentRadius / maxVisibleRadius));
                 color.a = alpha;
                 wave.lineRenderer.startColor = color;
                 wave.lineRenderer.endColor = color;
@@ -453,6 +455,28 @@ namespace BossRush
             float fadeIn = Mathf.Min(1f, radius / waveSpacing);
             float fadeOut = 1f - (radius - maxRadius) / waveSpacing;
             return Mathf.Clamp01(fadeIn * fadeOut) * waveColor.a;
+        }
+
+        /// <summary>环白热核（生命周期起点）：比 waveColor 更亮更浅，接近纯白偏金。</summary>
+        private static readonly Color WaveBirthColor = new Color(1f, 0.96f, 0.82f, 1f);
+        /// <summary>环末段（生命周期终点，淡出前）：偏橙红，与出生的白热金拉开层次。</summary>
+        private static readonly Color WaveEndColor = new Color(0.85f, 0.35f, 0.16f, 1f);
+
+        /// <summary>
+        /// 色相推进：出生白热金 → waveColor 金 → 末段橙红，前后两段各用 SmoothStep 过渡（不是线性 Lerp），
+        /// 只改颜色本身；alpha 仍由 CalculateAlpha 按半径算，淡入淡出时序不动。
+        /// </summary>
+        private Color EvaluateWaveColor(float lifecycleT)
+        {
+            Color mid = waveColor;
+            mid.a = 1f;
+            if (lifecycleT <= 0.5f)
+            {
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(lifecycleT * 2f));
+                return Color.Lerp(WaveBirthColor, mid, k);
+            }
+            float k2 = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((lifecycleT - 0.5f) * 2f));
+            return Color.Lerp(mid, WaveEndColor, k2);
         }
 
         private void KnockbackPlayer(Vector3 playerPos, Vector3 waveCenter)

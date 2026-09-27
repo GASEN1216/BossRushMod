@@ -395,3 +395,11 @@ Boss --> Weapon["PhantomWitchScytheWeaponConfig"]
 - `Circle` 发射器统一放平；诅咒领域预警外圈固定在判定半径、中心填充按蓄力长满、最后闪一下；横扫与怨灵拖斩出手前有扇形预警（守卫 `PhantomWitchVfxReadabilityGuard`）。判定半径与时序未改。
 - 灯光强度与范围收敛，特效按粒子寿命淡出后再回收；瞬移标记给借来的霜之哀伤冰焰改色走 MaterialPropertyBlock，不再污染共享材质。
 - 待 owner 定：横扫刀光视觉半径仍是判定的 2 倍（旧要求，守卫钉着）；怨灵拖斩刀光按蓄力起点锁方向、判定却跟随玩家。详情：本地 `docs/reports/testing/2026-09-23-UI与特效审美-看图清单.md`。
+
+## 2026-09-27 出招与破绽调整
+
+- 出招从固定轮播改为「阶段战术包袋」：`DrawNextPackageIndex` 在当前阶段序列里随机抽、不连出同一招，抽空重装；每招出现次数仍按 `Phase*Packages`。换阶段 `ResetPackageBag`。
+- 主力招式补收招硬直：追踪瞬移斩 `TrackedStrikeRecovery` 0.4 s、安魂弧 `RequiemArcRecovery` 0.35 s、亡魂两段斩 `WraithTrailRecovery` 0.5 s。
+- 三阶段「残喘突袭」不再与侧翼压制同码：瞬移斩后接 `ExecuteLastBreathCleave`（`HeavyScytheSlash*`：0.6 s 扇形预警、3.6 m / 65°、30 伤、0.7 s 硬直）。
+- 删去从未调用的诅咒范围技与领域传送/蓄力常量；亡魂两段斩、诅咒领域、重斩起手播放 `NewWeaponSfx.SoulSummon`。
+- 技能伤害与诅咒领域每跳伤害乘 `ResolveSkillDamageScale()`，冠军之影的决战倍率由此生效。诅咒领域仍不吃翻滚豁免（持续地面区域）。

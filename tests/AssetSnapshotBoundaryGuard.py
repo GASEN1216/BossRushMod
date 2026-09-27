@@ -44,7 +44,9 @@ def main():
             r'CharacterItem.Save\("MainCharacterItemData"\)', r'Inventory.Save\("PlayerStorage"\)',
             r"PlayerStorageBuffer.SaveBuffer\(\)", r'SavesSystem.Save<float>\("MainCharacterHealth"',
             r"assetSnapshotRequired = true;",
-            r"OnPhysicalSaveSucceeded\(\) \{ owner.assetSnapshotRequired = false; owner.cashSnapshotRequired = false; \}",
+            # 物理保存成功才清三份采集义务：实物快照、现金、官方任务交付资产（CR-2026-09-27-403）。
+            r"OnPhysicalSaveSucceeded\(\)\s*\{\s*owner.assetSnapshotRequired = false;\s*owner.cashSnapshotRequired = false;\s*owner.officialQuestAssetCollector = null;\s*\}",
+            r"HasSnapshotObligation \{ get \{ return owner.assetSnapshotRequired \|\| owner.cashSnapshotRequired \|\| owner.officialQuestAssetCollector != null; \} \}",
             r"BeforeCollectSaveData = CollectPendingCash",
             r"if \(!owner.CollectPendingCash\(\)\)",
             # 出击图（天空岛）里没有基地仓库：永久记录随这一趟结算（owner 2026-09-14「随撤离一起存」）。

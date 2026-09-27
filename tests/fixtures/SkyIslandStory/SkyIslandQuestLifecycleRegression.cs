@@ -98,5 +98,61 @@ internal static class SkyIslandQuestLifecycleRegression
         check(flow.story.TryApply(SkyIslandStoryAction.UnlockRoute, out unlocked), "the route can be unlocked");
         check(!flow.ProbeObjective(false) && !flow.ProbeObjective(true), "a delivered prelude never places the objective again");
         flow.ProbeClose();
+        SaveFailureAcrossClose(check);
+    }
+
+    private static void SaveFailureAcrossClose(Action<bool, string> check)
+    {
+        // 实际 EnsureStory / CloseStory + 完整门面 / 恢复 owner：三种失败都必须保住唯一写入责任。
+        for (int failure = 0; failure < 3; failure++)
+        {
+            int slot = 100180 + failure;
+            SavesSystem.Switch(slot);
+            var flow = new SkyIslandPreludeFlow();
+            check(flow.ProbeEnsure(), "recovery: empty prelude opens");
+            SkyIslandStoryService original = flow.story;
+            string message;
+            check(original.TryApply(SkyIslandStoryAction.AcceptPrelude, out message), "recovery: accept is queued");
+            SavesSystem.FailKeyWrite = failure == 0;
+            SavesSystem.FailPhysical = failure == 1;
+            SavesSystem.IsSaving = failure == 2;
+            flow.ProbeClose();
+            check(flow.story == null && SkyIslandStorySaveRecovery.IsPending(), "recovery: close hands off failed save " + failure);
+            check(SavesSystem.Subscribers == 1, "recovery: exactly one subscribed store after close");
+            flow.ProbeEnsure();
+            check(ReferenceEquals(flow.story, original) && !SkyIslandStorySaveRecovery.IsPending(),
+                "recovery: same-slot reopen takes the original owner " + failure);
+            check(flow.story.Current.Has(SkyIslandStoryFlag.PreludeAccepted) && SavesSystem.Subscribers == 1,
+                "recovery: reopening cannot replace accepted facts with old disk data");
+            flow.ProbeClose();
+            check(SkyIslandStorySaveRecovery.IsPending(), "recovery: a second close still retains the debt");
+            SavesSystem.FailKeyWrite = false;
+            SavesSystem.FailPhysical = false;
+            SavesSystem.ClearStuckSaving();
+            UnityEngine.Time.unscaledTime += 5f;
+            UnityEngine.MonoBehaviour.PumpAll();
+            check(!SkyIslandStorySaveRecovery.IsPending() && SavesSystem.Subscribers == 0,
+                "recovery: retry saves and releases all subscriptions");
+            SavesSystem.CrashReload(slot);
+            check(flow.ProbeEnsure() && flow.story.Current.Has(SkyIslandStoryFlag.PreludeAccepted),
+                "recovery: accepted prelude survives an actual durable-snapshot reload " + failure);
+            flow.ProbeClose();
+        }
+
+        SavesSystem.Switch(100190);
+        var switching = new SkyIslandPreludeFlow();
+        check(switching.ProbeEnsure(), "slot isolation: first slot opens");
+        string accepted;
+        check(switching.story.TryApply(SkyIslandStoryAction.AcceptPrelude, out accepted), "slot isolation: first slot accepts");
+        SavesSystem.IsSaving = true;
+        switching.ProbeClose();
+        SavesSystem.Switch(100191);
+        SavesSystem.ClearStuckSaving();
+        check(switching.ProbeEnsure() && !switching.story.Current.Has(SkyIslandStoryFlag.PreludeAccepted),
+            "slot isolation: another slot cannot adopt the previous slot's pending story");
+        UnityEngine.Time.unscaledTime += 5f;
+        UnityEngine.MonoBehaviour.PumpAll();
+        switching.ProbeClose();
+        check(SavesSystem.Subscribers == 0, "slot isolation: abandoned old-slot recovery unsubscribes");
     }
 }

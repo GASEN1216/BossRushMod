@@ -49,6 +49,9 @@ def main():
     asset = source("Integration/PhantomWitch/PhantomWitchAssetManager.cs")
     modifier = re.search(r"SetFieldSafe\(modifier, modifierTypeField, (ItemStatsSystem.Stats.ModifierType.\w+)\);", asset).group(1)
     slow = re.search(r"CurseSlowPerLayer\s*=\s*([-\d.]+f)", source("Integration/PhantomWitch/PhantomWitchConfig.cs")).group(1)
+    wraith_fields = source("Integration/DeathWraith/DeathWraithSystem.cs")
+    field_start = wraith_fields.index("private List<WraithInfo> _deathWraithListCache;")
+    field_end = wraith_fields.index(";", wraith_fields.index("private const float DEATH_WRAITH_SAVE_DELAY", field_start)) + 1
     replacements = {
         "Fire": {"FIRE_METHOD": member("Integration/Bonus/DragonSetBonus.cs", "private void OnDragonSetHurt(")},
         "Flight": {
@@ -61,6 +64,7 @@ def main():
         "Pool": {"POOL_METHODS": methods(pool, ["internal static void RequestFireExplosionEffectWarmup(", "private static async UniTaskVoid WarmFireExplosionEffectPoolAsync(", "internal static void ClearFireExplosionEffectPool("]).replace("async UniTaskVoid", "async Task")},
         "Mark": {},
         "Wraith": {
+            "WRAITH_PERSISTENCE_FIELDS": wraith_fields[field_start:field_end],
             "WRAITH_METHODS": methods("Integration/DeathWraith/DeathWraithSpawnFlow.cs", [
                 "private async void TrySpawnStoredDeathWraithForRaid_DeathWraith(",
                 "private async UniTask<CharacterMainControl> CreateWraithCharacterFromPlayerSnapshot_DeathWraith("

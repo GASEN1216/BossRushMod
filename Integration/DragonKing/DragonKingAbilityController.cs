@@ -293,6 +293,12 @@ namespace BossRush
         private bool isCustomShootingActive = false;
 
         /// <summary>
+        /// 大招期间常规扫射停火到此时刻（Time.time）；0 表示不停火。
+        /// 用时间戳而不是布尔，技能协程被外部中断时也会自己恢复。
+        /// </summary>
+        private float customShotsHeldUntil = 0f;
+
+        /// <summary>
         /// 自定义射击协程引用
         /// </summary>
         private Coroutine customShootingCoroutine = null;
@@ -383,6 +389,7 @@ namespace BossRush
         private static readonly WaitForSeconds wait3s = new WaitForSeconds(3f);
         private static readonly WaitForSeconds wait5s = new WaitForSeconds(5f);
         private static readonly WaitForSeconds wait8s = new WaitForSeconds(8f);
+        private static readonly WaitForSeconds waitLanceFinalGrace = new WaitForSeconds(DragonKingConfig.EtherealLanceFinalGrace);
 
         // ========== 性能优化：Gradient缓存（避免每次攻击重复创建） ==========
 

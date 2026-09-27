@@ -2,6 +2,47 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+<!-- BEGIN PRODUCTION READINESS AUDIT 2026-09-27 -->
+
+## 2026-09-27 生产就绪全面审计（天空岛重点，6 项 Fixed / L1+L2，L3 待实机）
+
+**修复回填（2026-09-27 晚）**：402–406 全部修复，完整守卫 711/711、隔离回归 108/108（三项 Harmony 夹具需设 `BOSSRUSH_HARMONY_DLL` / `BOSSRUSH_GAME_MANAGED`）、Windows 正式构建 exit 0、部署 DLL SHA-256 `EEC6C46F…` 与 `Build/BossRush.dll` 一致、73 包资源校验通过。修复明细见 `FIX_TRACKER.md` 同日「生产就绪审计与 Boss 设计修复」。L3 仍按续审报告的实机步骤执行。
+
+原审计摘要：只读审计。续审基线 `97ef0f7e492b7afbd0740c19df5c3720c7353ab2` 加冻结工作区；当前确认 1 P0、2 P1 发布阻断，2 P2 风险。全量守卫 709/711（2 NEW-FAIL）、stock 回归 107/107；Windows 正式编译真实失败，无新 DLL；独立 73 包资源部署/VerifyOnly 通过。完整覆盖、条件、修复兼容性、原始证据和 17 组实机步骤见 [续审终态报告](docs/reports/reviews/2026-09-27-生产就绪全面审计-天空岛重点-续审.md)。L3 未执行。
+
+| ID | 严重程度 / 修复兼容性 | 位置、条件与实际影响 | 证据 / 最小修复 / 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-27-406 | P0 / COMPAT + OPERATIONAL | `Integration/DragonDescendant/DragonDescendantAbilities_ProjectilesAndGrenades.cs:33`、`:68` 引用未定义 RocketTelegraphSeconds；`compile_official.bat:751` 的龙裔清单漏列已有 DragonDescendantRocketMarker。当前工作区完整正式构建无法产出 DLL。 | **Fixed / L1+L2**。`DragonDescendantConfig.RocketTelegraphSeconds`（0.8 s）已定义，`DragonDescendantRocketMarker.cs` 与 `Utilities/BossSkillDamageRules.cs` 已登记；正式构建 exit 0，编译清单守卫通过。L3：预警时长、1.6 m 半径、翻滚、暂停/死亡/切图取消。 |
+| CR-2026-09-27-402 | P1 / COMPAT | `SkyIsland/SkyIslandPreludeFlow.cs:174`、`:646`、`:647` 切图关闭并丢弃 story；`SkyIsland/SkyIslandStoryService.cs:709` 在 TryClose 失败后仍退订。序章键写失败期间触发通用切图关闭，进度失去恢复 owner。 | **Fixed / L1+L2**。`SkyIslandPreludeFlow` 关闭改走 `SkyIslandStorySaveRecovery.CloseOrRetain`，同槽重开经 `TakeCurrent` 接回原门面（唯一 writer）；`SkyIslandQuestLifecycleRegression` 覆盖，SkyIslandStory 回归通过。L3 待实机。 |
+| CR-2026-09-27-403 | P1 / COMPAT；欠账方案 SCHEMA+ | `Utilities/OfficialQuests/OfficialQuestProjection.cs:236` 先 Deliver 后 `:238` Give；`Campaign/CampaignProgressService.cs:532` RequestFlush，`CampaignSaveCoordinator.cs:145` 仅现金采集。下一次全量资产采集前异常退出，会留下已完成但无实物的任务；天空岛绑定同入口。 | **Fixed / L1+L2（COMPAT，无新存档字段）**。交付期 `BeginDelivery` 冻结客户端采集，`TryGive` 可回滚投递（禁合堆、收据回滚），完成事实与 `AssetCollector` 资产在同一次物理保存落盘，义务留到保存成功；Campaign、天空岛两客户端接线；出击中奖品寄待领取区。`ContentTransactions`/`JeffQuestFlow` 回归与 `OfficialQuestProjectionGuard`、`AssetSnapshotBoundaryGuard`（锚点随结构更新并反向验证）通过。L3 待实机。 |
+| CR-2026-09-27-404 | P2 / COMPAT | `ZombieMode/ZombieModeRuntimeModule_HostLifecycle.cs:182`、`:193` 逐协程登记；`ZombieMode/ZombieModeRuntimeModule.cs:739`、`:824` 正常完成不摘 Coroutine。记录单局累积，退局会清。 | **Fixed / L1+L2**。新增 `ZombieMode/ZombieModeRunCoroutine.cs`：先登记后启动，完成/异常/取消/退局统一摘 record，显式驱动嵌套 IEnumerator；`ZombieModeHostOwners` 回归通过。长局内存/FPS 未采样。 |
+| CR-2026-09-27-405 | P2 / COMPAT | `Integration/DeathWraith/DeathWraithLifecycleAndPersistence.cs:426` 读异常缓存空表，`:512`/`:535` 追加，`:464` 写回。暂时读失败后新的死亡记录覆盖旧 Mod 亡魂记录；不删除官方遗失物或背包。 | **Fixed / L1+L2**。读失败返回 null 作写屏障（1 s 后重读），新增/移除先排队、读通后合并，切槽与失效清队列；`DeathWraithPersistence`、`AuditCombatSeptember` 回归通过。L3 待实机。 |
+| CR-2026-09-27-401 | 原 P1 / OPERATIONAL | 原 skyisland_fx 漏列问题已由合入代码在 `tools/resource_release_manifest.json:79` 补齐。 | **Fixed / L1+L2**。73 包临时部署与 VerifyOnly 均 exit 0、hash 全同；406 修复后完整正式构建亦 exit 0。 |
+
+上午 677/66 与 C# 成功的结果仅属于初审快照，不能替代以上当前验证。全部 L2 均为隔离证据，未确认线索与未执行的 L3 单列在报告；没有把空 catch、生命周期定位清单或守卫通过当作功能正确证据。
+
+<!-- END PRODUCTION READINESS AUDIT 2026-09-27 -->
+
+<!-- BEGIN UI VFX BOSS DESIGN REVIEW 2026-09-27 -->
+
+## 2026-09-27 UI / 特效 / Boss 设计审核（Fixed / L1+L2，L3 待实机）
+
+只读审核三路（UI 与波次遮挡、特效塑料感、Boss 技能机制），随后按 owner「全部修复」实施。UI 与波次提示未见遮挡或塑料感高危项（横幅走官方 `NotificationText` 队列，实际屏幕位置待实机）；特效已普遍三段式。确认并修复：
+
+| ID | 严重程度 / 兼容性 | 问题 | 状态 |
+| --- | --- | --- | --- |
+| UVB-2026-09-27-01 | 高 / COMPAT | 龙王技能弹、冲锋、撞击，龙裔冲撞直接 `Hurt` 不看 `Dashing`，与官方子弹/爆炸/近战的翻滚豁免不一致 | Fixed：`Utilities/BossSkillDamageRules.cs` 统一瞬发豁免；持续地面区域按官方 `ZoneDamage` 不豁免 |
+| UVB-2026-09-27-02 | 高 / COMPAT | 幽灵女巫（冠军之影同源）主力招式零硬直、固定轮播、P3 残喘突袭与侧翼压制同码、两组技能只有配置 | Fixed：三招收招硬直、战术包袋随机不连出、残喘重斩追击、删死配置、起手音 |
+| UVB-2026-09-27-03 | 中 / COMPAT | 冠军之影 1.6 倍与全局 Boss 倍率不作用于自制技能伤害；龙裔二阶段覆盖掉全局倍率 | Fixed：按「当前 Stat / 刷怪基线」放大；龙裔二阶段乘法保留 |
+| UVB-2026-09-27-04 | 中 / COMPAT | 龙王大招预警期间常规扫射不停、虚影枪末线 0.1 s、二段冲锋无预警 | Fixed：预警类大招停火、末线 ≥0.4 s、二段 0.3 s 倒计时光圈 |
+| UVB-2026-09-27-05 | 中 / COMPAT | 龙裔「火箭弹」无弹体无预警、在玩家脚下瞬间结算；二阶段冲刺无起手 | Fixed：锁点 + 贴地预警 0.8 s + 落点爆炸（1.6 m/10 伤）；冲刺 0.3 s 扬尘起手 |
+| UVB-2026-09-27-06 | 中 / COMPAT | 丧尸 Hunter 冲刺起手 0.3 s；同场多 Boss 技能无全局节流 | Fixed：0.45 s；`BossSkillGlobalSpacingSeconds` 错开起手（Boss 数量与奖励不变，未封顶以免改经济） |
+| UVB-2026-09-27-07 | 低 / COMPAT | 焚皇戟火焰单色覆盖、丧尸支援弹无辨识、龙王冲击波单色、成就灰阶字面量色 | Fixed：三段渐变/金红色相、主题色拖尾、色相推进、`BossRushUIColors.Disabled` |
+
+未改：ModeH 危险按钮（B-04）核实已在 `fe122a36` 修复；Storm 脉冲圈登记 `TelegraphRingNames` 需搬常量并改三处结构守卫，而 Storm 逃圈速度已有 `SkyIslandStormEchoEscapePropertyTest` 保护，不做。
+
+<!-- END UI VFX BOSS DESIGN REVIEW 2026-09-27 -->
+
 ## 2026-09-27 模块解耦独立审计修复（L1/L2 已闭环）
 
 基点 `f90d6a5d` 的七项确认问题已修复；拉取前 699 守卫、99 隔离回归、Windows 正式/Dev 构建全部通过。随后合并远端的终态验证另见 [完整修复与合并记录](architecture/MIGRATION_REPAIR_20260927.md)，不能以此前结果替代合并后验证。

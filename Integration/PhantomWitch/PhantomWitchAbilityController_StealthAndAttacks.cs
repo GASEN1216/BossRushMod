@@ -347,6 +347,8 @@ namespace BossRush
             yield return TeleportTo(lockedTeleportPos);
             SetStealthMode(PhantomWitchStealthMode.Visible);
             yield return ExecuteImmediateScytheSweep(target);
+            // 瞬移斩收招硬直：落地后站定可见，贴脸反打的窗口
+            yield return waitTrackedStrikeRecovery;
             ResumeAI(target);
         }
 

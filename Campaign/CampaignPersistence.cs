@@ -62,8 +62,12 @@ namespace BossRush
 
         #endregion
 
-        private static readonly BossRushSlotJsonStore<CampaignSaveData> _store =
-            new BossRushSlotJsonStore<CampaignSaveData>(new BossRushSlotJsonStoreSpec<CampaignSaveData>
+        private static BossRushSlotJsonStore<CampaignSaveData> _store = CreateStore();
+        private static float _nextRecoveryAt;
+
+        private static BossRushSlotJsonStore<CampaignSaveData> CreateStore()
+        {
+            return new BossRushSlotJsonStore<CampaignSaveData>(new BossRushSlotJsonStoreSpec<CampaignSaveData>
             {
                 StorageKey = CampaignTuning.ProgressSaveKey,
                 SchemaVersion = CurrentSchemaVersion,
@@ -77,6 +81,7 @@ namespace BossRush
                 NotifySlotChanged = NotifySlotChangedDownstream,
                 BeforeCollectSaveData = BeforeCollectSaveData,
             });
+        }
 
         #region 只读查询
 
@@ -132,6 +137,43 @@ namespace BossRush
         internal static bool FlushPending()
         {
             return _store.FlushPending();
+        }
+
+        /// <summary>键写/回读的短暂失败后，校验原 key 并由新 store 接回已接受快照；不解除旧 owner 的单向故障。</summary>
+        internal static bool TryRecoverFaultedStore()
+        {
+            if (!_store.IsStoreFaulted) return true;
+            if (Saves.SavesSystem.IsSaving || Time.unscaledTime < _nextRecoveryAt) return false;
+            _nextRecoveryAt = Time.unscaledTime + 1f;
+            BossRushSlotJsonStore<CampaignSaveData> replacement = null;
+            bool adopted = false;
+            try
+            {
+                int slot = Saves.SavesSystem.CurrentSlot;
+                CampaignSaveData accepted = CampaignProgressService.CloneSaveData(_store.Current);
+                // Current 会自失效漂移的旧槽；不能把失效前的快照转给新槽。
+                if (!_store.IsStoreFaulted) return true;
+                if (slot < 0 || accepted == null || Decode(Encode(accepted)) == null) return false;
+                replacement = CreateStore();
+                replacement.LoadOrInit();
+                if (Saves.SavesSystem.CurrentSlot != slot || replacement.HasWriteBarrier || replacement.IsStoreFaulted)
+                    return false;
+                if (!replacement.Store(accepted)) return false;
+                if (_store.IsSubscribed) replacement.EnsureSubscribed();
+                _store.ShutdownSubscription();
+                _store = replacement;
+                adopted = true;
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 待保存快照恢复失败: " + e.Message);
+                return false;
+            }
+            finally
+            {
+                if (!adopted && replacement != null) replacement.ShutdownSubscription();
+            }
         }
 
         /// <summary>引导三态独立持久化：接取、体验目标、回基地交付。</summary>
@@ -250,6 +292,7 @@ namespace BossRush
         /// </summary>
         private static void NotifySlotChangedDownstream()
         {
+            _nextRecoveryAt = 0f;
             CampaignSaveCoordinator.NotifySlotChanged();
             CampaignFacilityUnlocks.ResetForSlotReload();
             CampaignProgressService.NotifySlotChanged();
@@ -285,6 +328,7 @@ namespace BossRush
         /// <summary>静态缓存重置（Mod 卸载 / 宿主重建）。会先退订。</summary>
         internal static void ResetStaticCaches()
         {
+            _nextRecoveryAt = 0f;
             _store.ResetAll();
         }
 

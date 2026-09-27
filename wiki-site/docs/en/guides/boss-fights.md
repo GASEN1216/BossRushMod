@@ -4,7 +4,7 @@
 
 ### Phase 1
 - Damage only 0.3x — low pressure. Learn the patterns
-- Every 10th bullet = rocket (1m blast). Keep distance
+- Up close, every 10th bullet marks an orange ring under you that blows ~0.8s later (1.6m radius). Step out of the ring
 - Incendiary bomb every 5s — dodge the ground fire
 - Steady DPS, no rush
 

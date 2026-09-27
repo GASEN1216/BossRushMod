@@ -63,7 +63,8 @@ namespace BossRush
                     continue;
                 }
 
-                PhantomWitchAttackPackageType packageType = sequence[currentPackageIndex % sequence.Length];
+                currentPackageIndex = DrawNextPackageIndex(sequence);
+                PhantomWitchAttackPackageType packageType = sequence[currentPackageIndex];
                 currentTelemetryPackageType = packageType;
                 currentPackageStartedAt = Time.time;
                 currentPackageHadAttackLanded = false;
@@ -97,7 +98,6 @@ namespace BossRush
                     ResumeAI(target);
                 }
 
-                currentPackageIndex = (currentPackageIndex + 1) % sequence.Length;
                 yield return GetCurrentPackageIntervalYield();
                 attackLoopLastTickTime = Time.time;
             }
@@ -212,6 +212,8 @@ namespace BossRush
                 true,
                 1.0f,
                 target);
+            // 出手硬直：站定可见，给读招成功的玩家输出窗口
+            yield return waitRequiemArcRecovery;
             ResumeAI(target);
         }
 
@@ -248,6 +250,7 @@ namespace BossRush
             }
 
             TrackEffect(windupOutline);
+            PlaySkillWindupCue();
 
             // 审查 VB-07：两段判定各画一片扇形预警（半径 / 半角 / 前移量与下方 DealConeDamage 的字面量一致）：
             // 第一段 3.2 m / 48° 实色填充，蓄力结束即结算；第二段 3.6 m / 54° 只画虚线外沿，再过 WraithTrailDelay 结算。
@@ -301,6 +304,8 @@ namespace BossRush
                 DealConeDamage(3.6f, 54f, PhantomWitchConfig.WraithTrailDamage, false, 1.0f, target);
             }
 
+            // 两段斩收招硬直
+            yield return waitWraithTrailRecovery;
             ResumeAI(target);
         }
 
@@ -337,6 +342,10 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 残喘突袭（仅三阶段）：瞬移斩落地后原地蓄力，再追一记大范围重斩。
+        /// 与侧翼压制的区别在追击：多一段可读的扇形预警和三阶段最长的收招硬直。
+        /// </summary>
         private IEnumerator ExecuteShortDriftPressurePackage()
         {
             CharacterMainControl target;
@@ -345,11 +354,50 @@ namespace BossRush
             if (target != null)
             {
                 yield return ExecuteTrackedTeleportStrike(target);
+                if (CanContinueAttacking())
+                {
+                    yield return ExecuteLastBreathCleave(target);
+                }
             }
             else
             {
                 yield return ExecuteImmediateScytheSweep(null);
             }
+        }
+
+        private IEnumerator ExecuteLastBreathCleave(CharacterMainControl target)
+        {
+            PauseAI();
+            SetStealthMode(PhantomWitchStealthMode.Visible);
+            PlaySkillWindupCue();
+            TrackEffect(PhantomWitchAssetManager.CreateConeTelegraph(
+                bossCharacter.transform,
+                target != null ? target.transform : null,
+                PhantomWitchConfig.HeavyScytheSlashRadius,
+                PhantomWitchConfig.HeavyScytheSlashHalfAngle,
+                PhantomWitchConfig.HeavyScytheSlashForwardOffset,
+                PhantomWitchConfig.HeavyScytheSlashWindup));
+            yield return waitHeavyScytheSlashWindup;
+
+            if (!CanContinueAttacking())
+            {
+                ResumeAI(target);
+                yield break;
+            }
+
+            ForceScytheAttackAnimation(target);
+            Vector3 forward = ResolveAttackForward(target);
+            Vector3 origin = bossCharacter.transform.position + forward * PhantomWitchConfig.HeavyScytheSlashForwardOffset;
+            TrackEffect(PhantomWitchAssetManager.CreateHeavySlashEffect(origin, forward, PhantomWitchConfig.HeavyScytheSlashRadius));
+            DealConeDamage(
+                PhantomWitchConfig.HeavyScytheSlashRadius,
+                PhantomWitchConfig.HeavyScytheSlashHalfAngle,
+                PhantomWitchConfig.HeavyScytheSlashDamage,
+                true,
+                PhantomWitchConfig.HeavyScytheSlashForwardOffset,
+                target);
+            yield return waitHeavyScytheSlashRecovery;
+            ResumeAI(target);
         }
 
         private IEnumerator ExecuteLastStandSummonPackage()

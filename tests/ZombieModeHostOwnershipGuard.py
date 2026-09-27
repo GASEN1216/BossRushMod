@@ -71,8 +71,17 @@ def main():
     scene = body(lifecycle, "internal void CleanupZombieModeForSceneChange(")
     ordered(scene, ["!IsZombieModeActive && !IsZombieModeStartupInProgress() && zombieModeRunState.RunOnlyObjects.Count <= 0", "return;", "LifecyclePhase = ZombieModeLifecyclePhase.Exiting;"])
     coroutine = body(lifecycle, "internal Coroutine StartZombieModeCoroutine(")
-    ordered(coroutine, ["if (!IsZombieModeRunValid(runId) || routine == null)", "return null;", "ModBehaviour coroutineOwner = owner;", "Coroutine coroutine = coroutineOwner.StartCoroutine(routine);", "if (coroutine != null)", "RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Coroutine, null, null, delegate", "coroutineOwner.StopCoroutine(coroutine);", "return coroutine;"])
-    assert "owner.StopCoroutine" not in coroutine, "回收闭包必须保留原宿主"
+    ordered(coroutine, ["if (!IsZombieModeRunValid(runId) || routine == null)", "return null;", "return ZombieModeRunCoroutine.Start(owner, runState, runId, routine, () => IsZombieModeRunValid(runId));"])
+    tracked = sources["ZombieModeRunCoroutine.cs"]
+    assert "private readonly ModBehaviour owner;" in tracked, "任务必须捕获原宿主"
+    start = body(tracked, "internal static Coroutine Start(")
+    ordered(start, ["run.RunOnlyObjects.Add(task.record);", "task.coroutine = owner.StartCoroutine(task);", "if (task.coroutine == null) task.Dispose();"])
+    advance = body(tracked, "public bool MoveNext()")
+    ordered(advance, ["object value = next.Current;", "IEnumerator child = value as IEnumerator;", "if (child != null) stack.Push(child);", "current = value;"])
+    assert "if (!yielded || disposeRequested) Dispose();" in advance, "异常与正常完成必须释放"
+    release = body(tracked, "public void Dispose()")
+    ordered(release, ["if (disposed) return;", "if (moving) return;", "disposed = true;", "record.CleanupAction = null;", "if (!run.IsCleaningUp) run.RunOnlyObjects.Remove(record);", "while (stack.Count > 0) DisposeIterator(stack.Pop());"])
+    assert "owner.StopCoroutine(coroutine);" in body(tracked, "private void StopNative()"), "取消必须使用捕获的原宿主"
     assert body(host, "private Coroutine StartZombieModeCoroutine(") == "ZombieModeRuntimeModule module = zombieModeRuntimeModule; return module != null ? module.StartZombieModeCoroutine(routine, runId) : null;"
     print("ZombieModeHostOwnershipGuard: PASS")
 

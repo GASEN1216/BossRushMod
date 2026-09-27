@@ -406,7 +406,7 @@ namespace BossRush
 
                     // 创建警告线（中心在玩家脚下，带旋转）。蓄力时长 = 离这一波发射还剩多久（每 0.1 s 一条、1 s 齐射），
                     // 核心线随它从 0.12 m 涨到 0.25 m，发射那一刻刚好满（VB-11，纯表现，判定时序不变）。
-                    float chargeSeconds = (linesPerWave - i) * 0.1f;
+                    float chargeSeconds = (linesPerWave - i) * 0.1f + DragonKingConfig.EtherealLanceFinalGrace;
                     GameObject line = CreateHorizontalWarningLine(currentPos, lineLength, rotation, chargeSeconds, 0.08f, 1f);
                     if (line != null)
                     {
@@ -419,8 +419,9 @@ namespace BossRush
                     yield return wait01s; // lineInterval = 0.1f
                 }
 
-                // 等待警告显示（已经过了1秒，等待剩余时间）
-                // 注：linesPerWave * lineInterval = 10 * 0.1 = 1.0s，与warningTime相等，无需额外等待
+                // 画线 1.0 s 之后再留 EtherealLanceFinalGrace：最后一条线跟随玩家实时位置，
+                // 不留这段它只剩 0.1 s 预警
+                yield return waitLanceFinalGrace;
 
                 // 射出所有长矛
                 if (warningLines.Count > 0)
@@ -789,10 +790,12 @@ namespace BossRush
             try
             {
                 if (player == null) return;
+                if (BossSkillDamageRules.IsDodging(player)) return;
 
                 // 创建伤害信息
                 DamageInfo dmgInfo = new DamageInfo(bossCharacter);
-                dmgInfo.damageValue = DragonKingConfig.CollisionDamage;
+                dmgInfo.damageValue = DragonKingConfig.CollisionDamage
+                    * BossSkillDamageRules.ResolveGunDamageScale(bossCharacter, DragonKingConfig.DamageMultiplier);
                 dmgInfo.damageType = DamageTypes.normal;
 
                 // 计算伤害方向（从Boss指向玩家）

@@ -502,8 +502,15 @@ namespace BossRush
                     var main = ps.main;
                     main.simulationSpace = ParticleSystemSimulationSpace.World;
 
-                    // 强制覆盖颜色，同时保持粒子的亮度
-                    main.startColor = new ParticleSystem.MinMaxGradient(color);
+                    // 不再用纯色覆盖整段生命周期（会糊成一坨单色）：
+                    // startColor 只留一个白热核心色，真正的颜色走 colorOverLifetime 三段渐变
+                    // （白热核 → 焚皇金红主色 → 暗红烟灰透明），与龙裔龙息的火焰色相区分开。
+                    Color core = new Color(1f, 0.94f, 0.78f, color.a);
+                    Color end = new Color(0.22f, 0.06f, 0.04f, 0f);
+                    main.startColor = new ParticleSystem.MinMaxGradient(core);
+                    var colorOverLifetime = ps.colorOverLifetime;
+                    colorOverLifetime.enabled = true;
+                    colorOverLifetime.color = BossRushFxKit.FadeGradient(core, color, end, 0f);
 
                     // 为了让原生枪械的“环境小火苗”变成巨大的“挥击特效拖尾”，必须魔改参数：
                     // 1. 停留时间缩短，符合挥击动作
@@ -582,16 +589,17 @@ namespace BossRush
             }
         }
 
+        // 焚皇断界戟专属火焰色：偏金红，与龙裔龙息（更偏纯红）区分开
         private static Color GetStepColor(int step)
         {
             switch (step)
             {
                 case 1:
-                    return new Color(1f, 0.25f, 0.08f, 0.9f); // 原本 case 2 的颜色
+                    return new Color(1f, 0.5f, 0.12f, 0.9f); // 原本 case 2 的颜色，往金色推
                 case 2:
-                    return new Color(1f, 0.6f, 0.18f, 0.85f); // 原本 case 1 的颜色
+                    return new Color(1f, 0.62f, 0.18f, 0.85f); // 原本 case 1 的颜色，金红基准色
                 default:
-                    return new Color(1f, 0.45f, 0.12f, 0.85f);
+                    return new Color(1f, 0.56f, 0.15f, 0.85f);
             }
         }
     }

@@ -220,8 +220,13 @@ namespace BossRush
             {
                 if (story == null)
                 {
-                    story = new SkyIslandStoryService();
-                    story.Open();
+                    // 同槽重开先接回尚未落盘的门面；不能从旧磁盘创建第二个 writer 覆盖待保存事实。
+                    story = SkyIslandStorySaveRecovery.TakeCurrent();
+                    if (story == null)
+                    {
+                        story = new SkyIslandStoryService();
+                        story.Open();
+                    }
                     openedSlot = Saves.SavesSystem.CurrentSlot;
                 }
                 bool migrated;
@@ -643,7 +648,7 @@ namespace BossRush
             holdsInstrument = false;
             instrumentSampled = false;
             openedSlot = -1;
-            if (story != null) story.Close();
+            SkyIslandStorySaveRecovery.CloseOrRetain(story);
             story = null;
             SkyIslandOfficialQuestStory.SetBaseSource(null);
         }

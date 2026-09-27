@@ -186,17 +186,8 @@ namespace BossRush
                 return null;
             }
 
-            ModBehaviour coroutineOwner = owner;
-            Coroutine coroutine = coroutineOwner.StartCoroutine(routine);
-            if (coroutine != null)
-            {
-                RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Coroutine, null, null, delegate
-                {
-                    try { coroutineOwner.StopCoroutine(coroutine); } catch (System.Exception e) { ModBehaviour.DevLog("[ZombieMode] StopCoroutine 失败: " + e.Message); }
-                });
-            }
-
-            return coroutine;
+            return ZombieModeRunCoroutine.Start(owner, runState, runId, routine,
+                () => IsZombieModeRunValid(runId));
         }
     }
 }

@@ -361,3 +361,11 @@ RUNTIME --> LIFE["主控制器生命周期"]
 - [DragonKingAbilityController_AttackFlow.cs:483-526](file://Integration/DragonKing/DragonKingAbilityController_AttackFlow.cs#L483-L526)
 - [DragonKingBossGunRuntime.cs:564-640](file://Integration/DragonKing/Weapons/DragonKingBossGunRuntime.cs#L564-L640)
 - [DragonKingConfig.cs:44-92](file://Integration/DragonKing/DragonKingConfig.cs#L44-L92)
+
+## 2026-09-27 节奏与公平性调整
+
+- 冲锋、日轮舞、虚影枪（含切屏）期间常规扫射停火：`ExecuteAttack` 设置 `customShotsHeldUntil`（兜底 `SkillHoldFireMaxSeconds` 12 s），技能结束清零；棱彩弹、万彩虹环期间照常射击。
+- 虚影枪每波画线后多等 `EtherealLanceFinalGrace` 0.3 s 再齐射，最后一条线的预警从 0.1 s 提到 0.4 s。
+- 二阶段第二段冲锋：落地后在起手开始时重新锁定方向，原地转向并亮 `DashSecondSegmentWindup`（0.3 s）倒计时光圈与蓄力声再冲。
+- `ApplyDamageToPlayer`、冲锋碰撞、撞击伤害遵守翻滚豁免；翻滚穿过的弹幕不消耗。岩浆仍为持续地面伤害。技能伤害按全局倍率放大，见《自定义 Boss 系统》同日小节。
+- 删去太阳舞五个未接线常量（光束由 `SunBeamGroupPrefab` 与 `SunBeamDamageTrigger` 决定）。

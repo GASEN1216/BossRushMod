@@ -177,6 +177,73 @@ namespace BossRush
             return bossCharacter;
         }
 
+        /// <summary>由 PhantomWitchBoss 在全局倍率之前读到的近战 Stat 基线。只接受第一次有效值。</summary>
+        internal void SetSkillDamageStatBaseline(float baseline)
+        {
+            if (skillDamageStatBaseline <= 0f && baseline > 0f)
+            {
+                skillDamageStatBaseline = baseline;
+            }
+        }
+
+        /// <summary>自制技能伤害的倍率（全局 Boss 倍率 × 决战倍率）；诅咒领域开领域时也按它放大。</summary>
+        internal float GetSkillDamageScaleForRealmRuntime()
+        {
+            return ResolveSkillDamageScale();
+        }
+
+        private float ResolveSkillDamageScale()
+        {
+            return BossSkillDamageRules.ResolveMeleeDamageScale(bossCharacter, skillDamageStatBaseline);
+        }
+
+        /// <summary>重招起手声：视线不在 Boss 身上、或她在屏幕外时也能听到要出大招了。纯表现。</summary>
+        private void PlaySkillWindupCue()
+        {
+            // 复用新武器音效入口（自带路径解析与吞异常），不另取宿主单例
+            NewWeaponFx.PlaySound(NewWeaponSfx.SoulSummon);
+        }
+
+        /// <summary>从当前阶段的战术包袋里抽下一招的序列下标，见 <see cref="packageBag"/>。</summary>
+        private int DrawNextPackageIndex(PhantomWitchAttackPackageType[] sequence)
+        {
+            if (!ReferenceEquals(packageBagSource, sequence) || packageBag.Count == 0)
+            {
+                packageBagSource = sequence;
+                packageBag.Clear();
+                for (int i = 0; i < sequence.Length; i++)
+                {
+                    packageBag.Add(i);
+                }
+            }
+
+            int count = packageBag.Count;
+            int start = UnityEngine.Random.Range(0, count);
+            int slot = start;
+            for (int k = 0; k < count; k++)
+            {
+                int candidate = (start + k) % count;
+                if (!hasLastDrawnPackage || sequence[packageBag[candidate]] != lastDrawnPackageType)
+                {
+                    slot = candidate;
+                    break;
+                }
+            }
+
+            int index = packageBag[slot];
+            packageBag.RemoveAt(slot);
+            lastDrawnPackageType = sequence[index];
+            hasLastDrawnPackage = true;
+            return index;
+        }
+
+        /// <summary>换阶段时清袋，新阶段从满袋开始抽。</summary>
+        private void ResetPackageBag()
+        {
+            packageBag.Clear();
+            packageBagSource = null;
+        }
+
         internal void NotifyBossCurseRealmRuntimeEnded(PhantomWitchBossCurseRealmRuntime runtime, string reason)
         {
             if (runtime == null)

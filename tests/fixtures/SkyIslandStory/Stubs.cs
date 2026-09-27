@@ -18,6 +18,14 @@ namespace UnityEngine
     {
         internal bool Destroyed;
         internal static readonly List<Object> Live = new List<Object>();
+        public static bool operator ==(Object a, Object b)
+        {
+            bool an = ReferenceEquals(a, null) || a.Destroyed, bn = ReferenceEquals(b, null) || b.Destroyed;
+            return an || bn ? an == bn : ReferenceEquals(a, b);
+        }
+        public static bool operator !=(Object a, Object b) { return !(a == b); }
+        public override bool Equals(object value) { return ReferenceEquals(this, value); }
+        public override int GetHashCode() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
         public static void DontDestroyOnLoad(Object value) { }
         public static void Destroy(Object value)
         {
@@ -27,7 +35,7 @@ namespace UnityEngine
             value.Destroyed = true;
             Live.Remove(value);
             MonoBehaviour behaviour = value as MonoBehaviour;
-            if (behaviour != null) behaviour.Raise("OnDestroy");
+            if (!ReferenceEquals(behaviour, null)) behaviour.Raise("OnDestroy");
         }
         public static T[] FindObjectsOfType<T>(bool includeInactive) where T : Object
         {

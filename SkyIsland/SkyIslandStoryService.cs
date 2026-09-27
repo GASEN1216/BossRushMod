@@ -16,6 +16,8 @@ namespace BossRush
         private float nextRecoveryAt;
         private bool assetSnapshotRequired;
         private bool cashSnapshotRequired, rewardCommitting;
+        private bool officialDeliveryActive;
+        private Func<bool> officialQuestAssetCollector;
         private SkyIslandStoryAction? cashPaidPendingAction;
         /// <summary>这一趟出击里暂不入档的永久记录 id（见 <see cref="EncodeForSave"/>）。</summary>
         private readonly HashSet<string> raidHeldNotes = new HashSet<string>(StringComparer.Ordinal);
@@ -343,7 +345,8 @@ namespace BossRush
 
         private bool CollectPendingCash()
         {
-            if (rewardCommitting) return false;
+            if (rewardCommitting || officialDeliveryActive) return false;
+            if (officialQuestAssetCollector != null && !officialQuestAssetCollector()) return false;
             if (!cashSnapshotRequired) return true;
             try
             {
@@ -353,6 +356,24 @@ namespace BossRush
                 return true;
             }
             catch (Exception e) { lastSaveError = "cash_collect_failed:" + e.GetType().Name; return false; }
+        }
+
+        internal bool BeginOfficialDelivery(Func<bool> collectAssets, out string message)
+        {
+            message = SaveStatus;
+            if (!CanWrite || officialDeliveryActive || officialQuestAssetCollector != null || collectAssets == null || SavesSystem.IsSaving) return false;
+            officialQuestAssetCollector = collectAssets;
+            officialDeliveryActive = true;
+            message = null;
+            return true;
+        }
+
+        internal void EndOfficialDelivery(bool committed)
+        {
+            if (!officialDeliveryActive) return;
+            officialDeliveryActive = false;
+            if (!committed) officialQuestAssetCollector = null;
+            Tick(true);
         }
 
         /// <summary>把入口门上线前已经玩过群岛的槽位迁移成完整序章状态，并按既有事实回填岛上主线任务的接取 / 交付位；新槽不动。</summary>
@@ -771,6 +792,8 @@ namespace BossRush
 
         private void OnSlotChanged()
         {
+            officialDeliveryActive = false;
+            officialQuestAssetCollector = null;
             slotChanged = true;
             // 旧槽的待写批次不会再写（IsCurrentSlot 挡住），去抖状态一并作废。
             pendingSince = -1f;
@@ -790,7 +813,7 @@ namespace BossRush
             public string LogPrefix { get { return "[SkyIsland] "; } }
             public bool HasPendingWrite { get { return store.HasPendingWrite; } }
             public bool IsStoreFaulted { get { return store.IsStoreFaulted; } }
-            public bool HasSnapshotObligation { get { return owner.assetSnapshotRequired || owner.cashSnapshotRequired; } }
+            public bool HasSnapshotObligation { get { return owner.assetSnapshotRequired || owner.cashSnapshotRequired || owner.officialQuestAssetCollector != null; } }
             public string LastError { get { return store.LastError; } }
             public bool CollectSnapshot(out string error)
             {
@@ -810,7 +833,12 @@ namespace BossRush
                 catch (Exception e) { error = "asset_collect_failed:" + e.GetType().Name; return false; }
             }
             public bool FlushPending() { return store.FlushPending(); }
-            public void OnPhysicalSaveSucceeded() { owner.assetSnapshotRequired = false; owner.cashSnapshotRequired = false; }
+            public void OnPhysicalSaveSucceeded()
+            {
+                owner.assetSnapshotRequired = false;
+                owner.cashSnapshotRequired = false;
+                owner.officialQuestAssetCollector = null;
+            }
         }
     }
 }

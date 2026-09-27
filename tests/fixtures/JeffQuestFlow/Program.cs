@@ -265,6 +265,7 @@ internal static class Program
         internal OfficialQuestBinding Binding(int id)
         {
             return new OfficialQuestBinding {QuestId=id,GiverId=5901,ObjectName="test_"+id,NameKey="name",DescriptionKey="desc",Client=this,
+                BeginDelivery=CampaignSaveCoordinator.BeginQuestDelivery,EndDelivery=CampaignSaveCoordinator.EndQuestDelivery,
                 CanOffer=()=>!Accepted,CanDeliver=()=>Accepted && Done,IsAccepted=()=>Accepted,IsDelivered=()=>Delivered,
                 Accept=(out string m)=>{if(FailAccept){m="accept write failed";return false;}m=null;Accepted=true;return true;}, Deliver=(out string m)=>{m=null;Delivered=true;return true;},
                 RewardItems=new[]{new OfficialQuestItemStack(500080,2),new OfficialQuestItemStack(500078,3)},

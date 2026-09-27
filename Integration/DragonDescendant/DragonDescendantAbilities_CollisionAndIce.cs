@@ -174,10 +174,12 @@ namespace BossRush
             try
             {
                 if (player == null) return;
+                if (BossSkillDamageRules.IsDodging(player)) return;
 
-                // 创建伤害信息
+                // 创建伤害信息（冲撞只在狂暴期出现，基线取二阶段倍率）
                 DamageInfo dmgInfo = new DamageInfo(bossCharacter);
-                dmgInfo.damageValue = DragonDescendantConfig.CollisionDamage;
+                dmgInfo.damageValue = DragonDescendantConfig.CollisionDamage
+                    * BossSkillDamageRules.ResolveGunDamageScale(bossCharacter, DragonDescendantConfig.Phase2DamageMultiplier);
                 dmgInfo.damageType = DamageTypes.normal;
 
                 // 计算伤害方向（从Boss指向玩家）

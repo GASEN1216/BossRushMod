@@ -679,6 +679,8 @@ namespace BossRush
         public int CurrentWaveKills;
         public readonly List<ZombieModeBossInstance> CurrentWaveBossInstances = new List<ZombieModeBossInstance>();
         public int CurrentWaveBossesRemaining;
+        /// <summary>同场 Boss 伤害技能的下一个可起手时刻（丧尸模式 unscaled 时间轴），见 BossSkillGlobalSpacingSeconds。</summary>
+        public float NextBossSkillWindowTime;
         public int PurificationPoints;
         public readonly List<ZombieModeSpawnPoint> EffectiveSpawnPoints = new List<ZombieModeSpawnPoint>();
         public float PeriodicSpawnTimer;
@@ -765,6 +767,7 @@ namespace BossRush
             CurrentWaveKills = 0;
             CurrentWaveBossInstances.Clear();
             CurrentWaveBossesRemaining = 0;
+            NextBossSkillWindowTime = 0f;
             PurificationPoints = 0;
             EffectiveSpawnPoints.Clear();
             PeriodicSpawnTimer = 0f;
@@ -853,6 +856,7 @@ namespace BossRush
             CurrentWaveKillTarget = 0;
             CurrentWaveKills = 0;
             CurrentWaveBossesRemaining = 0;
+            NextBossSkillWindowTime = 0f;
             PurificationPoints = 0;
             PeriodicSpawnTimer = 0f;
             NextSpawnPointIndex = 0;

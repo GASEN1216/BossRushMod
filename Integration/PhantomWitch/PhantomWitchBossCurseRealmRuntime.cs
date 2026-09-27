@@ -52,6 +52,10 @@ namespace BossRush
             weaponTypeId = controller != null
                 ? controller.GetCurrentWeaponTypeIdForRealmRuntime()
                 : PhantomWitchConfig.PlaceholderScytheTypeId;
+            if (controller != null)
+            {
+                damagePerTick = PhantomWitchConfig.BossCurseRealmDamagePerTick * controller.GetSkillDamageScaleForRealmRuntime();
+            }
         }
 
         public void ForceTerminate(string reason)

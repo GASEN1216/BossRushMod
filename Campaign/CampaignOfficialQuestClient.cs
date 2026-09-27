@@ -172,6 +172,8 @@ namespace BossRush
                 RewardPaid = () => State(chapterId) == CampaignChapterState.Completed,
                 Accept = (out string message) => Accept(chapterId, out message),
                 Deliver = (out string message) => Deliver(def, out message),
+                BeginDelivery = CampaignSaveCoordinator.BeginQuestDelivery,
+                EndDelivery = CampaignSaveCoordinator.EndQuestDelivery,
                 PayReward = null,
                 StateStamp = () => CampaignQuestTable.ComputeStateStamp(State(chapterId), Armed(chapterId),
                     CampaignObjectiveTracker.Progress, CampaignBaseObjectives.DoneBits(def)),
@@ -220,6 +222,8 @@ namespace BossRush
                 RewardPaid = () => CampaignGuideTable.IsCompleted(id),
                 Accept = (out string message) => AcceptGuide(id, out message),
                 Deliver = (out string message) => DeliverGuide(id, cash, out message),
+                BeginDelivery = CampaignSaveCoordinator.BeginQuestDelivery,
+                EndDelivery = CampaignSaveCoordinator.EndQuestDelivery,
                 PayReward = null,
                 StateStamp = () => CampaignGuideTable.IsCompleted(id) ? 3
                     : (CampaignGuideTable.IsExperienced(id) ? 2 : (CampaignGuideTable.IsAccepted(id) ? 1 : 0)),

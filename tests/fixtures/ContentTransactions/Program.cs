@@ -5,7 +5,7 @@ using Duckov.Economy;
 using ItemStatsSystem;
 using Saves;
 
-class Program
+partial class Program
 {
     static int checks;
     static void Check(bool condition, string text)
@@ -42,6 +42,10 @@ class Program
         PetNestExpeditionService.ResetValidationRewardBackend();
         ShowcaseService.ResetStaticCaches();
         ItemUtilities.Delivered.Clear(); RelicEggConfig.FailStamp = false;
+        ItemUtilities.ThrowBeforePack = ItemUtilities.ThrowBeforeBuffer = ItemUtilities.ThrowAfterBuffer = false;
+        ItemUtilities.DuringDelivery = null;
+        PlayerStorage.IncomingItemBuffer.Clear();
+        PlayerStorage.Instance = new PlayerStorage();
         ItemAssetsCollection.FailInstantiate = false; UnityEngine.Random.value = 0;
         ItemAssetsCollection.MissingPrefabId = ItemAssetsCollection.InstantiateCalls = 0;
         PetNestBaseIdleSpawner.DeployNotifications = PetNestCompanionRuntime.Cleanups = 0;
@@ -494,6 +498,7 @@ class Program
     }
     static void Main()
     {
+        QuestDeliveryTransactions();
         CampaignGuideLifecycle(); GuideCash(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
         ManualChromaAndDurations();
         PityGuarantees();

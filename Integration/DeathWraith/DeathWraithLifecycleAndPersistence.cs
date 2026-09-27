@@ -413,17 +413,30 @@ namespace BossRush
             {
                 return _deathWraithListCache;
             }
+            if (Time.realtimeSinceStartup < _deathWraithReadRetryAt) return null;
 
             try
             {
-                List<WraithInfo> infos =
-                    SavesSystem.Load<List<WraithInfo>>(DEATH_WRAITH_LIST_SAVE_KEY);
-                _deathWraithListCache = infos ?? new List<WraithInfo>();
+                bool exists = SavesSystem.KeyExisits(DEATH_WRAITH_LIST_SAVE_KEY);
+                List<WraithInfo> infos = exists
+                    ? SavesSystem.Load<List<WraithInfo>>(DEATH_WRAITH_LIST_SAVE_KEY) : new List<WraithInfo>();
+                if (infos == null) throw new InvalidOperationException("亡魂记录键存在但列表不可读");
+                // 原记录读取成功之前，不将新死亡列表当成权威全量快照。
+                for (int i = infos.Count - 1; i >= 0; i--)
+                    if (infos[i] != null && _deathWraithPendingRemovals.Contains(infos[i].raidID)) infos.RemoveAt(i);
+                for (int i = 0; i < _deathWraithPendingAppends.Count; i++)
+                    MergeStoredDeathWraithInfo_DeathWraith(infos, _deathWraithPendingAppends[i]);
+                _deathWraithListCache = infos;
+                _deathWraithPendingAppends.Clear();
+                _deathWraithPendingRemovals.Clear();
+                _deathWraithReadRetryAt = 0f;
             }
             catch (Exception e)
             {
                 DevLog("[DeathWraith] 读取亡魂记录列表失败: " + e.Message);
-                _deathWraithListCache = new List<WraithInfo>();
+                _deathWraithReadRetryAt = Time.realtimeSinceStartup + 1f;
+                // null 保持写屏障；下次存档采集 / 去抖会重读，不能用空列表覆盖旧档。
+                return null;
             }
 
             return _deathWraithListCache;
@@ -458,17 +471,22 @@ namespace BossRush
             {
                 return;
             }
+            if (SavesSystem.IsSaving || SavesSystem.CurrentSlot < 0 || Time.realtimeSinceStartup < _deathWraithSaveRetryAt) return;
 
             try
             {
+                List<WraithInfo> infos = LoadStoredDeathWraithInfos_DeathWraith();
+                if (infos == null) return;
                 SavesSystem.Save<List<WraithInfo>>(
                     DEATH_WRAITH_LIST_SAVE_KEY,
-                    _deathWraithListCache ?? new List<WraithInfo>());
+                    infos);
                 _deathWraithListDirty = false;
                 _deathWraithListDirtySince = -1f;
+                _deathWraithSaveRetryAt = 0f;
             }
             catch (Exception e)
             {
+                _deathWraithSaveRetryAt = Time.realtimeSinceStartup + 1f;
                 DevLog("[DeathWraith] 保存亡魂记录列表失败: " + e.Message);
             }
         }
@@ -510,6 +528,19 @@ namespace BossRush
             }
 
             List<WraithInfo> infos = LoadStoredDeathWraithInfos_DeathWraith();
+            if (infos == null)
+            {
+                _deathWraithPendingRemovals.Remove(info.raidID);
+                MergeStoredDeathWraithInfo_DeathWraith(_deathWraithPendingAppends, info);
+                MarkDeathWraithListDirty_DeathWraith();
+                return;
+            }
+            MergeStoredDeathWraithInfo_DeathWraith(infos, info);
+            SaveStoredDeathWraithInfos_DeathWraith(infos);
+        }
+
+        private void MergeStoredDeathWraithInfo_DeathWraith(List<WraithInfo> infos, WraithInfo info)
+        {
             for (int i = infos.Count - 1; i >= 0; i--)
             {
                 WraithInfo existing = infos[i];
@@ -532,12 +563,12 @@ namespace BossRush
                 infos.RemoveAt(0);
             }
 
-            SaveStoredDeathWraithInfos_DeathWraith(infos);
         }
 
         private WraithInfo FindStoredDeathWraithInfoByRaidId_DeathWraith(uint raidID)
         {
             List<WraithInfo> infos = LoadStoredDeathWraithInfos_DeathWraith();
+            if (infos == null) return null;
             for (int i = 0; i < infos.Count; i++)
             {
                 WraithInfo info = infos[i];
@@ -554,6 +585,14 @@ namespace BossRush
         {
             bool removed = false;
             List<WraithInfo> infos = LoadStoredDeathWraithInfos_DeathWraith();
+            if (infos == null)
+            {
+                _deathWraithPendingRemovals.Add(raidID);
+                for (int i = _deathWraithPendingAppends.Count - 1; i >= 0; i--)
+                    if (_deathWraithPendingAppends[i].raidID == raidID) _deathWraithPendingAppends.RemoveAt(i);
+                MarkDeathWraithListDirty_DeathWraith();
+                return false;
+            }
             for (int i = infos.Count - 1; i >= 0; i--)
             {
                 WraithInfo info = infos[i];
@@ -576,6 +615,10 @@ namespace BossRush
 
         internal void InvalidateStoredDeathWraithRecords_DeathWraith(string reason)
         {
+            // 明确关闭系统时沿用原有失效语义；不得把之前排队的死亡重新合回已清空的列表。
+            _deathWraithPendingAppends.Clear();
+            _deathWraithPendingRemovals.Clear();
+            _deathWraithReadRetryAt = _deathWraithSaveRetryAt = 0f;
             SaveStoredDeathWraithInfos_DeathWraith(new List<WraithInfo>());
             DevLog("[DeathWraith] 已清空全部亡魂记录: " + reason);
         }
