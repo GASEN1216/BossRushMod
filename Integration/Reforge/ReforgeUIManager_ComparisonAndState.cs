@@ -999,7 +999,8 @@ namespace BossRush
                                     baseText = baseText.Substring(0, colorTagIndex);
                                 }
 
-                                string colorHex = diff > 0 ? IntegrationUIFeedback.SuccessHex : IntegrationUIFeedback.DangerHex;
+                                string colorHex = ReforgeSystem.IsBeneficialChange(key, diff)
+                                    ? IntegrationUIFeedback.SuccessHex : IntegrationUIFeedback.DangerHex;
                                 QueueReforgeReveal(key, propType, entryOrdinal, newValue, diff);   // UD-25：详情面板重建后逐行揭晓
                                 float prefabValue;
                                 string diffMarkup = TryGetCachedPrefabValue(key, propType, entryOrdinal, out prefabValue)
@@ -1012,7 +1013,7 @@ namespace BossRush
                                 valueText.text = baseText + diffMarkup;
 
                                 string logArrow = diff > 0 ? "↑" : "↓";
-                                string logColor = diff > 0 ? "绿" : "红";
+                                string logColor = ReforgeSystem.IsBeneficialChange(key, diff) ? "绿" : "红";
                                 ModBehaviour.DevLog("[ReforgeUI] 属性变化: " + key + " " + logArrow + " " + Mathf.Abs(diff).ToString("F2") + " (" + logColor + ")");
                             }
                         }
@@ -1052,12 +1053,16 @@ namespace BossRush
         {
             if (diff > 0 && ReforgeSystem.IsValueAtUpperBound(key, prefabValue, currentValue))
             {
-                return string.Format(" <color={0}>Max</color>", IntegrationUIFeedback.LegendaryHex);
+                return string.Format(" <color={0}>Max</color>",
+                    ReforgeSystem.GetBeneficialValueDirection(key) > 0
+                        ? IntegrationUIFeedback.LegendaryHex : IntegrationUIFeedback.SecondaryHex);
             }
 
             if (diff < 0 && ReforgeSystem.IsValueAtLowerBound(key, prefabValue, currentValue))
             {
-                return string.Format(" <color={0}>Min</color>", IntegrationUIFeedback.SecondaryHex);
+                return string.Format(" <color={0}>Min</color>",
+                    ReforgeSystem.GetBeneficialValueDirection(key) < 0
+                        ? IntegrationUIFeedback.LegendaryHex : IntegrationUIFeedback.SecondaryHex);
             }
 
             return string.Empty;

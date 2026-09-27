@@ -117,6 +117,7 @@ namespace ItemStatsSystem
     public class Slot { public Item Content; }
     public class Item
     {
+        public T GetComponent<T>() where T : class { return null; }
         public int TypeID = 500059, MaxStackCount = 20, Quality;
         public string Lineage = "test";
         public bool Destroyed, FailSaveOnce, IsFallback, Stackable = true;
@@ -289,7 +290,7 @@ namespace BossRush
     static class BackMountainItems
     {
         public class Definition { public bool IsSeed; public string NameCN = "餐", NameEN = "meal"; }
-        public static Definition GetDefinition(int id) { return id == 500065 ? new Definition() : null; }
+        public static Definition GetDefinition(int id) { return id >= 500065 && id <= 500067 ? new Definition() : null; }
     }
     enum BackMountainFacility { Showcase }
     static class BackMountainUnlocks { public static bool IsFacilityUnlocked(BackMountainFacility facility) { return true; } }
@@ -315,4 +316,34 @@ namespace BossRush
             Registered++; return true;
         }
     }
+    // 本夹具只隔离使用动作成功/拒绝/异常，不模拟变身行为。
+    // 完整生产变身、装备与碰撞器回归见 BackMountainMorph。
+    internal static class BackMountainBossMorphService
+    {
+        internal static bool Reject, Throw;
+        internal static int Started;
+        internal static void Clear() { }
+        internal static bool CanUse { get { return !SceneLoader.IsSceneLoading; } }
+        internal static bool TryBegin(int typeId, ModBehaviour owner)
+        {
+            if (Throw) throw new InvalidOperationException("injected morph failure");
+            if (Reject || !CanUse) return false;
+            if (typeId != BossRushItemIds.DragonFruit && typeId != BossRushItemIds.EmberChili
+                && typeId != BossRushItemIds.PhantomMushroom) return false;
+            Started++; return true;
+        }
+    }
 }
+
+static class SceneLoader { public static bool IsSceneLoading; }
+
+namespace BossRush { static class BossRushItemIds { public const int DragonFruit = 500065, EmberChili = 500066, PhantomMushroom = 500067; } }
+
+// Attributes only; signature/IL binding is separately checked against the installed game DLL.
+namespace HarmonyLib
+{
+    [AttributeUsage(AttributeTargets.Class)] public sealed class HarmonyPatch : Attribute
+    { public HarmonyPatch(Type type, string method) { } }
+    [AttributeUsage(AttributeTargets.Method)] public sealed class HarmonyPrefix : Attribute { }
+}
+class CA_UseItem { public CharacterMainControl characterController; }

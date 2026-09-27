@@ -141,19 +141,18 @@ namespace BossRush
     internal static class PermanentDuckNpcRegistry
     {
         internal static readonly Dictionary<string,CharacterMainControl> Instances = new Dictionary<string,CharacterMainControl>();
-        internal static bool IsPermanentDuckNpc(string id) { return id == "sky_qinghe" || id == "sky_weibai"; }
+        internal static bool IsPermanentDuckNpc(string id) { return SkyIslandResidents.MarkerOf(id) != null; }
         internal static CharacterMainControl GetInstance(string id) { CharacterMainControl npc; return Instances.TryGetValue(id, out npc) ? npc : null; }
         internal static void UnregisterInstance(string id) { Instances.Remove(id); }
     }
     internal static class DuckNpcSpawner { internal static void Despawn(CharacterMainControl npc) { UnityEngine.Object.Destroy(npc.gameObject); } }
-    internal sealed class SkyIslandResidents
+    internal sealed partial class SkyIslandResidents
     {
-        internal static string[] AllIds { get { return new[] { "sky_qinghe", "sky_weibai" }; } }
         internal bool SpawnFinished;
         internal readonly Dictionary<string,InteractableBase> Owners = new Dictionary<string,InteractableBase>();
         internal InteractableBase FindQuestInteractionOwner(string id) { InteractableBase owner; return Owners.TryGetValue(id, out owner) ? owner : null; }
     }
-    internal sealed class SkyIslandWorldStory
+    internal sealed partial class SkyIslandWorldStory
     {
         internal int Talks; internal string LastId;
         internal static string ResidentName(string id)
@@ -162,7 +161,9 @@ namespace BossRush
     }
     internal sealed class SkyIslandStoryService
     {
-        internal bool IsCurrentSlot;
+        internal bool IsCurrentSlot, CanWrite;
+        internal SkyIslandStoryData Current; internal int TimingLogs;
+        internal void LogTiming(string kind, string id) { TimingLogs++; }
         internal string DescribeNpc(string id, bool married, bool onIsland) { return id + ":" + married + ":" + onIsland; }
     }
     internal static class SkyIslandOfficialQuestStory
@@ -186,16 +187,15 @@ namespace BossRush
     {
         internal SkyIslandResidents residents; internal GameObject root; internal CharacterMainControl player;
         internal SkyIslandWorldStory worldStory; internal SkyIslandStoryService story; internal bool Valid;
+        internal SkyIslandEncounters encounters; internal int Announcements;
+        internal void Announce(string message, bool warning) { Announcements++; }
         private bool IsSessionValid() { return Valid; }
     }
     internal sealed class QuestGiver : InteractableBase { internal int ID; }
     internal sealed class SkyIslandOfficialQuestDefinition { internal int GiverId; }
-    internal static class SkyIslandOfficialQuestTable
+    internal static partial class SkyIslandOfficialQuestTable
     {
         internal static IList<SkyIslandOfficialQuestDefinition> Island;
-        internal static int GiverIdOfResident(string id) { return id == "sky_weibai" ? 5901 : 0; }
-        internal static string ResidentOfGiver(int id) { return id == 5901 ? "sky_weibai" : "resident_" + id; }
-        internal static string FallbackMarkerOfGiver(int id) { return id == 5901 ? "Search_B" : "device_" + id; }
     }
     internal static partial class SkyIslandOfficialQuestGivers
     {
@@ -249,5 +249,51 @@ namespace BossRush
         internal void OnAwake(ModBehaviour owner) { _owner = owner; }
         private void InvalidatePermanentSpouseRestore() { _owner.Invalidations++; }
         private void DestroyWeddingPlaceholder() { _owner.PlaceholderRemovals++; }
+    }
+}
+
+namespace BossRush
+{
+    internal enum SkyIslandStoryAction { ReconcileZheling, ZhelingDefeated, BellKeeperDefeated, StormSlain }
+    internal sealed class SkyIslandStoryData { internal bool ZhelingResolved, BellKeeperResolved, BothBeacons, StormResolved; }
+    internal static class SkyIslandStoryRules
+    {
+        internal static bool CanApply(SkyIslandStoryData data, SkyIslandStoryAction action, out string reason)
+        { reason = null; return true; }
+    }
+    internal static class SkyIslandStormEchoRules { internal static bool IsEcho(string id) { return id == "StormEcho"; } }
+    internal sealed partial class SkyIslandEncounters
+    {
+        internal bool Allowed; internal int Starts;
+        internal bool CanBeginChallenge(string id, out string reason) { reason = null; return Allowed; }
+        internal bool BeginChallenge(string id) { if (!Allowed) return false; Starts++; return true; }
+    }
+    internal sealed class SkyIslandStoryPresentation
+    {
+        internal sealed class Choice
+        {
+            internal string Label; internal Func<string> Action;
+            internal Choice(string label, Func<string> action) { Label = label; Action = action; }
+        }
+        internal bool Disposed;
+        internal void Dispose() { Disposed = true; }
+    }
+    internal sealed partial class SkyIslandWorldStory
+    {
+        private SkyIslandSession session; private SkyIslandStoryService story;
+        private SkyIslandStoryPresentation presentation; private Func<string> pendingBegin;
+        internal string LastHint;
+        internal void BindChallenge(SkyIslandSession value)
+        { session = value; story = value.story; presentation = new SkyIslandStoryPresentation(); pendingBegin = null; LastHint = null; }
+        internal List<SkyIslandStoryPresentation.Choice> ZhelingOptions()
+        { var choices = new List<SkyIslandStoryPresentation.Choice>(); ZhelingChoices(choices); return choices; }
+        internal string ConfirmChallenge() { return pendingBegin(); }
+        internal bool ChallengePanelDisposed { get { return presentation.Disposed; } }
+        private void AddIf(List<SkyIslandStoryPresentation.Choice> choices, string label, SkyIslandStoryAction action) { }
+        private void Hint(string reason) { LastHint = reason; }
+        private string ChallengeConfirmTitle(string id) { return id; }
+        private string ChallengeWarning(string id) { return id; }
+        private string ConfirmPage(string title, string warning, string label, Func<string> begin, object unused)
+        { pendingBegin = begin; return "confirmation"; }
     }
 }

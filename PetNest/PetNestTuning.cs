@@ -103,13 +103,22 @@ namespace BossRush
         internal const int PetExpPerLevel = 100;
 
         /// <summary>带崽进局并活着回巢的经验（重伤退场也算：战痕已经是惩罚了）。</summary>
-        internal const int PetExpHomecoming = 10;
+        internal const int PetExpHomecoming = 20;
 
-        /// <summary>随从每次击杀的经验。</summary>
-        internal const int PetExpPerCompanionKill = 2;
+        /// <summary>随从每次击杀的基础经验；高血量目标会按下方系数追加。</summary>
+        internal const int PetExpPerCompanionKill = 4;
+
+        /// <summary>
+        /// 目标每拥有这么多 MaxHealth，随从击杀经验 +1。
+        /// 直接读取运行时 Health.MaxHealth，沿用官方预制体 / Boss 实际属性，不另建 Boss 表。
+        /// </summary>
+        internal const int PetExpCompanionKillHealthDivisor = 100;
+
+        /// <summary>单个目标因血量追加的经验上限，防止异常巨型目标一次冲满。</summary>
+        internal const int PetExpCompanionKillHealthBonusCap = 12;
 
         /// <summary>单局击杀经验上限，避免刷小怪把等级冲满。</summary>
-        internal const int PetExpCompanionKillRunCap = 30;
+        internal const int PetExpCompanionKillRunCap = 80;
 
         /// <summary>每多少级给玩家 +1 格捡漏背包（PetCapcity）。</summary>
         internal const int PetLevelsPerCapacityBonus = 3;
@@ -127,10 +136,10 @@ namespace BossRush
 
         /// <summary>
         /// 每级额外伤害（小数口径，作用在 GunDamageMultiplier / MeleeDamageMultiplier 上）。
-        /// Lv10 = +45%，即基准 0.06 提到约 0.087，仍然远低于玩家，
-        /// 守住设计稿「锦上添花不改天换地」。置 0 即回到旧行为。
+        /// Lv10 最多叠加 72%；实际基准来自来源 Boss 的 damageMultiplier 映射，
+        /// 基准在创建前受 CompanionDpsShareTarget 钳制，成长再经统一 Modifier 叠加。
         /// </summary>
-        internal const float PetLevelDamageBonusPerLevel = 0.05f;
+        internal const float PetLevelDamageBonusPerLevel = 0.08f;
 
         /// <summary>每崽战痕上限。溢出后最旧的合并进 mergedOldScarCount，防存档膨胀。</summary>
         internal const int MaxScarsPerPet = 8;
@@ -143,13 +152,22 @@ namespace BossRush
         #region 随从进局（草案）
 
         /// <summary>
-        /// 随从 DPS 目标占比。伤害归一系数由此反推：
-        /// "锦上添花不改天换地"，价值在牵制、补刀和陪伴。
+        /// 随从基础伤害倍率上限（旧名保留，不代表 DPS 占比）。实际伤害按来源 Boss 预制体的 damageMultiplier ×
+        /// CompanionBossDamageScale 缩放，保留血脉之间的强弱差异；此值只做保险钳制。
         /// </summary>
-        internal const float CompanionDpsShareTarget = 0.06f;
+        internal const float CompanionDpsShareTarget = 0.28f;
+
+        /// <summary>Boss 伤害倍率映射到幼体的缩放系数（0.20 = 来源角色倍率的 20%，不是 DPS 占比）。</summary>
+        internal const float CompanionBossDamageScale = 0.20f;
+
+        /// <summary>来源倍率缺失或异常时的幼体伤害下限。</summary>
+        internal const float CompanionDamageMinMultiplier = 0.12f;
 
         /// <summary>幼体视觉缩放基准（只作用于 modelRoot，不动碰撞体）。</summary>
-        internal const float DefaultCubModelScale = 0.4f;
+        internal const float DefaultCubModelScale = 0.62f;
+
+        /// <summary>每级视觉体型 +5% 初始体型；Lv10 是 Lv1 的 1.45 倍。只缩模型。</summary>
+        internal const float PetModelScaleGrowthPerLevel = 0.05f;
 
         /// <summary>
         /// 战痕永久 Modifier 单条数值。

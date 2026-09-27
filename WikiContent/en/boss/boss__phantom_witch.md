@@ -1,7 +1,7 @@
 ## Phantom Witch
 
 ### Overview
-The Phantom Witch is the third custom Boss in BossRush Mod. She flips between blinking and stealth, and fights in three phases with Curse Realms, scythe sweeps and undead summons. Killing her has a 50% chance to drop her exclusive melee weapon, Soulreaper's Requiem.
+The Phantom Witch is the third custom Boss in this mod. She flips between blinking and stealth, and fights in three phases with Curse Realms, scythe sweeps and undead summons. Killing her has a 50% chance to drop her exclusive melee weapon, Soulreaper's Requiem.
 
 ### Base Stats
 - HP: 1000

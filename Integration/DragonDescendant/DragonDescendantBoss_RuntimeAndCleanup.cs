@@ -236,8 +236,8 @@ namespace BossRush
             UnregisterEnemyRecovery(character);
             ClearBossRandomLootTracking(character);
             FinalizeBossRushLootboxPathTracking(character);
-            if (currentBoss == character) currentBoss = null;
-            currentWaveBosses?.Remove(character);
+            ClearArenaCurrentBoss(character);
+            RemoveArenaWaveBoss(character);
             if (dragonDescendantInstance == character)
             {
                 dragonDescendantInstance = null;
@@ -259,10 +259,7 @@ namespace BossRush
                     // 死亡监听已改为捕获死者的闭包（同场可能有两只龙裔），闭包退不掉；
                     // 但它随角色一起销毁，且回调体内对已销毁实例是幂等的，
                     // 与 PhantomWitchBoss 的同款写法一致。这里不再尝试 RemoveListener。
-                    if (currentBoss == dragonDescendantInstance)
-                    {
-                        currentBoss = null;
-                    }
+                    ClearArenaCurrentBoss(dragonDescendantInstance);
 
                     ClearBossRandomLootTracking(dragonDescendantInstance);
                     BossCleanupHelpers.DestroyRuntimePreset(
@@ -291,22 +288,14 @@ namespace BossRush
         {
             try
             {
-                if (enemyPresets == null)
+                if (!HasArenaEnemyPresetCatalog)
                 {
                     DevLog("[DragonDescendant] [WARNING] enemyPresets 为空，无法注册");
                     return;
                 }
 
                 // 检查是否已存在（每次都检查，因为 enemyPresets 可能被清空重建）
-                bool exists = false;
-                foreach (var p in enemyPresets)
-                {
-                    if (p != null && p.name == DragonDescendantConfig.BOSS_NAME_KEY)
-                    {
-                        exists = true;
-                        break;
-                    }
-                }
+                bool exists = FindArenaEnemyPreset(DragonDescendantConfig.BOSS_NAME_KEY) != null;
 
                 if (exists)
                 {
@@ -327,7 +316,7 @@ namespace BossRush
                     expReward = 500
                 };
 
-                enemyPresets.Add(presetInfo);
+                AddArenaEnemyPreset(presetInfo);
                 dragonDescendantRegistered = true;
                 DevLog("[DragonDescendant] 已注册到BossRush敌人预设系统");
             }

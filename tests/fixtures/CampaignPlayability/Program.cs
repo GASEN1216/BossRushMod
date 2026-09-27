@@ -221,7 +221,11 @@ internal static class Program
         Check(CampaignQuestTable.DescribeObjective(wave, null, true, false).Contains("已达成"), "settled objective says done");
         Check(CampaignQuestTable.DescribeObjective(garden, null, false, false) == "基地：在基地建好菜地", "base objective is prefixed and has no number");
         Check(CampaignQuestTable.DescribeObjective(garden, null, false, true).Contains("已达成"), "base fact marks base objective done");
+        Check(!CampaignQuestTable.DescribeObjective(garden, null, true, false).Contains("已达成"),
+            "settled run cannot label an unbuilt garden as done");
         L10n.IsChinese = false;
+        Check(!CampaignQuestTable.DescribeObjective(garden, null, true, false).Contains("(done)"),
+            "English settled run cannot label an unbuilt garden as done");
         Check(CampaignQuestTable.DescribeObjective(garden, null, false, false) == "Base: Build the garden at base", "english base objective");
         Check(CampaignQuestTable.GetModeDisplayName(CampaignContentCatalog.ModeZombie) == "Zombie Mode", "zombie mode display name is the mode's own name");
         Check(CampaignQuestTable.DescribeObjectiveHint(wave, CampaignContentCatalog.ModeModeD, false) == "Go to: From Scratch", "run objective hint points at the mode");

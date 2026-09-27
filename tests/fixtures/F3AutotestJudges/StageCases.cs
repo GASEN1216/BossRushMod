@@ -86,10 +86,12 @@ internal static partial class Program
         bool ok;
         Dictionary<string, SkyIslandStoryData> movedStages = ExpectedStages(moved, errors, out ok);
         Check(!ok && AnyStartsWith(errors, "new_save:story:RingHomecomingBell:"), "red: ringing the bell before both beacons is rejected: " + Dump(errors));
-        string reason;
+        string reason = null;
         SkyIslandStoryData movedEnding;
-        Check(movedStages.TryGetValue("ending", out movedEnding) && !Judge(movedEnding, lamps, out reason) && reason.Contains("flags:16384"),
-            "red: the ending stage then misses the Ending flag");
+        // 结局阶段还会交付归航 / 钟庭两单（没敲钟就交不了），缺的位不只 Ending 一个：按位核 Ending 在缺失掩码里，不钉整数。
+        Check(movedStages.TryGetValue("ending", out movedEnding) && !Judge(movedEnding, lamps, out reason)
+            && (MissingFlags(reason) & (int)SkyIslandStoryFlag.Ending) != 0,
+            "red: the ending stage then misses the Ending flag: " + reason);
 
         F3AutotestTable early = FreshTable();
         StoryStage(early, "new_save").Apply.Insert(0, "clear:D");

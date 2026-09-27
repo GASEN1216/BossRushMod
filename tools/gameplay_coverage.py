@@ -44,7 +44,7 @@ def required_automatic_ids():
     result.difference_update({'RUN_MARKER', 'COVERAGE_REPORT', 'SUITE_EXECUTION', 'RUNTIME_ERRORS', 'EXTERNAL_ERRORS', 'LOG_DIAGNOSTICS'})
     result.discard('RANDOM_EVENT_')
     result.update({'SCENE_ENTER_ARENA', 'SCENE_RETURN_BASE', 'SCENE_CLICK_GATE_ENTER', 'SCENE_CLICK_GATE_READY',
-                   'ITEM_FACTORY_*', 'RANDOM_EVENT_*'})
+                   'ITEM_FACTORY_*', 'RANDOM_EVENT_*', 'MAP_TOUR_*'})
     return result
 
 
@@ -122,6 +122,15 @@ def expand_case(case):
         source = (ROOT / 'RandomEvents/RandomEventModels.cs').read_text(encoding='utf-8-sig')
         block = source.split('enum RandomEventId', 1)[1].split('}', 1)[0]
         return ['RANDOM_EVENT_' + key.upper() for key in re.findall(r'^\s*(\w+)\s*=\s*\d+', block, re.M) if key != 'None']
+    if case == 'MAP_TOUR_*':
+        # 地图选择器的清单：游戏侧 MapSpawnPointRegistry 读 Assets/SpawnPoints/*.json、按 sortOrder 排序；
+        # 用例 id 与 F3MapTourJudges.CaseId 同口径（场景名大写，非字母数字换成下划线）。
+        rows = []
+        for path in sorted((ROOT / 'Assets/SpawnPoints').glob('*.json')):
+            row = json.loads(path.read_text(encoding='utf-8-sig'))
+            if row.get('sceneName') and row.get('sceneID') and row.get('spawnPoints'):
+                rows.append((row.get('sortOrder', 0), row['sceneName']))
+        return ['MAP_TOUR_' + re.sub(r'[^A-Za-z0-9]', '_', name).upper() for _, name in sorted(rows)] or [case]
     if case == 'ITEM_FACTORY_*':
         # 离线报告不能猜测本轮 DLL 的运行时注册表；在清单中保留逐 ID 审核要求。
         return [case]

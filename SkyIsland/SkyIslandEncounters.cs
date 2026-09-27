@@ -7,7 +7,7 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>
-    /// COMPAT：区域接近生成，沿用官方装备、伤害、经验；地图拥有角色、preset 与战利品。
+    /// COMPAT：区域接近生成，沿用官方装备与经验，战斗基础属性按原版参照提升 50%；地图拥有角色、preset 与战利品。
     ///
     /// 刷新口径（2026-09-09 可玩性复审后定）：
     /// - **自动组按出击刷新**：每次进岛都会重新生成，出击图应当每趟都有风险。
@@ -164,18 +164,18 @@ namespace BossRush
             return encounter != null && encounter.Started && !encounter.Cleared && !encounter.AllDead;
         }
 
-        /// <summary>
-        /// 本局是否已经打响过这一组（含正在打、已打完、以及存档事实带来的一次性关闭）。
-        ///
-        /// 具名剧情对手的「剧情体该不该露面」必须用它，不能用 <see cref="IsBusy"/> 加持久 flag：
-        /// 那是两个**延迟不同**的派生条件——最后一名倒下的那一帧 `IsBusy` 就转 false，
-        /// 而持久 flag 要等下一次 <see cref="Tick"/>（0.25 s 节流）跑完 `cleared()` 并被存档接受；
-        /// 中间这段窗口刚打死的人会站回自己的尸体旁，写屏障期间更是永远回不去。
-        /// </summary>
+        /// <summary>已在本趟开始，或被持久剧情判为已结束；用于挑战/清场查询。</summary>
         internal bool HasStarted(string id)
         {
             Encounter encounter = Find(id);
             return encounter != null && (encounter.Started || encounter.Cleared);
+        }
+
+        /// <summary>只认本趟真正开战；旧档已完成带来的 Cleared 不能让居民永久隐藏。</summary>
+        internal bool WasStartedThisRaid(string id)
+        {
+            Encounter encounter = Find(id);
+            return encounter != null && encounter.Started;
         }
 
         /// <summary>
@@ -445,7 +445,8 @@ namespace BossRush
                     // 夜限定带队白天不刷：位置留着，玩家夜里走近时再补（SkyIslandBossForge.LeadWaitsForNight）。
                     if (LeadWaiting(encounter, i)) continue;
                     Vector3 point = FindGround(encounter.Marker, i);
-                    CharacterRandomPreset clone = UnityEngine.Object.Instantiate(sources[PresetIndex(encounter.Id, i)]);
+                    CharacterRandomPreset source = sources[PresetIndex(encounter.Id, i)];
+                    CharacterRandomPreset clone = UnityEngine.Object.Instantiate(source);
                     clone.name = "BossRush_SkyIsland_" + encounter.Id;
                     // 正式独立出击沿用官方 CharacterMainControl.OnDead 箱子、经验与魂语义。
                     clone.dropBoxOnDead = true;
@@ -455,6 +456,8 @@ namespace BossRush
                     try
                     {
                         // 在途 preset 仅由当前 async 栈拥有，场景退出无权提前销毁。
+                        SkyIslandEnemyTier tier = encounter.Definition.TierFor(i);
+                        SkyIslandCombatPreset.Apply(clone, source, encounter.Id, i, tier);
                         created = await clone.CreateCharacterAsync(point, Vector3.forward, -1, null, false);
                         if (created == null) throw new InvalidOperationException("官方角色创建失败");
                         SkyIslandEnemyLife life = created.gameObject.AddComponent<SkyIslandEnemyLife>();
@@ -470,7 +473,6 @@ namespace BossRush
                         created.SetTeam(Teams.wolf);
                         // 断风游猎（SkyIslandBossRules.IsRivalFaction）整组换成另一阵营：官方 Team.IsEnemy 下与玩家、与岛上其余敌人都敌对。
                         if (encounter.RivalFaction) created.SetTeam(Teams.bear);
-                        SkyIslandEnemyTier tier = encounter.Definition.TierFor(i);
                         SkyIslandEnemyTiers.ApplyAi(ai, tier);
                         ApplyIdentity(created, encounter, i, tier);
                         // 头顶气泡：头目 / 岛主 / 具名对手在身份层里挂过自己的台词组件，噬风按人设不说话；
@@ -503,7 +505,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 身份层：具名剧情对手保留自己的脸与名字（只吃数值），其余按档次装饰。
+        /// 身份层：具名剧情对手保留自己的脸与名字（数值已在克隆 preset 上准备），其余按档次装饰。
         /// 噬风的相位编排挂在带队者身上，死亡回调由它自己派发，不与清场记账争 owner。
         /// </summary>
         private void ApplyIdentity(CharacterMainControl created, Encounter encounter, int index, SkyIslandEnemyTier tier)
@@ -513,6 +515,7 @@ namespace BossRush
                 SkyIslandResidents.ApplyBattleFace(created, "sky_zheling");
                 SkyIslandEnemyTiers.ApplyStoryChampion(created, "zheling", "折翎", "Zheling");
                 SkyIslandBossForge.BindVoice(created, null, "zheling", BossContext());
+                SkyIslandBossForge.BindChampionMoves(created, "zheling", BossContext());
                 return;
             }
             if (encounter.Id == "BellKeeper" && index == 0)
@@ -520,6 +523,7 @@ namespace BossRush
                 SkyIslandResidents.ApplyBattleFace(created, "sky_bellkeeper");
                 SkyIslandEnemyTiers.ApplyStoryChampion(created, "bellkeeper", "失控的守钟装置", "Runaway Bell Engine");
                 SkyIslandBossForge.BindVoice(created, null, "bellkeeper", BossContext());
+                SkyIslandBossForge.BindChampionMoves(created, "bellkeeper", BossContext());
                 return;
             }
             // 头目 / 岛主（SkyIslandBossRules 档案按「遭遇 id + 位次」查）：名字、数值、配装、掉落与招式控制器由 Forge 一次做完；

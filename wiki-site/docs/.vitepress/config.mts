@@ -22,14 +22,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
  */
 
 // ── 导出配置 ──────────────────────────────────────────────
+// 正式站 https://bossrushmod.pages.dev/ 在 Cloudflare Pages 上以根路径部署（构建环境设 DEPLOY_TARGET=cloudflare）；
+// 默认的 /BossRushMod/ 留给 .github/workflows/deploy.yml 仍在发布的 GitHub Pages 副本与本地构建。
 const base = process.env.DEPLOY_TARGET === 'cloudflare' ? '/' : '/BossRushMod/'
 
-// 站点绝对地址（含 base）：GitHub Pages 默认；换域名用 SITE_URL 环境变量（见 seo.mts）。
-// 取不到时 sitemap / canonical / hreflang / RSS 这些必须是绝对地址的东西一并省略。
+// 站点绝对地址：默认是正式站；换域名用 SITE_URL 环境变量（见 seo.mts 的 siteUrl）。
+// sitemap / canonical / hreflang / RSS 这些必须是绝对地址的东西都用它，两种 base 的构建都指向正式站。
 const SITE_URL = siteUrl(base)
 
 const FEED_HEAD: HeadConfig[] = SITE_URL
-  ? [['link', { rel: 'alternate', type: 'application/rss+xml', title: 'BossRush Wiki · 更新日志', href: `${SITE_URL}feed.xml` }]]
+  ? [['link', { rel: 'alternate', type: 'application/rss+xml', title: 'BossRush · 晴岚群岛 Wiki 更新日志', href: `${SITE_URL}feed.xml` }]]
   : []
 
 /**
@@ -323,8 +325,9 @@ const MSGBOX: Record<string, { color: string; icon: string }> = {
 }
 
 export default defineConfig({
-  title: 'BossRush Wiki',
-  description: 'Escape from Duckov — BossRush Mod 百科',
+  // 站名跟着模组名「BossRush · 晴岚群岛」走；英文站名在 locales.en 里单独给
+  title: 'BossRush · 晴岚群岛 Wiki',
+  description: 'Escape from Duckov — BossRush · 晴岚群岛 模组百科',
   base,
   cleanUrls: true,
 
@@ -457,9 +460,14 @@ export default defineConfig({
     en: {
       label: 'English',
       lang: 'en',
-      description: 'Escape from Duckov — BossRush Mod Wiki',
+      title: 'BossRush · Qinglan Archipelago Wiki',
+      description: 'Escape from Duckov — BossRush · Qinglan Archipelago mod wiki',
       themeConfig: {
         editLink: { pattern: EDIT_LINK_PATTERN, text: 'Edit this page on GitHub' },
+        footer: {
+          message: 'BossRush · Qinglan Archipelago for Escape from Duckov',
+          copyright: '© 2024-2026 BossRush Mod Team',
+        },
       },
     },
   },
@@ -468,10 +476,10 @@ export default defineConfig({
     /*
      * RSS 的地址（没有就是 null）。
      *
-     * feed.mts 只在拿得到站点绝对地址时才写 dist/feed.xml —— `DEPLOY_TARGET=cloudflare`
-     * 又没设 SITE_URL 时它整个不生成。主题层几处「订阅」入口因此不能写死链接，
-     * 得按这个值决定渲染不渲染；写死的下场是根部署下三处死链
-     * （2026-09-07 实测：check_wiki_links --base / 报 feed.xml missing output）。
+     * feed.mts 只在拿得到站点绝对地址时才写 dist/feed.xml。主题层几处「订阅」入口因此不能写死链接，
+     * 得按这个值决定渲染不渲染；写死的下场是生不出 feed 时三处死链
+     * （2026-09-07 实测：当时 `DEPLOY_TARGET=cloudflare` 拿不到绝对地址，check_wiki_links --base /
+     * 报 feed.xml missing output）。2026-09-26 起 siteUrl 默认返回正式站，两种 base 都会生成 feed。
      */
     feedUrl: SITE_URL ? base + 'feed.xml' : null,
 
@@ -481,7 +489,8 @@ export default defineConfig({
     search: SEARCH,
 
     footer: {
-      message: 'BossRush Mod for Escape from Duckov',
+      // 英文站的页脚在 locales.en.themeConfig.footer 里覆盖（themeConfig 按语言浅合并）
+      message: '《逃离鸭科夫》模组 BossRush · 晴岚群岛',
       copyright: '© 2024-2026 BossRush Mod Team',
     },
   },

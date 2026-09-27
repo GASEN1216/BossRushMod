@@ -334,14 +334,13 @@ namespace BossRush
             if (module != null) module.ApplyZombieModeEnemyTuning(enemy, marker);
         }
 
-        private void ApplyZombieModeEnemyHurtAffixes(
-            int runId,
+        internal void ApplyZombieModeEnemyDefense(
             Health health,
-            DamageInfo damageInfo,
+            ref DamageInfo damageInfo,
             ZombieModeEnemyRuntimeMarker marker)
         {
             ZombieModeRuntimeModule module = zombieModeRuntimeModule;
-            if (module != null) module.ApplyZombieModeEnemyHurtAffixes(runId, health, damageInfo, marker);
+            if (module != null) module.ApplyZombieModeEnemyDefense(health, ref damageInfo, marker);
         }
 
         private bool IsZombieModeDamageFromMeleeWeapon(DamageInfo damageInfo)

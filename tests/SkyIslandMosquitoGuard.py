@@ -206,12 +206,12 @@ def main():
     # ---- 1. 判夜只有一个口径 ----
     ordered(need_body(night, "internal static bool IsNight(double hours)", "唯一判夜"),
             ("double.IsNaN(hours)", "return false;", "return hours >= StartHour || hours < EndHour;"),
-            "读不到时钟（NaN）必须先判成不是夜里，再按 19–5 点判")
+            "读不到时钟（NaN）必须先判成不是夜里，再按 22–6 点判")
     ordered(need_body(night, "internal static double EffectiveHours(bool clockAvailable, double clockHours)", "本 Mod 读到的钟点"),
             ("if (DevForceNight) return ForcedHour;", "return clockAvailable ? clockHours : double.NaN;"),
             "没有官方时钟实例时必须返回 NaN（TimeOfDay 恒为 00:00，照读会整趟判成夜里）")
-    if number(night, "StartHour", "SkyIslandNight") != 19 or number(night, "EndHour", "SkyIslandNight") != 5:
-        errors.append("夜里的钟点不再是 19–5 点：这两个值刻意等于官方 TimeOfDayController 的 nightStart / morningStart，光照的星夜整档、星屑夜里加成与文案都按 19–5 写")
+    if number(night, "StartHour", "SkyIslandNight") != 22 or number(night, "EndHour", "SkyIslandNight") != 6:
+        errors.append("夜里的钟点不再是 22–6 点：这两个值刻意等于官方 TimeOfDayController 运行时（LevelManagerPrefab 序列化值，2026-09-25 F3 实机读出）的 nightStart / morningStart，反编译源的初值 19 / 5 会被 prefab 覆盖；光照的星夜整档、星屑夜里加成与文案都按 22–6 写")
     clock = need_body(lighting, "internal static double ClockHours()", "光照读钟")
     require(clock, "bool available = GameClock.Instance != null;", "读钟要先判官方时钟实例")
     require(clock, "return SkyIslandNight.EffectiveHours(available, available ? GameClock.TimeOfDay.TotalHours : double.NaN);",

@@ -86,6 +86,28 @@ namespace BossRush
                 "invalidated spawn after yield destroys character and returns observable failure");
             Check(!Probe.Events.Contains("equip") && !Probe.Events.Contains("mutator"), "late result cannot configure or mutate ended run");
 
+            foreach (bool modeF in new[] { false, true })
+            {
+                Reset(); owner = new Owner(); preset = owner.Add("disposed-" + modeF);
+                var host = new ModBehaviour(); var e = new ModeERuntimeModule(); var f = new ModeFRuntimeModule();
+                e.OnAwake(host); f.OnAwake(host); host.F = f;
+                int token = modeF ? f.Begin() : e.Begin();
+                Func<bool> productionGate = () => e.IsModeEOrModeFSpawnSessionStillValid(modeF ? token : 0, 17, modeF ? 0 : token, 17);
+                var creation = new TaskCompletionSource<CharacterMainControl>(); owner.Presets[preset.name].PendingCreation = creation.Task;
+                int commits = 0;
+                pending = owner.Runtime.SpawnEnemyCoreInternalAsync(preset, new Vector3(), true, productionGate,
+                    waveIndex: 4, onCommit: c => { commits++; return true; }).AsTask();
+                Check(!pending.IsCompleted && productionGate(), "production E/F gate is live while real spawn core awaits factory F=" + modeF);
+                if (modeF) f.OnDestroy(); else e.OnDestroy();
+                Check(!productionGate(), "production OnDestroy closes shared spawn gate F=" + modeF);
+                var lateCharacter = new CharacterMainControl(preset.name); creation.SetResult(lateCharacter); result = pending.Result;
+                Check(!result.success && result.failureReason == "模式结束" && lateCharacter == null,
+                    "shared production spawn core recycles factory completion after module destruction F=" + modeF);
+                Check(commits == 0 && owner.RandomCalls == 0 && !Probe.Events.Contains("normalize") && !Probe.Events.Contains("equip")
+                    && !Probe.Events.Contains("mutator") && !Probe.Events.Contains("loot:3"),
+                    "disposed real gate prevents event commit, loot, mutation and retry random roll F=" + modeF);
+            }
+
             Reset(); owner = new Owner(); preset = owner.Add("deferred");
             pending = owner.Spawn(preset, deferred: true, commit: c => { Probe.Events.Add("commit"); return true; });
             Check(!pending.IsCompleted && Probe.Events.SequenceEqual(new[] { "create:deferred", "yield", "normalize", "plan" }), "deferred spawn waits on real scheduler");

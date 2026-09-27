@@ -36,7 +36,7 @@ namespace BossRush
         internal bool WaitingForNextWave { get; set; }
         internal float WaveCountdown { get; set; }
         internal int LastWaveCountdownSeconds { get; set; } = -1;
-        internal float WaveIntegrityCheckTimer { get; set; }
+        private float WaveIntegrityCheckTimer { get; set; }
         internal float DaXingXingCleanTimer { get; set; }
         internal int TotalEnemies { get; set; }
         internal int CurrentEnemyIndex { get; set; }

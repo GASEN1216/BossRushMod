@@ -31,6 +31,11 @@ namespace BossRush
                 foreach (RandomEventId id in Enum.GetValues(typeof(RandomEventId)))
                     if (id != RandomEventId.None) events.Add("RANDOM_EVENT_" + id.ToString().ToUpperInvariant());
                 _coverage.Expand("RANDOM_EVENT_*", events);
+                // 地图选择器逐图进场：与 RunMapTour 同一份清单（ModBehaviour.GetAllMapConfigs）。
+                List<string> maps = new List<string>();
+                foreach (BossRushMapConfig map in ModBehaviour.GetAllMapConfigs() ?? new BossRushMapConfig[0])
+                    if (map != null) maps.Add(F3MapTourJudges.CaseId(map.sceneName));
+                _coverage.Expand("MAP_TOUR_*", maps);
 #if BOSSRUSH_DEV
                 // 全自动实机验收的步骤表：每一步都进 SKY_ISLAND 的自动项；读不到表时保留 SKY_AUTOTEST_* 占位，覆盖报告照实记未跑。
                 ExpandAutotestCoverage();

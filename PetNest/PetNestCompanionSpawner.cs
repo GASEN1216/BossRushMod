@@ -25,6 +25,8 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
+using ItemStatsSystem.Items;
+using Duckov.Utilities;
 using UnityEngine;
 
 namespace BossRush
@@ -71,7 +73,7 @@ namespace BossRush
         /// <summary>
         /// 幼体视觉缩放基准档。
         /// 数值单点在 PetNestTuning.DefaultCubModelScale；这里只保留调用面，
-        /// 避免同一个 0.4f 在两处各写一遍、改一处漏一处。
+        /// 避免同一个体型基准在两处各写一遍、改一处漏一处。
         /// </summary>
         internal const float DefaultModelScale = PetNestTuning.DefaultCubModelScale;
 
@@ -113,7 +115,8 @@ namespace BossRush
                 clone.hasCashChance = 0f;
                 // 非 raid 图也允许判定死亡，与 staging 先例一致
                 clone.canDieIfNotRaidMap = true;
-                // 战斗强度归一，避免克隆继承 Boss 侧的 combat factor
+                // 战斗强度归一，避免克隆继承 Boss 侧的 combat factor；
+                // 血脉差异保留在 damageMultiplier / moveSpeedFactor 等字段。
                 clone.aiCombatFactor = 1f;
 
                 // —— 伤害归一必须写在这里 ——
@@ -121,9 +124,30 @@ namespace BossRush
                 // （SetCharacterStat("GunDamageMultiplier"/"MeleeDamageMultiplier"/
                 // "GunCritRateGain", ...) 写进角色 Item 的 BaseValue），创建返回之后再改
                 // preset 已经没有任何读者。写在这里才真的能把幼体输出压到目标占比。
-                clone.damageMultiplier = PetNestTuning.CompanionDpsShareTarget;
+                float sourceGunDamage = clone.damageMultiplier;
+                float sourceMeleeDamage = clone.setMeleeDamageMultiplier
+                    ? clone.meleeDamageMultiplier : sourceGunDamage;
+                // 自定义 Boss 的 runtime preset 不在官方 preset 池里，幼体解析时使用
+                // Cname_Boss_Red / Cname_Ghost 底模；这里回读各 Boss Config 的既有倍率，
+                // 避免三只自定义 Boss 因底模不同而丢失强弱差异。
+                if (string.Equals(clone.nameKey, DragonDescendantConfig.BOSS_NAME_KEY, StringComparison.Ordinal))
+                {
+                    sourceGunDamage = sourceMeleeDamage = DragonDescendantConfig.DamageMultiplier;
+                    clone.health = DragonDescendantConfig.BaseHealth;
+                }
+                else if (string.Equals(clone.nameKey, DragonKingConfig.BossNameKey, StringComparison.Ordinal))
+                {
+                    sourceGunDamage = sourceMeleeDamage = DragonKingConfig.DamageMultiplier;
+                    clone.health = DragonKingConfig.BaseHealth;
+                }
+                else if (string.Equals(clone.nameKey, PhantomWitchConfig.BossNameKey, StringComparison.Ordinal))
+                {
+                    sourceGunDamage = sourceMeleeDamage = PhantomWitchConfig.DamageMultiplier;
+                    clone.health = PhantomWitchConfig.BaseHealth;
+                }
+                clone.damageMultiplier = PetNestGrowth.BaseDamageMultiplier(sourceGunDamage);
                 clone.setMeleeDamageMultiplier = true;
-                clone.meleeDamageMultiplier = PetNestTuning.CompanionDpsShareTarget;
+                clone.meleeDamageMultiplier = PetNestGrowth.BaseDamageMultiplier(sourceMeleeDamage);
                 clone.gunCritRateGain = 0f;
                 // 特殊挂件（炮台/召唤物一类）一律清空，首版幼体只留基础攻击
                 clone.specialAttachmentBases = new List<AISpecialAttachmentBase>();
@@ -208,6 +232,10 @@ namespace BossRush
                 {
                     handle.Health.SetInvincible(true);
                 }
+                character.gameObject.SetActive(false);
+                // 三个自定义 Boss 血脉沿用 Boss 本人的专属装备；先在 staging 阶段装好，
+                // 激活后玩家看到的第一帧就是完整造型。其它血脉保留官方 preset 的随机装备。
+                await EquipCustomBossGearAsync(character, lineageKey);
                 character.gameObject.name = "PetNest_Companion_" + (string.IsNullOrEmpty(lineageKey) ? "unknown" : lineageKey);
                 character.gameObject.SetActive(false);
             }
@@ -220,6 +248,152 @@ namespace BossRush
 
             ApplyModelScale(handle);
             return handle;
+        }
+
+        /// <summary>
+        /// 给自定义 Boss 血脉的崽穿 Boss 专属装备。装备缺失时保留已生成角色，
+        /// 不能因为某个可选 bundle 尚未加载而阻断随从入场。
+        /// </summary>
+        private static async UniTask EquipCustomBossGearAsync(CharacterMainControl character, string lineageKey)
+        {
+            if (character == null || string.IsNullOrEmpty(lineageKey)) return;
+
+            int[] typeIds = ResolveCustomBossGear(lineageKey);
+            if (typeIds == null || typeIds.Length == 0) return;
+
+            string[] slots = string.Equals(lineageKey, PhantomWitchConfig.BossNameKey, StringComparison.Ordinal)
+                ? new[] { "MeleeWeapon" }
+                : typeIds.Length == 4
+                    ? new[] { "Helmat", "Armor", "MeleeWeapon", "PrimaryWeapon" }
+                    : new[] { "Helmat", "Armor", "PrimaryWeapon" };
+            for (int i = 0; i < typeIds.Length; i++)
+            {
+                await EquipCustomBossSlotAsync(character, slots[i], typeIds[i]);
+            }
+        }
+
+        /// <summary>复用官方 Slot.Plug 的替换语义：新物品可用后才卸旧物品，失败保留原装。</summary>
+        private static async UniTask EquipCustomBossSlotAsync(CharacterMainControl character, string slotKey, int typeId)
+        {
+            Item item = null;
+            bool equipped = false;
+            try
+            {
+                Item prefab = ItemAssetsCollection.GetPrefab(typeId);
+                // 官方 GetPrefab 缺资源时可能给 FallbackItem；非空不等于找到了目标装备。
+                if (prefab == null || prefab.TypeID != typeId) return;
+                item = await ItemAssetsCollection.InstantiateAsync(typeId);
+                if (item == null || item.TypeID != typeId || character == null || character.CharacterItem == null) return;
+                if (!PrepareCustomGunMagazine(item)) return;
+                Slot slot = character.CharacterItem.Slots.GetSlot(slotKey);
+                if (slot == null) return;
+                Item replaced;
+                slot.Plug(item, out replaced);
+                equipped = slot.Content == item;
+                if (!equipped) return;
+                if (replaced != null && replaced != item) replaced.DestroyTree();
+                ItemSetting_Gun gun = item.GetComponent<ItemSetting_Gun>();
+                if (gun != null) StoreCustomAmmo(character.CharacterItem.Inventory, gun.TargetBulletID, 300);
+                if (slotKey == "PrimaryWeapon" || typeId == PhantomWitchConfig.ReservedScytheTypeId)
+                    character.ChangeHoldItem(item);
+                ModBehaviour.DevLog("[PetNest] 专属装备已穿戴: " + slotKey + "=" + typeId);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 专属装备穿戴失败: " + typeId + " / " + e.Message);
+            }
+            finally
+            {
+                if (!equipped && item != null) item.DestroyTree();
+            }
+        }
+
+        /// <summary>新枪在挂到角色前装满弹匣；没有可用子弹就保留原武器，避免拿空枪出战。</summary>
+        private static bool PrepareCustomGunMagazine(Item item)
+        {
+            ItemSetting_Gun gun = item.GetComponent<ItemSetting_Gun>();
+            if (gun == null) return true;
+            if (item.Inventory == null || gun.Capacity <= 0) return false;
+            if (gun.GetBulletCount() > 0) return true;
+            Item bullet = ItemAssetsCollection.GetPrefab(gun.TargetBulletID);
+            if (bullet == null || bullet.TypeID != gun.TargetBulletID || !gun.IsValidBullet(bullet))
+            {
+                ItemFilter filter = default(ItemFilter);
+                filter.requireTags = new[] { GameplayDataSettings.Tags.Bullet };
+                filter.minQuality = 1;
+                filter.maxQuality = 6;
+                filter.caliber = item.Constants.GetString("Caliber", null);
+                int[] candidates = ItemAssetsCollection.Search(filter);
+                bullet = null;
+                if (candidates != null)
+                {
+                    for (int i = candidates.Length - 1; i >= 0; i--)
+                    {
+                        Item candidate = ItemAssetsCollection.GetPrefab(candidates[i]);
+                        if (candidate == null || candidate.TypeID != candidates[i] || !gun.IsValidBullet(candidate)) continue;
+                        bullet = candidate;
+                        break;
+                    }
+                }
+            }
+            if (bullet == null) return false;
+            gun.SetTargetBulletType(bullet.TypeID);
+            // 此时新枪未生成手持 agent；_bulletCountCache 的初值仍为 -1，第一次读从弹匣计算。
+            if (!StoreCustomAmmo(item.Inventory, bullet.TypeID, gun.Capacity)) return false;
+            return gun.BulletCount > 0;
+        }
+
+        private static bool StoreCustomAmmo(Inventory inventory, int typeId, int count)
+        {
+            if (inventory == null || typeId <= 0) return false;
+            // 每只崽只在 staging 装一次，最多 16 组，不跑每帧补弹或扫描。
+            for (int i = 0; i < 16 && count > 0; i++)
+            {
+                Item ammo = ItemAssetsCollection.InstantiateSync(typeId);
+                if (ammo == null) return false;
+                int stack = Math.Min(count, ammo.MaxStackCount);
+                if (ammo.TypeID != typeId || stack <= 0)
+                {
+                    ammo.DestroyTree();
+                    return false;
+                }
+                ammo.StackCount = stack;
+                if (!inventory.AddAndMerge(ammo, 0))
+                {
+                    ammo.DestroyTree();
+                    return false;
+                }
+                count -= stack;
+            }
+            return count <= 0;
+        }
+
+        private static int[] ResolveCustomBossGear(string lineageKey)
+        {
+            if (string.Equals(lineageKey, DragonDescendantConfig.BOSS_NAME_KEY, StringComparison.Ordinal))
+            {
+                return new int[]
+                {
+                    DragonDescendantConfig.DRAGON_HELM_TYPE_ID,
+                    DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID,
+                    DragonDescendantConfig.DRAGON_BREATH_TYPE_ID
+                };
+            }
+            if (string.Equals(lineageKey, DragonKingConfig.BossNameKey, StringComparison.Ordinal))
+            {
+                return new int[]
+                {
+                    DragonKingConfig.DRAGON_KING_HELM_TYPE_ID,
+                    DragonKingConfig.DRAGON_KING_ARMOR_TYPE_ID,
+                    DragonKingConfig.FEN_HUANG_HALBERD_TYPE_ID,
+                    DragonKingBossGunConfig.WeaponTypeId
+                };
+            }
+            if (string.Equals(lineageKey, PhantomWitchConfig.BossNameKey, StringComparison.Ordinal))
+            {
+                return new int[] { PhantomWitchConfig.ReservedScytheTypeId };
+            }
+            return null;
         }
 
         /// <summary>
@@ -285,6 +459,8 @@ namespace BossRush
                     owner.SanitizeBossRushZombieSpawn(handle.Character, "PetNestCompanion");
                 }
 
+                handle.ModelScale = PetNestGrowth.ModelScale(handle.ModelScale, pet != null ? pet.level : 1);
+                ApplyModelScale(handle);
                 NormalizeCombatOutput(handle.Character);
                 // 天赋与战痕必须真的挂上去，否则它们只是面板上的展示文本
                 ApplyPetModifiers(handle.Character, pet);
@@ -440,7 +616,7 @@ namespace BossRush
         /// 伤害归一：把幼体的输出压到「锦上添花不改天换地」的区间。
         ///
         /// 克隆自 Boss 的随从会原样继承 Boss 的武器与伤害倍率，不归一会直接抢镜。
-        /// 目标 DPS 占比见 PetNestTuning.CompanionDpsShareTarget（数值待 owner 审定）。
+        /// 基准倍率上限见 PetNestTuning.CompanionDpsShareTarget；实际 DPS 取决于所持武器与 AI。
         /// </summary>
         internal static void NormalizeCombatOutput(CharacterMainControl companion)
         {
@@ -482,6 +658,23 @@ namespace BossRush
         }
 
         #endregion
+
+        /// <summary>经验事务成功后刷新在场崽；不额外回血，模型以血脉基准绝对赋值，避免反复乘大。</summary>
+        internal static void RefreshProgression(PetNestCompanionHandle handle, PetNestPetRecord pet)
+        {
+            if (handle == null || handle.CleanedUp || handle.Character == null || pet == null) return;
+            PetNestLineageInfo lineage;
+            if (!PetNestLineageCatalog.TryGet(pet.lineageKey, out lineage) || lineage == null) return;
+            float healthRatio = handle.Health != null && handle.Health.MaxHealth > 0f
+                ? Mathf.Clamp01(handle.Health.CurrentHealth / handle.Health.MaxHealth) : 0f;
+            ApplyPetModifiers(handle.Character, pet);
+            if (handle.Health != null) handle.Health.SetHealth(handle.Health.MaxHealth * healthRatio);
+            handle.ModelScale = PetNestGrowth.ModelScale(lineage.ModelScale, pet.level);
+            ApplyModelScale(handle);
+            // 层数不变，只在真正升级时重建一次，让元素大小与新体型保持比例。
+            DetachChromaAura(handle);
+            AttachChromaAura(handle, pet);
+        }
 
         #region 天赋与战痕（per-pet Modifier）
 
@@ -536,7 +729,7 @@ namespace BossRush
         /// </summary>
         private static void ApplyLevelModifiers(Item characterItem, PetNestPetRecord pet)
         {
-            int levels = pet.level - 1;
+            int levels = PetNestGrowth.GrowthLevels(pet.level);
             if (levels <= 0) return;
 
             float health = PetNestTuning.PetLevelMaxHealthBonusPerLevel * levels;

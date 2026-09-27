@@ -3,6 +3,26 @@ namespace BossRush
     /// <summary>COMPAT：婚姻与地点只改变说话方式；进度仍读同一份故事，不增加存档状态。</summary>
     internal sealed partial class SkyIslandStoryService
     {
+        private static string OtherResidentHomeLine(string id)
+        {
+            switch (id)
+            {
+                case "sky_fuzhou":
+                    return L10n.T("回来了，先把脚歇稳。岛上的整备和合成仍在码头渡口工台；我留家时，钟庭之争也在那里接交。",
+                        "You are home. Rest your feet. Repairs and crafting are still at the island dock workbench; when I stay home, take and turn in The Bell Court Standoff there too.");
+                case "sky_miantai":
+                    return L10n.T("我在家陪你。回岛要用苔药或药臼，就去悬根林的药材装置，东西都留在那儿。",
+                        "I am here with you. For moss remedies or the mortar on the island, use the herb station in Hanging Root Wood. The supplies are still there.");
+                case "sky_zheling":
+                    return L10n.T("这次守的是咱们的家。岛上的旧事，回镜水寺装置前再了结；家里不比刀枪。",
+                        "This time I am guarding our home. Settle the old island matters at the Mirrorwater Temple device; there is no fighting at home.");
+                case "sky_bellkeeper":
+                    return L10n.T("（他写下：我留在家，钟仍在岛上。归航钟任务去归航钟庭装置接交，敲钟也在那里。）",
+                        "(He writes: I stay home, but the bell remains on the island. Take and turn in the Homecoming Bell quest at the Bell Court device, and ring the bell there.)");
+                default: return null;
+            }
+        }
+
         private static string QingheStoryLine(SkyIslandStoryData data, bool married, bool onIsland)
         {
             string greeting = !married ? string.Empty : onIsland
@@ -37,9 +57,14 @@ namespace BossRush
                     "Route quests are taken and turned in on the island. When I stay home, the Windchime Market board has them under Route quests.\n");
             if (!data.Has(SkyIslandStoryFlag.BeaconQuestDelivered))
             {
+                bool accepted = data.Has(SkyIslandStoryFlag.BeaconQuestAccepted);
+                // 灯亮了但没接单：先说「接」再说「交」，不能先催交、再说「你还没接」（2026-09-25 F3 英文复拍读出的前后矛盾）。
                 string progress = data.BothBeacons
-                    ? L10n.T("两盏灯都亮了！这单还没交呢，交完再去码头找浮舟接下一单。\n",
-                        "Both lamps are lit! Turn in the beacon quest first, then Fuzhou has the next quest at the dock.\n")
+                    ? (accepted
+                        ? L10n.T("两盏灯都亮了！这单还没交呢，交完再去码头找浮舟接下一单。\n",
+                            "Both lamps are lit! Turn in the beacon quest first, then Fuzhou has the next quest at the dock.\n")
+                        : L10n.T("两盏灯都亮了！这单你还没接，先在岛上的「航路任务」里接下再交。交完去码头找浮舟接下一单。\n",
+                            "Both lamps are lit! You haven't taken the beacon quest yet, so accept it under Route quests and turn it in. Then Fuzhou has the next quest at the dock.\n"))
                     : data.Has(SkyIslandStoryFlag.WindBeacon)
                         ? L10n.T("西边风标修好了，还差东边残星工坊那盏星灯。点亮了回来跟我说一声。\n",
                             "The west beacon is repaired. The east star lamp at Fallen Star Workshop still needs work. Come tell me once it burns.\n")
@@ -48,7 +73,7 @@ namespace BossRush
                                 "The east star lamp is lit. The west beacon in Hanging Root Wood still needs work. Come tell me once it is fixed.\n")
                             : L10n.T("西边悬根林那支风标，东边残星工坊那盏星灯，都得修。两头一亮，双航标门自己就开。\n",
                                 "The west beacon in Hanging Root Wood and the east star lamp at Fallen Star Workshop both need fixing. Light both ends and the twin-beacon gate opens itself.\n");
-                if (!data.Has(SkyIslandStoryFlag.BeaconQuestAccepted))
+                if (!accepted && !data.BothBeacons)
                     progress += L10n.T("这单你还没接呢，先在岛上的「航路任务」里接一下。\n",
                         "You haven't taken this one yet. Accept it under Route quests on the island first.\n");
                 return greeting + progress + L10n.T("在岛上找我接、找我交。我不在的时候，风铃集委托板上也有「航路任务」。\n",

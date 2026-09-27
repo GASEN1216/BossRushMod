@@ -23,6 +23,8 @@ namespace BossRush
         }
 
         private ModBehaviour modeEHost;
+        private bool modeERuntimeDestroyed;
+        private bool modeECleanupPending;
         private float modeEIntegrityTimer;
         private ModeDRuntimeModule modeD;
         private ModeDItemPool equipment;
@@ -52,12 +54,19 @@ namespace BossRush
         public override void OnAwake(ModBehaviour owner)
         {
             this.modeEHost = owner;
+            modeERuntimeDestroyed = false;
         }
 
         public override void OnDestroy()
         {
-            if (modeEHost != null)
+            if (modeERuntimeDestroyed) return;
+            modeERuntimeDestroyed = true;
+            InvalidateModeESession();
+            // 场景预热早于 BeginSession，也归此 owner 回收，不能借机清其它模式的状态。
+            StopModeEStartupWarmupIfPending();
+            if (!object.ReferenceEquals(modeEHost, null))
             {
+                EndModeE(false);
                 DestroyModeEShellRuntimeState();
             }
             // 静态缓存兜底清理：Mode E 商人相关缓存

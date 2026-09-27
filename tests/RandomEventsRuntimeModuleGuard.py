@@ -59,6 +59,7 @@ def main():
         return fail(REGISTRATION.as_posix() + " 缺少只读门面 RandomEventsRuntime")
 
     # ---- 2) 全仓库只有一次 new ----
+    # 隔离夹具中的同名宿主替身不进入游戏编译；单实例约束覆盖全部生产源码。
     news = []
     for source in read_compile_sources():
         path = Path(source)

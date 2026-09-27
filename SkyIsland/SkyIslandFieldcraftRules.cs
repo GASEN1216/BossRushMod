@@ -191,7 +191,7 @@ namespace BossRush
         /// <summary>观星镜校准之后，残星瞭台的风晶簇多出星屑的概率。</summary>
         internal const double TelescopeStardustBonus = 0.20;
 
-        /// <summary>夜里（19 点到次日 5 点，与光照的「星夜」整档一致）风晶簇多出星屑的概率。</summary>
+        /// <summary>夜里（22 点到次日 6 点，与光照的「星夜」整档一致）风晶簇多出星屑的概率。</summary>
         internal const double NightStardustBonus = 0.15;
 
         #endregion
@@ -873,7 +873,7 @@ namespace BossRush
         { get { return L10n.T("它只认晴岚群岛的风，到了岛上才有用。", "It only works with the Qinglan winds. Use it on the isles."); } }
 
         /// <summary>
-        /// 夜里：转给唯一口径 <see cref="SkyIslandNight.IsNight"/>（19 点到次日 5 点，光照的星夜整档、夜风与云蚋共用）。
+        /// 夜里：转给唯一口径 <see cref="SkyIslandNight.IsNight"/>（22 点到次日 6 点，光照的星夜整档、夜风与云蚋共用）。
         /// 这里不再另写一份小时数；保留这个入口只为已有调用点与回归不改签名。
         /// </summary>
         internal static bool IsNight(double hours)
@@ -882,14 +882,14 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 风力 0 无风 / 1 微风 / 2 大风。夜里 +1、站在桥上（含中继平台）+1、噬风将至（双航标已亮而噬风未散）时栈道与桥上再 +1，封顶 2。
-        /// 白天在主岛上永远无风——夜风是「晚上出门要准备」，不是「随时在掉东西」。
+        /// 风力 0 无风 / 1 微风 / 2 大风。普通夜风与桥风各 +1；噬风将至或回响在场时，栈道与桥上直接为大风。
+        /// 其余主岛白天无风。十灯只消除普通夜风，不消除噬风；随身的噬风之核仍可把大风降为微风。
         /// </summary>
         internal static int WindLevel(bool night, bool onBridge, bool onBoardwalk, bool stormPending)
         {
+            if (stormPending && (onBoardwalk || onBridge)) return 2;
             int level = night ? 1 : 0;
             if (onBridge) level++;
-            if (stormPending && (onBoardwalk || onBridge)) level++;
             return level > 2 ? 2 : level;
         }
 

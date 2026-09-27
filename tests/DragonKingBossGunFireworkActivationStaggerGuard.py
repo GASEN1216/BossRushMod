@@ -54,8 +54,9 @@ def main() -> int:
         "private static FireworkBloomEffectHandle RentFireworkBloomEffect()",
         "private static void ClearFireworkBloomEffectPool()",
         "emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 72) });",
-        # 2026-09-23 VB-16：闪光从 10 个白方片改成 3 团软圆闪光 + 一层暖色光晕（火花 72 粒的齐射量不变）。
-        "flashEmission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 3) });",
+        # 2026-09-23 VB-16：绽放 = 72 粒调色板火花 + 一层暖色光晕（火花齐射量不变）。
+        # 2026-09-26 owner「不要很白的光效」：中间那层 3 团近白软圆闪光（BloomFlash）已删，
+        # 不许加回来由 DragonKingBossGunNoWhiteGlowGuard 钉住。
         "haloEmission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 1) });",
         "bool staggerFireworkCollisionCheck = secondaryProjectile",
         "((Time.frameCount + projectileIndex) & 1) == 0",

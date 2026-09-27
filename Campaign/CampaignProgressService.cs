@@ -47,6 +47,9 @@ namespace BossRush
         /// </summary>
         private static string _cashPaidPendingChapterId;
 
+        /// <summary>引导奖金的同一种闩：钱已发、交付事实没写上且退款也失败时，重试只补写事实。</summary>
+        private static string _cashPaidPendingGuideId;
+
         #endregion
 
         #region 初始化
@@ -80,6 +83,7 @@ namespace BossRush
             _objectiveRetrySeconds = 0f;
             // 闩是按章节记的，换槽后章节含义变了，留着会让新槽第一次交付白拿不到钱
             _cashPaidPendingChapterId = null;
+            _cashPaidPendingGuideId = null;
             try
             {
                 CampaignObjectiveTracker.ResetSession();
@@ -424,6 +428,47 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 一次性引导交付：与章节同一套补偿式发钱——先发钱（现金快照就绪才发），再写交付事实；
+        /// 事实没写上就退款，退款也失败时闩住，重试只补写事实不再发钱。奖金为 0 时只写事实。
+        /// </summary>
+        internal static bool TryDeliverGuide(string guideId, int rewardCash)
+        {
+            try
+            {
+                if (CampaignGuideTable.Find(guideId) == null || CampaignPersistence.IsGuideCompleted(guideId)
+                    || !CampaignPersistence.IsGuideExperienced(guideId)) return false;
+                bool cashAlreadyPaid = string.Equals(_cashPaidPendingGuideId, guideId, StringComparison.Ordinal);
+                if (rewardCash > 0 && !cashAlreadyPaid)
+                {
+                    if (!CampaignSaveCoordinator.TryPrepareCashReward()) return false;
+                    bool paid = false;
+                    try { paid = EconomyManager.Add(rewardCash); }
+                    catch (Exception e) { LogFailure("guide_reward_cash", e); }
+                    if (!paid) return false;
+                    _cashPaidPendingGuideId = guideId;
+                }
+                if (!CampaignPersistence.TryAdvanceGuide(guideId, 3))
+                {
+                    bool refunded = rewardCash <= 0 || cashAlreadyPaid;
+                    if (rewardCash > 0 && !cashAlreadyPaid)
+                    {
+                        try { refunded = EconomyManager.Pay(new Cost((long)rewardCash), true, true); }
+                        catch (Exception e) { LogFailure("guide_reward_rollback", e); }
+                    }
+                    if (refunded && !cashAlreadyPaid) _cashPaidPendingGuideId = null;
+                    return false;
+                }
+                _cashPaidPendingGuideId = null;
+                return true;
+            }
+            catch (Exception e)
+            {
+                LogFailure("guide_deliver", e);
+                return false;
+            }
+        }
+
         #endregion
 
         #region 存档写入
@@ -494,7 +539,7 @@ namespace BossRush
             }
         }
 
-        private static CampaignSaveData CloneSaveData(CampaignSaveData source)
+        internal static CampaignSaveData CloneSaveData(CampaignSaveData source)
         {
             CampaignSaveData copy = new CampaignSaveData();
             copy.schemaVersion = source.schemaVersion;
@@ -515,6 +560,14 @@ namespace BossRush
                 ? (string[])source.grantedTokens.Clone() : new string[0];
             copy.unlockedClues = source.unlockedClues != null
                 ? (string[])source.unlockedClues.Clone() : new string[0];
+            // 一次性新内容引导与章节状态共用同一份 CampaignSaveData；章节推进复制快照时
+            // 必须保留引导标记，否则玩家完成引导后交付章节会把它们静默抹掉。
+            copy.completedGuides = source.completedGuides != null
+                ? (string[])source.completedGuides.Clone() : new string[0];
+            copy.acceptedGuides = source.acceptedGuides != null
+                ? (string[])source.acceptedGuides.Clone() : new string[0];
+            copy.experiencedGuides = source.experiencedGuides != null
+                ? (string[])source.experiencedGuides.Clone() : new string[0];
             return copy;
         }
 
@@ -556,6 +609,7 @@ namespace BossRush
             _initialized = false;
             _readyToDeliverChapterId = null;
             _cashPaidPendingChapterId = null;
+            _cashPaidPendingGuideId = null;
             _pendingObjectiveChapterId = null;
             _objectiveRetrySeconds = 0f;
         }

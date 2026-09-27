@@ -1,7 +1,7 @@
 # Loot & Rewards
 
 ## Overview
-- The BossRush Mod loot system follows different rules depending on the mode. This page details the loot mechanics for each mode.
+- This mod's loot system follows different rules depending on the mode. This page details the loot mechanics for each mode.
 
 ## Standard BossRush Loot
 

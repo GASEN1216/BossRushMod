@@ -6,6 +6,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
 from cs_source_util import clean_source
+from IntegrationLeafOwnershipGuard import body, compact
 sys.path.insert(0, str(ROOT / "tools"))
 from compile_list import read_compile_sources
 
@@ -50,8 +51,13 @@ def main():
         require("public override void OnAwake(ModBehaviour owner)" in module
                 and "this.owner = owner;" in module,
                 "runtime module must bind its host owner")
-        require(re.search(r"public override void OnDestroy\(\)\s*\{\s*owner\s*=\s*null;", module) is not None,
-                "runtime module must release its host reference on destroy")
+        require(compact(body(module, "public override void OnDestroy()")) ==
+                "if(destroyed)return;destroyed=true;try{DestroyGoblinNPC();}finally{owner=null;}",
+                "runtime module must independently destroy its NPC before releasing the host, once")
+        cleanup = compact(body(module, "internal void DestroyGoblinNPC()"))
+        require("UnityEngine.Object.Destroy(goblinNPCInstance);" in cleanup
+                and cleanup.endswith("goblinNPCInstance=null;goblinController=null;"),
+                "NPC cleanup must destroy the object and clear even externally destroyed references")
 
         require("private GoblinNpcRuntimeModule goblinNpcRuntime;" in bridge,
                 "host bridge must hold the registered runtime instance")

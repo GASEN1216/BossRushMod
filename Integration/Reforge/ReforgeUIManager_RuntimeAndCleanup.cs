@@ -264,7 +264,8 @@ namespace BossRush
                     }
 
                     // 显示差异: 预制体值 (↑/↓ xx)，保留两位小数
-                    string colorHex = diff > 0 ? IntegrationUIFeedback.SuccessHex : IntegrationUIFeedback.DangerHex;
+                    string colorHex = ReforgeSystem.IsBeneficialChange(key, diff)
+                        ? IntegrationUIFeedback.SuccessHex : IntegrationUIFeedback.DangerHex;
 
                     string newText = baseText + BuildPropertyDiffMarkup(key, prefabValue, playerValue, diff, colorHex, true);
                     valueText.text = newText;

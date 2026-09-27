@@ -6,6 +6,16 @@ using UnityEngine;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
 
+// Attribute/owner adapters only; Harmony detours are not executed by this lifecycle fixture.
+namespace HarmonyLib
+{
+    [AttributeUsage(AttributeTargets.Class)]
+    public sealed class HarmonyPatch : Attribute { public HarmonyPatch(Type type, string method) { } }
+    [AttributeUsage(AttributeTargets.Method)]
+    public sealed class HarmonyPrefix : Attribute { }
+}
+public class CA_UseItem { public CharacterMainControl characterController; }
+
 namespace UnityEngine
 {
     public class Object
@@ -55,7 +65,8 @@ namespace UnityEngine
         public readonly List<Component> Components = new List<Component>();
         public T AddComponent<T>() where T : Component, new() { var c = new T { gameObject = this }; Components.Add(c); return c; }
         public T GetComponent<T>() where T : Component { return Components.OfType<T>().FirstOrDefault(c => !c.Destroyed); }
-        public void SetActive(bool active) { }
+        public bool activeSelf = true;
+        public void SetActive(bool active) { activeSelf = active; }
     }
     public class Component : Object
     {
@@ -179,7 +190,9 @@ namespace ItemStatsSystem
     {
         public static readonly Dictionary<int, Item> Prefabs = new Dictionary<int, Item>();
         public static Item GetPrefab(int id) { Item item; return Prefabs.TryGetValue(id, out item) && item != null ? item : null; }
-        public static void AddDynamicEntry(Item item) { Prefabs[item.TypeID] = item; }
+        // Official returns false (does not throw) while ItemAssetsCollection.Instance is null.
+        public static bool Unavailable;
+        public static bool AddDynamicEntry(Item item) { if (Unavailable) return false; Prefabs[item.TypeID] = item; return true; }
         public static int Instantiated;
         public static Item InstantiateSync(int id)
         {
@@ -204,7 +217,7 @@ namespace ItemStatsSystem
         public abstract DisplaySettingsData DisplaySettings { get; }
         public abstract bool CanBeUsed(Item item, object user);
         protected abstract void OnUse(Item item, object user);
-        public void Use(Item item) { if (CanBeUsed(item, null)) OnUse(item, null); }
+        public void Use(Item item) { if (CanBeUsed(item, CharacterMainControl.Main)) OnUse(item, CharacterMainControl.Main); }
     }
 }
 namespace Duckov.Crops
@@ -215,6 +228,24 @@ namespace Duckov.Crops
     {
         public List<CropInfo> entries = new List<CropInfo>();
         public List<SeedInfo> seedInfos = new List<SeedInfo>();
+    }
+    public struct CropData { public string cropID; }
+    public class Crop : UnityEngine.Component { public CropData Data; public string SavedId; }
+    // Official Garden.Load: crops whose CropInfo is missing stay in the dictionary with default Data (the wipe hazard).
+    public class Garden : UnityEngine.Component
+    {
+        public static Dictionary<string, Garden> gardens = new Dictionary<string, Garden>();
+        public string GardenID = "Default";
+        public readonly List<Crop> Children = new List<Crop>();
+        public int Loads;
+        public T[] GetComponentsInChildren<T>(bool includeInactive) where T : UnityEngine.Component { return Children.OfType<T>().ToArray(); }
+        public void Load()
+        {
+            Loads++;
+            var db = Duckov.Utilities.GameplayDataSettings.CropDatabase;
+            foreach (var crop in Children)
+                crop.Data.cropID = db != null && db.entries.Any(e => e.id == crop.SavedId) ? crop.SavedId : null;
+        }
     }
 }
 namespace Duckov.Utilities
@@ -358,4 +389,23 @@ namespace BossRush
         public const string GunDamageMultiplier = "GunDamageMultiplier", MeleeDamageMultiplier = "MeleeDamageMultiplier",
             RunSpeed = "RunSpeed", WalkSpeed = "WalkSpeed", ReloadSpeedGain = "ReloadSpeedGain", ElementFactorPhysics = "ElementFactor_Physics", MaxHealth = "MaxHealth";
     }
+    // 本夹具只隔离使用动作成功/拒绝/异常，不模拟变身行为。
+    // 完整生产变身、装备与碰撞器回归见 BackMountainMorph。
+    internal static class BackMountainBossMorphService
+    {
+        internal static bool Reject, Throw;
+        internal static int Started;
+        internal static void Clear() { }
+        internal static bool CanUse { get { return !SceneLoader.IsSceneLoading; } }
+        internal static bool TryBegin(int typeId, ModBehaviour owner)
+        {
+            if (Throw) throw new InvalidOperationException("injected morph failure");
+            if (Reject || !CanUse) return false;
+            if (typeId != BossRushItemIds.DragonFruit && typeId != BossRushItemIds.EmberChili
+                && typeId != BossRushItemIds.PhantomMushroom) return false;
+            Started++; return true;
+        }
+    }
 }
+
+internal static class SceneLoader { internal static bool IsSceneLoading; }

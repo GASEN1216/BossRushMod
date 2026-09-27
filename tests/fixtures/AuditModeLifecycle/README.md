@@ -30,3 +30,5 @@ Zombie HUD 子项逐字抽取 `ZombieModeRuntimeModule_Hud` 的创建、显隐�
 2026-09-25 共享商人运行时：生产 Spawn 方法用显式装配策略验证迟到请求；另抽取生产 Cleanup 与物品预热方法并链接真实 RunScopedRegistry，覆盖逆序销毁、共享商店列表清理、贝壳策略先退役、重复清理、8 次尝试分帧，以及预热中销毁旧商店、换入后继列表时的快照边界。替身模拟 GameObject 销毁连带组件和 Unity 判空，未验证真实 StockShop 生命周期或实机帧耗。
 
 2026-09-25 后续归属：视觉复原与脚印释放 helper 从 `ZombieModeRuntimeModule_EnemyRuntime.cs` 抽取真实模块方法，宿主入口仍按生产薄桥接通；RunOnly 的地图隔离恢复动作由模块替身记录，旧宿主恢复入口抽取 `ZombieModeEntry.cs` 的真实转发。地图隔离内部行为由专用夹具负责，本套件继续约束清理顺序。
+
+2026-09-27 独立审计修复：MerchantOwner 删除自造的 session 相等门，逐字抽取生产 E/F BeginSession、Invalidate、IsSessionStillValid、共享 gate 与 OnAwake/OnDestroy。End/Exit 的依赖在此故意保持无操作，以证明销毁安全来自生产 gate 本身；完整模式清理另由 ModeDestroyLifecycle 实跑。商人覆盖 dispose 之后才返回的 null/fault/success、直接向已 dispose owner 发请求，以及 gate 自身抛异常的回收。Unity 替身销毁 GameObject 连带角色组件并模拟假 null。

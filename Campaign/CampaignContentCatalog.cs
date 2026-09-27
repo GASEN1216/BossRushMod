@@ -133,8 +133,8 @@ namespace BossRush
             switch (chapterId)
             {
                 case "ch1":
-                    return L10n.T("已解锁菜地。基地的菜地工地开放了，带铲子 ×1、粑粑 ×9 走过去交钱动工。起步种子放进了背包，之后基地售货机有卖，龙裔遗族、焚天龙皇、幽灵女巫也会掉；种出来的就是出击餐。",
-                        "Garden unlocked. The garden site at base is open: bring Shovel ×1 and Poop ×9, walk up and pay. Starter seeds are in your backpack; the base vendor sells more, and the Dragon Descendant, Dragon King and Phantom Witch drop them. What you grow is your raid meal.");
+                    return L10n.T("已解锁菜地。基地的菜地工地开放了，带铲子 ×1、粑粑 ×9 走过去交钱动工。起步种子放进了背包，之后基地售货机有卖，龙裔遗族、焚天龙皇、幽灵女巫也会掉；种出来的收成能让你短暂变身。",
+                        "Garden unlocked. The garden site at base is open: bring Shovel ×1 and Poop ×9, walk up and pay. Starter seeds are in your backpack; the base vendor sells more, and the Dragon Descendant, Dragon King and Phantom Witch drop them. Your harvest gives you a temporary Boss form.");
                 case "ch2":
                     return L10n.T("已解锁陈列加成。把 Boss 战利品摆上基地的枪械展示架或假人，每件给生命上限加成。",
                         "Display bonus unlocked. Put Boss trophies on the base weapon display rack or on a dummy. Each one raises your max health.");
@@ -142,8 +142,8 @@ namespace BossRush
                     return L10n.T("已解锁点唱机战歌。基地点唱机里多了「龙裔挽歌」和「幽影回廊」。",
                         "Jukebox tracks unlocked. \"Dragon Elegy\" and \"Umbral Corridors\" are now in the base jukebox.");
                 case "ch4":
-                    return L10n.T("第四行已入册。下一章是疫区那场，出击前在基地吃一份菜地种出来的出击餐（龙息果、焚心椒或幽影蘑菇）。",
-                        "Line four is in the ledger. Next up is the quarantine match. Before you go, eat a raid meal from the garden at base (Dragonbreath Fruit, Emberheart Chili or Umbral Mushroom).");
+                    return L10n.T("第四行已入册。下一章是疫区那场，带一份菜地收成（龙息果、焚心椒或幽影蘑菇），战斗时吃下能变成对应头目三十秒。",
+                        "Line four is in the ledger. Next up is the quarantine match. Take a garden harvest (Dragonbreath Fruit, Emberheart Chili or Umbral Mushroom) and eat it during combat for thirty seconds in its Boss form.");
                 case "ch5":
                     return L10n.T("第五行已入册。报名石会立在竞技场里等你，别先点路牌。",
                         "Line five is in the ledger. A sign-up stone will be waiting in the arena. Don't start the sign first.");

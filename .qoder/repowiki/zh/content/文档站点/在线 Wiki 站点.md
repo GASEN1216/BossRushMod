@@ -169,7 +169,7 @@ GenEnIndex --> Done
   - 中文与英文侧边栏函数分别返回结构化菜单。
   - 更新日志项从 catalog.tsv 动态读取并按 order 排序，链接根据 entryId 生成。
 - 基础路径与环境变量
-  - base 根据 DEPLOY_TARGET 环境变量切换，便于在不同平台部署（如 cloudflare 使用根路径）。
+  - base 根据 DEPLOY_TARGET 环境变量切换：正式站 https://bossrushmod.pages.dev/ 在 Cloudflare Pages 以根路径部署（DEPLOY_TARGET=cloudflare → `/`）；默认 `/BossRushMod/` 留给 `.github/workflows/deploy.yml` 仍在发布的 GitHub Pages 副本与本地构建。
 - 搜索与社交
   - 启用本地搜索；search.mts 提供中文二元分词（「焚天龙皇」→ 焚天 / 天龙 / 龙皇，建索引与查询同一切法）、详细结果视图与中文文案。该 tokenizer 会被 VitePress 序列化进站点数据、在浏览器里还原，因此必须自包含。
   - 搜索弹层是 vitepress 自带 VPLocalSearchBox 的 fork（theme/components/WikiSearchBox.vue），经 config.mts 的 Vite alias 顶替：索引改为模块级缓存 + 首屏空闲预热、索引未就绪时显示加载态、先 AND 后 OR 检索、上下键判输入法组合态、弹层开合带动画。升级 VitePress 需重新对照上游，由 WikiSiteThemeWiringGuard 用版本标记守卫。
@@ -177,9 +177,9 @@ GenEnIndex --> Done
 - SEO、编辑链接与订阅
   - sitemap.xml（hostname 含 base，中英页面配成 hreflang 对）；transformPageData 从正文第一段抽逐页 description；transformHead 输出 Open Graph、Twitter 卡片、canonical、zh-CN ⇄ en hreflang；buildEnd 生成 feed.xml。
   - 「编辑此页」按 frontmatter.editSource 指向 WikiContent 源文件或 hubs/ 手写页；首页无源文件则隐藏。
-  - 绝对地址前缀：GitHub Pages 默认，SITE_URL 环境变量可覆盖；DEPLOY_TARGET=cloudflare 且未设 SITE_URL 时省略上述绝对地址类标签。
+  - 绝对地址前缀：`seo.mts` 的 `siteUrl()` 默认返回正式站 `WIKI_HOME_URL`（https://bossrushmod.pages.dev/），与 base 无关，SITE_URL 环境变量可覆盖；两种 base 的构建都输出 sitemap / canonical / hreflang / RSS 且都指向正式站（2026-09-26 起；此前 GitHub Pages 构建指向 github.io、Cloudflare 构建省略这些标签）。
 - 页脚与图标
-  - 设置站点标题、描述、favicon、theme-color 与页脚信息；中文 404 文案。
+  - 设置站点标题、描述、favicon、theme-color 与页脚信息；站名随模组名：中文「BossRush · 晴岚群岛 Wiki」、英文「BossRush · Qinglan Archipelago Wiki」（`locales.en` 单独给 title 与页脚）；中文 404 文案。
 
 ```mermaid
 graph LR

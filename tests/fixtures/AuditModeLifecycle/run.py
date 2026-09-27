@@ -1,8 +1,8 @@
 from pathlib import Path
-import hashlib, subprocess, sys, xml.sax.saxutils
+import hashlib, os, subprocess, sys, xml.sax.saxutils
 ROOT=Path(__file__).resolve().parents[3]
 HERE=Path(__file__).resolve().parent
-OUT=ROOT/'Build/runtime-regressions/AuditModeLifecycle'
+OUT=Path(os.environ.get('BOSSRUSH_FIXTURE_OUTPUT', str(ROOT/'Build/runtime-regressions/AuditModeLifecycle')))
 sys.path.insert(0,str(ROOT/'tests'))
 from cs_source_util import clean_source
 
@@ -171,7 +171,15 @@ methods='\n'.join(member(prod,m) for m in ['private async Cysharp.Threading.Task
 methods=methods.replace('Cysharp.Threading.Tasks.UniTask<ModeHSpawnHandle>','System.Threading.Tasks.Task<ModeHSpawnHandle>')
 execute('ownership',[HERE/'Ownership.cs'],'using System; using UnityEngine; namespace BossRush { public partial class CertificationOwner {'+methods+'}}')
 merchant=member(ROOT/'Utilities/ModeEFMerchantRuntime.cs','internal async UniTaskVoid SpawnModeEMerchant(').replace('async UniTaskVoid','async System.Threading.Tasks.Task')
-execute('merchant_owner',[HERE/'MerchantOwner.cs'],'using System; using UnityEngine; namespace BossRush { internal sealed partial class ModeEFMerchantRuntime {'+merchant+'}}')
+merchant_owner_methods = []
+for mode, lifecycle, entry, signatures in [
+    ('E', 'ModeE/ModeERuntimeModule.cs', 'ModeE/ModeEStartup.cs', ['private int BeginModeESession()', 'private void InvalidateModeESession()', 'internal bool IsModeESessionStillValid(', 'internal bool IsModeEOrModeFSpawnSessionStillValid(']),
+    ('F', 'ModeF/ModeFRuntimeModule.cs', 'ModeF/ModeFEntry.cs', ['private int BeginModeFSession()', 'private void InvalidateModeFSession()', 'internal bool IsModeFSessionStillValid(']),
+]:
+    methods = '\n'.join(member(ROOT/lifecycle, sig) for sig in ['public override void OnAwake(', 'public override void OnDestroy()'])
+    methods += '\n' + '\n'.join(member(ROOT/entry, sig) for sig in signatures)
+    merchant_owner_methods.append('internal sealed partial class Mode'+mode+'RuntimeModule {'+methods+'}')
+execute('merchant_owner',[HERE/'MerchantOwner.cs'],'using System; using UnityEngine; namespace BossRush { internal sealed partial class ModeEFMerchantRuntime {'+merchant+'}'+''.join(merchant_owner_methods)+'}')
 merchant_lifecycle='\n'.join(member(ROOT/'Utilities/ModeEFMerchantRuntime.cs', signature) for signature in ['internal void CleanupModeEMerchant()', 'private System.Collections.IEnumerator CacheAllModeFShopItemInstancesAsync()'])
 execute('merchant_shared_lifecycle',[HERE/'MerchantSharedLifecycle.cs', ROOT/'Utilities/RunScopedRegistry.cs'],'using System; using System.Collections.Generic; using UnityEngine; using Duckov.Economy; using ItemStatsSystem; namespace BossRush { internal sealed partial class ModeEFMerchantRuntime {'+merchant_lifecycle+'}}')
 respawn=member(ROOT/'ModeF/ModeFRespawn.cs','private async UniTaskVoid RespawnModeFBossAsync(').replace('async UniTaskVoid','async System.Threading.Tasks.Task')
@@ -463,7 +471,8 @@ internal sealed partial class ZombieModeRuntimeModule {
 }
 }'''
 execute('hud_runtime',[HERE/'HudRuntime.cs'],hud_fixture)
-execute('wave_owner',[HERE/'WaveOwner.cs',ROOT/'WavesArena/WavesArenaRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule_WaveResolution.cs'])
+mode_d_destroy = '\n'.join(member(ROOT/'ModeD/ModeDRuntimeModule_Lifecycle.cs', sig) for sig in ['private void CleanupModeDRuntimeOnDestroy()', 'private void CleanupModeDWaveEnemiesOnExit()'])
+execute('wave_owner',[HERE/'WaveOwner.cs',ROOT/'WavesArena/WavesArenaRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule_WaveResolution.cs'], 'using System; namespace BossRush { internal sealed partial class ModeDRuntimeModule {'+mode_d_destroy+'}}')
 execute('milestone',[HERE/'Milestone.cs',ROOT/'LootAndRewards/InfiniteHellMilestoneDelivery.cs'])
 f3=ROOT/'DebugAndTools/F3GameplayValidationAutotestStory.cs'
 f3methods='\n'.join(member(f3,m) for m in ['private static bool TryReclaimAutotestItems(', 'private bool ClearAutotestSnapshotKey()'])

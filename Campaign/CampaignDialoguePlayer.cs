@@ -255,8 +255,8 @@ namespace BossRush
                             "剩一行，疫区那场。签过的人没回来过，所以一直空着。",
                             "One line left. The quarantine match. Nobody who signed it came back, so it stayed blank." },
                         new string[] {
-                            "去之前先吃一顿。菜地有收成，就在基地吃一份出击餐再走。",
-                            "Eat before you go. If the garden's in, eat a raid meal at base before you head out." }
+                            "菜地有收成，就带一份再走。打起来再吃，能变成对应的头目三十秒。",
+                            "Take a harvest from the garden with you. Eat it during combat to take its Boss form for thirty seconds." }
                     };
                 case "ch5":
                     return new string[][]

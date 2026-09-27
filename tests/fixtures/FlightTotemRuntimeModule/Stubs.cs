@@ -52,6 +52,15 @@ namespace UnityEngine
         internal readonly List<Object> Components = new List<Object>();
         internal GameObject(string name) { Name = name; }
     }
+    public sealed class Coroutine : IEnumerator
+    {
+        internal readonly IEnumerator Routine;
+        internal bool Stopped;
+        internal Coroutine(IEnumerator routine) { Routine = routine; }
+        public object Current { get { return Routine.Current; } }
+        public bool MoveNext() { return !Stopped && Routine.MoveNext(); }
+        public void Reset() { throw new NotSupportedException(); }
+    }
     public class MonoBehaviour : Object
     {
         public readonly GameObject gameObject;
@@ -61,12 +70,14 @@ namespace UnityEngine
             gameObject = new GameObject(GetType().Name);
             gameObject.Components.Add(this);
         }
-        public object StartCoroutine(IEnumerator routine)
+        public Coroutine StartCoroutine(IEnumerator routine)
         {
             TestTrace.Events.Add("coroutine.start");
-            Coroutines.Add(routine);
-            return routine;
+            var handle = new Coroutine(routine);
+            Coroutines.Add(handle);
+            return handle;
         }
+        public void StopCoroutine(Coroutine handle) { handle.Stopped = true; TestTrace.Events.Add("coroutine.stop"); }
     }
     public sealed class WaitForSeconds
     {

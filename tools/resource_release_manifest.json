@@ -75,7 +75,8 @@
     "Assets/ui/love_heart",
     "Assets/ui/modeg_presentation",
     "Assets/ui/modeh_presentation",
-    "Assets/ui/production_icons"
+    "Assets/ui/production_icons",
+    "Assets/ui/skyisland_fx"
   ],
   "targetBundlePolicy": {
     "rejectUnlisted": true,

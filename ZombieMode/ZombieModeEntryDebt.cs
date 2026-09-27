@@ -14,7 +14,7 @@
 //   - **落存档**。只靠当前对象重试不够：对象随切图一起销毁，玩家也可能直接退出游戏。
 //     账本写在两个独立的原始类型 key 上（`SavesSystem` 天然按槽位隔离）。
 //   - **SCHEMA+**。老档没有这两个 key 就是「不欠」，读出 0；不动任何既有 key。
-//   - **不缓存**。只在入场回滚与经济加载完成这两个低频点读写，因此不需要缓存，
+//   - **不缓存**。只在入场回滚、经济加载与关卡就绪等低频点读写，因此不需要缓存，
 //     也就没有「缓存跨槽位串台」这类问题（对照 `BossRushSlotJsonStore` 的槽位烙印）。
 //   - **先送达再销账**（与 `SkyIslandBounty.TryClaim`、日报里程碑同一条纪律）：
 //     钱/物先真的到手，回读核对通过才把账销掉。极端情况下宁可重发，也不吞玩家的东西。
@@ -23,7 +23,9 @@
 // 何时结账：
 //   1. 官方 `EconomyManager.OnEconomyManagerLoaded`（`Awake` 与切换存档文件时都会触发，
 //      此刻 `Instance` 已经赋值）——这是「经济回来了」最准确的信号；
-//   2. 每次准备进丧尸模式之前顺手结一次，保证老欠账不会一直挂着。
+//   2. 官方 `LevelManager.OnAfterLevelInitialized`，补偿经济 Awake 早于角色/仓库就绪的时序；
+//   3. 每次准备进丧尸模式之前顺手结一次，保证老欠账不会一直挂着。
+//   邀请函必须有入包、入仓、Buffer 或有效可拾取落地物回执；仅实例化成功不销账。
 //
 // 由 tests/ZombieModeEntryDebtGuard.py 守卫。
 // ============================================================================
@@ -52,13 +54,14 @@ namespace BossRush
 
         #region 订阅
 
-        /// <summary>订阅官方经济加载完成事件。幂等；由 ZombieMode 运行时模块的启动路径调用。</summary>
+        /// <summary>订阅官方经济加载与关卡就绪事件。幂等；由 ZombieMode 运行时模块的启动路径调用。</summary>
         internal static void Attach()
         {
             if (subscribed) return;
             try
             {
                 EconomyManager.OnEconomyManagerLoaded += OnEconomyLoaded;
+                LevelManager.OnAfterLevelInitialized += OnLevelReady;
                 subscribed = true;
             }
             catch (Exception e)
@@ -74,6 +77,7 @@ namespace BossRush
             try
             {
                 EconomyManager.OnEconomyManagerLoaded -= OnEconomyLoaded;
+                LevelManager.OnAfterLevelInitialized -= OnLevelReady;
             }
             catch (Exception e)
             {
@@ -88,6 +92,12 @@ namespace BossRush
         /// <summary>命名方法，不用 lambda：lambda 退订退不掉（AGENTS 4.6）。</summary>
         private static void OnEconomyLoaded()
         {
+            TrySettleAll();
+        }
+
+        private static void OnLevelReady()
+        {
+            // 经济 Awake 时角色和仓库可能尚未加载；关卡就绪后再补一次。
             TrySettleAll();
         }
 
@@ -217,43 +227,87 @@ namespace BossRush
             return OweCash(amount);
         }
 
-        /// <summary>
-        /// 入场回滚：返还一张尸潮邀请函。
-        ///
-        /// 判据是「实例造出来了没有」：官方 <c>ItemUtilities.SendToPlayer</c> 没有返回值，
-        /// 而 <c>ItemAssetsCollection.InstantiateSync</c> 在资源未就绪时返回 null。
-        /// 造不出来就转进存档账本等资源就绪再补；造出来之后送达抛异常按已发放处理
-        /// （实例已经存在，再发一次会凭空多一张）。返回语义同 <see cref="RefundCash"/>。
-        /// </summary>
+        /// <summary>返还一张邀请函：确认送达才算完成，未送达转入现有欠账。返回语义同 RefundCash。</summary>
         internal static bool RefundInvitation()
         {
-            Item refund = null;
-            try
-            {
-                ZombieTideInvitationConfig.EnsureRuntimeFallbackRegistrationShell();
-                refund = ItemAssetsCollection.InstantiateSync(BossRushItemIds.ZombieTideInvitation);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(LogPrefix + "[WARNING] 返还尸潮邀请函异常: " + e.Message);
-            }
-            if (refund == null) return OweInvitation(1);
-            Deliver(refund);
+            if (!TryDeliverInvitation()) return OweInvitation(1);
             NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_RefundedInvitation"));
             return true;
         }
 
-        /// <summary>把造好的邀请函送到玩家身上。异常按已发放处理，不重复发。</summary>
-        private static void Deliver(Item refund)
+        private static bool StorageReady()
         {
+            return PlayerStorage.Instance != null && PlayerStorage.Instance.HasInitialized()
+                && !PlayerStorage.Loading && PlayerStorage.Inventory != null && PlayerStorageBuffer.Instance != null;
+        }
+
+        /// <summary>先检查接收方；实例不等于交付，失败且仍无人持有的临时物品由本方法清理。</summary>
+        private static bool TryDeliverInvitation()
+        {
+            Item refund = null;
+            int instanceId = 0;
             try
             {
-                ItemUtilities.SendToPlayer(refund, true, PlayerStorage.Inventory != null);
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (!StorageReady() && (player == null || player.CharacterItem == null
+                    || player.CharacterItem.Inventory == null)) return false;
+                ZombieTideInvitationConfig.EnsureRuntimeFallbackRegistrationShell();
+                if (ItemAssetsCollection.GetPrefab(BossRushItemIds.ZombieTideInvitation) == null) return false;
+                refund = ItemAssetsCollection.InstantiateSync(BossRushItemIds.ZombieTideInvitation);
+                if (refund == null) return false;
+                instanceId = refund.GetInstanceID();
+                ItemUtilities.SendToPlayer(refund, true, StorageReady());
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog(LogPrefix + "[WARNING] 邀请函送达异常，按已发放处理: " + e.Message);
+                ModBehaviour.DevLog(LogPrefix + "[WARNING] 邀请函送达异常，核对交付结果: " + e.Message);
             }
+            if (HasDeliveryReceipt(refund, instanceId)) return true;
+            try
+            {
+                if (refund != null) refund.DestroyTree();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LogPrefix + "[WARNING] 未交付邀请函清理失败: " + e.Message);
+            }
+            return false;
+        }
+
+        /// <summary>核对入包、入仓、缓冲区或可拾取落地物，覆盖交付之后通知回调才抛异常的情况。</summary>
+        private static bool HasDeliveryReceipt(Item refund, int instanceId)
+        {
+            if (instanceId == 0) return false;
+            try
+            {
+                if (refund != null && !refund.IsBeingDestroyed)
+                {
+                    CharacterMainControl player = CharacterMainControl.Main;
+                    if (player != null && player.CharacterItem != null
+                        && ReferenceEquals(refund.GetCharacterItem(), player.CharacterItem)) return true;
+                    if (PlayerStorage.Inventory != null && ReferenceEquals(refund.InInventory, PlayerStorage.Inventory)) return true;
+                    ItemAgent agent = refund.ActiveAgent;
+                    if (agent != null && agent.AgentType == ItemAgent.AgentTypes.pickUp
+                        && ReferenceEquals(agent.Item, refund) && agent.gameObject.activeInHierarchy
+                        && agent.GetComponent<InteractablePickup>() != null) return true;
+                }
+                // 官方 Push 先把树放进 Buffer，再销毁实例，最后才通知；不能把 Unity 的假 null 当失败。
+                if (PlayerStorageBuffer.Instance != null)
+                {
+                    var buffer = PlayerStorage.IncomingItemBuffer;
+                    for (int i = 0; buffer != null && i < buffer.Count; i++)
+                    {
+                        var tree = buffer[i];
+                        if (tree != null && tree.rootInstanceID == instanceId
+                            && tree.RootTypeID == BossRushItemIds.ZombieTideInvitation) return true;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LogPrefix + "[WARNING] 邀请函交付核对失败，欠账保留: " + e.Message);
+            }
+            return false;
         }
 
         #endregion
@@ -307,25 +361,11 @@ namespace BossRush
             if (owed <= 0) return true;
             while (owed > 0)
             {
-                Item refund = null;
-                try
+                if (!TryDeliverInvitation())
                 {
-                    ZombieTideInvitationConfig.EnsureRuntimeFallbackRegistrationShell();
-                    refund = ItemAssetsCollection.InstantiateSync(BossRushItemIds.ZombieTideInvitation);
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog(LogPrefix + "[WARNING] 结清邀请函欠账异常，账目保留: " + e.Message);
+                    ModBehaviour.DevLog(LogPrefix + "邀请函尚未送达，欠账继续保留: " + owed);
                     return false;
                 }
-                if (refund == null)
-                {
-                    ModBehaviour.DevLog(LogPrefix + "邀请函资源暂不可用，欠账继续保留: " + owed);
-                    return false;
-                }
-
-                // 实例已经造出来了：无论送达是否抛异常都销掉这一张，不重复发。
-                Deliver(refund);
                 owed--;
                 if (!WriteInvitations(owed))
                 {

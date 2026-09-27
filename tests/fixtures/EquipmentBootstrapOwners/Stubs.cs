@@ -50,6 +50,15 @@ namespace UnityEngine
             return result;
         }
     }
+    public sealed class Coroutine : IEnumerator
+    {
+        internal readonly IEnumerator Routine;
+        internal bool Stopped;
+        internal Coroutine(IEnumerator routine) { Routine = routine; }
+        public object Current { get { return Routine.Current; } }
+        public bool MoveNext() { return !Stopped && Routine.MoveNext(); }
+        public void Reset() { throw new NotSupportedException(); }
+    }
     public class MonoBehaviour : Object
     {
         public GameObject gameObject;
@@ -59,7 +68,8 @@ namespace UnityEngine
             gameObject = new GameObject(GetType().Name);
             gameObject.Components.Add(this);
         }
-        public object StartCoroutine(IEnumerator value) { Coroutines.Add(value); Trace.Add("schedule"); return value; }
+        public Coroutine StartCoroutine(IEnumerator value) { var handle = new Coroutine(value); Coroutines.Add(handle); Trace.Add("schedule"); return handle; }
+        public void StopCoroutine(Coroutine handle) { handle.Stopped = true; Trace.Add("coroutine.stop"); }
     }
     public sealed class WaitForSeconds
     {

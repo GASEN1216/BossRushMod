@@ -204,6 +204,9 @@ namespace BossRush
             }
             if (!SkyIslandBossProps.Alive(decoy))
             {
+                // 打碎倒影的回执（碎片 + 地面余波 + 碎裂声），原先倒影只是「没了」。接收体被停用后位置仍可读。
+                Vector3 core = decoy.transform.position;
+                SkyIslandImpactFx.Shatter(context.Root, core, core - Vector3.up * 1.0f, SwapTint);
                 ClearDecoy();
                 EnterStagger();
                 return;

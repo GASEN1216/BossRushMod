@@ -378,11 +378,6 @@ namespace BossRush
             set { wavesArenaRuntime.LastWaveCountdownSeconds = value; }
         }
 
-        private float waveIntegrityCheckTimer
-        {
-            get { return wavesArenaRuntime.WaveIntegrityCheckTimer; }
-            set { wavesArenaRuntime.WaveIntegrityCheckTimer = value; }
-        }
 
         private float daXingXingCleanTimer
         {

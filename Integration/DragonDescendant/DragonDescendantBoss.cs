@@ -127,13 +127,7 @@ namespace BossRush
                 if (!isChildProtectionSummon && !isNonWaveSpawn)
                 {
                     // 关键：将龙裔遗族设置为当前Boss，以便BossRush系统能够追踪死亡事件
-                    currentBoss = character;
-
-                    // 多Boss模式下，将龙裔遗族加入当前波列表
-                    if (bossesPerWave > 1 && currentWaveBosses != null && !currentWaveBosses.Contains(character))
-                    {
-                        currentWaveBosses.Add(character);
-                    }
+                    RegisterArenaWaveBoss(character);
                 }
                 else
                 {
@@ -274,18 +268,7 @@ namespace BossRush
         {
             try
             {
-                EnemyPresetInfo dragonPreset = null;
-                if (enemyPresets != null)
-                {
-                    foreach (var p in enemyPresets)
-                    {
-                        if (p != null && p.name == DragonDescendantConfig.BOSS_NAME_KEY)
-                        {
-                            dragonPreset = p;
-                            break;
-                        }
-                    }
-                }
+                EnemyPresetInfo dragonPreset = FindArenaEnemyPreset(DragonDescendantConfig.BOSS_NAME_KEY);
 
                 OnBossSpawnFailed(dragonPreset);
             }

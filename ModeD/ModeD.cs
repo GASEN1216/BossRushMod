@@ -91,53 +91,7 @@ namespace BossRush
         /// <summary>
         /// 检查并尝试启动 Mode D（在进入竞技场时调用）
         /// </summary>
-        public bool TryStartModeD()
-        {
-            // Mode H 真实资产风险门（加法分支，设计提案 §24.3）：
-            // 只在存在未终结真实资产事务或风险未知时拒绝；no-throw，
-            // 新档/无 journal 时同步 ready 且不阻断，旧模式行为逐字不变。
-            try
-            {
-                if (!ModeHRuntimeGates.IsLegacyModeEntryAllowed())
-                {
-                    // 被拒的成因有两种：扫描本身失败（可自愈）与确有未结算押品。
-                    // 先给一次重试机会，再按真实成因取文案，别把读档出错说成「你有笔账没结」。
-                    ShowMessage(L10n.T(ModeHRuntimeGates.ResolveLegacyBlockedMessageKey()));
-                    DevLog("[BossRush] 入口被 Mode H 真实资产风险门拒绝");
-                    return false;
-                }
-            }
-            catch
-            {
-                // 门查询本身 no-throw；异常只表示未能判定，放行旧模式既有流程
-            }
-
-            try
-            {
-                // 互斥保护：Mode E 已激活时不启动 Mode D
-                if (modeEActive)
-                {
-                    DevLog("[ModeD] Mode E 已激活，跳过 Mode D 启动");
-                    return false;
-                }
-
-                // 检查是否满足 Mode D 条件
-                if (!IsPlayerNaked())
-                {
-                    DevLog("[ModeD] 玩家不满足裸体条件，不启动 Mode D");
-                    return false;
-                }
-
-                DevLog("[ModeD] 检测到裸体入场，启动 Mode D");
-                StartModeD();
-                return true;
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeD] [ERROR] TryStartModeD 失败: " + e.Message);
-                return false;
-            }
-        }
+        public bool TryStartModeD() { return ModeDRuntimeModule.TryStartModeD(this); }
 
         /// <summary>
         /// 结束 Mode D 模式
@@ -247,7 +201,8 @@ namespace BossRush
         { return modeDRuntime.GenerateFallbackSpawnPointsAroundPlayer(position, pointCount, minRadius, maxRadius); }
 
         // 保持 D / Arena 在原调度位置共用完整性时钟的语义。
-        internal float ModeDIntegrityCheckTimer { get { return waveIntegrityCheckTimer; } set { waveIntegrityCheckTimer = value; } }
+        internal void ResetArenaIntegrityCheck() { wavesArenaRuntime.ResetWaveIntegrityCheck(); }
+        internal bool AdvanceArenaIntegrityCheck(float deltaTime) { return wavesArenaRuntime.AdvanceWaveIntegrityCheck(deltaTime); }
         internal int ModeDConfiguredEnemiesPerWave { get { return config != null ? config.modeDEnemiesPerWave : 0; } }
         internal void ShowModeDEnemyBanner(string name, Vector3 position, Vector3 playerPosition, int current, int total, bool infinite, int wave, int bosses)
         { ShowEnemyBanner_UIAndSigns(name, position, playerPosition, current, total, infinite, wave, bosses); }

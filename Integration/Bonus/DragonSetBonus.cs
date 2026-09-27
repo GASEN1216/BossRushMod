@@ -123,6 +123,12 @@ namespace BossRush
         /// <summary>
         /// [性能优化] 获取缓存的事件字段 FieldInfo
         /// </summary>
+        private static void ResetSetBonusReflectionCaches()
+        {
+            cachedSlotChangedEventField = null;
+            slotChangedEventFieldCached = false;
+        }
+
         private static FieldInfo GetCachedSlotChangedEventField()
         {
             if (!slotChangedEventFieldCached)

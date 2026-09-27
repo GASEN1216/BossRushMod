@@ -348,11 +348,9 @@ def main():
     check_callers(errors, sources, "BuildBehaviorSnapshot",
                   ["ModeH/ModeHCommandCompatibilityRegistry.cs", "DebugAndTools/"], "行为快照")
 
-    # 免费侦察（§17.5）：没有调用方 = 四条 reconChoices 数据、Button_Recon /
-    # Recon_Consumed 文案与 TryApplyRecon 全是死内容，玩家只能盲押。
-    # owner_prefixes 带 DebugAndTools/ 的理由同 ERROR 互换：验收不算生产接线。
-    check_callers(errors, sources, ".TryApplyRecon(",
-                  ["ModeH/ModeHEncounterPlanner.cs", "DebugAndTools/"], "免费侦察")
+    # 免费侦察（§17.5）：2026-09-25 owner 拍板从赛前页去掉「赛况 / 侦察」入口——双方对照页已经把
+    # 敌方装备与八项属性摆在明面上，玩家不再盲押。TryApplyRecon 与 reconChoices 数据留在规划器里
+    # （旧存档里已揭示的侦察结果仍要能读，执行回归 ModeHMarketAudit 继续覆盖），这里不再要求生产调用方。
 
     # 名人堂展示：没有调用方 = 记录只写不读，玩家打完整季进名人堂看到的是一张空页，
     # 而「32 席、第 33 个把最底下挤掉」正是鸭王征程整条剧情线的锚点。

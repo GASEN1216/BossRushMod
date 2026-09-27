@@ -29,19 +29,13 @@ namespace BossRush
             if (currentOwner != null) currentOwner.DetachDragonDescendantRuntimeModule(this);
         }
 
-        private MonoBehaviour currentBoss
-        {
-            get { return owner != null ? owner.DragonDescendantCurrentBoss : null; }
-            set { if (owner != null) owner.DragonDescendantCurrentBoss = value; }
-        }
+        private void RegisterArenaWaveBoss(CharacterMainControl character) { if (owner != null) owner.RegisterArenaWaveBossFromContent(character); }
+        private void ClearArenaCurrentBoss(CharacterMainControl character) { if (owner != null) owner.ClearArenaCurrentBossFromContent(character); }
+        private void RemoveArenaWaveBoss(CharacterMainControl character) { if (owner != null) owner.RemoveArenaWaveBossFromContent(character); }
+        private bool HasArenaEnemyPresetCatalog { get { return owner != null && owner.HasArenaEnemyPresetCatalog; } }
+        private EnemyPresetInfo FindArenaEnemyPreset(string nameKey) { return owner != null ? owner.FindArenaEnemyPreset(nameKey) : null; }
+        private void AddArenaEnemyPreset(EnemyPresetInfo preset) { if (owner != null) owner.AddArenaEnemyPreset(preset); }
 
-        private List<MonoBehaviour> currentWaveBosses
-        {
-            get { return owner != null ? owner.DragonDescendantCurrentWaveBosses : null; }
-        }
-
-        private int bossesPerWave { get { return owner != null ? owner.DragonDescendantBossesPerWave : 0; } }
-        private List<EnemyPresetInfo> enemyPresets { get { return owner != null ? owner.DragonDescendantEnemyPresets : null; } }
         private bool modeEActive { get { return owner != null && owner.DragonDescendantModeEActive; } }
 
         private Coroutine StartCoroutine(IEnumerator routine)

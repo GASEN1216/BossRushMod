@@ -295,14 +295,17 @@ namespace BossRush
             if (ReferenceEquals(dragonDescendantRuntimeModule, module)) dragonDescendantRuntimeModule = null;
         }
 
-        internal MonoBehaviour DragonDescendantCurrentBoss
-        {
-            get { return currentBoss; }
-            set { currentBoss = value; }
-        }
-        internal List<MonoBehaviour> DragonDescendantCurrentWaveBosses { get { return currentWaveBosses; } }
-        internal int DragonDescendantBossesPerWave { get { return bossesPerWave; } }
-        internal List<EnemyPresetInfo> DragonDescendantEnemyPresets { get { return enemyPresets; } }
+        internal void RegisterArenaWaveBossFromContent(CharacterMainControl character) { wavesArenaRuntime.RegisterContentWaveBoss(character); }
+        internal void ClearArenaCurrentBossFromContent(CharacterMainControl character) { wavesArenaRuntime.ClearContentCurrentBoss(character); }
+        internal void RemoveArenaWaveBossFromContent(CharacterMainControl character) { wavesArenaRuntime.RemoveContentWaveBoss(character); }
+        internal bool HasArenaEnemyPresetCatalog { get { return wavesArenaRuntime.HasEnemyPresetCatalog; } }
+        internal EnemyPresetInfo FindArenaEnemyPreset(string nameKey) { return wavesArenaRuntime.FindEnemyPresetForContent(nameKey); }
+        internal void AddArenaEnemyPreset(EnemyPresetInfo preset) { wavesArenaRuntime.AddEnemyPresetFromContent(preset); }
+        internal void RecordArenaBossLoot(CharacterMainControl character, float spawnTime, int count) { wavesArenaRuntime.RecordContentBossLoot(character, spawnTime, count); }
+        internal void RemoveArenaBossLootRecord(CharacterMainControl character) { wavesArenaRuntime.RemoveContentBossLootRecord(character); }
+        internal int ArenaBossLootRecordCount { get { return wavesArenaRuntime.ContentBossLootRecordCount; } }
+        internal void CopyArenaTrackedBossCharactersTo(ICollection<CharacterMainControl> destination) { wavesArenaRuntime.CopyTrackedBossCharactersTo(destination); }
+
         internal bool DragonDescendantModeEActive { get { return modeEActive; } }
 
         internal Item FindDragonDescendantSharedItemByTypeId(int typeId)
@@ -453,16 +456,6 @@ namespace BossRush
             return CheckBossKillAchievementsOnce(boss, bossTypeOverride);
         }
 
-        internal MonoBehaviour DragonKingCurrentBoss
-        {
-            get { return currentBoss; }
-            set { currentBoss = value; }
-        }
-        internal List<MonoBehaviour> DragonKingCurrentWaveBosses { get { return currentWaveBosses; } }
-        internal int DragonKingBossesPerWave { get { return bossesPerWave; } }
-        internal List<EnemyPresetInfo> DragonKingEnemyPresets { get { return enemyPresets; } }
-        internal Dictionary<CharacterMainControl, float> DragonKingBossSpawnTimes { get { return bossSpawnTimes; } }
-        internal Dictionary<CharacterMainControl, int> DragonKingBossOriginalLootCounts { get { return bossOriginalLootCounts; } }
 
         internal void ApplyDragonKingBossStatMultiplier(CharacterMainControl character) { ApplyBossStatMultiplier(character); }
         internal void RegisterDragonKingEnemyRecoveryAnchor(CharacterMainControl enemy, Vector3 anchor) { RegisterEnemyRecoveryAnchor(enemy, anchor); }
@@ -891,16 +884,6 @@ namespace BossRush
             if (ReferenceEquals(phantomWitchRuntimeModule, module)) phantomWitchRuntimeModule = null;
         }
 
-        internal MonoBehaviour PhantomWitchCurrentBoss
-        {
-            get { return currentBoss; }
-            set { currentBoss = value; }
-        }
-
-        internal List<MonoBehaviour> PhantomWitchCurrentWaveBosses { get { return currentWaveBosses; } }
-        internal int PhantomWitchBossesPerWave { get { return bossesPerWave; } }
-        internal List<EnemyPresetInfo> PhantomWitchEnemyPresets { get { return enemyPresets; } }
-        internal Dictionary<CharacterMainControl, float> PhantomWitchBossSpawnTimes { get { return bossSpawnTimes; } }
 
         internal void ApplyPhantomWitchBossStatMultiplier(CharacterMainControl character)
         {

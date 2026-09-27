@@ -702,6 +702,33 @@ namespace BossRush
                     }
                 }
             }
+            else if (kind == ZombieModeRunOnlyObjectKind.Projectile)
+            {
+                // 毒径每秒两段、远程骚扰每次出手一条：局内只清敌人类记录时，自毁完的地面区 / 弹道
+                // 记录会整局累积，被击杀清理、恢复监控和光环逐条遍历。登记新一条时顺手摘掉已销毁的。
+                for (int i = runState.RunOnlyObjects.Count; i-- > 0;)
+                {
+                    ZombieModeRunOnlyRecord existing = runState.RunOnlyObjects[i];
+                    if (existing == null ||
+                        (existing.Kind == ZombieModeRunOnlyObjectKind.Projectile &&
+                         existing.GameObject == null &&
+                         existing.Target == null))
+                    {
+                        if (existing != null)
+                        {
+                            try
+                            {
+                                existing.Cleanup(false);
+                            }
+                            catch (System.Exception e)
+                            {
+                                ModBehaviour.DevLog("[ZombieMode] Run-only projectile prune failed: " + e.Message);
+                            }
+                        }
+                        runState.RunOnlyObjects.RemoveAt(i);
+                    }
+                }
+            }
 
             ZombieModeRunOnlyRecord record = new ZombieModeRunOnlyRecord();
             record.RunId = runId;
@@ -1091,6 +1118,7 @@ namespace BossRush
         public override void OnDestroy()
         {
             ZombieModeEntryDebt.ResetStaticCaches();
+            ZombieModeBossVisuals.ResetStaticCaches();
             ModBehaviour currentOwner = owner;
             owner = null;
             if (currentOwner != null) currentOwner.DetachZombieModeRuntimeModule(this);

@@ -1,7 +1,7 @@
 ## Dragon Descendant
 
 ### Overview
-Dragon Descendant is the first custom boss in BossRush Mod, with two phases. Beat it for the Dragon Set and the Dragon Breath gun; it's the first stop for custom boss loot.
+Dragon Descendant is the first custom boss in this mod, with two phases. Beat it for the Dragon Set and the Dragon Breath gun; it's the first stop for custom boss loot.
 
 ### Base Stats
 - HP: 500

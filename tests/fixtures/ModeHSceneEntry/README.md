@@ -12,3 +12,7 @@
 `mainCharacter.SetPosition(startPos)` 后才设 `AfterInit=true`。九张地图各模拟 15 个 60 Hz 帧，
 期间即使主角/活动场景/子场景加载都就绪也不能取得租约；最终官方搬人及 AfterInit 后才允许。
 全局 AfterInit 已真而后续子场景仍在加载的情况另测，避免两个门彼此掩盖。
+
+2026-09-26：额外覆盖普通 BossRush 自定义落点在 SceneLoader 或 MultiSceneCore 仍加载时不移动玩家，加载完成后只初始化一次。
+
+首次已到达时另测：不再调用 Legacy SetPosition，但仍执行一次竞技场初始化。到达标记在本夹具为替身，其生产生命周期由 EntryAndReforgeCompatibility 执行。

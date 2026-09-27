@@ -102,6 +102,7 @@ namespace BossRush
         public ZombieModeCommanderAuraTargetRuntime CommanderAuraTargetRuntime;
         public float SuppressedForceTraceDistance;
         public bool HasSuppressedForceTraceDistance;
+        internal ZombieModeBossVisuals BossVisuals;
         public bool VisualIdentityApplied;
         public bool VisualScaleApplied;
         public bool VisualFaceApplied;

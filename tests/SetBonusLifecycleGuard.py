@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import sys
 from cs_source_util import clean_source
+from IntegrationLeafOwnershipGuard import body, compact, ordered
 
 
 FROST = Path("Integration/Bonus/FrostSetBonus.cs")
@@ -86,7 +87,7 @@ def main() -> int:
         "public override string ModuleName { get { return \"SetBonus\"; } }",
         "public override void OnAwake(ModBehaviour owner)",
         "private Coroutine StartSetBonusCoroutine(IEnumerator routine)",
-        "_owner.StartCoroutine(routine)",
+        "_owner.StartCoroutine(tracked)",
         "private void StopSetBonusCoroutine(Coroutine coroutine)",
         "_owner.StopCoroutine(coroutine)",
         "setBonusRuntime.RegisterDragonSetEvents();",
@@ -99,6 +100,17 @@ def main() -> int:
     ), "set bonus host bridge")
     if rc:
         return rc
+    owner_bridge = clean_source(BRIDGE.read_text(encoding="utf-8-sig"))
+    destroy = body(owner_bridge, "public override void OnDestroy()")
+    ordered(destroy, ["if (destroyed) return;", "destroyed = true;", "UnregisterDragonSetEvents();",
+                      "UnregisterSetBonusEvents();", "StopOwnedSetBonusCoroutines();", "CancelDragonDash();",
+                      "ResetSetBonusReflectionCaches();", "_owner = null;"], "independent set owner cleanup")
+    schedule = body(owner_bridge, "private Coroutine StartSetBonusCoroutine(IEnumerator routine)")
+    ordered(schedule, ["routine == null || destroyed", "ownedCoroutines.Add(tracked);", "_owner.StartCoroutine(tracked)"], "owned set coroutine scheduling")
+    assert "return routine.Current;" in owner_bridge, "coroutine wrapper must preserve Current (including nested yields)"
+    assert "owner.ownedCoroutines.Remove(this);" in body(owner_bridge, "public void Dispose()"), "completed coroutine must release ownership"
+    stop = body(owner_bridge, "private void StopOwnedSetBonusCoroutines()")
+    ordered(stop, ["ownedCoroutines.CopyTo(pending);", "_owner.StopCoroutine(tracked.Handle);", "tracked.Dispose();"], "set task cancellation")
     if "setBonusRuntime = new SetBonusRuntimeModule();" not in registration or "runtimeModuleHost.Register(setBonusRuntime);" not in registration:
         return fail("SetBonusRuntimeModule must be registered once from its stored host instance")
     if "UpdateDragonDash();" not in equipment_hooks:

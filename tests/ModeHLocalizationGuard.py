@@ -203,7 +203,7 @@ def main():
         if os.path.exists(os.path.join(REPO_ROOT, "Assets", "Data", "ModeH", name)):
             errors.append("[Source] 不得新建第二套本地化数据: " + name)
 
-    # 三处引用风险行
+    # 两处引用风险行
     risk_key_users = []
     for root, dirs, files in os.walk(REPO_ROOT):
         parts = root.replace("\\", "/").split("/")
@@ -215,7 +215,8 @@ def main():
             text = read_text(os.path.join(root, name)) or ""
             if "RealStakeRiskNotice" in text:
                 risk_key_users.append(name)
-    for required in ["ModeHUIPages.cs", "ModeHInteractable.cs", "ModeHLocalization.cs"]:
+    # 2026-09-25 owner：进入地图选择器时不再推送风险横幅；披露固定在选人页页脚（ModeHUIPages 的 CompactRiskNotice）。
+    for required in ["ModeHUIPages.cs", "ModeHLocalization.cs"]:
         if required not in risk_key_users:
             errors.append("[RiskNotice] {} 必须引用 RealStakeRiskNotice".format(required))
 

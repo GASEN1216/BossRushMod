@@ -15,7 +15,7 @@
 ## 2. 常用命令
 
 在仓库根目录用 PowerShell 的 `& "$PWD\compile_official.bat"` 正式构建；Dev 构建先设 `$env:BOSSRUSH_DEV_BUILD="1"`，再调同一完整路径。`cmd /c` 在沙箱下可能误报找不到命令。守卫：`python tools/run_guards.py --changed-only`（全量去参数）；回归：`python tools/run_runtime_regressions.py --filter <名字>`（全量去参数）；语法探针：`python tools/verify_syntax.py --with-bcl`；改 Wiki 时 `npm --prefix wiki-site run build`。
-构建自动探测 `GAME_PATH` / `WORKSHOP_PATH`，正式部署写游戏 Mod 目录；游戏锁文件时复制可能静默失败，按实际目标 SHA-256 核对。`BOSSRUSH_NO_PAUSE=1` 跳过等待。隔离构建的 `GAME_PATH` 指向游戏 Managed 的**拷贝**，不用 junction；交付部署用正式构建，不把 Dev DLL 留在游戏目录。依赖游戏 DLL 的夹具环境变量见 `tests/AGENTS.md`。
+构建自动探测 `GAME_PATH` / `WORKSHOP_PATH`，正式部署写游戏 Mod 目录；游戏锁文件时复制可能静默失败，按实际目标 SHA-256 核对。`BOSSRUSH_NO_PAUSE=1` 跳过等待。隔离构建的 `GAME_PATH` 指向游戏 Managed 的**拷贝**，不用 junction；交付部署用正式构建，不把 Dev DLL 留在游戏目录；正式构建前移除 `BOSSRUSH_DEV_BUILD`，设为 `0` 仍会启用 Dev。依赖游戏 DLL 的夹具环境变量见 `tests/AGENTS.md`。
 `.bat` 保持 CRLF，修改勿用 `sed -i`；`compile_official.bat` 的注释用 ASCII 标点，避免 `chcp 65001` 下尾段被当命令执行。
 
 ## 3. 子系统地图
@@ -161,7 +161,7 @@ python tools/run_guards.py --filter OfficialCompileList
 ## 10. 必须先得到 owner 明确同意的事
 
 删除 / 迁移 / 批量重写玩家数据或存档；破坏性 schema / 兼容变更；TypeID 复用、删除、回填或改已发布 key；写官方存档键或加新 `Duckov.Quests` 任务；破坏公开 API / 外部协议；密钥与服务配置；`git push`、PR、创意工坊发布、部署流水线或全局构建改造；启动游戏、读写玩家存档；大幅改经济；模式状态机或 Harmony / 反射策略整体替换；大规模目录迁移、批量格式化 / 清理 catch；删除 git 外本地文件。
-已授权例外：官方 `NoteIndex` 镜像、天空岛任务 590001 / 590011–590013、鸭王征程任务 590101–590106，均以 Mod 状态为权威并过滤官方保存快照；授权不扩到其它新任务。已明确授权的当次工作不用重复问。
+已授权例外：官方 `NoteIndex` 镜像、天空岛任务 590001 / 590011–590013、鸭王征程任务 590101–590106、2026-09-25 已授权的 Jeff 新内容引导 590201–590214，均以 Mod 状态为权威并过滤官方保存快照；授权不扩到其它新任务。已明确授权的当次工作不用重复问。
 
 ## 11. 不是规则来源的目录与文件
 

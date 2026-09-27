@@ -349,32 +349,9 @@ def check_enemy_tiers():
     # 只缩放模型：角色 transform 不动，碰撞体与导航半径保持官方口径。
     assert 'character.characterModel.transform.localScale' in tiers, 'Tier scaling must target the model only'
     assert re.search(r'character\.transform\.localScale\s*=', tiers) is None, 'Never scale the character transform'
-    assert 'Mathf.Min(DamageMultiplier(tier), 3f)' in tiers, 'Damage multiplier must stay capped at 3'
-    assert 'character.Health.SetHealth(character.Health.MaxHealth)' in tiers, 'Health must be synced after raising the cap'
-    # 三张倍率表必须**随档次严格递增**。历史教训：Champion（折翎、钟守）曾经是 2.2/1.3/1.25，
-    # 比守航标的 Elite（2.6/1.35/1.3）还软——单挑的主线对手比路上的杂兵小队更弱，
-    # 而当时守卫只钉了「伤害封顶 3」这条赋值语句在位，一个数字都没钉，于是倒挂无人察觉。
-    # 这里解析方法体取出实际数字，口径同上面的品质带解析。
-    multipliers = {}
-    for accessor in ('HealthMultiplier', 'DamageMultiplier', 'ReactionSpeedup'):
-        marker = 'internal static float %s(SkyIslandEnemyTier tier)' % accessor
-        assert marker in tiers, 'Tier multiplier accessor missing: ' + accessor
-        body = tiers.split(marker, 1)[1].split('\n        }', 1)[0]
-        values = dict(re.findall(r'if \(tier == SkyIslandEnemyTier\.(\w+)\) return ([\d.]+)f;', body))
-        default = re.search(r'\n\s*return ([\d.]+)f;', body)
-        assert default, 'Tier multiplier %s has no default branch' % accessor
-        values['Scav'] = default.group(1)
-        multipliers[accessor] = {k: float(v) for k, v in values.items()}
-    assert multipliers['HealthMultiplier'] == {'Scav': 1.0, 'Elite': 2.6, 'Champion': 4.5, 'Storm': 13.0}, \
-        'Enemy health multipliers changed: %r' % multipliers['HealthMultiplier']
-    assert multipliers['DamageMultiplier'] == {'Scav': 1.0, 'Elite': 1.35, 'Champion': 1.55, 'Storm': 1.8}, \
-        'Enemy damage multipliers changed: %r' % multipliers['DamageMultiplier']
-    assert multipliers['ReactionSpeedup'] == {'Scav': 1.0, 'Elite': 1.3, 'Champion': 1.45, 'Storm': 1.7}, \
-        'Enemy reaction speedups changed: %r' % multipliers['ReactionSpeedup']
-    for accessor, table in multipliers.items():
-        ordered = [table['Scav'], table['Elite'], table['Champion'], table['Storm']]
-        assert ordered == sorted(ordered) and len(set(ordered)) == len(ordered), \
-            '%s must increase strictly with tier: %r' % (accessor, ordered)
+    # 基础属性已迁到生成前的固定原版参照；新守卫钉 1.5 倍、基准快照和创建时序。
+    from SkyIslandCombatBalanceGuard import check as check_combat_balance
+    check_combat_balance(ROOT)
     # Champion 保留自己的脸与名字，染色/放大会毁掉具名角色的辨识度。
     champion = tiers.split('internal static void Apply(', 1)[1].split('\n        }', 1)[0]
     assert 'decorate = tier != SkyIslandEnemyTier.Champion' in champion, 'Champions must skip appearance decoration'
@@ -388,7 +365,7 @@ def check_enemy_tiers():
     # 官方拾荒者击杀数与 RequireEnemyKilled 解锁都不再推进。自动组按出击刷新之后这批击杀会反复产生。
     assert 'if (decorate && tier != SkyIslandEnemyTier.Scav)' in champion, \
         'Plain scavengers must keep the official name key so official kill counters still advance'
-    # 数值层是乘法（血量 *=、反应时间 /=），重复施加会复利：18 倍血跑两遍就是 324 倍。
+    # 身份与外观仍需幂等；战斗基础数值不再从这里施加。
     # 这两条必须按**方法体**判断：只在整份源码里找 token，删掉一处另一处还在，子串仍会命中。
     assert 'MarkApplied(character)' in champion, 'Tier application must be idempotent'
     champ_body = tiers.split('internal static void ApplyStoryChampion(', 1)[1] \
@@ -720,8 +697,8 @@ def check_session_ownership():
     # 两个条件延迟不同——最后一名倒下的那一帧 IsBusy 就转 false，而持久 flag 要等
     # encounters.Tick（0.25 s 节流）提交并被存档接受；存档有写屏障时 flag 永远落不下来，
     # 那就是持久可见（CR-2026-09-09-013）。
-    assert 'residents.SetVisible("sky_zheling", !ZhelingDefeated && !HasStoryChallengeStarted("Zheling"));' in session, \
-        'A defeated Zheling must not walk back as a talkable resident'
+    assert 'residents.SetVisible("sky_zheling", encounters == null || !encounters.WasStartedThisRaid("Zheling"));' in session, \
+        'Zheling must rest after combat this raid and return for relationships on the next raid'
     assert 'IsStoryChallengeActive("Zheling")' not in session.split('residents.SetVisible("sky_zheling"', 1)[1].split(';', 1)[0], \
         'Zheling visibility must not depend on the frame-latency IsBusy query'
     enc_src = source('SkyIslandEncounters.cs')

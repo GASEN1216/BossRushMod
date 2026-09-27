@@ -95,13 +95,7 @@ namespace BossRush
             {
                 if (kv.Key != null) trackedCharacters.Add(kv.Key);
             }
-            if (bossSpawnTimes != null)
-            {
-                foreach (var kv in bossSpawnTimes)
-                {
-                    if (kv.Key != null) trackedCharacters.Add(kv.Key);
-                }
-            }
+            CopyArenaTrackedBossCharactersTo(trackedCharacters);
 
             HashSet<CharacterMainControl> destroyed = new HashSet<CharacterMainControl>();
             foreach (CharacterMainControl character in trackedCharacters)
@@ -123,10 +117,7 @@ namespace BossRush
                     }
                 }
 
-                if (currentBoss == character)
-                {
-                    currentBoss = null;
-                }
+                ClearArenaCurrentBoss(character);
 
                 CleanupTrackedPhantomWitchCharacter(character, destroyed, releasedByController);
             }
@@ -228,13 +219,7 @@ namespace BossRush
                 if (!isNonWaveSpawn)
                 {
                     // 设置为当前Boss
-                    currentBoss = character;
-
-                    // 多Boss模式支持
-                    if (bossesPerWave > 1 && currentWaveBosses != null && !currentWaveBosses.Contains(character))
-                    {
-                        currentWaveBosses.Add(character);
-                    }
+                    RegisterArenaWaveBoss(character);
                 }
                 else
                 {
@@ -437,15 +422,9 @@ namespace BossRush
                 "PhantomWitch_Preset",
                 "[PhantomWitch]");
 
-            if (currentWaveBosses != null)
-            {
-                currentWaveBosses.Remove(character);
-            }
+            RemoveArenaWaveBoss(character);
 
-            if (currentBoss == character)
-            {
-                currentBoss = null;
-            }
+            ClearArenaCurrentBoss(character);
 
             try
             {
@@ -782,7 +761,7 @@ namespace BossRush
         /// </summary>
         private EnemyPresetInfo FindPhantomWitchPresetInfo()
         {
-            return ModBossPresetLookup.FindByNameKey(enemyPresets, PhantomWitchConfig.BossNameKey);
+            return FindArenaEnemyPreset(PhantomWitchConfig.BossNameKey);
         }
 
         /// <summary>
@@ -803,16 +782,13 @@ namespace BossRush
         internal void RegisterPhantomWitchPreset()
         {
             if (phantomWitchRegistered) return;
-            if (enemyPresets == null) return;
+            if (!HasArenaEnemyPresetCatalog) return;
 
             // 检查是否已存在
-            foreach (var p in enemyPresets)
+            if (FindArenaEnemyPreset(PhantomWitchConfig.BossNameKey) != null)
             {
-                if (p != null && p.name == PhantomWitchConfig.BossNameKey)
-                {
-                    phantomWitchRegistered = true;
-                    return;
-                }
+                phantomWitchRegistered = true;
+                return;
             }
 
             // 添加幽灵女巫预设
@@ -828,7 +804,7 @@ namespace BossRush
                 expReward = 400
             };
 
-            enemyPresets.Add(witchPreset);
+            AddArenaEnemyPreset(witchPreset);
             phantomWitchRegistered = true;
 
             DevLog("[PhantomWitch] 幽灵女巫Boss已注册到敌人预设列表");

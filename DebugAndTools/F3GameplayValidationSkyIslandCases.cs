@@ -85,6 +85,41 @@ namespace BossRush
             return true;
         }
 
+        /// <summary>纯判据：所有居民必须有完整关系配置；本次观察到的角色必须实挂全部互动。</summary>
+        internal static bool JudgeResidentRelationship(string id, IDictionary<string, bool> observed,
+            bool requireInstance, out string metrics, out string reason)
+        {
+            var errors = new List<string>();
+            string[] configuration = { "permanent", "affinity", "gift_config", "relationship_dialogue" };
+            string[] interactions = { "chat", "gift", "story", "follow", "divorce", "home" };
+            bool instance = false;
+            if (observed != null) observed.TryGetValue("instance", out instance);
+            foreach (string key in configuration)
+            {
+                bool present;
+                if (observed == null || !observed.TryGetValue(key, out present) || !present) errors.Add(key);
+            }
+            if (requireInstance && !instance) errors.Add("instance");
+            if (instance)
+                foreach (string key in interactions)
+                {
+                    bool present;
+                    if (!observed.TryGetValue(key, out present) || !present) errors.Add(key);
+                }
+            bool storyHidden = false;
+            if (instance && !observed.TryGetValue("story_hidden", out storyHidden)) errors.Add("story_hidden_observation");
+            if (instance && !storyHidden)
+                foreach (string key in new[] { "chat_reachable", "gift_reachable", "story_reachable" })
+                {
+                    bool reachable;
+                    if (!observed.TryGetValue(key, out reachable) || !reachable) errors.Add(key);
+                }
+            metrics = id + ":relationships=" + (instance ? "observed" : "off_island_unobserved")
+                + ",menu=" + (!instance ? "off_island_unobserved" : (storyHidden ? "story_hidden_unobserved" : "checked"));
+            reason = errors.Count == 0 ? null : id + ":" + string.Join(",", errors.ToArray());
+            return errors.Count == 0;
+        }
+
         #endregion
 
         // ====================================================================
@@ -719,7 +754,7 @@ namespace BossRush
                 try { isMarried = AffinityManager.IsMarriedToPlayer(ids[i]); }
                 catch (Exception) { /* 关系系统不可用时按未婚处理，下面的 spawned 判据会兜住 */ }
                 bool spawned = residents.IsSpawned(ids[i]);
-                // 永久 NPC 已由别处登记实例时 `SpawnOneAsync` 同样跳过生成（既定行为，与婚后离岛同理）。
+                // 别处登记的实例保留为诊断信息；未婚居民在岛上缺席仍是失败，不能用陈旧登记豁免。
                 bool elsewhere = false;
                 if (!spawned)
                 {
@@ -734,14 +769,18 @@ namespace BossRush
                     : (isMarried ? "married_off_island" : (elsewhere ? "instance_elsewhere" : "absent"))));
                 // 婚后离岛是既定行为（婚姻系统接管，`SpawnOneAsync` 直接跳过生成）；
                 // 既没结婚又不在岛上才是缺陷——那位居民的服务与委托入口这一趟就失联了。
-                if (!spawned && !isMarried && !elsewhere) errors.Add(ids[i] + ":missing");
+                if (!spawned && !isMarried) errors.Add(ids[i] + ":missing");
                 if (spawned && !talk) errors.Add(ids[i] + ":no_talk_interaction");
+                string relationshipMetrics, relationshipReason;
+                if (!JudgeResidentRelationship(ids[i], session.ValidationResidentRelationship(ids[i]), spawned || !isMarried,
+                    out relationshipMetrics, out relationshipReason)) errors.Add(relationshipReason);
+                parts.Add(relationshipMetrics);
             }
             metrics = "ids=" + ids.Length + ",on_island=" + present + ",married=" + married
                 + ",owned=" + residents.SpawnedCount + ",talk_interactables=" + talkers
                 + " | " + string.Join(" ", parts.ToArray());
             if (errors.Count > 0)
-                reason = "居民装配不合格（既没结婚离岛也没在岛上生成，或缺少剧情交互体）："
+                reason = "居民装配不合格（角色缺席、关系配置或实际互动缺失）："
                     + string.Join(",", errors.ToArray());
             return errors.Count == 0;
         }

@@ -24,17 +24,22 @@ namespace BossRush
     internal sealed class GoblinNpcRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour owner;
+        private bool destroyed;
 
         public override string ModuleName { get { return "GoblinNPC"; } }
 
         public override void OnAwake(ModBehaviour owner)
         {
             this.owner = owner;
+            destroyed = false;
         }
 
         public override void OnDestroy()
         {
-            owner = null;
+            if (destroyed) return;
+            destroyed = true;
+            try { DestroyGoblinNPC(); }
+            finally { owner = null; }
         }
 
         // ============================================================================
@@ -257,10 +262,11 @@ namespace BossRush
             if (goblinNPCInstance != null)
             {
                 UnityEngine.Object.Destroy(goblinNPCInstance);
-                goblinNPCInstance = null;
-                goblinController = null;
+
                 ModBehaviour.DevLog("[GoblinNPC] 哥布林已销毁");
             }
+            goblinNPCInstance = null;
+            goblinController = null;
         }
         
         /// <summary>

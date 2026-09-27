@@ -99,6 +99,9 @@ namespace BossRush
     }
     internal partial class ModeHRuntimeModule
     {
+        private bool _waitingForBetReveal;
+        private bool _showReconDetails, _showItemBetPicker;
+        private string _pageFailureText;
         public ModeHSeasonDto _season;
         public ModeHRunState _runState;
         public ModeHSeasonRewardOperationDto _lastRewardOperation;
@@ -140,6 +143,8 @@ namespace BossRush
         }
         private void CancelSeasonResume() { Events.Add("cancel_resume"); }
         private void CancelSceneReadyWait() { Events.Add("cancel_scene_ready"); }
+        // 装备预览协程属于 UI 宿主边界；此夹具仍执行真实 DestroyUi，只记录取消请求。
+        private void CancelPreparedFighterPage() { Events.Add("cancel_prepared_page"); }
         private void ReturnEscrowFromRecovery()
         {
             Events.Add("return_escrow");

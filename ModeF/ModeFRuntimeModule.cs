@@ -69,6 +69,8 @@ namespace BossRush
         private void InitializeModeDItemPools() { equipment.InitializeModeDItemPools(equipment.FindTagByName); }
 
         private ModBehaviour owner;
+        private bool modeFRuntimeDestroyed;
+        private bool modeFCleanupPending;
         public override string ModuleName
         {
             get { return "ModeF"; }
@@ -77,11 +79,16 @@ namespace BossRush
         public override void OnAwake(ModBehaviour owner)
         {
             this.owner = owner;
+            modeFRuntimeDestroyed = false;
         }
 
         public override void OnDestroy()
         {
-            // Mod 卸载时 Mode F 可能还在跑：状态卡是静态 owner，这里兜底销毁（切图走 ExitModeF 那一份）。
+            if (modeFRuntimeDestroyed) return;
+            modeFRuntimeDestroyed = true;
+            InvalidateModeFSession();
+            if (!object.ReferenceEquals(owner, null)) ExitModeF(false);
+            CleanupModeFDeferredExitBossObjects();
             ModeFStatusHud.Dispose();
             ResetPlayerBountyKillLatch();
             owner = null;

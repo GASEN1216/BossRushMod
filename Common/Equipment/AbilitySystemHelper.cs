@@ -71,6 +71,15 @@ namespace BossRush.Common.Equipment
             Func<IEnumerator> delayedCheckEquipment,
             MonoBehaviour monoBehaviour)
         {
+            StartSceneChange(config, onSceneChanged, delayedCheckEquipment, monoBehaviour);
+        }
+
+        public static Coroutine StartSceneChange(
+            EquipmentAbilityConfig config,
+            Action onSceneChanged,
+            Func<IEnumerator> delayedCheckEquipment,
+            MonoBehaviour monoBehaviour)
+        {
             try
             {
                 // 调用场景变化回调
@@ -79,7 +88,7 @@ namespace BossRush.Common.Equipment
                 // 启动延迟检查装备协程
                 if (delayedCheckEquipment != null && monoBehaviour != null)
                 {
-                    monoBehaviour.StartCoroutine(DelayedCheckEquipmentCoroutine(
+                    return monoBehaviour.StartCoroutine(DelayedCheckEquipmentCoroutine(
                         delayedCheckEquipment,
                         config
                     ));
@@ -89,6 +98,7 @@ namespace BossRush.Common.Equipment
             {
                 ModBehaviour.DevLog($"{config.LogPrefix} 场景设置失败: {e.Message}");
             }
+            return null;
         }
 
         /// <summary>

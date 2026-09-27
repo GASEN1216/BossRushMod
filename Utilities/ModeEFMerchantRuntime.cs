@@ -79,10 +79,23 @@ namespace BossRush
             int modeESessionRelatedScene = -1)
         {
             CharacterMainControl spawnedCharacter = null;
-            Func<bool> isRequestCurrent = () => policy.IsSpawnSessionValid(
-                modeFSessionToken, modeFRelatedScene, modeESessionToken, modeESessionRelatedScene);
+            Func<bool> isRequestCurrent = () =>
+            {
+                try
+                {
+                    return policy.IsSpawnSessionValid(
+                        modeFSessionToken, modeFRelatedScene, modeESessionToken, modeESessionRelatedScene);
+                }
+                catch (Exception validityException)
+                {
+                    ModBehaviour.DevLog("[ModeE] [WARNING] 商人请求 owner 已不可用: " + validityException.Message);
+                    return false;
+                }
+            };
             try
             {
+                if (!isRequestCurrent()) return;
+
                 if (modeESessionToken > 0 &&
                     (!policy.ShellEconomyAvailable() || !policy.VerifyShellPatchInstallation()))
                 {
@@ -139,11 +152,7 @@ namespace BossRush
                     return;
                 }
 
-                if (!policy.IsSpawnSessionValid(
-                        modeFSessionToken,
-                        modeFRelatedScene,
-                        modeESessionToken,
-                        modeESessionRelatedScene) ||
+                if (!isRequestCurrent() ||
                     UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex != relatedScene)
                 {
                     try

@@ -1,5 +1,5 @@
 """
-ModeHOneClickFlowGuard — Mode H「选完人就开打、场间最多按一个键、镜头跟着选手」的结构守卫。
+ModeHOneClickFlowGuard — Mode H「选完人进入赛前参数页、确认后开打、场间最多按一个键、镜头跟着选手」的结构守卫。
 
 背景（2026-09-23，owner 人工实测第 6 条）：
   「鸭王杯我一进去就在跑什么契约什么的，跑完了后才选择什么什么武将而且还要选一堆东西，
@@ -7,8 +7,8 @@ ModeHOneClickFlowGuard — Mode H「选完人就开打、场间最多按一个�
    而且下面那个拍铃铛按钮也太丑了吧。」
 
 改法（行为与理由写在各方法注释里）：
-  - 入口页是唯一的选人页：一次点击 = 签主将 + 自动配接力 + 一路推到开打（RunAutoAdvance）；
-  - 自动链的中间相位不建页面（_deferPageRoutes），但入场收页 / 开 HUD、恢复壳、挂起照常路由；
+  - 入口页是唯一的选人页：一次点击 = 签主将 + 自动配接力 + 推到赛前 MatchBrief；
+  - 赛前参数与押注页由玩家点「开打」后才进入整备和锁盘；其余自动链中间相位不建页面（_deferPageRoutes）；
   - 默认值：不下虚拟注、不押真实物品（兜底页上勾过的押品格也要清掉）、默认阵容与配装、招牌口令；
   - 结算页的战痕 / 整备奖励按默认值自动处理（复用玩家点按钮走的同一批方法），只剩一个「下一场」；
   - 转会窗口保留，两个按钮都经自动链；
@@ -148,6 +148,10 @@ def check(sources):
                       "_selectedVirtualStake = 0;", "ModeHRealStakeService.ClearSelection();",
                       "LockLoadoutAndStartMatch();"],
             "自动链必须走原有命令方法，并在锁盘前清零虚拟注、清空真实押品选择")
+    need(advance, "if (!_allowBriefToLoadout) return;", "自动链到达 MatchBrief 后必须先停下，不能跳过赛前参数与押注页")
+    brief_start = body("ui_flow", "private void StartMatchFromBrief()")
+    need(brief_start, "_allowBriefToLoadout = true;", "只有赛前页的开打按钮可以继续进入整备")
+    need(brief_start, 'RunAutoAdvance("brief_start", null);', "赛前页开打必须复用统一自动链")
 
     defaults = body("ui_flow", "private void ApplySettlementDefaults()")
     need(defaults, "ResolveScarOffer(", "战痕默认处理必须复用结算页按钮的同一方法（身份围栏与落盘屏障）")

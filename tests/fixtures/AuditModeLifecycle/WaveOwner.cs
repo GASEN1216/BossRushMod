@@ -1,14 +1,18 @@
 using System;
-namespace UnityEngine { public struct Vector3 {} public class MonoBehaviour {} public class Coroutine {} }
+namespace UnityEngine {
+ public class Object { public bool Destroyed; public static bool operator ==(Object a,Object b){return (ReferenceEquals(a,null)||a.Destroyed)?ReferenceEquals(b,null)||b.Destroyed:ReferenceEquals(a,b);} public static bool operator !=(Object a,Object b){return !(a==b);} public override bool Equals(object o){return ReferenceEquals(this,o);} public override int GetHashCode(){return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this);} public static void Destroy(GameObject o){if(ReferenceEquals(o,null))return;o.Destroyed=true;foreach(var c in o.Components)c.Destroyed=true;} }
+ public class GameObject:Object {public System.Collections.Generic.List<Object> Components=new System.Collections.Generic.List<Object>();public void SetActive(bool value){} }
+ public struct Vector3 {} public class MonoBehaviour:Object {} public class Coroutine {}
+}
 namespace UnityEngine.SceneManagement {
  public struct Scene { public int handle; }
  public static class SceneManager { public static int Handle=1; public static Scene GetActiveScene(){return new Scene{handle=Handle};} }
 }
 namespace ItemStatsSystem { public sealed class Item {} }
-public sealed class Health { public bool IsDead; }
+public sealed class Health:UnityEngine.Object { public bool IsDead; }
 public sealed class InteractableLootbox {}
 public sealed class CharacterRandomPreset {}
-public sealed class CharacterMainControl { public static CharacterMainControl Main; public Health Health=new Health(); }
+public sealed class CharacterMainControl:UnityEngine.Object { public static CharacterMainControl Main; public Health Health=new Health(); public bool dropBoxOnDead; public UnityEngine.GameObject gameObject=new UnityEngine.GameObject(); public CharacterMainControl(){gameObject.Components.Add(this);gameObject.Components.Add(Health);} }
 namespace BossRush {
  // This fixture links only the arena generation owner; loot event cleanup has its own guard.
  internal sealed partial class WavesArenaRuntimeModule { private void ReleaseBossRandomLootTrackingOnDestroy() {} }
@@ -28,7 +32,7 @@ namespace BossRush {
   public virtual void OnSceneLoaded(SceneRuntimeContext c){}
  }
  internal class InfiniteHellMilestoneDelivery { public void Tick(ModBehaviour o){} public void Enqueue(int t,UnityEngine.Vector3 v){} }
- public class ModBehaviour { public bool IsActive,IsModeDActive;public int ModeDWaveIndex;public void TickModeDIntegrity(float d){} public static void DevLog(string message){} }
+ public class ModBehaviour { public void StopCoroutine(UnityEngine.Coroutine c){} public void ClearModeDEnemyRecoveryState(){} public void ClearModeDMutators(string mode){} public void UnregisterEnemyRecoveryForArena(CharacterMainControl c){} public bool IsActive,IsModeDActive;public int ModeDWaveIndex;public void TickModeDIntegrity(float d){} public static void DevLog(string message){} }
  static class Program {
   static void Check(bool b,string s){if(!b)throw new Exception(s);Console.WriteLine("PASS "+s);}
   static void Main(){

@@ -210,6 +210,16 @@ Boss Waves appear every 5 waves. There are 5 Boss types. Each drops **8** purifi
 - **Shielder** — HP Mult: ×28; Dmg Mult: ×1.3; Scale: ×1.3; Speed: ×0.9; Traits: Self shield + group shield aura
 - **Corruptor** — HP Mult: ×26; Dmg Mult: ×1.2; Scale: ×1.4; Speed: ×1.0; Traits: Ground corruption zones + poison trail
 
+#### Appearance and Codex
+
+- **Titan**: heavy dark shoulder armor and a three-pronged crown with ember-orange blade tips; its ground sigil is a double ring with three crown teeth. Fortify spins the sigil faster and brightens the tips.
+- **Hunter**: crimson twin back blades and forward claws; its ground sigil is two chevrons pointing where it faces. Dashes leave a red afterimage streak, and frenzy accelerates its energy ring.
+- **Splitter**: a purple crystal spine fan with staggered shards; its ground sigil is a ring of five cells. Summoning triggers a pulse.
+- **Shielder**: three cyan shield plates and a hexagonal ring; its ground sigil is two nested hexagons of shield plates. An active shield brightens the sigil and blade tips.
+- **Corruptor**: toxic-green branching antlers and back spines; its ground sigil is a warped ring dripping outward. Casting a corruption zone releases a pulse.
+
+Each ability cast bursts matching sparks from the chest and sends a shock ring across the ground; a kill ends in a burst of sparks and a smoke ring. Ground sigils draw beneath ability warning circles, so they never hide a danger zone. All five use official nameplates with the official Boss icon beside the name. Your own kills count as separate Emperor Codex entries; ordinary zombies, split offspring, companion kills and environmental kills do not unlock Boss entries. Progress is queued during combat and saved after returning to base. Use the Emperor Codex item to check kill totals.
+
 #### Boss Abilities
 
 **Titan**:
@@ -217,8 +227,8 @@ Boss Waves appear every 5 waves. There are 5 Boss types. Each drops **8** purifi
 - **Fortify**: 40% damage reduction, 4s duration, 20s cooldown
 
 **Hunter**:
-- **Dash**: Teleports 15m toward player, 3.5m radius dealing 40 damage, 5s cooldown
-- **Frenzy**: Triggers below 30% HP — +50% attack speed, +30% move speed, size increase, lasts 15s
+- **Dash**: Shows a startup warning, then dashes toward the locked player position up to 15m; deals 40 damage within 3.5m of its actual landing position, 5s cooldown
+- **Frenzy**: Triggers below 30% HP — +50% attack speed, +30% move speed, size increase; once triggered it lasts until the Hunter dies
 
 **Splitter**:
 - **Summon**: Spawns 4 smaller zombies (0.7× scale), 15s cooldown
@@ -386,7 +396,7 @@ Normal wave packs contain 1 of each; Boss node packs contain 2 of each.
 - Always consider extracting after Boss Waves. It gets harder, but points also increase
 - Watch your pollution level. High-pollution elites are nasty (3 affixes + enhanced multipliers)
 - Shielder Boss is the most annoying: its group shield makes every zombie tanky, so kill it first
-- Hunter Boss frenzies at low HP. Keep enough health to survive the dash
+- Hunter Boss stays in frenzy from 30% HP until it dies. Keep enough health to survive the dash and burst down its last stretch
 - Don't fight Splitter Boss in tight spaces; split zombies will block your escape
 - Use the Zombie Tide Beacon to skip preparation when you're well-equipped
 - Projectile mods stack (most cap at 3). Penetration + Burn works with almost anything

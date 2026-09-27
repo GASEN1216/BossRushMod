@@ -11,3 +11,5 @@
 反向验证：`python tests/fixtures/GardenHarvestNotice/negative_probes.py` 在 `Build/ghn-negative/` 的稀疏副本中分别制造提前提示、吞发货异常、缺换槽门、缺切图门、遗漏观察调用和接受多个发货调用，仍通过聚合入口执行夹具，要求红在预期断言；最后按字节还原并比对 SHA-256。记录在 `Build/garden-harvest-notice/negative-probes.json`，不在共享工作区修改生产文件。
 
 边界：这套回归不执行官方 Cost.Return 或 PlayerStorage.Push，不证明实际入库数量、Unity 主线程调度、Harmony 在真实 Mono 进程安装成功或横幅屏幕效果。代码认为官方交付任务正常完成后才允许提示；真实收获数量与视觉仍需 L3。
+
+2026-09-25：增加后山产物优先背包的真实 Return 参数布局检查、官方作物路线不变、未注册产物在 Harvest 前保留成熟作物。原发货仍只调用一次；不模拟实际库存容积或资源加载。

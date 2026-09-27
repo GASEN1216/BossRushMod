@@ -94,6 +94,13 @@ def check(sources):
         ("mapMarker.IsArea = true", "目标只画一个点，零号区那张图上容易被漏看"),
     ):
         require(token in prelude, PRELUDE + "：" + why + "（缺 " + token + "）")
+    spawn = prelude.split("private async void SpawnBoss(", 1)[1].split("private bool IsObjectiveGeneration(", 1)[0]
+    prepare = 'SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief);'
+    ordered(spawn, "clone = UnityEngine.Object.Instantiate(source);", prepare,
+            PRELUDE + " 序章守必须先克隆，再按岛内 K3 档案准备基准")
+    ordered(spawn, prepare, "await clone.CreateCharacterAsync(",
+            PRELUDE + " 序章守属性必须在官方工厂创建之前准备，不能只在岛内遭遇 owner 接线")
+    require(spawn.count(prepare) == 1, PRELUDE + " 序章守基准准备应恰好一次")
     departure = prelude.split("internal bool TryPrepareDeparture(", 1)[1].split("private void CloseStory()", 1)[0]
     require("SkyIslandOfficialQuestStory.SetBaseSource(null);" in departure,
             PRELUDE + " 出发前没有释放基地故事投影")
@@ -253,6 +260,7 @@ def main():
     sources = {path: (ROOT / path).read_text(encoding="utf-8-sig") for path in PATHS}
     errors = check(sources)
     probes = (
+        (PRELUDE, 'SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief);', ""),
         (PRELUDE, "story.IsCurrentSlot && storyReady", "story.IsCurrentSlot"),
         (PRELUDE, "storyReady = false;", "storyReady = true;"),
         (GIVERS, "context.BundleDeployed = SkyIslandPreludeFlow.BundleDeployed;", "context.BundleDeployed = SkyIslandRaidLease.IsBundleDeployed();"),

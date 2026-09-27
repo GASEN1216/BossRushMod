@@ -235,6 +235,7 @@ namespace BossRush
 
         /// <summary>Mode E 入场预热线程，尽量把重初始化提前摊到前置等待阶段。</summary>
         private Coroutine modeEStartupWarmupCoroutine = null;
+        private Coroutine modeEMerchantWarmupCoroutine = null;
 
         /// <summary>当前预热对应的场景名，用于避免跨场景误复用协程状态。</summary>
         private string modeEStartupWarmupSceneName = null;

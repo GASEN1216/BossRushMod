@@ -1,8 +1,9 @@
 {
   "version": 1,
-  "_comment": "Boss 战循环 BGM / 胜利 stinger / 点唱机曲目。音频文件放 Assets/Sounds/BGM/。文件缺失的条目会被静默跳过，因此换曲目只需替换同名文件，不需要改代码。phase 字段 V1 恒为 0（非 0 的条目会被忽略），为二期 FMOD 阶段切歌预留。",
+  "_comment": "Boss 战循环 BGM / 胜利 stinger / 点唱机曲目 / 场景常驻曲。音频文件放 Assets/Sounds/BGM/。文件缺失的条目会被静默跳过，因此换曲目只需替换同名文件，不需要改代码。phase 字段 V1 恒为 0（非 0 的条目会被忽略），为二期 FMOD 阶段切歌预留。",
   "_comment_dragonking": "DragonKing 故意不在 bossTracks 里：Assets/Sounds/DragonKing/dragonking.mp3 是作者已有的曲子，龙王维持旧的播放路径。将来若要接管，在这里加一条 bossKey=DragonKing 的条目并把文件放进 Assets/Sounds/BGM/ 即可，代码零改动。",
-  "_comment_format": "wav 与 mp3 都行（FMOD programmer sound 原生支持）。当前两条循环是程序化合成的氛围乐，32kHz 单声道，RMS 约 -20 dBFS；换成正式曲目时保持这个响度区间，否则会盖过枪声。",
+  "_comment_format": "wav / ogg / mp3 都行（FMOD programmer sound 原生支持）。要循环的曲子优先用 ogg 或 wav：FMOD 读部分 mp3（例如网站转出、带 Info 头的 CBR）会把时长估成两倍，循环时中间空白半首（2026-09-26 实测 ryw.mp3 34.4 秒被读成 69.3 秒）。Boss 战两条循环是程序化合成的氛围乐，32kHz 单声道，约 -25 LUFS，刻意压低以免盖过枪声；点唱机与场景常驻曲统一到 -16 LUFS（官方点唱机曲目约 -12 LUFS）。",
+  "_comment_sceneTracks": "场景常驻曲（SCHEMA+，2026-09-26）：地图会话开始时起播并循环；Boss 曲起播时让位，Boss 曲停下后自动接回；会话结束（撤离、倒下、退出）停止。sceneKey 取 BossBgmScenes 常量。",
   "bossTracks": [
     { "bossKey": "DragonDescendant", "file": "boss_descendant_loop.wav", "loop": true, "phase": 0 },
     { "bossKey": "PhantomWitch", "file": "boss_witch_loop.wav", "loop": true, "phase": 0 }
@@ -12,7 +13,11 @@
     { "eventKey": "RunVictory", "file": "stinger_run_victory.wav" }
   ],
   "jukebox": [
-    { "musicName": "龙裔挽歌", "musicNameEn": "Dragon Elegy", "author": "BossRushMod", "file": "boss_descendant_loop.wav" },
-    { "musicName": "幽影回廊", "musicNameEn": "Umbral Corridors", "author": "BossRushMod", "file": "boss_witch_loop.wav" }
+    { "musicName": "龙裔挽歌", "musicNameEn": "Dragon Elegy", "author": "BossRush · 晴岚群岛", "authorEn": "BossRush · Qinglan Archipelago", "file": "jukebox_dragon_elegy.ogg" },
+    { "musicName": "幽影回廊", "musicNameEn": "Umbral Corridors", "author": "BossRush · 晴岚群岛", "authorEn": "BossRush · Qinglan Archipelago", "file": "jukebox_umbral_corridors.ogg" },
+    { "musicName": "晴岚群岛", "musicNameEn": "Qinglan Archipelago", "author": "洛克王国", "authorEn": "Roco Kingdom", "file": "sky_island_theme.ogg" }
+  ],
+  "sceneTracks": [
+    { "sceneKey": "SkyIsland", "file": "sky_island_theme.ogg", "loop": true }
   ]
 }

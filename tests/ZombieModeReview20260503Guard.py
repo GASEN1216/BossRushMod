@@ -5,7 +5,7 @@
 涉及审查发现：
   §1.1  已删除 FindZombieModeNormalZombiePreset / 缓存字段；改 EnsureCharacterPresetsCacheReady
   §1.2  ZombieModeTuning.GetBossKind / BossKindTuning 数据表
-  §1.3  RunScopedRegistry.ForEachReverse 至少 5 处使用
+  §1.3  RunOnly、转存回滚和两类临时 NPC 清理分别使用 RunScopedRegistry.ForEachReverse
   §1.4  Common/Stats/RuntimeStatModifierTracker 存在
   §2.1  BossSkillState.Tick 抽象化（virtual + 5 子类 override）
   §2.3  ZombieModeStatNames 常量集中
@@ -15,12 +15,14 @@
   §3.2  Hunter Frenzy / Player Slow / Reward Attribute 改用 PercentageAdd（去除 stat.BaseValue * percent 模式）
   §3.3  共享 disk mesh visual（s_zoneDiskMesh + CreateZombieModeFlatZoneVisual）
   §3.7  静态数组替代每帧 new （s_zombieModeBossKindOrder / s_zombieModeSpecialKindOrder）
-  §4.1  RestoreZombieModeFinalDamageReduction 加架构债注释
+  §4.1  Boss 护盾/减伤在官方死亡判定前消费（2026-09-26 修复原补血债务）
   §4.2  ExplosionManager.CreateExplosion 接入（DealZombieModeExplosionAreaDamage）
 """
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
+from ZombieModeBossPresentationGuard import body
 
 REWARD_PARTS = [
     Path("ZombieMode/ZombieModeRewards.cs"),
@@ -45,7 +47,7 @@ def fail(msg: str) -> int:
 def must_contain(path: Path, *needles: str) -> str:
     if not path.is_file():
         return "missing file: " + str(path)
-    text = path.read_text(encoding="utf-8")
+    text = clean_source(path.read_text(encoding="utf-8-sig"))
     for n in needles:
         if n not in text:
             return "missing in " + str(path) + ": " + n
@@ -55,7 +57,7 @@ def must_contain(path: Path, *needles: str) -> str:
 def must_not_contain(path: Path, *needles: str) -> str:
     if not path.is_file():
         return "missing file: " + str(path)
-    text = path.read_text(encoding="utf-8")
+    text = clean_source(path.read_text(encoding="utf-8-sig"))
     for n in needles:
         if n in text:
             return "regression in " + str(path) + ": " + n
@@ -63,11 +65,11 @@ def must_not_contain(path: Path, *needles: str) -> str:
 
 
 def read_rewards() -> str:
-    return "\n".join(path.read_text(encoding="utf-8") for path in REWARD_PARTS if path.is_file())
+    return "\n".join(clean_source(path.read_text(encoding="utf-8-sig")) for path in REWARD_PARTS if path.is_file())
 
 
 def read_pollution() -> str:
-    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS if path.is_file())
+    return "\n".join(clean_source(path.read_text(encoding="utf-8-sig")) for path in POLLUTION_PARTS if path.is_file())
 
 
 def main() -> int:
@@ -123,15 +125,17 @@ def main() -> int:
     if err:
         return fail(err)
 
-    # §1.3 — RunScopedRegistry.ForEachReverse 至少 5 处
-    fer_count = 0
-    for path in [cleanup, runtime_module, runtime_module_inventory, map_iso, drops, inventory]:
-        if path.is_file():
-            txt = path.read_text(encoding="utf-8")
-            fer_count += txt.count("RunScopedRegistry.ForEachReverse")
-    fer_count += rewards_text.count("RunScopedRegistry.ForEachReverse")
-    if fer_count < 5:
-        return fail("RunScopedRegistry.ForEachReverse 使用 < 5 处（实测 " + str(fer_count) + "）")
+    # §1.3 — 按真实 owner 与集合钉住四条清理路径；历史总数把注释也计入了调用。
+    reverse_owners = (
+        (runtime_module, "internal void CleanupZombieModeRunOnlyState(", "runState.RunOnlyObjects"),
+        (runtime_module_inventory, "internal void RollbackZombieModeInventoryTransfer(", "entryTransaction.InventoryTransferredItems"),
+        (drops, "internal void RecycleZombieModeTemporaryNpcs(", "runState.TemporaryNpcs"),
+        (drops, "internal void RecycleZombieModeTemporaryRealNpcs(", "runState.TemporaryRealNpcs"),
+    )
+    for path, signature, collection in reverse_owners:
+        method = body(clean_source(path.read_text(encoding="utf-8-sig")), signature)
+        if "RunScopedRegistry.ForEachReverse( " + collection + "," not in " ".join(method.split()):
+            return fail(str(path) + " " + signature + " 必须逆序清理 " + collection)
 
     # §1.4 — RuntimeStatModifierTracker 存在 + ZombieMode 已经接入
     if not tracker.is_file():
@@ -243,10 +247,9 @@ def main() -> int:
         if needle not in pollution_text:
             return fail("missing in ZombieMode pollution partials: " + needle)
 
-    # §4.1 — 架构债注释
-    err = must_contain(wave, "Health.cs:418", "heal-back 模式")
-    if err:
-        return fail(err)
+    # §4.1 — 旧补血路径不能穿透致命一击；详细接线由 BossPresentationGuard 与真实 Hurt 回归覆盖。
+    from ZombieModeBossPresentationGuard import main as check_boss_contract
+    check_boss_contract()
 
     # §4.2 — ExplosionManager 接入
     for needle in ("DealZombieModeExplosionAreaDamage", "ExplosionManager.CreateExplosion"):

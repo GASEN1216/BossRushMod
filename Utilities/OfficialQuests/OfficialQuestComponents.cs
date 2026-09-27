@@ -85,6 +85,42 @@ namespace BossRush
         }
     }
 
+    /// <summary>
+    /// 奖励物品行的投影：图标与「名字 xN」照官方 RewardItem 的样子显示，发放由投影核心在交付事务里一次完成。
+    /// 「已领取」同样读客户端的交付事实。
+    /// </summary>
+    public sealed class OfficialQuestProjectionItemReward : Duckov.Quests.Reward
+    {
+        public int questId;
+        public int typeId;
+        public int amount;
+
+        public override bool Claimed { get { return OfficialQuestProjection.IsRewardPaid(questId); } }
+        public override bool AutoClaim { get { return true; } }
+
+        public override UnityEngine.Sprite Icon
+        {
+            get
+            {
+                try { return ItemStatsSystem.ItemAssetsCollection.GetMetaData(typeId).icon; }
+                catch (Exception) { return null; }
+            }
+        }
+
+        public override string Description { get { return OfficialQuestItems.DisplayName(typeId) + " x" + amount; } }
+
+        /// <summary>发放在交付事务里完成，这里永远是空操作。</summary>
+        public override void OnClaim()
+        {
+        }
+
+        public override object GenerateSaveData() { return Claimed; }
+
+        public override void SetupSaveData(object data)
+        {
+        }
+    }
+
     internal static class OfficialQuestText
     {
         /// <summary>奖励行文案复用官方 Reward_Money（各语言都有），取不到格式串时退回中英双语。</summary>

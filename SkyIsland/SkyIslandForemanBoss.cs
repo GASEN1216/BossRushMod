@@ -50,7 +50,7 @@ namespace BossRush
         private Modifier headShield, bodyShield, overheatModifier;
         private GameObject overheatGlow;
         private Light overheatLight;
-        private ParticleSystem overheatSteam;
+        private ParticleSystem overheatSteam, overheatShimmer, overheatHaze;
         private int receiverLayer, phase, casts;
         private float nextTick, nextCastAt, overheatUntil;
         private bool subscribed, casting, overheated, finished;
@@ -114,6 +114,7 @@ namespace BossRush
                 if (target > phase)
                 {
                     phase = target;
+                    SkyIslandImpactFx.PhaseBurst(context.Root, boss.transform.position, StarfireTint);
                     DeployPylons();
                 }
             }
@@ -357,6 +358,8 @@ namespace BossRush
             {
                 for (int i = 0; i < points.Count; i++)
                 {
+                    // 创建预警中途失败时，后续点没有画出圈，不能悄悄结算伤害。
+                    if (i >= lines.Count || lines[i] == null) continue;
                     // catch 子句体内不能 yield return（CS1631）：这里只记账。
                     // 星焰是真的爆炸：留官方火球；三圈齐落只震第一发（VB-21）。
                     try
@@ -440,6 +443,20 @@ namespace BossRush
                     overheatLight.range = 4f;
                     overheatLight.shadows = LightShadows.None;
                     overheatSteam = CreateOverheatSteam(overheatGlow.transform);
+                    // 背上再冒一股往上抖的热浪（2026-09-27）：灰白蒸汽读「在散热」，抖动的暖光读「烫」。
+                    overheatShimmer = SkyIslandImpactFx.CreateHeatShimmer(overheatGlow.transform);
+                    // 管线给了不透明场景色时再叠一层真正的折射热浪（skyisland_fx）；没有就只剩上面的粒子版。
+                    overheatHaze = SkyIslandImpactFx.CreateHeatHaze(overheatGlow.transform);
+                }
+                if (overheatHaze != null)
+                {
+                    if (on) overheatHaze.Play(true);
+                    else overheatHaze.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                }
+                if (overheatShimmer != null)
+                {
+                    if (on) overheatShimmer.Play(true);
+                    else overheatShimmer.Stop(true, ParticleSystemStopBehavior.StopEmitting);
                 }
                 SkyIslandLightFade.FadeTo(overheatLight, on ? 3.5f : 0f, 0.2f, false);
                 if (overheatSteam == null) return;
@@ -515,12 +532,14 @@ namespace BossRush
             if (helmEquipped && !helmBrokenAnnounced && HelmBroken())
             {
                 helmBrokenAnnounced = true;
+                SkyIslandImpactFx.Shatter(context.Root, boss.transform.position + Vector3.up * 1.8f, boss.transform.position, StarfireTint);
                 Announce("星铜护目盔被打穿了，匠首的星焰没了准头，一次只落一处。",
                     "The starbrass visor is shot through. The Foreman's starfire loses its aim and lands one ring at a time.", false);
             }
             if (harnessEquipped && !harnessBrokenAnnounced && HarnessBroken())
             {
                 harnessBrokenAnnounced = true;
+                SkyIslandImpactFx.Shatter(context.Root, boss.transform.position + Vector3.up * 1.2f, boss.transform.position, PylonTint);
                 if (pylons.Count > 0) ApplyShield(true);
                 Announce("星炉背甲的接头被打坏了，供能桩只能给它一半的护甲。",
                     "The furnace harness couplings are wrecked. The pylons can only give it half the plating now.", false);
@@ -561,6 +580,8 @@ namespace BossRush
             overheatGlow = null;
             overheatLight = null;
             overheatSteam = null;
+            overheatShimmer = null;
+            overheatHaze = null;
         }
 
         private void OnDestroy()

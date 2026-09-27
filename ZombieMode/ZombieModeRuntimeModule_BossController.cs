@@ -59,6 +59,7 @@ namespace BossRush
                 instance.Lifecycle.LastHurtTime = GetZombieModeRuntimeNow();
                 instance.SkillState = CreateZombieModeBossSkillState(kind);
                 instance.SkillState.Reset(now, boss.transform.localScale.x);
+                ZombieModeBossVisuals.Attach(owner, instance);
                 break;
             }
         }
@@ -112,24 +113,11 @@ namespace BossRush
                     TeleportZombieModeBossNearPlayer(instance);
                 }
 
-                // Tick state expirations (Titan DR, Hunter frenzy)
+                // Tick state expirations (Titan DR). Hunter frenzy 触发后持续到死亡，没有到期。
                 ZombieModeTitanState titanState = instance.SkillState as ZombieModeTitanState;
                 if (titanState != null && titanState.DamageReductionActive && now >= titanState.DamageReductionEndTime)
                 {
                     titanState.DamageReductionActive = false;
-                }
-
-                ZombieModeHunterState hunterState = instance.SkillState as ZombieModeHunterState;
-                if (hunterState != null && hunterState.FrenzyActive && now >= hunterState.FrenzyEndTime)
-                {
-                    hunterState.FrenzyActive = false;
-                    RemoveZombieModeHunterFrenzyModifiers(hunterState);
-                    if (instance.Character != null && hunterState.FrenzyOriginalScale > 0f)
-                    {
-                        Vector3 s = instance.Character.transform.localScale;
-                        float ratio = hunterState.FrenzyOriginalScale / Mathf.Max(0.01f, s.x);
-                        instance.Character.transform.localScale = s * ratio;
-                    }
                 }
 
                 TryExecuteZombieModeBossSkill(instance, now);
@@ -173,6 +161,7 @@ namespace BossRush
             if (now >= titan.NextShockwaveTime)
             {
                 titan.NextShockwaveTime = now + ZombieModeTuning.TitanShockwaveCooldownSeconds;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 StartZombieModeTelegraphedAreaDamage(
                     runId,
                     boss,
@@ -186,6 +175,7 @@ namespace BossRush
             {
                 titan.NextDamageReductionTime = now + ZombieModeTuning.TitanDamageReductionCooldownSeconds;
                 titan.DamageReductionActive = true;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 titan.DamageReductionEndTime = now
                     + ZombieModeTuning.TitanDamageReductionStartupSeconds
                     + ZombieModeTuning.TitanDamageReductionDurationSeconds;
@@ -203,18 +193,17 @@ namespace BossRush
             if (now >= hunter.NextDashTime)
             {
                 hunter.NextDashTime = now + ZombieModeTuning.HunterDashCooldownSeconds;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_HunterDash"));
-                Vector3 target = Vector3.MoveTowards(boss.transform.position, player.transform.position, ZombieModeTuning.HunterDashDistance);
-                target.y = boss.transform.position.y;
-                boss.transform.position = target;
-                StartZombieModeTelegraphedAreaDamage(
-                    runId,
-                    boss,
-                    player.transform.position,
+                GameObject telegraph = CreateZombieModeFlatZoneVisual(
+                    "ZombieMode_HunterDashTelegraph", boss.transform.position,
+                    ZombieModeTuning.HunterDashRadius, 0.02f, ZombieModeBossVisuals.GetAccent(instance.Kind));
+                ZombieModeSprinterDashRuntime dash = telegraph.AddComponent<ZombieModeSprinterDashRuntime>();
+                dash.Initialize(runId, boss, player.transform.position,
+                    ZombieModeTuning.HunterDashDistance, ZombieModeTuning.HunterDashStartupSeconds, 0.18f,
                     ZombieModeTuning.HunterDashRadius,
-                    ZombieModeTuning.HunterDashDamage * owner.GetZombieModeBossDamageScaleForRuntimeModule(runState.CurrentWave),
-                    ZombieModeTuning.HunterDashStartupSeconds,
-                    L10n.T("BossRush_ZombieMode_BossSkill_HunterDash"));
+                    ZombieModeTuning.HunterDashDamage * owner.GetZombieModeBossDamageScaleForRuntimeModule(runState.CurrentWave));
+                RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, telegraph, dash, null);
             }
         }
 
@@ -227,6 +216,7 @@ namespace BossRush
             if (now >= splitter.NextSummonTime)
             {
                 splitter.NextSummonTime = now + ZombieModeTuning.SplitterBossSummonCooldownSeconds;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_SplitterSummon"));
                 for (int i = 0; i < ZombieModeTuning.SplitterBossSummonCount; i++)
                 {
@@ -245,6 +235,7 @@ namespace BossRush
             if (now >= shielder.NextSelfShieldTime)
             {
                 shielder.NextSelfShieldTime = now + ZombieModeTuning.ShielderSelfShieldCooldownSeconds;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_ShielderSelfShield"));
                 if (boss.Health != null)
                 {
@@ -263,6 +254,7 @@ namespace BossRush
             if (now >= shielder.NextGroupShieldTime)
             {
                 shielder.NextGroupShieldTime = now + ZombieModeTuning.ShielderGroupShieldCooldownSeconds;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_ShielderGroupShield"));
                 ApplyZombieModeBossShieldPulse(runId, boss.transform.position);
             }
@@ -278,6 +270,7 @@ namespace BossRush
             if (now >= corruptor.NextZoneTime && player != null)
             {
                 corruptor.NextZoneTime = now + ZombieModeTuning.CorruptorZoneCooldownSeconds;
+                ZombieModeBossVisuals.Pulse(instance.Marker);
                 SpawnZombieModeCorruptionZone(runId, boss, player.transform.position);
                 boss.PopText(L10n.T("BossRush_ZombieMode_BossSkill_CorruptorZone"));
             }
@@ -677,8 +670,9 @@ namespace BossRush
             if (instance == null || instance.Character == null) return;
             ZombieModeHunterState hunter = instance.SkillState as ZombieModeHunterState;
             if (hunter == null) return;
+            // 狂暴是低血后的最终形态：触发一次、持续到死亡（owner 2026-09-27 定）。
+            // 此前 15 秒到期后下一击又重新触发，体型在 1 与 1.08 倍之间来回跳。
             hunter.FrenzyActive = true;
-            hunter.FrenzyEndTime = GetZombieModeRuntimeNow() + ZombieModeTuning.HunterFrenzyDurationSeconds;
             instance.Character.PopText(L10n.T("BossRush_ZombieMode_Boss_Hunter"));
             ApplyZombieModeHunterFrenzyModifiers(instance.Character, hunter);
             instance.Character.transform.localScale = instance.Character.transform.localScale * 1.08f;
@@ -831,6 +825,7 @@ namespace BossRush
                 return;
             }
 
+            ZombieModeBossVisuals.PlayDeath(marker);
             if (marker.BossKind == ZombieModeBossKind.Splitter)
             {
                 DealZombieModeExplosionAreaDamage(

@@ -53,6 +53,16 @@ internal static class Program
     { typeof(SkyIslandResidentInteractable).GetMethod("Update", BindingFlags.Instance|BindingFlags.NonPublic).Invoke(interaction, null); }
     private static void Givers()
     {
+        foreach (string id in new[] { "sky_weibai", "sky_fuzhou", "sky_bellkeeper" })
+        {
+            var current = Session(true);
+            int giverId = SkyIslandOfficialQuestTable.GiverIdOfResident(id);
+            string device = SkyIslandOfficialQuestTable.FallbackMarkerOfGiver(giverId);
+            UnityEngine.Object.Destroy(current.residents.Owners[id].gameObject);
+            SkyIslandOfficialQuestGivers.EnsureDeviceFallback(current);
+            Check(current.FindDeviceInteractable(device).GetComponentInChildren<QuestGiver>().ID == giverId,
+                id + ": real quest identity transfers to its own device when spouse leaves");
+        }
         var session=Session(false); SkyIslandOfficialQuestGivers.EnsureDeviceFallback(session);
         Check(Board(session)!=null, "spouse staying home: board is available");
         session=Session(true); SkyIslandOfficialQuestGivers.EnsureDeviceFallback(session);
@@ -67,8 +77,8 @@ internal static class Program
         Check(session.FindDeviceInteractable("Search_B").transform.Children.Count==count, "repair is idempotent");
         // 部分任务入口一直缺失，耗尽共用预算后，已成功的入口再因婚礼失效。
         session=Session(true);
-        UnityEngine.Object.Destroy(session.residents.Owners["resident_5903"].gameObject);
-        UnityEngine.Object.Destroy(session.FindDeviceInteractable("device_5903").gameObject);
+        UnityEngine.Object.Destroy(session.residents.Owners["sky_bellkeeper"].gameObject);
+        UnityEngine.Object.Destroy(session.FindDeviceInteractable("Search_H").gameObject);
         for(int i=0;i<45;i++) SkyIslandOfficialQuestGivers.EnsureDeviceFallback(session);
         Check(SkyIslandOfficialQuestGivers.Attempts==40, "missing UI or device has bounded attempts");
         DuckNpcSpawner.Despawn(PermanentDuckNpcRegistry.GetInstance("sky_weibai"));
@@ -94,13 +104,13 @@ internal static class Program
     }
     private static void Interactions()
     {
-        foreach(string id in new[] {"sky_qinghe","sky_weibai"})
+        foreach(string id in SkyIslandResidents.AllIds)
         {
             var session=Session(false); var npc=Npc(id);
             SkyIslandResidentInteractable.AttachPermanent(npc,id);
             SkyIslandResidentInteractable.AttachPermanent(npc,id);
             var owner=npc.GetComponentInChildren<PermanentDuckNpcInteractable>();
-            Check(owner.Group.Count==(id=="sky_weibai"?2:1), id+": storyline and quest attach once without replacing marriage options");
+            Check(owner.Group.Count==(SkyIslandOfficialQuestTable.GiverIdOfResident(id)!=0?2:1), id+": storyline and quest attach once without replacing marriage options");
             var talk=npc.GetComponentInChildren<SkyIslandResidentInteractable>();
             Check(talk.Available, id+": unmarried island resident can talk");
             talk.Click(); Check(session.worldStory.Talks==1, id+": actual click reaches current island owner");
@@ -132,7 +142,7 @@ internal static class Program
     }
     private static void Divorce()
     {
-        foreach(string id in new[]{"sky_qinghe","sky_weibai"})
+        foreach(string id in SkyIslandResidents.AllIds)
         {
             Session(false); var npc=Npc(id); PermanentDuckNpcRegistry.Instances[id]=npc;
             ModBehaviour.Instance.HandleDivorceNpcRelocation(id);
@@ -145,9 +155,87 @@ internal static class Program
     private static void Main()
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+        RaidVisibility();
+        FollowingZhelingChallenge();
         Givers(); Interactions(); Divorce();
         MarriageLifecycleRegression.Run(Npc, Session, Check);
         ActorReuseRegression.Run(Npc, Check);
         Console.WriteLine("PASS SkyIslandMarriage: "+checks+" checks (production control flow; Unity/official UI substitutes)");
+    }
+    private static void FollowingZhelingChallenge()
+    {
+        foreach (bool cn in new[] { true, false })
+        foreach (bool married in new[] { false, true })
+        foreach (bool following in new[] { false, true })
+        foreach (bool present in new[] { false, true })
+        foreach (bool sameScene in new[] { false, true })
+        foreach (bool resolved in new[] { false, true })
+        {
+            var session = Session(false); L10n.IsChinese = cn;
+            session.story.CanWrite = true;
+            session.story.Current = new SkyIslandStoryData { ZhelingResolved = resolved, BothBeacons = true };
+            session.encounters = new SkyIslandEncounters { Allowed = true };
+            session.worldStory.BindChallenge(session);
+            AffinityManager.Spouse = married ? "sky_zheling" : null; AffinityManager.Following = following;
+            if (present)
+            {
+                var spouse = Npc("sky_zheling");
+                if (!sameScene) spouse.gameObject.scene = new Scene { handle = 2, name = "Base" };
+                PermanentDuckNpcRegistry.Instances["sky_zheling"] = spouse;
+            }
+            bool localFollower = married && following && present && sameScene;
+            bool allowed = !resolved && !localFollower;
+            string reason;
+            Check(session.CanBeginStoryChallenge("Zheling", out reason) == allowed, "Zheling shared gate matches current spouse/scene facts");
+            Check((session.worldStory.ZhelingOptions().Count == 1) == allowed, "actual Zheling menu construction uses the shared gate");
+            Check(session.BeginStoryChallenge("Zheling") == allowed && session.encounters.Starts == (allowed ? 1 : 0),
+                "actual click entry rechecks gate before encounter starts");
+            if (!resolved && localFollower)
+                Check(reason != null && reason.Contains(cn ? "回家" : "home")
+                    && session.worldStory.LastHint == reason, "blocked menu explains sending the same-scene spouse home in both languages");
+            Check(session.CanBeginStoryChallenge("BellKeeper", out reason), "Zheling following gate does not block other challenges");
+            Check(session.story.Current.ZhelingResolved == resolved && AffinityManager.Spouse == (married ? "sky_zheling" : null)
+                && AffinityManager.Following == following, "gate never changes story or relationship facts");
+        }
+        var current = Session(false); L10n.IsChinese = true;
+        current.story.CanWrite = true; current.story.Current = new SkyIslandStoryData();
+        current.encounters = new SkyIslandEncounters { Allowed = true }; current.worldStory.BindChallenge(current);
+        var choices = current.worldStory.ZhelingOptions();
+        Check(choices.Count == 1 && choices[0].Action() == "confirmation", "normal challenge uses the real confirmation entry");
+        AffinityManager.Spouse = "sky_zheling"; AffinityManager.Following = true;
+        var follower = Npc("sky_zheling"); PermanentDuckNpcRegistry.Instances["sky_zheling"] = follower;
+        string blocked = current.worldStory.ConfirmChallenge();
+        Check(blocked.Contains("回家") && current.encounters.Starts == 0 && !current.worldStory.ChallengePanelDisposed,
+            "stale confirmation cannot spawn a hostile copy of the following spouse and returns the exact blocker");
+        Check(current.Announcements == 0 && current.story.TimingLogs == 0, "rejected challenge does not announce or log a started fight");
+        AffinityManager.Following = false; follower.gameObject.scene = new Scene { handle = 2, name = "Base" };
+        choices = current.worldStory.ZhelingOptions(); choices[0].Action(); current.worldStory.ConfirmChallenge();
+        Check(current.encounters.Starts == 1 && current.worldStory.ChallengePanelDisposed,
+            "sending spouse home reopens the same device menu and starts exactly once");
+        Check(!current.story.Current.ZhelingResolved && AffinityManager.Spouse == "sky_zheling",
+            "home-to-challenge transition keeps marriage and unresolved story intact");
+    }
+    private static void RaidVisibility()
+    {
+        foreach (bool started in new[] { false, true })
+        foreach (bool cleared in new[] { false, true })
+        {
+            var encounters = new SkyIslandEncounters();
+            encounters.Set("Zheling", started, cleared);
+            Check(encounters.WasStartedThisRaid("Zheling") == started,
+                "Zheling hides only after this raid starts, even for completed old saves");
+            Check(!encounters.WasStartedThisRaid("missing"), "missing encounter never hides resident");
+        }
+    }
+}
+
+namespace BossRush
+{
+    internal sealed partial class SkyIslandEncounters
+    {
+        private sealed class Encounter { internal string Id; internal bool Started, Cleared; }
+        private readonly System.Collections.Generic.List<Encounter> encounters = new System.Collections.Generic.List<Encounter>();
+        internal void Set(string id, bool started, bool cleared)
+        { encounters.Add(new Encounter { Id = id, Started = started, Cleared = cleared }); }
     }
 }

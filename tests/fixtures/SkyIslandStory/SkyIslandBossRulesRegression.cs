@@ -9,18 +9,13 @@ using BossRush;
 /// - 掉落：岛主每次必出一件（权重合计 100、不掉权重 0），头目有不掉权重；按均匀种子网格精确计频，不靠大数定律糊过去。
 /// - 档案：挂在已有遭遇组的带队位置上，内容表档次与档案一致；一种招式一个控制器（断风游猎是同一家族的三个变体）；
 ///   夜限定只有蚋笛翁与镜中客，换阵营只有断风游猎；五栏非空、核心招式两两不同由守卫解析。
-/// - 档次：按官方护甲公式折算的有效血量与伤害、反应倍率随档次严格递增（Elite &lt; Chief &lt; Champion &lt; Lord &lt; Storm）。
+/// - 档次：按角色定位指定原版参照，血量与战斗属性统一提升 50%；完整基准与生成时序由 SkyIslandEncounters 回归。
 /// - 预警：每一个会伤人或减速的圈，逃圈速度 ≤ 5.5 m/s（与噬风同一条判据）；静听耳罩只会让预警更长。
 /// - 招式几何（绊索、倒影换位、冲步、逃点、洞口、镜池）与套装效果（翻箱、割草、走桥、偷窃白名单）都是纯函数，这里逐条算。
 /// - 星工两件套只让渡口工台配方的残铜片少耗一片，且不低于一片；配方原件不被改写。
 /// </summary>
 internal static class SkyIslandBossRulesRegression
 {
-    // 与 SkyIslandEnemyTiers 同口径（该文件依赖 Unity，不进这个夹具；数字由 SkyIslandContentExpansionGuard 钉住）。
-    private const double EliteHealth = 2.6, ChampionHealth = 4.5, StormHealth = 13.0;
-    private const double EliteDamage = 1.35, ChampionDamage = 1.55, StormDamage = 1.8;
-    private const double EliteReaction = 1.3, ChampionReaction = 1.45, StormReaction = 1.7;
-
     private sealed class Expected
     {
         internal string Encounter;
@@ -51,6 +46,9 @@ internal static class SkyIslandBossRulesRegression
         Drops(check);
         Tiers(check);
         Telegraphs(check);
+        check(SkyIslandBossRules.FluteInterruptedCooldown > SkyIslandBossRules.FluteInterval
+            && SkyIslandBossRules.FluteInterruptedCooldown <= SkyIslandBossRules.FluteInterval * 2f,
+            "boss piper: interrupt rewards a longer recovery window without removing repeat pressure");
         Geometry(check);
         Gear(check);
         Crafting(check);
@@ -176,21 +174,11 @@ internal static class SkyIslandBossRulesRegression
         foreach (SkyIslandBossProfile profile in SkyIslandBossRules.Profiles)
         {
             double effective = SkyIslandBossRules.EffectiveHealth(profile);
-            if (profile.Tier == SkyIslandEnemyTier.Chief)
-            {
-                check(EliteHealth < effective && effective < ChampionHealth,
-                    "boss tier: chief " + profile.Id + " armour-adjusted health sits between Elite and Champion (" + effective + ")");
-                check(EliteDamage < profile.Damage && profile.Damage < ChampionDamage && EliteReaction < profile.Reaction && profile.Reaction < ChampionReaction,
-                    "boss tier: chief " + profile.Id + " damage and reaction sit between Elite and Champion");
-            }
-            else
-            {
-                check(profile.Tier == SkyIslandEnemyTier.Lord && ChampionHealth < effective && effective < StormHealth,
-                    "boss tier: lord " + profile.Id + " armour-adjusted health sits between Champion and Storm (" + effective + ")");
-                check(ChampionDamage < profile.Damage && profile.Damage < StormDamage && profile.Damage <= 3f
-                    && ChampionReaction < profile.Reaction && profile.Reaction < StormReaction,
-                    "boss tier: lord " + profile.Id + " damage and reaction sit between Champion and Storm, capped");
-            }
+            SkyIslandCombatBaseline baseline = SkyIslandCombatBalance.Find(profile.VanillaPresetId);
+            check(baseline.Health > 0f && baseline.Damage > 0f && baseline.Reaction > 0f,
+                "boss tier: explicit vanilla combat baseline for " + profile.Id);
+            check(effective >= baseline.Health * 1.5f,
+                "boss tier: armour cannot reduce the baseline +50% health for " + profile.Id);
             check(profile.Scale >= 1f && profile.Scale < 1.9f, "boss tier: model scale of " + profile.Id + " stays below the Windeater's");
         }
         check(Math.Abs(SkyIslandBossRules.ArmorFactor(3.0, 2.0) - 2.0 / 3.0) < 1e-9 && SkyIslandBossRules.ArmorFactor(0.0, 2.0) == 1.0

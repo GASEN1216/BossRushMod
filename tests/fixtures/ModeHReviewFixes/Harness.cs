@@ -51,7 +51,10 @@ namespace BossRush
     public static class ModeHMapSupportRegistry
     {
         public static ModeHSupportedMap Map = new ModeHSupportedMap();
+        public static ModeHSupportedMap Variant;
         public static bool TryGetMap(string name, out ModeHSupportedMap map) { map = Map; return map != null && map.SceneName == name; }
+        public static bool TryCreateRunVariant(ModeHSupportedMap source, long seed, out ModeHSupportedMap variant, out string reason)
+        { variant = Variant; reason = variant == null ? "fixture_no_safe_arena" : null; return variant != null; }
     }
     public class ModeHArenaIsolationLease
     {
@@ -84,6 +87,8 @@ namespace BossRush
     }
     internal partial class ModeHCombatTelemetry { public HashSet<string> _enteredProfileIds = new HashSet<string>(); }
     internal class ModeHCombatControl { public ModeHInjuryAndScarSystem InjuryAndScar = new ModeHInjuryAndScarSystem(); }
+    internal static class ModeHBetRevealView { public static bool IsPlaying; }
+    internal sealed class ModeHUI { public int Closed; public void ClosePage() { Closed++; } }
     internal partial class ModeHRuntimeModule
     {
         public ModeHSeasonDto _season;
@@ -93,6 +98,8 @@ namespace BossRush
         public int _sceneGeneration, _restoredSlotGeneration, _resumeSceneIntentGeneration;
         public bool _restoredSeasonPending, _resumeScenePending, _resumeNeedsMatchReset, _commandsClosed, _shutdownCompleted;
         private bool _seasonDirty;
+        public bool _waitingForBetReveal;
+        public ModeHUI _ui;
         private int _recoveryDriveStateSequence = -1;
         public ModBehaviour _owner = new ModBehaviour();
         public bool IsEnabled = true;

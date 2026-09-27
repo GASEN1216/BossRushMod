@@ -37,6 +37,27 @@ namespace BossRush
         {
             ModeHCashBetService.Stats = new ModeHCashBetRecord();
 
+            // 奖品交付完成后 pendingItems 为空，结算图标仍应由完整计划恢复。
+            ModeHCashBetRecord iconRecord = new ModeHCashBetRecord
+            {
+                kind = ModeHCashBetService.KindItems, status = ModeHCashBetService.StatusSettled,
+                itemSettlement = 1, prizeItems = "202|3|900|5|Rifle|prize_1", pendingItems = string.Empty,
+            };
+            string iconJson = ModeHCashBetService.CashBetJournal.SaveRecord(iconRecord);
+            ModeHCashBetRecord restoredIcons = ModeHCashBetService.CashBetJournal.LoadRecord(iconJson);
+            Check(restoredIcons != null && restoredIcons.prizeItems == iconRecord.prizeItems
+                  && restoredIcons.pendingItems == string.Empty,
+                "delivered prize icons survive ledger round-trip without pending obligations");
+            for (int version = 1; version <= 2; version++)
+            {
+                ModeHCashBetRecord legacy = ModeHCashBetService.CashBetJournal.LoadRecord(
+                    "{\"schemaVersion\":" + version + ",\"kind\":1,\"status\":2,\"prizes\":\"old reward\"}");
+                Check(legacy != null && legacy.prizeItems == string.Empty && legacy.prizes == "old reward",
+                    "legacy ledger schema " + version + " retains results with empty icon list");
+            }
+            Check(ModeHCashBetService.CashBetJournal.LoadRecord("{\"schemaVersion\":4}") == null,
+                "future ledger schema is rejected");
+
             // 1. 押了哪几件：来回编码不丢数，名字里的分隔符被去掉，坏条目跳过
             List<ModeHItemBetEntry> entries = new List<ModeHItemBetEntry>
             {

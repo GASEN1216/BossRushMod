@@ -6,6 +6,8 @@
 //   官方任务日志的目标行 ← 本局进度 / 基地侧事实；官方「完成任务」按钮 → TryDeliver。
 // 发钱、发 token、写线索仍归 TryDeliver 的补偿式事务（PayReward = null）；
 // 官方奖励行只是展示（RewardMoney = def.RewardCash，同一字段源），「已领取」读 Completed。
+// 奖励物品与提交物品（CampaignRewardTable）由共享核心在同一次交付里处理：先备好奖励、预留提交物，
+// 本客户端的交付事务成功才收走提交物、发出奖励物；引导的奖金走 CampaignProgressService.TryDeliverGuide。
 //
 // 整个 Campaign/ 目录不出现任何 Duckov.Quests 符号：注册、投影、补丁、快照过滤、
 // 给予者查找全在 Utilities/OfficialQuests/（tests/CampaignSkeletonGuard.py）。
@@ -60,6 +62,12 @@ namespace BossRush
                 OfficialQuestBinding binding = BuildBinding(def);
                 if (binding != null) projection.Register(binding);
             }
+            IList<CampaignGuideTable.Definition> guides = CampaignGuideTable.Definitions;
+            for (int i = 0; i < guides.Count; i++)
+            {
+                OfficialQuestBinding binding = BuildGuideBinding(guides[i]);
+                if (binding != null) projection.Register(binding);
+            }
             _registered = true;
         }
 
@@ -106,9 +114,7 @@ namespace BossRush
             }
         }
 
-        public void BeginTick()
-        {
-        }
+        public void BeginTick() { }
 
         public void EndTick(bool dirty)
         {
@@ -156,6 +162,8 @@ namespace BossRush
                 NameKey = CampaignQuestTable.NameKey(chapterId),
                 DescriptionKey = CampaignQuestTable.DescriptionKey(chapterId),
                 RewardMoney = def.RewardCash,
+                RewardItems = CampaignRewardTable.ChapterItems(def.Order),
+                Submissions = CampaignRewardTable.ChapterSubmissions(def.Order),
                 CanOffer = () => CampaignQuestTable.CanOffer(State(chapterId), CanWrite(), AnotherActive(chapterId)),
                 CanDeliver = () => CampaignQuestTable.CanDeliver(State(chapterId), CanWrite(), CampaignBaseObjectives.AllDone(def)),
                 DeliverBlocked = () => DescribeBlocked(def),
@@ -182,6 +190,89 @@ namespace BossRush
                 };
             }
             return binding;
+        }
+
+        private OfficialQuestBinding BuildGuideBinding(CampaignGuideTable.Definition guide)
+        {
+            if (guide == null) return null;
+            string id = guide.Id;
+            CampaignRewardTable.Grant grant = CampaignRewardTable.ForGuide(id);
+            int cash = grant.Cash;
+            return new OfficialQuestBinding
+            {
+                QuestId = guide.QuestId,
+                GiverId = CampaignQuestTable.JeffGiverId,
+                ObjectName = "BossRush_Campaign_Guide_Quest_" + guide.QuestId,
+                NameKey = guide.NameKey,
+                DescriptionKey = guide.DescriptionKey,
+                RewardMoney = cash,
+                RewardItems = grant.Items,
+                Submissions = grant.Submissions,
+                // 一条接一条：只有排到的那一条挂在杰夫的可接取页上（CampaignGuideTable.NextOfferableId）
+                CanOffer = () => CanWrite() && CampaignGuideTable.InBase()
+                    && !CampaignGuideTable.IsAccepted(id) && !CampaignGuideTable.IsCompleted(id)
+                    && string.Equals(CampaignGuideTable.NextOfferableId(GuidePrerequisiteMet), id, StringComparison.Ordinal),
+                CanDeliver = () => CanWrite() && CampaignGuideTable.InBase()
+                    && CampaignGuideTable.IsAccepted(id) && CampaignGuideTable.IsExperienced(id) && !CampaignGuideTable.IsCompleted(id),
+                DeliverBlocked = () => L10n.T("还没去试过吧？照我说的试一次，再回来找我。", "Haven't tried it yet, have you? Give it a go the way I said, then come back."),
+                IsAccepted = () => CampaignGuideTable.IsAccepted(id) || CampaignGuideTable.IsCompleted(id),
+                IsDelivered = () => CampaignGuideTable.IsCompleted(id),
+                RewardPaid = () => CampaignGuideTable.IsCompleted(id),
+                Accept = (out string message) => AcceptGuide(id, out message),
+                Deliver = (out string message) => DeliverGuide(id, cash, out message),
+                PayReward = null,
+                StateStamp = () => CampaignGuideTable.IsCompleted(id) ? 3
+                    : (CampaignGuideTable.IsExperienced(id) ? 2 : (CampaignGuideTable.IsAccepted(id) ? 1 : 0)),
+                Tasks = new OfficialQuestTaskBinding[]
+                {
+                    new OfficialQuestTaskBinding
+                    {
+                        TaskId = 1,
+                        Done = () => CampaignGuideTable.IsExperienced(id) || CampaignGuideTable.IsCompleted(id),
+                        Description = () => CampaignGuideTable.Describe(guide, CampaignGuideTable.IsExperienced(id)),
+                        ExtraHint = () => L10n.T("去试一次，回基地跟杰夫讲讲。", "Try it once, then tell Jeff about it back at base.")
+                    }
+                },
+                Client = this,
+            };
+        }
+
+        private bool AcceptGuide(string guideId, out string message)
+        {
+            message = null;
+            if (CanWrite() && CampaignGuideTable.InBase()
+                && !CampaignGuideTable.IsCompleted(guideId) && CampaignPersistence.TryAdvanceGuide(guideId, 1)) return true;
+            message = L10n.T("回基地找我接就行。要是没接上，多半是存档正忙，过一会儿再来。", "Come find me at base to take this. If it didn't go through, the save is probably busy; try again in a moment.");
+            return false;
+        }
+
+        private bool DeliverGuide(string guideId, int rewardCash, out string message)
+        {
+            message = null;
+            if (CanWrite() && CampaignGuideTable.InBase() && CampaignProgressService.TryDeliverGuide(guideId, rewardCash)) return true;
+            message = L10n.T("先照我说的去试一次，回基地再来找我。要是已经试过了，多半是存档正忙，过一会儿再来。",
+                "Go try it the way I said first, then come see me at base. If you already have, the save is probably busy; try again in a moment.");
+            return false;
+        }
+
+        /// <summary>
+        /// 引导的前置：菜地要鸭王征程第一章交付（解锁菜地工地），陈列要第二章交付（解锁陈列加成）；
+        /// 天空岛装备要本槽航线已开（Jeff 序章「云上的坐标」已交付）。其余没有前置。
+        /// 菜地 / 陈列读战役的设施解锁 token（战役关闭时一律未解锁）；三条前置没到时都排在后面，不挡别的。
+        /// 天空岛那条若不设前置，新档会卡在「先做完整条序章再上岛打 Boss」上，后面九条入门引导全部挂不出来。
+        /// </summary>
+        private static bool GuidePrerequisiteMet(string guideId)
+        {
+            if (string.Equals(guideId, CampaignGuideTable.Garden, StringComparison.Ordinal))
+                return CampaignFacilityUnlocks.IsTokenGranted(CampaignFacilityUnlocks.BuildTokenForChapter(1));
+            if (string.Equals(guideId, CampaignGuideTable.Trophy, StringComparison.Ordinal))
+                return CampaignFacilityUnlocks.IsTokenGranted(CampaignFacilityUnlocks.BuildTokenForChapter(2));
+            if (string.Equals(guideId, CampaignGuideTable.SkyIslandGear, StringComparison.Ordinal))
+            {
+                string unused;
+                return SkyIslandPreludeFlow.CanUseRoute(out unused);
+            }
+            return true;
         }
 
         private static CampaignChapterState State(string chapterId)
@@ -229,7 +320,8 @@ namespace BossRush
             CampaignChapterState state = State(chapterId);
             bool armed = Armed(chapterId);
             CampaignObjectiveProgress progress = armed ? CampaignQuestTable.FindProgress(CampaignObjectiveTracker.Progress, objective) : null;
-            bool baseFact = objective.IsBaseScope && CampaignBaseObjectives.IsDone(objective.Kind);
+            bool baseFact = state == CampaignChapterState.Completed
+                || (objective.IsBaseScope && CampaignBaseObjectives.IsDone(objective.Kind));
             return CampaignQuestTable.DescribeObjective(objective, progress, IsSettled(state), baseFact);
         }
 

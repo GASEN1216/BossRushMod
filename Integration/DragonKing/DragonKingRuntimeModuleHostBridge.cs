@@ -41,21 +41,15 @@ namespace BossRush
 
         internal HashSet<Health> ActiveDragonKingHealths { get { return activeDragonKingHealths; } }
 
-        private MonoBehaviour currentBoss
-        {
-            get { return owner != null ? owner.DragonKingCurrentBoss : null; }
-            set { if (owner != null) owner.DragonKingCurrentBoss = value; }
-        }
-
-        private List<MonoBehaviour> currentWaveBosses
-        {
-            get { return owner != null ? owner.DragonKingCurrentWaveBosses : null; }
-        }
-
-        private int bossesPerWave { get { return owner != null ? owner.DragonKingBossesPerWave : 0; } }
-        private List<EnemyPresetInfo> enemyPresets { get { return owner != null ? owner.DragonKingEnemyPresets : null; } }
-        private Dictionary<CharacterMainControl, float> bossSpawnTimes { get { return owner != null ? owner.DragonKingBossSpawnTimes : null; } }
-        private Dictionary<CharacterMainControl, int> bossOriginalLootCounts { get { return owner != null ? owner.DragonKingBossOriginalLootCounts : null; } }
+        private void RegisterArenaWaveBoss(CharacterMainControl character) { if (owner != null) owner.RegisterArenaWaveBossFromContent(character); }
+        private void ClearArenaCurrentBoss(CharacterMainControl character) { if (owner != null) owner.ClearArenaCurrentBossFromContent(character); }
+        private void RemoveArenaWaveBoss(CharacterMainControl character) { if (owner != null) owner.RemoveArenaWaveBossFromContent(character); }
+        private bool HasArenaEnemyPresetCatalog { get { return owner != null && owner.HasArenaEnemyPresetCatalog; } }
+        private EnemyPresetInfo FindArenaEnemyPreset(string nameKey) { return owner != null ? owner.FindArenaEnemyPreset(nameKey) : null; }
+        private void AddArenaEnemyPreset(EnemyPresetInfo preset) { if (owner != null) owner.AddArenaEnemyPreset(preset); }
+        private void RecordArenaBossLoot(CharacterMainControl character, float spawnTime, int count) { if (owner != null) owner.RecordArenaBossLoot(character, spawnTime, count); }
+        private void RemoveArenaBossLootRecord(CharacterMainControl character) { if (owner != null) owner.RemoveArenaBossLootRecord(character); }
+        private int ArenaBossLootRecordCount { get { return owner != null ? owner.ArenaBossLootRecordCount : 0; } }
 
         private Coroutine StartCoroutine(IEnumerator routine)
         {

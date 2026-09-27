@@ -37,7 +37,75 @@ internal static class Program
         FrameProfile();
         BossProfiles();
         Chatter();
+        ResidentRelationships();
         Console.WriteLine("PASS: " + assertions + " assertions; F3 Sky Island runtime-case judges (pure half only, no Unity)");
+    }
+
+    private static void ResidentRelationships()
+    {
+        var observed = new Dictionary<string, bool>();
+        string[] configuration = { "permanent", "affinity", "gift_config", "relationship_dialogue" };
+        string[] interactions = { "chat", "gift", "story", "follow", "divorce", "home" };
+        foreach (string key in configuration) observed[key] = true;
+        foreach (string key in interactions) observed[key] = true;
+        observed["instance"] = true;
+        observed["story_hidden"] = false;
+        string[] menuKeys = { "chat_reachable", "gift_reachable", "story_reachable" };
+        foreach (string key in menuKeys) observed[key] = true;
+        string metrics, reason;
+        foreach (string id in new[] { "sky_qinghe", "sky_weibai", "sky_fuzhou", "sky_miantai", "sky_zheling", "sky_bellkeeper" })
+            Check(F3GameplayValidationRunner.JudgeResidentRelationship(id, observed, true, out metrics, out reason),
+                "all six residents have a complete observed relationship chain: " + id);
+        foreach (string key in configuration)
+        {
+            observed[key] = false;
+            Check(!F3GameplayValidationRunner.JudgeResidentRelationship("sky_fuzhou", observed, false, out metrics, out reason)
+                && reason.Contains(key), "configuration failure cannot hide behind marriage: " + key);
+            observed[key] = true;
+        }
+        foreach (string key in interactions)
+        {
+            observed[key] = false;
+            Check(!F3GameplayValidationRunner.JudgeResidentRelationship("sky_bellkeeper", observed, true, out metrics, out reason)
+                && reason.Contains(key), "observed actor needs the real interaction: " + key);
+            observed[key] = true;
+        }
+        foreach (string key in menuKeys)
+        {
+            observed[key] = false;
+            Check(!F3GameplayValidationRunner.JudgeResidentRelationship("sky_fuzhou", observed, true, out metrics, out reason)
+                && reason.Contains(key), "present but inactive or outside the actual interaction group fails: " + key);
+            observed.Remove(key);
+            Check(!F3GameplayValidationRunner.JudgeResidentRelationship("sky_fuzhou", observed, true, out metrics, out reason),
+                "missing menu observation fails: " + key);
+            observed[key] = true;
+        }
+        observed.Remove("story_hidden");
+        Check(!F3GameplayValidationRunner.JudgeResidentRelationship("sky_zheling", observed, true, out metrics, out reason),
+            "missing visibility observation cannot silently skip menu checks");
+        observed["story_hidden"] = true;
+        foreach (string key in menuKeys) observed[key] = false;
+        Check(F3GameplayValidationRunner.JudgeResidentRelationship("sky_zheling", observed, true, out metrics, out reason)
+            && metrics.Contains("story_hidden_unobserved"), "intentional story hiding is explicitly unobserved");
+        observed["gift"] = false;
+        Check(!F3GameplayValidationRunner.JudgeResidentRelationship("sky_zheling", observed, true, out metrics, out reason),
+            "story hiding does not excuse missing relationship components");
+        observed["gift"] = true;
+        observed["story_hidden"] = false;
+        Check(!F3GameplayValidationRunner.JudgeResidentRelationship("sky_miantai", observed, true, out metrics, out reason),
+            "accidentally inactive resident has no story-hiding exemption");
+        foreach (string key in menuKeys) observed[key] = true;
+        observed["instance"] = false;
+        observed["registry_elsewhere"] = true;
+        Check(!F3GameplayValidationRunner.JudgeResidentRelationship("sky_fuzhou", observed, true, out metrics, out reason)
+            && reason.Contains("instance"), "unmarried off-island registry entry cannot excuse a missing island instance");
+        Check(F3GameplayValidationRunner.JudgeResidentRelationship("sky_qinghe", observed, false, out metrics, out reason)
+            && metrics.Contains("off_island_unobserved"), "off-island spouse is explicitly unobserved, not an interaction pass");
+        Check(!F3GameplayValidationRunner.JudgeResidentRelationship("sky_zheling", observed, true, out metrics, out reason),
+            "an expected resident cannot disappear from the relationship observation");
+        observed.Remove("affinity");
+        Check(!F3GameplayValidationRunner.JudgeResidentRelationship("sky_miantai", observed, false, out metrics, out reason),
+            "missing observation is not true by default");
     }
 
     // ---------------------------------------------------------------- 头顶气泡：按当前存档取一遍话语池 + 同屏上限（2026-09-17）

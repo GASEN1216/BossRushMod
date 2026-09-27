@@ -115,12 +115,46 @@ namespace BossRush
                     return false;
                 }
             }
+            handle.Character.SwitchToFirstAvailableWeapon();
+            if (handle.Character.Health != null) handle.Character.Health.CurrentHealth = handle.Character.Health.MaxHealth;
+            return true;
+        }
+
+        /// <summary>预先抽好的完整基础配装。沿用同一装配事务，四件手动 kit 只覆盖对应槽。</summary>
+        internal static bool TryApplyPrepared(ModeHSpawnHandle handle, IList<ModeHResolvedKit> kits,
+            out ModeHKitApplication application, out string reason)
+        {
+            if (!TryApply(handle, null, out application, out reason)) return false;
+            if (kits == null || kits.Count == 0) { reason = "prepared_loadout_empty"; return false; }
+            foreach (ModeHResolvedKit kit in kits)
+            {
+                if (kit == null || !kit.Available || !TryApplyOne(handle.Character.CharacterItem, kit, application, out reason))
+                {
+                    Recycle(application);
+                    return false;
+                }
+            }
+            handle.Character.SwitchToFirstAvailableWeapon();
+            if (handle.Character.Health != null) handle.Character.Health.CurrentHealth = handle.Character.Health.MaxHealth;
+            return true;
+        }
+
+        /// <summary>预览只操作临时角色物品树，读真实装备 Modifier；不创建角色或访问玩家资产。</summary>
+        internal static bool TryApplyPreview(Item characterItem, IList<ModeHResolvedKit> kits)
+        {
+            ModeHKitApplication application = new ModeHKitApplication();
+            foreach (ModeHResolvedKit kit in kits)
+            {
+                string reason;
+                if (!TryApplyOne(characterItem, kit, application, out reason, false))
+                { Recycle(application); return false; }
+            }
             return true;
         }
 
         /// <summary>装配单件 kit：主物品入槽，枪械槽再补冻结弹药。</summary>
         private static bool TryApplyOne(
-            Item characterItem, ModeHResolvedKit kit, ModeHKitApplication application, out string failureReasonId)
+            Item characterItem, ModeHResolvedKit kit, ModeHKitApplication application, out string failureReasonId, bool fillAmmo = true)
         {
             failureReasonId = null;
 
@@ -197,6 +231,14 @@ namespace BossRush
             }
 
             if (!IsWeaponSlot(kit.Spec.ReplaceSlot)) return true;
+            if (!fillAmmo)
+            {
+                ItemSetting_Gun previewGun = created.GetComponent<ItemSetting_Gun>();
+                int previewAmmo = kit.Spec.AmmoTypeId > 0 ? kit.Spec.AmmoTypeId : ResolveAmmoTypeIdByCaliber(created);
+                if (previewGun == null || previewAmmo <= 0) { failureReasonId = "preview_ammo_missing"; return false; }
+                previewGun.SetTargetBulletType(previewAmmo);
+                return true;
+            }
             return TryApplyAmmo(characterItem, kit, created, application, out failureReasonId);
         }
 

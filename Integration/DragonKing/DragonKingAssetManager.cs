@@ -422,10 +422,16 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 创建后备特效（当AssetBundle预制体不可用时）
+        /// 创建后备特效（当AssetBundle预制体不可用时）。没有登记专属后备配色的名字不画后备，返回 null（见 TryGetEffectColor）。
         /// </summary>
         private static GameObject CreateFallbackEffect(string prefabName, Vector3 position, Quaternion rotation)
         {
+            Color unusedColor;
+            if (!TryGetEffectColor(prefabName, out unusedColor))
+            {
+                return null;
+            }
+
             try
             {
                 GameObject fallback = new GameObject($"Fallback_{prefabName}");
@@ -448,6 +454,12 @@ namespace BossRush
 
         private static GameObject CreateFallbackEffect(string prefabName, Vector3 position, Quaternion rotation, Transform parent)
         {
+            Color unusedColor;
+            if (!TryGetEffectColor(prefabName, out unusedColor))
+            {
+                return null;
+            }
+
             try
             {
                 GameObject fallback = new GameObject($"Fallback_{prefabName}");
@@ -471,8 +483,12 @@ namespace BossRush
         /// </summary>
         private static void AddFallbackVisuals(GameObject obj, string prefabName)
         {
-            // 根据预制体类型选择不同的后备效果
-            Color effectColor = GetEffectColor(prefabName);
+            // 根据预制体类型选择不同的后备效果；没有专属配色的名字什么都不加（不再退回白色光团 + 白色点光源）
+            Color effectColor;
+            if (!TryGetEffectColor(prefabName, out effectColor))
+            {
+                return;
+            }
             float scale = GetEffectScale(prefabName);
             
             // 后备光团（VB-29.1）：旧版是 CreatePrimitive 球体 + 内置 Standard 材质——URP 画不出 Standard 的 ForwardBase pass，
@@ -531,32 +547,44 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 根据预制体名称获取特效颜色
+        /// 后备特效的专属配色：只有登记在这里的预制体名字，缺包时才画后备光团与点光源。
+        /// 其余名字返回 false、不画后备。焚天龙铳的 Fx_DragonGun_* 都没打进 dragonking 包，
+        /// 旧版这里默认给 Color.white，冲锋 / 突击 / 重型 / 狙击 / 霰弹 / 马格南 / 箭矢七种弹药每发都挂一团白色加色光团和一盏白色点光源；
+        /// 2026-09-26 owner：焚天龙铳所有弹药都不要这层很白的光（太塑料），默认分支改为不画。能量弹（PWS）的青色光团是它自己的弹体色，保留。
         /// </summary>
-        private static Color GetEffectColor(string prefabName)
+        private static bool TryGetEffectColor(string prefabName, out Color color)
         {
             switch (prefabName)
             {
                 case DragonKingConfig.PrismaticBoltPrefab:
-                    return new Color(1f, 0.5f, 1f, 1f); // 粉紫色
+                    color = new Color(1f, 0.5f, 1f, 1f); // 粉紫色
+                    return true;
                 case DragonKingConfig.SunBeamGroupPrefab:
-                    return new Color(1f, 0.9f, 0.3f, 1f); // 金黄色
+                    color = new Color(1f, 0.9f, 0.3f, 1f); // 金黄色
+                    return true;
                 case DragonKingConfig.RainbowStarPrefab:
-                    return new Color(0.5f, 1f, 1f, 1f); // 青色
+                    color = new Color(0.5f, 1f, 1f, 1f); // 青色
+                    return true;
                 case DragonKingConfig.EtherealLancePrefab:
-                    return new Color(0.8f, 0.8f, 1f, 1f); // 淡蓝色
+                    color = new Color(0.8f, 0.8f, 1f, 1f); // 淡蓝色
+                    return true;
                 case DragonKingConfig.DashTrailPrefab:
-                    return new Color(1f, 0.3f, 0.3f, 1f); // 红色
+                    color = new Color(1f, 0.3f, 0.3f, 1f); // 红色
+                    return true;
                 case DragonKingConfig.TeleportFXPrefab:
-                    return new Color(0.5f, 0f, 1f, 1f); // 紫色
+                    color = new Color(0.5f, 0f, 1f, 1f); // 紫色
+                    return true;
                 case DragonKingConfig.PhaseTransitionPrefab:
-                    return new Color(1f, 1f, 0f, 1f); // 黄色
+                    color = new Color(1f, 1f, 0f, 1f); // 黄色
+                    return true;
                 case "Fx_DragonGun_Energy_Trail":
                 case "Fx_DragonGun_Energy_Hit":
                 case "Fx_DragonGun_Energy_Explosion":
-                    return new Color(0.2f, 0.95f, 1f, 1f);
+                    color = new Color(0.2f, 0.95f, 1f, 1f);
+                    return true;
                 default:
-                    return Color.white;
+                    color = default(Color);
+                    return false;
             }
         }
         

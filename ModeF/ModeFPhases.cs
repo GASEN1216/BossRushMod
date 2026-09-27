@@ -53,6 +53,8 @@ namespace BossRush
             = new Dictionary<CharacterMainControl, AICharacterController>();
         private float modeFBossRetargetTimer = 0f;
         private float modeFBossIntegrityTimer = 0f;
+        // 普通退出仍等待 0.25 秒；等待期间的实体由模块保留，宿主销毁时兜底回收。
+        private readonly Dictionary<GameObject, Coroutine> modeFDeferredExitBossObjects = new Dictionary<GameObject, Coroutine>();
         /// <summary>防止 ApplyModeFBleedDamage 致死 + TickModeF 帧首检测 重复触发 OnModeFPlayerDeath</summary>
         private bool modeFPlayerDeathHandled = false;
 
@@ -605,11 +607,20 @@ namespace BossRush
         {
             try
             {
-                if (!modeFActive) return;
+                if (!modeFActive && !modeFCleanupPending) return;
 
-                // 如果正在放置工事，取消并退还物品
+                // 取消只退还已消费但未落地的工事物品，不是新增奖励。
                 CancelFortPlacement();
-                FlushModeFPendingUtilityRewards(true);
+                if (!modeFRuntimeDestroyed)
+                {
+                    // 正常退出保持待领奖励发放；宿主销毁只回收运行态。
+                    FlushModeFPendingUtilityRewards(true);
+                }
+                else
+                {
+                    modeFPendingUtilityRewardCounts.Clear();
+                    modeFPendingUtilityRewardTypeScratch.Clear();
+                }
 
                 ModBehaviour.DevLog("[ModeF] 退出 Mode F 模式");
 
@@ -704,6 +715,7 @@ namespace BossRush
                 ClearModeFBossRegenCache();
                 owner.ClearModeDEnemyRecoveryState();
                 ClearAllModeFBossPlunderLootState();
+                modeFCleanupPending = false;
 
 
                 if (showEndMessage)
@@ -758,7 +770,16 @@ namespace BossRush
                 }
                 catch { }
 
-                owner.StartCoroutine(DestroyModeFExitBossDeferred(bossObject));
+                if (modeFRuntimeDestroyed)
+                {
+                    // 宿主已进入销毁，不能依赖它再推进 0.25 秒后的协程。
+                    UnityEngine.Object.Destroy(bossObject);
+                }
+                else
+                {
+                    modeFDeferredExitBossObjects[bossObject] = null;
+                    modeFDeferredExitBossObjects[bossObject] = owner.StartCoroutine(DestroyModeFExitBossDeferred(bossObject));
+                }
             }
             catch (Exception e)
             {
@@ -770,6 +791,7 @@ namespace BossRush
         {
             if (bossObject == null)
             {
+                modeFDeferredExitBossObjects.Remove(bossObject);
                 yield break;
             }
 
@@ -779,6 +801,32 @@ namespace BossRush
             {
                 UnityEngine.Object.Destroy(bossObject);
             }
+            modeFDeferredExitBossObjects.Remove(bossObject);
+        }
+
+        private void CleanupModeFDeferredExitBossObjects()
+        {
+            foreach (KeyValuePair<GameObject, Coroutine> pending in modeFDeferredExitBossObjects)
+            {
+                try
+                {
+                    if (owner != null && pending.Value != null) owner.StopCoroutine(pending.Value);
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[ModeF] [WARNING] 销毁时停止退出延迟协程失败: " + e.Message);
+                }
+                try
+                {
+                    GameObject bossObject = pending.Key;
+                    if (bossObject != null) UnityEngine.Object.Destroy(bossObject);
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[ModeF] [WARNING] 清理退出延迟实体失败: " + e.Message);
+                }
+            }
+            modeFDeferredExitBossObjects.Clear();
         }
 
         /// <summary>

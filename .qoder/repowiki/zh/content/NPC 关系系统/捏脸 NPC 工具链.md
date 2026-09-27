@@ -1,5 +1,12 @@
 # 捏脸 NPC 工具链
 
+## 2026-09-26 天空岛六位关系身份补齐（COMPAT）
+
+六位实际居民晴禾、苇白、浮舟、眠苔、折翎、无声钟守全部使用永久 NPC 蓝图；后四位补全分档聊天、礼物偏好与婚后台词，身份 ID、外观与场景不变。`SkyIslandResidentInteractable.AttachPermanent` 改为按 `SkyIslandResidents.MarkerOf` 识别六位，普通生成、教堂恢复与随行恢复共用原交互组。关系仍写入既有 `NPCAffinity` 字典，不添加存档字段或迁移玩家数据。
+
+折翎开战后本趟休整，下一趟恢复本人和关系入口，已战败旧档也能继续培养。显隐读 `SkyIslandEncounters.WasStartedThisRaid` 的局内 `Started`，不能读含旧档 `Cleared` 的 `HasStarted`。婚后岛上任务和服务仍有装置兜底，基地配偶只聊当前进度及回岛位置。`SkyIslandMarriage` 覆盖六位生产交互与婚姻生命周期，`PermanentDuckNpcDialogue` 覆盖六位真实蓝图解析；实机验收清单在 `docs/reports/sky-island/天空岛_NPC关系发版审查_2026-09-26.md`。
+
+
 ## 2026-09-17 婚姻延迟收尾与对话角色复用修复（COMPAT）
 
 `CR-2026-09-17-019` / `020` 均已修复（L1 / L2，待 L3），上轮 `013` / `014` 的任务接管与实体回收继续有效。婚姻成功变更后，`NPCMarriageSystem.BeginOperation` 捕获宿主、玩家、槽、场景 handle 和 registry 中的原 NPC 实例。每次成功的新结婚/离婚更新操作代际；继续视频、显示反馈和延迟回收前核对代际、身份及婚姻/跟随状态。旧操作失效时不回收新实例、不取消当前恢复请求；文字回退使用原角色销毁令牌。只新增一个静态数值代际，Unity 引用归该次异步操作持有，不写存档。
@@ -332,7 +339,7 @@ ECM2 层碰撞矩阵）**且全程无报错**。
 
 ## 2026-09-08 天空岛居民（COMPAT / SCHEMA+）
 
-`Assets/Data/DuckNpcs.json` 登记六个稳定身份：`sky_qinghe`（晴禾）、`sky_weibai`（苇白）、`sky_fuzhou`（浮舟）、`sky_miantai`（眠苔）、`sky_zheling`（折翎）、`sky_bellkeeper`（无声钟守）。前两位复用永久 NPC 好感、按日聊天/礼物与婚姻配置；四位剧情角色不写关系存档。外观使用完整固化 `faceJson`，在现有小满数据基线上编辑体色、翼色和体型，经官方基线补几何；不是已经通过 F3 导出的实机审定形象，配色与穿戴效果须游戏确认。
+`Assets/Data/DuckNpcs.json` 登记六个稳定身份：`sky_qinghe`（晴禾）、`sky_weibai`（苇白）、`sky_fuzhou`（浮舟）、`sky_miantai`（眠苔）、`sky_zheling`（折翎）、`sky_bellkeeper`（无声钟守）。2026-09-26 起六位全部复用永久 NPC 好感、按日聊天/礼物与婚姻配置；旧版仅前两位接关系的限制已经补齐。外观使用完整固化 `faceJson`，在现有小满数据基线上编辑体色、翼色和体型，经官方基线补几何；不是已经通过 F3 导出的实机审定形象，配色与穿戴效果须游戏确认。
 
 正式地图场景为 `SkyIslandRaid`，独立身份 `BossRush_SkyIsland`，经官方 LevelManager 重建角色；蓝图的 `scenes` 登记此场景，两个通用 DuckNpcModule 显式排除自动刷新，由地图固定落点生成。`SkyIsland/SkyIslandResidents.cs` 是显式会话 owner，先检查婚姻与已有 registry，异步生成后再次验证会话和关系，再调用共享 `PermanentDuckNpcModule.AttachPermanentParts` 并登记。既有实例不搬动、不复制；未被保留的迟到对象只销毁自己。Dispose 先关闭许可、再注销引用仍匹配的登记并回收对象，已被婚姻系统接管者交还婚姻 owner。
 

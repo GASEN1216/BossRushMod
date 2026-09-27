@@ -16,8 +16,8 @@
    绝不能再出现无条件清状态的 `finally`；
 3. **落存档**：两个原始类型 key（SCHEMA+，老档读出 0），写入一律回读核对
    （官方 `SavesSystem.Save` 在没有当前存档文件时只打日志就返回）；
-4. **先送达再销账**：`TrySettleCash` 必须先 `Add` 成功才写 0；
-5. **接得回来**：订阅官方 `OnEconomyManagerLoaded`（命名方法、幂等、成对退订），
+4. **先送达再销账**：`TrySettleCash` 必须先 `Add` 成功才写 0；邀请函核验实物或 Buffer 回执；
+5. **接得回来**：订阅官方 `OnEconomyManagerLoaded` 与 `OnAfterLevelInitialized`（命名方法、幂等、成对退订），
    另在每次入场扣款前顺手结一次账。
 
 它证明的是接线与顺序；真实的切图时序、ES3 落盘与官方送达仍要实机 smoke。
@@ -110,8 +110,8 @@ refund_cash = body(ledger, 'internal static bool RefundCash(long amount)', LEDGE
 require(refund_cash, 'paid = EconomyManager.Add(amount);', '退款要看官方 Add 的返回值')
 require(refund_cash, 'return OweCash(amount);', '付不出去要落进存档账本，并把记账结果如实返回')
 refund_inv = body(ledger, 'internal static bool RefundInvitation()', LEDGER)
-require(refund_inv, 'if (refund == null) return OweInvitation(1);',
-        '邀请函造不出来（资源未就绪）要落进存档账本')
+require(refund_inv, 'if (!TryDeliverInvitation()) return OweInvitation(1);',
+        '邀请函未交付（含资源/接收方/发送失败）要落进存档账本')
 
 # ---- 5. 结账：先到账再销账 ----
 settle_cash = body(ledger, 'internal static bool TrySettleCash()', LEDGER)
@@ -123,7 +123,17 @@ require(settle_cash, 'ModBehaviour.DevLog(LogPrefix + "经济实例暂不可用�
         '付不出去时账目必须原样保留并留下日志')
 settle_inv = body(ledger, 'internal static bool TrySettleInvitations()', LEDGER)
 require(settle_inv, 'owed--;', '邀请函逐张推进：中途失败时剩下的张数还留在账上')
-require(settle_inv, 'if (refund == null)', '造不出来就停在这一张，不继续吃掉剩余账目')
+require(settle_inv, 'if (!TryDeliverInvitation())', '未送达就停在这一张，不继续吃掉剩余账目')
+if not 0 <= settle_inv.find('if (!TryDeliverInvitation())') < settle_inv.find('owed--;'):
+    errors.append('邀请函必须核对交付后才销掉一张')
+deliver = body(ledger, 'private static bool TryDeliverInvitation()', LEDGER)
+for token in ('if (!StorageReady()', 'ItemAssetsCollection.GetPrefab(', 'if (refund == null) return false;',
+              'if (HasDeliveryReceipt(refund, instanceId)) return true;', 'refund.DestroyTree();'):
+    require(deliver, token, '邀请函交付必须门控、核对并清理未交付实例')
+receipt = body(ledger, 'private static bool HasDeliveryReceipt(', LEDGER)
+for token in ('refund.GetCharacterItem()', 'refund.InInventory', 'ItemAgent.AgentTypes.pickUp',
+              'agent.GetComponent<InteractablePickup>() != null', 'tree.rootInstanceID == instanceId'):
+    require(receipt, token, '回执核对必须覆盖背包/仓库/可拾取落地物/缓冲区')
 
 # ---- 6. 订阅：命名方法、幂等、成对退订 ----
 attach = body(ledger, 'internal static void Attach()', LEDGER)
@@ -131,6 +141,8 @@ require(attach, 'if (subscribed) return;', '订阅必须幂等（AGENTS 4.6）')
 require(attach, 'EconomyManager.OnEconomyManagerLoaded += OnEconomyLoaded;', '订阅官方「经济加载完成」')
 detach = body(ledger, 'internal static void Detach()', LEDGER)
 require(detach, 'EconomyManager.OnEconomyManagerLoaded -= OnEconomyLoaded;', '必须成对退订')
+require(attach, 'LevelManager.OnAfterLevelInitialized += OnLevelReady;', '经济 Awake 之后还要在关卡就绪补偿')
+require(detach, 'LevelManager.OnAfterLevelInitialized -= OnLevelReady;', '关卡事件必须成对退订')
 require(detach, 'subscribed = false;', '退订后复位标志')
 if re.search(r'OnEconomyManagerLoaded\s*[+-]=\s*(?:delegate|\()', ledger):
     errors.append('订阅不许用 lambda / 匿名委托：退订退不掉（AGENTS 4.6）')

@@ -142,6 +142,10 @@ namespace BossRush
             string failure;
             try
             {
+                ModeHSupportedMap restoredMap;
+                if (!ModeHMapSupportRegistry.TryCreateRunVariant(_map, _runState.RunSeed, out restoredMap, out failure))
+                { FailSeasonResume(failure); return; }
+                _map = restoredMap;
                 _arenaLease = new ModeHArenaIsolationLease();
                 if (!_arenaLease.TryAcquire(_map.SceneName, _sceneGeneration,
                         _runState.OwnerToken, out failure))

@@ -9,3 +9,5 @@
 Unity 对象/协程、物品变量、管理器与资源服务为记录调用的替身；销毁 GameObject 会销毁组件并体现 Unity 假 null。共享辅助算法、逆鳞配置和三个装备流程来自生产源。渲染资源与游戏内装备行为仍需正式 Windows 构建和实机验证。
 
 2026-09-26 宿主载体同步：逆鳞及龙王/幽灵女巫旧入口读取 `IntegrationHostCompatibility.cs` 的当前生产区域；原混装文件保留的 RuntimeModule 继续直接链接。
+
+2026-09-27 清理 owner 收口：协程替身返回真实形状的可停止句柄；`ModuleOwnerCleanup` 额外执行模块直接 `OnDestroy` 与未完成任务取消，不能再用预先调用 Cleanup 后的成功替代销毁入口证据。

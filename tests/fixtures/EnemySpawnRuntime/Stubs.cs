@@ -124,20 +124,24 @@ namespace BossRush
     public class CharacterRandomPreset : UnityEngine.Object
     {
         public Func<CharacterMainControl> Create;
+        public Task<CharacterMainControl> PendingCreation;
         public int Calls;
         public UniTask<CharacterMainControl> CreateCharacterAsync(Vector3 p, Vector3 direction, int scene, object data, bool active)
         {
             if (scene != 17 || active) throw new Exception("creation contract changed");
             Calls++; Probe.Events.Add("create:" + name);
-            return new UniTask<CharacterMainControl>(Task.FromResult(Create()));
+            return new UniTask<CharacterMainControl>(PendingCreation ?? Task.FromResult(Create()));
         }
     }
     internal class ManagedBossRuntimeHandle { }
     internal class ManagedBossPrepareResult { public CharacterMainControl Character; public ManagedBossRuntimeHandle Handle; }
     internal sealed class ModeDItemPool
     { internal sealed class SharedModeEnemyEquipmentMaterializationPlan { } }
-    internal static class ModBehaviour
+    internal class ModBehaviour : UnityEngine.Object
     {
+        internal ModeFRuntimeModule F;
+        internal bool IsModeFActive { get { return F != null && F.modeFActive; } }
+        internal bool IsModeFSessionStillValid(int token, int scene) { return F != null && F.IsModeFSessionStillValid(token, scene); }
         internal static bool DevModeEnabled { get { return false; } }
         internal static bool ModeEFSpawnProfilingEnabled { get { return false; } }
         internal static void DevLog(string text) { }

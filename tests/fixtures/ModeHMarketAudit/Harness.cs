@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace UnityEngine { public static class Mathf { public static int RoundToInt(float x) { return (int)Math.Round(x); } } }
 namespace Duckov.Utilities { public class Tag { public string name; } }
 namespace ItemStatsSystem {
- public struct ItemMetaData { public int id; public Duckov.Utilities.Tag[] tags; }
+ public struct ItemMetaData { public int id; public Duckov.Utilities.Tag[] tags; public object icon; }
  public static class ItemAssetsCollection { public static ItemMetaData GetMetaData(int id) { return new ItemMetaData(); } }
 }
 namespace BossRush {

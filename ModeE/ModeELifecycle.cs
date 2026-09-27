@@ -118,7 +118,7 @@ namespace BossRush
         {
             try
             {
-                if (!modeEActive) return;
+                if (!modeEActive && !modeECleanupPending) return;
 
                 ModBehaviour.DevLog("[ModeE] 结束 Mode E 模式");
 
@@ -214,6 +214,7 @@ namespace BossRush
 
                 // 清理龙息Buff处理器（防止非 BossRush 场景中意外触发龙焰灼烧）
                 DragonBreathBuffHandler.Cleanup();
+                modeECleanupPending = false;
 
                 if (showEndMessage)
                 {

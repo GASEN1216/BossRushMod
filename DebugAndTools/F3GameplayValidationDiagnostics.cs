@@ -198,6 +198,30 @@ namespace BossRush
                 && modifiers == 0 && randomClear;
         }
 
+        /// <summary>
+        /// F3 MAP_TOUR_*：照玩家在地图选择器里点第 <paramref name="index"/> 个条目的口径排好入场——
+        /// 同一个待处理条目索引、同一个 bossRushArenaPlanned 标记、官方 NotifyEntryClicked 写的同一个信标索引。
+        /// 走直传来源（MarkEntryFlowFromDirectTeleport），不算预扣船票，验收不花玩家的票。
+        /// </summary>
+        internal void ValidationPlanMapTourEntry(int index, int beaconIndex)
+        {
+            BossRushMapSelectionHelper.MarkEntryFlowFromDirectTeleport(BossRushPendingEntryKind.None);
+            BossRushMapSelectionHelper.SetPendingMapEntryIndex(index);
+            LevelManager.loadLevelBeaconIndex = beaconIndex;
+            bossRushArenaPlanned = true;
+        }
+
+        /// <summary>MAP_TOUR_* 进场没走完时撤掉排好的入场，免得下一次加载误吃这份意图。</summary>
+        internal void ValidationCancelMapTourEntry()
+        {
+            bossRushArenaPlanned = false;
+            BossRushMapSelectionHelper.ClearPendingMapEntry();
+            BossRushMapSelectionHelper.ClearPendingEntryFlowState();
+        }
+
+        /// <summary>BossRush 是否已经接管当前地图（进场初始化走完的标志；回基地后应当复位）。</summary>
+        internal bool ValidationArenaActive { get { return bossRushArenaActive; } }
+
         private static bool IsValidationOwnedCharacterName(string objectName)
         {
             return objectName.StartsWith("BossRush_", StringComparison.Ordinal) ||

@@ -44,6 +44,8 @@ namespace BossRush
         public List<string> RelayKitIds;
         /// <summary>本场锁定的口令 ID。</summary>
         public string CommandId;
+        public float PlayerPower;
+        public float EnemyPower;
     }
 
     /// <summary>
@@ -69,6 +71,17 @@ namespace BossRush
             List<ModeHOddsBreakdownEntry> breakdown = new List<ModeHOddsBreakdownEntry>();
             int playerScore = ComputePlayerPublicScore(input, plan, breakdown);
             int enemyScore = ComputeEnemyPublicScore(plan, breakdown);
+            if (input.PlayerPower > 0f && input.EnemyPower > 0f)
+            {
+                // 双方同一套装备后参数。公开条件仅作小幅修正，不能压过实力差。
+                int conditions = Math.Max(-8, Math.Min(8, playerScore - enemyScore));
+                int edge = ComputePreparedPowerEdge(input.PlayerPower, input.EnemyPower);
+                playerScore = 100 + edge + conditions;
+                enemyScore = 100;
+                breakdown.Clear();
+                Add(breakdown, false, "Odds_PlayerOfficialAttributes", edge);
+                Add(breakdown, false, "Odds_Command", conditions);
+            }
 
             ModeHOddsQuote quote = new ModeHOddsQuote();
             quote.PlayerPublicScore = playerScore;
@@ -447,6 +460,14 @@ namespace BossRush
                 if (summary.synergyTags.Contains(category.PublicTag)) score += perCategory;
             }
             return score > cap ? cap : score;
+        }
+
+        /// <summary>对称有界实力分差：我方变强赔率只会下降，敌方变强只会上升。</summary>
+        internal static int ComputePreparedPowerEdge(float playerPower, float enemyPower)
+        {
+            double player = Math.Max(1d, playerPower);
+            double enemy = Math.Max(1d, enemyPower);
+            return (int)Math.Round(100d * (player - enemy) / (player + enemy), MidpointRounding.AwayFromZero);
         }
 
         #endregion

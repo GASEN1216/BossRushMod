@@ -61,6 +61,8 @@ internal static partial class Program
     { character.Health.Die(); UnityEngine.Object.Destroy(character.gameObject); }
     private static void Main()
     {
+        CheckCombatBalance();
+        CheckPreludeSpawnBalance();
         CheckChatter();
         CheckChatterBehavior();
         Reset();

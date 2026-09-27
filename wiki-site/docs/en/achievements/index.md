@@ -1,7 +1,7 @@
 # Achievement List
 
 ## Overview
-BossRush Mod currently contains 45 achievements across 9 categories. Completing achievements grants cash rewards. Press L (default, configurable) to open the achievement panel and check your progress.
+This mod currently contains 45 achievements across 9 categories. Completing achievements grants cash rewards. Press L (default, configurable) to open the achievement panel and check your progress.
 
 ## Basic Completion
 | Achievement | Requirement | Reward | Difficulty |

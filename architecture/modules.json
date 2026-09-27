@@ -19,7 +19,8 @@
       "data": [],
       "tests": [
         "tests/fixtures/HostMapArenaOwners",
-        "tests/fixtures/HostUtilityOwners"
+        "tests/fixtures/HostUtilityOwners",
+        "tests/fixtures/HostDestroyOwnership"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/架构设计/运行时模块系统.md",
@@ -132,7 +133,9 @@
         "tests/ModeEFEnemyRegistryOwnershipGuard.py",
         "tests/SteamPlatformInfoOwnershipGuard.py",
         "tests/fixtures/ModeEFEnemyRegistry",
-        "tests/fixtures/SteamPlatformInfo"
+        "tests/fixtures/SteamPlatformInfo",
+        "tests/StaticCacheLifecycleGuard.py",
+        "tests/fixtures/AuditModeLifecycle"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/工具与调试/运行时钩子.md",
@@ -187,7 +190,8 @@
       "tests": [
         "tests/WavesArena*Guard.py",
         "tests/ArenaHostRemainderOwnershipGuard.py",
-        "tests/fixtures/ArenaHostRemainder"
+        "tests/fixtures/ArenaHostRemainder",
+        "tests/fixtures/ModuleOwnerCleanup"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/游戏模式系统/标准 BossRush 模式/标准 BossRush 模式.md",
@@ -244,7 +248,9 @@
       ],
       "data": [],
       "tests": [
-        "tests/ModeD*Guard.py"
+        "tests/ModeD*Guard.py",
+        "tests/fixtures/ModeDestroyLifecycle",
+        "tests/fixtures/ModeDEntryOwnership"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/游戏模式系统/Mode D：白手起家.md"
@@ -271,7 +277,9 @@
       ],
       "data": [],
       "tests": [
-        "tests/ModeE*Guard.py"
+        "tests/ModeE*Guard.py",
+        "tests/fixtures/ModeDestroyLifecycle",
+        "tests/fixtures/AuditModeLifecycle"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/游戏模式系统/Mode E：划地为营.md"
@@ -299,7 +307,9 @@
       ],
       "data": [],
       "tests": [
-        "tests/ModeF*Guard.py"
+        "tests/ModeF*Guard.py",
+        "tests/fixtures/ModeDestroyLifecycle",
+        "tests/fixtures/AuditModeLifecycle"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/游戏模式系统/Mode F：血猎追击.md"
@@ -761,7 +771,8 @@
       ],
       "data": [],
       "tests": [
-        "tests/GoblinRuntimeModuleGuard.py"
+        "tests/GoblinRuntimeModuleGuard.py",
+        "tests/fixtures/ModuleOwnerCleanup"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/NPC 关系系统/NPC 交互系统.md"
@@ -1142,7 +1153,8 @@
       ],
       "data": [],
       "tests": [
-        "tests/SetBonusLifecycleGuard.py"
+        "tests/SetBonusLifecycleGuard.py",
+        "tests/fixtures/ModuleOwnerCleanup"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/装备与物品系统/套装效果系统.md"
@@ -1172,7 +1184,8 @@
       "data": [],
       "tests": [
         "tests/Frostmourne*Guard.py",
-        "tests/EquipmentBootstrapRuntimeModuleGuard.py"
+        "tests/EquipmentBootstrapRuntimeModuleGuard.py",
+        "tests/fixtures/ModuleOwnerCleanup"
       ],
       "docs": [
         ".qoder/repowiki/zh/content/装备与物品系统/自定义武器系统/霜之哀伤（Frostmourne）.md"
@@ -1203,7 +1216,8 @@
       "tests": [
         "tests/FlightTotem*Guard.py",
         "tests/EquipmentBootstrapRuntimeModuleGuard.py",
-        "tests/fixtures/FlightTotemRuntimeModule/*"
+        "tests/fixtures/FlightTotemRuntimeModule/*",
+        "tests/fixtures/ModuleOwnerCleanup"
       ],
       "docs": [],
       "rules": [
@@ -1262,7 +1276,8 @@
       "tests": [
         "tests/ReverseScale*Guard.py",
         "tests/EquipmentBootstrapRuntimeModuleGuard.py",
-        "tests/fixtures/EquipmentBootstrapOwners"
+        "tests/fixtures/EquipmentBootstrapOwners",
+        "tests/fixtures/ModuleOwnerCleanup"
       ],
       "docs": [],
       "rules": [

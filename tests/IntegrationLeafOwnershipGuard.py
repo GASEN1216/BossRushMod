@@ -42,7 +42,15 @@ def main():
                   "private static AssetBundle nurseAssetBundle = null;", "private static GameObject nursePrefab = null;"):
         assert token in nurse, "nurse state lifetime changed: " + token
     assert compact(body(nurse, "internal static GameObject GetPrefabForRuntime()")) == "returnLoadNurseAssetBundle()?nursePrefab:null;", "nurse prefab query bypassed loader"
-    assert compact(body(nurse, "public override void OnDestroy()")) == "owner=null;", "nurse cleanup order changed"
+    for label, path in (("Nurse", "Integration/NPCs/Nurse/NurseNPC.cs"),
+                        ("Courier", "Integration/NPCs/Courier/CourierNpcRuntimeModule.cs")):
+        source = read(path)
+        expected = "if(destroyed)return;destroyed=true;try{Destroy" + label + "NPC();}finally{owner=null;}"
+        assert compact(body(source, "public override void OnDestroy()")) == expected, label + " owner must independently clean exactly once before detach"
+        access = "public" if label == "Courier" else "internal"
+        cleanup = compact(body(source, access + " void Destroy" + label + "NPC()"))
+        assert "UnityEngine.Object.Destroy(" + label.lower() + "NPCInstance);" in cleanup, label + " destroy call missing"
+        assert cleanup.endswith(label.lower() + "NPCInstance=null;" + label.lower() + "Controller=null;"), label + " destroyed object references must still clear"
     spawn = body(nurse, "internal void SpawnNurseNPC(")
     ordered(spawn, ["NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn", "AffinityManager.IsMarriedToPlayer", "if (nurseNPCInstance != null)",
                     "if (!LoadNurseAssetBundle())", "!ShouldSpawnNurse(currentSceneName)", "GetNurseSpawnPosition(currentSceneName)",

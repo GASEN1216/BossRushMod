@@ -14,6 +14,7 @@ namespace BossRush
 
         private int BeginModeFSession()
         {
+            modeFCleanupPending = true;
             modeFState.RuntimeSessionToken = ++modeFSessionSerial;
             return modeFState.RuntimeSessionToken;
         }
@@ -26,7 +27,7 @@ namespace BossRush
 
         internal bool IsModeFSessionStillValid(int sessionToken, int relatedScene)
         {
-            if (sessionToken <= 0)
+            if (modeFRuntimeDestroyed || owner == null || sessionToken <= 0)
             {
                 return false;
             }

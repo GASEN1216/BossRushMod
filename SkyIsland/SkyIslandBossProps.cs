@@ -1,7 +1,7 @@
 // ============================================================================
 // SkyIslandBossProps.cs - 头目 / 岛主招式共用的场上小件与动作（R2–R4）
 // ============================================================================
-// 七位新 Boss 的招式都由这几样拼出来，不另起第二套（残星匠首与瞭台观星手 R1 已实机验过，原样不动）：
+// R2–R4 的招式共用这些部件与动作；残星匠首与瞭台观星手沿用各自控制器：
 // - 可以打的轻量接收体（根桩、倒影）：配方照供能桩 / 云蚋——先失活，伤害接收体层非触发球 + 运动学刚体 +
 //   DamageReceiver（useSimpleHealth）+ HealthSimpleBase，再激活；死亡看 activeSelf（SkyIsland/AGENTS.md §4）。
 // - 倒影：把角色此刻的蒙皮网格烤成静态网格，不克隆角色（克隆会把身上的装备 Item / ItemAgent 一起复制出来）。
@@ -72,7 +72,7 @@ namespace BossRush
     internal static class SkyIslandBossProps
     {
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-        private static readonly int ColorId = Shader.PropertyToID("_Color");
+        private static readonly int TintColorId = Shader.PropertyToID("_TintColor");
         /// <summary>倒影最多烤这么多块渲染器（角色本体 + 挂点上的装备模型），挡住异常模型把一帧烤爆。</summary>
         private const int DecoyPartLimit = 32;
 
@@ -152,7 +152,7 @@ namespace BossRush
         /// <summary>
         /// 倒影：把 <paramref name="source"/> 此刻的样子烤成静态网格挂在一个接收体下面（会吸准星、能打碎），**已激活**。
         /// 蒙皮网格用 BakeMesh 快照当前姿势（带缩放），不带骨骼、动画与脚本；挂点上的普通网格（装备模型）共享原网格。
-        /// 共享原材料、只用 MaterialPropertyBlock 调色，不 new 材质；烤出的 Mesh 记进 <paramref name="baked"/>，由调用方在倒影销毁时 Destroy。
+        /// 复用共享 Alpha 特效材质并保留原贴图，用 MaterialPropertyBlock 调色；烤出的 Mesh 记进 <paramref name="baked"/>，由调用方在倒影销毁时 Destroy。
         /// </summary>
         internal static GameObject CreateDecoy(Transform root, CharacterMainControl source, float health, Color tint, List<Mesh> baked)
         {
@@ -206,13 +206,24 @@ namespace BossRush
             if (copyScale) part.transform.localScale = from.lossyScale;
             part.AddComponent<MeshFilter>().sharedMesh = mesh;
             MeshRenderer renderer = part.AddComponent<MeshRenderer>();
-            renderer.sharedMaterials = materials;
+            // 本体的 SodaCharacter 是不透明材质，单改颜色 alpha 不会变透明。
+            // 倒影按原贴图取共享 Alpha 材质，不改本体材质、不逐次 new Material。
+            Material[] ghostMaterials = new Material[materials != null && materials.Length > 0 ? materials.Length : 1];
+            for (int i = 0; i < ghostMaterials.Length; i++)
+            {
+                Material original = materials != null && i < materials.Length ? materials[i] : null;
+                Texture texture = original != null ? original.mainTexture : Texture2D.whiteTexture;
+                ghostMaterials[i] = BossRushFxMaterials.Get(BossRushFxBlend.Alpha, texture != null ? texture : Texture2D.whiteTexture);
+                if (ghostMaterials[i] == null) throw new InvalidOperationException("倒影透明材质不可用");
+            }
+            renderer.sharedMaterials = ghostMaterials;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             block.Clear();
-            Material first = materials != null && materials.Length > 0 ? materials[0] : null;
-            if (first != null && first.HasProperty(BaseColorId)) block.SetColor(BaseColorId, tint);
-            if (first != null && first.HasProperty(ColorId)) block.SetColor(ColorId, tint);
+            Material first = ghostMaterials[0];
+            if (first.HasProperty(BaseColorId)) block.SetColor(BaseColorId, tint);
+            // Legacy Alpha Blended 片元乘 2：按共享特效工厂口径写半值，不能把倒影洗成白块。
+            if (first.HasProperty(TintColorId)) block.SetVector(TintColorId, new Vector4(tint.r, tint.g, tint.b, tint.a) * 0.5f);
             renderer.SetPropertyBlock(block);
         }
 

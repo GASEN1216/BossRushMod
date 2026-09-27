@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Pathfinding;
+using Duckov.Utilities;
 
 namespace BossRush
 {
@@ -27,6 +29,12 @@ namespace BossRush
         public Vector3 ExitPos;
         /// <summary>擂台中心（由刷怪点求均值，供 center 口令点火使用）。</summary>
         public Vector3 ArenaCenter;
+
+        /// <summary>
+        /// 通过地图配置登记的额外候选点。运行时只从这些已存在的真实刷怪点
+        /// 取样，不凭空在几何中心偏移，避免把角色放进墙、坑或不可走楼层。
+        /// </summary>
+        public Vector3[] RandomCandidatePoints;
 
         /// <summary>
         /// 点位是**派生**的还是地图 JSON 显式给的。
@@ -67,10 +75,11 @@ namespace BossRush
     /// Mode H 地图支持注册表（设计提案 §19.1、§25.1）。
     ///
     /// 与 Mode G 的地图注册表同形：不维护第二份地图清单，只从
-    /// ModBehaviour.GetAllMapConfigs() 构建，并要求地图 JSON 提供 Mode H 可选点位：
+    /// ModBehaviour.GetAllMapConfigs() 构建，优先使用地图 JSON 的 Mode H 点位：
     /// modeHSpawnPoints / modeHStagingPos / modeHSpectatorPos / modeHPlayerSpawnPos / modeHExitPos。
     ///
-    /// 没有有效擂台、staging 或看台点位就拒绝进入，绝不把普通 BossRush 刷新点猜作替代。
+    /// 未显式配置时从该图已登记的 Boss 刷新点派生；场景就绪后再做 A* 与净空检查，
+    /// 没有安全的随机场地组合就中止入场。
     /// </summary>
     public static class ModeHMapSupportRegistry
     {
@@ -187,6 +196,8 @@ namespace BossRush
             map.PlayerSpawnPos = config.modeHPlayerSpawnPos.Value;
             map.ExitPos = config.modeHExitPos.Value;
             map.ArenaCenter = center;
+            map.RandomCandidatePoints = config.spawnPoints != null
+                ? (Vector3[])config.spawnPoints.Clone() : map.ArenaSpawnPoints;
             map.Derived = false;
             return map;
         }
@@ -307,8 +318,219 @@ namespace BossRush
             map.PlayerSpawnPos = points[arenaIndices[fighterIndex]];
             map.ExitPos = exit;
             map.ArenaCenter = center;
+            map.RandomCandidatePoints = (Vector3[])points.Clone();
             map.Derived = true;
             return map;
+        }
+
+        /// <summary>
+        /// 从地图已经登记的真实刷怪点中，为本局确定性抽取一组擂台位置。
+        ///
+        /// 官方 AI_PathControl 通过 Seeker 使用 A* 图；这里按同一图采样并计算 ABPath。
+        /// Unity NavMesh 不是官方移动的权威，不能拿它的缺席拒绝整张地图。
+        /// A* 未就绪、路径不完整、绕行过长或落点碰墙时拒绝该组点位。
+        /// </summary>
+        public static bool TryCreateRunVariant(ModeHSupportedMap source, long runSeed,
+            out ModeHSupportedMap variant, out string reason)
+        {
+            variant = null;
+            reason = null;
+            if (source == null)
+            {
+                reason = "map_variant_source_missing";
+                return false;
+            }
+
+            Vector3[] candidates = source.RandomCandidatePoints;
+            if (candidates == null || candidates.Length < DerivedArenaPointCount + 1)
+            {
+                reason = "map_variant_candidates_insufficient";
+                return false;
+            }
+
+            try
+            {
+                ModeHSeedStream stream = ModeHSeedStream.Create(runSeed, "modeh_arena_location", 0);
+                List<Vector3> pool = new List<Vector3>(candidates);
+                stream.Shuffle(pool);
+                int attempts = Math.Min(48, pool.Count);
+                for (int attempt = 0; attempt < attempts; attempt++)
+                {
+                    Vector3[] selected = PickNearestCluster(pool, attempt, DerivedArenaPointCount + 1);
+                    if (selected == null) continue;
+
+                    Vector3[] sampled = new Vector3[selected.Length];
+                    bool valid = true;
+                    for (int i = 0; i < selected.Length; i++)
+                    {
+                        if (!TrySampleArenaGround(selected[i], out sampled[i]))
+                        {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    if (!valid || !HasDistinctSpacing(sampled, 2.5f)) continue;
+                    if (!AreMutuallyReachable(sampled)) continue;
+                    float spread = 0f;
+                    for (int i = 1; i < sampled.Length; i++)
+                        spread = Mathf.Max(spread, Vector3.Distance(sampled[0], sampled[i]));
+                    if (spread < MinDerivedArenaSpread || spread > MaxDerivedArenaSpread * 2f) continue;
+
+
+                    Vector3 center = Vector3.zero;
+                    for (int i = 0; i < sampled.Length; i++) center += sampled[i];
+                    center /= sampled.Length;
+
+                    int fighterIndex = 0;
+                    float fighterDistance = Vector3.Distance(sampled[0], center);
+                    for (int i = 1; i < sampled.Length; i++)
+                    {
+                        float distance = Vector3.Distance(sampled[i], center);
+                        if (distance < fighterDistance)
+                        {
+                            fighterIndex = i;
+                            fighterDistance = distance;
+                        }
+                    }
+
+                    Vector3[] enemies = new Vector3[DerivedArenaPointCount];
+                    int slot = 0;
+                    for (int i = 0; i < sampled.Length; i++)
+                        if (i != fighterIndex) enemies[slot++] = sampled[i];
+
+                    ModeHSupportedMap copy = CopyMap(source);
+                    copy.ArenaSpawnPoints = enemies;
+                    copy.PlayerSpawnPos = sampled[fighterIndex];
+                    // 中心口令同样必须落在可走实点；看台跟随本局场地，不能留在旧地图另一端。
+                    copy.ArenaCenter = sampled[fighterIndex];
+                    Vector3 spectator;
+                    if (!TryFindSpectator(sampled, copy.ArenaCenter, stream, out spectator)) continue;
+                    copy.SpectatorPos = spectator;
+                    copy.ExitPos = spectator;
+                    copy.StagingPos = copy.ArenaCenter + Vector3.down * DerivedStagingDepth;
+                    copy.RandomCandidatePoints = (Vector3[])candidates.Clone();
+                    copy.Derived = true;
+                    variant = copy;
+                    return true;
+                }
+
+                reason = "map_variant_no_reachable_cluster";
+                return false;
+            }
+            catch (Exception e)
+            {
+                reason = "map_variant_exception:" + e.GetType().Name;
+                return false;
+            }
+        }
+
+        private static bool TrySampleArenaGround(Vector3 raw, out Vector3 position)
+        {
+            position = raw;
+            AstarPath astar = AstarPath.active;
+            if (astar == null || astar.isScanning) return false;
+            NNInfo nearest = astar.GetNearest(raw, NNConstraint.Walkable);
+            if (nearest.node == null || !nearest.node.Walkable
+                || Vector3.Distance(nearest.position, raw) > 2f
+                || Mathf.Abs(nearest.position.y - raw.y) > 2f) return false;
+            position = nearest.position;
+            int walls = GameplayDataSettings.Layers.wallLayerMask | GameplayDataSettings.Layers.halfObsticleLayer;
+            return !Physics.CheckCapsule(position + Vector3.up * 0.5f,
+                position + Vector3.up * 1.4f, 0.4f, walls, QueryTriggerInteraction.Ignore);
+        }
+
+        private static bool TryFindSpectator(Vector3[] arena, Vector3 center, ModeHSeedStream stream, out Vector3 spectator)
+        {
+            spectator = center;
+            int start = stream.NextInt(16);
+            for (int step = 0; step < 32; step++)
+            {
+                float angle = ((start + step) % 16) * Mathf.PI / 8f;
+                float radius = step < 16 ? 16f : 24f;
+                Vector3 point;
+                if (!TrySampleArenaGround(center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius, out point)) continue;
+                bool separated = true;
+                foreach (Vector3 spawn in arena) if (Vector3.Distance(spawn, point) < 6f) separated = false;
+                if (!separated || !AreMutuallyReachable(new Vector3[] { center, point })) continue;
+                if (Physics.Linecast(point + Vector3.up * 1.5f, center + Vector3.up * 1.5f,
+                    GameplayDataSettings.Layers.wallLayerMask, QueryTriggerInteraction.Ignore)) continue;
+                spectator = point;
+                return true;
+            }
+            return false;
+        }
+
+        private static Vector3[] PickNearestCluster(IList<Vector3> pool, int seedIndex, int count)
+        {
+            if (pool == null || count <= 0 || pool.Count < count || seedIndex < 0 || seedIndex >= pool.Count)
+                return null;
+            List<Vector3> nearest = new List<Vector3>(pool);
+            Vector3 seed = pool[seedIndex];
+            nearest.Sort(delegate (Vector3 a, Vector3 b)
+            {
+                return Vector3.Distance(seed, a).CompareTo(Vector3.Distance(seed, b));
+            });
+            Vector3[] result = new Vector3[count];
+            for (int i = 0; i < count; i++) result[i] = nearest[i];
+            return result;
+        }
+
+        private static bool HasDistinctSpacing(IList<Vector3> points, float minDistance)
+        {
+            float minSqr = minDistance * minDistance;
+            for (int i = 0; i < points.Count; i++)
+                for (int j = i + 1; j < points.Count; j++)
+                    if ((points[i] - points[j]).sqrMagnitude < minSqr) return false;
+            return true;
+        }
+
+        private static bool AreMutuallyReachable(IList<Vector3> points)
+        {
+            AstarPath astar = AstarPath.active;
+            if (astar == null || astar.isScanning) return false;
+            for (int i = 1; i < points.Count; i++)
+            {
+                ABPath path = null;
+                bool claimed = false;
+                try
+                {
+                    // 只在入场/续赛选址时计算，最多 48 组；不扫描或改写官方导航图。
+                    // Claim 防止返回队列在读取 vectorPath 前把路径交回池，finally 必须释放。
+                    path = ABPath.Construct(points[0], points[i], null);
+                    path.Claim(points);
+                    claimed = true;
+                    AstarPath.StartPath(path);
+                    path.BlockUntilCalculated();
+                    if (path.error || path.CompleteState != PathCompleteState.Complete
+                        || path.vectorPath == null || path.vectorPath.Count < 2) return false;
+                    float length = 0f;
+                    IList<Vector3> corners = path.vectorPath;
+                    for (int j = 1; j < corners.Count; j++) length += Vector3.Distance(corners[j - 1], corners[j]);
+                    if (length > Vector3.Distance(points[0], points[i]) * 1.6f + 3f) return false;
+                }
+                catch { return false; }
+                finally { if (path != null && claimed) path.Release(points); }
+            }
+            return true;
+        }
+
+        private static ModeHSupportedMap CopyMap(ModeHSupportedMap source)
+        {
+            ModeHSupportedMap copy = new ModeHSupportedMap();
+            copy.SceneName = source.SceneName;
+            copy.SceneId = source.SceneId;
+            copy.DisplayName = source.DisplayName;
+            copy.ArenaSpawnPoints = source.ArenaSpawnPoints != null
+                ? (Vector3[])source.ArenaSpawnPoints.Clone() : null;
+            copy.StagingPos = source.StagingPos;
+            copy.SpectatorPos = source.SpectatorPos;
+            copy.PlayerSpawnPos = source.PlayerSpawnPos;
+            copy.ExitPos = source.ExitPos;
+            copy.ArenaCenter = source.ArenaCenter;
+            copy.RandomCandidatePoints = source.RandomCandidatePoints != null
+                ? (Vector3[])source.RandomCandidatePoints.Clone() : null;
+            copy.Derived = source.Derived;
+            return copy;
         }
 
         /// <summary>

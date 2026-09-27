@@ -31,6 +31,7 @@ namespace BossRush
 
         // 冲刺状态
         private bool isDragonDashing = false;
+        private CharacterMainControl dragonDashCharacter;
         private float lastDashTime = -999f;
 
         // 龙王套装连续冲刺状态
@@ -60,6 +61,15 @@ namespace BossRush
         /// <summary>
         /// 龙影冲刺 Update 检测（在主 Update 中调用）
         /// </summary>
+        private void CancelDragonDash()
+        {
+            if (dragonDashCharacter != null) dragonDashCharacter.SetForceMoveVelocity(Vector3.zero);
+            dragonDashCharacter = null;
+            isDragonDashing = false;
+            isInChainDashWindow = false;
+            ClearAfterimages();
+        }
+
         internal void UpdateDragonDash()
         {
             // 龙套装或龙王套装激活时都检测冲刺
@@ -317,6 +327,7 @@ namespace BossRush
         private System.Collections.IEnumerator DragonDashCoroutine(CharacterMainControl main, Vector3 direction)
         {
             isDragonDashing = true;
+            dragonDashCharacter = main;
 
             Vector3 startPos = main.transform.position;
 
@@ -359,6 +370,7 @@ namespace BossRush
             main.SetForceMoveVelocity(Vector3.zero);
 
             isDragonDashing = false;
+            dragonDashCharacter = null;
 
             // 延迟清理残影
             StartSetBonusCoroutine(ClearAfterimagesDelayed(0.5f));
@@ -374,6 +386,7 @@ namespace BossRush
         private System.Collections.IEnumerator DragonKingDashCoroutine(CharacterMainControl main, Vector3 direction, float distance, bool enableChainWindow)
         {
             isDragonDashing = true;
+            dragonDashCharacter = main;
 
             Vector3 startPos = main.transform.position;
 
@@ -430,6 +443,7 @@ namespace BossRush
             main.SetForceMoveVelocity(Vector3.zero);
 
             isDragonDashing = false;
+            dragonDashCharacter = null;
 
             // 如果是第一次冲刺，开启连续冲刺窗口
             if (enableChainWindow)

@@ -3,7 +3,7 @@
 For the full achievement list, see the "Achievement List" page.
 
 ## Overview
-- The Reforge system allows you to re-randomize equipment stats, serving as the core equipment progression mechanic in BossRush Mod.
+- The Reforge system allows you to re-randomize equipment stats, serving as the core equipment progression mechanic in this mod.
 - Accessed through Dingdang (the goblin artisan)'s Reforge service.
 
 ::: tip
@@ -25,7 +25,8 @@ Dingdang also runs a separate service called **Affix Forging**: reforging change
 ## Reforge Process
 - Interact with Dingdang and select "Reforge".
 - Place the equipment you want to reforge.
-- Adjust the investment amount (higher investment = better odds of a good result).
+- Adjust the investment amount (higher investment favors larger changes).
+- Adjust the benefit tendency separately. Favoring benefits makes helpful changes more likely; lower vertical and horizontal recoil counts as a benefit.
 - If needed, use Cold Quench Fluid to lock stats you don't want changed.
 - Click Reforge.
 
@@ -35,14 +36,17 @@ Dingdang also runs a separate service called **Affix Forging**: reforging change
 
 ## Reforge Results
 - Each Reforge changes all unlocked stats simultaneously. Results are influenced by:
-  - Investment amount: higher amounts increase the probability of stats changing in a positive direction
-  - Equipment quality: higher quality increases the upper bound of change magnitude
+  - Investment amount: higher amounts favor larger changes; benefit tendency separately controls whether a change is helpful or harmful
+  - Equipment quality: affects the distribution of change magnitudes
   - Equipment value: affects the baseline change magnitude
+
+- Green means a benefit and red means a penalty; arrows show the numeric direction. Reduced recoil has a green down arrow, increased recoil a red up arrow.
+- Existing reforged values are preserved. This correction does not automatically reverse old values.
 
 ### Stat Change Range
 - Stat values will not exceed reasonable bounds (there are upper and lower limits).
 - When a stat reaches its extreme value, a "Max" or "Min" tag is displayed.
-- Each stat is guaranteed at least a minimum amount of change per Reforge.
+- Each unlocked stat attempts to change; rolling further toward a bound already reached leaves it at that bound.
 
 ## Cold Quench Fluid Lock
 - Cold Quench Fluid is the most critical material in the Reforge system.
@@ -63,10 +67,10 @@ Dingdang also runs a separate service called **Affix Forging**: reforging change
 
 ## How much money to invest
 
-On top of the bench fee you can **invest extra money** to improve your odds of a good roll. The
+On top of the bench fee you can **invest extra money** to favor larger changes. The
 curve scales with **multiples of the item's value**, not with an absolute amount:
 
-- Invest **10x** the item's value → roughly **+10%** chance of a positive change
+- Invest **10x** the item's value → roughly **+10%** to the magnitude factor
 - Invest **100x** → roughly **+30%**
 - Invest **1000x** → roughly **+100%**
 

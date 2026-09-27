@@ -44,6 +44,7 @@ internal static class SkyIslandMarriageTextRegression
                 check(!string.IsNullOrEmpty(line) && (cn || !Cjk(line)),"Weibai context has current-language text");
                 check(stage!=5 || line.Contains(cn?"还没交":"Turn in the beacon quest first"),"both repaired: hand-in before next quest");
                 check(stage!=4 || line.Contains(cn?"还没接":"haven't taken"),"late acceptance after repairs is explained");
+                check(stage!=4 || !line.Contains(cn?"还没交":"Turn in the beacon quest first"),"not accepted yet: never urges a hand-in before saying it was not taken");
                 check(stage!=6 || line.Contains(cn?"钟庭之争":"Bell Court Standoff"),"after hand-in: Fuzhou's next quest is named");
                 check(island || line.Contains(cn?"岛上接":"on the island"),"home does not claim to accept island quests");
                 check(before==SkyIslandStoryCodec.Encode(story.Current),"Weibai dialogue does not mutate progress");
@@ -51,12 +52,31 @@ internal static class SkyIslandMarriageTextRegression
             story.Current.flags=route;
             string fuzhou=story.DescribeNpc("sky_fuzhou",false,true,true);
             check(fuzhou.Contains(cn?"委托板":"Market board") && !fuzhou.Contains(cn?"沿桥去风铃集":"Follow the bridge"),"Fuzhou directs player to board when Weibai is away");
+            foreach (string id in new[] { "sky_fuzhou", "sky_miantai", "sky_zheling", "sky_bellkeeper" })
+            {
+                string before = SkyIslandStoryCodec.Encode(story.Current);
+                string home = story.DescribeNpc(id, true, false);
+                check(!string.IsNullOrEmpty(home) && (cn || !Cjk(home)), id + ": home guidance is bilingual");
+                check(home.Contains(cn ? "岛" : "island"), id + ": home points island business to island");
+                check(home != story.DescribeNpc(id, true, true), id + ": home never reuses location-dependent island text");
+                check(before == SkyIslandStoryCodec.Encode(story.Current), id + ": home dialogue does not mutate progress");
+            }
         }
         L10n.IsChinese=true;
         story.Current.flags=route;
         story.Current.discoveredNotes = new[]{"Letter_02","Letter_03"};
         check(story.DescribeNpc("sky_qinghe",true,false).Contains("没署名的信"),"home spouse keeps collected-letter conversation");
         check(story.DescribeNpc("sky_weibai",true,false).Contains("苇生的信"),"home spouse keeps Weisheng's letter conversation");
+        story.Current.flags = route | (int)SkyIslandStoryFlag.ZhelingDefeated;
+        foreach (bool cn in new[] { true, false })
+        {
+            L10n.IsChinese = cn;
+            check(story.DescribeNpc("sky_zheling").Contains(cn ? "伤养好了" : "I have recovered"),
+                "defeated Zheling remains alive and can resume relationships next trip");
+            check(SkyIslandCrew.Page(1, story.Current).Contains(cn ? "等他回来" : "when he returns"),
+                "crew letter remembers recovery without implying permanent death");
+        }
+        L10n.IsChinese = true;
         story.Close();
     }
     private static bool Cjk(string text)

@@ -68,10 +68,8 @@ namespace BossRush
             {
                 if (!owner.IsModeDActive)
                 {
-                    WaveIntegrityCheckTimer += deltaTime;
-                    if (WaveIntegrityCheckTimer >= ModBehaviour.WaveIntegrityCheckInterval)
+                    if (AdvanceWaveIntegrityCheck(deltaTime))
                     {
-                        WaveIntegrityCheckTimer = 0f;
                         owner.TryFixStuckWaveIfNoBossAlive();
                     }
                 }

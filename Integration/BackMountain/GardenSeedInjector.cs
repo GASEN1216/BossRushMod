@@ -17,8 +17,12 @@
 //   产物 TypeID 未注册时会在官方代码里 NRE。玩家一旦种下过我们的作物，
 //   存档里就有了引用；此后若因为关开关而不再注入，读档时官方就会踩空。
 //   因此解锁过一次之后，注入不再受开关回退影响——把破档面缩到「卸载整个 mod」。
-//   （即使那样也不会崩：`Crop.Initialize` 找不到 CropInfo 会 LogError 后早退，
-//   只是那个格子空着。）
+//   （那样不会崩，但会丢作物：`Crop.Initialize` 找不到 CropInfo 会 LogError 后早退，
+//   留下 Data 为默认值的空壳 Crop 仍在 Garden 字典里，下一次官方存档就把原作物记录覆盖掉。）
+//
+// 【注入晚于 Garden.Load 的自救】sceneLoaded 那一拍注入失败、到关卡就绪才补上时，
+//   Garden.Start 已按缺表读过档。存档此刻还是完整的，所以注入成功后对留有空壳 Crop 的 Garden 重读一次
+//   （RecoverGardensLoadedBeforeInjection）；正常路径没有空壳，不会多读。
 //
 // 【顺序硬约束】食材物品必须先于任何菜园场景加载完成注册，见上一条。
 // EnsureInjected 内部保证了这个顺序：先注册物品，再注入作物表。
@@ -107,12 +111,41 @@ namespace BossRush
                 InjectCrops(database);
                 InjectSeeds(database);
                 _injected = true;
+                RecoverGardensLoadedBeforeInjection();
 
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "菜地作物已注入官方种植系统");
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 作物注入失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 官方 Garden.Load 遇到查不到 CropInfo 的记录时仍把未初始化的 Crop 放进字典，Data 是默认值（cropID 为空），
+        /// 下一次 Save 会把它写回存档、原作物永久丢失。注入刚完成时存档尚未被覆盖：只对含这种空壳的 Garden 重读一次。
+        /// 官方 Crop 模板只在 Instantiate 时被克隆成激活对象，空壳判据只看激活中的子 Crop。
+        /// </summary>
+        private static void RecoverGardensLoadedBeforeInjection()
+        {
+            try
+            {
+                if (Garden.gardens == null || Garden.gardens.Count == 0) return;
+                foreach (Garden garden in new List<Garden>(Garden.gardens.Values))
+                {
+                    if (garden == null) continue;
+                    Crop[] crops = garden.GetComponentsInChildren<Crop>(true);
+                    bool hollow = false;
+                    for (int i = 0; i < crops.Length && !hollow; i++)
+                        hollow = crops[i] != null && crops[i].gameObject.activeSelf && string.IsNullOrEmpty(crops[i].Data.cropID);
+                    if (!hollow) continue;
+                    garden.Load();
+                    ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "注入晚于菜地读档，已按存档重建作物: " + garden.GardenID);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 菜地重读失败: " + e.Message);
             }
         }
 
@@ -330,9 +363,9 @@ namespace BossRush
                     return false;
                 }
                 PendingStarterNotice = L10n.T(
-                    "菜地起步种子已放进背包：" + string.Join("、", namesCN.ToArray()) + "。用完了去基地售货机买，龙裔遗族、焚天龙皇、幽灵女巫也会掉。",
+                    "菜地起步种子已放进背包：" + string.Join("、", namesCN.ToArray()) + "。种下后记得浇水，浇过水才会长。用完了去基地售货机买，龙裔遗族、焚天龙皇、幽灵女巫也会掉。",
                     "Starter garden seeds are in your backpack: " + string.Join(", ", namesEN.ToArray())
-                    + ". Buy more from the base vendor; the Dragon Descendant, Dragon King and Phantom Witch also drop them.");
+                    + ". Water them after planting; they only grow once watered. Buy more from the base vendor; the Dragon Descendant, Dragon King and Phantom Witch also drop them.");
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "已发放菜地起步种子: " + namesEN.Count + " 种");
                 return true;
             }

@@ -71,6 +71,9 @@ namespace BossRush
         private GameObject _modalInputToken;
         private ModeHPage _currentPage;
         private string _currentPageTitle;
+        /// <summary>当前页是不是占位页，与当前面板尺寸（占位页换正式页时不重播打开动画）。</summary>
+        private bool _currentPagePlaceholder;
+        private Vector2 _currentPanelSize;
         private GameObject _modalSurface;
         private string _modalOwnerLabel;
 
@@ -80,6 +83,9 @@ namespace BossRush
         private TextMeshProUGUI _hudRelay;
         private TextMeshProUGUI _hudEnemies;
         private Button _bellButton;
+        private Button _surrenderButton;
+        internal GameObject HudAnchor { get { return _hudRoot; } }
+        private Button _exitButton;
         private Image _bellStroke;
         private Image _bellBadge;
         private Image _bellBadgeRing;
@@ -143,7 +149,7 @@ namespace BossRush
         /// 创建观战 HUD。挂 `GraphicRaycaster` 让拍铃按钮可点，
         /// 但**不**调用会暂停时间的 `ClaimModalInput`——角色输入由 spectator lease 阻断。
         /// </summary>
-        public void EnsureHud(Action onRingBell)
+        public void EnsureHud(Action onRingBell, Action onSurrender, Action onExit)
         {
             if (_hudRoot != null) return;
 
@@ -187,7 +193,38 @@ namespace BossRush
             _timerTone = -1;
 
             CreateBellButton(onRingBell);
+            CreateSpectatorActions(onSurrender, onExit);
             BossRushUI.PlayOpenAnimation(_hudRoot);
+        }
+
+        /// <summary>观战期右侧的投降与退出：小型次级按钮，不遮挡中央战场。</summary>
+        private void CreateSpectatorActions(Action onSurrender, Action onExit)
+        {
+            float x = -SpectatorActionMargin - SpectatorActionSize.x * 0.5f;
+            _surrenderButton = ZombieModeUIHelper.CreateButton(
+                "ModeH_Surrender", _hudRoot.transform,
+                L10n.T("投降", "Surrender"),
+                new Vector2(1f, 0.5f), new Vector2(x, SpectatorActionGap * 0.5f),
+                SpectatorActionSize, BossRushUIColors.SurfaceRaised, 17f,
+                new Vector2(SpectatorActionSize.x - 16f, SpectatorActionSize.y - 8f),
+                onSurrender != null ? new UnityEngine.Events.UnityAction(onSurrender) : null,
+                onSurrender != null);
+            BossRushUIKit.StyleSecondaryButton(_surrenderButton);
+            Image surrenderImage = _surrenderButton != null ? _surrenderButton.targetGraphic as Image : null;
+            if (surrenderImage != null)
+                BossRushUI.ApplyPanelStroke(surrenderImage, 8, BossRushUISkinPart.Button, BossRushUIColors.DangerText);
+            TextMeshProUGUI surrenderLabel = _surrenderButton != null ? _surrenderButton.GetComponentInChildren<TextMeshProUGUI>() : null;
+            if (surrenderLabel != null) surrenderLabel.color = BossRushUIColors.DangerText;
+
+            _exitButton = ZombieModeUIHelper.CreateButton(
+                "ModeH_SpectatorExit", _hudRoot.transform,
+                L10n.T("退出", "Exit"),
+                new Vector2(1f, 0.5f), new Vector2(x, -SpectatorActionGap * 0.5f),
+                SpectatorActionSize, BossRushUIColors.SurfaceRaised, 17f,
+                new Vector2(SpectatorActionSize.x - 16f, SpectatorActionSize.y - 8f),
+                onExit != null ? new UnityEngine.Events.UnityAction(onExit) : null,
+                onExit != null);
+            BossRushUIKit.StyleSecondaryButton(_exitButton);
         }
 
         private TextMeshProUGUI CreateHudLine(Transform parent, string name, float offsetY, float width)
@@ -584,6 +621,8 @@ namespace BossRush
             _hudRelay = null;
             _hudEnemies = null;
             _bellButton = null;
+            _surrenderButton = null;
+            _exitButton = null;
             _bellStroke = null;
             _bellBadge = null;
             _bellBadgeRing = null;
@@ -759,13 +798,17 @@ namespace BossRush
             bool refresh = _modalRoot != null && _modalSurface != null && _currentPage == page
                 && content != null && string.Equals(_currentPageTitle, content.Title, StringComparison.Ordinal);
             List<float> scroll = refresh ? CaptureScroll(_modalSurface) : null;
+            Vector2 size = ModeHUIPages.ResolvePanelSize(page, content);
+            // 占位页（「准备参赛选手」）换成正式页、面板一样大：像同一块面板填上内容，不再关一下再开一下
+            bool fillPlaceholder = !refresh && _modalSurface != null && _currentPagePlaceholder && size == _currentPanelSize;
 
             EnsureModalRoot(lifecycle, runId);
             ClearModalContent();
             _currentPage = page;
             _currentPageTitle = content != null ? content.Title : null;
+            _currentPagePlaceholder = content != null && content.IsPlaceholder;
+            _currentPanelSize = size;
 
-            Vector2 size = page == ModeHPage.Settlement ? ReportPanelSize : MainPanelSize;
             GameObject surface = ZombieModeUIHelper.CreateModalSurface(
                 "ModeH_PageSurface", _modalRoot.transform, size, BossRushUIColors.Accent, createBackdrop: false);
             _modalSurface = surface;
@@ -774,7 +817,30 @@ namespace BossRush
             ModeHUIPages.Build(page, surface.transform, size, content);
             SyncCancelKey(content);
             if (refresh) RestoreScroll(surface, scroll);
-            else BossRushUI.PlayOpenAnimation(surface);
+            else if (!fillPlaceholder) BossRushUI.PlayOpenAnimation(surface);
+        }
+
+        /// <summary>
+        /// 当前页暂不接受点击（2026-09-25：选人页点了刷新、结算页点了下一场，新一批选手的预案还在分帧准备）。
+        /// 只在面板最上层盖一块透明挡板，不动按钮的可交互态——改 CanvasGroup 会让整页按钮一齐变灰，那又是一闪。
+        /// 下一次 OpenPage 换掉整块面板时挡板随旧面板销毁；取消准备时由调用方显式撤掉。
+        /// </summary>
+        public void SetPageBusy(bool busy)
+        {
+            if (_modalSurface == null) return;
+            Transform existing = _modalSurface.transform.Find("ModeH_BusyBlocker");
+            if (!busy)
+            {
+                if (existing != null) UnityEngine.Object.Destroy(existing.gameObject);
+                return;
+            }
+            if (existing != null) return;
+            GameObject blocker = ZombieModeUIHelper.CreateRect("ModeH_BusyBlocker", _modalSurface.transform,
+                Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+            Image image = blocker.AddComponent<Image>();
+            image.color = new Color(0f, 0f, 0f, 0f);
+            image.raycastTarget = true;
+            blocker.transform.SetAsLastSibling();
         }
 
         /// <summary>
@@ -885,6 +951,7 @@ namespace BossRush
             DetachCancelKey();
             _currentPage = ModeHPage.None;
             _currentPageTitle = null;
+            _currentPagePlaceholder = false;
             _modalSurface = null;
             // 输入不等动画：租约在淡出开始前就还回去
             if (_modalLease != null)
@@ -1025,6 +1092,10 @@ namespace BossRush
         internal static readonly Vector2 RecoverySize = new Vector2(1280f, 780f);
         /// <summary>HUD 左边距（计时区的顶边距）。</summary>
         internal const float StatusMargin = 24f;
+        /// <summary>观战操作按钮尺寸与右侧间距。</summary>
+        internal static readonly Vector2 SpectatorActionSize = new Vector2(148f, 48f);
+        internal const float SpectatorActionGap = 64f;
+        internal const float SpectatorActionMargin = 28f;
         /// <summary>模态页四周安全边距。</summary>
         internal const float SafeMargin = 48f;
 

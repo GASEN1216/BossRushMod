@@ -717,8 +717,11 @@ namespace BossRush
             SkyIslandGnats swarm = field == null ? null : field.Gnats;
             CharacterMainControl player = CharacterMainControl.Main;
             if (swarm == null || !swarm.Usable || player == null) { AutotestFail(record, "action:spawn_gnats", "swarm_unusable", null, false); return; }
-            int placed = swarm.DevSpawnAround(player.transform.position, ArgInt(args, 0, SkyIslandMosquitoRules.MaxAlive));
-            record.Notes.Add("gnats_spawned=" + placed + ",alive=" + swarm.Alive);
+            // 第三个参数 ahead：刷在主角朝向 ±15° 里（可见度截图要目标在官方夜视扇形内）；缺省照旧四周随机。
+            bool ahead = args.Length > 2 && args[2] == "ahead";
+            int count = ArgInt(args, 0, SkyIslandMosquitoRules.MaxAlive);
+            int placed = ahead ? swarm.DevSpawnAhead(player, count) : swarm.DevSpawnAround(player.transform.position, count);
+            record.Notes.Add("gnats_spawned=" + placed + ",alive=" + swarm.Alive + (ahead ? ",bearing=ahead_15deg" : string.Empty));
         }
 
         /// <summary>

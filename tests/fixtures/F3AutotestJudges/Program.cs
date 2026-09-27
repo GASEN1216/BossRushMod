@@ -66,6 +66,18 @@ internal static partial class Program
         return false;
     }
 
+    /// <summary>从 JudgeStageData 的 reason 里取出缺失的剧情位掩码（"stage_not_reached:flags:N+..."）；没有 flags 段返回 0。</summary>
+    private static int MissingFlags(string reason)
+    {
+        const string marker = "flags:";
+        int at = reason == null ? -1 : reason.IndexOf(marker, StringComparison.Ordinal);
+        if (at < 0) return 0;
+        int end = at + marker.Length;
+        while (end < reason.Length && char.IsDigit(reason[end])) end++;
+        int value;
+        return int.TryParse(reason.Substring(at + marker.Length, end - at - marker.Length), out value) ? value : 0;
+    }
+
     private static bool AnyContains(IEnumerable<string> values, string part)
     {
         foreach (string value in values) if (value != null && value.IndexOf(part, StringComparison.Ordinal) >= 0) return true;

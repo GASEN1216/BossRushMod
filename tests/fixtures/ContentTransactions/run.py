@@ -50,7 +50,7 @@ def main():
     (OUT / "Extracted.cs").write_text(extracted, encoding="utf-8")
     linked = [
         "Campaign/CampaignProgressService.cs", "Campaign/CampaignModels.cs",
-        "Campaign/CampaignPersistence.cs", "Campaign/CampaignSaveCoordinator.cs",
+        "Campaign/CampaignPersistence.cs", "Campaign/CampaignSaveCoordinator.cs", "Campaign/CampaignGuideTable.cs",
         "Integration/DailyReport/DailyReportSaveCoordinator.cs",
         "Integration/BackMountain/RaidMealUsageBehavior.cs",
         "Integration/BackMountain/ShowcaseService.cs",

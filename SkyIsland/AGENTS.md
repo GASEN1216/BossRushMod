@@ -44,7 +44,7 @@
 
 ## 4. 运行时规则
 
-- **判夜只有一个口径**：`SkyIslandNight` + `SkyIslandLighting.ClockHours()`。没有 `GameClock` 实例时 `TimeOfDay` 恒为 00:00 且不抛异常；不要用官方 `TimeOfDayController.AtNight`。夜是 19–5 点，刻意等于官方 `TimeOfDayController` 的 `nightStart / morningStart`（官方 Volume 与敌人夜间感知同相）；一昼夜约 24 现实分钟、夜里约 10 分钟（`clockTimeScale = 60`），写夜间内容先按这个算（`SkyIslandMosquitoGuard`）。
+- **判夜只有一个口径**：`SkyIslandNight` + `SkyIslandLighting.ClockHours()`。没有 `GameClock` 实例时 `TimeOfDay` 恒为 00:00 且不抛异常；不要用官方 `TimeOfDayController.AtNight`。夜是 22–6 点，刻意等于官方 `TimeOfDayController` 运行时的 `nightStart / morningStart`（官方 Volume 与敌人夜间感知同相；反编译源的字段初值 19 / 5 会被 `LevelManagerPrefab` 序列化值覆盖，官方数值以 F3 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机读数为准，不照抄反编译初值）；一昼夜约 24 现实分钟、夜里约 8 分钟（`clockTimeScale = 60`），写夜间内容先按这个算（`SkyIslandMosquitoGuard`）。
 - **玩法计时走游戏时间**（撤离读秒、救援），暂停菜单与拍照模式会冻结它；表现层可以走 unscaled，但暂停时停推进。
 - **常驻 HUD 跟随官方 HUD 显隐**（`BossRushUI.IsOfficialHudHidden()`），右上角卡片排在官方「操作说明」提示栈下沿之下（`BossRushUI.GetTopRightHudTop`）。
 - **当前区域按脚下地面判定**（`COL_Ground_{区域}` 碰撞体），不按离地标的距离。场景包的 `POI_` 节点数不等于区域数，可完成量一律取地面切分出的区域表。
@@ -80,6 +80,7 @@
 - 布局、聚落规划、小地图、验证台账与 C# 门坐标、遭遇标记互相引用：先在草稿目录里整条跑通（`SKY_ISLAND_SETTLEMENT_PLAN` 覆盖规划路径，小地图脚本有 `--layout` / `--out-dir` / `--out-json`），再整体换进仓库，避免别的会话看到半红的守卫。
 - **重打包不是隔离操作**，会把作者工程当下的全部资产一起发出去：打包前看作者工程资产的修改时间；打包后用 UnityPy 读已构建 bundle 与上一版逐项对照，再跑 `python tools/verify_sky_island_bundle_shaders.py`。作者 / 仓库 / 游戏 Mod 目录三份 SHA-256 写回 `ArtSource/SkyIsland/Validation/raid_deployment_hashes.json`。
 - Unity 批处理：先确认没有别的实例占用工程；每步单独执行并检查退出码与产物，不用分号或 `&&` 串联（会把失败伪装成成功）。Blender 后台加 `--factory-startup --python-exit-code 1`，并在日志里找 PASS 标记。
+- **运行时特效小包 `skyisland_fx`**（热浪折射、泥面流动两个材质）独立于场景包：作者工程 `SkyIslandFxBundleBuilder.BuildOnlyAndExit` 只打这两个材质及其着色器，产物复制到 `Assets/ui/skyisland_fx`，正式编译脚本部署。重打它**不会**把场景与其它资产一起发出去，想加运行时特效材质优先放这里、别动场景包。透明特效着色器只写一个 `UniversalForward` pass（Deferred 下透明物体走前向，不需要 GBuffer pass）；采样 `_CameraOpaqueTexture` 的材质只在 `SkyIslandFxAssets.SceneColorAvailable()` 为真时启用，否则退回粒子版（`SkyIslandFxBundleGuard`）。
 - 光色与天色硬编码在四处（玩家看到的天空主要是云 shader 的 haze 常量），改一处同步四处。画风基准是原版暖琥珀色带，材质 `_BaseColor` 全白、颜色在贴图里（`ArtSource/SkyIsland/VANILLA_GRADE.md`）。
 - 小地图形状按几何烘焙、颜色取对齐后的生成图。布局几何一变，`tools/build_sky_island_minimap.py` 会拒绝旧底图：重走 `tools/sky_island_minimap_art.py` 的 reference / generate / align，或加 `--flat`。
 

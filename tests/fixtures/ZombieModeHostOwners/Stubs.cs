@@ -9,6 +9,7 @@ namespace UnityEngine
     public class Object
     {
         internal bool Destroyed;
+        internal static int DestroyCalls;
         public static bool operator ==(Object a, Object b)
         {
             bool an = ReferenceEquals(a, null) || a.Destroyed;
@@ -21,11 +22,14 @@ namespace UnityEngine
         public static void Destroy(Object value)
         {
             if (ReferenceEquals(value, null)) return;
+            DestroyCalls++;
             value.Destroyed = true;
             GameObject go = value as GameObject;
             if (!ReferenceEquals(go, null)) foreach (Object component in go.Components) component.Destroyed = true;
         }
     }
+    public class MonoBehaviour : Object { }
+    public class Texture2D : Object { }
     public class GameObject : Object { internal readonly List<Object> Components = new List<Object>(); }
     public class Coroutine : Object { internal IEnumerator Routine; }
     public struct Vector3 { }

@@ -21,6 +21,12 @@
 //   龙王原本走 PostCustomSFX 播一次性音效（不循环、不占 bgmSource）。
 //   规则：表里有 DragonKing 条目 → 由本协调器接管为循环 BGM；
 //   没有条目 → 维持旧行为。零素材时行为完全不变。
+//
+// 【场景常驻 BGM（2026-09-26，天空岛）】
+//   sceneTracks 是 Boss 曲下面的一层：地图会话 AcquireSceneBgm 后整趟循环；
+//   Boss 曲起播时官方 PlayCustomBGM 自己会先 StopBGM，场景曲自然让位；
+//   Boss 曲停下（StopBossBgm）时若场景租约仍属于当前场景，就接回场景曲而不是静音。
+//   会话结束 ReleaseSceneBgm 停曲；租约按 owner 实例 id 与场景 handle 双重校验，跨局残留自动失效。
 // ============================================================================
 
 using System;
@@ -37,6 +43,12 @@ namespace BossRush
         internal const string DragonKing = "DragonKing";
         internal const string DragonDescendant = "DragonDescendant";
         internal const string PhantomWitch = "PhantomWitch";
+    }
+
+    /// <summary>场景常驻 BGM 标识常量（BgmTracks.json 的 sceneTracks.sceneKey）。</summary>
+    internal static class BossBgmScenes
+    {
+        internal const string SkyIsland = "SkyIsland";
     }
 
     /// <summary>stinger 事件常量。</summary>
@@ -70,6 +82,16 @@ namespace BossRush
         private static Dictionary<string, BossBgmTrackEntry> _bossTracks;
         private static Dictionary<string, string> _stingerFiles;
         private static List<BossBgmJukeboxEntry> _jukebox;
+        private static Dictionary<string, BossBgmSceneEntry> _sceneTracks;
+
+        /// <summary>场景常驻 BGM 租约：同一时间只有一张图的会话持有。</summary>
+        private static string _sceneLeaseKey;
+        private static int _sceneLeaseOwnerId;
+        private static UnityEngine.Object _sceneLeaseOwner;
+        private static int _sceneLeaseSceneHandle;
+
+        /// <summary>当前在放的场景曲标识；null 表示没在放（没有租约，或被 Boss 曲顶掉）。</summary>
+        private static string _playingSceneKey;
 
         /// <summary>当前由本协调器起播的 Boss 标识；null 表示没有在播。</summary>
         private static string _playingBossKey;
@@ -117,6 +139,7 @@ namespace BossRush
             _bossTracks = new Dictionary<string, BossBgmTrackEntry>(StringComparer.Ordinal);
             _stingerFiles = new Dictionary<string, string>(StringComparer.Ordinal);
             _jukebox = new List<BossBgmJukeboxEntry>();
+            _sceneTracks = new Dictionary<string, BossBgmSceneEntry>(StringComparer.Ordinal);
 
             try
             {
@@ -176,8 +199,20 @@ namespace BossRush
                     }
                 }
 
+                if (table.sceneTracks != null)
+                {
+                    for (int i = 0; i < table.sceneTracks.Length; i++)
+                    {
+                        BossBgmSceneEntry entry = table.sceneTracks[i];
+                        if (entry == null) continue;
+                        if (string.IsNullOrEmpty(entry.sceneKey) || string.IsNullOrEmpty(entry.file)) continue;
+                        _sceneTracks[entry.sceneKey] = entry;
+                    }
+                }
+
                 ModBehaviour.DevLog(LogPrefix + "曲目表已装载: boss=" + _bossTracks.Count
-                    + ", stinger=" + _stingerFiles.Count + ", jukebox=" + _jukebox.Count);
+                    + ", stinger=" + _stingerFiles.Count + ", jukebox=" + _jukebox.Count
+                    + ", scene=" + _sceneTracks.Count);
             }
             catch (Exception e)
             {
@@ -282,6 +317,8 @@ namespace BossRush
 
                 if (!InvokePlayCustomBgm(path, entry.loop)) return false;
 
+                // 官方 PlayCustomBGM 先 StopBGM：场景曲此刻已被顶掉，Boss 曲停下时再接回
+                _playingSceneKey = null;
                 _playingBossKey = bossKey;
                 _playingSceneHandle = GetActiveSceneHandle();
                 ModBehaviour.DevLog(LogPrefix + "起播 Boss BGM: " + bossKey);
@@ -431,9 +468,11 @@ namespace BossRush
                     return;
                 }
 
-                InvokeStopBgm();
-                ModBehaviour.DevLog(LogPrefix + "停止 Boss BGM: " + _playingBossKey);
+                string stopped = _playingBossKey;
                 _playingBossKey = null;
+                // 这张图有场景常驻曲：接回它（PlayCustomBGM 自带 StopBGM），否则才静音
+                if (!TryResumeSceneBgm()) InvokeStopBgm();
+                ModBehaviour.DevLog(LogPrefix + "停止 Boss BGM: " + stopped);
             }
             catch (Exception e)
             {
@@ -441,6 +480,119 @@ namespace BossRush
                 _playingBossKey = null;
             }
         }
+
+        #region 场景常驻 BGM
+
+        /// <summary>该场景是否配了常驻曲**且文件确实存在**。</summary>
+        internal static bool HasSceneTrack(string sceneKey)
+        {
+            try
+            {
+                EnsureTableLoaded();
+                if (string.IsNullOrEmpty(sceneKey)) return false;
+                BossBgmSceneEntry entry;
+                if (!_sceneTracks.TryGetValue(sceneKey, out entry)) return false;
+                return FileExists(ResolveSoundPath(entry.file));
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 地图会话开始时获取场景常驻 BGM 租约并起播（Boss 曲在放时先不抢，等它停下再接回）。
+        /// 同一 owner 重复调用幂等；无条目/无文件/官方 API 不可用时返回 false，什么也不做。
+        /// </summary>
+        internal static bool AcquireSceneBgm(string sceneKey, UnityEngine.Object owner)
+        {
+            if (owner == null || !HasSceneTrack(sceneKey)) return false;
+            try
+            {
+                int ownerId = owner.GetInstanceID();
+                if (_sceneLeaseOwnerId == ownerId && string.Equals(_sceneLeaseKey, sceneKey, StringComparison.Ordinal)
+                    && string.Equals(_playingSceneKey, sceneKey, StringComparison.Ordinal)) return true;
+
+                _sceneLeaseKey = sceneKey;
+                _sceneLeaseOwnerId = ownerId;
+                _sceneLeaseOwner = owner;
+                _sceneLeaseSceneHandle = GetActiveSceneHandle();
+
+                if (_playingBossKey != null && IsPlaybackFromCurrentScene()) return true;
+                return TryResumeSceneBgm();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LogPrefix + "[WARNING] 场景 BGM 获取失败 " + sceneKey + ": " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 地图会话结束时释放租约。只有租约属于这个 owner 才生效；owner 可以已被销毁（按实例 id 比对）。
+        /// 场景曲正在放且还在同一场景时停曲；已切场景则官方早已 StopBGM，只清记账。
+        /// </summary>
+        internal static void ReleaseSceneBgm(UnityEngine.Object owner)
+        {
+            if (ReferenceEquals(owner, null)) return;
+            try
+            {
+                if (_sceneLeaseKey == null || _sceneLeaseOwnerId != owner.GetInstanceID()) return;
+                int current = GetActiveSceneHandle();
+                bool sameScene = _sceneLeaseSceneHandle == 0 || current == 0 || _sceneLeaseSceneHandle == current;
+                string playing = _playingSceneKey;
+                ClearSceneLease();
+                if (playing != null && sameScene && _playingBossKey == null)
+                {
+                    InvokeStopBgm();
+                    ModBehaviour.DevLog(LogPrefix + "停止场景 BGM: " + playing);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LogPrefix + "[WARNING] 场景 BGM 释放失败: " + e.Message);
+                ClearSceneLease();
+            }
+        }
+
+        internal static string PlayingSceneKey { get { return _playingSceneKey; } }
+
+        /// <summary>租约仍属于当前场景且 owner 还活着时（重新）起播场景曲。成功返回 true。</summary>
+        private static bool TryResumeSceneBgm()
+        {
+            if (!HasLiveSceneLease()) return false;
+            BossBgmSceneEntry entry;
+            if (_sceneTracks == null || !_sceneTracks.TryGetValue(_sceneLeaseKey, out entry)) return false;
+            string path = ResolveSoundPath(entry.file);
+            if (!FileExists(path) || !InvokePlayCustomBgm(path, entry.loop)) return false;
+            _playingSceneKey = _sceneLeaseKey;
+            ModBehaviour.DevLog(LogPrefix + "起播场景 BGM: " + _sceneLeaseKey);
+            return true;
+        }
+
+        private static bool HasLiveSceneLease()
+        {
+            if (_sceneLeaseKey == null || _sceneLeaseOwner == null) return false;
+            int current = GetActiveSceneHandle();
+            if (_sceneLeaseSceneHandle != 0 && current != 0 && current != _sceneLeaseSceneHandle)
+            {
+                // 跨局残留：会话没走到释放就切了场景，官方切场景时已经停过曲子
+                ClearSceneLease();
+                return false;
+            }
+            return true;
+        }
+
+        private static void ClearSceneLease()
+        {
+            _sceneLeaseKey = null;
+            _sceneLeaseOwnerId = 0;
+            _sceneLeaseOwner = null;
+            _sceneLeaseSceneHandle = 0;
+            _playingSceneKey = null;
+        }
+
+        #endregion
 
         /// <summary>
         /// 播一次性 stinger。走 ModBehaviour.PlaySoundEffect（内部是官方 PostCustomSFX），
@@ -629,7 +781,11 @@ namespace BossRush
         {
             try
             {
+                // 先撤场景租约：宿主销毁时 StopBossBgm 不能再把场景曲接回来
+                bool scenePlaying = _playingSceneKey != null;
+                ClearSceneLease();
                 StopBossBgm();
+                if (scenePlaying) InvokeStopBgm();
             }
             catch (Exception e)
             {
@@ -640,6 +796,8 @@ namespace BossRush
             _bossTracks = null;
             _stingerFiles = null;
             _jukebox = null;
+            _sceneTracks = null;
+            ClearSceneLease();
             _playingBossKey = null;
             _playingSceneHandle = 0;
             _ownerLeases.Clear();

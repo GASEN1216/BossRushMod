@@ -52,7 +52,12 @@ def main():
     cancellation = extract_methods(dialogue, (
         "internal static void InvalidatePlayback()", "private static CancellationToken PlaybackToken()",
     ))
-    lifecycle = extract_methods(clean_source((ROOT / "Campaign/CampaignRuntimeModule.cs").read_text(encoding="utf-8-sig")), (
+    lifecycle_source = clean_source((ROOT / "Campaign/CampaignRuntimeModule.cs").read_text(encoding="utf-8-sig"))
+    guide_poll_fields = re.findall(r'^        private float _guidePollRemaining(?:\s*=[^;]+)?;', lifecycle_source, re.M)
+    if len(guide_poll_fields) != 1:
+        raise RuntimeError("Expected the production campaign guide polling field exactly once")
+    fields += "\n" + guide_poll_fields[0]
+    lifecycle = extract_methods(lifecycle_source, (
         "public override void OnSceneLoaded(SceneRuntimeContext context)",
         "public override void OnDestroy()",
     ))

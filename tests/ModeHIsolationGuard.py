@@ -3,13 +3,14 @@
 ModeHIsolationGuard — Mode H 隔离与玩家资产白名单守卫（设计提案 §17.1、§24.3、§26.1）。
 
 不变式：
-- 玩家真实资产的引用点严格等于 §17.1 白名单的三条路径，且每条只允许其表内对象：
+- 玩家真实资产的引用点严格限定在以下白名单职责，且每条只允许其表内对象：
   1) ModeHEntry.TryRefundPrepaidTicket()：只允许 Inventory + 一个船票 typeId，禁止 PlayerStorage；
   2) ModeHLoadoutKitApplicator：只允许 owner 标记且 inactive 的临时选手实例 slots/inventory；
   3) ModeHWarehouseStakeJournal + ModeHInventoryPersistenceBridge：真实押品/奖励根物品；
   4) ModeHItemBetStake（2026-09-24 owner 拍板押背包物品）：只读主角色背包列候选，物品押上不离开背包，
      只在押输时由 ForfeitLocked 收走仍在玩家身上的那几件；押赢的奖品只经 ModeHRewardItemPool 实例化、
-     只在 DeliverPrizes 里用 SendToPlayer(prize, true, false) 发一次（不送仓库），不碰仓库；
+     只在 DeliverPrizes 里用 SendToPlayerCharacterInventory(prize, true) 不合并地交付；
+     持久身份、收走/交付的主角物品快照与账本同存，满包留欠账，不碰仓库；
 - 白名单以外的任何 Mode H 文件都不得出现 Inventory / PlayerStorage / ItemTreeData；
 - Mode H 不写旧模式状态（波次计数、Mode E/F/G/Zombie profile/loot/mutator、全局玩家生命）；
 - 退款路径必须先 ClearPendingEntryFlowState 再发票，失败时 DestroyTree；
@@ -56,11 +57,26 @@ def check_item_bet_stake(code, errors):
     ]:
         if forbidden in code:
             errors.append("[ItemBet] 押物品{}（发现 {}）".format(why, forbidden))
-    if code.count("SendToPlayer(") != 1:
+    if code.count("SendToPlayerCharacterInventory(") != 1:
         errors.append("[ItemBet] 发奖品只能有一处（DeliverPrizes）")
-    deliver = re.search(r"internal static void DeliverPrizes\(List<Item> prizes\)[\s\S]*?\n        \}", code)
-    if not deliver or "ItemUtilities.SendToPlayer(prize, true, false);" not in deliver.group(0):
-        errors.append("[ItemBet] 奖品必须在 DeliverPrizes 里经 SendToPlayer(prize, true, false) 发（进背包、满了落地、不送仓库）")
+    deliver = re.search(r"internal static List<ModeHItemBetEntry> DeliverPrizes\(List<ModeHItemBetEntry> prizes\)[\s\S]*?\n        \}", code)
+    if not deliver:
+        errors.append("[ItemBet] 缺少返回剩余交付义务的 DeliverPrizes")
+    else:
+        for token in ("ItemUtilities.SendToPlayerCharacterInventory(prize, true);", "IsOnPlayer(prize, character)",
+                      "remaining.Add(entry);", "ModeHRewardItemPool.DestroyUngranted(prize);", "return remaining;",
+                      "FindIdentity(pool, entry, out ambiguous)"):
+            if token not in deliver.group(0): errors.append("[ItemBet] 缺少交付核对/欠账/清理：" + token)
+    rebind = re.search(r"internal static void RebindFromLedger\(List<ModeHItemBetEntry> entries\)[\s\S]*?\n        \}", code)
+    if not rebind or "FindIdentity(pool, entry, out ambiguous)" not in rebind.group(0):
+        errors.append("[ItemBet] 读档必须用持久身份认领，禁止按同型号猜测")
+    identity = re.search(r"private static Item FindIdentity\([\s\S]*?\n        \}", code)
+    if not identity or any(token not in identity.group(0) for token in (
+            "if (string.IsNullOrEmpty(entry.Identity)) return null;", "item.GetString(IdentityKey, string.Empty)",
+            "if (match != null) { ambiguous = true; return null; }")):
+        errors.append("[ItemBet] 缺失/重复身份必须拒绝认领")
+    if 'PlayerCharacterItem().Save("MainCharacterItemData")' not in code:
+        errors.append("[ItemBet] 身份与实物变更必须采集主角物品树")
     if "ModeHRewardItemPool.TryInstantiate(" not in code or "BossRushQualityItemPool.GetCandidates(" not in code:
         errors.append("[ItemBet] 奖品必须从共享品质候选池挑、经共享实例化门禁生成")
     if code.count("DestroyTree(") != 1 or code.count(".Detach()") != 1:

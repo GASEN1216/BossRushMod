@@ -28,9 +28,9 @@ internal static class SkyIslandMosquitoRegression
 
     private static void Night(Action<bool, string> check)
     {
-        check(SkyIslandNight.IsNight(19) && SkyIslandNight.IsNight(23.5) && SkyIslandNight.IsNight(4.99) && SkyIslandNight.IsNight(-1),
-            "gnat night covers 19:00 to 05:00 (official nightStart) and wraps across midnight");
-        check(!SkyIslandNight.IsNight(5) && !SkyIslandNight.IsNight(12) && !SkyIslandNight.IsNight(18.99), "daytime hours are not night");
+        check(SkyIslandNight.IsNight(22) && SkyIslandNight.IsNight(23.5) && SkyIslandNight.IsNight(5.99) && SkyIslandNight.IsNight(-1),
+            "gnat night covers 22:00 to 06:00 (official runtime nightStart) and wraps across midnight");
+        check(!SkyIslandNight.IsNight(6) && !SkyIslandNight.IsNight(12) && !SkyIslandNight.IsNight(21.99), "daytime hours are not night");
         check(!SkyIslandNight.IsNight(double.NaN) && !SkyIslandNight.IsNight(double.PositiveInfinity), "non-finite hours never count as night");
         // 官方 GameClock 没有实例时 TimeOfDay 恒为 00:00：照读会把整趟判成夜里。
         check(double.IsNaN(SkyIslandNight.EffectiveHours(false, 0)) && !SkyIslandNight.IsNight(SkyIslandNight.EffectiveHours(false, 0)),
@@ -436,10 +436,10 @@ internal static class SkyIslandMosquitoRegression
     {
         // ---- 距天亮还有多少现实秒 ----
         const double scale = SkyIslandNight.DefaultClockScale; // 官方默认 60：一现实秒走 60 游戏秒
-        check(SkyIslandNight.RealSecondsUntilDawn(21, scale) == 8 * 3600.0 / scale, "a full night is eight game hours of real seconds");
-        check(Math.Abs(SkyIslandNight.RealSecondsUntilDawn(23, scale) - 6 * 60.0) < 1e-6, "23:00 leaves six game hours to dawn");
-        check(Math.Abs(SkyIslandNight.RealSecondsUntilDawn(1, scale) - 4 * 60.0) < 1e-6, "past midnight counts straight to 05:00");
-        check(SkyIslandNight.RealSecondsUntilDawn(12, scale) == 0.0 && SkyIslandNight.RealSecondsUntilDawn(5, scale) == 0.0,
+        check(SkyIslandNight.RealSecondsUntilDawn(22, scale) == 8 * 3600.0 / scale, "a full night is eight game hours of real seconds");
+        check(Math.Abs(SkyIslandNight.RealSecondsUntilDawn(23, scale) - 7 * 60.0) < 1e-6, "23:00 leaves seven game hours to dawn");
+        check(Math.Abs(SkyIslandNight.RealSecondsUntilDawn(1, scale) - 5 * 60.0) < 1e-6, "past midnight counts straight to 06:00");
+        check(SkyIslandNight.RealSecondsUntilDawn(12, scale) == 0.0 && SkyIslandNight.RealSecondsUntilDawn(6, scale) == 0.0,
             "daytime has no night left");
         check(SkyIslandNight.RealSecondsUntilDawn(double.NaN, scale) == 0.0, "a missing clock leaves no night");
         check(SkyIslandNight.RealSecondsUntilDawn(23, 0) == 0.0 && SkyIslandNight.RealSecondsUntilDawn(23, double.NaN) == 0.0,
@@ -464,7 +464,7 @@ internal static class SkyIslandMosquitoRegression
         check(SkyIslandMosquitoRules.CullableBeforeDawn(double.PositiveInfinity, 0) == 0,
             "an infinite night length degrades instead of overflowing");
         // 一整夜的保守下界要够接第一单，否则这一单永远派不出来。
-        int fullNight = SkyIslandMosquitoRules.CullableBeforeDawn(SkyIslandNight.RealSecondsUntilDawn(21, scale), 0);
+        int fullNight = SkyIslandMosquitoRules.CullableBeforeDawn(SkyIslandNight.RealSecondsUntilDawn(22, scale), 0);
         check(fullNight >= SkyIslandBounty.BaseGnatTarget + SkyIslandBounty.MaxRounds,
             "a full night conservatively covers every round of the cull contract: " + fullNight);
 

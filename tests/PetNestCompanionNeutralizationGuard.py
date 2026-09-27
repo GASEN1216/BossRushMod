@@ -54,8 +54,8 @@ def main():
     # 1b. 伤害归一必须写在 clone preset 上（CreateCharacterAsync **之前**）
     # 官方只在 CreateCharacterAsync 内部消费这三个字段一次，创建返回后再写没有任何读者
     for pattern, desc in [
-        (r"clone\.damageMultiplier = PetNestTuning\.CompanionDpsShareTarget;", "远程伤害倍率"),
-        (r"clone\.meleeDamageMultiplier = PetNestTuning\.CompanionDpsShareTarget;", "近战伤害倍率"),
+        (r"clone\.damageMultiplier = PetNestGrowth\.BaseDamageMultiplier\(sourceGunDamage\);", "远程伤害倍率"),
+        (r"clone\.meleeDamageMultiplier = PetNestGrowth\.BaseDamageMultiplier\(sourceMeleeDamage\);", "近战伤害倍率"),
         (r"clone\.gunCritRateGain = 0f;", "暴击加成清零"),
     ]:
         if not re.search(pattern, code):
@@ -64,6 +64,18 @@ def main():
     # "Damage" 是**武器 Item** 的 stat，在角色 Item 上取不到
     if re.search(r'GetStat\("Damage"\)', code):
         errors.append("[伤害归一] \"Damage\" 是武器 Item 的 stat，角色 Item 上取不到")
+
+    # 异步换装之前已经 inactive：在途角色不能在旧场景先跑 AI。
+    isolate = code.find("character.gameObject.SetActive(false);")
+    outfit = code.find("await EquipCustomBossGearAsync(character, lineageKey);")
+    if isolate < 0 or outfit < 0 or isolate >= outfit:
+        errors.append("[隔离] 自定义装备 await 之前必须先 SetActive(false)")
+    if "DuckNpcOutfitter.StripEquipment(character)" in code:
+        errors.append("[换装] 禁止先全脱；应通过 Slot.Plug 替换已就绪的新装备")
+    for required in ("prefab.TypeID != typeId", "item.TypeID != typeId",
+                     "equipped = slot.Content == item;", "PetNestGrowth.ModelScale(handle.ModelScale,"):
+        if required not in code:
+            errors.append("[装备/成长] 缺少 " + required)
 
     # 2. 中性化必须写在独立入口里，便于复用与断言
     if not re.search(r"internal static void NeutralizeClonePreset\(CharacterRandomPreset clone\)", code):

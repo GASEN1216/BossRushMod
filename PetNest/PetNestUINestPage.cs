@@ -187,6 +187,12 @@ namespace BossRush
 
             string appearance = DescribeAppearance(pet);
             if (appearance != null) detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("外观", "Look"), appearance));
+            int growth = PetNestGrowth.GrowthLevels(pet.level);
+            detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("成长", "Growth"),
+                L10n.T("生命 +", "Health +") + (growth * PetNestTuning.PetLevelMaxHealthBonusPerLevel * 100f).ToString("0")
+                + "% / " + L10n.T("伤害 +", "Damage +") + (growth * PetNestTuning.PetLevelDamageBonusPerLevel * 100f).ToString("0")
+                + "% / " + L10n.T("体型 ", "Size ") + ((1f + growth * PetNestTuning.PetModelScaleGrowthPerLevel) * 100f).ToString("0")
+                + L10n.T("% 初生大小", "% of hatch size")));
             detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("性格", "Temperament"), DescribePersonality(pet)));
             detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("出身", "Endowments"), DescribeTalents(pet)));
             detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("战痕", "Scars"), DescribeScars(pet)));

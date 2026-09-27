@@ -15,6 +15,13 @@ namespace BossRush
 
             while (elapsed < maxWait)
             {
+                // LevelInited 早于官方最终落点/出场动画；加载期间不抢写位置，也不消耗就绪超时。
+                var entryCore = MultiSceneCore.Instance;
+                if (SceneLoader.IsSceneLoading || (entryCore != null && entryCore.IsLoading))
+                {
+                    yield return null;
+                    continue;
+                }
                 bool mainExists = ReadMainExistsWithWarning("TeleportPlayerToCustomPosition");
                 bool levelInited = ReadLevelInitedWithWarning("TeleportPlayerToCustomPosition");
 
@@ -33,7 +40,7 @@ namespace BossRush
         internal Vector3 ApplyCustomTeleportPosition(Vector3 targetPosition, CharacterMainControl main, bool isModeEEntry)
         {
             Vector3 finalPosition = targetPosition;
-            if (isModeEEntry)
+            if (isModeEEntry || BossRushInitialSpawn.HasArrived(targetPosition))
             {
                 return finalPosition;
             }

@@ -812,7 +812,7 @@ namespace BossRush
         /// 2. 每个属性独立判定是否修改（rand < p + 保底加成）
         /// 3. 保证至少有一个属性被修改
         /// 4. 触发后用 u^expo 抽幅度
-        /// 5. 正负号由 tendencyChance 倾向绝对控制（0~1）
+        /// 5. 收益方向由 tendencyChance 控制（0~1），再按属性极性换算数值正负号
         /// 6. 属性范围：预制体值≤1时用0~1，>1时用预制体值的30%~200%（针对非强制值）
         /// 7. 整数属性保持整数
         /// 8. 保底机制：连续失败后提升成功率
@@ -969,9 +969,9 @@ namespace BossRush
                     // Step 2: 抽幅度（使用原始概率baseP，保底不影响幅度）
                     float mag01 = RollMagnitude(baseP, random);
 
-                    // Step 3: 决定正负号（由滑动条控制绝对正负倾向）
+                    // Step 3: 先抽收益方向，再按官方属性极性转换成数值方向（后坐力越低越好）
                     float originalValue = prop.Value;
-                    int sign = RollSign(tendencyChance);
+                    int sign = RollSign(tendencyChance) * GetBeneficialValueDirection(prop.Key);
 
                     // Step 4: 计算delta和新值
                     float delta, newValue;

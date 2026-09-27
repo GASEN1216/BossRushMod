@@ -5,18 +5,22 @@ Guard: 静态缓存生命周期检查
 
 白名单中的类以「已登记待办」形式暂不合规但输出警告。
 
-扫描排除目录：Build/、.codex_tmp/、tests/、.git/、.kiro/
+只扫描 compile_official.bat 的正式源码清单；历史快照不构成清理证据。
 """
 
 from pathlib import Path
 import re
 import sys
 
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+from compile_list import read_compile_sources
+from cs_cleanup_reachability import clean_structure_source, reachable_reset_methods
+
 # ============================================================================
 # 配置
 # ============================================================================
 
-EXCLUDE_DIRS = {"Build", ".codex_tmp", "tests", ".git", ".kiro"}
 ALLOWLIST_FILE = Path(__file__).parent / "static_cache_allowlist.txt"
 
 # ============================================================================
@@ -48,12 +52,6 @@ PATTERN_CLASS_DECL = re.compile(
     r"(?:class|struct)\s+(\w+)"
 )
 
-# Xxx.ResetYyyStaticCaches()/ClearStaticCache()/ForceCleanup() 调用
-PATTERN_RESET_CALL = re.compile(
-    r"(\w+)\s*\.\s*((?:Reset\w*StaticCaches)|(?:Clear\w*StaticCaches?)|ForceCleanup)\s*\("
-)
-
-
 # ============================================================================
 # 工具函数
 # ============================================================================
@@ -70,16 +68,13 @@ def load_allowlist() -> set:
     return names
 
 
-def should_exclude(path: Path, repo_root: Path) -> bool:
-    """判断文件是否在排除目录中"""
-    try:
-        rel = path.relative_to(repo_root)
-    except ValueError:
-        return True
-    for part in rel.parts:
-        if part in EXCLUDE_DIRS:
-            return True
-    return False
+def load_production_sources(repo_root: Path) -> dict:
+    """Use the shared manifest parser and fail closed on missing source inputs."""
+    sources = read_compile_sources(repo_root / "compile_official.bat")
+    if not sources:
+        raise ValueError("official compile source list is empty")
+    return {repo_root / source: (repo_root / source).read_text(encoding="utf-8-sig")
+            for source in sources}
 
 
 def is_method_declaration(stripped: str) -> bool:
@@ -124,60 +119,8 @@ def is_cache_line(line: str) -> bool:
 
 
 def find_reset_calls_on_ondestroy_path(all_files: dict) -> set:
-    """
-    找到所有在 OnDestroy 路径上被调用 ResetStaticCaches 的类名。
-
-    策略：全局搜索所有 Xxx.ResetYyyStaticCaches() 调用，
-    检查调用所在的方法名是否匹配 OnDestroy 路径约定。
-    """
-    result = set()
-
-    # OnDestroy 路径方法名模式
-    ONDESTROY_METHOD_PATTERN = re.compile(
-        r"^(?:OnDestroy|OnDestroy_\w+|Cleanup\w*OnDestroy\w*|"
-        r"Reset\w*StaticCaches|CleanupAchievementRuntime|CleanupIntegrationRuntime\w*|"
-        r"CleanupAlwaysOnRuntime\w*|CleanupModeRuntime\w*|"
-        r"CleanupGameplayRuntime\w*)$"
-    )
-
-    # 方法声明模式（必须有访问修饰符或 override/static 等关键字）
-    METHOD_DECL_PATTERN = re.compile(
-        r"(?:public|private|internal|protected|override|static|void)\s+"
-        r"(?:static\s+|override\s+|virtual\s+|sealed\s+|async\s+)*"
-        r"(?:void\s+|[\w<>\[\],]+\s+)?(\w+)\s*\("
-    )
-
-    for filepath, text in all_files.items():
-        # 找到所有 ResetStaticCaches 调用
-        for call_match in PATTERN_RESET_CALL.finditer(text):
-            called_class = call_match.group(1)
-            call_pos = call_match.start()
-
-            # 确定调用所在的方法：向前搜索最近的方法声明。
-            #
-            # 窗口 2026-09-03 由 5000 放宽到 12000：卸载漏斗
-            # OnDestroy_Integration 本身就是一个很长的方法（它的职责就是把几十个
-            # 子系统的清理串起来），末尾的调用离方法声明已经 5169 字符。
-            # 旧窗口下，只要往漏斗中段再插一行清理，末尾那些调用就会集体
-            # 「找不到所属方法」而被判成未在 OnDestroy 路径上——纯粹是启发式的悬崖，
-            # 与运行时行为无关（调用一直都在漏斗里）。
-            # 放宽的是**归属识别的射程**，不是不变式本身：
-            # 断言仍然是「必须在某个 OnDestroy 路径方法内被调用」。
-            search_start = max(0, call_pos - 12000)
-            preceding = text[search_start:call_pos]
-
-            method_sigs = list(METHOD_DECL_PATTERN.finditer(preceding))
-
-            if not method_sigs:
-                continue
-
-            containing_method = method_sigs[-1].group(1)
-
-            # 检查方法名是否在 OnDestroy 路径上
-            if ONDESTROY_METHOD_PATTERN.match(containing_method):
-                result.add(called_class)
-
-    return result
+    """从真实 OnDestroy 出发解析调用边，不把方法名或孤立 reset 当作证据。"""
+    return {owner for owner, method in reachable_reset_methods(all_files)}
 
 
 def structural_braces(line: str, state: dict) -> list:
@@ -296,6 +239,7 @@ def analyze_file(filepath: Path, text: str) -> list:
     使用类声明后的大括号范围来分段，避免嵌套 struct/class 被误判为
     持有外层类的静态缓存字段。
     """
+    text = clean_structure_source(text)
     results = []
     lines = text.split("\n")
 
@@ -345,19 +289,13 @@ def main() -> int:
     repo_root = Path(__file__).parent.parent
     allowlist = load_allowlist()
 
-    # 收集所有 .cs 文件
-    all_files = {}
-    for cs_file in repo_root.rglob("*.cs"):
-        if should_exclude(cs_file, repo_root):
-            continue
-        try:
-            text = cs_file.read_text(encoding="utf-8")
-            all_files[cs_file] = text
-        except Exception:
-            continue
-
-    # 构建 OnDestroy 调用链中被调用 ResetStaticCaches 的类名集合
-    ondestroy_called = find_reset_calls_on_ondestroy_path(all_files)
+    try:
+        all_files = load_production_sources(repo_root)
+        ondestroy_called = find_reset_calls_on_ondestroy_path(all_files)
+    except (OSError, UnicodeError, ValueError) as error:
+        print("StaticCacheLifecycleGuard: FAIL: " + str(error))
+        return 1
+    print(f"  正式编译源码: {len(all_files)}")
 
     # 检查每个文件中的类；partial class 需要按 logical_name 聚合，否则拆分后
     # 含缓存字段的分部文件会被误判为缺少 ResetStaticCaches。

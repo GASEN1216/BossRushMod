@@ -60,36 +60,37 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 - Go to **Standard BossRush** (the quest calls it "Standard Arena")
 - Clear one run
 - Take zero damage through wave 2. If your filtered run has fewer than two waves, finish the whole run without damage.
-- Reward **20,000**. Handing in opens the base's **garden site** for you.
+- Reward **20,000** + BossRush Ticket x2. Handing in opens the base's **garden site** for you.
 
 #### Chapter 2 · The Fighter With a Garden
 - Base: build the garden (pay at the site to start construction)
+- Base: give Jeff 2 backyard harvests (Dragonbreath Fruit, Emberheart Chili or Umbral Mushroom, any mix). Carry them in your backpack; they are taken when you hand in. Crops need watering and ripen in about 20 minutes.
 - Go to **From Scratch**
 - Enter with only a ticket, including an empty pet bag, and reach wave 5. Equip anything you find during the run.
 - Kill 5 with a melee weapon. While this quest is active, the starter kit includes a melee weapon.
-- Reward **35,000**. Handing in unlocks the **display bonus**.
+- Reward **35,000** + Dragon Seed, Ember Seed and Phantom Spore x2 each. Handing in unlocks the **display bonus**.
 
 #### Chapter 3 · A Proper Front
 - Go to **Faction War**
 - Defeat 8 hostile bosses. Allies and neutral characters do not count; hand in as soon as the tally is met.
 - Base: put 1 Boss trophy on an official weapon display rack or a dummy
-- Reward **50,000**. Handing in unlocks the **jukebox tracks**.
+- Reward **50,000** + Affix Forge Stone x2. Handing in unlocks the **jukebox tracks**.
 
 #### Chapter 4 · Collect and Leave
 - Go to **Blood Hunt**
 - Kill 3 targets carrying a bounty mark
 - Extract successfully once
-- Reward **75,000**
+- Reward **75,000** + Cold Quench Fluid x2 + Bloodhunt Transponder x1
 
 #### Chapter 5 · The Match Nobody Takes
 - Go to **Zombie Mode**
 - Hold the tide to wave 5
 - Extract successfully once (the extraction opens once the wave 5 Boss is down)
-- Reward **100,000**
+- Reward **100,000** + Zombie Tide Invitation x1 + Portable Safe-Zone Device x1
 
 #### Chapter 6 · The One Holding the Ring
 - Beat the **Shadow of the Champion** in the arena
-- Reward **200,000**
+- Reward **200,000** + Relic Egg x2 + Affix Forge Stone x3
 
 ### How the final showdown works
 
@@ -105,11 +106,11 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 
 ### What you walk away with
 
-- **Cash**: **480,000** across all six chapters.
+- **Cash**: **480,000** across all six chapters. Each chapter also pays an item reward (see above), delivered to your backpack first, then storage.
 - **Clues**: one per chapter, written into the game's own **notes**. They are the six lines of the
   ledger. Unlocked entries stay readable forever.
 - **Arena Backyard**, one per chapter for the first three:
-  - Chapter 1 → **the garden**: the base's garden site opens; pay Shovel ×1 and Poop ×9 to build it. You get a starter pack of seeds, the base vendor sells more and the three mod Bosses drop them; what you grow is your raid meal
+  - Chapter 1 → **the garden**: the base's garden site opens; pay Shovel ×1 and Poop ×9 to build it. You get a starter pack of seeds, the base vendor sells more and the three mod Bosses drop them; eat the harvest during combat for 30 seconds in its matching Boss form
   - Chapter 2 → **the display bonus**: put Boss trophies on the official weapon display rack or on a dummy, each one raises your max health
   - Chapter 3 → **jukebox battle tracks**: the base jukebox picks up the mod's own music
   - Chapters 4 through 6 unlock no backyard facility; they pay in cash, clues and ending
@@ -134,3 +135,34 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
   down; your progress is safe either way. Quests now come from Jeff, and old progress carries over.
 - **What happens across save slots?** Campaign progress follows the **save slot**, so each save
   runs its own campaign.
+
+### Jeff's new-content introductions
+
+Alongside the six campaign chapters, Jeff offers fourteen one-time introductions. They come **one at a time**: Jeff only hands you the next one after you turn in the current one. The garden and display introductions wait until campaign chapters 1 and 2 are turned in (which unlock the garden and the display bonus), and the Sky Island gear introduction waits until Coordinates Above the Clouds is turned in and the route is open. None of them holds up the rest. Accept them at base, follow the quest log, then return and hand them in yourself. Acceptance, trial completion and hand-in survive reloading. These introductions do not change chapter order.
+
+Every hand-in pays a reward, and the item is usually what the next introduction needs, so you can go straight on without buying it first. Reward items go to your backpack first, then storage. The fourteen together pay **74,000** cash.
+
+| Introduction | Reward |
+| --- | --- |
+| Bring Your Own Gear (Echo of Fate) | 3,000 + BossRush Ticket x2 |
+| Your Turn in the Stands (Duck King Cup) | 3,000 + Relic Egg x1 |
+| Room for a Cub (Pet Nest) | 3,000 + BossRush Ticket x1 |
+| Expect a Surprise (random events) | 5,000 + BossRush Ticket x1 |
+| Something from the Clouds (Sky Island gear, hand in Brass Scrap x5) | 10,000 |
+| Start with Empty Hands (From Scratch) | 5,000 + Random Flag x1 |
+| Choose Your Side (Faction War) | 5,000 + Bloodhunt Transponder x1 + BossRush Ticket x1 |
+| Borrowed Time (Blood Hunt) | 3,000 + Zombie Tide Invitation x1 |
+| Hear the Horde (Zombie Mode) | 5,000 + Affix Forge Stone x2 |
+| A Place for Seeds (garden) | 3,000 + Dragon Seed, Ember Seed and Phantom Spore x1 each |
+| Keep a Trophy (display) | 6,000 + Dragonbreath Fruit, Emberheart Chili and Umbral Mushroom x1 each |
+| Give Gear Some Character (affix forging) | 5,000 + Cold Quench Fluid x2 |
+| Give Old Gear a Chance (reforge) | 8,000 |
+| Read the Daily Paper (daily report) | 10,000 + Relic Egg x1 |
+
+- **Modes**: Bare Hands, Territory, Blood Hunt, Echo of Fate, Black Market Duck King Cup and Zombie mode. Each quest explains the entry items and preparation; starting a real run is enough, with no first-try victory required.
+- **Pet Nest and random events**: hatch or deploy a cub, or experience a random event in a supported mode.
+- **Sky Island gear**: obtain exclusive gear from an island boss and bring it to base in your backpack or wear it. Visiting the island alone does not count. You also hand Jeff 5 Brass Scrap (mined from the island's brass veins). The route still follows Coordinates Above the Clouds.
+- **Base facilities**: finish the garden, display a Boss trophy, and open the daily report to sign in once.
+- **Equipment growth**: return with gear carrying a real affix or a reforge record. The quests point you to the goblin.
+
+[tip] A finished trial stays in your active quests until you return to Jeff at base and press Complete. Existing cubs, built facilities and qualifying gear count; you do not have to start them over.

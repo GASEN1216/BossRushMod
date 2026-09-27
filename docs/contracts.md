@@ -65,7 +65,7 @@ Mode G 冻结 key：
 
 鸭王征程 / 竞技场后山 冻结 key（M0 起）：
 
-- `BossRush_Campaign_Progress_v1` — 章节进度、契约状态、线索解锁、已授予 token
+- `BossRush_Campaign_Progress_v1` — 章节进度、契约状态、线索解锁、已授予 token；2026-09-25 `SCHEMA+` 追加可选 `acceptedGuides` / `experiencedGuides` / `completedGuides` 一次性新内容引导 ID 数组，分别表示接取 / 已体验 / 已向 Jeff 交付；缺字段按空数组读取，`schemaVersion` 保持 1 以兼容旧档。
 - `BossRush_BackMountain_Showcase_v1`（2026-09-22 `SCHEMA+`：新增可选 `sourceVersion`，缺失 = 1 老登记簿、2 = 官方枪械展示架 / 假人实摆；`schemaVersion` 保持 1，升版会让老档被 `EnsureLoaded` 永久写保护；语义改为「官方陈列柜里现在摆着的 Mod 战利品」，老登记簿只在基地找到官方柜时被覆盖） — 展示柜收藏
 - `BossRush_BackMountain_RaidMeal_v1` — 出击餐待生效登记
 - `BossRush_BackMountain_GardenRatchet_v1` — 槽位级 `bool`，由
@@ -129,8 +129,10 @@ Dev 专用测试档的 `BossRush_Validation_AutotestSnapshot_v1` 保持 version=
 `EconomyManager.Instance` 已随场景销毁（`Add` 返回 false）、`ItemAssetsCollection.InstantiateSync`
 可能因资源未就绪返回 null，只靠当前对象重试会随对象一起消失。
 纪律：写入后回读核对；结账**先到账再销账**（销账失败只会重发，绝不吞玩家的钱物）；
-邀请函逐张推进，中途资源掉线时剩余张数留在账上。结账点是官方
-`EconomyManager.OnEconomyManagerLoaded`（命名方法、幂等订阅、随模块销毁退订）与每次入场扣款之前。
+邀请函逐张推进，中途资源或接收方掉线时剩余张数留在账上。实例化成功不等于送达：先确认角色或完整仓库就绪，
+再核对角色物品树、仓库、有效拾取代理或官方 Buffer 内同实例 ID 的树回执。投递前失败保留欠账，
+投递后通知异常已有回执则不重发。结账点是官方 `EconomyManager.OnEconomyManagerLoaded`、
+`LevelManager.OnAfterLevelInitialized`（命名方法、幂等订阅、随模块销毁成对退订）与每次入场扣款之前。
 由 `tests/ZombieModeEntryDebtGuard.py` 与执行回归 `tests/fixtures/ZombieModeEntryDebt` 守卫。
 
 Breaking:
@@ -294,7 +296,7 @@ Mode H 的正式入口、五席试棚、三幕六战、虚拟整备与下注、�
 三个 Mode H key 均不存在时，轻量扫描同步得到 ready 且 unblocked。
 `OnSetFile` 后按新 `slotGeneration` 重新读取风险头，I/O 异常时最终模式入口 fail-closed 并提供重试。
 
-**存档键（SCHEMA+）。** 三个 typed key 全部已实现：
+**赛季与旧仓库押品存档键（SCHEMA+）。** 三个 typed key 全部已实现：
 
 - `BossRush_ModeH_Season_v1`
 - `BossRush_ModeH_HallOfFame_v1`
@@ -309,6 +311,29 @@ envelope 带 `schemaVersion`、`gameBuildSignature`、`modBuildSignature`、
 按 ID 幂等插入、读回后再标记完成，上限 32 条。
 删档清空对应 cache、pending barrier、recovery shell、owner/token、presentation 引用与 slot generation。
 
+**选人页刷新次数（2026-09-25，SCHEMA+）。** 独立冻结 key `BossRush_ModeHDraftRefresh_v1`，
+`Save<string>` 存 `schemaVersion|已用次数|runId`（`ModeH/ModeHDraftRefreshLedger.cs`，复用 `BossRushSlotJsonStore`）。
+只认当前赛季 runId；旧档无此 key 读作 0 次；更高版本或损坏进写屏障、只读不写。赛季 DTO 不动。
+
+**押钱 / 押背包物品账本（2026-09-25，COMPAT / SCHEMA+）。** 独立冻结 key
+`BossRush_ModeHCashBet_v1`，用 `Save<string>` 保存 JSON，复用 `BossRushSlotJsonStore` 与
+`BossRushSaveCoordinatorEngine`。当前 `schemaVersion=3`，兼容 v1/v2；新增可选 `prizeItems` 保存完整奖品图标清单，旧档缺省为空。更高版本与损坏数据仍进写屏障。
+v1 新字段缺省为未准备结算、无待交付项、缺失估值 0，下一次正常写入才升级；不迁移或删除旧 key。
+
+- 押品编码追加第六列身份，旧五列可读；每次锁盘给实际押品的 Variables 写
+  `BossRush_ModeHBetIdentity`，只按 TypeID + 唯一身份恢复。身份缺失或重复时不认领同型号替代品，
+  沿用原有缺失估值补偿。主角物品树经官方 `Save("MainCharacterItemData")` 采集，随账本同批保存；不依赖基地仓库。
+- 追加 `itemSettlement`（0 未准备 / 1 赢 / 2 输）、`pendingItems`、`missingValue`。
+  先接受固定输赢与奖品计划，再保存实物与剩余义务，全部实物完成后才结清现金与统计。
+  失败保持 Reserved；恢复、放弃或开新季都不能退款或覆盖已经准备的实物结算。
+- 奖品仅通过官方 `SendToPlayerCharacterInventory(prize, true)` 不合并地入包；满包时保留欠账，
+  不把无法随主角快照保存的落地物当成持久交付。身份回执防止已入包奖品重发；缺失估值与收走后的树同存，
+  重启不得再次扣同一笔。宿主驱动共享保存重试，待交付最多每秒尝试一次，无待交付时只做常量时间检查。
+- 金额变更仍与 `EconomyData` 快照同批保存；零金额计划不能清掉之前尚未完成的现金快照义务。
+  实物或钱包变更期间关闭采集门，避免通知重入保存半完成的账本。
+
+结构守卫 `ModeHCashBetGuard` / `ModeHIsolationGuard`，故障恢复执行回归 `SaveFailureRecovery`。
+
 **战痕选择凭据（2026-09-06，COMPAT）。** 复用现有 `appliedEventTokenIds` 保存
 `scar_offered|<operationId>|<scarId>` 与 `scar_resolved|<operationId>|<scarId>`，不新增字段、
 key 或 schemaVersion，不改变 canonical digest 算法。归属由持久 report / operation 恢复；
@@ -320,11 +345,13 @@ key 或 schemaVersion，不改变 canonical digest 算法。归属由持久 repo
 才能还原虚拟预约、清理旧锁盘并重新选择；失败保留快照与恢复入口。零件选择同样检查历史
 journal；已提交结果不得转成退款重打，已退款的旧场不得标记为新场押品。
 
-**玩家资产边界。** 只有三条白名单路径可以触碰玩家真实资产：
+**玩家资产边界。** 白名单按 `ModeHIsolationGuard` 的实际职责限制：
 `ModeHEntry.TryRefundPrepaidTicket()`（唯一退款实现点）、
 `ModeHLoadoutKitApplicator`（只访问 owner 标记且 inactive 的临时选手实例）、
-以及 `ModeHWarehouseStakeJournal`（唯一真实仓库写入者，经
-`ModeHInventoryPersistenceBridge` 落地）。其余 Mode H 文件不得出现
+`ModeHWarehouseStakeJournal`（唯一真实仓库写入者，经 `ModeHInventoryPersistenceBridge` 落地），
+以及 `ModeHItemBetStake`（背包押品身份、收走、奖品交付与主角物品快照，不碰仓库）。
+旧仓库物品树的规范化与恢复仍归 `ModeHItemTreeNormalizer` / `ModeHItemTreeRestoration`。
+其余 Mode H 文件不得出现
 `Inventory`、`PlayerStorage` 或玩家 `ItemTreeData` 任一符号。
 `ModeHSeasonRewardService` 与 `ModeHRewardTransaction` 都在白名单之外：
 前者只发虚拟套装/名声，后者只生成不可变结果计划并经 journal 提交。
@@ -537,9 +564,11 @@ mod 程序集改名/重构就会让老档读不回来。
 单 key 整存门面的状态机同样共享：`Common/Lifecycle/BossRushSlotJsonStore.cs`（征程 / 图鉴 / 日报三者共用）。
 
 所有状态变化必须先修改 `DailyReportData.Clone()` 候选副本，只有 `Store` 接受后才替换
-权威内存状态并向 UI 返回成功；签到、跨日、里程碑、悬赏种子、未读提示和补发路径都遵守
-同一规则。跨日悬赏先把完成结果作为“待发债务”随 rollover 落档，再触碰官方经济，最后以
-第二次候选提交标记领取；写盘失败时 UI 不得显示成功。
+权威内存状态；签到、跨日、里程碑、悬赏种子、未读提示和补发路径都遵守同一规则。
+跨日计时以 **Store 接受**为推进边界：接受后立即消费对应的 `_carrySeconds`，再请求物理保存；
+写盘失败由协调器重试同一份状态，不能让已消费的一天再次推进。Store 拒绝则保留计时并退避重试。
+跨日悬赏先把完成结果作为“待发债务”随 rollover 提交，再触碰官方经济，最后以第二次候选提交标记领取。
+面向玩家的领取入口仍保留物理保存失败反馈，不因为跨日计时修复而把硬写失败显示为成功。
 
 **DTO 扁平化是契约的一部分。** 里程碑领取用位掩码 `periodClaimedMask` 而不是 token 列表，
 往期数据用定长编码而不是嵌套对象；这是发布后冻结的存档字段面，不因解析器升级而改。
@@ -636,8 +665,9 @@ Breaking/Operational:
 
 收获提示 `GardenHarvestNoticePatch`（COMPAT / WIRE+）只匹配 `Crop.Harvest()` 内唯一的
 `Cost.Return(bool, bool, int, List<Item>) → UniTaskExtensions.Forget(UniTask)`，保留原交付与 Forget，
-在两者之间包装等待任务。发货正常完成后才提示名称、数量及仓库/马蜂自提点去向；失败继续由原
-Forget 观察。失配保留全部原 IL 并警告；切图、换槽、换主角、停用或卸载后不迟发通知。
+在两者之间包装等待任务。对三种后山果实，验证 prefab 后仅将 Return 的第二个 bool 改为优先进背包；
+官方作物仍进仓库。发货正常完成后才提示名称、数量及对应去向；失败继续由原 Forget 观察。
+失配保留全部原 IL 并警告；切图、换槽、换主角、停用或卸载后不迟发通知。
 
 ## 7.1 官方游戏行为：静默失败类陷阱
 
@@ -645,6 +675,46 @@ Forget 观察。失配保留全部原 IL 并警告；切图、换槽、换主角
 
 下面每条都能在反编译源（`鸭科夫源码/`）里核实，而编译和 guard 都查不出来。共同点是**不报错**，表现只是「功能不工作」。
 写到相关 API 时先对照这里；发现新的同类行为就追加一条，并写明核实位置。
+
+**食用、收获与攻击事件（2026-09-26 核对）**
+
+- `CA_UseItem.OnFinish` 在 `Item.Use(characterController)` 后无条件减 `StackCount`；
+  `UsageUtilities.Use` 又会重新检查 `CanBeUsed`，失败时根本不调用 `OnUse`。只在 OnUse 内补偿，
+  覆盖不了读条期间失效。后山果实前缀在 OnFinish 扣量入口重新验证实际主玩家/场景/使用资格；
+  门通过但 TryBegin 失败仍沿原 Count KV 预补。其它物品照官方流程。
+- `CharacterMainControl.Attack` 即使 `StartAction` 拒绝也会发 `OnAttackEvent`；需要成功近战的效果
+  应监听同一角色的 `CA_Attack.OnAttack`（在 OnStart 内触发），并对原 action 实例退订。
+- `Cost.Return` 的异步状态机不在当前反编译文本中。实际官方 DLL 显示：按 MaxStackCount 分堆，
+  背包路线调用 `SendToPlayerCharacterInventory`，成功跳过仓库，失败由 Return 继续调用
+  `SendToPlayerStorage`；后者经 `PlayerStorage.Push` 合堆/空格，余量序列化进入 `IncomingItemBuffer`。
+  Harvest 在 Return().Forget() 后清格，所以成功提示必须等发货任务完成。只读 DLL 契约检查在
+  `tests/fixtures/JeffQuestFlow/OfficialAssemblyContract.cs`，真实收获数量仍需实机验证。
+
+**换模、雨天与菜地读档（2026-09-27 核对）**
+
+- `CharacterMainControl.SetCharacterModel` 先 `StoreHoldWeaponBeforeUse`、`ChangeHoldItem(null)`，末尾
+  `SwitchToWeaponBeforeUse`（切完无条件把 `holdWeaponBeforeUse` 置 -1）。`ChangeHoldItem` 受 `CanEditInventory` 门控，
+  任一动作 Running 且未放行（`CA_UseItem`、近战、冲刺、交互……）时换手持物被拒，旧模型连同挂在它插槽上的手持物一起销毁。
+  在 `CA_UseItem.OnFinish` 里换模 → 官方记下的吃前武器位被清成 -1 → `OnStop` 把玩家切到近战位（没近战武器就空手）。
+  后山果实换模前后原样写回 `holdWeaponBeforeUse`；到期恢复等动作结束（最多 3 秒）再换回。
+- `Health.ElementFactor(fire)` 在出击地图下雨时再减 0.15，结果不截断；`Health.Hurt` 对负最终伤害照样
+  `CurrentHealth -= finalDamage`，也不钳上限。把火焰系数乘成 0 的免疫在雨天会变成火伤回血、血量越过上限。
+  后山火系形态在雨天补一条 `overrideOrder` 排在乘算之后的 `Add +0.15`。`Stat` 按 `Modifier.Order`（默认等于类型枚举值）排序计算。
+- `Garden.Start → Load` 遇到 `CropDatabase.GetCropInfo` 查不到的记录时，`Crop.Initialize` LogError 早退，
+  但未初始化的 Crop 仍进字典，`Data` 为默认值；下一次 `Garden.Save` 就把原记录写成空 cropID，Mod 作物永久丢失。
+  作物表必须在 `sceneLoaded` 那一拍注入；晚到时 `GardenSeedInjector` 对含空壳 Crop 的 Garden 重读一次存档。
+  `ItemAssetsCollection.AddDynamicEntry` 在 `Instance == null` 时返回 false 而不抛异常，调用方要检查返回值。
+  官方作物不浇水不累计生长（`Crop.Tick`）。
+
+**任务奖励物品与提交物品（2026-09-27 核对）**
+
+- 官方 `RewardItem` 把 claimed 写在 Quest 实例上、领取时 `PlayerStorage.Push`；`SubmitItems` 的已交数量也存在官方 Quest 快照里。
+  我们每次加载都从 Mod 事实重建投影并剥离官方快照，所以两者都不能直接用：物品奖励行用
+  `OfficialQuestProjectionItemReward`（照 RewardItem 的图标与「名字 xN」显示，「已领取」读交付事实），
+  提交物投影成 `OfficialQuestProjectionTask`（身上够了才完成，交付后恒完成）。
+- 交付事务只在共享核心 `OfficialQuestProjection.TryCommitDelivery`：先生成奖励物（先问 `GetPrefab`，缺件整体中止），
+  再用 `SkyIslandInventoryTransaction` 整份预留背包里的提交物，客户端 `Deliver` 成功才收走提交物、发出奖励物，失败原样归还并销毁预生成物。
+  已交付的重试只补事实，不收不发。提交物只认主角背包（官方 `GetItemCount` 还数仓库与宠物背包，这里有意更严）。
 
 **生成与激活**
 
@@ -701,7 +771,7 @@ Forget 观察。失配保留全部原 IL 并警告；切图、换槽、换主角
   `SceneLoader.LoadScene` 同步拒绝时 `LoadFinished` 立刻为 true，等待场景的循环必须看它。
 - `DialogueBubblesManager.Show` 在 manager 缺席，或无可复用气泡且 prefab 缺失时，正常完成 UniTask 而不显示。异常也会进入返回任务，`Forget` 没有同步抛错不代表发送成功。
   天空岛只发送非交互、正时长气泡：主线程调用后正常展示必定跨帧；已完成任务只消费一次结果并拒绝记账，挂起的请求用异常观察回调消费一次。该判断依赖官方当前 `Show` / `ShowTask` 合同；官方更新时需复核，计数不是像素可见性证据。
-- 岛上判夜 19–5（`SkyIslandNight.StartHour / EndHour`），刻意等于官方 `TimeOfDayController` 的 `nightStart = 19 / morningStart = 5`（官方 Volume 与敌人夜间感知同相）；仍只经 `SkyIslandLighting.ClockHours()` 读 `GameClock`，不读 `AtNight`。官方改这两个值要跟着改（Dev 只读用例 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机比对）。
+- 岛上判夜 22–6（`SkyIslandNight.StartHour / EndHour`），刻意等于官方 `TimeOfDayController` 运行时的 `nightStart = 22 / morningStart = 6`（官方 Volume 与敌人夜间感知同相；反编译源字段初值 19 / 5 会被 `LevelManagerPrefab` 序列化值覆盖，2026-09-25 F3 实机读出）；仍只经 `SkyIslandLighting.ClockHours()` 读 `GameClock`，不读 `AtNight`。官方改这两个值要跟着改（Dev 只读用例 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机比对）。
 - `SceneLoader.LoadBaseScene` 恒传 `clickToConinue: true`（`<LoadBaseScene>d__47` IL 实查）：基地读完后停在「点击继续」，等 `clicked` 的循环没有超时；进等待前先 `SetActive(true)` 点击接收器 `pointerClickEventRecevier` 并把 `clicked` 复位。
   无人值守的流程要在接收器激活后调 `NotifyPointerClick`，否则玩法代码发起的返基地（Mode F / 丧尸撤离）会一直停在加载屏。卡加载时先看 `SceneLoader.LoadingComment`，官方每个等待点都写了一句（如 `Wait for click...`）。
 - `Duckov.Quests` 接天空岛跨局主线（任务表 `SkyIslandOfficialQuestTable`，2026-09-16 授权）与鸭王征程六章（任务表 `CampaignQuestTable`，2026-09-22 owner 授权）；投影核心只有 `Utilities/OfficialQuests/` 一份：
@@ -715,7 +785,7 @@ Forget 观察。失配保留全部原 IL 并警告；切图、换槽、换主角
   | `590013` 归航钟 | 钟守 `5903`（缺席时 `Search_H` 钟庭装置） | `HomecomingQuestAccepted` / `HomecomingQuestDelivered` |
 
   区间 5900–5949 归 BossRush 的自定义给予者（官方 UI 不显示给予者名，`Quest.Compare` 只做整数减法，`GetAllQuestsByQuestGiverID` 只做相等比较）。
-  BossRush 保留任务 ID 段：`590001`–`590099` 天空岛入口、`590011`–`590013` 岛上主线、`590101`–`590106` 鸭王征程六章；下一可用 `590107`。征程六章的奖金由 `CampaignProgressService.TryDeliver` 的补偿式事务发放（官方奖励行只展示 `def.RewardCash`，`PayReward = null`），线索与设施 token 同一事务；官方 UI 没有「放弃任务」入口，`TryAbandonContract` 只留 Dev 演练。
+  BossRush 保留任务 ID 段：`590001`–`590099` 天空岛入口、`590011`–`590013` 岛上主线、`590101`–`590106` 鸭科夫征程六章、`590201`–`590214` 新内容一次性引导；章节下一可用 `590107`。征程六章的奖金由 `CampaignProgressService.TryDeliver` 的补偿式事务发放（官方奖励行只展示 `def.RewardCash`，`PayReward = null`），线索与设施 token 同一事务；引导任务以 `acceptedGuides` / `experiencedGuides` / `completedGuides` 为权威；2026-09-27 起交付发奖金（`CampaignProgressService.TryDeliverGuide`，与章节同一套先发钱、写事实、失败退款、会话闩）与奖励物品，数值只在 `Campaign/CampaignRewardTable.cs`；2026-09-25 owner 明确授权挂 Jeff，接取和交付均限基地；官方 UI 没有「放弃任务」入口，`TryAbandonContract` 只留 Dev 演练。
   运行时向官方 `QuestCollection` 注册 prefab，接取、任务日志、目标完成通知与交付按钮均走官方 `QuestManager` / `Quest` / `Task` / `QuestGiverView`；岛上三条只在岛上接、岛上交，返航后仍留在官方任务日志里。
   `BossRush_SkyIsland_Story_v1` 仍是唯一权威；官方 `GenerateSaveData` / `SetupSaveData` 快照会剥离这些 ID 的 active、history、completed、ever-inspected 记录（`Quest.SaveData.questGiverID` 随整条记录一起剥掉，卸载后不留野枚举值），
   加载后从 Mod 事实重建官方投影，保证卸载后 `"Quest"/"Data"` 没有孤儿 ID；`completedQuests` 的残留还会把 `IsQuestAvaliable` 永久钉死，所以四类一个都不能少。

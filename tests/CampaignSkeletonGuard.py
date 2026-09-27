@@ -92,6 +92,7 @@ def main():
     if not re.search(r"CampaignRuntimeModule\s+CampaignRuntime\s*\{\s*get", reg):
         return fail(REGISTRATION.as_posix() + " 缺少只读门面 CampaignRuntime")
 
+    # 隔离夹具中的同名宿主替身不进入游戏编译；单实例约束覆盖全部生产源码。
     news = []
     for source_path in read_compile_sources(Path("compile_official.bat")):
         path = Path(source_path)

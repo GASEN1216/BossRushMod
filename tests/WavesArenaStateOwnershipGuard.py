@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 
 from cs_source_util import clean_source
+from IntegrationLeafOwnershipGuard import body, compact
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -50,7 +51,6 @@ def main():
         ("waitingForNextWave", "WaitingForNextWave"),
         ("waveCountdown", "WaveCountdown"),
         ("lastWaveCountdownSeconds", "LastWaveCountdownSeconds"),
-        ("waveIntegrityCheckTimer", "WaveIntegrityCheckTimer"),
         ("daXingXingCleanTimer", "DaXingXingCleanTimer"),
         ("totalEnemies", "TotalEnemies"),
         ("defeatedEnemies", "DefeatedEnemies"),
@@ -67,6 +67,19 @@ def main():
             raise AssertionError(old_name + " setter must forward to the arena owner")
         if re.search(r"^\s*private\s+(?:readonly\s+)?[\w<>,.\[\] ]+\s+" + re.escape(old_name) + r"\s*(?:=|;)", HOST, re.M):
             raise AssertionError(old_name + " must not remain a host field")
+    access = clean_source((ROOT / "WavesArena/WavesArenaRuntimeModule_BossAccess.cs").read_text(encoding="utf-8-sig"))
+    dhost = clean_source((ROOT / "ModeD/ModeD.cs").read_text(encoding="utf-8-sig"))
+    dclock = clean_source((ROOT / "ModeD/ModeDRuntimeModule_Waves.cs").read_text(encoding="utf-8-sig"))
+    assert "private float WaveIntegrityCheckTimer { get; set; }" in MODULE, "shared integrity timer must be private to Arena"
+    assert "waveIntegrityCheckTimer" not in BRIDGE and "ModeDIntegrityCheckTimer" not in dhost, "mutable timer bridge must not return"
+    assert compact(body(access, "internal bool AdvanceWaveIntegrityCheck(")) == "WaveIntegrityCheckTimer+=deltaTime;if(WaveIntegrityCheckTimer>=ModBehaviour.WaveIntegrityCheckInterval){WaveIntegrityCheckTimer=0f;returntrue;}returnfalse;", "shared clock threshold/reset semantics changed"
+    assert compact(body(dhost, "internal bool AdvanceArenaIntegrityCheck(")) == "returnwavesArenaRuntime.AdvanceWaveIntegrityCheck(deltaTime);", "D must advance the registered Arena owner clock"
+    assert "if (owner.AdvanceArenaIntegrityCheck(deltaTime))" in body(dclock, "internal void TickModeDIntegrity(") and "owner.ResetArenaIntegrityCheck();" in body(dclock, "internal void TickModeDIntegrity("), "D must use shared clock actions"
+    assert "if (AdvanceWaveIntegrityCheck(deltaTime))" in body(TICK, "internal bool TickWavesArenaRuntime("), "Arena must use the same clock action"
+    content_host = clean_source((ROOT / "Integration/IntegrationHostCompatibility.cs").read_text(encoding="utf-8-sig"))
+    for label in ("DragonKing", "DragonDescendant", "PhantomWitch"):
+        for suffix in ("CurrentBoss", "CurrentWaveBosses", "EnemyPresets", "BossSpawnTimes", "BossOriginalLootCounts"):
+            assert not re.search(r"\b" + label + suffix + r"\b", content_host), "mutable content/Arena view returned: " + label + suffix
     if "LastWaveCountdownSeconds { get; set; } = -1;" not in MODULE:
         raise AssertionError("initial countdown marker must stay negative")
     if "BossesPerWave { get; set; } = 1;" not in MODULE:

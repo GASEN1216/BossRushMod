@@ -19,6 +19,8 @@ namespace BossRush
     internal sealed class FrostmourneRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour _owner;
+        private Coroutine pendingAbilitySetup;
+        private bool systemCleanupCompleted;
 
         public override string ModuleName { get { return "Frostmourne"; } }
 
@@ -29,7 +31,8 @@ namespace BossRush
 
         public override void OnDestroy()
         {
-            _owner = null;
+            try { CleanupFrostmourneSystem(); }
+            finally { _owner = null; }
         }
 
         // ========== 初始化 ==========
@@ -39,6 +42,7 @@ namespace BossRush
         /// </summary>
         internal void InitializeFrostmourneSystem()
         {
+            systemCleanupCompleted = false;
             try
             {
                 // 创建右键能力管理器（MonoBehaviour 单例）
@@ -65,6 +69,8 @@ namespace BossRush
         /// </summary>
         internal void SetupFrostmourneForScene(Scene scene)
         {
+            CancelPendingAbilitySetup();
+            systemCleanupCompleted = false;
             try
             {
                 // 通知右键能力管理器场景已切换
@@ -77,7 +83,7 @@ namespace BossRush
                 // 延迟注册/重新绑定能力到玩家角色
                 if (ModBehaviour.IsGameplaySceneName(scene.name))
                 {
-                    _owner.StartCoroutine(DelayedSetupFrostmourneAbility());
+                    pendingAbilitySetup = _owner.StartCoroutine(DelayedSetupFrostmourneAbility());
                 }
             }
             catch (Exception e)
@@ -137,8 +143,20 @@ namespace BossRush
         /// <summary>
         /// 清理霜之哀伤系统
         /// </summary>
+        private void CancelPendingAbilitySetup()
+        {
+            if (_owner != null && pendingAbilitySetup != null)
+            {
+                _owner.StopCoroutine(pendingAbilitySetup);
+            }
+            pendingAbilitySetup = null;
+        }
+
         internal void CleanupFrostmourneSystem()
         {
+            CancelPendingAbilitySetup();
+            if (systemCleanupCompleted) return;
+            systemCleanupCompleted = true;
             try
             {
                 // 清理右键能力管理器

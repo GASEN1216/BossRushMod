@@ -12,6 +12,30 @@ namespace BossRush
     public static partial class ReforgeSystem
     {
         /// <summary>
+        /// 正收益对应的数值方向。与官方详情页共用极性；只为已核实的两轴后坐力
+        /// 提供精确键兜底，不按 Recoil 子串误伤后坐力控制/恢复等属性。
+        /// 未登记极性的属性保持原来的数值向上口径，不猜第三方属性的语义。
+        /// </summary>
+        public static int GetBeneficialValueDirection(string key)
+        {
+            if (key == "RecoilScaleV" || key == "RecoilScaleH") return -1;
+            if (!string.IsNullOrEmpty(key))
+            {
+                try
+                {
+                    if (Duckov.UI.StatInfoDatabase.GetPolarity(key) == Polarity.Negative) return -1;
+                }
+                catch { }
+            }
+            return 1;
+        }
+
+        public static bool IsBeneficialChange(string key, float difference)
+        {
+            return difference * GetBeneficialValueDirection(key) > 0f;
+        }
+
+        /// <summary>
         /// 获取物品的重铸计数
         /// </summary>
         private static int GetReforgeCount(Item item)

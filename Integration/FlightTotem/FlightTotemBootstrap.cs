@@ -17,6 +17,8 @@ namespace BossRush
     internal sealed partial class FlightTotemRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour _owner;
+        private Coroutine pendingEquipmentCheck;
+        private bool systemCleanupCompleted;
 
         public override string ModuleName { get { return "FlightTotem"; } }
 
@@ -27,7 +29,8 @@ namespace BossRush
 
         public override void OnDestroy()
         {
-            _owner = null;
+            try { CleanupFlightTotemSystem(); }
+            finally { _owner = null; }
         }
 
         // ========== 初始化 ==========
@@ -37,6 +40,7 @@ namespace BossRush
         /// </summary>
         internal void InitializeFlightTotemSystem()
         {
+            systemCleanupCompleted = false;
             AbilitySystemHelper.InitializeSystem(
                 config: FlightConfig.Instance,
                 ensureManagerInstance: () => FlightAbilityManager.EnsureInstance(),
@@ -53,9 +57,11 @@ namespace BossRush
         /// </summary>
         internal void SetupFlightTotemForScene(Scene scene)
         {
+            CancelPendingEquipmentCheck();
+            systemCleanupCompleted = false;
             if (ModBehaviour.IsGameplaySceneName(scene.name))
             {
-                AbilitySystemHelper.HandleSceneChange(
+                pendingEquipmentCheck = AbilitySystemHelper.StartSceneChange(
                     config: FlightConfig.Instance,
                     onSceneChanged: () =>
                     {
@@ -89,6 +95,7 @@ namespace BossRush
         private IEnumerator DelayedCheckFlightTotemEquipment()
         {
             yield return ModBehaviour.FlightTotemSharedWait05sForRuntime;
+            pendingEquipmentCheck = null;
 
             if (FlightTotemEffectManager.Instance != null)
             {
@@ -101,8 +108,20 @@ namespace BossRush
         /// <summary>
         /// 清理飞行图腾系统
         /// </summary>
+        private void CancelPendingEquipmentCheck()
+        {
+            if (_owner != null && pendingEquipmentCheck != null)
+            {
+                _owner.StopCoroutine(pendingEquipmentCheck);
+            }
+            pendingEquipmentCheck = null;
+        }
+
         internal void CleanupFlightTotemSystem()
         {
+            CancelPendingEquipmentCheck();
+            if (systemCleanupCompleted) return;
+            systemCleanupCompleted = true;
             AbilitySystemHelper.CleanupSystem(
                 config: FlightConfig.Instance,
                 cleanupManager: () => FlightAbilityManager.Cleanup(),

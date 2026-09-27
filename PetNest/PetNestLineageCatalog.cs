@@ -63,15 +63,16 @@ namespace BossRush
             };
 
         /// <summary>
-        /// 体型偏大的血脉用更小的缩放档，让全谱系幼体在视觉体量上大致齐平。
+        /// 体型偏大的血脉仍用略小的缩放档，让全谱系幼体在视觉体量上大致齐平。
+        /// 底模实际仍是官方红鸭 / 幽灵，不套用自定义 Boss 本人的巨大缩放。
         /// 首版只覆盖自定义 Boss；官方 Boss 一律用基准档。
         /// </summary>
         private static readonly Dictionary<string, float> LineageModelScaleOverrides =
             new Dictionary<string, float>(StringComparer.Ordinal)
             {
-                { DragonDescendantConfig.BOSS_NAME_KEY, 0.3f },
-                { DragonKingConfig.BossNameKey, 0.25f },
-                { PhantomWitchConfig.BossNameKey, 0.35f },
+                { DragonDescendantConfig.BOSS_NAME_KEY, 0.62f },
+                { DragonKingConfig.BossNameKey, 0.64f },
+                { PhantomWitchConfig.BossNameKey, 0.62f },
             };
 
         #endregion

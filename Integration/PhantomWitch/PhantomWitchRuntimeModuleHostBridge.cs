@@ -28,23 +28,13 @@ namespace BossRush
             if (currentOwner != null) currentOwner.DetachPhantomWitchRuntimeModule(this);
         }
 
-        private MonoBehaviour currentBoss
-        {
-            get { return owner != null ? owner.PhantomWitchCurrentBoss : null; }
-            set { if (owner != null) owner.PhantomWitchCurrentBoss = value; }
-        }
-
-        private List<MonoBehaviour> currentWaveBosses
-        {
-            get { return owner != null ? owner.PhantomWitchCurrentWaveBosses : null; }
-        }
-
-        private int bossesPerWave { get { return owner != null ? owner.PhantomWitchBossesPerWave : 0; } }
-        private List<EnemyPresetInfo> enemyPresets { get { return owner != null ? owner.PhantomWitchEnemyPresets : null; } }
-        private Dictionary<CharacterMainControl, float> bossSpawnTimes
-        {
-            get { return owner != null ? owner.PhantomWitchBossSpawnTimes : null; }
-        }
+        private void RegisterArenaWaveBoss(CharacterMainControl character) { if (owner != null) owner.RegisterArenaWaveBossFromContent(character); }
+        private void ClearArenaCurrentBoss(CharacterMainControl character) { if (owner != null) owner.ClearArenaCurrentBossFromContent(character); }
+        private void RemoveArenaWaveBoss(CharacterMainControl character) { if (owner != null) owner.RemoveArenaWaveBossFromContent(character); }
+        private bool HasArenaEnemyPresetCatalog { get { return owner != null && owner.HasArenaEnemyPresetCatalog; } }
+        private EnemyPresetInfo FindArenaEnemyPreset(string nameKey) { return owner != null ? owner.FindArenaEnemyPreset(nameKey) : null; }
+        private void AddArenaEnemyPreset(EnemyPresetInfo preset) { if (owner != null) owner.AddArenaEnemyPreset(preset); }
+        private void CopyArenaTrackedBossCharactersTo(ICollection<CharacterMainControl> destination) { if (owner != null) owner.CopyArenaTrackedBossCharactersTo(destination); }
 
         private Coroutine StartCoroutine(IEnumerator routine)
         {

@@ -2,7 +2,7 @@
 """NonWaveBossSpawnGuard — 非本波生成的自定义 Boss 不得登记波次身份。
 
 三个自定义 Boss 有各自的专用生成器，而 `EnemySpawnCore` 会把对应 preset 路由过去。
-生成器里 `currentBoss = character` 与 `currentWaveBosses.Add` 是本波身份的**唯一**来源，
+生成器的 RegisterArenaWaveBoss 窄动作由 Arena owner 写入本波身份，
 `WavesArena.IsCurrentWaveBossMember` 就信这两个容器。
 
 随机事件「Boss 乱入」从 `GetFilteredEnemyPresets()` 取池，池里**含**三个自定义 Boss。
@@ -18,6 +18,8 @@ import io
 import os
 import re
 import sys
+from cs_source_util import clean_source
+from IntegrationLeafOwnershipGuard import body, compact
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -38,7 +40,7 @@ def read(path):
     if not os.path.isfile(path):
         return None
     with io.open(path, "r", encoding="utf-8", errors="ignore") as fh:
-        return fh.read()
+        return clean_source(fh.read())
 
 
 def main():
@@ -56,18 +58,27 @@ def main():
         elif not re.search(r"\bisNonWaveSpawn\b", m.group(0)):
             errors.append("[Spawner] " + name + " 必须有 isNonWaveSpawn 参数（非本波生成门控）")
 
-        # 身份写入必须被门控住：currentBoss 赋值所在的行之前要出现门控条件
-        assign = re.search(r"currentBoss = character;", src)
-        if assign is None:
-            errors.append("[Spawner] " + name + " 找不到 currentBoss 赋值")
-            continue
-        head = src[:assign.start()]
-        # 取赋值前最近的 600 字符，检查门控存在
-        window = head[-600:]
-        if (not re.search(r"\bisNonWaveSpawn\b", window)
-                and not re.search(r"\bisChildProtectionSummon\b", window)):
-            errors.append(
-                "[Spawner] " + name + " 的 currentBoss 赋值必须置于非本波门控之内")
+        # Pin the complete guarded action block inside this generator, not a nearby token window.
+        method_signature = "public async UniTask<CharacterMainControl> " + name + "("
+        spawn = body(src, method_signature)
+        condition = "!isChildProtectionSummon&&!isNonWaveSpawn" if name == "SpawnDragonDescendant" else "!isNonWaveSpawn"
+        required = "if(" + condition + "){RegisterArenaWaveBoss(character);}"
+        if required not in compact(spawn) or spawn.count("RegisterArenaWaveBoss(character);") != 1:
+            errors.append("[Spawner] " + name + " must guard the sole Arena registration action")
+        if re.search(r"\b(currentBoss|currentWaveBosses)\b", spawn):
+            errors.append("[Spawner] " + name + " must not mutate Arena state through collection views")
+
+    arena = read(os.path.join(ROOT, "WavesArena", "WavesArenaRuntimeModule_BossAccess.cs"))
+    expected = "CurrentBoss=character;if(BossesPerWave>1&&!CurrentWaveBosses.Contains(character)){CurrentWaveBosses.Add(character);}"
+    if arena is None or compact(body(arena, "internal void RegisterContentWaveBoss(")) != expected:
+        errors.append("[Arena] content registration must set current boss then conditionally append exactly once")
+    host = read(os.path.join(ROOT, "Integration", "IntegrationHostCompatibility.cs"))
+    if compact(body(host, "internal void RegisterArenaWaveBossFromContent(")) != "wavesArenaRuntime.RegisterContentWaveBoss(character);":
+        errors.append("[Host] content action must forward to the registered Arena owner")
+    for label in ("DragonKing", "DragonDescendant", "PhantomWitch"):
+        adapter = read(os.path.join(ROOT, "Integration", label, label + "RuntimeModuleHostBridge.cs"))
+        if compact(body(adapter, "private void RegisterArenaWaveBoss(")) != "if(owner!=null)owner.RegisterArenaWaveBossFromContent(character);":
+            errors.append("[Adapter] " + label + " registration action disconnected")
 
     core = read(CORE)
     if core is None:

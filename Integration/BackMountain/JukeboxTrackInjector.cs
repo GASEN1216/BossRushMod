@@ -53,7 +53,10 @@ namespace BossRush
                     BaseBGMSelector.Entry entry = new BaseBGMSelector.Entry();
                     entry.musicName = L10n.T(track.musicName,
                         string.IsNullOrEmpty(track.musicNameEn) ? track.musicName : track.musicNameEn);
-                    entry.author = string.IsNullOrEmpty(track.author) ? "BossRushMod" : track.author;
+                    // 作者名同曲名一样在取用时按语言解析；缺省署模组名
+                    entry.author = string.IsNullOrEmpty(track.author)
+                        ? L10n.T("BossRush · 晴岚群岛", "BossRush · Qinglan Archipelago")
+                        : L10n.T(track.author, string.IsNullOrEmpty(track.authorEn) ? track.author : track.authorEn);
                     // switchName 留空：filePath 非空时官方走外部文件路径，不查 FMOD 事件
                     entry.switchName = string.Empty;
                     entry.filePath = path;

@@ -8,7 +8,7 @@
 //   这些形状全部在这里程序化画出来，零新增美术资源、不重打 AssetBundle。
 //
 // 口径：
-//   - 纯函数：输入种类与边长，输出 Color32[]（RGB 恒白，只有 alpha 描形状）。
+//   - 纯函数：输入种类与边长，输出 Color32[]（alpha 描形状；RGB 是明暗，除叶片外恒白）。
 //     颜色一律交给粒子的 startColor / 材质 _TintColor，所以一张贴图可以给任意颜色用；
 //   - 像素按 Texture2D.SetPixels32 的口径排列（行优先、左下原点），采样点取像素中心；
 //   - 所有形状在贴图边缘 alpha 归零，Clamp 采样不会出现硬边；
@@ -16,6 +16,8 @@
 //     本文件没有静态缓存，也就没有需要登记的清理路径。
 //   - 2026-09-23 起画师本体在 Common/Effects/BossRushParticleTextures.cs（全 Mod 共享），本文件只留
 //     遗种巢的枚举与转调；枚举数值与共享枚举一一对应，改一边必须同改另一边。
+//   - 2026-09-25 起炫彩蓝 / 白 / 绿三色不再逐只画贴图：它们直接用共享画师的懒加载贴图与
+//     BossRushFxKit 的共享材质（要真加色，见 PetNestAuraEffect.SharedLook）；其余七色与异色仍走这里。
 // ============================================================================
 
 using UnityEngine;
@@ -29,11 +31,11 @@ namespace BossRush
         GlowDot = 0,
         /// <summary>四主芒 + 四副芒的星光（闪光、金星、冰晶闪烁）。</summary>
         Star = 1,
-        /// <summary>带高光的空心气泡。</summary>
+        /// <summary>薄壁气泡（中心近乎透明、细亮边、窗形高光）。</summary>
         Bubble = 2,
         /// <summary>六瓣雪花。</summary>
         Snowflake = 3,
-        /// <summary>带叶脉的叶片。</summary>
+        /// <summary>竖直叶片（叶脉、半透明叶缘，RGB 带明暗）。</summary>
         Leaf = 4,
         /// <summary>带噪声边缘的烟缕（暗影、寒雾）。</summary>
         Wisp = 5,
@@ -49,7 +51,11 @@ namespace BossRush
         RuneInner = 10,
         /// <summary>拖尾条带：沿 U 恒亮、沿 V 柔边（拖尾按 Stretch 贴，头尾渐隐交给 colorOverTrail）。</summary>
         TrailStrip = 11,
-        Count = 12,
+        /// <summary>珍珠晶片（柔边透镜形 + 珠光带）。</summary>
+        Pearl = 12,
+        /// <summary>水面涟漪（主细环 + 淡回波）。</summary>
+        Ripple = 13,
+        Count = 14,
     }
 
     /// <summary>
@@ -77,7 +83,7 @@ namespace BossRush
             return BossRushParticleTextures.Sample(ToShared(kind), x, y);
         }
 
-        /// <summary>两边枚举逐项同值（GlowDot = 0 … TrailStrip = 11），按数值转换。</summary>
+        /// <summary>两边枚举逐项同值（GlowDot = 0 … Ripple = 13），按数值转换。</summary>
         private static BossRushParticleShape ToShared(PetNestAuraTexture kind)
         {
             int value = (int)kind;

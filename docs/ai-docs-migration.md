@@ -1,5 +1,14 @@
 # AI 协作文档收敛迁移记录
 
+## 2026-09-27 独立审计修复与合并（SAFE / COMPAT / OPERATIONAL）
+
+七项确认问题及合并适配见 `architecture/MIGRATION_REPAIR_20260927.md`。根规则保持 180 行，将远端新 ScrollRect / 引导 UI 细则保留在 `Common/UI/AGENTS.md`；根补正式构建须移除 Dev 环境变量、已授权 Jeff 引导任务段。五类上下文按磁盘重新计量，台账保留双方记录并恢复顶部归档入口。两篇当前本地专题改正天空岛路径。模块索引、回归清单、覆盖表与实机步骤同步；计划状态明确新修复版尚未部署，未把历史 L2 / 部署记录当作本轮 L3。
+
+## 2026-09-25 天空岛判夜口径改正（SAFE）
+
+- `DebugAndTools/SkyIsland/AGENTS.md` 与 `docs/contracts.md` §7.1 的「夜是 19–5 点」与官方运行时不符（F3 实机读 `TimeOfDayController` 为 22 / 6，反编译初值 19 / 5 被 prefab 覆盖），随代码改为 22–6、夜里约 8 分钟，并写明以实机读数为准、不照抄反编译初值。
+- `tests/AGENTS.md` 补记 `tests/fixtures/Directory.Build.props` 排除夹具本地 `obj/`、`bin/`。
+
 ## 2026-09-22 官方任务授权范围扩到鸭王征程（SAFE）
 
 根 `AGENTS.md` §4.14 与 §10 的 `Duckov.Quests` 授权文字改为「天空岛跨局主线 + 鸭王征程六章（590101–590106，给予者官方 Jeff）」，任务表按子系统各一份、投影核心只有 `Utilities/OfficialQuests/` 一份；`Utilities/AGENTS.md` 加 `OfficialQuests/` 职责边界；`docs/contracts.md` §7.1 加征程一行与 ID 保留段、§3.2 加 `chapterId` / `clueId` 冻结说明与基地侧目标口径；教程 `docs/guides/官方任务系统接入教程.md` 加 §12a「多客户端：共享投影核心」。
@@ -328,3 +337,12 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 - architecture/CONTEXT_BASELINE.md 保留原样本并追踪真实 owner：自动导入链下降，四类完整文件源码阅读量上升。未把字节换算为 token，也未用薄桥文件冒充迁出实现。
 - architecture/MIGRATION_ACCEPTANCE.md 使用现有人工与 F3 ID，明确报告路径、截图文件主名、观察位置和不合格条件。覆盖表的两条内容建筑步骤按退役事实修正：旧公告板/展示柜恢复并指引，现行报箱/遗种巢走建造功能。
 - 交付审查发现宿主字段迁属性后地图费用仍用 GetField 取票 ID，已通过生产注册/费用回归复现并修复；记录为 CR-2026-09-26-001。最终构建、部署、离线证据与 L3 待测边界汇总在 architecture/MIGRATION_STATUS.md。
+
+
+- 2026-09-25：依 owner 本轮明确请求，根 AGENTS §4.14 / §10 登记 Jeff 新内容引导授权 590201–590214，并明确引导与六章共用征程客户端；contracts 同步三态可选存档字段和任务范围，避免旧“只限天空岛/六章”规则与现代码冲突。
+
+- 2026-09-25：按 `compile_official.bat` 的 `if defined BOSSRUSH_DEV_BUILD` 补充正式构建命令口径：必须移除变量，设成 0 仍是 Dev；交付需再核 DLL 标识与部署哈希。
+
+- 2026-09-26：根 AGENTS §4.14「复用官方 prefab」一条补上官方 `UIPrefabs.ScrollRect` 的 content 自带竖排布局与自适应高度、手动摆位前必须 `DestroyImmediate` 摘掉（鸭王杯看盘 / 押物品 / 结算三页布局全乱的根因；图鉴 `CodexView.EnsureGridLayout` 早已这样做）。
+
+- 2026-09-26：在线 Wiki 正式地址定为 https://bossrushmod.pages.dev/（owner 原话「我们的网址是 https://bossrushmod.pages.dev/」）。`wiki-site/AGENTS.md` §4.9 随 `seo.mts` 的 `siteUrl()` 改写：默认返回正式站、与 base 无关，Cloudflare 构建不再省略 sitemap / canonical / RSS，GitHub Pages 副本的 canonical 指回正式站；README 链接同步。模组显示名改为「BossRush · 晴岚群岛」（英文 BossRush · Qinglan Archipelago），Mod 标识 `name = BossRush`、命名空间与各类 key 不变。

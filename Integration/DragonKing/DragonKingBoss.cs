@@ -188,13 +188,9 @@ namespace BossRush
                     }
                 }
 
-                if (currentBoss == character)
-                {
-                    currentBoss = null;
-                }
+                ClearArenaCurrentBoss(character);
 
-                bossSpawnTimes.Remove(character);
-                bossOriginalLootCounts.Remove(character);
+                RemoveArenaBossLootRecord(character);
 
                 CleanupTrackedDragonKingCharacter(character, destroyed);
             }
@@ -225,8 +221,8 @@ namespace BossRush
             FinalizeBossRushLootboxPathTracking(character);
             PetNestDropService.ClearTracking(character);
             AffixForgeStoneDropService.ClearTracking(character);
-            if (currentBoss == character) currentBoss = null;
-            currentWaveBosses?.Remove(character);
+            ClearArenaCurrentBoss(character);
+            RemoveArenaWaveBoss(character);
             BossCleanupHelpers.DestroyRuntimePreset(character, DragonKingConfig.BossNameKey, "DragonKing_Preset", "[DragonKing]");
             UnityEngine.Object.Destroy(character.gameObject);
             if (acquired && releaseAssetReference) ReleaseDragonKingInstance();
@@ -315,13 +311,7 @@ namespace BossRush
                 if (!isNonWaveSpawn)
                 {
                     // 设置为当前Boss
-                    currentBoss = character;
-
-                    // 多Boss模式支持
-                    if (bossesPerWave > 1 && currentWaveBosses != null && !currentWaveBosses.Contains(character))
-                    {
-                        currentWaveBosses.Add(character);
-                    }
+                    RegisterArenaWaveBoss(character);
                 }
                 else
                 {
@@ -408,8 +398,7 @@ namespace BossRush
                 // 记录Boss生成信息
                 try
                 {
-                    bossSpawnTimes[character] = Time.time;
-                    bossOriginalLootCounts[character] = 5; // 龙王掉落更多
+                    RecordArenaBossLoot(character, Time.time, 5); // 龙王掉落更多
 
                     // 龙王绕过 RegisterBossRandomLootTracking，所以那里的
                     // MarkBossRushLootboxPathTracking 也没跑过——`ShouldDeferExtraBossDropToModPath`
@@ -448,7 +437,7 @@ namespace BossRush
 
                     // 无间炼狱同步消费 pending，先登记两项额外掉落，再订阅主消费者。
                     character.BeforeCharacterSpawnLootOnDead += lootHandler;
-                    DevLog("[DragonKing] 已订阅掉落事件，bossSpawnTimes.Count=" + bossSpawnTimes.Count);
+                    DevLog("[DragonKing] 已订阅掉落事件，bossSpawnTimes.Count=" + ArenaBossLootRecordCount);
                 }
                 catch (Exception recordEx)
                 {
@@ -505,7 +494,7 @@ namespace BossRush
         /// </summary>
         private EnemyPresetInfo FindDragonKingPresetInfo()
         {
-            return ModBossPresetLookup.FindByNameKey(enemyPresets, DragonKingConfig.BossNameKey);
+            return FindArenaEnemyPreset(DragonKingConfig.BossNameKey);
         }
         
         /// <summary>
@@ -781,16 +770,13 @@ namespace BossRush
         internal void RegisterDragonKingPreset()
         {
             if (dragonKingRegistered) return;
-            if (enemyPresets == null) return;
+            if (!HasArenaEnemyPresetCatalog) return;
             
             // 检查是否已存在
-            foreach (var p in enemyPresets)
+            if (FindArenaEnemyPreset(DragonKingConfig.BossNameKey) != null)
             {
-                if (p != null && p.name == DragonKingConfig.BossNameKey)
-                {
-                    dragonKingRegistered = true;
-                    return;
-                }
+                dragonKingRegistered = true;
+                return;
             }
             
             // 添加龙王预设
@@ -806,7 +792,7 @@ namespace BossRush
                 expReward = 500
             };
             
-            enemyPresets.Add(dragonKingPreset);
+            AddArenaEnemyPreset(dragonKingPreset);
             dragonKingRegistered = true;
             
             DevLog("[DragonKing] 龙王Boss已注册到敌人预设列表");

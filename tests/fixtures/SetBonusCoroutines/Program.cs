@@ -150,6 +150,8 @@ namespace BossRush
         internal void RegisterSetBonusEvents() { }
         internal void UnregisterSetBonusEvents() { }
         internal void UpdateDragonDash() { }
+        private void CancelDragonDash() { }
+        private static void ResetSetBonusReflectionCaches() { }
         internal bool HasSetBonusElementHealing { get { return frostSetActive || thunderSetActive; } }
     }
 

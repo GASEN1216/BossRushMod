@@ -217,8 +217,7 @@ namespace BossRush
         {
             try
             {
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = Path.GetDirectoryName(assemblyLocation);
+                string modDir = ModBehaviour.GetModPath();
                 if (string.IsNullOrEmpty(modDir)) return string.Empty;
 
                 string cutsceneDir = Path.Combine(modDir, "Assets", "cutscenes");

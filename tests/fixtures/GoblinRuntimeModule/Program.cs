@@ -99,6 +99,12 @@ internal static class Program
         Check(runtime.GoblinNPCInstance.transform.position == new Vector3(7f, 0.1f, 9f),
             "shared spawn result retains the raycast correction path");
 
+        GameObject finalNpc = runtime.GoblinNPCInstance;
+        runtime.OnDestroy();
+        runtime.OnDestroy();
+        Check(finalNpc == null && runtime.GoblinNPCInstance == null && host.GetGoblinController() == null,
+            "direct module destroy must clean the live NPC once without a prior host cleanup");
+
         Console.WriteLine("Goblin RuntimeModule regression PASS (" + checks + " checks)");
     }
 }

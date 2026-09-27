@@ -509,6 +509,7 @@ namespace BossRush
             }
 
             bool refunded = TryGiveItemToPlayerOrDrop(typeId, displayName, false);
+            if (modeFRuntimeDestroyed) return;
             if (refunded)
             {
                 owner.ShowMessage(reason + L10n.T("，物品已返还。", ", item refunded."));

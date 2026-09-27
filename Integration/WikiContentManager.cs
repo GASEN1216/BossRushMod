@@ -594,7 +594,8 @@ namespace BossRush
             switch (categoryId.ToLower())
             {
                 case "_wiki_link":
-                    return isChinese ? "BossRush Wiki" : "BossRush Wiki";
+                    // 页眉「在线 Wiki」按钮建不出来时的兜底入口，与按钮同名（模组改名后全称太长，放不进分类列表）
+                    return isChinese ? "在线 Wiki" : "Online Wiki";
                 case "start":
                     return isChinese ? "入门" : "Getting Started";
                 case "mechanics":

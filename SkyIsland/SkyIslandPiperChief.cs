@@ -12,7 +12,7 @@ namespace BossRush
     /// 脚下那个圈只是吹笛的提示，不是伤害范围：这位头目自己不放爆炸。
     ///
     /// 克制：现成的七种驱蚋手段都管用；吹笛那一下打掉它 <see cref="SkyIslandBossRules.FluteInterruptDamage"/> 点血，笛声就断了，
-    /// 下一口笛也来得快一半（打断是给玩家的奖励，不是惩罚）；白天去找不到它。
+    /// 下一口笛比正常晚一半（给玩家一个稳定的反击和整理空间）；白天去找不到它。
     ///
     /// 装备联动：苔纱面罩被暴击打穿，它吹不响笛子。面罩槽官方不磨耐久，由本控制器在自己的 `Health.OnHurtEvent`
     /// 里照官方磨头盔的口径扣（<see cref="SkyIslandBossProps.WearSoftPiece"/>），每 0.2 秒节流读一次耐久。
@@ -141,7 +141,7 @@ namespace BossRush
                 if (!interruptAnnounced)
                     Announce("笛声被打断了：趁它吹笛时打它。", "The flute tune breaks off. Hit it while it's playing.", true);
                 interruptAnnounced = true;
-                EndFlute(SkyIslandBossRules.FluteInterval * 0.5f);
+                EndFlute(SkyIslandBossRules.FluteInterruptedCooldown);
                 yield break;
             }
             if (MaskBroken())

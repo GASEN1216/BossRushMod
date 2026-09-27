@@ -31,6 +31,9 @@ namespace BossRush
             graph.offset = origin;
             graph.rotation = Vector3.zero;
             graph.scale = 1f;
+            // 本租约图不接官方 NavmeshCut（官方 Door 等克隆 prefab 上带着）：切割会整块重建 tile、换一批全可走的新节点，
+            // SetBlockedAreas 写下的 Walkable=false 随之丢失（2026-09-25 F3：天空岛五扇门的封锁整体丢失，钟庭门关着却走得到）。
+            graph.enableNavmeshCutting = false;
             return owner.ScanAsync(graph).GetEnumerator();
         }
 

@@ -752,16 +752,29 @@ internal static class Program
             && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandSmokeFan) == SkyIslandFieldBuff.Fan
             && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandCloudmossVeil) == SkyIslandFieldBuff.None
             && SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Soothe).Length > 0, "the zapper and the fan are used on the isles; the veil only has to be carried");
-        Check(SkyIslandFieldcraftRules.IsNight(19) && SkyIslandFieldcraftRules.IsNight(23.5) && SkyIslandFieldcraftRules.IsNight(4.99)
-            && !SkyIslandFieldcraftRules.IsNight(5) && !SkyIslandFieldcraftRules.IsNight(12) && !SkyIslandFieldcraftRules.IsNight(18.99)
-            && SkyIslandFieldcraftRules.IsNight(-1) && !SkyIslandFieldcraftRules.IsNight(double.NaN), "night is 19:00 to 05:00 (official nightStart)");
+        Check(SkyIslandFieldcraftRules.IsNight(22) && SkyIslandFieldcraftRules.IsNight(23.5) && SkyIslandFieldcraftRules.IsNight(5.99)
+            && !SkyIslandFieldcraftRules.IsNight(6) && !SkyIslandFieldcraftRules.IsNight(12) && !SkyIslandFieldcraftRules.IsNight(21.99)
+            && SkyIslandFieldcraftRules.IsNight(-1) && !SkyIslandFieldcraftRules.IsNight(double.NaN), "night is 22:00 to 06:00 (official runtime nightStart)");
         // 内容批次四：判夜收成一个口径（SkyIslandNight），夜风的入口只是转交，逐点一致。
         for (double hour = -3; hour <= 27; hour += 0.125)
             Check(SkyIslandFieldcraftRules.IsNight(hour) == SkyIslandNight.IsNight(hour), "wind night follows the one night rule: " + hour);
         Check(SkyIslandFieldcraftRules.WindLevel(false, false, false, false) == 0 && SkyIslandFieldcraftRules.WindLevel(true, false, false, false) == 1
             && SkyIslandFieldcraftRules.WindLevel(false, true, false, false) == 1 && SkyIslandFieldcraftRules.WindLevel(true, true, false, false) == 2
-            && SkyIslandFieldcraftRules.WindLevel(false, false, true, false) == 0 && SkyIslandFieldcraftRules.WindLevel(false, false, true, true) == 1
-            && SkyIslandFieldcraftRules.WindLevel(true, true, true, true) == 2, "wind level: night +1, bridge +1, storm pending on boardwalk or bridge +1, capped at 2");
+            && SkyIslandFieldcraftRules.WindLevel(false, false, true, false) == 0 && SkyIslandFieldcraftRules.WindLevel(false, false, true, true) == 2
+            && SkyIslandFieldcraftRules.WindLevel(true, true, true, true) == 2, "wind level: ordinary night and bridge winds add up; storm makes boardwalk and bridges gale");
+        // 十灯完成后回响仍带来大风；核、驱风香、灯旁庇护保留各自的应对价值。
+        foreach (bool night in new[] { false, true })
+            foreach (bool bridge in new[] { false, true })
+                foreach (bool boardwalk in new[] { false, true })
+                {
+                    bool ordinaryNight = SkyIslandFieldcraftRules.NightWind(night, SkyIslandLights.Target);
+                    int stormWind = SkyIslandFieldcraftRules.WindLevel(ordinaryNight, bridge, boardwalk, true);
+                    Check(stormWind == (bridge || boardwalk ? 2 : 0), "ten lights: storm gale stays local to boardwalk and bridges");
+                    Check(SkyIslandFieldcraftRules.CoreEased(stormWind, true) == (bridge || boardwalk ? 1 : 0),
+                        "ten lights: carrying the core still eases a returning gale");
+                    Check(SkyIslandFieldcraftRules.WindLevel(ordinaryNight, bridge, boardwalk, false) == (bridge ? 1 : 0),
+                        "ending the echo restores ordinary wind immediately");
+                }
         float exposure = 0f;
         int breezeSeconds = 0;
         while (!SkyIslandFieldcraftRules.NextChilled(false, exposure) && breezeSeconds < 1000)

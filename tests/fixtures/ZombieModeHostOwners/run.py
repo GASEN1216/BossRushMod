@@ -30,6 +30,7 @@ def main():
     module = ROOT / "ZombieMode/ZombieModeRuntimeModule.cs"
     host = ROOT / "ZombieMode/ZombieModeEntryHostBridge.cs"
     models = ROOT / "ZombieMode/ZombieModeModels.cs"
+    visuals = ROOT / "ZombieMode/ZombieModeBossVisuals.cs"
     generated = "using System; using System.Collections; using System.Collections.Generic; using UnityEngine; using UnityEngine.SceneManagement; namespace BossRush {\n"
     generated += "\n".join(member(models, signature) for signature in [
         "public enum ZombieModeLifecyclePhase", "public enum ZombieModeCombatPhase",
@@ -66,6 +67,10 @@ def main():
         "private void CleanupZombieModeForSceneChange(", "private void CleanupZombieModeOnDestroy()",
         "private Coroutine StartZombieModeCoroutine(", "private System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize(",
     ])
+    generated += "\n}\ninternal sealed partial class ZombieModeBossVisuals : MonoBehaviour {\n"
+    cache_field = "private static readonly Texture2D[] SigilTextures = new Texture2D[5];"
+    assert visuals.read_text(encoding="utf-8-sig").count(cache_field) == 1
+    generated += cache_field + "\n" + member(visuals, "internal static void ResetStaticCaches()")
     generated += "\n}}\n"
     (OUT / "Production.cs").write_text(generated, encoding="utf-8")
     production_files = [ROOT / "ZombieMode/ZombieModeRuntimeModule_HostLifecycle.cs", ROOT / "Utilities/RunScopedRegistry.cs"]

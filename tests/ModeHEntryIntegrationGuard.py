@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.join(REPO_ROOT, "tools"))
 
 from modeh_guard_util import read_text, strip_cs_comments  # noqa: E402
 from compile_list import read_compile_sources  # noqa: E402
+from IntegrationLeafOwnershipGuard import body as method_body, compact  # noqa: E402
 
 HELPER = os.path.join(REPO_ROOT, "MapSelection", "BossRushMapSelectionHelper.cs")
 ENTRY_FLOW = os.path.join(REPO_ROOT, "WavesArena", "BossRushEntryFlow.cs")
@@ -204,6 +205,22 @@ def main():
             errors.append("[Legacy] 缺少文件: " + rel)
             continue
         code = strip_cs_comments(text)
+        if rel == "ModeD/ModeD.cs":
+            # 准入判断在真实 Mode D owner；旧公开入口必须只把当前宿主传入。
+            try:
+                if compact(method_body(code, "public bool TryStartModeD()")) != "returnModeDRuntimeModule.TryStartModeD(this);":
+                    errors.append("[Legacy] Mode D public entry must forward its own host to the runtime owner")
+                owner_code = strip_cs_comments(read_text(os.path.join(
+                    REPO_ROOT, "ModeD/ModeDRuntimeModule_Lifecycle.cs")) or "")
+                entry = method_body(owner_code, "internal static bool TryStartModeD(ModBehaviour owner)")
+                ordered = ["ModeHRuntimeGates.IsLegacyModeEntryAllowed()", "owner.IsModeEActive",
+                           "owner.IsPlayerNaked()", "owner.StartModeD();", "return true;"]
+                positions = [entry.index(token) for token in ordered]
+                if positions != sorted(positions):
+                    errors.append("[Legacy] Mode D owner must keep risk / Mode E / inventory / start order")
+                code += "\n" + entry
+            except (AssertionError, ValueError, IndexError) as error:
+                errors.append("[Legacy] Mode D owner entry is missing or incomplete: " + str(error))
         if "IsLegacyModeEntryAllowed" not in code:
             delegate = LEGACY_GATE_DELEGATES.get(rel)
             if delegate is None or delegate[0] not in code:

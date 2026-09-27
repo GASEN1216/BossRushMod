@@ -291,6 +291,10 @@ echo(SkyIsland\SkyIslandGnatsLure.cs
 echo(SkyIsland\SkyIslandGnatsDrill.cs
 echo(SkyIsland\SkyIslandGnatProjectilePatch.cs
 echo(SkyIsland\SkyIslandHearthFx.cs
+echo(SkyIsland\SkyIslandCombatBalance.cs
+echo(SkyIsland\SkyIslandCombatPreset.cs
+echo(SkyIsland\SkyIslandChampionMoves.cs
+echo(SkyIsland\SkyIslandFxAssets.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs
 echo(DebugAndTools\MarriageTestDebugUI.cs
 echo(DebugAndTools\PermanentDuckNpcDebug.cs
@@ -313,6 +317,8 @@ echo(DebugAndTools\F3GameplayValidationScenes.cs
 echo(DebugAndTools\F3GameplayValidationStages.cs
 echo(DebugAndTools\F3GameplayValidationModes.cs
 echo(DebugAndTools\F3GameplayValidationDiagnostics.cs
+echo(DebugAndTools\F3GameplayValidationMapTour.cs
+echo(DebugAndTools\F3GameplayValidationMapTourJudges.cs
 echo(DebugAndTools\F3GameplayValidationRandomEvents.cs
 echo(DebugAndTools\F3GameplayValidationCodex.cs
 echo(DebugAndTools\F3GameplayValidationPersistence.cs
@@ -451,6 +457,8 @@ echo(Utilities\MapSelectionEntryInjectionHelper.cs
 echo(Utilities\OfficialQuests\OfficialQuestBinding.cs
 echo(Utilities\OfficialQuests\OfficialQuestProjection.cs
 echo(Utilities\OfficialQuests\OfficialQuestComponents.cs
+echo(Utilities\OfficialQuests\OfficialQuestItemRules.cs
+echo(Utilities\OfficialQuests\OfficialQuestItems.cs
 echo(Utilities\OfficialQuests\OfficialQuestGiverLocator.cs
 echo(Utilities\OfficialQuests\OfficialQuestRuntimeModule.cs
 echo(Config\Config.cs
@@ -464,6 +472,7 @@ echo(WavesArena\WavesArenaRuntimeModule_HostState.cs
 echo(WavesArena\WavesArenaRuntimeModule_ReturnPoint.cs
 echo(WavesArena\WavesArenaEntryAndTeleport.cs
 echo(WavesArena\WavesArenaRuntimeModule.cs
+echo(WavesArena\WavesArenaRuntimeModule_BossAccess.cs
 echo(WavesArena\WavesArenaRuntimeModule_Tick.cs
 echo(WavesArena\WavesArenaRuntimeModule_RewardPool.cs
 echo(WavesArena\WavesArenaRuntimeModule_EnemyPresets.cs
@@ -597,6 +606,7 @@ echo(ModeH\ModeHContentModels.cs
 echo(ModeH\ModeHControlPointHarness.cs
 echo(ModeH\ModeHDeathSuppressionRegistry.cs
 echo(ModeH\ModeHDraftController.cs
+echo(ModeH\ModeHDraftRefreshLedger.cs
 echo(ModeH\ModeHEncounterPlanner.cs
 echo(ModeH\ModeHEntry.cs
 echo(ModeH\ModeHEventRouter.cs
@@ -612,6 +622,11 @@ echo(ModeH\ModeHLoadoutKitApplicator.cs
 echo(ModeH\ModeHLoadoutKitRegistry.cs
 echo(ModeH\ModeHMapSupportRegistry.cs
 echo(ModeH\ModeHOddsController.cs
+echo(ModeH\ModeHOfficialBossAttributes.cs
+echo(ModeH\ModeHRuntimeModule_FighterPresentation.cs
+echo(ModeH\ModeHUIFighterDetails.cs
+echo(ModeH\ModeHRuntimeModule_PreparedLoadouts.cs
+echo(ModeH\ModeHLoadoutKitRegistry_Prepared.cs
 echo(ModeH\ModeHPresentationAssetCache.cs
 echo(ModeH\ModeHPresetRegistry.cs
 echo(ModeH\ModeHProductionCertification.cs
@@ -696,6 +711,8 @@ echo(ZombieMode\ZombieModeMapSelectionHelper.cs
 echo(ZombieMode\ZombieModeMapIsolation.cs
 echo(ZombieMode\ZombieModePollution_RuntimeComponents.cs
 echo(ZombieMode\ZombieModeBossController.cs
+echo(ZombieMode\ZombieModeDamageRuntime.cs
+echo(ZombieMode\ZombieModeBossVisuals.cs
 echo(ZombieMode\ZombieModePlayerSlowRuntime.cs
 echo(ZombieMode\ZombieModeSpawner.cs
 echo(ZombieMode\ZombieModeRuntimeModule_WaveController.cs
@@ -729,6 +746,7 @@ echo(BossFilter\BossFilterHostBridge.cs
 echo(MapSelection\BossRushMapSelectionHelper.cs
 echo(MapSelection\BossRushMapRuntime.cs
 echo(MapSelection\MapThumbnailCache.cs
+echo(MapSelection\BossRushInitialSpawn.cs
 echo(Integration\DragonDescendant\DragonDescendantConfig.cs
 echo(Integration\DragonDescendant\DragonDescendantAbilities.cs
 echo(Integration\DragonDescendant\DragonDescendantAbilities_ProjectilesAndGrenades.cs
@@ -1046,6 +1064,7 @@ echo(Integration\WishFountain\WishFountainBuilder.cs
 echo(Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs
 echo(PetNest\PetNestModels.cs
 echo(PetNest\PetNestTuning.cs
+echo(PetNest\PetNestGrowth.cs
 echo(PetNest\PetNestChroma.cs
 echo(PetNest\PetNestAuraEffect.cs
 echo(PetNest\PetNestAuraRecipes.cs
@@ -1165,11 +1184,14 @@ echo(Campaign\CampaignTuning.cs
 echo(Campaign\CampaignModels.cs
 echo(Campaign\CampaignFacilityUnlocks.cs
 echo(Campaign\CampaignPersistence.cs
+echo(Campaign\CampaignGuideTable.cs
+echo(Campaign\CampaignGuideFacts.cs
 echo(Campaign\CampaignSaveCoordinator.cs
 echo(Campaign\CampaignContentCatalog.cs
 echo(Campaign\CampaignQuestTable.cs
 echo(Campaign\CampaignBaseObjectives.cs
 echo(Campaign\CampaignOfficialQuestClient.cs
+echo(Campaign\CampaignRewardTable.cs
 echo(Campaign\CampaignObjectiveTracker.cs
 echo(Campaign\CampaignObjectiveCollector.cs
 echo(Campaign\CampaignProgressService.cs
@@ -1188,6 +1210,7 @@ echo(Campaign\CampaignRuntimeModule.cs
 echo(Campaign\CampaignRuntimeModuleHostBridge.cs
 echo(Config\ConfigBackMountain.cs
 echo(Integration\BackMountain\BackMountainConfig.cs
+echo(Integration\BackMountain\BackMountainBossMorphService.cs
 echo(Integration\BackMountain\BackMountainUnlocks.cs
 echo(Integration\BackMountain\BackMountainItems.cs
 echo(Integration\BackMountain\GardenSeedInjector.cs
@@ -1393,6 +1416,18 @@ if %BUILD_EXIT_CODE% EQU 0 (
             ) else (
                 echo Deployed Mode G presentation bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui
             )
+        )
+        rem Sky Island runtime fx bundle: heat haze refraction and mud flow materials. Missing bundle falls back to particles.
+        if exist "Assets\ui\skyisland_fx" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui"
+            copy /Y "Assets\ui\skyisland_fx" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\skyisland_fx" >nul 2>nul
+            if errorlevel 1 (
+                echo WARNING: Sky Island fx bundle deploy failed.
+            ) else (
+                echo Deployed Sky Island fx bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui
+            )
+        ) else (
+            echo WARNING: Sky Island fx bundle missing at Assets\ui\skyisland_fx; heat haze and mud flow use particle fallback.
         )
         rem Achievement bundle and high-resolution PNG overrides.
         if exist "Assets\achievement" (

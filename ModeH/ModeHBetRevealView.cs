@@ -3,8 +3,8 @@
 // ============================================================================
 // owner：「进场时弄个像许愿台那样的抽奖动画，格子就是压上去的赌注」。押的是钱之后，格子是五档赔率，
 // 每格写「赔率 xN · 赢了拿回多少」；高亮像许愿台的轮带一样从快到慢扫过去，停在这一场开出来的赔率上。
-// 纯表现：押金在锁盘时已经扣好、赔率在锁盘时已经定死，这里不改任何状态，也不挡状态机——
-// 生成阶段照常进行，画布不接管输入（不吃点击、不暂停），约 3.5 秒后自己淡出；暂停菜单开着时停住。
+// 押金与赔率已在锁盘时确定；生成阶段等待 IsPlaying 结束，避免开打后遮挡视野。
+// 画布不接管输入，约 3.5 秒后淡出；暂停菜单开着时停住。
 // 不自建 Update（ModeHPerformanceGuard）：由宿主每帧回调 OnUpdateInternal 调 Tick，没在播时 O(1) 早返。
 // ============================================================================
 
@@ -27,6 +27,9 @@ namespace BossRush
         private const int SweepLaps = 2;
 
         private static ModeHBetRevealView _instance;
+
+        /// <summary>开盘动画是否仍在屏幕上。锁盘流程用它把生成阶段顺延到揭晓结束之后。</summary>
+        internal static bool IsPlaying { get { return _instance != null; } }
 
         private Canvas _canvas;
         private CanvasGroup _group;
@@ -69,7 +72,7 @@ namespace BossRush
 
         private void Build(long amount, bool items)
         {
-            // 不接管输入：比赛在后面照常生成，这一层只是看的
+            // 不接管输入；宿主等待揭晓收场后才开始生成战场。
             _canvas = BossRushUI.CreateCanvasRoot(RootName, BossRushUILayers.Modal, false);
             _canvas.transform.SetParent(transform, false);
             _group = _canvas.gameObject.AddComponent<CanvasGroup>();
@@ -109,7 +112,7 @@ namespace BossRush
                 _cells[i].raycastTarget = false;
                 Transform stroke = cell.transform.Find("Stroke");
                 _strokes[i] = stroke != null ? stroke.GetComponent<Image>() : null;
-                TextMeshProUGUI oddsText = ZombieModeUIHelper.CreateText("Odds", cell.transform, "x" + odds, 30f,
+                TextMeshProUGUI oddsText = ZombieModeUIHelper.CreateText("Odds", cell.transform, ModeHRuntimeModule.FormatPayoutMultiplier(odds), 30f,
                     new Vector2(0f, 18f), new Vector2(CellWidth - 16f, 48f), TextAlignmentOptions.Center,
                     BossRushUIColors.WarningText);
                 oddsText.fontStyle = FontStyles.Bold;
@@ -140,7 +143,7 @@ namespace BossRush
             {
                 // 与许愿台轮带同一种手感：一条 ease-out 曲线从最快减到停，总步数 = 若干整圈 + 落点
                 float t = Mathf.Clamp01(_elapsed / SweepSeconds);
-                float eased = 1f - Mathf.Pow(1f - t, 3f);
+                float eased = BossRushUI.EaseOut(t);
                 int totalSteps = SweepLaps * ModeHConfig.MaxOdds + _target;
                 int lit = Mathf.Min(totalSteps, Mathf.FloorToInt(eased * totalSteps)) % ModeHConfig.MaxOdds;
                 if (lit != _lastLit)

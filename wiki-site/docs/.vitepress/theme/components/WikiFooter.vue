@@ -52,7 +52,7 @@ const footerText = computed(() => theme.value.footer ?? {})
         <a href="https://vitepress.dev" target="_blank" rel="noopener">Powered by VitePress</a>
       </li>
       <li>
-        <a :href="repo" target="_blank" rel="noopener">BossRush Mod</a>
+        <a :href="repo" target="_blank" rel="noopener">{{ ui.modName }}</a>
       </li>
       <li>
         <a href="https://store.steampowered.com/app/2411430/" target="_blank" rel="noopener">

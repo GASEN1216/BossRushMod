@@ -17,8 +17,14 @@ owner 2026-09-22 实测第 9 条「异色太廉价」、第 12 条「不同炫�
 5. 异色一整套都在：两圈符文环、金星、星芒、光冠、金尘、入场绽放、点光。
 6. 资源生命周期：new Material / new Texture2D / new Mesh 全部直接包在 Own( 里；
    OnDestroy 遍历 _ownedAssets 逐个 Destroy；特效文件里没有静态 Material / Texture / Mesh 字段。
-7. 材质只从共享模板派生（RingParticleEffect.GetSharedParticleMaterial()），特效文件里没有 Shader.Find(。
+7. 七色与异色的材质只从共享模板派生（RingParticleEffect.GetSharedParticleMaterial()），特效文件里没有 Shader.Find(。
 8. 特效根挂在角色根下；只有异色（符文环 / 点光）才启用 Update。
+9. 蓝 / 白 / 绿三色（2026-09-25 owner「泡泡太塑料、塑料叶子」第二轮）：主元素与点缀都用
+   SharedLook → BossRushFxKit.GetShapeMaterial（全 Mod 共享贴图 + BossRushFxMaterials 材质，能真加色），
+   不再回到逐只复制的 Legacy 半透明模板；气泡 / 珠光晶片是加色、叶片是半透明；涟漪用专门的 Ripple 形状；
+   三色的颜色走各自的自然色板（TintWater / TintNacre / TintFoliage），主元素与点缀共用；
+   发射器工厂 NewEmitter 只有一个扣预算的本体，其余重载一行转调；
+   遗种巢贴图枚举与共享形状枚举逐项同名同值（按数值转调，错一位就画错形状）。
 
 文本守卫的上限：挡不住「保留 token、废掉执行路径」。粒子到底好不好看、HDR 是否出光，
 只能 owner 实机看（清单见交付报告）。
@@ -37,6 +43,24 @@ RECIPES = ROOT / "PetNest/PetNestAuraRecipes.cs"
 TEXTURES = ROOT / "PetNest/PetNestAuraTextures.cs"
 CHROMA = ROOT / "PetNest/PetNestChroma.cs"
 SPAWNER = ROOT / "PetNest/PetNestCompanionSpawner.cs"
+PAINTER = ROOT / "Common/Effects/BossRushParticleTextures.cs"
+
+# 蓝白绿三色：配方方法 → 必须出现的共享材质调用（形状 + 混合）
+SHARED_LOOK_RECIPES = {
+    "BuildTide": [
+        "SharedLook(BossRushParticleShape.Bubble, BossRushFxBlend.Additive,",
+        "SharedLook(BossRushParticleShape.Ripple, BossRushFxBlend.Additive,",
+    ],
+    "BuildRadiant": [
+        "SharedLook(BossRushParticleShape.Pearl, BossRushFxBlend.Additive,",
+        "SharedLook(BossRushParticleShape.GlowDot, BossRushFxBlend.Additive,",
+    ],
+    "BuildVerdant": [
+        "SharedLook(BossRushParticleShape.Leaf, BossRushFxBlend.Alpha,",
+        "SharedLook(BossRushParticleShape.GlowDot, BossRushFxBlend.Additive,",
+    ],
+}
+SHARED_LOOK_PALETTES = {"BuildTide": "TintWater(", "BuildRadiant": "TintNacre(", "BuildVerdant": "TintFoliage("}
 
 CHROMA_BUDGET_MAX = 60
 SHINY_BUDGET_MAX = 120
@@ -83,6 +107,35 @@ def method_body(code, name):
     return None
 
 
+def method_bodies(code, name):
+    """同名方法（重载）的全部方法体，按出现顺序。"""
+    pattern = re.compile(
+        r"(?:private|internal|public|protected)\s+(?:static\s+)?[\w<>\[\],\s]+?\b"
+        + re.escape(name) + r"\s*\([^)]*\)\s*\{")
+    bodies = []
+    for m in pattern.finditer(code):
+        start = m.end() - 1
+        depth = 0
+        for i in range(start, len(code)):
+            ch = code[i]
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    bodies.append(code[start:i + 1])
+                    break
+    return bodies
+
+
+def enum_members(code, enum_name):
+    """enum 的 (名字, 数值) 列表；找不到返回 None。"""
+    m = re.search(r"enum\s+" + re.escape(enum_name) + r"\s*\{([^}]*)\}", code)
+    if not m:
+        return None
+    return [(n, int(v)) for n, v in re.findall(r"(\w+)\s*=\s*(\d+)", m.group(1))]
+
+
 def switch_cases(body):
     """switch 里出现过的 case 元素名。"""
     return set(re.findall(r"case\s+PetNestAuraElement\.(\w+)\s*:", body))
@@ -95,7 +148,7 @@ def caps_in(body):
 
 def main():
     errors = []
-    for path in (EFFECT, RECIPES, TEXTURES, CHROMA, SPAWNER):
+    for path in (EFFECT, RECIPES, TEXTURES, CHROMA, SPAWNER, PAINTER):
         if not path.exists():
             print("PetNestAuraEffectGuard: FAIL - missing source " + path.as_posix())
             return 1
@@ -108,6 +161,7 @@ def main():
     textures = clean_source(textures_raw)
     spawner = clean_source(SPAWNER.read_text(encoding="utf-8-sig"))
     chroma = clean_source(CHROMA.read_text(encoding="utf-8-sig"))
+    painter = clean_source(PAINTER.read_text(encoding="utf-8-sig"))
     fx_all = effect + "\n" + recipes + "\n" + textures
 
     # ---- 1. 映射 ----
@@ -209,7 +263,20 @@ def main():
 
     # 任何变量名上的 .maxParticles 写入都算（反向验证时 m2.maxParticles = 500 曾从只认 main. 的写法下漏过）
     assigns = len(re.findall(r"\.maxParticles\s*=", fx_all))
-    new_emitter = method_body(effect, "NewEmitter")
+    # NewEmitter 有重载：恰好一个本体扣预算，其余只能一行转调本体（不许第二个工厂绕过 TakeBudget）
+    new_emitter = None
+    emitter_overloads = method_bodies(effect, "NewEmitter")
+    cores = [b for b in emitter_overloads if "TakeBudget(" in b]
+    if len(cores) != 1:
+        errors.append("NewEmitter 必须恰好有一个扣预算的本体（实际 %d 个）" % len(cores))
+    else:
+        new_emitter = cores[0]
+    for b in emitter_overloads:
+        if b in cores:
+            continue
+        statements = [s for s in norm(b).strip("{} ").split(";") if s.strip()]
+        if len(statements) != 1 or not statements[0].strip().startswith("return NewEmitter("):
+            errors.append("NewEmitter 的非本体重载只能一行转调本体：" + norm(b)[:120])
     clone_official = method_body(recipes, "CloneOfficial")
     factories_ok = True
     for name, body in (("NewEmitter", new_emitter), ("CloneOfficial", clone_official)):
@@ -318,6 +385,55 @@ def main():
     build = norm(method_body(effect, "Build") or "")
     if "enabled = _haloOuter != null || _haloInner != null || _light != null;" not in build:
         errors.append("只有异色（符文环 / 点光）才启用 Update，纯炫彩崽零脚本帧成本")
+
+    # ---- 9. 蓝白绿三色走共享材质 ----
+    shared_look = method_body(effect, "SharedLook")
+    if shared_look is None or "return BossRushFxKit.GetShapeMaterial(shape, blend, gain);" not in norm(shared_look):
+        errors.append("SharedLook 必须转调 BossRushFxKit.GetShapeMaterial(shape, blend, gain)（共享贴图 + BossRushFxMaterials）")
+    for builder, looks in SHARED_LOOK_RECIPES.items():
+        body = method_body(recipes, builder)
+        if body is None:
+            continue
+        b = norm(body)
+        if "PetNestAuraTexture." in b:
+            errors.append("%s 不得再用逐只复制的 Legacy 模板材质（PetNestAuraTexture.*）：蓝白绿要共享材质才能加色" % builder)
+        for look in looks:
+            if look not in b:
+                errors.append("%s 缺少 %s ...）" % (builder, look))
+        emitters = len(re.findall(r"NewEmitter\(", b))
+        with_look = len(re.findall(r"NewEmitter\(\s*\"\w+\"\s*,\s*SharedLook\(", b))
+        if emitters == 0 or emitters != with_look:
+            errors.append("%s 的每个发射器都必须直接传 SharedLook(...) 材质（%d 个里 %d 个）" % (builder, emitters, with_look))
+        palette = SHARED_LOOK_PALETTES[builder]
+        if palette not in b:
+            errors.append("%s 必须用自己的自然色板 %s...)（调色板的饱和本色直接上就是塑料色）" % (builder, palette))
+    if accent is not None:
+        a = norm(accent)
+        for case, look, palette in (
+                ("Verdant", "SharedLook(BossRushParticleShape.Leaf, BossRushFxBlend.Alpha,", "TintFoliage(ring,"),
+                ("Tide", "SharedLook(BossRushParticleShape.Bubble, BossRushFxBlend.Additive,", "TintWater(ring,"),
+                ("default", "SharedLook(BossRushParticleShape.Pearl, BossRushFxBlend.Additive,", "TintNacre(ring,")):
+            anchor = "case PetNestAuraElement.%s:" % case if case != "default" else "default:"
+            start = a.find(anchor)
+            end = a.find("break;", start) if start >= 0 else -1
+            if start < 0 or end < 0 or look not in a[start:end]:
+                errors.append("点缀 %s 分支必须取共享材质 %s ...）" % (case, look))
+            if palette not in a:
+                errors.append("点缀 %s 必须与主元素共用色板 %s" % (case, palette))
+        if "if (sharedLook && shared == null) return;" not in a:
+            errors.append("点缀是蓝白绿但取不到共享材质时必须直接不建（不许退回本实例的默认亮点）")
+        if "? NewEmitter(\"Accent_\" + element, shared," not in a:
+            errors.append("点缀是蓝白绿时必须用共享材质建发射器（sharedLook ? NewEmitter(..., shared, ...)），取不到就不建")
+    pet_enum = enum_members(textures, "PetNestAuraTexture")
+    shared_enum = enum_members(painter, "BossRushParticleShape")
+    if not pet_enum or not shared_enum:
+        errors.append("解析不到 PetNestAuraTexture / BossRushParticleShape 枚举")
+    elif pet_enum != shared_enum:
+        errors.append("PetNestAuraTexture 与 BossRushParticleShape 必须逐项同名同值（按数值转调）：%s vs %s"
+                      % (pet_enum, shared_enum))
+    for shape in ("Pearl", "Ripple"):
+        if "case BossRushParticleShape.%s: return %s(" % (shape, shape) not in norm(painter):
+            errors.append("共享画师缺少 %s 形状的分派" % shape)
 
     if errors:
         print("PetNestAuraEffectGuard: FAIL (%d errors)" % len(errors))

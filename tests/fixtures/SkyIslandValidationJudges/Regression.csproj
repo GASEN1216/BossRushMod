@@ -33,6 +33,7 @@
     <Compile Include="../../../SkyIsland/SkyIslandStormEchoReward.cs" Link="Production/SkyIslandStormEchoReward.cs" />
     <!-- 头目 / 岛主 R1：SKY_BOSS_PROFILES 判据读档案表；剧情存档白名单与合成台减耗也引用它。 -->
     <Compile Include="../../../SkyIsland/SkyIslandBossRules.cs" Link="Production/SkyIslandBossRules.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandCombatBalance.cs" Link="Production/SkyIslandCombatBalance.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandChatterLines.cs" Link="Production/SkyIslandChatterLines.cs" />
     <!-- 帧时间分项计时：夹具不定义 BOSSRUSH_DEV（与正式构建同口径），只剩段名表与恒返回 false 的交出接口。 -->
     <Compile Include="../../../SkyIsland/SkyIslandFrameProfile.cs" Link="Production/SkyIslandFrameProfile.cs" />

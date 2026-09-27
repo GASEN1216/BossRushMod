@@ -80,7 +80,8 @@ MUTATING_MEMBERS = (
     ("RearmPigeonIfStoryLetterWaiting", "重新武装信鸽"), ("ReadLetter", "打开读信面板"),
     ("ShowMultipleChoiceBilingual", "弹官方对话"), ("ShowDialogueSequenceBilingual", "弹官方对话"),
     ("ForceEndDialogue", "结束别人的对话"), ("SetHealth", "改主角血量"), ("AddListener", "订阅事件"),
-    ("DevSpawnAround", "Dev 演练：刷云蚋"), ("DevSyntheticShot", "Dev 演练：登记合成弹道"),
+    ("DevSpawnAround", "Dev 演练：刷云蚋"), ("DevSpawnAhead", "Dev 演练：朝前刷云蚋"),
+    ("DevSyntheticShot", "Dev 演练：登记合成弹道"),
     ("DevKillOne", "Dev 演练：打死云蚋"), ("DevMotorStats", "Dev 演练入口"),
     # 2026-09-14 B 轮：噬风·回响。引风会预留并烧掉风晶、让遭遇 owner 开战；回响倒下会发箱子、记本趟清场。
     ("TryBeginStormEcho", "引风：烧风晶并开战"), ("StormEchoChoice", "打开引风选项"),
@@ -489,9 +490,33 @@ def main():
                 or re.search(r"(?<![\w.])" + name + r"\.(?:Add|AddRange|Remove|RemoveAt|RemoveAll|Clear|Insert|"
                              r"Enqueue|Dequeue|Push|Pop|Sort|Reverse)\(", flat_surface)):
             errors.append("会话观测面写了会话字段：" + field)
-    declared = set(re.findall(r"\b(?:internal|public|private|protected)\s+(?:static\s+)?[\w<>\[\],.]+\s+([A-Za-z_]\w*)\s*\(",
+    declared = set(re.findall(r"\b(?:internal|public|private|protected)\s+(?:static\s+)?[\w<>\[\],. ]+?\s+([A-Za-z_]\w*)\s*\(",
                               surface))
-    without_new = re.sub(r"\bnew\s+[A-Za-z_][\w.]*(?:<[^<>]*>)?\s*(?=[(\[{])", "new ", blank_strings(surface))
+    # 居民关系取数只允许审过的只读 API，限定在这一方法内，不向其它观测方法开放。
+    relationship = need_body(surface,
+        "internal System.Collections.Generic.Dictionary<string, bool> ValidationResidentRelationship(string id)", "居民关系观测")
+    # GetInteractableList 只重建官方临时列表；Contains/IsHidden 均只读。不得调用刷新显隐或业务入口。
+    relationship_calls = {"GetNPCConfig", "IsPermanentDuckNpc", "FindResidentQuestOwner", "GetComponentInParent", "GetComponentInChildren",
+                          "GetInteractableList", "Contains", "IsHidden"}
+    relationship_without_new = re.sub(r"\bnew\s+[A-Za-z_][\w.]*(?:<[^<>]*>)?\s*(?=[(\[{])", "new ", blank_strings(relationship))
+    observed_calls = set(re.findall(r"([A-Za-z_]\w*)\s*(?:<[^<>()]*>)?\s*\(", relationship_without_new))
+    unexpected_relationship = sorted(observed_calls - relationship_calls - CALL_KEYWORDS)
+    if unexpected_relationship:
+        errors.append("居民关系观测只许读配置和组件：" + ",".join(unexpected_relationship))
+    resident_case = need_body(cases, "private bool ValidateSkyIslandResidents(out string metrics, out string reason)", "居民逐人验收")
+    if not re.search(r"JudgeResidentRelationship\(ids\[i\], session\.ValidationResidentRelationship\(ids\[i\]\), spawned \|\| !isMarried,", resident_case):
+        errors.append("居民验收必须逐人把真实关系观测交给纯判据，未婚居民必须要求岛上实例")
+    if not re.search(r'if\s*\(\s*!spawned\s*&&\s*!isMarried\s*\)\s*errors\.Add\(ids\[i\] \+ ":missing"\);', resident_case):
+        errors.append("未婚居民缺席必须失败，外地 registry 实例不得豁免")
+    flat_relationship = re.sub(r"\s+", " ", normalize(relationship))
+    need(flat_relationship, "居民菜单必须观察官方实际分组", "var menu = owner.GetInteractableList();",
+         'observed["story_hidden"] = residents != null && residents.IsHidden(id);')
+    for key, variable in (("chat", "chat"), ("gift", "gift"), ("story", "storyOption")):
+        need(flat_relationship, "居民菜单可达性 " + key,
+             'observed["' + key + '_reachable"] = ' + variable + ' != null && ' + variable
+             + '.isActiveAndEnabled && menu.Contains(' + variable + ');')
+    remaining_surface = surface.replace(relationship, "") if relationship else surface
+    without_new = re.sub(r"\bnew\s+[A-Za-z_][\w.]*(?:<[^<>]*>)?\s*(?=[(\[{])", "new ", blank_strings(remaining_surface))
     calls = set(re.findall(r"([A-Za-z_]\w*)\s*(?:<[^<>()]*>)?\s*\(", without_new))
     unexpected = sorted(calls - declared - READ_ONLY_HELPERS - CALL_KEYWORDS)
     if unexpected:

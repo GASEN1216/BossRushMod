@@ -37,6 +37,7 @@
     <Compile Include="../../../SkyIsland/SkyIslandStormEchoReward.cs" Link="Production/SkyIslandStormEchoReward.cs" />
     <!-- 头目 / 岛主 R1 的档案表：剧情门面的手记白名单引用它。另一会话在建，文件还不在的签出里跳过（门面那一版也还没引用它）。 -->
     <Compile Include="../../../SkyIsland/SkyIslandBossRules.cs" Link="Production/SkyIslandBossRules.cs" Condition="Exists('../../../SkyIsland/SkyIslandBossRules.cs')" />
+    <Compile Include="../../../SkyIsland/SkyIslandCombatBalance.cs" Link="Production/SkyIslandCombatBalance.cs" Condition="Exists('../../../SkyIsland/SkyIslandCombatBalance.cs')" />
     <Compile Include="../../../SkyIsland/SkyIslandFrameProfile.cs" Link="Production/SkyIslandFrameProfile.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
     <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />

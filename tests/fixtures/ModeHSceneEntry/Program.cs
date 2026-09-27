@@ -17,6 +17,7 @@ internal static class Program
     private static Scene Target(string name="arena") { return new Scene{name=name,handle=2,isLoaded=true}; }
     private static ModeHRuntimeModule Reset(string name="arena",string id="main")
     {
+        BossRushInitialSpawn.Arrived=false;
         CharacterMainControl.Main=null;LevelManager.LevelInited=false;LevelManager.AfterInit=false;SceneLoader.IsSceneLoading=true;
         SceneLoader.Instance=new SceneLoader{Load=()=>Task.CompletedTask};
         MultiSceneCore.Instance=new MultiSceneCore{IsLoading=true};
@@ -86,6 +87,18 @@ internal static class Program
         BossRushMapSelectionHelper.Pending=false;ModeHRuntimeGates.Active=false;
         r._owner.Legacy(Stand);Ticks(r,2);
         Check(At(Stand)&&r._owner.LegacySetups==1,"ordinary entry remains available");
+
+        r=Reset();Ready(Target());BossRushMapSelectionHelper.Pending=false;ModeHRuntimeGates.Active=false;
+        SceneLoader.IsSceneLoading=true;int before=CharacterMainControl.Main.PositionWrites;
+        r._owner.Legacy(Stand);Ticks(r,4);
+        Check(CharacterMainControl.Main.PositionWrites==before&&r._owner.LegacySetups==0,"Legacy waits for final official player spawn");
+        SceneLoader.IsSceneLoading=false;MultiSceneCore.Instance.IsLoading=true;Ticks(r,4);
+        Check(CharacterMainControl.Main.PositionWrites==before,"Legacy also waits for nested subscene teleport");
+        MultiSceneCore.Instance.IsLoading=false;Ticks(r,2);
+        Check(At(Stand)&&r._owner.LegacySetups==1,"Legacy enters arena once after official spawn completes");
+        r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());CharacterMainControl.Main.PositionWrites=0;BossRushInitialSpawn.Arrived=true;
+        r._owner.Legacy(Stand);Ticks(r,3);
+        Check(CharacterMainControl.Main.PositionWrites==0&&r._owner.LegacySetups==1,"initial spawn skips second teleport but retains arena setup");
     }
     private static void Cancellation()
     {

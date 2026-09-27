@@ -1,6 +1,6 @@
 # Map Overview
 
-BossRush Mod supports 9 arena maps and the Sky Islands · Qinglan exploration journey, which departs from the base boat.
+This mod supports 9 arena maps and the Sky Islands · Qinglan exploration journey, which departs from the base boat.
 
 **Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt and Fate Echo** can
 all be played on any of the 9.

@@ -55,7 +55,7 @@ namespace BossRush
 ///   5. 好感度分档、婚后台词、气泡三条路径都吃这套对照；
 ///   6. 缺 en 时回落中文，而不是显示空串；
 ///   7. 语言在**取用时**解析：切语言之后同一份数据读出另一种语言；
-///   8. 真实 `Assets/Data/DuckNpcs.json` 里两位天空岛居民的 46 条台词确实都有非空英文。
+///   8. 真实 `Assets/Data/DuckNpcs.json` 里全部天空岛居民均为永久身份，关系台词都有非空英文。
 /// </summary>
 internal static class Program
 {
@@ -196,7 +196,7 @@ internal static class Program
         Check(ModBehaviour.Logs.Count > before, "坏数据要记一行 DevLog，而不是静默吞掉");
     }
 
-    // ---- 8：真实数据里两位天空岛居民确实译全了 ----
+    // ---- 8：真实数据里全部六位天空岛居民确实译全了 ----
     private static void RealDataSkyIslanders()
     {
         string path = Path.Combine("Assets", "Data", "DuckNpcs.json");
@@ -214,7 +214,8 @@ internal static class Program
             string id;
             if (!row.TryGetString("id", out id) || !id.StartsWith("sky_", StringComparison.Ordinal)) continue;
             PermanentDuckNpcData data = PermanentDuckNpcData.Parse(row, id);
-            if (data == null) continue;
+            bool permanent;
+            Check(row.TryGetBool("isPermanent", out permanent) && permanent && data != null, id + " 必须解析成永久关系身份");
             islanders++;
             // 每一条玩家会读到的台词：中英两种语言下都必须非空，且**互不相同**
             // （相同就说明这一句其实没译，只是把中文抄了一遍）。
@@ -228,7 +229,7 @@ internal static class Program
                     string cn = data.GetDialogue(category, level);
                     L10n.Chinese = false;
                     string en = data.GetDialogue(category, level);
-                    if (cn == null) continue;
+                    Check(!string.IsNullOrEmpty(cn), id + " 的 " + category + " 中文为空");
                     Check(!string.IsNullOrEmpty(en), id + " 的 " + category + " 英文为空");
                     Check(cn != en, id + " 的 " + category + " 中英同文（这一句没译）：" + cn);
                 }
@@ -241,7 +242,7 @@ internal static class Program
                 string cn = data.GetMarriedDialogue(key);
                 L10n.Chinese = false;
                 string en = data.GetMarriedDialogue(key);
-                if (cn == null) continue;
+                Check(!string.IsNullOrEmpty(cn), id + " 的婚后台词 " + key + " 中文为空");
                 Check(!string.IsNullOrEmpty(en), id + " 的婚后台词 " + key + " 英文为空");
                 Check(cn != en, id + " 的婚后台词 " + key + " 中英同文：" + cn);
             }
@@ -255,7 +256,7 @@ internal static class Program
                 Check(bubblesCn[i] != bubblesEn[i], id + " 的气泡中英同文：" + bubblesCn[i]);
             L10n.Chinese = true;
         }
-        Check(islanders == 2, "天空岛的两位永久居民（晴禾 / 苇白）都要有 permanent 台词块，实得 " + islanders);
+        Check(islanders == 6, "天空岛六位居民（含折翎与钟守）都要有 permanent 台词块，实得 " + islanders);
     }
 
     private static int Main()

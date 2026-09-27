@@ -1,6 +1,17 @@
 # Mode H：百战留痕（黑市鸭王杯）
 
-2026-09-24 F3 认证迁移（COMPAT，L1/L2，实机待复测）：普通新赛季与续赛在正式版、Dev 版均只调用 `TryUseReleaseCatalog`，入场直接选人，点击候选沿原自动链开打。自动 F3 套件也模拟普通玩家入口，`MODE_H_PLAYER_ENTRY` / `MODE_H_PLAYER_REENTRY` 断言到达 Drafting 且未启动动态认证，再执行整备、ERROR 与六场赛季用例。
+2026-09-25 玩家流程修订（COMPAT / SCHEMA+，L1/L2；页面观感与游戏内输入待 L3）：先选首发、再选接力，候选可刷新三次，锁定首发对象和装备预案保留。选人卡显示装配后的八项数值与同比例属性条，所有装备槽画图标。每场都先停在左右双方对照页，我方首发/接力、敌方每名选手均可逐项查看；押注固定在双方对照下方。选人页和上场战报页不提前下注。（「赛况 / 侦察」次级页已于同日晚些时候去掉，见下一段。）
+
+2026-09-25 owner 实测修订（COMPAT，L1/L2；观感待 L3）：看盘 / 押物品 / 结算三页布局全乱的根因是 `ModeHUIPages.CreateScrollHost` 复用官方 ScrollRect prefab 时没有摘掉 content 自带的竖排布局与自适应高度，手动定位的卡片被压成一列；现在实例化后 `StripLayoutControllers`（DestroyImmediate，与 CodexView 同口径）。看盘页（`ModeHUIFighterDetails.CreateMatchComparison`）改成一屏：场次与胜利返还倍率一行、本场擂台规则一行小字，左右两列列头写合计战力，每名选手一张横卡（立绘 + 名字 + 右侧装备图标 / 下方八项属性格，双方同尺度；放得下两行四列就用高卡，否则一行八列矮卡，再放不下才滚动）。owner 拍板去掉「赛况 / 侦察」：`AppendReconLinesAndActions`、`ApplyRecon`、`AppendMatchPreview` 删除，`TryApplyRecon` 与 reconChoices 数据留在规划器里给旧档与执行回归用；`ModeHReachabilityGuard` 同步不再要求生产调用方。「自己调整再开打」直接进整备页签（`OpenLoadoutEditorFromBrief`），「完成」回到双方对照页再锁盘；整备页签下一行写当前首发 / 接力 / 口令，阵容页左列首发右列接力，配装页两列带官方物品图标。押物品页是整卡可点的物品格，选中格底色染主色、描边常亮主色。结算页按内容估高（`ResolvePanelSize`），奖品一排居中，战报单按行数收高。刷新候选 / 结算点下一场时不再先换成「准备参赛选手」占位页：已有页面时原页盖一块透明挡板（`ModeHUI.SetPageBusy`）等预案分帧备好再原地换内容，选人页新卡错峰升起一次；只有没开页面时才出占位页，占位页换正式页不重播面板打开动画。
+
+候选与赛前首次装备预览由 `ModeHRuntimeModule_FighterPresentation` 每帧准备一名选手，完成后才绘制全部数字与装备；同页刷新命中本局预案。准备页允许返回基地，官方暂停时停止推进，离开相位、退出或销毁 UI 会取消协程，每次跨帧均复核 owner/phase，避免旧任务重开页面。侦察/押品子页状态随 UI 清理。
+
+背包与穿戴物品都可选，含任务物品和零估值物品，容器携带内容一起押；押品选择是可滚动图标网格，穿戴状态、估值与选中态就近标出。倍率取双方同一份装配预案的战力，玩家越占优倍率越低；界面与揭晓动画显示实际返还倍率（ComputePayout 的比值），不把内部档号当成实付倍数。锁盘后关闭旧页面，等开盘动画彻底结束再生成战场；暂停或 owner 关闭时不推进。
+
+胜利奖励只用物品图标与右下数量，整备奖励同样画图标。现金账本 schema 3 兼容 1/2，新增可选 prizeItems 保存完整奖品计划；pendingItems 清空后仍能重建奖励展示，旧档缺字段时不猜测类型。观战右侧投降/退出使用共享确认框并绑定当前 HUD；退出保留中断赛季，结束赛季统一经 SafeExitFromModeH 回基地。主要文件：ModeHUIFighterDetails、ModeHRuntimeModule_FighterPresentation、ModeHRuntimeModule_PreparedLoadouts。守卫 ModeHPrematchPresentationGuard 与 ModeHCashBetGuard 已做稀疏副本实跑转红和 SHA-256 还原；ModeHItemBetLedger 回归覆盖旧 schema 与奖品图标清单往返。
+
+
+2026-09-24 F3 认证迁移（COMPAT，L1/L2，实机待复测）：普通新赛季与续赛在正式版、Dev 版均只调用 `TryUseReleaseCatalog`，入场直接选人；两席签约后沿原自动链停在赛前对照页。自动 F3 套件也模拟普通玩家入口，`MODE_H_PLAYER_ENTRY` / `MODE_H_PLAYER_REENTRY` 断言到达 Drafting 且未启动动态认证，再执行整备、ERROR 与六场赛季用例。
 
 逐项生成、受伤、死亡与口令探针仅由 F3 → 玩法验收 →「鸭王杯逐项认证」按钮显式启动，要求 Dev 构建、专用测试档、当前停在选人页，且无其他验收、保存或场景加载。按钮先关闭 F3，再关闭 Mode H 选人页，依次释放两层暂停。完成、失败与「停止测试并返回选人」均回收诊断选手、恢复发布目录和原选人页；不创建新赛季、不重抽候选、不写赛季或认证缓存、不退票。关停及过图取消当前 owner，旧认证的迟到 finally 不能清掉新认证的句柄或 UI。旧的首次入场认证与缓存实测记录只描述历史版本，不再是当前玩家流程。认证驱动复用 `ValidationCoroutineStack`，嵌套协程异常同样清理并返回选人页，取消不记通过。整备页口令说明与候选列表共用兼容表判据，发布支持的效果正常显示。
 
@@ -94,7 +105,7 @@ scene handle、主角、`LevelManager.LevelInited`、`LevelManager.AfterInit`、
   typed pending entry kind（`BossRushPendingEntryKind.ModeH`），与 Mode G 互斥。
 - `modeHEnabled` 字段与旧键 `BossRush_ModeHEnabled` 仅为兼容保留；Mode H 现属默认内容，
   不再注册总开关，并会在读配置后强制恢复为开启。
-- 入口页顶部**固定显示**风险行 `BossRush_ModeH_RealStakeRiskNotice`，不可折叠、不可关闭。
+- 入口页页脚固定显示风险行 `BossRush_ModeH_RealStakeRiskNotice`，不可折叠、不可关闭。
   2026-09-24 起文案改为押钱口径（「押的是你的钱……押金归庄家」，见下文「押钱」一节）；
   key 不变，`ModeHLocalizationGuard` 按新口径核对中英关键词。
 - 五种拒绝原因（内容未就绪、地图不支持、展示资源缺失、旧模式冲突、生产认证失败）
@@ -120,7 +131,7 @@ E2 --> E3["结算 → 战痕 offer → 幕间"]
 - 六场，第一幕 1/2，第二幕 3/4，第三幕 5/6；第 6 场就是冠军赛，没有第 7 场。
 - 每场最多 180 秒；到时判玩家失败，不补伤害、不伪造击倒。
 - 市场只有两个窗口：第 2 场后（候签）与第 4 场后（特殊敌军资格）。
-- **2026-09-23 复查后的玩家流程**：场景就绪后直接进入唯一的选人页，点一位即签主将、自动配接力并开打；
+- **2026-09-23 历史玩家流程（已由本文开头取代）**：场景就绪后直接进入唯一的选人页，点一位即签主将、自动配接力并开打；
   每场「看盘 → 整备 → 赔率 → 锁盘」由自动链按默认值走完不停页，场间只有结算页一个「下一场」（转会窗口两键直达下一场）。
   状态机相位与上图一致，只是中间相位不再弹页。详见文末「2026-09-23」一节。
 
@@ -419,8 +430,8 @@ Intermission / TransferWindow / HallOfFame / Suspended`，**没有任何一条�
 局中重建因此在状态机层面结构性不可达。重建侧四个成员已随之移除，
 `ModeHBattleSnapshotGuard` 的断言方向反转为「必须保持缺席」。
 
-玩家侧口径：中断后是**重打这一场**，不是接着打；这一场押的虚拟筹码与真实押品全额退回，
-**绝不判负**，也绝不声称继续了原战斗。
+玩家侧口径：中断后是**重打这一场**，不是接着打，**绝不判负**。旧仓库托管链按原协议回滚；
+2026-09-24 起当前押钱/押背包物品跟着这一场走，中断不退，详见下节。
 
 采集侧保持不变（四类触发点、只在内存构造、随 Season 一并落盘、参与 §20.2 canonical digest）：
 `currentBattleSnapshot` 是落盘字段，摘掉它属 `SCHEMA-`，需 owner 签字。
@@ -431,10 +442,11 @@ Intermission / TransferWindow / HallOfFame / Suspended`，**没有任何一条�
 
 - 档位 `ModeHConfig.CashBetAmounts = {0, 1000, 5000, 20000}` 加一颗「押物品」，默认不押、读档回到不押；在选人页、每场结算页、兜底赔率页的页脚一排选（`AppendCashBetRow`）。
 - 赔付：赢了拿回 `押金 × (1000 − 80) ÷ 假定胜率‰`，向下取整到 10；假定胜率表 `CashBetAssumedWinPermilleByOdds`（x1…x5 = 850/700/550/420/300）。每档满 20 场后取 `max(表, 实际胜率)`，只会让赔付变少。
-- 资金：`ModeHCashBetService` 的账本是本槽 typed 存档 `BossRush_ModeHCashBet_v1`（`BossRushSlotJsonStore` + `BossRushSaveCoordinatorEngine`，现金快照同批落盘）；Reserved → Settled / Refunded 单向，结算与退回至多一次。赛季 DTO 不动（canonical digest 反射全部公有字段）。
+- 资金：`ModeHCashBetService` 的账本是本槽 JSON 字符串存档 `BossRush_ModeHCashBet_v1`（`BossRushSlotJsonStore` + `BossRushSaveCoordinatorEngine`，现金快照同批落盘）；Reserved → Settled / Refunded 单向，结算与退回至多一次。赛季 DTO 不动（canonical digest 反射全部公有字段）。
 - 接线：锁盘落盘后下注（`ReserveStandingCashBet`，并播 `ModeHBetRevealView`「开盘」揭晓）；本场结算处结算（`SettleCashBetForMatch` → `SettleReservedBet`）；两处读档与开新赛季对账（`ReconcileCashBetOnRestore`）。
 - **押注跟着这一场走**（同日第二轮）：技术重试、恢复回落、挂起 / 关停 / 切图中止（`TryReturnRealStakeOnAbort`）都不退，重锁时经 `ModeHCashBetService.ReservedFor` 沿用挂着的那一笔、按重打结果结算；只有恢复页放弃赛季、开新赛季对到上一季、F3 清理才退。旧版一中断就整额退回，打输了强退重进等于免费重掷。
-- **押背包物品**（同日第二轮，第三轮去掉限制并改发奖品）：押注行「押物品」打开 `ModeHPage.ItemBet` 卡片栅格选背包里的东西，押什么、押几件都不限（只挡任务物品与估值为 0 的），估值 = 官方总价 × 0.5 的商人收购口径，只管下一场。物品侧 `ModeH/ModeHItemBetStake.cs` 是玩家资产访问白名单的一条：只读主角色背包，物品押上**不离开背包**；输了由 `ForfeitLocked` 收走仍在玩家身上的那几件，找不到的按估值从余额扣到 0 为止；赢了东西留着、另发奖品——品质 = 押品按估值加权的平均品质，总价值 = 「赔付 − 估值」，件数 = 押上件数（最多 6），从 `BossRushQualityItemPool` 挑、经 `ModeHRewardItemPool.TryInstantiate` 实例化，账本记成才 `SendToPlayer(prize, true, false)` 发，凑不满的折成钱；读档后按账本 typeId / 数量重新认领。账本同一本（`kind`、`items`、`charged`、`prizes`、`prizeCash`）。
+- **押背包物品**（同日第二轮，第三轮去掉限制并改发奖品）：押注行「押物品」打开 `ModeHPage.ItemBet` 卡片栅格选背包里的东西，押什么、押几件都不限（只挡任务物品与估值为 0 的），估值 = 官方总价 × 0.5 的商人收购口径，只管下一场。物品侧 `ModeH/ModeHItemBetStake.cs` 是玩家资产访问白名单的一条：只读主角色背包，物品押上**不离开背包**；输了由 `ForfeitLocked` 收走仍在玩家身上的那几件，找不到的按估值从余额扣到 0 为止；赢了东西留着、另发奖品——品质 = 押品按估值加权的平均品质，总价值 = 「赔付 − 估值」，件数 = 押上件数（最多 6），从 `BossRushQualityItemPool` 挑、经 `ModeHRewardItemPool.TryInstantiate` 实例化，先固定奖品计划，再由 `SendToPlayerCharacterInventory(prize, true)` 不合并地入包，凑不满的折成钱。满包保留欠账，空位就绪后补发；当前押注完成之前不能覆盖成下一笔。读档只按 TypeID + 持久身份唯一认领，旧记录缺身份或身份重复都走缺失估值补偿。账本仍是同一本。
+- **可恢复实物结算（2026-09-25，SCHEMA+）**：原 key 不变，schemaVersion=2 接受 v1，新增 `itemSettlement` / `pendingItems` / `missingValue`，押品编码追加身份列。锁盘给物品 Variables 写 `BossRush_ModeHBetIdentity`，随主角物品树一起保存。结算先提交固定计划，再把实物与剩余义务同批保存，全部完成后才结清现金与统计；投递异常不抹掉欠账，已入包身份不重发，输局已收押品不再次扣缺失估值。放弃赛季不能清除已准备结算的义务；宿主每秒最多尝试一次补发，保存走原共享协调器。L2 故障、重启、同型号实例与旧账本回归见 `tests/fixtures/SaveFailureRecovery/README.md`，真实物品与切图仍待实机。
 - ESC（同日第二轮）：页面动作可标 `IsCancel`（整备页与押物品页的「完成」、恢复壳的「稍后处理」），ESC 等于点它；没有返回语义的页不接 ESC，照常交给官方暂停菜单。
 - 守卫 `tests/ModeHCashBetGuard.py`、`tests/ModeHIsolationGuard.py`（`check_item_bet_stake`）；设计与回退见本地 `docs/design/鸭王杯押钱_2026-09-24.md`。
 
@@ -753,7 +765,7 @@ owner 定：「地图选择器里已有的所有图都接入我们 7 月以来�
 
 2026-09-22 审计修复（COMPAT，L2，未实机）：逐 effect 报告恢复接受合法 ActionApplied=5，拒绝未知状态与仅用于聚合的 PartiallyVerified=4，finish 动作证据在报告往返后保留。诊断创建改走独立 async 接收器；取消、代次变化和超时后晚成功立即 Recycle，返回成功也在协程读取前交给 owner 持有。pending task 超时不再强行 GetResult，保留接收器等待并回收晚结果。执行回归覆盖 scav/wolf 创建期取消、超时、后继代次及返回后尚未被协程读取的取消。
 
-## 2026-09-23：一页选人、自动开打、观战镜头与拍铃卡（COMPAT / WIRE+，L1/L2，未实机）
+## 2026-09-23 历史实现（选人/开打流程已由本文开头取代）：观战镜头与拍铃卡（COMPAT / WIRE+，L1/L2，未实机）
 
 owner 人工实测第 6 条：「一进去就在跑什么契约」「选完武将还要选一堆东西」「选完后完全看不到有斗蛐蛐」「拍铃铛按钮太丑」。
 
@@ -775,3 +787,14 @@ owner 人工实测第 6 条：「一进去就在跑什么契约」「选完武�
 - 按钮口径：每页至多一个 `AccentFill` 主按钮，不可逆操作 `Danger`，其余次级描边按钮；选人卡整张可点。同页刷新不重播打开动画、保住滚动位置。
 - 复核补缺：凑不出接力搭档时选人页有「退出本赛季」按钮（复用既有退出路径、不退船票）；热身文案不再写「只做这一次」；无报价的转会窗口自动关窗直进下一场（F3 `MODE_H_FULL_SEASON` 已接受这种情况）；12 位选手描述只写战斗代码真实实现的行为；打法标签改为「打持久战」「专收残血」。
 - 新文件 `ModeH/ModeHUIPageParts.cs`（从 `ModeHUIPages.cs` 拆出，行数预算）。详情：本地 `docs/reports/testing/2026-09-23-UI与特效审美-看图清单.md`。
+
+## 2026-09-25 官方属性赔率与随机地点
+
+- 候选 Boss 的官方 Wiki 基础属性快照见 `docs/reference/ModeH官方Boss预制体属性.md`，运行时索引由 `ModeHOfficialBossAttributes` 提供。每场比较双方装配后战力来修正公开分差：我方占优时降低倍率，敌方占优时提高倍率；实际属性仍来自游戏内预制体与同一份装备预案。
+- 每局按 runSeed 从地图已登记刷新点抽取擂台，使用官方 AI 同用的 A* 图检查可走节点、间距、胶囊净空、完整路径与绕行长度；看台和隔离点随场地移动，续赛按原 seed 重建。无安全组合时中止入场，不回退未经本次检查的固定点；动态障碍和大体型角色仍需实机验证。
+
+## 2026-09-25 赛前参数页与地图选择横幅（COMPAT）
+
+选人签约和幕间自动流程现在只推进到 `MatchBrief`，不再跳过赛前决策页。看盘页用左右独立滚动列列出我方首发/接力、每名敌人的装配属性条与数字；押注选项固定在该页下方，玩家点「开打」后才进入整备、锁盘和开战。选人页不提供押注选择。
+
+从地图选择器进入鸭王杯时，鸭王杯条目清除 `MapSelectionEntry.fullScreenImage`，保留地点卡片与地图名，避免模式横幅遮住地图选择。

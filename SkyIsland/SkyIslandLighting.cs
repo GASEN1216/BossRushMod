@@ -211,8 +211,8 @@ namespace BossRush
             return scale > 0.0 && !double.IsNaN(scale) && !double.IsInfinity(scale) ? scale : SkyIslandNight.DefaultClockScale;
         }
 
-        // 0–5 星夜；5–7 晨光；7–10 晴昼；10–16 晴昼恒定；16–18 晴昼→暮色；18–19 暮色→星夜；19–24 星夜。
-        // 星夜整档的起止取 SkyIslandNight（与夜风、云蚋同一份），与官方 TimeOfDayController 的 dawnStart=16 / nightStart=19 同相。
+        // 0–6 星夜；6–7 晨光；7–10 晴昼；10–16 晴昼恒定；16–18 晴昼→暮色；18–22 暮色→星夜；22–24 星夜。
+        // 星夜整档的起止取 SkyIslandNight（与夜风、云蚋同一份），与官方 TimeOfDayController 运行时的 morningStart=6 / nightStart=22 同相。
         // 以连续小时和 SmoothStep 插值，午夜仍在同一星夜档，不产生跳变。
         internal static void ResolveTimeBlend(double hours, out int from, out int to, out float blend)
         {

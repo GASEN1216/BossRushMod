@@ -36,7 +36,7 @@ namespace BossRush
     {
         internal static void Run(Func<string,CharacterMainControl> create, Action<bool,string> check)
         {
-            foreach (string id in new[] { "sky_qinghe", "sky_weibai" })
+            foreach (string id in SkyIslandResidents.AllIds)
             foreach (bool marriageFirst in new[] { false, true })
             foreach (bool chinese in new[] { false, true })
             {

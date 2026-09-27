@@ -701,7 +701,7 @@ namespace BossRush
             return errors.Count == 0;
         }
 
-        /// <summary>SKY_NIGHT_BOUNDARY_OFFICIAL：岛上判夜（`SkyIslandNight` 19–5）刻意等于官方 `TimeOfDayController.nightStart / morningStart`；生产路径仍是纯常量，官方改了值只有这里会红。</summary>
+        /// <summary>SKY_NIGHT_BOUNDARY_OFFICIAL：岛上判夜（`SkyIslandNight` 22–6）刻意等于官方 `TimeOfDayController.nightStart / morningStart` 的运行时值（prefab 序列化值，不是反编译初值 19 / 5）；生产路径仍是纯常量，官方改了值只有这里会红。</summary>
         internal static bool JudgeNightBoundary(float officialMorning, float officialNight, double modEnd, double modStart, out string metrics, out string reason)
         {
             metrics = "official_night=" + officialNight.ToString("0.##") + ",official_morning=" + officialMorning.ToString("0.##") + ",mod_start=" + modStart.ToString("0.##") + ",mod_end=" + modEnd.ToString("0.##");
@@ -990,7 +990,10 @@ namespace BossRush
         {
             TimeOfDayController controller = TimeOfDayController.Instance;
             if (controller == null) throw new SkyIslandSkipCase("official_time_of_day_controller_missing", "controller=false");
-            return JudgeNightBoundary(controller.morningStart, controller.nightStart, SkyIslandNight.EndHour, SkyIslandNight.StartHour, out metrics, out reason);
+            bool ok = JudgeNightBoundary(controller.morningStart, controller.nightStart, SkyIslandNight.EndHour, SkyIslandNight.StartHour, out metrics, out reason);
+            // 只记不判：光照 16–18 / 18–入夜两段过渡按官方黄昏起点校对时要看它（反编译初值 16，运行时以 prefab 为准）。
+            metrics += ",official_dawn=" + controller.dawnStart.ToString("0.##");
+            return ok;
         }
 
         /// <summary>

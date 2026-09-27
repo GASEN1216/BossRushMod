@@ -213,8 +213,10 @@ namespace BossRush
         /// <summary>木牌上一次按哪种语言写的：玩家在岛上切了语言时只重写字，不重扫导航。</summary>
         private bool labelsChinese;
         /// <summary>关着的门自检节拍（见 <see cref="VerifyBlocked"/>）；自检点不在挡区里时停掉，免得每秒重封。</summary>
-        private float nextVerifyAt;
-        private bool verifyDisabled, leakReported;
+        private float nextVerifyAt, nextLeakLogAt;
+        private bool verifyDisabled;
+        /// <summary>这一趟一共重封了几次：每次都数，日志限频到 10 秒一条，下一轮 F3 能看出丢失是否还在发生。</summary>
+        private int leakCount;
 
         internal void Apply(SkyIslandStoryData story)
         {
@@ -262,9 +264,10 @@ namespace BossRush
             navigation.SetBlockedAreas(CollectBlocked(story, false));
             string still = LeakedGate(story);
             if (still != null) verifyDisabled = true;
-            if (leakReported && still == null) return;
-            leakReported = true;
-            Debug.LogWarning("[SkyIsland] gate navigation block was lost and re-applied: gate=" + leaked
+            leakCount++;
+            if (still == null && Time.time < nextLeakLogAt) return;
+            nextLeakLogAt = Time.time + 10f;
+            Debug.LogWarning("[SkyIsland] gate navigation block was lost and re-applied: gate=" + leaked + ",count=" + leakCount
                 + ",walkable_before=" + before + ",walkable_after=" + navigation.CountWalkableNodes()
                 + (still != null ? ",probe_not_in_block=" + still + ",verify_disabled=True" : string.Empty));
         }

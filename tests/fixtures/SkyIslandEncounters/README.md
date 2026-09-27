@@ -21,3 +21,12 @@
 2026-09-18 补齐官方气泡合同：manager 缺席/停用/销毁、缺 prefab 的同步静默完成、
 已失败/取消的异步结果、正常跨帧完成及清理后的迟到异常。替身的 Forget 不阻塞，
 不再用同步抛错代替官方 UniTask 失败。仅证明请求记账与异常观察，不证明实际像素可见。
+
+2026-09-26：直接链接 `SkyIslandCombatBalance` 与 `SkyIslandCombatPreset`，按 Wiki 固定快照逐字段核对，
+覆盖全部头目 / 岛主 / 剧情对手 / 噬风 / 回响与同组随从，真实 owner 在官方工厂调用前写好属性；
+验证普通敌人底模差异、独立近战伤害、负暴击修正、基准资源不被污染和重复准备不复利。
+官方 CreateCharacterAsync 内部 Stat / 难度 / AI 装配仍是宿主边界，替身只记录调用时数据，待 Windows 编译与 L3 核实。
+
+2026-09-26 序章补验：`run.py` 将正式 `SkyIslandPreludeFlow.SpawnBoss` 方法逐字写入 Build 下的编译输入；`PreludeSpawnRegression` 只存根场景 / 资源边界，工厂替身按调用当刻 `preset.health` 创建角色。验证序章守基础 375 HP、出场满血、伤害 / 移动 / 反应、source 不变、再次生成不复利，以及敌对、掉落开关与原 K3 配装入口。删除基准准备调用、或挪至 `await CreateCharacterAsync` 之后，执行结果都必须转红。该夹具没有运行 Unity 的真实物理、装备和尸体箱，不能替代实机。
+
+序章 `SkyIslandPreludeFlow.SpawnBoss` 从生产文件逐字抽取执行；覆盖零号区断风游猎·守的生成前属性、满血、重复生成、敌对性与 preset owner。

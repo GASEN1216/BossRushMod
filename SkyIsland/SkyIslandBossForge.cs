@@ -38,7 +38,7 @@ namespace BossRush
     ///
     /// 五层都是**可失败的装饰**（口径同 <see cref="SkyIslandEnemyTiers"/>），任一失败都不影响这场战斗能不能打完：
     /// 1. 名字、血条名与 Boss 图标（改克隆 preset，不污染官方角色池）；
-    /// 2. 数值与反应（乘法，<see cref="SkyIslandBossMark"/> 挡重入）；
+    /// 2. 数值与反应已由 SkyIslandCombatPreset 在生成前按 Wiki ×1.5 准备；
     /// 3. 配装事务（照 Mode H 装配器：先问 prefab、换下来的官方随机装备销毁、任一件失败整批回收）；
     /// 4. 只缩放 `characterModel`，不动角色 transform（碰撞体与导航半径保持官方口径）；
     /// 5. 专属掉落组件与招式控制器。
@@ -65,8 +65,6 @@ namespace BossRush
             }
             created.gameObject.AddComponent<SkyIslandBossMark>();
             ApplyIdentity(created, profile);
-            ApplyStats(created, profile);
-            ApplyReaction(created, profile);
             if (!string.IsNullOrEmpty(profile.FaceId)) SkyIslandResidents.ApplyBattleFace(created, profile.FaceId);
             string reason;
             if (!TryEquip(created, profile, out reason))
@@ -101,6 +99,28 @@ namespace BossRush
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 头顶台词装配失败（只是这一位不说话）：" + e.Message); }
         }
 
+        /// <summary>
+        /// 具名剧情对手（折翎战斗体、失控的守钟装置）的专属招式（<see cref="SkyIslandZhelingMoves"/> / <see cref="SkyIslandBellEngineMoves"/>）。
+        /// 与台词一样是可失败的装饰：装不上只是这一位没有专属招式，这场仗照打。由遭遇 owner 在具名对手分支里调。
+        /// </summary>
+        internal static void BindChampionMoves(CharacterMainControl created, string championId, SkyIslandBossContext context)
+        {
+            if (created == null || context == null) return;
+            try
+            {
+                switch (championId)
+                {
+                    case "zheling":
+                        created.gameObject.AddComponent<SkyIslandZhelingMoves>().Bind(created, context);
+                        break;
+                    case "bellkeeper":
+                        created.gameObject.AddComponent<SkyIslandBellEngineMoves>().Bind(created, context);
+                        break;
+                }
+            }
+            catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 具名对手招式装配失败（只剩官方 AI）：" + e.Message); }
+        }
+
         private static void ApplyIdentity(CharacterMainControl created, SkyIslandBossProfile profile)
         {
             try
@@ -117,42 +137,6 @@ namespace BossRush
                     BossRushEagerReflectionCache.CharacterRandomPreset_CharacterIconType.SetValue(preset, CharacterIconTypes.boss);
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 名字与图标失败：" + e.Message); }
-        }
-
-        private static void ApplyStats(CharacterMainControl created, SkyIslandBossProfile profile)
-        {
-            try
-            {
-                Item item = created.CharacterItem;
-                if (item == null) return;
-                Stat maxHealth = item.GetStat("MaxHealth".GetHashCode());
-                if (maxHealth != null) maxHealth.BaseValue *= profile.Health;
-                // 先改上限再同步当前血量，否则角色以旧血量出场。
-                if (created.Health != null) created.Health.SetHealth(created.Health.MaxHealth);
-                float damage = Mathf.Min(profile.Damage, 3f);
-                Stat gun = item.GetStat("GunDamageMultiplier".GetHashCode());
-                if (gun != null) gun.BaseValue *= damage;
-                Stat melee = item.GetStat("MeleeDamageMultiplier".GetHashCode());
-                if (melee != null) melee.BaseValue *= damage;
-            }
-            catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 数值倍率失败：" + e.Message); }
-        }
-
-        /// <summary>
-        /// 反应速度。遭遇 owner 在分派前已按档次跑过 `SkyIslandEnemyTiers.ApplyAi`：新档次的反应倍率走默认分支（1），
-        /// 追踪距离取精英以上的 85 米，所以这里只乘档案自己的倍率，不会复利。
-        /// </summary>
-        private static void ApplyReaction(CharacterMainControl created, SkyIslandBossProfile profile)
-        {
-            try
-            {
-                AICharacterController ai = created.GetComponentInChildren<AICharacterController>();
-                if (ai == null || Mathf.Approximately(profile.Reaction, 1f)) return;
-                ai.baseReactionTime /= profile.Reaction;
-                ai.reactionTime /= profile.Reaction;
-                ai.shootDelay /= profile.Reaction;
-            }
-            catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] AI 调参失败：" + e.Message); }
         }
 
         private static void ApplyScale(CharacterMainControl created, SkyIslandBossProfile profile)
@@ -331,6 +315,8 @@ namespace BossRush
 
         internal static void RaiseDefeated(SkyIslandBossProfile profile, Vector3 position)
         {
+            // 倒下的回执先于剧情回调：纯表现，失败只记警告（口径同结算表现）。
+            if (profile != null) SkyIslandImpactFx.DefeatBurst(null, position, DefeatTint(profile));
             Action<SkyIslandBossProfile, Vector3> handler = Defeated;
             if (handler == null || profile == null) return;
             try { handler(profile, position); }
@@ -348,9 +334,17 @@ namespace BossRush
         internal static LineRenderer CreateGroundRing(Transform root, Vector3 world)
         {
             LineRenderer line = SkyIslandGroundRing.Create(root, LocalOf(root, world));
+            // GroundRing 找不到材质时返回 disabled 的线；不能把非空组件误当成已画出的预警。
+            if (!line.enabled)
+            {
+                UnityEngine.Object.Destroy(line.gameObject);
+                throw new InvalidOperationException("头目预警圈材质不可用");
+            }
             line.gameObject.name = "SkyIslandBossRing";
             try { SkyIslandBossRingFx.Attach(line); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 预警圈填充失败（只剩描边）：" + e.Message); }
+            // 蓄力声：圈一画出来就响（同一帧画几圈只响一声），背对着 Boss 也听得见要来了。
+            SkyIslandBossSfx.Play(root, SkyIslandBossCue.Telegraph, world);
             return line;
         }
 
@@ -489,7 +483,17 @@ namespace BossRush
             damage.fromWeaponItemID = 0;
             ExplosionFxTypes fx = blast ? ExplosionFxTypes.normal : ExplosionFxTypes.custom;
             LevelManager.Instance.ExplosionManager.CreateExplosion(origin, radius, damage, fx, shake, false);
-            SkyIslandImpactFx.Play(source.transform.parent, origin, radius, tint, 0);
+            // 官方火球自带爆炸声；custom 招式补一声落地闷响，否则落地无声。
+            SkyIslandImpactFx.Play(source.transform.parent, origin, radius, tint, 0, !blast);
+        }
+
+        private static readonly Color LordDefeatTint = new Color(1f, 0.70f, 0.34f, 1f);
+        private static readonly Color ChiefDefeatTint = new Color(0.96f, 0.82f, 0.52f, 1f);
+
+        /// <summary>倒下回执的颜色：岛主深琥珀、头目浅金，都在天空岛的暖琥珀色带里。</summary>
+        internal static Color DefeatTint(SkyIslandBossProfile profile)
+        {
+            return profile != null && profile.Tier == SkyIslandEnemyTier.Lord ? LordDefeatTint : ChiefDefeatTint;
         }
 
         /// <summary>这件专属装备是否已经不起作用：没穿、被换掉、或耐久打空（官方耐久归零后属性修饰也失效）。</summary>

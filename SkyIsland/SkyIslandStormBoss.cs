@@ -10,13 +10,13 @@ namespace BossRush
     /// 组成方式刻意保守，全部复用已验证的通道：
     /// - 本体是**遭遇系统的一个手动组**（噬风 + 两名断风游猎一次生成），因此天然吃 12 活体上限、
     ///   本图 graphMask、关闭距离休眠与官方掉落/经验，不另开生成路径。
-    /// - 相位只做两件事：预警 1 秒后放一圈范围伤害，并让它随血线变快。没有新资源、没有新 AI。
+    /// - 相位在固定风眼预警 1.4 秒后释放多波范围伤害，并按血线提高反应速度；复用现有资源与官方 AI。
     ///   预警是**贴地圆环**（半径等于真实作用范围），俯视视角下这是唯一读得出边界的表现。
     /// - 范围伤害显式 `canHurtSelf:false` + `isFromBuffOrEffect:true` + `fromWeaponItemID:0`，
     ///   与套装/词条自建伤害同一口径；`OnHurt` 期间不嵌套爆炸，脉冲一律由协程延后一帧发起。
     /// - **噬风·回响**（结局后每趟可引一次，<see cref="SkyIslandStormEchoRules"/>）复用这里全部的相位阈值、脉冲、预警与提速常量，
-    ///   基底战调参时回响自动跟着变。它只多一个模式位：风眼钉在预警开始的位置、不跟着本体追人（首战的圈每波重读本体位置，
-    ///   追人时逃圈要的速度高于纸面，R-12）；每档三波之后在原地再响一声（半径同最后一波）；圈与光换成风晶的暖金色。
+    ///   基底战调参时回响自动跟着变。首战与回响的风眼都钉在预警开始的位置，不跟着本体追人，保证贴近时也能按预警逃圈。
+    ///   回响每档三波之后在原地再响一声（半径同最后一波）；圈与光换成风晶的暖金色。
     /// </summary>
     internal sealed class SkyIslandStormBoss : MonoBehaviour
     {
@@ -52,9 +52,9 @@ namespace BossRush
         private float baseReactionTime, baseCurrentReactionTime, baseShootDelay;
         /// <summary>回响模式（<see cref="SkyIslandStormEchoRules"/>）：遭遇 owner 在 Bind 时给定，之后不变。</summary>
         private bool echo;
-        /// <summary>这一档风眼的位置：预警开始时读一次。回响的圈、三波与回响那一声都落在这里；首战不读它。</summary>
+        /// <summary>这一档风眼的位置：预警开始时读一次。首战、回响的圈、灯与全部伤害都落在这里。</summary>
         private Vector3 eyeOrigin;
-        /// <summary>这一档还在场的预警光与地面圈。回响挂在地图根上、不随本体销毁，所以组件销毁时自己收。</summary>
+        /// <summary>这一档还在场的预警光与地面圈。首战与回响均不跟随本体，组件销毁时自己收。</summary>
         private GameObject warningObject, ringObject;
         /// <summary>这一档预警灯（随蓄力升亮、结束时淡出）。</summary>
         private Light warningLight;
@@ -68,10 +68,9 @@ namespace BossRush
         /// <summary>
         /// 末相位相对**出场时**的反应速度上限。
         ///
-        /// 旧写法是每进一档就 `/= 1.25f`，两档时总量 1.56 还算克制；相位加到四档之后它复利成
-        /// 1.25⁴ ≈ 2.44，再叠上档次自带的 1.7 倍，末段反应时间只有官方拾荒者的 1/4.15 ——
-        /// 那已经不是「更凶」而是没有反应窗口。现在按基线算绝对值，四档线性摊到 1.6 封顶，
-        /// 叠档次后总量 2.72，且**重复进入同一档不会再叠加**。
+        /// 相位按入场基线算绝对值，四档线性摊到 1.6 封顶，重复进入同一档不会再叠加。
+        /// 入场基线由 SkyIslandCombatPreset 按原版参照提升 50%，官方难度系数仍由工厂应用；
+        /// 因此同一难度下末相反应速度约为参照的 1.5 × 1.6 = 2.4 倍，不额外叠旧档次倍率。
         /// </summary>
         internal const float MaxPhaseSpeedup = 1.6f;
 
@@ -96,8 +95,8 @@ namespace BossRush
             defeated = onDefeated;
             echo = echoMode;
             // 相位提速改成「按基线算绝对值」，所以必须在这里先记下基线。
-            // 此刻 `SkyIslandEnemyTiers.ApplyAi` 已经跑过（`SkyIslandEncounters.Spawn` 里它排在
-            // `ApplyIdentity` 之前），因此基线是**已含档次 1.7 倍**的值，相位倍率在它之上叠加。
+            // 此刻官方工厂已从 SkyIslandCombatPreset 准备的克隆装好 AI 与难度系数；
+            // SkyIslandEnemyTiers.ApplyAi 只改追踪距离，不再叠旧档次反应倍率。
             brain = character.GetComponentInChildren<AICharacterController>();
             if (brain != null)
             {
@@ -108,8 +107,8 @@ namespace BossRush
             health.OnDeadEvent.AddListener(OnDead);
             subscribed = true;
             if (echo)
-                Announce("噬风的回响翻上了栈道，这回风眼落在哪儿就钉在哪儿。",
-                    "The Windeater's echo climbs onto the boardwalk. This time the eye stays where it falls.", false);
+                Announce("噬风的回响翻上了栈道，风眼消散前还会在原地再响一声。",
+                    "The Windeater's echo climbs onto the boardwalk. The eye will pulse once more before it fades.", false);
             else
                 Announce("噬风从云海里翻上来了，冲着那两盏重新亮起的灯。",
                     "The Windeater rises from the sea of cloud, drawn by the two relit beacons.", false);
@@ -134,6 +133,7 @@ namespace BossRush
             int target = PhaseForFraction(Mathf.Clamp01(health.CurrentHealth / max));
             if (target <= phase || pulsing) return;
             phase = target;
+            SkyIslandImpactFx.PhaseBurst(boss.transform.parent, boss.transform.position, RingTint);
             EnterPhase();
         }
 
@@ -174,7 +174,7 @@ namespace BossRush
         private IEnumerator PulseRoutine()
         {
             pulsing = true;
-            // 回响的风眼钉在预警开始这一刻：圈、三波与回响那一声都落在这里，不跟着本体追人（R-12）。首战不读它。
+            // 首战与回响都锁定这一刻的风眼：后续追人不会把已预告的安全区重新卷进伤害。
             eyeOrigin = boss.transform.position;
             GameObject warning = null;
             LineRenderer ring = null;
@@ -182,10 +182,22 @@ namespace BossRush
             {
                 warning = CreateWarningLight();
                 ring = CreateWarningRing();
+                SkyIslandBossSfx.Play(boss.transform.parent, SkyIslandBossCue.Telegraph, eyeOrigin);
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 预警表现失败：" + e.Message); }
             warningObject = warning;
             ringObject = ring != null ? ring.gameObject : null;
+            // 圈没有画出来就不结算这一轮：点光不能替代准确的范围预警。
+            if (ring == null || !ring.enabled)
+            {
+                if (ring != null) Destroy(ring.gameObject);
+                ringObject = null;
+                if (warning != null) Destroy(warning);
+                warningObject = null;
+                warningLight = null;
+                pulsing = false;
+                yield break;
+            }
 
             // 预警阶段：地面圈按 wave0 的实际半径画出来，并随倒计时加粗、提亮。
             // 只靠一盏点光源读不出「这一圈到底多大」，而三波 38 伤害站在中心必死。
@@ -262,8 +274,8 @@ namespace BossRush
             // buff/effect 通道：不计入武器击杀口径，也不会被「只认直接击杀」的系统当成起链。
             damage.isFromBuffOrEffect = true;
             damage.fromWeaponItemID = 0;
-            // 首战每一波重读本体当前位置（风眼跟着它走）；回响钉在预警开始时的位置。
-            Vector3 origin = echo ? eyeOrigin : boss.transform.position;
+            // 伤害与预警共用锁定的风眼，不能被本体追逐挪走。
+            Vector3 origin = eyeOrigin;
             // canHurtSelf=false：官方默认 true 时 selfTeam=Teams.all，风眼中心的一切都会被判定为敌人。
             // 震屏 0.8（VB-21 / VB-23：旧值 0 把官方震屏关了）；噬风是真的风暴炸开，留官方火球。
             LevelManager.Instance.ExplosionManager.CreateExplosion(
@@ -275,16 +287,8 @@ namespace BossRush
         private GameObject CreateWarningLight()
         {
             GameObject go = new GameObject("SkyIslandStormWarning");
-            if (echo && boss.transform.parent != null)
-            {
-                go.transform.SetParent(boss.transform.parent, true);
-                go.transform.position = eyeOrigin + Vector3.up * 1.2f;
-            }
-            else
-            {
-                go.transform.SetParent(boss.transform, false);
-                go.transform.localPosition = Vector3.up * 1.2f;
-            }
+            if (boss.transform.parent != null) go.transform.SetParent(boss.transform.parent, true);
+            go.transform.position = eyeOrigin + Vector3.up * 1.2f;
             Light light = go.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = RingTint;
@@ -301,15 +305,14 @@ namespace BossRush
         ///
         /// 建造与形状走共享的 <see cref="SkyIslandGroundRing"/>（撤离点标识同款），
         /// 这里只保留「随倒计时加粗、提亮」这一层编排。
-        /// 首战的圈挂在 Boss 身下并随它移动（风眼跟着本体走，`Detonate` 每波都重新读它的当前位置）；
-        /// 回响的圈挂在地图根上、钉在风眼那一点。
+        /// 首战与回响都挂在地图根上，钉在风眼那一点；没有父节点时也用世界坐标落在同一点。
         /// </summary>
         private LineRenderer CreateWarningRing()
         {
             Transform map = boss.transform.parent;
-            LineRenderer line = echo && map != null
+            LineRenderer line = map != null
                 ? SkyIslandGroundRing.Create(map, map.InverseTransformPoint(eyeOrigin) + Vector3.up * SkyIslandGroundRing.GroundLift)
-                : SkyIslandGroundRing.Create(boss.transform, Vector3.up * SkyIslandGroundRing.GroundLift);
+                : SkyIslandGroundRing.Create(null, eyeOrigin + Vector3.up * SkyIslandGroundRing.GroundLift);
             line.gameObject.name = "SkyIslandStormWarningRing";
             SetRing(line, RadiusForWave(0), 0f);
             return line;
@@ -348,6 +351,7 @@ namespace BossRush
         {
             if (finished) return;
             finished = true;
+            if (boss != null) SkyIslandImpactFx.DefeatBurst(boss.transform.parent, boss.transform.position, RingTint);
             if (echo)
                 Announce("回响散了。风晶烧过的地方落下一箱东西。",
                     "The echo breaks apart. Where the windcrystal burned, a cache drops.", false);
@@ -367,7 +371,7 @@ namespace BossRush
         {
             if (subscribed && health != null) health.OnDeadEvent.RemoveListener(OnDead);
             subscribed = false;
-            // 回响的圈与光挂在地图根上：协程随组件停下时它们不会跟着本体一起销毁。
+            // 两种战斗的圈与光都挂在地图根上：协程随组件停下时需要由 owner 主动回收。
             if (warningObject != null) Destroy(warningObject);
             if (ringObject != null) Destroy(ringObject);
             warningObject = null;

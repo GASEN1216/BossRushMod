@@ -37,7 +37,8 @@ def read_gates():
     assert "root.transform.localRotation = Quaternion.Euler(0, yaw, 0)" in source
     navigation = clean_source((ROOT / "DebugAndTools/ArenaPrototype/ArenaPrototypeNavigation.cs").read_text(encoding="utf-8-sig"))
     for token in ("triangle.GetVertex(0)", "triangle.GetVertex(1)", "triangle.GetVertex(2)",
-                  "bounds.Intersects(area)", "node.Walkable = original && !blocked"):
+                  "bounds.Intersects(area)", "node.Walkable = original && !blocked",
+                  "graph.enableNavmeshCutting = false;"):
         assert token in navigation, "生产导航封锁算法变化，需同步属性模型 " + token
     return result
 

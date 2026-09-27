@@ -79,8 +79,8 @@ namespace BossRush
     public enum ModeHExitReason { SceneGenerationMismatch,TechnicalAbort }
     public class ModeHRunState
     {
-        public long OwnerToken; public string SceneName; public ModeHLifecycle Lifecycle;
-        public ModeHRunState(string id,long seed,string scene,int generation) { SceneName=scene;OwnerToken=seed; }
+        public long OwnerToken,RunSeed; public string SceneName; public ModeHLifecycle Lifecycle;
+        public ModeHRunState(string id,long seed,string scene,int generation) { SceneName=scene;OwnerToken=seed;RunSeed=seed; }
         public void UpdateSceneGeneration(int value) { } public void ResetTechnicalRetry() { }
     }
     public static class ModeHSeedStream { public static ulong Fnv1a64(string value) { return 12345; } }
@@ -88,8 +88,10 @@ namespace BossRush
     public static class ModeHMapSupportRegistry
     {
         public static ModeHSupportedMap Map;
+        public static bool TryCreateRunVariant(ModeHSupportedMap source,long seed,out ModeHSupportedMap result,out string reason) { result=source;reason=null;return source!=null; }
         public static bool TryGetMap(string name,out ModeHSupportedMap map) { map=Map;return map!=null && map.SceneName==name; }
     }
+    public static class BossRushInitialSpawn { public static bool Arrived; public static bool HasArrived(Vector3 p) { return Arrived; } }
     public class BossRushMapConfig { public Vector3? customSpawnPos; }
     public static class BossRushMapSelectionHelper
     {
@@ -166,6 +168,7 @@ namespace BossRush
     }
     internal partial class ModeHRuntimeModule
     {
+        private bool _waitingForBetReveal; private string _draftPrimaryProfileId, _draftRelayProfileId; private int _draftRefreshCount;
         private const float SceneReadyTimeoutSeconds=30f;
         private Coroutine _sceneReadyRoutine; private int _sceneReadyRequestSerial,_sceneReadyIntentGeneration;
         public ModBehaviour _owner=new ModBehaviour(); public bool IsEnabled=true;

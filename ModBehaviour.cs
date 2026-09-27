@@ -422,6 +422,9 @@ namespace BossRush
 
         void OnDestroy()
         {
+            // Awake 拒绝的重复实例没有装配模块，也不能清理活动宿主的全局资源。
+            if (!ReferenceEquals(Instance, this)) return;
+
             // Mode G 宿主销毁预备（加法分支，任务 #7）：至迟在 CleanupAchievementRuntime() 之前，
             // 先通知 Mode G 释放共享引用/登记。幂等、no-throw 由 Felix 侧保证；
             // 无 Mode G run 时 O(1) 早返。此处额外 try/catch 兜底，绝不影响后续清理。
@@ -471,6 +474,8 @@ namespace BossRush
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             if (StoneOutpostSceneLease.IsResourceScene(scene)) return;
+            if (BossRushMapSelectionHelper.ShouldIgnoreAuxiliarySceneLoad(scene, mode,
+                bossRushArenaPlanned || bossRushArenaActive)) return;
             PrepareSceneRuntimeForLoad();
 
             // 场景切换时清理好感度系统UI缓存

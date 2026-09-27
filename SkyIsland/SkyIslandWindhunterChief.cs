@@ -427,12 +427,14 @@ namespace BossRush
             if (!pieceBrokenAnnounced && TelegraphPieceBroken())
             {
                 pieceBrokenAnnounced = true;
+                SkyIslandImpactFx.Shatter(context.Root, boss.transform.position + Vector3.up * 1.4f, boss.transform.position, LungeTint);
                 Announce("断风装备被打穿了：它冲锋前的线要亮得更久。",
                     "Its Galebreaker gear is shot through: the lunge line now stays lit longer before it charges.", false);
             }
             if (variant == SkyIslandBossRules.WindhunterStalker && packEquipped && !packBurstAnnounced && PackBurst())
             {
                 packBurstAnnounced = true;
+                SkyIslandImpactFx.PhaseBurst(context.Root, boss.transform.position, LungeTint);
                 Announce("断风行囊散开了：伏再也闪不回平台边缘。",
                     "The Galebreaker pack bursts open: the Stalker can no longer blink back to the platform edge.", false);
             }

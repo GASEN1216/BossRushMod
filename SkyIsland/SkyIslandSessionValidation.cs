@@ -18,6 +18,41 @@ namespace BossRush
 {
     internal sealed partial class SkyIslandSession
     {
+        /// <summary>只在 F3 取数：配置与实际角色分开核对，缺配置不能被婚后离岛掩盖。</summary>
+        internal System.Collections.Generic.Dictionary<string, bool> ValidationResidentRelationship(string id)
+        {
+            var observed = new System.Collections.Generic.Dictionary<string, bool>();
+            INPCAffinityConfig config = AffinityManager.GetNPCConfig(id);
+            observed["permanent"] = PermanentDuckNpcRegistry.IsPermanentDuckNpc(id);
+            observed["affinity"] = config != null && config.NpcId == id;
+            observed["gift_config"] = config is INPCGiftConfig;
+            observed["relationship_dialogue"] = config is INPCRelationshipDialogueConfig;
+            InteractableBase owner = FindResidentQuestOwner(id);
+            CharacterMainControl npc = owner == null ? null : owner.GetComponentInParent<CharacterMainControl>();
+            observed["instance"] = npc != null;
+            observed["story_hidden"] = residents != null && residents.IsHidden(id);
+            if (npc == null) return observed;
+            PermanentDuckNpcInteractable chat = npc.GetComponentInChildren<PermanentDuckNpcInteractable>(true);
+            observed["chat"] = chat != null;
+            NPCGiftInteractable gift = npc.GetComponentInChildren<NPCGiftInteractable>(true);
+            observed["gift"] = gift != null && gift.NpcId == id;
+            SkyIslandResidentInteractable storyOption = npc.GetComponentInChildren<SkyIslandResidentInteractable>(true);
+            observed["story"] = storyOption != null && storyOption.NpcId == id;
+            // 官方此方法仅重建临时列表，无业务写入；必须读实际分组，不能把隐藏/未分组组件当玩家入口。
+            // 剧情隐藏由纯判据单独标为未观测，不能用对象实际 inactive 豁免意外失活。
+            var menu = owner.GetInteractableList();
+            observed["chat_reachable"] = chat != null && chat.isActiveAndEnabled && menu.Contains(chat);
+            observed["gift_reachable"] = gift != null && gift.isActiveAndEnabled && menu.Contains(gift);
+            observed["story_reachable"] = storyOption != null && storyOption.isActiveAndEnabled && menu.Contains(storyOption);
+            NPCSpouseFollowInteractable follow = npc.GetComponentInChildren<NPCSpouseFollowInteractable>(true);
+            NPCDivorceInteractable divorce = npc.GetComponentInChildren<NPCDivorceInteractable>(true);
+            NPCSpouseHomeInteractable home = npc.GetComponentInChildren<NPCSpouseHomeInteractable>(true);
+            observed["follow"] = follow != null && follow.NpcId == id;
+            observed["divorce"] = divorce != null && divorce.NpcId == id;
+            observed["home"] = home != null && home.NpcId == id;
+            return observed;
+        }
+
         internal GameObject ValidationWorldRoot { get { return root; } }
         internal Scene ValidationScene { get { return entryScene; } }
         internal SkyIslandStoryService ValidationStory { get { return story; } }

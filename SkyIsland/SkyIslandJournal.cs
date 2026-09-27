@@ -162,7 +162,7 @@ namespace BossRush
                 "five fuse into a Qinglan Windcrystal (once the star lamp is lit); charms, salves and compasses need them too; the echo's cache gives three back"));
             Use(text, BossRushItemIds.SkyIslandStardust, L10n.T("晴岚护符、云苔纱笠、残星瞭台的风晶灯；夜里风晶簇更容易出；回响遗存里有两撮",
                 "Qinglan charms, the cloudmoss veil and the Starfall Overlook lamp; clusters yield more at night; the echo's cache holds two"));
-            Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("用于七盏风晶灯与灭蚊灯，灯旁能取暖。十盏灯全亮后，岛上夜里无风，桥上仍有风。结局后可在鸣风栈道消耗一块「引风」，召回噬风·回响，每趟一次。",
+            Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("用于七盏风晶灯与灭蚊灯，灯旁能取暖。十盏灯全亮后，岛上夜里无风，桥上仍有风。结局后可在鸣风栈道烧一块来「引风」，召回噬风·回响，每趟一次。",
                 "Wicks for seven windcrystal lamps and the gnat zapper. Lamps provide warmth. Ten lit lamps stop island night winds; bridges stay windy. After the ending, burn one on Windsong Boardwalk to call the Windeater's echo, once per raid."));
             Use(text, BossRushItemIds.SkyIslandWindLantern, L10n.T("挡微风、大风挡一半，也能照明。会招云蚋，但灯下的蚋不叮人、不躲子弹，趁灯亮着清掉。钟庭风晶灯也需要一盏。",
                 "Blocks breezes and half of a gale. Draws gnats into its light, where they cannot bite or dodge shots. Clear them before it goes out. The Bell Court lamp also needs one."));

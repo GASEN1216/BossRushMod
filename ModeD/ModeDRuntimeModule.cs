@@ -5,6 +5,7 @@ namespace BossRush
         private ModBehaviour owner;
         private static ModeDRuntimeModule current;
         private int generation;
+        private bool modeDCleanupPending;
         internal bool IsActive { get { return modeDActive; } }
         internal System.Collections.Generic.IReadOnlyList<EnemyPresetInfo> MinionPresets { get { return modeDMinionPool; } }
         internal static System.Collections.Generic.IReadOnlyDictionary<string, CharacterRandomPreset> CharacterPresets { get { return cachedCharacterPresets; } }
@@ -88,6 +89,7 @@ namespace BossRush
         public override void OnDestroy()
         {
             generation++;
+            CleanupModeDRuntimeOnDestroy();
             if (current == this) current = null;
             owner = null;
         }

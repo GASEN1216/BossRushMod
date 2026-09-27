@@ -21,12 +21,35 @@ namespace BossRush
         /// <summary>Dev 演练：在 <paramref name="center"/> 周围按正常刷新的距离与悬停高度放一群（受 MaxAlive 限制），返回实际放下的只数。</summary>
         internal int DevSpawnAround(Vector3 center, int count)
         {
+            return DevSpawnAround(center, count, Vector3.zero, Math.PI);
+        }
+
+        /// <summary>Dev 演练：刷在 <paramref name="player"/> 瞄准方向 ±15° 里（瞄准点贴脚时退回身体朝向）。</summary>
+        internal int DevSpawnAhead(CharacterMainControl player, int count)
+        {
+            Vector3 facing = player.GetCurrentAimPoint() - player.transform.position;
+            facing.y = 0f;
+            if (facing.sqrMagnitude < 0.01f) facing = player.transform.forward;
+            return DevSpawnAround(player.transform.position, count, facing, 15.0 * Math.PI / 180.0);
+        }
+
+        /// <summary>
+        /// Dev 演练：同上，但只在 <paramref name="facing"/> 朝向 ±<paramref name="halfSpread"/> 弧度内放（<paramref name="facing"/> 为零向量时四周随机）。
+        /// 全自动验收的可见度截图要让目标落在官方夜视扇形里：扇形外的精灵会被战争迷雾一起盖掉，读数只取决于随机方位（2026-09-25 F3）。
+        /// </summary>
+        internal int DevSpawnAround(Vector3 center, int count, Vector3 facing, double halfSpread)
+        {
             if (!Usable) return 0;
             float now = Time.time;
             int placed = 0;
+            facing.y = 0f;
+            bool aimed = facing.sqrMagnitude > 1e-4f;
+            double heading = aimed ? Math.Atan2(facing.z, facing.x) : 0.0;
             for (int i = 0; i < count; i++)
             {
-                double bearing = random.NextDouble() * Math.PI * 2.0;
+                double bearing = aimed
+                    ? heading + (random.NextDouble() * 2.0 - 1.0) * halfSpread
+                    : random.NextDouble() * Math.PI * 2.0;
                 float distance = SkyIslandMosquitoRules.SpawnDistance(random.NextDouble());
                 Vector3 at = center + new Vector3((float)Math.Cos(bearing), 0f, (float)Math.Sin(bearing)) * distance
                     + Vector3.up * SkyIslandMosquitoRules.HoverHeight;

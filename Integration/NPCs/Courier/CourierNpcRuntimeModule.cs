@@ -22,17 +22,22 @@ namespace BossRush
     internal sealed class CourierNpcRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour owner;
+        private bool destroyed;
 
         public override string ModuleName { get { return "CourierNPC"; } }
 
         public override void OnAwake(ModBehaviour owner)
         {
             this.owner = owner;
+            destroyed = false;
         }
 
         public override void OnDestroy()
         {
-            owner = null;
+            if (destroyed) return;
+            destroyed = true;
+            try { DestroyCourierNPC(); }
+            finally { owner = null; }
         }
 
         private GameObject courierNPCInstance = null;
@@ -283,10 +288,11 @@ namespace BossRush
             if (courierNPCInstance != null)
             {
                 UnityEngine.Object.Destroy(courierNPCInstance);
-                courierNPCInstance = null;
-                courierController = null;
+
                 ModBehaviour.DevLog("[CourierNPC] 快递员已销毁");
             }
+            courierNPCInstance = null;
+            courierController = null;
         }
 
         public void NotifyCourierBossFightStart()

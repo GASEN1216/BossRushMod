@@ -17,6 +17,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -99,8 +100,89 @@ namespace BossRush
             return null;
         }
         
+        /// <summary>入场只由选中的目标消费，不能被同批加载的另一个竞技场抢先接管。</summary>
+        internal static bool IsPendingTargetScene(string sceneName)
+        {
+            string target = GetPendingTargetSubSceneName();
+            return !string.IsNullOrEmpty(target)
+                && string.Equals(sceneName, target, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// 其他 Mod 用 bundle 附加加载资源时，不应当作 BossRush 离场。
+        /// 只在入场/竞技场期间过滤非活动、非内置、没有关卡 owner 的附加场景；
+        /// 菜单、基地、明确目标和含 LevelManager/MultiSceneCore 的真正关卡照常分发。
+        /// 不缓存第三方 Scene，不扫描全局对象；只有候选资源 scene 才检查自己的根节点。
+        /// </summary>
+        internal static bool ShouldIgnoreAuxiliarySceneLoad(
+            UnityEngine.SceneManagement.Scene scene,
+            UnityEngine.SceneManagement.LoadSceneMode mode, bool hasArenaEntryOrRun)
+        {
+            if (!hasArenaEntryOrRun || mode != UnityEngine.SceneManagement.LoadSceneMode.Additive
+                || !scene.IsValid() || scene.buildIndex >= 0
+                || scene == UnityEngine.SceneManagement.SceneManager.GetActiveScene()
+                || SceneRuntimeGate.IsBaseHubSceneName(scene.name) || !SceneRuntimeGate.IsGameplaySceneName(scene.name)
+                || BossRushMapSelectionHelper.IsPendingTargetScene(scene.name)
+                || string.Equals(scene.name, BossRushMapSelectionHelper.GetPendingMainSceneName(), StringComparison.Ordinal))
+                return false;
+
+            try
+            {
+                var registeredScenes = SceneInfoCollection.Entries;
+                if (registeredScenes == null) return false;
+                foreach (var info in registeredScenes)
+                {
+                    if (info != null && info.SceneReference != null
+                        && string.Equals(info.SceneReference.Name, scene.name, StringComparison.Ordinal))
+                        return false;
+                }
+                foreach (var root in scene.GetRootGameObjects())
+                {
+                    if (root.GetComponentInChildren<LevelManager>(true) != null
+                        || root.GetComponentInChildren<MultiSceneCore>(true) != null)
+                        return false;
+                }
+                return true;
+            }
+            catch { return false; }
+        }
+
         // 当前选中的地图条目索引（用于传送后处理）
         private static int pendingMapEntryIndex = -1;
+        private static bool pendingInitialSpawn;
+
+        internal static void CaptureInitialSpawnSelection(int index)
+        {
+            pendingInitialSpawn = false;
+            var configs = ModBehaviour.GetAllMapConfigs();
+            var mod = ModBehaviour.Instance;
+            if (pendingEntryFlowSource == BossRushEntryFlowSource.MapSelectionUi
+                && configs != null && index >= 0 && index < configs.Length && mod != null && HasEnoughTickets())
+                pendingInitialSpawn = mod.UsesBossRushInitialSpawn(configs[index]);
+        }
+
+        internal static void ConfirmInitialSpawnSelection(bool confirmed)
+        {
+            CaptureInitialSpawnSelection(confirmed ? pendingMapEntryIndex : -1);
+        }
+
+        internal static BossRushMapConfig TakeInitialSpawnSelection()
+        {
+            bool requested = pendingInitialSpawn;
+            pendingInitialSpawn = false;
+            var configs = ModBehaviour.GetAllMapConfigs();
+            return requested && configs != null && pendingMapEntryIndex >= 0
+                && pendingMapEntryIndex < configs.Length ? configs[pendingMapEntryIndex] : null;
+        }
+
+        internal static void CancelUnstartedMapSelection()
+        {
+            if (SceneLoader.IsSceneLoading || pendingPrepaidTicketForCurrentEntry
+                || pendingEntryFlowSource != BossRushEntryFlowSource.MapSelectionUi) return;
+            ClearPendingMapEntry();
+            ClearPendingEntryFlowState();
+            SetBossRushArenaPlanned(false);
+        }
 
         // 地图选择 UI 流程与“船票已被 UI 扣除”的跨场景状态
         private static BossRushEntryFlowSource pendingEntryFlowSource = BossRushEntryFlowSource.None;
@@ -190,6 +272,7 @@ namespace BossRush
         /// <summary>标记本次启动来自地图选择 UI，并冻结显式入场意图类别。</summary>
         public static void MarkEntryFlowFromMapSelectionUi(BossRushPendingEntryKind kind)
         {
+            pendingInitialSpawn = false;
             pendingEntryFlowSource = BossRushEntryFlowSource.MapSelectionUi;
             pendingPrepaidTicketForCurrentEntry = false;
             pendingEntryKind = kind;
@@ -213,6 +296,7 @@ namespace BossRush
         /// <summary>标记本次启动来自直接传送路径，并冻结显式入场意图类别。</summary>
         public static void MarkEntryFlowFromDirectTeleport(BossRushPendingEntryKind kind)
         {
+            pendingInitialSpawn = false;
             pendingEntryFlowSource = BossRushEntryFlowSource.DirectTeleport;
             pendingPrepaidTicketForCurrentEntry = false;
             pendingEntryKind = kind;
@@ -308,6 +392,7 @@ namespace BossRush
         /// </summary>
         public static void ClearPendingEntryFlowState()
         {
+            pendingInitialSpawn = false;
             pendingEntryFlowSource = BossRushEntryFlowSource.None;
             pendingPrepaidTicketForCurrentEntry = false;
             pendingEntryKind = BossRushPendingEntryKind.None;
@@ -474,6 +559,7 @@ namespace BossRush
         /// </summary>
         public static void ClearPendingMapEntry()
         {
+            pendingInitialSpawn = false;
             pendingMapEntryIndex = -1;
         }
         
@@ -615,14 +701,37 @@ namespace BossRush
             }
 
             string displayName = GetBossRushEntryDisplayName(mapConfig);
-            if (!string.IsNullOrEmpty(mapConfig.previewImageName))
+            // 鸭王杯地图选择只保留官方地图卡片与地点名，不再在右侧铺一张模式横幅；
+            // 其它 BossRush 入口继续沿用配置里的预览图。
+            if (pendingEntryKind != BossRushPendingEntryKind.ModeH
+                && !string.IsNullOrEmpty(mapConfig.previewImageName))
             {
                 UpdateEntryThumbnailWithImage(uiEntry, mapConfig.previewImageName);
+            }
+            else if (pendingEntryKind == BossRushPendingEntryKind.ModeH)
+            {
+                ClearEntryFullScreenImage(uiEntry);
             }
 
             string templateName = template != null && template.gameObject != null ? template.gameObject.name : "null";
             string parentName = targetParent != null ? targetParent.name : "null";
             ModBehaviour.DevLog("[BossRush] 创建地图条目: " + displayName + " (sceneID=" + mapConfig.sceneID + ", 模板=" + templateName + ", 容器=" + parentName + ")");
+        }
+
+        /// <summary>清除 MapSelectionEntry 私有横幅字段，避免 Mode H 选择地点时遮住地图列表。</summary>
+        private static void ClearEntryFullScreenImage(MapSelectionEntry entry)
+        {
+            if (entry == null) return;
+            try
+            {
+                FieldInfo imageField = typeof(MapSelectionEntry).GetField(
+                    "fullScreenImage", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (imageField != null) imageField.SetValue(entry, null);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] 清除鸭王杯地图横幅失败: " + e.Message);
+            }
         }
 
         /// <summary>
@@ -850,6 +959,7 @@ namespace BossRush
         /// </summary>
         public static void Cleanup()
         {
+            pendingInitialSpawn = false;
             try
             {
                 // 恢复被隐藏的原有条目
@@ -876,6 +986,44 @@ namespace BossRush
         }
     }
     
+    // 官方 NotifyEntryClicked 会立即启动异步加载；不能依赖另一个 IPointerClickHandler
+    // 恰好先执行。只观察自有条目，不替换官方确认、扣票或其他 Mod 的加载逻辑。
+    [HarmonyPatch(typeof(MapSelectionView), "NotifyEntryClicked", new Type[] { typeof(MapSelectionEntry), typeof(PointerEventData) })]
+    internal static class BossRushMapEntrySelectionPatch
+    {
+        [HarmonyPrefix, HarmonyPriority(Priority.First)]
+        internal static void RecordSelection(MapSelectionEntry mapSelectionEntry)
+        {
+            try
+            {
+                BossRushMapSelectionHelper.CaptureInitialSpawnSelection(-1);
+                if (mapSelectionEntry == null || !mapSelectionEntry.ConditionsSatisfied
+                    || !mapSelectionEntry.Cost.Enough) return;
+                var marker = mapSelectionEntry.GetComponent<BossRushMapEntryClickHandler>();
+                if (marker != null && marker.entryIndex >= 0)
+                {
+                    BossRushMapSelectionHelper.SetPendingMapEntryIndex(marker.entryIndex);
+                }
+                else
+                    BossRushMapSelectionHelper.CancelUnstartedMapSelection();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] 记录入场地图失败: " + e.Message);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(MapSelectionView), "OnClose")]
+    internal static class BossRushMapSelectionClosePatch
+    {
+        [HarmonyPostfix]
+        internal static void OnClosed()
+        {
+            BossRushMapSelectionHelper.CancelUnstartedMapSelection();
+        }
+    }
+
     /// <summary>
     /// BossRush 地图条目点击处理器
     /// 用于在玩家点击地图条目时记录选中的地图索引
@@ -886,12 +1034,8 @@ namespace BossRush
         
         public void OnPointerClick(PointerEventData eventData)
         {
-            // 记录选中的地图索引，供场景加载后使用
-            if (entryIndex >= 0)
-            {
-                BossRushMapSelectionHelper.SetPendingMapEntryIndex(entryIndex);
-                ModBehaviour.DevLog("[BossRush] 玩家点击地图条目: " + entryIndex);
-            }
+            // 保留点击回退；与官方入口前缀共用费用/条件门，重复记录是幂等的。
+            BossRushMapEntrySelectionPatch.RecordSelection(GetComponent<MapSelectionEntry>());
         }
     }
 }

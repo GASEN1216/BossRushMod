@@ -69,6 +69,13 @@ namespace UnityEngine
         public Transform Find(string value) { foreach (Transform child in children) if (child.gameObject.name == value) return child; return null; }
         public bool IsChildOf(Transform value) { return this == value || (parent != null && parent.IsChildOf(value)); }
     }
+    /// <summary>替身：天空岛倒下回执只把颜色当参数透传，不参与判定。</summary>
+    public struct Color
+    {
+        public float r, g, b, a;
+        public Color(float r, float g, float b, float a) { this.r = r; this.g = g; this.b = b; this.a = a; }
+    }
+
     public struct Vector3
     {
         public float x, y, z;
@@ -76,6 +83,7 @@ namespace UnityEngine
         public static Vector3 up { get { return new Vector3(0,1,0); } }
         public static Vector3 down { get { return new Vector3(0,-1,0); } }
         public static Vector3 forward { get { return new Vector3(0,0,1); } }
+        public static Vector3 left { get { return new Vector3(-1,0,0); } }
         public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z); }
         public static Vector3 operator -(Vector3 a, Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
         public static Vector3 operator *(Vector3 a, float b) { return new Vector3(a.x*b,a.y*b,a.z*b); }
@@ -104,11 +112,11 @@ namespace UnityEngine
         { hit = new RaycastHit { point = p + Vector3.down * 2, transform = Ground }; return true; }
         public static bool CheckCapsule(Vector3 a, Vector3 b, float radius, int mask, QueryTriggerInteraction ignore) { return false; }
     }
-    public static class Time { public static float time; }
+    public static class Time { public static float time; public static float unscaledTime { get { return time; } } }
     public static class Resources { public static T[] FindObjectsOfTypeAll<T>() { return (T[])(object)new[] { CharacterRandomPreset.Source }; } }
     public static class Debug { public static void LogWarning(string value) { } }
 }
-namespace Duckov.Utilities { public static class GameplayDataSettings { public static class Layers { public static int wallLayerMask = 2; } } }
+namespace Duckov.Utilities { public static class GameplayDataSettings { public static class Layers { public struct Mask { public int value; } public static Mask groundLayerMask = new Mask { value = 1 }; public static int wallLayerMask = 2; } } }
 namespace Pathfinding
 {
     public struct GraphMask { }
@@ -159,9 +167,13 @@ public class CharacterMainControl : UnityEngine.Component
 }
 public class CharacterRandomPreset : UnityEngine.Object
 {
+    public float health, damageMultiplier, moveSpeedFactor, bulletSpeedMultiplier, gunDistanceMultiplier, gunScatterMultiplier, gunCritRateGain, nightVisionAbility, aiCombatFactor, sightDistance, hearingAbility, reactionTime, shootDelay, nightReactionTimeFactor, meleeDamageMultiplier;
+    public bool setMeleeDamageMultiplier;
+    public int exp;
+    public string nameKey;
     public bool isBoss, isZombie, dropBoxOnDead, setActiveByPlayerDistance;
     public Teams team;
-    internal static CharacterRandomPreset Source = new CharacterRandomPreset { name="Scav", team=Teams.scav };
+    internal static CharacterRandomPreset Source = new CharacterRandomPreset { name="Scav", nameKey="Cname_Scav", team=Teams.scav, health=45f, damageMultiplier=0.9f, moveSpeedFactor=1f, meleeDamageMultiplier=1f, bulletSpeedMultiplier=0.75f, gunDistanceMultiplier=1f, gunScatterMultiplier=0.65f, nightVisionAbility=0.5f, aiCombatFactor=1f, sightDistance=17f, hearingAbility=1f, reactionTime=0.5f, shootDelay=0.2f, nightReactionTimeFactor=1.5f, exp=20 };
     internal static readonly List<CharacterRandomPreset> Clones = new List<CharacterRandomPreset>();
     internal static readonly List<CharacterMainControl> Created = new List<CharacterMainControl>();
     internal static TaskCompletionSource<CharacterMainControl> Block;
@@ -172,6 +184,7 @@ public class CharacterRandomPreset : UnityEngine.Object
     {
         if (Block != null) return Block.Task;
         CharacterMainControl character = CharacterMainControl.Create(!MissingHealth); character.transform.position = point;
+        if (character.Health != null) character.Health.MaxHealth = character.Health.CurrentHealth = health;
         Created.Add(character); return Task.FromResult(character);
     }
 }
@@ -230,6 +243,10 @@ namespace BossRush
     }
     internal static class SkyIslandBossForge
     {
+        internal static UnityEngine.Color DefeatTint(SkyIslandBossProfile profile) { return new UnityEngine.Color(1f, 0.8f, 0.5f, 1f); }
+        /// <summary>替身：具名对手专属招式是纯战斗表现层，这里只记下挂给了谁。</summary>
+        internal static readonly List<string> ChampionMoves = new List<string>();
+        internal static void BindChampionMoves(CharacterMainControl created, string championId, SkyIslandBossContext context) { ChampionMoves.Add(championId); }
         internal static void BindVoice(CharacterMainControl created, SkyIslandBossProfile profile,
             string championId, SkyIslandBossContext context)
         {
@@ -310,5 +327,15 @@ namespace Duckov.UI.DialogueBubbles
             LastRequest = new TaskCompletionSource<bool>();
             return LastRequest.Task;
         }
+    }
+}
+
+namespace BossRush
+{
+    /// <summary>替身：纯表现层，只计次数（具名剧情对手倒下时 SkyIslandBossVoice 调一次）。</summary>
+    internal static class SkyIslandImpactFx
+    {
+        internal static int DefeatBursts;
+        internal static void DefeatBurst(UnityEngine.Transform root, UnityEngine.Vector3 at, UnityEngine.Color tint) { DefeatBursts++; }
     }
 }

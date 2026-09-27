@@ -112,6 +112,28 @@ internal static class Program
         faultHost.State.RunOnlyObjects[0].Cleanup(true); Check(faultHost.Stops == 1, "StopCoroutine failure contained");
     }
     private static IEnumerator Tokens(object first, IEnumerator second) { yield return first; yield return second; yield return null; }
+    private static void BossVisualCache()
+    {
+        var cache = (Texture2D[])typeof(ZombieModeBossVisuals).GetField("SigilTextures", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
+        for (int i = 0; i < cache.Length; i++) cache[i] = new Texture2D();
+        var allocated = (Texture2D[])cache.Clone();
+        UnityEngine.Object.Destroy(allocated[2]);
+        int before = UnityEngine.Object.DestroyCalls;
+        var module = Attach(new ModBehaviour());
+        module.OnDestroy();
+        Check(UnityEngine.Object.DestroyCalls == before + 4, "module destroy releases each live sigil texture and skips fake-null texture");
+        for (int i = 0; i < cache.Length; i++)
+        {
+            Check(allocated[i] == null, "sigil texture native object released " + i);
+            Check(ReferenceEquals(cache[i], null), "sigil managed cache reference cleared " + i);
+        }
+        before = UnityEngine.Object.DestroyCalls;
+        module.OnDestroy();
+        Check(UnityEngine.Object.DestroyCalls == before, "repeated module destroy does not release textures twice");
+        cache[0] = new Texture2D();
+        new ZombieModeRuntimeModule().OnDestroy();
+        Check(UnityEngine.Object.DestroyCalls == before + 1 && ReferenceEquals(cache[0], null), "missing host still clears module static sigil cache");
+    }
     private static void Iterators()
     {
         var host = new ModBehaviour(); Check(!host.WaitTarget().MoveNext(), "unattached iterator ends");
@@ -123,7 +145,7 @@ internal static class Program
     }
     public static void Main()
     {
-        Identity(); Cleanup(); Coroutines(); Iterators();
+        Identity(); Cleanup(); Coroutines(); Iterators(); BossVisualCache();
         Console.WriteLine("ZombieModeHostOwners: " + checks + " PASS / 0 FAIL");
     }
 }

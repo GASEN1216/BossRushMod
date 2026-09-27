@@ -31,6 +31,7 @@ internal static class Program
         SceneManager.Handle = 10;
         SceneLoader.IsSceneLoading = false;
         L10n.IsChinese = true;
+        BackMountainItems.Ready = true;
         ModBehaviour.Logs.Clear();
         UnityEngine.Debug.Warnings.Clear();
         ItemAssetsCollection.ThrowOnRead = false;
@@ -198,17 +199,39 @@ internal static class Program
             var forget = new CodeInstruction(OpCodes.Call, Forget);
             Label label = new DynamicMethod("LabelOwner", typeof(void), Type.EmptyTypes).GetILGenerator().DefineLabel();
             delivery.labels.Add(label);
-            var input = new List<CodeInstruction> { new CodeInstruction(OpCodes.Nop), delivery };
+            var input = new List<CodeInstruction> { new CodeInstruction(OpCodes.Nop),
+                new CodeInstruction(OpCodes.Ldloca_S, (byte)0), new CodeInstruction(OpCodes.Ldc_I4_0),
+                new CodeInstruction(OpCodes.Ldc_I4_0), new CodeInstruction(OpCodes.Ldc_I4_1), new CodeInstruction(OpCodes.Ldnull), delivery };
             if (nop) input.Add(new CodeInstruction(OpCodes.Nop));
             input.Add(forget);
             input.Add(new CodeInstruction(OpCodes.Ret));
             var output = GardenHarvestNoticePatch.Transpiler(input).ToList();
-            Check(output.Count == input.Count + 2 && output.Count(c => Equals(c.operand, Observe)) == 1, "valid IL adds exactly one two-instruction observer " + nop);
+            Check(output.Count == input.Count + 3 && output.Count(c => Equals(c.operand, Observe)) == 1, "valid IL adds one route and one two-instruction observer " + nop);
             Check(output.Where(c => input.Contains(c)).SequenceEqual(input), "original instructions retain order and identity " + nop);
             int at = output.IndexOf(delivery);
             Check(output[at + 1].opcode == OpCodes.Ldarg_0 && output[at + 2].opcode == OpCodes.Call && Equals(output[at + 2].operand, Observe), "observer consumes returned task plus current crop " + nop);
             Check(output.Count(c => Equals(c.operand, Delivery)) == 1 && output.Count(c => Equals(c.operand, Forget)) == 1 && delivery.labels.Contains(label), "delivery Forget and original branch label are retained " + nop);
         }
+
+        Reset();
+        var live = new List<CodeInstruction> {
+            new CodeInstruction(OpCodes.Ldloca_S, (byte)0), new CodeInstruction(OpCodes.Ldc_I4_0),
+            new CodeInstruction(OpCodes.Ldc_I4_0), new CodeInstruction(OpCodes.Ldc_I4_1), new CodeInstruction(OpCodes.Ldnull),
+            new CodeInstruction(OpCodes.Call, Delivery), new CodeInstruction(OpCodes.Call, Forget), new CodeInstruction(OpCodes.Ret)
+        };
+        var routed = GardenHarvestNoticePatch.Transpiler(live).ToList();
+        Check(routed.Count == live.Count + 3 && routed[2].opcode == OpCodes.Ldarg_0
+            && Equals(routed[3].operand, AccessTools.Method(typeof(GardenHarvestNoticePatch), "PreferPlayerInventory")),
+            "real official Return argument layout routes product before its one delivery");
+        Check(GardenHarvestNoticePatch.PreferPlayerInventory(NewCrop())
+            && !GardenHarvestNoticePatch.PreferPlayerInventory(NewCrop(100)), "only mod fruit prefers backpack");
+        bool harvest = true;
+        BackMountainItems.Ready = false;
+        Check(!GardenHarvestNoticePatch.EnsureHarvestProduct(NewCrop(), ref harvest) && !harvest,
+            "missing product prevents official crop destruction");
+        Check(GardenHarvestNoticePatch.EnsureHarvestProduct(NewCrop(100), ref harvest), "official harvest is unaffected by mod resource absence");
+        BackMountainItems.Ready = true;
+        Check(GardenHarvestNoticePatch.EnsureHarvestProduct(NewCrop(), ref harvest), "registered fruit can be harvested");
 
         var invalid = new Dictionary<string, List<CodeInstruction>> {
             { "missing delivery", new List<CodeInstruction> { new CodeInstruction(OpCodes.Call, Forget), new CodeInstruction(OpCodes.Ret) } },

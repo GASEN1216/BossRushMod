@@ -103,13 +103,13 @@ const firstSteps = computed(() => [
       <div class="inner">
         <div class="main-title">
           <h1 class="welcome">
-            {{ t('欢迎来到 BossRush Wiki', 'Welcome to the BossRush Wiki') }}
+            {{ t('欢迎来到 BossRush · 晴岚群岛 Wiki', 'Welcome to the BossRush · Qinglan Archipelago Wiki') }}
           </h1>
           <div class="tagline">
             {{
               t(
-                '鸭科夫 / Escape from Duckov 的 BossRush Mod 百科，由玩家编写与维护。',
-                'The community-written reference for the BossRush mod for Escape from Duckov.'
+                '鸭科夫 / Escape from Duckov 模组「BossRush · 晴岚群岛」的百科，由玩家编写与维护。',
+                'The community-written reference for BossRush · Qinglan Archipelago, a mod for Escape from Duckov.'
               )
             }}
           </div>

@@ -100,6 +100,15 @@ namespace BossRush
             return DetermineBossRushEntryMode("FreezeEntryIntent") == BossRushEntryMode.ModeG;
         }
 
+        // 切图前复用同一个模式判据，避免玩家销毁后重新猜测背包。
+        internal bool UsesBossRushInitialSpawn(BossRushMapConfig map)
+        {
+            if (map == null) return false;
+            var mode = DetermineBossRushEntryMode("FreezeEntryIntent");
+            return mode != BossRushEntryMode.ModeE && mode != BossRushEntryMode.ModeH
+                && (map.customSpawnPos.HasValue || mode == BossRushEntryMode.Normal || mode == BossRushEntryMode.ModeD);
+        }
+
         /// <summary>
         /// 当前是否存在显式 Mode H 入场意图（只读 typed pending intent，不做物品猜测）。
         /// </summary>
@@ -289,7 +298,8 @@ namespace BossRush
                     }
 
                     Vector3 currentPos = main.transform.position;
-                    if ((currentPos - targetPosition).sqrMagnitude > 0.25f)
+                    if (!BossRushInitialSpawn.HasArrived(targetPosition)
+                        && (currentPos - targetPosition).sqrMagnitude > 0.25f)
                     {
                         try
                         {

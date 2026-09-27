@@ -69,6 +69,7 @@ namespace BossRush
 
         private int BeginModeESession()
         {
+            modeECleanupPending = true;
             modeESessionToken = ++modeESessionSerial;
             return modeESessionToken;
         }
@@ -108,13 +109,7 @@ namespace BossRush
 
             if (stopWarmupCoroutine)
             {
-                if (modeEStartupWarmupCoroutine != null)
-                {
-                    modeEHost.StopCoroutine(modeEStartupWarmupCoroutine);
-                    modeEStartupWarmupCoroutine = null;
-                }
-
-                modeEStartupWarmupSceneName = null;
+                StopModeEStartupWarmupIfPending();
             }
 
             CleanupModeEVirtualSpawnerRoot();
@@ -125,7 +120,7 @@ namespace BossRush
 
         internal bool IsModeESessionStillValid(int sessionToken, int relatedScene)
         {
-            if (sessionToken <= 0)
+            if (modeERuntimeDestroyed || modeEHost == null || sessionToken <= 0)
             {
                 return false;
             }
@@ -141,6 +136,8 @@ namespace BossRush
             int modeESessionToken,
             int modeESessionRelatedScene)
         {
+            if (modeERuntimeDestroyed || modeEHost == null) return false;
+
             if (modeFSessionToken > 0)
             {
                 return modeEHost.IsModeFSessionStillValid(modeFSessionToken, modeFRelatedScene);
@@ -159,6 +156,7 @@ namespace BossRush
         /// </summary>
         internal void ScheduleModeEStartupWarmup(string reason)
         {
+            if (modeERuntimeDestroyed || modeEHost == null) return;
             try
             {
                 string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
@@ -167,11 +165,7 @@ namespace BossRush
                     return;
                 }
 
-                if (modeEStartupWarmupCoroutine != null)
-                {
-                    modeEHost.StopCoroutine(modeEStartupWarmupCoroutine);
-                    modeEStartupWarmupCoroutine = null;
-                }
+                StopModeEStartupWarmupIfPending();
 
                 modeEStartupWarmupSceneName = sceneName;
                 modeEStartupWarmupCoroutine = modeEHost.StartCoroutine(PrepareModeEStartupCoroutine(sceneName, reason));
@@ -194,10 +188,16 @@ namespace BossRush
         {
             if (modeEStartupWarmupCoroutine != null)
             {
-                modeEHost.StopCoroutine(modeEStartupWarmupCoroutine);
+                // OnDestroy 可能已进入 Unity 假 null，原生宿主已自动停止协程。
+                if (modeEHost != null) modeEHost.StopCoroutine(modeEStartupWarmupCoroutine);
                 modeEStartupWarmupCoroutine = null;
             }
 
+            if (modeEMerchantWarmupCoroutine != null)
+            {
+                if (modeEHost != null) modeEHost.StopCoroutine(modeEMerchantWarmupCoroutine);
+                modeEMerchantWarmupCoroutine = null;
+            }
             modeEStartupWarmupSceneName = null;
         }
 
@@ -281,7 +281,9 @@ namespace BossRush
             }
             yield return null;
 
-            yield return modeEHost.StartCoroutine(WarmModeEMerchantCachesAsync());
+            modeEMerchantWarmupCoroutine = modeEHost.StartCoroutine(WarmModeEMerchantCachesAsync());
+            yield return modeEMerchantWarmupCoroutine;
+            modeEMerchantWarmupCoroutine = null;
             profiler.Mark("WarmModeEMerchantCachesAsync");
             yield return null;
 

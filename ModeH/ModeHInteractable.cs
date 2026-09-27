@@ -12,7 +12,8 @@ namespace BossRush
     ///   与 Mode G 一样不占用路牌的难度子选项；
     /// - IsInteractable 统一受 ModeHAvailability、地图支持、展示资源预检、
     ///   Mode H 运行门和旧模式冲突门控；
-    /// - 交互提示必须包含真实资产风险行（BossRush_ModeH_RealStakeRiskNotice，§22.1）；
+    /// - 真实资产风险行（BossRush_ModeH_RealStakeRiskNotice，§22.1）固定披露在选人页页脚；
+    ///   进入地图选择器时不再另推一条横幅（2026-09-25 owner：「进鸭王杯地图选择器时的横幅也去掉」）；
     /// - 确认后唯一调用 ModeHEntry.TryEnter；被拒绝时不改变旧模式状态。
     /// </summary>
     public sealed class ModeHInteractable : InteractableBase
@@ -241,9 +242,6 @@ namespace BossRush
                     return false;
                 }
 
-                // 真实资产风险行必须在进入前展示（§22.1，进入模式即知情同意）
-                ShowRiskNotice();
-
                 LastInteractionAttemptedEntry = true;
                 string reasonId;
                 bool started = ModeHEntry.TryEnter(_entryHost, map.SceneName, map.SceneId, out reasonId);
@@ -263,20 +261,6 @@ namespace BossRush
                 ModeHEntry.CancelPendingEntry();
                 DismissActive();
                 return false;
-            }
-        }
-
-        private static void ShowRiskNotice()
-        {
-            try
-            {
-                ModBehaviour mod = ResolveHost(null);
-                if (mod == null) return;
-                mod.ShowMessage(L10n.T(ModeHConfig.LocalizationKeyPrefix + "RealStakeRiskNotice"));
-            }
-            catch (Exception)
-            {
-                // 提示失败不阻断入场判定
             }
         }
 

@@ -309,3 +309,21 @@ CampaignObjectiveCollector 只把正 finalDamage 计为受伤，避免官方零�
 终章生成编号隔离旧成功/旧异常，返回无 Health/已死亡产物也回收。落点复用关卡点和 `SpawnPositionHelper`，召唤石采样至多每秒一次。程序化公告板复用现有 URP shader，召唤石 2026-09-23 起首选 `SodaCraft/SodaCharacter`（浮动自转的晶体、自发光、呼吸点光、余烬，开战时 0.5 秒缩没，表现与退场在 `Campaign/CampaignFinalBossFx.cs`），纹理、sprite、材质与染色工具归 `CampaignAssetCache` 的现有账本；没有另建缓存或调度器。
 
 执行证据：`CampaignPlayability`、`ContentTransactions`；结构接线：`CampaignFlowGuard`。新增内容必须同时维护 JSON、硬编码 fallback 与签名校验，不能承诺只改 JSON 即热扩展。详细范围、失败记录与实机清单见 `docs/reports/reviews/2026-09-22-鸭王征程重设计交付.md`。离线结果不证明实战难度、物理/渲染或帧时间。
+
+### 2026-09-25 新内容 Jeff 入门指引（COMPAT / SCHEMA+ / WIRE+）
+
+`CampaignGuideTable` 定义 590201–590214 十四条一次性引导，覆盖 Mode D–H、丧尸、遗种、随机事件、天空岛 Boss 装备、菜地、陈列、词缀、重铸与日报。仍由同一 CampaignOfficialQuestClient 注册到共享 OfficialQuestProjection，不增加补丁 owner，不改六章任务身份。玩家入口是基地 Jeff 的官方任务页。
+
+权威仍为 CampaignPersistence，acceptedGuides / experiencedGuides / completedGuides 分别表示接取、体验达标和手动交付。全部为可选数组，旧档缺失默认空集；完成观察不能直接投影为已交付。所有写入复制当前 DTO 后经共享 Store 入队，拒写时不提前改活对象。章节补偿式事务 CloneSaveData 同时复制三数组。
+
+只在基地接/交；采集器 CampaignGuideFacts 只处理已接未达标项，每半秒读各系统既有事实。模式任务要求开始真实战斗，鸭王杯从 2026-09-26 起通过 HasCompletedMatch 读取已结算/已归档战报，刚开战和技术重试不算“看完一场”；装备任务只在基地按真实玩家物品树核对，进过天空岛本身不算拿到装备。词缀必须至少一个非空槽；孵出的旧崽和已建设施允许补认。无全场景扫描、无官方 Quest 存档孤儿 ID。
+
+L1 接线与 L2 存档事务已覆盖；14 条官方页面接取/重载/回基地交付及中英切换仍待 L3。
+
+### 2026-09-26 Jeff 链路审查（COMPAT）
+
+六章的 ReadyToDeliver 只证明局内目标结算，不代表菜地/陈列事实已满足。目标正文现对基地目标只读取真实 baseFact；真正 Completed 的历史由客户端传入完成事实，设施后来消失也不把历史任务改回未完成。Task 完成门与交付门原本已核对基地事实，本次修的是误导性的“已达成”文字。
+
+共享核心共 24 个 ID：Jeff 21 条（序章 1、征程 6、一次性引导 14），岛上居民 3 条。14 条引导仍按表逐条接/交，设施前置未到会跳过；主动关闭随机事件时，应先重新开启才能完成该引导，不能把系统关闭误当达成。
+
+新增 JeffQuestFlow 完整执行官方投影核心、征程客户端、任务表和引导采集器，另只读本机官方 DLL 检查字段/调用契约；真实存档交付事务由 ContentTransactions、真实局内目标及模式桥由 CampaignPlayability 覆盖。天空岛规则/交互/交付用原专项夹具，未把通用客户端的 ID 共存测试充作完整天空岛任务实测。完整范围、证据边界和逐步人工验收见 `docs/reports/reviews/2026-09-26-Jeff任务与果实生产审查.md`。

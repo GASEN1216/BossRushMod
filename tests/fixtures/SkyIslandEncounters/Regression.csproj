@@ -4,6 +4,7 @@
     <LangVersion>7.3</LangVersion><Nullable>disable</Nullable><ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../../Build/runtime-regressions/SkyIslandEncounters/PreludeSpawn.Extracted.cs" Link="Production/PreludeSpawn.Extracted.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandEncounters.cs" Link="Production/SkyIslandEncounters.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandBossVoice.cs" Link="Production/SkyIslandBossVoice.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandChatter.cs" Link="Production/SkyIslandChatter.cs" />
@@ -19,6 +20,8 @@
     <Compile Include="../../../SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
     <!-- 头目 / 岛主档案表（R1–R4）：Forge 替身问真实档案决定接手、夜限定与换阵营；档案表只依赖下面这几份纯规则。 -->
     <Compile Include="../../../SkyIsland/SkyIslandBossRules.cs" Link="Production/SkyIslandBossRules.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandCombatBalance.cs" Link="Production/SkyIslandCombatBalance.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandCombatPreset.cs" Link="Production/SkyIslandCombatPreset.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandItemRules.cs" Link="Production/SkyIslandItemRules.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandLetters.cs" Link="Production/SkyIslandLetters.cs" />
     <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />

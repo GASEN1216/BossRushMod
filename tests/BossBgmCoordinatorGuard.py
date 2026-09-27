@@ -16,7 +16,15 @@
 
 另外 PlayCustomBGM 的返回类型是 FMOD 类型，本程序集没引用 FMOD，
 只能 MethodInfo.Invoke 并忽略返回值——不许改成 CreateDelegate（编译期就会炸）。
+
+场景常驻曲（2026-09-26，天空岛）另守三条：
+  6. Boss 曲停下时要先尝试接回场景曲，否则天空岛打完 Boss 就一直静音；
+     宿主销毁的复位必须先撤场景租约，免得 StopBossBgm 在拆场时把曲子又接回来。
+  7. 天空岛会话（SkyIslandAmbience）构造时获取租约、Dispose 时释放。
+  8. 场景常驻曲要整趟循环，文件只许 ogg / wav：FMOD 读部分 mp3 会把时长估成两倍，
+     循环时中间空白半首（ryw.mp3 实测 34.4 秒被读成 69.3 秒）。
 """
+import json
 
 from pathlib import Path
 import re
@@ -25,6 +33,8 @@ import sys
 COORDINATOR = Path("Audio/BossBgmCoordinator.cs")
 MANAGER = Path("Audio/BossRushAudioManager.cs")
 TABLE = Path("Audio/BossBgmTrackTable.cs")
+AMBIENCE = Path("SkyIsland/SkyIslandAmbience.cs")
+DATA = Path("Assets/Data/Audio/BgmTracks.json")
 
 
 def fail(message):
@@ -129,7 +139,47 @@ def main():
         if token not in coord:
             return fail(COORDINATOR.as_posix() + " 缺少 " + token)
 
-    print("BossBgmCoordinatorGuard: PASS（零素材零行为 + 按 Boss 甄别 + 跨局自愈）")
+    # ---- 6) 场景常驻曲：Boss 曲停下接回，复位先撤租约 ----
+    if '"sceneTracks"' not in table or "table.sceneTracks = scenes.ToArray()" not in table:
+        return fail(TABLE.as_posix() + " 缺少 sceneTracks 解析（场景常驻曲的数据契约）")
+    stop_body = stop[stop.find("_playingBossKey = null;", stop.find("IsPlaybackFromCurrentScene()")):]
+    if "if (!TryResumeSceneBgm()) InvokeStopBgm();" not in stop_body:
+        return fail(COORDINATOR.as_posix() + " 的 StopBossBgm 没有先尝试接回场景曲：天空岛打完 Boss 会一直静音")
+    reset = extract_method(coord, "internal static void ResetStaticCaches()")
+    if not reset or reset.find("ClearSceneLease();") < 0 or reset.find("ClearSceneLease();") > reset.find("StopBossBgm();"):
+        return fail(COORDINATOR.as_posix() + " 的 ResetStaticCaches 必须先 ClearSceneLease 再 StopBossBgm，否则拆场时场景曲会被接回")
+    for token in ("internal static bool AcquireSceneBgm(string sceneKey, UnityEngine.Object owner)",
+                  "internal static void ReleaseSceneBgm(UnityEngine.Object owner)",
+                  "_sceneLeaseSceneHandle", "_sceneLeaseOwnerId != owner.GetInstanceID()"):
+        if token not in coord:
+            return fail(COORDINATOR.as_posix() + " 场景常驻曲租约缺少: " + token)
+
+    # ---- 7) 天空岛会话获取 / 释放 ----
+    if not AMBIENCE.is_file():
+        return fail("找不到 " + AMBIENCE.as_posix())
+    amb = strip_comments(AMBIENCE.read_text(encoding="utf-8", errors="ignore"))
+    ctor = extract_method(amb, "internal SkyIslandAmbience(GameObject root)")
+    dispose = extract_method(amb, "public void Dispose()")
+    if "BossBgmCoordinator.AcquireSceneBgm(BossBgmScenes.SkyIsland" not in ctor:
+        return fail(AMBIENCE.as_posix() + " 构造时没有获取天空岛场景常驻曲")
+    if "BossBgmCoordinator.ReleaseSceneBgm(bgmOwner)" not in dispose:
+        return fail(AMBIENCE.as_posix() + " Dispose 没有释放场景常驻曲：离岛后曲子会一直放")
+
+    # ---- 8) 场景常驻曲只许 ogg / wav ----
+    if not DATA.is_file():
+        return fail("找不到 " + DATA.as_posix())
+    data = json.loads(DATA.read_text(encoding="utf-8"))
+    scenes = data.get("sceneTracks") or []
+    if not any(r.get("sceneKey") == "SkyIsland" for r in scenes):
+        return fail(DATA.as_posix() + " 缺少 sceneKey=SkyIsland 的场景常驻曲")
+    for row in scenes:
+        f = str(row.get("file", "")).lower()
+        if not (f.endswith(".ogg") or f.endswith(".wav")):
+            return fail(DATA.as_posix() + " 场景常驻曲 " + f + " 不是 ogg / wav：FMOD 读 mp3 可能把时长估成两倍，循环中间空白")
+        if row.get("loop") is False:
+            return fail(DATA.as_posix() + " 场景常驻曲 " + f + " 必须循环")
+
+    print("BossBgmCoordinatorGuard: PASS（零素材零行为 + 按 Boss 甄别 + 跨局自愈 + 场景常驻曲）")
     return 0
 
 

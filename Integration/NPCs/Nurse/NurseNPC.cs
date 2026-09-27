@@ -24,9 +24,16 @@ namespace BossRush
     internal sealed class NurseNpcRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour owner;
+        private bool destroyed;
         public override string ModuleName { get { return "NurseNPC"; } }
-        public override void OnAwake(ModBehaviour owner) { this.owner = owner; }
-        public override void OnDestroy() { owner = null; }
+        public override void OnAwake(ModBehaviour owner) { this.owner = owner; destroyed = false; }
+        public override void OnDestroy()
+        {
+            if (destroyed) return;
+            destroyed = true;
+            try { DestroyNurseNPC(); }
+            finally { owner = null; }
+        }
 
         internal GameObject NurseNPCInstance { get { return nurseNPCInstance; } }
         internal static GameObject GetPrefabForRuntime() { return LoadNurseAssetBundle() ? nursePrefab : null; }
@@ -259,9 +266,10 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[NurseNPC] 销毁护士NPC");
                 UnityEngine.Object.Destroy(nurseNPCInstance);
-                nurseNPCInstance = null;
-                nurseController = null;
+
             }
+            nurseNPCInstance = null;
+            nurseController = null;
         }
         
         /// <summary>

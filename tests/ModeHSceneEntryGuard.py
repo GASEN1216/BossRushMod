@@ -50,7 +50,8 @@ def main():
                   'yield return _owner.IntegrationSharedWait05s;'):
         assert token in travel, 'custom teleport readiness wait changed: ' + token
     landing = body('Integration/BossRushIntegrationRuntimeModule_Travel.cs', 'internal Vector3 ApplyCustomTeleportPosition(')
-    assert landing.index('if (isModeEEntry)') < landing.index('Physics.RaycastAll('), 'Mode E must keep the default spawn point'
+    skip_landing = re.search(r'if\s*\(isModeEEntry\s*\|\|\s*BossRushInitialSpawn.HasArrived\(targetPosition\)\)\s*\{\s*return finalPosition;\s*\}', landing)
+    assert skip_landing and skip_landing.start() < landing.index('Physics.RaycastAll('), 'Mode E and completed official arrival must preserve the spawn point'
     assert landing.index('Physics.RaycastAll(') < landing.index('Physics.Raycast(') < landing.index('main.SetPosition(finalPosition);')
     assert landing.index('cameraOffset = camera.transform.position - main.transform.position;') < landing.index('main.SetPosition(finalPosition);')
     assert 'camera.transform.position = main.transform.position + cameraOffset;' in landing

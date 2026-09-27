@@ -28,6 +28,9 @@ namespace BossRush
 
     internal static partial class ModeHUIPages
     {
+        /// <summary>整备选项行首物品图标的边长（配装页）。</summary>
+        private const float PrepIconSize = 60f;
+
         private static bool TryCreateHeroHeader(Transform surface, Vector2 panelSize, ModeHPageContent content,
             bool result, out float contentTop)
         {
@@ -110,14 +113,18 @@ namespace BossRush
         /// 整张卡当按钮：底图就是按钮图（ColorBlock 绝对色，悬停向描边色提亮一点），挂共享手感（音效、按下回弹）；
         /// 悬停时描边换主色（ModeHCardHover）。卡里的「选他出战」是子按钮，点它只触发它自己。
         /// </summary>
-        private static void MakeCardClickable(Transform card, UnityEngine.Events.UnityAction onClick)
+        private static void MakeCardClickable(Transform card, UnityEngine.Events.UnityAction onClick, bool selected = false)
         {
             Image image = card.GetComponent<Image>();
             if (image == null || onClick == null) return;
             Button button = card.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             button.navigation = new Navigation { mode = Navigation.Mode.None };
-            Color normal = BossRushUIColors.SurfaceRaised;
+            // 选中卡（押物品页勾上的那几件）：底色染一点主色、描边常亮主色，指针移开也不褪回灰边
+            Color normal = selected
+                ? Color.Lerp(BossRushUIColors.SurfaceRaised, BossRushUIColors.Accent, SelectedTint)
+                : BossRushUIColors.SurfaceRaised;
+            normal.a = BossRushUIColors.SurfaceRaised.a;
             Color hover = Color.Lerp(normal, BossRushUIColors.Stroke, CardHoverLift);
             hover.a = normal.a;
             ZombieModeUIHelper.ApplyButtonColors(button, normal, hover, BossRushUI.GetDisabledColor(normal));
@@ -125,7 +132,10 @@ namespace BossRush
             Transform stroke = card.Find("Stroke");
             if (stroke != null)
             {
-                card.gameObject.AddComponent<ModeHCardHover>().Bind(button, stroke.GetComponent<Image>());
+                Image strokeImage = stroke.GetComponent<Image>();
+                Color rest = selected ? BossRushUIColors.Accent : BossRushUIColors.Stroke;
+                if (strokeImage != null) strokeImage.color = rest;
+                card.gameObject.AddComponent<ModeHCardHover>().Bind(button, strokeImage, rest);
             }
         }
 
@@ -183,33 +193,79 @@ namespace BossRush
             return key.Length > 0 && value.Length > 0;
         }
 
+        /// <summary>
+        /// 整备选项上方：一句当前选择的小结（次级小字），多列时每列一个小标题（「首发」「接力」）。返回选项区顶边。
+        /// </summary>
+        private static float CreatePreparationHeaders(Transform surface, Vector2 panelSize, ModeHPageContent content,
+            float topY, int columns, float cellWidth)
+        {
+            float width = panelSize.x - ModeHUI.SafeMargin * 2f - 40f;
+            if (!string.IsNullOrEmpty(content.Body))
+            {
+                TextMeshProUGUI summary = DetailText(surface, "ModeH_PrepSummary", content.Body,
+                    new Vector2(-width * 0.5f, topY - panelSize.y * 0.5f), new Vector2(width, 30f),
+                    16f, BossRushUIColors.TextSecondary, TextAlignmentOptions.Center);
+                summary.enableAutoSizing = false;
+                summary.enableWordWrapping = false;
+                topY -= 40f;
+            }
+            if (columns < 2 || content.PreparationHeaders == null || content.PreparationHeaders.Count == 0) return topY;
+            for (int i = 0; i < columns && i < content.PreparationHeaders.Count; i++)
+            {
+                if (string.IsNullOrEmpty(content.PreparationHeaders[i])) continue;
+                // 选项区整体左移 10（给滚动条让位），小标题跟着对齐到每列左缘
+                float left = -width * 0.5f - 10f + i * (cellWidth + CardGap);
+                TextMeshProUGUI header = DetailText(surface, "ModeH_PrepHeader_" + i, content.PreparationHeaders[i],
+                    new Vector2(left + 4f, topY - panelSize.y * 0.5f), new Vector2(cellWidth - 8f, 28f),
+                    17f, BossRushUIColors.Accent, TextAlignmentOptions.MidlineLeft);
+                header.enableAutoSizing = false;
+            }
+            return topY - 36f;
+        }
+
+        /// <summary>
+        /// 整备选项一格：整格是按钮（深色底 + 描边），左边可选一枚物品图标，标签按「\n」拆成标题（主色）+ 说明（次级小字）；
+        /// 选中格底色染一点主色、描边换主色，右上角角标。<paramref name="x"/> / <paramref name="row"/> 给多列排布用。
+        /// </summary>
         private static void CreatePreparationRow(Transform host, ModeHActionData option, int index, float width,
-            float rowHeight, bool animate)
+            float rowHeight, bool animate, float x = 0f, int row = -1)
         {
             if (option == null) return;
             string label = option.Label ?? string.Empty;
             int split = label.IndexOf('\n');
             string title = split >= 0 ? label.Substring(0, split) : label;
             string detail = split >= 0 ? label.Substring(split + 1) : null;
+            if (row < 0) row = index;
+            float height = rowHeight - 10f;
 
-            Button row = ZombieModeUIHelper.CreateButton("ModeH_Preparation_" + index, host, title,
-                new Vector2(0.5f, 1f), new Vector2(0f, -(index + 0.5f) * rowHeight),
-                new Vector2(width, rowHeight - 8f), BossRushUIColors.SurfaceRaised,
+            Button button = ZombieModeUIHelper.CreateButton("ModeH_Preparation_" + index, host, title,
+                new Vector2(0.5f, 1f), new Vector2(x, -(row + 0.5f) * rowHeight),
+                new Vector2(width, height), BossRushUIColors.SurfaceRaised,
                 19f, new Vector2(width - 40f, PrepTitleHeight),
                 option.OnClick != null ? new UnityEngine.Events.UnityAction(option.OnClick) : null,
                 option.Interactable);
             float right = 20f;
             if (option.IsSelected)
             {
-                StyleSelectedButton(row, BossRushUIColors.Accent, BossRushUIColors.Accent);
-                right += AddSelectedBadge(row.transform, option.SelectedBadge) + 12f;
+                StyleSelectedButton(button, BossRushUIColors.Accent, BossRushUIColors.Accent);
+                right += AddSelectedBadge(button.transform, option.SelectedBadge) + 12f;
             }
             else
             {
-                BossRushUIKit.StyleSecondaryButton(row);
+                BossRushUIKit.StyleSecondaryButton(button);
             }
 
-            TextMeshProUGUI titleText = FindLabel(row);
+            float textLeft = 20f;
+            if (option.Icon != null)
+            {
+                float iconSize = Mathf.Min(PrepIconSize, height - 20f);
+                CreateItemIcon(button.transform, "Icon",
+                    new ModeHItemIconData { Icon = option.Icon, Count = 0, Quality = option.IconQuality },
+                    new Vector2(-width * 0.5f + 16f + iconSize * 0.5f, -height * 0.5f), iconSize, true, false);
+                textLeft = 16f + iconSize + 14f;
+            }
+
+            TextMeshProUGUI titleText = FindLabel(button);
             if (titleText != null)
             {
                 RectTransform titleRect = titleText.rectTransform;
@@ -222,7 +278,7 @@ namespace BossRush
                     titleText.alignment = TextAlignmentOptions.MidlineLeft;
                     titleRect.anchorMin = Vector2.zero;
                     titleRect.anchorMax = Vector2.one;
-                    titleRect.offsetMin = new Vector2(20f, 0f);
+                    titleRect.offsetMin = new Vector2(textLeft, 0f);
                     titleRect.offsetMax = new Vector2(-right, 0f);
                 }
                 else
@@ -230,25 +286,25 @@ namespace BossRush
                     titleText.alignment = TextAlignmentOptions.TopLeft;
                     titleRect.anchorMin = new Vector2(0f, 1f);
                     titleRect.anchorMax = new Vector2(1f, 1f);
-                    titleRect.offsetMin = new Vector2(20f, -(14f + PrepTitleHeight));
+                    titleRect.offsetMin = new Vector2(textLeft, -(14f + PrepTitleHeight));
                     titleRect.offsetMax = new Vector2(-right, -14f);
                 }
             }
 
             if (!string.IsNullOrEmpty(detail))
             {
-                GameObject descObj = ZombieModeUIHelper.CreateRect("Desc", row.transform,
+                GameObject descObj = ZombieModeUIHelper.CreateRect("Desc", button.transform,
                     Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
                 RectTransform descRect = descObj.GetComponent<RectTransform>();
-                descRect.offsetMin = new Vector2(20f, 10f);
-                descRect.offsetMax = new Vector2(-20f, -(18f + PrepTitleHeight));
+                descRect.offsetMin = new Vector2(textLeft, 10f);
+                descRect.offsetMax = new Vector2(-20f, -(16f + PrepTitleHeight));
                 TextMeshProUGUI desc = ZombieModeUIHelper.CreateTMPText(descObj, detail, 15f,
                     TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
                 BossRushUI.ApplyGameFont(desc);
             }
             if (animate && index < MaxAnimatedRows)
             {
-                BossRushUIEntranceAnimation.Play(row.gameObject, 0.04f * index, 0.24f, 10f);
+                BossRushUIEntranceAnimation.Play(button.gameObject, 0.03f * index, 0.24f, 10f);
             }
         }
 
@@ -378,11 +434,13 @@ namespace BossRush
     {
         private Selectable _target;
         private Image _stroke;
+        private Color _rest = BossRushUIColors.Stroke;
 
-        internal void Bind(Selectable target, Image stroke)
+        internal void Bind(Selectable target, Image stroke, Color rest)
         {
             _target = target;
             _stroke = stroke;
+            _rest = rest;
         }
 
         public void OnPointerEnter(PointerEventData eventData)
@@ -395,12 +453,12 @@ namespace BossRush
 
         public void OnPointerExit(PointerEventData eventData)
         {
-            if (_stroke != null) _stroke.color = BossRushUIColors.Stroke;
+            if (_stroke != null) _stroke.color = _rest;
         }
 
         private void OnDisable()
         {
-            if (_stroke != null) _stroke.color = BossRushUIColors.Stroke;
+            if (_stroke != null) _stroke.color = _rest;
         }
     }
 }

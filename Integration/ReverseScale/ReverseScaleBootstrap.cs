@@ -17,6 +17,8 @@ namespace BossRush
     internal sealed partial class ReverseScaleRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour _owner;
+        private Coroutine pendingEquipmentCheck;
+        private bool systemCleanupCompleted;
 
         public override string ModuleName { get { return "ReverseScale"; } }
 
@@ -27,7 +29,8 @@ namespace BossRush
 
         public override void OnDestroy()
         {
-            _owner = null;
+            try { CleanupReverseScaleSystem(); }
+            finally { _owner = null; }
         }
 
         // ========== 初始化 ==========
@@ -37,6 +40,7 @@ namespace BossRush
         /// </summary>
         internal void InitializeReverseScaleSystem()
         {
+            systemCleanupCompleted = false;
             AbilitySystemHelper.InitializeSystem(
                 config: ReverseScaleConfig.Instance,
                 ensureManagerInstance: () => ReverseScaleAbilityManager.EnsureInstance(),
@@ -53,9 +57,11 @@ namespace BossRush
         /// </summary>
         internal void SetupReverseScaleForScene(Scene scene)
         {
+            CancelPendingEquipmentCheck();
+            systemCleanupCompleted = false;
             if (ModBehaviour.IsGameplaySceneName(scene.name))
             {
-                AbilitySystemHelper.HandleSceneChange(
+                pendingEquipmentCheck = AbilitySystemHelper.StartSceneChange(
                     config: ReverseScaleConfig.Instance,
                     onSceneChanged: () =>
                     {
@@ -89,6 +95,7 @@ namespace BossRush
         private IEnumerator DelayedCheckReverseScaleEquipment()
         {
             yield return ModBehaviour.ReverseScaleSharedWait05sForRuntime;
+            pendingEquipmentCheck = null;
 
             if (ReverseScaleEffectManager.Instance != null)
             {
@@ -101,8 +108,20 @@ namespace BossRush
         /// <summary>
         /// 清理逆鳞图腾系统
         /// </summary>
+        private void CancelPendingEquipmentCheck()
+        {
+            if (_owner != null && pendingEquipmentCheck != null)
+            {
+                _owner.StopCoroutine(pendingEquipmentCheck);
+            }
+            pendingEquipmentCheck = null;
+        }
+
         internal void CleanupReverseScaleSystem()
         {
+            CancelPendingEquipmentCheck();
+            if (systemCleanupCompleted) return;
+            systemCleanupCompleted = true;
             AbilitySystemHelper.CleanupSystem(
                 config: ReverseScaleConfig.Instance,
                 cleanupManager: () => ReverseScaleAbilityManager.Cleanup(),

@@ -52,15 +52,19 @@ def main():
     (OUT / 'maps.json').write_text(json.dumps(maps), encoding='utf-8')
     linked = [ROOT / path for path in (
         'PetNest/PetNestBaseIdleSpawner.cs', 'PetNest/PetNestCompanionRuntime.cs', 'PetNest/PetNestPetProxyBridge.cs',
-        'ModeH/ModeHMapSupportRegistry.cs', 'Common/MapConfig/BossRushMapConfig.cs',
+        'ModeH/ModeHMapSupportRegistry.cs', 'ModeH/ModeHSeedStream.cs', 'Common/MapConfig/BossRushMapConfig.cs',
         'Integration/Codex/CodexSceneNames.cs')]
-    files = linked + [OUT / 'Reveal.cs', OUT / 'ExpeditionReveal.cs', OUT / 'Combat.cs', HERE / 'Program.cs', HERE / 'Stubs.cs']
+    odds = ROOT / 'ModeH/ModeHOddsController.cs'
+    code = 'using System; namespace BossRush { internal static class PreparedOdds {\n'
+    code += member(odds.read_text(encoding='utf-8-sig'), 'internal static int ComputePreparedPowerEdge(') + '\n}}'
+    (OUT / 'PreparedOdds.cs').write_text(code, encoding='utf-8')
+    files = linked + [OUT / 'PreparedOdds.cs', OUT / 'Reveal.cs', OUT / 'ExpeditionReveal.cs', OUT / 'Combat.cs', HERE / 'Program.cs', HERE / 'Stubs.cs']
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0169;0414</NoWarn></PropertyGroup><ItemGroup>'
     project += ''.join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in files)
     project += '</ItemGroup></Project>'
     (OUT / 'Regression.csproj').write_text(project, encoding='utf-8')
     (OUT / 'sources.json').write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in linked + [source, expedition, combat]}, indent=2), encoding='utf-8')
+        for p in linked + [source, expedition, combat, odds]}, indent=2), encoding='utf-8')
     return subprocess.call(['dotnet', 'run', '--project', str(OUT / 'Regression.csproj'),
         '--configuration', 'Release', '--', str(OUT / 'maps.json')], cwd=ROOT)
 

@@ -663,14 +663,12 @@ namespace BossRush
 
             if (!owner.IsActive)
             {
-                owner.ModeDIntegrityCheckTimer = 0f;
+                owner.ResetArenaIntegrityCheck();
                 return;
             }
 
-            owner.ModeDIntegrityCheckTimer += deltaTime;
-            if (owner.ModeDIntegrityCheckTimer >= ModBehaviour.WaveIntegrityCheckInterval)
+            if (owner.AdvanceArenaIntegrityCheck(deltaTime))
             {
-                owner.ModeDIntegrityCheckTimer = 0f;
                 TryFixStuckWaveIfNoModeDEnemyAlive();
             }
         }

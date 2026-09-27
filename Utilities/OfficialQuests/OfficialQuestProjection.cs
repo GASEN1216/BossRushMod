@@ -4,6 +4,7 @@ using System.Reflection;
 using Duckov.Quests;
 using Duckov.Utilities;
 using HarmonyLib;
+using ItemStatsSystem;
 using UnityEngine;
 
 namespace BossRush
@@ -28,6 +29,10 @@ namespace BossRush
     internal sealed class OfficialQuestProjection : IDisposable
     {
         private const float TickInterval = 0.25f;
+        /// <summary>提交物品目标的 TaskId 从这里起排，避开客户端自己的目标编号。</summary>
+        internal const int SubmissionTaskIdBase = 900;
+        /// <summary>奖励行 ID：金钱固定 1，物品从 2 起。</summary>
+        private const int ItemRewardIdBase = 2;
 
         private static readonly FieldInfo QuestIdField = AccessTools.Field(typeof(Quest), "id");
         private static readonly FieldInfo QuestGiverField = AccessTools.Field(typeof(Quest), "questGiverID");
@@ -85,11 +90,46 @@ namespace BossRush
                     "[OfficialQuest] [ERROR] 任务定义不完整（缺客户端或委托），拒绝登记: " + binding.QuestId);
                 return;
             }
+            AppendSubmissionTasks(binding);
             var entry = new Entry { Binding = binding };
             entries.Add(entry);
             byId[binding.QuestId] = entry;
             if (FindClient(binding.Client) == null) clients.Add(new ClientState { Client = binding.Client });
             EnsureRegistered(entry);
+        }
+
+        /// <summary>
+        /// 每条提交物品各投影成一个官方目标：身上凑够了才算完成（官方完成按钮因此只在带够时可点）。
+        /// 交付后恒为完成——东西已被收走，官方 TryComplete 的 AreTasksFinished 不能因此回退。
+        /// </summary>
+        private static void AppendSubmissionTasks(OfficialQuestBinding binding)
+        {
+            if (binding.Submissions == null || binding.Submissions.Length == 0) return;
+            int existing = binding.Tasks == null ? 0 : binding.Tasks.Length;
+            var tasks = new OfficialQuestTaskBinding[existing + binding.Submissions.Length];
+            for (int i = 0; i < existing; i++) tasks[i] = binding.Tasks[i];
+            for (int i = 0; i < binding.Submissions.Length; i++)
+            {
+                OfficialQuestSubmission submission = binding.Submissions[i];
+                tasks[existing + i] = new OfficialQuestTaskBinding
+                {
+                    TaskId = SubmissionTaskIdBase + i,
+                    Done = () => binding.IsDelivered()
+                        || OfficialQuestItemRules.Held(submission, OfficialQuestItems.HeldInBackpack) >= submission.Count,
+                    Description = () => DescribeSubmission(binding, submission),
+                    ExtraHint = () => binding.IsDelivered() ? null
+                        : L10n.T("放在背包里带去，交付时会收走。", "Carry them in your backpack; they are taken when you hand in."),
+                };
+            }
+            binding.Tasks = tasks;
+        }
+
+        private static string DescribeSubmission(OfficialQuestBinding binding, OfficialQuestSubmission submission)
+        {
+            string text = submission.Description != null ? submission.Description() : string.Empty;
+            if (binding.IsDelivered()) return text + L10n.T("（已交）", " (handed in)");
+            int held = OfficialQuestItemRules.Held(submission, OfficialQuestItems.HeldInBackpack);
+            return text + L10n.T("（身上 ", " (carrying ") + Math.Min(held, submission.Count) + "/" + submission.Count + L10n.T("）", ")");
         }
 
         /// <summary>撤掉一条定义：只在确实拥有模板时清自己的投影、移出官方集合、销毁模板。</summary>
@@ -182,11 +222,28 @@ namespace BossRush
                     reason = L10n.T("目标完成后，请在任务给予者所在地图交付。", "Finish the objectives, then report to the giver on their map.");
                 return false;
             }
-            // 发钱只认「这一拍从未交付变成已交付」：读档重建投影走的是 ForceComplete，不经过这里，也就不会再发一次。
-            bool wasDelivered = binding.IsDelivered();
-            bool committed = binding.Deliver(out reason);
-            if (committed && !wasDelivered && binding.PayReward != null) binding.PayReward();
-            return committed;
+            // 发奖只认「这一拍从未交付变成已交付」：读档重建投影走的是 ForceComplete，不经过这里，也就不会再发一次。
+            if (binding.IsDelivered()) return binding.Deliver(out reason);
+
+            // 顺序：先把奖励物生成好、再把要交的物品整份预留，最后才提交客户端事务（发钱 / 写事实）。
+            // 任何一步不成都原样退回：预留归还原槽，生成的奖励物销毁，玩家不会白交东西，也不会拿到半份奖励。
+            var rewards = new List<Item>();
+            OfficialQuestItemReservation reservation = null;
+            try
+            {
+                if (!OfficialQuestItems.TryCreate(binding.RewardItems, rewards, out reason)) return false;
+                if (!OfficialQuestItems.TryReserve(binding.Submissions, out reservation, out reason)) return false;
+                if (!binding.Deliver(out reason)) return false;
+                if (reservation != null) reservation.Commit();
+                OfficialQuestItems.Give(rewards);
+                if (binding.PayReward != null) binding.PayReward();
+                return true;
+            }
+            finally
+            {
+                if (reservation != null) reservation.Dispose();
+                OfficialQuestItems.Discard(rewards);
+            }
         }
 
         /// <summary>官方任务详情页的「所需物品」栏：纯展示，收物品仍由那条任务自己的 Deliver 负责。</summary>
@@ -210,21 +267,48 @@ namespace BossRush
         /// </summary>
         private static void ApplyReward(Entry entry, Quest quest, GameObject root)
         {
-            if (entry.Binding.RewardMoney <= 0) return;
+            OfficialQuestItemStack[] items = entry.Binding.RewardItems;
+            bool anyItem = false;
+            if (items != null) for (int i = 0; i < items.Length; i++) anyItem |= items[i].TypeId > 0 && items[i].Count > 0;
+            if (entry.Binding.RewardMoney <= 0 && !anyItem) return;
             if (QuestRewardsField == null || RewardIdField == null || RewardMasterField == null)
             {
-                ModBehaviour.DevLog(entry.Binding.Client.LogTag + " [WARNING] 官方 Reward 字段已改名，任务页不显示奖励行（交付照常发钱）。");
+                ModBehaviour.DevLog(entry.Binding.Client.LogTag + " [WARNING] 官方 Reward 字段已改名，任务页不显示奖励行（交付照常发放）。");
                 return;
             }
             var rewards = QuestRewardsField.GetValue(quest) as List<Reward>;
             if (rewards == null) return;
+            if (entry.Binding.RewardMoney > 0)
+            {
+                AddRewardRow<OfficialQuestProjectionReward>(root, quest, rewards, 1, reward =>
+                {
+                    reward.questId = entry.Binding.QuestId;
+                    reward.amount = entry.Binding.RewardMoney;
+                });
+            }
+            if (!anyItem) return;
+            for (int i = 0; i < items.Length; i++)
+            {
+                if (items[i].TypeId <= 0 || items[i].Count <= 0) continue;
+                OfficialQuestItemStack stack = items[i];
+                AddRewardRow<OfficialQuestProjectionItemReward>(root, quest, rewards, ItemRewardIdBase + i, reward =>
+                {
+                    reward.questId = entry.Binding.QuestId;
+                    reward.typeId = stack.TypeId;
+                    reward.amount = stack.Count;
+                });
+            }
+        }
+
+        /// <summary>官方 Reward.Awake 要求 master 已就位：先在停用的子物体上写完字段再激活。</summary>
+        private static void AddRewardRow<T>(GameObject root, Quest quest, List<Reward> rewards, int rewardId, Action<T> setup) where T : Reward, new()
+        {
             GameObject rewardHost = new GameObject("Reward");
             rewardHost.transform.SetParent(root.transform, false);
             rewardHost.SetActive(false);
-            OfficialQuestProjectionReward reward = rewardHost.AddComponent<OfficialQuestProjectionReward>();
-            reward.questId = entry.Binding.QuestId;
-            reward.amount = entry.Binding.RewardMoney;
-            RewardIdField.SetValue(reward, 1);
+            T reward = rewardHost.AddComponent<T>();
+            setup(reward);
+            RewardIdField.SetValue(reward, rewardId);
             RewardMasterField.SetValue(reward, quest);
             rewards.Add(reward);
             rewardHost.SetActive(true);
@@ -499,7 +583,11 @@ namespace BossRush
             string message;
             bool accepted = binding.Accept(out message);
             if (!accepted)
-                ModBehaviour.DevLog(binding.Client.LogTag + " [WARNING] 官方接取已发生，Mod 事实等待重试: " + message);
+            {
+                // 下一拍 Synchronize 按 Mod 事实把这条投影收回可接取页；正式构建没有 DevLog，得让玩家知道要重接。
+                ModBehaviour.DevLog(binding.Client.LogTag + " [WARNING] 官方接取已发生，Mod 事实未写入，投影将退回可接取页: " + message);
+                ReportDeliveryFailure(message);
+            }
         }
 
         private void OnQuestCompleted(Quest quest)

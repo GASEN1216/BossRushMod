@@ -55,13 +55,16 @@ namespace BossRush
         private static readonly PetNestChromaColor[] Palette =
         {
             Make("black",  "黑", "Black",   0.08f, 0.08f, 0.10f, "#858B95"),
-            Make("white",  "白", "White",   1.00f, 1.00f, 1.00f, "#FFFFFF"),
+            // 白：略带冰蓝，和蓝色搭配时能看到两端的层次，不是一整条纯白。
+            Make("white",  "白", "White",   0.96f, 0.985f, 1.00f, "#F8FCFF"),
             Make("red",    "赤", "Crimson", 0.95f, 0.22f, 0.22f, "#FF8A80"),
             Make("orange", "橙", "Amber",   1.00f, 0.55f, 0.12f, "#FFB74D"),
             Make("yellow", "黄", "Gold",    1.00f, 0.88f, 0.25f, "#FFE066"),
-            Make("green",  "绿", "Verdant", 0.25f, 0.85f, 0.35f, "#7FE08A"),
+            // 绿：把蓝绿色相压开，粒子更像荧光叶片，文字仍保持深色面板上的 4.5:1 对比。
+            Make("green",  "绿", "Verdant", 0.20f, 0.95f, 0.50f, "#78E8A0"),
             Make("cyan",   "青", "Cyan",    0.25f, 0.88f, 0.90f, "#7DE3E8"),
-            Make("blue",   "蓝", "Azure",   0.22f, 0.45f, 0.98f, "#8FB0FF"),
+            // 蓝：提高青蓝通道并保留深蓝核心，渐变时不会发灰或变成普通薄荷色。
+            Make("blue",   "蓝", "Azure",   0.16f, 0.52f, 1.00f, "#83B7FF"),
             Make("purple", "紫", "Violet",  0.62f, 0.32f, 0.92f, "#C29BFF"),
             Make("silver", "银", "Silver",  0.78f, 0.82f, 0.88f, "#D7DCE4"),
         };

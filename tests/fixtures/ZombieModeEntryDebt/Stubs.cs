@@ -1,4 +1,5 @@
 using System;
+using ItemStatsSystem;
 using System.Collections.Generic;
 
 // 隔离执行 ZombieModeEntryDebt 所需的最小替身。生产文件原样链接，这里只顶住它引用的官方类型：
@@ -100,55 +101,120 @@ namespace Duckov.UI
     }
 }
 
+namespace UnityEngine
+{
+    internal class Object
+    {
+        internal bool Destroyed;
+        public static bool operator ==(Object a, Object b) { return ReferenceEquals(a, b) || ((ReferenceEquals(a, null) || a.Destroyed) && (ReferenceEquals(b, null) || b.Destroyed)); }
+        public static bool operator !=(Object a, Object b) { return !(a == b); }
+        public override bool Equals(object value) { return ReferenceEquals(this, value); }
+        public override int GetHashCode() { return base.GetHashCode(); }
+        internal static void Destroy(GameObject go) { go.Destroyed = true; foreach (Object component in go.Components) component.Destroyed = true; }
+    }
+    internal class GameObject : Object { internal bool activeInHierarchy; internal List<Object> Components = new List<Object>(); }
+}
+internal class CharacterMainControl
+{
+    internal static CharacterMainControl Main;
+    internal ItemStatsSystem.Item CharacterItem;
+}
+internal static class LevelManager
+{
+    internal static Action OnAfterLevelInitialized;
+    internal static void RaiseReady() { OnAfterLevelInitialized?.Invoke(); }
+    internal static int SubscriberCount { get { return OnAfterLevelInitialized == null ? 0 : OnAfterLevelInitialized.GetInvocationList().Length; } }
+}
+internal class InteractablePickup { }
 namespace ItemStatsSystem
 {
-    internal sealed class Item
+    internal class Inventory : List<Item> { }
+    internal sealed class Item : UnityEngine.Object
     {
+        static int next;
+        readonly int id = ++next;
         internal int TypeID;
+        internal Item Character;
+        internal Inventory InInventory, Inventory;
+        internal ItemAgent ActiveAgent;
+        internal UnityEngine.GameObject gameObject = new UnityEngine.GameObject();
+        internal Item() { gameObject.Components.Add(this); }
+        internal bool IsBeingDestroyed { get { return Destroyed; } }
+        internal int GetInstanceID() { return id; }
+        internal Item GetCharacterItem() { return Character; }
+        internal void DestroyTree()
+        {
+            if (InInventory != null) InInventory.Remove(this);
+            if (ActiveAgent != null) UnityEngine.Object.Destroy(ActiveAgent.gameObject);
+            UnityEngine.Object.Destroy(gameObject);
+        }
     }
-
-    /// <summary><see cref="Available"/> 为 false 对应资源未就绪：<c>InstantiateSync</c> 返回 null。</summary>
+    internal class ItemAgent : UnityEngine.Object
+    {
+        internal enum AgentTypes { normal, pickUp, handheld, equipment }
+        internal AgentTypes AgentType;
+        internal Item Item;
+        internal bool PickupPresent;
+        internal UnityEngine.GameObject gameObject = new UnityEngine.GameObject();
+        internal T GetComponent<T>() where T : class { return PickupPresent ? new InteractablePickup() as T : null; }
+    }
     internal static class ItemAssetsCollection
     {
         internal static bool Available = true;
         internal static bool ThrowOnInstantiate;
         internal static int Instantiated;
-        /// <summary>造出这么多个之后资源就掉线（负数表示不限制）。用来复现「结账到一半资源没了」。</summary>
         internal static int FailAfter = -1;
-
+        internal static readonly List<Item> Created = new List<Item>();
         internal static void Reset()
         {
-            Available = true;
-            ThrowOnInstantiate = false;
-            Instantiated = 0;
-            FailAfter = -1;
+            Available = true; ThrowOnInstantiate = false; Instantiated = 0; FailAfter = -1; Created.Clear();
         }
-
+        internal static Item GetPrefab(int typeId) { return Available ? new Item { TypeID = typeId } : null; }
         internal static Item InstantiateSync(int typeId)
         {
             if (ThrowOnInstantiate) throw new Exception("asset faulted");
-            if (!Available) return null;
-            if (FailAfter >= 0 && Instantiated >= FailAfter) return null;
+            if (!Available || (FailAfter >= 0 && Instantiated >= FailAfter)) return null;
             Instantiated++;
-            return new Item { TypeID = typeId };
+            Item item = new Item { TypeID = typeId }; Created.Add(item); return item;
         }
     }
-
     internal static class ItemUtilities
     {
+        internal enum Destination { Backpack, Storage, Buffer, Ground, BrokenGround }
         internal static readonly List<Item> Delivered = new List<Item>();
-        internal static bool ThrowOnSend;
-
+        internal static bool ThrowOnSend, ThrowAfterSend;
+        internal static Destination Target;
+        internal static int FailAfter;
         internal static void Reset()
         {
-            Delivered.Clear();
-            ThrowOnSend = false;
+            Delivered.Clear(); ThrowOnSend = ThrowAfterSend = false; Target = Destination.Backpack; FailAfter = -1;
         }
-
         internal static void SendToPlayer(Item item, bool a, bool b)
         {
-            if (ThrowOnSend) throw new Exception("send faulted");
-            Delivered.Add(item);
+            if (ThrowOnSend || (FailAfter >= 0 && Delivered.Count >= FailAfter)) throw new Exception("send faulted before transfer");
+            if (Target == Destination.Backpack)
+            {
+                item.Character = CharacterMainControl.Main.CharacterItem;
+                item.InInventory = item.Character.Inventory; item.InInventory.Add(item);
+            }
+            else if (Target == Destination.Storage)
+            {
+                item.InInventory = BossRush.PlayerStorage.Inventory; item.InInventory.Add(item);
+            }
+            else if (Target == Destination.Buffer)
+            {
+                BossRush.PlayerStorage.IncomingItemBuffer.Add(new BossRush.BufferedTree {
+                    rootInstanceID = item.GetInstanceID(), RootTypeID = item.TypeID });
+                item.DestroyTree();
+            }
+            else
+            {
+                item.ActiveAgent = new ItemAgent { AgentType = ItemAgent.AgentTypes.pickUp, Item = item,
+                    PickupPresent = Target == Destination.Ground };
+                item.ActiveAgent.gameObject.activeInHierarchy = true;
+            }
+            if (Target != Destination.BrokenGround) Delivered.Add(item);
+            if (ThrowAfterSend) throw new Exception("notification faulted after transfer");
         }
     }
 }
@@ -177,8 +243,15 @@ namespace BossRush
         internal static void EnsureRuntimeFallbackRegistrationShell() { }
     }
 
-    internal static class PlayerStorage
+    internal sealed class PlayerStorage
     {
-        internal static object Inventory = new object();
+        internal static PlayerStorage Instance;
+        internal static bool Loading;
+        internal static Inventory Inventory;
+        internal static readonly List<BufferedTree> IncomingItemBuffer = new List<BufferedTree>();
+        internal bool Initialized;
+        internal bool HasInitialized() { return Initialized; }
     }
+    internal sealed class BufferedTree { internal int rootInstanceID, RootTypeID; }
+    internal static class PlayerStorageBuffer { internal static object Instance; }
 }

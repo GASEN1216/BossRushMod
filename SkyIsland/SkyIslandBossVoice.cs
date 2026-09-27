@@ -153,6 +153,9 @@ namespace BossRush
             finished = true;
             wounded.Discard();
             Say(SkyIslandChatterMoment.Down, true);
+            // 具名剧情对手（折翎战斗体、失控的守钟装置）没有招式控制器、不走 RaiseDefeated：倒下回执在这里补，档案 Boss 不重复放。
+            if (profile == null)
+                SkyIslandImpactFx.DefeatBurst(context != null ? context.Root : null, transform.position, SkyIslandBossForge.DefeatTint(null));
         }
 
         private void Detach()
