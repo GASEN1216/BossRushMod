@@ -30,8 +30,10 @@ REGISTRATION = "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs"
 SKY_BRIDGE = "DebugAndTools/SkyIsland/SkyIslandOfficialQuestBridge.cs"
 SKY_GIVERS = "DebugAndTools/SkyIsland/SkyIslandOfficialQuestGivers.cs"
 SKY_PRELUDE = "DebugAndTools/SkyIsland/SkyIslandPreludeFlow.cs"
+SKY_TABLE = "DebugAndTools/SkyIsland/SkyIslandOfficialQuestTable.cs"
+SKY_ITEM_RULES = "DebugAndTools/SkyIsland/SkyIslandItemRules.cs"
 COMPILE = "compile_official.bat"
-PATHS = (BINDING, CORE, COMPONENTS, LOCATOR, MODULE, ITEMS, ITEM_RULES, REGISTRATION, SKY_BRIDGE, SKY_GIVERS, SKY_PRELUDE, COMPILE)
+PATHS = (BINDING, CORE, COMPONENTS, LOCATOR, MODULE, ITEMS, ITEM_RULES, REGISTRATION, SKY_BRIDGE, SKY_GIVERS, SKY_PRELUDE, SKY_TABLE, SKY_ITEM_RULES, COMPILE)
 
 HARMONY_TARGETS = (
     "HarmonyPatch(typeof(Quest), nameof(Quest.MeetsPrerequisit))",
@@ -231,6 +233,19 @@ def check(sources, tree):
         require(token in sky_bridge, SKY_BRIDGE + "：" + why + "（缺 " + token + "）")
     for banned in ("QuestCollection", "FilterSaveSnapshot", "manager.ActivateQuest", "Quest.onQuestActivated"):
         require(banned not in sky_bridge, SKY_BRIDGE + " 出现了 " + banned + "：注册 / 投影 / 过滤只能在核心")
+    # 岛上三条的奖励物品：桥必须把表里的物品交给核心（核心在交付事务里发进背包），不能自己另发一份
+    require("RewardItems = ToStacks(def.RewardItems)," in sky_bridge, SKY_BRIDGE + " 没有把岛上任务的奖励物品交给共享核心")
+    require("ItemUtilities.Send" not in sky_bridge and "InstantiateSync" not in sky_bridge,
+            SKY_BRIDGE + " 自己发物品：奖励物只能由核心在交付成功后发，否则交付失败也会到手")
+    table = sources[SKY_TABLE]
+    island_ids = set(re.findall(r"BossRushItemIds\.(SkyIsland\w+)", sources[SKY_ITEM_RULES].split("internal static readonly int[] AllTypeIds", 1)[1].split(";", 1)[0]))
+    for quest in ("BeaconQuestId", "BellCourtQuestId", "HomecomingQuestId"):
+        block = table.split("QuestId = " + quest, 1)[1].split("new SkyIslandOfficialQuestDefinition", 1)[0] if "QuestId = " + quest in table else ""
+        rewards = re.findall(r"new SkyIslandQuestReward\(BossRushItemIds\.(\w+), (\d+)\)", block)
+        require(len(rewards) > 0, SKY_TABLE + " " + quest + " 没有奖励物品")
+        for name, count in rewards:
+            require(name in island_ids, SKY_TABLE + " " + quest + " 的奖励 " + name + " 不是岛上登记物品（SkyIslandItemRules.AllTypeIds）")
+            require(0 < int(count) <= 10, SKY_TABLE + " " + quest + " 的奖励数量越界: " + name + " x" + count)
 
     # ---- 9) 编译清单 ----
     for rel in (BINDING, CORE, COMPONENTS, LOCATOR, MODULE, ITEMS, ITEM_RULES):
@@ -252,6 +267,8 @@ def main():
         (SKY_GIVERS, "OfficialQuestGiverLocator.RefreshMarker(giver)", "RefreshMarkerStub(giver)"),
         (SKY_BRIDGE, "owner.OfficialQuestRuntime.Projection", "new OfficialQuestProjection(owner)"),
         (SKY_BRIDGE, "projection.UnregisterClient(this)", "projection.Unregister(0)"),
+        (SKY_BRIDGE, "RewardItems = ToStacks(def.RewardItems),", ""),
+        (SKY_TABLE, "new SkyIslandQuestReward(BossRushItemIds.SkyIslandStardust, 3),", "new SkyIslandQuestReward(BossRushItemIds.BossRushTicket, 3),"),
         (CORE, "if (binding.IsDelivered()) return binding.Deliver(out reason);", ""),
         (CORE, "if (reservation != null) reservation.Dispose();", ""),
         (CORE, "OfficialQuestItems.Discard(rewards);", ""),

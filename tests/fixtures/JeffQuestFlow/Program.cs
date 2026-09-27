@@ -267,6 +267,7 @@ internal static class Program
             return new OfficialQuestBinding {QuestId=id,GiverId=5901,ObjectName="test_"+id,NameKey="name",DescriptionKey="desc",Client=this,
                 CanOffer=()=>!Accepted,CanDeliver=()=>Accepted && Done,IsAccepted=()=>Accepted,IsDelivered=()=>Delivered,
                 Accept=(out string m)=>{if(FailAccept){m="accept write failed";return false;}m=null;Accepted=true;return true;}, Deliver=(out string m)=>{m=null;Delivered=true;return true;},
+                RewardItems=new[]{new OfficialQuestItemStack(500080,2),new OfficialQuestItemStack(500078,3)},
                 Tasks=new[]{new OfficialQuestTaskBinding {TaskId=1,Done=()=>Done,Description=()=>"target"}}};
         }
     }
@@ -292,6 +293,8 @@ internal static class Program
         Tick(); Check(GameplayDataSettings.QuestCollection.Count==24 && manager.ActiveQuests.Count==4,"all 24 ids coexist in one core");
         clients[0].Ready=false; Tick(); Check(Active(ids[0])!=null,"temporarily unavailable client is retained");clients[0].Ready=true;
         for(int i=0;i<ids.Length;i++){clients[i].Done=true;Tick();Check(Active(ids[i]).TryComplete(),"shared client delivers "+ids[i]);}
+        Check(Given(500080)==8 && Given(500078)==12 && OfficialQuestItems.HeldInBackpack(500080)==8,"sky-island style client gets its reward items into the backpack once per quest");
+        foreach(int qid in ids) Check(GameplayDataSettings.QuestCollection.Get(qid).Rewards.OfType<OfficialQuestProjectionItemReward>().Count()==2,"item reward rows shown for "+qid);
         // A foreign quest using an already claimed ID is never owned or filtered.
         var foreign=new GameObject("foreign").AddComponent<Quest>();
         HarmonyLib.AccessTools.Field(typeof(Quest),"id").SetValue(foreign,599999);GameplayDataSettings.QuestCollection.Add(foreign);

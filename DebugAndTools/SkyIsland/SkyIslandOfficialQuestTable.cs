@@ -35,6 +35,14 @@ namespace BossRush
 
     internal delegate bool SkyIslandOfficialQuestCommit(out string message);
 
+    /// <summary>交付奖励物品（纯值）。桥转成共享核心的 OfficialQuestItemStack，由核心在交付事务里生成并发进背包。</summary>
+    internal struct SkyIslandQuestReward
+    {
+        internal int TypeId;
+        internal int Count;
+        internal SkyIslandQuestReward(int typeId, int count) { TypeId = typeId; Count = count; }
+    }
+
     /// <summary>
     /// 一条投影到官方 <c>Duckov.Quests</c> 的任务定义。Mod 分槽故事是权威：接取 / 交付各写一位旗标，
     /// 官方 active / history 只是从这两位重建出来的投影（读档时官方快照里没有我们的 ID）。
@@ -62,6 +70,12 @@ namespace BossRush
         /// 但真正发放由桥在「未交付 → 已交付」那一拍做一次，读档重建投影不会再发第二次。
         /// </summary>
         internal int RewardMoney;
+        /// <summary>
+        /// 可空：交付时另发的物品（2026-09-27 owner：岛上三条也给物品，直接进背包）。
+        /// 由共享核心在交付事务里先生成、交付成功才发：背包优先，放不下走官方仓库（出击中进待领取缓冲，回基地可领）。
+        /// 与奖金同一拍、同一次，读档重建投影不会补发；老档已交付的不回填。
+        /// </summary>
+        internal SkyIslandQuestReward[] RewardItems;
         internal SkyIslandStoryFlag AcceptedFlag;
         internal SkyIslandStoryFlag DeliveredFlag;
         internal SkyIslandStoryAction AcceptAction;
@@ -260,6 +274,12 @@ namespace BossRush
                 AcceptedFlag = SkyIslandStoryFlag.BeaconQuestAccepted, DeliveredFlag = SkyIslandStoryFlag.BeaconQuestDelivered,
                 AcceptAction = SkyIslandStoryAction.AcceptBeaconQuest, DeliverAction = SkyIslandStoryAction.DeliverBeaconQuest,
                 RewardMoney = BeaconQuestMoney,
+                // 苇白修灯的人：送灯与驱风香，正好用在接下来走鸣风栈道去钟庭的那一段。
+                RewardItems = new[]
+                {
+                    new SkyIslandQuestReward(BossRushItemIds.SkyIslandWindLantern, 2),
+                    new SkyIslandQuestReward(BossRushItemIds.SkyIslandWindwardIncense, 2),
+                },
                 Gate = OnIslandWithRoute,
                 Tasks = new[]
                 {
@@ -294,6 +314,12 @@ namespace BossRush
                 AcceptedFlag = SkyIslandStoryFlag.BellCourtQuestAccepted, DeliveredFlag = SkyIslandStoryFlag.BellCourtQuestDelivered,
                 AcceptAction = SkyIslandStoryAction.AcceptBellCourtQuest, DeliverAction = SkyIslandStoryAction.DeliverBellCourtQuest,
                 RewardMoney = BellCourtQuestMoney,
+                // 浮舟是摆渡的：给出航的补给。
+                RewardItems = new[]
+                {
+                    new SkyIslandQuestReward(BossRushItemIds.SkyIslandStarmossSalve, 3),
+                    new SkyIslandQuestReward(BossRushItemIds.SkyIslandHomecomingBento, 2),
+                },
                 Gate = context => OnIslandWithRoute(context) && context.Data.Has(SkyIslandStoryFlag.BeaconQuestDelivered),
                 Tasks = new[]
                 {
@@ -324,6 +350,12 @@ namespace BossRush
                 AcceptedFlag = SkyIslandStoryFlag.HomecomingQuestAccepted, DeliveredFlag = SkyIslandStoryFlag.HomecomingQuestDelivered,
                 AcceptAction = SkyIslandStoryAction.AcceptHomecomingQuest, DeliverAction = SkyIslandStoryAction.DeliverHomecomingQuest,
                 RewardMoney = HomecomingQuestMoney,
+                // 钟守的托付收尾：护符保下一趟，星屑给渡口工台与灶台的高阶配方（护符、纱笠都要星屑）。
+                RewardItems = new[]
+                {
+                    new SkyIslandQuestReward(BossRushItemIds.SkyIslandQinglanCharm, 1),
+                    new SkyIslandQuestReward(BossRushItemIds.SkyIslandStardust, 3),
+                },
                 // 钟庭事件就地衔接敲钟；浮舟的复命可留在返航路上，避免钟庭→码头→钟庭的空跑。
                 Gate = context => OnIslandWithRoute(context) && context.Data.BothBeacons && context.Data.BellKeeperResolved,
                 Tasks = new[]

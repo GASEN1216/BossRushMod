@@ -112,6 +112,7 @@ namespace BossRush
                 QuestId = def.QuestId, GiverId = def.GiverId, ObjectName = def.ObjectName,
                 NameKey = def.NameKey, DescriptionKey = def.DescriptionKey,
                 RequiredItemId = def.RequiredItemId, RequiredItemCount = def.RequiredItemCount, RewardMoney = def.RewardMoney,
+                RewardItems = ToStacks(def.RewardItems),
                 CanOffer = () => SkyIslandOfficialQuestTable.CanOffer(def, SkyIslandOfficialQuestStory.Capture(host)),
                 CanDeliver = () => SkyIslandOfficialQuestTable.CanDeliver(def, SkyIslandOfficialQuestStory.Capture(host)),
                 IsAccepted = () => HasFlag(def.AcceptedFlag),
@@ -142,6 +143,14 @@ namespace BossRush
                 };
             }
             return binding;
+        }
+
+        private static OfficialQuestItemStack[] ToStacks(SkyIslandQuestReward[] rewards)
+        {
+            if (rewards == null || rewards.Length == 0) return null;
+            var stacks = new OfficialQuestItemStack[rewards.Length];
+            for (int i = 0; i < rewards.Length; i++) stacks[i] = new OfficialQuestItemStack(rewards[i].TypeId, rewards[i].Count);
+            return stacks;
         }
 
         private bool HasFlag(SkyIslandStoryFlag flag)

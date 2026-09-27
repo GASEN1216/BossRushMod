@@ -1,5 +1,17 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+<!-- BEGIN SKY ISLAND QUEST REWARDS TRACKER 2026-09-27 -->
+
+## 2026-09-27 天空岛三条主线加物品奖励（COMPAT / SAFE）
+
+**授权与范围**：owner「天空岛那三条也加上物品奖励直接给到玩家背包」。只动 590011–590013 的奖励，奖金、门、交付流程与序章不变；无新 TypeID / 存档字段。
+
+**内容**：点亮两端航标 +风灯 ×2、驱风香 ×2；钟庭之争 +星苔药膏 ×3、归航菜便当 ×2；归航钟 +晴岚护符 ×1、星屑 ×3（都是岛上登记物品，接着用在下一段路或岛上配方）。数据在 `SkyIslandOfficialQuestTable`（无依赖结构 `SkyIslandQuestReward`），桥 `ToStacks` 交给共享核心，沿用上一轮的交付事务：先生成、`TryDeliverQuest` 成功后才 `SendToPlayer` 进背包，背包满走官方仓库（出击中进待领取缓冲）。三条只有官方任务页一个交付入口，已核对不会绕过；老档回填不补发。回退：删掉对应 `RewardItems`。
+
+**验证**：全量守卫 677 通过（`OfficialQuestProjectionGuard` 新增桥传递与「奖励物必须是岛上登记物品」两条及对应反向检查）；执行回归 11 组通过，含编译该任务表的 SkyIslandInteraction / Marriage / Story / Encounters / ValidationJudges / F3AutotestJudges 与 JeffQuestFlow 525（同 ID 段客户端交付一次到包）。Windows 正式构建成功（仅既有 CS0649），部署 DLL 与 Build 一致，Dev 标识 absent；构建脚本末尾的 `skyisland_fx` 清单报错属另一会话未登记的资源包。Wiki 构建通过。L3 未做：岛上交付后背包实际数量、背包满时的去向需实机确认。
+
+<!-- END SKY ISLAND QUEST REWARDS TRACKER 2026-09-27 -->
+
 <!-- BEGIN JEFF QUEST REWARDS TRACKER 2026-09-27 -->
 
 ## 2026-09-27 Jeff 任务的物品奖励、引导奖金与提交物品（COMPAT / WIRE+ / SAFE）

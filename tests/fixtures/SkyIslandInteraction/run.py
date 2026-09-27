@@ -117,6 +117,7 @@ def generate():
     generated = OUT / "Production.cs"
     generated.write_text("\n".join(parts), encoding="utf-8-sig")
     linked = [ROOT / SKY / n for n in ("SkyIslandStoryRules.cs", "SkyIslandOfficialQuestTable.cs", "SkyIslandPuzzles.cs", "SkyIslandBounty.cs")]
+    linked.append(ROOT / "Config/ConfigItemIds.cs")  # quest reward items use the shared TypeID constants
     hashes = {SKY + n: hashlib.sha256((ROOT / SKY / n).read_bytes()).hexdigest() for n in sources}
     hashes.update({p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in linked})
     hashes[helper_path.relative_to(ROOT).as_posix()] = hashlib.sha256(helper_path.read_bytes()).hexdigest()
