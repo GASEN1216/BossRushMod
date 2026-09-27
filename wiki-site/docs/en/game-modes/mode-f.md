@@ -62,7 +62,7 @@ Late-game power now becomes a dangerous damage window instead of unlimited passi
 All three present:
 - **Awen** — Storage & retrieval, plus **`Sweep Loot`** for fast cleanup of tracked BossRush lootboxes in the current scene
 - **Dingdang** — Reforge & shop
-- **Yuori** — Healing
+- **Yu Zhi** — Healing
 
 ## Mystery Merchant
 

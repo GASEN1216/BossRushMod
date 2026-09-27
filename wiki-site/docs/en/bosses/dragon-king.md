@@ -100,7 +100,7 @@ That 1% on the Dragon Cannon means roughly 100 Dragon Lord kills on expectation 
 - Rainbow Ring expands then contracts: run outward during expansion, move inward during contraction
 - Phase 2 doubles the attack frequency; constant movement is essential
 - "Protect me, my child!" phase: prioritize killing the Dragon Descendant while dodging the Dragon Lord's Prismatic Bolts
-- Wearing Dragon Set or Dragon King Set makes you immune to fire damage and heals you, significantly reducing difficulty
+- Wearing Dragon Set or Dragon King Set refunds 80% of the fire damage you take a moment later, significantly reducing difficulty (not true immunity, your HP still dips first)
 - Pure melee is unreliable against a target hovering 3-5m up. Bring at least one ranged weapon
 - For no-damage kills, use the Boss Filter to clear other bosses and face the Dragon Lord alone
 

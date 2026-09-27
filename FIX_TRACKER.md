@@ -1,5 +1,26 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+<!-- BEGIN WIKI CONTENT AUDIT TRACKER 2026-09-27 -->
+
+## 2026-09-27 WikiContent 对照最新代码全面审校（SAFE）
+
+**范围**：owner「全面看一下 WikiContent 是否符合最新代码，并且讲人话」。核对除历史版本 changelog 外的全部条目（中英），只改有代码依据的地方；只改正文与站点导航文字，不动代码、存档、TypeID。
+
+**修正**：
+- 英文名全站对齐代码：护士 Yuori → Yu Zhi（`Localization/LocalizationInjector.cs:139`）、Duck King Codex → Duckov Codex（`Integration/Codex/CodexBookItem.cs:42`）、Peace Amulet → Peace Charm（`Integration/Items/PeaceCharmConfig.cs:14`）；含 `catalog.tsv`、`structure.mts`、`hubs/systems.en.md`。
+- 龙裔 / 龙王套装「火焰免疫、火伤转治疗」→ 先掉血、下一帧补回火焰部分 80%，燃烧照挂，冲刺无无敌帧（`Integration/Bonus/DragonSetBonus.cs` `OnDragonSetHurt`）；两套装备页、装备总览、两篇 Boss 页同步。
+- 龙息对玩家封顶只限固定项；毒蛇匕首补必挂原版中毒、箱桶不叠毒。
+- 词缀熔石叮当商店 Lv.2 → Lv.10（`GoblinAffinityConfig.cs:805`，原与词缀锻造页矛盾）。
+- 新手上路补序章首趟上岛补给（`SkyIslandPreludeFlow.cs:104`）、冷淬液 Lv.4 是解锁购买；模式总览改正鸭王杯可用地图（`ModeHMapSupportRegistry.cs:166`）。
+
+**文风**：三组审校未发现典型 AI 套话，未为改而改。
+
+**存疑未改**：`FlightTotemConfig.cs` 物品面板的滑翔下降速度 -2 与实际生效的 `FlightConfig.cs` -0.8 不一致（代码侧，Wiki 按 -0.8）；v2.3.0 日志中天空岛区域 / 搜刮点 / 采集点数量在 C# 里查不到，需 owner 确认。装备 / Boss / 物品 / NPC / 天空岛一组的数值复核深度不如其余两组。
+
+**验证**：`npm --prefix wiki-site run build` 通过；`run_guards.py --changed-only` 288 通过，Wiki / Glyph / SkyIsland 过滤组全绿。L1 静态核对，游戏内显示未实机看。
+
+<!-- END WIKI CONTENT AUDIT TRACKER 2026-09-27 -->
+
 <!-- BEGIN SKY ISLAND PRELUDE REWARD TRACKER 2026-09-27 -->
 
 ## 2026-09-27 序章「云上的坐标」加物品奖励（COMPAT / SAFE）

@@ -98,7 +98,7 @@ Fate Echo uses the shared arena NPCs:
 
 - **Awen** — Storage and loot cleanup
 - **Dingdang** — Reforge and shop
-- **Yuori** — Healing
+- **Yu Zhi** — Healing
 
 ## Win / Lose
 

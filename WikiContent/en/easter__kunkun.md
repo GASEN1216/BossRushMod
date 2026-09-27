@@ -26,7 +26,7 @@ and you handed it back.
 A Brick Stone glitters convincingly. It is a rock.
 
 - **Give it to Dingdang** — he sees through it instantly. Affinity **-40**. A craftsman's pride.
-- **Give it to Yuori** — **-60**, worse than Dingdang. What it brings back for her is J-Lab.
+- **Give it to Yu Zhi** — **-60**, worse than Dingdang. What it brings back for her is J-Lab.
 
 Same worthless rock; it hurts them in different places.
 
@@ -51,11 +51,11 @@ Buy more than **10** of the same ammo type in one go at the arena ammo shop and 
 
 The first two are hardcore challenges. The last one… requires sending a cub off to die first.
 
-### Dingdang and Yuori already knew each other
+### Dingdang and Yu Zhi already knew each other
 
 Push both affinity lines up and the story dialogue slowly assembles one fact:
 
-Yuori was a researcher at **J-Lab**, and Dingdang is what that lab created.
+Yu Zhi was a researcher at **J-Lab**, and Dingdang is what that lab created.
 
 When the other goblins bullied him, she was the only one who slipped him food and patched up
 his wounds.

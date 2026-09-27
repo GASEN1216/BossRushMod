@@ -82,7 +82,7 @@ This mod currently contains 45 achievements across 9 categories. Completing achi
 "A Name on the Stone" is a hidden achievement and will not appear in the achievement panel until unlocked.
 :::
 
-## Codex (Duck King Codex)
+## Codex (Duckov Codex)
 | Achievement | Requirement | Reward | Difficulty |
 | --- | --- | --- | --- |
 | First Entry | Log your first boss in the codex | $50,000 | ★ |

@@ -20,7 +20,7 @@ boss	boss__dragon_king	焚天龙皇	Skyburner Dragon Lord	3
 boss	boss__phantom_witch	幽灵女巫	Phantom Witch	4
 npc	npc__overview	NPC 总览	NPC Overview	1
 npc	npc__goblin	叮当（哥布林工匠）	Dingdang (Goblin Smith)	2
-npc	npc__nurse	羽织（护士）	Yuori (Nurse)	3
+npc	npc__nurse	羽织（护士）	Yu Zhi (Nurse)	3
 npc	npc__courier	阿稳（快递员）	Awen (Courier)	4
 npc	npc__affinity_and_marriage	好感度与婚姻	Affinity & Marriage	5
 equipment	equipment__overview	装备总览	Equipment Overview	1
@@ -57,7 +57,7 @@ system	system__achievements_list	成就大全	Achievement List	6
 system	system__mutators	变异词条系统	Mutator System	7
 system	system__pet_nest	遗种巢	PetNest	8
 system	system__daily_report	鸭科夫日报	The Duckov Daily	9
-system	system__codex	鸭皇图鉴	Duck King Codex	10
+system	system__codex	鸭皇图鉴	Duckov Codex	10
 system	system__random_events	局内随机事件	Random Events	11
 system	system__affix_forge	词缀锻造	Affix Forging	12
 system	system__campaign	鸭王征程	Duck King Campaign	13

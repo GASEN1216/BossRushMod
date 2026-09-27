@@ -22,7 +22,8 @@ Each melee hit applies **1 poison stack** to the target (max 5 layers):
 - Burst damage = **35 flat** + **20% of the damage those 5 hits actually dealt to that target**
 - The burst itself cannot crit, but its percentage part grows with your stats, affixes and set bonuses
 - Stacks and accumulated damage both reset after a burst, and the snowball starts again
-- Enemies only: your own summons and allies never take stacks
+- Every hit also applies the vanilla Poison status (guaranteed), which is tracked separately from these stacks
+- Enemies only: your own summons, allies and breakable crates or barrels never take stacks
 
 ## What It Looks Like
 
@@ -33,8 +34,8 @@ Swings leave a **venom-green trail**. When the 5th stack triggers the toxic burs
 - Fast attack speed (2.1) and low stamina cost (4/hit) let you stack venom quickly
 - On base stats a burst lands around 50-57; reforges, affixes and set bonuses push it up with everything else
 - 1.4m range means you have to be right on top of enemies, which is risky when surrounded
-- Low crit stats mean early single-hit damage is weak; venom stacking is how you deal competitive DPS
+- Low crit stats mean early single hits feel weak; the venom stacks are what make up the difference
 
 ::: tip
-Works best against slow/stationary bosses you can reliably hit 5 times. Struggles against fast-moving targets like the Hunter Boss.
+Works best against slow/stationary bosses you can reliably hit 5 times. Struggles against fast-moving targets like the Hunter boss from Zombie Mode.
 :::

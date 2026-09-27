@@ -55,7 +55,7 @@ Multi-faction sandbox chaos. Pick a faction, watch Bosses from different faction
 All three NPCs present:
 - **Awen** — Storage & retrieval, plus **`Sweep Loot`** for fast cleanup of tracked BossRush lootboxes in the current scene
 - **Dingdang** — Reforge & shop
-- **Yuori** — Healing
+- **Yu Zhi** — Healing
 
 ## Run-Only Shells
 

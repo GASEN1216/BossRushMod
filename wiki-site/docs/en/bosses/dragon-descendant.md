@@ -67,7 +67,7 @@ several kills, and Dragon Breath is the stubborn one.
 - In Phase 2, read the loop: strafe during straight shots, dodge the rush, then use the short pause after the fan sweep as your best damage window
 - Melee players shouldn't facetank: the 1.5m contact hitbox plus the 5m blast check means taking multiple damage instances at once
 - **Ice weapons/ammo shine in Phase 2**: stack up the slow threshold, attack from the side while it's slowed, then disengage before the next rush
-- Wearing Dragon Set or Dragon King Set turns fire damage into healing for you
+- Wearing Dragon Set or Dragon King Set refunds 80% of the fire damage you take a moment later (not true immunity, your HP still dips first)
 - Melee players should wait for the ice slow to trigger before committing
 
 ## Spawn Limits

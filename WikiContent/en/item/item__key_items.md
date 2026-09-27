@@ -18,7 +18,7 @@ In-game Wiki. Use it to browse all mod content. Supports CN/EN, updated each ver
 
 ---
 
-### Duck King Codex
+### Duckov Codex
 
 A Boss collection book that keeps its own ledger. Right-click to open the codex panel and see
 which Bosses you've personally put down.
@@ -30,7 +30,7 @@ which Bosses you've personally put down.
 the Mod - buying late costs you nothing. The first-entry achievement awards 50,000
 regardless of whether you own the book.
 
-See the Duck King Codex page.
+See the Duckov Codex page.
 
 ---
 

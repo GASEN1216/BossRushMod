@@ -2,7 +2,7 @@
 
 ### Affinity System
 
-10 levels for Dingdang and Yuori. Chat daily, give gifts, unlock services and story content.
+10 levels for Dingdang and Yu Zhi. Chat daily, give gifts, unlock services and story content.
 
 #### Level Thresholds
 
@@ -11,8 +11,8 @@
 
 #### How to Gain Affinity
 
-- **Daily chat**: Dingdang +40 / Yuori +30 (once/day)
-- **Liked gift**: +80 / **Neutral gift**: +20 / **Disliked**: -40 (Yuori -60 for Brick Stone)
+- **Daily chat**: Dingdang +40 / Yu Zhi +30 (once/day)
+- **Liked gift**: +80 / **Neutral gift**: +20 / **Disliked**: -40 (Yu Zhi -60 for Brick Stone)
 - **Diamond Ring**: +500 / **Birthday Cake**: +150
 
 #### Decay
@@ -21,7 +21,7 @@ Skip a day (no chat or gift) = **-15 Affinity** next day. Don't neglect your NPC
 
 #### Per-Level Unlocks
 
-See individual Dingdang and Yuori pages.
+See individual Dingdang and Yu Zhi pages.
 
 ---
 
@@ -48,7 +48,7 @@ See individual Dingdang and Yuori pages.
 - Follow state persists across scene changes
 - If Affinity drops below Lv.10, spouse auto-returns home with a warning
 - **Dingdang perk**: Free Cold Quench Fluid during daily chat
-- **Yuori perk**: Free Calming Drops during daily chat
+- **Yu Zhi perk**: Free Calming Drops during daily chat
 - Wedding cutscene can be replayed at the chapel
 
 #### Rules

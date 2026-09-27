@@ -21,7 +21,7 @@ Two exceptions are worth knowing:
 
 - **Duck King Campaign chapter 5, "The Match Nobody Takes", sends you here** - hold the tide to wave 5
   and extract once, for a 100,000 payout. It's the only chapter that enters Zombie Mode.
-- **All five Zombie Bosses appear in the Duck King Codex** - Titan, Hunter, Splitter, Shielder
+- **All five Zombie Bosses appear in the Duckov Codex** - Titan, Hunter, Splitter, Shielder
   and Corruptor each get a square, tracking total kills, first-seen date and fastest kill just
   like any other Boss. There's no completing the codex without this mode.
 

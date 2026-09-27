@@ -2,7 +2,7 @@
 
 ## What Is It?
 
-The Dragon Set, but **better in every way**. Dropped by Skyburner Dragon Lord. Keeps fire-to-heal, massively upgrades the dash, and removes the poison/FOV downsides. **Replace your Dragon Set immediately.**
+The Dragon Set, but **better in every way**. Dropped by Skyburner Dragon Lord. Keeps the fire refund, massively upgrades the dash, and removes the poison/FOV downsides. **Replace your Dragon Set immediately.**
 
 ## Pieces
 
@@ -18,7 +18,7 @@ Armor 7 / Durability 200 / Physical damage taken -25% / Storm +1 / Cold +1 / Fir
 
 ## Set Effect (Both Equipped)
 
-- **Fire-to-heal** — Same 80% conversion
+- **Fire refund** — Fire damage still hits first; a frame later you get back 80% of the fire portion as healing. Burning itself isn't removed
 - **Dragon Eye** — Red breathing glow
 - **Dragon King Dash** — 6m first dash, 0.5s cooldown
 - **Chain Dash** — Press direction within 0.15s after first dash → 3m bonus dash

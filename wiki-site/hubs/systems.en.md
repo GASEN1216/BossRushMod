@@ -24,7 +24,7 @@ A run doesn't end when you leave the arena. What you get afterwards, how you res
 - **PetNest** — Pick up eggs from bosses, hatch them at base, take the hatchling to war
 - **Arena Backyard** — Farm, display trophies, pick your battle anthem; unlocked chapter by chapter through the campaign
 - **The Duckov Daily** — One issue per in-game day, reporting on what you did yesterday
-- **Duck King Codex** — A boss collection book that keeps its own records
+- **Duckov Codex** — A boss collection book that keeps its own records
 
 ## Story and relationships
 

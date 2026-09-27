@@ -44,7 +44,7 @@ Enemies carry random gear too — quality scales with wave and HP: `Quality = 1 
 ### Arena NPCs
 
 - **Awen** (Courier): Always present, storage & retrieval
-- **Dingdang or Yuori** (random): Reforge/shop or healing
+- **Dingdang or Yu Zhi** (random): Reforge/shop or healing
 
 ### Achievements
 

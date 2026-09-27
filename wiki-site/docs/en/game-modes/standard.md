@@ -51,7 +51,7 @@ After clearing, an evacuation point opens. Interact to return to base.
 ## Arena NPCs
 
 - **Awen** (Courier): Always present, storage & retrieval
-- **Dingdang or Yuori** (random): Reforge/shop or healing (married NPCs excluded from random pool)
+- **Dingdang or Yu Zhi** (random): Reforge/shop or healing (married NPCs excluded from random pool)
 
 ## Related Achievements
 

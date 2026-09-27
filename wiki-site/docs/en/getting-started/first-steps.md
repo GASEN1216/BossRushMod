@@ -2,12 +2,12 @@
 
 ## Step 1: Buy a Ticket
 
-Buy a **BossRush Ticket** from the base merchant to enter the Boss arena. To begin the Sky Islands journey, find the official NPC **Jeff** at base and accept **Coordinates Above the Clouds** in his normal quest screen. Defeat the guard in the marked area of Ground Zero and take the Lost Navigation Instrument from its loot box. Bring it back to Jeff's Active tab to hand it in and receive 5000 cash; only then does **Depart for Sky Islands · Qinglan** appear at the base boat. The journey does not require a ticket. See the Sky Islands · Qinglan entry.
+Buy a **BossRush Ticket** from the base merchant to enter the Boss arena. To begin the Sky Islands journey, find the official NPC **Jeff** at base and accept **Coordinates Above the Clouds** in his normal quest screen. Defeat the guard in the marked area of Ground Zero and take the Lost Navigation Instrument from its loot box. Bring it back to Jeff's Active tab to hand it in; you get 5000 cash plus a starter supply kit for the trip (2 Starmoss Salve, 2 Windward Incense, 1 Wind Lantern), and only then does **Depart for Sky Islands · Qinglan** appear at the base boat. The journey does not require a ticket. See the Sky Islands · Qinglan entry.
 
 Also grab:
 - **Achievement Medal** — Free. Right-click to open achievements
 - **Adventurer's Journal** — the in-game Wiki you're reading now
-- **Duck King Codex** — 4000, with one copy per restock. View defeated Bosses, missing entries,
+- **Duckov Codex** — 4000, with one copy per restock. View defeated Bosses, missing entries,
   and fastest times. Kills and achievement rewards accumulate without the book;
   buy it when you want to plan your next challenge.
 
@@ -43,8 +43,8 @@ Once you've extracted with your first payout, three cheap things start paying ou
 - **Take Chapter 1 of the Duck King Campaign from Jeff** (free) — it's on the quest page of Jeff, the game's own NPC at base. Six story chapters
   strung across modes you're already playing. Chapter 1 only asks you to clear one standard
   arena run without taking damage through wave 2, and pays 20,000 plus opening the base's garden site
-- **Go meet Dingdang and Yuori** — chat and gift daily to build affinity. Dingdang opens his
-  shop at Lv.2 and gives Cold Quench Fluid at Lv.4, for locking good stats; reforging itself is available from the start
+- **Go meet Dingdang and Yu Zhi** — chat and gift daily to build affinity. Dingdang opens his
+  shop at Lv.2 and unlocks Cold Quench Fluid for purchase at Lv.4, for locking good stats; reforging itself is available from the start
 
 ::: tip
 The 500 mailbox is the best-value build in the Mod, and Chapter 1 of the campaign costs nothing to take. The earlier you start, the more piles up.
@@ -74,7 +74,7 @@ Press **L** anytime for achievement progress.
 :::
 
 ::: tip
-Chat with Dingdang and Yuori on normal maps to unlock more content. Beyond reforging, Dingdang also does **affix forging**: affixes that change how your gear behaves, like kill explosions, lifesteal on hit, or armor that throws damage back.
+Chat with Dingdang and Yu Zhi on normal maps to unlock more content. Beyond reforging, Dingdang also does **affix forging**: affixes that change how your gear behaves, like kill explosions, lifesteal on hit, or armor that throws damage back.
 :::
 
 ::: tip

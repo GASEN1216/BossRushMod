@@ -1,4 +1,4 @@
-# Duck King Codex
+# Duckov Codex
 
 ## What it helps you do
 
@@ -13,8 +13,8 @@ The Codex records defeated bosses so you can choose an opponent you have not bea
 
 <div class="brs-icon">
 
-![Duck King Codex](/images/icons/codex-book.webp)
-*Duck King Codex*
+![Duckov Codex](/images/icons/codex-book.webp)
+*Duckov Codex*
 
 </div>
 

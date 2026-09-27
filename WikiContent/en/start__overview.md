@@ -9,7 +9,7 @@ A massive content expansion for Escape from Duckov (Steam Workshop). What starte
 - **8 Game Modes** — Standard, Infinite Hell, From Scratch, Faction War, Blood Hunt, Fate Echo, Black Market Duck Cup (recruit and bet), Zombie Mode
 - **9 Arena Maps + Sky Islands** — Arena battles across the map pool, plus separate expeditions to the Qinglan Archipelago
 - **3 Custom Arena Bosses** — Dragon Descendant, Skyburner Dragon Lord, Phantom Witch (unique skills + exclusive drops)
-- **3 Regular NPC Companions** — Dingdang (Smith), Yuori (Nurse), Awen (Courier)
+- **3 Regular NPC Companions** — Dingdang (Smith), Yu Zhi (Nurse), Awen (Courier)
 - **37 Custom Equipment Pieces** (sets counted piece by piece) — 20 regular weapons, totems and armor pieces, plus 17 Sky Islands wearable pieces; see Equipment Overview for sources
 - **Sky Islands Residents & Adventures** — Island quests, per-expedition commissions, lords and chiefs, gathering and crafting, and affinity and marriage with all six residents
 - **Custom Items** — Consumables, mode-exclusive props, functional items, forge stones, relic eggs, raid meals
@@ -17,7 +17,7 @@ A massive content expansion for Escape from Duckov (Steam Workshop). What starte
 - **Base Buildings** — Wedding Chapel, Dust-Covered StarWish Fountain, PetNest, Daily mailbox; the garden, weapon rack and jukebox are vanilla buildings
 - **Reforge System** — Stat rerolling + Cold Quench Fluid to lock affixes
 - **Affix Forging** — Reforge changes numbers, affixes change behaviour: kill explosions, hit lifesteal, armor thorns
-- **Duck King Codex** — a Boss collection book that keeps its own ledger as you kill them
+- **Duckov Codex** — a Boss collection book that keeps its own ledger as you kill them
 - **In-Run Random Events** — airdrops, blood moons, golden duck rain, an uninvited Boss
 - **Affinity & Marriage** — NPC relationship progression, gifting, weddings
 - **45 Achievements** — Completion, no-hit, speedrun, collection, taming, codex, and more

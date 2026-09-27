@@ -302,7 +302,7 @@
       "key": "codex-book",
       "src": "/images/icons/codex-book.webp",
       "zh": "鸭皇图鉴",
-      "en": "Duck King Codex"
+      "en": "Duckov Codex"
     },
     {
       "key": "forge-stone",
@@ -598,7 +598,7 @@
       "key": "npc-nurse",
       "src": "/images/ui/npc-nurse.webp",
       "zh": "羽织",
-      "en": "Yuori"
+      "en": "Yu Zhi"
     },
     {
       "key": "npc-courier",

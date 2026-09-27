@@ -1,4 +1,4 @@
-## Duck King Codex
+## Duckov Codex
 
 ### What it helps you do
 

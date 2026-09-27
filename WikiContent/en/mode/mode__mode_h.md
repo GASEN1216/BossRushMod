@@ -212,7 +212,7 @@ Being pushed out is not a failure. It is what the rule was always going to do â€
 - **Can I fight myself?** Normally no. Certain eligible fighters with the **ERROR** anomaly get one 8% check per match. Success gives you control of the fighter while your own body stays in the stands. The swap ends when the fighter goes down, the match ends or control is restored. These kills still do not count toward the Codex.
 - **Can I bring my PetNest companions?** No. This mode does not admit PetNest companions.
 - **Are there mutation affixes?** No. This mode applies no mutation affixes and fires no in-run random events.
-- **Do kills here count toward the Duck King Codex?** No. Your fighter landed the blow, not you.
+- **Do kills here count toward the Duckov Codex?** No. Your fighter landed the blow, not you.
 - **Can I reroll the candidates?** No. Closing and reopening the page changes nothing. Those five are the five.
 - **What happens after a season?** The season closes and your champion is recorded in the **Hall of Fame**. The Hall keeps only **32 places** â€” the 33rd entry pushes out the oldest one.
 - **Does a technical failure count as a loss?** No. The same match retries automatically, up to two times, without recording a defeat; if you had a bet on, it is not refunded; the retry keeps it and settles it on the rematch result. Press "Start the match" when you are back. Further failures suspend the season for recovery through the boat menu.

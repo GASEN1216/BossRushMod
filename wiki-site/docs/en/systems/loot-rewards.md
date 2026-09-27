@@ -157,7 +157,7 @@ the collection.
 ### Affix Forge Stones (about 8%)
 
 Material for affix forging, roughly one per standard arena run. The steady alternative is
-Dingdang's shop (affinity Lv.2, up to 5 per restock).
+Dingdang's shop (stocks at affinity Lv.10, up to 5 per restock).
 
 ### Where eggs and stones actually land
 

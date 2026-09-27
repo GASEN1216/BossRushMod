@@ -15,7 +15,7 @@
 Once the first payout lands, buy and build these three. They're cheap, and they all **keep
 producing** - the earlier you set them up, the more they've earned by the time you need them.
 
-- **Duck King Codex** — Cost: 4000; What it buys you: Logs every Boss you kill. The first entry alone returns **50,000** in achievement cash
+- **Duckov Codex** — Cost: 4000; What it buys you: Logs every Boss you kill. The first entry alone returns **50,000** in achievement cash
 - **Mailbox** — Cost: 500; What it buys you: A daily paper with a bounty and a check-in wall that pays high-quality prizes as it fills
 - **Duck King Campaign from Jeff** — Cost: 0; What it buys you: Six story quests on Jeff's quest page. Chapter 1 pays **20,000**
 
@@ -36,7 +36,7 @@ weapon rack or dummy), chapter 3 the jukebox tracks.
 
 ### Meet the NPCs
 
-- Find **Dingdang** and **Yuori** on normal maps
+- Find **Dingdang** and **Yu Zhi** on normal maps
 - Chat + gift daily → build Affinity
 - Dingdang **Lv.2** = shop (**Affix Forge Stones** only show up at **Lv.10**) / **Lv.4** = Cold Quench Fluid for stat locks; reforging is available from the start
 - Dingdang also runs **affix forging**: reforging changes numbers, affixes change behavior

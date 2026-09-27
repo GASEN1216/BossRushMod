@@ -4,7 +4,7 @@
 - The Boss Filter allows you to customize the Boss pool by disabling Bosses you don't want to encounter or adjusting the appearance weight of specific Bosses in Infinite Hell.
 - Disabled entries affect the Boss pools used by **Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt and Fate Echo**, plus the pool the "Uninvited Guest" random event draws its intruder from; Infinite Hell additionally supports its own per-Boss weight multipliers.
 - **Two exceptions**: the Black Market Duck Cup runs its own fighter/opposition roster, and Zombie Mode uses its own zombies. Neither reads this filter.
-- The Duck King Codex and the PetNest bloodline roster follow the same pool - disable a Boss and you can no longer fight it, but **entries you already collected do not disappear**.
+- The Duckov Codex and the PetNest bloodline roster follow the same pool - disable a Boss and you can no longer fight it, but **entries you already collected do not disappear**.
 - The filter follows the current Boss roster; fodder units spawned mid-run by Faction War / Blood Hunt never make it onto that list.
 
 ### How to Open

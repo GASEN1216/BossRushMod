@@ -2,7 +2,7 @@
 
 ## Birthday Cake
 
-- **Source**: the normal Wish Fountain reward pool; a one-time save gift during real-world December (not renewed each year) / **Affinity**: +150 to Dingdang or Yuori
+- **Source**: the normal Wish Fountain reward pool; a one-time save gift during real-world December (not renewed each year) / **Affinity**: +150 to Dingdang or Yu Zhi
 - **Eating**: restores 100 energy, no water; also applies the vanilla Happy buff when that buff is available
 
 Second only to Diamond Ring (+500) for raw Affinity gain. If you get one, **give it to whoever you're courting**.
@@ -11,9 +11,9 @@ Second only to Diamond Ring (+500) for raw Affinity gain. If you get one, **give
 
 ## Calming Drops
 
-Yuori's hand-prepared herbal drops. Clears treatable debuffs such as bleeding, fractures and poison.
+Yu Zhi's hand-prepared herbal drops. Clears treatable debuffs such as bleeding, fractures and poison.
 
-- **Source**: 5 free at Yuori Affinity Lv.3
+- **Source**: 5 free at Yu Zhi Affinity Lv.3
 - Stack 20 / Use time 2.5s
 - **Effect**: Removes treatable debuffs; does not remove the Phantom Witch's **Ghost Curse**
 - **Use condition**: At least one treatable debuff is active; Ghost Curse alone does not allow use

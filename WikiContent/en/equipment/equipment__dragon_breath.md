@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-Your first custom gun. Dropped by Dragon Descendant. Looks modest on paper, but the **% max HP burn** does the real work against high-HP bosses.
+Your first custom gun. Dropped by Dragon Descendant. Looks modest on paper, but the **% max HP burn** does the real work against high-HP bosses. Comes with its own fire muzzle flash and trailing sparks.
 
 ### Stats
 
@@ -15,7 +15,7 @@ Your first custom gun. Dropped by Dragon Descendant. Looks modest on paper, but 
 - **50% chance** per hit to apply burn
 - Burn: **(0.1% target max HP + 1) true fire damage** per stack per second
 - Max 10 stacks / 10s duration
-- Player damage cap: 2 per tick
+- The flat +1-per-stack part is capped at 2 per tick against the player; the percent-of-max-HP part isn't capped, it just doesn't matter much since players don't have boss-sized health pools
 - Fire resistance can reduce burn
 
 At full 10 stacks: **1% max HP + 10 true damage per second.** Against a non-fire-immune 1000 HP Boss, that's 20 DPS before fire mitigation. Dragon Descendant and Skyburner Dragon Lord heal from fire, so this example does not apply to them.

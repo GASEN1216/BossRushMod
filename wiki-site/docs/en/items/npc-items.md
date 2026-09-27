@@ -15,7 +15,7 @@ Sparkly, light... and **fake**. Dingdang will know.
 
 - **Source**: Base merchant (stock 5)
 - **Use**: Summons Dingdang, Affinity **-20** (he's insulted)
-- **Gift**: Dingdang -40 / Yuori -60
+- **Gift**: Dingdang -40 / Yu Zhi -60
 
 ::: warning
 Gift a fake diamond at your own risk.
@@ -47,18 +47,18 @@ See Affinity & Marriage for details.
 
 Clears treatable debuffs such as bleeding, fractures and poison. Herbal fragrance included.
 
-- **Source**: 5 free at Yuori Lv.3
+- **Source**: 5 free at Yu Zhi Lv.3
 - Stack 20 / Use time 2.5s
 - **Effect**: Removes treatable debuffs; does not remove the Phantom Witch's **Ghost Curse**
 - **Use condition**: At least one treatable debuff is active; Ghost Curse alone does not allow use
 
 ---
 
-## Peace Amulet
+## Peace Charm
 
 Passive lifesaver. 10% proc when HP drops below 50% → **full heal**. Once per scene.
 
-- **Source**: Yuori Lv.8 reward / Stack 1
+- **Source**: Yu Zhi Lv.8 reward / Stack 1
 - Just keep it in your inventory; no manual use needed
 
 ---

@@ -43,7 +43,7 @@ The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch
 
 ### Set Effects
 
-Both dragon sets give "fire-to-heal" + dash:
+Both dragon sets give a "fire refund" (fire damage hits first, then 80% comes back a frame later) + dash:
 
 - **Dragon Set** — 3m dash, 1.5s cooldown
 - **Dragon King Set** — 6m dash + 3m chain dash, 0.5s cooldown, **leaves magma trail**

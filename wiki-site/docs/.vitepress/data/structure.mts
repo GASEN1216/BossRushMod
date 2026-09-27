@@ -527,7 +527,7 @@ export const CATEGORIES: WikiCategory[] = [
       {
         path: '/npcs/nurse',
         zh: '羽织',
-        en: 'Yuori',
+        en: 'Yu Zhi',
         icon: 'npc-nurse',
         blurbZh: '护士——治疗、复活与野战诊所',
         blurbEn: 'Nurse — healing, revives, and a field clinic',
@@ -674,7 +674,7 @@ export const CATEGORIES: WikiCategory[] = [
       {
         path: '/systems/codex',
         zh: '鸭皇图鉴',
-        en: 'Duck King Codex',
+        en: 'Duckov Codex',
         icon: 'codex-book',
         blurbZh: '会自己记账的 Boss 收集册',
         blurbEn: 'A boss collection book that tracks itself',

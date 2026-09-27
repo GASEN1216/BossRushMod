@@ -11,7 +11,7 @@
 
 - **BossRush Ticket** appears at the base merchant
 - Press **L** → achievement panel opens
-- **Dingdang** and **Yuori** visible on normal maps
+- **Dingdang** and **Yu Zhi** visible on normal maps
 
 ## Config
 

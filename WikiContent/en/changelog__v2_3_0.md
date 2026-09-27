@@ -9,7 +9,7 @@
 - **Two new modes**: Fate Echo remembers how you fight and builds the next wave around it; the Black Market Duck Cup makes you the manager who picks fighters, reads the odds and places bets without ever stepping onto the field.
 - **The mod has a story now**: Jeff at your base hands out the six Duck King Campaign chapters through the game's own quest screen, plus fourteen starter quests that walk you through the new content.
 - **Plenty to do between runs**: raise cubs in the PetNest, farm and show off trophies in the Arena Backyard, and read The Duckov Daily every in-game day.
-- **More reasons to hunt Bosses**: the Duck King Codex, Affix Forging and in-run random events, and the five new weapons plus the Frost and Thunder sets can finally be obtained.
+- **More reasons to hunt Bosses**: the Duckov Codex, Affix Forging and in-run random events, and the five new weapons plus the Frost and Thunder sets can finally be obtained.
 
 ---
 
@@ -86,7 +86,7 @@
 - A fighter that goes down is injured, and an injured fighter that goes down again retires for the season. Only wins at odds of x3 or longer leave a battle scar on the surviving fighter.
 - The ring lands in a random spot each time you enter, drawn from the map's spawn points and checked beforehand for space and a walkable path.
 - Champions enter the **Hall of Fame**: kept across seasons, only 32 seats. When the season ends you are sent back to base automatically.
-- Kills here do not count for the Duck King Codex or The Duckov Daily's stats and bounties; no mutators, no random events, no cubs.
+- Kills here do not count for the Duckov Codex or The Duckov Daily's stats and bounties; no mutators, no random events, no cubs.
 
 ### New: Duck King Campaign
 
@@ -124,7 +124,7 @@
 - The nest page is a list plus details: click a cub card to select it, and deploying, renaming and releasing follow the selected cub. **Batch release** is supported.
 - The Relic Museum tracks the bloodline index, taming achievements and a memorial for cubs lost on expeditions.
 
-### New: Duck King Codex
+### New: Duckov Codex
 
 - A self-keeping Boss collection book: 4,000 at the base shop, used from your backpack, never consumed.
 - It records from the moment the mod is installed, book or no book; buying the book just gives you a way to read it.
@@ -193,7 +193,7 @@
 
 ### Changed: New Systems Are On by Default
 
-- The PetNest, The Duckov Daily, the Duck King Codex, Affix Forging, random events, the Duck King Campaign, the Arena Backyard and the Black Market Duck Cup are all on by default; there is nothing to enable in the settings.
+- The PetNest, The Duckov Daily, the Duckov Codex, Affix Forging, random events, the Duck King Campaign, the Arena Backyard and the Black Market Duck Cup are all on by default; there is nothing to enable in the settings.
 - Only the "Duck Life Is Uncertain" random events can be switched off in the mod settings. The other systems have no master toggle, just tuning options such as the random event frequency tier.
 
 ### Fixes
