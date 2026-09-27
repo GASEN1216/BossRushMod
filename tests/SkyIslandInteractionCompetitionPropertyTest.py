@@ -43,8 +43,8 @@ ROOT = Path(__file__).resolve().parents[1]
 # 2026-09-23：SkyIslandHud / SkyIslandStoryPresentation 超 1200 行，按 AGENTS §4.15 原样拆出同一 partial 的新文件。
 # 读主文件时把拆出去的那一半接在后面，断言照旧针对整个类。
 SPLIT_PARTS = {
-    "DebugAndTools/SkyIsland/SkyIslandHud.cs": "DebugAndTools/SkyIsland/SkyIslandHud_Layout.cs",
-    "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs": "DebugAndTools/SkyIsland/SkyIslandStoryPresentation_Parts.cs",
+    "SkyIsland/SkyIslandHud.cs": "SkyIsland/SkyIslandHud_Layout.cs",
+    "SkyIsland/SkyIslandStoryPresentation.cs": "SkyIsland/SkyIslandStoryPresentation_Parts.cs",
 }
 
 
@@ -73,13 +73,13 @@ def _const(source, pattern, label):
     return float(match.group(1))
 
 
-CRATE_SRC = _read('DebugAndTools/SkyIsland/SkyIslandRewardCrate.cs')
-LOOT_SRC = _read('DebugAndTools/SkyIsland/SkyIslandLootTables.cs')
-SERVICES_SRC = _read('DebugAndTools/SkyIsland/SkyIslandServices.cs')
-SESSION_SRC = _read('DebugAndTools/SkyIsland/SkyIslandSession.cs')
-PRESENTATION_SRC = _read('DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs')
-GUIDE_SRC = _read('DebugAndTools/SkyIsland/SkyIslandGuideInteractable.cs')
-RESIDENTS_SRC = _read('DebugAndTools/SkyIsland/SkyIslandResidents.cs')
+CRATE_SRC = _read('SkyIsland/SkyIslandRewardCrate.cs')
+LOOT_SRC = _read('SkyIsland/SkyIslandLootTables.cs')
+SERVICES_SRC = _read('SkyIsland/SkyIslandServices.cs')
+SESSION_SRC = _read('SkyIsland/SkyIslandSession.cs')
+PRESENTATION_SRC = _read('SkyIsland/SkyIslandStoryPresentation.cs')
+GUIDE_SRC = _read('SkyIsland/SkyIslandGuideInteractable.cs')
+RESIDENTS_SRC = _read('SkyIsland/SkyIslandResidents.cs')
 
 SEPARATION = _const(CRATE_SRC, r'InteractableSeparation\s*=\s*([0-9.]+)f', 'InteractableSeparation')
 PLACEMENT_ATTEMPTS = int(_const(CRATE_SRC, r'PlacementAttempts\s*=\s*(\d+)', 'PlacementAttempts'))
@@ -102,7 +102,7 @@ RESIDENT_HALF = _const(RESIDENTS_SRC, r'capsule\.radius\s*=\s*([0-9.]+)f', 'resi
 LOOTBOX_HALF_EXTENT = 0.6
 
 # 纪念物挂在哪些标记上：`SkyIslandWorldStory.Tick` 里每条 flag 对应一次 Beacon(...)。
-WORLD_STORY_SRC = _read('DebugAndTools/SkyIsland/SkyIslandWorldStory.cs')
+WORLD_STORY_SRC = _read('SkyIsland/SkyIslandWorldStory.cs')
 MEMORIAL_MARKERS = re.findall(r'Beacon\("([A-Za-z0-9_]+)"', WORLD_STORY_SRC)
 GUIDE_MARKERS = re.findall(r'marker\.name != "([A-Za-z0-9_]+)"', GUIDE_SRC)
 RESIDENT_MARKERS = re.findall(r'"(POI_[A-Z0-9]+|EnemySpawn_[A-Z0-9]+)"',
@@ -111,10 +111,10 @@ RESIDENT_MARKERS = re.findall(r'"(POI_[A-Z0-9]+|EnemySpawn_[A-Z0-9]+)"',
 # 交单锚点：装置版用 Search_B 本身（`BoardPosition("Search_B")`）。
 BOUNTY_ANCHOR = 'Search_B'
 # 信鸽：`SkyIslandLetters` 里每封信登记的 (id, 锚点)；落点算法见 `SkyIslandWorldStory.PlacePigeon`。
-LETTERS_SRC = _read('DebugAndTools/SkyIsland/SkyIslandLetters.cs')
+LETTERS_SRC = _read('SkyIsland/SkyIslandLetters.cs')
 LETTERS = re.findall(r'Letter\("(Letter_\d+)",\s*"([A-Za-z0-9_]+)"', LETTERS_SRC)
 # 采集点（内容批次三）：`SkyIslandFieldcraftRules.Nodes` 里每处的 (id, 锚点, 方位, 距离)；落点算法见 `SkyIslandGathering` 构造函数。
-FIELDCRAFT_SRC = _read('DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs')
+FIELDCRAFT_SRC = _read('SkyIsland/SkyIslandFieldcraftRules.cs')
 GATHER_NODES = [(node_id, marker, float(bearing), float(distance)) for node_id, marker, bearing, distance in re.findall(
     r'Node\("([A-Za-z0-9]+)",\s*"([A-Za-z0-9_]+)",\s*([0-9.]+)f,\s*([0-9.]+)f,', FIELDCRAFT_SRC)]
 GATHER_HALF = _const(FIELDCRAFT_SRC, r'NodeTriggerSize\s*=\s*([0-9.]+)f', 'NodeTriggerSize') / 2.0

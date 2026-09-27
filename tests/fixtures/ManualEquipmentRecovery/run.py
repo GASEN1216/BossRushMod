@@ -37,7 +37,11 @@ def main():
         return data.decode('utf-8-sig')
 
     host = clean_source(read('Integration/BossRushIntegration.cs'))
-    assert 'NewWeaponRuntime.RegisterRuntimeConfigs();' in member(host, 'private void RegisterCustomWeaponRuntimeConfigs(')
+    integration_module = clean_source(read('Integration/BossRushIntegrationRuntimeModule_Initialization.cs'))
+    host_registration = member(host, 'private void RegisterCustomWeaponRuntimeConfigs(')
+    module_registration = member(integration_module, 'internal void RegisterCustomWeaponRuntimeConfigs(')
+    assert 'bossRushIntegrationRuntime.RegisterCustomWeaponRuntimeConfigs();' in host_registration
+    assert 'NewWeaponRuntime.RegisterRuntimeConfigs();' in module_registration
     restore = read('Integration/Reforge/ReforgeDataPersistence.cs')
     runtime = read('Integration/NewWeapons/Common/NewWeaponRuntime.cs')
     forge = read('Integration/AffixForge/AffixForgeSystem.cs')

@@ -4,9 +4,7 @@ namespace BossRush
     {
         internal void PrepareSceneRuntimeForLoad()
         {
-            _characterCacheNeedsRefresh = true;
-            _characterCacheRefreshTimer = 0f;
-            _arenaCenterSet = false;
+            WavesArenaRuntimeModule.PrepareSceneCharacterCacheForLoad();
             ObjectCache.RefreshIfNeeded();
         }
 

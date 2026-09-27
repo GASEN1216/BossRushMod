@@ -8,9 +8,10 @@ mutator enemy buffs while normal bosses receive them.
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
-SOURCE = Path("ModBehaviour.cs")
+SOURCE = Path("WavesArena/WavesArenaRuntimeModule_LegacySpawn.cs")
 
 
 def fail(message: str) -> int:
@@ -57,8 +58,8 @@ def assert_branch_applies_mutator(method: str, marker: str, return_expr: str) ->
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8-sig")
-    method = extract_block(text, "private async UniTask<CharacterMainControl> SpawnEnemyAtPositionAsync(")
+    text = clean_source(SOURCE.read_text(encoding="utf-8-sig"))
+    method = extract_block(text, "internal async UniTask<CharacterMainControl> SpawnEnemyAtPositionAsync(")
     if method is None:
         return fail("missing SpawnEnemyAtPositionAsync")
 

@@ -4,7 +4,8 @@ from pathlib import Path
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 ENTRY_PARTS = [
     ENTRY,
     Path("ZombieMode/ZombieModeEntry_StarterLoadout.cs"),
@@ -12,7 +13,7 @@ ENTRY_PARTS = [
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -32,10 +33,12 @@ def read_entry() -> str:
 
 cash = Path("ZombieMode/ZombieModeCashInvestmentView.cs")
 extraction = Path("ZombieMode/ZombieModeExtractionController.cs")
+extraction_runtime = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 HUD = Path("ZombieMode/ZombieModeHudController.cs")
 UI_HELPER = Path("ZombieMode/ZombieModeUIHelper.cs")
+SHARED_UI = Path("Common/UI/BossRushUIFoundation.cs")
 MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
-ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
+ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:
@@ -66,11 +69,14 @@ def extract_block(text: str, marker: str) -> str:
 
 def main() -> int:
     entry = read_entry()
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
     rewards = read_rewards()
     cash_text = cash.read_text(encoding="utf-8")
     extraction_text = extraction.read_text(encoding="utf-8")
+    extraction_runtime_text = extraction_runtime.read_text(encoding="utf-8")
     hud = HUD.read_text(encoding="utf-8")
     helper = UI_HELPER.read_text(encoding="utf-8")
+    shared = SHARED_UI.read_text(encoding="utf-8")
     mode_runtime_hooks = MODE_RUNTIME_HOOKS.read_text(encoding="utf-8")
     zombie_runtime_hooks = ZOMBIE_RUNTIME_HOOKS.read_text(encoding="utf-8")
 
@@ -91,17 +97,25 @@ def main() -> int:
         "internal static bool IsModalInputPaused",
         "internal static void EnforceModalInputPause()",
     ]:
-        if snippet not in helper:
-            return fail("ZombieModeUIHelper modal input lease missing: " + snippet)
+        if snippet not in shared:
+            return fail("BossRushUIKit modal input lease missing: " + snippet)
+    for forwarding in ("BossRushUIKit.IsModalInputPaused", "BossRushUIKit.ModalInputLeaseCount",
+                       "BossRushUIKit.ClaimModalInput(inputToken, ownerLabel)",
+                       "BossRushUIKit.EnforceModalInputPause()"):
+        if forwarding not in helper:
+            return fail("ZombieModeUIHelper must forward shared modal state: " + forwarding)
 
     tick_method = extract_block(entry, "private void TickZombieMode(float deltaTime)")
     if not tick_method:
         return fail("TickZombieMode not found")
-    if "IsZombieModeRuntimePaused()" not in tick_method:
-        return fail("TickZombieMode must not advance ZombieMode timers while modal UI pauses time")
-    runtime_pause = extract_block(entry, "internal bool IsZombieModeRuntimePaused()")
+    if "module.TickZombieMode(deltaTime)" not in tick_method:
+        return fail("host TickZombieMode must forward to the module at the existing scheduler position")
+    module_tick = extract_block(runtime_module, "internal void TickZombieMode(float deltaTime)")
+    if "IsZombieModeRuntimePaused()" not in module_tick:
+        return fail("RuntimeModule TickZombieMode must not advance timers while modal UI pauses time")
+    runtime_pause = extract_block(runtime_module, "internal bool IsZombieModeRuntimePaused()")
     if "ZombieModeUIHelper.IsModalInputPaused" not in runtime_pause:
-        return fail("ZombieMode runtime pause helper must include modal UI pause")
+        return fail("RuntimeModule pause helper must include modal UI pause")
 
     late_update = extract_block(Path("ModBehaviour.cs").read_text(encoding="utf-8"), "void LateUpdate()")
     if not late_update:
@@ -155,7 +169,7 @@ def main() -> int:
     card = extract_block(extraction_view, "private void CreateChoiceCard(")
     if "RestoreInputState()" in card or "ReleaseInput()" in card:
         return fail("extraction choice buttons must not release the modal lease themselves; go through Choose")
-    host_start = extract_block(extraction_text, "private string StartZombieModeExtraction(int runId)")
+    host_start = extract_block(extraction_runtime_text, "private string StartZombieModeExtraction(int runId)")
     if 'return "BossRush_ZombieMode_Notify_ExtractionBeaconLocked";' not in host_start or \
             'return "BossRush_ZombieMode_Notify_ExtractionAreaFailed";' not in host_start:
         return fail("StartZombieModeExtraction must return the refusal reason to the page instead of a toast hidden under the modal")

@@ -121,7 +121,7 @@ namespace BossRush
         private const float RainFireFactorPenalty = 0.15f;
         /// <summary>到期时玩家正在做不能换手持物的动作（近战、冲刺、交互、用道具），最多等这么久再强制恢复。</summary>
         private const float RestoreWaitLimitSeconds = 3f;
-        private readonly List<ZombieModeAttributeModifierRecord> _modifiers = new List<ZombieModeAttributeModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> _modifiers = new List<BossRushStatModifierRecord>();
         private readonly List<GameObject> _costume = new List<GameObject>();
         private readonly List<Renderer> _hiddenEquipment = new List<Renderer>();
         private readonly Dictionary<DuckovItemAgent, HandheldAnimationType> _handAnimations = new Dictionary<DuckovItemAgent, HandheldAnimationType>();

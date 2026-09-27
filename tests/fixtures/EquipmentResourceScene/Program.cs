@@ -23,6 +23,25 @@ internal static class Program
     }
     private static void Main()
     {
+        SceneManager.ActiveScene = new Scene { name = "Base_SceneV2" };
+        Time.frameCount = 100;
+        Check(SceneRuntimeGate.CanRunGameplayRuntimeCached(), "Frame cache accepts gameplay scene");
+        Check(SceneManager.ActiveSceneReads == 1, "First frame evaluates the active scene once");
+        SceneManager.ActiveScene = new Scene { name = "MainMenu" };
+        Check(SceneRuntimeGate.CanRunGameplayRuntimeCached() && SceneManager.ActiveSceneReads == 1,
+            "Same frame retains its sampled gameplay decision");
+        Time.frameCount++;
+        Check(!SceneRuntimeGate.CanRunGameplayRuntimeCached() && SceneManager.ActiveSceneReads == 2,
+            "Next frame resamples and rejects menu scene");
+        SceneManager.ActiveScene = new Scene { name = "Base_SceneV2" };
+        SceneLoader.IsSceneLoading = true;
+        Time.frameCount++;
+        Check(!SceneRuntimeGate.CanRunGameplayRuntimeCached(), "Loading gate is sampled on the new frame");
+        SceneLoader.IsSceneLoading = false;
+        Check(!SceneRuntimeGate.CanRunGameplayRuntimeCached(), "Loading completion waits for the next frame sample");
+        Time.frameCount++;
+        Check(SceneRuntimeGate.CanRunGameplayRuntimeCached(), "Gameplay resumes on the next frame");
+
         var playerObject = new GameObject("Player");
         var player = playerObject.AddComponent<CharacterMainControl>();
         var characterItem = playerObject.AddComponent<Item>();

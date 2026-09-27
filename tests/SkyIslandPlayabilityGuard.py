@@ -13,15 +13,15 @@ def main():
     def read(path):
         return clean_source((ROOT / path).read_text(encoding="utf-8-sig"))
 
-    world = read("DebugAndTools/SkyIsland/SkyIslandWorldStory.cs")
-    guide = read("DebugAndTools/SkyIsland/SkyIslandGuideInteractable.cs")
-    crate = read("DebugAndTools/SkyIsland/SkyIslandRewardCrate.cs")
-    patch = read("DebugAndTools/SkyIsland/SkyIslandExplosionObstaclePatch.cs")
-    lease = read("DebugAndTools/SkyIsland/SkyIslandRaidLease.cs")
-    boss = read("DebugAndTools/SkyIsland/SkyIslandStormBoss.cs")
-    enc = read("DebugAndTools/SkyIsland/SkyIslandEncounters.cs")
-    rules = read("DebugAndTools/SkyIsland/SkyIslandStoryRules.cs")
-    session = read("DebugAndTools/SkyIsland/SkyIslandSession.cs")
+    world = read("SkyIsland/SkyIslandWorldStory.cs")
+    guide = read("SkyIsland/SkyIslandGuideInteractable.cs")
+    crate = read("SkyIsland/SkyIslandRewardCrate.cs")
+    patch = read("SkyIsland/SkyIslandExplosionObstaclePatch.cs")
+    lease = read("SkyIsland/SkyIslandRaidLease.cs")
+    boss = read("SkyIsland/SkyIslandStormBoss.cs")
+    enc = read("SkyIsland/SkyIslandEncounters.cs")
+    rules = read("SkyIsland/SkyIslandStoryRules.cs")
+    session = read("SkyIsland/SkyIslandSession.cs")
     errors = []
 
     def need(source, label, *tokens):
@@ -147,7 +147,7 @@ def main():
     # 作者场景里 Exit / BellExtraction 只是 Blender Empty，自绘地图删除后官方小地图也不标撤离点，
     # 而 F3 面板与中英 Wiki 三处都写着「蓝环 / 绿环」。钟庭那个是终章后才开放、离最近地标 14 m，
     # 没有标识就是让玩家去找一个不存在的东西。
-    ring = read("DebugAndTools/SkyIsland/SkyIslandGroundRing.cs")
+    ring = read("SkyIsland/SkyIslandGroundRing.cs")
     need(ring, "撤离环 owner",
          "internal sealed class SkyIslandExtractionRings",
          # 2026-09-23 审美审查 UE-02：环色与 UI 字色 token 分开（降饱和、a=0.78），色相族不变——码头青、钟庭与航标广场绿，
@@ -197,7 +197,7 @@ def main():
         errors.append("噬风的静态复位必须委托给共享圆环，避免两处各留一份材质")
 
     # ---- 10. 每帧路径不得产生垃圾（AGENTS 4.12） ----
-    module = read("DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs")
+    module = read("SkyIsland/SkyIslandRuntimeModule.cs")
     update = module.split("public override void OnUpdate(", 1)[1].split("\n        }", 1)[0]
     # Scene.name 每次调用都新建托管字符串；模块 OnUpdate 在所有场景每帧都跑。
     if "GetActiveScene().name" in update:
@@ -208,7 +208,7 @@ def main():
         errors.append("场景缓存必须在开始切图与关卡就绪两处作废，句柄复用才兜得住")
 
     # ---- 11. 光照不得每帧重写（RenderSettings.ambient* 在 Trilight 下会重算环境球） ----
-    lighting = read("DebugAndTools/SkyIsland/SkyIslandLighting.cs")
+    lighting = read("SkyIsland/SkyIslandLighting.cs")
     need(lighting, "光照写入阈值",
          "internal static bool Similar(Color a, Color b)",
          "Mathf.Abs(intensity - appliedIntensity) < IntensityEpsilon",
@@ -223,7 +223,7 @@ def main():
             errors.append("%s 必须是感知阈以下的正数，否则不是省写入而是丢过渡" % token)
 
     # ---- 12. HUD 的物资分母必须够得到 ----
-    scav = read("DebugAndTools/SkyIsland/SkyIslandScavenging.cs")
+    scav = read("SkyIsland/SkyIslandScavenging.cs")
     placed = scav.split("internal int PlacedPoints", 1)[1].split("internal int OpenedPoints", 1)[0]
     if "!points[i].Failed" not in placed:
         errors.append("PlacedPoints 必须排除建箱失败的点，否则 HUD 分母永远够不到")

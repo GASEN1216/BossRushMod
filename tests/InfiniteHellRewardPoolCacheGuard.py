@@ -4,8 +4,9 @@ from pathlib import Path
 import sys
 
 
-SOURCE = Path("LootAndRewards/LootAndRewardsInfiniteHell.cs")
+SOURCE = Path("LootAndRewards/LootAndRewards.cs")
 FIELDS_SOURCE = Path("LootAndRewards/LootAndRewards.cs")
+MODULE_SOURCE = Path("WavesArena/WavesArenaRuntimeModule_RewardPool.cs")
 
 
 def fail(message: str) -> int:
@@ -38,7 +39,11 @@ def extract_method_body(text: str, signature: str) -> str | None:
 def main() -> int:
     text = SOURCE.read_text(encoding="utf-8")
     fields_text = FIELDS_SOURCE.read_text(encoding="utf-8")
-    body = extract_method_body(text, "private int GetRandomInfiniteHellHighQualityRewardTypeID()")
+    module_text = MODULE_SOURCE.read_text(encoding="utf-8")
+    bridge = extract_method_body(text, "private int GetRandomInfiniteHellHighQualityRewardTypeID()")
+    if bridge is None or "return wavesArenaRuntime.GetRandomInfiniteHellHighQualityRewardTypeID();" not in bridge:
+        return fail("host reward picker must forward to arena runtime")
+    body = extract_method_body(module_text, "internal int GetRandomInfiniteHellHighQualityRewardTypeID()")
     if body is None:
         return fail("missing GetRandomInfiniteHellHighQualityRewardTypeID body")
 
@@ -54,14 +59,14 @@ def main() -> int:
         if snippet in body:
             return fail("reward pool still builds transient data synchronously -> " + snippet)
 
-    combined = text + "\n" + fields_text
+    combined = module_text + "\n" + fields_text
     required = [
-        "infiniteHellHighQualityCandidateIdScratch",
-        "infiniteHellHighQualityPreferredScratch",
-        "infiniteHellHighQualityFallbackScratch",
-        "BuildGeneralBossLootCandidateIdSet(infiniteHellHighQualityCandidateIdScratch)",
+        "InfiniteHellHighQualityCandidateIdScratch",
+        "InfiniteHellHighQualityPreferredScratch",
+        "InfiniteHellHighQualityFallbackScratch",
+        "owner.BuildGeneralBossLootCandidateIdSet(InfiniteHellHighQualityCandidateIdScratch)",
         "TryGetInfiniteHellRewardCandidateValueQuality(",
-        "infiniteHellHighQualityItemPool.AddRange(",
+        "InfiniteHellHighQualityItemPool.AddRange(",
         "ClearInfiniteHellHighQualityRewardScratch();",
     ]
     for snippet in required:

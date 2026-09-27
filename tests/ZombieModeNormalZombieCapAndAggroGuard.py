@@ -3,17 +3,18 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
+WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 RECOVERY = Path("Utilities/EnemyRecoveryMonitor.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -95,8 +96,8 @@ def main() -> int:
     if not pressure_target:
         return fail("GetZombieModeAmbientPressureTarget not found")
     for token in [
-        "CurrentWaveKillTarget - zombieModeRunState.CurrentWaveKills",
-        "GetZombieModePreparationPressureTarget(zombieModeRunState.CurrentWave + 1)",
+        "CurrentWaveKillTarget - runState.CurrentWaveKills",
+        "GetZombieModePreparationPressureTarget(runState.CurrentWave + 1)",
         "remainingToKill * ZombieModeTuning.NormalWavePressurePerRemainingKill",
         "target = Mathf.Min(target, ebbTarget);",
         "return GetZombieModePreparationPressureTarget(pacingWave);",
@@ -122,8 +123,8 @@ def main() -> int:
     if not tick:
         return fail("TickZombieModeWaveController not found")
     for token in [
-        "TickZombieModeAmbientZombiePressure(zombieModeRunState.RunId, deltaTime);",
-        "ZombieModePhaseGuards.AllowsBeacon(zombieModeRunState.CombatPhase)",
+        "TickZombieModeAmbientZombiePressure(runState.RunId, deltaTime);",
+        "ZombieModePhaseGuards.AllowsBeacon(runState.CombatPhase)",
     ]:
         result = require(tick, token, "preparation phases must continue maintaining ambient zombies")
         if result:
@@ -144,7 +145,7 @@ def main() -> int:
     if not ambient_tick:
         return fail("TickZombieModeAmbientZombiePressure not found")
     for token in [
-        "IsZombieModeAmbientZombieSpawnPhase(zombieModeRunState.CombatPhase)",
+        "IsZombieModeAmbientZombieSpawnPhase(runState.CombatPhase)",
         "ReconcileZombieModeLivingEnemyCounts(runId);",
         "SpawnZombieModeWaveAcrossMapAsync(runId, spawnCount, false).Forget();",
     ]:
@@ -165,7 +166,7 @@ def main() -> int:
     if result:
         return result
 
-    cleanup = extract_method(waves + spawner + models + Path("ZombieMode/ZombieModeCleanup.cs").read_text(encoding="utf-8"), "CleanupZombieModeEnemiesNearPlayerSafeZone")
+    cleanup = extract_method(Path("ZombieMode/ZombieModeSafeZoneController.cs").read_text(encoding="utf-8"), "CleanupZombieModeEnemiesNearPlayerSafeZone")
     if not cleanup:
         return fail("CleanupZombieModeEnemiesNearPlayerSafeZone not found")
     for token in [
@@ -182,9 +183,9 @@ def main() -> int:
     if not reserve:
         return fail("TryReserveZombieModeNormalSpawnSlot not found")
     for token in [
-        "zombieModeRunState.LivingNormalZombieCount + zombieModeRunState.PendingNormalZombieSpawns",
+        "runState.LivingNormalZombieCount + runState.PendingNormalZombieSpawns",
         "ZombieModeTuning.MaxNormalZombieCount",
-        "zombieModeRunState.PendingNormalZombieSpawns++;",
+        "runState.PendingNormalZombieSpawns++;",
     ]:
         result = require(reserve, token, "normal zombie spawns must reserve cap slots before async creation")
         if result:
@@ -196,7 +197,7 @@ def main() -> int:
     result = require(release, "if (!IsZombieModeRunValid(runId)) return;", "stale callbacks must not consume another run's reservation")
     if result:
         return result
-    result = require(release, "zombieModeRunState.PendingNormalZombieSpawns = Mathf.Max(0, zombieModeRunState.PendingNormalZombieSpawns - 1);", "failed async spawns must release reserved slots")
+    result = require(release, "runState.PendingNormalZombieSpawns = Mathf.Max(0, runState.PendingNormalZombieSpawns - 1);", "failed async spawns must release reserved slots")
     if result:
         return result
 
@@ -204,11 +205,11 @@ def main() -> int:
     if not reconcile:
         return fail("ReconcileZombieModeLivingEnemyCounts not found")
     for token in [
-        "CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, true)",
+        "CollectZombieModeRuntimeEnemyMarkers(runId, waveEnemyMarkerScratch, true)",
         "!marker.IsBoss",
-        "zombieModeRunState.LivingZombieCount = livingTotal;",
-        "zombieModeRunState.LivingNormalZombieCount = livingNormal;",
-        "zombieModeEnemyMarkerScratch.Clear();",
+        "runState.LivingZombieCount = livingTotal;",
+        "runState.LivingNormalZombieCount = livingNormal;",
+        "waveEnemyMarkerScratch.Clear();",
     ]:
         result = require(reconcile, token, "periodic pressure must repair stale living counters without allocations")
         if result:
@@ -273,18 +274,18 @@ def main() -> int:
     for token in [
         "if (!TryReserveZombieModeNormalSpawnSlot(runId))",
         "ReleaseZombieModeNormalSpawnSlot(runId);",
-        "zombieModeRunState.LivingNormalZombieCount++;",
+        "runState.LivingNormalZombieCount++;",
     ]:
         result = require(spawn, token, "normal zombie spawn path must enforce cap and maintain living count")
         if result:
             return result
 
     dead = extract_method(waves, "HandleZombieModeHealthDead")
-    result = require(dead, "zombieModeRunState.LivingNormalZombieCount = Mathf.Max(0, zombieModeRunState.LivingNormalZombieCount - 1);", "normal zombie death must free a cap slot")
+    result = require(dead, "runState.LivingNormalZombieCount = Mathf.Max(0, runState.LivingNormalZombieCount - 1);", "normal zombie death must free a cap slot")
     if result:
         return result
 
-    target = extract_method(rewards, "SetZombieModeEnemyTargetToMainPlayer")
+    target = extract_method(Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs").read_text(encoding="utf-8"), "SetZombieModeEnemyTargetToMainPlayer")
     for token in [
         "ai.searchedEnemy = main.mainDamageReceiver;",
         "ai.SetTarget(main.mainDamageReceiver.transform);",
@@ -305,9 +306,9 @@ def main() -> int:
     if not distant_recovery or not recover:
         return fail("distant normal-zombie recovery path not found")
     for token in [
-        "zombieMarker == null || zombieMarker.IsBoss",
-        "ZombieModeTuning.NormalZombieDistantRecoveryDistance",
-        "ZombieModeTuning.NormalZombieDistantRecoveryDelaySeconds",
+        "zombieMarker == null || isDistantRecoveryBoss(zombieMarker)",
+        "getDistantRecoveryDistance()",
+        "getDistantRecoveryDelay()",
         "GetHorizontalSqrDistance(currentPos, player.transform.position)",
     ]:
         result = require(distant_recovery, token, "only long-distance non-Boss zombies should be recovered")
@@ -319,6 +320,16 @@ def main() -> int:
         "TryGetNearestAlternateSpawnPoint(currentPos, state, player, out targetPos)",
     ]:
         result = require(recover, token, "distant recovery must reuse the player-near selector and retain generic fallback")
+        if result:
+            return result
+
+    recovery_bridge = clean_source(Path("Utilities/EnemyRecoveryHostBridge.cs").read_text(encoding="utf-8-sig"))
+    for token in [
+        "enemyRecoveryMonitor.BindRecoveryPolicies(marker => ((ZombieModeEnemyRuntimeMarker)marker).IsBoss,",
+        "() => ZombieModeTuning.NormalZombieDistantRecoveryDistance,",
+        "() => ZombieModeTuning.NormalZombieDistantRecoveryDelaySeconds,",
+    ]:
+        result = require(recovery_bridge, token, "recovery delegates must bind the original Zombie Boss exemption and tuning")
         if result:
             return result
 

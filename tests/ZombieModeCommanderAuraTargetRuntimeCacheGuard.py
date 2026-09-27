@@ -5,7 +5,8 @@ import sys
 
 
 RUNTIME = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
-SKILLS = Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
+SKILLS = Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs")
 
 
 def fail(message: str) -> int:
@@ -37,9 +38,10 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 def main() -> int:
     runtime = RUNTIME.read_text(encoding="utf-8-sig")
+    module = RUNTIME_MODULE.read_text(encoding="utf-8-sig")
     skills = SKILLS.read_text(encoding="utf-8-sig")
     refresh = extract_method_body(skills, "internal void RefreshZombieModeCommanderAuraTargets(")
-    register = extract_method_body(runtime, "private ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(")
+    register = extract_method_body(module, "internal ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(")
     if refresh is None:
         return fail("missing RefreshZombieModeCommanderAuraTargets body")
     if register is None:
@@ -47,10 +49,11 @@ def main() -> int:
 
     for snippet in [
         "public ZombieModeCommanderAuraTargetRuntime CommanderAuraTargetRuntime;",
-        "marker.CommanderAuraTargetRuntime = null;",
     ]:
         if snippet not in runtime:
             return fail("missing marker runtime cache snippet -> " + snippet)
+    if "marker.CommanderAuraTargetRuntime = null;" not in register:
+        return fail("RuntimeModule marker registration must clear the commander aura component cache")
 
     required_refresh = [
         "ZombieModeCommanderAuraTargetRuntime targetRuntime = target.CommanderAuraTargetRuntime;",

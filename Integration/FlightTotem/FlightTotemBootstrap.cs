@@ -13,24 +13,40 @@ using BossRush.Common.Equipment;
 
 namespace BossRush
 {
-    /// <summary>
-    /// 飞行图腾系统启动模块 - 使用 partial class 扩展 ModBehaviour
-    /// </summary>
-    public partial class ModBehaviour
+    /// <summary>飞行图腾 bootstrap 入口的唯一运行时 owner。</summary>
+    internal sealed partial class FlightTotemRuntimeModule : BossRushRuntimeModuleBase
     {
+        private ModBehaviour _owner;
+        private Coroutine pendingEquipmentCheck;
+        private bool systemCleanupCompleted;
+
+        public override string ModuleName { get { return "FlightTotem"; } }
+
+        public override void OnAwake(ModBehaviour owner)
+        {
+            _owner = owner;
+        }
+
+        public override void OnDestroy()
+        {
+            try { CleanupFlightTotemSystem(); }
+            finally { _owner = null; }
+        }
+
         // ========== 初始化 ==========
 
         /// <summary>
         /// 初始化飞行图腾系统（在 Start_Integration 中调用）
         /// </summary>
-        private void InitializeFlightTotemSystem()
+        internal void InitializeFlightTotemSystem()
         {
+            systemCleanupCompleted = false;
             AbilitySystemHelper.InitializeSystem(
                 config: FlightConfig.Instance,
                 ensureManagerInstance: () => FlightAbilityManager.EnsureInstance(),
                 ensureEffectManagerInstance: () => FlightTotemEffectManager.EnsureInstance(),
-                initializeItem: InitializeFlightTotemItem,
-                injectLocalization: InjectFlightTotemLocalization
+                initializeItem: () => InitializeFlightTotemItem(),
+                injectLocalization: () => InjectFlightTotemLocalization()
             );
         }
 
@@ -39,11 +55,13 @@ namespace BossRush
         /// <summary>
         /// 在场景加载后设置飞行图腾（场景切换时调用）
         /// </summary>
-        private void SetupFlightTotemForScene(Scene scene)
+        internal void SetupFlightTotemForScene(Scene scene)
         {
-            if (IsGameplaySceneName(scene.name))
+            CancelPendingEquipmentCheck();
+            systemCleanupCompleted = false;
+            if (ModBehaviour.IsGameplaySceneName(scene.name))
             {
-                AbilitySystemHelper.HandleSceneChange(
+                pendingEquipmentCheck = AbilitySystemHelper.StartSceneChange(
                     config: FlightConfig.Instance,
                     onSceneChanged: () =>
                     {
@@ -53,7 +71,7 @@ namespace BossRush
                         }
                     },
                     delayedCheckEquipment: DelayedCheckFlightTotemEquipment,
-                    monoBehaviour: this
+                    monoBehaviour: _owner
                 );
                 return;
             }
@@ -76,7 +94,8 @@ namespace BossRush
         /// </summary>
         private IEnumerator DelayedCheckFlightTotemEquipment()
         {
-            yield return sharedWait05s;
+            yield return ModBehaviour.FlightTotemSharedWait05sForRuntime;
+            pendingEquipmentCheck = null;
 
             if (FlightTotemEffectManager.Instance != null)
             {
@@ -89,8 +108,20 @@ namespace BossRush
         /// <summary>
         /// 清理飞行图腾系统
         /// </summary>
-        private void CleanupFlightTotemSystem()
+        private void CancelPendingEquipmentCheck()
         {
+            if (_owner != null && pendingEquipmentCheck != null)
+            {
+                _owner.StopCoroutine(pendingEquipmentCheck);
+            }
+            pendingEquipmentCheck = null;
+        }
+
+        internal void CleanupFlightTotemSystem()
+        {
+            CancelPendingEquipmentCheck();
+            if (systemCleanupCompleted) return;
+            systemCleanupCompleted = true;
             AbilitySystemHelper.CleanupSystem(
                 config: FlightConfig.Instance,
                 cleanupManager: () => FlightAbilityManager.Cleanup(),
@@ -98,10 +129,16 @@ namespace BossRush
                 {
                     if (FlightTotemEffectManager.Instance != null)
                     {
-                        Destroy(FlightTotemEffectManager.Instance.gameObject);
+                        UnityEngine.Object.Destroy(FlightTotemEffectManager.Instance.gameObject);
                     }
                 }
             );
+        }
+
+        [System.Diagnostics.Conditional("BOSSRUSH_DEV")]
+        private static void DevLog(string message)
+        {
+            ModBehaviour.DevLog(message);
         }
     }
 }

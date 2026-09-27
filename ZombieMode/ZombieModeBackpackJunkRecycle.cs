@@ -5,9 +5,9 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
-        private bool HasZombieModeRecyclableBackpackJunk()
+        internal bool HasZombieModeRecyclableBackpackJunk()
         {
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null || player.CharacterItem == null || player.CharacterItem.Inventory == null || player.CharacterItem.Inventory.Content == null)
@@ -58,7 +58,7 @@ namespace BossRush
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[ZombieMode] 背包废品回收失败: " + e.Message);
+                    ModBehaviour.DevLog("[ZombieMode] 背包废品回收失败: " + e.Message);
                 }
             }
 
@@ -68,7 +68,7 @@ namespace BossRush
             }
 
             int gainedPoints = Mathf.Max(recycledItems, Mathf.CeilToInt(recycledValue / (float)ZombieModeTuning.BackpackJunkValuePerPurificationPoint));
-            zombieModeRunState.PurificationPoints += gainedPoints;
+            runState.PurificationPoints += gainedPoints;
             NotificationText.Push(string.Format(
                 L10n.T("BossRush_ZombieMode_Notify_RecycledBackpackJunk"),
                 recycledItems,
@@ -129,7 +129,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] 检查废品内置库存失败，按受保护物品处理: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] 检查废品内置库存失败，按受保护物品处理: " + e.Message);
                 return true;
             }
 
@@ -149,7 +149,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] 检查废品插槽内容失败，按受保护物品处理: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] 检查废品插槽内容失败，按受保护物品处理: " + e.Message);
                 return true;
             }
 

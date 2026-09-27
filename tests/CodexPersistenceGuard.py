@@ -50,6 +50,7 @@ PORTRAITS = CODEX_DIR / "CodexPortraitCache.cs"
 VIEW = CODEX_DIR / "CodexView.cs"
 VIEW_GRID = CODEX_DIR / "CodexView_Grid.cs"
 BOOK_ITEM = CODEX_DIR / "CodexBookItem.cs"
+BOOK_STOCK_RUNTIME = Path("Integration/BossRushIntegrationRuntimeModule_CodexBook.cs")
 RUNTIME_MODULE = CODEX_DIR / "CodexRuntimeModule.cs"
 CONFIG = Path("Config/ConfigCodex.cs")
 LOCALIZATION = Path("Localization/CodexLocalization.cs")
@@ -61,7 +62,7 @@ COMPILE_LIST = Path("compile_official.bat")
 
 REQUIRED_SOURCES = [
     TUNING, MODELS, CODEC, PERSISTENCE, COORDINATOR, CATALOG, COLLECTOR,
-    MILESTONES, PORTRAITS, VIEW, VIEW_GRID, BOOK_ITEM, RUNTIME_MODULE,
+    MILESTONES, PORTRAITS, VIEW, VIEW_GRID, BOOK_ITEM, BOOK_STOCK_RUNTIME, RUNTIME_MODULE,
     CONFIG, LOCALIZATION,
 ]
 
@@ -70,7 +71,7 @@ SHARED_SOURCES = [STORE, ENGINE]
 # 除共享引擎之外，任何图鉴源文件都不得出现物理落盘调用
 NO_SAVEFILE_SOURCES = [
     CODEC, PERSISTENCE, COORDINATOR, CATALOG, COLLECTOR, MILESTONES,
-    PORTRAITS, VIEW, VIEW_GRID, RUNTIME_MODULE,
+    PORTRAITS, VIEW, VIEW_GRID, BOOK_STOCK_RUNTIME, RUNTIME_MODULE,
 ]
 
 
@@ -105,6 +106,8 @@ def main():
     engine_code = strip_comments(ENGINE.read_text(encoding="utf-8"))
     collector_code = strip_comments(COLLECTOR.read_text(encoding="utf-8"))
     book_code = strip_comments(BOOK_ITEM.read_text(encoding="utf-8"))
+    book_stock_runtime_code = strip_comments(BOOK_STOCK_RUNTIME.read_text(encoding="utf-8"))
+    book_shop_code = book_code + "\n" + book_stock_runtime_code
     tuning = TUNING.read_text(encoding="utf-8")
 
     # ---- 1) 存档 key 与 schema 版本是冻结的兼容面 ----
@@ -233,9 +236,9 @@ def main():
     # ---- 8) 图鉴实体不可倒卖，商店价格与库存存档必须保持可用 ----
     if 'AddTagToItem(item, "NotSellable")' not in book_code:
         return fail("鸭皇图鉴必须打官方 NotSellable 标签，避免买入后倒卖套利")
-    if not re.search(r"float\s+priceFactor\s*=\s*1f", book_code):
+    if not re.search(r"float\s+priceFactor\s*=\s*1f", book_shop_code):
         return fail("图鉴 StockShop.priceFactor 必须为 1；写 1/rawValue 会把 4000 金售价压成 1 金")
-    if "else if (cachedCodexBookStock >= 0)" not in book_code:
+    if "else if (cachedCodexBookStock >= 0)" not in book_shop_code:
         return fail("商店尚未注入时，存档收集必须保留已读取的售罄库存")
 
     # ---- 8) 条目上限必须 fail-closed，不得挤掉老条目 ----
@@ -261,8 +264,7 @@ def main():
             "已登记 " + str(len(registered)) + " 条，缺失: " + ", ".join(missing))
     if not registered:
         warn(
-            "图鉴源文件尚未登记进 compile_official.bat（等待主控合并两个实现 agent 的"
-            "清单一次加全）。登记后本 guard 会自动转为强制断言。")
+            "图鉴源文件尚未登记进 compile_official.bat。登记后本 guard 会自动转为强制断言。")
     for path in SHARED_SOURCES:
         entry = path.as_posix().replace("/", "\\")
         if entry not in compile_list:

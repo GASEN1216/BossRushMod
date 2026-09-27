@@ -6,14 +6,14 @@ using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class UIAndSignsRuntimeModule
     {
         /// <summary>
         /// 查找并注入交互目标
         /// scanTimes: 扫描次数，<=0 表示无限(不建议)
         /// Bug #2 修复：成功注入后立即停止扫描
         /// </summary>
-        private IEnumerator FindInteractionTargets(int scanTimes)
+        internal IEnumerator FindInteractionTargets(int scanTimes)
         {
             int count = 0;
             while (count < scanTimes)
@@ -23,13 +23,54 @@ namespace BossRush
 
                 if (injected)
                 {
-                    DevLog("[BossRush] 场景扫描成功，已注入 BossRush 交互点，停止扫描。");
+                    ModBehaviour.DevLog("[BossRush] 场景扫描成功，已注入 BossRush 交互点，停止扫描。");
                     yield break;
                 }
 
-                yield return sharedWait1s;
+                yield return owner.UIAndSignsSharedWait1s;
             }
-            DevLog("[BossRush] 场景扫描结束（未找到合适的注入点）。");
+            ModBehaviour.DevLog("[BossRush] 场景扫描结束（未找到合适的注入点）。");
+        }
+
+        internal bool IsBaseHubBoatInteractable(InteractableBase interactable)
+        {
+            if (interactable == null || interactable.gameObject == null)
+            {
+                return false;
+            }
+
+            if (interactable is BossRushInteractable)
+            {
+                return false;
+            }
+
+            string sceneName = string.Empty;
+            try { sceneName = interactable.gameObject.scene.name; } catch { }
+            if (!SceneRuntimeGate.IsBaseHubSceneName(sceneName))
+            {
+                return false;
+            }
+
+            string goName = interactable.gameObject.name ?? string.Empty;
+            bool isMainInteract = goName == "Interact" || interactable.interactableGroup;
+            bool isSubInteract = goName.Contains("_");
+            if (!isMainInteract || isSubInteract)
+            {
+                return false;
+            }
+
+            string path = GetGameObjectPath(interactable.gameObject);
+            return path.IndexOf("Boat", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        internal bool TryInjectBaseHubBoatInteractable(InteractableBase interactable)
+        {
+            if (!IsBaseHubBoatInteractable(interactable))
+            {
+                return false;
+            }
+
+            return InjectIntoInteractableBaseGroup_UIAndSigns(interactable);
         }
 
         private bool ScanAndInject()
@@ -41,12 +82,12 @@ namespace BossRush
                 string sceneName = activeScene.name;
 
                 Vector3 targetPos;
-                bool isBaseScene = IsBaseHubSceneName(sceneName);
-                bool isArenaScene = sceneName == BossRushArenaSceneName;
+                bool isBaseScene = ModBehaviour.IsBaseHubSceneName(sceneName);
+                bool isArenaScene = sceneName == owner.GetArenaSceneName();
 
                 if (isBaseScene)
                 {
-                    targetPos = BaseEntryPosition;
+                    targetPos = owner.UIAndSignsBaseEntryPosition;
                 }
                 else if (isArenaScene)
                 {
@@ -57,7 +98,7 @@ namespace BossRush
                     return false;
                 }
 
-                var allInteractables = FindObjectsOfType<InteractableBase>(true);
+                var allInteractables = UnityEngine.Object.FindObjectsOfType<InteractableBase>(true);
                 InteractableBase boatInteract = null;
                 float boatDistSq = float.MaxValue;
 
@@ -86,7 +127,7 @@ namespace BossRush
 
                 if (boatInteract != null)
                 {
-                    if (TryInjectBaseHubBoatInteractable(boatInteract))
+                    if (owner.TryInjectBaseHubBoatInteractable(boatInteract))
                     {
                         anyInjected = true;
                     }
@@ -94,7 +135,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] 扫描出错: " + e.Message + "\n" + e.StackTrace);
+                ModBehaviour.DevLog("[BossRush] 扫描出错: " + e.Message + "\n" + e.StackTrace);
             }
             return anyInjected;
         }
@@ -102,7 +143,7 @@ namespace BossRush
         /// <summary>
         /// 获取 GameObject 的完整层级路径
         /// </summary>
-        private string GetGameObjectPath(GameObject obj)
+        internal string GetGameObjectPath(GameObject obj)
         {
             if (obj == null) return "<null>";
             string path = obj.name;
@@ -135,7 +176,7 @@ namespace BossRush
         /// <summary>
         /// 通过反射注入到 InteractableBase 的 group 列表
         /// </summary>
-        private bool InjectIntoInteractableBaseGroup(InteractableBase target)
+        internal bool InjectIntoInteractableBaseGroup(InteractableBase target)
         {
             return InjectIntoInteractableBaseGroup_UIAndSigns(target);
         }

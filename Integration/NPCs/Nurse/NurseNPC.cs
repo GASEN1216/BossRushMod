@@ -1,5 +1,5 @@
 // ============================================================================
-// NurseNPC.cs - 护士NPC系统（ModBehaviour partial）
+// NurseNPC.cs - 护士 NPC 运行时模块
 // ============================================================================
 // 模块说明：
 //   管理 BossRush 模组的护士 NPC"羽织"，包括：
@@ -19,10 +19,25 @@ using BossRush.Utils;
 namespace BossRush
 {
     /// <summary>
-    /// 护士NPC系统 - ModBehaviour 的 partial class
+    /// 护士 NPC 唯一实例状态 owner，沿用 NPCModuleRegistry 的生成与销毁顺序。
     /// </summary>
-    public partial class ModBehaviour
+    internal sealed class NurseNpcRuntimeModule : BossRushRuntimeModuleBase
     {
+        private ModBehaviour owner;
+        private bool destroyed;
+        public override string ModuleName { get { return "NurseNPC"; } }
+        public override void OnAwake(ModBehaviour owner) { this.owner = owner; destroyed = false; }
+        public override void OnDestroy()
+        {
+            if (destroyed) return;
+            destroyed = true;
+            try { DestroyNurseNPC(); }
+            finally { owner = null; }
+        }
+
+        internal GameObject NurseNPCInstance { get { return nurseNPCInstance; } }
+        internal static GameObject GetPrefabForRuntime() { return LoadNurseAssetBundle() ? nursePrefab : null; }
+
         // ============================================================================
         // 护士实例和资源
         // ============================================================================
@@ -38,7 +53,7 @@ namespace BossRush
         /// <summary>
         /// 加载护士 AssetBundle
         /// </summary>
-        private bool LoadNurseAssetBundle()
+        internal static bool LoadNurseAssetBundle()
         {
             return NPCAssetBundleHelper.LoadNPCPrefab(
                 "nursenpc", "NurseNPC", "[NurseNPC]",
@@ -61,20 +76,22 @@ namespace BossRush
             // 获取其他NPC位置（如果存在）以避免重叠
             NPCExceptionHandler.TryExecute(() =>
             {
+                GameObject courierNPCInstance = owner.NurseCourierNpcInstanceForRuntime;
                 if (courierNPCInstance != null)
                 {
                     courierPosition = courierNPCInstance.transform.position;
-                    DevLog("[NurseNPC] 检测到快递员位置: " + courierPosition + "，将避开");
+                    ModBehaviour.DevLog("[NurseNPC] 检测到快递员位置: " + courierPosition + "，将避开");
                 }
+                GameObject goblinNPCInstance = owner.NurseGoblinNpcInstanceForRuntime;
                 if (goblinNPCInstance != null)
                 {
                     goblinPosition = goblinNPCInstance.transform.position;
-                    DevLog("[NurseNPC] 检测到哥布林位置: " + goblinPosition + "，将避开");
+                    ModBehaviour.DevLog("[NurseNPC] 检测到哥布林位置: " + goblinPosition + "，将避开");
                 }
             }, "ModBehaviour.GetNurseSpawnPosition - 获取其他NPC位置");
             
             // 从配置中查询护士刷新位置
-            Vector3[] sharedSpawnPoints = GetSharedCommonNPCSpawnPointsForScene(sceneName);
+            Vector3[] sharedSpawnPoints = ModBehaviour.GetSharedCommonNPCSpawnPointsForScene(sceneName);
             if (NPCSpawnConfig.TryGetSharedSpawnPosition(sharedSpawnPoints, out Vector3 position, new[] { courierPosition, goblinPosition }, 10f, requireAvoidance: true))
             {
                 return position;
@@ -82,16 +99,16 @@ namespace BossRush
 
             if (sharedSpawnPoints != null && sharedSpawnPoints.Length > 0)
             {
-                DevLog("[NurseNPC] 所有护士刷新点都与其他NPC过近，跳过本次生成");
+                ModBehaviour.DevLog("[NurseNPC] 所有护士刷新点都与其他NPC过近，跳过本次生成");
                 return Vector3.zero;
             }
             
             // 未配置的场景使用随机刷新点
-            Vector3[] spawnPoints = GetCurrentSceneSpawnPoints();
+            Vector3[] spawnPoints = owner.GetCurrentSceneSpawnPoints();
             if (spawnPoints != null && spawnPoints.Length > 0)
             {
                 int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
-                DevLog("[NurseNPC] 随机刷新点 [" + randomIndex + "/" + spawnPoints.Length + "]");
+                ModBehaviour.DevLog("[NurseNPC] 随机刷新点 [" + randomIndex + "/" + spawnPoints.Length + "]");
                 return spawnPoints[randomIndex];
             }
             return Vector3.zero;
@@ -102,13 +119,13 @@ namespace BossRush
         /// </summary>
         private bool ShouldSpawnNurse(string sceneName)
         {
-            if (ShouldUseRandomSupportNpcSelection(sceneName))
+            if (owner.ShouldUseRandomSupportNpcSelection(sceneName))
             {
-                return IsValidBossRushArenaScene(sceneName);
+                return owner.IsValidBossRushArenaScene(sceneName);
             }
-            if (UsesArenaSupportNpcPlacement())
+            if (owner.UsesArenaSupportNpcPlacement())
             {
-                return IsValidBossRushArenaScene(sceneName);
+                return owner.IsValidBossRushArenaScene(sceneName);
             }
 
             return NPCSpawnConfig.HasCourierNormalModeConfig(sceneName);
@@ -120,9 +137,9 @@ namespace BossRush
         /// <param name="overrideSpawnPos">强制刷新位置（用于婚礼教堂等特殊场景）</param>
         /// <param name="stayStillOnSpawn">刷新后是否保持不动</param>
         /// <param name="forceSpawn">是否忽略普通模式刷新条件</param>
-        public void SpawnNurseNPC(Vector3? overrideSpawnPos = null, bool stayStillOnSpawn = false, bool forceSpawn = false)
+        internal void SpawnNurseNPC(Vector3? overrideSpawnPos = null, bool stayStillOnSpawn = false, bool forceSpawn = false)
         {
-            DevLog("[NurseNPC] 开始生成护士...");
+            ModBehaviour.DevLog("[NurseNPC] 开始生成护士...");
             
             // 懒加载：在NPC生成时统一检查并应用每日好感度衰减
             NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(NurseAffinityConfig.NPC_ID, "[NurseNPC]");
@@ -130,21 +147,21 @@ namespace BossRush
             // 已婚后不再参与普通地图刷新（仅婚礼教堂强制生成）
             if (!forceSpawn && AffinityManager.IsMarriedToPlayer(NurseAffinityConfig.NPC_ID))
             {
-                DevLog("[NurseNPC] 已与玩家结婚，跳过普通地图刷新");
+                ModBehaviour.DevLog("[NurseNPC] 已与玩家结婚，跳过普通地图刷新");
                 return;
             }
             
             // 如果已经存在，不重复生成
             if (nurseNPCInstance != null)
             {
-                DevLog("[NurseNPC] 护士已存在，跳过生成");
+                ModBehaviour.DevLog("[NurseNPC] 护士已存在，跳过生成");
                 return;
             }
             
             // 加载 AssetBundle
             if (!LoadNurseAssetBundle())
             {
-                DevLog("[NurseNPC] 无法加载护士资源，跳过生成");
+                ModBehaviour.DevLog("[NurseNPC] 无法加载护士资源，跳过生成");
                 return;
             }
             
@@ -154,19 +171,19 @@ namespace BossRush
             // 检查场景是否配置了护士刷新点
             if (!forceSpawn && !ShouldSpawnNurse(currentSceneName))
             {
-                DevLog("[NurseNPC] 场景 " + currentSceneName + " 未配置护士刷新点，跳过生成");
+                ModBehaviour.DevLog("[NurseNPC] 场景 " + currentSceneName + " 未配置护士刷新点，跳过生成");
                 return;
             }
             
             Vector3 spawnPos = overrideSpawnPos.HasValue
                 ? overrideSpawnPos.Value
                 : GetNurseSpawnPosition(currentSceneName);
-            DevLog("[NurseNPC] 场景: " + currentSceneName + ", 位置: " + spawnPos);
+            ModBehaviour.DevLog("[NurseNPC] 场景: " + currentSceneName + ", 位置: " + spawnPos);
             
             // 检查是否获取到有效位置
             if (spawnPos == Vector3.zero)
             {
-                DevLog("[NurseNPC] 无法获取刷新点，跳过生成");
+                ModBehaviour.DevLog("[NurseNPC] 无法获取刷新点，跳过生成");
                 return;
             }
             
@@ -176,7 +193,7 @@ namespace BossRush
             {
                 // 与哥布林逻辑保持一致
                 spawnPos = hit.point + new Vector3(0f, 0.1f, 0f);
-                DevLog("[NurseNPC] Raycast 修正位置: " + spawnPos);
+                ModBehaviour.DevLog("[NurseNPC] Raycast 修正位置: " + spawnPos);
             }
             
             try
@@ -209,14 +226,14 @@ namespace BossRush
                     nurseMovement = nurseNPCInstance.AddComponent<NurseMovement>();
                 }
                 nurseMovement.SetSceneName(currentSceneName);
-                DevLog("[NurseNPC] 移动组件添加成功");
+                ModBehaviour.DevLog("[NurseNPC] 移动组件添加成功");
 
                 // 婚礼教堂中的已婚NPC暂时站桩不动
                 if (stayStillOnSpawn)
                 {
                     nurseMovement.StopMove();
                     nurseMovement.enabled = false;
-                    DevLog("[NurseNPC] 已设置为站桩模式（不移动）");
+                    ModBehaviour.DevLog("[NurseNPC] 已设置为站桩模式（不移动）");
                 }
                 
                 // 添加交互组件（主交互 + 独立服务锚点）
@@ -226,7 +243,7 @@ namespace BossRush
                     interactable = nurseNPCInstance.AddComponent<NurseInteractable>();
                 }
                 
-                DevLog("[NurseNPC] 护士NPC生成成功，位置: " + spawnPos);
+                ModBehaviour.DevLog("[NurseNPC] 护士NPC生成成功，位置: " + spawnPos);
             }
             catch (Exception e)
             {
@@ -243,21 +260,22 @@ namespace BossRush
         /// <summary>
         /// 销毁护士 NPC
         /// </summary>
-        public void DestroyNurseNPC()
+        internal void DestroyNurseNPC()
         {
             if (nurseNPCInstance != null)
             {
-                DevLog("[NurseNPC] 销毁护士NPC");
+                ModBehaviour.DevLog("[NurseNPC] 销毁护士NPC");
                 UnityEngine.Object.Destroy(nurseNPCInstance);
-                nurseNPCInstance = null;
-                nurseController = null;
+
             }
+            nurseNPCInstance = null;
+            nurseController = null;
         }
         
         /// <summary>
         /// 获取护士控制器引用
         /// </summary>
-        public NurseNPCController GetNurseController()
+        internal NurseNPCController GetNurseController()
         {
             return nurseController;
         }
@@ -265,7 +283,7 @@ namespace BossRush
         /// <summary>
         /// 护士NPC是否已生成
         /// </summary>
-        public bool IsNurseSpawned()
+        internal bool IsNurseSpawned()
         {
             return nurseNPCInstance != null;
         }

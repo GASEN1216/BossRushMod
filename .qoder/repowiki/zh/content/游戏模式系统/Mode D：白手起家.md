@@ -14,7 +14,7 @@ F3 当前波快照改为每次真实击杀后让出一帧，异常输出完整�
 - [ModeDEquipment.cs](file://ModeD/ModeDEquipment.cs)
 - [ModeDEquipment_StarterKit.cs](file://ModeD/ModeDEquipment_StarterKit.cs)
 - [ModeDGlobalLoot.cs](file://ModeD/ModeDGlobalLoot.cs)
-- [ModeDWaves.cs](file://ModeD/ModeDWaves.cs)
+- [ModeD.cs](file://ModeD/ModeD.cs)
 - [ModeDInteractables.cs](file://ModeD/ModeDInteractables.cs)
 - [ModeDRuntimeModule.cs](file://ModeD/ModeDRuntimeModule.cs)
 - [Config.cs](file://Config/Config.cs)
@@ -49,7 +49,7 @@ Mode D 由多个职责清晰的模块组成：
 graph TB
 A["模式核心<br/>ModeD.cs"] --> B["装备系统<br/>ModeDEquipment.cs / StarterKit"]
 A --> C["全局掉落<br/>ModeDGlobalLoot.cs"]
-A --> D["波次管理<br/>ModeDWaves.cs"]
+A --> D["波次管理<br/>ModeD.cs"]
 A --> E["交互组件<br/>ModeDInteractables.cs"]
 A --> F["运行时模块<br/>ModeDRuntimeModule.cs"]
 A --> G["配置系统<br/>Config.cs"]
@@ -60,7 +60,7 @@ A --> G["配置系统<br/>Config.cs"]
 - [ModeDEquipment.cs:469-623](file://ModeD/ModeDEquipment.cs#L469-L623)
 - [ModeDEquipment_StarterKit.cs:44-116](file://ModeD/ModeDEquipment_StarterKit.cs#L44-L116)
 - [ModeDGlobalLoot.cs:64-208](file://ModeD/ModeDGlobalLoot.cs#L64-L208)
-- [ModeDWaves.cs:45-138](file://ModeD/ModeDWaves.cs#L45-L138)
+- [ModeD.cs:45-138](file://ModeD/ModeD.cs#L238)
 - [ModeDInteractables.cs:118-194](file://ModeD/ModeDInteractables.cs#L118-L194)
 - [ModeDRuntimeModule.cs:12-30](file://ModeD/ModeDRuntimeModule.cs#L12-L30)
 - [Config.cs:55-56](file://Config/Config.cs#L55-L56)
@@ -78,7 +78,7 @@ A --> G["配置系统<br/>Config.cs"]
   - 配件池：按槽位有限随机抽样安装，避免大量 Instantiate/Destroy
 - 全局掉落（ModeDGlobalLoot.cs）
   - 预热与缓存全物品池，按品质分桶；支持历史/非历史两种品质分布；皇冠权重降低
-- 波次管理（ModeDWaves.cs）
+- 波次管理（ModeD.cs）
   - 第1-5波全小怪，6-10波1个Boss+小怪，11-15波2个Boss+小怪，16+波全Boss
   - 分帧生成、安全刷点、存活检测、结案计数、波次完成触发
   - 数值强化：每波约3%属性提升，统一伤害倍率为1
@@ -94,7 +94,7 @@ A --> G["配置系统<br/>Config.cs"]
 - [ModeDEquipment.cs:469-623](file://ModeD/ModeDEquipment.cs#L469-L623)
 - [ModeDEquipment_StarterKit.cs:44-116](file://ModeD/ModeDEquipment_StarterKit.cs#L44-L116)
 - [ModeDGlobalLoot.cs:64-208](file://ModeD/ModeDGlobalLoot.cs#L64-L208)
-- [ModeDWaves.cs:45-138](file://ModeD/ModeDWaves.cs#L45-L138)
+- [ModeD.cs:45-138](file://ModeD/ModeD.cs#L238)
 - [ModeDInteractables.cs:118-194](file://ModeD/ModeDInteractables.cs#L118-L194)
 - [ModeDRuntimeModule.cs:12-30](file://ModeD/ModeDRuntimeModule.cs#L12-L30)
 - [Config.cs:55-56](file://Config/Config.cs#L55-L56)
@@ -132,7 +132,7 @@ M-->>P : 提示完成波次/继续下一波
 - [ModeDEquipment_StarterKit.cs:44-116](file://ModeD/ModeDEquipment_StarterKit.cs#L44-L116)
 - [ModeDGlobalLoot.cs:64-208](file://ModeD/ModeDGlobalLoot.cs#L64-L208)
 - [ModeDInteractables.cs:68-100](file://ModeD/ModeDInteractables.cs#L68-L100)
-- [ModeDWaves.cs:45-138](file://ModeD/ModeDWaves.cs#L45-L138)
+- [ModeD.cs:45-138](file://ModeD/ModeD.cs#L238)
 
 ## 详细组件分析
 
@@ -229,7 +229,7 @@ F --> |否| R
 章节来源
 - [ModeDGlobalLoot.cs:64-208](file://ModeD/ModeDGlobalLoot.cs#L64-L208)
 
-### 波次管理系统（ModeDWaves.cs）
+### 波次管理系统（ModeD.cs）
 - 波次规则：
   - 1-5波：全小怪
   - 6-10波：1个Boss+小怪
@@ -262,14 +262,14 @@ W-->>U : 提示完成/下一波
 ```
 
 图表来源
-- [ModeDWaves.cs:45-138](file://ModeD/ModeDWaves.cs#L45-L138)
-- [ModeDWaves.cs:185-334](file://ModeD/ModeDWaves.cs#L185-L334)
-- [ModeDWaves.cs:659-681](file://ModeD/ModeDWaves.cs#L659-L681)
+- [ModeD.cs:45-138](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:185-334](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:659-681](file://ModeD/ModeD.cs#L238)
 
 章节来源
-- [ModeDWaves.cs:45-138](file://ModeD/ModeDWaves.cs#L45-L138)
-- [ModeDWaves.cs:185-334](file://ModeD/ModeDWaves.cs#L185-L334)
-- [ModeDWaves.cs:659-681](file://ModeD/ModeDWaves.cs#L659-L681)
+- [ModeD.cs:45-138](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:185-334](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:659-681](file://ModeD/ModeD.cs#L238)
 
 ### 交互组件（ModeDInteractables.cs）
 - 注入“冲下一波”到路牌，运行时隐藏/显示
@@ -308,7 +308,7 @@ Waves --> Inter
 - [ModeD.cs:126-227](file://ModeD/ModeD.cs#L126-L227)
 - [ModeDEquipment.cs:469-623](file://ModeD/ModeDEquipment.cs#L469-L623)
 - [ModeDGlobalLoot.cs:64-208](file://ModeD/ModeDGlobalLoot.cs#L64-L208)
-- [ModeDWaves.cs:45-138](file://ModeD/ModeDWaves.cs#L45-L138)
+- [ModeD.cs:45-138](file://ModeD/ModeD.cs#L238)
 - [ModeDInteractables.cs:118-194](file://ModeD/ModeDInteractables.cs#L118-L194)
 - [Config.cs:55-56](file://Config/Config.cs#L55-L56)
 
@@ -333,10 +333,10 @@ Waves --> Inter
   - 路牌交互清晰，支持手动开波与清理箱子
 
 章节来源
-- [ModeDWaves.cs:185-334](file://ModeD/ModeDWaves.cs#L185-L334)
+- [ModeD.cs:185-334](file://ModeD/ModeD.cs#L238)
 - [ModeDEquipment.cs:412-459](file://ModeD/ModeDEquipment.cs#L412-L459)
 - [ModeDGlobalLoot.cs:64-208](file://ModeD/ModeDGlobalLoot.cs#L64-L208)
-- [ModeDWaves.cs:692-781](file://ModeD/ModeDWaves.cs#L692-L781)
+- [ModeD.cs:692-781](file://ModeD/ModeD.cs#L238)
 
 ## 故障排查指南
 - 常见问题
@@ -350,7 +350,7 @@ Waves --> Inter
   - 验证配置项是否正确加载（如 modeDEnemiesPerWave）
 
 章节来源
-- [ModeDWaves.cs:57-65](file://ModeD/ModeDWaves.cs#L57-L65)
+- [ModeD.cs:57-65](file://ModeD/ModeD.cs#L238)
 - [ModeDGlobalLoot.cs:64-208](file://ModeD/ModeDGlobalLoot.cs#L64-L208)
 - [ModeDEquipment.cs:469-623](file://ModeD/ModeDEquipment.cs#L469-L623)
 
@@ -385,10 +385,12 @@ Mode D 通过独立敌池、随机装备与全局掉落池，构建了“从零�
 - [ModeDEquipment_StarterKit.cs:44-116](file://ModeD/ModeDEquipment_StarterKit.cs#L44-L116)
 - [ModeD.cs:580-799](file://ModeD/ModeD.cs#L580-L799)
 - [ModeDGlobalLoot.cs:64-208](file://ModeD/ModeDGlobalLoot.cs#L64-L208)
-- [ModeDWaves.cs:155-177](file://ModeD/ModeDWaves.cs#L155-L177)
+- [ModeD.cs:155-177](file://ModeD/ModeD.cs#L238)
 
 ## 2026-09-18 征程契约的近战开局工具
 
 `ModeD/ModeDEquipment_StarterKit.cs` 保留原随机配装。仅 `modeDActive` 且征程活动契约含近战击杀目标时，保证调用原 `GiveRandomMeleeWeapon`；无需另建物品池或装备管线。无契约/待交付沿用原 40% 分支，E/F 共用整备不受该保证影响。判据位于 `CampaignObjectiveTracker.NeedsMeleeStarterKit`，开局发装早于追踪武装，所以读取当前契约，不依赖 `IsArmed`。门控由 `CampaignFlowGuard` 钉住，契约判据由 `CampaignPlayability` 执行。局内可正常拾取和穿戴装备，第二章不是全程裸装挑战。
 
 2026-09-22 审计修复（COMPAT，CR-2026-09-22-049）：`ModeDRuntimeModule` 持有生成代次，开局、结束、切图和销毁都会失效旧请求。分帧刷怪队列在每次取共享队列项前验证 owner；单敌生成、成功/失败结案与自动下一波也持有同一代次，因此重开后同号波次不会接收旧任务。沿用既有自动休整 unscaled 计时。`ModeDAsyncOwnerGuard` 与 `AuditModeLifecycle` 验证接线和跨局同号隔离（L1/L2）；实际切图时序待 L3。
+
+2026-09-25 模块解耦（COMPAT）：[ModeDItemPool.cs](file://ModeD/ModeDItemPool.cs) 与配装、StarterKit、GlobalLoot partial 持有 D/E/F 共用的发装池、物化计划、品质分桶和全局掉落缓存；装配时绑定既有 Boss 候选目录、Legacy 配置、征程近战工具判据和丧尸候选排除判据。后两项仍在原随机分支位置求值。[ModeDRuntimeModule.cs](file://ModeD/ModeDRuntimeModule.cs) 持有 D 波次状态、敌人列表与协程句柄，敌池扫描、预设选择、自动下一波、路牌、刷怪、结算与启停主体均进入同一模块。裸装及玩家背包检查由 [ModeEntryInventory.cs](file://Utilities/ModeEntryInventory.cs) 承接；[ModeD.cs](file://ModeD/ModeD.cs) 保留跨模式入场协调与兼容桥。`CaptureValidity` 直接读取模块状态，D 与 Arena 的完整性计时仍沿用原共享时钟和调度槽位。隔离正式编译、Mode D 守卫与全量 69 项执行回归通过；波次结案回归直接链接生产模块，覆盖迟到任务、生成未结案、活敌及重复完成门，真实游戏仍待验收。

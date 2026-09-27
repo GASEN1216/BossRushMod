@@ -34,8 +34,8 @@ ROOT = Path(__file__).resolve().parents[1]
 # 2026-09-23：SkyIslandHud / SkyIslandStoryPresentation 超 1200 行，按 AGENTS §4.15 原样拆出同一 partial 的新文件。
 # 读主文件时把拆出去的那一半接在后面，断言照旧针对整个类。
 SPLIT_PARTS = {
-    "DebugAndTools/SkyIsland/SkyIslandHud.cs": "DebugAndTools/SkyIsland/SkyIslandHud_Layout.cs",
-    "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs": "DebugAndTools/SkyIsland/SkyIslandStoryPresentation_Parts.cs",
+    "SkyIsland/SkyIslandHud.cs": "SkyIsland/SkyIslandHud_Layout.cs",
+    "SkyIsland/SkyIslandStoryPresentation.cs": "SkyIsland/SkyIslandStoryPresentation_Parts.cs",
 }
 
 
@@ -50,10 +50,10 @@ sys.path.insert(0, str(ROOT / "tests"))
 from cs_source_util import clean_source
 
 UI = "Common/UI/BossRushUI.cs"
-ART = "DebugAndTools/SkyIsland/SkyIslandUiArt.cs"
-HUD = "DebugAndTools/SkyIsland/SkyIslandHud.cs"
-CONTROLS = "DebugAndTools/SkyIsland/SkyIslandControls.cs"
-PANEL = "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs"
+ART = "SkyIsland/SkyIslandUiArt.cs"
+HUD = "SkyIsland/SkyIslandHud.cs"
+CONTROLS = "SkyIsland/SkyIslandControls.cs"
+PANEL = "SkyIsland/SkyIslandStoryPresentation.cs"
 PATHS = [UI, ART, HUD, CONTROLS, PANEL]
 
 SCENE_P90 = 0.679

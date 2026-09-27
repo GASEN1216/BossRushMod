@@ -18,7 +18,7 @@ source_files:
     - Integration/DailyReport/DailyReportRuntimeModule.cs
     - Integration/DailyReport/DailyReportInteractable.cs
     - Integration/DailyReport/DailyReportUI.cs
-    - Integration/DailyReport/DailyReportUIBridge.cs
+    - Integration/DailyReport/DailyReportRuntimeModule_UI.cs
     - Integration/DailyReport/DailyReportMailboxBuilder.cs
     - Integration/DailyReport/DailyReportMailboxRuntime.cs
     - Config/ConfigDailyReport.cs
@@ -219,7 +219,7 @@ Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存�
 
 ## 2026-09-06 建筑注入器归属收口（D-1）
 
-`SAFE / COMPAT`。报箱、征程公告板、后山展示柜、遗种巢的建筑实现分别归 `DailyReportMailboxBuilder`、`CampaignBoardBuilder`、`ShowcaseBuildingBuilder`、`PetNestBuilder` 四个模块类型，各自持有创建它的 `ModBehaviour _owner`。原有 init、early、restore、notes、slot-change、cleanup 入口保留在 `Integration/ContentBuildingBridges.cs` 薄转发；同一宿主内复用模块实例，既有场景装配顺序、事件退订、恢复协程和清理义务不变。
+`SAFE / COMPAT`。报箱、征程公告板、后山展示柜、遗种巢的建筑实现分别归 `DailyReportMailboxBuilder`、`CampaignBoardBuilder`、`ShowcaseBuildingBuilder`、`PetNestBuilder` 四个模块类型，各自持有创建它的 `ModBehaviour _owner`。原有 init、early、restore、notes、slot-change、cleanup 入口保留在 `Integration/IntegrationHostCompatibility.cs` 薄转发；同一宿主内复用模块实例，既有场景装配顺序、事件退订、恢复协程和清理义务不变。
 
 官方建筑反射绑定共用 `Common/Buildings/BuildingInjectionHelper.cs`，包括查询失败结果的一次解析缓存。模型包围盒、shader 与碰撞体工具共用 `Common/Buildings/BuildingModelHelper.cs`；报箱经 owner 的只读模型属性借许愿台现有缓存，加载/卸载仍归许愿台。基地重绘保留唯一 ModBehaviour 协程，由模块显式请求。没有更改建筑 ID、prefab 名、造价、建造条件或官方存档格式。
 
@@ -256,3 +256,9 @@ Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存�
 淡出曲线使用 0 到 1 的插值进度：官方 CanvasGroupFade 已经把目标 alpha 设为 0，反向曲线会导致关闭时先消失、再亮起。详细根因、验证与人工边界见 `.qoder/repowiki/zh/content/高级功能/日报悬赏欠款.md` 的同日人工复查章节。
 
 本轮 Sprite 别名、几何、导入预算及其余贴图载荷保持原值。离线取色不替代 owner 在游戏中检查描边、字体、滚轮及中英文末行。完整交付与复测见 `docs/reports/testing/20260922人工实测复核修复记录.md`。
+
+## 2026-09-26 日报面板 owner 归位（COMPAT）
+
+`dailyReportView` 与首次创建、复用和打开逻辑现在由既有 `DailyReportRuntimeModule` 的 `DailyReportRuntimeModule_UI.cs` 持有。`IntegrationHostCompatibility.cs` 保留公开 `OpenDailyReportUI()`，每次读取一次原配置门并转发。官方 UI 管理器缺失或创建返回 null 时仍可重试；切图销毁父对象后按 Unity 对象语义重建。保存、退订、View、报箱与静态缓存的卸载顺序维持原模块顺序。
+
+`python tools/run_runtime_regressions.py --filter DailyReportHostUI` 完整编译真实模块和 UI owner，执行当前宿主装配/入口及真实 `DailyReportView.CleanupRuntime`。夹具覆盖 16 条行为断言，包含 Flush/Close 抛异常时继续清理和父对象销毁重建；存档、UI 呈现与 Unity 调度为替身，证据为 L2。L3 检查应从基地报箱打开日报，ESC 关闭后重开，再切图返回重开；打不开、重复面板、遗留遮罩或异常日志均不合格。

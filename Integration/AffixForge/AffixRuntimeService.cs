@@ -88,8 +88,8 @@ namespace BossRush
         private static bool _rebuildScheduled;
 
         private static readonly List<ActiveAffix> _active = new List<ActiveAffix>();
-        private static readonly List<ZombieModeAttributeModifierRecord> _persistentModifiers
-            = new List<ZombieModeAttributeModifierRecord>();
+        private static readonly List<BossRushStatModifierRecord> _persistentModifiers
+            = new List<BossRushStatModifierRecord>();
         private static readonly List<AffixSlotView> _slotScratch = new List<AffixSlotView>();
 
         /// <summary>Modifier 归属标识，移除时按此对象定位。</summary>

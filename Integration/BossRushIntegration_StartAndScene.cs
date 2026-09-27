@@ -22,60 +22,7 @@ namespace BossRush
         /// </summary>
         private void InjectLocalization_Extra_Integration()
         {
-            LocalizationInjector.InjectUILocalization();
-            LocalizationInjector.InjectMapNameLocalizations();
-            LocalizationInjector.InjectCommonNPCLocalization();
-            LocalizationInjector.InjectCourierNPCLocalization();
-            LocalizationInjector.InjectGoblinNPCLocalization();
-            LocalizationInjector.InjectNurseNPCLocalization();
-            AwenCourierTokenConfig.InjectLocalization();
-            LocalizationInjector.InjectColdQuenchFluidLocalization();
-            LocalizationInjector.InjectBrickStoneLocalization();
-            LocalizationInjector.InjectDiamondLocalization();
-            LocalizationInjector.InjectDiamondRingLocalization();
-            LocalizationInjector.InjectCalmingDropsLocalization();
-            LocalizationInjector.InjectPeaceCharmLocalization();
-            DingdangDrawingConfig.InjectLocalization();
-            WildHornConfig.InjectLocalization();
-            AwenLootSweepTokenConfig.InjectLocalization();
-            FactionFlagConfig.InjectLocalization();
-            // Mode H 的 BossRush_ModeH_ 键统一来自 Localization/ModeHLocalization.cs
-            ModeHLocalization.Inject();
-            // 遗种巢的 BossRush_PetNest_ 键统一来自 Localization/PetNestLocalization.cs
-            PetNestLocalization.Inject();
-
-            // 随机事件的 BossRush_RandomEvent_ 键：该模块绝大多数文案走内联 L10n.T，
-            // 只有商人交互名走官方按 key 查表的 _overrideInteractNameKey，必须注入。
-            RandomEventsLocalization.Inject();
-            // 日报的 BossRush_DailyReport_ 键统一来自 Localization/DailyReportLocalization.cs
-            DailyReportLocalization.Inject();
-            // 鸭皇图鉴的 BossRush_Codex_ 键统一来自 Localization/CodexLocalization.cs
-            CodexLocalization.Inject();
-            // 词缀锻造的 BossRush_Affix 键统一来自 Localization/AffixForgeLocalization.cs
-            AffixForgeLocalization.Inject();
-            // 鸭王征程的建筑/交互/线索键统一来自 Localization/CampaignLocalization.cs
-            CampaignLocalization.Inject();
-            // 后山种子与出击餐的 DisplayNameRaw 注入（AGENTS.md 4.4）
-            BackMountainItems.InjectLocalization();
-            // 后山建筑与交互键统一来自 Localization/BackMountainLocalization.cs
-            BackMountainLocalization.Inject();
-            // 天空岛物品的 DisplayNameRaw 注入（AGENTS.md 4.4）
-            SkyIslandItems.InjectLocalization();
-            // 失落的航向仪（Jeff 序章的交付物）的 DisplayNameRaw 注入（AGENTS.md 4.4）
-            SkyIslandNavInstrumentConfig.InjectLocalization();
-            // 20 处见闻在官方笔记图鉴里的标题与正文（官方查 Note_{key}_Title / _Content）。
-            // 文案不在那边另写一份，取的就是 SkyIslandPointText.Name / Lore。
-            SkyIslandNoteBridge.InjectNoteKeys();
-            // Jeff 序章与岛上三条主线的官方 Quest 标题与说明；任务进度由 Mod 分槽故事事实驱动。
-            SkyIslandPreludeFlow.InjectLocalizations(); SkyIslandOfficialQuestTable.InjectLocalizations();
-            RespawnItemConfig.InjectLocalization();
-            LocalizationInjector.InjectZombieModeLocalization();
-            InjectModeFItemLocalization();
-            EquipmentLocalization.InjectAllEquipmentLocalizations();
-            NewWeaponPlaceholderRegistry.InjectLocalization();
-            InjectReverseScaleLocalization();
-            LocalizationInjector.InjectWeddingBuildingLocalization();
-            DevLog("[BossRush] extension localization injected");
+            bossRushIntegrationRuntime.InjectLocalization_Extra_Integration();
         }
 
         void Start_Integration()
@@ -96,25 +43,17 @@ namespace BossRush
             EnsureLanguageChangeSubscription();
             RegisterCustomWeaponRuntimeConfigs();
 
-            if (runtimeStateMonitorCoroutine == null)
-            {
-                runtimeStateMonitorCoroutine = StartCoroutine(MonitorLateRuntimeStateRestore());
-            }
+            bossRushIntegrationRuntime.StartRuntimeStateMonitor();
 
             SceneManager.sceneLoaded += OnSceneLoaded;
             SceneLoader.onAfterSceneInitialize += OnAfterSceneInitialize_Integration;
-            StockShop.OnItemPurchased += OnItemPurchased_Integration;
+            bossRushIntegrationRuntime.SubscribePurchaseEvents();
 
-            SavesSystem.OnCollectSaveData += OnCollectSaveData_TicketStock;
-            SavesSystem.OnSetFile += OnSetFile_TicketStock;
-            SavesSystem.OnCollectSaveData += OnCollectSaveData_JournalStock;
-            SavesSystem.OnSetFile += OnSetFile_JournalStock;
-            SavesSystem.OnCollectSaveData += OnCollectSaveData_MedalStock;
-            SavesSystem.OnSetFile += OnSetFile_MedalStock;
-            SavesSystem.OnCollectSaveData += OnCollectSaveData_BrickStoneStock;
-            SavesSystem.OnSetFile += OnSetFile_BrickStoneStock;
-            SavesSystem.OnCollectSaveData += OnCollectSaveData_CodexBookStock;
-            SavesSystem.OnSetFile += OnSetFile_CodexBookStock;
+            bossRushIntegrationRuntime.SubscribeTicketStockEvents();
+            bossRushIntegrationRuntime.SubscribeJournalStockEvents();
+            achievementRuntime.SubscribeMedalStockEvents();
+            bossRushIntegrationRuntime.SubscribeBrickStoneStockEvents();
+            bossRushIntegrationRuntime.SubscribeCodexBookStockEvents();
             SavesSystem.OnSetFile += OnSetFile_DeathWraith;
 
             RegisterDragonSetEvents();
@@ -131,27 +70,19 @@ namespace BossRush
 
         void OnDestroy_Integration()
         {
-            if (runtimeStateMonitorCoroutine != null)
-            {
-                StopCoroutine(runtimeStateMonitorCoroutine);
-                runtimeStateMonitorCoroutine = null;
-            }
+            bossRushIntegrationRuntime.StopRuntimeStateMonitor();
 
             CleanupDeferredIntegrationBootstrap_Integration();
 
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SceneLoader.onAfterSceneInitialize -= OnAfterSceneInitialize_Integration;
-            StockShop.OnItemPurchased -= OnItemPurchased_Integration;
-            SavesSystem.OnCollectSaveData -= OnCollectSaveData_TicketStock;
-            SavesSystem.OnSetFile -= OnSetFile_TicketStock;
-            SavesSystem.OnCollectSaveData -= OnCollectSaveData_JournalStock;
-            SavesSystem.OnSetFile -= OnSetFile_JournalStock;
-            SavesSystem.OnCollectSaveData -= OnCollectSaveData_MedalStock;
-            SavesSystem.OnSetFile -= OnSetFile_MedalStock;
-            SavesSystem.OnCollectSaveData -= OnCollectSaveData_BrickStoneStock;
-            SavesSystem.OnSetFile -= OnSetFile_BrickStoneStock;
-            SavesSystem.OnCollectSaveData -= OnCollectSaveData_CodexBookStock;
-            SavesSystem.OnSetFile -= OnSetFile_CodexBookStock;
+            bossRushIntegrationRuntime.UnsubscribePurchaseEvents();
+            bossRushIntegrationRuntime.UnsubscribeDragonBreathEffectEvent();
+            bossRushIntegrationRuntime.UnsubscribeTicketStockEvents();
+            bossRushIntegrationRuntime.UnsubscribeJournalStockEvents();
+            achievementRuntime.UnsubscribeMedalStockEvents();
+            bossRushIntegrationRuntime.UnsubscribeBrickStoneStockEvents();
+            bossRushIntegrationRuntime.UnsubscribeCodexBookStockEvents();
             SavesSystem.OnSetFile -= OnSetFile_DeathWraith;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
             // 卸载前把内存中尚未写盘的亡魂列表刷一次，再解绑刷写回调，避免丢失死亡记录。
@@ -290,42 +221,6 @@ namespace BossRush
             ObjectCache.ResetStaticCaches();
         }
 
-        /// <summary>
-        /// 商店购买事件处理：检测玩家是否大量购买 ID 105 物品（进货行为）
-        /// 仅在 BossRush 加油站（ammoShop）中生效
-        /// </summary>
-        private void OnItemPurchased_Integration(StockShop shop, Item item)
-        {
-            try
-            {
-                if (shop == null || item == null) return;
-
-                // 仅在 BossRush 加油站中检测
-                if (ammoShop == null || shop != ammoShop) return;
-
-                // 检测是否购买了 ID 105 的物品
-                if (item.TypeID == 105)
-                {
-                    item105PurchaseCount++;
-
-                    // 达到 10 个时显示横幅提示
-                    if (item105PurchaseCount == 10)
-                    {
-                        ShowBigBanner(L10n.T("喂喂，你这家伙来这进货了是吗(*´·д·)?", "Hey, are you here to stock up? (*´·д·)?"));
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] [WARNING] 处理商店购买事件失败: " + e.Message);
-            }
-        }
-
-        private void ScheduleWishRewardPoolWarmup()
-        {
-            StartCoroutine(WishFountainService.WarmupWishRewardPoolAfterDelay());
-        }
-
         private void OnSceneLoaded_Integration(Scene scene, LoadSceneMode mode)
         {
             DevLog("[BossRush] scene loaded: " + scene.name);
@@ -355,8 +250,8 @@ namespace BossRush
 
             if (isGameplayScene)
             {
-                StartCoroutine(DelayedRestoreReforgeDataForInventory());
-                StartCoroutine(DelayedSubscribeDragonBreathEvents());
+                StartCoroutine(bossRushIntegrationRuntime.DelayedRestoreReforgeDataForInventory());
+                StartCoroutine(bossRushIntegrationRuntime.DelayedSubscribeDragonBreathEvents());
             }
 
             SetupFlightTotemForScene(scene);
@@ -368,7 +263,7 @@ namespace BossRush
 
             if (isGameplayScene)
             {
-                StartCoroutine(DelayedApplyDragonGunAmmoOverride());
+                StartCoroutine(bossRushIntegrationRuntime.DelayedApplyDragonGunAmmoOverride());
             }
 
             if (!IsDeathWraithSystemEnabled())
@@ -501,20 +396,7 @@ namespace BossRush
                             CleanupPhantomWitchTrackedStateOnArenaExit();
                         }
 
-                        try
-                        {
-                            System.Type notifType = typeof(NotificationText);
-                            System.Reflection.FieldInfo pendingField = notifType.GetField("pendingTexts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-                            if (pendingField != null)
-                            {
-                                System.Collections.Generic.Queue<string> q = pendingField.GetValue(null) as System.Collections.Generic.Queue<string>;
-                                if (q != null)
-                                {
-                                    q.Clear();
-                                }
-                            }
-                        }
-                        catch { }
+                        uiAndSignsRuntime.ClearPendingNotifications();
 
                         SetBossRushRuntimeActive(false);
                         bossRushArenaActive = false;
@@ -523,22 +405,7 @@ namespace BossRush
                         DestroyCommonNPCs("LeaveBossRushScene");
                         spawnersDisabled = false;
 
-                        try
-                        {
-                            if (ammoShop != null)
-                            {
-                                try
-                                {
-                                    if (ammoShop.gameObject != null)
-                                    {
-                                        UnityEngine.Object.Destroy(ammoShop.gameObject);
-                                    }
-                                }
-                                catch { }
-                                ammoShop = null;
-                            }
-                        }
-                        catch { }
+                        bossRushIntegrationRuntime.CleanupAmmoShop();
 
                         Health.OnDead -= OnEnemyDiedWithDamageInfo;
 
@@ -555,7 +422,7 @@ namespace BossRush
 
                     if (ShouldSpawnCommonNPCsInScene(scene.name))
                     {
-                        StartCoroutine(DelayedSpawnCommonNPCsInNormalMode(scene.name));
+                        bossRushIntegrationRuntime.ScheduleDelayedSpawnCommonNPCsInNormalMode(scene.name);
                     }
 
                     ScheduleRestoreFollowingSpouse(scene.name, "NormalSceneLoaded");
@@ -572,233 +439,9 @@ namespace BossRush
             }
         }
 
-        private System.Collections.IEnumerator DelayedRestoreReforgeDataForInventory()
+        internal void SpawnCommonNPCsForIntegrationRuntimeModule(string context)
         {
-            // 等待玩家角色可用
-            float waitTime = 0f;
-            while (CharacterMainControl.Main == null && waitTime < 10f)
-            {
-                yield return new UnityEngine.WaitForSeconds(0.5f);
-                waitTime += 0.5f;
-            }
-
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null || player.CharacterItem == null) yield break;
-
-            Inventory inventory = player.CharacterItem.Inventory;
-            if (inventory == null) yield break;
-
-            int restored = 0;
-            try
-            {
-                foreach (Item item in inventory)
-                {
-                    if (item == null) continue;
-                    if (CustomItemRuntimeStateHelper.RestoreRuntimeState(item, "PlayerInventory"))
-                    {
-                        restored++;
-                    }
-                }
-
-                restored += RestoreRuntimeStateForSlots(player.CharacterItem, "CharacterSlots");
-                restored += RestoreRuntimeStateForHoldAgent(player.CurrentHoldItemAgent, "CurrentHoldItemAgent");
-
-                if (PlayerStorage.Inventory != null)
-                {
-                    foreach (Item item in PlayerStorage.Inventory)
-                    {
-                        if (item == null) continue;
-                        if (CustomItemRuntimeStateHelper.RestoreRuntimeState(item, "PlayerStorage"))
-                        {
-                            restored++;
-                        }
-                    }
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[Reforge] 主动恢复重铸数据异常: " + e.Message);
-            }
-
-            if (restored > 0)
-            {
-                DevLog("[Reforge] 场景切换后主动恢复了 " + restored + " 件物品的重铸数据");
-            }
-        }
-
-        private System.Collections.IEnumerator MonitorLateRuntimeStateRestore()
-        {
-            WaitForSeconds wait = new WaitForSeconds(0.5f);
-
-            while (true)
-            {
-                if (!CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))
-                {
-                    yield return wait;
-                    continue;
-                }
-
-                int restored = 0;
-
-                try
-                {
-                    CharacterMainControl player = CharacterMainControl.Main;
-                    if (player != null && player.CharacterItem != null)
-                    {
-                        restored += RestoreRuntimeStateForInventory(player.CharacterItem.Inventory, "PlayerInventoryMonitor");
-                        restored += RestoreRuntimeStateForSlots(player.CharacterItem, "CharacterSlotsMonitor");
-                        restored += RestoreRuntimeStateForHoldAgent(player.CurrentHoldItemAgent, "CurrentHoldItemMonitor");
-                    }
-
-                    restored += RestoreRuntimeStateForInventory(PlayerStorage.Inventory, "PlayerStorageMonitor");
-                }
-                catch (System.Exception e)
-                {
-                    DevLog("[Reforge] 运行时状态监控异常: " + e.Message);
-                }
-
-                if (restored > 0)
-                {
-                    DevLog("[Reforge] 监控协程补恢复了 " + restored + " 件延迟实例化物品");
-                }
-
-                yield return wait;
-            }
-        }
-
-        private static int RestoreRuntimeStateForInventory(Inventory inventory, string reason)
-        {
-            if (inventory == null)
-            {
-                return 0;
-            }
-
-            int restored = 0;
-            foreach (Item item in inventory)
-            {
-                if (item == null)
-                {
-                    continue;
-                }
-
-                bool shouldRestore =
-                    CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID) ||
-                    ReforgeDataPersistence.HasReforgeData(item);
-
-                if (!shouldRestore)
-                {
-                    continue;
-                }
-
-                if (CustomItemRuntimeStateHelper.RestoreRuntimeState(item, reason))
-                {
-                    restored++;
-                }
-            }
-
-            return restored;
-        }
-
-        private static int RestoreRuntimeStateForSlots(Item characterItem, string reason)
-        {
-            if (characterItem == null || characterItem.Slots == null)
-            {
-                return 0;
-            }
-
-            int restored = 0;
-            foreach (Slot slot in characterItem.Slots)
-            {
-                if (slot == null || slot.Content == null)
-                {
-                    continue;
-                }
-
-                Item item = slot.Content;
-                bool shouldRestore =
-                    CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID) ||
-                    ReforgeDataPersistence.HasReforgeData(item);
-
-                if (!shouldRestore)
-                {
-                    continue;
-                }
-
-                if (CustomItemRuntimeStateHelper.RestoreRuntimeState(item, reason + ":" + slot.Key))
-                {
-                    restored++;
-                }
-            }
-
-            return restored;
-        }
-
-        private static int RestoreRuntimeStateForHoldAgent(DuckovItemAgent holdAgent, string reason)
-        {
-            if (holdAgent == null || holdAgent.Item == null)
-            {
-                return 0;
-            }
-
-            Item item = holdAgent.Item;
-            bool shouldRestore =
-                CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID) ||
-                ReforgeDataPersistence.HasReforgeData(item);
-
-            if (!shouldRestore)
-            {
-                return 0;
-            }
-
-            return CustomItemRuntimeStateHelper.RestoreRuntimeState(item, reason) ? 1 : 0;
-        }
-
-        /// <summary>
-        /// 普通模式下延迟生成公共NPC
-        /// 等待场景完全初始化后再生成，确保地面碰撞体等已加载
-        /// </summary>
-        private System.Collections.IEnumerator DelayedSpawnCommonNPCsInNormalMode(string sceneName)
-        {
-            // 等待场景完全加载
-            const float maxWait = 10f;
-            const float interval = 0.2f;
-            float elapsed = 0f;
-
-            while (elapsed < maxWait)
-            {
-                bool mainExists = ReadMainExistsWithWarning("DelayedSpawnCommonNPCsInNormalMode");
-                bool levelInited = ReadLevelInitedWithWarning("DelayedSpawnCommonNPCsInNormalMode");
-
-                if (mainExists && levelInited)
-                {
-                    break;
-                }
-
-                yield return new WaitForSeconds(interval);
-                elapsed += interval;
-            }
-
-            // 额外等待确保场景物理碰撞体已加载
-            yield return new WaitForSeconds(0.5f);
-
-            // 再次检查是否仍在目标场景（玩家可能已切换场景）
-            string currentScene = ReadActiveSceneNameWithWarning("DelayedSpawnCommonNPCsInNormalMode");
-
-            if (currentScene != sceneName)
-            {
-                DevLog("[NPCSpawn] 场景已切换，取消普通模式公共NPC生成");
-                yield break;
-            }
-
-            // 检查是否已进入 BossRush 模式（玩家可能在等待期间启动了 BossRush）
-            if (ShouldSuppressBaseNpcSpawnForCurrentMode())
-            {
-                DevLog("[NPCSpawn] 已进入 BossRush 模式，跳过普通模式公共NPC生成");
-                yield break;
-            }
-
-            SpawnCommonNPCs("普通模式场景初始化完成");
-            ScheduleRestoreFollowingSpouse(sceneName, "普通模式场景初始化完成");
+            SpawnCommonNPCs(context);
         }
 
     }

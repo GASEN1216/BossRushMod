@@ -301,7 +301,7 @@ namespace BossRush
     {
         public float NextDashTime;
         public bool FrenzyActive;
-        public readonly List<ZombieModeAttributeModifierRecord> FrenzyModifierRecords = new List<ZombieModeAttributeModifierRecord>();
+        public readonly List<BossRushStatModifierRecord> FrenzyModifierRecords = new List<BossRushStatModifierRecord>();
 
         public override float CooldownSeconds => ZombieModeTuning.HunterDashCooldownSeconds;
 
@@ -378,7 +378,7 @@ namespace BossRush
     /// Boss 运行期生命周期 + 卡死检测追踪。
     /// 字段写入由 ZombieModeSpawner / TickZombieModeBossController / HandleZombieModeBossHurt 维护。
     /// 与 SkillState 的差别：本类记录"是否还活着 / 上次能动 / 上次受伤"等通用追踪字段；
-    /// SkillState 记录 per-kind 的技能冷却（NextDashTime 等）。
+    /// SkillState 记录 per-kind 的技能冷却（NextDashTime 等）与常驻状态（FrenzyActive）。
     /// </summary>
     public sealed class ZombieModeBossLifecycleTrack
     {
@@ -398,7 +398,7 @@ namespace BossRush
         // 生命周期 + 卡死检测追踪（独立子对象，便于扩展新 Boss kind 时不必改 BossInstance）
         public readonly ZombieModeBossLifecycleTrack Lifecycle = new ZombieModeBossLifecycleTrack();
 
-        // per-kind 技能状态（按 Kind 实例化对应子类，承载 NextDashTime 等）
+        // per-kind 技能状态（按 Kind 实例化对应子类，承载冷却与 FrenzyActive 等常驻状态）
         public ZombieModeBossSkillState SkillState;
     }
 
@@ -415,14 +415,6 @@ namespace BossRush
         public ZombieModeRewardType RewardType;
         public ZombieModeRewardCategory Category;
         public int Weight;
-    }
-
-    public sealed class ZombieModeAttributeModifierRecord
-    {
-        public ItemStatsSystem.Item CharacterItem;
-        public ItemStatsSystem.Stat Stat;
-        public ItemStatsSystem.Stats.Modifier Modifier;
-        public string StatName = string.Empty;
     }
 
     public sealed class ZombieModeOptionRuntimeState
@@ -473,9 +465,9 @@ namespace BossRush
         public float OptionTradeoffReloadSpeedPenalty;
         public float OptionTradeoffDamageTakenPenalty;
         public float OptionTradeoffMaxHealthPenalty;
-        public readonly List<ZombieModeAttributeModifierRecord> ModifierRecords = new List<ZombieModeAttributeModifierRecord>();
-        public readonly List<ZombieModeAttributeModifierRecord> GuardianShieldRecords = new List<ZombieModeAttributeModifierRecord>();
-        public readonly List<ZombieModeAttributeModifierRecord> ContractRuntimeModifierRecords = new List<ZombieModeAttributeModifierRecord>();
+        public readonly List<BossRushStatModifierRecord> ModifierRecords = new List<BossRushStatModifierRecord>();
+        public readonly List<BossRushStatModifierRecord> GuardianShieldRecords = new List<BossRushStatModifierRecord>();
+        public readonly List<BossRushStatModifierRecord> ContractRuntimeModifierRecords = new List<BossRushStatModifierRecord>();
 
         public void Reset()
         {
@@ -735,7 +727,7 @@ namespace BossRush
         // 本局沿用的准备时长；默认 45 秒，玩家在任意波奖励界面修改后持续沿用。
         public int SelectedPreparationDurationSeconds = 45;
         public readonly Dictionary<string, float> AttributeBonuses = new Dictionary<string, float>();
-        public readonly List<ZombieModeAttributeModifierRecord> AttributeModifierRecords = new List<ZombieModeAttributeModifierRecord>();
+        public readonly List<BossRushStatModifierRecord> AttributeModifierRecords = new List<BossRushStatModifierRecord>();
         public bool AttributeModifierCleanupRegistered;
         public int GuaranteedMerchantPurchaseMinQuality;
         public bool GuaranteedMerchantPurchasePending;

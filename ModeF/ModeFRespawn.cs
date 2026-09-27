@@ -6,7 +6,7 @@ using Cysharp.Threading.Tasks;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         #region Mode F Boss Registration And Respawn
 
@@ -15,7 +15,7 @@ namespace BossRush
             = new Dictionary<CharacterMainControl, UnityAction<DamageInfo>>();
         private readonly Dictionary<CharacterMainControl, Action<DamageInfo>> modeFBossLootHandlers
             = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
-        private readonly HashSet<CharacterMainControl> modeFActiveBossSet = new HashSet<CharacterMainControl>();
+        internal readonly HashSet<CharacterMainControl> modeFActiveBossSet = new HashSet<CharacterMainControl>();
         private readonly List<MonoBehaviour> modeFBossRegenCache = new List<MonoBehaviour>(16);
         private bool modeFBossRegenCacheDirty = true;
         private readonly HashSet<int> modeFHandledBossDeathIds = new HashSet<int>();
@@ -26,7 +26,7 @@ namespace BossRush
         private readonly List<Vector3> reusableSpawnCandidates = new List<Vector3>();
         private readonly List<EnemyPresetInfo> modeFRespawnBossPresetScratch = new List<EnemyPresetInfo>();
 
-        private Teams ResolveModeFBossCombatTeam(Teams requestedFaction, EnemyPresetInfo preset, Vector3 spawnPos)
+        internal Teams ResolveModeFBossCombatTeam(Teams requestedFaction, EnemyPresetInfo preset, Vector3 spawnPos)
         {
             if (IsValidModeFCombatFaction(requestedFaction))
             {
@@ -48,7 +48,7 @@ namespace BossRush
                 }
             }
 
-            return ModeEAvailableFactions[UnityEngine.Random.Range(0, ModeEAvailableFactions.Length)];
+            return ModeERuntimeModule.ModeEAvailableFactions[UnityEngine.Random.Range(0, ModeERuntimeModule.ModeEAvailableFactions.Length)];
         }
 
         private bool IsValidModeFCombatFaction(Teams faction)
@@ -69,14 +69,14 @@ namespace BossRush
         private bool TryGetModeFAllocatedFactionForPosition(Vector3 spawnPos, out Teams faction)
         {
             faction = Teams.middle;
-            if (modeESpawnAllocation == null || modeESpawnAllocation.Count <= 0)
+            if (spawnPreparation.SpawnAllocation == null || spawnPreparation.SpawnAllocation.Count <= 0)
             {
                 return false;
             }
 
             bool found = false;
             float bestDistanceSqr = float.MaxValue;
-            foreach (var kvp in modeESpawnAllocation)
+            foreach (var kvp in spawnPreparation.SpawnAllocation)
             {
                 if (!IsValidModeFCombatFaction(kvp.Key) || kvp.Value == null)
                 {
@@ -122,7 +122,7 @@ namespace BossRush
             modeFBossRegenCacheDirty = false;
         }
 
-        private List<MonoBehaviour> GetModeFBossRegenCache()
+        internal List<MonoBehaviour> GetModeFBossRegenCache()
         {
             if (!modeFBossRegenCacheDirty)
             {
@@ -159,7 +159,7 @@ namespace BossRush
             modeFState.BountyMarksByCharacterId[bossId] = 1;
             MarkModeFHealthBarNamesDirty();
             EnsureModeFBossNameTag(boss);
-            DevLog("[ModeF] [BOUNTY] autoMark=" + GetModeFActorDisplayName(boss, false)
+            ModBehaviour.DevLog("[ModeF] [BOUNTY] autoMark=" + GetModeFActorDisplayName(boss, false)
                 + " | phase=" + modeFState.CurrentPhase);
             MarkModeFBountyLeaderDirty();
             RefreshModeFBountyLeaderIfDirty();
@@ -167,12 +167,12 @@ namespace BossRush
 
         private void PrepareModeESharedRuntimeForModeF()
         {
-            ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: false, stopWarmupCoroutine: false);
+            modeE.ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: false, stopWarmupCoroutine: false);
         }
 
         private void ResetModeESharedRuntimeAfterModeF()
         {
-            ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: false, stopWarmupCoroutine: true);
+            modeE.ResetModeESharedRuntimeState(clearSpawnAllocation: true, clearSpawnerCache: false, stopWarmupCoroutine: true);
         }
 
 
@@ -243,7 +243,7 @@ namespace BossRush
             }
             catch (Exception teamEx)
             {
-                DevLog("[ModeF] [WARNING] " + context + " 读取Boss阵营失败: " + teamEx.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] " + context + " 读取Boss阵营失败: " + teamEx.Message);
                 return null;
             }
         }
@@ -256,7 +256,7 @@ namespace BossRush
             }
             catch (Exception killerEx)
             {
-                DevLog("[ModeF] [WARNING] " + context + " 读取击杀者失败: " + killerEx.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] " + context + " 读取击杀者失败: " + killerEx.Message);
                 return null;
             }
         }
@@ -271,7 +271,7 @@ namespace BossRush
             }
             catch (Exception marksEx)
             {
-                DevLog("[ModeF] [WARNING] " + context + " 读取悬赏印记失败: " + marksEx.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] " + context + " 读取悬赏印记失败: " + marksEx.Message);
                 marks = 0;
                 return false;
             }
@@ -285,7 +285,7 @@ namespace BossRush
             }
             catch (Exception marksEx)
             {
-                DevLog("[ModeF] [WARNING] " + context + " 清理悬赏印记失败: " + marksEx.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] " + context + " 清理悬赏印记失败: " + marksEx.Message);
                 return false;
             }
         }
@@ -305,7 +305,7 @@ namespace BossRush
             }
             catch (Exception idEx)
             {
-                DevLog("[ModeF] [WARNING] " + context + " 读取Boss实例ID失败: " + idEx.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] " + context + " 读取Boss实例ID失败: " + idEx.Message);
                 bossId = 0;
                 return false;
             }
@@ -333,7 +333,7 @@ namespace BossRush
             }
             catch (Exception unregisterEx)
             {
-                DevLog("[ModeF] [WARNING] 取消Boss死亡事件订阅失败: " + unregisterEx.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] 取消Boss死亡事件订阅失败: " + unregisterEx.Message);
             }
 
             modeFBossDeathHandlers.Remove(boss);
@@ -361,7 +361,7 @@ namespace BossRush
             }
             catch (Exception unregisterEx)
             {
-                DevLog("[ModeF] [WARNING] 取消Boss掉落预处理订阅失败: " + unregisterEx.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] 取消Boss掉落预处理订阅失败: " + unregisterEx.Message);
             }
 
             modeFBossLootHandlers.Remove(boss);
@@ -376,10 +376,10 @@ namespace BossRush
 
             Teams faction = boss.Team;
             CleanupModeESharedRuntimeForModeFBoss(boss, faction);
-            TrackModeEAliveEnemy(boss, faction);
-            RegisterEnemyRecoveryAnchor(boss, anchorPosition);
-            RegisterModeEEnemyToSpawnerRoot(boss);
-            RegisterModeEEnemyDeath(boss);
+            enemyRegistry.TrackModeEAliveEnemy(boss, faction);
+            owner.RegisterModeDEnemyRecoveryAnchor(boss, anchorPosition);
+            virtualSpawnerRegistry.RegisterModeEEnemyToSpawnerRoot(boss);
+            enemyRegistry.RegisterModeEEnemyDeath(boss);
         }
 
         private void CleanupModeESharedRuntimeForModeFBoss(CharacterMainControl boss, Teams? faction = null)
@@ -393,21 +393,21 @@ namespace BossRush
             {
                 if (!(boss == null))
                 {
-                    UnregisterModeEEnemyDeath(boss);
-                    UnregisterModeEEnemyLootHandler(boss);
-                    RemoveModeEScalingModifiers(boss);
+                    enemyRegistry.UnregisterModeEEnemyDeath(boss);
+                    enemyRegistry.UnregisterModeEEnemyLootHandler(boss);
+                    modeE.RemoveModeEScalingModifiers(boss);
 
                 }
             }
             catch (Exception cleanupEx)
             {
-                DevLog("[ModeF] [WARNING] 清理ModeE共享运行时失败: " + cleanupEx.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] 清理ModeE共享运行时失败: " + cleanupEx.Message);
             }
 
-            modeEPendingAggroTraceDistance.Remove(boss);
-            UnregisterModeEEnemyFromSpawnerRoot(boss);
-            UnregisterEnemyRecovery(boss);
-            UntrackModeEAliveEnemy(boss, faction);
+            modeE.RemovePendingModeEAggroTarget(boss);
+            virtualSpawnerRegistry.UnregisterModeEEnemyFromSpawnerRoot(boss);
+            owner.UnregisterEnemyRecoveryForArena(boss);
+            enemyRegistry.UntrackModeEAliveEnemy(boss, faction);
             modeFBossAiControllers.Remove(boss);
         }
 
@@ -443,7 +443,7 @@ namespace BossRush
                 if (clearLootResolutionState)
                 {
                     ClearModeFBossPlunderLootState(boss);
-                    ClearBossRandomLootTracking(boss);
+                    arena.ClearBossRandomLootTracking(boss);
                 }
 
                 if (removeBountyMarks)
@@ -457,11 +457,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] CleanupModeFBossRuntimeState failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] CleanupModeFBossRuntimeState failed: " + e.Message);
             }
         }
 
-        private void RegisterModeFBoss(CharacterMainControl boss)
+        internal void RegisterModeFBoss(CharacterMainControl boss)
         {
             try
             {
@@ -477,7 +477,7 @@ namespace BossRush
                     modeFState.ActiveBosses.Add(boss);
                 }
 
-                RegisterBossRandomLootTracking(boss);
+                arena.RegisterBossRandomLootTracking(boss);
                 EnsureModeFBossHasBaseBountyMark(boss);
                 GetModeFBossAIController(boss);
                 ApplyModeFPressureToBoss(boss);
@@ -526,8 +526,8 @@ namespace BossRush
                     health.OnDeadEvent.AddListener(handler);
                 }
 
-                DevLog("[ModeF] Boss registered: " + boss.gameObject.name + " (total=" + modeFState.ActiveBosses.Count + ")");
-                DevLog("[ModeF] [RESPAWN] register=" + GetModeFActorDisplayName(boss, false)
+                ModBehaviour.DevLog("[ModeF] Boss registered: " + boss.gameObject.name + " (total=" + modeFState.ActiveBosses.Count + ")");
+                ModBehaviour.DevLog("[ModeF] [RESPAWN] register=" + GetModeFActorDisplayName(boss, false)
                     + " | team=" + boss.Team
                     + " | total=" + modeFState.ActiveBosses.Count
                     + " | pending=" + modeFPendingRespawnCount
@@ -535,7 +535,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] RegisterModeFBoss failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] RegisterModeFBoss failed: " + e.Message);
             }
         }
 
@@ -596,21 +596,21 @@ namespace BossRush
                 }
                 catch (Exception deathPosEx)
                 {
-                    DevLog("[ModeF] [WARNING] 读取Boss死亡位置失败: " + deathPosEx.Message);
+                    ModBehaviour.DevLog("[ModeF] [WARNING] 读取Boss死亡位置失败: " + deathPosEx.Message);
                 }
 
-                DevLog("[ModeF] Boss died: " + deadBoss.gameObject.name
+                ModBehaviour.DevLog("[ModeF] Boss died: " + deadBoss.gameObject.name
                     + " (source=" + (string.IsNullOrEmpty(sourceTag) ? "unknown" : sourceTag)
                     + ")"
                     + " (marks=" + deadBossMarks
                     + ", killedByPlayer=" + killedByPlayer
                     + ", killer=" + (killer != null ? killer.gameObject.name : "null") + ")");
-                DevLog("[ModeF] [RESPAWN] death victim=" + GetModeFActorDisplayName(deadBoss, false)
+                ModBehaviour.DevLog("[ModeF] [RESPAWN] death victim=" + GetModeFActorDisplayName(deadBoss, false)
                     + " | killer=" + GetModeFActorDisplayName(killer, killedByPlayer)
                     + " | marks=" + deadBossMarks
                     + " | source=" + (string.IsNullOrEmpty(sourceTag) ? "unknown" : sourceTag)
                     + " | totalAfterRemove=" + modeFState.ActiveBosses.Count);
-                RegisterModeEFBossDeathForSweepToken();
+                owner.RegisterModeEFBossDeathForSweepToken();
 
                 if (killedByPlayer)
                 {
@@ -625,7 +625,7 @@ namespace BossRush
                     OnModeFBossKilledByBoss(killer, deadBoss);
                     if (deadBossMarks > 0)
                     {
-                        DevLog("[ModeF] 悬赏额外奖励机会已随印记一并转移给胜者，不在当前死亡点兑现");
+                        ModBehaviour.DevLog("[ModeF] 悬赏额外奖励机会已随印记一并转移给胜者，不在当前死亡点兑现");
                     }
                 }
                 else
@@ -636,26 +636,26 @@ namespace BossRush
                     }
                     MarkModeFBountyLeaderDirty();
                     RefreshModeFBountyLeaderIfDirty();
-                    DevLog("[ModeF] Boss died to the environment or a non-ModeF actor, bounty marks were discarded.");
+                    ModBehaviour.DevLog("[ModeF] Boss died to the environment or a non-ModeF actor, bounty marks were discarded.");
                 }
 
                 try
                 {
                     if (hasDeathPos)
                     {
-                        StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(this, deathPosition, true));
+                        owner.StartCoroutine(BossRushLootboxUtility.DecorateLootboxesNearPosition(owner, deathPosition, true));
                     }
                 }
                 catch (Exception decorateEx)
                 {
-                    DevLog("[ModeF] [WARNING] 标记死亡点附近掉落箱失败: " + decorateEx.Message);
+                    ModBehaviour.DevLog("[ModeF] [WARNING] 标记死亡点附近掉落箱失败: " + decorateEx.Message);
                 }
 
-                FinalizeBossRushLootboxPathTracking(deadBoss);
+                arena.FinalizeBossRushLootboxPathTracking(deadBoss);
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] OnModeFBossDied failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] OnModeFBossDied failed: " + e.Message);
                 if (deadBossId != 0 && !replacementRequired)
                 {
                     modeFHandledBossDeathIds.Remove(deadBossId);
@@ -672,7 +672,7 @@ namespace BossRush
                     catch (Exception respawnEx)
                     {
                         // Queue increments pending before logging/dispatch, so the 1s integrity tick can retry it.
-                        DevLog("[ModeF] [ERROR] Failed to guarantee replacement after boss death: " + respawnEx.Message);
+                        ModBehaviour.DevLog("[ModeF] [ERROR] Failed to guarantee replacement after boss death: " + respawnEx.Message);
                     }
                 }
             }
@@ -686,7 +686,7 @@ namespace BossRush
             }
 
             modeFPendingRespawnCount += count;
-            DevLog("[ModeF] [RESPAWN] queue pending=" + modeFPendingRespawnCount
+            ModBehaviour.DevLog("[ModeF] [RESPAWN] queue pending=" + modeFPendingRespawnCount
                 + " | inflight=" + modeFRespawnInFlightCount
                 + " | added=" + count);
 
@@ -700,7 +700,7 @@ namespace BossRush
                 return;
             }
 
-            DevLog("[ModeF] [RESPAWN] dispatch pending=" + modeFPendingRespawnCount
+            ModBehaviour.DevLog("[ModeF] [RESPAWN] dispatch pending=" + modeFPendingRespawnCount
                 + " | inflight=" + modeFRespawnInFlightCount);
             modeFPendingRespawnCount = Mathf.Max(0, modeFPendingRespawnCount - 1);
             modeFRespawnInFlightCount += 1;
@@ -723,7 +723,7 @@ namespace BossRush
             if (!success && requeueOnFailure)
             {
                 modeFPendingRespawnCount += 1;
-                DevLog("[ModeF] [RESPAWN] complete success=False | requeue=True"
+                ModBehaviour.DevLog("[ModeF] [RESPAWN] complete success=False | requeue=True"
                     + " | pending=" + modeFPendingRespawnCount
                     + " | inflight=" + modeFRespawnInFlightCount);
                 return;
@@ -731,7 +731,7 @@ namespace BossRush
 
             if (success)
             {
-                DevLog("[ModeF] [RESPAWN] complete success=True"
+                ModBehaviour.DevLog("[ModeF] [RESPAWN] complete success=True"
                     + " | pending=" + modeFPendingRespawnCount
                     + " | inflight=" + modeFRespawnInFlightCount);
                 TryFulfillModeFPendingRespawns();
@@ -747,7 +747,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] RespawnModeFBoss dispatch failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] RespawnModeFBoss dispatch failed: " + e.Message);
                 return false;
             }
         }
@@ -767,29 +767,29 @@ namespace BossRush
                     return;
                 }
 
-                EnsureModeEFSpawnPoolsReady("ModeF.RespawnModeFBoss");
+                spawnRuntime.EnsureModeEFSpawnPoolsReady("ModeF.RespawnModeFBoss");
                 profiler.Mark("EnsureSpawnPools");
                 Vector3 spawnPos = FindSpawnPointAwayFromPlayer(50f);
                 profiler.Mark("ResolveSpawnPoint");
                 EnemyPresetInfo preset = GetRandomModeFRespawnBossPreset();
                 if (preset == null)
                 {
-                    DevLog("[ModeF] [WARNING] RespawnModeFBoss: no boss preset is available.");
+                    ModBehaviour.DevLog("[ModeF] [WARNING] RespawnModeFBoss: no boss preset is available.");
                     profiler.Complete("failed: no preset");
                     CompleteModeFBossRespawnAttempt(false, true);
                     return;
                 }
 
-                selectedDragonDescendant = IsDragonDescendantPreset(preset);
+                selectedDragonDescendant = owner.IsDragonDescendantPreset(preset);
                 if (selectedDragonDescendant)
                 {
-                    modeEDragonDescendantSpawned = true;
+                    spawnRuntime.DragonDescendantSpawned = true;
                 }
                 profiler.Mark("PickPreset");
 
-                DevLog("[ModeF] [RESPAWN] request preset=" + preset.displayName + " | pos=" + spawnPos);
+                ModBehaviour.DevLog("[ModeF] [RESPAWN] request preset=" + preset.displayName + " | pos=" + spawnPos);
 
-                EnemySpawnCoreResult result = await SpawnEnemyCoreInternalAsync(
+                EnemySpawnCoreResult result = await owner.SpawnEnemyCoreInternalAsync(
                     preset,
                     spawnPos,
                     true,
@@ -807,12 +807,12 @@ namespace BossRush
                 {
                     if (selectedDragonDescendant)
                     {
-                        modeEDragonDescendantSpawned = false;
+                        spawnRuntime.DragonDescendantSpawned = false;
                     }
 
                     string reason = result != null ? result.failureReason : "null result";
-                    DevLog("[ModeF] [WARNING] Failed to spawn replacement boss: " + reason);
-                    DevLog("[ModeF] [RESPAWN] spawnFailed");
+                    ModBehaviour.DevLog("[ModeF] [WARNING] Failed to spawn replacement boss: " + reason);
+                    ModBehaviour.DevLog("[ModeF] [RESPAWN] spawnFailed");
                     profiler.Complete("failed: " + reason);
                     CompleteModeFBossRespawnAttempt(false, true);
                     return;
@@ -823,11 +823,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] RespawnModeFBoss failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] RespawnModeFBoss failed: " + e.Message);
                 if (!IsModeFSessionStillValid(modeFSessionToken, relatedScene)) return;
                 if (selectedDragonDescendant)
                 {
-                    modeEDragonDescendantSpawned = false;
+                    spawnRuntime.DragonDescendantSpawned = false;
                 }
 
                 profiler.Complete("failed: exception");
@@ -841,18 +841,18 @@ namespace BossRush
             {
                 if (ctx == null || ctx.character == null)
                 {
-                    if (selectedDragonDescendant) modeEDragonDescendantSpawned = false;
+                    if (selectedDragonDescendant) spawnRuntime.DragonDescendantSpawned = false;
                     return false;
                 }
 
                 EnemyPresetInfo spawnedPreset = ctx.preset;
                 if (spawnedPreset == null)
                 {
-                    if (selectedDragonDescendant) modeEDragonDescendantSpawned = false;
+                    if (selectedDragonDescendant) spawnRuntime.DragonDescendantSpawned = false;
                     return false;
                 }
 
-                SyncModeEDragonDescendantSpawnFlag(selectedDragonDescendant, spawnedPreset, "ModeF");
+                spawnRuntime.SyncModeEDragonDescendantSpawnFlag(selectedDragonDescendant, spawnedPreset, "ModeF");
 
                 if (ctx.character.characterPreset != null)
                 {
@@ -865,7 +865,7 @@ namespace BossRush
                     // 挂租约，与 ModeEBattle 的准备期生成路径对齐。
                     // Mode F 的两条 Boss 生成路径是分叉的（RegisterModeFBoss 只有两个调用点）：
                     // 准备期那条走 ModeEBattle 有租约，战中补位这条没有。commit 1583da1 为修
-                    // CR-2026-09-01-010 #2 删掉了本文件的 Destroy(characterPreset)，于是这条
+                    // CR-2026-09-01-010 #2 删掉了本文件的 UnityEngine.Object.Destroy(characterPreset)，于是这条
                     // 路径从「提前销毁」变成了「永不销毁」——每次补位泄漏一个 ScriptableObject。
                     ModeECharacterPresetLease presetLease =
                         ctx.character.gameObject.GetComponent<ModeECharacterPresetLease>();
@@ -882,17 +882,17 @@ namespace BossRush
                 ctx.character.gameObject.name = "ModeF_" + spawnedPreset.displayName;
                 RegisterModeESharedRuntimeForModeFBoss(ctx.character, ctx.position);
                 RegisterModeFBoss(ctx.character);
-                DevLog("[ModeF] [RESPAWN] spawned=" + GetModeFActorDisplayName(ctx.character, false)
+                ModBehaviour.DevLog("[ModeF] [RESPAWN] spawned=" + GetModeFActorDisplayName(ctx.character, false)
                     + " | team=" + spawnedTeam
                     + " | total=" + modeFState.ActiveBosses.Count);
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] Failed to configure respawned boss: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] Failed to configure respawned boss: " + e.Message);
                 if (selectedDragonDescendant)
                 {
-                    modeEDragonDescendantSpawned = false;
+                    spawnRuntime.DragonDescendantSpawned = false;
                 }
 
                 return false;
@@ -906,12 +906,12 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 Vector3 playerPos = player != null ? player.transform.position : Vector3.zero;
 
-                Vector3[] allSpawnPoints = GetModeEFlattenedSpawnPoints();
-                float effectiveMinDist = Mathf.Max(minDistance, SPAWN_SAFE_DISTANCE);
+                Vector3[] allSpawnPoints = spawnPreparation.GetModeEFlattenedSpawnPoints();
+                float effectiveMinDist = Mathf.Max(minDistance, 15f);
 
                 if (allSpawnPoints.Length <= 0)
                 {
-                    return GetSafeBossSpawnPosition(playerPos + new Vector3(60f, 0f, 60f));
+                    return SpawnPositionHelper.SnapToGround(playerPos + new Vector3(60f, 0f, 60f));
                 }
 
                 Vector3 result = SpawnPositionHelper.FindNearestSafeSpawnPoint(allSpawnPoints, playerPos, effectiveMinDist);
@@ -922,22 +922,22 @@ namespace BossRush
                 if (resultDistSqr < effectiveMinDistSqr)
                 {
                     float resultDist = Mathf.Sqrt(resultDistSqr);
-                    DevLog("[ModeF] [WARNING] No spawn point was found beyond " + effectiveMinDist + "m, using the farthest point instead (" + resultDist.ToString("F0") + "m).");
+                    ModBehaviour.DevLog("[ModeF] [WARNING] No spawn point was found beyond " + effectiveMinDist + "m, using the farthest point instead (" + resultDist.ToString("F0") + "m).");
                 }
                 return result;
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] FindSpawnPointAwayFromPlayer failed: " + e.Message);
-                return GetSafeBossSpawnPosition(Vector3.zero);
+                ModBehaviour.DevLog("[ModeF] [ERROR] FindSpawnPointAwayFromPlayer failed: " + e.Message);
+                return SpawnPositionHelper.SnapToGround(Vector3.zero);
             }
         }
 
         private EnemyPresetInfo GetRandomModeFRespawnBossPreset()
         {
-            EnsureModeEFSpawnPoolsReady("ModeF.GetRandomModeFRespawnBossPreset");
+            spawnRuntime.EnsureModeEFSpawnPoolsReady("ModeF.GetRandomModeFRespawnBossPreset");
 
-            List<EnemyPresetInfo> filteredBossPool = GetFilteredEnemyPresets();
+            List<EnemyPresetInfo> filteredBossPool = owner.GetFilteredEnemyPresets();
             if (filteredBossPool == null || filteredBossPool.Count == 0)
             {
                 return null;
@@ -957,12 +957,12 @@ namespace BossRush
                     continue;
                 }
 
-                if (IsDragonKingPreset(preset))
+                if (owner.IsDragonKingPreset(preset))
                 {
                     continue;
                 }
 
-                if (modeEDragonDescendantSpawned && IsDragonDescendantPreset(preset))
+                if (spawnRuntime.DragonDescendantSpawned && owner.IsDragonDescendantPreset(preset))
                 {
                     continue;
                 }
@@ -1013,7 +1013,7 @@ namespace BossRush
                                 }
                                 catch (Exception cleanupEx)
                                 {
-                                    DevLog("[ModeF] [WARNING] IntegrityCheck 清理死亡Boss状态失败: " + cleanupEx.Message);
+                                    ModBehaviour.DevLog("[ModeF] [WARNING] IntegrityCheck 清理死亡Boss状态失败: " + cleanupEx.Message);
                                 }
                             }
 
@@ -1034,7 +1034,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] ModeFBossIntegrityCheck failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] ModeFBossIntegrityCheck failed: " + e.Message);
             }
         }
 

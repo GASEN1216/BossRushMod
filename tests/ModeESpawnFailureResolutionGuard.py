@@ -4,10 +4,11 @@ startup verification must not treat a failed attempt as a successfully spawned B
 """
 
 from pathlib import Path
+from cs_source_util import clean_source
 import sys
 
 
-SOURCE = Path("ModeE/ModeEBattle.cs")
+SOURCE = Path("Utilities/ModeEFEnemySpawnRuntime.cs")
 MODE_E_SOURCES = [
     Path("ModeE/ModeE.cs"),
     Path("ModeE/ModeEUiAndHealthBars.cs"),
@@ -49,30 +50,30 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 
 def main() -> int:
-    battle_text = SOURCE.read_text(encoding="utf-8")
+    battle_text = clean_source(SOURCE.read_text(encoding="utf-8"))
     mode_e_text = read_mode_e_sources()
 
-    if "private void ResolveModeESpawnAttempt" not in battle_text:
+    if "internal void ResolveModeESpawnAttempt" not in battle_text:
         return fail("ModeESpawnFailureResolutionGuard: missing ResolveModeESpawnAttempt helper")
 
-    spawned_body = extract_method_body(battle_text, "private bool OnModeEEnemySpawned")
+    spawned_body = extract_method_body(clean_source(Path("ModeE/ModeEBattle.cs").read_text(encoding="utf-8")), "internal bool OnModeEEnemySpawned")
     if spawned_body is None:
         return fail("ModeESpawnFailureResolutionGuard: missing OnModeEEnemySpawned body")
-    if "ResolveModeESpawnAttempt(" not in spawned_body:
+    if "spawnRuntime.ResolveModeESpawnAttempt();" not in spawned_body:
         return fail("ModeESpawnFailureResolutionGuard: successful spawns do not resolve the attempt")
     if "modeESpawnResolved++" in spawned_body:
         return fail("ModeESpawnFailureResolutionGuard: OnModeEEnemySpawned increments resolved directly")
 
-    single_body = extract_method_body(battle_text, "private void SpawnSingleModeEBoss")
+    single_body = extract_method_body(battle_text, "internal void SpawnSingleModeEBoss")
     if single_body is None:
         return fail("ModeESpawnFailureResolutionGuard: missing SpawnSingleModeEBoss body")
     if "onFailed:" not in single_body or "ResolveModeESpawnAttempt(" not in single_body:
         return fail("ModeESpawnFailureResolutionGuard: failed spawns do not resolve the attempt")
 
-    verify_body = extract_method_body(mode_e_text, "private System.Collections.IEnumerator WaitForModeEStartupVerification")
+    verify_body = extract_method_body(mode_e_text, "internal System.Collections.IEnumerator WaitForModeEStartupVerification")
     if verify_body is None:
         return fail("ModeESpawnFailureResolutionGuard: missing WaitForModeEStartupVerification body")
-    if "modeESpawnResolved > 0" in verify_body:
+    if "spawnRuntime.SpawnResolved > 0" in verify_body:
         return fail("ModeESpawnFailureResolutionGuard: startup verification still treats resolved attempts as successful spawns")
 
     print("ModeESpawnFailureResolutionGuard: PASS")

@@ -5,8 +5,8 @@ import sys
 
 
 POLLUTION_PARTS = [
-    Path("ZombieMode/ZombieModePollution.cs"),
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeCombatHostBridge.cs"),
+    Path("ZombieMode/ZombieModeCombatHostBridge.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 
@@ -21,27 +21,31 @@ def read_pollution() -> str:
 
 
 def main() -> int:
-    entry_text = Path("ZombieMode/ZombieModeEntry.cs").read_text(encoding="utf-8")
-    if "internal bool IsZombieModeGamePaused()" not in entry_text:
+    entry_text = Path("ZombieMode/ZombieModeEntryHostBridge.cs").read_text(encoding="utf-8")
+    module_text = Path("ZombieMode/ZombieModeRuntimeModule.cs").read_text(encoding="utf-8")
+    if "internal bool IsZombieModeGamePaused()" not in entry_text or "internal bool IsZombieModeGamePaused()" not in module_text:
         return fail("ZombieModePauseMenuGuard: missing shared PauseMenu pause helper")
-    if "PauseMenu.Instance != null && PauseMenu.Instance.Shown" not in entry_text:
+    if "PauseMenu.Instance != null && PauseMenu.Instance.Shown" not in module_text:
         return fail("ZombieModePauseMenuGuard: pause helper does not check PauseMenu.Instance.Shown")
     tick_match = re.search(r"private void TickZombieMode\(float deltaTime\)\s*\{(?P<body>.*?)\n        \}", entry_text, re.S)
     if not tick_match:
         return fail("ZombieModePauseMenuGuard: TickZombieMode body not found")
     tick_body = tick_match.group("body")
-    if "IsZombieModeRuntimePaused()" not in entry_text:
+    if "module.TickZombieMode(deltaTime)" not in tick_body:
+        return fail("ZombieModePauseMenuGuard: host tick must forward to RuntimeModule")
+    if "IsZombieModeRuntimePaused()" not in module_text:
         return fail("ZombieModePauseMenuGuard: missing shared runtime pause helper")
-    runtime_pause_match = re.search(r"internal bool IsZombieModeRuntimePaused\(\)\s*\{(?P<body>.*?)\n        \}", entry_text, re.S)
+    runtime_pause_match = re.search(r"internal bool IsZombieModeRuntimePaused\(\)\s*\{(?P<body>.*?)\n        \}", module_text, re.S)
     if not runtime_pause_match:
         return fail("ZombieModePauseMenuGuard: runtime pause helper body not found")
     runtime_pause_body = runtime_pause_match.group("body")
     if "ZombieModeUIHelper.IsModalInputPaused" not in runtime_pause_body:
-        return fail("ZombieModePauseMenuGuard: runtime pause helper must include ZombieMode modal pause")
+        return fail("ZombieModePauseMenuGuard: module runtime pause helper must include ZombieMode modal pause")
     if "IsZombieModeGamePaused()" not in runtime_pause_body:
-        return fail("ZombieModePauseMenuGuard: runtime pause helper must include PauseMenu pause")
-    if "IsZombieModeRuntimePaused()" not in tick_body:
-        return fail("ZombieModePauseMenuGuard: TickZombieMode must use shared runtime pause helper")
+        return fail("ZombieModePauseMenuGuard: module runtime pause helper must include PauseMenu pause")
+    module_tick_match = re.search(r"internal void TickZombieMode\(float deltaTime\)\s*\{(?P<body>.*?)\n        \}", module_text, re.S)
+    if not module_tick_match or "IsZombieModeRuntimePaused()" not in module_tick_match.group("body"):
+        return fail("ZombieModePauseMenuGuard: RuntimeModule TickZombieMode must use the shared pause gate")
 
     hud_text = Path("ZombieMode/ZombieModeHudController.cs").read_text(encoding="utf-8")
     if "SetPauseMenuHidden" not in hud_text:
@@ -51,14 +55,14 @@ def main() -> int:
     if not re.search(r"canvas\.enabled\s*=\s*!hidden", hud_text):
         return fail("ZombieModePauseMenuGuard: HUD canvas is not disabled when PauseMenu is shown")
 
-    wave_text = Path("ZombieMode/ZombieModeWaveController.cs").read_text(encoding="utf-8")
+    wave_text = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs").read_text(encoding="utf-8")
     if "PreparationTimer -= Time.unscaledDeltaTime" in wave_text:
         return fail("ZombieModePauseMenuGuard: preparation countdown bypasses caller pause gate")
     if "PreparationTimer -= deltaTime" not in wave_text:
         return fail("ZombieModePauseMenuGuard: preparation countdown should consume the TickZombieMode deltaTime")
 
-    extraction_text = Path("ZombieMode/ZombieModeExtractionController.cs").read_text(encoding="utf-8")
-    if "float remaining = zombieModeRunState.BeaconChannelDuration" not in extraction_text:
+    extraction_text = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs").read_text(encoding="utf-8")
+    if "float remaining = runState.BeaconChannelDuration" not in extraction_text:
         return fail("ZombieModePauseMenuGuard: beacon channel should be remaining-time based")
     if "remaining -= Time.unscaledDeltaTime" not in extraction_text:
         return fail("ZombieModePauseMenuGuard: beacon/extraction countdown should decrement only when not paused")

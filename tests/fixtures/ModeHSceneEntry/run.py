@@ -53,6 +53,12 @@ def main():
         code.append(method)
     code.append('} partial class ModBehaviour {')
     code.append(extract('ModeH/ModeHEntry.cs', 'private bool ShouldSkipLegacySceneSetupForModeH()', hashes))
+    code.append('} internal partial class IntegrationRuntimeModule {')
+    code.append(extract('Integration/BossRushIntegrationRuntimeModule_Travel.cs',
+                        'internal IEnumerator WaitForCustomTeleportSceneReady(', hashes))
+    code.append(extract('Integration/BossRushIntegrationRuntimeModule_Travel.cs',
+                        'internal Vector3 ApplyCustomTeleportPosition(', hashes))
+    code.append('} partial class ModBehaviour {')
     code.append(extract('Integration/BossRushIntegration_TravelAndSetup.cs',
                         'private System.Collections.IEnumerator TeleportPlayerToCustomPosition(', hashes))
     code.append('}}')

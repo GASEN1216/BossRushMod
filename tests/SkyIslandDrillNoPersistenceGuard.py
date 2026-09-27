@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """天空岛 Dev 演练套件：只在 Dev 构建、不写存档、改过的东西一定还原（2026-09-14）。
 
-演练（`DebugAndTools/F3GameplayValidationSkyIslandDrill.cs`、`DebugAndTools/SkyIsland/SkyIslandGnatsDrill.cs`）
+演练（`DebugAndTools/F3GameplayValidationSkyIslandDrill.cs`、`SkyIsland/SkyIslandGnatsDrill.cs`）
 为了看到「只读验收看不到的判据」会动这趟出击：强制夜里、刷云蚋、打死一只、把主角血量压到叮咬下限附近、弹官方对话。
 它能留在仓库里，靠的是下面这些约束，每一条都容易在后续改动里悄悄丢掉：
 
@@ -23,7 +23,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 from cs_source_util import clean_source  # noqa: E402
 
 DRILL = "DebugAndTools/F3GameplayValidationSkyIslandDrill.cs"
-GNATS_DRILL = "DebugAndTools/SkyIsland/SkyIslandGnatsDrill.cs"
+GNATS_DRILL = "SkyIsland/SkyIslandGnatsDrill.cs"
 RUNNER = "DebugAndTools/F3GameplayValidationRunner.cs"
 EXECUTION = "DebugAndTools/F3GameplayValidationExecution.cs"
 BAT = "compile_official.bat"

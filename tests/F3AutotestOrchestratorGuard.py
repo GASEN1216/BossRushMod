@@ -41,24 +41,24 @@ AUTOTEST_FILES = (
     CAPTURE,
     STORY,
     "DebugAndTools/F3GameplayValidationAutotestReport.cs",
-    "DebugAndTools/SkyIsland/SkyIslandSessionAutotest.cs",
-    "DebugAndTools/SkyIsland/SkyIslandStoryServiceAutotest.cs",
+    "SkyIsland/SkyIslandSessionAutotest.cs",
+    "SkyIsland/SkyIslandStoryServiceAutotest.cs",
 )
 # 岛内只读套件（与 SkyIslandReadOnlySuiteDrillIsolationGuard 同一份）与 Dev 演练：都不许引用编排。
 ISOLATED = (
     "DebugAndTools/F3GameplayValidationSkyIsland.cs",
     "DebugAndTools/F3GameplayValidationSkyIslandCases.cs",
     "DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs",
-    "DebugAndTools/SkyIsland/SkyIslandSessionValidation.cs",
+    "SkyIsland/SkyIslandSessionValidation.cs",
     "DebugAndTools/F3GameplayValidationSkyIslandDrill.cs",
-    "DebugAndTools/SkyIsland/SkyIslandGnatsDrill.cs",
+    "SkyIsland/SkyIslandGnatsDrill.cs",
 )
 SYMBOL = re.compile(r"\b\w*Autotest\w*\b|\b_autotest\w*\b|SKY_AUTO_")
 
 # 存档写入口：第一句必须是写入门。
 GATED_ENTRIES = {
-    "DebugAndTools/SkyIsland/SkyIslandStoryServiceAutotest.cs": ("DevAutotestReplace", "DevAutotestFlush"),
-    "DebugAndTools/SkyIsland/SkyIslandSessionAutotest.cs": ("DevAutotestTeleport", "DevAutotestResetEncounter", "DevAutotestReturnToBase"),
+    "SkyIsland/SkyIslandStoryServiceAutotest.cs": ("DevAutotestReplace", "DevAutotestFlush"),
+    "SkyIsland/SkyIslandSessionAutotest.cs": ("DevAutotestTeleport", "DevAutotestResetEncounter", "DevAutotestReturnToBase"),
 }
 READ_ONLY_ENTRIES = {
     "DevAutotestOpen": "只烙印槽位、订阅并读档，不写",
@@ -400,7 +400,7 @@ def load():
         path = ROOT / rel
         if path.is_file():
             src[rel] = path.read_bytes().decode("utf-8-sig")
-    for path in list((ROOT / "DebugAndTools").rglob("*.cs")) + list(ROOT.glob("*.cs")):
+    for path in list((ROOT / "DebugAndTools").rglob("*.cs")) + list((ROOT / "SkyIsland").rglob("*.cs")) + list(ROOT.glob("*.cs")):
         rel = path.relative_to(ROOT).as_posix()
         if rel in src:
             continue
@@ -409,7 +409,7 @@ def load():
             src[rel] = raw
     src["__autotest_glob__"] = tuple(sorted(
         p.relative_to(ROOT).as_posix()
-        for p in list((ROOT / "DebugAndTools").glob("F3GameplayValidationAutotest*.cs")) + list((ROOT / "DebugAndTools/SkyIsland").glob("*Autotest*.cs"))))
+        for p in list((ROOT / "DebugAndTools").glob("F3GameplayValidationAutotest*.cs")) + list((ROOT / "SkyIsland").glob("*Autotest*.cs"))))
     src[BAT] = (ROOT / BAT).read_bytes().decode("utf-8-sig")
     return src
 
@@ -432,8 +432,8 @@ PROBES = (
     (EXECUTION, sub_once(r"(\n[ \t]*if \(!_skyIslandMode\) yield return RunSkyIslandAutotestLeg\(\);)(\r?\n)#endif", r"\2#endif\1"), "钩子挪出 #if BOSSRUSH_DEV"),
     (EXECUTION, sub_once(r"FinishAutotestRestoreSynchronously\(\);", ""), "CompleteSession 去掉同步还原兜底"),
     ("DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs", sub_once(r"\Z", "\nclass AutotestProbe { string p = F3AutotestJudges.TableFile; }\n"), "只读套件引用编排"),
-    ("DebugAndTools/SkyIsland/SkyIslandStoryServiceAutotest.cs", sub_once(r"if \(!F3GameplayValidationRunner\.AutotestWriteAllowed\(out error\)\) return false;", ""), "存档写入口去掉写入门"),
-    ("DebugAndTools/SkyIsland/SkyIslandSessionAutotest.cs", sub_once(r"(\n[ \t]*internal bool DevAutotestReturnToBase)", r"\n        internal bool DevAutotestWarp(float x) { return true; }\1"), "新增未登记的写入口"),
+    ("SkyIsland/SkyIslandStoryServiceAutotest.cs", sub_once(r"if \(!F3GameplayValidationRunner\.AutotestWriteAllowed\(out error\)\) return false;", ""), "存档写入口去掉写入门"),
+    ("SkyIsland/SkyIslandSessionAutotest.cs", sub_once(r"(\n[ \t]*internal bool DevAutotestReturnToBase)", r"\n        internal bool DevAutotestWarp(float x) { return true; }\1"), "新增未登记的写入口"),
     (AUTOTEST, sub_once(r"if \(!IsDedicatedCurrentSlot\(\)\) \{ reason = \"dedicated_test_slot_required\"; return false; \}", ""), "写入门不核专用测试档"),
     (AUTOTEST, sub_once(r"if \(!runner\._autotest\.SnapshotPersisted && !runner\._autotest\.Snapshotting\)[^\n]*\n", "\n"), "写入门不核快照已落盘"),
     (STORY, sub_once(r"(GiveAutotestItems\(int typeId, int count, out string reason\)\s*\{)\s*if \(!AutotestWriteAllowed\(out reason\)\) return false;", r"\1 reason = null;"), "发物品不过写入门"),

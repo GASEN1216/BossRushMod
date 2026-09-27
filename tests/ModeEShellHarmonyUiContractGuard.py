@@ -2,11 +2,21 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
-SUPPORT = Path("ModeE/ModeEMerchantSupportClasses.cs")
+SUPPORT = (
+    Path("ModeE/ModeEMerchantSupportClasses.cs"),
+    Path("ModeE/ModeEShellSession.cs"),
+    Path("ModeE/ModeEShellTransactions.cs"),
+    Path("ModeE/ModeEShopInteractable.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI.cs"),
+    Path("ModeE/ModeEPetSpawner.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_ShopViewSetup.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_Layout.cs"),
+)
 HARMONY = Path("ModeE/ModeEHarmonyPatch.cs")
-MERCHANT = Path("ModeE/ModeEMerchant.cs")
+MERCHANT = Path("Utilities/ModeEFMerchantRuntime.cs")
 GLOBAL_SAMPLE_PATCH = Path("Patches/Economy/StockShopGetItemInstanceDirectPatch.cs")
 
 
@@ -34,10 +44,10 @@ def extract_method(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    support = SUPPORT.read_text(encoding="utf-8")
-    harmony = HARMONY.read_text(encoding="utf-8")
-    merchant = MERCHANT.read_text(encoding="utf-8")
-    global_sample_patch = GLOBAL_SAMPLE_PATCH.read_text(encoding="utf-8")
+    support = "\n".join(clean_source(path.read_text(encoding="utf-8")) for path in SUPPORT)
+    harmony = clean_source(HARMONY.read_text(encoding="utf-8"))
+    merchant = clean_source(MERCHANT.read_text(encoding="utf-8"))
+    global_sample_patch = clean_source(GLOBAL_SAMPLE_PATCH.read_text(encoding="utf-8"))
     combined = support + "\n" + harmony + "\n" + merchant + "\n" + global_sample_patch
 
     required = [
@@ -181,7 +191,7 @@ def main() -> int:
             return fail("shell merchant build must fail closed -> " + reason)
 
     fail_build = extract_method(merchant, "private void FailModeEShellMerchantBuild(")
-    for token in ["SetModeEShellEconomyUnavailable", "npcGo.SetActive(false)",
+    for token in ["policy.SetShellEconomyUnavailable", "npcGo.SetActive(false)",
                   "UnityEngine.Object.Destroy(npcGo)", "modeEMerchantMainInteract = null"]:
         if token not in fail_build:
             return fail("merchant build failure must disable and centrally clean up -> " + token)
@@ -196,7 +206,7 @@ def main() -> int:
         if token not in identity:
             return fail("merchant identity must be read back -> " + token)
 
-    spawn = extract_method(merchant, "private async UniTaskVoid SpawnModeEMerchant(")
+    spawn = extract_method(merchant, "internal async UniTaskVoid SpawnModeEMerchant(")
     for reason in [
         '"merchant preset unavailable"',
         '"merchant player unavailable"',

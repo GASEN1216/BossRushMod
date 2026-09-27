@@ -5,7 +5,7 @@
 - [ModeD.cs](file://ModeD/ModeD.cs)
 - [ModeDEquipment.cs](file://ModeD/ModeDEquipment.cs)
 - [ModeDEquipment_StarterKit.cs](file://ModeD/ModeDEquipment_StarterKit.cs)
-- [ModeDWaves.cs](file://ModeD/ModeDWaves.cs)
+- [ModeD.cs](file://ModeD/ModeD.cs)
 - [ModeDGlobalLoot.cs](file://ModeD/ModeDGlobalLoot.cs)
 - [Config.cs](file://Config/Config.cs)
 </cite>
@@ -29,7 +29,7 @@ Mode D（白手起家）是 BossRush 的一个特殊玩法模式。玩家以“�
 Mode D 的核心逻辑分布在以下文件中：
 - 模式启动与状态管理：ModeD.cs
 - 装备系统与掉落：ModeDEquipment.cs、ModeDEquipment_StarterKit.cs
-- 波次管理与难度曲线：ModeDWaves.cs
+- 波次管理与难度曲线：ModeD.cs
 - 全局物品池与随机掉落：ModeDGlobalLoot.cs
 - 配置项：Config.cs
 
@@ -37,7 +37,7 @@ Mode D 的核心逻辑分布在以下文件中：
 graph TB
 A["ModeD.cs<br/>模式入口/状态/初始化"] --> B["ModeDEquipment.cs<br/>敌人配装/掉落品质算法"]
 A --> C["ModeDEquipment_StarterKit.cs<br/>玩家开局装备发放"]
-A --> D["ModeDWaves.cs<br/>波次控制/敌人生成/难度缩放"]
+A --> D["ModeD.cs<br/>波次控制/敌人生成/难度缩放"]
 B --> E["ModeDGlobalLoot.cs<br/>全局掉落池/随机选品"]
 A --> F["Config.cs<br/>每波敌人数等配置"]
 ```
@@ -46,7 +46,7 @@ A --> F["Config.cs<br/>每波敌人数等配置"]
 - [ModeD.cs:139-189](file://ModeD/ModeD.cs#L139-L189)
 - [ModeDEquipment.cs:469-623](file://ModeD/ModeDEquipment.cs#L469-L623)
 - [ModeDEquipment_StarterKit.cs:44-116](file://ModeD/ModeDEquipment_StarterKit.cs#L44-L116)
-- [ModeDWaves.cs:45-131](file://ModeD/ModeDWaves.cs#L45-L131)
+- [ModeD.cs:45-131](file://ModeD/ModeD.cs#L238)
 - [ModeDGlobalLoot.cs:64-208](file://ModeD/ModeDGlobalLoot.cs#L64-L208)
 - [Config.cs:55-56](file://Config/Config.cs#L55-L56)
 
@@ -64,7 +64,7 @@ A --> F["Config.cs<br/>每波敌人数等配置"]
 章节来源
 - [ModeD.cs:139-189](file://ModeD/ModeD.cs#L139-L189)
 - [ModeDEquipment.cs:267-421](file://ModeD/ModeDEquipment.cs#L267-L421)
-- [ModeDWaves.cs:45-131](file://ModeD/ModeDWaves.cs#L45-L131)
+- [ModeD.cs:45-131](file://ModeD/ModeD.cs#L238)
 - [ModeDGlobalLoot.cs:64-208](file://ModeD/ModeDGlobalLoot.cs#L64-L208)
 - [Config.cs:55-56](file://Config/Config.cs#L55-L56)
 
@@ -76,7 +76,7 @@ sequenceDiagram
 participant P as "玩家"
 participant M as "ModeD.cs"
 participant S as "ModeDEquipment.cs"
-participant W as "ModeDWaves.cs"
+participant W as "ModeD.cs"
 participant G as "ModeDGlobalLoot.cs"
 P->>M : 进入竞技场/尝试启动
 M->>M : 检查裸体条件
@@ -96,7 +96,7 @@ W-->>P : 显示横幅/开始战斗
 图表来源
 - [ModeD.cs:139-189](file://ModeD/ModeD.cs#L139-L189)
 - [ModeDEquipment.cs:469-623](file://ModeD/ModeDEquipment.cs#L469-L623)
-- [ModeDWaves.cs:45-131](file://ModeD/ModeDWaves.cs#L45-L131)
+- [ModeD.cs:45-131](file://ModeD/ModeD.cs#L238)
 - [ModeDGlobalLoot.cs:284-395](file://ModeD/ModeDGlobalLoot.cs#L284-L395)
 
 ## 详细组件分析
@@ -175,11 +175,11 @@ DropQ --> Next["下一波继续增强"]
 ```
 
 图表来源
-- [ModeDWaves.cs:736-781](file://ModeD/ModeDWaves.cs#L736-L781)
+- [ModeD.cs:736-781](file://ModeD/ModeD.cs#L238)
 - [ModeDEquipment.cs:97-114](file://ModeD/ModeDEquipment.cs#L97-L114)
 
 章节来源
-- [ModeDWaves.cs:736-781](file://ModeD/ModeDWaves.cs#L736-L781)
+- [ModeD.cs:736-781](file://ModeD/ModeD.cs#L238)
 - [ModeDEquipment.cs:97-114](file://ModeD/ModeDEquipment.cs#L97-L114)
 
 ### 波次管理、敌人生成策略与难度曲线
@@ -212,16 +212,16 @@ W-->>W : TryResolveModeDWaveComplete()
 ```
 
 图表来源
-- [ModeDWaves.cs:45-131](file://ModeD/ModeDWaves.cs#L45-L131)
-- [ModeDWaves.cs:185-334](file://ModeD/ModeDWaves.cs#L185-L334)
-- [ModeDWaves.cs:352-512](file://ModeD/ModeDWaves.cs#L352-L512)
-- [ModeDWaves.cs:736-781](file://ModeD/ModeDWaves.cs#L736-L781)
+- [ModeD.cs:45-131](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:185-334](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:352-512](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:736-781](file://ModeD/ModeD.cs#L238)
 
 章节来源
-- [ModeDWaves.cs:45-131](file://ModeD/ModeDWaves.cs#L45-L131)
-- [ModeDWaves.cs:185-334](file://ModeD/ModeDWaves.cs#L185-L334)
-- [ModeDWaves.cs:352-512](file://ModeD/ModeDWaves.cs#L352-L512)
-- [ModeDWaves.cs:736-781](file://ModeD/ModeDWaves.cs#L736-L781)
+- [ModeD.cs:45-131](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:185-334](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:352-512](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:736-781](file://ModeD/ModeD.cs#L238)
 
 ### 掉落规则与全局物品池
 - 全局池构建：遍历所有 Tag，排除黑名单与不应掉落标签，按品质建立桶缓存，支持后续快速抽取。
@@ -266,12 +266,12 @@ Reroll --> Done
 章节来源
 - [ModeD.cs:139-189](file://ModeD/ModeD.cs#L139-L189)
 - [ModeDEquipment_StarterKit.cs:44-116](file://ModeD/ModeDEquipment_StarterKit.cs#L44-L116)
-- [ModeDWaves.cs:141-177](file://ModeD/ModeDWaves.cs#L141-L177)
+- [ModeD.cs:141-177](file://ModeD/ModeD.cs#L238)
 
 ## 依赖关系分析
 - ModeD.cs 依赖：
   - 装备系统（ModeDEquipment.cs、ModeDEquipment_StarterKit.cs）用于开局与敌人配装
-  - 波次系统（ModeDWaves.cs）用于敌人生成与难度控制
+  - 波次系统（ModeD.cs）用于敌人生成与难度控制
   - 全局掉落池（ModeDGlobalLoot.cs）用于掉落品质与随机选品
   - 配置（Config.cs）用于每波敌人数等参数
 - 耦合与内聚：
@@ -283,7 +283,7 @@ Reroll --> Done
 graph LR
 Core["ModeD.cs"] --> Eq["ModeDEquipment.cs"]
 Core --> SK["ModeDEquipment_StarterKit.cs"]
-Core --> Waves["ModeDWaves.cs"]
+Core --> Waves["ModeD.cs"]
 Eq --> Loot["ModeDGlobalLoot.cs"]
 Core --> Conf["Config.cs"]
 ```
@@ -292,7 +292,7 @@ Core --> Conf["Config.cs"]
 - [ModeD.cs:139-189](file://ModeD/ModeD.cs#L139-L189)
 - [ModeDEquipment.cs:469-623](file://ModeD/ModeDEquipment.cs#L469-L623)
 - [ModeDEquipment_StarterKit.cs:44-116](file://ModeD/ModeDEquipment_StarterKit.cs#L44-L116)
-- [ModeDWaves.cs:45-131](file://ModeD/ModeDWaves.cs#L45-L131)
+- [ModeD.cs:45-131](file://ModeD/ModeD.cs#L238)
 - [ModeDGlobalLoot.cs:64-208](file://ModeD/ModeDGlobalLoot.cs#L64-L208)
 - [Config.cs:55-56](file://Config/Config.cs#L55-L56)
 
@@ -307,7 +307,7 @@ Core --> Conf["Config.cs"]
 - 预热全局池：在 TagsData 就绪时提前构建掉落池，避免首次卡顿。
 
 章节来源
-- [ModeDWaves.cs:185-334](file://ModeD/ModeDWaves.cs#L185-L334)
+- [ModeD.cs:185-334](file://ModeD/ModeD.cs#L238)
 - [ModeDEquipment.cs:412-459](file://ModeD/ModeDEquipment.cs#L412-L459)
 - [ModeDGlobalLoot.cs:37-58](file://ModeD/ModeDGlobalLoot.cs#L37-L58)
 
@@ -318,7 +318,7 @@ Core --> Conf["Config.cs"]
 - 开局装备缺失：检查武器口径匹配、弹药类型设置、配件槽位是否可插。
 
 章节来源
-- [ModeDWaves.cs:548-650](file://ModeD/ModeDWaves.cs#L548-L650)
+- [ModeD.cs:548-650](file://ModeD/ModeD.cs#L238)
 - [ModeDGlobalLoot.cs:64-208](file://ModeD/ModeDGlobalLoot.cs#L64-L208)
 - [ModeDEquipment_StarterKit.cs:673-773](file://ModeD/ModeDEquipment_StarterKit.cs#L673-L773)
 

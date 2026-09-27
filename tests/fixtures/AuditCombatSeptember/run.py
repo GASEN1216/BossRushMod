@@ -66,8 +66,8 @@ def main():
                 "private async UniTask<CharacterMainControl> CreateWraithCharacterFromPlayerSnapshot_DeathWraith("
             ]).replace("async UniTask<CharacterMainControl>", "async Task<CharacterMainControl>"),
             "WRAITH_CLEANUP": methods("Integration/DeathWraith/DeathWraithLifecycleAndPersistence.cs", [
-                "private void ClearDeathWraithState_DeathWraith(", "private void RegisterActiveWraith_DeathWraith("
-            ]) + member("Integration/DeathWraith/DeathWraithSystem.cs", "private void OnSetFile_DeathWraith(")
+                "internal void ClearDeathWraithState_DeathWraith(", "private void RegisterActiveWraith_DeathWraith("
+            ]) + member("Integration/DeathWraith/DeathWraithSystem.cs", "internal void OnSetFile_DeathWraith(")
         },
         "Vfx": {
             "VFX_METHODS": methods(vfx, ["private static GameObject GetOrBuildVfx(", "private static bool TryAcquireCleanPooledRoot(", "private static bool IsReusablePooledRoot(", "private static void CleanupRootForPooling(", "internal sealed class PhantomWitchVfxRecycler", "private static GameObject CreateRoot("]),

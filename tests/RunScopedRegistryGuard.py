@@ -5,7 +5,8 @@ import sys
 
 
 HELPER = Path("Utilities/RunScopedRegistry.cs")
-ZOMBIE_CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+ZOMBIE_CLEANUP = Path("ZombieMode/ZombieModeRuntimeModule_HostLifecycle.cs")
+ZOMBIE_RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 
 
 def fail(message: str) -> int:
@@ -16,6 +17,7 @@ def fail(message: str) -> int:
 def main() -> int:
     helper = HELPER.read_text(encoding="utf-8")
     cleanup = ZOMBIE_CLEANUP.read_text(encoding="utf-8")
+    runtime_module = ZOMBIE_RUNTIME_MODULE.read_text(encoding="utf-8")
 
     for snippet in [
         "internal static class RunScopedRegistry",
@@ -25,10 +27,10 @@ def main() -> int:
         if snippet not in helper:
             return fail("RunScopedRegistryGuard: helper missing -> " + snippet)
 
-    if "RunScopedRegistry.ForEachReverse(" not in cleanup:
-        return fail("RunScopedRegistryGuard: ZombieMode cleanup must reuse RunScopedRegistry.ForEachReverse")
+    if "RunScopedRegistry.ForEachReverse(" not in runtime_module:
+        return fail("RunScopedRegistryGuard: ZombieMode RuntimeModule cleanup must reuse RunScopedRegistry.ForEachReverse")
 
-    if "for (int i = zombieModeRunState.RunOnlyObjects.Count - 1; i >= 0; i--)" in cleanup:
+    if "for (int i = runState.RunOnlyObjects.Count - 1; i >= 0; i--)" in runtime_module:
         return fail("RunScopedRegistryGuard: ZombieMode cleanup 仍保留旧 for 循环，未走 helper")
 
     print("RunScopedRegistryGuard: PASS")

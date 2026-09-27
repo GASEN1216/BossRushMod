@@ -19,7 +19,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class WavesArenaRuntimeModule
     {
         // ============================================================================
         // 现金磁铁常量
@@ -76,12 +76,12 @@ namespace BossRush
         /// 磁铁主更新方法，在 Update() 中调用。
         /// 仅在无间炼狱模式激活时执行检测和飞行逻辑。
         /// </summary>
-        private void UpdateCashMagnet()
+        internal void UpdateCashMagnet()
         {
             try
             {
                 // 仅在无间炼狱模式下生效
-                if (!infiniteHellMode) return;
+                if (owner == null || !owner.IsInfiniteHellMode_WavesArena) return;
 
                 // 获取玩家角色，为 null 则跳过本帧
                 CharacterMainControl player = CharacterMainControl.Main;
@@ -109,7 +109,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[CashMagnet] UpdateCashMagnet 异常: " + e.Message);
+                ModBehaviour.DevLog("[CashMagnet] UpdateCashMagnet 异常: " + e.Message);
             }
         }
 
@@ -135,7 +135,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[CashMagnet] DetectNearbyCashPickups 异常: " + e.Message);
+                ModBehaviour.DevLog("[CashMagnet] DetectNearbyCashPickups 异常: " + e.Message);
             }
         }
 
@@ -178,7 +178,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    DevLog("[CashMagnet] DetectNearbyCashPickups 处理碰撞体异常: " + e.Message);
+                    ModBehaviour.DevLog("[CashMagnet] DetectNearbyCashPickups 处理碰撞体异常: " + e.Message);
                 }
             }
         }
@@ -252,7 +252,7 @@ namespace BossRush
                                         cashMagnetBubbleTimer = CashMagnetBubbleWindow;
                                         try
                                         {
-                                            string bubbleText = L10n.T("吸附现金：", "Cash collected: ") + RichWarningTag + cashMagnetAbsorbedTotal.ToString("N0") + "</color>";   // 得钱用金色，不用纯红（UB-31）
+                                            string bubbleText = L10n.T("吸附现金：", "Cash collected: ") + ModBehaviour.RichWarningTag + cashMagnetAbsorbedTotal.ToString("N0") + "</color>";   // 得钱用金色，不用纯红（UB-31）
                                             Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(bubbleText, playerTransform, -1f, false, false, -1f, 3f);
                                         }
                                         catch {}
@@ -261,7 +261,7 @@ namespace BossRush
                             }
                             catch (Exception e)
                             {
-                                DevLog("[CashMagnet] PickupItem 调用异常: " + e.Message);
+                                ModBehaviour.DevLog("[CashMagnet] PickupItem 调用异常: " + e.Message);
                             }
 
                             // 销毁 pickup GameObject
@@ -271,7 +271,7 @@ namespace BossRush
                             }
                             catch (Exception e)
                             {
-                                DevLog("[CashMagnet] Destroy pickup 异常: " + e.Message);
+                                ModBehaviour.DevLog("[CashMagnet] Destroy pickup 异常: " + e.Message);
                             }
 
                             cashMagnetPickupsToRemove.Add(pickup);
@@ -281,7 +281,7 @@ namespace BossRush
                     {
                         // pickup 处理异常，标记移除
                         cashMagnetPickupsToRemove.Add(pickup);
-                        DevLog("[CashMagnet] UpdateFlyingCashPickups 处理单个 pickup 异常: " + e.Message);
+                        ModBehaviour.DevLog("[CashMagnet] UpdateFlyingCashPickups 处理单个 pickup 异常: " + e.Message);
                     }
                 }
 
@@ -296,7 +296,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[CashMagnet] UpdateFlyingCashPickups 异常: " + e.Message);
+                ModBehaviour.DevLog("[CashMagnet] UpdateFlyingCashPickups 异常: " + e.Message);
             }
         }
 
@@ -304,7 +304,7 @@ namespace BossRush
         /// 清理现金磁铁状态（模式结束或场景切换时调用）。
         /// 清空飞行列表和计时器。
         /// </summary>
-        private void ClearCashMagnetState()
+        internal void ClearCashMagnetState()
         {
             try
             {
@@ -315,7 +315,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[CashMagnet] ClearCashMagnetState 异常: " + e.Message);
+                ModBehaviour.DevLog("[CashMagnet] ClearCashMagnetState 异常: " + e.Message);
             }
         }
     }

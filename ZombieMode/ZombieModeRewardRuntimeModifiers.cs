@@ -13,12 +13,12 @@ using UnityEngine.Events;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
         private void RebuildZombieModeOptionPersistentModifiers()
         {
             CharacterMainControl player = CharacterMainControl.Main;
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             RuntimeStatModifierTracker.RemoveAll(options.ModifierRecords, "ZombieMode Option Persistent");
 
             if (player == null || player.CharacterItem == null)
@@ -162,12 +162,12 @@ namespace BossRush
             string statName,
             float value,
             ModifierType type,
-            System.Collections.Generic.List<ZombieModeAttributeModifierRecord> records,
+            System.Collections.Generic.List<BossRushStatModifierRecord> records,
             string context)
         {
             if (type == ModifierType.PercentageAdd)
             {
-                return RuntimeStatModifierTracker.TryAdd(character, statName, value, this, records, context);
+                return RuntimeStatModifierTracker.TryAdd(character, statName, value, owner, records, context);
             }
 
             if (character == null || character.CharacterItem == null ||
@@ -184,10 +184,10 @@ namespace BossRush
                     return false;
                 }
 
-                Modifier modifier = new Modifier(ModifierType.Add, value, this);
+                Modifier modifier = new Modifier(ModifierType.Add, value, owner);
                 stat.AddModifier(modifier);
 
-                ZombieModeAttributeModifierRecord record = new ZombieModeAttributeModifierRecord();
+                BossRushStatModifierRecord record = new BossRushStatModifierRecord();
                 record.CharacterItem = character.CharacterItem;
                 record.Stat = stat;
                 record.Modifier = modifier;
@@ -197,14 +197,14 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] option modifier add failed: " + context + ", " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] option modifier add failed: " + context + ", " + e.Message);
                 return false;
             }
         }
 
         private void EnsureZombieModeOptionPlayerHealthListener()
         {
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             if (!options.MutatorBulletTimeEnabled && !options.MutatorGuardianShieldEnabled)
             {
                 return;
@@ -225,7 +225,7 @@ namespace BossRush
             if (zombieModeOptionPlayerHealth != null && zombieModeOptionPlayerHealthChangeHandler != null)
             {
                 try { zombieModeOptionPlayerHealth.OnHealthChange.RemoveListener(zombieModeOptionPlayerHealthChangeHandler); }
-                catch (System.Exception e) { DevLog("[ZombieMode] option health listener swap failed: " + e.Message); }
+                catch (System.Exception e) { ModBehaviour.DevLog("[ZombieMode] option health listener swap failed: " + e.Message); }
             }
 
             zombieModeOptionPlayerHealth = player.Health;
@@ -235,7 +235,7 @@ namespace BossRush
             if (!zombieModeOptionRuntimeCleanupRegistered)
             {
                 zombieModeOptionRuntimeCleanupRegistered = true;
-                RegisterZombieModeRunOnlyObject(zombieModeRunState.RunId, ZombieModeRunOnlyObjectKind.EventListener, null, zombieModeOptionPlayerHealth, UnregisterZombieModeOptionPlayerHealthListener);
+                RegisterZombieModeRunOnlyObject(runState.RunId, ZombieModeRunOnlyObjectKind.EventListener, null, zombieModeOptionPlayerHealth, UnregisterZombieModeOptionPlayerHealthListener);
             }
         }
 
@@ -249,23 +249,23 @@ namespace BossRush
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[ZombieMode] option health listener remove failed: " + e.Message);
+                    ModBehaviour.DevLog("[ZombieMode] option health listener remove failed: " + e.Message);
                 }
             }
 
             zombieModeOptionPlayerHealth = null;
             zombieModeOptionPlayerHealthChangeHandler = null;
-            zombieModeRunState.OptionRuntime.PlayerHealthListenerRegistered = false;
+            runState.OptionRuntime.PlayerHealthListenerRegistered = false;
         }
 
         private void HandleZombieModePlayerHealthChangedForOptions(Health health)
         {
-            if (!IsZombieModeRunValid(zombieModeRunState.RunId) || health == null)
+            if (!IsZombieModeRunValid(runState.RunId) || health == null)
             {
                 return;
             }
 
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             if (options.MutatorBulletTimeEnabled)
             {
                 TryTriggerZombieModeBulletTime(health);
@@ -284,7 +284,7 @@ namespace BossRush
                 return;
             }
 
-            ZombieModeCombatPhase phase = zombieModeRunState.CombatPhase;
+            ZombieModeCombatPhase phase = runState.CombatPhase;
             if (phase == ZombieModeCombatPhase.None ||
                 phase == ZombieModeCombatPhase.RewardSelection ||
                 phase == ZombieModeCombatPhase.Settling ||
@@ -300,7 +300,7 @@ namespace BossRush
                 return;
             }
 
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             float now = GetZombieModeRuntimeNow();
             if (now - options.LastBulletTimeTriggerTime < 20f)
             {
@@ -317,13 +317,13 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] bullet time trigger failed: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] bullet time trigger failed: " + e.Message);
             }
         }
 
         private void UpdateZombieModeGuardianShield(Health health)
         {
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             bool fullHealth = health != null && health.MaxHealth > 0f && health.CurrentHealth >= health.MaxHealth - 0.01f;
             if (fullHealth && !options.GuardianShieldActive)
             {
@@ -355,7 +355,7 @@ namespace BossRush
                 return;
             }
 
-            if (!IsZombieModeActive)
+            if (!ZombieModePhaseGuards.IsRunActive(runState.LifecyclePhase))
             {
                 RemoveZombieModePlayerProjectileRuntime(projectile);
                 return;
@@ -374,7 +374,7 @@ namespace BossRush
                 return;
             }
 
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             if (options.ProjectilePenetrationStacks <= 0 &&
                 options.ProjectileBurnStacks <= 0 &&
                 options.ProjectileColdStacks <= 0 &&
@@ -414,7 +414,7 @@ namespace BossRush
 
                 runtime.ResetRuntimeState();
                 runtime.Initialize(
-                    zombieModeRunState.RunId,
+                    runState.RunId,
                     enableHelixRuntime,
                     0.18f,
                     14f,
@@ -450,7 +450,7 @@ namespace BossRush
             {
                 runtime.ResetRuntimeState();
                 runtime.ClearRuntimeConfiguration();
-                Destroy(runtime);
+                UnityEngine.Object.Destroy(runtime);
             }
             else
             {

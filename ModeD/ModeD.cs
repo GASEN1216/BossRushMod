@@ -21,6 +21,8 @@ using ItemStatsSystem;
 using ItemStatsSystem.Items;
 using Duckov.Utilities;
 
+using SharedModeEnemyEquipmentMaterializationPlan = BossRush.ModeDItemPool.SharedModeEnemyEquipmentMaterializationPlan;
+
 namespace BossRush
 {
     /// <summary>
@@ -29,87 +31,35 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        #region ModeD
+
         #region Mode D 状态变量
         
-        /// <summary>是否处于 Mode D 模式</summary>
-        private bool modeDActive = false;
-        
-        /// <summary>Mode D 当前波次索引（从1开始）</summary>
-        private int modeDWaveIndex = 0;
-        
-        /// <summary>Mode D 当前波次中存活的敌人列表</summary>
-        private readonly List<CharacterMainControl> modeDCurrentWaveEnemies = new List<CharacterMainControl>();
-        
-        /// <summary>Mode D 小怪预设池</summary>
-        private readonly List<EnemyPresetInfo> modeDMinionPool = new List<EnemyPresetInfo>();
-
-        /// <summary>Mode D Boss预设池（复用现有enemyPresets）</summary>
-        private List<EnemyPresetInfo> modeDBossPool = null;
-
-        /// <summary>CharacterRandomPreset 缓存字典（按 nameKey 索引，避免重复 FindObjectsOfTypeAll）</summary>
-        private static System.Collections.Generic.Dictionary<string, CharacterRandomPreset> cachedCharacterPresets = null;
-
-        /// <summary>复用 List 缓存（避免 GetRandomBossPreset/GetRandomMinionPreset 每次 new List 造成 GC）</summary>
-        private static readonly System.Collections.Generic.List<EnemyPresetInfo> presetFilterCache = new System.Collections.Generic.List<EnemyPresetInfo>();
-
-        /// <summary>复用 List 缓存 #2（用于两阶段过滤，如血量筛选）</summary>
-        private static readonly System.Collections.Generic.List<EnemyPresetInfo> presetFilterCache2 = new System.Collections.Generic.List<EnemyPresetInfo>();
-        
-        /// <summary>Mode D 物品池是否已初始化</summary>
-        private bool modeDItemPoolsInitialized = false;
-        private bool modeDEnemyPoolsInitialized = false;
-        
-        /// <summary>Mode D 武器池（Gun Tag）</summary>
-        private readonly List<int> modeDWeaponPool = new List<int>();
-        
-        /// <summary>Mode D 护甲池（Armor Tag）</summary>
-        private readonly List<int> modeDArmortPool = new List<int>();
-        private readonly Dictionary<int, List<int>> modeDArmortPoolByQuality = CreateModeDQualityBuckets();
-        
-        /// <summary>Mode D 头盔池（Helmat Tag）</summary>
-        private readonly List<int> modeDHelmetPool = new List<int>();
-        private readonly Dictionary<int, List<int>> modeDHelmetPoolByQuality = CreateModeDQualityBuckets();
-        
-        /// <summary>Mode D 弹药池（Bullet Tag）</summary>
-        private readonly List<int> modeDAmmoPool = new List<int>();
-        private readonly Dictionary<int, List<int>> modeDAmmoPoolByQuality = CreateModeDQualityBuckets();
-        
-        /// <summary>Mode D 医疗品池</summary>
-        private readonly List<int> modeDMedicalPool = new List<int>();
-        private readonly Dictionary<int, List<int>> modeDMedicalPoolByQuality = CreateModeDQualityBuckets();
-
-        /// <summary>Mode D 近战武器池（MeleeWeapon Tag，预建）</summary>
-        private readonly List<int> modeDMeleePool = new List<int>();
-
-        /// <summary>Mode D 图腾池（Totem Tag，预建）</summary>
-        private readonly List<int> modeDTotemPool = new List<int>();
-        private readonly Dictionary<int, List<int>> modeDTotemPoolByQuality = CreateModeDQualityBuckets();
-
-        /// <summary>Mode D 面具池（Mask Tag，预建）</summary>
-        private readonly List<int> modeDMaskPool = new List<int>();
-        private readonly Dictionary<int, List<int>> modeDMaskPoolByQuality = CreateModeDQualityBuckets();
-
-        /// <summary>Mode D 背包池（Backpack Tag，预建）</summary>
-        private readonly List<int> modeDBackpackPool = new List<int>();
-
-        /// <summary>Mode D 当前波次是否正在处理完成逻辑（防止重复触发）</summary>
-        private bool modeDWaveCompletePending = false;
-
-        /// <summary>Mode D 当前波次预期生成的敌人数（按实际调用 SpawnModeDEnemy 的次数累计）</summary>
-        private int modeDExpectedEnemiesInCurrentWave = 0;
-
-        /// <summary>Mode D 当前波次已"结案"的生成数量（成功或最终失败都算结案）</summary>
-        private int modeDSpawnResolvedInCurrentWave = 0;
-
-        /// <summary>自动下一波协程句柄（用于取消旧协程，防止重复开波）</summary>
-        private Coroutine modeDAutoNextWaveCoroutine = null;
+        private bool modeDActive { get { return modeDRuntime.modeDActive; } set { modeDRuntime.modeDActive = value; } }
+        private int modeDWaveIndex { get { return modeDRuntime.modeDWaveIndex; } set { modeDRuntime.modeDWaveIndex = value; } }
+        private List<CharacterMainControl> modeDCurrentWaveEnemies { get { return modeDRuntime.modeDCurrentWaveEnemies; } }
+        private List<EnemyPresetInfo> modeDMinionPool { get { return modeDRuntime.modeDMinionPool; } }
+        private List<EnemyPresetInfo> modeDBossPool { get { return modeDRuntime.modeDBossPool; } set { modeDRuntime.modeDBossPool = value; } }
+        private static Dictionary<string, CharacterRandomPreset> cachedCharacterPresets
+        {
+            get { return ModeDRuntimeModule.cachedCharacterPresets; }
+            set { ModeDRuntimeModule.cachedCharacterPresets = value; }
+        }
+        private static List<EnemyPresetInfo> presetFilterCache { get { return ModeDRuntimeModule.presetFilterCache; } }
+        private static List<EnemyPresetInfo> presetFilterCache2 { get { return ModeDRuntimeModule.presetFilterCache2; } }
+        private ModeDItemPool modeDItemPool { get { return modeDRuntime.ItemPool; } }
+        private bool modeDEnemyPoolsInitialized { get { return modeDRuntime.modeDEnemyPoolsInitialized; } set { modeDRuntime.modeDEnemyPoolsInitialized = value; } }
+        private bool modeDWaveCompletePending { get { return modeDRuntime.modeDWaveCompletePending; } set { modeDRuntime.modeDWaveCompletePending = value; } }
+        private int modeDExpectedEnemiesInCurrentWave { get { return modeDRuntime.modeDExpectedEnemiesInCurrentWave; } set { modeDRuntime.modeDExpectedEnemiesInCurrentWave = value; } }
+        private int modeDSpawnResolvedInCurrentWave { get { return modeDRuntime.modeDSpawnResolvedInCurrentWave; } set { modeDRuntime.modeDSpawnResolvedInCurrentWave = value; } }
+        private Coroutine modeDAutoNextWaveCoroutine { get { return modeDRuntime.modeDAutoNextWaveCoroutine; } set { modeDRuntime.modeDAutoNextWaveCoroutine = value; } }
 
         #endregion
         
         #region Mode D 配置
         
         /// <summary>Mode D 每波敌人数（可配置，1-10，默认3）</summary>
-        private int modeDEnemiesPerWave = 3;
+        private int modeDEnemiesPerWave { get { return modeDRuntime.modeDEnemiesPerWave; } set { modeDRuntime.modeDEnemiesPerWave = value; } }
         
         #endregion
         
@@ -136,496 +86,29 @@ namespace BossRush
         /// <summary>
         /// 启动 Mode D 模式
         /// </summary>
-        public void StartModeD()
-        {
-            ModeDRuntimeModule.Invalidate(this);
-            try
-            {
-                DevLog("[ModeD] 启动 Mode D 模式");
-
-                // 清理可能从无间炼狱残留的状态：ConfigureBossRushMode 是 infiniteHellMode
-                // 的唯一赋值点，玩家若先玩无间炼狱后直接进白手起家，残留的 true 会让
-                // OnBossBeforeSpawnLoot_LootAndRewards 禁用 Boss 掉落箱并在路牌旁掉钞票。
-                infiniteHellMode = false;
-                infiniteHellWaveIndex = 0;
-                infiniteHellCashPool = 0L;
-                infiniteHellMilestoneRewardTier = 0;
-                infiniteHellWaveCashThisWave = 0L;
-                ClearCashMagnetState();
-
-                modeDActive = true;
-                modeDWaveIndex = 0;
-                modeDWaveCompletePending = false;
-                modeDCurrentWaveEnemies.Clear();
-                ClearEnemyRecoveryMonitorState();
-
-                // 读取配置
-                if (config != null && config.modeDEnemiesPerWave > 0)
-                {
-                    modeDEnemiesPerWave = Mathf.Clamp(config.modeDEnemiesPerWave, 1, 10);
-                }
-                DevLog("[ModeD] 每波敌人数: " + modeDEnemiesPerWave);
-
-                // 初始化物品池
-                InitializeModeDItemPools();
-
-                // 初始化敌人池
-                InitializeModeDEnemyPools();
-
-                // 前置构建全局掉落池（避免战斗中首次调用时卡顿）
-                EnsureModeDGlobalItemPool();
-
-                // 给玩家发放开局装备
-                GivePlayerStarterKit();
-
-                // 抽取并应用本局变异词条（首波敌人由路牌触发，此处先于任何刷怪）
-                TryRollMutatorsForMode("ModeD");
-
-                // 设置路牌为 Mode D 模式
-                SetupSignForModeD();
-                
-                // 初始状态保持为生小鸡（EntryAndDifficulty），波次开始时再切换到加油状态
-
-                ShowMessage(L10n.T("白手起家模式已激活！通过路牌开始挑战！", "Rags to Riches mode activated! Start the challenge via the signpost!"));
-                ShowBigBanner(L10n.T("欢迎来到 <color=red>白手起家</color>！", "Welcome to <color=red>Rags to Riches</color>!"));
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeD] [ERROR] StartModeD 失败: " + e.Message);
-            }
-        }
+        public void StartModeD() { modeDRuntime.StartModeD(); }
 
         /// <summary>
         /// 检查并尝试启动 Mode D（在进入竞技场时调用）
         /// </summary>
-        public bool TryStartModeD()
-        {
-            // Mode H 真实资产风险门（加法分支，设计提案 §24.3）：
-            // 只在存在未终结真实资产事务或风险未知时拒绝；no-throw，
-            // 新档/无 journal 时同步 ready 且不阻断，旧模式行为逐字不变。
-            try
-            {
-                if (!ModeHRuntimeGates.IsLegacyModeEntryAllowed())
-                {
-                    // 被拒的成因有两种：扫描本身失败（可自愈）与确有未结算押品。
-                    // 先给一次重试机会，再按真实成因取文案，别把读档出错说成「你有笔账没结」。
-                    ShowMessage(L10n.T(ModeHRuntimeGates.ResolveLegacyBlockedMessageKey()));
-                    DevLog("[BossRush] 入口被 Mode H 真实资产风险门拒绝");
-                    return false;
-                }
-            }
-            catch
-            {
-                // 门查询本身 no-throw；异常只表示未能判定，放行旧模式既有流程
-            }
-
-            try
-            {
-                // 互斥保护：Mode E 已激活时不启动 Mode D
-                if (modeEActive)
-                {
-                    DevLog("[ModeD] Mode E 已激活，跳过 Mode D 启动");
-                    return false;
-                }
-
-                // 检查是否满足 Mode D 条件
-                if (!IsPlayerNaked())
-                {
-                    DevLog("[ModeD] 玩家不满足裸体条件，不启动 Mode D");
-                    return false;
-                }
-
-                DevLog("[ModeD] 检测到裸体入场，启动 Mode D");
-                StartModeD();
-                return true;
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeD] [ERROR] TryStartModeD 失败: " + e.Message);
-                return false;
-            }
-        }
+        public bool TryStartModeD() { return ModeDRuntimeModule.TryStartModeD(this); }
 
         /// <summary>
         /// 结束 Mode D 模式
         /// </summary>
-        public void EndModeD()
-        {
-            ModeDRuntimeModule.Invalidate(this);
-            try
-            {
-                // 即使状态已提前关闭，也要幂等清理仍登记的实体。
-                if (!modeDActive)
-                {
-                    CleanupModeDWaveEnemiesOnExit();
-                    return;
-                }
-
-                // 先保存完成波次数，再清零
-                int completedWaves = modeDWaveIndex;
-
-                DevLog("[ModeD] 结束 Mode D 模式，完成波次: " + completedWaves);
-
-                modeDActive = false;
-                modeDWaveIndex = 0;
-                CleanupModeDWaveEnemiesOnExit();
-                ClearEnemyRecoveryMonitorState();
-
-                // 清理变异词条（覆盖场景退出 / 玩家死亡 / 手动退出，幂等）
-                ClearMutatorsForMode("ModeD");
-
-                // 使用保存的波次数显示消息
-                ShowMessage(L10n.T(
-                    "白手起家挑战结束！共完成 " + completedWaves + " 波",
-                    "Rags to Riches challenge ended! Completed " + completedWaves + " waves"
-                ));
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeD] [ERROR] EndModeD 失败: " + e.Message);
-            }
-        }
-
-        /// <summary>
-        /// 退出 Mode D 时确定性销毁本波角色。只清列表会遗留仍在场景中的 AI，
-        /// 尤其中立预设不会被标准敌对清场路径识别。
-        /// </summary>
-        private void CleanupModeDWaveEnemiesOnExit()
-        {
-            for (int i = modeDCurrentWaveEnemies.Count - 1; i >= 0; i--)
-            {
-                CharacterMainControl enemy = modeDCurrentWaveEnemies[i];
-                if (enemy == null) continue;
-                try
-                {
-                    UnregisterEnemyRecovery(enemy);
-                    enemy.dropBoxOnDead = false;
-                    if (enemy.gameObject != null)
-                    {
-                        enemy.gameObject.SetActive(false);
-                        UnityEngine.Object.Destroy(enemy.gameObject);
-                    }
-                }
-                catch (Exception cleanupException)
-                {
-                    DevLog("[ModeD] [WARNING] 退出时销毁本波敌人失败: index=" + i
-                        + ", " + cleanupException.Message);
-                }
-            }
-            modeDCurrentWaveEnemies.Clear();
-        }
+        public void EndModeD() { modeDRuntime.EndModeD(); }
 
         /// <summary>
         /// 初始化 Mode D 物品池（按 Tag 筛选，包含游戏中所有该品类物品）
         /// </summary>
         private void InitializeModeDItemPools()
         {
-            if (modeDItemPoolsInitialized) return;
-
-            try
-            {
-                bool logEnabled = VerboseStartupDebugLogsEnabled;
-                if (logEnabled)
-                {
-                    DevLog("[ModeD] 开始初始化物品池...");
-                }
-
-                modeDWeaponPool.Clear();
-                modeDArmortPool.Clear();
-                modeDHelmetPool.Clear();
-                modeDAmmoPool.Clear();
-                modeDMedicalPool.Clear();
-                modeDMeleePool.Clear();
-                modeDTotemPool.Clear();
-                modeDMaskPool.Clear();
-                modeDBackpackPool.Clear();
-                ClearModeDQualityBuckets(modeDArmortPoolByQuality);
-                ClearModeDQualityBuckets(modeDHelmetPoolByQuality);
-                ClearModeDQualityBuckets(modeDAmmoPoolByQuality);
-                ClearModeDQualityBuckets(modeDMedicalPoolByQuality);
-                ClearModeDQualityBuckets(modeDTotemPoolByQuality);
-                ClearModeDQualityBuckets(modeDMaskPoolByQuality);
-
-                // 获取 Tag 系统
-                Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
-                if (tagsData == null)
-                {
-                    if (logEnabled)
-                    {
-                        DevLog("[ModeD] [WARNING] 无法获取 TagsData");
-                    }
-                    return;
-                }
-
-                // 发装池保留更多“带标签即可入池”的物品，只排除 demo / quest。
-                List<Duckov.Utilities.Tag> baseExclude = BuildModeDEquipmentPoolExcludeTags(tagsData);
-                Duckov.Utilities.Tag[] excludeArray = baseExclude.ToArray();
-
-                // 武器池（Gun Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
-                if (tagsData.Gun != null)
-                {
-                    int[] ids = SearchItemsByTag(tagsData.Gun, excludeArray);
-                    AddDistinctItemIds(modeDWeaponPool, ids);
-                }
-
-                // 护甲池（Armor Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
-                if (tagsData.Armor != null)
-                {
-                    int[] ids = SearchItemsByTag(tagsData.Armor, excludeArray);
-                    AddDistinctItemIds(modeDArmortPool, ids);
-                }
-
-                // 头盔池（Helmat Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
-                if (tagsData.Helmat != null)
-                {
-                    int[] ids = SearchItemsByTag(tagsData.Helmat, excludeArray);
-                    AddDistinctItemIds(modeDHelmetPool, ids);
-                }
-
-                // 弹药池（Bullet Tag）
-                if (tagsData.Bullet != null)
-                {
-                    int[] ids = SearchItemsByTag(tagsData.Bullet, excludeArray);
-                    AddDistinctItemIds(modeDAmmoPool, ids);
-                }
-
-                // 医疗品池（优先使用原版 Medic Tag，兼容旧 Medical/Consumable/Healing）
-                Duckov.Utilities.Tag medicalTag = FindTagByNameInInit("Medic");
-                if (medicalTag == null) medicalTag = FindTagByNameInInit("Medical");
-                if (medicalTag == null) medicalTag = FindTagByNameInInit("Consumable");
-                if (medicalTag == null) medicalTag = FindTagByNameInInit("Healing");
-                if (medicalTag != null)
-                {
-                    int[] ids = SearchItemsByTag(medicalTag, excludeArray);
-                    AddDistinctItemIds(modeDMedicalPool, ids);
-                }
-
-                // P1-8: 预建近战武器池（MeleeWeapon Tag）
-                Duckov.Utilities.Tag meleeTag = FindTagByNameInInit("MeleeWeapon");
-                if (meleeTag != null)
-                {
-                    int[] ids = SearchItemsByTag(meleeTag, excludeArray);
-                    AddDistinctItemIds(modeDMeleePool, ids);
-                }
-
-                // P1-8: 预建图腾池（Totem Tag）- 黑名单物品已在 SearchItemsByTag 中统一过滤
-                Duckov.Utilities.Tag totemTag = FindTagByNameInInit("Totem");
-                if (totemTag != null)
-                {
-                    int[] ids = SearchItemsByTag(totemTag, excludeArray);
-                    AddDistinctItemIds(modeDTotemPool, ids);
-                }
-
-                // P1-8: 预建面具池（Mask / FaceMask / Headset 任一标签都算）
-                Duckov.Utilities.Tag maskTag = FindTagByNameInInit("Mask");
-                if (maskTag != null)
-                {
-                    int[] ids = SearchItemsByTag(maskTag, excludeArray);
-                    AddDistinctItemIds(modeDMaskPool, ids);
-                }
-
-                Duckov.Utilities.Tag faceMaskTag = FindTagByNameInInit("FaceMask");
-                if (faceMaskTag != null)
-                {
-                    int[] ids = SearchItemsByTag(faceMaskTag, excludeArray);
-                    AddDistinctItemIds(modeDMaskPool, ids);
-                }
-
-                Duckov.Utilities.Tag headsetTag = FindTagByNameInInit("Headset");
-                if (headsetTag != null)
-                {
-                    int[] ids = SearchItemsByTag(headsetTag, excludeArray);
-                    AddDistinctItemIds(modeDMaskPool, ids);
-                }
-
-                // P1-8: 预建背包池（使用 GameplayDataSettings.Tags.Backpack）
-                if (tagsData.Backpack != null)
-                {
-                    int[] ids = SearchItemsByTag(tagsData.Backpack, excludeArray);
-                    AddDistinctItemIds(modeDBackpackPool, ids);
-                }
-
-                RebuildModeDQualityBuckets(modeDArmortPool, modeDArmortPoolByQuality);
-                RebuildModeDQualityBuckets(modeDHelmetPool, modeDHelmetPoolByQuality);
-                RebuildModeDQualityBuckets(modeDAmmoPool, modeDAmmoPoolByQuality);
-                RebuildModeDQualityBuckets(modeDMedicalPool, modeDMedicalPoolByQuality);
-                RebuildModeDQualityBuckets(modeDTotemPool, modeDTotemPoolByQuality);
-                RebuildModeDQualityBuckets(modeDMaskPool, modeDMaskPoolByQuality);
-                InitializeAccessoryPool();
-
-                modeDItemPoolsInitialized = true;
-                if (logEnabled)
-                {
-                    DevLog("[ModeD] 物品池初始化完成: " +
-                           "武器=" + modeDWeaponPool.Count +
-                           ", 护甲=" + modeDArmortPool.Count +
-                           ", 头盔=" + modeDHelmetPool.Count +
-                           ", 弹药=" + modeDAmmoPool.Count +
-                           ", 医疗=" + modeDMedicalPool.Count +
-                           ", 近战=" + modeDMeleePool.Count +
-                           ", 图腾=" + modeDTotemPool.Count +
-                           ", 面具=" + modeDMaskPool.Count +
-                           ", 背包=" + modeDBackpackPool.Count);
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeD] [ERROR] InitializeModeDItemPools 失败: " + e.Message);
-            }
+            modeDItemPool.InitializeModeDItemPools(FindTagByName);
         }
 
-        private static Dictionary<int, List<int>> CreateModeDQualityBuckets()
-        {
-            Dictionary<int, List<int>> buckets = new Dictionary<int, List<int>>();
-            for (int quality = 1; quality <= 8; quality++)
-            {
-                buckets[quality] = new List<int>();
-            }
-
-            return buckets;
-        }
-
-        private static void ClearModeDQualityBuckets(Dictionary<int, List<int>> buckets)
-        {
-            if (buckets == null)
-            {
-                return;
-            }
-
-            for (int quality = 1; quality <= 8; quality++)
-            {
-                List<int> bucket;
-                if (!buckets.TryGetValue(quality, out bucket) || bucket == null)
-                {
-                    buckets[quality] = new List<int>();
-                    continue;
-                }
-
-                bucket.Clear();
-            }
-        }
-
-        private static void AddDistinctItemIds(List<int> targetPool, int[] ids)
-        {
-            if (targetPool == null || ids == null || ids.Length == 0)
-            {
-                return;
-            }
-
-            for (int i = 0; i < ids.Length; i++)
-            {
-                int id = ids[i];
-                if (id > 0 && !targetPool.Contains(id))
-                {
-                    targetPool.Add(id);
-                }
-            }
-        }
-
-        private List<Duckov.Utilities.Tag> BuildModeDEquipmentPoolExcludeTags(Duckov.Utilities.GameplayDataSettings.TagsData tagsData)
-        {
-            List<Duckov.Utilities.Tag> excludeTags = new List<Duckov.Utilities.Tag>();
-            if (tagsData == null)
-            {
-                return excludeTags;
-            }
-
-            AddUniqueLootExcludeTag(excludeTags, tagsData.LockInDemoTag);
-            AddUniqueLootExcludeTag(excludeTags, TryFindQuestTag(tagsData));
-
-            return excludeTags;
-        }
-
-        private void RebuildModeDQualityBuckets(List<int> sourcePool, Dictionary<int, List<int>> buckets)
-        {
-            ClearModeDQualityBuckets(buckets);
-            if (sourcePool == null || buckets == null || sourcePool.Count == 0)
-            {
-                return;
-            }
-
-            for (int i = 0; i < sourcePool.Count; i++)
-            {
-                int id = sourcePool[i];
-                if (id <= 0)
-                {
-                    continue;
-                }
-
-                int quality = 1;
-                try
-                {
-                    quality = Mathf.Clamp(ItemAssetsCollection.GetMetaData(id).quality, 1, 8);
-                }
-                catch
-                {
-                }
-
-                List<int> bucket;
-                if (!buckets.TryGetValue(quality, out bucket) || bucket == null)
-                {
-                    bucket = new List<int>();
-                    buckets[quality] = bucket;
-                }
-
-                bucket.Add(id);
-            }
-        }
-
-        /// <summary>
-        /// 根据Tag搜索物品（包含所有品质），自动过滤黑名单物品
-        /// </summary>
-        private int[] SearchItemsByTag(Duckov.Utilities.Tag tag, Duckov.Utilities.Tag[] excludeTags)
-        {
-            try
-            {
-                ItemFilter filter = default(ItemFilter);
-                filter.requireTags = new Duckov.Utilities.Tag[] { tag };
-                filter.excludeTags = excludeTags;
-                filter.minQuality = 1;
-                filter.maxQuality = 8; // 包含所有品质
-                int[] rawIds = ItemAssetsCollection.Search(filter);
-                
-                if (rawIds == null || rawIds.Length == 0)
-                {
-                    return rawIds;
-                }
-                
-                // 过滤掉黑名单物品（统一使用 LootBlacklistRegistry）
-                List<int> filteredIds = new List<int>(rawIds.Length);
-                for (int i = 0; i < rawIds.Length; i++)
-                {
-                    int id = rawIds[i];
-                    if (id > 0 && !IsItemBlacklisted(id))
-                    {
-                        filteredIds.Add(id);
-                    }
-                }
-                return filteredIds.ToArray();
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// 根据名称查找Tag（用于初始化）
-        /// </summary>
         private Duckov.Utilities.Tag FindTagByNameInInit(string tagName)
         {
-            try
-            {
-                foreach (var tag in GameplayDataSettings.Tags.AllTags)
-                {
-                    if (tag != null && tag.name == tagName)
-                    {
-                        return tag;
-                    }
-                }
-            }
-            catch {}
-            return null;
+            return modeDItemPool.FindTagByNameInInit(tagName);
         }
 
         /// <summary>
@@ -633,252 +116,12 @@ namespace BossRush
         /// </summary>
         private void InitializeModeDEnemyPools()
         {
-            try
-            {
-                bool logEnabled = VerboseStartupDebugLogsEnabled;
-                if (logEnabled)
-                {
-                    DevLog("[ModeD] 开始初始化敌人池...");
-                }
-
-                modeDBossPool = enemyPresets;
-                if (modeDEnemyPoolsInitialized &&
-                    cachedCharacterPresets != null &&
-                    cachedCharacterPresets.Count > 0 &&
-                    modeDMinionPool.Count > 0)
-                {
-                    return;
-                }
-
-                modeDMinionPool.Clear();
-
-                // 扫描所有 CharacterRandomPreset
-                var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
-                if (allPresets == null || allPresets.Length == 0)
-                {
-                    if (logEnabled)
-                    {
-                        DevLog("[ModeD] [WARNING] 未找到任何 CharacterRandomPreset");
-                    }
-                    return;
-                }
-
-                // 构建缓存字典（一次性 O(N) 操作，后续 SpawnModeDEnemy 可 O(1) 查询）
-                cachedCharacterPresets = new System.Collections.Generic.Dictionary<string, CharacterRandomPreset>();
-                foreach (var preset in allPresets)
-                {
-                    if (preset == null || string.IsNullOrEmpty(preset.nameKey) || IsRuntimeCharacterPresetClone(preset)) continue;
-                    if (!cachedCharacterPresets.ContainsKey(preset.nameKey))
-                    {
-                        cachedCharacterPresets[preset.nameKey] = preset;
-                    }
-                }
-                if (logEnabled)
-                {
-                    DevLog("[ModeD] 缓存了 " + cachedCharacterPresets.Count + " 个 CharacterRandomPreset");
-                }
-
-                foreach (var preset in allPresets)
-                {
-                    if (preset == null || IsRuntimeCharacterPresetClone(preset)) continue;
-
-                    string nameKey = preset.nameKey;
-                    if (string.IsNullOrEmpty(nameKey)) continue;
-
-                    int team = (int)preset.team;
-                    // 只收集敌对阵营，排除玩家和中立阵营
-                    if (team == (int)Teams.player || team == (int)Teams.middle) continue;
-
-                    // 雇佣兵在运行时会被设置为友方（leader.IsMainCharacter），无法被玩家击杀
-                    if (nameKey == "Cname_Usec")
-                    {
-                        if (logEnabled)
-                        {
-                            DevLog("[ModeD] 排除雇佣兵预设: " + nameKey);
-                        }
-                        continue;
-                    }
-
-                    // 排除自动炮台（固定敌人，无法移动）
-                    if (nameKey == "Cname_GunTurret")
-                    {
-                        if (logEnabled)
-                        {
-                            DevLog("[ModeD] 排除自动炮台: " + nameKey);
-                        }
-                        continue;
-                    }
-
-                    // 排除商人和宠物类型
-                    bool shouldExclude = false;
-                    
-                    // 方法1：通过反射获取 characterIconType 字段
-                    try
-                    {
-                        var iconField = typeof(CharacterRandomPreset).GetField("characterIconType",
-                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                        if (iconField != null)
-                        {
-                            object iconValue = iconField.GetValue(preset);
-                            if (iconValue != null)
-                            {
-                                int iconType = (int)iconValue;
-                                // CharacterIconTypes: merchant = 4, pet = 5
-                                if (iconType == 4)
-                                {
-                                    shouldExclude = true;
-                                    if (logEnabled)
-                                    {
-                                        DevLog("[ModeD] 排除商人(iconType): " + nameKey);
-                                    }
-                                }
-                                else if (iconType == 5)
-                                {
-                                    shouldExclude = true;
-                                    if (logEnabled)
-                                    {
-                                        DevLog("[ModeD] 排除宠物(iconType): " + nameKey);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch { }
-                    
-                    // 方法2：通过 GetCharacterIcon() 返回的图标来判断
-                    if (!shouldExclude)
-                    {
-                        try
-                        {
-                            Sprite icon = preset.GetCharacterIcon();
-                            if (icon != null)
-                            {
-                                Sprite merchantIcon = GameplayDataSettings.UIStyle.MerchantCharacterIcon;
-                                Sprite petIcon = GameplayDataSettings.UIStyle.PetCharacterIcon;
-                                if (merchantIcon != null && icon == merchantIcon)
-                                {
-                                    shouldExclude = true;
-                                    if (logEnabled)
-                                    {
-                                        DevLog("[ModeD] 排除商人(icon): " + nameKey);
-                                    }
-                                }
-                                else if (petIcon != null && icon == petIcon)
-                                {
-                                    shouldExclude = true;
-                                    if (logEnabled)
-                                    {
-                                        DevLog("[ModeD] 排除宠物(icon): " + nameKey);
-                                    }
-                                }
-                            }
-                        }
-                        catch { }
-                    }
-                    
-                    // 方法3：通过名字关键词排除（作为最后的保险）
-                    if (!shouldExclude)
-                    {
-                        string lowerName = nameKey.ToLower();
-                        if (lowerName.Contains("merchant") || lowerName.Contains("trader") || 
-                            lowerName.Contains("shop") || lowerName.Contains("vendor") ||
-                            nameKey.Contains("商人") || nameKey.Contains("商贩"))
-                        {
-                            shouldExclude = true;
-                            if (logEnabled)
-                            {
-                                DevLog("[ModeD] 排除商人(name): " + nameKey);
-                            }
-                        }
-                        else if (lowerName.Contains("pet") || nameKey.Contains("宠物"))
-                        {
-                            shouldExclude = true;
-                            if (logEnabled)
-                            {
-                                DevLog("[ModeD] 排除宠物(name): " + nameKey);
-                            }
-                        }
-                    }
-
-                    if (shouldExclude) continue;
-
-                    // 排除载具类型（包括炮台）
-                    if (preset.isVehicle)
-                    {
-                        if (logEnabled)
-                        {
-                            DevLog("[ModeD] 排除载具/炮台: " + nameKey);
-                        }
-                        continue;
-                    }
-
-                    float health = (preset.health > 0f) ? preset.health : 100f;
-                    float damage = preset.damageMultiplier;
-
-                    // showName == false 的是小怪
-                    if (!preset.showName)
-                    {
-                        // 排除已存在的
-                        if (modeDMinionPool.Any(e => e.name == nameKey)) continue;
-
-                        string displayName = GetLocalizedCharacterName(nameKey);
-
-                        var minionInfo = new EnemyPresetInfo
-                        {
-                            name = nameKey,
-                            displayName = displayName,
-                            team = team,
-                            baseHealth = health,
-                            baseDamage = damage
-                        };
-
-                        modeDMinionPool.Add(minionInfo);
-                        if (logEnabled)
-                        {
-                            DevLog("[ModeD] 添加小怪: " + nameKey + " (health=" + health + ")");
-                        }
-                    }
-                }
-
-                // Boss池复用现有的 enemyPresets（已在 TryDiscoverAdditionalEnemies 中填充）
-                modeDBossPool = enemyPresets;
-
-                int bossCount = (modeDBossPool != null) ? modeDBossPool.Count : 0;
-                modeDEnemyPoolsInitialized = cachedCharacterPresets != null &&
-                    cachedCharacterPresets.Count > 0 &&
-                    (modeDMinionPool.Count > 0 || bossCount > 0);
-                if (logEnabled)
-                {
-                    DevLog("[ModeD] 敌人池初始化完成: 小怪=" + modeDMinionPool.Count + ", Boss=" + bossCount);
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeD] [ERROR] InitializeModeDEnemyPools 失败: " + e.Message);
-            }
+            modeDRuntime.InitializeModeDEnemyPools(enemyPresets, GetLocalizedCharacterName);
         }
-        
+
         #endregion
 
         #region Mode D/E 共用辅助方法
-
-        private static readonly string[] NakedEquipmentSlotNames = new string[]
-        {
-            "Armor",
-            "Helmat",
-            "FaceMask",
-            "Backpack",
-            "Headset",
-            "Totem1",
-            "Totem2"
-        };
-
-        private static readonly string[] NakedWeaponSlotNames = new string[]
-        {
-            "PrimaryWeapon",
-            "SecondaryWeapon",
-            "MeleeWeapon"
-        };
 
         private int GetBossRushTicketTypeId()
         {
@@ -886,206 +129,107 @@ namespace BossRush
         }
 
         private bool TryGetMainCharacterItem(out CharacterMainControl main, out Item characterItem)
-        {
-            main = CharacterMainControl.Main;
-            if (main == null)
-            {
-                characterItem = null;
-                return false;
-            }
-
-            characterItem = main.CharacterItem;
-            return characterItem != null;
-        }
-
+        { return ModeEntryInventory.TryGetMainCharacterItem(out main, out characterItem); }
         private Item FindFirstPlayerInventoryItemByTypeId(int typeId, string logTag = null, string itemLabel = null)
-        {
-            if (typeId <= 0)
-            {
-                return null;
-            }
-
-            try
-            {
-                CharacterMainControl main;
-                Item characterItem;
-                if (!TryGetMainCharacterItem(out main, out characterItem))
-                {
-                    return null;
-                }
-
-                Inventory inventory = characterItem.Inventory;
-                if (inventory == null || inventory.Content == null)
-                {
-                    return null;
-                }
-
-                for (int i = 0; i < inventory.Content.Count; i++)
-                {
-                    Item item = inventory.Content[i];
-                    if (item == null)
-                    {
-                        continue;
-                    }
-
-                    int itemTypeId = -1;
-                    try { itemTypeId = item.TypeID; } catch { }
-                    if (itemTypeId != typeId)
-                    {
-                        continue;
-                    }
-
-                    if (!string.IsNullOrEmpty(logTag) && !string.IsNullOrEmpty(itemLabel))
-                    {
-                        DevLog("[" + logTag + "] 检测到" + itemLabel + " (TypeID=" + itemTypeId + ")");
-                    }
-
-                    return item;
-                }
-            }
-            catch (Exception e)
-            {
-                if (!string.IsNullOrEmpty(logTag))
-                {
-                    string label = string.IsNullOrEmpty(itemLabel) ? "入场物品" : itemLabel;
-                    DevLog("[" + logTag + "] [ERROR] 查找" + label + "失败: " + e.Message);
-                }
-            }
-
-            return null;
-        }
-
-        private bool IsAllowedNakedEntryInventoryItem(int typeId, int allowedTypeIdA, int allowedTypeIdB, bool allowFactionFlags)
-        {
-            if (typeId <= 0)
-            {
-                return false;
-            }
-
-            if (typeId == allowedTypeIdA || typeId == allowedTypeIdB)
-            {
-                return true;
-            }
-
-            return allowFactionFlags && IsFactionFlagTypeId(typeId);
-        }
-
+        { return ModeEntryInventory.FindFirstPlayerInventoryItemByTypeId(typeId, logTag, itemLabel); }
         private bool IsPlayerNakedWithAllowedItems(string logTag, int allowedTypeIdA, int allowedTypeIdB, bool allowFactionFlags)
+        { return ModeEntryInventory.IsPlayerNakedWithAllowedItems(logTag, allowedTypeIdA, allowedTypeIdB, allowFactionFlags); }
+        private static bool IsFactionFlagTypeId(int typeId) { return ModeEntryInventory.IsFactionFlagTypeId(typeId); }
+        internal void ResetArenaForModeD()
         {
-            try
-            {
-                CharacterMainControl main;
-                Item characterItem;
-                if (!TryGetMainCharacterItem(out main, out characterItem))
-                {
-                    return false;
-                }
+                infiniteHellMode = false;
+                infiniteHellWaveIndex = 0;
+                infiniteHellCashPool = 0L;
+                infiniteHellMilestoneRewardTier = 0;
+                infiniteHellWaveCashThisWave = 0L;
+                ClearCashMagnetState();
 
-                for (int i = 0; i < NakedEquipmentSlotNames.Length; i++)
-                {
-                    string slotName = NakedEquipmentSlotNames[i];
-                    try
-                    {
-                        Slot slot = characterItem.Slots.GetSlot(slotName);
-                        if (slot != null && slot.Content != null)
-                        {
-                            DevLog("[" + logTag + "] 装备槽不为空: " + slotName);
-                            return false;
-                        }
-                    }
-                    catch { }
-                }
+        }
+        internal void ClearModeDEnemyRecoveryState() { ClearEnemyRecoveryMonitorState(); }
+        internal void ClearModeDMutators(string mode) { ClearMutatorsForMode(mode); }
+        internal void InitializeModeDEnemyPoolsForRuntime() { InitializeModeDEnemyPools(); }
 
-                for (int i = 0; i < NakedWeaponSlotNames.Length; i++)
-                {
-                    string slotName = NakedWeaponSlotNames[i];
-                    try
-                    {
-                        Slot slot = characterItem.Slots.GetSlot(slotName);
-                        if (slot != null && slot.Content != null)
-                        {
-                            DevLog("[" + logTag + "] 武器槽不为空: " + slotName);
-                            return false;
-                        }
-                    }
-                    catch { }
-                }
+        #endregion
 
-                Inventory inventory = characterItem.Inventory;
-                if (inventory != null && inventory.Content != null)
-                {
-                    for (int i = 0; i < inventory.Content.Count; i++)
-                    {
-                        Item item = inventory.Content[i];
-                        if (item == null)
-                        {
-                            continue;
-                        }
+        #endregion
 
-                        int typeId = -1;
-                        try { typeId = item.TypeID; } catch { }
-                        if (IsAllowedNakedEntryInventoryItem(typeId, allowedTypeIdA, allowedTypeIdB, allowFactionFlags))
-                        {
-                            continue;
-                        }
+        #region ModeDStaticCacheReset
 
-                        string displayName = null;
-                        try { displayName = item.DisplayName; } catch { }
-                        string itemLabel = string.IsNullOrEmpty(displayName)
-                            ? ("TypeID=" + typeId)
-                            : (displayName + " (TypeID=" + typeId + ")");
-                        DevLog("[" + logTag + "] 背包中存在未允许物品: " + itemLabel);
-                        return false;
-                    }
-                }
-
-                try
-                {
-                    Inventory petInventory = PetProxy.PetInventory;
-                    if (petInventory != null && petInventory.Content != null)
-                    {
-                        for (int i = 0; i < petInventory.Content.Count; i++)
-                        {
-                            Item petItem = petInventory.Content[i];
-                            if (petItem == null)
-                            {
-                                continue;
-                            }
-
-                            string displayName = null;
-                            try { displayName = petItem.DisplayName; } catch { }
-                            DevLog("[" + logTag + "] 狗子背包中存在物品: " + (string.IsNullOrEmpty(displayName) ? "未知物品" : displayName));
-                            return false;
-                        }
-                    }
-                }
-                catch (Exception petEx)
-                {
-                    DevLog("[" + logTag + "] 无法检查狗子背包: " + petEx.Message);
-                }
-
-                DevLog("[" + logTag + "] 玩家满足裸装条件");
-                return true;
-            }
-            catch (Exception e)
-            {
-                DevLog("[" + logTag + "] [ERROR] 裸装检测失败: " + e.Message);
-                return false;
-            }
+        private static void ResetModeDStaticCaches()
+        {
+            ModeDRuntimeModule.ResetStaticCaches();
         }
 
-        /// <summary>
-        /// 判断指定 TypeID 是否为 Mode E 营旗物品（裸装检测时豁免用）
-        /// </summary>
-        private static bool IsFactionFlagTypeId(int typeId)
+        #endregion
+
+        #region ModeDEquipmentHostBridge
+
+        private void BindModeDItemPoolQueries()
         {
-            if (typeId <= 0) return false;
-            int[] flagIds = FactionFlagConfig.ALL_FLAG_TYPE_IDS;
-            for (int i = 0; i < flagIds.Length; i++)
-            {
-                if (flagIds[i] == typeId) return true;
-            }
-            return false;
+            modeDItemPool.BindQueries(wavesArenaRuntime,
+                () => config != null && config.useLegacyBossLootProbabilities,
+                () => modeDActive && IsCampaignConfiguredEnabled() && CampaignObjectiveTracker.NeedsMeleeStarterKit(),
+                IsZombieModeRewardCandidateAllowed);
+        }
+
+        private void GivePlayerStarterKit() { modeDItemPool.GivePlayerStarterKit(); }
+        private Duckov.Utilities.Tag FindTagByName(string tagName) { return modeDItemPool.FindTagByName(tagName); }
+        private void TryPrewarmModeDGlobalItemPool() { modeDItemPool.TryPrewarmModeDGlobalItemPool(); }
+        private void EnsureModeDGlobalItemPool() { modeDItemPool.EnsureModeDGlobalItemPool(); }
+        public void EquipEnemyForModeD(CharacterMainControl enemy, int waveIndex, float enemyHealth, bool isBoss = false)
+        { modeDItemPool.EquipEnemyForModeD(enemy, waveIndex, enemyHealth, isBoss); }
+        internal Item CreateRandomGlobalItemForModeD(int minQ, int maxQ) { return modeDItemPool.CreateRandomGlobalItemForModeD(minQ, maxQ); }
+        internal Item CreateRandomGlobalItemForModeD(int minQ, int maxQ, float enemyHealth) { return modeDItemPool.CreateRandomGlobalItemForModeD(minQ, maxQ, enemyHealth); }
+        private SharedModeEnemyEquipmentMaterializationPlan CreateSharedModeEnemyEquipmentMaterializationPlan(CharacterMainControl enemy, int waveIndex, float enemyHealth, bool isBoss)
+        { return modeDItemPool.CreateSharedModeEnemyEquipmentMaterializationPlan(enemy, waveIndex, enemyHealth, isBoss); }
+        private bool MaterializeNextSharedModeEnemyEquipmentPlanStep(CharacterMainControl enemy, SharedModeEnemyEquipmentMaterializationPlan plan)
+        { return modeDItemPool.MaterializeNextSharedModeEnemyEquipmentPlanStep(enemy, plan); }
+        private void CleanupSharedModeEnemyEquipmentMaterializationPlan(SharedModeEnemyEquipmentMaterializationPlan plan)
+        { modeDItemPool.CleanupSharedModeEnemyEquipmentMaterializationPlan(plan); }
+
+        #endregion
+
+        #region ModeDWaves
+
+        public bool ModeDStartNextWave() { return modeDRuntime.ModeDStartNextWave(); }
+        internal void TickModeDIntegrity(float deltaTime) { modeDRuntime.TickModeDIntegrity(deltaTime); }
+        internal void OnModeDWaveComplete() { modeDRuntime.OnModeDWaveComplete(); }
+        private void NormalizeDamageMultiplier(CharacterMainControl character) { modeDRuntime.NormalizeDamageMultiplier(character); }
+        private EnemyPresetInfo GetRandomBossPreset() { return modeDRuntime.GetRandomBossPreset(); }
+        private EnemyPresetInfo GetRandomMinionPreset() { return modeDRuntime.GetRandomMinionPreset(); }
+        private Vector3[] GenerateFallbackSpawnPointsAroundPlayer(Vector3 position, int pointCount = 10, float minRadius = 8f, float maxRadius = 15f)
+        { return modeDRuntime.GenerateFallbackSpawnPointsAroundPlayer(position, pointCount, minRadius, maxRadius); }
+
+        // 保持 D / Arena 在原调度位置共用完整性时钟的语义。
+        internal void ResetArenaIntegrityCheck() { wavesArenaRuntime.ResetWaveIntegrityCheck(); }
+        internal bool AdvanceArenaIntegrityCheck(float deltaTime) { return wavesArenaRuntime.AdvanceWaveIntegrityCheck(deltaTime); }
+        internal int ModeDConfiguredEnemiesPerWave { get { return config != null ? config.modeDEnemiesPerWave : 0; } }
+        internal void ShowModeDEnemyBanner(string name, Vector3 position, Vector3 playerPosition, int current, int total, bool infinite, int wave, int bosses)
+        { ShowEnemyBanner_UIAndSigns(name, position, playerPosition, current, total, infinite, wave, bosses); }
+        internal void SpawnModeDEnemyCore(EnemyPresetInfo preset, Vector3 position, bool isBoss, Func<bool> isActiveCheck,
+            Action<EnemySpawnContext> onSpawned, Action onFailed, int waveIndex)
+        { SpawnEnemyCore(preset, position, isBoss, isActiveCheck, onSpawned, onFailed, waveIndex); }
+        internal void RegisterModeDEnemyRecoveryAnchor(CharacterMainControl enemy, Vector3 anchor) { RegisterEnemyRecoveryAnchor(enemy, anchor); }
+        internal void CheckModeDFlawlessAchievementForRuntime() { CheckModeDFlawlessAchievement(); }
+        internal void CheckModeDClearAchievementsForRuntime() { CheckModeDClearAchievements(); }
+
+        #endregion
+
+        #region ModeDInteractables
+
+        public void SetupSignForModeD() { modeDRuntime.SetupSignForModeD(bossRushSignInteract); }
+        public void ShowModeDNextWaveOption() { modeDRuntime.ShowModeDNextWaveOption(); }
+        public void HideModeDNextWaveOption() { modeDRuntime.HideModeDNextWaveOption(); }
+        public void ClearAllBossRushLootboxes() { modeDRuntime.ClearAllBossRushLootboxes(); }
+        public void ClearEmptyBossRushLootboxes() { modeDRuntime.ClearEmptyBossRushLootboxes(); }
+
+        #endregion
+
+        #region ModeDGlobalLootStaticCacheReset
+
+        private static void ResetModeDGlobalLootStaticCaches()
+        {
+            ModeDItemPool.ResetGlobalLootStaticCaches();
         }
 
         #endregion

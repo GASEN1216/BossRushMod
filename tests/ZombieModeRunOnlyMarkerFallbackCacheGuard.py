@@ -6,15 +6,15 @@ import sys
 
 SOURCES = {
     "CollectZombieModeRuntimeEnemyMarkers": (
-        Path("ZombieMode/ZombieModeDropsAndPerformance.cs"),
-        "private int CollectZombieModeRuntimeEnemyMarkers(",
+        Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs"),
+        "internal int CollectZombieModeRuntimeEnemyMarkers(",
     ),
     "PruneZombieModeRunOnlyEnemyRecords": (
-        Path("ZombieMode/ZombieModeCleanup.cs"),
-        "private void PruneZombieModeRunOnlyEnemyRecords(",
+        Path("ZombieMode/ZombieModeRuntimeModule.cs"),
+        "internal void PruneZombieModeRunOnlyEnemyRecords(",
     ),
     "RefreshZombieModeCommanderAuraTargets": (
-        Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+        Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
         "internal void RefreshZombieModeCommanderAuraTargets(",
     ),
     "KeepZombieModeEnemiesOutsideSafeZone": (
@@ -27,11 +27,11 @@ SOURCES = {
     ),
     "ReleaseZombieModeSafeZoneThreatSuppression": (
         Path("ZombieMode/ZombieModeSafeZoneController.cs"),
-        "private void ReleaseZombieModeSafeZoneThreatSuppression()",
+        "internal void ReleaseZombieModeSafeZoneThreatSuppression()",
     ),
     "MonitorZombieModeEnemyRecovery": (
-        Path("Utilities/EnemyRecoveryMonitor.cs"),
-        "private void MonitorZombieModeEnemyRecovery(",
+        Path("ZombieMode/ZombieModeRuntimeModule_Recovery.cs"),
+        "internal void MonitorZombieModeEnemyRecovery(",
     ),
     "ClearZombieModeTemporaryNpcThreatTargets": (
         Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),

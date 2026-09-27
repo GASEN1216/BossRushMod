@@ -27,7 +27,7 @@ using Duckov.Utilities;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeDItemPool
     {
         private static readonly string[] SharedStarterMedicalRequiredTags = { "Healing" };
         private static readonly string[] SharedStarterMeleeRequiredTags = { "MeleeWeapon" };
@@ -41,18 +41,18 @@ namespace BossRush
         /// <remarks>
         /// 发放顺序：武器 → 弹药 → 护甲 → 头盔 → 近战 → 医疗品 → 图腾 → 面具 → 背包
         /// </remarks>
-        private void GivePlayerStarterKit()
+        internal void GivePlayerStarterKit()
         {
             try
             {
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null)
                 {
-                    DevLog("[ModeD] [ERROR] GivePlayerStarterKit: 未找到玩家");
+                    ModBehaviour.DevLog("[ModeD] [ERROR] GivePlayerStarterKit: 未找到玩家");
                     return;
                 }
 
-                DevLog("[ModeD] 给玩家发放开局装备...");
+                ModBehaviour.DevLog("[ModeD] 给玩家发放开局装备...");
 
                 // 1. 发放随机武器（必给，配件随机 0-100%）
                 lastGivenWeapon = null;
@@ -82,7 +82,7 @@ namespace BossRush
 
                 // 5. 默认 40%；征程近战契约进行中时保证提供任务工具，复用同一配装流程。
                 if (UnityEngine.Random.value > 0.6f
-                    || (modeDActive && IsCampaignConfiguredEnabled() && CampaignObjectiveTracker.NeedsMeleeStarterKit()))
+                    || needsMeleeStarterKit())
                 {
                     GiveRandomMeleeWeapon(main);
                 }
@@ -108,11 +108,11 @@ namespace BossRush
                     GiveRandomBackpack(main);
                 }
 
-                DevLog("[ModeD] 开局装备发放完成");
+                ModBehaviour.DevLog("[ModeD] 开局装备发放完成");
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] GivePlayerStarterKit 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] GivePlayerStarterKit 失败: " + e.Message);
             }
         }
 
@@ -125,7 +125,7 @@ namespace BossRush
             {
                 if (modeDWeaponPool.Count == 0)
                 {
-                    DevLog("[ModeD] 武器池为空，跳过武器发放");
+                    ModBehaviour.DevLog("[ModeD] 武器池为空，跳过武器发放");
                     return;
                 }
 
@@ -135,7 +135,7 @@ namespace BossRush
                 Item weapon = ItemAssetsCollection.InstantiateSync(weaponId);
                 if (weapon == null)
                 {
-                    DevLog("[ModeD] 无法创建武器 ID=" + weaponId);
+                    ModBehaviour.DevLog("[ModeD] 无法创建武器 ID=" + weaponId);
                     return;
                 }
 
@@ -153,11 +153,11 @@ namespace BossRush
                     ItemUtilities.SendToPlayerCharacterInventory(weapon, false);
                 }
 
-                DevLog("[ModeD] 发放武器: " + weapon.DisplayName);
+                ModBehaviour.DevLog("[ModeD] 发放武器: " + weapon.DisplayName);
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] GiveRandomWeapon 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] GiveRandomWeapon 失败: " + e.Message);
             }
         }
 
@@ -178,7 +178,7 @@ namespace BossRush
 
                 if (modeDAccessoryPool.Count == 0)
                 {
-                    DevLog("[ModeD] 配件池为空，跳过配件添加");
+                    ModBehaviour.DevLog("[ModeD] 配件池为空，跳过配件添加");
                     return;
                 }
 
@@ -196,7 +196,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] TryAddRandomAttachmentsFullRandom 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] TryAddRandomAttachmentsFullRandom 失败: " + e.Message);
             }
         }
 
@@ -210,7 +210,7 @@ namespace BossRush
                 List<int> starterMeleePool = GetStarterMeleePool();
                 if (starterMeleePool.Count == 0)
                 {
-                    DevLog("[ModeD] 近战武器池为空，跳过近战武器发放");
+                    ModBehaviour.DevLog("[ModeD] 近战武器池为空，跳过近战武器发放");
                     return;
                 }
 
@@ -218,7 +218,7 @@ namespace BossRush
                 Item melee = ItemAssetsCollection.InstantiateSync(meleeId);
                 if (melee == null)
                 {
-                    DevLog("[ModeD] 无法创建近战武器 ID=" + meleeId);
+                    ModBehaviour.DevLog("[ModeD] 无法创建近战武器 ID=" + meleeId);
                     return;
                 }
 
@@ -229,11 +229,11 @@ namespace BossRush
                     ItemUtilities.SendToPlayerCharacterInventory(melee, false);
                 }
 
-                DevLog("[ModeD] 发放近战武器: " + melee.DisplayName);
+                ModBehaviour.DevLog("[ModeD] 发放近战武器: " + melee.DisplayName);
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] GiveRandomMeleeWeapon 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] GiveRandomMeleeWeapon 失败: " + e.Message);
             }
         }
 
@@ -247,7 +247,7 @@ namespace BossRush
             {
                 if (modeDMeleePool.Count == 0)
                 {
-                    DevLog("[ModeD] 敌人近战武器池为空，跳过");
+                    ModBehaviour.DevLog("[ModeD] 敌人近战武器池为空，跳过");
                     return;
                 }
 
@@ -255,7 +255,7 @@ namespace BossRush
                 Item melee = ItemAssetsCollection.InstantiateSync(meleeId);
                 if (melee == null)
                 {
-                    DevLog("[ModeD] 无法创建敌人近战武器 ID=" + meleeId);
+                    ModBehaviour.DevLog("[ModeD] 无法创建敌人近战武器 ID=" + meleeId);
                     return;
                 }
 
@@ -271,15 +271,15 @@ namespace BossRush
                     else
                     {
                         UnityEngine.Object.Destroy(melee.gameObject);
-                        DevLog("[ModeD] [WARNING] 敌人近战武器装备失败且无背包，已销毁");
+                        ModBehaviour.DevLog("[ModeD] [WARNING] 敌人近战武器装备失败且无背包，已销毁");
                     }
                 }
 
-                DevLog("[ModeD] 敌人发放近战武器: " + melee.DisplayName);
+                ModBehaviour.DevLog("[ModeD] 敌人发放近战武器: " + melee.DisplayName);
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] GiveRandomMeleeWeaponToEnemy 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] GiveRandomMeleeWeaponToEnemy 失败: " + e.Message);
             }
         }
 
@@ -292,7 +292,7 @@ namespace BossRush
             {
                 if (modeDArmortPool.Count == 0)
                 {
-                    DevLog("[ModeD] 护甲池为空，跳过护甲发放");
+                    ModBehaviour.DevLog("[ModeD] 护甲池为空，跳过护甲发放");
                     return;
                 }
 
@@ -305,12 +305,12 @@ namespace BossRush
                     {
                         ItemUtilities.SendToPlayerCharacterInventory(armor, false);
                     }
-                    DevLog("[ModeD] 发放护甲: " + armor.DisplayName);
+                    ModBehaviour.DevLog("[ModeD] 发放护甲: " + armor.DisplayName);
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] GiveRandomArmor 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] GiveRandomArmor 失败: " + e.Message);
             }
         }
 
@@ -323,7 +323,7 @@ namespace BossRush
             {
                 if (modeDHelmetPool.Count == 0)
                 {
-                    DevLog("[ModeD] 头盔池为空，跳过头盔发放");
+                    ModBehaviour.DevLog("[ModeD] 头盔池为空，跳过头盔发放");
                     return;
                 }
 
@@ -336,12 +336,12 @@ namespace BossRush
                     {
                         ItemUtilities.SendToPlayerCharacterInventory(helmet, false);
                     }
-                    DevLog("[ModeD] 发放头盔: " + helmet.DisplayName);
+                    ModBehaviour.DevLog("[ModeD] 发放头盔: " + helmet.DisplayName);
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] GiveRandomHelmet 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] GiveRandomHelmet 失败: " + e.Message);
             }
         }
 
@@ -354,7 +354,7 @@ namespace BossRush
             {
                 if (modeDTotemPool.Count == 0)
                 {
-                    DevLog("[ModeD] 图腾池为空，跳过图腾发放");
+                    ModBehaviour.DevLog("[ModeD] 图腾池为空，跳过图腾发放");
                     return;
                 }
 
@@ -367,12 +367,12 @@ namespace BossRush
                     {
                         ItemUtilities.SendToPlayerCharacterInventory(totem, false);
                     }
-                    DevLog("[ModeD] 发放图腾: " + totem.DisplayName);
+                    ModBehaviour.DevLog("[ModeD] 发放图腾: " + totem.DisplayName);
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] GiveRandomTotem 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] GiveRandomTotem 失败: " + e.Message);
             }
         }
 
@@ -385,7 +385,7 @@ namespace BossRush
             {
                 if (modeDMaskPool.Count == 0)
                 {
-                    DevLog("[ModeD] 面具池为空，跳过面具发放");
+                    ModBehaviour.DevLog("[ModeD] 面具池为空，跳过面具发放");
                     return;
                 }
 
@@ -398,12 +398,12 @@ namespace BossRush
                     {
                         ItemUtilities.SendToPlayerCharacterInventory(mask, false);
                     }
-                    DevLog("[ModeD] 发放面具: " + mask.DisplayName);
+                    ModBehaviour.DevLog("[ModeD] 发放面具: " + mask.DisplayName);
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] GiveRandomMask 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] GiveRandomMask 失败: " + e.Message);
             }
         }
 
@@ -416,7 +416,7 @@ namespace BossRush
             {
                 if (modeDBackpackPool.Count == 0)
                 {
-                    DevLog("[ModeD] 背包池为空，跳过背包发放");
+                    ModBehaviour.DevLog("[ModeD] 背包池为空，跳过背包发放");
                     return;
                 }
 
@@ -429,19 +429,19 @@ namespace BossRush
                     {
                         ItemUtilities.SendToPlayerCharacterInventory(backpack, false);
                     }
-                    DevLog("[ModeD] 发放背包: " + backpack.DisplayName);
+                    ModBehaviour.DevLog("[ModeD] 发放背包: " + backpack.DisplayName);
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] GiveRandomBackpack 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] GiveRandomBackpack 失败: " + e.Message);
             }
         }
 
         /// <summary>
         /// 根据名称查找 Tag
         /// </summary>
-        private Duckov.Utilities.Tag FindTagByName(string tagName)
+        internal Duckov.Utilities.Tag FindTagByName(string tagName)
         {
             try
             {
@@ -465,7 +465,7 @@ namespace BossRush
             {
                 if (lastGivenWeapon == null)
                 {
-                    DevLog("[ModeD] 没有武器，跳过弹药发放");
+                    ModBehaviour.DevLog("[ModeD] 没有武器，跳过弹药发放");
                     return;
                 }
 
@@ -473,18 +473,18 @@ namespace BossRush
                 ItemSetting_Gun gunSetting = lastGivenWeapon.GetComponent<ItemSetting_Gun>();
                 if (gunSetting == null)
                 {
-                    DevLog("[ModeD] 武器没有 ItemSetting_Gun 组件，跳过弹药发放");
+                    ModBehaviour.DevLog("[ModeD] 武器没有 ItemSetting_Gun 组件，跳过弹药发放");
                     return;
                 }
 
                 int targetBulletId = gunSetting.TargetBulletID;
                 if (targetBulletId < 0)
                 {
-                    DevLog("[ModeD] 武器没有指定弹药类型，跳过弹药发放");
+                    ModBehaviour.DevLog("[ModeD] 武器没有指定弹药类型，跳过弹药发放");
                     return;
                 }
 
-                DevLog("[ModeD] 武器目标弹药ID: " + targetBulletId);
+                ModBehaviour.DevLog("[ModeD] 武器目标弹药ID: " + targetBulletId);
 
                 // 直接创建对应的弹药
                 Item ammo = ItemAssetsCollection.InstantiateSync(targetBulletId);
@@ -492,16 +492,16 @@ namespace BossRush
                 {
                     ammo.StackCount = UnityEngine.Random.Range(120, 181);
                     ItemUtilities.SendToPlayerCharacterInventory(ammo, false);
-                    DevLog("[ModeD] 发放弹药: " + ammo.DisplayName + " x" + ammo.StackCount);
+                    ModBehaviour.DevLog("[ModeD] 发放弹药: " + ammo.DisplayName + " x" + ammo.StackCount);
                 }
                 else
                 {
-                    DevLog("[ModeD] 无法创建弹药 ID=" + targetBulletId);
+                    ModBehaviour.DevLog("[ModeD] 无法创建弹药 ID=" + targetBulletId);
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] GiveStarterAmmo 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] GiveStarterAmmo 失败: " + e.Message);
             }
         }
 
@@ -557,7 +557,7 @@ namespace BossRush
             {
                 int typeId = modeDMedicalPool[i];
                 if ((healingTag == null || ItemTypeHasTag(typeId, healingTag)) &&
-                    IsZombieModeRewardCandidateAllowed(typeId, SharedStarterMedicalRequiredTags))
+                    isStarterCandidateAllowed(typeId, SharedStarterMedicalRequiredTags))
                 {
                     filteredPool.Add(typeId);
                 }
@@ -565,7 +565,7 @@ namespace BossRush
 
             if (filteredPool.Count != modeDMedicalPool.Count)
             {
-                DevLog("[ModeD] 开局医疗品池应用 Healing/Zombie 过滤: " +
+                ModBehaviour.DevLog("[ModeD] 开局医疗品池应用 Healing/Zombie 过滤: " +
                     modeDMedicalPool.Count + " -> " + filteredPool.Count);
             }
 
@@ -580,7 +580,7 @@ namespace BossRush
             for (int i = 0; i < modeDMeleePool.Count; i++)
             {
                 int typeId = modeDMeleePool[i];
-                if (IsZombieModeRewardCandidateAllowed(typeId, SharedStarterMeleeRequiredTags))
+                if (isStarterCandidateAllowed(typeId, SharedStarterMeleeRequiredTags))
                 {
                     filteredPool.Add(typeId);
                 }
@@ -588,7 +588,7 @@ namespace BossRush
 
             if (filteredPool.Count != modeDMeleePool.Count)
             {
-                DevLog("[ModeD] 开局近战武器池应用 Zombie 过滤: " +
+                ModBehaviour.DevLog("[ModeD] 开局近战武器池应用 Zombie 过滤: " +
                     modeDMeleePool.Count + " -> " + filteredPool.Count);
             }
 
@@ -604,7 +604,7 @@ namespace BossRush
             for (int i = 0; i < candidates.Length; i++)
             {
                 int typeId = candidates[i];
-                if (!IsZombieModeRewardCandidateAllowed(typeId, requiredTags)) continue;
+                if (!isStarterCandidateAllowed(typeId, requiredTags)) continue;
 
                 allowedCount++;
                 if (UnityEngine.Random.Range(0, allowedCount) == 0)
@@ -637,7 +637,7 @@ namespace BossRush
                             SharedStarterMedicalRequiredTags);
                         if (medId <= 0)
                         {
-                            DevLog("[ModeD] 没有通过 Zombie 医疗过滤的硬编码兜底，跳过该格");
+                            ModBehaviour.DevLog("[ModeD] 没有通过 Zombie 医疗过滤的硬编码兜底，跳过该格");
                             continue;
                         }
 
@@ -645,7 +645,7 @@ namespace BossRush
                         if (med != null)
                         {
                             ItemUtilities.SendToPlayerCharacterInventory(med, false);
-                            DevLog("[ModeD] 发放医疗品(硬编码): " + med.DisplayName);
+                            ModBehaviour.DevLog("[ModeD] 发放医疗品(硬编码): " + med.DisplayName);
                         }
                     }
                     else
@@ -655,14 +655,14 @@ namespace BossRush
                         if (medical != null)
                         {
                             ItemUtilities.SendToPlayerCharacterInventory(medical, false);
-                            DevLog("[ModeD] 发放医疗品: " + medical.DisplayName);
+                            ModBehaviour.DevLog("[ModeD] 发放医疗品: " + medical.DisplayName);
                         }
                     }
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] GiveStarterMedical 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] GiveStarterMedical 失败: " + e.Message);
             }
         }
 
@@ -687,15 +687,15 @@ namespace BossRush
                 string weaponCaliber = weapon.Constants.GetString("Caliber".GetHashCode(), null);
                 if (string.IsNullOrEmpty(weaponCaliber))
                 {
-                    DevLog("[ModeD] 武器没有口径信息，无法匹配弹药");
+                    ModBehaviour.DevLog("[ModeD] 武器没有口径信息，无法匹配弹药");
                     return;
                 }
 
-                DevLog("[ModeD] 武器口径: " + weaponCaliber);
+                ModBehaviour.DevLog("[ModeD] 武器口径: " + weaponCaliber);
 
                 if (modeDAmmoPool.Count == 0)
                 {
-                    DevLog("[ModeD] 弹药池为空，无法为武器设置弹药类型");
+                    ModBehaviour.DevLog("[ModeD] 弹药池为空，无法为武器设置弹药类型");
                     return;
                 }
 
@@ -717,18 +717,18 @@ namespace BossRush
 
                 if (matchingAmmo.Count == 0)
                 {
-                    DevLog("[ModeD] 未找到口径 " + weaponCaliber + " 的弹药");
+                    ModBehaviour.DevLog("[ModeD] 未找到口径 " + weaponCaliber + " 的弹药");
                     return;
                 }
 
                 // 随机选择一个匹配的弹药
                 int selectedAmmoId = matchingAmmo[UnityEngine.Random.Range(0, matchingAmmo.Count)];
                 gunSetting.SetTargetBulletType(selectedAmmoId);
-                DevLog("[ModeD] 为武器设置弹药类型: ID=" + selectedAmmoId + " (口径=" + weaponCaliber + ")");
+                ModBehaviour.DevLog("[ModeD] 为武器设置弹药类型: ID=" + selectedAmmoId + " (口径=" + weaponCaliber + ")");
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] EnsureStarterGunHasBulletType 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] EnsureStarterGunHasBulletType 失败: " + e.Message);
             }
         }
 
@@ -764,12 +764,12 @@ namespace BossRush
                     ammo.StackCount = bulletsNeeded;
                     // 直接放入枪的库存（弹夹）
                     weaponInventory.AddAndMerge(ammo, 0);
-                    DevLog("[ModeD] 填满弹夹: " + weapon.DisplayName + " +" + bulletsNeeded + " 发");
+                    ModBehaviour.DevLog("[ModeD] 填满弹夹: " + weapon.DisplayName + " +" + bulletsNeeded + " 发");
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeD] [ERROR] FillGunMagazine 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeD] [ERROR] FillGunMagazine 失败: " + e.Message);
             }
         }
 

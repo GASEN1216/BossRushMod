@@ -15,11 +15,8 @@ import sys
 
 
 SOURCES = [
+    Path("WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs"),
     Path("LootAndRewards/LootAndRewards.cs"),
-    Path("LootAndRewards/LootAndRewardsInfiniteHell.cs"),
-    Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
-    Path("LootAndRewards/LootAndRewardsRandomBossLoot.cs"),
-    Path("LootAndRewards/LootAndRewardsSpecialLoot.cs"),
 ]
 
 
@@ -57,7 +54,7 @@ def main() -> int:
         return fail("DifficultyRewardLootboxCleanupGuard: spawn method not found")
 
     setup_call = "loader.StartSetup();"
-    cleanup_call = "StartCoroutine(CleanupDifficultyRewardLootboxInventory_LootAndRewards(lootbox, highQualityCount));"
+    cleanup_call = "owner.StartCoroutine(CleanupDifficultyRewardLootboxInventory_LootAndRewards(lootbox, highQualityCount));"
 
     if setup_call not in block:
         return fail("DifficultyRewardLootboxCleanupGuard: loader.StartSetup() call missing")

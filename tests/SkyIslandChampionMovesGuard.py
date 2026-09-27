@@ -16,7 +16,7 @@ from pathlib import Path
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parent.parent
-SKY = ROOT / "DebugAndTools" / "SkyIsland"
+SKY = ROOT / "SkyIsland"
 MOVES = SKY / "SkyIslandChampionMoves.cs"
 FORGE = SKY / "SkyIslandBossForge.cs"
 ENCOUNTERS = SKY / "SkyIslandEncounters.cs"
@@ -52,7 +52,7 @@ def const(text, name):
 def check(code):
     errors = []
     moves, forge, enc, rules, bat = code["moves"], code["forge"], code["enc"], code["rules"], code["bat"]
-    if "echo(DebugAndTools\\SkyIsland\\SkyIslandChampionMoves.cs" not in bat:
+    if "echo(SkyIsland\\SkyIslandChampionMoves.cs" not in bat:
         errors.append("compile_official.bat 没登记 SkyIslandChampionMoves.cs（不登记就不会编进 DLL，且不报错）")
     bind = body_of(forge, "internal static void BindChampionMoves(")
     for cid, cls in (("zheling", "SkyIslandZhelingMoves"), ("bellkeeper", "SkyIslandBellEngineMoves")):
@@ -110,7 +110,7 @@ def load():
 
 def reverse_checks(code):
     probes = [
-        ("bat", "echo(DebugAndTools\\SkyIsland\\SkyIslandChampionMoves.cs", "rem removed"),
+        ("bat", "echo(SkyIsland\\SkyIslandChampionMoves.cs", "rem removed"),
         ("enc", 'SkyIslandBossForge.BindChampionMoves(created, "bellkeeper", BossContext());', ""),
         ("moves", "internal const float EchoTelegraph = 1.6f;", "internal const float EchoTelegraph = 1.2f;"),
         ("moves", "if (line == null) yield break;", ""),

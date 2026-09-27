@@ -16,12 +16,12 @@ import sys
 
 
 ROOT = Path(".")
-WAVE = ROOT / "ZombieMode/ZombieModeWaveController.cs"
-CLEANUP = ROOT / "ZombieMode/ZombieModeCleanup.cs"
+WAVE = ROOT / "ZombieMode/ZombieModeRuntimeModule_WaveController.cs"
+CLEANUP = ROOT / "ZombieMode/ZombieModeSafeZoneController.cs"
 REWARDS = ROOT / "ZombieMode/ZombieModeRewards.cs"
 REWARD_PARTS = [
     REWARDS,
-    ROOT / "ZombieMode/ZombieModeRewardCatalogAndSelection.cs",
+    ROOT / "ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs",
     ROOT / "ZombieMode/ZombieModeRewardEffectsAndNpc.cs",
     ROOT / "ZombieMode/ZombieModeRewardItemGrants.cs",
     ROOT / "ZombieMode/ZombieModeRewardNpcServices.cs",
@@ -30,11 +30,11 @@ REWARD_PARTS = [
     ROOT / "ZombieMode/ZombieModeRewardSelectionView.cs",
     ROOT / "ZombieMode/ZombieModeTemporaryNpcServiceView.cs",
 ]
-ENTRY = ROOT / "ZombieMode/ZombieModeEntry.cs"
+ENTRY = ROOT / "ZombieMode/ZombieModeEntryHostBridge.cs"
 CASH = ROOT / "ZombieMode/ZombieModeCashInvestmentView.cs"
-EXTRACTION = ROOT / "ZombieMode/ZombieModeExtractionController.cs"
+EXTRACTION = ROOT / "ZombieMode/ZombieModeRuntimeModule_Extraction.cs"
 UI_HELPER = ROOT / "ZombieMode/ZombieModeUIHelper.cs"
-Boss_CONTROLLER = ROOT / "ZombieMode/ZombieModeBossController.cs"
+Boss_CONTROLLER = ROOT / "ZombieMode/ZombieModeRuntimeModule_BossController.cs"
 BEACON_CONFIG = ROOT / "Integration/Items/ZombieTideBeaconConfig.cs"
 LOCALIZATION = ROOT / "Localization/LocalizationInjector.cs"
 

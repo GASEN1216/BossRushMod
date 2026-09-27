@@ -22,6 +22,7 @@ namespace BossRush
         private bool cachedVisibility = false;
         private bool visibilityCached = false;
         private bool listenersRegistered = false;
+        internal NPCShopPaymentStrategy PaymentStrategy { get; set; } = NPCShopPaymentStrategy.Cash;
 
         protected override Vector3 GetDefaultInteractMarkerOffset()
         {
@@ -165,7 +166,7 @@ namespace BossRush
             // 其余子交互（NPCGiftInteractable 等）本来就是这个写法，此处对齐；
             // 对现有羽织/叮当行为等价——它们的 transform.parent 就是 NPC 根。
             Transform npcTransform = npcController != null ? npcController.NpcTransform : transform.parent;
-            NPCShopSystem.OpenShop(npcId, npcTransform, npcController);
+            NPCShopSystem.OpenShop(npcId, npcTransform, npcController, PaymentStrategy);
         }
     }
 }

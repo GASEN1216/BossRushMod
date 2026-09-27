@@ -56,7 +56,7 @@ namespace BossRush
         }
     }
 
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeGEntryRuntime
     {
         #region Mode G 入口
 
@@ -79,9 +79,9 @@ namespace BossRush
         /// <summary>
         /// 检测玩家背包中是否存在宿命回响信物
         /// </summary>
-        private Item DetectFateEchoRelic()
+        internal Item DetectFateEchoRelic()
         {
-            return FindFirstPlayerInventoryItemByTypeId(
+            return ModeEntryInventory.FindFirstPlayerInventoryItemByTypeId(
                 FateEchoRelicConfig.TYPE_ID,
                 "ModeG",
                 "宿命回响信物");
@@ -91,7 +91,7 @@ namespace BossRush
         /// Mode G 允许玩家携带现有装备、弹药和消耗品入场。
         /// 营旗/血猎收发器由 TryStartModeG 单独检查，避免与 Mode E/F 入口冲突。
         /// </summary>
-        private bool IsModeGLoadoutEligible()
+        internal bool IsModeGLoadoutEligible()
         {
             return true;
         }
@@ -105,7 +105,7 @@ namespace BossRush
                     && ItemAssetsCollection.GetPrefab(DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID) != null
                     && ItemAssetsCollection.GetPrefab(DragonDescendantConfig.DRAGON_BREATH_TYPE_ID) != null;
 
-                string modPath = GetModPath();
+                string modPath = ModBehaviour.GetModPath();
                 bool kingReady = FindDragonKingBasePreset() != null
                     && ItemAssetsCollection.GetPrefab(DragonKingConfig.DRAGON_KING_HELM_TYPE_ID) != null
                     && ItemAssetsCollection.GetPrefab(DragonKingConfig.DRAGON_KING_ARMOR_TYPE_ID) != null
@@ -127,7 +127,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [ERROR] 署名 Boss 能力预检异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [ERROR] 署名 Boss 能力预检异常: " + e.Message);
                 return false;
             }
         }
@@ -160,7 +160,7 @@ namespace BossRush
 
                 if (!HasMinimumModeGOfficialBossPool())
                 {
-                    DevLog("[ModeG] preview 创建失败：当前过滤 Boss 池没有可用的官方 Boss key");
+                    ModBehaviour.DevLog("[ModeG] preview 创建失败：当前过滤 Boss 池没有可用的官方 Boss key");
                     return null;
                 }
 
@@ -168,7 +168,7 @@ namespace BossRush
                 string sceneId;
                 if (!ModeGMapSupportRegistry.TryGetVerifiedPairForScene(sceneName, out sceneId))
                 {
-                    DevLog("[ModeG] preview 创建失败：当前场景不在地图选择 UI 的有效配置中");
+                    ModBehaviour.DevLog("[ModeG] preview 创建失败：当前场景不在地图选择 UI 的有效配置中");
                     return null;
                 }
 
@@ -185,7 +185,7 @@ namespace BossRush
 
                 if (!RefreshModeGSignatureEligibility())
                 {
-                    DevLog("[ModeG] preview 创建失败：署名 Boss 能力预检未通过");
+                    ModBehaviour.DevLog("[ModeG] preview 创建失败：署名 Boss 能力预检未通过");
                     return null;
                 }
 
@@ -218,7 +218,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [ERROR] GetOrCreateModeGEntryPreview 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [ERROR] GetOrCreateModeGEntryPreview 失败: " + e.Message);
                 return null;
             }
         }
@@ -263,7 +263,7 @@ namespace BossRush
                     // 被拒的成因有两种：扫描本身失败（可自愈）与确有未结算押品。
                     // 先给一次重试机会，再按真实成因取文案，别把读档出错说成「你有笔账没结」。
                     ShowMessage(L10n.T(ModeHRuntimeGates.ResolveLegacyBlockedMessageKey()));
-                    DevLog("[BossRush] 入口被 Mode H 真实资产风险门拒绝");
+                    ModBehaviour.DevLog("[BossRush] 入口被 Mode H 真实资产风险门拒绝");
                     return false;
                 }
             }
@@ -278,45 +278,45 @@ namespace BossRush
             {
                 if (modeGActive)
                 {
-                    DevLog("[ModeG] Mode G 已在运行，忽略重复启动请求");
+                    ModBehaviour.DevLog("[ModeG] Mode G 已在运行，忽略重复启动请求");
                     return false;
                 }
 
                 if (!ModeGAvailability.IsProductionReady && !ModeGAvailability.AllowDevTestEntry)
                 {
-                    DevLog("[ModeG] 发布闸关闭，拒绝启动且不消费入场物品");
+                    ModBehaviour.DevLog("[ModeG] 发布闸关闭，拒绝启动且不消费入场物品");
                     return false;
                 }
                 if (!HasMinimumModeGOfficialBossPool())
                 {
-                    DevLog("[ModeG] 当前过滤 Boss 池没有可用的官方 Boss key，拒绝启动且不消费入场物品");
+                    ModBehaviour.DevLog("[ModeG] 当前过滤 Boss 池没有可用的官方 Boss key，拒绝启动且不消费入场物品");
                     return false;
                 }
                 if (!ModeGPresentationAssetCache.TryPreflight())
                 {
-                    DevLog("[ModeG] 展示资源预检失败，拒绝启动且不消费入场物品");
+                    ModBehaviour.DevLog("[ModeG] 展示资源预检失败，拒绝启动且不消费入场物品");
                     return false;
                 }
 
                 // 分别拒绝各模式（禁止走聚合判定）
                 if (IsActive)
                 {
-                    DevLog("[ModeG] Legacy BossRush 激活中，拒绝 Mode G 启动");
+                    ModBehaviour.DevLog("[ModeG] Legacy BossRush 激活中，拒绝 Mode G 启动");
                     return false;
                 }
                 if (modeDActive || modeEActive || modeFActive)
                 {
-                    DevLog("[ModeG] Mode D/E/F 已激活，拒绝 Mode G 启动");
+                    ModBehaviour.DevLog("[ModeG] Mode D/E/F 已激活，拒绝 Mode G 启动");
                     return false;
                 }
                 if (IsZombieModeActive)
                 {
-                    DevLog("[ModeG] ZombieMode 激活中，拒绝 Mode G 启动");
+                    ModBehaviour.DevLog("[ModeG] ZombieMode 激活中，拒绝 Mode G 启动");
                     return false;
                 }
                 if (ModeGRuntimeGates.IsModeGEntryBlocked)
                 {
-                    DevLog("[ModeG] Mode G 入口被隔离（run 进行中或 late sink 未归零），拒绝启动");
+                    ModBehaviour.DevLog("[ModeG] Mode G 入口被隔离（run 进行中或 late sink 未归零），拒绝启动");
                     return false;
                 }
 
@@ -324,7 +324,7 @@ namespace BossRush
                     || ModeGProfilePersistence.IsStoreFaulted
                     || ModeGPersistenceFlushCoordinator.IsFaulted)
                 {
-                    DevLog("[ModeG] 持久化写屏障已故障，本 runtime fail-closed 拒绝启动");
+                    ModBehaviour.DevLog("[ModeG] 持久化写屏障已故障，本 runtime fail-closed 拒绝启动");
                     ShowMessage(L10n.T(
                         "宿命回响的存档写不进去，重启游戏再试。这次不扣你的东西。",
                         "Fate Echo couldn't write its save. Restart the game and try again. Nothing was used up."));
@@ -336,34 +336,34 @@ namespace BossRush
                 Item relic = DetectFateEchoRelic();
                 if ((ticket == null && !ticketPrepaid) || relic == null)
                 {
-                    DevLog("[ModeG] 未检测到船票或宿命回响信物，不启动 Mode G");
+                    ModBehaviour.DevLog("[ModeG] 未检测到船票或宿命回响信物，不启动 Mode G");
                     return false;
                 }
 
                 var (faction, flagItem) = DetectFactionFlag();
                 if (faction.HasValue || flagItem != null)
                 {
-                    DevLog("[ModeG] 检测到营旗，按优先级不进入 Mode G");
+                    ModBehaviour.DevLog("[ModeG] 检测到营旗，按优先级不进入 Mode G");
                     return false;
                 }
 
                 Item transponder = DetectBloodhuntTransponder();
                 if (transponder != null)
                 {
-                    DevLog("[ModeG] 检测到血猎收发器，Mode F 优先级更高，不进入 Mode G");
+                    ModBehaviour.DevLog("[ModeG] 检测到血猎收发器，Mode F 优先级更高，不进入 Mode G");
                     return false;
                 }
 
                 if (!IsModeGLoadoutEligible())
                 {
-                    DevLog("[ModeG] 玩家装备状态不满足 Mode G 入场条件，拒绝启动");
+                    ModBehaviour.DevLog("[ModeG] 玩家装备状态不满足 Mode G 入场条件，拒绝启动");
                     return false;
                 }
 
                 // golden vectors 自检（fail-closed）
                 if (!ModeGDeterministicRandom.ValidateGoldenVectors())
                 {
-                    DevLog("[ModeG] [ERROR] golden vectors 自检失败，fail-closed 拒绝启动");
+                    ModBehaviour.DevLog("[ModeG] [ERROR] golden vectors 自检失败，fail-closed 拒绝启动");
                     return false;
                 }
 
@@ -371,13 +371,13 @@ namespace BossRush
                 string weaponMatrixFailReason;
                 if (!ModeGWeaponScoringCompatibilityMatrix.IsMatrixValid(out weaponMatrixFailReason))
                 {
-                    DevLog("[ModeG] [ERROR] 武器计分兼容矩阵验证失败，fail-closed 拒绝启动: " + weaponMatrixFailReason);
+                    ModBehaviour.DevLog("[ModeG] [ERROR] 武器计分兼容矩阵验证失败，fail-closed 拒绝启动: " + weaponMatrixFailReason);
                     return false;
                 }
 
                 if (!RefreshModeGSignatureEligibility())
                 {
-                    DevLog("[ModeG] 署名 Boss 资源/adapter 能力预检失败，fail-closed 拒绝启动");
+                    ModBehaviour.DevLog("[ModeG] 署名 Boss 资源/adapter 能力预检失败，fail-closed 拒绝启动");
                     ShowMessage(L10n.T(
                         "宿命回响的资源没加载全，回基地再试。",
                         "Fate Echo didn't finish loading. Head back to base and try again."));
@@ -392,7 +392,7 @@ namespace BossRush
                 ModeGEntryPreview preview = GetOrCreateModeGEntryPreview();
                 if (!IsModeGEntryPreviewValidForCurrentScene(preview))
                 {
-                    DevLog("[ModeG] preview 缺失、过期或与当前 verified scene pair/revision 不一致");
+                    ModBehaviour.DevLog("[ModeG] preview 缺失、过期或与当前 verified scene pair/revision 不一致");
                     // 与上面同款：场内无可达入口，指向撤离重进而不是「重新打开入口」。
                     ShowMessage(L10n.T(
                         "宿命回响的预览过期了，撤回基地再重新进场。",
@@ -452,7 +452,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [ERROR] TryStartModeG 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [ERROR] TryStartModeG 失败: " + e.Message);
                 if (ticketConsumed) TryRefundModeGEntryItem(GetBossRushTicketTypeId(), L10n.T("船票", "Boss Rush Ticket"));
                 if (relicConsumed) TryRefundModeGEntryItem(FateEchoRelicConfig.TYPE_ID, L10n.T("宿命回响信物", "Fate Echo Relic"));
                 return false;
@@ -477,13 +477,13 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [WARNING] 入场道具返还异常 typeId=" + typeId + ": " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [WARNING] 入场道具返还异常 typeId=" + typeId + ": " + e.Message);
             }
 
             try { if (item != null) item.DestroyTree(); }
             catch (Exception cleanupException)
             {
-                DevLog("[ModeG] [WARNING] 返还失败后的物品清理异常: " + cleanupException.Message);
+                ModBehaviour.DevLog("[ModeG] [WARNING] 返还失败后的物品清理异常: " + cleanupException.Message);
             }
             return false;
         }
@@ -528,7 +528,7 @@ namespace BossRush
         /// <summary>
         /// 启动 Mode G 运行时（preview 冻结值驱动，Starting 阶段）。
         /// </summary>
-        private bool StartModeGRuntime(ModeGEntryPreview preview,
+        internal bool StartModeGRuntime(ModeGEntryPreview preview,
             bool refundTicketOnStartupFailure, bool refundRelicOnStartupFailure,
             out bool startupRefundOwnedByRuntime)
         {
@@ -570,14 +570,14 @@ namespace BossRush
                 modeGRuntime = new ModeGRuntimeModule();
                 if (!modeGRuntime.Initialize(state, preview))
                 {
-                    DevLog("[ModeG] RuntimeModule 初始化失败（fail-closed）");
+                    ModBehaviour.DevLog("[ModeG] RuntimeModule 初始化失败（fail-closed）");
                     modeGRuntime = null;
                     return false;
                 }
                 // None -> Starting（CAS 一次）
                 if (!state.TryAdvanceLifecycle(ModeGLifecyclePhase.Starting))
                 {
-                    DevLog("[ModeG] [ERROR] lifecycle Starting 推进失败");
+                    ModBehaviour.DevLog("[ModeG] [ERROR] lifecycle Starting 推进失败");
                     modeGRuntime.Dispose();
                     modeGRuntime = null;
                     return false;
@@ -592,7 +592,7 @@ namespace BossRush
                 startupRefundOwnedByRuntime = true;
                 if (!modeGRuntime.StartRun())
                 {
-                    DevLog("[ModeG] RuntimeModule 启动失败（fail-closed）");
+                    ModBehaviour.DevLog("[ModeG] RuntimeModule 启动失败（fail-closed）");
                     modeGRuntime.End(ModeGExitReason.TechnicalIntegrityLoss);
                     ModeGRunContext.Unbind(state);
                     modeGRuntime.Dispose();
@@ -602,7 +602,7 @@ namespace BossRush
 
                 if (!ModeGProfilePersistence.RecordSelectedContract(contractId))
                 {
-                    DevLog("[ModeG] [WARNING] 上一局契约选择未能持久化，下一局防重复可能不可用");
+                    ModBehaviour.DevLog("[ModeG] [WARNING] 上一局契约选择未能持久化，下一局防重复可能不可用");
                 }
 
                 // 创建 HUD（刷新上限 4Hz 由 HUD 内部节流）
@@ -619,7 +619,7 @@ namespace BossRush
                 // 发现性：放弃入口只有快捷键，开局告知一次当前绑定键
                 try
                 {
-                    int abandonKey = config != null ? config.modeGAbandonHotkey : 0;
+                    int abandonKey = getAbandonHotkey();
                     if (abandonKey > 0)
                     {
                         string keyName = ((UnityEngine.KeyCode)abandonKey).ToString();
@@ -630,18 +630,18 @@ namespace BossRush
                 }
                 catch { /* 提示失败不影响开局 */ }
 
-                DevLog("[ModeG] Mode G 启动成功 runId=" + runId.ToString("x"));
+                ModBehaviour.DevLog("[ModeG] Mode G 启动成功 runId=" + runId.ToString("x"));
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] StartModeGRuntime 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] StartModeGRuntime 异常: " + e.Message);
                 if (startupRefundOwnedByRuntime && modeGRuntime != null)
                 {
                     try { modeGRuntime.End(ModeGExitReason.TechnicalIntegrityLoss); }
                     catch (Exception endException)
                     {
-                        DevLog("[ModeG] [WARNING] 启动失败后的 Runtime 终止异常: " + endException.Message);
+                        ModBehaviour.DevLog("[ModeG] [WARNING] 启动失败后的 Runtime 终止异常: " + endException.Message);
                     }
                 }
                 if (state != null) ModeGRunContext.Unbind(state);
@@ -653,7 +653,7 @@ namespace BossRush
         /// <summary>
         /// 每帧更新 Mode G（ModeRuntimeHooks.UpdateModeG 兼容入口，内部委托给 module）。
         /// </summary>
-        private void UpdateModeG(float deltaTime)
+        internal void UpdateModeG(float deltaTime)
         {
             if (!modeGActive || modeGRuntime == null) return;
 
@@ -667,13 +667,13 @@ namespace BossRush
                 ModeGRunState state = modeGRuntime.State;
                 if (state != null && state.IsTerminal)
                 {
-                    DevLog("[ModeG] 检测到终态，准备关闭");
+                    ModBehaviour.DevLog("[ModeG] 检测到终态，准备关闭");
                     ShutdownModeG();
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] UpdateModeG 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] UpdateModeG 异常: " + e.Message);
             }
         }
 
@@ -694,7 +694,7 @@ namespace BossRush
                 // 官方暂停菜单并非 View；共用 HUD 门覆盖背包、地图、对话、拍照与暂停。
                 if (BossRushUI.IsOfficialHudHidden() || BossRushUI.IsGamePaused()) return;
 
-                int keyCode = config != null ? config.modeGAbandonHotkey : 0;
+                int keyCode = getAbandonHotkey();
                 if (keyCode <= 0) return;
                 if (!UnityEngine.Input.GetKeyDown((UnityEngine.KeyCode)keyCode)) return;
 
@@ -702,14 +702,14 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] 放弃快捷键处理异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] 放弃快捷键处理异常: " + e.Message);
             }
         }
 
         /// <summary>
         /// 关闭 Mode G（本地清理；九种终局的完整幂等 End 在 ModeGCleanupController）。
         /// </summary>
-        private void ShutdownModeG()
+        internal void ShutdownModeG()
         {
             try
             {
@@ -735,11 +735,11 @@ namespace BossRush
                 }
 
                 modeGActive = false;
-                DevLog("[ModeG] Mode G 已关闭");
+                ModBehaviour.DevLog("[ModeG] Mode G 已关闭");
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] ShutdownModeG 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] ShutdownModeG 异常: " + e.Message);
                 modeGActive = false;
                 modeGRuntime = null;
                 modeGHUD = null;
@@ -812,7 +812,7 @@ namespace BossRush
                 }
 
                 // 2. 回退：Steam 人格名 FNV 哈希（稳定标识）
-                string persona = TryGetSteamPersonaName();
+                string persona = ModBehaviour.TryGetSteamPersonaName();
                 if (!string.IsNullOrEmpty(persona))
                 {
                     modeGPlayerGuidCache = "persona_" + ModeGDeterministicRandom.Fnv1a64(persona).ToString("x");

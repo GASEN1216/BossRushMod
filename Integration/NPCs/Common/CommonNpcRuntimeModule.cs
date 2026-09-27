@@ -1,6 +1,6 @@
 namespace BossRush
 {
-    internal sealed class CommonNpcRuntimeModule : BossRushRuntimeModuleBase
+    internal sealed partial class CommonNpcRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour owner;
 

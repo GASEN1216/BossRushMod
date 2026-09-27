@@ -66,12 +66,12 @@ namespace BossRush
     /// Mode E（划地为营）：多阵营沙盒混战模式
     /// <para>玩家裸装+营旗入场，分配阵营，Boss一次性生成，按个人基线层数动态缩放</para>
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         #region Mode E 状态变量
 
         /// <summary>是否处于 Mode E 模式</summary>
-        private bool modeEActive = false;
+        internal bool modeEActive = false;
 
         /// <summary>玩家被分配的阵营</summary>
         private Teams modeEPlayerFaction = Teams.player;
@@ -80,7 +80,7 @@ namespace BossRush
         private int modeESessionSerial = 0;
 
         /// <summary>当前有效的 Mode E 会话令牌。</summary>
-        private int modeESessionToken = 0;
+        internal int modeESessionToken = 0;
 
         /// <summary>贝壳经济整局代号。只在整局初始化/失效时递增。</summary>
         private long modeEShellSessionGeneration = 0L;
@@ -216,35 +216,26 @@ namespace BossRush
         private FieldInfo modeEShellViewInteractionTextField;
         private FieldInfo modeEShellViewMerchantNameTextField;
 
-        /// <summary>当前所有存活的 Mode E 敌人（跨阵营）</summary>
-        private readonly List<CharacterMainControl> modeEAliveEnemies = new List<CharacterMainControl>();
+
 
         /// <summary>Mode E 结束清理快照复用列表，避免结束时按敌人数量分配数组。</summary>
         private readonly List<CharacterMainControl> modeEEndCleanupEnemyScratch = new List<CharacterMainControl>(32);
 
-        /// <summary>Mode E 存活敌人的去重集合，避免重复注册导致列表和扫描路径膨胀。</summary>
-        private readonly HashSet<CharacterMainControl> modeEAliveEnemySet = new HashSet<CharacterMainControl>();
 
-        /// <summary>BossRegen 专用缓存，避免变异词条开启时每帧重建存活列表。</summary>
-        private readonly List<MonoBehaviour> modeEBossRegenCache = new List<MonoBehaviour>(32);
-        private bool modeEBossRegenCacheDirty = true;
 
-        /// <summary>Mode E 存活敌人的阵营缓存，避免清理路径回退到全阵营扫描。</summary>
-        private readonly Dictionary<CharacterMainControl, Teams> modeEAliveEnemyFactionMap
-            = new Dictionary<CharacterMainControl, Teams>();
+
+
+
+
 
         /// <summary>各阵营死亡计数（用于计算每个敌人的个人层数：当前死亡数 - 出生基线）</summary>
         private Dictionary<Teams, int> modeEFactionDeathCount = new Dictionary<Teams, int>();
 
-        /// <summary>
-        /// [P4性能优化] 按阵营维护的独立存活敌人列表，避免缩放时全量遍历 modeEAliveEnemies
-        /// Key = 阵营, Value = 该阵营的存活敌人列表
-        /// </summary>
-        private readonly Dictionary<Teams, List<CharacterMainControl>> modeEFactionAliveMap
-            = new Dictionary<Teams, List<CharacterMainControl>>();
+
 
         /// <summary>Mode E 入场预热线程，尽量把重初始化提前摊到前置等待阶段。</summary>
         private Coroutine modeEStartupWarmupCoroutine = null;
+        private Coroutine modeEMerchantWarmupCoroutine = null;
 
         /// <summary>当前预热对应的场景名，用于避免跨场景误复用协程状态。</summary>
         private string modeEStartupWarmupSceneName = null;
@@ -283,7 +274,7 @@ namespace BossRush
         #region Mode E 配置
 
         /// <summary>Mode E 可用阵营池（排除 player/middle/all）</summary>
-        private static readonly Teams[] ModeEAvailableFactions = new Teams[]
+        internal static readonly Teams[] ModeEAvailableFactions = new Teams[]
         {
             Teams.scav,   // 拾荒者
             Teams.usec,   // USEC雇佣兵
@@ -319,6 +310,7 @@ namespace BossRush
         internal int CurrentModeESessionToken { get { return modeESessionToken; } }
 
         /// <summary>当前所有存活的 Mode E 敌人列表（只读访问，供龙王等系统查找攻击目标）</summary>
+        internal List<CharacterMainControl> modeEAliveEnemies { get { return enemyRegistry.LegacyAliveEnemies; } }
         public List<CharacterMainControl> ModeEAliveEnemies { get { return modeEAliveEnemies; } }
 
         #endregion

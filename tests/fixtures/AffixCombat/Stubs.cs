@@ -69,7 +69,12 @@ namespace ItemStatsSystem
         public T GetComponent<T>() where T : class { return Setting as T; }
         internal readonly List<AffixSlotView> Affixes = new List<AffixSlotView>();
         private readonly Dictionary<string, Stat> stats = new Dictionary<string, Stat>();
-        public Stat GetStat(string key) { Stat s; if (!stats.TryGetValue(key, out s)) stats[key] = s = new Stat(); return s; }
+        public Stat GetStat(string key)
+        {
+            if (key == "__missing__") return null;
+            if (key == "__throw__") throw new InvalidOperationException("injected stat lookup failure");
+            Stat s; if (!stats.TryGetValue(key, out s)) stats[key] = s = new Stat(); return s;
+        }
     }
 }
 public class ItemSetting_Gun { }
@@ -79,11 +84,16 @@ namespace ItemStatsSystem.Items { public sealed class Slot { public string Key; 
 namespace ItemStatsSystem.Stats
 {
     public enum ModifierType { Add, PercentageAdd, PercentageMultiply }
-    public sealed class Modifier { public Modifier(ModifierType t, float value, object source) { } }
+    public sealed class Modifier
+    {
+        public ModifierType Type; public float Value; public object Source;
+        public Modifier(ModifierType t, float value, object source) { Type = t; Value = value; Source = source; }
+    }
     public sealed class Stat
     {
         internal readonly List<Modifier> Modifiers = new List<Modifier>();
         public void AddModifier(Modifier m) { Modifiers.Add(m); }
+        public void RemoveModifier(Modifier m) { Modifiers.Remove(m); }
     }
 }
 namespace Duckov.Buffs { public sealed class Buff { internal string Id; } }
@@ -213,13 +223,14 @@ namespace BossRush
         internal bool Paused, FailScheduling;
         internal int Fallbacks;
         internal ZombieModeRunState zombieModeRunState = new ZombieModeRunState { RunId = 1 };
-        private float zombieModeOptionExplosionSkipLogTime;
-        private bool IsZombieModeRunValid(int id) { return id > 0 && id == zombieModeRunState.RunId && !zombieModeRunState.IsCleaningUp; }
+        internal ZombieModeRuntimeModule zombieModeRuntimeModule;
+        internal ModBehaviour() { Instance = this; zombieModeRuntimeModule = new ZombieModeRuntimeModule(this); }
+        internal bool IsZombieModeRunValid(int id) { return id > 0 && id == zombieModeRunState.RunId && !zombieModeRunState.IsCleaningUp; }
         internal bool IsZombieModeRuntimePaused() { return Paused; }
         private float GetZombieModeRuntimeNow() { return Time.time; }
-        private void DealZombieModeAreaDamageToPlayer(int id, CharacterMainControl source, Vector3 origin, float radius, float damage) { Fallbacks++; }
-        internal void OptionExplosion() { CreateZombieModeOptionExplosion(1, new Vector3(), 3, 25); }
-        internal void DoomPulse(int stacks) { TriggerZombieModeDoomPulse(1, stacks); }
+        internal void DealZombieModeAreaDamageToPlayer(int id, CharacterMainControl source, Vector3 origin, float radius, float damage) { Fallbacks++; }
+        internal void OptionExplosion() { zombieModeRuntimeModule.OptionExplosion(); }
+        internal void DoomPulse(int stacks) { zombieModeRuntimeModule.DoomPulse(stacks); }
         internal readonly List<Coroutine> Pending = new List<Coroutine>();
         public bool IsAffixForgeConfiguredEnabled() { return Enabled; }
         public static void DevLog(string line) { }
@@ -286,12 +297,6 @@ namespace BossRush
         { view = slot <= item.Affixes.Count ? item.Affixes[slot - 1] : new AffixSlotView(); return true; }
         public static bool HasAffixData(Item item) { return item.Affixes.Count > 0; }
         public static void ReadAllSlots(Item item, List<AffixSlotView> into) { into.AddRange(item.Affixes); }
-    }
-    public sealed class ZombieModeAttributeModifierRecord { public Item CharacterItem; public Stat Stat; public Modifier Modifier; public string StatName; }
-    public static class RuntimeStatModifierTracker
-    {
-        public static void RemoveAll(List<ZombieModeAttributeModifierRecord> records, string context)
-        { foreach (var r in records) r.Stat.Modifiers.Remove(r.Modifier); records.Clear(); }
     }
     internal static class AffixRuntimeTicker
     {

@@ -2,7 +2,7 @@ from pathlib import Path
 import sys
 
 
-COURIER = Path("Integration/NPCs/Courier/CourierNPC.cs")
+COURIER = Path("Integration/IntegrationHostCompatibility.cs")
 COURIER_NPC_SOURCES = [
     COURIER,
     Path("Integration/NPCs/Courier/CourierNPCController.cs"),
@@ -13,7 +13,7 @@ COURIER_NPC_SOURCES = [
 
 def read_courier_npc_sources() -> str:
     return "\n".join(path.read_text(encoding="utf-8") for path in COURIER_NPC_SOURCES)
-TRACKER = Path("LootAndRewards/ModeEFLootboxTracker.cs")
+TRACKER = Path("LootAndRewards/AwenLootSweepRuntime.cs")
 TOKEN = Path("Integration/Items/AwenLootSweepTokenConfig.cs")
 COURIER_SERVICE_SOURCES = [
     Path("Integration/NPCs/Courier/CourierService.cs"),

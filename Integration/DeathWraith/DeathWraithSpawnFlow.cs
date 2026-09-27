@@ -20,7 +20,7 @@ using Saves;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class DeathWraithRuntimeModule
     {
         #region 亡魂系统 — 生成
 
@@ -137,7 +137,7 @@ namespace BossRush
             int generation = deathWraithSpawnGeneration;
             int sceneHandle = SceneManager.GetActiveScene().handle;
             int slot = SavesSystem.CurrentSlot;
-            Func<bool> isCurrent = () => this != null && Instance == this && generation == deathWraithSpawnGeneration &&
+            Func<bool> isCurrent = () => owner != null && ModBehaviour.Instance == owner && generation == deathWraithSpawnGeneration &&
                 IsDeathWraithSystemEnabled() && SceneManager.GetActiveScene().handle == sceneHandle && SavesSystem.CurrentSlot == slot;
             try
             {

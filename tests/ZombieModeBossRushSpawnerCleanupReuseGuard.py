@@ -2,9 +2,11 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 MAP_ISOLATION = Path("ZombieMode/ZombieModeMapIsolation.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:
@@ -36,14 +38,24 @@ def extract_method(text: str, marker: str) -> str:
 
 def main() -> int:
     text = MAP_ISOLATION.read_text(encoding="utf-8")
+    bridges = clean_source(HOST_BRIDGE.read_text(encoding="utf-8"))
+    for signature, statement in [
+        ("internal void ResetZombieModeOriginalSpawnerStateForRuntimeModule()", "spawnersDisabled = false;"),
+        ("internal void DisableZombieModeOriginalSpawnersForRuntimeModule()", "DisableAllSpawners();"),
+    ]:
+        body = extract_method(bridges, signature)
+        if not body or body[body.index("{"):].split() != ("{ " + statement + " }").split():
+            return fail("host environment bridge must preserve the original single statement -> " + signature)
+    if "internal sealed partial class ZombieModeRuntimeModule" not in clean_source(text) or "partial class ModBehaviour" in clean_source(text):
+        return fail("map isolation state and policy must belong to the Zombie runtime module")
 
     disable_method = extract_method(text, "private void DisableZombieModeOriginalSpawners")
     if not disable_method:
         return fail("DisableZombieModeOriginalSpawners not found")
 
     for token in [
-        "spawnersDisabled = false;",
-        "DisableAllSpawners();",
+        "owner.ResetZombieModeOriginalSpawnerStateForRuntimeModule();",
+        "owner.DisableZombieModeOriginalSpawnersForRuntimeModule();",
         "已复用 BossRush 进图逻辑清理原版刷怪器",
     ]:
         if token not in disable_method:
@@ -64,7 +76,7 @@ def main() -> int:
         return fail("RestoreZombieModeOriginalSpawners not found")
 
     for token in [
-        "spawnersDisabled = false;",
+        "owner.ResetZombieModeOriginalSpawnerStateForRuntimeModule();",
     ]:
         if token not in restore_method:
             return fail("restore must reset BossRush spawner scan flag -> " + token)

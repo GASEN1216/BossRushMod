@@ -1,11 +1,12 @@
 """Guard: Mode E/F performance work must not throttle gameplay-visible rules."""
 
 from pathlib import Path
+from cs_source_util import clean_source
 import re
 import sys
 
 
-MODEE_BATTLE = Path("ModeE/ModeEBattle.cs")
+MODEE_BATTLE = Path("Utilities/ModeEFEnemySpawnRuntime.cs")
 MODEE_RESPAWN = Path("ModeE/ModeERespawnItems.cs")
 MODEF_PHASES = Path("ModeF/ModeFPhases.cs")
 MODEF_RESPAWN = Path("ModeF/ModeFRespawn.cs")
@@ -41,11 +42,6 @@ def extract_method_body(text: str, signature: str) -> str | None:
     return None
 
 
-def strip_comments(text: str) -> str:
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
-    return "\n".join(line.split("//", 1)[0] for line in text.splitlines())
-
-
 def require(text: str, needle: str, message: str) -> int | None:
     if needle not in text:
         return fail(message)
@@ -71,22 +67,24 @@ def scan_forbidden_tokens() -> int | None:
         "MODEF_ACTIVE_BOSS_LIMIT",
         "MODEE_ACTIVE_BOSS_LIMIT",
     )
+    paths = [MODEE_BATTLE]
     for root in (MODEE_DIR, MODEF_DIR):
-        for path in sorted(root.rglob("*.cs")):
-            text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
-            for token in banned:
-                if token in text:
-                    return fail(f"unexpected gameplay throttle token {token} in {path.as_posix()}")
+        paths.extend(sorted(root.rglob("*.cs")))
+    for path in paths:
+        text = clean_source(path.read_text(encoding="utf-8"))
+        for token in banned:
+            if token in text:
+                return fail(f"unexpected gameplay throttle token {token} in {path.as_posix()}")
 
     return None
 
 
 def main() -> int:
-    battle = MODEE_BATTLE.read_text(encoding="utf-8")
-    respawn_e = MODEE_RESPAWN.read_text(encoding="utf-8")
-    phases = MODEF_PHASES.read_text(encoding="utf-8")
-    respawn_f = MODEF_RESPAWN.read_text(encoding="utf-8")
-    entry = MODEF_ENTRY.read_text(encoding="utf-8")
+    battle = clean_source(MODEE_BATTLE.read_text(encoding="utf-8"))
+    respawn_e = clean_source(MODEE_RESPAWN.read_text(encoding="utf-8"))
+    phases = clean_source(MODEF_PHASES.read_text(encoding="utf-8"))
+    respawn_f = clean_source(MODEF_RESPAWN.read_text(encoding="utf-8"))
+    entry = clean_source(MODEF_ENTRY.read_text(encoding="utf-8"))
 
     for text, needle, message in (
         (battle, "const int SPAWN_DELAY_MS = 500;", "Mode E startup spawn cadence must stay 500ms after the opening batch"),

@@ -11,7 +11,7 @@
 修复后的结构由本守卫钉住：
 
 1. **账本是模块自有类型**（AGENTS 4.15）：退款与欠账的算法在 `ZombieModeEntryDebt`，
-   宿主 partial 里只剩「问账本要结果 → 决定清不清事务状态」几行；
+   `ZombieModeRuntimeModule` 根据账本结果清理它持有的入场事务状态，宿主只保留转发；
 2. **不吞**：宿主两处退款都必须先看账本返回值，返回 false 就 `return`（保留事务状态待重试），
    绝不能再出现无条件清状态的 `finally`；
 3. **落存档**：两个原始类型 key（SCHEMA+，老档读出 0），写入一律回读核对
@@ -32,7 +32,7 @@ sys.path.insert(0, str(ROOT / 'tests'))
 from cs_source_util import clean_source
 
 LEDGER = 'ZombieMode/ZombieModeEntryDebt.cs'
-ENTRY = 'ZombieMode/ZombieModeEntry.cs'
+ENTRY = 'ZombieMode/ZombieModeEntryHostBridge.cs'
 MODULE = 'ZombieMode/ZombieModeRuntimeModule.cs'
 MANIFEST = 'compile_official.bat'
 RUNNER = 'tools/run_runtime_regressions.py'
@@ -149,24 +149,30 @@ if re.search(r'OnEconomyManagerLoaded\s*[+-]=\s*(?:delegate|\()', ledger):
 
 # ---- 7. 宿主只做转发，且不再无条件清事务状态 ----
 host_cash = body(entry, 'private void RefundZombieModeCashIfNeeded()', ENTRY)
-require(host_cash, 'if (!ZombieModeEntryDebt.RefundCash(zombieModeEntryTransaction.CashWithheldAmount)) return;',
-        '宿主必须按账本返回值决定清不清事务状态')
-forbid(host_cash, 'finally', '退款路径不许再有无条件清事务状态的 finally')
-forbid(host_cash, 'EconomyManager', '退款算法属于账本，宿主不该直接碰经济（AGENTS 4.15）')
-for token in ('zombieModeEntryTransaction.CashTemporarilyHeld = false;',
-              'zombieModeEntryTransaction.CashWithheldAmount = 0L;',
-              'zombieModeRunState.ConfirmedCashInvested = 0L;'):
-    require(host_cash, token, '了结之后仍要清掉这一项事务状态：' + token)
+require(host_cash, 'module.RefundZombieModeCashIfNeeded();', '宿主现金退款入口必须转发给 RuntimeModule')
+forbid(host_cash, 'EconomyManager', '现金经济与事务状态属于 RuntimeModule/债务账本')
+module_cash = body(module, 'internal void RefundZombieModeCashIfNeeded()', MODULE)
+require(module_cash, 'if (!ZombieModeEntryDebt.RefundCash(entryTransaction.CashWithheldAmount)) return;',
+        'RuntimeModule 必须按账本返回值决定是否清事务状态')
+forbid(module_cash, 'finally', '退款路径不许再有无条件清事务状态的 finally')
+for token in ('entryTransaction.CashTemporarilyHeld = false;',
+              'entryTransaction.CashWithheldAmount = 0L;',
+              'runState.ConfirmedCashInvested = 0L;'):
+    require(module_cash, token, '了结之后仍要清掉这一项事务状态：' + token)
 
 host_inv = body(entry, 'private void RefundZombieModeInvitationIfNeeded()', ENTRY)
-require(host_inv, 'if (!ZombieModeEntryDebt.RefundInvitation()) return;',
-        '邀请函同样按账本返回值决定清不清事务状态')
-forbid(host_inv, 'finally', '邀请函返还路径不许再有无条件清事务状态的 finally')
+require(host_inv, 'module.RefundZombieModeInvitationIfNeeded();', '宿主邀请函退款入口必须转发给 RuntimeModule')
 forbid(host_inv, 'ItemAssetsCollection', '实例化属于账本，宿主不该直接造物品（AGENTS 4.15）')
-require(host_inv, 'zombieModeEntryTransaction.InvitationTemporarilyHeld = false;', '了结之后要清邀请函事务状态')
+module_inv = body(module, 'internal void RefundZombieModeInvitationIfNeeded()', MODULE)
+require(module_inv, 'if (!ZombieModeEntryDebt.RefundInvitation()) return;',
+        'RuntimeModule 必须按账本返回值决定清不清事务状态')
+forbid(module_inv, 'finally', '邀请函返还路径不许再有无条件清事务状态的 finally')
+require(module_inv, 'entryTransaction.InvitationTemporarilyHeld = false;', '了结之后要清邀请函事务状态')
 
 # ---- 8. 扣款前顺手结一次旧账 ----
-commit = body(entry, 'private bool CommitZombieModeEntryResourcesShell(out ZombieModeFailureReason reason)', ENTRY)
+host_commit = body(entry, 'private bool CommitZombieModeEntryResourcesShell(out ZombieModeFailureReason reason)', ENTRY)
+require(host_commit, 'module.CommitZombieModeEntryResourcesShell(out reason)', '宿主资源提交入口必须转发给 RuntimeModule')
+commit = body(module, 'internal bool CommitZombieModeEntryResourcesShell(out ZombieModeFailureReason reason)', MODULE)
 settle_at = commit.find('ZombieModeEntryDebt.TrySettleAll();')
 pay_at = commit.find('EconomyManager.Pay(')
 if settle_at < 0:

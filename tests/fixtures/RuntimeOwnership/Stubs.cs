@@ -24,8 +24,22 @@ public sealed class GameObject
     public bool Destroyed, Marked, Following, Idle;
     public int Queries, Refreshes;
     public T GetComponent<T>() where T:class { Queries++; return typeof(T)==typeof(Item) ? Item as T : Movement as T; }
+    public static bool operator ==(GameObject a, GameObject b)
+    { bool an=ReferenceEquals(a,null)||a.Destroyed,bn=ReferenceEquals(b,null)||b.Destroyed; return an||bn ? an==bn : ReferenceEquals(a,b); }
+    public static bool operator !=(GameObject a, GameObject b) { return !(a==b); }
+    public override bool Equals(object value) { return ReferenceEquals(this,value); }
+    public override int GetHashCode() { return base.GetHashCode(); }
 }
-public sealed class Item { public object InInventory, PluggedIntoSlot; }
+public sealed class Item
+{
+    public object InInventory, PluggedIntoSlot;
+    public bool Destroyed;
+    public static bool operator ==(Item a, Item b)
+    { bool an=ReferenceEquals(a,null)||a.Destroyed,bn=ReferenceEquals(b,null)||b.Destroyed; return an||bn ? an==bn : ReferenceEquals(a,b); }
+    public static bool operator !=(Item a, Item b) { return !(a==b); }
+    public override bool Equals(object value) { return ReferenceEquals(this,value); }
+    public override int GetHashCode() { return base.GetHashCode(); }
+}
 public sealed class CharacterMainControl
 {
     public static CharacterMainControl Main;
@@ -86,35 +100,56 @@ public partial class PermanentDuckNpcModule
 public partial class ModBehaviour
 {
     public static ModBehaviour Instance;
-    private int permanentSpouseRestoreGeneration;
-    private PermanentSpouseRestoreRequest permanentSpouseRestoreRequest;
-    private RunState zombieModeRunState=new RunState();
-    private float zombieModeLastDropPickupScanTime, now;
     public bool Building=true, Placeholder=true;
+    internal WeddingRuntimeModule WeddingRuntime;
     public static void DevLog(string value) {}
+    public static bool IsBaseHubSceneName(string name) => name=="Base";
+    public void Begin(bool following) { WeddingRuntime.Begin(following); }
+    public void Invalidate() { WeddingRuntime.Invalidate(); }
+    public bool HasPending => WeddingRuntime.HasPending;
+    public GameObject Cleanup(float age, float lastScan, bool owned, bool equipped, bool force, bool high=false, bool boss=false)
+    { return new ZombieModeRuntimeModule().Cleanup(age,lastScan,owned,equipped,force,high,boss); }
+}
+namespace UnityEngine
+{
+    public static class Object
+    {
+        public static void Destroy(GameObject o)
+        { if(o==null)return; o.Destroyed=true; if(o.Item!=null)o.Item.Destroyed=true; }
+    }
+}
+internal sealed partial class ZombieModeRuntimeModule
+{
+    private RunState runState=new RunState();
+    private float zombieModeLastDropPickupScanTime, now;
     private float GetZombieModeRuntimeNow() => now;
     private void RemoveZombieModeRunOnlyObjectRecord(GameObject o) {}
     private void PruneZombieModeUnknownRunOnlyRecords() {}
-    private void Destroy(GameObject o) { o.Destroyed=true; }
-    private bool IsBaseHubSceneName(string name) => name=="Base";
-    private bool HasWeddingBuildingPlaced() => Building;
-    private Vector3 FindWeddingBuildingNPCPosition() => new Vector3(5,0,5);
-    private bool CanCurrentSpouseFollowPlayer(string id) => AffinityManager.IsMarriedToPlayer(id);
-    private bool TryGetSpouseFollowSpawnPosition(out Vector3 position) { position=CharacterMainControl.Main.transform.position; return true; }
-    private void SnapSpouseInstanceToPosition(GameObject npc, Vector3 position) { npc.transform.position=position; }
-    private void SetWeddingNpcIdle(GameObject npc) { npc.Idle=true; }
-    private void MarkWeddingNpcInstance(GameObject npc, string id) { npc.Marked=true; }
-    private void DestroyWeddingPlaceholder() { Placeholder=false; }
-    private void RefreshSpouseInteractionOptions(GameObject npc) { npc.Refreshes++; }
-    private void PrepareSpouseInstanceForFollow(GameObject npc, string id) { npc.Following=true; Placeholder=false; }
-    public void Begin(bool following) { RequestPermanentSpouseRestore("xiaoman",new Vector3(5,0,5),following); }
-    public void Invalidate() { InvalidatePermanentSpouseRestore(); }
-    public bool HasPending => permanentSpouseRestoreRequest!=null;
     public GameObject Cleanup(float age, float lastScan, bool owned, bool equipped, bool force, bool high=false, bool boss=false)
     {
         now=300.01f; zombieModeLastDropPickupScanTime=lastScan;
         var obj=new GameObject {Item=new Item {InInventory=owned ? new object() : null, PluggedIntoSlot=equipped ? new object() : null}};
-        zombieModeRunState.EntityDropCleanupCandidates.Add(new ZombieModeDropCandidate {GameObject=obj,SpawnTime=now-age,WaveAtSpawn=1,HighValue=high,BossDrop=boss});
+        runState.EntityDropCleanupCandidates.Add(new ZombieModeDropCandidate {GameObject=obj,SpawnTime=now-age,WaveAtSpawn=1,HighValue=high,BossDrop=boss});
         CleanupZombieModeExpiredDropCandidates(force); return obj;
     }
+}
+internal sealed partial class WeddingRuntimeModule
+{
+    internal void OnAwake(ModBehaviour owner) { _owner = owner; }
+    private bool HasWeddingBuildingPlaced() => _owner.Building;
+    private Vector3 FindWeddingBuildingNPCPosition() => new Vector3(5,0,5);
+    private bool CanCurrentSpouseFollowPlayer(string id) => AffinityManager.IsMarriedToPlayer(id);
+    internal GameObject GetSpouseInstance(string id)
+    { CharacterMainControl npc=PermanentDuckNpcRegistry.GetInstance(id); return npc==null ? null : npc.gameObject; }
+    private bool TryGetSpouseFollowSpawnPosition(out Vector3 position)
+    { position=CharacterMainControl.Main.transform.position; return true; }
+    private void SnapSpouseInstanceToPosition(GameObject npc, Vector3 position) { npc.transform.position=position; }
+    private void SetWeddingNpcIdle(GameObject npc) { npc.Idle=true; }
+    private void MarkWeddingNpcInstance(GameObject npc, string id) { npc.Marked=true; }
+    private void DestroyWeddingPlaceholder() { _owner.Placeholder=false; }
+    private void RefreshSpouseInteractionOptions(GameObject npc) { npc.Refreshes++; }
+    private void PrepareSpouseInstanceForFollow(GameObject npc, string id) { npc.Following=true; _owner.Placeholder=false; }
+    internal void Begin(bool following) { RequestPermanentSpouseRestore("xiaoman",new Vector3(5,0,5),following); }
+    internal void Invalidate() { InvalidatePermanentSpouseRestore(); }
+    internal bool HasPending => permanentSpouseRestoreRequest!=null;
 }

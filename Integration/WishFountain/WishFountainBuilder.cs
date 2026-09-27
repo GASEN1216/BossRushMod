@@ -25,9 +25,9 @@ using UnityEngine.SceneManagement;
 namespace BossRush
 {
     /// <summary>
-    /// 布满了灰尘的星愿许愿台建筑注入器（partial class ModBehaviour）
+    /// 布满了灰尘的星愿许愿台建筑注入器（WishFountainRuntimeModule partial）
     /// </summary>
-    public partial class ModBehaviour
+    internal sealed partial class WishFountainRuntimeModule
     {
         // ============================================================================
         // 常量
@@ -68,13 +68,13 @@ namespace BossRush
         private GameObject starwishBuildingPrefabGO = null;
 
         /// <summary>建筑图标</summary>
-        private static Sprite starwishBuildingIcon = null;
+        private Sprite starwishBuildingIcon = null;
 
         /// <summary>AssetBundle 缓存</summary>
-        private static AssetBundle starwishAssetBundle = null;
+        private AssetBundle starwishAssetBundle = null;
 
         /// <summary>从 AssetBundle 加载的模型</summary>
-        private static GameObject starwishModelPrefab = null;
+        private GameObject starwishModelPrefab = null;
 
         /// <summary>场景内恢复交互点的协程句柄</summary>
         private Coroutine starwishRestoreCoroutine = null;
@@ -150,7 +150,7 @@ namespace BossRush
         /// <summary>
         /// 在基地场景尽早注入许愿台建筑数据，避免已有存档在 BuildingArea.Start 阶段先报缺 prefab
         /// </summary>
-        private void TryInitializeWishFountainEarly()
+        internal void TryInitializeWishFountainEarly()
         {
             try
             {

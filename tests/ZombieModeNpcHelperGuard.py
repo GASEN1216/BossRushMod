@@ -2,11 +2,12 @@ from pathlib import Path
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 MAP_ISOLATION = Path("ZombieMode/ZombieModeMapIsolation.cs")
 REGISTRY = Path("Integration/NPCs/Common/NPCModuleRegistry.cs")
-COURIER = Path("Integration/NPCs/Courier/CourierNPC.cs")
+COURIER = Path("Integration/IntegrationHostCompatibility.cs")
 COURIER_NPC_SOURCES = [
+    Path("Integration/NPCs/Courier/CourierNpcRuntimeModule.cs"),
     COURIER,
     Path("Integration/NPCs/Courier/CourierNPCController.cs"),
     Path("Integration/NPCs/Courier/CourierMovement.cs"),
@@ -19,11 +20,11 @@ def read_courier_npc_sources() -> str:
 GOBLIN = Path("Integration/NPCs/Goblin/GoblinNPC.cs")
 NURSE = Path("Integration/NPCs/Nurse/NurseNPC.cs")
 RUNNER = Path("Integration/NPCs/Courier/CourierLootSweepRunner.cs")
+INTEGRATION_SCENE_LIFECYCLE = Path("Integration/BossRushIntegrationRuntimeModule_SceneLifecycle.cs")
 INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration.cs"),
     Path("Integration/BossRushIntegration_StartAndScene.cs"),
     Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
-    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
 ]
 
 
@@ -45,6 +46,7 @@ def main() -> int:
     nurse_text = NURSE.read_text(encoding="utf-8")
     runner_text = RUNNER.read_text(encoding="utf-8")
     integration_text = read_boss_rush_integration()
+    integration_scene_lifecycle_text = INTEGRATION_SCENE_LIFECYCLE.read_text(encoding="utf-8")
 
     for snippet in [
         "public bool IsAnyBossRushLikeModeActive()",
@@ -62,8 +64,8 @@ def main() -> int:
         if "UsesArenaSupportNpcPlacement()" not in text and "mod.UsesArenaSupportNpcPlacement()" not in text:
             return fail("ZombieModeNpcHelperGuard: " + name + " does not use arena support NPC helper")
 
-    if "ShouldSuppressBaseNpcSpawnForCurrentMode()" not in integration_text:
-        return fail("ZombieModeNpcHelperGuard: normal-mode delayed NPC spawn does not use suppression helper")
+    if "_owner.ShouldSuppressBaseNpcSpawnForCurrentMode()" not in integration_scene_lifecycle_text:
+        return fail("ZombieModeNpcHelperGuard: module-owned normal-mode delayed NPC spawn does not use suppression helper")
 
     for snippet in [
         "ShouldPreserveZombieModeOriginalCharacter",
@@ -75,7 +77,7 @@ def main() -> int:
         "character.GetComponentInChildren<DuckovDialogueActor>(true)",
         "character.GetComponentInChildren<Duckov.Economy.StockShop>(true)",
         "character.GetComponentInChildren<IMerchant>(true)",
-        "NPCModuleRegistry.ShouldSpawnAnyInScene(this, SceneManager.GetActiveScene().name)",
+        "NPCModuleRegistry.ShouldSpawnAnyInScene(owner, SceneManager.GetActiveScene().name)",
         "character.GetComponentInChildren<WeddingNpcResidentMarker>(true)",
     ]:
         if snippet not in map_isolation_text:

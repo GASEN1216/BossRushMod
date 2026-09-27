@@ -10,10 +10,10 @@ def main():
     def read(path):
         return clean_source((ROOT / path).read_text(encoding="utf-8-sig"))
 
-    runtime = read("DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs")
-    session = read("DebugAndTools/SkyIsland/SkyIslandSession.cs")
-    guide = read("DebugAndTools/SkyIsland/SkyIslandGuideInteractable.cs")
-    registration = read("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+    runtime = read("SkyIsland/SkyIslandRuntimeModule.cs")
+    session = read("SkyIsland/SkyIslandSession.cs")
+    guide = read("SkyIsland/SkyIslandGuideInteractable.cs")
+    registration = read("ModBehaviourRuntimeModules.cs")
     errors = []
     for source, label, tokens in (
         (runtime, "船点 owner", ["owner.IsBaseHubBoatInteractable(candidate)",
@@ -52,7 +52,7 @@ def main():
     for label, text in (("船点 owner", runtime), ("会话准入", session)):
         if "SkyIslandRaidLease.IsBundleDeployed()" not in text:
             errors.append(label + " 未在缺包时提前拒绝")
-    lease = read("DebugAndTools/SkyIsland/SkyIslandRaidLease.cs")
+    lease = read("SkyIsland/SkyIslandRaidLease.cs")
     if "internal static bool IsBundleDeployed()" not in lease:
         errors.append("缺少场景包可用性检查")
 
@@ -86,7 +86,7 @@ def main():
 
     # 账户门控读的是 accountAvailable，不是 SaveCharacter：
     # 后者是「是否把主角写回存档」，raid 图里同样为 true（官方合同还硬性要求 true），拿它当门控恒真。
-    services = read("DebugAndTools/SkyIsland/SkyIslandServices.cs")
+    services = read("SkyIsland/SkyIslandServices.cs")
     if "LevelConfig.Instance.AccountAvailable" not in services:
         errors.append("岛上付费服务必须用 LevelConfig.accountAvailable 判断账户可用性")
     if "LevelConfig.SaveCharacter" in services:

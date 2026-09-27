@@ -33,8 +33,8 @@ ROOT = Path(__file__).resolve().parents[1]
 # 2026-09-23：SkyIslandHud / SkyIslandStoryPresentation 超 1200 行，按 AGENTS §4.15 原样拆出同一 partial 的新文件。
 # 读主文件时把拆出去的那一半接在后面，断言照旧针对整个类。
 SPLIT_PARTS = {
-    "DebugAndTools/SkyIsland/SkyIslandHud.cs": "DebugAndTools/SkyIsland/SkyIslandHud_Layout.cs",
-    "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs": "DebugAndTools/SkyIsland/SkyIslandStoryPresentation_Parts.cs",
+    "SkyIsland/SkyIslandHud.cs": "SkyIsland/SkyIslandHud_Layout.cs",
+    "SkyIsland/SkyIslandStoryPresentation.cs": "SkyIsland/SkyIslandStoryPresentation_Parts.cs",
 }
 
 
@@ -48,11 +48,11 @@ def read_with_parts(root, rel):
 sys.path.insert(0, str(ROOT / 'tests'))
 from cs_source_util import clean_source
 
-PANEL = 'DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs'
-STORY = 'DebugAndTools/SkyIsland/SkyIslandWorldStory.cs'
+PANEL = 'SkyIsland/SkyIslandStoryPresentation.cs'
+STORY = 'SkyIsland/SkyIslandWorldStory.cs'
 # 居民服务按钮与「航务委托」子页（2026-09-14 从主文件拆出的 partial）。
-SERVICES = 'DebugAndTools/SkyIsland/SkyIslandWorldStoryServices.cs'
-POINT_TEXT = 'DebugAndTools/SkyIsland/SkyIslandPointText.cs'
+SERVICES = 'SkyIsland/SkyIslandWorldStoryServices.cs'
+POINT_TEXT = 'SkyIsland/SkyIslandPointText.cs'
 PAIR = r'L10n\.T\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\)'
 
 
@@ -409,10 +409,10 @@ def batch_two_strings():
     谜题页正文按「最长见闻 + 最长场景 + 最长提问」拼（中英混拼只会更长，偏保守）；名册一页按该页全部句子拼。
     """
     arg = r'"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"'
-    puzzles = read('DebugAndTools/SkyIsland/SkyIslandPuzzles.cs')
-    letters = read('DebugAndTools/SkyIsland/SkyIslandLetters.cs')
-    crew = read('DebugAndTools/SkyIsland/SkyIslandCrew.cs')
-    journal = read('DebugAndTools/SkyIsland/SkyIslandJournal.cs')
+    puzzles = read('SkyIsland/SkyIslandPuzzles.cs')
+    letters = read('SkyIsland/SkyIslandLetters.cs')
+    crew = read('SkyIsland/SkyIslandCrew.cs')
+    journal = read('SkyIsland/SkyIslandJournal.cs')
     story = read(STORY)
     options = [s for pair in re.findall(r'Option\(\s*' + arg, puzzles) for s in pair]
     prompts = [s for pair in re.findall(r'Step\(\s*' + arg, puzzles) for s in pair]
@@ -643,8 +643,8 @@ def batch_three_strings():
     配方按钮与背包摘要由 `SkyIslandFieldcraftRules.RecipeLabel` / `PackSummary` 在运行时拼，这里照同一个格式把最坏情况拼出来：
     件数按两位数算，物品名取 `SkyIslandItemRules.NameCn` / `NameEn`。每站至多 4 条配方，面板按最坏 6 条选项复算。
     """
-    rules = read('DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs')
-    items = read('DebugAndTools/SkyIsland/SkyIslandItemRules.cs')
+    rules = read('SkyIsland/SkyIslandFieldcraftRules.cs')
+    items = read('SkyIsland/SkyIslandItemRules.cs')
     name_row = r'case BossRushItemIds\.(\w+): return "([^"]+)";'
     cn = dict(re.findall(name_row, items.split('internal static string NameCn(', 1)[1].split('internal static string NameEn(', 1)[0]))
     en = dict(re.findall(name_row, items.split('internal static string NameEn(', 1)[1].split('internal static string Name(', 1)[0]))
@@ -680,10 +680,10 @@ def weave_strings():
     按钮照 `SkyIslandLights.ChoiceLabel` / `SkyIslandFieldcraftRules.LockedLabel` 的格式拼最坏情况：件数按两位数算，
     还不会做的配方按「每件成品 × 每句门槛提示」全拼（比实际只多不少）；手记那一页把灯的一页与群岛之物的全部句子拼上。
     """
-    lights = read('DebugAndTools/SkyIsland/SkyIslandLights.cs')
-    rules = read('DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs')
-    journal = read('DebugAndTools/SkyIsland/SkyIslandJournal.cs')
-    items = read('DebugAndTools/SkyIsland/SkyIslandItemRules.cs')
+    lights = read('SkyIsland/SkyIslandLights.cs')
+    rules = read('SkyIsland/SkyIslandFieldcraftRules.cs')
+    journal = read('SkyIsland/SkyIslandJournal.cs')
+    items = read('SkyIsland/SkyIslandItemRules.cs')
     name_row = r'case BossRushItemIds\.(\w+): return "([^"]+)";'
     cn = dict(re.findall(name_row, items.split('internal static string NameCn(', 1)[1].split('internal static string NameEn(', 1)[0]))
     en = dict(re.findall(name_row, items.split('internal static string NameEn(', 1)[1].split('internal static string Name(', 1)[0]))
@@ -718,8 +718,8 @@ def weave_strings():
 
 def echo_strings():
     """2026-09-14 B 轮：鸣风栈道装置上的「引风」按钮，以及挂不出来时收进正文的三种「还差什么」（接在最长的见闻导语后面拼）。"""
-    rules = read('DebugAndTools/SkyIsland/SkyIslandStoryRules.cs')
-    echo = read('DebugAndTools/SkyIsland/SkyIslandStormEchoRules.cs')
+    rules = read('SkyIsland/SkyIslandStoryRules.cs')
+    echo = read('SkyIsland/SkyIslandStormEchoRules.cs')
     point = read(POINT_TEXT)
     choice = re.findall(PAIR, echo.split('internal static string ChoiceLabel', 1)[1].split('internal static string Opened', 1)[0])
     hints = re.findall(PAIR, rules.split('internal static bool CanSummonStormEcho(', 1)[1].split('internal static bool TryApply', 1)[0]
@@ -737,7 +737,7 @@ def gnat_strings():
 
     照 `SkyIslandMosquitoRules.SpawnChoice` / `ReleaseChoice` 的拼法拼最坏情况：件数与进度都按两位数算。
     """
-    rules = read('DebugAndTools/SkyIsland/SkyIslandMosquitoRules.cs')
+    rules = read('SkyIsland/SkyIslandMosquitoRules.cs')
 
     def block(start, end):
         return rules.split(start, 1)[1].split(end, 1)[0]

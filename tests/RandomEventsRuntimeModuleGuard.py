@@ -21,9 +21,11 @@ from pathlib import Path
 import re
 import sys
 from cs_source_util import clean_source
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+from compile_list import read_compile_sources
 
 MODULE = Path("RandomEvents/RandomEventsRuntimeModule.cs")
-REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+REGISTRATION = Path("ModBehaviourRuntimeModules.cs")
 DIRECTOR = Path("RandomEvents/RandomEventDirector.cs")
 
 
@@ -59,9 +61,8 @@ def main():
     # ---- 2) 全仓库只有一次 new ----
     # 隔离夹具中的同名宿主替身不进入游戏编译；单实例约束覆盖全部生产源码。
     news = []
-    for path in Path(".").rglob("*.cs"):
-        if any(part in {".git", "Build", "tmp", "output", "outputs", "鸭科夫源码", "tests"} for part in path.parts):
-            continue
+    for source in read_compile_sources():
+        path = Path(source)
         text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
         news += [path.as_posix()] * len(
             re.findall(r"new\s+RandomEventsRuntimeModule\s*\(", text))

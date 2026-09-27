@@ -7,7 +7,7 @@ ROOT = HERE.parents[2]
 OUT = ROOT / 'Build' / 'runtime-regressions' / 'SkyIslandEncounters'
 OUT.mkdir(parents=True, exist_ok=True)
 # 原样执行正式序章 SpawnBoss；只替换 Unity 边界，不复制数值或生成算法。
-prelude = (ROOT / 'DebugAndTools/SkyIsland/SkyIslandPreludeFlow.cs').read_text(encoding='utf-8-sig')
+prelude = (ROOT / 'SkyIsland/SkyIslandPreludeFlow.cs').read_text(encoding='utf-8-sig')
 signature = 'private async void SpawnBoss(Vector3 position, int expectedGeneration)'
 member = signature + prelude.split(signature, 1)[1].split('private bool IsObjectiveGeneration(', 1)[0]
 (OUT / 'PreludeSpawn.Extracted.cs').write_text(

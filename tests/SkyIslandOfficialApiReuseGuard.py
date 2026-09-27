@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cs_source_util import clean_source
 
-SKY = "DebugAndTools/SkyIsland/"
+SKY = "SkyIsland/"
 DIALOGUE = SKY + "SkyIslandResidentDialogue.cs"
 WORLD = SKY + "SkyIslandWorldStory.cs"
 BRIDGE = SKY + "SkyIslandNoteBridge.cs"
@@ -44,8 +44,8 @@ BOUNTY = SKY + "SkyIslandBounty.cs"
 GNAT_BOUNTY = SKY + "SkyIslandSessionGnatBounty.cs"
 PANEL = SKY + "SkyIslandStoryPresentation.cs"
 MARKERS = SKY + "SkyIslandMapMarkers.cs"
-FINDINGS = "CODE_REVIEW_FINDINGS.md"
-START = "Integration/BossRushIntegration_StartAndScene.cs"
+FINDINGS = "archive/CODE_REVIEW_FINDINGS_2026-09.md"
+START = "Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs"
 
 PATHS = [DIALOGUE, WORLD, BRIDGE, PRELUDE_QUEST, QUEST_CORE, QUEST_COMPONENTS, PANEL, START, FINDINGS, MARKERS, BOUNTY, GNAT_BOUNTY]
 

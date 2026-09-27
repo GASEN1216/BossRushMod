@@ -1,0 +1,261 @@
+namespace BossRush
+{
+    public partial class ModBehaviour
+    {
+        private readonly ModeERuntimeModule modeERuntime = new ModeERuntimeModule();
+        private ModeEFMerchantCatalog modeEFMerchantCatalog;
+        private readonly ModeEFEnemyRegistry modeEFEnemyRegistry = new ModeEFEnemyRegistry();
+        private ModeEFEnemySpawnRuntime modeEFEnemySpawnRuntime;
+        private CommonNpcRuntimeModule commonNpcRuntime;
+        private AchievementRuntimeModule achievementRuntime;
+        private readonly BossRushAudioRuntimeService audioRuntime = new BossRushAudioRuntimeService();
+
+        private void RegisterRuntimeModules()
+        {
+            audioRuntime.BindRuntimeQueries(() => playerCharacter, () => info.path);
+            runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());
+
+            // 官方任务投影核心单实例纪律：先存字段，再把**同一个引用**注册给 host。
+            // 必须排在天空岛与征程之前：两者在自己的 OnAwake 里向它登记任务定义，
+            // 而 host 按注册顺序回调，先注册的先 OnAwake。全仓库只允许这一处 new。
+            officialQuestRuntime = new OfficialQuestRuntimeModule();
+            runtimeModuleHost.Register(officialQuestRuntime);
+
+            runtimeModuleHost.Register(modeDRuntime);
+            runtimeModuleHost.Register(new DebugToolsRuntimeModule());
+            runtimeModuleHost.Register(new SkyIslandRuntimeModule());
+            achievementRuntime = new AchievementRuntimeModule();
+            achievementRuntime.BindRuntimeQueries(() => IsActive, () => modeDRuntime.IsActive,
+                () => wavesArenaRuntime.InfiniteHellMode, () => wavesArenaRuntime.BossesPerWave,
+                () => config != null, () => config.achievementHotkey);
+            achievementRuntime.BindMedalShopQueries(IsBaseHubNormalMerchantShop, BaseSceneName);
+            runtimeModuleHost.Register(achievementRuntime);
+            commonNpcRuntime = new CommonNpcRuntimeModule();
+            commonNpcRuntime.BindSpawnPointQueries(UsesArenaSupportNpcPlacement, () => IsActive,
+                () => modeDRuntime.IsActive, () => IsBossRushArenaActive);
+            runtimeModuleHost.Register(commonNpcRuntime);
+            courierNpcRuntime = new CourierNpcRuntimeModule();
+            runtimeModuleHost.Register(courierNpcRuntime);
+            goblinNpcRuntime = new GoblinNpcRuntimeModule();
+            runtimeModuleHost.Register(goblinNpcRuntime);
+            nurseNpcRuntime = new NurseNpcRuntimeModule();
+            runtimeModuleHost.Register(nurseNpcRuntime);
+            wavesArenaRuntime = new WavesArenaRuntimeModule();
+            wavesArenaRuntime.BindHostStateServices(() => config != null ? (int?)config.infiniteHellBossesPerWave : null,
+                () => uiAndSignsRuntime.SignInteract, ClearEnemyRecoveryMonitorState);
+            runtimeModuleHost.Register(wavesArenaRuntime);
+            BindModeDItemPoolQueries();
+            BindSpawnPostprocessServices();
+            BindArenaSpawnServices();
+            mutatorBossRegenRuntime.BindArenaQueries(() => IsActive, () => wavesArenaRuntime.BossesPerWave,
+                () => wavesArenaRuntime.CurrentBoss, () => wavesArenaRuntime.CurrentWaveBosses);
+            mutatorBossRegenRuntime.BindModeDQueries(() => modeDRuntime.IsActive, () => modeDRuntime.modeDCurrentWaveEnemies);
+            mutatorBossRegenRuntime.BindModeEQueries(() => modeERuntime.IsModeEActive, () => modeERuntime.ModeEAliveEnemies, modeERuntime.GetModeEBossRegenCache);
+            mutatorBossRegenRuntime.BindModeFQueries(() => modeFRuntime.IsModeFActive, () => modeFActiveBossSet, modeFRuntime.GetModeFBossRegenCache);
+            BindAwenLootSweepRuntime();
+            var modeEFVirtualSpawnerRegistry = new ModeEFVirtualSpawnerRegistry();
+            modeERuntime.BindVirtualSpawnerRegistry(modeEFVirtualSpawnerRegistry);
+            modeFRuntime.BindVirtualSpawnerRegistry(modeEFVirtualSpawnerRegistry);
+            var modeEFSpawnPreparation = new ModeEFSpawnPreparation(ModeERuntimeModule.ModeEAvailableFactions,
+                () => modeERuntime.ModeEPlayerFaction,
+                position => modeDRuntime.GenerateFallbackSpawnPointsAroundPlayer(position), ShowMessage);
+            modeEFEnemySpawnRuntime = new ModeEFEnemySpawnRuntime(modeEFSpawnPreparation, enemySpawnRuntime);
+            modeEFEnemySpawnRuntime.BindPresetQueries(GetFilteredEnemyPresets, () => modeDRuntime.MinionPresets,
+                IsDragonKingPreset, IsDragonDescendantPreset, wavesArenaRuntime.InitializeEnemyPresets,
+                () => modeDRuntime.InitializeModeDEnemyPools(wavesArenaRuntime.EnemyPresets, wavesArenaRuntime.GetLocalizedCharacterName));
+            modeEFEnemySpawnRuntime.BindSpawnCallbacks(modeERuntime.IsModeEOrModeFSpawnSessionStillValid, modeERuntime.OnModeEEnemySpawned);
+            modeEFEnemyRegistry.BindDeathCallback(modeERuntime.OnModeEEnemyDeath);
+            modeERuntime.BindEnemyRegistry(modeEFEnemyRegistry);
+            modeFRuntime.BindEnemyRegistry(modeEFEnemyRegistry);
+            modeERuntime.BindEnemySpawnRuntime(modeEFEnemySpawnRuntime);
+            modeFRuntime.BindEnemySpawnRuntime(modeEFEnemySpawnRuntime);
+            modeEFMerchantCatalog = new ModeEFMerchantCatalog(() => ModeDRuntimeModule.CharacterPresets,
+                modeDRuntime.ItemPool.FindTagByNameInInit);
+            modeERuntime.BindSharedServices(modeDRuntime, wavesArenaRuntime, modeEFSpawnPreparation, modeEFMerchantCatalog);
+            runtimeModuleHost.Register(modeERuntime);
+            modeFRuntime.BindSharedServices(modeDRuntime, modeERuntime, wavesArenaRuntime, modeEFSpawnPreparation,
+                GetBossRushTicketTypeId, () => config != null && config.enableRandomBossLoot,
+                () => IsZombieModeActive, () => zombieModeRunState.RunId, RegisterZombieModeRunOnlyObject);
+            runtimeModuleHost.Register(modeFRuntime);
+            var zombieRuntime = new ZombieModeRuntimeModule();
+            zombieRuntime.BindEnemyRecoveryUnregister(UnregisterEnemyRecovery);
+            zombieRuntime.BindZombieModeTemporaryNpcServices(ResolveZombieModeTemporaryNpcPrefab, courierNpcRuntime.AddCourierInteraction);
+            BindEnemyRecoveryServices(zombieRuntime);
+            runtimeModuleHost.Register(zombieRuntime);
+            runtimeModuleHost.Register(new ModeGRuntimeModule());
+
+            // Mode H 只允许一个实例：先创建并保存到 ModBehaviour 字段，再把**同一个引用**
+            // 注册给 host。入口、交互点和恢复面板都必须委托 ModeHRuntime，禁止二次 new
+            // （设计提案 §18.1；Mode G 当前的入口实例/host 实例分裂是本模式要避免的反例）。
+            modeHRuntime = new ModeHRuntimeModule();
+            runtimeModuleHost.Register(modeHRuntime);
+
+            // 遗种巢同款单实例纪律：先存字段，再把**同一个引用**注册给 host。
+            // 建筑、面板、掉落、场景回调一律走 PetNestRuntime 门面，禁止二次 new。
+            petNestRuntime = new PetNestRuntimeModule();
+            runtimeModuleHost.Register(petNestRuntime);
+
+            // 鸭科夫日报同款单实例纪律：先存字段，再把**同一个引用**注册给 host。
+            // 报箱交互、日报面板与调试快进都必须走 DailyReportRuntime 门面，禁止二次 new。
+            dailyReportRuntime = new DailyReportRuntimeModule();
+            runtimeModuleHost.Register(dailyReportRuntime);
+
+            // 鸭皇图鉴同款单实例纪律：先存字段，再把**同一个引用**注册给 host。
+            // 图鉴面板、入口物品与击杀采集都必须走 CodexRuntime 门面，禁止二次 new。
+            codexRuntime = new CodexRuntimeModule();
+            runtimeModuleHost.Register(codexRuntime);
+
+            // 局内随机事件同款单实例纪律：调度器状态只有一份，禁止二次 new。
+            randomEventsRuntime = new RandomEventsRuntimeModule();
+            runtimeModuleHost.Register(randomEventsRuntime);
+
+            // 鸭王征程同款单实例纪律：先存字段，再把**同一个引用**注册给 host。
+            // 公告板、契约追踪、剧情对话与终章决战都必须走 CampaignRuntime 门面，禁止二次 new。
+            campaignRuntime = new CampaignRuntimeModule();
+            runtimeModuleHost.Register(campaignRuntime);
+
+            // 竞技场后山同款单实例纪律：先存字段，再把**同一个引用**注册给 host。
+            // 必须排在征程之后：后山 bootstrap 要订阅征程的解锁事件，
+            // 而 host 按注册顺序回调，先注册的先 OnAwake。
+            backMountainRuntime = new BackMountainRuntimeModule();
+            runtimeModuleHost.Register(backMountainRuntime);
+
+            bossFilterRuntime = new BossFilterRuntimeModule(this);
+            runtimeModuleHost.Register(bossFilterRuntime);
+            uiAndSignsRuntime = new UIAndSignsRuntimeModule(this);
+            runtimeModuleHost.Register(uiAndSignsRuntime);
+            setBonusRuntime = new SetBonusRuntimeModule();
+            runtimeModuleHost.Register(setBonusRuntime);
+            deathWraithRuntimeModule = new DeathWraithRuntimeModule();
+            runtimeModuleHost.Register(deathWraithRuntimeModule);
+            bossRushIntegrationRuntime = new IntegrationRuntimeModule();
+            runtimeModuleHost.Register(bossRushIntegrationRuntime);
+            affinityRuntime = new AffinityRuntimeModule();
+            runtimeModuleHost.Register(affinityRuntime);
+            weddingRuntime = new WeddingRuntimeModule();
+            runtimeModuleHost.Register(weddingRuntime);
+            wishFountainRuntime = new WishFountainRuntimeModule();
+            runtimeModuleHost.Register(wishFountainRuntime);
+            flightTotemRuntime = new FlightTotemRuntimeModule();
+            runtimeModuleHost.Register(flightTotemRuntime);
+            reverseScaleRuntime = new ReverseScaleRuntimeModule();
+            runtimeModuleHost.Register(reverseScaleRuntime);
+            frostmourneRuntime = new FrostmourneRuntimeModule();
+            runtimeModuleHost.Register(frostmourneRuntime);
+            dragonKingRuntimeModule = new DragonKingRuntimeModule();
+            runtimeModuleHost.Register(dragonKingRuntimeModule);
+            dragonDescendantRuntimeModule = new DragonDescendantRuntimeModule();
+            runtimeModuleHost.Register(dragonDescendantRuntimeModule);
+            phantomWitchRuntimeModule = new PhantomWitchRuntimeModule();
+            runtimeModuleHost.Register(phantomWitchRuntimeModule);
+        }
+
+        private UnityEngine.GameObject ResolveZombieModeTemporaryNpcPrefab(string kind)
+        {
+            switch (kind)
+            {
+                case "Goblin":
+                    return goblinNpcRuntime.LoadGoblinAssetBundle() ? goblinNpcRuntime.GoblinPrefab : null;
+                case "Nurse":
+                    return NurseNpcRuntimeModule.GetPrefabForRuntime();
+                case "Courier":
+                    return courierNpcRuntime.LoadCourierAssetBundle() ? CourierNpcRuntimeModule.CourierPrefab : null;
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>官方任务投影核心唯一运行时实例。</summary>
+        private readonly ModeDRuntimeModule modeDRuntime = new ModeDRuntimeModule();
+        private WavesArenaRuntimeModule wavesArenaRuntime;
+        private CourierNpcRuntimeModule courierNpcRuntime;
+        private readonly ModeFRuntimeModule modeFRuntime = new ModeFRuntimeModule();
+        private IntegrationRuntimeModule bossRushIntegrationRuntime;
+
+        /// <summary>Mode F 当前注册的运行时实例。</summary>
+        internal ModeFRuntimeModule ModeFRuntime { get { return modeFRuntime; } }
+
+        /// <summary>官方任务投影核心唯一运行时实例。</summary>
+        private OfficialQuestRuntimeModule officialQuestRuntime;
+
+        /// <summary>
+        /// 官方任务投影核心的只读门面。天空岛与征程只能经 <c>OfficialQuestRuntime.Projection</c> 登记 / 撤销任务定义，
+        /// 不得再次 new OfficialQuestRuntimeModule() 或 new OfficialQuestProjection()。
+        /// </summary>
+        internal OfficialQuestRuntimeModule OfficialQuestRuntime { get { return officialQuestRuntime; } }
+
+        /// <summary>Mode H 唯一运行时实例。</summary>
+        private ModeHRuntimeModule modeHRuntime;
+
+        /// <summary>
+        /// Mode H 唯一实例的只读门面。入口、交互点、恢复面板与场景回调都只能用它，
+        /// 不得再次 new ModeHRuntimeModule()。
+        /// </summary>
+        internal ModeHRuntimeModule ModeHRuntime { get { return modeHRuntime; } }
+
+        /// <summary>遗种巢唯一运行时实例。</summary>
+        private PetNestRuntimeModule petNestRuntime;
+
+        /// <summary>
+        /// 遗种巢唯一实例的只读门面。建筑、面板、掉落与场景回调都只能用它，
+        /// 不得再次 new PetNestRuntimeModule()。
+        /// </summary>
+        internal PetNestRuntimeModule PetNestRuntime { get { return petNestRuntime; } }
+
+        /// <summary>鸭科夫日报唯一运行时实例。</summary>
+        private DailyReportRuntimeModule dailyReportRuntime;
+
+        /// <summary>
+        /// 日报唯一实例的只读门面。报箱交互、日报面板、调试快进与场景回调都只能用它，
+        /// 不得再次 new DailyReportRuntimeModule()。
+        /// </summary>
+        internal DailyReportRuntimeModule DailyReportRuntime { get { return dailyReportRuntime; } }
+
+        /// <summary>鸭皇图鉴唯一运行时实例。</summary>
+        private CodexRuntimeModule codexRuntime;
+
+        /// <summary>
+        /// 图鉴唯一实例的只读门面。面板、入口物品、击杀采集与场景回调都只能用它，
+        /// 不得再次 new CodexRuntimeModule()。
+        /// </summary>
+        internal CodexRuntimeModule CodexRuntime { get { return codexRuntime; } }
+
+        /// <summary>局内随机事件唯一运行时实例。</summary>
+        private RandomEventsRuntimeModule randomEventsRuntime;
+
+        /// <summary>
+        /// 随机事件唯一实例的只读门面。调度器、事件效果与调试入口都只能用它，
+        /// 不得再次 new RandomEventsRuntimeModule()。
+        /// </summary>
+        internal RandomEventsRuntimeModule RandomEventsRuntime { get { return randomEventsRuntime; } }
+
+        /// <summary>鸭王征程唯一运行时实例。</summary>
+        private CampaignRuntimeModule campaignRuntime;
+
+        /// <summary>
+        /// 征程唯一实例的只读门面。公告板、契约追踪、剧情对话与场景回调都只能用它，
+        /// 不得再次 new CampaignRuntimeModule()。
+        /// </summary>
+        internal CampaignRuntimeModule CampaignRuntime { get { return campaignRuntime; } }
+
+        /// <summary>竞技场后山唯一运行时实例。</summary>
+        private BackMountainRuntimeModule backMountainRuntime;
+
+        /// <summary>
+        /// 后山唯一实例的只读门面。菜地注入、展示柜、点唱机与场景回调都只能用它，
+        /// 不得再次 new BackMountainRuntimeModule()。
+        /// </summary>
+        internal BackMountainRuntimeModule BackMountainRuntime { get { return backMountainRuntime; } }
+
+        private BossFilterRuntimeModule bossFilterRuntime;
+        private UIAndSignsRuntimeModule uiAndSignsRuntime;
+        private SetBonusRuntimeModule setBonusRuntime;
+        private WeddingRuntimeModule weddingRuntime;
+        internal WeddingRuntimeModule WeddingRuntime { get { return weddingRuntime; } }
+        private WishFountainRuntimeModule wishFountainRuntime;
+        internal WishFountainRuntimeModule WishFountainRuntime { get { return wishFountainRuntime; } }
+        private FlightTotemRuntimeModule flightTotemRuntime;
+        private ReverseScaleRuntimeModule reverseScaleRuntime;
+        private FrostmourneRuntimeModule frostmourneRuntime;
+    }
+}

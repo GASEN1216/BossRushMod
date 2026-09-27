@@ -35,7 +35,8 @@ public class CharacterMainControl : UnityEngine.Object
     public bool IsMainCharacter;
     public bool isBossCharacter;
     public bool Marked;
-    public int GetInstanceID() { return 1; }
+    public int InstanceId = 1;
+    public int GetInstanceID() { return InstanceId; }
 }
 public enum Teams { player, wolf, middle }
 public static class Team
@@ -61,28 +62,47 @@ public struct DamageInfo
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal abstract class BossRushRuntimeModuleBase
+    {
+        public virtual string ModuleName { get { return "fixture"; } }
+        public virtual void OnAwake(ModBehaviour owner) { }
+        public virtual void OnDestroy() { }
+        public virtual void OnSceneLoaded(SceneRuntimeContext context) { }
+    }
+    internal sealed class SceneRuntimeContext { }
+    internal static class ModeFStatusHud { internal static void Dispose() { } }
+    public partial class ModBehaviour : UnityEngine.Object
     {
         public static ModBehaviour Instance;
         public int Wave { get { return currentEnemyIndex + 1; } set { currentEnemyIndex = value - 1; } }
         public bool modeDActive, modeEActive, modeFActive, modeGActive, bossRushArenaActive, IsActive, infiniteHellMode;
         public int ModeDWaveIndex, infiniteHellWaveIndex, currentEnemyIndex;
-        public ZombieRun zombieModeRunState;
-        public FRun modeFState = new FRun();
-        private bool campaignFinalBossActive;
+        public ZombieModeRunState zombieModeRunState;
+        public ModeFState modeFState = new ModeFState();
+        private readonly CampaignRuntimeModule campaignRuntime;
+        internal CampaignRuntimeModule CampaignRuntime { get { return campaignRuntime; } }
+        internal ModeHRuntimeModule ModeHRuntime;
+        public ModBehaviour() { campaignRuntime = new CampaignRuntimeModule(this); }
         public bool IsCampaignConfiguredEnabled() { return true; }
-        private void TickCampaignFinalBossAltar() { }
-        private bool ConsumeModeFPlayerBountyKillLatch(int id) { return false; }
+        private readonly ModeFRuntimeModule modeFRuntime = new ModeFRuntimeModule();
+        private bool HasModeFPlayerBountyKillLatch(int id) { return modeFRuntime.HasPlayerBountyKillLatch(id); }
+        private bool ConsumeModeFPlayerBountyKillLatch(int id) { return modeFRuntime.ConsumePlayerBountyKillLatch(id); }
+        public void LatchBountyForTest(int id, bool marked) { modeFRuntime.LatchPlayerBountyKill(id, marked); }
         public static void DevLog(string value) { }
         public static void CriticalLog(string key, string value) { }
         public void ShowMessage(string value) { }
     }
-    public class ZombieRun { public int LifecyclePhase, CurrentWave; }
-    public class FRun { public Dictionary<int, int> BountyMarksByCharacterId = new Dictionary<int, int>(); }
+    public class ZombieModeRunState { public int LifecyclePhase, CurrentWave; }
+    public class ZombieRun : ZombieModeRunState { }
+    public class ModeFState { public Dictionary<int, int> BountyMarksByCharacterId = new Dictionary<int, int>(); }
+    internal static class ZombieModeLifecyclePhase { internal const int None = 0; }
+    internal enum ModeHLifecycle { None, Active }
+    internal sealed class ModeHRun { internal ModeHLifecycle Lifecycle; }
+    internal sealed class ModeHRuntimeModule { internal ModeHRun RunState; }
     internal static class ZombieModePhaseGuards { public static bool IsRunActive(int phase) { return phase == 1; } }
     internal static class L10n { internal static bool IsChinese; internal static string T(string cn, string en) { return IsChinese ? cn : en; } }
-    internal static class CampaignAssetCache { internal static object GetChapterPoster(int order) { return null; } }
-    internal static class CampaignPersistence { internal static bool HasWriteBarrier, IsStoreFaulted; }
+    internal static class CampaignAssetCache { internal static object GetChapterPoster(int order) { return null; } internal static void ResetStaticCaches() { } }
+    internal static class CampaignPersistence { internal static bool HasWriteBarrier, IsStoreFaulted; internal static void ResetStaticCaches() { } }
 
     internal static class JsonDataRegistry
     {
@@ -98,6 +118,7 @@ namespace BossRush
     internal static class CampaignProgressService
     {
         internal static string Active;
+        internal static void ResetStaticCaches() { }
         internal static int Notifications;
         internal static bool Reject;
         internal static CampaignChapterState State = CampaignChapterState.ContractActive;

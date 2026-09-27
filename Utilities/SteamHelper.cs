@@ -12,7 +12,7 @@ using HarmonyLib;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal static class SteamPlatformInfo
     {
         private static MethodInfo steam_getPersonaNameMethod;
         private static MethodInfo steam_getSteamDisplayMethod;
@@ -114,7 +114,7 @@ namespace BossRush
             hasLogged = true;
             try
             {
-                DevLog(message);
+                ModBehaviour.DevLog(message);
             }
             catch { }
         }

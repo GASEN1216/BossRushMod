@@ -9,7 +9,7 @@ namespace BossRush
     /// 配色与分段（2026-09-23 审美审查 UB-23）：旧版收益用纯红（读起来像扣血），四段用「 | 」挤成一长串。
     /// 现在收益 SuccessText、命火与悬赏 WarningText、过载警告 DangerText；段间用全角空格，两段一行、第 3 段起换行。
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         private string BuildModeFKillRewardBubbleText(
             bool isBountyBoss,
@@ -22,8 +22,8 @@ namespace BossRush
             if (overloadStarted)
             {
                 return L10n.T(
-                    RichDangerTag + "命火过载！</color>　火力 +40%　移速 +15%\n失血 x2　已被烧伤",
-                    RichDangerTag + "Bloodfire Overload!</color>  Power +40%  Speed +15%\nBleed x2  Burning");
+                    ModBehaviour.RichDangerTag + "命火过载！</color>　火力 +40%　移速 +15%\n失血 x2　已被烧伤",
+                    ModBehaviour.RichDangerTag + "Bloodfire Overload!</color>  Power +40%  Speed +15%\nBleed x2  Burning");
             }
 
             string result = null;
@@ -32,36 +32,36 @@ namespace BossRush
             if (healAmount > 0.01f)
             {
                 result = JoinModeFRewardPart(result, ref parts, L10n.T(
-                    "血量 " + RichSuccessTag + "+" + Mathf.RoundToInt(healAmount) + "</color>",
-                    "HP " + RichSuccessTag + "+" + Mathf.RoundToInt(healAmount) + "</color>"));
+                    "血量 " + ModBehaviour.RichSuccessTag + "+" + Mathf.RoundToInt(healAmount) + "</color>",
+                    "HP " + ModBehaviour.RichSuccessTag + "+" + Mathf.RoundToInt(healAmount) + "</color>"));
             }
 
             if (maxHealthGain > 0.01f)
             {
                 result = JoinModeFRewardPart(result, ref parts, L10n.T(
-                    "生命上限 " + RichSuccessTag + "+" + Mathf.RoundToInt(maxHealthGain) + "</color>",
-                    "Max HP " + RichSuccessTag + "+" + Mathf.RoundToInt(maxHealthGain) + "</color>"));
+                    "生命上限 " + ModBehaviour.RichSuccessTag + "+" + Mathf.RoundToInt(maxHealthGain) + "</color>",
+                    "Max HP " + ModBehaviour.RichSuccessTag + "+" + Mathf.RoundToInt(maxHealthGain) + "</color>"));
             }
 
             // 阈值取 0.5：续时被 24 秒上限截断成零点几秒时四舍五入会显示“+0秒”。
             if (overloadExtension >= 0.5f)
             {
                 result = JoinModeFRewardPart(result, ref parts, L10n.T(
-                    "命火续燃 " + RichWarningTag + "+" + Mathf.RoundToInt(overloadExtension) + "秒</color>",
-                    "Overload " + RichWarningTag + "+" + Mathf.RoundToInt(overloadExtension) + "s</color>"));
+                    "命火续燃 " + ModBehaviour.RichWarningTag + "+" + Mathf.RoundToInt(overloadExtension) + "秒</color>",
+                    "Overload " + ModBehaviour.RichWarningTag + "+" + Mathf.RoundToInt(overloadExtension) + "s</color>"));
             }
             else if (bloodfireGain > 0.01f)
             {
                 result = JoinModeFRewardPart(result, ref parts, L10n.T(
-                    "命火 " + RichWarningTag + "+" + Mathf.RoundToInt(bloodfireGain) + "</color>",
-                    "Bloodfire " + RichWarningTag + "+" + Mathf.RoundToInt(bloodfireGain) + "</color>"));
+                    "命火 " + ModBehaviour.RichWarningTag + "+" + Mathf.RoundToInt(bloodfireGain) + "</color>",
+                    "Bloodfire " + ModBehaviour.RichWarningTag + "+" + Mathf.RoundToInt(bloodfireGain) + "</color>"));
             }
 
             if (isBountyBoss)
             {
                 result = JoinModeFRewardPart(result, ref parts, L10n.T(
-                    "悬赏印记 " + RichWarningTag + "+1</color>",
-                    "Bounty " + RichWarningTag + "+1</color>"));
+                    "悬赏印记 " + ModBehaviour.RichWarningTag + "+1</color>",
+                    "Bounty " + ModBehaviour.RichWarningTag + "+1</color>"));
             }
 
             if (parts == 0)

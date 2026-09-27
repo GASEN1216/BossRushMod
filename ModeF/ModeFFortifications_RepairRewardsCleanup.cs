@@ -9,7 +9,7 @@ using Duckov.UI;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         private void OnFortificationDestroyed(ModeFFortificationMarker marker)
         {
@@ -24,7 +24,7 @@ namespace BossRush
                 modeFState.ActiveFortifications.Remove(marker.FortificationId);
 
                 string typeName = GetFortificationTypeName(marker.Type);
-                DevLog("[ModeF] [DESTROY] " + typeName + " | lastHp=" + marker.LastKnownHealth + "/" + marker.MaxHealth);
+                ModBehaviour.DevLog("[ModeF] [DESTROY] " + typeName + " | lastHp=" + marker.LastKnownHealth + "/" + marker.MaxHealth);
                 if (marker.gameObject != null)
                 {
                     UnityEngine.Object.Destroy(marker.gameObject);
@@ -41,7 +41,7 @@ namespace BossRush
             }
 
             marker.LastKnownHealth = Mathf.Max(0f, marker.BoundHealth.CurrentHealth);
-            if (!IsDevLoggingEnabled)
+            if (!ModBehaviour.IsDevLoggingEnabled)
             {
                 return;
             }
@@ -53,7 +53,7 @@ namespace BossRush
 
             marker.NextDamageLogTime = Time.unscaledTime + FORT_DAMAGE_LOG_INTERVAL;
             float finalDamage = damageInfo.finalDamage;
-            DevLog("[ModeF] [HURT] " + GetFortificationTypeName(marker.Type)
+            ModBehaviour.DevLog("[ModeF] [HURT] " + GetFortificationTypeName(marker.Type)
                 + " | damage=" + finalDamage.ToString("F1")
                 + " | hp=" + marker.LastKnownHealth.ToString("F1") + "/" + marker.MaxHealth.ToString("F1"));
         }
@@ -170,13 +170,13 @@ namespace BossRush
                 target.LastKnownHealth = newHealth;
 
                 string typeName = GetFortificationTypeName(target.Type);
-                DevLog("[ModeF] Fortification repaired: " + typeName + " +" + healAmount.ToString("F0") + " HP");
+                ModBehaviour.DevLog("[ModeF] Fortification repaired: " + typeName + " +" + healAmount.ToString("F0") + " HP");
                 ShowModeFRewardBubble(typeName + L10n.T("已维修", " repaired"));
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] TryRepairFortification failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] TryRepairFortification failed: " + e.Message);
                 return false;
             }
         }
@@ -214,7 +214,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] CreateFallbackModeFFortification failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] CreateFallbackModeFFortification failed: " + e.Message);
                 return null;
             }
         }
@@ -250,7 +250,7 @@ namespace BossRush
             ModeFFortificationHologramFx.ShowHighlight(marker.HighlightRoot, false);
         }
 
-        private void UpdateModeFFortificationHighlights()
+        internal void UpdateModeFFortificationHighlights()
         {
             if (!CanUseModeFortificationUtilities())
             {
@@ -296,7 +296,7 @@ namespace BossRush
                         // ★低端机优化：Highlight 关闭超过阈值后销毁 outline 对象，下次再 Highlight 时按需重建。
                         // 避免每个工事永远保留一份 MeshFilter+MeshRenderer 副本，累积 draw call 和 GPU 内存。
                         try { UnityEngine.Object.Destroy(marker.HighlightRoot); }
-                        catch (Exception e) { DevLog("[ModeF] [WARNING] Highlight outline 销毁失败: " + e.Message); }
+                        catch (Exception e) { ModBehaviour.DevLog("[ModeF] [WARNING] Highlight outline 销毁失败: " + e.Message); }
                         marker.HighlightRoot = null;
                         marker.HighlightUntilTime = 0f;
                     }
@@ -416,11 +416,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] GrantModeFKillRewards failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] GrantModeFKillRewards failed: " + e.Message);
             }
         }
 
-        private bool TryGiveItemToPlayerOrDrop(int typeId, string displayName, bool showRewardBubble = true, bool allowWorldDrop = true)
+        internal bool TryGiveItemToPlayerOrDrop(int typeId, string displayName, bool showRewardBubble = true, bool allowWorldDrop = true)
         {
             Item item = null;
             try
@@ -428,7 +428,7 @@ namespace BossRush
                 item = ItemAssetsCollection.InstantiateSync(typeId);
                 if (item == null)
                 {
-                    DevLog("[ModeF] [WARNING] 无法实例化物品: typeId=" + typeId);
+                    ModBehaviour.DevLog("[ModeF] [WARNING] 无法实例化物品: typeId=" + typeId);
                     return false;
                 }
 
@@ -509,13 +509,14 @@ namespace BossRush
             }
 
             bool refunded = TryGiveItemToPlayerOrDrop(typeId, displayName, false);
+            if (modeFRuntimeDestroyed) return;
             if (refunded)
             {
-                ShowMessage(reason + L10n.T("，物品已返还。", ", item refunded."));
+                owner.ShowMessage(reason + L10n.T("，物品已返还。", ", item refunded."));
             }
             else
             {
-                ShowMessage(reason + L10n.T("，但返还失败，请查看日志。", ", but refund failed. Check the log."));
+                owner.ShowMessage(reason + L10n.T("，但返还失败，请查看日志。", ", but refund failed. Check the log."));
             }
         }
 
@@ -565,7 +566,7 @@ namespace BossRush
 
                 modeFState.ActiveFortifications.Clear();
                 modeFHasActiveFortificationHighlight = false;
-                DevLog("[ModeF] All fortifications have been cleaned up.");
+                ModBehaviour.DevLog("[ModeF] All fortifications have been cleaned up.");
             }
             catch { }
         }
@@ -702,7 +703,7 @@ namespace BossRush
                         try { PlayerStorage.Push(item, true); stored = true; }
                         catch (Exception pushEx)
                         {
-                            DevLog("[ModeF] [WARNING] 工事奖励写入寄存失败，尝试缓冲: " + pushEx.Message);
+                            ModBehaviour.DevLog("[ModeF] [WARNING] 工事奖励写入寄存失败，尝试缓冲: " + pushEx.Message);
                         }
                         if (!stored)
                         {
@@ -715,11 +716,11 @@ namespace BossRush
                                 delivered++;
                                 remaining--;
                                 anyBuffered = true;
-                                DevLog("[ModeF] [WARNING] PlayerStorage.Push 失败，工事奖励已回退写入寄存缓冲");
+                                ModBehaviour.DevLog("[ModeF] [WARNING] PlayerStorage.Push 失败，工事奖励已回退写入寄存缓冲");
                             }
                             catch (Exception bufferEx)
                             {
-                                DevLog("[ModeF] [ERROR] 工事奖励写入寄存缓冲失败: " + bufferEx.Message);
+                                ModBehaviour.DevLog("[ModeF] [ERROR] 工事奖励写入寄存缓冲失败: " + bufferEx.Message);
                                 if (item != null)
                                 {
                                     SafeRuntime.Run("ModeF fortification reward destroy after buffer failure", item.DestroyTree);
@@ -733,7 +734,7 @@ namespace BossRush
                     }
                     catch (Exception itemEx)
                     {
-                        DevLog("[ModeF] [WARNING] 工事奖励发放异常: " + itemEx.Message);
+                        ModBehaviour.DevLog("[ModeF] [WARNING] 工事奖励发放异常: " + itemEx.Message);
                         if (item != null)
                         {
                             SafeRuntime.Run("ModeF fortification reward destroy after grant failure", item.DestroyTree);

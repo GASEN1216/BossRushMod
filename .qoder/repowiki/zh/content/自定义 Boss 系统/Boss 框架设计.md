@@ -1,5 +1,13 @@
 # Boss 框架设计
 
+## 2026-09-25 Mode G 托管角色流程
+
+三个 Boss 的 Mode G adapter 继续由各自 RuntimeModule 持有。共用的角色创建、冻结、激活和精确清理已提取到无状态 `ModeGManagedCharacterService`；`DragonDescendantRuntimeModuleHostBridge.cs` 保留原宿主 helper 转发，Mode G 事务的原调用点继续有效。本文下方关于 Boss 业务仍由宿主 partial 承载的描述属于旧快照。
+
+流程保持 staging preset 登记、等待 factory、登记 exact 角色、校验 owner/死亡/玩家 buff、无敌与停用、配置 runtime preset 的次序。异步返回后的 owner 失效仍回收暂存登记和角色。激活保持 SetActive、敌对队伍、AI 仇恨、血条和撤无敌；清理保持 staging/tracked 登记、恢复监控、随机掉落、箱路径、runtime preset、角色对象的次序。
+
+来源：[托管服务](file://Integration/ModeGManagedCharacterService.cs)、[旧入口兼容桥](file://Integration/DragonDescendant/DragonDescendantRuntimeModuleHostBridge.cs)、[执行回归](file://tests/fixtures/IntegrationLeafOwners/Program.cs)。
+
 <cite>
 **本文引用的文件**
 - [ModBehaviour.cs](file://ModBehaviour.cs)

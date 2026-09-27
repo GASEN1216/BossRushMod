@@ -53,7 +53,7 @@ def main() -> int:
         if text.index(snapshot_token) > add_and_merge:
             return fail("drop display/weight snapshot must precede AddAndMerge -> " + snapshot_token)
 
-    enemy_drop_start = text.index("private void TrySpawnZombieModeEnemyDrop")
+    enemy_drop_start = text.index("internal void TrySpawnZombieModeEnemyDrop")
     enemy_drop_end = text.index("private float GetZombieModeEnemyDropChance", enemy_drop_start)
     enemy_drop_body = text[enemy_drop_start:enemy_drop_end]
     if "FindRandomItemTypeByTags(null" in enemy_drop_body:

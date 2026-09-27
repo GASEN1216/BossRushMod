@@ -4,7 +4,8 @@ from pathlib import Path
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 MAP_ISOLATION = Path("ZombieMode/ZombieModeMapIsolation.cs")
 
 
@@ -37,15 +38,20 @@ def extract_method(text: str, marker: str) -> str:
 
 def main() -> int:
     entry = ENTRY.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
     map_isolation = MAP_ISOLATION.read_text(encoding="utf-8")
 
-    wait_method = extract_method(entry, "private System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize")
+    wait_method = extract_method(runtime_module, "internal System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize")
     if not wait_method:
         return fail("target-scene wait coroutine not found")
     if "TeleportPlayerToCustomPosition" in wait_method:
         return fail("ZombieMode must not call BossRush custom-position teleport after map load")
 
-    init_method = extract_method(entry, "private bool InitializeZombieModeRunAfterMapLoaded")
+    host_wait = extract_method(entry, "private System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize")
+    if "module.WaitForZombieModeTargetSceneActiveThenInitialize(scene, customPos)" not in host_wait:
+        return fail("host target-scene coroutine must forward to RuntimeModule")
+
+    init_method = extract_method(runtime_module, "internal bool InitializeZombieModeRunAfterMapLoaded")
     if not init_method:
         return fail("InitializeZombieModeRunAfterMapLoaded not found")
 
@@ -62,8 +68,8 @@ def main() -> int:
     if not disable_method:
         return fail("DisableZombieModeOriginalSpawners not found")
     for snippet in [
-        "spawnersDisabled = false;",
-        "DisableAllSpawners();",
+        "owner.ResetZombieModeOriginalSpawnerStateForRuntimeModule();",
+        "owner.DisableZombieModeOriginalSpawnersForRuntimeModule();",
         "已复用 BossRush 进图逻辑清理原版刷怪器",
     ]:
         if snippet not in disable_method:

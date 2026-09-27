@@ -17,7 +17,7 @@ using Duckov.ItemUsage;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class DragonDescendantRuntimeModule
     {
         /// <summary>
         /// 根据口径查找子弹（带缓存）
@@ -98,7 +98,7 @@ namespace BossRush
         /// 通过名称查找物品（带缓存）
         /// [性能优化] 使用ItemAssetsCollection替代Resources.FindObjectsOfTypeAll
         /// </summary>
-        private Item FindItemByName(string itemName)
+        internal Item FindItemByName(string itemName)
         {
             // 检查缓存
             Item cachedItem;
@@ -236,8 +236,8 @@ namespace BossRush
             UnregisterEnemyRecovery(character);
             ClearBossRandomLootTracking(character);
             FinalizeBossRushLootboxPathTracking(character);
-            if (currentBoss == character) currentBoss = null;
-            currentWaveBosses?.Remove(character);
+            ClearArenaCurrentBoss(character);
+            RemoveArenaWaveBoss(character);
             if (dragonDescendantInstance == character)
             {
                 dragonDescendantInstance = null;
@@ -259,10 +259,7 @@ namespace BossRush
                     // 死亡监听已改为捕获死者的闭包（同场可能有两只龙裔），闭包退不掉；
                     // 但它随角色一起销毁，且回调体内对已销毁实例是幂等的，
                     // 与 PhantomWitchBoss 的同款写法一致。这里不再尝试 RemoveListener。
-                    if (currentBoss == dragonDescendantInstance)
-                    {
-                        currentBoss = null;
-                    }
+                    ClearArenaCurrentBoss(dragonDescendantInstance);
 
                     ClearBossRandomLootTracking(dragonDescendantInstance);
                     BossCleanupHelpers.DestroyRuntimePreset(
@@ -287,26 +284,18 @@ namespace BossRush
         /// 注册龙裔遗族到BossRush敌人预设系统
         /// 注意：每次 enemyPresets 被清空后都需要重新注册，所以不能依赖 static 标记
         /// </summary>
-        private void RegisterDragonDescendantPreset()
+        internal void RegisterDragonDescendantPreset()
         {
             try
             {
-                if (enemyPresets == null)
+                if (!HasArenaEnemyPresetCatalog)
                 {
                     DevLog("[DragonDescendant] [WARNING] enemyPresets 为空，无法注册");
                     return;
                 }
 
                 // 检查是否已存在（每次都检查，因为 enemyPresets 可能被清空重建）
-                bool exists = false;
-                foreach (var p in enemyPresets)
-                {
-                    if (p != null && p.name == DragonDescendantConfig.BOSS_NAME_KEY)
-                    {
-                        exists = true;
-                        break;
-                    }
-                }
+                bool exists = FindArenaEnemyPreset(DragonDescendantConfig.BOSS_NAME_KEY) != null;
 
                 if (exists)
                 {
@@ -327,7 +316,7 @@ namespace BossRush
                     expReward = 500
                 };
 
-                enemyPresets.Add(presetInfo);
+                AddArenaEnemyPreset(presetInfo);
                 dragonDescendantRegistered = true;
                 DevLog("[DragonDescendant] 已注册到BossRush敌人预设系统");
             }
@@ -340,7 +329,7 @@ namespace BossRush
         /// <summary>
         /// 检查是否是龙裔遗族预设
         /// </summary>
-        private bool IsDragonDescendantPreset(EnemyPresetInfo preset)
+        internal bool IsDragonDescendantPreset(EnemyPresetInfo preset)
         {
             return ModBossPresetLookup.Matches(
                 preset,
@@ -417,7 +406,7 @@ namespace BossRush
         /// Boss伤害事件回调 - 火焰伤害免疫并转化为治疗
         /// [性能优化] 使用缓存的Health引用进行快速身份验证
         /// </summary>
-        private void OnDragonDescendantHurt(Health health, DamageInfo damageInfo)
+        internal void OnDragonDescendantHurt(Health health, DamageInfo damageInfo)
         {
             // [性能优化] 快速过滤：按在场龙裔集合判定（同场可能有第二只）
             if (health == null || dragonDescendantBossHealths.Count == 0) return;

@@ -28,11 +28,18 @@ def main():
         errors.append("ModeH 首次认证不得依赖尚未产生的 ProductionKeys")
 
     waves = text("WavesArena/WavesArena.cs")
+    wave_presets = text("WavesArena/WavesArenaRuntimeModule_EnemyPresets.cs")
     codex = text("Integration/Codex/CodexRuntimeModule.cs")
     petnest = text("PetNest/PetNestRuntimeModule.cs")
     bossfilter = text("BossFilter/BossFilter.cs")
     shared = "EnsureEnemyPresetsReadyForGameplayCatalogs"
-    if waves.count("InitializeEnemyPresets();") < 1 or shared not in waves:
+    ensure_presets = squeeze(method_body(clean_source(wave_presets),
+                                         "internal bool EnsureEnemyPresetsReadyForGameplayCatalogs()"))
+    if ("wavesArenaRuntime.InitializeEnemyPresets();" not in waves
+            or "wavesArenaRuntime.EnsureEnemyPresetsReadyForGameplayCatalogs();" not in waves
+            or "internal bool EnsureEnemyPresetsReadyForGameplayCatalogs()" not in wave_presets
+            or "if (EnemyPresetsInitialized && EnemyPresets != null && EnemyPresets.Count > 0)" not in ensure_presets
+            or "InitializeEnemyPresets();" not in ensure_presets):
         errors.append("图鉴/遗种巢缺少共享幂等预设初始化")
     if shared not in codex or shared not in petnest:
         errors.append("图鉴和遗种巢未共用同一预设初始化入口")

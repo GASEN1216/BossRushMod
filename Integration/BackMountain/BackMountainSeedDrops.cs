@@ -24,7 +24,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class BackMountainRuntimeModule
     {
         /// <summary>种子掉率。草案值，待 owner 审定。</summary>
         private const float BackMountainSeedDropChance = 0.25f;
@@ -33,7 +33,7 @@ namespace BossRush
         /// 按 Boss 类型往掉落箱里追加一颗对应种子。
         /// 后山关闭、菜地未解锁、或该 Boss 不是三个自定义 Boss 之一时静默返回。
         /// </summary>
-        private void TryAddBackMountainSeedLoot(Inventory inv, CharacterMainControl bossMain)
+        internal void TryAddBackMountainSeedLoot(Inventory inv, CharacterMainControl bossMain)
         {
             try
             {
@@ -42,11 +42,11 @@ namespace BossRush
                 if (seed == null) return;
 
                 if (!InteractableLootboxInventoryHelper.TryAddExtraItem(inv, seed)) return;
-                DevLog(BackMountainConfig.LogPrefix + "掉落菜地种子: " + seed.TypeID);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "掉落菜地种子: " + seed.TypeID);
             }
             catch (Exception e)
             {
-                DevLog(BackMountainConfig.LogPrefix + "[WARNING] 种子掉落失败: " + e.Message);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 种子掉落失败: " + e.Message);
             }
         }
 
@@ -54,7 +54,7 @@ namespace BossRush
         /// 官方 / 原生掉落箱路径：种子直接放进 Boss 的 characterItem，官方随后按它建箱。
         /// 只能在 BeforeCharacterSpawnLootOnDead 回调里、且 dropBoxOnDead 仍为 true 的分支上调用。
         /// </summary>
-        private void TryAddBackMountainSeedToCharacterItem(CharacterMainControl bossMain)
+        internal void TryAddBackMountainSeedToCharacterItem(CharacterMainControl bossMain)
         {
             Inventory inv = null;
             try
@@ -64,14 +64,14 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(BackMountainConfig.LogPrefix + "[WARNING] 读取 Boss characterItem 失败，种子不投放: " + e.Message);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 读取 Boss characterItem 失败，种子不投放: " + e.Message);
                 return;
             }
             TryAddBackMountainSeedLoot(inv, bossMain);
         }
 
         /// <summary>无间炼狱：没有任何掉落箱，种子落在 Boss 尸体处（与其它额外掉落的世界投放同口径）。</summary>
-        private void TryDropBackMountainSeedIntoWorld(CharacterMainControl bossMain)
+        internal void TryDropBackMountainSeedIntoWorld(CharacterMainControl bossMain)
         {
             Item seed = null;
             try
@@ -82,17 +82,17 @@ namespace BossRush
 
                 Vector3 position = bossMain.transform.position + Vector3.up * 0.1f;
                 seed.Drop(position, true, UnityEngine.Random.insideUnitSphere.normalized, UnityEngine.Random.Range(30f, 60f));
-                DevLog(BackMountainConfig.LogPrefix + "掉落菜地种子（世界掉落）: " + seed.TypeID);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "掉落菜地种子（世界掉落）: " + seed.TypeID);
             }
             catch (Exception e)
             {
-                DevLog(BackMountainConfig.LogPrefix + "[WARNING] 种子世界掉落失败: " + e.Message);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 种子世界掉落失败: " + e.Message);
                 if (seed != null)
                 {
                     try { seed.DestroyTree(); }
                     catch (Exception destroyError)
                     {
-                        DevLog(BackMountainConfig.LogPrefix + "[WARNING] 回收未掉出的种子失败: " + destroyError.Message);
+                        ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 回收未掉出的种子失败: " + destroyError.Message);
                     }
                 }
             }
@@ -105,7 +105,7 @@ namespace BossRush
         private Item TryRollBackMountainSeed(CharacterMainControl bossMain)
         {
             if (bossMain == null) return null;
-            if (!IsBackMountainConfiguredEnabled()) return null;
+            if (!_owner.IsBackMountainConfiguredEnabled()) return null;
             if (!BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Garden)) return null;
 
             int seedTypeId = ResolveBackMountainSeedTypeId(bossMain);
@@ -124,8 +124,8 @@ namespace BossRush
         {
             try
             {
-                if (IsDragonDescendantBoss(bossMain)) return BossRushItemIds.DragonSeed;
-                if (IsDragonKingBoss(bossMain)) return BossRushItemIds.EmberSeed;
+                if (_owner.IsBackMountainDragonDescendantBoss(bossMain)) return BossRushItemIds.DragonSeed;
+                if (_owner.IsBackMountainDragonKingBoss(bossMain)) return BossRushItemIds.EmberSeed;
                 if (IsBackMountainPhantomWitchBoss(bossMain)) return BossRushItemIds.PhantomSpore;
                 return 0;
             }

@@ -294,12 +294,12 @@ namespace BossRush
     }
     enum BackMountainFacility { Showcase }
     static class BackMountainUnlocks { public static bool IsFacilityUnlocked(BackMountainFacility facility) { return true; } }
-    class ZombieModeAttributeModifierRecord { }
+    class BossRushStatModifierRecord { }
     static class ZombieModeStatNames { public const string MaxHealth = "MaxHealth"; }
     static class RuntimeStatModifierTracker
     {
-        public static void RemoveAll(List<ZombieModeAttributeModifierRecord> records, string label) { records.Clear(); }
-        public static void TryAdd(CharacterMainControl main, string stat, float amount, object source, List<ZombieModeAttributeModifierRecord> records, string label) { records.Add(new ZombieModeAttributeModifierRecord()); }
+        public static void RemoveAll(List<BossRushStatModifierRecord> records, string label) { records.Clear(); }
+        public static void TryAdd(CharacterMainControl main, string stat, float amount, object source, List<BossRushStatModifierRecord> records, string label) { records.Add(new BossRushStatModifierRecord()); }
     }
     static class BackMountainConfig
     {

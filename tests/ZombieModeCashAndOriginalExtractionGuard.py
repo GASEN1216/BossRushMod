@@ -4,12 +4,12 @@ import sys
 
 COMPILE = Path("compile_official.bat")
 COMPILE_GUARD = Path("tests/ZombieModeCompileListGuard.py")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 MAP_SELECTION = Path("ZombieMode/ZombieModeMapSelectionHelper.cs")
 MAP_ISOLATION = Path("ZombieMode/ZombieModeMapIsolation.cs")
 EXTRACTION_HELPER = Path("Utilities/OriginalExtractionPointIsolationHelper.cs")
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
-EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 
 
 def fail(message: str) -> int:
@@ -60,7 +60,7 @@ def main() -> int:
         "if (!SettleZombieModeExtractionCashShell())",
         "TryReleaseZombieModeExtractionCountdownUi();",
         "奖励已保留",
-        "zombieModeRunState.PurificationPoints = 0;",
+        "runState.PurificationPoints = 0;",
     ]:
         result = require(extraction, snippet, "extraction cash failure retention")
         if result:
@@ -111,8 +111,8 @@ def main() -> int:
         "DisableZombieModeOriginalExtractionPoints(runId);",
         "OriginalExtractionPointIsolationHelper.Disable(",
         "ShouldSkipZombieModeOriginalExtractionArea",
-        "zombieModeRunState.ActiveExtractionArea",
-        "zombieModeRunState.MapProfile.DisabledExtractionAreaIds",
+        "runState.ActiveExtractionArea",
+        "runState.MapProfile.DisabledExtractionAreaIds",
         "RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.MapIsolation",
         "OriginalExtractionPointIsolationHelper.Restore(",
         "RestoreZombieModeOriginalExtractionPoints();",

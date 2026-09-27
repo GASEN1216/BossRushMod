@@ -5,11 +5,13 @@ import sys
 
 
 MARKER = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 SAFE_ZONE = Path("ZombieMode/ZombieModeSafeZoneController.cs")
-GRAVITY = Path("ZombieMode/ZombieModeRewardProjectileSpread.cs")
+GRAVITY = RUNTIME_MODULE
 TEMP_NPC = Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs")
-BOSS = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
+BOSS_HOST = Path("ZombieMode/ZombieModeCombatHostBridge.cs")
 
 
 def fail(message: str) -> int:
@@ -56,20 +58,23 @@ def require_body_uses_helper(path: Path, signature: str, snippet: str) -> int:
 
 def main() -> int:
     marker_text = MARKER.read_text(encoding="utf-8-sig")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8-sig")
     helper = extract_method_body(
-        marker_text,
-        "private static AICharacterController GetZombieModeEnemyAI(",
+        runtime_module,
+        "internal static AICharacterController GetZombieModeEnemyAI(",
     )
     if helper is None:
         return fail("missing GetZombieModeEnemyAI helper")
 
     marker_required = [
         "public AICharacterController CachedAI;",
-        "marker.CachedAI = null;",
     ]
     for snippet in marker_required:
         if snippet not in marker_text:
             return fail("missing marker AI cache snippet -> " + snippet)
+
+    if "marker.CachedAI = null;" not in runtime_module:
+        return fail("RuntimeModule marker registration must clear cached AI")
 
     helper_required = [
         "AICharacterController ai = marker != null ? marker.CachedAI : null;",
@@ -85,7 +90,7 @@ def main() -> int:
     checks = [
         (SPAWNER, "private void PrepareZombieModeSpawnedEnemy(", "GetZombieModeEnemyAI(enemy.gameObject, marker);"),
         (SPAWNER, "private void ApplyZombieModeBossTuning(", "GetZombieModeEnemyAI(boss.gameObject, marker);"),
-        (SAFE_ZONE, "private void SetZombieModeEnemyThreatSuppressed(", "GetZombieModeEnemyAI(enemyObject, marker);"),
+        (SAFE_ZONE, "internal void SetZombieModeEnemyThreatSuppressed(", "GetZombieModeEnemyAI(enemyObject, marker);"),
         (GRAVITY, "internal void RefreshZombieModeGravityWellTargets(", "GetZombieModeEnemyAI(enemy.gameObject, marker);"),
         (TEMP_NPC, "private void ClearZombieModeTemporaryNpcThreatTargets()", "GetZombieModeEnemyAI(record.GameObject, marker);"),
         (BOSS, "private void TeleportZombieModeBossNearPlayer(", "GetZombieModeEnemyAI(boss.gameObject, marker);"),
@@ -102,8 +107,12 @@ def main() -> int:
     if "ZombieModeEnemyRuntimeMarker marker = EnsureZombieModeBossMarker(instance);" not in teleport:
         return fail("boss teleport should resolve/cache marker before AI helper")
 
+    boss_host_text = BOSS_HOST.read_text(encoding="utf-8-sig")
+    if "return GetZombieModeEnemyAI(enemyObject, marker);" not in boss_host_text:
+        return fail("boss module host bridge must retain the cached AI helper")
+
     safe_zone_text = SAFE_ZONE.read_text(encoding="utf-8-sig")
-    suppress_helper = extract_method_body(safe_zone_text, "private void SetZombieModeEnemyThreatSuppressed(")
+    suppress_helper = extract_method_body(safe_zone_text, "internal void SetZombieModeEnemyThreatSuppressed(")
     if suppress_helper is None:
         return fail("missing SetZombieModeEnemyThreatSuppressed body")
     marker_recovery = "marker = enemyObject.GetComponent<ZombieModeEnemyRuntimeMarker>();"

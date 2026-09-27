@@ -6,32 +6,32 @@
   <ItemGroup>
     <Compile Include="../../../Achievement/AchievementRewardJournal.cs" Link="Production/AchievementRewardJournal.cs" />
     <Compile Include="$(SkyQuestGeneratedSource)" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandNoteBridge.cs" Link="Production/SkyIslandNoteBridge.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandPointText.cs" Link="Production/SkyIslandPointText.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryRules.cs" Link="Production/SkyIslandStoryRules.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandOfficialQuestTable.cs" Link="Production/SkyIslandOfficialQuestTable.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandContent.cs" Link="Production/SkyIslandContent.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandEnemyTier.cs" Link="Production/SkyIslandEnemyTier.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryCodec.cs" Link="Production/SkyIslandStoryCodec.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryService.cs" Link="Production/SkyIslandStoryService.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryResidentText.cs" Link="Production/SkyIslandStoryResidentText.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStorySaveRecovery.cs" Link="Production/SkyIslandStorySaveRecovery.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLetters.cs" Link="Production/SkyIslandLetters.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandPuzzles.cs" Link="Production/SkyIslandPuzzles.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandCrew.cs" Link="Production/SkyIslandCrew.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandJournal.cs" Link="Production/SkyIslandJournal.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandItemRules.cs" Link="Production/SkyIslandItemRules.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs" Link="Production/SkyIslandFieldcraftRules.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLights.cs" Link="Production/SkyIslandLights.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandNight.cs" Link="Production/SkyIslandNight.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandMosquitoRules.cs" Link="Production/SkyIslandMosquitoRules.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandBounty.cs" Link="Production/SkyIslandBounty.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStormEchoRules.cs" Link="Production/SkyIslandStormEchoRules.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStormEchoReward.cs" Link="Production/SkyIslandStormEchoReward.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandBossRules.cs" Link="Production/SkyIslandBossRules.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandCombatBalance.cs" Link="Production/SkyIslandCombatBalance.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandChatterLines.cs" Link="Production/SkyIslandChatterLines.cs" />
-    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandNoteBridge.cs" Link="Production/SkyIslandNoteBridge.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandPointText.cs" Link="Production/SkyIslandPointText.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandStoryRules.cs" Link="Production/SkyIslandStoryRules.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandOfficialQuestTable.cs" Link="Production/SkyIslandOfficialQuestTable.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandContent.cs" Link="Production/SkyIslandContent.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandEnemyTier.cs" Link="Production/SkyIslandEnemyTier.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandStoryCodec.cs" Link="Production/SkyIslandStoryCodec.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandStoryService.cs" Link="Production/SkyIslandStoryService.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandStoryResidentText.cs" Link="Production/SkyIslandStoryResidentText.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandStorySaveRecovery.cs" Link="Production/SkyIslandStorySaveRecovery.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandLetters.cs" Link="Production/SkyIslandLetters.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandPuzzles.cs" Link="Production/SkyIslandPuzzles.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandCrew.cs" Link="Production/SkyIslandCrew.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandJournal.cs" Link="Production/SkyIslandJournal.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandItemRules.cs" Link="Production/SkyIslandItemRules.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandFieldcraftRules.cs" Link="Production/SkyIslandFieldcraftRules.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandLights.cs" Link="Production/SkyIslandLights.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandNight.cs" Link="Production/SkyIslandNight.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandMosquitoRules.cs" Link="Production/SkyIslandMosquitoRules.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandBounty.cs" Link="Production/SkyIslandBounty.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandStormEchoRules.cs" Link="Production/SkyIslandStormEchoRules.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandStormEchoReward.cs" Link="Production/SkyIslandStormEchoReward.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandBossRules.cs" Link="Production/SkyIslandBossRules.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandCombatBalance.cs" Link="Production/SkyIslandCombatBalance.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandChatterLines.cs" Link="Production/SkyIslandChatterLines.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
     <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />
     <Compile Include="../../../Common/Lifecycle/BossRushSlotJsonStore.cs" Link="Production/BossRushSlotJsonStore.cs" />
     <Compile Include="../../../Common/Lifecycle/BossRushSaveCoordinatorEngine.cs" Link="Production/BossRushSaveCoordinatorEngine.cs" />

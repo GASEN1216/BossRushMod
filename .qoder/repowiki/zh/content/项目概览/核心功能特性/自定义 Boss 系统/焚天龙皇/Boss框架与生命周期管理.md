@@ -1,5 +1,7 @@
 # Boss框架与生命周期管理
 
+2026-09-27 Arena 边界：龙皇通过 `WavesArenaRuntimeModule_BossAccess` 的窄动作登记/移除波次身份和掉落记录，查询预设、记录数量，不再取得 Arena 列表或字典。原 CurrentBoss→多 Boss 追加、掉落时刻→原数量→路径标记→事件订阅的顺序保持；宿主只作兼容转发。
+
 <cite>
 **本文引用的文件**
 - [DragonKingBoss.cs](file://Integration/DragonKing/DragonKingBoss.cs)

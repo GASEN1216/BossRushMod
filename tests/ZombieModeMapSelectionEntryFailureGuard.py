@@ -15,7 +15,8 @@ import re
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 
 
 def fail(message: str) -> int:
@@ -47,6 +48,7 @@ def extract_method(text: str, marker: str) -> str:
 
 def main() -> int:
     entry = ENTRY.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
 
     can_start = extract_method(entry, "public bool CanStartZombieModeMapSelectionPhase1")
     if not can_start:
@@ -57,7 +59,7 @@ def main() -> int:
             "ZombieModeMapSelectionEntryFailureGuard: item transfer blockers must not run before opening map UI"
         )
 
-    fail_method = extract_method(entry, "private void FailZombieModeBeforeActive")
+    fail_method = extract_method(runtime_module, "internal void FailZombieModeBeforeActive")
     if not fail_method:
         return fail("ZombieModeMapSelectionEntryFailureGuard: FailZombieModeBeforeActive not found")
 
@@ -73,7 +75,7 @@ def main() -> int:
     if gate_index < 0 or gate_index > load_base_index:
         return fail("ZombieModeMapSelectionEntryFailureGuard: LoadBaseScene must be gated before it is called")
 
-    helper = extract_method(entry, "private bool ShouldReturnToBaseAfterZombieModePreActiveFailure")
+    helper = extract_method(runtime_module, "internal bool ShouldReturnToBaseAfterZombieModePreActiveFailure")
     if not helper:
         return fail("ZombieModeMapSelectionEntryFailureGuard: return-to-base helper not found")
 
@@ -96,7 +98,7 @@ def main() -> int:
     if "return true;" not in helper:
         return fail("ZombieModeMapSelectionEntryFailureGuard: target-map startup phases must return true")
 
-    precheck = extract_method(entry, "private bool TryRunZombieModePrechecks")
+    precheck = extract_method(runtime_module, "internal bool TryRunZombieModePrechecks")
     if not precheck:
         return fail("ZombieModeMapSelectionEntryFailureGuard: TryRunZombieModePrechecks not found")
 

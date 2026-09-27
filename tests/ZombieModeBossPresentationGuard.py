@@ -22,13 +22,13 @@ def body(text, signature):
 
 
 def main():
-    boss = source("ZombieMode/ZombieModeBossController.cs")
+    boss = source("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
     look = source("ZombieMode/ZombieModeBossVisuals.cs")
     damage = source("ZombieMode/ZombieModeDamageRuntime.cs")
-    wave = source("ZombieMode/ZombieModeWaveController.cs")
+    wave = source("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
     patch = source("Patches/Combat/BossLethalHealthProtectionPatch.cs")
-    register = body(boss, "private void RegisterZombieModeBossRuntime(")
-    assert "ZombieModeBossVisuals.Attach(this, instance);" in register, "Boss runtime must attach presentation"
+    register = body(boss, "internal void RegisterZombieModeBossRuntime(")
+    assert "ZombieModeBossVisuals.Attach(owner, instance);" in register, "Boss runtime must attach presentation"
     attach = body(look, "internal static void Attach(")
     assert "Transform modelRoot = instance.Character.modelRoot;" in attach
     assert "root.transform.SetParent(modelRoot != null ? modelRoot : instance.Character.transform, false);" in attach, "boss silhouette must follow official facing root"
@@ -56,7 +56,7 @@ def main():
     assert "if (marker.IsBoss && info.finalDamage >= health.CurrentHealth)" in body(damage, "internal static void ReduceFinalDamage(") \
         and "ZombieModeBossVisuals.RestoreOfficialPreset(marker);" in body(damage, "internal static void ReduceFinalDamage("), \
         "lethal hit must restore the official preset before OnDead"
-    assert "ZombieModeBossVisuals.PlayDeath(marker);" in body(boss, "private void HandleZombieModeBossDeathEffects("), \
+    assert "ZombieModeBossVisuals.PlayDeath(marker);" in body(boss, "internal void HandleZombieModeBossDeathEffects("), \
         "boss death must play the presentation burst"
     # 死因：残留腐蚀区 / 毒径 / 死亡毒云以 Boss 尸体为来源。尸体要活过最长的残留区，
     # 死后（静态 OnDead，晚于写击杀计数的实例 OnDeadEvent）再挂回显示副本，结算页才显示 Boss 名而不是「自己」。
@@ -86,6 +86,13 @@ def main():
     destroy = body(look, "private void OnDestroy()")
     for resource in ("armorMesh", "seamMesh", "displayPreset"):
         assert "Destroy(" + resource + ")" in destroy, "instance resource cleanup: " + resource
+    reset = body(look, "internal static void ResetStaticCaches()")
+    assert "for (int i = 0; i < SigilTextures.Length; i++)" in reset, "sigil reset must visit every cached texture"
+    assert "if (SigilTextures[i] != null) Destroy(SigilTextures[i]);" in reset, "sigil cache must release Unity textures"
+    assert "SigilTextures[i] = null;" in reset, "sigil cache must drop destroyed references"
+    module = source("ZombieMode/ZombieModeRuntimeModule.cs")
+    assert "ZombieModeBossVisuals.ResetStaticCaches();" in body(module, "public override void OnDestroy()"), \
+        "ZombieMode owner must release sigil cache on destroy"
     assert "Shader.Find" not in look and "new Material(" not in look and "Collider" not in look
     hunter = body(boss, "internal void TickZombieModeHunterState(")
     assert "boss.transform.position =" not in hunter, "Hunter must not teleport before warning"
@@ -104,8 +111,12 @@ def main():
     assert "owner.ApplyZombieModeEnemyDefense(health, ref info, marker);" in reduce
     assert "owner.AbsorbZombieModeBossFinalDamage(target, marker, info.finalDamage)" in reduce
     assert "info.finalDamage = Mathf.Max(0f, info.finalDamage - absorbed);" in reduce
-    elite = body(source("ZombieMode/ZombieModePollution.cs"), "internal void ApplyZombieModeEnemyDefense(")
+    elite = body(source("ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs"), "internal void ApplyZombieModeEnemyDefense(")
     assert "damageInfo.damageValue" not in elite and "SetHealth(" not in elite, "elite defenses must consume actual damage before health loss"
+    bridge = body(source("ZombieMode/ZombieModeCombatHostBridge.cs"), "internal void ApplyZombieModeEnemyDefense(")
+    assert "if (module != null) module.ApplyZombieModeEnemyDefense(health, ref damageInfo, marker);" in bridge, \
+        "defense bridge must forward finalDamage by reference to the real module owner"
+    assert "shield.AbsorbDamage(ref damageInfo.finalDamage);" in elite, "elite shield must consume finalDamage in the owner"
     print("ZombieModeBossPresentationGuard: PASS (static wiring only)")
 
 

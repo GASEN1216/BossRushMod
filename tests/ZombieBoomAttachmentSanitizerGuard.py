@@ -5,6 +5,7 @@ import sys
 
 
 SANITIZER = Path("Utilities/ZombieSpawnSanitizer.cs")
+POLICY = Path("ZombieMode/ZombieModeSpawnSanitizationPolicy.cs")
 FROSTMOURNE = Path("Integration/Frostmourne/FrostmourneAction.cs")
 SUMMON_STAFF = Path("Integration/NewWeapons/SummonStaff/SummonStaffAction.cs")
 ZOMBIE_SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
@@ -21,8 +22,14 @@ def main() -> int:
         return fail("sanitizer no longer targets AISpecialAttachment_BoomCar")
     if "Skill_Grenade" not in sanitizer:
         return fail("sanitizer no longer targets zombie self-destruction skill")
-    if "ZombieModeSpecialKind.OfficialExploder" not in sanitizer:
+    policy = POLICY.read_text(encoding="utf-8-sig")
+    if "ZombieModeSpecialKind.OfficialExploder" not in policy:
         return fail("sanitizer no longer preserves OfficialExploder self-destruction skill")
+    bridge = Path("Utilities/Utilities.cs").read_text(encoding="utf-8-sig")
+    if "new ZombieSpawnSanitizer(ZombieModeRuntimeModule.ShouldKeepBossRushZombieSelfDestructionSkill)" not in bridge:
+        return fail("host no longer binds the zombie-owned preservation policy")
+    if "ZombieModeEnemyRuntimeMarker" in sanitizer:
+        return fail("shared sanitizer must not depend on the zombie marker type")
     if "ShouldKeepBossRushZombieSelfDestructionSkill" not in sanitizer:
         return fail("missing official exploder self-destruction preservation helper")
     if "if (ShouldKeepBossRushZombieSelfDestructionSkill(character))" not in sanitizer:

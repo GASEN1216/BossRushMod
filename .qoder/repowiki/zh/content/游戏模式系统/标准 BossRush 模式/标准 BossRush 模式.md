@@ -1,12 +1,22 @@
 # 标准 BossRush 模式
 
+> 2026-09-26 迁移注：波次、生成、清场、现金磁铁与 Tick 的宿主兼容入口合并到 `WavesArena.cs`；`BossRushEntryFlow.cs` 和 `WavesArenaEntryAndTeleport.cs` 继续承担跨模式入场协调。运行时状态和算法仍在既有 `WavesArenaRuntimeModule` partial，成员语义与初始化顺序不因文件归并改变。
+
 <cite>
 **本文引用的文件**
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [WavesArenaSpawnerControl.cs](file://WavesArena/WavesArenaSpawnerControl.cs)
 - [LootAndRewards.cs](file://LootAndRewards/LootAndRewards.cs)
-- [LootAndRewardsInfiniteHell.cs](file://LootAndRewards/LootAndRewardsInfiniteHell.cs)
+- [WavesArenaRuntimeModule_LootCatalog.cs](file://WavesArena/WavesArenaRuntimeModule_LootCatalog.cs)
+- [WavesArenaRuntimeModule_LootTracking.cs](file://WavesArena/WavesArenaRuntimeModule_LootTracking.cs)
+- [WavesArenaRuntimeModule_LootCleanup.cs](file://WavesArena/WavesArenaRuntimeModule_LootCleanup.cs)
+- [WavesArenaRuntimeModule_DragonLoot.cs](file://WavesArena/WavesArenaRuntimeModule_DragonLoot.cs)
+- [WavesArenaRuntimeModule_RandomBossLoot.cs](file://WavesArena/WavesArenaRuntimeModule_RandomBossLoot.cs)
+- [WavesArenaRuntimeModule_BossLootEvent.cs](file://WavesArena/WavesArenaRuntimeModule_BossLootEvent.cs)
+- [WavesArenaRuntimeModule_SpecialLoot.cs](file://WavesArena/WavesArenaRuntimeModule_SpecialLoot.cs)
+- [WavesArenaRuntimeModule_VictoryRewards.cs](file://WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs)
+- [LootAndRewards.cs](file://LootAndRewards/LootAndRewards.cs)
 - [Config.cs](file://Config/Config.cs)
 - [BossFilter.cs](file://BossFilter/BossFilter.cs)
 - [README.md](file://README.md)
@@ -31,6 +41,11 @@
 BossRush 相关代码集中在以下模块：
 - 波次与竞技场：WavesArena 系列负责波次流程、倒计时、敌人生成与生命周期管理。
 - 掉落与奖励：LootAndRewards 系列负责 Boss 掉落、通关奖励箱、无间炼狱现金池与里程碑奖励。
+- 掉落候选目录、品质保底选择、奖励箱清理协程、龙裔与龙王专属奖励以及 Boss 掉落追踪状态由已注册的 `WavesArenaRuntimeModule` 持有；`LootAndRewards` 各分部保留旧调用入口并转发。候选目录仍按原协程每 20 个物品等待一帧；保底仍用原随机调用选档和选物；奖励箱仍待 Loader 填完再逆序清理；龙系收藏成就在成功入箱后登记；追踪事件仍在记录处理器后订阅，并在清理时退订。
+- 随机 Boss 奖励箱的反射元数据、候选/品质 scratch 与入箱调度同属竞技场模块；原宿主入口保留，随机事件的奖励箱路径复用这一份反射缓存。
+- 标准通关结算、虚影箱控制、Mode G 严格物化器入口与难度奖励箱生成由 `WavesArenaRuntimeModule_VictoryRewards.cs` 执行；宿主保留旧调用签名。虚影初始化失败时仍立即生成奖励箱，正常完成时仍落地并继续结算。
+- Boss 死前掉落事件由 `WavesArenaRuntimeModule_BossLootEvent.cs` 处理，宿主原事件委托转发。Mode E/F 继续保留官方掉落箱，无间炼狱先把待投物品送到世界再清理追踪，随机掉落仍按原门控与概率计算。
+- 奖励箱加载后的专属掉落、原版概率保底、Mode F 掠夺增减，以及额外掉落的官方箱回退和无间炼狱世界投放由 `WavesArenaRuntimeModule_SpecialLoot.cs` 执行；宿主保留原入口与种子注入桥，仍等待库存加载并在 `finally` 清理追踪。
 - 配置系统：Config 提供本地文件与 ModConfig 动态配置加载、保存与热更新。
 - Boss 筛选器：BossFilter 提供 Boss 池启用/禁用与无间炼狱权重因子编辑 UI。
 - 地图与刷怪点：通过配置系统获取当前场景刷怪点与默认路牌位置。
@@ -47,10 +62,10 @@ A --> G["Config<br/>全局配置/热更新"]
 
 图表来源
 - [WavesArena.cs:108-184](file://WavesArena/WavesArena.cs#L108-L184)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
 - [WavesArenaSpawnerControl.cs:21-81](file://WavesArena/WavesArenaSpawnerControl.cs#L21-L81)
 - [LootAndRewards.cs:300-310](file://LootAndRewards/LootAndRewards.cs#L300-L310)
-- [LootAndRewardsInfiniteHell.cs:30-308](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L30-L308)
+- [LootAndRewards.cs:30-308](file://LootAndRewards/LootAndRewards.cs#L378)
 - [BossFilter.cs:197-232](file://BossFilter/BossFilter.cs#L197-L232)
 - [Config.cs:41-81](file://Config/Config.cs#L41-L81)
 
@@ -66,9 +81,9 @@ A --> G["Config<br/>全局配置/热更新"]
 
 章节来源
 - [WavesArena.cs:108-184](file://WavesArena/WavesArena.cs#L108-L184)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
 - [LootAndRewards.cs:300-310](file://LootAndRewards/LootAndRewards.cs#L300-L310)
-- [LootAndRewardsInfiniteHell.cs:30-308](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L30-L308)
+- [LootAndRewards.cs:30-308](file://LootAndRewards/LootAndRewards.cs#L378)
 - [Config.cs:41-81](file://Config/Config.cs#L41-L81)
 - [BossFilter.cs:197-232](file://BossFilter/BossFilter.cs#L197-L232)
 
@@ -102,9 +117,9 @@ Note over CFG,WA : 配置变更可即时影响倒计时与行为
 ```
 
 图表来源
-- [WavesArenaBossSpawning.cs:19-107](file://WavesArena/WavesArenaBossSpawning.cs#L19-L107)
+- [WavesArena.cs:19-107](file://WavesArena/WavesArena.cs#L19-L107)
 - [WavesArena.cs:108-184](file://WavesArena/WavesArena.cs#L108-L184)
-- [LootAndRewardsInfiniteHell.cs:30-308](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L30-L308)
+- [LootAndRewards.cs:30-308](file://LootAndRewards/LootAndRewards.cs#L378)
 - [Config.cs:586-704](file://Config/Config.cs#L586-L704)
 
 ## 详细组件分析
@@ -155,14 +170,14 @@ end
 ```
 
 图表来源
-- [WavesArenaBossSpawning.cs:117-251](file://WavesArena/WavesArenaBossSpawning.cs#L117-L251)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
-- [WavesArenaBossSpawning.cs:478-661](file://WavesArena/WavesArenaBossSpawning.cs#L478-L661)
+- [WavesArena.cs:117-251](file://WavesArena/WavesArena.cs#L117-L251)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
+- [WavesArena.cs:478-661](file://WavesArena/WavesArena.cs#L478-L661)
 
 章节来源
-- [WavesArenaBossSpawning.cs:117-251](file://WavesArena/WavesArenaBossSpawning.cs#L117-L251)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
-- [WavesArenaBossSpawning.cs:478-661](file://WavesArena/WavesArenaBossSpawning.cs#L478-L661)
+- [WavesArena.cs:117-251](file://WavesArena/WavesArena.cs#L117-L251)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
+- [WavesArena.cs:478-661](file://WavesArena/WavesArena.cs#L478-L661)
 
 ### 难度调节系统与前期 Boss 排除
 - 难度级别：
@@ -172,7 +187,7 @@ end
 - 前期排除：挑战开始时对 Boss 池进行洗牌，并将前20波中的强力 Boss（如口口口口、四骑士、龙裔遗族、焚天龙皇）与后续普通 Boss 交换，确保前期体验平滑。
 
 章节来源
-- [WavesArenaBossSpawning.cs:19-107](file://WavesArena/WavesArenaBossSpawning.cs#L19-L107)
+- [WavesArena.cs:19-107](file://WavesArena/WavesArena.cs#L19-L107)
 - [WavesArena.cs:42-104](file://WavesArena/WavesArena.cs#L42-L104)
 - [README.md:29-35](file://README.md#L29-L35)
 
@@ -183,7 +198,7 @@ end
 
 章节来源
 - [WavesArena.cs:209-346](file://WavesArena/WavesArena.cs#L209-L346)
-- [WavesArenaBossSpawning.cs:511-549](file://WavesArena/WavesArenaBossSpawning.cs#L511-L549)
+- [WavesArena.cs:511-549](file://WavesArena/WavesArena.cs#L511-L549)
 - [WavesArenaSpawnerControl.cs:141-251](file://WavesArena/WavesArenaSpawnerControl.cs#L141-L251)
 
 ### 掉落与奖励机制
@@ -223,11 +238,11 @@ WaveEnd --> |否| NextWave
 图表来源
 - [WavesArena.cs:348-441](file://WavesArena/WavesArena.cs#L348-L441)
 - [WavesArena.cs:643-742](file://WavesArena/WavesArena.cs#L643-L742)
-- [LootAndRewardsInfiniteHell.cs:30-308](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L30-L308)
+- [LootAndRewards.cs:30-308](file://LootAndRewards/LootAndRewards.cs#L378)
 
 章节来源
 - [WavesArena.cs:643-742](file://WavesArena/WavesArena.cs#L643-L742)
-- [LootAndRewardsInfiniteHell.cs:30-308](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L30-L308)
+- [LootAndRewards.cs:30-308](file://LootAndRewards/LootAndRewards.cs#L378)
 
 ### 配置选项与自定义方法
 - 全局配置项：
@@ -273,13 +288,13 @@ LR --> EM["EconomyManager"]
 
 图表来源
 - [WavesArena.cs:108-184](file://WavesArena/WavesArena.cs#L108-L184)
-- [WavesArenaBossSpawning.cs:117-251](file://WavesArena/WavesArenaBossSpawning.cs#L117-L251)
+- [WavesArena.cs:117-251](file://WavesArena/WavesArena.cs#L117-L251)
 - [LootAndRewards.cs:605-663](file://LootAndRewards/LootAndRewards.cs#L605-L663)
 - [Config.cs:234-407](file://Config/Config.cs#L234-L407)
 
 章节来源
 - [WavesArena.cs:108-184](file://WavesArena/WavesArena.cs#L108-L184)
-- [WavesArenaBossSpawning.cs:117-251](file://WavesArena/WavesArenaBossSpawning.cs#L117-L251)
+- [WavesArena.cs:117-251](file://WavesArena/WavesArena.cs#L117-L251)
 - [LootAndRewards.cs:605-663](file://LootAndRewards/LootAndRewards.cs#L605-L663)
 - [Config.cs:234-407](file://Config/Config.cs#L234-L407)
 
@@ -301,7 +316,7 @@ LR --> EM["EconomyManager"]
 - 配置未生效：确认 ModConfig 键名与范围限制；检查热更新回调是否触发。
 
 章节来源
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
 - [WavesArenaSpawnerControl.cs:141-251](file://WavesArena/WavesArenaSpawnerControl.cs#L141-L251)
 - [LootAndRewards.cs:246-262](file://LootAndRewards/LootAndRewards.cs#L246-L262)
 - [Config.cs:586-704](file://Config/Config.cs#L586-L704)

@@ -39,7 +39,7 @@ namespace BossRush
         public static readonly string FrostCounter = Path.Combine(BasePath, "frost_counter.wav");
     }
 
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal partial class SetBonusRuntimeModule
     {
         #region 眼光
 
@@ -184,7 +184,7 @@ namespace BossRush
 
             if (target == null) return false;
             if (target.IsMainCharacterHealth) return false;
-            if (IsModeHRunInProgressSafe()) return false;
+            if (ModBehaviour.IsModeHRunInProgressSafe()) return false;
             if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter) return false;
             if (PetNestCompanionAgent.IsCompanionHealth(target)) return false;
 

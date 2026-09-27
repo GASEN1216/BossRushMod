@@ -15,25 +15,41 @@ using ItemStatsSystem;
 
 namespace BossRush
 {
-    /// <summary>
-    /// 霜之哀伤系统启动模块 - 使用 partial class 扩展 ModBehaviour
-    /// </summary>
-    public partial class ModBehaviour
+    /// <summary>霜之哀伤 bootstrap 入口的唯一运行时 owner。</summary>
+    internal sealed class FrostmourneRuntimeModule : BossRushRuntimeModuleBase
     {
+        private ModBehaviour _owner;
+        private Coroutine pendingAbilitySetup;
+        private bool systemCleanupCompleted;
+
+        public override string ModuleName { get { return "Frostmourne"; } }
+
+        public override void OnAwake(ModBehaviour owner)
+        {
+            _owner = owner;
+        }
+
+        public override void OnDestroy()
+        {
+            try { CleanupFrostmourneSystem(); }
+            finally { _owner = null; }
+        }
+
         // ========== 初始化 ==========
 
         /// <summary>
         /// 初始化霜之哀伤系统（在 Start_Integration 中调用）
         /// </summary>
-        private void InitializeFrostmourneSystem()
+        internal void InitializeFrostmourneSystem()
         {
+            systemCleanupCompleted = false;
             try
             {
                 // 创建右键能力管理器（MonoBehaviour 单例）
                 if (FrostmourneAbilityManager.Instance == null)
                 {
                     GameObject mgrObj = new GameObject("FrostmourneAbilityManager");
-                    DontDestroyOnLoad(mgrObj);
+                    UnityEngine.Object.DontDestroyOnLoad(mgrObj);
                     mgrObj.AddComponent<FrostmourneAbilityManager>();
                     DevLog("[Frostmourne] 右键能力管理器已创建");
                 }
@@ -51,8 +67,10 @@ namespace BossRush
         /// <summary>
         /// 场景加载后设置霜之哀伤系统
         /// </summary>
-        private void SetupFrostmourneForScene(Scene scene)
+        internal void SetupFrostmourneForScene(Scene scene)
         {
+            CancelPendingAbilitySetup();
+            systemCleanupCompleted = false;
             try
             {
                 // 通知右键能力管理器场景已切换
@@ -63,9 +81,9 @@ namespace BossRush
                 }
 
                 // 延迟注册/重新绑定能力到玩家角色
-                if (IsGameplaySceneName(scene.name))
+                if (ModBehaviour.IsGameplaySceneName(scene.name))
                 {
-                    StartCoroutine(DelayedSetupFrostmourneAbility());
+                    pendingAbilitySetup = _owner.StartCoroutine(DelayedSetupFrostmourneAbility());
                 }
             }
             catch (Exception e)
@@ -83,7 +101,7 @@ namespace BossRush
             float waitTime = 0f;
             while (CharacterMainControl.Main == null && waitTime < 15f)
             {
-                yield return sharedWait05s;
+                yield return ModBehaviour.FrostmourneSharedWait05sForRuntime;
                 waitTime += 0.5f;
             }
 
@@ -125,8 +143,20 @@ namespace BossRush
         /// <summary>
         /// 清理霜之哀伤系统
         /// </summary>
-        private void CleanupFrostmourneSystem()
+        private void CancelPendingAbilitySetup()
         {
+            if (_owner != null && pendingAbilitySetup != null)
+            {
+                _owner.StopCoroutine(pendingAbilitySetup);
+            }
+            pendingAbilitySetup = null;
+        }
+
+        internal void CleanupFrostmourneSystem()
+        {
+            CancelPendingAbilitySetup();
+            if (systemCleanupCompleted) return;
+            systemCleanupCompleted = true;
             try
             {
                 // 清理右键能力管理器
@@ -144,6 +174,12 @@ namespace BossRush
             {
                 DevLog("[Frostmourne] 系统清理失败: " + e.Message);
             }
+        }
+
+        [System.Diagnostics.Conditional("BOSSRUSH_DEV")]
+        private static void DevLog(string message)
+        {
+            ModBehaviour.DevLog(message);
         }
     }
 

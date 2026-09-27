@@ -3,17 +3,17 @@ import sys
 
 
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-WAVE = Path("ZombieMode/ZombieModeWaveController.cs")
-BOSS = Path("ZombieMode/ZombieModeBossController.cs")
+WAVE = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
+BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 POLLUTION_PARTS = [
-    Path("ZombieMode/ZombieModePollution.cs"),
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_Pollution.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -69,7 +69,7 @@ def main() -> int:
     rewards = read_rewards()
 
     try:
-        spawn_normal = extract_method(spawner, "private async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync")
+        spawn_normal = extract_method(spawner, "internal async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync")
         if not spawn_normal:
             return fail("cannot extract TrySpawnZombieModeNormalZombieAsync")
 
@@ -112,27 +112,27 @@ def main() -> int:
 
         require(
             wave,
-            "() => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat",
+            "() => runState.CombatPhase == ZombieModeCombatPhase.Combat",
             "combat wave spawns must pass a combat-phase predicate",
         )
         require(
             wave,
-            "() => IsZombieModeAmbientZombieSpawnPhase(zombieModeRunState.CombatPhase)",
+            "() => IsZombieModeAmbientZombieSpawnPhase(runState.CombatPhase)",
             "ambient map spawns must pass the ambient-phase predicate through the await",
         )
         require(
             boss,
-            "() => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat",
+            "() => runState.CombatPhase == ZombieModeCombatPhase.Combat",
             "splitter boss children must not spawn after combat phase leaves Combat",
         )
         require(
             pollution,
-            "() => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat",
+            "() => runState.CombatPhase == ZombieModeCombatPhase.Combat",
             "elite splitting affix children must not spawn after combat phase leaves Combat",
         )
         require(
             rewards,
-            "() => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat",
+            "() => runState.CombatPhase == ZombieModeCombatPhase.Combat",
             "elite squad reward spawns must keep checking Combat phase through the await",
         )
     except AssertionError as exc:

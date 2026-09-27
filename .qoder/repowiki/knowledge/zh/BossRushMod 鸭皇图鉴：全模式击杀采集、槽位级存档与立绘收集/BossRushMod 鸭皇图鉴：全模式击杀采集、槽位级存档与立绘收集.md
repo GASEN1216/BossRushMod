@@ -53,7 +53,8 @@ source_files:
 | `CodexMilestones.cs` | 解锁数变化后调成就 `TryUnlock`，幂等 |
 | `CodexPortraitCache.cs` | 立绘 bundle 加载与 per-sprite 缓存，**fail-open** |
 | `CodexView.cs` / `CodexView_Grid.cs` | 面板、每页最多12张卡、待收集筛选与挑战来源（复用官方 ScrollRect 和 `Common/UI/BossRushUI.cs`） |
-| `CodexBookItem.cs` | 入口物品 500061（`CodexBookConfig`）+ 零消耗 `UsageBehavior` + 商店注入与宿主兼容转发 |
+| `CodexBookItem.cs` | 入口物品 500061（`CodexBookConfig`）+ 零消耗 `UsageBehavior` + 商店注入宿主兼容转发 |
+| `BossRushIntegrationRuntimeModule_CodexBook.cs` | Codex Book 商店库存状态、注入逻辑与存档事件订阅的唯一 `IntegrationRuntimeModule` owner |
 | `CodexRuntimeModule.cs` | 宿主回调及运行时销毁清理的唯一 owner：dormant 契约、幂等 bootstrap、兼容开关门控 |
 
 ## 3. 架构与设计约定
@@ -188,6 +189,12 @@ F3 调试菜单可导出目录清单（nameKey + 显示名），用于核对立�
 （`FallbackLoader` = `CodexBookConfig.EnsureRuntimeFallbackRegistrationShell`）。
 此前 shell 已写好但没登记，重启后玩家背包/仓库里的图鉴书会退化成官方
 `FallbackItem`（AGENTS 契约第 6 节）。词缀熔石 500060 同批补登记。
+
+### 8.2 2026-09-25 收敛商店库存 owner（SAFE）
+
+商店库存缓存、注入与 `OnCollectSaveData` / `OnSetFile` handler 已移入唯一
+`IntegrationRuntimeModule` partial；宿主保留旧方法签名作薄兼容桥，并在原 Start / OnDestroy
+顺序调用模块订阅、退订。库存 key、默认值、`-1` 哨兵、`KeyExisits` 拼写及上架参数保持不变。
 
 ## 9. 2026-08-31 官方预设池共享初始化
 

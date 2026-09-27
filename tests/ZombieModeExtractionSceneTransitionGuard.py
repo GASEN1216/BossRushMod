@@ -2,7 +2,7 @@ from pathlib import Path
 import sys
 
 
-EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 
 
 def fail(message: str) -> int:
@@ -38,9 +38,9 @@ def extract_method(text: str, marker: str) -> str:
 
 
 def has_success_dispatch_guard(method: str) -> bool:
-    direct_guard = "if (!TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea))"
+    direct_guard = "if (!TryDispatchZombieModeExtractionSuccess(runState.ActiveExtractionArea))"
     assigned_guard = (
-        "bool dispatched = TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea);",
+        "bool dispatched = TryDispatchZombieModeExtractionSuccess(runState.ActiveExtractionArea);",
         "if (!dispatched)",
     )
 
@@ -51,7 +51,7 @@ def main() -> int:
     extraction = EXTRACTION.read_text(encoding="utf-8")
 
     try:
-        ensure_area = extract_method(extraction, "private void EnsureZombieModeExtractionArea")
+        ensure_area = extract_method(extraction, "internal void EnsureZombieModeExtractionArea")
         if not ensure_area:
             return fail("cannot extract EnsureZombieModeExtractionArea")
 

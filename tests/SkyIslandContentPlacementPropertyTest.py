@@ -85,7 +85,7 @@ def near_blocker(px, pz, py, clearance):
 
 
 def read_anchors():
-    src = (ROOT / 'DebugAndTools/SkyIsland/SkyIslandLootTables.cs').read_text(encoding='utf-8')
+    src = (ROOT / 'SkyIsland/SkyIslandLootTables.cs').read_text(encoding='utf-8')
     return [(a, m, float(b), float(d), t, r) for a, m, b, d, t, r in re.findall(
         r'Anchor\("([A-Za-z0-9_]+)",\s*"([A-Za-z0-9_]+)",\s*([0-9.]+)f,\s*([0-9.]+)f,\s*'
         r'SkyIslandLootTier\.(\w+),\s*"([A-Za-z0-9]+)"\)', src)]

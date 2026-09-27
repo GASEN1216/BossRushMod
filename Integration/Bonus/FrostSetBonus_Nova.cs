@@ -22,7 +22,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal partial class SetBonusRuntimeModule
     {
         #region 霜噬配置
 
@@ -78,7 +78,7 @@ namespace BossRush
                 // 冷却在 FrostBiteStep 真正结算时才扣。调度即扣会让
                 // 「目标在这 40 毫秒里被打死 / 中途脱下装备 / 切图」白白吃掉一整轮冷却。
                 frostBitePending = true;
-                if (StartCoroutine(FrostBiteStep(target, victim, position, setBonusGeneration)) == null)
+                if (StartSetBonusCoroutine(FrostBiteStep(target, victim, position, setBonusGeneration)) == null)
                 {
                     frostBitePending = false;
                 }
@@ -126,7 +126,7 @@ namespace BossRush
                 {
                     if (TryApplyFrostFreeze(victim))
                     {
-                        PlaySoundEffect(SetBonusSfx.FrostNova);
+                        _owner.PlaySoundEffect(SetBonusSfx.FrostNova);
                     }
                 }
             }

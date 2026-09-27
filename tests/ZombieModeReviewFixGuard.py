@@ -18,21 +18,23 @@ import sys
 ZOMBIE_FILES = list(Path("ZombieMode").glob("*.cs"))
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
-INVENTORY = Path("ZombieMode/ZombieModeInventoryTransfer.cs")
-POLLUTION = Path("ZombieMode/ZombieModePollution.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+INVENTORY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+INVENTORY_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_InventoryTransfer.cs")
+POLLUTION = Path("ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs")
 POLLUTION_PARTS = [
     POLLUTION,
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-WAVE = Path("ZombieMode/ZombieModeWaveController.cs")
+WAVE = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -46,7 +48,7 @@ def read_rewards() -> str:
 def read_pollution() -> str:
     return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
 
-CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:
@@ -64,11 +66,30 @@ def uncommented_contains_call(text: str, call: str) -> bool:
     return False
 
 
+def extract_method(text: str, name: str):
+    """Extract one C# method body from comment-stripped source."""
+    matches = list(re.finditer(r"\b" + re.escape(name) + r"\s*\([^)]*\)\s*\{", text))
+    if len(matches) != 1:
+        return None
+    opening = text.find("{", matches[0].start())
+    depth = 0
+    for index in range(opening, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[matches[0].start():index + 1]
+    return None
+
+
 def main() -> int:
     combined = "\n".join(path.read_text(encoding="utf-8") for path in ZOMBIE_FILES)
     models = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
     entry = ENTRY.read_text(encoding="utf-8")
     inventory = clean_source(INVENTORY.read_text(encoding="utf-8"))
+    runtime_module = clean_source(RUNTIME_MODULE.read_text(encoding="utf-8"))
+    inventory_module = clean_source(INVENTORY_MODULE.read_text(encoding="utf-8"))
     pollution = read_pollution()
     spawner = SPAWNER.read_text(encoding="utf-8")
     wave = WAVE.read_text(encoding="utf-8")
@@ -91,11 +112,13 @@ def main() -> int:
 
     for token, text, label in [
         ("PruneZombieModeRunOnlyEnemyRecords", cleanup, "run-only enemy pruning helper"),
-        ("PruneZombieModeRunOnlyEnemyRecords(runId);", wave, "death pruning call"),
         ("PruneZombieModeRunOnlyEnemyRecords(runId);", cleanup, "runtime cleanup pruning call"),
     ]:
         if token not in text:
             return fail("ZombieModeReviewFixGuard: missing " + label + " -> " + token)
+    death_handler = extract_method(wave, "HandleZombieModeHealthDead")
+    if death_handler is None or death_handler.count("PruneZombieModeRunOnlyEnemyRecords(runId);") != 2:
+        return fail("ZombieModeReviewFixGuard: boss and normal death paths must both prune run-only enemy records")
 
     for token in [
         "RecycleZombieModeFarEnemiesForPerformance",
@@ -113,9 +136,9 @@ def main() -> int:
             return fail("ZombieModeReviewFixGuard: missing throttled NPC state/tuning -> " + token)
 
     for token in [
-        "Time.unscaledTime - zombieModeRunState.LastTemporaryNpcProtectionTickTime",
+        "Time.unscaledTime - runState.LastTemporaryNpcProtectionTickTime",
         "ZombieModeTuning.TemporaryNpcProtectionTickIntervalSeconds",
-        "zombieModeRunState.LastTemporaryNpcProtectionTickTime = Time.unscaledTime;",
+        "runState.LastTemporaryNpcProtectionTickTime = Time.unscaledTime;",
     ]:
         if token not in rewards:
             return fail("ZombieModeReviewFixGuard: temporary NPC protection is not throttled -> " + token)
@@ -125,26 +148,33 @@ def main() -> int:
     if "MaterialPropertyBlock" not in combined or "SetPropertyBlock" not in combined:
         return fail("ZombieModeReviewFixGuard: ZombieMode visual colors must use MaterialPropertyBlock")
 
+    transfer_methods = {}
+    for method_name in [
+        "PrepareZombieModeInventoryTransfer",
+        "TryMoveZombieModeEntryItemToStorageOrInbox",
+        "RollbackZombieModeInventoryTransfer",
+        "CollectZombieModeTopLevelPlayerItems",
+        "AddZombieModeTransferCandidate",
+    ]:
+        method = extract_method(inventory_module, method_name)
+        if method is None:
+            return fail("ZombieModeReviewFixGuard: production transfer method not found in runtime module -> " + method_name)
+        transfer_methods[method_name] = method
+    transfer_source = "\n".join(transfer_methods.values())
+
     for token, text, label in [
-        ("HasZombieModeBlockedTransferItem", inventory, "blocked item detector"),
-        ("TryGetZombieModeBlockedTransferMessage", inventory, "blocked item message helper"),
-        ("IsZombieModeBlockedTransferItem", inventory, "blocked item classifier"),
-        ("ItemHasZombieModeTransferBlockTag", inventory, "blocked item tag checker"),
-        ("DontDropOnDeadInSlot", inventory, "bound item tag block"),
+        ("HasZombieModeBlockedTransferItem", transfer_source, "blocked item detector"),
+        ("TryGetZombieModeBlockedTransferMessage", transfer_source, "blocked item message helper"),
+        ("IsZombieModeBlockedTransferItem", transfer_source, "blocked item classifier"),
+        ("ItemHasZombieModeTransferBlockTag", transfer_source, "blocked item tag checker"),
+        ("DontDropOnDeadInSlot", transfer_source, "bound item tag block"),
         ("ZombieModeFailureReason.BlockedTaskOrBoundItems", entry, "precheck failure reason"),
-        ("BossRush_ZombieMode_Notify_HasBoundItems", inventory, "blocked item notification"),
+        ("BossRush_ZombieMode_Notify_HasBoundItems", transfer_source, "blocked item notification"),
     ]:
         if token in text:
             return fail("ZombieModeReviewFixGuard: entry must not block carried/equipped items via " + label + " -> " + token)
 
-    transfer_candidate_match = re.search(
-        r"private\s+void\s+AddZombieModeTransferCandidate\s*\([^)]*\)\s*\{(.+?)\n\s{8}\}",
-        inventory,
-        re.S,
-    )
-    if transfer_candidate_match is None:
-        return fail("ZombieModeReviewFixGuard: AddZombieModeTransferCandidate not found")
-    transfer_candidate_body = transfer_candidate_match.group(1)
+    transfer_candidate_body = transfer_methods["AddZombieModeTransferCandidate"]
     for token in [
         "BossRushItemIds.ZombieTideInvitation",
         "BossRushItemIds.ZombieTideBeacon",
@@ -154,27 +184,13 @@ def main() -> int:
         if token in transfer_candidate_body:
             return fail("ZombieModeReviewFixGuard: transfer candidate must not exclude player items -> " + token)
 
-    transfer_shell_match = re.search(
-        r"private\s+bool\s+PrepareZombieModeInventoryTransferShell\s*\([^)]*\)\s*\{(.+?)\n\s{8}\}",
-        inventory,
-        re.S,
-    )
-    if transfer_shell_match is None:
-        return fail("ZombieModeReviewFixGuard: PrepareZombieModeInventoryTransferShell not found")
-    transfer_shell_body = transfer_shell_match.group(1)
+    transfer_shell_body = transfer_methods["PrepareZombieModeInventoryTransfer"]
     if "storage.AddItem(item)" in transfer_shell_body or "PlayerStorage.Inventory.AddItem(item)" in transfer_shell_body:
         return fail("ZombieModeReviewFixGuard: entry transfer must not fail just because storage grid is full")
     if "PlayerStorage.Instance == null" in transfer_shell_body:
         return fail("ZombieModeReviewFixGuard: entry transfer must not fail just because PlayerStorage instance is absent")
 
-    transfer_helper_match = re.search(
-        r"private\s+bool\s+TryMoveZombieModeEntryItemToStorageOrInbox\s*\([^)]*\)\s*\{(.+?)\n\s{8}\}",
-        inventory,
-        re.S,
-    )
-    if transfer_helper_match is None:
-        return fail("ZombieModeReviewFixGuard: TryMoveZombieModeEntryItemToStorageOrInbox not found")
-    transfer_helper_body = transfer_helper_match.group(1)
+    transfer_helper_body = transfer_methods["TryMoveZombieModeEntryItemToStorageOrInbox"]
     detach_index = transfer_helper_body.find("item.Detach();")
     inbox_index = transfer_helper_body.find("PlayerStorageBuffer.Buffer.Add(itemData);")
     if detach_index < 0 or inbox_index < 0 or detach_index > inbox_index:
@@ -182,10 +198,10 @@ def main() -> int:
     for token in [
         "storage.GetFirstEmptyPosition(0)",
         "storage.AddAt(item, firstEmptyPosition)",
-        "zombieModeEntryTransaction.InventoryTransferredItems.Add(item);",
+        "entryTransaction.InventoryTransferredItems.Add(item);",
         "ReforgeDataPersistence.SyncCurrentReforgeState(item);",
         "PlayerStorageBuffer.Buffer.Add(itemData);",
-        "zombieModeEntryTransaction.InventoryTransferredInboxItems.Add(itemData);",
+        "entryTransaction.InventoryTransferredInboxItems.Add(itemData);",
         "item.DestroyTree();",
     ]:
         if token not in transfer_helper_body:
@@ -193,22 +209,30 @@ def main() -> int:
     if "PlayerStorage.Push(item, true)" in transfer_helper_body:
         return fail("ZombieModeReviewFixGuard: entry transfer inbox fallback must use direct PlayerStorageBuffer write, not PlayerStorage.Push")
 
-    rollback_match = re.search(
-        r"private\s+void\s+RollbackZombieModeInventoryTransferShell\s*\([^)]*\)\s*\{(.+?)\n\s{8}\}",
-        inventory,
-        re.S,
-    )
-    if rollback_match is None:
-        return fail("ZombieModeReviewFixGuard: RollbackZombieModeInventoryTransferShell not found")
-    rollback_body = rollback_match.group(1)
+    rollback_body = transfer_methods["RollbackZombieModeInventoryTransfer"]
     if "PlayerStorageBuffer.Buffer.Remove" in rollback_body:
         return fail("ZombieModeReviewFixGuard: rollback must retain the only persisted inbox copy")
     for token in [
-        "zombieModeEntryTransaction.InventoryTransferredInboxItems",
-        "zombieModeEntryTransaction.InventoryTransferredInboxItems.Clear();",
+        "entryTransaction.InventoryTransferredInboxItems",
+        "entryTransaction.InventoryTransferredInboxItems.Clear();",
     ]:
         if token not in rollback_body:
             return fail("ZombieModeReviewFixGuard: rollback must clear transfer bookkeeping while retaining delivered inbox trees -> " + token)
+
+    for name, call in [
+        ("PrepareZombieModeInventoryTransferShell", "module.PrepareZombieModeInventoryTransfer(runId)"),
+        ("TryMoveZombieModeEntryItemToStorageOrInbox", "module.TryMoveZombieModeEntryItemToStorageOrInbox(item)"),
+        ("RollbackZombieModeInventoryTransferShell", "module.RollbackZombieModeInventoryTransfer()"),
+        ("CollectZombieModeTopLevelPlayerItems", "module.CollectZombieModeTopLevelPlayerItems()"),
+        ("AddZombieModeTransferCandidate", "module.AddZombieModeTransferCandidate(result, item)"),
+    ]:
+        bridge = extract_method(inventory, name)
+        if bridge is None or call not in bridge:
+            return fail("ZombieModeReviewFixGuard: host compatibility bridge must forward to runtime module -> " + name)
+    runtime_bridge = clean_source(Path("ZombieMode/ZombieModeEntryHostBridge.cs").read_text(encoding="utf-8"))
+    prepare_bridge = extract_method(runtime_bridge, "PrepareZombieModeInventoryTransferForRuntimeModule")
+    if prepare_bridge is None or "module.PrepareZombieModeInventoryTransfer(runId)" not in prepare_bridge:
+        return fail("ZombieModeReviewFixGuard: map-selection runtime bridge must forward to module transfer owner")
 
     precheck_match = re.search(
         r"private\s+bool\s+TryRunZombieModePrechecks\s*\([^)]*\)\s*\{(.+?)\n\s{8}\}",

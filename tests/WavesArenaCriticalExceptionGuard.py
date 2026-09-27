@@ -5,7 +5,8 @@ import re
 import sys
 
 
-ARENA = Path("WavesArena/WavesArena.cs")
+ARENA = Path("WavesArena/WavesArenaRuntimeModule_WaveDeaths.cs")
+HOST = Path("WavesArena/WavesArena.cs")
 SPAWNER_CONTROL = Path("WavesArena/WavesArenaSpawnerControl.cs")
 EMPTY_CATCH_RE = re.compile(r"catch\s*(?:\([^)]*\))?\s*\{\s*\}", re.S)
 
@@ -54,17 +55,17 @@ def assert_no_empty_catches(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    if not ARENA.exists() or not SPAWNER_CONTROL.exists():
+    if not ARENA.exists() or not HOST.exists() or not SPAWNER_CONTROL.exists():
         return fail("missing WavesArena source files")
 
     arena = ARENA.read_text(encoding="utf-8")
     spawner_control = SPAWNER_CONTROL.read_text(encoding="utf-8")
 
     checks = [
-        (arena, "private void HandleBossDeath(", "[BossRush] [ERROR] HandleBossDeath 错误: "),
-        (arena, "private void ProceedAfterWaveFinished()", "[BossRush] [ERROR] ProceedAfterWaveFinished 错误: "),
-        (arena, "private void OnBossSpawnFailed(", "[BossRush] [ERROR] OnBossSpawnFailed 错误: "),
-        (spawner_control, "private void TryFixStuckWaveIfNoBossAlive()", "[BossRush] [ERROR] TryFixStuckWaveIfNoBossAlive 错误: "),
+        (arena, "internal void HandleBossDeath(", "[BossRush] [ERROR] HandleBossDeath 错误: "),
+        (arena, "internal void ProceedAfterWaveFinished()", "[BossRush] [ERROR] ProceedAfterWaveFinished 错误: "),
+        (arena, "internal void OnBossSpawnFailed(", "[BossRush] [ERROR] OnBossSpawnFailed 错误: "),
+        (spawner_control, "internal void TryFixStuckWaveIfNoBossAlive()", "[BossRush] [ERROR] TryFixStuckWaveIfNoBossAlive 错误: "),
     ]
     for text, signature, expected_log in checks:
         error = assert_logs_outer_exception(text, signature, expected_log)
@@ -72,17 +73,26 @@ def main() -> int:
             return fail(error)
 
     no_empty_checks = [
-        (arena, "private void OnEnemyDiedWithDamageInfo("),
-        (arena, "private void HandleBossDeath("),
-        (arena, "private void ProceedAfterWaveFinished()"),
-        (arena, "private void OnBossSpawnFailed("),
-        (spawner_control, "private void DisableAllSpawners()"),
-        (spawner_control, "private void TryFixStuckWaveIfNoBossAlive()"),
+        (arena, "internal void OnEnemyDiedWithDamageInfo("),
+        (arena, "internal void HandleBossDeath("),
+        (arena, "internal void ProceedAfterWaveFinished()"),
+        (arena, "internal void OnBossSpawnFailed("),
+        (spawner_control, "internal void DisableAllSpawners()"),
+        (spawner_control, "internal void TryFixStuckWaveIfNoBossAlive()"),
     ]
     for text, signature in no_empty_checks:
         error = assert_no_empty_catches(text, signature)
         if error:
             return fail(error)
+    host = HOST.read_text(encoding="utf-8")
+    for bridge in (
+        "wavesArenaRuntime.OnEnemyDiedWithDamageInfo(deadHealth, damageInfo);",
+        "wavesArenaRuntime.HandleBossDeath(bossMain, damageInfo);",
+        "wavesArenaRuntime.ProceedAfterWaveFinished();",
+        "wavesArenaRuntime.OnBossSpawnFailed(preset);",
+    ):
+        if bridge not in host:
+            return fail("critical exception path is not reachable through host bridge: " + bridge)
 
     print("WavesArenaCriticalExceptionGuard: PASS")
     return 0

@@ -151,7 +151,7 @@ namespace BossRush
         }
     }
 
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
         // ─── 复用原版 SoulCube prefab 的缓存 ───
         private static SoulCube s_cachedSoulCubePrefab;
@@ -219,13 +219,13 @@ namespace BossRush
         /// <summary>
         /// 每局允许重新打印视觉路径日志，但不强制重新全局搜索 prefab。
         /// </summary>
-        private void PrepareSoulCubePrefabCacheForZombieRun()
+        internal void PrepareSoulCubePrefabCacheForZombieRun()
         {
             s_soulCubePrefabLoggedOnce = false;
             PrewarmSoulCubePrefabCache();
         }
 
-        private bool CreateZombieModePurificationPoint(int runId, Vector3 position, int value)
+        internal bool CreateZombieModePurificationPoint(int runId, Vector3 position, int value)
         {
             if (!IsZombieModeRunValid(runId))
             {
@@ -254,7 +254,7 @@ namespace BossRush
                     point.transform.localScale = new Vector3(0.35f, 0.35f, 0.35f);
 
                     // 必须用 DestroyImmediate 移除原版 SoulCube 脚本——
-                    // SoulCube.Update 中 target==null 时会 Destroy(gameObject) 导致净化点自毁。
+                    // SoulCube.Update 中 target==null 时会 UnityEngine.Object.Destroy(gameObject) 导致净化点自毁。
                     SoulCube originalScript = point.GetComponent<SoulCube>();
                     if (originalScript != null)
                     {
@@ -277,7 +277,7 @@ namespace BossRush
                     if (!s_soulCubePrefabLoggedOnce)
                     {
                         s_soulCubePrefabLoggedOnce = true;
-                        DevLog("[ZombieMode] 净化点视觉：使用原版 SoulCube prefab");
+                        ModBehaviour.DevLog("[ZombieMode] 净化点视觉：使用原版 SoulCube prefab");
                     }
                 }
                 else
@@ -287,7 +287,7 @@ namespace BossRush
                     if (!s_soulCubePrefabLoggedOnce)
                     {
                         s_soulCubePrefabLoggedOnce = true;
-                        DevLog("[ZombieMode] 净化点视觉：SoulCube prefab 未找到，使用回退发光球体");
+                        ModBehaviour.DevLog("[ZombieMode] 净化点视觉：SoulCube prefab 未找到，使用回退发光球体");
                     }
                 }
 
@@ -297,7 +297,7 @@ namespace BossRush
                 star.SpawnPosition = point.transform.position;
                 star.SpawnTime = GetZombieModeRuntimeNow();
                 star.Visual = point;
-                zombieModeRunState.PendingPurificationStars.Add(star);
+                runState.PendingPurificationStars.Add(star);
 
                 ZombiePurificationPointController controller = point.AddComponent<ZombiePurificationPointController>();
                 controller.Initialize(runId, Mathf.Max(1, value), star);
@@ -323,7 +323,7 @@ namespace BossRush
             Collider collider = point.GetComponent<Collider>();
             if (collider != null)
             {
-                Destroy(collider);
+                UnityEngine.Object.Destroy(collider);
             }
 
             Renderer renderer = point.GetComponent<Renderer>();
@@ -337,21 +337,21 @@ namespace BossRush
             return point;
         }
 
-        private bool HasZombieModePendingPurificationStars()
+        internal bool HasZombieModePendingPurificationStars()
         {
-            return zombieModeRunState.PendingPurificationStars.Count > 0;
+            return runState.PendingPurificationStars.Count > 0;
         }
 
-        private void ForceCollectZombieModePendingPurificationStars(int runId)
+        internal void ForceCollectZombieModePendingPurificationStars(int runId)
         {
-            if (!IsZombieModeRunValid(runId) || zombieModeRunState.PendingPurificationStars.Count <= 0)
+            if (!IsZombieModeRunValid(runId) || runState.PendingPurificationStars.Count <= 0)
             {
                 return;
             }
 
-            for (int i = zombieModeRunState.PendingPurificationStars.Count - 1; i >= 0; i--)
+            for (int i = runState.PendingPurificationStars.Count - 1; i >= 0; i--)
             {
-                ZombiePurificationStar star = zombieModeRunState.PendingPurificationStars[i];
+                ZombiePurificationStar star = runState.PendingPurificationStars[i];
                 if (star == null || star.Settled)
                 {
                     continue;
@@ -378,7 +378,7 @@ namespace BossRush
             {
                 starRecord.Settled = true;
                 starRecord.Visual = null;
-                zombieModeRunState.PendingPurificationStars.Remove(starRecord);
+                runState.PendingPurificationStars.Remove(starRecord);
             }
 
             if (!IsZombieModeRunValid(runId))
@@ -386,7 +386,7 @@ namespace BossRush
                 return;
             }
 
-            zombieModeRunState.PurificationPoints += Mathf.Max(1, value);
+            runState.PurificationPoints += Mathf.Max(1, value);
         }
     }
 }

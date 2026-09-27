@@ -44,6 +44,18 @@ internal static class Program
 
     private static void Main()
     {
+        var bountyOwner = new ModBehaviour { modeFActive = true };
+        var bountyVictim = new CharacterMainControl { InstanceId = 19 };
+        var otherVictim = new CharacterMainControl { InstanceId = 20 };
+        bountyOwner.modeFState.BountyMarksByCharacterId[19] = 1;
+        bountyOwner.LatchBountyForTest(19, true);
+        bountyOwner.modeFState.BountyMarksByCharacterId.Remove(19);
+        Check(bountyOwner.HasCampaignBountyMark(bountyVictim), "bounty query sees latch after marks are removed");
+        Check(bountyOwner.HasCampaignBountyMark(bountyVictim), "bounty query does not consume latch");
+        Check(!bountyOwner.ConsumeCampaignBountyMark(otherVictim), "wrong victim does not consume latch");
+        Check(bountyOwner.ConsumeCampaignBountyMark(bountyVictim), "matching victim consumes latch once");
+        Check(!bountyOwner.ConsumeCampaignBountyMark(bountyVictim), "consumed latch cannot count twice");
+
         Check(CampaignContentCatalog.Source == "Json", "must execute deployed chapter table, not fallback");
         Check(CampaignContentCatalog.ContentSignature == CampaignContentCatalog.ExpectedContentSignature, "table and fallback agree");
 

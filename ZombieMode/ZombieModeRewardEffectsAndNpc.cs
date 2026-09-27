@@ -15,17 +15,28 @@ using BossRush.Utils;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
-        private bool ApplyZombieModeReward(ZombieModeRewardType rewardType)
+        private System.Func<string, GameObject> resolveZombieModeNpcPrefab;
+        private System.Action<GameObject> addZombieModeCourierInteraction;
+
+        internal void BindZombieModeTemporaryNpcServices(
+            System.Func<string, GameObject> resolvePrefab,
+            System.Action<GameObject> addCourierInteraction)
         {
-            bool bossNode = zombieModeRunState.CurrentRewardNode != null && zombieModeRunState.CurrentRewardNode.BossNode;
+            resolveZombieModeNpcPrefab = resolvePrefab;
+            addZombieModeCourierInteraction = addCourierInteraction;
+        }
+
+        internal bool ApplyZombieModeReward(ZombieModeRewardType rewardType)
+        {
+            bool bossNode = runState.CurrentRewardNode != null && runState.CurrentRewardNode.BossNode;
             switch (rewardType)
             {
                 case ZombieModeRewardType.PurificationPoints:
                 {
                     int points = CalculateZombieModePurificationRewardPoints(bossNode);
-                    zombieModeRunState.PurificationPoints += points;
+                    runState.PurificationPoints += points;
                     NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Notify_RewardGranted"), points));
                     return true;
                 }
@@ -117,7 +128,7 @@ namespace BossRush
                     ApplyZombieModeInsuranceReward(0.20f, false);
                     return true;
                 case ZombieModeRewardType.InsuranceNearFull:
-                    zombieModeRunState.PollutionFromContracts += 5;
+                    runState.PollutionFromContracts += 5;
                     ApplyZombieModeInsuranceReward(0.80f, false);
                     return true;
 
@@ -159,27 +170,27 @@ namespace BossRush
                     return ApplyZombieModeOptionReward(rewardType);
 
                 case ZombieModeRewardType.NextNodeFreeRefresh:
-                    zombieModeRunState.PendingFreeRefreshNextNode = Mathf.Clamp(
-                        zombieModeRunState.PendingFreeRefreshNextNode + 1,
+                    runState.PendingFreeRefreshNextNode = Mathf.Clamp(
+                        runState.PendingFreeRefreshNextNode + 1,
                         0,
                         ZombieModeTuning.FreeRefreshCapPerNode);
                     NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_NextNodeFreeRefresh"));
                     return true;
                 case ZombieModeRewardType.HalfPricePaidRefresh:
-                    zombieModeRunState.HalfPriceNextPaidRefresh = true;
+                    runState.HalfPriceNextPaidRefresh = true;
                     NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_HalfPricePaidRefresh"));
                     return true;
                 case ZombieModeRewardType.CurrentNodeFreeRefresh:
                 {
-                    if (zombieModeRunState.FreeRefreshesRemainingCurrentNode >= ZombieModeTuning.FreeRefreshCapPerNode)
+                    if (runState.FreeRefreshesRemainingCurrentNode >= ZombieModeTuning.FreeRefreshCapPerNode)
                     {
-                        zombieModeRunState.PurificationPoints += 30;
+                        runState.PurificationPoints += 30;
                         NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Notify_RewardGranted"), 30));
                     }
                     else
                     {
-                        zombieModeRunState.FreeRefreshesRemainingCurrentNode = Mathf.Clamp(
-                            zombieModeRunState.FreeRefreshesRemainingCurrentNode + 1,
+                        runState.FreeRefreshesRemainingCurrentNode = Mathf.Clamp(
+                            runState.FreeRefreshesRemainingCurrentNode + 1,
                             0,
                             ZombieModeTuning.FreeRefreshCapPerNode);
                         NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_CurrentNodeFreeRefresh"));
@@ -202,11 +213,11 @@ namespace BossRush
                 case ZombieModeRewardType.StarterReroll:
                 {
                     bool granted = false;
-                    if (zombieModeRunState.StarterLoadout == ZombieModeStarterLoadout.Gunner)
+                    if (runState.StarterLoadout == ZombieModeStarterLoadout.Gunner)
                     {
                         granted = TryGiveRandomItemByTags(ZombieModeRewardTagGun, 2, ZombieModeTuning.StarterMaxQuality);
                     }
-                    else if (zombieModeRunState.StarterLoadout == ZombieModeStarterLoadout.Melee)
+                    else if (runState.StarterLoadout == ZombieModeStarterLoadout.Melee)
                     {
                         granted = TryGiveRandomItemByTags(ZombieModeRewardTagMeleeWeapon, 2, ZombieModeTuning.StarterMaxQuality);
                     }
@@ -241,7 +252,7 @@ namespace BossRush
             }
         }
 
-        private string GetZombieModePendingTemporaryNpcServiceType(ZombieModeRewardType rewardType)
+        internal string GetZombieModePendingTemporaryNpcServiceType(ZombieModeRewardType rewardType)
         {
             if (rewardType == ZombieModeRewardType.TempMerchant)
             {
@@ -256,7 +267,7 @@ namespace BossRush
             return string.Empty;
         }
 
-        private void SpawnZombieModeTemporaryRealNpc(int runId, string npcType)
+        internal void SpawnZombieModeTemporaryRealNpc(int runId, string npcType)
         {
             if (!IsZombieModeRunValid(runId) || string.IsNullOrEmpty(npcType))
             {
@@ -282,9 +293,9 @@ namespace BossRush
             ZombieModeTemporaryRealNpcRecord record = new ZombieModeTemporaryRealNpcRecord();
             record.GameObject = npc;
             record.NpcType = npcType;
-            record.SpawnWave = zombieModeRunState.CurrentWave;
-            record.SafeZoneBound = zombieModeRunState.ActiveSafeZoneActive;
-            zombieModeRunState.TemporaryRealNpcs.Add(record);
+            record.SpawnWave = runState.CurrentWave;
+            record.SafeZoneBound = runState.ActiveSafeZoneActive;
+            runState.TemporaryRealNpcs.Add(record);
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.TemporaryNpc, npc, npc, () => CloseZombieModeTemporaryRealNpcServices(npc));
 
             string key = "BossRush_ZombieMode_Npc_TempGoblinNpc";
@@ -325,10 +336,10 @@ namespace BossRush
         private Vector3 GetZombieModeTemporaryRealNpcAnchorPosition()
         {
             CharacterMainControl player = CharacterMainControl.Main;
-            Vector3 center = zombieModeRunState.ActiveSafeZoneActive
-                ? zombieModeRunState.ActiveSafeZoneCenter
+            Vector3 center = runState.ActiveSafeZoneActive
+                ? runState.ActiveSafeZoneCenter
                 : (player != null ? player.transform.position + player.transform.forward * 3f : Vector3.zero);
-            int existingCount = zombieModeRunState.TemporaryNpcs.Count + zombieModeRunState.TemporaryRealNpcs.Count;
+            int existingCount = runState.TemporaryNpcs.Count + runState.TemporaryRealNpcs.Count;
             float angle = existingCount * 72f;
             Vector3 offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * 2.8f;
             Vector3 spawnPos = center + offset + Vector3.up * 0.05f;
@@ -356,12 +367,13 @@ namespace BossRush
 
         private GameObject CreateZombieModeTemporaryGoblinNpc(Vector3 spawnPos)
         {
-            if (!LoadGoblinAssetBundle() || goblinPrefab == null)
+            GameObject prefab = resolveZombieModeNpcPrefab("Goblin");
+            if (prefab == null)
             {
                 return null;
             }
 
-            GameObject npc = UnityEngine.Object.Instantiate(goblinPrefab, spawnPos, Quaternion.identity);
+            GameObject npc = UnityEngine.Object.Instantiate(prefab, spawnPos, Quaternion.identity);
             npc.name = "ZombieMode_TemporaryRealNpc_Goblin";
             npc.SetActive(true);
             foreach (Transform child in npc.GetComponentsInChildren<Transform>(true))
@@ -394,17 +406,23 @@ namespace BossRush
                 interactable = npc.AddComponent<GoblinInteractable>();
             }
 
+            // 临时 NPC 的创建者决定支付策略；商店不推断玩法模式。
+            interactable.ShopPaymentStrategy = NPCShopPaymentStrategy.Purification(
+                price => CanAffordZombieModePurificationPointsForRealNpc(npc.transform, price),
+                price => TrySpendZombieModePurificationPointsForRealNpc(npc.transform, price, "ZombieModeTempGoblinShopBuy"));
+
             return npc;
         }
 
         private GameObject CreateZombieModeTemporaryNurseNpc(Vector3 spawnPos)
         {
-            if (!LoadNurseAssetBundle() || nursePrefab == null)
+            GameObject prefab = resolveZombieModeNpcPrefab("Nurse");
+            if (prefab == null)
             {
                 return null;
             }
 
-            GameObject npc = UnityEngine.Object.Instantiate(nursePrefab, spawnPos, Quaternion.identity);
+            GameObject npc = UnityEngine.Object.Instantiate(prefab, spawnPos, Quaternion.identity);
             npc.name = "ZombieMode_TemporaryRealNpc_Nurse";
             npc.SetActive(true);
             foreach (Transform child in npc.GetComponentsInChildren<Transform>(true))
@@ -441,12 +459,13 @@ namespace BossRush
 
         private GameObject CreateZombieModeTemporaryCourierNpc(Vector3 spawnPos)
         {
-            if (!LoadCourierAssetBundle() || courierPrefab == null)
+            GameObject prefab = resolveZombieModeNpcPrefab("Courier");
+            if (prefab == null)
             {
                 return null;
             }
 
-            GameObject npc = UnityEngine.Object.Instantiate(courierPrefab, spawnPos, Quaternion.identity);
+            GameObject npc = UnityEngine.Object.Instantiate(prefab, spawnPos, Quaternion.identity);
             npc.name = "ZombieMode_TemporaryRealNpc_Courier";
             npc.SetActive(true);
             foreach (Transform child in npc.GetComponentsInChildren<Transform>(true))
@@ -472,7 +491,7 @@ namespace BossRush
             movement.SetStationary(true);
             controller.SetStationary(true);
             controller.StartTalking(false);
-            AddCourierInteraction(npc);
+            addZombieModeCourierInteraction(npc);
             return npc;
         }
 
@@ -494,11 +513,11 @@ namespace BossRush
             marker.UsesPurificationPayment = true;
         }
 
-        private ZombieModeTemporaryRealNpcRecord FindZombieModeTemporaryRealNpc(string npcType)
+        internal ZombieModeTemporaryRealNpcRecord FindZombieModeTemporaryRealNpc(string npcType)
         {
-            for (int i = 0; i < zombieModeRunState.TemporaryRealNpcs.Count; i++)
+            for (int i = 0; i < runState.TemporaryRealNpcs.Count; i++)
             {
-                ZombieModeTemporaryRealNpcRecord npc = zombieModeRunState.TemporaryRealNpcs[i];
+                ZombieModeTemporaryRealNpcRecord npc = runState.TemporaryRealNpcs[i];
                 if (npc != null &&
                     npc.GameObject != null &&
                     string.Equals(npc.NpcType, npcType, System.StringComparison.Ordinal))
@@ -530,7 +549,7 @@ namespace BossRush
                 return false;
             }
 
-            return cost <= 0 || zombieModeRunState.PurificationPoints >= cost;
+            return cost <= 0 || runState.PurificationPoints >= cost;
         }
 
         public bool TrySpendZombieModePurificationPointsForRealNpc(Component component, int cost, string reason)
@@ -550,13 +569,13 @@ namespace BossRush
                 return;
             }
 
-            zombieModeRunState.PurificationPoints += cost;
+            runState.PurificationPoints += cost;
         }
 
         public int GetZombieModePurificationPointsForRealNpcUi(Component component)
         {
             return IsZombieModeTemporaryRealNpc(component)
-                ? zombieModeRunState.PurificationPoints
+                ? runState.PurificationPoints
                 : 0;
         }
 
@@ -575,11 +594,11 @@ namespace BossRush
             }
 
             float current = 0f;
-            zombieModeRunState.AttributeBonuses.TryGetValue(key, out current);
+            runState.AttributeBonuses.TryGetValue(key, out current);
             float next = increment < 0f
                 ? Mathf.Max(cap, current + increment)
                 : Mathf.Min(cap, current + increment);
-            zombieModeRunState.AttributeBonuses[key] = next;
+            runState.AttributeBonuses[key] = next;
             ApplyZombieModePlayerAttributeModifiers();
 
             NotificationText.Push(string.Format(
@@ -629,7 +648,7 @@ namespace BossRush
 
             float oldMaxHealth = player.Health != null ? player.Health.MaxHealth : -1f;
             RemoveZombieModeAttributeModifiers();
-            foreach (KeyValuePair<string, float> pair in zombieModeRunState.AttributeBonuses)
+            foreach (KeyValuePair<string, float> pair in runState.AttributeBonuses)
             {
                 if (Mathf.Approximately(pair.Value, 0f))
                 {
@@ -670,38 +689,38 @@ namespace BossRush
                     player,
                     statName,
                     percent,
-                    this,
-                    zombieModeRunState.AttributeModifierRecords,
+                    owner,
+                    runState.AttributeModifierRecords,
                     "ZombieMode Reward Attribute");
                 if (!added)
                 {
                     return;
                 }
 
-                if (!zombieModeRunState.AttributeModifierCleanupRegistered)
+                if (!runState.AttributeModifierCleanupRegistered)
                 {
-                    zombieModeRunState.AttributeModifierCleanupRegistered = true;
-                    RegisterZombieModeRunOnlyObject(zombieModeRunState.RunId, ZombieModeRunOnlyObjectKind.Buff, null, player.CharacterItem, RemoveZombieModeAttributeModifiers);
+                    runState.AttributeModifierCleanupRegistered = true;
+                    RegisterZombieModeRunOnlyObject(runState.RunId, ZombieModeRunOnlyObjectKind.Buff, null, player.CharacterItem, RemoveZombieModeAttributeModifiers);
                 }
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] [WARNING] Attribute Modifier 注册失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] [WARNING] Attribute Modifier 注册失败: " + e.Message);
             }
         }
 
-        private void RemoveZombieModeAttributeModifiers()
+        internal void RemoveZombieModeAttributeModifiers()
         {
             RuntimeStatModifierTracker.RemoveAll(
-                zombieModeRunState.AttributeModifierRecords,
+                runState.AttributeModifierRecords,
                 "ZombieMode Reward Attribute");
-            zombieModeRunState.AttributeModifierCleanupRegistered = false;
+            runState.AttributeModifierCleanupRegistered = false;
         }
 
         private void GrantZombieModeMerchantPurchaseGuarantee()
         {
-            zombieModeRunState.GuaranteedMerchantPurchasePending = true;
-            zombieModeRunState.GuaranteedMerchantPurchaseMinQuality = 6;
+            runState.GuaranteedMerchantPurchasePending = true;
+            runState.GuaranteedMerchantPurchaseMinQuality = 6;
             NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_TempMerchantGuarantee"));
         }
 
@@ -783,7 +802,7 @@ namespace BossRush
             return string.Empty;
         }
 
-        private void SpawnZombieModeTemporaryNpc(int runId, string serviceType, bool bossNodeStock)
+        internal void SpawnZombieModeTemporaryNpc(int runId, string serviceType, bool bossNodeStock)
         {
             if (!IsZombieModeRunValid(runId))
             {
@@ -801,7 +820,7 @@ namespace BossRush
             ClearZombieModeTemporaryNpcThreatTargets();
 
             ZombieModeTemporaryNpc record = CreateZombieModeTemporaryNpcRecord(npc, serviceType, bossNodeStock);
-            zombieModeRunState.TemporaryNpcs.Add(record);
+            runState.TemporaryNpcs.Add(record);
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.TemporaryNpc, npc, interactable, null);
 
             string key = string.Equals(serviceType, "Nurse", System.StringComparison.Ordinal)
@@ -813,10 +832,10 @@ namespace BossRush
         private GameObject CreateZombieModeTemporaryServiceTerminal(int runId, string serviceType)
         {
             CharacterMainControl player = CharacterMainControl.Main;
-            Vector3 center = zombieModeRunState.ActiveSafeZoneActive
-                ? zombieModeRunState.ActiveSafeZoneCenter
+            Vector3 center = runState.ActiveSafeZoneActive
+                ? runState.ActiveSafeZoneCenter
                 : (player != null ? player.transform.position + player.transform.forward * 3f : Vector3.zero);
-            int existingCount = zombieModeRunState.TemporaryNpcs.Count;
+            int existingCount = runState.TemporaryNpcs.Count;
             float angle = ZombieModeNpcCatalog.NpcAngleArrangement[existingCount % ZombieModeNpcCatalog.NpcAngleArrangement.Length];
             Vector3 offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * 2.4f;
 
@@ -837,8 +856,8 @@ namespace BossRush
             // 胶囊只留碰撞体（交互与阻挡）；交互体与服务状态不动。资源缺失时退回旧胶囊并染色。
             bool nurseTerminal = string.Equals(serviceType, "Nurse", System.StringComparison.Ordinal);
             GameObject lookPrefab = nurseTerminal
-                ? (LoadNurseAssetBundle() ? nursePrefab : null)
-                : (LoadCourierAssetBundle() ? courierPrefab : null);
+                ? resolveZombieModeNpcPrefab("Nurse")
+                : resolveZombieModeNpcPrefab("Courier");
             Renderer renderer = terminal.GetComponent<Renderer>();
             if (!ZombieModeServiceTerminalLook.Dress(terminal, lookPrefab, nurseTerminal ? "[ZombieModeNurseTerminal]" : "[ZombieModeSupplyTerminal]") && renderer != null)
             {
@@ -859,8 +878,8 @@ namespace BossRush
             ZombieModeTemporaryNpc record = new ZombieModeTemporaryNpc();
             record.GameObject = npc;
             record.ServiceType = serviceType;
-            record.SpawnWave = zombieModeRunState.CurrentWave;
-            record.ServiceState = CreateZombieModeNpcServiceState(serviceType, bossNodeStock, zombieModeRunState.ActiveSafeZoneActive);
+            record.SpawnWave = runState.CurrentWave;
+            record.ServiceState = CreateZombieModeNpcServiceState(serviceType, bossNodeStock, runState.ActiveSafeZoneActive);
             return record;
         }
 
@@ -914,48 +933,48 @@ namespace BossRush
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[ZombieMode] Heal 设置无敌+血量失败: " + e.Message);
+                    ModBehaviour.DevLog("[ZombieMode] Heal 设置无敌+血量失败: " + e.Message);
                 }
             }
         }
 
-        private void TickZombieModeTemporaryNpcProtection()
+        internal void TickZombieModeTemporaryNpcProtection()
         {
-            if (!IsZombieModeActive ||
-                (zombieModeRunState.TemporaryNpcs.Count <= 0 && zombieModeRunState.TemporaryRealNpcs.Count <= 0))
+            if (!ZombieModePhaseGuards.IsRunActive(runState.LifecyclePhase) ||
+                (runState.TemporaryNpcs.Count <= 0 && runState.TemporaryRealNpcs.Count <= 0))
             {
                 return;
             }
 
-            if (Time.unscaledTime - zombieModeRunState.LastTemporaryNpcProtectionTickTime <
+            if (Time.unscaledTime - runState.LastTemporaryNpcProtectionTickTime <
                 ZombieModeTuning.TemporaryNpcProtectionTickIntervalSeconds)
             {
                 return;
             }
-            zombieModeRunState.LastTemporaryNpcProtectionTickTime = Time.unscaledTime;
+            runState.LastTemporaryNpcProtectionTickTime = Time.unscaledTime;
 
-            for (int i = zombieModeRunState.TemporaryNpcs.Count - 1; i >= 0; i--)
+            for (int i = runState.TemporaryNpcs.Count - 1; i >= 0; i--)
             {
-                ZombieModeTemporaryNpc npc = zombieModeRunState.TemporaryNpcs[i];
+                ZombieModeTemporaryNpc npc = runState.TemporaryNpcs[i];
                 if (npc == null || npc.GameObject == null)
                 {
-                    zombieModeRunState.TemporaryNpcs.RemoveAt(i);
+                    runState.TemporaryNpcs.RemoveAt(i);
                     continue;
                 }
 
-                ApplyZombieModeTemporaryNpcProtection(npc.GameObject, zombieModeRunState.RunId, npc.ServiceType);
+                ApplyZombieModeTemporaryNpcProtection(npc.GameObject, runState.RunId, npc.ServiceType);
             }
 
-            for (int i = zombieModeRunState.TemporaryRealNpcs.Count - 1; i >= 0; i--)
+            for (int i = runState.TemporaryRealNpcs.Count - 1; i >= 0; i--)
             {
-                ZombieModeTemporaryRealNpcRecord npc = zombieModeRunState.TemporaryRealNpcs[i];
+                ZombieModeTemporaryRealNpcRecord npc = runState.TemporaryRealNpcs[i];
                 if (npc == null || npc.GameObject == null)
                 {
-                    zombieModeRunState.TemporaryRealNpcs.RemoveAt(i);
+                    runState.TemporaryRealNpcs.RemoveAt(i);
                     continue;
                 }
 
-                ApplyZombieModeTemporaryNpcProtection(npc.GameObject, zombieModeRunState.RunId, npc.NpcType);
+                ApplyZombieModeTemporaryNpcProtection(npc.GameObject, runState.RunId, npc.NpcType);
             }
 
             ClearZombieModeTemporaryNpcThreatTargets();
@@ -963,9 +982,9 @@ namespace BossRush
 
         private void ClearZombieModeTemporaryNpcThreatTargets()
         {
-            for (int i = 0; i < zombieModeRunState.RunOnlyObjects.Count; i++)
+            for (int i = 0; i < runState.RunOnlyObjects.Count; i++)
             {
-                ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
+                ZombieModeRunOnlyRecord record = runState.RunOnlyObjects[i];
                 if (record == null ||
                     (record.Kind != ZombieModeRunOnlyObjectKind.Enemy && record.Kind != ZombieModeRunOnlyObjectKind.Boss) ||
                     record.GameObject == null)
@@ -1021,32 +1040,13 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] TemporaryNpcProtection 判定失败: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] TemporaryNpcProtection 判定失败: " + e.Message);
             }
 
             return false;
         }
 
-        private void SetZombieModeEnemyTargetToMainPlayer(AICharacterController ai)
-        {
-            if (ai == null)
-            {
-                return;
-            }
 
-            CharacterMainControl main = CharacterMainControl.Main;
-            if (main == null || main.mainDamageReceiver == null)
-            {
-                ai.searchedEnemy = null;
-                ai.noticed = false;
-                return;
-            }
-
-            ai.searchedEnemy = main.mainDamageReceiver;
-            ai.SetTarget(main.mainDamageReceiver.transform);
-            ai.SetNoticedToTarget(main.mainDamageReceiver);
-            ai.noticed = true;
-        }
 
         private ZombieModeNpcServiceState CreateZombieModeNpcServiceState(string serviceType, bool bossNodeStock, bool safeZoneBound)
         {

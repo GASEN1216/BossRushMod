@@ -82,7 +82,7 @@ namespace UnityEngine
         public static bool GetKey(KeyCode key) { return false; }
         public static bool GetKeyDown(KeyCode key) { return false; }
     }
-    public static class Time { public static float deltaTime = 0.02f; public static float timeScale = 1f; }
+    public static class Time { public static int frameCount; public static float deltaTime = 0.02f; public static float timeScale = 1f; }
     public enum CursorLockMode { None, Locked }
     public static class Cursor { public static CursorLockMode lockState = CursorLockMode.Locked; }
 }
@@ -92,6 +92,9 @@ namespace UnityEngine.SceneManagement
     public struct Scene { public string name; public string path; }
     public static class SceneManager
     {
+        public static Scene ActiveScene;
+        public static int ActiveSceneReads;
+        public static Scene GetActiveScene() { ActiveSceneReads++; return ActiveScene; }
         public static event Action<Scene, LoadSceneMode> sceneLoaded;
         public static event Action<Scene> sceneUnloaded;
         public static void Load(Scene scene) { if (sceneLoaded != null) sceneLoaded(scene, LoadSceneMode.Additive); }

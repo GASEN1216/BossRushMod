@@ -7,9 +7,10 @@ import sys
 TRACKER = Path("Achievement/AchievementTracker.cs")
 MANAGER = Path("Achievement/BossRushAchievementManager.cs")
 TRIGGERS = Path("Achievement/AchievementTriggers.cs")
-RUNTIME = Path("Achievement/AchievementRuntimeHooks.cs")
+RUNTIME = Path("Achievement/AchievementRuntimeModule.cs")
 DRAGON_KING = Path("Integration/DragonKing/DragonKingBoss.cs")
-WAVES = Path("WavesArena/WavesArena.cs")
+WAVES = Path("WavesArena/WavesArenaRuntimeModule_WaveDeaths.cs")
+WAVES_HOST = Path("WavesArena/WavesArena.cs")
 
 
 def fail(message: str) -> int:
@@ -104,7 +105,7 @@ def main() -> int:
 
     for snippet in [
         "private readonly HashSet<CharacterMainControl> achievementCountedBossKills",
-        "private bool CheckBossKillAchievementsOnce(CharacterMainControl bossMain, string bossTypeOverride = null)",
+        "internal bool CheckBossKillAchievementsOnce(CharacterMainControl bossMain, string bossTypeOverride = null)",
         "private void ResetAchievementBossKillTracking()",
         "BossRushAchievementManager.CheckCompletionistAchievement();",
     ]:
@@ -115,15 +116,17 @@ def main() -> int:
         return fail("achievement runtime cleanup must clear boss kill tracking")
 
     dragon_death = extract_block(dragon_king, "private void OnDragonKingDeath(")
-    waves_death = extract_block(waves, "private void HandleBossDeath(")
+    waves_death = extract_block(waves, "internal void HandleBossDeath(")
     if not dragon_death or not waves_death:
         return fail("missing death handling block")
     if 'CheckBossKillAchievementsOnce(deadKing, "DragonKing")' not in dragon_death:
         return fail("DragonKing death must use achievement kill de-dup helper")
     if 'CheckBossKillAchievements("DragonKing")' in dragon_death:
         return fail("DragonKing death still directly increments achievement kills")
-    if "CheckBossKillAchievementsOnce(bossMain);" not in waves_death:
+    if "owner.CheckBossKillAchievementsOnceForArena(bossMain);" not in waves_death:
         return fail("generic BossRush death must use achievement kill de-dup helper")
+    if "return CheckBossKillAchievementsOnce(boss);" not in WAVES_HOST.read_text(encoding="utf-8"):
+        return fail("arena achievement bridge must call the original de-dup helper")
     if "CheckBossKillAchievements(bossType);" in waves_death:
         return fail("generic BossRush death still directly increments achievement kills")
 

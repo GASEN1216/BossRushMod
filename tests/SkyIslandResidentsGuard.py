@@ -7,9 +7,9 @@ from cs_source_util import clean_source
 ROOT = Path(__file__).resolve().parents[1]
 DATA = json.loads((ROOT / 'Assets/Data/DuckNpcs.json').read_text(encoding='utf-8-sig'))
 NPCS = {row['id']: row for row in DATA['npcs']}
-SOURCE = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandResidents.cs').read_text(encoding='utf-8-sig'))
-INTERACT = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandResidentInteractable.cs').read_text(encoding='utf-8-sig'))
-SESSION = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandSession.cs').read_text(encoding='utf-8-sig'))
+SOURCE = clean_source((ROOT / 'SkyIsland/SkyIslandResidents.cs').read_text(encoding='utf-8-sig'))
+INTERACT = clean_source((ROOT / 'SkyIsland/SkyIslandResidentInteractable.cs').read_text(encoding='utf-8-sig'))
+SESSION = clean_source((ROOT / 'SkyIsland/SkyIslandSession.cs').read_text(encoding='utf-8-sig'))
 errors = []
 
 for npc_id in ['sky_qinghe', 'sky_weibai', 'sky_fuzhou', 'sky_miantai', 'sky_zheling', 'sky_bellkeeper']:
@@ -55,7 +55,7 @@ if 'SkyIslandResidentInteractable.AttachPermanent(npc, blueprint.id);' not in mo
     errors.append('永久 NPC 装配（含婚后恢复）没有接回航路剧情')
 if 'new SkyIslandResidents' not in SESSION or '.Dispose()' not in SESSION:
     errors.append('天空岛会话未接居民创建/清理')
-encounters = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandEncounters.cs').read_text(encoding='utf-8-sig'))
+encounters = clean_source((ROOT / 'SkyIsland/SkyIslandEncounters.cs').read_text(encoding='utf-8-sig'))
 raid_started = re.search(r'internal bool WasStartedThisRaid\(string id\)\s*\{([^}]+)\}', encounters)
 if raid_started is None or not re.fullmatch(
         r'\s*Encounter encounter = Find\(id\);\s*return encounter != null && encounter.Started;\s*',
@@ -63,7 +63,7 @@ if raid_started is None or not re.fullmatch(
     errors.append('折翎关系恢复必须区分本趟 Started 与旧档投影的 Cleared')
 if 'residents.SetVisible("sky_zheling", encounters == null || !encounters.WasStartedThisRaid("Zheling"));' not in SESSION:
     errors.append('折翎只在本趟挑战后休整，不得按持久战败位永久隐藏')
-bridge = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandSceneReferenceBridge.cs').read_text(encoding='utf-8-sig'))
+bridge = clean_source((ROOT / 'SkyIsland/SkyIslandSceneReferenceBridge.cs').read_text(encoding='utf-8-sig'))
 def constant(source, name):
     match = re.search(r'const\s+string\s+' + name + r'\s*=\s*"([^"\r\n]+)"\s*;', source)
     return match.group(1) if match else None

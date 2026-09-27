@@ -30,8 +30,8 @@ COMPILE = Path("compile_official.bat")
 # 每个调用点：文件 -> 该文件里 Create( 的场景参数必须命中的写法
 CALL_SITES = {
     Path("ModeF/ModeFExtraction.cs"): "MapPointSceneResolver.Resolve()",
-    Path("ZombieMode/ZombieModeExtractionController.cs"): "MapPointSceneResolver.Resolve()",
-    Path("DebugAndTools/SkyIsland/SkyIslandPreludeFlow.cs"): "MapPointSceneResolver.Resolve(GroundZeroScene)",
+    Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs"): "MapPointSceneResolver.Resolve()",
+    Path("SkyIsland/SkyIslandPreludeFlow.cs"): "MapPointSceneResolver.Resolve(GroundZeroScene)",
 }
 
 # 只允许 Utilities 里的那一份直接反查官方场景表；别处再写一遍就是第二份实现。
@@ -90,9 +90,9 @@ def main():
     probes = (
         (Path("ModeF/ModeFExtraction.cs"), "MapPointSceneResolver.Resolve()",
          "UnityEngine.SceneManagement.SceneManager.GetActiveScene().name"),
-        (Path("DebugAndTools/SkyIsland/SkyIslandPreludeFlow.cs"),
+        (Path("SkyIsland/SkyIslandPreludeFlow.cs"),
          "MapPointSceneResolver.Resolve(GroundZeroScene)", "SceneManager.GetActiveScene().name"),
-        (Path("ZombieMode/ZombieModeExtractionController.cs"), "MapPointSceneResolver.Resolve()",
+        (Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs"), "MapPointSceneResolver.Resolve()",
          "SceneManager.GetActiveScene().name"),
         (RESOLVER, "SceneInfoCollection.GetSceneID(active.buildIndex)", "null"),
     )

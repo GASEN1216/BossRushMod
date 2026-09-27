@@ -43,7 +43,7 @@ def main():
     reset=viewer[viewer.find('internal static void ResetStaticCaches()'):]
     require(reset,['if (entry == null || !entry.Owned || entry.Bundle == null) continue;','entry.Bundle.Unload(false);',
         'fallbackBundles.Clear();','fallbackCreatedSprites.Clear();'], 'image viewer cache release')
-    hooks=source('Integration/IntegrationRuntimeHooks.cs')
+    hooks=source('Integration/BossRushIntegration.cs')
     cleanup=hooks[hooks.find('internal void CleanupIntegrationRuntimeOnDestroy()'):]
     if 'ImageViewerUI.ResetStaticCaches()' not in cleanup[:cleanup.find('\n        }')]:
         errors.append('image viewer cache release must run in CleanupIntegrationRuntimeOnDestroy')

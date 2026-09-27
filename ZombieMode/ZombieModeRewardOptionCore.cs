@@ -13,11 +13,11 @@ using UnityEngine.Events;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
         private bool ApplyZombieModeOptionReward(ZombieModeRewardType rewardType)
         {
-            if (!IsZombieModeRunValid(zombieModeRunState.RunId))
+            if (!IsZombieModeRunValid(runState.RunId))
             {
                 return false;
             }
@@ -33,7 +33,7 @@ namespace BossRush
                 return false;
             }
 
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             switch (rewardType)
             {
                 case ZombieModeRewardType.ProjectilePenetration:
@@ -79,19 +79,19 @@ namespace BossRush
                     break;
                 case ZombieModeRewardType.BattlefieldPurgeAura:
                     options.BattlefieldPurgeAuraStacks = Mathf.Min(2, options.BattlefieldPurgeAuraStacks + 1);
-                    StartZombieModeBattlefieldAreaRuntimeIfNeeded(zombieModeRunState.RunId);
+                    StartZombieModeBattlefieldAreaRuntimeIfNeeded(runState.RunId);
                     break;
                 case ZombieModeRewardType.BattlefieldCurseTrap:
                     options.BattlefieldCurseTrapStacks = Mathf.Min(2, options.BattlefieldCurseTrapStacks + 1);
-                    StartZombieModeBattlefieldAreaRuntimeIfNeeded(zombieModeRunState.RunId);
+                    StartZombieModeBattlefieldAreaRuntimeIfNeeded(runState.RunId);
                     break;
                 case ZombieModeRewardType.BattlefieldBlackHole:
                     options.BattlefieldBlackHoleStacks = Mathf.Min(2, options.BattlefieldBlackHoleStacks + 1);
-                    StartZombieModeBattlefieldGravityRuntimeIfNeeded(zombieModeRunState.RunId);
+                    StartZombieModeBattlefieldGravityRuntimeIfNeeded(runState.RunId);
                     break;
                 case ZombieModeRewardType.BattlefieldGravityDrag:
                     options.BattlefieldGravityDragStacks = Mathf.Min(2, options.BattlefieldGravityDragStacks + 1);
-                    StartZombieModeBattlefieldGravityRuntimeIfNeeded(zombieModeRunState.RunId);
+                    StartZombieModeBattlefieldGravityRuntimeIfNeeded(runState.RunId);
                     break;
                 case ZombieModeRewardType.TriggerLifesteal:
                     ApplyZombieModeLifestealReward(10, 1);
@@ -138,14 +138,14 @@ namespace BossRush
                     break;
                 case ZombieModeRewardType.BattlefieldAmmoRain:
                     options.BattlefieldAmmoRainStacks = Mathf.Min(2, options.BattlefieldAmmoRainStacks + 1);
-                    StartZombieModeAmmoRainIfNeeded(zombieModeRunState.RunId);
+                    StartZombieModeAmmoRainIfNeeded(runState.RunId);
                     break;
                 default:
                     return false;
             }
 
             ApplyZombieModeOptionTradeoff(rewardType);
-            NotificationText.Push(GetZombieModeRewardDisplayText(zombieModeRunState.RunId, rewardType));
+            NotificationText.Push(GetZombieModeRewardDisplayText(runState.RunId, rewardType));
             return true;
         }
 
@@ -163,7 +163,7 @@ namespace BossRush
             }
         }
 
-        private int GetZombieModeLifestealRewardChanceGain(ZombieModeRewardType rewardType)
+        internal int GetZombieModeLifestealRewardChanceGain(ZombieModeRewardType rewardType)
         {
             switch (rewardType)
             {
@@ -180,7 +180,7 @@ namespace BossRush
 
         private void ApplyZombieModeLifestealReward(int chanceGainPercent, int healAmount)
         {
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             int acceptedGain = Mathf.Clamp(
                 chanceGainPercent,
                 0,
@@ -200,7 +200,7 @@ namespace BossRush
 
         private void ApplyZombieModeOptionTradeoff(ZombieModeRewardType rewardType)
         {
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             float moveSpeedPenalty = GetZombieModeOptionTradeoffMoveSpeedPenalty(rewardType);
             float gunDamagePenalty = GetZombieModeOptionTradeoffGunDamagePenalty(rewardType);
             float reloadSpeedPenalty = GetZombieModeOptionTradeoffReloadSpeedPenalty(rewardType);
@@ -235,7 +235,7 @@ namespace BossRush
 
             if (pollutionGain > 0)
             {
-                zombieModeRunState.PollutionFromContracts += pollutionGain;
+                runState.PollutionFromContracts += pollutionGain;
             }
 
             bool hasPercentTradeoff =
@@ -246,7 +246,7 @@ namespace BossRush
                 maxHealthPenalty > 0f;
             if (hasPercentTradeoff && GetZombieModeOptionTradeoffDisplayPercent(rewardType) <= 0)
             {
-                DevLog("[ZombieMode] option reward tradeoff display percent missing: " + rewardType);
+                ModBehaviour.DevLog("[ZombieMode] option reward tradeoff display percent missing: " + rewardType);
             }
 
             if (hasPercentTradeoff)
@@ -363,7 +363,7 @@ namespace BossRush
             }
         }
 
-        private int GetZombieModeOptionTradeoffPurificationCost(ZombieModeRewardType rewardType)
+        internal int GetZombieModeOptionTradeoffPurificationCost(ZombieModeRewardType rewardType)
         {
             switch (rewardType)
             {
@@ -373,21 +373,21 @@ namespace BossRush
                     return 180;
                 // 契约需要消耗净化点数
                 case ZombieModeRewardType.ContractPollutionDeal:
-                    return zombieModeRunState.CurrentWave > 0 && zombieModeRunState.CurrentWave % 5 == 0 ? 150 : 80;
+                    return runState.CurrentWave > 0 && runState.CurrentWave % 5 == 0 ? 150 : 80;
                 case ZombieModeRewardType.ContractGearDeal:
-                    return zombieModeRunState.CurrentWave > 0 && zombieModeRunState.CurrentWave % 5 == 0 ? 120 : 60;
+                    return runState.CurrentWave > 0 && runState.CurrentWave % 5 == 0 ? 120 : 60;
                 case ZombieModeRewardType.ContractHugePurification:
                     return 200;
                 case ZombieModeRewardType.ContractInsurance:
                     return 80;
                 case ZombieModeRewardType.ContractDevilBargain:
-                    return zombieModeRunState.CurrentWave > 0 && zombieModeRunState.CurrentWave % 5 == 0 ? 200 : 120;
+                    return runState.CurrentWave > 0 && runState.CurrentWave % 5 == 0 ? 200 : 120;
                 case ZombieModeRewardType.ContractCursedReload:
-                    return zombieModeRunState.CurrentWave > 0 && zombieModeRunState.CurrentWave % 5 == 0 ? 100 : 60;
+                    return runState.CurrentWave > 0 && runState.CurrentWave % 5 == 0 ? 100 : 60;
                 case ZombieModeRewardType.ContractBloodPrice:
-                    return zombieModeRunState.CurrentWave > 0 && zombieModeRunState.CurrentWave % 5 == 0 ? 80 : 50;
+                    return runState.CurrentWave > 0 && runState.CurrentWave % 5 == 0 ? 80 : 50;
                 case ZombieModeRewardType.ContractCursePool:
-                    return zombieModeRunState.CurrentWave > 0 && zombieModeRunState.CurrentWave % 5 == 0 ? 150 : 100;
+                    return runState.CurrentWave > 0 && runState.CurrentWave % 5 == 0 ? 150 : 100;
                 default:
                     return 0;
             }
@@ -416,9 +416,9 @@ namespace BossRush
         }
 
 
-        private void RemoveZombieModeOptionRuntimeEffects()
+        internal void RemoveZombieModeOptionRuntimeEffects()
         {
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             RemoveZombieModePhase2ContractRuntimeEffects();
             RestoreZombieModeProjectileSpreadState();
             UnregisterZombieModeOptionPlayerHealthListener();
@@ -430,7 +430,7 @@ namespace BossRush
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[ZombieMode] spread hold listener remove failed: " + e.Message);
+                    ModBehaviour.DevLog("[ZombieMode] spread hold listener remove failed: " + e.Message);
                 }
             }
 
@@ -439,7 +439,7 @@ namespace BossRush
             zombieModeOptionExplosionSkipLogTime = -999f;
             RuntimeStatModifierTracker.RemoveAll(options.GuardianShieldRecords, "ZombieMode Option GuardianShield");
             RuntimeStatModifierTracker.RemoveAll(options.ModifierRecords, "ZombieMode Option Persistent");
-            zombieModeRunState.OptionRuntime.Reset();
+            runState.OptionRuntime.Reset();
         }
 
         private bool ApplyZombieModePhase2ContractReward(ZombieModeRewardType rewardType, bool bossNode)
@@ -461,7 +461,7 @@ namespace BossRush
 
         private void RemoveZombieModePhase2ContractRuntimeEffects()
         {
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             RuntimeStatModifierTracker.RemoveAll(
                 options.ContractRuntimeModifierRecords,
                 "ZombieMode Contract Runtime");
@@ -476,7 +476,7 @@ namespace BossRush
                 return false;
             }
 
-            zombieModeRunState.PollutionFromContracts += pollution;
+            runState.PollutionFromContracts += pollution;
             ApplyZombieModeInsuranceReward(0.25f, true);
             NotificationText.Push(string.Format(
                 L10n.T("BossRush_ZombieMode_Notify_ContractDevilBargainCost"),
@@ -487,7 +487,7 @@ namespace BossRush
 
         private bool ApplyZombieModeContractCursedReload(bool bossNode)
         {
-            ZombieModeOptionRuntimeState options = zombieModeRunState.OptionRuntime;
+            ZombieModeOptionRuntimeState options = runState.OptionRuntime;
             int pollution = bossNode ? 3 : 2;
             int pointsCost = bossNode ? 100 : 60;
             if (!SpendZombieModePurificationPoints(pointsCost, "ContractCursedReload"))
@@ -495,7 +495,7 @@ namespace BossRush
                 return false;
             }
 
-            zombieModeRunState.PollutionFromContracts += pollution;
+            runState.PollutionFromContracts += pollution;
             TryAddZombieModeOptionModifier(
                 CharacterMainControl.Main,
                 ZombieModeStatNames.ReloadSpeedGain,
@@ -520,7 +520,7 @@ namespace BossRush
                 return false;
             }
 
-            zombieModeRunState.PollutionFromContracts += pollution;
+            runState.PollutionFromContracts += pollution;
             if (player != null && player.Health != null)
             {
                 float heal = bossNode ? player.Health.MaxHealth * 0.45f : player.Health.MaxHealth * 0.30f;
@@ -543,7 +543,7 @@ namespace BossRush
                 return false;
             }
 
-            zombieModeRunState.PollutionFromContracts += pollution;
+            runState.PollutionFromContracts += pollution;
             if (UnityEngine.Random.value < 0.5f)
             {
                 ApplyZombieModeInsuranceReward(0.15f, false);

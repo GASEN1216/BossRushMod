@@ -35,7 +35,7 @@ _layout_spec = importlib.util.spec_from_file_location(
 PANEL_LAYOUT = importlib.util.module_from_spec(_layout_spec)
 _layout_spec.loader.exec_module(PANEL_LAYOUT)
 
-PANEL_CS = ROOT / 'DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs'
+PANEL_CS = ROOT / 'SkyIsland/SkyIslandStoryPresentation.cs'
 UI_CS = ROOT / 'Common/UI/BossRushUI.cs'
 ART = ROOT / 'Assets/ui/SkyIsland'
 OUT = ROOT / 'output/sky_island_panel_preview.png'
@@ -112,7 +112,7 @@ def rounded(img, box, radius, fill):
     img.alpha_composite(layer)
 
 
-ART_CS = ROOT / 'DebugAndTools/SkyIsland/SkyIslandUiArt.cs'
+ART_CS = ROOT / 'SkyIsland/SkyIslandUiArt.cs'
 
 
 def art_const(name):
@@ -319,7 +319,7 @@ def render(title, body, choices, banner_name=None, portrait_name=None):
     return img
 
 
-HUD_CS = ROOT / 'DebugAndTools/SkyIsland/SkyIslandHud.cs'
+HUD_CS = ROOT / 'SkyIsland/SkyIslandHud.cs'
 HUD_OUT = ROOT / 'output/sky_island_hud_preview.png'
 
 
@@ -481,7 +481,7 @@ def render_hud():
     print('hud preview -> %s (%dx%d)' % (HUD_OUT, W, Ht))
 
 
-STORY_CS = ROOT / 'DebugAndTools/SkyIsland/SkyIslandWorldStory.cs'
+STORY_CS = ROOT / 'SkyIsland/SkyIslandWorldStory.cs'
 PAIR_RE = r'L10n\.T\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\)'
 EN_OUT = ROOT / 'output/sky_island_panel_preview_en.png'
 SHEET_OUT = ROOT / 'output/sky_island_art_contact_sheet.png'

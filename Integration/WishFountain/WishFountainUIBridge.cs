@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class WishFountainRuntimeModule
     {
         private WishFountainView wishFountainView;
 

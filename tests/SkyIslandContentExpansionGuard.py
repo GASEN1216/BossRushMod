@@ -10,7 +10,7 @@ from pathlib import Path
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parent.parent
-SKY = ROOT / 'DebugAndTools/SkyIsland'
+SKY = ROOT / 'SkyIsland'
 
 # 每个区域必须有产出，深处更值钱。改动内容表时必须同步这张表。
 EXPECTED_REGION_COUNTS = {
@@ -744,7 +744,7 @@ def check_registration():
     bat = (ROOT / 'compile_official.bat').read_text(encoding='utf-8', errors='ignore')
     for name in NEW_SOURCES:
         assert (SKY / name).exists(), 'Missing expansion source: ' + name
-        assert 'DebugAndTools\\SkyIsland\\' + name in bat, 'Source not registered in compile list: ' + name
+        assert 'SkyIsland\\' + name in bat, 'Source not registered in compile list: ' + name
     # 共享排除口径也是新增 .cs，同样必须登记，否则静默不参与编译。
     assert (ROOT / 'Config/LootExcludeTagPolicy.cs').exists(), 'Missing shared loot exclusion policy'
     assert 'Config\\LootExcludeTagPolicy.cs' in bat, \

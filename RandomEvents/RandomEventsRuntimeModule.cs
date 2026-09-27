@@ -16,7 +16,7 @@ using System;
 namespace BossRush
 {
     /// <summary>随机事件运行时模块。宿主回调的唯一落点。</summary>
-    internal sealed class RandomEventsRuntimeModule : BossRushRuntimeModuleBase
+    internal sealed partial class RandomEventsRuntimeModule : BossRushRuntimeModuleBase
     {
         #region 状态
 

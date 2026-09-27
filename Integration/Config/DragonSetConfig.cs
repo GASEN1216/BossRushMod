@@ -29,6 +29,11 @@ namespace BossRush
     /// </summary>
     public static class DragonSetConfig
     {
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterConfigurator("DragonSetConfig", (item, baseName) => { TryConfigure(item, baseName); });
+        }
+
         // ========== 龙套装物品基础名（用于匹配 AssetBundle 中的 Prefab）==========
         private const string DRAGON_HELM_BASE = "dargon_Helmet";
         private const string DRAGON_ARMOR_BASE = "dargon_Armor";

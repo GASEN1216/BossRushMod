@@ -4,8 +4,9 @@ from pathlib import Path
 import sys
 
 
-POLLUTION = Path("ZombieMode/ZombieModePollution.cs")
+POLLUTION = Path("ZombieMode/ZombieModeRuntimeModule_Pollution.cs")
 RUNTIME = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 
 
@@ -35,8 +36,9 @@ def extract_method(text: str, signature: str) -> str:
 def main() -> int:
     pollution = POLLUTION.read_text(encoding="utf-8")
     runtime = RUNTIME.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
     tuning = TUNING.read_text(encoding="utf-8")
-    combined = pollution + "\n" + runtime + "\n" + tuning
+    combined = pollution + "\n" + runtime + "\n" + runtime_module + "\n" + tuning
 
     required = [
         "marker.IsBoss",
@@ -100,9 +102,9 @@ def main() -> int:
         "ParticleSystem",
         "renderer.transform.localScale = renderer.transform.localScale * visualScale",
     ]
-    visual_start = pollution.index("private void ApplyZombieModeMutationVisualIdentity")
-    visual_end = pollution.index("private void ApplyZombieModeSpecialKindTuning", visual_start)
-    visual_body = pollution[visual_start:visual_end]
+    visual_body = extract_method(pollution, "private void ApplyZombieModeMutationVisualIdentity")
+    if not visual_body:
+        return fail("mutation visual identity method body not found")
     for token in forbidden:
         if token in visual_body:
             return fail("forbidden visual implementation -> " + token)
@@ -141,7 +143,7 @@ def main() -> int:
         if token not in restore:
             return fail("CustomFace rollback must isolate every restore step -> " + token)
 
-    register = extract_method(runtime, "private ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(")
+    register = extract_method(runtime_module, "internal ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(")
     restore_scale_idx = register.find("RestoreZombieModeVisualScale(marker)")
     release_marker_idx = register.find("ReleaseZombieModeFootMarker(marker)")
     clear_marker_idx = register.find("marker.VisualFootMarkerFallbackApplied = false")

@@ -28,7 +28,7 @@ def main():
     source_path = ROOT / "Integration" / "SkyIsland" / "SkyIslandItems.cs"
     source = source_path.read_text(encoding="utf-8-sig")
     extracted = method(source, "internal static bool TryGive(int typeId, bool toStorage, Func<bool> recordGrant")
-    sky = ROOT / "DebugAndTools/SkyIsland"
+    sky = ROOT / "SkyIsland"
     fieldcraft = (sky / "SkyIslandFieldcraft.cs").read_text(encoding="utf-8-sig")
     gnats = (sky / "SkyIslandGnats.cs").read_text(encoding="utf-8-sig")
     loot = (sky / "SkyIslandBossLoot.cs").read_text(encoding="utf-8-sig")

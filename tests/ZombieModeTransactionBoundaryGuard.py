@@ -13,10 +13,11 @@ import re
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 STARTER_LOADOUT = Path("ZombieMode/ZombieModeEntry_StarterLoadout.cs")
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
-CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(msg: str) -> int:
@@ -26,7 +27,8 @@ def fail(msg: str) -> int:
 
 def main() -> int:
     entry_text = ENTRY.read_text(encoding="utf-8")
-    entry_flow_text = entry_text + "\n" + STARTER_LOADOUT.read_text(encoding="utf-8")
+    module_text = RUNTIME_MODULE.read_text(encoding="utf-8")
+    entry_flow_text = entry_text + "\n" + module_text + "\n" + STARTER_LOADOUT.read_text(encoding="utf-8")
     models_text = MODELS.read_text(encoding="utf-8")
     cleanup_text = CLEANUP.read_text(encoding="utf-8")
 
@@ -45,8 +47,8 @@ def main() -> int:
 
     # 2. MarkZombieModeMapConfirmedPhase1 必须先走 Prechecking 再走 CommittingResources，最后才到 LoadingMap
     confirm_match = re.search(
-        r"public\s+void\s+MarkZombieModeMapConfirmedPhase1\s*\(\s*\)\s*\{(.+?)\n\s{8}\}",
-        entry_text,
+        r"internal\s+void\s+MarkZombieModeMapConfirmedPhase1\s*\(\s*\)\s*\{(.+?)\n\s{8}\}",
+        module_text,
         re.S,
     )
     if confirm_match is None:
@@ -62,19 +64,19 @@ def main() -> int:
         )
 
     # 3. FailZombieModeBeforeActive 签名必须接收枚举
-    if "FailZombieModeBeforeActive(ZombieModeFailureReason reason)" not in entry_text:
-        return fail("ZombieModeTransactionBoundaryGuard: FailZombieModeBeforeActive 签名必须接收 ZombieModeFailureReason")
+    if "FailZombieModeBeforeActive(ZombieModeFailureReason reason)" not in module_text:
+        return fail("ZombieModeTransactionBoundaryGuard: RuntimeModule FailZombieModeBeforeActive 必须接收 ZombieModeFailureReason")
 
     # 4. 失败回滚链路完整
     fail_match = re.search(
-        r"private\s+void\s+FailZombieModeBeforeActive\s*\(.*?\)\s*\{(.+?)\n\s{8}\}",
-        entry_text,
+        r"internal\s+void\s+FailZombieModeBeforeActive\s*\(.*?\)\s*\{(.+?)\n\s{8}\}",
+        module_text,
         re.S,
     )
     if fail_match is None:
         return fail("ZombieModeTransactionBoundaryGuard: FailZombieModeBeforeActive 实现未找到")
     fail_body = fail_match.group(1)
-    for snippet in ["RefundZombieModeInvitationIfNeeded", "RefundZombieModeCashIfNeeded", "CleanupZombieModeForSceneChange"]:
+    for snippet in ["RefundZombieModeInvitationIfNeeded", "RefundZombieModeCashIfNeeded", "owner.CleanupZombieModeForRuntimeModule(reason)"]:
         if snippet not in fail_body:
             return fail("ZombieModeTransactionBoundaryGuard: FailZombieModeBeforeActive 缺少回滚步骤 -> " + snippet)
 

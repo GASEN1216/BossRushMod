@@ -16,8 +16,10 @@ EFFECT_PARTS = [
 def read_effects() -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in EFFECT_PARTS)
 
-CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
-WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
+CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+BRIDGES = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 
 
 def fail(message: str) -> int:
@@ -29,13 +31,15 @@ def main() -> int:
     models = MODELS.read_text(encoding="utf-8")
     effects = read_effects() if EFFECTS.exists() else ""
     cleanup = CLEANUP.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
+    bridges = BRIDGES.read_text(encoding="utf-8")
     waves = WAVES.read_text(encoding="utf-8")
 
     for token in [
         "public sealed class ZombieModeOptionRuntimeState",
         "public readonly ZombieModeOptionRuntimeState OptionRuntime",
-        "public readonly List<ZombieModeAttributeModifierRecord> ModifierRecords",
-        "public readonly List<ZombieModeAttributeModifierRecord> GuardianShieldRecords",
+        "public readonly List<BossRushStatModifierRecord> ModifierRecords",
+        "public readonly List<BossRushStatModifierRecord> GuardianShieldRecords",
         "public void Reset()",
     ]:
         if token not in models:
@@ -44,26 +48,28 @@ def main() -> int:
     for token in [
         "private UnityEngine.Events.UnityAction<Health> zombieModeOptionPlayerHealthChangeHandler;",
         "private bool zombieModeOptionRuntimeCleanupRegistered;",
-        "private void RemoveZombieModeOptionRuntimeEffects()",
+        "internal void RemoveZombieModeOptionRuntimeEffects()",
         "private void UnregisterZombieModeOptionPlayerHealthListener()",
         "RuntimeStatModifierTracker.RemoveAll",
         "GuardianShieldRecords",
         "OnHealthChange.RemoveListener",
         "UnregisterZombieModeOptionPlayerHealthListener",
-        "zombieModeRunState.OptionRuntime.Reset();",
+        "runState.OptionRuntime.Reset();",
     ]:
         if token not in effects:
             return fail("ZombieModeRewardCleanupGuard: effects missing cleanup token -> " + token)
 
-    if "RegisterZombieModeRunOnlyObject(zombieModeRunState.RunId, ZombieModeRunOnlyObjectKind.EventListener, null, zombieModeOptionPlayerHealth, RemoveZombieModeOptionRuntimeEffects)" in effects:
+    if "RegisterZombieModeRunOnlyObject(runState.RunId, ZombieModeRunOnlyObjectKind.EventListener, null, zombieModeOptionPlayerHealth, RemoveZombieModeOptionRuntimeEffects)" in effects:
         return fail("ZombieModeRewardCleanupGuard: option listener cleanup must not register full runtime cleanup")
 
-    remove_index = cleanup.find("RemoveZombieModeOptionRuntimeEffects();")
-    invalidate_index = cleanup.find("InvalidateZombieModeRun();")
+    remove_index = runtime_module.find("RemoveZombieModeOptionRuntimeEffects();")
+    invalidate_index = runtime_module.find("InvalidateZombieModeRun();")
     if remove_index < 0:
         return fail("ZombieModeRewardCleanupGuard: cleanup does not remove option runtime effects")
     if invalidate_index < 0 or remove_index > invalidate_index:
         return fail("ZombieModeRewardCleanupGuard: option cleanup must run before InvalidateZombieModeRun")
+    if "RemoveZombieModeOptionRuntimeEffects();" not in bridges:
+        return fail("ZombieModeRewardCleanupGuard: host compatibility bridge must preserve option effects cleanup")
 
     for token in [
         "HandleZombieModeOptionHealthHurt(runId, health, damageInfo, victim, marker);",

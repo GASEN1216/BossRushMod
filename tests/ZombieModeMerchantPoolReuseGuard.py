@@ -1,13 +1,14 @@
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
-MODEE = Path("ModeE/ModeEMerchant.cs")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+MODEE = Path("Utilities/ModeEFMerchantCatalog.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -15,7 +16,7 @@ REWARD_PARTS = [
 
 
 def read_rewards() -> str:
-    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+    return "\n".join(clean_source(path.read_text(encoding="utf-8")) for path in REWARD_PARTS)
 
 CATALOG = Path("ZombieMode/ZombieModeNpcCatalog.cs")
 
@@ -32,17 +33,17 @@ def require(text: str, snippet: str, label: str) -> int:
 
 
 def main() -> int:
-    modee = MODEE.read_text(encoding="utf-8")
-    entry = ENTRY.read_text(encoding="utf-8")
+    modee = clean_source(MODEE.read_text(encoding="utf-8"))
+    entry = clean_source(ENTRY.read_text(encoding="utf-8"))
     rewards = read_rewards()
-    catalog = CATALOG.read_text(encoding="utf-8")
+    catalog = clean_source(CATALOG.read_text(encoding="utf-8"))
 
     for snippet in [
         "GetModeEMerchantCategories",
-        'if (medTag == null) medTag = FindTagByNameInInit("Medical");',
-        'if (medTag == null) medTag = FindTagByNameInInit("Consumable");',
-        'if (medTag == null) medTag = FindTagByNameInInit("Healing");',
-        'Duckov.Utilities.Tag injectorTag = FindTagByNameInInit("Injector");',
+        'if (medTag == null) medTag = findTag("Medical");',
+        'if (medTag == null) medTag = findTag("Consumable");',
+        'if (medTag == null) medTag = findTag("Healing");',
+        'Duckov.Utilities.Tag injectorTag = findTag("Injector");',
         "ModeESearchItemsMultiTag",
     ]:
         result = require(modee, snippet, "Mode E merchant reference contract")

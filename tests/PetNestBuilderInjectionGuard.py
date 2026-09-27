@@ -190,11 +190,14 @@ def check_runtime(errors):
     if "object.ReferenceEquals(buildingGO, petNestBuildingPrefabGO)" not in code:
         errors.append("[身份] 必须排除自己那份 DontDestroyOnLoad 的 prefab")
 
-    # 恢复协程去重
-    if "if (petNestRestoreCoroutine != null) return;" not in code:
-        errors.append("[协程] 恢复协程必须天然去重")
-    if "finally" not in code or "petNestRestoreCoroutine = null;" not in code:
-        errors.append("[协程] 协程结束必须归还句柄")
+    # 恢复请求由每个建筑 owner 自己的共享核心合并并归还句柄。
+    if "petNestRestore.Request(source);" not in code:
+        errors.append("[协程] 恢复请求必须交给共享核心")
+    core = read_text(repo_path("Common", "Buildings", "BuildingRestoreCore.cs"))
+    if "if (restoreCoroutine != null) return;" not in core:
+        errors.append("[协程] 共享核心必须合并重复请求")
+    if "finally" not in core or "if (generation == requestGeneration) restoreCoroutine = null;" not in core:
+        errors.append("[协程] 共享核心结束时必须归还自己的句柄")
 
 
 def check_interactable(errors):
@@ -244,12 +247,12 @@ def check_interactable(errors):
 
 
 def check_wiring(errors):
-    boot = read_text(repo_path("Integration", "IntegrationDeferredBootstrap.cs"))
+    boot = read_text(repo_path("Integration", "BossRushIntegrationRuntimeModule_DeferredBootstrap.cs"))
     if boot is None:
         errors.append("[File] 缺少 Integration/IntegrationDeferredBootstrap.cs")
     else:
         bcode = strip_cs_comments(boot)
-        for token in ['yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/petnest_relic_nest", InitPetNestBuilding, () => PetNestBuilder.IsBundleLoaded);',
+        for token in ['yield return FactoryResourceLoading.RunSpecial(_owner, "Assets/buildings/petnest_relic_nest", _owner.InitPetNestBuilding, () => PetNestBuilder.IsBundleLoaded);',
                       'RunDeferredStep_Integration("RestorePetNestBuildings"']:
             if token not in bcode:
                 errors.append("[接线] 基地场景装配管线缺少: " + token)

@@ -195,13 +195,15 @@ Next --> Done["输出汇总并返回退出码"]
 
 ### 静态缓存生命周期守卫（StaticCacheLifecycleGuard）
 职责：
+- 通过 `tools/compile_list.py` 读取正式编译清单，缺少清单输入即失败；git 外旧快照不参与判定。
 - 检测声明了 private static Dictionary 或含 cache/cached 字段的类。
-- 要求提供 Reset/Clear 静态缓存方法，并在 OnDestroy 路径上调用。
+- 要求提供 Reset/Clear 静态缓存方法，并从真实 `OnDestroy` 声明追踪同类、静态类型及已声明实例接收者的调用链；普通 `Cleanup` 可以中转，孤立的 `CleanupOnDestroy` 名字不构成证据。
+- 忽略注释、字符串、`#if false`、常量假分支、无条件返回后的调用和未执行的 lambda。这里只证明结构可达性；动态派发、复杂条件、Unity 销毁时序仍需执行回归或 L3。
 - 支持白名单暂存待办，输出 PASS/WARN/FAIL 并验证目标类状态。
 
 ```mermaid
 flowchart TD
-S(["开始"]) --> ReadAll["读取所有 .cs 文件"]
+S(["开始"]) --> ReadAll["读取正式编译清单中的 .cs 文件"]
 ReadAll --> DetectCache["识别静态缓存字段/重置方法"]
 DetectCache --> Aggregate["按逻辑类名聚合分部类"]
 Aggregate --> OnDestroyPath["查找 OnDestroy 路径上的调用"]

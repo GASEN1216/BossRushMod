@@ -6,7 +6,7 @@
       "id": "SKY_ISLAND",
       "title": "天空岛独立出击与晴岚群岛故事",
       "sources": [
-        "DebugAndTools/SkyIsland",
+        "SkyIsland",
         "Integration/SkyIsland",
         "Assets/Data/SkyIsland"
       ],
@@ -196,7 +196,6 @@
       "title": "安装、入口与所有地图",
       "sources": [
         "ModBehaviour.cs",
-        "Injection",
         "Integration/Config",
         "Integration/Constants",
         "MapSelection",
@@ -1554,23 +1553,23 @@
     },
     {
       "id": "CONTENT_BUILDINGS",
-      "title": "内容建筑共享反射、宿主归属与模型复用",
+      "title": "内容建筑共享反射、恢复核心、宿主归属与模型复用",
       "sources": [
         "Common/Buildings",
-        "Integration/ContentBuildingBridges.cs"
+        "Integration/IntegrationHostCompatibility.cs"
       ],
       "automatic": [],
       "wiki": [],
       "manual": [
         {
           "id": "M_CONTENT_BUILDINGS_01",
-          "steps": "先运行 python tests/fixtures/ContentBuildingOwnership/run.py 并保存夹具日志；再冷启动加载已建报箱、征程公告板、后山展示柜和遗种巢的专用旧档，从各建筑交互入口打开功能。",
-          "expected": "夹具仅证明真实反射工具与宿主桥的无宿主断言，不视作 Unity PASS；实机四类建筑均在场景早期恢复，无缺 prefab、重复建筑或失效交互。未实测本条保持 MANUAL_PENDING。"
+          "steps": "先运行 python tools/run_runtime_regressions.py --filter ContentBuildingOwnership 与 python tools/run_runtime_regressions.py --filter BuildingRestoreCore 并保存日志（前者由聚合器调用 tests/fixtures/ContentBuildingOwnership/run.py）；再冷启动加载已有报箱、征程公告板、旧展示柜和遗种巢的专用旧档：报箱打开日报，遗种巢打开当前功能，退役公告板与旧展示柜显示迁移指引。",
+          "expected": "夹具证明真实反射工具、宿主桥与恢复核心的离线时序，不视作 Unity PASS；四类旧建筑均恢复，无缺 prefab、重复建筑或失效交互；旧公告板指向杰夫，旧展示柜指向官方枪械展示架/假人。未实测本条保持 MANUAL_PENDING。"
         },
         {
           "id": "M_CONTENT_BUILDINGS_02",
-          "steps": "在专用档基地从建造 UI 摆放、旋转、拆除并重建四类建筑；检查报箱借用模型的材质和碰撞，再切换展示柜解锁状态不同的两个槽位，返回基地并退出重进。",
-          "expected": "建造 ID、造价、条件和上限保持原契约；模型材质与碰撞正常，重绘不重复，事件和恢复协程随原宿主清理；新槽不继承旧槽展示柜门控或建筑实例。该路径必须实机记录，夹具不能替代。"
+          "steps": "在专用档基地从官方建造 UI 摆放、旋转、拆除并重建现行报箱与遗种巢；检查报箱模型的材质和碰撞，再切换两个测试槽，返回基地并退出重进；同时复核旧公告板与旧展示柜恢复及指引，它们不应重新出现在新建菜单。",
+          "expected": "现行建造 ID、造价、条件和上限保持原契约；模型材质与碰撞正常，重绘不重复，事件和恢复协程随原 owner 清理；新槽不继承旧槽建筑实例。退役建筑仅恢复旧实例与迁移指引。该路径保持 MANUAL_PENDING，夹具不能替代。"
         }
       ]
     },
@@ -1642,6 +1641,11 @@
           "id": "M_RUNTIME_04",
           "steps": "在专用档 F3 自动验收中途取消、超时/失败后查看日志与 coverage.md；重新跑一轮。",
           "expected": "未执行显示 NOT_RUN/SKIP，人工显示 MANUAL_PENDING；失败不会被后续 PASS 覆盖；再跑不继承旧结果。"
+        },
+        {
+          "id": "M_RUNTIME_05",
+          "steps": "在专用测试档分别于 D 波次进行中、E 入场前及商人子协程预热中、E/F 商人或敌人生成等待中、F 工事预览/维修选择中，通过官方 Mod 管理器同场景停用 Mod；另在基地未开局、一局正常结束后及 F 退出后 Boss 延迟销毁的 0.25 秒内停用。重新启用并进入一局，保留停用前后日志、物品计数和玩家属性。",
+          "expected": "旧敌人、商人、工事、能力协程、事件、HUD 与临时属性均收尾；迟到生成物立即回收，不能复活旧局；未启动的模式不改玩家阵营/属性；已扣除但未使用的道具按原退款语义只返还一次，不额外发奖励；重启后一局无重复订阅或残留状态。"
         }
       ]
     },

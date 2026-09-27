@@ -426,6 +426,15 @@ namespace BossRush
             if (seamMesh != null) Destroy(seamMesh);
         }
 
+        internal static void ResetStaticCaches()
+        {
+            for (int i = 0; i < SigilTextures.Length; i++)
+            {
+                if (SigilTextures[i] != null) Destroy(SigilTextures[i]);
+                SigilTextures[i] = null;
+            }
+        }
+
         private static void BuildSilhouette(ZombieModeBossKind kind, Geometry armor, Geometry glow, Color color)
         {
             // 数值为角色身高的比例；每种轮廓独立，不靠改整体体型或复制同一顶帽子区分。

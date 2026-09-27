@@ -8,7 +8,7 @@ ROOTS = [Path("ZombieMode"), Path("Integration")]
 SPEND_HELPER = "public bool SpendZombieModePurificationPoints(int cost, string reason)"
 REWARD_PARTS = [
     Path("ZombieMode/ZombieModeRewards.cs"),
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -81,7 +81,7 @@ def main() -> int:
 
     if not spend_body:
         return fail("missing shared spend helper")
-    if "zombieModeRunState.PurificationPoints -= cost;" not in spend_body:
+    if "runState.PurificationPoints -= cost;" not in spend_body:
         return fail("shared spend helper must be the only direct subtraction site")
     spend_range = extract_method_line_range(spend_text, SPEND_HELPER)
     if spend_range is None:

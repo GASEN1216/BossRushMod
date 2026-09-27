@@ -13,7 +13,7 @@ def fail(message: str) -> int:
 def main() -> int:
     text = SOURCE.read_text(encoding="utf-8", errors="ignore")
 
-    roll = 'TryRollMutatorsForMode("ModeE");'
+    roll = 'modeEHost.TryRollMutatorsForArena("ModeE");'
     spawn = "ModeESpawnAllBosses("
 
     roll_index = text.find(roll)

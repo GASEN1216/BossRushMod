@@ -109,6 +109,20 @@ class ModBehaviour : UnityEngine.Object
     public static ModBehaviour Instance;
     public Flow Flow;
     public bool Enabled = true;
+    public DeathWraithRuntimeModule Runtime;
+    public ModBehaviour() { Runtime = new DeathWraithRuntimeModule(this); }
+    public void Spawn(Flow flow) { Flow = flow; Runtime.StartSpawnForTest(7, new Vector3()); }
+    public void Reload() { Runtime.OnSetFile_DeathWraith(); }
+    public bool Pending => Runtime.Pending;
+    public int Active => Runtime.Active;
+    public static void DevLog(string value) { }
+    public bool IsDeathWraithSystemEnabledForModule_DeathWraith() => Enabled;
+    public void NormalizeDamageMultiplierForModule_DeathWraith(CharacterMainControl character) { }
+    public void ApplyBossStatMultiplierForModule_DeathWraith(CharacterMainControl character) { }
+}
+class DeathWraithRuntimeModule
+{
+    private readonly ModBehaviour owner;
     private int deathWraithSpawnGeneration;
     private HashSet<uint> spawningWraithRaidIds = new HashSet<uint>();
     private Dictionary<uint, CharacterMainControl> activeWraithsByRaidId = new Dictionary<uint, CharacterMainControl>();
@@ -117,21 +131,21 @@ class ModBehaviour : UnityEngine.Object
     private object _deathWraithListCache;
     private bool _deathWraithListDirty;
     private float _deathWraithListDirtySince;
-    public void Spawn(Flow flow) { Flow = flow; TrySpawnStoredDeathWraithForRaid_DeathWraith(7, new Vector3()); }
-    public void Reload() { OnSetFile_DeathWraith(); }
+    public DeathWraithRuntimeModule(ModBehaviour owner) { this.owner = owner; }
     public bool Pending => spawningWraithRaidIds.Contains(7);
     public int Active => activeWraithsByRaidId.Count;
-    public static void DevLog(string value) { }
-    private bool IsDeathWraithSystemEnabled() => Enabled;
-    private WraithInfo FindStoredDeathWraithInfoByRaidId_DeathWraith(uint id) => Flow.Info;
+    private static void DevLog(string value) { ModBehaviour.DevLog(value); }
+    public void StartSpawnForTest(uint raidId, Vector3 position) { TrySpawnStoredDeathWraithForRaid_DeathWraith(raidId, position); }
+    private bool IsDeathWraithSystemEnabled() => owner != null && owner.IsDeathWraithSystemEnabledForModule_DeathWraith();
+    private WraithInfo FindStoredDeathWraithInfoByRaidId_DeathWraith(uint id) => owner.Flow.Info;
     private CharacterModel GetMainCharacterModelPrefab_DeathWraith(LevelManager level) => new CharacterModel();
     private void RestoreWraithItemRuntimeStateRecursive_DeathWraith(Item item, string context) { }
     private void ApplyStoredWraithFaceData_DeathWraith(CharacterMainControl character, WraithInfo info) { }
     private Task EnsureStoredBoundMeleeEquipped_DeathWraith(CharacterMainControl character, WraithInfo info) => character.Flow.Steps[2].Task;
     private Task PrepareWraithCombatLoadout_DeathWraith(CharacterMainControl character) => character.Flow.Steps[4].Task;
-    private void NormalizeDamageMultiplier(CharacterMainControl character) { }
+    private void NormalizeDamageMultiplier(CharacterMainControl character) => owner.NormalizeDamageMultiplierForModule_DeathWraith(character);
+    private void ApplyBossStatMultiplier(CharacterMainControl character) => owner.ApplyBossStatMultiplierForModule_DeathWraith(character);
     private void RestoreWraithMaxHealthSnapshot_DeathWraith(CharacterMainControl character, float value) { }
-    private void ApplyBossStatMultiplier(CharacterMainControl character) { }
     private void InitializeWraithAI_DeathWraith(CharacterMainControl character, Vector3 position, WraithInfo info) { }
     private WraithTier ClassifyWraithTier_DeathWraith(int value, long wealth) => WraithTier.Weak;
     private string GetWraithDisplayName_DeathWraith(string name, WraithTier tier) => "wraith";

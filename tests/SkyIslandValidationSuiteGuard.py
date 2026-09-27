@@ -31,7 +31,7 @@ BACKSLASH = chr(92)
 SUITE = "DebugAndTools/F3GameplayValidationSkyIsland.cs"
 CASES = "DebugAndTools/F3GameplayValidationSkyIslandCases.cs"
 RUNTIME = "DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs"
-SURFACE = "DebugAndTools/SkyIsland/SkyIslandSessionValidation.cs"
+SURFACE = "SkyIsland/SkyIslandSessionValidation.cs"
 
 # `Inspect` 的 CJK 码位区间。C# 那边写成整数常量而不是字面汉字或 \u 转义，是因为后两者
 # 在文件被按非 UTF-8 读写、或经过会折反斜杠的工具时会静默变形，而这条断言完全靠
@@ -226,8 +226,11 @@ def main():
     runtime = read(RUNTIME)
     surface = read(SURFACE)
     runner = read("DebugAndTools/F3GameplayValidationRunner.cs")
+    mode_gate = read("Utilities/ModeRuntimeHooks.cs")
+    island_prelude = read("SkyIsland/SkyIslandPreludeFlow.cs")
+    island_givers = read("SkyIsland/SkyIslandOfficialQuestGivers.cs")
     execution = read("DebugAndTools/F3GameplayValidationExecution.cs")
-    session = read("DebugAndTools/SkyIsland/SkyIslandSession.cs")
+    session = read("SkyIsland/SkyIslandSession.cs")
     bat = (ROOT / "compile_official.bat").read_text(encoding="utf-8", errors="ignore")
     errors = []
 
@@ -247,6 +250,21 @@ def main():
     for path in (SUITE, CASES, RUNTIME, SURFACE):
         if path.replace("/", BACKSLASH) not in bat:
             errors.append("编译清单缺少 " + path)
+
+    # 正式天空岛入口与 F3 读取同一个生产模式冲突判据。
+    mode_gate_body = need_body(mode_gate, "internal bool ValidationHasActiveMode(out string reason)", "生产模式冲突判据")
+    if "internal bool ValidationHasActiveMode(out string reason)" in runner:
+        errors.append("模式冲突判据不得定义在 F3 文件中")
+    for token in ("IsActive", "modeDActive", "modeEActive", "modeFActive",
+                  "ModeGRuntimeGates.IsModeGEntryBlocked", "IsZombieModeStartupInProgress()",
+                  "ModeHRuntime.HasActiveRun", "campaignFinalBossActive"):
+        if token not in mode_gate_body:
+            errors.append("生产模式冲突判据缺少 " + token)
+    if "Utilities\\ModeRuntimeHooks.cs" not in bat:
+        errors.append("生产模式冲突判据未登记正式构建")
+    for label, source in (("天空岛会话", session), ("天空岛序章", island_prelude), ("岛上任务门", island_givers)):
+        if "ValidationHasActiveMode(out mode)" not in source:
+            errors.append(label + " 未共用生产模式冲突判据")
 
     # ---- 2. 岛内入口存在，门的方向与主套件相反，而且每一道都真的会拦 ----
     gate_body = need_body(suite, "private bool CheckSkyIslandStartGate(out string reason)", "岛内启动门")

@@ -1,3 +1,4 @@
+using Duckov.Utilities;
 // ============================================================================
 // ZombieModeRewardItemGrants.cs - 丧尸模式物品与契约奖励
 // ============================================================================
@@ -15,7 +16,7 @@ using BossRush.Utils;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
         private bool GrantZombieModeRandomMeleeReward(bool bossNode)
         {
@@ -67,7 +68,7 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                DevLog("[ZombieMode] RandomGunWithAmmo reward failed: " + e.Message);
+                ModBehaviour.DevLog("[ZombieMode] RandomGunWithAmmo reward failed: " + e.Message);
                 try
                 {
                     if (gun != null)
@@ -77,7 +78,7 @@ namespace BossRush
                 }
                 catch (System.Exception destroyEx)
                 {
-                    DevLog("[ZombieMode] RandomGunWithAmmo reward cleanup failed: " + destroyEx.Message);
+                    ModBehaviour.DevLog("[ZombieMode] RandomGunWithAmmo reward cleanup failed: " + destroyEx.Message);
                 }
 
                 GrantZombieModeFallbackPurificationReward("RandomGunWithAmmoRewardFail_Exception", bossNode ? 160 : 110);
@@ -87,8 +88,8 @@ namespace BossRush
 
         private bool GrantZombieModeAmmoSupplyReward()
         {
-            string caliber = !string.IsNullOrEmpty(zombieModeRunState.StarterAmmoCaliber)
-                ? zombieModeRunState.StarterAmmoCaliber
+            string caliber = !string.IsNullOrEmpty(runState.StarterAmmoCaliber)
+                ? runState.StarterAmmoCaliber
                 : string.Empty;
             if (!string.IsNullOrEmpty(caliber) && TryGiveZombieModeStarterAmmo(caliber, ZombieModeTuning.AmmoSupplyRewardAmmoCount))
             {
@@ -145,7 +146,7 @@ namespace BossRush
 
         private int GetZombieModeRewardMaxQuality(bool bossNode)
         {
-            return Mathf.Clamp(zombieModeRunState.PollutionTier + (bossNode ? 2 : 1), 1, ZombieModeTuning.StarterMaxQuality + (bossNode ? 1 : 0));
+            return Mathf.Clamp(runState.PollutionTier + (bossNode ? 2 : 1), 1, ZombieModeTuning.StarterMaxQuality + (bossNode ? 1 : 0));
         }
 
         private bool GrantZombieModeFortificationPack(bool bossNode)
@@ -158,7 +159,7 @@ namespace BossRush
 
             if (granted > 0)
             {
-                ShowBigBanner(L10n.T("BossRush_ZombieMode_Banner_RepairPackReceived"));
+                owner.ShowBigBanner(L10n.T("BossRush_ZombieMode_Banner_RepairPackReceived"));
                 return true;
             }
 
@@ -189,7 +190,7 @@ namespace BossRush
                 return false;
             }
 
-            zombieModeRunState.PollutionFromContracts += pollution;
+            runState.PollutionFromContracts += pollution;
             NotificationText.Push(string.Format(
                 L10n.T("BossRush_ZombieMode_Notify_ContractPollutionCost"),
                 pollution,
@@ -206,7 +207,7 @@ namespace BossRush
                 return false;
             }
 
-            zombieModeRunState.PollutionFromContracts += pollution;
+            runState.PollutionFromContracts += pollution;
             GrantZombieModeContractGearDealRewardOnly();
             NotificationText.Push(string.Format(
                 L10n.T("BossRush_ZombieMode_Notify_ContractGearCost"),
@@ -299,7 +300,7 @@ namespace BossRush
                 return false;
             }
 
-            zombieModeRunState.PollutionFromContracts += 3;
+            runState.PollutionFromContracts += 3;
             ApplyZombieModeInsuranceReward(0.30f, true);
             NotificationText.Push(string.Format(
                 L10n.T("BossRush_ZombieMode_Notify_ContractHugePurificationCost"),
@@ -316,7 +317,7 @@ namespace BossRush
                 return false;
             }
 
-            zombieModeRunState.PollutionFromContracts += 2;
+            runState.PollutionFromContracts += 2;
             ApplyZombieModeInsuranceReward(0.20f, true);
             NotificationText.Push(string.Format(
                 L10n.T("BossRush_ZombieMode_Notify_ContractInsuranceCost"),
@@ -328,45 +329,45 @@ namespace BossRush
         private void ApplyZombieModeInsuranceReward(float randomKeepRatio, bool includeSpecifiedKeep)
         {
             List<Item> candidates = CollectZombieModeInsuranceCandidates();
-            if (includeSpecifiedKeep && zombieModeRunState.InsuranceState.SpecifiedKeepItem == null && candidates.Count > 0)
+            if (includeSpecifiedKeep && runState.InsuranceState.SpecifiedKeepItem == null && candidates.Count > 0)
             {
-                zombieModeRunState.InsuranceState.SpecifiedKeepItem = candidates[0];
+                runState.InsuranceState.SpecifiedKeepItem = candidates[0];
             }
 
-            zombieModeRunState.InsuranceState.RandomKeepRatio = Mathf.Clamp(
-                zombieModeRunState.InsuranceState.RandomKeepRatio + Mathf.Max(0f, randomKeepRatio),
+            runState.InsuranceState.RandomKeepRatio = Mathf.Clamp(
+                runState.InsuranceState.RandomKeepRatio + Mathf.Max(0f, randomKeepRatio),
                 0f,
                 0.80f);
             NotificationText.Push(string.Format(
                 L10n.T("BossRush_ZombieMode_Notify_InsuranceKeepOne"),
-                Mathf.RoundToInt(zombieModeRunState.InsuranceState.RandomKeepRatio * 100f)));
+                Mathf.RoundToInt(runState.InsuranceState.RandomKeepRatio * 100f)));
         }
 
         private void ApplyZombieModeMapEventReward(ZombieModeRewardType rewardType)
         {
             if (rewardType == ZombieModeRewardType.MapEventHighValueAirdrop)
             {
-                zombieModeRunState.PendingMapEvent = ZombieModePendingMapEventType.HighValueAirdrop;
-                CreateZombieModeHighValueAirdrop(zombieModeRunState.RunId);
+                runState.PendingMapEvent = ZombieModePendingMapEventType.HighValueAirdrop;
+                CreateZombieModeHighValueAirdrop(runState.RunId);
                 NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_MapEventHighValueAirdrop"));
                 return;
             }
 
-            zombieModeRunState.PendingMapEvent = ZombieModePendingMapEventType.EliteSquad;
-            zombieModeRunState.PendingEliteSquadCount += 3;
+            runState.PendingMapEvent = ZombieModePendingMapEventType.EliteSquad;
+            runState.PendingEliteSquadCount += 3;
             NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_MapEventEliteSquad"));
         }
 
-        private void SpawnPendingZombieModeEliteSquad(int runId)
+        internal void SpawnPendingZombieModeEliteSquad(int runId)
         {
-            if (!IsZombieModeRunValid(runId) || zombieModeRunState.PendingEliteSquadCount <= 0)
+            if (!IsZombieModeRunValid(runId) || runState.PendingEliteSquadCount <= 0)
             {
                 return;
             }
 
-            int count = zombieModeRunState.PendingEliteSquadCount;
-            zombieModeRunState.PendingEliteSquadCount = 0;
-            zombieModeRunState.PendingMapEvent = ZombieModePendingMapEventType.None;
+            int count = runState.PendingEliteSquadCount;
+            runState.PendingEliteSquadCount = 0;
+            runState.PendingMapEvent = ZombieModePendingMapEventType.None;
             SpawnZombieModeEliteSquadAsync(runId, count).Forget();
         }
 
@@ -374,7 +375,7 @@ namespace BossRush
         {
             for (int i = 0; i < count; i++)
             {
-                if (!IsZombieModeRunValid(runId) || zombieModeRunState.CombatPhase != ZombieModeCombatPhase.Combat)
+                if (!IsZombieModeRunValid(runId) || runState.CombatPhase != ZombieModeCombatPhase.Combat)
                 {
                     return;
                 }
@@ -384,7 +385,7 @@ namespace BossRush
                     GetZombieModeSpawnPosition(),
                     ZombieModeEnemyKind.Elite,
                     true,
-                    () => zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat);
+                    () => runState.CombatPhase == ZombieModeCombatPhase.Combat);
                 await UniTask.Yield();
             }
         }
@@ -404,29 +405,29 @@ namespace BossRush
             {
                 GrantZombieModeFallbackPurificationReward("HighValueSupply", 180);
             }
-            ShowBigBanner(L10n.T("BossRush_ZombieMode_Reward_MapEventHighValueAirdrop"));
+            owner.ShowBigBanner(L10n.T("BossRush_ZombieMode_Reward_MapEventHighValueAirdrop"));
         }
 
-        private void SettleZombieModeFailureInsuranceShell(int runId)
+        internal void SettleZombieModeFailureInsuranceShell(int runId)
         {
-            if (runId <= 0 || zombieModeRunState.RunId != runId)
+            if (runId <= 0 || runState.RunId != runId)
             {
                 return;
             }
 
-            float keepRatio = Mathf.Clamp(zombieModeRunState.InsuranceState.RandomKeepRatio, 0f, 0.80f);
-            Item specified = zombieModeRunState.InsuranceState.SpecifiedKeepItem;
-            zombieModeRunState.PurificationPoints = 0;
+            float keepRatio = Mathf.Clamp(runState.InsuranceState.RandomKeepRatio, 0f, 0.80f);
+            Item specified = runState.InsuranceState.SpecifiedKeepItem;
+            runState.PurificationPoints = 0;
             if (keepRatio <= 0f && specified == null)
             {
-                zombieModeRunState.InsuranceState.Reset();
+                runState.InsuranceState.Reset();
                 return;
             }
 
             List<Item> candidates = CollectZombieModeInsuranceCandidates();
             if (candidates.Count <= 0)
             {
-                zombieModeRunState.InsuranceState.Reset();
+                runState.InsuranceState.Reset();
                 return;
             }
 
@@ -456,7 +457,7 @@ namespace BossRush
             {
                 NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Settle_InsuranceSaved"), saved));
             }
-            zombieModeRunState.InsuranceState.Reset();
+            runState.InsuranceState.Reset();
         }
 
         private List<Item> CollectZombieModeInsuranceCandidates()
@@ -489,14 +490,14 @@ namespace BossRush
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[ZombieMode] PlayerStorage.AddItem 失败: " + e.Message);
+                    ModBehaviour.DevLog("[ZombieMode] PlayerStorage.AddItem 失败: " + e.Message);
                 }
             }
 
             return false;
         }
 
-        private string GetZombieModeAttributeKey(ZombieModeRewardType rewardType)
+        internal string GetZombieModeAttributeKey(ZombieModeRewardType rewardType)
         {
             switch (rewardType)
             {
@@ -517,7 +518,7 @@ namespace BossRush
             }
         }
 
-        private float GetZombieModeAttributeCap(ZombieModeRewardType rewardType)
+        internal float GetZombieModeAttributeCap(ZombieModeRewardType rewardType)
         {
             switch (rewardType)
             {
@@ -536,6 +537,113 @@ namespace BossRush
                 default:
                     return 1f;
             }
+        }
+        internal bool TryGiveZombieModeWaveClearHealingItem()
+        {
+            return TryGiveRandomItemByTags(ZombieModeRewardTagHealing, 1, ZombieModeTuning.StarterMaxQuality);
+        }
+
+        internal int TryGiveRandomItemByTagsTimes(string[] requiredTags, int minQuality, int maxQuality, int times)
+        {
+            int success = 0;
+            for (int i = 0; i < times; i++)
+            {
+                if (TryGiveRandomItemByTags(requiredTags, minQuality, maxQuality))
+                {
+                    success++;
+                }
+            }
+            return success;
+        }
+
+        internal string TryReadZombieModeItemCaliber(Item item)
+        {
+            if (item == null)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                if (item.Constants == null)
+                {
+                    return string.Empty;
+                }
+                string caliber = item.Constants.GetString("Caliber", null);
+                return caliber ?? string.Empty;
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] 弹药 caliber 读取失败: " + e.Message);
+            }
+            return string.Empty;
+        }
+
+        internal bool TryGiveZombieModeStarterAmmo(string caliber, int totalCount)
+        {
+            return TryGiveZombieModeAmmo(caliber, totalCount, 1, 2);
+        }
+
+        private bool TryGiveZombieModeAmmo(string caliber, int totalCount, int minQuality, int maxQuality)
+        {
+            try
+            {
+                ItemFilter filter = new ItemFilter();
+                Tag[] ammoTags = ResolveZombieModeTags(ZombieModeRewardTagAmmo);
+                if (ammoTags == null || ammoTags.Length <= 0)
+                {
+                    ammoTags = ResolveZombieModeTags(ZombieModeRewardTagBullet);
+                }
+                filter.requireTags = ammoTags;
+                filter.minQuality = minQuality;
+                filter.maxQuality = maxQuality;
+                filter.caliber = caliber ?? string.Empty;
+
+                int[] candidates = ItemAssetsCollection.Search(filter);
+                if (candidates == null || candidates.Length <= 0)
+                {
+                    return false;
+                }
+
+                int chosenTypeId = PickZombieModeStrictQualityCandidate(candidates, minQuality, maxQuality);
+                if (chosenTypeId <= 0)
+                {
+                    return false;
+                }
+
+                Item ammoItem = ItemAssetsCollection.InstantiateSync(chosenTypeId);
+                if (ammoItem == null)
+                {
+                    return false;
+                }
+
+                try { ammoItem.StackCount = totalCount; } catch (System.Exception e) { ModBehaviour.DevLog("[ZombieMode] ammoItem.StackCount 设置失败: " + e.Message); }
+                ItemUtilities.SendToPlayer(ammoItem, true, true);
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] 发放起始弹药失败: " + e.Message);
+                return false;
+            }
+        }
+
+        internal bool TryGiveRandomItemByTags(string[] requiredTags, int minQuality, int maxQuality)
+        {
+            int typeId = FindRandomItemTypeByTags(requiredTags, minQuality, maxQuality);
+            if (typeId <= 0)
+            {
+                return false;
+            }
+
+            Item item = ItemAssetsCollection.InstantiateSync(typeId);
+            if (item == null)
+            {
+                return false;
+            }
+
+            ItemUtilities.SendToPlayer(item, false, false);
+            return true;
         }
     }
 }

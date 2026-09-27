@@ -4,10 +4,13 @@ import sys
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 MOD_BEHAVIOUR = Path("ModBehaviour.cs")
 MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
-ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
+ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+HOST_LIFECYCLE = Path("ZombieMode/ZombieModeRuntimeModule_HostLifecycle.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 
 REQUIRED_MODEL_SNIPPETS = [
     "public enum ZombieModeLifecyclePhase",
@@ -65,17 +68,44 @@ REQUIRED_MODEL_SNIPPETS = [
 ]
 
 REQUIRED_ENTRY_SNIPPETS = [
-    "private readonly ZombieModeRunState zombieModeRunState",
-    "private readonly ZombieModeEntryTransaction zombieModeEntryTransaction",
-    "private static int nextZombieModeRunId",
+    "private ZombieModeRunState zombieModeRunState",
+    "private ZombieModeEntryTransaction zombieModeEntryTransaction",
+    "private bool pendingZombieModeEntry",
+    "private int nextZombieModeRunId",
     "public bool IsZombieModeActive",
     "public int ZombieModeCurrentRunId",
     "private bool IsZombieModeRunValid(int runId)",
-    "SceneManager.GetActiveScene()",
     "BuildZombieModeMapProfile",
-    "ZombieModePhaseGuards.IsActive",
-    "ZombieModeFailureReason.InitializationFailed",
     "FailZombieModeBeforeActive(ZombieModeFailureReason reason)",
+]
+
+REQUIRED_MODULE_SNIPPETS = [
+    "private ZombieModeRunState runState;",
+    "private ZombieModeEntryTransaction entryTransaction;",
+    "private Dictionary<string, int[]> rewardCandidateCache;",
+    "private List<int> rewardCandidateScratch;",
+    "private HashSet<int> opaqueFilterLogIds;",
+    "private bool pendingEntry;",
+    "private float runtimePausedDuration;",
+    "private float runtimePauseStartTime = -1f;",
+    "private int runtimePauseRunId;",
+    "internal void AdoptHostState(",
+    "currentOwner.DetachZombieModeRuntimeModule(this);",
+    "this.runState = runState;",
+    "this.entryTransaction = entryTransaction;",
+    "this.rewardCandidateCache = rewardCandidateCache;",
+    "this.rewardCandidateScratch = rewardCandidateScratch;",
+    "this.opaqueFilterLogIds = opaqueFilterLogIds;",
+    "internal bool CanStartZombieModeMapSelectionPhase1(out string failureReason)",
+    "internal void MarkZombieModeMapConfirmedPhase1()",
+    "internal bool CommitZombieModeEntryResourcesShell(out ZombieModeFailureReason reason)",
+    "internal int BeginZombieModeRunShell(int sceneBuildIndex, string sceneName)",
+    "internal bool InitializeZombieModeRunAfterMapLoaded(int runId)",
+    "internal void FinalizeZombieModeEntryResources()",
+    "internal void TickZombieMode(float deltaTime)",
+    "ZombieModePhaseGuards.IsActive(phase)",
+    "SceneManager.GetActiveScene()",
+    "ZombieModeFailureReason.InitializationFailed",
 ]
 
 
@@ -87,17 +117,51 @@ def fail(message: str) -> int:
 def main() -> int:
     model_text = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
     entry_text = ENTRY.read_text(encoding="utf-8")
+    bridge_text = HOST_BRIDGE.read_text(encoding="utf-8")
+    lifecycle_text = HOST_LIFECYCLE.read_text(encoding="utf-8")
+    host_entry_text = entry_text + "\n" + bridge_text
     mod_text = MOD_BEHAVIOUR.read_text(encoding="utf-8")
     mode_runtime_hooks_text = MODE_RUNTIME_HOOKS.read_text(encoding="utf-8")
     zombie_runtime_hooks_text = ZOMBIE_RUNTIME_HOOKS.read_text(encoding="utf-8")
+    runtime_module_text = RUNTIME_MODULE.read_text(encoding="utf-8")
 
     for snippet in REQUIRED_MODEL_SNIPPETS:
         if snippet not in model_text:
             return fail("ZombieModeStateModelGuard: model missing snippet -> " + snippet)
 
     for snippet in REQUIRED_ENTRY_SNIPPETS:
-        if snippet not in entry_text:
+        if snippet not in host_entry_text:
             return fail("ZombieModeStateModelGuard: entry missing snippet -> " + snippet)
+
+    for snippet in REQUIRED_MODULE_SNIPPETS:
+        if snippet not in runtime_module_text:
+            return fail("ZombieModeStateModelGuard: runtime module missing snippet -> " + snippet)
+    for snippet in [
+        "module.AdoptHostState(",
+        "zombieModeUnattachedRunState,",
+        "zombieModeUnattachedEntryTransaction,",
+        "zombieModeUnattachedRewardCandidateCache,",
+        "zombieModeUnattachedRewardCandidateScratch,",
+        "zombieModeUnattachedOpaqueFilterLogIds,",
+        "zombieModeUnattachedPendingEntry);",
+        "zombieModeRuntimeModule.RunState : zombieModeUnattachedRunState",
+        "zombieModeRuntimeModule.EntryTransaction : zombieModeUnattachedEntryTransaction",
+    ]:
+        if snippet not in lifecycle_text:
+            return fail("ZombieModeStateModelGuard: lifecycle state owner missing snippet -> " + snippet)
+    if "private readonly ZombieModeRunState zombieModeRunState" in host_entry_text:
+        return fail("ZombieModeStateModelGuard: ModBehaviour still owns the active ZombieModeRunState field")
+    for snippet in [
+        "return module.CanStartZombieModeMapSelectionPhase1(out failureReason);",
+        "module.MarkZombieModeMapConfirmedPhase1();",
+        "return module != null && module.IsZombieModeMapLoadReadyPhase1();",
+        "if (module != null) module.AbortZombieModeMapLoadPhase1(reason);",
+        "return module != null && module.TryHandleZombieModePendingMapSceneLoaded(scene, loadedMapConfig);",
+        "return module != null && module.InitializeZombieModeRunAfterMapLoaded(runId);",
+        "if (module != null) module.TickZombieMode(deltaTime);",
+    ]:
+        if snippet not in host_entry_text:
+            return fail("ZombieModeStateModelGuard: host entry bridge missing module forward -> " + snippet)
 
     if "TickModeRuntimeGroup(Time.deltaTime, Time.unscaledDeltaTime)" not in mod_text:
         return fail("ZombieModeStateModelGuard: ModBehaviour.Update does not tick mode runtime group")

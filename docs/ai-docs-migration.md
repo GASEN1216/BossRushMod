@@ -1,5 +1,9 @@
 # AI 协作文档收敛迁移记录
 
+## 2026-09-27 独立审计修复与合并（SAFE / COMPAT / OPERATIONAL）
+
+七项确认问题及合并适配见 `architecture/MIGRATION_REPAIR_20260927.md`。根规则保持 180 行，将远端新 ScrollRect / 引导 UI 细则保留在 `Common/UI/AGENTS.md`；根补正式构建须移除 Dev 环境变量、已授权 Jeff 引导任务段。五类上下文按磁盘重新计量，台账保留双方记录并恢复顶部归档入口。两篇当前本地专题改正天空岛路径。模块索引、回归清单、覆盖表与实机步骤同步；计划状态明确新修复版尚未部署，未把历史 L2 / 部署记录当作本轮 L3。
+
 ## 2026-09-25 天空岛判夜口径改正（SAFE）
 
 - `DebugAndTools/SkyIsland/AGENTS.md` 与 `docs/contracts.md` §7.1 的「夜是 19–5 点」与官方运行时不符（F3 实机读 `TimeOfDayController` 为 22 / 6，反编译初值 19 / 5 被 prefab 覆盖），随代码改为 22–6、夜里约 8 分钟，并写明以实机读数为准、不照抄反编译初值。
@@ -308,6 +312,32 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 - 删除：591 → 147。`superpowers/`、`视频策划/`、三个转发页（`代码审查/CODE_REVIEW*.md`、`协作/FIX_TRACKER.md`）、`AI使用提示词.md`、`项目全景文档.md`，全量审计的批次件，审美审查分报告，逐轮人工实测与 F3 诊断的中间轮次，截图，已落地的实施计划书，重复教程与重复设计稿。有同专题结论件的，引用改指结论件；没有的（如 `项目全景文档.md`）在 `FIX_TRACKER.md` 等历史台账里保留原文，不改写历史。
 - 内容：留下的教程、架构说明与设计稿逐篇对照代码改正（例：Mode F 回血数值、护士折扣档位、丧尸准备期与刷怪模型、日报签到奖励、物品 ID 表末尾与明细、Config 黑名单已 JSON 化、Hooks 约定与 §4.15 冲突处）；设计稿文首加状态行；报告加历史快照行；长期文档里的 `文件:行号` 改为「文件 + 符号名」。
 - 同步：全仓库引用改写（`AGENTS.md`、子系统 `AGENTS.md`、`CODE_REVIEW*.md`、`FIX_TRACKER.md`、`.qoder/repowiki/`、守卫与工具路径、26 个 `.cs` 的注释），`.gitignore` 放行行改为新路径（嵌套目录先放行父目录），`docs/AGENTS.md` 的「放哪里」表与 `docs/README.md` 重写。全量守卫 665/665 PASS。
+## 2026-09-24 模块解耦 P1：根规则迁出对照（SAFE / OPERATIONAL）
+
+- 原根 §3 子系统地图 → `MODULES.md` 生成表与保留的旧地图、`architecture/modules.json` 归属表；子目录规则清单仍在根 §3。
+- 原根 §4.14 UI 全文 → `Common/UI/AGENTS.md`，根 §4.14 留入口和四项总则。
+- 原根 §4.16 新增内容全文 → `Integration/AGENTS.md`「原根规则 §4.16」，根 §4.16 留四项要点。
+- 原根 §4.17 F3 与常驻 HUD 全文 → `DebugAndTools/AGENTS.md`，根 §4.17 留三项要点。
+- 根 §5、§7、§9、§11、§14 压缩为指针与要点；长期细则以原专项规则、`docs/contracts.md` 及相应守卫为准。§4.1 与 §4.3 标题、正文原样保留。前后数字见 `architecture/CONTEXT_BASELINE.md`。
+
+## 2026-09-25 Integration 初始化归属修正（COMPAT）
+
+- `Integration/AGENTS.md` 原将自定义武器参数登记定位在宿主 `BossRushIntegration.cs`；P3 将实现迁到 `BossRushIntegrationRuntimeModule_Initialization.cs` 后，宿主同名方法只保留兼容转发，已同步修正规则中的生产入口。
+
+## 2026-09-26 模块解耦 P5：天空岛正式目录归位（SAFE / OPERATIONAL）
+
+- `DebugAndTools/SkyIsland/` 的 99 个 C# 与专项 `AGENTS.md` 迁到顶级 `SkyIsland/`；97 个源码字节不变，另外两个只更新规则路径注释。命名空间、资源名、存档键与正式/Dev 条件保持。
+- 编译清单、模块索引和生成导航、当前规则、守卫、夹具、工具及 repowiki 定位引用同步。历史台账、归档和前测中的旧路径保留其历史含义。
+- 复核发现原计划 §7 所称 `tools/gameplay_coverage.py` 的天空岛特殊分域深度逻辑已经不存在；现工具直接按顶级目录分域，因此仅改覆盖表的源目录与受影响消费者，不增加分域特例。
+- `F3AutotestOrchestratorGuard` 的递归扫描显式纳入新目录；守卫路径修改均以独立副本的真实生产结构变异证明仍命中原断言。验证与交付记录见 `architecture/MIGRATION_STATUS.md`。
+
+## 2026-09-26 模块解耦 P6：终态与验收口径（SAFE / COMPAT / OPERATIONAL）
+
+- 模块索引修正 Integration 实际 owner/入口与 Config 参数归属，补 22 组现有专题导航；生成 MODULES.md。宿主终态、生命周期和 hook 专题同步，四篇 local-only 架构文档按当前 owner/路径更新。
+- architecture/CONTEXT_BASELINE.md 保留原样本并追踪真实 owner：自动导入链下降，四类完整文件源码阅读量上升。未把字节换算为 token，也未用薄桥文件冒充迁出实现。
+- architecture/MIGRATION_ACCEPTANCE.md 使用现有人工与 F3 ID，明确报告路径、截图文件主名、观察位置和不合格条件。覆盖表的两条内容建筑步骤按退役事实修正：旧公告板/展示柜恢复并指引，现行报箱/遗种巢走建造功能。
+- 交付审查发现宿主字段迁属性后地图费用仍用 GetField 取票 ID，已通过生产注册/费用回归复现并修复；记录为 CR-2026-09-26-001。最终构建、部署、离线证据与 L3 待测边界汇总在 architecture/MIGRATION_STATUS.md。
+
 
 - 2026-09-25：依 owner 本轮明确请求，根 AGENTS §4.14 / §10 登记 Jeff 新内容引导授权 590201–590214，并明确引导与六章共用征程客户端；contracts 同步三态可选存档字段和任务范围，避免旧“只限天空岛/六章”规则与现代码冲突。
 

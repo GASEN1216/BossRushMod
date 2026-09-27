@@ -9,9 +9,9 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>
-    /// 成就触发逻辑 - 集成到 ModBehaviour 的 partial class
+    /// 成就触发逻辑 - 由成就运行模块持有
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class AchievementRuntimeModule
     {
         #region 私有字段
 
@@ -35,11 +35,11 @@ namespace BossRush
                 SteamAchievementPopup.EnsureInstance();
                 SubscribeAchievementEvents();
                 achievementSystemInitialized = true;
-                DevLog("[Achievement] 成就系统初始化完成");
+                ModBehaviour.DevLog("[Achievement] 成就系统初始化完成");
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] 成就系统初始化失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] 成就系统初始化失败: " + e.Message);
             }
         }
 
@@ -60,7 +60,7 @@ namespace BossRush
         /// <summary>
         /// 在真正开始一局挑战时重置会话状态。
         /// </summary>
-        private void BeginAchievementSession(string sessionName)
+        internal void BeginAchievementSession(string sessionName)
         {
             if (!achievementSystemInitialized) return;
 
@@ -78,11 +78,11 @@ namespace BossRush
                     lastPlayerHealth = -1f;
                 }
 
-                DevLog("[Achievement] 成就会话开始: " + sessionName + ", startTime=" + AchievementTracker.ArenaEnterTime);
+                ModBehaviour.DevLog("[Achievement] 成就会话开始: " + sessionName + ", startTime=" + AchievementTracker.ArenaEnterTime);
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] 成就会话初始化失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] 成就会话初始化失败: " + e.Message);
             }
         }
 
@@ -96,7 +96,7 @@ namespace BossRush
             try
             {
                 float elapsedTime = AchievementTracker.GetElapsedTime();
-                DevLog("[Achievement] 检查速通成就: source=" + source + ", elapsed=" + elapsedTime);
+                ModBehaviour.DevLog("[Achievement] 检查速通成就: source=" + source + ", elapsed=" + elapsedTime);
 
                 if (elapsedTime <= 60f)
                 {
@@ -123,14 +123,14 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] 速通成就检查失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] 速通成就检查失败: " + e.Message);
             }
         }
 
         /// <summary>
         /// 检查 Mode D 无伤成就。
         /// </summary>
-        private void CheckModeDFlawlessAchievement()
+        internal void CheckModeDFlawlessAchievement()
         {
             if (!achievementSystemInitialized) return;
 
@@ -141,7 +141,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] Mode D 无伤成就检查失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] Mode D 无伤成就检查失败: " + e.Message);
             }
         }
 
@@ -152,7 +152,7 @@ namespace BossRush
         /// <summary>
         /// 检查通关相关成就
         /// </summary>
-        private void CheckClearAchievements()
+        internal void CheckClearAchievements()
         {
             if (!achievementSystemInitialized) return;
 
@@ -162,7 +162,7 @@ namespace BossRush
                 BossRushAchievementManager.TryUnlock("first_clear");
 
                 // 根据难度触发对应成就
-                if (bossesPerWave <= 1)
+                if (getBossesPerWave() <= 1)
                 {
                     BossRushAchievementManager.TryUnlock("easy_clear");
                     if (!AchievementTracker.HasTakenDamage)
@@ -191,7 +191,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] 通关成就检查失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] 通关成就检查失败: " + e.Message);
             }
         }
 
@@ -202,7 +202,7 @@ namespace BossRush
         /// <summary>
         /// 检查无间炼狱波次成就
         /// </summary>
-        private void CheckInfiniteHellAchievements(int waveNumber)
+        internal void CheckInfiniteHellAchievements(int waveNumber)
         {
             if (!achievementSystemInitialized) return;
 
@@ -235,7 +235,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] 无间炼狱成就检查失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] 无间炼狱成就检查失败: " + e.Message);
             }
         }
 
@@ -246,7 +246,7 @@ namespace BossRush
         /// <summary>
         /// 检查 Mode D 通关成就
         /// </summary>
-        private void CheckModeDClearAchievements()
+        internal void CheckModeDClearAchievements()
         {
             if (!achievementSystemInitialized) return;
 
@@ -257,7 +257,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] Mode D 成就检查失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] Mode D 成就检查失败: " + e.Message);
             }
         }
 
@@ -306,14 +306,14 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] Boss击杀成就检查失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] Boss击杀成就检查失败: " + e.Message);
             }
         }
 
         /// <summary>
         /// 按角色实例去重的 Boss 击杀成就入口。
         /// </summary>
-        private bool CheckBossKillAchievementsOnce(CharacterMainControl bossMain, string bossTypeOverride = null)
+        internal bool CheckBossKillAchievementsOnce(CharacterMainControl bossMain, string bossTypeOverride = null)
         {
             if (!achievementSystemInitialized) return false;
 
@@ -336,7 +336,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] Boss击杀成就去重检查失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] Boss击杀成就去重检查失败: " + e.Message);
                 return false;
             }
         }
@@ -433,11 +433,11 @@ namespace BossRush
                 AchievementTracker.HasTakenDamage = false;
                 modeGCountedAchievementReports.Clear();
                 modeGAchievementSessionActive = true;
-                DevLog("[Achievement] [ModeG] 独立成就 session 已开启");
+                ModBehaviour.DevLog("[Achievement] [ModeG] 独立成就 session 已开启");
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] [ModeG] session 开启失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] [ModeG] session 开启失败: " + e.Message);
             }
         }
 
@@ -450,11 +450,11 @@ namespace BossRush
             try
             {
                 modeGAchievementSessionActive = false;
-                DevLog("[Achievement] [ModeG] 独立成就 session 已关闭");
+                ModBehaviour.DevLog("[Achievement] [ModeG] 独立成就 session 已关闭");
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] [ModeG] session 关闭失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] [ModeG] session 关闭失败: " + e.Message);
             }
         }
 
@@ -486,11 +486,11 @@ namespace BossRush
                         BossRushAchievementManager.TryUnlock("kill_dragon_king_flawless");
                 }
 
-                DevLog("[Achievement] [ModeG] Boss击杀上报: token=" + token + ", type=" + bossType + ", flawless=" + wasFlawlessAtDeath);
+                ModBehaviour.DevLog("[Achievement] [ModeG] Boss击杀上报: token=" + token + ", type=" + bossType + ", flawless=" + wasFlawlessAtDeath);
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] [ModeG] Boss击杀成就上报失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] [ModeG] Boss击杀成就上报失败: " + e.Message);
             }
         }
 
@@ -557,7 +557,7 @@ namespace BossRush
             // 仅在 BossRush 激活时追踪；Mode G 门控（加法分支）：
             // Mode G 成就伤害窗口（仅 Active+Fighting/LastStand，默认 false）同样纳入追踪。
             // 不写 IsActive 本身；窗口查询 no-throw。
-            if (!IsActive && !IsModeGAchievementDamageWindowActiveSafe()) return;
+            if (!isLegacyActive() && !IsModeGAchievementDamageWindowActiveSafe()) return;
             if (!achievementSystemInitialized) return;
 
             try
@@ -575,7 +575,7 @@ namespace BossRush
                 if (damage > 0)
                 {
                     TrackPlayerDamage(damage);
-                    DevLog("[Achievement] 玩家受伤: " + damage + ", HasTakenDamage=" + AchievementTracker.HasTakenDamage);
+                    ModBehaviour.DevLog("[Achievement] 玩家受伤: " + damage + ", HasTakenDamage=" + AchievementTracker.HasTakenDamage);
                 }
             }
             catch { }
@@ -588,7 +588,7 @@ namespace BossRush
         private void OnItemPickupForAchievement(InteractablePickup pickup, CharacterMainControl character)
         {
             // 仅在 Mode D 激活时追踪
-            if (!modeDActive) return;
+            if (!isModeDActive()) return;
             if (!achievementSystemInitialized) return;
 
             try
@@ -599,7 +599,7 @@ namespace BossRush
 
                 // 记录玩家拾取物品
                 TrackPlayerPickup();
-                DevLog("[Achievement] 玩家拾取物品, HasPickedUpItem=" + AchievementTracker.HasPickedUpItem);
+                ModBehaviour.DevLog("[Achievement] 玩家拾取物品, HasPickedUpItem=" + AchievementTracker.HasPickedUpItem);
             }
             catch { }
         }
@@ -616,7 +616,7 @@ namespace BossRush
         private void OnPlayerHealthChangeForAchievement(Health health)
         {
             // 仅在无间炼狱模式激活时追踪
-            if (!infiniteHellMode) return;
+            if (!isInfiniteHellMode()) return;
             if (!achievementSystemInitialized) return;
 
             try
@@ -637,7 +637,7 @@ namespace BossRush
                 {
                     float healAmount = currentHealth - lastPlayerHealth;
                     TrackPlayerHeal();
-                    DevLog("[Achievement] 玩家治疗: +" + healAmount + ", HasUsedHealItem=" + AchievementTracker.HasUsedHealItem);
+                    ModBehaviour.DevLog("[Achievement] 玩家治疗: +" + healAmount + ", HasUsedHealItem=" + AchievementTracker.HasUsedHealItem);
                 }
 
                 lastPlayerHealth = currentHealth;
@@ -658,7 +658,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] 检查成就收集者失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] 检查成就收集者失败: " + e.Message);
             }
         }
 
@@ -673,11 +673,11 @@ namespace BossRush
             {
                 // 订阅物品拾取事件（Mode D 无拾取成就）
                 InteractablePickup.OnPickupSuccess += OnItemPickupForAchievement;
-                DevLog("[Achievement] 已订阅物品拾取事件");
+                ModBehaviour.DevLog("[Achievement] 已订阅物品拾取事件");
             }
             catch (Exception e)
             {
-                DevLog("[Achievement] 订阅物品拾取事件失败: " + e.Message);
+                ModBehaviour.DevLog("[Achievement] 订阅物品拾取事件失败: " + e.Message);
             }
 
             LevelManager.OnAfterLevelInitialized += RebindAchievementHealth;
@@ -697,7 +697,7 @@ namespace BossRush
                 lastPlayerHealth = current == null ? -1f : current.CurrentHealth;
                 if (current != null) current.OnHealthChange.AddListener(OnPlayerHealthChangeForAchievement);
             }
-            catch (Exception e) { DevLog("[Achievement] 治疗监听重绑失败: " + e.Message); }
+            catch (Exception e) { ModBehaviour.DevLog("[Achievement] 治疗监听重绑失败: " + e.Message); }
         }
 
         /// <summary>

@@ -4,7 +4,8 @@ from pathlib import Path
 import sys
 
 
-BOSS = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
+HOST = Path("ZombieMode/ZombieModeCombatHostBridge.cs")
 
 
 def fail(message: str) -> int:
@@ -18,7 +19,7 @@ def main() -> int:
     required_tokens = [
         "private bool TryResolveZombieModeBossFallbackPosition(",
         "SpawnPositionHelper.TryFindAroundPlayer(",
-        "TryGetNearestZombieModeMapSpawnPositionToPlayer(out target)",
+        "owner.TryGetNearestZombieModeMapSpawnPositionToPlayerForBossRuntimeModule(out target)",
         "SpawnPositionHelper.TrySampleNavMesh(",
         "if (!TryResolveZombieModeBossFallbackPosition(instance, out target))",
         "SetZombieModeEnemyTargetToMainPlayer(ai);",
@@ -35,6 +36,17 @@ def main() -> int:
     for token in forbidden_tokens:
         if token in text:
             return fail("stale direct-position fallback remains -> " + token)
+
+    host = HOST.read_text(encoding="utf-8")
+    for token in [
+        "private void TickZombieModeBossController(float deltaTime)",
+        "module.TickZombieModeBossController(deltaTime);",
+        "return TryGetNearestZombieModeMapSpawnPositionToPlayer(out position);",
+        "return GetZombieModeEnemyAI(enemyObject, marker);",
+        "SetZombieModeEnemyTargetToMainPlayer(ai);",
+    ]:
+        if token not in host:
+            return fail("host compatibility bridge missing -> " + token)
 
     print("ZombieModeBossFallbackTeleportGuard: PASS")
     return 0

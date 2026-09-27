@@ -3,8 +3,8 @@ from pathlib import Path
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandOfficialContract.cs').read_text(encoding='utf-8-sig'))
-SESSION = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandSession.cs').read_text(encoding='utf-8-sig'))
+SOURCE = clean_source((ROOT / 'SkyIsland/SkyIslandOfficialContract.cs').read_text(encoding='utf-8-sig'))
+SESSION = clean_source((ROOT / 'SkyIsland/SkyIslandSession.cs').read_text(encoding='utf-8-sig'))
 errors = []
 for token in ['level.gameObject.scene.handle != scene.handle', 'config.gameObject.scene.handle != scene.handle',
               'core.gameObject.scene.handle != scene.handle', '!level.IsRaidMap || level.IsBaseLevel',
@@ -18,7 +18,7 @@ if 'SkyIslandOfficialContract.Verify(' not in SESSION:
     errors.append('正式天空岛会话未接官方独立场景验证')
 # CR-2026-09-08-005：激活前合同必须真的被调用，而且必须早于官方服务激活。
 # 只断言方法定义存在是无效断言 —— 把调用点注释掉照样全绿。
-LEASE = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandRaidLease.cs').read_text(encoding='utf-8-sig'))
+LEASE = clean_source((ROOT / 'SkyIsland/SkyIslandRaidLease.cs').read_text(encoding='utf-8-sig'))
 for token in ['VerifyBeforeActivation(scene, services, world, out contractError)',
               'SkyIslandSceneReferenceBridge.BindInitializationScene(this, scene)',
               'SkyIslandSceneReferenceBridge.AbortInitialization(this, e.Message)']:
@@ -41,7 +41,7 @@ for name in ['DuckNpcModule.cs', 'Permanent/PermanentDuckNpcModule.cs']:
     source = clean_source((ROOT / 'Integration/NPCs/DuckNpc' / name).read_text(encoding='utf-8-sig'))
     if 'string.Equals(sceneName, "SkyIslandRaid", StringComparison.Ordinal)' not in source:
         errors.append('通用 NPC 刷新未排除地图居民 owner：' + name)
-if list((ROOT / 'DebugAndTools/SkyIsland').glob('SkyIslandDeath*.cs')):
+if list((ROOT / 'SkyIsland').glob('SkyIslandDeath*.cs')):
     errors.append('独立 Raid 场景应沿用官方死亡，不得再引入基地死亡适配')
 runner = (ROOT / 'tools/run_runtime_regressions.py').read_text(encoding='utf-8-sig')
 if '"SkyIslandOfficialContract"' not in runner:

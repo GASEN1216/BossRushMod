@@ -14,6 +14,8 @@ COMPILE_BAT = os.path.join(REPO_ROOT, "compile_official.bat")
 # 必须存在的 Mode G 核心文件
 REQUIRED_FILES = [
     "ModeGEntry.cs",
+    "ModeGEntryRuntimeServices.cs",
+    "ModeGEntryHostBridge.cs",
     "ModeGAvailability.cs",
     "ModeGDeterministicRandom.cs",
     "ModeGStateModel.cs",

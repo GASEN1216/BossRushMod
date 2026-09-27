@@ -218,19 +218,37 @@ namespace BossRush
     internal static class NurseAffinityConfig { public const string NPC_ID = "nurse"; }
     public partial class ModBehaviour : MonoBehaviour
     {
-        public static ModBehaviour Instance;
+        private static ModBehaviour instance;
+        public static ModBehaviour Instance
+        {
+            get { return instance; }
+            set
+            {
+                instance = value;
+                if (value != null && value.WeddingRuntime == null)
+                {
+                    value.WeddingRuntime = new WeddingRuntimeModule();
+                    value.WeddingRuntime.OnAwake(value);
+                }
+            }
+        }
         internal GameObject goblinNPCInstance, nurseNPCInstance;
+        internal WeddingRuntimeModule WeddingRuntime;
         internal Transform WeddingTarget;
         internal int WeddingAttempts;
         public Transform TrySpawnMarriedNpcAtWeddingPoint() { WeddingAttempts++; return WeddingTarget; }
         internal int Invalidations, PlaceholderRemovals, GoblinRemovals, NurseRemovals;
-        private void InvalidatePermanentSpouseRestore() { Invalidations++; }
-        private void DestroyWeddingPlaceholder() { PlaceholderRemovals++; }
         public void DestroyGoblinNPC() { GoblinRemovals++; UnityEngine.Object.Destroy(goblinNPCInstance); goblinNPCInstance = null; }
         private void SpawnGoblinNPC(object p, bool a, bool b) { }
         public void DestroyNurseNPC() { NurseRemovals++; UnityEngine.Object.Destroy(nurseNPCInstance); nurseNPCInstance = null; }
         private void SpawnNurseNPC(object p, bool a, bool b) { }
         public static void DevLog(string message) { }
+    }
+    internal sealed partial class WeddingRuntimeModule
+    {
+        internal void OnAwake(ModBehaviour owner) { _owner = owner; }
+        private void InvalidatePermanentSpouseRestore() { _owner.Invalidations++; }
+        private void DestroyWeddingPlaceholder() { _owner.PlaceholderRemovals++; }
     }
 }
 

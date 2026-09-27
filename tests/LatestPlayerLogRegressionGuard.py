@@ -82,7 +82,7 @@ def main() -> int:
     ui = read("UIAndSigns/UIAndSigns.cs")
     runner = read("DebugAndTools/F3GameplayValidationRunner.cs")
     runner += read("DebugAndTools/F3GameplayValidationExecution.cs")
-    if ui.count("if (GameplayValidationSuppressNotifications) return;") < 2:
+    if ui.count("if (owner.GameplayValidationSuppressNotifications) return;") < 2:
         errors.append("完整验收未抑制普通消息与大横幅队列")
     if "GameplayValidationSuppressNotifications = false" not in runner:
         errors.append("完整验收缺少通知抑制复位")
@@ -93,7 +93,7 @@ def main() -> int:
     if not (0 <= scheduler_at < waves_at):
         errors.append("共享刷怪后处理队列仍被 WavesArena early-return 门控")
 
-    mode_d_waves = read("ModeD/ModeDWaves.cs")
+    mode_d_waves = read("ModeD/ModeDRuntimeModule_Waves.cs")
     for token in ("Team.IsEnemy(Teams.player, character.Team)",
                   "character.SetTeam(Teams.wolf)", "confirmedHostile",
                   "modeDCurrentWaveEnemies.Add(character)"):
@@ -103,8 +103,8 @@ def main() -> int:
             < mode_d_waves.find("modeDCurrentWaveEnemies.Add(character)")):
         errors.append("Mode D 必须在登记本波敌人前完成敌对性修正")
 
-    mode_d = read("ModeD/ModeD.cs")
-    for token in ("CleanupModeDWaveEnemiesOnExit()", "UnregisterEnemyRecovery(enemy)",
+    mode_d = read("ModeD/ModeDRuntimeModule_Lifecycle.cs")
+    for token in ("CleanupModeDWaveEnemiesOnExit()", "owner.UnregisterEnemyRecoveryForArena(enemy)",
                   "enemy.dropBoxOnDead = false", "Destroy(enemy.gameObject)"):
         if token not in mode_d:
             errors.append("Mode D 退出实体清理缺失: " + token)
@@ -135,7 +135,7 @@ def main() -> int:
     if "enemy.Health.Hurt" in mode_e_lifecycle:
         errors.append("Mode E 模式结束不得通过 Hurt 触发死亡副作用")
 
-    merchant = read("ModeE/ModeEMerchant.cs")
+    merchant = read("Utilities/ModeEFMerchantRuntime.cs")
     helper_start = merchant.find("private StockShop CreateConfiguredModeEMerchantShop(")
     helper_end = merchant.find("\n        private ", helper_start + 1)
     helper = merchant[helper_start:helper_end] if helper_start >= 0 and helper_end > helper_start else ""

@@ -13,9 +13,9 @@ using ItemStatsSystem;
 namespace BossRush
 {
     /// <summary>
-    /// 逆鳞图腾物品工厂 - 使用 partial class 扩展 ModBehaviour
+    /// 逆鳞图腾物品工厂；状态和配置归同一 ReverseScaleRuntimeModule。
     /// </summary>
-    public partial class ModBehaviour
+    internal sealed partial class ReverseScaleRuntimeModule
     {
         // ========== 状态 ==========
 
@@ -48,7 +48,7 @@ namespace BossRush
         /// <summary>
         /// 注入逆鳞图腾本地化
         /// </summary>
-        private void InjectReverseScaleLocalization()
+        internal void InjectReverseScaleLocalization()
         {
             var config = ReverseScaleConfig.Instance;
 
@@ -102,7 +102,7 @@ namespace BossRush
         /// <summary>
         /// 尝试配置逆鳞图腾（供 EquipmentFactory 调用）
         /// </summary>
-        public static bool TryConfigureReverseScale(Item item, string baseName)
+        internal static bool TryConfigureReverseScale(Item item, string baseName)
         {
             if (item == null || string.IsNullOrEmpty(baseName)) return false;
 

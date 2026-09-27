@@ -3,6 +3,8 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
+from ArchitectureStructureGuard import extract_method_body
 
 
 COMPILE = Path("compile_official.bat")
@@ -10,15 +12,17 @@ INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration.cs"),
     Path("Integration/BossRushIntegration_StartAndScene.cs"),
     Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
-    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
-    Path("Integration/IntegrationDeferredBootstrap.cs"),
+    Path("Integration/BossRushIntegrationRuntimeModule_DeferredBootstrap.cs"),
+    Path("Integration/BossRushIntegrationRuntimeModule_Initialization.cs"),
 ]
 ITEM_REGISTRY = Path("Integration/Items/ItemContentRegistry.cs")
-EQUIPMENT_REGISTRY = Path("Integration/EquipmentContentRegistry.cs")
+EQUIPMENT_REGISTRY = Path("Integration/BossRushIntegration.cs")
+CONTENT_REGISTRATION = Path("Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs")
 
 ITEM_COMPILE_SOURCES = [
     "Integration/Items/ItemContentRegistry.cs",
-    "Integration/EquipmentContentRegistry.cs",
+    "Integration/BossRushIntegration.cs",
+    "Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs",
 ]
 
 ITEM_REGISTRATION_CALLS = [
@@ -44,7 +48,7 @@ ITEM_REGISTRATION_CALLS = [
     "EmergencyRepairSprayConfig.RegisterConfigurator();",
     "ZombieTideInvitationConfig.RegisterConfigurator();",
     "ZombieTideBeaconConfig.RegisterConfigurator();",
-    "ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);",
+    "ItemFactory.RegisterConfigurator(BossRushItemIds.AdventureJournal, OnAdventureJournalLoaded);",
     "ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);",
     "ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);",
     "ItemFactory.RegisterConfigurator(PhantomWitchConfig.ReservedScytheTypeId, OnPhantomWitchScytheLoaded);",
@@ -74,6 +78,7 @@ EQUIPMENT_TOKENS = [
     "Item frostmourne = ItemFactory.GetLoadedItem(FrostmourneIds.WeaponTypeId);",
     'FrostmourneWeaponConfig.TryConfigure(frostmourne, "Frostmourne");',
     'DevLog("[BossRush] 绑定霜之哀伤模型失败: " + e.Message);',
+    "NewWeaponRuntime.ConfigureAfterLoad();",
     "InitializeFlightTotemSystem();",
     "InitializeReverseScaleSystem();",
     "InitializeFenHuangHalberdSystem();",
@@ -107,7 +112,7 @@ def normalize_slashes(text: str) -> str:
 
 
 def read_boss_rush_integration() -> str:
-    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_PARTS)
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in dict.fromkeys(INTEGRATION_PARTS))
 
 
 def require_ordered_tokens(text: str, tokens: list[str], label: str) -> str | None:
@@ -131,7 +136,7 @@ def require_exactly_once(text: str, token: str, label: str) -> str | None:
 
 def main() -> int:
     compile_text = normalize_slashes(COMPILE.read_text(encoding="utf-8", errors="ignore"))
-    integration_text = read_boss_rush_integration()
+    integration_text = clean_source(read_boss_rush_integration())
 
     missing_compile = [path for path in ITEM_COMPILE_SOURCES if path not in compile_text]
     if missing_compile:
@@ -143,8 +148,39 @@ def main() -> int:
         return fail("ContentRegistryGuard: missing equipment registry file: " + str(EQUIPMENT_REGISTRY))
 
     item_text = ITEM_REGISTRY.read_text(encoding="utf-8", errors="ignore")
-    equipment_text = EQUIPMENT_REGISTRY.read_text(encoding="utf-8", errors="ignore")
-    from cs_source_util import clean_source
+    equipment_host_text = EQUIPMENT_REGISTRY.read_text(encoding="utf-8", errors="ignore")
+    registration_text = CONTENT_REGISTRATION.read_text(encoding="utf-8-sig")
+    equipment_host_code = clean_source(equipment_host_text)
+    equipment_members = []
+    # The compatibility carrier now shares a file with these four registry
+    # methods. Inspect the methods themselves, excluding unrelated forwarding
+    # methods from the exactly-once assertions.
+    for method in EQUIPMENT_METHODS:
+        signature = "private void " + method + "()"
+        body = extract_method_body(equipment_host_code, signature)
+        if not body:
+            return fail("ContentRegistryGuard: missing equipment method body: " + method)
+        start = equipment_host_code.index(signature)
+        opening = equipment_host_code.index("{", start)
+        equipment_members.append(equipment_host_code[start:opening + len(body)])
+        start = integration_text.index(signature)
+        opening = integration_text.index("{", start)
+        integration_text = integration_text[:start] + integration_text[opening + len(body):]
+    equipment_text = clean_source(registration_text) + "\n".join(equipment_members)
+    registration_code = clean_source(registration_text)
+    if "internal sealed partial class IntegrationRuntimeModule" not in registration_code or "partial class ModBehaviour" in registration_code:
+        return fail("ContentRegistryGuard: content registration must belong to IntegrationRuntimeModule")
+    for host_text, method_name in (
+        (Path("Integration/BossRushIntegration_StartAndScene.cs").read_text(encoding="utf-8-sig"), "InjectLocalization_Extra_Integration"),
+        (equipment_host_text, "LoadEquipmentContent"),
+    ):
+        compact = "".join(clean_source(host_text).split())
+        signature = "privatevoid" + method_name + "()"
+        expected = signature + "{bossRushIntegrationRuntime." + method_name + "();}"
+        if expected not in compact:
+            return fail("ContentRegistryGuard: host entry must forward directly to module -> " + method_name)
+        if "internal void " + method_name + "()" not in registration_code:
+            return fail("ContentRegistryGuard: module missing production entry -> " + method_name)
     if "DragonKingBossGunRuntime.WarmupProjectileCache();" in clean_source(equipment_text):
         return fail("ContentRegistryGuard: equipment registry must not start equipment-specific warmup")
 
@@ -160,10 +196,18 @@ def main() -> int:
         if occurrence_error:
             return fail(occurrence_error)
 
+    initialization_code = clean_source(Path("Integration/BossRushIntegrationRuntimeModule_Initialization.cs").read_text(encoding="utf-8-sig"))
+    initializer_start = initialization_code.index("internal void InitializeDynamicItems_Integration()")
+    initializer_open = initialization_code.index("{", initializer_start)
+    initializer_end, initializer_depth = initializer_open + 1, 1
+    while initializer_depth:
+        initializer_depth += (initialization_code[initializer_end] == "{") - (initialization_code[initializer_end] == "}")
+        initializer_end += 1
+    initialization_body = initialization_code[initializer_open + 1:initializer_end - 1]
     integration_item_order_error = require_ordered_tokens(
-        integration_text,
+        initialization_body,
         [
-            "RegisterItemContentConfigurators();",
+            "EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();",
             "int itemCount = ItemFactory.LoadedItemCount;",
             "PeaceCharmRuntime.InitializeRuntime();",
         ],
@@ -172,10 +216,10 @@ def main() -> int:
         return fail(integration_item_order_error)
 
     for token in [
-        "RegisterItemContentConfigurators();",
+        "EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();",
         "int itemCount = ItemFactory.LoadedItemCount;",
     ]:
-        occurrence_error = require_exactly_once(integration_text, token, "ContentRegistryGuard: integration item bootstrap")
+        occurrence_error = require_exactly_once(initialization_body, token, "ContentRegistryGuard: integration item bootstrap")
         if occurrence_error:
             return fail(occurrence_error)
 
@@ -202,7 +246,7 @@ def main() -> int:
     # 装备内容/能力系统初始化已从 Start_Integration 同步路径下沉到
     # IntegrationDeferredBootstrap.cs 的跨帧协程（性能优化：避免过图帧同步重负载）。
     # 这里改为校验“延迟引导协程”内的有序性，并确认 Start_Integration 不再做同步重初始化。
-    deferred_text = Path("Integration/IntegrationDeferredBootstrap.cs").read_text(
+    deferred_text = Path("Integration/BossRushIntegrationRuntimeModule_DeferredBootstrap.cs").read_text(
         encoding="utf-8", errors="ignore")
     start_text = Path("Integration/BossRushIntegration_StartAndScene.cs").read_text(
         encoding="utf-8", errors="ignore")
@@ -210,13 +254,13 @@ def main() -> int:
     async_source = Path("Integration/FactoryResourceLoading.cs").read_text(encoding="utf8")
     async_error = require_ordered_tokens(async_source, ["owner.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();", "yield return ItemFactory.LoadAllItemsAsync(owner);", "if (owner != null) finish();"], "asynchronous item bootstrap")
     if async_error: return fail(async_error)
-    if "yield return EquipmentFactory.LoadAllEquipmentAsync(this);" not in deferred_text: return fail("missing asynchronous equipment bootstrap")
+    if "yield return EquipmentFactory.LoadAllEquipmentAsync(_owner);" not in deferred_text: return fail("missing asynchronous equipment bootstrap")
     integration_equipment_start_order_error = require_ordered_tokens(
         deferred_text,
         [
-            "() => LoadEquipmentContent()",
-            "() => InitializeEarlyEquipmentAbilitySystems()",
-            "() => InitializeLateEquipmentAbilitySystems()",
+            "() => _deferredBootstrapActions.LoadEquipmentContent()",
+            "() => _deferredBootstrapActions.InitializeEarlyEquipmentAbilitySystems()",
+            "() => _deferredBootstrapActions.InitializeLateEquipmentAbilitySystems()",
         ],
         "ContentRegistryGuard: deferred equipment bootstrap")
     if integration_equipment_start_order_error:
@@ -246,9 +290,9 @@ def main() -> int:
         return fail(integration_equipment_cleanup_order_error)
 
     for token in [
-        "() => LoadEquipmentContent()",
-        "() => InitializeEarlyEquipmentAbilitySystems()",
-        "() => InitializeLateEquipmentAbilitySystems()",
+        "() => _deferredBootstrapActions.LoadEquipmentContent()",
+        "() => _deferredBootstrapActions.InitializeEarlyEquipmentAbilitySystems()",
+        "() => _deferredBootstrapActions.InitializeLateEquipmentAbilitySystems()",
         "CleanupEquipmentAbilitySystems();",
     ]:
         occurrence_error = require_exactly_once(integration_text, token, "ContentRegistryGuard: integration equipment wrapper")

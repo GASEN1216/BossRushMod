@@ -18,7 +18,9 @@ public static class Program
         AffinityManager.Spouse="xiaoman"; AffinityManager.Married=true; AffinityManager.Following=follow;
         CharacterMainControl.Main=new CharacterMainControl();
         CharacterMainControl.Main.transform.position=new Vector3(100,0,100);
-        var owner=new ModBehaviour(); ModBehaviour.Instance=owner; return owner;
+        var owner=new ModBehaviour(); ModBehaviour.Instance=owner;
+        owner.WeddingRuntime=new WeddingRuntimeModule(); owner.WeddingRuntime.OnAwake(owner);
+        return owner;
     }
     public static async Task Main()
     {

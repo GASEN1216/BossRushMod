@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-SOURCE = Path("LootAndRewards/LootAndRewards.cs")
+SOURCE = Path("WavesArena/WavesArenaRuntimeModule_LootTracking.cs")
 
 
 def fail(message: str) -> int:
@@ -58,7 +58,7 @@ def main() -> int:
         "bossRushLootboxPathStaleBossScratch.Clear();",
     ]
     for snippet in required:
-        if snippet not in text:
+        if snippet not in body:
             return fail("missing scratch-list reuse snippet -> " + snippet)
 
     print("BossLootboxPathTrackingScratchGuard: PASS")

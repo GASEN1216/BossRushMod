@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class PhantomWitchRuntimeModule
     {
         internal async UniTask<ManagedBossPrepareResult> PrepareManagedPhantomWitchAsync(
             Vector3 position, ManagedBossSpawnContext ctx)

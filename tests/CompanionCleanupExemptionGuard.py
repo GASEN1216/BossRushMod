@@ -15,13 +15,15 @@
 import io
 import os
 import sys
+from cs_source_util import clean_source
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 文件 -> 该文件里必须出现豁免调用的次数下限
 SCANS = {
-    os.path.join(ROOT, "ModBehaviour.cs"): 2,
-    os.path.join(ROOT, "WavesArena", "WavesArenaEnemyMaintenance.cs"): 2,
+    os.path.join(ROOT, "WavesArena", "WavesArenaRuntimeModule_LegacySpawn.cs"): 1,
+    os.path.join(ROOT, "WavesArena", "WavesArenaRuntimeModule_CharacterRegistry.cs"): 1,
+    os.path.join(ROOT, "WavesArena", "WavesArenaRuntimeModule_EnemyMaintenance.cs"): 2,
 }
 
 EXEMPTION = "PetNestCompanionAgent.IsCompanionCharacter"
@@ -31,7 +33,7 @@ def read(path):
     if not os.path.isfile(path):
         return None
     with io.open(path, "r", encoding="utf-8", errors="ignore") as fh:
-        return fh.read()
+        return clean_source(fh.read())
 
 
 def main():
@@ -49,9 +51,9 @@ def main():
                 "[Exempt] {0} 至少要有 {1} 处随从豁免，当前 {2} 处".format(name, minimum, count))
 
     # 大兴兴清理是历史上漏掉的那一条，单独钉住
-    mb = read(os.path.join(ROOT, "ModBehaviour.cs"))
+    mb = read(os.path.join(ROOT, "WavesArena", "WavesArenaRuntimeModule_CharacterRegistry.cs"))
     if mb is not None:
-        start = mb.find("private void TryCleanNonBossRushDaXingXing()")
+        start = mb.find("internal void TryCleanNonBossRushDaXingXing()")
         if start < 0:
             errors.append("[Exempt] 找不到 TryCleanNonBossRushDaXingXing")
         else:

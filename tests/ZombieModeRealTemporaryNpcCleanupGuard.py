@@ -7,7 +7,7 @@ DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -17,8 +17,8 @@ REWARD_PARTS = [
 def read_rewards() -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
 
-WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
-EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
+WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 
 
 def fail(message: str) -> int:
@@ -47,10 +47,10 @@ def main() -> int:
         if result:
             return result
 
-    result = require(drops, "private void RecycleZombieModeTemporaryRealNpcs(int runId)", "real NPC cleanup helper")
+    result = require(drops, "internal void RecycleZombieModeTemporaryRealNpcs(int runId)", "real NPC cleanup helper")
     if result:
         return result
-    result = require(drops, "private void RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(int runId)", "safe-zone real NPC cleanup helper")
+    result = require(drops, "internal void RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(int runId)", "safe-zone real NPC cleanup helper")
     if result:
         return result
     result = require(waves, "RecycleZombieModeTemporaryRealNpcs(runId);", "wave cleanup wiring")
@@ -62,7 +62,7 @@ def main() -> int:
 
     for snippet in [
         "AttachZombieModeTemporaryRealNpcMarker(",
-        "zombieModeRunState.TemporaryRealNpcs.Add(record);",
+        "runState.TemporaryRealNpcs.Add(record);",
     ]:
         result = require(rewards, snippet, "real NPC spawn tracking")
         if result:

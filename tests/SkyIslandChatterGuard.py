@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tests"))
 from cs_source_util import clean_source  # noqa: E402
 
-SKY = ROOT / "DebugAndTools" / "SkyIsland"
+SKY = ROOT / "SkyIsland"
 errors = []
 
 

@@ -12,6 +12,11 @@ namespace BossRush
 {
     public static class DragonKingBossGunConfig
     {
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterGunConfigurator("DragonKingBossGunConfig", (item, baseName) => { TryConfigure(item, baseName); });
+        }
+
         public const int WeaponTypeId = 500035;
         public const int MaxLinkedMarkStacks = 10;
 

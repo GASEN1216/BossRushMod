@@ -135,7 +135,7 @@ namespace BossRush
         }
     }
 
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         #region Mode F Fortifications
 
@@ -196,14 +196,14 @@ namespace BossRush
 
         private bool CanUseModeFortificationUtilities()
         {
-            return modeFActive || IsZombieModeActive;
+            return modeFActive || isZombieModeActive();
         }
 
         public bool UseModeFFortificationItem(FortificationType type)
         {
             if (!CanUseModeFortificationUtilities())
             {
-                ShowMessage(L10n.T(
+                owner.ShowMessage(L10n.T(
                     "该物品只能在 Mode F 或丧尸模式中使用",
                     "This item can only be used in Mode F or Zombie Mode"));
                 return false;
@@ -211,13 +211,13 @@ namespace BossRush
 
             if (modeFPlacementActive)
             {
-                ShowMessage(L10n.T("已有工事正在部署中", "A fortification is already being placed"));
+                owner.ShowMessage(L10n.T("已有工事正在部署中", "A fortification is already being placed"));
                 return false;
             }
 
             if (modeFRepairSelectionActive)
             {
-                ShowMessage(L10n.T("请先结束当前维修选择", "Finish the current repair selection first"));
+                owner.ShowMessage(L10n.T("请先结束当前维修选择", "Finish the current repair selection first"));
                 return false;
             }
 
@@ -226,7 +226,7 @@ namespace BossRush
                 && modeFState.ActiveFortifications != null
                 && modeFState.ActiveFortifications.Count >= MODEF_MAX_ACTIVE_FORTIFICATIONS)
             {
-                ShowMessage(L10n.T(
+                owner.ShowMessage(L10n.T(
                     "工事数量已达上限 (" + MODEF_MAX_ACTIVE_FORTIFICATIONS + ")",
                     "Fortification limit reached (" + MODEF_MAX_ACTIVE_FORTIFICATIONS + ")"));
                 return false;
@@ -239,7 +239,7 @@ namespace BossRush
         {
             if (!CanUseModeFortificationUtilities())
             {
-                ShowMessage(L10n.T(
+                owner.ShowMessage(L10n.T(
                     "该物品只能在 Mode F 或丧尸模式中使用",
                     "This item can only be used in Mode F or Zombie Mode"));
                 return false;
@@ -247,13 +247,13 @@ namespace BossRush
 
             if (modeFPlacementActive)
             {
-                ShowMessage(L10n.T("已有工事正在部署中", "A fortification is already being placed"));
+                owner.ShowMessage(L10n.T("已有工事正在部署中", "A fortification is already being placed"));
                 return false;
             }
 
             if (modeFRepairSelectionActive)
             {
-                ShowMessage(L10n.T("已在维修选择模式中", "Repair selection is already active"));
+                owner.ShowMessage(L10n.T("已在维修选择模式中", "Repair selection is already active"));
                 return false;
             }
 
@@ -314,15 +314,15 @@ namespace BossRush
                 modeFPlacementRotationY = player.transform.eulerAngles.y;
                 modeFPlacementItemTypeId = GetFortificationTypeItemTypeId(type);
 
-                ShowMessage(L10n.T(
+                owner.ShowMessage(L10n.T(
                     "工事部署模式：左键确认 | 右键取消 | 滚轮旋转 | 中键旋转90度",
                     "Fortification placement: LMB confirm | RMB cancel | Scroll rotate | MMB rotate 90 deg"));
-                DevLog("[ModeF] 进入工事放置模式: " + type);
+                ModBehaviour.DevLog("[ModeF] 进入工事放置模式: " + type);
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] EnterFortPlacementMode failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] EnterFortPlacementMode failed: " + e.Message);
                 // 只清理预览对象，不退还物品（由 OnUse fallback 处理退还）
                 try { if (modeFPlacementPreview != null) UnityEngine.Object.Destroy(modeFPlacementPreview); } catch { }
                 modeFPlacementPreview = null;
@@ -405,7 +405,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] UpdateFortPlacementMode failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] UpdateFortPlacementMode failed: " + e.Message);
             }
         }
 
@@ -450,7 +450,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] UpdateModeFRepairSelection failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] UpdateModeFRepairSelection failed: " + e.Message);
             }
         }
 
@@ -487,14 +487,14 @@ namespace BossRush
                 modeFRepairSelectionActive = true;
                 modeFRepairSelectionItemTypeId = EmergencyRepairSprayConfig.TYPE_ID;
                 modeFRepairSelectionTarget = null;
-                ShowMessage(L10n.T(
+                owner.ShowMessage(L10n.T(
                     "工事维修模式：靠近鼠标的受损工事会高亮 | 左键确认 | 右键取消",
                     "Fortification repair: damaged fortification nearest to cursor is highlighted | LMB confirm | RMB cancel"));
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] EnterModeFRepairSelection failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] EnterModeFRepairSelection failed: " + e.Message);
                 modeFRepairSelectionActive = false;
                 modeFRepairSelectionItemTypeId = 0;
                 modeFRepairSelectionTarget = null;
@@ -522,7 +522,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] ConfirmModeFRepairSelection failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] ConfirmModeFRepairSelection failed: " + e.Message);
                 CancelModeFRepairSelection(L10n.T("维修失败", "Repair failed"), true);
             }
         }
@@ -682,7 +682,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] ConfirmFortPlacement failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] ConfirmFortPlacement failed: " + e.Message);
                 // 清理残留状态
                 try { if (modeFPlacementPreview != null) UnityEngine.Object.Destroy(modeFPlacementPreview); } catch { }
                 modeFPlacementPreview = null;
@@ -728,7 +728,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] 清理丧尸模式工事放置状态失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] 清理丧尸模式工事放置状态失败: " + e.Message);
             }
 
             try
@@ -737,7 +737,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] 清理丧尸模式工事维修状态失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] 清理丧尸模式工事维修状态失败: " + e.Message);
             }
 
             ClearModeFFortificationHighlights();
@@ -777,7 +777,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] 清理工事高亮失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] 清理工事高亮失败: " + e.Message);
             }
         }
 

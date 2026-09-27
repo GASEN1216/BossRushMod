@@ -27,9 +27,13 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 GUARD = "ExtraBossDropDeferGuard"
 
-SPECIAL_LOOT = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewardsSpecialLoot.cs")
-RANDOM_BOSS_LOOT = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewardsRandomBossLoot.cs")
-LOOT_CORE = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewards.cs")
+SPECIAL_LOOT = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_SpecialLoot.cs")
+SPECIAL_LOOT_HOST = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewards.cs")
+SPECIAL_REWARD_PRODUCER = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_SpecialLoot.cs")
+RANDOM_BOSS_LOOT = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_BossLootEvent.cs")
+RANDOM_BOSS_LOOT_MODULE = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_RandomBossLoot.cs")
+LOOT_CORE = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_LootTracking.cs")
+LOOT_BRIDGE = os.path.join(REPO_ROOT, "LootAndRewards", "LootAndRewards.cs")
 DRAGON_KING = os.path.join(REPO_ROOT, "Integration", "DragonKing", "DragonKingBoss.cs")
 
 # integration 名 -> (源文件, 消费者类名)
@@ -85,14 +89,17 @@ def load(path, errors):
 
 def check_defer_predicate(errors):
     """判定必须存在，且显式覆盖无间炼狱。"""
-    code = load(SPECIAL_LOOT, errors)
-    if code is None:
+    code = load(LOOT_CORE, errors)
+    bridge = load(SPECIAL_LOOT_HOST, errors)
+    if code is None or bridge is None:
         return
 
     if "internal bool ShouldDeferExtraBossDropToModPath(" not in code:
         errors.append(
-            "[判定] LootAndRewardsSpecialLoot 必须提供 ShouldDeferExtraBossDropToModPath")
+            "[判定] Arena 掉落模块必须提供 ShouldDeferExtraBossDropToModPath")
         return
+    if "return wavesArenaRuntime.ShouldDeferExtraBossDropToModPath(bossMain);" not in bridge:
+        errors.append("[判定] 宿主旧入口必须转发至 Arena 掉落模块")
 
     body = re.search(
         r"internal bool ShouldDeferExtraBossDropToModPath\([^)]*\)\s*\{(.*?)\n        \}",
@@ -102,7 +109,7 @@ def check_defer_predicate(errors):
         return
     inner = body.group(1)
 
-    if "infiniteHellMode" not in inner:
+    if "InfiniteHellMode" not in inner:
         errors.append(
             "[判定] ShouldDeferExtraBossDropToModPath 必须显式并上 infiniteHellMode："
             "MarkBossRushLootboxPathTracking 在无间炼狱下刻意不登记，"
@@ -116,7 +123,14 @@ def check_integrations_wired(errors):
     """每个 integration 的四处接线齐全。"""
     special = load(SPECIAL_LOOT, errors)
     core = load(LOOT_CORE, errors)
-    if special is None or core is None:
+    bridge = load(LOOT_BRIDGE, errors)
+    if special is None or core is None or bridge is None:
+        return
+    if "wavesArenaRuntime.FinalizeBossRushLootboxPathTracking(character);" not in bridge:
+        errors.append("[接线] 宿主 Finalize 入口未转发至竞技场模块")
+
+    special_reward_producer = load(SPECIAL_REWARD_PRODUCER, errors)
+    if special_reward_producer is None:
         return
 
     for name, (path, handler) in sorted(INTEGRATIONS.items()):
@@ -147,7 +161,7 @@ def check_integrations_wired(errors):
         # 进箱消费必须被 AddBossSpecialLootToLootboxCoroutine 调用
         if not re.search(
                 re.escape(handler) + r"\.TryConsumePendingBossRushLootboxDrop\s*\(\s*bossMain\s*,\s*inv\s*\)",
-                special):
+                special_reward_producer):
             errors.append(
                 "[接线] AddBossSpecialLootToLootboxCoroutine 未消费 {} 的 pending".format(name))
 
@@ -179,7 +193,7 @@ def check_infinite_hell_order(errors):
         return
 
     branch = re.search(
-        r"if \(infiniteHellMode\)\s*\{(.*?)\n                \}", code, flags=re.S)
+        r"if \(InfiniteHellMode\)\s*\{(.*?)\n                \}", code, flags=re.S)
     if branch is None:
         errors.append("[无间炼狱] 无法解析 infiniteHellMode 分支")
         return
@@ -201,7 +215,7 @@ def check_prefab_fallback_returns_pending(errors):
     找不到 Lootbox 模板的回退分支：官方箱照建（未置 dropBoxOnDead=false），
     但 pending 会被随后的 Finalize 撤销。必须先把额外掉落还回 characterItem。
     """
-    code = load(RANDOM_BOSS_LOOT, errors)
+    code = load(RANDOM_BOSS_LOOT_MODULE, errors)
     special = load(SPECIAL_LOOT, errors)
     if code is None or special is None:
         return
@@ -239,7 +253,7 @@ def check_prefab_fallback_returns_pending(errors):
     # 每个 integration 一个都不能漏
     for name, (_path, handler) in sorted(INTEGRATIONS.items()):
         body = re.search(
-            r"private void ReturnPendingExtraLootToCharacterItem\([^)]*\)\s*\{(.*?)\n        \}",
+            r"internal void ReturnPendingExtraLootToCharacterItem\([^)]*\)\s*\{(.*?)\n        \}",
             special, flags=re.S)
         if body is None:
             errors.append("[模板回退] 无法解析 ReturnPendingExtraLootToCharacterItem 方法体")
@@ -252,7 +266,7 @@ def check_prefab_fallback_returns_pending(errors):
 def check_every_finalize_has_a_sink(errors):
     """
     总不变式：`FinalizeBossRushLootboxPathTracking` 会撤销 pending，
-    所以在 `LootAndRewardsRandomBossLoot.cs` 里**每一处** Finalize 之前，
+    所以在 `LootAndRewards.cs` 里**每一处** Finalize 之前，
     都必须先给 pending 一个去处——要么还回 characterItem（官方箱还会建），
     要么世界掉落（官方箱不会建）。
     唯一豁免：`AddBossSpecialLootToLootboxCoroutine` 的 finally——
@@ -260,41 +274,41 @@ def check_every_finalize_has_a_sink(errors):
 
     这条比逐个分支列白名单更耐改：将来谁再加一条早返，忘了给 pending 出路就会红。
     """
-    code = load(RANDOM_BOSS_LOOT, errors)
-    if code is None:
-        return
-
-    lines = code.splitlines()
     sinks = ("ReturnPendingExtraLootToCharacterItem", "DropPendingExtraLootIntoWorld")
-    for idx, line in enumerate(lines):
-        if "FinalizeBossRushLootboxPathTracking(" not in line:
+    for path in (RANDOM_BOSS_LOOT, RANDOM_BOSS_LOOT_MODULE):
+        code = load(path, errors)
+        if code is None:
             continue
-        if "private void Finalize" in line:
-            continue
-
-        # 只在**同一个语句块**内往上找：遇到 `{` 或 `}` 就停。
-        # 用固定行数的窗口不行——那会把上一条分支里的 sink 误当成本分支的，
-        # 于是新加一条没出路的早返照样是绿的（本守卫自己踩过这个坑）。
-        found = False
-        j = idx - 1
-        while j >= 0:
-            probe = lines[j].strip()
-            if probe == "":
-                j -= 1
+        lines = code.splitlines()
+        for idx, line in enumerate(lines):
+            if "FinalizeBossRushLootboxPathTracking(" not in line:
                 continue
-            if "{" in probe or "}" in probe:
-                break
-            if any(sink in probe for sink in sinks):
-                found = True
-                break
-            j -= 1
-        if found:
-            continue
+            if "private void Finalize" in line:
+                continue
 
-        errors.append(
-            "[出路] LootAndRewardsRandomBossLoot.cs 第 {} 行的 Finalize 之前没有给 pending "
-            "安排去处（还回 characterItem 或世界掉落）；Finalize 会直接撤销 pending，"
-            "额外掉落会静默消失：{}".format(idx + 1, line.strip()))
+            # 只在**同一个语句块**内往上找：遇到 `{` 或 `}` 就停。
+            # 用固定行数的窗口不行——那会把上一条分支里的 sink 误当成本分支的，
+            # 于是新加一条没出路的早返照样是绿的（本守卫自己踩过这个坑）。
+            found = False
+            j = idx - 1
+            while j >= 0:
+                probe = lines[j].strip()
+                if probe == "":
+                    j -= 1
+                    continue
+                if "{" in probe or "}" in probe:
+                    break
+                if any(sink in probe for sink in sinks):
+                    found = True
+                    break
+                j -= 1
+            if found:
+                continue
+
+            errors.append(
+                "[出路] {} 第 {} 行的 Finalize 之前没有给 pending "
+                "安排去处（还回 characterItem 或世界掉落）；Finalize 会直接撤销 pending，"
+                "额外掉落会静默消失：{}".format(path, idx + 1, line.strip()))
 
 
 def check_dragonking_marked(errors):
@@ -310,6 +324,14 @@ def check_dragonking_marked(errors):
 
 def main():
     errors = []
+    host = load(SPECIAL_LOOT_HOST, errors)
+    if host is not None:
+        for bridge in (
+            "wavesArenaRuntime.ReturnPendingExtraLootToCharacterItem(bossMain);",
+            "wavesArenaRuntime.DropPendingExtraLootIntoWorld(bossMain);",
+        ):
+            if bridge not in host:
+                errors.append("[宿主桥] pending 额外掉落入口未转发到竞技场模块: " + bridge)
     check_defer_predicate(errors)
     check_integrations_wired(errors)
     check_infinite_hell_order(errors)

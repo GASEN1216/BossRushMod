@@ -5,7 +5,7 @@ import sys
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -19,6 +19,7 @@ def read_rewards() -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
 
 HELPER = Path("ZombieMode/ZombieModeUIHelper.cs")
+FOUNDATION = Path("Common/UI/BossRushUIFoundation.cs")
 
 
 def fail(message: str) -> int:
@@ -35,17 +36,25 @@ def require(text: str, snippet: str, label: str) -> int:
 def main() -> int:
     rewards = read_rewards()
     helper = HELPER.read_text(encoding="utf-8")
+    foundation = FOUNDATION.read_text(encoding="utf-8")
 
     for snippet in [
         "tmp.enableAutoSizing = true;",
         "tmp.fontSizeMin = Mathf.Max(10f, fontSize * 0.65f);",
+        "BossRushUIKit.ConfigureCanvasScaler(scaler);",
+    ]:
+        result = require(helper, snippet, "shared responsive UI helper")
+        if result:
+            return result
+
+    for snippet in [
         "scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;",
         # 同一参考尺寸也供成就/图鉴的逻辑视口计算使用，锁住常量与绑定两端。
         "internal static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);",
         "scaler.referenceResolution = ReferenceResolution;",
         "scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;",
     ]:
-        result = require(helper, snippet, "shared responsive UI helper")
+        result = require(foundation, snippet, "shared canvas scaler implementation")
         if result:
             return result
 

@@ -33,7 +33,7 @@ import sys
 COORDINATOR = Path("Audio/BossBgmCoordinator.cs")
 MANAGER = Path("Audio/BossRushAudioManager.cs")
 TABLE = Path("Audio/BossBgmTrackTable.cs")
-AMBIENCE = Path("DebugAndTools/SkyIsland/SkyIslandAmbience.cs")
+AMBIENCE = Path("SkyIsland/SkyIslandAmbience.cs")
 DATA = Path("Assets/Data/Audio/BgmTracks.json")
 
 

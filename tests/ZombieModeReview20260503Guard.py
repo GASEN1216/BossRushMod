@@ -5,7 +5,7 @@
 涉及审查发现：
   §1.1  已删除 FindZombieModeNormalZombiePreset / 缓存字段；改 EnsureCharacterPresetsCacheReady
   §1.2  ZombieModeTuning.GetBossKind / BossKindTuning 数据表
-  §1.3  RunScopedRegistry.ForEachReverse 至少 5 处使用
+  §1.3  RunOnly、转存回滚和两类临时 NPC 清理分别使用 RunScopedRegistry.ForEachReverse
   §1.4  Common/Stats/RuntimeStatModifierTracker 存在
   §2.1  BossSkillState.Tick 抽象化（virtual + 5 子类 override）
   §2.3  ZombieModeStatNames 常量集中
@@ -21,17 +21,20 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
+from ZombieModeBossPresentationGuard import body
 
 REWARD_PARTS = [
     Path("ZombieMode/ZombieModeRewards.cs"),
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
 ]
 POLLUTION_PARTS = [
-    Path("ZombieMode/ZombieModePollution.cs"),
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_Pollution.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 
@@ -44,7 +47,7 @@ def fail(msg: str) -> int:
 def must_contain(path: Path, *needles: str) -> str:
     if not path.is_file():
         return "missing file: " + str(path)
-    text = path.read_text(encoding="utf-8")
+    text = clean_source(path.read_text(encoding="utf-8-sig"))
     for n in needles:
         if n not in text:
             return "missing in " + str(path) + ": " + n
@@ -54,7 +57,7 @@ def must_contain(path: Path, *needles: str) -> str:
 def must_not_contain(path: Path, *needles: str) -> str:
     if not path.is_file():
         return "missing file: " + str(path)
-    text = path.read_text(encoding="utf-8")
+    text = clean_source(path.read_text(encoding="utf-8-sig"))
     for n in needles:
         if n in text:
             return "regression in " + str(path) + ": " + n
@@ -62,27 +65,31 @@ def must_not_contain(path: Path, *needles: str) -> str:
 
 
 def read_rewards() -> str:
-    return "\n".join(path.read_text(encoding="utf-8") for path in REWARD_PARTS if path.is_file())
+    return "\n".join(clean_source(path.read_text(encoding="utf-8-sig")) for path in REWARD_PARTS if path.is_file())
 
 
 def read_pollution() -> str:
-    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS if path.is_file())
+    return "\n".join(clean_source(path.read_text(encoding="utf-8-sig")) for path in POLLUTION_PARTS if path.is_file())
 
 
 def main() -> int:
     spawner = Path("ZombieMode/ZombieModeSpawner.cs")
-    boss = Path("ZombieMode/ZombieModeBossController.cs")
+    boss = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
     models = Path("ZombieMode/ZombieModeModels.cs")
     tuning = Path("ZombieMode/ZombieModeTuning.cs")
     pollution_text = read_pollution()
-    wave = Path("ZombieMode/ZombieModeWaveController.cs")
+    wave = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
     drops = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
     rewards_text = read_rewards()
-    cleanup = Path("ZombieMode/ZombieModeCleanup.cs")
-    inventory = Path("ZombieMode/ZombieModeInventoryTransfer.cs")
+    cleanup = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+    runtime_module = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+    runtime_module_enemy = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
+    runtime_module_inventory = Path("ZombieMode/ZombieModeRuntimeModule_InventoryTransfer.cs")
+    runtime_bridges = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+    inventory = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
     map_iso = Path("ZombieMode/ZombieModeMapIsolation.cs")
     enemy_runtime = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
-    extraction = Path("ZombieMode/ZombieModeExtractionController.cs")
+    extraction = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
     tracker = Path("Common/Stats/RuntimeStatModifierTracker.cs")
     spawn_core = Path("Utilities/EnemySpawnCore.cs")
     loot = Path("LootAndRewards/LootAndRewards.cs")
@@ -98,7 +105,11 @@ def main() -> int:
     err = must_contain(spawner, "EnsureCharacterPresetsCacheReady()")
     if err:
         return fail(err)
-    err = must_contain(spawn_core, "EnsureCharacterPresetsCacheReady")
+    err = must_contain(Path("ModeD/ModeDRuntimeModule_EnemyPools.cs"), "internal void EnsureCharacterPresetsCacheReady()")
+    if err:
+        return fail(err)
+    err = must_contain(Path("Utilities/EnemySpawnHostBridge.cs"),
+        "internal void EnsureCharacterPresetsCacheReady() { modeDRuntime.EnsureCharacterPresetsCacheReady(); }")
     if err:
         return fail(err)
     # SpawnEnemyCore 调用方不再传 directPreset
@@ -114,15 +125,17 @@ def main() -> int:
     if err:
         return fail(err)
 
-    # §1.3 — RunScopedRegistry.ForEachReverse 至少 5 处
-    fer_count = 0
-    for path in [cleanup, map_iso, drops, inventory]:
-        if path.is_file():
-            txt = path.read_text(encoding="utf-8")
-            fer_count += txt.count("RunScopedRegistry.ForEachReverse")
-    fer_count += rewards_text.count("RunScopedRegistry.ForEachReverse")
-    if fer_count < 5:
-        return fail("RunScopedRegistry.ForEachReverse 使用 < 5 处（实测 " + str(fer_count) + "）")
+    # §1.3 — 按真实 owner 与集合钉住四条清理路径；历史总数把注释也计入了调用。
+    reverse_owners = (
+        (runtime_module, "internal void CleanupZombieModeRunOnlyState(", "runState.RunOnlyObjects"),
+        (runtime_module_inventory, "internal void RollbackZombieModeInventoryTransfer(", "entryTransaction.InventoryTransferredItems"),
+        (drops, "internal void RecycleZombieModeTemporaryNpcs(", "runState.TemporaryNpcs"),
+        (drops, "internal void RecycleZombieModeTemporaryRealNpcs(", "runState.TemporaryRealNpcs"),
+    )
+    for path, signature, collection in reverse_owners:
+        method = body(clean_source(path.read_text(encoding="utf-8-sig")), signature)
+        if "RunScopedRegistry.ForEachReverse( " + collection + "," not in " ".join(method.split()):
+            return fail(str(path) + " " + signature + " 必须逆序清理 " + collection)
 
     # §1.4 — RuntimeStatModifierTracker 存在 + ZombieMode 已经接入
     if not tracker.is_file():
@@ -144,7 +157,7 @@ def main() -> int:
         err = must_contain(models, "TickZombieMode" + kind + "State")
         if err:
             return fail(err + "（每个 SkillState 子类需要 override Tick）")
-    err = must_contain(boss, "instance.SkillState.Tick(this, instance, now)")
+    err = must_contain(boss, "instance.SkillState.Tick(owner, instance, now)")
     if err:
         return fail(err)
     # 旧 switch 主体已废
@@ -177,17 +190,30 @@ def main() -> int:
         return fail(err)
 
     # §3.1 — OnHurt HashSet 早返
-    err = must_contain(enemy_runtime, "zombieModeEnemyInstanceIds", "RegisterZombieModeEnemyInstanceId",
-                       "UnregisterZombieModeEnemyInstanceId", "ClearZombieModeEnemyInstanceIds")
+    err = must_contain(runtime_module_enemy,
+                       "private readonly HashSet<int> zombieModeEnemyInstanceIds",
+                       "private readonly Dictionary<int, ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkersByInstanceId",
+                       "internal void RegisterZombieModeEnemyInstanceId(CharacterMainControl character, ZombieModeEnemyRuntimeMarker marker)",
+                       "internal void UnregisterZombieModeEnemyInstanceId(CharacterMainControl character)",
+                       "internal void ClearZombieModeEnemyInstanceIds()")
+    if err:
+        return fail(err)
+    err = must_contain(Path("ZombieMode/ZombieModeCombatHostBridge.cs"),
+                       "module.IsZombieModeKnownEnemy(character)",
+                       "module.TryGetZombieModeKnownEnemyMarker(character, out marker)",
+                       "module.RegisterZombieModeEnemyInstanceId(character, marker)",
+                       "module.UnregisterZombieModeEnemyInstanceId(character)",
+                       "module.ClearZombieModeEnemyInstanceIds()",
+                       "module.RegisterZombieModeEnemyRuntimeShell(")
     if err:
         return fail(err)
     err = must_contain(wave, "TryGetZombieModeKnownEnemyMarker", "TryHandleZombieModeSafeZonePlayerAttack", "CancelZombieModeSafeZone(runId, \"PlayerAttack\");")
     if err:
         return fail(err)
-    err = must_contain(cleanup, "ClearZombieModeEnemyInstanceIds()")
+    err = must_contain(runtime_bridges, "ClearZombieModeEnemyInstanceIds();")
     if err:
         return fail(err)
-    err = must_contain(cleanup, "UnregisterZombieModeEnemyInstanceId(owner)")
+    err = must_contain(Path("ZombieMode/ZombieModeSafeZoneController.cs"), "UnregisterZombieModeEnemyInstanceId(owner)")
     if err:
         return fail(err)
 

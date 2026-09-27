@@ -65,7 +65,7 @@ tools/sky_island_settlement.py 规划
 
 Unity world builder 位于作者工程 `Assets/Editor/SkyIslandBundleBuilder.cs`，入口 `BossRush.SkyIslandBundleBuilder.BuildResourcesAndExit`，负责导入、材质/碰撞/导航装配、保存整图 prefab，并输出 `SkyIslandExport/sky_island_world` 与作者报告。Unity raid builder 位于 `Assets/Editor/SkyIslandRaidBuilder.cs`，入口 `BossRush.SkyIslandRaidBuilder.BuildAndExit`，消费更新后的 prefab，输出 `SkyIslandRaidExport/sky_island_raid` 和 `raid_scene_validation.json`。该入口只构建资源，独立作者预览入口见下一节，不能只重渲旧 prefab 就认定整图或正式包已更新。
 
-正式运行时由 [SkyIslandRaidLease](../../DebugAndTools/SkyIsland/SkyIslandRaidLease.cs) 只加载仓库/部署目录中的 `Assets/arenas/sky_island_raid`。`sky_island_world` 在当前流程中用于作者资源构建与物理验证，不作为游戏天空岛入口；[compile_official.bat](../../compile_official.bat) 的天空岛部署对象为正式 raid 包。离线布景 metadata 的 `SCHEMA+` 分类对应作者数据扩展，不涉及玩家存档 schema。
+正式运行时由 [SkyIslandRaidLease](../../SkyIsland/SkyIslandRaidLease.cs) 只加载仓库/部署目录中的 `Assets/arenas/sky_island_raid`。`sky_island_world` 在当前流程中用于作者资源构建与物理验证，不作为游戏天空岛入口；[compile_official.bat](../../compile_official.bat) 的天空岛部署对象为正式 raid 包。离线布景 metadata 的 `SCHEMA+` 分类对应作者数据扩展，不涉及玩家存档 schema。
 
 ## 独立预览与物理入口
 

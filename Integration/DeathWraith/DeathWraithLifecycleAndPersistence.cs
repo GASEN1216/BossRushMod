@@ -20,14 +20,14 @@ using Saves;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class DeathWraithRuntimeModule
     {
         #region 亡魂系统 — 击杀处理
 
         /// <summary>
         /// 亡魂被击杀时的处理
         /// </summary>
-        private void OnWraithDied_DeathWraith(Health deadHealth, DamageInfo damageInfo)
+        internal void OnWraithDied_DeathWraith(Health deadHealth, DamageInfo damageInfo)
         {
             try
             {
@@ -65,7 +65,7 @@ namespace BossRush
         /// <summary>
         /// 场景切换时清理亡魂状态
         /// </summary>
-        private void ClearDeathWraithState_DeathWraith()
+        internal void ClearDeathWraithState_DeathWraith()
         {
             deathWraithSpawnGeneration++;
             ClearPendingDeathWraithInfo_DeathWraith();
@@ -357,7 +357,7 @@ namespace BossRush
         {
             try
             {
-                string steamName = TryGetSteamPersonaName();
+                string steamName = ModBehaviour.TryGetSteamPersonaName();
                 if (!string.IsNullOrEmpty(steamName))
                 {
                     return steamName;
@@ -452,7 +452,7 @@ namespace BossRush
         /// 由游戏官方存档收集点 OnCollectSaveData 调用（撤离/切场景/退出都会触发），
         /// 因此死亡帧本身不需要做这次序列化。
         /// </summary>
-        private void FlushDeathWraithListIfDirty_DeathWraith()
+        internal void FlushDeathWraithListIfDirty_DeathWraith()
         {
             if (!_deathWraithListDirty)
             {
@@ -574,13 +574,13 @@ namespace BossRush
             return removed;
         }
 
-        private void InvalidateStoredDeathWraithRecords_DeathWraith(string reason)
+        internal void InvalidateStoredDeathWraithRecords_DeathWraith(string reason)
         {
             SaveStoredDeathWraithInfos_DeathWraith(new List<WraithInfo>());
             DevLog("[DeathWraith] 已清空全部亡魂记录: " + reason);
         }
 
-        private bool IsDeathWraithCharacter_DeathWraith(CharacterMainControl character)
+        internal bool IsDeathWraithCharacter_DeathWraith(CharacterMainControl character)
         {
             if (character == null)
             {

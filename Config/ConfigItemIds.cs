@@ -28,7 +28,7 @@ namespace BossRush
         public const int PortableSafeZoneDevice = 500058;
 
         // 天空岛（晴岚群岛）物品 500068-500072：纪念品、道具与岛上特产（Integration/SkyIsland/SkyIslandItems.cs）。
-        // 放在这张无依赖的表里，是因为岛上的纯规则（DebugAndTools/SkyIsland/SkyIslandItemRules.cs）也要引用，
+        // 放在这张无依赖的表里，是因为岛上的纯规则（SkyIsland/SkyIslandItemRules.cs）也要引用，
         // 而那份规则由隔离回归直接链接。
         /// <summary>晴岚航徽：敲响归航钟的纪念品。</summary>
         public const int SkyIslandHomecomingBadge = 500068;
@@ -42,7 +42,7 @@ namespace BossRush
         public const int SkyIslandStarmossSalve = 500072;
 
         // 天空岛内容批次三 500073-500082：采集材料、碎片凑整与局内耗材
-        // （配方与产出规则在 DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs，同样由隔离回归直接链接）。
+        // （配方与产出规则在 SkyIsland/SkyIslandFieldcraftRules.cs，同样由隔离回归直接链接）。
         /// <summary>云苔纤维：云苔处采集的材料。</summary>
         public const int SkyIslandCloudmossFiber = 500073;
         /// <summary>青穗草：青穗草丛采集的材料。</summary>

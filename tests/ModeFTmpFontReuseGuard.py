@@ -6,6 +6,7 @@ import sys
 
 MODEF = Path("ModeF/ModeFUI_BountyRadarAndHealthBars.cs")
 ZOMBIE_UI = Path("ZombieMode/ZombieModeUIHelper.cs")
+SHARED_UI = Path("Common/UI/BossRushUIFoundation.cs")
 WISH_UI = Path("Integration/WishFountain/WishFountainUI.cs")
 
 
@@ -37,17 +38,21 @@ def extract_method(text: str, signature: str) -> str:
 def main() -> int:
     modef = MODEF.read_text(encoding="utf-8")
     zombie_ui = ZOMBIE_UI.read_text(encoding="utf-8")
+    shared_ui = SHARED_UI.read_text(encoding="utf-8")
     wish_ui = WISH_UI.read_text(encoding="utf-8")
 
     helper = extract_method(zombie_ui, "internal static TMP_FontAsset GetGameFont()")
     if not helper:
         return fail("missing ZombieModeUIHelper.GetGameFont")
+    if "return BossRushUIKit.GetGameFont();" not in helper:
+        return fail("ZombieMode font helper must forward to shared UI")
+    shared_helper = extract_method(shared_ui, "internal static TMP_FontAsset GetGameFont()")
     for token in [
         "TMP_Settings.defaultFontAsset",
         "ObjectCache.GetFirstTmpFont()",
         "_cachedFont",
     ]:
-        if token not in helper:
+        if token not in shared_helper:
             return fail("shared helper missing token: " + token)
 
     modef_font = extract_method(modef, "private TMP_FontAsset GetModeFBountyRadarFont()")

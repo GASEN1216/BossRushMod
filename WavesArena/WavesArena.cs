@@ -1,16 +1,7 @@
 // ============================================================================
-// WavesArena.cs - 波次与竞技场管理
-// ============================================================================
-// 模块说明：
-//   管理 BossRush 模组的波次系统和竞技场逻辑，包括：
-//   - 波次敌人生成和管理
-//   - 玩家传送到官方挑战场景
-//   - 波次间隔倒计时
-//
-// 主要功能：
-//   - StartBossRush: 开始 BossRush 模式
-//   - TeleportToBossRushAsync: 异步传送到竞技场
-//   - SpawnNextEnemy: 生成下一波敌人
+// WavesArena.cs - 波次与竞技场的宿主兼容入口
+// 运行时状态和算法由 WavesArenaRuntimeModule 持有；跨模式入场协调见
+// BossRushEntryFlow.cs 与 WavesArenaEntryAndTeleport.cs。
 // ============================================================================
 
 using System;
@@ -31,179 +22,28 @@ using Duckov.UI.DialogueBubbles;
 using Duckov.UI;
 using UnityEngine.AI;
 using Duckov.ItemBuilders;
+using Duckov;
 
 namespace BossRush
 {
-    /// <summary>
-    /// 波次与竞技场管理模块
-    /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        #region 前期波次Boss排除
+        private static HashSet<string> EarlyWaveExcludedBosses { get { return WavesArenaRuntimeModule.EarlyWaveExcludedBosses; } }
 
-        /// <summary>
-        /// 前期波次需要排除的强力 Boss 名称列表
-        /// 包括：口口口口、四骑士、龙裔遗族和焚天龙皇
-        /// </summary>
-        private static readonly HashSet<string> EarlyWaveExcludedBosses = new HashSet<string>
-        {
-            "Cname_StormBoss1",    // 口口口口 或 四骑士
-            "Cname_StormBoss2",    // 口口口口 或 四骑士
-            "Cname_StormBoss3",    // 口口口口 或 四骑士
-            "Cname_StormBoss4",    // 口口口口 或 四骑士
-            "Cname_StormBoss5",    // 口口口口 或 四骑士
-            "DragonDescendant",    // 龙裔遗族
-            "boss_dragonking",     // 焚天龙皇
-        };
-
-        /// <summary>
-        /// 检查是否是前期波次需要排除的强力Boss
-        /// </summary>
-        private bool IsEarlyWaveExcludedBoss(string bossName)
-        {
-            if (string.IsNullOrEmpty(bossName)) return false;
-            return EarlyWaveExcludedBosses.Contains(bossName);
-        }
-
-        /// <summary>
-        /// 预处理：确保前20波不出现强力Boss
-        /// 在挑战开始时调用一次，将前20位中的强力Boss与后面的普通Boss交换
-        /// </summary>
         private void EnsureEarlyWavesNoStrongBoss()
         {
-            if (enemyPresets == null || enemyPresets.Count <= 20) return;
-
-            int swapCount = 0;
-            int nextSwapTarget = 20; // 从第20位开始找可交换的普通Boss
-
-            for (int i = 0; i < 20 && i < enemyPresets.Count; i++)
-            {
-                if (!IsEarlyWaveExcludedBoss(enemyPresets[i].name)) continue;
-
-                // 找一个第10位之后的普通Boss来交换
-                while (nextSwapTarget < enemyPresets.Count &&
-                       IsEarlyWaveExcludedBoss(enemyPresets[nextSwapTarget].name))
-                {
-                    nextSwapTarget++;
-                }
-
-                if (nextSwapTarget >= enemyPresets.Count) break; // 没有可交换的了
-
-                // 交换
-                var tmp = enemyPresets[i];
-                enemyPresets[i] = enemyPresets[nextSwapTarget];
-                enemyPresets[nextSwapTarget] = tmp;
-                nextSwapTarget++;
-                swapCount++;
-            }
-
-            if (swapCount > 0)
-            {
-                DevLog("[BossRush] 前20波强力Boss预处理完成，交换了 " + swapCount + " 个Boss");
-            }
+            wavesArenaRuntime.EnsureEarlyWavesNoStrongBoss();
         }
 
-        #endregion
 
         public void StartNextWaveCountdown(bool showInitialBanner = true, bool suppressImmediateRepeatBanner = false)
         {
-            float interval = GetWaveIntervalSeconds();
-            bool milestoneBonusApplied = false;
-
-            // 每5波额外休息时间
-            float milestoneBonus = GetMilestoneRestBonusSeconds();
-            if (milestoneBonus > 0f)
-            {
-                // 模式A/B: currentEnemyIndex 已在 ProceedAfterWaveFinished 中自增，代表已完成波数
-                // 模式C: infiniteHellWaveIndex 已在 OnInfiniteHellWaveCompleted 中自增，代表已完成波数
-                int completedWave = infiniteHellMode ? infiniteHellWaveIndex : currentEnemyIndex;
-                if (completedWave > 0 && completedWave % 5 == 0)
-                {
-                    interval += milestoneBonus;
-                    milestoneBonusApplied = true;
-                    DevLog("[BossRush] 第 " + completedWave + " 波完成，额外休息 " + milestoneBonus + " 秒");
-                }
-            }
-
-            if (!infiniteHellMode)
-            {
-                try
-                {
-                    nextWaveBossName = null;
-                    // 使用过滤后的 Boss 列表，确保预告的 Boss 与实际生成的一致
-                    var filteredPresets = GetFilteredEnemyPresets();
-                    int presetCount = (filteredPresets != null) ? filteredPresets.Count : 0;
-                    if (currentEnemyIndex >= 0 && currentEnemyIndex < presetCount)
-                    {
-                        EnemyPresetInfo nextPreset = filteredPresets[currentEnemyIndex];
-                        if (nextPreset != null)
-                        {
-                            nextWaveBossName = nextPreset.displayName;
-                        }
-                    }
-                }
-                catch
-                {
-                    nextWaveBossName = null;
-                }
-            }
-            else
-            {
-                nextWaveBossName = null;
-            }
-            if (interval <= 0f)
-            {
-                waitingForNextWave = false;
-                lastWaveCountdownSeconds = -1;
-                SpawnNextEnemy();
-                return;
-            }
-
-            // 重置上一轮倒计时状态
-            waitingForNextWave = true;
-            waveCountdown = interval;
-            int secondsInt = Mathf.RoundToInt(interval);
-            if (secondsInt < 1)
-            {
-                secondsInt = 1;
-            }
-
-            if (showInitialBanner && (interval <= 5f || milestoneBonusApplied))
-            {
-                ShowNextWaveCountdownBanner(secondsInt);
-                lastWaveCountdownSeconds = secondsInt;
-            }
-            else if (suppressImmediateRepeatBanner)
-            {
-                lastWaveCountdownSeconds = secondsInt;
-            }
-            else
-            {
-                lastWaveCountdownSeconds = -1;
-            }
+            wavesArenaRuntime.StartNextWaveCountdown(showInitialBanner, suppressImmediateRepeatBanner);
         }
 
-        private void ShowNextWaveCountdownBanner(int secondsInt)
+        internal void ShowNextWaveCountdownBanner(int secondsInt)
         {
-            if (secondsInt < 1)
-            {
-                secondsInt = 1;
-            }
-
-            if (!infiniteHellMode && !string.IsNullOrEmpty(nextWaveBossName))
-            {
-                ShowBigBanner(L10n.T(
-                    RichDangerTag + nextWaveBossName + "</color> 将在 " + RichWarningTag + secondsInt + "</color> 秒后抵达战场...",
-                    RichDangerTag + nextWaveBossName + "</color> arriving in " + RichWarningTag + secondsInt + "</color> seconds..."
-                ));
-            }
-            else
-            {
-                ShowBigBanner(L10n.T(
-                    "下一波将在 " + RichWarningTag + secondsInt + "</color> 秒后开始...",
-                    "Next wave in " + RichWarningTag + secondsInt + "</color> seconds..."
-                ));
-            }
+            wavesArenaRuntime.ShowNextWaveCountdownBanner(secondsInt);
         }
 
         /// <summary>
@@ -212,981 +52,430 @@ namespace BossRush
         /// </summary>
         private void OnEnemyDiedWithDamageInfo(Health deadHealth, DamageInfo damageInfo)
         {
-            try
-            {
-                // Mode D 有独立的敌人死亡处理（RegisterModeDEnemyDeath），不走普通模式逻辑
-                // 避免 Mode D 打死敌人时误触发普通模式的通关判定
-                if (modeDActive)
-                {
-                    return;
-                }
-
-                if (!IsActive || deadHealth == null)
-                {
-                    return;
-                }
-
-                CharacterMainControl deadCharacter = null;
-                try
-                {
-                    deadCharacter = deadHealth.TryGetCharacter();
-                }
-                catch (Exception e)
-                {
-                    DevLog("[BossRush] [WARNING] OnEnemyDied 读取死亡角色失败: " + e.Message);
-                }
-
-                // 多Boss模式：检查是否是当前波的其中一名Boss
-                if (bossesPerWave > 1 && currentWaveBosses != null && currentWaveBosses.Count > 0)
-                {
-                    MonoBehaviour matchedBoss = null;
-                    for (int i = 0; i < currentWaveBosses.Count; i++)
-                    {
-                        MonoBehaviour boss = currentWaveBosses[i];
-                        if (boss == null) continue;
-
-                        bool isDeadBoss = false;
-
-                        try
-                        {
-                            CharacterMainControl bossCharacter = boss as CharacterMainControl;
-                            if (bossCharacter != null && deadCharacter != null)
-                            {
-                                isDeadBoss = (bossCharacter == deadCharacter);
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            DevLog("[BossRush] [WARNING] OnEnemyDied 比对多Boss角色失败: " + e.Message);
-                        }
-
-                        if (!isDeadBoss)
-                        {
-                            try
-                            {
-                                Health bossHealth = boss.GetComponent<Health>();
-                                if (bossHealth == deadHealth || boss.gameObject == deadHealth.gameObject)
-                                {
-                                    isDeadBoss = true;
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                DevLog("[BossRush] [WARNING] OnEnemyDied 比对多Boss Health失败: " + e.Message);
-                            }
-                        }
-
-                        if (isDeadBoss)
-                        {
-                            matchedBoss = boss;
-                            break;
-                        }
-                    }
-
-                    if (matchedBoss != null)
-                    {
-                        DevLog("[BossRush] 当前波有一名Boss被击败");
-
-                        // 处理Boss掉落随机化
-                        CharacterMainControl bossMainControl = matchedBoss as CharacterMainControl;
-                        if (bossMainControl != null)
-                        {
-                            HandleBossDeath(bossMainControl, damageInfo);
-                        }
-                    }
-                }
-                else
-                {
-                    // 单Boss模式：保持原有逻辑
-                    bool isCurrentBossDead = false;
-
-                    if (currentBoss != null)
-                    {
-                        try
-                        {
-                            CharacterMainControl currentBossCharacter = currentBoss as CharacterMainControl;
-                            if (currentBossCharacter != null && deadCharacter != null)
-                            {
-                                isCurrentBossDead = (currentBossCharacter == deadCharacter);
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            DevLog("[BossRush] [WARNING] OnEnemyDied 比对当前Boss角色失败: " + e.Message);
-                        }
-
-                        if (!isCurrentBossDead)
-                        {
-                            try
-                            {
-                                isCurrentBossDead = (deadHealth.gameObject == ((MonoBehaviour)currentBoss).gameObject);
-                            }
-                            catch (Exception e)
-                            {
-                                DevLog("[BossRush] [WARNING] OnEnemyDied 比对当前Boss对象失败: " + e.Message);
-                            }
-                        }
-                    }
-
-                    if (currentBoss != null && isCurrentBossDead)
-                    {
-                        DevLog("[BossRush] 当前敌人已击败");
-                        CharacterMainControl bossMainControl = currentBoss as CharacterMainControl;
-                        if (bossMainControl != null)
-                        {
-                            HandleBossDeath(bossMainControl, damageInfo);
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] [ERROR] OnEnemyDied 错误: " + e.Message);
-            }
+            wavesArenaRuntime.OnEnemyDiedWithDamageInfo(deadHealth, damageInfo);
         }
 
         private void HandleBossDeath(CharacterMainControl bossMain, DamageInfo damageInfo)
         {
-            try
+            wavesArenaRuntime.HandleBossDeath(bossMain, damageInfo);
+        }
+
+        internal void ProceedAfterWaveFinished() { wavesArenaRuntime.ProceedAfterWaveFinished(); }
+        private void OnBossSpawnFailed(EnemyPresetInfo preset) { wavesArenaRuntime.OnBossSpawnFailed(preset); }
+        internal void UnregisterEnemyRecoveryForArena(CharacterMainControl boss) { UnregisterEnemyRecovery(boss); }
+        internal bool CheckBossKillAchievementsOnceForArena(CharacterMainControl boss) { return CheckBossKillAchievementsOnce(boss); }
+        internal bool ArenaUsesInteractBetweenWaves { get { return config != null && config.useInteractBetweenWaves; } }
+
+        private void InitializeEnemyPresets() { wavesArenaRuntime.InitializeEnemyPresets(); }
+        internal bool EnsureEnemyPresetsReadyForGameplayCatalogs() { return wavesArenaRuntime.EnsureEnemyPresetsReadyForGameplayCatalogs(); }
+        internal int EnemyPresetInitializationScanCount { get { return wavesArenaRuntime.EnemyPresetInitializationScanCount; } }
+        private EnemyPresetInfo PickRandomEnemyForInfiniteHell() { return wavesArenaRuntime.PickRandomEnemyForInfiniteHell(); }
+        private static bool IsRuntimeCharacterPresetClone(CharacterRandomPreset preset) { return WavesArenaRuntimeModule.IsRuntimeCharacterPresetClone(preset); }
+        private string GetLocalizedCharacterName(string nameKey) { return wavesArenaRuntime.GetLocalizedCharacterName(nameKey); }
+
+        internal void ResetBossPoolFilterStateForArena() { ResetBossPoolFilterStateForEnemyPresetRefresh(); }
+        internal bool IsBossPoolFilterInitializedForArena { get { return bossPoolFilterInitialized; } }
+        internal void InitializeBossPoolFilterForArena() { InitializeBossPoolFilter(); }
+        internal void RegisterDragonDescendantPresetForArena() { RegisterDragonDescendantPreset(); }
+        internal void RegisterDragonKingPresetForArena() { RegisterDragonKingPreset(); }
+        internal void RegisterPhantomWitchPresetForArena() { RegisterPhantomWitchPreset(); }
+        internal bool IsManagedBossPresetForArena(EnemyPresetInfo preset) { return IsManagedBossPreset(preset); }
+        internal void NotifyArenaPresetCatalogsRefreshed()
+        {
+            if (PetNestRuntime != null) PetNestRuntime.NotifyEnemyPresetsRefreshed();
+            if (CodexRuntime != null) CodexRuntime.NotifyEnemyPresetsRefreshed();
+        }
+
+
+        /// <summary>
+        /// 开始第一波Boss（在竞技场内）- 单波生成模式
+        /// </summary>
+        public void StartFirstWave() { wavesArenaRuntime.StartFirstWave(); }
+        internal void ClearEnemiesForBossRushForArena() { ClearEnemiesForBossRush(); }
+        internal void BeginAchievementSessionForArena(string mode) { BeginAchievementSession(mode); }
+        internal void SetBossRushRuntimeActiveForArena(bool active) { SetBossRushRuntimeActive(active); }
+        internal void TryRollMutatorsForArena(string mode) { TryRollMutatorsForMode(mode); }
+        internal void SubscribeArenaBossDeaths()
+        {
+            Health.OnDead -= OnEnemyDiedWithDamageInfo;
+            Health.OnDead += OnEnemyDiedWithDamageInfo;
+        }
+
+        /// <summary>通关奖励箱虚影控制器是否已起来，供 F3 验收断言胜利奖励链真的触发了。</summary>
+        internal bool VictoryRewardCrateActiveForValidation
+        {
+            get
             {
-                if (!IsActive || bossMain == null)
-                {
-                    return;
-                }
-
-                if (countedDeadBosses.Contains(bossMain))
-                {
-                    return;
-                }
-
-                countedDeadBosses.Add(bossMain);
-                UnregisterEnemyRecovery(bossMain);
-
-                // 识别 Boss 类型并触发成就（同一角色实例只计一次，避免专用死亡回调和通用死亡流重复计数）
-                CheckBossKillAchievementsOnce(bossMain);
-
-                // ── 本波成员校验：这条线以下全是波次记账，非本波 Boss 一律不得越过 ──
-                //
-                // 本方法有三个调用点，前两个在 OnEnemyDiedWithDamageInfo 内、成员身份已由那里的
-                // 比对证明；第三个是 OnBossBeforeSpawnLoot_LootAndRewards 的掉落漏斗，它只验了
-                // 「在不在 bossSpawnTimes 里」，任何走共享刷怪核心的 Boss 都满足。于是随机事件的
-                // 乱入 Boss（RndEvt_Intruder_*）死亡会被当成本波 Boss 死亡：波次提前推进，
-                // ProceedAfterWaveFinished 还会把 currentBoss 置 null 把真 Boss 丢出状态机，
-                // 玩家再打死它时又推一次波；最后一波则提前触发 OnAllEnemiesDefeated。
-                //
-                // 校验放在成就与去重之后：杀掉一只真 Boss 该算的成就照算，只是不参与波次账。
-                if (!IsCurrentWaveBossMember(bossMain))
-                {
-                    string nonMemberName = "<unknown>";
-                    try { nonMemberName = bossMain.gameObject.name; }
-                    catch (Exception e)
-                    {
-                        // 读名字只为日志，读不到不影响拦截结论
-                        DevLog("[BossRush] [WARNING] HandleBossDeath 读取非本波 Boss 名称失败: " + e.Message);
-                    }
-                    // 不打 [WARNING]：对乱入 Boss / Mode D / 孩儿护我龙裔来说，被拦下才是正常稳态，
-                    // 打成警告会让正常流程长期刷屏。
-                    DevLog("[BossRush] 非本波 Boss 死亡，跳过波次记账: " + nonMemberName
-                        + "（bossesPerWave=" + bossesPerWave + ", modeDActive=" + modeDActive + "）");
-                    return;
-                }
-
-                // 无间炼狱：先累加现金池
-                if (infiniteHellMode)
-                {
-                    try
-                    {
-                        float maxHp = 0f;
-                        if (bossMain.Health != null)
-                        {
-                            maxHp = bossMain.Health.MaxHealth;
-                        }
-                        if (maxHp < 0f) maxHp = 0f;
-                        long reward = (long)Mathf.Round(maxHp * 10f);
-                        if (reward < 0L) reward = 0L;
-                        infiniteHellCashPool += reward;
-                        infiniteHellWaveCashThisWave += reward;
-                    }
-                    catch (Exception e)
-                    {
-                        DevLog("[BossRush] [WARNING] HandleBossDeath 计算无间炼狱现金池失败: " + e.Message);
-                    }
-                }
-
-                if (bossesPerWave > 1 && currentWaveBosses != null && currentWaveBosses.Count > 0)
-                {
-                    for (int i = 0; i < currentWaveBosses.Count; i++)
-                    {
-                        MonoBehaviour boss = currentWaveBosses[i];
-                        if (boss == null)
-                        {
-                            continue;
-                        }
-
-                        CharacterMainControl bossCharacter = null;
-                        try
-                        {
-                            bossCharacter = boss as CharacterMainControl;
-                        }
-                        catch (Exception e)
-                        {
-                            DevLog("[BossRush] [WARNING] HandleBossDeath 读取多Boss角色失败: " + e.Message);
-                        }
-
-                        if (bossCharacter == bossMain)
-                        {
-                            currentWaveBosses.RemoveAt(i);
-                            break;
-                        }
-                    }
-                }
-
-                defeatedEnemies++;
-
-                if (bossesPerWave > 1)
-                {
-                    bossesInCurrentWaveRemaining = Mathf.Max(0, bossesInCurrentWaveRemaining - 1);
-
-                    if (bossesInCurrentWaveRemaining <= 0)
-                    {
-                        ProceedAfterWaveFinished();
-                        return;
-                    }
-                }
-                else
-                {
-                    // 单Boss模式：击杀后直接推进到下一波
-                    ProceedAfterWaveFinished();
-                    return;
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] [ERROR] HandleBossDeath 错误: " + e.Message);
+                return _activeVictoryRewardShadowCrateController != null
+                    && _activeVictoryRewardShadowCrateController.gameObject != null;
             }
         }
 
         /// <summary>
-        /// 这只 Boss 是否属于本波，即它的死亡是否有资格推进波次。
+        /// Dev 验收专用：把 Boss 池临时收窄到 1 个，开一波标准 BossRush。
+        /// 之后调用方清掉这一个 Boss，HandleBossDeath → ProceedAfterWaveFinished →
+        /// OnAllEnemiesDefeated 就会按产品逻辑自然走完，胜利奖励链随之触发。
         ///
-        /// 比对口径逐字沿用 OnEnemyDiedWithDamageInfo 的既有语义：先比 CharacterMainControl 引用，
-        /// 再回落 Health 与 gameObject 引用（多阶段 Boss 换过组件引用时仍能认出来）。
+        /// 这样做的意义：胜利结算原本要打完全部 Boss 才能到达，45 分钟预算里跑不完。
+        /// 收窄池子改的是「这一局有几个 Boss」这个玩家本就能在 Boss 池面板里改的设置，
+        /// 不是绕过结算——结算判定用的还是 currentEnemyIndex >= presetCount 那条真实条件。
         ///
-        /// 单 Boss 档**只认 currentBoss**：currentWaveBosses 会在 SpawnNextEnemy 的单 Boss 分支里
-        /// 被清空，那时去查列表恒为空，会把真 Boss 也判成非成员。
-        ///
-        /// no-throw：任何比对异常都按「不是成员」处理（fail-closed），宁可漏推一次波
-        /// 也不能让旁路 Boss 推波——漏推还有 TryFixStuckWaveIfNoBossAlive 自愈，误推没有回头路。
+        /// 原 Boss 池开关与 bossesPerWave 由 <see cref="RestoreBossPoolAfterValidation"/> 还原，
+        /// 调用方必须在 finally 里调它。
         /// </summary>
-        private bool IsCurrentWaveBossMember(CharacterMainControl bossMain)
+        internal bool DebugStartSingleBossVictoryForValidation(
+            out Dictionary<string, bool> restoreStates,
+            out int restoreBossesPerWave,
+            out string reason)
         {
-            if (bossMain == null)
-            {
-                return false;
-            }
-
-            // Mode D 有独立的敌人死亡处理（RegisterModeDEnemyDeath / modeDCurrentWaveEnemies），
-            // 口径与 OnEnemyDiedWithDamageInfo 开头那条 modeDActive 早返一致。
-            //
-            // 为什么判在这里而不是 HandleBossDeath 开头：Mode D 会 BeginAchievementSession("ModeD")，
-            // 而 Mode D 的 Boss 击杀成就**只**经 HandleBossDeath 里的 CheckBossKillAchievementsOnce
-            // 计数（那是它全仓库仅有的两个调用点之一）。放在方法开头早返会把 Mode D 的
-            // Boss 击杀成就整条掐掉。放在成员判定里则只挡波次记账，成就照常。
-            //
-            // 这条同时挡住 Mode D 里刷出的龙王/龙裔——它们会无条件写 currentBoss，
-            // 光靠下面的容器比对挡不住。
-            if (modeDActive)
-            {
-                return false;
-            }
-
-            // 多 Boss 档先查本波列表；查不到再回落 currentBoss。
-            // 回落不是冗余：currentBoss 在 SpawnEnemyAtPositionAsync 里是**无条件**赋值的
-            // （currentWaveBosses.Add 才受 bossesPerWave > 1 门控），多 Boss 档它就是本波最后
-            // 生成的那只。万一登记进列表那步失败，靠它仍能认出真 Boss，避免把真 Boss 判成
-            // 非成员导致卡波。
-            if (bossesPerWave > 1 && currentWaveBosses != null)
-            {
-                for (int i = 0; i < currentWaveBosses.Count; i++)
-                {
-                    if (IsSameWaveBossInstance(currentWaveBosses[i], bossMain))
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            return IsSameWaveBossInstance(currentBoss, bossMain);
-        }
-
-        /// <summary>
-        /// 单项比对：引用 -> Health -> gameObject，逐层 try/catch。
-        /// 与 OnEnemyDiedWithDamageInfo 的多 Boss 分支同一套判据。
-        /// </summary>
-        private bool IsSameWaveBossInstance(MonoBehaviour tracked, CharacterMainControl bossMain)
-        {
-            if (tracked == null || bossMain == null)
-            {
-                return false;
-            }
+            restoreStates = null;
+            restoreBossesPerWave = bossesPerWave;
+            reason = null;
+            if (!DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
+            if (IsActive) { reason = "arena_already_active"; return false; }
 
             try
             {
-                CharacterMainControl trackedCharacter = tracked as CharacterMainControl;
-                if (trackedCharacter != null && trackedCharacter == bossMain)
-                {
-                    return true;
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] [WARNING] 本波成员比对角色失败: " + e.Message);
-            }
-
-            try
-            {
-                Health trackedHealth = tracked.GetComponent<Health>();
-                if (trackedHealth != null && trackedHealth == bossMain.Health)
-                {
-                    return true;
-                }
-                if (tracked.gameObject == bossMain.gameObject)
-                {
-                    return true;
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] [WARNING] 本波成员比对 Health/对象失败: " + e.Message);
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// 当当前波所有Boss被击杀或因生成失败/异常被跳过时，推进到下一波或结束挑战
-        /// </summary>
-        private void ProceedAfterWaveFinished()
-        {
-            try
-            {
-                // 通知快递员 Boss 战结束
-                NotifyCourierBossFightEnd();
-
-                // 通知快递员当前没有Boss（召唤间隔期间）
-                NotifyCourierNoBoss(true);
-
-                currentEnemyIndex++;
-                currentBoss = null;
-
-                if (infiniteHellMode)
-                {
-                    // 无间炼狱：统一走专用逻辑
-                    OnInfiniteHellWaveCompleted();
-                    return;
-                }
-
-                // 使用过滤后的 Boss 列表判断是否还有下一波
-                var filteredPresets = GetFilteredEnemyPresets();
-                int presetCount = (filteredPresets != null) ? filteredPresets.Count : 0;
-
-                if (currentEnemyIndex >= presetCount)
-                {
-                    OnAllEnemiesDefeated();
-                    return;
-                }
-
-                if (currentEnemyIndex < presetCount)
-                {
-                    if (config != null && config.useInteractBetweenWaves)
-                    {
-                        try
-                        {
-                            if (bossRushSignInteract != null)
-                            {
-                                bossRushSignInteract.SetNextWaveMode();
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            DevLog("[BossRush] [WARNING] ProceedAfterWaveFinished 设置下一波交互失败: " + e.Message);
-                        }
-                    }
-                    else
-                    {
-                        StartNextWaveCountdown();
-                    }
-                }
-                else
-                {
-                    OnAllEnemiesDefeated();
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] [ERROR] ProceedAfterWaveFinished 错误: " + e.Message);
-            }
-        }
-
-        /// <summary>
-        /// Boss 在生成阶段失败时的统一处理：修正当前波计数并在必要时推进波次
-        /// </summary>
-        private void OnBossSpawnFailed(EnemyPresetInfo preset)
-        {
-            try
-            {
-                // 记录日志方便排查
-                try
-                {
-                    string name = (preset != null ? preset.displayName : "<null>");
-                    DevLog("[BossRush] OnBossSpawnFailed: Boss 生成失败, preset=" + name);
-                }
-                catch (Exception e)
-                {
-                    UnityEngine.Debug.LogWarning("[BossRush] OnBossSpawnFailed 日志记录失败: " + e.Message);
-                }
-
-                // 递增已击败敌人数，保持总数一致
-                defeatedEnemies++;
-
-                if (bossesPerWave > 1)
-                {
-                    // 多Boss模式：减少当前波剩余Boss数量
-                    bossesInCurrentWaveRemaining = Mathf.Max(0, bossesInCurrentWaveRemaining - 1);
-
-                    if (bossesInCurrentWaveRemaining <= 0)
-                    {
-                        ProceedAfterWaveFinished();
-                    }
-                }
-                else
-                {
-                    // 单Boss模式：视为跳过该敌人，直接进入下一波
-                    ProceedAfterWaveFinished();
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] [ERROR] OnBossSpawnFailed 错误: " + e.Message);
-            }
-        }
-
-        /// <summary>
-        /// 初始化敌人预设列表 - 动态识别所有显示名字的敌人
-        /// [性能优化] 添加初始化标记，避免每次传送都重复扫描
-        /// </summary>
-        private void InitializeEnemyPresets()
-        {
-            // [性能优化] 如果已经初始化过，跳过重复扫描
-            if (_enemyPresetsInitialized && enemyPresets != null && enemyPresets.Count > 0)
-            {
-                if (!IsActive && !modeDActive && !modeEActive && !modeFActive)
-                {
-                    int removed = PruneNonBossEnemyPresetsFromCache();
-                    if (removed > 0)
-                    {
-                        ResetBossPoolFilterStateForEnemyPresetRefresh();
-                    }
-                }
-
-                DevLog("[BossRush] 敌人预设已初始化，跳过重复扫描 (共 " + enemyPresets.Count + " 个)");
-                return;
-            }
-
-            _enemyPresetInitializationScanCount++;
-            enemyPresets.Clear();;
-
-            // 获取所有可能的敌人类型
-            var enemyTypes = new List<EnemyPresetInfo>();
-
-            // 仅通过游戏内的角色预设动态发现敌人类型
-            TryDiscoverAdditionalEnemies(enemyTypes);
-
-            // 按团队类型和基础生命值排序，使用排除法过滤（排除玩家和中立阵营）
-            // 这样可以兼容其他mod添加的自定义敌对阵营
-            enemyPresets = enemyTypes
-                .Where(e =>
-                    e.team != (int)Teams.player    // 排除玩家阵营
-                    && e.team != (int)Teams.middle // 排除中立阵营
-                    && e.baseHealth > 100f)
-                .OrderBy(e => e.team)
-                .ThenBy(e => e.baseHealth)
-                .ToList();
-
-            // 注册龙裔遗族Boss
-            RegisterDragonDescendantPreset();
-
-            // 注册龙王Boss
-            RegisterDragonKingPreset();
-
-            // 注册幽灵女巫Boss
-            RegisterPhantomWitchPreset();
-
-            PruneNonBossEnemyPresetsFromCache();
-
-            // 计算 Boss 池基础血量范围
-            try
-            {
-                if (enemyPresets != null && enemyPresets.Count > 0)
-                {
-                    float minH = float.MaxValue;
-                    float maxH = 0f;
-                    for (int i = 0; i < enemyPresets.Count; i++)
-                    {
-                        float h = enemyPresets[i].baseHealth;
-                        if (h <= 0f)
-                        {
-                            continue;
-                        }
-                        if (h < minH)
-                        {
-                            minH = h;
-                        }
-                        if (h > maxH)
-                        {
-                            maxH = h;
-                        }
-                    }
-
-                    if (minH < float.MaxValue && maxH > 0f && maxH >= minH)
-                    {
-                        minBossBaseHealth = minH;
-                        maxBossBaseHealth = maxH;
-                        DevLog("[BossRush] Boss池基础血量范围: " + minBossBaseHealth + " ~ " + maxBossBaseHealth);
-                    }
-                }
-            }
-            catch {}
-
-            DevLog("[BossRush] 初始化完成，共发现 " + enemyPresets.Count + " 个敌人类型");
-
-            // [性能优化] 标记初始化完成，后续传送不再重复扫描
-            _enemyPresetsInitialized = true;
-
-            // 遗种巢与图鉴目录都可能早于这张表构建。池填满后必须并联刷新，
-            // 否则官方 Boss 会从血脉目录或图鉴分母中缺失。
-            try
-            {
-                if (PetNestRuntime != null) PetNestRuntime.NotifyEnemyPresetsRefreshed();
-                if (CodexRuntime != null) CodexRuntime.NotifyEnemyPresetsRefreshed();
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] 预设初始化后刷新玩法目录失败: " + e.Message);
-            }
-        }
-
-        /// <summary>
-        /// 内容目录共用：确保 Boss 预设池在**基地**就已填充。
-        ///
-        /// 为什么必须有它（CR-2026-08-29-015）：InitializeEnemyPresets 的全部调用点都在
-        /// 进竞技场路径与调试面板，基地启动一处都不触发；而血脉目录的资格口径正是这张池
-        /// （GetFilteredEnemyPresets 在 enemyPresets==null 时返回空表）。于是每次重启会话后、
-        /// 进第一次竞技场之前，官方血脉在基地全面不可用：蛋孵出 lineage_unknown、
-        /// 巢页显示裸 Cname_* key、遗魂账本官方血脉整行缺失、凝蛋按钮消失。
-        ///
-        /// 幂等：池已填充时零成本返回，绝不重复扫描；未填充时走 InitializeEnemyPresets
-        /// 自身的完整流程（它填完会回调 PetNestRuntime.NotifyEnemyPresetsRefreshed 重建目录，
-        /// 因此这里不需要、也不应该再手动建一次目录）。
-        ///
-        /// 门控在调用侧（AGENTS.md 4.12）：只有图鉴或遗种巢至少一个消费者已启用时
-        /// 才请求预热；池已填充后为 O(1) 早返，同一进程只做一次实际扫描。
-        /// </summary>
-        internal bool EnsureEnemyPresetsReadyForGameplayCatalogs()
-        {
-            try
-            {
-                if (_enemyPresetsInitialized && enemyPresets != null && enemyPresets.Count > 0)
-                {
-                    return true;
-                }
-
-                InitializeEnemyPresets();
-
-                // 与进竞技场路径、Boss 池窗口路径同一套接法：池填好后必须把玩家配置的
-                // 禁用名单加载进来，否则基地侧目录会包含玩家已禁用的 Boss，
-                // 直到进一次竞技场才收敛（它自身幂等，并会 Invalidate 触发目录重建）。
                 if (!bossPoolFilterInitialized && enemyPresets != null && enemyPresets.Count > 0)
                 {
                     InitializeBossPoolFilter();
                 }
 
-                return enemyPresets != null && enemyPresets.Count > 0;
+                List<EnemyPresetInfo> pool = GetFilteredEnemyPresets();
+                if (pool == null || pool.Count == 0)
+                {
+                    reason = "filtered_boss_pool_empty";
+                    return false;
+                }
+
+                restoreStates = new Dictionary<string, bool>(bossEnabledStates);
+                string keep = pool[0].name;
+
+                List<string> names = new List<string>(bossEnabledStates.Keys);
+                for (int i = 0; i < names.Count; i++)
+                {
+                    if (names[i] != keep) SetBossEnabled(names[i], false);
+                }
+                SetBossEnabled(keep, true);
+
+                List<EnemyPresetInfo> narrowed = GetFilteredEnemyPresets();
+                if (narrowed == null || narrowed.Count != 1)
+                {
+                    reason = "narrow_failed_count=" + (narrowed == null ? "null" : narrowed.Count.ToString());
+                    return false;
+                }
+
+                ConfigureBossRushMode(1, false);
+                StartFirstWave();
+                if (!IsActive)
+                {
+                    reason = "start_first_wave_did_not_activate";
+                    return false;
+                }
+                DevLog("[BossRush] [Validation] 单 Boss 胜利链已开波，保留 Boss=" + keep);
+                return true;
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [WARNING] 基地侧 Boss 预设池预热失败: " + e.Message);
+                reason = e.GetType().Name + ":" + e.Message;
                 return false;
             }
         }
 
-        /// <summary>本宿主实例实际执行官方预设全量扫描的次数（F3 可靠性验收）。</summary>
-        internal int EnemyPresetInitializationScanCount
+        /// <summary>还原 <see cref="DebugStartSingleBossVictoryForValidation"/> 改动的 Boss 池与每波数量。</summary>
+        internal void RestoreBossPoolAfterValidation(
+            Dictionary<string, bool> restoreStates,
+            int restoreBossesPerWave)
         {
-            get { return _enemyPresetInitializationScanCount; }
-        }
-
-        /// <summary>
-        /// 无间炼狱模式下按权重随机选取一个敌人预设
-        /// 权重根据基础血量与波次线性放大，高血量Boss在后期权重更高
-        /// 同时应用用户设置的无间炼狱因子作为权重乘数
-        /// </summary>
-        private EnemyPresetInfo PickRandomEnemyForInfiniteHell()
-        {
-            // 使用过滤后的 Boss 列表
-            var filteredPresets = GetFilteredEnemyPresets();
-            if (filteredPresets == null || filteredPresets.Count == 0)
-            {
-                return null;
-            }
-
-            float refMin = minBossBaseHealth;
-            float refMax = maxBossBaseHealth;
-
-            // 如果没有有效范围，退化为按因子权重随机
-            if (!(refMax > refMin && refMin > 0f))
-            {
-                // 即使没有血量范围，也应用用户设置的因子
-                float totalFactorWeight = 0f;
-                float[] factorWeights = new float[filteredPresets.Count];
-                for (int i = 0; i < filteredPresets.Count; i++)
-                {
-                    float factor = GetBossInfiniteHellFactor(filteredPresets[i].name);
-                    factorWeights[i] = factor;
-                    totalFactorWeight += factor;
-                }
-
-                if (totalFactorWeight <= 0f)
-                {
-                    int idx = UnityEngine.Random.Range(0, filteredPresets.Count);
-                    return filteredPresets[idx];
-                }
-
-                float rFactor = UnityEngine.Random.value * totalFactorWeight;
-                float accFactor = 0f;
-                for (int i = 0; i < filteredPresets.Count; i++)
-                {
-                    accFactor += factorWeights[i];
-                    if (rFactor <= accFactor)
-                    {
-                        return filteredPresets[i];
-                    }
-                }
-                return filteredPresets[filteredPresets.Count - 1];
-            }
-
-            // 计算每个Boss的权重
-            float totalWeight = 0f;
-            float[] weights = new float[filteredPresets.Count];
-            // 基础系数：t * baseK + (wave/50)*t，t 为基础血量归一化
-            const float baseK = 4f;
-            float waveTerm = (float)infiniteHellWaveIndex / 50f;
-
-            for (int i = 0; i < filteredPresets.Count; i++)
-            {
-                float h = filteredPresets[i].baseHealth;
-                if (h <= 0f)
-                {
-                    h = refMin;
-                }
-
-                float t = Mathf.Clamp01((h - refMin) / (refMax - refMin));
-                float w = 1f + t * baseK + waveTerm * t;
-                if (w < 0.01f)
-                {
-                    w = 0.01f;
-                }
-
-                // 应用用户设置的无间炼狱因子作为权重乘数
-                float userFactor = GetBossInfiniteHellFactor(filteredPresets[i].name);
-                w *= userFactor;
-
-                weights[i] = w;
-                totalWeight += w;
-            }
-
-            if (totalWeight <= 0f)
-            {
-                int idx = UnityEngine.Random.Range(0, filteredPresets.Count);
-                return filteredPresets[idx];
-            }
-
-            // 按累计权重抽样
-            float r = UnityEngine.Random.value * totalWeight;
-            float acc = 0f;
-            for (int i = 0; i < filteredPresets.Count; i++)
-            {
-                acc += weights[i];
-                if (r <= acc)
-                {
-                    return filteredPresets[i];
-                }
-            }
-
-            // 理论上不会到这里，兜底返回最后一个
-            return filteredPresets[filteredPresets.Count - 1];
-        }
-
-
-        private static bool IsRuntimeCharacterPresetClone(CharacterRandomPreset preset)
-        {
-            if (preset == null)
-            {
-                return false;
-            }
-
-            string runtimeName = null;
-            try { runtimeName = preset.name; } catch { }
-
-            return !string.IsNullOrEmpty(runtimeName) &&
-                   runtimeName.IndexOf("(Clone)", StringComparison.Ordinal) >= 0;
-        }
-
-        private static bool IsBossPoolSpecialNoShowNamePreset(string nameKey)
-        {
-            return string.Equals(nameKey, "Cname_Boss_Red", StringComparison.Ordinal) ||
-                   string.Equals(nameKey, "Cname_Boss_Blue", StringComparison.Ordinal);
-        }
-
-        private static bool IsBossPoolHardExcludedPresetName(string presetName)
-        {
-            if (string.IsNullOrEmpty(presetName))
-            {
-                return false;
-            }
-
-            return string.Equals(presetName, "Character_Ming", StringComparison.Ordinal);
-        }
-
-        private int PruneNonBossEnemyPresetsFromCache()
-        {
-            if (enemyPresets == null || enemyPresets.Count == 0)
-            {
-                return 0;
-            }
-
             try
             {
-                var allPresets = ObjectCache.GetCharacterPresets();
-                if (allPresets == null || allPresets.Length == 0)
+                if (restoreStates != null)
                 {
-                    return 0;
-                }
-
-                var showNameByKey = new Dictionary<string, bool>(StringComparer.Ordinal);
-                for (int i = 0; i < allPresets.Length; i++)
-                {
-                    CharacterRandomPreset preset = allPresets[i];
-                    if (preset == null || IsRuntimeCharacterPresetClone(preset))
+                    foreach (KeyValuePair<string, bool> kv in restoreStates)
                     {
-                        continue;
-                    }
-
-                    string nameKey = preset.nameKey;
-                    if (string.IsNullOrEmpty(nameKey))
-                    {
-                        continue;
-                    }
-
-                    bool existingShowName = false;
-                    if (showNameByKey.TryGetValue(nameKey, out existingShowName))
-                    {
-                        showNameByKey[nameKey] = existingShowName || preset.showName;
-                    }
-                    else
-                    {
-                        showNameByKey[nameKey] = preset.showName;
+                        SetBossEnabled(kv.Key, kv.Value);
                     }
                 }
-
-                int removed = 0;
-                for (int i = enemyPresets.Count - 1; i >= 0; i--)
-                {
-                    EnemyPresetInfo preset = enemyPresets[i];
-                    if (preset == null || string.IsNullOrEmpty(preset.name))
-                    {
-                        continue;
-                    }
-
-                    if (IsManagedBossPreset(preset))
-                    {
-                        continue;
-                    }
-
-                    if (IsBossPoolHardExcludedPresetName(preset.name))
-                    {
-                        enemyPresets.RemoveAt(i);
-                        removed++;
-                        DevLog("[BossRush] 已从 Boss 池缓存中移除预设名硬排除的非 Boss 预设: " + preset.name + " (" + preset.displayName + ")");
-                        continue;
-                    }
-
-                    bool canonicalShowName = false;
-                    if (!showNameByKey.TryGetValue(preset.name, out canonicalShowName) || canonicalShowName)
-                    {
-                        continue;
-                    }
-
-                    if (IsBossPoolSpecialNoShowNamePreset(preset.name))
-                    {
-                        continue;
-                    }
-
-                    enemyPresets.RemoveAt(i);
-                    removed++;
-                }
-
-                if (removed > 0)
-                {
-                    DevLog("[BossRush] 已从 Boss 池缓存中移除 " + removed + " 个非 Boss 预设");
-                }
-
-                return removed;
+                ConfigureBossRushMode(restoreBossesPerWave, false);
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] [WARNING] 清理 Boss 池缓存中的误判小怪失败: " + e.Message);
-                return 0;
+                DevLog("[BossRush] [WARNING] 还原验收 Boss 池失败: " + e.Message);
             }
         }
 
         /// <summary>
-        /// 尝试发现额外的敌人类型
+        /// 获取安全的Boss生成位置（只修正Y轴高度，不改变XZ坐标）
         /// </summary>
-        private void TryDiscoverAdditionalEnemies(List<EnemyPresetInfo> enemyList)
+        /// <remarks>
+        /// 委托 SpawnPositionHelper.SnapToGround：Raycast(groundLayerMask) 优先 → NavMesh 兜底 → +0.5m 兜底。
+        /// 避免 NavMesh 采样把敌人吸到非预设点（屋顶、楼梯下、墙体内的 NavMesh）。
+        /// </remarks>
+        private static Vector3 GetSafeBossSpawnPosition(Vector3 rawPosition)
         {
-            try
-            {
-                var allPresets = ObjectCache.GetCharacterPresets();
-                if (allPresets != null && allPresets.Length > 0)
-                {
-                    foreach (var preset in allPresets)
-                    {
-                        if (preset == null)
-                        {
-                            continue;
-                        }
-
-                        if (IsRuntimeCharacterPresetClone(preset))
-                        {
-                            continue;
-                        }
-
-                        string nameKey = preset.nameKey;
-                        if (string.IsNullOrEmpty(nameKey))
-                        {
-                            continue;
-                        }
-
-                        string displayName = GetLocalizedCharacterName(nameKey);
-                        bool isSpecialUnknownBoss = IsBossPoolSpecialNoShowNamePreset(nameKey);
-
-                        if (!preset.showName && !isSpecialUnknownBoss)
-                        {
-                            continue;
-                        }
-
-                        if (IsBossPoolHardExcludedPresetName(nameKey))
-                        {
-                            DevLog("[BossRush] 已跳过预设名硬排除的非 Boss 预设: " + nameKey + " (" + displayName + ")");
-                            continue;
-                        }
-
-                        if (enemyList.Any(e => e.name == nameKey))
-                        {
-                            continue;
-                        }
-
-                        int team = (int)preset.team;
-                        float health = (preset.health > 0f) ? preset.health : 100f;
-                        float damage = preset.damageMultiplier;
-
-                        var newEnemy = new EnemyPresetInfo
-                        {
-                            name = nameKey,
-                            displayName = displayName,
-                            team = team,
-                            baseHealth = health,
-                            baseDamage = damage
-                        };
-
-                        enemyList.Add(newEnemy);
-                        DevLog("[BossRush] 发现额外敌人类型: " + nameKey + " (team=" + team + ", health=" + health + ")");
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] 动态发现敌人时出现异常: " + e.Message);
-            }
+            return SpawnPositionHelper.SnapToGround(rawPosition);
         }
 
-        // [性能优化] 本地化 ToPlainText 的反射结果缓存：此前每个 preset 都做一次
-        // Type.GetType + GetMethod（过图进竞技场时逐 preset 调用），现解析一次复用。
-        private static System.Reflection.MethodInfo _cachedToPlainTextMethod;
-        private static bool _toPlainTextResolved;
+        /// <summary>
+        /// 玩家安全距离（米）：刷怪点距玩家小于此距离时不会被选中
+        /// </summary>
+        private const float SPAWN_SAFE_DISTANCE = 15f;
+        private const float SPAWN_SAFE_DISTANCE_SQR = SPAWN_SAFE_DISTANCE * SPAWN_SAFE_DISTANCE;
 
-        private string GetLocalizedCharacterName(string nameKey)
+        /// <summary>
+        /// 从刷怪点数组中选取距玩家最近但不在安全距离内的点
+        /// <para>如果所有点都在安全距离内，回退到距玩家最远的点</para>
+        /// </summary>
+        /// <param name="spawnPoints">候选刷怪点数组</param>
+        /// <param name="playerPos">玩家当前位置</param>
+        /// <returns>经过 GetSafeBossSpawnPosition Y轴修正后的安全刷怪位置</returns>
+        private static Vector3 FindNearestSafeSpawnPoint(Vector3[] spawnPoints, Vector3 playerPos)
         {
-            if (string.IsNullOrEmpty(nameKey))
-            {
-                return nameKey;
-            }
+            return SpawnPositionHelper.FindNearestSafeSpawnPoint(spawnPoints, playerPos, SPAWN_SAFE_DISTANCE);
+        }
 
+        /// <summary>
+        /// 从刷怪点列表中选取距玩家最近但不在安全距离内的点（List版本）
+        /// </summary>
+        private static Vector3 FindNearestSafeSpawnPoint(List<Vector3> spawnPoints, Vector3 playerPos)
+        {
+            return SpawnPositionHelper.FindNearestSafeSpawnPoint(spawnPoints, playerPos, SPAWN_SAFE_DISTANCE);
+        }
+
+        private static List<Vector3> FindMultipleSafeSpawnPoints(int count, Vector3[] spawnPoints, Vector3 playerPos)
+        {
+            return SpawnPositionHelper.FindMultipleSafeSpawnPoints(count, spawnPoints, playerPos, SPAWN_SAFE_DISTANCE);
+        }
+
+        private static List<Vector3> FindMultipleSafeSpawnPoints(int count, List<Vector3> spawnPoints, Vector3 playerPos)
+        {
+            return SpawnPositionHelper.FindMultipleSafeSpawnPoints(count, spawnPoints, playerPos, SPAWN_SAFE_DISTANCE);
+        }
+
+        /// <summary>
+        /// 校验并修正Boss位置（生成后调用，防止Boss卡在地下）
+        /// </summary>
+        private void ValidateAndFixBossPosition(CharacterMainControl boss)
+        { enemyRecoveryMonitor.ValidateAndFixBossPosition(boss); }
+
+        /// <summary>
+        /// 延迟校验Boss位置的协程（给地形加载留出时间）
+        /// </summary>
+        private IEnumerator DelayedBossPositionValidation(CharacterMainControl boss, float delay)
+        { return enemyRecoveryMonitor.DelayedBossPositionValidation(boss, delay); }
+
+        internal void SpawnNextEnemy() { wavesArenaRuntime.SpawnNextEnemy(); }
+        internal void OnAllEnemiesDefeatedForArena() { OnAllEnemiesDefeated(); }
+        internal void OnBossSpawnFailedForArena(EnemyPresetInfo preset) { OnBossSpawnFailed(preset); }
+        internal void ShowEnemyBannerForArena(string name, Vector3 enemyPos, Vector3 playerPos)
+        {
+            ShowEnemyBanner(name, enemyPos, playerPos);
+        }
+        internal UniTask<CharacterMainControl> SpawnEnemyAtPositionForArenaAsync(
+            EnemyPresetInfo preset, Vector3 position, Func<bool> isSpawnCurrent)
+        {
+            return SpawnEnemyAtPositionAsync(preset, position, isSpawnCurrent);
+        }
+
+        private void BindArenaSpawnServices()
+        {
+            wavesArenaRuntime.BindLegacySpawnServices(IsDragonDescendantPreset, IsDragonKingPreset, IsPhantomWitchPreset,
+                (position, child, notify, active) => SpawnDragonDescendant(position, isChildProtectionSummon: child,
+                    notifyBossRushOnFailure: notify, isActiveCheck: active),
+                (position, notify, active) => SpawnDragonKing(position, notifyBossRushOnFailure: notify, isActiveCheck: active),
+                (position, notify, active) => SpawnPhantomWitch(position, notifyBossRushOnFailure: notify, isActiveCheck: active),
+                character => ApplyBossStatMultiplier(character));
+            wavesArenaRuntime.BindLootBoxPolicies(() => config != null, () => config.lootBoxBlocksBullets);
+        }
+
+
+        internal bool IsInfiniteHellMode_WavesArena { get { return infiniteHellMode; } }
+
+        private void UpdateCashMagnet()
+        {
+            if (wavesArenaRuntime != null) wavesArenaRuntime.UpdateCashMagnet();
+        }
+
+        private void ClearCashMagnetState()
+        {
+            if (wavesArenaRuntime != null) wavesArenaRuntime.ClearCashMagnetState();
+        }
+
+        /// <summary>
+        /// 强制杀死所有敌人（用于F10调试，忽略范围限制）
+        /// 直接调用Health.Kill()而不是Destroy，确保触发死亡事件
+        /// </summary>
+        private void ForceKillAllEnemies() { wavesArenaRuntime.ForceKillAllEnemies(); }
+        private void ClearEnemiesForBossRush() { wavesArenaRuntime.ClearEnemiesForBossRush(); }
+        private IEnumerator ContinuousClearEnemiesUntilWaveStart()
+        {
+            return wavesArenaRuntime.ContinuousClearEnemiesUntilWaveStart();
+        }
+
+        internal void RefreshCharacterCacheForArena() { RefreshCharacterCache(); }
+        internal List<CharacterMainControl> ArenaCharacterCache { get { return WavesArenaRuntimeModule.CharacterCache; } }
+        internal bool ArenaCharacterCacheNeedsRefresh
+        {
+            get { return WavesArenaRuntimeModule.CharacterCacheNeedsRefresh; }
+            set { WavesArenaRuntimeModule.CharacterCacheNeedsRefresh = value; }
+        }
+        internal List<GameObject> ArenaReusableDestroyList { get { return WavesArenaRuntimeModule.ReusableDestroyList; } }
+        internal bool ArenaCenterSetForCleanup { get { return WavesArenaRuntimeModule.ArenaCenterSet; } }
+        internal Vector3 ArenaCenterForCleanup { get { return WavesArenaRuntimeModule.ArenaCenter; } }
+        internal CharacterRandomPreset ArenaEggSpawnPreset { get { return BossRushAudioRuntimeService.EggSpawnPreset; } }
+        internal bool IsModeETrackedEnemyForArena(CharacterMainControl enemy) { return modeEFEnemyRegistry.IsTracked(enemy); }
+        internal bool IsDeathWraithCharacterForArena(CharacterMainControl enemy)
+        {
+            return IsDeathWraithCharacter_DeathWraith(enemy);
+        }
+        internal WaitForSeconds ArenaSharedWait05s { get { return sharedWait05s; } }
+
+        private System.Collections.Generic.List<EnemyPresetInfo> enemyPresets
+        {
+            get { return wavesArenaRuntime.EnemyPresets; }
+            set { wavesArenaRuntime.EnemyPresets = value; }
+        }
+
+        private int _enemyPresetInitializationScanCount
+        {
+            get { return wavesArenaRuntime.EnemyPresetInitializationScanCount; }
+            set { wavesArenaRuntime.EnemyPresetInitializationScanCount = value; }
+        }
+
+        private float minBossBaseHealth
+        {
+            get { return wavesArenaRuntime.MinBossBaseHealth; }
+            set { wavesArenaRuntime.MinBossBaseHealth = value; }
+        }
+
+        private float maxBossBaseHealth
+        {
+            get { return wavesArenaRuntime.MaxBossBaseHealth; }
+            set { wavesArenaRuntime.MaxBossBaseHealth = value; }
+        }
+
+        private static bool _enemyPresetsInitialized
+        {
+            get { return WavesArenaRuntimeModule.EnemyPresetsInitialized; }
+            set { WavesArenaRuntimeModule.EnemyPresetsInitialized = value; }
+        }
+
+        private bool waitingForNextWave
+        {
+            get { return wavesArenaRuntime.WaitingForNextWave; }
+            set { wavesArenaRuntime.WaitingForNextWave = value; }
+        }
+
+        private float waveCountdown
+        {
+            get { return wavesArenaRuntime.WaveCountdown; }
+            set { wavesArenaRuntime.WaveCountdown = value; }
+        }
+
+        private int lastWaveCountdownSeconds
+        {
+            get { return wavesArenaRuntime.LastWaveCountdownSeconds; }
+            set { wavesArenaRuntime.LastWaveCountdownSeconds = value; }
+        }
+
+
+        private float daXingXingCleanTimer
+        {
+            get { return wavesArenaRuntime.DaXingXingCleanTimer; }
+            set { wavesArenaRuntime.DaXingXingCleanTimer = value; }
+        }
+
+        private int totalEnemies
+        {
+            get { return wavesArenaRuntime.TotalEnemies; }
+            set { wavesArenaRuntime.TotalEnemies = value; }
+        }
+
+        private int defeatedEnemies
+        {
+            get { return wavesArenaRuntime.DefeatedEnemies; }
+            set { wavesArenaRuntime.DefeatedEnemies = value; }
+        }
+
+        private string nextWaveBossName
+        {
+            get { return wavesArenaRuntime.NextWaveBossName; }
+            set { wavesArenaRuntime.NextWaveBossName = value; }
+        }
+
+        private int bossesPerWave
+        {
+            get { return wavesArenaRuntime.BossesPerWave; }
+            set { wavesArenaRuntime.BossesPerWave = value; }
+        }
+
+        private int bossesInCurrentWaveTotal
+        {
+            get { return wavesArenaRuntime.BossesInCurrentWaveTotal; }
+            set { wavesArenaRuntime.BossesInCurrentWaveTotal = value; }
+        }
+
+        private int bossesInCurrentWaveRemaining
+        {
+            get { return wavesArenaRuntime.BossesInCurrentWaveRemaining; }
+            set { wavesArenaRuntime.BossesInCurrentWaveRemaining = value; }
+        }
+
+        private System.Collections.Generic.List<MonoBehaviour> currentWaveBosses
+        {
+            get { return wavesArenaRuntime.CurrentWaveBosses; }
+        }
+
+        private void DisableAllSpawners()
+        {
+            wavesArenaRuntime.DisableAllSpawners();
+        }
+
+        internal void TryFixStuckWaveIfNoBossAlive()
+        {
+            wavesArenaRuntime.TryFixStuckWaveIfNoBossAlive();
+        }
+
+        internal bool TickWavesArenaRuntime(float deltaTime)
+        {
+            return wavesArenaRuntime.TickWavesArenaRuntime(deltaTime);
+        }
+
+        internal void TickWavesArenaBossCleanupRuntime(float deltaTime)
+        {
+            wavesArenaRuntime.TickWavesArenaBossCleanupRuntime(deltaTime);
+        }
+
+        /// <summary>
+        /// Mode G 运行状态的全 partial 共享 no-throw 读取（异常视为未运行，保持 Legacy 行为）。
+        /// 只反映 lifecycle（LifecyclePhase != None），绝不包含 late sink quarantine。
+        /// </summary>
+        internal static bool IsModeGRunInProgressSafe()
+        {
             try
             {
-                System.Reflection.MethodInfo method = ResolveToPlainTextMethod();
-                if (method != null)
-                {
-                    object result = method.Invoke(null, new object[] { nameKey });
-                    string str = result as string;
-                    if (!string.IsNullOrEmpty(str))
-                    {
-                        return str;
-                    }
-                }
+                return ModeGRuntimeGates.IsModeGRunInProgress;
             }
             catch
             {
+                return false;
             }
-
-            return nameKey;
         }
 
-        private static System.Reflection.MethodInfo ResolveToPlainTextMethod()
+        /// <summary>
+        /// Mode H 是否正在进行（no-throw，未运行时恒 false）。
+        /// 供 Legacy 清怪循环等旧路径做加法分支使用（设计提案 §19.2）。
+        /// </summary>
+        internal static bool IsModeHRunInProgressSafe()
         {
-            if (_toPlainTextResolved)
+            try
             {
-                return _cachedToPlainTextMethod;
+                return ModeHRuntimeGates.IsModeHRunOwnerActive;
             }
-
-            _toPlainTextResolved = true;
-
-            string[] types = new string[]
+            catch
             {
-                "SodaCraft.Localizations.LocalizationManager, SodaLocalization",
-                "SodaCraft.Localizations.LocalizationManager, TeamSoda.Duckov.Core",
-                "LocalizationManager, Assembly-CSharp"
-            };
-
-            Type locType = null;
-            for (int i = 0; i < types.Length; i++)
-            {
-                locType = Type.GetType(types[i]);
-                if (locType != null)
-                {
-                    break;
-                }
+                return false;
             }
-
-            if (locType != null)
-            {
-                _cachedToPlainTextMethod = locType.GetMethod(
-                    "ToPlainText", BindingFlags.Static | BindingFlags.Public);
-            }
-
-            return _cachedToPlainTextMethod;
         }
-
     }
 }

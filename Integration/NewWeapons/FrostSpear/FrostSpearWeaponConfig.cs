@@ -16,6 +16,11 @@ namespace BossRush
     /// </summary>
     public static class FrostSpearWeaponConfig
     {
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterConfigurator("FrostSpearWeaponConfig", (item, baseName) => { TryConfigure(item, baseName); });
+        }
+
         private static readonly NewWeaponMeleeSpec Spec = new NewWeaponMeleeSpec
         {
             TypeId = NewWeaponIds.FrostSpearTypeId,

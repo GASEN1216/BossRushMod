@@ -1,6 +1,6 @@
 # 天空岛字幕排队策略回归
 
-分类 COMPAT。工程只链接完整生产 `DebugAndTools/SkyIsland/SkyIslandCaptionQueue.cs`，**没有任何替身**：
+分类 COMPAT。工程只链接完整生产 `SkyIsland/SkyIslandCaptionQueue.cs`，**没有任何替身**：
 这个类型刻意不依赖 Unity，排队规则整段原样执行。
 
 覆盖：普通字幕先来先播；与队里或正在播的同一句去重（后者要求刷新停留）；警示排在全部普通字幕之前、

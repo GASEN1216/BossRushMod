@@ -43,8 +43,18 @@ def main() -> int:
     if "public static" in helper_text:
         return fail("ZombieModeSpawnPositionHelperGuard: SpawnPositionHelper should keep internal API surface")
 
-    if "(spawnPoints[i] - playerPos).sqrMagnitude" in helper_text:
-        return fail("ZombieModeSpawnPositionHelperGuard: safe spawn selection must ignore Y distance")
+    xz_selection = helper_text.split("internal static bool PassesMinPlayerDistance(", 1)[1].split(
+        "internal static List<Vector3> FindMultipleSafeSpawnPoints(", 1
+    )[0]
+    if "delta.y = 0f;" not in xz_selection or xz_selection.count(
+        "GetXZDistanceSqr(spawnPoints[i], playerPos)"
+    ) != 2:
+        return fail("ZombieModeSpawnPositionHelperGuard: nearest safe selection must ignore Y distance")
+    arena_selection = helper_text.split("internal static List<Vector3> FindMultipleSafeSpawnPoints(", 1)[1].split(
+        "internal static bool TryFindAroundPlayer(", 1
+    )[0]
+    if arena_selection.count("(spawnPoints[i] - playerPos).sqrMagnitude") != 2:
+        return fail("ZombieModeSpawnPositionHelperGuard: arena multi-spawn selection must retain 3D distance")
 
     print("ZombieModeSpawnPositionHelperGuard: PASS")
     return 0

@@ -54,24 +54,43 @@ def main():
     generated += member(damage, "public DamageInfo(CharacterMainControl fromCharacter = null)")
     generated += member(damage, "public void AddElementFactor(ElementTypes _type, float _factor)") + "}\n"
     # The actual production helper and ownership predicate are included, too.
-    visuals = (ROOT / "Integration/Bonus/SetBonusVisuals.cs").read_text(encoding="utf-8-sig")
-    generated += "namespace BossRush { public partial class ModBehaviour {\n"
+    visuals_path = ROOT / "Integration/Bonus/SetBonusVisuals.cs"
+    visuals = visuals_path.read_text(encoding="utf-8-sig")
+    bridge_path = ROOT / "Integration/IntegrationHostCompatibility.cs"
+    bridge = bridge_path.read_text(encoding="utf-8-sig")
+    generated += "namespace BossRush { internal partial class SetBonusRuntimeModule {\n"
     generated += member(visuals, "private static float GetSetBonusElementDamagePortion(")
-    generated += member(visuals, "internal bool HasSetBonusElementHealing")
-    boss = (ROOT / "ZombieMode/ZombieModeBossController.cs").read_text(encoding="utf-8-sig")
+    generated += member(visuals, "internal bool HasSetBonusElementHealing") + "}}\n"
+    generated += "namespace BossRush { public partial class ModBehaviour {\n"
+    generated += member(bridge, "internal bool HasSetBonusElementHealing") + "}}\n"
+    combat_bridge_path = ROOT / "ZombieMode/ZombieModeCombatHostBridge.cs"
+    combat_bridge = combat_bridge_path.read_text(encoding="utf-8-sig")
+    generated += "namespace BossRush { public partial class ModBehaviour {\n"
     for signature in ("public float AbsorbZombieModeBossFinalDamage(",
                       "public float ApplyZombieModeShielderAuraFinalDamageReduction(",
+                      "internal void ApplyZombieModeEnemyDefense("):
+        generated += member(combat_bridge, signature)
+    generated += "} internal sealed partial class ZombieModeRuntimeModule {\n"
+    boss_runtime_path = ROOT / "ZombieMode/ZombieModeRuntimeModule_BossController.cs"
+    boss_runtime = boss_runtime_path.read_text(encoding="utf-8-sig")
+    for signature in ("internal float AbsorbZombieModeBossFinalDamage(",
+                      "internal float ApplyZombieModeShielderAuraFinalDamageReduction(",
                       "private bool TryApplyZombieModeShielderAuraReduction(",
                       "private ZombieModeBossInstance FindZombieModeBossInstanceFor("):
-        generated += member(boss, signature)
-    pollution = (ROOT / "ZombieMode/ZombieModePollution.cs").read_text(encoding="utf-8-sig")
-    components = (ROOT / "ZombieMode/ZombieModePollution_RuntimeComponents.cs").read_text(encoding="utf-8-sig")
+        generated += member(boss_runtime, signature)
+    boss_path = ROOT / "ZombieMode/ZombieModeBossController.cs"
+    boss = boss_path.read_text(encoding="utf-8-sig")
+    pollution_path = ROOT / "ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs"
+    pollution = pollution_path.read_text(encoding="utf-8-sig")
+    components_path = ROOT / "ZombieMode/ZombieModePollution_RuntimeComponents.cs"
+    components = components_path.read_text(encoding="utf-8-sig")
     generated += member(pollution, "internal void ApplyZombieModeEnemyDefense(")
     generated += "}\n" + member(boss, "public sealed class ZombieModeBossShieldRuntime")
     generated += member(components, "public sealed class ZombieModeShieldedAffixRuntime")
     generated += member(boss, "public abstract class ZombieModeTimedRunScopedRuntime")
     generated += member(components, "public sealed class ZombieModeSprinterDashRuntime") + "}\n"
-    tuning = (ROOT / "ZombieMode/ZombieModeTuning.cs").read_text(encoding="utf-8-sig")
+    tuning_path = ROOT / "ZombieMode/ZombieModeTuning.cs"
+    tuning = tuning_path.read_text(encoding="utf-8-sig")
     generated += "namespace BossRush { public static class ZombieModeTuning {"
     for name in ("TitanDamageReductionPercent", "ShielderAuraRadius", "ShielderAuraDamageReductionPercent",
                  "StalwartRangedDamageMultiplier", "AdaptiveAffixReductionPercent", "AdaptiveAffixDurationSeconds", "AdaptiveAffixHitThreshold"):
@@ -98,7 +117,9 @@ def main():
     response.write_text("\n".join(args), encoding="utf-8-sig")
     (OUT / "source-hashes.txt").write_text("\n".join(
         hashlib.sha256(path.read_bytes()).hexdigest() + "  " + str(path)
-        for path in sources + [official / "Health.cs", official / "DamageInfo.cs", harmony]), encoding="utf-8")
+        for path in sources + [visuals_path, bridge_path, combat_bridge_path, boss_runtime_path, boss_path,
+                               pollution_path, components_path, tuning_path,
+                               official / "Health.cs", official / "DamageInfo.cs", harmony]), encoding="utf-8")
     result = subprocess.call(["dotnet", str(compiler), "/noconfig", "@" + str(response)], cwd=ROOT)
     if result:
         return result

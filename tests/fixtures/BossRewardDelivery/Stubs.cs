@@ -33,9 +33,11 @@ namespace UnityEngine
     }
     public static class Random
     {
-        public static float value;
-        public static float Range(float min, float max) { return value; }
-        public static Vector3 insideUnitSphere { get { return new Vector3(1, 0, 0); } }
+        private static float currentValue;
+        public static int ValueCalls, RangeCalls, SphereCalls;
+        public static float value { get { ValueCalls++; return currentValue; } set { currentValue = value; } }
+        public static float Range(float min, float max) { RangeCalls++; return currentValue; }
+        public static Vector3 insideUnitSphere { get { SphereCalls++; return new Vector3(1, 0, 0); } }
     }
     public struct Vector3
     {
@@ -132,6 +134,9 @@ namespace BossRush
     public partial class ModBehaviour
     {
         public bool Enabled = true;
+        private readonly BackMountainRuntimeModule backMountainRuntime;
+        public ModBehaviour() { backMountainRuntime = new BackMountainRuntimeModule(this); }
+        private readonly WavesArenaRuntimeModule arena = new WavesArenaRuntimeModule();
         public static readonly List<string> Logs = new List<string>();
         public static void DevLog(string message) { Logs.Add(message); }
         public void Seed(Inventory inv, string kind)
@@ -149,15 +154,23 @@ namespace BossRush
         public void SeedOfficialBox(CharacterMainControl boss) { TryAddBackMountainSeedToCharacterItem(boss); }
         public void SeedWorld(CharacterMainControl boss) { TryDropBackMountainSeedIntoWorld(boss); }
         public void Descendant(Inventory inv)
-        { var routine = AddDragonDescendantLoot(inv); while (routine.MoveNext()) { } }
-        public bool King(Inventory inv) { return TryAddDragonKingLootItem(inv, 500001, "reward"); }
-        private bool IsBackMountainConfiguredEnabled() { return Enabled; }
+        { var routine = arena.AddDragonDescendantLoot(inv); while (routine.MoveNext()) { } }
+        public bool King(Inventory inv) { return arena.TryAddDragonKingLootItem(inv, 500001, "reward"); }
+        internal bool IsBackMountainConfiguredEnabled() { return Enabled; }
         private bool IsDragonDescendantBoss(CharacterMainControl boss) { return boss.Kind == "descendant"; }
         private bool IsDragonKingBoss(CharacterMainControl boss) { return boss.Kind == "king"; }
+    }
+    internal sealed partial class BackMountainRuntimeModule
+    {
+        private readonly ModBehaviour _owner;
+        public BackMountainRuntimeModule(ModBehaviour owner) { _owner = owner; }
+    }
+    internal sealed partial class WavesArenaRuntimeModule
+    {
         private bool EnsureDragonBossRewardPrefabLoaded(int id, string prefix) { return BackMountainItems.Registered; }
         private void CheckDragonDescendantCollectionAchievement() { }
         private void CheckDragonKingCollectionAchievement() { }
-        private void LogLootWarningLimited(string key, string message, Exception error) { DevLog(message); }
+        private void LogLootWarningLimited(string key, string message, Exception error) { ModBehaviour.DevLog(message); }
     }
     public static class BackMountainItems
     {

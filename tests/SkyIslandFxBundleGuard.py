@@ -2,7 +2,7 @@
 
 不变式：
 1. 运行时 SkyIslandFxAssets 的包路径与材质路径 == 作者工程 SkyIslandFxBundleBuilder 的常量（作者工程不在时只查仓库侧）；
-2. 正式编译脚本部署 Assets\\ui\\skyisland_fx，缺包只警告；
+2. 正式编译脚本部署 Assets\\ui\\skyisland_fx，资源发布清单恰好登记一次该包；缺制品仍失败；
 3. 缺包 / 材质缺失 / 着色器不受支持时退回粒子版：LoadFromFile 一次性闸门、Usable 查 isSupported、
    热浪另要求管线提供不透明场景色（SceneColorAvailable），ResetStaticCaches 卸包；
 4. 调用点：匠首过热叠折射热浪、穗镰泥块换流动材质（换上后不再推涟漪圈）；
@@ -11,6 +11,7 @@
 
 包文件缺失时退出码 2（外部制品缺失，source-only 模式记 PARTIAL）。脚本末尾带内存反向检查。
 """
+import json
 import re
 import sys
 from pathlib import Path
@@ -19,10 +20,11 @@ from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
-FX = ROOT / "DebugAndTools" / "SkyIsland" / "SkyIslandImpactFx.cs"
-FX_ASSETS = ROOT / "DebugAndTools" / "SkyIsland" / "SkyIslandFxAssets.cs"
-FOREMAN = ROOT / "DebugAndTools" / "SkyIsland" / "SkyIslandForemanBoss.cs"
+FX = ROOT / "SkyIsland" / "SkyIslandImpactFx.cs"
+FX_ASSETS = ROOT / "SkyIsland" / "SkyIslandFxAssets.cs"
+FOREMAN = ROOT / "SkyIsland" / "SkyIslandForemanBoss.cs"
 BAT = ROOT / "compile_official.bat"
+RELEASE_MANIFEST = ROOT / "tools" / "resource_release_manifest.json"
 BUNDLE = ROOT / "Assets" / "ui" / "skyisland_fx"
 HAZE_SHADER = "BossRush/SkyIsland/HeatHaze"
 MUD_SHADER = "BossRush/SkyIsland/MudFlow"
@@ -53,8 +55,19 @@ def need(errors, hay, needle, message):
         errors.append(message)
 
 
+def check_release_manifest(raw):
+    try:
+        manifest = json.loads(raw)
+    except (TypeError, ValueError):
+        return ["资源发布清单不是有效 JSON"]
+    bundles = manifest.get("bundles") if isinstance(manifest, dict) else None
+    if not isinstance(bundles, list) or bundles.count("Assets/ui/skyisland_fx") != 1:
+        return ["资源发布清单必须恰好登记一次 Assets/ui/skyisland_fx"]
+    return []
+
+
 def check(code):
-    errors = []
+    errors = check_release_manifest(code.get("manifest"))
     fx, foreman, bat = code["fx"], code["foreman"], code["bat"]
     need(errors, fx, 'internal const string BundleRelativePath = "Assets/ui/skyisland_fx";', "运行时包路径不是 Assets/ui/skyisland_fx")
     need(errors, fx, 'internal const string HazeMaterialPath = "assets/skyisland/fx/skyislandheathaze.mat";', "热浪材质路径漂移")
@@ -122,6 +135,7 @@ def load():
         "fx": clean_source(FX.read_text(encoding="utf-8")) + "\n" + clean_source(FX_ASSETS.read_text(encoding="utf-8")),
         "foreman": clean_source(FOREMAN.read_text(encoding="utf-8")),
         "bat": BAT.read_text(encoding="utf-8", errors="replace"),
+        "manifest": RELEASE_MANIFEST.read_text(encoding="utf-8-sig"),
     }
     try:
         import unity_project_path
@@ -146,6 +160,7 @@ def reverse_checks(code):
         ("fx", "haze != null && SceneColorAvailable() ? haze : null", "haze"),
         ("fx", "if (!shaderFlow)", "if (true)"),
         ("bat", 'copy /Y "Assets\\ui\\skyisland_fx"', 'rem "Assets\\ui\\skyisland_fx"'),
+        ("manifest", '"Assets/ui/skyisland_fx"', '"Assets/ui/removed-skyisland-fx"'),
         ("foreman", "overheatHaze = SkyIslandImpactFx.CreateHeatHaze(overheatGlow.transform);", ""),
     ]
     if code.get("haze_shader"):

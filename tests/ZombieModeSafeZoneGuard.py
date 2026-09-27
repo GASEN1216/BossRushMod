@@ -1,13 +1,15 @@
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 SAFE_ZONE = Path("ZombieMode/ZombieModeSafeZoneController.cs")
-EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
-WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
+WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 DEBUG_TOOLS = Path("DebugAndTools/DebugAndTools.cs")
 
 
@@ -47,6 +49,12 @@ def main() -> int:
     waves = WAVES.read_text(encoding="utf-8")
     spawner = SPAWNER.read_text(encoding="utf-8")
     debug_tools = DEBUG_TOOLS.read_text(encoding="utf-8")
+    anchor_bridge = extract_method(
+        clean_source(HOST_BRIDGE.read_text(encoding="utf-8")),
+        "internal void RegisterZombieModeEnemyRecoveryAnchorForRuntimeModule(")
+    if not anchor_bridge or anchor_bridge[anchor_bridge.index("{"):].split() != (
+            "{ RegisterEnemyRecoveryAnchor(enemy, anchor); }").split():
+        return fail("ZombieModeSafeZoneGuard: recovery anchor bridge must preserve the original single call")
 
     for snippet in [
         "public float LastSafeZoneTickTime;",
@@ -63,16 +71,21 @@ def main() -> int:
         if result:
             return result
 
+    if "internal sealed partial class ZombieModeRuntimeModule" not in safe_zone or "partial class ModBehaviour" in safe_zone:
+        return fail("safe-zone state and event owner must belong to the runtime module")
+    if "runState.ActiveSafeZoneActive || runState.PortableSafeZoneActive" not in extraction:
+        return fail("both safe-zone slots must use the module run state")
+
     for snippet in [
         "TickZombieModeSafeZone",
-        "Time.unscaledTime - zombieModeRunState.LastSafeZoneTickTime",
+        "Time.unscaledTime - runState.LastSafeZoneTickTime",
         "ZombieModeTuning.SafeZoneTickIntervalSeconds",
         "UpdateZombieModeSafeZonePlayerPresence",
         "SuppressZombieModeSafeZoneThreats",
         "ReleaseZombieModeSafeZoneThreatSuppression",
         "SetZombieModeEnemyThreatSuppressed",
-        "zombieModeRunState.PlayerInsideSafeZone = IsZombieModePlayerInsideActiveSafeZone();",
-        "zombieModeRunState.SafeZoneThreatSuppressed = shouldSuppress",
+        "runState.PlayerInsideSafeZone = IsZombieModePlayerInsideActiveSafeZone();",
+        "runState.SafeZoneThreatSuppressed = shouldSuppress",
         "AICharacterController",
         "marker.SuppressedForceTraceDistance = ai.forceTracePlayerDistance;",
         "marker.HasSuppressedForceTraceDistance = true;",
@@ -89,7 +102,6 @@ def main() -> int:
         "TryMoveZombieModeEnemyOutsideSafeZone",
         # 主槽（正常安全区）与副槽（准备期便携区）任一激活都必须驱动物理禁入。
         "if (!AnyZombieModeSafeZoneActive)",
-        "zombieModeRunState.ActiveSafeZoneActive || zombieModeRunState.PortableSafeZoneActive",
         # 抑制判定必须先于弹出，且弹出只能沿用该判定结果，不得自行去仇恨。
         "bool shouldSuppress = ShouldSuppressZombieModeEnemyAggroForSafeZone();\n            KeepZombieModeEnemiesOutsideSafeZone(shouldSuppress);",
         "TryResolveZombieModeSafeZoneExclusionSlot(enemyTransform.position, out slotCenter, out slotRadius)",
@@ -105,20 +117,20 @@ def main() -> int:
 
     for snippet in [
         "TickZombieModeSafeZone();",
-        "zombieModeRunState.LastSafeZoneTickTime = 0f;",
-        "zombieModeRunState.SafeZoneThreatSuppressed = false;",
+        "runState.LastSafeZoneTickTime = 0f;",
+        "runState.SafeZoneThreatSuppressed = false;",
         "CanUseZombieModePortableSafeZoneDevice",
         "TryUseZombieModePortableSafeZoneDevice",
         "ZombieModePhaseGuards.AllowsPortableSafeZoneDeployment",
         "ResetZombieModeSafeZoneForReplacement",
         "RemoveZombieModeSafeZoneRunOnlyRecord",
         # 战斗期部署替换主槽（波次结束随准备期清理消失，再生成带商人的正常区）。
-        "CreateZombieModeSafeZone(zombieModeRunState.RunId, false, true, true);",
+        "CreateZombieModeSafeZone(runState.RunId, false, true, true);",
         # 准备期部署写入独立副槽：不带商人、不回收主槽绑定的服务 NPC。
-        "CreateZombieModeSafeZone(zombieModeRunState.RunId, false, false, true, true);",
+        "CreateZombieModeSafeZone(runState.RunId, false, false, true, true);",
         "ClearZombieModeEnemiesInsideActiveSafeZone(runId, \"CreateSafeZone\");",
         # 准备期清理必须无条件清掉两个槽，不再保留任何便携区跨越波次边界。
-        "private void CleanupZombieModePreparationObjects(int runId)",
+        "internal void CleanupZombieModePreparationObjects(int runId)",
         "ClearZombieModePortableSafeZoneSlot();",
     ]:
         result = require(extraction, snippet, "safe zone lifecycle")
@@ -127,8 +139,8 @@ def main() -> int:
 
     drops = Path("ZombieMode/ZombieModeDropsAndPerformance.cs").read_text(encoding="utf-8")
     for signature in [
-        "private void RecycleZombieModeSafeZoneBoundTemporaryNpcs(int runId)",
-        "private void RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(int runId)",
+        "internal void RecycleZombieModeSafeZoneBoundTemporaryNpcs(int runId)",
+        "internal void RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(int runId)",
     ]:
         body = extract_method(drops, signature)
         if not body or "RemoveZombieModeRunOnlyObjectRecord(npc.GameObject);" not in body:
@@ -152,7 +164,7 @@ def main() -> int:
     for snippet in [
         "TryHandleZombieModeSafeZonePlayerAttack",
         "!IsZombieModePlayerInsideActiveSafeZone()",
-        "ZombieModePhaseGuards.AllowsSafeZone(zombieModeRunState.CombatPhase)",
+        "ZombieModePhaseGuards.AllowsSafeZone(runState.CombatPhase)",
         "CancelZombieModeSafeZone(runId, \"PlayerAttack\");",
         # 只有枪械/近战直伤取消安全区：手雷、投掷物与玩家来源的奖励弹道不算。
         "!IsZombieModeSafeZoneCancellingWeapon(damageInfo)",
@@ -195,8 +207,8 @@ def main() -> int:
         "if (ShouldSuppressZombieModeEnemyAggroForSafeZone())",
         "SetZombieModeEnemyThreatSuppressed(enemy.gameObject, marker, true);",
         "TryMoveZombieModeEnemyOutsideSafeZone(",
-        "RegisterEnemyRecoveryAnchor(zombie, zombie.transform.position);",
-        "RegisterEnemyRecoveryAnchor(boss, boss.transform.position);",
+        "owner.RegisterZombieModeEnemyRecoveryAnchorForRuntimeModule(zombie, zombie.transform.position);",
+        "owner.RegisterZombieModeEnemyRecoveryAnchorForRuntimeModule(boss, boss.transform.position);",
     ]:
         result = require(spawner, snippet, "spawn aggro suppression")
         if result:
@@ -209,7 +221,9 @@ def main() -> int:
         return fail("ZombieModeSafeZoneGuard: zombie stealth breaker must live in ZombieMode, not DevMode debug")
 
     hud = Path("ZombieMode/ZombieModeHudController.cs").read_text(encoding="utf-8")
-    if "zombieModeRunState.PreparationTimer > 0f &&" not in hud:
+    hud_runtime = Path("ZombieMode/ZombieModeRuntimeModule_Hud.cs").read_text(encoding="utf-8")
+    safe_zone_text = extract_method(hud_runtime, "public string GetZombieModeHudSafeZoneText(int runId)")
+    if "if (runState.PreparationTimer <= 0f)" not in safe_zone_text:
         return fail("ZombieModeSafeZoneGuard: combat portable safe zone must not flash as a zero-second preparation timer")
 
     print("ZombieModeSafeZoneGuard: PASS")

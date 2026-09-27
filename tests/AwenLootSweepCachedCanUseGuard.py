@@ -5,9 +5,10 @@ target count, while actual activation still performs a fresh target collection.
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
-SOURCE = Path("LootAndRewards/ModeEFLootboxTracker.cs")
+SOURCE = Path("LootAndRewards/AwenLootSweepRuntime.cs")
 
 
 def fail(message: str) -> int:
@@ -38,7 +39,26 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = clean_source(SOURCE.read_text(encoding="utf-8"))
+    host = clean_source(Path("LootAndRewards/LootAndRewards.cs").read_text(encoding="utf-8"))
+    registration = clean_source(Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8"))
+    if host.count("new AwenLootSweepRuntime()") != 1 or "private int modeEFBossDeathGrantCounter" in host:
+        return fail("AwenLootSweepCachedCanUseGuard: host must delegate state to one sweep runtime")
+    bind = extract_method_body(host, "private void BindAwenLootSweepRuntime()") or ""
+    for statement in ("awenLootSweepRuntime.BindServices(TryGetActiveModeEFLootboxContext, CanUseAwenLootSweepInCurrentMode,",
+                      "IsAwenLootSweepSessionStillValid, () => courierNPCInstance, () => courierController,",
+                      "modeFRuntime.TryGiveItemToPlayerOrDrop(typeId, name, bubble, drop)"):
+        if statement not in bind:
+            return fail("AwenLootSweepCachedCanUseGuard: missing runtime binding -> " + statement)
+    if "BindAwenLootSweepRuntime();" not in registration:
+        return fail("AwenLootSweepCachedCanUseGuard: missing startup binding")
+    for signature, call in (
+        ("internal void ResetModeEFLootboxTrackerState()", "awenLootSweepRuntime.ResetModeEFLootboxTrackerState();"),
+        ("internal bool TryActivateAwenLootSweepToken", "return awenLootSweepRuntime.TryActivateAwenLootSweepToken(player);"),
+        ("internal bool TryRefundAwenLootSweepToken()", "return awenLootSweepRuntime.TryRefundAwenLootSweepToken();"),
+    ):
+        if call not in (extract_method_body(host, signature) or ""):
+            return fail("AwenLootSweepCachedCanUseGuard: missing host forward -> " + call)
 
     can_use_body = extract_method_body(text, "internal bool CanUseAwenLootSweepToken(CharacterMainControl player, bool showFailureFeedback)")
     if can_use_body is None:

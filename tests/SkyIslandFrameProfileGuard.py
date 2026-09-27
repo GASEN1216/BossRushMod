@@ -23,11 +23,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cs_source_util import clean_source  # noqa: E402
 
-PROFILE = "DebugAndTools/SkyIsland/SkyIslandFrameProfile.cs"
-SESSION = "DebugAndTools/SkyIsland/SkyIslandSession.cs"
-WORLD = "DebugAndTools/SkyIsland/SkyIslandWorldStory.cs"
-FIELDCRAFT = "DebugAndTools/SkyIsland/SkyIslandFieldcraft.cs"
-MODULE = "DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs"
+PROFILE = "SkyIsland/SkyIslandFrameProfile.cs"
+SESSION = "SkyIsland/SkyIslandSession.cs"
+WORLD = "SkyIsland/SkyIslandWorldStory.cs"
+FIELDCRAFT = "SkyIsland/SkyIslandFieldcraft.cs"
+MODULE = "SkyIsland/SkyIslandRuntimeModule.cs"
 RUNNER = "DebugAndTools/F3GameplayValidationRunner.cs"
 RUNTIME = "DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs"
 BAT = "compile_official.bat"
@@ -89,7 +89,7 @@ def non_dev_lines(raw):
 
 
 def production_paths():
-    paths = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "DebugAndTools/SkyIsland").glob("*.cs"))
+    paths = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "SkyIsland").glob("*.cs"))
     paths += sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "Integration/SkyIsland").glob("*.cs"))
     paths += sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "DebugAndTools").glob("F3GameplayValidation*.cs"))
     return paths
@@ -180,7 +180,7 @@ def check(sources):
     destroy = squash(body_of(clean_source(sources[MODULE]), "public override void OnDestroy()") or "")
     if "SkyIslandFrameProfile.ResetStaticCaches();" not in destroy:
         errors.append("模块销毁时要丢掉没交出去的分项计时录制")
-    if "echo(DebugAndTools\\SkyIsland\\SkyIslandFrameProfile.cs" not in sources[BAT]:
+    if "echo(SkyIsland\\SkyIslandFrameProfile.cs" not in sources[BAT]:
         errors.append("编译清单缺 SkyIslandFrameProfile.cs")
     return errors
 

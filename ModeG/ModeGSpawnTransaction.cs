@@ -230,7 +230,7 @@ namespace BossRush
     /// Mode G 生成桥接（partial ModBehaviour：SpawnCore 私有入口、preset 查找、奖励候选）。
     /// 全部为加法成员，不改 Jimmy 的 Utilities/EnemySpawnCore.cs。
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeGEntryRuntime
     {
         #region Official Spawn Bridge（§13.1）
 
@@ -294,7 +294,7 @@ namespace BossRush
                 if (character.Health == null || character.Health.IsDead) return null;
                 stagingBossRegistered = state.RegisterStagingBoss(character.Health, character);
                 if (!stagingBossRegistered || !character.Health.CanDieIfNotRaidMap
-                    || HasModeGPlayerAuthoredBuff(character)) return null;
+                    || ModeGManagedCharacterService.HasModeGPlayerAuthoredBuff(character)) return null;
                 character.Health.SetInvincible(true);
                 character.gameObject.SetActive(false);
                 if (character.gameObject.activeSelf || !character.Health.Invincible) return null;
@@ -327,7 +327,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [ERROR] SpawnModeGOfficialBossAsync 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [ERROR] SpawnModeGOfficialBossAsync 异常: " + e.Message);
                 return null;
             }
             finally
@@ -336,7 +336,7 @@ namespace BossRush
                 if (stagingPreset != null) UnityEngine.Object.Destroy(stagingPreset);
                 if (!preparedSuccessfully && stagingBossRegistered && state != null)
                     state.UnregisterStagingBoss(character != null ? character.Health : null);
-                if (!preparedSuccessfully && character != null) DestroyManagedCharacterQuiet(character);
+                if (!preparedSuccessfully && character != null) ModBehaviour.DestroyManagedCharacterQuiet(character);
             }
         }
 
@@ -368,7 +368,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [ERROR] GetModeGOfficialBossPoolKeys 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [ERROR] GetModeGOfficialBossPoolKeys 异常: " + e.Message);
                 keys.Clear();
             }
             return keys;
@@ -398,7 +398,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [WARNING] FindModeGOfficialPresetByKey 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [WARNING] FindModeGOfficialPresetByKey 异常: " + e.Message);
             }
             return null;
         }
@@ -449,7 +449,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [ERROR] GetModeGRewardCandidates 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [ERROR] GetModeGRewardCandidates 异常: " + e.Message);
                 candidates.Clear();
             }
             return candidates;
@@ -497,7 +497,7 @@ namespace BossRush
 
                 if (prepared == null || prepared.Character == null || prepared.Handle == null)
                 {
-                    DevLog("[ModeG] managed Prepare 失败 key=" + key);
+                    ModBehaviour.DevLog("[ModeG] managed Prepare 失败 key=" + key);
                     return null;
                 }
 
@@ -517,7 +517,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeG] [ERROR] DispatchModeGManagedBossSpawnAsync 异常: " + e.Message);
+                ModBehaviour.DevLog("[ModeG] [ERROR] DispatchModeGManagedBossSpawnAsync 异常: " + e.Message);
                 return null;
             }
         }

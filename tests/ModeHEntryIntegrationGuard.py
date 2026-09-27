@@ -21,15 +21,18 @@ import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "tools"))
 
 from modeh_guard_util import read_text, strip_cs_comments  # noqa: E402
+from compile_list import read_compile_sources  # noqa: E402
+from IntegrationLeafOwnershipGuard import body as method_body, compact  # noqa: E402
 
 HELPER = os.path.join(REPO_ROOT, "MapSelection", "BossRushMapSelectionHelper.cs")
 ENTRY_FLOW = os.path.join(REPO_ROOT, "WavesArena", "BossRushEntryFlow.cs")
 INTEGRATION = os.path.join(REPO_ROOT, "Integration", "BossRushIntegration_StartAndScene.cs")
 TRAVEL = os.path.join(REPO_ROOT, "Integration", "BossRushIntegration_TravelAndSetup.cs")
-MAINTENANCE = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaEnemyMaintenance.cs")
-REGISTRATION = os.path.join(REPO_ROOT, "Common", "Lifecycle", "BossRushRuntimeModuleRegistration.cs")
+MAINTENANCE = os.path.join(REPO_ROOT, "WavesArena", "WavesArenaRuntimeModule_EnemyMaintenance.cs")
+REGISTRATION = os.path.join(REPO_ROOT, "ModBehaviourRuntimeModules.cs")
 MODEH_ENTRY = os.path.join(REPO_ROOT, "ModeH", "ModeHEntry.cs")
 
 LEGACY_ENTRIES = [
@@ -38,8 +41,8 @@ LEGACY_ENTRIES = [
     ("ModeF/ModeFEntry.cs", "TryStartModeF"),
     ("ModeG/ModeGEntry.cs", "TryStartModeG"),
     ("WavesArena/WavesArenaEntryAndTeleport.cs", "StartBossRush_WavesArena"),
-    ("ZombieMode/ZombieModeEntry.cs", "CanStartZombieModeMapSelectionPhase1"),
-    ("ZombieMode/ZombieModeMapSelection.cs", "TryBeginZombieModeMapSelectionShell"),
+    ("ZombieMode/ZombieModeEntryHostBridge.cs", "CanStartZombieModeMapSelectionPhase1"),
+    ("ZombieMode/ZombieModeEntryHostBridge.cs", "TryBeginZombieModeMapSelectionShell"),
 ]
 
 FORBIDDEN_IN_LEGACY = [
@@ -50,12 +53,12 @@ FORBIDDEN_IN_LEGACY = [
 
 # 允许把风险门判定委托给同一 partial class 里的具名 helper，但**必须**指明 helper 名与
 # 它所在的文件，且那个文件仍要被本 guard 逐字检查到 IsLegacyModeEntryAllowed。
-# 起因：ZombieMode/ZombieModeEntry.cs 已顶到 large_file_existing_allowlist 的行数上限，
+# 起因：ZombieMode/ZombieModeEntryHostBridge.cs 已顶到 large_file_existing_allowlist 的行数上限，
 # 无法再容纳「区分扫描失败与真实押品风险」所需的分支。
 LEGACY_GATE_DELEGATES = {
-    "ZombieMode/ZombieModeEntry.cs": (
+    "ZombieMode/ZombieModeEntryHostBridge.cs": (
         "IsZombieModeStartBlocked",
-        "ZombieMode/ZombieModeMapSelection.cs",
+        "ZombieMode/ZombieModeEntryHostBridge.cs",
     ),
 }
 
@@ -176,7 +179,7 @@ def main():
 
     registration = read_text(REGISTRATION)
     if registration is None:
-        errors.append("[File] 缺少 Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+        errors.append("[File] 缺少 ModBehaviourRuntimeModules.cs")
     else:
         code = strip_cs_comments(registration)
         if not re.search(r"modeHRuntime = new ModeHRuntimeModule\(\);", code):
@@ -188,17 +191,12 @@ def main():
         if not re.search(r"internal ModeHRuntimeModule ModeHRuntime", code):
             errors.append("[Host] 缺少唯一实例只读门面")
 
-    # 全仓禁止二次 new ModeHRuntimeModule
-    for root, _dirs, files in os.walk(REPO_ROOT):
-        if any(part in root for part in (".git", "Build", "鸭科夫源码", "tests", "wiki-site")):
-            continue
-        for name in files:
-            if not name.endswith(".cs"):
-                continue
-            path = os.path.join(root, name)
-            code = strip_cs_comments(read_text(path) or "")
-            if "new ModeHRuntimeModule()" in code and name != "BossRushRuntimeModuleRegistration.cs":
-                errors.append("[Host] {} 出现二次 new ModeHRuntimeModule()".format(name))
+    # 以正式构建清单限定生产源码，避免 tmp 下的历史签出误报。
+    for rel in read_compile_sources():
+        path = os.path.join(REPO_ROOT, rel)
+        code = strip_cs_comments(read_text(path) or "")
+        if "new ModeHRuntimeModule()" in code and rel != "ModBehaviourRuntimeModules.cs":
+            errors.append("[Host] {} 出现二次 new ModeHRuntimeModule()".format(rel))
 
     # 旧模式入口只读两个门
     for rel, method in LEGACY_ENTRIES:
@@ -207,6 +205,22 @@ def main():
             errors.append("[Legacy] 缺少文件: " + rel)
             continue
         code = strip_cs_comments(text)
+        if rel == "ModeD/ModeD.cs":
+            # 准入判断在真实 Mode D owner；旧公开入口必须只把当前宿主传入。
+            try:
+                if compact(method_body(code, "public bool TryStartModeD()")) != "returnModeDRuntimeModule.TryStartModeD(this);":
+                    errors.append("[Legacy] Mode D public entry must forward its own host to the runtime owner")
+                owner_code = strip_cs_comments(read_text(os.path.join(
+                    REPO_ROOT, "ModeD/ModeDRuntimeModule_Lifecycle.cs")) or "")
+                entry = method_body(owner_code, "internal static bool TryStartModeD(ModBehaviour owner)")
+                ordered = ["ModeHRuntimeGates.IsLegacyModeEntryAllowed()", "owner.IsModeEActive",
+                           "owner.IsPlayerNaked()", "owner.StartModeD();", "return true;"]
+                positions = [entry.index(token) for token in ordered]
+                if positions != sorted(positions):
+                    errors.append("[Legacy] Mode D owner must keep risk / Mode E / inventory / start order")
+                code += "\n" + entry
+            except (AssertionError, ValueError, IndexError) as error:
+                errors.append("[Legacy] Mode D owner entry is missing or incomplete: " + str(error))
         if "IsLegacyModeEntryAllowed" not in code:
             delegate = LEGACY_GATE_DELEGATES.get(rel)
             if delegate is None or delegate[0] not in code:

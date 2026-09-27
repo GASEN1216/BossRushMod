@@ -5,8 +5,9 @@ import re
 import sys
 
 
-RUNTIME = Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs")
+RUNTIME = Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs")
 MARKER = Path("ZombieMode/ZombieModeEnemyRuntime.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 
 
@@ -71,20 +72,20 @@ def main() -> int:
         return fail("custom Exploder distance gate must run before telegraphed explosion")
 
     marker_text = MARKER.read_text(encoding="utf-8-sig")
-    for token in [
-        "public bool CustomExploderSkillDetonated;",
-        "marker.CustomExploderSkillDetonated = false;",
-    ]:
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8-sig")
+    for token in ["public bool CustomExploderSkillDetonated;"]:
         if token not in marker_text:
             return fail("custom Exploder self-detonation marker missing token -> " + token)
+    if "marker.CustomExploderSkillDetonated = false;" not in runtime_module:
+        return fail("RuntimeModule marker registration must reset custom Exploder self-detonation state")
 
-    death_body = extract_method_body(runtime, "private void HandleZombieModeSpecialDeathEffects(")
+    death_body = extract_method_body(runtime, "internal void HandleZombieModeSpecialDeathEffects(")
     if death_body is None:
         return fail("missing HandleZombieModeSpecialDeathEffects body")
     if "marker.CustomExploderSkillDetonated" not in death_body:
         return fail("custom Exploder skill detonation must skip duplicate death explosion")
 
-    telegraph_body = extract_method_body(runtime, "public void TryExecuteZombieModeTelegraphedAreaDamage(")
+    telegraph_body = extract_method_body(runtime, "internal void TryExecuteZombieModeTelegraphedAreaDamage(")
     if telegraph_body is None:
         return fail("missing TryExecuteZombieModeTelegraphedAreaDamage body")
     if "TryKillZombieModeCustomExploderAfterDetonation(runId, source, origin);" not in telegraph_body:

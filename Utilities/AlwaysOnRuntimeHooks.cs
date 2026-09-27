@@ -217,7 +217,7 @@ namespace BossRush
 
                 try
                 {
-                    _mapSpawnRegistry.Initialize(modPath);
+                    BossRushMapRuntime.Initialize(modPath);
                 }
                 catch (System.Exception e)
                 {
@@ -231,15 +231,14 @@ namespace BossRush
         internal void TickAlwaysOnRuntime()
         {
             UpdateMessage();
-            AffinityManager.UpdateDeferredSave();
+            TickAffinityRuntimeFromHost();
             // 死亡帧把亡魂列表写盘的成本已移走，这里兜底把内存中的脏数据去抖刷回 ES3。
             UpdateDeferredDeathWraithSave_DeathWraith();
         }
 
         internal void OnSceneUnloadAlwaysOnRuntime()
         {
-            AffinityUIManager.OnSceneUnload();
-            AffinityManager.OnSceneUnload();
+            OnSceneUnloadAffinityRuntimeFromHost();
 
             try
             {
@@ -258,11 +257,7 @@ namespace BossRush
         {
             try
             {
-                AffinityManager.OnAffinityChanged -= OnAffinityChanged;
-                AffinityManager.OnLevelUp -= OnAffinityLevelUp;
-                AffinityManager.Shutdown();
-                AffinityManager.ResetStaticCaches();
-                AffinityUIManager.Cleanup();
+                CleanupAffinityRuntimeFromHost();
             }
             catch (System.Exception e)
             {

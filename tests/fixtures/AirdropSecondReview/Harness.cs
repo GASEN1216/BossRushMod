@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Duckov.Utilities;
+using BossLootBoxLoaderReflection = WavesArenaRuntimeModule.BossLootBoxLoaderReflection;
 
 namespace UnityEngine
 {
@@ -58,6 +59,8 @@ namespace Duckov.Utilities
         public void StartSetup() { SetupCalls++; }
     }
 }
+public static class WavesArenaRuntimeModule
+{
 public static class BossLootBoxLoaderReflection
 {
     public static Type LoaderEntryType = typeof(LootBoxLoader.Entry);
@@ -74,18 +77,28 @@ public static class BossLootBoxLoaderReflection
     public static FieldInfo FixedItemsField = typeof(LootBoxLoader).GetField("fixedItems");
     public static FieldInfo FixedChanceField = typeof(LootBoxLoader).GetField("fixedChance");
 }
+}
 public static class RandomEventsTuning { public const string LogPrefix = "test"; }
 public partial class ModBehaviour
 {
     public HashSet<int> Candidates = new HashSet<int>();
     public HashSet<int> Blacklist = new HashSet<int>();
-    private HashSet<int> BuildGeneralBossLootCandidateIdSet() { return Candidates; }
-    private bool IsItemBlacklisted(int id) { return Blacklist.Contains(id); }
-    private static void DevLog(string message) { }
-    private List<Tag> BuildGeneralLootExcludeTags(GameplayDataSettings.TagsData data, bool extra) { return new List<Tag>(); }
-    private void MergeGeneralLootExcludeTags(List<Tag> tags, GameplayDataSettings.TagsData data) { }
+    private static ModBehaviour current;
+    private readonly RandomEventsRuntimeModule runtime;
+    public ModBehaviour() { current = this; runtime = new RandomEventsRuntimeModule(this); }
+    internal HashSet<int> BuildRandomEventLootCandidateIdsForRuntime() { return Candidates; }
+    internal static bool IsItemBlacklisted(int id) { return current.Blacklist.Contains(id); }
+    internal static void DevLog(string message) { }
+    internal List<Tag> BuildGeneralLootExcludeTags(GameplayDataSettings.TagsData data, bool extra) { return new List<Tag>(); }
+    internal void MergeGeneralLootExcludeTags(List<Tag> tags, GameplayDataSettings.TagsData data) { }
     public void Configure(LootBoxLoader loader, int count, int min, int max)
-    { ConfigureRandomEventAirdropLoader(loader, count, min, max); }
+    { runtime.Configure(loader, count, min, max); }
+}
+internal sealed partial class RandomEventsRuntimeModule
+{
+    private readonly ModBehaviour _owner;
+    internal RandomEventsRuntimeModule(ModBehaviour owner) { _owner = owner; }
+    internal void Configure(LootBoxLoader loader, int count, int min, int max) { ConfigureRandomEventAirdropLoader(loader, count, min, max); }
 }
 public static class Program
 {

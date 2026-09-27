@@ -380,3 +380,10 @@ Mode F 通过清晰的状态机驱动高压生存体验，结合悬赏系统与�
 - 击杀奖励气泡改为分段换行、收益用 `SuccessText`；赏金雷达字改用 TMP 距离场描边（`BossRushUIKit.ApplyWorldTextOutline`，旧的 `UI.Outline` 挂在 TMP 上无效），隐藏改淡出。
 - 放置预览与维修高亮改由 `ModeF/ModeFFortificationHologramFx.cs` 负责（旧预览着色器不支持透明，0.4 alpha 不生效，出来是实心纯色模型）。
 - 详情：本地 `docs/reports/testing/2026-09-23-UI与特效审美-看图清单.md`、`fix_vfxA_report.md`。
+
+
+### E/F 共享生成归属（2026-09-26）
+
+阵营 Boss/小怪缓存、狼阵营分配计数、生成预计数与完成数、龙裔/龙王占位及分批生成现归 `Utilities/ModeEFEnemySpawnRuntime.cs`。根装配把同一实例交给 E/F，并复用既有 `ModeEFSpawnPreparation` 与 `EnemySpawnRuntime`；Mode F 的初始生成、池预热和龙裔占位不再通过 Mode E 字段。筛选池、原 D 小怪池、会话有效性与 E 提交登记通过窄委托绑定。
+
+分批顺序仍按玩家距离排序，原 800/500 ms 等待、生成前预计数、随机调用次数、失败回退和重试后最终预设检查保持。E 的贝壳奖励分类与生成提交仍由 E 模块负责，并查询共享服务的缓存。活敌列表、去重集合、阵营登记、回血缓存及死亡/掉落订阅句柄已归 `Utilities/ModeEFEnemyRegistry.cs`，E/F 持有同一实例；E 的同阵营禁掉落策略、缩放与贝壳结算仍在 E。F 对 E 的残留缩放、仇恨及入局重置使用明确清理动作，不再直接修改其私有仇恨字典。原列表次序、引用身份、Unity 假 null、先退订后派发死亡回调，以及重置时与 E 私有状态清理的交错顺序保持。登记回归直接链接服务与真实 E 掉落策略，见 `tests/fixtures/ModeEFEnemyRegistry/`。执行证据见 `tests/fixtures/ModeEFEnemySpawnRuntime/`，不代表实机帧耗时已验证。

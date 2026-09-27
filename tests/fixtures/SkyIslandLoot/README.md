@@ -2,8 +2,8 @@
 
 直接链接两份**无 Unity 依赖的生产源码**执行，不用任何替身：
 
-- `DebugAndTools/SkyIsland/SkyIslandLootTables.cs`：24 个搜刮锚点、三档品质带与件数、每点固定随机流。
-- `DebugAndTools/SkyIsland/SkyIslandBounty.cs`：航务委托的基线进度、目标升级与奖励升档。
+- `SkyIsland/SkyIslandLootTables.cs`：24 个搜刮锚点、三档品质带与件数、每点固定随机流。
+- `SkyIsland/SkyIslandBounty.cs`：航务委托的基线进度、目标升级与奖励升档。
 
 覆盖的口径：
 

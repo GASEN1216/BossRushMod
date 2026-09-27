@@ -11,6 +11,8 @@
     <Compile Include="../../../Build/set-bonus-coroutines/ShieldBehaviour.cs" />
     <Compile Include="../../../Integration/Bonus/ThunderSetBonus_Storm.cs" />
     <Compile Include="../../../Integration/Bonus/FrostSetBonus_Nova.cs" />
+    <Compile Include="../../../Integration/Bonus/SetBonusRuntimeHostBridge.cs" />
+    <Compile Include="../../../Build/set-bonus-coroutines/SetBonusHost.cs" />
     <Compile Include="../../../Build/set-bonus-coroutines/DeathHandlers.cs" />
     <Compile Include="../../../Build/set-bonus-coroutines/WeaponDeathHandlers.cs" />
   </ItemGroup>

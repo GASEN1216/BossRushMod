@@ -55,7 +55,7 @@ def main() -> int:
 
     # 真正的清理路径：没有掉落管线在跑，必须两件都做。
     cleanup_targets = [
-        "private void CleanupFailedPhantomWitchSpawn(CharacterMainControl character)",
+        "internal void CleanupFailedPhantomWitchSpawn(CharacterMainControl character)",
         "private void CleanupTrackedPhantomWitchCharacter(",
     ]
 

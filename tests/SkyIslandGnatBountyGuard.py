@@ -29,15 +29,15 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tests'))
 from cs_source_util import clean_source
 
-BOUNTY = 'DebugAndTools/SkyIsland/SkyIslandBounty.cs'
-GNATS = 'DebugAndTools/SkyIsland/SkyIslandGnats.cs'
-SESSION = 'DebugAndTools/SkyIsland/SkyIslandSession.cs'
-PARTIAL = 'DebugAndTools/SkyIsland/SkyIslandSessionGnatBounty.cs'
-RULES = 'DebugAndTools/SkyIsland/SkyIslandMosquitoRules.cs'
-NIGHT = 'DebugAndTools/SkyIsland/SkyIslandNight.cs'
-LIGHTING = 'DebugAndTools/SkyIsland/SkyIslandLighting.cs'
-STORY = 'DebugAndTools/SkyIsland/SkyIslandWorldStory.cs'
-ENCOUNTERS = 'DebugAndTools/SkyIsland/SkyIslandEncounters.cs'
+BOUNTY = 'SkyIsland/SkyIslandBounty.cs'
+GNATS = 'SkyIsland/SkyIslandGnats.cs'
+SESSION = 'SkyIsland/SkyIslandSession.cs'
+PARTIAL = 'SkyIsland/SkyIslandSessionGnatBounty.cs'
+RULES = 'SkyIsland/SkyIslandMosquitoRules.cs'
+NIGHT = 'SkyIsland/SkyIslandNight.cs'
+LIGHTING = 'SkyIsland/SkyIslandLighting.cs'
+STORY = 'SkyIsland/SkyIslandWorldStory.cs'
+ENCOUNTERS = 'SkyIsland/SkyIslandEncounters.cs'
 MANIFEST = 'compile_official.bat'
 
 errors = []

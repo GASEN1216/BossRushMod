@@ -29,7 +29,7 @@ namespace BossRush
     /// <summary>
     /// 雷霆套装效果 - 电伤转治疗 + 受击雷霆反震（雷噬在 ThunderSetBonus_Storm.cs）
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal partial class SetBonusRuntimeModule
     {
         #region 雷霆套配置
 
@@ -104,7 +104,7 @@ namespace BossRush
                 // 4. 显示激活提示
                 if (announce)
                 {
-                    ShowMessage(L10n.T(
+                    _owner.ShowMessage(L10n.T(
                         "<color=#FFD700>【雷霆之怒】</color> 套装效果激活！\n电伤转治疗 · 普攻附带雷噬 · 受击雷霆反震",
                         "<color=#FFD700>[Thunder's Wrath]</color> Set bonus activated!\nShock heals you · attacks arc to nearby foes · counter-shock when hit"
                     ));
@@ -244,7 +244,7 @@ namespace BossRush
                     float heal = electricDamage * THUNDER_SET_ELEC_HEAL_RATIO;
                     if (heal > 0f)
                     {
-                        StartCoroutine(DelayedHeal(health, heal));
+                        StartSetBonusCoroutine(DelayedHeal(health, heal));
                     }
                 }
 
@@ -272,7 +272,7 @@ namespace BossRush
 
                 // 延后一帧结算：OnHurt 可能正处在敌方爆炸的 ExplosionManager 循环内，
                 // 嵌套 CreateExplosion 会覆写其共享 colliders/damagedHealth 缓冲。
-                StartCoroutine(ThunderCounterStep(player, damageInfo.fromCharacter, setBonusGeneration));
+                StartSetBonusCoroutine(ThunderCounterStep(player, damageInfo.fromCharacter, setBonusGeneration));
             }
             catch (Exception e)
             {
@@ -318,7 +318,7 @@ namespace BossRush
                     SpawnSetArc(origin + Vector3.up * 1f, attacker.transform.position + Vector3.up * 1f,
                         THUNDER_SET_ARC_COLOR, 0.08f, 0.2f);
                 }
-                PlaySoundEffect(SetBonusSfx.ThunderCounter);
+                _owner.PlaySoundEffect(SetBonusSfx.ThunderCounter);
 
                 DevLog("[ThunderSet] 雷霆反震触发！范围: " + THUNDER_SET_COUNTER_RADIUS + "m");
             }

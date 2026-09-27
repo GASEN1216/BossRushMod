@@ -2,11 +2,13 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 
 POLLUTION_PARTS = [
-    Path("ZombieMode/ZombieModePollution.cs"),
-    Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_Pollution.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionTuning.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs"),
     Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs"),
 ]
 
@@ -22,23 +24,87 @@ def require(text: str, needle: str, message: str):
 
 
 def read_pollution() -> str:
-    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
+    return "\n".join(clean_source(path.read_text(encoding="utf-8-sig")) for path in POLLUTION_PARTS)
+
+
+def extract_method(text: str, marker: str) -> str:
+    start = text.find(marker)
+    if start < 0:
+        return ""
+    brace = text.find("{", start)
+    if brace < 0:
+        return ""
+    depth = 0
+    for index in range(brace, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:index + 1]
+    return ""
 
 
 def main() -> int:
-    entry_text = Path("ZombieMode/ZombieModeEntry.cs").read_text(encoding="utf-8")
+    entry_text = clean_source(Path("ZombieMode/ZombieModeEntryHostBridge.cs").read_text(encoding="utf-8-sig"))
+    module_text = clean_source(Path("ZombieMode/ZombieModeRuntimeModule.cs").read_text(encoding="utf-8-sig"))
+    host_bridge_text = clean_source(Path("ZombieMode/ZombieModeEntryHostBridge.cs").read_text(encoding="utf-8-sig"))
     try:
-        require(entry_text, "private float zombieModeRuntimePausedDuration", "missing runtime paused-duration accumulator")
-        require(entry_text, "private float zombieModeRuntimePauseStartTime", "missing runtime pause-start timestamp")
-        require(entry_text, "private int zombieModeRuntimePauseRunId", "missing runtime pause run-id tracker")
-        require(entry_text, "private void RefreshZombieModeRuntimePauseClock()", "missing runtime pause clock refresh")
-        require(entry_text, "internal float GetZombieModeRuntimeNow()", "missing runtime pause-adjusted clock")
-        require(entry_text, "RefreshZombieModeRuntimePauseClock();", "TickZombieMode must refresh runtime pause clock")
-        require(entry_text, "return Time.unscaledTime - pausedDuration;", "runtime clock must subtract paused duration")
+        require(module_text, "private float runtimePausedDuration;", "missing module-owned runtime paused-duration accumulator")
+        require(module_text, "private float runtimePauseStartTime = -1f;", "missing module-owned runtime pause-start timestamp")
+        require(module_text, "private int runtimePauseRunId;", "missing module-owned runtime pause run-id tracker")
     except AssertionError as exc:
         return fail(str(exc))
 
-    boss_text = Path("ZombieMode/ZombieModeBossController.cs").read_text(encoding="utf-8")
+    entry_tick = extract_method(entry_text, "private void TickZombieMode(float deltaTime)")
+    module_tick = extract_method(module_text, "internal void TickZombieMode(float deltaTime)")
+    if not entry_tick or "module.TickZombieMode(deltaTime)" not in entry_tick:
+        return fail("host TickZombieMode must forward the original deltaTime to RuntimeModule")
+    if not module_tick:
+        return fail("RuntimeModule TickZombieMode body not found")
+    tick_tokens = [
+        "if (!ZombieModePhaseGuards.IsRunActive(runState.LifecyclePhase))",
+        "ResetZombieModeRuntimePauseClock();",
+        "RefreshZombieModeRuntimePauseClock();",
+        "if (IsZombieModeRuntimePaused())",
+        "owner.TickZombieModeWaveControllerForRuntimeModule(deltaTime);",
+        "TickZombieModeDropsAndPerformance(deltaTime);",
+        "owner.TickZombieModeBossControllerForRuntimeModule(deltaTime);",
+        "TickZombieModeTemporaryNpcProtection();",
+        "owner.UpdateModeFFortificationHighlightsForRuntimeModule();",
+        "owner.UpdateFortPlacementMode();",
+        "owner.UpdateModeFRepairSelection();",
+    ]
+    tick_positions = [module_tick.find(token) for token in tick_tokens]
+    if any(position < 0 for position in tick_positions) or tick_positions != sorted(tick_positions):
+        return fail("RuntimeModule TickZombieMode must keep the active gate, pause return and controller order")
+    if "private float zombieModeRuntimePausedDuration" in host_bridge_text or "zombieModeUnattachedRuntimePausedDuration" in host_bridge_text:
+        return fail("pause-clock state must not remain in the host partial")
+
+    pause_method = extract_method(module_text, "internal bool IsZombieModeRuntimePaused()")
+    game_pause_method = extract_method(module_text, "internal bool IsZombieModeGamePaused()")
+    refresh_method = extract_method(module_text, "internal void RefreshZombieModeRuntimePauseClock()")
+    reset_method = extract_method(module_text, "internal void ResetZombieModeRuntimePauseClock()")
+    clock_method = extract_method(module_text, "internal float GetZombieModeRuntimeNow()")
+    try:
+        require(pause_method, "ZombieModeUIHelper.IsModalInputPaused || IsZombieModeGamePaused() || CameraMode.Active", "runtime pause sources must remain modal, game menu and photo mode")
+        require(game_pause_method, "PauseMenu.Instance != null && PauseMenu.Instance.Shown", "game pause must use the official pause menu state")
+        require(refresh_method, "Time.unscaledTime", "pause accumulator must use unscaled time")
+        require(refresh_method, "if (runtimePauseRunId != runId)", "pause clock must reset when run id changes")
+        require(refresh_method, "runtimePausedDuration += Mathf.Max(0f, Time.unscaledTime - runtimePauseStartTime);", "resume must subtract paused unscaled duration")
+        require(reset_method, "runtimePauseRunId = 0;", "inactive mode tick must reset clock run id")
+        require(reset_method, "runtimePausedDuration = 0f;", "inactive mode tick must reset paused duration")
+        require(reset_method, "runtimePauseStartTime = -1f;", "inactive mode tick must clear pause start")
+        require(clock_method, "return Time.unscaledTime - pausedDuration;", "runtime clock must subtract paused duration")
+        require(entry_text, "module.RefreshZombieModeRuntimePauseClock();", "host clock refresh compatibility entry must forward to module")
+        require(entry_text, "module.ResetZombieModeRuntimePauseClock();", "host clock reset compatibility entry must forward to module")
+        require(entry_text, "module.GetZombieModeRuntimeNow()", "host runtime clock API must forward to module")
+        require(entry_text, "module.IsZombieModeRuntimePaused()", "host pause API must forward to module")
+        require(entry_text, "module.IsZombieModeGamePaused()", "host game pause API must forward to module")
+    except AssertionError as exc:
+        return fail(str(exc))
+
+    boss_text = clean_source(Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs").read_text(encoding="utf-8-sig"))
     try:
         require(boss_text, "float now = GetZombieModeRuntimeNow();", "boss controller must use pause-adjusted runtime clock")
         require(boss_text, "instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow();", "boss lifecycle timestamps must use runtime clock")
@@ -59,7 +125,7 @@ def main() -> int:
     except AssertionError as exc:
         return fail(str(exc))
 
-    drop_text = Path("ZombieMode/ZombieModeDropsAndPerformance.cs").read_text(encoding="utf-8")
+    drop_text = clean_source(Path("ZombieMode/ZombieModeDropsAndPerformance.cs").read_text(encoding="utf-8-sig"))
     try:
         require(drop_text, "float now = GetZombieModeRuntimeNow();", "drop/performance tick must use runtime clock")
         require(drop_text, "candidate.SpawnTime = GetZombieModeRuntimeNow();", "drop expiry must use runtime clock at spawn")
@@ -67,7 +133,7 @@ def main() -> int:
     except AssertionError as exc:
         return fail(str(exc))
 
-    cleanup_text = Path("ZombieMode/ZombieModeCleanup.cs").read_text(encoding="utf-8")
+    cleanup_text = clean_source(Path("ZombieMode/ZombieModeSpawner.cs").read_text(encoding="utf-8-sig"))
     try:
         require(cleanup_text, "private async UniTask<bool> WaitForZombieModeRuntimeResumeAsync(int runId)", "missing shared async-spawn pause wait helper")
         require(cleanup_text, "while (IsZombieModeRunValid(runId) && IsZombieModeRuntimePaused())", "async-spawn pause wait must hold while runtime is paused")
@@ -75,16 +141,16 @@ def main() -> int:
     except AssertionError as exc:
         return fail(str(exc))
 
-    spawner_text = Path("ZombieMode/ZombieModeSpawner.cs").read_text(encoding="utf-8")
+    spawner_text = clean_source(Path("ZombieMode/ZombieModeSpawner.cs").read_text(encoding="utf-8-sig"))
     try:
-        require(spawner_text, "private async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync", "normal zombie async spawn must be awaitable")
-        require(spawner_text, "private async UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync", "boss async spawn must be awaitable")
+        require(spawner_text, "internal async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync", "normal zombie async spawn must be awaitable")
+        require(spawner_text, "internal async UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync", "boss async spawn must be awaitable")
         require(spawner_text, "await WaitForZombieModeRuntimeResumeAsync(runId)", "async spawns must wait for ZombieMode runtime pause")
         require(spawner_text, "abortedByPause", "async spawns must abort and retry if pause starts while SpawnEnemyCore is mid-flight")
     except AssertionError as exc:
         return fail(str(exc))
 
-    star_text = Path("ZombieMode/ZombiePurificationPointController.cs").read_text(encoding="utf-8")
+    star_text = clean_source(Path("ZombieMode/ZombiePurificationPointController.cs").read_text(encoding="utf-8-sig"))
     if "inst != null && inst.IsZombieModeRuntimePaused()" not in star_text:
         return fail("purification star magnet/auto-collect must stop while runtime is paused")
 

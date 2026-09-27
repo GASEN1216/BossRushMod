@@ -6,7 +6,7 @@ MODELS = Path("ZombieMode/ZombieModeModels.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -23,6 +23,7 @@ EFFECT_PARTS = [
     Path("ZombieMode/ZombieModeRewardProjectileSpread.cs"),
     Path("ZombieMode/ZombieModeRewardRuntimeModifiers.cs"),
     Path("ZombieMode/ZombieModeRewardTriggerEffects.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs"),
 ]
 
 

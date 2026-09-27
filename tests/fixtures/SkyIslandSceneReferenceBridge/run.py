@@ -25,7 +25,7 @@ if __name__ == "__main__":
             '/out:"' + str(exe) + '"', '/r:"' + str(harmony) + '"']
     args += ['/r:"' + str(framework / name) + '"' for name in ("mscorlib.dll", "System.dll", "System.Core.dll")]
     args += ['"' + str(p) + '"' for p in (
-        ROOT / "DebugAndTools/SkyIsland/SkyIslandSceneReferenceBridge.cs", HERE / "Host.cs", HERE / "Program.cs")]
+        ROOT / "SkyIsland/SkyIslandSceneReferenceBridge.cs", HERE / "Host.cs", HERE / "Program.cs")]
     response = OUT / "compile.rsp"
     response.write_text("\n".join(args), encoding="utf-8-sig")
     code = subprocess.call(["dotnet", str(compiler), "@" + str(response)], cwd=ROOT)

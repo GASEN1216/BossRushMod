@@ -5,14 +5,15 @@ import re
 import sys
 
 
-CATALOG = Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs")
+CATALOG = Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs")
 NPC_CATALOG = Path("ZombieMode/ZombieModeNpcCatalog.cs")
 # 2026-09-23 审美审查：奖励选择面板与终端服务面板从 ZombieModeRewards.cs（宿主 partial）拆到独立文件。
 REWARD_VIEWS = [
     Path("ZombieMode/ZombieModeRewardSelectionView.cs"),
     Path("ZombieMode/ZombieModeTemporaryNpcServiceView.cs"),
 ]
-CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 
 
@@ -44,6 +45,7 @@ def main() -> int:
     npc_catalog = NPC_CATALOG.read_text(encoding="utf-8")
     rewards = "\n".join(path.read_text(encoding="utf-8") for path in REWARD_VIEWS)
     cleanup = CLEANUP.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
     localization = LOCALIZATION.read_text(encoding="utf-8")
 
     build_catalog = extract_method(catalog, "private List<ZombieModeRewardCatalogEntry> BuildZombieModeRewardCatalogEntries")
@@ -56,11 +58,11 @@ def main() -> int:
     cap_filter = extract_method(catalog, "private bool IsZombieModeRewardAtSelectionCap")
     for token in [
         "case ZombieModeRewardType.TempMerchant:",
-        "zombieModeRunState.GuaranteedMerchantPurchasePending",
+        "runState.GuaranteedMerchantPurchasePending",
         "case ZombieModeRewardType.TempNurse:",
         'FindZombieModeTemporaryNpc("Nurse") != null',
         "case ZombieModeRewardType.HalfPricePaidRefresh:",
-        "zombieModeRunState.HalfPriceNextPaidRefresh",
+        "runState.HalfPriceNextPaidRefresh",
     ]:
         if token not in cap_filter:
             return fail("missing ineffective-repeat reward filter -> " + token)
@@ -96,15 +98,19 @@ def main() -> int:
         if token not in localization:
             return fail("terminal subtitle localization missing -> " + token)
 
-    register = extract_method(cleanup, "private void RegisterZombieModeRunOnlyObject")
+    register = extract_method(runtime_module, "internal void RegisterZombieModeRunOnlyObject")
     for token in [
         "kind == ZombieModeRunOnlyObjectKind.RewardUi",
         "existing.GameObject == null",
         "existing.CleanupAction == null",
-        "zombieModeRunState.RunOnlyObjects.RemoveAt(i);",
+        "runState.RunOnlyObjects.RemoveAt(i);",
     ]:
         if token not in register:
             return fail("destroyed RewardUi record pruning missing -> " + token)
+
+    host_register = extract_method(cleanup, "private void RegisterZombieModeRunOnlyObject")
+    if "zombieModeRuntimeModule.RegisterZombieModeRunOnlyObject(runId, kind, gameObject, target, cleanupAction)" not in host_register:
+        return fail("host RunOnly registration entry must forward to its RuntimeModule owner")
 
     print("ZombieModeRewardTerminalOptimizationGuard: PASS")
     return 0

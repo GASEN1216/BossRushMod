@@ -49,7 +49,7 @@ def main() -> int:
         "            {\n"
         "                return;\n"
         "            }\n\n"
-        "            if (!IsZombieModeActive)"
+        "            if (!ZombieModePhaseGuards.IsRunActive(runState.LifecyclePhase))"
     )
     if inactive_return not in effects:
         return fail("projectile patch must clean stale runtime when ZombieMode is inactive")

@@ -34,7 +34,7 @@
 
 光色与天空色**重复硬编码在四个位置**，只改一处会静默不生效：
 
-1. `DebugAndTools/SkyIsland/SkyIslandLighting.cs` 的 `Presets[]` —— 实机
+1. `SkyIsland/SkyIslandLighting.cs` 的 `Presets[]` —— 实机
 2. 作者工程 `Assets/Editor/SkyIslandBundleBuilder.cs` 的 rig、`SetAuthoringLighting()` 与 5 处 `camera.backgroundColor` —— 仅作者预览
 3. `Assets/SkyIsland/Shaders/SkyIslandCloud.shader` 约 123–125 行的 `haze` 四档常量 —— **玩家实际看到的「天空」是这里**，俯视构图里占满画面的是 `CloudBackdrop` 那块 y=-160、±6000 的巨型平面，与相机背景无关
 4. 两个 shader 里 `_SkyIslandLightingEnabled` 未置位时的兜底 ambient 常量

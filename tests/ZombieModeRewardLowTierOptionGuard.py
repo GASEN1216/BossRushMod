@@ -5,7 +5,7 @@ import sys
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -63,7 +63,7 @@ def main() -> int:
         "AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.ProjectileTrail",
         "AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.BattlefieldBlackHole",
         "AddZombieModeRewardCatalogEntry(entries, ZombieModeRewardType.BattlefieldGravityDrag",
-        "StartZombieModeBattlefieldGravityRuntimeIfNeeded(zombieModeRunState.RunId);",
+        "StartZombieModeBattlefieldGravityRuntimeIfNeeded(runState.RunId);",
     ]:
         if token not in combined:
             return fail("selected rewards should remain consistently available/effective -> " + token)

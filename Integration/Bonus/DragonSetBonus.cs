@@ -32,7 +32,7 @@ namespace BossRush
     /// <summary>
     /// 龙套装效果管理器
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal partial class SetBonusRuntimeModule : BossRushRuntimeModuleBase
     {
         #region 龙套装配置
 
@@ -52,6 +52,7 @@ namespace BossRush
         private bool dragonSetActive = false;
         private bool dragonKingSetActive = false; // 标记是否为龙王套装
         private bool dragonSetEventRegistered = false;
+        private bool dragonLevelEventRegistered = false;
         private bool dragonHurtEventRegistered = false;
 
         // 眼睛特效（表现在 SetBonusFx.cs 的 SetBonusEyeGlow：两颗 HDR 亮点 + 一盏弱补光，自带呼吸）
@@ -78,33 +79,40 @@ namespace BossRush
         /// <summary>
         /// 注册龙套装事件监听（在 OnEnable 中调用）
         /// </summary>
-        private void RegisterDragonSetEvents()
+        internal void RegisterDragonSetEvents()
         {
-            if (dragonSetEventRegistered) return;
+            if (dragonSetEventRegistered && dragonLevelEventRegistered) return;
 
             try
             {
-                // [性能优化] 使用缓存的 FieldInfo，避免重复反射
-                FieldInfo eventField = GetCachedSlotChangedEventField();
-
-                if (eventField != null)
+                if (!dragonSetEventRegistered)
                 {
-                    var currentDelegate = eventField.GetValue(null) as Delegate;
-                    var newDelegate = Delegate.Combine(currentDelegate,
-                        new Action<CharacterMainControl, Slot>(OnMainCharacterSlotContentChanged));
-                    eventField.SetValue(null, newDelegate);
+                    // [性能优化] 使用缓存的 FieldInfo，避免重复反射
+                    FieldInfo eventField = GetCachedSlotChangedEventField();
 
-                    dragonSetEventRegistered = true;
-                    DevLog("[DragonSet] 已注册装备槽变化事件");
-                }
-                else
-                {
-                    DevLog("[DragonSet] 未找到 OnMainCharacterSlotContentChangedEvent 字段");
+                    if (eventField != null)
+                    {
+                        var currentDelegate = eventField.GetValue(null) as Delegate;
+                        var newDelegate = Delegate.Combine(currentDelegate,
+                            new Action<CharacterMainControl, Slot>(OnMainCharacterSlotContentChanged));
+                        eventField.SetValue(null, newDelegate);
+
+                        dragonSetEventRegistered = true;
+                        DevLog("[DragonSet] 已注册装备槽变化事件");
+                    }
+                    else
+                    {
+                        DevLog("[DragonSet] 未找到 OnMainCharacterSlotContentChangedEvent 字段");
+                    }
                 }
 
                 // 订阅场景加载事件，在玩家进入存档时检测套装
-                LevelManager.OnAfterLevelInitialized += OnLevelInitializedCheckDragonSet;
-                DevLog("[DragonSet] 已注册场景加载事件");
+                if (!dragonLevelEventRegistered)
+                {
+                    LevelManager.OnAfterLevelInitialized += OnLevelInitializedCheckDragonSet;
+                    dragonLevelEventRegistered = true;
+                    DevLog("[DragonSet] 已注册场景加载事件");
+                }
             }
             catch (Exception e)
             {
@@ -115,6 +123,12 @@ namespace BossRush
         /// <summary>
         /// [性能优化] 获取缓存的事件字段 FieldInfo
         /// </summary>
+        private static void ResetSetBonusReflectionCaches()
+        {
+            cachedSlotChangedEventField = null;
+            slotChangedEventFieldCached = false;
+        }
+
         private static FieldInfo GetCachedSlotChangedEventField()
         {
             if (!slotChangedEventFieldCached)
@@ -157,32 +171,51 @@ namespace BossRush
         /// <summary>
         /// 取消注册龙套装事件监听（在 OnDisable 中调用）
         /// </summary>
-        private void UnregisterDragonSetEvents()
+        internal void UnregisterDragonSetEvents()
         {
-            if (!dragonSetEventRegistered) return;
-
-            try
+            if (dragonSetEventRegistered)
             {
-                // [性能优化] 使用缓存的 FieldInfo
-                FieldInfo eventField = GetCachedSlotChangedEventField();
-
-                if (eventField != null)
+                try
                 {
-                    var currentDelegate = eventField.GetValue(null) as Delegate;
-                    var newDelegate = Delegate.Remove(currentDelegate,
-                        new Action<CharacterMainControl, Slot>(OnMainCharacterSlotContentChanged));
-                    eventField.SetValue(null, newDelegate);
+                    // [性能优化] 使用缓存的 FieldInfo
+                    FieldInfo eventField = GetCachedSlotChangedEventField();
+
+                    if (eventField != null)
+                    {
+                        var currentDelegate = eventField.GetValue(null) as Delegate;
+                        var newDelegate = Delegate.Remove(currentDelegate,
+                            new Action<CharacterMainControl, Slot>(OnMainCharacterSlotContentChanged));
+                        eventField.SetValue(null, newDelegate);
+                    }
+
+                    DevLog("[DragonSet] 已取消注册装备槽变化事件");
                 }
-
-                // 取消订阅场景加载事件
-                LevelManager.OnAfterLevelInitialized -= OnLevelInitializedCheckDragonSet;
-
-                dragonSetEventRegistered = false;
-                DevLog("[DragonSet] 已取消注册装备槽变化事件");
+                catch (Exception e)
+                {
+                    DevLog("[DragonSet] 取消注册装备槽事件失败: " + e.Message);
+                }
+                finally
+                {
+                    dragonSetEventRegistered = false;
+                }
             }
-            catch (Exception e)
+
+            // 独立退订：反射槽位字段不可用时，等级事件仍已成功订阅。
+            if (dragonLevelEventRegistered)
             {
-                DevLog("[DragonSet] 取消注册事件失败: " + e.Message);
+                try
+                {
+                    LevelManager.OnAfterLevelInitialized -= OnLevelInitializedCheckDragonSet;
+                    DevLog("[DragonSet] 已取消注册场景加载事件");
+                }
+                catch (Exception e)
+                {
+                    DevLog("[DragonSet] 取消注册场景事件失败: " + e.Message);
+                }
+                finally
+                {
+                    dragonLevelEventRegistered = false;
+                }
             }
 
             // 取消注册伤害事件
@@ -370,7 +403,7 @@ namespace BossRush
                 string titleCN = isDragonKing ? "<color=#FFD700>【龙王之庇护】</color>" : "<color=#FFD700>【龙之庇护】</color>";
                 string titleEN = isDragonKing ? "<color=#FFD700>[Dragon King's Protection]</color>" : "<color=#FFD700>[Dragon's Protection]</color>";
 
-                ShowMessage(L10n.T(
+                _owner.ShowMessage(L10n.T(
                     titleCN + " 套装效果激活！\n火焰伤害转化为治疗",
                     titleEN + " Set bonus activated!\nFire damage heals you"
                 ));
@@ -461,7 +494,7 @@ namespace BossRush
                 // 如果有火焰治疗，延迟添加生命值
                 if (fireHealAmount > 0f)
                 {
-                    StartCoroutine(DelayedHeal(health, fireHealAmount));
+                    StartSetBonusCoroutine(DelayedHeal(health, fireHealAmount));
                 }
             }
             catch (Exception e)

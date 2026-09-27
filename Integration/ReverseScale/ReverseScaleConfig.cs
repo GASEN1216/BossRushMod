@@ -16,6 +16,11 @@ namespace BossRush
     /// </summary>
     public class ReverseScaleConfig : EquipmentAbilityConfig
     {
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterConfigurator("ReverseScaleConfig", (item, baseName) => { ReverseScaleRuntimeModule.TryConfigureReverseScale(item, baseName); });
+        }
+
         // 单例实例
         private static ReverseScaleConfig _instance;
         public static ReverseScaleConfig Instance

@@ -3,11 +3,12 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 
 COMPILE = Path("compile_official.bat")
 MOD = Path("ModBehaviour.cs")
-MODED_WAVES = Path("ModeD/ModeDWaves.cs")
+MODED_WAVES = Path("ModeD/ModeDRuntimeModule_Waves.cs")
 MODED_RUNTIME_MODULE = Path("ModeD/ModeDRuntimeModule.cs")
 ALWAYS_ON_RUNTIME_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
 PLAYER_LIFECYCLE_RUNTIME_HOOKS = Path("Utilities/PlayerLifecycleRuntimeHooks.cs")
@@ -19,31 +20,32 @@ ACHIEVEMENT_RUNTIME_HOOKS = Path("Achievement/AchievementRuntimeHooks.cs")
 UI_SIGNS_INTERACTION_SCAN = Path("UIAndSigns/BossRushInteractionScan.cs")
 UI_SIGNS_RUNTIME_BRIDGES = Path("UIAndSigns/UIAndSignsRuntimeBridges.cs")
 COMMON_NPC_RUNTIME_MODULE = Path("Integration/NPCs/Common/CommonNpcRuntimeModule.cs")
-COMMON_NPC_RUNTIME_HOOKS = Path("Integration/NPCs/Common/CommonNpcRuntimeHooks.cs")
-EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
-INTEGRATION_RUNTIME_HOOKS = Path("Integration/IntegrationRuntimeHooks.cs")
+COMMON_NPC_RUNTIME_HOOKS = Path("Integration/IntegrationHostCompatibility.cs")
+EQUIPMENT_RUNTIME_HOOKS = Path("Integration/IntegrationHostCompatibility.cs")
+INTEGRATION_RUNTIME_HOOKS = Path("Integration/BossRushIntegration.cs")
 AFFINITY_RUNTIME_HOOKS = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
+AFFINITY_RUNTIME_HOST_BRIDGE = Path("Integration/IntegrationHostCompatibility.cs")
 AUDI0_RUNTIME_HOOKS = Path("Audio/BossRushAudioHooks.cs")
-LOOT_RUNTIME_HOOKS = Path("LootAndRewards/LootAndRewardsRuntimeHooks.cs")
+LOOT_RUNTIME_HOOKS = Path("LootAndRewards/LootAndRewards.cs")
 GAMEPLAY_RUNTIME_HOOKS = Path("Utilities/GameplayRuntimeHooks.cs")
 MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
-WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArenaRuntimeHooks.cs")
+WAVES_RUNTIME_HOOKS = Path("WavesArena/WavesArena.cs")
+WAVES_RUNTIME_TICK = Path("WavesArena/WavesArenaRuntimeModule_Tick.cs")
 WAVES_ENTRY_FLOW = Path("WavesArena/BossRushEntryFlow.cs")
-WAVES_ENEMY_MAINTENANCE = Path("WavesArena/WavesArenaEnemyMaintenance.cs")
+WAVES_ENEMY_MAINTENANCE = Path("WavesArena/WavesArenaRuntimeModule_EnemyMaintenance.cs")
 WAVES_SPAWNER_CONTROL = Path("WavesArena/WavesArenaSpawnerControl.cs")
 MODEE_RUNTIME_HOOKS = Path("ModeE/ModeERuntimeHooks.cs")
 MODEF_RUNTIME_HOOKS = Path("ModeF/ModeFRuntimeHooks.cs")
-ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeRuntimeHooks.cs")
+ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration.cs"),
     Path("Integration/BossRushIntegration_StartAndScene.cs"),
     Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
-    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
 ]
 
 
 def read_boss_rush_integration() -> str:
-    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_PARTS)
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in dict.fromkeys(INTEGRATION_PARTS))
 
 REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/IBossRushRuntimeModule.cs",
@@ -51,7 +53,7 @@ REQUIRED_COMPILE_SOURCES = [
     "Common/Lifecycle/BossRushRuntimeModuleHost.cs",
     "Common/Lifecycle/BossRushRuntimeModuleBase.cs",
     "Common/Lifecycle/ArchitectureSentinelRuntimeModule.cs",
-    "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs",
+    "ModBehaviourRuntimeModules.cs",
     "Common/Infrastructure/HarmonyBindingSelfCheck.cs",
     "Utilities/AlwaysOnRuntimeHooks.cs",
     "Utilities/PlayerLifecycleRuntimeHooks.cs",
@@ -64,25 +66,25 @@ REQUIRED_COMPILE_SOURCES = [
     "UIAndSigns/BossRushInteractionScan.cs",
     "UIAndSigns/UIAndSignsRuntimeBridges.cs",
     "Integration/NPCs/Common/CommonNpcRuntimeModule.cs",
-    "Integration/NPCs/Common/CommonNpcRuntimeHooks.cs",
-    "Integration/EquipmentRuntimeHooks.cs",
-    "Integration/IntegrationRuntimeHooks.cs",
+    "Integration/IntegrationHostCompatibility.cs",
+    "Integration/BossRushIntegration.cs",
     "Integration/Affinity/AffinityRuntimeHooks.cs",
     "Audio/BossRushAudioHooks.cs",
-    "LootAndRewards/LootAndRewardsRuntimeHooks.cs",
+    "LootAndRewards/LootAndRewards.cs",
+    "WavesArena/WavesArenaRuntimeModule_Tick.cs",
     "Utilities/GameplayRuntimeHooks.cs",
     "Utilities/ModeRuntimeHooks.cs",
     "WavesArena/WavesArenaRuntimeModule.cs",
-    "WavesArena/WavesArenaRuntimeHooks.cs",
+    "WavesArena/WavesArena.cs",
     "WavesArena/BossRushEntryFlow.cs",
-    "WavesArena/WavesArenaEnemyMaintenance.cs",
+    "WavesArena/WavesArenaRuntimeModule_EnemyMaintenance.cs",
     "WavesArena/WavesArenaSpawnerControl.cs",
     "ModeE/ModeERuntimeModule.cs",
     "ModeE/ModeERuntimeHooks.cs",
     "ModeF/ModeFRuntimeModule.cs",
     "ModeF/ModeFRuntimeHooks.cs",
     "ZombieMode/ZombieModeRuntimeModule.cs",
-    "ZombieMode/ZombieModeRuntimeHooks.cs",
+    "ZombieMode/ZombieModeEntryHostBridge.cs",
     "Utilities/RuntimeScope.cs",
     "Utilities/SceneRuntimeGate.cs",
 ]
@@ -154,28 +156,55 @@ def main() -> int:
     if register_index < 0 or awake_index < 0 or register_index > awake_index:
         return fail("ArchitectureStructureGuard: RegisterRuntimeModules must run before runtimeModuleHost.OnAwake")
 
-    registration_text = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs").read_text(encoding="utf-8", errors="ignore")
+    registration_text = clean_source(Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8", errors="ignore"))
     if "runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing ArchitectureSentinelRuntimeModule")
-    if "runtimeModuleHost.Register(new ModeDRuntimeModule());" not in registration_text:
-        return fail("ArchitectureStructureGuard: runtime module registration missing ModeDRuntimeModule")
+    if (
+        "private readonly ModeDRuntimeModule modeDRuntime = new ModeDRuntimeModule();" not in registration_text
+        or "runtimeModuleHost.Register(modeDRuntime);" not in registration_text
+    ):
+        return fail("ArchitectureStructureGuard: registered Mode D runtime is not the host state owner")
     if "runtimeModuleHost.Register(new DebugToolsRuntimeModule());" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing DebugToolsRuntimeModule")
-    if "runtimeModuleHost.Register(new AchievementRuntimeModule());" not in registration_text:
+    if "achievementRuntime = new AchievementRuntimeModule();" not in registration_text or "runtimeModuleHost.Register(achievementRuntime);" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing AchievementRuntimeModule")
-    if "runtimeModuleHost.Register(new CommonNpcRuntimeModule());" not in registration_text:
+    if "commonNpcRuntime = new CommonNpcRuntimeModule();" not in registration_text or "runtimeModuleHost.Register(commonNpcRuntime);" not in registration_text:
         return fail("ArchitectureStructureGuard: runtime module registration missing CommonNpcRuntimeModule")
     for module_name in [
         "WavesArenaRuntimeModule",
         "ModeERuntimeModule",
         "ModeFRuntimeModule",
         "ZombieModeRuntimeModule",
+        "AffinityRuntimeModule",
     ]:
-        if "runtimeModuleHost.Register(new " + module_name + "());" not in registration_text:
+        registration_token = "runtimeModuleHost.Register(new " + module_name + "());"
+        if module_name == "WavesArenaRuntimeModule":
+            registration_token = "wavesArenaRuntime = new WavesArenaRuntimeModule();"
+            if "runtimeModuleHost.Register(wavesArenaRuntime);" not in registration_text:
+                return fail("ArchitectureStructureGuard: WavesArena must register its stored runtime instance")
+        elif module_name == "ModeERuntimeModule":
+            registration_token = "private readonly ModeERuntimeModule modeERuntime = new ModeERuntimeModule();"
+            if "runtimeModuleHost.Register(modeERuntime);" not in registration_text:
+                return fail("ArchitectureStructureGuard: Mode E must register its stored runtime owner")
+        elif module_name == "ModeFRuntimeModule":
+            registration_token = "modeFRuntime = new ModeFRuntimeModule();"
+            if "runtimeModuleHost.Register(modeFRuntime);" not in registration_text:
+                return fail("ArchitectureStructureGuard: Mode F must register its stored runtime instance")
+        elif module_name == "ZombieModeRuntimeModule":
+            registration_token = "var zombieRuntime = new ZombieModeRuntimeModule();"
+            binding = "zombieRuntime.BindEnemyRecoveryUnregister(UnregisterEnemyRecovery);"
+            register = "runtimeModuleHost.Register(zombieRuntime);"
+            if binding not in registration_text or register not in registration_text:
+                return fail("ArchitectureStructureGuard: Zombie runtime must bind recovery and register the same instance")
+            if registration_text.index(binding) > registration_text.index(register):
+                return fail("ArchitectureStructureGuard: Zombie recovery must bind before registration")
+        elif module_name == "AffinityRuntimeModule":
+            registration_token = "affinityRuntime = new AffinityRuntimeModule();"
+        if registration_token not in registration_text:
             return fail("ArchitectureStructureGuard: runtime module registration missing " + module_name)
 
     mode_d_runtime_module = MODED_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
-    if "owner.TickModeDIntegrity(deltaTime);" not in mode_d_runtime_module:
+    if "TickModeDIntegrity(deltaTime);" not in mode_d_runtime_module:
         return fail("ArchitectureStructureGuard: ModeDRuntimeModule must route Mode D integrity ticking through owner wrapper")
 
     mode_d_waves = MODED_WAVES.read_text(encoding="utf-8", errors="ignore")
@@ -195,11 +224,11 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing TickAlwaysOnRuntime wrapper")
     for required in [
         "UpdateMessage();",
-        "AffinityManager.UpdateDeferredSave();",
+        "TickAffinityRuntimeFromHost();",
     ]:
         if required not in always_on_tick_body:
             return fail("ArchitectureStructureGuard: TickAlwaysOnRuntime missing token: " + required)
-    if always_on_tick_body.find("UpdateMessage();") > always_on_tick_body.find("AffinityManager.UpdateDeferredSave();"):
+    if always_on_tick_body.find("UpdateMessage();") > always_on_tick_body.find("TickAffinityRuntimeFromHost();"):
         return fail("ArchitectureStructureGuard: TickAlwaysOnRuntime must preserve message update before deferred save")
 
     always_on_init_body = extract_method_body(always_on_hooks, "internal void InitializeAlwaysOnRuntime()")
@@ -218,7 +247,7 @@ def main() -> int:
     for required in [
         "string modPath = GetModPath();",
         "EntityModelFactory.Initialize(modPath);",
-        "_mapSpawnRegistry.Initialize(modPath);",
+        "BossRushMapRuntime.Initialize(modPath);",
         "InitializeAffinitySystem();",
     ]:
         if required not in always_on_deferred_body:
@@ -276,22 +305,18 @@ def main() -> int:
     if not always_on_scene_unload_body:
         return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing OnSceneUnloadAlwaysOnRuntime wrapper")
     for required in [
-        "AffinityUIManager.OnSceneUnload();",
-        "AffinityManager.OnSceneUnload();",
+        "OnSceneUnloadAffinityRuntimeFromHost();",
     ]:
         if required not in always_on_scene_unload_body:
             return fail("ArchitectureStructureGuard: OnSceneUnloadAlwaysOnRuntime missing token: " + required)
-    if always_on_scene_unload_body.find("AffinityUIManager.OnSceneUnload();") > always_on_scene_unload_body.find("AffinityManager.OnSceneUnload();"):
-        return fail("ArchitectureStructureGuard: OnSceneUnloadAlwaysOnRuntime must preserve UI unload before affinity unload")
+    if "AffinityUIManager.OnSceneUnload();" in always_on_scene_unload_body or "AffinityManager.OnSceneUnload();" in always_on_scene_unload_body:
+        return fail("ArchitectureStructureGuard: OnSceneUnloadAlwaysOnRuntime must forward affinity unload to its owner")
 
     always_on_destroy_body = extract_method_body(always_on_hooks, "internal void CleanupAlwaysOnRuntimeOnDestroy()")
     if not always_on_destroy_body:
         return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing CleanupAlwaysOnRuntimeOnDestroy wrapper")
     for required in [
-        "AffinityManager.OnAffinityChanged -= OnAffinityChanged;",
-        "AffinityManager.OnLevelUp -= OnAffinityLevelUp;",
-        "AffinityManager.Shutdown();",
-        "AffinityUIManager.Cleanup();",
+        "CleanupAffinityRuntimeFromHost();",
         "EntityModelFactory.ResetStaticCaches();",
         'DevLog("[BossRush] [WARNING] EntityModelFactory 卸载异常: " + e.Message);',
         # 关键失败日志与补丁自检的去重状态必须随 OnDestroy 一起重置，
@@ -301,7 +326,7 @@ def main() -> int:
     ]:
         if required not in always_on_destroy_body:
             return fail("ArchitectureStructureGuard: CleanupAlwaysOnRuntimeOnDestroy missing token: " + required)
-    if always_on_destroy_body.find("AffinityUIManager.Cleanup();") > always_on_destroy_body.find("EntityModelFactory.ResetStaticCaches();"):
+    if always_on_destroy_body.find("CleanupAffinityRuntimeFromHost();") > always_on_destroy_body.find("EntityModelFactory.ResetStaticCaches();"):
         return fail("ArchitectureStructureGuard: CleanupAlwaysOnRuntimeOnDestroy must preserve affinity cleanup before entity model shutdown")
 
     if "TryFixStuckWaveIfNoModeDEnemyAlive();" in update_body:
@@ -349,15 +374,18 @@ def main() -> int:
     if not gameplay_scene_prepare_body:
         return fail("ArchitectureStructureGuard: GameplayRuntimeHooks missing PrepareSceneRuntimeForLoad wrapper")
     for required in [
-        "_characterCacheNeedsRefresh = true;",
-        "_characterCacheRefreshTimer = 0f;",
-        "_arenaCenterSet = false;",
+        "WavesArenaRuntimeModule.PrepareSceneCharacterCacheForLoad();",
         "ObjectCache.RefreshIfNeeded();",
     ]:
         if required not in gameplay_scene_prepare_body:
             return fail("ArchitectureStructureGuard: PrepareSceneRuntimeForLoad missing token: " + required)
 
     gameplay_cash_cleanup_body = extract_method_body(gameplay_hooks, "internal void CleanupCashMagnetForSceneChange()")
+    character_registry = clean_source(Path("WavesArena/WavesArenaRuntimeModule_CharacterRegistry.cs").read_text(encoding="utf-8"))
+    character_prepare = extract_method_body(character_registry, "internal static void PrepareSceneCharacterCacheForLoad()")
+    if "".join(character_prepare.split()) != "{_characterCacheNeedsRefresh=true;_characterCacheRefreshTimer=0f;_arenaCenterSet=false;}":
+        return fail("ArchitectureStructureGuard: character registry must preserve scene invalidation order")
+
     if not gameplay_cash_cleanup_body:
         return fail("ArchitectureStructureGuard: GameplayRuntimeHooks missing CleanupCashMagnetForSceneChange wrapper")
     for required in [
@@ -368,6 +396,7 @@ def main() -> int:
             return fail("ArchitectureStructureGuard: CleanupCashMagnetForSceneChange missing token: " + required)
 
     waves_hooks = WAVES_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    waves_runtime_tick = WAVES_RUNTIME_TICK.read_text(encoding="utf-8", errors="ignore")
     waves_entry_flow = WAVES_ENTRY_FLOW.read_text(encoding="utf-8", errors="ignore")
     waves_enemy_maintenance = WAVES_ENEMY_MAINTENANCE.read_text(encoding="utf-8", errors="ignore")
     waves_spawner_control = WAVES_SPAWNER_CONTROL.read_text(encoding="utf-8", errors="ignore")
@@ -393,16 +422,16 @@ def main() -> int:
             if required not in body:
                 return fail("ArchitectureStructureGuard: BossRushEntryFlow missing token: " + required)
     for signature, required_tokens in {
-        "private void ForceKillAllEnemies()": [
+        "internal void ForceKillAllEnemies()": [
             "ForceKillAllEnemies: 已杀死 ",
             "DamageInfo dmgInfo = new DamageInfo(main);",
         ],
-        "private void ClearEnemiesForBossRush()": [
+        "internal void ClearEnemiesForBossRush()": [
             "ClearEnemiesForBossRush: 开始清理",
             "_reusableDestroyList.Clear();",
             "_arenaCenterSet",
         ],
-        "private IEnumerator ContinuousClearEnemiesUntilWaveStart()": [
+        "internal IEnumerator ContinuousClearEnemiesUntilWaveStart()": [
             "ContinuousClearEnemiesUntilWaveStart: 协程已启动",
             "DisableAllSpawners();",
             "ClearEnemiesForBossRush();",
@@ -415,9 +444,9 @@ def main() -> int:
             if required not in body:
                 return fail("ArchitectureStructureGuard: WavesArenaEnemyMaintenance missing token: " + required)
     for signature, required_tokens in {
-        "private void DisableAllSpawners()": [
+        "internal void DisableAllSpawners()": [
             "_cachedCreatedField = typeof(CharacterSpawnerRoot).GetField(\"created\"",
-            "spawnersDisabled = true;",
+            "SpawnersDisabled = true;",
         ],
         # 销毁 + 灯光保留已拆到跨帧协程（性能优化：避免单帧批量 Destroy 尖峰），
         # 行为不变，token 改在此方法体内校验。
@@ -425,10 +454,10 @@ def main() -> int:
             "Light[] lights = root.gameObject.GetComponentsInChildren<Light>(true);",
             "UnityEngine.Object.Destroy(root.gameObject);",
         ],
-        "private void TryFixStuckWaveIfNoBossAlive()": [
-            "bossesPerWave > 1",
-            "bossesInCurrentWaveRemaining = 0;",
-            "ProceedAfterWaveFinished();",
+        "internal void TryFixStuckWaveIfNoBossAlive()": [
+            "BossesPerWave > 1",
+            "BossesInCurrentWaveRemaining = 0;",
+            "owner.ProceedAfterWaveFinished();",
         ],
     }.items():
         body = extract_method_body(waves_spawner_control, signature)
@@ -444,7 +473,7 @@ def main() -> int:
         "private void ClearEnemiesForBossRush()",
         "private System.Collections.IEnumerator ContinuousClearEnemiesUntilWaveStart()",
         "private void DisableAllSpawners()",
-        "private void TryFixStuckWaveIfNoBossAlive()",
+        "internal void TryFixStuckWaveIfNoBossAlive()",
     ]:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own boss rush entry flow method anymore: " + forbidden)
@@ -481,13 +510,18 @@ def main() -> int:
     waves_tick_body = extract_method_body(waves_hooks, "internal bool TickWavesArenaRuntime(float deltaTime)")
     if not waves_tick_body:
         return fail("ArchitectureStructureGuard: WavesArenaRuntimeHooks missing TickWavesArenaRuntime wrapper")
+    if "return wavesArenaRuntime.TickWavesArenaRuntime(deltaTime);" not in waves_tick_body:
+        return fail("ArchitectureStructureGuard: WavesArena tick must delegate to its runtime module")
+    waves_tick_body = extract_method_body(waves_runtime_tick, "internal bool TickWavesArenaRuntime(float deltaTime)")
+    if not waves_tick_body:
+        return fail("ArchitectureStructureGuard: WavesArena runtime module missing TickWavesArenaRuntime")
     for required in [
-        "waitingForNextWave && waveCountdown > 0f",
-        "waveCountdown -= deltaTime;",
-        "GetWaveIntervalSeconds();",
-        "ShowNextWaveCountdownBanner(seconds);",
-        "SpawnNextEnemy();",
-        "TryFixStuckWaveIfNoBossAlive();",
+        "WaitingForNextWave && WaveCountdown > 0f",
+        "WaveCountdown -= deltaTime;",
+        "owner.GetWaveIntervalSeconds();",
+        "owner.ShowNextWaveCountdownBanner(seconds);",
+        "owner.SpawnNextEnemy();",
+        "owner.TryFixStuckWaveIfNoBossAlive();",
         "return true;",
         "return false;",
     ]:
@@ -497,11 +531,16 @@ def main() -> int:
     waves_cleanup_body = extract_method_body(waves_hooks, "internal void TickWavesArenaBossCleanupRuntime(float deltaTime)")
     if not waves_cleanup_body:
         return fail("ArchitectureStructureGuard: WavesArenaRuntimeHooks missing TickWavesArenaBossCleanupRuntime wrapper")
+    if "wavesArenaRuntime.TickWavesArenaBossCleanupRuntime(deltaTime);" not in waves_cleanup_body:
+        return fail("ArchitectureStructureGuard: WavesArena cleanup must delegate to its runtime module")
+    waves_cleanup_body = extract_method_body(waves_runtime_tick, "internal void TickWavesArenaBossCleanupRuntime(float deltaTime)")
+    if not waves_cleanup_body:
+        return fail("ArchitectureStructureGuard: WavesArena runtime module missing TickWavesArenaBossCleanupRuntime")
     for required in [
-        "daXingXingCleanTimer += deltaTime;",
-        "daXingXingCleanTimer >= DaXingXingCleanInterval",
+        "DaXingXingCleanTimer += deltaTime;",
+        "DaXingXingCleanTimer >= ModBehaviour.DaXingXingCleanInterval",
         "TryCleanNonBossRushDaXingXing();",
-        "daXingXingCleanTimer = 0f;",
+        "DaXingXingCleanTimer = 0f;",
     ]:
         if required not in waves_cleanup_body:
             return fail("ArchitectureStructureGuard: TickWavesArenaBossCleanupRuntime missing token: " + required)
@@ -523,7 +562,7 @@ def main() -> int:
     for required in [
         "UpdateModeEPlayerNameTag();",
         "modeEIntegrityTimer += deltaTime;",
-        "modeEIntegrityTimer >= WaveIntegrityCheckInterval",
+        "modeEIntegrityTimer >= ModBehaviour.WaveIntegrityCheckInterval",
         "ModeEIntegrityCheck();",
         "ModeEScalingBatchUpdate();",
         "modeEIntegrityTimer = 0f;",
@@ -852,14 +891,14 @@ def main() -> int:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own marriage test debug method anymore: " + forbidden)
 
-    audio_runtime_hooks = AUDI0_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    audio_runtime_hooks = clean_source(Path("Audio/BossRushAudioRuntimeService.cs").read_text(encoding="utf-8", errors="ignore"))
     for signature, required_tokens in {
         "public void TrySpawnEggForPlayer()": [
             "TryPlayNgmSound();",
             "SpawnEgg behavior = null;",
             "egg.Init(",
         ],
-        "private void TryPlayNgmSound()": [
+        "internal void TryPlayNgmSound()": [
             'Path.Combine(baseDir, "Assets")',
             'Path.Combine(baseDir, "ngm.mp3")',
         ],
@@ -897,22 +936,22 @@ def main() -> int:
     interaction_scan = UI_SIGNS_INTERACTION_SCAN.read_text(encoding="utf-8", errors="ignore")
     ui_signs_runtime_bridges = UI_SIGNS_RUNTIME_BRIDGES.read_text(encoding="utf-8", errors="ignore")
     for signature, required_tokens in {
-        "private IEnumerator FindInteractionTargets(int scanTimes)": [
+        "internal IEnumerator FindInteractionTargets(int scanTimes)": [
             "ScanAndInject();",
-            'DevLog("[BossRush] 场景扫描成功，已注入 BossRush 交互点，停止扫描。");',
+            'ModBehaviour.DevLog("[BossRush] 场景扫描成功，已注入 BossRush 交互点，停止扫描。");',
         ],
         "private bool ScanAndInject()": [
             "GetGameObjectPath(interact.gameObject);",
-            "TryInjectBaseHubBoatInteractable(boatInteract)",
+            "owner.TryInjectBaseHubBoatInteractable(boatInteract)",
         ],
-        "private string GetGameObjectPath(GameObject obj)": [
+        "internal string GetGameObjectPath(GameObject obj)": [
             'return "<null>";',
             'path = parent.name + "/" + path;',
         ],
         "private List<InteractableBase> GetGroupList(InteractableBase target)": [
             "BossRushEagerReflectionCache.InteractableBase_OtherInterablesInGroup",
         ],
-        "private bool InjectIntoInteractableBaseGroup(InteractableBase target)": [
+        "internal bool InjectIntoInteractableBaseGroup(InteractableBase target)": [
             "InjectIntoInteractableBaseGroup_UIAndSigns(target);",
         ],
     }.items():
@@ -931,6 +970,13 @@ def main() -> int:
     ]:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own interaction scan method anymore: " + forbidden)
+    for forwarded in (
+        "uiAndSignsRuntime.FindInteractionTargets(scanTimes)",
+        "uiAndSignsRuntime.GetGameObjectPath(obj)",
+        "uiAndSignsRuntime.InjectIntoInteractableBaseGroup(target)",
+    ):
+        if forwarded not in ui_signs_runtime_bridges:
+            return fail("ArchitectureStructureGuard: UIAndSigns host bridge missing module dispatch: " + forwarded)
 
     for signature, required_tokens in {
         "private void CreateRescueTeleportBubble()": [
@@ -961,12 +1007,12 @@ def main() -> int:
         if forbidden in mod_text:
             return fail("ArchitectureStructureGuard: ModBehaviour.cs must not own UIAndSigns bridge method anymore: " + forbidden)
 
-    achievement_runtime_module = ACHIEVEMENT_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore")
-    if "owner.TickAchievementRuntime(deltaTime, unscaledDeltaTime);" not in achievement_runtime_module:
-        return fail("ArchitectureStructureGuard: AchievementRuntimeModule must route update through owner wrapper")
+    achievement_runtime_module = clean_source(ACHIEVEMENT_RUNTIME_MODULE.read_text(encoding="utf-8", errors="ignore"))
+    if "TickAchievementRuntime(deltaTime, unscaledDeltaTime);" not in extract_method_body(achievement_runtime_module, "public override void OnUpdate("):
+        return fail("ArchitectureStructureGuard: AchievementRuntimeModule must execute its own update")
 
     achievement_hooks = ACHIEVEMENT_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
-    achievement_init_body = extract_method_body(achievement_hooks, "internal void InitializeAchievementRuntime()")
+    achievement_init_body = extract_method_body(achievement_runtime_module, "private void InitializeAchievementRuntimeCore()")
     if not achievement_init_body:
         return fail("ArchitectureStructureGuard: AchievementRuntimeHooks missing InitializeAchievementRuntime wrapper")
     for required in [
@@ -977,18 +1023,18 @@ def main() -> int:
         if required not in achievement_init_body:
             return fail("ArchitectureStructureGuard: InitializeAchievementRuntime missing token: " + required)
 
-    achievement_tick_body = extract_method_body(achievement_hooks, "internal void TickAchievementRuntime(float deltaTime, float unscaledDeltaTime)")
+    achievement_tick_body = extract_method_body(achievement_runtime_module, "internal void TickAchievementRuntime(float deltaTime, float unscaledDeltaTime)")
     if not achievement_tick_body:
         return fail("ArchitectureStructureGuard: AchievementRuntimeHooks missing TickAchievementRuntime wrapper")
     for required in [
-        "config.achievementHotkey",
+        "getAchievementHotkey()",
         "Duckov.UI.View.ActiveView == null",
         "AchievementView.Instance.Toggle();",
     ]:
         if required not in achievement_tick_body:
             return fail("ArchitectureStructureGuard: TickAchievementRuntime missing token: " + required)
 
-    achievement_cleanup_body = extract_method_body(achievement_hooks, "internal void CleanupAchievementRuntime()")
+    achievement_cleanup_body = extract_method_body(achievement_runtime_module, "private void CleanupAchievementRuntimeCore()")
     if not achievement_cleanup_body:
         return fail("ArchitectureStructureGuard: AchievementRuntimeHooks missing CleanupAchievementRuntime wrapper")
     for required in [
@@ -1113,29 +1159,19 @@ def main() -> int:
             if required not in body:
                 return fail("ArchitectureStructureGuard: IntegrationRuntimeHooks wrapper missing token: " + required)
 
-    affinity_runtime_hooks = AFFINITY_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
-    for signature, required_tokens in {
-        "private void InitializeAffinitySystem()": [
-            "AffinityManager.Initialize();",
-            "NPCModuleRegistry.RegisterAffinityConfigs();",
-            "AffinityManager.OnAffinityChanged += OnAffinityChanged;",
-            "AffinityManager.OnLevelUp += OnAffinityLevelUp;",
-        ],
-        "private void OnAffinityChanged(string npcId, int oldPoints, int newPoints)": [
-            "AffinityUIManager.ShowAffinityChange(npcId, delta);",
-            "HandleSpouseFollowAffinityLoss(npcId);",
-            "RefreshSpouseInteractionOptionsForNpc(npcId);",
-        ],
-        "private void OnAffinityLevelUp(string npcId, int newLevel)": [
-            "AffinityUIManager.ShowLevelUpNotification(npcId, newLevel);",
-        ],
-    }.items():
-        body = extract_method_body(affinity_runtime_hooks, signature)
-        if not body:
-            return fail("ArchitectureStructureGuard: AffinityRuntimeHooks missing method: " + signature)
-        for required in required_tokens:
-            if required not in body:
-                return fail("ArchitectureStructureGuard: AffinityRuntimeHooks method missing token: " + required)
+    affinity_runtime_bridge = AFFINITY_RUNTIME_HOST_BRIDGE.read_text(encoding="utf-8", errors="ignore")
+    if "private void InitializeAffinitySystem()" not in affinity_runtime_bridge:
+        return fail("ArchitectureStructureGuard: Affinity host bridge must preserve InitializeAffinitySystem signature")
+    if "affinityRuntime.InitializeAffinitySystem();" not in extract_method_body(affinity_runtime_bridge, "private void InitializeAffinitySystem()"):
+        return fail("ArchitectureStructureGuard: InitializeAffinitySystem must forward to AffinityRuntimeModule")
+    for signature, target in [
+        ("internal void TickAffinityRuntimeFromHost()", "affinityRuntime.TickAffinityRuntime();"),
+        ("internal void OnSceneUnloadAffinityRuntimeFromHost()", "affinityRuntime.OnAffinitySceneUnload();"),
+        ("internal void CleanupAffinityRuntimeFromHost()", "affinityRuntime.Cleanup();"),
+    ]:
+        body = extract_method_body(affinity_runtime_bridge, signature)
+        if not body or target not in body:
+            return fail("ArchitectureStructureGuard: Affinity host lifecycle bridge missing forward: " + signature)
     for forbidden in [
         "private void InitializeAffinitySystem()",
         "private void OnAffinityChanged(string npcId, int oldPoints, int newPoints)",
@@ -1227,9 +1263,10 @@ def main() -> int:
         module_text = Path(module_path).read_text(encoding="utf-8", errors="ignore")
         if 'get { return "' + module_name + '"; }' not in module_text:
             return fail("ArchitectureStructureGuard: runtime module shell missing module name: " + module_name)
-        if "private ModBehaviour owner;" not in module_text:
+        owner_field = "modeEHost" if module_name == "ModeE" else "owner"
+        if "private ModBehaviour " + owner_field + ";" not in module_text:
             return fail("ArchitectureStructureGuard: runtime module shell must keep owner reference: " + module_name)
-        if "owner = null;" not in module_text:
+        if owner_field + " = null;" not in module_text:
             return fail("ArchitectureStructureGuard: runtime module shell must clear owner on destroy: " + module_name)
 
     scene_gate = Path("Utilities/SceneRuntimeGate.cs").read_text(encoding="utf-8", errors="ignore")

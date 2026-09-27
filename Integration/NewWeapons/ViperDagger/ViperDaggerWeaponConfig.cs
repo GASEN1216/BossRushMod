@@ -17,6 +17,11 @@ namespace BossRush
     /// </summary>
     public static class ViperDaggerWeaponConfig
     {
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterConfigurator("ViperDaggerWeaponConfig", (item, baseName) => { TryConfigure(item, baseName); });
+        }
+
         private static readonly NewWeaponMeleeSpec Spec = new NewWeaponMeleeSpec
         {
             TypeId = NewWeaponIds.ViperDaggerTypeId,

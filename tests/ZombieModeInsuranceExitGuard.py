@@ -2,12 +2,14 @@ from pathlib import Path
 import sys
 
 
-CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
-WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
+CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+BRIDGES = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+WAVES = Path("ZombieMode/ZombieModeCombatHostBridge.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -17,8 +19,8 @@ REWARD_PARTS = [
 def read_rewards() -> str:
     return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
 
-DEBUG = Path("ZombieMode/ZombieModeDebug.cs")
-EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
+DEBUG = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 
 
 def fail(message: str) -> int:
@@ -32,8 +34,7 @@ def require(text: str, snippet: str, label: str) -> int:
     return 0
 
 
-def extract_cleanup_method(text: str) -> str:
-    marker = "private void CleanupZombieModeRunOnlyState"
+def extract_cleanup_method(text: str, marker: str) -> str:
     start = text.find(marker)
     if start < 0:
         return ""
@@ -57,6 +58,8 @@ def extract_cleanup_method(text: str) -> str:
 
 def main() -> int:
     cleanup = CLEANUP.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
+    bridges = BRIDGES.read_text(encoding="utf-8")
     waves = WAVES.read_text(encoding="utf-8")
     rewards = read_rewards()
     debug = DEBUG.read_text(encoding="utf-8")
@@ -64,23 +67,26 @@ def main() -> int:
 
     for snippet in [
         "ShouldSettleZombieModeFailureInsurance(reason)",
-        "SettleZombieModeFailureInsuranceShell(zombieModeRunState.RunId)",
+        "SettleZombieModeFailureInsuranceShell(runState.RunId)",
         "reason != ZombieModeFailureReason.SuccessfulExtraction",
         "ZombieModeFailureReason.PlayerDeath",
         "ZombieModeFailureReason.ManualExit",
         "ZombieModeFailureReason.SceneSwitched",
         "ZombieModeFailureReason.UnexpectedSceneUnload",
     ]:
-        result = require(cleanup, snippet, "cleanup insurance gate")
+        result = require(runtime_module, snippet, "RuntimeModule cleanup insurance gate")
         if result:
             return result
 
-    cleanup_method = extract_cleanup_method(cleanup)
+    cleanup_method = extract_cleanup_method(runtime_module, "internal void CleanupZombieModeRunOnlyState")
     if not cleanup_method:
         return fail("ZombieModeInsuranceExitGuard: cannot extract CleanupZombieModeRunOnlyState")
 
-    if cleanup_method.find("SettleZombieModeFailureInsuranceShell(zombieModeRunState.RunId)") > cleanup_method.find("InvalidateZombieModeRun()"):
+    if cleanup_method.find("SettleZombieModeFailureInsuranceShell(runState.RunId)") > cleanup_method.find("InvalidateZombieModeRun()"):
         return fail("ZombieModeInsuranceExitGuard: insurance settlement must run before run invalidation")
+
+    if "SettleZombieModeFailureInsuranceShell(runId);" not in bridges:
+        return fail("ZombieModeInsuranceExitGuard: RuntimeModule compatibility bridge must preserve the legacy settlement entry")
 
     if "SettleZombieModeFailureInsuranceShell(runId)" in waves:
         return fail("ZombieModeInsuranceExitGuard: death path must rely on unified cleanup insurance settlement")
@@ -94,16 +100,16 @@ def main() -> int:
             return result
 
     for snippet in [
-        "CleanupZombieModeForSceneChange(ZombieModeFailureReason.SuccessfulExtraction)",
+        "owner.CleanupZombieModeForRuntimeModule(ZombieModeFailureReason.SuccessfulExtraction)",
     ]:
         result = require(extraction, snippet, "successful extraction cleanup")
         if result:
             return result
 
     for snippet in [
-        "zombieModeRunState.PurificationPoints = 0;",
-        "zombieModeRunState.InsuranceState.Reset();",
-        "runId <= 0 || zombieModeRunState.RunId != runId",
+        "runState.PurificationPoints = 0;",
+        "runState.InsuranceState.Reset();",
+        "runId <= 0 || runState.RunId != runId",
         "CollectZombieModeTopLevelPlayerItems()",
         "PlayerStorage.Push(item, true)",
     ]:
@@ -111,7 +117,7 @@ def main() -> int:
         if result:
             return result
 
-    insurance_method_start = rewards.find("private void SettleZombieModeFailureInsuranceShell")
+    insurance_method_start = rewards.find("internal void SettleZombieModeFailureInsuranceShell")
     insurance_method = rewards[insurance_method_start:rewards.find("private List<Item> CollectZombieModeInsuranceCandidates", insurance_method_start)]
     if "IsZombieModeRunValid(runId)" in insurance_method:
         return fail("ZombieModeInsuranceExitGuard: insurance settlement must not depend on active scene validity")

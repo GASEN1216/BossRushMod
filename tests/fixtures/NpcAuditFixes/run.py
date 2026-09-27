@@ -37,7 +37,7 @@ def build(name, files, generated=""):
     out.mkdir(parents=True, exist_ok=True)
     project = ET.Element("Project", Sdk="Microsoft.NET.Sdk")
     props = ET.SubElement(project, "PropertyGroup")
-    for key, value in {"OutputType": "Exe", "TargetFramework": "net10.0", "LangVersion": "7.3",
+    for key, value in {"OutputType": "Exe", "TargetFramework": "net8.0", "LangVersion": "7.3",
                        "EnableDefaultCompileItems": "false", "NoWarn": "0067;0649;0414"}.items():
         ET.SubElement(props, key).text = value
     items = ET.SubElement(project, "ItemGroup")
@@ -52,7 +52,7 @@ def build(name, files, generated=""):
     result = subprocess.run(["dotnet", "build", str(out / "Regression.csproj"), "-c", "Release", "--nologo", "-v:q"], cwd=ROOT)
     if result.returncode:
         return result.returncode
-    return subprocess.run(["dotnet", str(out / "bin/Release/net10.0/Regression.dll")], cwd=ROOT).returncode
+    return subprocess.run(["dotnet", str(out / "bin/Release/net8.0/Regression.dll")], cwd=ROOT).returncode
 
 
 def main():

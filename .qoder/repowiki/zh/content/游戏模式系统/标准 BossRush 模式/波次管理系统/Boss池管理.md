@@ -4,7 +4,7 @@
 **本文引用的文件**
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [BossFilter.cs](file://BossFilter/BossFilter.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [ModBehaviour.cs](file://ModBehaviour.cs)
 </cite>
 
@@ -44,13 +44,13 @@ C --> D["ModBehaviour<br/>特殊Boss处理 / 数值缩放"]
 图表来源
 - [WavesArena.cs:555-641](file://WavesArena/WavesArena.cs#L555-L641)
 - [BossFilter.cs:201-223](file://BossFilter/BossFilter.cs#L201-L223)
-- [WavesArenaBossSpawning.cs:346-395](file://WavesArena/WavesArenaBossSpawning.cs#L346-L395)
+- [WavesArena.cs:346-395](file://WavesArena/WavesArena.cs#L346-L395)
 - [ModBehaviour.cs:1212-1243](file://ModBehaviour.cs#L1212-L1243)
 
 章节来源
 - [WavesArena.cs:555-641](file://WavesArena/WavesArena.cs#L555-L641)
 - [BossFilter.cs:201-223](file://BossFilter/BossFilter.cs#L201-L223)
-- [WavesArenaBossSpawning.cs:346-395](file://WavesArena/WavesArenaBossSpawning.cs#L346-L395)
+- [WavesArena.cs:346-395](file://WavesArena/WavesArena.cs#L346-L395)
 - [ModBehaviour.cs:1212-1243](file://ModBehaviour.cs#L1212-L1243)
 
 ## 核心组件
@@ -82,7 +82,7 @@ C --> D["ModBehaviour<br/>特殊Boss处理 / 数值缩放"]
 - [WavesArena.cs:555-641](file://WavesArena/WavesArena.cs#L555-L641)
 - [WavesArena.cs:648-742](file://WavesArena/WavesArena.cs#L648-L742)
 - [BossFilter.cs:201-223](file://BossFilter/BossFilter.cs#L201-L223)
-- [WavesArenaBossSpawning.cs:346-395](file://WavesArena/WavesArenaBossSpawning.cs#L346-L395)
+- [WavesArena.cs:346-395](file://WavesArena/WavesArena.cs#L346-L395)
 
 ## 架构总览
 Boss池管理的整体数据流如下：
@@ -117,7 +117,7 @@ Spawn->>Mod : ApplyInfiniteHellScaling / ApplyBossStatMultiplier
 图表来源
 - [WavesArena.cs:555-641](file://WavesArena/WavesArena.cs#L555-L641)
 - [WavesArena.cs:648-742](file://WavesArena/WavesArena.cs#L648-L742)
-- [WavesArenaBossSpawning.cs:346-395](file://WavesArena/WavesArenaBossSpawning.cs#L346-L395)
+- [WavesArena.cs:346-395](file://WavesArena/WavesArena.cs#L346-L395)
 - [ModBehaviour.cs:1212-1243](file://ModBehaviour.cs#L1212-L1243)
 
 ## 详细组件分析
@@ -226,7 +226,7 @@ RandomPick --> ReturnB["返回对应Boss"]
 章节来源
 - [BossFilter.cs:201-223](file://BossFilter/BossFilter.cs#L201-L223)
 - [WavesArena.cs:134-143](file://WavesArena/WavesArena.cs#L134-L143)
-- [WavesArenaBossSpawning.cs:358-366](file://WavesArena/WavesArenaBossSpawning.cs#L358-L366)
+- [WavesArena.cs:358-366](file://WavesArena/WavesArena.cs#L358-L366)
 
 ### 生成流程与多Boss支持
 - 单Boss模式：按顺序或权重选择后，调用 SpawnEnemyAtPositionAsync。
@@ -234,8 +234,8 @@ RandomPick --> ReturnB["返回对应Boss"]
 - 位置校验：延迟校验Boss位置，防止低配地形加载慢导致Boss卡在地下。
 
 章节来源
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
-- [WavesArenaBossSpawning.cs:478-661](file://WavesArena/WavesArenaBossSpawning.cs#L478-L661)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
+- [WavesArena.cs:478-661](file://WavesArena/WavesArena.cs#L478-L661)
 
 ## 依赖关系分析
 - WavesArena 依赖 BossFilter 提供的过滤列表。
@@ -252,13 +252,13 @@ WAS --> MB["ModBehaviour"]
 图表来源
 - [WavesArena.cs:555-641](file://WavesArena/WavesArena.cs#L555-L641)
 - [BossFilter.cs:201-223](file://BossFilter/BossFilter.cs#L201-L223)
-- [WavesArenaBossSpawning.cs:346-395](file://WavesArena/WavesArenaBossSpawning.cs#L346-L395)
+- [WavesArena.cs:346-395](file://WavesArena/WavesArena.cs#L346-L395)
 - [ModBehaviour.cs:1212-1243](file://ModBehaviour.cs#L1212-L1243)
 
 章节来源
 - [WavesArena.cs:555-641](file://WavesArena/WavesArena.cs#L555-L641)
 - [BossFilter.cs:201-223](file://BossFilter/BossFilter.cs#L201-L223)
-- [WavesArenaBossSpawning.cs:346-395](file://WavesArena/WavesArenaBossSpawning.cs#L346-L395)
+- [WavesArena.cs:346-395](file://WavesArena/WavesArena.cs#L346-L395)
 - [ModBehaviour.cs:1212-1243](file://ModBehaviour.cs#L1212-L1243)
 
 ## 性能考量
@@ -272,7 +272,7 @@ WAS --> MB["ModBehaviour"]
 - [WavesArena.cs:555-641](file://WavesArena/WavesArena.cs#L555-L641)
 - [BossFilter.cs:201-223](file://BossFilter/BossFilter.cs#L201-L223)
 - [WavesArena.cs:938-1003](file://WavesArena/WavesArena.cs#L938-L1003)
-- [WavesArenaBossSpawning.cs:525-661](file://WavesArena/WavesArenaBossSpawning.cs#L525-L661)
+- [WavesArena.cs:525-661](file://WavesArena/WavesArena.cs#L525-L661)
 
 ## 故障排查指南
 - Boss池为空：检查 GetFilteredEnemyPresets 返回值，确认至少启用一个Boss。
@@ -281,9 +281,12 @@ WAS --> MB["ModBehaviour"]
 - 缓存污染：运行 PruneNonBossEnemyPresetsFromCache 清理非Boss预设。
 
 章节来源
-- [WavesArenaBossSpawning.cs:358-366](file://WavesArena/WavesArenaBossSpawning.cs#L358-L366)
+- [WavesArena.cs:358-366](file://WavesArena/WavesArena.cs#L358-L366)
 - [WavesArena.cs:648-742](file://WavesArena/WavesArena.cs#L648-L742)
 - [WavesArena.cs:775-865](file://WavesArena/WavesArena.cs#L775-L865)
 
 ## 结论
 Boss池管理系统通过动态敌人发现、团队过滤、血量排序、缓存清理与权重随机选择，实现了灵活高效的Boss生成机制。结合Boss池过滤器与性能优化策略，确保了在不同模式下的稳定表现与用户体验。建议在实际使用中关注初始化标记与缓存脏标记的正确使用，以避免重复计算与性能瓶颈。
+## 2026-09-25 预设池归属（COMPAT）
+
+官方预设扫描、非 Boss 剪枝、血量范围缓存和基地侧图鉴 / 遗种巢幂等预热由 `WavesArena/WavesArenaRuntimeModule_EnemyPresets.cs` 执行，状态仍属于已注册的 `WavesArenaRuntimeModule`。旧 `ModBehaviour.InitializeEnemyPresets` 等入口只转发，扫描后沿原时序通知图鉴与遗种巢目录重建。`WavesArenaPresetWeight` 执行回归直接抽取无间炼狱预设选择方法，验证因子回退、波次血量权重及随机数调用次数；实际场景中的预设来源仍需实机确认。

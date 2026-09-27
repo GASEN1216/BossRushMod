@@ -1,7 +1,9 @@
 """Guard: SpawnEnemyCore must expose observable internal completion without changing legacy callers."""
 
 from pathlib import Path
+import re
 import sys
+from cs_source_util import clean_source
 
 
 SOURCE = Path("Utilities/EnemySpawnCore.cs")
@@ -47,7 +49,34 @@ def forbid(text: str, needle: str, message: str) -> int | None:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = clean_source(SOURCE.read_text(encoding="utf-8"))
+    host = clean_source(Path("Utilities/EnemySpawnHostBridge.cs").read_text(encoding="utf-8"))
+    registration = clean_source(Path("ModBehaviourRuntimeModules.cs").read_text(encoding="utf-8"))
+    if "internal sealed class EnemySpawnRuntime" not in text or "partial class ModBehaviour" in text:
+        return fail("the production spawn algorithm must belong to EnemySpawnRuntime")
+    binding = extract_method_body(host, "private void BindSpawnPostprocessServices()")
+    if binding is None or binding.count("new EnemySpawnRuntime(spawnPostprocess)") != 1:
+        return fail("host must bind one spawn runtime to the existing postprocess scheduler")
+    for name in ("BindPresetQueries", "BindSpecialBossServices", "BindEquipmentServices", "BindOwnedEnemyTracking"):
+        if "enemySpawnRuntime." + name + "(" not in binding:
+            return fail("missing runtime dependency binding: " + name)
+    if registration.count("BindSpawnPostprocessServices();") != 1:
+        return fail("spawn services must bind exactly once in module registration")
+    parameters = "preset, position, isBoss, isActiveCheck, "
+    common = ("waveIndex, skipDragonDescendant, skipDragonKing, applyEquipment, applyBossMultiplier, "
+              "directPreset, skipBossRushLootTracking, normalizeDamageMultiplier, deferActivationUntilNextFrame, onCommit")
+    compact = lambda value: re.sub(r"\s+", "", value or "")
+    for signature, expected in (
+        ("internal void SpawnEnemyCore(", "{enemySpawnRuntime.SpawnEnemyCore(" + parameters + "onSpawned, onFailed, " + common + ");}"),
+        ("internal UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync(", "{return enemySpawnRuntime.SpawnEnemyCoreInternalAsync(" + parameters + common + ", options);}"),
+        ("internal void EnsureCharacterPresetsCacheReady()", "{modeDRuntime.EnsureCharacterPresetsCacheReady();}"),
+    ):
+        if compact(extract_method_body(host, signature)) != compact(expected):
+            return fail("legacy spawn bridge changed or disconnected: " + signature)
+    for statement in ("get { return EnemySpawnRuntime.ManagedBossSpawnDispatcher; }",
+                      "set { EnemySpawnRuntime.ManagedBossSpawnDispatcher = value; }"):
+        if statement not in host:
+            return fail("managed dispatcher alias must retain the same static slot")
 
     for needle, message in (
         ("internal sealed class EnemySpawnCoreResult", "spawn core result object must exist"),
@@ -55,9 +84,9 @@ def main() -> int:
         ("public EnemySpawnContext context;", "spawn core result must expose context"),
         ("public string failureReason;", "spawn core result must expose failure reason"),
         ("public EnemyPresetInfo actualPreset;", "spawn core result must expose actual preset"),
-        ("private void SpawnEnemyCore(", "legacy SpawnEnemyCore wrapper must remain for existing callers"),
+        ("internal void SpawnEnemyCore(", "legacy SpawnEnemyCore wrapper must remain for existing callers"),
         ("SpawnEnemyCoreFireAndForgetAsync(", "legacy wrapper must stay fire-and-forget"),
-        ("private async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync", "internal spawn core must be awaitable"),
+        ("internal async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync", "internal spawn core must be awaitable"),
         ("const int maxAttempts = 5;", "spawn core retry count must stay 5"),
         ("await UniTask.Yield();", "ordinary spawn path must keep the existing yield"),
         ("SpawnDragonDescendant(", "dragon descendant path must remain in shared spawn core"),
@@ -71,7 +100,7 @@ def main() -> int:
         if result is not None:
             return result
 
-    wrapper = extract_method_body(text, "private void SpawnEnemyCore")
+    wrapper = extract_method_body(text, "internal void SpawnEnemyCore")
     if wrapper is None:
         return fail("missing legacy SpawnEnemyCore wrapper")
     result = forbid(wrapper, "async void", "legacy wrapper must not be async void")
@@ -89,7 +118,7 @@ def main() -> int:
         if result is not None:
             return result
 
-    internal_body = extract_method_body(text, "private async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync")
+    internal_body = extract_method_body(text, "internal async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync")
     if internal_body is None:
         return fail("missing internal awaitable body")
     for needle, message in (

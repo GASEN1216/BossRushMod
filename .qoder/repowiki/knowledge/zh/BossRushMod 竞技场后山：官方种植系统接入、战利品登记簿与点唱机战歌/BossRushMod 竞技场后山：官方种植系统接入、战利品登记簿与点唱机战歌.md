@@ -188,10 +188,10 @@ source_files:
 
 | 文件 | 改动 |
 | --- | --- |
-| `LootAndRewards/LootAndRewardsSpecialLoot.cs` | +1 行 `TryAddBackMountainSeedLoot(inv, bossMain)`，接在掉落箱协程末尾（额外掉落，不顶掉既有战利品） |
+| `LootAndRewards/LootAndRewards.cs` | +1 行 `TryAddBackMountainSeedLoot(inv, bossMain)`，接在掉落箱协程末尾（额外掉落，不顶掉既有战利品） |
 | `Integration/BossRushDynamicItemRegistry.cs` | 六件物品的 FallbackLoader 登记 |
 | `Integration/BossRushIntegration_StartAndScene.cs` | 本地化注入 + 早期建筑注入 |
-| `Common/Lifecycle/BossRushRuntimeModuleRegistration.cs` | 注册单实例，排在征程之后 |
+| `ModBehaviourRuntimeModules.cs` | 注册单实例，排在征程之后 |
 
 ## 7. 风险（必须实机验证）
 
@@ -276,7 +276,7 @@ source_files:
 
 ## 2026-09-06 建筑注入器归属收口（D-1）
 
-`SAFE / COMPAT`。报箱、征程公告板、后山展示柜、遗种巢的建筑实现分别归 `DailyReportMailboxBuilder`、`CampaignBoardBuilder`、`ShowcaseBuildingBuilder`、`PetNestBuilder` 四个模块类型，各自持有创建它的 `ModBehaviour _owner`。原有 init、early、restore、notes、slot-change、cleanup 入口保留在 `Integration/ContentBuildingBridges.cs` 薄转发；同一宿主内复用模块实例，既有场景装配顺序、事件退订、恢复协程和清理义务不变。
+`SAFE / COMPAT`。报箱、征程公告板、后山展示柜、遗种巢的建筑实现分别归 `DailyReportMailboxBuilder`、`CampaignBoardBuilder`、`ShowcaseBuildingBuilder`、`PetNestBuilder` 四个模块类型，各自持有创建它的 `ModBehaviour _owner`。原有 init、early、restore、notes、slot-change、cleanup 入口保留在 `Integration/IntegrationHostCompatibility.cs` 薄转发；同一宿主内复用模块实例，既有场景装配顺序、事件退订、恢复协程和清理义务不变。
 
 官方建筑反射绑定共用 `Common/Buildings/BuildingInjectionHelper.cs`，包括查询失败结果的一次解析缓存。模型包围盒、shader 与碰撞体工具共用 `Common/Buildings/BuildingModelHelper.cs`；报箱经 owner 的只读模型属性借许愿台现有缓存，加载/卸载仍归许愿台。基地重绘保留唯一 ModBehaviour 协程，由模块显式请求。没有更改建筑 ID、prefab 名、造价、建造条件或官方存档格式。
 

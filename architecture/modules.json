@@ -1,0 +1,1379 @@
+{
+  "version": 1,
+  "modules": [
+    {
+      "id": "host",
+      "title": "生命周期、调度与模块装配",
+      "kind": "host",
+      "paths": [
+        "ModBehaviour.cs",
+        "ModBehaviourRuntimeModules.cs",
+        "ModConfigApi.cs"
+      ],
+      "entry": "ModBehaviour.cs",
+      "state_owner": "ModBehaviour",
+      "public_api": [
+        "ModBehaviour",
+        "ModConfigApi"
+      ],
+      "data": [],
+      "tests": [
+        "tests/fixtures/HostMapArenaOwners",
+        "tests/fixtures/HostUtilityOwners",
+        "tests/fixtures/HostDestroyOwnership"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/架构设计/运行时模块系统.md",
+        ".qoder/repowiki/zh/content/架构设计/生命周期管理.md"
+      ],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "config",
+      "title": "运行时配置与参数",
+      "kind": "shared",
+      "paths": [
+        "Config/**/*.cs"
+      ],
+      "entry": "Config/Config.cs",
+      "state_owner": "ModBehaviour.BossRushConfig（运行时参数）；各 Config/Tuning（模块常量）",
+      "public_api": [
+        "ModBehaviour 的配置转发与 ModConfigApi"
+      ],
+      "data": [],
+      "tests": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/配置与部署/配置管理/配置系统架构.md"
+      ],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host"
+      ]
+    },
+    {
+      "id": "localization",
+      "title": "玩家文本注入",
+      "kind": "shared",
+      "paths": [
+        "Localization/**/*.cs"
+      ],
+      "entry": "Localization/LocalizationInjector.cs",
+      "state_owner": "LocalizationInjector",
+      "public_api": [
+        "LocalizationInjector"
+      ],
+      "data": [],
+      "tests": [],
+      "docs": [],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host"
+      ]
+    },
+    {
+      "id": "common",
+      "title": "UI、存档、装备与数据共享能力",
+      "kind": "shared",
+      "paths": [
+        "Common/**/*.cs"
+      ],
+      "entry": "Common/Lifecycle/BossRushRuntimeModuleHost.cs",
+      "state_owner": "BossRushRuntimeModuleHost（生命周期列表）；BossRushUIKit（字体与模态租约）；其余共享服务按各自 owner 持有状态",
+      "public_api": [
+        "BossRushRuntimeModuleHost"
+      ],
+      "data": [],
+      "tests": [],
+      "docs": [
+        "docs/architecture/UI制作共识.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Common/UI/AGENTS.md"
+      ],
+      "depends_on": [
+        "host"
+      ]
+    },
+    {
+      "id": "utilities",
+      "title": "刷怪、场景门控与跨模块 hooks",
+      "kind": "shared",
+      "paths": [
+        "Utilities/**/*.cs"
+      ],
+      "entry": "Utilities/ModeRuntimeHooks.cs",
+      "state_owner": "OfficialQuestRuntimeModule / ModeEFSpawnPreparation / ModeEFMerchantCatalog / ModeEFMerchantRuntime / ModeEFSpawnPostprocessScheduler / ModeEFVirtualSpawnerRegistry / EnemySpawnRuntime / EnemyRecoveryMonitor / ModeEFEnemySpawnRuntime / ModeEFEnemyRegistry / SteamPlatformInfo, BossStatScaling, BossRushWaitCache, ZombieSpawnSanitizer",
+      "public_api": [
+        "ModeRuntimeHooks",
+        "EnemySpawnRuntime"
+      ],
+      "data": [],
+      "tests": [
+        "tests/ArchitectureStructureGuard.py",
+        "tests/ModeEFSpawnPostprocessSchedulerGuard.py",
+        "tests/fixtures/ModeEFSpawnPreparation",
+        "tests/fixtures/ModeEFSpawnPostprocessScheduler",
+        "tests/fixtures/ModeEFMerchantCatalog",
+        "tests/ModeEFVirtualSpawnerRegistryGuard.py",
+        "tests/fixtures/ModeEFVirtualSpawnerRegistry",
+        "tests/EnemySpawnCoreObservableGuard.py",
+        "tests/fixtures/EnemySpawnRuntime",
+        "tests/EnemyRecoveryOwnershipGuard.py",
+        "tests/fixtures/EnemyRecoveryRuntime",
+        "tests/ModeEFEnemySpawnOwnershipGuard.py",
+        "tests/fixtures/ModeEFEnemySpawnRuntime",
+        "tests/ModeEFEnemyRegistryOwnershipGuard.py",
+        "tests/SteamPlatformInfoOwnershipGuard.py",
+        "tests/fixtures/ModeEFEnemyRegistry",
+        "tests/fixtures/SteamPlatformInfo",
+        "tests/StaticCacheLifecycleGuard.py",
+        "tests/fixtures/AuditModeLifecycle"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/工具与调试/运行时钩子.md",
+        ".qoder/repowiki/zh/content/游戏模式系统/标准 BossRush 模式/Boss 生成系统.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Utilities/AGENTS.md"
+      ],
+      "depends_on": [
+        "host"
+      ]
+    },
+    {
+      "id": "patches",
+      "title": "跨模块 Harmony 接点",
+      "kind": "shared",
+      "paths": [
+        "Patches/**/*.cs"
+      ],
+      "entry": "Patches/AI/StaleAITaskCallbackPatch.cs",
+      "state_owner": "StaleAITaskCallbackPatch",
+      "public_api": [
+        "StaleAITaskCallbackPatch"
+      ],
+      "data": [],
+      "tests": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/项目概览/技术架构概览/Harmony 代码注入系统.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Patches/AGENTS.md"
+      ],
+      "depends_on": [
+        "host"
+      ]
+    },
+    {
+      "id": "arena",
+      "title": "标准与无间炼狱波次",
+      "kind": "mode",
+      "paths": [
+        "WavesArena/**/*.cs"
+      ],
+      "entry": "WavesArena/WavesArenaRuntimeModule.cs",
+      "state_owner": "WavesArenaRuntimeModule",
+      "public_api": [
+        "WavesArenaRuntimeModule"
+      ],
+      "data": [],
+      "tests": [
+        "tests/WavesArena*Guard.py",
+        "tests/ArenaHostRemainderOwnershipGuard.py",
+        "tests/fixtures/ArenaHostRemainder",
+        "tests/fixtures/ModuleOwnerCleanup"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/标准 BossRush 模式/标准 BossRush 模式.md",
+        ".qoder/repowiki/zh/content/游戏模式系统/标准 BossRush 模式/无间炼狱模式.md"
+      ],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "rewards",
+      "title": "掉落、奖励与欠账",
+      "kind": "system",
+      "paths": [
+        "LootAndRewards/**/*.cs"
+      ],
+      "entry": "LootAndRewards/InfiniteHellMilestoneDelivery.cs",
+      "state_owner": "WavesArenaRuntimeModule（竞技场掉落与奖励状态）；InfiniteHellMilestoneDelivery（里程碑交付）；AwenLootSweepRuntime（扫箱计数、缓存与 runner）",
+      "public_api": [
+        "LootAndRewards",
+        "ModeEFLootboxTracker"
+      ],
+      "data": [],
+      "tests": [
+        "tests/AwenLootSweepCachedCanUseGuard.py",
+        "tests/fixtures/AwenLootSweepRuntime"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/标准 BossRush 模式/无间炼狱模式.md"
+      ],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "mode-d",
+      "title": "白手起家",
+      "kind": "mode",
+      "paths": [
+        "ModeD/**/*.cs"
+      ],
+      "entry": "ModeD/ModeDRuntimeModule.cs",
+      "state_owner": "ModeDRuntimeModule",
+      "public_api": [
+        "ModeDRuntimeModule"
+      ],
+      "data": [],
+      "tests": [
+        "tests/ModeD*Guard.py",
+        "tests/fixtures/ModeDestroyLifecycle",
+        "tests/fixtures/ModeDEntryOwnership"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/Mode D：白手起家.md"
+      ],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "mode-e",
+      "title": "划地为营",
+      "kind": "mode",
+      "paths": [
+        "ModeE/**/*.cs"
+      ],
+      "entry": "ModeE/ModeERuntimeModule.cs",
+      "state_owner": "ModeERuntimeModule",
+      "public_api": [
+        "ModeERuntimeModule"
+      ],
+      "data": [],
+      "tests": [
+        "tests/ModeE*Guard.py",
+        "tests/fixtures/ModeDestroyLifecycle",
+        "tests/fixtures/AuditModeLifecycle"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/Mode E：划地为营.md"
+      ],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "mode-f",
+      "title": "血猎追击",
+      "kind": "mode",
+      "paths": [
+        "ModeF/**/*.cs"
+      ],
+      "entry": "ModeF/ModeFRuntimeModule.cs",
+      "state_owner": "ModeFRuntimeModule",
+      "public_api": [
+        "ModeFRuntimeModule",
+        "ModeFBounty"
+      ],
+      "data": [],
+      "tests": [
+        "tests/ModeF*Guard.py",
+        "tests/fixtures/ModeDestroyLifecycle",
+        "tests/fixtures/AuditModeLifecycle"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/Mode F：血猎追击.md"
+      ],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "mode-g",
+      "title": "宿命回响",
+      "kind": "mode",
+      "paths": [
+        "ModeG/**/*.cs"
+      ],
+      "entry": "ModeG/ModeGRuntimeModule.cs",
+      "state_owner": "ModeGRuntimeModule / ModeGEntryRuntime",
+      "public_api": [
+        "ModeGRuntimeModule"
+      ],
+      "data": [],
+      "tests": [
+        "tests/ModeG*Guard.py",
+        "tests/ModeGEntryOwnershipGuard.py",
+        "tests/fixtures/ModeGEntryOwners"
+      ],
+      "docs": [],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "mode-h",
+      "title": "百战留痕",
+      "kind": "mode",
+      "paths": [
+        "ModeH/**/*.cs"
+      ],
+      "entry": "ModeH/ModeHRuntimeModule.cs",
+      "state_owner": "ModeHRuntimeModule",
+      "public_api": [
+        "ModeHRuntimeModule"
+      ],
+      "data": [
+        "Assets/Data/ModeH/**/*.json"
+      ],
+      "tests": [
+        "tests/ModeH*Guard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/Mode H：百战留痕（黑市鸭王杯）.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Common/UI/AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "zombie",
+      "title": "末日丧尸",
+      "kind": "mode",
+      "paths": [
+        "ZombieMode/**/*.cs"
+      ],
+      "entry": "ZombieMode/ZombieModeRuntimeModule.cs",
+      "state_owner": "ZombieModeRuntimeModule / ZombieModeHostLifecycle",
+      "public_api": [
+        "ZombieModeRuntimeModule"
+      ],
+      "data": [],
+      "tests": [
+        "tests/ZombieMode*Guard.py",
+        "tests/fixtures/ZombieModeSafeZoneRuntime",
+        "tests/fixtures/ZombieModeRewardRuntime",
+        "tests/fixtures/ZombieModeSpawnRuntime",
+        "tests/fixtures/ZombieModeStarterRuntime",
+        "tests/fixtures/ZombieModeHostOwners"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/僵尸模式.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "ZombieMode/AGENTS.md",
+        "Common/UI/AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "campaign",
+      "title": "鸭王征程",
+      "kind": "system",
+      "paths": [
+        "Campaign/**/*.cs"
+      ],
+      "entry": "Campaign/CampaignRuntimeModule.cs",
+      "state_owner": "CampaignRuntimeModule",
+      "public_api": [
+        "CampaignRuntimeModule"
+      ],
+      "data": [
+        "Assets/Data/Campaign/**/*.json"
+      ],
+      "tests": [
+        "tests/Campaign*Guard.py",
+        "tests/CampaignRuntimeOwnershipGuard.py",
+        "tests/fixtures/CampaignPlayability"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/鸭王征程交付.md"
+      ],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "pet-nest",
+      "title": "遗种巢",
+      "kind": "system",
+      "paths": [
+        "PetNest/**/*.cs"
+      ],
+      "entry": "PetNest/PetNestRuntimeModule.cs",
+      "state_owner": "PetNestRuntimeModule",
+      "public_api": [
+        "PetNestRuntimeModule"
+      ],
+      "data": [],
+      "tests": [
+        "tests/PetNest*Guard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/遗种巢系统.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Common/UI/AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "random-events",
+      "title": "局内随机事件",
+      "kind": "system",
+      "paths": [
+        "RandomEvents/**/*.cs"
+      ],
+      "entry": "RandomEvents/RandomEventsRuntimeModule.cs",
+      "state_owner": "RandomEventsRuntimeModule",
+      "public_api": [
+        "RandomEventsRuntimeModule"
+      ],
+      "data": [],
+      "tests": [
+        "tests/RandomEvents*Guard.py",
+        "tests/fixtures/RandomEventEffectsOwners"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/局内随机事件系统.md"
+      ],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "achievement",
+      "title": "成就",
+      "kind": "system",
+      "paths": [
+        "Achievement/**/*.cs"
+      ],
+      "entry": "Achievement/AchievementEntryUI.cs",
+      "state_owner": "AchievementRuntimeModule",
+      "public_api": [
+        "AchievementEntryUI"
+      ],
+      "data": [],
+      "tests": [
+        "tests/Achievement*Guard.py",
+        "tests/AchievementRuntimeOwnershipGuard.py",
+        "tests/fixtures/AchievementRuntime"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/成就系统.md"
+      ],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "audio",
+      "title": "音频与 Boss BGM",
+      "kind": "system",
+      "paths": [
+        "Audio/**/*.cs"
+      ],
+      "entry": "Audio/BossBgmCoordinator.cs",
+      "state_owner": "BossRushAudioManager / BossRushAudioRuntimeService",
+      "public_api": [
+        "BossBgmCoordinator"
+      ],
+      "data": [
+        "Assets/Data/Audio/**/*.json"
+      ],
+      "tests": [
+        "tests/AudioRuntimeOwnershipGuard.py",
+        "tests/fixtures/AudioRuntime"
+      ],
+      "docs": [],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "boss-filter",
+      "title": "Boss 筛选",
+      "kind": "system",
+      "paths": [
+        "BossFilter/**/*.cs"
+      ],
+      "entry": "BossFilter/BossFilter.cs",
+      "state_owner": "BossFilterRuntimeModule",
+      "public_api": [
+        "BossFilter"
+      ],
+      "data": [],
+      "tests": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/标准 BossRush 模式/波次管理系统/Boss池管理.md"
+      ],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "ui-signs",
+      "title": "路牌与通用界面入口",
+      "kind": "system",
+      "paths": [
+        "UIAndSigns/**/*.cs"
+      ],
+      "entry": "UIAndSigns/BossRushInteractionScan.cs",
+      "state_owner": "UIAndSignsRuntimeModule",
+      "public_api": [
+        "BossRushInteractionScan"
+      ],
+      "data": [],
+      "tests": [],
+      "docs": [],
+      "rules": [
+        "AGENTS.md",
+        "Common/UI/AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "interactables",
+      "title": "共享交互体",
+      "kind": "shared",
+      "paths": [
+        "Interactables/**/*.cs"
+      ],
+      "entry": "Interactables/BossRushBuildingInteractableBase.cs",
+      "state_owner": "BossRushBuildingInteractableBase",
+      "public_api": [
+        "BossRushBuildingInteractableBase"
+      ],
+      "data": [],
+      "tests": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/架构设计/内容建筑模块归属.md"
+      ],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "map-selection",
+      "title": "地图选择",
+      "kind": "system",
+      "paths": [
+        "MapSelection/**/*.cs"
+      ],
+      "entry": "MapSelection/BossRushMapSelectionHelper.cs",
+      "state_owner": "BossRushMapSelectionHelper, BossRushMapRuntime",
+      "public_api": [
+        "BossRushMapSelectionHelper"
+      ],
+      "data": [],
+      "tests": [
+        "tests/MapSelection*Guard.py"
+      ],
+      "docs": [],
+      "rules": [
+        "AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "sky-island",
+      "title": "天空岛正式地图、居民与剧情",
+      "kind": "map",
+      "paths": [
+        "SkyIsland/**/*.cs"
+      ],
+      "entry": "SkyIsland/SkyIslandRuntimeModule.cs",
+      "state_owner": "SkyIslandRuntimeModule",
+      "public_api": [
+        "SkyIslandRuntimeModule"
+      ],
+      "data": [
+        "Assets/Data/SkyIsland*.json"
+      ],
+      "tests": [
+        "tests/SkyIsland*Guard.py",
+        "tests/SkyIsland*PropertyTest.py",
+        "tests/fixtures/SkyIsland*"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/天空岛剧情与持久化.md",
+        ".qoder/repowiki/zh/content/游戏模式系统/天空岛生产复核与交付前置.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "SkyIsland/AGENTS.md",
+        "Common/UI/AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common",
+        "utilities"
+      ]
+    },
+    {
+      "id": "devtools",
+      "title": "F3、调试与场景原型",
+      "kind": "devtools",
+      "paths": [
+        "DebugAndTools/*.cs",
+        "DebugAndTools/ArenaPrototype/**/*.cs"
+      ],
+      "entry": "DebugAndTools/F3GameplayValidationRunner.cs",
+      "state_owner": "DebugToolsRuntimeModule",
+      "public_api": [
+        "F3GameplayValidationRunner"
+      ],
+      "data": [],
+      "tests": [
+        "tests/F3*Guard.py",
+        "tests/fixtures/F3*"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/工具与调试/调试工具.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "DebugAndTools/AGENTS.md",
+        "Common/UI/AGENTS.md"
+      ],
+      "depends_on": [
+        "host"
+      ]
+    },
+    {
+      "id": "integration-core",
+      "title": "物品、装备工厂与集成生命周期",
+      "kind": "system",
+      "paths": [
+        "Integration/*.cs",
+        "Integration/Config/**/*.cs",
+        "Integration/Constants/**/*.cs",
+        "Integration/Utils/**/*.cs",
+        "Integration/UI/**/*.cs",
+        "Integration/Dialogue/**/*.cs"
+      ],
+      "entry": "Integration/BossRushIntegrationRuntimeModule.cs",
+      "state_owner": "IntegrationRuntimeModule（库存、购买事件、恢复协程、内容注册、地图对象、加油站与场景资源）；ModBehaviour 仅保留生命周期分发、显式装配及跨模式入场协调",
+      "public_api": [
+        "IntegrationRuntimeModule",
+        "IntegrationHostCompatibility（旧宿主签名）"
+      ],
+      "data": [],
+      "tests": [
+        "tests/IntegrationRuntimeModuleGuard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/装备与物品系统/装备框架与工厂系统/工厂核心架构.md",
+        ".qoder/repowiki/zh/content/架构设计/内容建筑模块归属.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common"
+      ]
+    },
+    {
+      "id": "npcs",
+      "title": "NPC 与建筑内容",
+      "kind": "system",
+      "paths": [
+        "Integration/NPCs/**/*.cs"
+      ],
+      "entry": "Integration/IntegrationHostCompatibility.cs",
+      "state_owner": "CommonNpcRuntimeModule, CourierNpcRuntimeModule, GoblinNpcRuntimeModule, NurseNpcRuntimeModule",
+      "public_api": [
+        "CommonNpcRuntimeHooks",
+        "GoblinNpcRuntimeModule"
+      ],
+      "data": [],
+      "tests": [
+        "tests/GoblinRuntimeModuleGuard.py",
+        "tests/fixtures/ModuleOwnerCleanup"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/NPC 关系系统/NPC 交互系统.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "items",
+      "title": "物品内容注册",
+      "kind": "content",
+      "paths": [
+        "Integration/Items/**/*.cs"
+      ],
+      "entry": "Integration/Items/AwenDepositTokenConfig.cs",
+      "state_owner": "AwenDepositTokenConfig",
+      "public_api": [
+        "AwenDepositTokenConfig"
+      ],
+      "data": [],
+      "tests": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/装备与物品系统/物品注册表与动态加载.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "affinity",
+      "title": "好感与商店",
+      "kind": "system",
+      "paths": [
+        "Integration/Affinity/**/*.cs"
+      ],
+      "entry": "Integration/Affinity/AffinityRuntimeHooks.cs",
+      "state_owner": "AffinityRuntimeModule",
+      "public_api": [
+        "AffinityRuntimeModule",
+        "AffinityConfig"
+      ],
+      "data": [],
+      "tests": [
+        "tests/AffinityRuntimeModuleGuard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/NPC 关系系统/好感度框架核心.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "daily-report",
+      "title": "日报、悬赏与报箱",
+      "kind": "system",
+      "paths": [
+        "Integration/DailyReport/**/*.cs",
+        "Config/ConfigDailyReport.cs",
+        "Localization/DailyReportLocalization.cs"
+      ],
+      "entry": "Integration/DailyReport/DailyReportRuntimeModule.cs",
+      "state_owner": "DailyReportRuntimeModule",
+      "public_api": [
+        "DailyReportRuntimeModule"
+      ],
+      "data": [
+        "Assets/Data/DailyReport*.json"
+      ],
+      "tests": [
+        "tests/DailyReport*Guard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/日报悬赏欠款.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md",
+        "Common/UI/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "back-mountain",
+      "title": "竞技场后山",
+      "kind": "system",
+      "paths": [
+        "Integration/BackMountain/**/*.cs",
+        "Config/ConfigBackMountain.cs"
+      ],
+      "entry": "Integration/BackMountain/BackMountainRuntimeModule.cs",
+      "state_owner": "BackMountainRuntimeModule",
+      "public_api": [
+        "BackMountainRuntimeModule"
+      ],
+      "data": [],
+      "tests": [
+        "tests/BackMountain*Guard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/竞技场后山修复约定.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "wish-fountain",
+      "title": "星愿许愿台",
+      "kind": "system",
+      "paths": [
+        "Integration/WishFountain/**/*.cs"
+      ],
+      "entry": "Integration/WishFountain/WishFountainRuntimeModule.cs",
+      "state_owner": "WishFountainRuntimeModule",
+      "public_api": [
+        "WishFountainRuntimeModule",
+        "WishFountainService"
+      ],
+      "data": [],
+      "tests": [
+        "tests/WishFountainRuntimeModuleGuard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/许愿台系统.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "codex",
+      "title": "鸭皇图鉴",
+      "kind": "system",
+      "paths": [
+        "Integration/Codex/**/*.cs",
+        "Config/ConfigCodex.cs"
+      ],
+      "entry": "Integration/Codex/CodexRuntimeModule.cs",
+      "state_owner": "CodexRuntimeModule",
+      "public_api": [
+        "CodexRuntimeModule"
+      ],
+      "data": [
+        "Assets/Data/Codex*.json"
+      ],
+      "tests": [
+        "tests/Codex*Guard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/鸭皇图鉴系统.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "reforge",
+      "title": "重铸",
+      "kind": "system",
+      "paths": [
+        "Integration/Reforge/**/*.cs"
+      ],
+      "entry": "Integration/Reforge/ColdQuenchFluidConfig.cs",
+      "state_owner": "ColdQuenchFluidConfig",
+      "public_api": [
+        "ColdQuenchFluidConfig"
+      ],
+      "data": [],
+      "tests": [
+        "tests/Reforge*Guard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/项目概览/核心功能特性/高级功能/重铸系统.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "affix-forge",
+      "title": "词缀锻造",
+      "kind": "system",
+      "paths": [
+        "Integration/AffixForge/**/*.cs",
+        "Config/ConfigAffixForge.cs"
+      ],
+      "entry": "Integration/AffixForge/AffixBuffFactory.cs",
+      "state_owner": "AffixBuffFactory",
+      "public_api": [
+        "AffixBuffFactory"
+      ],
+      "data": [],
+      "tests": [
+        "tests/AffixForge*Guard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/词缀锻造系统.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "dragon-king",
+      "title": "龙王 Boss 与武器",
+      "kind": "content",
+      "paths": [
+        "Integration/DragonKing/**/*.cs"
+      ],
+      "entry": "Integration/DragonKing/DragonKingBoss.cs",
+      "state_owner": "DragonKingRuntimeModule",
+      "public_api": [
+        "DragonKingRuntimeModule",
+        "DragonKingAbilityController"
+      ],
+      "data": [],
+      "tests": [
+        "tests/DragonKing*Guard.py",
+        "tests/ManagedBossRuntimeModuleOwnershipGuard.py",
+        "tests/fixtures/EquipmentBootstrapOwners"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/项目概览/核心功能特性/装备与物品系统/套装效果系统/龙王套装效果.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "dragon-descendant",
+      "title": "龙裔 Boss",
+      "kind": "content",
+      "paths": [
+        "Integration/DragonDescendant/**/*.cs"
+      ],
+      "entry": "Integration/DragonDescendant/DragonDescendantBoss.cs",
+      "state_owner": "DragonDescendantRuntimeModule",
+      "public_api": [
+        "DragonDescendantRuntimeModule",
+        "DragonBreathBuffHandler"
+      ],
+      "data": [],
+      "tests": [
+        "tests/DragonDescendant*Guard.py",
+        "tests/ManagedBossRuntimeModuleOwnershipGuard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/自定义 Boss 系统/龙裔遗族 Boss/龙裔遗族 Boss.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "phantom-witch",
+      "title": "幽灵女巫 Boss",
+      "kind": "content",
+      "paths": [
+        "Integration/PhantomWitch/**/*.cs"
+      ],
+      "entry": "Integration/PhantomWitch/PhantomWitchBoss.cs",
+      "state_owner": "PhantomWitchRuntimeModule",
+      "public_api": [
+        "PhantomWitchRuntimeModule",
+        "PhantomWitchAbilityController"
+      ],
+      "data": [],
+      "tests": [
+        "tests/PhantomWitch*Guard.py",
+        "tests/ManagedBossRuntimeModuleOwnershipGuard.py",
+        "tests/fixtures/EquipmentBootstrapOwners"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/自定义 Boss 系统/幽灵女巫 Boss.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "new-weapons",
+      "title": "新武器",
+      "kind": "content",
+      "paths": [
+        "Integration/NewWeapons/**/*.cs"
+      ],
+      "entry": "Integration/IntegrationHostCompatibility.cs",
+      "state_owner": "NewWeaponBootstrap",
+      "public_api": [
+        "NewWeaponBootstrap"
+      ],
+      "data": [],
+      "tests": [],
+      "docs": [
+        ".qoder/repowiki/zh/content/装备与物品系统/自定义武器系统/自定义武器系统.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "set-bonus",
+      "title": "套装效果",
+      "kind": "content",
+      "paths": [
+        "Integration/Bonus/**/*.cs"
+      ],
+      "entry": "Integration/Bonus/DragonSetBonus.cs",
+      "state_owner": "SetBonusRuntimeModule",
+      "public_api": [
+        "SetBonusRuntimeModule",
+        "DragonSetBonus"
+      ],
+      "data": [],
+      "tests": [
+        "tests/SetBonusLifecycleGuard.py",
+        "tests/fixtures/ModuleOwnerCleanup"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/装备与物品系统/套装效果系统.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "frostmourne",
+      "title": "霜之哀伤",
+      "kind": "content",
+      "paths": [
+        "Integration/Frostmourne/**/*.cs"
+      ],
+      "entry": "Integration/Frostmourne/FrostmourneBootstrap.cs",
+      "state_owner": "FrostmourneRuntimeModule",
+      "public_api": [
+        "FrostmourneRuntimeModule",
+        "FrostmourneAbilityManager"
+      ],
+      "data": [],
+      "tests": [
+        "tests/Frostmourne*Guard.py",
+        "tests/EquipmentBootstrapRuntimeModuleGuard.py",
+        "tests/fixtures/ModuleOwnerCleanup"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/装备与物品系统/自定义武器系统/霜之哀伤（Frostmourne）.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "flight-totem",
+      "title": "飞行图腾",
+      "kind": "content",
+      "paths": [
+        "Integration/FlightTotem/**/*.cs"
+      ],
+      "entry": "Integration/FlightTotem/FlightTotemBootstrap.cs",
+      "state_owner": "FlightTotemRuntimeModule",
+      "public_api": [
+        "FlightTotemRuntimeModule",
+        "CA_Flight"
+      ],
+      "data": [],
+      "tests": [
+        "tests/FlightTotem*Guard.py",
+        "tests/EquipmentBootstrapRuntimeModuleGuard.py",
+        "tests/fixtures/FlightTotemRuntimeModule/*",
+        "tests/fixtures/ModuleOwnerCleanup"
+      ],
+      "docs": [],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "death-wraith",
+      "title": "死亡亡魂",
+      "kind": "system",
+      "paths": [
+        "Integration/DeathWraith/**/*.cs"
+      ],
+      "entry": "Integration/DeathWraith/DeathWraithSystem.cs",
+      "state_owner": "DeathWraithRuntimeModule",
+      "public_api": [
+        "DeathWraithRuntimeModule",
+        "DeathWraithCombatLoadout"
+      ],
+      "data": [],
+      "tests": [
+        "tests/DeathWraith*Guard.py",
+        "tests/DeathWraithRuntimeModuleOwnershipGuard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/项目概览/核心功能特性/高级功能/死亡亡魂系统.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "reverse-scale",
+      "title": "逆鳞",
+      "kind": "content",
+      "paths": [
+        "Integration/ReverseScale/**/*.cs"
+      ],
+      "entry": "Integration/ReverseScale/ReverseScaleBootstrap.cs",
+      "state_owner": "ReverseScaleRuntimeModule",
+      "public_api": [
+        "ReverseScaleRuntimeModule",
+        "ReverseScaleAbilityManager"
+      ],
+      "data": [],
+      "tests": [
+        "tests/ReverseScale*Guard.py",
+        "tests/EquipmentBootstrapRuntimeModuleGuard.py",
+        "tests/fixtures/EquipmentBootstrapOwners",
+        "tests/fixtures/ModuleOwnerCleanup"
+      ],
+      "docs": [],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "wedding",
+      "title": "婚姻",
+      "kind": "system",
+      "paths": [
+        "Integration/Wedding/**/*.cs"
+      ],
+      "entry": "Integration/Wedding/WeddingRuntimeModule.cs",
+      "state_owner": "WeddingRuntimeModule",
+      "public_api": [
+        "WeddingRuntimeModule",
+        "NPCMarriageSystem"
+      ],
+      "data": [],
+      "tests": [
+        "tests/PermanentSpouseRestoreLifecycleGuard.py"
+      ],
+      "docs": [],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "sky-items",
+      "title": "天空岛物品",
+      "kind": "content",
+      "paths": [
+        "Integration/SkyIsland/**/*.cs",
+        "Assets/Data/SkyIsland/**/*.json"
+      ],
+      "entry": "Integration/SkyIsland/SkyIslandBossGearConfig.cs",
+      "state_owner": "SkyIslandBossGearConfig",
+      "public_api": [
+        "SkyIslandBossGearConfig"
+      ],
+      "data": [
+        "Assets/Data/SkyIsland*.json",
+        "Assets/Data/SkyIsland/**/*.json"
+      ],
+      "tests": [
+        "tests/SkyIsland*Guard.py"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/天空岛剧情与持久化.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    },
+    {
+      "id": "mutators",
+      "title": "变异词条",
+      "kind": "system",
+      "paths": [
+        "Integration/Mutators/**/*.cs"
+      ],
+      "entry": "Integration/Mutators/MutatorDefinitions.cs",
+      "state_owner": "MutatorDefinitions / MutatorManager / MutatorModeFlow / MutatorBossRegenRuntime",
+      "public_api": [
+        "MutatorDefinitions"
+      ],
+      "data": [],
+      "tests": [
+        "tests/Mutators*Guard.py",
+        "tests/fixtures/ArenaHostRemainder"
+      ],
+      "docs": [],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common"
+      ]
+    }
+  ]
+}

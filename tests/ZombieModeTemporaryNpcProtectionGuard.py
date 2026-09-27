@@ -3,11 +3,13 @@ import sys
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
+RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+HOST_BRIDGE = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -36,6 +38,8 @@ def require(text: str, snippet: str, label: str) -> int:
 def main() -> int:
     models = MODELS.read_text(encoding="utf-8")
     entry = ENTRY.read_text(encoding="utf-8")
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
+    host_bridge = HOST_BRIDGE.read_text(encoding="utf-8")
     rewards = read_rewards()
     spawner = SPAWNER.read_text(encoding="utf-8")
     safe_zone = SAFE_ZONE.read_text(encoding="utf-8")
@@ -51,12 +55,12 @@ def main() -> int:
         if result:
             return result
 
-    for snippet in [
-        "TickZombieModeTemporaryNpcProtection();",
-    ]:
-        result = require(entry, snippet, "temporary NPC protection tick")
-        if result:
-            return result
+    if "TickZombieModeTemporaryNpcProtection();" not in runtime_module:
+        return fail("ZombieModeTemporaryNpcProtectionGuard: runtime module must schedule temporary NPC protection")
+    if "if (module != null) module.TickZombieMode(deltaTime);" not in entry:
+        return fail("ZombieModeTemporaryNpcProtectionGuard: host tick must forward to RuntimeModule")
+    if "TickZombieModeTemporaryNpcProtection();" not in host_bridge:
+        return fail("ZombieModeTemporaryNpcProtectionGuard: host bridge must forward temporary NPC protection tick")
 
     for snippet in [
         "ApplyZombieModeTemporaryNpcProtection(npc, runId, serviceType);",

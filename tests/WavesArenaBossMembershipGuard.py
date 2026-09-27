@@ -22,23 +22,24 @@ from pathlib import Path
 import re
 import sys
 
-ARENA = Path("WavesArena/WavesArena.cs")
-LOOT = Path("LootAndRewards/LootAndRewardsRandomBossLoot.cs")
+ARENA = Path("WavesArena/WavesArenaRuntimeModule_WaveDeaths.cs")
+HOST = Path("WavesArena/WavesArena.cs")
+LOOT = Path("WavesArena/WavesArenaRuntimeModule_BossLootEvent.cs")
 
 GATE = "IsCurrentWaveBossMember(bossMain)"
 
 # 分界线之上：与单次击杀绑定，任何来源的 Boss 都要做
 ABOVE_GATE = (
-    "countedDeadBosses.Add(bossMain);",
-    "CheckBossKillAchievementsOnce(bossMain);",
+    "CountedDeadBosses.Add(bossMain);",
+    "owner.CheckBossKillAchievementsOnceForArena(bossMain);",
 )
 
 # 分界线之下：与本波进度绑定，只有成员才允许触碰
 BELOW_GATE = (
-    "infiniteHellCashPool",
-    "currentWaveBosses.RemoveAt",
-    "defeatedEnemies++",
-    "bossesInCurrentWaveRemaining",
+    "InfiniteHellCashPool",
+    "CurrentWaveBosses.RemoveAt",
+    "DefeatedEnemies++",
+    "BossesInCurrentWaveRemaining",
     "ProceedAfterWaveFinished();",
 )
 
@@ -76,14 +77,14 @@ def extract_method(text, signature):
 
 
 def main():
-    for path in (ARENA, LOOT):
+    for path in (ARENA, HOST, LOOT):
         if not path.is_file():
             return fail("找不到 " + path.as_posix())
 
     arena = ARENA.read_text(encoding="utf-8", errors="ignore")
 
     # ---- 1) 分界线存在且是 return 闸 ----
-    body = extract_method(arena, "private void HandleBossDeath(")
+    body = extract_method(arena, "internal void HandleBossDeath(")
     if not body:
         return fail(ARENA.as_posix() + " 找不到 HandleBossDeath 方法体")
     body = strip_comments(body)
@@ -124,11 +125,11 @@ def main():
         return fail(ARENA.as_posix() + " 找不到 IsCurrentWaveBossMember 方法体")
     helper = strip_comments(helper)
     for symbol, why in (
-        ("modeDActive", "Mode D 有独立波次系统，且它会 SetBossRushRuntimeActive(true)，"
+        ("owner.IsModeDActive", "Mode D 有独立波次系统，且它会 SetBossRushRuntimeActive(true)，"
                         "必须在这里挡掉（放 HandleBossDeath 开头会掐掉 Mode D 的击杀成就）"),
-        ("currentWaveBosses", "多 Boss 档的成员真相来源"),
-        ("currentBoss", "单 Boss 档的成员真相来源；多 Boss 档也用作登记失败时的回落"),
-        ("bossesPerWave", "两档的分流判据"),
+        ("CurrentWaveBosses", "多 Boss 档的成员真相来源"),
+        ("CurrentBoss", "单 Boss 档的成员真相来源；多 Boss 档也用作登记失败时的回落"),
+        ("BossesPerWave", "两档的分流判据"),
     ):
         if symbol not in helper:
             return fail(
@@ -154,6 +155,9 @@ def main():
     if "HandleBossDeath(bossMain, dmgInfo);" not in loot:
         return fail(
             LOOT.as_posix() + " 不再调用 HandleBossDeath，本守卫的前提已变，请同步更新守卫。")
+    host = strip_comments(HOST.read_text(encoding="utf-8", errors="ignore"))
+    if "wavesArenaRuntime.HandleBossDeath(bossMain, damageInfo);" not in host:
+        return fail("掉落漏斗调用的宿主入口必须转发到实际竞技场模块")
 
     print("WavesArenaBossMembershipGuard: PASS（分界线就位，"
           + str(len(ABOVE_GATE)) + " 项在上，" + str(len(BELOW_GATE)) + " 项在下）")

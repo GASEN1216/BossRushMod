@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class DragonKingRuntimeModule
     {
         internal async UniTask<ManagedBossPrepareResult> PrepareManagedDragonKingAsync(
             Vector3 position, ManagedBossSpawnContext ctx)

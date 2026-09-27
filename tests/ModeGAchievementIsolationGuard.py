@@ -26,6 +26,7 @@ ModeGAchievementIsolationGuard — Mode G 成就隔离守卫（规格 §20 第 2
 import os
 import re
 import sys
+from cs_source_util import clean_source
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TRIGGERS = os.path.join(REPO_ROOT, "Achievement", "AchievementTriggers.cs")
@@ -41,9 +42,7 @@ def read(path, errors):
 
 
 def strip_comments(text):
-    text = re.sub(r"/\*[\s\S]*?\*/", "", text)
-    text = re.sub(r"//[^\n]*", "", text)
-    return text
+    return clean_source(text)
 
 
 def main():
@@ -76,7 +75,7 @@ def main():
              r"[\s\S]{0,80}?catch[\s\S]{0,40}?return false;",
              "窗口查询 Safe 包装 no-throw（异常 false）"),
             ("HurtGateReadOnly",
-             r"if \(!IsActive && !IsModeGAchievementDamageWindowActiveSafe\(\)\) return;",
+             r"if \(!isLegacyActive\(\) && !IsModeGAchievementDamageWindowActiveSafe\(\)\) return;",
              "OnHurt 门控：只读 IsActive + 窗口（不写 IsActive）"),
             ("SessionFlawlessBaseline",
              r"internal void BeginModeGAchievementSession\(\)"
@@ -85,7 +84,7 @@ def main():
              "开局归零 flawless 基准（HasTakenDamage）后再清去重集"),
         ]
         for name, pattern, desc in checks:
-            if not re.search(pattern, triggers):
+            if not re.search(pattern, clean_source(triggers)):
                 errors.append("[{}] 不满足: {}".format(name, desc))
 
         # 不写 IsActive：Mode G region 代码体（剥注释）禁 `IsActive =` 赋值

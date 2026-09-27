@@ -14,12 +14,12 @@ ModeGManagedBossLootGuard — 托管 Boss 掉落关闭守卫（规格 §20 第 1
 import os
 import re
 import sys
+from cs_source_util import clean_source
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONTRACTS = os.path.join(REPO_ROOT, "Utilities", "ManagedBossSpawnContracts.cs")
 TRANSACTION = os.path.join(REPO_ROOT, "ModeG", "ModeGSpawnTransaction.cs")
-DD_ADAPTER = os.path.join(REPO_ROOT, "Integration", "DragonDescendant",
-                          "DragonDescendantBoss_ModeGAdapter.cs")
+DD_ADAPTER = os.path.join(REPO_ROOT, "Integration", "ModeGManagedCharacterService.cs")
 ONDEAD_PATCH = os.path.join(REPO_ROOT, "Patches", "Combat", "CharacterOnDeadPatch.cs")
 
 
@@ -41,7 +41,7 @@ def main():
     errors = []
     contracts = read(CONTRACTS, errors)
     tx = read(TRANSACTION, errors)
-    dd = read(DD_ADAPTER, errors)
+    dd = clean_source(read(DD_ADAPTER, errors))
     patch = read(ONDEAD_PATCH, errors)
 
     if contracts:

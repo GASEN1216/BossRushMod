@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class BossFilterRuntimeModule
     {
         /// <summary>
         /// 创建 Boss 池 UI（使用官方 Prefab）
@@ -57,11 +57,11 @@ namespace BossRush
                 // 创建底部按钮（列表内容由 OpenBossPoolWindow 的 ShowBossPoolTab 填）
                 CreateBottomButtons(bossPoolPanel.transform);
 
-                DevLog("[BossRush] Boss 池 UI 创建完成");
+                ModBehaviour.DevLog("[BossRush] Boss 池 UI 创建完成");
             }
             catch (Exception ex)
             {
-                DevLog("[BossRush] CreateBossPoolUI 失败: " + ex.Message + "\n" + ex.StackTrace);
+                ModBehaviour.DevLog("[BossRush] CreateBossPoolUI 失败: " + ex.Message + "\n" + ex.StackTrace);
             }
         }
 

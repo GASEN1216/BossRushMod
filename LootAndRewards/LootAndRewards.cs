@@ -34,6 +34,8 @@ using Duckov.UI;
 using UnityEngine.AI;
 using Duckov.ItemBuilders;
 
+using ItemValueCacheEntry = BossRush.WavesArenaRuntimeModule.ItemValueCacheEntry;
+
 namespace BossRush
 {
     /// <summary>
@@ -41,44 +43,46 @@ namespace BossRush
     /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        #region LootAndRewards
+
         // ============================================================================
         // 掉落系统内部常量
         // ============================================================================
 
         /// <summary>普通品质最小值</summary>
-        private const int LOOT_LOW_QUALITY_MIN = 1;
+        internal const int LOOT_LOW_QUALITY_MIN = 1;
 
         /// <summary>普通品质最大值</summary>
-        private const int LOOT_LOW_QUALITY_MAX = 4;
+        internal const int LOOT_LOW_QUALITY_MAX = 4;
 
         /// <summary>高品质最小值</summary>
-        private const int LOOT_HIGH_QUALITY_MIN = 5;
+        internal const int LOOT_HIGH_QUALITY_MIN = 5;
 
         /// <summary>高品质最大值</summary>
-        private const int LOOT_HIGH_QUALITY_MAX = 8;
-
-        /// <summary>血量加成系数（每100血量增加的高品质概率，0.05即5%）</summary>
-        private const float LOOT_HEALTH_BONUS_RATE = 0.05f;
-
-        /// <summary>击杀时间加成系数（最快击杀时的最大加成，0.1即10%）</summary>
-        private const float LOOT_TIME_BONUS_RATE = 0.1f;
-
-        /// <summary>原版 Boss 战利品 Q5+ 保底的最小 Boss 最大生命值门槛</summary>
-        private const float LEGACY_BOSS_GUARANTEE_MIN_MAX_HEALTH = 250f;
+        internal const int LOOT_HIGH_QUALITY_MAX = 8;
 
         // ============================================================================
 
-        private static InteractableLootbox _cachedLootBoxTemplateWithLoader = null;
-        private static InteractableLootbox _cachedDifficultyRewardLootBoxTemplate = null;
-        private static InteractableLootbox _cachedVictoryRewardVisualLootBoxTemplate = null;
-        private VictoryRewardShadowCrateController _activeVictoryRewardShadowCrateController = null;
-        private bool _difficultyRewardSpawnPositionOverrideActive = false;
-        private Vector3 _difficultyRewardSpawnPositionOverride = Vector3.zero;
+        private VictoryRewardShadowCrateController _activeVictoryRewardShadowCrateController
+        {
+            get { return wavesArenaRuntime._activeVictoryRewardShadowCrateController; }
+            set { wavesArenaRuntime._activeVictoryRewardShadowCrateController = value; }
+        }
+        private bool _difficultyRewardSpawnPositionOverrideActive
+        {
+            get { return wavesArenaRuntime._difficultyRewardSpawnPositionOverrideActive; }
+            set { wavesArenaRuntime._difficultyRewardSpawnPositionOverrideActive = value; }
+        }
+        private Vector3 _difficultyRewardSpawnPositionOverride
+        {
+            get { return wavesArenaRuntime._difficultyRewardSpawnPositionOverride; }
+            set { wavesArenaRuntime._difficultyRewardSpawnPositionOverride = value; }
+        }
 
         /// <summary>
         /// 检查物品ID是否在掉落黑名单中
         /// </summary>
-        private static bool IsItemBlacklisted(int itemId)
+        internal static bool IsItemBlacklisted(int itemId)
         {
             return LootBlacklistRegistry.Contains(itemId);
         }
@@ -101,12 +105,12 @@ namespace BossRush
 
         // 通用随机奖池的排除口径唯一定义在 LootExcludeTagPolicy：
         // Boss 奖励箱、通关奖励、空投与天空岛搜刮点共用同一份列表，避免各写各的漏排。
-        private List<Duckov.Utilities.Tag> BuildGeneralLootExcludeTags(Duckov.Utilities.GameplayDataSettings.TagsData tagsData, bool includeCharacterTag = false)
+        internal List<Duckov.Utilities.Tag> BuildGeneralLootExcludeTags(Duckov.Utilities.GameplayDataSettings.TagsData tagsData, bool includeCharacterTag = false)
         {
             return LootExcludeTagPolicy.BuildExcludeTags(tagsData, includeCharacterTag);
         }
 
-        private void MergeGeneralLootExcludeTags(List<Duckov.Utilities.Tag> excludeList, Duckov.Utilities.GameplayDataSettings.TagsData tagsData, bool includeCharacterTag = false)
+        internal void MergeGeneralLootExcludeTags(List<Duckov.Utilities.Tag> excludeList, Duckov.Utilities.GameplayDataSettings.TagsData tagsData, bool includeCharacterTag = false)
         {
             if (excludeList == null || tagsData == null)
             {
@@ -120,648 +124,694 @@ namespace BossRush
             }
         }
 
-        private List<EnemyPresetInfo> enemyPresets = new List<EnemyPresetInfo>();
-        private int _enemyPresetInitializationScanCount;
-        private float minBossBaseHealth = 100f;
-        private float maxBossBaseHealth = 100f;
 
         // [性能优化] 敌人预设初始化标记，避免每次传送都重复扫描
-        private static bool _enemyPresetsInitialized = false;
 
-        private readonly Dictionary<CharacterMainControl, float> bossSpawnTimes = new Dictionary<CharacterMainControl, float>();
-        private readonly Dictionary<CharacterMainControl, int> bossOriginalLootCounts = new Dictionary<CharacterMainControl, int>();
-        private readonly HashSet<CharacterMainControl> countedDeadBosses = new HashSet<CharacterMainControl>();
-        private readonly HashSet<CharacterMainControl> bossRushLootboxPathBosses = new HashSet<CharacterMainControl>();
-        private readonly Dictionary<CharacterMainControl, Action<DamageInfo>> trackedBossLootHooks
-            = new Dictionary<CharacterMainControl, Action<DamageInfo>>();
-        private readonly List<CharacterMainControl> bossRushLootboxPathTrackedBossScratch = new List<CharacterMainControl>(16);
-        private readonly List<CharacterMainControl> bossRushLootboxPathStaleBossScratch = new List<CharacterMainControl>(4);
-        private readonly List<Item> modeFPlunderPenaltyScratch = new List<Item>();
-        private readonly List<int> legacyBossGuaranteeCandidateScratch = new List<int>(1024);
-        private readonly Dictionary<int, List<int>> legacyBossGuaranteeQualityBucketsScratch = new Dictionary<int, List<int>>(8);
-        private readonly List<Item> difficultyRewardPreferredScratch = new List<Item>(32);
-        private readonly List<Item> difficultyRewardFallbackHighQualityScratch = new List<Item>(32);
-        private readonly List<Item> difficultyRewardKeepScratch = new List<Item>(32);
-        private const float LOOT_WARNING_LOG_INTERVAL = 5f;
-        private readonly Dictionary<string, float> lootNextWarningLogTimes = new Dictionary<string, float>();
+        private Dictionary<CharacterMainControl, float> bossSpawnTimes
+        {
+            get { return wavesArenaRuntime.bossSpawnTimes; }
+        }
+        private Dictionary<CharacterMainControl, int> bossOriginalLootCounts
+        {
+            get { return wavesArenaRuntime.bossOriginalLootCounts; }
+        }
+        private HashSet<CharacterMainControl> countedDeadBosses { get { return wavesArenaRuntime.CountedDeadBosses; } }
+        private HashSet<CharacterMainControl> bossRushLootboxPathBosses
+        {
+            get { return wavesArenaRuntime.bossRushLootboxPathBosses; }
+        }
+        private Dictionary<CharacterMainControl, Action<DamageInfo>> trackedBossLootHooks
+        {
+            get { return wavesArenaRuntime.trackedBossLootHooks; }
+        }
+        private List<CharacterMainControl> bossRushLootboxPathTrackedBossScratch
+        {
+            get { return wavesArenaRuntime.bossRushLootboxPathTrackedBossScratch; }
+        }
+        private List<CharacterMainControl> bossRushLootboxPathStaleBossScratch
+        {
+            get { return wavesArenaRuntime.bossRushLootboxPathStaleBossScratch; }
+        }
+        private List<int> legacyBossGuaranteeCandidateScratch
+        {
+            get { return wavesArenaRuntime.legacyBossGuaranteeCandidateScratch; }
+        }
+        private Dictionary<int, List<int>> legacyBossGuaranteeQualityBucketsScratch
+        {
+            get { return wavesArenaRuntime.legacyBossGuaranteeQualityBucketsScratch; }
+        }
+        private List<Item> difficultyRewardPreferredScratch
+        {
+            get { return wavesArenaRuntime.difficultyRewardPreferredScratch; }
+        }
+        private List<Item> difficultyRewardFallbackHighQualityScratch
+        {
+            get { return wavesArenaRuntime.difficultyRewardFallbackHighQualityScratch; }
+        }
+        private List<Item> difficultyRewardKeepScratch
+        {
+            get { return wavesArenaRuntime.difficultyRewardKeepScratch; }
+        }
 
         private void LogLootWarningLimited(string key, string message, Exception e = null)
         {
-            if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(message))
-            {
-                return;
-            }
-
-            float now = Time.unscaledTime;
-            float nextLogTime;
-            if (lootNextWarningLogTimes.TryGetValue(key, out nextLogTime) && now < nextLogTime)
-            {
-                return;
-            }
-
-            lootNextWarningLogTimes[key] = now + LOOT_WARNING_LOG_INTERVAL;
-            DevLog("[BossRush] [WARNING] " + message + (e != null ? ": " + e.Message : string.Empty));
+            wavesArenaRuntime.LogLootWarningLimited(key, message, e);
         }
 
-        private string GetBossLootTrackingDebugName(CharacterMainControl character)
+        private bool infiniteHellMode
         {
-            if (object.ReferenceEquals(character, null))
-            {
-                return "<null>";
-            }
-
-            try
-            {
-                if (character.gameObject != null && !string.IsNullOrEmpty(character.gameObject.name))
-                {
-                    return character.gameObject.name;
-                }
-            }
-            catch (Exception)
-            {
-                return "<unnamed>";
-            }
-
-            return "<unnamed>";
+            get { return wavesArenaRuntime.InfiniteHellMode; }
+            set { wavesArenaRuntime.InfiniteHellMode = value; }
         }
 
-        private void RollbackBossRandomLootTrackingRegistration(CharacterMainControl character)
+        private int infiniteHellWaveIndex
         {
-            if (object.ReferenceEquals(character, null))
-            {
-                return;
-            }
-
-            bossSpawnTimes.Remove(character);
-            bossOriginalLootCounts.Remove(character);
-            countedDeadBosses.Remove(character);
-            trackedBossLootHooks.Remove(character);
-            FinalizeBossRushLootboxPathTracking(character);
+            get { return wavesArenaRuntime.InfiniteHellWaveIndex; }
+            set { wavesArenaRuntime.InfiniteHellWaveIndex = value; }
         }
 
-        private bool infiniteHellMode = false;
-        private int infiniteHellWaveIndex = 0;
-        private long infiniteHellCashPool = 0L;
-        // 已发放的最高里程碑阶数（每100波递进，0表示尚未发放任何里程碑奖励）
-        private int infiniteHellMilestoneRewardTier = 0;
-        private long infiniteHellWaveCashThisWave = 0L;
-        private readonly List<int> infiniteHellHighQualityItemPool = new List<int>(256);
-        private readonly HashSet<int> infiniteHellHighQualityCandidateIdScratch = new HashSet<int>();
-        private readonly List<int> infiniteHellHighQualityPreferredScratch = new List<int>(128);
-        private readonly List<int> infiniteHellHighQualityFallbackScratch = new List<int>(128);
-        private bool infiniteHellHighQualityItemPoolInitialized = false;
+        private long infiniteHellCashPool
+        {
+            get { return wavesArenaRuntime.InfiniteHellCashPool; }
+            set { wavesArenaRuntime.InfiniteHellCashPool = value; }
+        }
+
+        private int infiniteHellMilestoneRewardTier
+        {
+            get { return wavesArenaRuntime.InfiniteHellMilestoneRewardTier; }
+            set { wavesArenaRuntime.InfiniteHellMilestoneRewardTier = value; }
+        }
+
+        private long infiniteHellWaveCashThisWave
+        {
+            get { return wavesArenaRuntime.InfiniteHellWaveCashThisWave; }
+            set { wavesArenaRuntime.InfiniteHellWaveCashThisWave = value; }
+        }
+
+        private List<int> infiniteHellHighQualityItemPool
+        {
+            get { return wavesArenaRuntime.InfiniteHellHighQualityItemPool; }
+        }
+
+        private HashSet<int> infiniteHellHighQualityCandidateIdScratch
+        {
+            get { return wavesArenaRuntime.InfiniteHellHighQualityCandidateIdScratch; }
+        }
+
+        private List<int> infiniteHellHighQualityPreferredScratch
+        {
+            get { return wavesArenaRuntime.InfiniteHellHighQualityPreferredScratch; }
+        }
+
+        private List<int> infiniteHellHighQualityFallbackScratch
+        {
+            get { return wavesArenaRuntime.InfiniteHellHighQualityFallbackScratch; }
+        }
+
+        private bool infiniteHellHighQualityItemPoolInitialized
+        {
+            get { return wavesArenaRuntime.InfiniteHellHighQualityItemPoolInitialized; }
+            set { wavesArenaRuntime.InfiniteHellHighQualityItemPoolInitialized = value; }
+        }
 
         // ============================================================================
         // 物品价值缓存系统 - 避免Boss死亡时同步实例化大量物品导致卡顿
         // ============================================================================
-        private static Dictionary<int, ItemValueCacheEntry> _itemValueCache = null;
-        private static bool _itemValueCacheInitialized = false;
-        private static bool _itemValueCacheInitializing = false;
-        private static List<int> _legacyBossLootCandidateIds = null;
-        private static Dictionary<int, List<int>> _legacyBossLootCandidateIdsByQuality = null;
-        private static bool _legacyBossLootCandidateCacheInitialized = false;
+        private static InteractableLootbox _cachedLootBoxTemplateWithLoader
+        {
+            get { return WavesArenaRuntimeModule.CachedLootBoxTemplateWithLoader; }
+            set { WavesArenaRuntimeModule.CachedLootBoxTemplateWithLoader = value; }
+        }
+
+        private static InteractableLootbox _cachedDifficultyRewardLootBoxTemplate
+        {
+            get { return WavesArenaRuntimeModule.CachedDifficultyRewardLootBoxTemplate; }
+            set { WavesArenaRuntimeModule.CachedDifficultyRewardLootBoxTemplate = value; }
+        }
+
+        private static InteractableLootbox _cachedVictoryRewardVisualLootBoxTemplate
+        {
+            get { return WavesArenaRuntimeModule.CachedVictoryRewardVisualLootBoxTemplate; }
+            set { WavesArenaRuntimeModule.CachedVictoryRewardVisualLootBoxTemplate = value; }
+        }
+
+        private static Dictionary<int, ItemValueCacheEntry> _itemValueCache
+        {
+            get { return WavesArenaRuntimeModule.ItemValueCache; }
+            set { WavesArenaRuntimeModule.ItemValueCache = value; }
+        }
+
+        private static bool _itemValueCacheInitialized
+        {
+            get { return WavesArenaRuntimeModule.ItemValueCacheInitialized; }
+            set { WavesArenaRuntimeModule.ItemValueCacheInitialized = value; }
+        }
+
+        private static bool _itemValueCacheInitializing
+        {
+            get { return WavesArenaRuntimeModule.ItemValueCacheInitializing; }
+            set { WavesArenaRuntimeModule.ItemValueCacheInitializing = value; }
+        }
+
+        private static List<int> _legacyBossLootCandidateIds
+        {
+            get { return WavesArenaRuntimeModule.LegacyBossLootCandidateIds; }
+            set { WavesArenaRuntimeModule.LegacyBossLootCandidateIds = value; }
+        }
+
+        private static Dictionary<int, List<int>> _legacyBossLootCandidateIdsByQuality
+        {
+            get { return WavesArenaRuntimeModule.LegacyBossLootCandidateIdsByQuality; }
+            set { WavesArenaRuntimeModule.LegacyBossLootCandidateIdsByQuality = value; }
+        }
+
+        private static bool _legacyBossLootCandidateCacheInitialized
+        {
+            get { return WavesArenaRuntimeModule.LegacyBossLootCandidateCacheInitialized; }
+            set { WavesArenaRuntimeModule.LegacyBossLootCandidateCacheInitialized = value; }
+        }
+
+        private static void ResetLootAndRewardsStaticCaches()
+        {
+            WavesArenaRuntimeModule.ResetLootAndRewardsStaticCaches();
+        }
+
 
         private void RegisterBossRandomLootTracking(CharacterMainControl character, int originalLootCount = 3, float spawnTimeOffset = 1f)
         {
-            try
-            {
-                if (character == null)
-                {
-                    return;
-                }
-
-                bossSpawnTimes[character] = Time.time + spawnTimeOffset;
-                bossOriginalLootCounts[character] = Mathf.Max(0, originalLootCount);
-                countedDeadBosses.Remove(character);
-                MarkBossRushLootboxPathTracking(character);
-
-                // 遗种巢掉落双轨（加法分支）：本函数覆盖全部 Boss 生成调用位，且天然不含
-                // Mode G 托管路径与丧尸模式，正好等于首版掉落范围。开关关闭时内部直接返回。
-                PetNestDropService.TryTrack(this, character);
-
-                // 词缀熔石掉落（加法分支）：同一挂接点、同一三段式，开关关闭时内部直接返回。
-                AffixForgeStoneDropService.TryTrack(this, character);
-
-                Action<DamageInfo> existingHandler = null;
-                if (trackedBossLootHooks.TryGetValue(character, out existingHandler) && existingHandler != null)
-                {
-                    try
-                    {
-                        character.BeforeCharacterSpawnLootOnDead -= existingHandler;
-                    }
-                    catch (Exception e)
-                    {
-                        DevLog("[BossRush] [WARNING] 重绑随机掉落追踪前取消旧事件失败: boss="
-                            + GetBossLootTrackingDebugName(character) + ", " + e.Message);
-                    }
-                }
-
-                CharacterMainControl capturedCharacter = character;
-                Action<DamageInfo> handler = (dmgInfo) => OnBossBeforeSpawnLoot(capturedCharacter, dmgInfo);
-                trackedBossLootHooks[character] = handler;
-
-                try
-                {
-                    character.BeforeCharacterSpawnLootOnDead += handler;
-                }
-                catch (Exception e)
-                {
-                    RollbackBossRandomLootTrackingRegistration(character);
-                    DevLog("[BossRush] [WARNING] 注册随机掉落追踪事件失败，已回滚追踪状态: boss="
-                        + GetBossLootTrackingDebugName(character) + ", " + e.Message);
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] 注册随机掉落追踪失败: " + e.Message);
-            }
+            wavesArenaRuntime.RegisterBossRandomLootTracking(character, originalLootCount, spawnTimeOffset);
         }
 
         private void ClearBossRandomLootTracking(CharacterMainControl character)
         {
-            if (object.ReferenceEquals(character, null))
-            {
-                return;
-            }
-
-            PetNestDropService.ClearTracking(character);
-            AffixForgeStoneDropService.ClearTracking(character);
-
-            Action<DamageInfo> handler = null;
-            if (trackedBossLootHooks.TryGetValue(character, out handler))
-            {
-                try
-                {
-                    if (!(character == null) && handler != null)
-                    {
-                        character.BeforeCharacterSpawnLootOnDead -= handler;
-                    }
-                }
-                catch (Exception e)
-                {
-                    DevLog("[BossRush] [WARNING] 清理随机掉落追踪事件失败: boss="
-                        + GetBossLootTrackingDebugName(character) + ", " + e.Message);
-                }
-            }
-
-            bossSpawnTimes.Remove(character);
-            bossOriginalLootCounts.Remove(character);
-            countedDeadBosses.Remove(character);
-            trackedBossLootHooks.Remove(character);
+            wavesArenaRuntime.ClearBossRandomLootTracking(character);
         }
 
         private void MarkBossRushLootboxPathTracking(CharacterMainControl character)
         {
-            if (object.ReferenceEquals(character, null))
-            {
-                return;
-            }
-
-            if (config != null &&
-                config.enableRandomBossLoot &&
-                !infiniteHellMode &&
-                !modeEActive &&
-                !modeFActive)
-            {
-                bossRushLootboxPathBosses.Add(character);
-            }
-            else
-            {
-                bossRushLootboxPathBosses.Remove(character);
-            }
+            wavesArenaRuntime.MarkBossRushLootboxPathTracking(character);
         }
 
         private void FinalizeBossRushLootboxPathTracking(CharacterMainControl character)
         {
-            if (object.ReferenceEquals(character, null))
-            {
-                return;
-            }
-
-            bossRushLootboxPathBosses.Remove(character);
-            FrostmourneBlueBossDropHandler.CancelPendingBossRushLootboxDrop(character);
-            PhantomWitchScytheBossDropHandler.CancelPendingBossRushLootboxDrop(character);
-            PetNestDropService.CancelPendingBossRushLootboxDrop(character);
-            AffixForgeStoneDropService.CancelPendingBossRushLootboxDrop(character);
-            SetBonusBossDropHandler.CancelPendingBossRushLootboxDrop(character);
-            NewWeaponBossDropHandler.CancelPendingBossRushLootboxDrop(character);
+            wavesArenaRuntime.FinalizeBossRushLootboxPathTracking(character);
         }
 
         internal void RefreshBossRushLootboxPathTrackingForTrackedBosses()
         {
-            if (bossSpawnTimes.Count == 0)
-            {
-                bossRushLootboxPathBosses.Clear();
-                return;
-            }
-
-            bossRushLootboxPathTrackedBossScratch.Clear();
-            bossRushLootboxPathStaleBossScratch.Clear();
-            foreach (CharacterMainControl boss in bossSpawnTimes.Keys)
-            {
-                bossRushLootboxPathTrackedBossScratch.Add(boss);
-            }
-
-            for (int i = 0; i < bossRushLootboxPathTrackedBossScratch.Count; i++)
-            {
-                CharacterMainControl boss = bossRushLootboxPathTrackedBossScratch[i];
-                if (boss == null)
-                {
-                    bossRushLootboxPathStaleBossScratch.Add(boss);
-                    continue;
-                }
-
-                MarkBossRushLootboxPathTracking(boss);
-            }
-
-            if (bossRushLootboxPathStaleBossScratch.Count == 0)
-            {
-                bossRushLootboxPathTrackedBossScratch.Clear();
-                return;
-            }
-
-            for (int i = 0; i < bossRushLootboxPathStaleBossScratch.Count; i++)
-            {
-                CharacterMainControl staleBoss = bossRushLootboxPathStaleBossScratch[i];
-                bossSpawnTimes.Remove(staleBoss);
-                bossOriginalLootCounts.Remove(staleBoss);
-                countedDeadBosses.Remove(staleBoss);
-                trackedBossLootHooks.Remove(staleBoss);
-                bossRushLootboxPathBosses.Remove(staleBoss);
-            }
-
-            bossRushLootboxPathTrackedBossScratch.Clear();
-            bossRushLootboxPathStaleBossScratch.Clear();
+            wavesArenaRuntime.RefreshBossRushLootboxPathTrackingForTrackedBosses();
         }
 
-        /// <summary>
-        /// 物品价值缓存条目
-        /// </summary>
-        private struct ItemValueCacheEntry
+        internal bool ShouldTrackBossRushLootboxPathForArena()
         {
-            public int value;
-            public int quality;
+            return config != null && config.enableRandomBossLoot && !infiniteHellMode && !modeEActive && !modeFActive;
+        }
+
+        internal void OnBossBeforeSpawnLootForArena(CharacterMainControl character, DamageInfo damageInfo)
+        {
+            OnBossBeforeSpawnLoot(character, damageInfo);
         }
 
         /// <summary>
         /// 初始化物品价值缓存（异步，在后台分帧处理避免卡顿）
         /// </summary>
-        private void InitializeItemValueCacheAsync()
+        private void InitializeItemValueCacheAsync() { wavesArenaRuntime.InitializeItemValueCacheAsync(); }
+        internal bool TryGetCachedItemValue(int itemId, out int value, out int quality)
         {
-            if (_itemValueCacheInitialized || _itemValueCacheInitializing)
-            {
-                return;
-            }
-            _itemValueCacheInitializing = true;
-            StartCoroutine(InitializeItemValueCacheCoroutine());
+            return wavesArenaRuntime.TryGetCachedItemValue(itemId, out value, out quality);
+        }
+        private HashSet<int> BuildGeneralBossLootCandidateIdSet()
+        {
+            return wavesArenaRuntime.BuildGeneralBossLootCandidateIdSet();
+        }
+        private int GetBossLootCandidateQuality(int itemId)
+        {
+            return wavesArenaRuntime.GetBossLootCandidateQuality(itemId);
+        }
+        private void BuildLegacyBossLootQualityBucketsFromIds(IEnumerable<int> ids, Dictionary<int, List<int>> buckets)
+        {
+            wavesArenaRuntime.BuildLegacyBossLootQualityBucketsFromIds(ids, buckets);
+        }
+        internal bool BuildGeneralBossLootCandidateIdSet(HashSet<int> idSet)
+        {
+            return wavesArenaRuntime.BuildGeneralBossLootCandidateIdSet(idSet);
+        }
+        private void ClearLegacyBossGuaranteeQualityBucketsScratch()
+        {
+            wavesArenaRuntime.ClearLegacyBossGuaranteeQualityBucketsScratch();
+        }
+        private bool TryGetLegacyBossLootCandidates(List<int> candidateIds, Dictionary<int, List<int>> qualityBuckets = null)
+        {
+            return wavesArenaRuntime.TryGetLegacyBossLootCandidates(candidateIds, qualityBuckets);
+        }
+        private float ComputeLegacyBossLootBonusFactor(float maxHealth, float killDuration)
+        {
+            return wavesArenaRuntime.ComputeLegacyBossLootBonusFactor(maxHealth, killDuration);
+        }
+        private static float ComputeBossKillSpeedFactor(float maxHealth, float killDuration)
+        {
+            return WavesArenaRuntimeModule.ComputeBossKillSpeedFactor(maxHealth, killDuration);
+        }
+
+        #endregion
+
+        #region LootAndRewardsInfiniteHell
+
+        private void OnInfiniteHellWaveCompleted_LootAndRewards()
+        {
+            wavesArenaRuntime.OnInfiniteHellWaveCompleted_LootAndRewards();
+        }
+
+        internal void CheckInfiniteHellAchievementsForArena(int wave) { CheckInfiniteHellAchievements(wave); }
+        internal GameObject ArenaRewardSignGameObject { get { return _bossRushSignGameObject; } }
+        internal BossRushSignInteractable ArenaRewardSignInteract { get { return bossRushSignInteract; } }
+        internal MonoBehaviour ArenaPlayerCharacter { get { return playerCharacter; } }
+        internal bool UseInteractBetweenWavesForArena { get { return config != null && config.useInteractBetweenWaves; } }
+        internal void LogLootWarningLimitedForArena(string key, string message, Exception e) { LogLootWarningLimited(key, message, e); }
+
+        private int GetRandomInfiniteHellHighQualityRewardTypeID()
+        {
+            return wavesArenaRuntime.GetRandomInfiniteHellHighQualityRewardTypeID();
+        }
+
+
+        #endregion
+
+        #region LootAndRewardsVictoryRewards
+
+        internal CharacterMainControl GetPlayerCharacterForArenaLoot()
+        {
+            return playerCharacter as CharacterMainControl;
+        }
+
+        /// <summary>所有敌人击败后交给标准竞技场模块收尾。</summary>
+        private void OnAllEnemiesDefeated_LootAndRewards()
+        {
+            wavesArenaRuntime.OnAllEnemiesDefeated_LootAndRewards();
+        }
+
+        internal void SetArenaVictoryActiveForArena(bool active) { bossRushArenaActive = active; }
+        internal void UnsubscribeArenaBossDeathsForArena() { Health.OnDead -= OnEnemyDiedWithDamageInfo; }
+        internal void CheckClearAchievementsForArena() { CheckClearAchievements(); }
+        internal void TryCreateReturnInteractableForArena() { TryCreateReturnInteractable(); }
+
+        private void StartVictoryRewardShadowCrate_LootAndRewards(int highQualityCount)
+        {
+            wavesArenaRuntime.StartVictoryRewardShadowCrate_LootAndRewards(highQualityCount);
+        }
+
+        private void CompleteVictoryRewardShadowCrate_LootAndRewards()
+        {
+            wavesArenaRuntime.CompleteVictoryRewardShadowCrate_LootAndRewards();
+        }
+
+        internal void NotifyVictoryRewardShadowCrateDisposed_LootAndRewards(VictoryRewardShadowCrateController controller)
+        {
+            wavesArenaRuntime.NotifyVictoryRewardShadowCrateDisposed_LootAndRewards(controller);
+        }
+
+        internal bool TryStartModeGRewardMaterialization_LootAndRewards(
+            int[] fixedTypeIds, ItemStatsSystem.Inventory targetInventory,
+            Action<int, ItemStatsSystem.Item, bool> onItemCommitted,
+            Action<int, int, int> onAllCompleted, out string failureReason)
+        {
+            return wavesArenaRuntime.TryStartModeGRewardMaterialization_LootAndRewards(
+                fixedTypeIds, targetInventory, onItemCommitted, onAllCompleted, out failureReason);
+        }
+
+        internal void CancelModeGRewardMaterialization_LootAndRewards()
+        {
+            wavesArenaRuntime.CancelModeGRewardMaterialization_LootAndRewards();
+        }
+
+        internal void SpawnDifficultyRewardLootboxAtWorldPosition_LootAndRewards(int highQualityCount, Vector3 worldPosition)
+        {
+            wavesArenaRuntime.SpawnDifficultyRewardLootboxAtWorldPosition_LootAndRewards(highQualityCount, worldPosition);
+        }
+
+        internal void SpawnDifficultyRewardLootboxFallback_LootAndRewards(int highQualityCount)
+        {
+            wavesArenaRuntime.SpawnDifficultyRewardLootboxFallback_LootAndRewards(highQualityCount);
+        }
+
+
+        #endregion
+
+        #region LootAndRewardsRandomBossLoot
+
+        internal bool ShouldUseBossDeadBoxPrefabForArena()
+        {
+            return config != null && !config.lootBoxBlocksBullets;
+        }
+
+        internal bool IsModeEOrFActiveForArenaLoot()
+        {
+            return modeEActive || modeFActive;
         }
 
         /// <summary>
-        /// 物品价值缓存初始化协程 - 分帧处理避免卡顿
+        /// 玩家死亡保护（BossRush期间）- 参考keep_items_on_death实现（LootAndRewards 分部实现）
+        /// 不干预游戏死亡流程，只阻止物品掉落
         /// </summary>
-        private IEnumerator InitializeItemValueCacheCoroutine()
+        private void OnPlayerDeathInBossRush_LootAndRewards(Health deadHealth, DamageInfo damageInfo)
         {
-            if (_itemValueCache == null)
+            try
             {
-                _itemValueCache = new Dictionary<int, ItemValueCacheEntry>();
-            }
-            else
-            {
-                _itemValueCache.Clear();
-            }
+                // 检查是否是BossRush期间的玩家死亡
+                if (!IsActive) return;
 
-            if (_legacyBossLootCandidateIds == null)
-            {
-                _legacyBossLootCandidateIds = new List<int>();
-            }
-            else
-            {
-                _legacyBossLootCandidateIds.Clear();
-            }
+                var character = deadHealth.GetComponent<CharacterMainControl>();
+                if (character == null) return;
 
-            if (_legacyBossLootCandidateIdsByQuality == null)
-            {
-                _legacyBossLootCandidateIdsByQuality = new Dictionary<int, List<int>>();
-            }
-            else
-            {
-                _legacyBossLootCandidateIdsByQuality.Clear();
-            }
-
-            _legacyBossLootCandidateCacheInitialized = false;
-
-            DevLog("[BossRush] 开始初始化物品价值缓存...");
-
-            // 收集所有候选物品ID
-            HashSet<int> idSet = BuildGeneralBossLootCandidateIdSet();
-
-            DevLog("[BossRush] 物品价值缓存：共需处理 " + idSet.Count + " 个物品");
-
-            // 分帧处理：每帧处理一定数量的物品
-            const int itemsPerFrame = 20;
-            int processedCount = 0;
-            List<int> idList = new List<int>(idSet);
-
-            for (int i = 0; i < idList.Count; i++)
-            {
-                int itemId = idList[i];
+                // 检查是否是玩家
+                bool isPlayer = false;
                 try
                 {
-                    Item temp = ItemAssetsCollection.InstantiateSync(itemId);
-                    if (temp != null)
-                    {
-                        ItemValueCacheEntry entry = new ItemValueCacheEntry();
-                        try { entry.value = temp.Value; } catch { entry.value = 0; }
-                        try { entry.quality = temp.Quality; } catch { entry.quality = -1; }
-                        _itemValueCache[itemId] = entry;
-
-                        _legacyBossLootCandidateIds.Add(itemId);
-                        AddLegacyBossLootCandidateToQualityBucket(itemId, entry.quality);
-                        UnityEngine.Object.Destroy(temp.gameObject);
-                    }
+                    isPlayer = CharacterMainControlExtensions.IsMainCharacter(character);
                 }
-                catch (Exception e)
+                catch
                 {
-                    LogLootWarningLimited("InitializeItemValueCache_item", "初始化物品价值缓存时处理单个物品失败", e);
+                    isPlayer = (character == CharacterMainControl.Main);
                 }
 
-                processedCount++;
+                if (!isPlayer) return;
 
-                // 每处理一定数量的物品，等待下一帧
-                if (processedCount >= itemsPerFrame)
+                DevLog("[BossRush] 检测到玩家死亡，不再掉落物品，直接结束BossRush");
+
+                // 结束BossRush
+                SetBossRushRuntimeActive(false);
+                bossRushArenaActive = false;
+                currentBoss = null;
+                bossRushIntegrationRuntime.CleanupAmmoShopOnPlayerDeath(LogLootWarningLimited);
+
+                // 取消敌人死亡监听
+                Health.OnDead -= OnEnemyDiedWithDamageInfo;
+
+                // 如果是 Mode D 模式，结束 Mode D
+                if (modeDActive)
                 {
-                    processedCount = 0;
-                    yield return null;
+                    EndModeD();
                 }
+
+                // 如果是 Mode E 模式，结束 Mode E
+                if (modeEActive)
+                {
+                    EndModeE();
+                }
+
+                ShowMessage(L10n.T("BossRush挑战失败！", "BossRush challenge failed!"));
             }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] OnPlayerDeathInBossRush错误: " + e.Message + "\n" + e.StackTrace);
+            }
+        }
 
-            _itemValueCacheInitialized = true;
-            _legacyBossLootCandidateCacheInitialized = true;
-            _itemValueCacheInitializing = false;
-            DevLog("[BossRush] 物品价值缓存初始化完成，共缓存 " + _itemValueCache.Count + " 个物品，Boss 掉落候选缓存=" + _legacyBossLootCandidateIds.Count);
+        /// <summary>Boss 掉落事件沿用旧订阅委托，实际处理归竞技场模块。</summary>
+        private void OnBossBeforeSpawnLoot_LootAndRewards(CharacterMainControl bossMain, DamageInfo dmgInfo)
+        {
+            wavesArenaRuntime.OnBossBeforeSpawnLoot_LootAndRewards(bossMain, dmgInfo);
+        }
+
+        internal bool IsRandomBossLootEnabledForArena() { return config != null && config.enableRandomBossLoot; }
+        internal bool UseLegacyBossLootProbabilitiesForArena() { return config != null && config.useLegacyBossLootProbabilities; }
+        internal void TryAddBackMountainSeedToCharacterItemForArena(CharacterMainControl boss) { TryAddBackMountainSeedToCharacterItem(boss); }
+        internal void TryDropBackMountainSeedIntoWorldForArena(CharacterMainControl boss) { TryDropBackMountainSeedIntoWorld(boss); }
+        internal bool TryHandleModeFBossPreLootPlunderForArena(CharacterMainControl killer, CharacterMainControl victim) { return TryHandleModeFBossPreLootPlunder(killer, victim); }
+        internal int ConsumeModeFBossPendingHighQualityLootPenaltyCountForArena(CharacterMainControl boss) { return ConsumeModeFBossPendingHighQualityLootPenaltyCount(boss); }
+        internal int ConsumeModeFBossCarriedHighQualityLootCountForArena(CharacterMainControl boss) { return ConsumeModeFBossCarriedHighQualityLootCount(boss); }
+
+        private void RandomizeBossLoot_LootAndRewards(
+            CharacterMainControl bossMain,
+            int totalCount,
+            float killDuration,
+            float highChanceBonusByHealth,
+            bool useLegacyProbabilities,
+            float legacyBonusFactor,
+            float bossMaxHealth,
+            int modeFPlunderLootBonusCount = 0,
+            int modeFPlunderLootPenaltyCount = 0)
+        {
+            wavesArenaRuntime.RandomizeBossLoot_LootAndRewards(bossMain, totalCount, killDuration,
+                highChanceBonusByHealth, useLegacyProbabilities, legacyBonusFactor, bossMaxHealth,
+                modeFPlunderLootBonusCount, modeFPlunderLootPenaltyCount);
+        }
+
+        #endregion
+
+        #region LootAndRewardsSpecialLoot
+
+        /// <summary>
+        /// 调试：记录 Boss 掉落实际物品列表（LootAndRewards 分部实现）
+        /// </summary>
+        private IEnumerator LogBossLootInventory_LootAndRewards(InteractableLootbox lootbox)
+        {
+            return wavesArenaRuntime.LogBossLootInventory_LootAndRewards(lootbox);
+        }
+
+        private IEnumerator CleanupDifficultyRewardLootboxInventory_LootAndRewards(InteractableLootbox lootbox, int highQualityCount)
+        {
+            return wavesArenaRuntime.CleanupDifficultyRewardLootboxInventory_LootAndRewards(lootbox, highQualityCount);
+        }
+
+        private void ClearDifficultyRewardCleanupScratch()
+        {
+            wavesArenaRuntime.ClearDifficultyRewardCleanupScratch();
+        }
+
+        private bool InventoryContainsItemAtLeastQuality(Inventory inv, int minimumQuality)
+        {
+            return wavesArenaRuntime.InventoryContainsItemAtLeastQuality(inv, minimumQuality);
+        }
+
+        private int GetLegacyBossGuaranteeTypeId(int desiredQuality, out int actualQuality)
+        {
+            return wavesArenaRuntime.GetLegacyBossGuaranteeTypeId(desiredQuality, out actualQuality);
+        }
+
+        private bool TryAddLegacyBossGuaranteeItem(Inventory inv)
+        {
+            return wavesArenaRuntime.TryAddLegacyBossGuaranteeItem(inv);
         }
 
         /// <summary>
-        /// 从缓存获取物品价值信息
+        /// 判断Boss是否是龙裔遗族（支持多Boss模式）
+        /// 通过GameObject名称或预设nameKey判断，不依赖单一实例引用
         /// </summary>
-        private bool TryGetCachedItemValue(int itemId, out int value, out int quality)
+        private bool IsDragonDescendantBoss(CharacterMainControl boss)
         {
-            ItemValueCacheEntry entry;
-            if (_itemValueCache != null && _itemValueCache.TryGetValue(itemId, out entry))
+            return wavesArenaRuntime.IsDragonDescendantBoss(boss);
+        }
+
+        private bool IsDragonKingBoss(CharacterMainControl boss)
+        {
+            return wavesArenaRuntime.IsDragonKingBoss(boss);
+        }
+
+        private IEnumerator AddDragonDescendantLoot(Inventory inv)
+        {
+            return wavesArenaRuntime.AddDragonDescendantLoot(inv);
+        }
+
+        private IEnumerator AddDragonKingLoot(Inventory inv)
+        {
+            return wavesArenaRuntime.AddDragonKingLoot(inv);
+        }
+
+        private bool TryAddDragonKingLootItem(Inventory inv, int typeId, string itemName)
+        {
+            return wavesArenaRuntime.TryAddDragonKingLootItem(inv, typeId, itemName);
+        }
+
+        internal IEnumerator AddBossSpecialLootToLootboxCoroutine(
+            InteractableLootbox lootbox,
+            CharacterMainControl bossMain,
+            bool useLegacyBossLootProbabilities,
+            float bossMaxHealth,
+            int modeFPlunderLootBonusCount = 0,
+            int modeFPlunderLootPenaltyCount = 0)
+        {
+            return wavesArenaRuntime.AddBossSpecialLootToLootboxCoroutine(
+                lootbox, bossMain, useLegacyBossLootProbabilities, bossMaxHealth,
+                modeFPlunderLootBonusCount, modeFPlunderLootPenaltyCount);
+        }
+
+        internal void TryAddBackMountainSeedLootForArena(Inventory inv, CharacterMainControl boss)
+        {
+            TryAddBackMountainSeedLoot(inv, boss);
+        }
+
+        internal bool ShouldDeferBlueBossExtraDropToBossRushLootbox(CharacterMainControl bossMain)
+        {
+            return wavesArenaRuntime.ShouldDeferBlueBossExtraDropToBossRushLootbox(bossMain);
+        }
+
+        internal void ReturnPendingExtraLootToCharacterItem(CharacterMainControl bossMain)
+        {
+            wavesArenaRuntime.ReturnPendingExtraLootToCharacterItem(bossMain);
+        }
+
+        internal void DropPendingExtraLootIntoWorld(CharacterMainControl bossMain)
+        {
+            wavesArenaRuntime.DropPendingExtraLootIntoWorld(bossMain);
+        }
+
+        /// <summary>
+        /// 额外掉落（寒霜长矛 / 女巫镰刀 / 遗种蛋 / 词缀熔石）是否必须 defer，
+        /// 即"不能直接塞进 `boss.CharacterItem.Inventory`"。
+        ///
+        /// 判据是**官方那只 characterItem 掉落箱到底会不会被创建**，而不是
+        /// "会不会有 BossRush 奖励箱"——本 Mod 有两条路径都会把它关掉：
+        ///   1. BossRush 奖励箱路径：`RandomizeBossLoot_LootAndRewards` 置
+        ///      `dropBoxOnDead = false` 后另建带全新本地 Inventory 的箱子；
+        ///   2. 无间炼狱：`OnBossBeforeSpawnLoot` 同样置 false，但连箱子都不建，
+        ///      奖励改走世界掉落。
+        /// 两条路径下写进 characterItem 的物品都会被静默丢掉，所以都要 defer。
+        /// 消费点分别是 `AddBossSpecialLootToLootboxCoroutine`（进箱）与
+        /// `DropPendingExtraLootIntoWorld`（落地）。
+        /// </summary>
+        internal bool ShouldDeferExtraBossDropToModPath(CharacterMainControl bossMain)
+        {
+            return wavesArenaRuntime.ShouldDeferExtraBossDropToModPath(bossMain);
+        }
+
+
+        #endregion
+
+        #region LootAndRewardsRuntimeHooks
+
+        /// <summary>
+        /// 无间炼狱单波完成：掉落现金、更新显示并准备下一波
+        /// </summary>
+        private void OnInfiniteHellWaveCompleted()
+        {
+            OnInfiniteHellWaveCompleted_LootAndRewards();
+            return;
+        }
+
+        /// <summary>
+        /// 所有敌人击败完成
+        /// </summary>
+        private void OnAllEnemiesDefeated()
+        {
+            // 每日挑战通关结算
+
+            OnAllEnemiesDefeated_LootAndRewards();
+            return;
+        }
+
+        /// <summary>
+        /// 玩家死亡保护（BossRush 期间），参考 keep_items_on_death 实现
+        /// 不干预游戏死亡流程，只阻止物品掉落
+        /// </summary>
+        private void OnPlayerDeathInBossRush(Health deadHealth, DamageInfo damageInfo)
+        {
+            // 每日挑战死亡结算
+
+            OnPlayerDeathInBossRush_LootAndRewards(deadHealth, damageInfo);
+            return;
+        }
+
+        private void OnBossBeforeSpawnLoot(CharacterMainControl bossMain, DamageInfo dmgInfo)
+        {
+            OnBossBeforeSpawnLoot_LootAndRewards(bossMain, dmgInfo);
+            return;
+        }
+
+        #endregion
+
+        #region ModeEFLootboxTracker
+
+        private readonly AwenLootSweepRuntime awenLootSweepRuntime = new AwenLootSweepRuntime();
+
+        private void BindAwenLootSweepRuntime()
+        {
+            awenLootSweepRuntime.BindServices(TryGetActiveModeEFLootboxContext, CanUseAwenLootSweepInCurrentMode,
+                IsAwenLootSweepSessionStillValid, () => courierNPCInstance, () => courierController,
+                (typeId, name, bubble, drop) => modeFRuntime.TryGiveItemToPlayerOrDrop(typeId, name, bubble, drop),
+                ShowBigBanner, ShowMessage);
+        }
+
+        private bool TryGetActiveModeEFLootboxContext(out BossRushTrackedLootboxMode mode, out int sessionToken)
+        {
+            mode = BossRushTrackedLootboxMode.None;
+            sessionToken = 0;
+
+            if (modeFActive && modeFState.IsActive && CurrentModeFSessionToken > 0)
             {
-                value = entry.value;
-                quality = entry.quality;
+                mode = BossRushTrackedLootboxMode.ModeF;
+                sessionToken = CurrentModeFSessionToken;
                 return true;
             }
-            value = 0;
-            quality = -1;
+
+            if (modeEActive && CurrentModeESessionToken > 0)
+            {
+                mode = BossRushTrackedLootboxMode.ModeE;
+                sessionToken = CurrentModeESessionToken;
+                return true;
+            }
+
             return false;
         }
 
-        private HashSet<int> BuildGeneralBossLootCandidateIdSet()
+        internal void ResetModeEFLootboxTrackerState()
+        { awenLootSweepRuntime.ResetModeEFLootboxTrackerState(); }
+
+        internal void CaptureModeEFLootboxBaseline()
+        { awenLootSweepRuntime.CaptureModeEFLootboxBaseline(); }
+
+        internal bool CanUseAwenLootSweepInCurrentMode()
         {
-            HashSet<int> idSet = new HashSet<int>();
-            BuildGeneralBossLootCandidateIdSet(idSet);
-            return idSet;
+            return (IsActive && !IsModeDActive) || (IsBossRushArenaActive && !IsModeDActive) || modeEActive || modeFActive;
         }
 
-        private bool BuildGeneralBossLootCandidateIdSet(HashSet<int> idSet)
+        internal void InvalidateAwenLootSweepTargetCache()
+        { awenLootSweepRuntime.InvalidateAwenLootSweepTargetCache(); }
+
+        internal int GetCurrentAwenLootSweepTargetCount()
+        { return awenLootSweepRuntime.GetCurrentAwenLootSweepTargetCount(); }
+
+        internal int CopyCurrentAwenLootSweepTargets(List<AwenLootSweepTarget> output)
+        { return awenLootSweepRuntime.CopyCurrentAwenLootSweepTargets(output); }
+
+        internal int CopyFreshAwenLootSweepTargets(List<AwenLootSweepTarget> output)
+        { return awenLootSweepRuntime.CopyFreshAwenLootSweepTargets(output); }
+
+        internal void NotifyAwenLootSweepRunnerDestroyed(AwenLootSweepRunner runner)
+        { awenLootSweepRuntime.NotifyAwenLootSweepRunnerDestroyed(runner); }
+
+        internal bool IsAwenLootSweepSessionStillValid(BossRushTrackedLootboxMode mode, int sessionToken, int relatedScene)
         {
-            if (idSet == null)
+            switch (mode)
             {
-                return false;
-            }
-
-            idSet.Clear();
-            try
-            {
-                Duckov.Utilities.GameplayDataSettings.TagsData tagsData = Duckov.Utilities.GameplayDataSettings.Tags;
-                if (tagsData != null && tagsData.AllTags != null)
-                {
-                    List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData);
-
-                    foreach (Duckov.Utilities.Tag tag in tagsData.AllTags)
-                    {
-                        if (tag == null || baseExclude.Contains(tag))
-                        {
-                            continue;
-                        }
-
-                        ItemFilter filter = default(ItemFilter);
-                        filter.requireTags = new Duckov.Utilities.Tag[] { tag };
-                        filter.excludeTags = baseExclude.ToArray();
-                        filter.minQuality = 1;
-                        filter.maxQuality = 8;
-
-                        int[] ids = ItemAssetsCollection.Search(filter);
-                        if (ids == null)
-                        {
-                            continue;
-                        }
-
-                        for (int i = 0; i < ids.Length; i++)
-                        {
-                            int id = ids[i];
-                            if (id > 0 && !IsItemBlacklisted(id))
-                            {
-                                idSet.Add(id);
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[BossRush] 收集候选物品ID失败: " + e.Message);
-            }
-
-            return idSet.Count > 0;
-        }
-
-        private void AddLegacyBossLootCandidateToQualityBucket(int itemId, int quality)
-        {
-            if (itemId <= 0 || quality < 1 || quality > 8)
-            {
-                return;
-            }
-
-            if (_legacyBossLootCandidateIdsByQuality == null)
-            {
-                _legacyBossLootCandidateIdsByQuality = new Dictionary<int, List<int>>();
-            }
-
-            List<int> bucket = null;
-            if (!_legacyBossLootCandidateIdsByQuality.TryGetValue(quality, out bucket) || bucket == null)
-            {
-                bucket = new List<int>();
-                _legacyBossLootCandidateIdsByQuality[quality] = bucket;
-            }
-
-            bucket.Add(itemId);
-        }
-
-        private int GetBossLootCandidateQuality(int itemId)
-        {
-            int value = 0;
-            int quality = -1;
-            if (TryGetCachedItemValue(itemId, out value, out quality) && quality > 0)
-            {
-                return quality;
-            }
-
-            try
-            {
-                var meta = ItemAssetsCollection.GetMetaData(itemId);
-                if (meta.id > 0 && meta.quality > 0)
-                {
-                    return meta.quality;
-                }
-            }
-            catch (Exception e)
-            {
-                LogLootWarningLimited("GetBossLootCandidateQuality_meta", "读取 Boss 掉落候选品质元数据失败", e);
-            }
-
-            return 1;
-        }
-
-        private void BuildLegacyBossLootQualityBucketsFromIds(IEnumerable<int> ids, Dictionary<int, List<int>> buckets)
-        {
-            if (ids == null || buckets == null)
-            {
-                return;
-            }
-
-            foreach (int itemId in ids)
-            {
-                int quality = GetBossLootCandidateQuality(itemId);
-                if (quality < 1 || quality > 8)
-                {
-                    continue;
-                }
-
-                List<int> bucket = null;
-                if (!buckets.TryGetValue(quality, out bucket) || bucket == null)
-                {
-                    bucket = new List<int>();
-                    buckets[quality] = bucket;
-                }
-
-                bucket.Add(itemId);
+                case BossRushTrackedLootboxMode.ModeE:
+                    return IsModeESessionStillValid(sessionToken, relatedScene);
+                case BossRushTrackedLootboxMode.ModeF:
+                    return IsModeFSessionStillValid(sessionToken, relatedScene);
+                default:
+                    return false;
             }
         }
 
-        private void CopyLegacyBossLootQualityBuckets(Dictionary<int, List<int>> destination)
-        {
-            if (destination == null || _legacyBossLootCandidateIdsByQuality == null)
-            {
-                return;
-            }
+        internal void TryRegisterModeEFLootbox(InteractableLootbox lootbox)
+        { awenLootSweepRuntime.TryRegisterModeEFLootbox(lootbox); }
 
-            ClearLegacyBossLootQualityBucketLists(destination);
-            foreach (KeyValuePair<int, List<int>> pair in _legacyBossLootCandidateIdsByQuality)
-            {
-                if (pair.Value == null || pair.Value.Count == 0)
-                {
-                    continue;
-                }
+        internal void RegisterModeEFBossDeathForSweepToken()
+        { awenLootSweepRuntime.RegisterModeEFBossDeathForSweepToken(); }
 
-                List<int> bucket = null;
-                if (!destination.TryGetValue(pair.Key, out bucket) || bucket == null)
-                {
-                    bucket = new List<int>(pair.Value.Count);
-                    destination[pair.Key] = bucket;
-                }
-                bucket.AddRange(pair.Value);
-            }
-        }
+        internal bool CanUseAwenLootSweepToken()
+        { return awenLootSweepRuntime.CanUseAwenLootSweepToken(); }
 
-        private void ClearLegacyBossLootQualityBucketLists(Dictionary<int, List<int>> buckets)
-        {
-            if (buckets == null)
-            {
-                return;
-            }
+        internal bool CanUseAwenLootSweepToken(CharacterMainControl player, bool showFailureFeedback)
+        { return awenLootSweepRuntime.CanUseAwenLootSweepToken(player, showFailureFeedback); }
 
-            foreach (KeyValuePair<int, List<int>> pair in buckets)
-            {
-                if (pair.Value != null)
-                {
-                    pair.Value.Clear();
-                }
-            }
-        }
+        internal bool TryActivateAwenLootSweepToken(CharacterMainControl player)
+        { return awenLootSweepRuntime.TryActivateAwenLootSweepToken(player); }
 
-        private void ClearLegacyBossGuaranteeQualityBucketsScratch()
-        {
-            ClearLegacyBossLootQualityBucketLists(legacyBossGuaranteeQualityBucketsScratch);
-        }
+        internal bool TryRefundAwenLootSweepToken()
+        { return awenLootSweepRuntime.TryRefundAwenLootSweepToken(); }
 
-        private bool TryGetLegacyBossLootCandidates(List<int> candidateIds, Dictionary<int, List<int>> qualityBuckets = null)
-        {
-            if (candidateIds == null)
-            {
-                return false;
-            }
 
-            candidateIds.Clear();
-
-            if (_legacyBossLootCandidateCacheInitialized && _legacyBossLootCandidateIds != null && _legacyBossLootCandidateIds.Count > 0)
-            {
-                candidateIds.AddRange(_legacyBossLootCandidateIds);
-                if (qualityBuckets != null)
-                {
-                    CopyLegacyBossLootQualityBuckets(qualityBuckets);
-                }
-                return true;
-            }
-
-            HashSet<int> dynamicIds = BuildGeneralBossLootCandidateIdSet();
-            if (dynamicIds.Count == 0)
-            {
-                return false;
-            }
-
-            candidateIds.AddRange(dynamicIds);
-            if (qualityBuckets != null)
-            {
-                ClearLegacyBossLootQualityBucketLists(qualityBuckets);
-                BuildLegacyBossLootQualityBucketsFromIds(candidateIds, qualityBuckets);
-            }
-
-            return true;
-        }
-
-        private float ComputeLegacyBossLootBonusFactor(float maxHealth, float killDuration)
-        {
-            float healthFactor = 0f;
-            float refMin = minBossBaseHealth;
-            float refMax = maxBossBaseHealth;
-            if (refMax > refMin && refMin > 0f)
-            {
-                healthFactor = Mathf.InverseLerp(refMin, refMax, maxHealth);
-            }
-            else
-            {
-                healthFactor = Mathf.Clamp01((maxHealth - 100f) / 1000f);
-            }
-
-            float speedFactor = ComputeBossKillSpeedFactor(maxHealth, killDuration);
-            return Mathf.Clamp01((healthFactor * 0.8f) + (speedFactor * 0.2f));
-        }
-
-        /// <summary>
-        /// 基于 Boss 最大血量和击杀耗时的 0..1 击杀速度评分。
-        /// 血量越高 referenceWindow 越宽（容忍更长耗时），越早击杀评分越高。
-        /// </summary>
-        private static float ComputeBossKillSpeedFactor(float maxHealth, float killDuration)
-        {
-            float referenceWindow = 60f * (1f + maxHealth / 500f);
-            if (referenceWindow <= 0f)
-            {
-                return 0f;
-            }
-            return Mathf.Clamp01(1f - (killDuration / referenceWindow));
-        }
+        #endregion
     }
 }

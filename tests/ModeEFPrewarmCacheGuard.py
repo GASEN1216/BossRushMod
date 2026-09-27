@@ -1,10 +1,11 @@
 """Guard: Mode E/F spawn pool prewarm stays centralized and behavior-neutral."""
 
 from pathlib import Path
+from cs_source_util import clean_source
 import sys
 
 
-BATTLE = Path("ModeE/ModeEBattle.cs")
+BATTLE = Path("Utilities/ModeEFEnemySpawnRuntime.cs")
 STARTUP = Path("ModeE/ModeEStartup.cs")
 MODEF_ENTRY = Path("ModeF/ModeFEntry.cs")
 MODEF_RESPAWN = Path("ModeF/ModeFRespawn.cs")
@@ -50,12 +51,12 @@ def forbid(text: str, needle: str, message: str) -> int | None:
 
 
 def main() -> int:
-    battle = BATTLE.read_text(encoding="utf-8")
-    startup = STARTUP.read_text(encoding="utf-8")
-    entry = MODEF_ENTRY.read_text(encoding="utf-8")
-    respawn = MODEF_RESPAWN.read_text(encoding="utf-8")
+    battle = clean_source(BATTLE.read_text(encoding="utf-8"))
+    startup = clean_source(STARTUP.read_text(encoding="utf-8"))
+    entry = clean_source(MODEF_ENTRY.read_text(encoding="utf-8"))
+    respawn = clean_source(MODEF_RESPAWN.read_text(encoding="utf-8"))
 
-    ensure_body = extract_method_body(battle, "private void EnsureModeEFSpawnPoolsReady")
+    ensure_body = extract_method_body(battle, "internal void EnsureModeEFSpawnPoolsReady")
     if ensure_body is None:
         return fail("missing EnsureModeEFSpawnPoolsReady")
     for needle, message in (

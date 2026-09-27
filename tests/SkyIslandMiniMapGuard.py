@@ -44,9 +44,9 @@ def main():
     errors = []
 
     # ---- 1) 自绘地图不得复活 ----
-    if (ROOT / 'DebugAndTools/SkyIsland/SkyIslandMap.cs').exists():
+    if (ROOT / 'SkyIsland/SkyIslandMap.cs').exists():
         errors.append('自绘旅程图已废弃，不得重新引入 SkyIslandMap.cs')
-    session = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandSession.cs').read_text(encoding='utf-8-sig'))
+    session = clean_source((ROOT / 'SkyIsland/SkyIslandSession.cs').read_text(encoding='utf-8-sig'))
     if 'MiniMapView.Show()' not in session:
         errors.append('OpenMap 必须打开官方地图（MiniMapView.Show）')
     # 注意用 `new SkyIslandMap(`，不是裸的 `SkyIslandMap`：
@@ -55,7 +55,7 @@ def main():
         if token in session:
             errors.append('会话不得重建自绘地图或接管模态状态：' + token)
     # 分区「未探索」灰显：必须按存档到访位刷，且新到访区域要立刻点亮。
-    fog = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandMapFog.cs').read_text(encoding='utf-8-sig'))
+    fog = clean_source((ROOT / 'SkyIsland/SkyIslandMapFog.cs').read_text(encoding='utf-8-sig'))
     for token in ('MiniMapSettings.Instance', 'pair.Value.hide', 'SkyIslandStoryService.RegionBit',
                   'SpritePrefix', 'name.StartsWith(SpritePrefix'):
         if token not in fog:
@@ -67,7 +67,7 @@ def main():
         errors.append('分区迷雾必须在装配时刷一次，并在新到访区域时再刷一次')
     if 'mapFog.Dispose()' not in session:
         errors.append('分区迷雾必须随会话释放')
-    module = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs').read_text(encoding='utf-8-sig'))
+    module = clean_source((ROOT / 'SkyIsland/SkyIslandRuntimeModule.cs').read_text(encoding='utf-8-sig'))
     if 'KeyCode.F6' in module or 'KeyCode.F6' in session:
         errors.append('官方地图由玩家自己的地图键开合，Mod 侧不得再处理 F6')
 

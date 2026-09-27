@@ -35,8 +35,15 @@ def main():
     callback = method("Integration/BossRushIntegration_StartAndScene.cs", "private void OnSceneLoaded_Integration(")
     assert "(!bossRushArenaPlanned || BossRushMapSelectionHelper.IsPendingTargetScene(scene.name))" in callback, "DEMO 接管必须匹配选中地图"
     travel = method("Integration/BossRushIntegration_TravelAndSetup.cs", "private System.Collections.IEnumerator TeleportPlayerToCustomPosition(")
-    assert re.search(r"if\s*\(SceneLoader.IsSceneLoading\s*\|\|\s*\(entryCore != null && entryCore.IsLoading\)\)\s*\{\s*yield return null;\s*continue;", travel), "最终出场结束前不能移动玩家"
-    assert "!BossRushInitialSpawn.HasArrived(targetPosition)" in travel, "首次已到达时不能再次搬人"
+    assert "yield return bossRushIntegrationRuntime.WaitForCustomTeleportSceneReady();" in travel, "宿主等待必须到达真实 Integration owner"
+    assert "bossRushIntegrationRuntime.ApplyCustomTeleportPosition(" in travel, "宿主位置写入必须到达真实 Integration owner"
+    owner = "Integration/BossRushIntegrationRuntimeModule_Travel.cs"
+    wait = method(owner, "internal IEnumerator WaitForCustomTeleportSceneReady(")
+    assert re.search(r"if\s*\(SceneLoader.IsSceneLoading\s*\|\|\s*\(entryCore != null && entryCore.IsLoading\)\)\s*\{\s*yield return null;\s*continue;", wait), "最终出场结束前不能移动玩家"
+    assert wait.index("entryCore.IsLoading") < wait.index('ReadMainExistsWithWarning(') < wait.index("elapsed += interval;"), "官方加载门须位于就绪读取及超时推进之前"
+    landing = method(owner, "internal Vector3 ApplyCustomTeleportPosition(")
+    gate = re.search(r"if\s*\(isModeEEntry\s*\|\|\s*BossRushInitialSpawn.HasArrived\(targetPosition\)\)\s*\{\s*return finalPosition;\s*\}", landing)
+    assert gate and gate.start() < landing.index("Physics.RaycastAll("), "首次已到达时不能再次搬人"
     spawn = "MapSelection/BossRushInitialSpawn.cs"
     select = method(spawn, "internal static void Select(LevelManager")
     assert "BossRushMapSelectionHelper.TakeInitialSpawnSelection()" in select

@@ -13,24 +13,40 @@ using BossRush.Common.Equipment;
 
 namespace BossRush
 {
-    /// <summary>
-    /// 逆鳞图腾系统启动模块 - 使用 partial class 扩展 ModBehaviour
-    /// </summary>
-    public partial class ModBehaviour
+    /// <summary>逆鳞 bootstrap 入口的唯一运行时 owner。</summary>
+    internal sealed partial class ReverseScaleRuntimeModule : BossRushRuntimeModuleBase
     {
+        private ModBehaviour _owner;
+        private Coroutine pendingEquipmentCheck;
+        private bool systemCleanupCompleted;
+
+        public override string ModuleName { get { return "ReverseScale"; } }
+
+        public override void OnAwake(ModBehaviour owner)
+        {
+            _owner = owner;
+        }
+
+        public override void OnDestroy()
+        {
+            try { CleanupReverseScaleSystem(); }
+            finally { _owner = null; }
+        }
+
         // ========== 初始化 ==========
 
         /// <summary>
         /// 初始化逆鳞图腾系统（在 Start_Integration 中调用）
         /// </summary>
-        private void InitializeReverseScaleSystem()
+        internal void InitializeReverseScaleSystem()
         {
+            systemCleanupCompleted = false;
             AbilitySystemHelper.InitializeSystem(
                 config: ReverseScaleConfig.Instance,
                 ensureManagerInstance: () => ReverseScaleAbilityManager.EnsureInstance(),
                 ensureEffectManagerInstance: () => ReverseScaleEffectManager.EnsureInstance(),
-                initializeItem: InitializeReverseScaleItem,
-                injectLocalization: InjectReverseScaleLocalization
+                initializeItem: () => InitializeReverseScaleItem(),
+                injectLocalization: () => InjectReverseScaleLocalization()
             );
         }
 
@@ -39,11 +55,13 @@ namespace BossRush
         /// <summary>
         /// 在场景加载后设置逆鳞图腾（场景切换时调用）
         /// </summary>
-        private void SetupReverseScaleForScene(Scene scene)
+        internal void SetupReverseScaleForScene(Scene scene)
         {
-            if (IsGameplaySceneName(scene.name))
+            CancelPendingEquipmentCheck();
+            systemCleanupCompleted = false;
+            if (ModBehaviour.IsGameplaySceneName(scene.name))
             {
-                AbilitySystemHelper.HandleSceneChange(
+                pendingEquipmentCheck = AbilitySystemHelper.StartSceneChange(
                     config: ReverseScaleConfig.Instance,
                     onSceneChanged: () =>
                     {
@@ -53,7 +71,7 @@ namespace BossRush
                         }
                     },
                     delayedCheckEquipment: DelayedCheckReverseScaleEquipment,
-                    monoBehaviour: this
+                    monoBehaviour: _owner
                 );
                 return;
             }
@@ -76,7 +94,8 @@ namespace BossRush
         /// </summary>
         private IEnumerator DelayedCheckReverseScaleEquipment()
         {
-            yield return sharedWait05s;
+            yield return ModBehaviour.ReverseScaleSharedWait05sForRuntime;
+            pendingEquipmentCheck = null;
 
             if (ReverseScaleEffectManager.Instance != null)
             {
@@ -89,8 +108,20 @@ namespace BossRush
         /// <summary>
         /// 清理逆鳞图腾系统
         /// </summary>
-        private void CleanupReverseScaleSystem()
+        private void CancelPendingEquipmentCheck()
         {
+            if (_owner != null && pendingEquipmentCheck != null)
+            {
+                _owner.StopCoroutine(pendingEquipmentCheck);
+            }
+            pendingEquipmentCheck = null;
+        }
+
+        internal void CleanupReverseScaleSystem()
+        {
+            CancelPendingEquipmentCheck();
+            if (systemCleanupCompleted) return;
+            systemCleanupCompleted = true;
             AbilitySystemHelper.CleanupSystem(
                 config: ReverseScaleConfig.Instance,
                 cleanupManager: () => ReverseScaleAbilityManager.Cleanup(),
@@ -98,10 +129,16 @@ namespace BossRush
                 {
                     if (ReverseScaleEffectManager.Instance != null)
                     {
-                        Destroy(ReverseScaleEffectManager.Instance.gameObject);
+                        UnityEngine.Object.Destroy(ReverseScaleEffectManager.Instance.gameObject);
                     }
                 }
             );
+        }
+
+        [System.Diagnostics.Conditional("BOSSRUSH_DEV")]
+        private static void DevLog(string message)
+        {
+            ModBehaviour.DevLog(message);
         }
     }
 }

@@ -39,8 +39,8 @@ LOADER = "Common/UI/BossRushUISkinLoader.cs"
 SKIN = "Common/UI/BossRushUI.cs"
 ALWAYS_ON = "Utilities/AlwaysOnRuntimeHooks.cs"
 MOD_BEHAVIOUR = "ModBehaviour.cs"
-HUD = "DebugAndTools/SkyIsland/SkyIslandHud.cs"
-PANEL = "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs"
+HUD = "SkyIsland/SkyIslandHud.cs"
+PANEL = "SkyIsland/SkyIslandStoryPresentation.cs"
 
 PATHS = [LOADER, SKIN, ALWAYS_ON, MOD_BEHAVIOUR, HUD, PANEL]
 

@@ -5,14 +5,14 @@ using UnityEngine.UI;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ZombieModeRuntimeModule
     {
         // 玩家在地图选择确认后、场景切换前可设置投入金额。100 现金 = 1 净化点数（向下取整）。
         // 投入 0 合法（直接跳过）；现金不足时拒绝并保留弹窗。
         public bool ConfigureZombieModePendingCashInvestment(long requestedAmount, out string failureReasonKey)
         {
             failureReasonKey = null;
-            if (zombieModeRunState.LifecyclePhase != ZombieModeLifecyclePhase.SelectingMap)
+            if (runState.LifecyclePhase != ZombieModeLifecyclePhase.SelectingMap)
             {
                 failureReasonKey = "BossRush_ZombieMode_NotInitialized";
                 return false;
@@ -37,19 +37,19 @@ namespace BossRush
                 }
                 catch (System.Exception e)
                 {
-                    DevLog("[ZombieMode] ConfigureZombieModePendingCashInvestment: " + e.Message);
+                    ModBehaviour.DevLog("[ZombieMode] ConfigureZombieModePendingCashInvestment: " + e.Message);
                     failureReasonKey = "BossRush_ZombieMode_CashPrompt_NotEnough";
                     return false;
                 }
             }
 
-            zombieModeRunState.PendingCashInvestment = requestedAmount;
+            runState.PendingCashInvestment = requestedAmount;
             return true;
         }
 
         public long GetZombieModePendingCashInvestment()
         {
-            return zombieModeRunState != null ? zombieModeRunState.PendingCashInvestment : 0L;
+            return runState != null ? runState.PendingCashInvestment : 0L;
         }
 
         public int PreviewZombieModeInitialPurificationPoints()
@@ -69,7 +69,7 @@ namespace BossRush
         {
             GameObject root = new GameObject("ZombieMode_CashInvestmentPrompt");
             ZombieModeCashInvestmentView view = root.AddComponent<ZombieModeCashInvestmentView>();
-            view.Initialize(this, onConfirmed, onCancelled);
+            view.Initialize(owner, onConfirmed, onCancelled);
         }
     }
 

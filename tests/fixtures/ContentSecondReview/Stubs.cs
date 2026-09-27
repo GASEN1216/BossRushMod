@@ -111,21 +111,21 @@ public partial class PermanentDuckNpcModule
     public bool Busy { get { return _spawnInFlight; } }
     public bool Pending { get { return _pendingSpawnRequest != null; } }
 }
-public sealed class ZombieModeAttributeModifierRecord { public Health Owner; }
+public sealed class BossRushStatModifierRecord { public Health Owner; }
 public static class RuntimeStatModifierTracker
 {
     public static bool RejectAdd;
-    public static void RemoveAll(List<ZombieModeAttributeModifierRecord> records, string context)
+    public static void RemoveAll(List<BossRushStatModifierRecord> records, string context)
     {
         foreach (var record in records) record.Owner.Bonus = 0;
         records.Clear();
     }
     public static bool TryAdd(CharacterMainControl main, string stat, float value, object source,
-        List<ZombieModeAttributeModifierRecord> records, string context)
+        List<BossRushStatModifierRecord> records, string context)
     {
         if (RejectAdd || main.Health == null) return false;
         main.Health.Bonus = value;
-        records.Add(new ZombieModeAttributeModifierRecord { Owner = main.Health });
+        records.Add(new BossRushStatModifierRecord { Owner = main.Health });
         return true;
     }
 }
@@ -139,14 +139,14 @@ public static class ZombieModeStatNames { public const string MaxHealth = "MaxHe
 public static class BackMountainConfig { public const string LogPrefix = "fixture"; }
 public static partial class ShowcaseService
 {
-    private static List<ZombieModeAttributeModifierRecord> _records = new List<ZombieModeAttributeModifierRecord>();
+    private static List<BossRushStatModifierRecord> _records = new List<BossRushStatModifierRecord>();
     private static object _modifierSource = new object();
     private static float _bonus;
     private static float CalculateBonus() { return _bonus; }
     public static void Configure(Health health, float oldBonus, float newBonus)
     {
         _records.Clear();
-        if (oldBonus > 0) _records.Add(new ZombieModeAttributeModifierRecord { Owner = health });
+        if (oldBonus > 0) _records.Add(new BossRushStatModifierRecord { Owner = health });
         health.Bonus = oldBonus;
         _bonus = newBonus;
         BackMountainUnlocks.Unlocked = true;

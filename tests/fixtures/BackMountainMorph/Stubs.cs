@@ -418,7 +418,6 @@ namespace BossRush
     public static class ObjectCache { public static CharacterRandomPreset[] Presets; public static CharacterRandomPreset[] GetCharacterPresets() { return Presets; } }
     public static class DragonKingFxShared { public static readonly List<Color> Colors = new List<Color>(); public static void HitBurst(Vector3 pos, Color color) { Colors.Add(color); } }
     public static class L10n { public static string T(string cn, string en) { return en; } }
-    public class ZombieModeAttributeModifierRecord { public Item CharacterItem; public Stat Stat; public Modifier Modifier; public string StatName; }
     public static class BackMountainItems
     {
         public class Definition { public bool IsSeed; public string NameCN, NameEN; }

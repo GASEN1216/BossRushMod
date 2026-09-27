@@ -7,7 +7,16 @@ import sys
 BATTLE = Path("ModeE/ModeEBattle.cs")
 SCALING = Path("ModeE/ModeEBattle_ScalingAndRuntime.cs")
 MODE_E = Path("ModeE/ModeE.cs")
-SUPPORT = Path("ModeE/ModeEMerchantSupportClasses.cs")
+SUPPORT = (
+    Path("ModeE/ModeEMerchantSupportClasses.cs"),
+    Path("ModeE/ModeEShellSession.cs"),
+    Path("ModeE/ModeEShellTransactions.cs"),
+    Path("ModeE/ModeEShopInteractable.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI.cs"),
+    Path("ModeE/ModeEPetSpawner.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_ShopViewSetup.cs"),
+    Path("ModeE/ModeEMerchantSellAllUI_Layout.cs"),
+)
 
 
 def fail(message: str) -> int:
@@ -37,7 +46,7 @@ def main() -> int:
     battle = BATTLE.read_text(encoding="utf-8")
     scaling = SCALING.read_text(encoding="utf-8")
     mode_e = MODE_E.read_text(encoding="utf-8")
-    support = SUPPORT.read_text(encoding="utf-8")
+    support = "\n".join(path.read_text(encoding="utf-8") for path in SUPPORT)
     combined = battle + "\n" + scaling + "\n" + mode_e + "\n" + support
 
     required = [
@@ -83,7 +92,7 @@ def main() -> int:
     settle = extract_method(scaling, "private void SettleModeEShellRewardNoThrow(ModeEShellRewardSnapshot snapshot)")
     if "modeEShellEconomyAvailable" not in settle:
         return fail("settle must require economy capability")
-    if "modeFActive" not in settle:
+    if "modeEHost.IsModeFActive" not in settle:
         return fail("Mode F must zero rewards")
     if "PlayerAliveAtSnapshot" not in settle:
         return fail("settle must honor playerAliveAtSnapshot veto")
@@ -109,7 +118,7 @@ def main() -> int:
         if forbidden in reward_formula:
             return fail("Boss reward must not use hard-coded health tiers -> " + forbidden)
 
-    death = extract_method(scaling, "private void OnModeEEnemyDeath(")
+    death = extract_method(scaling, "internal void OnModeEEnemyDeath(")
     if not death:
         return fail("missing OnModeEEnemyDeath")
     if "CaptureAndClaimModeEShellRewardSnapshot" not in death:

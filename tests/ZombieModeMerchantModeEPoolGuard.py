@@ -1,12 +1,13 @@
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
-MODEE = Path("ModeE/ModeEMerchant.cs")
+MODEE = Path("Utilities/ModeEFMerchantCatalog.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -14,7 +15,7 @@ REWARD_PARTS = [
 
 
 def read_rewards() -> str:
-    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in REWARD_PARTS)
+    return "\n".join(clean_source(path.read_text(encoding="utf-8")) for path in REWARD_PARTS)
 
 
 
@@ -30,12 +31,22 @@ def require(text: str, snippet: str, label: str) -> int:
 
 
 def main() -> int:
-    modee = MODEE.read_text(encoding="utf-8")
+    modee = clean_source(MODEE.read_text(encoding="utf-8"))
     rewards = read_rewards()
 
+    for path, snippet in (
+        ("ModBehaviourRuntimeModules.cs", "modeERuntime.BindSharedServices(modeDRuntime, wavesArenaRuntime, modeEFSpawnPreparation, modeEFMerchantCatalog);"),
+        ("ModeE/ModeERuntimeModule.cs", "this.merchantCatalog = merchantCatalog;"),
+        ("ModeE/ModeEHostBridge.cs", "return modeEFMerchantCatalog.GetModeEMerchantCategoryPoolIds(suffix);"),
+        ("ModeE/ModeEMerchant.cs", "ModeEFMerchantCatalog.ResetStaticCaches();"),
+    ):
+        source = clean_source(Path(path).read_text(encoding="utf-8"))
+        if require(source, snippet, "shared merchant catalog wiring"):
+            return 1
+
     for snippet in [
-        "private List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>> GetModeEMerchantCategories(",
-        "private List<int> ModeESearchItemsMultiTag(",
+        "internal List<System.Tuple<List<Duckov.Utilities.Tag>, string, string>> GetModeEMerchantCategories(",
+        "internal List<int> ModeESearchItemsMultiTag(",
         "private static readonly Dictionary<string, int[]> modeEMerchantCategoryItemCache",
         "private static readonly HashSet<int> modeEMedicalShopExcludedIds",
         "internal int[] GetModeEMerchantCategoryPoolIds(",

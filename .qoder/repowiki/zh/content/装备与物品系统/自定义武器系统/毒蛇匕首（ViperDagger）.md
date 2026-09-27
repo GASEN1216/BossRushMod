@@ -7,7 +7,7 @@
 - [ViperDaggerConfig.cs](file://Integration/NewWeapons/ViperDagger/ViperDaggerConfig.cs)
 - [ViperDaggerRuntime.cs](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs)
 - [ViperDaggerWeaponConfig.cs](file://Integration/NewWeapons/ViperDagger/ViperDaggerWeaponConfig.cs)
-- [NewWeaponBootstrap.cs](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs)
+- [NewWeaponBootstrap.cs](file://Integration/IntegrationHostCompatibility.cs)
 - [NewWeaponIds.cs](file://Integration/NewWeapons/Common/NewWeaponIds.cs)
 </cite>
 
@@ -59,15 +59,15 @@ C --> E
 ```
 
 图表来源
-- [NewWeaponBootstrap.cs:28-58](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L28-L58)
-- [NewWeaponBootstrap.cs:143-152](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L143-L152)
+- [NewWeaponBootstrap.cs:28-58](file://Integration/IntegrationHostCompatibility.cs#L28-L58)
+- [NewWeaponBootstrap.cs:143-152](file://Integration/IntegrationHostCompatibility.cs#L143-L152)
 - [ViperDaggerRuntime.cs:46-67](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs#L46-L67)
 - [ViperDaggerWeaponConfig.cs:52-94](file://Integration/NewWeapons/ViperDagger/ViperDaggerWeaponConfig.cs#L52-L94)
 - [NewWeaponIds.cs:15-20](file://Integration/NewWeapons/Common/NewWeaponIds.cs#L15-L20)
 
 章节来源
-- [NewWeaponBootstrap.cs:28-58](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L28-L58)
-- [NewWeaponBootstrap.cs:143-152](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L143-L152)
+- [NewWeaponBootstrap.cs:28-58](file://Integration/IntegrationHostCompatibility.cs#L28-L58)
+- [NewWeaponBootstrap.cs:143-152](file://Integration/IntegrationHostCompatibility.cs#L143-L152)
 - [ViperDaggerRuntime.cs:46-67](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs#L46-L67)
 - [ViperDaggerWeaponConfig.cs:52-94](file://Integration/NewWeapons/ViperDagger/ViperDaggerWeaponConfig.cs#L52-L94)
 - [NewWeaponIds.cs:15-20](file://Integration/NewWeapons/Common/NewWeaponIds.cs#L15-L20)
@@ -83,7 +83,7 @@ C --> E
 - [ViperDaggerConfig.cs:24-55](file://Integration/NewWeapons/ViperDagger/ViperDaggerConfig.cs#L24-L55)
 - [ViperDaggerRuntime.cs:23-39](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs#L23-L39)
 - [ViperDaggerWeaponConfig.cs:28-47](file://Integration/NewWeapons/ViperDagger/ViperDaggerWeaponConfig.cs#L28-L47)
-- [NewWeaponBootstrap.cs:28-58](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L28-L58)
+- [NewWeaponBootstrap.cs:28-58](file://Integration/IntegrationHostCompatibility.cs#L28-L58)
 - [NewWeaponIds.cs:15-20](file://Integration/NewWeapons/Common/NewWeaponIds.cs#L15-L20)
 
 ## 架构总览
@@ -113,8 +113,8 @@ end
 ```
 
 图表来源
-- [NewWeaponBootstrap.cs:28-58](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L28-L58)
-- [NewWeaponBootstrap.cs:143-152](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L143-L152)
+- [NewWeaponBootstrap.cs:28-58](file://Integration/IntegrationHostCompatibility.cs#L28-L58)
+- [NewWeaponBootstrap.cs:143-152](file://Integration/IntegrationHostCompatibility.cs#L143-L152)
 - [ViperDaggerRuntime.cs:82-109](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs#L82-L109)
 - [ViperDaggerRuntime.cs:148-171](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs#L148-L171)
 - [ViperDaggerWeaponConfig.cs:164-191](file://Integration/NewWeapons/ViperDagger/ViperDaggerWeaponConfig.cs#L164-L191)
@@ -232,10 +232,10 @@ ViperDaggerWeaponConfig --> ItemSetting_MeleeWeapon : "绑定毒元素/Buff"
 - 销毁清理：取消订阅并清理所有相关静态缓存。
 
 章节来源
-- [NewWeaponBootstrap.cs:28-58](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L28-L58)
-- [NewWeaponBootstrap.cs:65-95](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L65-L95)
-- [NewWeaponBootstrap.cs:143-152](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L143-L152)
-- [NewWeaponBootstrap.cs:193-221](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L193-L221)
+- [NewWeaponBootstrap.cs:28-58](file://Integration/IntegrationHostCompatibility.cs#L28-L58)
+- [NewWeaponBootstrap.cs:65-95](file://Integration/IntegrationHostCompatibility.cs#L65-L95)
+- [NewWeaponBootstrap.cs:143-152](file://Integration/IntegrationHostCompatibility.cs#L143-L152)
+- [NewWeaponBootstrap.cs:193-221](file://Integration/IntegrationHostCompatibility.cs#L193-L221)
 
 ## 依赖关系分析
 - ViperDaggerRuntime 依赖：
@@ -277,16 +277,16 @@ BOOT --> IF["ItemFactory"]
 - [ViperDaggerRuntime.cs:148-171](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs#L148-L171)
 - [ViperDaggerRuntime.cs:198-224](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs#L198-L224)
 - [ViperDaggerWeaponConfig.cs:103-191](file://Integration/NewWeapons/ViperDagger/ViperDaggerWeaponConfig.cs#L103-L191)
-- [NewWeaponBootstrap.cs:28-58](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L28-L58)
-- [NewWeaponBootstrap.cs:143-152](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L143-L152)
+- [NewWeaponBootstrap.cs:28-58](file://Integration/IntegrationHostCompatibility.cs#L28-L58)
+- [NewWeaponBootstrap.cs:143-152](file://Integration/IntegrationHostCompatibility.cs#L143-L152)
 
 章节来源
 - [ViperDaggerRuntime.cs:82-109](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs#L82-L109)
 - [ViperDaggerRuntime.cs:148-171](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs#L148-L171)
 - [ViperDaggerRuntime.cs:198-224](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs#L198-L224)
 - [ViperDaggerWeaponConfig.cs:103-191](file://Integration/NewWeapons/ViperDagger/ViperDaggerWeaponConfig.cs#L103-L191)
-- [NewWeaponBootstrap.cs:28-58](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L28-L58)
-- [NewWeaponBootstrap.cs:143-152](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L143-L152)
+- [NewWeaponBootstrap.cs:28-58](file://Integration/IntegrationHostCompatibility.cs#L28-L58)
+- [NewWeaponBootstrap.cs:143-152](file://Integration/IntegrationHostCompatibility.cs#L143-L152)
 
 ## 性能考量
 - 早期退出策略：仅在伤害来自毒蛇匕首且由主角持有时继续处理，其余路径立即返回，降低热路径开销。
@@ -320,7 +320,7 @@ BOOT --> IF["ItemFactory"]
 - [ViperDaggerRuntime.cs:176-196](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs#L176-L196)
 - [ViperDaggerRuntime.cs:229-253](file://Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs#L229-L253)
 - [ViperDaggerWeaponConfig.cs:52-94](file://Integration/NewWeapons/ViperDagger/ViperDaggerWeaponConfig.cs#L52-L94)
-- [NewWeaponBootstrap.cs:65-95](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L65-L95)
+- [NewWeaponBootstrap.cs:65-95](file://Integration/IntegrationHostCompatibility.cs#L65-L95)
 
 ## 结论
 毒蛇匕首通过“命中叠毒+满层爆发”的机制，将低单体伤害转化为高爆发的持续伤害循环。其实现清晰分层：配置层统一数值，运行时层专注状态管理与爆发，装配层完成与游戏系统的集成。整体设计注重性能与稳定性，具备可扩展性与良好的调试支持。

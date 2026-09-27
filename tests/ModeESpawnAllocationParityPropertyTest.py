@@ -8,10 +8,11 @@ import math
 import random
 import re
 import sys
+from cs_source_util import clean_source
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SOURCE = PROJECT_ROOT / "ModeE" / "ModeESpawnAllocation.cs"
+SOURCE = PROJECT_ROOT / "Utilities" / "ModeEFSpawnPreparation.cs"
 SPAWN_DIR = PROJECT_ROOT / "Assets" / "SpawnPoints"
 MIN_DISTANCE = 10.0
 MIN_DISTANCE_SQR = MIN_DISTANCE * MIN_DISTANCE
@@ -117,7 +118,7 @@ def assert_equal(case_name: str, sorted_points: list[Point]) -> int | None:
 
 
 def verify_source_shape() -> int | None:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = clean_source(SOURCE.read_text(encoding="utf-8"))
     required = [
         "FilterModeESpawnPointsByDistanceGrid(sorted)",
         "acceptedByCell",

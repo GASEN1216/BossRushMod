@@ -8,8 +8,7 @@ import sys
 
 
 SOURCE_CANDIDATES = [
-    Path("LootAndRewards/LootAndRewards.cs"),
-    Path("LootAndRewards/LootAndRewardsVictoryRewards.cs"),
+    Path("WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs"),
 ]
 
 
@@ -44,12 +43,16 @@ def main() -> int:
     block = ""
     for candidate in SOURCE_CANDIDATES:
         text = candidate.read_text(encoding="utf-8")
-        block = extract_block(text, "private async void OnAllEnemiesDefeated_LootAndRewards()")
+        block = extract_block(text, "internal async void OnAllEnemiesDefeated_LootAndRewards()")
         if block:
             break
 
     if not block:
         return fail("VictoryRewardShadowCrateFlowGuard: missing OnAllEnemiesDefeated_LootAndRewards block")
+
+    host = Path("LootAndRewards/LootAndRewards.cs").read_text(encoding="utf-8")
+    if "wavesArenaRuntime.OnAllEnemiesDefeated_LootAndRewards();" not in host:
+        return fail("VictoryRewardShadowCrateFlowGuard: legacy victory entry does not forward to the arena module")
 
     start_call = "StartVictoryRewardShadowCrate_LootAndRewards(rewardHighCount);"
     complete_call = "CompleteVictoryRewardShadowCrate_LootAndRewards();"

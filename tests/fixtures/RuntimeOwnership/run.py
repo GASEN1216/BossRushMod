@@ -27,17 +27,25 @@ def member(source, marker):
 def generate():
     drops = (ROOT / "ZombieMode/ZombieModeDropsAndPerformance.cs").read_text(encoding="utf-8-sig")
     bridge = (ROOT / "Integration/Wedding/WeddingModBehaviourBridge.cs").read_text(encoding="utf-8-sig")
+    wedding_runtime = (ROOT / "Integration/Wedding/WeddingRuntimeModule.cs").read_text(encoding="utf-8-sig")
     module = (ROOT / "Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcModule.cs").read_text(encoding="utf-8-sig")
-    methods = [member(drops, "private void CleanupZombieModeExpiredDropCandidates(bool forceWaveCleanup)")]
+    drop_method = member(drops, "internal void CleanupZombieModeExpiredDropCandidates(bool forceWaveCleanup)")
+    assert "private ModBehaviour _owner;" in wedding_runtime
+    wedding_members = ["private ModBehaviour _owner;"]
+    for name in ("permanentSpouseRestoreGeneration", "permanentSpouseRestoreRequest"):
+        found = re.findall(r"^\s*private [^\n]*\b" + name + r"\b[^\n]*;", bridge, re.M)
+        assert len(found) == 1, name
+        wedding_members.extend(found)
     for marker in ["private sealed class PermanentSpouseRestoreRequest", "private void InvalidatePermanentSpouseRestore()",
                    "private void RequestPermanentSpouseRestore(", "private bool IsPermanentSpouseRestoreCurrent(",
                    "private async UniTaskVoid RestorePermanentSpouseAsync("]:
-        methods.append(member(bridge, marker))
+        wedding_members.append(member(bridge, marker))
     # Only async return type is adapted; bodies and call sites remain production code.
-    body = "\n".join(methods).replace("async UniTaskVoid", "async Task")
+    body = "\n".join(wedding_members).replace("async UniTaskVoid", "async Task")
     force = member(module, "internal static async UniTask<CharacterMainControl> ForceSpawnAtAsync(")
     force = force.replace("async UniTask<CharacterMainControl>", "async Task<CharacterMainControl>")
-    generated = ("using System; using System.Threading.Tasks;\npublic partial class ModBehaviour {\n" + body
+    generated = ("using System; using System.Threading.Tasks;\ninternal sealed partial class ZombieModeRuntimeModule {\n" + drop_method
+                 + "\n}\ninternal sealed partial class WeddingRuntimeModule {\n" + body
                  + "\n}\npublic partial class PermanentDuckNpcModule {\n" + force + "\n}\n")
     target = ROOT / "Build/runtime-ownership-fixture"
     target.mkdir(parents=True, exist_ok=True)

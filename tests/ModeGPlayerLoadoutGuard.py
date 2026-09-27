@@ -14,6 +14,7 @@ ModeGPlayerLoadoutGuard — Mode G 玩家装备守卫（owner 2026-08-18 裁决�
 import os
 import re
 import sys
+from cs_source_util import clean_source
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEG_DIR = os.path.join(REPO_ROOT, "ModeG")
@@ -25,9 +26,7 @@ FORBIDDEN = ["CharacterDieTask"]
 
 
 def strip_comments(text):
-    text = re.sub(r"/\*[\s\S]*?\*/", "", text)
-    text = re.sub(r"//[^\n]*", "", text)
-    return text
+    return clean_source(text)
 
 
 def read(path):
@@ -55,7 +54,7 @@ def main():
         if "IsPlayerNakedWithAllowedItems" in entry or "IsPlayerNakedForModeG" in entry:
             errors.append("[BringLoadout] Mode G 入口重新引入裸装扫描")
         if not re.search(
-                r"private bool IsModeGLoadoutEligible\(\)\s*\{\s*return true;\s*\}",
+                r"internal bool IsModeGLoadoutEligible\(\)\s*\{\s*return true;\s*\}",
                 entry):
             errors.append("[BringLoadout] Mode G 未显式允许玩家保留当前装备")
         if not re.search(r"TryConsumeModeEntryItem\(", entry):

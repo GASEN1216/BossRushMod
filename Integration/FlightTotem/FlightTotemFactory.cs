@@ -20,9 +20,9 @@ using ItemStatsSystem.Stats;
 namespace BossRush
 {
     /// <summary>
-    /// 飞行图腾物品工厂 - 使用 partial class 扩展 ModBehaviour
+    /// 飞行图腾物品的加载、配置与本地化，由飞行图腾运行时 owner 持有。
     /// </summary>
-    public partial class ModBehaviour
+    internal sealed partial class FlightTotemRuntimeModule
     {
         // ========== 状态 ==========
 

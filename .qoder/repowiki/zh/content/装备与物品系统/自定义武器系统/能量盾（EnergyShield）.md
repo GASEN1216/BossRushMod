@@ -5,7 +5,7 @@
 - [EnergyShieldConfig.cs](file://Integration/NewWeapons/EnergyShield/EnergyShieldConfig.cs)
 - [EnergyShieldRuntime.cs](file://Integration/NewWeapons/EnergyShield/EnergyShieldRuntime.cs)
 - [EnergyShieldWeaponConfig.cs](file://Integration/NewWeapons/EnergyShield/EnergyShieldWeaponConfig.cs)
-- [NewWeaponBootstrap.cs](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs)
+- [NewWeaponBootstrap.cs](file://Integration/IntegrationHostCompatibility.cs)
 - [NewWeaponIds.cs](file://Integration/NewWeapons/Common/NewWeaponIds.cs)
 </cite>
 
@@ -77,14 +77,14 @@ B --> W
 - [EnergyShieldConfig.cs:14-56](file://Integration/NewWeapons/EnergyShield/EnergyShieldConfig.cs#L14-L56)
 - [EnergyShieldRuntime.cs:21-195](file://Integration/NewWeapons/EnergyShield/EnergyShieldRuntime.cs#L21-L195)
 - [EnergyShieldWeaponConfig.cs:20-115](file://Integration/NewWeapons/EnergyShield/EnergyShieldWeaponConfig.cs#L20-L115)
-- [NewWeaponBootstrap.cs:40-90](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L40-L90)
+- [NewWeaponBootstrap.cs:40-90](file://Integration/IntegrationHostCompatibility.cs#L40-L90)
 - [NewWeaponIds.cs:29-35](file://Integration/NewWeapons/Common/NewWeaponIds.cs#L29-L35)
 
 章节来源
 - [EnergyShieldConfig.cs:14-56](file://Integration/NewWeapons/EnergyShield/EnergyShieldConfig.cs#L14-L56)
 - [EnergyShieldRuntime.cs:21-195](file://Integration/NewWeapons/EnergyShield/EnergyShieldRuntime.cs#L21-L195)
 - [EnergyShieldWeaponConfig.cs:20-115](file://Integration/NewWeapons/EnergyShield/EnergyShieldWeaponConfig.cs#L20-L115)
-- [NewWeaponBootstrap.cs:40-90](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L40-L90)
+- [NewWeaponBootstrap.cs:40-90](file://Integration/IntegrationHostCompatibility.cs#L40-L90)
 - [NewWeaponIds.cs:29-35](file://Integration/NewWeapons/Common/NewWeaponIds.cs#L29-L35)
 
 ## 核心组件
@@ -104,7 +104,7 @@ B --> W
 - [EnergyShieldConfig.cs:14-56](file://Integration/NewWeapons/EnergyShield/EnergyShieldConfig.cs#L14-L56)
 - [EnergyShieldRuntime.cs:21-195](file://Integration/NewWeapons/EnergyShield/EnergyShieldRuntime.cs#L21-L195)
 - [EnergyShieldWeaponConfig.cs:20-115](file://Integration/NewWeapons/EnergyShield/EnergyShieldWeaponConfig.cs#L20-L115)
-- [NewWeaponBootstrap.cs:40-90](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L40-L90)
+- [NewWeaponBootstrap.cs:40-90](file://Integration/IntegrationHostCompatibility.cs#L40-L90)
 - [NewWeaponIds.cs:29-35](file://Integration/NewWeapons/Common/NewWeaponIds.cs#L29-L35)
 
 ## 架构总览
@@ -203,8 +203,8 @@ UpdateCD --> End(["结束"])
 - 销毁时取消订阅并清理其他新武器系统状态，保证资源释放。
 
 章节来源
-- [NewWeaponBootstrap.cs:40-90](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L40-L90)
-- [NewWeaponBootstrap.cs:188-225](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L188-L225)
+- [NewWeaponBootstrap.cs:40-90](file://Integration/IntegrationHostCompatibility.cs#L40-L90)
+- [NewWeaponBootstrap.cs:188-225](file://Integration/IntegrationHostCompatibility.cs#L188-L225)
 
 ### 标识与资源（NewWeaponIds）
 - 提供能量盾的 TypeID、BaseName、ModelBaseName、IconAssetName 等常量，供运行时与配置层引用。
@@ -266,14 +266,14 @@ NewWeaponBootstrap --> EnergyShieldRuntime : "订阅/取消订阅"
 - [EnergyShieldRuntime.cs:21-195](file://Integration/NewWeapons/EnergyShield/EnergyShieldRuntime.cs#L21-L195)
 - [EnergyShieldConfig.cs:14-56](file://Integration/NewWeapons/EnergyShield/EnergyShieldConfig.cs#L14-L56)
 - [EnergyShieldWeaponConfig.cs:20-115](file://Integration/NewWeapons/EnergyShield/EnergyShieldWeaponConfig.cs#L20-L115)
-- [NewWeaponBootstrap.cs:40-90](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L40-L90)
+- [NewWeaponBootstrap.cs:40-90](file://Integration/IntegrationHostCompatibility.cs#L40-L90)
 - [NewWeaponIds.cs:29-35](file://Integration/NewWeapons/Common/NewWeaponIds.cs#L29-L35)
 
 章节来源
 - [EnergyShieldRuntime.cs:21-195](file://Integration/NewWeapons/EnergyShield/EnergyShieldRuntime.cs#L21-L195)
 - [EnergyShieldConfig.cs:14-56](file://Integration/NewWeapons/EnergyShield/EnergyShieldConfig.cs#L14-L56)
 - [EnergyShieldWeaponConfig.cs:20-115](file://Integration/NewWeapons/EnergyShield/EnergyShieldWeaponConfig.cs#L20-L115)
-- [NewWeaponBootstrap.cs:40-90](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L40-L90)
+- [NewWeaponBootstrap.cs:40-90](file://Integration/IntegrationHostCompatibility.cs#L40-L90)
 - [NewWeaponIds.cs:29-35](file://Integration/NewWeapons/Common/NewWeaponIds.cs#L29-L35)
 
 ## 性能考量
@@ -302,7 +302,7 @@ NewWeaponBootstrap --> EnergyShieldRuntime : "订阅/取消订阅"
 - [EnergyShieldRuntime.cs:76-116](file://Integration/NewWeapons/EnergyShield/EnergyShieldRuntime.cs#L76-L116)
 - [EnergyShieldRuntime.cs:121-160](file://Integration/NewWeapons/EnergyShield/EnergyShieldRuntime.cs#L121-L160)
 - [EnergyShieldWeaponConfig.cs:61-107](file://Integration/NewWeapons/EnergyShield/EnergyShieldWeaponConfig.cs#L61-L107)
-- [NewWeaponBootstrap.cs:82-90](file://Integration/NewWeapons/Common/NewWeaponBootstrap.cs#L82-L90)
+- [NewWeaponBootstrap.cs:82-90](file://Integration/IntegrationHostCompatibility.cs#L82-L90)
 
 ## 结论
 能量盾通过简洁的事件驱动与配置驱动实现了高效的正面伤害吸收与回血机制。其设计注重性能与稳定性，提供了清晰的扩展点与调试入口。对于使用者而言，合理站位与面对正面威胁能最大化收益；对于开发者而言，可通过调整配置参数与扩展视觉反馈来增强体验。

@@ -74,8 +74,8 @@ def main() -> int:
         "if (parts == 0)",
         "Mathf.RoundToInt(healAmount)",
         "Mathf.RoundToInt(maxHealthGain)",
-        '"悬赏印记 " + RichWarningTag + "+1</color>"',
-        '"Bounty " + RichWarningTag + "+1</color>"',
+        '"悬赏印记 " + ModBehaviour.RichWarningTag + "+1</color>"',
+        '"Bounty " + ModBehaviour.RichWarningTag + "+1</color>"',
     ]
     for snippet in required:
         if snippet not in body:

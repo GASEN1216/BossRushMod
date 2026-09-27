@@ -9,7 +9,7 @@ MODEF_FORT_PARTS = [
     Path("ModeF/ModeFFortifications_RepairRewardsCleanup.cs"),
     Path("ModeF/ModeFItemUsageAndTriggers.cs"),
 ]
-ZOMBIE_CLEANUP = Path("ZombieMode/ZombieModeCleanup.cs")
+ZOMBIE_CLEANUP = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 
 
 def fail(message: str) -> int:
@@ -87,6 +87,8 @@ def main() -> int:
     paid_sweep = PAID_SWEEP.read_text(encoding="utf-8")
     modef_fort = read_modef_fortifications()
     zombie_cleanup = ZOMBIE_CLEANUP.read_text(encoding="utf-8")
+    zombie_runtime_module = Path("ZombieMode/ZombieModeRuntimeModule.cs").read_text(encoding="utf-8")
+    zombie_bridges = Path("ZombieMode/ZombieModeEntryHostBridge.cs").read_text(encoding="utf-8")
 
     for snippet in [
         "private static bool TryClaimPromptState(Transform npcTransform, int promptGeneration, ref bool promptOwnsState)",
@@ -132,15 +134,18 @@ def main() -> int:
         if result:
             return result
 
-    run_cleanup = extract_method(zombie_cleanup, "private void CleanupZombieModeRunOnlyState")
-    result = require(run_cleanup, "CleanupZombieModeFortificationInteractionState();", "zombie cleanup must clear fortification interaction state")
+    run_cleanup = extract_method(zombie_runtime_module, "internal void CleanupZombieModeRunOnlyState")
+    result = require(run_cleanup, "owner.CleanupZombieModeFortificationInteractionStateForRuntimeModule();", "RuntimeModule cleanup must clear fortification interaction state")
     if result:
         return result
     result = require_before(
         run_cleanup,
-        "CleanupZombieModeFortificationInteractionState();",
+        "owner.CleanupZombieModeFortificationInteractionStateForRuntimeModule();",
         "RunScopedRegistry.ForEachReverse(",
         "interaction state cleanup before run-only object cleanup")
+    if result:
+        return result
+    result = require(zombie_bridges, "CleanupZombieModeFortificationInteractionState();", "host bridge must preserve fortification interaction cleanup")
     if result:
         return result
 

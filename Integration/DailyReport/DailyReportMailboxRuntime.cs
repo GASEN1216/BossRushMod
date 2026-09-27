@@ -263,7 +263,7 @@ namespace BossRush
         private void OnDailyReportBuildingDestroyed(int buildingInstanceId)
         {
             // 子物体由 Unity 随建筑一起销毁，这里只需要让缓存失效
-            preparedDailyReportBuildingInstanceIds.Clear();
+            dailyReportRestore.ClearPrepared();
             ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "建筑被拆除，交互点缓存已清空");
         }
 
@@ -279,11 +279,9 @@ namespace BossRush
 
         private void RequestRestoreDailyReportBuildings(string source)
         {
-            // 已有协程在跑时天然去重
-            if (dailyReportRestoreCoroutine != null) return;
             try
             {
-                dailyReportRestoreCoroutine = _owner.StartCoroutine(RestoreDailyReportBuildingsDelayed(source));
+                dailyReportRestore.Request(source);
             }
             catch (Exception e)
             {
@@ -291,64 +289,9 @@ namespace BossRush
             }
         }
 
-        private IEnumerator RestoreDailyReportBuildingsDelayed(string source)
-        {
-            // 等两帧：建筑实例的 Awake/Start 要先跑完
-            yield return null;
-            yield return null;
-
-            try
-            {
-                RefreshDailyReportPreparedBuildingCacheForActiveScene();
-                if (!HasPendingDailyReportBuildingsInManager()) yield break;
-
-                Type buildingType = BuildingInjectionHelper.GetBuildingType();
-                if (buildingType == null) yield break;
-
-                UnityEngine.Object[] allBuildings = ObjectCache.GetSceneObjectsByType(buildingType);
-                if (allBuildings == null) yield break;
-
-                for (int i = 0; i < allBuildings.Length; i++)
-                {
-                    Component comp = allBuildings[i] as Component;
-                    if (comp == null) continue;
-                    if (!IsDailyReportBuildingComponent(comp)) continue;
-
-                    GameObject buildingGO = comp.gameObject;
-                    int instanceId = buildingGO.GetInstanceID();
-                    if (preparedDailyReportBuildingInstanceIds.Contains(instanceId)
-                        && !NeedsDailyReportFunctionPointRepair(buildingGO))
-                    {
-                        continue;
-                    }
-
-                    EnsureDailyReportFunctionPoints(buildingGO);
-                    preparedDailyReportBuildingInstanceIds.Add(instanceId);
-                }
-            }
-            finally
-            {
-                dailyReportRestoreCoroutine = null;
-            }
-        }
-
-        private void RefreshDailyReportPreparedBuildingCacheForActiveScene()
-        {
-            int handle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
-            if (handle == preparedDailyReportSceneHandle) return;
-            preparedDailyReportBuildingInstanceIds.Clear();
-            preparedDailyReportSceneHandle = handle;
-        }
-
         private void ResetDailyReportPreparedBuildingCache()
         {
-            preparedDailyReportBuildingInstanceIds.Clear();
-            try { ObjectCache.InvalidateSceneObjectsByType(BuildingInjectionHelper.GetBuildingType()); }
-            catch (Exception)
-            {
-                // 缓存失效失败不阻断清理
-            }
-            preparedDailyReportSceneHandle = int.MinValue;
+            dailyReportRestore.ResetPreparedCache();
         }
 
         /// <summary>管理器里是否有本建筑的实例。异常时 fail-open=true（宁可多扫一遍）。</summary>

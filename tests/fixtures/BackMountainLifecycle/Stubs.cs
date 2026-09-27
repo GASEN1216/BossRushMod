@@ -384,7 +384,6 @@ namespace BossRush
         public static IList<BossBgmJukeboxEntry> GetJukeboxTracks() { return Tracks; }
         public static string ResolveSoundPath(string file) { return file; }
     }
-    public class ZombieModeAttributeModifierRecord { public Item CharacterItem; public Stat Stat; public Modifier Modifier; public string StatName; }
     public static class ZombieModeStatNames
     {
         public const string GunDamageMultiplier = "GunDamageMultiplier", MeleeDamageMultiplier = "MeleeDamageMultiplier",

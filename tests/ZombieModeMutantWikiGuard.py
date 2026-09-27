@@ -12,8 +12,9 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 MODELS = ROOT / "ZombieMode" / "ZombieModeModels.cs"
 TUNING = ROOT / "ZombieMode" / "ZombieModeTuning.cs"
-POLLUTION = ROOT / "ZombieMode" / "ZombieModePollution.cs"
-SKILLS = ROOT / "ZombieMode" / "ZombieModePollution_RuntimeSkills.cs"
+POLLUTION = ROOT / "ZombieMode" / "ZombieModeRuntimeModule_Pollution.cs"
+SKILLS = ROOT / "ZombieMode" / "ZombieModeRuntimeModule_PollutionSkills.cs"
+POLLUTION_TUNING = ROOT / "ZombieMode" / "ZombieModeRuntimeModule_PollutionTuning.cs"
 COMPONENTS = ROOT / "ZombieMode" / "ZombieModePollution_RuntimeComponents.cs"
 LOCALIZATION = ROOT / "Localization" / "LocalizationInjector.cs"
 
@@ -148,6 +149,7 @@ def main() -> int:
         pollution = read(POLLUTION)
         skills = read(SKILLS)
         components = read(COMPONENTS)
+        pollution_tuning = read(POLLUTION_TUNING)
         localization = read(LOCALIZATION)
         zh = read(CANONICAL["zh"])
         en = read(CANONICAL["en"])
@@ -184,7 +186,7 @@ def main() -> int:
         if zh_name not in zh_elite or en_name not in en_elite:
             return fail("elite affix missing from both tables -> " + member)
 
-    source = "\n".join((tuning, pollution, skills, components))
+    source = "\n".join((tuning, pollution, pollution_tuning, skills, components))
     pairs = [
         # Shared combat and pollution framing.
         ("SpecialHealthMultiplier = 1.4f", "生命 ×1.40", "HP ×1.40"),

@@ -6,7 +6,7 @@ MODELS = Path("ZombieMode/ZombieModeModels.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -14,7 +14,8 @@ REWARD_PARTS = [
     # 结构断言照旧覆盖它们。
     Path("ZombieMode/ZombieModeRewardSelectionView.cs"),
     Path("ZombieMode/ZombieModeTemporaryNpcServiceView.cs"),
-    Path("ZombieMode/ZombieModeRewardPreparationDuration.cs"),
+    Path("ZombieMode/ZombieModeRewardHostBridge.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule.cs"),
     Path("ZombieMode/ZombieModeBackpackJunkRecycle.cs"),
 ]
 
@@ -24,6 +25,7 @@ def read_rewards() -> str:
 
 NPC_CATALOG = Path("ZombieMode/ZombieModeNpcCatalog.cs")
 COMPILE = Path("compile_official.bat")
+TRACKER = Path("Common/Stats/RuntimeStatModifierTracker.cs")
 
 
 def fail(message: str) -> int:
@@ -39,6 +41,7 @@ def require(text: str, snippet: str, label: str) -> int:
 
 def main() -> int:
     models = MODELS.read_text(encoding="utf-8")
+    tracker = TRACKER.read_text(encoding="utf-8")
     rewards = read_rewards()
     npc_catalog = NPC_CATALOG.read_text(encoding="utf-8")
     compile_text = COMPILE.read_text(encoding="utf-8")
@@ -56,8 +59,6 @@ def main() -> int:
         "public sealed class ZombieModeRewardCatalogEntry",
         "public ZombieModeRewardCategory Category;",
         "public int Weight;",
-        "public sealed class ZombieModeAttributeModifierRecord",
-        "public ItemStatsSystem.Stats.Modifier Modifier;",
         "public enum ZombieModePendingMapEventType",
         "HighValueAirdrop",
         "EliteSquad",
@@ -65,6 +66,11 @@ def main() -> int:
         "public int PendingEliteSquadCount;",
     ]:
         result = require(models, snippet, "reward model contract")
+        if result:
+            return result
+
+    for snippet in ("public sealed class BossRushStatModifierRecord", "public Modifier Modifier;"):
+        result = require(tracker, snippet, "shared modifier record contract")
         if result:
             return result
 
@@ -86,8 +92,8 @@ def main() -> int:
         "KeepZombieModeBossBonusRewardEntries",
         "selectedNode.RemainingSelections",
         "!selectedNode.Options.Contains(rewardType)",
-        "zombieModeRunState.StarterLoadout == ZombieModeStarterLoadout.Melee",
-        "zombieModeRunState.StarterLoadout == ZombieModeStarterLoadout.Gunner",
+        "runState.StarterLoadout == ZombieModeStarterLoadout.Melee",
+        "runState.StarterLoadout == ZombieModeStarterLoadout.Gunner",
         "ZombieModeRewardType.MedicalSupply",
         "ZombieModeRewardType.ArmorOrHelmet",
         "ZombieModeRewardType.Heal",
@@ -117,7 +123,7 @@ def main() -> int:
         "ApplyZombieModePlayerAttributeModifiers",
         "RemoveZombieModeAttributeModifiers",
         "AddZombieModeAttributeModifier",
-        "RegisterZombieModeRunOnlyObject(zombieModeRunState.RunId, ZombieModeRunOnlyObjectKind.Buff",
+        "RegisterZombieModeRunOnlyObject(runState.RunId, ZombieModeRunOnlyObjectKind.Buff",
         "ApplyZombieModeMapEventReward",
         "SpawnPendingZombieModeEliteSquad",
         "CreateZombieModeHighValueAirdrop",

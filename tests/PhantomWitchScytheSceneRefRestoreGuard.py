@@ -14,6 +14,7 @@ Reason:
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 SOURCE = Path("Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs")
@@ -47,7 +48,7 @@ def extract_block(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = clean_source(SOURCE.read_text(encoding="utf-8"))
 
     helper = extract_block(text, "private void EnsurePhantomWitchScytheSharedAssetReference()")
     if not helper:
@@ -66,7 +67,7 @@ def main() -> int:
                 "PhantomWitchScytheSceneRefRestoreGuard: helper missing " + token
             )
 
-    init_block = extract_block(text, "private void InitializePhantomWitchScytheSystem()")
+    init_block = extract_block(text, "internal void InitializePhantomWitchScytheSystem()")
     if not init_block:
         return fail("PhantomWitchScytheSceneRefRestoreGuard: missing InitializePhantomWitchScytheSystem block")
 
@@ -75,7 +76,7 @@ def main() -> int:
             "PhantomWitchScytheSceneRefRestoreGuard: init must call EnsurePhantomWitchScytheSharedAssetReference()"
         )
 
-    setup_block = extract_block(text, "private void SetupPhantomWitchScytheForScene(Scene scene)")
+    setup_block = extract_block(text, "internal void SetupPhantomWitchScytheForScene(Scene scene)")
     if not setup_block:
         return fail("PhantomWitchScytheSceneRefRestoreGuard: missing SetupPhantomWitchScytheForScene block")
 

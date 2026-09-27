@@ -43,7 +43,7 @@ def main() -> int:
         return fail("missing per-instance death handler registry")
 
     spawn_block = extract_block(text, "public async UniTask<CharacterMainControl> SpawnDragonKing(")
-    cleanup_block = extract_block(text, "private void CleanupTrackedDragonKingsOnArenaExit()")
+    cleanup_block = extract_block(text, "internal void CleanupTrackedDragonKingsOnArenaExit()")
     death_block = extract_block(text, "private void OnDragonKingDeath(")
 
     for block, label in [

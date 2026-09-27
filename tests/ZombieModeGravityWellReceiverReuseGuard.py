@@ -5,7 +5,7 @@ from cs_source_util import clean_source
 import sys
 
 
-SOURCE = Path("ZombieMode/ZombieModeRewardProjectileSpread.cs")
+SOURCE = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 
 
 def fail(message: str) -> int:

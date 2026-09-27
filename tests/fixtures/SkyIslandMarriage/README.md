@@ -13,3 +13,5 @@
 2026-09-26：新增三位任务居民婚后离岛分别接管到 Search_B / Search_A / Search_H；折翎在本趟开战后保持隐藏，旧档仅 Cleared 时不隐藏。真实数据的永久身份与双语台词另由 PermanentDuckNpcDialogue 逐个解析验证，礼物条件、实际碰撞/菜单及存档落盘仍不由本夹具模拟。
 
 2026-09-26 补充：逐字抽取 Session.CanBeginStoryChallenge / BeginStoryChallenge / TryChallengeOutcome，以及 WorldStory.ZhelingChoices / ChallengeAvailable / Challenge 的完整菜单、确认与开战调用。64 组中英/婚姻/随行/实例/场景/已解决组合，加确认页陈旧后拒绝与送回家再挑战，验证同场随行配偶不能与同名敌体同时生成。官方遭遇现场门、确认页容器与故事基础事实是显式替身；没有模拟真实寻路或写盘，关系/故事事实不由查询改写。
+
+2026-09-26 宿主载体同步：婚姻、配偶与旧 NPC 桥入口从当前 `IntegrationHostCompatibility.cs` 按完整方法读取，婚姻模块业务继续使用原文件。

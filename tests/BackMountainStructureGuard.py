@@ -18,6 +18,10 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+from compile_list import read_compile_sources
 
 MODULE = Path("Integration/BackMountain/BackMountainRuntimeModule.cs")
 SHOWCASE = Path("Integration/BackMountain/ShowcaseService.cs")
@@ -32,7 +36,7 @@ RAID_MEAL = Path("Integration/BackMountain/RaidMealService.cs")
 RAID_MEAL_USE = Path("Integration/BackMountain/RaidMealUsageBehavior.cs")
 UNLOCKS = Path("Integration/BackMountain/BackMountainUnlocks.cs")
 CONFIG_CONST = Path("Integration/BackMountain/BackMountainConfig.cs")
-REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+REGISTRATION = Path("ModBehaviourRuntimeModules.cs")
 SCENE = Path("Integration/BossRushIntegration_StartAndScene.cs")
 # 开关接线散在 Config.cs 与提取出去的白名单文件里（同一 partial 类，
 # 拆分只为 LargeFileBudgetGuard 的 1200 行预算），断言时合并来看。
@@ -58,8 +62,7 @@ def fail(message):
 
 
 def strip_comments(text):
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    return re.sub(r"//[^\n]*", "", text)
+    return clean_source(text)
 
 
 def main():
@@ -95,9 +98,8 @@ def main():
         return fail(REGISTRATION.as_posix() + " 缺少只读门面 BackMountainRuntime")
 
     news = []
-    for path in Path(".").rglob("*.cs"):
-        if any(part in {".git", "Build", "tmp", "output", "outputs", "鸭科夫源码"} for part in path.parts):
-            continue
+    production_paths = [Path(source) for source in read_compile_sources()]
+    for path in production_paths:
         text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
         news += [path.as_posix()] * len(
             re.findall(r"new\s+BackMountainRuntimeModule\s*\(", text))
@@ -215,7 +217,9 @@ def main():
     # ---- 7b) 菜地工地：只读官方键、判据走纯函数、开门排在作物注入之后 ----
     if not re.search(r'ConstructionSaveKey\s*=\s*"ConstructionSite_GardenConstruction"', garden_judges):
         return fail(GARDEN_JUDGES.as_posix() + " 官方工地存档键字面值已变（只读契约）")
-    for path in Path("Integration").rglob("*.cs"):
+    for path in production_paths:
+        if path.parts[0] != "Integration":
+            continue
         text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
         if 'SavesSystem.Save<bool>("ConstructionSite_' in text or "SavesSystem.Save<bool>(GardenSiteJudges.ConstructionSaveKey" in text:
             return fail(path.as_posix() + " 写了官方工地存档键：Mod 只能打开付费交互，wasBuilt / 存档全归官方（AGENTS §10）")

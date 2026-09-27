@@ -20,7 +20,7 @@ using System;
 namespace BossRush
 {
     /// <summary>鸭王征程运行时模块。宿主六回调的唯一落点。</summary>
-    internal sealed class CampaignRuntimeModule : BossRushRuntimeModuleBase
+    internal sealed partial class CampaignRuntimeModule : BossRushRuntimeModuleBase
     {
         #region 状态
 
@@ -119,7 +119,7 @@ namespace BossRush
                 // 否则召唤石永远不再出现、终章再也打不了。收尾本身幂等。
                 if (_owner != null)
                 {
-                    _owner.CleanupCampaignFinalBoss(false);
+                    CleanupCampaignFinalBoss(false);
                 }
 
                 _guidePollRemaining = 0f;
@@ -159,7 +159,7 @@ namespace BossRush
 
                 if (_owner != null)
                 {
-                    _owner.TickCampaignModeBridge(deltaTime);
+                    TickCampaignModeBridge(deltaTime);
                 }
                 TickGuideCompletions(unscaledDeltaTime);
                 CampaignHud.Tick();
@@ -177,7 +177,7 @@ namespace BossRush
         {
             try
             {
-                if (_owner != null) _owner.CleanupCampaignFinalBoss(true);
+                if (_owner != null) CleanupCampaignFinalBoss(true);
                 if (_questClient != null) _questClient.UnregisterAll();
                 if (_bootstrapped)
                 {
@@ -259,7 +259,7 @@ namespace BossRush
                 // 关掉开关也要把已入队的进度落下去，否则玩家刚交付的章节会丢
                 CampaignSaveCoordinator.TryFlushOnHostDestroy();
                 CampaignSaveCoordinator.ShutdownSubscription();
-                if (_owner != null) _owner.CleanupCampaignFinalBoss(true);
+                if (_owner != null) CleanupCampaignFinalBoss(true);
                 // 关掉开关即从杰夫的任务页撤走六章（核心先冻结所有权再清投影）
                 if (_questClient != null) _questClient.UnregisterAll();
                 CampaignObjectiveTracker.ResetSession();

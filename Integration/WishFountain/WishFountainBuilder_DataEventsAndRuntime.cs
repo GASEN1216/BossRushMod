@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class WishFountainRuntimeModule
     {
         /// <summary>
         /// 添加 Building 组件（通过反射）
@@ -219,18 +219,20 @@ namespace BossRush
                 if (bmType == null) return;
 
                 EventInfo builtEvent = bmType.GetEvent("OnBuildingBuilt", BindingFlags.Public | BindingFlags.Static);
-                if (builtEvent != null)
+                if (builtEvent != null && !_builtEventSubscribed)
                 {
                     Action<int> handler = OnStarwishBuildingBuilt;
                     builtEvent.AddEventHandler(null, handler);
+                    _builtEventSubscribed = true;
                     DevLog("[WishFountain] 已订阅 OnBuildingBuilt 事件");
                 }
 
                 EventInfo destroyedEvent = bmType.GetEvent("OnBuildingDestroyed", BindingFlags.Public | BindingFlags.Static);
-                if (destroyedEvent != null)
+                if (destroyedEvent != null && !_destroyedEventSubscribed)
                 {
                     Action<int> handler = OnStarwishBuildingDestroyed;
                     destroyedEvent.AddEventHandler(null, handler);
+                    _destroyedEventSubscribed = true;
                     DevLog("[WishFountain] 已订阅 OnBuildingDestroyed 事件");
                 }
             }
@@ -248,20 +250,25 @@ namespace BossRush
                 if (bmType == null) return;
 
                 EventInfo builtEvent = bmType.GetEvent("OnBuildingBuilt", BindingFlags.Public | BindingFlags.Static);
-                if (builtEvent != null)
+                if (builtEvent != null && _builtEventSubscribed)
                 {
                     Action<int> handler = OnStarwishBuildingBuilt;
                     builtEvent.RemoveEventHandler(null, handler);
+                    _builtEventSubscribed = false;
                 }
 
                 EventInfo destroyedEvent = bmType.GetEvent("OnBuildingDestroyed", BindingFlags.Public | BindingFlags.Static);
-                if (destroyedEvent != null)
+                if (destroyedEvent != null && _destroyedEventSubscribed)
                 {
                     Action<int> handler = OnStarwishBuildingDestroyed;
                     destroyedEvent.RemoveEventHandler(null, handler);
+                    _destroyedEventSubscribed = false;
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                DevLog("[WishFountain] 取消建筑事件订阅失败: " + e.Message);
+            }
         }
 
         private void OnStarwishBuildingBuilt(int buildingInstanceId)

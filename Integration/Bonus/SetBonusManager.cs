@@ -23,7 +23,7 @@ namespace BossRush
     /// <summary>
     /// 套装效果统一管理器 - 检测装备变化并分发到各套装效果模块
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal partial class SetBonusRuntimeModule
     {
         #region 套装管理器配置
 
@@ -44,7 +44,7 @@ namespace BossRush
         /// <summary>
         /// 注册套装管理器事件（在 Integration 初始化时调用）
         /// </summary>
-        private void RegisterSetBonusEvents()
+        internal void RegisterSetBonusEvents()
         {
             if (setBonusEventRegistered && setBonusLevelEventRegistered) return;
 
@@ -88,7 +88,7 @@ namespace BossRush
         /// <summary>
         /// 取消注册套装管理器事件（在 Integration 销毁时调用）
         /// </summary>
-        private void UnregisterSetBonusEvents()
+        internal void UnregisterSetBonusEvents()
         {
             try
             {

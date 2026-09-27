@@ -7,7 +7,7 @@ from cs_source_util import clean_source
 
 
 def check(root):
-    sky = root / "DebugAndTools/SkyIsland"
+    sky = root / "SkyIsland"
     code = {name: clean_source((sky / (name + ".cs")).read_text(encoding="utf-8-sig"))
             for name in ("SkyIslandCombatBalance", "SkyIslandCombatPreset", "SkyIslandEncounters",
                          "SkyIslandEnemyTiers", "SkyIslandBossForge", "SkyIslandBossRules", "SkyIslandPreludeFlow")}
@@ -53,7 +53,7 @@ def check(root):
         assert not re.search(r"clone\." + field + r"\s*=", adapter), "战斗倍率不得改写经济或身份：" + field
     bat = (root / "compile_official.bat").read_text(encoding="utf-8-sig")
     for name in ("SkyIslandCombatBalance", "SkyIslandCombatPreset"):
-        assert "echo(DebugAndTools\\SkyIsland\\" + name + ".cs" in bat, "正式编译漏收：" + name
+        assert "echo(SkyIsland\\" + name + ".cs" in bat, "正式编译漏收：" + name
 
 
 if __name__ == "__main__":

@@ -10,6 +10,12 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
+        // 保留的婚姻系统测试面板（仅 DevMode）
+        private bool marriageTestUIVisible = false;
+        private Rect marriageTestWindowRect = new Rect(430f, 40f, 560f, 760f);
+        private Vector2 marriageTestLogScroll = Vector2.zero;
+        private string marriageTestLog = "";
+
         private void DrawMarriageTestUI()
         {
             if (!DevModeEnabled || !marriageTestUIVisible) return;

@@ -16,7 +16,7 @@ from pathlib import Path
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parent.parent
-SKY = ROOT / "DebugAndTools" / "SkyIsland"
+SKY = ROOT / "SkyIsland"
 FILES = {
     "fx": SKY / "SkyIslandImpactFx.cs",
     "assets": SKY / "SkyIslandFxAssets.cs",

@@ -51,8 +51,8 @@ ROOT = Path(__file__).resolve().parents[1]
 # 2026-09-23：SkyIslandHud / SkyIslandStoryPresentation 超 1200 行，按 AGENTS §4.15 原样拆出同一 partial 的新文件。
 # 读主文件时把拆出去的那一半接在后面，断言照旧针对整个类。
 SPLIT_PARTS = {
-    "DebugAndTools/SkyIsland/SkyIslandHud.cs": "DebugAndTools/SkyIsland/SkyIslandHud_Layout.cs",
-    "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs": "DebugAndTools/SkyIsland/SkyIslandStoryPresentation_Parts.cs",
+    "SkyIsland/SkyIslandHud.cs": "SkyIsland/SkyIslandHud_Layout.cs",
+    "SkyIsland/SkyIslandStoryPresentation.cs": "SkyIsland/SkyIslandStoryPresentation_Parts.cs",
 }
 
 
@@ -116,16 +116,16 @@ def main():
     def read(path):
         return clean_source(read_with_parts(ROOT, path))
 
-    session = read("DebugAndTools/SkyIsland/SkyIslandSession.cs")
-    hud = read("DebugAndTools/SkyIsland/SkyIslandHud.cs")
-    art = read("DebugAndTools/SkyIsland/SkyIslandUiArt.cs")
-    ring = read("DebugAndTools/SkyIsland/SkyIslandGroundRing.cs")
-    panel = read("DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs")
-    module = read("DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs")
-    encounters = read("DebugAndTools/SkyIsland/SkyIslandEncounters.cs")
-    scavenging = read("DebugAndTools/SkyIsland/SkyIslandScavenging.cs")
-    storm = read("DebugAndTools/SkyIsland/SkyIslandStormBoss.cs")
-    caption_queue = read("DebugAndTools/SkyIsland/SkyIslandCaptionQueue.cs")
+    session = read("SkyIsland/SkyIslandSession.cs")
+    hud = read("SkyIsland/SkyIslandHud.cs")
+    art = read("SkyIsland/SkyIslandUiArt.cs")
+    ring = read("SkyIsland/SkyIslandGroundRing.cs")
+    panel = read("SkyIsland/SkyIslandStoryPresentation.cs")
+    module = read("SkyIsland/SkyIslandRuntimeModule.cs")
+    encounters = read("SkyIsland/SkyIslandEncounters.cs")
+    scavenging = read("SkyIsland/SkyIslandScavenging.cs")
+    storm = read("SkyIsland/SkyIslandStormBoss.cs")
+    caption_queue = read("SkyIsland/SkyIslandCaptionQueue.cs")
     shared_ui = read("Common/UI/BossRushUI.cs")
     campaign = read("Campaign/CampaignHud.cs")
     regressions = (ROOT / "tools/run_runtime_regressions.py").read_text(encoding="utf-8")
@@ -141,7 +141,7 @@ def main():
 
     # ---- 0. 进编译清单 ----
     for name in ("SkyIslandHud.cs", "SkyIslandCaptionQueue.cs"):
-        if "DebugAndTools" + BACKSLASH + "SkyIsland" + BACKSLASH + name not in bat:
+        if "SkyIsland" + BACKSLASH + name not in bat:
             errors.append("编译清单缺少 " + name)
 
     # ---- 1. 不得回退到试验场那块屏幕正上方的裸文字 ----

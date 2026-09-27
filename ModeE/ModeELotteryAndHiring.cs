@@ -14,7 +14,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeERuntimeModule
     {
         private const float MODE_E_BOSS_HIRE_REFERENCE_HEALTH = 1000f;
         private const int MODE_E_BOSS_HIRE_REFERENCE_PRICE = 200;
@@ -364,7 +364,7 @@ namespace BossRush
                 try { ItemUtilities.SendToPlayerCharacterInventory(deliveryItem, false); }
                 catch (Exception e)
                 {
-                    DevLog("[ModeE/Lottery] character inventory delivery threw: " + e.Message);
+                    ModBehaviour.DevLog("[ModeE/Lottery] character inventory delivery threw: " + e.Message);
                 }
 
                 bool allowPurchasedObserver;
@@ -385,7 +385,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE/Lottery] transaction failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeE/Lottery] transaction failed: " + e.Message);
                 if (committed)
                 {
                     FailModeEShellEconomyDuringCommittedTransaction(
@@ -425,7 +425,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE/Lottery] reward notification failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeE/Lottery] reward notification failed: " + e.Message);
             }
         }
 
@@ -518,7 +518,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE/Hire] create offer failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeE/Hire] create offer failed: " + e.Message);
                 if (offerObject != null) UnityEngine.Object.Destroy(offerObject);
             }
         }
@@ -740,7 +740,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE/Hire] transaction failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeE/Hire] transaction failed: " + e.Message);
                 return committed;
             }
             finally
@@ -781,7 +781,7 @@ namespace BossRush
 
             CharacterMainControl character = state.Character;
             Teams trackedFaction;
-            if (!modeEAliveEnemyFactionMap.TryGetValue(character, out trackedFaction))
+            if (!enemyRegistry.TryGetTrackedFaction(character, out trackedFaction))
             {
                 trackedFaction = state.Faction;
             }
@@ -842,7 +842,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE/Hire] faction conversion failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeE/Hire] faction conversion failed: " + e.Message);
                 RollbackModeEBossFactionConversion(state, snapshot);
                 snapshot = null;
                 return false;
@@ -888,7 +888,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeE/Hire] faction rollback failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeE/Hire] faction rollback failed: " + e.Message);
             }
         }
 

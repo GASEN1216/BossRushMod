@@ -7,7 +7,7 @@ NEWLINE = chr(10)
 
 
 def main():
-    source = clean_source((ROOT / "DebugAndTools/SkyIsland/SkyIslandSceneReferenceBridge.cs").read_text(encoding="utf-8-sig"))
+    source = clean_source((ROOT / "SkyIsland/SkyIslandSceneReferenceBridge.cs").read_text(encoding="utf-8-sig"))
     errors = []
     for token in ('SceneId = "BossRush_SkyIsland"', 'ScenePath = "Assets/SkyIsland/SkyIslandRaid.unity"',
                   'SceneName = "SkyIslandRaid"', 'SpawnLocation = "StartPoints/PlayerSpawn"',
@@ -41,7 +41,7 @@ def main():
                 errors.append('GetSceneID(int) 前缀必须按当前活动场景收窄，否则是全局 -1 别名')
             if 'buildIndex >= 0' not in body:
                 errors.append('GetSceneID(int) 前缀必须拒绝正常 buildIndex')
-    runtime = clean_source((ROOT / "DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs").read_text(encoding="utf-8-sig"))
+    runtime = clean_source((ROOT / "SkyIsland/SkyIslandRuntimeModule.cs").read_text(encoding="utf-8-sig"))
     for token in ("SkyIslandSceneReferenceBridge.EnsureRegistered()", "SkyIslandSceneReferenceBridge.Shutdown()"):
         if token not in runtime:
             errors.append("缺少生命周期归属：" + token)
@@ -51,8 +51,8 @@ def main():
                   'if (replaced != 1) throw'):
         if token not in source:
             errors.append("桥接缺少初始化失败信号：" + token)
-    lease = clean_source((ROOT / "DebugAndTools/SkyIsland/SkyIslandRaidLease.cs").read_text(encoding="utf-8-sig"))
-    session = clean_source((ROOT / "DebugAndTools/SkyIsland/SkyIslandSession.cs").read_text(encoding="utf-8-sig"))
+    lease = clean_source((ROOT / "SkyIsland/SkyIslandRaidLease.cs").read_text(encoding="utf-8-sig"))
+    session = clean_source((ROOT / "SkyIsland/SkyIslandSession.cs").read_text(encoding="utf-8-sig"))
     for token in ("SkyIslandSceneReferenceBridge.BeginInitialization(this)",
                   "SkyIslandSceneReferenceBridge.BindInitializationScene(this, scene)",
                   "SkyIslandSceneReferenceBridge.AbortInitialization(this, ",

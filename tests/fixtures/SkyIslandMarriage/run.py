@@ -14,22 +14,28 @@ def member(source, signature):
     assert len(hits) == 1, signature
     hit = hits[0]
     opening = source.index('{', hit.end())
+    line_end = source.find('\n', opening)
+    close_on_line = source.find('}', opening)
+    if close_on_line != -1 and (line_end == -1 or close_on_line < line_end):
+        return source[hit.start():close_on_line + 1]
     end = re.search(r'^' + re.escape(hit.group(1)) + r'\}', source[opening:], re.M)
     assert end, signature
     return source[hit.start():opening + end.end()]
 
-paths = ['DebugAndTools/SkyIsland/SkyIslandOfficialQuestGivers.cs',
+paths = ['SkyIsland/SkyIslandOfficialQuestGivers.cs',
          'Integration/Wedding/WeddingModBehaviourBridge.cs',
+         'Integration/IntegrationHostCompatibility.cs',
+         'Integration/Wedding/WeddingRuntimeModule.cs',
          'Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcModule.cs',
          'Integration/Wedding/NPCMarriageSystem.cs',
-         'DebugAndTools/SkyIsland/SkyIslandResidentDialogue.cs',
+         'SkyIsland/SkyIslandResidentDialogue.cs',
          'Integration/Dialogue/DialogueActorFactory.cs',
-         'DebugAndTools/SkyIsland/SkyIslandResidents.cs',
-         'DebugAndTools/SkyIsland/SkyIslandEncounters.cs',
-         'DebugAndTools/SkyIsland/SkyIslandOfficialQuestTable.cs',
-         'DebugAndTools/SkyIsland/SkyIslandSession.cs',
-         'DebugAndTools/SkyIsland/SkyIslandWorldStory.cs']
-givers, bridge, permanent, marriage, dialogue, factory, residents, encounters, quest_table, session, world = [(ROOT / path).read_text(encoding='utf-8-sig') for path in paths]
+         'SkyIsland/SkyIslandResidents.cs',
+         'SkyIsland/SkyIslandEncounters.cs',
+         'SkyIsland/SkyIslandOfficialQuestTable.cs',
+         'SkyIsland/SkyIslandSession.cs',
+         'SkyIsland/SkyIslandWorldStory.cs']
+givers, bridge, host_bridge, wedding_runtime, permanent, marriage, dialogue, factory, residents, encounters, quest_table, session, world = [(ROOT / path).read_text(encoding='utf-8-sig') for path in paths]
 fields = []
 for name in ('FallbackAttemptLimit', 'attached', 'fallbackDone', 'fallbackAttempts'):
     found = re.findall(r'^        private [^\n]*\b' + name + r'\b[^\n]*;', givers, re.M)
@@ -40,7 +46,15 @@ methods = [member(givers, signature) for signature in
             'internal static void ClearSessionState()')]
 source = 'using System; using System.Collections.Generic; using System.Threading.Tasks; using UnityEngine; using BossRush.Utils; using NodeCanvas.DialogueTrees;\nnamespace BossRush {\n'
 source += 'internal static partial class SkyIslandOfficialQuestGivers {\n' + '\n'.join(fields + methods) + '\n}\n'
-source += 'public partial class ModBehaviour {\n' + member(bridge, 'public void HandleDivorceNpcRelocation(') + '\n' + member(bridge, 'internal GameObject GetSpouseInstance(') + '\n}\n'
+assert 'private ModBehaviour _owner;' in wedding_runtime
+source += 'internal sealed partial class WeddingRuntimeModule {\nprivate ModBehaviour _owner;\n'
+source += member(bridge, 'public void HandleDivorceNpcRelocation(') + '\n' + member(bridge, 'internal GameObject GetSpouseInstance(') + '\n}\n'
+host_methods = [
+    'public void HandleDivorceNpcRelocation(', 'internal GameObject GetSpouseInstance(',
+    'internal GameObject GetWeddingGoblinNpcInstance(', 'internal GameObject GetWeddingNurseNpcInstance(',
+    'internal void DestroyWeddingGoblinNpc(', 'internal void DestroyWeddingNurseNpc(',
+    'internal void SpawnWeddingGoblinNpc(', 'internal void SpawnWeddingNurseNpc(']
+source += 'public partial class ModBehaviour {\n' + '\n'.join(member(host_bridge, signature) for signature in host_methods) + '\n}\n'
 source += 'internal static class PermanentDuckNpcModule {\n' + member(permanent, 'internal static void ReleaseDivorcedNpc(') + '\n}\n'
 marriage_fields = []
 for name in ('DIVORCE_RELOCATE_DELAY_SECONDS', 'operationGeneration'):

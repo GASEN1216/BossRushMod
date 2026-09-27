@@ -204,9 +204,9 @@ def check_spawner(errors):
 
 
 def check_exemptions(errors):
-    maintenance = read_text(repo_path("WavesArena", "WavesArenaEnemyMaintenance.cs"))
+    maintenance = read_text(repo_path("WavesArena", "WavesArenaRuntimeModule_EnemyMaintenance.cs"))
     if maintenance is None:
-        errors.append("[File] 缺少 WavesArena/WavesArenaEnemyMaintenance.cs")
+        errors.append("[File] 缺少 WavesArena/WavesArenaRuntimeModule_EnemyMaintenance.cs")
     else:
         mcode = strip_cs_comments(maintenance)
         if mcode.count("PetNestCompanionAgent.IsCompanionCharacter(c)") < 2:
@@ -217,7 +217,7 @@ def check_exemptions(errors):
         if mcode.count("bool isPet = false;") < 2:
             errors.append("[兼容] 不得删除既有的 isPet 字面量（DeathWraith guard 依赖它的顺序）")
 
-    host = read_text(repo_path("ModBehaviour.cs"))
+    host = read_text(repo_path("WavesArena/WavesArenaRuntimeModule_LegacySpawn.cs"))
     if host is None:
         errors.append("[File] 缺少 ModBehaviour.cs")
     else:

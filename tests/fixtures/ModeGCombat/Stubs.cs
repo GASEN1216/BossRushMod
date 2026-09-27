@@ -214,12 +214,17 @@ namespace BossRush
             Action<int,Item,bool> perItem,Action<int,int,int> completed,out string reason)
         { reason="fixture does not start Unity components"; return false; }
         public static bool SelectFormation(Vector3[] source,int count,ModeGPlanVariant variant,out Vector3[] selected)
+        { return ModeGEntryRuntime.SelectFormation(source, count, variant, out selected); }
+    }
+    internal sealed partial class ModeGEntryRuntime
+    {
+        internal static bool SelectFormation(Vector3[] source,int count,ModeGPlanVariant variant,out Vector3[] selected)
         { return TrySelectModeGFormation(source,new Vector3(),0,count,variant,ModeGWavePlan.GetFormationSpec(variant),false,out selected); }
     }
-    public sealed class ZombieModeAttributeModifierRecord { public Item CharacterItem; public Stat Stat; public Modifier Modifier; public string StatName; }
+    public sealed class BossRushStatModifierRecord { public Item CharacterItem; public Stat Stat; public Modifier Modifier; public string StatName; }
     public static class RuntimeStatModifierTracker
     {
-        public static void RemoveAll(List<ZombieModeAttributeModifierRecord> records, string label)
+        public static void RemoveAll(List<BossRushStatModifierRecord> records, string label)
         { foreach (var r in records) r.Stat.RemoveModifier(r.Modifier); records.Clear(); }
     }
     public static class ModeGOfficialBossEligibilityRegistry

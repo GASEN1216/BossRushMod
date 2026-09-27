@@ -1,12 +1,115 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed class EnemyRecoveryMonitor
     {
+        internal delegate void AppendRecoveryCandidates(List<Vector3> candidates, ref bool prevalidated);
+        internal delegate bool TryRecoveryPosition(out Vector3 position);
+        private Func<bool> getModeDActive;
+        private Func<bool> getModeEActive;
+        private Func<bool> getModeFActive;
+        private Func<bool> getArenaActive;
+        private Func<bool> getZombieActive;
+        private Func<bool> getModeGRunActive;
+        private Func<List<CharacterMainControl>> getModeDEnemies;
+        private Func<List<CharacterMainControl>> getModeEEnemies;
+        private Func<List<CharacterMainControl>> getModeFBosses;
+        private Func<List<CharacterMainControl>> getModeGBosses;
+        private Action<CharacterMainControl> MonitorZombieModeEnemyRecovery;
+        private Action<CharacterMainControl> MonitorNormalBossRushRecovery;
+        private Func<Dictionary<Teams, List<Vector3>>> getSpawnAllocation;
+        private Func<Vector3[]> GetModeEFlattenedSpawnPoints;
+        private Func<Vector3[]> GetCurrentSceneSpawnPoints;
+        private Func<Vector3, Vector3[]> GenerateFallbackSpawnPointsAroundPlayer;
+        private AppendRecoveryCandidates appendZombieRecoveryCandidates;
+        private TryRecoveryPosition TryGetZombieModeReliableSpawnPosition;
+        private Func<Component, bool> isDistantRecoveryBoss;
+        private Func<float> getDistantRecoveryDistance;
+        private Func<float> getDistantRecoveryDelay;
+        private Func<GameObject, Component, AICharacterController> GetZombieModeEnemyAI;
+        private Action<CharacterMainControl> ApplyModeFPressureToBoss;
+        private bool modeDActive { get { return getModeDActive(); } }
+        private bool modeEActive { get { return getModeEActive(); } }
+        private bool modeFActive { get { return getModeFActive(); } }
+        private bool IsActive { get { return getArenaActive(); } }
+        private bool IsZombieModeActive { get { return getZombieActive(); } }
+        private List<CharacterMainControl> modeDCurrentWaveEnemies { get { return getModeDEnemies(); } }
+        private List<CharacterMainControl> modeEAliveEnemies { get { return getModeEEnemies(); } }
+        private Dictionary<Teams, List<Vector3>> modeESpawnAllocation { get { return getSpawnAllocation(); } }
+
+        internal void BindModeQueries(
+            Func<bool> getModeDActive,
+            Func<bool> getModeEActive,
+            Func<bool> getModeFActive,
+            Func<bool> getArenaActive,
+            Func<bool> getZombieActive,
+            Func<bool> getModeGRunActive)
+        {
+            this.getModeDActive = getModeDActive;
+            this.getModeEActive = getModeEActive;
+            this.getModeFActive = getModeFActive;
+            this.getArenaActive = getArenaActive;
+            this.getZombieActive = getZombieActive;
+            this.getModeGRunActive = getModeGRunActive;
+        }
+
+        internal void BindTrackedEnemies(
+            Func<List<CharacterMainControl>> getModeDEnemies,
+            Func<List<CharacterMainControl>> getModeEEnemies,
+            Func<List<CharacterMainControl>> getModeFBosses,
+            Func<List<CharacterMainControl>> getModeGBosses,
+            Action<CharacterMainControl> MonitorZombieModeEnemyRecovery,
+            Action<CharacterMainControl> MonitorNormalBossRushRecovery)
+        {
+            this.getModeDEnemies = getModeDEnemies;
+            this.getModeEEnemies = getModeEEnemies;
+            this.getModeFBosses = getModeFBosses;
+            this.getModeGBosses = getModeGBosses;
+            this.MonitorZombieModeEnemyRecovery = MonitorZombieModeEnemyRecovery;
+            this.MonitorNormalBossRushRecovery = MonitorNormalBossRushRecovery;
+        }
+
+        internal void BindSpawnPositions(
+            Func<Dictionary<Teams, List<Vector3>>> getSpawnAllocation,
+            Func<Vector3[]> GetModeEFlattenedSpawnPoints,
+            Func<Vector3[]> GetCurrentSceneSpawnPoints,
+            Func<Vector3, Vector3[]> GenerateFallbackSpawnPointsAroundPlayer,
+            AppendRecoveryCandidates appendZombieRecoveryCandidates,
+            TryRecoveryPosition TryGetZombieModeReliableSpawnPosition)
+        {
+            this.getSpawnAllocation = getSpawnAllocation;
+            this.GetModeEFlattenedSpawnPoints = GetModeEFlattenedSpawnPoints;
+            this.GetCurrentSceneSpawnPoints = GetCurrentSceneSpawnPoints;
+            this.GenerateFallbackSpawnPointsAroundPlayer = GenerateFallbackSpawnPointsAroundPlayer;
+            this.appendZombieRecoveryCandidates = appendZombieRecoveryCandidates;
+            this.TryGetZombieModeReliableSpawnPosition = TryGetZombieModeReliableSpawnPosition;
+        }
+
+        internal void BindRecoveryPolicies(
+            Func<Component, bool> isDistantRecoveryBoss,
+            Func<float> getDistantRecoveryDistance,
+            Func<float> getDistantRecoveryDelay,
+            Func<GameObject, Component, AICharacterController> GetZombieModeEnemyAI,
+            Action<CharacterMainControl> ApplyModeFPressureToBoss)
+        {
+            this.isDistantRecoveryBoss = isDistantRecoveryBoss;
+            this.getDistantRecoveryDistance = getDistantRecoveryDistance;
+            this.getDistantRecoveryDelay = getDistantRecoveryDelay;
+            this.GetZombieModeEnemyAI = GetZombieModeEnemyAI;
+            this.ApplyModeFPressureToBoss = ApplyModeFPressureToBoss;
+        }
+
+        private void AppendZombieModeRecoverySpawnCandidates()
+        {
+            appendZombieRecoveryCandidates(enemyRecoverySpawnCandidates, ref enemyRecoverySpawnCandidatesArePrevalidated);
+        }
+
+
         private sealed class EnemyRecoveryState
         {
             public Vector3 lastSamplePosition;
@@ -60,7 +163,7 @@ namespace BossRush
 
         private float enemyRecoveryCheckTimer = 0f;
 
-        private void ClearEnemyRecoveryMonitorState()
+        internal void ClearEnemyRecoveryMonitorState()
         {
             enemyRecoveryCheckTimer = 0f;
             enemyRecoveryStates.Clear();
@@ -73,7 +176,7 @@ namespace BossRush
             enemyRecoverySpawnCandidatesArePrevalidated = false;
         }
 
-        private void RegisterEnemyRecoveryAnchor(CharacterMainControl enemy, Vector3 anchorPosition)
+        internal void RegisterEnemyRecoveryAnchor(CharacterMainControl enemy, Vector3 anchorPosition)
         {
             try
             {
@@ -92,7 +195,7 @@ namespace BossRush
                     }
                     catch (Exception positionEx)
                     {
-                        DevLog("[EnemyRecovery] [WARNING] RegisterEnemyRecoveryAnchor 无法读取敌人位置: " + positionEx.Message);
+                        ModBehaviour.DevLog("[EnemyRecovery] [WARNING] RegisterEnemyRecoveryAnchor 无法读取敌人位置: " + positionEx.Message);
                     }
 
                     state = new EnemyRecoveryState
@@ -112,11 +215,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[EnemyRecovery] [ERROR] RegisterEnemyRecoveryAnchor failed: " + e.Message);
+                ModBehaviour.DevLog("[EnemyRecovery] [ERROR] RegisterEnemyRecoveryAnchor failed: " + e.Message);
             }
         }
 
-        private void UnregisterEnemyRecovery(CharacterMainControl enemy)
+        internal void UnregisterEnemyRecovery(CharacterMainControl enemy)
         {
             if (enemy == null)
             {
@@ -126,7 +229,7 @@ namespace BossRush
             enemyRecoveryStates.Remove(enemy);
         }
 
-        private void UpdateEnemyRecoveryMonitor()
+        internal void UpdateEnemyRecoveryMonitor()
         {
             try
             {
@@ -135,7 +238,7 @@ namespace BossRush
                 bool modeGRunActive = false;
                 try
                 {
-                    modeGRunActive = ModeGRuntimeGates.IsModeGRunInProgress;
+                    modeGRunActive = getModeGRunActive();
                 }
                 catch
                 {
@@ -173,7 +276,7 @@ namespace BossRush
                 }
                 else if (modeFActive)
                 {
-                    MonitorEnemyRecoveryList(modeFState.ActiveBosses, player);
+                    MonitorEnemyRecoveryList(getModeFBosses(), player);
                 }
                 else if (IsZombieModeActive)
                 {
@@ -185,7 +288,7 @@ namespace BossRush
                     List<CharacterMainControl> modeGBosses = null;
                     try
                     {
-                        modeGBosses = ModeGRuntimeGates.GetTrackedBosses();
+                        modeGBosses = getModeGBosses();
                     }
                     catch
                     {
@@ -206,55 +309,10 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[EnemyRecovery] [ERROR] UpdateEnemyRecoveryMonitor failed: " + e.Message);
+                ModBehaviour.DevLog("[EnemyRecovery] [ERROR] UpdateEnemyRecoveryMonitor failed: " + e.Message);
             }
         }
 
-        private void MonitorZombieModeEnemyRecovery(CharacterMainControl player)
-        {
-            if (zombieModeRunState == null || zombieModeRunState.RunOnlyObjects.Count <= 0)
-            {
-                return;
-            }
-
-            for (int i = zombieModeRunState.RunOnlyObjects.Count - 1; i >= 0; i--)
-            {
-                ZombieModeRunOnlyRecord record = zombieModeRunState.RunOnlyObjects[i];
-                if (record == null ||
-                    (record.Kind != ZombieModeRunOnlyObjectKind.Enemy && record.Kind != ZombieModeRunOnlyObjectKind.Boss) ||
-                    record.GameObject == null)
-                {
-                    continue;
-                }
-
-                ZombieModeEnemyRuntimeMarker marker = record.Target as ZombieModeEnemyRuntimeMarker;
-                if (marker == null && record.GameObject != null)
-                {
-                    marker = record.GameObject.GetComponent<ZombieModeEnemyRuntimeMarker>();
-                    if (marker != null)
-                    {
-                        record.Target = marker;
-                    }
-                }
-
-                CharacterMainControl enemy = marker != null ? marker.Owner : null;
-                if (enemy == null)
-                {
-                    enemy = record.GameObject.GetComponent<CharacterMainControl>();
-                    if (enemy == null)
-                    {
-                        enemy = record.GameObject.GetComponentInChildren<CharacterMainControl>(true);
-                    }
-
-                    if (marker != null)
-                    {
-                        marker.Owner = enemy;
-                    }
-                }
-
-                MonitorEnemyRecovery(enemy, player, marker);
-            }
-        }
 
         private void MonitorEnemyRecoveryList(List<CharacterMainControl> enemies, CharacterMainControl player)
         {
@@ -269,24 +327,8 @@ namespace BossRush
             }
         }
 
-        private void MonitorNormalBossRushRecovery(CharacterMainControl player)
-        {
-            if (bossesPerWave > 1)
-            {
-                for (int i = currentWaveBosses.Count - 1; i >= 0; i--)
-                {
-                    CharacterMainControl enemy = currentWaveBosses[i] as CharacterMainControl;
-                    MonitorEnemyRecovery(enemy, player);
-                }
 
-                return;
-            }
-
-            CharacterMainControl singleBoss = currentBoss as CharacterMainControl;
-            MonitorEnemyRecovery(singleBoss, player);
-        }
-
-        private void MonitorEnemyRecovery(CharacterMainControl enemy, CharacterMainControl player, ZombieModeEnemyRuntimeMarker zombieMarker = null)
+        internal void MonitorEnemyRecovery(CharacterMainControl enemy, CharacterMainControl player, Component zombieMarker = null)
         {
             if (enemy == null)
             {
@@ -364,7 +406,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[EnemyRecovery] [ERROR] MonitorEnemyRecovery failed: " + e.Message);
+                ModBehaviour.DevLog("[EnemyRecovery] [ERROR] MonitorEnemyRecovery failed: " + e.Message);
             }
         }
 
@@ -453,10 +495,10 @@ namespace BossRush
             EnemyRecoveryState state,
             Vector3 currentPos,
             CharacterMainControl player,
-            ZombieModeEnemyRuntimeMarker zombieMarker,
+            Component zombieMarker,
             float now)
         {
-            if (state == null || player == null || zombieMarker == null || zombieMarker.IsBoss)
+            if (state == null || player == null || zombieMarker == null || isDistantRecoveryBoss(zombieMarker))
             {
                 if (state != null)
                 {
@@ -465,7 +507,7 @@ namespace BossRush
                 return false;
             }
 
-            float recoveryDistance = ZombieModeTuning.NormalZombieDistantRecoveryDistance;
+            float recoveryDistance = getDistantRecoveryDistance();
             if (GetHorizontalSqrDistance(currentPos, player.transform.position) <= recoveryDistance * recoveryDistance)
             {
                 state.farFromPlayerSince = -1f;
@@ -478,7 +520,7 @@ namespace BossRush
                 return false;
             }
 
-            return now - state.farFromPlayerSince >= ZombieModeTuning.NormalZombieDistantRecoveryDelaySeconds;
+            return now - state.farFromPlayerSince >= getDistantRecoveryDelay();
         }
 
         private bool TryRecoverEnemyToNearestSpawnPoint(
@@ -486,7 +528,7 @@ namespace BossRush
             EnemyRecoveryState state,
             CharacterMainControl player,
             string reason,
-            ZombieModeEnemyRuntimeMarker zombieMarker,
+            Component zombieMarker,
             out Vector3 recoveredPos)
         {
             recoveredPos = Vector3.zero;
@@ -512,7 +554,7 @@ namespace BossRush
                                            TryGetZombieModeReliableSpawnPosition(out targetPos);
                 if (!recoveredNearPlayer && !TryGetNearestAlternateSpawnPoint(currentPos, state, player, out targetPos))
                 {
-                    DevLog("[EnemyRecovery] [WARNING] No valid recovery spawn found for " + enemy.name + " reason=" + reason);
+                    ModBehaviour.DevLog("[EnemyRecovery] [WARNING] No valid recovery spawn found for " + enemy.name + " reason=" + reason);
                     return false;
                 }
 
@@ -522,7 +564,7 @@ namespace BossRush
                 }
                 catch (Exception setPositionEx)
                 {
-                    DevLog("[EnemyRecovery] [WARNING] SetPosition 恢复敌人失败，改用 transform.position: " + setPositionEx.Message);
+                    ModBehaviour.DevLog("[EnemyRecovery] [WARNING] SetPosition 恢复敌人失败，改用 transform.position: " + setPositionEx.Message);
                     enemy.transform.position = targetPos;
                 }
 
@@ -545,7 +587,7 @@ namespace BossRush
                 }
                 catch (Exception rigidbodyEx)
                 {
-                    DevLog("[EnemyRecovery] [WARNING] 重置敌人物理状态失败: " + rigidbodyEx.Message);
+                    ModBehaviour.DevLog("[EnemyRecovery] [WARNING] 重置敌人物理状态失败: " + rigidbodyEx.Message);
                 }
 
                 RestoreRecoveredEnemyAggro(enemy, player, zombieMarker);
@@ -556,12 +598,12 @@ namespace BossRush
 
                 recoveredPos = targetPos;
 
-                DevLog("[EnemyRecovery] Recovered " + enemy.name + " reason=" + reason + " from " + currentPos + " to " + targetPos);
+                ModBehaviour.DevLog("[EnemyRecovery] Recovered " + enemy.name + " reason=" + reason + " from " + currentPos + " to " + targetPos);
                 return true;
             }
             catch (Exception e)
             {
-                DevLog("[EnemyRecovery] [ERROR] TryRecoverEnemyToNearestSpawnPoint failed: " + e.Message);
+                ModBehaviour.DevLog("[EnemyRecovery] [ERROR] TryRecoverEnemyToNearestSpawnPoint failed: " + e.Message);
                 return false;
             }
         }
@@ -585,16 +627,16 @@ namespace BossRush
                 if (health.CurrentHealth > clampedHealth + 0.01f)
                 {
                     health.SetHealth(clampedHealth);
-                    DevLog("[EnemyRecovery] Preserved damaged health after recovery for " + enemy.name + ": " + clampedHealth);
+                    ModBehaviour.DevLog("[EnemyRecovery] Preserved damaged health after recovery for " + enemy.name + ": " + clampedHealth);
                 }
             }
             catch (Exception e)
             {
-                DevLog("[EnemyRecovery] [WARNING] RestoreEnemyHealthAfterRecovery failed: " + e.Message);
+                ModBehaviour.DevLog("[EnemyRecovery] [WARNING] RestoreEnemyHealthAfterRecovery failed: " + e.Message);
             }
         }
 
-        private void RestoreRecoveredEnemyAggro(CharacterMainControl enemy, CharacterMainControl player, ZombieModeEnemyRuntimeMarker zombieMarker)
+        private void RestoreRecoveredEnemyAggro(CharacterMainControl enemy, CharacterMainControl player, Component zombieMarker)
         {
             if (modeEActive || enemy == null || player == null || player.mainDamageReceiver == null)
             {
@@ -633,7 +675,7 @@ namespace BossRush
             }
             catch (Exception aggroEx)
             {
-                DevLog("[EnemyRecovery] [WARNING] 恢复敌人仇恨失败: " + aggroEx.Message);
+                ModBehaviour.DevLog("[EnemyRecovery] [WARNING] 恢复敌人仇恨失败: " + aggroEx.Message);
             }
         }
 
@@ -737,37 +779,6 @@ namespace BossRush
                 enemyRecoverySpawnCandidates.Count == enemyRecoveryModeEValidatedSpawnCandidates.Count;
         }
 
-        private void AppendZombieModeRecoverySpawnCandidates()
-        {
-            if (zombieModeRunState == null)
-            {
-                return;
-            }
-
-            List<ZombieModeSpawnPoint> effectivePoints = zombieModeRunState.EffectiveSpawnPoints;
-            if (effectivePoints != null && effectivePoints.Count > 0)
-            {
-                for (int i = 0; i < effectivePoints.Count; i++)
-                {
-                    enemyRecoverySpawnCandidates.Add(effectivePoints[i].Position);
-                }
-                enemyRecoverySpawnCandidatesArePrevalidated = false;
-                return;
-            }
-
-            List<ZombieModeSpawnPoint> spawnPoints = zombieModeRunState.SpawnPoints;
-            if (spawnPoints == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < spawnPoints.Count; i++)
-            {
-                enemyRecoverySpawnCandidates.Add(spawnPoints[i].Position);
-            }
-
-            enemyRecoverySpawnCandidatesArePrevalidated = false;
-        }
 
         private void AppendRecoverySpawnCandidates(IEnumerable<Vector3> candidates)
         {
@@ -865,7 +876,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[EnemyRecovery] [WARNING] TryResolveGroundAlignedPosition failed: " + e.Message);
+                ModBehaviour.DevLog("[EnemyRecovery] [WARNING] TryResolveGroundAlignedPosition failed: " + e.Message);
             }
 
             return false;
@@ -903,6 +914,89 @@ namespace BossRush
             float dy = a.y - b.y;
             float dz = a.z - b.z;
             return dx * dx + dy * dy + dz * dz;
+        }
+        internal void ValidateAndFixBossPosition(CharacterMainControl boss)
+        {
+            if (boss == null) return;
+
+            try
+            {
+                Vector3 currentPos = boss.transform.position;
+
+                bool needsRecovery = false;
+                string reason = null;
+
+                Vector3 groundAlignedPos;
+                if (TryResolveGroundAlignedPosition(currentPos, 8f, 5f, out groundAlignedPos))
+                {
+                    if (groundAlignedPos.y - currentPos.y >= 0.75f)
+                    {
+                        needsRecovery = true;
+                        reason = "spawn_below_ground";
+                    }
+                }
+                else
+                {
+                    EnemyRecoveryState recoveryState;
+                    if (enemyRecoveryStates.TryGetValue(boss, out recoveryState) &&
+                        recoveryState.hasExcludedAnchorPosition &&
+                        recoveryState.excludedAnchorPosition.y - currentPos.y >= 6f)
+                    {
+                        needsRecovery = true;
+                        reason = "spawn_void";
+                    }
+                }
+
+                if (!needsRecovery)
+                {
+                    return;
+                }
+
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main == null)
+                {
+                    return;
+                }
+
+                EnemyRecoveryState state;
+                if (!enemyRecoveryStates.TryGetValue(boss, out state))
+                {
+                    state = new EnemyRecoveryState
+                    {
+                        lastSamplePosition = currentPos,
+                        lastMovedTime = Time.time,
+                        lastRecoveryTime = -4f,
+                        excludedAnchorPosition = currentPos,
+                        hasExcludedAnchorPosition = true,
+                        continuousFallSamples = 0
+                    };
+                }
+
+                Vector3 recoveredPos;
+                if (TryRecoverEnemyToNearestSpawnPoint(boss, state, main, reason, null, out recoveredPos))
+                {
+                    state.lastMovedTime = Time.time;
+                    state.lastRecoveryTime = Time.time;
+                    state.lastSamplePosition = recoveredPos;
+                    enemyRecoveryStates[boss] = state;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] ValidateAndFixBossPosition 异常: " + e.Message);
+            }
+        }
+
+        internal IEnumerator DelayedBossPositionValidation(CharacterMainControl boss, float delay)
+        {
+            if (boss == null) yield break;
+
+            yield return new WaitForSeconds(delay);
+
+            if (boss != null && boss.gameObject != null)
+            {
+                ValidateAndFixBossPosition(boss);
+            }
         }
     }
 }

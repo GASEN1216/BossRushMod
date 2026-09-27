@@ -10,7 +10,7 @@
 //
 // 【三种形态】
 //   - 纪念品（晴岚航徽、噬风之核）：不可使用、不可堆叠，只在剧情节点发一次
-//     （发放台账在 DebugAndTools/SkyIsland/SkyIslandItemRules.cs，发放记录写进本槽群岛手记）；
+//     （发放台账在 SkyIsland/SkyIslandItemRules.cs，发放记录写进本槽群岛手记）；
 //     带在背包里上岛才有用：航徽让整备与苔药半价（SkyIslandServices），在岛上使用还能拉缆绳回码头（每趟一次，SkyIslandSessionRecall）；
 //     噬风之核让大风只算微风（SkyIslandFieldcraft）。
 //   - 道具（风标罗盘）：使用不消耗（耐久 999，形态照鸭皇图鉴），在岛上指向信鸽或下一个目标。

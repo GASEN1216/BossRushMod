@@ -49,7 +49,12 @@ namespace BossRush
     public partial class ModBehaviour
     {
         public bool IsZombieModeActive;
-        private bool IsZombieModeDamageFromMeleeWeapon(DamageInfo info) { return info.fromWeaponItemID == 1; }
+        private ZombieModeRuntimeModule zombieModeRuntimeModule;
+        internal void BindZombieFixture()
+        {
+            zombieModeRuntimeModule = new ZombieModeRuntimeModule();
+            zombieModeRuntimeModule.BindFixture(this, zombieModeRunState);
+        }
         public int ZombieModeCurrentRunId = 7;
         public bool Paused;
         public int Impacts;
@@ -64,6 +69,15 @@ namespace BossRush
         public sealed class Run { public List<ZombieModeBossInstance> CurrentWaveBossInstances = new List<ZombieModeBossInstance>(); }
         public Run zombieModeRunState = new Run();
     }
+    internal sealed partial class ZombieModeRuntimeModule
+    {
+        private ModBehaviour owner;
+        private ModBehaviour.Run runState;
+        internal void BindFixture(ModBehaviour host, ModBehaviour.Run state) { owner = host; runState = state; }
+        // Clock and weapon metadata are explicit boundary adapters; defenses execute production bodies.
+        private bool IsZombieModeDamageFromMeleeWeapon(DamageInfo info) { return info.fromWeaponItemID == 1; }
+        private float GetZombieModeRuntimeNow() { return owner.GetZombieModeRuntimeNow(); }
+    }
 }
 
 internal static class ZombieBossCases
@@ -77,6 +91,7 @@ internal static class ZombieBossCases
     private static Health Target(float hp, bool boss, BossRush.ZombieModeBossKind kind, float shieldAmount = 0)
     {
         var owner = new BossRush.ModBehaviour { IsZombieModeActive = true };
+        owner.BindZombieFixture();
         BossRush.ModBehaviour.Instance = owner;
         var target = new CharacterMainControl { IsMainCharacter = false };
         var health = new GameObject().AddComponent<Health>();

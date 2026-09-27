@@ -304,8 +304,8 @@ namespace BossRush
     internal sealed class RandomEventBloodMoon : RandomEventBase
     {
         private Image _vignette;
-        private readonly List<ZombieModeAttributeModifierRecord> _records =
-            new List<ZombieModeAttributeModifierRecord>(64);
+        private readonly List<BossRushStatModifierRecord> _records =
+            new List<BossRushStatModifierRecord>(64);
         private readonly List<CharacterMainControl> _tracked = new List<CharacterMainControl>(32);
         private readonly HashSet<Health> _sacrificeTargets = new HashSet<Health>();
         private bool _deathSubscribed;

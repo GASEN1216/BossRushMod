@@ -8,10 +8,14 @@ COMPILE = Path("compile_official.bat")
 REGISTRY = Path("Integration/BossRushDynamicItemRegistry.cs")
 PATCH = Path("Patches/ItemStatsSystem/ItemAssetsCollectionDynamicRegistrationPatch.cs")
 ALWAYS_ON_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
-EQUIPMENT_REGISTRY = Path("Integration/EquipmentContentRegistry.cs")
+EQUIPMENT_REGISTRY = Path("Integration/BossRushIntegration.cs")
+CONTENT_REGISTRATION = Path("Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs")
 START = Path("Integration/BossRushIntegration_StartAndScene.cs")
-WIKI_BOOK = Path("Integration/WikiBookItem.cs")
-LOOT = Path("LootAndRewards/LootAndRewardsSpecialLoot.cs")
+WIKI_BOOK_HOST = Path("Integration/BossRushIntegration.cs")
+WIKI_BOOK_RUNTIME = Path("Integration/BossRushIntegrationRuntimeModule_WikiBook.cs")
+BIRTHDAY_CAKE_HOST = Path("Integration/BossRushIntegration.cs")
+BIRTHDAY_CAKE_RUNTIME = Path("Integration/BossRushIntegrationRuntimeModule_BirthdayCake.cs")
+LOOT = Path("WavesArena/WavesArenaRuntimeModule_DragonLoot.cs")
 PHANTOM = Path("Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs")
 NEW_WEAPON_PLACEHOLDER = Path("Integration/NewWeapons/Common/NewWeaponPlaceholderRegistry.cs")
 SET_BONUS_PLACEHOLDER = Path("Integration/Bonus/SetBonusPlaceholderRegistry.cs")
@@ -26,14 +30,35 @@ def normalize_slashes(text: str) -> str:
     return text.replace("\\", "/")
 
 
+def extract_method(text: str, signature: str) -> str:
+    start = text.find(signature)
+    if start < 0:
+        return ""
+    brace = text.find("{", start)
+    if brace < 0:
+        return ""
+    depth = 0
+    for index in range(brace, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:index + 1]
+    return ""
+
+
 def main() -> int:
     compile_text = normalize_slashes(COMPILE.read_text(encoding="utf-8", errors="ignore"))
     registry = REGISTRY.read_text(encoding="utf-8", errors="ignore")
     patch = PATCH.read_text(encoding="utf-8", errors="ignore")
     always_on_hooks = ALWAYS_ON_HOOKS.read_text(encoding="utf-8", errors="ignore")
-    equipment = EQUIPMENT_REGISTRY.read_text(encoding="utf-8", errors="ignore")
+    equipment = EQUIPMENT_REGISTRY.read_text(encoding="utf-8", errors="ignore") + CONTENT_REGISTRATION.read_text(encoding="utf-8", errors="ignore")
     start = START.read_text(encoding="utf-8", errors="ignore")
-    wiki_book = WIKI_BOOK.read_text(encoding="utf-8", errors="ignore")
+    wiki_book_host = WIKI_BOOK_HOST.read_text(encoding="utf-8", errors="ignore")
+    wiki_book_runtime = WIKI_BOOK_RUNTIME.read_text(encoding="utf-8", errors="ignore")
+    birthday_cake_host = BIRTHDAY_CAKE_HOST.read_text(encoding="utf-8", errors="ignore")
+    birthday_cake_runtime = BIRTHDAY_CAKE_RUNTIME.read_text(encoding="utf-8", errors="ignore")
     loot = LOOT.read_text(encoding="utf-8", errors="ignore")
     phantom = PHANTOM.read_text(encoding="utf-8", errors="ignore")
     new_weapon = NEW_WEAPON_PLACEHOLDER.read_text(encoding="utf-8", errors="ignore")
@@ -41,6 +66,7 @@ def main() -> int:
 
     for source in (
         "Integration/BossRushDynamicItemRegistry.cs",
+        "Integration/BossRushIntegrationRuntimeModule_BirthdayCake.cs",
         "Patches/ItemStatsSystem/ItemAssetsCollectionDynamicRegistrationPatch.cs",
     ):
         if source not in compile_text:
@@ -172,10 +198,69 @@ def main() -> int:
     if "EnsureDragonBossRewardContentPreloaded" in start + equipment:
         return fail("dragon reward content must not be synchronously preloaded at Start")
 
-    if "private const int WIKI_BOOK_TYPE_ID = BossRushItemIds.AdventureJournal;" not in wiki_book:
+    if "private const int WIKI_BOOK_TYPE_ID = BossRushItemIds.AdventureJournal;" not in wiki_book_runtime:
         return fail("WikiBookItem must use the published AdventureJournal TypeID")
-    if "itemPrefab.SetTypeID(WIKI_BOOK_TYPE_ID);" not in wiki_book:
+    if "itemPrefab.SetTypeID(WIKI_BOOK_TYPE_ID);" not in wiki_book_runtime:
         return fail("WikiBookItem must correct legacy prefab TypeID to AdventureJournal")
+    if 'private const string WIKI_BUNDLE_NAME = "bossrush_wiki";' not in wiki_book_runtime:
+        return fail("WikiBookItem must retain its AssetBundle name")
+    if "LocalizationInjector.InjectWikiBookLocalization(wikiBookTypeId);" not in wiki_book_runtime:
+        return fail("WikiBook localization must use the runtime-confirmed item TypeID")
+    for field in (
+        "private bool wikiBookInitialized = false;",
+        "private int wikiBookTypeId = WIKI_BOOK_TYPE_ID;",
+        "private GameObject wikiUIPrefab = null;",
+        "private GameObject wikiBookPrefab = null;",
+    ):
+        if field not in wiki_book_runtime:
+            return fail("WikiBook runtime state must be privately owned by IntegrationRuntimeModule -> " + field)
+    for signature, target in (
+        ("private void InitializeWikiBookItem()", "bossRushIntegrationRuntime.InitializeWikiBookItem();"),
+        ("private void InjectWikiBookLocalization()", "bossRushIntegrationRuntime.InjectWikiBookLocalization();"),
+    ):
+        bridge = extract_method(wiki_book_host, signature)
+        compact_bridge = "".join(bridge.split())
+        expected_bridge = "".join((signature + "{" + target + "}").split())
+        if compact_bridge != expected_bridge:
+            return fail("WikiBook host compatibility entry must be a thin module forward -> " + signature)
+    if "public class WikiBookUsageBehavior : UsageBehavior" not in Path("Integration/WikiBookItem.cs").read_text(encoding="utf-8"):
+        return fail("WikiBook usage behavior must remain attached to the existing item flow")
+
+    if "private const int BIRTHDAY_CAKE_TYPE_ID = BossRushItemIds.BirthdayCake;" not in birthday_cake_runtime:
+        return fail("Birthday Cake must retain its published TypeID")
+    if 'private const string BIRTHDAY_CAKE_BUNDLE_NAME = "birthday_cake";' not in birthday_cake_runtime:
+        return fail("Birthday Cake must retain its AssetBundle name")
+    if "private const float ENERGY_RESTORE_VALUE = 100f;" not in birthday_cake_runtime:
+        return fail("Birthday Cake food value must remain unchanged")
+    if "LocalizationInjector.InjectCakeLocalization(birthdayCakeTypeId);" not in birthday_cake_runtime:
+        return fail("Birthday Cake localization must use its runtime-confirmed TypeID")
+    if 'private const string BIRTHDAY_CAKE_GIVEN_KEY = "BossRush_BirthdayCakeGiven_2024";' not in birthday_cake_runtime:
+        return fail("Birthday Cake must retain its existing once-per-save key")
+    if "internal void AddTagsToItem(Item itemPrefab, string[] tagNames)" not in birthday_cake_runtime:
+        return fail("Birthday Cake runtime module must own the shared dynamic-item tag helper")
+    if 'AddTagsToItem(itemPrefab, new string[] { "Key", "SpecialKey" });' not in registry:
+        return fail("BossRush Ticket must keep its original Key/SpecialKey tag injection")
+    for field in (
+        "private bool birthdayCakeInitialized = false;",
+        "private int birthdayCakeTypeId = BIRTHDAY_CAKE_TYPE_ID;",
+        "private Buff happyBuffPrefab = null;",
+    ):
+        if field not in birthday_cake_runtime:
+            return fail("Birthday Cake runtime state must be privately owned by IntegrationRuntimeModule -> " + field)
+    birthday_registration = extract_method(registry, "internal bool EnsureBirthdayCakeItemRegisteredForDynamicRegistry()")
+    if "InitializeBirthdayCakeItem();" not in birthday_registration:
+        return fail("dynamic registry fallback must still initialize the Birthday Cake through its host bridge")
+    for signature, target in (
+        ("private void InitializeBirthdayCakeItem()", "bossRushIntegrationRuntime.InitializeBirthdayCakeItem();"),
+        ("private void InjectBirthdayCakeLocalization()", "bossRushIntegrationRuntime.InjectBirthdayCakeLocalization();"),
+        ("private void AddTagsToItem(Item itemPrefab, string[] tagNames)", "bossRushIntegrationRuntime.AddTagsToItem(itemPrefab, tagNames);"),
+        ("public void DebugGiveBirthdayCake()", "bossRushIntegrationRuntime.DebugGiveBirthdayCake();"),
+    ):
+        bridge = extract_method(birthday_cake_host, signature)
+        compact_bridge = "".join(bridge.split())
+        expected_bridge = "".join((signature + "{" + target + "}").split())
+        if compact_bridge != expected_bridge:
+            return fail("Birthday Cake host compatibility entry must be a thin module forward -> " + signature)
 
     if "BossRushDynamicItemRegistry.EnsureRegistered(typeId);" not in loot:
         return fail("dragon reward drop fallback must delegate to unified registry")

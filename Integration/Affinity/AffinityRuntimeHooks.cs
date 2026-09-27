@@ -2,27 +2,59 @@ using System;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    /// <summary>好感度系统的运行时状态与生命周期 owner。</summary>
+    internal sealed class AffinityRuntimeModule : BossRushRuntimeModuleBase
     {
-        /// <summary>
-        /// 初始化好感度系统
-        /// </summary>
-        private void InitializeAffinitySystem()
+        private ModBehaviour _owner;
+        private bool _affinityChangedSubscribed;
+        private bool _levelUpSubscribed;
+        private bool _cleanupCompleted;
+
+        public override string ModuleName { get { return "Affinity"; } }
+
+        public override void OnAwake(ModBehaviour owner)
         {
+            _owner = owner;
+            if (owner != null)
+            {
+                owner.AttachAffinityRuntimeModule(this);
+            }
+        }
+
+        public override void OnDestroy()
+        {
+            Cleanup();
+
+            ModBehaviour owner = _owner;
+            if (owner != null)
+            {
+                owner.DetachAffinityRuntimeModule(this);
+            }
+            _owner = null;
+        }
+
+        /// <summary>在原 deferred-content hook 的位置初始化，保持 NPC 注册与事件订阅顺序。</summary>
+        internal void InitializeAffinitySystem()
+        {
+            _cleanupCompleted = false;
             try
             {
-                // 初始化好感度管理器
                 AffinityManager.Initialize();
 
-                // 通过 NPC 模块注册中心统一注册可用 NPC 好感度配置
                 int affinityNpcCount = NPCModuleRegistry.RegisterAffinityConfigs();
                 DevLog("[BossRush] NPC 好感度配置注册完成，数量: " + affinityNpcCount);
 
-                // 订阅好感度变化事件（显示UI动画）
-                AffinityManager.OnAffinityChanged += OnAffinityChanged;
+                if (!_affinityChangedSubscribed)
+                {
+                    AffinityManager.OnAffinityChanged += OnAffinityChanged;
+                    _affinityChangedSubscribed = true;
+                }
 
-                // 订阅等级提升事件（显示通知）
-                AffinityManager.OnLevelUp += OnAffinityLevelUp;
+                if (!_levelUpSubscribed)
+                {
+                    AffinityManager.OnLevelUp += OnAffinityLevelUp;
+                    _levelUpSubscribed = true;
+                }
 
                 DevLog("[BossRush] 好感度系统初始化完成");
             }
@@ -32,27 +64,72 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 好感度变化事件处理
-        /// </summary>
+        internal void TickAffinityRuntime()
+        {
+            AffinityManager.UpdateDeferredSave();
+        }
+
+        internal void OnAffinitySceneUnload()
+        {
+            AffinityUIManager.OnSceneUnload();
+            AffinityManager.OnSceneUnload();
+        }
+
+        /// <summary>可由既有宿主清理槽调用；OnDestroy 再调用时保持幂等。</summary>
+        internal void Cleanup()
+        {
+            if (_cleanupCompleted)
+            {
+                return;
+            }
+
+            try
+            {
+                if (_affinityChangedSubscribed)
+                {
+                    AffinityManager.OnAffinityChanged -= OnAffinityChanged;
+                    _affinityChangedSubscribed = false;
+                }
+
+                if (_levelUpSubscribed)
+                {
+                    AffinityManager.OnLevelUp -= OnAffinityLevelUp;
+                    _levelUpSubscribed = false;
+                }
+
+                AffinityManager.Shutdown();
+                AffinityManager.ResetStaticCaches();
+                AffinityUIManager.Cleanup();
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] Affinity runtime cleanup failed: " + e.Message);
+            }
+
+            _cleanupCompleted = true;
+        }
+
         private void OnAffinityChanged(string npcId, int oldPoints, int newPoints)
         {
             int delta = newPoints - oldPoints;
             AffinityUIManager.ShowAffinityChange(npcId, delta);
 
-            if (!string.IsNullOrEmpty(npcId))
+            if (!string.IsNullOrEmpty(npcId) && _owner != null)
             {
-                HandleSpouseFollowAffinityLoss(npcId);
-                RefreshSpouseInteractionOptionsForNpc(npcId);
+                _owner.HandleSpouseFollowAffinityLoss(npcId);
+                _owner.RefreshSpouseInteractionOptionsForNpc(npcId);
             }
         }
 
-        /// <summary>
-        /// 好感度等级提升事件处理
-        /// </summary>
         private void OnAffinityLevelUp(string npcId, int newLevel)
         {
             AffinityUIManager.ShowLevelUpNotification(npcId, newLevel);
+        }
+
+        [System.Diagnostics.Conditional("BOSSRUSH_DEV")]
+        private static void DevLog(string message)
+        {
+            ModBehaviour.DevLog(message);
         }
     }
 }

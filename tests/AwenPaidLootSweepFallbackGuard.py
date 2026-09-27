@@ -10,8 +10,9 @@ from cs_source_util import clean_source
 SERVICE = Path("Integration/NPCs/Courier/CourierPaidLootSweepService.cs")
 # 2026-09-23：结果物品回到玩家手里的那一段按 AGENTS §4.15 原样拆到同一 partial 的新文件，断言针对整个类。
 SERVICE_DELIVERY = Path("Integration/NPCs/Courier/CourierPaidLootSweepDelivery.cs")
-COURIER = Path("Integration/NPCs/Courier/CourierNPC.cs")
+COURIER = Path("Integration/IntegrationHostCompatibility.cs")
 COURIER_NPC_SOURCES = [
+    Path("Integration/NPCs/Courier/CourierNpcRuntimeModule.cs"),
     COURIER,
     Path("Integration/NPCs/Courier/CourierNPCController.cs"),
     Path("Integration/NPCs/Courier/CourierMovement.cs"),
@@ -21,7 +22,7 @@ COURIER_NPC_SOURCES = [
 
 def read_courier_npc_sources() -> str:
     return "\n".join(path.read_text(encoding="utf-8") for path in COURIER_NPC_SOURCES)
-TRACKER = Path("LootAndRewards/ModeEFLootboxTracker.cs")
+TRACKER = Path("LootAndRewards/AwenLootSweepRuntime.cs")
 CLOSE_AND_CLEANUP = Path("Integration/NPCs/Courier/CourierService_CloseAndCleanup.cs")
 
 
@@ -79,7 +80,11 @@ def main() -> int:
     if "CourierPaidLootSweepService.ReleasePendingSweepResultToPlayer(true, false);" not in destroy_method:
         return fail("AwenPaidLootSweepFallbackGuard: courier destroy does not release pending sweep result")
 
-    reset_method = extract_method(tracker_text, "private void ResetModeEFLootboxTrackerState()")
+    destroy_bridge = extract_method(COURIER.read_text(encoding="utf-8"), "public void DestroyCourierNPC()")
+    if "courierNpcRuntime.DestroyCourierNPC();" not in destroy_bridge:
+        return fail("AwenPaidLootSweepFallbackGuard: host destroy entry does not forward to courier runtime owner")
+
+    reset_method = extract_method(tracker_text, "internal void ResetModeEFLootboxTrackerState()")
     if "CourierPaidLootSweepService.ReleasePendingSweepResultToPlayer(true, false);" not in reset_method:
         return fail("AwenPaidLootSweepFallbackGuard: Mode E/F tracker reset does not release pending sweep result")
 

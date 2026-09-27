@@ -94,6 +94,16 @@ namespace BossRush
         private GoblinReforgeInteractable reforgeInteractable;
         private GoblinAffixForgeInteractable affixForgeInteractable;  // 词缀锻造子交互
         private NPCShopInteractable shopInteractable;  // 使用通用商店交互组件
+        private NPCShopPaymentStrategy shopPaymentStrategy = NPCShopPaymentStrategy.Cash;
+        internal NPCShopPaymentStrategy ShopPaymentStrategy
+        {
+            get { return shopPaymentStrategy; }
+            set
+            {
+                shopPaymentStrategy = value ?? NPCShopPaymentStrategy.Cash;
+                if (shopInteractable != null) shopInteractable.PaymentStrategy = shopPaymentStrategy;
+            }
+        }
         private NPCGiftInteractable giftInteractable;  // 使用通用礼物交互组件
         private NPCSpouseFollowInteractable spouseFollowInteractable;
         private NPCDivorceInteractable divorceInteractable;  // 离婚选项（仅配偶可见）
@@ -202,7 +212,11 @@ namespace BossRush
                     transform,
                     "ShopOption",
                     groupList,
-                    component => component.NpcId = GoblinAffinityConfig.NPC_ID);
+                    component =>
+                    {
+                        component.NpcId = GoblinAffinityConfig.NPC_ID;
+                        component.PaymentStrategy = shopPaymentStrategy;
+                    });
             }
 
             if (giftInteractable == null)

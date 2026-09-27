@@ -15,9 +15,10 @@ import sys
 
 SPAWN_CORE = Path("Utilities/EnemySpawnCore.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-BOSS = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 BOSS_PARTS = [
     BOSS,
+    Path("ZombieMode/ZombieModeBossController.cs"),
     Path("ZombieMode/ZombieModePlayerSlowRuntime.cs"),
 ]
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
@@ -25,7 +26,7 @@ MODELS = Path("ZombieMode/ZombieModeModels.cs")
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
 REWARD_PARTS = [
     REWARDS,
-    Path("ZombieMode/ZombieModeRewardCatalogAndSelection.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs"),
     Path("ZombieMode/ZombieModeRewardEffectsAndNpc.cs"),
     Path("ZombieMode/ZombieModeRewardItemGrants.cs"),
     Path("ZombieMode/ZombieModeRewardNpcServices.cs"),
@@ -144,9 +145,9 @@ def main() -> int:
     if "AttributeModifierCleanupRegistered" not in models:
         return fail("ZombieModeProductionReadinessGuard: run state lacks AttributeModifierCleanupRegistered")
     add_attr = extract_method(rewards, "AddZombieModeAttributeModifier")
-    if "if (!zombieModeRunState.AttributeModifierCleanupRegistered)" not in add_attr:
+    if "if (!runState.AttributeModifierCleanupRegistered)" not in add_attr:
         return fail("ZombieModeProductionReadinessGuard: attribute cleanup is not guarded by one-shot registration")
-    if "zombieModeRunState.AttributeModifierCleanupRegistered = true;" not in add_attr:
+    if "runState.AttributeModifierCleanupRegistered = true;" not in add_attr:
         return fail("ZombieModeProductionReadinessGuard: attribute cleanup registration flag is not set")
 
     print("ZombieModeProductionReadinessGuard: PASS")

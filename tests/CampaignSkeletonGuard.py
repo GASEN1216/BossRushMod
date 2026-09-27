@@ -24,12 +24,14 @@ from pathlib import Path
 import re
 import sys
 from cs_source_util import clean_source
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+from compile_list import read_compile_sources
 
 MODULE = Path("Campaign/CampaignRuntimeModule.cs")
 PROGRESS = Path("Campaign/CampaignProgressService.cs")
 UNLOCKS = Path("Campaign/CampaignFacilityUnlocks.cs")
 TUNING = Path("Campaign/CampaignTuning.cs")
-REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+REGISTRATION = Path("ModBehaviourRuntimeModules.cs")
 SCENE = Path("Integration/BossRushIntegration_StartAndScene.cs")
 PLAYER = Path("Campaign/CampaignDialoguePlayer.cs")
 FINAL_BOSS = Path("Campaign/CampaignFinalBoss.cs")
@@ -92,9 +94,8 @@ def main():
 
     # 隔离夹具中的同名宿主替身不进入游戏编译；单实例约束覆盖全部生产源码。
     news = []
-    for path in Path(".").rglob("*.cs"):
-        if any(part in {".git", "Build", "tmp", "output", "outputs", "鸭科夫源码", "tests"} for part in path.parts):
-            continue
+    for source_path in read_compile_sources(Path("compile_official.bat")):
+        path = Path(source_path)
         text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
         news += [path.as_posix()] * len(
             re.findall(r"new\s+CampaignRuntimeModule\s*\(", text))

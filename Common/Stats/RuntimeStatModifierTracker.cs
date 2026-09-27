@@ -13,7 +13,7 @@
 //   - EquipmentHelper 加的是装备 ModifierDescription（持久词条）
 //   - 本类加的是运行时 Modifier（短命 Buff，不会被序列化）
 //
-// 注：调用方仍然自带 List<ZombieModeAttributeModifierRecord> 容器，
+// 注：调用方仍然自带 List<BossRushStatModifierRecord> 容器，
 //     因为 SkillState / Run state / Pollution affix 各自有不同的生命周期；
 //     helper 只负责"如何加 + 如何统一移除"两个机械动作。
 // ============================================================================
@@ -24,6 +24,14 @@ using ItemStatsSystem.Stats;
 
 namespace BossRush
 {
+    public sealed class BossRushStatModifierRecord
+    {
+        public Item CharacterItem;
+        public Stat Stat;
+        public Modifier Modifier;
+        public string StatName = string.Empty;
+    }
+
     internal static class RuntimeStatModifierTracker
     {
         /// <summary>
@@ -36,7 +44,7 @@ namespace BossRush
             string statName,
             float percent,
             object source,
-            List<ZombieModeAttributeModifierRecord> records,
+            List<BossRushStatModifierRecord> records,
             string context)
         {
             return TryAdd(character, statName, percent, source, records, context, ModifierType.PercentageAdd);
@@ -45,7 +53,16 @@ namespace BossRush
         /// <summary>Gain 类零基数属性可显式用 Add；旧入口仍按 PercentageAdd 计算。</summary>
         internal static bool TryAdd(
             CharacterMainControl character, string statName, float percent, object source,
-            List<ZombieModeAttributeModifierRecord> records, string context, ModifierType modifierType)
+            List<BossRushStatModifierRecord> records, string context, ModifierType modifierType)
+        {
+            return TryAdd(character, statName, percent, source, records, context, modifierType, null);
+        }
+
+        /// <summary>调用方可保留自己的失败日志文案，不改变挂载与记录语义。</summary>
+        internal static bool TryAdd(
+            CharacterMainControl character, string statName, float percent, object source,
+            List<BossRushStatModifierRecord> records, string context, ModifierType modifierType,
+            System.Action<string, System.Exception> onFailure)
         {
             if (character == null || character.CharacterItem == null ||
                 string.IsNullOrEmpty(statName) || records == null || source == null)
@@ -69,7 +86,7 @@ namespace BossRush
                 Modifier modifier = new Modifier(modifierType, percent, source);
                 stat.AddModifier(modifier);
 
-                ZombieModeAttributeModifierRecord record = new ZombieModeAttributeModifierRecord();
+                BossRushStatModifierRecord record = new BossRushStatModifierRecord();
                 record.CharacterItem = character.CharacterItem;
                 record.Stat = stat;
                 record.Modifier = modifier;
@@ -79,7 +96,8 @@ namespace BossRush
             }
             catch (System.Exception e)
             {
-                ModBehaviour.DevLog("[RuntimeStatModifier] " + context + " add 失败: " + statName + ", " + e.Message);
+                if (onFailure != null) onFailure(statName, e);
+                else ModBehaviour.DevLog("[RuntimeStatModifier] " + context + " add 失败: " + statName + ", " + e.Message);
                 return false;
             }
         }
@@ -89,7 +107,7 @@ namespace BossRush
         /// 反向迭代以容忍部分失败；失败用 DevLog 记。
         /// </summary>
         internal static void RemoveAll(
-            List<ZombieModeAttributeModifierRecord> records,
+            List<BossRushStatModifierRecord> records,
             string context)
         {
             if (records == null)
@@ -99,7 +117,7 @@ namespace BossRush
 
             for (int i = records.Count - 1; i >= 0; i--)
             {
-                ZombieModeAttributeModifierRecord record = records[i];
+                BossRushStatModifierRecord record = records[i];
                 if (record == null || record.Modifier == null)
                 {
                     continue;

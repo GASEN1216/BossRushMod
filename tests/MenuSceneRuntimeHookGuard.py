@@ -10,31 +10,35 @@ INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration.cs"),
     Path("Integration/BossRushIntegration_StartAndScene.cs"),
     Path("Integration/BossRushIntegration_TravelAndSetup.cs"),
-    Path("Integration/BossRushIntegration_MapObjectsAndDragonBreath.cs"),
 ]
 ALWAYS_ON_RUNTIME_HOOKS = Path("Utilities/AlwaysOnRuntimeHooks.cs")
-EQUIPMENT_RUNTIME_HOOKS = Path("Integration/EquipmentRuntimeHooks.cs")
+AFFINITY_RUNTIME = Path("Integration/Affinity/AffinityRuntimeHooks.cs")
+EQUIPMENT_RUNTIME_HOOKS = Path("Integration/IntegrationHostCompatibility.cs")
+INTEGRATION_RUNTIME_MODULES = [
+    Path("Integration/BossRushIntegrationRuntimeModule.cs"),
+    Path("Integration/BossRushIntegrationRuntimeModule_RuntimeHooks.cs"),
+]
 STEAM_ACHIEVEMENT_POPUP = Path("Achievement/SteamAchievementPopup.cs")
 BOOTSTRAP_FILES = [
     (
         Path("Integration/FlightTotem/FlightTotemBootstrap.cs"),
-        "private void SetupFlightTotemForScene",
+        "internal void SetupFlightTotemForScene",
         "delayedCheckEquipment: DelayedCheckFlightTotemEquipment,",
     ),
     (
         Path("Integration/DragonKing/Weapons/FenHuangHalberdBootstrap.cs"),
-        "private void SetupFenHuangHalberdForScene",
-        "StartCoroutine(DelayedSetupHalberdAbility());",
+        "internal void SetupFenHuangHalberdForScene",
+        "owner.StartCoroutine(DelayedSetupHalberdAbility());",
     ),
     (
         Path("Integration/Frostmourne/FrostmourneBootstrap.cs"),
-        "private void SetupFrostmourneForScene",
-        "StartCoroutine(DelayedSetupFrostmourneAbility());",
+        "internal void SetupFrostmourneForScene",
+        "_owner.StartCoroutine(DelayedSetupFrostmourneAbility());",
     ),
     (
         Path("Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs"),
-        "private void SetupPhantomWitchScytheForScene",
-        "StartCoroutine(DelayedSetupPhantomWitchScytheAbility());",
+        "internal void SetupPhantomWitchScytheForScene",
+        "owner.StartCoroutine(DelayedSetupPhantomWitchScytheAbility());",
     ),
 ]
 PER_FRAME_MANAGER_METHODS = [
@@ -101,7 +105,7 @@ def fail(message: str) -> int:
 
 
 def read_boss_rush_integration() -> str:
-    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_PARTS)
+    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in dict.fromkeys(INTEGRATION_PARTS))
 
 
 def extract_method(text: str, signature: str) -> str:
@@ -140,6 +144,9 @@ def main() -> int:
     integration_text = read_boss_rush_integration()
     always_on_runtime_text = ALWAYS_ON_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
     equipment_runtime_text = EQUIPMENT_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore")
+    integration_runtime_text = "\n".join(
+        path.read_text(encoding="utf-8", errors="ignore") for path in INTEGRATION_RUNTIME_MODULES
+    )
 
     if "IsGameplaySceneName" not in mod_text:
         return fail("missing stable gameplay scene-name helper")
@@ -196,6 +203,8 @@ def main() -> int:
     start_integration = extract_method(integration_text, "void Start_Integration()")
     if not start_integration:
         return fail("could not find Start_Integration")
+    if "bossRushIntegrationRuntime.StartRuntimeStateMonitor();" not in start_integration:
+        return fail("Integration runtime-state monitor must start at its original host lifecycle slot")
     if not has_recent_guard(
         start_integration,
         "StartCoroutine(FindInteractionTargets(5));",
@@ -205,9 +214,9 @@ def main() -> int:
         return fail("startup interaction scan should not run in menu/loading scenes")
 
     gameplay_hook_calls = [
-        "StartCoroutine(DelayedRestoreReforgeDataForInventory());",
-        "StartCoroutine(DelayedSubscribeDragonBreathEvents());",
-        "StartCoroutine(DelayedApplyDragonGunAmmoOverride());",
+        "StartCoroutine(bossRushIntegrationRuntime.DelayedRestoreReforgeDataForInventory());",
+        "StartCoroutine(bossRushIntegrationRuntime.DelayedSubscribeDragonBreathEvents());",
+        "StartCoroutine(bossRushIntegrationRuntime.DelayedApplyDragonGunAmmoOverride());",
     ]
     for call in gameplay_hook_calls:
         if not has_recent_guard(on_scene, call, "if (isGameplayScene)"):
@@ -226,18 +235,24 @@ def main() -> int:
         method = extract_method(text, signature)
         if not method:
             return fail("could not find bootstrap method -> " + str(path))
+        scene_guard = "ModBehaviour.IsGameplaySceneName(scene.name)"
         if not has_recent_guard(
             method,
             delayed_call,
-            "if (IsGameplaySceneName(scene.name))",
+            "if (" + scene_guard + ")",
             window=800,
         ):
             return fail("equipment delayed setup must be guarded in " + str(path))
 
-    monitor = extract_method(integration_text, "private System.Collections.IEnumerator MonitorLateRuntimeStateRestore")
+    destroy_integration = extract_method(integration_text, "void OnDestroy_Integration()")
+    if "bossRushIntegrationRuntime.StopRuntimeStateMonitor();" not in destroy_integration:
+        return fail("Integration runtime-state monitor must stop at its original host lifecycle slot")
+    monitor = extract_method(integration_runtime_text, "private System.Collections.IEnumerator MonitorLateRuntimeStateRestore")
     if not monitor:
         return fail("could not find MonitorLateRuntimeStateRestore")
-    guard_pos = monitor.find("if (!CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))")
+    if "private Coroutine _runtimeStateMonitorCoroutine;" not in integration_runtime_text:
+        return fail("runtime-state coroutine handle must be owned by IntegrationRuntimeModule")
+    guard_pos = monitor.find("if (!ModBehaviour.CanRunGameplayRuntimeNow(SceneManager.GetActiveScene().name))")
     storage_pos = monitor.find("PlayerStorage.Inventory")
     if guard_pos < 0 or storage_pos < 0 or guard_pos > storage_pos:
         return fail("runtime-state monitor must skip player/storage checks outside gameplay scenes")
@@ -248,11 +263,14 @@ def main() -> int:
     update_guard = update.find("if (!runGameplaySceneHooks)")
     equipment_runtime_tick = update.find("TickEquipmentAbilityRuntime();")
     always_on_runtime_tick = update.find("TickAlwaysOnRuntime();")
-    cached_helper = extract_method(mod_text, "internal static bool CanRunGameplayRuntimeCached")
+    cached_bridge = extract_method(mod_text, "internal static bool CanRunGameplayRuntimeCached")
+    if "return SceneRuntimeGate.CanRunGameplayRuntimeCached();" not in cached_bridge:
+        return fail("host frame-cache bridge must call the shared scene gate")
+    cached_helper = extract_method(scene_gate_text, "internal static bool CanRunGameplayRuntimeCached")
     if not cached_helper:
         return fail("could not find frame-cached gameplay runtime helper")
     for token in [
-        "int frame = Time.frameCount;",
+        "int frame = UnityEngine.Time.frameCount;",
         "if (frame != _staticCanRunFrame)",
         "SceneRuntimeGate.CanRunGameplayRuntimeNow(",
     ]:
@@ -268,8 +286,12 @@ def main() -> int:
     always_on_runtime_tick_block = extract_method(always_on_runtime_text, "internal void TickAlwaysOnRuntime()")
     if not always_on_runtime_tick_block:
         return fail("could not find TickAlwaysOnRuntime")
-    if "AffinityManager.UpdateDeferredSave();" not in always_on_runtime_tick_block:
-        return fail("Affinity deferred save must remain in the always-on runtime tick")
+    affinity_runtime_text = AFFINITY_RUNTIME.read_text(encoding="utf-8", errors="ignore")
+    if "TickAffinityRuntimeFromHost();" not in always_on_runtime_tick_block:
+        return fail("Affinity module tick must remain in the always-on runtime tick")
+    affinity_tick = extract_method(affinity_runtime_text, "internal void TickAffinityRuntime()")
+    if "AffinityManager.UpdateDeferredSave();" not in affinity_tick:
+        return fail("Affinity module tick must still flush deferred saves")
 
     equipment_runtime_tick_block = extract_method(equipment_runtime_text, "internal void TickEquipmentAbilityRuntime()")
     if not equipment_runtime_tick_block:

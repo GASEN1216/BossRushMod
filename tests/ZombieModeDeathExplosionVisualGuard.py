@@ -5,8 +5,8 @@ import re
 import sys
 
 
-RUNTIME = Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs")
-BOSS = Path("ZombieMode/ZombieModeBossController.cs")
+RUNTIME = Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs")
+BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 
 
 def fail(message: str) -> int:
@@ -40,7 +40,7 @@ def main() -> int:
     runtime = RUNTIME.read_text(encoding="utf-8-sig")
     boss = BOSS.read_text(encoding="utf-8-sig")
 
-    elite_death = extract_method_body(runtime, "private void HandleZombieModeEliteDeathEffects(")
+    elite_death = extract_method_body(runtime, "internal void HandleZombieModeEliteDeathEffects(")
     if elite_death is None:
         return fail("missing HandleZombieModeEliteDeathEffects body")
 
@@ -58,7 +58,7 @@ def main() -> int:
     if "DealZombieModeExplosionAreaDamage(" not in burst_body:
         return fail("Burst death affix must use native explosion path")
 
-    boss_death = extract_method_body(boss, "private void HandleZombieModeBossDeathEffects(")
+    boss_death = extract_method_body(boss, "internal void HandleZombieModeBossDeathEffects(")
     if boss_death is None:
         return fail("missing HandleZombieModeBossDeathEffects body")
 
@@ -73,7 +73,7 @@ def main() -> int:
     for token in [
         "DealZombieModeExplosionAreaDamage(\n                    runId,\n                    character,\n                    character.transform.position,\n                    ZombieModeTuning.SplitterBossDeathRadius",
         "DealZombieModeExplosionAreaDamage(\n                    runId,\n                    character,\n                    character.transform.position,\n                    ZombieModeTuning.TitanShockwaveRadius",
-        "ZombieModeTuning.TitanShockwaveDamage * GetZombieModeBossDamageScale(zombieModeRunState.CurrentWave)",
+        "ZombieModeTuning.TitanShockwaveDamage * owner.GetZombieModeBossDamageScaleForRuntimeModule(runState.CurrentWave)",
     ]:
         if token not in boss_death:
             return fail("boss death explosion missing token -> " + token)

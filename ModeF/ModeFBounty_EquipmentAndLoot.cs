@@ -8,7 +8,7 @@ using ItemStatsSystem.Stats;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         private bool TrySwapModeFItemsBetweenCharacters(
             CharacterMainControl receiver,
@@ -96,7 +96,7 @@ namespace BossRush
                     DropOrDestroyModeFLootedItem(receiver, receiverItem, lootDropPosition);
                 }
 
-                DevLog("[ModeF] [WARNING] Boss 装备互换回滚不完整");
+                ModBehaviour.DevLog("[ModeF] [WARNING] Boss 装备互换回滚不完整");
             }
 
             return false;
@@ -186,7 +186,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] RefillModeFBossGunAndAmmo 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] RefillModeFBossGunAndAmmo 失败: " + e.Message);
             }
         }
 
@@ -284,7 +284,7 @@ namespace BossRush
 
             if (transferred > 0)
             {
-                DevLog("[ModeF] Boss 换枪同步转移兼容弹药: " + transferred + " 组");
+                ModBehaviour.DevLog("[ModeF] Boss 换枪同步转移兼容弹药: " + transferred + " 组");
             }
 
             modeFTransferableAmmoScratch.Clear();
@@ -491,7 +491,7 @@ namespace BossRush
             if (plugged)
             {
                 try { replaceCandidate.DestroyTree(); } catch { }
-                DevLog("[ModeF] 新枪补给弹药：已替换同口径低品质弹药");
+                ModBehaviour.DevLog("[ModeF] 新枪补给弹药：已替换同口径低品质弹药");
                 return true;
             }
 
@@ -504,7 +504,7 @@ namespace BossRush
 
             if (!restored)
             {
-                DevLog("[ModeF] [WARNING] 同口径低品质弹药回滚失败");
+                ModBehaviour.DevLog("[ModeF] [WARNING] 同口径低品质弹药回滚失败");
                 try { replaceCandidate.DestroyTree(); } catch { }
             }
 
@@ -539,9 +539,9 @@ namespace BossRush
             string killerName = GetModeFActorDisplayName(killer, true);
             string victimName = GetModeFActorDisplayName(victim, false);
 
-            modeFBountyLeaderContextZh = RichWarningTag + killerName + "</color> 杀死了 " + RichDangerTag + victimName
+            modeFBountyLeaderContextZh = ModBehaviour.RichWarningTag + killerName + "</color> 杀死了 " + ModBehaviour.RichDangerTag + victimName
                 + "</color>，并成为悬赏榜首！";
-            modeFBountyLeaderContextEn = RichWarningTag + killerName + "</color> killed " + RichDangerTag + victimName
+            modeFBountyLeaderContextEn = ModBehaviour.RichWarningTag + killerName + "</color> killed " + ModBehaviour.RichDangerTag + victimName
                 + "</color> and became the Bounty Leader!";
         }
 
@@ -648,7 +648,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] CheckAndBroadcastLeaderChange 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] CheckAndBroadcastLeaderChange 失败: " + e.Message);
             }
         }
 
@@ -709,7 +709,7 @@ namespace BossRush
                 {
                     try
                     {
-                        int rewardTypeId = GetRandomInfiniteHellHighQualityRewardTypeID();
+                        int rewardTypeId = arena.GetRandomInfiniteHellHighQualityRewardTypeID();
                         if (rewardTypeId <= 0) continue;
 
                         Item reward = ItemAssetsCollection.InstantiateSync(rewardTypeId);
@@ -721,11 +721,11 @@ namespace BossRush
                     catch { }
                 }
 
-                DevLog("[ModeF] 悬赏 Boss 额外掉落: " + marks + " 格高品质奖励");
+                ModBehaviour.DevLog("[ModeF] 悬赏 Boss 额外掉落: " + marks + " 格高品质奖励");
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] AddBountyBossExtraLoot 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] AddBountyBossExtraLoot 失败: " + e.Message);
             }
         }
 

@@ -22,7 +22,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal partial class SetBonusRuntimeModule
     {
         #region 雷噬配置
 
@@ -84,7 +84,7 @@ namespace BossRush
                 // 「附近只有被你打的那一个敌人」「中途脱下装备 / 切图」白白吃掉一整轮冷却——
                 // 单挑 Boss 时那正是最常见的情形。
                 thunderBitePending = true;
-                if (StartCoroutine(ThunderBiteStep(position, victim, setBonusGeneration)) == null)
+                if (StartSetBonusCoroutine(ThunderBiteStep(position, victim, setBonusGeneration)) == null)
                 {
                     thunderBitePending = false;
                 }
@@ -136,7 +136,7 @@ namespace BossRush
                 SpawnSetArc(from, h.transform.position + Vector3.up * 1f, THUNDER_SET_ARC_COLOR, 0.1f, 0.22f);
             }
             SpawnSetBurst(origin, THUNDER_SET_BURST_COLOR, 1.2f, 0.25f, 0);
-            PlaySoundEffect(SetBonusSfx.ThunderChain);
+            _owner.PlaySoundEffect(SetBonusSfx.ThunderChain);
 
             thunderBiteResolving = true;
             try
@@ -179,14 +179,14 @@ namespace BossRush
         {
             StopThunderAmbientArcLoop();
             if (player == null) return;
-            thunderAmbientArcCoroutine = StartCoroutine(ThunderAmbientArcLoop(player));
+            thunderAmbientArcCoroutine = StartSetBonusCoroutine(ThunderAmbientArcLoop(player));
         }
 
         private void StopThunderAmbientArcLoop()
         {
             if (thunderAmbientArcCoroutine != null)
             {
-                StopCoroutine(thunderAmbientArcCoroutine);
+                StopSetBonusCoroutine(thunderAmbientArcCoroutine);
                 thunderAmbientArcCoroutine = null;
             }
         }

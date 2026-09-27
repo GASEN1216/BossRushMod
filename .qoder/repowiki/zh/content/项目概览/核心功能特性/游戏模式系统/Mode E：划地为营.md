@@ -1,5 +1,9 @@
 # Mode E：划地为营
 
+2026-09-25 核对：地图 spawner 扫描、10 米间距过滤、阵营分配、扁平化缓存与安全传送已迁入 [ModeEFSpawnPreparation.cs](file://Utilities/ModeEFSpawnPreparation.cs)。宿主创建一个实例并绑定 E/F；`ModeESpawnAllocation.cs` 只保留 Mode E 兼容入口。下文算法描述沿用，方法实体以共享服务为准；分配与场景缓存仍按原参数分别清理。
+
+商人分类实现同日迁入 [ModeEFMerchantCatalog.cs](file://Utilities/ModeEFMerchantCatalog.cs)：E/F、丧尸商店和随机事件共用预设、分类与商品缓存，分帧预热和医疗品排除顺序保留；[ModeEFMerchantRuntime.cs](file://Utilities/ModeEFMerchantRuntime.cs) 持有共享 NPC/商店列表并负责生成、装配与清理，`ModeEMerchant.cs` 提供贝壳和交互策略，Mode F 直接使用同一实例。
+
 <cite>
 **本文引用的文件**
 - [ModeE.cs](file://ModeE/ModeE.cs)
@@ -33,7 +37,7 @@ Mode E 的代码集中在 ModeE 目录下，围绕“入场与状态”“战斗
 
 ```mermaid
 graph TB
-A["ModeE.cs<br/>模式核心状态与配置"] --> B["ModeESpawnAllocation.cs<br/>刷怪点扫描与分配"]
+A["ModeE.cs<br/>模式核心状态与配置"] --> B["ModeEFSpawnPreparation.cs<br/>共享刷怪点扫描与分配"]
 A --> C["ModeEBattle.cs<br/>Boss生成与动态难度缩放"]
 A --> D["ModeEMerchant.cs<br/>神秘商人与分类商店"]
 A --> E["ModeELotteryAndHiring.cs<br/>抽奖与Boss雇佣"]

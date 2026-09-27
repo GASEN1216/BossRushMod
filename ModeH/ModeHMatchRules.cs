@@ -150,7 +150,7 @@ namespace BossRush
             internal float Elapsed;
             internal int LastEdgePulse;
             private readonly string _condition;
-            private readonly List<ZombieModeAttributeModifierRecord> _modifiers = new List<ZombieModeAttributeModifierRecord>();
+            private readonly List<BossRushStatModifierRecord> _modifiers = new List<BossRushStatModifierRecord>();
             private bool _areaActive;
             private bool _healingSubscribed;
             private bool _adjustingHealth;

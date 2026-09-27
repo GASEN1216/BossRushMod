@@ -16,6 +16,11 @@ namespace BossRush
     /// </summary>
     public static class ThunderRingWeaponConfig
     {
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterConfigurator("ThunderRingWeaponConfig", (item, baseName) => { TryConfigure(item, baseName); });
+        }
+
         private static readonly NewWeaponTotemSpec Spec = new NewWeaponTotemSpec
         {
             TypeId = NewWeaponIds.ThunderRingTypeId,

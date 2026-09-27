@@ -24,9 +24,9 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>
-    /// 婚礼教堂建筑注入器（partial class ModBehaviour）
+    /// 婚礼教堂建筑注入器（WeddingRuntimeModule partial）
     /// </summary>
-    public partial class ModBehaviour
+    internal sealed partial class WeddingRuntimeModule
     {
         // ============================================================================
         // 婚礼建筑常量
@@ -67,13 +67,13 @@ namespace BossRush
         private GameObject weddingBuildingPrefabGO = null;
 
         /// <summary>AssetBundle 缓存</summary>
-        private static AssetBundle weddingAssetBundle = null;
+        private AssetBundle weddingAssetBundle = null;
 
         /// <summary>从 AssetBundle 加载的模型</summary>
-        private static GameObject weddingModelPrefab = null;
+        private GameObject weddingModelPrefab = null;
 
         /// <summary>建筑图标 Sprite（从 PNG 加载）</summary>
-        private static Sprite weddingBuildingIcon = null;
+        private Sprite weddingBuildingIcon = null;
 
         /// <summary>当前场景中已放置的婚礼建筑实例（用于NPC生成追踪）</summary>
         private GameObject weddingNPCInstance = null;
@@ -209,14 +209,14 @@ namespace BossRush
             {
                 if (weddingBuildingInjected)
                 {
-                    DevLog("[WeddingBuilding] 建筑数据已注入，跳过");
+                    ModBehaviour.DevLog("[WeddingBuilding] 建筑数据已注入，跳过");
                     return;
                 }
 
                 // 已放置的教堂必须恢复模型；旧档可能缺少好感度历史标记。
                 if (!AffinityManager.HasAnyNPCEverReachedMaxLevel() && !RefreshWeddingBuildingPresence())
                 {
-                    DevLog("[WeddingBuilding] 尚未有NPC好感度达到过" + WEDDING_BUILDING_REQUIRED_AFFINITY_LEVEL + "级，婚礼建筑暂不解锁");
+                    ModBehaviour.DevLog("[WeddingBuilding] 尚未有NPC好感度达到过" + WEDDING_BUILDING_REQUIRED_AFFINITY_LEVEL + "级，婚礼建筑暂不解锁");
                     return;
                 }
 
@@ -245,9 +245,9 @@ namespace BossRush
                 }
                 else
                 {
-                    DevLog("[WeddingBuilding] 当前存档未放置婚礼教堂，跳过建筑区重绘");
+                    ModBehaviour.DevLog("[WeddingBuilding] 当前存档未放置婚礼教堂，跳过建筑区重绘");
                 }
-                DevLog("[WeddingBuilding] 婚礼教堂建筑系统初始化完成（已解锁或恢复已有建筑）");
+                ModBehaviour.DevLog("[WeddingBuilding] 婚礼教堂建筑系统初始化完成（已解锁或恢复已有建筑）");
             }
             catch (Exception e)
             {
@@ -255,7 +255,7 @@ namespace BossRush
             }
         }
 
-        private void TryInitializeWeddingBuildingEarly()
+        internal void TryInitializeWeddingBuildingEarly()
         {
             try
             {
@@ -265,7 +265,7 @@ namespace BossRush
                 }
 
                 UnityEngine.SceneManagement.Scene activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-                if (!activeScene.IsValid() || !IsBaseHubSceneName(activeScene.name))
+                if (!activeScene.IsValid() || !ModBehaviour.IsBaseHubSceneName(activeScene.name))
                 {
                     return;
                 }
@@ -293,7 +293,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBuilding] 早期初始化失败: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBuilding] 早期初始化失败: " + e.Message);
             }
         }
 
@@ -320,7 +320,7 @@ namespace BossRush
                     weddingNPCInstance = null;
                 }
 
-                DevLog("[WeddingBuilding] 婚礼建筑系统已清理");
+                ModBehaviour.DevLog("[WeddingBuilding] 婚礼建筑系统已清理");
             }
             catch (Exception e)
             {
@@ -340,7 +340,7 @@ namespace BossRush
         {
             if (weddingBuildingIcon != null)
             {
-                DevLog("[WeddingBuilding] 图标已缓存，跳过加载");
+                ModBehaviour.DevLog("[WeddingBuilding] 图标已缓存，跳过加载");
                 return;
             }
 
@@ -356,21 +356,21 @@ namespace BossRush
                     if (weddingBuildingIcon != null)
                     {
                         Texture2D texture = weddingBuildingIcon.texture;
-                        DevLog("[WeddingBuilding] 建筑图标加载成功: " + iconPath + " (" + texture.width + "x" + texture.height + ")");
+                        ModBehaviour.DevLog("[WeddingBuilding] 建筑图标加载成功: " + iconPath + " (" + texture.width + "x" + texture.height + ")");
                     }
                     else
                     {
-                        DevLog("[WeddingBuilding] 图标 PNG 解码失败: " + iconPath);
+                        ModBehaviour.DevLog("[WeddingBuilding] 图标 PNG 解码失败: " + iconPath);
                     }
                 }
                 else
                 {
-                    DevLog("[WeddingBuilding] 未找到建筑图标文件: " + iconPath + "，建造UI将显示空白图标");
+                    ModBehaviour.DevLog("[WeddingBuilding] 未找到建筑图标文件: " + iconPath + "，建造UI将显示空白图标");
                 }
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBuilding] 加载建筑图标异常: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBuilding] 加载建筑图标异常: " + e.Message);
             }
         }
 
@@ -386,7 +386,7 @@ namespace BossRush
         {
             if (weddingModelPrefab != null)
             {
-                DevLog("[WeddingBuilding] 模型已缓存，跳过加载");
+                ModBehaviour.DevLog("[WeddingBuilding] 模型已缓存，跳过加载");
                 return;
             }
 
@@ -399,7 +399,7 @@ namespace BossRush
 
                 if (File.Exists(bundlePath))
                 {
-                    DevLog("[WeddingBuilding] 尝试加载 AssetBundle: " + bundlePath);
+                    ModBehaviour.DevLog("[WeddingBuilding] 尝试加载 AssetBundle: " + bundlePath);
 
                     if (weddingAssetBundle != null)
                     {
@@ -412,16 +412,16 @@ namespace BossRush
                     {
                         // 列出 bundle 中所有资源名称，方便调试
                         string[] allNames = weddingAssetBundle.GetAllAssetNames();
-                        DevLog("[WeddingBuilding] AssetBundle 已加载，包含 " + allNames.Length + " 个资源:");
+                        ModBehaviour.DevLog("[WeddingBuilding] AssetBundle 已加载，包含 " + allNames.Length + " 个资源:");
                         for (int i = 0; i < allNames.Length; i++)
                         {
-                            DevLog("[WeddingBuilding]   [" + i + "] " + allNames[i]);
+                            ModBehaviour.DevLog("[WeddingBuilding]   [" + i + "] " + allNames[i]);
                         }
 
                         weddingModelPrefab = weddingAssetBundle.LoadAsset<GameObject>("WeddingChapel");
                         if (weddingModelPrefab != null)
                         {
-                            DevLog("[WeddingBuilding] AssetBundle 模型加载成功");
+                            ModBehaviour.DevLog("[WeddingBuilding] AssetBundle 模型加载成功");
                             return;
                         }
 
@@ -432,22 +432,22 @@ namespace BossRush
                             weddingModelPrefab = weddingAssetBundle.LoadAsset<GameObject>(assetNames[0]);
                             if (weddingModelPrefab != null)
                             {
-                                DevLog("[WeddingBuilding] 从 AssetBundle 加载了: " + assetNames[0]);
+                                ModBehaviour.DevLog("[WeddingBuilding] 从 AssetBundle 加载了: " + assetNames[0]);
                                 return;
                             }
                         }
                     }
 
-                    DevLog("[WeddingBuilding] AssetBundle 加载失败，使用临时占位模型");
+                    ModBehaviour.DevLog("[WeddingBuilding] AssetBundle 加载失败，使用临时占位模型");
                 }
                 else
                 {
-                    DevLog("[WeddingBuilding] 未找到 AssetBundle 文件: " + bundlePath + "，使用临时占位模型");
+                    ModBehaviour.DevLog("[WeddingBuilding] 未找到 AssetBundle 文件: " + bundlePath + "，使用临时占位模型");
                 }
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBuilding] AssetBundle 加载异常: " + e.Message + "，使用临时占位模型");
+                ModBehaviour.DevLog("[WeddingBuilding] AssetBundle 加载异常: " + e.Message + "，使用临时占位模型");
             }
 
             // AssetBundle 不可用，不创建临时模型（后续在 CreateWeddingBuildingPrefab 中处理）
@@ -470,7 +470,7 @@ namespace BossRush
         {
             if (weddingBuildingPrefabGO != null)
             {
-                DevLog("[WeddingBuilding] 预制体已存在，跳过创建");
+                ModBehaviour.DevLog("[WeddingBuilding] 预制体已存在，跳过创建");
                 return;
             }
 
@@ -493,19 +493,19 @@ namespace BossRush
                 modelInstance.SetActive(true);
 
                 // 诊断日志
-                DevLog("[WeddingBuilding] 使用 AssetBundle 模型，子物体数量: " + modelInstance.transform.childCount);
-                DevLog("[WeddingBuilding] 模型 localScale: " + modelInstance.transform.localScale);
+                ModBehaviour.DevLog("[WeddingBuilding] 使用 AssetBundle 模型，子物体数量: " + modelInstance.transform.childCount);
+                ModBehaviour.DevLog("[WeddingBuilding] 模型 localScale: " + modelInstance.transform.localScale);
 
                 // 检查 Renderer 信息
                 Renderer[] renderers = modelInstance.GetComponentsInChildren<Renderer>(true);
-                DevLog("[WeddingBuilding] Renderer 数量: " + renderers.Length);
+                ModBehaviour.DevLog("[WeddingBuilding] Renderer 数量: " + renderers.Length);
 
                 // 计算模型的合并 bounds（用于自动缩放）
                 Bounds combinedBounds = new Bounds(Vector3.zero, Vector3.zero);
                 bool hasBounds = false;
                 foreach (Renderer r in renderers)
                 {
-                    DevLog("[WeddingBuilding]   Renderer: " + r.gameObject.name
+                    ModBehaviour.DevLog("[WeddingBuilding]   Renderer: " + r.gameObject.name
                         + " | bounds.size=" + r.bounds.size
                         + " | enabled=" + r.enabled
                         + " | shader=" + (r.sharedMaterial != null ? r.sharedMaterial.shader.name : "NULL"));
@@ -523,20 +523,20 @@ namespace BossRush
 
                 // 自动缩放：目标约 2.5m 宽（3x3格子建筑）
                 float maxDim = Mathf.Max(combinedBounds.size.x, combinedBounds.size.y, combinedBounds.size.z);
-                DevLog("[WeddingBuilding] 模型合并 bounds: size=" + combinedBounds.size + " maxDim=" + maxDim);
+                ModBehaviour.DevLog("[WeddingBuilding] 模型合并 bounds: size=" + combinedBounds.size + " maxDim=" + maxDim);
 
                 if (maxDim > 0.001f && maxDim < 2.5f)
                 {
                     // 模型偏小，放大到约 2.5m
                     float scaleFactor = 2.5f / maxDim;
                     modelInstance.transform.localScale *= scaleFactor;
-                    DevLog("[WeddingBuilding] 模型偏小，放大 " + scaleFactor + " 倍");
+                    ModBehaviour.DevLog("[WeddingBuilding] 模型偏小，放大 " + scaleFactor + " 倍");
                 }
                 else if (maxDim > 10f)
                 {
                     float scaleFactor = 3f / maxDim;
                     modelInstance.transform.localScale *= scaleFactor;
-                    DevLog("[WeddingBuilding] 模型过大，缩小到 " + scaleFactor + " 倍");
+                    ModBehaviour.DevLog("[WeddingBuilding] 模型过大，缩小到 " + scaleFactor + " 倍");
                 }
 
                 // 重新计算缩放后的 bounds，对齐底部到 y=0
@@ -558,7 +558,7 @@ namespace BossRush
                 // 将模型底部对齐到 Graphics 容器的 y=0（即地面）
                 float modelBottomLocal = combinedBounds.min.y - graphicsContainer.transform.position.y;
                 modelInstance.transform.localPosition = new Vector3(0f, -modelBottomLocal, 0f);
-                DevLog("[WeddingBuilding] 缩放后 bounds: " + combinedBounds.size + " 底部对齐偏移: " + (-modelBottomLocal));
+                ModBehaviour.DevLog("[WeddingBuilding] 缩放后 bounds: " + combinedBounds.size + " 底部对齐偏移: " + (-modelBottomLocal));
 
                 // 修复模型材质：将 Standard shader 替换为游戏兼容的 shader
                 // AssetBundle 中的材质使用 Built-in Standard Shader，在 URP 游戏中会显示为透明
@@ -583,7 +583,7 @@ namespace BossRush
                         localBounds.size.x / modelInstance.transform.lossyScale.x,
                         localBounds.size.y / modelInstance.transform.lossyScale.y,
                         localBounds.size.z / modelInstance.transform.lossyScale.z);
-                    DevLog("[WeddingBuilding] 已添加 BoxCollider: center=" + boxCol.center + " size=" + boxCol.size);
+                    ModBehaviour.DevLog("[WeddingBuilding] 已添加 BoxCollider: center=" + boxCol.center + " size=" + boxCol.size);
                 }
             }
             else
@@ -613,14 +613,14 @@ namespace BossRush
                     {
                         renderer.material.color = new Color(1f, 0.75f, 0.8f, 1f);
                     }
-                    DevLog("[WeddingBuilding] 占位模型 Shader: " + renderer.material.shader.name);
+                    ModBehaviour.DevLog("[WeddingBuilding] 占位模型 Shader: " + renderer.material.shader.name);
                 }
 
                 // 移除碰撞体（占位模型不需要物理碰撞）
                 Collider col = placeholder.GetComponent<Collider>();
                 if (col != null) UnityEngine.Object.Destroy(col);
 
-                DevLog("[WeddingBuilding] 使用临时占位模型（粉色立方体）");
+                ModBehaviour.DevLog("[WeddingBuilding] 使用临时占位模型（粉色立方体）");
             }
 
             // 创建 Function 容器（功能元素）
@@ -642,7 +642,7 @@ namespace BossRush
             AddBuildingComponent(weddingBuildingPrefabGO);
             weddingBuildingPrefabGO.SetActive(true);
 
-            DevLog("[WeddingBuilding] 预制体创建完成，尺寸: " + WEDDING_BUILDING_SIZE);
+            ModBehaviour.DevLog("[WeddingBuilding] 预制体创建完成，尺寸: " + WEDDING_BUILDING_SIZE);
         }
 
         /// <summary>
@@ -673,14 +673,14 @@ namespace BossRush
                     targetShader = Shader.Find(shaderName);
                     if (targetShader != null)
                     {
-                        DevLog("[WeddingBuilding] 找到目标 Shader: " + shaderName);
+                        ModBehaviour.DevLog("[WeddingBuilding] 找到目标 Shader: " + shaderName);
                         break;
                     }
                 }
 
                 if (targetShader == null)
                 {
-                    DevLog("[WeddingBuilding] 警告：未找到任何兼容的 Shader，保持原始材质");
+                    ModBehaviour.DevLog("[WeddingBuilding] 警告：未找到任何兼容的 Shader，保持原始材质");
                     return;
                 }
 
@@ -732,7 +732,7 @@ namespace BossRush
                                         newMat.SetColor("_Color", color);
 
                                     materials[i] = newMat;
-                                    DevLog("[WeddingBuilding] Renderer '" + renderer.gameObject.name
+                                    ModBehaviour.DevLog("[WeddingBuilding] Renderer '" + renderer.gameObject.name
                                         + "' Shader 已替换: " + originalShaderName + " -> " + targetShader.name);
                                 }
                             }
@@ -746,7 +746,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[WeddingBuilding] 修复 Shader 出错: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBuilding] 修复 Shader 出错: " + e.Message);
             }
         }
 
@@ -799,7 +799,7 @@ namespace BossRush
             // 诊断：打印预制体完整层级树
             DumpGameObjectHierarchy(go, 0);
 
-            DevLog("[WeddingBuilding] Building 组件已添加，ID=" + WEDDING_BUILDING_ID + "（容器引用已预填充）");
+            ModBehaviour.DevLog("[WeddingBuilding] Building 组件已添加，ID=" + WEDDING_BUILDING_ID + "（容器引用已预填充）");
         }
 
         private void AssignBuildingContainerField(FieldInfo field, Component buildingComp, Transform container)
@@ -818,7 +818,7 @@ namespace BossRush
             {
                 if (c != null) components += c.GetType().Name + ", ";
             }
-            DevLog("[WeddingBuilding] " + indent + go.name
+            ModBehaviour.DevLog("[WeddingBuilding] " + indent + go.name
                 + " [active=" + go.activeSelf + "] (" + components.TrimEnd(',', ' ') + ")");
 
             for (int i = 0; i < go.transform.childCount; i++)

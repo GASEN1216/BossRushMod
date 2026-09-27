@@ -40,7 +40,7 @@ from unity_project_path import find_unity_project  # noqa: E402
 
 # 件名 -> (装备 bundle 基名, 槽位, 目标包围盒 (宽, 高, 深) 米, 是否按轴拉伸, 三角面预算, 贴图上限)
 # 不拉伸时只按宽度等比缩放（头盔先保证套得住头），高、深跟着模型走，清单里记实际值。
-# 基名与 DebugAndTools/SkyIsland/SkyIslandBossRules.cs 的 GearSpecs.ModelBaseName 一一对应，发布后不改。
+# 基名与 SkyIsland/SkyIslandBossRules.cs 的 GearSpecs.ModelBaseName 一一对应，发布后不改。
 # 三角面预算按 Tripo 网页「面数上限约 6000」给：回收件本来就在预算内时不减面（减面会把贴图接缝拉花）。
 # 装备材质贴图上限 512；立绘的 1024 例外不适用于随身装备贴图。
 PIECES = {

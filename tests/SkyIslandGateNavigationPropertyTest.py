@@ -23,7 +23,7 @@ def number(value):
 
 
 def read_gates():
-    source = clean_source((ROOT / "DebugAndTools/SkyIsland/SkyIslandGates.cs").read_text(encoding="utf-8-sig"))
+    source = clean_source((ROOT / "SkyIsland/SkyIslandGates.cs").read_text(encoding="utf-8-sig"))
     pattern = (r'Add\(root, wood, wallLayer, "([^"\n]+)", new Vector3\((' + NUMBER + r'),\s*(' + NUMBER +
                r'),\s*(' + NUMBER + r')\),\s*(' + NUMBER + r'),\s*(' + NUMBER + r')\)')
     result = {}
@@ -44,7 +44,7 @@ def read_gates():
 
 
 def verify_bridge_notices(layout):
-    source = clean_source((ROOT / "DebugAndTools/SkyIsland/SkyIslandGates.cs").read_text(encoding="utf-8-sig"))
+    source = clean_source((ROOT / "SkyIsland/SkyIslandGates.cs").read_text(encoding="utf-8-sig"))
     pattern = (r'AddSign\(root, wood, wallLayer, "([^"\n]+)", new Vector3\((' + NUMBER + r'),\s*(' +
                NUMBER + r'),\s*(' + NUMBER + r')\)\)')
     rows = re.findall(pattern, source)

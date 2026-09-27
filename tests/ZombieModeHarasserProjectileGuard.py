@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-RUNTIME = Path("ZombieMode/ZombieModePollution_RuntimeSkills.cs")
+RUNTIME = Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs")
 COMPONENTS = Path("ZombieMode/ZombieModePollution_RuntimeComponents.cs")
 
 
@@ -98,7 +98,7 @@ def main() -> int:
         if token not in visual_helper:
             return fail("Harasser projectile visual is not readable enough -> " + token)
 
-    impact_helper = extract_method_body(runtime, "public void TryExecuteZombieModeHarasserProjectileImpact(")
+    impact_helper = extract_method_body(runtime, "internal void TryExecuteZombieModeHarasserProjectileImpact(")
     if impact_helper is None:
         return fail("missing Harasser projectile impact helper")
     for token in [

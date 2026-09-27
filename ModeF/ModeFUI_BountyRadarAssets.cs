@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         private static Sprite GetModeFBountyRadarRegularSprite()
         {
@@ -157,13 +157,13 @@ namespace BossRush
                     Sprite sprite = ItemFactory.GetSpriteFromFile(relativePath);
                     if (sprite != null)
                     {
-                        DevLog("[ModeF] 已加载悬赏雷达贴图: " + relativePath);
+                        ModBehaviour.DevLog("[ModeF] 已加载悬赏雷达贴图: " + relativePath);
                         return sprite;
                     }
                 }
                 catch (Exception e)
                 {
-                    DevLog("[ModeF] 加载悬赏雷达贴图失败: " + relativePath + " - " + e.Message);
+                    ModBehaviour.DevLog("[ModeF] 加载悬赏雷达贴图失败: " + relativePath + " - " + e.Message);
                 }
             }
 

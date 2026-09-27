@@ -8,7 +8,7 @@ using Duckov.Utilities;
 
 namespace BossRush
 {
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeFRuntimeModule
     {
         #region Mode F 阶段常量
 
@@ -42,9 +42,9 @@ namespace BossRush
         /// 所以存 record 列表而不是单个 Modifier：官方角色没有 "MoveSpeed" 这个 stat
         /// （那是 Animator 参数名，AGENTS §14），必须分别挂到两个真实 stat 上。
         /// </summary>
-        private readonly Dictionary<CharacterMainControl, List<ZombieModeAttributeModifierRecord>>
+        private readonly Dictionary<CharacterMainControl, List<BossRushStatModifierRecord>>
             modeFBossMoveSpeedModifiers
-            = new Dictionary<CharacterMainControl, List<ZombieModeAttributeModifierRecord>>();
+            = new Dictionary<CharacterMainControl, List<BossRushStatModifierRecord>>();
         private readonly Dictionary<CharacterMainControl, float> modeFBossAppliedSpeedBonuses
             = new Dictionary<CharacterMainControl, float>();
         private readonly Dictionary<CharacterMainControl, CharacterMainControl> modeFBossForcedTargets
@@ -53,6 +53,8 @@ namespace BossRush
             = new Dictionary<CharacterMainControl, AICharacterController>();
         private float modeFBossRetargetTimer = 0f;
         private float modeFBossIntegrityTimer = 0f;
+        // 普通退出仍等待 0.25 秒；等待期间的实体由模块保留，宿主销毁时兜底回收。
+        private readonly Dictionary<GameObject, Coroutine> modeFDeferredExitBossObjects = new Dictionary<GameObject, Coroutine>();
         /// <summary>防止 ApplyModeFBleedDamage 致死 + TickModeF 帧首检测 重复触发 OnModeFPlayerDeath</summary>
         private bool modeFPlayerDeathHandled = false;
 
@@ -99,18 +101,18 @@ namespace BossRush
                 EnsureModeFPlayerNameTag();
 
                 EnterModeFPhase(ModeFPhase.Preparation);
-                DevLog("[ModeF] 状态机已启动，进入准备阶段");
+                ModBehaviour.DevLog("[ModeF] 状态机已启动，进入准备阶段");
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] StartModeFRun 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] StartModeFRun 失败: " + e.Message);
             }
         }
 
         /// <summary>
         /// 每帧 Tick Mode F 状态机
         /// </summary>
-        private void TickModeF(float deltaTime)
+        internal void TickModeF(float deltaTime)
         {
             if (!modeFActive || !modeFState.IsActive) return;
 
@@ -170,7 +172,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] TickModeF 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] TickModeF 失败: " + e.Message);
             }
         }
 
@@ -190,41 +192,41 @@ namespace BossRush
                 {
                     case ModeFPhase.Preparation:
                         modeFState.PhaseDuration = MODEF_PREPARATION_DURATION;
-                        ShowBigBanner(L10n.T(
-                            RichDangerTag + "血猎追击</color> · " + RichWarningTag + "准备阶段</color> 开始！持续 180 秒",
-                            RichDangerTag + "Bloodhunt</color> · " + RichWarningTag + "Preparation Phase</color> started! 180 seconds"
+                        owner.ShowBigBanner(L10n.T(
+                            ModBehaviour.RichDangerTag + "血猎追击</color> · " + ModBehaviour.RichWarningTag + "准备阶段</color> 开始！持续 180 秒",
+                            ModBehaviour.RichDangerTag + "Bloodhunt</color> · " + ModBehaviour.RichWarningTag + "Preparation Phase</color> started! 180 seconds"
                         ));
-                        DevLog("[ModeF] 进入准备阶段 (180s, 1%/s)");
+                        ModBehaviour.DevLog("[ModeF] 进入准备阶段 (180s, 1%/s)");
                         break;
 
                     case ModeFPhase.Bounty:
                         modeFState.PhaseDuration = MODEF_BOUNTY_DURATION;
                         GenerateBountyList();
                         TryFulfillModeFPendingRespawns();
-                        ShowBigBanner(L10n.T(
-                            RichDangerTag + "血猎追击</color> · " + RichWarningTag + "悬赏阶段</color> 开始！悬赏名单已生成",
-                            RichDangerTag + "Bloodhunt</color> · " + RichWarningTag + "Bounty Phase</color> started! Bounty list generated"
+                        owner.ShowBigBanner(L10n.T(
+                            ModBehaviour.RichDangerTag + "血猎追击</color> · " + ModBehaviour.RichWarningTag + "悬赏阶段</color> 开始！悬赏名单已生成",
+                            ModBehaviour.RichDangerTag + "Bloodhunt</color> · " + ModBehaviour.RichWarningTag + "Bounty Phase</color> started! Bounty list generated"
                         ));
-                        DevLog("[ModeF] 进入悬赏阶段 (180s, 1.5%/s)");
+                        ModBehaviour.DevLog("[ModeF] 进入悬赏阶段 (180s, 1.5%/s)");
                         break;
 
                     case ModeFPhase.HuntStorm:
                         modeFState.PhaseDuration = MODEF_HUNTSTORM_DURATION;
-                        ShowBigBanner(L10n.T(
-                            RichDangerTag + "血猎追击</color> · " + RichDangerTag + "猎潮阶段</color> 开始！Boss 全面追杀！",
-                            RichDangerTag + "Bloodhunt</color> · " + RichDangerTag + "Hunt Storm</color> started! All bosses hunting you!"
+                        owner.ShowBigBanner(L10n.T(
+                            ModBehaviour.RichDangerTag + "血猎追击</color> · " + ModBehaviour.RichDangerTag + "猎潮阶段</color> 开始！Boss 全面追杀！",
+                            ModBehaviour.RichDangerTag + "Bloodhunt</color> · " + ModBehaviour.RichDangerTag + "Hunt Storm</color> started! All bosses hunting you!"
                         ));
-                        DevLog("[ModeF] 进入猎潮阶段 (180s, 2%/s)");
+                        ModBehaviour.DevLog("[ModeF] 进入猎潮阶段 (180s, 2%/s)");
                         break;
 
                     case ModeFPhase.Extraction:
                         modeFState.PhaseDuration = float.MaxValue;
                         SpawnFinalExtractionPoint();
-                        ShowBigBanner(L10n.T(
-                            RichDangerTag + "血猎追击</color> · " + RichSuccessTag + "撤离阶段</color> 开始！撤离点已生成，速速撤离！",
-                            RichDangerTag + "Bloodhunt</color> · " + RichSuccessTag + "Extraction Phase</color> started! Extraction point spawned, evacuate now!"
+                        owner.ShowBigBanner(L10n.T(
+                            ModBehaviour.RichDangerTag + "血猎追击</color> · " + ModBehaviour.RichSuccessTag + "撤离阶段</color> 开始！撤离点已生成，速速撤离！",
+                            ModBehaviour.RichDangerTag + "Bloodhunt</color> · " + ModBehaviour.RichSuccessTag + "Extraction Phase</color> started! Extraction point spawned, evacuate now!"
                         ));
-                        DevLog("[ModeF] 进入撤离阶段 (无限, 3%/s)");
+                        ModBehaviour.DevLog("[ModeF] 进入撤离阶段 (无限, 3%/s)");
                         break;
                 }
 
@@ -232,7 +234,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] EnterModeFPhase 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] EnterModeFPhase 失败: " + e.Message);
             }
         }
 
@@ -273,7 +275,7 @@ namespace BossRush
         internal bool DebugAdvanceModeFPhaseForValidation(out string reason)
         {
             reason = null;
-            if (!DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
+            if (!ModBehaviour.DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
             if (!modeFActive || modeFState == null || !modeFState.IsActive)
             {
                 reason = "mode_f_not_active";
@@ -302,7 +304,7 @@ namespace BossRush
                 reason = "phase_did_not_advance_from_" + before;
                 return false;
             }
-            DevLog("[ModeF] [Validation] 阶段推进: " + before + " -> " + modeFState.CurrentPhase);
+            ModBehaviour.DevLog("[ModeF] [Validation] 阶段推进: " + before + " -> " + modeFState.CurrentPhase);
             return true;
         }
 
@@ -333,7 +335,7 @@ namespace BossRush
                 if (modeFState.InitialMaxHealthSnapshot <= 0.01f && health.MaxHealth > 0.01f)
                 {
                     modeFState.InitialMaxHealthSnapshot = health.MaxHealth;
-                    DevLog("[ModeF] [WARNING] 初始最大生命快照缺失，已回填为当前最大生命: " + modeFState.InitialMaxHealthSnapshot);
+                    ModBehaviour.DevLog("[ModeF] [WARNING] 初始最大生命快照缺失，已回填为当前最大生命: " + modeFState.InitialMaxHealthSnapshot);
                 }
 
                 float damage = rate * modeFState.InitialMaxHealthSnapshot * deltaTime;
@@ -368,7 +370,7 @@ namespace BossRush
                 if (!health.IsDead)
                 {
                     // 某些兜底死亡路径不会触发 Health.OnDead，这里手动补记亡魂数据。
-                    RecordManualDeathWraithData_DeathWraith(
+                    owner.RecordManualDeathWraithData_DeathWraith(
                         player,
                         lethalDamage,
                         "ModeFBleedFallback");
@@ -379,7 +381,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] ApplyModeFBleedDamage 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] ApplyModeFBleedDamage 失败: " + e.Message);
                 // 致死路径异常时仍需确保死亡处理被触发，否则玩家卡在 1HP 不死不活
                 try { OnModeFPlayerDeath(); } catch { }
             }
@@ -439,7 +441,7 @@ namespace BossRush
                 float healAmount = initialMaxHealth * healPercent;
                 float newHp = Mathf.Min(health.CurrentHealth + healAmount, health.MaxHealth);
                 health.CurrentHealth = newHp;
-                DevLog("[ModeF] 击杀回血: " + healAmount.ToString("F1") + " (bounty=" + isBountyBoss + ")");
+                ModBehaviour.DevLog("[ModeF] 击杀回血: " + healAmount.ToString("F1") + " (bounty=" + isBountyBoss + ")");
 
                 float growthUnit = initialMaxHealth * MODEF_MAX_HP_GROWTH_RATIO_NORMAL;
                 float growthReward = isBountyBoss
@@ -469,13 +471,13 @@ namespace BossRush
                         }
 
                         modeFState.TempMaxHealthGrowth = previousGrowth + appliedGrowth;
-                        modeFMaxHealthModifier = new Modifier(ModifierType.Add, modeFState.TempMaxHealthGrowth, this);
+                        modeFMaxHealthModifier = new Modifier(ModifierType.Add, modeFState.TempMaxHealthGrowth, owner);
                         maxHealthStat.AddModifier(modeFMaxHealthModifier);
 
                         float raisedMaxHealth = health.MaxHealth;
                         actualMaxHealthGain = Mathf.Max(0f, raisedMaxHealth - oldMaxHealth);
                         health.CurrentHealth = Mathf.Min(health.CurrentHealth + actualMaxHealthGain, raisedMaxHealth);
-                        DevLog("[ModeF] 最大生命成长: +" + actualMaxHealthGain.ToString("F1")
+                        ModBehaviour.DevLog("[ModeF] 最大生命成长: +" + actualMaxHealthGain.ToString("F1")
                             + " (bounty=" + isBountyBoss
                             + ", victimMarks=" + resolvedVictimMarks
                             + ", 总计+" + modeFState.TempMaxHealthGrowth.ToString("F1")
@@ -483,7 +485,7 @@ namespace BossRush
                     }
                     catch (Exception e)
                     {
-                        DevLog("[ModeF] [WARNING] 最大生命成长 Modifier 失败: " + e.Message);
+                        ModBehaviour.DevLog("[ModeF] [WARNING] 最大生命成长 Modifier 失败: " + e.Message);
                         // 状态必须与实际生效的 Modifier 保持一致，否则后续击杀会按虚高的成长量
                         // 计算上限余量，提前判定到顶。
                         modeFState.TempMaxHealthGrowth = previousGrowth;
@@ -507,7 +509,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] ApplyModeFKillReward 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] ApplyModeFKillReward 失败: " + e.Message);
                 return (0f, 0f, 0f, false, 0f);
             }
         }
@@ -523,11 +525,11 @@ namespace BossRush
             bool exitAttempted = false;
             try
             {
-                DevLog("[ModeF] 玩家死亡，Mode F 失败");
+                ModBehaviour.DevLog("[ModeF] 玩家死亡，Mode F 失败");
 
-                ShowBigBanner(L10n.T(
-                    RichDangerTag + "血猎追击失败！</color> 你倒在了血猎场上...",
-                    RichDangerTag + "Bloodhunt Failed!</color> You fell on the hunting grounds..."
+                owner.ShowBigBanner(L10n.T(
+                    ModBehaviour.RichDangerTag + "血猎追击失败！</color> 你倒在了血猎场上...",
+                    ModBehaviour.RichDangerTag + "Bloodhunt Failed!</color> You fell on the hunting grounds..."
                 ));
 
                 // 印记清零、不发奖励
@@ -540,13 +542,13 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] OnModeFPlayerDeath 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] OnModeFPlayerDeath 失败: " + e.Message);
             }
             finally
             {
                 if (!exitAttempted && modeFActive)
                 {
-                    try { ExitModeF(); } catch (Exception exitEx) { DevLog("[ModeF] [ERROR] OnModeFPlayerDeath 强制退出失败: " + exitEx.Message); }
+                    try { ExitModeF(); } catch (Exception exitEx) { ModBehaviour.DevLog("[ModeF] [ERROR] OnModeFPlayerDeath 强制退出失败: " + exitEx.Message); }
                 }
             }
         }
@@ -569,7 +571,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    DevLog("[ModeF] [WARNING] 最大生命成长 Modifier 清理失败: " + e.Message);
+                    ModBehaviour.DevLog("[ModeF] [WARNING] 最大生命成长 Modifier 清理失败: " + e.Message);
                 }
             }
 
@@ -587,38 +589,47 @@ namespace BossRush
                 {
                     float previousHealth = health.CurrentHealth;
                     health.SetHealth(restoredMaxHealth);
-                    DevLog("[ModeF] 退出时钳制超额生命: "
+                    ModBehaviour.DevLog("[ModeF] 退出时钳制超额生命: "
                         + previousHealth.ToString("F1") + " -> " + health.CurrentHealth.ToString("F1")
                         + " / " + restoredMaxHealth.ToString("F1"));
                 }
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] 退出时生命钳制失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] 退出时生命钳制失败: " + e.Message);
             }
         }
 
         /// <summary>
         /// 退出 Mode F，清理所有临时状态
         /// </summary>
-        private void ExitModeF(bool showEndMessage = true)
+        internal void ExitModeF(bool showEndMessage = true)
         {
             try
             {
-                if (!modeFActive) return;
+                if (!modeFActive && !modeFCleanupPending) return;
 
-                // 如果正在放置工事，取消并退还物品
+                // 取消只退还已消费但未落地的工事物品，不是新增奖励。
                 CancelFortPlacement();
-                FlushModeFPendingUtilityRewards(true);
+                if (!modeFRuntimeDestroyed)
+                {
+                    // 正常退出保持待领奖励发放；宿主销毁只回收运行态。
+                    FlushModeFPendingUtilityRewards(true);
+                }
+                else
+                {
+                    modeFPendingUtilityRewardCounts.Clear();
+                    modeFPendingUtilityRewardTypeScratch.Clear();
+                }
 
-                DevLog("[ModeF] 退出 Mode F 模式");
+                ModBehaviour.DevLog("[ModeF] 退出 Mode F 模式");
 
                 modeFActive = false;
                 modeFState.IsActive = false;
                 InvalidateModeFSession();
 
                 // 清理变异词条（覆盖正常通关 / 玩家死亡 / 手动退出）
-                ClearMutatorsForMode("ModeF");
+                owner.ClearModeDMutators("ModeF");
 
                 EndModeFBloodfireOverload(false);
 
@@ -673,7 +684,7 @@ namespace BossRush
                         CleanupModeFBossRuntimeState(boss, bossTeam);
                         RetireModeFActiveBossAtExit(boss);
                     },
-                    (e, boss) => DevLog("[ModeF] [WARNING] Cleanup active boss failed: " + e.Message));
+                    (e, boss) => ModBehaviour.DevLog("[ModeF] [WARNING] Cleanup active boss failed: " + e.Message));
 
                 // H2: 清理 Boss 成长 Modifier 缓存
                 modeFBossModifiers.Clear();
@@ -692,8 +703,8 @@ namespace BossRush
                 CleanupAllModeFortifications();
 
                 // 清理商人和快递员
-                CleanupModeEMerchant();
-                DestroyCourierNPC();
+                merchantRuntime.CleanupModeEMerchant();
+                owner.DestroyCourierNPC();
 
                 // 清理龙息Buff处理器
                 DragonBreathBuffHandler.Cleanup();
@@ -702,13 +713,14 @@ namespace BossRush
                 modeFState.Reset();
                 modeFActiveBossSet.Clear();
                 ClearModeFBossRegenCache();
-                ClearEnemyRecoveryMonitorState();
+                owner.ClearModeDEnemyRecoveryState();
                 ClearAllModeFBossPlunderLootState();
+                modeFCleanupPending = false;
 
 
                 if (showEndMessage)
                 {
-                    ShowMessage(L10n.T(
+                    owner.ShowMessage(L10n.T(
                         "血猎追击模式已结束！",
                         "Bloodhunt mode ended!"
                     ));
@@ -716,7 +728,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [ERROR] ExitModeF 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [ERROR] ExitModeF 失败: " + e.Message);
             }
         }
 
@@ -758,11 +770,20 @@ namespace BossRush
                 }
                 catch { }
 
-                StartCoroutine(DestroyModeFExitBossDeferred(bossObject));
+                if (modeFRuntimeDestroyed)
+                {
+                    // 宿主已进入销毁，不能依赖它再推进 0.25 秒后的协程。
+                    UnityEngine.Object.Destroy(bossObject);
+                }
+                else
+                {
+                    modeFDeferredExitBossObjects[bossObject] = null;
+                    modeFDeferredExitBossObjects[bossObject] = owner.StartCoroutine(DestroyModeFExitBossDeferred(bossObject));
+                }
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] RetireModeFActiveBossAtExit failed: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] RetireModeFActiveBossAtExit failed: " + e.Message);
             }
         }
 
@@ -770,6 +791,7 @@ namespace BossRush
         {
             if (bossObject == null)
             {
+                modeFDeferredExitBossObjects.Remove(bossObject);
                 yield break;
             }
 
@@ -779,6 +801,32 @@ namespace BossRush
             {
                 UnityEngine.Object.Destroy(bossObject);
             }
+            modeFDeferredExitBossObjects.Remove(bossObject);
+        }
+
+        private void CleanupModeFDeferredExitBossObjects()
+        {
+            foreach (KeyValuePair<GameObject, Coroutine> pending in modeFDeferredExitBossObjects)
+            {
+                try
+                {
+                    if (owner != null && pending.Value != null) owner.StopCoroutine(pending.Value);
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[ModeF] [WARNING] 销毁时停止退出延迟协程失败: " + e.Message);
+                }
+                try
+                {
+                    GameObject bossObject = pending.Key;
+                    if (bossObject != null) UnityEngine.Object.Destroy(bossObject);
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[ModeF] [WARNING] 清理退出延迟实体失败: " + e.Message);
+                }
+            }
+            modeFDeferredExitBossObjects.Clear();
         }
 
         /// <summary>
@@ -864,7 +912,7 @@ namespace BossRush
             return true;
         }
 
-        private void ApplyModeFPressureToBoss(CharacterMainControl boss)
+        internal void ApplyModeFPressureToBoss(CharacterMainControl boss)
         {
             try
             {
@@ -931,7 +979,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] ApplyModeFPressureToBoss 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] ApplyModeFPressureToBoss 失败: " + e.Message);
             }
         }
 
@@ -1073,10 +1121,10 @@ namespace BossRush
                 }
 
                 // 先摘旧的，再按新数值挂。RemoveAll 会顺带清空列表，可直接复用。
-                List<ZombieModeAttributeModifierRecord> records;
+                List<BossRushStatModifierRecord> records;
                 if (!modeFBossMoveSpeedModifiers.TryGetValue(boss, out records) || records == null)
                 {
-                    records = new List<ZombieModeAttributeModifierRecord>();
+                    records = new List<BossRushStatModifierRecord>();
                     modeFBossMoveSpeedModifiers[boss] = records;
                 }
                 RuntimeStatModifierTracker.RemoveAll(records, "ModeF BossMoveSpeed");
@@ -1092,10 +1140,10 @@ namespace BossRush
                 // 这里两条都挂：Boss 追击时走 RunSpeed，巡逻时走 WalkSpeed，
                 // 只挂一条会让加速在另一半时间里看不出来。
                 bool walkAdded = RuntimeStatModifierTracker.TryAdd(
-                    boss, ZombieModeStatNames.WalkSpeed, speedBonus, this, records,
+                    boss, ZombieModeStatNames.WalkSpeed, speedBonus, owner, records,
                     "ModeF BossMoveSpeed");
                 bool runAdded = RuntimeStatModifierTracker.TryAdd(
-                    boss, ZombieModeStatNames.RunSpeed, speedBonus, this, records,
+                    boss, ZombieModeStatNames.RunSpeed, speedBonus, owner, records,
                     "ModeF BossMoveSpeed");
 
                 if (!walkAdded && !runAdded)
@@ -1110,7 +1158,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[ModeF] [WARNING] ApplyModeFBossMoveSpeedModifier 失败: " + e.Message);
+                ModBehaviour.DevLog("[ModeF] [WARNING] ApplyModeFBossMoveSpeedModifier 失败: " + e.Message);
             }
         }
 

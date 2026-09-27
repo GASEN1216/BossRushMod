@@ -19,7 +19,7 @@ namespace BossRush
     /// <summary>
     /// 成就勋章商店注入模块
     /// </summary>
-    public partial class ModBehaviour
+    internal sealed partial class AchievementRuntimeModule
     {
         // 缓存注入的成就勋章条目引用
         private static StockShop.Entry injectedMedalEntry = null;
@@ -30,7 +30,7 @@ namespace BossRush
         /// <summary>
         /// 注入成就勋章本地化
         /// </summary>
-        private void InjectAchievementMedalLocalization()
+        internal void InjectAchievementMedalLocalization()
         {
             AchievementMedalConfig.InjectLocalization();
         }
@@ -40,7 +40,7 @@ namespace BossRush
         /// </summary>
         internal bool TryInjectAchievementMedalIntoShop(StockShop shop)
         {
-            if (!IsBaseHubNormalMerchantShop(shop))
+            if (!isBaseHubNormalMerchantShop(shop))
             {
                 return false;
             }
@@ -91,11 +91,11 @@ namespace BossRush
 
             injectedMedalEntry = wrapped;
             shop.entries.Insert(0, wrapped);
-            DevLog("[AchievementMedal] 成就勋章注入成功，库存设置为: " + stockToSet + ", priceFactor=" + priceFactor);
+            ModBehaviour.DevLog("[AchievementMedal] 成就勋章注入成功，库存设置为: " + stockToSet + ", priceFactor=" + priceFactor);
             return true;
         }
 
-        private void InjectAchievementMedalIntoShops(string targetSceneName = null)
+        internal void InjectAchievementMedalIntoShops(string targetSceneName = null)
         {
             // 如果不在基地主场景，跳过扫描
             string currentScene = targetSceneName;
@@ -103,7 +103,7 @@ namespace BossRush
             {
                 try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; } catch {}
             }
-            if (currentScene != BaseSceneName)
+            if (currentScene != achievementBaseSceneName)
             {
                 return;
             }
@@ -129,12 +129,12 @@ namespace BossRush
 
                 if (addedCount > 0)
                 {
-                    DevLog("[AchievementMedal] 成就勋章商店注入完成，新增: " + addedCount);
+                    ModBehaviour.DevLog("[AchievementMedal] 成就勋章商店注入完成，新增: " + addedCount);
                 }
             }
             catch (Exception e)
             {
-                DevLog("[AchievementMedal] InjectAchievementMedalIntoShops 出错: " + e.Message);
+                ModBehaviour.DevLog("[AchievementMedal] InjectAchievementMedalIntoShops 出错: " + e.Message);
             }
         }
 
@@ -153,7 +153,7 @@ namespace BossRush
                 if (SavesSystem.KeyExisits(AchievementMedalConfig.STOCK_SAVE_KEY))
                 {
                     cachedMedalStock = SavesSystem.Load<int>(AchievementMedalConfig.STOCK_SAVE_KEY);
-                    DevLog("[AchievementMedal] 从存档读取成就勋章库存: " + cachedMedalStock);
+                    ModBehaviour.DevLog("[AchievementMedal] 从存档读取成就勋章库存: " + cachedMedalStock);
                     return cachedMedalStock;
                 }
 
@@ -162,7 +162,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[AchievementMedal] 读取成就勋章库存失败: " + e.Message);
+                ModBehaviour.DevLog("[AchievementMedal] 读取成就勋章库存失败: " + e.Message);
                 cachedMedalStock = AchievementMedalConfig.DEFAULT_MAX_STOCK;
                 return cachedMedalStock;
             }
@@ -184,11 +184,11 @@ namespace BossRush
 
                 SavesSystem.Save<int>(AchievementMedalConfig.STOCK_SAVE_KEY, stockToSave);
                 cachedMedalStock = stockToSave;
-                DevLog("[AchievementMedal] 保存成就勋章库存: " + stockToSave);
+                ModBehaviour.DevLog("[AchievementMedal] 保存成就勋章库存: " + stockToSave);
             }
             catch (Exception e)
             {
-                DevLog("[AchievementMedal] 保存成就勋章库存失败: " + e.Message);
+                ModBehaviour.DevLog("[AchievementMedal] 保存成就勋章库存失败: " + e.Message);
             }
         }
 
@@ -199,7 +199,7 @@ namespace BossRush
         {
             cachedMedalStock = -1;
             injectedMedalEntry = null;
-            DevLog("[AchievementMedal] 检测到读档，重置成就勋章库存缓存");
+            ModBehaviour.DevLog("[AchievementMedal] 检测到读档，重置成就勋章库存缓存");
         }
     }
 }

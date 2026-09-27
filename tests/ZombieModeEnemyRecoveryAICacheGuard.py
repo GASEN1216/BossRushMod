@@ -2,10 +2,12 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 SOURCE = Path("Utilities/EnemyRecoveryMonitor.cs")
-WAVES = Path("WavesArena/WavesArenaBossSpawning.cs")
+ZOMBIE = Path("ZombieMode/ZombieModeRuntimeModule_Recovery.cs")
+HOST = Path("Utilities/EnemyRecoveryHostBridge.cs")
 
 
 def fail(message: str) -> int:
@@ -36,9 +38,11 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8-sig")
-    monitor_zombie = extract_method_body(text, "private void MonitorZombieModeEnemyRecovery(")
-    monitor = extract_method_body(text, "private void MonitorEnemyRecovery(")
+    text = clean_source(SOURCE.read_text(encoding="utf-8-sig"))
+    zombie = clean_source(ZOMBIE.read_text(encoding="utf-8-sig"))
+    host = clean_source(HOST.read_text(encoding="utf-8-sig"))
+    monitor_zombie = extract_method_body(zombie, "internal void MonitorZombieModeEnemyRecovery(")
+    monitor = extract_method_body(text, "internal void MonitorEnemyRecovery(")
     recover = extract_method_body(text, "private bool TryRecoverEnemyToNearestSpawnPoint(")
     restore = extract_method_body(text, "private void RestoreRecoveredEnemyAggro(")
     if monitor_zombie is None:
@@ -51,16 +55,16 @@ def main() -> int:
         return fail("missing RestoreRecoveredEnemyAggro body")
 
     required_text = [
-        "private void MonitorEnemyRecovery(CharacterMainControl enemy, CharacterMainControl player, ZombieModeEnemyRuntimeMarker zombieMarker = null)",
+        "internal void MonitorEnemyRecovery(CharacterMainControl enemy, CharacterMainControl player, Component zombieMarker = null)",
         "private bool TryRecoverEnemyToNearestSpawnPoint(",
-        "ZombieModeEnemyRuntimeMarker zombieMarker,",
-        "private void RestoreRecoveredEnemyAggro(CharacterMainControl enemy, CharacterMainControl player, ZombieModeEnemyRuntimeMarker zombieMarker)",
+        "Component zombieMarker,",
+        "private void RestoreRecoveredEnemyAggro(CharacterMainControl enemy, CharacterMainControl player, Component zombieMarker)",
     ]
     for snippet in required_text:
         if snippet not in text:
             return fail("missing recovery marker signature snippet -> " + snippet)
 
-    required_monitor_zombie = "MonitorEnemyRecovery(enemy, player, marker);"
+    required_monitor_zombie = "enemyRecoveryMonitor.MonitorEnemyRecovery(enemy, player, marker);"
     if required_monitor_zombie not in monitor_zombie:
         return fail("zombie recovery monitor should pass marker into recovery")
 
@@ -86,9 +90,11 @@ def main() -> int:
     if "MonitorEnemyRecovery(enemies[i], player, marker)" in text:
         return fail("non-zombie recovery list should not pass zombie marker")
 
-    waves_text = WAVES.read_text(encoding="utf-8-sig")
-    if "TryRecoverEnemyToNearestSpawnPoint(boss, state, main, reason, null, out recoveredPos)" not in waves_text:
+    validation = extract_method_body(text, "internal void ValidateAndFixBossPosition(")
+    if validation is None or "TryRecoverEnemyToNearestSpawnPoint(boss, state, main, reason, null, out recoveredPos)" not in validation:
         return fail("WavesArena boss recovery should pass null zombie marker")
+    if "ZombieModeRuntimeModule.GetZombieModeEnemyAI(go, (ZombieModeEnemyRuntimeMarker)marker)" not in host:
+        return fail("marker AI resolver must bind the existing zombie cache")
 
     print("ZombieModeEnemyRecoveryAICacheGuard: PASS")
     return 0

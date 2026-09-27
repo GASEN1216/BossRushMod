@@ -238,25 +238,38 @@ namespace BossRush
     }
     internal partial class ModBehaviour
     {
-        private bool weddingBuildingInjected;
-        private const int WEDDING_BUILDING_REQUIRED_AFFINITY_LEVEL = 10;
-        private const string WEDDING_BUILDING_ID = "wedding_chapel";
-        internal ModBehaviour() { FakeBuildingManager.Placed = false; FakeBuildingManager.Registered = false; }
+        internal WeddingRuntimeModule WeddingRuntime;
+        internal ModBehaviour()
+        {
+            FakeBuildingManager.Placed = false; FakeBuildingManager.Registered = false;
+            WeddingRuntime = new WeddingRuntimeModule(); WeddingRuntime.OnAwake(this);
+        }
         internal bool ChapelPlaced { get { return FakeBuildingManager.Placed; } set { FakeBuildingManager.Placed = value; } }
         internal int Prefabs, Injections, Repaints, Events;
         internal void Early() { TryInitializeWeddingBuildingEarly(); }
-        internal bool Presence() { return RefreshWeddingBuildingPresence(); }
-        private static System.Reflection.MethodInfo GetBuildingManagerAnyMethod() { return typeof(FakeBuildingManager).GetMethod("Any"); }
-        private void SetWeddingBuildingPresence(bool isPresent) { }
-        private void LoadWeddingBuildingIcon() { }
-        private void LoadWeddingBuildingModel() { }
-        private void CreateWeddingBuildingPrefab() { Prefabs++; }
-        private void InjectWeddingBuildingData() { Injections++; FakeBuildingManager.Registered = true; }
-        private void RegisterWeddingBuildingEvents() { Events++; }
-        private void RequestBaseBuildingAreaRepaint(string source) { Repaints++; }
-        private static bool IsBaseHubSceneName(string scene) { return scene == "Base"; }
-        private static Type FindGameType(string name) { return typeof(FakeBuildingDataCollection); }
+        internal bool Presence() { return WeddingRuntime.Presence(); }
+        internal static bool IsBaseHubSceneName(string scene) { return scene == "Base"; }
         internal static void DevLog(string text) { }
         internal static void LogError(string text) { throw new Exception(text); }
+    }
+    internal sealed partial class WeddingRuntimeModule
+    {
+        private ModBehaviour _owner;
+        private bool weddingBuildingInjected;
+        private bool weddingBuildingPresenceKnown, cachedWeddingBuildingPresent;
+        private const int WEDDING_BUILDING_REQUIRED_AFFINITY_LEVEL = 10;
+        private const string WEDDING_BUILDING_ID = "wedding_chapel";
+        internal void OnAwake(ModBehaviour owner) { _owner = owner; }
+        internal bool Presence() { return RefreshWeddingBuildingPresence(); }
+        private static System.Reflection.MethodInfo GetBuildingManagerAnyMethod() { return typeof(FakeBuildingManager).GetMethod("Any"); }
+        private static Type FindGameType(string name) { return typeof(FakeBuildingDataCollection); }
+        private void SetWeddingBuildingPresence(bool isPresent)
+        { weddingBuildingPresenceKnown = true; cachedWeddingBuildingPresent = isPresent; }
+        private void LoadWeddingBuildingIcon() { }
+        private void LoadWeddingBuildingModel() { }
+        private void CreateWeddingBuildingPrefab() { _owner.Prefabs++; }
+        private void InjectWeddingBuildingData() { _owner.Injections++; FakeBuildingManager.Registered = true; }
+        private void RegisterWeddingBuildingEvents() { _owner.Events++; }
+        internal void RequestBaseBuildingAreaRepaint(string source) { _owner.Repaints++; }
     }
 }

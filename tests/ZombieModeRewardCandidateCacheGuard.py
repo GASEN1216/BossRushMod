@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-ENTRY = Path("ZombieMode/ZombieModeEntry.cs")
+ENTRY = Path("ZombieMode/ZombieModeRewards.cs")
 
 
 def fail(message: str) -> int:
@@ -38,15 +38,15 @@ def main() -> int:
     text = ENTRY.read_text(encoding="utf-8")
 
     for snippet in [
-        "zombieModeRewardCandidateCache",
+        "rewardCandidateCache",
         "BuildZombieModeRewardCandidateCacheKey(",
         "GetZombieModeRewardCandidateIds(",
-        "zombieModeRewardSafeCandidateScratch",
+        "rewardCandidateScratch",
     ]:
         if snippet not in text:
             return fail("ZombieModeRewardCandidateCacheGuard: missing cache snippet -> " + snippet)
 
-    random_body = extract_method_body(text, "private int FindRandomItemTypeByTags(")
+    random_body = extract_method_body(text, "internal int FindRandomItemTypeByTags(")
     if random_body is None:
         return fail("ZombieModeRewardCandidateCacheGuard: missing FindRandomItemTypeByTags")
 
@@ -56,7 +56,7 @@ def main() -> int:
     if "ItemAssetsCollection.Search(filter)" in random_body:
         return fail("ZombieModeRewardCandidateCacheGuard: random item selection still searches directly")
 
-    cache_body = extract_method_body(text, "private int[] GetZombieModeRewardCandidateIds(")
+    cache_body = extract_method_body(text, "internal int[] GetZombieModeRewardCandidateIds(")
     if cache_body is None:
         return fail("ZombieModeRewardCandidateCacheGuard: missing candidate cache helper")
 

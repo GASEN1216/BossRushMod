@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 u"""R-12 离线复算：噬风的风暴圈要多快才逃得出，以及噬风·回响有没有比首战更难逃。
 
-生产常量全部从 `DebugAndTools/SkyIsland/SkyIslandStormBoss.cs` 读，不在这里写第二份：
+生产常量全部从 `SkyIsland/SkyIslandStormBoss.cs` 读，不在这里写第二份：
 `PulseRadius`、`PulseTelegraph`、`PulseWaves`、`WaveGap`、`RadiusForWave` 的每波增量，以及 `Detonate` 的圆心取法。
 
 模型（写明假设，结论只到 L2）：
@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cs_source_util import clean_source  # noqa: E402
 
-BOSS = (ROOT / "DebugAndTools/SkyIsland/SkyIslandStormBoss.cs").read_text(encoding="utf-8-sig").replace("\r\n", "\n")
+BOSS = (ROOT / "SkyIsland/SkyIslandStormBoss.cs").read_text(encoding="utf-8-sig").replace("\r\n", "\n")
 SPEED_CAP = 5.5
 CHASE_SPEEDS = [x * 0.5 for x in range(0, 17)]
 

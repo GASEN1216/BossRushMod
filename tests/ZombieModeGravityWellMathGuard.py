@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-SOURCE = Path("ZombieMode/ZombieModeRewardProjectileSpread.cs")
+SOURCE = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 
 
 def fail(message: str) -> int:

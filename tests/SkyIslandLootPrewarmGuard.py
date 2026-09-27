@@ -25,10 +25,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cs_source_util import clean_source  # noqa: E402
 
-SESSION = "DebugAndTools/SkyIsland/SkyIslandSession.cs"
-POOLS = "DebugAndTools/SkyIsland/SkyIslandLootPools.cs"
-TABLES = "DebugAndTools/SkyIsland/SkyIslandLootTables.cs"
-MODULE = "DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs"
+SESSION = "SkyIsland/SkyIslandSession.cs"
+POOLS = "SkyIsland/SkyIslandLootPools.cs"
+TABLES = "SkyIsland/SkyIslandLootTables.cs"
+MODULE = "SkyIsland/SkyIslandRuntimeModule.cs"
 CASES = "DebugAndTools/F3GameplayValidationSkyIslandCases.cs"
 FIXED = [SESSION, POOLS, TABLES, MODULE, CASES]
 PER_FRAME = re.compile(r"(?:private|internal|public|protected)?\s*(?:static\s+)?void\s+(?:Update|LateUpdate|FixedUpdate|Tick|Frame|OnUpdate)\s*\(")
@@ -58,7 +58,7 @@ def body_of(source, signature, start_at=0):
 
 
 def scanned_paths():
-    paths = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "DebugAndTools/SkyIsland").glob("*.cs"))
+    paths = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "SkyIsland").glob("*.cs"))
     paths += sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "Integration/SkyIsland").glob("*.cs"))
     paths += sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "DebugAndTools").glob("F3GameplayValidation*.cs"))
     return paths

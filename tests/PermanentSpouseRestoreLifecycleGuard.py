@@ -1,10 +1,12 @@
 """Guard: permanent spouse async completion and its real runtime entry points."""
 from pathlib import Path
-import re
 import sys
+from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
 BRIDGE = "Integration/Wedding/WeddingModBehaviourBridge.cs"
+HOST_BRIDGE = "Integration/IntegrationHostCompatibility.cs"
+RUNTIME = "Integration/Wedding/WeddingRuntimeModule.cs"
 MODULE = "Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcModule.cs"
 
 
@@ -19,7 +21,7 @@ def body(source, marker):
     raise ValueError("unclosed member: " + marker)
 
 
-def validate(bridge, module, cleanup, events):
+def validate(bridge, module, cleanup, events, host_bridge, runtime):
     errors = []
 
     def need(source, marker, tokens):
@@ -37,7 +39,7 @@ def validate(bridge, module, cleanup, events):
         "pending.Following == following", "IsPermanentSpouseRestoreCurrent(pending)",
         "Generation = ++permanentSpouseRestoreGeneration", "permanentSpouseRestoreRequest = request"])
     need(bridge, "private bool IsPermanentSpouseRestoreCurrent(", [
-        "Instance != this", "request != permanentSpouseRestoreRequest", "request.Generation != permanentSpouseRestoreGeneration",
+        "_owner == null || ModBehaviour.Instance != _owner", "request != permanentSpouseRestoreRequest", "request.Generation != permanentSpouseRestoreGeneration",
         "request.SceneHandle != UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle",
         "AffinityManager.GetCurrentSpouseNpcId()", "!AffinityManager.IsMarriedToPlayer(request.NpcId)",
         "AffinityManager.IsSpouseFollowingPlayer(request.NpcId) != request.Following", "HasWeddingBuildingPlaced()"])
@@ -65,14 +67,24 @@ def validate(bridge, module, cleanup, events):
     need(bridge, "public bool SendSpouseHome(", ["InvalidatePermanentSpouseRestore()"])
     need(bridge, "public void HandleDivorceNpcRelocation(", ["InvalidatePermanentSpouseRestore()"])
     need(bridge, "private void RefreshSpouseInteractionOptions(", ["GetComponentInChildren<PermanentDuckNpcInteractable>(true)"])
+    need(bridge, "private IEnumerator DelayedRestoreFollowingSpouse(", ["yield return new WaitForSeconds(SpouseFollowRestorePollInterval)", "SpouseFollowRestoreTimeout"])
+    need(bridge, "public void ScheduleRestoreFollowingSpouse(", ["spouseFollowRestoreRequestId++", "StartCoroutine(DelayedRestoreFollowingSpouse(expectedSceneName, spouseFollowRestoreRequestId, context))"])
+    need(host_bridge, "public void ScheduleRestoreFollowingSpouse(", ["WeddingRuntime.ScheduleRestoreFollowingSpouse(expectedSceneName, context)"])
+    need(host_bridge, "public void CleanupWeddingBuilding()", ["WeddingRuntime.CleanupWeddingBuilding()"])
+    need(host_bridge, "internal void TryInitializeWeddingBuildingEarly()", ["WeddingRuntime.TryInitializeWeddingBuildingEarly()"])
+    need(runtime, "public override void OnAwake(ModBehaviour owner)", ["_owner = owner"])
+    need(runtime, "public override void OnDestroy()", ["CleanupWeddingBuilding()"])
+    if "private bool _builtEventSubscribed;" not in runtime or "private bool _destroyedEventSubscribed;" not in runtime:
+        errors.append("runtime must own both event subscription flags")
+    if "0.25f" not in bridge or "20f" not in bridge or "0.75f" not in bridge:
+        errors.append("spouse restore poll, timeout, or settle timing changed")
     return errors
 
 
 def main():
     paths = [BRIDGE, MODULE, "Integration/Wedding/WeddingBuildingInjector.cs",
-             "Integration/Wedding/WeddingBuildingInjector_DataEventsAndRuntime.cs"]
-    sources = [re.sub(r"/\*.*?\*/|//[^\n]*", "", (ROOT / path).read_text(encoding="utf-8-sig"), flags=re.S)
-               for path in paths]
+             "Integration/Wedding/WeddingBuildingInjector_DataEventsAndRuntime.cs", HOST_BRIDGE, RUNTIME]
+    sources = [clean_source((ROOT / path).read_text(encoding="utf-8-sig")) for path in paths]
     try:
         errors = validate(*sources)
         # Prove the guard rejects the original two omissions and the late-registration regression.

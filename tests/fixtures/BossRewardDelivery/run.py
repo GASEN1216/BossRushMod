@@ -7,6 +7,10 @@ ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
 OUT = ROOT / "Build/boss-reward-delivery"
 
+import sys
+sys.path.insert(0, str(ROOT / "tests"))
+from integration_host_source import materialize_host
+
 
 def member(source, signature):
     assert source.count(signature) == 1, signature
@@ -25,17 +29,18 @@ def member(source, signature):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    source = (ROOT / 'LootAndRewards/LootAndRewardsSpecialLoot.cs').read_text(encoding='utf-8-sig')
+    source = (ROOT / 'WavesArena/WavesArenaRuntimeModule_DragonLoot.cs').read_text(encoding='utf-8-sig')
     methods = '\n'.join(member(source, signature) for signature in (
-        'private IEnumerator AddDragonDescendantLoot(Inventory inv)',
-        'private bool TryAddDragonKingLootItem(Inventory inv, int typeId, string itemName)',
+        'internal IEnumerator AddDragonDescendantLoot(Inventory inv)',
+        'internal bool TryAddDragonKingLootItem(Inventory inv, int typeId, string itemName)',
     ))
     extracted = OUT / 'DragonRewards.cs'
     extracted.write_text('using System; using System.Collections; using ItemStatsSystem; '
-                         'namespace BossRush { public partial class ModBehaviour {\n' + methods + '\n} }',
+                         'namespace BossRush { internal sealed partial class WavesArenaRuntimeModule {\n' + methods + '\n} }',
                          encoding='utf-8')
     sources = [ROOT / 'Utilities/InteractableLootboxInventoryHelper.cs',
                ROOT / 'Integration/BackMountain/BackMountainSeedDrops.cs',
+               materialize_host(ROOT, OUT / "SeedHost.cs", "BackMountainSeedDropsHostBridge", "using ItemStatsSystem;"),
                HERE / 'Program.cs', HERE / 'Stubs.cs', extracted]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
     project += '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'

@@ -7,7 +7,7 @@ FallbackItem，玩家背包里的蛋在重启后变成一块占位砖。因此�
 必须同时齐全：
 1. Integration/Items/ItemContentRegistry.cs 注册 configurator；
 2. Integration/BossRushDynamicItemRegistry.cs BuildPlans 登记按需注册计划；
-3. Integration/BossRushIntegration_StartAndScene.cs 挂本地化注入；
+3. Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs 挂本地化注入；
 4. docs/reference/Bossrush使用物品ID表.md 与 AGENTS.md 台账登记 500059。
 
 另外守：
@@ -90,14 +90,14 @@ def check_registration_points(errors):
                 errors.append("[零资源] 遗种蛋是零新增 bundle 物品，计划里不得声明 bundle")
 
     # 3) 本地化挂接
-    start = read_text(repo_path("Integration", "BossRushIntegration_StartAndScene.cs"))
+    start = read_text(repo_path("Integration", "BossRushIntegrationRuntimeModule_ContentRegistration.cs"))
     if start is None:
-        errors.append("[File] 缺少 Integration/BossRushIntegration_StartAndScene.cs")
+        errors.append("[File] 缺少 Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs")
     else:
         scode = strip_cs_comments(start)
         if "PetNestLocalization.Inject();" not in scode:
             errors.append("[注册点3] InjectLocalization_Extra_Integration 缺少 PetNestLocalization.Inject()")
-        inject = re.search(r"private void InjectLocalization_Extra_Integration\(\)[\s\S]{0,3000}?\n        \}", scode)
+        inject = re.search(r"internal void InjectLocalization_Extra_Integration\(\)[\s\S]{0,3000}?\n        \}", scode)
         if inject is not None and "PetNestLocalization.Inject();" not in inject.group(0):
             errors.append("[注册点3] PetNestLocalization.Inject() 必须在 InjectLocalization_Extra_Integration 体内")
 

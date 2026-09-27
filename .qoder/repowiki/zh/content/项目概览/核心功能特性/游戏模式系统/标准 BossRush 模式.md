@@ -3,12 +3,12 @@
 <cite>
 **本文引用的文件**
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
-- [WavesArenaBossSpawning.cs](file://WavesArena/WavesArenaBossSpawning.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [WavesArenaEntryAndTeleport.cs](file://WavesArena/WavesArenaEntryAndTeleport.cs)
-- [WavesArenaRuntimeHooks.cs](file://WavesArena/WavesArenaRuntimeHooks.cs)
+- [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [WavesArenaSpawnerControl.cs](file://WavesArena/WavesArenaSpawnerControl.cs)
-- [ModeDWaves.cs](file://ModeD/ModeDWaves.cs)
-- [LootAndRewardsInfiniteHell.cs](file://LootAndRewards/LootAndRewardsInfiniteHell.cs)
+- [ModeD.cs](file://ModeD/ModeD.cs)
+- [LootAndRewards.cs](file://LootAndRewards/LootAndRewards.cs)
 - [Config.cs](file://Config/Config.cs)
 - [NPCSpawnConfig.cs](file://Config/NPCSpawnConfig.cs)
 - [ModBehaviour.cs](file://ModBehaviour.cs)
@@ -32,23 +32,23 @@
 ## 项目结构
 BossRush 模式的波次与竞技场逻辑主要分布在 WavesArena 模块中，配合 ModeD 的波次系统、LootAndRewards 的奖励流程以及 Config 的配置系统共同工作。关键职责划分如下：
 - 波次与竞技场管理：WavesArena.cs
-- Boss 生成与位置校验：WavesArenaBossSpawning.cs
+- Boss 生成与位置校验：WavesArena.cs
 - 传送与入场流程：WavesArenaEntryAndTeleport.cs
-- 运行时钩子与自检：WavesArenaRuntimeHooks.cs
+- 运行时钩子与自检：WavesArena.cs
 - Spawner 禁用与分帧销毁：WavesArenaSpawnerControl.cs
-- 白手起家（Mode D）波次：ModeDWaves.cs
-- 无间炼狱奖励与现金池：LootAndRewardsInfiniteHell.cs
+- 白手起家（Mode D）波次：ModeD.cs
+- 无间炼狱奖励与现金池：LootAndRewards.cs
 - 全局配置项：Config.cs
 - NPC/快递员刷新点：NPCSpawnConfig.cs
 - 运行期状态与模式切换：ModBehaviour.cs
 
 ```mermaid
 graph TB
-A["WavesArena.cs<br/>波次与竞技场管理"] --> B["WavesArenaBossSpawning.cs<br/>Boss 生成与位置校验"]
+A["WavesArena.cs<br/>波次与竞技场管理"] --> B["WavesArena.cs<br/>Boss 生成与位置校验"]
 A --> C["WavesArenaEntryAndTeleport.cs<br/>传送与入场流程"]
-A --> D["WavesArenaRuntimeHooks.cs<br/>运行时钩子与自检"]
+A --> D["WavesArena.cs<br/>运行时钩子与自检"]
 D --> E["WavesArenaSpawnerControl.cs<br/>Spawner 禁用与分帧销毁"]
-A --> F["LootAndRewardsInfiniteHell.cs<br/>无间炼狱奖励与现金池"]
+A --> F["LootAndRewards.cs<br/>无间炼狱奖励与现金池"]
 A --> G["Config.cs<br/>全局配置项"]
 A --> H["NPCSpawnConfig.cs<br/>NPC/快递员刷新点"]
 A --> I["ModBehaviour.cs<br/>运行期状态与模式切换"]
@@ -56,22 +56,22 @@ A --> I["ModBehaviour.cs<br/>运行期状态与模式切换"]
 
 图表来源
 - [WavesArena.cs:1-120](file://WavesArena/WavesArena.cs#L1-L120)
-- [WavesArenaBossSpawning.cs:1-120](file://WavesArena/WavesArenaBossSpawning.cs#L1-L120)
+- [WavesArena.cs:1-120](file://WavesArena/WavesArena.cs#L1-L120)
 - [WavesArenaEntryAndTeleport.cs:1-120](file://WavesArena/WavesArenaEntryAndTeleport.cs#L1-L120)
-- [WavesArenaRuntimeHooks.cs:1-89](file://WavesArena/WavesArenaRuntimeHooks.cs#L1-L89)
+- [WavesArena.cs:1-89](file://WavesArena/WavesArena.cs#L1-L89)
 - [WavesArenaSpawnerControl.cs:1-140](file://WavesArena/WavesArenaSpawnerControl.cs#L1-L140)
-- [LootAndRewardsInfiniteHell.cs:1-120](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L1-L120)
+- [LootAndRewards.cs:1-120](file://LootAndRewards/LootAndRewards.cs#L378)
 - [Config.cs:1-120](file://Config/Config.cs#L1-L120)
 - [NPCSpawnConfig.cs:1-120](file://Config/NPCSpawnConfig.cs#L1-L120)
 - [ModBehaviour.cs:252-528](file://ModBehaviour.cs#L252-L528)
 
 章节来源
 - [WavesArena.cs:1-120](file://WavesArena/WavesArena.cs#L1-L120)
-- [WavesArenaBossSpawning.cs:1-120](file://WavesArena/WavesArenaBossSpawning.cs#L1-L120)
+- [WavesArena.cs:1-120](file://WavesArena/WavesArena.cs#L1-L120)
 - [WavesArenaEntryAndTeleport.cs:1-120](file://WavesArena/WavesArenaEntryAndTeleport.cs#L1-L120)
-- [WavesArenaRuntimeHooks.cs:1-89](file://WavesArena/WavesArenaRuntimeHooks.cs#L1-L89)
+- [WavesArena.cs:1-89](file://WavesArena/WavesArena.cs#L1-L89)
 - [WavesArenaSpawnerControl.cs:1-140](file://WavesArena/WavesArenaSpawnerControl.cs#L1-L140)
-- [LootAndRewardsInfiniteHell.cs:1-120](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L1-L120)
+- [LootAndRewards.cs:1-120](file://LootAndRewards/LootAndRewards.cs#L378)
 - [Config.cs:1-120](file://Config/Config.cs#L1-L120)
 - [NPCSpawnConfig.cs:1-120](file://Config/NPCSpawnConfig.cs#L1-L120)
 - [ModBehaviour.cs:252-528](file://ModBehaviour.cs#L252-L528)
@@ -89,12 +89,12 @@ A --> I["ModBehaviour.cs<br/>运行期状态与模式切换"]
 
 章节来源
 - [WavesArena.cs:108-207](file://WavesArena/WavesArena.cs#L108-L207)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
 - [WavesArenaEntryAndTeleport.cs:16-226](file://WavesArena/WavesArenaEntryAndTeleport.cs#L16-L226)
-- [WavesArenaRuntimeHooks.cs:7-67](file://WavesArena/WavesArenaRuntimeHooks.cs#L7-L67)
+- [WavesArena.cs:7-67](file://WavesArena/WavesArena.cs#L7-L67)
 - [WavesArenaSpawnerControl.cs:21-139](file://WavesArena/WavesArenaSpawnerControl.cs#L21-L139)
-- [ModeDWaves.cs:45-138](file://ModeD/ModeDWaves.cs#L45-L138)
-- [LootAndRewardsInfiniteHell.cs:30-120](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L30-L120)
+- [ModeD.cs:45-138](file://ModeD/ModeD.cs#L238)
+- [LootAndRewards.cs:30-120](file://LootAndRewards/LootAndRewards.cs#L378)
 - [Config.cs:42-81](file://Config/Config.cs#L42-L81)
 - [NPCSpawnConfig.cs:63-74](file://Config/NPCSpawnConfig.cs#L63-L74)
 - [ModBehaviour.cs:252-528](file://ModBehaviour.cs#L252-L528)
@@ -128,10 +128,10 @@ Loot-->>Arena : 下一波准备自动或交互
 图表来源
 - [WavesArenaEntryAndTeleport.cs:16-226](file://WavesArena/WavesArenaEntryAndTeleport.cs#L16-L226)
 - [WavesArena.cs:108-207](file://WavesArena/WavesArena.cs#L108-L207)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
-- [WavesArenaRuntimeHooks.cs:7-67](file://WavesArena/WavesArenaRuntimeHooks.cs#L7-L67)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
+- [WavesArena.cs:7-67](file://WavesArena/WavesArena.cs#L7-L67)
 - [WavesArenaSpawnerControl.cs:21-139](file://WavesArena/WavesArenaSpawnerControl.cs#L21-L139)
-- [LootAndRewardsInfiniteHell.cs:30-120](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L30-L120)
+- [LootAndRewards.cs:30-120](file://LootAndRewards/LootAndRewards.cs#L378)
 
 ## 详细组件分析
 
@@ -165,7 +165,7 @@ Spawn --> End(["等待敌人死亡/推进"])
 - [WavesArena.cs:108-207](file://WavesArena/WavesArena.cs#L108-L207)
 - [WavesArena.cs:213-441](file://WavesArena/WavesArena.cs#L213-L441)
 
-### Boss 生成与位置校验（WavesArenaBossSpawning.cs）
+### Boss 生成与位置校验（WavesArena.cs）
 - 起始流程：记录玩家出生点、打乱敌人顺序、清理场景敌人、订阅死亡事件、抽取变异词条、初始化计数。
 - 安全刷怪点：优先选择距玩家安全距离外的点，若全部太近则回退到最远点；Y 轴高度通过地面贴合修正。
 - 单/多 Boss 生成：单 Boss 异步生成带重试；多 Boss 批量分配不重复的安全位置，串行生成并间隔短暂等待，失败重试多次。
@@ -188,16 +188,16 @@ Spawn-->>Arena : 生成结果(成功/失败)
 ```
 
 图表来源
-- [WavesArenaBossSpawning.cs:19-108](file://WavesArena/WavesArenaBossSpawning.cs#L19-L108)
-- [WavesArenaBossSpawning.cs:117-251](file://WavesArena/WavesArenaBossSpawning.cs#L117-L251)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
-- [WavesArenaBossSpawning.cs:478-661](file://WavesArena/WavesArenaBossSpawning.cs#L478-L661)
+- [WavesArena.cs:19-108](file://WavesArena/WavesArena.cs#L19-L108)
+- [WavesArena.cs:117-251](file://WavesArena/WavesArena.cs#L117-L251)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
+- [WavesArena.cs:478-661](file://WavesArena/WavesArena.cs#L478-L661)
 
 章节来源
-- [WavesArenaBossSpawning.cs:19-108](file://WavesArena/WavesArenaBossSpawning.cs#L19-L108)
-- [WavesArenaBossSpawning.cs:117-251](file://WavesArena/WavesArenaBossSpawning.cs#L117-L251)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
-- [WavesArenaBossSpawning.cs:478-661](file://WavesArena/WavesArenaBossSpawning.cs#L478-L661)
+- [WavesArena.cs:19-108](file://WavesArena/WavesArena.cs#L19-L108)
+- [WavesArena.cs:117-251](file://WavesArena/WavesArena.cs#L117-L251)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
+- [WavesArena.cs:478-661](file://WavesArena/WavesArena.cs#L478-L661)
 
 ### 传送与入场流程（WavesArenaEntryAndTeleport.cs）
 - 启动入口：标记直接进入流程、预热角色预设缓存、设置待进入地图索引（DEMO 挑战）。
@@ -229,7 +229,7 @@ Entry->>Arena : 开始第一波StartFirstWave
 - [WavesArenaEntryAndTeleport.cs:228-272](file://WavesArena/WavesArenaEntryAndTeleport.cs#L228-L272)
 - [WavesArenaEntryAndTeleport.cs:277-335](file://WavesArena/WavesArenaEntryAndTeleport.cs#L277-L335)
 
-### 运行时钩子与自检（WavesArenaRuntimeHooks.cs）
+### 运行时钩子与自检（WavesArena.cs）
 - 倒计时更新：每帧减少 waveCountdown，每秒更新大横幅（间隔大于 5 秒时按 5 秒倍数显示）。
 - 卡波修复：定期检测当前波是否存在“无存活 Boss 但计数未清零”的情况，自动推进下一波。
 - 非模式 Boss 清理：在 BossRush/丧尸模式期间定时清理残留的“大兴兴”Boss，防止干扰。
@@ -248,11 +248,11 @@ Fix --> |否| Clean["清理非模式Boss"]
 ```
 
 图表来源
-- [WavesArenaRuntimeHooks.cs:7-67](file://WavesArena/WavesArenaRuntimeHooks.cs#L7-L67)
+- [WavesArena.cs:7-67](file://WavesArena/WavesArena.cs#L7-L67)
 - [WavesArenaSpawnerControl.cs:141-251](file://WavesArena/WavesArenaSpawnerControl.cs#L141-L251)
 
 章节来源
-- [WavesArenaRuntimeHooks.cs:7-67](file://WavesArena/WavesArenaRuntimeHooks.cs#L7-L67)
+- [WavesArena.cs:7-67](file://WavesArena/WavesArena.cs#L7-L67)
 - [WavesArenaSpawnerControl.cs:141-251](file://WavesArena/WavesArenaSpawnerControl.cs#L141-L251)
 
 ### Spawner 控制（WavesArenaSpawnerControl.cs）
@@ -278,7 +278,7 @@ Destroy --> Done["完成"]
 - [WavesArenaSpawnerControl.cs:21-139](file://WavesArena/WavesArenaSpawnerControl.cs#L21-L139)
 - [WavesArenaSpawnerControl.cs:141-251](file://WavesArena/WavesArenaSpawnerControl.cs#L141-L251)
 
-### 白手起家（Mode D）波次（ModeDWaves.cs）
+### 白手起家（Mode D）波次（ModeD.cs）
 - 波次规则：第 1-5 波全小怪，第 6-10 波 1 Boss + 小怪，第 11-15 波 2 Boss + 小怪，第 16+ 波全 Boss。
 - 生成流程：动态刷新敌人数、计算 Boss/小怪配比、分帧生成避免低端机尖刺。
 - 数值强化：每波提升 3% 属性（通过 Stat Modifier 增加 MaxHealth 并同步 CurrentHealth）。
@@ -295,16 +295,16 @@ Normalize --> Complete["波次完成判定"]
 ```
 
 图表来源
-- [ModeDWaves.cs:45-138](file://ModeD/ModeDWaves.cs#L45-L138)
-- [ModeDWaves.cs:185-334](file://ModeD/ModeDWaves.cs#L185-L334)
-- [ModeDWaves.cs:736-781](file://ModeD/ModeDWaves.cs#L736-L781)
+- [ModeD.cs:45-138](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:185-334](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:736-781](file://ModeD/ModeD.cs#L238)
 
 章节来源
-- [ModeDWaves.cs:45-138](file://ModeD/ModeDWaves.cs#L45-L138)
-- [ModeDWaves.cs:185-334](file://ModeD/ModeDWaves.cs#L185-L334)
-- [ModeDWaves.cs:736-781](file://ModeD/ModeDWaves.cs#L736-L781)
+- [ModeD.cs:45-138](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:185-334](file://ModeD/ModeD.cs#L238)
+- [ModeD.cs:736-781](file://ModeD/ModeD.cs#L238)
 
-### 无间炼狱奖励与现金池（LootAndRewardsInfiniteHell.cs）
+### 无间炼狱奖励与现金池（LootAndRewards.cs）
 - 现金池累积：Boss 击杀时按最大生命值折算现金加入池，路牌展示与气泡提示。
 - 每 5 波奖励：从共享高品质奖励池中随机取一个 Q5+ 且价格≥10000 的物品。
 - 每 100 波里程碑：皇冠数量与现金总额按 2^(tier-1) 指数增长，大量掉落。
@@ -324,14 +324,14 @@ Milestone100 --> |否| Loop["继续循环"]
 ```
 
 图表来源
-- [LootAndRewardsInfiniteHell.cs:30-120](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L30-L120)
-- [LootAndRewardsInfiniteHell.cs:149-279](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L149-L279)
-- [LootAndRewardsInfiniteHell.cs:310-408](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L310-L408)
+- [LootAndRewards.cs:30-120](file://LootAndRewards/LootAndRewards.cs#L378)
+- [LootAndRewards.cs:149-279](file://LootAndRewards/LootAndRewards.cs#L378)
+- [LootAndRewards.cs:310-408](file://LootAndRewards/LootAndRewards.cs#L378)
 
 章节来源
-- [LootAndRewardsInfiniteHell.cs:30-120](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L30-L120)
-- [LootAndRewardsInfiniteHell.cs:149-279](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L149-L279)
-- [LootAndRewardsInfiniteHell.cs:310-408](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L310-L408)
+- [LootAndRewards.cs:30-120](file://LootAndRewards/LootAndRewards.cs#L378)
+- [LootAndRewards.cs:149-279](file://LootAndRewards/LootAndRewards.cs#L378)
+- [LootAndRewards.cs:310-408](file://LootAndRewards/LootAndRewards.cs#L378)
 
 ### 配置系统（Config.cs）
 - 波次间隔：2-60 秒，默认 15 秒，支持运行时修改并静重算倒计时。
@@ -366,11 +366,11 @@ Milestone100 --> |否| Loop["继续循环"]
 
 ```mermaid
 graph LR
-WA["WavesArena.cs"] --> WBS["WavesArenaBossSpawning.cs"]
+WA["WavesArena.cs"] --> WBS["WavesArena.cs"]
 WA --> WAE["WavesArenaEntryAndTeleport.cs"]
-WA --> WARH["WavesArenaRuntimeHooks.cs"]
+WA --> WARH["WavesArena.cs"]
 WARH --> WASC["WavesArenaSpawnerControl.cs"]
-WA --> LRIH["LootAndRewardsInfiniteHell.cs"]
+WA --> LRIH["LootAndRewards.cs"]
 WA --> CFG["Config.cs"]
 WA --> NPC["NPCSpawnConfig.cs"]
 WA --> MB["ModBehaviour.cs"]
@@ -378,22 +378,22 @@ WA --> MB["ModBehaviour.cs"]
 
 图表来源
 - [WavesArena.cs:1-120](file://WavesArena/WavesArena.cs#L1-L120)
-- [WavesArenaBossSpawning.cs:1-120](file://WavesArena/WavesArenaBossSpawning.cs#L1-L120)
+- [WavesArena.cs:1-120](file://WavesArena/WavesArena.cs#L1-L120)
 - [WavesArenaEntryAndTeleport.cs:1-120](file://WavesArena/WavesArenaEntryAndTeleport.cs#L1-L120)
-- [WavesArenaRuntimeHooks.cs:1-89](file://WavesArena/WavesArenaRuntimeHooks.cs#L1-L89)
+- [WavesArena.cs:1-89](file://WavesArena/WavesArena.cs#L1-L89)
 - [WavesArenaSpawnerControl.cs:1-140](file://WavesArena/WavesArenaSpawnerControl.cs#L1-L140)
-- [LootAndRewardsInfiniteHell.cs:1-120](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L1-L120)
+- [LootAndRewards.cs:1-120](file://LootAndRewards/LootAndRewards.cs#L378)
 - [Config.cs:1-120](file://Config/Config.cs#L1-L120)
 - [NPCSpawnConfig.cs:1-120](file://Config/NPCSpawnConfig.cs#L1-L120)
 - [ModBehaviour.cs:252-528](file://ModBehaviour.cs#L252-L528)
 
 章节来源
 - [WavesArena.cs:1-120](file://WavesArena/WavesArena.cs#L1-L120)
-- [WavesArenaBossSpawning.cs:1-120](file://WavesArena/WavesArenaBossSpawning.cs#L1-L120)
+- [WavesArena.cs:1-120](file://WavesArena/WavesArena.cs#L1-L120)
 - [WavesArenaEntryAndTeleport.cs:1-120](file://WavesArena/WavesArenaEntryAndTeleport.cs#L1-L120)
-- [WavesArenaRuntimeHooks.cs:1-89](file://WavesArena/WavesArenaRuntimeHooks.cs#L1-L89)
+- [WavesArena.cs:1-89](file://WavesArena/WavesArena.cs#L1-L89)
 - [WavesArenaSpawnerControl.cs:1-140](file://WavesArena/WavesArenaSpawnerControl.cs#L1-L140)
-- [LootAndRewardsInfiniteHell.cs:1-120](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L1-L120)
+- [LootAndRewards.cs:1-120](file://LootAndRewards/LootAndRewards.cs#L378)
 - [Config.cs:1-120](file://Config/Config.cs#L1-L120)
 - [NPCSpawnConfig.cs:1-120](file://Config/NPCSpawnConfig.cs#L1-L120)
 - [ModBehaviour.cs:252-528](file://ModBehaviour.cs#L252-L528)
@@ -417,10 +417,10 @@ WA --> MB["ModBehaviour.cs"]
 章节来源
 - [WavesArenaEntryAndTeleport.cs:160-184](file://WavesArena/WavesArenaEntryAndTeleport.cs#L160-L184)
 - [WavesArenaEntryAndTeleport.cs:228-272](file://WavesArena/WavesArenaEntryAndTeleport.cs#L228-L272)
-- [WavesArenaBossSpawning.cs:346-473](file://WavesArena/WavesArenaBossSpawning.cs#L346-L473)
-- [WavesArenaRuntimeHooks.cs:48-67](file://WavesArena/WavesArenaRuntimeHooks.cs#L48-L67)
+- [WavesArena.cs:346-473](file://WavesArena/WavesArena.cs#L346-L473)
+- [WavesArena.cs:48-67](file://WavesArena/WavesArena.cs#L48-L67)
 - [WavesArenaSpawnerControl.cs:141-251](file://WavesArena/WavesArenaSpawnerControl.cs#L141-L251)
-- [LootAndRewardsInfiniteHell.cs:30-120](file://LootAndRewards/LootAndRewardsInfiniteHell.cs#L30-L120)
+- [LootAndRewards.cs:30-120](file://LootAndRewards/LootAndRewards.cs#L378)
 
 ## 结论
 标准 BossRush 模式通过模块化设计实现了弹指可灭、有点意思、无间炼狱三种难度的差异化体验。前期强力 Boss 排除保障新手友好，多 Boss 支持与位置校验提升稳定性，无间炼狱的权重随机与现金池系统提供无限挑战与丰厚回报。配置系统灵活可调，性能优化贯穿始终，故障排查机制完善，适合不同水平玩家探索与策略构建。

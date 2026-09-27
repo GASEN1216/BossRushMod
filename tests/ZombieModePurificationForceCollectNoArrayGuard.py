@@ -36,7 +36,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 def main() -> int:
     text = SOURCE.read_text(encoding="utf-8")
-    body = extract_method_body(text, "private void ForceCollectZombieModePendingPurificationStars(")
+    body = extract_method_body(text, "internal void ForceCollectZombieModePendingPurificationStars(")
     if body is None:
         return fail("missing ForceCollectZombieModePendingPurificationStars body")
 
@@ -44,8 +44,8 @@ def main() -> int:
         return fail("force collection still allocates a pending-star array snapshot")
 
     required = [
-        "for (int i = zombieModeRunState.PendingPurificationStars.Count - 1; i >= 0; i--)",
-        "ZombiePurificationStar star = zombieModeRunState.PendingPurificationStars[i];",
+        "for (int i = runState.PendingPurificationStars.Count - 1; i >= 0; i--)",
+        "ZombiePurificationStar star = runState.PendingPurificationStars[i];",
     ]
     for snippet in required:
         if snippet not in body:

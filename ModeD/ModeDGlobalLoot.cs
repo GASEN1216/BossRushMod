@@ -22,19 +22,17 @@ namespace BossRush
     /// <summary>
     /// Mode D 全物品池随机掉落辅助模块
     /// </summary>
-    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
+    internal sealed partial class ModeDItemPool
     {
         /// <summary>上次尝试构建全局掉落池的时间（用于节流，避免 TagsData 未就绪时高频重试）</summary>
-        private static float lastGlobalPoolAttemptTime = -999f;
         /// <summary>全局掉落池构建尝试的最小间隔（秒）</summary>
         private const float GLOBAL_POOL_RETRY_INTERVAL = 5f;
         /// <summary>按品质缓存的全局掉落池，供 Legacy 品质分布精确选档使用。</summary>
-        private static Dictionary<int, List<int>> modeDGlobalItemPoolByQuality = null;
 
         /// <summary>
         /// 仅在 TagsData 已就绪时预热全局掉落池，避免触发重试节流影响正式入口构建
         /// </summary>
-        private void TryPrewarmModeDGlobalItemPool()
+        internal void TryPrewarmModeDGlobalItemPool()
         {
             if (modeDGlobalItemPoolInitialized && modeDGlobalItemPool != null && modeDGlobalItemPool.Count > 0)
             {
@@ -61,7 +59,7 @@ namespace BossRush
         /// 构建/缓存 Mode D 全局掉落物品池
         /// <para>从全物品池中收集可掉落物品，排除黑名单和不应掉落的 Tag</para>
         /// </summary>
-        private void EnsureModeDGlobalItemPool()
+        internal void EnsureModeDGlobalItemPool()
         {
             if (modeDGlobalItemPoolInitialized && modeDGlobalItemPool != null && modeDGlobalItemPool.Count > 0)
             {
@@ -112,7 +110,7 @@ namespace BossRush
                     return;
                 }
 
-                List<Duckov.Utilities.Tag> baseExclude = BuildGeneralLootExcludeTags(tagsData);
+                List<Duckov.Utilities.Tag> baseExclude = LootExcludeTagPolicy.BuildExcludeTags(tagsData);
 
                 // P1-3 优化：把 ToArray() 提到循环外，避免每次循环都分配数组
                 Duckov.Utilities.Tag[] excludeArray = baseExclude.ToArray();
@@ -159,7 +157,7 @@ namespace BossRush
                         int id = ids[j];
                         if (id > 0)
                         {
-                            if (IsItemBlacklisted(id))
+                            if (LootBlacklistRegistry.Contains(id))
                             {
                                 continue;
                             }
@@ -194,12 +192,12 @@ namespace BossRush
                 if (modeDGlobalItemPool.Count > 0)
                 {
                     modeDGlobalItemPoolInitialized = true;
-                    DevLog("[ModeD] 全局掉落池构建完成：物品数=" + modeDGlobalItemPool.Count);
+                    ModBehaviour.DevLog("[ModeD] 全局掉落池构建完成：物品数=" + modeDGlobalItemPool.Count);
                 }
                 else
                 {
                     // 池为空，不设置初始化标记，允许下次重试
-                    DevLog("[ModeD] [WARNING] 全局掉落池为空，未设置初始化标记，将稍后重试");
+                    ModBehaviour.DevLog("[ModeD] [WARNING] 全局掉落池为空，未设置初始化标记，将稍后重试");
                 }
             }
             catch

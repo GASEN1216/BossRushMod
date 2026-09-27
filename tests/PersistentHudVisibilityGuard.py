@@ -79,13 +79,13 @@ PERSISTENT = (
     ("ModeG/ModeGHUD.cs", None, "public void Update(float deltaTime)",
      "SetVisible(visible);",
      ("call", "ModeG/ModeGEntry.cs", "modeGHUD.Update(deltaTime);",
-      "private void UpdateModeG(float deltaTime)", ["try"], "if (modeGHUD != null)", 1),
+      "internal void UpdateModeG(float deltaTime)", ["try"], "if (modeGHUD != null)", 1),
      "Mode G 状态文本"),
     # 2026-09-23 审美审查 UB-06：取代每 15 秒一条的阶段横幅的常驻状态卡（左上，Hud 层）
     ("ModeF/ModeFStatusHud.cs", None, "internal static void Tick(ModeFState state, float maxCharge)",
      "_canvas.enabled = visible;",
      ("call", "ModeF/ModeFPhases.cs", "ModeFStatusHud.Tick(modeFState, MODEF_BLOODFIRE_MAX_CHARGE);",
-      "private void TickModeF(float deltaTime)", ["try"], "", 2),
+      "internal void TickModeF(float deltaTime)", ["try"], "", 2),
      "Mode F 状态卡"),
     ("ModeF/ModeFUI_BountyRadarAndHealthBars.cs", None, "private bool IsModeFBountyRadarSuppressedByOverlay()",
      "return true;",
@@ -104,9 +104,9 @@ PERSISTENT = (
      ("call", "Campaign/CampaignRuntimeModule.cs", "CampaignHud.Tick();",
       "public override void OnUpdate(float deltaTime, float unscaledDeltaTime)", ["try"], "", 2),
      "征程契约追踪条"),
-    ("DebugAndTools/SkyIsland/SkyIslandHud.cs", None, "internal void Tick(float unscaledDelta, bool suppressed)",
+    ("SkyIsland/SkyIslandHud.cs", None, "internal void Tick(float unscaledDelta, bool suppressed)",
      "rootGroup.alpha = visibility;",
-     ("call", "DebugAndTools/SkyIsland/SkyIslandSession.cs", "hud.Tick(Time.unscaledDeltaTime, HudSuppressed())",
+     ("call", "SkyIsland/SkyIslandSession.cs", "hud.Tick(Time.unscaledDeltaTime, HudSuppressed())",
       "private void Update()", [], "if (hud != null)", 1),
      "天空岛右上卡片、区域大标题与字幕"),
 )
@@ -115,7 +115,7 @@ PERSISTENT = (
 EXCLUDED = {
     "Integration/WishFountain/WishFountainUI.cs":
         "许愿台是玩家主动打开的界面，只借 HudOverlay 当宿主层（HOST_TOPMOST_SORTING_ORDER）",
-    "DebugAndTools/SkyIsland/SkyIslandGates.cs":
+    "SkyIsland/SkyIslandGates.cs":
         "桥口木牌：世界空间文字（WorldOverlay）",
     "DebugAndTools/ArenaPrototype/ArenaPrototypeControls.cs":
         "Dev 专用自建试验场的状态行：只在 Dev 构建出现，本轮只登记不改（见报告第三节待办）",
@@ -135,7 +135,7 @@ MODAL = {
     "BossFilter/BossFilterUi.cs": "Boss 筛选界面（Panel）：玩家主动打开",
     "DebugAndTools/F3DebugCheatMenuUi.cs": "F3 调试菜单（Modal）：Dev 构建里玩家主动打开",
     "DebugAndTools/NPCTeleportUI.cs": "NPC 传送调试界面（Panel）：玩家主动打开",
-    "DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs": "天空岛剧情面板（Modal）：交互打开，注册官方 HUD 隐藏令牌",
+    "SkyIsland/SkyIslandStoryPresentation.cs": "天空岛剧情面板（Modal）：交互打开，注册官方 HUD 隐藏令牌",
     "Integration/Codex/CodexView.cs": "图鉴界面（Panel）：玩家主动打开",
     "Integration/Codex/CodexView_Grid.cs": "图鉴详情确认弹窗（ModalConfirm）",
     "Integration/DailyReport/DailyReportUI.cs": "日报界面（Panel）：玩家主动打开",
@@ -278,6 +278,16 @@ def host_errors(label, drive, read):
     return errors
 
 
+MODEG_DRIVE_CHAIN = (
+    ("call", "ModeG/ModeGEntryHostBridge.cs", "modeGEntryRuntime.UpdateModeG(deltaTime);",
+     "private void UpdateModeG(float deltaTime)", [], "if (modeGEntryRuntime != null)", 0),
+    ("call", "Utilities/ModeRuntimeHooks.cs", "UpdateModeG(deltaTime);",
+     "internal bool TickModeRuntimeGroup(float deltaTime, float unscaledDeltaTime)", [], "", 1),
+    ("call", "ModBehaviour.cs", "if (TickModeRuntimeGroup(Time.deltaTime, Time.unscaledDeltaTime))",
+     "void Update()", [], "", 1),
+)
+
+
 def check(read, layer_files, canvas_files, ongui_files):
     """read(rel) -> 清洗过的源码或 None；三个 dict 都是 {相对路径: 原文}。返回错误清单。"""
     errors = []
@@ -301,6 +311,10 @@ def check(read, layer_files, canvas_files, ongui_files):
             errors += host_errors(label, drive, read)
         elif not re.search(drive[1], source):
             errors.append("%s 靠 Unity 的 Update 驱动，但 %s 里找不到 MonoBehaviour 声明" % (label, rel))
+
+    # Mode G 的服务并非注册模块，HUD 必须沿原宿主 tick 链逐层到达。
+    for drive in MODEG_DRIVE_CHAIN:
+        errors += host_errors("Mode G 状态文本完整驱动链", drive, read)
 
     listed = {entry[0] for entry in PERSISTENT}
     for rel in sorted(layer_files):
@@ -407,6 +421,11 @@ def main():
             expect_red("拆掉 %s 的 %s" % (label, token), {rel: source.replace(token, "false")})
         probes += 1
         expect_red("拆掉 %s 的显隐落点 %s" % (label, effect), {rel: source.replace(effect, ";")})
+
+    for drive in MODEG_DRIVE_CHAIN:
+        _, rel, call, _, _, _, _ = drive
+        probes += 1
+        expect_red("拆掉 Mode G 驱动链 " + rel, {rel: read_from({})(rel).replace(call, ";")})
 
     semantic = [
         ("① 词条浮层的闸门改成 suppressed = false", "Integration/Mutators/MutatorUI.cs",

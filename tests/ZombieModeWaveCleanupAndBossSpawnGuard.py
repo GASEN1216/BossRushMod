@@ -5,9 +5,9 @@ import sys
 
 
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
-WAVES = Path("ZombieMode/ZombieModeWaveController.cs")
+WAVES = Path("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
-BOSS = Path("ZombieMode/ZombieModeBossController.cs")
+BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
 TUNING = Path("ZombieMode/ZombieModeTuning.cs")
 
 
@@ -35,8 +35,8 @@ def main() -> int:
     ]:
         if token not in drops:
             return fail("wave cleanup contract missing -> " + token)
-    cleanup = drops[drops.index("private void CleanupZombieModeExpiredDropCandidates("):]
-    cleanup = cleanup[:cleanup.index("private void RecycleZombieModeTemporaryNpcs")]
+    cleanup = drops[drops.index("internal void CleanupZombieModeExpiredDropCandidates("):]
+    cleanup = cleanup[:cleanup.index("internal void RecycleZombieModeTemporaryNpcs")]
     rescan = cleanup.find("if (!scanPickups)")
     destroy = cleanup.find("Destroy(candidate.GameObject)")
     if rescan < 0 or rescan > destroy:
@@ -46,7 +46,7 @@ def main() -> int:
     cleanup_token = "CleanupZombieModeExpiredDropCandidates(true);"
     if cleanup_token not in waves:
         return fail("next wave start does not force ordinary drop cleanup")
-    start_index = waves.index("private void StartZombieModeWave")
+    start_index = waves.index("internal void StartZombieModeWave")
     complete_index = waves.index("private void CompleteZombieModeWave")
     if waves.find(cleanup_token, start_index, complete_index) < 0:
         return fail("ordinary drop cleanup is not at next wave start")
@@ -54,7 +54,7 @@ def main() -> int:
         return fail("ordinary drop cleanup still runs at wave settlement")
 
     for token in [
-        "TryResolveZombieModeSpawnPoint(candidate, zombieModeRunState.SpawnPoints[index].VirtualPoint",
+        "TryResolveZombieModeSpawnPoint(candidate, runState.SpawnPoints[index].VirtualPoint",
         "return GetZombieModeSpawnPosition();",
     ]:
         if token not in spawner:
@@ -69,7 +69,7 @@ def main() -> int:
     ]:
         if token not in boss:
             return fail("boss stuck recovery missing -> " + token)
-    hurt_start = boss.find("private void HandleZombieModeBossHurt(")
+    hurt_start = boss.find("internal void HandleZombieModeBossHurt(")
     if hurt_start < 0:
         return fail("boss hurt handler missing")
     hurt_end = boss.find("private ", hurt_start + 20)
