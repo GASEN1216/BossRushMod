@@ -20,6 +20,27 @@ namespace BossRush
         internal Func<string> ExtraHint;
     }
 
+    /// <summary>奖励物品：交付成功那一拍由核心生成并发放（背包优先，放不下走官方仓库 / 自提）。</summary>
+    internal struct OfficialQuestItemStack
+    {
+        internal int TypeId;
+        internal int Count;
+        internal OfficialQuestItemStack(int typeId, int count) { TypeId = typeId; Count = count; }
+    }
+
+    /// <summary>
+    /// 交付时要带在身上交给给予者的物品：TypeIds 里任意几种凑够 Count 个即可。
+    /// 核心为每条生成一个官方 Task（持有够了才算完成），交付事务先整份预留、客户端提交成功才真正收走，失败原样归还。
+    /// 只认主角背包：与「带在身上交给他」的文案一致，也与交付时实际能扣的范围一致。
+    /// </summary>
+    internal sealed class OfficialQuestSubmission
+    {
+        internal int[] TypeIds;
+        internal int Count;
+        /// <summary>任务日志里的目标行（不含「身上 x/N」，核心补）。</summary>
+        internal Func<string> Description;
+    }
+
     /// <summary>
     /// 投影核心的客户端：一个子系统一份（天空岛 / 鸭王征程）。核心每拍按客户端分组同步，
     /// 事实未就绪（<see cref="Ready"/> 为假）时对该客户端不清不建。
@@ -78,6 +99,10 @@ namespace BossRush
         /// <summary>事实指纹：变化时刷新给予者标记。</summary>
         internal Func<int> StateStamp;
         internal OfficialQuestTaskBinding[] Tasks;
+        /// <summary>可空：交付成功后由核心发放的物品。与 RewardMoney 一样只在「未交付 → 已交付」那一拍发一次。</summary>
+        internal OfficialQuestItemStack[] RewardItems;
+        /// <summary>可空：交付时收走的物品。</summary>
+        internal OfficialQuestSubmission[] Submissions;
         internal IOfficialQuestClient Client;
     }
 }

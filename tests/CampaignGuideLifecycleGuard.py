@@ -26,7 +26,17 @@ def main():
     assert 'IsDelivered = () => CampaignGuideTable.IsCompleted(id),' in client, 'objective must not auto-deliver guide'
     assert 'Done = () => CampaignGuideTable.IsExperienced(id) || CampaignGuideTable.IsCompleted(id),' in client
     assert 'CanDeliver = () => CanWrite() && CampaignGuideTable.InBase() && CampaignGuideTable.IsAccepted(id) && CampaignGuideTable.IsExperienced(id) && !CampaignGuideTable.IsCompleted(id),' in client
-    assert 'CanWrite() && CampaignGuideTable.InBase() && CampaignPersistence.TryAdvanceGuide(guideId, 3)' in client, 'stale delivery callback needs same gate'
+    assert 'CanWrite() && CampaignGuideTable.InBase() && CampaignProgressService.TryDeliverGuide(guideId, rewardCash)' in client, 'stale delivery callback needs same gate'
+    guide_deliver = progress.split('internal static bool TryDeliverGuide(', 1)[1].split('#endregion', 1)[0]
+    assert '!CampaignPersistence.IsGuideExperienced(guideId)' in guide_deliver, 'guide delivery must require the experienced fact'
+    assert 'CampaignSaveCoordinator.TryPrepareCashReward()' in guide_deliver and 'EconomyManager.Pay(new Cost((long)rewardCash), true, true)' in guide_deliver, 'guide cash must follow the chapter snapshot/refund pattern'
+    assert guide_deliver.index('EconomyManager.Add(rewardCash)') < guide_deliver.index('CampaignPersistence.TryAdvanceGuide(guideId, 3)'), 'pay before writing the delivery fact so a failed write can refund'
+    assert '_cashPaidPendingGuideId = guideId;' in guide_deliver, 'paid-but-unwritten retries must not pay twice'
+    rewards = read('Campaign/CampaignRewardTable.cs')
+    for name in ('ModeD','ModeE','ModeF','ModeG','ModeH','Zombie','PetNest','RandomEvents','SkyIslandGear','Garden','Trophy','AffixForge','Reforge','DailyReport'):
+        assert f'case CampaignGuideTable.{name}:' in rewards, f'guide {name} has no reward entry'
+    assert 'RewardItems = grant.Items,' in client and 'Submissions = grant.Submissions,' in client and 'RewardMoney = cash,' in client
+    assert 'RewardItems = CampaignRewardTable.ChapterItems(def.Order),' in client and 'Submissions = CampaignRewardTable.ChapterSubmissions(def.Order),' in client
     assert 'main.CharacterItem.GetAllChildren(true, true)' in facts, 'equipment objective must examine owned equipment'
     assert 'SkyIslandBossRules.GearSpec(item.TypeID) != null' in facts, 'visiting island does not prove gear'
     assert 'owner.ModeHRuntime.HasCompletedMatch' in facts, 'guide requires a completed match, not merely starting combat'

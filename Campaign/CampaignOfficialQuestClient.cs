@@ -6,6 +6,8 @@
 //   官方任务日志的目标行 ← 本局进度 / 基地侧事实；官方「完成任务」按钮 → TryDeliver。
 // 发钱、发 token、写线索仍归 TryDeliver 的补偿式事务（PayReward = null）；
 // 官方奖励行只是展示（RewardMoney = def.RewardCash，同一字段源），「已领取」读 Completed。
+// 奖励物品与提交物品（CampaignRewardTable）由共享核心在同一次交付里处理：先备好奖励、预留提交物，
+// 本客户端的交付事务成功才收走提交物、发出奖励物；引导的奖金走 CampaignProgressService.TryDeliverGuide。
 //
 // 整个 Campaign/ 目录不出现任何 Duckov.Quests 符号：注册、投影、补丁、快照过滤、
 // 给予者查找全在 Utilities/OfficialQuests/（tests/CampaignSkeletonGuard.py）。
@@ -160,6 +162,8 @@ namespace BossRush
                 NameKey = CampaignQuestTable.NameKey(chapterId),
                 DescriptionKey = CampaignQuestTable.DescriptionKey(chapterId),
                 RewardMoney = def.RewardCash,
+                RewardItems = CampaignRewardTable.ChapterItems(def.Order),
+                Submissions = CampaignRewardTable.ChapterSubmissions(def.Order),
                 CanOffer = () => CampaignQuestTable.CanOffer(State(chapterId), CanWrite(), AnotherActive(chapterId)),
                 CanDeliver = () => CampaignQuestTable.CanDeliver(State(chapterId), CanWrite(), CampaignBaseObjectives.AllDone(def)),
                 DeliverBlocked = () => DescribeBlocked(def),
@@ -192,6 +196,8 @@ namespace BossRush
         {
             if (guide == null) return null;
             string id = guide.Id;
+            CampaignRewardTable.Grant grant = CampaignRewardTable.ForGuide(id);
+            int cash = grant.Cash;
             return new OfficialQuestBinding
             {
                 QuestId = guide.QuestId,
@@ -199,7 +205,9 @@ namespace BossRush
                 ObjectName = "BossRush_Campaign_Guide_Quest_" + guide.QuestId,
                 NameKey = guide.NameKey,
                 DescriptionKey = guide.DescriptionKey,
-                RewardMoney = 0,
+                RewardMoney = cash,
+                RewardItems = grant.Items,
+                Submissions = grant.Submissions,
                 // 一条接一条：只有排到的那一条挂在杰夫的可接取页上（CampaignGuideTable.NextOfferableId）
                 CanOffer = () => CanWrite() && CampaignGuideTable.InBase()
                     && !CampaignGuideTable.IsAccepted(id) && !CampaignGuideTable.IsCompleted(id)
@@ -211,7 +219,7 @@ namespace BossRush
                 IsDelivered = () => CampaignGuideTable.IsCompleted(id),
                 RewardPaid = () => CampaignGuideTable.IsCompleted(id),
                 Accept = (out string message) => AcceptGuide(id, out message),
-                Deliver = (out string message) => DeliverGuide(id, out message),
+                Deliver = (out string message) => DeliverGuide(id, cash, out message),
                 PayReward = null,
                 StateStamp = () => CampaignGuideTable.IsCompleted(id) ? 3
                     : (CampaignGuideTable.IsExperienced(id) ? 2 : (CampaignGuideTable.IsAccepted(id) ? 1 : 0)),
@@ -238,11 +246,12 @@ namespace BossRush
             return false;
         }
 
-        private bool DeliverGuide(string guideId, out string message)
+        private bool DeliverGuide(string guideId, int rewardCash, out string message)
         {
             message = null;
-            if (CanWrite() && CampaignGuideTable.InBase() && CampaignPersistence.TryAdvanceGuide(guideId, 3)) return true;
-            message = L10n.T("先照我说的去试一次，回基地再来找我。", "Go try it the way I said first, then come see me at base.");
+            if (CanWrite() && CampaignGuideTable.InBase() && CampaignProgressService.TryDeliverGuide(guideId, rewardCash)) return true;
+            message = L10n.T("先照我说的去试一次，回基地再来找我。要是已经试过了，多半是存档正忙，过一会儿再来。",
+                "Go try it the way I said first, then come see me at base. If you already have, the save is probably busy; try again in a moment.");
             return false;
         }
 

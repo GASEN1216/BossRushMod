@@ -1,5 +1,36 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+<!-- BEGIN JEFF QUEST REWARDS TRACKER 2026-09-27 -->
+
+## 2026-09-27 Jeff 任务的物品奖励、引导奖金与提交物品（COMPAT / WIRE+ / SAFE）
+
+**授权与范围**：owner「奖励不单单是钱，适当插入要提交物品的任务，你自己看看怎么给」，按授权直接定。只动鸭王征程六章与十四条引导；天空岛四条的奖励与会话事务不动。无新 TypeID / 任务 ID / 存档字段。设计理由、完整奖励表与人工步骤 R1–R6 见 [交付说明](docs/reports/reviews/2026-09-27-Jeff任务奖励与提交物品.md)。
+
+**内容**：
+- 引导奖励：每条 3000–10000 现金（合计 74000），外加下一条要用的入场物品。
+- 章节奖励：奖金不变，另各发一份物品。
+- 提交物品：第 2 章交 2 个后山收成（三种任选）；天空岛装备引导交 5 片残铜片。
+- 数据只在 `Campaign/CampaignRewardTable.cs`。
+
+**实现**：
+- 共享投影核心新增可选 `RewardItems` / `Submissions`，在 `TryCommitDelivery` 里按「生成奖励 → 预留提交物 → 客户端交付 → 收走 → 发放」执行，任一步失败原样退回。
+- 提交物复用 `SkyIslandInventoryTransaction`，奖励行照官方 RewardItem 显示。
+- 引导奖金走 `CampaignProgressService.TryDeliverGuide`，与章节同一套补偿式发钱。
+- 新文件：`OfficialQuestItemRules.cs`、`OfficialQuestItems.cs`、`CampaignRewardTable.cs`，均已登记编译清单。
+
+**回退**：`CampaignRewardTable` 对应条目改成 `Pays(0)` / `null`。
+
+**验证**：
+- 全量守卫 677 通过。
+- 执行回归 10 组通过：JeffQuestFlow 520、ContentTransactions 396、CampaignPlayability 187、BackMountainMorph 1176、BackMountainLifecycle 181 与天空岛四组。
+- 7 个运行时反向探针转红后按 SHA-256 还原。
+- Windows 正式构建成功，仅既有 CS0649；部署 DLL 与 Build 一致，Dev 标识 absent；Wiki 构建通过。
+- 构建脚本末尾的资源清单报错来自另一会话未提交的 `skyisland_fx` 资源包，与本轮无关。
+
+**边界**：L3 未做。
+
+<!-- END JEFF QUEST REWARDS TRACKER 2026-09-27 -->
+
 <!-- BEGIN JEFF FRUIT REAUDIT TRACKER 2026-09-27 -->
 
 ## 2026-09-27 Jeff 任务、菜地收获与果实变身复审（COMPAT / WIRE+ / SAFE）

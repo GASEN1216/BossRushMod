@@ -433,6 +433,8 @@ echo(Utilities\MapSelectionEntryInjectionHelper.cs
 echo(Utilities\OfficialQuests\OfficialQuestBinding.cs
 echo(Utilities\OfficialQuests\OfficialQuestProjection.cs
 echo(Utilities\OfficialQuests\OfficialQuestComponents.cs
+echo(Utilities\OfficialQuests\OfficialQuestItemRules.cs
+echo(Utilities\OfficialQuests\OfficialQuestItems.cs
 echo(Utilities\OfficialQuests\OfficialQuestGiverLocator.cs
 echo(Utilities\OfficialQuests\OfficialQuestRuntimeModule.cs
 echo(Config\Config.cs
@@ -1118,6 +1120,7 @@ echo(Campaign\CampaignContentCatalog.cs
 echo(Campaign\CampaignQuestTable.cs
 echo(Campaign\CampaignBaseObjectives.cs
 echo(Campaign\CampaignOfficialQuestClient.cs
+echo(Campaign\CampaignRewardTable.cs
 echo(Campaign\CampaignObjectiveTracker.cs
 echo(Campaign\CampaignObjectiveCollector.cs
 echo(Campaign\CampaignProgressService.cs

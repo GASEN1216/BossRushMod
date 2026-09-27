@@ -105,6 +105,8 @@ namespace Duckov.Quests
         public virtual bool Claimed { get { return false; } }
         public virtual bool AutoClaim { get { return false; } }
         public virtual string Description { get { return ""; } }
+        public virtual UnityEngine.Sprite Icon { get { return null; } }
+        public int RewardId { get { return id; } }
         public virtual void OnClaim() { }
         public virtual object GenerateSaveData() { return null; }
         public virtual void SetupSaveData(object data) { }
@@ -155,11 +157,17 @@ namespace Duckov.Quests
                 HarmonyLib.AccessTools.Field(typeof(Task), "master").SetValue(task, copy);
                 copy.Tasks.Add(task);
             }
-            foreach (OfficialQuestProjectionReward source in rewards)
+            // Mirrors Unity Instantiate: serialized fields of every reward row are copied onto the clone.
+            foreach (Reward source in rewards)
             {
-                var task = root.AddComponent<OfficialQuestProjectionReward>(); task.questId = source.questId; task.amount = source.amount;
-                HarmonyLib.AccessTools.Field(typeof(Reward), "master").SetValue(task, copy);
-                copy.rewards.Add(task);
+                Reward row;
+                var money = source as OfficialQuestProjectionReward;
+                var item = source as OfficialQuestProjectionItemReward;
+                if (money != null) { var r = root.AddComponent<OfficialQuestProjectionReward>(); r.questId = money.questId; r.amount = money.amount; row = r; }
+                else { var r = root.AddComponent<OfficialQuestProjectionItemReward>(); r.questId = item.questId; r.typeId = item.typeId; r.amount = item.amount; row = r; }
+                HarmonyLib.AccessTools.Field(typeof(Reward), "id").SetValue(row, source.RewardId);
+                HarmonyLib.AccessTools.Field(typeof(Reward), "master").SetValue(row, copy);
+                copy.rewards.Add(row);
             }
             return copy;
         }
@@ -201,11 +209,14 @@ namespace Saves { public static class SavesSystem { public static int CurrentSlo
 public class LevelManager { public static LevelManager Instance = new LevelManager(); public bool IsBaseLevel = true; }
 public static class SceneLoader { public static bool IsSceneLoading; }
 public class CharacterMainControl { public static CharacterMainControl Main = new CharacterMainControl(); public ItemStatsSystem.Item CharacterItem = new ItemStatsSystem.Item(); }
+namespace UnityEngine { public class Sprite { } }
 namespace ItemStatsSystem
 {
+    public struct ItemMetaData { public UnityEngine.Sprite icon; public string DisplayName; }
+    public static class ItemAssetsCollection { public static ItemMetaData GetMetaData(int id) { return new ItemMetaData { DisplayName = "item" + id }; } }
     public class Item
     {
-        public int TypeID; public bool Reforged, Affix;
+        public int TypeID, Count = 1; public bool Reforged, Affix;
         public List<Item> Items = new List<Item>();
         public List<Item> GetAllChildren(bool self, bool recursive) { return Items; }
     }
@@ -231,13 +242,64 @@ namespace BossRush
             return true;
         }
     }
+    // Official item side of the projection core as an adapter: a backpack of TypeID -> count.
+    // The allocation rules (OfficialQuestItemRules) and the transaction order in OfficialQuestProjection are production code.
+    internal sealed class OfficialQuestItemReservation : IDisposable
+    {
+        internal List<OfficialQuestItemStack> Plan; internal bool Committed, Disposed;
+        internal void Commit() { if (Committed || Disposed) return; Committed = true; foreach (var p in Plan) OfficialQuestItems.Backpack[p.TypeId] -= p.Count; }
+        public void Dispose() { Disposed = true; OfficialQuestItems.Disposed++; }
+    }
+    internal static class OfficialQuestItems
+    {
+        internal static Dictionary<int,int> Backpack = new Dictionary<int,int>();
+        internal static List<OfficialQuestItemStack> Given = new List<OfficialQuestItemStack>();
+        internal static bool FailCreate; internal static int Created, Discarded, Disposed;
+        internal static void Reset() { Backpack.Clear(); Given.Clear(); FailCreate = false; Created = Discarded = Disposed = 0; }
+        internal static int HeldInBackpack(int typeId) { int n; return Backpack.TryGetValue(typeId, out n) ? n : 0; }
+        internal static string DisplayName(int typeId) { return "item" + typeId; }
+        internal static bool TryReserve(OfficialQuestSubmission[] subs, out OfficialQuestItemReservation reservation, out string reason)
+        {
+            reservation = null; reason = null;
+            if (subs == null || subs.Length == 0) return true;
+            var plan = new List<OfficialQuestItemStack>(); OfficialQuestSubmission missing;
+            if (!OfficialQuestItemRules.TryPlan(subs, HeldInBackpack, plan, out missing)) { reason = "missing"; return false; }
+            reservation = new OfficialQuestItemReservation { Plan = plan }; return true;
+        }
+        internal static bool TryCreate(OfficialQuestItemStack[] rewards, List<ItemStatsSystem.Item> created, out string reason)
+        {
+            reason = null;
+            if (rewards == null) return true;
+            if (FailCreate) { reason = "reward missing"; return false; }
+            foreach (var r in rewards) { created.Add(new ItemStatsSystem.Item { TypeID = r.TypeId, Count = r.Count }); Created++; }
+            return true;
+        }
+        internal static void Give(List<ItemStatsSystem.Item> created)
+        {
+            foreach (var item in created) { Given.Add(new OfficialQuestItemStack(item.TypeID, item.Count)); int n; Backpack.TryGetValue(item.TypeID, out n); Backpack[item.TypeID] = n + item.Count; }
+            created.Clear();
+        }
+        internal static void Discard(List<ItemStatsSystem.Item> created) { Discarded += created.Count; created.Clear(); }
+    }
+    internal static partial class BossRushItemIds
+    {
+        public const int BossRushTicket = 500001, ZombieTideInvitation = 500045, PortableSafeZoneDevice = 500058, RelicEgg = 500059, AffixForgeStone = 500060;
+        public const int DragonSeed = 500062, EmberSeed = 500063, PhantomSpore = 500064, DragonFruit = 500065, EmberChili = 500066, PhantomMushroom = 500067;
+        public const int SkyIslandBrassScrap = 500076;
+    }
+    internal static class FactionFlagConfig { public const int RANDOM_FLAG_TYPE_ID = 500020; }
+    internal static class BloodhuntTransponderConfig { public const int TYPE_ID = 500036; }
+    internal static class ColdQuenchFluidConfig { public const int TYPE_ID = 500014; }
     internal static class CampaignProgressService
     {
+        internal static int GuideCash;
+        internal static bool TryDeliverGuide(string id, int cash) { if (!CampaignPersistence.TryAdvanceGuide(id, 3)) return false; GuideCash += cash; return true; }
         internal static Dictionary<string,CampaignChapterState> States = new Dictionary<string,CampaignChapterState>();
         internal static CampaignChapterState GetState(string id) { CampaignChapterState value; return States.TryGetValue(id,out value)?value:CampaignChapterState.Locked; }
         internal static string GetActiveChapterId() { return States.Where(p=>p.Value==CampaignChapterState.ContractActive || p.Value==CampaignChapterState.ReadyToDeliver).Select(p=>p.Key).FirstOrDefault(); }
         internal static bool TryAcceptContract(string id) { if(GetState(id)!=CampaignChapterState.Available || GetActiveChapterId()!=null)return false; States[id]=CampaignChapterState.ContractActive;return true; }
-        internal static bool TryDeliver(string id) { if(GetState(id)!=CampaignChapterState.ReadyToDeliver)return false; States[id]=CampaignChapterState.Completed; return true; }
+        internal static bool FailDeliver;
+        internal static bool TryDeliver(string id) { if(FailDeliver || GetState(id)!=CampaignChapterState.ReadyToDeliver)return false; States[id]=CampaignChapterState.Completed; return true; }
     }
     internal class CampaignRuntimeModule { internal bool IsBootstrapped = true, IsEnabled = true; }
     internal static class CampaignDialoguePlayer { internal static void PlayChapterDelivered(CampaignChapterDef def) { } }

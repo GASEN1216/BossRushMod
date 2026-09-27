@@ -32,6 +32,7 @@ def main():
         'Utilities/OfficialQuests/OfficialQuestProjection.cs',
         'Utilities/OfficialQuests/OfficialQuestBinding.cs',
         'Utilities/OfficialQuests/OfficialQuestComponents.cs',
+        'Utilities/OfficialQuests/OfficialQuestItemRules.cs', 'Campaign/CampaignRewardTable.cs',
         'Campaign/CampaignOfficialQuestClient.cs', 'Campaign/CampaignQuestTable.cs',
         'Campaign/CampaignGuideTable.cs', 'Campaign/CampaignGuideFacts.cs',
         'Campaign/CampaignContentCatalog.cs', 'Campaign/CampaignBaseObjectives.cs',

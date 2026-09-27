@@ -24,12 +24,14 @@ CORE = CORE_DIR + "OfficialQuestProjection.cs"
 COMPONENTS = CORE_DIR + "OfficialQuestComponents.cs"
 LOCATOR = CORE_DIR + "OfficialQuestGiverLocator.cs"
 MODULE = CORE_DIR + "OfficialQuestRuntimeModule.cs"
+ITEMS = CORE_DIR + "OfficialQuestItems.cs"
+ITEM_RULES = CORE_DIR + "OfficialQuestItemRules.cs"
 REGISTRATION = "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs"
 SKY_BRIDGE = "DebugAndTools/SkyIsland/SkyIslandOfficialQuestBridge.cs"
 SKY_GIVERS = "DebugAndTools/SkyIsland/SkyIslandOfficialQuestGivers.cs"
 SKY_PRELUDE = "DebugAndTools/SkyIsland/SkyIslandPreludeFlow.cs"
 COMPILE = "compile_official.bat"
-PATHS = (BINDING, CORE, COMPONENTS, LOCATOR, MODULE, REGISTRATION, SKY_BRIDGE, SKY_GIVERS, SKY_PRELUDE, COMPILE)
+PATHS = (BINDING, CORE, COMPONENTS, LOCATOR, MODULE, ITEMS, ITEM_RULES, REGISTRATION, SKY_BRIDGE, SKY_GIVERS, SKY_PRELUDE, COMPILE)
 
 HARMONY_TARGETS = (
     "HarmonyPatch(typeof(Quest), nameof(Quest.MeetsPrerequisit))",
@@ -159,9 +161,11 @@ def check(sources, tree):
         ("bool slotChanged = slot != state.LastSlot", "换槽没有先按新槽整清再重建"),
         ("if (slotChanged) { ClearProjection(entry, manager);", "换槽没有先按新槽整清再重建"),
         ("internal bool Blocked, CollisionReported;", "ID 冲突 / 注册失败必须按条目 fail-closed，不能整核心停摆"),
-        ("if (committed && !wasDelivered && binding.PayReward != null) binding.PayReward();", "奖金不是在「未交付 → 已交付」那一拍发的"),
-        ("bool wasDelivered = binding.IsDelivered();", "交付前没有采样「是否已交付」"),
+        ("if (binding.IsDelivered()) return binding.Deliver(out reason);", "已交付的重试必须只补事实，不能再收物品或发奖"),
         ("if (!binding.CanDeliver())", "交付必须先验客户端的门"),
+        ("if (reservation != null) reservation.Dispose();", "交付失败时提交物必须归还"),
+        ("OfficialQuestItems.Discard(rewards);", "交付失败时预先生成的奖励物必须销毁"),
+        ("AppendSubmissionTasks(binding);", "提交物品没有投影成官方目标，完成按钮会在没带够时可点"),
         ("if (!ReferenceEquals(entry.Binding.Client, client) || !Owns(entry)) continue;", "同步必须按客户端分组"),
         ("internal void UnregisterClient(IOfficialQuestClient client)", "客户端不能整体撤销"),
         ("if (binding.Client == null || binding.Accept == null || binding.Deliver == null ||", "不完整的定义没有被拒绝"),
@@ -183,12 +187,26 @@ def check(sources, tree):
     ordered(unregister_client, "flags.Add(Owns(entries[i]));", "Release(owned[i], flags[i]);",
             CORE + " 撤销客户端时必须先冻结每条所有权再清")
     delivery = core.split("internal static bool TryCommitDelivery(", 1)[1].split("private static void ApplyRequiredItem(", 1)[0]
-    ordered(delivery, "if (!binding.CanDeliver())", "bool committed = binding.Deliver(out reason);", CORE + " 交付必须先验门再提交")
+    # 先验门 → 跳过已交付 → 备好奖励 → 预留提交物 → 客户端提交 → 收走提交物 → 发奖励物 → 单独发奖回调
+    steps = ("if (!binding.CanDeliver())", "if (binding.IsDelivered()) return binding.Deliver(out reason);",
+             "OfficialQuestItems.TryCreate(binding.RewardItems, rewards, out reason)",
+             "OfficialQuestItems.TryReserve(binding.Submissions, out reservation, out reason)",
+             "if (!binding.Deliver(out reason)) return false;", "reservation.Commit();",
+             "OfficialQuestItems.Give(rewards);", "binding.PayReward();")
+    for first, second in zip(steps, steps[1:]):
+        ordered(delivery, first, second, CORE + " 交付事务顺序错误：" + first + " 必须在 " + second + " 之前")
+    submission_tasks = core.split("private static void AppendSubmissionTasks(", 1)[1].split("private static string DescribeSubmission(", 1)[0] if "private static void AppendSubmissionTasks(" in core else ""
+    require("binding.IsDelivered()" in submission_tasks, CORE + " 提交目标交付后必须恒为完成，否则官方 TryComplete 在物品被收走后回退")
+    items = sources[ITEMS]
+    require("ItemAssetsCollection.GetPrefab(typeId)" in items and "InstantiateSync(typeId)" in items, ITEMS + " 生成奖励前必须先确认 prefab（官方缺资源时返回空壳）")
+    ordered(items, "ItemAssetsCollection.GetPrefab(typeId)", "InstantiateSync(typeId)", ITEMS + " 必须先查 prefab 再实例化")
+    require("SkyIslandInventoryTransaction.TryReserve(" in items, ITEMS + " 提交物必须走既有背包事务，不另写第二套扣物品")
 
     # ---- 7) 组件：官方 Task / Reward 基类、只带整数回查、读档无声采样 ----
     for token, why in (
         ("class OfficialQuestProjectionTask : Duckov.Quests.Task", "没有使用官方 Task 基类"),
         ("class OfficialQuestProjectionReward : Duckov.Quests.Reward", "奖励行没有用官方 Reward 基类"),
+        ("class OfficialQuestProjectionItemReward : Duckov.Quests.Reward", "物品奖励行没有用官方 Reward 基类"),
         ("public int questId;", "Task 必须只带整数回查表（委托不随 Instantiate 克隆）"),
         ("public int taskId;", "Task 必须只带整数回查表（委托不随 Instantiate 克隆）"),
         ("if (!initialized)", "读档时目标已完成会被误报成刚完成，导致每次重建重复通知"),
@@ -200,6 +218,8 @@ def check(sources, tree):
     ):
         require(token in components, COMPONENTS + "：" + why + "（缺 " + token + "）")
     require("Prefab.GetComponent<OfficialQuestProjectionTask>()" in core, CORE + " 所有权必须验核心专用 Task 组件")
+    require(components.count("OfficialQuestProjection.IsRewardPaid(questId)") >= 2,
+            COMPONENTS + " 金钱与物品两种奖励行的「已领取」都必须读 Mod 交付事实")
 
     # ---- 8) 天空岛客户端：只做适配，不再持有第二份投影 ----
     for token, why in (
@@ -213,7 +233,7 @@ def check(sources, tree):
         require(banned not in sky_bridge, SKY_BRIDGE + " 出现了 " + banned + "：注册 / 投影 / 过滤只能在核心")
 
     # ---- 9) 编译清单 ----
-    for rel in (BINDING, CORE, COMPONENTS, LOCATOR, MODULE):
+    for rel in (BINDING, CORE, COMPONENTS, LOCATOR, MODULE, ITEMS, ITEM_RULES):
         require("echo(" + rel.replace("/", "\\") in sources[COMPILE], COMPILE + " 未登记 " + rel)
     return errors
 
@@ -232,7 +252,9 @@ def main():
         (SKY_GIVERS, "OfficialQuestGiverLocator.RefreshMarker(giver)", "RefreshMarkerStub(giver)"),
         (SKY_BRIDGE, "owner.OfficialQuestRuntime.Projection", "new OfficialQuestProjection(owner)"),
         (SKY_BRIDGE, "projection.UnregisterClient(this)", "projection.Unregister(0)"),
-        (CORE, "if (committed && !wasDelivered && binding.PayReward != null) binding.PayReward();", ""),
+        (CORE, "if (binding.IsDelivered()) return binding.Deliver(out reason);", ""),
+        (CORE, "if (reservation != null) reservation.Dispose();", ""),
+        (CORE, "OfficialQuestItems.Discard(rewards);", ""),
         (CORE, "rewardHost.SetActive(false);", "rewardHost.SetActive(true);"),
         (CORE, "manager.ActivateQuest(entry.Binding.QuestId, (QuestGiverID)entry.Binding.GiverId)", ""),
         (CORE, "collection.Add(quest);", "root.SetActive(false);\n                collection.Add(quest);"),

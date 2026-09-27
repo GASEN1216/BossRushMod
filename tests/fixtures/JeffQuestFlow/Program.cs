@@ -29,6 +29,7 @@ internal static class Program
         CharacterMainControl.Main = new CharacterMainControl();
         LevelManager.Instance.IsBaseLevel=true; SceneLoader.IsSceneLoading=false;
         ModeGRuntimeGates.IsModeGRunInProgress=false; PetNestService.PetCount=0; PetNestCompanionRuntime.HasCompanion=false; DailyReportService.IsSignedToday=false; SkyIslandPreludeFlow.RouteOpen=false;
+        OfficialQuestItems.Reset(); CampaignProgressService.GuideCash=0; CampaignProgressService.FailDeliver=false;
         SavesSystem.CurrentSlot++; Time.unscaledTime=0;
         core=new OfficialQuestProjection(ModBehaviour.Instance); manager=new QuestManager();
         client=new CampaignOfficialQuestClient(new CampaignRuntimeModule()); client.RegisterAll(core); Tick();
@@ -50,7 +51,8 @@ internal static class Program
             case CampaignGuideTable.Garden: CampaignBaseObjectives.RegisterProvider(CampaignObjectiveKind.GardenBuilt,()=>true); break;
             case CampaignGuideTable.Trophy: CampaignBaseObjectives.RegisterProvider(CampaignObjectiveKind.TrophyDisplayed,()=>true); break;
             case CampaignGuideTable.DailyReport: DailyReportService.IsSignedToday=true; break;
-            case CampaignGuideTable.SkyIslandGear: CharacterMainControl.Main.CharacterItem.Items.Add(new ItemStatsSystem.Item {TypeID=500086}); break;
+            case CampaignGuideTable.SkyIslandGear: CharacterMainControl.Main.CharacterItem.Items.Add(new ItemStatsSystem.Item {TypeID=500086});
+                OfficialQuestItems.Backpack[BossRushItemIds.SkyIslandBrassScrap]=5; break;
             case CampaignGuideTable.AffixForge: CharacterMainControl.Main.CharacterItem.Items.Add(new ItemStatsSystem.Item {Affix=true}); break;
             case CampaignGuideTable.Reforge: CharacterMainControl.Main.CharacterItem.Items.Add(new ItemStatsSystem.Item {Reforged=true}); break;
             default: throw new Exception("No observer fixture for "+id);
@@ -69,7 +71,8 @@ internal static class Program
         {
             Quest prefab=GameplayDataSettings.QuestCollection.Get(def.QuestId);
             Check(prefab!=null && (int)prefab.QuestGiverID==1 && prefab.gameObject.activeSelf,"guide template active under Jeff "+def.Id);
-            Check(prefab.DisplayNameRaw==def.NameKey && prefab.Tasks.Count==1,"guide identity and target "+def.Id);
+            var guideGrant=CampaignRewardTable.ForGuide(def.Id);
+            Check(prefab.DisplayNameRaw==def.NameKey && prefab.Tasks.Count==1+(guideGrant.Submissions==null?0:guideGrant.Submissions.Length),"guide identity and target "+def.Id);
             Check(prefab.MeetsPrerequisit(),"guide offered in order "+def.Id);
             CampaignGuideFacts.ObserveAccepted(ModBehaviour.Instance);
             Check(!CampaignGuideTable.IsExperienced(def.Id),"not observed before acceptance "+def.Id);
@@ -130,6 +133,99 @@ internal static class Program
         SkyIslandPreludeFlow.RouteOpen=true; Tick();
         Check(GameplayDataSettings.QuestCollection.Get(CampaignGuideTable.Find(CampaignGuideTable.SkyIslandGear).QuestId).MeetsPrerequisit(),"sky island gear guide appears once the route is open");
     }
+    private static int Expected(OfficialQuestItemStack[] items, int typeId) { return items == null ? 0 : items.Where(i=>i.TypeId==typeId).Sum(i=>i.Count); }
+    private static int Given(int typeId) { return OfficialQuestItems.Given.Where(i=>i.TypeId==typeId).Sum(i=>i.Count); }
+    private static void RewardsAndSubmissions()
+    {
+        // Pure allocation: submissions sharing a type are charged cumulatively, any-of picks in order, shortfall names the submission.
+        var shared=new[]{ new OfficialQuestSubmission{TypeIds=new[]{1,2},Count=3}, new OfficialQuestSubmission{TypeIds=new[]{2},Count=2} };
+        var plan=new System.Collections.Generic.List<OfficialQuestItemStack>(); OfficialQuestSubmission missing;
+        Func<int,int> held=t=>t==1?1:(t==2?4:0);
+        Check(OfficialQuestItemRules.TryPlan(shared,held,plan,out missing) && plan.Count==2 && plan[0].TypeId==1 && plan[0].Count==1 && plan[1].TypeId==2 && plan[1].Count==4,"shared type charged cumulatively");
+        Func<int,int> tight=t=>t==1?1:(t==2?3:0);
+        Check(!OfficialQuestItemRules.TryPlan(shared,tight,plan,out missing) && missing==shared[1] && plan.Count==0,"cumulative shortfall rejected and names the second submission");
+        Check(OfficialQuestItemRules.Held(new OfficialQuestSubmission{TypeIds=new[]{2,2},Count=1},held)==4,"duplicate type ids are counted once");
+        // Every Jeff quest shows its production reward rows (money + items) and they flip to claimed only after delivery.
+        Reset(); CampaignFacilityUnlocks.Tokens.Add(CampaignFacilityUnlocks.BuildTokenForChapter(1));
+        CampaignFacilityUnlocks.Tokens.Add(CampaignFacilityUnlocks.BuildTokenForChapter(2)); SkyIslandPreludeFlow.RouteOpen=true;
+        int totalGuideCash=0;
+        foreach(CampaignGuideTable.Definition def in CampaignGuideTable.Definitions)
+        {
+            var grant=CampaignRewardTable.ForGuide(def.Id);
+            Check(grant.Cash>0 || (grant.Items!=null && grant.Items.Length>0),"guide pays something "+def.Id);
+            totalGuideCash+=grant.Cash;
+            Quest prefab=GameplayDataSettings.QuestCollection.Get(def.QuestId);
+            int rows=(grant.Cash>0?1:0)+(grant.Items==null?0:grant.Items.Length);
+            Check(prefab.Rewards.Count==rows,"guide reward rows match table "+def.Id);
+            Check(prefab.Rewards.OfType<OfficialQuestProjectionReward>().All(r=>r.amount==grant.Cash),"money row shows guide cash "+def.Id);
+            Check(prefab.Rewards.OfType<OfficialQuestProjectionItemReward>().Select(r=>r.typeId+":"+r.amount)
+                .SequenceEqual((grant.Items??new OfficialQuestItemStack[0]).Select(i=>i.TypeId+":"+i.Count)),"item rows show table items "+def.Id);
+            Check(prefab.Rewards.Select(r=>r.RewardId).Distinct().Count()==rows,"reward row ids are unique "+def.Id);
+        }
+        Check(totalGuideCash==74000,"guide cash total stays at the documented 74000");
+        foreach(CampaignChapterDef chapter in CampaignContentCatalog.Chapters)
+        {
+            Quest prefab=GameplayDataSettings.QuestCollection.Get(CampaignQuestTable.QuestIdForOrder(chapter.Order));
+            var items=CampaignRewardTable.ChapterItems(chapter.Order);
+            Check(items!=null && items.Length>0,"chapter pays items besides cash "+chapter.ChapterId);
+            Check(prefab.Rewards.OfType<OfficialQuestProjectionReward>().Single().amount==chapter.RewardCash
+                && prefab.Rewards.OfType<OfficialQuestProjectionItemReward>().Count()==items.Length,"chapter reward rows "+chapter.ChapterId);
+            var subs=CampaignRewardTable.ChapterSubmissions(chapter.Order);
+            Check(prefab.Tasks.Count==chapter.Objectives.Count+(subs==null?0:subs.Length),"chapter submission targets projected "+chapter.ChapterId);
+        }
+
+        // Guide with a submission: the gear alone cannot deliver; 5 brass scrap are taken exactly once.
+        Reset(); SkyIslandPreludeFlow.RouteOpen=true;
+        foreach(CampaignGuideTable.Definition def in CampaignGuideTable.Definitions.TakeWhile(d=>d.Id!=CampaignGuideTable.SkyIslandGear))
+        { manager.ActivateQuest(def.QuestId,QuestGiverID.Jeff); Tick(); Observe(def.Id); Check(Active(def.QuestId).TryComplete(),"prepare "+def.Id); }
+        OfficialQuestItems.Given.Clear(); int cashBefore=CampaignProgressService.GuideCash;
+        var gearDef=CampaignGuideTable.Find(CampaignGuideTable.SkyIslandGear);
+        manager.ActivateQuest(gearDef.QuestId,QuestGiverID.Jeff); Tick();
+        Quest gear=Active(gearDef.QuestId);
+        CharacterMainControl.Main.CharacterItem.Items.Add(new ItemStatsSystem.Item {TypeID=500086});
+        CampaignGuideFacts.ObserveAccepted(ModBehaviour.Instance); Tick();
+        OfficialQuestItems.Backpack[BossRushItemIds.SkyIslandBrassScrap]=4;
+        Check(CampaignGuideTable.IsExperienced(gearDef.Id) && !gear.AreTasksFinished(),"gear alone leaves the brass target open");
+        Check(gear.Tasks.Last().Description.Contains("4/5"),"submission target shows carried count");
+        Check(!gear.TryComplete() && OfficialQuestItems.HeldInBackpack(BossRushItemIds.SkyIslandBrassScrap)==4,"short submission cannot deliver or take items");
+        OfficialQuestItems.Backpack[BossRushItemIds.SkyIslandBrassScrap]=7; Tick();
+        Check(gear.AreTasksFinished(),"carrying enough brass finishes the target");
+        Check(gear.TryComplete() && manager.HistoryQuests.Contains(gear),"guide with submission delivers");
+        Check(OfficialQuestItems.HeldInBackpack(BossRushItemIds.SkyIslandBrassScrap)==2,"exactly five brass scrap taken");
+        Check(CampaignProgressService.GuideCash-cashBefore==10000 && OfficialQuestItems.Given.Count==0,"gear guide pays its cash once and no items");
+        Check(gear.Tasks.All(t=>t.IsFinished()) && gear.Tasks.Last().Description.Contains("(handed in)"),"submission target stays finished after items are gone");
+        Check(!gear.TryComplete() && OfficialQuestItems.HeldInBackpack(BossRushItemIds.SkyIslandBrassScrap)==2,"no second take");
+
+        // Chapter submission with alternatives, rollback on client failure and on missing reward prefab.
+        Reset();
+        CampaignChapterDef two=CampaignContentCatalog.Chapters.Single(c=>c.Order==2);
+        int twoId=CampaignQuestTable.QuestIdForOrder(2);
+        CampaignProgressService.States[two.ChapterId]=CampaignChapterState.Available;
+        manager.ActivateQuest(twoId,QuestGiverID.Jeff); Tick();
+        Quest q2=Active(twoId);
+        CampaignProgressService.States[two.ChapterId]=CampaignChapterState.ReadyToDeliver;
+        foreach(var objective in two.Objectives.Where(o=>o.IsBaseScope)) CampaignBaseObjectives.RegisterProvider(objective.Kind,()=>true);
+        OfficialQuestItems.Backpack[BossRushItemIds.EmberChili]=1; Tick();
+        Check(!q2.AreTasksFinished() && !q2.TryComplete(),"one harvest is not enough");
+        OfficialQuestItems.Backpack[BossRushItemIds.PhantomMushroom]=1; Tick();
+        Check(q2.AreTasksFinished(),"two different harvests satisfy the any-of submission");
+        OfficialQuestItems.FailCreate=true;
+        Check(!q2.TryComplete() && CampaignProgressService.GetState(two.ChapterId)==CampaignChapterState.ReadyToDeliver
+            && OfficialQuestItems.HeldInBackpack(BossRushItemIds.EmberChili)==1 && OfficialQuestItems.Given.Count==0,"missing reward prefab aborts before taking anything");
+        OfficialQuestItems.FailCreate=false;
+        CampaignProgressService.FailDeliver=true; int discarded=OfficialQuestItems.Discarded;
+        Check(!q2.TryComplete() && OfficialQuestItems.HeldInBackpack(BossRushItemIds.PhantomMushroom)==1 && OfficialQuestItems.Given.Count==0
+            && OfficialQuestItems.Discarded>discarded,"failed client delivery returns harvests and discards prepared rewards");
+        CampaignProgressService.FailDeliver=false;
+        Check(q2.TryComplete() && manager.HistoryQuests.Contains(q2),"chapter 2 delivers");
+        Check(OfficialQuestItems.HeldInBackpack(BossRushItemIds.EmberChili)==0 && OfficialQuestItems.HeldInBackpack(BossRushItemIds.PhantomMushroom)==0,"both harvests taken");
+        var items2=CampaignRewardTable.ChapterItems(2);
+        Check(items2.All(i=>Given(i.TypeId)==Expected(items2,i.TypeId)),"chapter 2 seeds given exactly once");
+        Check(q2.Rewards.All(r=>r.Claimed),"reward rows claimed after delivery");
+        int givenCount=OfficialQuestItems.Given.Count;
+        manager.Dispose(); manager=new QuestManager(); Tick();
+        Check(OfficialQuestItems.Given.Count==givenCount && manager.HistoryQuests.Any(q=>q.ID==twoId),"rebuilding the delivered projection gives nothing again");
+    }
     private static void Chapters()
     {
         Reset();
@@ -138,7 +234,8 @@ internal static class Program
             int id=CampaignQuestTable.QuestIdForOrder(def.Order);
             CampaignProgressService.States[def.ChapterId]=CampaignChapterState.Available;
             var prefab=GameplayDataSettings.QuestCollection.Get(id);
-            Check(prefab.MeetsPrerequisit() && prefab.Tasks.Count==def.Objectives.Count,"chapter offered with all objectives "+id);
+            var chapterSubs=CampaignRewardTable.ChapterSubmissions(def.Order);
+            Check(prefab.MeetsPrerequisit() && prefab.Tasks.Count==def.Objectives.Count+(chapterSubs==null?0:chapterSubs.Length),"chapter offered with all objectives "+id);
             manager.ActivateQuest(id,QuestGiverID.Jeff); Tick();
             var quest=Active(id); Check(quest!=null && !quest.TryComplete(),"chapter accepted and cannot prematurely deliver "+id);
             CampaignProgressService.States[def.ChapterId]=CampaignChapterState.ReadyToDeliver; Tick();
@@ -149,6 +246,7 @@ internal static class Program
                     Check(!target.Description.Contains("(done)"),"unfinished base objective never labeled done "+id);
             }
             foreach(var objective in def.Objectives.Where(o=>o.IsBaseScope)) CampaignBaseObjectives.RegisterProvider(objective.Kind,()=>true);
+            if(CampaignRewardTable.ChapterSubmissions(def.Order)!=null) OfficialQuestItems.Backpack[BossRushItemIds.DragonFruit]=2;
             Tick(); Check(quest.AreTasksFinished(),"all chapter objectives complete "+id);
             CampaignPersistence.HasWriteBarrier=true;
             Check(!quest.TryComplete() && Active(id)==quest,"failed commit keeps chapter active "+id);
@@ -156,7 +254,7 @@ internal static class Program
             Check(quest.TryComplete() && manager.HistoryQuests.Contains(quest),"chapter delivers after write recovery "+id);
             Check(quest.Rewards.All(r=>r.Claimed),"reward projection reflects delivered fact "+id);
             CampaignBaseObjectives.ResetStaticCaches(); Tick();
-            Check(quest.Tasks.All(t=>t.IsFinished()) && quest.Tasks.All(t=>t.Description.Contains("(done)")),"completed chapter stays complete after base objects disappear "+id);
+            Check(quest.Tasks.All(t=>t.IsFinished()) && quest.Tasks.All(t=>t.Description.Contains("(done)") || t.Description.Contains("(handed in)")),"completed chapter stays complete after base objects disappear "+id);
         }
     }
     private sealed class OtherClient : IOfficialQuestClient
@@ -206,5 +304,5 @@ internal static class Program
         core.Dispose(); Check(GameplayDataSettings.QuestCollection.Count==1 && foreign!=null,"cleanup retains foreign template");
         Check(manager.ActiveQuests.Count==0 && manager.HistoryQuests.Count==0,"cleanup removes all owned projections");
     }
-    public static void Main(string[] args) { OfficialAssemblyContract.Run(args[0]); AllGuides(); GatedGuidesDoNotBlockChain(); AcceptFailureIsVisibleAndRetryable(); Chapters(); SharedOwnership(); Console.WriteLine("JeffQuestFlow: PASS "+checks+" assertions"); }
+    public static void Main(string[] args) { OfficialAssemblyContract.Run(args[0]); AllGuides(); GatedGuidesDoNotBlockChain(); AcceptFailureIsVisibleAndRetryable(); Chapters(); RewardsAndSubmissions(); SharedOwnership(); Console.WriteLine("JeffQuestFlow: PASS "+checks+" assertions"); }
 }

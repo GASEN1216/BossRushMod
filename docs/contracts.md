@@ -706,6 +706,16 @@ Breaking/Operational:
   `ItemAssetsCollection.AddDynamicEntry` 在 `Instance == null` 时返回 false 而不抛异常，调用方要检查返回值。
   官方作物不浇水不累计生长（`Crop.Tick`）。
 
+**任务奖励物品与提交物品（2026-09-27 核对）**
+
+- 官方 `RewardItem` 把 claimed 写在 Quest 实例上、领取时 `PlayerStorage.Push`；`SubmitItems` 的已交数量也存在官方 Quest 快照里。
+  我们每次加载都从 Mod 事实重建投影并剥离官方快照，所以两者都不能直接用：物品奖励行用
+  `OfficialQuestProjectionItemReward`（照 RewardItem 的图标与「名字 xN」显示，「已领取」读交付事实），
+  提交物投影成 `OfficialQuestProjectionTask`（身上够了才完成，交付后恒完成）。
+- 交付事务只在共享核心 `OfficialQuestProjection.TryCommitDelivery`：先生成奖励物（先问 `GetPrefab`，缺件整体中止），
+  再用 `SkyIslandInventoryTransaction` 整份预留背包里的提交物，客户端 `Deliver` 成功才收走提交物、发出奖励物，失败原样归还并销毁预生成物。
+  已交付的重试只补事实，不收不发。提交物只认主角背包（官方 `GetItemCount` 还数仓库与宠物背包，这里有意更严）。
+
 **生成与激活**
 
 - `CreateCharacterAsync` 传 `relatedScene != -1` 且 preset 的 `setActiveByPlayerDistance` 为 true 时，角色进官方
@@ -775,7 +785,7 @@ Breaking/Operational:
   | `590013` 归航钟 | 钟守 `5903`（缺席时 `Search_H` 钟庭装置） | `HomecomingQuestAccepted` / `HomecomingQuestDelivered` |
 
   区间 5900–5949 归 BossRush 的自定义给予者（官方 UI 不显示给予者名，`Quest.Compare` 只做整数减法，`GetAllQuestsByQuestGiverID` 只做相等比较）。
-  BossRush 保留任务 ID 段：`590001`–`590099` 天空岛入口、`590011`–`590013` 岛上主线、`590101`–`590106` 鸭科夫征程六章、`590201`–`590214` 新内容一次性引导；章节下一可用 `590107`。征程六章的奖金由 `CampaignProgressService.TryDeliver` 的补偿式事务发放（官方奖励行只展示 `def.RewardCash`，`PayReward = null`），线索与设施 token 同一事务；引导任务以 `acceptedGuides` / `experiencedGuides` / `completedGuides` 为权威，不发现金，2026-09-25 owner 明确授权挂 Jeff，接取和交付均限基地；官方 UI 没有「放弃任务」入口，`TryAbandonContract` 只留 Dev 演练。
+  BossRush 保留任务 ID 段：`590001`–`590099` 天空岛入口、`590011`–`590013` 岛上主线、`590101`–`590106` 鸭科夫征程六章、`590201`–`590214` 新内容一次性引导；章节下一可用 `590107`。征程六章的奖金由 `CampaignProgressService.TryDeliver` 的补偿式事务发放（官方奖励行只展示 `def.RewardCash`，`PayReward = null`），线索与设施 token 同一事务；引导任务以 `acceptedGuides` / `experiencedGuides` / `completedGuides` 为权威；2026-09-27 起交付发奖金（`CampaignProgressService.TryDeliverGuide`，与章节同一套先发钱、写事实、失败退款、会话闩）与奖励物品，数值只在 `Campaign/CampaignRewardTable.cs`；2026-09-25 owner 明确授权挂 Jeff，接取和交付均限基地；官方 UI 没有「放弃任务」入口，`TryAbandonContract` 只留 Dev 演练。
   运行时向官方 `QuestCollection` 注册 prefab，接取、任务日志、目标完成通知与交付按钮均走官方 `QuestManager` / `Quest` / `Task` / `QuestGiverView`；岛上三条只在岛上接、岛上交，返航后仍留在官方任务日志里。
   `BossRush_SkyIsland_Story_v1` 仍是唯一权威；官方 `GenerateSaveData` / `SetupSaveData` 快照会剥离这些 ID 的 active、history、completed、ever-inspected 记录（`Quest.SaveData.questGiverID` 随整条记录一起剥掉，卸载后不留野枚举值），
   加载后从 Mod 事实重建官方投影，保证卸载后 `"Quest"/"Data"` 没有孤儿 ID；`completedQuests` 的残留还会把 `IsQuestAvaliable` 永久钉死，所以四类一个都不能少。

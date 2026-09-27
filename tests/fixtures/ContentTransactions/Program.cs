@@ -457,9 +457,44 @@ class Program
         Check(quest - 1 == CampaignGuideTable.LastQuestId, "guide id ledger reaches final task");
     }
 
+    static void GuideCash()
+    {
+        const string id = CampaignGuideTable.ModeH;
+        Reset();
+        Check(!CampaignProgressService.TryDeliverGuide(id, 3000) && EconomyManager.Adds == 0, "guide cash needs accepted and experienced facts");
+        CampaignPersistence.TryAdvanceGuide(id, 1); CampaignPersistence.TryAdvanceGuide(id, 2);
+        Check(CampaignProgressService.TryDeliverGuide(id, 3000) && CampaignGuideTable.IsCompleted(id)
+            && EconomyManager.Money == 103000 && EconomyManager.Adds == 1, "guide delivery pays its cash and completes");
+        Check(!CampaignProgressService.TryDeliverGuide(id, 3000) && EconomyManager.Adds == 1, "delivered guide never pays twice");
+
+        Reset(); CampaignPersistence.TryAdvanceGuide(id, 1); CampaignPersistence.TryAdvanceGuide(id, 2);
+        EconomyManager.RejectAdd = true;
+        Check(!CampaignProgressService.TryDeliverGuide(id, 3000) && !CampaignGuideTable.IsCompleted(id), "failed payment keeps the guide open");
+        EconomyManager.RejectAdd = false;
+
+        Reset(); CampaignPersistence.TryAdvanceGuide(id, 1); CampaignPersistence.TryAdvanceGuide(id, 2);
+        SetPrivate(typeof(CampaignPersistence), "_storeFaulted", true);
+        Check(!CampaignProgressService.TryDeliverGuide(id, 3000) && EconomyManager.Money == 100000,
+            "failed delivery write refunds the guide cash");
+        SetPrivate(typeof(CampaignPersistence), "_storeFaulted", false);
+        Check(CampaignProgressService.TryDeliverGuide(id, 3000) && EconomyManager.Money == 103000 && EconomyManager.Adds == 2,
+            "retry after refund pays normally once");
+
+        Reset(); CampaignPersistence.TryAdvanceGuide(id, 1); CampaignPersistence.TryAdvanceGuide(id, 2);
+        SetPrivate(typeof(CampaignPersistence), "_storeFaulted", true); EconomyManager.RejectPay = true;
+        Check(!CampaignProgressService.TryDeliverGuide(id, 3000) && EconomyManager.Money == 103000,
+            "write and refund both failing leave the cash with the player");
+        SetPrivate(typeof(CampaignPersistence), "_storeFaulted", false); EconomyManager.RejectPay = false;
+        Check(CampaignProgressService.TryDeliverGuide(id, 3000) && EconomyManager.Money == 103000 && EconomyManager.Adds == 1,
+            "latched retry only writes the fact and never pays twice");
+
+        Reset(); CampaignPersistence.TryAdvanceGuide(id, 1); CampaignPersistence.TryAdvanceGuide(id, 2);
+        Check(CampaignProgressService.TryDeliverGuide(id, 0) && EconomyManager.Adds == 0 && CampaignGuideTable.IsCompleted(id),
+            "zero-cash guide completes without touching money");
+    }
     static void Main()
     {
-        CampaignGuideLifecycle(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
+        CampaignGuideLifecycle(); GuideCash(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
         ManualChromaAndDurations();
         PityGuarantees();
         PetNestLifecycleRepairs();
