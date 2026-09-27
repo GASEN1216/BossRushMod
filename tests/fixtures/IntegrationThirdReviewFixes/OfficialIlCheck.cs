@@ -36,6 +36,10 @@ namespace BossRush
         public bool IsShieldActive() { return false; }
         public float AbsorbDamage(float damage) { return 0; }
     }
+    public static class ZombieModeBossVisuals
+    {
+        public static void RestoreOfficialPreset(ZombieModeEnemyRuntimeMarker marker) { }
+    }
 }
 internal static class OfficialIlCheck
 {

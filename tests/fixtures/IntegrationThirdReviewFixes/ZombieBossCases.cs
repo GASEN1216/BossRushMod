@@ -14,6 +14,12 @@ namespace BossRush
         public static void SetCountdown(GameObject go, float value) { }
     }
     public enum ZombieModeBossKind { Titan, Hunter, Splitter, Shielder, Corruptor }
+    // 替身：只记录「致死前换回官方 preset」被调用了几次（生产实现在 ZombieModeBossVisuals.cs）。
+    public static class ZombieModeBossVisuals
+    {
+        public static int Restores;
+        public static void RestoreOfficialPreset(ZombieModeEnemyRuntimeMarker marker) { Restores++; }
+    }
     public enum ZombieModeEnemyKind { Normal, Elite }
     public enum ZombieModeEliteAffix { Shielded, Stalwart, Adaptive }
     public static class L10n { public static string T(string text) { return text; } }
@@ -152,13 +158,16 @@ internal static class ZombieBossCases
         {
             Time.unscaledTime = 0;
             var target = Target(20, true, BossRush.ZombieModeBossKind.Hunter, 100);
+            BossRush.ZombieModeBossVisuals.Restores = 0;
             Near(Hit(target, 80), 0, "shield consumes final damage before lethal branch");
             Check(!target.IsDead, "absorbed lethal hit does not emit death");
+            Check(BossRush.ZombieModeBossVisuals.Restores == 0, "absorbed hit keeps the boss display preset");
             Near(target.CurrentHealth, 20, "full shield prevents health loss");
             Near(Hit(target, 30), 10, "remaining shield only consumed once");
             Near(target.CurrentHealth, 10, "partial shield passes remainder");
             int deaths = 0; Health.OnDead = (h, d) => deaths++;
             Hit(target, 50); Check(target.IsDead && deaths == 1, "exhausted shield permits exactly one death");
+            Check(BossRush.ZombieModeBossVisuals.Restores == 1, "lethal boss hit restores official preset before OnDead");
 
             target = Target(20, true, BossRush.ZombieModeBossKind.Hunter, 40);
             Hit(target, 200); Check(target.IsDead, "overkill is absorbed before HP+1 cap; insufficient shield cannot make target immortal");
@@ -173,7 +182,9 @@ internal static class ZombieBossCases
                 new BossRush.ZombieModeBossInstance { Character = new CharacterMainControl(), Kind = BossRush.ZombieModeBossKind.Shielder });
             Near(Hit(target, 50), 25.5f, "shield then aura reduction");
             target = Target(20, false, BossRush.ZombieModeBossKind.Hunter, 50);
+            BossRush.ZombieModeBossVisuals.Restores = 0;
             Near(Hit(target, 30), 0, "group shield also protects ordinary ally from lethal hit");
+            Check(BossRush.ZombieModeBossVisuals.Restores == 0, "ordinary zombies never touch the boss preset");
             target = Target(20, true, BossRush.ZombieModeBossKind.Hunter, 100);
             Time.unscaledTime = 6; Hit(target, 30); Check(target.IsDead, "expired shield cannot protect");
             Time.unscaledTime = 0;

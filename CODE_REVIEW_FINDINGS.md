@@ -5317,3 +5317,18 @@ Mode G 本轮收尾补证（2026-09-18）：最终专项守卫37 PASS、生产�
 | CR-2026-09-26-113 | P2 / COMPAT | 五类 Boss 没有独立轮廓；普通变异外形路径排除 IsBoss，原来只有体型与飘字，不能满足明确区分需求。 | Fixed：独立 `ZombieModeBossVisuals` 五类轮廓/色系/技能脉冲/官方姓名，跟随 modelRoot，暂停与销毁清理。L1+L2 接线与反向守卫；审美、遮挡、帧耗待 owner 目检。 |
 
 图鉴复核：五个 `zombie_boss_*` key、主角亲手击杀、杂兵过滤、实例去重、回基地 flush 与持久化链未发现新增确认缺陷；`ContentThirdReviewFixes`、`SaveFailureRecovery` 通过。未修改图鉴生产代码，不能将隔离回归写成实机重启后已保存。独立 Windows 正式构建通过，未部署实际游戏目录；并行改动应整合后另作正式交付。
+
+## 2026-09-27 丧尸模式 Boss 表现、官方计数与补丁隔离复审
+
+分类：COMPAT / WIRE+；L1+L2 + Windows 正式编译，L3 待 owner。详见 [复审报告](docs/reports/reviews/2026-09-27_丧尸模式Boss表现与链路复审.md)。同日 001–004 已被其他会话占用，本专题从 101 起。
+
+| ID | 等级 / 分类 | 已确认根因与影响 | 修复 / 验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-27-101 | P2 / COMPAT | `ZombieModeBossVisuals` 的线宽与余烬按身高倍数给，但 LineRenderer 线宽不随 Transform 缩放、粒子 Local 缩放不继承父级：能量环 1.2 cm、脉冲 2.6 cm、余烬 2.5 cm，低于 0.06 m 下限（VB-08），实机基本不可见；发光缝藏在甲内。 | Fixed：世界米数线宽 / 余烬、暗甲包发光刃尖、五种脚下纹章、共享 PlayBurst 起手与死亡爆发、追猎冲刺拖尾。守卫钉线宽下限、Local 缩放与五个纹章分支。观感待 L3。 |
+| CR-2026-09-27-102 | P2 / COMPAT | 09-26 显示副本改 `nameKey` 且销毁才还原；官方 `CharacterMainControl.OnDead` 按它写 `SavesCounter` 击杀计数，官方存档多出 `Count/Kills/BossRush_ZombieMode_Boss_*`，击杀 `Cname_Zombie` 的官方任务漏算 Boss。 | Fixed：`ZombieModeDamageRuntime.ReduceFinalDamage` 判定致死后、扣血前换回原 preset。执行回归新增 3 条断言（吸收不换 / 致死恰好一次 / 普通丧尸不碰）。已写入的旧键不清理（§10）。 |
+| CR-2026-09-27-103 | P3 / COMPAT | 丧尸 Boss 血条无官方 Boss 图标（preset iconType=none），与其他 Mod Boss 不一致。 | Fixed：显示副本设 `CharacterIconTypes.boss`。守卫覆盖。 |
+| CR-2026-09-27-104 | P2 / WIRE+ | 丧尸减伤 Transpiler 挂在共享 `BossRushHealthHurtContextPatch`；IL 失配抛出时逐类安装器跳过整类，所有模式同时失去 Mode G 屏障、逆鳞无敌与 Boss 致死钳制。 | Fixed：独立 `ZombieModeHealthHurtDamagePatch`；`ModeGSpawnTransactionGuard` 登记精确身份，展示守卫禁止回挂。官方 DLL 两种注入顺序回归通过。 |
+| CR-2026-09-27-105 | P3 / COMPAT | `Projectile` 类 run-only 记录局内不清理，毒径 / 远程弹道整局累积并被多处线性遍历（性能影响推断）。 | Fixed：登记新 Projectile 记录时摘除已销毁的同类记录。 |
+| CR-2026-09-27-106（未修） | P3 / COMPAT | 腐蚀 Boss 死后 0.5 s 被销毁，死亡毒云与残留腐蚀区 `source` 为空，回退成玩家来源的效果伤害，死因显示「自己」。 | Deferred：只影响死因文字；需给地面区缓存来源身份。 |
+
+线索（UNVERIFIED）：追猎狂暴无单次标记，低血后反复触发近似常驻（Needs owner confirmation）；丧尸 Boss 未设 `isBossCharacter`，日报 / 征程 Boss 计数可能不含丧尸 Boss。图鉴链路复核无新增缺陷。

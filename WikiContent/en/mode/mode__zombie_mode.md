@@ -212,13 +212,13 @@ Boss Waves appear every 5 waves. There are 5 Boss types. Each drops **8** purifi
 
 #### Appearance and Codex
 
-- **Titan**: heavy dark shoulder armor and a three-pronged crown with ember-orange seams; fortify brightens the seams.
-- **Hunter**: crimson twin back blades and forward claws; frenzy accelerates its energy ring.
-- **Splitter**: a purple crystal spine fan with staggered shards; summoning triggers a pulse.
-- **Shielder**: three cyan shield plates and a hexagonal ring; an active shield brightens the ring and seams.
-- **Corruptor**: toxic-green branching antlers and back spines; casting a corruption zone releases a pulse.
+- **Titan**: heavy dark shoulder armor and a three-pronged crown with ember-orange blade tips; its ground sigil is a double ring with three crown teeth. Fortify spins the sigil faster and brightens the tips.
+- **Hunter**: crimson twin back blades and forward claws; its ground sigil is two chevrons pointing where it faces. Dashes leave a red afterimage streak, and frenzy accelerates its energy ring.
+- **Splitter**: a purple crystal spine fan with staggered shards; its ground sigil is a ring of five cells. Summoning triggers a pulse.
+- **Shielder**: three cyan shield plates and a hexagonal ring; its ground sigil is two nested hexagons of shield plates. An active shield brightens the sigil and blade tips.
+- **Corruptor**: toxic-green branching antlers and back spines; its ground sigil is a warped ring dripping outward. Casting a corruption zone releases a pulse.
 
-All five use official nameplates. Your own kills count as separate Emperor Codex entries; ordinary zombies, split offspring, companion kills and environmental kills do not unlock Boss entries. Progress is queued during combat and saved after returning to base. Use the Emperor Codex item to check kill totals.
+Each ability cast bursts matching sparks from the chest and sends a shock ring across the ground; a kill ends in a burst of sparks and a smoke ring. Ground sigils draw beneath ability warning circles, so they never hide a danger zone. All five use official nameplates with the official Boss icon beside the name. Your own kills count as separate Emperor Codex entries; ordinary zombies, split offspring, companion kills and environmental kills do not unlock Boss entries. Progress is queued during combat and saved after returning to base. Use the Emperor Codex item to check kill totals.
 
 #### Boss Abilities
 

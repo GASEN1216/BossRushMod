@@ -834,6 +834,7 @@ namespace BossRush
                 return;
             }
 
+            ZombieModeBossVisuals.PlayDeath(marker);
             if (marker.BossKind == ZombieModeBossKind.Splitter)
             {
                 DealZombieModeExplosionAreaDamage(

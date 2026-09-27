@@ -47,6 +47,28 @@ def main():
     assert "displayPreset = Instantiate(originalPreset);" in init
     assert 'displayPreset.nameKey = "BossRush_ZombieMode_Boss_" + instance.Kind;' in init
     assert "displayPreset.showName = true;" in init, "official health bar must show boss identity"
+    assert "CharacterRandomPreset_CharacterIconType.SetValue(" in init and "CharacterIconTypes.boss" in init, \
+        "zombie bosses must carry the official boss icon like other mod bosses"
+    # 官方 CharacterMainControl.OnDead 按 characterPreset.nameKey 写 SavesCounter 与击杀任务：
+    # 显示用副本必须在致死一击扣血前换回，否则官方存档多出自定义计数键、击杀丧尸任务漏算 Boss。
+    restore = body(look, "internal static void RestoreOfficialPreset(")
+    assert "look.instance.Character.characterPreset = look.originalPreset;" in restore
+    assert "if (marker.IsBoss && info.finalDamage >= health.CurrentHealth)" in body(damage, "internal static void ReduceFinalDamage(") \
+        and "ZombieModeBossVisuals.RestoreOfficialPreset(marker);" in body(damage, "internal static void ReduceFinalDamage("), \
+        "lethal hit must restore the official preset before OnDead"
+    assert "ZombieModeBossVisuals.PlayDeath(marker);" in body(boss, "private void HandleZombieModeBossDeathEffects("), \
+        "boss death must play the presentation burst"
+    # 俯视镜头下的身份：五种纹章各有独立分支，贴图按种类缓存。
+    sigil = body(look, "private static float SigilAlpha(")
+    for kind in ("Titan", "Hunter", "Splitter", "Shielder"):
+        assert "case ZombieModeBossKind." + kind + ":" in sigil, kind + " must paint its own sigil"
+    assert "default:" in sigil, "Corruptor sigil branch"
+    assert "GetSigilTexture(instance.Kind)" in init
+    # LineRenderer 线宽是世界米数、不随 Transform 缩放；低于 0.06 m 在游戏镜头下是 1–2 px 噪点（VB-08）。
+    width = re.search(r"const float CrestLineWidth = ([0-9.]+)f;", look)
+    assert width and float(width.group(1)) >= 0.06, "crest line must be at least 0.06 m wide"
+    assert "main.scalingMode = ParticleSystemScalingMode.Local;" in body(look, "private void CreateSparks("), \
+        "ember sizes are world meters only under Local scaling"
     tick = body(look, "private void Update()")
     for token in ("owner.ZombieModeCurrentRunId != marker.RunId", "marker.DeathSettled", "marker.RemovedFromRuntime",
                   "owner.IsZombieModeRuntimePaused()", "if (paused) return;", "sparks.Pause(false)"):
@@ -60,7 +82,12 @@ def main():
     assert "boss.transform.position =" not in hunter, "Hunter must not teleport before warning"
     assert "dash.Initialize(runId, boss, player.transform.position," in hunter
     assert "RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, telegraph, dash, null);" in hunter
-    assert "return ZombieModeDamageRuntime.InjectBeforeHealthLoss(instructions);" in patch
+    # 丧尸减伤 Transpiler 必须自成一类：IL 失配时拒绝安装只能拆掉它自己，
+    # 不能连带共享 Hurt 上下文补丁（Mode G 屏障 / 逆鳞无敌 / Boss 致死钳制）一起失效。
+    zombie_patch = body(damage, "internal static class ZombieModeHealthHurtDamagePatch")
+    assert "[HarmonyPatch(typeof(Health), nameof(Health.Hurt))]" in damage.split("internal static class ZombieModeHealthHurtDamagePatch", 1)[0][-200:]
+    assert "return ZombieModeDamageRuntime.InjectBeforeHealthLoss(instructions);" in zombie_patch
+    assert "[HarmonyTranspiler]" not in patch and "InjectBeforeHealthLoss" not in patch,         "zombie transpiler must not share the lethal-protection patch class"
     hurt = body(wave, "private void HandleZombieModeHealthHurt(")
     assert "AbsorbZombieModeBossFinalDamage(" not in hurt and "RestoreZombieModeFinalDamageReduction(" not in wave, "no post-death heal-back or double absorption"
     reduce = body(damage, "internal static void ReduceFinalDamage(")

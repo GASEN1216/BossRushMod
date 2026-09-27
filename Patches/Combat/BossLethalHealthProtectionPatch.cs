@@ -68,12 +68,9 @@ namespace BossRush
             return true;
         }
 
-        [HarmonyTranspiler]
-        private static System.Collections.Generic.IEnumerable<CodeInstruction> Transpiler(
-            System.Collections.Generic.IEnumerable<CodeInstruction> instructions)
-        {
-            return ZombieModeDamageRuntime.InjectBeforeHealthLoss(instructions);
-        }
+        // 丧尸模式的致死前减伤 Transpiler 在独立类 ZombieModeHealthHurtDamagePatch：
+        // 它遇到未知 IL 会拒绝安装，放在这里会连带本类的 Prefix / Finalizer 一起装不上，
+        // 让 Mode G 屏障、逆鳞无敌和各 Boss 的致死钳制在所有模式同时失效。
 
         [HarmonyFinalizer]
         private static Exception Finalizer(Exception __exception, bool __state)

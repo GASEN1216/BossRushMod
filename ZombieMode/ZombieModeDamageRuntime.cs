@@ -7,7 +7,19 @@ using UnityEngine;
 
 namespace BossRush
 {
-    // 接在既有 Health.Hurt 补丁上：官方完成护甲/暴击/元素计算后、生命上限钳制与死亡之前。
+    // 独立补丁类：InjectBeforeHealthLoss 在官方 IL 变化时抛出拒绝安装，逐类安装器只让本类失效，
+    // 不牵连 BossRushHealthHurtContextPatch 的 Mode G 屏障、逆鳞无敌与 Boss 致死钳制。
+    [HarmonyPatch(typeof(Health), nameof(Health.Hurt))]
+    internal static class ZombieModeHealthHurtDamagePatch
+    {
+        [HarmonyTranspiler]
+        private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            return ZombieModeDamageRuntime.InjectBeforeHealthLoss(instructions);
+        }
+    }
+
+    // 注入点：官方完成护甲/暴击/元素计算后、生命上限钳制与死亡之前。
     // 不能在 OnHurt 里补血：致命一击先发 OnDead，marker 已注销，护盾根本没有机会吸收。
     internal static class ZombieModeDamageRuntime
     {
@@ -25,21 +37,26 @@ namespace BossRush
                 || marker.DeathSettled || marker.RemovedFromRuntime) return;
 
             owner.ApplyZombieModeEnemyDefense(health, ref info, marker);
-            if (!info.fromCharacter.IsMainCharacter) return;
-
-            float absorbed = 0f;
-            if (marker.IsBoss)
+            if (info.fromCharacter.IsMainCharacter)
             {
-                absorbed = owner.AbsorbZombieModeBossFinalDamage(target, marker, info.finalDamage);
+                float absorbed = 0f;
+                if (marker.IsBoss)
+                {
+                    absorbed = owner.AbsorbZombieModeBossFinalDamage(target, marker, info.finalDamage);
+                }
+                else
+                {
+                    ZombieModeBossShieldRuntime shield = marker.AllyShield;
+                    if (shield != null && shield.IsShieldActive()) absorbed = shield.AbsorbDamage(info.finalDamage);
+                    absorbed += owner.ApplyZombieModeShielderAuraFinalDamageReduction(target,
+                        Mathf.Max(0f, info.finalDamage - absorbed));
+                }
+                info.finalDamage = Mathf.Max(0f, info.finalDamage - absorbed);
             }
-            else
-            {
-                ZombieModeBossShieldRuntime shield = marker.AllyShield;
-                if (shield != null && shield.IsShieldActive()) absorbed = shield.AbsorbDamage(info.finalDamage);
-                absorbed += owner.ApplyZombieModeShielderAuraFinalDamageReduction(target,
-                    Mathf.Max(0f, info.finalDamage - absorbed));
-            }
-            info.finalDamage = Mathf.Max(0f, info.finalDamage - absorbed);
+            // 官方 OnDead 按 characterPreset.nameKey 写击杀计数 / 击杀任务：致死前换回原 preset，
+            // 血条上的 Boss 名只是显示副本，不能让官方存档多出自定义计数键。
+            if (marker.IsBoss && info.finalDamage >= health.CurrentHealth)
+                ZombieModeBossVisuals.RestoreOfficialPreset(marker);
         }
 
         internal static IEnumerable<CodeInstruction> InjectBeforeHealthLoss(IEnumerable<CodeInstruction> instructions)

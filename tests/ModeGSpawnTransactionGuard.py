@@ -30,6 +30,9 @@ HURT_OWNERS = {
     # Mode E 雇佣 Boss 击杀归属的 transpiler，早于本轮就在库里；它用 "Hurt" 字符串形式
     # 声明目标，之前的字面量匹配看不见它。登记的是精确身份，不是把预算放宽到 3。
     "ModeE/ModeEHarmonyPatch.cs": "ModeEHiredBossKillAttributionPatch",
+    # 丧尸模式致死前减伤的 transpiler（2026-09-27 从共享上下文补丁拆出，失配只拆自己）。
+    # 不改准入 / 事务深度 / 返回值，只在官方 finalDamage 累加后调用 ZombieModeDamageRuntime。
+    "ZombieMode/ZombieModeDamageRuntime.cs": "ZombieModeHealthHurtDamagePatch",
 }
 HURT_PATCH_RE = re.compile(
     r'\[HarmonyPatch\s*\(\s*typeof\s*\(\s*(?:global::)?Health\s*\)\s*,\s*'
