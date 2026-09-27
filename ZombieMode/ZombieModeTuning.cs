@@ -290,7 +290,6 @@ namespace BossRush
             public const float HunterFrenzyHpThreshold = 0.30f;
             public const float HunterFrenzyAttackSpeedBonus = 0.50f;
             public const float HunterFrenzyMoveSpeedBonus = 0.30f;
-            public const float HunterFrenzyDurationSeconds = 15f;
 
             // Splitter
             public const int SplitterBossSummonCount = 4;
@@ -627,7 +626,6 @@ namespace BossRush
         public const float HunterFrenzyHpThreshold = Boss.HunterFrenzyHpThreshold;
         public const float HunterFrenzyAttackSpeedBonus = Boss.HunterFrenzyAttackSpeedBonus;
         public const float HunterFrenzyMoveSpeedBonus = Boss.HunterFrenzyMoveSpeedBonus;
-        public const float HunterFrenzyDurationSeconds = Boss.HunterFrenzyDurationSeconds;
 
         // Boss - Splitter
         public const int SplitterBossSummonCount = Boss.SplitterBossSummonCount;

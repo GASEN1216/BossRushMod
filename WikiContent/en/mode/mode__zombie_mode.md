@@ -228,7 +228,7 @@ Each ability cast bursts matching sparks from the chest and sends a shock ring a
 
 **Hunter**:
 - **Dash**: Shows a startup warning, then dashes toward the locked player position up to 15m; deals 40 damage within 3.5m of its actual landing position, 5s cooldown
-- **Frenzy**: Triggers below 30% HP — +50% attack speed, +30% move speed, size increase, lasts 15s
+- **Frenzy**: Triggers below 30% HP — +50% attack speed, +30% move speed, size increase; once triggered it lasts until the Hunter dies
 
 **Splitter**:
 - **Summon**: Spawns 4 smaller zombies (0.7× scale), 15s cooldown
@@ -396,7 +396,7 @@ Normal wave packs contain 1 of each; Boss node packs contain 2 of each.
 - Always consider extracting after Boss Waves. It gets harder, but points also increase
 - Watch your pollution level. High-pollution elites are nasty (3 affixes + enhanced multipliers)
 - Shielder Boss is the most annoying: its group shield makes every zombie tanky, so kill it first
-- Hunter Boss frenzies at low HP. Keep enough health to survive the dash
+- Hunter Boss stays in frenzy from 30% HP until it dies. Keep enough health to survive the dash and burst down its last stretch
 - Don't fight Splitter Boss in tight spaces; split zombies will block your escape
 - Use the Zombie Tide Beacon to skip preparation when you're well-equipped
 - Projectile mods stack (most cap at 3). Penetration + Burn works with almost anything

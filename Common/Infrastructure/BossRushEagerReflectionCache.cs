@@ -42,6 +42,9 @@ namespace BossRush
         // CharacterRandomPreset.characterIconType (私有字段)
         public static readonly FieldInfo CharacterRandomPreset_CharacterIconType;
 
+        // Health.DeadDestroyDelay (私有字段，默认 0.5 秒：死亡后多久销毁角色)
+        public static readonly FieldInfo Health_DeadDestroyDelay;
+
 // 缓存初始化标志
         public static readonly bool IsInitialized;
 
@@ -82,6 +85,10 @@ namespace BossRush
                 // CharacterRandomPreset.characterIconType
                 CharacterRandomPreset_CharacterIconType = typeof(CharacterRandomPreset).GetField(
                     "characterIconType", privateInstance);
+
+                // Health.DeadDestroyDelay
+                Health_DeadDestroyDelay = typeof(Health).GetField(
+                    "DeadDestroyDelay", privateInstance);
 
 IsInitialized = true;
             }

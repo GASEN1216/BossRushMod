@@ -5367,6 +5367,6 @@ Mode G 本轮收尾补证（2026-09-18）：最终专项守卫37 PASS、生产�
 | CR-2026-09-27-103 | P3 / COMPAT | 丧尸 Boss 血条无官方 Boss 图标（preset iconType=none），与其他 Mod Boss 不一致。 | Fixed：显示副本设 `CharacterIconTypes.boss`。守卫覆盖。 |
 | CR-2026-09-27-104 | P2 / WIRE+ | 丧尸减伤 Transpiler 挂在共享 `BossRushHealthHurtContextPatch`；IL 失配抛出时逐类安装器跳过整类，所有模式同时失去 Mode G 屏障、逆鳞无敌与 Boss 致死钳制。 | Fixed：独立 `ZombieModeHealthHurtDamagePatch`；`ModeGSpawnTransactionGuard` 登记精确身份，展示守卫禁止回挂。官方 DLL 两种注入顺序回归通过。 |
 | CR-2026-09-27-105 | P3 / COMPAT | `Projectile` 类 run-only 记录局内不清理，毒径 / 远程弹道整局累积并被多处线性遍历（性能影响推断）。 | Fixed：登记新 Projectile 记录时摘除已销毁的同类记录。 |
-| CR-2026-09-27-106（未修） | P3 / COMPAT | 腐蚀 Boss 死后 0.5 s 被销毁，死亡毒云与残留腐蚀区 `source` 为空，回退成玩家来源的效果伤害，死因显示「自己」。 | Deferred：只影响死因文字；需给地面区缓存来源身份。 |
+| CR-2026-09-27-106 | P3 / COMPAT | 腐蚀 Boss 死后 0.5 s 被销毁，死亡毒云与残留腐蚀区 `source` 为空，回退成玩家来源的效果伤害，死因显示「自己」。 | Fixed（同日第二轮）：丧尸 Boss 的 `Health.DeadDestroyDelay` 延到最长残留区（8 s）+ 1 s，尸体保持失活但有效；静态 OnDead（晚于写击杀计数的实例 OnDeadEvent）再挂回显示副本，结算页死因显示 Boss 名。玩家兜底来源不变（`ZombieModeAreaDamagePlayerGuard` 禁止空来源）。 |
 
-线索（UNVERIFIED）：追猎狂暴无单次标记，低血后反复触发近似常驻（Needs owner confirmation）；丧尸 Boss 未设 `isBossCharacter`，日报 / 征程 Boss 计数可能不含丧尸 Boss。图鉴链路复核无新增缺陷。
+线索（UNVERIFIED）：~~追猎狂暴无单次标记~~ owner 同日定为「狂暴就是一直」，已改为触发一次持续到死亡（见 FIX_TRACKER 同日第二轮）；丧尸 Boss 未设 `isBossCharacter`，日报 / 征程 Boss 计数可能不含丧尸 Boss。图鉴链路复核无新增缺陷。

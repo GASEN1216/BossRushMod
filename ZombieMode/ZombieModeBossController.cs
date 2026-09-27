@@ -110,24 +110,11 @@ namespace BossRush
                     TeleportZombieModeBossNearPlayer(instance);
                 }
 
-                // Tick state expirations (Titan DR, Hunter frenzy)
+                // Tick state expirations (Titan DR). Hunter frenzy 触发后持续到死亡，没有到期。
                 ZombieModeTitanState titanState = instance.SkillState as ZombieModeTitanState;
                 if (titanState != null && titanState.DamageReductionActive && now >= titanState.DamageReductionEndTime)
                 {
                     titanState.DamageReductionActive = false;
-                }
-
-                ZombieModeHunterState hunterState = instance.SkillState as ZombieModeHunterState;
-                if (hunterState != null && hunterState.FrenzyActive && now >= hunterState.FrenzyEndTime)
-                {
-                    hunterState.FrenzyActive = false;
-                    RemoveZombieModeHunterFrenzyModifiers(hunterState);
-                    if (instance.Character != null && hunterState.FrenzyOriginalScale > 0f)
-                    {
-                        Vector3 s = instance.Character.transform.localScale;
-                        float ratio = hunterState.FrenzyOriginalScale / Mathf.Max(0.01f, s.x);
-                        instance.Character.transform.localScale = s * ratio;
-                    }
                 }
 
                 TryExecuteZombieModeBossSkill(instance, now);
@@ -680,8 +667,9 @@ namespace BossRush
             if (instance == null || instance.Character == null) return;
             ZombieModeHunterState hunter = instance.SkillState as ZombieModeHunterState;
             if (hunter == null) return;
+            // 狂暴是低血后的最终形态：触发一次、持续到死亡（owner 2026-09-27 定）。
+            // 此前 15 秒到期后下一击又重新触发，体型在 1 与 1.08 倍之间来回跳。
             hunter.FrenzyActive = true;
-            hunter.FrenzyEndTime = GetZombieModeRuntimeNow() + ZombieModeTuning.HunterFrenzyDurationSeconds;
             instance.Character.PopText(L10n.T("BossRush_ZombieMode_Boss_Hunter"));
             ApplyZombieModeHunterFrenzyModifiers(instance.Character, hunter);
             instance.Character.transform.localScale = instance.Character.transform.localScale * 1.08f;

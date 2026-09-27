@@ -301,8 +301,6 @@ namespace BossRush
     {
         public float NextDashTime;
         public bool FrenzyActive;
-        public float FrenzyEndTime;
-        public float FrenzyOriginalScale = 1f;
         public readonly List<ZombieModeAttributeModifierRecord> FrenzyModifierRecords = new List<ZombieModeAttributeModifierRecord>();
 
         public override float CooldownSeconds => ZombieModeTuning.HunterDashCooldownSeconds;
@@ -310,7 +308,6 @@ namespace BossRush
         public override void Reset(float now, float bossScale)
         {
             NextDashTime = now + UnityEngine.Random.Range(2f, 4f);
-            FrenzyOriginalScale = bossScale;
             FrenzyModifierRecords.Clear();
         }
 
@@ -381,7 +378,7 @@ namespace BossRush
     /// Boss 运行期生命周期 + 卡死检测追踪。
     /// 字段写入由 ZombieModeSpawner / TickZombieModeBossController / HandleZombieModeBossHurt 维护。
     /// 与 SkillState 的差别：本类记录"是否还活着 / 上次能动 / 上次受伤"等通用追踪字段；
-    /// SkillState 记录 per-kind 的技能冷却（NextDashTime / FrenzyEndTime 等）。
+    /// SkillState 记录 per-kind 的技能冷却（NextDashTime 等）。
     /// </summary>
     public sealed class ZombieModeBossLifecycleTrack
     {
@@ -401,7 +398,7 @@ namespace BossRush
         // 生命周期 + 卡死检测追踪（独立子对象，便于扩展新 Boss kind 时不必改 BossInstance）
         public readonly ZombieModeBossLifecycleTrack Lifecycle = new ZombieModeBossLifecycleTrack();
 
-        // per-kind 技能状态（按 Kind 实例化对应子类，承载 NextDashTime / FrenzyEndTime 等）
+        // per-kind 技能状态（按 Kind 实例化对应子类，承载 NextDashTime 等）
         public ZombieModeBossSkillState SkillState;
     }
 

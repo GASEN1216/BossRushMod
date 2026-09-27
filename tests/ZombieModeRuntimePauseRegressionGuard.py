@@ -43,7 +43,10 @@ def main() -> int:
         require(boss_text, "float now = GetZombieModeRuntimeNow();", "boss controller must use pause-adjusted runtime clock")
         require(boss_text, "instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow();", "boss lifecycle timestamps must use runtime clock")
         require(boss_text, "instance.Lifecycle.LastHurtTime = GetZombieModeRuntimeNow();", "boss hurt timestamp must use runtime clock")
-        require(boss_text, "hunter.FrenzyEndTime = GetZombieModeRuntimeNow() + ZombieModeTuning.HunterFrenzyDurationSeconds;", "hunter frenzy must freeze during pause")
+        # 追猎狂暴触发后持续到死亡（owner 2026-09-27 定），没有到期时刻，暂停也就无从漂移。
+        # 重新引入到期必须走运行时时钟并补暂停，同时回到这里改守卫。
+        if "FrenzyEndTime" in boss_text or "HunterFrenzyDurationSeconds" in boss_text:
+            raise AssertionError("hunter frenzy is permanent once triggered; no expiry clock")
     except AssertionError as exc:
         return fail(str(exc))
 

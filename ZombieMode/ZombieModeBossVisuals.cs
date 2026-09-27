@@ -16,6 +16,10 @@ namespace BossRush
         private const float SigilDiameter = 1.3f;       // 角色身高的倍数
         private const float DashTrailSpeed = 14f;       // m/s；追猎平时追击远低于此，冲刺约 80 m/s
         private const float TeleportJump = 9f;          // 单帧位移超过它按解卡传送处理，不画拖尾
+        // Boss 尸体保留到最长的残留地面区结束：官方默认死后 0.5 s 销毁，腐蚀区 / 毒径 / 死亡毒云的
+        // source 随之变空，伤害回退成玩家来源，玩家死在里面时死因显示「自己」（CR-2026-09-27-106）。
+        private static readonly float CorpseKeepSeconds = Mathf.Max(ZombieModeTuning.CorruptorZoneDurationSeconds,
+            Mathf.Max(ZombieModeTuning.CorruptorPoisonPathDurationSeconds, ZombieModeTuning.CorruptorDeathCloudDurationSeconds)) + 1f;
         private static readonly Texture2D[] SigilTextures = new Texture2D[5];
 
         private ModBehaviour owner;
@@ -104,6 +108,7 @@ namespace BossRush
                 }
                 instance.Character.characterPreset = displayPreset;
             }
+            KeepCorpseForResidualZones(instance.Character);
             // 用真实角色 renderer 的局部包围盒定衣架；子树无额外碰撞，不放大命中盒。
             CharacterModel model = instance.Character.characterModel;
             Bounds bounds = new Bounds(new Vector3(0f, 0.65f, 0f), new Vector3(0.8f, 1.3f, 0.8f));
@@ -185,12 +190,18 @@ namespace BossRush
                 look.instance.Character.characterPreset = look.originalPreset;
         }
 
-        /// <summary>Boss 死亡结算时调用：同色火花冲天 + 贴地烟环 + 一道扩散冲击环。只是表现，不带判定。</summary>
+        /// <summary>
+        /// Boss 死亡结算时调用（静态 Health.OnDead，晚于写击杀计数的实例 OnDeadEvent）：
+        /// 同色火花冲天 + 贴地烟环 + 一道扩散冲击环，只是表现、不带判定。
+        /// 击杀计数已记在原 preset 名下，这里再把显示副本挂回尸体：残留地面区以尸体为伤害来源，
+        /// 官方结算页的死因读 fromCharacter.characterPreset.DisplayName，显示的就是这只 Boss 的名字。
+        /// </summary>
         internal static void PlayDeath(ZombieModeEnemyRuntimeMarker marker)
         {
-            RestoreOfficialPreset(marker);
             ZombieModeBossVisuals look = marker != null ? marker.BossVisuals : null;
             if (look == null) return;
+            if (look.displayPreset != null && look.instance != null && look.instance.Character != null)
+                look.instance.Character.characterPreset = look.displayPreset;
             Vector3 feet = look.transform.position;
             float h = look.worldHeight;
 
@@ -286,6 +297,21 @@ namespace BossRush
                 dashTrail.emitting = moved <= TeleportJump && moved > DashTrailSpeed * delta;
                 lastPosition = position;
                 hasLastPosition = true;
+            }
+        }
+
+        private static void KeepCorpseForResidualZones(CharacterMainControl character)
+        {
+            System.Reflection.FieldInfo field = BossRushEagerReflectionCache.Health_DeadDestroyDelay;
+            if (field == null || character == null || character.Health == null) return;
+            try
+            {
+                float current = (float)field.GetValue(character.Health);
+                if (current < CorpseKeepSeconds) field.SetValue(character.Health, CorpseKeepSeconds);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("[ZombieMode] Boss corpse lifetime failed: " + e.Message);
             }
         }
 

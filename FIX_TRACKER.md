@@ -9583,3 +9583,12 @@ Lv.2 的钻石、Lv.4 的冷淬液、Lv.7 的钻石戒指三处一并改为
 - Windows 正式编译：HEAD + 本轮生产改动快照，`Build succeeded!`，DLL SHA-256 `5EE64134357908561D8742D4BBAD94CA1379CD159211A60DE1582146EA1DB23E`，14 个 Dev 标识缺席。未部署游戏目录。
 - L3 未做：没有启动游戏、读写存档或看截图。外形是否帅、纹章是否好认、特效是否遮挡、帧耗、官方任务计数，按 [复审报告](docs/reports/reviews/2026-09-27_丧尸模式Boss表现与链路复审.md) 第 5 节清单由 owner 验收。
 - 回退：纹章 / 拖尾 / 爆发各自独立可删；致死前还原与独立补丁类不要回退（分别带回 102、104）。
+
+## 2026-09-27（第二轮）追猎狂暴常驻与残留区死因（COMPAT）
+
+- owner 定「狂暴就是一直」：追猎低于 30% 血触发狂暴后持续到死亡，删掉 15 秒到期、体型回弹和 `HunterFrenzyDurationSeconds` / `FrenzyEndTime` / `FrenzyOriginalScale`。此前到期后下一击立刻重触发，体型在 1 与 1.08 倍间来回跳。`ZombieModeRuntimePauseRegressionGuard` 改为禁止重新引入到期时钟。
+- 修 CR-2026-09-27-106：丧尸 Boss 尸体销毁延迟经 `BossRushEagerReflectionCache.Health_DeadDestroyDelay` 延到最长残留区 + 1 s（9 s），死后再挂回显示 preset，残留腐蚀区 / 毒径 / 死亡毒云害死玩家时结算页显示该 Boss 名而不是「自己」。击杀计数仍在致死前换回的原 preset 名下；残留区伤害、半径、时长不变，恢复监控与 Boss 实例都按已死过滤。
+- 残余边界：若丧尸模式暂停但官方时间照走，超过 9 s 的残留区末段仍会回退到玩家来源（现有时长下不会发生）。
+- L2：全量守卫本轮文件全绿（唯一红 `OfficialCompileListFileExistenceGuard` 是其他会话新增未登记的 `Utilities/OfficialQuests/OfficialQuestItemRules.cs`）；3 次反向验证按字节还原；`IntegrationThirdReviewFixes`、`AffixCombat`、`ContentThirdReviewFixes`、`ZombieModeEntryDebt` 通过；在线 Wiki 临时副本构建通过。
+- Windows 正式编译：HEAD `61e77e6a` + 本轮生产改动快照，`Build succeeded!`，DLL SHA-256 `9A614B50108AD8B86F8D0B2184BAC268C56CF708C1248640001090B8503DCCE7`，14 个 Dev 标识缺席。未部署游戏目录。
+- L3 待 owner：把追猎打到三成血以下，确认狂暴后体型不再忽大忽小、一直保持加速到死；站在腐蚀 Boss 死亡毒云里被毒死，结算页死因应是「腐蚀地面」而不是「自己」。

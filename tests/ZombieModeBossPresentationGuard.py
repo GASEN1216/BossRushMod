@@ -58,6 +58,15 @@ def main():
         "lethal hit must restore the official preset before OnDead"
     assert "ZombieModeBossVisuals.PlayDeath(marker);" in body(boss, "private void HandleZombieModeBossDeathEffects("), \
         "boss death must play the presentation burst"
+    # 死因：残留腐蚀区 / 毒径 / 死亡毒云以 Boss 尸体为来源。尸体要活过最长的残留区，
+    # 死后（静态 OnDead，晚于写击杀计数的实例 OnDeadEvent）再挂回显示副本，结算页才显示 Boss 名而不是「自己」。
+    assert "KeepCorpseForResidualZones(instance.Character);" in init, "boss corpse must outlive residual zones"
+    for duration in ("CorruptorZoneDurationSeconds", "CorruptorPoisonPathDurationSeconds", "CorruptorDeathCloudDurationSeconds"):
+        assert "ZombieModeTuning." + duration in look.split("CorpseKeepSeconds =", 1)[1].split(";", 1)[0], \
+            "corpse lifetime must cover " + duration
+    death = body(look, "internal static void PlayDeath(")
+    assert "look.instance.Character.characterPreset = look.displayPreset;" in death and "RestoreOfficialPreset(" not in death, \
+        "after official kill count, the corpse must carry the boss display preset for the death reason"
     # 俯视镜头下的身份：五种纹章各有独立分支，贴图按种类缓存。
     sigil = body(look, "private static float SigilAlpha(")
     for kind in ("Titan", "Hunter", "Splitter", "Shielder"):
