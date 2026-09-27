@@ -239,8 +239,11 @@ def check(sources, tree):
             SKY_BRIDGE + " 自己发物品：奖励物只能由核心在交付成功后发，否则交付失败也会到手")
     table = sources[SKY_TABLE]
     island_ids = set(re.findall(r"BossRushItemIds\.(SkyIsland\w+)", sources[SKY_ITEM_RULES].split("internal static readonly int[] AllTypeIds", 1)[1].split(";", 1)[0]))
-    for quest in ("BeaconQuestId", "BellCourtQuestId", "HomecomingQuestId"):
-        block = table.split("QuestId = " + quest, 1)[1].split("new SkyIslandOfficialQuestDefinition", 1)[0] if "QuestId = " + quest in table else ""
+    prelude = sources[SKY_PRELUDE]
+    prelude_block = prelude.split("QuestId = SkyIslandOfficialQuestTable.PreludeQuestId", 1)[1].split("Tasks = new[]", 1)[0] if "QuestId = SkyIslandOfficialQuestTable.PreludeQuestId" in prelude else ""
+    for quest, block in [("PreludeQuestId", prelude_block)] + [
+            (q, table.split("QuestId = " + q, 1)[1].split("new SkyIslandOfficialQuestDefinition", 1)[0] if "QuestId = " + q in table else "")
+            for q in ("BeaconQuestId", "BellCourtQuestId", "HomecomingQuestId")]:
         rewards = re.findall(r"new SkyIslandQuestReward\(BossRushItemIds\.(\w+), (\d+)\)", block)
         require(len(rewards) > 0, SKY_TABLE + " " + quest + " 没有奖励物品")
         for name, count in rewards:
@@ -268,6 +271,7 @@ def main():
         (SKY_BRIDGE, "owner.OfficialQuestRuntime.Projection", "new OfficialQuestProjection(owner)"),
         (SKY_BRIDGE, "projection.UnregisterClient(this)", "projection.Unregister(0)"),
         (SKY_BRIDGE, "RewardItems = ToStacks(def.RewardItems),", ""),
+        (SKY_PRELUDE, "new SkyIslandQuestReward(BossRushItemIds.SkyIslandWindLantern, 1),", "new SkyIslandQuestReward(BossRushItemIds.SkyIslandWindLantern, 99),"),
         (SKY_TABLE, "new SkyIslandQuestReward(BossRushItemIds.SkyIslandStardust, 3),", "new SkyIslandQuestReward(BossRushItemIds.BossRushTicket, 3),"),
         (CORE, "if (binding.IsDelivered()) return binding.Deliver(out reason);", ""),
         (CORE, "if (reservation != null) reservation.Dispose();", ""),

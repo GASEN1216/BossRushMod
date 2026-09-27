@@ -4,9 +4,9 @@ The Qinglan Archipelago is a standalone raid you launch from the base dock. Cros
 
 ## Setting out
 
-On a first install, the route is not yet in the base route table. Find the official NPC **Jeff** at base, open his normal quest screen, and accept **Coordinates Above the Clouds** from the Available tab. The details page lists what to bring back (Lost Navigation Instrument x1) and the reward, Currency +5000. The quest enters the regular journal, and Jeff's original quests remain available as usual.
+On a first install, the route is not yet in the base route table. Find the official NPC **Jeff** at base, open his normal quest screen, and accept **Coordinates Above the Clouds** from the Available tab. The details page lists what to bring back (Lost Navigation Instrument x1) and the reward: Currency +5000 plus Starmoss Salve x2, Windward Incense x2 and Wind Lantern x1. The quest enters the regular journal, and Jeff's original quests remain available as usual.
 
-Enter an ordinary Ground Zero raid and open the map: a ring marks **Lost Navigation Instrument**. Step inside it and a Qinglan boss, **Galebreaker Ranger (Warden)**, wakes up. Beat it and **the instrument is in its loot box**. Pick it up and the objective completes. Carry it back to Jeff, open his Active tab and choose Complete Quest. He takes the instrument, pays 5000, and writes the Qinglan route into the table.
+Enter an ordinary Ground Zero raid and open the map: a ring marks **Lost Navigation Instrument**. Step inside it and a Qinglan boss, **Galebreaker Ranger (Warden)**, wakes up. Beat it and **the instrument is in its loot box**. Pick it up and the objective completes. Carry it back to Jeff, open his Active tab and choose Complete Quest. He takes the instrument, pays 5000, puts supplies for your first trip up (Starmoss Salve x2, Windward Incense x2, Wind Lantern x1) straight into your backpack (storage if it is full), and writes the Qinglan route into the table.
 
 ::: tip
 Losing the instrument is not a dead end: while you carry none, the guard returns on your next raid, and you can salvage another one beside the wreck. The instrument cannot be sold; handing it to Jeff is its only use.

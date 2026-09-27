@@ -1,5 +1,15 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+<!-- BEGIN SKY ISLAND PRELUDE REWARD TRACKER 2026-09-27 -->
+
+## 2026-09-27 序章「云上的坐标」加物品奖励（COMPAT / SAFE）
+
+**授权与范围**：owner「序章也加上物品奖励」。只给 590001 加 `RewardItems`：星苔药膏 ×2、驱风香 ×2、风灯 ×1（第一趟上岛的补给），奖金 5000、收走航向仪与解锁航线不变。交付只有 `TryCompleteOfficialQuest` 一个入口（在基地），由共享核心在交付成功后发进背包，放不下进仓库；已交付的重试与老档航线回填都不发。回退：删掉 `BuildDefinition` 里的 `RewardItems`。
+
+**验证**：全量守卫 677 通过（`OfficialQuestProjectionGuard` 的岛上奖励检查扩到序章，新增反向检查 1 条，共 31 条）；执行回归 9 组通过（含编译序章的 SkyIslandInteraction / Story / Encounters）；Windows 正式构建成功（仅既有 CS0649），部署 DLL 与 Build 一致，Dev 标识 absent；Wiki 构建通过。构建脚本末尾的 `skyisland_fx` 清单报错属另一会话。L3 未做。
+
+<!-- END SKY ISLAND PRELUDE REWARD TRACKER 2026-09-27 -->
+
 <!-- BEGIN SKY ISLAND QUEST REWARDS TRACKER 2026-09-27 -->
 
 ## 2026-09-27 天空岛三条主线加物品奖励（COMPAT / SAFE）

@@ -99,6 +99,14 @@ namespace BossRush
                 // 官方任务页的「所需物品」栏与完成面板的奖励行都只是投影：真正的账记在本槽剧情事实上，
                 // 钱在交付那一拍随 RouteUnlocked 一起发，读档重建投影不会再发第二次（见 SkyIslandOfficialQuestBridge）。
                 RequiredItemId = SkyIslandNavInstrumentConfig.TYPE_ID, RequiredItemCount = 1, RewardMoney = DeliveryMoney,
+                // 2026-09-27 owner：序章也给物品。Jeff 送第一趟上岛的补给：回血的药膏、防夜风的驱风香、夜里照路的风灯。
+                // 由共享核心在交付事务里生成、交付成功后发进背包（人在基地，放不下进仓库）；老档回填航线不补发。
+                RewardItems = new[]
+                {
+                    new SkyIslandQuestReward(BossRushItemIds.SkyIslandStarmossSalve, 2),
+                    new SkyIslandQuestReward(BossRushItemIds.SkyIslandWindwardIncense, 2),
+                    new SkyIslandQuestReward(BossRushItemIds.SkyIslandWindLantern, 1),
+                },
                 Tasks = new[]
                 {
                     new SkyIslandOfficialQuestTaskDefinition
