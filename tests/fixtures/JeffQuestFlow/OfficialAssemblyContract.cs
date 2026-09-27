@@ -86,7 +86,16 @@ internal static class OfficialAssemblyContract
             Require(Type(r,"CA_UseItem").GetFields().Any(h=>r.GetString(r.GetFieldDefinition(h).Name)=="item"),"fruit prefix injected item field exists");
             Require(Type(r,"CharacterActionBase").GetFields().Any(h=>r.GetString(r.GetFieldDefinition(h).Name)=="characterController"),"fruit prefix character owner exists");
             References(pe,r,"CA_Attack","OnStart");References(pe,r,"CharacterMainControl","Attack");
-            References(pe,r,"CharacterMainControl","SetCharacterModel");
+            // Fruit morph: SetCharacterModel resets holdWeaponBeforeUse; CA_UseItem.OnStop switches back from it.
+            Ordered(References(pe,r,"CharacterMainControl","SetCharacterModel"),"CharacterMainControl.StoreHoldWeaponBeforeUse",
+                "CharacterMainControl.ChangeHoldItem","CharacterMainControl.SwitchToWeaponBeforeUse");
+            Require(Type(r,"CharacterMainControl").GetFields().Any(h=>r.GetString(r.GetFieldDefinition(h).Name)=="holdWeaponBeforeUse"),"morph restores official holdWeaponBeforeUse");
+            Require(References(pe,r,"CA_UseItem","OnStop").Contains("CharacterMainControl.SwitchToWeaponBeforeUse"),"use action returns the pre-use weapon on stop");
+            Require(References(pe,r,"CharacterMainControl","ChangeHoldItem").Contains("CharacterMainControl.CanEditInventory"),"hold changes are gated by running actions");
+            Require(References(pe,r,"Health","ElementFactor").Contains("TimeOfDayController.get_CurrentWeather"),"rain fire penalty source still in ElementFactor");
+            // Garden recovery: Load re-reads the save; missing CropInfo still leaves the crop registered.
+            Ordered(References(pe,r,"Garden","Load"),"Crop.Initialize");
+            Require(References(pe,r,"Crop","Initialize").Contains("CropDatabase.GetCropInfo"),"crop load depends on injected CropInfo");
             Ordered(References(pe,r,"Quest","TryComplete"),"Quest.get_Complete","Quest.AreTasksFinished","Quest.set_Complete");
             References(pe,r,"QuestManager","ActivateQuest");References(pe,r,"QuestManager","GenerateSaveData");
             foreach(string type in new[]{"Quest","Task","Reward"})

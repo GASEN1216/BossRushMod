@@ -161,6 +161,59 @@ internal static class Program
         Check(GameObject.All.All(g => g == null || !g.name.StartsWith("costume-") || !g.name.EndsWith("(Clone)")), label + " no costume clones left");
         Check(GameObject.All.All(g => g == null || g.name != "BossFruitCostumeStaging"), label + " no staging root left");
     }
+    private static void HandsWeatherAndBlockedExpiry()
+    {
+        foreach (int id in FixtureWorld.Fruits)
+        {
+            // Eating runs inside the official CA_UseItem: CanEditInventory is false until OnStop.
+            foreach (int slot in new[] { 0, 1, -1 })
+            {
+                FixtureWorld.Reset(); var p = FixtureWorld.Player;
+                p.HeldWeaponSlot = slot; p.StartUse();
+                Check(BackMountainBossMorphService.TryBegin(id, FixtureWorld.Owner), "form starts during use action " + id);
+                p.FinishUse();
+                Check(p.HeldWeaponSlot == slot, id + " eating returns the weapon held before use, slot " + slot + " got " + p.HeldWeaponSlot);
+                BackMountainBossMorphService.Clear();
+            }
+
+            // Timeout while an action forbids hand changes waits for it, then restores with the weapon in hand.
+            FixtureWorld.Reset(); var q = FixtureWorld.Player;
+            Check(BackMountainBossMorphService.TryBegin(id, FixtureWorld.Owner), "blocked expiry setup " + id);
+            FixtureWorld.Tick(29.9f); q.ActionRunning = true; FixtureWorld.Tick(0.2f);
+            Check(BackMountainBossMorphService.IsActive && q.HeldWeaponSlot == 0, id + " expiry waits while an action blocks hand changes");
+            q.Shoot(); FixtureWorld.Tick(0.01f);
+            Check(Physics.Overlaps == 0, id + " no ability while waiting to restore");
+            q.ActionRunning = false; FixtureWorld.Tick(0.01f);
+            Clean(q, id + " restored after blocking action ended"); Preserved("blocked expiry");
+            Check(q.HeldWeaponSlot == 0, id + " weapon still in hand after restore");
+
+            // A blocking action that never ends cannot keep the form alive forever.
+            FixtureWorld.Reset(); var r = FixtureWorld.Player;
+            Check(BackMountainBossMorphService.TryBegin(id, FixtureWorld.Owner), "stuck expiry setup " + id);
+            r.ActionRunning = true; FixtureWorld.Tick(30.1f); FixtureWorld.Tick(2.7f);
+            Check(BackMountainBossMorphService.IsActive, id + " still waiting within the limit");
+            FixtureWorld.Tick(0.2f); Clean(r, id + " forced restore after wait limit"); r.ActionRunning = false;
+        }
+
+        // Official Health.ElementFactor subtracts 0.15 from fire in rain on raid maps without clamping at 0.
+        foreach (int id in new[] { 500065, 500066 })
+        {
+            FixtureWorld.Reset(); var p = FixtureWorld.Player;
+            TimeOfDayController.Instance = new TimeOfDayController { CurrentWeather = Duckov.Weathers.Weather.Rainy };
+            Check(BackMountainBossMorphService.TryBegin(id, FixtureWorld.Owner), "rain form starts " + id);
+            Stat fire = p.CharacterItem.GetStat("ElementFactor_Fire");
+            Near(fire.Value - 0.15f, 0f, id + " rainy raid fire factor is exactly immune, never healing");
+            TimeOfDayController.Instance.CurrentWeather = Duckov.Weathers.Weather.Sunny; FixtureWorld.Tick(0.01f);
+            Near(fire.Value, 0f, id + " clear weather removes the rain compensation");
+            TimeOfDayController.Instance.CurrentWeather = Duckov.Weathers.Weather.Rainy; FixtureWorld.Tick(0.01f);
+            Near(fire.Value - 0.15f, 0f, id + " rain starting mid-form re-applies compensation");
+            LevelManager.Instance.IsBaseLevel = true; FixtureWorld.Tick(0.01f);
+            Near(fire.Value, 0f, id + " base level has no rain penalty to compensate");
+            LevelManager.Instance.IsBaseLevel = false; FixtureWorld.Tick(0.01f);
+            BackMountainBossMorphService.Clear(); Clean(p, id + " rain compensation removed on restore");
+            TimeOfDayController.Instance = null;
+        }
+    }
     private static void FormsAndConsumption()
     {
         for (int i = 0; i < FixtureWorld.Fruits.Length; i++)
@@ -395,7 +448,7 @@ internal static class Program
     {
         try
         {
-            FormsAndConsumption(); RejectionAndRollback(); RecheckedEligibility(); TimersAndOwnership(); Combat(); EquipmentRefresh();
+            FormsAndConsumption(); RejectionAndRollback(); RecheckedEligibility(); TimersAndOwnership(); HandsWeatherAndBlockedExpiry(); Combat(); EquipmentRefresh();
             FixtureWorld.Reset(); BackMountainBossMorphService.Clear();
             Console.WriteLine("BackMountainMorph: " + checks + " assertions PASS"); return 0;
         }

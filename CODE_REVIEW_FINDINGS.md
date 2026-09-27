@@ -1,5 +1,26 @@
 # CODE_REVIEW_FINDINGS.md — 已确认问题库
 
+<!-- BEGIN JEFF FRUIT REAUDIT 2026-09-27 -->
+
+## 2026-09-27 Jeff 任务与菜地果实链路复审（8 项 Fixed / L1+L2，L3 待验）
+
+结合 `鸭科夫源码/` 与本机官方 DLL 复审任务挂载与推进、收获到手、吃下变身三条链，重点补上一轮替身没有模拟的官方行为（`CanEditInventory`、雨天元素系数、`Garden.Load` 缺表分支）。完整依据、反驳 / 接受项与人工步骤见 [复审报告](docs/reports/reviews/2026-09-27-Jeff任务与果实复审.md)。编号 301 起。
+
+| ID | 等级 / 分类 | 确认问题与修复 | 验证 / 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-27-301 | P1 / COMPAT | 引导一条接一条，第 5 条「天空岛装备」无前置，未做完 Jeff 序章的档卡死后面九条。`GuidePrerequisiteMet` 加 `SkyIslandPreludeFlow.CanUseRoute`，前置未到跳过。 | Fixed / L2。JeffQuestFlow 新档走完其余 11 条；反向探针转红。 |
+| CR-2026-09-27-302 | P2 / COMPAT / WIRE+ | 吃果实时 `CA_UseItem` 在跑，官方 `SetCharacterModel` 把 `holdWeaponBeforeUse` 清成 -1，`OnStop` 切近战（无近战则空手）。换模前后写回官方字段。 | Fixed / L2。三果实 × 三种吃前武器；DLL 契约核对字段与调用顺序。 |
+| CR-2026-09-27-303 | P2 / COMPAT | 到期时正在近战 / 冲刺 / 交互 / 用道具，换回模型会连手持武器一起销毁。改为等动作结束再恢复，最多 3 秒。 | Fixed / L2。等待、放行、卡死强制恢复；探针转红。 |
+| CR-2026-09-27-304 | P2 / COMPAT / WIRE+ | 官方雨天对火焰系数再减 0.15 不截断，乘 0 的火免变成火伤回血且越过上限。雨天补排在乘算之后的 `Add +0.15`。 | Fixed / L2。夹具 Stat 按官方 Order 重写；探针得 -0.15 转红。 |
+| CR-2026-09-27-305 | P2 / COMPAT / WIRE+ | 作物表注入晚于 `Garden.Load` 时，未初始化 Crop 带默认 Data 进字典，下次存档抹掉 Mod 作物。注入成功后对含空壳的 Garden 重读一次存档。 | Fixed / L2。早读→晚注入→恢复，健康菜地与模板不重读；探针转红。 |
+| CR-2026-09-27-306 | P3 / COMPAT | `AddDynamicEntry` 在官方物品表未就绪时返回 false，兜底注册却记成功。改为检查返回值、交给重试。 | Fixed / L2。探针转红。 |
+| CR-2026-09-27-307 | P3 / COMPAT | 官方接取后 Mod 事实写失败只打 DevLog（正式构建不存在），任务无声消失。改为给玩家原因，投影退回可接取页。 | Fixed / L2。失败提示、退回、重试。 |
+| CR-2026-09-27-308 | P3 / COMPAT | 官方作物不浇水不长，起步种子提示没说。补中英一句。 | Fixed / L1。 |
+
+反驳：切语言后种子名不跟随（已在 `InjectLocalization_Extra_Integration`）。接受：基地可食用（Wiki 设计）、额外攻击不出命中标记（`isFromBuffOrEffect` 设计）、护甲削减额外伤害（数值取舍）、换武器慢一帧与女巫持枪手势（待实机）。
+
+<!-- END JEFF FRUIT REAUDIT 2026-09-27 -->
+
 <!-- BEGIN JEFF FRUIT AUDIT 2026-09-26 -->
 
 ## 2026-09-26 Jeff 任务与菜地果实链路（4 项 Fixed / L1+L2，L3 待验）

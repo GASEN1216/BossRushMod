@@ -259,7 +259,8 @@ namespace BossRush
         internal string ResolveCampaignCurrentMode() { return Mode; }
         internal static void DevLog(string message) { }
         internal static void CriticalLog(string key, string message) { }
-        internal void ShowMessage(string message) { }
+        internal string LastMessage;
+        internal void ShowMessage(string message) { LastMessage = message; }
     }
     internal static class L10n { internal static bool Chinese; internal static string T(string cn, string en) { return Chinese?cn:en; } internal static string T(string key) { return key; } }
     internal static class BossRushUI { internal static bool IsOfficialHudHidden() { return false; } internal static bool IsGamePaused() { return false; } }
@@ -275,6 +276,7 @@ namespace BossRush
     internal class RandomEventDirector { internal int EventsFiredThisRun; }
     internal static class DailyReportService { internal static bool IsSignedToday; }
     internal static class SkyIslandBossRules { internal static object GearSpec(int id) { return id==500086?new object():null; } }
+    internal static class SkyIslandPreludeFlow { internal static bool RouteOpen; internal static bool CanUseRoute(out string reason) { reason=RouteOpen?null:"route closed"; return RouteOpen; } }
     internal static class ReforgeDataPersistence { internal static bool HasReforgeData(ItemStatsSystem.Item item) { return item.Reforged; } }
     internal static class AffixDefinitions { internal const int MaxSlots=3; }
     internal struct AffixSlotView { internal bool IsEmpty; }

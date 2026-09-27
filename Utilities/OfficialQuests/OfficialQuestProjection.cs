@@ -499,7 +499,11 @@ namespace BossRush
             string message;
             bool accepted = binding.Accept(out message);
             if (!accepted)
-                ModBehaviour.DevLog(binding.Client.LogTag + " [WARNING] 官方接取已发生，Mod 事实等待重试: " + message);
+            {
+                // 下一拍 Synchronize 按 Mod 事实把这条投影收回可接取页；正式构建没有 DevLog，得让玩家知道要重接。
+                ModBehaviour.DevLog(binding.Client.LogTag + " [WARNING] 官方接取已发生，Mod 事实未写入，投影将退回可接取页: " + message);
+                ReportDeliveryFailure(message);
+            }
         }
 
         private void OnQuestCompleted(Quest quest)

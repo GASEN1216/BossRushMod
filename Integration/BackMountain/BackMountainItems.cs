@@ -339,7 +339,13 @@ namespace BossRush
                 UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
                 clone.SetTypeID(typeId);
                 ConfigureItem(typeId, clone);
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                // 官方在 ItemAssetsCollection 尚未就绪时返回 false 而不是抛异常；照实报告，交给下一次注入重试。
+                if (!ItemAssetsCollection.AddDynamicEntry(clone))
+                {
+                    UnityEngine.Object.Destroy(clone.gameObject);
+                    ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "官方物品表尚未就绪，兜底物品稍后重试: " + typeId);
+                    return false;
+                }
                 _runtimeRegistered.Add(typeId);
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "运行时兜底物品已注册: " + typeId);
                 return true;

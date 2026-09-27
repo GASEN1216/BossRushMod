@@ -391,11 +391,48 @@ static class Program
         ModBehaviour.Instance.Enabled = true; CampaignFacilityUnlocks.Tokens.Clear(); SavesSystem.Save("BossRush_BackMountain_GardenRatchet_v1", true);
         Check(BackMountainItems.TryInjectSeedsIntoShop(new Duckov.Economy.StockShop(), ModBehaviour.Instance) == 3, "slot ratchet keeps the vendor stocked before campaign tokens load");
     }
+    static Crop CropChild(Garden garden, string savedId, bool active = true)
+    {
+        var go = new GameObject(); go.SetActive(active);
+        var crop = go.AddComponent<Crop>(); crop.SavedId = savedId; garden.Children.Add(crop); return crop;
+    }
+    static void LateInjectionRecoversGardens()
+    {
+        int seedId = BackMountainItems.Definitions.First(d => d.IsSeed).TypeId;
+        string modCropId = GardenSeedInjector.BuildCropId(seedId);
+        Reset(); StartModule(); ModBehaviour.Instance.UnlockAll = true;
+        Garden.gardens.Clear();
+        GameplayDataSettings.CropDatabase.entries.Add(new CropInfo { id = "Official_Wheat" });
+        var garden = new GameObject().AddComponent<Garden>(); Garden.gardens["Default"] = garden;
+        var official = CropChild(garden, "Official_Wheat");
+        var mod = CropChild(garden, modCropId);
+        var template = CropChild(garden, null, false);
+        // sceneLoaded injection fails (official item table not ready), then Garden.Start reads the save without our CropInfo.
+        ItemAssetsCollection.Unavailable = true; ItemAssetsCollection.Prefabs.Remove(BackMountainItems.Definitions[0].TypeId);
+        module.OnUpdate(0, 0);
+        Check(!GardenSeedInjector.IsInjected, "unavailable item table reports failure instead of latching success");
+        garden.Load();
+        Check(string.IsNullOrEmpty(mod.Data.cropID) && official.Data.cropID == "Official_Wheat" && garden.Loads == 1,
+            "setup: early Garden.Load leaves a hollow default-data mod crop");
+        ItemAssetsCollection.Unavailable = false; LevelManager.Ready();
+        Check(GardenSeedInjector.IsInjected, "level-ready retry injects crops");
+        Check(garden.Loads == 2 && mod.Data.cropID == modCropId && official.Data.cropID == "Official_Wheat",
+            "late injection re-reads the untouched save once and restores the mod crop before the next official save");
+
+        Reset(); StartModule(); ModBehaviour.Instance.UnlockAll = true;
+        Garden.gardens.Clear();
+        var healthy = new GameObject().AddComponent<Garden>(); Garden.gardens["Default"] = healthy;
+        CropChild(healthy, "Official_Wheat").Data.cropID = "Official_Wheat";
+        CropChild(healthy, null, false);
+        LevelManager.Ready();
+        Check(GardenSeedInjector.IsInjected && healthy.Loads == 0, "healthy garden and inactive template are never re-read");
+        Garden.gardens.Clear();
+    }
     static int Main()
     {
         try
         {
-            RegistrationAndUsage(); MealLifecycle(); MealFailures(); Facilities(); Showcase(); GardenSite(); StarterSeedsAndShop();
+            RegistrationAndUsage(); MealLifecycle(); MealFailures(); Facilities(); Showcase(); GardenSite(); StarterSeedsAndShop(); LateInjectionRecoversGardens();
             if (module != null) module.OnDestroy();
             Console.WriteLine("BackMountainLifecycle PASS: " + assertions + " assertions"); return 0;
         }

@@ -2,7 +2,10 @@
 // 仅替换模型和临时战斗属性；玩家生命、真实 Item 树与通行碰撞体保持原样，不写档。
 using System;
 using System.Collections.Generic;
+using System.Reflection;
+using Duckov.Weathers;
 using ItemStatsSystem;
+using ItemStatsSystem.Stats;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -111,6 +114,13 @@ namespace BossRush
     /// <summary>只在变身期间存在。真实射击/近战事件排队，下一次 Update 结算，避免嵌套伤害链。</summary>
     internal sealed class BackMountainBossMorphRuntime : MonoBehaviour
     {
+        /// <summary>官方私有字段：UseItem 开始前记下的手持武器位（-1 近战 / 0 主武器 / 1 副武器）。</summary>
+        private static readonly FieldInfo HoldWeaponBeforeUseField =
+            typeof(CharacterMainControl).GetField("holdWeaponBeforeUse", BindingFlags.Instance | BindingFlags.NonPublic);
+        /// <summary>官方 Health.ElementFactor 在出击地图下雨时对火焰系数再减 0.15，且不截断到 0。</summary>
+        private const float RainFireFactorPenalty = 0.15f;
+        /// <summary>到期时玩家正在做不能换手持物的动作（近战、冲刺、交互、用道具），最多等这么久再强制恢复。</summary>
+        private const float RestoreWaitLimitSeconds = 3f;
         private readonly List<ZombieModeAttributeModifierRecord> _modifiers = new List<ZombieModeAttributeModifierRecord>();
         private readonly List<GameObject> _costume = new List<GameObject>();
         private readonly List<Renderer> _hiddenEquipment = new List<Renderer>();
@@ -129,6 +139,8 @@ namespace BossRush
         private float _remaining;
         private float _nextAbility;
         private bool _active, _subscribed, _pendingAbility, _refreshEquipment, _cleaned;
+        private Stat _fireStat;
+        private Modifier _rainFireGuard;
         private int _scene, _damageMask, _wallMask;
         internal bool Active { get { return _active; } }
 
@@ -155,7 +167,7 @@ namespace BossRush
                 CaptureCollision();
                 _model.transform.localScale *= profile.Scale;
                 _active = true;
-                character.SetCharacterModel(_model);
+                SetModelKeepingWeaponBeforeUse(_model);
                 RestoreCollision();
                 HidePlayerEquipment();
                 if (helm != null) AttachCostume(helm, _model.HelmatSocket, false);
@@ -168,6 +180,8 @@ namespace BossRush
                     || (profile.Fire && !RuntimeStatModifierTracker.TryAdd(character, "ElementFactor_Fire", -1f,
                         this, _modifiers, "BossFruit", ItemStatsSystem.Stats.ModifierType.PercentageMultiply)))
                     throw new InvalidOperationException("玩家战斗属性不完整");
+                if (profile.Fire) _fireStat = character.CharacterItem.GetStat("ElementFactor_Fire");
+                UpdateRainFireGuard();
                 _remaining = Mathf.Max(0.1f, duration);
                 _scene = SceneManager.GetActiveScene().handle;
                 _damageMask = LayerMask.GetMask("Character", "DamageReceiver");
@@ -187,6 +201,56 @@ namespace BossRush
                 Restore();
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 吃果实时官方 CA_UseItem 还在 Running，CanEditInventory 为假：SetCharacterModel 里的「切回吃前武器」会被拒，
+        /// 却仍把 holdWeaponBeforeUse 清成 -1，随后 CA_UseItem.OnStop 就把玩家切到近战位（没有近战武器就空手）。
+        /// 这里把官方记下的武器位原样写回，让 OnStop 照官方原意切回吃之前拿着的那把枪。
+        /// </summary>
+        private void SetModelKeepingWeaponBeforeUse(CharacterModel model)
+        {
+            bool restoreIndex = HoldWeaponBeforeUseField != null && !_character.CanEditInventory();
+            object before = restoreIndex ? HoldWeaponBeforeUseField.GetValue(_character) : null;
+            _character.SetCharacterModel(model);
+            if (restoreIndex && before != null) HoldWeaponBeforeUseField.SetValue(_character, before);
+        }
+
+        /// <summary>
+        /// 火焰免疫用 PercentageMultiply -1 把系数压成 0；官方在出击地图下雨时再减 0.15，结果是负数，
+        /// 火焰伤害会变成回血。下雨时补一条排在乘算之后的 +0.15，让最终系数正好回到 0。天气可能中途变，每帧 O(1) 跟随。
+        /// </summary>
+        private void UpdateRainFireGuard()
+        {
+            if (_fireStat == null) return;
+            bool rainy = false;
+            try
+            {
+                rainy = TimeOfDayController.Instance != null && LevelManager.Instance != null
+                    && !LevelManager.Instance.IsBaseLevel && TimeOfDayController.Instance.CurrentWeather == Weather.Rainy;
+            }
+            catch (Exception)
+            {
+                // 天气 / 关卡读不到时按不下雨处理：最坏是雨天少补 0.15，不会反过来让火伤变大
+            }
+            if (rainy == (_rainFireGuard != null)) return;
+            if (rainy)
+            {
+                _rainFireGuard = new Modifier(ModifierType.Add, RainFireFactorPenalty, true, 10000, this);
+                _fireStat.AddModifier(_rainFireGuard);
+            }
+            else RemoveRainFireGuard();
+        }
+
+        private void RemoveRainFireGuard()
+        {
+            if (_rainFireGuard == null) return;
+            try { if (_fireStat != null) _fireStat.RemoveModifier(_rainFireGuard); }
+            catch (Exception)
+            {
+                // 物品树已随角色销毁时 modifier 一起消失，无需再摘
+            }
+            _rainFireGuard = null;
         }
 
         private bool AddBonus(string stat, float value)
@@ -302,8 +366,16 @@ namespace BossRush
             { Restore(); return; }
             if (BossRushUI.IsGamePaused()) return;
             if (_refreshEquipment) { _refreshEquipment = false; HidePlayerEquipment(); }
+            UpdateRainFireGuard();
             _remaining -= Time.deltaTime;
-            if (_remaining <= 0f) { Restore(); return; }
+            if (_remaining <= 0f)
+            {
+                // 正在近战 / 冲刺 / 交互 / 用道具时官方不许换手持物：此刻换回原模型，挂在 Boss 模型上的武器会随它销毁，
+                // 玩家落得空手。先停掉能力、等动作结束再恢复，最多等 RestoreWaitLimitSeconds。
+                _pendingAbility = false;
+                if (_character.CanEditInventory() || -_remaining >= RestoreWaitLimitSeconds) Restore();
+                return;
+            }
             if (_pendingAbility)
             {
                 _pendingAbility = false;
@@ -369,6 +441,8 @@ namespace BossRush
                 _subscribed = false;
             }
             RuntimeStatModifierTracker.RemoveAll(_modifiers, "BossFruit");
+            RemoveRainFireGuard();
+            _fireStat = null;
             foreach (KeyValuePair<DuckovItemAgent, HandheldAnimationType> saved in _handAnimations)
                 if (saved.Key != null) saved.Key.handAnimationType = saved.Value;
             _handAnimations.Clear();

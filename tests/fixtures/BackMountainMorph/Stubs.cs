@@ -181,13 +181,18 @@ namespace UnityEngine.SceneManagement
 }
 namespace ItemStatsSystem.Stats
 {
-    public enum ModifierType { Add, PercentageAdd, PercentageMultiply }
+    public enum ModifierType { Add = 0, PercentageAdd = 100, PercentageMultiply = 200 }
     public class Modifier
     {
         public readonly ModifierType Type;
         public readonly float Value;
         public readonly object Source;
-        public Modifier(ModifierType type, float value, object source) { Type = type; Value = value; Source = source; }
+        private readonly bool overrideOrder; private readonly int overrideOrderValue;
+        public Modifier(ModifierType type, float value, object source) : this(type, value, false, 0, source) { }
+        public Modifier(ModifierType type, float value, bool overrideOrder, int overrideOrderValue, object source)
+        { Type = type; Value = value; Source = source; this.overrideOrder = overrideOrder; this.overrideOrderValue = overrideOrderValue; }
+        // Mirrors official Modifier.Order: default order is the enum value.
+        public int Order { get { return overrideOrder ? overrideOrderValue : (int)Type; } }
     }
     public class Stat
     {
@@ -198,10 +203,18 @@ namespace ItemStatsSystem.Stats
         {
             get
             {
-                float value = (BaseValue + Modifiers.Where(m => m.Type == ModifierType.Add).Sum(m => m.Value))
-                    * (1 + Modifiers.Where(m => m.Type == ModifierType.PercentageAdd).Sum(m => m.Value));
-                foreach (var m in Modifiers.Where(m => m.Type == ModifierType.PercentageMultiply)) value *= 1 + m.Value;
-                return value;
+                // Mirrors official Stat.Recalculate: stable order sort, grouped PercentageAdd, clamped multipliers.
+                float result = BaseValue, pending = 0f; bool adding = false; int last = int.MinValue;
+                foreach (var m in Modifiers.Select((m, i) => new { m, i }).OrderBy(x => x.m.Order).ThenBy(x => x.i).Select(x => x.m))
+                {
+                    if (adding && (m.Order != last || m.Type != ModifierType.PercentageAdd)) { result *= Math.Max(0f, 1f + pending); pending = 0f; adding = false; }
+                    last = m.Order;
+                    if (m.Type == ModifierType.Add) result += m.Value;
+                    else if (m.Type == ModifierType.PercentageAdd) { adding = true; pending += m.Value; }
+                    else result *= Math.Max(0f, 1f + m.Value);
+                }
+                if (adding) result *= Math.Max(0f, 1f + pending);
+                return result;
             }
         }
         public void AddModifier(Modifier modifier) { if (Reject) throw new InvalidOperationException("missing stat binding"); Modifiers.Add(modifier); }
@@ -320,8 +333,21 @@ public class CharacterMainControl : Component
     public void AttackRejected() { if (attack != null) attack(null); }
     public void HoldChanged() { if (holdChanged != null) holdChanged(CurrentHoldItemAgent); }
     public void EquipmentChanged() { if (equipmentChanged != null) equipmentChanged(this, null); }
+    // Official: CanEditInventory() is false while a running action forbids it (CA_UseItem, attack, dash, interact).
+    public bool ActionRunning;
+    public int HeldWeaponSlot = 0;
+    private int holdWeaponBeforeUse = -1;
+    public bool CanEditInventory() { return !ActionRunning; }
+    /// <summary>Official UseItem: StoreHoldWeaponBeforeUse, then CA_UseItem starts and holds the item.</summary>
+    public void StartUse() { holdWeaponBeforeUse = HeldWeaponSlot; ActionRunning = true; HeldWeaponSlot = 99; }
+    /// <summary>Official CA_UseItem.OnStop: running=false first, then SwitchToWeaponBeforeUse.</summary>
+    public void FinishUse() { ActionRunning = false; SwitchToWeaponBeforeUse(); }
+    private void SwitchToWeaponBeforeUse() { if (CanEditInventory()) HeldWeaponSlot = holdWeaponBeforeUse; holdWeaponBeforeUse = -1; }
     public void SetCharacterModel(CharacterModel model)
     {
+        // Official StoreHoldWeaponBeforeUse only records a real weapon slot.
+        if (HeldWeaponSlot >= -1 && HeldWeaponSlot <= 1) holdWeaponBeforeUse = HeldWeaponSlot;
+        bool handsLost = !CanEditInventory(); // ChangeHoldItem(null) refused: held agent dies with the old model.
         if (characterModel != null) UnityEngine.Object.Destroy(characterModel.gameObject);
         characterModel = model;
         AppliedModels.Add(model);
@@ -344,9 +370,13 @@ public class CharacterMainControl : Component
             if (visual.AgentType == ItemAgent.AgentTypes.handheld) CurrentHoldItemAgent = visual;
             PlayerVisuals.Add(visual);
         }
+        if (handsLost) HeldWeaponSlot = 98;
+        SwitchToWeaponBeforeUse();
     }
 }
 public static class SceneLoader { public static bool IsSceneLoading; }
+namespace Duckov.Weathers { public enum Weather { Sunny, Cloudy, Rainy, Snow } }
+public class TimeOfDayController { public static TimeOfDayController Instance; public Duckov.Weathers.Weather CurrentWeather; }
 public class LevelManager { public static LevelManager Instance; public bool IsBaseLevel; }
 namespace Duckov.Utilities { public static class GameplayDataSettings { public static class Layers { public static int wallLayerMask = 4; } } }
 namespace Duckov.UI { public static class NotificationText { public static readonly List<string> Messages = new List<string>(); public static void Push(string text) { Messages.Add(text); } } }

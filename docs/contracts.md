@@ -690,6 +690,22 @@ Breaking/Operational:
   Harvest 在 Return().Forget() 后清格，所以成功提示必须等发货任务完成。只读 DLL 契约检查在
   `tests/fixtures/JeffQuestFlow/OfficialAssemblyContract.cs`，真实收获数量仍需实机验证。
 
+**换模、雨天与菜地读档（2026-09-27 核对）**
+
+- `CharacterMainControl.SetCharacterModel` 先 `StoreHoldWeaponBeforeUse`、`ChangeHoldItem(null)`，末尾
+  `SwitchToWeaponBeforeUse`（切完无条件把 `holdWeaponBeforeUse` 置 -1）。`ChangeHoldItem` 受 `CanEditInventory` 门控，
+  任一动作 Running 且未放行（`CA_UseItem`、近战、冲刺、交互……）时换手持物被拒，旧模型连同挂在它插槽上的手持物一起销毁。
+  在 `CA_UseItem.OnFinish` 里换模 → 官方记下的吃前武器位被清成 -1 → `OnStop` 把玩家切到近战位（没近战武器就空手）。
+  后山果实换模前后原样写回 `holdWeaponBeforeUse`；到期恢复等动作结束（最多 3 秒）再换回。
+- `Health.ElementFactor(fire)` 在出击地图下雨时再减 0.15，结果不截断；`Health.Hurt` 对负最终伤害照样
+  `CurrentHealth -= finalDamage`，也不钳上限。把火焰系数乘成 0 的免疫在雨天会变成火伤回血、血量越过上限。
+  后山火系形态在雨天补一条 `overrideOrder` 排在乘算之后的 `Add +0.15`。`Stat` 按 `Modifier.Order`（默认等于类型枚举值）排序计算。
+- `Garden.Start → Load` 遇到 `CropDatabase.GetCropInfo` 查不到的记录时，`Crop.Initialize` LogError 早退，
+  但未初始化的 Crop 仍进字典，`Data` 为默认值；下一次 `Garden.Save` 就把原记录写成空 cropID，Mod 作物永久丢失。
+  作物表必须在 `sceneLoaded` 那一拍注入；晚到时 `GardenSeedInjector` 对含空壳 Crop 的 Garden 重读一次存档。
+  `ItemAssetsCollection.AddDynamicEntry` 在 `Instance == null` 时返回 false 而不抛异常，调用方要检查返回值。
+  官方作物不浇水不累计生长（`Crop.Tick`）。
+
 **生成与激活**
 
 - `CreateCharacterAsync` 传 `relatedScene != -1` 且 preset 的 `setActiveByPlayerDistance` 为 true 时，角色进官方

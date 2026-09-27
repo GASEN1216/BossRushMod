@@ -211,7 +211,7 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 
 ## Jeff's new-content introductions
 
-Alongside the six campaign chapters, Jeff offers fourteen one-time introductions. They come **one at a time**: Jeff only hands you the next one after you turn in the current one. The garden and display introductions wait until campaign chapters 1 and 2 are turned in (which unlock the garden and the display bonus), without holding up the rest. Accept them at base, follow the quest log, then return and hand them in yourself. Acceptance, trial completion and hand-in survive reloading. These introductions pay no extra cash and do not change chapter order.
+Alongside the six campaign chapters, Jeff offers fourteen one-time introductions. They come **one at a time**: Jeff only hands you the next one after you turn in the current one. The garden and display introductions wait until campaign chapters 1 and 2 are turned in (which unlock the garden and the display bonus), and the Sky Island gear introduction waits until Coordinates Above the Clouds is turned in and the route is open. None of them holds up the rest. Accept them at base, follow the quest log, then return and hand them in yourself. Acceptance, trial completion and hand-in survive reloading. These introductions pay no extra cash and do not change chapter order.
 
 - **Modes**: Bare Hands, Territory, Blood Hunt, Echo of Fate, Black Market Duck King Cup and Zombie mode. Each quest explains the entry items and preparation; starting a real run is enough, with no first-try victory required.
 - **Pet Nest and random events**: hatch or deploy a cub, or experience a random event in a supported mode.

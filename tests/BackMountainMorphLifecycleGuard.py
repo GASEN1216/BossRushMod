@@ -19,7 +19,7 @@ def main():
     assert 'profile.NameKey = PhantomWitchConfig.BasePresetNameKey;' in witch
     assert 'profile.Weapon = PhantomWitchConfig.ReservedScytheTypeId;' in witch
     assert 'profile.Scale = PhantomWitchConfig.BossModelScale;' in witch
-    for token in ('character.SetCharacterModel(_model); RestoreCollision();', '_character.SetCharacterModel(null);',
+    for token in ('SetModelKeepingWeaponBeforeUse(_model); RestoreCollision();', '_character.SetCharacterModel(null);',
                   '_remaining -= Time.deltaTime;', 'if (BossRushUI.IsGamePaused()) return;',
                   'RuntimeStatModifierTracker.RemoveAll(_modifiers, "BossFruit");',
                   '_character.OnShootEvent -= OnAttack;', '_attackAction.OnAttack -= OnMeleeAttack;',
@@ -47,6 +47,13 @@ def main():
     assert 'usage.CanBeUsed(___item, __instance.characterController)' in usage
     assert 'ReferenceEquals(user, CharacterMainControl.Main)' in usage
     assert '_character.OnAttackEvent +=' not in morph, 'rejected attack input must not release an ability'
+    # 官方 CA_UseItem 运行中换模会把 holdWeaponBeforeUse 清成 -1，吃完被切到近战：必须写回官方记下的武器位
+    assert 'GetField("holdWeaponBeforeUse", BindingFlags.Instance | BindingFlags.NonPublic)' in morph
+    assert '_character.SetCharacterModel(model); if (restoreIndex && before != null) HoldWeaponBeforeUseField.SetValue(_character, before);' in morph, 'eating must keep the pre-use weapon'
+    # 到期时动作仍在跑就等它结束（有上限），否则挂在 Boss 模型上的武器随模型销毁、玩家空手
+    assert 'if (_character.CanEditInventory() || -_remaining >= RestoreWaitLimitSeconds) Restore();' in morph
+    # 官方雨天对火焰系数再减 0.15 且不截断：乘算 -1 之后必须补排序在后的 +0.15，否则火伤回血
+    assert 'new Modifier(ModifierType.Add, RainFireFactorPenalty, true, 10000, this)' in morph and 'RemoveRainFireGuard();' in morph
     assert module.count('BackMountainBossMorphService.Clear();') >= 2, 'shutdown and unload must release morph'
     assert '[HarmonyPrefix] internal static bool EnsureHarvestProduct' in harvest
     assert 'BackMountainItems.EnsureRuntimeRegistration(productId)' in harvest

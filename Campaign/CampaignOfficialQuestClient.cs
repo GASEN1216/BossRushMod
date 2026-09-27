@@ -247,8 +247,10 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 引导的前置：菜地要鸭王征程第一章交付（解锁菜地工地），陈列要第二章交付（解锁陈列加成）；其余没有前置。
-        /// 读的是战役的设施解锁 token（战役关闭时一律未解锁，这两条就一直排在后面，不挡别的）。
+        /// 引导的前置：菜地要鸭王征程第一章交付（解锁菜地工地），陈列要第二章交付（解锁陈列加成）；
+        /// 天空岛装备要本槽航线已开（Jeff 序章「云上的坐标」已交付）。其余没有前置。
+        /// 菜地 / 陈列读战役的设施解锁 token（战役关闭时一律未解锁）；三条前置没到时都排在后面，不挡别的。
+        /// 天空岛那条若不设前置，新档会卡在「先做完整条序章再上岛打 Boss」上，后面九条入门引导全部挂不出来。
         /// </summary>
         private static bool GuidePrerequisiteMet(string guideId)
         {
@@ -256,6 +258,11 @@ namespace BossRush
                 return CampaignFacilityUnlocks.IsTokenGranted(CampaignFacilityUnlocks.BuildTokenForChapter(1));
             if (string.Equals(guideId, CampaignGuideTable.Trophy, StringComparison.Ordinal))
                 return CampaignFacilityUnlocks.IsTokenGranted(CampaignFacilityUnlocks.BuildTokenForChapter(2));
+            if (string.Equals(guideId, CampaignGuideTable.SkyIslandGear, StringComparison.Ordinal))
+            {
+                string unused;
+                return SkyIslandPreludeFlow.CanUseRoute(out unused);
+            }
             return true;
         }
 

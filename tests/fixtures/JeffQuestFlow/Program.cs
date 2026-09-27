@@ -28,7 +28,7 @@ internal static class Program
         ModBehaviour.Instance = new ModBehaviour();
         CharacterMainControl.Main = new CharacterMainControl();
         LevelManager.Instance.IsBaseLevel=true; SceneLoader.IsSceneLoading=false;
-        ModeGRuntimeGates.IsModeGRunInProgress=false; PetNestService.PetCount=0; PetNestCompanionRuntime.HasCompanion=false; DailyReportService.IsSignedToday=false;
+        ModeGRuntimeGates.IsModeGRunInProgress=false; PetNestService.PetCount=0; PetNestCompanionRuntime.HasCompanion=false; DailyReportService.IsSignedToday=false; SkyIslandPreludeFlow.RouteOpen=false;
         SavesSystem.CurrentSlot++; Time.unscaledTime=0;
         core=new OfficialQuestProjection(ModBehaviour.Instance); manager=new QuestManager();
         client=new CampaignOfficialQuestClient(new CampaignRuntimeModule()); client.RegisterAll(core); Tick();
@@ -64,6 +64,7 @@ internal static class Program
         client.RegisterAll(core); Check(GameplayDataSettings.QuestCollection.Count==20,"registration is idempotent");
         CampaignFacilityUnlocks.Tokens.Add(CampaignFacilityUnlocks.BuildTokenForChapter(1));
         CampaignFacilityUnlocks.Tokens.Add(CampaignFacilityUnlocks.BuildTokenForChapter(2));
+        SkyIslandPreludeFlow.RouteOpen=true;
         foreach(CampaignGuideTable.Definition def in CampaignGuideTable.Definitions)
         {
             Quest prefab=GameplayDataSettings.QuestCollection.Get(def.QuestId);
@@ -103,6 +104,32 @@ internal static class Program
         CampaignPersistence.Current=new CampaignSaveData(); SavesSystem.CurrentSlot++; Tick();
         Check(manager.HistoryQuests.Count==0 && manager.ActiveQuests.Count==0,"new slot has no previous guide projections");
     }
+    private static void GatedGuidesDoNotBlockChain()
+    {
+        Reset();
+        // Fresh save: sky island route closed and no campaign facility tokens yet.
+        string[] order=CampaignGuideTable.Definitions.Select(d=>d.Id).ToArray();
+        var offered=new System.Collections.Generic.List<string>();
+        for(int guard=0;guard<order.Length;guard++)
+        {
+            string next=CampaignGuideTable.NextOfferableId(id=>
+                id==CampaignGuideTable.Garden ? CampaignFacilityUnlocks.IsTokenGranted(CampaignFacilityUnlocks.BuildTokenForChapter(1))
+                : id==CampaignGuideTable.Trophy ? CampaignFacilityUnlocks.IsTokenGranted(CampaignFacilityUnlocks.BuildTokenForChapter(2))
+                : id!=CampaignGuideTable.SkyIslandGear || SkyIslandPreludeFlow.RouteOpen);
+            if(next==null)break;
+            var def=CampaignGuideTable.Find(next);
+            Quest prefab=GameplayDataSettings.QuestCollection.Get(def.QuestId);
+            Check(prefab.MeetsPrerequisit(),"production gate agrees with offered guide "+next);
+            foreach(var other in CampaignGuideTable.Definitions.Where(d=>d.Id!=next))
+                Check(!GameplayDataSettings.QuestCollection.Get(other.QuestId).MeetsPrerequisit(),"only one guide offered at a time "+other.Id);
+            offered.Add(next);
+            manager.ActivateQuest(def.QuestId,QuestGiverID.Jeff); Tick(); Observe(next); Check(Active(def.QuestId).TryComplete(),"deliver "+next);
+        }
+        Check(!offered.Contains(CampaignGuideTable.SkyIslandGear) && !offered.Contains(CampaignGuideTable.Garden) && !offered.Contains(CampaignGuideTable.Trophy),"unmet prerequisites are skipped on a fresh save");
+        Check(offered.Count==order.Length-3,"closed sky island route does not block the remaining guides");
+        SkyIslandPreludeFlow.RouteOpen=true; Tick();
+        Check(GameplayDataSettings.QuestCollection.Get(CampaignGuideTable.Find(CampaignGuideTable.SkyIslandGear).QuestId).MeetsPrerequisit(),"sky island gear guide appears once the route is open");
+    }
     private static void Chapters()
     {
         Reset();
@@ -136,14 +163,27 @@ internal static class Program
     {
         public string LogTag {get{return "test";}} public bool Ready{get;set;}=true; public int Slot{get{return SavesSystem.CurrentSlot;}}
         public void BeginTick(){} public void EndTick(bool dirty){} public void RefreshMarkers(){}
-        internal bool Accepted, Delivered, Done;
+        internal bool Accepted, Delivered, Done, FailAccept;
         internal OfficialQuestBinding Binding(int id)
         {
             return new OfficialQuestBinding {QuestId=id,GiverId=5901,ObjectName="test_"+id,NameKey="name",DescriptionKey="desc",Client=this,
                 CanOffer=()=>!Accepted,CanDeliver=()=>Accepted && Done,IsAccepted=()=>Accepted,IsDelivered=()=>Delivered,
-                Accept=(out string m)=>{m=null;Accepted=true;return true;}, Deliver=(out string m)=>{m=null;Delivered=true;return true;},
+                Accept=(out string m)=>{if(FailAccept){m="accept write failed";return false;}m=null;Accepted=true;return true;}, Deliver=(out string m)=>{m=null;Delivered=true;return true;},
                 Tasks=new[]{new OfficialQuestTaskBinding {TaskId=1,Done=()=>Done,Description=()=>"target"}}};
         }
+    }
+    private static void AcceptFailureIsVisibleAndRetryable()
+    {
+        Reset();
+        var other=new OtherClient {FailAccept=true};
+        core.Register(other.Binding(590099)); Tick();
+        Quest prefab=GameplayDataSettings.QuestCollection.Get(590099);
+        ModBehaviour.Instance.LastMessage=null;
+        manager.ActivateQuest(590099,(QuestGiverID)5901);
+        Check(ModBehaviour.Instance.LastMessage=="accept write failed","failed Mod accept tells the player instead of failing silently");
+        Tick(); Check(Active(590099)==null && prefab.MeetsPrerequisit(),"failed accept returns the quest to the available list");
+        other.FailAccept=false; manager.ActivateQuest(590099,(QuestGiverID)5901); Tick();
+        Check(other.Accepted && Active(590099)!=null,"retry after failed accept succeeds");
     }
     private static void SharedOwnership()
     {
@@ -166,5 +206,5 @@ internal static class Program
         core.Dispose(); Check(GameplayDataSettings.QuestCollection.Count==1 && foreign!=null,"cleanup retains foreign template");
         Check(manager.ActiveQuests.Count==0 && manager.HistoryQuests.Count==0,"cleanup removes all owned projections");
     }
-    public static void Main(string[] args) { OfficialAssemblyContract.Run(args[0]); AllGuides(); Chapters(); SharedOwnership(); Console.WriteLine("JeffQuestFlow: PASS "+checks+" assertions"); }
+    public static void Main(string[] args) { OfficialAssemblyContract.Run(args[0]); AllGuides(); GatedGuidesDoNotBlockChain(); AcceptFailureIsVisibleAndRetryable(); Chapters(); SharedOwnership(); Console.WriteLine("JeffQuestFlow: PASS "+checks+" assertions"); }
 }

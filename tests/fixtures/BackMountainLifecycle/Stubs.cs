@@ -65,7 +65,8 @@ namespace UnityEngine
         public readonly List<Component> Components = new List<Component>();
         public T AddComponent<T>() where T : Component, new() { var c = new T { gameObject = this }; Components.Add(c); return c; }
         public T GetComponent<T>() where T : Component { return Components.OfType<T>().FirstOrDefault(c => !c.Destroyed); }
-        public void SetActive(bool active) { }
+        public bool activeSelf = true;
+        public void SetActive(bool active) { activeSelf = active; }
     }
     public class Component : Object
     {
@@ -189,7 +190,9 @@ namespace ItemStatsSystem
     {
         public static readonly Dictionary<int, Item> Prefabs = new Dictionary<int, Item>();
         public static Item GetPrefab(int id) { Item item; return Prefabs.TryGetValue(id, out item) && item != null ? item : null; }
-        public static void AddDynamicEntry(Item item) { Prefabs[item.TypeID] = item; }
+        // Official returns false (does not throw) while ItemAssetsCollection.Instance is null.
+        public static bool Unavailable;
+        public static bool AddDynamicEntry(Item item) { if (Unavailable) return false; Prefabs[item.TypeID] = item; return true; }
         public static int Instantiated;
         public static Item InstantiateSync(int id)
         {
@@ -225,6 +228,24 @@ namespace Duckov.Crops
     {
         public List<CropInfo> entries = new List<CropInfo>();
         public List<SeedInfo> seedInfos = new List<SeedInfo>();
+    }
+    public struct CropData { public string cropID; }
+    public class Crop : UnityEngine.Component { public CropData Data; public string SavedId; }
+    // Official Garden.Load: crops whose CropInfo is missing stay in the dictionary with default Data (the wipe hazard).
+    public class Garden : UnityEngine.Component
+    {
+        public static Dictionary<string, Garden> gardens = new Dictionary<string, Garden>();
+        public string GardenID = "Default";
+        public readonly List<Crop> Children = new List<Crop>();
+        public int Loads;
+        public T[] GetComponentsInChildren<T>(bool includeInactive) where T : UnityEngine.Component { return Children.OfType<T>().ToArray(); }
+        public void Load()
+        {
+            Loads++;
+            var db = Duckov.Utilities.GameplayDataSettings.CropDatabase;
+            foreach (var crop in Children)
+                crop.Data.cropID = db != null && db.entries.Any(e => e.id == crop.SavedId) ? crop.SavedId : null;
+        }
     }
 }
 namespace Duckov.Utilities

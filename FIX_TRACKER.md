@@ -1,5 +1,21 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+<!-- BEGIN JEFF FRUIT REAUDIT TRACKER 2026-09-27 -->
+
+## 2026-09-27 Jeff 任务、菜地收获与果实变身复审（COMPAT / WIRE+ / SAFE）
+
+**范围**：owner 要求结合官方源码完整审查 Jeff 任务链路（任务可挂、可推进）、菜地收获到手与吃下变身，达到生产级；期间无人值守，完成验证后提交。保留工作区其他会话的改动；未启动游戏、未读玩家存档。完整 [复审报告与人工清单 Q1–G2](docs/reports/reviews/2026-09-27-Jeff任务与果实复审.md)。
+
+**修复**：CR-2026-09-27-301–308。天空岛装备引导加航线前置，不再卡住引导链；接取写失败告诉玩家；吃完保留吃前武器；到期等动作结束再恢复；雨天火免不再回血；作物表晚注入时重读菜地存档防丢作物；兜底注册检查返回值；起步种子提示浇水。无新 TypeID / 任务 ID / 存档字段 / 数值变更。
+
+**决定与回退**（玩法取舍，按 owner「确保能顺利推进」的要求直接定）：天空岛装备引导改为航线开通后才排进来，理由是它依赖整条序章与岛上 Boss，放在第 5 条会挡住九条入门引导；回退办法是删掉 `GuidePrerequisiteMet` 里的 SkyIslandGear 分支。到期恢复最多等 3 秒（`RestoreWaitLimitSeconds`），这期间属性仍在、不放能力。
+
+**验证**：相关守卫全绿，`EmptyCatchGuard` 968/968；执行回归 10 组通过（BackMountainMorph 1176、BackMountainLifecycle 181、JeffQuestFlow 405 含本机 DLL 契约、CampaignPlayability 187、ContentTransactions、GardenHarvestNotice、SkyIslandDelivery、SkyIslandInteraction 202、SkyIslandOfficialContract 78、SkyIslandStory 54769）；6 个反向探针转红后按 SHA-256 还原。Windows 正式构建成功（仅既有 CS0649），部署 DLL 与 Build 一致，Dev 标识 absent；构建来自共享工作区。Wiki 文案同步后 `npm --prefix wiki-site run build` 通过。
+
+**边界**：L3 未做，不宣称实机手持物、雨天、菜地读档已通过；人工步骤见报告。
+
+<!-- END JEFF FRUIT REAUDIT TRACKER 2026-09-27 -->
+
 ## 2026-09-26 点唱机曲目响度、天空岛常驻 BGM、模组更名与网址、v2.3.0 日志并版（COMPAT / SCHEMA+ / OPERATIONAL）
 
 **点唱机「放不出来」**：owner 反馈后山点唱机的 Mod 音乐像是没有。结论（L2）：两首文件都已部署，游戏自带 FMOD 2.3.8 按官方 `CustomSFXCallback` 的 mode 0x10202 离线实测都能解码播放；问题是它们直接复用了 Boss 战的程序化氛围循环，约 -25 LUFS，比官方点唱机曲目（-12.3 LUFS）小 13 dB，在基地环境声里几乎听不见；另外点唱机要交付征程第三章才解锁。处理：点唱机改放 -16 LUFS 的 ogg 副本，并新增第三首天空岛主题曲「晴岚群岛」；作者名改为按语言取用（`authorEn`，SCHEMA+）；Boss 战循环本身不动。
