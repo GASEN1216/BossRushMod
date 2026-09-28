@@ -90,7 +90,7 @@ namespace BossRush
                 sceneInfo = new SceneInfoEntry(SceneId, sceneReference);
                 FieldInfo name = RequireField(typeof(SceneInfoEntry), "displayName");
                 name.SetValue(sceneInfo, "BossRush_SkyIsland_SceneName");
-                LocalizationHelper.InjectLocalization("BossRush_SkyIsland_SceneName", L10n.T("天空岛 · 晴岚群岛", "Sky Islands · Qinglan"));
+                InjectLocalization();
                 activeSubSceneField = RequireField(typeof(MultiSceneCore), "activeSubScene");
                 // 同一个字段的**读**走 FieldRef：`ActiveSubSceneID` 的 getter 是官方地图 / 迷雾 / HUD 每帧都问的热路径，
                 // `FieldInfo.GetValue` 每次都把 Scene 这个 struct 装箱一次（R-9 分项）。绑定目标不变，
@@ -164,6 +164,12 @@ namespace BossRush
             MethodInfo prefixMethod = AccessTools.Method(typeof(SkyIslandSceneReferenceBridge), prefix);
             if (prefixMethod == null) throw new MissingMethodException(typeof(SkyIslandSceneReferenceBridge).FullName, prefix);
             harmony.Patch(target, prefix: new HarmonyMethod(prefixMethod));
+        }
+
+        /// <summary>与场景注册分离；宿主切语言时可刷新名称，不重装场景补丁。</summary>
+        internal static void InjectLocalization()
+        {
+            LocalizationHelper.InjectLocalization("BossRush_SkyIsland_SceneName", L10n.T("天空岛 · 晴岚群岛", "Sky Islands · Qinglan"));
         }
 
         private static bool OwnsReference(SceneReference reference)

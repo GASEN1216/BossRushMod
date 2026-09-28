@@ -6,6 +6,12 @@
 
 入口：`python tools/run_runtime_regressions.py --filter AuditModeLifecycle`。所有结果仅 L2。
 
+2026-09-28 补齐支援弹新增拖尾的宿主表现依赖：`ProjectileVisualHost` 只提供 Color、奖励分类色、共享材质与
+TrailRenderer 的边界替身；生产 builder 与 `ZombieModeSupportProjectileTrailFx` 全类型仍逐字抽取。
+对子物体触发失活后，执行真实 OnDisable，核对 Clear 与 Destroy 后普通弹复用不残留拖尾；材质缺席时
+真实 Attach 早退而支援弹仍成功生成。此处没有验证实际颜色、着色器、拖尾像素、Unity 回调时序或物理命中，
+也没有修改丧尸生产逻辑。
+
 奖励执行迁移后，支援弹 builder 在 `ZombieModeRuntimeModule` 中直接执行；Tick 的掉落 / NPC 和 RunOnly 的奖励清理边界由模块替身记录，原顺序判据继续覆盖模块内部直接调用。
 
 2026-09-22 补充：逐字抽取 Mode E 商人、Mode F 补位及金鸭雨现金生产方法，受控工厂覆盖旧请求的 null / fault / success 和后继请求交错；仅将 UniTask 返回类型与 Yield 换为 Task，其余方法体不改。商人构建/失败、补位结案和现金完成回调以可观测替身记录调用，验证旧任务不消费新局计数、不关闭新商人经济、不投放迟到现金。丧尸转存回归直接执行 RuntimeModule 生产方法，覆盖库存顺序、装备槽引用去重、仓库满与缺失时的收件箱回退、Reforge 同步/序列化/保存/销毁顺序、反向回滚、重复调用，以及第二件保存失败时先撤候选副本再返还原物；认证 owner 增加迟到失败与当前失败对照。

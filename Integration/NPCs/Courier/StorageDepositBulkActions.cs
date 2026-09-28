@@ -342,7 +342,7 @@ namespace BossRush
                 string notification = LocalizationHelper.GetLocalizedText("BossRush_StorageDeposit_Discarded");
                 if (string.IsNullOrEmpty(notification) || notification.StartsWith("BossRush_"))
                 {
-                    notification = "已丢弃所有寄存物品";
+                    notification = L10n.T("全扔了", "All gone");
                 }
                 NotificationText.Push(notification);
 

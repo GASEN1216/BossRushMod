@@ -1062,9 +1062,9 @@ namespace BossRush
         }
 
         /// <summary>SKY_PERF_* 关窗（采样循环之后）：岛内套件把分项计时拼到 metrics 末尾并返回不合格原因；主套件原样返回 null。</summary>
-        private string AppendSkyIslandFrameProfile(ref string metrics)
+        private string AppendSkyIslandFrameProfile(ref string metrics, bool profileStarted)
         {
-            if (!_skyIslandMode) return null;
+            if (!profileStarted) return null;
             string reason;
             metrics += SkyIslandFrameProfileMetrics(out reason);
             return reason;

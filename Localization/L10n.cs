@@ -146,8 +146,8 @@ namespace BossRush
         /// </summary>
         public static string DragonBurnDesc
         {
-            get { return T("每秒受到最大生命值0.1%+1点真实火焰伤害，最多叠加10层，持续10秒", 
-                          "Takes 0.1% max HP + 1 true fire damage per second per layer, stacks up to 10, lasts 10 seconds"); }
+            get { return T("龙焰沾上就灭不掉。\n<color=#FF7043>每秒 0.1%最大生命+1 火伤，叠10层，持续10秒</color>",
+                          "Dragonfire clings until it burns out.\n<color=#FF7043>0.1% max HP + 1 fire damage per second, up to 10 stacks, 10 seconds</color>"); }
         }
         
         // ========== 焚天龙皇Boss本地化 ==========

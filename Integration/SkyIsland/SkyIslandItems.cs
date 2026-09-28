@@ -250,9 +250,6 @@ namespace BossRush
                 item.StackCount = 1;
                 item.Value = def.Value;
                 item.Quality = def.Quality;
-                string description = L10n.T(def.DescCN, def.DescEN);
-                ModeFItemConfigHelper.SetHiddenMember(item, "description", description);
-                ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", description);
                 EquipmentHelper.AddTagToItem(item, "Special");
                 EquipmentHelperIcon.TryInjectIcon(item, null, def.IconName);
                 switch (def.Kind)
@@ -441,6 +438,14 @@ namespace BossRush
         /// </summary>
         internal static bool TryGive(int typeId, bool toStorage, Func<bool> recordGrant, Func<bool> rollbackGrant = null)
         {
+            bool buffered;
+            return TryGiveWithReceipt(typeId, toStorage, recordGrant, rollbackGrant, out buffered);
+        }
+
+        /// <summary>回报实际基地寄存位置，包括背包满时的自动寄存。</summary>
+        internal static bool TryGiveWithReceipt(int typeId, bool toStorage, Func<bool> recordGrant, Func<bool> rollbackGrant, out bool buffered)
+        {
+            buffered = false;
             Item item = null;
             bool transferStarted = false;
             int instanceId = 0;
@@ -454,6 +459,7 @@ namespace BossRush
                 transferStarted = true;
                 if (toStorage) ItemUtilities.SendToPlayerStorage(item);
                 else ItemUtilities.SendToPlayer(item);
+                buffered = SkyIslandInventoryTransaction.HasBufferReceipt(instanceId, typeId);
                 item = null;
                 return true;
             }
@@ -464,8 +470,8 @@ namespace BossRush
                 // 通知异常不能把已交付的纪念品删掉，也不应该再发第二份。
                 bool owned = transferStarted && item != null
                     && (item.IsBeingDestroyed || SkyIslandInventoryTransaction.HasOwner(item));
-                if (transferStarted && !owned && SkyIslandInventoryTransaction.HasBufferReceipt(instanceId, typeId))
-                    owned = true;
+                buffered = transferStarted && SkyIslandInventoryTransaction.HasBufferReceipt(instanceId, typeId);
+                if (buffered) owned = true;
                 if (transferStarted && !owned && rollbackGrant != null)
                 {
                     try
@@ -491,7 +497,7 @@ namespace BossRush
 
         #region 本地化与清理
 
-        /// <summary>注入全部物品名。DisplayNameRaw 设了就必须注入，否则游戏里会显示 *BossRush_SkyIsland_...*（AGENTS.md 4.4）。</summary>
+        /// <summary>官方描述固定查询 DisplayNameRaw + "_Desc"，名称和描述一起随语言刷新。</summary>
         public static void InjectLocalization()
         {
             try
@@ -499,7 +505,10 @@ namespace BossRush
                 var map = new Dictionary<string, string>();
                 Definition[] all = Definitions;
                 for (int i = 0; i < all.Length; i++)
+                {
                     map[all[i].LocKey] = SkyIslandItemRules.Name(all[i].TypeId);
+                    map[all[i].LocKey + "_Desc"] = L10n.T(all[i].DescCN, all[i].DescEN);
+                }
                 LocalizationHelper.InjectLocalizations(map);
             }
             catch (Exception e)

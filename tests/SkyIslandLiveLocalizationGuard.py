@@ -58,6 +58,16 @@ need("string sceneId = MapPointSceneResolver.Resolve(GroundZeroScene);" in marke
 need("return SkyIslandPreludeFlow.DepartureNameKey;" in runtime, "船点交互须使用统一稳定 key")
 need("return SkyIslandPreludeFlow.InstrumentNameKey;" in prelude, "仪器交互须使用统一稳定 key")
 integration = clean_source((ROOT / "Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs").read_text(encoding="utf-8-sig"))
-need("SkyIslandPreludeFlow.InjectLocalizations();" in integration, "统一语言注入链必须调用序章入口")
+integration_inject = body(integration, "internal void InjectLocalization_Extra_Integration()")
+for call in ("SkyIslandPreludeFlow.InjectLocalizations();", "SkyIslandItems.InjectLocalization();",
+             "SkyIslandSceneReferenceBridge.InjectLocalization();", "SkyIslandSearchPoint.InjectLocalizations();"):
+    need(call in integration_inject, "统一语言注入链必须调用 " + call)
+search = read("SkyIslandSearchPoint.cs")
+search_inject = body(search, "internal static void InjectLocalizations()")
+need("string[][] chapters = SkyIslandJournal.Chapters;" in search_inject
+     and "LocalizationHelper.InjectLocalization(LocalizationKey(marker), SkyIslandPointText.Name(marker));" in search_inject,
+     "搜索点的语言刷新必须复用见闻目录和 PointText，不维护第二套名称表")
+need("OnSetLanguage +=" not in search and "FindObjectsOfType" not in search,
+     "搜索点不得逐个订阅语言事件或扫描场景对象")
 print("SkyIslandLiveLocalizationGuard: " + ("FAIL\n" + "\n".join(errors) if errors else "PASS"))
 raise SystemExit(bool(errors))

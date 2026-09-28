@@ -4,7 +4,6 @@ import hashlib
 import json
 import re
 import shutil
-import subprocess
 import sys
 
 HERE = Path(__file__).resolve().parent
@@ -56,13 +55,15 @@ def main():
         print("ERROR: .NET 8 SDK is required; these regressions were not run.")
         return 1
     extract_presentation()
+    root = HERE.parents[2]
+    sys.path.insert(0, str(root / 'tools'))
+    from run_runtime_regressions import run_project_fixture
     failures = []
     for name in ("DailyReport", "Codex"):
-        result = subprocess.run(
-            [dotnet, "run", "--project", str(HERE / name / (name + ".csproj")), "--configuration", "Release"],
-            cwd=HERE,
-        )
-        if result.returncode:
+        code, output = run_project_fixture(HERE / name / (name + ".csproj"),
+            root / 'Build/content-third-review-fixes' / name / 'runs', HERE)
+        print(output)
+        if code:
             failures.append(name)
     if failures:
         print("FAIL: " + ", ".join(failures))

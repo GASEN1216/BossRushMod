@@ -7,20 +7,33 @@ namespace BossRush
     public sealed class SkyIslandSearchPoint : BossRushBuildingInteractableBase
     {
         private Action searched;
-        private string title;
         protected override string InteractNameKey
         {
-            get
-            {
-                string key = "BossRush_SkyIsland_Search_" + name;
-                LocalizationHelper.InjectLocalization(key, title ?? L10n.T("查看群岛见闻", "Read the archipelago notes"));
-                return key;
-            }
+            get { return LocalizationKey(name); }
         }
         protected override string LogPrefix { get { return "[SkyIsland] "; } }
         protected override string InteractionGroupLabel { get { return "[SkyIsland]"; } }
         protected override bool IsBuildingInteractable() { return searched != null; }
-        internal void Bind(Action callback, string label = null) { searched = callback; title = label; }
+        internal void Bind(Action callback, string label = null)
+        {
+            searched = callback;
+            LocalizationHelper.InjectLocalization(LocalizationKey(name), label ?? SkyIslandPointText.Name(name));
+            ApplyInteractName("bind");
+        }
+
+        private static string LocalizationKey(string pointName) { return "BossRush_SkyIsland_Search_" + pointName; }
+
+        /// <summary>复用见闻目录，语言切换时刷新固定搜索点的 key；不用查找场景对象或各点订阅事件。</summary>
+        internal static void InjectLocalizations()
+        {
+            string[][] chapters = SkyIslandJournal.Chapters;
+            for (int chapter = 0; chapter < chapters.Length; chapter++)
+                for (int point = 0; point < chapters[chapter].Length; point++)
+                {
+                    string marker = chapters[chapter][point];
+                    LocalizationHelper.InjectLocalization(LocalizationKey(marker), SkyIslandPointText.Name(marker));
+                }
+        }
         protected override void OnInteractCompleted()
         {
             if (searched != null) searched();

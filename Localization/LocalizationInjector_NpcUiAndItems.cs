@@ -115,7 +115,7 @@ namespace BossRush
             string discardAllButton = L10n.T(STORAGE_DEPOSIT_DISCARD_ALL_CN, STORAGE_DEPOSIT_DISCARD_ALL_EN);
             LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_DiscardAll", discardAllButton);
 
-            // "已丢弃所有寄存物品"通知文字
+            // 丢弃通知文字
             string discardedNotification = L10n.T(STORAGE_DEPOSIT_DISCARDED_CN, STORAGE_DEPOSIT_DISCARDED_EN);
             LocalizationHelper.InjectLocalization("BossRush_StorageDeposit_Discarded", discardedNotification);
 
@@ -222,19 +222,19 @@ namespace BossRush
             string closeButton = L10n.T(REFORGE_CLOSE_CN, REFORGE_CLOSE_EN);
             LocalizationHelper.InjectLocalization("BossRush_Close", closeButton);
 
-            // 重铸成功
+            // 重铸完成通知
             string success = L10n.T(REFORGE_SUCCESS_CN, REFORGE_SUCCESS_EN);
             LocalizationHelper.InjectLocalization("BossRush_ReforgeSuccess", success);
 
-            // 请先选择装备
+            // 选择装备提示
             string selectFirst = L10n.T(REFORGE_SELECT_FIRST_CN, REFORGE_SELECT_FIRST_EN);
             LocalizationHelper.InjectLocalization("BossRush_ReforgeSelectFirst", selectFirst);
 
-            // 金钱不足
+            // 资金提示
             string notEnoughMoney = L10n.T(REFORGE_NOT_ENOUGH_MONEY_CN, REFORGE_NOT_ENOUGH_MONEY_EN);
             LocalizationHelper.InjectLocalization("BossRush_ReforgeNotEnoughMoney", notEnoughMoney);
 
-            // 没有可重铸的装备
+            // 无可重铸装备提示
             string noEquipment = L10n.T(REFORGE_NO_EQUIPMENT_CN, REFORGE_NO_EQUIPMENT_EN);
             LocalizationHelper.InjectLocalization("BossRush_ReforgeNoEquipment", noEquipment);
 

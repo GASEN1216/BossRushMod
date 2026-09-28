@@ -347,10 +347,11 @@ class Program
             "encounter guidance is gone from the catalog, not merely unused by the panel");
         L10n.IsChinese = true;
         Check(CodexBossCatalog.BuildZombieBossKey((ZombieModeBossKind)999) == null, "unknown zombie kind cannot invent a collectible");
-        string key = CodexBossCatalog.BuildZombieBossKey(ZombieModeBossKind.Titan);
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 10000; i++) CodexBossCatalog.BuildZombieBossKey(ZombieModeBossKind.Titan);
-        Check(GC.GetAllocatedBytesForCurrentThread() == before && key == "zombie_boss_Titan", "zombie identity hot lookup allocates zero bytes and preserves frozen key");
+        // .NET 10 的首次循环 OSR 会给线程计数带入 24 B；先预热独立测量方法，再严格检查稳态零分配。
+        string key;
+        MeasureZombieKeyLookup(out key);
+        long allocated = MeasureZombieKeyLookup(out key);
+        Check(allocated == 0 && key == "zombie_boss_Titan", "zombie identity hot lookup allocates zero bytes and preserves frozen key");
         ModBehaviour.Instance.Pool = null;
         CodexBossCatalog.Invalidate();
         CodexBossCatalog.EnsureBuilt(ModBehaviour.Instance);
@@ -359,6 +360,15 @@ class Program
         Check(!CodexBossCatalog.IsFullyUnlocked(CodexPersistence.Current),
             "unavailable official pool cannot grant completion from fallback entries alone");
         ModBehaviour.Instance.Pool = new System.Collections.Generic.List<EnemyPresetInfo>();
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    static long MeasureZombieKeyLookup(out string key)
+    {
+        key = null;
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < 10000; i++) key = CodexBossCatalog.BuildZombieBossKey(ZombieModeBossKind.Titan);
+        return GC.GetAllocatedBytesForCurrentThread() - before;
     }
 
     static void CheckCodec()

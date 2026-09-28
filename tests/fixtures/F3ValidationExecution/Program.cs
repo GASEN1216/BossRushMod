@@ -163,6 +163,7 @@ internal static class Program
         Check(factoryCase.Reclaimed && factoryCase.Results.Contains("CASE:FAIL"), "factory exception records failure and reclaims");
 
         SkyIslandShell();
+        PerformanceWindows.Run(Check);
         Console.WriteLine("PASS: " + assertions + " assertions; production coroutine stack, main and Sky Island case wrappers, no Unity smoke");
     }
 

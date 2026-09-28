@@ -31,7 +31,9 @@ namespace UnityEngine
     internal class Component : Object
     {
         internal GameObject gameObject;
+        internal string name { get { return gameObject.name; } }
         internal Transform transform { get { return gameObject.transform; } }
+        internal T GetComponent<T>() where T : Component { return gameObject.GetComponent<T>(); }
     }
     internal class GameObject : Object
     {
@@ -62,6 +64,8 @@ namespace UnityEngine
         internal Vector3 position, localPosition, forward = Vector3.forward;
         internal void SetParent(Transform value, bool worldPositionStays)
         { if (parent != null) parent.Children.Remove(this); parent = value; if (value != null) value.Children.Add(this); }
+        internal Transform Find(string name)
+        { foreach (var child in Children) if (child != null && child.name == name) return child; return null; }
     }
     internal class RectTransform : Transform
     {
@@ -84,6 +88,7 @@ namespace UnityEngine
         internal float sqrMagnitude { get { return x * x + y * y + z * z; } }
         internal static Vector3 zero { get { return new Vector3(); } }
         internal static Vector3 forward { get { return new Vector3(0, 0, 1); } }
+        internal static Vector3 up { get { return new Vector3(0, 1, 0); } }
         public static Vector3 operator *(Vector3 a, float f) { return new Vector3(a.x * f, a.y * f, a.z * f); }
         public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z); }
     }
@@ -109,9 +114,11 @@ namespace UnityEngine
         internal static float Floor(float x) { return (float)Math.Floor(x); }
         internal static int CeilToInt(float x) { return (int)Math.Ceiling(x); }
         internal static float Lerp(float a, float b, float t) { return a + (b - a) * Clamp01(t); }
+        internal static float Abs(float value) { return Math.Abs(value); }
     }
     internal static class Time { internal static float time; }
-    internal static class Debug { internal static void LogWarning(string value) { } }
+    internal static class Debug { internal static void LogWarning(string value) { } internal static void Log(string value) { } }
+    internal class Collider : Component { internal bool enabled; }
     internal class LineRenderer : Component
     {
         private Vector3[] vertices = new Vector3[0];
@@ -166,6 +173,7 @@ namespace UnityEngine.EventSystems
 }
 namespace TMPro
 {
+    internal class TextMeshPro : TextMeshProUGUI { }
     internal enum TextAlignmentOptions { Left, TopLeft }
     internal enum TextOverflowModes { Ellipsis }
     internal class TextMeshProUGUI : UnityEngine.Component
@@ -291,11 +299,7 @@ namespace BossRush
     internal static class SkyIslandNoteBridge { internal static int Unlocks; internal static void Unlock(string key) { Unlocks++; } }
     internal static class ModBehaviour { internal static void DevLog(string text) { } }
     internal enum SkyIslandLootTier { Supply, Voyage, Starworks }
-    internal static class SkyIslandItemRules
-    {
-        internal static string BadgeDiscountNote { get { return " badge"; } }
-        internal static int ServicePrice(int price, bool badge) { return badge ? Math.Max(1, price / 2) : price; }
-    }
+    internal static class SkyIslandLetters { internal static int CollectedCount(SkyIslandStoryData data) { return 0; } }
     internal static class SkyIslandRewardCrate
     {
         internal static bool PlacementAvailable = true, Created = true;
@@ -313,6 +317,9 @@ namespace BossRush
     internal static class LocalizationHelper
     {
         internal static readonly Dictionary<string, string> Texts = new Dictionary<string, string>();
-        internal static void InjectLocalization(string key, string value) { Texts[key] = value; }
+        internal static int Writes;
+        internal static void InjectLocalization(string key, string value) { Texts[key] = value; Writes++; }
+        internal static void InjectLocalizations(Dictionary<string, string> values)
+        { foreach (var entry in values) InjectLocalization(entry.Key, entry.Value); }
     }
 }

@@ -58,7 +58,7 @@ namespace BossRush
                 RefreshShopEntries();
                 RefreshShopUI();
                 UpdateRetrieveAllButton();
-                NotificationText.Push(L10n.T("物品已取回", "Item retrieved"));
+                NotificationText.Push(L10n.T("拿好", "Here you go"));
                 return true;
             }
             catch (Exception e)

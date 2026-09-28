@@ -17,6 +17,7 @@
   数据读真实的 `Assets/Data/SkyIslandAutotest.json`、`Assets/Data/GameplayCoverage.json` 与 `F3GameplayValidationAutotestAsserts.cs` 的 case 字面量。
 - **宿主替身**：`SavesSystem`、`Time`、`L10n` 等沿用 `tests/fixtures/SkyIslandStory/Stubs.cs`；写入门 `F3GameplayValidationRunner.AutotestWriteAllowed`
   在本目录 `AutotestGateStub.cs`，只是一个默认关闭的静态开关（真实判定读 Runner 单例、专用测试档标记与当前槽位，离线造不出来）。
+- **资产采集依赖**：共享 `tests/fixtures/sky_island_asset_collectors.py` 将生产 `OfficialQuestItems.CanCollectAssets` / `AssetCollector` 和官方 `PlayerStorageBuffer.SaveBuffer` 逐字生成到本夹具目录并记录源 SHA-256；不依赖 Story 的奖励重试 harness，不补始终成功的采集替身。
 
 ## 覆盖（每节都有绿样本与红样本；断言失败不中断，全部跑完再汇总）
 

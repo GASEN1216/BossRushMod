@@ -126,7 +126,7 @@ namespace BossRush
             Add(map, "SelectItem", "选择一件武器或护甲", "Pick a weapon or a piece of armor");
             Add(map, "NotForgeable", "该装备无法附加词缀。", "This gear cannot carry affixes.");
             Add(map, "NoStone", "词缀熔石不足。", "Not enough Affix Forge Stones.");
-            Add(map, "NoMoney", "金钱不足。", "Not enough money.");
+            Add(map, "NoMoney", "口袋空了", "Your pockets are empty");
             Add(map, "AllLocked", "全部词缀槽都已锁定，没有可重铸的槽。",
                 "Every affix slot is locked; there is nothing to reroll.");
             Add(map, "KeepOneUnlocked", "至少要留一个未锁定的词缀槽。",

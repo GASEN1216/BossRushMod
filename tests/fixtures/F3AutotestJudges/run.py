@@ -26,6 +26,8 @@ FORBIDDEN = ('UnityEngine', 'Mathf.', 'GameObject', 'Transform', 'Texture2D')
 
 sys.path.insert(0, str(ROOT / 'tests'))
 from cs_source_util import clean_source  # noqa: E402  共享的注释剥离状态机（不用正则）
+sys.path.insert(0, str(ROOT / 'tests/fixtures'))
+from sky_island_asset_collectors import generate_asset_collectors
 
 
 def unwrap_dev(text, name):
@@ -123,6 +125,7 @@ if __name__ == '__main__':
             raise SystemExit(JUDGES + ':' + str(line) + ' 引用了 Unity（' + token + '）：纯判据必须能脱离游戏执行')
     gen = OUT / 'gen'
     gen.mkdir(parents=True, exist_ok=True)
+    generate_asset_collectors(ROOT, gen)
     (gen / 'AutotestJudges.cs').write_text(judges, encoding='utf-8')
     (gen / 'AutotestModels.cs').write_text(models, encoding='utf-8')
     (gen / 'SkyIslandStoryServiceAutotest.cs').write_text(story, encoding='utf-8')

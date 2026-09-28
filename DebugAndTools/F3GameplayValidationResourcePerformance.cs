@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using Unity.Profiling;
 using UnityEngine;
@@ -38,6 +39,57 @@ namespace BossRush
     internal sealed partial class F3GameplayValidationRunner
     {
         private readonly ResourcePerformanceReport resourcePerformance = new ResourcePerformanceReport();
+
+        /// <summary>5 / 10 秒帧时间窗口与资源窗口共用完整性判据；取消或协程释放也必须关闭岛内分项录制。</summary>
+        private IEnumerator SamplePerformanceWindow(string caseId, float seconds, bool baseline)
+        {
+            Stopwatch sw = Stopwatch.StartNew();
+            var frames = new List<float>(2048);
+            long memoryStart = GC.GetTotalMemory(false);
+            double started = Time.realtimeSinceStartupAsDouble;
+            int sceneHandle = SceneManager.GetActiveScene().handle;
+            bool finished = false, overflow = false;
+            bool profileStarted = _skyIslandMode;
+            BeginSkyIslandFrameProfile();
+            try
+            {
+                while (Time.realtimeSinceStartupAsDouble - started < seconds && !ShouldAbort()
+                    && SceneManager.GetActiveScene().handle == sceneHandle)
+                {
+                    if (frames.Count >= 8192) { overflow = true; break; }
+                    float ms = Time.unscaledDeltaTime * 1000f;
+                    if (ms > 0f && !float.IsInfinity(ms)) frames.Add(ms);
+                    if (ms > _peakFrameMs)
+                    {
+                        _peakFrameMs = ms;
+                        _peakStage = _status;
+                    }
+                    yield return null;
+                }
+                finished = true;
+            }
+            finally
+            {
+                double elapsed = Time.realtimeSinceStartupAsDouble - started;
+                string reason;
+                bool complete = ResourcePerformanceMetrics.IsComplete(elapsed, seconds, frames.Count,
+                    !finished || ShouldAbort(), SceneManager.GetActiveScene().handle == sceneHandle, overflow, out reason);
+                frames.Sort();
+                float p95 = frames.Count > 0 ? frames[Mathf.Clamp(Mathf.CeilToInt(frames.Count * 0.95f) - 1, 0, frames.Count - 1)] : 0f;
+                string metrics = "samples=" + frames.Count + ",p95_ms=" + p95.ToString("F2")
+                    + ",memory=" + GC.GetTotalMemory(false) + ",window_seconds=" + elapsed.ToString("F3") + ",required_seconds=" + seconds;
+                string profileReason = AppendSkyIslandFrameProfile(ref metrics, profileStarted);
+                if (complete)
+                {
+                    if (baseline) { _baselineP95Ms = p95; _baselineMemory = memoryStart; }
+                    else { _finalP95Ms = p95; _finalMemory = GC.GetTotalMemory(false); }
+                }
+                if (complete && profileReason == null && (baseline || p95 <= Mathf.Max(50f, _baselineP95Ms * 1.75f)))
+                    Record(caseId, "PASS", sw.ElapsedMilliseconds, metrics, string.Empty);
+                else
+                    Record(caseId, "FAIL", sw.ElapsedMilliseconds, metrics, reason ?? profileReason ?? "超过性能阈值");
+            }
+        }
 
         private sealed class Counter : IDisposable
         {

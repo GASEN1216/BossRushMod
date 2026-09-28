@@ -28,7 +28,7 @@ def check(root):
 
     spawn = code["SkyIslandEncounters"].split("private async void Spawn(Encounter encounter)", 1)[1].split("private void ApplyIdentity(", 1)[0]
     sequence = ["UnityEngine.Object.Instantiate(source)", "SkyIslandCombatPreset.Apply(clone, source, encounter.Id, i, tier)",
-                "await clone.CreateCharacterAsync(", "SkyIslandEnemyTiers.ApplyAi(ai, tier)", "ApplyIdentity(created, encounter, i, tier)"]
+                "await clone.CreateCharacterAsync(", "SkyIslandEnemyTiers.ApplyAi(ai, tier, encounter.Manual)", "ApplyIdentity(created, encounter, i, tier)"]
     positions = [spawn.find(token) for token in sequence]
     assert all(p >= 0 for p in positions) and positions == sorted(positions), "必须先克隆、写属性，再创建角色、挂身份"
     assert spawn.count("SkyIslandCombatPreset.Apply(") == 1, "同一个生成位只准备一次属性"

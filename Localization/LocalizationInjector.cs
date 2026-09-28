@@ -25,8 +25,8 @@ namespace BossRush
         // ============================================================================
         private const string TICKET_NAME_CN = "Boss Rush船票";
         private const string TICKET_NAME_EN = "Boss Rush Ticket";
-        private const string TICKET_DESC_CN = "进入 BossRush 的凭证。带上船票，在地图选择界面出发。\n空装入场可开启白手起家。死亡后掉落的物品会被清走，请看清所选模式的规则。";
-        private const string TICKET_DESC_EN = "Entry ticket for BossRush. Bring it to map selection.\nEnter without gear for Rags to Riches. Items dropped on death are cleared; check your mode's rules.";
+        private const string TICKET_DESC_CN = "皱巴巴的单程票，上面有阿稳的签章。\n<color=#BBBBBB>带船票去路牌选图出发。空装入场为白手起家。</color>";
+        private const string TICKET_DESC_EN = "A crumpled one-way ticket stamped by Awen.\n<color=#BBBBBB>Take it to the sign and choose a map. Enter empty-handed for From Scratch.</color>";
 
         // ============================================================================
         // 生日蛋糕本地化数据
@@ -77,10 +77,10 @@ namespace BossRush
         private const string COURIER_SERVICE_FEE_EN = "Fee: {0}";
         private const string COURIER_SERVICE_GOODBYE_CN = "欢迎下次光临，稳叔爱你哟~";
         private const string COURIER_SERVICE_GOODBYE_EN = "Come again, Uncle Wen loves you~";
-        private const string COURIER_SERVICE_INSUFFICIENT_CN = "资金不足";
-        private const string COURIER_SERVICE_INSUFFICIENT_EN = "Insufficient funds";
-        private const string COURIER_SERVICE_EMPTY_CN = "请放入物品";
-        private const string COURIER_SERVICE_EMPTY_EN = "Please add items";
+        private const string COURIER_SERVICE_INSUFFICIENT_CN = "钱不够";
+        private const string COURIER_SERVICE_INSUFFICIENT_EN = "Short on cash";
+        private const string COURIER_SERVICE_EMPTY_CN = "你倒是放东西进来啊";
+        private const string COURIER_SERVICE_EMPTY_EN = "Put something in here";
 
         // ============================================================================
         // 寄存服务本地化数据
@@ -105,22 +105,22 @@ namespace BossRush
         private const string STORAGE_DEPOSIT_SHOP_NAME_EN = "Awen's Storage";
         private const string STORAGE_DEPOSIT_BUTTON_CN = "寄存";
         private const string STORAGE_DEPOSIT_BUTTON_EN = "Deposit";
-        private const string STORAGE_DEPOSIT_DEPOSITED_CN = "物品已存入寄存柜";
-        private const string STORAGE_DEPOSIT_DEPOSITED_EN = "Item deposited";
-        private const string STORAGE_DEPOSIT_RETRIEVED_CN = "物品已取回";
-        private const string STORAGE_DEPOSIT_RETRIEVED_EN = "Item retrieved";
-        private const string STORAGE_DEPOSIT_INVENTORY_FULL_CN = "背包已满，无法取回";
-        private const string STORAGE_DEPOSIT_INVENTORY_FULL_EN = "Inventory full";
+        private const string STORAGE_DEPOSIT_DEPOSITED_CN = "收好了";
+        private const string STORAGE_DEPOSIT_DEPOSITED_EN = "Got it";
+        private const string STORAGE_DEPOSIT_RETRIEVED_CN = "拿好";
+        private const string STORAGE_DEPOSIT_RETRIEVED_EN = "Here you go";
+        private const string STORAGE_DEPOSIT_INVENTORY_FULL_CN = "装不下了";
+        private const string STORAGE_DEPOSIT_INVENTORY_FULL_EN = "No room";
         private const string STORAGE_DEPOSIT_FAREWELL_CN = "多存多优惠！小子！";
         private const string STORAGE_DEPOSIT_FAREWELL_EN = "Deposit more, get more discounts! Kid!";
         private const string STORAGE_DEPOSIT_RETRIEVE_ALL_CN = "全部取出";
         private const string STORAGE_DEPOSIT_RETRIEVE_ALL_EN = "Retrieve All";
-        private const string STORAGE_DEPOSIT_ITEM_NOT_UNLOCKED_CN = "该物品未解锁，无法寄存";
-        private const string STORAGE_DEPOSIT_ITEM_NOT_UNLOCKED_EN = "Item not unlocked, cannot deposit";
+        private const string STORAGE_DEPOSIT_ITEM_NOT_UNLOCKED_CN = "这东西没登记过，不收";
+        private const string STORAGE_DEPOSIT_ITEM_NOT_UNLOCKED_EN = "That item isn't registered. I won't take it.";
         private const string STORAGE_DEPOSIT_DISCARD_ALL_CN = "全部丢弃";
         private const string STORAGE_DEPOSIT_DISCARD_ALL_EN = "Discard All";
-        private const string STORAGE_DEPOSIT_DISCARDED_CN = "已丢弃所有寄存物品";
-        private const string STORAGE_DEPOSIT_DISCARDED_EN = "All deposited items discarded";
+        private const string STORAGE_DEPOSIT_DISCARDED_CN = "全扔了";
+        private const string STORAGE_DEPOSIT_DISCARDED_EN = "All gone";
 
         // ============================================================================
         // 哥布林NPC本地化数据
@@ -147,10 +147,10 @@ namespace BossRush
         private const string REFORGE_SERVICE_EN = "Reforge Service";
         private const string REFORGE_TITLE_CN = "叮当的重铸工坊";
         private const string REFORGE_TITLE_EN = "Dingdang's Reforge Workshop";
-        private const string REFORGE_DESC_CN = "选一件装备重铸。投入越多，出好属性的机会越大。\n高品质装备更容易获得高属性。";
-        private const string REFORGE_DESC_EN = "Choose gear to reforge. More money improves the odds.\nHigher-quality gear is more likely to roll high stats.";
-        private const string REFORGE_NO_ITEM_SELECTED_CN = "请先选择一件装备";
-        private const string REFORGE_NO_ITEM_SELECTED_EN = "Select a piece of gear first";
+        private const string REFORGE_DESC_CN = "搁这儿，砸一锤。塞的钱越多越容易出好东西。";
+        private const string REFORGE_DESC_EN = "Put it here and take a swing. More cash means better odds.";
+        private const string REFORGE_NO_ITEM_SELECTED_CN = "先挑一件";
+        private const string REFORGE_NO_ITEM_SELECTED_EN = "Pick one first";
         private const string REFORGE_SELECTED_CN = "已选择";
         private const string REFORGE_SELECTED_EN = "Selected";
         private const string REFORGE_MODIFIERS_CN = "属性数量";
@@ -161,14 +161,14 @@ namespace BossRush
         private const string REFORGE_BUTTON_EN = "Reforge";
         private const string REFORGE_CLOSE_CN = "关闭";
         private const string REFORGE_CLOSE_EN = "Close";
-        private const string REFORGE_SUCCESS_CN = "重铸成功";
-        private const string REFORGE_SUCCESS_EN = "Reforge successful";
-        private const string REFORGE_SELECT_FIRST_CN = "请先选择装备";
-        private const string REFORGE_SELECT_FIRST_EN = "Please select equipment first";
-        private const string REFORGE_NOT_ENOUGH_MONEY_CN = "金钱不足";
-        private const string REFORGE_NOT_ENOUGH_MONEY_EN = "Not enough money";
-        private const string REFORGE_NO_EQUIPMENT_CN = "没有可重铸的装备";
-        private const string REFORGE_NO_EQUIPMENT_EN = "No reforgeable equipment";
+        private const string REFORGE_SUCCESS_CN = "成了";
+        private const string REFORGE_SUCCESS_EN = "Done";
+        private const string REFORGE_SELECT_FIRST_CN = "先挑一件";
+        private const string REFORGE_SELECT_FIRST_EN = "Pick one first";
+        private const string REFORGE_NOT_ENOUGH_MONEY_CN = "口袋空了";
+        private const string REFORGE_NOT_ENOUGH_MONEY_EN = "Your pockets are empty";
+        private const string REFORGE_NO_EQUIPMENT_CN = "没什么能砸的";
+        private const string REFORGE_NO_EQUIPMENT_EN = "Nothing to reforge";
 
         // ============================================================================
         // 快递员首次见面对话（大对话系统）
@@ -637,9 +637,9 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Starter_Title", "选择初始流派", "Choose Starter Class");
             InjectZombieModeString("BossRush_ZombieMode_Starter_Subtitle", "进入第一波准备期前必须选择，无法重选。", "Required before the first preparation. Cannot be changed.");
             InjectZombieModeString("BossRush_ZombieMode_Starter_Melee", "近战求生", "Melee Survivor");
-            InjectZombieModeString("BossRush_ZombieMode_Starter_Melee_Desc", "随机近战武器 + 医疗补给 + 食物饮料。含护甲头盔耳机。", "Random melee weapon + medical supplies + food/drink. Includes armor, helmet, headset.");
+            InjectZombieModeString("BossRush_ZombieMode_Starter_Melee_Desc", "一把近战、够用的药粮、一身甲。", "A melee weapon, enough meds and food, and a set of armor.");
             InjectZombieModeString("BossRush_ZombieMode_Starter_Gunner", "枪械突围", "Gunner");
-            InjectZombieModeString("BossRush_ZombieMode_Starter_Gunner_Desc", "随机枪械 + 一组同口径弹药 + 少量医疗食物。含护甲头盔耳机。", "Random gun + a stack of matched ammo + some medical/food. Includes armor, helmet, headset.");
+            InjectZombieModeString("BossRush_ZombieMode_Starter_Gunner_Desc", "一把枪、一盒弹药、几口药粮、一身甲。", "A gun, a box of ammo, some meds and food, and a set of armor.");
             InjectZombieModeString("BossRush_ZombieMode_Starter_Select", "选择", "Select");
             InjectZombieModeString("BossRush_ZombieMode_Starter_Confirmed", "已锁定开局：{0}", "Starter locked: {0}");
             InjectZombieModeString("BossRush_ZombieMode_Hud_Wave", "第 {0} 波", "Wave {0}");

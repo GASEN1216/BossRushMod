@@ -4,8 +4,8 @@
 桥口木牌、采集点与搜刮点的浮空字、纪念物与信鸽的标签，都只在建出来或门状态变化时写一次字。
 玩家在岛上切语言时同样看得到（AGENTS §4.4：语言在取用时解析）。
 
-这里钉住各 owner 在已有推进里比较语言、变了就重写的接线。只查结构；行为由实机英文扫描
-SKY_LOCALIZATION_EN 判。
+这里钉住各 owner 在已有推进里比较语言、变了就重写的接线。官方交互 getter 与刷新行为由
+SkyIslandInteraction 执行回归覆盖；渲染文字仍需实机英文扫描 SKY_LOCALIZATION_EN 判。
 """
 
 import sys
@@ -91,8 +91,9 @@ def main():
             ["labelsChinese = chinese;", "SkyIslandFieldcraftRules.GatherLabel(spot.Node.Kind)",
              "text.text = label;", "point.Relabel(label);"],
             "采集点：浮空字与官方交互名一起重写")
-    if "internal void Relabel(string title) { label = title; }" not in gathering:
-        errors.append("采集交互体缺少 Relabel：官方交互名不会跟着换语言")
+    ordered(body(gathering, "internal void Relabel(string title)", "采集交互体换字"),
+            ["label = title;", 'ApplyInteractName("relabel");'],
+            "采集交互体：改字段后必须刷新官方缓存 key 的覆盖文字")
 
     scav = read(SKY + "SkyIslandScavenging.cs")
     ordered(body(scav, "internal void Tick()", "搜刮点推进"),
@@ -118,7 +119,8 @@ def main():
         errors.append("信鸽建出来与换语言必须共用 PigeonTitle")
     presentation = read(SKY + "SkyIslandStoryPresentation.cs")
     ordered(body(presentation, "internal void Relabel(string title)", "剧情交互体换字"),
-            ["label = title;", "text.text = title;"], "剧情交互体：官方交互名与头顶的字一起换")
+            ["label = title;", 'ApplyInteractName("relabel");', "text.text = title;"],
+            "剧情交互体：官方交互名与头顶的字一起换")
 
     if errors:
         print("SkyIslandWorldTextLanguageGuard: FAIL")

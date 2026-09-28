@@ -238,7 +238,7 @@ namespace BossRush
                 Cost cost = new Cost((long)moneyCost);
                 if (!EconomyManager.IsEnough(cost, true, true))
                 {
-                    return Fail(result, L10n.T("金钱不足。", "Not enough money."));
+                    return Fail(result, L10n.T("口袋空了", "Your pockets are empty"));
                 }
 
                 // KV 是最容易失败的一段，先做并保留快照；费用放在写入成功之后结算。

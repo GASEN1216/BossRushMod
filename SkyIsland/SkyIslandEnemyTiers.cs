@@ -197,13 +197,14 @@ namespace BossRush
         }
 
         /// <summary>
-        /// AI 追踪距离保持天空岛布局口径；反应与射击延迟由生成前的基准统一设置。
+        /// 手动挑战的追踪距离保持天空岛布局口径；自动组沿用官方感知选敌，让断风与拾荒者也能互相攻击。
+        /// 反应、视力和射击延迟由生成前的基准统一设置；不在这里改变距离唤醒。
         ///
         /// 用**独立**的标记组件，不能和 <see cref="SkyIslandEnemyTierMark"/> 共用：
         /// `AICharacterController` 常常就挂在角色本体上，共用一个标记会让先跑的
         /// `ApplyAi` 把后跑的 `Apply` 一起挡掉。
         /// </summary>
-        internal static void ApplyAi(AICharacterController ai, SkyIslandEnemyTier tier)
+        internal static void ApplyAi(AICharacterController ai, SkyIslandEnemyTier tier, bool forcePlayer = true)
         {
             if (ai == null) return;
             if (ai.GetComponent<SkyIslandEnemyAiMark>() != null)
@@ -214,8 +215,7 @@ namespace BossRush
             ai.gameObject.AddComponent<SkyIslandEnemyAiMark>();
             try
             {
-                ai.forceTracePlayerDistance = TraceDistance(tier);
-
+                ai.forceTracePlayerDistance = forcePlayer ? TraceDistance(tier) : 0f;
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandEnemy] AI 调参失败：" + e.Message); }
         }

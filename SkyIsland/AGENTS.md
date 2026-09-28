@@ -14,7 +14,7 @@
 | `Integration/SkyIsland/` | 岛上物品的注册与使用行为 |
 | `DebugAndTools/F3GameplayValidationSkyIsland*.cs` | 岛内只读 F3 验收套件（Dev 构建） |
 | `ArtSource/SkyIsland/`、`tools/generate_sky_island*.py`、`tools/sky_island_*.py` | 布局、导航、小地图等可重复生成的数据与生成器 |
-| 作者 Unity 工程 `D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/` | 场景、自研着色器、构建器 `SkyIslandRaidBuilder.BuildAndExit`；**独立 git 仓库**，那边的改动在那边提交 |
+| 作者 Unity 工程（由 `tools/unity_project_path.py` 解析） | 场景、自研着色器、构建器 `SkyIslandRaidBuilder.BuildAndExit`；**独立 git 仓库**，那边的改动在那边提交 |
 
 ## 2. 证据分级
 
@@ -41,8 +41,12 @@
 - 按品质带抽物资要**加权**。在筛出来的清单上均匀抽，一档被抽中的概率会正比于这一档的物品种类数。岛上物资池有单件价值上限，挡住高价官方物品。
 - 做收集品的节奏门之前，先算它把完成路径拉长多少、拉长的那段有没有新内容。
 - 按出击刷新的状态（搜刮、委托进度、局内 buff、采集点）不进存档。持久事实优先复用剧情存档的 `discoveredNotes`，按 id 前缀区分。确需新旗标走 `SCHEMA+` 并同步 `SkyIslandStoryRules.KnownFlags`，否则 Codec 拒绝整份存档；新区域同步 `RegionBit`、Codec 区域掩码、marker 与作者布局。
+- 纪念品保存按实际缓冲回执区分，包含背包满时自动寄存的罗盘：寄存实物和发放记录同批保存；随身物品、点灯和放生的成本仍随出击结算。交付冻结与重试走 `SkyIslandStoryService`，不能只按名义 `ToStorage` 或 typed pending 是否存在判断。
 
 ## 4. 运行时规则
+
+- 自动遭遇复用官方感知选敌，避免强制追踪每帧覆盖已选中的敌对 NPC；手动剧情挑战保留原追踪。生成后敌对性与距离休眠解除仍按根规则执行。
+- 密集爆炸只在天空岛句柄门内临时借换官方工作缓冲，继续执行官方伤害/阵营/遮挡/去重循环；异常、嵌套和正常返回均恢复原引用。缓冲按 manager 和同步调用深度复用，停用时不加每帧工作。
 
 - **判夜只有一个口径**：`SkyIslandNight` + `SkyIslandLighting.ClockHours()`。没有 `GameClock` 实例时 `TimeOfDay` 恒为 00:00 且不抛异常；不要用官方 `TimeOfDayController.AtNight`。夜是 22–6 点，刻意等于官方 `TimeOfDayController` 运行时的 `nightStart / morningStart`（官方 Volume 与敌人夜间感知同相；反编译源的字段初值 19 / 5 会被 `LevelManagerPrefab` 序列化值覆盖，官方数值以 F3 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机读数为准，不照抄反编译初值）；一昼夜约 24 现实分钟、夜里约 8 分钟（`clockTimeScale = 60`），写夜间内容先按这个算（`SkyIslandMosquitoGuard`）。
 - **玩法计时走游戏时间**（撤离读秒、救援），暂停菜单与拍照模式会冻结它；表现层可以走 unscaled，但暂停时停推进。

@@ -2,26 +2,26 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
-<!-- BEGIN PRODUCTION READINESS AUDIT 2026-09-27 -->
+## 2026-09-28 天空岛全面审核与修复（8 项 Fixed / L1+L2，L3 待实机）
 
-## 2026-09-27 生产就绪全面审计（天空岛重点，6 项 Fixed / L1+L2，L3 待实机）
+原审计 2 项 P1、3 项 P2 已修复；两条战斗线索经实际 DLL/行为树与隔离反例确证，另修 F3 窗口完整性，共 8 项。原始触发见[审核快照](docs/reports/reviews/2026-09-28-天空岛全面代码审核.md)，最终实现、复用/性能边界和实机步骤见[修复验收报告](docs/reports/sky-island/2026-09-28-天空岛修复与生产验收.md)。
 
-**修复回填（2026-09-27 晚）**：402–406 全部修复，完整守卫 711/711、隔离回归 108/108（三项 Harmony 夹具需设 `BOSSRUSH_HARMONY_DLL` / `BOSSRUSH_GAME_MANAGED`）、Windows 正式构建 exit 0、部署 DLL SHA-256 `EEC6C46F…` 与 `Build/BossRush.dll` 一致、73 包资源校验通过。修复明细见 `FIX_TRACKER.md` 同日「生产就绪审计与 Boss 设计修复」。L3 仍按续审报告的实机步骤执行。
+| ID | 严重度 / 分类 / 状态 | 修复与证据 |
+| --- | --- | --- |
+| CR-2026-09-28-004 | P1 / COMPAT / Fixed | `SkyIslandWorldStoryRewards` 与 `SkyIslandStoryService.Begin/EndKeepsakeDelivery` 按实际缓冲回执提交，覆盖满包罗盘；冻结交付中采集，寄存实物/收据同批保存，独立快照义务在 typed pending 消费后继续驱动 Tick。Story/Delivery 回归覆盖重开、物理失败、换槽、只采集未写盘和限频重试；L3 见 FIX-SKY-01。 |
+| CR-2026-09-28-002 | P1 / COMPAT / Fixed | `SkyIslandItems.InjectLocalization` 同时注入 18 件物品名称与 `_Desc`，删除官方空 setter/只读属性的无效反射。真实注入入口中英回归及反向验证通过；L3 见 FIX-SKY-02。 |
+| CR-2026-09-28-001 | P2 / COMPAT / Fixed | `SkyIslandStoryService` 目标/摘要加入接纳快照身份缓存键，清场数组变化及时失效。两端守卫和中英回归通过，正常稳定状态 10000 次读取托管分配为 0 B；L3 见 FIX-SKY-03。 |
+| CR-2026-09-28-005 | P2 / COMPAT / Fixed | 信鸽/采集 Relabel 复用基类 ApplyInteractName；搜索点复用章节表和全局语言刷新，延迟 Start 不覆盖新语言。现存对象热切执行回归及反向通过；L3 见 FIX-SKY-02。 |
+| CR-2026-09-28-003 | P2 / COMPAT / Fixed | `SkyIslandSceneReferenceBridge.InjectLocalization` 接全局刷新，语言变化不重装桥。场景名称热切回归通过；L3 见 FIX-SKY-02。 |
+| CR-2026-09-28-006 | P2 / COMPAT / Fixed | 原 U-CB-01：实际黑板/行为树确认强制追踪覆盖敌对 NPC 目标。自动遭遇改用官方感知，手动挑战保留追踪，不新增全局扫描。真实生成入口与选敌逻辑回归/反向通过；专属招式仍按原玩家目标设计，L3 见 FIX-SKY-04。 |
+| CR-2026-09-28-007 | P2 / COMPAT + WIRE+ / Fixed | 原 U-CB-02：原官方方法在受控 9 目标场景只处理 8 个。新增 `SkyIslandExplosionBufferPatch` 临时借换 manager 缓冲，饱和增长、按重入深度复用，Finalizer 恢复原数组/Health列表/掩码，继续执行官方伤害循环。64 条真实 Harmony 隔离断言及反向通过；真实 PhysX/L3 见 FIX-SKY-04。 |
+| CR-2026-09-28-008 | P2 / COMPAT / Fixed | `SamplePerformanceWindow` 复用完整窗口判据，锁定场景、拒绝不足额样本，并在取消/Dispose 后关闭开窗时录制。63 条 F3 执行断言及反向通过；跨图或中断样本不更新有效基线，L3 见 PERF-SKY-01～03。 |
 
-原审计摘要：只读审计。续审基线 `97ef0f7e492b7afbd0740c19df5c3720c7353ab2` 加冻结工作区；当前确认 1 P0、2 P1 发布阻断，2 P2 风险。全量守卫 709/711（2 NEW-FAIL）、stock 回归 107/107；Windows 正式编译真实失败，无新 DLL；独立 73 包资源部署/VerifyOnly 通过。完整覆盖、条件、修复兼容性、原始证据和 17 组实机步骤见 [续审终态报告](docs/reports/reviews/2026-09-27-生产就绪全面审计-天空岛重点-续审.md)。L3 未执行。
+终态：全量守卫 711/711、执行回归 109/109；1119 份 C# 的 Windows 正式/Dev 隔离构建 exit 0，正式 14 个 Dev 标识缺席、Dev 全部可检出。回归目标 net8.0 在本机 .NET 10.0.5 以 Major roll-forward 执行。没有部署、启动游戏或读写玩家存档，尚不能宣称生产实机验收完成或整岛无性能问题。
 
-| ID | 严重程度 / 修复兼容性 | 位置、条件与实际影响 | 证据 / 最小修复 / 状态 |
-| --- | --- | --- | --- |
-| CR-2026-09-27-406 | P0 / COMPAT + OPERATIONAL | `Integration/DragonDescendant/DragonDescendantAbilities_ProjectilesAndGrenades.cs:33`、`:68` 引用未定义 RocketTelegraphSeconds；`compile_official.bat:751` 的龙裔清单漏列已有 DragonDescendantRocketMarker。当前工作区完整正式构建无法产出 DLL。 | **Fixed / L1+L2**。`DragonDescendantConfig.RocketTelegraphSeconds`（0.8 s）已定义，`DragonDescendantRocketMarker.cs` 与 `Utilities/BossSkillDamageRules.cs` 已登记；正式构建 exit 0，编译清单守卫通过。L3：预警时长、1.6 m 半径、翻滚、暂停/死亡/切图取消。 |
-| CR-2026-09-27-402 | P1 / COMPAT | `SkyIsland/SkyIslandPreludeFlow.cs:174`、`:646`、`:647` 切图关闭并丢弃 story；`SkyIsland/SkyIslandStoryService.cs:709` 在 TryClose 失败后仍退订。序章键写失败期间触发通用切图关闭，进度失去恢复 owner。 | **Fixed / L1+L2**。`SkyIslandPreludeFlow` 关闭改走 `SkyIslandStorySaveRecovery.CloseOrRetain`，同槽重开经 `TakeCurrent` 接回原门面（唯一 writer）；`SkyIslandQuestLifecycleRegression` 覆盖，SkyIslandStory 回归通过。L3 待实机。 |
-| CR-2026-09-27-403 | P1 / COMPAT；欠账方案 SCHEMA+ | `Utilities/OfficialQuests/OfficialQuestProjection.cs:236` 先 Deliver 后 `:238` Give；`Campaign/CampaignProgressService.cs:532` RequestFlush，`CampaignSaveCoordinator.cs:145` 仅现金采集。下一次全量资产采集前异常退出，会留下已完成但无实物的任务；天空岛绑定同入口。 | **Fixed / L1+L2（COMPAT，无新存档字段）**。交付期 `BeginDelivery` 冻结客户端采集，`TryGive` 可回滚投递（禁合堆、收据回滚），完成事实与 `AssetCollector` 资产在同一次物理保存落盘，义务留到保存成功；Campaign、天空岛两客户端接线；出击中奖品寄待领取区。`ContentTransactions`/`JeffQuestFlow` 回归与 `OfficialQuestProjectionGuard`、`AssetSnapshotBoundaryGuard`（锚点随结构更新并反向验证）通过。L3 待实机。 |
-| CR-2026-09-27-404 | P2 / COMPAT | `ZombieMode/ZombieModeRuntimeModule_HostLifecycle.cs:182`、`:193` 逐协程登记；`ZombieMode/ZombieModeRuntimeModule.cs:739`、`:824` 正常完成不摘 Coroutine。记录单局累积，退局会清。 | **Fixed / L1+L2**。新增 `ZombieMode/ZombieModeRunCoroutine.cs`：先登记后启动，完成/异常/取消/退局统一摘 record，显式驱动嵌套 IEnumerator；`ZombieModeHostOwners` 回归通过。长局内存/FPS 未采样。 |
-| CR-2026-09-27-405 | P2 / COMPAT | `Integration/DeathWraith/DeathWraithLifecycleAndPersistence.cs:426` 读异常缓存空表，`:512`/`:535` 追加，`:464` 写回。暂时读失败后新的死亡记录覆盖旧 Mod 亡魂记录；不删除官方遗失物或背包。 | **Fixed / L1+L2**。读失败返回 null 作写屏障（1 s 后重读），新增/移除先排队、读通后合并，切槽与失效清队列；`DeathWraithPersistence`、`AuditCombatSeptember` 回归通过。L3 待实机。 |
-| CR-2026-09-27-401 | 原 P1 / OPERATIONAL | 原 skyisland_fx 漏列问题已由合入代码在 `tools/resource_release_manifest.json:79` 补齐。 | **Fixed / L1+L2**。73 包临时部署与 VerifyOnly 均 exit 0、hash 全同；406 修复后完整正式构建亦 exit 0。 |
+## 2026-09-27 生产就绪全面审计（代码修复与 L1/L2 已闭环，L3 待实机）
 
-上午 677/66 与 C# 成功的结果仅属于初审快照，不能替代以上当前验证。全部 L2 均为隔离证据，未确认线索与未执行的 L3 单列在报告；没有把空 catch、生命周期定位清单或守卫通过当作功能正确证据。
-
-<!-- END PRODUCTION READINESS AUDIT 2026-09-27 -->
+CR-2026-09-27-401～406 的原始发现、逐项回填及当时验证已[按原文归档](archive/CODE_REVIEW_FINDINGS_2026-09-27_production_readiness.md)。运行时验收仍见[续审报告](docs/reports/reviews/2026-09-27-生产就绪全面审计-天空岛重点-续审.md)，不得把当时离线通过解释为 L3 已完成。
 
 <!-- BEGIN UI VFX BOSS DESIGN REVIEW 2026-09-27 -->
 

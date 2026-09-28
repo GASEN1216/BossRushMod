@@ -408,8 +408,12 @@ namespace BossRush
                 Debug.LogWarning("[SkyIslandGather] 采集读条时长没有写进官方字段（可能已改名），将变成立即完成：" + name);
         }
 
-        /// <summary>切了语言：换交互名，读条与回调不动（<see cref="InteractNameKey"/> 每次取用时重注入）。</summary>
-        internal void Relabel(string title) { label = title; }
+        /// <summary>官方只保存初始化时的 key；换字时同时覆盖该 key，读条与回调不动。</summary>
+        internal void Relabel(string title)
+        {
+            label = title;
+            ApplyInteractName("relabel");
+        }
 
         protected override void OnInteractCompleted()
         {

@@ -1,5 +1,7 @@
 # 天空岛剧情与槽位持久化执行回归
 
+2026-09-28：`SkyIslandProductionReadinessRegression` 执行真实服务/保存引擎，验证目标与摘要在守卫清场后失效、稳定读取零分配，以及实际寄存纪念品与收据同批保存、独立缓冲义务、官方采集消费 pending 后继续写盘、物理失败和换槽。`run.py` 逐字抽取 `SkyIslandWorldStoryRewards.GrantKeepsakes`、警告/字段及主 Tick 的限频语句，物品准备/投递和字幕是可控替身；真实 `TryGiveWithReceipt` 的通知异常、满包寄存回执由 `SkyIslandDelivery` 覆盖。共享资产采集生成器抽取生产 `OfficialQuestItems` 与官方 `SaveBuffer`，没有永远成功的采集替身。三组依赖同一服务的夹具各自生成到独立输出，执行本次 build 返回的 TargetPath。
+
 分类：COMPAT / SCHEMA+。运行 `python tools/run_runtime_regressions.py --filter SkyIslandStory`。
 
 工程直接链接生产剧情规则、编解码、服务、共享 JSON parser/writer、槽位 store 与保存协调引擎。
@@ -9,6 +11,8 @@
 
 同日导航与场景刷新补验：逐字抽取 `SkyIslandMapMarkers.ObjectiveTargets` / `SideTargets` 和 `SkyIslandWorldStory.RebuildFeedback`（含生产掩码与字段初值）。中英、两种修灯顺序、钟守和解/战胜的完整旅程每步经 Codec 重开，核对 HUD 和地图/罗盘主线目标；敲钟后保留钟守、浮舟待交付指引。纪念物遍历全部可见旗标组合，验证任务位不引起重建、语言和剧情变化只重建一次、旧对象销毁和事实清除。Unity 物体及 Beacon 创建是替身；这些断言证明避免了冗余创建，不是实际帧时间或画面证明。
 SavesSystem、基地状态与每帧写盘节流是内存替身，不加载 Unity 或接触玩家存档。
+
+纪念品重试的专用类型位于本目录 `SkyIslandKeepsakeHarness.cs`，不混入供其它判据夹具链接的 `Stubs.cs`。`run.py` 从 `SkyIslandWorldStoryRewards.cs` 抽取发放、警告与状态字段，从 `SkyIslandWorldStory.cs` 抽取限频重试语句。三组需要剧情门面的夹具共用 `tests/fixtures/sky_island_asset_collectors.py`，各自生成真实 `OfficialQuestItems.CanCollectAssets` / `AssetCollector` 和官方 `PlayerStorageBuffer.SaveBuffer`，并记录源文件 SHA-256；不会为满足编译补永远成功的资产采集替身。
 
 覆盖东西顺序自由、清场前置、四支线、先发现后交付、折翎互斥结果、两种终章、通关补支线、
 重复提交、重入恢复、战斗帧禁落盘、物理写失败后重试、槽位切换、同槽删除、未知 schema、

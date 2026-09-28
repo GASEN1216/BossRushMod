@@ -108,8 +108,8 @@ namespace BossRush
             ApplyInteractName("start");
         }
 
-        /// <summary>设置交互名。Awake 与 Start 各调一次。</summary>
-        private void ApplyInteractName(string stage)
+        /// <summary>设置官方实际查询的名称键；Awake / Start 初始化，子类改文案时可显式刷新。</summary>
+        protected void ApplyInteractName(string stage)
         {
             try
             {

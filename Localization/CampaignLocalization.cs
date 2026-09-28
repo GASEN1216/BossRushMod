@@ -41,7 +41,7 @@ namespace BossRush
 
         /// <summary>
         /// 官方任务页的标题与说明（六章，键 BossRush_Campaign_chN_Name / _Description）。
-        /// 标题与章节表的 titleCN / titleEN 同一串；说明是杰夫在跟你说话，三四句，只用逗号句号。
+        /// 标题与章节表的 titleCN / titleEN 同一串；说明是杰夫在跟你说话，保持短句。
         /// </summary>
         public static void InjectQuestKeys()
         {
@@ -49,33 +49,33 @@ namespace BossRush
 
             AddQuest(map, "ch1",
                 "报个名", "Sign Us Up",
-                "竞技场的报名册上没有我们的名字，赏金按流浪选手结，亏得慌。你带上船票去标准竞技场打一局，路牌选标准那一档，开头两波别挨打，账房就看这两行。打完回基地找我，钱我付，后头那块菜地我也让人给你腾出来。",
-                "Our name isn't in the arena's ledger, so they pay us like drifters. It stings. Take a ticket into the Standard Arena, pick a standard tier at the sign, and don't get hit in the first two waves. That's all the bookkeeper reads. Come find me at base after and I'll pay, and I'll have that plot out back cleared for you.");
+                "册子上没咱的名。带船票打一场标准，头两波别挨揍。回来找我结钱。",
+                "Our name's missing from the book. Take a ticket into Standard and survive the first two waves. Come back for your pay.");
 
             AddQuest(map, "ch2",
                 "种地的选手", "The Fighter With a Garden",
-                "菜地建起来了吗，没粮的选手账房不给写第二行。地弄好了就带船票空手进白手起家，身上和宠物背包都得空，打到第 5 波，顺手用发给你的刀砍够 5 个。回来结钱，我再教你一招，打回来的好东西摆出来能长命。",
-                "Is the garden up yet? The bookkeeper won't write line two for a fighter with no food. Once it's planted, take a ticket into From Scratch with nothing on you, empty pet bag included, push to wave 5 and put down 5 with the knife we hand you. Come back for your money, and I'll show you a trick. The good stuff you win keeps you alive longer if you put it on display.");
+                "菜地弄好没？空手带船票进白手起家，刀砍够 5 个，撑到第 5 波。",
+                "Garden ready? Take a ticket into From Scratch with empty hands, cut down 5 with the knife, and reach wave 5.");
 
             AddQuest(map, "ch3",
                 "门面", "A Proper Front",
-                "第三行要证明我们守得住一块地。带船票和营旗去划地为营，选个阵营，把敌方头目干掉 8 个，够数就能回。架子那边也别忘了，随便摆一件打回来的战利品，账房要派人来基地看门面。",
-                "Line three says we can hold ground. Take a ticket and a faction banner into Faction War, pick a side, and drop 8 hostile bosses. That's enough, come home. Don't forget the rack either. Put one of your trophies up, the bookkeeper sends a man round to look the place over.");
+                "带船票和营旗去划地为营，干掉 8 个头目。架子上摆一件战利品。",
+                "Take a ticket and banner into Faction War. Kill 8 enemy bosses and put one trophy on the rack.");
 
             AddQuest(map, "ch4",
                 "收钱走人", "Collect and Leave",
-                "第四行要看我们收得了钱，还走得掉。带船票和血猎收发器裸装进血猎追击，把带悬赏印记的干掉 3 个，撤离点一开就走，别贪。这一章没有新东西给你，钱多给一点。",
-                "Line four wants to see we can collect and still walk out. Ticket and Bloodhunt Transponder, no gear, into Blood Hunt. Kill 3 marked bounties and take the extraction the moment it opens, don't get greedy. No new toys this time, just more money.");
+                "带船票和收发器空手进血猎，杀 3 个悬赏目标，撤离点开了就走。",
+                "Take a ticket and transponder into Blood Hunt with no gear. Kill 3 marked targets and leave when extraction opens.");
 
             AddQuest(map, "ch5",
                 "没人肯去的那场", "The Match Nobody Takes",
-                "最后一行是疫区那场，签过名的人没回来过，所以册子上一直空着。用尸潮邀请函出发，投多少现金你自己看，撑到第 5 波，Boss 打完撤离点就开。站上去走，回来这一行就满了。",
-                "The last line is the quarantine match. Nobody who signed it ever came back, so the line stayed empty. Use a Zombie Tide Invitation, put in as much cash as you think it's worth, and hold to wave 5. The extraction opens once that Boss is down. Step on it and leave, and the page is full.");
+                "拿邀请函进疫区，撑到第 5 波，Boss 打完撤离。活着回来。",
+                "Take the invitation into Quarantine. Reach wave 5, kill the Boss, and extract alive.");
 
             AddQuest(map, "ch6",
                 "守擂的那个", "The One Holding the Ring",
-                "册子翻到我们那一页了，就差你签。带装备和船票进竞技场，别带其它模式的信物，也别去点路牌。身边会立起一块报名石，按住它，守擂的那个就来，赢了名字就是我们的。",
-                "Our page is open, all it needs is your name. Take gear and a ticket into the arena, leave the other modes' tokens at home, and don't touch the sign. A sign-up stone comes up beside you. Hold it, the one holding the ring answers, and if you win the name is ours.");
+                "只带装备和船票进竞技场。按住报名石，赢了就是咱的名字。",
+                "Take only your gear and a ticket into the arena. Hold the sign-up stone; win, and the name is ours.");
 
             foreach (CampaignGuideTable.Definition guide in CampaignGuideTable.Definitions)
             {

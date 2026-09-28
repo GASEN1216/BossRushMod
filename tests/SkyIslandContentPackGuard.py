@@ -213,14 +213,17 @@ def main():
             "结局后码头要挂归航船名册")
     crew_choices = need_body(world, "private List<SkyIslandStoryPresentation.Choice> CrewChoices()", "名册选项")
     require(crew_choices, "story.RecordNote(SkyIslandCrew.NoteId(page), out message)", "名册翻页要记进手记")
-    ordered(tick, ["AnnounceCombatOutcomes(added);", "GrantKeepsakes();", "RebuildFeedback();"],
+    ordered(tick[tick.index("int added ="):], ["AnnounceCombatOutcomes(added);", "GrantKeepsakes();", "RebuildFeedback();"],
             "旗标变化后补查纪念品（旧存档第一次进岛同样补发），再按旗标重建纪念物")
-    grant = need_body(world, "private void GrantKeepsakes()", "纪念品发放")
-    ordered(grant, ["if (!story.CanWrite) return;", "SkyIslandItemRules.Due(story.Current, all[i])",
-                    "story.RequireAssetSnapshot(all[i].NoteId, out snapshotError)",
-                    "SkyIslandItems.TryGive(all[i].TypeId, all[i].ToStorage,",
+    rewards = read("SkyIsland/SkyIslandWorldStoryRewards.cs")
+    grant = need_body(rewards, "private void GrantKeepsakes()", "纪念品发放")
+    ordered(grant, ["SkyIslandItemRules.Due(story.Current, all[i])",
+                    "story.BeginKeepsakeDelivery(all[i].NoteId, out snapshotError)",
+                    "SkyIslandItems.TryGiveWithReceipt(all[i].TypeId, all[i].ToStorage,",
                     "delegate { return story.RecordNote(all[i].NoteId, out message); }"],
             "纪念品把记账交给发放入口：实例准备好才记手记，记成功才转移，缺资源不得永久烧掉领取资格")
+    require(grant, "finally { story.EndKeepsakeDelivery(all[i].NoteId, delivered, buffered); }", "交付闩必须在 finally 解除并使用实际寄存回执")
+    require(tick, "if (keepsakesPending && Time.unscaledTime >= nextKeepsakeAttempt) GrantKeepsakes();", "发放暂缓必须限频重试，不能等下一次旗标变化")
     record_note = need_body(service, "internal bool RecordNote(string id, out string message)", "RecordNote")
     ordered(record_note, ["SkyIslandLetters.Find(id) == null && SkyIslandCrew.IndexOf(id) < 0 && SkyIslandItemRules.FindKeepsake(id) == null",
                           "return RecordSearch(id, out message);"],
@@ -250,7 +253,7 @@ def main():
         errors.append("物品名没有注入本地化（游戏里会显示 *BossRush_SkyIsland_...*）")
     if "SkyIslandItems.ResetStaticCaches();" not in read("SkyIsland/SkyIslandRuntimeModule.cs"):
         errors.append("SkyIslandItems 的静态缓存没有生命周期 owner")
-    give = need_body(items, "internal static bool TryGive(int typeId, bool toStorage, Func<bool> recordGrant, Func<bool> rollbackGrant = null)", "物品发放")
+    give = need_body(items, "internal static bool TryGiveWithReceipt(int typeId, bool toStorage, Func<bool> recordGrant, Func<bool> rollbackGrant, out bool buffered)", "物品发放")
     ordered(give, ["ItemAssetsCollection.GetPrefab(typeId) == null", "ItemAssetsCollection.InstantiateSync(typeId);",
                    "item.TypeID != typeId", "if (recordGrant == null || !recordGrant()) return false;",
                    "ItemUtilities.SendToPlayerStorage(item)", "ItemUtilities.SendToPlayer(item)"],

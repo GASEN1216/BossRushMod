@@ -7,6 +7,7 @@
   <ItemGroup>
     <!-- run.py 逐字抽出的「纯判据」区（F3GameplayValidationSkyIslandRuntimeCases.cs）与 SkyIslandSkipCase。 -->
     <Compile Include="../../../Build/runtime-regressions/SkyIslandValidationJudges/gen/Judges.cs" Link="Generated/Judges.cs" />
+    <Compile Include="../../../Build/runtime-regressions/SkyIslandValidationJudges/gen/AssetCollectors.cs" Link="Generated/AssetCollectors.cs" />
     <!-- 与 SkyIslandStory 执行回归同一套生产纯规则与替身：判据调用的全是这些类型。 -->
     <Compile Include="../SkyIslandStory/Stubs.cs" Link="Stubs/Stubs.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandNoteBridge.cs" Link="Production/SkyIslandNoteBridge.cs" />

@@ -214,10 +214,12 @@ namespace BossRush
         internal static readonly List<string> Champions = new List<string>();
         internal static readonly List<SkyIslandEnemyTier> AiTiers = new List<SkyIslandEnemyTier>();
         internal static void Apply(CharacterMainControl character, SkyIslandEnemyTier tier) { Applied.Add(tier); }
-        internal static void ApplyAi(AICharacterController ai, SkyIslandEnemyTier tier) { AiTiers.Add(tier); }
+        internal static void ApplyAi(AICharacterController ai, SkyIslandEnemyTier tier, bool forcePlayer = true)
+        { AiTiers.Add(tier); ForcedPlayer.Add(forcePlayer); }
+        internal static readonly List<bool> ForcedPlayer = new List<bool>();
         internal static void ApplyStoryChampion(CharacterMainControl character, string id, string cn, string en)
         { Champions.Add(id); }
-        internal static void Reset() { Applied.Clear(); Champions.Clear(); AiTiers.Clear(); }
+        internal static void Reset() { Applied.Clear(); Champions.Clear(); AiTiers.Clear(); ForcedPlayer.Clear(); }
     }
 
     internal sealed class SkyIslandStormBoss : UnityEngine.MonoBehaviour

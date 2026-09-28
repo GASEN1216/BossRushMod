@@ -11,10 +11,13 @@
 from pathlib import Path
 import hashlib
 import subprocess
+import sys
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 OUT = ROOT / 'Build' / 'runtime-regressions' / 'SkyIslandValidationJudges'
+sys.path.insert(0, str(ROOT / 'tests/fixtures'))
+from sky_island_asset_collectors import generate_asset_collectors
 
 
 def extract(source, signature):
@@ -48,6 +51,7 @@ if __name__ == '__main__':
                  + judges + '    }\n\n    ' + skip_signal + '\n}\n')
     gen = OUT / 'gen'
     gen.mkdir(parents=True, exist_ok=True)
+    generate_asset_collectors(ROOT, gen)
     (gen / 'Judges.cs').write_text(generated, encoding='utf-8')
     (gen / 'source.sha256').write_text(hashlib.sha256((judges + skip_signal).encode('utf-8')).hexdigest(), encoding='utf-8')
     build = subprocess.run([

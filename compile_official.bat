@@ -221,6 +221,7 @@ echo(SkyIsland\SkyIslandStoryService.cs
 echo(SkyIsland\SkyIslandStoryResidentText.cs
 echo(SkyIsland\SkyIslandStoryServiceAutotest.cs
 echo(SkyIsland\SkyIslandWorldStory.cs
+echo(SkyIsland\SkyIslandWorldStoryRewards.cs
 echo(SkyIsland\SkyIslandAmbience.cs
 echo(SkyIsland\SkyIslandGates.cs
 echo(SkyIsland\SkyIslandLootTables.cs
@@ -234,6 +235,7 @@ echo(SkyIsland\SkyIslandStormBoss.cs
 echo(SkyIsland\SkyIslandBounty.cs
 echo(SkyIsland\SkyIslandServices.cs
 echo(SkyIsland\SkyIslandExplosionObstaclePatch.cs
+echo(SkyIsland\SkyIslandExplosionBufferPatch.cs
 echo(SkyIsland\SkyIslandGroundRing.cs
 echo(SkyIsland\SkyIslandImpactFx.cs
 echo(SkyIsland\SkyIslandMapMarkers.cs

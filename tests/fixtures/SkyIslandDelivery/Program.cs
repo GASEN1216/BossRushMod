@@ -6,7 +6,7 @@ class Program
 {
     static int checks;
     static void Check(bool ok, string text) { if (!ok) throw new Exception("FAIL " + text); checks++; Console.WriteLine("PASS " + text); }
-    static void Reset() { ItemUtilities.ThrowBefore = false; ItemUtilities.ThrowAfterOwnership = false; ItemUtilities.ThrowAfterBuffer = false; PlayerStorage.IncomingItemBuffer.Clear(); ItemAssetsCollection.MissingPrefab = false; CharacterMainControl.Main = null; }
+    static void Reset() { ItemUtilities.ThrowBefore = false; ItemUtilities.ThrowAfterOwnership = false; ItemUtilities.ThrowAfterBuffer = false; ItemUtilities.ForceBuffer = false; PlayerStorage.IncomingItemBuffer.Clear(); ItemAssetsCollection.MissingPrefab = false; CharacterMainControl.Main = null; }
     static void Main()
     {
         int calls;
@@ -16,6 +16,10 @@ class Program
         Reset(); ItemUtilities.ThrowBefore = true; bool rollbackCalled = false; Check(!SkyIslandItems.TryGive(BossRushItemIds.SkyIslandHomecomingBadge, false, () => true, () => { rollbackCalled = true; throw new InvalidOperationException("rollback failed"); }), "rollback failure remains retry-blocked"); Check(rollbackCalled, "rollback failure is attempted exactly once");
         Reset(); Check(!SkyIslandItems.TryGive(BossRushItemIds.SkyIslandHomecomingBadge, false, () => false, () => { throw new Exception("must not run"); }), "ledger rejection prevents transfer");
         Reset(); ItemAssetsCollection.MissingPrefab = true; Check(!SkyIslandItems.TryGive(BossRushItemIds.SkyIslandHomecomingBadge, false, () => { throw new Exception("must not run"); }), "missing prefab leaves claim retryable");
+        bool buffered;
+        Reset(); Check(SkyIslandItems.TryGiveWithReceipt(BossRushItemIds.SkyIslandHomecomingBadge, false, () => true, null, out buffered) && !buffered, "backpack grant reports no buffer receipt");
+        Reset(); ItemUtilities.ForceBuffer = true; Check(SkyIslandItems.TryGiveWithReceipt(BossRushItemIds.SkyIslandHomecomingBadge, false, () => true, null, out buffered) && buffered, "full backpack fallback reports actual buffer receipt");
+        Reset(); ItemUtilities.ThrowAfterBuffer = true; Check(SkyIslandItems.TryGiveWithReceipt(BossRushItemIds.SkyIslandHomecomingBadge, true, () => true, null, out buffered) && buffered, "notification failure preserves actual buffer receipt");
         Reset(); InventoryRegression.Run(Check);
         Console.WriteLine("checks=" + checks);
     }

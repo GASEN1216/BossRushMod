@@ -18,10 +18,13 @@ namespace BossRush
         private bool cashSnapshotRequired, rewardCommitting;
         private bool officialDeliveryActive;
         private Func<bool> officialQuestAssetCollector;
+        private bool keepsakeDeliveryActive;
+        private Func<bool> keepsakeAssetCollector;
         private SkyIslandStoryAction? cashPaidPendingAction;
         /// <summary>这一趟出击里暂不入档的永久记录 id（见 <see cref="EncodeForSave"/>）。</summary>
         private readonly HashSet<string> raidHeldNotes = new HashSet<string>(StringComparer.Ordinal);
         private string summaryCache, summaryStatus;
+        private SkyIslandStoryData summaryData;
         private int summaryFlags;
         private bool summaryChinese;
 
@@ -101,6 +104,38 @@ namespace BossRush
             return SkyIslandStoryCodec.Encode(persisted);
         }
 
+        /// <summary>交付期间冻结剧情采集；实际寄存的物品在完成后解除出击暂存，随收据一起保存。</summary>
+        internal bool BeginKeepsakeDelivery(string noteId, out string error)
+        {
+            error = "item_delivery_not_ready";
+            if (!CanWrite || SkyIslandItemRules.FindKeepsake(noteId) == null || keepsakeDeliveryActive || officialDeliveryActive
+                || !OfficialQuestItems.CanCollectAssets(true)) return false;
+            if (!RequireAssetSnapshot(noteId, out error)) return false;
+            keepsakeDeliveryActive = true;
+            return true;
+        }
+
+        /// <summary>
+        /// 按实际位置结算，涵盖背包满时寄存的罗盘。复用任务的缓冲采集，不在岛上保存随身背包。
+        /// 这里只入队，由会话战斗静默门决定落盘；保存失败时保留采集义务供恢复 owner 重试。
+        /// </summary>
+        internal void EndKeepsakeDelivery(string noteId, bool delivered, bool buffered)
+        {
+            if (!keepsakeDeliveryActive) return;
+            try
+            {
+                if (!IsCurrentSlot) return;
+                if (delivered && buffered)
+                {
+                    if (keepsakeAssetCollector == null) keepsakeAssetCollector = OfficialQuestItems.AssetCollector(true);
+                    if (raidHeldNotes.Remove(noteId)) store.Store(Current.Copy());
+                    MarkPending(true);
+                }
+                else if (!delivered && !SkyIslandItemRules.Granted(Current, noteId)) raidHeldNotes.Remove(noteId);
+            }
+            finally { keepsakeDeliveryActive = false; }
+        }
+
         /// <summary>
         /// 这一趟出击结算。<paramref name="keep"/> 为真：回到基地（撤离或倒下，官方已按结果存好背包），记录放进待写批次；
         /// 为假：退游戏或会话被销毁（背包会回到出击前），从手记里撤掉，与没做过一样。
@@ -145,7 +180,7 @@ namespace BossRush
         }
         /// <summary>
         /// 当前目标。HUD 每 0.5 秒读一次，而 `SkyIslandStoryRules.Objective` 每次都重新拼接字符串；
-        /// 目标文本只取决于剧情位与界面语言，两者都没变就复用上一次的结果（口径同 <see cref="Summary"/>）。
+        /// 按不可变剧情快照与语言缓存，清场等事实变化会替换快照，后续扩展规则输入也不会漏失效。
         /// </summary>
         internal string CurrentObjective
         {
@@ -153,9 +188,10 @@ namespace BossRush
             {
                 SkyIslandStoryData data = Current;
                 bool chinese = L10n.IsChinese;
-                if (objectiveCache == null || objectiveFlags != data.flags || objectiveChinese != chinese)
+                if (objectiveCache == null || !ReferenceEquals(objectiveData, data) || objectiveFlags != data.flags || objectiveChinese != chinese)
                 {
                     objectiveCache = SkyIslandStoryRules.Objective(data);
+                    objectiveData = data;
                     objectiveFlags = data.flags;
                     objectiveChinese = chinese;
                 }
@@ -163,6 +199,7 @@ namespace BossRush
             }
         }
         private string objectiveCache;
+        private SkyIslandStoryData objectiveData;
         private int objectiveFlags;
         private bool objectiveChinese;
         internal string SaveStatus
@@ -210,9 +247,10 @@ namespace BossRush
             {
                 SkyIslandStoryData data = Current;
                 string status = SaveProblem;
-                if (summaryCache != null && summaryFlags == data.flags && summaryChinese == L10n.IsChinese
+                if (summaryCache != null && ReferenceEquals(summaryData, data) && summaryFlags == data.flags && summaryChinese == L10n.IsChinese
                     && string.Equals(summaryStatus, status, StringComparison.Ordinal))
                     return summaryCache;
+                summaryData = data;
                 summaryFlags = data.flags;
                 summaryChinese = L10n.IsChinese;
                 summaryStatus = status;
@@ -345,8 +383,10 @@ namespace BossRush
 
         private bool CollectPendingCash()
         {
-            if (rewardCommitting || officialDeliveryActive) return false;
+            if (rewardCommitting || officialDeliveryActive || keepsakeDeliveryActive) return false;
             if (officialQuestAssetCollector != null && !officialQuestAssetCollector()) return false;
+            // 任务采集已包含同一缓冲；没有任务批次时才单独采集纪念品，避免重复序列化。
+            if (officialQuestAssetCollector == null && keepsakeAssetCollector != null && !keepsakeAssetCollector()) return false;
             if (!cashSnapshotRequired) return true;
             try
             {
@@ -361,7 +401,7 @@ namespace BossRush
         internal bool BeginOfficialDelivery(Func<bool> collectAssets, out string message)
         {
             message = SaveStatus;
-            if (!CanWrite || officialDeliveryActive || officialQuestAssetCollector != null || collectAssets == null || SavesSystem.IsSaving) return false;
+            if (!CanWrite || officialDeliveryActive || keepsakeDeliveryActive || officialQuestAssetCollector != null || collectAssets == null || SavesSystem.IsSaving) return false;
             officialQuestAssetCollector = collectAssets;
             officialDeliveryActive = true;
             message = null;
@@ -712,14 +752,14 @@ namespace BossRush
             if (!IsCurrentSlot || !safeToFlush) return;
             if (!TryRecoverFaultedStore()) return;
             // 共享引擎 Tick 固定只在基地重试；独立地图使用受战斗门保护的 RequestFlush 接续欠账。
-            if (store.HasPendingWrite || coordinator.HasDeferredFlush)
+            if (store.HasPendingWrite || coordinator.HasDeferredFlush || HasSnapshotObligation)
             {
                 // 去抖只挡「丢了也能重做」的事实（见 FlushDebounceSeconds）；剧情动作与已经欠着的重试照旧立刻写。
                 if (pendingSince < 0f) pendingSince = Time.unscaledTime;
                 if (urgentPending || coordinator.HasDeferredFlush || Time.unscaledTime - pendingSince >= FlushDebounceSeconds)
                     coordinator.RequestFlush(out lastSaveError);
             }
-            if (!store.HasPendingWrite && !coordinator.HasDeferredFlush && !store.IsStoreFaulted)
+            if (!store.HasPendingWrite && !coordinator.HasDeferredFlush && !HasSnapshotObligation && !store.IsStoreFaulted)
             {
                 lastSaveError = null;
                 pendingSince = -1f;
@@ -792,6 +832,8 @@ namespace BossRush
 
         private void OnSlotChanged()
         {
+            keepsakeDeliveryActive = false;
+            keepsakeAssetCollector = null;
             officialDeliveryActive = false;
             officialQuestAssetCollector = null;
             slotChanged = true;
@@ -804,6 +846,11 @@ namespace BossRush
             cashPaidPendingAction = null;
         }
 
+        private bool HasSnapshotObligation
+        {
+            get { return assetSnapshotRequired || cashSnapshotRequired || officialQuestAssetCollector != null || keepsakeAssetCollector != null; }
+        }
+
         private sealed class SaveSource : IBossRushSaveBatchSource
         {
             private readonly SkyIslandStoryService owner;
@@ -813,7 +860,7 @@ namespace BossRush
             public string LogPrefix { get { return "[SkyIsland] "; } }
             public bool HasPendingWrite { get { return store.HasPendingWrite; } }
             public bool IsStoreFaulted { get { return store.IsStoreFaulted; } }
-            public bool HasSnapshotObligation { get { return owner.assetSnapshotRequired || owner.cashSnapshotRequired || owner.officialQuestAssetCollector != null; } }
+            public bool HasSnapshotObligation { get { return owner.HasSnapshotObligation; } }
             public string LastError { get { return store.LastError; } }
             public bool CollectSnapshot(out string error)
             {
@@ -838,6 +885,7 @@ namespace BossRush
                 owner.assetSnapshotRequired = false;
                 owner.cashSnapshotRequired = false;
                 owner.officialQuestAssetCollector = null;
+                owner.keepsakeAssetCollector = null;
             }
         }
     }

@@ -7,7 +7,8 @@ namespace UnityEngine
     public static class Time { public static float unscaledTime; public static float realtimeSinceStartup; }
     public static class Debug
     {
-        public static void LogWarning(string value) { }
+        public static int Warnings;
+        public static void LogWarning(string value) { Warnings++; }
         /// <summary>记下最后一行普通日志：分段计时行（SKY_TIMING）要能被断言。</summary>
         public static string LastLog;
         public static void Log(string value) { LastLog = value; }
@@ -97,17 +98,22 @@ internal sealed class CharacterMainControl
     internal Health Health = new Health();
 }
 internal sealed class Health { internal float CurrentHealth = 100f; }
+namespace ItemStatsSystem.Data
+{
+    internal sealed class ItemTreeData { internal int RootTypeID; }
+}
 internal sealed class PlayerStorage
 {
     internal static PlayerStorage Instance = new PlayerStorage();
     internal static ItemStatsSystem.Inventory Inventory = new ItemStatsSystem.Inventory();
+    internal static List<ItemStatsSystem.Data.ItemTreeData> IncomingItemBuffer { get { return PlayerStorageBuffer.incomingItemBuffer; } }
     internal static bool Loading;
     internal bool HasInitialized() { return true; }
 }
-internal sealed class PlayerStorageBuffer
+internal sealed partial class PlayerStorageBuffer
 {
     internal static PlayerStorageBuffer Instance = new PlayerStorageBuffer();
-    internal static void SaveBuffer() { }
+    internal static readonly List<ItemStatsSystem.Data.ItemTreeData> incomingItemBuffer = new List<ItemStatsSystem.Data.ItemTreeData>();
 }
 internal sealed class LevelManager
 {
@@ -129,6 +135,7 @@ namespace Saves
             get { if (!slots.ContainsKey(CurrentSlot)) slots[CurrentSlot] = new Dictionary<string, object>(); return slots[CurrentSlot]; }
         }
         internal static bool KeyExisits(string key) { return Data.ContainsKey(key); }
+        internal static void Collect() { if (OnCollectSaveData != null) OnCollectSaveData(); }
         internal static T Load<T>(string key) { return (T)Data[key]; }
         internal static void Save<T>(string key, T value)
         {

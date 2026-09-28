@@ -29,9 +29,10 @@ WORLD = "SkyIsland/SkyIslandWorldStory.cs"
 FIELDCRAFT = "SkyIsland/SkyIslandFieldcraft.cs"
 MODULE = "SkyIsland/SkyIslandRuntimeModule.cs"
 RUNNER = "DebugAndTools/F3GameplayValidationRunner.cs"
+SAMPLING = "DebugAndTools/F3GameplayValidationResourcePerformance.cs"
 RUNTIME = "DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs"
 BAT = "compile_official.bat"
-FIXED = [PROFILE, SESSION, WORLD, FIELDCRAFT, MODULE, RUNNER, RUNTIME, BAT]
+FIXED = [PROFILE, SESSION, WORLD, FIELDCRAFT, MODULE, RUNNER, SAMPLING, RUNTIME, BAT]
 
 REQUIRED_MARKS = {
     SESSION: ("Hud", "StoryRest", "Encounters", "Scavenging", "Residents", "StorySave", "GatesAndMarkers", "Lighting",
@@ -152,21 +153,31 @@ def check(sources):
         for token in ("BeginRecording(", "TryTakeRecording("):
             if token in text:
                 errors.append(path + " 不许开关分项计时的录制（只由 F3 运行时用例开窗关窗）：" + token)
-    sample = squash(body_of(clean_source(sources[RUNNER]), "private IEnumerator SamplePerformance(string caseId, float seconds, bool baseline)") or "")
+    forward = squash(body_of(clean_source(sources[RUNNER]), "private IEnumerator SamplePerformance(string caseId, float seconds, bool baseline)") or "")
+    if "yield return SamplePerformanceWindow(caseId,seconds,baseline);" not in forward:
+        errors.append("SamplePerformance 必须转发到共享性能采样窗口")
+    sample_body = body_of(clean_source(sources[SAMPLING]), "private IEnumerator SamplePerformanceWindow(string caseId, float seconds, bool baseline)") or ""
+    sample = squash(sample_body)
     order = [sample.find(squash(t)) for t in ("BeginSkyIslandFrameProfile();",
-                                              "while (Time.realtimeSinceStartup < until && !ShouldAbort())",
-                                              "string profileReason = AppendSkyIslandFrameProfile(ref metrics);",
-                                              "if (profileReason == null && (baseline || p95 <= Mathf.Max(50f, _baselineP95Ms * 1.75f)))")]
+                                              "while (Time.realtimeSinceStartupAsDouble - started < seconds && !ShouldAbort()",
+                                              "string profileReason = AppendSkyIslandFrameProfile(ref metrics, profileStarted);",
+                                              "if (complete && profileReason == null && (baseline || p95 <= Mathf.Max(50f, _baselineP95Ms * 1.75f)))")]
     if min(order) < 0 or order != sorted(order):
         errors.append("SamplePerformance 必须在采样循环之前开窗、之后关窗，分项计时不合格时不记 PASS")
     runtime = clean_source(sources[RUNTIME])
     # 岛内模式门写在 SkyIsland partial 里（宿主 partial 有行数预算，只留两行调用）：主套件若也开了录制，没人打标记，PERF 用例会记成 profile_no_frames。
     begin = squash(body_of(runtime, "private void BeginSkyIslandFrameProfile()") or "").strip()
-    append = squash(body_of(runtime, "private string AppendSkyIslandFrameProfile(ref string metrics)") or "").strip()
+    append = squash(body_of(runtime, "private string AppendSkyIslandFrameProfile(ref string metrics, bool profileStarted)") or "").strip()
     if not begin.startswith(squash("if (!_skyIslandMode) return;")) or "SkyIslandFrameProfile.BeginRecording();" not in begin:
         errors.append("分项计时只在岛内套件开窗：BeginSkyIslandFrameProfile 必须先判 _skyIslandMode，再 BeginRecording")
-    if not append.startswith(squash("if (!_skyIslandMode) return null;")) or squash("metrics += SkyIslandFrameProfileMetrics(out reason);") not in append:
-        errors.append("分项计时只在岛内套件关窗：AppendSkyIslandFrameProfile 必须先判 _skyIslandMode，再把分项 metrics 追加进去")
+    if not append.startswith(squash("if (!profileStarted) return null;")) or squash("metrics += SkyIslandFrameProfileMetrics(out reason);") not in append:
+        errors.append("分项计时按开窗时的岛内状态关窗，不能受收尾复位 _skyIslandMode 影响")
+    finalizer = body_of(sample_body, "finally") or ""
+    for token in ("ResourcePerformanceMetrics.IsComplete(elapsed, seconds, frames.Count,",
+                  "!finished || ShouldAbort()", "SceneManager.GetActiveScene().handle == sceneHandle",
+                  "AppendSkyIslandFrameProfile(ref metrics, profileStarted)"):
+        if squash(token) not in squash(finalizer):
+            errors.append("采样 finally 必须判窗口完整性并关闭原录制：" + token)
     pure = runtime.split("#region 纯判据", 1)[-1].split("#endregion", 1)[0]
     if "internal static bool JudgeFrameProfile(" not in pure:
         errors.append("分项计时的判据必须写在纯判据区（隔离回归逐字抽出执行）")
@@ -203,13 +214,14 @@ def main():
         (FIELDCRAFT, "            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Gnats);\n", ""),
         (WORLD, "            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Pigeon);\n", "            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Hud);\n"),
         (SESSION, "            SkyIslandFrameProfile.Start();\n", ""),
-        (RUNNER, "            BeginSkyIslandFrameProfile();\n", ""),
+        (SAMPLING, "            BeginSkyIslandFrameProfile();\n", ""),
         (RUNTIME, "        private void BeginSkyIslandFrameProfile()\n        {\n            if (!_skyIslandMode) return;\n",
          "        private void BeginSkyIslandFrameProfile()\n        {\n"),
-        (RUNTIME, "        private string AppendSkyIslandFrameProfile(ref string metrics)\n        {\n            if (!_skyIslandMode) return null;\n",
-         "        private string AppendSkyIslandFrameProfile(ref string metrics)\n        {\n"),
-        (RUNNER, "if (profileReason == null && (baseline || p95 <= Mathf.Max(50f, _baselineP95Ms * 1.75f)))",
+        (RUNTIME, "if (!profileStarted) return null;", "if (!_skyIslandMode) return null;"),
+        (SAMPLING, "if (complete && profileReason == null && (baseline || p95 <= Mathf.Max(50f, _baselineP95Ms * 1.75f)))",
          "if (baseline || p95 <= Mathf.Max(50f, _baselineP95Ms * 1.75f))"),
+        (SAMPLING, "!finished || ShouldAbort()", "false"),
+        (SAMPLING, "ResourcePerformanceMetrics.IsComplete(elapsed, seconds, frames.Count,", "ResourcePerformanceMetrics.IsComplete(10, seconds, frames.Count,"),
         (MODULE, "            SkyIslandFrameProfile.ResetStaticCaches();\n", ""),
     ]
     for path, before, after in probes:

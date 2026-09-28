@@ -35,6 +35,52 @@ def member(source, signature):
     return source[hit.start():opening + end.end()]
 
 
+def localization_sources():
+    """保留物品定义和官方查询 getter；不以可写 description 的替身掩盖游戏契约。"""
+    paths = [
+        "Integration/SkyIsland/SkyIslandItems.cs", "SkyIsland/SkyIslandSceneReferenceBridge.cs",
+        "Interactables/BossRushBuildingInteractableBase.cs", "SkyIsland/SkyIslandSearchPoint.cs",
+        "SkyIsland/SkyIslandGathering.cs", "SkyIsland/SkyIslandStoryPresentation_Parts.cs",
+        "SkyIsland/SkyIslandJournal.cs", "SkyIsland/SkyIslandFieldcraftRules.cs",
+        "Integration/Items/ModeFItemConfigHelper.cs", "鸭科夫源码/ItemStatsSystem/Item.cs",
+        "鸭科夫源码/TeamSoda.Duckov.Core/InteractableBase.cs",
+    ]
+    source = {path: (ROOT / path).read_text(encoding="utf-8-sig") for path in paths}
+    items = source[paths[0]]
+    definitions = items[items.index("        private const string LogPrefix"):items.index("        #region 注册与配置")]
+    chunks = ["namespace BossRush { using SodaCraft.Localizations;\ninternal static class SkyIslandItems {\n",
+              definitions, member(items, "public static void InjectLocalization()"),
+              "internal static IEnumerable<string[]> DefinitionsForTest() { foreach (var d in Definitions) "
+              "yield return new[] { d.LocKey, d.DescCN, d.DescEN }; }\n}\n",
+              "internal static class SkyIslandSceneReferenceBridge {\n",
+              member(source[paths[1]], "internal static void InjectLocalization()"), "}\n"]
+    base = member(source[paths[2]], "public abstract class BossRushBuildingInteractableBase")
+    chunks.append(base.replace("public abstract class", "internal abstract partial class", 1))
+    chunks.append(member(source[paths[3]], "public sealed class SkyIslandSearchPoint")
+                  .replace("public sealed class", "internal sealed class", 1))
+    chunks.append(member(source[paths[4]], "public sealed class SkyIslandGatherPoint")
+                  .replace("public sealed class", "internal sealed class", 1))
+    story = source[paths[5]]
+    story_label = story[story.index("    public sealed class SkyIslandStoryInteractable"):
+                        story.index("        internal static GameObject Create(")]
+    chunks.append(story_label.replace("public sealed class", "internal sealed class", 1) + "}\n")
+    journal = source[paths[6]]
+    start = journal.index("        internal static readonly string[][] Chapters")
+    chunks.append("internal static class SkyIslandJournal {\n" + journal[start:journal.index(";", start) + 1] + "\n}\n")
+    chunks.append(member(source[paths[7]], "internal enum SkyIslandFieldBuff"))
+    chunks.append("internal static class ModeFItemConfigHelper {\n"
+                  + member(source[paths[8]], "internal static void SetHiddenMember(") + "}\n")
+    official = source[paths[9]]
+    chunks.append("internal sealed class OfficialItemDescriptionProbe { private string displayName;\n")
+    chunks.extend(member(official, s) for s in (
+        "public string DisplayNameRaw\n", "private string description\n", "public string DescriptionRaw\n", "public string Description\n"))
+    chunks.append("}\n}\n")
+    # 名称读取真实调用官方 _overrideInteractNameKey.ToPlainText，不调用派生类 InteractNameKey。
+    chunks.append("internal partial class InteractableBase {\n"
+                  + member(source[paths[10]], "public string InteractName") + "}\n")
+    return "\n".join(chunks), [ROOT / path for path in paths]
+
+
 def generate():
     sources = {}
     for name in ("SkyIslandStoryPresentation.cs", "SkyIslandWorldStory.cs", "SkyIslandWorldStoryServices.cs",
@@ -73,7 +119,7 @@ def generate():
     world_services = sources["SkyIslandWorldStoryServices.cs"]
     service = sources["SkyIslandServices.cs"]
     constants = "\n".join(re.findall(r"        internal const [^;]+;", service))
-    parts = ["using System;\nusing System.Collections.Generic;\nusing System.Reflection;\nusing System.Text.RegularExpressions;\nusing UnityEngine;\nusing UnityEngine.UI;\nusing TMPro;\nusing Duckov.Economy;\nusing BossRush.Utils;\nnamespace BossRush {\n"]
+    parts = ["using System;\nusing System.Collections.Generic;\nusing System.Reflection;\nusing System.Text.RegularExpressions;\nusing UnityEngine;\nusing UnityEngine.UI;\nusing TMPro;\nusing Duckov.Economy;\nusing BossRush.Utils;\nusing SodaCraft.Localizations;\nnamespace BossRush {\n"]
     parts.append("internal sealed partial class SkyIslandStoryPresentation {\n" + member(presentation, "internal sealed class Choice") + "\n" + fields)
     parts.extend(member(presentation, s) for s in panel_methods)
     parts.append(counted.group(0) + "\n" + "\n".join(look_fields) + "\n}\ninternal sealed partial class SkyIslandWorldStory {\n")
@@ -113,16 +159,21 @@ def generate():
                  + member(helper, "private sealed class OriginalHealthBarEntry") + "\n"
                  + field(helper, "OriginalHealthBarEntriesByTransformId") + "\n"
                  + member(helper, "internal static bool UpdateOriginalHealthBarDisplayName(") + "\n}\n}\n")
+    localization, localization_paths = localization_sources()
+    parts.append(localization)
     OUT.mkdir(parents=True, exist_ok=True)
     generated = OUT / "Production.cs"
     generated.write_text("\n".join(parts), encoding="utf-8-sig")
     linked = [ROOT / SKY / n for n in ("SkyIslandStoryRules.cs", "SkyIslandOfficialQuestTable.cs", "SkyIslandPuzzles.cs", "SkyIslandBounty.cs")]
     linked.append(ROOT / "Config/ConfigItemIds.cs")  # quest reward items use the shared TypeID constants
+    linked.extend(ROOT / SKY / n for n in ("SkyIslandItemRules.cs", "SkyIslandPointText.cs"))
     hashes = {SKY + n: hashlib.sha256((ROOT / SKY / n).read_bytes()).hexdigest() for n in sources}
     hashes.update({p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in linked})
     hashes[helper_path.relative_to(ROOT).as_posix()] = hashlib.sha256(helper_path.read_bytes()).hexdigest()
+    hashes.update({p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in localization_paths})
     (OUT / "source-hashes.json").write_text(json.dumps(hashes, indent=2), encoding="utf-8")
-    return [generated, HERE / "Stubs.cs", HERE / "Host.cs", HERE / "Program.cs", HERE / "LocalizationRegression.cs"] + linked
+    return [generated, HERE / "Stubs.cs", HERE / "Host.cs", HERE / "Program.cs", HERE / "LocalizationRegression.cs",
+            HERE / "ItemAndInteractionLocalizationRegression.cs"] + linked
 
 
 def main():

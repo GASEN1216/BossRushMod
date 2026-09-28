@@ -2,10 +2,12 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
     <LangVersion>7.3</LangVersion><Nullable>disable</Nullable><ImplicitUsings>disable</ImplicitUsings>
+    <SkyQuestGeneratedSource Condition="'$(SkyQuestGeneratedSource)' == ''">$(MSBuildThisFileDirectory)../../../Build/runtime-regressions/SkyIslandStory/PreludeGenerated.cs</SkyQuestGeneratedSource>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../../Achievement/AchievementRewardJournal.cs" Link="Production/AchievementRewardJournal.cs" />
     <Compile Include="$(SkyQuestGeneratedSource)" />
+    <Compile Include="../../../Build/runtime-regressions/SkyIslandStory/AssetCollectors.cs" Link="Generated/AssetCollectors.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandNoteBridge.cs" Link="Production/SkyIslandNoteBridge.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandPointText.cs" Link="Production/SkyIslandPointText.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandStoryRules.cs" Link="Production/SkyIslandStoryRules.cs" />

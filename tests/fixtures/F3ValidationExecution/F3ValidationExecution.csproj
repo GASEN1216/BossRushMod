@@ -3,10 +3,13 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <LangVersion>7.3</LangVersion>
+    <DefineConstants>BOSSRUSH_DEV</DefineConstants>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="PerformanceWindows.cs" />
+    <Compile Include="../../../DebugAndTools/ResourcePerformanceMetrics.cs" />
     <Compile Include="../../../Build/f3-validation-execution/ProductionCase.cs" />
     <Compile Include="../../../DebugAndTools/ValidationCoroutineStack.cs" />
   </ItemGroup>

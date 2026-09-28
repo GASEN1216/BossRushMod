@@ -17,8 +17,8 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_PortableSafeZoneDevice";
         public const string DISPLAY_NAME_CN = "便携安全区装置";
         public const string DISPLAY_NAME_EN = "Portable Safe-Zone Device";
-        public const string DESCRIPTION_CN = "丧尸模式专用，使用后消耗。\n战斗中：将安全区移到脚下。波次结束后恢复正常安全区和商人。\n准备时：额外放置一个无商人的安全区，保留到下一波开始。";
-        public const string DESCRIPTION_EN = "Zombie Mode only. Consumed on use.\nIn combat: move the safe zone to your feet. The normal zone and merchant return after the wave.\nDuring preparation: add a zone without a merchant until the next wave starts.";
+        public const string DESCRIPTION_CN = "阿稳的紧急定位器。按下去脚底撑出安全区，用完就坏。\n<color=#BBBBBB>战斗中使用：安全区挪到你身边。准备期使用：额外放一片临时区域。</color>";
+        public const string DESCRIPTION_EN = "Awen's emergency locator. Press it and a safe zone unfolds at your feet. One use only.\n<color=#BBBBBB>Combat: move the safe zone to you. Preparation: add a temporary extra zone.</color>";
         public const string USE_DESC_CN = "使用：在当前位置部署安全区";
         public const string USE_DESC_EN = "Use: deploy a safe zone at your position";
         public const int VALUE = 2400;

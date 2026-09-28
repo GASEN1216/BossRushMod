@@ -2,6 +2,7 @@
 from pathlib import Path
 import subprocess
 import hashlib
+import sys
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
@@ -34,6 +35,8 @@ marker_methods = [method(marker_source, signature) for signature in
                   ("internal static IEnumerable<string> ObjectiveTargets(", "internal static IEnumerable<string> SideTargets(")]
 world_path = ROOT / "SkyIsland/SkyIslandWorldStory.cs"
 world_source = world_path.read_text(encoding="utf-8-sig")
+reward_path = ROOT / "SkyIsland/SkyIslandWorldStoryRewards.cs"
+reward_source = reward_path.read_text(encoding="utf-8-sig")
 # 掩码和初始化值也来自生产文件；否则生产删掉一项，测试还在用自己的正确常量会假绿。
 import re
 feedback_fields = []
@@ -41,22 +44,35 @@ for name in ("feedbackChinese", "feedbackFlags", "FeedbackFlags"):
     found = re.findall(r"^        private (?:const )?\w+ " + name + r"\b[^;]*;", world_source, re.M)
     assert len(found) == 1, name
     feedback_fields.extend(found)
-generated.write_text("using System; using System.Collections.Generic; using UnityEngine; using UnityEngine.SceneManagement;\n"
+# 发放与重试判断逐字取生产代码；只替代物品准备/投递后端，不复制重试算法。
+keepsake_fields = []
+for pattern in (r"^        private bool keepsakesPending, keepsakeWarning;", r"^        private float nextKeepsakeAttempt;"):
+    found = re.findall(pattern, reward_source, re.M)
+    assert len(found) == 1, pattern
+    keepsake_fields.extend(found)
+retry_lines = re.findall(r"^        +if \(keepsakesPending && Time\.unscaledTime >= nextKeepsakeAttempt\) GrantKeepsakes\(\);", world_source, re.M)
+assert len(retry_lines) == 1, "生产纪念品重试入口必须唯一"
+keepsake_methods = [method(reward_source, signature) for signature in
+                    ("private void GrantKeepsakes()", "private void WarnKeepsakePending(string reason)")]
+sys.path.insert(0, str(ROOT / "tests/fixtures"))
+from sky_island_asset_collectors import generate_asset_collectors
+generate_asset_collectors(ROOT, OUT)
+generated.write_text("using System; using System.Collections.Generic; using UnityEngine; using UnityEngine.SceneManagement; using Saves; using ItemStatsSystem.Data;\n"
                      "namespace BossRush { internal sealed partial class SkyIslandPreludeFlow {\n"
                      + "\n".join(methods) + "\n}\n"
                      + "internal static class SkyIslandMapMarkers {\n" + "\n".join(marker_methods) + "\n}\n"
                      + "internal sealed partial class SkyIslandFeedbackHarness {\n" + "\n".join(feedback_fields)
-                     + "\n" + method(world_source, "private void RebuildFeedback()") + "\n} }\n", encoding="utf-8")
+                     + "\n" + method(world_source, "private void RebuildFeedback()") + "\n}\n"
+                     + "internal sealed partial class SkyIslandKeepsakeHarness {\n" + "\n".join(keepsake_fields)
+                     + "\n" + "\n".join(keepsake_methods)
+                     + "\ninternal void TickRetryForTest() {\n" + retry_lines[0] + "\n}\n}\n"
+                     + "}\n", encoding="utf-8")
 (OUT / "navigation-feedback-source-sha256.txt").write_text("\n".join(
     str(path.relative_to(ROOT)) + " " + hashlib.sha256(path.read_bytes()).hexdigest()
-    for path in (marker_path, world_path)), encoding="utf-8")
+    for path in (marker_path, world_path, reward_path)), encoding="utf-8")
 (OUT / "prelude-source-sha256.txt").write_text(hashlib.sha256(source_path.read_bytes()).hexdigest() + "\n", encoding="utf-8")
-build = subprocess.run([
-    'dotnet', 'build', str(HERE / 'Regression.csproj'), '--configuration', 'Release',
-    '--output', str(OUT / 'bin'),
-    '-p:BaseIntermediateOutputPath=' + str(OUT / 'obj') + '/',
-    '-p:SkyQuestGeneratedSource=' + str(generated),
-], cwd=ROOT)
-if build.returncode:
-    raise SystemExit(build.returncode)
-raise SystemExit(subprocess.run(['dotnet', str(OUT / 'bin' / 'Regression.dll')], cwd=ROOT).returncode)
+sys.path.insert(0, str(ROOT / "tools"))
+from run_runtime_regressions import run_project_fixture
+code, output = run_project_fixture(HERE / "Regression.csproj", OUT, ROOT)
+print(output)
+raise SystemExit(code)

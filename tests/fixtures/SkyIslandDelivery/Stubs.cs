@@ -168,10 +168,11 @@ namespace BossRush
     }
     public static class ItemUtilities
     {
-        public static bool ThrowBefore, ThrowAfterOwnership, ThrowAfterBuffer;
+        public static bool ThrowBefore, ThrowAfterOwnership, ThrowAfterBuffer, ForceBuffer;
         public static void SendToPlayer(Item item, bool drop = false, bool combine = true)
         {
             if (ThrowBefore) throw new InvalidOperationException("transfer unavailable");
+            if (ForceBuffer) { SendToPlayerStorage(item); return; }
             Inventory pack = CharacterMainControl.Main != null ? CharacterMainControl.Main.CharacterItem.Inventory : new Inventory();
             if (!pack.AddItem(item)) { if (drop) item.Drop(CharacterMainControl.Main, true); }
             if (ThrowAfterOwnership) throw new InvalidOperationException("notification failed");

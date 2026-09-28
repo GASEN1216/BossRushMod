@@ -560,6 +560,7 @@ namespace BossRush
                 SkyIslandStoryInteractable bird = pigeon != null ? pigeon.GetComponent<SkyIslandStoryInteractable>() : null;
                 if (bird != null) bird.Relabel(PigeonTitle());
             }
+            if (keepsakesPending && Time.unscaledTime >= nextKeepsakeAttempt) GrantKeepsakes();
             if (displayedFlags == story.Current.flags) return;
             // 进岛首帧 displayedFlags 为 -1：存档里早就有的结果只重建世界状态、不重播回话；之后只读真正新增的位。
             int added = displayedFlags < 0 ? 0 : story.Current.flags & ~displayedFlags;
@@ -1062,32 +1063,6 @@ namespace BossRush
                 return kept;
             }));
             presentation.Show(letter.Title, letter.Body, choices, null, SkyIslandUiArt.GetScene(letter.Anchor));
-        }
-
-        /// <summary>
-        /// 纪念品（<see cref="SkyIslandItemRules"/>）：条件满足、手记里还没有发放记录就发一件。
-        /// 先准备物品实例，再记手记，最后转移物品；资源缺失不耗掉领取资格，写屏障下也不会发出可重复卖钱的东西。
-        /// 旧存档第一次进岛同样补发（航徽、噬风之核按已有旗标，罗盘按已收到的信）。
-        /// </summary>
-        private void GrantKeepsakes()
-        {
-            if (!story.CanWrite) return;
-            SkyIslandKeepsake[] all = SkyIslandItemRules.Keepsakes;
-            for (int i = 0; i < all.Length; i++)
-            {
-                if (!SkyIslandItemRules.Due(story.Current, all[i])) continue;
-                string snapshotError;
-                if (!story.RequireAssetSnapshot(all[i].NoteId, out snapshotError))
-                {
-                    Debug.LogWarning("[SkyIsland] 纪念品发放前无法建立实物快照：" + (snapshotError ?? "unknown"));
-                    continue;
-                }
-                string message;
-                if (SkyIslandItems.TryGive(all[i].TypeId, all[i].ToStorage,
-                    delegate { return story.RecordNote(all[i].NoteId, out message); },
-                    delegate { return story.RemoveNote(all[i].NoteId); })) session.Announce(all[i].Caption, false);
-                else Debug.LogWarning("[SkyIsland] 纪念品发放未完成，请检查物品资源与群岛记录：" + all[i].NoteId);
-            }
         }
 
         /// <summary>

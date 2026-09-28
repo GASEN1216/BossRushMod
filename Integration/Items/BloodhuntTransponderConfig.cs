@@ -12,8 +12,8 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_BloodhuntTransponder";
         public const string DISPLAY_NAME_CN = "血猎收发器";
         public const string DISPLAY_NAME_EN = "Bloodhunt Transponder";
-        public const string DESCRIPTION_CN = "空装携带收发器和船票进入BossRush，开启血猎追击。\n持续掉血，击杀Boss回血。撑到撤离才能带走悬赏。";
-        public const string DESCRIPTION_EN = "Bring this transceiver and a ticket into BossRush with no gear to start Blood Hunt.\nHealth drains over time. Boss kills heal you. Extract to claim your bounties.";
+        public const string DESCRIPTION_CN = "改装过的军用定位器，能标记悬赏目标。你的命在倒数。\n<color=#BBBBBB>空装携带船票进场，击杀Boss回血，撤离带走悬赏。</color>";
+        public const string DESCRIPTION_EN = "A modified military locator that marks bounties. Your life is on a timer.\n<color=#BBBBBB>Enter with a ticket and no gear, heal on Boss kills, and extract with the bounty.</color>";
 
         public static string GetDisplayName()
         {

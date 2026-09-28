@@ -16,3 +16,9 @@
 入口：`python tools/run_runtime_regressions.py --filter F3ValidationExecution`。
 也可执行 `python tests/fixtures/F3ValidationExecution/run.py`；不要跳过生成步骤直接 `dotnet run`。
 产物位于 `Build/`。
+
+2026-09-28 追加性能窗口：逐字提取生产 `SamplePerformance` / `SamplePerformanceWindow` 及岛内分项录制开关，
+直接链接 `ResourcePerformanceMetrics`。宿主时钟、场景句柄和录制结果用内存替身；验证完整 5 秒窗口、换图、
+直接观察到取消、外层 Dispose（含当前模式已经复位）、采样帧不足与原有最终帧时间阈值。
+中断样本不得更新基线，任何退出路径都要关闭开窗时的录制。10 秒资源窗口保持原默认时长。
+构建经聚合 runner 的 fresh TargetPath 解析后执行，不再依赖 `dotnet run` 的默认输出选择。

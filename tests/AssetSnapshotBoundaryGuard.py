@@ -35,18 +35,24 @@ def main():
         "PetNest/PetNestPersistence.cs": [r"CollectPendingAssets\(out assetError\)[\s\S]*?_bundle.FlushPending\(\)"],
         # 天空岛纪念品（CR-2026-09-11-017）：发放前必须先立实物快照义务，落盘时四样官方资产
         # 与剧情手记进同一批；否则「已记账、物品未持久化」会在跨重启窗口里吞掉纪念品。
-        "SkyIsland/SkyIslandWorldStory.cs": [
+        "SkyIsland/SkyIslandWorldStoryRewards.cs": [
             # 负判 + 失败跳过 + 之后才发放：只核对顺序不够，快照检查必须是**承重**的。
-            r"if \(!story.RequireAssetSnapshot\(all\[i\]\.NoteId, out snapshotError\)\)[\s\S]{0,400}?continue;"
-            r"[\s\S]*?SkyIslandItems.TryGive\(",
+            r"if \(!story.BeginKeepsakeDelivery\(all\[i\]\.NoteId, out snapshotError\)\)[\s\S]{0,400}?continue;"
+            r"[\s\S]*?SkyIslandItems.TryGiveWithReceipt\(",
+            r"finally\s*\{\s*story.EndKeepsakeDelivery\(all\[i\]\.NoteId, delivered, buffered\);\s*\}",
         ],
         "SkyIsland/SkyIslandStoryService.cs": [
             r'CharacterItem.Save\("MainCharacterItemData"\)', r'Inventory.Save\("PlayerStorage"\)',
             r"PlayerStorageBuffer.SaveBuffer\(\)", r'SavesSystem.Save<float>\("MainCharacterHealth"',
             r"assetSnapshotRequired = true;",
             # 物理保存成功才清三份采集义务：实物快照、现金、官方任务交付资产（CR-2026-09-27-403）。
-            r"OnPhysicalSaveSucceeded\(\)\s*\{\s*owner.assetSnapshotRequired = false;\s*owner.cashSnapshotRequired = false;\s*owner.officialQuestAssetCollector = null;\s*\}",
-            r"HasSnapshotObligation \{ get \{ return owner.assetSnapshotRequired \|\| owner.cashSnapshotRequired \|\| owner.officialQuestAssetCollector != null; \} \}",
+            r"OnPhysicalSaveSucceeded\(\)\s*\{\s*owner.assetSnapshotRequired = false;\s*owner.cashSnapshotRequired = false;\s*owner.officialQuestAssetCollector = null;\s*owner.keepsakeAssetCollector = null;\s*\}",
+            r"HasSnapshotObligation\s*\{\s*get \{ return assetSnapshotRequired \|\| cashSnapshotRequired \|\| officialQuestAssetCollector != null \|\| keepsakeAssetCollector != null;\s*\}\s*\}",
+            r"HasSnapshotObligation \{ get \{ return owner.HasSnapshotObligation; \} \}",
+            r"if \(store.HasPendingWrite \|\| coordinator.HasDeferredFlush \|\| HasSnapshotObligation\)",
+            r"if \(rewardCommitting \|\| officialDeliveryActive \|\| keepsakeDeliveryActive\) return false;",
+            r"if \(delivered && buffered\)[\s\S]{0,250}?keepsakeAssetCollector = OfficialQuestItems.AssetCollector\(true\);[\s\S]{0,120}?if \(raidHeldNotes.Remove\(noteId\)\) store.Store\(Current.Copy\(\)\);",
+            r"officialQuestAssetCollector == null && keepsakeAssetCollector != null && !keepsakeAssetCollector\(\)",
             r"BeforeCollectSaveData = CollectPendingCash",
             r"if \(!owner.CollectPendingCash\(\)\)",
             # 出击图（天空岛）里没有基地仓库：永久记录随这一趟结算（owner 2026-09-14「随撤离一起存」）。
@@ -64,6 +70,7 @@ def main():
             r"item = ItemAssetsCollection.InstantiateSync\(typeId\);[\s\S]*?recordGrant\(\)",
             r"SkyIslandInventoryTransaction.HasOwner\(item\)",
             r"SkyIslandInventoryTransaction.HasBufferReceipt\(instanceId, typeId\)",
+            r"buffered = SkyIslandInventoryTransaction.HasBufferReceipt\(instanceId, typeId\);",
         ],
         # 共享落盘引擎：快照必须排在 typed pending 之前，pending 又排在物理 SaveFile 之前。
         "Common/Lifecycle/BossRushSaveCoordinatorEngine.cs": [

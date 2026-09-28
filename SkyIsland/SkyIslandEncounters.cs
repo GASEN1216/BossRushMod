@@ -473,7 +473,9 @@ namespace BossRush
                         created.SetTeam(Teams.wolf);
                         // 断风游猎（SkyIslandBossRules.IsRivalFaction）整组换成另一阵营：官方 Team.IsEnemy 下与玩家、与岛上其余敌人都敌对。
                         if (encounter.RivalFaction) created.SetTeam(Teams.bear);
-                        SkyIslandEnemyTiers.ApplyAi(ai, tier);
+                        // 自动组让官方感知在玩家与敌对阵营之间选敌；强锁玩家会把断风与拾荒者的互斗目标每帧覆盖掉。
+                        // 手动剧情挑战仍强制追踪；距离休眠由上面的独立安全网解除，与此选敌策略无关。
+                        SkyIslandEnemyTiers.ApplyAi(ai, tier, encounter.Manual);
                         ApplyIdentity(created, encounter, i, tier);
                         // 头顶气泡：头目 / 岛主 / 具名对手在身份层里挂过自己的台词组件，噬风按人设不说话；
                         // 其余全是小兵，走共享话语库。判一次存进记录，推进时不再逐个 GetComponent。

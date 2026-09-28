@@ -30,3 +30,7 @@
 2026-09-26 序章补验：`run.py` 将正式 `SkyIslandPreludeFlow.SpawnBoss` 方法逐字写入 Build 下的编译输入；`PreludeSpawnRegression` 只存根场景 / 资源边界，工厂替身按调用当刻 `preset.health` 创建角色。验证序章守基础 375 HP、出场满血、伤害 / 移动 / 反应、source 不变、再次生成不复利，以及敌对、掉落开关与原 K3 配装入口。删除基准准备调用、或挪至 `await CreateCharacterAsync` 之后，执行结果都必须转红。该夹具没有运行 Unity 的真实物理、装备和尸体箱，不能替代实机。
 
 序章 `SkyIslandPreludeFlow.SpawnBoss` 从生产文件逐字抽取执行；覆盖零号区断风游猎·守的生成前属性、满血、重复生成、敌对性与 preset owner。
+
+2026-09-28：`TargetingPolicy` 经真实生成 owner 核对自动组传入自然选敌、手动剧情组保留强制追踪；
+自动组仍禁用距离休眠、可以在死亡后完成清场。这里只记录 ApplyAi 的策略参数，实际方法及官方
+感知结果、每帧目标和攻击目标的传递由 `SkyIslandCombatRuntime` 执行，不把替身记账当作真实 AI 实测。

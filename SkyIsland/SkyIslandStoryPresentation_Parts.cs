@@ -298,6 +298,7 @@ namespace BossRush
         internal void Relabel(string title)
         {
             label = title;
+            ApplyInteractName("relabel");
             Transform sign = transform.Find("Label");
             TextMeshPro text = sign != null ? sign.GetComponent<TextMeshPro>() : null;
             if (text != null) text.text = title;

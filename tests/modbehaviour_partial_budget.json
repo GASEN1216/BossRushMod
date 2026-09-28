@@ -1,7 +1,7 @@
 {
   "description": "D-1: production host partial ceiling; only lower after responsibilities move to module-owned types.",
   "max_files": 58,
-  "max_total_lines": 20090,
+  "max_total_lines": 20060,
   "allowed_files": [
     "Achievement/AchievementRuntimeHooks.cs",
     "Audio/BossRushAudioHooks.cs",

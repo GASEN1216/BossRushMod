@@ -48,10 +48,8 @@ namespace BossRush
         {
             Add(map, "SystemName", "遗种巢", "PetNest");
             Add(map, "SystemDesc",
-                "你打过的 Boss 都可能留下遗种。孵出来、起个名字、带着打下一场，"
-                + "或者派去你自己都不敢去的天灾区。",
-                "Every boss you have killed may leave a relic behind. Hatch them, name them, "
-                + "take them along for the next run, or send them into disasters you would not face yourself.");
+                "打过的 Boss 可能留下遗种。孵出来养着，带去打架或派去天灾区。",
+                "Bosses you defeat may leave relics. Hatch them, raise them, take them into fights, or send them into disaster zones.");
             Add(map, "Page_Nest", "巢", "Nest");
             Add(map, "Page_Hatch", "孵化", "Hatch");
             Add(map, "Page_Expedition", "天灾远征", "Disaster Expedition");
@@ -60,8 +58,6 @@ namespace BossRush
 
             // 命名弹窗（SystemDesc 对玩家承诺过"起个名字"，入口在 PetNestRenameModal）
             Add(map, "Rename_Title", "给它起个名字", "Name this cub");
-            Add(map, "Rename_Hint", "点「用回血脉名」会把默认称呼填回框里，再点「就叫这个」确认。",
-                "\"Use bloodline name\" puts the default back in the box; then press \"Confirm\".");
             Add(map, "Rename_Confirm", "就叫这个", "Confirm");
             Add(map, "Rename_Reset", "用回血脉名", "Use bloodline name");
 
@@ -69,9 +65,8 @@ namespace BossRush
             Add(map, "Release_Action", "放生选中的崽", "Release selected cub");
             Add(map, "Release_Title", "放生确认", "Release this cub?");
             Add(map, "Release_Warn",
-                "放生不可逆：它将永远离开巢，也不会进纪念碑。你会收回一部分同血脉遗魂。",
-                "Releasing is permanent: the cub leaves the nest for good and is not memorialized. "
-                + "You get back some relic souls of its bloodline.");
+                "放了就不回来了，也不进纪念碑。能收回一部分遗魂。",
+                "Let it go and it never comes back or enters the memorial. You get some relic souls back.");
             Add(map, "Release_Confirm", "放生", "Release");
             Add(map, "Release_Cancel", "再想想", "Keep it");
             Add(map, "CapacityMilestoneHint",

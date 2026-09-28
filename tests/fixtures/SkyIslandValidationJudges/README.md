@@ -6,6 +6,8 @@
 （外加 `F3GameplayValidationSkyIsland.cs` 的 `SkyIslandSkipCase`），与生产纯规则（剧情规则、内容表、灯、夜风、信鸽、
 手记、图鉴键、委托）以及 `SkyIslandStory` 夹具的替身一起编译执行。纯判据区一旦引用 Unity，`run.py` 当场失败。
 
+剧情门面依赖的资产采集由共享 `tests/fixtures/sky_island_asset_collectors.py` 逐字抽取 `OfficialQuestItems.CanCollectAssets` / `AssetCollector` 与官方 `PlayerStorageBuffer.SaveBuffer` 到本夹具生成目录，并记录源 SHA-256。共享 `Stubs.cs` 只承载宿主数据，不带 Story 专用纪念品重试 harness，也不伪造始终成功的保存方法。
+
 覆盖九条判据，每条都有绿样本与红样本：
 
 - **委托门控**：驱蚋是软门（白天做不完只进 metrics），清理 / 搜刮 / 巡视三类做不完仍硬判红；巡岛可完成量超区域、目标为 0、轮次超上限各一红。

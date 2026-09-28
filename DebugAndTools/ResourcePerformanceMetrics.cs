@@ -35,8 +35,14 @@ namespace BossRush
 
         internal static bool IsComplete(double seconds, int frames, bool cancelled, bool sameScene, bool overflow, out string reason)
         {
+            return IsComplete(seconds, 10, frames, cancelled, sameScene, overflow, out reason);
+        }
+
+        internal static bool IsComplete(double seconds, double requiredSeconds, int frames, bool cancelled, bool sameScene, bool overflow, out string reason)
+        {
             reason = cancelled ? "cancelled" : !sameScene ? "scene_changed" : overflow ? "sample_capacity_exceeded"
-                : double.IsNaN(seconds) || double.IsInfinity(seconds) || seconds < 10 ? "window_incomplete"
+                : double.IsNaN(seconds) || double.IsInfinity(seconds) || double.IsNaN(requiredSeconds) ||
+                    double.IsInfinity(requiredSeconds) || requiredSeconds <= 0 || seconds < requiredSeconds ? "window_incomplete"
                 : frames < 2 ? "insufficient_frames" : null;
             return reason == null;
         }

@@ -7,7 +7,13 @@ using Duckov.Economy;
 internal static class Program
 {
     private static int checks;
-    private static void Check(bool ok, string label) { checks++; if (!ok) throw new Exception("FAIL " + label); }
+    private static void Check(bool ok, string label)
+    {
+        checks++;
+        if (ok) return;
+        Console.WriteLine("FAIL " + label);
+        throw new Exception("FAIL " + label);
+    }
     private static List<SkyIslandStoryPresentation.Choice> Empty() { return new List<SkyIslandStoryPresentation.Choice>(); }
     private static void Main()
     {
@@ -19,6 +25,7 @@ internal static class Program
         AudioStop();
         PanelLooks();
         LocalizationRegression.Run(Check);
+        ItemAndInteractionLocalizationRegression.Run(Check);
         Check(HUDManager.Tokens.Count == 0 && ZombieModeUIHelper.Leases == 0, "all modal and HUD owners released");
         Console.WriteLine("PASS SkyIslandInteraction assertions=" + checks + " (production control flow; Unity, physics and audio substituted)");
     }

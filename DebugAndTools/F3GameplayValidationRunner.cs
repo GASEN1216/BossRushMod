@@ -553,41 +553,11 @@ namespace BossRush
 
         private IEnumerator SamplePerformance(string caseId, float seconds, bool baseline)
         {
-            Stopwatch sw = Stopwatch.StartNew();
-            List<float> frames = new List<float>(2048);
-            long memoryStart = GC.GetTotalMemory(false);
-            BeginSkyIslandFrameProfile();
-            float until = Time.realtimeSinceStartup + seconds;
-            while (Time.realtimeSinceStartup < until && !ShouldAbort())
-            {
-                float ms = Time.unscaledDeltaTime * 1000f;
-                if (ms > 0f) frames.Add(ms);
-                if (ms > _peakFrameMs)
-                {
-                    _peakFrameMs = ms;
-                    _peakStage = _status;
-                }
-                yield return null;
-            }
-            frames.Sort();
-            float p95 = frames.Count > 0 ? frames[Mathf.Clamp(Mathf.CeilToInt(frames.Count * 0.95f) - 1, 0, frames.Count - 1)] : 0f;
-            if (baseline)
-            {
-                _baselineP95Ms = p95;
-                _baselineMemory = memoryStart;
-            }
-            else
-            {
-                _finalP95Ms = p95;
-                _finalMemory = GC.GetTotalMemory(false);
-            }
-            string metrics = "samples=" + frames.Count + ",p95_ms=" + p95.ToString("F2")
-                + ",memory=" + GC.GetTotalMemory(false);
-            string profileReason = AppendSkyIslandFrameProfile(ref metrics);
-            if (profileReason == null && (baseline || p95 <= Mathf.Max(50f, _baselineP95Ms * 1.75f)))
-                Record(caseId, "PASS", sw.ElapsedMilliseconds, metrics, string.Empty);
-            else
-                Record(caseId, "FAIL", sw.ElapsedMilliseconds, metrics, profileReason ?? "超过性能阈值");
+#if BOSSRUSH_DEV
+            yield return SamplePerformanceWindow(caseId, seconds, baseline);
+#else
+            yield break;
+#endif
         }
 
         private IEnumerator WaitSeconds(float seconds)

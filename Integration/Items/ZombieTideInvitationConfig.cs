@@ -19,8 +19,8 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_ZombieTideInvitation";
         public const string DISPLAY_NAME_CN = "尸潮邀请函";
         public const string DISPLAY_NAME_EN = "Zombie Tide Invitation";
-        public const string DESCRIPTION_CN = "进入末日丧尸模式的邀请函。确认选择地图前不会消耗。";
-        public const string DESCRIPTION_EN = "An invitation to enter Zombie Mode. It is not consumed until a map is confirmed.";
+        public const string DESCRIPTION_CN = "密封的红底请柬，角上印着生化标记。没打开就还是你的。";
+        public const string DESCRIPTION_EN = "A sealed red invitation marked with a biohazard. It's yours until you open it.";
         public const string USE_DESC_CN = "使用：选择末日丧尸模式地图";
         public const string USE_DESC_EN = "Use: choose a Zombie Mode map";
         public const int DEFAULT_PRICE = 20000;

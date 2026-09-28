@@ -28,6 +28,7 @@ def main():
     source_path = ROOT / "Integration" / "SkyIsland" / "SkyIslandItems.cs"
     source = source_path.read_text(encoding="utf-8-sig")
     extracted = method(source, "internal static bool TryGive(int typeId, bool toStorage, Func<bool> recordGrant")
+    extracted += "\n" + method(source, "internal static bool TryGiveWithReceipt(")
     sky = ROOT / "SkyIsland"
     fieldcraft = (sky / "SkyIslandFieldcraft.cs").read_text(encoding="utf-8-sig")
     gnats = (sky / "SkyIslandGnats.cs").read_text(encoding="utf-8-sig")
@@ -62,7 +63,12 @@ private static Definition GetDefinition(int typeId) { return typeId == BossRushI
         + str(HERE / "Program.cs") + '"/><Compile Include="' + str(HERE / "Stubs.cs")
         + '"/>' + ''.join('<Compile Include="' + str(p) + '"/>' for p in linked)
         + '<Compile Include="' + str(HERE / "InventoryRegression.cs") + '"/></ItemGroup></Project>', encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(project), "--configuration", "Release"], cwd=ROOT)
+    import sys
+    sys.path.insert(0, str(ROOT / "tools"))
+    from run_runtime_regressions import run_project_fixture
+    code, output = run_project_fixture(project, OUT, ROOT)
+    print(output)
+    return code
 
 
 if __name__ == "__main__":

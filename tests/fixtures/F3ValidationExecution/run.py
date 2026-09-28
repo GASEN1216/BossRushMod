@@ -8,6 +8,7 @@ from pathlib import Path
 import os
 import subprocess
 import hashlib
+import sys
 
 HERE = Path(__file__).resolve().parent
 
@@ -26,6 +27,8 @@ if __name__ == "__main__":
     execution = (root / 'DebugAndTools/F3GameplayValidationExecution.cs').read_text(encoding='utf-8-sig')
     runner = (root / 'DebugAndTools/F3GameplayValidationRunner.cs').read_text(encoding='utf-8-sig')
     island = (root / 'DebugAndTools/F3GameplayValidationSkyIsland.cs').read_text(encoding='utf-8-sig')
+    performance = (root / 'DebugAndTools/F3GameplayValidationResourcePerformance.cs').read_text(encoding='utf-8-sig')
+    runtime = (root / 'DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs').read_text(encoding='utf-8-sig')
     methods = extract(stages, 'private IEnumerator RunIsolatedCase(') + '\n' + extract(execution, 'private static bool TryStep(')
     island_methods = '\n'.join((
         extract(island, 'private bool SkyIslandSessionStillValid(out string reason)'),
@@ -71,11 +74,32 @@ internal IEnumerator Coroutine(string id, Func<IEnumerator> factory) { return Ru
 }
 ''' + skip_signal + '''
 }'''
+    performance_methods = '\n'.join((
+        extract(runner, 'private IEnumerator SamplePerformance('),
+        extract(performance, 'private IEnumerator SamplePerformanceWindow('),
+        extract(runtime, 'private void BeginSkyIslandFrameProfile()'),
+        extract(runtime, 'private string AppendSkyIslandFrameProfile('),
+    ))
+    generated += '''
+namespace BossRush { internal sealed class ProductionPerformance {
+internal bool Cancelled, _skyIslandMode = true;
+internal float _peakFrameMs, _baselineP95Ms = 13f, _finalP95Ms = 17f;
+internal long _baselineMemory = 11, _finalMemory = 19;
+private string _peakStage, _status = "probe";
+internal readonly List<string> Results = new List<string>();
+internal readonly List<string> Reasons = new List<string>();
+internal readonly List<string> Metrics = new List<string>();
+private bool ShouldAbort() { return Cancelled; }
+private void Record(string id, string outcome, long ms, string metrics, string reason) { Results.Add(outcome); Reasons.Add(reason); Metrics.Add(metrics); }
+private string SkyIslandFrameProfileMetrics(out string reason) { reason = null; SkyIslandFrameProfile.Recording = false; SkyIslandFrameProfile.Closed++; return ",profile=collected"; }
+internal IEnumerator Run(float seconds = 5f, bool baseline = true) { return SamplePerformance("SKY_PERF_PROBE", seconds, baseline); }
+''' + performance_methods + '\n} }\n'
     out = root / 'Build/f3-validation-execution'
     out.mkdir(parents=True, exist_ok=True)
     (out / 'ProductionCase.cs').write_text(generated, encoding='utf-8')
-    (out / 'source.sha256').write_text(hashlib.sha256((methods + island_methods + skip_signal).encode('utf-8')).hexdigest(), encoding='utf-8')
-    raise SystemExit(subprocess.call(
-        ["dotnet", "run", "--project", str(HERE / "F3ValidationExecution.csproj"),
-         "--configuration", "Release", "--verbosity", "quiet"],
-        cwd=HERE.parents[2], env=dict(os.environ, DOTNET_CLI_UI_LANGUAGE="en-US")))
+    (out / 'source.sha256').write_text(hashlib.sha256((methods + island_methods + skip_signal + performance_methods).encode('utf-8')).hexdigest(), encoding='utf-8')
+    sys.path.insert(0, str(root / 'tools'))
+    from run_runtime_regressions import run_project_fixture
+    code, output = run_project_fixture(HERE / "F3ValidationExecution.csproj", out / 'runs', root)
+    print(output)
+    raise SystemExit(code)
