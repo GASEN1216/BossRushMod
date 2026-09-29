@@ -172,7 +172,7 @@ ICONS = [
     ("eq-reverse-scale", "逆鳞", "Reverse Scale",
      icon("A single large dragon scale set backwards against the grain, cracked down the middle "
           "with red light bleeding from the fracture, crimson and obsidian palette.")),
-    ("eq-halberd", "焚皇断界戟", "Skyburner Halberd",
+    ("eq-halberd", "焚皇断界戟", "Inferno Emperor's Realm-Breaking Halberd",
      icon("A heavy polearm halberd with a broad flaming blade and a gold dragon-head collar, "
           "ember sparks rising, crimson gold and blackened steel palette.")),
     ("eq-dragon-breath", "龙息", "Dragon Breath",

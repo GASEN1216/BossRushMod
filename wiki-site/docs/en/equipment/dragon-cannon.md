@@ -56,10 +56,10 @@ Soak a group with Water Balloons first, then switch to Energy (Electric) rounds 
 ## Dragon Flame Mark Synergy
 
 - Cannon hits apply Dragon Flame Marks, up to **10 stacks** on one target.
-- Switch to the **Skyburner Halberd** and slam a marked target to detonate all stacks for 30 fire damage per stack.
+- Switch to the **Inferno Emperor's Realm-Breaking Halberd** and slam a marked target to detonate all stacks for 30 fire damage per stack.
 
 ## Tips
 
 - Rocket, Firework, and Shotgun excel against groups; Sniper, Heavy, and Magnum suit priority targets.
 - Snowballs, poison pools, and burning zones reward landing prediction. Energy and Nano are useful against evasive enemies.
-- The Large Energy Bullet groups scattered enemies into one spot; follow up with Shotgun, Rocket, or a Skyburner Halberd slam.
+- The Large Energy Bullet groups scattered enemies into one spot; follow up with Shotgun, Rocket, or a Inferno Emperor's Realm-Breaking Halberd slam.

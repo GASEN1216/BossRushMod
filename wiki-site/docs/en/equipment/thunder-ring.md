@@ -32,7 +32,7 @@ Reaching 5 charges prints a "Fully charged" bubble over your head. That's your c
 - Against slow stationary bosses you reliably build to 5 and repeatedly release
 - Useless in low-density phases where enemies aren't hitting you
 - Totem slot: it doesn't replace your melee weapon, it stacks on top of it
-- Best combined with high-burst weapons (e.g. Skyburner Halberd) so the release fires on a strong combo hit
+- Best combined with high-burst weapons (e.g. Inferno Emperor's Realm-Breaking Halberd) so the release fires on a strong combo hit
 - **Which hit you spend it on matters**: the percentage part scales off that single hit, so save it for heavy single-shot weapons
 - Shotguns get less out of it: only the first pellet of a blast consumes the charges
 

@@ -307,7 +307,7 @@ export const CATEGORIES: WikiCategory[] = [
       {
         path: '/equipment/halberd',
         zh: '焚皇断界戟',
-        en: 'Skyburner Halberd',
+        en: "Inferno Emperor's Realm-Breaking Halberd",
         icon: 'eq-halberd',
         blurbZh: '三连击 + 地面炸裂的近战大杀器',
         blurbEn: 'Three-hit combo that cracks the ground open',

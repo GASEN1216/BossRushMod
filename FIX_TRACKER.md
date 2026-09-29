@@ -7,6 +7,7 @@
 - 鸭王杯模组 Boss 战力（owner 定）：龙裔遗族 1500、幻影女巫 500，焚天龙皇仍为 2000（`ModeHGroupConfig.DragonDescendantPower` / `PhantomWitchPower`）；夹具 ModeHGroupRoster 断言同步，改值反向验证转红后按字节还原。
 - 丧尸模式（玩家反馈「第 30 波 6 只 Boss 只出来 5 只」）：没有波数上限，是无尽模式；Boss 数 = 1 + (波数-1)/5，第 30 波确是 6 只。单只 Boss 生成失败（落点解析不到可达点、生成核心重试耗尽）原先直接按「已击败」扣掉，HUD 写 6 只、场上少一只。现在每只最多尝试 4 次（首次 Boss 专属落点，之后随机可靠落点，间隔 15 帧），全部失败才扣并打 `[WARNING]`（`ZombieModeTuning.BossSpawnAttempts`）。具体是哪种失败没有日志，未证实。
 - WikiContent：以 cf64459c（09-27 对照审校）之后的提交为线索，中英两份全量对照当前代码更新：鸭王杯（群战、战力、押注退出口径、本场总结、名人堂、自定义 Boss 表现）、三只模组 Boss 页、Mode G 确认页与英文名、丧尸模式开局装备与技能预警、词条面板位置、Boss 筛选因子页签、随机事件「Boss 乱入」、遗种巢放生、天空岛奖励去向与首杀、龙铳寒冷、腾云驾雾翻滚键、叮当 Lv.5/6 限量上架、征程奖励表改列表（WikiContent 不支持表格）、龙皇台词英文与代码一致；在线站速查框同步。
+- 补（owner 定）：断界戟英文名统一为代码里的「Inferno Emperor's Realm-Breaking Halberd」（WikiContent、`catalog.tsv`、在线站结构与图标清单、README_EN）；v2.3.0 更新日志未发版，鸭王杯一节改写为群战、「不速之客」改为「Boss 乱入」。
 - 验证：正式编译（部署 SHA 与 `Build/` 一致）、718 守卫、111 执行回归、`npm --prefix wiki-site run build` 通过；未实机。L3：丧尸模式打到第 30 波，Boss 应出齐 6 只；若 Player.log（Dev 构建）出现「Boss 生成失败，换落点重试」，把日志发回来查失败原因。
 
 ## 2026-09-29 鸭王杯群战第四轮：龙裔二阶段弹幕、龙皇一阶段攻击（COMPAT，L1/L2）

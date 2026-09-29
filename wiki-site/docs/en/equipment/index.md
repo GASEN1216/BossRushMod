@@ -10,7 +10,7 @@ The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch
 - **Dragon King Set** — Helmet + Armor (Dragon Lord) — **direct upgrade**
 - **Cloud Soar I** — Flight totem (Dragon Lord)
 - **Reverse Scale** — One-time lifesave totem (Dragon Lord)
-- **Skyburner Halberd** — Fire melee with 3-hit combo (Dragon Lord)
+- **Inferno Emperor's Realm-Breaking Halberd** — Fire melee with 3-hit combo (Dragon Lord)
 - **Dragon Breath** — Fire gun with burn DOT (Dragon Descendant)
 - **Dragon Cannon** — 17 selectable ammo types (Dragon Lord, 1%)
 - **Soulreaper's Requiem** — Ghost scythe with curse (Phantom Witch, 50%)

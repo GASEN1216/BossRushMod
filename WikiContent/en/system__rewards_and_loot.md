@@ -122,7 +122,7 @@ Again **exactly one** piece, weighted across six:
 - Cloud Soar I (Totem): **15%**
 - Dragon King Crown (Helmet): **15%**
 - Dragon King Scale Armor (Armor): **15%**
-- Skyburner Halberd (Melee): **15%**
+- Inferno Emperor's Realm-Breaking Halberd (Melee): **15%**
 - Dragon Cannon (Firearm): **1%**
 
 [tip] That 1% on the Dragon Cannon means roughly 100 Dragon Lord kills on expectation. It is the hardest item in the Mod to obtain - go in knowing that.

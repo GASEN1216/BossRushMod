@@ -1,4 +1,4 @@
-## Skyburner Halberd
+## Inferno Emperor's Realm-Breaking Halberd
 
 ### What Is It?
 

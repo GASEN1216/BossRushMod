@@ -1,7 +1,7 @@
 ## Skyburner Dragon Lord
 
 ### Overview
-Skyburner Dragon Lord is the strongest custom boss in this mod. It hovers in the air, has 7 attack skills and fights in two phases. Beating it drops the mod's top-tier equipment, including the Dragon King Set, Cloud Soar I totem, Reverse Scale, and Skyburner Halberd.
+Skyburner Dragon Lord is the strongest custom boss in this mod. It hovers in the air, has 7 attack skills and fights in two phases. Beating it drops the mod's top-tier equipment, including the Dragon King Set, Cloud Soar I totem, Reverse Scale, and Inferno Emperor's Realm-Breaking Halberd.
 
 ### Base Stats
 - HP: 800
@@ -73,7 +73,7 @@ On kill, **one item is chosen via weighted random** from these six (not six inde
 - Cloud Soar I (Totem): 15% drop rate
 - Dragon King Crown (Helmet): 15% drop rate
 - Dragon King Scale Armor (Armor): 15% drop rate
-- Skyburner Halberd (Melee): 15% drop rate
+- Inferno Emperor's Realm-Breaking Halberd (Melee): 15% drop rate
 - Dragon Cannon (Firearm): 1% drop rate
 
 [tip] That 1% on the Dragon Cannon means roughly 100 Dragon Lord kills on expectation - the hardest item in the Mod to obtain.
