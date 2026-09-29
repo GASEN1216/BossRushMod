@@ -49,7 +49,11 @@ namespace BossRush
         internal static void ForceEndDialogue() { MarriageAsync.ForceEnds++; }
     }
     internal static class NPCDialogueSystem
-    { internal static void ShowDialogue(string id, Transform target, string text, float duration) { MarriageAsync.Feedback++; } }
+    {
+        internal static void ShowDialogue(string id, Transform target, string text, float duration) { MarriageAsync.Feedback++; }
+        internal static string GetPersonaLine(string id, string eventKey) { return null; }
+        internal static string GetPersonaLineOrDefault(string id, string eventKey, string cn, string en) { return cn; }
+    }
     public static partial class NPCMarriageSystem
     {
         private static Task<bool> PlayMarriageVideoCutsceneAsync(string id, Func<bool> valid = null)

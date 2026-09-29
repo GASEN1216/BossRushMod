@@ -977,7 +977,7 @@ namespace BossRush
                     int modeDValue = Mathf.Clamp(config.modeDEnemiesPerWave, 1, 10);
                     config.modeDEnemiesPerWave = modeDValue;
                     
-                    string modeDLabel = L10n.T("白手起家：每波敌人数", "Rags to Riches: enemies per wave");
+                    string modeDLabel = L10n.T("白手起家：每波敌人数", "From Scratch: enemies per wave");
                     string modeDKey = ModName + "_ModeDEnemiesPerWave";
                     
                     if (addSliderMethod != null)

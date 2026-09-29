@@ -10,8 +10,8 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_EmergencyRepairSpray";
         public const string DISPLAY_NAME_CN = "应急维修喷剂";
         public const string DISPLAY_NAME_EN = "Emergency Repair Spray";
-        public const string DESCRIPTION_CN = "使用后，3米内靠近鼠标的受损己方工事会高亮。\n左键维修，恢复25%最大生命；右键取消。";
-        public const string DESCRIPTION_EN = "Use to highlight a damaged allied fortification near your cursor within 3m.\nLeft-click to restore 25% of its max HP. Right-click to cancel.";
+        public const string DESCRIPTION_CN = "一罐带喷头的修补胶，喷在裂缝上几秒就硬。\n使用后，鼠标指向的、离你 3 米内的受损己方工事会高亮。左键维修，恢复 25% 最大生命；右键取消。";
+        public const string DESCRIPTION_EN = "A can of sticky patching foam that sets hard within seconds of hitting a crack.\nUse it to highlight the damaged allied fortification under your cursor, if it's within 3m of you. Left-click to restore 25% of its max HP; right-click to cancel.";
 
         public static void ConfigureItem(Item item)
         {

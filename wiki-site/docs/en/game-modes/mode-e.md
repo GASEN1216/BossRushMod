@@ -7,7 +7,7 @@ Multi-faction sandbox chaos. Pick a faction, watch Bosses from different faction
 ## Entry
 
 - **Naked** — no equipment
-- Carry a **Faction Banner** (consumed on entry)
+- Carry a **Faction Flag** (consumed on entry)
 
 ## Factions
 

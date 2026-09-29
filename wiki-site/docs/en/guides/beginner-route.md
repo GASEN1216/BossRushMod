@@ -67,7 +67,7 @@ actually does something
 By the official difficulty rating, lowest first:
 
 - **From Scratch** ★★★ — Naked + Ticket. Random start, grow from zero
-- **Faction War** ★★★ — Naked + Banner. Multi-faction chaos
+- **Faction War** ★★★ — Naked + Faction Flag. Multi-faction chaos
 - **Black Market Duck Cup** ★★★ — just a Ticket. You normally manage from the stands; two signed fighters do it for
   you. Pre-match decisions matter most; an ERROR on an eligible fighter can briefly put you
   in control of that fighter
@@ -79,7 +79,7 @@ By the official difficulty rating, lowest first:
 - **Blood Hunt** ★★★★★ — Naked + Ticket + Transponder. The hardest challenge
 
 ::: warning
-The Duck Cup is relaxed to play, but it lets you bet money or backpack items: you back your fighter, a loss hands your stake to the house, and in the long run the house always wins. Nothing from your warehouse is ever staked. Betting is off by default and entirely optional, so you can play a full season without it. New players should not bet.
+The Black Market Duck Cup is relaxed to play, but it lets you bet money or backpack items: you back your fighter, a loss hands your stake to the house, and in the long run the house always wins. Nothing from your warehouse is ever staked. Betting is off by default and entirely optional, so you can play a full season without it. New players should not bet.
 :::
 
 ## Economy

@@ -307,7 +307,7 @@ namespace BossRush
 
                     owner.ShowBigBanner(L10n.T(
                         ModBehaviour.RichSuccessTag + "血猎追击胜利！</color> 已向寄存点发送 " + storageRewards + " 件悬赏奖励",
-                        ModBehaviour.RichSuccessTag + "Bloodhunt Victory!</color> " + storageRewards + " bounty rewards sent to storage"
+                        ModBehaviour.RichSuccessTag + "Blood Hunt Victory!</color> " + storageRewards + " bounty rewards sent to storage"
                     ));
 
                     ModBehaviour.DevLog("[ModeF] 寄存点奖励发放: storage=" + storageRewards + ", failed=" + failedRewards);
@@ -316,7 +316,7 @@ namespace BossRush
                 {
                     owner.ShowBigBanner(L10n.T(
                         ModBehaviour.RichSuccessTag + "血猎追击胜利！</color> 你成功撤离了",
-                        ModBehaviour.RichSuccessTag + "Bloodhunt Victory!</color> You successfully extracted"
+                        ModBehaviour.RichSuccessTag + "Blood Hunt Victory!</color> You successfully extracted"
                     ));
                 }
 

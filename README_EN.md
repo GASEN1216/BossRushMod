@@ -40,7 +40,7 @@
 
 - **Original bosses**: Dragon Descendant, Skyburner Dragon Lord, Phantom Witch.
 - **NPCs**: Awen (courier), Dingdang (goblin smith, reforging), Yuori (nurse), plus permanent NPCs made with the duck-face NPC tool; affinity, gifts and marriage.
-- **Gear**: Dragon Set, Dragon King Set, Frost Set, Thunder Set, Cloud Rider Totem, Reverse Scale, Skyburner Halberd, Dragon Breath, Dragon Cannon, Soulreaper's Requiem, Frostmourne, Viper Dagger, Summoning Staff, Energy Shield, Frost Spear, Thunder Ring.
+- **Gear**: Dragon Set, Dragon King Set, Frost Set, Thunder Set, Cloud Soar I, Reverse Scale, Skyburner Halberd, Dragon Breath, Dragon Cannon, Soulreaper's Requiem, Frostmourne, Viper Dagger, Summoning Staff, Energy Shield, Frost Spear, Thunder Ring.
 
 ### Systems
 

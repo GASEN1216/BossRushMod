@@ -158,14 +158,14 @@ namespace BossRush
             int targetCount = mod.CopyFreshAwenLootSweepTargets(targets);
             if (targetCount <= 0)
             {
-                ShowBubbleOrMessage(npcTransform, L10n.T("小子，我只扫bossrush的箱子", "Kid, I only sweep BossRush crates."));
+                ShowBubbleOrMessage(npcTransform, L10n.T("我只扫竞技场里的箱子，别的不归我管。", "I only sweep the arena crates. Nothing else is my business."));
                 return false;
             }
 
             List<PaidSweepBoxPlan> plans = BuildBoxPlans(targets);
             if (plans.Count <= 0)
             {
-                ShowBubbleOrMessage(npcTransform, L10n.T("小子，我只扫bossrush的箱子", "Kid, I only sweep BossRush crates."));
+                ShowBubbleOrMessage(npcTransform, L10n.T("我只扫竞技场里的箱子，别的不归我管。", "I only sweep the arena crates. Nothing else is my business."));
                 return false;
             }
 
@@ -185,14 +185,14 @@ namespace BossRush
             int targetCount = mod.CopyFreshAwenLootSweepTargets(freshTargets);
             if (targetCount <= 0)
             {
-                ShowBubbleOrMessage(npcTransform, L10n.T("小子，我只扫bossrush的箱子", "Kid, I only sweep BossRush crates."));
+                ShowBubbleOrMessage(npcTransform, L10n.T("我只扫竞技场里的箱子，别的不归我管。", "I only sweep the arena crates. Nothing else is my business."));
                 return false;
             }
 
             List<PaidSweepBoxPlan> freshPlans = BuildBoxPlans(freshTargets);
             if (freshPlans.Count <= 0)
             {
-                ShowBubbleOrMessage(npcTransform, L10n.T("小子，我只扫bossrush的箱子", "Kid, I only sweep BossRush crates."));
+                ShowBubbleOrMessage(npcTransform, L10n.T("我只扫竞技场里的箱子，别的不归我管。", "I only sweep the arena crates. Nothing else is my business."));
                 return false;
             }
 
@@ -215,8 +215,8 @@ namespace BossRush
                     activeServiceController != null &&
                     ModBehaviour.Instance != null &&
                     ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(activeServiceController)
-                        ? L10n.T("小子，净化点呢？！", "Kid, where's the purification?!")
-                        : L10n.T("小子，钱呢？！", "Kid, where's the money?!"));
+                        ? L10n.T("净化点呢？先把账结了。", "Where's the Purification? Settle up first.")
+                        : L10n.T("钱呢？先把账结了。", "Where's the money? Settle up first."));
                 ExitServiceState();
                 return false;
             }
@@ -228,8 +228,8 @@ namespace BossRush
                     activeServiceController != null &&
                     ModBehaviour.Instance != null &&
                     ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(activeServiceController)
-                        ? L10n.T("小子，净化点呢？！", "Kid, where's the purification?!")
-                        : L10n.T("小子，钱呢？！", "Kid, where's the money?!"));
+                        ? L10n.T("净化点呢？先把账结了。", "Where's the Purification? Settle up first.")
+                        : L10n.T("钱呢？先把账结了。", "Where's the money? Settle up first."));
                 ExitServiceState();
                 return false;
             }
@@ -263,7 +263,7 @@ namespace BossRush
                     resultObject.transform.position = npcTransform != null ? npcTransform.position : Vector3.zero;
                 }
 
-                ShowBubbleOrMessage(npcTransform, L10n.T("哈哈有眼光小子！绝不漏件！", "Smart pick, kid! I never miss a package!"));
+                ShowBubbleOrMessage(npcTransform, L10n.T("收了。一件都不会漏。", "Paid. I won't miss a single piece."));
 
                 for (int i = 0; i < plans.Count; i++)
                 {

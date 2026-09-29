@@ -127,7 +127,7 @@ These three events grant no cash or items and spend the normal event budget. The
 
 Only **Standard BossRush, Infinite Hell and From Scratch**.
 
-Faction War, Blood Hunt, Fate Echo, the Black Market Duck Cup, Zombie Apocalypse and vanilla
+Faction War, Blood Hunt, Fate Echo, the Black Market Duck Cup, Zombie Mode and vanilla
 raid maps do **not** trigger events. Those modes have their own pacing and rules, and forcing
 events in would only fight with them.
 

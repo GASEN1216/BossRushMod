@@ -271,10 +271,10 @@ namespace BossRush
         /// </summary>
         private IEnumerator ShowResurrectionDialogue()
         {
-            string dialogue = DragonDescendantConfig.ResurrectionDialogue;
+            string dialogue = EquipmentLocalization.GetDragonDescendantResurrectionDialogue();
 
-            // 第一次：显示 "我..."（悬念效果）
-            ShowDialogueBubble("我...", 2f);
+            // 第一次：显示半句（"我..."，悬念效果）
+            ShowDialogueBubble(EquipmentLocalization.GetDragonDescendantResurrectionPrelude(), 2f);
             yield return wait1s;
 
             // 第二次：显示完整对话

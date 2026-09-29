@@ -1,7 +1,7 @@
 ## Skyburner Dragon Lord
 
 ### Overview
-Skyburner Dragon Lord is the strongest custom boss in this mod. It hovers in the air, has 7 attack skills and fights in two phases. Beating it drops the mod's top-tier equipment, including the Dragon King Set, Cloud Rider totem, Reverse Scale, and Skyburner Halberd.
+Skyburner Dragon Lord is the strongest custom boss in this mod. It hovers in the air, has 7 attack skills and fights in two phases. Beating it drops the mod's top-tier equipment, including the Dragon King Set, Cloud Soar I totem, Reverse Scale, and Skyburner Halberd.
 
 ### Base Stats
 - HP: 800
@@ -70,7 +70,7 @@ When the Skyburner Dragon Lord's HP drops to 1, it does not die immediately. Ins
 On kill, **one item is chosen via weighted random** from these six (not six independent rolls):
 
 - Reverse Scale (Totem): 39% drop rate
-- Cloud Rider (Totem): 15% drop rate
+- Cloud Soar I (Totem): 15% drop rate
 - Dragon King Crown (Helmet): 15% drop rate
 - Dragon King Scale Armor (Armor): 15% drop rate
 - Skyburner Halberd (Melee): 15% drop rate
@@ -85,8 +85,8 @@ On kill, **one item is chosen via weighted random** from these six (not six inde
 - **A relic egg (Dragon Lord bloodline)** - about 4%; where it lands depends on the mode (the loot
   crate in the arena - see Rewards & Loot)
 - **An Affix Forge Stone** - about 8%, landing the same way
-- **A Skyburner Ember Seed** - about 25%, **requires Duck King Campaign chapter 1 to unlock the
-  garden**. Grows Emberheart Chili: +8% move speed and +10% reload speed for your next run
+- **An Ember Seed** - about 25%, **requires Duck King Campaign chapter 1 to unlock the
+  garden**. Grows Emberheart Chili: 30 seconds as the Skyburner Dragon Lord (+15% gun damage, +50% melee damage, flame burst around you).
 
 ### Combat Strategy
 - The Skyburner Dragon Lord hovers in the air and melee weapons can barely reach it. **Use firearms**

@@ -80,7 +80,7 @@ namespace BossRush
             try
             {
                 int rewardHighCount = (BossesPerWave <= 1) ? 3 : 10;
-                string diffName = (BossesPerWave <= 1) ? L10n.T("弹指可灭", "Easy Mode") : L10n.T("有点意思", "Hard Mode");
+                string diffName = (BossesPerWave <= 1) ? L10n.T("弹指可灭", "A Snap") : L10n.T("有点意思", "Getting Interesting");
 
                 string banner = L10n.T(
                     "<color=#FF0000>恭</color><color=#FF7F00>喜</color><color=#FFFF00>通</color><color=#00FF00>关</color> " +
@@ -112,7 +112,7 @@ namespace BossRush
                     // 显示气泡对话（带炫彩文字），支持中英文
                     string bubbleText = L10n.T(
                         "<color=#FF0000>你</color><color=#FF7F00>简</color><color=#FFFF00>直</color><color=#00FF00>是</color><color=#0000FF>鸭</color><color=#4B0082>鸭</color><color=#9400D3>星</color><color=#FF0000>球</color><color=#FF7F00>里</color><color=#FFFF00>最</color><color=#00FF00>强</color><color=#0000FF>的</color><color=#4B0082>鸭</color><color=#9400D3>！</color><color=#FF0000>！</color><color=#FF7F00>！</color>",
-                        "<color=#FF0000>You</color> <color=#FF7F00>are</color> <color=#FFFF00>the</color> <color=#00FF00>strongest</color> <color=#0000FF>duck</color><color=#4B0082>!</color><color=#9400D3>!</color><color=#FF0000>!</color>"
+                        "<color=#FF0000>You</color> <color=#FF7F00>are</color> <color=#FFFF00>the</color> <color=#00FF00>strongest</color> <color=#0000FF>duck</color> <color=#4B0082>on</color> <color=#9400D3>Duck</color> <color=#FF0000>Planet</color><color=#FF7F00>!</color><color=#9400D3>!</color><color=#FF0000>!</color>"
                     );
                     await DialogueBubblesManager.Show(
                         bubbleText,

@@ -74,7 +74,7 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 
 - **High DPS weapons** — Fast kills = sustain
 - **Dragon King Set** — Dash + fire immunity
-- **Cloud Rider** — Fly to extraction fast
+- **Cloud Soar I** — Fly to extraction fast
 - **Reverse Scale** — Last-resort save
 - **Max ammo** — Buy from Mystery Merchant
 

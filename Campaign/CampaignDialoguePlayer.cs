@@ -210,8 +210,8 @@ namespace BossRush
                             "种子先塞你几颗，不够就去基地售货机买。",
                             "Here are a few seeds to start. The base vendor sells more." },
                         new string[] {
-                            "下一章要用。",
-                            "You'll need them next chapter." }
+                            "下一行用得上。",
+                            "You'll need them for the next line." }
                     };
                 case "ch2":
                     return new string[][]
@@ -226,7 +226,7 @@ namespace BossRush
                             "看着自己打回来的东西，人扛得住更多。",
                             "Looking at what you won keeps you standing longer." },
                         new string[] {
-                            "下一章账房要看门面，先摆一件，再来找我。",
+                            "下一行账房要看门面，先摆一件，再来找我。",
                             "The next line is about the look of the place. Put one up, then come see me." }
                     };
                 case "ch3":
@@ -255,8 +255,11 @@ namespace BossRush
                             "剩一行，疫区那场。签过的人没回来过，所以一直空着。",
                             "One line left. The quarantine match. Nobody who signed it came back, so it stayed blank." },
                         new string[] {
-                            "菜地有收成，就带一份再走。打起来再吃，能变成对应的头目三十秒。",
-                            "Take a harvest from the garden with you. Eat it during combat to take its Boss form for thirty seconds." }
+                            "菜地有收成，带一份再走。",
+                            "Take something from the garden with you." },
+                        new string[] {
+                            "打到一半吃下去，吃哪样变哪个头目，撑半分钟。",
+                            "Eat it mid-fight. Whatever you eat, you turn into that boss for half a minute." }
                     };
                 case "ch5":
                     return new string[][]

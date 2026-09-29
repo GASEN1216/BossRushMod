@@ -242,7 +242,7 @@ namespace BossRush
                         "Extract successfully " + def.Target + " times");
                 case DailyReportBountyKind.EarnMoney:
                     return L10n.T("单日进账 " + def.Target + " 金",
-                        "Earn " + def.Target + " in a single day");
+                        "Earn " + def.Target + " cash in a single day");
                 case DailyReportBountyKind.NoDeath:
                     return L10n.T("成功撤离且当日零阵亡",
                         "Extract with zero deaths today");

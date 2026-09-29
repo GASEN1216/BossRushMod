@@ -960,7 +960,7 @@ namespace BossRush
         { get { return L10n.T("青蛙夜里才到浅水边繁育。等天黑了，再来找新产的蛙卵。", "The frogs gather in the shallows to breed at night. Return after dark for fresh spawn."); } }
 
         internal static string SpawnNeedsFiber
-        { get { return L10n.T("得有一把云苔纤维才包得住蛙卵。", "You need a strand of cloudmoss fibre to wrap the spawn."); } }
+        { get { return L10n.T("得有一把云苔纤维才包得住蛙卵。", "You need a strand of cloudmoss fiber to wrap the spawn."); } }
 
         internal static string SpawnAlreadyCarried
         { get { return L10n.T("你已经捧着一团蛙卵了，先把它送回蛙鸣池。", "You're already carrying frogspawn. Take it to Frogsong Pool first."); } }

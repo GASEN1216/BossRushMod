@@ -8,7 +8,7 @@ The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch
 
 - **Dragon Set** — Helmet + Armor (Dragon Descendant)
 - **Dragon King Set** — Helmet + Armor (Dragon Lord) — **direct upgrade**
-- **Cloud Rider** — Flight totem (Dragon Lord)
+- **Cloud Soar I** — Flight totem (Dragon Lord)
 - **Reverse Scale** — One-time lifesave totem (Dragon Lord)
 - **Skyburner Halberd** — Fire melee with 3-hit combo (Dragon Lord)
 - **Dragon Breath** — Fire gun with burn DOT (Dragon Descendant)
@@ -54,7 +54,7 @@ Both dragon sets give a "fire refund" (fire damage hits first, then 80% comes ba
 
 ## Totems
 
-- **Cloud Rider** — Sustained flight/glide, stamina-based
+- **Cloud Soar I** — Sustained flight/glide, stamina-based
 - **Reverse Scale** — Near-death save, fires counterattack bolts, then shatters
 
 ## Progression Path

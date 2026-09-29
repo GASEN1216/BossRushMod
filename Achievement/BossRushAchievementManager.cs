@@ -70,7 +70,7 @@ namespace BossRush
 
             // ========== 基础通关成就 ==========
             Register("first_clear", "初出茅庐", "First Steps",
-                "首次在 BossRush 中成功撤离", "Complete BossRush for the first time",
+                "首次在 BossRush 中成功撤离", "Extract successfully from BossRush for the first time",
                 AchievementCategory.Basic, 5000, 1);
 
             Register("easy_clear", "弹指可灭", "Easy Peasy",
@@ -81,8 +81,8 @@ namespace BossRush
                 "在[有点意思]难度成功撤离", "Complete BossRush on Normal difficulty",
                 AchievementCategory.Basic, 25000, 2);
 
-            Register("mode_d_clear", "白手起家", "From Nothing",
-                "在白手起家模式完成10波", "Complete 10 waves in Mode D (start with nothing)",
+            Register("mode_d_clear", "白手起家", "From Scratch",
+                "在白手起家模式完成10波", "Complete 10 waves in From Scratch",
                 AchievementCategory.Basic, 30000, 2);
 
             // ========== 累计通关成就 ==========
@@ -128,8 +128,8 @@ namespace BossRush
                 "在[有点意思]难度无伤通关", "Complete Normal difficulty without taking damage",
                 AchievementCategory.Flawless, 250000, 4);
 
-            Register("flawless_mode_d", "完美白手", "Flawless Mode D",
-                "在白手起家模式无伤完成5波", "Complete 5 waves in Mode D without taking damage",
+            Register("flawless_mode_d", "完美白手", "Flawless From Scratch",
+                "在白手起家模式无伤完成5波", "Complete 5 waves in From Scratch without taking damage",
                 AchievementCategory.Flawless, 350000, 4);
 
             Register("flawless_hell_10", "钢铁意志", "Iron Will",
@@ -159,15 +159,15 @@ namespace BossRush
                 AchievementCategory.BossKill, 200000, 4);
 
             Register("kill_dragon_king", "弑龙者", "Kingslayer",
-                "首次击杀焚天龙皇", "Defeat the Dragon King for the first time",
+                "首次击杀焚天龙皇", "Defeat the Skyburner Dragon Lord for the first time",
                 AchievementCategory.BossKill, 100000, 3);
 
             Register("kill_dragon_king_flawless", "完美弑龙", "Perfect Kingslayer",
-                "无伤击杀焚天龙皇", "Defeat the Dragon King without taking damage",
+                "无伤击杀焚天龙皇", "Defeat the Skyburner Dragon Lord without taking damage",
                 AchievementCategory.BossKill, 500000, 5);
 
             Register("dragon_slayer_master", "屠龙大师", "Dragon Slayer Master",
-                "累计击杀焚天龙皇10次", "Defeat the Dragon King 10 times in total",
+                "累计击杀焚天龙皇10次", "Defeat the Skyburner Dragon Lord 10 times in total",
                 AchievementCategory.BossKill, 600000, 4);
 
             // ========== 累计击杀成就 ==========
@@ -179,7 +179,7 @@ namespace BossRush
                 "累计击杀100个Boss", "Defeat 100 bosses in total",
                 AchievementCategory.Cumulative, 80000, 2);
 
-            Register("kill_500_bosses", "屠龙勇士", "Dragon Hunter",
+            Register("kill_500_bosses", "五百斩", "Five Hundred Down",
                 "累计击杀500个Boss", "Defeat 500 bosses in total",
                 AchievementCategory.Cumulative, 500000, 4);
 
@@ -202,7 +202,7 @@ namespace BossRush
                 AchievementCategory.Special, 300000, 3);
 
             Register("collect_dragon_king_loot", "龙王宝库", "Dragon King Collector",
-                "收集焚天龙皇的全部专属掉落物", "Collect all exclusive loot from Dragon King",
+                "收集焚天龙皇的全部专属掉落物", "Collect all exclusive loot from the Skyburner Dragon Lord",
                 AchievementCategory.Special, 500000, 4);
 
             // ========== 装备能力成就 ==========
@@ -215,7 +215,7 @@ namespace BossRush
                 AchievementCategory.Special, 80000, 2);
 
             // ========== 驯养成就（遗种巢）==========
-            Register("petnest_first_hatch", "初为人父", "First Hatch",
+            Register("petnest_first_hatch", "第一声嘎", "First Hatch",
                 "在遗种巢孵出第一只幼体", "Hatch your first cub at the PetNest",
                 AchievementCategory.Taming, 60000, 1);
 
@@ -223,7 +223,7 @@ namespace BossRush
                 "解锁 10 个血脉图鉴", "Unlock 10 bloodline entries",
                 AchievementCategory.Taming, 200000, 3);
 
-            Register("petnest_lineage_30", "全谱系执念", "Lineage Obsession",
+            Register("petnest_lineage_30", "一个都不能少", "Every Last One",
                 "解锁 30 个血脉图鉴", "Unlock 30 bloodline entries",
                 AchievementCategory.Taming, 600000, 4);
 

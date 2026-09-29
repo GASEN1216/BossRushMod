@@ -159,8 +159,8 @@ namespace BossRush
             int remaining = GetWishRewardCooldownRemainingSeconds();
             string formatted = FormatWishRewardCooldownForBubble(remaining);
             ShowWishRewardBubble(L10n.T(
-                "许愿抽奖冷却：" + formatted,
-                "Wish Gacha Cooldown: " + formatted));
+                "星愿还在冷却：" + formatted,
+                "The stars are still cooling down: " + formatted));
         }
 
         private static void ShowWishRewardResultBubble(string rewardDisplayName)
@@ -171,8 +171,8 @@ namespace BossRush
             }
 
             ShowWishRewardBubble(L10n.T(
-                "我许到了一件：" + rewardDisplayName,
-                "I wished for: " + rewardDisplayName), 2.8f);
+                "星愿应验：" + rewardDisplayName,
+                "Wish granted: " + rewardDisplayName), 2.8f);
         }
 
         private static void ShowWishRewardFailureBubble()
@@ -187,8 +187,8 @@ namespace BossRush
             if (IsWishRewardReady())
             {
                 ShowWishRewardBubble(L10n.T(
-                    "你这家伙快去许愿领奖励！！",
-                    "Hey you, go make a wish and claim your reward!!"), 2.8f);
+                    "许愿台还能领一份，别忘了去。",
+                    "The fountain still has a reward for you. Don't forget it."), 2.8f);
                 return;
             }
 

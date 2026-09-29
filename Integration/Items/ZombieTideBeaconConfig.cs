@@ -17,8 +17,8 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_ZombieTideBeacon";
         public const string DISPLAY_NAME_CN = "尸潮信标";
         public const string DISPLAY_NAME_EN = "Zombie Tide Beacon";
-        public const string DESCRIPTION_CN = "一扭就响，尸潮闻声而至。反正坏不了。";
-        public const string DESCRIPTION_EN = "Twist it and the tide comes. It never seems to break.";
+        public const string DESCRIPTION_CN = "一扭就响的信标，反正坏不了。\n只在准备倒计时里能用：读条 3 秒后立即开始下一波。本局工具，不能带出。";
+        public const string DESCRIPTION_EN = "A beacon that blares the moment you twist it. Never seems to break.\nUsable only during the preparation countdown: after a 3s channel the next wave starts at once. Run-only tool, cannot be taken out.";
         public const string USE_DESC_CN = "使用：准备期快速开始下一波。";
         public const string USE_DESC_EN = "Use: start the next wave during preparation.";
         public const int VALUE = 0;

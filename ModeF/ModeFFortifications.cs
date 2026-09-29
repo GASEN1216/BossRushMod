@@ -204,8 +204,8 @@ namespace BossRush
             if (!CanUseModeFortificationUtilities())
             {
                 owner.ShowMessage(L10n.T(
-                    "该物品只能在 Mode F 或丧尸模式中使用",
-                    "This item can only be used in Mode F or Zombie Mode"));
+                    "该物品只能在血猎追击或末日丧尸中使用",
+                    "This item can only be used in Blood Hunt or Zombie Mode"));
                 return false;
             }
 
@@ -240,8 +240,8 @@ namespace BossRush
             if (!CanUseModeFortificationUtilities())
             {
                 owner.ShowMessage(L10n.T(
-                    "该物品只能在 Mode F 或丧尸模式中使用",
-                    "This item can only be used in Mode F or Zombie Mode"));
+                    "该物品只能在血猎追击或末日丧尸中使用",
+                    "This item can only be used in Blood Hunt or Zombie Mode"));
                 return false;
             }
 

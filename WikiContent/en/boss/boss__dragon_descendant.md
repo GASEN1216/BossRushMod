@@ -55,7 +55,7 @@ several kills, and Dragon Breath is the stubborn one.
   crate in the arena - see Rewards & Loot)
 - **An Affix Forge Stone** - about 8%, landing the same way
 - **A Dragon Seed** - about 25%, **requires Duck King Campaign chapter 1 to unlock the garden**.
-  Grows Dragon Breath Fruit: +10% gun and melee damage for your next run
+  Grows Dragonbreath Fruit: 30 seconds as the Dragon Descendant (+30% gun and melee damage, fire breath).
 
 ### Combat Strategy
 - Phase 1 pressure is low; keeping 5m+ away avoids most damage

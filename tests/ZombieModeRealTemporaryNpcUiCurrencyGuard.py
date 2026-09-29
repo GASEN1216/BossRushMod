@@ -87,7 +87,7 @@ def main() -> int:
         "usePurification",
         "净化点我就收下了",
         "钱我就收下了",
-        "Purification Points",
+        "take the Purification.",
         "money",
     ]:
         result = require(courier_auto_bubble, snippet, "courier auto completion bubble currency branch")

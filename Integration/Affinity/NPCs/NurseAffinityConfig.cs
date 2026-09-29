@@ -7,8 +7,8 @@
 // 好感度系统使用 AffinityManager 统一等级配置。
 //   
 // 羽织的背景故事：
-// 羽织原本是J-Lab实验室的高级医疗研究员，是唯一一个会在深夜偷偷给叮当带食物、
-// 处理伤口的研究员。实验室崩溃后逃到鸭科夫，建立战地医疗站帮助冒险者。
+// 羽织是从J-Lab实验室出来的护士，腿上还留着实验的痕迹。在实验室里，她是唯一会在深夜偷偷给叮当带食物、
+// 处理伤口的人。实验室崩溃后逃到鸭科夫，建立战地医疗站帮助冒险者。
 // 性格参考星露谷物语海莉：初见高冷，逐渐展现温柔。
 // ============================================================================
 
@@ -245,10 +245,10 @@ namespace BossRush
                         // 傲娇反应
                         L10n.T("哼...眼光倒还不错，我收下了。", "Hmph... your taste is decent. I'll take it."),
                         L10n.T("你...你怎么会挑到我真正喜欢的东西？", "H-how did you manage to pick something I'd really like?"),
-                        L10n.T("别误会，我只是觉得扔掉太可惜了。", "Don't get the wrong idea. It would just be a waste to throw this away."),
+                        L10n.T("先收进柜子。别盯着我，我在登记。", "Into the cabinet it goes. Stop staring, I'm logging it."),
                         L10n.T("这个...我会好好收着，你别多想。", "This... I'll keep it properly. Don't read too much into it."),
                         L10n.T("哼，至少说明你还是有点品位的。", "Hmph. At least it proves you have some taste."),
-                        L10n.T("我、我才没有高兴得忘形。", "I-I'm not getting carried away or anything."),
+                        L10n.T("脉搏是快了点。刚从药房跑回来的缘故。", "My pulse is up a little. I just ran back from the dispensary."),
                         
                         // 真情流露
                         L10n.T("哇...真好看。谢、谢谢你。", "Wow... it's really beautiful. Th-thank you."),
@@ -264,11 +264,11 @@ namespace BossRush
                         L10n.T("在实验室的时候，从来没人给过我这种东西。", "Back in the lab, no one ever gave me anything like this."),
                         L10n.T("你不觉得给一个护士送这个有点奇怪吗？...但我很喜欢。", "Don't you think giving this to a nurse is a little strange? ...But I like it a lot."),
                         L10n.T("看到这个，值班的烦心事都忘了。...就一会儿。", "This made me forget about my shift. ...Just for a moment."),
-                        L10n.T("只是眼睛有点酸而已，才不是被你感动到了。", "My eyes just sting a little, that's all. It's not because you moved me."),
+                        L10n.T("消毒水熏的。……真的是消毒水。", "Disinfectant fumes. ...It really is the disinfectant."),
                         
                         // 可爱反应
-                        L10n.T("心跳突然变快了...一定是你吓到我了。", "My heart suddenly sped up... you must have startled me."),
-                        L10n.T("你、你下次要是还想送，我也不会拦你。", "I-if you want to bring me something again next time, I won't stop you."),
+                        L10n.T("……别碰我手腕，我自己知道快了。", "...Don't reach for my wrist. I know it's racing."),
+                        L10n.T("下回想送就送。柜子那层我给你腾着。", "Bring another next time if you like. I'll clear that shelf."),
                         L10n.T("这份心意我会记很久的。嘴上不说，不代表我不在意。", "I'll remember this kindness for a long time. Just because I don't say it doesn't mean I don't care."),
                         L10n.T("外面天天打仗，你倒还记得给我带东西。...谢了。", "There's a war on out there and you still remember to bring me stuff. ...Thanks."),
                         L10n.T("这个对心情，比很多药都管用。", "This does more for my mood than half my medicine."),
@@ -349,10 +349,10 @@ namespace BossRush
                     _normalBubbles = new string[]
                     {
                         // 傲娇接受
-                        L10n.T("哼，勉为其难收下吧。", "Hmph. I'll accept it, reluctantly."),
-                        L10n.T("不、不是我想要，是你非要塞给我的。", "I-it's not that I wanted it. You insisted on giving it to me."),
-                        L10n.T("算你有心了...虽然也就那样。", "At least you put some thought into it... even if it's just alright."),
-                        L10n.T("收下了，别指望我反应太大。", "I'll take it. Don't expect a big reaction."),
+                        L10n.T("收到了。先登记，回头细看。", "Received. I'll log it and look properly later."),
+                        L10n.T("又往我手里塞东西……行，放那边。", "Pressing things into my hands again... fine, over there."),
+                        L10n.T("至少不是顺手抓的，这个我看得出来。", "At least you didn't grab it on the way here. I can tell."),
+                        L10n.T("收下。我脸上本来就没什么表情，别多想。", "Accepted. My face doesn't do much. Don't read into it."),
                         L10n.T("嗯...还行吧，至少不算敷衍。", "Mm... it's alright. At least it doesn't feel careless."),
                         L10n.T("你不用特意送我东西的...不过既然送了，我就收下。", "You didn't have to bring me anything... but since you did, I'll accept it."),
                         
@@ -574,6 +574,39 @@ namespace BossRush
                         L10n.T("今天先到这里吧。你要是真想补偿我，明天认真一点。", "Let's stop here for today. If you really want to make it up to me, try a little harder tomorrow."),
                         L10n.T("先别继续塞礼物了，我怕你越送越慌。", "Don't keep pushing gifts at me. I'm afraid you'll only get more flustered."),
                     });
+                case "marriage_chapel_required":
+                    return L10n.T("……先把教堂建好。我不想在换药室里答应你。",
+                        "...Build the chapel first. I won't say yes in the middle of a clinic.");
+                case "marriage_divorce":
+                    return L10n.T("好。……伤口我治得了，这个治不了。",
+                        "Fine. ...I can treat wounds. Not this.");
+                case "marriage_bubble_date":
+                    return L10n.T("{date}。这个日子，我记下了。",
+                        "{date}. I've written this day down.");
+                case "marriage_cheat_first":
+                    return L10n.T("戒指给了别人？……这次当我没看见，别让我看见第二次。",
+                        "A ring for someone else? ...I didn't see that. Don't make me see it twice.");
+                case "marriage_cheat_repeat":
+                    return L10n.T("又一次。我不生气了，只是累了。",
+                        "Again. I'm not angry anymore. Just tired.");
+                case "marriage_follow_refused":
+                    return L10n.T("今天我得守着诊所，改天。",
+                        "I have to mind the clinic today. Another time.");
+                case "ring_reject":
+                    return L10n.T("太快了。我可不是谁递枚戒指都点头的人。",
+                        "Too fast. I don't nod at every ring that's held out to me.");
+                case "ring_cheater":
+                    return L10n.T("结了婚还到处递戒指？收回去，别让我替你脸红。",
+                        "Married, and still handing out rings? Put it away before I blush for you.");
+                case "ring_spouse_repeat":
+                    return L10n.T("一枚就够了。……有你在，我不缺戒指。",
+                        "One is enough. ...With you here, I don't need more.");
+                case "gift_fallback":
+                    return L10n.T("收到了，谢谢。",
+                        "Received. Thanks.");
+                case "gift_already_fallback":
+                    return L10n.T("今天的已经收过了，明天再来。",
+                        "I've already got today's. Come back tomorrow.");
                 case "heal_success_married":
                     return GetRandomDialogue(new string[]
                     {
@@ -598,7 +631,7 @@ namespace BossRush
                 case "heal_debuff_only_married":
                     return GetRandomDialogue(new string[]
                     {
-                        L10n.T("伤倒是不重，但这些异常状态我看着就不安心。先让我处理掉。", "Your injuries aren't serious, but these abnormal effects still worry me. Let me deal with them first."),
+                        L10n.T("伤倒是不重，但你身上这些不对劲的地方我看着就不安心。先让我处理掉。", "Your injuries aren't serious, but the things wrong with you still worry me. Let me deal with them first."),
                         L10n.T("先别动，我把这些乱七八糟的影响清掉，你再去忙。", "Hold still. I'll clear these messy effects off you before you do anything else."),
                         L10n.T("你总说自己没事，可这些小毛病积起来也会让我心烦。", "You always say you're fine, but little problems piling up still drive me crazy with worry."),
                     });
@@ -714,7 +747,7 @@ namespace BossRush
             {
                 return new string[]
                 {
-                    L10n.T("你怎么才来看我啊...我、我才没有在等你呢！", "What took you so long... I wasn't waiting for you or anything!"),
+                    L10n.T("你可算来了。……别多想，药柜我整理了三遍，顺便的。", "You finally showed up. ...Don't read into it. I only reorganized the cabinet three times, in passing."),
                     L10n.T("唔...你身上有血腥味。快过来让我检查，不许拒绝。", "Ugh... you smell like blood. Come here and let me check, no refusing."),
                     L10n.T("我特意给你留了最好的药，别跟别人说哦。", "I saved the best medicine for you, don't tell anyone."),
                     L10n.T("有时候我会想...如果我们是在另一个世界认识的就好了。", "Sometimes I think... if only we had met in a different world."),
@@ -808,7 +841,7 @@ namespace BossRush
                     L10n.T("嗯，恢复得不错。记得按时换药，别偷懒。", "Mm, you're recovering well. Change your dressings on time, and don't slack off."),
                     L10n.T("治疗完成。你可真会给我添工作。", "Treatment complete. You really do know how to create work for me."),
                     L10n.T("血止住了，呼吸也稳了。现在别乱跑。", "The bleeding's stopped and your breathing's steady. Don't go running around now."),
-                    L10n.T("所有的负面状态都清干净了。你之前到底碰了什么鬼东西...", "All the debuffs are cleared. What in the world did you get yourself into...?"),
+                    L10n.T("脏东西都清干净了。你之前到底碰了什么鬼东西……", "All cleaned out. What on earth did you touch...?"),
                     L10n.T("处理好了。真撑不住的时候，要第一时间来找我。", "You're patched up. If you really can't hold out, come find me first."),
                     L10n.T("别皱眉，只是包扎而已，还不至于把你送上手术台。", "Stop frowning. It's just bandaging, not enough to put you on an operating table."),
                     L10n.T("身体不是拿来硬扛的。下次记得早点撤。", "Your body isn't for soaking up damage. Pull out sooner next time."),
@@ -832,11 +865,11 @@ namespace BossRush
                 {
                     L10n.T("你很健康，不需要我的治疗。这样最好。", "You're healthy. You don't need my treatment. That's for the best."),
                     L10n.T("嗯？状态不错。那你来这儿做什么？", "Hm? You're in good shape. So what are you here for?"),
-                    L10n.T("检查结果：没有外伤，也没有异常。今天不用治疗。", "Check result: no external injuries, no abnormalities. No treatment needed today."),
+                    L10n.T("看过了，外伤没有，别的毛病也没有。今天用不着我。", "Looked you over. No wounds, nothing off. You don't need me today."),
                     L10n.T("你身上没什么问题。省得我替你收拾残局。", "There's nothing wrong with you. Saves me from cleaning up another mess."),
                     L10n.T("不用治疗。但既然来了，就先歇一会儿吧。", "No treatment needed. But since you're here, sit down and rest for a bit."),
                     L10n.T("完全没事。看来你今天终于学会小心了。", "You're completely fine. Looks like you've finally learned to be careful today."),
-                    L10n.T("满血满状态。作为护士，我很喜欢看到这种结果。", "Full health, no debuffs. As a nurse, this is exactly what I like to see."),
+                    L10n.T("一点毛病没有。当护士的，最爱看到这个。", "Not a scratch on you. As a nurse, this is my favorite result."),
                     L10n.T("你现在比我这里大部分病人都健康，这可不容易。", "You're healthier than most of the people who come through here. That's not easy in a place like this."),
                     L10n.T("没有伤势就好。要是只是路过，也别把自己再折腾伤了。", "No injuries is good. Even if you're just passing by, don't go getting yourself hurt afterward."),
                     L10n.T("看来今天轮不到我出手。这样也好。", "Looks like my hands aren't needed today. That's a good thing.")
@@ -876,16 +909,16 @@ namespace BossRush
             {
                 _debuffOnlyDialogues = new string[]
                 {
-                    L10n.T("身上有负面状态，让我先替你处理一下。", "You've got some negative effects on you. Let me deal with those first."),
-                    L10n.T("血量倒是没掉多少，但这些异常状态更麻烦。", "You haven't lost much health, but these abnormal effects are more troublesome."),
-                    L10n.T("没受伤不代表没事，这些debuff不清掉迟早要出问题。", "Not being wounded doesn't mean you're fine. If those debuffs stay on you, they'll cause trouble sooner or later."),
+                    L10n.T("你身上带着不干净的东西，先让我处理。", "You're carrying something nasty. Let me deal with that first."),
+                    L10n.T("血量倒是没掉多少，但你身上这些不对劲的地方更麻烦。", "You haven't lost much health, but what's wrong with you is more troublesome."),
+                    L10n.T("没流血不代表没事，身上这些脏东西不清掉，迟早出问题。", "Not bleeding doesn't mean you're fine. Leave that mess on you and it'll bite you sooner or later."),
                     L10n.T("这状态不太对劲...你又碰了什么危险东西？", "That condition doesn't look right... what dangerous thing did you touch this time?"),
-                    L10n.T("先站稳，我帮你把这些异常反应压下去。", "Hold still. I'll suppress these abnormal reactions for you."),
+                    L10n.T("先站稳，我帮你把这些不舒服压下去。", "Hold still. I'll ease these symptoms for you."),
                     L10n.T("你现在这样去战斗，和把自己往坑里送没区别。", "Going back into a fight like this is no different from throwing yourself into a pit."),
                     L10n.T("别嘴硬，这些状态看着不重，拖久了会更难处理。", "Don't act tough. These effects may not look severe, but they'll get harder to deal with if you drag this out."),
                     L10n.T("呼吸放慢一点，我先把这些乱七八糟的影响清掉。", "Slow your breathing. I'll clear out these messy effects first."),
                     L10n.T("你运气不错，还没发展成更糟的样子。现在处理还来得及。", "You're lucky it hasn't turned into something worse yet. There's still time to deal with it now."),
-                    L10n.T("这些异常状态我能处理，但你最好别再把自己弄成这样第二次。", "I can handle these abnormal effects, but you'd better not let yourself end up like this again.")
+                    L10n.T("这些不对劲的地方我能处理，但你最好别再把自己弄成这样第二次。", "I can deal with what's wrong with you, but you'd better not end up like this a second time.")
                 };
             }
             return _debuffOnlyDialogues[UnityEngine.Random.Range(0, _debuffOnlyDialogues.Length)];

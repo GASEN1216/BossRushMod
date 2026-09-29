@@ -68,7 +68,7 @@ def main():
               "Utilities/SimpleJsonHelper.cs", "ModeH/ModeHSeedStream.cs"]
     presentation = ["Integration/Affinity/INPCAffinityConfig.cs"] + ["Integration/Affinity/Core/" + file for file in (
         "INPCGiftConfig.cs", "INPCDialogueConfig.cs", "INPCShopConfig.cs", "INPCGiftContainerConfig.cs", "INPCRelationshipDialogueConfig.cs")]
-    presentation += ["Integration/Affinity/NPCs/GoblinAffinityConfig.cs", "Integration/Affinity/NPCs/GoblinAffinityConfig_LanguageCache.cs", "Integration/Affinity/NPCs/NurseAffinityConfig.cs", "Integration/Dialogue/DialogueActorFactory.cs"]
+    presentation += ["Integration/Affinity/NPCs/GoblinAffinityConfig.cs", "Integration/Affinity/NPCs/GoblinAffinityConfig_LanguageCache.cs", "Integration/Affinity/NPCs/GoblinAffinityConfig_Persona.cs", "Integration/Affinity/NPCs/NurseAffinityConfig.cs", "Integration/Dialogue/DialogueActorFactory.cs"]
     wedding = "Integration/Wedding/NPCMarriageSystem.cs"
     generated = "using System; using UnityEngine; namespace BossRush {\n" + extract(wedding, "internal static class WeddingBuildingRequirementsPatch") + "\n" + extract(wedding, "internal static class WeddingBuildingRuntimePolicy") + "\n}"
     results = {"Affinity": build("Affinity", affinity), "Daily": build("Daily", daily), "Presentation": build("Presentation", presentation, generated)}

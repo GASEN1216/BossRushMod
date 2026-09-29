@@ -237,7 +237,7 @@ namespace BossRush
                 string bubbleText = usePurification
                     ? L10n.T(
                         "货我已经送出去了，净化点我就收下了",
-                        "I've sent the goods, I'll take the Purification Points"
+                        "Goods are out. I'll take the Purification."
                     )
                     : L10n.T(
                         "货我已经送出去了，钱我就收下了",
@@ -667,8 +667,8 @@ namespace BossRush
                     // 格式：已送达x件物品，共花费x，欢迎下次光临~
                     // x 用数字高亮色（WarningText）显示：这是一条正面消息，旧写法用纯红 #FF0000 像是报错（审美审查 UA-31）
                     string goodbyeText = L10n.T(
-                        "已送达<color=" + CourierHighlightHex + ">" + lastSentItemCount + "</color>件物品，共花费<color=" + CourierHighlightHex + ">" + currencyTextCn + lastDeliveryFee + "</color>，欢迎下次光临~",
-                        "Delivered <color=" + CourierHighlightHex + ">" + lastSentItemCount + "</color> items, cost <color=" + CourierHighlightHex + ">" + currencyTextEn + lastDeliveryFee + "</color>, come again~"
+                        "已送达<color=" + CourierHighlightHex + ">" + lastSentItemCount + "</color>件物品，共花费<color=" + CourierHighlightHex + ">" + currencyTextCn + lastDeliveryFee + "</color>。下回有货再来。",
+                        "Delivered <color=" + CourierHighlightHex + ">" + lastSentItemCount + "</color> items, cost <color=" + CourierHighlightHex + ">" + currencyTextEn + lastDeliveryFee + "</color>. Bring more next time."
                     );
 
                     // 使用原版气泡系统显示对话
@@ -695,11 +695,11 @@ namespace BossRush
                     bool usePurification = IsZombieModeTemporaryCourierPurificationService(npcTransform);
                     string bubbleText = usePurification
                         ? L10n.T(
-                            "净化点不够还来浪费爷的时间",
-                            "Wasting my time without enough Purification")
+                            "净化点不够？别在这儿耗我的时间。",
+                            "No Purification, no service. Quit wasting my time.")
                         : L10n.T(
-                            "穷小子，没钱还来浪费爷的时间",
-                            "Poor kid, wasting my time without money");
+                            "没钱就别在这儿耗我的时间。",
+                            "No money? Then quit wasting my time.");
 
                     // 使用原版气泡系统显示对话
                     Cysharp.Threading.Tasks.UniTaskExtensions.Forget(

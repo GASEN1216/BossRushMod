@@ -10,11 +10,11 @@ At the start of every run, the system draws a handful of mutators from a pool of
 
 - **Standard BossRush** — Rolls mutators?: √
 - **Infinite Hell** — Rolls mutators?: √
-- **From Scratch (Mode D)** — Rolls mutators?: √
-- **Faction War (Mode E)** — Rolls mutators?: √
-- **Blood Hunt (Mode F)** — Rolls mutators?: √
-- **Fate Echo (Mode G)** — Rolls mutators?: × (the nine-wave counter schedule is fixed)
-- **Black Market Duck Cup (Mode H)** — Rolls mutators?: × (what the odds sheet says is what you get)
+- **From Scratch** — Rolls mutators?: √
+- **Faction War** — Rolls mutators?: √
+- **Blood Hunt** — Rolls mutators?: √
+- **Fate Echo** — Rolls mutators?: × (the nine-wave counter schedule is fixed)
+- **Black Market Duck Cup** — Rolls mutators?: × (what the odds sheet says is what you get)
 - **Zombie Mode** — Rolls mutators?: × (separate system)
 
 ## How to See Active Mutators
@@ -44,7 +44,7 @@ At the start of every run, the system draws a handful of mutators from a pool of
 - **Bloodhounds** — Effect: All enemies have infinite aggro range — **permanently lock onto you**
 - **Vicious** — Effect: All enemies deal **+30%** gun and melee damage
 - **Enemy Marksman** — Effect: All enemies gun scatter **-25%** (shots are tighter)
-- **Frenzy** — Effect: All enemies movement speed and fire rate **+20%**
+- **Bloodbath** — Effect: All enemies movement speed and fire rate **+20%**
 
 ### ★ Player Boons (11)
 
@@ -62,12 +62,12 @@ At the start of every run, the system draws a handful of mutators from a pool of
 
 ### ※ Environment Rules (8)
 
-- **Hemorrhage** — Effect: Bleed damage speed **×1.5**; Note: Blood Hunt (Mode F) only
+- **Hemorrhage** — Effect: Bleed damage speed **×1.5**; Note: Blood Hunt only
 - **Festering Wounds** — Effect: All healing effectiveness **-40%**
-- **Undying** — Effect: Bosses regenerate **5% HP every 10 seconds**
+- **Regenerating Bosses** — Effect: Bosses regenerate **5% HP every 10 seconds**
 - **Glass Cannon** — Effect: Player damage **+50%**, but armor is zeroed; Note: Applies to gun and melee
 - **Blitz** — Effect: Player move speed **+40%**, but max HP **-20%**; Note: Current HP is clamped to the new cap
-- **Lifesteal** — Effect: Killing an enemy restores **8% max HP**
+- **Bloodlust** — Effect: Killing an enemy restores **8% max HP**
 - **Blood Pact** — Effect: Direct player kills restore **16% max HP**, but healing **-30%**; Note: Direct player kill credit only
 - **Volatile Remains** — Effect: Enemies explode on death (3m radius, 40 fire damage); Note: **Can injure you** — watch spacing
 

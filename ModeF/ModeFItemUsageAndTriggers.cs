@@ -134,7 +134,7 @@ namespace BossRush
                 case EmergencyRepairSprayConfig.TYPE_ID:
                     return L10n.T("使用：修复已部署的防御工事", "Use: Repair deployed fortifications");
                 default:
-                    return L10n.T("使用：部署 Mode F 战术物品", "Use: Deploy Mode F tactical utility");
+                    return L10n.T("使用：部署血猎追击战术物品", "Use: Deploy Blood Hunt tactical utility");
             }
         }
     }

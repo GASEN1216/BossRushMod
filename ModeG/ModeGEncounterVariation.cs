@@ -125,7 +125,7 @@ namespace BossRush
             if (string.Equals(key, ManagedDragonDescendantKey, StringComparison.Ordinal))
                 return L10n.T("龙裔遗族", "Dragon Descendant");
             if (string.Equals(key, ManagedDragonKingKey, StringComparison.Ordinal))
-                return L10n.T("龙王", "Dragon King");
+                return L10n.T(DragonKingConfig.BossNameCN, DragonKingConfig.BossNameEN);
             if (string.Equals(key, ManagedPhantomWitchKey, StringComparison.Ordinal))
                 return L10n.T("幽灵女巫", "Phantom Witch");
             // official stable key 就是 preset.nameKey；每次取用按当前语言解析。

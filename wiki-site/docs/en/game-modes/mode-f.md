@@ -8,7 +8,7 @@ The hardest mode in BossRush. **You're bleeding out from the moment you enter.**
 
 - **Naked** — no equipment
 - **BossRush Ticket** + **Bloodhunt Transponder** (both consumed)
-- No Banner (otherwise you enter Faction War)
+- No Faction Flag (otherwise you enter Faction War)
 
 ## Four Phases
 
@@ -51,7 +51,7 @@ Bounty Boss drops = additional high-quality items equal to its mark count.
 
 - Run-only max-HP growth caps at **+50% of entry max HP**, so total max HP cannot exceed 150% through this mechanic; at +4% per kill that cap is reached in roughly 13 regular kills
 - Growth earned past that cap becomes `0–100` Bloodfire charge: each regular kill adds 8 charge, so about 13 more kills fill the gauge (roughly 25 kills to the first Overload)
-- At full charge, a **15-second Overload** starts automatically: gun and melee damage +40%, movement speed +15%, but Mode F bleed ×2 and you immediately receive the Burn Buff
+- At full charge, a **15-second Overload** starts automatically: gun and melee damage +40%, movement speed +15%, but Blood Hunt bleed ×2 and you immediately receive the Burn Buff
 - Killing a Bounty Boss during Overload adds 3 seconds, up to 24 seconds remaining; a completed Overload leaves 25 charge
 - Player-head bubbles report charge, extensions, and Overload entry; phase broadcasts show charge or remaining Overload time
 

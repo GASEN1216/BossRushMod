@@ -40,9 +40,16 @@ namespace BossRush
         private static readonly string DragonDescendantNameCN = "<color=red>龙裔遗族</color>";
         private static readonly string DragonDescendantNameEN = "<color=red>Dragon Descendant</color>";
         
-        // 复活台词
-        private static readonly string DragonDescendantResurrectionCN = "我...命不该绝！";
-        private static readonly string DragonDescendantResurrectionEN = "I... shall not fall!";
+        // 龙裔遗族头顶气泡台词：中英文的唯一出口是本类的 GetDragonDescendant*Dialogue()。
+        // 复活台词的文字只在 DragonDescendantConfig 定义一份，这里引用，不再另写英文版本。
+        private static readonly string DragonDescendantResurrectionCN = DragonDescendantConfig.ResurrectionDialogue;
+        private static readonly string DragonDescendantResurrectionEN = DragonDescendantConfig.ResurrectionDialogueEN;
+        private static readonly string DragonDescendantResurrectionPreludeCN = "我……";
+        private static readonly string DragonDescendantResurrectionPreludeEN = "I...";
+        private static readonly string DragonDescendantIceSlowCN = "此等极寒之力，也被你压住了吗……可恶！";
+        private static readonly string DragonDescendantIceSlowEN = "So even this bitter cold bows to you? Damn...";
+        private static readonly string DragonDescendantIceRecoveryCN = "哈哈哈，用完了吗？轮到我了！";
+        private static readonly string DragonDescendantIceRecoveryEN = "Ha! Done already? My turn!";
         
         #endregion
         
@@ -55,14 +62,14 @@ namespace BossRush
         // 龙王之冕（龙王专属头盔）
         private static readonly string DragonKingHelmNameCN = "龙王之冕";
         private static readonly string DragonKingHelmNameEN = "Dragon King's Crown";
-        private static readonly string DragonKingHelmDescCN = "龙王遗下的冠冕，额前的王印烫得碰不得。\n<color=#FFD700>【龙王套装】</color>与龙王鳞铠同时穿戴：\n双击方向键冲刺6米，可再接一次3米冲刺。\n冲刺留下熔浆灼烧敌人。火焰伤害转为治疗。";
-        private static readonly string DragonKingHelmDescEN = "The Dragon King's crown. Its royal seal is too hot to touch.\n<color=#FFD700>[Dragon King Set]</color> Wear with Dragon King's Scale Mail:\nDouble-tap movement to dash 6m, then chain a 3m dash.\nDashes leave burning lava. Fire damage heals you.";
+        private static readonly string DragonKingHelmDescCN = "龙皇遗下的冠冕，额前的王印烫得碰不得。\n<color=#FFD700>【龙王套装】</color>与龙王鳞铠同时穿戴：\n双击方向键冲刺6米，可再接一次3米冲刺。\n冲刺留下熔浆灼烧敌人。火焰伤害转为治疗。";
+        private static readonly string DragonKingHelmDescEN = "The crown the Dragon Lord left behind. Its royal seal is too hot to touch.\n<color=#FFD700>[Dragon King Set]</color> Wear with Dragon King's Scale Mail:\nDouble-tap movement to dash 6m, then chain a 3m dash.\nDashes leave burning lava. Fire damage heals you.";
         
         // 龙王鳞铠（龙王专属护甲）
         private static readonly string DragonKingArmorNameCN = "龙王鳞铠";
         private static readonly string DragonKingArmorNameEN = "Dragon King's Scale Mail";
-        private static readonly string DragonKingArmorDescCN = "龙王心口的鳞甲锻成，贴近时能听到微弱的跳动。\n<color=#FFD700>【龙王套装】</color>与龙王之冕同时穿戴：\n双击方向键冲刺6米，可再接一次3米冲刺。\n冲刺留下熔浆灼烧敌人。火焰伤害转为治疗。";
-        private static readonly string DragonKingArmorDescEN = "Forged from scales over the Dragon King's heart. A faint beat remains.\n<color=#FFD700>[Dragon King Set]</color> Wear with Dragon King's Crown:\nDouble-tap movement to dash 6m, then chain a 3m dash.\nDashes leave burning lava. Fire damage heals you.";
+        private static readonly string DragonKingArmorDescCN = "龙皇心口的鳞甲锻成，贴近时能听到微弱的跳动。\n<color=#FFD700>【龙王套装】</color>与龙王之冕同时穿戴：\n双击方向键冲刺6米，可再接一次3米冲刺。\n冲刺留下熔浆灼烧敌人。火焰伤害转为治疗。";
+        private static readonly string DragonKingArmorDescEN = "Forged from scales over the Dragon Lord's heart. A faint beat remains.\n<color=#FFD700>[Dragon King Set]</color> Wear with Dragon King's Crown:\nDouble-tap movement to dash 6m, then chain a 3m dash.\nDashes leave burning lava. Fire damage heals you.";
         
         #endregion
 
@@ -80,8 +87,8 @@ namespace BossRush
         private static readonly string DragonBreathNameEN = "Dragon's Breath";
         
         // 龙息武器描述
-        private static readonly string DragonBreathDescCN = "J-Lab拿赤龙残骸改的MCX。扣一次扳机你就懂了：\"生存\"和\"撤离\"之外还有第三个选项，把路烤出来。";
-        private static readonly string DragonBreathDescEN = "J-Lab bolted crimson dragon remains onto an MCX. Pull the trigger once and you'll get it: besides 'survive' and 'extract', there's a third option. Burn your way out.";
+        private static readonly string DragonBreathDescCN = "J-Lab拿赤龙残骸改的MCX。扣一次扳机你就懂了：\"生存\"和\"撤离\"之外还有第三个选项，把路烤出来。\n<color=#FF7043>【龙焰灼烧】</color>命中有 50% 概率施加灼烧：每层每秒 0.1% 最大生命 + 1 点火焰伤害，最多 10 层，持续 10 秒。";
+        private static readonly string DragonBreathDescEN = "J-Lab bolted crimson dragon remains onto an MCX. Pull the trigger once and you'll get it: besides 'survive' and 'extract', there's a third option. Burn your way out.\n<color=#FF7043>[Dragon Burn]</color> Hits have a 50% chance to burn: 0.1% max HP + 1 fire damage per stack per second, up to 10 stacks, 10s.";
         
         #endregion
         
@@ -162,6 +169,30 @@ namespace BossRush
         public static string GetDragonDescendantResurrectionDialogue()
         {
             return L10n.T(DragonDescendantResurrectionCN, DragonDescendantResurrectionEN);
+        }
+
+        /// <summary>
+        /// 获取龙裔遗族复活前的半句台词（悬念）
+        /// </summary>
+        public static string GetDragonDescendantResurrectionPrelude()
+        {
+            return L10n.T(DragonDescendantResurrectionPreludeCN, DragonDescendantResurrectionPreludeEN);
+        }
+
+        /// <summary>
+        /// 获取龙裔遗族被冰冻减速时的气泡台词
+        /// </summary>
+        public static string GetDragonDescendantIceSlowDialogue()
+        {
+            return L10n.T(DragonDescendantIceSlowCN, DragonDescendantIceSlowEN);
+        }
+
+        /// <summary>
+        /// 获取龙裔遗族从冰冻中恢复时的气泡台词
+        /// </summary>
+        public static string GetDragonDescendantIceRecoveryDialogue()
+        {
+            return L10n.T(DragonDescendantIceRecoveryCN, DragonDescendantIceRecoveryEN);
         }
         
         /// <summary>

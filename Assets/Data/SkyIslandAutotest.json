@@ -393,9 +393,9 @@
       "actions": ["assert:stage_data", "wait_real:1", "assert:objective_contains:归航钟已响|The bell has rung", "shot:hud_ending:ui:SkyIslandHud"]
     },
     {
-      "id": "SKY_AUTO_END_ROSTER", "title": "结局后码头灯旁的归航船名册：开页、翻老舵手那一页、不出框；那页多一句「栈道那头的装置还记着那阵风」",
+      "id": "SKY_AUTO_END_ROSTER", "title": "结局后码头灯旁的归航船名册：开页、翻老舵手那一页、不出框；那页多一句「栈道上那扇双航标门还记着那阵风」",
       "stage": "ending", "location": "Lamp_A_02", "class": "auto", "checklist": ["2.10.10", "2.17.15"], "budget": 60,
-      "actions": ["teleport:Lamp_A_02:2.5:0", "wait_real:1", "interact:completed:Lamp_A_02", "wait_panel:4", "shot:roster_intro:ui", "assert:overflow_none", "choose:0", "wait_real:0.6", "shot:roster_page:ui", "assert:overflow_none", "assert:body_contains:栈道那头的装置还记着那阵风|The device at the boardwalk still remembers that wind"]
+      "actions": ["teleport:Lamp_A_02:2.5:0", "wait_real:1", "interact:completed:Lamp_A_02", "wait_panel:4", "shot:roster_intro:ui", "assert:overflow_none", "choose:0", "wait_real:0.6", "shot:roster_page:ui", "assert:overflow_none", "assert:body_contains:栈道上那扇双航标门还记着那阵风|The twin-beacon gate on the boardwalk still remembers that wind"]
     },
     {
       "id": "SKY_AUTO_END_ECHO_BLOCKERS", "title": "结局档、没带晴岚风晶：不挂「引风」，正文末尾写缺什么",
@@ -405,7 +405,7 @@
     {
       "id": "SKY_AUTO_END_ECHO_SUMMON", "title": "核 + 一块风晶：挂出「引风」，按下后面板收起、风晶少一块、核还在、本趟计数 1",
       "stage": "ending", "location": "Search_E", "class": "auto", "checklist": ["2.17.6", "2.17.7", "M_SKY_ISLAND_14"], "budget": 70,
-      "actions": ["give_if_missing:500069:1", "give:500079:1", "invincible:on", "teleport:Search_E:2:0", "clear_nearby:50:15", "interact:Search_E", "wait_panel:4", "assert:choice_present:引风|Call the wind", "shot:echo_offered:ui", "choose_label:引风|Call the wind", "wait_real:1", "assert:panel_closed", "assert:echo_starts:1", "assert:pack_delta:500079:0", "assert:pack_count_ge:500069:1", "wait_caption:风晶在装置里烧化|windcrystal burns away:5:optional", "shot:echo_open_caption:ui:SkyIslandHud"]
+      "actions": ["give_if_missing:500069:1", "give:500079:1", "invincible:on", "teleport:Search_E:2:0", "clear_nearby:50:15", "interact:Search_E", "wait_panel:4", "assert:choice_present:引风|Call the wind", "shot:echo_offered:ui", "choose_label:引风|Call the wind", "wait_real:1", "assert:panel_closed", "assert:echo_starts:1", "assert:pack_delta:500079:0", "assert:pack_count_ge:500069:1", "wait_caption:风晶在双航标门前烧化|windcrystal burns away:5:optional", "shot:echo_open_caption:ui:SkyIslandHud"]
     },
     {
       "id": "SKY_AUTO_END_ECHO_RING", "title": "回响第一次相位：先站到回响刷出点 POI_E 旁（本体还没追远），风眼落在画面中间；预警圈从出现起连拍看线性加粗与柔边、画在风眼、不跟着本体走；栈道起大风；三波与原地那一声连拍（开着无敌，不走回圈里挨那一声）",
@@ -510,7 +510,7 @@
         "dialogue_advance:0.4",
         "wait_dialogue_typed:10",
         "shot:dialogue_alt_line4:ui:Dialogue",
-        "assert:dialogue_line_contains:观星手|stargazer up on|悬根林的风标底下蹲着个猎首|huntmaster crouches|断风游猎|Galebreaker Ranger holds",
+        "assert:dialogue_line_contains:观星手|stargazer up on|悬根林的风标底下蹲着个猎首|huntmaster crouches|断风游猎|Galebreaker holds",
         "dialogue_advance:30",
         "wait_dialogue_typed:10",
         "shot:dialogue_alt_choice:ui:Dialogue",
@@ -588,7 +588,7 @@
     {
       "id": "SKY_AUTO_ALT_WORLD", "title": "换语言重看岛上世界文字与短字幕：HUD 目标卡、罗盘读数、桥口木牌 K3、码头浮木的浮空字与采集字幕、归航船名册老舵手页、折翎旧腰牌、归航菜便当字幕",
       "stage": "alt_language", "location": "PlayerSpawn, POI_B, Lamp_A_02, EnemySpawn_F", "class": "shot", "checklist": ["M_SKY_ISLAND_09", "2.10.14", "2.11.15", "2.12.15", "2.17.16"], "budget": 120,
-      "actions": ["teleport:PlayerSpawn:0:0", "wait_real:1", "shot:hud_alt:ui:SkyIslandHud", "assert:overflow_none", "use_compass", "wait_caption::4:optional", "shot:compass_caption_alt:ui:SkyIslandHud", "assert:overflow_none", "teleport:POI_B:14:24", "wait_real:1", "shot:bridge_sign_k3_alt:world", "teleport:Lamp_A_02:-2.5:-4.3", "wait_real:1.2", "shot:gather_label_alt:world", "interact:gather:A2", "wait_caption:采到|Gathered:5:optional", "shot:gather_caption_alt:ui:SkyIslandHud", "interact:completed:Lamp_A_02", "wait_panel:4", "choose:0", "wait_real:0.6", "shot:roster_page_alt:ui", "assert:overflow_none", "assert:body_contains:栈道那头的装置还记着那阵风|The device at the boardwalk still remembers that wind", "invincible:on", "teleport:EnemySpawn_F:3:0", "clear_nearby:45:10", "interact:completed:EnemySpawn_F", "wait_panel:4:false", "shot:zheling_badge_alt:ui", "assert:overflow_none", "close_panel", "give:500071:1", "use_item:500071", "wait_caption:归航菜便当还温着|homecoming bento is still warm:4:optional", "shot:bento_caption_alt:ui:SkyIslandHud"]
+      "actions": ["teleport:PlayerSpawn:0:0", "wait_real:1", "shot:hud_alt:ui:SkyIslandHud", "assert:overflow_none", "use_compass", "wait_caption::4:optional", "shot:compass_caption_alt:ui:SkyIslandHud", "assert:overflow_none", "teleport:POI_B:14:24", "wait_real:1", "shot:bridge_sign_k3_alt:world", "teleport:Lamp_A_02:-2.5:-4.3", "wait_real:1.2", "shot:gather_label_alt:world", "interact:gather:A2", "wait_caption:采到|Gathered:5:optional", "shot:gather_caption_alt:ui:SkyIslandHud", "interact:completed:Lamp_A_02", "wait_panel:4", "choose:0", "wait_real:0.6", "shot:roster_page_alt:ui", "assert:overflow_none", "assert:body_contains:栈道上那扇双航标门还记着那阵风|The twin-beacon gate on the boardwalk still remembers that wind", "invincible:on", "teleport:EnemySpawn_F:3:0", "clear_nearby:45:10", "interact:completed:EnemySpawn_F", "wait_panel:4:false", "shot:zheling_badge_alt:ui", "assert:overflow_none", "close_panel", "give:500071:1", "use_item:500071", "wait_caption:归航菜便当还温着|homecoming bento is still warm:4:optional", "shot:bento_caption_alt:ui:SkyIslandHud"]
     },
     {
       "id": "SKY_AUTO_ALT_NIGHT_WIND", "title": "（可选，约 2–3 分钟）换语言夜里站在桥上：英文寒意与风寒字幕不出框（十盏灯亮后只有桥上还有风；起风说明每趟只发一次，真实状态段已发过）",

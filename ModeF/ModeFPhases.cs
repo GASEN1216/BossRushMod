@@ -194,7 +194,7 @@ namespace BossRush
                         modeFState.PhaseDuration = MODEF_PREPARATION_DURATION;
                         owner.ShowBigBanner(L10n.T(
                             ModBehaviour.RichDangerTag + "血猎追击</color> · " + ModBehaviour.RichWarningTag + "准备阶段</color> 开始！持续 180 秒",
-                            ModBehaviour.RichDangerTag + "Bloodhunt</color> · " + ModBehaviour.RichWarningTag + "Preparation Phase</color> started! 180 seconds"
+                            ModBehaviour.RichDangerTag + "Blood Hunt</color> · " + ModBehaviour.RichWarningTag + "Preparation Phase</color> started! 180 seconds"
                         ));
                         ModBehaviour.DevLog("[ModeF] 进入准备阶段 (180s, 1%/s)");
                         break;
@@ -205,7 +205,7 @@ namespace BossRush
                         TryFulfillModeFPendingRespawns();
                         owner.ShowBigBanner(L10n.T(
                             ModBehaviour.RichDangerTag + "血猎追击</color> · " + ModBehaviour.RichWarningTag + "悬赏阶段</color> 开始！悬赏名单已生成",
-                            ModBehaviour.RichDangerTag + "Bloodhunt</color> · " + ModBehaviour.RichWarningTag + "Bounty Phase</color> started! Bounty list generated"
+                            ModBehaviour.RichDangerTag + "Blood Hunt</color> · " + ModBehaviour.RichWarningTag + "Bounty Phase</color> started! Bounty list generated"
                         ));
                         ModBehaviour.DevLog("[ModeF] 进入悬赏阶段 (180s, 1.5%/s)");
                         break;
@@ -214,7 +214,7 @@ namespace BossRush
                         modeFState.PhaseDuration = MODEF_HUNTSTORM_DURATION;
                         owner.ShowBigBanner(L10n.T(
                             ModBehaviour.RichDangerTag + "血猎追击</color> · " + ModBehaviour.RichDangerTag + "猎潮阶段</color> 开始！Boss 全面追杀！",
-                            ModBehaviour.RichDangerTag + "Bloodhunt</color> · " + ModBehaviour.RichDangerTag + "Hunt Storm</color> started! All bosses hunting you!"
+                            ModBehaviour.RichDangerTag + "Blood Hunt</color> · " + ModBehaviour.RichDangerTag + "Hunt Storm</color> started! All bosses hunting you!"
                         ));
                         ModBehaviour.DevLog("[ModeF] 进入猎潮阶段 (180s, 2%/s)");
                         break;
@@ -224,7 +224,7 @@ namespace BossRush
                         SpawnFinalExtractionPoint();
                         owner.ShowBigBanner(L10n.T(
                             ModBehaviour.RichDangerTag + "血猎追击</color> · " + ModBehaviour.RichSuccessTag + "撤离阶段</color> 开始！撤离点已生成，速速撤离！",
-                            ModBehaviour.RichDangerTag + "Bloodhunt</color> · " + ModBehaviour.RichSuccessTag + "Extraction Phase</color> started! Extraction point spawned, evacuate now!"
+                            ModBehaviour.RichDangerTag + "Blood Hunt</color> · " + ModBehaviour.RichSuccessTag + "Extraction Phase</color> started! Extraction point spawned, evacuate now!"
                         ));
                         ModBehaviour.DevLog("[ModeF] 进入撤离阶段 (无限, 3%/s)");
                         break;
@@ -529,7 +529,7 @@ namespace BossRush
 
                 owner.ShowBigBanner(L10n.T(
                     ModBehaviour.RichDangerTag + "血猎追击失败！</color> 你倒在了血猎场上...",
-                    ModBehaviour.RichDangerTag + "Bloodhunt Failed!</color> You fell on the hunting grounds..."
+                    ModBehaviour.RichDangerTag + "Blood Hunt Failed!</color> You fell on the hunting grounds..."
                 ));
 
                 // 印记清零、不发奖励
@@ -722,7 +722,7 @@ namespace BossRush
                 {
                     owner.ShowMessage(L10n.T(
                         "血猎追击模式已结束！",
-                        "Bloodhunt mode ended!"
+                        "Blood Hunt ended!"
                     ));
                 }
             }

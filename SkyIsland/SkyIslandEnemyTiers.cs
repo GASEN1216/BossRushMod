@@ -54,7 +54,7 @@ namespace BossRush
         internal static string NameEn(SkyIslandEnemyTier tier)
         {
             if (tier == SkyIslandEnemyTier.Storm) return "Windeater";
-            if (tier == SkyIslandEnemyTier.Elite) return "Galebreaker Ranger";
+            if (tier == SkyIslandEnemyTier.Elite) return "Galebreaker";
             return "Cloudedge Scavenger";
         }
 

@@ -9,7 +9,7 @@
 | **Standard BossRush** | Ticket | Limited waves | Classic Boss wave challenge | ★★☆☆☆ |
 | **Infinite Hell** | Ticket (select at signpost) | Unlimited waves | Bosses get stronger forever | ★★★★☆ |
 | **From Scratch** | Naked + Ticket | Unlimited waves | Random start, grow from zero | ★★★☆☆ |
-| **Faction War** | Naked + Banner | Sandbox | Multi-faction Boss brawl | ★★★☆☆ |
+| **Faction War** | Naked + Faction Flag | Sandbox | Multi-faction Boss brawl | ★★★☆☆ |
 | **Blood Hunt** | Naked + Ticket + Transponder | 4 phases | Constant bleed, kill to heal | ★★★★★ |
 | **Fate Echo** | Current loadout + Ticket + Fate Echo Relic | 9 waves, 3 acts | Counter your habits, then hunt your nemesis | ★★★★★ |
 | **Zombie Mode** | Zombie Tide Invitation | Roguelite survival | Enter empty-handed, endless zombie waves + escalating pollution + purification-point economy, separate from the seven modes above | ★★★★☆ |
@@ -19,7 +19,7 @@
 
 Carrying multiple entry items? The system picks by priority:
 
-1. **Faction War** — Naked-entry requirements met + Banner detected
+1. **Faction War** — Naked-entry requirements met + Faction Flag detected
 2. **Blood Hunt** — Naked-entry requirements met + Transponder + Ticket detected
 3. **Fate Echo** — Relic + Ticket detected, no Transponder
 4. **From Scratch** — Naked + Ticket detected

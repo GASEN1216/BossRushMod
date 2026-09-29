@@ -365,7 +365,7 @@ namespace BossRush
                 PendingStarterNotice = L10n.T(
                     "菜地起步种子已放进背包：" + string.Join("、", namesCN.ToArray()) + "。种下后记得浇水，浇过水才会长。用完了去基地售货机买，龙裔遗族、焚天龙皇、幽灵女巫也会掉。",
                     "Starter garden seeds are in your backpack: " + string.Join(", ", namesEN.ToArray())
-                    + ". Water them after planting; they only grow once watered. Buy more from the base vendor; the Dragon Descendant, Dragon King and Phantom Witch also drop them.");
+                    + ". Water them after planting; they only grow once watered. Buy more from the base vendor; the Dragon Descendant, Skyburner Dragon Lord and Phantom Witch also drop them.");
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "已发放菜地起步种子: " + namesEN.Count + " 种");
                 return true;
             }

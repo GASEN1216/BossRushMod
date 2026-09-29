@@ -63,8 +63,8 @@ namespace BossRush
         {
             get
             {
-                return L10n.T("风晶在装置里烧化了。云海那头，那阵风循着味道回来了。",
-                    "The windcrystal burns away in the device. Out on the cloud sea, that wind follows the scent back.");
+                return L10n.T("风晶在双航标门前烧化了。云海那头，那阵风循着味道回来了。",
+                    "The windcrystal burns away at the twin-beacon gate. Out on the cloud sea, that wind follows the scent back.");
             }
         }
 

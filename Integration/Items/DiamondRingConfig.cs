@@ -209,6 +209,33 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 按 NPC 取拒绝对话：NPC 配置实现了 ring_reject 就用专属台词，否则落回通用池。
+        /// </summary>
+        public static string GetRandomRejectDialogue(string npcId)
+        {
+            string persona = NPCDialogueSystem.GetPersonaLine(npcId, "ring_reject");
+            return !string.IsNullOrEmpty(persona) ? persona : GetRandomRejectDialogue();
+        }
+
+        /// <summary>
+        /// 按 NPC 取“花心惩罚”对话（ring_cheater），没有专属版本就落回通用池。
+        /// </summary>
+        public static string GetRandomCheaterDialogue(string npcId)
+        {
+            string persona = NPCDialogueSystem.GetPersonaLine(npcId, "ring_cheater");
+            return !string.IsNullOrEmpty(persona) ? persona : GetRandomCheaterDialogue();
+        }
+
+        /// <summary>
+        /// 按 NPC 取“已婚同配偶重复送戒指”拒绝对话（ring_spouse_repeat），没有专属版本就落回通用池。
+        /// </summary>
+        public static string GetRandomSpouseRingRejectDialogue(string npcId)
+        {
+            string persona = NPCDialogueSystem.GetPersonaLine(npcId, "ring_spouse_repeat");
+            return !string.IsNullOrEmpty(persona) ? persona : GetRandomSpouseRingRejectDialogue();
+        }
+
+        /// <summary>
         /// 获取结婚过场视频路径（优先NPC专属，其次通用文件）
         /// </summary>
         /// <param name="npcId">NPC ID</param>

@@ -172,9 +172,11 @@ namespace BossRush
 
                 if (npcTransform != null)
                 {
-                    string text = L10n.T(
-                        "看来我们要分道扬镳了...",
-                        "Looks like we have to go our separate ways...");
+                    string text = NPCDialogueSystem.GetPersonaLineOrDefault(
+                        npcId,
+                        "marriage_divorce",
+                        "……好，我明白了。往后各走各的。",
+                        "...I understand. We go our own ways from here.");
                     NPCDialogueSystem.ShowDialogue(npcId, npcTransform, text, 4.5f);
                 }
             }
@@ -857,9 +859,12 @@ namespace BossRush
                         ? DateTime.Now.ToString("yyyy年M月d日")
                         : marriageDateTextCN;
                     string dateEn = DateTime.Now.ToString("MMMM d, yyyy");
-                    string bubbleText = L10n.T(
-                        dateCn + "我会永远记住这个日子的~",
-                        "I will always remember this day: " + dateEn + "~");
+                    string personaBubble = NPCDialogueSystem.GetPersonaLine(npcId, "marriage_bubble_date");
+                    string bubbleText = !string.IsNullOrEmpty(personaBubble)
+                        ? personaBubble.Replace("{date}", L10n.T(dateCn, dateEn))
+                        : L10n.T(
+                            dateCn + "，这个日子我会记着。",
+                            dateEn + ", I'll remember this day.");
                     NPCDialogueSystem.ShowDialogue(npcId, npcTransform, bubbleText, 4f);
                 }
             }

@@ -419,7 +419,7 @@ namespace BossRush
                 new string[][]
                 {
                     new string[] { "别动，我先把伤口包好。", "Hold still. Let me dress that wound." },
-                    new string[] { "这些安神滴剂是我调的，能清掉负面状态。", "I mixed these Calming Drops. They clear harmful effects." },
+                    new string[] { "安神滴剂是我调的，中毒、流血、乱了神，都能压一压。", "I mixed these drops. Poison, bleeding, frayed nerves: they settle it." },
                     new string[] { "难受就用，别又咬牙硬撑。", "Use them when you need them. Stop trying to tough it out." },
                     new string[] { "拿着，药包里给它留个位置。", "Take them. Make room in your medkit." }
                 });
@@ -446,7 +446,7 @@ namespace BossRush
                 {
                     new string[] { "以前我给人包扎完，就不想别的了。", "I used to finish a dressing and put everything else aside." },
                     new string[] { "现在一听见门响，就想看看是不是你。", "Now I look up whenever the door opens, hoping it's you." },
-                    new string[] { "明明没病，还总盼着你来医务室。你说怪不怪。", "You're not even ill, but I keep hoping you'll visit. Strange, isn't it?" },
+                    new string[] { "明明没病，还总盼着你来医疗站。你说怪不怪。", "You're not even ill, but I keep hoping you'll visit. Strange, isn't it?" },
                     new string[] { "以后没受伤也来坐坐，好吗？", "Come sit with me even when you're not hurt, will you?" },
                     new string[] { "不用挂号，我想见你。", "No appointment. I just want to see you." }
                 });
@@ -490,7 +490,7 @@ namespace BossRush
                 { "BossRush_Sign_Cheer", L10n.T("<color=#FFD700>加油！！！</color>", "<color=#FFD700>Go! Go! Go!</color>") },
                 { "BossRush_Sign_Entry", L10n.T("<color=#FFD700>哎哟~你干嘛~</color>", "<color=#FFD700>Hey~ What are you doing~</color>") },
                 { "BossRush_Sign_NextWave", L10n.T("<color=#FFD700>冲！（下一波）</color>", "<color=#FFD700>Charge! (Next Wave)</color>") },
-                { "BossRush_Sign_Victory", L10n.T("<color=#FFD700>君王凯旋归来，拿取属于王的荣耀！</color>", "<color=#FFD700>The King Returns Triumphant, Claim Your Glory!</color>") },
+                { "BossRush_Sign_Victory", L10n.T("<color=#FFD700>打完了？奖励在那边，去拿吧。</color>", "<color=#FFD700>All done? Your reward is over there. Go get it.</color>") },
 
                 // 搬运选项
                 { "BossRush_Carry_Up", L10n.T("搬起", "Pick Up") },

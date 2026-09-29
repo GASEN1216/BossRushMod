@@ -1015,6 +1015,7 @@ echo(Integration\Affinity\Interactables\NPCGiftInteractable.cs
 echo(Integration\Affinity\Interactables\NPCShopInteractable.cs
 echo(Integration\Affinity\NPCs\GoblinAffinityConfig.cs
 echo(Integration\Affinity\NPCs\GoblinAffinityConfig_LanguageCache.cs
+echo(Integration\Affinity\NPCs\GoblinAffinityConfig_Persona.cs
 echo(Integration\Affinity\NPCs\NurseAffinityConfig.cs
 echo(Integration\Affinity\AffinityUIManager.cs
 echo(Integration\Dialogue\DialogueManager.cs

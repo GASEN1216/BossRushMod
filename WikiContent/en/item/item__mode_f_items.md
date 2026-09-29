@@ -9,7 +9,7 @@ Purchasable from Mystery Merchant "Other" shop. **Faction War only.**
 - **Hunter's Whistle** (Blue) — All hostile Bosses within 50m chase you
 - **Blood Hunt Beacon** (Purple) — ALL hostile Bosses on the map chase you
 
-Every 10 Boss kills auto-grants 1 Smoke Bomb. Banners: see Entry & Utility Items.
+Every 10 Boss kills auto-grants 1 Smoke Bomb. Flags: see Entry & Utility Items.
 
 Taunt Smoke Bomb and Chaos Detonator are no longer blocked by an active-Boss population cap. The former always attempts the nearest 10 spawn points, while the latter attempts every point on the map. A new call cannot start until the current respawn task finishes.
 

@@ -105,8 +105,8 @@ namespace BossRush
                 if (announce)
                 {
                     _owner.ShowMessage(L10n.T(
-                        "<color=#FFD700>【雷霆之怒】</color> 套装效果激活！\n电伤转治疗 · 普攻附带雷噬 · 受击雷霆反震",
-                        "<color=#FFD700>[Thunder's Wrath]</color> Set bonus activated!\nShock heals you · attacks arc to nearby foes · counter-shock when hit"
+                        "<color=#FFD700>【雷霆之怒】</color> 已生效\n电伤半转治疗 · 命中向附近敌人放电弧 · 受击可能触发雷霆反震",
+                        "<color=#FFD700>[Thunder's Wrath]</color> active\nHalf of shock damage heals you · hits arc to nearby foes · hits taken may trigger a counter-shock"
                     ));
                 }
             }

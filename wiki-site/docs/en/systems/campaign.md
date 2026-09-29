@@ -115,7 +115,7 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 
 - Go to **Faction War**
 - Defeat 8 hostile bosses. Allies and neutral characters do not count; hand in as soon as the tally is met.
-- Base: put 1 Boss trophy on an official weapon display rack or a dummy
+- Base: put 1 Boss trophy on a weapon display rack or a dummy
 - Reward **50,000** + Affix Forge Stone x2. Handing in unlocks the **jukebox tracks**.
 
 ### Chapter 4 · Collect and Leave
@@ -185,7 +185,7 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
   ledger. Unlocked entries stay readable forever.
 - **Arena Backyard**, one per chapter for the first three:
   - Chapter 1 → **the garden**: the base's garden site opens; pay Shovel ×1 and Poop ×9 to build it. You get a starter pack of seeds, the base vendor sells more and the three mod Bosses drop them; eat the harvest during combat for 30 seconds in its matching Boss form
-  - Chapter 2 → **the display bonus**: put Boss trophies on the official weapon display rack or on a dummy, each one raises your max health
+  - Chapter 2 → **the display bonus**: put Boss trophies on the weapon display rack or on a dummy, each one raises your max health
   - Chapter 3 → **jukebox battle tracks**: the base jukebox picks up the mod's own music
   - Chapters 4 through 6 unlock no backyard facility; they pay in cash, clues and ending
 
@@ -218,8 +218,8 @@ Every hand-in pays a reward, and the item is usually what the next introduction 
 
 | Introduction | Reward |
 | --- | --- |
-| Bring Your Own Gear (Echo of Fate) | 3,000 + BossRush Ticket x2 |
-| Your Turn in the Stands (Duck King Cup) | 3,000 + Relic Egg x1 |
+| Bring Your Own Gear (Fate Echo) | 3,000 + BossRush Ticket x2 |
+| Your Turn in the Stands (Black Market Duck Cup) | 3,000 + Relic Egg x1 |
 | Room for a Cub (Pet Nest) | 3,000 + BossRush Ticket x1 |
 | Expect a Surprise (random events) | 5,000 + BossRush Ticket x1 |
 | Something from the Clouds (Sky Island gear, hand in Brass Scrap x5) | 10,000 |
@@ -233,7 +233,7 @@ Every hand-in pays a reward, and the item is usually what the next introduction 
 | Give Old Gear a Chance (reforge) | 8,000 |
 | Read the Daily Paper (daily report) | 10,000 + Relic Egg x1 |
 
-- **Modes**: Bare Hands, Territory, Blood Hunt, Echo of Fate, Black Market Duck King Cup and Zombie mode. Each quest explains the entry items and preparation; starting a real run is enough, with no first-try victory required.
+- **Modes**: From Scratch, Faction War, Blood Hunt, Fate Echo, Black Market Duck Cup and Zombie Mode. Each quest explains the entry items and preparation; starting a real run is enough, with no first-try victory required.
 - **Pet Nest and random events**: hatch or deploy a cub, or experience a random event in a supported mode.
 - **Sky Island gear**: obtain exclusive gear from an island boss and bring it to base in your backpack or wear it. Visiting the island alone does not count. You also hand Jeff 5 Brass Scrap (mined from the island's brass veins). The route still follows Coordinates Above the Clouds.
 - **Base facilities**: finish the garden, display a Boss trophy, and open the daily report to sign in once.

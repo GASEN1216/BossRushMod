@@ -173,8 +173,8 @@ namespace BossRush
                 {
                     RuntimeStatModifierTracker.RemoveAll(_records, "RaidMeal");
                     Duckov.UI.NotificationText.Push(L10n.T(
-                        "出击餐属性尚未就绪，餐食记录已保留。",
-                        "Meal stats are not ready; your meal record has been kept."));
+                        "这顿出击餐还没准备好，记录先留着。",
+                        "This raid meal isn't ready yet. Your meal record is kept."));
                     return;
                 }
                 // 所有属性装配成功后才结算；写入失败也摘掉刚挂的效果，避免半份餐或白吃。
@@ -182,8 +182,8 @@ namespace BossRush
                 {
                     RuntimeStatModifierTracker.RemoveAll(_records, "RaidMeal");
                     Duckov.UI.NotificationText.Push(L10n.T(
-                        "出击餐登记暂时无法结算，本局未消耗也未生效。",
-                        "The meal record could not be settled; it was neither consumed nor applied."));
+                        "这顿出击餐这次没结算成，没扣也没生效。",
+                        "The raid meal couldn't be settled this time. Nothing was used or applied."));
                     return;
                 }
                 _activeMeal = mealTypeId;

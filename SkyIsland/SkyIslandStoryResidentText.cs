@@ -8,17 +8,17 @@ namespace BossRush
             switch (id)
             {
                 case "sky_fuzhou":
-                    return L10n.T("回来了，先把脚歇稳。岛上的整备和合成仍在码头渡口工台；我留家时，钟庭之争也在那里接交。",
-                        "You are home. Rest your feet. Repairs and crafting are still at the island dock workbench; when I stay home, take and turn in The Bell Court Standoff there too.");
+                    return L10n.T("回来了，先歇脚。修家伙、做东西，还是岛上码头那张工台；我在家，钟庭之争那桩事也在那儿交代。",
+                        "Back. Sit, rest your feet. Repairs and making things are still done at the island dock workbench. While I'm home, the Bell Court Standoff gets settled there too.");
                 case "sky_miantai":
-                    return L10n.T("我在家陪你。回岛要用苔药或药臼，就去悬根林的药材装置，东西都留在那儿。",
-                        "I am here with you. For moss remedies or the mortar on the island, use the herb station in Hanging Root Wood. The supplies are still there.");
+                    return L10n.T("我在家。上岛要苔药、药臼，去悬根林那口臼，东西都放着。",
+                        "I'm home. For moss remedy or the mortar on the island, it's the one under the roots in Hanging Root Wood. Everything's still there.");
                 case "sky_zheling":
-                    return L10n.T("这次守的是咱们的家。岛上的旧事，回镜水寺装置前再了结；家里不比刀枪。",
-                        "This time I am guarding our home. Settle the old island matters at the Mirrorwater Temple device; there is no fighting at home.");
+                    return L10n.T("这回守的是家。岛上没了的事，到了镜水寺再说；家里不动刀。",
+                        "This time I'm holding the house. Whatever's left on the island can wait until the temple. No blades at home.");
                 case "sky_bellkeeper":
-                    return L10n.T("（他写下：我留在家，钟仍在岛上。归航钟任务去归航钟庭装置接交，敲钟也在那里。）",
-                        "(He writes: I stay home, but the bell remains on the island. Take and turn in the Homecoming Bell quest at the Bell Court device, and ring the bell there.)");
+                    return L10n.T("（他在木牌上写：人在家，钟还在岛上。要敲钟，回钟庭找我。）",
+                        "(He writes on a slate: I'm home; the bell is still out on the island. To ring it, come to the Bell Court.)");
                 default: return null;
             }
         }
@@ -35,8 +35,8 @@ namespace BossRush
                             "Everyone who came home got a hot meal. The last bed is for the next boat.")
                         : L10n.T("新风车转起来了。等下一船靠岸，我就下锅。",
                             "The new pinwheel is turning. I'll start cooking when the next boat docks."))
-                    : L10n.T("记录交好了，岛上菜畦也重新开张了。归航菜留在菜畦，回岛时每趟都能吃一顿。",
-                        "The record is returned and the island garden is growing again. A homecoming meal awaits at the garden each trip."));
+                    : L10n.T("记录到手了，菜畦又能开火了。归航菜就留在畦边，回岛的时候，每趟来吃一顿热的。",
+                        "I've got the record back, so the beds can cook again. The homecoming meal waits by the garden; come and eat a hot one each trip."));
             if (data.Has(SkyIslandStoryFlag.PlantingRecord))
                 return greeting + (onIsland
                     ? L10n.T("种植记录找到了，泥手印还在呢。交给我，或留在风铃集委托板上，菜畦就能重新开张了。",
@@ -53,8 +53,8 @@ namespace BossRush
                 ? L10n.T("今天和你一起跑航路，家里的事回去再张罗。\n", "Today we're walking the lanes together. Home can wait until we get back.\n")
                 : L10n.T("回来啦！咱们成了家，岛上的事也不能丢。\n", "You're back! We've made a home together, but the island still needs us.\n");
             if (!onIsland)
-                greeting += L10n.T("航路任务得回岛上接、岛上交。我留在家里的时候，去风铃集委托板找「航路任务」就行。\n",
-                    "Route quests are taken and turned in on the island. When I stay home, the Windchime Market board has them under Route quests.\n");
+                greeting += L10n.T("航路上的活得回岛上接、岛上交。我要是留在家，去风铃集的板子上揭也行。\n",
+                    "Lane work has to be taken and handed in on the island. If I'm home, go and pull it off the board at Windchime Market.\n");
             if (!data.Has(SkyIslandStoryFlag.BeaconQuestDelivered))
             {
                 bool accepted = data.Has(SkyIslandStoryFlag.BeaconQuestAccepted);
@@ -63,25 +63,25 @@ namespace BossRush
                     ? (accepted
                         ? L10n.T("两盏灯都亮了！这单还没交呢，交完再去码头找浮舟接下一单。\n",
                             "Both lamps are lit! Turn in the beacon quest first, then Fuzhou has the next quest at the dock.\n")
-                        : L10n.T("两盏灯都亮了！这单你还没接，先在岛上的「航路任务」里接下再交。交完去码头找浮舟接下一单。\n",
-                            "Both lamps are lit! You haven't taken the beacon quest yet, so accept it under Route quests and turn it in. Then Fuzhou has the next quest at the dock.\n"))
+                        : L10n.T("两盏灯都亮了！这活你还没接，先来我这儿接上，再来交。交了去码头，浮舟那边还有一桩。\n",
+                            "Both lamps are lit! You haven't taken this job yet, so take it from me first, then hand it in. After that, Fuzhou has the next one at the dock.\n"))
                     : data.Has(SkyIslandStoryFlag.WindBeacon)
-                        ? L10n.T("西边风标修好了，还差东边残星工坊那盏星灯。点亮了回来跟我说一声。\n",
-                            "The west beacon is repaired. The east star lamp at Fallen Star Workshop still needs work. Come tell me once it burns.\n")
+                        ? L10n.T("西边风标修好了，就差东边残星工坊那盏星灯。灯一亮，回来找我。\n",
+                            "The west beacon's mended. Only the star lamp at Fallen Star Workshop, on the east side, is left. When it burns, come find me.\n")
                         : data.Has(SkyIslandStoryFlag.StarLamp)
-                            ? L10n.T("东边星灯亮了，还差西边悬根林那支风标。修好了回来跟我说一声。\n",
-                                "The east star lamp is lit. The west beacon in Hanging Root Wood still needs work. Come tell me once it is fixed.\n")
+                            ? L10n.T("东边的灯亮了，西边悬根林那支风标还卡着。修顺了，来我这儿报个到。\n",
+                                "The east lamp is up. The west beacon in Hanging Root Wood is still jammed. Once it turns, check in with me.\n")
                             : L10n.T("西边悬根林那支风标，东边残星工坊那盏星灯，都得修。两头一亮，双航标门自己就开。\n",
                                 "The west beacon in Hanging Root Wood and the east star lamp at Fallen Star Workshop both need fixing. Light both ends and the twin-beacon gate opens itself.\n");
                 if (!accepted && !data.BothBeacons)
-                    progress += L10n.T("这单你还没接呢，先在岛上的「航路任务」里接一下。\n",
-                        "You haven't taken this one yet. Accept it under Route quests on the island first.\n");
-                return greeting + progress + L10n.T("在岛上找我接、找我交。我不在的时候，风铃集委托板上也有「航路任务」。\n",
-                    "Take it from me and turn it in to me, on the island. When I am away, the Windchime Market board has Route quests too.\n");
+                    progress += L10n.T("这活你还没接呢，先找我接上。\n",
+                        "You haven't taken this job yet. Come to me and take it first.\n");
+                return greeting + progress + L10n.T("接活交活都找我，就在岛上。我不在的话，风铃集的委托板上也挂着，照样能接能交。\n",
+                    "Take it from me and hand it in to me, right here on the island. If I'm away, the board at Windchime Market has it too, same deal.\n");
             }
             if (!data.Has(SkyIslandStoryFlag.BellCourtQuestAccepted))
-                return greeting + L10n.T("航标这单交好了。去码头找浮舟，在「航路任务」里接下钟庭之争。\n",
-                    "The beacon quest is turned in. Find Fuzhou at the island dock and take The Bell Court Standoff under Route quests.\n");
+                return greeting + L10n.T("航标这桩活了结了。去码头找浮舟，钟庭之争那一桩，他等着派给你。\n",
+                    "The beacon job's done. Go find Fuzhou at the dock; he has The Bell Court Standoff to hand you.\n");
             if (data.Has(SkyIslandStoryFlag.Ending))
                 return greeting + L10n.T("钟响时，两头的风铃也响了。岛上委托板还挂着，回去可以再揭一张。\n",
                     "The chimes at both ends rang with the bell. There's still work on the island contract board next trip.\n") + CurrentObjective + "\n";

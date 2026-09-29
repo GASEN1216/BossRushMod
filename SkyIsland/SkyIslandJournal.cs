@@ -86,8 +86,8 @@ namespace BossRush
                 return L10n.T("手记还空着。走到哪儿，就记到哪儿。",
                     "The journal is still blank. Whatever you walk past goes in here.");
             if (notes >= NoteCount)
-                return L10n.T("二十页见闻都记满了，这本手记可以留给下一位旅人。",
-                    "All twenty notes are in. This journal is ready for the next traveller.");
+                return L10n.T("二十页见闻都记满了，这本手记可以留给后来的人。",
+                    "All twenty notes are in. This journal is ready for whoever comes next.");
             return L10n.T("手记记了 ", "The journal holds ") + notes
                 + L10n.T(" 页，还空着 ", " pages; ") + (NoteCount - notes)
                 + L10n.T(" 页。", " are still blank.");
@@ -157,13 +157,13 @@ namespace BossRush
             Use(text, BossRushItemIds.SkyIslandCloudmossFiber, L10n.T("风灯、驱风香、星苔药膏、云苔纱笠，夜里包蛙卵；栈道与邮亭的风晶灯",
                 "wind lanterns, windward incense, starmoss salve, the cloudmoss veil, wrapping frogspawn at night; the boardwalk and post hut lamps"));
             Use(text, BossRushItemIds.SkyIslandBrassScrap, L10n.T("晴岚护符、风标罗盘、风晶灭蚊灯的罩；工坊、钟庭与听雨洞的风晶灯",
-                "Qinglan charms, wind-vane compasses, the gnat zapper's cage; the workshop, Bell Court and grotto lamps"));
+                "Qinglan charms, wind-vane compasses, the Gnat Zapper's cage; the workshop, Bell Court and grotto lamps"));
             Use(text, BossRushItemIds.SkyIslandWindcrystalShard, L10n.T("五片熔成晴岚风晶（星灯亮起之后）；护符、药膏、罗盘也要；回响遗存里还回来三片",
                 "five fuse into a Qinglan Windcrystal (once the star lamp is lit); charms, salves and compasses need them too; the echo's cache gives three back"));
             Use(text, BossRushItemIds.SkyIslandStardust, L10n.T("晴岚护符、云苔纱笠、残星瞭台的风晶灯；夜里风晶簇更容易出；回响遗存里有两撮",
                 "Qinglan charms, the cloudmoss veil and the Starfall Overlook lamp; clusters yield more at night; the echo's cache holds two"));
             Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("用于七盏风晶灯与灭蚊灯，灯旁能取暖。十盏灯全亮后，岛上夜里无风，桥上仍有风。结局后可在鸣风栈道烧一块来「引风」，召回噬风·回响，每趟一次。",
-                "Wicks for seven windcrystal lamps and the gnat zapper. Lamps provide warmth. Ten lit lamps stop island night winds; bridges stay windy. After the ending, burn one on Windsong Boardwalk to call the Windeater's echo, once per raid."));
+                "Wicks for seven windcrystal lamps and the Gnat Zapper. Lamps provide warmth. Ten lit lamps stop island night winds; bridges stay windy. After the ending, burn one on Windsong Boardwalk to call the Windeater's echo, once per raid."));
             Use(text, BossRushItemIds.SkyIslandWindLantern, L10n.T("挡微风、大风挡一半，也能照明。会招云蚋，但灯下的蚋不叮人、不躲子弹，趁灯亮着清掉。钟庭风晶灯也需要一盏。",
                 "Blocks breezes and half of a gale. Draws gnats into its light, where they cannot bite or dodge shots. Clear them before it goes out. The Bell Court lamp also needs one."));
             Use(text, BossRushItemIds.SkyIslandWindwardIncense, L10n.T("挡风、加快耐力恢复，也能驱蚋。镜水寺风晶灯需要一炷。回响唤起的栈道与桥上大风也能挡。",
@@ -192,7 +192,7 @@ namespace BossRush
             Use(text, BossRushItemIds.SkyIslandStarbrassVisorHelm, L10n.T("残星匠首掉的头盔：和星炉背甲、星炉背囊任穿两件，渡口工台做东西少耗 1 片残铜片",
                 "the Starforge Foreman's helmet: wear any two of it, the Starfurnace Harness and the Starfurnace Pack and the dock workbench takes one less brass scrap"));
             Use(text, BossRushItemIds.SkyIslandStarfurnaceHarness, L10n.T("残星匠首掉的护甲：星工两件套之一（渡口工台少耗 1 片残铜片）",
-                "the Starforge Foreman's armour: one of the Starworks pair (one less brass scrap at the dock workbench)"));
+                "the Starforge Foreman's armor: one of the Starworks pair (one less brass scrap at the dock workbench)"));
             Use(text, BossRushItemIds.SkyIslandStarfurnacePack, L10n.T("残星匠首掉的背囊：背包容量 +6，也算星工两件套之一",
                 "the Starforge Foreman's pack: +6 pack capacity, and it counts toward the Starworks pair"));
             Use(text, BossRushItemIds.SkyIslandStargazerLensHelm, L10n.T("瞭台观星手掉的镜盔：戴着站定 2 秒，40 米内的敌人脚下亮起星标（耐久打光就不灵了）",
@@ -201,7 +201,7 @@ namespace BossRush
             Use(text, BossRushItemIds.SkyIslandRootweaveMask, L10n.T("悬根猎首掉的面罩：和藤编甲、悬根箭囊任穿两件，翻搜刮箱时出岛上特产的机会翻倍",
                 "the Hanging-Root Huntmaster's mask: wear any two of it, the Vinewoven Cuirass and the Hanging-Root Quiver and island goods turn up twice as often in crates you search"));
             Use(text, BossRushItemIds.SkyIslandVinewovenCuirass, L10n.T("悬根猎首掉的护甲：悬根猎装之一（翻箱出特产的机会翻倍）",
-                "the Huntmaster's armour: one of the rootweave pair (island goods turn up twice as often in crates)"));
+                "the Huntmaster's armor: one of the rootweave pair (island goods turn up twice as often in crates)"));
             Use(text, BossRushItemIds.SkyIslandHangrootQuiver, L10n.T("悬根猎首掉的箭囊：背包容量 +6，也算悬根猎装之一",
                 "the Huntmaster's quiver: +6 pack capacity, and it counts toward the rootweave pair"));
             Use(text, BossRushItemIds.SkyIslandOldMailbag, L10n.T("截信人掉的邮包：背着上岛，信鸽那一趟多送一封信",
@@ -209,7 +209,7 @@ namespace BossRush
             Use(text, BossRushItemIds.SkyIslandGreenearStrawHat, L10n.T("穗镰掉的斗笠：和蓑衣甲、谷囊任穿两件，割青穗草一次多割一份",
                 "Grain Sickle's hat: wear any two of it, the Straw Raincoat and the Grain Sack and each cut of greenear yields one more sheaf"));
             Use(text, BossRushItemIds.SkyIslandStrawRaincoat, L10n.T("穗镰掉的护甲：蓑衣农装之一（割青穗草多一份）",
-                "Grain Sickle's armour: one of the straw-cloak pair (one more greenear sheaf per cut)"));
+                "Grain Sickle's armor: one of the straw-cloak pair (one more greenear sheaf per cut)"));
             Use(text, BossRushItemIds.SkyIslandGrainSack, L10n.T("穗镰掉的谷囊：背包容量 +7，也算蓑衣农装之一",
                 "Grain Sickle's sack: +7 pack capacity, and it counts toward the straw-cloak pair"));
             Use(text, BossRushItemIds.SkyIslandRainhushEarmuffs, L10n.T("听雨人掉的耳罩：戴着，所有头目与岛主的预警圈亮得更久；听雨人要 16 枪才引一次落石",
@@ -218,11 +218,11 @@ namespace BossRush
                 "the Gnat Piper's mask: worn, the cloud gnats around you stop dodging your shots"));
             Use(text, BossRushItemIds.SkyIslandMirrorgrainPlate, L10n.T("镜中客掉的护甲：穿着去见折翎，不带旧信与航路图也能和解",
                 "the Mirror Guest's plate: wear it to see Zheling and you can reconcile without the old letter or the route chart"));
-            Use(text, BossRushItemIds.SkyIslandWindbreakHood, L10n.T("断风游猎 · 守掉的兜帽：和断风披甲、断风行囊任穿两件，走桥与中继平台更快",
+            Use(text, BossRushItemIds.SkyIslandWindbreakHood, L10n.T("断风游猎·守掉的兜帽：和断风披甲、断风行囊任穿两件，走桥与中继平台更快",
                 "the Galebreaker Warden's hood: wear any two of it, the Galebreaker Mantle and the Galebreaker Pack and you move faster on bridges and relay platforms"));
-            Use(text, BossRushItemIds.SkyIslandWindbreakMantle, L10n.T("断风游猎 · 追掉的披甲：断风套之一（走桥更快）",
+            Use(text, BossRushItemIds.SkyIslandWindbreakMantle, L10n.T("断风游猎·追掉的披甲：断风套之一（走桥更快）",
                 "the Galebreaker Chaser's mantle: one of the Galebreaker pair (faster on bridges)"));
-            Use(text, BossRushItemIds.SkyIslandWindbreakPack, L10n.T("断风游猎 · 伏掉的行囊：背包容量 +5，也算断风套之一",
+            Use(text, BossRushItemIds.SkyIslandWindbreakPack, L10n.T("断风游猎·伏掉的行囊：背包容量 +5，也算断风套之一",
                 "the Galebreaker Stalker's pack: +5 pack capacity, and it counts toward the Galebreaker pair"));
             return text.ToString();
         }
@@ -239,8 +239,8 @@ namespace BossRush
         {
             get
             {
-                return L10n.T("终页 · 晴岚手记\n二十处见闻都收进了这本手记。翻到最后，你发现每一页的边角都画着同一个小记号：一只系在码头的空船。浮舟说这是岛上的老规矩，走过的路记下来留给下一位旅人，后来的人就不会迷路。",
-                    "Last page · The Qinglan journal\nAll twenty notes are in this journal now. On the last page you notice the same small mark in the corner of every page: an empty boat tied at the dock. Fuzhou says it's an old island custom. Write down the way you came and leave it for the next traveller, and nobody after you gets lost.");
+                return L10n.T("终页 · 晴岚手记\n二十处见闻都收进了这本手记。翻到最后，你发现每一页的边角都画着同一个小记号：一只系在码头的空船。浮舟说这是岛上的老规矩：走过的路记下来，留给后来的人，别让他们再迷路。",
+                    "Last page · The Qinglan journal\nAll twenty notes are in this journal now. On the last page you notice the same small mark in the corner of every page: an empty boat tied at the dock. Fuzhou says it's an old island custom: write down the way you came and leave it for whoever follows, so they don't get lost.");
             }
         }
 

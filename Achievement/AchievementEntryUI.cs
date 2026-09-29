@@ -546,7 +546,7 @@ namespace BossRush
                     nameText.color = DisabledColor;
                     descText.text = GetDescription(isChinese);
                     descText.color = DisabledColor;
-                    rewardText.text = "$" + achievement.reward.cashReward.ToString("N0");
+                    rewardText.text = (isChinese ? "￥" : "$") + achievement.reward.cashReward.ToString("N0");
                     rewardText.color = DisabledColor;
                     SetStatusSlot(false, false, true);
                     LoadIcon(achievement.iconFile, true);
@@ -572,7 +572,7 @@ namespace BossRush
                     nameText.color = TextColor;
                     descText.text = GetDescription(isChinese);
                     descText.color = DescColor;
-                    rewardText.text = "$" + achievement.reward.cashReward.ToString("N0");
+                    rewardText.text = (isChinese ? "￥" : "$") + achievement.reward.cashReward.ToString("N0");
                     rewardText.color = GoldColor;
                     SetStatusSlot(true, false, false);
                     claimButton.interactable = true;
@@ -592,7 +592,7 @@ namespace BossRush
                     nameText.color = TextColor;
                     descText.text = GetDescription(isChinese);
                     descText.color = DescColor;
-                    rewardText.text = "$" + achievement.reward.cashReward.ToString("N0");
+                    rewardText.text = (isChinese ? "￥" : "$") + achievement.reward.cashReward.ToString("N0");
                     rewardText.color = DisabledColor;
                     // 已领取不留灰按钮（A-21）：按钮收起，同一格写「√ 已领取」
                     SetStatusSlot(false, true, false);

@@ -36,9 +36,9 @@ namespace BossRush
 
         public override string DisplayNameEN => "Cloud Soar I";
 
-        public override string DescriptionCN => "尔等凡鸭怎知我俯瞰众生的疲惫";
+        public override string DescriptionCN => "尔等凡鸭怎知我俯瞰众生的疲惫。\n装备后按住翻滚键腾空，松开滑翔；腾空与滑翔都耗体力。";
 
-        public override string DescriptionEN => "Mere ducks cannot fathom my exhaustion overlooking all beings";
+        public override string DescriptionEN => "How would you mere ducks know the weariness of looking down on everyone?\nEquip it, hold Dash to rise and release to glide. Rising and gliding both drain stamina.";
 
         public override int ItemQuality => 6;
 

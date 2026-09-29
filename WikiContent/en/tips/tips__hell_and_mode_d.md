@@ -7,7 +7,7 @@ No end. Bosses gain +2% stats per wave. **Survive as long as you can.**
 #### Prep
 - Best gear, best weapons, max ammo
 - Dragon King Set (dash + fire immunity) is critical late
-- Cloud Rider for aerial dodging, Reverse Scale for emergency saves
+- Cloud Soar I for aerial dodging, Reverse Scale for emergency saves
 
 #### Pacing
 - Infinite Hell draws from enabled Bosses by weight from wave 1; it has no 20-wave heavy-hitter protection, so a Dragon Lord or one of the Four Horsemen can appear immediately

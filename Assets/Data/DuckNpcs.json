@@ -90,7 +90,8 @@
               "lines": [
                 { "cn": "又是你啊，今天外面还太平吗？", "en": "You again. Quiet out there today?" },
                 { "cn": "在这儿待久了，哪块砖松了我都知道。", "en": "Been here so long I know which bricks are loose." },
-                { "cn": "你回来了就好。", "en": "Glad you're back." }
+                { "cn": "你回来了就好。", "en": "Glad you're back." },
+                { "cn": "外面风大吗？进来暖一暖。", "en": "Windy out there? Come in and warm up." }
               ]
             },
             {
@@ -111,7 +112,8 @@
           "idle": [
             { "cn": "外面的天色又变了。", "en": "Weather's turning again." },
             { "cn": "这地方待久了，倒也不觉得闷。", "en": "You get used to this place. I don't mind the quiet." },
-            { "cn": "……嗯？没什么，随便看看。", "en": "Hm? Nothing. Just looking around." }
+            { "cn": "……嗯？没什么，随便看看。", "en": "Hm? Nothing. Just looking around." },
+            { "cn": "炉子上的水该开了。", "en": "The kettle should be boiling by now." }
           ],
           "afterGift": [
             { "cn": "这个我收下了，真的谢谢你。", "en": "I'll keep this. Thank you." },
@@ -1065,6 +1067,60 @@
             {
               "cn": "（他把礼物放好，写道：有你就好。）",
               "en": "(He puts the gift away and writes: I am glad you are here.)"
+            }
+          ],
+          "marriage_chapel_required": [
+            {
+              "cn": "（他在铜牌上写：先把教堂建好。）",
+              "en": "(He writes on the brass plate: Build the chapel first.)"
+            }
+          ],
+          "marriage_divorce": [
+            {
+              "cn": "（他放下铜牌，点了点头。）",
+              "en": "(He lowers the brass plate and nods once.)"
+            }
+          ],
+          "marriage_bubble_date": [
+            {
+              "cn": "（铜牌上多了一行字：{date}。）",
+              "en": "(The brass plate gains a new line: {date}.)"
+            }
+          ],
+          "marriage_cheat_first": [
+            {
+              "cn": "（他看着你，把铜牌翻了过去，这次没有写字。）",
+              "en": "(He looks at you and turns the brass plate face down. Not a word this time.)"
+            }
+          ],
+          "marriage_cheat_repeat": [
+            {
+              "cn": "（他敲了一下钟，很轻。）",
+              "en": "(He strikes the bell once, very softly.)"
+            }
+          ],
+          "marriage_follow_refused": [
+            {
+              "cn": "（他指了指铜牌：今天我守钟。）",
+              "en": "(He points at the plate: I keep the bell today.)"
+            }
+          ],
+          "ring_reject": [
+            {
+              "cn": "（他摇了摇头，把戒指推了回来。）",
+              "en": "(He shakes his head and pushes the ring back.)"
+            }
+          ],
+          "ring_cheater": [
+            {
+              "cn": "（他在铜牌上写：有家的人，别乱送。）",
+              "en": "(He writes: You have a home already. Don't hand these out.)"
+            }
+          ],
+          "ring_spouse_repeat": [
+            {
+              "cn": "（他按住你的手，写下：一枚够了。）",
+              "en": "(He presses your hand and writes: One is enough.)"
             }
           ]
         }

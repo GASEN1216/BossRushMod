@@ -105,8 +105,8 @@ namespace BossRush
             Dictionary<string, string> map = new Dictionary<string, string>();
             map[buildingKey] = L10n.T("征程公告板", "Campaign Board");
             map[buildingKey + "_Desc"] = L10n.T(
-                "钉满旧悬赏纸的木板。杰夫把征程的活儿收回自己手里了，这块板子留着当个纪念，拆了也不影响进度。",
-                "An old board plastered with bounty notices. Jeff runs the campaign himself now. Keep it as a souvenir or tear it down, either way your progress is safe.");
+                "钉满旧悬赏纸的木板。杰夫把征程的活儿收回自己手里了，这块板子留着当个念想，拆了也不耽误事。",
+                "An old board plastered with bounty notices. Jeff runs the campaign himself now. Keep it as a keepsake or tear it down; nothing rides on it.");
 
             LocalizationHelper.InjectLocalizations(map);
         }

@@ -365,7 +365,7 @@ namespace BossRush
             }
             catch { }
 
-            return L10n.T("我", "Me");
+            return L10n.T("无名鸭", "Nameless Duck");
         }
 
         private string GetActiveSceneName_DeathWraith()

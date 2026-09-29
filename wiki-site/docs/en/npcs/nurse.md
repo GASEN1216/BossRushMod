@@ -2,7 +2,7 @@
 
 ## Who Is She?
 
-Former senior medical researcher at J-Lab. After the lab collapsed, she escaped to Duckov and opened a field clinic. **Your healer and debuff cleaner**, with her own Affinity storyline.
+A nurse who came out of J-Lab, with the marks of its experiments still on her legs. After the lab blew up she ran to Duckov and opened a field clinic. **Your healer and debuff cleaner**, with her own Affinity storyline.
 
 ## Services
 

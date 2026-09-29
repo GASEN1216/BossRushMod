@@ -22,7 +22,7 @@ namespace BossRush
             {
                 if (ModeGRuntimeGates.IsModeGEntryBlocked)
                 {
-                    ShowMessage(L10n.T("宿命回响仍在结算中，暂时无法开始 Legacy 挑战。", "Mode G is still settling; legacy BossRush entry is blocked."));
+                    ShowMessage(L10n.T("宿命回响仍在结算中，暂时无法开始 Legacy 挑战。", "Fate Echo is still settling; legacy BossRush entry is blocked."));
                     DevLog("[BossRush] StartBossRush_WavesArena 被 Mode G 门控拒绝（IsModeGEntryBlocked=true）");
                     return;
                 }

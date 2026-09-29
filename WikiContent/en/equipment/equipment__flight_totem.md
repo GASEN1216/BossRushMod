@@ -1,4 +1,4 @@
-## Cloud Rider Totem
+## Cloud Soar I
 
 ### What Is It?
 

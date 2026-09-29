@@ -24,11 +24,11 @@ namespace BossRush
         public const string CN_Claim = "领取";
         public const string CN_Claimed = "已领取";
         public const string CN_Stats = "已解锁: {0}/{1}";
-        public const string CN_TotalReward = "已领取奖励: ${0}";
+        public const string CN_TotalReward = "已领取奖励: ￥{0}";
         public const string CN_HiddenName = "???";
         public const string CN_HiddenDesc = "完成特定条件解锁";
         public const string CN_NoRewards = "没有可领取的奖励";
-        public const string CN_ClaimedTotal = "已领取 ${0}";
+        public const string CN_ClaimedTotal = "已领取 ￥{0}";
 
         #endregion
 

@@ -2,7 +2,7 @@
 
 ### BossRush Ticket
 
-The entry item for ticket-based arena modes. Faction War uses a Banner, Zombie Mode uses an invitation, and the unlocked Sky Islands route is free.
+The entry item for ticket-based arena modes. Faction War uses a Flag, Zombie Mode uses an invitation, and the unlocked Sky Islands route is free.
 
 - **Name in the shop**: `Boss Rush Ticket`
 - **Source**: Base merchant / **Stock**: 10
@@ -41,7 +41,7 @@ The material for rolling affixes onto gear. Spent when you pick "Affix Forging" 
 - **Source**: Dingdang's shop (unlocks at affinity **Lv.10**, up to 5 per restock); about **8%** from arena Bosses,
   landing wherever that Boss's normal loot lands: the loot crate in standard arena and From Scratch,
   the ground in Infinite Hell, the body itself in Faction War and Blood Hunt
-- **Cost**: **1** stone per re-roll, **2** to lock a slot (unlocking costs nothing, but lock stones are not refunded)
+- **Cost**: **1** stone per unlocked slot on a re-roll, **2** to lock a slot (unlocking costs nothing, but lock stones are not refunded)
 - **Stack**: up to 20
 
 See the Affix Forging page.
@@ -93,11 +93,11 @@ Bring your current loadout, a Ticket, and the Relic into BossRush map selection.
 
 ---
 
-### Faction Banner (7 variants)
+### Faction Flag (7 variants)
 
 Determines your faction in Faction War. Consumed on entry.
 
-- **Random** → 1 of 5 NPC factions / **Scav / USEC / BEAR / Lab / Wolf Pack** → corresponding faction / **My Banner** → Lone Wolf (hostile to all)
+- **Random** → 1 of 5 NPC factions / **Scav / USEC / BEAR / Lab / Wolf Pack** → corresponding faction / **Lone Wolf Flag** → Lone Wolf (hostile to all)
 - **Source**: Base merchant / **Stock**: 5 per type
 
 See Faction War for details.

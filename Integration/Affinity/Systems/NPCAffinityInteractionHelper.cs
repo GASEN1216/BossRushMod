@@ -185,15 +185,19 @@ namespace BossRush
                 string dialogue;
                 if (penalty <= 0)
                 {
-                    dialogue = L10n.T(
-                        "你不该这样花心……这次我先原谅你，但别再有下次。",
-                        "You shouldn't be so fickle... I'll forgive you this once, but don't do it again.");
+                    dialogue = NPCDialogueSystem.GetPersonaLineOrDefault(
+                        npcId,
+                        "marriage_cheat_first",
+                        "你把戒指送给别人了……这次我不追究，别再有下次。",
+                        "You gave a ring to someone else... I'll let it go this once. Not again.");
                 }
                 else
                 {
-                    dialogue = L10n.T(
-                        "你又让我失望了……这次我真的很难过。",
-                        "You let me down again... this time it really hurts.");
+                    dialogue = NPCDialogueSystem.GetPersonaLineOrDefault(
+                        npcId,
+                        "marriage_cheat_repeat",
+                        "又是这样……这次我是真的难过。",
+                        "Again... this time it really hurts.");
                 }
 
                 NPCDialogueSystem.ShowDialogue(npcId, dialogueTarget, dialogue, 4.5f);
@@ -209,8 +213,8 @@ namespace BossRush
                     var config = AffinityManager.GetNPCConfig(npcId);
                     string npcName = config != null ? config.DisplayName : npcId;
                     string penaltyText = L10n.T(
-                        npcName + "好感度-" + penalty + "（花心惩罚）",
-                        npcName + " Affinity -" + penalty + " (Cheating Penalty)");
+                        npcName + "好感度-" + penalty + "（把戒指给了别人）",
+                        npcName + " Affinity -" + penalty + " (ring given to someone else)");
 
                     if (ModBehaviour.Instance != null)
                     {

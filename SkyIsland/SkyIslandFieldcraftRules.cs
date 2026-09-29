@@ -609,8 +609,8 @@ namespace BossRush
                     "Fuzhou: The workshop's crystal furnace won't burn until the star lamp is lit. Fix the lamp, then bring the shards to my dock workbench and I'll fuse them for you.");
                 case "Compass": return L10n.T("浮舟：罗盘我还没捎给你呢。等第一只信鸽落了、你手里有过一只，我才照着样子重做。",
                     "Fuzhou: I haven't even sent you the compass yet. Once the first pigeon has come and you've held one, I can copy it.");
-                case "Zapper": return L10n.T("浮舟：苇白说风晶灯芯的嗡声调低半个音就能引蚋，可她得先在岛上听够两盏灯的调子。灯亮了，我给它打铜罩。",
-                    "Fuzhou: Weibai says a windcrystal wick tuned half a note lower draws the gnats, but she has to hear two lamps burning on the isles before she can find that note. Light them and I'll hammer out the brass cage.");
+                case "Zapper": return L10n.T("浮舟：苇白说灯芯调低半个音能引蚋，可她得先听够两盏灯响。灯点上，我来打铜罩。",
+                    "Fuzhou: Weibai says a wick tuned half a note low draws gnats, but she needs to hear two lamps burn first. Light them and I'll hammer out the cage.");
                 default: return L10n.T("还不会做：", "Not yet: ") + UnlockHint(recipe) + L10n.T("。", ".");
             }
         }

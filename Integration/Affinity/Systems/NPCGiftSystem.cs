@@ -99,7 +99,7 @@ namespace BossRush
                     {
                         if (npcTransform != null)
                         {
-                            string spouseRejectDialogue = DiamondRingConfig.GetRandomSpouseRingRejectDialogue();
+                            string spouseRejectDialogue = DiamondRingConfig.GetRandomSpouseRingRejectDialogue(npcId);
                             NPCDialogueSystem.ShowDialogue(npcId, npcTransform, spouseRejectDialogue);
                         }
 
@@ -116,7 +116,7 @@ namespace BossRush
 
                     if (npcTransform != null)
                     {
-                        string cheaterDialogue = DiamondRingConfig.GetRandomCheaterDialogue();
+                        string cheaterDialogue = DiamondRingConfig.GetRandomCheaterDialogue(npcId);
                         NPCDialogueSystem.ShowDialogue(npcId, npcTransform, cheaterDialogue);
                     }
 
@@ -136,9 +136,11 @@ namespace BossRush
                 {
                     if (npcTransform != null)
                     {
-                        string buildingRequiredDialogue = L10n.T(
-                            "嘻嘻，我们先建个婚礼教堂来个正式点的吧",
-                            "Hehe, let's build a wedding chapel first and make it official.");
+                        string buildingRequiredDialogue = NPCDialogueSystem.GetPersonaLineOrDefault(
+                            npcId,
+                            "marriage_chapel_required",
+                            "这事得办得正式点，先把婚礼教堂建起来吧。",
+                            "Let's do this properly. Build the wedding chapel first.");
                         NPCDialogueSystem.ShowDialogue(npcId, npcTransform, buildingRequiredDialogue);
                     }
 
@@ -152,7 +154,7 @@ namespace BossRush
                     // NPC拒绝接受钻石戒指
                     if (npcTransform != null)
                     {
-                        string rejectDialogue = DiamondRingConfig.GetRandomRejectDialogue();
+                        string rejectDialogue = DiamondRingConfig.GetRandomRejectDialogue(npcId);
                         NPCDialogueSystem.ShowDialogue(npcId, npcTransform, rejectDialogue);
                     }
                     
@@ -338,7 +340,7 @@ namespace BossRush
         /// </summary>
         public static string GetReactionBubble(string npcId, INPCGiftConfig config, GiftReactionType reactionType)
         {
-            if (config == null) return L10n.T("谢谢你的礼物~", "Thanks for the gift~");
+            if (config == null) return NPCDialogueSystem.GetPersonaLineOrDefault(npcId, "gift_fallback", "谢谢你的礼物~", "Thanks for the gift~");
             
             string relationshipKey;
             switch (reactionType)
@@ -376,7 +378,7 @@ namespace BossRush
             
             if (bubbles == null || bubbles.Length == 0)
             {
-                return L10n.T("谢谢你的礼物~", "Thanks for the gift~");
+                return NPCDialogueSystem.GetPersonaLineOrDefault(npcId, "gift_fallback", "谢谢你的礼物~", "Thanks for the gift~");
             }
             
             return bubbles[UnityEngine.Random.Range(0, bubbles.Length)];
@@ -392,7 +394,7 @@ namespace BossRush
             
             if (giftConfig == null)
             {
-                return L10n.T("今天已经收到礼物了~", "Already received a gift today~");
+                return NPCDialogueSystem.GetPersonaLineOrDefault(npcId, "gift_already_fallback", "今天已经收到礼物了~", "Already received a gift today~");
             }
             
             int lastReaction = AffinityManager.GetLastGiftReaction(npcId);
@@ -421,7 +423,7 @@ namespace BossRush
             string[] dialogues = giftConfig.GetAlreadyGiftedDialogues(reactionType);
             if (dialogues == null || dialogues.Length == 0)
             {
-                return L10n.T("今天已经收到礼物了~", "Already received a gift today~");
+                return NPCDialogueSystem.GetPersonaLineOrDefault(npcId, "gift_already_fallback", "今天已经收到礼物了~", "Already received a gift today~");
             }
             
             return dialogues[UnityEngine.Random.Range(0, dialogues.Length)];

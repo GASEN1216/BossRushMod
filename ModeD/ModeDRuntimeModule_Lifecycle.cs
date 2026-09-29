@@ -100,8 +100,8 @@ namespace BossRush
 
                 // 初始状态保持为生小鸡（EntryAndDifficulty），波次开始时再切换到加油状态
 
-                owner.ShowMessage(L10n.T("白手起家模式已激活！通过路牌开始挑战！", "Rags to Riches mode activated! Start the challenge via the signpost!"));
-                owner.ShowBigBanner(L10n.T("欢迎来到 <color=red>白手起家</color>！", "Welcome to <color=red>Rags to Riches</color>!"));
+                owner.ShowMessage(L10n.T("白手起家模式已激活！通过路牌开始挑战！", "From Scratch mode activated! Start the challenge via the signpost!"));
+                owner.ShowBigBanner(L10n.T("欢迎来到 <color=red>白手起家</color>！", "Welcome to <color=red>From Scratch</color>!"));
             }
             catch (Exception e)
             {
@@ -138,7 +138,7 @@ namespace BossRush
                 // 使用保存的波次数显示消息
                 owner.ShowMessage(L10n.T(
                     "白手起家挑战结束！共完成 " + completedWaves + " 波",
-                    "Rags to Riches challenge ended! Completed " + completedWaves + " waves"
+                    "From Scratch challenge ended! Completed " + completedWaves + " waves"
                 ));
             }
             catch (Exception e)

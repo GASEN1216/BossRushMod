@@ -53,10 +53,10 @@ namespace BossRush
         public const string DISPLAY_NAME_EN = "Dingdang's Doodle";
 
         /// <summary>描述（中文）</summary>
-        public const string DESCRIPTION_CN = "叮当花了好多好多天才画完的...才、才不是特意画给你的！只是正好画完了而已！...请好好保管。";
+        public const string DESCRIPTION_CN = "叮当花了好多天才画完的。……不是特意画给你的，只是刚好画完了。请好好收着。";
 
         /// <summary>描述（英文）</summary>
-        public const string DESCRIPTION_EN = "Dingdang spent so many days drawing this... I-it's not like I drew it especially for you! I just happened to finish it! ...Please take good care of it.";
+        public const string DESCRIPTION_EN = "Dingdang spent days on this. ...It's not made just for you. It just happened to be finished. Please keep it safe.";
 
         /// <summary>使用说明（中文）</summary>
         public const string USAGE_DESC_CN = "使用：欣赏这幅画";

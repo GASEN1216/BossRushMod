@@ -41,12 +41,12 @@ namespace BossRush
         public const string DISPLAY_NAME_CN = "词缀熔石";
         public const string DISPLAY_NAME_EN = "Affix Forge Stone";
 
-        public const string DESCRIPTION_CN = "从 Boss 残骸里烧出来的一块半熔矿石，还带着它主人的脾气。"
-            + "拿去找哥布林做词缀锻造，它会把这股脾气刻进你的武器或护甲。"
-            + "重铸一次要一块，锁住一条已有词缀要两块。";
-        public const string DESCRIPTION_EN = "A half-molten ore burned out of a boss's remains, still carrying its "
-            + "owner's temper. Bring it to the goblin for affix forging and that temper gets etched into your "
-            + "weapon or armor. One stone per reroll, two to lock an affix you want to keep.";
+        public const string DESCRIPTION_CN = "从 Boss 残骸里烧出来的一块半熔矿石，还带着它主人的脾气。\n"
+            + "拿去找哥布林做词缀锻造，这股脾气会被刻进你的武器或防具。"
+            + "重铸时每个没锁的词缀槽耗一颗，锁住一条想留的词缀要两颗。";
+        public const string DESCRIPTION_EN = "A half-molten ore burned out of a boss's remains, still carrying its owner's temper.\n"
+            + "Bring it to the goblin for affix forging and that temper gets etched into your "
+            + "weapon or armor. A reroll costs one stone per unlocked affix slot; locking an affix you want to keep costs two.";
 
         /// <summary>
         /// 图标资源名。EquipmentHelperIcon 会按 Assets/Items/{ICON_NAME}.png 找 PNG，

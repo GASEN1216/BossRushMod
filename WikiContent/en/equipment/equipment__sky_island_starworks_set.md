@@ -4,7 +4,7 @@
 
 ### What Is It?
 
-**The gear worn by the Starforge Foreman, island lord of the Fallen Star Workshop, and the Overlook Stargazer, chief of the Starfall Overlook**: the Starbrass Visor Helm, Starfurnace Harness and Starfurnace Pack come from the Foreman; the Stargazer's Lens Helm comes from the Stargazer. Worn, they give the game's usual head armour / body armour / pack capacity; on the isles each also has a use: any two Starworks pieces make Fuzhou's dock workbench take one less Brass Scrap, and the lens helm spots nearby enemies for you while you stand still.
+**The gear worn by the Starforge Foreman, island lord of the Fallen Star Workshop, and the Overlook Stargazer, chief of the Starfall Overlook**: the Starbrass Visor Helm, Starfurnace Harness and Starfurnace Pack come from the Foreman; the Stargazer's Lens Helm comes from the Stargazer. Worn, they give the game's usual head armor / body armor / pack capacity; on the isles each also has a use: any two Starworks pieces make Fuzhou's dock workbench take one less Brass Scrap, and the lens helm spots nearby enemies for you while you stand still.
 
 ### The Four Pieces
 
@@ -35,10 +35,10 @@
 ### Tips
 
 **Starforge Foreman:**
-- At **70% / 40% / 15%** health it raises **2 starfurnace pylons** each time (5.5–8.5 m away): while they stand, its head and body armour are each 6 thicker. Break the pylons first; they also burn out on their own after 25 seconds.
+- At **70% / 40% / 15%** health it raises **2 starfurnace pylons** each time (5.5–8.5 m away): while they stand, its head and body armor are each 6 thicker. Break the pylons first; they also burn out on their own after 25 seconds.
 - **Starfire**: 3 warning rings land around you and burst about 1.25 seconds later (2.6 m radius). Sidestep as soon as you see them.
 - After every two rounds of starfire it **overheats for 4 seconds**: it holds fire and takes 25% more physical damage. That is your window.
-- **Breaking its gear cuts its attacks**: with the visor helm at zero durability, starfire lands only 1 ring; with the harness at zero, the pylons' armour bonus is halved.
+- **Breaking its gear cuts its attacks**: with the visor helm at zero durability, starfire lands only 1 ring; with the harness at zero, the pylons' armor bonus is halved.
 
 **Overlook Stargazer:**
 - Between 8 and 42 m, with a line of sight, it paints a ring at your feet that follows you for about 0.8 seconds, locks, and 0.6 seconds later drops **two starfire shells** on the locked spot (2.2 m radius, 0.4 seconds apart).

@@ -55,7 +55,7 @@
 #### Recommended Gear
 - Dragon Set / Dragon King Set (fire immunity + dash)
 - High DPS guns (shorter fight = fewer mistakes)
-- Cloud Rider (aerial evasion)
+- Cloud Soar I (aerial evasion)
 - Reverse Scale (emergency save)
 
 #### No-Hit Tips

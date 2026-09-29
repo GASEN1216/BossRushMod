@@ -713,8 +713,8 @@ namespace BossRush
                 case SkyIslandBossKind.Listener: return "Rain Listener";
                 case SkyIslandBossKind.Piper: return "Gnat Piper";
                 case SkyIslandBossKind.Mirror: return "Mirror Guest";
-                // 与精英档次「断风游猎 / Galebreaker Ranger」同名：三位头目是这群游猎的领头人，名字后缀区分追、伏、守。
-                case SkyIslandBossKind.Windhunter: return "Galebreaker Ranger";
+                // 与精英档次「断风游猎 / Galebreaker」同名：三位头目是这群游猎的领头人，名字后缀区分追、伏、守。
+                case SkyIslandBossKind.Windhunter: return "Galebreaker";
                 default: return "Chief";
             }
         }
@@ -735,9 +735,9 @@ namespace BossRush
         {
             switch (variant)
             {
-                case WindhunterChaser: return " (Chaser)";
-                case WindhunterStalker: return " (Stalker)";
-                case WindhunterWarden: return " (Warden)";
+                case WindhunterChaser: return " Chaser";
+                case WindhunterStalker: return " Stalker";
+                case WindhunterWarden: return " Warden";
                 default: return string.Empty;
             }
         }
@@ -1077,7 +1077,7 @@ namespace BossRush
         /// 晴禾拿农活打比方、眠苔只关心伤口与夜里的东西。原来那版是攻略腔（「先拆供能桩，等炉子过热再打它」），
         /// 放在谁嘴里都一样。**每条仍是两屏**（官方对话一句一屏），关键词
         /// 「星工装备 / Starworks outfit」「悬根林的风标底下蹲着个猎首 / huntmaster crouches」
-        /// 「断风游猎 / Galebreaker Ranger holds」「观星手 / stargazer up on」原样保留——
+        /// 「断风游猎 / Galebreaker holds」「观星手 / stargazer up on」原样保留——
         /// 全自动验收按屏序截图并断言这些词（Assets/Data/SkyIslandAutotest.json）。
         /// </summary>
         internal static string ResidentLine(string npcId, SkyIslandStoryData data)
@@ -1102,7 +1102,7 @@ namespace BossRush
                             "A huntmaster crouches under the beacon in Hanging Root Wood. Cut one tripwire stake and the line drops; when a root hollow lights, move.\n");
                     if (!Defeated(data, Find("K1_Relay", 0)) || !Defeated(data, Find("K2_Relay", 0)) || !Defeated(data, Find("K3_Relay", 0)))
                         return L10n.T("三座回程中继，一座一个断风游猎，连拾荒者也打。冲锋前地上先亮一条线，横着让。\n",
-                            "A Galebreaker Ranger holds each return relay, and they fight the scavengers too. A line lights up before the charge, so sidestep.\n");
+                            "A Galebreaker holds each return relay, and they fight the scavengers too. A line lights up before the charge, so sidestep.\n");
                     return L10n.T("戴观星镜盔站着别动，远处的人影会给你标出来。悬根套两件好翻箱，断风套两件走桥快。\n",
                             "Stand still in the lens helm and far figures get marked for you. Two Rootweave pieces turn up more local goods; two Galebreaker pieces make the bridges quicker.\n");
                 case "sky_qinghe":

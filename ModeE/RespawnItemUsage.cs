@@ -117,7 +117,7 @@ namespace BossRush
                 {
                     NotificationText.Push(L10n.T(
                         "该物品只能在划地为营模式中使用！",
-                        "This item can only be used in Faction Battle mode!"
+                        "This item can only be used in Faction War!"
                     ));
                     return;
                 }

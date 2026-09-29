@@ -69,50 +69,50 @@ namespace BossRush
         public const string RANDOM_FLAG_LOC_KEY = "BossRush_FactionFlagRandom";
         public const string RANDOM_FLAG_NAME_CN = "随机营旗";
         public const string RANDOM_FLAG_NAME_EN = "Random Faction Flag";
-        public const string RANDOM_FLAG_DESC_CN = "一面无标识的战旗。携带它裸装进入bossrush，将被随机分配到一个阵营参加划地为营模式。";
-        public const string RANDOM_FLAG_DESC_EN = "An unmarked battle flag. Enter bossrush naked with it to be randomly assigned to a faction in Faction Battle mode.";
+        public const string RANDOM_FLAG_DESC_CN = "旗面是空白的，扛上它，才知道自己跟哪一伙。裸装带着它进入 BossRush，会被随机分到一个阵营，参加划地为营。";
+        public const string RANDOM_FLAG_DESC_EN = "A blank flag; you only learn whose side you're on once you pick it up. Enter BossRush naked with it and you're dropped into a random faction for Faction War.";
 
         // --- 拾荒者营旗 ---
         public const string SCAV_FLAG_LOC_KEY = "BossRush_FactionFlagScav";
         public const string SCAV_FLAG_NAME_CN = "拾荒者营旗";
         public const string SCAV_FLAG_NAME_EN = "Scav Faction Flag";
-        public const string SCAV_FLAG_DESC_CN = "拾荒者阵营的战旗。携带它裸装进入bossrush，将加入拾荒者阵营参加划地为营模式。";
-        public const string SCAV_FLAG_DESC_EN = "Battle flag of the Scav faction. Enter bossrush naked with it to join the Scav faction in Faction Battle mode.";
+        public const string SCAV_FLAG_DESC_CN = "拾荒者的旗，补丁摞补丁，旗杆是根撬棍。裸装带着它进入 BossRush，加入拾荒者阵营，参加划地为营。";
+        public const string SCAV_FLAG_DESC_EN = "The scavs' flag, patch on patch, hung on a pry bar. Enter BossRush naked with it to join the Scav faction in Faction War.";
 
         // --- USEC营旗 ---
         public const string USEC_FLAG_LOC_KEY = "BossRush_FactionFlagUsec";
         public const string USEC_FLAG_NAME_CN = "USEC营旗";
         public const string USEC_FLAG_NAME_EN = "USEC Faction Flag";
-        public const string USEC_FLAG_DESC_CN = "USEC阵营的战旗。携带它裸装进入bossrush，将加入USEC阵营参加划地为营模式。";
-        public const string USEC_FLAG_DESC_EN = "Battle flag of the USEC faction. Enter bossrush naked with it to join the USEC faction in Faction Battle mode.";
+        public const string USEC_FLAG_DESC_CN = "USEC 的旗，边角压得平整，一看就是有人管着的队伍。裸装带着它进入 BossRush，加入 USEC 阵营，参加划地为营。";
+        public const string USEC_FLAG_DESC_EN = "The USEC flag, edges pressed flat; somebody runs a tight ship. Enter BossRush naked with it to join the USEC faction in Faction War.";
 
         // --- BEAR营旗 ---
         public const string BEAR_FLAG_LOC_KEY = "BossRush_FactionFlagBear";
         public const string BEAR_FLAG_NAME_CN = "BEAR营旗";
         public const string BEAR_FLAG_NAME_EN = "BEAR Faction Flag";
-        public const string BEAR_FLAG_DESC_CN = "BEAR阵营的战旗。携带它裸装进入bossrush，将加入BEAR阵营参加划地为营模式。";
-        public const string BEAR_FLAG_DESC_EN = "Battle flag of the BEAR faction. Enter bossrush naked with it to join the BEAR faction in Faction Battle mode.";
+        public const string BEAR_FLAG_DESC_CN = "BEAR 的旗，布厚得像帆布，风大了也不见飘。裸装带着它进入 BossRush，加入 BEAR 阵营，参加划地为营。";
+        public const string BEAR_FLAG_DESC_EN = "The BEAR flag, cloth as thick as canvas; it barely stirs in a gale. Enter BossRush naked with it to join the BEAR faction in Faction War.";
 
         // --- 实验室营旗 ---
         public const string LAB_FLAG_LOC_KEY = "BossRush_FactionFlagLab";
         public const string LAB_FLAG_NAME_CN = "实验室营旗";
         public const string LAB_FLAG_NAME_EN = "Lab Faction Flag";
-        public const string LAB_FLAG_DESC_CN = "实验室阵营的战旗。携带它裸装进入bossrush，将加入实验室阵营参加划地为营模式。";
-        public const string LAB_FLAG_DESC_EN = "Battle flag of the Lab faction. Enter bossrush naked with it to join the Lab faction in Faction Battle mode.";
+        public const string LAB_FLAG_DESC_CN = "实验室的旗，白底，边上沾着洗不掉的药水渍。裸装带着它进入 BossRush，加入实验室阵营，参加划地为营。";
+        public const string LAB_FLAG_DESC_EN = "The Lab flag, white cloth with chemical stains that never washed out. Enter BossRush naked with it to join the Lab faction in Faction War.";
 
         // --- 狼群营旗 ---
         public const string WOLF_FLAG_LOC_KEY = "BossRush_FactionFlagWolf";
         public const string WOLF_FLAG_NAME_CN = "狼群营旗";
         public const string WOLF_FLAG_NAME_EN = "Wolf Faction Flag";
-        public const string WOLF_FLAG_DESC_CN = "狼群阵营的战旗。携带它裸装进入bossrush，将加入狼群阵营参加划地为营模式。";
-        public const string WOLF_FLAG_DESC_EN = "Battle flag of the Wolf faction. Enter bossrush naked with it to join the Wolf faction in Faction Battle mode.";
+        public const string WOLF_FLAG_DESC_CN = "狼群的旗，灰旗面上几道爪痕，摸上去发硬。裸装带着它进入 BossRush，加入狼群阵营，参加划地为营。";
+        public const string WOLF_FLAG_DESC_EN = "The wolf pack's flag: gray cloth with claw marks, stiff to the touch. Enter BossRush naked with it to join the Wolf faction in Faction War.";
 
         // --- 爷的营旗 ---
         public const string PLAYER_FLAG_LOC_KEY = "BossRush_FactionFlagPlayer";
         public const string PLAYER_FLAG_NAME_CN = "爷的营旗";
         public const string PLAYER_FLAG_NAME_EN = "Lone Wolf Flag";
-        public const string PLAYER_FLAG_DESC_CN = "只属于你自己的战旗。携带它裸装进入bossrush，所有阵营的Boss都冲你来，没人跟你一伙。";
-        public const string PLAYER_FLAG_DESC_EN = "A flag that belongs to you alone. Enter bossrush naked with it and every faction's bosses come for you. Nobody's on your side.";
+        public const string PLAYER_FLAG_DESC_CN = "只属于你自己的旗，杆子上就挂了这么一面。扛着它，你就是独狼一只：裸装带着它进入 BossRush，所有阵营的 Boss 都冲你来，没人跟你一伙。";
+        public const string PLAYER_FLAG_DESC_EN = "A flag that is yours alone, the only one on its pole. Carry it and you're a Lone Wolf: enter BossRush naked with it and every faction's Bosses come for you. Nobody is on your side.";
 
         // ============================================================================
         // 营旗信息结构（内部使用）

@@ -33,8 +33,8 @@ namespace BossRush
         // ============================================================================
         private const string CAKE_NAME_CN = "生日蛋糕";
         private const string CAKE_NAME_EN = "Birthday Cake";
-        private const string CAKE_DESC_CN = "祝你永远开开心心快快乐乐！——来自小猪鲨的祝福";
-        private const string CAKE_DESC_EN = "May you always be happy! — Blessings from Little Pig Shark";
+        private const string CAKE_DESC_CN = "奶油顶上插着一根歪歪扭扭的蜡烛，卡片上写着：祝你永远开开心心快快乐乐！——来自小猪鲨的祝福\n<color=#BBBBBB>可以吃，也可以送给叮当或羽织（好感度 +150）。</color>";
+        private const string CAKE_DESC_EN = "A crooked candle sits in the icing. The card reads: May you always be happy! — Blessings from Little Pig Shark\n<color=#BBBBBB>Eat it, or give it to Dingdang or Yu Zhi (+150 affinity).</color>";
 
         // ============================================================================
         // Wiki Book 本地化数据
@@ -49,8 +49,8 @@ namespace BossRush
         // ============================================================================
         private const string DRAGON_DESCENDANT_NAME_CN = "龙裔遗族";
         private const string DRAGON_DESCENDANT_NAME_EN = "Dragon Descendant";
-        private const string DRAGON_DESCENDANT_RESURRECTION_CN = "我...命不该绝！";
-        private const string DRAGON_DESCENDANT_RESURRECTION_EN = "I...shall not perish!";
+        private const string DRAGON_DESCENDANT_RESURRECTION_CN = DragonDescendantConfig.ResurrectionDialogue;
+        private const string DRAGON_DESCENDANT_RESURRECTION_EN = DragonDescendantConfig.ResurrectionDialogueEN;
 
         // ============================================================================
         // 快递员NPC本地化数据
@@ -61,12 +61,12 @@ namespace BossRush
         private const string COURIER_SERVICE_EN = "Courier Service";
         private const string COURIER_SERVICE_UNAVAILABLE_CN = "快递服务暂未开放，敬请期待！";
         private const string COURIER_SERVICE_UNAVAILABLE_EN = "Courier service coming soon!";
-        private const string COURIER_FLEE_CN = "离我远点小子！弄坏了可是要赔的";
-        private const string COURIER_FLEE_EN = "Stay away kid! You break it, you pay for it!";
-        private const string COURIER_CHEER_CN = "加油小子！我赌了不少钱呢";
-        private const string COURIER_CHEER_EN = "Go get 'em kid! I bet a lot on you!";
-        private const string COURIER_VICTORY_CN = "哈哈哈哈哈...赚大发了";
-        private const string COURIER_VICTORY_EN = "Hahaha... I'm rich!";
+        private const string COURIER_FLEE_CN = "退后，弄坏了要赔的。";
+        private const string COURIER_FLEE_EN = "Back off. You break it, you pay.";
+        private const string COURIER_CHEER_CN = "加油。我压了你，别让我亏。";
+        private const string COURIER_CHEER_EN = "Go on. I've got money on you. Don't make me lose it.";
+        private const string COURIER_VICTORY_CN = "赢了。今晚加个菜。";
+        private const string COURIER_VICTORY_EN = "Paid off. Extra dish tonight.";
 
         // 快递服务功能本地化数据
         private const string COURIER_CONTAINER_TITLE_CN = "阿稳速递";
@@ -75,8 +75,8 @@ namespace BossRush
         private const string COURIER_SERVICE_SEND_EN = "Send";
         private const string COURIER_SERVICE_FEE_CN = "快递费: {0}";
         private const string COURIER_SERVICE_FEE_EN = "Fee: {0}";
-        private const string COURIER_SERVICE_GOODBYE_CN = "欢迎下次光临，稳叔爱你哟~";
-        private const string COURIER_SERVICE_GOODBYE_EN = "Come again, Uncle Wen loves you~";
+        private const string COURIER_SERVICE_GOODBYE_CN = "下次再来，单子我给你留着。";
+        private const string COURIER_SERVICE_GOODBYE_EN = "Come again. I'll hold your slip.";
         private const string COURIER_SERVICE_INSUFFICIENT_CN = "钱不够";
         private const string COURIER_SERVICE_INSUFFICIENT_EN = "Short on cash";
         private const string COURIER_SERVICE_EMPTY_CN = "你倒是放东西进来啊";
@@ -91,10 +91,10 @@ namespace BossRush
         private const string STORAGE_CONTAINER_TITLE_EN = "Awen Storage";
         private const string STORAGE_SERVICE_RETRIEVE_ALL_CN = "全部取出";
         private const string STORAGE_SERVICE_RETRIEVE_ALL_EN = "Retrieve All";
-        private const string STORAGE_SERVICE_INSUFFICIENT_CN = "别乱碰，不然让你见识下稳叔的厉害";
-        private const string STORAGE_SERVICE_INSUFFICIENT_EN = "Don't touch that, or I'll show you what Uncle Wen is capable of";
-        private const string STORAGE_SERVICE_RETRIEVED_CN = "多存多优惠！小子！";
-        private const string STORAGE_SERVICE_RETRIEVED_EN = "Store more, save more! Kid!";
+        private const string STORAGE_SERVICE_INSUFFICIENT_CN = "钱不够。价钱写着呢，凑齐了再来取。";
+        private const string STORAGE_SERVICE_INSUFFICIENT_EN = "Short on cash. The prices are posted. Come back when you've got it.";
+        private const string STORAGE_SERVICE_RETRIEVED_CN = "都在这儿了，点点数。";
+        private const string STORAGE_SERVICE_RETRIEVED_EN = "That's all of it. Count it.";
         private const string STORAGE_SERVICE_EMPTY_CN = "空空如也";
         private const string STORAGE_SERVICE_EMPTY_EN = "Empty";
 
@@ -111,8 +111,8 @@ namespace BossRush
         private const string STORAGE_DEPOSIT_RETRIEVED_EN = "Here you go";
         private const string STORAGE_DEPOSIT_INVENTORY_FULL_CN = "装不下了";
         private const string STORAGE_DEPOSIT_INVENTORY_FULL_EN = "No room";
-        private const string STORAGE_DEPOSIT_FAREWELL_CN = "多存多优惠！小子！";
-        private const string STORAGE_DEPOSIT_FAREWELL_EN = "Deposit more, get more discounts! Kid!";
+        private const string STORAGE_DEPOSIT_FAREWELL_CN = "东西我看着，回头来取。";
+        private const string STORAGE_DEPOSIT_FAREWELL_EN = "I'll keep an eye on it. Come get it later.";
         private const string STORAGE_DEPOSIT_RETRIEVE_ALL_CN = "全部取出";
         private const string STORAGE_DEPOSIT_RETRIEVE_ALL_EN = "Retrieve All";
         private const string STORAGE_DEPOSIT_ITEM_NOT_UNLOCKED_CN = "这东西没登记过，不收";
@@ -129,8 +129,8 @@ namespace BossRush
         private const string GOBLIN_NAME_EN = "Dingdang";
         private const string GOBLIN_TALK_CN = "交谈";
         private const string GOBLIN_TALK_EN = "Talk";
-        private const string GOBLIN_GREETING_CN = "嘿嘿，有啥需要的？";
-        private const string GOBLIN_GREETING_EN = "Hehe, need something?";
+        private const string GOBLIN_GREETING_CN = "嘿嘿，叮当的小店开张啦，要点什么？";
+        private const string GOBLIN_GREETING_EN = "Hehe, Dingdang's shop is open! Looking for something?";
 
         // ============================================================================
         // 护士NPC本地化数据
@@ -147,8 +147,8 @@ namespace BossRush
         private const string REFORGE_SERVICE_EN = "Reforge Service";
         private const string REFORGE_TITLE_CN = "叮当的重铸工坊";
         private const string REFORGE_TITLE_EN = "Dingdang's Reforge Workshop";
-        private const string REFORGE_DESC_CN = "搁这儿，砸一锤。塞的钱越多越容易出好东西。";
-        private const string REFORGE_DESC_EN = "Put it here and take a swing. More cash means better odds.";
+        private const string REFORGE_DESC_CN = "放这儿，叮当帮你敲一锤！钱塞得越多，越容易出好东西。";
+        private const string REFORGE_DESC_EN = "Put it here and Dingdang gives it a whack! The more cash, the better the odds.";
         private const string REFORGE_NO_ITEM_SELECTED_CN = "先挑一件";
         private const string REFORGE_NO_ITEM_SELECTED_EN = "Pick one first";
         private const string REFORGE_SELECTED_CN = "已选择";
@@ -161,14 +161,14 @@ namespace BossRush
         private const string REFORGE_BUTTON_EN = "Reforge";
         private const string REFORGE_CLOSE_CN = "关闭";
         private const string REFORGE_CLOSE_EN = "Close";
-        private const string REFORGE_SUCCESS_CN = "成了";
-        private const string REFORGE_SUCCESS_EN = "Done";
+        private const string REFORGE_SUCCESS_CN = "敲好啦！";
+        private const string REFORGE_SUCCESS_EN = "Done!";
         private const string REFORGE_SELECT_FIRST_CN = "先挑一件";
         private const string REFORGE_SELECT_FIRST_EN = "Pick one first";
-        private const string REFORGE_NOT_ENOUGH_MONEY_CN = "口袋空了";
-        private const string REFORGE_NOT_ENOUGH_MONEY_EN = "Your pockets are empty";
-        private const string REFORGE_NO_EQUIPMENT_CN = "没什么能砸的";
-        private const string REFORGE_NO_EQUIPMENT_EN = "Nothing to reforge";
+        private const string REFORGE_NOT_ENOUGH_MONEY_CN = "钱不够啦，叮当要吃饭的";
+        private const string REFORGE_NOT_ENOUGH_MONEY_EN = "Not enough cash. Dingdang has to eat!";
+        private const string REFORGE_NO_EQUIPMENT_CN = "没东西可敲呀";
+        private const string REFORGE_NO_EQUIPMENT_EN = "Nothing to whack";
 
         // ============================================================================
         // 快递员首次见面对话（大对话系统）
@@ -232,30 +232,30 @@ namespace BossRush
             new string[] { "签个字吧。爪印也行，别把单子戳穿了。", "Sign here. A paw print works. Just don't tear the slip." },
 
             // ============ 焚天龙皇Boss相关 ============
-            new string[] { "我送货撞见过龙皇。那单差点成了最后一单。", "I met the Dragon King on a delivery. Nearly my last one." },
-            new string[] { "龙皇的鳞片值钱，剥鳞片的活儿可别找我。", "Dragon King scales sell well. Don't ask me to peel them off." },
-            new string[] { "龙皇一发火，半边天都红了。快递差点烤熟。", "The Dragon King lit up half the sky. Nearly roasted my parcels." },
+            new string[] { "我送货撞见过龙皇。那单差点成了最后一单。", "I met the Dragon Lord on a delivery. Nearly my last one." },
+            new string[] { "龙皇的鳞片值钱，剥鳞片的活儿可别找我。", "Dragon Lord scales sell well. Don't ask me to peel them off." },
+            new string[] { "龙皇一发火，半边天都红了。快递差点烤熟。", "The Dragon Lord lit up half the sky. Nearly roasted my parcels." },
             new string[] { "龙王之冕和龙王鳞铠？得去找龙皇拿。", "Want the Dragon King's Crown and Scale Mail? Ask the dragon." },
-            new string[] { "龙皇会变招。别拿上一招的空当赌下一招。", "The Dragon King changes tactics. Keep watching it." },
+            new string[] { "龙皇的单我不接。收件人烧成灰，签收栏谁来签？", "I don't take Dragon Lord orders. Who signs the slip once the recipient is ash?" },
 
             // ============ 火龙相关 ============
             new string[] { "离那头火龙远点。烧坏了包裹，你赔啊？", "Keep away from that fire dragon. You paying for burnt parcels?" },
             new string[] { "火龙怕毒。备点带毒的家伙再去。", "Fire dragons hate poison. Bring some." },
-            new string[] { "火龙也怕冰。上回我亲眼看它栽下来了。", "Fire dragons hate ice too. Saw one crash myself." },
+            new string[] { "被火龙烤过的单子，字都糊了，我认得那股焦味。", "Slips that meet a fire dragon come back scorched. I know that smell." },
             new string[] { "该死的火龙，我的快递又飞了！", "That blasted dragon! There go my parcels!" },
             new string[] { "火龙开始嘀咕了？先跑再说。", "Dragon's muttering? Run first, ask later." },
-            new string[] { "别贴火龙太近，炸一下够你受的。", "Don't hug the fire dragon. It explodes." },
+            new string[] { "带龙的路线我都标红。红的意思：别去。", "Any route with a dragon on it gets marked red. Red means don't." },
 
             // ============ 叮当NPC相关 ============
-            new string[] { "装备要重铸，找叮当。它的锤子比嘴靠谱。", "Need a reforge? See Dingdang. Good hammer, loud mouth." },
-            new string[] { "叮当一直在笑。我倒没见过它歇口气。", "Dingdang's always smiling. Never seems to get a break." },
-            new string[] { "找叮当办事，顺手带点它喜欢的礼物。", "Seeing Dingdang? Bring a gift it likes." },
+            new string[] { "装备要重铸，找叮当。叮当的锤子比嘴靠谱。", "Need a reforge? See Dingdang. Dingdang's hammer is more reliable than Dingdang's talk." },
+            new string[] { "叮当一直在笑，也没见歇过口气。", "Dingdang is always smiling. Never seen Dingdang take a break." },
+            new string[] { "叮当敲锤隔三条街都听得见，单子倒没震坏过。", "Dingdang's hammer carries three streets. My parcels have survived it so far." },
             new string[] { "叮当又画涂鸦了。这回没画在我箱子上，谢天谢地。", "More graffiti from Dingdang. At least it's not on my crates this time." },
 
             // ============ 护士NPC相关 ============
             new string[] { "羽织的药材单刚送到。她记账比我还细。", "Yu Zhi's medicine order is in. She counts every last packet." },
             new string[] { "受伤就找羽织。她嘴上凶，手上稳。", "Hurt? See Yu Zhi. Sharp tongue, steady hands." },
-            new string[] { "别老盯着羽织的腿看。送药又不用看腿。", "Quit staring at Yu Zhi's legs. You're here for medicine." },
+            new string[] { "羽织腿上的旧伤，别多问，她不爱提。", "Don't ask Yu Zhi about her legs. She doesn't like talking about it." },
             new string[] { "别在羽织面前逞强，她一眼就能看出你瘸了。", "Don't play tough with Yu Zhi. She can see you limping." },
 
             // ============ 好感度系统相关（用角色口吻传递信息） ============
@@ -279,7 +279,7 @@ namespace BossRush
             new string[] { "难拿的勋章慢慢来。我送急件也得认路。", "Take your time with the hard medals. Even express needs a route." },
 
             // ============ 新物品相关 ============
-            new string[] { "砖石和钻石都能叫叮当来，可别送错了。", "Brick or diamond, both call Dingdang. Choose carefully." },
+            new string[] { "别人的礼物我照送不误，就是不许我拆。", "I'll deliver anyone's gift. I just don't get to open it." },
             new string[] { "喜欢的属性先用冷淬液锁住，再重铸。", "Lock your favorite stats with Cold Quench Fluid before reforging." },
             new string[] { "叮当的画你收着吧。别拿来垫箱子，它会急。", "Keep Dingdang's drawings. Don't use them to pack crates." },
 
@@ -291,72 +291,72 @@ namespace BossRush
 
             // ============ 标准BossRush模式 ============
             new string[] { "带船票选张图，就能去竞技场。难度看路牌。", "Take a ticket and pick a map. Set the difficulty at the signpost." },
-            new string[] { "竞技场要补弹、修甲，先去路牌附近看看。", "Need ammo or repairs in the arena? Check by the signpost." },
+            new string[] { "竞技场里的枪声我听惯了，就是听不惯欠账。", "I'm used to gunfire in the arena. Unpaid tabs, never." },
             new string[] { "通关先等一等，奖励箱还没落地呢。", "Cleared it? Wait for the reward crate to land." },
-            new string[] { "打完记得走撤离点，别在场上瞎转悠。", "Done fighting? Use the extraction point." },
+            new string[] { "撤离点排队的人，脸比我送错单那天还白。", "People queued at extraction: paler than I was the day I misdelivered." },
             new string[] { "前面的波次拿来热身，狠角色还在后头。", "Warm up in the early waves. The nasty ones come later." },
 
             // ============ 无间炼狱 ============
             new string[] { "无间炼狱没个头，撑不住就找机会撤。", "Infinite Hell keeps going. Leave before it gets the better of you." },
-            new string[] { "无间炼狱百波有大奖。先活到那儿再惦记。", "Big reward at wave 100 in Infinite Hell. Get there alive first." },
-            new string[] { "无间炼狱的战利品折成钱，省得我搬箱子。", "Infinite Hell turns loot into cash. Less hauling for me." },
-            new string[] { "无间炼狱每五波有奖励，记着去看。", "Rewards every five waves in Infinite Hell. Keep an eye out." },
-            new string[] { "无间炼狱攒了多少钱，路牌上能看。", "Check the signpost for your Infinite Hell cash pool." },
+            new string[] { "无间炼狱那边的账，我记到一半就放弃了。", "The tab from Infinite Hell never ends. I gave up halfway through." },
+            new string[] { "有人在无间炼狱里待了一整天，出来第一句要可乐。", "Someone spent a whole day in Infinite Hell. First words out: cola." },
+            new string[] { "无间炼狱不收快递，我问过。", "Infinite Hell doesn't take deliveries. I asked." },
+            new string[] { "无间炼狱的路牌，我看一回想绕一回。", "Every time I read the Infinite Hell signpost, I want another route." },
 
             // ============ 白手起家 ============
-            new string[] { "白手起家得空着身子进，进去了再找装备。", "Go into Rags to Riches with nothing. Find your gear inside." },
-            new string[] { "白手起家先搜小兵的装备，别急着往后冲。", "Loot the grunts in Rags to Riches. Gear up before pushing on." },
-            new string[] { "后面的敌人穿得越来越好，扒下来就是你的。", "Later enemies wear better gear. Help yourself when they fall." },
-            new string[] { "白手起家发什么就用什么，先站稳再挑。", "Use what Rags to Riches gives you. Be picky once you're safe." },
+            new string[] { "白手起家得空着身子进，进去了再找装备。", "Go into From Scratch with nothing. Find your gear inside." },
+            new string[] { "白手起家的人两手空空进场，比我空车回程还干净。", "People walk into From Scratch emptier than my return trips." },
+            new string[] { "小兵的行头比我这件快递服体面多了。", "Those grunts dress better than I do in this delivery jacket." },
+            new string[] { "路上有什么就凑合什么，我送货的时候也是。", "You make do with what's on the road. Same on my routes." },
 
             // ============ 划地为营 ============
-            new string[] { "划地为营先认旗子，别一上来就打自己人。", "Check the flags in Zone Defense. Don't shoot your own side." },
-            new string[] { "划地为营缺补给？找神秘商人，记得带钱。", "Short on supplies in Zone Defense? Find the merchant. Bring cash." },
-            new string[] { "带爷的营旗？那可没人跟你一伙了。", "Taking the Lone Wolf flag? Nobody's on your side." },
-            new string[] { "划地为营能叫煤球帮忙。个头小，下手可不轻。", "Meiqiu can help in Zone Defense. Small, but hits hard." },
-            new string[] { "挑衅烟雾弹能惹来Boss。扔之前先想好退路。", "Taunt Smoke brings bosses. Plan your exit before throwing it." },
-            new string[] { "划地为营倒下的Boss越多，剩下的越难缠。", "Each fallen boss makes the survivors tougher in Zone Defense." },
+            new string[] { "划地为营先认旗子，别一上来就打自己人。", "Check the flags in Faction War. Don't shoot your own side." },
+            new string[] { "划地为营缺补给？找神秘商人，记得带钱。", "Short on supplies in Faction War? Find the merchant. Bring cash." },
+            new string[] { "扛着独狼那面旗？那可没人跟你一伙了。", "Taking the Lone Wolf flag? Nobody's on your side." },
+            new string[] { "划地为营能叫煤球帮忙。个头小，下手可不轻。", "Coalball can help in Faction War. Small, but hits hard." },
+            new string[] { "烟雾弹的味我闻过一次，包里的东西全串味了。", "Smelled a smoke bomb once. Every parcel in my bag picked it up." },
+            new string[] { "旗子多了容易认错。我认错单子，老板扣钱。", "Too many flags and you mix them up. I mix up slips and the boss docks my pay." },
 
             // ============ 血猎追击 ============
             new string[] { "血猎追击会掉血，杀Boss能续命。别停太久。", "Blood Hunt drains your health. Boss kills keep you going." },
-            new string[] { "血猎追击越往后越难熬，记好撤离点在哪。", "Blood Hunt gets rougher over time. Know your extraction route." },
-            new string[] { "血猎追击能摆工事，别等被围了才想起来。", "Set up your Blood Hunt defenses before you're surrounded." },
-            new string[] { "血猎的悬赏印记得撤离后才换奖励。别贪。", "Extract to cash in your Blood Hunt bounty marks. Don't get greedy." },
-            new string[] { "血猎开场先找装备，准备时间可不等人。", "Find gear early in Blood Hunt. Prep time won't wait." },
+            new string[] { "血猎那头的路，我送一趟折一天寿。", "Every delivery down the Blood Hunt road costs me a day of my life." },
+            new string[] { "血猎追击的人都带着伤来签收，单子上全是血印。", "Everyone from Blood Hunt signs with a bloody thumb. Ruins the slips." },
+            new string[] { "血猎追击我押过一回，输了半个月工钱。", "Bet on Blood Hunt once. Lost half a month's pay." },
+            new string[] { "血猎追击那边我不带可乐，怕味道招人。", "I don't bring cola out to Blood Hunt. The smell might draw attention." },
 
             // ============ 龙裔遗族Boss ============
-            new string[] { "龙裔遗族没龙皇那么凶，也够你忙一阵的。", "The Dragon Descendant isn't the King. Still keeps you busy." },
+            new string[] { "龙裔遗族没龙皇那么凶，也够你忙一阵的。", "The Dragon Descendant isn't the Dragon Lord. Still keeps you busy." },
             new string[] { "赤龙首和焰鳞甲，都能从龙裔遗族那儿拿。", "The Dragon Descendant drops the Crimson Helm and Flame Scale Armor." },
-            new string[] { "先找龙裔遗族练练手，再惦记龙皇吧。", "Try the Dragon Descendant before taking on the King." },
+            new string[] { "龙裔遗族烧起来的时候，我在三条街外数单子。", "When the Dragon Descendant flares up, I'm three streets away counting slips." },
 
             // ============ 龙裔套装 ============
             new string[] { "龙裔和龙王套装都能把火伤转成回血。得穿齐。", "Both dragon sets turn fire damage into healing. Wear the full set." },
-            new string[] { "龙裔套穿齐，双击方向键就能冲出去。", "Wear the dragon set and double-tap a direction to dash." },
+            new string[] { "穿龙裔套的人走路带风，我送货可没这待遇。", "People in the dragon set walk like they own the road. I don't get that on deliveries." },
 
             // ============ 龙王套装 ============
-            new string[] { "龙王套冲刺会留下岩浆，路过都烫脚。", "The Dragon King set leaves lava when you dash. Watch your feet." },
-            new string[] { "龙王套先冲六米，还能再接三米。别冲过头。", "Dragon King set: a six-meter dash, then three more. Mind the edge." },
+            new string[] { "龙王套踩过的地方，路面都得重铺。这笔账谁认？", "The road needs repaving wherever the Dragon King set has stepped. Who pays for that?" },
+            new string[] { "龙王套能连冲两下，先六米再三米，冲前看脚下。", "The Dragon King set dashes twice, six meters then three. Look before you go." },
 
             // ============ 逆鳞 ============
             new string[] { "逆鳞能救急，用一次就碎。别拿它试着玩。", "Reverse Scale can save you once. Don't waste it testing your luck." },
-            new string[] { "打龙皇前带个逆鳞，多少有个照应。", "Pack a Reverse Scale before facing the Dragon King." },
+            new string[] { "东西碎了就是碎了，账我照记。", "Once something breaks it stays broken. I still log it." },
 
             // ============ 焚皇断界戟 ============
-            new string[] { "龙皇那把焚皇断界戟，抡起来可别忘了躲招。", "Swinging the Dragon King's halberd? You still need to dodge." },
+            new string[] { "龙皇那把戟，我只在远处见过一眼，够了。", "I saw the Dragon Lord's halberd from far away once. That was plenty." },
 
             // ============ 龙息 ============
-            new string[] { "龙息能从龙裔遗族身上出，拿到了别乱卖。", "The Dragon Descendant can drop Dragon Breath. Keep it if you get one." },
+            new string[] { "龙息那把枪的味道，我隔着箱子都闻得见。", "I can smell that Dragon's Breath gun through the crate." },
 
             // ============ 霜之哀伤 ============
             new string[] { "霜之哀伤右键能叫亡灵帮忙，省点自己的力气。", "Right-click with Frostmourne to call undead help." },
-            new string[] { "去雪地带霜之哀伤，能挡些寒气。", "Frostmourne helps with the cold on snow maps." },
+            new string[] { "霜之哀伤寒气太重，我送货一律戴手套。", "Frostmourne runs so cold I wear gloves whenever I carry it." },
 
             // ============ 焚天龙铳 ============
-            new string[] { "龙皇抬起焚天龙铳的时候，我劝你先找掩体。", "When the Dragon King raises its cannon, find cover." },
+            new string[] { "龙皇那炮响过一回，我耳朵嗡嗡响了半个月。", "That cannon went off once. My ears rang for two weeks." },
 
             // ============ 地图 ============
             new string[] { "新手先去DEMO终极挑战，场地平，好看清路。", "Start with DEMO Ultimate Challenge. Flat ground, clear sightlines." },
-            new string[] { "零度挑战是雪地，进场先检查防寒装备。", "Zero Challenge is snowy. Check your cold protection on arrival." },
+            new string[] { "雪地的单最难送。字迹一冻，收件人是谁都看不清。", "Snow deliveries are the worst. Once the ink freezes I can't read the name." },
             new string[] { "J-Lab的单我不爱送，总觉得背后有人看。", "I hate J-Lab deliveries. Always feels like someone's watching." },
             new string[] { "迷宫拐角多，别光盯着眼前那个Boss。", "Lots of corners in the Maze. Watch more than the boss in front." },
             new string[] { "农场镇地方宽，跑得开，也容易被远处盯上。", "Farm Town has room to run. Also room to get spotted." },
@@ -371,34 +371,34 @@ namespace BossRush
 
             // ============ 婚姻系统 ============
             new string[] { "想求婚，先处好关系，再带钻石戒指去。", "Thinking of proposing? Build a bond, then bring a diamond ring." },
-            new string[] { "婚后的礼物每天别忘了领。人家特意留的。", "Don't forget your spouse's daily gift. They saved it for you." },
+            new string[] { "喜帖我倒是愿意送，只要别让我当伴郎。", "I'll deliver wedding invitations. Just don't make me the best man." },
             new string[] { "结了婚还乱送戒指？这单我可不替你解释。", "Married and giving rings away? I'm not explaining that one for you." },
-            new string[] { "离婚会把好感清零，想好了再开口。", "Divorce resets affinity to zero. Think it through." },
-            new string[] { "配偶能陪你出门，可别只把人家当帮手。", "Your spouse can travel with you. Treat them as more than backup." },
+            new string[] { "散伙的单子最难送。收件人不肯签。", "Breakup notices are the hardest to deliver. Nobody wants to sign." },
+            new string[] { "陪你出门的人，别让他们替你扛账。", "Whoever walks out with you, don't let them carry your tab." },
 
             // ============ 安神滴剂 ============
-            new string[] { "安神滴剂能清负面状态，药包里留一瓶。", "Calming Drops clear debuffs. Keep a bottle in your medkit." },
+            new string[] { "安神滴剂能清掉大部分坏状态，药包里留一瓶。", "Calming Drops clear most bad effects. Keep a bottle in your medkit." },
 
             // ============ 平安护身符 ============
             new string[] { "羽织的平安护身符能救命，可不是每次都灵。", "Yu Zhi's Peace Charm can save you. Don't count on it every time." },
 
             // ============ 钻石戒指 ============
-            new string[] { "叮当那儿卖钻石戒指。买好了，别又让我转交。", "Dingdang sells diamond rings. Deliver that one yourself." },
+            new string[] { "戒指我经手过，盒子总比里头的东西重。", "I've handled a ring or two. The box always weighs more than the ring." },
 
             // ============ 快递牌 ============
-            new string[] { "快递牌能把东西寄回家，急用时翻翻背包。", "An Express Token ships your things home. Check your bag in a pinch." },
+            new string[] { "快递牌能把东西寄回家，急用时翻翻背包。", "An Awen Courier Token ships your things home. Check your bag in a pinch." },
 
             // ============ 扫箱令 ============
-            new string[] { "划地为营和血猎追击会奖扫箱令，留着叫我。", "Zone Defense and Blood Hunt award Sweep Tokens. Use one to call me." },
+            new string[] { "划地为营和血猎追击会奖扫箱令，留着叫我。", "Faction War and Blood Hunt award Loot Sweep Tokens. Use one to call me." },
 
             // ============ 荒野号角 ============
-            new string[] { "荒野号角能叫坐骑。跑远路，总比靠两条腿强。", "The Wild Horn calls a mount. Beats walking long distances." },
+            new string[] { "有坐骑的人从来不挑路。我挑，因为我用两条腿。", "People with mounts never pick their roads. I do. I'm on foot." },
 
             // ============ Boss筛选器 ============
-            new string[] { "Ctrl+F10开Boss筛选器，出发前先挑好对手。", "Ctrl+F10 opens the Boss Filter. Pick your opponents before leaving." },
+            new string[] { "出发前看看对手名单，不想碰的划掉。", "Check the roster before you go. Cross off anyone you don't want to meet." },
 
             // ============ 配置选项 ============
-            new string[] { "波次间隔和Boss强度能调，挑个自己打得动的。", "Adjust wave gaps and boss strength to suit you." },
+            new string[] { "波次间隔越短，我喝可乐的时间越少。", "The shorter the wave gap, the less time I get for cola." },
 
             // ============ 掉落/战利品 ============
             new string[] { "箱子该拿就拿，别打完一转身把战利品忘了。", "Check the crates. Don't walk off and leave your loot behind." },
@@ -406,18 +406,18 @@ namespace BossRush
             new string[] { "箱子堆太多就清一清，别把自己的路堵死。", "Clear those crates before you block your own escape." },
 
             // ============ 成就系统补充 ============
-            new string[] { "按L看成就，完成了记得领奖金。", "Press L for achievements. Claim the rewards you've earned." },
-            new string[] { "成就勋章能在商人那免费领，别漏了。", "Get your free achievement medal from the merchant." },
+            new string[] { "勋章上记着你干的好事，奖金别忘了去领。", "Your medal keeps score. Go collect the bonus you've earned." },
+            new string[] { "勋章比快递轻，我更愿意送勋章。", "Medals weigh less than parcels. I'd rather deliver medals." },
 
             // ============ 营旗/血猎收发器 ============
             new string[] { "营旗认准颜色再带，别进了场才认错队伍。", "Check your flag before leaving. Know which side you're on." },
-            new string[] { "玩血猎追击，船票和血猎收发器都得带上。", "For Blood Hunt, bring both a ticket and a transceiver." },
+            new string[] { "血猎追击要船票加收发器，落一样白跑。", "Blood Hunt needs a ticket and the transceiver. Miss one and it's a wasted trip." },
 
             // ============ 入场优先级 ============
-            new string[] { "想玩哪种模式就带哪种凭证，别全塞包里。", "Pack the entry item for the mode you want. Don't bring the whole lot." },
+            new string[] { "凭证带多了容易错。我错过单，老板念了一个月。", "Too many passes and you grab the wrong one. I misfiled a slip once. The boss nagged for a month." },
 
             // ============ 龙皇掉落细节 ============
-            new string[] { "龙皇能掉图腾和逆鳞，可别指望回回都有。", "The Dragon King can drop totems and Reverse Scales. Not every time." },
+            new string[] { "龙皇能掉图腾和逆鳞，可别指望回回都有。", "The Dragon Lord can drop totems and Reverse Scales. Not every time." },
 
             // ============ 更多日常/世界观 ============
             new string[] { "最怕送到了没人签收，跑得再快也白搭。", "Worst delivery? Nobody there to sign. All that running for nothing." },
@@ -425,42 +425,42 @@ namespace BossRush
 
             // ============ 末日丧尸模式（v2.2.0） ============
             new string[] { "基地商人卖尸潮邀请函，一张只能进一趟。", "The base merchant sells Zombie Tide Invitations. One per run." },
-            new string[] { "尸潮净化点撤离能换钱，死了就没了。", "Extract to cash in your tide purification points. Die and lose them." },
-            new string[] { "尸潮污染越高，丧尸越难打。别贪最后一波。", "More pollution, tougher zombies. Don't get greedy for one more wave." },
+            new string[] { "尸潮那头信号不好，单子都得当面递。", "Reception's bad out at the zombie tide. Slips have to be handed over in person." },
+            new string[] { "尸潮里的鬼东西我认不全，就认得它们从不签收。", "I can't name half of what's in the tide. I do know none of them sign for anything." },
             new string[] { "带尸潮信标能跳过准备读秒，想好了再用。", "A Zombie Tide Beacon skips the prep countdown. Be ready." },
 
             // ============ 变异词条系统（v2.2.0） ============
             new string[] { "开场看看左边抽到的变异词条，别闷头冲。", "Check your mutators on the left before charging in." },
-            new string[] { "词条细则把鼠标移上去看。便宜往往带着代价。", "Hover over a mutator for details. Read the catch." },
-            new string[] { "变异词条抽几个能在配置里调，出发前看看。", "Set your mutator count in the config before leaving." },
+            new string[] { "词条抽到什么算什么，我抽到过一张欠条。", "You take whatever the mutators give you. I once drew an IOU." },
+            new string[] { "变异这词儿让我起鸡皮疙瘩，J-Lab 常说。", "'Mutation'... that word gives me chills. J-Lab used to say it." },
 
             // ============ 新装备货源（P0 五把武器 2026-09 已批出库；霜雷两套装同批） ============
-            new string[] { "毒蛇匕首那批新武器送到叮当那儿了，熟了去问。", "Dingdang has the new weapons, Viper Dagger included. Get to know it." },
-            new string[] { "霜雷两套甲也在叮当那儿，好感六级才卖。", "Dingdang sells the frost and thunder armor sets at Affinity 6." },
+            new string[] { "毒蛇匕首那批新武器送到叮当那儿了，熟了去问。", "Dingdang has the new weapons, Viper Dagger included. Ask once you're on good terms." },
+            new string[] { "霜雷两套甲在叮当里屋，六级交情才肯拿出来。", "Dingdang keeps the frost and thunder sets in the back. Level six to see them." },
 
             // 近期内容：入口、去处与用途各说一件，旧下标不变。
-            new string[] { "宿命回响要带信物和船票，自己的装备也带齐。", "For Fate Echo, pack the relic, a ticket, and your own gear." },
-            new string[] { "宿命回响那位宿敌记仇，下回还会来找你。", "Your Fate Echo nemesis holds a grudge. Expect another visit." },
+            new string[] { "去会宿敌？信物、船票、自己的家伙，一样别落。", "Off to meet your nemesis? Relic, ticket, your own gear. Don't leave one behind." },
+            new string[] { "宿敌记仇？我也记，欠我可乐的那几位。", "Nemeses hold grudges? So do I. Especially about the cola people owe me." },
             new string[] { "黑市鸭王杯让你当经理人，选将和配装都得操心。", "The Black Market Duck Cup puts you in charge of fighters and their gear." },
-            new string[] { "百战留痕要看对阵再下注，别光听名字响。", "In the Duck Cup, check the matchup before placing your bet." },
-            new string[] { "鸭王征程找基地里的杰夫接，六章都在他的任务页上。", "Jeff at base hands out the Duck King Campaign. All six chapters are on his quest page." },
-            new string[] { "鸭王征程接了契约再去打，别白跑；做完回来找杰夫交。", "Take a campaign contract before heading out, and hand it in to Jeff when you're done." },
-            new string[] { "听说有条去天空岛的航路，先找Jeff问问。", "Heard there's a route to Sky Island. Ask Jeff first." },
-            new string[] { "Jeff让找的航向仪在零号区，拿到后回来交差。", "Jeff's missing instrument is in Ground Zero. Bring it back to him." },
-            new string[] { "天空岛通航后，从基地船点走，不用挤竞技场。", "Once Sky Island opens, leave from the base boat." },
+            new string[] { "押注的单我经手过，输的人签字比赢的人用力。", "I've handled bet slips. The losers sign harder than the winners." },
+            new string[] { "鸭王征程归杰夫管，六章的单子都在他手上。", "Jeff runs the Duck King Campaign. All six chapters of jobs are on his desk." },
+            new string[] { "杰夫的单子我送过，字比我的还小。", "Jeff's slips are written smaller than mine. I've read them." },
+            new string[] { "天空岛我没去过。云上没有邮路，我没法对账。", "Never been to Sky Island. No postal route up there. I couldn't balance the books." },
+            new string[] { "杰夫托我留意的航向仪在零号区，找着了给他送去。", "Jeff wants that heading instrument. It's in Ground Zero. Bring it to him." },
+            new string[] { "云上刮风，一张纸都留不住。", "Up in the clouds the wind won't let a single sheet of paper stay put." },
             new string[] { "天空岛想返航，回登云码头找系泊桩。", "Heading home from Sky Island? Use Cloudrise Dock's mooring post." },
-            new string[] { "天空岛的浮舟修装备，眠苔治伤。别跑错门。", "On Sky Island, Fuzhou repairs gear and Miantai treats wounds." },
+            new string[] { "听说岛上送信靠鸽子。同行，我不服。", "Heard they deliver mail by pigeon up on the islands. A rival. I'm not impressed." },
             new string[] { "岛上头目穿的装备能掉下来，看上哪件就盯紧谁。", "Island bosses can drop the gear they wear. Pick your target." },
-            new string[] { "夜里上岛多带药，云蚋可不看你有没有空。", "Pack medicine for island nights. Gnats don't wait their turn." },
-            new string[] { "Boss掉的遗种蛋别卖，带回基地遗种巢孵。", "Keep those Relic Eggs from bosses. Hatch them in a Relic Nest at base." },
+            new string[] { "夜里的虫子专挑穿快递服的叮。我试过。", "Night bugs go for delivery jackets first. I tested it." },
+            new string[] { "Boss掉的遗种蛋别卖，带回基地遗种巢孵。", "Keep those Relic Eggs from bosses. Hatch them in a PetNest at base." },
             new string[] { "想添点新本事，去词缀锻造台看看。", "Want a new trick on your gear? Check the Affix Forge." },
             new string[] { "竞技场后山有地方整备，忙完一场再去转转。", "Check the arena's back mountain between fights. You can prepare there." },
-            new string[] { "没见过的Boss，打完翻翻鸭皇图鉴。", "Met a new boss? Check the bestiary after the fight." },
+            new string[] { "图鉴上没我的名字，我挺满意。", "I'm not in the bestiary. Suits me fine." },
             new string[] { "基地能看鸭科夫日报，送报的可比我轻松。", "Read the Duckov Daily at base. Easier job than hauling crates." },
             new string[] { "毒蛇匕首找典狱长，召唤法杖找大兴兴。", "The Warden can drop Viper Dagger; Big Xing, the Summoning Staff." },
-            new string[] { "呆头鹅出能量盾，大冰冰出冰霜长矛。", "Goofy Goose can drop Energy Shield; Big Ice, Frost Spear." },
-            new string[] { "雷电戒指找三枪哥。能不能拿到，还得看手气。", "Triple-Shot Man can drop Thunder Ring. If you're lucky." },
-            new string[] { "新货的详细用法在书里，别听我一句就乱按。", "The book explains the new gear. Read it before pressing buttons." },
+            new string[] { "呆头鹅我送货时见过一回，后来一直绕路。", "Met Goofy Goose on a delivery once. Been taking the long way since." },
+            new string[] { "三枪哥的准头我信。可乐瓶盖飞出去他都打得中。", "I believe Triple-Shot Man is accurate. He could probably hit a cola cap in flight." },
+            new string[] { "新货的单子最厚，我签收的时候手都酸了。", "New stock comes with the thickest slips. My hand cramped signing for it." },
 
         };
 
@@ -596,10 +596,8 @@ namespace BossRush
             ZombieTideInvitationConfig.InjectLocalization();
             ZombieTideBeaconConfig.InjectLocalization();
             PortableSafeZoneDeviceConfig.InjectLocalization();
-            InjectZombieModeString("BossRush_ZombieTideInvitation", "尸潮邀请函", "Zombie Tide Invitation");
-            InjectZombieModeString("BossRush_ZombieTideInvitation_Desc", "进入末日丧尸模式的入场凭证。撤离失败时不退还。", "Required to enter Zombie Mode. Not refunded on failure.");
-            InjectZombieModeString("BossRush_ZombieTideBeacon", "尸潮信标", "Zombie Tide Beacon");
-            InjectZombieModeString("BossRush_ZombieTideBeacon_Desc", "在准备倒计时阶段使用，立即开始下一波。本局工具，不能带出。", "Use during preparation countdown to start the next wave immediately. Run-only tool.");
+            // 尸潮邀请函 / 信标的名称与描述只有一份事实来源：各自 Config 的常量（上面的 InjectLocalization）。
+            // 这里不再对同一个 key 二次注入，否则写死的文案会静默覆盖配置里的版本。
             InjectZombieModeString("BossRush_PortableSafeZoneDevice", "便携安全区装置", "Portable Safe-Zone Device");
             // 描述只有一份事实来源：PortableSafeZoneDeviceConfig 的常量。
             // 这里在 InjectLocalization() 之后再注入同一个 key，写死文案会静默覆盖掉配置里的版本。
@@ -623,7 +621,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_NoMaps", "没有可用的末日丧尸模式地图。", "No Zombie Mode maps are available.");
             InjectZombieModeString("BossRush_ZombieMode_OpenMapFailed", "无法打开地图选择界面。", "Could not open the map selection UI.");
             InjectZombieModeString("BossRush_ZombieMode_NotInitialized", "末日丧尸模式尚未初始化。", "Zombie Mode is not initialized.");
-            InjectZombieModeString("BossRush_ZombieMode_OtherModeActive", "已有 BossRush 类模式正在进行。", "A BossRush-like mode is already in progress.");
+            InjectZombieModeString("BossRush_ZombieMode_OtherModeActive", "已经有另一个模式在进行。", "Another mode is already running.");
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_Title", "投入现金兑换初始净化点数", "Convert Cash to Initial Purification Points");
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_Body", "兑换比例：100 现金 = 1 局内净化点数。失败/死亡全部损失；撤离时剩余净化点按点数结算为现金奖励。", "Rate: 100 cash = 1 run-only Purification Point. All lost on failure or death; remaining points are settled as cash rewards on extraction.");
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_AmountLabel", "投入金额", "Investment Amount");
@@ -704,7 +702,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Notify_PointsShort", "还差 {0} 净化点", "Need {0} more Purification");
             InjectZombieModeString("BossRush_ZombieMode_Notify_RefundedInvitation", "末日丧尸模式未正式开始，已返还尸潮邀请函。", "Zombie Mode did not start; Zombie Tide Invitation refunded.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_RefundedCash", "已退还投入的现金。", "Refunded invested cash.");
-            InjectZombieModeString("BossRush_ZombieMode_Notify_StorageFull", "仓储格已满，随身物品已转入仓库收件箱。", "Storage grid is full; carried items were sent to the storage inbox.");
+            InjectZombieModeString("BossRush_ZombieMode_Notify_StorageFull", "仓库放不下了，随身物品已转入仓库收件箱。", "Your storage is full. Carried items went to the storage inbox.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_HasBoundItems", "随身物品会在入场后转入仓库。", "Carried items are moved to storage after entry.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_NoSpawnPoints", "该地图暂无可用丧尸刷怪点。", "No spawn points available on this map.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_BackpackFullDropped", "背包已满，奖励掉落在脚下。", "Backpack full; reward dropped at your feet.");
@@ -730,25 +728,25 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Banner_ExtractionCountdown", "撤离倒计时 <color=#FFC966>{0}</color> 秒，保持存活！", "Extraction in <color=#FFC966>{0}</color>s. Stay alive!");
             InjectZombieModeString("BossRush_ZombieMode_Reason_InvitationMissing", "缺少尸潮邀请函。", "Missing Zombie Tide Invitation.");
             InjectZombieModeString("BossRush_ZombieMode_Reason_NotEnoughCash", "现金不足。", "Not enough cash.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_NoEffectiveSpawnPoints", "无有效刷怪点。", "No effective spawn points.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_StorageFull", "仓储格已满，已使用仓库收件箱。", "Storage grid is full; storage inbox was used.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_NoEffectiveSpawnPoints", "这张图暂时没有可用的刷怪点。", "No usable spawn points on this map.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_StorageFull", "仓库满了，多出的东西放进了收件箱。", "Your storage is full. The overflow went to the storage inbox.");
             InjectZombieModeString("BossRush_ZombieMode_Reason_BlockedTaskOrBoundItems", "随身物品会转入仓库。", "Carried items are moved to storage.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_AnotherBossRushLikeModeActive", "已有 BossRush 类模式进行中。", "Another BossRush-like mode is active.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_InvitationConsumeFailed", "邀请函消耗失败。", "Invitation consume failed.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_CashWithdrawFailed", "现金扣款失败。", "Cash withdrawal failed.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_InventoryTransferFailed", "物品转移失败。", "Inventory transfer failed.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_MapLoadFailed", "地图加载失败。", "Map load failed.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_MapIsolationFailed", "地图隔离失败。", "Map isolation failed.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_SpawnPointCollectionFailed", "刷怪点收集失败。", "Spawn point collection failed.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_BeaconGrantFailed", "尸潮信标发放失败。", "Beacon grant failed.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_InitializationFailed", "模式初始化失败。", "Mode initialization failed.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_StarterChoiceUiClosed", "初始选择 UI 异常关闭。", "Starter choice UI closed unexpectedly.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_StarterChoiceTimedOut", "初始选择超时。", "Starter choice timed out.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_StarterLoadoutFailed", "初始装备发放失败。", "Starter loadout failed.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_AnotherBossRushLikeModeActive", "已经有另一个模式在进行。", "Another mode is already running.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_InvitationConsumeFailed", "邀请函没能扣除，这次没进成。", "The invitation couldn't be taken. Entry cancelled.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_CashWithdrawFailed", "投入的现金没能扣除，这次没进成，邀请函会退回。", "Couldn't take the invested cash. Entry cancelled, and your invitation will be returned.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_InventoryTransferFailed", "随身物品没能转入仓库，这次没进成。", "Carried items couldn't be moved to storage. Entry cancelled.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_MapLoadFailed", "地图没能加载，这次没进成。", "The map failed to load. Entry cancelled.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_MapIsolationFailed", "没能把这张地图准备好，这次没进成。", "The map couldn't be prepared. Entry cancelled.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_SpawnPointCollectionFailed", "刷怪点没准备好，这次没进成。", "Spawn points weren't ready. Entry cancelled.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_BeaconGrantFailed", "没能给到尸潮信标。", "The Zombie Tide Beacon couldn't be handed over.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_InitializationFailed", "模式没能启动。", "The mode couldn't start.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_StarterChoiceUiClosed", "开局选择界面意外关掉了。", "The starter selection closed unexpectedly.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_StarterChoiceTimedOut", "开局选择超时了。", "The starter selection timed out.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_StarterLoadoutFailed", "开局装备没能发放。", "The starter loadout couldn't be handed out.");
             InjectZombieModeString("BossRush_ZombieMode_Reason_PlayerDeath", "玩家死亡。", "Player died.");
             InjectZombieModeString("BossRush_ZombieMode_Reason_ManualExit", "手动退出。", "Manual exit.");
             InjectZombieModeString("BossRush_ZombieMode_Reason_SceneSwitched", "场景已切换。", "Scene switched.");
-            InjectZombieModeString("BossRush_ZombieMode_Reason_UnexpectedSceneUnload", "场景被异常卸载。", "Scene unloaded unexpectedly.");
+            InjectZombieModeString("BossRush_ZombieMode_Reason_UnexpectedSceneUnload", "地图意外中断了。", "The map was interrupted unexpectedly.");
             InjectZombieModeString("BossRush_ZombieMode_Reason_SuccessfulExtraction", "撤离成功。", "Extraction successful.");
             InjectZombieModeString("BossRush_ZombieMode_Reason_Unknown", "未知原因。", "Unknown reason.");
             InjectZombieModeString("BossRush_ZombieMode_Reward_Title_Normal", "第 {0} 波 奖励选择", "Wave {0} Rewards");
@@ -793,7 +791,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Reward_TempMerchant", "补给终端：下次购买保底高品质", "Supply Terminal: Next Purchase High Quality");
             InjectZombieModeString("BossRush_ZombieMode_Reward_TempNurse", "医疗终端：可花净化点治疗", "Medical Terminal: Spend Purification to Heal");
             InjectZombieModeString("BossRush_ZombieMode_Reward_TempGoblinNpc", "召唤叮当：可花净化点重铸", "Summon Dingdang: Reforge with Purification");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_TempNurseNpc", "召唤羽织：可花净化点治疗", "Summon Yuzhi: Heal with Purification");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_TempNurseNpc", "召唤羽织：可花净化点治疗", "Summon Yu Zhi: Heal with Purification");
             InjectZombieModeString("BossRush_ZombieMode_Reward_TempCourierNpc", "召唤阿稳：可花净化点使用服务", "Summon Awen: Services with Purification");
             InjectZombieModeString("BossRush_ZombieMode_Reward_FortificationPack", "给掩体/路障/铁丝网/维修喷剂", "Cover/Roadblock/Wire/Repair Spray Pack");
             InjectZombieModeString("BossRush_ZombieMode_Reward_ContractPollutionDeal", "污染 +1/+2，净化点 -80/-150", "Pollution +1/+2, Purification -80/-150");
@@ -852,7 +850,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Npc_TempMerchant", "补给终端已部署", "Supply Terminal deployed");
             InjectZombieModeString("BossRush_ZombieMode_Npc_TempNurse", "医疗终端已部署", "Medical Terminal deployed");
             InjectZombieModeString("BossRush_ZombieMode_Npc_TempGoblinNpc", "叮当已抵达安全区", "Dingdang reached the safe zone");
-            InjectZombieModeString("BossRush_ZombieMode_Npc_TempNurseNpcReal", "羽织已抵达安全区", "Yuzhi reached the safe zone");
+            InjectZombieModeString("BossRush_ZombieMode_Npc_TempNurseNpcReal", "羽织已抵达安全区", "Yu Zhi reached the safe zone");
             InjectZombieModeString("BossRush_ZombieMode_Npc_TempCourierNpc", "阿稳已抵达安全区", "Awen reached the safe zone");
             InjectZombieModeString("BossRush_ZombieMode_Notify_TempMerchantGuarantee", "补给终端高品质保底已就绪", "Supply Terminal high-quality guarantee is ready");
             InjectZombieModeString("BossRush_ZombieMode_Npc_InteractMerchant", "按 {0} 使用补给终端", "Press {0} to use Supply Terminal");

@@ -312,7 +312,7 @@ namespace BossRush
             try
             {
                 int seconds = Mathf.Max(1, Mathf.CeilToInt(remainingCooldown));
-                string bubbleText = L10n.T("冷却中" + seconds + "s...", "Cooldown " + seconds + "s...");
+                string bubbleText = L10n.T("冷却中，还剩 " + seconds + " 秒", "On cooldown: " + seconds + "s");
                 Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
                     bubbleText,
                     player.transform,

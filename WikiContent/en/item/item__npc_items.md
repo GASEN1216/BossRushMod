@@ -75,7 +75,7 @@ Ships everything you're carrying home in one action. Brass token with Awen's duc
 
 Awen sweeps all existing lootboxes nearest-to-farthest. Works in standard BossRush, Faction War and Blood Hunt.
 
-- **Source**: Auto-granted per 20 Boss deaths in Mode E/F
+- **Source**: Auto-granted per 20 Boss deaths in Faction War and Blood Hunt
 - Stack 1 / Use time 1s / Requires Awen present + lootboxes on field
 - Can't reuse while Awen is already sweeping
 - **Note**: this is the consumable version; Awen also now provides a permanent **`Sweep Loot`** interaction service

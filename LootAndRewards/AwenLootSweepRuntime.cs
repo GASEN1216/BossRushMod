@@ -211,7 +211,7 @@ namespace BossRush
                     player,
                     showFailureFeedback,
                     L10n.T(
-                        "现在还不能叫阿稳扫箱，得在可用的BossRush战场里用。",
+                        "这里叫不动阿稳，得在 BossRush 的战场上用。",
                         "You can only call Awen to sweep in supported BossRush modes."));
             }
 
@@ -232,7 +232,7 @@ namespace BossRush
                     player,
                     showFailureFeedback,
                     L10n.T(
-                        "阿稳已经开吃了，等他扫完再用。",
+                        "阿稳正在扫箱，等他扫完再用。",
                         "Awen is already sweeping. Let him finish first."));
             }
 

@@ -39,8 +39,8 @@ namespace BossRush
             Dictionary<string, string> map = new Dictionary<string, string>();
             map[buildingKey] = L10n.T("战利品展示柜", "Trophy Showcase");
             map[buildingKey + "_Desc"] = L10n.T(
-                "旧的战利品登记柜。现在摆上官方的枪械展示架或假人就算数，这个柜子里的登记已经折算过去了。",
-                "The old trophy registry. The official weapon display racks and dummies count now, and whatever was registered here has been carried over.");
+                "旧的战利品登记柜，已经退役。现在战利品直接摆上枪械展示架或假人就算数，这柜子里登记过的也已折算过去。",
+                "The old trophy registry, now retired. Trophies count as soon as they're on a weapon rack or a dummy, and whatever was registered here has been carried over.");
 
             LocalizationHelper.InjectLocalizations(map);
         }

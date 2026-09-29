@@ -263,7 +263,7 @@ namespace BossRush
         /// </summary>
         private void ShowIceSlowdownDialogue()
         {
-            ShowDialogueBubble("此等极寒之力也被你征服了吗，可恶...", 3f);
+            ShowDialogueBubble(EquipmentLocalization.GetDragonDescendantIceSlowDialogue(), 3f);
             ModBehaviour.DevLog("[DragonDescendant] 显示冰冻减速对话");
         }
 
@@ -309,7 +309,7 @@ namespace BossRush
         /// </summary>
         private void ShowIceRecoveryDialogue()
         {
-            ShowDialogueBubble("哈哈哈用完了吗？轮到我了！", 3f);
+            ShowDialogueBubble(EquipmentLocalization.GetDragonDescendantIceRecoveryDialogue(), 3f);
             ModBehaviour.DevLog("[DragonDescendant] 显示冰冻恢复对话");
         }
     }

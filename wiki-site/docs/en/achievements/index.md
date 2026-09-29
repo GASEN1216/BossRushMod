@@ -9,7 +9,7 @@ This mod currently contains 45 achievements across 9 categories. Completing achi
 | First Steps | Complete BossRush for the first time | $5,000 | ★ |
 | Easy Peasy | Complete BossRush on Easy difficulty | $10,000 | ★ |
 | Getting Serious | Complete BossRush on Normal difficulty | $25,000 | ★★ |
-| From Nothing | Complete 10 waves in From Scratch mode | $30,000 | ★★ |
+| From Scratch | Complete 10 waves in From Scratch | $30,000 | ★★ |
 | Hell Wave 10 | Survive 10 waves in Infinite Hell mode | $50,000 | ★★★ |
 | Hell Wave 25 | Survive 25 waves in Infinite Hell mode | $150,000 | ★★★ |
 | Hell Wave 50 | Survive 50 waves in Infinite Hell mode | $350,000 | ★★★★ |
@@ -24,7 +24,7 @@ This mod currently contains 45 achievements across 9 categories. Completing achi
 | Legendary Hunter | Complete BossRush 100 times in total | $800,000 | ★★★★ |
 | Novice Hunter | Defeat 50 bosses in total | $20,000 | ★ |
 | Veteran | Defeat 100 bosses in total | $80,000 | ★★ |
-| Dragon Hunter | Defeat 500 bosses in total | $500,000 | ★★★★ |
+| Five Hundred Down | Defeat 500 bosses in total | $500,000 | ★★★★ |
 | Immortal Warlord | Defeat 1000 bosses in total | $1,500,000 | ★★★★★ |
 
 ## Flawless
@@ -32,7 +32,7 @@ This mod currently contains 45 achievements across 9 categories. Completing achi
 | --- | --- | --- | --- |
 | Flawless Easy | Complete Easy difficulty without taking damage | $80,000 | ★★★ |
 | Flawless Normal | Complete Normal difficulty without taking damage | $250,000 | ★★★★ |
-| Flawless Mode D | Complete 5 waves in From Scratch without taking damage | $350,000 | ★★★★ |
+| Flawless From Scratch | Complete 5 waves in From Scratch without taking damage | $350,000 | ★★★★ |
 | Iron Will | Survive 10 waves in Infinite Hell without taking damage | $500,000 | ★★★★★ |
 
 ## Speedrun
@@ -62,7 +62,7 @@ This mod currently contains 45 achievements across 9 categories. Completing achi
 | Iron Man (Hidden) | Survive 10 waves in Infinite Hell without using healing items | $250,000 | ★★★★ |
 | Dragon Descendant Collector | Collect all exclusive drops from Dragon Descendant | $300,000 | ★★★ |
 | Dragon King Collector | Collect all exclusive drops from Skyburner Dragon Lord | $500,000 | ★★★★ |
-| Wind Rider | Take flight for the first time using Cloud Rider Totem | $50,000 | ★ |
+| Wind Rider | Take flight for the first time using Cloud Soar I | $50,000 | ★ |
 | Dragon's Wrath | Trigger the Reverse Scale totem effect for the first time | $80,000 | ★★ |
 
 ::: tip
@@ -74,7 +74,7 @@ This mod currently contains 45 achievements across 9 categories. Completing achi
 | --- | --- | --- | --- |
 | First Hatch | Hatch your first cub at the PetNest | $60,000 | ★ |
 | Bloodline Collector | Unlock 10 bloodline entries | $200,000 | ★★★ |
-| Lineage Obsession | Unlock 30 bloodline entries | $600,000 | ★★★★ |
+| Every Last One | Unlock 30 bloodline entries | $600,000 | ★★★★ |
 | The Pale Purple One | Hatch a shiny cub | $300,000 | ★★★★ |
 | A Name on the Stone (Hidden) | Carve the first name into the memorial | $120,000 | ★★ |
 

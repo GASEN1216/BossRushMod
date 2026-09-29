@@ -52,7 +52,7 @@ If an egg's bloodline can no longer be identified after a game update, the syste
 - The system spawns it beside you on entry. It follows you and finds its own targets.
 - Its damage is a bonus on top. It earns its keep with pressure and finishing blows; the source preset's base multiplier keeps bloodlines distinct before the companion safety cap.
 
-The cub only scales its visual root, never its collider. At level 1 its body is **62%** of the official base model (**64%** for Dragon King). Each level adds **5%** of its hatch size, reaching about **90%** of the base model at level 10 (**93%** for Dragon King).
+The cub only scales its visual root, never its collider. At level 1 its body is **62%** of the official base model (**64%** for the Dragon Lord). Each level adds **5%** of its hatch size, reaching about **90%** of the base model at level 10 (**93%** for the Dragon Lord).
 
 #### Cub backpack
 Every cub has its own backpack: **4 slots** to start, with more from levels, endowments and the Lazy temperament. In the base or on a raid, walk up to your deployed cub and choose **Backpack** above its head to use the official inventory grid. Contents stay with that cub across maps, deployment changes and knockouts. Empty it before releasing the cub or sending it on an expedition. The nest page shows how many slots the cub has.
@@ -109,7 +109,7 @@ Returning empty-handed still awards survival experience; dying awards neither ex
 
 - **Bloodline index** — one page per bloodline, unlocked on first hatch. Tracks kills, hatches, shinies, highest level and expedition count.
 - **Memorial** — cubs lost on expeditions are carved in permanently: name, bloodline, where they fell, **the risk tier you chose**, the death rate at departure, and their career record. The stone spells out that you chose "Desperate".
-- **Taming achievements** — First Hatch, Bloodline Collector, Lineage Obsession, The Pale Purple One (shiny), A Name on the Stone.
+- **Taming achievements** — First Hatch, Bloodline Collector, Every Last One, The Pale Purple One (shiny), A Name on the Stone.
 
 ### Levels
 

@@ -597,17 +597,17 @@ namespace BossRush
                 case CodexTuning.ModeIdHell:
                     return L10n.T("无间炼狱", "Infinite Hell");
                 case CodexTuning.ModeIdModeD:
-                    return L10n.T("白手起家", "From Nothing");
+                    return L10n.T("白手起家", "From Scratch");
                 case CodexTuning.ModeIdModeE:
-                    return L10n.T("划地为营", "Hold the Line");
+                    return L10n.T("划地为营", "Faction War");
                 case CodexTuning.ModeIdModeF:
-                    return L10n.T("血猎追击", "Bloodhunt");
+                    return L10n.T("血猎追击", "Blood Hunt");
                 case CodexTuning.ModeIdModeG:
                     return L10n.T("宿命回响", "Fate Echo");
                 case CodexTuning.ModeIdModeH:
                     return L10n.T("百战留痕", "Black Market Duck Cup");
                 case CodexTuning.ModeIdZombie:
-                    return L10n.T("末日丧尸", "Zombie Tide");
+                    return L10n.T("末日丧尸", "Zombie Mode");
                 case CodexTuning.ModeIdRaid:
                     return L10n.T("撤离行动", "Raid");
                 default:
@@ -623,7 +623,7 @@ namespace BossRush
         private string FormatCategory(CodexBossInfo info)
         {
             if (info == null) return "—";
-            if (info.IsZombieBoss) return L10n.T("模组 Boss · 末日丧尸", "Mod boss · Zombie Tide");
+            if (info.IsZombieBoss) return L10n.T("模组 Boss · 末日丧尸", "Mod boss · Zombie Mode");
             if (info.IsCustomBoss) return L10n.T("模组 Boss · 自定义", "Mod boss · Custom");
             if (CodexOfficialBossRegistry.IsOfficialBoss(info.Key)) return L10n.T("官方 Boss", "Official boss");
             if (CodexOfficialBossRegistry.IsOfficialCreature(info.Key)) return L10n.T("官方精英", "Official elite");

@@ -19,8 +19,8 @@ namespace BossRush
         public override int ItemTypeId => FrostmourneIds.WeaponTypeId;
         public override string DisplayNameCN => "霜之哀伤";
         public override string DisplayNameEN => "Frostmourne";
-        public override string DescriptionCN => "剑刃覆着蓝霜，靠近就能听到低语。\n<color=#4FC3F7>【寒冰之力】</color>冰属性攻击，寒冷防护+2。\n<color=#81D4FA>【亡灵召唤】</color>右键召唤5只亡灵仆从。冷却10秒。";
-        public override string DescriptionEN => "Blue frost coats the blade. It whispers when held close.\n<color=#4FC3F7>[Frost Power]</color> Ice attacks. Cold Protection +2.\n<color=#81D4FA>[Undead Summoning]</color> Right-click to summon 5 undead servants. Cooldown: 10s.";
+        public override string DescriptionCN => "剑刃覆着蓝霜，握久了整条手臂都发僵。\n<color=#4FC3F7>【寒冰之力】</color>冰属性攻击，寒冷防护+2。\n<color=#81D4FA>【亡灵召唤】</color>右键召唤5只亡灵仆从。冷却10秒。";
+        public override string DescriptionEN => "Blue frost coats the blade. Hold it long enough and your whole arm stiffens.\n<color=#4FC3F7>[Frost Power]</color> Ice attacks. Cold Protection +2.\n<color=#81D4FA>[Undead Summoning]</color> Right-click to summon 5 undead servants. Cooldown: 10s.";
         public override int ItemQuality => 6;
         public override string[] ItemTags => new string[] { "Weapon", "MeleeWeapon", "DontDropOnDeadInSlot", "Special", "DragonKing" };
         public override string IconAssetName => FrostmourneIds.IconAssetName;

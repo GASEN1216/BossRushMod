@@ -125,7 +125,7 @@ namespace BossRush
                     ModBehaviour.DevLog("[ModeF] 玩家不满足裸装条件，拒绝启动");
                     owner.ShowMessage(L10n.T(
                         "血猎追击模式需要裸装入场！请清空所有装备后重试。",
-                        "Bloodhunt mode requires naked entry! Please remove all equipment."
+                        "Blood Hunt requires naked entry! Please remove all equipment."
                     ));
                     return false;
                 }
@@ -136,7 +136,7 @@ namespace BossRush
                 {
                     owner.ShowMessage(L10n.T(
                         "血猎追击模式启动失败：无法消耗血猎收发器。",
-                        "Bloodhunt start failed: unable to consume the Bloodhunt Transponder."
+                        "Blood Hunt start failed: unable to consume the Bloodhunt Transponder."
                     ));
                     return false;
                 }
@@ -149,7 +149,7 @@ namespace BossRush
                     transponderConsumed = false;
                     owner.ShowMessage(L10n.T(
                         "血猎追击模式启动失败：无法消耗船票，已退还血猎收发器。",
-                        "Bloodhunt start failed: unable to consume the ticket. Transponder refunded."
+                        "Blood Hunt start failed: unable to consume the ticket. Transponder refunded."
                     ));
                     return false;
                 }
@@ -160,7 +160,7 @@ namespace BossRush
                     RefundModeFStartupEntryItems(ticketConsumed, transponderConsumed);
                     owner.ShowMessage(L10n.T(
                         "血猎追击模式启动失败，已返还入场道具。",
-                        "Bloodhunt start failed. Entry items were refunded."
+                        "Blood Hunt start failed. Entry items were refunded."
                     ));
                 }
                 else
@@ -392,11 +392,11 @@ namespace BossRush
 
                 owner.ShowMessage(L10n.T(
                     "血猎追击模式已激活！持续掉血，击杀Boss回血续命！",
-                    "Bloodhunt mode activated! You're bleeding out - kill bosses to survive!"
+                    "Blood Hunt activated! You're bleeding out - kill bosses to survive!"
                 ));
                 owner.ShowBigBanner(L10n.T(
                     "欢迎来到 " + ModBehaviour.RichDangerTag + "血猎追击</color>！",
-                    "Welcome to " + ModBehaviour.RichDangerTag + "Bloodhunt</color>!"
+                    "Welcome to " + ModBehaviour.RichDangerTag + "Blood Hunt</color>!"
                 ));
                 profiler.Complete("success");
                 return true;

@@ -65,7 +65,7 @@ def main() -> int:
         "private bool CanUseModeFortificationUtilities()",
         "return modeFActive || isZombieModeActive();",
         "if (!CanUseModeFortificationUtilities())",
-        "This item can only be used in Mode F or Zombie Mode",
+        "This item can only be used in Blood Hunt or Zombie Mode",
         "inst.IsModeFActive || inst.IsZombieModeActive",
         "modeFState.ActiveFortifications.Remove(marker.FortificationId)",
     ]:

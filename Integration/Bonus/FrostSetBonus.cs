@@ -116,8 +116,8 @@ namespace BossRush
                 if (announce)
                 {
                     _owner.ShowMessage(L10n.T(
-                        "<color=#87CEEB>【寒冰之护】</color> 套装效果激活！\n冰伤转治疗 · 普攻附带霜噬 · 受击冻结攻击者",
-                        "<color=#87CEEB>[Frost Ward]</color> Set bonus activated!\nIce heals you · attacks carry frostbite · freeze attackers when hit"
+                        "<color=#87CEEB>【寒冰之护】</color> 已生效\n冰伤半转治疗 · 命中追加冰伤 · 受击可能冻结攻击者",
+                        "<color=#87CEEB>[Frost Ward]</color> active\nHalf of ice damage heals you · hits add ice damage · attackers may freeze"
                     ));
                 }
             }

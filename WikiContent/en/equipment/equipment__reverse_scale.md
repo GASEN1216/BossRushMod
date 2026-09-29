@@ -23,7 +23,7 @@ Touch a dragon's reverse scale and it bites back. **A one-time lifesaver totem**
 - Pure insurance. Save it for high-risk moments (first Dragon Lord attempt, deep Infinite Hell, Blood Hunt)
 - **Single use.** Get a new one after it triggers
 - Bolt tracking works best in close-range multi-enemy scenarios
-- Swap with Cloud Rider: fly during safe periods, equip Reverse Scale for danger
+- Swap with Cloud Soar I: fly during safe periods, equip Reverse Scale for danger
 
 ### Achievement
 

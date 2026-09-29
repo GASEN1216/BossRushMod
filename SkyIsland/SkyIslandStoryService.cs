@@ -576,7 +576,7 @@ namespace BossRush
         /// 【人设，写话之前先看这一栏】头顶气泡的话语表 `SkyIslandChatterLines` 与这里共用同一份人设：
         /// 晴禾是种地的（短句、絮叨，拿吃的表达关心）；苇白管委托板（嘴快、爱张罗，说话像在派活）；
         /// 浮舟是码头老手（话少、稳，说船说绳说料）；眠苔是药师（冷淡专业，只关心伤口）；
-        /// 折翎是旧航路守卫（戒备，句子短而重）；无声钟守只在面对面时开口，气泡里一个字都不说。
+        /// 折翎是旧航路守卫（戒备，句子短而重）；无声钟守从不出声：面对面时递木牌、写字，气泡里只有钟声与省略号。
         ///
         /// 【2026-09-17 复核】逐条读了这里的三十多句，把读着像 UI 提示的四句换成各人自己的口气
         /// （苇白派活那句、浮舟指路那句、眠苔说风标那句、浮舟说熔晶炉那句），信息一个不少。
@@ -612,10 +612,10 @@ namespace BossRush
                         ? L10n.T("听见钟声了，船头的名册也添了四页。归来的人亲手写的，去看看。",
                             "Heard the bell. Four new pages in the roster at the bow. Written by the people who came home.")
                         : weibaiAway
-                            ? L10n.T("航路任务找苇白接交；她没来岛上，就用风铃集委托板。要返航就回码头解系泊桩，记下的事下趟接着算。",
-                            "Take and turn in route quests with Weibai; if she stayed home, use the Windchime Market board. To head home, use the mooring post, and your progress carries over.")
-                            : L10n.T("沿桥去风铃集，找苇白。要返航就回码头解系泊桩，记下的事下趟接着算。",
-                            "Follow the bridge to Windchime Market and find Weibai. To head home, come back to the mooring post, and your progress carries over.")) +
+                            ? L10n.T("路上的活找苇白。她没上岛，就去风铃集的委托板。要回去，到码头解桩，走过的路都记着。",
+                            "Lane work is Weibai's; if she isn't on the isles, use the Windchime Market board. To head home, cast off at the mooring post here; everything you've done stays recorded.")
+                            : L10n.T("沿桥去风铃集，找苇白。要回去，到码头解桩，走过的路都记着。",
+                            "Follow the bridge to Windchime Market and find Weibai. To head home, cast off at the mooring post here; everything you've done stays recorded.")) +
                         (SkyIslandLetters.Collected(data, "Letter_01")
                             ? L10n.T("\n阿潮的缆绳，我挂回最高那根桩上了。打结的手法还是老样子。",
                             "\nAchao's mooring line is back on the tallest post. Same old knots.")
@@ -626,17 +626,17 @@ namespace BossRush
                     return ZhelingLine(data);
                 case "sky_bellkeeper":
                     if (data.Has(SkyIslandStoryFlag.Ending))
-                        return L10n.T("这回钟声传到海上了。名册新添的那行字，我会留着。",
-                            "The bell reached the sea this time. I'll keep that new line in the register.") +
+                        return L10n.T("（木牌上写着：）这回钟声传到海上了。名册新添的那行字，我会留着。",
+                            "(Written on the slate:) The bell reached the sea this time. I'll keep that new line in the register.") +
                             (SkyIslandMosquitoRules.FrogsComplete(data)
                                 ? L10n.T("\n夜里敲钟，蛙鸣池也有蛙应声了。",
                             "\nAt night, frogs at Frogsong Pool answer the bell.")
                                 : string.Empty) + BellKeeperEchoLine(data);
                     return data.BellKeeperResolved
-                        ? L10n.T("去敲归航钟吧。让他们知道，岛上还有人在等。",
-                            "Ring the Homecoming Bell. Let them know we're still here.")
-                        : L10n.T("钟一响，又会有人出海。证明航路安全，我才放行；不然就来停下守钟装置。",
-                            "Once the bell rings, people will put to sea. Prove the lanes safe, or stop my bell engine.");
+                        ? L10n.T("（他递来木牌：）去敲归航钟吧。让他们知道，岛上还有人在等。",
+                            "(He hands you a slate:) Ring the Homecoming Bell. Let them know we're still here.")
+                        : L10n.T("（他递来木牌：）钟一响，又会有人出海。证明航路安全，我才放行；不然，就来停下那台守钟装置。",
+                            "(He hands you a slate:) Once the bell rings, people will put to sea. Prove the lanes are safe and I'll let it ring. If you can't, come and stop the bell engine.");
                 default: return CurrentObjective;
             }
         }
@@ -719,7 +719,7 @@ namespace BossRush
                 return L10n.T("云蚋追着灯芯的亮光和嗡声跑。再亮一盏，我就能试着调个灭蚊的灯芯。\n",
                             "Gnats follow the wick's light and hum. Light one more lamp and I can tune a wick to trap them.\n");
             return L10n.T("灭蚊灯的调子交给浮舟了。带晴岚风晶和残铜片，去他的渡口工台做。\n",
-                            "Fuzhou has my gnat zapper plans. Take a Qinglan Windcrystal and brass scrap to his dock workbench.\n");
+                            "Fuzhou has my Gnat Zapper plans. Take a Qinglan Windcrystal and brass scrap to his dock workbench.\n");
         }
 
         /// <summary>内容批次四：和解之后的折翎说起寺里池子的青蛙——蛙卵从这里捧回蛙鸣池。</summary>

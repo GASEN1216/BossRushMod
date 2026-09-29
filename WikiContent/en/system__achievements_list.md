@@ -7,7 +7,7 @@ This mod currently contains 45 achievements across 9 categories. Completing achi
 - First Steps: Complete BossRush for the first time. Reward `$5,000`, difficulty `★`
 - Easy Peasy: Complete BossRush on Easy difficulty. Reward `$10,000`, difficulty `★`
 - Getting Serious: Complete BossRush on Normal difficulty. Reward `$25,000`, difficulty `★★`
-- From Nothing: Complete 10 waves in From Scratch mode. Reward `$30,000`, difficulty `★★`
+- From Scratch: Complete 10 waves in From Scratch. Reward `$30,000`, difficulty `★★`
 - Hell Wave 10: Survive 10 waves in Infinite Hell mode. Reward `$50,000`, difficulty `★★★`
 - Hell Wave 25: Survive 25 waves in Infinite Hell mode. Reward `$150,000`, difficulty `★★★`
 - Hell Wave 50: Survive 50 waves in Infinite Hell mode. Reward `$350,000`, difficulty `★★★★`
@@ -20,13 +20,13 @@ This mod currently contains 45 achievements across 9 categories. Completing achi
 - Legendary Hunter: Complete BossRush 100 times in total. Reward `$800,000`, difficulty `★★★★`
 - Novice Hunter: Defeat 50 bosses in total. Reward `$20,000`, difficulty `★`
 - Veteran: Defeat 100 bosses in total. Reward `$80,000`, difficulty `★★`
-- Dragon Hunter: Defeat 500 bosses in total. Reward `$500,000`, difficulty `★★★★`
+- Five Hundred Down: Defeat 500 bosses in total. Reward `$500,000`, difficulty `★★★★`
 - Immortal Warlord: Defeat 1000 bosses in total. Reward `$1,500,000`, difficulty `★★★★★`
 
 ### Flawless
 - Flawless Easy: Complete Easy difficulty without taking damage. Reward `$80,000`, difficulty `★★★`
 - Flawless Normal: Complete Normal difficulty without taking damage. Reward `$250,000`, difficulty `★★★★`
-- Flawless Mode D: Complete 5 waves in From Scratch without taking damage. Reward `$350,000`, difficulty `★★★★`
+- Flawless From Scratch: Complete 5 waves in From Scratch without taking damage. Reward `$350,000`, difficulty `★★★★`
 - Iron Will: Survive 10 waves in Infinite Hell without taking damage. Reward `$500,000`, difficulty `★★★★★`
 
 ### Speedrun
@@ -48,7 +48,7 @@ This mod currently contains 45 achievements across 9 categories. Completing achi
 - Iron Man (Hidden): Survive 10 waves in Infinite Hell without using healing items. Reward `$250,000`, difficulty `★★★★`
 - Dragon Descendant Collector: Collect all exclusive drops from Dragon Descendant. Reward `$300,000`, difficulty `★★★`
 - Dragon King Collector: Collect all exclusive drops from Skyburner Dragon Lord. Reward `$500,000`, difficulty `★★★★`
-- Wind Rider: Take flight for the first time using Cloud Rider Totem. Reward `$50,000`, difficulty `★`
+- Wind Rider: Take flight for the first time using Cloud Soar I. Reward `$50,000`, difficulty `★`
 - Dragon's Wrath: Trigger the Reverse Scale totem effect for the first time. Reward `$80,000`, difficulty `★★`
 
 [tip] "Iron Man" is a hidden achievement and will not appear in the achievement panel until unlocked.
@@ -56,7 +56,7 @@ This mod currently contains 45 achievements across 9 categories. Completing achi
 ### Taming (PetNest)
 - First Hatch: Hatch your first cub at the PetNest. Reward `$60,000`, difficulty `★`
 - Bloodline Collector: Unlock 10 bloodline entries. Reward `$200,000`, difficulty `★★★`
-- Lineage Obsession: Unlock 30 bloodline entries. Reward `$600,000`, difficulty `★★★★`
+- Every Last One: Unlock 30 bloodline entries. Reward `$600,000`, difficulty `★★★★`
 - The Pale Purple One: Hatch a shiny cub. Reward `$300,000`, difficulty `★★★★`
 - A Name on the Stone (Hidden): Carve the first name into the memorial. Reward `$120,000`, difficulty `★★`
 

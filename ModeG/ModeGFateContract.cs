@@ -131,18 +131,18 @@ namespace BossRush
         {
             new ContractDef(IdTriadBreaker, ModeGContractFamily.Adaptation, "TriadBreaker",
                 "三轴破晓", "Triad Breaker",
-                "距离回声、弹药点名、属性封锁三种反制，本局各破解至少一次。",
-                "Break each of the three counter axes (distance, ammo, attribute) at least once this run."),
+                "距离、弹药、属性三种反制，本局每种都要破解一次。",
+                "Break each of the three counters (range, ammo, attribute) at least once this run."),
 
             new ContractDef(IdLastExecutioner, ModeGContractFamily.Execution, "LastExecutioner",
                 "终末行刑者", "Last Executioner",
-                "完成至少 2 次最后处决，并用枪械或近战直接击倒 R3 宿敌。",
-                "Complete at least two Last Stand executions and finish an R3 nemesis with direct damage."),
+                "至少完成 2 次最后处决，并亲手（枪械或近战）击倒三阶宿敌。",
+                "Complete at least 2 final executions, and take down a third-rank nemesis with your own gun or blade."),
 
             new ContractDef(IdCounterflowChain, ModeGContractFamily.Tempo, "CounterflowChain",
                 "逆流连锁", "Counterflow Chain",
                 "连续破解三个反制目标，中间不能断。",
-                "Break three axis objectives in a row, no gaps."),
+                "Break three counter targets in a row, no gaps."),
 
             new ContractDef(IdUnbrokenActs, ModeGContractFamily.Tempo, "UnbrokenActs",
                 "三幕无缺", "Unbroken Acts",
@@ -162,7 +162,7 @@ namespace BossRush
             new ContractDef(IdFinalMinute, ModeGContractFamily.Execution, "FinalMinute",
                 "最终时刻", "Final Minute",
                 "完成 3 次最后处决（每个多 Boss 波各 1 次）。",
-                "Complete three Last Stand executions this run."),
+                "Complete three final executions this run."),
 
             new ContractDef(IdNemesisDenied, ModeGContractFamily.Adaptation, "NemesisDenied",
                 "宿敌否定", "Nemesis Denied",

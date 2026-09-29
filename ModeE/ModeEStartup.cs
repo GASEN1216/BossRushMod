@@ -748,12 +748,12 @@ namespace BossRush
             if (rollbackSucceeded && refunded && restoredPlayerPosition)
             {
                 chineseMessage = "划地为营模式启动失败，已恢复玩家位置、回滚启动物资并返还营旗。";
-                englishMessage = "Faction Battle start failed. Player position was restored, startup items were rolled back, and the faction flag was refunded.";
+                englishMessage = "Faction War start failed. Player position was restored, startup items were rolled back, and the faction flag was refunded.";
             }
             else
             {
                 chineseMessage = "划地为营模式启动失败，已尝试恢复玩家位置、回滚启动物资并返还营旗；其中部分恢复失败，请查看日志。";
-                englishMessage = "Faction Battle start failed. Player position restore, startup rollback, and faction flag refund were attempted, but some recovery steps failed. Check the log.";
+                englishMessage = "Faction War start failed. Player position restore, startup rollback, and faction flag refund were attempted, but some recovery steps failed. Check the log.";
             }
 
             modeEHost.ShowMessage(L10n.T(chineseMessage, englishMessage));
@@ -869,7 +869,7 @@ namespace BossRush
                     ModBehaviour.DevLog("[ModeE] 玩家不满足裸装条件，拒绝启动");
                     modeEHost.ShowMessage(L10n.T(
                         "划地为营模式需要裸装入场！请清空所有装备后重试。",
-                        "Faction Battle requires naked entry! Please remove all equipment."
+                        "Faction War requires naked entry! Please remove all equipment."
                     ));
                     return false;
                 }
@@ -879,7 +879,7 @@ namespace BossRush
                     profileStatus = "failed: player position capture failed";
                     modeEHost.ShowMessage(L10n.T(
                         "划地为营模式启动失败：无法记录玩家当前位置。",
-                        "Faction Battle start failed: unable to capture the player's current position."
+                        "Faction War start failed: unable to capture the player's current position."
                     ));
                     return false;
                 }
@@ -889,7 +889,7 @@ namespace BossRush
                     profileStatus = "failed: snapshot capture failed";
                     modeEHost.ShowMessage(L10n.T(
                         "划地为营模式启动失败：无法建立启动回滚快照。",
-                        "Faction Battle start failed: unable to capture the startup rollback snapshot."
+                        "Faction War start failed: unable to capture the startup rollback snapshot."
                     ));
                     return false;
                 }
@@ -901,7 +901,7 @@ namespace BossRush
                     profileStatus = "failed: flag type lookup failed";
                     modeEHost.ShowMessage(L10n.T(
                         "划地为营模式启动失败：营旗数据异常，已取消消耗。",
-                        "Faction Battle start failed: the faction flag data is invalid, so it was not consumed."
+                        "Faction War start failed: the faction flag data is invalid, so it was not consumed."
                     ));
                     return false;
                 }
@@ -910,7 +910,7 @@ namespace BossRush
                     profileStatus = "failed: flag consume failed";
                     modeEHost.ShowMessage(L10n.T(
                         "划地为营模式启动失败：营旗消耗异常。",
-                        "Faction Battle start failed: unable to consume the faction flag."
+                        "Faction War start failed: unable to consume the faction flag."
                     ));
                     return false;
                 }
@@ -1066,11 +1066,11 @@ namespace BossRush
 
                 modeEHost.ShowMessage(L10n.T(
                     "划地为营模式已激活！阵营：" + GetFactionDisplayName(faction),
-                    "Faction Battle activated! Faction: " + faction.ToString()
+                    "Faction War activated! Faction: " + GetFactionDisplayName(faction)
                 ));
                 modeEHost.ShowBigBanner(L10n.T(
                     "欢迎来到 <color=red>划地为营</color>！",
-                    "Welcome to <color=red>Faction Battle</color>!"
+                    "Welcome to <color=red>Faction War</color>!"
                 ));
                 profiler.Mark("ShowModeEUI");
                 profiler.Complete("success");

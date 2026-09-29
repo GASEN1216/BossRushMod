@@ -55,7 +55,7 @@ The first two are hardcore challenges. The last one… requires sending a cub of
 
 Push both affinity lines up and the story dialogue slowly assembles one fact:
 
-Yu Zhi was a researcher at **J-Lab**, and Dingdang is what that lab created.
+Yu Zhi came out of **J-Lab**, and Dingdang is what that lab created.
 
 When the other goblins bullied him, she was the only one who slipped him food and patched up
 his wounds.

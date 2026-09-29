@@ -10,8 +10,8 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_BarbedWirePack";
         public const string DISPLAY_NAME_CN = "阻滞铁丝网包";
         public const string DISPLAY_NAME_EN = "Barbed Wire Pack";
-        public const string DESCRIPTION_CN = "一卷带刺铁丝网。使用后进入部署预览：左键确认，右键取消，滚轮旋转，中键90度旋转。确认后部署阻滞铁丝网，阻挡并拖延敌人推进。";
-        public const string DESCRIPTION_EN = "A roll of barbed wire. Using it enters placement preview: LMB confirm, RMB cancel, mouse wheel rotate, MMB rotate 90 degrees. Confirm to deploy barbed wire that obstructs and delays enemy advances.";
+        public const string DESCRIPTION_CN = "一卷缠得比手臂还粗的带刺铁丝网。\n使用后进入部署预览：左键确认，右键取消，滚轮旋转，中键旋转 90 度。确认后部署阻滞铁丝网（200 生命），阻挡并拖慢敌人推进。";
+        public const string DESCRIPTION_EN = "A coil of barbed wire thicker than your arm.\nUsing it opens placement preview: left-click to confirm, right-click to cancel, mouse wheel to rotate, middle-click to rotate 90 degrees. Confirming deploys barbed wire (200 HP) that blocks and slows enemy advances.";
 
         public static void ConfigureItem(Item item)
         {

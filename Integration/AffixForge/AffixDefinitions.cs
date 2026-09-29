@@ -450,7 +450,7 @@ namespace BossRush
                 TierValues = Val_GlassCannonDamage,
                 TierValues2 = Val_GlassCannonArmor,
                 Value2IsPercent = false,
-                NameCN = "玻璃炮", NameEN = "Glass Cannon",
+                NameCN = "玻璃炮", NameEN = "Glass Edge",
                 DescCN = "诅咒：全部武器伤害 +{0}，但护甲 -{1} 点。",
                 DescEN = "Curse: all weapon damage +{0}, but armor -{1}."
             },

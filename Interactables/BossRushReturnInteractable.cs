@@ -25,7 +25,7 @@ namespace BossRush
                 playerNear = true;
                 if (BossRush.ModBehaviour.Instance != null)
                 {
-                    BossRush.ModBehaviour.Instance.ShowMessage(L10n.T("按E键返回出生点！", "Press E to return to spawn!"));
+                    BossRush.ModBehaviour.Instance.ShowMessage(L10n.T("回出生点", "Return to spawn"));
                 }
             }
         }

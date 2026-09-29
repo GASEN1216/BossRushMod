@@ -16,8 +16,8 @@ namespace BossRush
         // ========== 本地化 ==========
         public const string DisplayNameCN = "冰霜长矛";
         public const string DisplayNameEN = "Frost Spear";
-        public const string DescriptionCN = "矛尖常年挂霜，扎到谁谁就慢下来。爆发不高，但能一直把敌人挡在够不着你的地方。\n<color=#4FC3F7>【寒霜刺击】</color>攻击100%附带冰冻减速。\n<color=#81D4FA>【安全距离】</color>攻击范围2.4米，中距离控场。\n<color=#B3E5FC>【代价】</color>暴击率和暴击伤害较低。\n<color=#BBBBBB>来源：大冰冰 掉落 20% / 叮当的小店（好感 5 级）</color>";
-        public const string DescriptionEN = "The tip never thaws, and whatever it pokes slows down. Low burst, but it keeps enemies out of reach.\n<color=#4FC3F7>[Frost Thrust]</color> 100% chance to apply freeze slow.\n<color=#81D4FA>[Safe Distance]</color> 2.4m attack range for mid-range control.\n<color=#B3E5FC>[Trade-off]</color> Low crit rate and crit damage.\n<color=#BBBBBB>Source: 20% drop from Big Ice / Dingdang's Shop (Affinity 5)</color>";
+        public const string DescriptionCN = "矛杆缠着冻硬的麻绳，矛尖终年挂着一层薄霜，摸上去粘手。\n<color=#4FC3F7>【寒霜刺击】</color>攻击100%附带冰冻减速。\n<color=#81D4FA>【安全距离】</color>攻击范围2.4米，中距离控场。\n<color=#B3E5FC>【代价】</color>暴击率和暴击伤害较低。\n<color=#BBBBBB>来源：大冰冰 掉落 20% / 叮当的小店（好感 5 级）</color>";
+        public const string DescriptionEN = "The shaft is wrapped in frozen cord, the tip rimed with frost all year round. Touch it and your skin sticks.\n<color=#4FC3F7>[Frost Thrust]</color> 100% chance to apply freeze slow.\n<color=#81D4FA>[Safe Distance]</color> 2.4m attack range for mid-range control.\n<color=#B3E5FC>[Trade-off]</color> Low crit rate and crit damage.\n<color=#BBBBBB>Source: 20% drop from Big Ice / Dingdang's Shop (Affinity 5)</color>";
 
         // ========== 物品属性 ==========
         public const int ItemQuality = 5;

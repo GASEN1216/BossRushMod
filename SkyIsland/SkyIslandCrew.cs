@@ -76,8 +76,8 @@ namespace BossRush
                             "But the wind out on the cloud sea has not broken up yet. Next time you are on the boardwalk, do not stand alone at mid-span."));
                     // 噬风·回响：栈道那头的装置还记着那阵风（与引风同一个解锁口径 SkyIslandStormEchoRules.UnlockedBySave）。
                     if (SkyIslandStormEchoRules.UnlockedBySave(data))
-                        text.Append(L10n.T("可栈道那头的装置还记着那阵风：带着它的核、烧一块风晶，它就会回来。就当替还在云底下的人练练手。",
-                            " The device at the boardwalk still remembers that wind, though: carry its core, burn a windcrystal, and it comes back. Call it practice for the ones still under the clouds."));
+                        text.Append(L10n.T("可栈道上那扇双航标门还记着那阵风：带着它留下的核，烧一块风晶，它就会回来。就当替还在云底下的人练练手。",
+                            " The twin-beacon gate on the boardwalk still remembers that wind: bring its core, burn a windcrystal, and it comes back. Call it practice for the ones still under the clouds."));
                     // 岛上的灯（SkyIslandLights）：十盏都亮了，老舵手在船头数得出来。
                     if (SkyIslandLights.AllLit(data))
                     {
@@ -127,8 +127,8 @@ namespace BossRush
                         "Nian'an: I am the ship's doctor. Everyone who comes home carries old wounds; the hardest to treat is the kind you get from waiting."));
                     text.Append("\n\n");
                     if (data.Has(SkyIslandStoryFlag.BellKeeperReconciled))
-                        text.Append(L10n.T("钟守跟我说，这一次钟声不是催人出海，是告诉大家有人在等。我想，这句话比我的药管用。",
-                            "The Bell Keeper told me that this time the bell was not sending anyone to sea, but telling everyone someone is waiting. I think those words work better than my medicine."));
+                        text.Append(L10n.T("钟守把话写在木牌上给我看：这一次钟声不是催人出海，是告诉大家有人在等。我想，这句话比我的药管用。",
+                            "The Bell Keeper wrote it on his slate and showed me: this time the bell is not sending anyone to sea, but telling everyone someone is waiting. I think those words work better than my medicine."));
                     else if (data.Has(SkyIslandStoryFlag.BellKeeperDefeated))
                         text.Append(L10n.T("守钟装置停下以后，钟守一个人把钟擦了一整夜。我给他手上换了药，他什么也没说。",
                             "After the bell engine stopped, the Bell Keeper polished the bell alone all night. I dressed his hands; he did not say a word."));

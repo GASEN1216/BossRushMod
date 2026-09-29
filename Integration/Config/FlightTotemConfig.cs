@@ -137,7 +137,7 @@ namespace BossRush
         {
             // 物品名称和描述
             string displayName = L10n.T("腾云驾雾 I", "Cloud Soar I");
-            string description = L10n.T("尔等凡鸭怎知我俯瞰众生的疲惫", "Mere ducks cannot fathom my exhaustion overlooking all beings");
+            string description = L10n.T("尔等凡鸭怎知我俯瞰众生的疲惫。\n装备后按住翻滚键腾空，松开滑翔；腾空与滑翔都耗体力。", "How would you mere ducks know the weariness of looking down on everyone?\nEquip it, hold Dash to rise and release to glide. Rising and gliding both drain stamina.");
 
             // 物品 displayName 字段对应的本地化键（重要！）
             LocalizationHelper.InjectLocalization(LOC_KEY_DISPLAY, displayName);

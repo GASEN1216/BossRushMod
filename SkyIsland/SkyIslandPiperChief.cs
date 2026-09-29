@@ -176,7 +176,7 @@ namespace BossRush
                 // 每 9 秒一口：字幕只在第一口说清楚，之后看云蚋扑过来就知道。
                 if (!fluteAnnounced)
                     Announce("蚋笛翁吹响了笛子：云蚋全往你身上扑，灭蚊灯也引不走它们。",
-                        "The Gnat Piper plays its flute. Every gnat dives at you, and bug zappers can't draw them away.", true);
+                        "The Gnat Piper plays its flute. Every gnat dives at you, and the Gnat Zapper can't draw them away.", true);
                 fluteAnnounced = true;
                 return;
             }

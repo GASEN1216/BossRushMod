@@ -310,8 +310,8 @@ namespace BossRush
             routeUnlocked = true;
             holdsInstrument = false;
             ClearJeff();
-            Report(L10n.T("Jeff 把坐标读完了，让船工在航路表上添了一条晴岚。想上去看看，船点见。",
-                "Jeff finishes reading the coordinates and has the crew add Qinglan to the route table. If you want to see it for yourself, the boat is waiting."), false);
+            Report(L10n.T("Jeff 把坐标读完，让船工在航路表上添了一条晴岚。想上去看，就去船边。",
+                "Jeff finishes reading the coordinates and has the boat crew add Qinglan to the route table. If you want to see it, head down to the boat."), false);
             if (routeOpened != null) routeOpened();
             reason = null;
             return true;

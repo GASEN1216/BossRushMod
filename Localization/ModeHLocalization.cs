@@ -61,16 +61,16 @@ namespace BossRush
             Add(map, "Page_Transfer", "转会窗口", "Transfer Window");
             Add(map, "Page_HallOfFame", "名人堂", "Hall of Fame");
             // 逐项认证只在 F3 开发测试入口展示。
-            Add(map, "Page_Diagnostics", "鸭王杯逐项认证", "Duck Cup Certification");
+            Add(map, "Page_Diagnostics", "鸭王杯逐项认证", "Black Market Duck Cup Certification");
             Add(map, "Page_Recovery", "恢复", "Recovery");
 
             Add(map, "Button_Confirm", "确认", "Confirm");
             Add(map, "Button_Cancel", "取消", "Cancel");
             Add(map, "Button_Retry", "重试", "Retry");
             Add(map, "Match_NotWiredYet",
-                "敌军已按计划就位，但本场战斗的驱动尚未接线；赛季已退回看盘，不计败场。",
-                "The lineup spawned as planned, but match combat is not wired yet; "
-                + "the season returned to the brief and no loss was recorded.");
+                "这一场的战斗没能启动，敌军已经就位，赛季退回看盘，不算你输。",
+                "This match couldn't get going. The lineup is in place, the season is back at the brief, "
+                + "and no loss is recorded.");
             Add(map, "Summary_NoOffer", "本次转会窗口没有报价", "No offers in this transfer window");
             Add(map, "Summary_Draft",
                 "挑一位替你上擂台。另一位会自动当接力：先上场的倒下了，它顶上。选好马上开打，你在看台上看，关键时刻可以拍一次铃。",
@@ -246,7 +246,7 @@ namespace BossRush
             Add(map, "Anomaly_error", "控制权异常", "ERROR");
             Add(map, "Anomaly_error_Desc",
                 "每场有一次机会交换控制权：你操作选手，原身体在看台表演；结束后还原。此模式击杀不计入鸭皇图鉴。",
-                "Once per match, may swap control: you play the fighter while your body performs in the stands. Control is restored afterward. Mode H kills do not count toward the Duck Codex.");
+                "Once per match, may swap control: you play the fighter while your body performs in the stands. Control is restored afterward. Black Market Duck Cup kills do not count toward the Duck Codex.");
 
             Add(map, "Injury_leg", "腿伤", "Leg Injury");
             Add(map, "Injury_leg_Desc", "追不远、转身慢。", "Cannot chase far; turns slowly.");
@@ -580,16 +580,16 @@ namespace BossRush
             Add(map, "Outcome_Timeout", "时间到，判负", "Time out — loss");
             Add(map, "Outcome_Cowardice", "整队弃赛", "Team forfeited");
 
-            Add(map, "Recovery_TechnicalAbort", "技术中止，本场按同一看盘重开",
-                "Technical abort; the match restarts from the same brief");
+            Add(map, "Recovery_TechnicalAbort", "这场出了点问题，按刚才的看盘重开一次",
+                "Something went wrong with this match; restarting it from the same brief");
             Add(map, "Recovery_SameMatchRestart", "同场重开，不判负",
                 "Restarting the same match; this is not a loss");
             Add(map, "Recovery_ManualIntervention", "需要人工介入，当前只读",
                 "Manual intervention required; read-only for now");
             Add(map, "Recovery_Suspended", "已挂起，环境恢复后可从同一场继续",
                 "Suspended; you can resume the same match once the environment recovers");
-            Add(map, "Recovery_SnapshotUnusable", "战场快照不可用，已回落到同场重开",
-                "Battle snapshot unusable; fell back to restarting the same match");
+            Add(map, "Recovery_SnapshotUnusable", "战场没能保存住，只能从开场重打这一场",
+                "The battle couldn't be restored, so this match restarts from the opening bell");
             Add(map, "Recovery_RetryScan", "重试风险扫描", "Retry risk scan");
             Add(map, "Recovery_ReturnEscrow", "取回托管押品", "Retrieve escrowed stake");
             Add(map, "Recovery_ReturnEscrow_Done",
@@ -617,20 +617,20 @@ namespace BossRush
             // 用同一句会把「读档出错」说成「你有笔押品没结算」。
             Add(map, "LegacyBlocked_Scan",
                 "黑市鸭王杯的资产风险扫描未能完成（读档异常），正在重试；稍后再试其他模式。",
-                "Mode H's asset risk scan could not complete (save read error); retrying. "
+                "The Black Market Duck Cup asset risk scan could not complete (save read error); retrying. "
                 + "Try other modes again shortly.");
             Add(map, "LegacyBlocked_ActiveJournal",
                 "黑市鸭王杯仍有未结算的真实资产事务，暂时无法开始其他模式。",
-                "Mode H has unsettled real-asset transactions; other modes are blocked.");
+                "The Black Market Duck Cup has unsettled real-asset transactions; other modes are blocked.");
 
             // 恢复面板会按 ModeHLifecycle / ModeHStakePhase 的枚举名拼 key，
             // 因此**所有**枚举值都要有对应条目，缺一个就会在面板上显示 raw key。
             Add(map, "State_Unknown", "未知状态", "Unknown state");
             Add(map, "State_None", "无进行中的赛季", "No active season");
-            Add(map, "State_EntryIntent", "已冻结入场意图", "Entry intent frozen");
+            Add(map, "State_EntryIntent", "入场已定，等待开赛", "Entry confirmed, waiting to start");
             Add(map, "State_SceneLoading", "等待场景就绪", "Waiting for the arena");
             Add(map, "State_ProductionCertifying", "擂台准备中", "Getting the ring ready");
-            Add(map, "State_ErrorRecoveryPending", "等待恢复屏障", "Awaiting recovery barrier");
+            Add(map, "State_ErrorRecoveryPending", "等着处理上次的问题", "Waiting to sort out the last problem");
             Add(map, "State_StakePrepared", "押品已锁盘", "Stake locked in escrow");
             Add(map, "StakePhase_Unknown", "押品阶段未知", "Stake phase unknown");
             Add(map, "StakePhase_None", "无押品事务", "No stake transaction");
@@ -658,7 +658,8 @@ namespace BossRush
                 "Presentation assets missing");
             Add(map, "Unavailable_modeh_certification_failed", "选手热身没通过",
                 "The fighters' warm-up failed");
-            Add(map, "Unavailable_modeh_owner_missing", "运行实例缺失", "Runtime owner missing");
+            Add(map, "Unavailable_modeh_owner_missing", "模式没能启动，回基地再试",
+                "The mode failed to start. Head back to base and try again");
             Add(map, "Unavailable_TicketRefunded", "已退还船票", "Ticket refunded");
 
             // 拍铃失败原因：key 由 ModeHCommandController.GetBellFailureLocalizationKey
@@ -769,8 +770,8 @@ namespace BossRush
                 "Cannot lock in right now; try again shortly");
 
             Add(map, "StakePhase_Prepared", "已冻结计划", "Plan frozen");
-            Add(map, "StakePhase_EscrowSnapshotDurable", "托管快照已落盘", "Escrow snapshot durable");
-            Add(map, "StakePhase_EscrowRemovedDurable", "托管已脱离仓库", "Escrow removed from storage");
+            Add(map, "StakePhase_EscrowSnapshotDurable", "押品已记账", "Stake recorded");
+            Add(map, "StakePhase_EscrowRemovedDurable", "押品已离开仓库", "Stake taken out of storage");
             Add(map, "StakePhase_MatchLocked", "比赛已锁定", "Match locked");
             Add(map, "StakePhase_ResultCommitted", "结果已提交", "Result committed");
             Add(map, "StakePhase_SettlementPending", "结算未完成", "Settlement pending");

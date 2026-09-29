@@ -272,7 +272,7 @@ namespace BossRush
                 NameCn = "嗜血猎犬",
                 NameEn = "Bloodhounds",
                 DescCn = "敌人永久锁定你，视野拉满",
-                DescEn = "Enemies lock onto you, infinite sight",
+                DescEn = "Enemies lock onto you and see all the way to the horizon",
                 Category = MutatorCategory.EnemyBuff,
                 OnApply = ctx =>
                 {
@@ -351,7 +351,7 @@ namespace BossRush
             {
                 Id = "frenzy",
                 NameCn = "血腥狂欢",
-                NameEn = "Frenzy",
+                NameEn = "Bloodbath",
                 DescCn = "敌人移速和射速各 +20%",
                 DescEn = "Enemy move speed and fire rate +20%",
                 Category = MutatorCategory.EnemyBuff,
@@ -696,8 +696,8 @@ namespace BossRush
             new MutatorDefinition
             {
                 Id = "boss_regen",
-                NameCn = "不死之躯",
-                NameEn = "Undying",
+                NameCn = "Boss 回春",
+                NameEn = "Regenerating Bosses",
                 DescCn = "Boss 每 10 秒回复 5% 血量",
                 DescEn = "Boss regenerates 5% HP every 10s",
                 Category = MutatorCategory.EnvironmentRule,
@@ -796,7 +796,7 @@ namespace BossRush
             {
                 Id = "lifesteal_on_kill",
                 NameCn = "嗜血",
-                NameEn = "Lifesteal",
+                NameEn = "Bloodlust",
                 DescCn = "击杀敌人回复 8% 最大生命",
                 DescEn = "Killing an enemy heals 8% max HP",
                 Category = MutatorCategory.EnvironmentRule,

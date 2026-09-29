@@ -263,6 +263,44 @@ namespace BossRush
             return relationshipConfig.GetRelationshipDialogue(eventKey, level);
         }
 
+        /// <summary>
+        /// 取 NPC 专属的婚恋 / 求婚场景台词（不要求已婚）。
+        /// 复用 INPCRelationshipDialogueConfig：配置里实现了对应 eventKey 就返回专属台词，
+        /// 没实现（返回 null）由调用方落回通用文案。
+        /// 约定的 eventKey：marriage_chapel_required / marriage_divorce / marriage_bubble_date（含 {date} 占位）/
+        /// marriage_cheat_first / marriage_cheat_repeat / marriage_follow_refused /
+        /// ring_reject / ring_cheater / ring_spouse_repeat / gift_fallback / gift_already_fallback
+        /// </summary>
+        public static string GetPersonaLine(string npcId, string eventKey)
+        {
+            if (string.IsNullOrEmpty(npcId) || string.IsNullOrEmpty(eventKey))
+            {
+                return null;
+            }
+
+            try
+            {
+                var relationshipConfig = AffinityManager.GetNPCConfig(npcId) as INPCRelationshipDialogueConfig;
+                if (relationshipConfig == null)
+                {
+                    return null;
+                }
+
+                return relationshipConfig.GetRelationshipDialogue(eventKey, AffinityManager.GetLevel(npcId));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>专属台词优先，没有就用通用文案。</summary>
+        public static string GetPersonaLineOrDefault(string npcId, string eventKey, string defaultCn, string defaultEn)
+        {
+            string persona = GetPersonaLine(npcId, eventKey);
+            return !string.IsNullOrEmpty(persona) ? persona : L10n.T(defaultCn, defaultEn);
+        }
+
         private static bool IsCurrentSpouse(string npcId)
         {
             string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();

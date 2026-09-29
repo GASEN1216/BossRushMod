@@ -400,10 +400,10 @@ namespace BossRush
                     ModBehaviour.DevLog(CampaignTuning.LogPrefix
                         + "[ERROR] 交付状态写入失败，奖金回滚=" + refunded + ": " + chapterId);
                     Duckov.UI.NotificationText.Push(refunded
-                        ? L10n.T("交付没存上，这次的奖金先收回了，等会儿再试。",
-                            "Couldn't save the delivery. The reward was taken back. Try again later.")
-                        : L10n.T("交付没存上，奖金也没能收回，别再交一次。",
-                            "Delivery and reward rollback both failed. Don't hand it in again."));
+                        ? L10n.T("这一行没记上账，奖金先收回了，等会儿再来交。",
+                            "The ledger didn't take it, so the money was held back. Hand it in again in a bit.")
+                        : L10n.T("这一行没记上账，但奖金已经到你手上了，别再交第二次。",
+                            "The ledger didn't record it, but the money's already yours. Don't hand it in twice."));
                     return false;
                 }
 

@@ -8,7 +8,7 @@ A lite roguelike run. You enter **completely naked**, get a random starter kit, 
 
 - **Naked** — no equipment, empty backpack and pet bag
 - Carry a **BossRush Ticket**
-- No Banner or Transponder (those trigger other modes)
+- No Faction Flag or Transponder (those trigger other modes)
 
 ## Starting Gear (Random)
 
@@ -50,8 +50,8 @@ Enemies carry random gear too — quality scales with wave and HP: `Quality = 1 
 
 ## Achievements
 
-- **From Nothing** — Complete 10 waves (30K)
-- **Flawless Mode D** — 5 waves no damage (350K)
+- **From Scratch** — Complete 10 waves (30K)
+- **Flawless From Scratch** — 5 waves no damage (350K)
 
 ## Tips
 

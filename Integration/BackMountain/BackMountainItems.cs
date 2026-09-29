@@ -93,41 +93,41 @@ namespace BossRush
             {
                 Make(BossRushItemIds.DragonSeed, "BossRush_DragonSeed", "BossRush_DragonSeed",
                     "龙裔之种", "Dragon Seed",
-                    "从龙裔遗族的余烬里捡到的一粒硬核。种在菜地里能长出龙息果。菜地开放后，基地售货机也有卖。",
-                    "A hard kernel picked from the embers of a fallen Dragon Descendant. "
-                    + "Plant it in the garden to grow Dragonbreath Fruit. Also sold at the base vendor once the garden opens.",
+                    "龙裔遗族烧尽后剩下的一粒硬核，壳上还带着焦痕。种进菜地，长出来的是龙息果。菜地开放后，基地售货机里也能买到。",
+                    "A hard kernel left behind when a Dragon Descendant burned out, scorch marks still on the shell. "
+                    + "Plant it in the garden to grow Dragonbreath Fruit. The base vendor stocks it once the garden opens.",
                     "dragon_seed", 900, 4, true),
 
                 Make(BossRushItemIds.EmberSeed, "BossRush_EmberSeed", "BossRush_EmberSeed",
                     "龙皇焰种", "Ember Seed",
-                    "焚天龙皇陨落处仍在发烫的种子。种在菜地里能长出焚心椒。菜地开放后，基地售货机也有卖。",
-                    "A seed still warm from where the Ember Dragon King fell. "
-                    + "Plant it in the garden to grow Emberheart Chili. Also sold at the base vendor once the garden opens.",
+                    "焚天龙皇陨落的地方捡回来的种子，攥在手里还发烫。种进菜地会结出焚心椒。售货机在菜地开放后也开卖。",
+                    "A seed from where the Skyburner Dragon Lord fell, still hot in your palm. "
+                    + "Plant it in the garden for Emberheart Chili. The base vendor sells it once the garden opens.",
                     "ember_seed", 1100, 4, true),
 
                 Make(BossRushItemIds.PhantomSpore, "BossRush_PhantomSpore", "BossRush_PhantomSpore",
                     "幽魂孢子", "Phantom Spore",
-                    "幽灵女巫散去后飘落的孢子，摸上去是凉的。种在菜地里能长出幽影蘑菇。菜地开放后，基地售货机也有卖。",
-                    "A spore drifting down where the Phantom Witch dissolved. It feels cold to the touch. "
-                    + "Plant it in the garden to grow Umbral Mushroom. Also sold at the base vendor once the garden opens.",
+                    "幽灵女巫散去后飘落的孢子，摸上去是凉的，攥不住。种进菜地，长成幽影蘑菇。菜地开放后，售货机也有得卖。",
+                    "A spore that drifted down when the Phantom Witch dissolved. Cold, and hard to hold on to. "
+                    + "Plant it in the garden to grow Umbral Mushroom. The vendor sells it too once the garden opens.",
                     "phantom_spore", 1000, 4, true),
 
                 Make(BossRushItemIds.DragonFruit, "BossRush_DragonFruit", "BossRush_DragonFruit",
                     "龙息果", "Dragonbreath Fruit",
-                    "食用后化身龙裔 30 秒：枪械和近战伤害 +30%，免疫火焰，攻击时向前喷吐龙息（8 米，每 0.8 秒最多一次，24 火焰伤害）。血量仍是自己的，装备保留。",
-                    "Take the Dragon Descendant's form for 30 seconds: +30% gun and melee damage, fire immunity, and an 8m fire breath when attacking (24 fire damage, 0.8s cooldown). Keep your own health and gear.",
+                    "剥开还冒着热气的果子，籽粒红得像炭。\n食用后 30 秒化身龙裔遗族：枪械和近战伤害 +30%，免疫火焰；攻击时向前喷出龙息（8 米，24 火焰伤害，每 0.8 秒最多一次）。血量仍是你自己的，装备保留。",
+                    "The skin splits open steaming, the seeds glowing like coals.\nEat it to take the Dragon Descendant's form for 30s: +30% gun and melee damage, fire immunity, and an 8m fire breath when you attack (24 fire damage, at most once per 0.8s). Your own health and gear stay as they are.",
                     "dragon_fruit", 2400, 5, false),
 
                 Make(BossRushItemIds.EmberChili, "BossRush_EmberChili", "BossRush_EmberChili",
                     "焚心椒", "Emberheart Chili",
-                    "食用后化身焚天龙皇 30 秒：枪械伤害 +15%、近战伤害 +50%，免疫火焰，攻击触发周围 6 米焰爆（36 火焰伤害，每 1.2 秒最多一次）。血量仍是自己的，装备保留。",
-                    "Take the Ember Dragon King's form for 30 seconds: +15% gun and +50% melee damage, fire immunity, and a 6m flame burst when attacking (36 fire damage, 1.2s cooldown). Keep your own health and gear.",
+                    "红到发黑的辣椒，捏在手里就烫，闻一下眼泪直流。\n食用后 30 秒化身焚天龙皇：枪械伤害 +15%、近战伤害 +50%，免疫火焰；攻击时周身 6 米炸开焰爆（36 火焰伤害，每 1.2 秒最多一次）。血量仍是你自己的，装备保留。",
+                    "A chili so red it's nearly black. Too hot to hold for long, and one sniff makes your eyes stream.\nEat it to take the Skyburner Dragon Lord's form for 30s: +15% gun damage, +50% melee damage, fire immunity, and a 6m flame burst around you when you attack (36 fire damage, at most once per 1.2s). Your own health and gear stay as they are.",
                     "ember_chili", 2400, 5, false),
 
                 Make(BossRushItemIds.PhantomMushroom, "BossRush_PhantomMushroom", "BossRush_PhantomMushroom",
                     "幽影蘑菇", "Umbral Mushroom",
-                    "食用后化身持镰的幽灵女巫 30 秒：近战伤害 +40%、移动速度 +20%，攻击触发前方 5 米、120 度镰斩（32 物理伤害，每 0.65 秒最多一次）。血量仍是自己的，装备保留。",
-                    "Take the scythe-wielding Phantom Witch's form for 30 seconds: +40% melee damage and +20% movement speed. Attacks trigger a 5m, 120-degree scythe sweep (32 physical damage, 0.65s cooldown). Keep your own health and gear.",
+                    "伞盖薄得透光，摸上去是凉的，夜里会自己泛一点青。\n食用后 30 秒化身持镰的幽灵女巫：近战伤害 +40%、移动速度 +20%；攻击时向前方 5 米、120 度斩出一道镰光（32 物理伤害，每 0.65 秒最多一次）。血量仍是你自己的，装备保留。",
+                    "The cap is thin enough to see through, cold to the touch, and faintly green in the dark.\nEat it to take the Phantom Witch's scythe-wielding form for 30s: +40% melee damage, +20% move speed, and a 5m, 120-degree scythe sweep when you attack (32 physical damage, at most once per 0.65s). Your own health and gear stay as they are.",
                     "phantom_mushroom", 2400, 5, false)
             };
         }

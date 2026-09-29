@@ -287,7 +287,7 @@ export const CATEGORIES: WikiCategory[] = [
       {
         path: '/equipment/flight-totem',
         zh: '腾云驾雾图腾',
-        en: 'Cloud Rider Totem',
+        en: 'Cloud Soar I',
         icon: 'eq-flight-totem',
         blurbZh: '装上就能飞，消耗体力滑翔',
         blurbEn: 'Equip and fly — glide while stamina lasts',

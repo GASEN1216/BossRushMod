@@ -100,7 +100,7 @@ scythe is appended to the loot crate without displacing anything already in it.
   in the arena - see Rewards & Loot)
 - **An Affix Forge Stone** - about 8%, landing the same way
 - **A Phantom Spore** - about 25%, **requires Duck King Campaign chapter 1 to unlock the garden**.
-  Grows Shadow Mushroom: -10% physical damage taken for your next run
+  Grows Umbral Mushroom: 30 seconds as the scythe-wielding Phantom Witch (+40% melee damage, +20% move speed, scythe sweep).
 
 ### Combat Tips
 - **The violet tracking marker is the key signal**: keep strafing for 2 seconds until it locks, don't just take one step

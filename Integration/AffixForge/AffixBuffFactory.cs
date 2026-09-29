@@ -161,11 +161,11 @@ namespace BossRush
             try
             {
                 LocalizationHelper.InjectLocalization(LOC_BULWARK_NAME, L10n.T("磐石", "Bulwark"));
-                LocalizationHelper.InjectLocalization(LOC_BULWARK_DESC, L10n.T("受击后短暂提升护甲，可叠加。", "Briefly gains armor after being hit. Stacks."));
+                LocalizationHelper.InjectLocalization(LOC_BULWARK_DESC, L10n.T("受击后短暂获得额外护甲，可叠加。", "Extra armor for a short time after being hit. Stacks."));
                 LocalizationHelper.InjectLocalization(LOC_SWIFTHAND_NAME, L10n.T("迅手", "Swift Hand"));
-                LocalizationHelper.InjectLocalization(LOC_SWIFTHAND_DESC, L10n.T("击杀后短暂提升换弹速度，可叠加。", "Briefly gains reload speed after a kill. Stacks."));
+                LocalizationHelper.InjectLocalization(LOC_SWIFTHAND_DESC, L10n.T("击杀后短暂加快换弹，可叠加。", "Faster reloads for a short time after a kill. Stacks."));
                 LocalizationHelper.InjectLocalization(LOC_FRENZY_NAME, L10n.T("狂潮", "Frenzy"));
-                LocalizationHelper.InjectLocalization(LOC_FRENZY_DESC, L10n.T("击杀后短暂提升射速与机动性，可叠加。", "Briefly gains fire rate and mobility after a kill. Stacks."));
+                LocalizationHelper.InjectLocalization(LOC_FRENZY_DESC, L10n.T("击杀后短暂提升射速与机动性，可叠加。", "Faster fire rate and movement for a short time after a kill. Stacks."));
             }
             catch (Exception e)
             {

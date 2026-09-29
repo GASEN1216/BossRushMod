@@ -1,10 +1,10 @@
 ## Island Chief Gear
 
-[tip] Found on seven Sky Islands chiefs, plus the Galebreaker Warden in Jeff's prelude: the Waylayer, the Rain Listener, the Gnat Piper and the Mirror Guest each wear one piece and leave it behind 30% of the time; the three Galebreaker Rangers each wear one piece of the Galebreaker set and leave it behind 40% of the time. The piece takes one slot in the loot box; the rest of the box is whatever the chief was carrying.
+[tip] Found on seven Sky Islands chiefs, plus the Galebreaker Warden in Jeff's prelude: the Waylayer, the Rain Listener, the Gnat Piper and the Mirror Guest each wear one piece and leave it behind 30% of the time; the three Galebreakers each wear one piece of the Galebreaker set and leave it behind 40% of the time. The piece takes one slot in the loot box; the rest of the box is whatever the chief was carrying.
 
 ### What Is It?
 
-**The single piece each of seven chiefs wears**: the Old Mailbag comes from the Waylayer at the Upturned Post Hut, the Rainhush Earmuffs from the Rain Listener in the Rainlisten Grotto, the Mossgauze Mask from the Gnat Piper at Frogsong Pool and the Mirrorgrain Plate from the Mirror Guest at Mirrorwater Temple; the Galebreaker Mantle, Galebreaker Pack and Galebreaker Hood make up the Galebreaker set and come from the Galebreaker Ranger (Chaser), (Stalker) and (Warden) holding the three return relay platforms. Worn, they give the game's usual pack capacity, hearing, head armour or body armour; on the isles each also has a use: an extra pigeon letter, longer chief warnings, gnats that stop dodging, reconciling with Zheling without the old letter or route chart, and any two Galebreaker pieces make you quicker on bridges. The Overlook Stargazer's lens helm is under "Starworks Gear".
+**The single piece each of seven chiefs wears**: the Old Mailbag comes from the Waylayer at the Upturned Post Hut, the Rainhush Earmuffs from the Rain Listener in the Rainlisten Grotto, the Mossgauze Mask from the Gnat Piper at Frogsong Pool and the Mirrorgrain Plate from the Mirror Guest at Mirrorwater Temple; the Galebreaker Mantle, Galebreaker Pack and Galebreaker Hood make up the Galebreaker set and come from the Galebreaker Chaser, Stalker and Warden holding the three return relay platforms. Worn, they give the game's usual pack capacity, hearing, head armor or body armor; on the isles each also has a use: an extra pigeon letter, longer chief warnings, gnats that stop dodging, reconciling with Zheling without the old letter or route chart, and any two Galebreaker pieces make you quicker on bridges. The Overlook Stargazer's lens helm is under "Starworks Gear".
 
 ### The Seven Pieces
 
@@ -24,7 +24,7 @@
 - **Rain Listener** (chief, Rainlisten Grotto): drops the Rainhush Earmuffs **30%** of the time, nothing the other 70%.
 - **Gnat Piper** (chief, Frogsong Pool, **night only**): drops the Mossgauze Mask **30%** of the time, nothing the other 70%.
 - **Mirror Guest** (chief, Mirrorwater Temple, **night only**): drops the Mirrorgrain Plate **30%** of the time, nothing the other 70%.
-- **Galebreaker Ranger (Chaser / Stalker / Warden)** (chiefs, the three return relay platforms: K1 Hanging Root Wood, K2 Fallen Star Workshop, K3 Windsong Boardwalk): the Chaser wears the Galebreaker Mantle, the Stalker carries the Galebreaker Pack and the Warden wears the Galebreaker Hood; each leaves its own piece behind **40%** of the time, nothing the other 60%. Completing the set means beating all three.
+- **Galebreaker Chaser / Stalker / Warden** (chiefs, the three return relay platforms: K1 Hanging Root Wood, K2 Fallen Star Workshop, K3 Windsong Boardwalk): the Chaser wears the Galebreaker Mantle, the Stalker carries the Galebreaker Pack and the Warden wears the Galebreaker Hood; each leaves its own piece behind **40%** of the time, nothing the other 60%. Completing the set means beating all three.
 - **Jeff's prelude (Ground Zero)**: the Galebreaker Warden guarding the lost navigation instrument uses the same profile and has a **40%** chance to drop the Galebreaker Hood.
 - "Night" means 22:00 to 06:00 game time: by day you will only find followers at Frogsong Pool and Mirrorwater Temple, and the chief only comes out when you approach at night.
 - The piece that drops comes at **full durability**.
@@ -72,7 +72,7 @@
 - Move more than 45 m from the pool and it stops flipping.
 - Once its Mirrorgrain Plate is at zero durability it still flips, but can no longer leave a reflection.
 
-**Galebreaker Rangers (all three):**
+**The Galebreakers (all three):**
 - Stay inside 6 m for about **2.5 seconds** with its lunge ready and it retreats toward 9 m to seek another lunge. Hugging it does not permanently disable the move.
 - When you are **6–28 m** away, a **lunge line** runs along the ground from its feet to just in front of you and a ring (1.8 m radius) lights at the landing spot; once the line is fully lit it dashes in, slams down and then **staggers for 1.2 seconds**. **Sidestep** as soon as the line lights.
 - Their whole group is **no friend of the scavengers** and fights them on sight. Lead one over and let them go at each other.

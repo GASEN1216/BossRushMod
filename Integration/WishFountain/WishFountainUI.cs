@@ -915,8 +915,8 @@ namespace BossRush
             if (hintText != null)
             {
                 hintText.text = L10n.T(
-                    "许愿对抽奖有加成哦，另外有想要实现的功能也可以写下来，我可以看到~",
-                    "Wishing boosts your draw. Want a feature added? Write that too, I read these~");
+                    "心愿越具体，越容易落到你想要的东西上。想要的功能也可以写，我会看。",
+                    "The more specific the wish, the closer the reward. Feature ideas welcome too. I read them.");
             }
 
             if (placeholderText != null)

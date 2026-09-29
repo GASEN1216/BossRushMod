@@ -90,7 +90,7 @@ All three go on any supported gear, and all three are passive: they apply as lon
 holding or wearing the piece.
 
 - **Blood Rage** — All weapon damage `+10% / +16% / +24%`, but max health `-12% / -18% / -25%`.
-- **Glass Cannon** — All weapon damage `+15% / +24% / +35%`, but armor `-1 / -2 / -3`.
+- **Glass Edge** — All weapon damage `+15% / +24% / +35%`, but armor `-1 / -2 / -3`.
 - **Death Pact** — Kills restore `10% / 14% / 20%` of max health, but you lose
   `0.8% / 1.2% / 1.8%` of max health per second. **It can never kill you**: it always leaves
   you at 1 HP, and there's no drain inside the base.
@@ -100,7 +100,7 @@ holding or wearing the piece.
 :::
 
 ::: tip
-Cursed affixes work best as a set: stack Blood Rage and Glass Cannon for `+59%` damage, then use Death Pact or Slaughter to keep the health topped up. Commit fully or don't touch them; half-measures just leave you fragile without the payoff.
+Cursed affixes work best as a set: stack Blood Rage and Glass Edge for `+59%` damage, then use Death Pact or Slaughter to keep the health topped up. Commit fully or don't touch them; half-measures just leave you fragile without the payoff.
 :::
 
 ## Common questions

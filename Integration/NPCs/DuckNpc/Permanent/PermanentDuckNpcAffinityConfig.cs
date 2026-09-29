@@ -339,6 +339,10 @@ namespace BossRush
         ///   gift_positive_married / gift_negative_married / gift_normal_married
         ///   gift_already_positive_married / gift_already_normal_married /
         ///   gift_already_negative_married
+        /// 婚恋场景专属台词（不要求已婚，由 NPCDialogueSystem.GetPersonaLine 取；没配就落回通用文案）：
+        ///   marriage_chapel_required / marriage_divorce / marriage_bubble_date（正文里用 {date} 占位）/
+        ///   marriage_cheat_first / marriage_cheat_repeat / marriage_follow_refused /
+        ///   ring_reject / ring_cheater / ring_spouse_repeat
         /// </remarks>
         public string GetRelationshipDialogue(string eventKey, int level)
         {

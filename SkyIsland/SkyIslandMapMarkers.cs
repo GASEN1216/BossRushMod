@@ -68,10 +68,10 @@ namespace BossRush
             if (notify == null) return;
             if ((opened & 2) != 0)
                 notify(L10n.T("风标点亮：悬根林广场开出返航风道，站进绿环即可撤离",
-                    "Wind beacon lit: an extraction ring opened on the Hanging Root Wood plaza — step into the green ring to extract"), false);
+                    "Wind beacon lit: an extraction ring has opened on the Hanging Root Wood plaza; step into the green ring to extract."), false);
             if ((opened & 4) != 0)
                 notify(L10n.T("星灯点亮：残星工坊广场开出返航风道，站进绿环即可撤离",
-                    "Star lamp lit: an extraction ring opened on the Fallen Star Workshop plaza — step into the green ring to extract"), false);
+                    "Star lamp lit: an extraction ring has opened on the Fallen Star Workshop plaza; step into the green ring to extract."), false);
             if ((opened & 1) != 0)
                 notify(L10n.T("双航标已亮：归航钟庭的撤离点开放", "Both beacons lit: the Bell Court extraction is open"), false);
         }

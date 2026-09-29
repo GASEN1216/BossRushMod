@@ -93,7 +93,7 @@ If you recorded trophies in the old self-built "Trophy Showcase": that cabinet i
 All three harvests can be eaten at base or during a raid. Each immediately grants its matching Boss form for **30 seconds**:
 
 - **Dragonbreath Fruit: Dragon Descendant.** Wear its armor, gain `+30%` gun and melee damage and fire immunity. Attacks breathe flame in an 8m, roughly 70-degree cone: 24 fire damage, at most once every 0.8s.
-- **Emberheart Chili: Ember Dragon King.** Wear its armor, gain `+15%` gun damage, `+50%` melee damage and fire immunity. Attacks burst into flame in a 6m circle: 36 fire damage, at most once every 1.2s.
+- **Emberheart Chili: Skyburner Dragon Lord.** Wear its armor, gain `+15%` gun damage, `+50%` melee damage and fire immunity. Attacks burst into flame in a 6m circle: 36 fire damage, at most once every 1.2s.
 - **Umbral Mushroom: Phantom Witch.** Take its full ghostly form with a scythe, `+40%` melee damage and `+20%` movement speed. Attacks sweep a 5m, 120-degree arc: 32 physical damage, at most once every 0.65s.
 
 Both shooting and melee trigger these abilities. Allies and targets behind walls are excluded. **Your current health, maximum health and actual gear remain your own.** Only appearance and combat bonuses change temporarily.
@@ -113,7 +113,7 @@ Both shooting and melee trigger these abilities. Allies and targets behind walls
 **Boss-form harvests** (harvested from the Garden, 2 per harvest)
 
 - **Dragonbreath Fruit** — Dragon Descendant: forward fire breath, balanced damage bonuses and fire immunity
-- **Emberheart Chili** — Ember Dragon King: close-range flame burst, melee damage and fire immunity
+- **Emberheart Chili** — Skyburner Dragon Lord: close-range flame burst, melee damage and fire immunity
 - **Umbral Mushroom** — Phantom Witch: a full ghostly body and scythe, quick sweeps and movement speed
 
 ## Questions you might have

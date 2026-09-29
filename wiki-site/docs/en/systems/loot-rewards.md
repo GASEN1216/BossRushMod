@@ -119,7 +119,7 @@ Breath in particular is down to luck.
 Again **exactly one** piece, weighted across six:
 
 - Reverse Scale (Totem): **39%**
-- Cloud Rider (Totem): **15%**
+- Cloud Soar I (Totem): **15%**
 - Dragon King Crown (Helmet): **15%**
 - Dragon King Scale Armor (Armor): **15%**
 - Skyburner Halberd (Melee): **15%**

@@ -2,9 +2,8 @@
 
 ### What Is It
 
-- The Dust-Covered StarWish Fountain is a buildable interactive structure in the base.
-- It lets you send ideas, suggestions, or future feature wishes directly from the game.
-- The current implementation submits wishes to a Feishu Bitable workflow and does not require a separate custom server.
+- The Dust-Covered StarWish Fountain is a buildable structure at base.
+- Write what you'd like to say or see added; the author can read it.
 
 ### How To Use It
 
@@ -12,14 +11,10 @@
 - Walk up to it and interact with `Make a Wish`.
 - It opens a panel styled to match the base game, so fonts, colors and controls feel native.
 
-### Current UI Rules
+### Writing a Wish
 
-- The title is `Write Your Wish`.
-- The input area is a fixed-height multi-line text box.
-- Long text uses an internal vertical scrollbar instead of expanding the whole window.
-- The fixed reminder on the right says: `Please don't enter invalid or spam content~`
-- The anonymous toggle is currently off by default.
-- The allowed length range is `20 ~ 10000` characters.
+- `20 ~ 10000` characters, with a 30-second cooldown.
+- The anonymous toggle is off by default.
 
 ### Feedback After Submission
 
@@ -28,12 +23,12 @@
 - The panel pauses for a moment after success, then closes automatically.
 - The cooldown is currently a global `30 seconds`, not per individual fountain.
 
-### Wish Gacha Reward
+### Wish Reward
 
-- After each successful wish submission, the system also checks whether the `Wish Gacha` reward is available.
+- After each successful wish, the fountain also checks whether a reward is ready to claim.
 - The reward cooldown is a global `4 hours`, not tracked per individual fountain.
 - If the reward cooldown is ready, a successful submission will trigger the `Starwish Draw` animation and grant 1 reward item when it finishes.
-- If the reward is still on cooldown, your wish is still submitted normally, but the game only shows the remaining gacha cooldown and does not grant another reward.
+- If the reward is still on cooldown, your wish is still submitted normally, but the game only shows the remaining cooldown and does not grant another reward.
 - The content of your wish influences the reward direction:
   - Mentioning certain item types or keywords makes related rewards more likely.
   - The current bias can lean toward weapons, melee gear, armor, helmets, totems, gifts, healing, faction flags, summon items, fortification items, and travel-related items.

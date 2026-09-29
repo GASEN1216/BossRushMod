@@ -284,8 +284,8 @@ namespace BossRush
                     if (!source.Has(SkyIslandStoryFlag.PreludeInstrumentRecovered))
                         required = L10n.T("先去零号区把那台航向仪带回来。",
                             "Bring the instrument back from Ground Zero first.");
-                    message = L10n.T("Jeff 把坐标读完了，让船工在航路表上添了一条晴岚。想上去看看，船点见。",
-                        "Jeff finishes reading the coordinates and has the crew add Qinglan to the route table. If you want to see it for yourself, the boat is waiting."); break;
+                    message = L10n.T("Jeff 把坐标读完，让船工在航路表上添了一条晴岚。想上去看，就去船边。",
+                        "Jeff finishes reading the coordinates and has the boat crew add Qinglan to the route table. If you want to see it, head down to the boat."); break;
                 case SkyIslandStoryAction.AcceptBeaconQuest:
                     flag = SkyIslandStoryFlag.BeaconQuestAccepted;
                     if (!source.SkyIslandRouteUnlocked)
@@ -295,7 +295,7 @@ namespace BossRush
                 case SkyIslandStoryAction.DeliverBeaconQuest:
                     flag = SkyIslandStoryFlag.BeaconQuestDelivered;
                     if (!source.Has(SkyIslandStoryFlag.BeaconQuestAccepted))
-                        required = L10n.T("先找苇白接下航标任务。她不在的话，风铃集委托板上也能接。", "Take the beacon quest from Weibai first. If she is away, the Windchime Market board has it too.");
+                        required = L10n.T("先去找苇白，把两端航标的活接下来。她要是不在，风铃集的委托板上也有。", "Find Weibai first and take on the beacon work. If she's away, the Windchime Market board has it too.");
                     else if (!source.BothBeacons)
                         required = L10n.T("风标与星灯都亮起来再回来复命。", "Light both the wind beacon and the star lamp, then report back.");
                     message = L10n.T("两端航标的修复记录已交付，航路名册添上了两道标记。可以到码头找浮舟接下钟庭之争。",
@@ -303,13 +303,13 @@ namespace BossRush
                 case SkyIslandStoryAction.AcceptBellCourtQuest:
                     flag = SkyIslandStoryFlag.BellCourtQuestAccepted;
                     if (!source.Has(SkyIslandStoryFlag.BeaconQuestDelivered))
-                        required = L10n.T("先把两端航标的活交给苇白。她不在的话，风铃集委托板上也能交。", "Turn the beacon work in to Weibai first. If she is away, the Windchime Market board takes it too.");
+                        required = L10n.T("先回去跟苇白交差。她不在，就到风铃集的委托板上交。", "Report back to Weibai first. If she's away, hand it in at the Windchime Market board.");
                     message = L10n.T("浮舟：灯都亮了，钟守还是不肯让钟响。去归航钟庭，说服他，或者击停守钟装置，再回来告诉我。",
                         "Fuzhou: The lamps are lit, but the Bell Keeper still won't let the bell ring. Go to the Bell Court, talk him down or stop his bell engine, then report back to me."); break;
                 case SkyIslandStoryAction.DeliverBellCourtQuest:
                     flag = SkyIslandStoryFlag.BellCourtQuestDelivered;
                     if (!source.Has(SkyIslandStoryFlag.BellCourtQuestAccepted))
-                        required = L10n.T("先在码头接下浮舟的委托。", "Take Fuzhou's commission at the dock first.");
+                        required = L10n.T("先去码头，听浮舟怎么说。", "Go to the dock and hear what Fuzhou has to say first.");
                     else if (!source.BellKeeperResolved)
                         required = L10n.T("说服钟守或击停守钟装置之后，再回码头复命。", "Talk the Bell Keeper down or stop his bell engine, then report back at the dock.");
                     message = source.Has(SkyIslandStoryFlag.Ending)
@@ -321,16 +321,16 @@ namespace BossRush
                     flag = SkyIslandStoryFlag.HomecomingQuestAccepted;
                     if (!source.BothBeacons || !source.BellKeeperResolved)
                         required = L10n.T("先恢复两端航标，并解决钟守的阻拦。", "Restore both beacons and settle the Bell Keeper's objection first.");
-                    message = L10n.T("钟守：去敲响归航钟。这一次，是为归来的人。",
-                        "The Bell Keeper: Ring the Homecoming Bell. This time, for the ones coming home."); break;
+                    message = L10n.T("钟守在木牌上写：去敲响归航钟。这一次，是为归来的人。",
+                        "The Bell Keeper writes on his slate: Ring the Homecoming Bell. This time, for the ones coming home."); break;
                 case SkyIslandStoryAction.DeliverHomecomingQuest:
                     flag = SkyIslandStoryFlag.HomecomingQuestDelivered;
                     if (!source.Has(SkyIslandStoryFlag.HomecomingQuestAccepted))
-                        required = L10n.T("先在归航钟庭接下钟守的托付。", "Take the Bell Keeper's charge at the Bell Court first.");
+                        required = L10n.T("先到钟庭，看看钟守留的字。", "Go to the Bell Court and read what the Bell Keeper left for you first.");
                     else if (!source.Has(SkyIslandStoryFlag.Ending))
                         required = L10n.T("敲响归航钟之后再回来复命。", "Ring the Homecoming Bell, then report back.");
-                    message = L10n.T("钟守望着云海：『听见了。他们都听见了。』",
-                        "The Bell Keeper looks out over the cloud sea: 'They heard it. All of them.'"); break;
+                    message = L10n.T("钟守望着云海，在木牌上添了一行：『听见了。他们都听见了。』",
+                        "The Bell Keeper looks out over the cloud sea and adds a line to his slate: 'They heard it. All of them.'"); break;
                 case SkyIslandStoryAction.RepairWindBeacon:
                     flag = SkyIslandStoryFlag.WindBeacon;
                     if (!WindBeaconGuardsCleared(source))
@@ -424,8 +424,8 @@ namespace BossRush
                         && source.ZhelingResolved) && !source.StormResolved)
                         required = L10n.T("钟守不信航路安全：带齐旧信、航路图、观星镜并了结折翎（和解或战胜都算），或者解决栈道上那阵风。",
                             "The Bell Keeper doubts the lanes are safe. Bring the old letter, the route chart and a repaired telescope and settle Zheling (reconciling or defeating both count). Or deal with the wind on the boardwalk.");
-                    message = L10n.T("钟守：『这一次，钟声不是催他们出航，是告诉他们有人等着归来。』守钟装置停了。",
-                        "The Bell Keeper: 'This time the bell is not sending them out. It is telling them someone is waiting for them to come home.' The bell engine falls still."); break;
+                    message = L10n.T("钟守在木牌上写：『这一次，钟声不是催他们出航，是告诉他们有人等着归来。』守钟装置停了。",
+                        "The Bell Keeper writes: 'This time the bell is not sending them out. It is telling them someone is waiting for them to come home.' The bell engine falls still."); break;
                 case SkyIslandStoryAction.BellKeeperDefeated:
                     flag = SkyIslandStoryFlag.BellKeeperDefeated;
                     if (!source.BothBeacons)
@@ -468,8 +468,8 @@ namespace BossRush
                     return L10n.T("折翎停下战斗，将旧腰牌留在路旁：『航路交给你。』镜水寺的路已开放。他先退下休整，下次来仍可找他。",
                         "Zheling breaks off the fight and leaves his old badge by the road: 'The route is yours now.' The Mirrorwater Temple road is open. He rests for this visit; you can meet him again next trip.");
                 case SkyIslandStoryFlag.BellKeeperDefeated:
-                    return L10n.T("失控的守钟装置停下。钟守望向亮着的航标：『那就让钟声，为归来的人响一次。』",
-                        "The runaway bell engine stops. The Bell Keeper looks out at the lit beacons: 'Then let the bell ring once, for the ones coming home.'");
+                    return L10n.T("失控的守钟装置停下。钟守望向亮着的航标，写下：『那就让钟声，为归来的人响一次。』",
+                        "The runaway bell engine stops. The Bell Keeper looks out at the lit beacons and writes: 'Then let the bell ring once, for the ones coming home.'");
                 case SkyIslandStoryFlag.StormSlain:
                     return L10n.T("噬风散了。折翎说的『封路』和钟守说的『不安全』，从今天起都少了一个理由。",
                         "The Windeater is gone. Zheling's 'close the lanes' and the Bell Keeper's 'it is not safe' each lost a reason today.");

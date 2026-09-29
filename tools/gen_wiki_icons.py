@@ -166,7 +166,7 @@ ICONS = [
     ("eq-dragon-king-set", "龙王套装", "Dragon King Set",
      icon("A golden horned dragon crown above an ornate gold-trimmed scale cuirass, "
           "molten seams glowing between the scales, crimson and gold palette.")),
-    ("eq-flight-totem", "腾云驾雾图腾", "Cloud Rider Totem",
+    ("eq-flight-totem", "腾云驾雾图腾", "Cloud Soar I",
      icon("A carved jade totem disc with feathered wings spread on either side, small clouds "
           "curling beneath it, jade green and white palette.")),
     ("eq-reverse-scale", "逆鳞", "Reverse Scale",

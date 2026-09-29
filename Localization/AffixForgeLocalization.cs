@@ -123,7 +123,7 @@ namespace BossRush
             Add(map, "Unlock", "解锁", "Unlock");
             Add(map, "Locked", "已锁定", "Locked");
             Add(map, "EmptySlot", "空词缀槽", "Empty affix slot");
-            Add(map, "SelectItem", "选择一件武器或护甲", "Pick a weapon or a piece of armor");
+            Add(map, "SelectItem", "选择一件武器或防具", "Pick a weapon or a piece of armor");
             Add(map, "NotForgeable", "该装备无法附加词缀。", "This gear cannot carry affixes.");
             Add(map, "NoStone", "词缀熔石不足。", "Not enough Affix Forge Stones.");
             Add(map, "NoMoney", "口袋空了", "Your pockets are empty");
@@ -136,7 +136,7 @@ namespace BossRush
                 "This affix comes from another version and cannot be interpreted here.");
 
             Add(map, "SlotCountFormat", "词缀槽 {0}", "Affix slots: {0}");
-            Add(map, "LockCostFormat", "锁定需要 {0} 块词缀熔石", "Locking costs {0} Affix Forge Stones");
+            Add(map, "LockCostFormat", "锁定需要 {0} 颗词缀熔石", "Locking costs {0} Affix Forge Stones");
 
             Add(map, "Rarity_Common", "普通", "Common");
             Add(map, "Rarity_Rare", "稀有", "Rare");

@@ -391,7 +391,7 @@ namespace BossRush
                 L10n.T("贴脸输出", "point-blank fire"),
                 L10n.T("开箱子", "opening crates"),
                 L10n.T("囤积弹药", "hoarding ammo"),
-                L10n.T("与 NPC 攀谈", "chatting up NPCs"),
+                L10n.T("找人闲聊", "chatting up NPCs"),
                 L10n.T("原地发呆", "standing still and thinking"),
                 L10n.T("清空仓库", "clearing out storage"),
             };
@@ -399,7 +399,7 @@ namespace BossRush
             {
                 L10n.T("空手开门", "opening doors empty-handed"),
                 L10n.T("背身换弹", "reloading with your back turned"),
-                L10n.T("贪最后一个箱子", "greeding one last crate"),
+                L10n.T("贪最后一个箱子", "getting greedy for one last crate"),
                 L10n.T("独自远行", "traveling alone"),
                 L10n.T("相信自己的血量", "trusting your health bar"),
                 L10n.T("裸奔", "going out unarmored"),

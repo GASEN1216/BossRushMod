@@ -94,12 +94,12 @@ namespace BossRush
         /// <summary>
         /// 复活对话内容
         /// </summary>
-        public const string ResurrectionDialogue = "我...命不该绝！";
+        public const string ResurrectionDialogue = "我……命不该绝！";
         
         /// <summary>
         /// 复活对话英文版本
         /// </summary>
-        public const string ResurrectionDialogueEN = "I...shall not perish!";
+        public const string ResurrectionDialogueEN = "I... will not fall!";
         
         // ========== 狂暴状态配置 ==========
         

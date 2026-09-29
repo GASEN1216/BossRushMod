@@ -173,7 +173,7 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[OfficialQuest] [WARNING] 奖励物品未就绪，交付中止: " + e.Message);
                 Discard(created);
-                reason = L10n.T("奖励还没备齐，过一会儿再来找我。", "The reward isn't ready yet. Come back in a moment.");
+                reason = L10n.T("奖励还没备齐，过会儿再来。", "The reward isn't ready yet. Come back in a bit.");
                 return false;
             }
         }
@@ -192,8 +192,8 @@ namespace BossRush
                     delivered.Track(item);
                     if (TryPlace(item, inboxOnly)) continue;
                 }
-                reason = L10n.T("奖励暂时无法送达，这次交付没有扣除物品，请稍后再试。",
-                    "The reward cannot be delivered yet. No hand-in items were consumed. Please try again shortly.");
+                reason = L10n.T("奖励这会儿送不出去，要交的东西没收走，过会儿再试。",
+                    "The reward can't go out right now. Nothing was taken from you. Try again shortly.");
                 return false;
             }
             return true;

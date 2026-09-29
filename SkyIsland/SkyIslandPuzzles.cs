@@ -181,7 +181,7 @@ namespace BossRush
                 Puzzle("Search_S3", SkyIslandStoryFlag.RouteChart, "辨认水声", "Read the streams",
                     "洞里有三道水声：急流、缓流，还有一道断断续续。旧航路图写着：『先走缓流，到头右拐。出洞贴着断续的水声走。别碰急流，它会把船冲下云海。』",
                     "Three streams: fast, slow, and one that comes and goes. The old chart reads: 'Follow the slow stream. Turn right at its end. Leave beside the broken flow. Avoid the fast stream; it sweeps boats into the cloud sea.'",
-                    "三道水声都对上了航路图的标记，避风航道一段不差。", "All three streams match the marks on the chart; the sheltered lane is complete, not a stretch missing.",
+                    "三道水声都对上了航路图的标记，避风航道一段不差。", "All three streams match the chart, and the sheltered lane is whole.",
                     Step("先跟着哪道水声走？", "Which stream do you follow first?",
                         new[] { Option("急流", "The fast stream"), Option("缓流", "The slow stream"), Option("断断续续的那道", "The one that comes and goes") }, 1,
                         "航路图说，先跟着缓的走。", "The chart says to follow the slow one first.",

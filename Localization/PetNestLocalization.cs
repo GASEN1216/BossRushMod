@@ -147,11 +147,11 @@ namespace BossRush
 
             // —— 随从进局（模式门控与入场）——
             Add(map, "Fail_mode_g_banned", "宿命回响不能带崽：宿敌的账只算你自己打出来的伤害",
-                "No cubs in Echoes of Fate: the nemesis duel only counts damage you deal yourself");
+                "No cubs in Fate Echo: the nemesis duel only counts damage you deal yourself");
             Add(map, "Fail_zombie_mode_banned", "末日丧尸模式不能带崽：它有自己的一套局内奖励",
-                "No cubs in the Zombie mode: it runs its own in-run reward system");
+                "No cubs in Zombie Mode: it runs its own in-run reward system");
             Add(map, "Fail_mode_h_banned", "百战留痕是观战模式，你不下场，崽也不上场",
-                "Blackmarket Cup is a spectator mode: you stay out of the ring, and so does your cub");
+                "Black Market Duck Cup is a spectator mode: you stay out of the ring, and so does your cub");
             Add(map, "Fail_no_run_active", "这张图不支持带崽出战",
                 "Cubs cannot be deployed on this map");
             Add(map, "Fail_mode_query_failed", "没能判断当前模式，本局不带崽",
@@ -166,16 +166,16 @@ namespace BossRush
                 "The cub failed to enter the field; it stays home this run");
 
             // —— 存档 ——
-            Add(map, "Fail_save_write_barrier", "存档为只读状态，本次改动未保存",
-                "The save is read-only; this change was not stored");
-            Add(map, "Fail_save_store_faulted", "存档写入故障，本次改动未保存",
-                "The save failed to write; this change was not stored");
-            Add(map, "Fail_transaction_missing", "没有进行中的存档事务，本次改动未保存",
-                "No save transaction was open; this change was not stored");
+            Add(map, "Fail_save_write_barrier", "存档暂时写不进去，本次改动没保存",
+                "The save can't be written right now; this change wasn't stored.");
+            Add(map, "Fail_save_store_faulted", "存档暂时写不进去，本次改动没保存",
+                "The save can't be written right now; this change wasn't stored.");
+            Add(map, "Fail_transaction_missing", "存档暂时写不进去，本次改动没保存",
+                "The save can't be written right now; this change wasn't stored.");
             Add(map, "Fail_nested_transaction", "上一次存档操作还没结束，请稍后再试",
                 "The previous save operation is still running; try again in a moment");
-            Add(map, "Fail_transaction_clone_failed", "存档快照失败，本次改动未保存",
-                "The save snapshot failed; this change was not stored");
+            Add(map, "Fail_transaction_clone_failed", "存档暂时写不进去，本次改动没保存",
+                "The save can't be written right now; this change wasn't stored.");
             Add(map, "Fail_asset_save_not_ready", "背包与仓库还没就绪，请稍后再试",
                 "Inventory and storage are not ready yet; try again in a moment");
             Add(map, "Fail_commit_failed", "本次改动未能保存", "This change could not be stored");

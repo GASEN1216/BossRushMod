@@ -111,7 +111,7 @@ namespace BossRush
                     "The Windeater's echo climbs onto the boardwalk. The eye will pulse once more before it fades.", false);
             else
                 Announce("噬风从云海里翻上来了，冲着那两盏重新亮起的灯。",
-                    "The Windeater rises from the sea of cloud, drawn by the two relit beacons.", false);
+                    "The Windeater rises from the cloud sea, drawn by the two relit beacons.", false);
         }
 
         /// <summary>纯逻辑：给定血量比例返回应处的相位序号，供隔离回归直接验证阈值不漂移。</summary>

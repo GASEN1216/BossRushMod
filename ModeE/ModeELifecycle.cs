@@ -32,7 +32,7 @@ namespace BossRush
                 }
 
                 string factionName = GetFactionDisplayName(faction);
-                string bubbleText = L10n.T("阵营：" + factionName, "Faction: " + faction.ToString());
+                string bubbleText = L10n.T("阵营：" + factionName, "Faction: " + factionName);
 
                 // 使用游戏原版 DialogueBubblesManager 显示气泡，时长 3 秒
                 DialogueBubblesManager.Show(bubbleText, player.transform, 2.5f, false, false, -1f, 3f);
@@ -220,7 +220,7 @@ namespace BossRush
                 {
                     modeEHost.ShowMessage(L10n.T(
                         "划地为营模式已结束！",
-                        "Faction Battle ended!"
+                        "Faction War ended!"
                     ));
                 }
             }

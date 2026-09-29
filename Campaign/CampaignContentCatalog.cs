@@ -133,8 +133,8 @@ namespace BossRush
             switch (chapterId)
             {
                 case "ch1":
-                    return L10n.T("已解锁菜地。基地的菜地工地开放了，带铲子 ×1、粑粑 ×9 走过去交钱动工。起步种子放进了背包，之后基地售货机有卖，龙裔遗族、焚天龙皇、幽灵女巫也会掉；种出来的收成能让你短暂变身。",
-                        "Garden unlocked. The garden site at base is open: bring Shovel ×1 and Poop ×9, walk up and pay. Starter seeds are in your backpack; the base vendor sells more, and the Dragon Descendant, Dragon King and Phantom Witch drop them. Your harvest gives you a temporary Boss form.");
+                    return L10n.T("菜地开放了：带铲子 ×1、粑粑 ×9 去后山工地交钱动工。起步种子在背包里，基地售货机也有卖。",
+                        "Garden unlocked: bring Shovel ×1 and Poop ×9 to the backyard site and pay to build. Starter seeds are in your backpack; the base vendor sells more.");
                 case "ch2":
                     return L10n.T("已解锁陈列加成。把 Boss 战利品摆上基地的枪械展示架或假人，每件给生命上限加成。",
                         "Display bonus unlocked. Put Boss trophies on the base weapon display rack or on a dummy. Each one raises your max health.");

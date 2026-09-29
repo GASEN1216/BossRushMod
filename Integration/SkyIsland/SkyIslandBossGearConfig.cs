@@ -244,72 +244,72 @@ namespace BossRush
             {
                 case BossRushItemIds.SkyIslandStarbrassVisorHelm:
                     return L10n.T(
-                        "匠首的铜盔，面罩熏成了琥珀色。\n头部护甲 +3。\n群岛效果：星工套任穿2件，渡口配方少耗1片残铜，最低仍需1片。\n来源：残星工坊的残星匠首，整套随机留1件。\n打穿它的头盔，星焰落点由3处减为1处。",
-                        "The Foreman's helm, its visor stained amber with soot.\nHead armor +3.\nOn Qinglan: any 2 Starworks pieces save 1 brass scrap per dock recipe, minimum 1 scrap.\nSource: Starforge Foreman, Fallen Star Workshop. Drops 1 set piece.\nBreaking its helm reduces starfire rings from 3 to 1.");
+                        "匠首的铜盔，面罩被炉火熏成了琥珀色。\n星工装备（头盔、背甲、背囊）穿任意两件，在渡口工台做东西就少耗 1 片残铜片，最少仍要 1 片。\n残星匠首每趟都穿着整套，倒下时只留一件。它戴着头盔时星焰有 3 处落点，头盔被打穿就只剩 1 处。",
+                        "The Foreman's brass helm, its visor smoked amber by the furnace.\nWear any two pieces of the Starworks set (helm, harness, pack) and the dock workbench uses 1 less brass scrap per recipe, never below 1.\nThe Foreman wears the full set every raid and leaves one piece when it falls. While its helm holds, its starfire lands on 3 spots; shoot the helm through and it drops to 1.");
                 case BossRushItemIds.SkyIslandStarfurnaceHarness:
                     return L10n.T(
-                        "铜板围裙的下摆，怎么擦都带着烟灰。\n身体护甲 +3。\n群岛效果：星工套任穿2件，渡口配方少耗1片残铜，最低仍需1片。\n来源：残星工坊的残星匠首。\n打穿它的背甲，供能桩提供的护甲减半。",
-                        "A brass-plated apron with soot ground into the hem.\nBody armor +3.\nOn Qinglan: any 2 Starworks pieces save 1 brass scrap per dock recipe, minimum 1 scrap.\nSource: Starforge Foreman, Fallen Star Workshop.\nBreaking its harness halves the armor its pylons provide.");
+                        "铜板缝的围裙，下摆怎么擦都带着烟灰。\n星工装备穿任意两件，渡口工台做东西少耗 1 片残铜片，最少仍要 1 片。\n出自残星匠首，整套穿在它身上，每次倒下只留一件。背甲被打穿，它立的供能桩只能给一半护甲。",
+                        "A brass-plated apron, its hem black with soot no matter how you scrub.\nAny two Starworks pieces: 1 less brass scrap per dock workbench recipe, never below 1.\nFrom the Starforge Foreman, who wears the whole set and drops one piece per fall. Shoot the harness through and its pylons give only half the armor.");
                 case BossRushItemIds.SkyIslandStarfurnacePack:
                     return L10n.T(
-                        "背得走的小星炉，底下还捆着工具卷。\n背包容量 +6。\n群岛效果：星工套任穿2件，渡口配方少耗1片残铜，最低仍需1片。\n来源：残星工坊的残星匠首。\n它每放2次星焰就过热，停手时更容易受伤。",
-                        "A portable star furnace with tools strapped underneath.\nBackpack capacity +6.\nOn Qinglan: any 2 Starworks pieces save 1 brass scrap per dock recipe, minimum 1 scrap.\nSource: Starforge Foreman, Fallen Star Workshop.\nIt overheats every 2 starfires, stops attacking and takes more damage.");
+                        "一座能背走的小星炉，底下还捆着工具卷。\n背包容量 +6。星工装备穿任意两件，渡口工台做东西少耗 1 片残铜片，最少仍要 1 片。\n出自残星匠首。它背着这只炉子，每放 2 次星焰就过热，停手散热时更容易受伤。",
+                        "A small star furnace you can carry on your back, a tool roll lashed underneath.\nBackpack capacity +6. Any two Starworks pieces: 1 less brass scrap per dock workbench recipe, never below 1.\nFrom the Starforge Foreman. With this furnace on its back it overheats after every 2 starfires, and takes more damage while it vents.");
                 case BossRushItemIds.SkyIslandStargazerLensHelm:
                     return L10n.T(
-                        "皮帽上装了三层镜片，看人比看星还清楚。\n头部护甲 +2。\n群岛效果：戴着站定2秒，标出40米内的敌人。\n来源：残星瞭台的观星手，掉落率30%。\n打穿它的镜盔，可阻止远距离标记。",
-                        "Three lenses on a leather cap. Better for spotting people than stars.\nHead armor +2.\nOn Qinglan: stand still for 2s to mark enemies within 40m.\nSource: Stargazer, Starfall Overlook. Drop chance: 30%.\nBreaking its helm stops its ranged marks.");
+                        "皮帽上装了三层镜片，看人比看星还清楚。\n戴着站定 2 秒，40 米内的敌人脚下会亮起星标。\n残星瞭台的观星手戴着它，倒下时有 30% 留下。观星手的镜片被打穿，就再也标记不了你。",
+                        "Three lenses on a leather cap, better for spotting people than stars.\nStand still for 2 seconds while wearing it and enemies within 40 m get a star mark at their feet.\nThe stargazer on Starfall Overlook wears one; 30% chance it stays behind when it falls. Shoot its lens through and it can no longer mark you.");
                 case BossRushItemIds.SkyIslandRootweaveMask:
                     return L10n.T(
-                        "树根编的面罩，缝里还长着苔。\n头部护甲 +1。\n群岛效果：悬根套任穿2件，搜到便当、药膏、罗盘的概率翻倍。\n来源：悬根林的悬根猎首，整套随机留1件。\n打穿它的面罩，根洞预警由1秒延长至2秒。",
-                        "A woven-root mask with moss in the seams.\nHead armor +1.\nOn Qinglan: any 2 Rootweave pieces double the chance of bentos, salves and compasses in crates.\nSource: Hanging-Root Huntmaster, Hanging Root Wood. Drops 1 set piece.\nBreaking its mask extends root-hollow warnings from 1s to 2s.");
+                        "树根编的面罩，缝里还长着苔。\n悬根猎装（面罩、藤编甲、箭囊）穿任意两件，翻搜刮箱时出岛上特产（便当、药膏、罗盘）的机会翻倍。\n悬根猎首每趟穿着整套，倒下时只留一件。它的面罩被打穿，钻出根洞前的预警圈会由 1 秒延长到 2 秒。",
+                        "A mask woven from roots, moss still growing in the seams.\nWear any two pieces of the Rootweave gear (mask, cuirass, quiver) and crates you search turn up island goods (bentos, salves, compasses) twice as often.\nThe Huntmaster wears the full set every raid and leaves one piece when it falls. Shoot its mask through and the warning ring before it bursts from a root hollow lasts 2 seconds instead of 1.");
                 case BossRushItemIds.SkyIslandVinewovenCuirass:
                     return L10n.T(
-                        "硬树皮和粗藤缠成的甲，腰带磨得发亮。\n身体护甲 +3。\n群岛效果：悬根套任穿2件，搜到岛上特产的概率翻倍。\n来源：悬根林的悬根猎首。\n打穿它的藤编甲，绊索减速减半。",
-                        "Bark and vines bound into armor, with a worn leather belt.\nBody armor +3.\nOn Qinglan: any 2 Rootweave pieces double the chance of local goods in crates.\nSource: Hanging-Root Huntmaster, Hanging Root Wood.\nBreaking its cuirass halves the tripwire slow.");
+                        "硬树皮和粗藤缠成的甲，腰带磨得发亮。\n悬根猎装穿任意两件，翻搜刮箱时出岛上特产（便当、药膏、罗盘）的机会翻倍。\n出自悬根猎首。它的藤编甲被打穿，它拉的绊索只能让你慢一半。",
+                        "Armor of hard bark and coarse vine, the belt worn shiny.\nAny two Rootweave pieces: crates you search turn up island goods (bentos, salves, compasses) twice as often.\nFrom the Hanging-Root Huntmaster. Shoot its cuirass through and its tripwire slows you by half as much.");
                 case BossRushItemIds.SkyIslandHangrootQuiver:
                     return L10n.T(
-                        "老树根掏成的箭囊，装的却是绊索桩。\n背包容量 +6。\n群岛效果：悬根套任穿2件，搜到岛上特产的概率翻倍。\n来源：悬根林的悬根猎首。",
-                        "A hollow root quiver filled with tripwire stakes.\nBackpack capacity +6.\nOn Qinglan: any 2 Rootweave pieces double the chance of local goods in crates.\nSource: Hanging-Root Huntmaster, Hanging Root Wood.");
+                        "老树根掏空做的箭囊，里头装的却是绊索桩。\n背包容量 +6。悬根猎装穿任意两件，翻搜刮箱时出岛上特产（便当、药膏、罗盘）的机会翻倍。\n出自悬根猎首。",
+                        "A quiver hollowed out of an old root, and what it holds is tripwire stakes.\nBackpack capacity +6. Any two Rootweave pieces: crates you search turn up island goods (bentos, salves, compasses) twice as often.\nFrom the Hanging-Root Huntmaster.");
                 case BossRushItemIds.SkyIslandOldMailbag:
                     return L10n.T(
-                        "邮包里塞满信封，一封也没写地址。\n背包容量 +4。\n群岛效果：背着上岛，信鸽每趟多送1封信。\n来源：倒挂邮亭的截信人，掉落率30%。\n它会贴身抢岛上耗材，生命低于40%时丢下赃物。",
-                        "Envelopes fill the mailbag. None has an address.\nBackpack capacity +4.\nOn Qinglan: wear it for 1 extra pigeon letter per raid.\nSource: Waylayer, Upturned Post Hut. Drop chance: 30%.\nIt steals island supplies up close and drops them below 40% HP.");
+                        "邮包里塞满信封，一封也没写地址。\n背包容量 +4。背着它上岛，信鸽每趟多送 1 封信。\n倒挂邮亭的截信人背着它，倒下时有 30% 留下。截信人贴身会抢走岛上耗材，血量低于 40% 就把赃物丢在脚下。",
+                        "A mailbag stuffed with envelopes, none of them addressed.\nBackpack capacity +4. Carry it onto the isles and the pigeons bring 1 extra letter each raid.\nThe Waylayer at the Upturned Post Hut carries it; 30% chance it stays behind when it falls. Up close the Waylayer snatches island supplies, and below 40% health it drops its loot at its feet.");
                 case BossRushItemIds.SkyIslandGreenearStrawHat:
                     return L10n.T(
-                        "帽带里插着青穗，草檐已经磨白了。\n头部护甲 +2。\n群岛效果：穗镰套任穿2件，采青穗草多得1份。\n来源：青穗梯田的穗镰，整套随机留1件。\n打穿它的斗笠，开闸泥地由3块减为1块。",
-                        "Green ears tucked into the band of a worn straw hat.\nHead armor +2.\nOn Qinglan: any 2 Grain Sickle pieces give 1 extra greenear per harvest.\nSource: Grain Sickle, Green Terraces. Drops 1 set piece.\nBreaking its hat reduces flood patches from 3 to 1.");
+                        "帽带里插着青穗，草檐已经磨白了。\n穗镰农装（斗笠、蓑衣甲、谷囊）穿任意两件，割青穗草时每次多得 1 份。\n穗镰每趟穿着整套，倒下时只留一件。它的斗笠被打穿，开闸时冲出的泥地由 3 块减为 1 块。",
+                        "Green ears tucked into the band of a straw hat whose brim has worn white.\nWear any two pieces of the Grain Sickle gear (hat, raincoat, sack) and each cut of greenear yields 1 extra.\nGrain Sickle wears the full set every raid and leaves one piece when it falls. Shoot its hat through and its sluice floods 1 patch of mud instead of 3.");
                 case BossRushItemIds.SkyIslandStrawRaincoat:
                     return L10n.T(
-                        "蓑草盖住铜片，晃动时能听到轻响。\n身体护甲 +3。\n群岛效果：穗镰套任穿2件，采青穗草多得1份。\n来源：青穗梯田的穗镰。\n打穿它的蓑衣甲，镰扫预警由0.9秒延长至1.6秒。",
-                        "Brass plates rattle under layers of straw.\nBody armor +3.\nOn Qinglan: any 2 Grain Sickle pieces give 1 extra greenear per harvest.\nSource: Grain Sickle, Green Terraces.\nBreaking its armor extends sweep warnings from 0.9s to 1.6s.");
+                        "蓑草底下盖着铜片，一动就轻轻响。\n穗镰农装穿任意两件，割青穗草时每次多得 1 份。\n出自穗镰。它的蓑衣甲被打穿，镰扫前的预警圈会由 0.9 秒延长到 1.6 秒。",
+                        "Straw laid over brass plates that rattle softly when you move.\nAny two Grain Sickle pieces: each cut of greenear yields 1 extra.\nFrom Grain Sickle. Shoot its raincoat through and the warning before its sweep lasts 1.6 seconds instead of 0.9.");
                 case BossRushItemIds.SkyIslandGrainSack:
                     return L10n.T(
-                        "鼓鼓的谷袋，边上拴着木瓢和镰刀。\n背包容量 +7。\n群岛效果：穗镰套任穿2件，采青穗草多得1份。\n来源：青穗梯田的穗镰。\n它首次开闸时会召来谷仓里还活着的帮手。",
-                        "A full grain sack with a scoop and sickle tied to the side.\nBackpack capacity +7.\nOn Qinglan: any 2 Grain Sickle pieces give 1 extra greenear per harvest.\nSource: Grain Sickle, Green Terraces.\nIts first flood calls any surviving barn hands.");
+                        "鼓鼓的谷袋，边上拴着木瓢和镰刀。\n背包容量 +7。穗镰农装穿任意两件，割青穗草时每次多得 1 份。\n出自穗镰。它背着谷囊，第一次开闸就会喊来谷仓里还活着的帮手。",
+                        "A bulging grain sack with a scoop and a sickle tied to its side.\nBackpack capacity +7. Any two Grain Sickle pieces: each cut of greenear yields 1 extra.\nFrom Grain Sickle. With the sack on its back, its first sluice calls in any barn hands still alive.");
                 case BossRushItemIds.SkyIslandRainhushEarmuffs:
                     return L10n.T(
-                        "铜耳罩衬着厚毛毡，壳上刻着一滴雨。\n听力 +1，听声辨位 +1：屏幕外敌人发出的声响会标出方向。\n群岛效果：延长头目预警，听雨人每16次枪声才引发落石。\n来源：听雨洞的听雨人，掉落率30%。\n打穿它的耳罩，可阻止枪声触发落石。",
-                        "Thick felt lines brass cups engraved with a raindrop.\nHearing +1, Sound Localization +1: off-screen enemy noises are marked with their direction.\nOn Qinglan: longer boss warnings; the Listener needs 16 shots to trigger rockfall.\nSource: Rain Listener, Rainlisten Grotto. Drop chance: 30%.\nBreaking its earmuffs stops gunfire-triggered rockfalls.");
+                        "铜耳罩里衬着厚毛毡，壳上刻着一滴雨。\n听力 +1，听声辨位 +1：屏幕外的敌人出声，会标出方向。戴着它，所有头目与岛主的预警圈亮得更久；听雨人要听到 16 声枪响才引一次落石。\n听雨洞的听雨人戴着它，倒下时有 30% 留下。听雨人的耳罩被打穿，就再也听不见枪声，引不下落石。",
+                        "Brass earcups lined with thick felt, a raindrop engraved on each shell.\nHearing +1, Sound Localization +1: off-screen enemy noises are marked with a direction. While you wear it, every chief's and lord's warning ring stays lit longer, and the Rain Listener needs 16 shots to bring rocks down.\nThe Rain Listener in Rainlisten Grotto wears a pair; 30% chance they stay behind when it falls. Shoot its earmuffs through and it can no longer hear gunfire, so no more rockfall.");
                 case BossRushItemIds.SkyIslandMossgauzeMask:
                     return L10n.T(
-                        "苔纱遮住脸，下方挂着一支小铜笛。\n头部护甲 +1。\n群岛效果：戴着瞄准云蚋，它们不再预先闪避。\n来源：夜间蛙鸣池的蚋笛翁，掉落率30%。\n打穿它的面罩，可阻止吹笛引蚋。",
-                        "Mossgauze over a bamboo frame, a brass flute hanging below.\nHead armor +1.\nOn Qinglan: gnats no longer dodge your aim in advance.\nSource: Gnat Piper, Frogsong Pool at night. Drop chance: 30%.\nBreaking its mask stops its gnat-calling tune.");
+                        "苔纱遮住整张脸，下面挂着一支小铜笛。\n戴着它瞄准云蚋，它们不会再提前闪躲。\n只在夜里出来的蚋笛翁（蛙鸣池）戴着它，倒下时有 30% 留下。它的面罩被打穿，就吹不响笛子，招不来云蚋。",
+                        "Mossgauze covers the whole face, a small brass flute hanging below.\nAim at cloud gnats while wearing it and they stop dodging ahead of your shots.\nThe Gnat Piper, who only comes out at night at Frogsong Pool, wears it; 30% chance it stays behind when it falls. Shoot its mask through and it can no longer play its flute to call the gnats.");
                 case BossRushItemIds.SkyIslandMirrorgrainPlate:
                     return L10n.T(
-                        "胸前的圆镜，映出层层水纹甲片。\n身体护甲 +2。\n群岛效果：穿着见折翎，无需旧信和航路图也能和解。\n来源：夜间镜水寺的镜中客，掉落率30%。\n打穿它的镜纹甲，换位后不再留下倒影。",
-                        "A round chest mirror reflects rippled plates.\nBody armor +2.\nOn Qinglan: Zheling will reconcile without the old letter or route chart.\nSource: Mirror Guest, Mirrorwater Temple at night. Drop chance: 30%.\nBreaking its plate stops it leaving decoys when it shifts.");
+                        "胸前嵌着一面圆镜，映着层层水纹似的甲片。\n穿着它去见折翎，不带旧信和航路图也能和解。\n只在夜里出现的镜水寺镜中客穿着它，倒下时有 30% 留下。镜纹甲被打穿，它换位后就不再留下倒影。",
+                        "A round mirror set in the chest, reflecting plates like rippling water.\nWear it when you meet Zheling and you can make peace without the old letter or the route chart.\nThe Mirror Guest of Mirrorwater Temple, who only appears at night, wears it; 30% chance it stays behind when it falls. Shoot the plate through and it leaves no reflection when it swaps places.");
                 case BossRushItemIds.SkyIslandWindbreakHood:
                     return L10n.T(
-                        "兜帽裹着轻铜盔，顶上一片小风翼。\n头部护甲 +2。\n群岛效果：断风套任穿2件，走桥和中继平台更快。\n来源：中央回程中继的断风游猎·守，掉落率40%。\n打穿它的兜帽，冲锋预警延长一倍。",
-                        "A canvas hood over a light helm with a small wind fin.\nHead armor +2.\nOn Qinglan: any 2 Galebreaker pieces boost speed on bridges and relays.\nSource: Galebreaker Warden, central return relay. Drop chance: 40%.\nBreaking its hood doubles its charge warning.");
+                        "帆布兜帽下是一顶轻铜盔，顶上立着一片小风翼。\n断风装备（兜帽、披甲、行囊）穿任意两件，走桥和中继平台更快。\n中央回程中继的断风游猎·守戴着它，倒下时有 40% 留下。兜帽被打穿，它冲锋前的预警线会亮得长一倍。",
+                        "A canvas hood over a light brass helm, a small wind fin on top.\nWear any two Galebreaker pieces (hood, mantle, pack) and you move faster on bridges and relay platforms.\nThe Galebreaker Warden at the central return relay wears it; 40% chance it stays behind when it falls. Shoot the hood through and its charge warning line stays lit twice as long.");
                 case BossRushItemIds.SkyIslandWindbreakMantle:
                     return L10n.T(
-                        "轻皮甲后拖着短披风，铜扣像一对鸟翼。\n身体护甲 +2。\n群岛效果：断风套任穿2件，走桥和中继平台更快。\n来源：西北回程中继的断风游猎·追，掉落率40%。\n打穿它的披甲，冲锋预警延长一倍。",
-                        "Light scales and a short mantle, fastened with wing-shaped buckles.\nBody armor +2.\nOn Qinglan: any 2 Galebreaker pieces boost speed on bridges and relays.\nSource: Galebreaker Chaser, northwest return relay. Drop chance: 40%.\nBreaking its mantle doubles its charge warning.");
+                        "轻皮甲后拖着一件短披风，铜扣像一对鸟翼。\n断风装备穿任意两件，走桥和中继平台更快。\n西北回程中继的断风游猎·追穿着它，倒下时有 40% 留下。披甲被打穿，它冲锋前的预警线会亮得长一倍。",
+                        "Light leather scales with a short mantle behind, the brass clasps shaped like a pair of wings.\nAny two Galebreaker pieces: you move faster on bridges and relay platforms.\nThe Galebreaker Chaser at the northwest return relay wears it; 40% chance it stays behind when it falls. Shoot the mantle through and its charge line stays lit twice as long.");
                 case BossRushItemIds.SkyIslandWindbreakPack:
                     return L10n.T(
-                        "行囊顶上是铺盖卷，边上绑着望远镜。\n背包容量 +5。\n群岛效果：断风套任穿2件，走桥和中继平台更快。\n来源：东侧回程中继的断风游猎·伏，掉落率40%。\n它生命过半时，冲锋后还会闪回平台边缘射击。",
-                        "A slim pack with a bedroll and spyglass strapped on.\nBackpack capacity +5.\nOn Qinglan: any 2 Galebreaker pieces boost speed on bridges and relays.\nSource: Galebreaker Stalker, east return relay. Drop chance: 40%.\nAbove half HP, it shifts back to the edge to shoot after lunging.");
+                        "行囊顶上是铺盖卷，边上绑着一支望远镜。\n背包容量 +5。断风装备穿任意两件，走桥和中继平台更快。\n东侧回程中继的断风游猎·伏背着它，倒下时有 40% 留下。它生命过半、行囊散开之前，每次冲锋后都会闪回平台边缘补枪。",
+                        "A bedroll on top, a spyglass strapped to the side.\nBackpack capacity +5. Any two Galebreaker pieces: you move faster on bridges and relay platforms.\nThe Galebreaker Stalker at the east return relay carries it; 40% chance it stays behind when it falls. Until it drops below half health and the pack bursts open, it blinks back to the platform edge to shoot after every lunge.");
                 default:
                     return string.Empty;
             }

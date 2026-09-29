@@ -211,20 +211,20 @@ namespace BossRush
             Entry entry;
             if (!TryGetOwned(id, out entry))
             {
-                reason = L10n.T("任务尚未就绪。", "The quest is not ready yet.");
+                reason = L10n.T("还没准备好，过会儿再来。", "Not ready yet. Come back in a bit.");
                 return false;
             }
             OfficialQuestBinding binding = entry.Binding;
             if (entry.Delivering)
             {
-                reason = L10n.T("这次交付正在处理。", "This delivery is being processed.");
+                reason = L10n.T("正在交，别急。", "Handing it in now. Hang on.");
                 return false;
             }
             if (!binding.CanDeliver())
             {
                 reason = binding.DeliverBlocked != null ? binding.DeliverBlocked() : null;
                 if (string.IsNullOrEmpty(reason))
-                    reason = L10n.T("目标完成后，请在任务给予者所在地图交付。", "Finish the objectives, then report to the giver on their map.");
+                    reason = L10n.T("做完了，回去找交代你这件事的人。", "Once it's done, go back to whoever gave you the job.");
                 return false;
             }
             // 发奖只认「这一拍从未交付变成已交付」：读档重建投影走的是 ForceComplete，不经过这里，也就不会再发一次。
@@ -242,7 +242,7 @@ namespace BossRush
                 int slot = binding.Client.Slot;
                 if (binding.BeginDelivery == null || binding.EndDelivery == null || !OfficialQuestItems.CanCollectAssets(inboxOnly))
                 {
-                    reason = L10n.T("交付暂时无法保存，请稍后重试。", "The delivery cannot be saved yet. Please try again shortly.");
+                    reason = L10n.T("交付没记上，东西没收走，过会儿再试。", "The hand-in didn't go through and nothing was taken. Try again shortly.");
                     return false;
                 }
                 if (!OfficialQuestItems.TryCreate(binding.RewardItems, rewards, out reason)) return false;
@@ -258,7 +258,7 @@ namespace BossRush
                 try { committed = binding.Deliver(out reason); }
                 catch (Exception e)
                 {
-                    reason = L10n.T("交付未完成，请稍后重试。", "The delivery did not finish. Please try again shortly.");
+                    reason = L10n.T("交付没记上，过会儿再试。", "The hand-in didn't go through. Try again shortly.");
                     ModBehaviour.DevLog("[OfficialQuest] 交付通知异常: " + e.Message);
                 }
                 // 客户端可能已接受完成事实，只是末尾通知抛错；此时不能回滚已经属于玩家的奖品。
@@ -268,7 +268,7 @@ namespace BossRush
                 if (delivered != null) delivered.Commit();
                 if (binding.PayReward != null) binding.PayReward();
                 if (inboxOnly && rewards.Count > 0)
-                    Duckov.UI.NotificationText.Push(L10n.T("任务奖品已寄往基地的待领取区。", "Quest rewards have been sent to the base collection buffer."));
+                    Duckov.UI.NotificationText.Push(L10n.T("奖励已送到基地的马蜂自提点。", "Your reward has been sent to Package Pickup at base."));
                 return true;
             }
             finally

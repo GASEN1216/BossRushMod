@@ -221,7 +221,8 @@ namespace BossRush
 
                 InvalidatePermanentSpouseRestore();
                 PrepareSpouseInstanceForFollow(spouseInstance, npcId);
-                _owner.ShowMessage(L10n.T("配偶开始跟随你了。", "Your spouse is now following you."));
+                string followName = AffinityManager.GetNPCConfig(npcId)?.DisplayName ?? npcId;
+                _owner.ShowMessage(L10n.T(followName + "跟上来了。", followName + " is following you."));
                 return true;
             }
             catch (Exception e)
@@ -253,13 +254,14 @@ namespace BossRush
 
                 if (AffinityManager.GetLevel(npcId) < AffinityManager.SPOUSE_FOLLOW_REQUIRED_LEVEL)
                 {
-                    string npcName = AffinityManager.GetNPCConfig(npcId)?.DisplayName ?? npcId;
                     NPCDialogueSystem.ShowDialogue(
                         npcId,
                         dialogueTarget,
-                        L10n.T(
-                            "今天" + npcName + "有别的选择哦~",
-                            npcName + " has other plans today~"));
+                        NPCDialogueSystem.GetPersonaLineOrDefault(
+                            npcId,
+                            "marriage_follow_refused",
+                            "今天我有别的安排，改天吧。",
+                            "I have other plans today. Another time."));
                     RefreshSpouseInteractionOptionsForNpc(npcId);
                     return false;
                 }
@@ -320,7 +322,8 @@ namespace BossRush
 
                 if (showMessage)
                 {
-                    _owner.ShowMessage(L10n.T("配偶已经回家了。", "Your spouse has gone home."));
+                    string homeName = AffinityManager.GetNPCConfig(npcId)?.DisplayName ?? npcId;
+                    _owner.ShowMessage(L10n.T(homeName + "回家了。", homeName + " went home."));
                 }
 
                 return true;
@@ -345,9 +348,10 @@ namespace BossRush
 
                 SendSpouseHome(npcId, false);
                 ShowSpouseFollowAffinityLossBubble();
+                string lossName = AffinityManager.GetNPCConfig(npcId)?.DisplayName ?? npcId;
                 _owner.ShowMessage(L10n.T(
-                    "配偶的好感度低于10级，已经先回家了。",
-                    "Your spouse's Affinity fell below Lv.10, so they went home."));
+                    lossName + "的好感度跌破 Lv.10，先回家了。",
+                    lossName + "'s Affinity fell below Lv.10, so they went home."));
             }
             catch (Exception e)
             {
@@ -367,8 +371,8 @@ namespace BossRush
 
                 Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
                     L10n.T(
-                        "唔...太久没理人家，生气了",
-                        "Hm... guess they're upset I ignored them too long."),
+                        "（冷落太久了，对方生气回家了。）",
+                        "(I've ignored them too long. They went home upset.)"),
                     playerTransform,
                     2.5f,
                     false,

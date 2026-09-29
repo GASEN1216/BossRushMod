@@ -164,7 +164,8 @@ namespace BossRush
                         L10n.T("灯灭了以后，我就站在这儿。", "I've stood here since the lamps went out."),
                         L10n.T("你要过去？先说清楚为什么。", "You want through? Tell me why first.")
                     };
-                // 【声音】无声钟守：**不说话**。只有钟声与省略号——名字里就写着「无声」，
+                // 【声音】无声钟守：**不说话**，头顶只有钟声与省略号；面对面、任务与剧情里他也从不出声，只在木牌上写字、只敲钟。
+                // 名字里就写着「无声」，
                 // 给他配台词等于把人设推翻。这是全表唯一的非语言说话者。
                 case "sky_bellkeeper":
                     return new[]

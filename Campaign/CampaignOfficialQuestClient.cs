@@ -216,7 +216,7 @@ namespace BossRush
                     && string.Equals(CampaignGuideTable.NextOfferableId(GuidePrerequisiteMet), id, StringComparison.Ordinal),
                 CanDeliver = () => CanWrite() && CampaignGuideTable.InBase()
                     && CampaignGuideTable.IsAccepted(id) && CampaignGuideTable.IsExperienced(id) && !CampaignGuideTable.IsCompleted(id),
-                DeliverBlocked = () => L10n.T("还没去试过吧？照我说的试一次，再回来找我。", "Haven't tried it yet, have you? Give it a go the way I said, then come back."),
+                DeliverBlocked = NotTriedYet,
                 IsAccepted = () => CampaignGuideTable.IsAccepted(id) || CampaignGuideTable.IsCompleted(id),
                 IsDelivered = () => CampaignGuideTable.IsCompleted(id),
                 RewardPaid = () => CampaignGuideTable.IsCompleted(id),
@@ -247,7 +247,7 @@ namespace BossRush
             message = null;
             if (CanWrite() && CampaignGuideTable.InBase()
                 && !CampaignGuideTable.IsCompleted(guideId) && CampaignPersistence.TryAdvanceGuide(guideId, 1)) return true;
-            message = L10n.T("回基地找我接就行。要是没接上，多半是存档正忙，过一会儿再来。", "Come find me at base to take this. If it didn't go through, the save is probably busy; try again in a moment.");
+            message = !CampaignGuideTable.InBase() ? BackAtBase() : BookkeeperBusy();
             return false;
         }
 
@@ -255,10 +255,16 @@ namespace BossRush
         {
             message = null;
             if (CanWrite() && CampaignGuideTable.InBase() && CampaignProgressService.TryDeliverGuide(guideId, rewardCash)) return true;
-            message = L10n.T("先照我说的去试一次，回基地再来找我。要是已经试过了，多半是存档正忙，过一会儿再来。",
-                "Go try it the way I said first, then come see me at base. If you already have, the save is probably busy; try again in a moment.");
+            message = !CampaignGuideTable.InBase() ? BackAtBase()
+                : !CampaignGuideTable.IsExperienced(guideId) ? NotTriedYet()
+                : BookkeeperBusy();
             return false;
         }
+
+        // 失败提示是杰夫当面说的话：按原因分支，存档忙一律说成「账房在誊册子」，不让杰夫讲存档（2026-09-29 文案审查）。
+        private static string BackAtBase() { return L10n.T("回基地再说。", "Talk to me back at base."); }
+        private static string NotTriedYet() { return L10n.T("还没去试过吧？照我说的走一趟再来。", "Haven't tried it yet, have you? Do it the way I said, then come back."); }
+        private static string BookkeeperBusy() { return L10n.T("账房正誊册子，腾不开手。过一会儿再来。", "The bookkeeper's busy copying the ledger. Try me again in a bit."); }
 
         /// <summary>
         /// 引导的前置：菜地要鸭王征程第一章交付（解锁菜地工地），陈列要第二章交付（解锁陈列加成）；
@@ -334,20 +340,21 @@ namespace BossRush
         {
             CampaignChapterState state = State(def.ChapterId);
             if (state != CampaignChapterState.ReadyToDeliver)
-                return L10n.T("目标还没做完，做完再来找我。", "The objectives aren't done yet. Come back when they are.");
+                return L10n.T("册子上那几样还没办完，办完再来。", "The ledger's still waiting on a few things. Come back when they're done.");
             CampaignObjectiveDef pending = CampaignBaseObjectives.FirstPending(def);
             if (pending != null)
                 return L10n.T("还差一件：", "One thing left: ") + L10n.T(pending.DescCN, pending.DescEN);
             if (!CanWrite())
-                return L10n.T("进度暂时无法保存，稍后再来找我。", "Progress can't be saved right now. Come back in a moment.");
+                return BookkeeperBusy();
             return null;
         }
 
         private static bool Accept(string chapterId, out string message)
         {
             if (CampaignProgressService.TryAcceptContract(chapterId)) { message = null; return true; }
-            message = L10n.T("现在接不了这份契约：同时只能进行一份，或者进度暂时无法保存。",
-                "Can't take this contract now: only one at a time, or progress can't be saved yet.");
+            message = AnotherActive(chapterId)
+                ? L10n.T("手上那份还没了结，一份一份来。", "Finish the one you're holding first. One at a time.")
+                : BookkeeperBusy();
             return false;
         }
 
@@ -355,7 +362,7 @@ namespace BossRush
         {
             if (!CampaignProgressService.TryDeliver(def.ChapterId))
             {
-                message = L10n.T("契约还没结算完，稍后再来找我。", "The contract isn't settled yet. Come back in a moment.");
+                message = L10n.T("账房还在算这一行，等会儿。", "The bookkeeper's still tallying this line. Give it a moment.");
                 return false;
             }
             _pendingDialogue = def;

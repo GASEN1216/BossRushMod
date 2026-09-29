@@ -164,12 +164,12 @@ namespace BossRush
                 case "Search_G": return L10n.T(
                     "工坊的铜环还完好。星灯重新校准一次，东边的光就能照回村里。",
                     "The workshop's brass rings are still in one piece. Recalibrate the star lamp once and the east light reaches the village again.");
-                // 守钟装置照着钟守的样子造（R-11 拍板：不是画错脸，是钟庭的规矩）。
+                // 守钟装置照着钟守的样子造（R-11 拍板：不是画错脸，是照当值守钟人铸的）。
                 // 这句是玩家**唯一**能读到的解释，而挑战选项就挨在同一页上——不写清楚，
                 // 打起来只会觉得「名字说是装置，脸却是他本人」。
                 case "Search_H": return L10n.T(
-                    "归航钟不再催人出航。它为什么再响，要看两端的航标、送回来的信，和守钟人怎么选。钟架下立着守钟装置。钟庭的规矩，敲钟的机械一律照当值守钟人的样子铸，好让回来的人远远就认得出谁在等。它如今空转不停，那张脸也就一直是钟守的脸。",
-                    "The Homecoming Bell doesn't send anyone out anymore. Why it rings again comes down to the two beacons, the letter that made it home, and what the keeper decides. Under the bell frame stands the bell engine. Court custom says every ringing machine is cast in the likeness of the keeper on duty, so people coming home can see from far off who's waiting. It has been running empty ever since, so the face it wears is still the Bell Keeper's.");
+                    "归航钟不再催人出航。它为什么再响，要看两端的航标、送回来的信，和守钟人怎么选。钟架下立着守钟装置，脸是照当值守钟人铸的，好让远处回来的人认得谁在等。它如今空转停不下来，顶着的还是钟守那张脸。",
+                    "The Homecoming Bell doesn't send anyone out anymore. Whether it rings again depends on the two beacons, the letter that made it home, and what the keeper decides. The bell engine under the frame is cast with the keeper's face, so anyone coming home can tell from far off who is waiting. It runs empty now and won't stop, still wearing the Keeper's face.");
                 case "Search_S1": return L10n.T(
                     "池边潮湿的纸页上记着菜种、日期，以及每一个归航人的名字。晴禾在页角留了话：镜水寺的青蛙还在繁育，夜里可用云苔纤维包一团蛙卵带回来，白天也能放。放回的会一直记着，顺路送一团就好，不用一趟来回跑齐。",
                     "The damp pages by the pool list seeds, dates, and the name of every person expected home. Qinghe added a note in the margin: the temple frogs still breed. Wrap a clutch of spawn in cloudmoss one night and bring it here; daylight is fine for release. Every clutch counts, so drop one off in passing. No need to do them all in one raid.");

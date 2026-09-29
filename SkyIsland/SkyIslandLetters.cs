@@ -161,9 +161,9 @@ namespace BossRush
                     "钟守名册的附页：钟响那天，名册上多了一行字。不知道是谁写的，只有四个字：『我回来了。』",
                     "A loose page from the Bell Keeper's register: on the day the bell rang, one new line appeared. Nobody knows who wrote it. It says only: 'I am home.'"),
                 Letter("Letter_12", "Lamp_A", "A", SkyIslandStoryFlag.Ending,
-                    "给下一位旅人", "To the next traveller",
-                    "给下一位旅人：船系在码头，灯亮在云海上。你修过的桥，往后天天有人走。谢谢你把路修好。——晴岚群岛的所有人",
-                    "To the next traveller: the boat is tied at the dock and the lights burn over the cloud sea. The bridges you fixed get walked every day now. Thanks for mending the way. — everyone on the Qinglan isles")
+                    "给下一个来岛的人", "To whoever comes next",
+                    "给下一个来岛的人：船系在码头了，灯在云海上亮着。你修的那几座桥，现在天天有人走。路是你修好的，我们都记着。——岛上所有人",
+                    "To whoever comes to the isles next: the boat is tied at the dock and the lights burn over the cloud sea. The bridges you fixed get walked every day now. You mended the road; we haven't forgotten. From everyone on the isles.")
             };
         }
 

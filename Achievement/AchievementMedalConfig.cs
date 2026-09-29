@@ -55,12 +55,12 @@ namespace BossRush
         /// <summary>
         /// 物品描述（中文）
         /// </summary>
-        public const string DESCRIPTION_CN = "一枚闪闪发光的勋章，记录着你在 Boss Rush 中的辉煌战绩。右键查看成就。";
+        public const string DESCRIPTION_CN = "一枚沉甸甸的勋章，正面刻着你打倒过的对手。右键查看成就。";
         
         /// <summary>
         /// 物品描述（英文）
         /// </summary>
-        public const string DESCRIPTION_EN = "A shiny medal that records your glorious achievements in Boss Rush. Right-click to view achievements.";
+        public const string DESCRIPTION_EN = "A heavy medal, engraved with the opponents you've brought down. Right-click to view achievements.";
         
         // ============================================================================
         // 商店配置

@@ -802,7 +802,7 @@ namespace BossRush
                             }
                             _host.ShowMessage(L10n.T(
                                 "最后处决完成，决意 +1",
-                                "Last Stand resolved! Resolve +1"));
+                                "Final execution done! Resolve +1"));
                         }
                     }
                 }
@@ -847,7 +847,7 @@ namespace BossRush
                     _state.lastStandActive = true;
                     _state.lastStandTimer = ModeGAdaptiveCombat.LastStandDurationSeconds;
                     _state.combatPhase = ModeGCombatPhase.LastStand;
-                    _host.ShowMessage(L10n.T("最后处决倒计时开始！", "Last Stand countdown begins!"));
+                    _host.ShowMessage(L10n.T("最后处决倒计时开始！", "Final execution countdown begins!"));
                 }
 
                 // 存活归零：下一帧结算
