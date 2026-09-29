@@ -8,7 +8,7 @@ import sys
 UI_SOURCE = Path("DebugAndTools/F3DebugCheatMenuUi.cs")
 ACTIONS_SOURCE = Path("DebugAndTools/F3DebugCheatMenuActions.cs")
 PROFILES_SOURCE = Path("Integration/DragonKing/Weapons/DragonKingBossGunProfiles.cs")
-EXPECTED_TYPE_IDS = [326, 594, 603, 612, 621, 630, 640, 648, 650, 944, 1262, 1303, 1351, 1434, 1523]
+EXPECTED_TYPE_IDS = [326, 594, 603, 612, 621, 630, 640, 648, 650, 918, 944, 1262, 1303, 1351, 1434, 1523, 1630]
 
 
 def fail(message: str) -> int:

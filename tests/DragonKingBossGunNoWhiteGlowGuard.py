@@ -29,6 +29,7 @@ GUN_FX_SOURCES = [
     AGENT_SOURCE,
     Path("Integration/DragonKing/Weapons/DragonKingBossGunProjectileAgent_Fx.cs"),
     Path("Integration/DragonKing/Weapons/DragonKingBossGunProjectileAgent_HitStage.cs"),
+    Path("Integration/DragonKing/Weapons/DragonKingBossGunSpecialAmmo.cs"),
     Path("Integration/DragonKing/Weapons/DragonKingBossGunProjectileZones.cs"),
     Path("Integration/DragonKing/Weapons/DragonKingBossGunRuntime.cs"),
     Path("Integration/DragonKing/Weapons/DragonKingBossGunRuntime_ProjectilesAndPatches.cs"),

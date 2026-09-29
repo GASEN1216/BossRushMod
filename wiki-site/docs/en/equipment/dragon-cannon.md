@@ -2,7 +2,7 @@
 
 ## What Is It?
 
-The Skyburner Dragon Lord's personal firearm. It supports 15 ammo types that can be selected through the normal ammo-type UI; every one is rewritten into a distinct dragonfire barrage.
+The Skyburner Dragon Lord's personal firearm. It supports 17 ammo types that can be selected through the normal ammo-type UI; every one is rewritten into a distinct dragonfire barrage.
 
 - **Type**: Firearm / **Element**: Fire
 - **Drop**: Skyburner Dragon Lord (**1%**; exceptionally rare)
@@ -18,7 +18,7 @@ The Skyburner Dragon Lord's personal firearm. It supports 15 ammo types that can
 Loading a specific ammo profile changes damage, fire rate, magazine, reload time, range, and projectile behavior. The values above are the unloaded base stats.
 :::
 
-## 15 Selectable Ammo Types
+## 17 Selectable Ammo Types
 
 Compatible ammo in your inventory appears in the ammo-type list. Select it and reload to use its corresponding barrage.
 
@@ -45,6 +45,14 @@ Compatible ammo in your inventory appears in the ammo-type list. Select it and r
 - **Snow** — Ice element, low base damage, ultra-slow straight roll for 5s that grows and gains damage. The main snowball splits into 4 small snowballs on hit or expiry; they get brief spawn protection, roll for 2s, and continue growing. Only the main snowball leaves a 1s ice zone.
 - **Poop** — Poison element, high arc, ×3.2 damage, a 4s poison pool on landing, range 60.
 
+### Elemental Control
+- **Large Energy Bullet (Void Singularity)** — Space element. Fires one slow, oversized orb that passes through every enemy in its path. At the crosshair (or on hitting a wall, or at max range) it collapses into a singularity that pulls enemies within 3.2m toward its center for **1.3s** (bosses are not pulled), deals damage every 0.3s, then implodes. ×2.4 damage, slowest ROF tier (×0.12), mag 4.
+- **Water Balloon (Spirit Skipper)** — Psionic element. Lobs 3 water balloons on a low arc; each skips off the ground **3** more times like a stone on water. Every bounce bursts a 1.3m splash that applies the vanilla Soaked status (more Electric damage taken, less Fire damage taken), and the last one leaves a 3s spirit puddle. ×1.6 damage split across the 3 balloons, mag 12.
+
+::: tip
+Soak a group with Water Balloons first, then switch to Energy (Electric) rounds for extra damage. Soaked targets also shrug off fire, so don't switch straight back to dragonfire.
+:::
+
 ## Dragon Flame Mark Synergy
 
 - Cannon hits apply Dragon Flame Marks, up to **10 stacks** on one target.
@@ -54,4 +62,5 @@ Compatible ammo in your inventory appears in the ammo-type list. Select it and r
 
 - Rocket, Firework, and Shotgun excel against groups; Sniper, Heavy, and Magnum suit priority targets.
 - Snowballs, poison pools, and burning zones reward landing prediction. Energy and Nano are useful against evasive enemies.
+- The Large Energy Bullet groups scattered enemies into one spot; follow up with Shotgun, Rocket, or a Skyburner Halberd slam.
 - Firework optimization does not reduce its visual or damage design. Avoid concentrating every projectile in extremely tight terrain when possible.

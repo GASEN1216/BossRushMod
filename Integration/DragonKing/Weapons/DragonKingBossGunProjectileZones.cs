@@ -78,7 +78,8 @@ namespace BossRush
 
         private void RegisterZonePerformanceBudget()
         {
-            if (profile == null || profile.GroundZoneElement != ElementTypes.poison)
+            // 毒池与水弹的灵泉水洼都是一发能铺好几片的持续区，共用同屏上限，超了先挤掉最老的。
+            if (profile == null || !UsesSharedZoneBudget(profile.GroundZoneElement))
             {
                 return;
             }
@@ -97,6 +98,11 @@ namespace BossRush
             }
 
             activePoisonZones.Add(this);
+        }
+
+        private static bool UsesSharedZoneBudget(ElementTypes element)
+        {
+            return element == ElementTypes.poison || element == ElementTypes.ghost;
         }
 
         private static void CompactActivePoisonZones()
@@ -129,6 +135,11 @@ namespace BossRush
                     zoneColor = new Color(0.42f, 0.86f, 1f, 0.75f);
                     stainColor = new Color(0.55f, 0.80f, 0.95f, 0.15f);
                     break;
+                case ElementTypes.ghost:
+                    // 水弹留下的灵泉水洼：水蓝圈、底下一层偏紫的水渍。
+                    zoneColor = new Color(0.36f, 0.72f, 1f, 0.62f);
+                    stainColor = new Color(0.30f, 0.42f, 0.85f, 0.2f);
+                    break;
                 default:
                     return;
             }
@@ -136,7 +147,7 @@ namespace BossRush
             ringColor = zoneColor;
             CreateZoneStain();
             CreateZoneRing(zoneColor);
-            if (profile.GroundZoneElement != ElementTypes.poison)
+            if (!UsesSharedZoneBudget(profile.GroundZoneElement))
             {
                 CreateZoneLight(zoneColor);
             }
@@ -155,11 +166,12 @@ namespace BossRush
             main.startSize = new ParticleSystem.MinMaxCurve(baseSize * 0.7f, baseSize * 1.2f);
             main.startColor = zoneColor;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles = profile.GroundZoneElement == ElementTypes.poison ? PoisonZoneMaxParticles : 72;
+            bool sharedBudgetZone = UsesSharedZoneBudget(profile.GroundZoneElement);
+            main.maxParticles = sharedBudgetZone ? PoisonZoneMaxParticles : 72;
 
             var emission = ps.emission;
-            float emissionMin = profile.GroundZoneElement == ElementTypes.poison ? PoisonZoneEmissionMin : 22f;
-            float emissionMax = profile.GroundZoneElement == ElementTypes.poison ? PoisonZoneEmissionMax : 42f;
+            float emissionMin = sharedBudgetZone ? PoisonZoneEmissionMin : 22f;
+            float emissionMax = sharedBudgetZone ? PoisonZoneEmissionMax : 42f;
             emission.rateOverTime = Mathf.Lerp(emissionMin, emissionMax, Mathf.InverseLerp(0.5f, 2f, radius));
 
             var shape = ps.shape;
@@ -415,7 +427,8 @@ namespace BossRush
                     continue;
                 }
 
-                if (profile.GroundZoneElement == ElementTypes.poison && !TryClaimPoisonTick(receiverId))
+                // 几片水洼 / 毒池叠在一起时，同一个目标在锁定间隔内只结算一次。
+                if (UsesSharedZoneBudget(profile.GroundZoneElement) && !TryClaimPoisonTick(receiverId))
                 {
                     continue;
                 }
@@ -459,6 +472,8 @@ namespace BossRush
                     return GameplayDataSettings.Buffs.Cold;
                 case ElementTypes.poison:
                     return GameplayDataSettings.Buffs.Poison;
+                case ElementTypes.ghost:
+                    return profile.ApplyWaterSoak ? DragonKingBossGunProjectileAgent.ResolveWaterSoakBuff() : null;
                 default:
                     return null;
             }

@@ -55,6 +55,7 @@ namespace BossRush
             ClearFireworkSparkEffectPool();
             ClearFireworkBloomEffectPool();
             ClearIceEmitters();
+            ClearSpecialAmmoStaticCaches();
             DragonKingBossGunGroundZone.ClearStaticCaches();
         }
 
@@ -559,6 +560,10 @@ namespace BossRush
                 customTrailInstance.transform.localRotation = Quaternion.identity;
                 DragonBreathWeaponConfig.TryAddFireEffectsToGraphic(customTrailInstance);
             }
+            else if (customTrailInstance == null && profile != null && !usesNativeVisual)
+            {
+                customTrailInstance = CreateSpecialAmmoTrail();
+            }
 
             if (customTrailInstance != null)
             {
@@ -583,7 +588,8 @@ namespace BossRush
 
         private float ResolveAirburstDistance()
         {
-            if (projectile == null || profile == null || !profile.SplitOnAirburst)
+            // 大型能量弹的奇点也按准星距离落点，与空爆共用这套取距。
+            if (projectile == null || profile == null || !(profile.SplitOnAirburst || profile.UseSingularity))
             {
                 return float.MaxValue;
             }
@@ -1678,6 +1684,12 @@ namespace BossRush
                 SuppressNativeExplosionForAirburst();
                 deadRef(projectile) = true;
             }
+
+            if (!deadRef(projectile) && !secondaryProjectile && profile.UseSingularity && traveledDistanceRef(projectile) >= airburstDistance)
+            {
+                SetDeathContext(DragonKingBossGunProjectileDeathReason.Airburst, transform.position, -directionRef(projectile));
+                deadRef(projectile) = true;
+            }
         }
 
         private float UpdateDirectionAndVelocity(float deltaTime)
@@ -2017,6 +2029,8 @@ namespace BossRush
             {
                 SpawnObstacleHitFx(hitPoint, hitNormal);
             }
+
+            OnSpecialAmmoBounce(hitObject, hitPoint, hitNormal);
         }
 
         private void SpawnObstacleHitFx(Vector3 hitPoint, Vector3 hitNormal)
@@ -2139,6 +2153,8 @@ namespace BossRush
             {
                 SpawnFireworkSparkEffect(resolvedDeathPoint);
             }
+
+            HandleSpecialAmmoDeath(resolvedDeathPoint);
         }
 
         private void TriggerSplit(bool playFx = true)

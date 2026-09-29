@@ -28,11 +28,11 @@ namespace BossRush
         public const string UnknownCaliberCN = "？？？";
         public const string UnknownCaliberEN = "???";
         public const string WeaponDescCN = "龙息枪的残骸重铸成铳，枪管里总带着余火。" +
-            "\n<color=#FF6347>【万弹归焰】</color>兼容15种口径。弹药不同，龙焰弹幕也不同。" +
+            "\n<color=#FF6347>【万弹归焰】</color>兼容17种口径。弹药不同，龙焰弹幕也不同。" +
             "\n<color=#FF4500>【口径改写】</color>换口径会改变射速、伤害、弹匣、射程和弹道。" +
             "\n<color=#FFD700>【龙焰印记】</color>命中叠加印记，最多10层。用焚皇断界戟砸落可引爆，层数越多伤害越高。";
         public const string WeaponDescEN = "Reforged from Dragon Breath wreckage. Embers linger in the barrel." +
-            "\n<color=#FF6347>[Myriad Rounds, One Flame]</color> Takes 15 calibers. Each produces a different dragonfire barrage." +
+            "\n<color=#FF6347>[Myriad Rounds, One Flame]</color> Takes 17 calibers. Each produces a different dragonfire barrage." +
             "\n<color=#FF4500>[Caliber Rewrite]</color> Caliber changes fire rate, damage, capacity, range and projectile behavior." +
             "\n<color=#FFD700>[Dragon Flame Mark]</color> Hits apply up to 10 marks. Detonate them with the halberd slam; more marks deal more damage.";
 

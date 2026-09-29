@@ -795,6 +795,7 @@ echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileAgent.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileAgent_Fx.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileAgent_HitStage.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileZones.cs
+echo(Integration\DragonKing\Weapons\DragonKingBossGunSpecialAmmo.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunRuntime.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunRuntime_ProjectilesAndPatches.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunRuntimeStaticCacheReset.cs

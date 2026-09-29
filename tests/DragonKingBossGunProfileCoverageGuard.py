@@ -1,4 +1,4 @@
-"""Guard: Dragon King boss gun must keep all 15 ammo profiles playable."""
+"""Guard: Dragon King boss gun must keep all 17 ammo profiles playable (2026-09-29 +大型能量弹 918 / 水球 1630)."""
 
 from pathlib import Path
 import re
@@ -22,8 +22,10 @@ EXPECTED_PROFILE_IDS = {
     "Snow",
     "Nano",
     "Firework",
+    "VoidOrb",
+    "WaterBall",
 }
-EXPECTED_TYPE_IDS = [326, 594, 603, 612, 621, 630, 640, 648, 650, 944, 1262, 1303, 1351, 1434, 1523]
+EXPECTED_TYPE_IDS = [326, 594, 603, 612, 621, 630, 640, 648, 650, 918, 944, 1262, 1303, 1351, 1434, 1523, 1630]
 
 
 def fail(message: str) -> int:
@@ -64,8 +66,8 @@ def main() -> int:
         return fail("profile enum mismatch: " + ", ".join(sorted(enum_names ^ EXPECTED_PROFILE_IDS)))
 
     profile_count = text.count("Id = DragonKingBossGunProfileId.")
-    if profile_count != 15:
-        return fail(f"expected 15 ordered profiles, found {profile_count}")
+    if profile_count != 17:
+        return fail(f"expected 17 ordered profiles, found {profile_count}")
 
     for type_id in EXPECTED_TYPE_IDS:
         pattern = r"TypeIds\s*=\s*new\[\]\s*\{\s*" + str(type_id) + r"\s*\}"

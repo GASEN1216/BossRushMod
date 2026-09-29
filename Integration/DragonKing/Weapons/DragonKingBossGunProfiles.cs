@@ -22,7 +22,9 @@ namespace BossRush
         IceBlade = 12,
         Snow = 13,
         Nano = 14,
-        Firework = 15
+        Firework = 15,
+        VoidOrb = 16,
+        WaterBall = 17
     }
 
     internal enum DragonKingBossGunArcMode
@@ -130,6 +132,22 @@ namespace BossRush
         public int MaxFollowupMarksPerTargetPerShot = -1;
         public int ReturnMarkPerHit = -1;
         public int MaxReturnMarksPerTargetPerShot = -1;
+        // 大型能量弹「虚空奇点」：主弹停在准星处（或撞墙 / 射程尽头）塌成奇点，把周围敌人往中心拽，周期伤害后坍缩爆开。
+        public bool UseSingularity;
+        public float SingularityRadius = 3f;
+        public float SingularityDuration = 1.2f;
+        public float SingularityPullSpeed = 4f;
+        public float SingularityTickInterval = 0.3f;
+        public float SingularityTickDamageFactor = 0.18f;
+        public float SingularityCollapseRange = 2.6f;
+        public float SingularityCollapseDamageFactor = 1f;
+        // 水弹「灵潮水漂」：落地像打水漂一样弹起，每次触地炸一圈水花并挂官方「浸水」。
+        public bool UseSkipSplash;
+        public float SkipVerticalDamping = 0.5f;
+        public float SkipHorizontalDamping = 0.85f;
+        public float SplashRadius = 1.2f;
+        public float SplashDamageFactor = 0.4f;
+        public bool ApplyWaterSoak;
         // 枪械属性覆盖（换弹/场景加载时应用到龙枪 StatCollection）
         public float FireRateMult = 1f;       // ShootSpeed 乘数（<1 变慢，>1 变快）
         public float GunDamageMult = 1f;      // 基础伤害乘数
@@ -664,6 +682,89 @@ namespace BossRush
                 OverrideCapacity = 6,
                 OverrideReloadTime = 3.5f,
                 OverrideBulletDistance = 20f,
+                TrailFxPrefab = "",
+                HitFxPrefab = "",
+                ExplosionFxPrefab = ""
+            },
+            // 官方大型能量弹 #918（口径 PWL）：空间属性。慢速大光球穿过沿途所有敌人，到准星处塌成奇点——
+            // 1.3 秒内把 3.2 米内的敌人往中心拽（Boss 不拽）并周期结算，结束时坍缩爆开。弹少、射速最慢一档，定位是聚怪控场。
+            new DragonKingBossGunShotProfile
+            {
+                Id = DragonKingBossGunProfileId.VoidOrb,
+                TypeIds = new[] { 918 },
+                Calibers = new[] { "PWL" },
+                Scale = 1.8f,
+                DistanceFactor = 1f,
+                DamageFactor = 1f,
+                FixedSpeed = 12f,
+                Pierce = 99,
+                Element = ElementTypes.space,
+                PlayObstacleHitFx = false,
+                PlaySplitTriggerFx = false,
+                RequiresCustomMovement = true,
+                UseSingularity = true,
+                SingularityRadius = 3.2f,
+                SingularityDuration = 1.3f,
+                SingularityPullSpeed = 4.5f,
+                SingularityTickInterval = 0.3f,
+                SingularityTickDamageFactor = 0.18f,
+                SingularityCollapseRange = 2.8f,
+                SingularityCollapseDamageFactor = 1.1f,
+                MarkPerHit = 2,
+                MaxMarksPerTargetPerShot = 2,
+                SecondaryMarkPerHit = 1,
+                MaxSecondaryMarksPerTargetPerShot = 3,
+                FireRateMult = 0.12f,
+                GunDamageMult = 2.4f,
+                OverrideCapacity = 4,
+                OverrideReloadTime = 4.2f,
+                OverrideBulletDistance = 22f,
+                TrailFxPrefab = "",
+                HitFxPrefab = "",
+                ExplosionFxPrefab = ""
+            },
+            // 官方水球 #1630（口径 WaterBall，玩家叫它水弹）：灵能属性。一次抛出 3 颗低弧水球，落地像打水漂一样再弹 3 次，
+            // 每次触地炸一圈水花并挂官方「浸水」（受电伤更高、受火伤更低），最后留一滩灵泉水洼。定位是给能量弹铺场的辅助弹。
+            new DragonKingBossGunShotProfile
+            {
+                Id = DragonKingBossGunProfileId.WaterBall,
+                TypeIds = new[] { 1630 },
+                Calibers = new[] { "WaterBall" },
+                ShotCount = 3,
+                Scale = 0.62f,
+                DistanceFactor = 1.1f,
+                DamageFactor = 1.2f,
+                SpreadAngle = 14f,
+                Arc = DragonKingBossGunArcMode.Low,
+                ArcLift = 0.2f,
+                Gravity = 14f,
+                FixedSpeed = 16f,
+                Bounce = 3,
+                Element = ElementTypes.ghost,
+                PlayObstacleHitFx = false,
+                RequiresCustomMovement = true,
+                UseSkipSplash = true,
+                SkipVerticalDamping = 0.5f,
+                SkipHorizontalDamping = 0.85f,
+                SplashRadius = 1.3f,
+                SplashDamageFactor = 0.45f,
+                ApplyWaterSoak = true,
+                UseGroundZone = true,
+                MaxGroundZonesPerShot = 2,
+                GroundZoneRadius = 1.5f,
+                GroundZoneDuration = 3f,
+                GroundZoneTickDamageFactor = 0.06f,
+                GroundZoneElement = ElementTypes.ghost,
+                GroundZoneRequireGroundImpact = false,
+                MarkPerHit = 1,
+                MaxMarksPerTargetPerShot = 1,
+                SecondaryMarkPerHit = 1,
+                MaxSecondaryMarksPerTargetPerShot = 1,
+                FireRateMult = 0.3f,
+                GunDamageMult = 1.6f,
+                OverrideCapacity = 12,
+                OverrideReloadTime = 3.2f,
+                OverrideBulletDistance = 22f,
                 TrailFxPrefab = "",
                 HitFxPrefab = "",
                 ExplosionFxPrefab = ""

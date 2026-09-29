@@ -68,7 +68,8 @@ namespace BossRush
         private static readonly FieldInfo itemVariableEntryTargetField = typeof(ItemVariableEntry).GetField("target", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly FieldInfo itemVariableEntryValueField = typeof(ItemVariableEntry).GetField("value", BindingFlags.Instance | BindingFlags.NonPublic);
 
-        private const int MaxProfileId = 15;
+        // 命中标记里弹种占 ShotMarkerStageScale（20）以内的一段，上限必须 < 20。
+        private const int MaxProfileId = 17;
         private const int MaxHitStage = 3;
 
         private static bool hurtEventSubscribed;
