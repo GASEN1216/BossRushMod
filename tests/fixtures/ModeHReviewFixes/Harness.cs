@@ -14,6 +14,7 @@ namespace BossRush
         public static void DevLog(string text) { }
         public bool HasLegacyModeConflictForModeH(out string id) { id = Conflict ? "conflict" : null; return Conflict; }
         public void ShowMessage(string text) { }
+        public void StopCoroutine(SpawnWork work) { work.Stopped = true; }
     }
     public static partial class ModeHRuntimeGates
     {
@@ -89,6 +90,11 @@ namespace BossRush
     internal partial class ModeHCombatTelemetry { public HashSet<string> _enteredProfileIds = new HashSet<string>(); }
     internal class ModeHCombatControl { public ModeHInjuryAndScarSystem InjuryAndScar = new ModeHInjuryAndScarSystem(); }
     internal sealed class ModeHUI { public int Closed; public void ClosePage() { Closed++; } }
+    public sealed class SpawnWork
+    {
+        public bool Stopped, RolledBack;
+        public void RollbackAll() { RolledBack = true; }
+    }
     // 本场总结（2026-09-29）：读档 / 换槽对账不进任何一趟的总结；这里只记清了几次
     internal static class ModeHSessionSummary { public static int Discards; public static void Discard() { Discards++; } }
     internal partial class ModeHRuntimeModule
@@ -102,6 +108,9 @@ namespace BossRush
         private bool _seasonDirty;
         public ModeHUI _ui;
         private int _recoveryDriveStateSequence = -1;
+        private int _suspendExitStateSequence = -1;
+        private long _suspendExitOwnerToken;
+        private const string SuspendedExitReasonId = "technical_suspend_exit";
         public ModBehaviour _owner = new ModBehaviour();
         public bool IsEnabled = true;
         public ModeHSupportedMap _map;
@@ -109,6 +118,7 @@ namespace BossRush
         private ModeHArenaIsolationLease _arenaLease;
         private ModeHSpectatorLease _spectatorLease;
         public int Started, MatchResets, Released;
+        public SpawnWork _spawnRoutine, _spawnTransaction;
         public int Exits;
         public string Failure;
         public List<string> _restedProfileIds = new List<string>();
@@ -123,6 +133,9 @@ namespace BossRush
         public bool Scene(string name) { return TryHandleSeasonResumeScene(new SceneRuntimeContext { SceneName = name }); }
         public bool Current(long token, int slot, int intent) { return IsSeasonResumeRequestCurrent(token, slot, intent); }
         public void Cancel() { CancelSeasonResume(); }
+        public void FailPreparation() { RequestTechnicalRetry("fixture_preparation_failed"); }
+        public void Drive() { DriveRecovery(); }
+        public bool DriveSuspendedExit() { return TryDriveSuspendedExit(); }
         private void EnsureContentScanned() { }
         private void BeginNewRunSession() { _commandsClosed = false; _seasonDirty = false; }
         // 本夹具假定宿主已就绪；真实等待/取消时序由 ModeHSceneEntry 链接生产协程覆盖。
@@ -131,10 +144,10 @@ namespace BossRush
         private void CancelSceneReadyWait() { }
         private void OnTransitionApplied(ModeHTransitionRecord r) { ProjectRunStateIntoSeason(); }
         private void LogFailure(string tag, Exception e) { Failure = tag; }
-        private void RequestSuspended(string reason, bool attemptStakeReturn = true) { Failure = reason; TryTransition(_runState.Lifecycle, ModeHLifecycle.Suspended, reason); }
+        private void TryReturnRealStakeOnAbort(string reason) { }
+        private void ReleaseCombatRuntimeObjects() { Released++; }
         private bool HasPendingScarOffers() { return false; } // 新战痕凭据由 ModeHThirdReviewFixes 覆盖。
         private void RouteUiForLifecycle(ModeHLifecycle lifecycle) { }
-        private void RequestTechnicalRetry(string reason) { Failure = reason; }
         private void RequestExit(ModeHExitReason exit, string reason) { Exits++; }
         private void OpenRecoveryShell(string failure) { Failure = failure; }
         private void PresentRecoveryFailure(string failure) { Failure = failure; }

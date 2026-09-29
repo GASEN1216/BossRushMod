@@ -650,6 +650,7 @@ echo(ModeH\ModeHRuntimeModule_Recovery.cs
 echo(ModeH\ModeHRuntimeModule_SceneFlow.cs
 echo(ModeH\ModeHRuntimeModule_UiFlow.cs
 echo(ModeH\ModeHRuntimeModule_MatchFlow.cs
+echo(ModeH\ModeHRuntimeModule_SpawnRoutine.cs
 echo(ModeH\ModeHRuntimeModule_MatchPages.cs
 echo(ModeH\ModeHRuntimeModule_BetFlow.cs
 echo(ModeH\ModeHCashBetService.cs

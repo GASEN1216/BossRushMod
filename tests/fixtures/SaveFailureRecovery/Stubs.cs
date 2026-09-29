@@ -112,6 +112,24 @@ namespace ItemStatsSystem
     {
         public Item Owner;
         public new int Capacity;
+        public bool ThrowBeforeRemove, ThrowAfterRemove, ThrowAfterAdd;
+        public Item GetItemAt(int position) { return position >= 0 && position < Count ? this[position] : null; }
+        public bool RemoveAt(int position, out Item removed)
+        {
+            removed = null;
+            if (ThrowBeforeRemove) { ThrowBeforeRemove = false; throw new InvalidOperationException("remove before mutation"); }
+            removed = GetItemAt(position);
+            if (removed == null) return false;
+            base.RemoveAt(position); removed.Parent = null;
+            if (ThrowAfterRemove) { ThrowAfterRemove = false; throw new InvalidOperationException("remove notification"); }
+            return true;
+        }
+        public bool AddAt(Item item, int position)
+        {
+            if (position != Count || !AddItem(item)) return false;
+            if (ThrowAfterAdd) { ThrowAfterAdd = false; throw new InvalidOperationException("add notification"); }
+            return true;
+        }
         public int GetFirstEmptyPosition(int from = 0) { return Count < Capacity ? Count : -1; }
         public bool AddItem(Item item)
         {
@@ -124,12 +142,27 @@ namespace ItemStatsSystem
         static int nextId;
         readonly int id = ++nextId;
         public readonly UnityEngine.GameObject gameObject = new UnityEngine.GameObject();
-        public int TypeID, StackCount = 1, Quality = 3, Value = 100;
+        public int TypeID, Quality = 3, Value = 100;
+        private int stackCount = 1;
+        public bool ThrowBeforeStackChange, ThrowAfterStackChange, ThrowAfterDetach;
+        public int StackCount
+        {
+            get { return stackCount; }
+            set
+            {
+                if (ThrowBeforeStackChange) { ThrowBeforeStackChange = false; throw new InvalidOperationException("stack before mutation"); }
+                stackCount = value;
+                // 官方 setter 先更新 Count KV，再通知 onSetStackCount / 容器。
+                if (ThrowAfterStackChange) { ThrowAfterStackChange = false; throw new InvalidOperationException("stack notification"); }
+            }
+        }
         public string DisplayName;
         public bool Sticky;
         public bool IsBeingDestroyed { get { return Destroyed; } }
         public UnityEngine.Sprite Icon;
         public Item Parent;
+        public Item ParentItem { get { return Parent; } }
+        public Inventory InInventory { get { return Parent != null ? Parent.Inventory : null; } }
         public object PluggedIntoSlot;
         public Inventory Inventory;
         public readonly Dictionary<string, string> Variables = new Dictionary<string, string>();
@@ -144,17 +177,24 @@ namespace ItemStatsSystem
             if (Inventory != null) foreach (Item item in Inventory) if (item != null) total += item.GetTotalRawValue();
             return total;
         }
-        public List<Item> GetAllChildren(bool self, bool unused)
+        public List<Item> GetAllChildren(bool includingGrandChildren, bool excludeSelf)
         {
             List<Item> items = new List<Item>();
-            if (self) items.Add(this);
-            if (Inventory != null) foreach (Item item in Inventory) if (item != null) items.AddRange(item.GetAllChildren(true, false));
+            if (!excludeSelf) items.Add(this);
+            if (Inventory != null) foreach (Item item in Inventory)
+            {
+                if (item == null) continue;
+                items.Add(item);
+                if (includingGrandChildren) items.AddRange(item.GetAllChildren(true, true));
+            }
             return items;
         }
         public void Detach()
         {
             if (Parent != null && Parent.Inventory != null) Parent.Inventory.Remove(this);
             Parent = null;
+            // 官方 RemoveAt / Unplug 在通知订阅者之前已经清除所有权。
+            if (ThrowAfterDetach) { ThrowAfterDetach = false; throw new InvalidOperationException("detach notification"); }
         }
         public void DestroyTree()
         {
@@ -227,6 +267,19 @@ public static class ItemUtilities
 
 namespace BossRush
 {
+    // 仓库桥的物品摘要是宿主边界；摘取和放回的生产方法逐字抽取执行。
+    class ModeHItemTreeSnapshotDto { public int sourcePosition; public Item Expected; }
+    static class ModeHItemTreeNormalizer
+    {
+        public static bool Matches(ModeHItemTreeSnapshotDto expected, Item item, int occurrences, out string error)
+        { error = null; return ReferenceEquals(expected.Expected, item); }
+    }
+    static partial class ModeHInventoryPersistenceBridge
+    {
+        public static Inventory TestInventory;
+        static Inventory TryGetInventory(out string error) { error = null; return TestInventory; }
+        static int CountOccurrences(ModeHItemTreeSnapshotDto expected) { return 1; }
+    }
     static class L10n { public static string T(string cn, string en) { return en; } }
     class ModBehaviour
     {
@@ -256,11 +309,33 @@ namespace BossRush
         }
         public static void DestroyUngranted(Item item) { if (item != null) item.DestroyTree(); }
     }
-    class ModeHRunState { public long RunSeed; }
-    partial class ModeHRuntimeModule
+    enum ModeHMatchOutcome { PlayerVictory = 1, PlayerDefeat = 2 }
+    class ModeHRunState { public long RunSeed; public string RunId; }
+    class ModeHRunStateDto { public string runId; public long runSeed; }
+    class ModeHMatchReportDto { public int matchIndex, winner; }
+    class ModeHSeasonDto { public ModeHRunStateDto runState; public List<ModeHMatchReportDto> matchReports; }
+    static class ModeHProfilePersistence
+    {
+        public static ModeHSeasonDto Saved;
+        public static ModeHSeasonDto LoadCurrent() { return Saved; }
+    }
+    static class ModeHWarehouseStakeJournal { public static void TryRecomputeDeferredSlotConsistency() { } }
+    class RuntimeModule { public virtual void OnStart() { } }
+    partial class ModeHRuntimeModule : RuntimeModule
     {
         private ModeHRunState _runState;
+        private ModeHSeasonDto _season;
+        public bool LevelReady;
         public ModeHRuntimeModule(long seed) { _runState = new ModeHRunState { RunSeed = seed }; }
         public void Settle(bool won) { SettleReservedBet(ModeHCashBetService.Current, won); }
+        public void Configure(ModeHSeasonDto season)
+        { _season = season; _runState = season == null ? null : new ModeHRunState { RunId = season.runState.runId, RunSeed = 42 }; }
+        public void Reconcile() { ReconcileCashBetOnRestore(); }
+        public bool ResolveBeforeAbandon() { return TryResolveCashBetBeforeAbandon(); }
+        public void OnReady() { HandleLevelReady(); }
+        private bool IsLevelAfterInit() { return LevelReady; }
+        private void EnsureContentScanned() { }
+        private void LogFailure(string tag, Exception e) { throw new Exception(tag, e); }
+        private void RefundCashBet(string context) { long refunded; ModeHCashBetService.TryRefund(context, out refunded); }
     }
 }

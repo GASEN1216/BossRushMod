@@ -1,5 +1,6 @@
 """天空岛独立出击生命周期、资源所有权与表现层接线；不代替 Unity 实机测试。"""
 from pathlib import Path
+import re
 from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -82,6 +83,10 @@ def main():
     if 'session.Close(true, "runtime_shutdown")' in module:
         errors.append(f'{module_path}: 模块销毁仍写死 Close(true, "runtime_shutdown")，退游戏也会派发返航')
     session = sources['Session']
+    # 官方点击继续发生在目标场景激活之前；真实调用点必须使用租约时钟。
+    root_wait = re.search(r'while\s*\(root\s*==\s*null\s*&&\s*lease\.Error\s*==\s*null\s*&&\s*assemblyError\s*==\s*null\s*&&\s*lease\.HasSceneLoadTimeRemaining\(ref\s+deadline\)\)', session)
+    if root_wait is None:
+        errors.append('等待场景根节点必须排除官方点击继续的人为等待，不能直接消耗 120 秒加载预算')
     if session.index('while ((SceneManager.GetActiveScene().handle != entryScene.handle') > session.index('lighting.Apply(root)'):
         errors.append('必须等待官方活动场景与相机就绪后才创建天空岛光照')
     # 腾空救援同样走游戏时间（2026-09-10 全方位审核）：起点与比较必须是同一个时基。

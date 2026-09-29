@@ -151,6 +151,8 @@ namespace BossRush
         public bool Pending { get { return HasPendingScarOffers(); } }
         private void OnTransitionApplied(ModeHTransitionRecord record) { ProjectRunStateIntoSeason(); }
         private void TryReturnRealStakeOnAbort(string context) { ImplicitAbortReturns++; }
+        // 实际协程与事务清理由 ModeHReviewFixes 覆盖；这里隔离宿主回收，只观察资产屏障顺序。
+        private void ReleaseMatchRuntime() { Releases++; }
         private void ReleaseCombatRuntimeObjects() { Releases++; }
         private void LogFailure(string context, Exception error) { throw new Exception(context, error); }
         private string ResolveProfileDisplayName(string id) { return id; }

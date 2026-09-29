@@ -39,7 +39,7 @@ internal static class Program
     }
     private static void Main()
     {
-        DurableProgress(); ValidationArchive(); LegacyOccurrences(); Recovery(); Rest();
+        DurableProgress(); ValidationArchive(); LegacyOccurrences(); Recovery(); EarlyRecoverySuspension(); SpawnRetryCleanup(); RepeatedSuspension(); Rest();
         Console.WriteLine("PASS: " + checks + " assertions; production branches with host boundaries stubbed, no Unity smoke");
     }
     private static void DurableProgress()
@@ -149,6 +149,64 @@ internal static class Program
         var settled = Runtime(ModeHLifecycle.Suspended, 3);
         settled._season.matchReports.Add(new ModeHMatchReportDto { matchIndex = 3, reportStatus = (int)ModeHMatchReportStatus.SettledPendingArchive });
         Check(settled.Derive() == ModeHLifecycle.Intermission, "settled fact resumes to intermission without replaying fight");
+    }
+    private static void EarlyRecoverySuspension()
+    {
+        foreach (var origin in new[] { ModeHLifecycle.Drafting, ModeHLifecycle.RosterLocked })
+        {
+            Reset(); var run = Runtime(origin, 0);
+            // Exercise the real runtime failure path, including the state machine and durable projection.
+            for (int attempt = 0; attempt <= ModeHConfig.MaxAutomaticTechnicalRetriesPerMatch; attempt++)
+            {
+                run.FailPreparation();
+                if (run._runState.Lifecycle == ModeHLifecycle.Recovering) run.Drive();
+            }
+            Check(run._runState.Lifecycle == ModeHLifecycle.Suspended,
+                "exhausted preparation retries must suspend instead of stranding " + origin);
+            Check(run._season.runState.lifecycle == (int)ModeHLifecycle.Suspended,
+                "suspended early season is projected for recovery: " + origin);
+            Check(run._runState.MatchIndex == 0 && run.Started == 0,
+                "early suspension cannot fabricate a match or spawn: " + origin);
+        }
+        foreach (var origin in new[] { ModeHLifecycle.EntryIntent, ModeHLifecycle.SceneLoading,
+            ModeHLifecycle.Drafting, ModeHLifecycle.RosterLocked })
+        {
+            Reset(); var run = Runtime(origin, 0);
+            Check(run.TryTransition(origin, ModeHLifecycle.Recovering, "fixture_failure"), "early recovery begins: " + origin);
+            Check(!run.TryTransition(ModeHLifecycle.Recovering, ModeHLifecycle.MatchBrief, "invalid_resume"),
+                "early recovery still cannot skip preparation: " + origin);
+            run._runState.IncrementTechnicalRetry();
+            for (int i = 0; i < ModeHConfig.MaxAutomaticTechnicalRetriesPerMatch; i++)
+                run._runState.IncrementTechnicalRetry();
+            run.Drive();
+            Check(run._runState.Lifecycle == ModeHLifecycle.Suspended,
+                "unresolved or exhausted early recovery can terminate safely: " + origin);
+        }
+    }
+    private static void SpawnRetryCleanup()
+    {
+        Reset(); var run = Runtime(ModeHLifecycle.MatchSpawning, 1);
+        var routine = new SpawnWork(); var transaction = new SpawnWork();
+        run._spawnRoutine = routine; run._spawnTransaction = transaction;
+        run.FailPreparation();
+        Check(routine.Stopped && transaction.RolledBack,
+            "technical retry during spawning stops pending coroutine and cancels its transaction");
+        Check(run._spawnRoutine == null && run._spawnTransaction == null,
+            "retry cannot keep stale spawn handles");
+        run.Drive();
+        Check(run._runState.Lifecycle == ModeHLifecycle.MatchBrief && run._runState.MatchIndex == 1,
+            "cleaned spawning retry returns to the same match without recording defeat");
+    }
+    private static void RepeatedSuspension()
+    {
+        Reset(); var run = Runtime(ModeHLifecycle.Suspended, 1);
+        Check(run.DriveSuspendedExit() && run.Exits == 1, "first suspended run exits once");
+        Check(run.DriveSuspendedExit() && run.Exits == 1, "same suspension is idempotent");
+        // The module lives across seasons/slot changes. Equal state sequences belong to different owners.
+        var next = Runtime(ModeHLifecycle.Suspended, 1);
+        run._season = next._season; run._runState = next._runState;
+        Check(run.DriveSuspendedExit() && run.Exits == 2,
+            "a second owner at the same state sequence must still leave the arena");
     }
     private static void Rest()
     {

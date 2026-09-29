@@ -742,6 +742,14 @@ namespace BossRush
                 failureReasonId = "cancel_escrow_still_held";
                 return false;
             }
+            // 主菜单恢复与出击图没有可用仓库。缺少宿主只表示现在不能核对，
+            // 不能把未移除的押品永久推入没有出边的人工介入阶段。
+            string storageReason;
+            if (!ModeHInventoryPersistenceBridge.IsStorageReady(out storageReason))
+            {
+                failureReasonId = "cancel_escrow_preimage_unreadable:" + storageReason;
+                return false;
+            }
             // _escrowItems 为空**不等于**物品还在仓库：LoadPersisted 在切槽/重启时
             // 会把它清空，此时仅凭内存态判断会把「物品已脱离但阶段回滚过」的错位
             // 静默归档成 CancelledTerminal（语义是"已证明从未移除"），等于确认丢失。

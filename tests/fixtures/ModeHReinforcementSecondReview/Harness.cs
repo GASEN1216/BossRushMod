@@ -104,8 +104,8 @@ namespace BossRush
         { if (c.Done || c.Stopped && !force) return; if (!c.Routine.MoveNext()) c.Done = true; }
         public void Drain() { for (int i = 0; i < 20; i++) foreach (var c in Routines.ToArray()) Advance(c); }
     }
-    internal enum ModeHLifecycle { MatchFighting, RelayPending, Intermission, Recovering }
-    internal sealed class Run { public long OwnerToken = 7; public int MatchIndex = 1; public ModeHLifecycle Lifecycle = ModeHLifecycle.MatchFighting; }
+    internal enum ModeHLifecycle { MatchFighting, RelayPending, Intermission, Recovering, MatchSpawning }
+    internal sealed class Run { public long OwnerToken = 7; public int MatchIndex = 1, StateSequence; public ModeHLifecycle Lifecycle = ModeHLifecycle.MatchFighting; }
     internal sealed class ModeHMatchPlanDto { public List<string> enemyStableKeys = new List<string>(); public List<int> enemyBatchIndices = new List<int>(); }
     internal sealed class ModeHMatchCorridor { public int SimultaneousCap; }
     internal static class ModeHEncounterPlanner
@@ -170,7 +170,8 @@ namespace BossRush
     {
         private Run _runState = new Run(); private int _sceneGeneration = 1;
         private bool _commandsClosed, _shutdownCompleted, _errorSwapInputYielded;
-        private Coroutine _relaySpawnRoutine;
+        private Coroutine _relaySpawnRoutine, _spawnRoutine;
+        private IEnumerator _auditSpawnBody;
         private readonly Season _season = new Season();
         private readonly Owner _owner = new Owner(); private readonly ModeHSupportedMap _map = new ModeHSupportedMap();
         private ModeHCombatControl _combatControl = new ModeHCombatControl(); private Telemetry _combatTelemetry;
@@ -181,12 +182,12 @@ namespace BossRush
         private ModeHSpawnTransaction _spawnTransaction, _relaySpawnTransaction;
         private readonly Spectator _spectatorLease = new Spectator(); private readonly UI _ui = new UI();
         private string _starterDisplayName, _relayDisplayName;
-        internal int Retries, Settlements; internal bool ThrowRegister;
+        internal int Retries, Settlements; internal bool ThrowRegister, ThrowOutfit;
         internal ModeHRuntimeModule(int last = 1) { _combatControl.Configure(last); _combatTelemetry = _combatControl._telemetry; }
         private static int ResolveEnemyBatchIndex(ModeHMatchPlanDto plan, int i) { return plan.enemyBatchIndices[i]; }
         private object GetPreparedEnemyOutfit(ModeHMatchPlanDto plan, int index) { return new object(); }
         private bool ApplyPreparedOutfit(ModeHSpawnHandle handle, object outfit, string injury, out string reason)
-        { reason=null; if (handle.Activated || string.IsNullOrEmpty(handle.ProfileId)) throw new Exception("outfit must precede activation and have owner"); return true; }
+        { reason=null; if (ThrowOutfit) throw new InvalidOperationException("outfit health callback"); if (handle.Activated || string.IsNullOrEmpty(handle.ProfileId)) throw new Exception("outfit must precede activation and have owner"); return true; }
         private static ModeHParticipantRef BuildParticipant(ModeHSpawnHandle h, string p, bool e, int i, bool r) { return new ModeHParticipantRef { Character = h.Character, PlanSlotIndex = i }; }
         private void RegisterParticipant(ModeHSpawnHandle h, ModeHParticipantRef r) { if (ThrowRegister) throw new InvalidOperationException("register"); }
         private void RefreshBattleSnapshotContext() { } private void AttachAndPersistBattleSnapshot(string s) { }
@@ -196,6 +197,8 @@ namespace BossRush
         private void SyncErrorSwapInputYield() { } private void TryBeginErrorSwapIfDue() { }
         private bool TryTransition(ModeHLifecycle a, ModeHLifecycle b, string reason) { _runState.Lifecycle = b; return true; }
         private IEnumerator DriveRelaySpawning() { yield break; }
+        private IEnumerator DriveCompleteMatchSpawning() { return _auditSpawnBody; }
+        private void AbortMatchSpawning(string reason) { RequestTechnicalRetry(reason); }
         private void BeginMatchSettlement() { Settlements++; _runState.Lifecycle = ModeHLifecycle.Intermission; ReleaseCombatRuntimeObjects(); }
 
         internal void Queue(int count, int batch = 1)
@@ -227,6 +230,13 @@ namespace BossRush
             _combatTelemetry = _combatControl._telemetry;
         }
         internal void NewMatchDifferentIndex() { _runState.MatchIndex++; NewMatchSameOwner(); }
+        internal IEnumerator GuardedSpawn(IEnumerator body, bool relay)
+        {
+            _runState.Lifecycle = relay ? ModeHLifecycle.RelayPending : ModeHLifecycle.MatchSpawning;
+            _auditSpawnBody = body;
+            return relay ? DriveSpawnRoutine(body, "relay") : DriveMatchSpawning();
+        }
+        internal void ChangeSpawnOwnerState() { _runState.StateSequence++; }
     }
     internal static class Program
     {
@@ -249,8 +259,52 @@ namespace BossRush
         }
         private static void Drain(IEnumerator e) { for (int i = 0; i < 30 && e.MoveNext(); i++) { } }
 
+        private static IEnumerator SpawnChild(object wait, bool fail, Action disposed)
+        {
+            try
+            {
+                yield return wait;
+                if (fail) throw new InvalidOperationException("injected host health callback");
+            }
+            finally { disposed(); }
+        }
+        private static IEnumerator SpawnParent(IEnumerator child, Action disposed)
+        {
+            try { yield return child; }
+            finally { disposed(); }
+        }
+        private static void GuardedSpawnFailures()
+        {
+            foreach (bool relay in new[] { false, true })
+            {
+                Reset(); var runtime = new ModeHRuntimeModule();
+                object wait = new object(); int disposed = 0;
+                IEnumerator guarded = runtime.GuardedSpawn(SpawnParent(
+                    SpawnChild(wait, true, () => disposed++), () => disposed++), relay);
+                Check(guarded.MoveNext() && ReferenceEquals(guarded.Current, wait),
+                    "spawn boundary drives nested iterator and preserves host yield: relay=" + relay);
+                Check(!guarded.MoveNext() && runtime.Retries == 1 && disposed == 2,
+                    "host callback fault retries once and disposes parent/child: relay=" + relay);
+                Check(!guarded.MoveNext() && runtime.Retries == 1,
+                    "completed failed iterator cannot repeat retry: relay=" + relay);
+
+                runtime = new ModeHRuntimeModule(); disposed = 0;
+                guarded = runtime.GuardedSpawn(SpawnParent(
+                    SpawnChild(wait, false, () => disposed++), () => disposed++), relay);
+                Check(guarded.MoveNext(), "cancel probe begins"); runtime.ChangeSpawnOwnerState();
+                Check(!guarded.MoveNext() && runtime.Retries == 0 && disposed == 2,
+                    "old state iterator only disposes, cannot retry new state: relay=" + relay);
+            }
+        }
+
         public static void Main()
         {
+            GuardedSpawnFailures();
+            Reset(); var failedOutfit = new ModeHRuntimeModule { ThrowOutfit = true };
+            failedOutfit.Queue(1); failedOutfit.Start(); failedOutfit.Drain();
+            Check(failedOutfit.Retries == 1 && failedOutfit.Owned == 0 && !failedOutfit.Busy,
+                "reinforcement outfit callback failure cancels and retries instead of silently losing pending batch");
+            AllRecycled("outfit failure recycles reinforcement once");
             Reset(); var runtime = new ModeHRuntimeModule(); runtime.Queue(1); runtime.Tick();
             Check(runtime.Settlements == 0 && runtime.Busy && runtime.Owned == 1, "synchronous creation still yields; cannot win before reinforcement registration");
             runtime.Drain(); Check(!runtime.Busy && runtime.Owned == 1 && runtime.LiveCount == 1, "successful reinforcement remains owned after commit");

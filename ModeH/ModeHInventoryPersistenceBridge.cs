@@ -362,6 +362,22 @@ namespace BossRush
             catch (Exception e)
             {
                 failureReasonId = "detach_remove_exception:" + e.GetType().Name;
+                // RemoveAt 先清槽位/所属容器，再通知。通知失败时仍把已脱离的原实例交给 journal，
+                // 否则它既不在仓库里，也进不了本次托管/回滚列表。
+                try
+                {
+                    if (candidate != null && !candidate.IsBeingDestroyed
+                        && candidate.InInventory == null && candidate.PluggedIntoSlot == null
+                        && !ReferenceEquals(inventory.GetItemAt(expected.sourcePosition), candidate))
+                    {
+                        failureReasonId = null;
+                        return candidate;
+                    }
+                }
+                catch (Exception probeError)
+                {
+                    ModBehaviour.DevLog("[ModeH] 仓库移出通知失败后无法核对归属: " + probeError.Message);
+                }
                 return null;
             }
             if (!ok || removed == null)
@@ -413,6 +429,19 @@ namespace BossRush
             catch (Exception e)
             {
                 failureReasonId = "add_exception:" + e.GetType().Name;
+                // AddAt 也会在实物落位后通知。按真实槽位确认交付，防止调用方把已到账奖励销毁。
+                try
+                {
+                    if (ReferenceEquals(inventory.GetItemAt(targetPosition), item))
+                    {
+                        failureReasonId = null;
+                        return true;
+                    }
+                }
+                catch (Exception probeError)
+                {
+                    ModBehaviour.DevLog("[ModeH] 仓库放回通知失败后无法核对槽位: " + probeError.Message);
+                }
                 return false;
             }
             if (!ok)

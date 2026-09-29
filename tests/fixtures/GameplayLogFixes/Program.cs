@@ -16,6 +16,7 @@ internal static class Program
     private static void Reset(bool ready, ModeHStakeJournalDto journal = null, bool unreadable = false)
     {
         ModeHInventoryPersistenceBridge.Ready = ready;
+        ModeHInventoryPersistenceBridge.Occurrences = 1;
         ModeHStakeJournalPersistence.Stored = journal;
         ModeHStakeJournalPersistence.IsWriteBarrier = unreadable;
         ModeHStakeJournalPersistence.Loads = 0;
@@ -55,6 +56,33 @@ internal static class Program
             new ModeHRuntimeModule().OnAwake(new ModBehaviour());
             Require(ModeHWarehouseStakeJournal.IsSlotConsistent && !ModeHRuntimeGates.Blocked,
                 "completed refund still blocked the next match");
+        });
+        Check("unremoved stake waits for storage and cancels after it becomes ready", () => {
+            foreach (ModeHStakePhase phase in new[] { ModeHStakePhase.Prepared, ModeHStakePhase.EscrowSnapshotDurable })
+            {
+                var journal = new ModeHStakeJournalDto { phase = (int)phase };
+                journal.escrowItems.Add(new ModeHItemTreeSnapshotDto { semanticTreeDigest = "original", preCount = 1 });
+                Reset(false, journal); new ModeHRuntimeModule().OnAwake(new ModBehaviour());
+                string reason;
+                Require(!ModeHWarehouseStakeJournal.TryCancelWithoutRemoval(out reason)
+                    && journal.phase == (int)phase && ModeHWarehouseStakeJournal.ManualInterventions == 0,
+                    "unavailable storage permanently changed the recoverable journal phase");
+                ModeHInventoryPersistenceBridge.Ready = true;
+                Require(ModeHWarehouseStakeJournal.TryCancelWithoutRemoval(out reason)
+                    && journal.phase == (int)ModeHStakePhase.CancelledTerminal,
+                    "unchanged original stake could not be cancelled after storage initialization");
+            }
+        });
+        Check("actual missing stake still enters manual intervention", () => {
+            var journal = new ModeHStakeJournalDto { phase = (int)ModeHStakePhase.EscrowSnapshotDurable };
+            journal.escrowItems.Add(new ModeHItemTreeSnapshotDto { semanticTreeDigest = "original", preCount = 1 });
+            Reset(true, journal); new ModeHRuntimeModule().OnAwake(new ModBehaviour());
+            ModeHInventoryPersistenceBridge.Occurrences = 0;
+            string reason;
+            Require(!ModeHWarehouseStakeJournal.TryCancelWithoutRemoval(out reason)
+                && journal.phase == (int)ModeHStakePhase.ManualIntervention
+                && ModeHWarehouseStakeJournal.ManualInterventions == 1,
+                "missing original item was incorrectly accepted as a clean cancellation");
         });
         Check("inactive dragon ignores a queued hurt callback", () => {
             var dragon = new DragonKingAbilityController { isActiveAndEnabled = false };
@@ -107,8 +135,10 @@ namespace BossRush
         internal static void InitializeRiskForSlot(int generation) { }
         internal static void SetExternalAssetRiskBlocked(bool blocked, string reason) { Blocked = blocked; }
     }
-    internal enum ModeHStakePhase { Unknown, None, MatchLocked, Terminal, CancelledTerminal, RefundedTerminal, ManualIntervention }
-    internal sealed class ModeHStakeJournalDto { internal int phase; }
+    internal enum ModeHStakePhase { Unknown, None, MatchLocked, Terminal, CancelledTerminal, RefundedTerminal, ManualIntervention, Prepared, EscrowSnapshotDurable }
+    internal enum ModeHSettlementKind { None }
+    internal sealed class ModeHItemTreeSnapshotDto { internal string semanticTreeDigest; internal int preCount; }
+    internal sealed class ModeHStakeJournalDto { internal int phase; internal List<ModeHItemTreeSnapshotDto> escrowItems = new List<ModeHItemTreeSnapshotDto>(); }
     internal static class ModeHStakeJournalPersistence
     {
         internal static bool IsWriteBarrier;
@@ -119,7 +149,9 @@ namespace BossRush
     internal static class ModeHInventoryPersistenceBridge
     {
         internal static bool Ready;
+        internal static int Occurrences;
         internal static bool IsStorageReady(out string reason) { reason = Ready ? null : "storage_not_initialized"; return Ready; }
+        internal static int CountOccurrences(ModeHItemTreeSnapshotDto snapshot) { return Occurrences; }
     }
     internal static partial class ModeHWarehouseStakeJournal
     {
@@ -127,12 +159,16 @@ namespace BossRush
         private static bool _slotConsistent, _slotConsistencyDeferred;
         private static string _slotInconsistentReasonId;
         private static readonly List<object> _escrowItems = new List<object>();
+        internal static int ManualInterventions;
+        private static void EnterManualIntervention(string reason) { ManualInterventions++; _active.phase = (int)ModeHStakePhase.ManualIntervention; }
+        private static bool TryAdvancePhase(ModeHStakePhase next, ModeHSettlementKind kind, out string reason)
+        { reason = null; _active.phase = (int)next; return true; }
         internal static bool IsSlotConsistent { get { return _slotConsistent; } }
         internal static ModeHStakeJournalDto Active { get { return _active; } }
         internal static bool Deferred { get { return _slotConsistencyDeferred; } }
         internal static string Reason { get { return _slotInconsistentReasonId; } }
         private static void DrainEscrowToStorageBuffer(string reason, bool sameSlot) { }
-        internal static void Reset() { _active = null; _slotConsistent = false; _slotConsistencyDeferred = false; _slotInconsistentReasonId = null; }
+        internal static void Reset() { _active = null; _slotConsistent = false; _slotConsistencyDeferred = false; _slotInconsistentReasonId = null; ManualInterventions = 0; }
     }
     internal enum DragonKingPhase { Fighting, Transitioning, Dead }
     internal static class DragonKingConfig { internal const float ChildProtectionHealthThreshold = 1f; }

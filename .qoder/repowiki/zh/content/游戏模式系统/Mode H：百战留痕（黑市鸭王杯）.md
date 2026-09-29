@@ -1,5 +1,13 @@
 # Mode H：百战留痕（黑市鸭王杯）
 
+2026-09-29 发布前审核修复（COMPAT，L1/L2，实机待验）：
+- 现金与物品对账在关卡就绪/晚启动时补做；已结束赛季没有运行 owner 时仍按保存的同季同场战报结算。实物押注与旧仓库移出/放回均核对实际数量、归属及槽位，官方“先改状态、后通知”的异常不再造成双扣、丢托管引用或销毁已交付物品。
+- 选秀/签约故障耗尽重试后可挂起；早期恢复仍不能跳过准备直接开赛。生成期技术重试先停止主生成协程、回滚事务；挂起离场以 owner + 状态序号去重，跨季同序号可正常退出。
+- 普通页面先构造内容，再复核 run、状态序号、场景及 UI 实例后提交，建页触发恢复时旧页不能覆盖新状态。
+- 初始生成和接力共用 `ModeHRuntimeModule_SpawnRoutine.cs` 的协程异常边界，嵌套协程同样执行、捕获异常并释放；增援配装失败由生成事务回滚后同场重试。放弃确认会说明已有赛果按输赢结清，其余押注才退款。
+- 观战状态写入之前登记补偿；原图刷怪器部分冻结失败照实际登记回滚，晚到实例恢复真实 created 原值。已销毁角色用 handle 双引用清死亡抑制登记。
+- 远程受伤事实归当前登场者；高威胁核心击杀者独立记录，后续护卫击杀不覆盖；增援入场清掉前批临时终结标签。回归见 ModeHCombatRelease、ModeHMarketAudit、ModeHPlayerFlow、ModeHReviewFixes、SaveFailureRecovery；完整结论见 `docs/reports/reviews/2026-09-29-模式H发布前审核.md`。
+
 2026-09-29 owner 实测修订（COMPAT / SCHEMA+，L1/L2，观感待 L3）：
 - 赛前各页不再挂警告 / 说明文字：选人页去掉页头引导（`BuildDraftPageContent` 不写 `page.Body`）；赔率页不再打开顶部风险横幅（「……长期来看，庄家总是赢的」）；押注行只留余额 / 已押 / 估值，押物品页只留已选件数与估值；本场规则小字不再附「对面有狠角色」。`ModeHPrematchDeclutterGuard` 钉住。
 - 调整页页签改为「阵容 / 配装 / 口令」，配装页左列首发、右列接力，各列是该选手全部基础装备 + 可换整备（`AddGearOptions`），与赛前对照页人物卡的装备一致。玩家每次点选按选手身份写入本槽独立 key `BossRush_ModeHKitPreference_v1`（`ModeHKitPreferenceLedger`，走 `BossRushSlotJsonStore`，旧档无 key 读出空表）；新建阵容先沿用上一场，没有（同场重开清空阵容、换赛季）再读账本，只取本季已解锁、可选、同槽一件、不超上限的整备。`ModeHLoadoutPreferenceGuard` 与 `ModeHPreparedEquipment` / `ModeHMarketAudit` 回归覆盖。

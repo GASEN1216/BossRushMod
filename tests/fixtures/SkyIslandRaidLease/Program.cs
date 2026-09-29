@@ -13,6 +13,7 @@ internal static class Program
     private static SkyIslandRaidLease New()
     {
         SceneManager.Reset();SceneLoader.Loads=SceneLoader.Returns=0;SceneLoader.IsSceneLoading=false;Time.unscaledTime=0;
+        SceneLoader.LoadingComment=null;Time.realtimeSinceStartup=0;
         CharacterMainControl.Main=new CharacterMainControl();AssetBundle.ScenePath=SkyIslandSceneReferenceBridge.ScenePath;
         SkyIslandSceneReferenceBridge.Reset();SkyIslandOfficialContract.ActivationAllowed=true;SkyIslandOfficialContract.Calls=0;
         SkyIslandOfficialContract.ConfiguredAtCall=false;
@@ -108,6 +109,26 @@ internal static class Program
         Check(SkyIslandSceneReferenceBridge.Failure!=null,"cancelling during load signals the official loader wait");
         SceneManager.LoadRaid();SceneLoader.Finish();lease.PumpRelease();SceneManager.UnloadRaid();SceneLoader.Finish();
         Check(AssetBundle.Last.Unloaded && SkyIslandSceneReferenceBridge.Owner==null,"cancelled load still releases token and bundle");
+        // 官方先停在点击继续，再激活目标场景；玩家读提示或离开电脑不能烧掉 120 秒加载预算。
+        lease=New();lease.BeginLoad();float deadline=120f;
+        SceneLoader.LoadingComment="Wait for click...";Time.realtimeSinceStartup=130f;
+        Check(lease.HasSceneLoadTimeRemaining(ref deadline),"waiting for the player's click survives the original load deadline");
+        Time.realtimeSinceStartup=7200f;
+        Check(lease.HasSceneLoadTimeRemaining(ref deadline),"the click screen allows a long player-controlled wait");
+        SceneLoader.LoadingComment="Allowing activation...";Time.realtimeSinceStartup=7201f;
+        Check(lease.HasSceneLoadTimeRemaining(ref deadline),"clicking still leaves time to activate the scene");
+        Time.realtimeSinceStartup=7321f;
+        Check(!lease.HasSceneLoadTimeRemaining(ref deadline),"a stalled activation still times out after the click");
+        SceneLoader.LoadingComment="Wait for click...";SceneLoader.IsSceneLoading=false;
+        Check(!lease.HasSceneLoadTimeRemaining(ref deadline),"a stale comment outside loading cannot extend the deadline");
+        SceneLoader.IsSceneLoading=true;lease.Abort("cancelled");
+        Check(!lease.HasSceneLoadTimeRemaining(ref deadline),"failed initialization is never kept alive by the click screen");
+        lease.Release(null);SceneLoader.Finish(true);
+        Check(AssetBundle.Last.Unloaded,"cancelled click wait still releases its lease");
+        lease=New();lease.BeginLoad();deadline=120f;
+        SceneLoader.LoadingComment="Waiting for scene loading operation...";Time.realtimeSinceStartup=121f;
+        Check(!lease.HasSceneLoadTimeRemaining(ref deadline),"actual asset loading retains the original timeout");
+        lease.Release(null);SceneLoader.Finish(true);
         Console.WriteLine("PASS SkyIslandRaidLease: "+checks+" assertions (production lease with official loader and Unity substitutes)");
     }
 }

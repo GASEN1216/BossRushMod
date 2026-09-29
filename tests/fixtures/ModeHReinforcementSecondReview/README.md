@@ -2,13 +2,14 @@
 
 覆盖 CR-2026-09-05-013 / 014 / 016。兼容分类 COMPAT；不读写玩家存档，不启动或部署游戏。
 
-运行：`python tests/fixtures/ModeHReinforcementSecondReview/run.py`。需要 .NET 8 SDK；C# 语言版本限制为 7.3。输出与来源 SHA-256 在 `Build/fix-20260905-r2/ModeHReinforcementSecondReview/`。
+运行：`python tools/run_runtime_regressions.py --filter ModeHReinforcementSecondReview`。需要 .NET 8 SDK；C# 语言版本限制为 7.3。输出与来源 SHA-256 在 `Build/fix-20260905-r2/ModeHReinforcementSecondReview/`。
 
 每次运行重新从当前生产源码读取并编译：
 
 - 完整 `ModeHSpawnTransaction.cs`，不替换其事务或异步所有权逻辑。
 - `CombatProfiles` 整个“敌军分批入场”区域，包括字段、拆批、容量门、协程、所有权校验和释放。
 - 完整 `TickActiveCombat`、`ReleaseCombatRuntimeObjects`、`IsCallbackStillValid`。
+- 完整 `DriveMatchSpawning` 与 `DriveSpawnRoutine`，核对初始生成和接力共享的协程异常边界。
 - 完整 `ModeHCombatControl.Tick`、`OnEnemyEntered`、`OnEnemyBatchEntered`、`SetEnemySpawningPending`。
 
 Unity、preset/生成端、遥测伤害输入和其他战斗效果是可控替身。UniTask 替身只提供语言级 awaitable/状态接口，使用测试主线程同步完成的 TaskCompletionSource；生产代码仍沿用 UniTask，不引入线程池 continuation。该夹具不能证明 Unity 生命周期或真实场景物理效果，正式 Windows 编译与游戏 smoke 仍应单独执行。
@@ -18,3 +19,5 @@ Unity、preset/生成端、遥测伤害输入和其他战斗效果是可控替�
 `ModeHReinforcementSecondReviewGuard.py` 另外保持生产接线/所有权结构不变量，并在内存副本上运行 11 个负向变异。guard 不替代本执行夹具。
 
 2026-09-18：入场接口透传规则失败并保留技术重试，增援按冻结计划身份恢复 PlanSlotIndex；替身保留对应字段。区域效果在本夹具中隔离，完整实现由 ModeHMarketAudit 编译执行。
+
+2026-09-29：初始生成和接力分别验证嵌套迭代器会执行、非迭代器等待对象原样交回 Unity、宿主回调异常只请求一次技术重试并释放父子迭代器；状态版本变化后只做清理，不让旧协程重试新状态。Unity 的调度与等待本身仍由替身模拟。

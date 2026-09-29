@@ -24,7 +24,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     names = ["ModeHSpawnTransaction.cs", "ModeHRuntimeModule_CombatProfiles.cs",
              "ModeHRuntimeModule_CombatFlow.cs", "ModeHCombatControl.cs",
-             "ModeHRuntimeModule_SceneFlow.cs"]
+             "ModeHRuntimeModule_SceneFlow.cs", "ModeHRuntimeModule_SpawnRoutine.cs"]
     sources = {name: (ROOT / "ModeH" / name).read_text(encoding="utf-8-sig") for name in names}
     profiles = sources["ModeHRuntimeModule_CombatProfiles.cs"]
     region = profiles[profiles.index("        #region 敌军分批入场"):profiles.rindex("        #endregion")]
@@ -32,6 +32,8 @@ def main():
     for file, signature in [
         ("ModeHRuntimeModule_CombatFlow.cs", "private void ReleaseCombatRuntimeObjects()"),
         ("ModeHRuntimeModule_CombatFlow.cs", "private void TickActiveCombat(float deltaTime)"),
+        ("ModeHRuntimeModule_SpawnRoutine.cs", "private System.Collections.IEnumerator DriveMatchSpawning()"),
+        ("ModeHRuntimeModule_SpawnRoutine.cs", "private System.Collections.IEnumerator DriveSpawnRoutine("),
         ("ModeHRuntimeModule_SceneFlow.cs", "private bool IsCallbackStillValid("),
     ]:
         runtime.append(method(sources[file], signature))

@@ -269,7 +269,9 @@ namespace BossRush
                 || origin == ModeHLifecycle.MatchSpawning;
             if (ownsMatchRuntime)
             {
-                ReleaseCombatRuntimeObjects();
+                // 生成期也会因晚到刷怪器等原因重试，须先停止主生成协程，
+                // 否则旧协程仍持有同一 run owner，回落后可以继续推进新一轮状态。
+                ReleaseMatchRuntime();
             }
             // 已有完整战报时只恢复结算；绝不撤销结果或重复发奖。
             if (FindLatestPendingReport() == null)
@@ -1103,16 +1105,6 @@ namespace BossRush
                 return;
             }
             _spawnRoutine = _owner.StartCoroutine(DriveMatchSpawning());
-        }
-
-        /// <summary>
-        /// 分帧生成本场敌军与我方选手，提交后交给 CombatControl。
-        /// 任何一步失败都走「技术中止 + 同场重开」，**绝不判负**（§17.4）。
-        /// </summary>
-        private System.Collections.IEnumerator DriveMatchSpawning()
-        {
-            System.Collections.IEnumerator inner = DriveCompleteMatchSpawning();
-            while (inner.MoveNext()) yield return inner.Current;
         }
 
         /// <summary>

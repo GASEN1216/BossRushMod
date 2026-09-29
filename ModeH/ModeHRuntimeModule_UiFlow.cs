@@ -212,7 +212,7 @@ namespace BossRush
             if (!IsItemBetPickerHost(lifecycle)) _showItemBetPicker = false;
             if (_showItemBetPicker)
             {
-                OpenPage(ModeHPage.ItemBet, BuildItemBetPickerPage());
+                OpenLifecyclePage(ModeHPage.ItemBet, lifecycle, BuildItemBetPickerPage);
                 return;
             }
 
@@ -221,15 +221,15 @@ namespace BossRush
             switch (lifecycle)
             {
                 case ModeHLifecycle.Drafting:
-                    OpenPage(ModeHPage.Entry, BuildDraftPageContent());
+                    OpenLifecyclePage(ModeHPage.Entry, lifecycle, BuildDraftPageContent);
                     break;
                 case ModeHLifecycle.RosterLocked:
                 case ModeHLifecycle.MatchBrief:
-                    OpenPage(ModeHPage.Brief, BuildBriefPageContent());
+                    OpenLifecyclePage(ModeHPage.Brief, lifecycle, BuildBriefPageContent);
                     break;
                 case ModeHLifecycle.LoadoutEditing:
                 case ModeHLifecycle.OddsPreview:
-                    OpenPage(ModeHPage.Odds, BuildOddsPageContent());
+                    OpenLifecyclePage(ModeHPage.Odds, lifecycle, BuildOddsPageContent);
                     break;
                 case ModeHLifecycle.MatchSpawning:
                 case ModeHLifecycle.MatchFighting:
@@ -241,20 +241,20 @@ namespace BossRush
                         ResolveLockedCommandPlain());
                     break;
                 case ModeHLifecycle.MatchSettling:
-                    OpenPage(ModeHPage.Settlement, BuildSettlementPageContent());
+                    OpenLifecyclePage(ModeHPage.Settlement, lifecycle, BuildSettlementPageContent);
                     break;
                 case ModeHLifecycle.Intermission:
                     // 战痕 / 整备奖励按默认值自动处理，结算页只剩战报与一个「下一场」
                     ApplySettlementDefaults();
                     if (_commandsClosed || _ui == null || _runState == null
                         || _runState.Lifecycle != ModeHLifecycle.Intermission) break;
-                    OpenPage(ModeHPage.Settlement, BuildSettlementPageContent());
+                    OpenLifecyclePage(ModeHPage.Settlement, lifecycle, BuildSettlementPageContent);
                     break;
                 case ModeHLifecycle.TransferWindow:
-                    OpenPage(ModeHPage.Transfer, BuildTransferPageContent());
+                    OpenLifecyclePage(ModeHPage.Transfer, lifecycle, BuildTransferPageContent);
                     break;
                 case ModeHLifecycle.HallOfFame:
-                    OpenPage(ModeHPage.HallOfFame, BuildHallOfFamePageContent());
+                    OpenLifecyclePage(ModeHPage.HallOfFame, lifecycle, BuildHallOfFamePageContent);
                     break;
                 case ModeHLifecycle.Recovering:
                 case ModeHLifecycle.ErrorRecoveryPending:
@@ -267,6 +267,21 @@ namespace BossRush
                     _ui.ClosePage();
                     break;
             }
+        }
+
+        /// <summary>建页可能触发技术重试并重入路由；旧调用不能在返回后覆盖恢复页或新场次。</summary>
+        private void OpenLifecyclePage(ModeHPage page, ModeHLifecycle lifecycle, Func<ModeHPageContent> buildContent)
+        {
+            if (_commandsClosed || _runState == null || _ui == null || _runState.Lifecycle != lifecycle) return;
+            var state = _runState;
+            var ui = _ui;
+            int sequence = state.StateSequence;
+            int generation = _sceneGeneration;
+            ModeHPageContent content = buildContent();
+            if (_commandsClosed || !ReferenceEquals(_runState, state) || !ReferenceEquals(_ui, ui)
+                || _sceneGeneration != generation || state.StateSequence != sequence
+                || state.Lifecycle != lifecycle) return;
+            OpenPage(page, content);
         }
 
         private void OpenPage(ModeHPage page, ModeHPageContent content)
@@ -851,10 +866,11 @@ namespace BossRush
         private List<ModeHActionData> BuildRecoveryActions(ModeHSeasonDto season)
         {
             List<ModeHActionData> actions = new List<ModeHActionData>();
-            if (season == null || _runState == null) return actions;
 
             // Suspended：允许玩家从同一场重开（技术中止绝不判负，§17.4）
-            if ((_runState.Lifecycle == ModeHLifecycle.Suspended || _restoredSeasonPending)
+            // 只有续赛需要内存 owner；旧押品 journal 或风险扫描失败可以独立于 Season 存在。
+            if (season != null && _runState != null
+                && (_runState.Lifecycle == ModeHLifecycle.Suspended || _restoredSeasonPending)
                 && !_resumeScenePending)
             {
                 actions.Add(new ModeHActionData
@@ -866,7 +882,7 @@ namespace BossRush
             }
 
             // 存档暂时写不下去时给一个显式重试，而不是让玩家干等
-            if (_seasonDirty)
+            if (_season != null && _seasonDirty)
             {
                 actions.Add(new ModeHActionData
                 {
@@ -944,8 +960,8 @@ namespace BossRush
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
             {
                 Title = L10n.T("放弃本赛季？", "Abandon this season?"),
-                Body = L10n.T("这一场押的钱原样退回，旧档托管的仓库物品也还回仓库，然后结束这一季，之后可以重新开一季。",
-                    "Any money bet on this match is refunded and any storage items held from an old save go back to storage; then this season ends and you can start a new one."),
+                Body = L10n.T("已有赛果的押注按输赢结清，其余押注原样退回，旧档托管的物品还回仓库。之后结束这一季，可以重新开一季。",
+                    "Bets with a recorded result are settled as won or lost; other bets are refunded, and storage items held from an old save are returned. This season then ends and you can start a new one."),
                 Warning = L10n.T("这一季没打完的场次、战绩与名声都不再继续。",
                     "The remaining matches, results and fame of this season will not carry on."),
                 ConfirmLabel = L10n.T("放弃赛季", "Abandon season"),
@@ -971,9 +987,15 @@ namespace BossRush
         private void AbandonSeasonFromRecovery()
         {
             ModeHSessionSummary.Discard(); // 总结只写这一次放弃带来的结算
-            RefundCashBet("abandon_season");
             try
             {
+                if (!TryResolveCashBetBeforeAbandon())
+                {
+                    if (_owner != null) _owner.ShowMessage(L10n.T(
+                        "押注尚未结清，请留出背包空位并等待保存完成后重试。赛季记录已保留。",
+                        "Your bet is still pending. Make room in your backpack and let saving finish, then retry. The season record is kept."));
+                    return;
+                }
                 ModeHStakeJournalDto journal = ModeHWarehouseStakeJournal.Active;
                 if (journal != null
                     && !ModeHWarehouseStakeJournal.IsTerminalPhase(

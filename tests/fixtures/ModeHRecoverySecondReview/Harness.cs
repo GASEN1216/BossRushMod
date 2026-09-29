@@ -121,6 +121,9 @@ namespace BossRush
         // 押钱（2026-09-24）：放弃赛季先退押金，结算页挂押注行；结构由 ModeHCashBetGuard 守，这里只记次数
         public int CashRefunds;
         private void RefundCashBet(string context) { CashRefunds++; }
+        public bool CashResolutionSucceeds = true;
+        private bool TryResolveCashBetBeforeAbandon()
+        { if (!CashResolutionSucceeds) return false; RefundCashBet("abandon_season"); return true; }
         private void AppendCashBetReportLine(ModeHPageContent page, ModeHMatchReportDto report) { }
         // 本场总结（2026-09-29）：放弃赛季成功后弹一张只能关闭的总结；展示本身是 UI 宿主边界，这里只记次数
         public int SummaryShows;

@@ -125,8 +125,12 @@ def check(sources):
             "自动链只能在进 switch 之前按页面相位早退")
     intermission = route[route.find("case ModeHLifecycle.Intermission:"):] if "case ModeHLifecycle.Intermission:" in route else ""
     ordered(intermission, ["case ModeHLifecycle.Intermission:", "ApplySettlementDefaults();",
-                           "OpenPage(ModeHPage.Settlement, BuildSettlementPageContent());"],
+                           "OpenLifecyclePage(ModeHPage.Settlement, lifecycle, BuildSettlementPageContent);"],
             "幕间先按默认值处理战痕 / 整备，再建结算页")
+    for page, builder in (("Brief", "BuildBriefPageContent"), ("Odds", "BuildOddsPageContent"),
+                          ("Entry", "BuildDraftPageContent"), ("Transfer", "BuildTransferPageContent")):
+        need(route, "OpenLifecyclePage(ModeHPage.%s, lifecycle, %s);" % (page, builder),
+             "建页可能重入恢复路由，必须校验原相位与 owner 后才显示: " + page)
     page_body = method_body(src["ui_flow"], "private static bool IsPageLifecycle(ModeHLifecycle lifecycle)")
     if page_body is None:
         errors.append("[UiFlow] 找不到 IsPageLifecycle")
@@ -239,6 +243,10 @@ def check(sources):
 
 
 PROBES = [
+    ("ui_flow", "OpenLifecyclePage(ModeHPage.Brief, lifecycle, BuildBriefPageContent);",
+     "OpenPage(ModeHPage.Brief, BuildBriefPageContent());"),
+    ("ui_flow", "OpenLifecyclePage(ModeHPage.Settlement, lifecycle, BuildSettlementPageContent);\n                    break;\n                case ModeHLifecycle.TransferWindow:",
+     "OpenPage(ModeHPage.Settlement, BuildSettlementPageContent());\n                    break;\n                case ModeHLifecycle.TransferWindow:"),
     ("match", 'RunAutoAdvance("champion_picked", delegate', 'RunDetached("champion_picked", delegate'),
     ("match", "card.PortraitKey = profile.stableKey;", "card.PortraitKey = profile.profileId;"),
     ("match", "_spectatorLease.SyncCameraTarget(", "_spectatorLease.GetHashCode("),

@@ -177,8 +177,15 @@ def check(sources):
                        "ModeHItemBetStake.RebindFromLedger(", "ReserveItemBet(odds);",
                        "ModeHCashBetService.TryReserve("],
             "[沿用] 重锁时先沿用挂着的那一笔（不重扣），再押物品，最后押钱")
-    need(body(src["ui_flow"], "private void AbandonSeasonFromRecovery()"), 'RefundCashBet("abandon_season");',
-         "[退回] 放弃赛季原样退回押注")
+    ordered(body(src["ui_flow"], "private void AbandonSeasonFromRecovery()"),
+            ["if (!TryResolveCashBetBeforeAbandon())", "ModeHStakeJournalDto journal =", "RequestSeasonWrite("],
+            "[退回] 放弃赛季必须先结清押注，再归还仓库押品和归档赛季")
+    abandon_bet = body(bet, "private bool TryResolveCashBetBeforeAbandon()")
+    ordered(abandon_bet, ["ReconcileCashBetOnRestore();", "FindCashBetReport(savedSeason, record) != null) return false;",
+                         'RefundCashBet("abandon_season");'],
+            "[退回] 已存胜负先结算，仍有义务不得改成退本金，未决押注才能退款")
+    need(abandon_bet, "return record != null && record.status != ModeHCashBetService.StatusReserved;",
+         "[退回] 退款失败仍须保留 Reserved 义务")
     need(body(bet, "private void ReconcileCashBetOnRestore()"), 'RefundCashBet("restore_other_run");',
          "[退回] 读档对到上一季的押注原样退回")
 
@@ -267,6 +274,8 @@ def main():
         ("service", "if (previous.itemSettlement == 0)", "if (true)"),
         ("service", "_cashSnapshotRequired |= delta != 0;", "_cashSnapshotRequired = delta != 0;"),
         ("module", "ModeHCashBetService.Tick();", ""),
+        ("ui_flow", "if (!TryResolveCashBetBeforeAbandon())", "if (false)"),
+        ("bet", "|| FindCashBetReport(savedSeason, record) != null) return false;", ") return false;"),
     ]
     for key, before, after in probes:
         if sources[key].count(before) != 1:

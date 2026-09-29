@@ -7,7 +7,7 @@ namespace UnityEngine { public static class Mathf { public static int RoundToInt
 namespace Duckov.Utilities { public class Tag { public string name; } }
 namespace ItemStatsSystem {
  public struct ItemMetaData { public int id; public Duckov.Utilities.Tag[] tags; public object icon; }
- public static class ItemAssetsCollection { public static ItemMetaData GetMetaData(int id) { return new ItemMetaData(); } }
+ public static class ItemAssetsCollection { public static ItemMetaData GetMetaData(int id) { return id == 101 ? new ItemMetaData { id = id, tags = new[] { new Duckov.Utilities.Tag { name = "Gun" } } } : new ItemMetaData(); } }
 }
 namespace BossRush {
  internal sealed partial class CharacterMainControl : UnityEngine.Object { }
@@ -58,6 +58,36 @@ namespace BossRush {
    var fighterSweep=new ModeHCombatTelemetry();fighterSweep.BeginMatch(2,7,"");var fighter=new ModeHParticipantRef{ProfileId="main",StableKey="main_key",Character=new CharacterMainControl()};
    fighterSweep.OnFighterEntered(fighter);fighter.Character.Health.IsDead=true;fighterSweep.SweepDepartedParticipants(0f);
    Check(fighterSweep.IsDown("main")&&fighterSweep.PendingDownProfileId=="main","fighter dead without event becomes the canonical down fact");
+   var ranged=new ModeHCombatTelemetry();ranged.BeginMatch(2,7,"");
+   var starter=new ModeHParticipantRef{ProfileId="starter",Character=new CharacterMainControl()};
+   var relay=new ModeHParticipantRef{ProfileId="relay",IsRelay=true,Character=new CharacterMainControl()};
+   ranged.OnFighterEntered(starter);ranged.OnParticipantHurt(starter,null,10f,101);
+   Check(ranged.ActiveFighterTookRangedDamage,"starter gun hit records the current fighter's ranged damage");
+   ranged.OnFighterEntered(starter);Check(ranged.ActiveFighterTookRangedDamage,"duplicate entry must preserve current fighter damage");
+   ranged.OnParticipantDead(starter,null);ranged.OnFighterEntered(relay);
+   Check(!ranged.ActiveFighterTookRangedDamage,"relay must not inherit starter ranged damage for longshot_memory");
+   ranged.OnParticipantHurt(starter,null,10f,101);Check(!ranged.ActiveFighterTookRangedDamage,"late starter damage must not trigger relay scar");
+   ranged.OnParticipantHurt(relay,null,10f,0);Check(!ranged.ActiveFighterTookRangedDamage,"non-ranged relay damage must not trigger scar");
+   ranged.OnParticipantHurt(relay,null,10f,101);Check(ranged.ActiveFighterTookRangedDamage,"relay's own first gun hit can trigger scar");
+   var coreKill=new ModeHCombatTelemetry();coreKill.BeginMatch(3,7,"core_key");
+   var coreTarget=Enemy("core_key");var escort=Enemy("escort_key");
+   coreKill.OnFighterEntered(starter);coreKill.OnEnemyEntered(escort);coreKill.OnEnemyEntered(coreTarget);
+   coreKill.OnParticipantDead(coreTarget,starter);coreKill.OnParticipantDead(starter,null);
+   coreKill.OnFighterEntered(relay);coreKill.OnParticipantDead(escort,relay);coreKill.TryClaimVictory(true);
+   coreKill.FinalizeSpecialKill(1,relay.ProfileId);
+   Check(coreKill.Result.SpecialKillTag==ModeHStableIds.SpecialKillHighThreatCore
+       && coreKill.Result.SpecialKillProfileId==starter.ProfileId,"core credit must remain with starter after relay kills final escort");
+   coreKill.BeginMatch(4,7,null);coreKill.OnFighterEntered(relay);coreKill.OnEnemyEntered(Enemy("other"));
+   var last=coreKill.GetLiveEnemyAt(0);coreKill.OnParticipantDead(last,relay);coreKill.TryClaimVictory(true);
+   coreKill.FinalizeSpecialKill(1,relay.ProfileId);
+   Check(coreKill.Result.SpecialKillTag==ModeHStableIds.SpecialKillRelayFinisher
+       && coreKill.Result.SpecialKillProfileId==relay.ProfileId,"next match must not inherit previous core credit");
+   var waves=new ModeHCombatTelemetry();waves.BeginMatch(5,7,null);waves.OnFighterEntered(starter);
+   starter.Character.Health.SetHealth(1f);var waveOne=Enemy("first_wave");waves.OnEnemyEntered(waveOne);
+   waves.OnParticipantDead(waveOne,starter);starter.Character.Health.SetHealth(100f);
+   var waveTwo=Enemy("last_wave");waves.OnEnemyEntered(waveTwo);waves.OnParticipantDead(waveTwo,starter);
+   waves.TryClaimVictory(true);waves.FinalizeSpecialKill(1,starter.ProfileId);
+   Check(string.IsNullOrEmpty(waves.Result.SpecialKillTag),"clearing an early wave at low health is not a final-enemy last stand");
    var r=Report(t);Check(r.specialEnemyEligible&&r.finalDefeatedProfileSnapshot=="enemy_special","duplicate and late death preserve final source");
    var season=Season(r);string reason;var offer=ModeHTransferMarket.BuildOffer(season,4,out reason);
    Check(offer!=null&&offer.profileId=="enemy_special","victory report yields offer");
@@ -83,6 +113,7 @@ namespace BossRush {
    PlanAudit();
    ContentAudit.Run();
    MatchRulesAudit.Run();
+   CombatControlAudit.Run();
   }
   static void PlanAudit(){
    ModeHPresetRegistry.Rejected.Clear();ModeHContentCatalog.Load();

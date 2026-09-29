@@ -26,6 +26,18 @@ namespace BossRush
         internal string Error { get; private set; }
         internal bool IsReturning { get { return returning; } }
 
+        /// <summary>官方在激活场景前等待玩家点击继续；这段人为等待不消耗加载超时预算。</summary>
+        internal bool HasSceneLoadTimeRemaining(ref float deadline)
+        {
+            // SceneLoader 的公开诊断在点击接收器启用后才变成这句，点击后立即改写。
+            // 只豁免本租约仍在加载的等待阶段；真正卡在读包、激活或初始化时仍会超时。
+            float now = Time.realtimeSinceStartup;
+            if (loading && !releaseRequested && Error == null && SceneLoader.IsSceneLoading &&
+                string.Equals(SceneLoader.LoadingComment, "Wait for click...", StringComparison.Ordinal))
+                deadline = now + 120f;
+            return now < deadline;
+        }
+
         internal void BeginPrepare(string modDirectory, TimeOfDayConfig template)
         {
             if (preparation != null) throw new InvalidOperationException("Raid preparation already started");

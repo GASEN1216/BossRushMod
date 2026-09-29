@@ -485,14 +485,22 @@ namespace BossRush
                     yield break;
                 }
 
-                for (int i = 0; i < tx.EnemyHandles.Count; i++)
+                try
                 {
-                    ModeHSpawnHandle handle = tx.EnemyHandles[i];
-                    int index = _season.currentMatchPlan.enemyStableKeys.IndexOf(handle.StableKey);
-                    handle.ProfileId = "enemy|" + index;
-                    if (!ApplyPreparedOutfit(handle, GetPreparedEnemyOutfit(_season.currentMatchPlan, index), null, out failureReasonId))
-                        yield break;
+                    for (int i = 0; i < tx.EnemyHandles.Count; i++)
+                    {
+                        ModeHSpawnHandle handle = tx.EnemyHandles[i];
+                        int index = _season.currentMatchPlan.enemyStableKeys.IndexOf(handle.StableKey);
+                        handle.ProfileId = "enemy|" + index;
+                        if (!ApplyPreparedOutfit(handle, GetPreparedEnemyOutfit(_season.currentMatchPlan, index), null, out failureReasonId))
+                        {
+                            if (failureReasonId == null) failureReasonId = "reinforcement_outfit_failed";
+                            break;
+                        }
+                    }
                 }
+                catch (Exception e) { failureReasonId = "reinforcement_outfit_exception:" + e.GetType().Name; }
+                if (failureReasonId != null) yield break;
 
                 try
                 {

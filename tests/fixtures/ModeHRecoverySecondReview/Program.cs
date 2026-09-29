@@ -73,6 +73,11 @@ namespace BossRush
         }
         private static void Abandonment()
         {
+            var blocked = Create(ModeHLifecycle.Suspended);
+            blocked.CashResolutionSucceeds = false; blocked.Abandon();
+            Check(blocked._runState != null && blocked._season != null && !blocked._commandsClosed
+                && ModeHSaveFlushCoordinator.Writes == 0 && !blocked.Events.Contains("match"),
+                "unresolved cash or item bet preserves the authoritative season before any archive or cleanup");
             var run = Create(ModeHLifecycle.Suspended); var old = run._season;
             run.Abandon();
             Check(old.runState.lifecycle == (int)ModeHLifecycle.SeasonEnded && ModeHSaveFlushCoordinator.Writes == 1,

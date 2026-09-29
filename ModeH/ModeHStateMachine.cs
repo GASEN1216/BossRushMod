@@ -99,12 +99,14 @@ namespace BossRush
             {
                 ModeHLifecycle.RosterLocked,
                 ModeHLifecycle.Recovering,
+                ModeHLifecycle.Suspended,
                 ModeHLifecycle.None
             };
             map[ModeHLifecycle.RosterLocked] = new ModeHLifecycle[]
             {
                 ModeHLifecycle.MatchBrief,
                 ModeHLifecycle.Recovering,
+                ModeHLifecycle.Suspended,
                 ModeHLifecycle.None
             };
             map[ModeHLifecycle.MatchBrief] = new ModeHLifecycle[]
@@ -355,7 +357,10 @@ namespace BossRush
                 failureReasonId = "state_transition_rejected";
                 return false;
             }
-            if (expected == ModeHLifecycle.Recovering && IsEarlyRecoverySource(runState.RecoveryOriginalLifecycle))
+            // 早期子表限制的是继续游戏的目标；重试耗尽必须仍能挂起并安全离场。
+            // 否则 Drafting / RosterLocked 故障会永久停在没有可用操作的页面或恢复态。
+            if (expected == ModeHLifecycle.Recovering && next != ModeHLifecycle.Suspended
+                && IsEarlyRecoverySource(runState.RecoveryOriginalLifecycle))
             {
                 ModeHLifecycle[] allowed = GetEarlyRecoveryTargets(runState.RecoveryOriginalLifecycle);
                 bool ok = false;

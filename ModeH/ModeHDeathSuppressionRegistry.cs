@@ -71,19 +71,21 @@ namespace BossRush
         /// <summary>解除角色引用登记（回收第一步）。</summary>
         public static void UnregisterCharacter(Health health)
         {
-            if (health == null) return;
+            UnregisterCharacter(health, null);
+        }
+
+        /// <summary>使用 handle 保留的双引用注销；过图销毁后的 Unity 假 null 仍须移除实例 ID。</summary>
+        public static void UnregisterCharacter(Health health, CharacterMainControl character)
+        {
             lock (_lock)
             {
-                _healthIds.Remove(health.GetInstanceID());
-                try
+                if (!ReferenceEquals(health, null)) _healthIds.Remove(health.GetInstanceID());
+                if (ReferenceEquals(character, null) && health != null)
                 {
-                    CharacterMainControl character = health.TryGetCharacter();
-                    if (character != null) _characterIds.Remove(character.GetInstanceID());
+                    try { character = health.TryGetCharacter(); }
+                    catch (Exception) { /* 单参兼容入口允许 Health 已无法解析角色。 */ }
                 }
-                catch (Exception)
-                {
-                    // 角色引用解析失败时只移除 Health 登记
-                }
+                if (!ReferenceEquals(character, null)) _characterIds.Remove(character.GetInstanceID());
             }
         }
 

@@ -267,7 +267,7 @@ namespace BossRush
 
             try
             {
-                ModeHDeathSuppressionRegistry.UnregisterCharacter(handle.Health);
+                ModeHDeathSuppressionRegistry.UnregisterCharacter(handle.Health, handle.Character);
             }
             catch (Exception)
             {

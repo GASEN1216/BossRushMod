@@ -349,7 +349,10 @@ namespace BossRush
             for (int i = _selected.Count - 1; i >= 0; i--)
             {
                 Item item = _selected[i];
-                if (!IsOnPlayer(item, character) || !IsBettable(item)) _selected.RemoveAt(i);
+                // 选择页只列角色直属物品。选择后移入容器的子项由容器整体计价，
+                // 不能仍单独留下，否则同一物品会同时算进容器和自己的押注。
+                if (!IsOnPlayer(item, character) || !IsBettable(item)
+                    || !ReferenceEquals(item.ParentItem, character)) _selected.RemoveAt(i);
             }
         }
 
@@ -452,6 +455,12 @@ namespace BossRush
             if (_forfeited) return _forfeitMissing;
             long missing = 0;
             Item character = PlayerCharacterItem();
+            // 官方背包可在看台打开。两件独立押品可能在锁盘后成为父子，
+            // 必须先收子项，避免销毁容器后又把同一子押品记成缺失并扣现金。
+            _locked.Sort(delegate (LockedEntry a, LockedEntry b)
+            {
+                return ItemDepth(b.Item).CompareTo(ItemDepth(a.Item));
+            });
             for (int i = 0; i < _locked.Count; i++)
             {
                 LockedEntry entry = _locked[i];
@@ -464,31 +473,47 @@ namespace BossRush
                     missing += entry.Value;
                     continue;
                 }
-                try
+                int now = CountOf(item);
+                if (now > entry.Count)
                 {
-                    int now = CountOf(item);
-                    if (now > entry.Count)
+                    // 官方 setter 先改 Count 再通知；通知失败也必须按实际减少的数量记账。
+                    try { item.StackCount = now - entry.Count; }
+                    catch (Exception e)
                     {
-                        // 比赛期间又合并进来的不算押注：只扣回押上的数量
-                        item.StackCount = now - entry.Count;
-                        continue;
+                        ModBehaviour.DevLog("[ModeH] 收走押注堆叠通知异常，核对数量: " + e.Message);
                     }
-                    if (now < entry.Count && entry.Count > 0)
-                    {
-                        missing += entry.Value * (entry.Count - now) / entry.Count;
-                    }
-                    item.Detach();
-                    item.DestroyTree();
+                    int left = IsOnPlayer(item, character) ? CountOf(item) : 0;
+                    int removed = Math.Max(0, Math.Min(entry.Count, now - left));
+                    missing += entry.Value * (entry.Count - removed) / entry.Count;
+                    continue;
                 }
+
+                // 官方 Detach 可能在清除所属容器后由通知抛错。先核对所有权，再清理已收走实物；
+                // 不能把已经离开背包的押品再计为缺失，否则会同时没收物品和扣钱。
+                try { item.Detach(); }
                 catch (Exception e)
                 {
-                    ModBehaviour.DevLog("[ModeH] 收走押注物品失败，按估值扣钱: " + e.Message);
-                    missing += entry.Value;
+                    ModBehaviour.DevLog("[ModeH] 收走押注物品通知异常，核对所有权: " + e.Message);
                 }
+                if (IsOnPlayer(item, character))
+                {
+                    missing += entry.Value;
+                    continue;
+                }
+                try { if (item != null && !item.IsBeingDestroyed) item.DestroyTree(); }
+                catch (Exception e) { ModBehaviour.DevLog("[ModeH] 清理已收走押品异常: " + e.Message); }
+                if (now < entry.Count) missing += entry.Value * (entry.Count - now) / entry.Count;
             }
             _forfeited = true;
             _forfeitMissing = missing;
             return missing;
+        }
+
+        private static int ItemDepth(Item item)
+        {
+            int depth = 0;
+            for (; item != null && depth < 128; depth++) item = item.ParentItem;
+            return depth;
         }
 
         #endregion

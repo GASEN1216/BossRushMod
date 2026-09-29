@@ -32,8 +32,8 @@ REQUIRED_EDGES = [
     ("EntryIntent", ["SceneLoading"]),
     ("SceneLoading", ["ProductionCertifying"]),
     ("ProductionCertifying", ["Drafting", "None"]),
-    ("Drafting", ["RosterLocked"]),
-    ("RosterLocked", ["MatchBrief"]),
+    ("Drafting", ["RosterLocked", "Suspended"]),
+    ("RosterLocked", ["MatchBrief", "Suspended"]),
     ("MatchBrief", ["LoadoutEditing"]),
     ("LoadoutEditing", ["OddsPreview"]),
     ("OddsPreview", ["LoadoutEditing", "LoadoutLocked", "StakePrepared"]),
@@ -152,6 +152,9 @@ def main():
             errors.append("[EarlyRecovery] 早期恢复出口不得直接跳到 MatchBrief")
 
     # 单点转换与 CAS
+    if not re.search(r"if\s*\(expected == ModeHLifecycle\.Recovering\s*&&\s*next != ModeHLifecycle\.Suspended\s*"
+                     r"&&\s*IsEarlyRecoverySource\(runState\.RecoveryOriginalLifecycle\)\)", code):
+        errors.append("[EarlyRecovery] 早期恢复目标校验必须允许 Suspended 安全出口")
     checks = [
         (r"public static bool TryTransition\(", "唯一转换入口"),
         (r"if \(!runState\.IsOwnerTokenValid\(ownerToken\)\)", "owner token 校验"),

@@ -188,6 +188,8 @@ namespace BossRush
             bell.StartAcceptingBell();
             Check(!bell.Accepting, "released lease cannot reopen");
             FlowRegression.Run();
+            UiRouting.Run();
+            RecoveryActions.Run();
             Console.WriteLine("PASS ModeHPlayerFlow: " + _assertions + " assertions");
         }
     }

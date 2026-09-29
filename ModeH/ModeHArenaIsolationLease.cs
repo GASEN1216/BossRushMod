@@ -341,9 +341,15 @@ namespace BossRush
                     if (root == null || root.gameObject == null) continue;
                     if (_registeredSpawnerIds.Contains(root.GetInstanceID())) continue;
 
+                    bool originalCreated = false;
+                    if (_createdField != null)
+                    {
+                        object raw = _createdField.GetValue(root);
+                        if (raw is bool) originalCreated = (bool)raw;
+                    }
                     foundLate = true;
                     _frozenSpawners.Add(root);
-                    _frozenOriginalCreated.Add(false);
+                    _frozenOriginalCreated.Add(originalCreated);
                     _frozenOriginalActive.Add(root.gameObject.activeSelf);
                     _registeredSpawnerIds.Add(root.GetInstanceID());
                     if (_createdField != null) _createdField.SetValue(root, true);
@@ -395,7 +401,8 @@ namespace BossRush
         private void RollbackTo(int completedStep)
         {
             // 逆序回滚：先恢复 spawner，再清空登记
-            if (completedStep >= 2)
+            // 冻结循环可能只完成一部分就抛异常；登记在首次写入前完成，按实际登记恢复。
+            if (completedStep >= 2 || _frozenSpawners.Count > 0)
             {
                 RestoreSpawners();
             }

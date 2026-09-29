@@ -1,5 +1,7 @@
 # Mode H 市场与计划输入审计
 
+运行 `python tools/run_runtime_regressions.py --filter ModeHMarketAudit`。
+
 该夹具每次运行都会复制并编译当前生产源码，验证：
 
 - 第 4 场胜利的最后一名实际死亡敌军才可写入市场资格快照；
@@ -31,5 +33,11 @@ Unity/官方 Stat 的语义由 MatchRulesAudit 提供替身，包含销毁即 nu
 
 
 ## 2026-09-29 扩展：存活对账与边界伤害隔离
+
+发布前补测远程受伤事实按登场选手归属：先发中弹后换入的接力者不继承 `longshot_memory` 触发条件；重复入场通知保留本人的受伤事实，晚到先发伤害与非远程伤害不触发接力者战痕，接力者自己中弹后才满足条件。
+
+特殊击杀归属补测：先发击倒核心后，接力击倒最后护卫，高威胁核心奖励仍归先发；下一场不继承上一场核心记录。前批低血清场后，新增援入场会清除临时终结标签，最终满血胜利不错误保留 `last_stand`。两种错误均在修复前实际转红，修复后通过。
+
+`CombatControlAudit` 逐字提取生产 `Tick`、胆怯判定、接力窗口和 `RestoreErrorSwap` 等方法：死亡事件、存活对账和场景销毁三种倒地来源都应开启接力，不再把尸体的低血量判成逃跑；同一确定性 seed 下，活着的低血选手仍可触发原有胆怯。ERROR 恢复验证官方控制动作先停止，再归还控制目标，且重复恢复不再执行停止动作、玩家原持枪槽恢复。动作、持枪与关卡替身模拟官方 `StopAction` 先清 `Running`、`SetControllingCharacter` 先切回武器的顺序；不执行真实官方动作或 Unity 生命周期。
 
 生产 `ModeHCombatTelemetry.SweepDepartedParticipants`：已判死但没收到死亡事件、已销毁、失活超过宽限的敌军出列，活着的敌军留下，迟到的真实死亡事件去重，名单清空后能判胜；登场选手判死补倒地事实。生产 `ModeHMatchRules.HurtAtEdge`：替身 Hurt 在致死时模拟第三方死亡监听器抛 NRE，断言 Tick 不外抛、伤害已生效并留日志。新增替身只有 `Time.realtimeSinceStartup`、`Debug.LogWarning`、`GameObject.activeInHierarchy` 与 `CharacterMainControl.gameObject`；不证明官方 Health 事件顺序与第三方 Mod 的真实行为，仍需 L3。

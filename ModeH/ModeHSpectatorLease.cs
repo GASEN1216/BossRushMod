@@ -151,19 +151,21 @@ namespace BossRush
                 step = 2;
 
                 // 步骤 3：中立阵营（避免成为友军/敌军/第三方单位）
-                _player.SetTeam(Teams.middle);
+                // 官方先修改状态再派发回调，回调抛异常时仍必须偿还这次写入。
                 _teamChanged = true;
                 step = 3;
+                _player.SetTeam(Teams.middle);
 
                 // 步骤 4：移动到审计后的看台位置
-                _player.SetPosition(spectatorPos);
                 _positionChanged = true;
                 step = 4;
+                _player.SetPosition(spectatorPos);
 
                 // 步骤 5：保持光标可见（拍铃按钮需要点击）
+                _cursorChanged = true;
+                step = 5;
                 Cursor.visible = true;
                 Cursor.lockState = CursorLockMode.None;
-                _cursorChanged = true;
 
                 _acquired = true;
                 _released = false;

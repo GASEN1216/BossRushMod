@@ -546,7 +546,7 @@ namespace BossRush
                     RequestTechnicalRetry("relay_transition_rejected");
                     return;
                 }
-                _relaySpawnRoutine = _owner.StartCoroutine(DriveRelaySpawning());
+                _relaySpawnRoutine = _owner.StartCoroutine(DriveSpawnRoutine(DriveRelaySpawning(), "relay"));
             }
         }
 

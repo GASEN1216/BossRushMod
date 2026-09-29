@@ -61,6 +61,7 @@ namespace BossRush
         private string _lastSpecialKillTag;
         private string _lastSpecialKillProfileId;
         private bool _highThreatCoreKilled;
+        private string _highThreatCoreKillerProfileId;
         private float _highThreatCoreEnteredAt = -1f;
         private string _highThreatCoreStableKey;
         private string _lastDefeatedEnemyStableKey;
@@ -170,6 +171,7 @@ namespace BossRush
             _lastSpecialKillTag = null;
             _lastSpecialKillProfileId = null;
             _highThreatCoreKilled = false;
+            _highThreatCoreKillerProfileId = null;
             _highThreatCoreEnteredAt = -1f;
             _highThreatCoreStableKey = highThreatCoreStableKey;
             _lastDefeatedEnemyStableKey = null;
@@ -184,7 +186,13 @@ namespace BossRush
         public void OnEnemyEntered(ModeHParticipantRef enemy)
         {
             if (enemy == null || !enemy.IsEnemy) return;
-            if (!_liveEnemies.Contains(enemy)) _liveEnemies.Add(enemy);
+            if (!_liveEnemies.Contains(enemy))
+            {
+                _liveEnemies.Add(enemy);
+                // 新增援说明上一批清空尚非最终击杀；核心归属由独立字段保留。
+                _lastSpecialKillTag = null;
+                _lastSpecialKillProfileId = null;
+            }
             if (_highThreatCoreEnteredAt < 0f && !string.IsNullOrEmpty(_highThreatCoreStableKey)
                 && enemy.StableKey == _highThreatCoreStableKey) _highThreatCoreEnteredAt = _elapsedSeconds;
         }
@@ -196,6 +204,8 @@ namespace BossRush
         public void OnFighterEntered(ModeHParticipantRef fighter)
         {
             if (fighter == null || string.IsNullOrEmpty(fighter.ProfileId)) return;
+            // 首次远程受伤属于当前登场者，接力不能继承先发的受伤事实。
+            if (!ReferenceEquals(_activeFighter, fighter)) _activeFighterTookRangedDamage = false;
             _activeFighter = fighter;
             _enteredProfileIds.Add(fighter.ProfileId);
             if (fighter.IsRelay) _relayConsumed = true;
@@ -517,10 +527,10 @@ namespace BossRush
         {
             if (_result == null || _result.Outcome != ModeHMatchOutcome.PlayerVictory) return;
 
-            if (_highThreatCoreKilled && !string.IsNullOrEmpty(_lastSpecialKillProfileId))
+            if (_highThreatCoreKilled && !string.IsNullOrEmpty(_highThreatCoreKillerProfileId))
             {
                 _result.SpecialKillTag = ModeHStableIds.SpecialKillHighThreatCore;
-                _result.SpecialKillProfileId = _lastSpecialKillProfileId;
+                _result.SpecialKillProfileId = _highThreatCoreKillerProfileId;
                 return;
             }
             if (string.Equals(_lastSpecialKillTag, ModeHStableIds.SpecialKillRelayFinisher,
@@ -562,6 +572,8 @@ namespace BossRush
             {
                 _lastSpecialKillTag = ModeHStableIds.SpecialKillHighThreatCore;
                 _lastSpecialKillProfileId = owner.ProfileId;
+                // 核心优先级高于接力终结；后续护卫击杀不能覆盖核心的实际归属。
+                _highThreatCoreKillerProfileId = owner.ProfileId;
                 return;
             }
             if (!finalEnemy) return;

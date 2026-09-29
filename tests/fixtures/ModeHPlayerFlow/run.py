@@ -51,9 +51,21 @@ def main():
         "private bool IsCallbackStillValid(", "private static string DescribeCertificationProgress("))
     code += "\n} partial class ModBehaviour {\n" + extract(runner, "private void StartModeHCertificationFromF3()")
     code += "\n} static partial class F3GameplayValidationRunner {\n" + extract(runner, "internal static bool CanRunModeHCertification(") + "\n}}"
+    code += "\nnamespace BossRush { partial class UiRouting {\n"
+    code += "\n".join(extract("ModeH/ModeHRuntimeModule_UiFlow.cs", signature) for signature in (
+        "private void RouteUiForLifecycle(", "private void OpenLifecyclePage(",
+        "private void OpenPage(", "private static bool IsPageLifecycle(")) + "\n}}"
+    code += "\nnamespace BossRush { partial class RecoveryActions {\n"
+    code += "\n".join(extract("ModeH/ModeHRuntimeModule_UiFlow.cs", signature) for signature in (
+        "internal void OpenRecoveryShell(", "private List<ModeHActionData> BuildRecoveryActions(",
+        "private void ReturnEscrowFromRecovery(", "private static bool HasResumableSeasonRecord("))
+    code += "\n} partial class ModeHRecoveryPanel {\n"
+    code += "\n".join(extract("ModeH/ModeHRecoveryPanel.cs", signature) for signature in (
+        "private IList<ModeHActionData> EnsureCloseAction(", "private void SyncCancelKey(",
+        "private void DetachCancelKey(")) + "\n}}"
     generated = OUT / "ProductionMethods.cs"
     generated.write_text(code, encoding="utf-8")
-    files = [HERE / "Program.cs", HERE / "FlowHarness.cs", generated] + [ROOT / p for p in (
+    files = [HERE / "Program.cs", HERE / "FlowHarness.cs", HERE / "UiRouting.cs", HERE / "RecoveryActions.cs", generated] + [ROOT / p for p in (
         "Common/Data/BossRushJsonValue.cs", "Common/Data/JsonDataRegistry.cs", "Utilities/SimpleJsonHelper.cs",
         "ModeH/ModeHConfig.cs", "ModeH/ModeHStateModel.cs", "ModeH/ModeHStateDtos.cs", "ModeH/ModeHContentModels.cs",
         "ModeH/ModeHCanonicalDigest.cs", "ModeH/ModeHContentCatalog.cs", "ModeH/ModeHContentCatalogParsers.cs",

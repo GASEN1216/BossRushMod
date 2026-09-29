@@ -52,7 +52,16 @@ for name in names:
 bet = clean_source((ROOT / 'ModeH/ModeHRuntimeModule_BetFlow.cs').read_text(encoding='utf-8-sig'))
 extracted = 'using System; using System.Collections.Generic; using ItemStatsSystem; namespace BossRush {\n'
 extracted += 'static class ModeHConfig {\n' + '\n'.join(constants) + '\n}\n'
-extracted += 'partial class ModeHRuntimeModule {\n' + member(bet, 'private void SettleReservedBet(ModeHCashBetRecord record, bool won)') + '\n}\n}\n'
+extracted += 'partial class ModeHRuntimeModule {\n' + member(bet, 'private void SettleReservedBet(ModeHCashBetRecord record, bool won)') + '\n}\n'
+host = clean_source((ROOT / 'ModeH/ModeHRuntimeModule.cs').read_text(encoding='utf-8-sig'))
+extracted += 'partial class ModeHRuntimeModule {\n' + member(bet, 'private void ReconcileCashBetOnRestore()') + '\n'
+extracted += member(bet, 'private bool TryResolveCashBetBeforeAbandon()') + '\n'
+extracted += member(bet, 'private static ModeHMatchReportDto FindCashBetReport(') + '\n'
+extracted += member(host, 'public override void OnStart()') + '\n' + member(host, 'private void HandleLevelReady()') + '\n}\n'
+bridge = clean_source((ROOT / 'ModeH/ModeHInventoryPersistenceBridge.cs').read_text(encoding='utf-8-sig'))
+extracted += 'static partial class ModeHInventoryPersistenceBridge {\n'
+extracted += member(bridge, 'public static Item TryDetachAt(') + '\n'
+extracted += member(bridge, 'public static bool TryAddAtEmpty(') + '\n}\n}\n'
 (OUT / 'Extracted.cs').write_text(extracted, encoding='utf-8')
 
 paths = [ROOT / p for p in files] + [OUT / 'Extracted.cs', HERE / 'Stubs.cs', HERE / 'Program.cs']
@@ -60,6 +69,6 @@ project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8
 project += ''.join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in paths)
 project += '</ItemGroup></Project>'
 (OUT / 'Regression.csproj').write_text(project, encoding='utf-8')
-hashes = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in files + ['ModeH/ModeHConfig.cs', 'ModeH/ModeHRuntimeModule_BetFlow.cs']}
+hashes = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in files + ['ModeH/ModeHConfig.cs', 'ModeH/ModeHRuntimeModule.cs', 'ModeH/ModeHRuntimeModule_BetFlow.cs', 'ModeH/ModeHInventoryPersistenceBridge.cs']}
 (OUT / 'production-sha256.json').write_text(json.dumps(hashes, indent=2) + '\n', encoding='utf-8')
 raise SystemExit(subprocess.call(['dotnet', 'run', '--project', str(OUT / 'Regression.csproj'), '--configuration', 'Release'], cwd=ROOT))

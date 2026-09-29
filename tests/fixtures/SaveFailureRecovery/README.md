@@ -2,10 +2,16 @@
 
 针对 CR-2026-09-25-001/002/003 的 L2 执行回归。
 
-- 真实生产逻辑：直接链接日报 Service、Persistence、Coordinator、DTO 与 codec，Mode H 押注账本、押品身份/收走/奖品计划/交付，共享槽位 store、保存协调器、节流器、JSON 解析器。生产 `SettleReservedBet` 和数值常量逐字抽取，SHA-256 写到构建目录。
-- 宿主替身：钱包、背包、物品模板、Unity 对象和 ES3 缓存/磁盘。物品树快照复制 Variables，重启必经旧 GameObject/组件销毁并重建新实例。官方 `SaveFile` 抛错后 `IsSaving` 保持 true；可在准备计划、资产确认、现金结清三个写盘点注入失败。
-- 覆盖：日报 Store 拒绝与物理写失败的区别、领取页失败反馈；奖品送达前/后异常、满包、部分交付、三个崩溃边界、资产采集失败、槽位切换；同型号/重复身份/旧账本、堆叠数量变化、输局删除与账本同存；v1 兼容升级与高版本写屏障。
+- 真实生产逻辑：直接链接日报 Service、Persistence、Coordinator、DTO 与 codec，Mode H 押注账本、押品身份/收走/奖品计划/交付，共享槽位 store、保存协调器、节流器、JSON 解析器。生产 `SettleReservedBet`、仓库桥 `TryDetachAt` / `TryAddAtEmpty` 和数值常量逐字抽取，SHA-256 写到构建目录。
+- 宿主替身：钱包、背包、仓库物品摘要、物品模板、Unity 对象和 ES3 缓存/磁盘。物品树快照复制 Variables，重启必经旧 GameObject/组件销毁并重建新实例。官方 `SaveFile` 抛错后 `IsSaving` 保持 true；可在准备计划、资产确认、现金结清三个写盘点注入失败。仓库 AddAt / RemoveAt 可在实际变更后抛通知异常，验证托管引用及已交付奖励不会丢失。
+- 覆盖：日报 Store 拒绝与物理写失败的区别、领取页失败反馈；奖品送达前/后异常、满包、部分交付、三个崩溃边界、资产采集失败、槽位切换；同型号/重复身份/旧账本、堆叠数量变化、输局删除与账本同存；扣堆叠与移出容器的通知异常按实际物品状态结账，避免物品和现金双扣；v1 兼容升级与高版本写屏障。
 
 运行：`python tools/run_runtime_regressions.py --filter SaveFailureRecovery`。
 
 不访问玩家存档或启动游戏；不验证真实 ES3 文件原子性、Unity 帧时序、物品资源和 UI 表现。
+
+2026-09-29 补入生产 `OnStart` / `HandleLevelReady` / `ReconcileCashBetOnRestore`：模拟主菜单对账时钱包不存在、关卡就绪后钱包出现，覆盖晚启动、重复就绪、已结束赛季的待结赢注及切槽隔离。赛季 DTO / 关卡就绪标志为宿主边界，实际退款和结算仍执行生产账本。
+
+2026-09-29 发布审查补入押品嵌套：锁盘前把已选子物品放进已选容器，只留下选择页可见的直属根物品并计价一次；锁盘后把两件独立押品嵌套，交换选择顺序验证后代先收走、没有重复扣现金，重启后不重复收取。`GetAllChildren` 替身按官方 `includingGrandChildren` / `excludeSelf` 参数语义枚举，销毁容器必经子物品销毁。
+
+同次复审逐字执行 `TryResolveCashBetBeforeAbandon` 与共用战报查询：钱包未就绪不得放弃，恢复后未决押注退本金、已存胜负按原结果结算；满包保留已决实物欠账，腾空间后才放弃；已存赢注因钱包上溢结算受阻时，也不能改成较小的本金退款。该夹具验证财务前置条件，真实放弃入口收到 false 后不归档、不释放 owner 由 `ModeHRecoverySecondReview` 验证。

@@ -4,4 +4,6 @@
 覆盖加载中宿主消失、迟到官方关卡装配、等待实际 scene 卸载和官方加载完成、死亡任务所有权、
 返航失败重试、准备/装配错误清理。测试不启动 Unity，不修改玩家存档，不能替代实机切图与死亡验收。
 
+加载时钟回归直接执行生产租约：官方“点击继续”停留超过 120 秒或两小时仍可继续，点击后实际加载卡住仍超时，陈旧提示与取消状态不延长预算。提示文字与激活顺序已对照本机官方 `SceneLoader.LoadScene` DLL；Unity 加载、按钮与时钟仍为替身。
+
 运行：`python tools/run_runtime_regressions.py --filter SkyIslandRaidLease`。

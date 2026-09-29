@@ -392,6 +392,31 @@ namespace BossRush
                 : L10n.T("押注 " + FormatMoney(refunded) + " 已原样退回。", "Your bet of " + FormatMoney(refunded) + " was returned."));
         }
 
+        /// <summary>放弃前先履行已有胜负，未决押注才退款；剩余义务必须保留原赛季作为依据。</summary>
+        private bool TryResolveCashBetBeforeAbandon()
+        {
+            ReconcileCashBetOnRestore();
+            ModeHCashBetRecord record = ModeHCashBetService.Current;
+            if (record == null) return false;
+            if (record.status != ModeHCashBetService.StatusReserved) return true;
+            ModeHSeasonDto savedSeason = _season ?? ModeHProfilePersistence.LoadCurrent();
+            if ((record.kind == ModeHCashBetService.KindItems && record.itemSettlement != 0)
+                || FindCashBetReport(savedSeason, record) != null) return false;
+            RefundCashBet("abandon_season");
+            record = ModeHCashBetService.Current;
+            return record != null && record.status != ModeHCashBetService.StatusReserved;
+        }
+
+        private static ModeHMatchReportDto FindCashBetReport(ModeHSeasonDto savedSeason, ModeHCashBetRecord record)
+        {
+            if (record == null || savedSeason == null || savedSeason.runState == null
+                || !string.Equals(record.runId, savedSeason.runState.runId, StringComparison.Ordinal)) return null;
+            List<ModeHMatchReportDto> reports = savedSeason.matchReports;
+            for (int i = 0; reports != null && i < reports.Count; i++)
+                if (reports[i] != null && reports[i].matchIndex == record.matchIndex) return reports[i];
+            return null;
+        }
+
         /// <summary>
         /// 读档恢复赛季时对账：挂着的押注如果本场已有战报，就按战报结算；属于别的赛季或没有活动赛季，就原样退回。
         /// 同一赛季同一场还没打完的留着：重打这一场时沿用（押注跟着这一场走）。
@@ -407,21 +432,20 @@ namespace BossRush
                     SettleReservedBet(record, record.itemSettlement == 1);
                     return;
                 }
+                // 已结束的赛季不会重建 run owner，但其中的已存战报仍是未结押注的权威结果。
+                // 先找同一季同一场的结果，不能把延迟到账的赢注误退成只有本金。
+                ModeHSeasonDto savedSeason = _season ?? ModeHProfilePersistence.LoadCurrent();
+                ModeHMatchReportDto report = FindCashBetReport(savedSeason, record);
+                if (report != null)
+                {
+                    bool won = report.winner == (int)ModeHMatchOutcome.PlayerVictory;
+                    if (record.kind == ModeHCashBetService.KindItems)
+                        ModeHCashBetService.TrySettleItems(record.runId, record.matchIndex, won, savedSeason.runState.runSeed);
+                    else SettleReservedBet(record, won);
+                    return;
+                }
                 bool sameRun = _runState != null && string.Equals(record.runId, _runState.RunId, StringComparison.Ordinal);
-                if (!sameRun)
-                {
-                    RefundCashBet("restore_other_run");
-                    return;
-                }
-                List<ModeHMatchReportDto> reports = _season != null ? _season.matchReports : null;
-                if (reports == null) return;
-                for (int i = 0; i < reports.Count; i++)
-                {
-                    ModeHMatchReportDto report = reports[i];
-                    if (report == null || report.matchIndex != record.matchIndex) continue;
-                    SettleReservedBet(record, report.winner == (int)ModeHMatchOutcome.PlayerVictory);
-                    return;
-                }
+                if (!sameRun) RefundCashBet("restore_other_run");
             }
             catch (Exception e)
             {

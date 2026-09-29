@@ -20,3 +20,5 @@ python tests/ModeHRecoverySecondReviewGuard.py
 结构 guard 另含 9 个反向变异；它不能代替上述执行断言或正式 Windows 双配置编译。
 
 2026-09-18：结算名声展示新增调用 FindSeasonProfile，夹具同步逐字提取该生产 helper。
+
+2026-09-29：放弃入口改为先请求押注结清；本夹具对该财务边界注入 false，验证原赛季、owner 与恢复控件在任何归档或清理前保留。真实现金、物品结算和判定逻辑由 `SaveFailureRecovery` 直接执行。

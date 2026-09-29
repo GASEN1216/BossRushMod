@@ -32,6 +32,7 @@ class Program
         ItemUtilities.Deliveries = 0; ItemUtilities.FailAfter = -1; ItemUtilities.OnDelivery = null;
         Item.FailSnapshot = false; ItemAssetsCollection.Available = true;
         ModeHRewardItemPool.Created.Clear(); ModBehaviour.DevModeEnabled = false;
+        ModeHProfilePersistence.Saved = null;
         Item root = new Item { TypeID = 1, DisplayName = "character" };
         root.Inventory = new Inventory { Owner = root, Capacity = 20 };
         CharacterMainControl.Main = new CharacterMainControl { CharacterItem = root };
@@ -232,6 +233,29 @@ class Program
         Check(selected != null && selected.StackCount == 3 && ModeHCashBetService.Current.charged == 0,
             "merged extra units stay with the player");
 
+        Reset(); selected = Add(count: 2); Reserve(selected); selected.StackCount = 5;
+        selected.ThrowAfterStackChange = true; Settle(false); Tick();
+        Check(selected != null && selected.StackCount == 3 && ModeHCashBetService.Current.charged == 0
+            && EconomyManager.Money == 100000,
+            "stack notification failure after forfeiture never also charges cash");
+
+        Reset(); selected = Add(count: 2); Reserve(selected); selected.StackCount = 5;
+        selected.ThrowBeforeStackChange = true; Settle(false);
+        Check(selected != null && selected.StackCount == 5 && ModeHCashBetService.Current.charged == 1000
+            && EconomyManager.Money == 99000,
+            "failed stack mutation compensates only units actually left with the player");
+
+        Reset(); selected = Add(); Reserve(selected); selected.ThrowAfterDetach = true; Settle(false); Tick();
+        Check(selected == null && Bag.Count == 0 && ModeHCashBetService.Current.charged == 0
+            && EconomyManager.Money == 100000,
+            "detach notification failure still cleans removed stake and never double charges");
+
+        Reset(); selected = Add(count: 4); Reserve(selected); selected.StackCount = 2;
+        selected.ThrowAfterDetach = true; Settle(false);
+        Check(selected == null && Bag.Count == 0 && ModeHCashBetService.Current.charged == 1000
+            && EconomyManager.Money == 99000,
+            "partial stack detach failure charges only units consumed before settlement");
+
         Reset(); selected = Add(); other = Add(); entries = Reserve(selected);
         ModeHItemBetStake.ResetStaticCaches(); other.SetString(ModeHItemBetStake.IdentityKey, entries[0].Identity, true);
         ModeHItemBetStake.RebindFromLedger(entries);
@@ -243,6 +267,144 @@ class Program
         ModeHItemBetStake.RebindFromLedger(entries);
         Check(ModeHItemBetStake.ForfeitLocked() == 500 && Bag.Count == 2,
             "legacy ledger without identity uses missing-item compensation and destroys no guessed item");
+    }
+
+    static void NestedStakeOwnership()
+    {
+        Reset();
+        var current = ModeHCashBetService.Current;
+        Item container = Add(201, 1000);
+        container.Inventory = new Inventory { Owner = container, Capacity = 10 };
+        Item child = Add(202, 800);
+        string reason;
+        Check(ModeHItemBetStake.Toggle(container.GetInstanceID(), out reason)
+            && ModeHItemBetStake.Toggle(child.GetInstanceID(), out reason), "separate roots can be selected together");
+        Check(container.Inventory.AddItem(child), "selected item can move inside a selected container before locking");
+        Check(ModeHItemBetStake.SelectedCount == 1 && ModeHItemBetStake.ListCandidates().Count == 1,
+            "nested selection is pruned to the same roots shown by the picker");
+        long value; List<ModeHItemBetEntry> entries;
+        Check(ModeHItemBetStake.TryLock(out value, out entries, out reason)
+            && entries.Count == 1 && value == ModeHItemBetStake.ValueOf(container),
+            "a container and its contents are valued only once at lock");
+
+        for (int reverse = 0; reverse <= 1; reverse++)
+        {
+            Reset();
+            container = Add(201, 1000);
+            container.Inventory = new Inventory { Owner = container, Capacity = 10 };
+            child = Add(202, 800);
+            Reserve(reverse == 0 ? new[] { container, child } : new[] { child, container });
+            Check(container.Inventory.AddItem(child), "locked items can become nested while watching the match");
+            long before = EconomyManager.Money;
+            Settle(false);
+            Check(Bag.Count == 0 && container == null && child == null,
+                "both independently staked items are forfeited after becoming nested");
+            Check(ModeHCashBetService.Current.charged == 0 && EconomyManager.Money == before,
+                "nested forfeiture does not charge cash for an already confiscated child, order=" + reverse);
+            Restart(); Tick();
+            Check(Bag.Count == 0 && EconomyManager.Money == before && ModeHCashBetService.Current.tierBets[5] == 1,
+                "nested loss persists once and does not charge or restore items on restart");
+        }
+    }
+
+    static void WarehouseNotifications()
+    {
+        Reset(); Item item = Add(); ModeHInventoryPersistenceBridge.TestInventory = Bag;
+        var snapshot = new ModeHItemTreeSnapshotDto { sourcePosition = 0, Expected = item };
+        string reason;
+        Bag.ThrowAfterRemove = true;
+        Check(ReferenceEquals(ModeHInventoryPersistenceBridge.TryDetachAt(snapshot, out reason), item)
+            && Bag.Count == 0 && item.InInventory == null,
+            "warehouse removal notification preserves escrow ownership of the removed item");
+        Bag.ThrowAfterAdd = true;
+        Check(ModeHInventoryPersistenceBridge.TryAddAtEmpty(item, 0, out reason) && ReferenceEquals(Bag[0], item),
+            "warehouse insertion notification acknowledges the delivered item");
+        Bag.ThrowBeforeRemove = true;
+        Check(ModeHInventoryPersistenceBridge.TryDetachAt(snapshot, out reason) == null && ReferenceEquals(Bag[0], item),
+            "warehouse removal failure before mutation leaves the original item in place");
+        Check(!ModeHInventoryPersistenceBridge.TryAddAtEmpty(new Item(), 0, out reason) && ReferenceEquals(Bag[0], item),
+            "warehouse occupied slot remains protected after notification recovery");
+    }
+
+    static void CashRestoreReadiness()
+    {
+        for (int lateStart = 0; lateStart <= 1; lateStart++)
+        {
+            Reset(); string reason;
+            Check(ModeHCashBetService.TryReserve("run", 1, 5, 1000, out reason), "cash stake reserved for restored result");
+            var season = new ModeHSeasonDto { runState = new ModeHRunStateDto { runId = "run" },
+                matchReports = new List<ModeHMatchReportDto> { new ModeHMatchReportDto { matchIndex = 1, winner = (int)ModeHMatchOutcome.PlayerVictory } } };
+            var runtime = new ModeHRuntimeModule(42); runtime.Configure(season);
+            EconomyManager.Instance = null; runtime.Reconcile();
+            Check(ModeHCashBetService.Current.status == ModeHCashBetService.StatusReserved,
+                "menu restore waits for the real wallet");
+            EconomyManager.Instance = new EconomyManager(); runtime.LevelReady = true;
+            if (lateStart == 0) runtime.OnReady(); else runtime.OnStart();
+            Check(ModeHCashBetService.Current.status == ModeHCashBetService.StatusSettled
+                && EconomyManager.Money == 99000 + ModeHCashBetService.ComputePayout(1000, 5),
+                "restored cash win reconciles when level is ready, late start=" + lateStart);
+            long paid = EconomyManager.Money; runtime.OnReady(); runtime.OnStart();
+            Check(EconomyManager.Money == paid && ModeHCashBetService.Current.tierBets[5] == 1,
+                "repeated readiness callbacks never pay the result twice");
+        }
+
+        Reset(); string failure;
+        Check(ModeHCashBetService.TryReserve("finished", 1, 5, 1000, out failure), "cash stake reserved for completed season");
+        ModeHProfilePersistence.Saved = new ModeHSeasonDto { runState = new ModeHRunStateDto { runId = "finished" },
+            matchReports = new List<ModeHMatchReportDto> { new ModeHMatchReportDto { matchIndex = 1, winner = (int)ModeHMatchOutcome.PlayerVictory } } };
+        var ended = new ModeHRuntimeModule(42); ended.Configure(null); ended.OnReady();
+        Check(ModeHCashBetService.Current.status == ModeHCashBetService.StatusSettled
+            && EconomyManager.Money == 99000 + ModeHCashBetService.ComputePayout(1000, 5),
+            "ended season keeps its recorded win instead of refunding only the stake");
+        SavesSystem.ChangeSlot(2); ModeHProfilePersistence.Saved = null;
+        EconomyManager.Money = 23000; ended.OnReady();
+        Check(EconomyManager.Money == 23000 && ModeHCashBetService.Current.status == ModeHCashBetService.StatusNone,
+            "new slot readiness cannot inherit the previous slot bet");
+    }
+
+    static void AbandonBetResolution()
+    {
+        for (int outcome = 0; outcome <= 2; outcome++)
+        {
+            Reset(); string reason;
+            Check(ModeHCashBetService.TryReserve("run", 1, 5, 1000, out reason), "reserve bet before abandonment");
+            var season = new ModeHSeasonDto { runState = new ModeHRunStateDto { runId = "run" },
+                matchReports = new List<ModeHMatchReportDto>() };
+            if (outcome > 0) season.matchReports.Add(new ModeHMatchReportDto { matchIndex = 1,
+                winner = outcome == 1 ? (int)ModeHMatchOutcome.PlayerVictory : (int)ModeHMatchOutcome.PlayerDefeat });
+            var runtime = new ModeHRuntimeModule(42); runtime.Configure(season);
+            EconomyManager.Instance = null;
+            Check(!runtime.ResolveBeforeAbandon() && ModeHCashBetService.Current.status == ModeHCashBetService.StatusReserved,
+                "missing wallet preserves outstanding bet and prevents abandonment");
+            EconomyManager.Instance = new EconomyManager();
+            Check(runtime.ResolveBeforeAbandon(), "bet resolves before abandonment after wallet recovery");
+            long expected = outcome == 0 ? 100000L : outcome == 1 ? 99000L + ModeHCashBetService.ComputePayout(1000, 5) : 99000L;
+            Check(EconomyManager.Money == expected && ModeHCashBetService.Current.status ==
+                (outcome == 0 ? ModeHCashBetService.StatusRefunded : ModeHCashBetService.StatusSettled),
+                "abandon refunds only undecided bets and honors recorded win or loss, outcome=" + outcome);
+            Check(runtime.ResolveBeforeAbandon() && EconomyManager.Money == expected,
+                "repeated abandonment never repeats a payout or refund");
+        }
+
+        Reset(); Reserve(Add()); Bag.Capacity = Bag.Count;
+        var wonSeason = new ModeHSeasonDto { runState = new ModeHRunStateDto { runId = "run" },
+            matchReports = new List<ModeHMatchReportDto> { new ModeHMatchReportDto { matchIndex = 1,
+                winner = (int)ModeHMatchOutcome.PlayerVictory } } };
+        var pending = new ModeHRuntimeModule(42); pending.Configure(wonSeason);
+        Check(!pending.ResolveBeforeAbandon() && ModeHCashBetService.Current.itemSettlement == 1
+            && ModeHCashBetService.Current.status == ModeHCashBetService.StatusReserved,
+            "full backpack keeps decided item prize debt instead of refunding or abandoning it");
+        Bag.Capacity += 5;
+        Check(pending.ResolveBeforeAbandon() && ModeHCashBetService.Current.status == ModeHCashBetService.StatusSettled,
+            "freeing backpack space completes the original prize before abandonment");
+
+        Reset(); string failure;
+        Check(ModeHCashBetService.TryReserve("run", 1, 5, 1000, out failure), "reserve overflow boundary bet");
+        EconomyManager.Money = long.MaxValue - 1000;
+        var overflow = new ModeHRuntimeModule(42); overflow.Configure(wonSeason);
+        Check(!overflow.ResolveBeforeAbandon() && ModeHCashBetService.Current.status == ModeHCashBetService.StatusReserved
+            && EconomyManager.Money == long.MaxValue - 1000,
+            "a blocked recorded payout cannot be silently replaced with a smaller principal refund");
     }
 
     static void Schema()
@@ -264,7 +426,7 @@ class Program
     {
         try
         {
-            DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); Schema();
+            DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); NestedStakeOwnership(); WarehouseNotifications(); CashRestoreReadiness(); AbandonBetResolution(); Schema();
             Console.WriteLine("SaveFailureRecovery: PASS " + checks + " assertions (real services, stores and coordinators; in-memory host)");
             return 0;
         }

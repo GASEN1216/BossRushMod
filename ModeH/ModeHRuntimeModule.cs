@@ -107,6 +107,7 @@ namespace BossRush
                 if (IsLevelAfterInit())
                 {
                     ModeHWarehouseStakeJournal.TryRecomputeDeferredSlotConsistency();
+                    ReconcileCashBetOnRestore();
                 }
                 EnsureContentScanned();
             }
@@ -243,6 +244,8 @@ namespace BossRush
             try
             {
                 ModeHWarehouseStakeJournal.TryRecomputeDeferredSlotConsistency();
+                // 选档/OnAwake 时官方钱包和主角可能尚未创建，早期对账失败须在关卡就绪后补做。
+                ReconcileCashBetOnRestore();
             }
             catch (Exception e)
             {

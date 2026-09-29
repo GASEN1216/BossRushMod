@@ -69,7 +69,7 @@ namespace UnityEngine
         public void Unload(bool all) { Unloaded=true; }
     }
     public struct Vector3 { public float x, y, z; public static Vector3 zero { get { return default(Vector3); } } }
-    public static class Time { public static float unscaledTime; }
+    public static class Time { public static float unscaledTime, realtimeSinceStartup; }
     public static class Debug { public static void LogError(string value) { } public static void LogWarning(string value) { } }
 }
 namespace UnityEngine.SceneManagement
@@ -157,6 +157,7 @@ public class CharacterMainControl {public static CharacterMainControl Main;publi
 public class SceneLoader
 {
     public static SceneLoader Instance=new SceneLoader();public static bool IsSceneLoading;
+    public static string LoadingComment;
     internal static TaskCompletionSource<bool> Pending;
     internal static int Loads,Returns;
     internal static bool LastEvacuated;

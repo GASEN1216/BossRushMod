@@ -185,7 +185,8 @@ namespace BossRush
         /// <summary>赛季在场内挂起后送玩家回基地的退出原因（ShutdownRuntime 按它走回基地 + 本场总结）。</summary>
         internal const string SuspendedExitReasonId = "technical_suspend_exit";
 
-        /// <summary>已为哪个状态序号发起过挂起离场（每次进入 Suspended 只发一次）。</summary>
+        /// <summary>挂起离场按运行 owner 与状态序号共同去重，跨季或换槽不能互相吞掉退出。</summary>
+        private long _suspendExitOwnerToken;
         private int _suspendExitStateSequence = -1;
 
         /// <summary>
@@ -208,7 +209,9 @@ namespace BossRush
         private bool TryDriveSuspendedExit()
         {
             if (_runState == null || _runState.Lifecycle != ModeHLifecycle.Suspended) return false;
-            if (_runState.StateSequence == _suspendExitStateSequence) return true;
+            if (_runState.OwnerToken == _suspendExitOwnerToken
+                && _runState.StateSequence == _suspendExitStateSequence) return true;
+            _suspendExitOwnerToken = _runState.OwnerToken;
             _suspendExitStateSequence = _runState.StateSequence;
             try
             {
@@ -294,8 +297,8 @@ namespace BossRush
                     BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
                     {
                         Title = L10n.T("这一季接不上了", "This season can't continue"),
-                        Body = L10n.T("游戏或模组更新过，或本季用到的内容已不可用，上一季没法接着打。放弃这一季后押的钱原样退回，可以重新开一季。",
-                            "The game or mod was updated, or content this season relies on is gone, so it can't continue. Abandon it to get your bet back and start a new season."),
+                        Body = L10n.T("游戏或模组更新过，或本季用到的内容已不可用，上一季没法接着打。放弃时，已有赛果的押注按输赢结清，其余押注原样退回，之后可以重新开一季。",
+                            "The game or mod was updated, or content this season relies on is gone, so it can't continue. Abandoning settles bets with recorded results as won or lost and refunds other bets, then lets you start a new season."),
                         ConfirmLabel = L10n.T("放弃这一季", "Abandon season"),
                         Danger = true,
                         OnConfirm = AbandonSeasonFromRecovery,

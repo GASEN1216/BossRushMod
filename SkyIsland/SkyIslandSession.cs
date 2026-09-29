@@ -214,7 +214,7 @@ namespace BossRush
             loadStarted = true;
             lease.BeginLoad();
             float deadline = Time.realtimeSinceStartup + 120;
-            while (root == null && lease.Error == null && assemblyError == null && Time.realtimeSinceStartup < deadline)
+            while (root == null && lease.Error == null && assemblyError == null && lease.HasSceneLoadTimeRemaining(ref deadline))
             {
                 // 官方 SceneLoader 遇到「已在切图」或身份未登记时只记一条 LogError 就同步返回：
                 // LoadFinished 立刻为 true 而 root 永远不会来，不能空等 120 秒。

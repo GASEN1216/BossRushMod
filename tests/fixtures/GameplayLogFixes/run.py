@@ -32,6 +32,8 @@ if __name__ == "__main__":
             ("ModeH/ModeHWarehouseStakeJournal.cs", "public static bool IsTerminalPhase("),
             ("ModeH/ModeHWarehouseStakeJournal.cs", "private static ModeHStakePhase ToPhase("),
             ("ModeH/ModeHWarehouseStakeJournal.cs", "public static void LoadPersisted("),
+            ("ModeH/ModeHWarehouseStakeJournal.cs", "public static bool TryCancelWithoutRemoval("),
+            ("ModeH/ModeHWarehouseStakeJournal.cs", "private static bool VerifyEscrowStillInInventory("),
         ],
         "internal partial class DragonKingAbilityController": [
             ("Integration/DragonKing/DragonKingAbilityController_AttackFlow.cs", "private void OnBossHurt("),

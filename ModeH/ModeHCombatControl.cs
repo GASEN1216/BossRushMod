@@ -440,6 +440,11 @@ namespace BossRush
         private bool TryEvaluateCowardice(out string cowardiceType)
         {
             cowardiceType = null;
+            // 死亡事件或本帧存活对账已经确认倒地后，只能走下方的接力/倒地结算。
+            // 否则见血胆怯会把尸体的 0 HP 当成逃跑触发条件，截断仍可用的接力。
+            if (_activeFighter == null || _activeFighter.Character == null
+                || _telemetry == null || _telemetry.IsDown(_activeFighter.ProfileId)
+                || IsDead(_activeFighter.Character)) return false;
             if (string.IsNullOrEmpty(_activeAnomalyId)) return false;
             if (!ModeHCommandCompatibilityRegistry.HasVerifiedAnomalyBehavior(
                     _activeStableKey, _activeAnomalyId))
@@ -738,7 +743,19 @@ namespace BossRush
             // 2) 清零解冻门（ModeHIsolationGuard 断言退出后必须为 false）
             ModeHRuntimeGates.SetStandInActive(false, 0);
 
-            // 3) 独立确认控制目标已回到玩家身体，不只信任原版回调
+            // 3) 先结束本次官方控制动作，再确认控制目标。StopAction 先清 Running 再执行
+            // OnStop，才能让其中的 SwitchToWeaponBeforeUse 通过 CanEditInventory；
+            // 直接切控制目标会在动作仍 Running 时丢掉玩家原先持枪槽的恢复记录。
+            try
+            {
+                CA_ControlOtherCharacter action = _playerBody != null ? _playerBody.ControlOtherCharacterAction : null;
+                if (action != null && action.Running && ReferenceEquals(action.targetCharacter, _controlledFighter))
+                    action.StopAction();
+            }
+            catch (Exception)
+            {
+                // 官方 OnStop 的外部事件可能抛异常，仍继续确认目标和偿还身体状态。
+            }
             if (_playerBody != null && !IsControllingCharacter(_playerBody))
             {
                 TryRestoreControllingCharacter(_playerBody);
