@@ -1157,7 +1157,10 @@ namespace BossRush
 
         #endregion
     }
-    /// <summary>Windows 滚轮可能送来 120 单位；规范成一格，避免共享灵敏度再次放大成整页跳动。</summary>
+    /// <summary>
+    /// 根因：官方 InputSystemUIInputModule 的 m_ScrollDeltaPerTick 默认 6，滚轮一格送来 scrollDelta≈6，
+    /// 再乘共享灵敏度 32 就是约 192px，一两格就到顶 / 到底。这里把单次事件规范成至多一格（32px）。
+    /// </summary>
     internal sealed class PetNestScrollRect : ScrollRect
     {
         public override void OnScroll(PointerEventData eventData)

@@ -234,7 +234,8 @@ namespace BossRush
                         TaskId = 1,
                         Done = () => CampaignGuideTable.IsExperienced(id) || CampaignGuideTable.IsCompleted(id),
                         Description = () => CampaignGuideTable.Describe(guide, CampaignGuideTable.IsExperienced(id)),
-                        ExtraHint = () => L10n.T("去试一次，回基地跟杰夫讲讲。", "Try it once, then tell Jeff about it back at base.")
+                        // 目标行已是直接动作；不再附旁白副行（2026-09-29 owner）。
+                        ExtraHint = null
                     }
                 },
                 Client = this,

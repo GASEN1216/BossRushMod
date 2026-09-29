@@ -82,6 +82,15 @@ def main() -> int:
         if snippet not in wait_method:
             return fail("ZombieModeTargetSceneActivationGuard: wait coroutine missing -> " + snippet)
 
+    # 官方 InitLevel 置 levelInited 后还要 0.25 秒才 SetPosition(startPos) 并置 afterInit；
+    # 只等 levelInited 会拿未定位的玩家做可达性判定，失败回基地还会让官方 SetPosition NRE。
+    flat_wait = " ".join(wait_method.split())
+    if "bool levelAfterInit = IsOfficialLevelAfterInitForZombieMode();" not in flat_wait or             "sceneLoaded && activeMatches && sceneLoaderDone && levelInited && levelAfterInit" not in flat_wait:
+        return fail("ZombieModeTargetSceneActivationGuard: initialization must wait for LevelManager.AfterInit")
+    after_init = extract_method(module, "internal static bool IsOfficialLevelAfterInitForZombieMode")
+    if "LevelManager.AfterInit" not in after_init:
+        return fail("ZombieModeTargetSceneActivationGuard: AfterInit probe must read LevelManager.AfterInit")
+
     print("ZombieModeTargetSceneActivationGuard: PASS")
     return 0
 

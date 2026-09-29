@@ -97,6 +97,8 @@ namespace BossRush
         private void LogFailure(string step, Exception error) { throw new Exception(step, error); }
     }
     internal static class ModeHSaveFlushCoordinator { internal static void EnsureSubscribed() { } }
+    // 本场总结（2026-09-29）：读档对账不进总结，启动时清一次记账
+    internal static class ModeHSessionSummary { internal static void Discard() { } }
     internal static class ModeHRuntimeGates
     {
         internal static int SlotGeneration;

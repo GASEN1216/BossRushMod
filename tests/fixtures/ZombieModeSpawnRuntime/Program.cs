@@ -9,7 +9,7 @@ internal static class Program
     private static ZombieModeRuntimeModule New(out ModBehaviour host,out ZombieModeRunState state)
     {
         Probe.Trace.Clear(); Assert(Probe.Yields.Count==0,"Previous asynchronous wait must be drained");
-        UnityEngine.AI.NavMesh.Reset();
+        UnityEngine.AI.NavMesh.Reset(); AstarPath.active=null;
         CharacterMainControl.Main=new CharacterMainControl("player") { Team=Teams.player };
         host=new ModBehaviour(); state=new ZombieModeRunState(); return new ZombieModeRuntimeModule(host,state);
     }
@@ -89,6 +89,28 @@ internal static class Program
         Assert(module.Resolve(new Vector3(20,0,0),false,out result) && result.x==21 && result.z==1 && result.y==ZombieModeTuning.NavMeshLiftOffset,"Spawn must use full sampled XYZ, including lift");
         Assert(!module.Resolve(new Vector3(1,0,0),true,out result),"Virtual ring must preserve player-safe distance");
         UnityEngine.AI.NavMesh.Reset();
+        // 官方关卡只有 A* 图、没有 Unity NavMesh：可达性必须以 A* 连通区为准（Demo 地图收集为 0 的回归）。
+        var astar=new AstarPath(); AstarPath.active=astar; UnityEngine.AI.NavMesh.SampleSuccess=false;
+        var playerNode=new Pathfinding.GraphNode { Area=1 }; var connected=new Pathfinding.GraphNode { Area=1 }; var island=new Pathfinding.GraphNode { Area=2 };
+        Func<Pathfinding.GraphNode,Vector3,Func<Vector3,Pathfinding.NNInfo>> graph=(node,offset)=>p=>p.x==0&&p.z==0
+            ? new Pathfinding.NNInfo { node=playerNode,position=p }
+            : new Pathfinding.NNInfo { node=node,position=p+offset };
+        astar.Nearest=graph(connected,new Vector3(1,0,1));
+        Assert(module.Resolve(new Vector3(20,0,0),false,out result) && result.x==21 && result.z==1 && result.y==ZombieModeTuning.NavMeshLiftOffset,"A* graph must accept connected official points without Unity NavMesh, using full node XYZ plus lift");
+        astar.Nearest=graph(island,Vector3.zero);
+        Assert(!module.Resolve(new Vector3(20,0,0),false,out result),"A* point in another connected area must be rejected");
+        Assert(module.TrySpawnZombieModeNormalZombieAsync(1,new Vector3(20,0,0)).Inner.Result==null && host.Requests.Count==0,"Spawn core must not receive A*-disconnected points");
+        astar.Nearest=graph(connected,new Vector3(0,3,0));
+        Assert(!module.Resolve(new Vector3(20,0,0),false,out result),"A* node on another floor must be rejected");
+        astar.Nearest=graph(connected,new Vector3(5,0,0));
+        Assert(!module.Resolve(new Vector3(20,0,0),false,out result),"A* node beyond the sample radius must be rejected");
+        astar.Nearest=graph(new Pathfinding.GraphNode { Area=1,Walkable=false },Vector3.zero);
+        Assert(!module.Resolve(new Vector3(20,0,0),false,out result),"Unwalkable A* node must be rejected");
+        astar.Nearest=graph(connected,Vector3.zero); astar.isScanning=true;
+        Assert(!module.Resolve(new Vector3(20,0,0),false,out result),"A* graph being scanned must not be trusted");
+        astar.isScanning=false;
+        Assert(!module.Resolve(new Vector3(1,0,0),true,out result),"A* virtual ring must preserve player-safe distance");
+        AstarPath.active=null; UnityEngine.AI.NavMesh.Reset();
         var source=new CharacterMainControl("plague"); var poison=new Duckov.Buffs.Buff(); var receiver=CharacterMainControl.Main.mainDamageReceiver;
         module.DealZombieModeAreaDamageToPlayer(1,source,Vector3.zero,4,4,poison);
         Assert(receiver.Calls==1 && receiver.Last.buff==poison && receiver.Last.buffChance==1 && receiver.Last.fromCharacter==source && receiver.Last.damageValue==4,"Cloud tick must submit official poison Buff, guaranteed chance, source and damage in one receiver hit");

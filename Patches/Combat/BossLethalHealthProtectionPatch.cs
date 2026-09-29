@@ -81,7 +81,29 @@ namespace BossRush
                 hurtDepth--;
             }
 
+            if (__exception != null) LogHurtFaultLimited(__exception);
             return __exception;
+        }
+
+        // Hurt 链路异常的原始栈（2026-09-29 Mode H 实机：DamageAction / ZoneDamage 触发的 NRE 只显示到
+        // Health.Hurt_PatchN——带 Finalizer 的补丁方法会重抛，栈被截在补丁方法这一层，看不出是
+        // 官方 Hurt 体、哪个监听器还是哪个 Mod 的补丁抛的）。异常照旧原样返回，这里只留证据；
+        // 只在出异常时进来，5 秒节流，热路径零成本。
+        private static float _lastHurtFaultLogTime = -1000f;
+
+        private static void LogHurtFaultLimited(Exception exception)
+        {
+            try
+            {
+                float now = UnityEngine.Time.realtimeSinceStartup;
+                if (now - _lastHurtFaultLogTime < 5f) return;
+                _lastHurtFaultLogTime = now;
+                UnityEngine.Debug.LogWarning("[BossRush] Health.Hurt 链路异常（原始栈，异常照常抛出）: " + exception);
+            }
+            catch
+            {
+                // 诊断日志失败不得影响宿主伤害流程
+            }
         }
 
         /// <summary>

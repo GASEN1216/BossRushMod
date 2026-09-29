@@ -32,6 +32,8 @@ namespace BossRush
                     int id = ids[(start + offset) % ids.Length];
                     // 基础配装使用官方完整物品，防止自定义主动能力在临时角色上建立第二个 owner。
                     if (id <= 0 || id >= 500001) continue;
+                    // 其它 Mod 的物品（例如武器拓展 Mod 的 92235「荷鲁斯之眼」）照样可以抽到；
+                    // 枪械靠下面的弹匣判据把关，实例上弹匣仍不可用时装配器降级为只放背包弹药。
                     Item item = ItemAssetsCollection.GetPrefab(id);
                     if (item == null || item.TypeID != id || item.name == "FallbackItem" || item.Sticky
                         || item.GetStatValue("ControlMindType".GetHashCode()) != 0f) continue;
@@ -39,6 +41,8 @@ namespace BossRush
                     if (!slot.CanPlug(item)) continue;
                     bool gunSlot = slot.Key == "PrimaryWeapon" || slot.Key == "SecondaryWeapon";
                     ItemSetting_Gun gun = item.GetComponent<ItemSetting_Gun>();
+                    // 枪械槽必须真能装弹：与装配器同一判据（弹匣容器存在且容量 > 0），预选阶段就跳过。
+                    if (gunSlot && !ModeHLoadoutKitApplicator.HasMagazine(item, gun)) continue;
                     int ammoTypeId = gunSlot ? ResolvePreparedAmmoTypeId(item, gun) : 0;
                     if (gunSlot && ammoTypeId <= 0) continue;
                     ModeHKitSpec spec = new ModeHKitSpec

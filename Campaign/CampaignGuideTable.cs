@@ -111,23 +111,25 @@ namespace BossRush
         internal static string Describe(Definition definition, bool done)
         {
             if (definition == null) return string.Empty;
+            // 目标行只写玩家要做的动作（2026-09-29 owner：不重复任务描述，不再附「去试一次」之类的旁白）；
+            // 判据与 CampaignGuideFacts 一一对应，交付仍在基地找杰夫。
             string objective;
             switch (definition.Id)
             {
-                case ModeG: objective = L10n.T("开始一局宿命回响", "Start a Fate Echo run"); break;
-                case ModeH: objective = L10n.T("完成一场黑市鸭王杯比赛", "Finish one Black Market Duck King Cup match"); break;
-                case PetNest: objective = L10n.T("孵出一只崽，或带崽出击一次", "Hatch a cub or take one on a raid"); break;
-                case RandomEvents: objective = L10n.T("在普通 BossRush 中触发一次随机事件", "Trigger a random event in ordinary BossRush"); break;
-                case SkyIslandGear: objective = L10n.T("带一件天空岛 Boss 专属装备回基地", "Bring one island boss gear item back to base"); break;
-                case ModeD: objective = L10n.T("开始一局白手起家", "Start a From Scratch run"); break;
-                case ModeE: objective = L10n.T("开始一局划地为营", "Start a Territory run"); break;
-                case ModeF: objective = L10n.T("开始一局血猎追击", "Start a Blood Hunt run"); break;
-                case Zombie: objective = L10n.T("选好开局流派，开始一局丧尸模式", "Choose a starting build and start a Zombie run"); break;
-                case Garden: objective = L10n.T("建成菜地", "Build the garden"); break;
-                case Trophy: objective = L10n.T("在展示架或假人上陈列一件 Boss 战利品", "Display a Boss trophy on a rack or mannequin"); break;
-                case AffixForge: objective = L10n.T("带一件已有词缀的装备回基地", "Bring gear with a forged affix back to base"); break;
-                case Reforge: objective = L10n.T("带一件重铸过的装备回基地", "Bring reforged gear back to base"); break;
-                case DailyReport: objective = L10n.T("在基地日报中签到一次", "Sign in once through the daily paper at base"); break;
+                case ModeG: objective = L10n.T("用船票和宿命回响信物开始一局宿命回响", "Start a Fate Echo run with a ticket and an Echo of Fate token"); break;
+                case ModeH: objective = L10n.T("在黑市鸭王杯看完一场比赛", "Watch one Black Market Duck King Cup match"); break;
+                case PetNest: objective = L10n.T("在基地搭建遗种巢，孵出一只崽（或带崽出击一次）", "Build a Pet Nest at base and hatch a cub (or take one on a raid)"); break;
+                case RandomEvents: objective = L10n.T("在普通 BossRush 中遇到一次随机事件", "Run into a random event in ordinary BossRush"); break;
+                case SkyIslandGear: objective = L10n.T("击败天空岛 Boss，把一件它的专属装备带回基地", "Beat a Sky Island boss and bring one of its gear pieces back to base"); break;
+                case ModeD: objective = L10n.T("清空装备，只带 BossRush 船票开始一局白手起家", "Empty your gear and start a From Scratch run with only a BossRush ticket"); break;
+                case ModeE: objective = L10n.T("卸下装备，带营旗开始一局划地为营", "Take off your gear and start a Territory run with a faction flag"); break;
+                case ModeF: objective = L10n.T("卸下装备，带船票和血猎收发器开始一局血猎追击", "Take off your gear and start a Blood Hunt run with a ticket and a Blood Hunt receiver"); break;
+                case Zombie: objective = L10n.T("用尸潮邀请函进图，选好开局流派", "Enter with a Horde Invitation and choose a starting build"); break;
+                case Garden: objective = L10n.T("在后山工地建成菜地", "Build the garden at the backyard site"); break;
+                case Trophy: objective = L10n.T("把一件 Boss 战利品摆上展示架或假人", "Put a Boss trophy on a display rack or mannequin"); break;
+                case AffixForge: objective = L10n.T("在哥布林处锻出一条词缀，带着该装备回基地", "Forge an affix at the goblin and bring that gear back to base"); break;
+                case Reforge: objective = L10n.T("在哥布林处重铸一件装备，带着它回基地", "Reforge a piece of gear at the goblin and bring it back to base"); break;
+                case DailyReport: objective = L10n.T("在基地邮箱打开日报并签到", "Open the daily paper at the base mailbox and sign in"); break;
                 default: return string.Empty;
             }
             return objective + (done ? L10n.T("（已完成）", " (done)") : string.Empty);

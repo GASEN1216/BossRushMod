@@ -1,5 +1,11 @@
 # Mode H：百战留痕（黑市鸭王杯）
 
+2026-09-29 owner 实测修订（COMPAT / SCHEMA+，L1/L2，观感待 L3）：
+- 赛前各页不再挂警告 / 说明文字：选人页去掉页头引导（`BuildDraftPageContent` 不写 `page.Body`）；赔率页不再打开顶部风险横幅（「……长期来看，庄家总是赢的」）；押注行只留余额 / 已押 / 估值，押物品页只留已选件数与估值；本场规则小字不再附「对面有狠角色」。`ModeHPrematchDeclutterGuard` 钉住。
+- 调整页页签改为「阵容 / 配装 / 口令」，配装页左列首发、右列接力，各列是该选手全部基础装备 + 可换整备（`AddGearOptions`），与赛前对照页人物卡的装备一致。玩家每次点选按选手身份写入本槽独立 key `BossRush_ModeHKitPreference_v1`（`ModeHKitPreferenceLedger`，走 `BossRushSlotJsonStore`，旧档无 key 读出空表）；新建阵容先沿用上一场，没有（同场重开清空阵容、换赛季）再读账本，只取本季已解锁、可选、同槽一件、不超上限的整备。`ModeHLoadoutPreferenceGuard` 与 `ModeHPreparedEquipment` / `ModeHMarketAudit` 回归覆盖。
+- 地图选择器里鸭王杯条目与 BossRush 同一句 `UpdateEntryThumbnailWithImage(uiEntry, mapConfig.previewImageName)`，不再按入口种类分叉、也不再清空 `fullScreenImage`（取代下文 2026-09-25 的横幅清除）。
+- 新增「本场总结」（`ModeHSessionSummary`，纯运行时）：这一趟里出了结算的场次、每场押注账本快照（锁盘前、结算相位、原样退回时抄）、技术中止、名人堂；赛季结束或观战退出回基地前，在关停清状态之前组装（`BuildSessionSummaryContent`），用结算页版式弹出，唯一按钮「返回基地」（ESC 同），点完才 `SafeExitFromModeH`；弹不出来、F3 自动验收在跑、这一趟没有事实时照旧直接离场；官方途径离场只给「关闭」；场景被切走时自行收起。放弃赛季后有原样退回也给一张只能关闭的总结。`ModeHSessionSummaryGuard` 钉住。
+
 2026-09-28 修复（COMPAT，L1/L2，完整六场待 L3）：选人页移除风险警告，开盘动画及等待分支删除，倍率保留在赛前对照页；锁盘与押注成功后直接生成。调整页同时列出选手身上的全部基础装备和可用替换装备，基础装备按实际槽位标记「已带上」，点击基础装备会撤掉该槽的替换；页签件数取同一份装备预览。每次修改随 Season 保存，新一场按 profileId 沿用上一场装备，换首发时装备跟选手走。
 
 Season 暂存现在深拷贝整个 DTO 和嵌套列表，避免官方保存忙时运行时继续修改原对象、旧摘要与待写内容失配。临时写入异常保留待写快照供重试；真实读回摘要异常仍进入保护。战斗帧或同帧节流的正常延期不再记成「落盘失败」，显式锁盘/结算仍要求真实写入。预览不装备用弹、实战每枪固定 240 发，低堆叠弹药可能耗尽临时选手原背包；装配器现在只为临时角色的备用弹按需增加容量，弹匣容量及冻结弹量保持原规则。生成技术重试与真实保存失败使用发布版日志，包含场次、阶段和具体原因。
@@ -113,7 +119,7 @@ scene handle、主角、`LevelManager.LevelInited`、`LevelManager.AfterInit`、
   typed pending entry kind（`BossRushPendingEntryKind.ModeH`），与 Mode G 互斥。
 - `modeHEnabled` 字段与旧键 `BossRush_ModeHEnabled` 仅为兼容保留；Mode H 现属默认内容，
   不再注册总开关，并会在读配置后强制恢复为开启。
-- 选人页不显示风险警告；押注后果在赛前选项及真实押品确认框说明，`BossRush_ModeH_RealStakeRiskNotice` key 为兼容保留。
+- 选人页、看盘页、赔率页都不显示风险警告（2026-09-29 起押注行也不再附输赢说明）；真押仓库物品时锁盘前的共享确认框仍写后果，`BossRush_ModeH_RealStakeRiskNotice` key 为兼容保留。
   2026-09-24 起文案改为押钱口径（「押的是你的钱……押金归庄家」，见下文「押钱」一节）；
   key 不变，`ModeHLocalizationGuard` 按新口径核对中英关键词。
 - 五种拒绝原因（内容未就绪、地图不支持、展示资源缺失、旧模式冲突、生产认证失败）
@@ -805,4 +811,19 @@ owner 人工实测第 6 条：「一进去就在跑什么契约」「选完武�
 
 选人签约和幕间自动流程现在只推进到 `MatchBrief`，不再跳过赛前决策页。看盘页用左右独立滚动列列出我方首发/接力、每名敌人的装配属性条与数字；押注选项固定在该页下方，玩家点「开打」后才进入整备、锁盘和开战。选人页不提供押注选择。
 
-从地图选择器进入鸭王杯时，鸭王杯条目清除 `MapSelectionEntry.fullScreenImage`，保留地点卡片与地图名，避免模式横幅遮住地图选择。
+（已过时，2026-09-29 取代：预览图改为与 BossRush 同源）从地图选择器进入鸭王杯时，鸭王杯条目清除 `MapSelectionEntry.fullScreenImage`，保留地点卡片与地图名，避免模式横幅遮住地图选择。
+
+## 2026-09-29 比赛中的运行时韧性（COMPAT，L1/L2，待 L3）
+
+玩家实机：打一半镜头回到看台身体、`运行时阶段失败: update - NullReferenceException`、`Health.Hurt_PatchN` 的 NRE、「都死完了还提示有一个敌人」到时判负、第三场「确认 → 开盘 → 又回确认」三次、左侧「恢复」面板关不掉、`kit_apply_magazine_missing:prepared_SecondaryWeapon_92235`、拍铃被「招牌口令的持有者不在场上」拒绝。
+
+- **Hurt NRE 的来源**：创意工坊 `BattlefieldTypeKillNotice` 的 `ModBehaviour.OnDead(Health, DamageInfo)` 挂在静态 `Health.OnDead` 上，不判空直接读 `damageInfo.fromCharacter.IsMainCharacter`（IL 偏移 68–74）。DoT（`DamageAction`）、伤害区（`ZoneDamage`）和 Mode H 危险边界的伤害 `fromCharacter` 都是 null，致死时在官方死亡分支里抛 NRE：排在它后面的 `ModeHEventRouter` 收不到死亡，`SetActive(false)` 也不执行；危险边界又在 Mode H 每帧驱动里，异常冒到 `OnUpdate` 就整局关停、释放观战租约。栈只到 `Hurt_PatchN` 是因为带 Finalizer 的补丁会重抛；`BossRushHealthHurtContextPatch` 的 Finalizer 现在按 5 秒节流打印原始栈（异常照常抛出）。
+- **每帧异常分级**（`HandleUpdateFailure`）：交战 / 生成相位按技术故障同场重开，页面相位保留现场，连续约 120 帧失败才走旧的关停兜底；存档与押钱账本的 Tick 单独 try，不再牵连比赛。危险边界伤害走 `ModeHMatchRules.HurtAtEdge`，宿主链路异常被接住并留栈。
+- **存活对账**：`ModeHCombatTelemetry.SweepDepartedParticipants` 每帧按事实复核存活名单，已判死、已销毁、失活超过 3 秒的敌军按「死亡、击杀者未知」走原有出列，登场选手同理补倒地；在 `ModeHCombatControl.Tick` 里排在胜利与 180 秒超时之前，并且「敌军全灭」先于超时判定。
+- **预选配装兼容其它 Mod 的枪**：`BuildPreparedKits` 不再排除其它 Mod 注册的动态物品（例如 92235 是武器拓展 Mod 的枪），枪械槽按模板弹匣判据把关（`ModeHLoadoutKitApplicator.HasMagazine`：有弹匣容器且容量 > 0）；实例上弹匣仍不可用时，`TryApplyAmmo` 把冻结弹量全部放进临时角色背包，由官方换弹装填，不再判 `kit_apply_magazine_missing`。后者正是「确认 → 开盘 → 又回确认」三次后挂起的根因。
+- **恢复壳不进玩家路径**：Recovering / ErrorRecoveryPending 不再弹恢复壳，技术重试静默；场内进入 Suspended（自动重试用完）后下一帧送回基地（`SuspendedExitReasonId`，照常弹本场总结），赛季与押注保留；鸭王杯入口有可续赛季时正式构建直接续赛（`ContinueSeasonFromEntry`，关停后按存档重建内存 owner）；续赛失败在正式构建只给提示或「放弃这一季」确认框。Dev 构建、未结清的旧押品 journal 仍打开恢复壳，恢复壳恒有「稍后处理」，「技术中止」一组只在 Dev 显示。
+- **拍铃给所有人用**：删除 `command_signature_owner_absent` 拒绝与文案；handoff「接力登场后才成立」保留。
+- **AI 靠近兜底**：目标已锁定但对手在视距八成之外时，每名参赛者按 1.5 秒节流发一次 `MoveToPos` 走近（ERROR 受控选手、口令窗口中的登场选手、寻路未返回时不插手）。
+- **押钱在战报落盘后结**：`BeginMatchSettlement` 里 `SettleCashBetForMatch` 挪到 `match_settling` 耐久落盘之后；落盘失败挂起时押注保持 Reserved，下一场下注前（`ReserveStandingCashBet` 先调 `ReconcileCashBetOnRestore`）或读档时按战报补结。
+
+守卫 `ModeHRuntimeResilienceGuard`（18 条变异探针）；回归 `ModeHMarketAudit` 新增存活对账与边界异常隔离断言。

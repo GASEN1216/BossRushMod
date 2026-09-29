@@ -11,7 +11,7 @@ namespace BossRush
     /// - 赛前只能从通用口令、先发招牌口令、接力者招牌口令中锁定一条；
     /// - 战中每场只有一次拍铃，用 CAS 保证唯一性；拍铃立即触发预选口令，
     ///   不暂停战斗、不弹菜单；
-    /// - 招牌口令只有其持有者在场时才响应；handoff 只有 matchRelay 实际接力后才有效；
+    /// - 拍铃对当前登场的任一己方选手生效（招牌口令不要求持有者在场）；handoff 只有 matchRelay 实际接力后才有效；
     /// - 口令窗口结束、倒地、接力、技术中止、切图与 shutdown 都调用同一幂等 Restore；
     /// - ReportOnly / Unavailable 口令不得进入可选择列表。
     /// </summary>
@@ -23,7 +23,6 @@ namespace BossRush
         private readonly ModeHCommandFireContext _fireContext = new ModeHCommandFireContext();
 
         private string _lockedCommandId;
-        private string _lockedOwnerProfileId;
         private int _bellUsesRemaining;
         private bool _bellConsumed;
         private string _activeCommandId;
@@ -113,7 +112,10 @@ namespace BossRush
             return relayOwns ? relay.profileId : (starterOwns ? starter.profileId : null);
         }
 
-        /// <summary>锁盘：冻结本场口令与拍铃次数。</summary>
+        /// <summary>
+        /// 锁盘：冻结本场口令与拍铃次数。<paramref name="ownerProfileId"/> 只保留签名兼容，
+        /// 拍铃不再按招牌持有者拒绝（2026-09-29 owner）。
+        /// </summary>
         public bool LockCommand(string commandId, string ownerProfileId, long ownerToken, out string failureReasonId)
         {
             failureReasonId = null;
@@ -123,7 +125,6 @@ namespace BossRush
                 return false;
             }
             _lockedCommandId = commandId;
-            _lockedOwnerProfileId = ownerProfileId;
             _ownerToken = ownerToken;
             _bellUsesRemaining = ModeHConfig.BellUsesPerMatch;
             _bellConsumed = false;
@@ -154,14 +155,13 @@ namespace BossRush
                 || failureReasonId == "command_not_locked"
                 || failureReasonId == "command_no_active_fighter"
                 || failureReasonId == "command_spec_missing"
-                || failureReasonId == "command_signature_owner_absent"
                 || failureReasonId == "command_requires_relay"
                 || failureReasonId == "command_requires_enemy_count"
                 || failureReasonId == "command_lock_empty";
         }
 
         /// <summary>
-        /// 拍铃：每场唯一一次，CAS 保证；招牌口令只有持有者在场时才响应。
+        /// 拍铃：每场唯一一次，CAS 保证；口令作用于当前登场选手，不看持有者是谁。
         /// </summary>
         public bool TryRingBell(
             AICharacterController activeAi,
@@ -207,20 +207,12 @@ namespace BossRush
                 return false;
             }
 
-            // 招牌口令：只有其持有者在场时才响应
-            if (spec.IsSignature)
+            // 拍铃对场上任何一名己方选手都生效（2026-09-29 owner：「拍铃本来就是给所有人用的」）：
+            // 招牌口令不再要求持有者在场，只保留 handoff 这类「接力登场后才成立」的语义条件。
+            if (spec.IsSignature && spec.RequiresRelayEntered && !relayEntered)
             {
-                if (!string.IsNullOrEmpty(_lockedOwnerProfileId)
-                    && !string.Equals(_lockedOwnerProfileId, activeProfileId, StringComparison.Ordinal))
-                {
-                    failureReasonId = "command_signature_owner_absent";
-                    return false;
-                }
-                if (spec.RequiresRelayEntered && !relayEntered)
-                {
-                    failureReasonId = "command_requires_relay";
-                    return false;
-                }
+                failureReasonId = "command_requires_relay";
+                return false;
             }
             if (spec.RequiresEnemyCountAtLeast > 0 && enemyCount < spec.RequiresEnemyCountAtLeast)
             {

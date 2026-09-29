@@ -1122,13 +1122,35 @@ namespace BossRush
         internal override RandomEventValidationOutcome GetValidationOutcome(out string metrics)
         {
             int entries = _shop != null && _shop.entries != null ? _shop.entries.Count : 0;
+            int interactions = CountActiveMerchantInteractions();
             metrics = "completed=" + _spawnCompleted + ",failed=" + _spawnFailed
                 + ",merchant=" + (_merchant != null) + ",shop=" + (_shop != null)
-                + ",entries=" + entries;
+                + ",entries=" + entries + ",interactions=" + interactions;
             if (!_spawnCompleted) return RandomEventValidationOutcome.Pending;
-            return !_spawnFailed && _merchant != null && _shop != null && entries > 0
+            // 只允许「神秘商人」一个入口：原版根交互「交易」必须已随生成流程移除。
+            return !_spawnFailed && _merchant != null && _shop != null && entries > 0 && interactions == 1
                 ? RandomEventValidationOutcome.Passed
                 : RandomEventValidationOutcome.Failed;
+        }
+
+        /// <summary>验收用：商人身上仍启用的交互数（仅 F3 读取，不在热路径）。</summary>
+        private int CountActiveMerchantInteractions()
+        {
+            if (_merchant == null) return 0;
+            try
+            {
+                InteractableBase[] all = _merchant.GetComponentsInChildren<InteractableBase>(false);
+                int count = 0;
+                for (int i = 0; i < all.Length; i++)
+                {
+                    if (all[i] != null && all[i].enabled) count++;
+                }
+                return count;
+            }
+            catch (Exception)
+            {
+                return -1;
+            }
         }
 
         internal override void OnCleanup(RandomEventContext ctx, RandomEventEndReason reason)

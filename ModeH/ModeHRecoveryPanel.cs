@@ -68,7 +68,34 @@ namespace BossRush
 
             if (_root == null) CreatePanel(headline);
             UpdateLines(lines);
-            RebuildActions(actions, allowActions);
+            RebuildActions(EnsureCloseAction(actions), allowActions);
+        }
+
+        /// <summary>
+        /// 恒有一条能点的「稍后处理」（2026-09-29：关停后内存 owner 清空时，调用方给出的动作是空表，
+        /// 面板占着模态输入却一个按钮都没有，ESC 也关不掉）。调用方已给了可点的取消项就原样用。
+        /// </summary>
+        private IList<ModeHActionData> EnsureCloseAction(IList<ModeHActionData> actions)
+        {
+            if (actions != null)
+            {
+                for (int i = 0; i < actions.Count; i++)
+                {
+                    ModeHActionData action = actions[i];
+                    if (action != null && action.IsCancel && action.BypassReadOnly
+                        && action.Interactable && action.OnClick != null) return actions;
+                }
+            }
+            List<ModeHActionData> result = actions != null
+                ? new List<ModeHActionData>(actions) : new List<ModeHActionData>();
+            result.Add(new ModeHActionData
+            {
+                Label = L10n.T("稍后处理", "Later"),
+                OnClick = delegate { Hide(); },
+                BypassReadOnly = true,
+                IsCancel = true,
+            });
+            return result;
         }
 
         private void CreatePanel(string headline)
@@ -236,7 +263,8 @@ namespace BossRush
         {
             List<string> lines = new List<string>();
 
-            if (!string.IsNullOrEmpty(technicalReasonId))
+            // 「技术中止」一组是开发诊断（2026-09-29 owner：不进玩家路径），只在 Dev 构建显示
+            if (!string.IsNullOrEmpty(technicalReasonId) && ModBehaviour.DevModeEnabled)
             {
                 AddGroupHeader(lines, L10n.T("技术中止", "Technical stop"));
                 lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_TechnicalAbort"));

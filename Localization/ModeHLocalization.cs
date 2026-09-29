@@ -675,8 +675,6 @@ namespace BossRush
                 "No fighter can take the command; no bell use was consumed");
             Add(map, "BellFailed_command_spec_missing", "锁定的口令已失效，未消耗拍铃次数",
                 "The locked command is no longer valid; no bell use was consumed");
-            Add(map, "BellFailed_command_signature_owner_absent", "招牌口令的持有者不在场上",
-                "The signature command's owner is not in the arena");
             Add(map, "BellFailed_command_requires_relay", "该招牌口令要接力者上场后才能下",
                 "That signature command requires the relay fighter to enter first");
             Add(map, "BellFailed_command_requires_enemy_count", "场上敌人数量不满足该口令的条件",

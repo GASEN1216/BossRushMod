@@ -269,8 +269,18 @@ namespace BossRush
                 ItemSetting_Gun gun = gunItem.GetComponent<ItemSetting_Gun>();
                 if (gun == null || gunItem.Inventory == null || gun.Capacity <= 0)
                 {
-                    failureReasonId = "kit_apply_magazine_missing:" + kit.Spec.KitId;
-                    return false;
+                    // 其它 Mod 的枪模板能装弹、实例上弹匣暂不可用（容量属性晚一步才算好等）：
+                    // 不判技术故障重开，冻结弹量全部放进临时角色背包，由官方换弹从背包装填。
+                    if (gun != null) gun.SetTargetBulletType(ammoTypeId);
+                    string fallbackReason;
+                    if (!TryStoreAmmo(characterItem.Inventory, ammoTypeId, kit.Spec.AmmoCount,
+                            null, application, out fallbackReason))
+                    {
+                        failureReasonId = fallbackReason + ":" + kit.Spec.KitId;
+                        return false;
+                    }
+                    UnityEngine.Debug.LogWarning("[ModeH] 枪械弹匣不可用，弹药改放背包: " + kit.Spec.KitId);
+                    return true;
                 }
                 if (GunBulletCountCacheField == null)
                 { failureReasonId = "kit_apply_ammo_cache_binding_missing:" + kit.Spec.KitId; return false; }
@@ -340,6 +350,16 @@ namespace BossRush
                 count -= stack;
             }
             return true;
+        }
+
+        /// <summary>
+        /// 枪械是否带可用弹匣（预选配装用，与 TryApplyAmmo 的弹匣判据相同，读物品模板）。
+        /// 只读物品模板，不碰任何玩家资产。no-throw。
+        /// </summary>
+        internal static bool HasMagazine(Item weapon, ItemSetting_Gun gun)
+        {
+            try { return weapon != null && gun != null && weapon.Inventory != null && gun.Capacity > 0; }
+            catch (Exception) { return false; }
         }
 
         /// <summary>按枪械的 `ItemSetting_Gun.TargetBulletID` 解析弹药 typeId。</summary>

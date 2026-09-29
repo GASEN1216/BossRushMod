@@ -89,6 +89,8 @@ namespace BossRush
     internal partial class ModeHCombatTelemetry { public HashSet<string> _enteredProfileIds = new HashSet<string>(); }
     internal class ModeHCombatControl { public ModeHInjuryAndScarSystem InjuryAndScar = new ModeHInjuryAndScarSystem(); }
     internal sealed class ModeHUI { public int Closed; public void ClosePage() { Closed++; } }
+    // 本场总结（2026-09-29）：读档 / 换槽对账不进任何一趟的总结；这里只记清了几次
+    internal static class ModeHSessionSummary { public static int Discards; public static void Discard() { Discards++; } }
     internal partial class ModeHRuntimeModule
     {
         public ModeHSeasonDto _season;
@@ -135,6 +137,7 @@ namespace BossRush
         private void RequestTechnicalRetry(string reason) { Failure = reason; }
         private void RequestExit(ModeHExitReason exit, string reason) { Exits++; }
         private void OpenRecoveryShell(string failure) { Failure = failure; }
+        private void PresentRecoveryFailure(string failure) { Failure = failure; }
         // 2026-09-24：锁盘 / 押品被拒的原因画在按钮带上方（就地失败提示）
         internal string PageFailure;
         private void NotePageFailure(string text) { PageFailure = text; }

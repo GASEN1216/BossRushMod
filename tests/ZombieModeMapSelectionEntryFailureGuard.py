@@ -75,6 +75,18 @@ def main() -> int:
     if gate_index < 0 or gate_index > load_base_index:
         return fail("ZombieModeMapSelectionEntryFailureGuard: LoadBaseScene must be gated before it is called")
 
+    # 回基地必须等官方 InitLevel 走完（afterInit）或关卡已不存在，否则官方 SetPosition NRE、DOTween 报目标丢失。
+    if "owner.StartCoroutine(LoadBaseSceneAfterOfficialLevelInitialized());" not in fail_method:
+        return fail("ZombieModeMapSelectionEntryFailureGuard: LoadBaseScene must be deferred until official level init finishes")
+    deferred = extract_method(runtime_module, "private System.Collections.IEnumerator LoadBaseSceneAfterOfficialLevelInitialized")
+    safe = extract_method(runtime_module, "private static bool IsOfficialLevelSafeToLeaveForZombieMode")
+    if "IsOfficialLevelSafeToLeaveForZombieMode()" not in deferred or "SceneLoader.Instance.LoadBaseScene(null, true)" not in deferred:
+        return fail("ZombieModeMapSelectionEntryFailureGuard: deferred return must wait on the level-safe probe before LoadBaseScene")
+    if deferred.find("IsOfficialLevelSafeToLeaveForZombieMode()") > deferred.find("SceneLoader.Instance.LoadBaseScene(null, true)"):
+        return fail("ZombieModeMapSelectionEntryFailureGuard: level-safe wait must precede LoadBaseScene")
+    if "LevelManager.AfterInit" not in safe or "SceneLoader.IsSceneLoading" not in safe:
+        return fail("ZombieModeMapSelectionEntryFailureGuard: level-safe probe must check SceneLoader and LevelManager.AfterInit")
+
     helper = extract_method(runtime_module, "internal bool ShouldReturnToBaseAfterZombieModePreActiveFailure")
     if not helper:
         return fail("ZombieModeMapSelectionEntryFailureGuard: return-to-base helper not found")

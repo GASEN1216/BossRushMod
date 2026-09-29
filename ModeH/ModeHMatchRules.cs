@@ -121,9 +121,33 @@ namespace BossRush
                 if (distanceSquared <= _radius * _radius * SafeRadiusFraction * SafeRadiusFraction) continue;
                 _edgeDamage.damageValue = participant.Health.MaxHealth * EdgeDamageFractionPerSecond;
                 _edgeDamage.damagePoint = participant.Reference.Character.transform.position;
-                participant.Health.Hurt(_edgeDamage);
+                HurtAtEdge(participant.Health);
             }
             return true;
+        }
+
+        private float _lastEdgeHurtFaultLogTime = -1000f;
+
+        /// <summary>
+        /// 危险边界的一跳伤害。Health.Hurt 会串起官方死亡 / 受伤事件和所有 Mod 挂的 Harmony 补丁，
+        /// 其中任何一个抛异常都会原样冒到这里——而本方法在 Mode H 每帧驱动里，异常再往上冒就会被
+        /// 宿主 OnUpdate 当成「运行时阶段失败」，整场关停、观战镜头回到看台身体（2026-09-29 实机）。
+        /// 伤害已经扣下去了（异常发生在扣血之后的事件派发里），这里只把异常挡在比赛驱动之外并留原始栈；
+        /// 死亡事件若因此丢失，由遥测的存活对账兜住。
+        /// </summary>
+        private void HurtAtEdge(Health health)
+        {
+            try
+            {
+                health.Hurt(_edgeDamage);
+            }
+            catch (Exception e)
+            {
+                float now = Time.realtimeSinceStartup;
+                if (now - _lastEdgeHurtFaultLogTime < 5f) return;
+                _lastEdgeHurtFaultLogTime = now;
+                Debug.LogWarning("[ModeH] 危险边界伤害触发的 Health.Hurt 链路异常（已隔离，比赛继续）: " + e);
+            }
         }
 
         internal static float HorizontalDistanceSquared(Vector3 position, Vector3 center)

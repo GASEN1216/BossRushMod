@@ -34,7 +34,20 @@ namespace BossRush
                 AddZombieModeSpawnPointArray(runState.MapProfile.StaticSpawnPoints, false);
             }
 
-            ModBehaviour.DevLog("[ZombieMode] 收集刷怪点: " + runState.SpawnPoints.Count);
+            // 官方点与地图画像点都与玩家不连通时（例如玩家出生在独立导航区），
+            // 用共享回退环在玩家周围补点；每个点仍须过同一可达性判据。
+            CharacterMainControl collectPlayer = CharacterMainControl.Main;
+            if (runState.SpawnPoints.Count <= 0 && collectPlayer != null &&
+                (runState.MapProfile == null || runState.MapProfile.AllowVirtualSpawnPoints))
+            {
+                float ringRadius = Mathf.Max(18f, GetZombieModeSpawnPointMinPlayerDistance() + 6f);
+                AddZombieModeSpawnPointArray(
+                    SpawnPositionHelper.BuildRingPoints(collectPlayer.transform.position, 12, ringRadius, ringRadius + 8f, ZombieModeTuning.NavMeshLiftOffset),
+                    true);
+            }
+
+            ModBehaviour.DevLog("[ZombieMode] 收集刷怪点: " + runState.SpawnPoints.Count
+                + " (astar=" + (AstarPath.active != null) + ")");
             runState.EffectiveSpawnPoints.Clear();
             for (int i = 0; i < runState.SpawnPoints.Count; i++)
             {
@@ -309,22 +322,21 @@ namespace BossRush
                 return false;
             }
 
-            // Raycast 命中地形不代表可行走；SamplePosition 也可能落在断开的导航岛或另一层。
-            // 所有来源都必须采纳 NavMesh 的 XYZ，并证明到当前玩家有完整路径。
-            NavMeshHit spawnHit;
-            NavMeshHit playerHit;
+            // Raycast 命中地形不代表可行走；吸附点也可能落在断开的导航岛或另一层。
+            // 所有来源都采纳导航面 XYZ，并证明与当前玩家连通（A* 优先，无 A* 时退 NavMesh）。
             float sampleRadius = navMeshSampleRadius > 0f ? navMeshSampleRadius :
                 (virtualPoint ? ZombieModeTuning.NavMeshVirtualSpawnRadius : ZombieModeTuning.SpawnPointNavMeshSampleRadius);
-            if (!NavMesh.SamplePosition(position, out spawnHit, sampleRadius, NavMesh.AllAreas) ||
-                !NavMesh.SamplePosition(player.transform.position, out playerHit, 2f, NavMesh.AllAreas) ||
-                Mathf.Abs(spawnHit.position.y - position.y) > 2f ||
-                Mathf.Abs(playerHit.position.y - player.transform.position.y) > 2f ||
-                !NavMesh.CalculatePath(spawnHit.position, playerHit.position, NavMesh.AllAreas, zombieModeSpawnReachabilityPath) ||
-                zombieModeSpawnReachabilityPath.status != NavMeshPathStatus.PathComplete)
+            if (!SpawnPositionHelper.TryResolveReachableFrom(
+                    position,
+                    player.transform.position,
+                    sampleRadius,
+                    ZombieModeTuning.NavMeshLiftOffset,
+                    out resolved,
+                    zombieModeSpawnReachabilityPath))
             {
+                resolved = Vector3.zero;
                 return false;
             }
-            resolved = spawnHit.position + Vector3.up * ZombieModeTuning.NavMeshLiftOffset;
             return !virtualPoint || SpawnPositionHelper.PassesMinPlayerDistance(resolved, ZombieModeTuning.SpawnPointMinPlayerDistance);
         }
 

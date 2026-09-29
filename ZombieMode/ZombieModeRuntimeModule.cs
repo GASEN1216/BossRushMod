@@ -514,8 +514,11 @@ namespace BossRush
                 bool activeMatches = activeScene.name == scene.name;
                 bool sceneLoaderDone = owner.ReadSceneLoaderDoneWithWarningForRuntimeModule("ZombieModeTargetSceneInitialize");
                 bool levelInited = owner.ReadLevelInitedWithWarningForRuntimeModule("ZombieModeTargetSceneInitialize");
+                // 官方 InitLevel 置 levelInited 后还会等 0.25 秒再 SetPosition(startPos)、置 afterInit；
+                // 在这之前初始化会拿到未定位的玩家，失败回基地还会让官方 SetPosition 打到已销毁的角色。
+                bool levelAfterInit = IsOfficialLevelAfterInitForZombieMode();
 
-                if (sceneLoaded && activeMatches && sceneLoaderDone && levelInited)
+                if (sceneLoaded && activeMatches && sceneLoaderDone && levelInited && levelAfterInit)
                 {
                     break;
                 }
@@ -527,6 +530,7 @@ namespace BossRush
                         + ", sceneLoaded=" + sceneLoaded
                         + ", sceneLoaderDone=" + sceneLoaderDone
                         + ", levelInited=" + levelInited
+                        + ", afterInit=" + levelAfterInit
                         + ", elapsed=" + elapsed + "s");
                 }
 
@@ -1005,6 +1009,57 @@ namespace BossRush
             if (!shouldReturnToBase)
             {
                 return;
+            }
+
+            // 官方关卡初始化（InitLevel）还在跑时切场景会让它在 SetPosition 上 NRE、DOTween 报目标丢失；
+            // 等 afterInit 或关卡已不存在后再 LoadBaseScene。
+            try
+            {
+                owner.StartCoroutine(LoadBaseSceneAfterOfficialLevelInitialized());
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] [WARNING] Entry 失败回主场景调度失败: " + e.Message);
+            }
+        }
+
+        internal static bool IsOfficialLevelAfterInitForZombieMode()
+        {
+            try
+            {
+                return LevelManager.Instance != null && LevelManager.AfterInit;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool IsOfficialLevelSafeToLeaveForZombieMode()
+        {
+            try
+            {
+                if (SceneLoader.IsSceneLoading)
+                {
+                    return false;
+                }
+
+                return LevelManager.Instance == null || LevelManager.AfterInit;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        private System.Collections.IEnumerator LoadBaseSceneAfterOfficialLevelInitialized()
+        {
+            const float maxWaitSeconds = 30f;
+            float waited = 0f;
+            while (waited < maxWaitSeconds && !IsOfficialLevelSafeToLeaveForZombieMode())
+            {
+                yield return new WaitForSecondsRealtime(0.1f);
+                waited += 0.1f;
             }
 
             try

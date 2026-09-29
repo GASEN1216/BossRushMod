@@ -93,8 +93,10 @@ namespace BossRush
                 EquipmentHelper.EnsureModifierOnItem(item, spec.StatKey, ModifierType.Add, spec.StatValue, true);
                 // 官方 AIMainBrain.FilterPlayerHearSound 先检查 SoundVisable >= 0.2，
                 // 再用 HearingAbility 计算距离。只加听力数值仍不会触发官方声音提示。
+                // 与官方耳机一致：两条都挂 Character、都显示（官方 StatInfo 的听力显示格式是 "0"，
+                // 小数会被四舍五入显示，所以数值取整数，说明文字与物品页一致）。
                 if (spec.Slot == "Headset")
-                    EquipmentHelper.EnsureModifierOnItem(item, "SoundVisable", ModifierType.Add, 1f, false);
+                    EquipmentHelper.EnsureModifierOnItem(item, "SoundVisable", ModifierType.Add, 1f, true);
                 // 不设 Value，NPC 商店标价 0（contracts §7.1）。
                 item.Value = SkyIslandItemRules.ValueOf(spec.TypeId);
                 // 官方 Item.Repairable = UseDurability && Tags.Contains("Repairable")：不打这个标签维修台会显示「无法维修」。
@@ -286,8 +288,8 @@ namespace BossRush
                         "A full grain sack with a scoop and sickle tied to the side.\nBackpack capacity +7.\nOn Qinglan: any 2 Grain Sickle pieces give 1 extra greenear per harvest.\nSource: Grain Sickle, Green Terraces.\nIts first flood calls any surviving barn hands.");
                 case BossRushItemIds.SkyIslandRainhushEarmuffs:
                     return L10n.T(
-                        "铜耳罩衬着厚毛毡，壳上刻着一滴雨。\n听觉 +0.5。\n群岛效果：延长头目预警，听雨人每16次枪声才引发落石。\n来源：听雨洞的听雨人，掉落率30%。\n打穿它的耳罩，可阻止枪声触发落石。",
-                        "Thick felt lines brass cups engraved with a raindrop.\nHearing +0.5.\nOn Qinglan: longer boss warnings; the Listener needs 16 shots to trigger rockfall.\nSource: Rain Listener, Rainlisten Grotto. Drop chance: 30%.\nBreaking its earmuffs stops gunfire-triggered rockfalls.");
+                        "铜耳罩衬着厚毛毡，壳上刻着一滴雨。\n听力 +1，听声辨位 +1：屏幕外敌人发出的声响会标出方向。\n群岛效果：延长头目预警，听雨人每16次枪声才引发落石。\n来源：听雨洞的听雨人，掉落率30%。\n打穿它的耳罩，可阻止枪声触发落石。",
+                        "Thick felt lines brass cups engraved with a raindrop.\nHearing +1, Sound Localization +1: off-screen enemy noises are marked with their direction.\nOn Qinglan: longer boss warnings; the Listener needs 16 shots to trigger rockfall.\nSource: Rain Listener, Rainlisten Grotto. Drop chance: 30%.\nBreaking its earmuffs stops gunfire-triggered rockfalls.");
                 case BossRushItemIds.SkyIslandMossgauzeMask:
                     return L10n.T(
                         "苔纱遮住脸，下方挂着一支小铜笛。\n头部护甲 +1。\n群岛效果：戴着瞄准云蚋，它们不再预先闪避。\n来源：夜间蛙鸣池的蚋笛翁，掉落率30%。\n打穿它的面罩，可阻止吹笛引蚋。",

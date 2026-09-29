@@ -270,6 +270,78 @@ namespace BossRush
             if (ReferenceEquals(target, _activeFighter)) _activeFighter = null;
         }
 
+        /// <summary>失活多久才算「已离场」。死亡帧官方就 SetActive(false)，这里只兜住没有死亡事件的情形。</summary>
+        internal const float DepartedInactiveGraceSeconds = 3f;
+
+        /// <summary>
+        /// 存活名单兜底对账（2026-09-29「都死完了还提示有一个敌人」）。
+        ///
+        /// 名单原本只靠 `Health.OnDead` 出列，而这条事件会丢：官方 Hurt 在死亡分支里先置 isDead，
+        /// 再依次派发 OnDeadEvent / 静态 OnDead，任一监听器（别的 Mod、Harmony 补丁）抛异常，
+        /// 排在后面的 Mode H 路由就收不到；对象被回收或销毁也没有事件。结果是 LiveEnemyCount 残留，
+        /// 胜利条件永远不成立，180 秒到时反判玩家输。
+        ///
+        /// 这里每帧按事实复核：已判死 / 已销毁 / 持续失活超过宽限的，按「死亡、击杀者未知」走原有
+        /// OnParticipantDead 出列（与迟到的真实事件天然去重）；本场登场选手同理补倒地事实。
+        /// O(存活敌军数)、零分配（日志只在真正出列时拼一次）。
+        /// </summary>
+        public void SweepDepartedParticipants(float deltaTime)
+        {
+            if (HasResult) return;
+            for (int i = _liveEnemies.Count - 1; i >= 0; i--)
+            {
+                if (i >= _liveEnemies.Count) continue;
+                ModeHParticipantRef enemy = _liveEnemies[i];
+                if (enemy == null)
+                {
+                    _liveEnemies.RemoveAt(i);
+                    continue;
+                }
+                string departure = ResolveDeparture(enemy, deltaTime);
+                if (departure == null) continue;
+                Debug.LogWarning("[ModeH] 存活对账：敌军 " + (enemy.StableKey ?? "?") + " 已" + departure
+                    + "却没收到死亡事件，按阵亡出列");
+                OnParticipantDead(enemy, null);
+            }
+
+            ModeHParticipantRef fighter = _activeFighter;
+            if (fighter != null && !IsDown(fighter.ProfileId))
+            {
+                string departure = ResolveDeparture(fighter, deltaTime);
+                if (departure != null)
+                {
+                    Debug.LogWarning("[ModeH] 存活对账：选手 " + (fighter.ProfileId ?? "?") + " 已" + departure
+                        + "却没收到倒地事件，按倒地处理");
+                    OnParticipantDead(fighter, null);
+                }
+            }
+        }
+
+        /// <summary>该参赛者是否已不在场上；在场返回 null，否则返回原因（仅用于日志）。no-throw。</summary>
+        private static string ResolveDeparture(ModeHParticipantRef participant, float deltaTime)
+        {
+            CharacterMainControl character = participant.Character;
+            // Unity 重载的 == null 同时覆盖「已销毁」
+            if (character == null) return "销毁";
+            try
+            {
+                Health health = character.Health;
+                if (health == null) return "丢失生命组件";
+                if (health.IsDead) return "判死";
+                if (character.gameObject.activeInHierarchy)
+                {
+                    participant.InactiveSeconds = 0f;
+                    return null;
+                }
+            }
+            catch (Exception)
+            {
+                return "销毁";
+            }
+            participant.InactiveSeconds += deltaTime > 0f ? deltaTime : 0f;
+            return participant.InactiveSeconds >= DepartedInactiveGraceSeconds ? "失活" : null;
+        }
+
         /// <summary>取本场某选手的倒地 token（不存在返回空串）。</summary>
         public string GetDownToken(string profileId)
         {

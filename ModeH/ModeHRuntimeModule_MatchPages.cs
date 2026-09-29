@@ -208,9 +208,8 @@ namespace BossRush
             // （ModeHConfigApiGuard 禁止任何 RealWarehouseStake 开关符号）。
             // 证据不足时禁用并原位说明原因，赛季照常用虚拟筹码跑完整闭环。
             page.RealStakeSelectorEnabled = ModeHWarehouseStakeJournal.IsSlotConsistent;
-            // 风险提示只在真的能押的时候出：功能不可用还挂着「失败永久没收」
-            // 会让玩家以为自己的存档坏了，而不是"这个功能现在用不了"。
-            page.ShowRealStakeNotice = page.RealStakeSelectorEnabled;
+            // 2026-09-29 owner：赛前页顶部的风险横幅（「……长期来看，庄家总是赢的」）去掉，与选人页、看盘页一致；
+            // 真押仓库物品时锁盘前的共享确认框仍写清后果（ConfirmRealStakeThenLock）。
             if (!page.RealStakeSelectorEnabled)
             {
                 page.RealStakeDisabledReason = ResolveRealStakeDisabledReason();

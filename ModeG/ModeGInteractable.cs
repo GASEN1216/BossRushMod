@@ -366,6 +366,17 @@ namespace BossRush
                 () => ConfirmAndStart(host), true);
             cursor += ButtonHeight + BottomPad;
 
+            // 关闭：页眉右上的幽灵「×」+ ESC（UI 共识 §3）。免费退出，预扣船票由 CloseModal 退回。
+            // 最后创建，画在横幅上面；建的时候传透明底色，悬停才显出 Danger 底（同图鉴 / 成就页）。
+            Color ghost = new Color(BossRushUIColors.Danger.r, BossRushUIColors.Danger.g, BossRushUIColors.Danger.b, 0f);
+            Button closeButton = ZombieModeUIHelper.CreateButton(
+                "CloseX", st, "×",
+                new Vector2(1f, 1f), new Vector2(-(HeroInset + 22f), -(HeroInset + 22f)), new Vector2(36f, 36f),
+                ghost, 24f, new Vector2(36f, 36f),
+                CloseModal, true);
+            IntegrationUIFeedback.StyleGhostCloseButton(
+                closeButton, closeButton.GetComponentInChildren<TextMeshProUGUI>(true));
+
             // 面板收到内容高度。子物体都挂在顶边上，改高度不会挪动它们。
             RectTransform surfaceRect = surface.GetComponent<RectTransform>();
             surfaceRect.sizeDelta = new Vector2(ModalWidth, Mathf.Ceil(cursor));

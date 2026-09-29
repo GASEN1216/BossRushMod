@@ -202,6 +202,9 @@ namespace BossRush
                 HideRecoveryShell();
             }
 
+            // 本场总结的记账：结算、技术中止、名人堂（与建不建页无关，放在自动流程早退之前）
+            ObserveLifecycleForSummary(lifecycle);
+
             // 自动流程的中间相位不建页（名单、看盘、整备、赔率一闪而过），链条结束后统一路由一次
             if (_deferPageRoutes && IsPageLifecycle(lifecycle)) return;
 
@@ -256,7 +259,8 @@ namespace BossRush
                 case ModeHLifecycle.Recovering:
                 case ModeHLifecycle.ErrorRecoveryPending:
                 case ModeHLifecycle.Suspended:
-                    OpenRecoveryShell(_lastExitReasonId);
+                    // 技术故障的同场重试静默进行，不弹恢复壳（2026-09-29 owner，见 Recovery.RouteRecoveryLifecycle）
+                    RouteRecoveryLifecycle(lifecycle);
                     break;
                 case ModeHLifecycle.SeasonEnded:
                 case ModeHLifecycle.None:
@@ -539,6 +543,260 @@ namespace BossRush
 
         #endregion
 
+        #region 本场总结（2026-09-29 owner：Mode H 结束后、回基地前弹一张收获 / 失去的总结）
+
+        /// <summary>状态投影时顺手记账：出了结算的场次、被技术中止打断的场次、名人堂（ModeHSessionSummary）。</summary>
+        private void ObserveLifecycleForSummary(ModeHLifecycle lifecycle)
+        {
+            if (_runState == null) return;
+            try
+            {
+                switch (lifecycle)
+                {
+                    case ModeHLifecycle.MatchSettling:
+                    case ModeHLifecycle.Intermission:
+                        if (FindReportByMatch(_runState.MatchIndex) == null) break;
+                        ModeHSessionSummary.NoteSettled(_runState.RunId, _runState.MatchIndex);
+                        ModeHSessionSummary.NoteBet(ModeHCashBetService.Current);
+                        break;
+                    case ModeHLifecycle.Recovering:
+                    case ModeHLifecycle.ErrorRecoveryPending:
+                    case ModeHLifecycle.Suspended:
+                        if (_runState.MatchIndex < ModeHConfig.FirstMatchIndex
+                            || FindReportByMatch(_runState.MatchIndex) != null) break;
+                        ModeHSessionSummary.NoteInterrupted(_runState.RunId, _runState.MatchIndex);
+                        ModeHSessionSummary.NoteBet(ModeHCashBetService.Current);
+                        break;
+                    case ModeHLifecycle.HallOfFame:
+                        ModeHSessionSummary.NoteHallOfFame();
+                        break;
+                }
+            }
+            catch (Exception e)
+            {
+                LogFailure("session_summary_note", e);
+            }
+        }
+
+        private ModeHMatchReportDto FindReportByMatch(int matchIndex)
+        {
+            if (_season == null || _season.matchReports == null) return null;
+            for (int i = _season.matchReports.Count - 1; i >= 0; i--)
+            {
+                ModeHMatchReportDto report = _season.matchReports[i];
+                if (report != null && report.matchIndex == matchIndex) return report;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 组装本场总结（关停清状态之前调用）。只写实际发生的结算：每场胜负与押注结果、押注输赢合计、
+        /// 得到 / 失去的物品、原样退回、解锁的整备、退役、名人堂；中途退出 / 技术中止的那一场写押注留着。
+        /// 这一趟什么都没发生、F3 自动验收在跑时返回 null（不弹，直接离场）。
+        /// </summary>
+        private ModeHPageContent BuildSessionSummaryContent(ModeHExitReason reason, string reasonId)
+        {
+            if (reason == ModeHExitReason.ModDestroyed || reason == ModeHExitReason.TechnicalAbort
+                || reason == ModeHExitReason.Unavailable) return null;
+            if (!string.IsNullOrEmpty(reasonId) && reasonId.StartsWith("f3_", StringComparison.Ordinal)) return null;
+            if (F3GameplayValidationRunner.IsRunning) return null;
+
+            string runId = _runState != null ? _runState.RunId : null;
+            ModeHSessionSummary.NoteBet(ModeHCashBetService.Current);
+            // 中途离开时这一场还没有战报：押上的押注留着，回来重打照算
+            int openMatch = -1;
+            ModeHCashBetRecord carried = null;
+            if (reason != ModeHExitReason.SeasonComplete && _runState != null
+                && _runState.MatchIndex >= ModeHConfig.FirstMatchIndex && FindReportByMatch(_runState.MatchIndex) == null)
+            {
+                carried = CarriedBetForCurrentMatch();
+                if (carried != null) openMatch = _runState.MatchIndex;
+            }
+            if (!ModeHSessionSummary.HasFacts && openMatch < 0) return null;
+
+            string prefix = ModeHConfig.LocalizationKeyPrefix;
+            ModeHPageContent page = new ModeHPageContent();
+            page.Title = L10n.T("本场总结", "Session summary");
+
+            long net = 0;
+            bool anyMoney = false;
+            bool champion = ModeHSessionSummary.HallOfFame;
+            List<string> gained = new List<string>();
+            List<string> lost = new List<string>();
+            List<string> kits = new List<string>();
+            List<string> retired = new List<string>();
+
+            foreach (string key in ModeHSessionSummary.SettledKeys)
+            {
+                int matchIndex;
+                ModeHMatchReportDto report = ResolveSummaryReport(key, runId, out matchIndex);
+                if (report == null) continue;
+                bool won = report.winner == (int)ModeHMatchOutcome.PlayerVictory;
+                if (won && matchIndex >= ModeHConfig.SeasonMatchCount) champion = true;
+                string outcome = won ? L10n.T(prefix + "Outcome_Victory")
+                    : report.timeout ? L10n.T(prefix + "Outcome_Timeout")
+                    : !string.IsNullOrEmpty(report.cowardiceType) ? L10n.T(prefix + "Outcome_Cowardice")
+                    : L10n.T(prefix + "Outcome_Defeat");
+                page.Lines.Add(DescribeSummaryMatch(matchIndex) + L10n.T("：", ": ") + outcome
+                    + DescribeSummaryBet(page, ModeHSessionSummary.FindBet(key), ref net, ref anyMoney, gained, lost));
+
+                ModeHSeasonRewardOperationDto operation = FindRewardOperation(report.seasonRewardOperationId);
+                if (operation != null && !string.IsNullOrEmpty(operation.selectedRewardKitId))
+                {
+                    string kitName = L10n.T(prefix + "Kit_" + operation.selectedRewardKitId);
+                    if (!kits.Contains(kitName)) kits.Add(kitName);
+                }
+                for (int i = 0; report.injuryEvents != null && i < report.injuryEvents.Count; i++)
+                {
+                    ModeHInjuryEventDto evt = report.injuryEvents[i];
+                    if (evt != null && evt.retired) retired.Add(ResolveProfileDisplayName(evt.profileId));
+                }
+            }
+            foreach (string key in ModeHSessionSummary.InterruptedKeys)
+            {
+                int matchIndex;
+                if (ResolveSummaryReport(key, runId, out matchIndex) != null || matchIndex == openMatch) continue;
+                ModeHCashBetRecord record = ModeHSessionSummary.FindBet(key);
+                page.Lines.Add(DescribeSummaryMatch(matchIndex) + L10n.T("：技术中止", ": technical stop")
+                    + (record != null && record.status == ModeHCashBetService.StatusReserved
+                        ? L10n.T(" · 押注 ", " · bet ") + DescribeRecordStake(record) + L10n.T(" 留到重打", " kept for the rematch")
+                        : string.Empty));
+            }
+            if (openMatch >= 0)
+            {
+                page.Lines.Add(DescribeSummaryMatch(openMatch) + L10n.T("：中途退出", ": left early")
+                    + L10n.T(" · 押注 ", " · bet ") + DescribeRecordStake(carried) + L10n.T(" 留到重打", " kept for the rematch"));
+            }
+
+            List<string> refunded = new List<string>();
+            foreach (ModeHCashBetRecord record in ModeHSessionSummary.AllBets())
+            {
+                if (record != null && record.status == ModeHCashBetService.StatusRefunded)
+                    refunded.Add(DescribeRecordStake(record));
+            }
+
+            if (anyMoney) page.Lines.Add(L10n.T("押注输赢：", "Bet result: ") + (net >= 0 ? "+" : "-") + FormatMoney(Math.Abs(net)));
+            if (gained.Count > 0) page.Lines.Add(L10n.T("得到：", "Gained: ") + string.Join(L10n.T("、", ", "), gained.ToArray()));
+            if (lost.Count > 0) page.Lines.Add(L10n.T("失去：", "Lost: ") + string.Join(L10n.T("、", ", "), lost.ToArray()));
+            if (refunded.Count > 0) page.Lines.Add(L10n.T("原样退回：", "Returned: ") + string.Join(L10n.T("、", ", "), refunded.ToArray()));
+            if (kits.Count > 0) page.Lines.Add(L10n.T("解锁整备：", "Kits unlocked: ") + string.Join(L10n.T("、", ", "), kits.ToArray()));
+            if (retired.Count > 0) page.Lines.Add(L10n.T(prefix + "Injury_Retired") + L10n.T("：", ": ")
+                + string.Join(L10n.T("、", ", "), retired.ToArray()));
+            if (ModeHSessionSummary.HallOfFame) page.Lines.Add(L10n.T("名人堂：冠军入堂", "Hall of Fame: champion inducted"));
+
+            if (reason == ModeHExitReason.SeasonComplete)
+            {
+                page.ResultTone = champion ? ModeHResultTone.Victory : ModeHResultTone.Defeat;
+                page.Body = champion ? L10n.T("赛季夺冠", "Season won") : L10n.T("赛季结束", "Season over");
+            }
+            else
+            {
+                page.Body = L10n.T("中途离场，赛季保留", "Left mid-season; the season is kept");
+            }
+            return page;
+        }
+
+        private ModeHMatchReportDto ResolveSummaryReport(string key, string runId, out int matchIndex)
+        {
+            matchIndex = -1;
+            int bar = key != null ? key.LastIndexOf('|') : -1;
+            if (bar < 0 || !int.TryParse(key.Substring(bar + 1), out matchIndex)) return null;
+            if (!string.Equals(key.Substring(0, bar), runId ?? string.Empty, StringComparison.Ordinal)) return null;
+            return FindReportByMatch(matchIndex);
+        }
+
+        private static string DescribeSummaryMatch(int matchIndex)
+        {
+            return L10n.T(ModeHConfig.LocalizationKeyPrefix + "Label_Match").Replace("{0}", matchIndex.ToString());
+        }
+
+        /// <summary>
+        /// 一场的押注结果后缀（「 · 押 5,000，拿回 8,360」），并把钱数计进合计、物品计进得到 / 失去（奖品图标挂进物品格）。
+        /// 没押、还没结清（实物补发中写一句）、原样退回（单列）时不计。
+        /// </summary>
+        private string DescribeSummaryBet(ModeHPageContent page, ModeHCashBetRecord record, ref long net, ref bool anyMoney,
+            List<string> gained, List<string> lost)
+        {
+            if (record == null || record.status == ModeHCashBetService.StatusNone
+                || record.status == ModeHCashBetService.StatusRefunded) return string.Empty;
+            string stake = DescribeRecordStake(record);
+            if (record.kind == ModeHCashBetService.KindItems)
+            {
+                bool won = record.itemSettlement == 1 || record.payout > 0;
+                if (record.status != ModeHCashBetService.StatusSettled)
+                {
+                    return record.itemSettlement == 1
+                        ? L10n.T(" · 押 ", " · bet ") + stake + L10n.T("，奖品补发中", ", prizes still arriving")
+                        : string.Empty;
+                }
+                if (won)
+                {
+                    AppendPrizeIcons(page, record);
+                    gained.AddRange(DescribeSummaryItems(ModeHItemBetEntry.Decode(record.prizeItems)));
+                    if (record.prizeCash > 0) { net += record.prizeCash; anyMoney = true; }
+                    return L10n.T(" · 押 ", " · bet ") + stake + L10n.T("，押品保留并得奖品", ", kept it and won prizes");
+                }
+                lost.AddRange(DescribeSummaryItems(ModeHItemBetEntry.Decode(record.items)));
+                if (record.charged > 0) { net -= record.charged; anyMoney = true; }
+                return L10n.T(" · 押 ", " · bet ") + stake + L10n.T("，输掉", ", lost");
+            }
+            if (record.status != ModeHCashBetService.StatusSettled) return string.Empty;
+            anyMoney = true;
+            if (record.payout > 0)
+            {
+                net += record.payout - record.amount;
+                return L10n.T(" · 押 ", " · bet ") + stake + L10n.T("，拿回 ", ", paid ") + FormatMoney(record.payout);
+            }
+            net -= record.amount;
+            return L10n.T(" · 押 ", " · bet ") + stake + L10n.T("，输掉", ", lost");
+        }
+
+        /// <summary>「名字 ×n」：名字按当前语言从官方物品表取，取不到用押注时记下的名字。</summary>
+        private static List<string> DescribeSummaryItems(List<ModeHItemBetEntry> entries)
+        {
+            List<string> names = new List<string>();
+            for (int i = 0; entries != null && i < entries.Count; i++)
+            {
+                ModeHItemBetEntry entry = entries[i];
+                if (entry == null) continue;
+                string name = null;
+                try { name = ItemStatsSystem.ItemAssetsCollection.GetMetaData(entry.TypeId).DisplayName; }
+                catch (Exception) { /* 官方表取不到：用记下的名字 */ }
+                if (string.IsNullOrEmpty(name) || name[0] == '*') name = entry.Name ?? "?";
+                names.Add(entry.Count > 1 ? name + " ×" + entry.Count : name);
+            }
+            return names;
+        }
+
+        /// <summary>放弃赛季（在基地的恢复页里）后：只要有原样退回之类的结算事实就给一张总结，只能关闭。</summary>
+        private void ShowSessionSummaryAfterAbandon()
+        {
+            try
+            {
+                if (!ModeHSessionSummary.HasFacts) return;
+                ModeHPageContent page = new ModeHPageContent();
+                page.Title = L10n.T("本场总结", "Session summary");
+                page.Body = L10n.T("已放弃本赛季", "Season abandoned");
+                List<string> refunded = new List<string>();
+                foreach (ModeHCashBetRecord record in ModeHSessionSummary.AllBets())
+                    if (record != null && record.status == ModeHCashBetService.StatusRefunded)
+                        refunded.Add(DescribeRecordStake(record));
+                if (refunded.Count > 0)
+                    page.Lines.Add(L10n.T("原样退回：", "Returned: ") + string.Join(L10n.T("、", ", "), refunded.ToArray()));
+                if (page.Lines.Count > 0) ModeHSessionSummary.Show(page, L10n.T("关闭", "Close"), null);
+            }
+            catch (Exception e)
+            {
+                LogFailure("session_summary_abandon", e);
+            }
+            finally
+            {
+                ModeHSessionSummary.Discard();
+            }
+        }
+
+        #endregion
+
         #region 恢复壳
 
         /// <summary>
@@ -712,6 +970,7 @@ namespace BossRush
         /// </summary>
         private void AbandonSeasonFromRecovery()
         {
+            ModeHSessionSummary.Discard(); // 总结只写这一次放弃带来的结算
             RefundCashBet("abandon_season");
             try
             {
@@ -772,6 +1031,7 @@ namespace BossRush
                     _owner.ShowMessage(
                         L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_AbandonSeason_Done"));
                 }
+                ShowSessionSummaryAfterAbandon();
             }
             catch (Exception e)
             {
@@ -828,7 +1088,7 @@ namespace BossRush
                 string resumeFailure;
                 if (!TryPrepareSeasonResume(out resumeFailure))
                 {
-                    OpenRecoveryShell(resumeFailure);
+                    PresentRecoveryFailure(resumeFailure);
                     return;
                 }
                 if (_restoredSeasonPending || _arenaLease == null || !_arenaLease.IsActive)

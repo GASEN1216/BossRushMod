@@ -780,6 +780,10 @@ namespace BossRush
             {
                 return;
             }
+            // 上一场的战报引用不能带进这一场：下面 catch 按它判断「本场战报是否已构造」，
+            // 残留会把本场构造前的异常误当成「已有战报」挂起，恢复后又按没有战报回落重打。
+            _lastSettlementReport = null;
+            _lastRewardOperation = null;
 
             try
             {
@@ -836,8 +840,6 @@ namespace BossRush
                 bool won = report.winner == (int)ModeHMatchOutcome.PlayerVictory;
                 int rewardCandidates = ModeHVirtualStakeController.Settle(
                     _season, _season.preMatchSnapshot, report, odds, won);
-                SettleCashBetForMatch(won); // 押钱按本场输赢结算（至多一次，账本在 ModeHCashBetService）
-
                 // 真实押品结算：无 journal 时是 no-op（本场没押）。
                 // 失败**不重打这一场**——虚拟筹码已经结算过，重来会重复发奖；
                 // journal 内部已进人工介入或保持 pending，交给恢复壳只读展示处置。
@@ -895,10 +897,16 @@ namespace BossRush
                 {
                     // 战报与奖励 operation 已完整构造，保留它们进入恢复壳；恢复时直接
                     // 回 Intermission，绝不能退回看盘重打一场并重复结算。
+                    // 押钱此时还没结：下一场下注前 / 读档时由 ReconcileCashBetOnRestore 按这份战报补结（至多一次）。
                     ReleaseCombatRuntimeObjects();
                     RequestSuspended("settlement_persist_failed");
                     return;
                 }
+
+                // 押钱按本场输赢结算（至多一次，账本在 ModeHCashBetService）。必须排在战报与奖励 operation
+                // 耐久落盘之后：之前排在最前，后面任一步抛异常或落盘失败都会让这一场按「没有战报」回落看盘重打，
+                // 钱已经按上一次结果发过，重打再押再结一次 = 同一场结两次（2026-09-29 复核）。
+                SettleCashBetForMatch(won);
 
                 ReleaseCombatRuntimeObjects();
                 if (TryTransition(ModeHLifecycle.MatchSettling, ModeHLifecycle.Intermission,
@@ -1012,64 +1020,6 @@ namespace BossRush
             }
             TryTransition(ModeHLifecycle.Intermission, ModeHLifecycle.HallOfFame,
                 "champion_recorded");
-        }
-
-        private ModeHHallOfFameRecordDto BuildHallOfFameRecord()
-        {
-            if (_season == null || _runState == null) return null;
-            ModeHProfileDto champion = FindSeasonProfile(
-                _season.contract != null ? _season.contract.contractMainProfileId : null);
-            if (champion == null) return null;
-
-            ModeHHallOfFameRecordDto record = new ModeHHallOfFameRecordDto();
-            record.hallOfFameId = "hof|" + _runState.RunId;
-            record.schemaVersion = ModeHConfig.CurrentSchemaVersion;
-            record.seasonVersion = ModeHConfig.CurrentSchemaVersion;
-            record.championProfileSnapshot = CloneProfile(champion);
-            record.aliasKey = champion.displayNameKey ?? string.Empty;
-            record.archetypeId = champion.archetypeId ?? string.Empty;
-            record.temperamentId = champion.temperamentId ?? string.Empty;
-            record.quirkId = champion.quirkId ?? string.Empty;
-            record.anomalyId = champion.anomalyId ?? string.Empty;
-            record.signatureCommandId = champion.signatureCommandId ?? string.Empty;
-            record.scarIds = champion.scarIds != null
-                ? new List<string>(champion.scarIds) : new List<string>();
-            record.matchReportIds = new List<string>();
-            // 已知残留：ApplyRetirement 晋升替补后会把 subProfileId 清空，
-            // 于是「主选手中途退役、替补顶上并夺冠」这一支的 substituteHistory 是空的
-            // （冠军字段本身已经对了——那正是接通退役结算修好的部分）。
-            // 要把被晋升者也记进来就得加持久字段，而本 DTO 进 canonical digest，
-            // 加字段会让所有已存名人堂信封 VerifyDigest 失败。留待单独评估。
-            record.substituteHistory = new List<string>();
-            if (_season.contract != null
-                && !string.IsNullOrEmpty(_season.contract.contractSubProfileId))
-            {
-                record.substituteHistory.Add(_season.contract.contractSubProfileId);
-            }
-
-            if (_season.matchReports != null)
-            {
-                for (int i = 0; i < _season.matchReports.Count; i++)
-                {
-                    ModeHMatchReportDto report = _season.matchReports[i];
-                    if (report == null) continue;
-                    record.matchReportIds.Add(report.resultToken ?? string.Empty);
-                    if (report.winner == (int)ModeHMatchOutcome.PlayerVictory)
-                    {
-                        if (report.lockedOdds > record.maxOddsWin) record.maxOddsWin = report.lockedOdds;
-                        if (report.virtualStakeAmount > record.maxVirtualStakeWin)
-                        {
-                            record.maxVirtualStakeWin = report.virtualStakeAmount;
-                        }
-                    }
-                }
-            }
-            record.finalVirtualStakeCredits = _season.virtualStakeCredits;
-            record.maxRealStakeWin = 0;
-            record.createdUtc = DateTime.UtcNow.ToString("O");
-            record.gameBuildSignature = _season.gameBuildSignature ?? string.Empty;
-            record.modBuildSignature = _season.modBuildSignature ?? string.Empty;
-            return record;
         }
 
         private void ReleaseCombatRuntimeObjects()

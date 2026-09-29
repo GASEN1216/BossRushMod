@@ -169,7 +169,6 @@ def main():
             (r"public bool TryRingBell\(", "拍铃入口"),
             (r"_bellUsesRemaining--;\s*\n\s*_bellConsumed = true;", "拍铃 CAS 先消耗后应用"),
             (r"command_bell_consumed", "重复拍铃拒绝"),
-            (r"command_signature_owner_absent", "招牌口令持有者不在场拒绝"),
             (r"spec\.RequiresRelayEntered && !relayEntered", "handoff 需要接力已登场"),
             (r"public void RestoreAll\(\)", "统一幂等还原入口"),
             (r"ModeHCommandCompatibilityRegistry\.IsCommandSelectable", "可选列表只取可用口令"),
@@ -177,6 +176,10 @@ def main():
         for pattern, desc in cchecks:
             if not re.search(pattern, ccode):
                 errors.append("[Controller] 不满足: " + desc)
+        # 2026-09-29 owner：拍铃给所有人用，招牌口令不再要求持有者在场。
+        # 这道门一旦回来，玩家会看到「招牌口令的持有者不在场上」而拍铃无效。
+        if "command_signature_owner_absent" in ccode:
+            errors.append("[Controller] 拍铃不得再按招牌持有者在场拒绝（command_signature_owner_absent）")
 
     config = read_text(CONFIG)
     if config and not re.search(r"public const float CommandReassertIntervalSeconds = 0\.1f;", config):

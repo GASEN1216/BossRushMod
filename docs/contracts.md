@@ -316,6 +316,11 @@ envelope 带 `schemaVersion`、`gameBuildSignature`、`modBuildSignature`、
 `Save<string>` 存 `schemaVersion|已用次数|runId`（`ModeH/ModeHDraftRefreshLedger.cs`，复用 `BossRushSlotJsonStore`）。
 只认当前赛季 runId；旧档无此 key 读作 0 次；更高版本或损坏进写屏障、只读不写。赛季 DTO 不动。
 
+**选手配装偏好（2026-09-29，SCHEMA+）。** 独立冻结 key `BossRush_ModeHKitPreference_v1`，
+`Save<string>` 存 `schemaVersion|stableKey=kitA,kitB;stableKey2=`（`ModeH/ModeHKitPreferenceLedger.cs`，复用 `BossRushSlotJsonStore`），
+按选手 stableKey 记调整页上穿上的整备套装 ID（空列表 = 全套基础装备），最多 64 位、最近改动排最后。
+旧档无此 key 读作空表（行为同改动前）；读出后只取本季已解锁、可选、同槽一件、不超上限的套装。赛季 DTO 不动。
+
 **押钱 / 押背包物品账本（2026-09-25，COMPAT / SCHEMA+）。** 独立冻结 key
 `BossRush_ModeHCashBet_v1`，用 `Save<string>` 保存 JSON，复用 `BossRushSlotJsonStore` 与
 `BossRushSaveCoordinatorEngine`。当前 `schemaVersion=3`，兼容 v1/v2；新增可选 `prizeItems` 保存完整奖品图标清单，旧档缺省为空。更高版本与损坏数据仍进写屏障。

@@ -34,12 +34,22 @@ def main():
                   'private bool TryResolveZombieModeSpawnPoint(']
     damage_path = ROOT / 'ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs'
     damage_raw = damage_path.read_bytes()
-    production = 'using System; using System.Collections.Generic; using UnityEngine; using UnityEngine.AI; using Duckov.Buffs; using Cysharp.Threading.Tasks;\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n'
+    production = 'using System; using System.Collections.Generic; using Pathfinding; using UnityEngine; using UnityEngine.AI; using Duckov.Buffs; using Cysharp.Threading.Tasks;\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n'
     production += '\n'.join(member(text, signature) for signature in signatures)
-    production += '\n' + member(damage_raw.decode('utf-8-sig'), 'internal void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source,') + '\n}}'
+    production += '\n' + member(damage_raw.decode('utf-8-sig'), 'internal void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source,') + '\n}'
+    # 可达性判据在共享 SpawnPositionHelper（A* 优先、无 A* 退 NavMesh），连同常量一起按原文执行。
+    helper_path = ROOT / 'Utilities/SpawnPositionHelper.cs'
+    helper_raw = helper_path.read_bytes()
+    helper_text = helper_raw.decode('utf-8-sig')
+    constants = [line.strip() for line in helper_text.splitlines()
+                 if line.strip().startswith(('internal const float ReachableAnchorSnapDistance', 'internal const float ReachableVerticalTolerance'))]
+    assert len(constants) == 2, constants
+    production += '\ninternal static partial class SpawnPositionHelper {\n' + '\n'.join(constants) + '\n'
+    production += member(helper_text, 'internal static bool TryResolveReachableFrom(') + '\n'
+    production += member(helper_text, 'private static bool IsNearWalkableNode(') + '\n}}'
     generated = OUT / 'Production.cs'
     generated.write_text(production, encoding='utf-8')
-    (OUT / 'production-sha256.json').write_text(json.dumps({str(path.relative_to(ROOT)): hashlib.sha256(raw).hexdigest(), str(damage_path.relative_to(ROOT)): hashlib.sha256(damage_raw).hexdigest()}, indent=2), encoding='utf-8')
+    (OUT / 'production-sha256.json').write_text(json.dumps({str(path.relative_to(ROOT)): hashlib.sha256(raw).hexdigest(), str(damage_path.relative_to(ROOT)): hashlib.sha256(damage_raw).hexdigest(), str(helper_path.relative_to(ROOT)): hashlib.sha256(helper_raw).hexdigest()}, indent=2), encoding='utf-8')
     sources = [generated, HERE / 'Program.cs', HERE / 'Stubs.cs']
     includes = ''.join('<Compile Include="' + escape(str(path), {'"': '&quot;'}) + '" />' for path in sources)
     project = OUT / 'Regression.csproj'

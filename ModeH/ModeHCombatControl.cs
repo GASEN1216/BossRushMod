@@ -176,6 +176,7 @@ namespace BossRush
             _fireContext.NearestEnemy = null;
             _fireContext.LowestHealthEnemy = null;
             _lowestEnemyHealthFraction = 1f;
+            _arenaApproachNextTime.Clear();
             _activeFighterArmorItem = null;
             _arenaConditionId = arenaConditionId;
             _lastEntryBatchIndex = lastEntryBatchIndex > 0 ? lastEntryBatchIndex : 0;
@@ -277,7 +278,12 @@ namespace BossRush
         {
             if (_telemetry == null || _telemetry.HasResult) return false;
 
+            // 存活对账先于一切终局判定：死亡事件丢失时名单会残留，胜利永远不成立、最后被超时判负。
+            _telemetry.SweepDepartedParticipants(deltaTime);
             RefreshFireContext(deltaTime, false);
+
+            // 优先级 1 先于优先级 4：最后一名敌军与 180 秒在同一帧结束时，按胜利判（场上真的没人了）。
+            if (TryClaimVictoryIfCleared()) return true;
 
             // 优先级 4：180 秒
             if (_telemetry.Tick(deltaTime)) return true;
@@ -307,15 +313,7 @@ namespace BossRush
             TryEvaluateErrorTrigger();
 
             // 优先级 1：全部计划批次已入场、没有生成工作，敌军全灭且我方存活。
-            if (_entryBatchIndex >= _lastEntryBatchIndex && !_enemySpawningPending
-                && _telemetry.LiveEnemyCount == 0 && IsAnyFighterAlive())
-            {
-                if (_telemetry.TryClaimVictory(true))
-                {
-                    RestoreAll();
-                    return true;
-                }
-            }
+            if (TryClaimVictoryIfCleared()) return true;
 
             // 优先级 2：先发倒地 -> 一次自动接力窗口；无接力者判负
             string downProfileId = _telemetry.PendingDownProfileId;
@@ -376,6 +374,16 @@ namespace BossRush
             _relayWindowOpen = false;
             if (!OnFighterEntered(_relayFighter, relayProfile, out failureReasonId)) return false;
             CaptureSnapshot(ModeHSnapshotTrigger.DownOrRelay, snapshotContext);
+            return true;
+        }
+
+        /// <summary>优先级 1：全部计划批次已入场、没有生成工作，敌军全灭且我方存活时锁定胜利。</summary>
+        private bool TryClaimVictoryIfCleared()
+        {
+            bool cleared = _entryBatchIndex >= _lastEntryBatchIndex && !_enemySpawningPending
+                && _telemetry.LiveEnemyCount == 0 && IsAnyFighterAlive();
+            if (!cleared || !_telemetry.TryClaimVictory(true)) return false;
+            RestoreAll();
             return true;
         }
 
@@ -1010,6 +1018,7 @@ namespace BossRush
 
                 float sqr = (enemyPos - originPos).sqrMagnitude;
                 WakeArenaOpponent(character, origin.mainDamageReceiver);
+                NudgeArenaApproach(character, origin.mainDamageReceiver);
                 if (sqr < bestSqr)
                 {
                     bestSqr = sqr;
@@ -1026,6 +1035,48 @@ namespace BossRush
                 }
             }
             WakeArenaOpponent(origin, _fireContext.NearestEnemy);
+            // 口令窗口（例如 center 的回中点火）正在驱动登场选手的移动时不插手
+            if (_commandController.ActiveCommandId == null) NudgeArenaApproach(origin, _fireContext.NearestEnemy);
+        }
+
+        /// <summary>两次靠近指令的最短间隔：MoveToPos 每次都会发一次 A* 寻路，不能按 0.1 秒扫描节奏狂发。</summary>
+        private const float ArenaApproachRepathSeconds = 1.5f;
+
+        /// <summary>每名参赛者下一次允许发靠近指令的时刻（按角色实例）。每场 BeginMatch 清空。</summary>
+        private readonly Dictionary<int, float> _arenaApproachNextTime = new Dictionary<int, float>();
+
+        /// <summary>
+        /// 擂台靠近兜底（2026-09-29「AI 老是呆呆的」）：目标已经锁上、但对手在它的视距之外时，
+        /// 官方行为树的 SearchEnemyAround 看不见就会把目标清掉，双方隔着半个擂台来回「找人」。
+        /// 这里只在 AI 当前目标就是这名对手、且距离超过视距八成时，按 1.5 秒节流发一次 MoveToPos 走近，
+        /// 进入视距后交还官方行为树自己索敌、追击、开火。ERROR 受控选手与寻路未返回时不插手。no-throw。
+        /// </summary>
+        private void NudgeArenaApproach(CharacterMainControl character, DamageReceiver target)
+        {
+            if (character == null || target == null) return;
+            try
+            {
+                if (target.health == null || target.health.IsDead || character.Health == null || character.Health.IsDead
+                    || !character.gameObject.activeInHierarchy) return;
+                if (LevelManager.Instance != null && LevelManager.Instance.ControllingCharacter == character) return;
+                AICharacterController ai = ResolveAi(character);
+                if (ai == null || !ReferenceEquals(ai.searchedEnemy, target)) return;
+                int id = character.GetInstanceID();
+                float now = Time.time;
+                float next;
+                if (_arenaApproachNextTime.TryGetValue(id, out next) && now < next) return;
+                _arenaApproachNextTime[id] = now + ArenaApproachRepathSeconds;
+                Vector3 from = character.transform.position;
+                Vector3 to = target.transform.position;
+                float sight = ai.sightDistance > 1f ? ai.sightDistance : 20f;
+                if ((to - from).sqrMagnitude <= sight * sight * 0.64f) return;
+                if (ai.WaitingForPathResult()) return;
+                ai.MoveToPos(to);
+            }
+            catch (Exception)
+            {
+                // 寻路组件缺失或角色刚被回收：本轮不靠近，比赛照常
+            }
         }
 
         /// <summary>

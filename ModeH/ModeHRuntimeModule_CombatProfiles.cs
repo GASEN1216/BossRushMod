@@ -19,8 +19,9 @@ namespace BossRush
                     ? previous.relayKitIds : null;
                 if (selected != null) return new List<string>(selected);
             }
-            // 全槽基础配装在选人前冻结；没有历史选择时使用原本那套。
-            return new List<string>();
+            // 全槽基础配装在选人前冻结；阵容被重开清掉或换了赛季时，沿用玩家上次给这位选手穿上的（ModeHKitPreferenceLedger），
+            // 从没调过就用原本那套。
+            return LoadKitPreference(profile);
         }
 
         private void ReplaceSeasonProfile(ModeHProfileDto snapshot)

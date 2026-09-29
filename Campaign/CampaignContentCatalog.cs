@@ -450,7 +450,7 @@ namespace BossRush
             list.Add(MakeChapter(
                 "ch2", 2, ModeModeD, "种地的选手", "The Fighter With a Garden", 35000, 2, "clue_ch2",
                 MakeObjective(CampaignObjectiveKind.GardenBuilt, 1,
-                    "在基地建好菜地", "Build the garden at base"),
+                    "建好后山菜地", "Build the backyard garden"),
                 MakeObjective(CampaignObjectiveKind.ReachWave, 5,
                     "白手起家打到第 5 波", "Reach wave 5 from nothing"),
                 MakeObjective(CampaignObjectiveKind.MeleeKills, 5,

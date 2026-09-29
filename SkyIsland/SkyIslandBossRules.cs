@@ -406,7 +406,7 @@ namespace BossRush
             },
             new SkyIslandBossGearSpec
             {
-                TypeId = BossRushItemIds.SkyIslandRainhushEarmuffs, Slot = "Headset", StatKey = "HearingAbility", StatValue = 0.5f,
+                TypeId = BossRushItemIds.SkyIslandRainhushEarmuffs, Slot = "Headset", StatKey = "HearingAbility", StatValue = 1f,
                 Durability = 40f, Quality = 4, ModelBaseName = "RainhushEarmuffs_Headset", IconName = "sky_island_rainhush_earmuffs",
                 LocKey = "BossRush_SkyIsland_RainhushEarmuffs"
             },

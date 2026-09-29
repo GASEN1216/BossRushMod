@@ -22,7 +22,7 @@
       "titleCN": "种地的选手",
       "titleEN": "The Fighter With a Garden",
       "objectives": [
-        { "type": "garden_built", "threshold": 1, "descCN": "在基地建好菜地", "descEN": "Build the garden at base" },
+        { "type": "garden_built", "threshold": 1, "descCN": "建好后山菜地", "descEN": "Build the backyard garden" },
         { "type": "reach_wave", "threshold": 5, "descCN": "白手起家打到第 5 波", "descEN": "Reach wave 5 from nothing" },
         { "type": "melee_kills", "threshold": 5, "descCN": "用近战武器击杀 5 个", "descEN": "Kill 5 with a melee weapon" }
       ],

@@ -8,7 +8,10 @@ namespace BossRush
     {
         private string _selectedMatchCommandId;
         private bool _showLoadoutEditor;
-        /// <summary>整备页当前分区：1 阵容 / 2 首发配装 / 3 接力配装 / 4 口令（页头下一排页签，审查 B-08）。</summary>
+        /// <summary>
+        /// 整备页当前分区：1 阵容 / 2 配装（首发、接力两列，两人身上全部装备）/ 3 口令（页头下一排页签，审查 B-08）。
+        /// 2026-09-29 owner：调整页要把两个人身上的装备都摆出来，与赛前对照页一致，不再分「首发配装」「接力配装」两页。
+        /// </summary>
         private int _loadoutSection = 1;
 
         private bool CanEditLoadout(ModeHMatchRosterDto roster)
@@ -42,44 +45,71 @@ namespace BossRush
                 {
                     if (!CanEditLoadout(owner)) return;
                     edit();
+                    // 穿上 / 换回的选择按选手记下来：换场、重开、下个赛季再抽到他都沿用（ModeHKitPreferenceLedger）
+                    RecordKitPreferences(owner);
                     TryPersistSeason("loadout_edited");
                     RouteUiForLifecycle(_runState.Lifecycle);
                 },
             };
         }
 
+        /// <summary>把本场两名选手现在穿上的整备套装按选手身份记下来（空列表 = 全套基础装备，也记）。</summary>
+        private void RecordKitPreferences(ModeHMatchRosterDto roster)
+        {
+            if (roster == null) return;
+            ModeHProfileDto starter = FindSeasonProfile(roster.matchStarterProfileId);
+            if (starter != null) ModeHKitPreferenceLedger.Record(starter.stableKey, roster.starterKitIds);
+            ModeHProfileDto relay = FindSeasonProfile(roster.matchRelayProfileId);
+            if (relay != null) ModeHKitPreferenceLedger.Record(relay.stableKey, roster.relayKitIds);
+        }
+
         /// <summary>
-        /// 整备页（审查 B-08）：四个分区做成页头下的一排页签（阵容 / 首发配装 / 接力配装 / 口令），
+        /// 这位选手上次穿上的整备套装（阵容被同场重开清掉、换了赛季时用）。只取这一季已解锁、可用、
+        /// 与选手兼容的，同槽只留第一件、总数不超过上限；从没调过或读不出来时返回空（= 全套基础装备）。
+        /// </summary>
+        private List<string> LoadKitPreference(ModeHProfileDto profile)
+        {
+            List<string> result = new List<string>();
+            if (profile == null || _season == null) return result;
+            List<string> saved = ModeHKitPreferenceLedger.Find(profile.stableKey);
+            if (saved == null || saved.Count == 0) return result;
+            HashSet<string> slots = new HashSet<string>(StringComparer.Ordinal);
+            foreach (ModeHResolvedKit kit in ModeHLoadoutKitRegistry.GetSelectableKits(
+                _season.unlockedKitIds, profile.archetypeId, profile.profileId))
+            {
+                if (result.Count >= ModeHConfig.MaxKitsPerFighter) break;
+                if (kit == null || kit.Spec == null || !saved.Contains(kit.Spec.KitId)) continue;
+                if (!slots.Add(kit.Spec.ReplaceSlot)) continue;
+                result.Add(kit.Spec.KitId);
+            }
+            result.Sort(StringComparer.Ordinal);
+            return result;
+        }
+
+        /// <summary>
+        /// 整备页（审查 B-08）：三个分区做成页头下的一排页签（阵容 / 配装 / 口令），
         /// 不再是「先进目录页、再点进分区、6 项一页翻页」；选项列表本身可以滚动，不分页。
         /// 底栏只有一颗「完成」，回到双方对照页再锁定开打。
         /// 2026-09-25 owner「整备页也是乱的」：页签下一行写清当前的首发 / 接力 / 口令；阵容页左列首发、右列接力；
-        /// 配装页两列、每格带物品图标；口令页整行（说明长）。
+        /// 口令页整行（说明长）。2026-09-29：配装页左列首发、右列接力，两人身上全部装备一页看全、每格带物品图标。
         /// </summary>
         private ModeHPageContent BuildLoadoutEditorPage()
         {
             ModeHPageContent page = new ModeHPageContent();
             page.Title = L10n.T("本场阵容、配装与口令", "Match roster, kits and command");
             ModeHMatchRosterDto roster = _season.matchRoster;
-            bool hasRelay = !string.IsNullOrEmpty(roster.matchRelayProfileId);
-            if (_loadoutSection < 1 || _loadoutSection > 4 || (_loadoutSection == 3 && !hasRelay)) _loadoutSection = 1;
+            if (_loadoutSection < 1 || _loadoutSection > 3) _loadoutSection = 1;
 
             ModeHOptionRow tabs = new ModeHOptionRow();
             tabs.AtTop = true;
             AddSectionTab(tabs, roster, 1, L10n.T("阵容", "Roster"));
-            AddSectionTab(tabs, roster, 2, L10n.T("首发配装 ", "Starter gear ")
-                + CountKits(FindSeasonProfile(roster.matchStarterProfileId), roster.starterKitIds));
-            // 接力休息（单人出战）时没有接力配装可调：不挂这个页签（§4.14 不挂灰掉的占位项）
-            if (hasRelay) AddSectionTab(tabs, roster, 3, L10n.T("接力配装 ", "Relay gear ")
-                + CountKits(FindSeasonProfile(roster.matchRelayProfileId), roster.relayKitIds));
-            AddSectionTab(tabs, roster, 4, L10n.T("口令", "Command"));
+            AddSectionTab(tabs, roster, 2, L10n.T("配装", "Gear"));
+            AddSectionTab(tabs, roster, 3, L10n.T("口令", "Command"));
             page.OptionRows.Add(tabs);
             page.Body = DescribeLoadoutSummary(roster);
 
             if (_loadoutSection == 1) AddRosterOptions(page, roster);
-            else if (_loadoutSection == 2) AddKitOptions(page,
-                FindSeasonProfile(roster.matchStarterProfileId), roster.starterKitIds);
-            else if (_loadoutSection == 3) AddKitOptions(page,
-                FindSeasonProfile(roster.matchRelayProfileId), roster.relayKitIds);
+            else if (_loadoutSection == 2) AddGearOptions(page, roster);
             else AddCommandOptions(page, roster);
 
             page.Actions.Add(new ModeHActionData
@@ -115,11 +145,32 @@ namespace BossRush
                 + L10n.T("　·　口令 ", "  ·  Command ") + command;
         }
 
-        /// <summary>件数包含基础全套和已替换装备，与赛前人物面板一致。</summary>
-        private string CountKits(ModeHProfileDto profile, List<string> kits)
+        /// <summary>
+        /// 配装页：左列首发、右列接力，各列是这名选手身上的全部装备（基础全套逐槽 + 可换上的整备套装），
+        /// 「√ 已带上」的那些就是赛前对照页人物卡上的那一排装备。接力休息时右列只有列头。
+        /// 两列各自从上往下排，短的一列用 null 补位（渲染按下标排格，null 格跳过）。
+        /// </summary>
+        private void AddGearOptions(ModeHPageContent page, ModeHMatchRosterDto roster)
         {
-            ModeHPreparedFighterStats stats = GetPreparedFighterStats(profile, kits);
-            return stats != null ? stats.Gear.Count.ToString() : "0";
+            ModeHProfileDto starter = FindSeasonProfile(roster.matchStarterProfileId);
+            ModeHProfileDto relay = FindSeasonProfile(roster.matchRelayProfileId);
+            ModeHPageContent left = new ModeHPageContent();
+            ModeHPageContent right = new ModeHPageContent();
+            AddKitOptions(left, starter, roster.starterKitIds);
+            if (relay != null) AddKitOptions(right, relay, roster.relayKitIds);
+
+            page.PreparationColumns = 2;
+            page.PreparationRowHeight = 108f;
+            page.PreparationHeaders.Add(L10n.T("首发 · ", "Starter · ") + ResolveProfileDisplayName(roster.matchStarterProfileId));
+            page.PreparationHeaders.Add(relay != null
+                ? L10n.T("接力 · ", "Relay · ") + ResolveProfileDisplayName(relay.profileId)
+                : L10n.T("接力休息", "Rest the relay"));
+            int rows = Math.Max(left.PreparationOptions.Count, right.PreparationOptions.Count);
+            for (int i = 0; i < rows; i++)
+            {
+                page.PreparationOptions.Add(i < left.PreparationOptions.Count ? left.PreparationOptions[i] : null);
+                page.PreparationOptions.Add(i < right.PreparationOptions.Count ? right.PreparationOptions[i] : null);
+            }
         }
 
         private void AddSectionTab(ModeHOptionRow tabs, ModeHMatchRosterDto roster, int section, string label)
@@ -305,7 +356,6 @@ namespace BossRush
             List<string> parts = new List<string> { L10n.T("生效 6 秒", "Active for 6 seconds") };
             if (spec.RequiresRelayEntered) parts.Add(L10n.T("仅接力登场后", "After relay entry only"));
             if (spec.RequiresEnemyCountAtLeast > 0) parts.Add(L10n.T("敌军至少 ", "Enemies required: ") + spec.RequiresEnemyCountAtLeast);
-            if (spec.IsSignature) parts.Add(L10n.T("仅招牌持有者响应", "Signature owner only"));
             if (spec.Effects != null) foreach (ModeHEffectSpec effect in spec.Effects)
             {
                 if (effect == null) continue;
@@ -347,17 +397,16 @@ namespace BossRush
             }
         }
 
-        /// <summary>看盘 / 赔率对照页场次行下面那行小字（替代旧的「赛况 / 侦察」页）。本场规则一行小字：「本场规则 · 中央掩体：蓝圈内……」；有高威胁核心时补半句。</summary>
+        /// <summary>看盘 / 赔率对照页场次行下面那行小字（替代旧的「赛况 / 侦察」页）。本场规则一行小字：「本场规则 · 中央掩体：蓝圈内……」。</summary>
         private string DescribeMatchNote()
         {
             ModeHPublicSummaryDto summary = _season != null && _season.currentMatchPlan != null
                 ? _season.currentMatchPlan.publicSummary : null;
             if (summary == null || string.IsNullOrEmpty(summary.conditionId)) return null;
             string prefix = ModeHConfig.LocalizationKeyPrefix;
-            string note = L10n.T("本场规则 · ", "Match rule · ") + L10n.T(prefix + "Condition_" + summary.conditionId)
+            // 2026-09-29 owner：不再附「对面有狠角色」一类提醒，只留本场规则本身
+            return L10n.T("本场规则 · ", "Match rule · ") + L10n.T(prefix + "Condition_" + summary.conditionId)
                 + L10n.T("：", ": ") + L10n.T(prefix + "Condition_" + summary.conditionId + "_Desc");
-            if (summary.hasHighThreatCore) note += L10n.T("　对面有狠角色，留意它什么时候上场。", "  A heavy hitter is on their side; watch when it enters.");
-            return note;
         }
 
         private bool RefreshSelectedLoadoutDigest(out string error)

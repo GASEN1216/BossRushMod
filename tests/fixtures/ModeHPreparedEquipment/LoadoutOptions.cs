@@ -10,14 +10,15 @@ namespace BossRush
 
         internal static void Run()
         {
-            var profile = new ModeHProfileDto { profileId = "starter" };
+            var profile = new ModeHProfileDto { profileId = "starter", stableKey = "fixture_boss" };
             var selected = new List<string> { "replacement_HeadArmor" };
             var runtime = new ModeHRuntimeModule
             {
                 _season = new ModeHSeasonDto
                 {
+                    profiles = new List<ModeHProfileDto> { profile },
                     unlockedKitIds = new List<string> { "replacement_HeadArmor" },
-                    matchRoster = new ModeHMatchRosterDto { matchIndex = 2, starterKitIds = selected },
+                    matchRoster = new ModeHMatchRosterDto { matchIndex = 2, matchStarterProfileId = "starter", starterKitIds = selected },
                 },
                 _runState = new FixtureRunState { MatchIndex = 2, Lifecycle = ModeHLifecycle.LoadoutEditing },
             };
@@ -45,6 +46,8 @@ namespace BossRush
             original.OnClick();
             Check(selected.Count == 0 && runtime.SaveRequests == 1 && runtime.Routes == 1,
                 "clicking original restores slot and requests persistence before refreshing");
+            Check(ModeHKitPreferenceLedger.Find("fixture_boss") != null && ModeHKitPreferenceLedger.Find("fixture_boss").Count == 0,
+                "restoring original gear is remembered for this fighter (empty list = full original outfit)");
             page = runtime.Options(profile, selected);
             Check(page.PreparationOptions.Find(option => option.Label.StartsWith("original_HeadArmor\n")).IsSelected,
                 "restored original displays equipped on refresh");
@@ -52,6 +55,8 @@ namespace BossRush
             replacement.OnClick();
             Check(selected.Count == 1 && selected[0] == "replacement_HeadArmor" && runtime.SaveRequests == 2,
                 "replacement can be worn again and queued for season persistence");
+            Check(ModeHKitPreferenceLedger.Find("fixture_boss").Contains("replacement_HeadArmor"),
+                "wearing a replacement is remembered for this fighter");
             runtime._season.matchRoster = new ModeHMatchRosterDto { matchIndex = 3 };
             replacement.OnClick();
             Check(selected.Count == 1 && runtime.SaveRequests == 2,
@@ -70,6 +75,8 @@ namespace BossRush
         internal int SaveRequests, Routes;
         internal readonly List<ModeHResolvedKit> Outfit = new List<ModeHResolvedKit>();
         private List<ModeHResolvedKit> GetPreparedProfileOutfit(ModeHProfileDto profile) { return Outfit; }
+        private ModeHProfileDto FindSeasonProfile(string id)
+        { return _season == null || _season.profiles == null ? null : _season.profiles.Find(p => p.profileId == id); }
         private bool TryPersistSeason(string reason) { SaveRequests++; return true; }
         private void RouteUiForLifecycle(ModeHLifecycle lifecycle)
         { if (SaveRequests <= Routes) throw new Exception("refresh before persistence"); Routes++; }
@@ -102,6 +109,16 @@ namespace BossRush
     }
     static class ModeHInjuryAndScarSystem
     { internal static bool InjuryDisablesKitSlot(string injury, string slot) { return injury == slot; } }
+    // 选手配装偏好的存档边界（生产走 BossRushSlotJsonStore）：这里只记最后一次写入，验证「写了什么、读回什么」
+    static class ModeHKitPreferenceLedger
+    {
+        internal static readonly Dictionary<string, List<string>> Saved = new Dictionary<string, List<string>>();
+        internal static int Writes;
+        internal static List<string> Find(string key)
+        { List<string> v; return key != null && Saved.TryGetValue(key, out v) ? new List<string>(v) : null; }
+        internal static bool Record(string key, IList<string> kits)
+        { if (string.IsNullOrEmpty(key)) return false; Writes++; Saved[key] = new List<string>(kits ?? new List<string>()); return true; }
+    }
     static partial class ModeHLoadoutKitRegistry
     {
         internal static readonly Dictionary<string, ModeHResolvedKit> Kits = new Dictionary<string, ModeHResolvedKit>();

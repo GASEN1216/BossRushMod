@@ -433,5 +433,63 @@ namespace BossRush
                 RequestSuspended("scar_resolution_exception");
             }
         }
+
+        private ModeHHallOfFameRecordDto BuildHallOfFameRecord()
+        {
+            if (_season == null || _runState == null) return null;
+            ModeHProfileDto champion = FindSeasonProfile(
+                _season.contract != null ? _season.contract.contractMainProfileId : null);
+            if (champion == null) return null;
+
+            ModeHHallOfFameRecordDto record = new ModeHHallOfFameRecordDto();
+            record.hallOfFameId = "hof|" + _runState.RunId;
+            record.schemaVersion = ModeHConfig.CurrentSchemaVersion;
+            record.seasonVersion = ModeHConfig.CurrentSchemaVersion;
+            record.championProfileSnapshot = CloneProfile(champion);
+            record.aliasKey = champion.displayNameKey ?? string.Empty;
+            record.archetypeId = champion.archetypeId ?? string.Empty;
+            record.temperamentId = champion.temperamentId ?? string.Empty;
+            record.quirkId = champion.quirkId ?? string.Empty;
+            record.anomalyId = champion.anomalyId ?? string.Empty;
+            record.signatureCommandId = champion.signatureCommandId ?? string.Empty;
+            record.scarIds = champion.scarIds != null
+                ? new List<string>(champion.scarIds) : new List<string>();
+            record.matchReportIds = new List<string>();
+            // 已知残留：ApplyRetirement 晋升替补后会把 subProfileId 清空，
+            // 于是「主选手中途退役、替补顶上并夺冠」这一支的 substituteHistory 是空的
+            // （冠军字段本身已经对了——那正是接通退役结算修好的部分）。
+            // 要把被晋升者也记进来就得加持久字段，而本 DTO 进 canonical digest，
+            // 加字段会让所有已存名人堂信封 VerifyDigest 失败。留待单独评估。
+            record.substituteHistory = new List<string>();
+            if (_season.contract != null
+                && !string.IsNullOrEmpty(_season.contract.contractSubProfileId))
+            {
+                record.substituteHistory.Add(_season.contract.contractSubProfileId);
+            }
+
+            if (_season.matchReports != null)
+            {
+                for (int i = 0; i < _season.matchReports.Count; i++)
+                {
+                    ModeHMatchReportDto report = _season.matchReports[i];
+                    if (report == null) continue;
+                    record.matchReportIds.Add(report.resultToken ?? string.Empty);
+                    if (report.winner == (int)ModeHMatchOutcome.PlayerVictory)
+                    {
+                        if (report.lockedOdds > record.maxOddsWin) record.maxOddsWin = report.lockedOdds;
+                        if (report.virtualStakeAmount > record.maxVirtualStakeWin)
+                        {
+                            record.maxVirtualStakeWin = report.virtualStakeAmount;
+                        }
+                    }
+                }
+            }
+            record.finalVirtualStakeCredits = _season.virtualStakeCredits;
+            record.maxRealStakeWin = 0;
+            record.createdUtc = DateTime.UtcNow.ToString("O");
+            record.gameBuildSignature = _season.gameBuildSignature ?? string.Empty;
+            record.modBuildSignature = _season.modBuildSignature ?? string.Empty;
+            return record;
+        }
     }
 }

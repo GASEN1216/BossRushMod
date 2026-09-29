@@ -87,6 +87,8 @@ namespace BossRush
                 ModeHWarehouseStakeJournal.LoadPersisted(ModeHStakeJournalPersistence.LoadCurrent());
                 RestoreFromSaveIfPresent();
                 ReconcileCashBetOnRestore();
+                // 读档时的对账不属于任何一趟鸭王杯（退款已由提示告知），不进本场总结
+                ModeHSessionSummary.Discard();
             }
             catch (Exception e)
             {
@@ -145,14 +147,24 @@ namespace BossRush
         {
             try
             {
-                ModeHSaveFlushCoordinator.Tick();
-                ModeHCashBetService.Tick();
+                // 存档 / 押钱账本的重试与比赛驱动互不牵连：这两步抛异常只记日志，不能拖着比赛同场重开
+                try
+                {
+                    ModeHSaveFlushCoordinator.Tick();
+                    ModeHCashBetService.Tick();
+                }
+                catch (Exception e)
+                {
+                    LogFailure("update_save_tick", e);
+                }
                 OnUpdateInternal(deltaTime, unscaledDeltaTime);
             }
             catch (Exception e)
             {
                 LogFailure("update", e);
-                RequestExit(ModeHExitReason.TechnicalAbort, "update_exception");
+                // 不再「任何一帧抛异常就整局关停」：那会释放观战租约，镜头当场回到看台身体（2026-09-29 实机）。
+                // 交战相位按技术故障同场重开，页面相位保留现场，连续多帧失败才关停兜底（见 MatchFlow）。
+                HandleUpdateFailure(e);
             }
         }
 
@@ -319,6 +331,7 @@ namespace BossRush
             BeginNewRunSession();
             RestoreFromSaveIfPresent();
             ReconcileCashBetOnRestore();
+            ModeHSessionSummary.Discard();
         }
 
         /// <summary>存在活动 Season 时重建内存 run owner（生成新的 owner token）。</summary>
@@ -449,6 +462,12 @@ namespace BossRush
             CancelSeasonResume();
             _lastExitReasonId = reasonId;
 
+            // 本场总结：内容必须在关停清掉赛季状态之前组装；这一趟的记账随之清空（ModeHSessionSummary）
+            ModeHPageContent sessionSummary = null;
+            try { sessionSummary = BuildSessionSummaryContent(reason, reasonId); }
+            catch (Exception e) { LogFailure("session_summary_build", e); }
+            ModeHSessionSummary.Discard();
+
             ShutdownRuntimeInternal(reason, reasonId);
 
             try
@@ -464,11 +483,25 @@ namespace BossRush
 
             // 鸭王杯结束或玩家从观战 HUD 主动退出后，统一回到基地，避免把玩家留在
             // 已解除隔离租约的出击图里。正常地图返回事件不重复触发，只有明确的结束/按钮路径调用。
+            // 2026-09-29 owner：回基地前先弹「本场总结」，点「返回基地」（或 ESC）后才离场；没弹出来就照旧直接离场。
             if (reason == ModeHExitReason.SeasonComplete
-                || string.Equals(reasonId, "spectator_exit", StringComparison.Ordinal))
+                || string.Equals(reasonId, "spectator_exit", StringComparison.Ordinal)
+                || string.Equals(reasonId, SuspendedExitReasonId, StringComparison.Ordinal))
             {
-                try { if (_owner != null) _owner.SafeExitFromModeH(); }
+                try
+                {
+                    ModBehaviour owner = _owner;
+                    if (owner != null && !ModeHSessionSummary.Show(sessionSummary,
+                            L10n.T("返回基地", "Return to base"), owner.SafeExitFromModeH))
+                        owner.SafeExitFromModeH();
+                }
                 catch (Exception e) { LogFailure("safe_exit_base", e); }
+            }
+            else if (sessionSummary != null && (reason == ModeHExitReason.SceneGenerationMismatch
+                || reason == ModeHExitReason.UserMapReturn))
+            {
+                // 从官方途径离开（已经在回基地的路上或到了基地）：总结照样给，只能关闭，不再二次离场
+                ModeHSessionSummary.Show(sessionSummary, L10n.T("关闭", "Close"), null);
             }
 
             // 关停清掉了内存里的 _season/_runState，但磁盘上那份可能仍是活动 lifecycle.
@@ -528,6 +561,8 @@ namespace BossRush
             ModeHSpectatorLease.ResetStaticCaches();
             ModeHCashBetService.ResetStaticCaches();
             ModeHDraftRefreshLedger.ResetStaticCaches();
+            ModeHKitPreferenceLedger.ResetStaticCaches();
+            ModeHSessionSummary.ResetStaticCaches();
             ModeHItemBetStake.ResetStaticCaches();
         }
 

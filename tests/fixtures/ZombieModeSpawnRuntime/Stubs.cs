@@ -81,6 +81,21 @@ namespace UnityEngine
 }
 
 namespace Duckov.Buffs { public sealed class Buff { } }
+namespace Pathfinding
+{
+    public sealed class GraphNode { public bool Walkable=true; public uint Area; }
+    public struct NNInfo { public GraphNode node; public UnityEngine.Vector3 position; }
+    public sealed class NNConstraint { public static readonly NNConstraint Walkable=new NNConstraint(); }
+    public static class PathUtilities { public static bool IsPathPossible(GraphNode a,GraphNode b) { return a.Walkable && b.Walkable && a.Area==b.Area; } }
+}
+/// <summary>A* 替身：GetNearest 按点返回节点；Area 相同即连通。</summary>
+public sealed class AstarPath
+{
+    public static AstarPath active;
+    public bool isScanning;
+    public Func<UnityEngine.Vector3,Pathfinding.NNInfo> Nearest;
+    public Pathfinding.NNInfo GetNearest(UnityEngine.Vector3 point,Pathfinding.NNConstraint constraint) { return Nearest(point); }
+}
 namespace UnityEngine.AI
 {
     public enum NavMeshPathStatus { PathComplete, PathPartial, PathInvalid }
@@ -131,7 +146,7 @@ namespace BossRush
         public readonly List<ZombieModeBossInstance> CurrentWaveBossInstances=new List<ZombieModeBossInstance>();
     }
     public static class ZombieModeTuning { public const int MaxNormalZombieCount=20; public const float NormalZombieForceTraceDistance=120,NavMeshVirtualSpawnRadius=3,SpawnPointNavMeshSampleRadius=2,NavMeshLiftOffset=0.1f,SpawnPointMinPlayerDistance=12; }
-    public static class SpawnPositionHelper { public static bool PassesMinPlayerDistance(Vector3 point,float distance) { return (point-CharacterMainControl.Main.transform.position).sqrMagnitude>=distance*distance; } }
+    internal static partial class SpawnPositionHelper { public static bool PassesMinPlayerDistance(Vector3 point,float distance) { return (point-CharacterMainControl.Main.transform.position).sqrMagnitude>=distance*distance; } }
     public enum DamageTypes { normal }
     public struct DamageInfo
     {

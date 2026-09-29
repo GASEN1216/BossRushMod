@@ -12,7 +12,7 @@ namespace ItemStatsSystem {
 namespace BossRush {
  internal sealed partial class CharacterMainControl : UnityEngine.Object { }
  internal sealed partial class Health : UnityEngine.Object { }
- internal sealed class ModeHParticipantRef { public string ProfileId; public string StableKey; public int PlanSlotIndex=-1; public bool IsEnemy; public bool IsRelay; public CharacterMainControl Character; public int BatchIndex; }
+ internal sealed class ModeHParticipantRef { public string ProfileId; public string StableKey; public int PlanSlotIndex=-1; public bool IsEnemy; public bool IsRelay; public CharacterMainControl Character; public int BatchIndex; internal float InactiveSeconds; }
  internal interface IModeHTelemetrySink { void OnParticipantHurt(ModeHParticipantRef t,ModeHParticipantRef a,float d,int w); void OnParticipantDead(ModeHParticipantRef t,ModeHParticipantRef k); }
  internal static class ModeHProfileRegistry {
   public static readonly Dictionary<string,ModeHProfileTemplate> Map=new Dictionary<string,ModeHProfileTemplate>();
@@ -46,6 +46,18 @@ namespace BossRush {
    var t=new ModeHCombatTelemetry();t.BeginMatch(4,7,"");var first=Enemy("other_key");var final=Enemy("enemy_key");
    t.OnEnemyEntered(first);t.OnEnemyEntered(final);t.OnParticipantDead(first,null);t.OnParticipantDead(final,null);t.OnParticipantDead(first,null);
    Check(t.TryClaimVictory(true),"victory claimed");t.OnParticipantDead(Enemy("other_key"),null);
+   // 存活对账（2026-09-29）：死亡事件丢失 / 对象被销毁 / 长时间失活都要出列，不能残留成「还剩一个敌人」
+   var sweep=new ModeHCombatTelemetry();sweep.BeginMatch(2,7,"");var deadNoEvent=Enemy("other_key");var destroyed=Enemy("enemy_key");var parked=Enemy("enemy_key");var alive=Enemy("other_key");
+   sweep.OnEnemyEntered(deadNoEvent);sweep.OnEnemyEntered(destroyed);sweep.OnEnemyEntered(parked);sweep.OnEnemyEntered(alive);
+   deadNoEvent.Character.Health.IsDead=true;UnityEngine.Object.Destroy(destroyed.Character.transform.Owner);parked.Character.transform.Owner.Active=false;
+   sweep.SweepDepartedParticipants(0.1f);Check(sweep.LiveEnemyCount==2,"judged-dead and destroyed enemies leave immediately");
+   sweep.SweepDepartedParticipants(ModeHCombatTelemetry.DepartedInactiveGraceSeconds);Check(sweep.LiveEnemyCount==1,"inactive enemy leaves after grace");
+   sweep.SweepDepartedParticipants(10f);Check(sweep.LiveEnemyCount==1&&!sweep.HasResult,"alive active enemy stays");
+   sweep.OnParticipantDead(deadNoEvent,null);Check(sweep.LiveEnemyCount==1,"late real event after sweep is deduplicated");
+   alive.Character.Health.IsDead=true;sweep.SweepDepartedParticipants(0f);Check(sweep.LiveEnemyCount==0&&sweep.TryClaimVictory(true),"cleared field claims victory instead of timing out");
+   var fighterSweep=new ModeHCombatTelemetry();fighterSweep.BeginMatch(2,7,"");var fighter=new ModeHParticipantRef{ProfileId="main",StableKey="main_key",Character=new CharacterMainControl()};
+   fighterSweep.OnFighterEntered(fighter);fighter.Character.Health.IsDead=true;fighterSweep.SweepDepartedParticipants(0f);
+   Check(fighterSweep.IsDown("main")&&fighterSweep.PendingDownProfileId=="main","fighter dead without event becomes the canonical down fact");
    var r=Report(t);Check(r.specialEnemyEligible&&r.finalDefeatedProfileSnapshot=="enemy_special","duplicate and late death preserve final source");
    var season=Season(r);string reason;var offer=ModeHTransferMarket.BuildOffer(season,4,out reason);
    Check(offer!=null&&offer.profileId=="enemy_special","victory report yields offer");

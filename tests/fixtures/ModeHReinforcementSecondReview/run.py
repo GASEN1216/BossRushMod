@@ -38,7 +38,7 @@ def main():
     control = []
     for signature in ["public bool Tick(float deltaTime, ModeHBattleSnapshotContext snapshotContext)",
                       "public void OnEnemyBatchEntered(", "public bool OnEnemyEntered(",
-                      "public void SetEnemySpawningPending("]:
+                      "public void SetEnemySpawningPending(", "private bool TryClaimVictoryIfCleared()"]:
         control.append(method(sources["ModeHCombatControl.cs"], signature))
     generated = "using System;using System.Collections;using System.Collections.Generic;using UnityEngine;\nnamespace BossRush {\n"
     generated += "internal sealed partial class ModeHRuntimeModule {\n" + "\n".join(runtime) + "\n}\n"

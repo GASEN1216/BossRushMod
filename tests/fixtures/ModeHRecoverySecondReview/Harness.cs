@@ -97,6 +97,7 @@ namespace BossRush
         { StageCalls++; error = null; return true; }
         public static int Count { get { return _cache.records.Count; } }
     }
+    internal static class ModeHSessionSummary { public static int Discards; public static void Discard() { Discards++; } }
     internal partial class ModeHRuntimeModule
     {
         private bool _waitingForBetReveal;
@@ -121,6 +122,9 @@ namespace BossRush
         public int CashRefunds;
         private void RefundCashBet(string context) { CashRefunds++; }
         private void AppendCashBetReportLine(ModeHPageContent page, ModeHMatchReportDto report) { }
+        // 本场总结（2026-09-29）：放弃赛季成功后弹一张只能关闭的总结；展示本身是 UI 宿主边界，这里只记次数
+        public int SummaryShows;
+        private void ShowSessionSummaryAfterAbandon() { SummaryShows++; }
         public bool CleanupKeptOwner = true;
         public bool CleanupOwnerExpected = true;
         public void InitHost()

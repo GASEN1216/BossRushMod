@@ -17,6 +17,7 @@
 // ============================================================================
 
 using System.Collections.Generic;
+using Pathfinding;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -25,6 +26,96 @@ namespace BossRush
     internal static class SpawnPositionHelper
     {
         internal const float DefaultLiftOffset = 0.15f;
+        /// <summary>锚点（通常是玩家）吸附到导航面的最大水平距离。</summary>
+        internal const float ReachableAnchorSnapDistance = 3f;
+        /// <summary>吸附前后允许的最大高度差；超过视为另一层楼 / 屋顶。</summary>
+        internal const float ReachableVerticalTolerance = 2f;
+
+        /// <summary>
+        /// 把 raw 吸附到可走导航面，并证明它与 anchor（通常是玩家）在同一连通区。
+        /// 官方 AI 走 A* Pathfinding（AstarPath），官方关卡不烘焙 Unity NavMesh：
+        /// 只查 NavMesh 会把所有官方刷怪点判为不可达（丧尸模式 Demo 地图收集为 0 的根因）。
+        /// 因此 A* 图优先，用 PathUtilities.IsPathPossible 判连通（不发起寻路、不改写图）；
+        /// 场景没有 A* 时才退到 Unity NavMesh 完整路径；两者都没有判不可达，不用 Raycast 冒充可达。
+        /// 成功时采纳导航面的完整 XYZ 并抬高 liftOffset。
+        /// </summary>
+        internal static bool TryResolveReachableFrom(
+            Vector3 rawPosition,
+            Vector3 anchorPosition,
+            float snapDistance,
+            float liftOffset,
+            out Vector3 resolved,
+            NavMeshPath navMeshPathBuffer = null)
+        {
+            resolved = Vector3.zero;
+            try
+            {
+                AstarPath astar = AstarPath.active;
+                if (astar != null)
+                {
+                    if (astar.isScanning)
+                    {
+                        return false;
+                    }
+
+                    NNInfo target = astar.GetNearest(rawPosition, NNConstraint.Walkable);
+                    NNInfo anchor = astar.GetNearest(anchorPosition, NNConstraint.Walkable);
+                    if (!IsNearWalkableNode(target, rawPosition, snapDistance) ||
+                        !IsNearWalkableNode(anchor, anchorPosition, ReachableAnchorSnapDistance) ||
+                        !PathUtilities.IsPathPossible(target.node, anchor.node))
+                    {
+                        return false;
+                    }
+
+                    resolved = target.position + Vector3.up * liftOffset;
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+
+            try
+            {
+                NavMeshHit targetHit;
+                NavMeshHit anchorHit;
+                NavMeshPath path = navMeshPathBuffer ?? new NavMeshPath();
+                if (!NavMesh.SamplePosition(rawPosition, out targetHit, snapDistance, NavMesh.AllAreas) ||
+                    !NavMesh.SamplePosition(anchorPosition, out anchorHit, ReachableAnchorSnapDistance, NavMesh.AllAreas) ||
+                    Mathf.Abs(targetHit.position.y - rawPosition.y) > ReachableVerticalTolerance ||
+                    Mathf.Abs(anchorHit.position.y - anchorPosition.y) > ReachableVerticalTolerance ||
+                    !NavMesh.CalculatePath(targetHit.position, anchorHit.position, NavMesh.AllAreas, path) ||
+                    path.status != NavMeshPathStatus.PathComplete)
+                {
+                    return false;
+                }
+
+                resolved = targetHit.position + Vector3.up * liftOffset;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool IsNearWalkableNode(NNInfo info, Vector3 rawPosition, float maxHorizontalDistance)
+        {
+            if (info.node == null || !info.node.Walkable)
+            {
+                return false;
+            }
+
+            Vector3 delta = info.position - rawPosition;
+            if (Mathf.Abs(delta.y) > ReachableVerticalTolerance)
+            {
+                return false;
+            }
+
+            delta.y = 0f;
+            return delta.sqrMagnitude <= maxHorizontalDistance * maxHorizontalDistance;
+        }
         internal const float DefaultNavMeshSampleRadius = 5f;
         internal const float DefaultRaycastMaxDistance = 5f;
         internal const float DefaultRaycastOriginHeight = 1f;

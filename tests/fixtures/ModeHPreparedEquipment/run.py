@@ -37,6 +37,7 @@ def main():
     editing = paths[5].read_text(encoding="utf-8-sig")
     code += "\n".join(method_body(editing, signature) for signature in (
         "private bool CanEditLoadout(", "private ModeHActionData MakePreparationOption(",
+        "private void RecordKitPreferences(", "private List<string> LoadKitPreference(",
         "private void AddKitOptions(", "private static bool KitReplacesSlot(")) + "\n}\n"
     code += "static partial class ModeHLoadoutKitRegistry {\n" + method_body(registry, "internal static int ResolvePreparedAmmoTypeId(") + "\n}\n"
     persistence = paths[2].read_text(encoding="utf-8-sig")

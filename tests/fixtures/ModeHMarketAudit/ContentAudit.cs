@@ -62,6 +62,13 @@ namespace BossRush
         public static List<ModeHResolvedKit> GetSelectableKits(List<string> ids, string archetype, string profile)
         { return Kits.Where(x => ids.Contains(x.Spec.KitId)).ToList(); }
     }
+    // 2026-09-29：调整页的穿上 / 换回按选手记下来（生产走 BossRushSlotJsonStore）；这里只做内存替身
+    internal static class ModeHKitPreferenceLedger
+    {
+        internal static readonly Dictionary<string, List<string>> Saved = new Dictionary<string, List<string>>();
+        internal static List<string> Find(string key) { List<string> v; return key != null && Saved.TryGetValue(key, out v) ? new List<string>(v) : null; }
+        internal static bool Record(string key, IList<string> kits) { if (string.IsNullOrEmpty(key)) return false; Saved[key] = new List<string>(kits ?? new List<string>()); return true; }
+    }
     internal sealed class ModeHActionData { public string Label; public Action OnClick; public bool Interactable = true; public bool IsSelected; public bool IsPrimary; public string SelectedBadge; public bool IsCancel; public object Icon; public int IconQuality; }
     // 2026-09-24：整备页的分区改成页头下的一排页签（ModeHOptionRow）
     internal sealed class ModeHOptionRow { public string Label, Caption; public bool AtTop; public List<ModeHActionData> Options = new List<ModeHActionData>(); }
@@ -167,22 +174,34 @@ namespace BossRush
                 { KitId = "originalBackpack", NameKey = "Original backpack", ReplaceSlot = "Backpack" } });
             runtime.Page().OptionRows[0].Options[1].OnClick();
             var gearPage = runtime.Page();
-            Check(gearPage.PreparationOptions.Count(x => x.Label.StartsWith("Original")) == 2
-                && gearPage.PreparationOptions.Where(x => x.Label.StartsWith("Original")).All(x => x.IsSelected),
-                "editor shows every original equipment slot, initially marked equipped");
-            gearPage.PreparationOptions.First(x => x.Label.StartsWith("Helmet")).OnClick();
-            Check(runtime.Page().PreparationOptions.First(x => x.Label.StartsWith("Helmet")).IsSelected
-                && !runtime.Page().PreparationOptions.First(x => x.Label.StartsWith("Original helmet")).IsSelected,
+            // 2026-09-29：配装页一页两列（左首发、右接力），两人身上的装备都在；偶数下标是首发列
+            Check(gearPage.PreparationColumns == 2 && gearPage.PreparationHeaders.Count == 2
+                && gearPage.PreparationHeaders[0].Contains("starter") && gearPage.PreparationHeaders[1].Contains("relay"),
+                "gear tab shows starter and relay side by side");
+            Check(gearPage.PreparationOptions.Count(x => x != null && x.Label.StartsWith("Original")) == 4
+                && gearPage.PreparationOptions.Where(x => x != null && x.Label.StartsWith("Original")).All(x => x.IsSelected),
+                "editor shows every original equipment slot of both fighters, initially marked equipped");
+            Func<ModeHPageContent, List<ModeHActionData>> starterColumn = p => p.PreparationOptions.Where((x, i) => i % 2 == 0 && x != null).ToList();
+            starterColumn(gearPage).First(x => x.Label.StartsWith("Helmet")).OnClick();
+            Check(starterColumn(runtime.Page()).First(x => x.Label.StartsWith("Helmet")).IsSelected
+                && !starterColumn(runtime.Page()).First(x => x.Label.StartsWith("Original helmet")).IsSelected,
                 "manual replacement changes both original and override equipped badges");
-            runtime.Page().PreparationOptions.First(x => x.Label.StartsWith("Original helmet")).OnClick();
+            starterColumn(runtime.Page()).First(x => x.Label.StartsWith("Original helmet")).OnClick();
             Check(!season.matchRoster.starterKitIds.Contains("Helmet") && runtime.PersistedEdits >= 2,
                 "restoring original gear clears the override and persists the edit");
-            Check(runtime.Page().PreparationOptions.All(x => !x.Label.StartsWith("Armor") && !x.Label.StartsWith("✓ Armor")), "disabled armor has no editing button");
+            Check(starterColumn(runtime.Page()).All(x => !x.Label.StartsWith("Armor") && !x.Label.StartsWith("✓ Armor")), "disabled armor has no editing button");
             runtime.Page().Actions.Last().OnClick();
             int score = runtime.Score;
             season.matchRoster.starterKitIds.Add("Armor");
             Check(runtime.Prepare(out error) && runtime.Score == score, "restored stale armor cannot improve score");
-            var page = runtime.Page(); Check(page.OptionRows.Count == 1 && page.OptionRows[0].Options.Count == 4, "preparation has four section tabs");
+            // 2026-09-29：穿上的整备按选手记下来，同场重开把阵容清掉后照样穿回去
+            runtime.Page().OptionRows[0].Options[1].OnClick();
+            starterColumn(runtime.Page()).First(x => x.Label.StartsWith("Helmet")).OnClick();
+            Check(ModeHKitPreferenceLedger.Find("Cname_Prison_Boss").Contains("Helmet"), "wearing a kit is remembered by fighter identity");
+            season.matchRoster = null;
+            Check(runtime.Prepare(out error) && season.matchRoster.starterKitIds.Contains("Helmet"),
+                "a cleared roster (same-match restart) brings the worn kit back");
+            var page = runtime.Page(); Check(page.OptionRows.Count == 1 && page.OptionRows[0].Options.Count == 3, "preparation has three section tabs (roster / gear / command)");
             page.OptionRows[0].Options[0].OnClick();
             var rosterPage = runtime.Page(); Check(rosterPage.PreparationOptions.Any(x => x != null && x.Label.Contains("Damaged Armor")), "roster shows actual injury");
             Check(rosterPage.PreparationColumns == 2 && rosterPage.PreparationHeaders.Count == 2
@@ -192,9 +211,9 @@ namespace BossRush
             var stale = rosterPage.PreparationOptions.Last().OnClick;
             season.matchRoster = new ModeHMatchRosterDto { matchIndex = 1, matchRelayProfileId = "relay" };
             stale(); Check(season.matchRoster.matchRelayProfileId == "relay", "stale page cannot alter replacement roster");
-            // 2026-09-25：「赛况 / 侦察」页去掉，本场规则与高威胁核心提醒并成对照页上的一行小字
+            // 2026-09-25：「赛况 / 侦察」页去掉，本场规则并成对照页上的一行小字；2026-09-29 owner：不再附高威胁核心提醒
             string note = runtime.Note();
-            Check(note != null && note.Contains("Narrow Cage") && note.Contains("heavy hitter"), "brief note shows the arena rule and core warning");
+            Check(note != null && note.Contains("Narrow Cage") && !note.Contains("heavy hitter"), "brief note shows only the arena rule");
 
             var input = new ModeHOddsPlayerInput { Starter = starter, Relay = relay };
             var quote = ModeHOddsController.BuildQuote(input, plan);

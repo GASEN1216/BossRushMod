@@ -2,6 +2,40 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-09-29 Mode H 实机反馈九项 + 十四项复核（COMPAT / SCHEMA+）
+
+**Mode H 运行时**：
+- 第三方 `BattlefieldTypeKillNotice` 在 `Health.OnDead` 里读空 `fromCharacter`，吞掉后续死亡回调，造成「剩一个敌人」和 update 阶段 NRE、观战镜头丢失。改动：
+  - 危险边伤害隔离（`ModeHMatchRules.HurtAtEdge`）；
+  - update 失败改为静默重打本场（`HandleUpdateFailure`）；
+  - 每帧剔除死 / 销毁 / 失活敌人（`ModeHCombatTelemetry`）；
+  - 全灭先于超时判定。
+- 兼容外部 Mod 枪（owner 要求）：预选配装按模板弹匣判据（有容器且容量 > 0）把关；实例弹匣仍不可用时，冻结弹量全放背包，不再判 `kit_apply_magazine_missing` 重开。
+- 技术故障不弹「恢复」页，恢复页只在 Dev 保留且可关。
+- 删掉拍铃「持有者不在场上」门，AI 超出视距 80% 时向目标靠近。
+- 押钱结算挪到战报落盘之后，防止同一场重结。
+- `startIndex` 刷屏来自官方 `CustomData.GetInt/GetBool` 的空数据，非本 Mod 字符串。
+
+**Mode H 界面**：
+- 删除选人 / 赔率 / 押注页的说明与警告文字。
+- 配装页合为左右两列、列出全部装备；穿戴偏好存新键 `BossRush_ModeHKitPreference_v1`（SCHEMA+，旧档为空）。
+- 地图选择器预览图与 BossRush 同源。
+- 新增结束总结页 `ModeHSessionSummary`，回基地前展示本趟得失。
+- `BuildHallOfFameRecord` 原样从 CombatFlow 移到 SettlementFlow，满足 1200 行预算。
+
+**其他**：
+- 丧尸刷怪点改用 A* 连通判定（`SpawnPositionHelper.TryResolveReachableFrom`），修复所有地图收集为 0。
+- 失败回基地改为等官方 `AfterInit`，修复 InitLevel NRE。
+- 静听耳罩：听力 +1 与听声辨位 +1 可见。
+- 宿命回响入场页加「×」关闭。
+- 杰夫目标改为直接动作，另加两条守卫。
+
+**验证**：
+- 守卫：全量 706 / 717 通过。剩余 11 条都由工作区 9-22 残留的未跟踪旧源码引起；在「HEAD + 本次改动」的干净 worktree 中，这 11 条连同行数预算全部通过。
+- 执行回归：ModeH 11 / 11、Zombie 6 / 6、Campaign 1 / 1 通过。
+- 构建：Windows 正式构建通过，部署 SHA-256 `C98BCF1F11D746C841DAF96BE567234684C672AFE57B2F7ABADA43F1C8A88F1F` 与 Build 一致。
+- 证据止于 L2；L3 实机待验，未提交。
+
 ## 2026-09-28 十四项玩家反馈与日志复核（COMPAT / SCHEMA+ / WIRE+ / OPERATIONAL）
 
 接续会话 `01a0e7ae-7bc7-7c73-8678-698875dec7f5`：修复 Mode H 落盘快照、循环确认、全装备调整及跨场选择，移除开盘动画和选人警告；精简 Mode G 入场页、居中规则并移除普通路牌 / 垃圾桶；崽独立官方格子背包与绑定持久化、巢页滚轮；Jeff 目标短文案；静听耳罩听觉开关；毒疫官方中毒、官方刷怪点及完整路径；神秘商人单入口。最新日志另修正 F3 累计重伤误报泄漏与倒影材质缺贴图属性错误。

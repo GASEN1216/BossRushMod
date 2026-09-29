@@ -32,8 +32,12 @@ namespace UnityEngine
     }
     public struct Color { public Color(float r, float g, float b, float a) { } }
     public sealed class Transform { public Vector3 position; public GameObject Owner; }
+    public static class Time { public static float realtimeSinceStartup = 100f; }
+    public static class Debug { public static string LastWarning; public static void LogWarning(object message) { LastWarning = message != null ? message.ToString() : null; } }
     public sealed class GameObject : Object
     {
+        public bool Active = true;
+        public bool activeInHierarchy { get { return Active && !Destroyed; } }
         public readonly List<Object> Children = new List<Object>();
         public readonly Transform transform;
         public GameObject(string name) { transform = new Transform { Owner = this }; }
@@ -91,14 +95,21 @@ namespace BossRush
         public float MaxHealth = 100, CurrentHealth = 100;
         public bool IsDead;
         public int Hits;
+        public bool ThrowInDeathListeners;
         public HealthEvent OnHealthChange = new HealthEvent();
         public void SetHealth(float value) { float old = CurrentHealth; CurrentHealth = Math.Min(value, MaxHealth); if (old != CurrentHealth) OnHealthChange.Invoke(this); }
-        public void Hurt(DamageInfo info) { Hits++; SetHealth(CurrentHealth - info.damageValue); IsDead = CurrentHealth <= 0; }
+        public void Hurt(DamageInfo info)
+        {
+            Hits++; SetHealth(CurrentHealth - info.damageValue); IsDead = CurrentHealth <= 0;
+            // 模拟官方死亡分支里第三方监听器（如击杀提示 Mod 读 null fromCharacter）抛异常
+            if (IsDead && ThrowInDeathListeners) throw new NullReferenceException("third-party OnDead listener");
+        }
     }
     internal sealed partial class CharacterMainControl
     {
         public Health Health = new Health();
         public Transform transform;
+        public GameObject gameObject { get { return transform.Owner; } }
         public ItemStatsSystem.Item CharacterItem = new ItemStatsSystem.Item();
         public CharacterMainControl()
         {
@@ -179,6 +190,11 @@ namespace BossRush
             Check(edge.Character.Health.Hits == 2, "stall cannot burst catch-up damage");
             var late = Person(true, 0); late.Character.transform.position = new Vector3(7, 0, 0); rules.Enter(late, out reason); rules.Tick(1, out reason);
             Check(late.Character.Health.Hits == 0 && Near(late.Character.Health.CurrentHealth, 100), "unwounded late reinforcement has its own grace");
+            // 危险边界致死时宿主 Hurt 链路抛异常（第三方死亡监听器）：伤害照扣，异常不得冒出 Tick 拖垮整场比赛
+            var doomed = Person(true, 0); doomed.Character.transform.position = new Vector3(7, 0, 0); rules.Enter(doomed, out reason);
+            doomed.Character.Health.SetHealth(1); doomed.Character.Health.ThrowInDeathListeners = true;
+            bool ticked = false; try { ticked = rules.Tick(6, out reason); } catch (Exception) { ticked = false; }
+            Check(ticked && doomed.Character.Health.IsDead && Debug.LastWarning != null, "edge Hurt exception is isolated and logged, match keeps ticking");
             UnityEngine.Object.Destroy(edge.Character.transform.Owner); rules.Tick(1, out reason); rules.RestoreAll();
 
             rules.Begin(Plan("medical_limited"), map, out reason);

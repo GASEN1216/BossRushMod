@@ -24,6 +24,8 @@ namespace BossRush
         public bool IsRelay;
         /// <summary>角色引用（只用于身份比对，不做逻辑判断）。</summary>
         public CharacterMainControl Character;
+        /// <summary>连续失活秒数（存活对账用，运行期字段，不进存档）。</summary>
+        internal float InactiveSeconds;
     }
 
     /// <summary>Mode H 遥测接收端（由 ModeHCombatTelemetry 实现）。</summary>

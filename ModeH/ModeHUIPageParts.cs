@@ -215,10 +215,12 @@ namespace BossRush
                 if (string.IsNullOrEmpty(content.PreparationHeaders[i])) continue;
                 // 选项区整体左移 10（给滚动条让位），小标题跟着对齐到每列左缘
                 float left = -width * 0.5f - 10f + i * (cellWidth + CardGap);
+                // 单行框高 ≥ 1.45×17+4≈29（旧 28 贴线，列头换成「首发 · 名字」后长名字可能被 Ellipsis 整行清空）
                 TextMeshProUGUI header = DetailText(surface, "ModeH_PrepHeader_" + i, content.PreparationHeaders[i],
-                    new Vector2(left + 4f, topY - panelSize.y * 0.5f), new Vector2(cellWidth - 8f, 28f),
+                    new Vector2(left + 4f, topY - panelSize.y * 0.5f), new Vector2(cellWidth - 8f, 30f),
                     17f, BossRushUIColors.Accent, TextAlignmentOptions.MidlineLeft);
                 header.enableAutoSizing = false;
+                header.enableWordWrapping = false;
             }
             return topY - 36f;
         }

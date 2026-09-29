@@ -28,3 +28,8 @@ ModeHMatchRules 和共享 RuntimeStatModifierTracker；准备/过滤/口令选�
 公开赔率，以及六类擂台规则的双边属性、区域进出、伤害宽限、增援独立窗口、治疗递归门和清理。
 Unity/官方 Stat 的语义由 MatchRulesAudit 提供替身，包含销毁即 null 与父物体销毁子组件。
 该夹具不证明渲染可见、官方物理/伤害事件及真实 AI；这些仍需 L3。权重与认证矩阵也使用受控替身。
+
+
+## 2026-09-29 扩展：存活对账与边界伤害隔离
+
+生产 `ModeHCombatTelemetry.SweepDepartedParticipants`：已判死但没收到死亡事件、已销毁、失活超过宽限的敌军出列，活着的敌军留下，迟到的真实死亡事件去重，名单清空后能判胜；登场选手判死补倒地事实。生产 `ModeHMatchRules.HurtAtEdge`：替身 Hurt 在致死时模拟第三方死亡监听器抛 NRE，断言 Tick 不外抛、伤害已生效并留日志。新增替身只有 `Time.realtimeSinceStartup`、`Debug.LogWarning`、`GameObject.activeInHierarchy` 与 `CharacterMainControl.gameObject`；不证明官方 Health 事件顺序与第三方 Mod 的真实行为，仍需 L3。

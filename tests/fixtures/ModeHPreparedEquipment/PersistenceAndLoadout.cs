@@ -51,6 +51,25 @@ namespace BossRush
             Check(runtime.Default(new ModeHProfileDto { profileId = "new" }).Count == 0,
                 "new fighter without history uses original full outfit");
 
+            // 2026-09-29：阵容被同场重开清掉、或下个赛季再抽到同一位选手时，沿用上次穿上的（只取本季解锁、同槽一件）
+            ModeHLoadoutKitRegistry.Kits["pref_head"] = new ModeHResolvedKit { Available = true,
+                Spec = new ModeHKitSpec { KitId = "pref_head", NameKey = "pref_head", ReplaceSlot = "HeadArmor" } };
+            ModeHLoadoutKitRegistry.Kits["pref_head_b"] = new ModeHResolvedKit { Available = true,
+                Spec = new ModeHKitSpec { KitId = "pref_head_b", NameKey = "pref_head_b", ReplaceSlot = "HeadArmor" } };
+            ModeHLoadoutKitRegistry.Kits["pref_locked"] = new ModeHResolvedKit { Available = true,
+                Spec = new ModeHKitSpec { KitId = "pref_locked", NameKey = "pref_locked", ReplaceSlot = "Armor" } };
+            saved.unlockedKitIds = new List<string> { "pref_head", "pref_head_b" };
+            ModeHKitPreferenceLedger.Saved["boss_pref"] = new List<string> { "pref_head", "pref_head_b", "pref_locked" };
+            var remembered = runtime.Default(new ModeHProfileDto { profileId = "benched", stableKey = "boss_pref" });
+            Check(remembered.Count == 1 && remembered[0] == "pref_head",
+                "fighter without a seat last match gets saved gear filtered to this season's unlocked kits, one per slot");
+            saved.matchRoster = null;
+            Check(runtime.Default(new ModeHProfileDto { profileId = "starter", stableKey = "boss_pref" }).Count == 1,
+                "same-match restart that cleared the roster still restores saved gear");
+            ModeHKitPreferenceLedger.Saved["boss_pref"] = new List<string>();
+            Check(runtime.Default(new ModeHProfileDto { profileId = "starter", stableKey = "boss_pref" }).Count == 0,
+                "a saved empty choice keeps the original full outfit");
+
             var bag = new Inventory { Capacity = 2 };
             bag.Content.Add(new Item()); bag.Content.Add(new Item());
             ItemAssetsCollection.Prefabs[701] = new Item { TypeID = 701, IsBullet = true, MaxStackCount = 6 };

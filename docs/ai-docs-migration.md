@@ -364,3 +364,7 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 - 2026-09-26：根 AGENTS §4.14「复用官方 prefab」一条补上官方 `UIPrefabs.ScrollRect` 的 content 自带竖排布局与自适应高度、手动摆位前必须 `DestroyImmediate` 摘掉（鸭王杯看盘 / 押物品 / 结算三页布局全乱的根因；图鉴 `CodexView.EnsureGridLayout` 早已这样做）。
 
 - 2026-09-26：在线 Wiki 正式地址定为 https://bossrushmod.pages.dev/（owner 原话「我们的网址是 https://bossrushmod.pages.dev/」）。`wiki-site/AGENTS.md` §4.9 随 `seo.mts` 的 `siteUrl()` 改写：默认返回正式站、与 base 无关，Cloudflare 构建不再省略 sitemap / canonical / RSS，GitHub Pages 副本的 canonical 指回正式站；README 链接同步。模组显示名改为「BossRush · 晴岚群岛」（英文 BossRush · Qinglan Archipelago），Mod 标识 `name = BossRush`、命名空间与各类 key 不变。
+
+- 2026-09-29：`ZombieMode/AGENTS.md` 刷怪可达性一条按代码修正。官方 AI 走 A* Pathfinding，官方关卡不烘焙 Unity NavMesh，旧规则写的「NavMesh 采样与完整路径」在官方地图上恒不成立（丧尸模式 Demo 图收集刷怪点为 0 的根因）；现改为经共享 `SpawnPositionHelper.TryResolveReachableFrom`（A* 连通区优先，无 A* 退 NavMesh），并补上「收集与失败回基地都要等 `LevelManager.AfterInit`」。
+
+- 2026-09-29：`Common/UI/AGENTS.md` 交互骨架一条与 `docs/architecture/UI制作共识.md` §5 / §7 / §10 按 owner 要求改口径：鸭王杯赛前各页「警告 / 提示文字全部删掉，不要再自己往 UI 上加说明文字」——页头只留横幅 / 标题（去掉引导句），流程页不挂风险横幅或页脚免责小字，危险操作的后果写进确认框；代码侧由 `tests/ModeHPrematchDeclutterGuard.py` 钉住。

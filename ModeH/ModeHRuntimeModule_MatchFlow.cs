@@ -27,6 +27,8 @@ namespace BossRush
             if (_commandsClosed) return;
             if (_runState == null) return;
             if (_restoredSeasonPending || _resumeScenePending) return;
+            // 自动重试用完而挂起：下一帧送回基地（赛季与押注保留），不弹恢复壳（见 Recovery.TryDriveSuspendedExit）
+            if (TryDriveSuspendedExit()) return;
 
             // 观战镜头：开打期间对准当前登场选手，离开交战相位对回玩家身体。O(1)、零分配（见 ModeHSpectatorLease）。
             if (_spectatorLease != null)
@@ -63,6 +65,57 @@ namespace BossRush
 
         /// <summary>租约巡检间隔。设计只要求「不每帧扫」，1 秒足够发现晚到 spawner。</summary>
         private const float LeaseCheckIntervalSeconds = 1f;
+
+        /// <summary>每帧驱动连续失败多少帧才整局关停（约 2 秒）。</summary>
+        private const int UpdateFailureStreakLimit = 120;
+        private int _updateFailureFrame = -1;
+        private int _updateFailureStreak;
+        private float _lastUpdateFailureLogTime = -1000f;
+
+        /// <summary>
+        /// 宿主 OnUpdate 的异常出口（2026-09-29 实机：update 阶段 NRE 直接整局关停，观战租约随之释放，
+        /// 镜头回到看台身体，玩家只能看着自己的鸭子）。
+        ///
+        /// - 交战 / 生成相位：按技术故障同场重开（§17.4，绝不判负），静默，不弹恢复壳；
+        /// - 其余相位：保留现场，下一帧照常；
+        /// - 连续 <see cref="UpdateFailureStreakLimit"/> 帧都失败、或没有活动 run，才走旧的关停兜底。
+        /// 原始栈按 5 秒节流写 Warning（CriticalLog 按键去重，只会留第一条且不带栈）。
+        /// </summary>
+        private void HandleUpdateFailure(Exception e)
+        {
+            try
+            {
+                int frame = Time.frameCount;
+                _updateFailureStreak = frame - _updateFailureFrame <= 1 ? _updateFailureStreak + 1 : 1;
+                _updateFailureFrame = frame;
+                float now = Time.realtimeSinceStartup;
+                if (now - _lastUpdateFailureLogTime >= 5f)
+                {
+                    _lastUpdateFailureLogTime = now;
+                    Debug.LogWarning("[ModeH] 每帧驱动异常（第 " + _updateFailureStreak + " 帧）: " + e);
+                }
+                if (_runState != null && !_commandsClosed && _updateFailureStreak <= UpdateFailureStreakLimit)
+                {
+                    ModeHLifecycle lifecycle = _runState.Lifecycle;
+                    if (lifecycle == ModeHLifecycle.MatchSpawning
+                        || lifecycle == ModeHLifecycle.MatchFighting
+                        || lifecycle == ModeHLifecycle.RelayPending)
+                    {
+                        // 生成协程不在 ReleaseCombatRuntimeObjects 的回收范围里，先停，免得它在回落后接着推进状态
+                        try { if (_spawnRoutine != null && _owner != null) _owner.StopCoroutine(_spawnRoutine); }
+                        catch (Exception) { /* 协程已结束 */ }
+                        _spawnRoutine = null;
+                        RequestTechnicalRetry("update_exception:" + e.GetType().Name);
+                    }
+                    return;
+                }
+            }
+            catch (Exception inner)
+            {
+                LogFailure("update_failure_handler", inner);
+            }
+            RequestExit(ModeHExitReason.TechnicalAbort, "update_exception");
+        }
 
         private void TickLeaseIntegrity()
         {
@@ -400,19 +453,8 @@ namespace BossRush
 
             bool hasPrimary = !string.IsNullOrEmpty(_draftPrimaryProfileId);
             bool hasRelay = !string.IsNullOrEmpty(_draftRelayProfileId);
-            if (!hasPrimary)
-            {
-                page.Body = L10n.T("先选一名首发，再选一名接力。", "Choose a starter, then choose a relay.");
-            }
-            else if (!hasRelay)
-            {
-                page.Body = L10n.T("首发已锁定：再选一名接力。首发不会随刷新改变。",
-                    "Starter locked: choose a relay. Refreshing will keep the starter.");
-            }
-            else
-            {
-                page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Summary_Draft");
-            }
+            // 2026-09-29 owner：选人页顶部不放任何提示 / 说明文字，只留卡片与按钮；
+            // 该选首发还是接力由卡上按钮（选首发 / 选接力 / 取消首发）与「√ 首发锁定」角标说清。
 
             List<ModeHProfileDto> profiles = _season.profiles;
             if (profiles != null)

@@ -166,8 +166,9 @@ namespace BossRush
                 ModeHRuntimeModule runtime = host.ModeHRuntime;
                 if (runtime == null) return false;
 
-                runtime.OpenRecoveryShell(reasonId);
-                ModBehaviour.DevLog("[ModeH] 入口转恢复壳: " + (reasonId ?? "unknown"));
+                // 有可续赛季时正式构建直接续赛；Dev / 押品没结清 / 无可续赛季时才开恢复壳（ContinueSeasonFromEntry）
+                runtime.ContinueSeasonFromEntry(reasonId);
+                ModBehaviour.DevLog("[ModeH] 入口转续赛/恢复: " + (reasonId ?? "unknown"));
                 return true;
             }
             catch (Exception e)

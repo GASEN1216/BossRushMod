@@ -221,6 +221,19 @@ def main():
         if re.search(r'CreateButton\(\s*"Cancel",', confirm_page) or not re.search(
                 r'ModeGModalCancelKey\.Attach\(root,\s*CloseModal\)', confirm_page):
             errors.append("[CancelIsFreeExit] 入场页只通过 ESC / 手柄免费退出，不再显示取消按钮")
+        # 删掉「暂不挑战」后鼠标也要能关：页眉右上幽灵「×」接 CloseModal（UI 共识 §3：关闭 = 页眉右上 + ESC）。
+        close_x = re.search(r"CreateButton\(\s*\"CloseX\", st, \"×\",(.*?)\);", confirm_page, re.DOTALL)
+        if not close_x or "CloseModal, true" not in close_x.group(1) \
+                or "new Vector2(1f, 1f)" not in close_x.group(1) \
+                or "StyleGhostCloseButton(" not in confirm_page:
+            errors.append("[HeaderCloseButton] 入场页必须保留页眉右上的「×」关闭（接 CloseModal）")
+        # 2026-09-29 owner：死亡损失 / 备装建议 / 入场消耗披露整段删除，不得回流到入场页。
+        for removed in ("BossRush_ModeG_Entry_DeathRule", "BossRush_ModeG_Entry_LoadoutHint", "入场消耗：", "暂不挑战"):
+            if removed in confirm_page:
+                errors.append("[EntryDisclosureRemoved] 入场页不得再显示已删除的文案 -> " + removed)
+        rules = re.search(r"cursor \+= PlaceText\((\w+)\(\"Rules\", st,", confirm_page)
+        if not rules or rules.group(1) != "CreateBodyText":
+            errors.append("[RulesCentered] ①②③ 玩法说明必须用居中的 CreateBodyText")
 
     for flow in ENTRY_FLOWS:
         flow_content = open(flow, "r", encoding="utf-8", errors="replace").read()

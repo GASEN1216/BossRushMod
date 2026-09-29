@@ -9,7 +9,7 @@
 ### The Seven Pieces
 
 - **Old Mailbag** (backpack): quality 4, pack capacity +4, item ID 500093
-- **Rainhush Earmuffs** (headset): quality 4, Hearing +0.5, durability 40, item ID 500097
+- **Rainhush Earmuffs** (headset): quality 4, Hearing +1, Sound Localization +1, durability 40, item ID 500097
 - **Mossgauze Mask** (face mask): quality 4, Head Armor +1, durability 40, item ID 500098
 - **Mirrorgrain Plate** (body armor): quality 5, Body Armor +2, durability 80, item ID 500099
 - **Galebreaker Hood** (helmet): quality 4, Head Armor +2, durability 50, item ID 500100

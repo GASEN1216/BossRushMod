@@ -51,7 +51,7 @@ Temperament affects combat and following as well as personality:
 
 - **Reckless** — notices enemies farther away and pursues aggressively; +10% melee damage multiplier, -8% body armor
 - **Cautious** — shorter sight range and less pursuit; +10% body armor, -5% gun damage multiplier
-- **Lazy** — less eager to chase, -6% run speed, but +1 extra scavenging-backpack slot
+- **Lazy** — less eager to chase, -6% run speed, but +1 extra cub-backpack slot
 - **Loyal** — stays closer to you and gains +8% max health
 
 If an egg's bloodline can no longer be identified after a game update, the system says so and **leaves your egg untouched** rather than consuming it.
@@ -65,8 +65,8 @@ If an egg's bloodline can no longer be identified after a game update, the syste
 
 The cub only scales its visual root, never its collider. At level 1 its body is **62%** of the official base model (**64%** for Dragon King). Each level adds **5%** of its hatch size, reaching about **90%** of the base model at level 10 (**93%** for Dragon King).
 
-### Scavenging backpack
-The slots go onto the **official pet backpack**: when the deployed cub joins a BossRush-family raid (the three standard difficulties, From Scratch, Faction War, Blood Hunt), the official pet backpack gets **+4 slots**, with further slots from levels, endowments and the Lazy temperament. Open the pet backpack during the raid to see them; they do not apply in the base or in normal raids, and are removed if the cub is carried off. The nest page shows how many slots the current deployed cub adds.
+### Cub backpack
+Every cub has its own backpack: **4 slots** to start, with more from levels, endowments and the Lazy temperament. In the base or on a raid, walk up to your deployed cub and choose **Backpack** above its head to use the official inventory grid. Contents stay with that cub across maps, deployment changes and knockouts. Empty it before releasing the cub or sending it on an expedition. The nest page shows how many slots the cub has.
 
 ### While you are there, it does not die
 - A downed cub **does not die**. It is **carried off wounded**: out for the rest of the run, restored when you return to base.
@@ -136,7 +136,7 @@ Cubs grow by working with you, capping at level 10 ("Adult"), after which they s
 - **Bloodline baseline** — 20% of the source boss character damage multiplier, bounded to 0.12-0.28. This is a character stat, not a share of final damage or DPS: weapons, fire rate and AI still matter. Custom bloodlines use their boss's base health and signature equipment.
 - **Combat growth** — each level above level 1 adds +6% max health and +8% to both gun and melee damage multipliers. At level 10, level bonuses total +54% max health and +72% to each damage multiplier, applied alongside endowments, temperament and scars.
 - **Mid-raid growth** — a committed level-up immediately updates combat bonuses and visual size, preserving the current health fraction. The nest detail page shows the health, damage and size bonuses provided by levels.
-- **Backpack growth** — +1 pet-backpack slot at levels 3 / 6 / 9, so +3 at max, stacking with the deployment bonus, endowment slots and temperament slots.
+- **Backpack growth** — +1 cub-backpack slot at levels 3 / 6 / 9, so +3 at max, stacking with the base slots, endowment slots and temperament slots.
 - The index records the highest level reached for each bloodline.
 
 ## Nest capacity and releasing

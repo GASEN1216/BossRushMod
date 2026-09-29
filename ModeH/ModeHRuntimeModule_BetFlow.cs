@@ -43,22 +43,20 @@ namespace BossRush
             ModeHCashBetRecord carried = CarriedBetForCurrentMatch();
             ModeHOptionRow row = new ModeHOptionRow();
             row.Label = L10n.T("押注", "Bet");
+            // 2026-09-29 owner：押注行下不再放输赢说明 / 免责式文字，只留做决定要用的数（已押多少、估值、余额）
             if (carried != null)
             {
-                row.Caption = L10n.T("这一场沿用中断前押的", "This match keeps the bet placed before the interruption: ")
-                    + DescribeRecordStake(carried) + L10n.T("（中断不退，重打照算）；下面选的是之后几场。", " (not refunded; the rematch settles it). The choice below is for later matches.");
+                row.Caption = L10n.T("本场已押 ", "Already bet this match: ") + DescribeRecordStake(carried)
+                    + L10n.T(" · 下面选的从下一场起", " · the choice below starts next match");
             }
             else if (itemsMode)
             {
-                row.Caption = L10n.T("押上 " + ModeHItemBetStake.SelectedCount + " 件物品，估值 ", "Betting " + ModeHItemBetStake.SelectedCount + " item(s) worth ")
-                    + FormatMoney(ModeHItemBetStake.SelectedValue)
-                    + L10n.T("：赢了东西留着、另得同等品质的奖品；输了归庄家。押物品只管下一场。",
-                        ": win and you keep them plus prizes of matching quality; lose and the house takes them. Applies to the next match only.");
+                row.Caption = L10n.T("押上 " + ModeHItemBetStake.SelectedCount + " 件物品 · 估值 ", ModeHItemBetStake.SelectedCount + " item(s) · worth ")
+                    + FormatMoney(ModeHItemBetStake.SelectedValue);
             }
             else
             {
-                row.Caption = L10n.T("押你的选手赢：赔率越冷门拿回越多，输了押金归庄家。余额 ", "Bet on your fighter: longer odds pay more; lose and the house keeps it. Balance ")
-                    + FormatMoney(Duckov.Economy.EconomyManager.Money);
+                row.Caption = L10n.T("余额 ", "Balance ") + FormatMoney(Duckov.Economy.EconomyManager.Money);
             }
             for (int i = 0; i < amounts.Length; i++)
             {
@@ -218,15 +216,9 @@ namespace BossRush
             }
             else if (selectedCount > 0)
             {
-                page.Body = L10n.T("已选 " + selectedCount + " 件 · 估值 " + FormatMoney(ModeHItemBetStake.SelectedValue)
-                    + "。赢了保留物品并获奖，输了押品归庄家。",
-                    selectedCount + " item(s) picked, worth " + FormatMoney(ModeHItemBetStake.SelectedValue)
-                    + ". Win: keep them and earn prizes. Lose: the house takes your stake.");
-            }
-            else
-            {
-                page.Body = L10n.T("背包和穿戴都可选。点选押上，再点取消；容器连同内容一起押。",
-                    "Choose carried or equipped items. Tap to select or clear. Containers include their contents.");
+                // 2026-09-29 owner：只留已选件数与估值，不再附输赢说明
+                page.Body = L10n.T("已选 " + selectedCount + " 件 · 估值 " + FormatMoney(ModeHItemBetStake.SelectedValue),
+                    selectedCount + " item(s) picked · worth " + FormatMoney(ModeHItemBetStake.SelectedValue));
             }
             for (int i = 0; i < candidates.Count; i++)
             {
@@ -304,6 +296,10 @@ namespace BossRush
             _cashBetSkipNote = null;
             _cashBetSkipMatchIndex = -1;
             _showItemBetPicker = false;
+            // 先对账：上一场若因战报落盘失败挂起过，押注还没结，按已有战报补结（至多一次）；别的赛季挂着的原样退回
+            ReconcileCashBetOnRestore();
+            // 账本只留最新一条：新押注覆盖之前，把上一场的结果抄进本场总结（奖品可能是结算页之后才补发完）
+            ModeHSessionSummary.NoteBet(ModeHCashBetService.Current);
             ModeHCashBetRecord carried = CarriedBetForCurrentMatch();
             if (carried != null)
             {
@@ -388,6 +384,7 @@ namespace BossRush
                 && record.kind == ModeHCashBetService.KindItems;
             long refunded;
             if (!ModeHCashBetService.TryRefund(context, out refunded)) return;
+            ModeHSessionSummary.NoteBet(ModeHCashBetService.Current); // 本场总结的「原样退回」
             ModeHItemBetStake.ReleaseLocked();
             if (refunded <= 0 || _owner == null) return;
             _owner.ShowMessage(items

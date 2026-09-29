@@ -73,9 +73,18 @@ def main() -> int:
         require(spawner, "EnsureCharacterPresetsCacheReady();", "ZombieMode must reuse shared preset cache warmup")
         require(spawner, "SpawnPositionHelper.TryFindAroundPlayer", "ZombieMode virtual spawn points must reuse shared geometry helper")
         resolve = extract_method(clean_source(spawner), "TryResolveZombieModeSpawnPoint") or ""
-        require(resolve, "NavMesh.SamplePosition(position, out spawnHit", "ZombieMode must require an actual NavMesh sample without raycast-only fallback")
-        require(resolve, "NavMesh.CalculatePath(spawnHit.position, playerHit.position", "ZombieMode must check a path from the spawn surface to the player's surface")
-        require(resolve, "zombieModeSpawnReachabilityPath.status != NavMeshPathStatus.PathComplete", "ZombieMode must reject disconnected navigation islands")
+        # 官方 AI 走 A* Pathfinding，官方关卡不烘焙 Unity NavMesh（丧尸 Demo 图收集为 0 的根因）：
+        # 可达性统一交给共享 SpawnPositionHelper，A* 连通区优先、无 A* 才退 NavMesh 完整路径，两条都不许 Raycast 兜底。
+        require(resolve, "SpawnPositionHelper.TryResolveReachableFrom(", "ZombieMode must resolve reachability through the shared helper")
+        require(resolve, "player.transform.position", "ZombieMode reachability must be proven against the current player")
+        helper = extract_method(clean_source(Path("Utilities/SpawnPositionHelper.cs").read_text(encoding="utf-8")),
+                                "TryResolveReachableFrom") or ""
+        require(helper, "AstarPath.active", "shared reachability must prefer the official A* graph")
+        require(helper, "PathUtilities.IsPathPossible(target.node, anchor.node)", "shared reachability must reject disconnected A* areas")
+        require(helper, "NavMesh.CalculatePath(targetHit.position, anchorHit.position", "NavMesh fallback must check a full path to the anchor")
+        require(helper, "path.status != NavMeshPathStatus.PathComplete", "NavMesh fallback must reject disconnected navigation islands")
+        forbid(helper, "Physics.Raycast", "shared reachability must not accept raycast-only ground as reachable")
+        forbid(helper, "TryRaycastSnapPreserveXZ", "shared reachability must not accept raycast-only ground as reachable")
         require(spawner, "skipBossRushLootTracking: true", "ZombieMode bosses must stay compatible with BossRush loot ownership")
         forbid(spawner, "Resources.FindObjectsOfTypeAll<", "ZombieMode spawner must not restore its own preset scan")
         require(spawn_core, "SpawnEnemyCoreInternalAsync", "shared spawn core must expose observable async completion")

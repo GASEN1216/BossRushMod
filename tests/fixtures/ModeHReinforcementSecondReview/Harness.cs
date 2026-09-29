@@ -129,6 +129,8 @@ namespace BossRush
         public bool TryClaimDefeatByCowardice(string s) { return false; }
         public bool TryClaimVictory(bool alive) { if (!alive || LiveEnemyCount != 0) return false; HasResult = true; return true; }
         public void ConsumePendingDown() { } public void OnEnemyEntered(ModeHParticipantRef enemy) { LiveEnemyCount++; }
+        // 存活对账由 ModeHMarketAudit 的完整生产遥测验证；此处只测生成所有权与判胜门槛。
+        public void SweepDepartedParticipants(float d) { }
     }
     // 区域规则另由 ModeHMarketAudit 的完整生产类验证；此处只测生成所有权。
     internal sealed class Rules

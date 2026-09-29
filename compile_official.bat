@@ -610,6 +610,8 @@ echo(ModeH\ModeHControlPointHarness.cs
 echo(ModeH\ModeHDeathSuppressionRegistry.cs
 echo(ModeH\ModeHDraftController.cs
 echo(ModeH\ModeHDraftRefreshLedger.cs
+echo(ModeH\ModeHKitPreferenceLedger.cs
+echo(ModeH\ModeHSessionSummary.cs
 echo(ModeH\ModeHEncounterPlanner.cs
 echo(ModeH\ModeHEntry.cs
 echo(ModeH\ModeHEventRouter.cs
