@@ -654,7 +654,9 @@ namespace BossRush
             // 启动自定义射击（每秒10发朝玩家方向）
             StartCustomShooting();
 
-            // 启动攻击循环
+            // 启动攻击循环（阵营模式看门狗给 2 秒起步宽限）
+            attackLoopHeartbeat = Time.time;
+            factionWatchdogGraceUntil = Time.time + 2f;
             attackLoopCoroutine = StartCoroutine(AttackLoop());
 
             // 播放登场音效
@@ -1341,6 +1343,7 @@ namespace BossRush
         {
             UpdateTrackingProjectiles();
             UpdateActiveLances();
+            TickFactionLoopWatchdog();
         }
 
         private void RegisterTrackingProjectile(GameObject projectile, float lifetime, float trackingDuration = -1f)

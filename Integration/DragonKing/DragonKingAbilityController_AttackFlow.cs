@@ -19,6 +19,7 @@ namespace BossRush
         /// </summary>
         private IEnumerator AttackLoop()
         {
+            attackLoopHeartbeat = Time.time;
             // 等待初始化完成。Mode E / 鸭王杯是 Boss 群殴：一上场就被好几只 Boss 集火，
             // 等 1 秒再错峰的话一阶段往往一个技能都放不出来（2026-09-29 鸭王杯实测），只让一帧
             if (IsFactionTargetMode())
@@ -37,6 +38,7 @@ namespace BossRush
             }
 
             ModBehaviour.DevLog("[DragonKing] 攻击循环开始");
+            attackLoopHeartbeat = Time.time;
 
             // 调试模式提示
             if (DragonKingConfig.DebugMode)
@@ -46,6 +48,7 @@ namespace BossRush
 
             while (CurrentPhase != DragonKingPhase.Dead && bossCharacter != null)
             {
+                attackLoopHeartbeat = Time.time;
                 // 阶段转换中或孩儿护我期间暂停攻击
                 if (CurrentPhase == DragonKingPhase.Transitioning || isInChildProtection)
                 {
@@ -111,6 +114,7 @@ namespace BossRush
                 currentAttackCoroutine = StartCoroutine(ExecuteAttack(attackType));
                 yield return currentAttackCoroutine;
                 currentAttackCoroutine = null;
+                attackLoopHeartbeat = Time.time;
 
                 // 调试模式下不推进序列
                 if (!DragonKingConfig.DebugMode)
@@ -613,6 +617,45 @@ namespace BossRush
             }
         }
 
+        // ========== 阵营模式攻击循环看门狗 ==========
+        // 2026-09-29 鸭王杯实测两次：一阶段「自定义射击循环开始」打出来了，「攻击循环开始」（第一帧之后）却始终没有，
+        // 整个一阶段一枪一技能都没有；二阶段转换重开循环后一切正常。没有异常日志，协程是被静默停掉的
+        // （原因未能从日志确定）。阵营模式下每帧检查两条循环的心跳，停了就重开并留一条警告，下次日志能看出是不是它。
+        private float attackLoopHeartbeat;
+        private float customShootingHeartbeat;
+        private float factionWatchdogGraceUntil;
+        private const float AttackLoopStallSeconds = 4f;
+        private const float AttackStallSecondsDuringSkill = 20f;
+        private const float CustomShootingStallSeconds = 2f;
+
+        private void TickFactionLoopWatchdog()
+        {
+            if (bossCharacter == null || bossHealth == null || bossHealth.IsDead) return;
+            if (CurrentPhase != DragonKingPhase.Phase1 && CurrentPhase != DragonKingPhase.Phase2) return;
+            if (isInChildProtection || Time.time < factionWatchdogGraceUntil || !IsFactionTargetMode()) return;
+
+            float attackLimit = currentAttackCoroutine != null ? AttackStallSecondsDuringSkill : AttackLoopStallSeconds;
+            if (Time.time - attackLoopHeartbeat > attackLimit)
+            {
+                ModBehaviour.DevLog("[DragonKing] [WARNING] 攻击循环停了 " + (Time.time - attackLoopHeartbeat).ToString("0.0")
+                    + " 秒（阶段 " + CurrentPhase + "），重新启动");
+                if (attackLoopCoroutine != null) StopCoroutine(attackLoopCoroutine);
+                if (currentAttackCoroutine != null) StopCoroutine(currentAttackCoroutine);
+                currentAttackCoroutine = null;
+                ResumeBossMovementAndShooting();
+                attackLoopHeartbeat = Time.time;
+                attackLoopCoroutine = StartCoroutine(AttackLoop());
+            }
+
+            if (isCustomShootingActive && Time.time - customShootingHeartbeat > CustomShootingStallSeconds)
+            {
+                ModBehaviour.DevLog("[DragonKing] [WARNING] 自定义射击停了，重新启动");
+                if (customShootingCoroutine != null) StopCoroutine(customShootingCoroutine);
+                customShootingHeartbeat = Time.time;
+                customShootingCoroutine = StartCoroutine(CustomShootingLoop());
+            }
+        }
+
         /// <summary>
         /// 开始自定义射击（每秒10发朝玩家方向）
         /// </summary>
@@ -620,6 +663,7 @@ namespace BossRush
         {
             if (isCustomShootingActive) return;
 
+            customShootingHeartbeat = Time.time;
             isCustomShootingActive = true;
             customShootingCoroutine = StartCoroutine(CustomShootingLoop());
             ModBehaviour.DevLog("[DragonKing] 自定义射击已启动");
@@ -652,6 +696,7 @@ namespace BossRush
 
             while (isCustomShootingActive && bossCharacter != null && CurrentPhase != DragonKingPhase.Dead)
             {
+                customShootingHeartbeat = Time.time;
                 // 转阶段、孩儿护我或大招停火期间暂停射击但不退出循环
                 if (CurrentPhase == DragonKingPhase.Transitioning || isInChildProtection || Time.time < customShotsHeldUntil)
                 {

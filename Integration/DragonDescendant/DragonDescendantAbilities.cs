@@ -205,12 +205,52 @@ namespace BossRush
         private bool IsPlayerAlly()
         {
             if (bossCharacter == null) return false;
-            // 鸭王杯（Mode H）里玩家只在看台观战：专属技能一律不朝玩家放，只靠原版 AI 与对手互殴
-            if (ModeHRuntimeGates.IsModeHRunOwnerActive) return true;
+            // 鸭王杯（Mode H）里玩家只在看台观战：「玩家」引用换成 AI 锁定的对手（见 RefreshPlayerReference），
+            // 没有对手、或者引用指回主角时一律按友方处理，专属技能绝不朝看台放
+            if (ModeHRuntimeGates.IsModeHRunOwnerActive)
+                return playerCharacter == null || playerCharacter.IsMainCharacter
+                    || playerCharacter.Health == null || playerCharacter.Health.IsDead;
             var inst = ModBehaviour.Instance;
             if (inst == null || !inst.IsModeEActive) return false;
             // 同阵营 = 友方
             return bossCharacter.Team == inst.ModeEPlayerFaction;
+        }
+
+        /// <summary>
+        /// 刷新「玩家」引用。鸭王杯里玩家只在看台观战，龙裔的对手是原版 AI 当前锁定的那只 Boss：
+        /// 二阶段冲刺 + 直线 / 扇形弹幕、燃烧弹都朝它放（2026-09-29 owner：龙裔二阶段不会发弹幕，
+        /// 原因是这里一直取主角、再被友方判定挡掉）。其余模式照旧：引用空了才取主角。
+        /// </summary>
+        private void RefreshPlayerReference()
+        {
+            if (ModeHRuntimeGates.IsModeHRunOwnerActive)
+            {
+                playerCharacter = ResolveModeHOpponent();
+                return;
+            }
+            if (playerCharacter == null)
+            {
+                try { playerCharacter = CharacterMainControl.Main; } catch { }
+            }
+        }
+
+        private CharacterMainControl ResolveModeHOpponent()
+        {
+            try
+            {
+                if (bossCharacter == null) return null;
+                AICharacterController ai = aiController != null ? aiController.GetAI() : null;
+                if (ai == null) ai = bossCharacter.aiCharacterController;
+                if (ai == null) ai = bossCharacter.GetComponentInChildren<AICharacterController>(true);
+                DamageReceiver target = ai != null ? ai.searchedEnemy : null;
+                // 放技能时 AI 被暂停、searchedEnemy 暂存在控制器里
+                if (target == null && aiController != null) target = aiController.PausedTarget;
+                if (target == null || target.health == null || target.health.IsDead) return null;
+                CharacterMainControl character = target.health.TryGetCharacter();
+                if (character == null || character.IsMainCharacter || character.Team == bossCharacter.Team) return null;
+                return character;
+            }
+            catch (Exception) { return null; }
         }
 
         /// <summary>
@@ -256,12 +296,16 @@ namespace BossRush
                 bossHealth.OnHurtEvent.AddListener(OnBossHurt);
             }
 
-            // 获取玩家引用
-            try
+            // 获取玩家引用（鸭王杯里是 AI 锁定的对手，刚激活时还没有）
+            if (ModeHRuntimeGates.IsModeHRunOwnerActive) playerCharacter = null;
+            else
             {
-                playerCharacter = CharacterMainControl.Main;
+                try
+                {
+                    playerCharacter = CharacterMainControl.Main;
+                }
+                catch { }
             }
-            catch { }
 
             // 订阅射击事件
             SubscribeToShootEvent();

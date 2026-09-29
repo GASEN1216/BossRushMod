@@ -49,10 +49,7 @@ namespace BossRush
             while (isEnraged && bossCharacter != null)
             {
                 // 更新玩家引用
-                if (playerCharacter == null)
-                {
-                    try { playerCharacter = CharacterMainControl.Main; } catch { }
-                }
+                RefreshPlayerReference();
 
                 if (playerCharacter == null)
                 {
@@ -106,10 +103,7 @@ namespace BossRush
                 while (chargeTime < 0.5f && isEnraged && bossCharacter != null)
                 {
                     // 更新玩家引用
-                    if (playerCharacter == null)
-                    {
-                        try { playerCharacter = CharacterMainControl.Main; } catch { }
-                    }
+                    RefreshPlayerReference();
 
                     var ai = aiController?.GetAI();
                     if (playerCharacter != null && ai != null)

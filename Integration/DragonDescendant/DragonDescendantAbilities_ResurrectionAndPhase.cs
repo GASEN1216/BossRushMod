@@ -225,10 +225,7 @@ namespace BossRush
                 if (bossCharacter == null) return;
 
                 // 更新玩家引用
-                if (playerCharacter == null)
-                {
-                    try { playerCharacter = CharacterMainControl.Main; } catch { }
-                }
+                RefreshPlayerReference();
 
                 Vector3 bossPos = bossCharacter.transform.position;
 
