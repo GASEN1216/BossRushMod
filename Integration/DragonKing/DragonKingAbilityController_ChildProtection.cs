@@ -554,7 +554,8 @@ namespace BossRush
         {
             try
             {
-                Vector3[] spawnPoints = ModBehaviour.Instance?.GetCurrentSceneSpawnPoints();
+                // Mode E / 鸭王杯：龙裔落在龙皇脚下附近（下面的后备方案），不去地图另一头的 BossRush 刷怪点
+                Vector3[] spawnPoints = IsFactionTargetMode() ? null : ModBehaviour.Instance?.GetCurrentSceneSpawnPoints();
                 if (spawnPoints != null && spawnPoints.Length > 0)
                 {
                     int index = UnityEngine.Random.Range(0, spawnPoints.Length);

@@ -36,6 +36,12 @@ namespace BossRush
         public bool Down;
         public float InactiveSeconds;
         public float NextApproachTime;
+        /// <summary>自定义 Boss 召唤出来的（女巫随从、龙皇第三阶段的龙裔）；比赛结束随召唤物列表一起销毁。</summary>
+        public bool IsAuxiliary;
+        /// <summary>焚天龙皇的能力控制器（只有龙皇有）：「孩儿护我」飞在天上时不让别人锁它。</summary>
+        public DragonKingAbilityController DragonKing;
+        /// <summary>召唤物的召唤者（龙皇召唤的龙裔 → 龙皇）；飞天龙皇的仇恨优先转给它。</summary>
+        public ModeHGroupUnit SummonedBy;
     }
 
     /// <summary>拍铃天灾种类。</summary>
@@ -211,6 +217,11 @@ namespace BossRush
         internal void AddUnit(ModeHGroupUnit unit)
         {
             if (unit == null || unit.Character == null) return;
+            if (unit.DragonKing == null)
+            {
+                try { unit.DragonKing = unit.Character.GetComponent<DragonKingAbilityController>(); }
+                catch (Exception) { unit.DragonKing = null; }
+            }
             _units.Add(unit);
             if (unit.IsEnemy) _enemyTotal++;
             else _allyTotal++;
@@ -229,7 +240,7 @@ namespace BossRush
         /// 自定义 Boss 召唤的辅助单位（女巫随从、龙王第三阶段的龙裔）：激活前登记，跟随召唤者阵营，
         /// 回收时一起销毁。返回 true 放行激活。
         /// </summary>
-        internal bool RegisterAuxiliary(CharacterMainControl character, Teams team)
+        internal bool RegisterAuxiliary(CharacterMainControl character, Teams team, ModeHGroupUnit summoner)
         {
             if (character == null || _hasResult) return false;
             if (_auxiliaries.Contains(character)) return true;
@@ -241,7 +252,33 @@ namespace BossRush
                 if (character.CharacterItem != null) character.CharacterItem.SetInt("Exp", 0, true);
             }
             catch (Exception) { /* 登记失败只少一层掉落抑制 */ }
+            // 召唤物也是场上的一员（2026-09-29 owner：龙裔切不到视角、还锁看台玩家）：进单位表，
+            // 于是能切观战、按 0.5 秒索敌改打对面（顺手关掉激活时打开的强追玩家），也能被对面锁定。
+            // 战力记 0，不影响到时判分；人数算进召唤者那一队的存活。
+            string key = string.Empty;
+            try { key = character.characterPreset != null ? character.characterPreset.nameKey : string.Empty; }
+            catch (Exception) { key = string.Empty; }
+            AddUnit(new ModeHGroupUnit
+            {
+                Entry = new ModeHGroupEntry { Key = key, DisplayNameCn = key, DisplayNameEn = key, Power = 0, IsCustom = true },
+                IsEnemy = team == Teams.wolf,
+                Character = character,
+                Health = character.Health,
+                SpawnPosition = character.transform.position,
+                IsAuxiliary = true,
+                SummonedBy = summoner,
+            });
             return true;
+        }
+
+        /// <summary>
+        /// 暂时锁不得的单位：焚天龙皇「孩儿护我」飞在天上期间。别的 Boss 不再找它，已经锁着它的改打它召唤的龙裔
+        /// 或者别的对手（2026-09-29 owner：第三阶段在天上不该被锁、仇恨转给龙裔）。
+        /// </summary>
+        private static bool IsUntargetable(ModeHGroupUnit unit)
+        {
+            try { return unit != null && unit.DragonKing != null && unit.DragonKing.IsInChildProtection; }
+            catch (Exception) { return false; }
         }
 
         #endregion
@@ -377,13 +414,16 @@ namespace BossRush
             {
                 ModeHGroupUnit unit = _units[i];
                 if (unit.Down || unit.Character == null) continue;
-                ModeHGroupUnit nearest = FindNearestOpponent(unit);
+                // 正锁着飞天龙皇的：优先改打它召唤出来的龙裔（仇恨从龙皇转到龙裔），没有才找最近的对手
+                ModeHGroupUnit untargetable = FindLockedUntargetable(unit.Character);
+                ModeHGroupUnit nearest = untargetable != null ? FindLiveSummon(untargetable) : null;
+                if (nearest == null) nearest = FindNearestOpponent(unit);
                 if (nearest == null) continue;
                 DamageReceiver target;
                 try { target = nearest.Character.mainDamageReceiver; }
                 catch (Exception) { continue; }
                 if (target == null) continue;
-                WakeOpponent(unit.Character, target);
+                WakeOpponent(unit.Character, target, untargetable != null);
                 NudgeApproach(unit, target);
             }
         }
@@ -398,7 +438,7 @@ namespace BossRush
             for (int i = 0; i < _units.Count; i++)
             {
                 ModeHGroupUnit other = _units[i];
-                if (other.Down || other.IsEnemy == from.IsEnemy || other.Character == null) continue;
+                if (other.Down || other.IsEnemy == from.IsEnemy || other.Character == null || IsUntargetable(other)) continue;
                 float sqr;
                 try { sqr = (other.Character.transform.position - origin).sqrMagnitude; }
                 catch (Exception) { continue; }
@@ -412,7 +452,36 @@ namespace BossRush
         }
 
         /// <summary>没目标或目标已倒 / 不再敌对时补一次官方索敌输入；已有有效目标不覆盖。</summary>
-        private static void WakeOpponent(CharacterMainControl character, DamageReceiver target)
+        private ModeHGroupUnit FindLiveSummon(ModeHGroupUnit summoner)
+        {
+            for (int i = 0; i < _units.Count; i++)
+            {
+                ModeHGroupUnit unit = _units[i];
+                if (ReferenceEquals(unit.SummonedBy, summoner) && !unit.Down && unit.Character != null) return unit;
+            }
+            return null;
+        }
+
+        /// <summary>这个角色的 AI 现在锁着的飞天龙皇（要强制改打别人）；没锁着返回 null。</summary>
+        private ModeHGroupUnit FindLockedUntargetable(CharacterMainControl character)
+        {
+            try
+            {
+                AICharacterController ai = ResolveAi(character);
+                DamageReceiver current = ai != null ? ai.searchedEnemy : null;
+                if (current == null || current.health == null) return null;
+                for (int i = 0; i < _units.Count; i++)
+                {
+                    ModeHGroupUnit unit = _units[i];
+                    if (unit.DragonKing != null && ReferenceEquals(unit.Health, current.health))
+                        return IsUntargetable(unit) ? unit : null;
+                }
+            }
+            catch (Exception) { /* 角色刚被回收 */ }
+            return null;
+        }
+
+        private static void WakeOpponent(CharacterMainControl character, DamageReceiver target, bool force)
         {
             try
             {
@@ -424,7 +493,7 @@ namespace BossRush
                 // 托管 Boss 激活时会把强制追玩家打开：鸭王杯里玩家只在看台，一律关掉
                 if (ai.forceTracePlayerDistance > 0.5f) ai.forceTracePlayerDistance = 0f;
                 DamageReceiver current = ai.searchedEnemy;
-                if (current != null && current.health != null && !current.health.IsDead
+                if (!force && current != null && current.health != null && !current.health.IsDead
                     && Team.IsEnemy(character.Team, current.Team)
                     && !ReferenceEquals(current, CharacterMainControl.Main != null ? CharacterMainControl.Main.mainDamageReceiver : null)) return;
                 ai.searchedEnemy = target;
@@ -698,6 +767,7 @@ namespace BossRush
             }
             for (int i = 0; i < _auxiliaries.Count; i++)
             {
+                // 召唤物同时在单位表里（IsAuxiliary），这里按召唤物列表销毁一次即可
                 CharacterMainControl aux = _auxiliaries[i];
                 try
                 {

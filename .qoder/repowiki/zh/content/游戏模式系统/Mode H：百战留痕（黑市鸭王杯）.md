@@ -1,5 +1,7 @@
 # Mode H：百战留痕（黑市鸭王杯）
 
+2026-09-29 第三轮（焚天龙皇，COMPAT，L1/L2）：阵营模式下龙皇攻击循环不再等 1 秒错峰；鸭王杯里龙皇血量 ×3（`ModeHGroupConfig.CustomHealthScale`）；冲击波不击飞看台玩家；「孩儿护我」龙裔落在龙皇脚下；召唤物进 `ModeHGroupBattle` 单位表（`IsAuxiliary`、`SummonedBy`），可切观战、被索敌改打对面；龙皇飞天期间 `IsInChildProtection` 为真时不被锁，正锁着它的优先改打它召唤的龙裔。
+
 2026-09-29 owner 实测第二轮（COMPAT，L1/L2，实机待验）：
 - 两队一起抽、一张赛前页：蓝队（左，Teams.scav）与红队（右，Teams.wolf）同时摆出，玩家选押哪队（`_groupBetOnRed`，锁盘时冻结为 `_groupLockedBetOnRed`，结算按「押的那队赢且没投降」判胜）；「换一批」两队一起重抽，页面标题固定走 ModeHUI 同页刷新，不再闪。原「就这队」一步取消。
 - 战力与人数随场次爬升：蓝队按 `ModeHGroupConfig.MatchPowerScale`（官方平均战力 × 4 / 6 / 8.5 / 11 / 14 / 17.5，±8%，3~20 人）抽，红队按蓝队配平（差 ≤ 500）；官方 Boss 允许重复，自定义 Boss 每队至多一只；焚天龙皇战力 2000，另两只 1000。

@@ -19,13 +19,21 @@ namespace BossRush
         /// </summary>
         private IEnumerator AttackLoop()
         {
-            // 等待初始化完成
-            yield return wait1s;
-
-            float startupDelay = GetAttackLoopStartupDelay();
-            if (startupDelay > 0f)
+            // 等待初始化完成。Mode E / 鸭王杯是 Boss 群殴：一上场就被好几只 Boss 集火，
+            // 等 1 秒再错峰的话一阶段往往一个技能都放不出来（2026-09-29 鸭王杯实测），只让一帧
+            if (IsFactionTargetMode())
             {
-                yield return new WaitForSeconds(startupDelay);
+                yield return null;
+            }
+            else
+            {
+                yield return wait1s;
+
+                float startupDelay = GetAttackLoopStartupDelay();
+                if (startupDelay > 0f)
+                {
+                    yield return new WaitForSeconds(startupDelay);
+                }
             }
 
             ModBehaviour.DevLog("[DragonKing] 攻击循环开始");

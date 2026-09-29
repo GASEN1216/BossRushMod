@@ -37,6 +37,17 @@ namespace BossRush
         internal const int CustomBossPower = 1000;
         /// <summary>焚天龙皇单独按 2000 点算（owner 2026-09-29 第二轮）。</summary>
         internal const int DragonKingPower = 2000;
+        /// <summary>
+        /// 鸭王杯里焚天龙皇的血量倍率（2026-09-29 第三轮）：本体 800 血，战力按 2000 算意味着对面约有八九只官方 Boss，
+        /// 一上场被集火半秒就进二阶段、一阶段技能放不出来。×3 后一阶段能放完两三个技能；其余两只不加。
+        /// </summary>
+        internal const float DragonKingHealthScale = 3f;
+
+        internal static float CustomHealthScale(string key)
+        {
+            return string.Equals(key, DragonKingConfig.BossNameKey, StringComparison.Ordinal) ? DragonKingHealthScale : 1f;
+        }
+
         /// <summary>同一只自定义 Boss 每边最多几只（特效与技能很重，不让一边刷一排龙王）；官方 Boss 不限。</summary>
         internal const int MaxSameCustomPerSide = 1;
         /// <summary>官方 Boss 战力下限 / 上限（防止个别预设数值异常把配平搞崩）。</summary>

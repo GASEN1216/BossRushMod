@@ -36,6 +36,7 @@ Every match, two teams of bosses brawl at once: Blue on the left, Red on the rig
 - Both teams hit the field at once and go for the nearest opponent. **Last side standing wins**; if both sides go down together, the house wins and every bet loses.
 - Health-bar names carry **"- Blue Team"** (in blue) or **"- Red Team"** (in red).
 - Bosses **don't hurt their own teammates**: grenade and rocket blasts and the mod bosses' area skills only hit the other side. The bell's disaster is the exception; it hits both.
+- The **Dragon King** has triple health in the Duck Cup. When it takes to the sky for "Protect Me, Child" nobody can target it; everyone switches to the Dragon Descendant it summons, and the King falls when the Descendant does. You can spectate summons too.
 - A match lasts up to **240 seconds**. If nobody has won by then, the side with more **power × remaining health** among the fighters still standing wins.
 - **Switch who you watch**: the keys pop up when the fight starts. **A / ← / left mouse** for the previous fighter, **D / → / right mouse** for the next, **W / ↑** to jump to the Blue Team, **S / ↓** to the Red Team. The camera starts on the team you backed and moves to the next teammate when the one it follows goes down.
 - The spectator panel on the right has **Surrender** and **Exit**: surrender counts as a lost bet; exit leaves the arena, keeps this match to replay later, and settles your bet as lost.

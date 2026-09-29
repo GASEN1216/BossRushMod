@@ -219,10 +219,11 @@ namespace BossRush
 
         private void FindPlayer()
         {
-            playerCharacter = CharacterMainControl.Main;
+            // Mode E / 鸭王杯：玩家在看台观战，冲击波不去击飞他（2026-09-29 日志：鸭王杯里「玩家被击退」）
+            playerCharacter = DragonKingAbilityController.IsFactionTargetMode() ? null : CharacterMainControl.Main;
             cachedPlayerTransform = playerCharacter != null ? playerCharacter.transform : null;
 
-            if (playerCharacter == null)
+            if (playerCharacter == null && !DragonKingAbilityController.IsFactionTargetMode())
             {
                 ModBehaviour.DevLog("[DragonKing] 无法找到玩家引用");
             }

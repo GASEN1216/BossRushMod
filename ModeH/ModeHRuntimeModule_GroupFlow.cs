@@ -677,13 +677,14 @@ namespace BossRush
         {
             ManagedBossPrepareResult prepared = null;
             Teams team = enemy ? Teams.wolf : Teams.scav;
+            ModeHGroupUnit[] summoner = new ModeHGroupUnit[1]; // 准备完才有单位，召唤物登记时再取
             try
             {
                 ManagedBossSpawnContext ctx = ManagedBossSpawnContext.CreateModeHPrimary(entry.Key,
                     delegate { return IsCallbackStillValid(ownerToken, generation) && ReferenceEquals(_groupBattle, battle); });
                 ctx.TryCommitAuxiliaryBeforeActivation = delegate(CharacterMainControl child, ManagedBossRole role)
                 {
-                    return ReferenceEquals(_groupBattle, battle) && battle.RegisterAuxiliary(child, team);
+                    return ReferenceEquals(_groupBattle, battle) && battle.RegisterAuxiliary(child, team, summoner[0]);
                 };
                 ctx.OnAuxiliaryReleased = delegate(CharacterMainControl child, ManagedBossRole role) { };
                 prepared = await ModeHGroupBattle.PrepareCustomAsync(_owner, entry.Key, slot, ctx);
@@ -723,13 +724,33 @@ namespace BossRush
                     if (character.CharacterItem != null) character.CharacterItem.SetInt("Exp", 0, true);
                 }
                 catch (Exception e) { LogFailure("group_custom_register", e); }
+                ScaleGroupCustomHealth(character, entry.Key);
                 battle.AddUnit(unit);
+                summoner[0] = unit;
                 ticket.Unit = unit;
             }
             finally
             {
                 ticket.Done = true;
             }
+        }
+
+        /// <summary>
+        /// 鸭王杯里给焚天龙皇加血（2026-09-29 实测：800 血对面一群官方 Boss 集火，半秒就掉进二阶段，一阶段一个技能都放不出来）。
+        /// 在激活前改 MaxHealth 基础值再回满，阶段阈值按比例走，二、三阶段也跟着变长；只动这一只实例。
+        /// </summary>
+        private static void ScaleGroupCustomHealth(CharacterMainControl character, string key)
+        {
+            float scale = ModeHGroupConfig.CustomHealthScale(key);
+            if (scale <= 1.001f || character == null || character.CharacterItem == null || character.Health == null) return;
+            try
+            {
+                ItemStatsSystem.Stat stat = character.CharacterItem.GetStat("MaxHealth");
+                if (stat == null) return;
+                stat.BaseValue = stat.BaseValue * scale;
+                character.Health.SetHealth(character.Health.MaxHealth);
+            }
+            catch (Exception e) { LogFailure("group_custom_health", e); }
         }
 
         /// <summary>托管激活（开能力、开 AI），然后改回本边阵营、放到站位、摘掉强追玩家与距离休眠。</summary>

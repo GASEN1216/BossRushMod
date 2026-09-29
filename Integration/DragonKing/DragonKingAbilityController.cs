@@ -244,6 +244,9 @@ namespace BossRush
         /// </summary>
         private bool isInChildProtection = false;
 
+        /// <summary>「孩儿护我」飞在天上期间（鸭王杯据此不让别的 Boss 锁它，仇恨转到召唤出来的龙裔身上）。</summary>
+        internal bool IsInChildProtection { get { return isInChildProtection; } }
+
         /// <summary>
         /// Mode G 联动死亡击杀归因开关：为 true 时孩儿护我联动死亡的伤害来源归因给玩家；
         /// Legacy 路径默认 false，保持原行为（来源为 null）。
