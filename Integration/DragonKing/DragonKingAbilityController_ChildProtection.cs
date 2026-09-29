@@ -595,6 +595,9 @@ namespace BossRush
                         ManagedBossSpawnContext ctx = ManagedBossSpawnContext.CreateModeGPrimary(
                             DragonDescendantConfig.BOSS_NAME_KEY, isCurrent);
                         ctx.Role = ManagedBossRole.PhaseProxy;
+                        // 子代跟父 owner 走：鸭王杯的龙王召唤龙裔也走 Mode H 托管口径（没有 Mode G run 状态）
+                        ctx.Owner = ModeGChildSpawnContext.Owner;
+                        ctx.PreserveLinkedKillAttribution = ModeGChildSpawnContext.PreserveLinkedKillAttribution;
                         prepared = await host.PrepareManagedDragonDescendantAsync(position, ctx);
                         if (!isCurrent() || prepared == null || prepared.Handle == null) return;
                         var commit = ModeGChildSpawnContext.TryCommitAuxiliaryBeforeActivation;

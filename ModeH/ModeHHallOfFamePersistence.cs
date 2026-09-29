@@ -312,7 +312,8 @@ namespace BossRush
             envelope.records.Sort(CompareRecords);
             while (envelope.records.Count > ModeHConfig.MaxHallOfFameRecords)
             {
-                envelope.records.RemoveAt(0);
+                // 群战赛季是排行榜：满员挤排名最末的；没有群战记录时沿用旧口径挤最早的
+                envelope.records.RemoveAt(ModeHGroupHallOfFame.FindEvictionIndex(envelope.records));
             }
 
             if (StageEnvelope(envelope, out error)) return true;

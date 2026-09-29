@@ -619,7 +619,7 @@ namespace BossRush
                     aiController.enabled = true;
                     
                     // 设置AI仇恨玩家（Mode E 同阵营时不设置，避免友方龙王攻击玩家）
-                    if (!IsModeEActive)
+                    if (!IsModeEActive && !ModeHRuntimeGates.IsModeHRunOwnerActive)
                     {
                         CharacterMainControl mainPlayer = CharacterMainControl.Main;
                         if (mainPlayer != null && mainPlayer.mainDamageReceiver != null)

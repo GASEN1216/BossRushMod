@@ -37,8 +37,9 @@ namespace BossRush {
  public class Health{public bool IsDead;public DeathEvent OnDeadEvent=new DeathEvent();}
  public class CharacterMainControl{public bool Destroyed;public Health Health=new Health();}
  public enum ManagedBossRole{PhaseProxy} public enum ManagedBossCleanupReason{OwnerInvalid,SpawnRejected}
+ public enum ManagedBossOwner{Legacy,ModeG,ModeH}
  public class ManagedBossSpawnContext{
-  public Func<bool> IsOwnerValid;public ManagedBossRole Role;
+  public Func<bool> IsOwnerValid;public ManagedBossRole Role;public ManagedBossOwner Owner;public bool PreserveLinkedKillAttribution;
   public Func<CharacterMainControl,ManagedBossRole,bool> TryCommitAuxiliaryBeforeActivation;
   public Action<CharacterMainControl,ManagedBossRole> OnAuxiliaryReleased;
   public static ManagedBossSpawnContext CreateModeGPrimary(string key,Func<bool> gate){return new ManagedBossSpawnContext{IsOwnerValid=gate};}

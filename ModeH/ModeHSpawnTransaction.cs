@@ -65,6 +65,12 @@ namespace BossRush
         /// <summary>当前选手 handle（只读遍历用）。</summary>
         public List<ModeHSpawnHandle> FighterHandles { get { return _fighterHandles; } }
 
+        /// <summary>
+        /// 群战（2026-09-29 改版）的每边实例上限；0 表示沿用单挑版的敌军 / 选手常量上限。
+        /// 群战两边各最多 20~30 人，由生成 owner 在 Begin 之后显式设置。
+        /// </summary>
+        public int GroupCapacity;
+
         #endregion
 
         #region 事务边界
@@ -94,6 +100,7 @@ namespace BossRush
             _begun = true;
             _committed = false;
             _cancelled = false;
+            GroupCapacity = 0;
             _spawnGeneration++;
             return true;
         }
@@ -150,9 +157,9 @@ namespace BossRush
                     yield break;
                 }
 
-                int cap = isFighter
+                int cap = GroupCapacity > 0 ? GroupCapacity : (isFighter
                     ? ModeHConfig.MaxConcurrentFighterInstances
-                    : ModeHConfig.MaxConcurrentEnemyInstances;
+                    : ModeHConfig.MaxConcurrentEnemyInstances);
                 int current = isFighter ? _fighterHandles.Count : _enemyHandles.Count;
                 if (current >= cap)
                 {
@@ -261,6 +268,13 @@ namespace BossRush
         /// </summary>
         public bool TryCommit(IList<Vector3> enemyPositions, Vector3 fighterPosition, out string failureReasonId)
         {
+            return TryCommit(enemyPositions, null, fighterPosition, out failureReasonId);
+        }
+
+        /// <summary>群战提交：我方每人一个落点（不足时回落到 fighterPosition），其余与单挑版同一条提交链。</summary>
+        public bool TryCommit(IList<Vector3> enemyPositions, IList<Vector3> fighterPositions, Vector3 fighterPosition,
+            out string failureReasonId)
+        {
             failureReasonId = null;
             if (!IsActive)
             {
@@ -285,7 +299,10 @@ namespace BossRush
 
                 for (int i = 0; i < _fighterHandles.Count; i++)
                 {
-                    if (!ModeHSpawnBridge.TryPrepareForArena(_fighterHandles[i], fighterPosition, out failureReasonId))
+                    Vector3 pos = fighterPositions != null && i < fighterPositions.Count
+                        ? fighterPositions[i]
+                        : fighterPosition;
+                    if (!ModeHSpawnBridge.TryPrepareForArena(_fighterHandles[i], pos, out failureReasonId))
                     {
                         RecordFailure(failureReasonId);
                         RollbackAll();

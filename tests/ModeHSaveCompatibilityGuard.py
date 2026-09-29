@@ -108,7 +108,8 @@ def main():
             (r"MaxHallOfFameRecords", "引用 32 条上限常量"),
             (r"return true; ?", "同 ID 幂等直接返回"),
             (r"envelope\.records\.Sort\(CompareRecords\);", "按 (createdUtc, hallOfFameId) 稳定排序"),
-            (r"envelope\.records\.RemoveAt\(0\);", "超上限删除最旧一条"),
+            # 2026-09-29 群战：满员挤群战排名最末的一条；没有群战记录时 FindEvictionIndex 回落 0（最旧一条）
+            (r"envelope\.records\.RemoveAt\(ModeHGroupHallOfFame\.FindEvictionIndex\(envelope\.records\)\);", "超上限按排名挤最末一条"),
             (r"string\.Equals\(existing\.hallOfFameId, record\.hallOfFameId, StringComparison\.Ordinal\)",
              "按稳定 ID 去重"),
             (r"TryGetCertificationCache\(", "三签名认证缓存读取"),

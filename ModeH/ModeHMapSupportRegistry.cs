@@ -329,6 +329,12 @@ namespace BossRush
         /// 官方 AI_PathControl 通过 Seeker 使用 A* 图；这里按同一图采样并计算 ABPath。
         /// Unity NavMesh 不是官方移动的权威，不能拿它的缺席拒绝整张地图。
         /// A* 未就绪、路径不完整、绕行过长或落点碰墙时拒绝该组点位。
+        ///
+        /// 两档判据（2026-09-29 owner 实测：迷宫一进鸭王杯就退票回基地，普通 BossRush 正常）：
+        /// 先按严格档（绕路不超过直线 1.6 倍 + 3 m、看台能直视擂台中心）找；整张图一组都找不到时，
+        /// 再按宽松档找一遍（绕路不超过 4 倍 + 20 m、看台只要可走可达、不要求视线）。迷宫这类
+        /// 拐角多的图在严格档里 48 组全被「绕路太长 / 看台被墙挡」拒掉。路径不完整、落点碰墙、
+        /// A* 未就绪在两档里都照旧拒绝。
         /// </summary>
         public static bool TryCreateRunVariant(ModeHSupportedMap source, long runSeed,
             out ModeHSupportedMap variant, out string reason)
@@ -354,64 +360,69 @@ namespace BossRush
                 List<Vector3> pool = new List<Vector3>(candidates);
                 stream.Shuffle(pool);
                 int attempts = Math.Min(48, pool.Count);
-                for (int attempt = 0; attempt < attempts; attempt++)
+                for (int tier = 0; tier < 2; tier++)
                 {
-                    Vector3[] selected = PickNearestCluster(pool, attempt, DerivedArenaPointCount + 1);
-                    if (selected == null) continue;
-
-                    Vector3[] sampled = new Vector3[selected.Length];
-                    bool valid = true;
-                    for (int i = 0; i < selected.Length; i++)
+                    bool relaxed = tier > 0;
+                    for (int attempt = 0; attempt < attempts; attempt++)
                     {
-                        if (!TrySampleArenaGround(selected[i], out sampled[i]))
+                        Vector3[] selected = PickNearestCluster(pool, attempt, DerivedArenaPointCount + 1);
+                        if (selected == null) continue;
+
+                        Vector3[] sampled = new Vector3[selected.Length];
+                        bool valid = true;
+                        for (int i = 0; i < selected.Length; i++)
                         {
-                            valid = false;
-                            break;
+                            if (!TrySampleArenaGround(selected[i], out sampled[i]))
+                            {
+                                valid = false;
+                                break;
+                            }
                         }
-                    }
-                    if (!valid || !HasDistinctSpacing(sampled, 2.5f)) continue;
-                    if (!AreMutuallyReachable(sampled)) continue;
-                    float spread = 0f;
-                    for (int i = 1; i < sampled.Length; i++)
-                        spread = Mathf.Max(spread, Vector3.Distance(sampled[0], sampled[i]));
-                    if (spread < MinDerivedArenaSpread || spread > MaxDerivedArenaSpread * 2f) continue;
+                        if (!valid || !HasDistinctSpacing(sampled, 2.5f)) continue;
+                        if (!AreMutuallyReachable(sampled, relaxed)) continue;
+                        float spread = 0f;
+                        for (int i = 1; i < sampled.Length; i++)
+                            spread = Mathf.Max(spread, Vector3.Distance(sampled[0], sampled[i]));
+                        if (spread < MinDerivedArenaSpread || spread > MaxDerivedArenaSpread * 2f) continue;
 
 
-                    Vector3 center = Vector3.zero;
-                    for (int i = 0; i < sampled.Length; i++) center += sampled[i];
-                    center /= sampled.Length;
+                        Vector3 center = Vector3.zero;
+                        for (int i = 0; i < sampled.Length; i++) center += sampled[i];
+                        center /= sampled.Length;
 
-                    int fighterIndex = 0;
-                    float fighterDistance = Vector3.Distance(sampled[0], center);
-                    for (int i = 1; i < sampled.Length; i++)
-                    {
-                        float distance = Vector3.Distance(sampled[i], center);
-                        if (distance < fighterDistance)
+                        int fighterIndex = 0;
+                        float fighterDistance = Vector3.Distance(sampled[0], center);
+                        for (int i = 1; i < sampled.Length; i++)
                         {
-                            fighterIndex = i;
-                            fighterDistance = distance;
+                            float distance = Vector3.Distance(sampled[i], center);
+                            if (distance < fighterDistance)
+                            {
+                                fighterIndex = i;
+                                fighterDistance = distance;
+                            }
                         }
+
+                        Vector3[] enemies = new Vector3[DerivedArenaPointCount];
+                        int slot = 0;
+                        for (int i = 0; i < sampled.Length; i++)
+                            if (i != fighterIndex) enemies[slot++] = sampled[i];
+
+                        ModeHSupportedMap copy = CopyMap(source);
+                        copy.ArenaSpawnPoints = enemies;
+                        copy.PlayerSpawnPos = sampled[fighterIndex];
+                        // 中心口令同样必须落在可走实点；看台跟随本局场地，不能留在旧地图另一端。
+                        copy.ArenaCenter = sampled[fighterIndex];
+                        Vector3 spectator;
+                        if (!TryFindSpectator(sampled, copy.ArenaCenter, stream, relaxed, out spectator)) continue;
+                        copy.SpectatorPos = spectator;
+                        copy.ExitPos = spectator;
+                        copy.StagingPos = copy.ArenaCenter + Vector3.down * DerivedStagingDepth;
+                        copy.RandomCandidatePoints = (Vector3[])candidates.Clone();
+                        copy.Derived = true;
+                        variant = copy;
+                        if (relaxed) ModBehaviour.DevLog("[ModeH] 擂台选址走宽松档: " + (source.SceneName ?? "?"));
+                        return true;
                     }
-
-                    Vector3[] enemies = new Vector3[DerivedArenaPointCount];
-                    int slot = 0;
-                    for (int i = 0; i < sampled.Length; i++)
-                        if (i != fighterIndex) enemies[slot++] = sampled[i];
-
-                    ModeHSupportedMap copy = CopyMap(source);
-                    copy.ArenaSpawnPoints = enemies;
-                    copy.PlayerSpawnPos = sampled[fighterIndex];
-                    // 中心口令同样必须落在可走实点；看台跟随本局场地，不能留在旧地图另一端。
-                    copy.ArenaCenter = sampled[fighterIndex];
-                    Vector3 spectator;
-                    if (!TryFindSpectator(sampled, copy.ArenaCenter, stream, out spectator)) continue;
-                    copy.SpectatorPos = spectator;
-                    copy.ExitPos = spectator;
-                    copy.StagingPos = copy.ArenaCenter + Vector3.down * DerivedStagingDepth;
-                    copy.RandomCandidatePoints = (Vector3[])candidates.Clone();
-                    copy.Derived = true;
-                    variant = copy;
-                    return true;
                 }
 
                 reason = "map_variant_no_reachable_cluster";
@@ -439,20 +450,27 @@ namespace BossRush
                 position + Vector3.up * 1.4f, 0.4f, walls, QueryTriggerInteraction.Ignore);
         }
 
-        private static bool TryFindSpectator(Vector3[] arena, Vector3 center, ModeHSeedStream stream, out Vector3 spectator)
+        private static bool TryFindSpectator(Vector3[] arena, Vector3 center, ModeHSeedStream stream, bool relaxed,
+            out Vector3 spectator)
         {
             spectator = center;
             int start = stream.NextInt(16);
-            for (int step = 0; step < 32; step++)
+            // 宽松档多一圈近的（迷宫走廊短，16 m 外往往已经是另一条死胡同），分隔距离也放到 5 m
+            int steps = relaxed ? 48 : 32;
+            float minSeparation = relaxed ? 5f : 6f;
+            for (int step = 0; step < steps; step++)
             {
                 float angle = ((start + step) % 16) * Mathf.PI / 8f;
-                float radius = step < 16 ? 16f : 24f;
+                float radius = relaxed
+                    ? (step < 16 ? 10f : (step < 32 ? 16f : 24f))
+                    : (step < 16 ? 16f : 24f);
                 Vector3 point;
                 if (!TrySampleArenaGround(center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius, out point)) continue;
                 bool separated = true;
-                foreach (Vector3 spawn in arena) if (Vector3.Distance(spawn, point) < 6f) separated = false;
-                if (!separated || !AreMutuallyReachable(new Vector3[] { center, point })) continue;
-                if (Physics.Linecast(point + Vector3.up * 1.5f, center + Vector3.up * 1.5f,
+                foreach (Vector3 spawn in arena) if (Vector3.Distance(spawn, point) < minSeparation) separated = false;
+                if (!separated || !AreMutuallyReachable(new Vector3[] { center, point }, relaxed)) continue;
+                // 观战镜头是俯视跟随选手的，看台隔墙不影响看比赛；只有严格档要求直视
+                if (!relaxed && Physics.Linecast(point + Vector3.up * 1.5f, center + Vector3.up * 1.5f,
                     GameplayDataSettings.Layers.wallLayerMask, QueryTriggerInteraction.Ignore)) continue;
                 spectator = point;
                 return true;
@@ -484,8 +502,10 @@ namespace BossRush
             return true;
         }
 
-        private static bool AreMutuallyReachable(IList<Vector3> points)
+        private static bool AreMutuallyReachable(IList<Vector3> points, bool relaxed)
         {
+            float detourFactor = relaxed ? 4f : 1.6f;
+            float detourSlack = relaxed ? 20f : 3f;
             AstarPath astar = AstarPath.active;
             if (astar == null || astar.isScanning) return false;
             for (int i = 1; i < points.Count; i++)
@@ -506,7 +526,7 @@ namespace BossRush
                     float length = 0f;
                     IList<Vector3> corners = path.vectorPath;
                     for (int j = 1; j < corners.Count; j++) length += Vector3.Distance(corners[j - 1], corners[j]);
-                    if (length > Vector3.Distance(points[0], points[i]) * 1.6f + 3f) return false;
+                    if (length > Vector3.Distance(points[0], points[i]) * detourFactor + detourSlack) return false;
                 }
                 catch { return false; }
                 finally { if (path != null && claimed) path.Release(points); }

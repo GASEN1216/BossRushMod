@@ -33,8 +33,8 @@ namespace BossRush
             // 观战镜头：开打期间对准当前登场选手，离开交战相位对回玩家身体。O(1)、零分配（见 ModeHSpectatorLease）。
             if (_spectatorLease != null)
             {
-                _spectatorLease.SyncCameraTarget(
-                    _activeFighterHandle != null ? _activeFighterHandle.Character : null,
+                _spectatorLease.SyncCameraTarget(_groupBattle != null ? _groupBattle.CameraFocus
+                    : (_activeFighterHandle != null ? _activeFighterHandle.Character : null),
                     IsCombatLifecycle(_runState.Lifecycle));
             }
 
@@ -351,6 +351,8 @@ namespace BossRush
         private void OnBellPressed()
         {
             if (_commandsClosed || _runState == null) return;
+            if (_groupBattle != null && _runState.Lifecycle == ModeHLifecycle.MatchFighting
+                && (_spectatorLease == null || _spectatorLease.IsBellAccepting)) { OnGroupBellPressed(); return; }
             if (_runState.Lifecycle != ModeHLifecycle.MatchFighting || _combatControl == null) return;
             // 观战租约的拍铃门：ReleaseCombatRuntimeObjects 已经关门时不再受理。
             // 租约缺失不阻断（租约本来就允许取不到，那时按旧口径只靠上面两道门）。
@@ -372,7 +374,7 @@ namespace BossRush
         /// <summary>观战 HUD 的投降按钮：确认后把本场记为玩家主动弃赛，沿用统一结算与押注流程。</summary>
         private void OnSurrenderPressed()
         {
-            if (_commandsClosed || _runState == null || _combatTelemetry == null
+            if (_commandsClosed || _runState == null || (_combatTelemetry == null && _groupBattle == null)
                 || _runState.Lifecycle != ModeHLifecycle.MatchFighting) return;
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
             {
@@ -388,8 +390,9 @@ namespace BossRush
 
         private void ClaimPlayerSurrender()
         {
-            if (_commandsClosed || _runState == null || _combatTelemetry == null
+            if (_commandsClosed || _runState == null || (_combatTelemetry == null && _groupBattle == null)
                 || _runState.Lifecycle != ModeHLifecycle.MatchFighting) return;
+            if (_groupBattle != null) { _groupBattle.TrySurrender(); return; }
             if (!_combatTelemetry.TryClaimDefeatByCowardice("player_surrender")) return;
             // TickActiveCombat 会在下一帧观察 CAS 结果并进入 MatchSettling，避免在按钮回调
             // 内重入状态机、同时保证押注、战报、真实押品仍走同一条结算链。
@@ -785,6 +788,7 @@ namespace BossRush
         /// </summary>
         private void EnsureMatchPlan()
         {
+            if (GroupModeEnabled) { EnsureGroupMatchPlan(); return; }
             if (_season == null || _runState == null) return;
             if (_season.currentMatchPlan != null
                 && _season.currentMatchPlan.matchIndex == _runState.MatchIndex
@@ -1164,6 +1168,7 @@ namespace BossRush
         private ModeHPageContent BuildSettlementPageContent()
         {
             ModeHPageContent page = BuildCompletedSettlementPageContent();
+            AppendGroupResultLines(page);
             DecorateSettlementPage(page);
             return page;
         }

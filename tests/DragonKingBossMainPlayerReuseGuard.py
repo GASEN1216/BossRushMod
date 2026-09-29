@@ -44,7 +44,8 @@ def main() -> int:
         return fail("DisableDragonKingOriginalAI should read CharacterMainControl.Main exactly once")
 
     required = [
-        "if (!IsModeEActive)",
+        # Mode E 与鸭王杯（Mode H）都不锁玩家：两个门同一行判定
+        "if (!IsModeEActive && !ModeHRuntimeGates.IsModeHRunOwnerActive)",
         "CharacterMainControl mainPlayer = CharacterMainControl.Main;",
         "if (mainPlayer != null && mainPlayer.mainDamageReceiver != null)",
         "aiController.searchedEnemy = mainPlayer.mainDamageReceiver;",

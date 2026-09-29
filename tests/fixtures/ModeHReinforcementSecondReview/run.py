@@ -3,6 +3,9 @@ from pathlib import Path
 import hashlib
 import subprocess
 import sys
+import sys as _sys
+_sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[1]))
+from modeh_group_off import members as group_off_members  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
@@ -43,7 +46,8 @@ def main():
                       "public void SetEnemySpawningPending(", "private bool TryClaimVictoryIfCleared()"]:
         control.append(method(sources["ModeHCombatControl.cs"], signature))
     generated = "using System;using System.Collections;using System.Collections.Generic;using UnityEngine;\nnamespace BossRush {\n"
-    generated += "internal sealed partial class ModeHRuntimeModule {\n" + "\n".join(runtime) + "\n}\n"
+    generated += "internal sealed partial class ModeHRuntimeModule {\n" + "\n".join(runtime) + "\n"
+    generated += group_off_members("enabled", "spawn", "release", "tick", "battle_ref") + "}\n"
     generated += "internal sealed partial class ModeHCombatControl {\n" + "\n".join(control) + "\n}\n}\n"
     (OUT / "Extracted.cs").write_text(generated, encoding="utf-8")
     (OUT / "ModeHSpawnTransaction.cs").write_text(sources["ModeHSpawnTransaction.cs"], encoding="utf-8")

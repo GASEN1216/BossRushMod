@@ -160,7 +160,7 @@ namespace BossRush
                 if (playerCharacter.Health.IsDead)
                 {
                     var inst = ModBehaviour.Instance;
-                    if (inst != null && inst.IsModeEActive)
+                    if (inst != null && (inst.IsModeEActive || ModeHRuntimeGates.IsModeHRunOwnerActive))
                     {
                         // 【Mode E】仇恨目标被击杀，清空引用等待AI搜索下一个目标
                         // 不调用 OnPlayerDeath，避免 StopAllCoroutines 永久终止攻击循环
@@ -931,7 +931,7 @@ namespace BossRush
             if (aiController != null)
             {
                 var inst = ModBehaviour.Instance;
-                if (inst != null && inst.IsModeEActive)
+                if (inst != null && (inst.IsModeEActive || ModeHRuntimeGates.IsModeHRunOwnerActive))
                 {
                     // 【Mode E】不传目标，让原版AI自行通过行为树搜索敌人
                     aiController.Resume(null);

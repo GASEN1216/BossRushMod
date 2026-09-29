@@ -1,5 +1,8 @@
 from pathlib import Path
 import subprocess,sys,hashlib
+import sys as _sys
+_sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[1]))
+from modeh_group_off import members as group_off_members  # noqa: E402
 ROOT=Path(__file__).resolve().parents[3]
 HERE=Path(__file__).resolve().parent
 OUT=ROOT/'Build'/'runtime-regressions'/'ModeHMarketAudit'
@@ -47,6 +50,7 @@ assert pick.index('CanConstructFullSeason(contract, assignments, out failureReas
 (PROD/'RuntimeStatModifierTracker.cs').write_bytes((ROOT/'Common/Stats/RuntimeStatModifierTracker.cs').read_bytes())
 (PROD/'ModeHLocalization.cs').write_bytes((ROOT/'Localization/ModeHLocalization.cs').read_bytes())
 extra='using System; using System.Collections.Generic; namespace BossRush { internal sealed partial class ModeHRuntimeModule {\n'
+extra+=group_off_members('enabled','odds')
 for file, signatures in {
  'ModeHRuntimeModule_CombatFlow.cs': ['private bool EnsurePreparedMatchSelection('],
  'ModeHRuntimeModule_CombatProfiles.cs': ['private List<string> BuildDefaultKitSelection(', 'private ModeHProfileDto FindSeasonProfile(', 'private static IList<string> FilterKitsForInjury(', 'private static string ResolveCommandDisplayName('],

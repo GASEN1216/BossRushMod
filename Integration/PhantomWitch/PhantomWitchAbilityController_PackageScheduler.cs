@@ -37,7 +37,7 @@ namespace BossRush
                 if (!hasTarget)
                 {
                     var inst = ModBehaviour.Instance;
-                    if (inst != null && (inst.IsModeEActive || inst.IsModeFPreparationPhase))
+                    if (inst != null && (inst.IsModeEActive || inst.IsModeFPreparationPhase || ModeHRuntimeGates.IsModeHRunOwnerActive))
                     {
                         attackLoopLastTickTime = Time.time;
                         yield return wait05s;

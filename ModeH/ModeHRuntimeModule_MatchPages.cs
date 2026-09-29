@@ -87,12 +87,12 @@ namespace BossRush
             page.MatchNote = DescribeMatchNote();
             page.Headline = L10n.T("胜利返还倍率", "Win payout multiplier");
             page.HeadlineValue = FormatPayoutMultiplier(_currentOddsQuote.Odds);
-            // 「自己调整」直接进整备页（阵容 / 配装 / 口令页签），「完成」回到双方对照页再锁定开打
-            page.Actions.Add(new ModeHActionData
-            {
-                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_CustomSetup"),
-                OnClick = OpenLoadoutEditorFromBrief,
-            });
+            // 2026-09-29 owner：去掉「自己调整再开打」（战前调整）按钮及其入口，代码先注释保留。
+            // page.Actions.Add(new ModeHActionData
+            // {
+            //     Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_CustomSetup"),
+            //     OnClick = OpenLoadoutEditorFromBrief,
+            // });
             AppendCashBetRow(page);
             page.Actions.Add(new ModeHActionData
             {

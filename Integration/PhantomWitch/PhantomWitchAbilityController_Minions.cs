@@ -170,7 +170,8 @@ namespace BossRush
             }
 
             var inst = ModBehaviour.Instance;
-            bool isModeE = inst != null && inst.IsModeEActive;
+            // 鸭王杯（Mode H）与 Mode E 同口径：随从不强追玩家，由阵营索敌
+            bool isModeE = inst != null && (inst.IsModeEActive || ModeHRuntimeGates.IsModeHRunOwnerActive);
             aiCtrl.forceTracePlayerDistance = isModeE ? 0f : PhantomWitchConfig.MinionForceTraceDistance;
 
             CharacterMainControl target;

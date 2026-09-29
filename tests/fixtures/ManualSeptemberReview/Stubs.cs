@@ -92,9 +92,9 @@ namespace UnityEngine
     public enum QueryTriggerInteraction { Ignore }
     public static class Physics
     {
-        public static bool Blocked;
+        public static bool Blocked, LineBlocked;
         public static bool CheckCapsule(Vector3 a,Vector3 b,float r,int mask,QueryTriggerInteraction q) { return Blocked; }
-        public static bool Linecast(Vector3 a,Vector3 b,int mask,QueryTriggerInteraction q) { return Blocked; }
+        public static bool Linecast(Vector3 a,Vector3 b,int mask,QueryTriggerInteraction q) { return Blocked || LineBlocked; }
     }
 }
 namespace UnityEngine.SceneManagement { public struct Scene { public string name; } public static class SceneManager { public static Scene GetActiveScene() { return new Scene(); } } }
@@ -326,7 +326,7 @@ namespace Duckov.Utilities
 public class AstarPath
 {
     private static readonly AstarPath Instance = new AstarPath();
-    public static bool Available = true, Reachable = true, Detour, Scanning;
+    public static bool Available = true, Reachable = true, Detour, Scanning, MazeDetour;
     public static AstarPath active { get { return Available ? Instance : null; } }
     public bool isScanning { get { return Scanning; } }
     public Pathfinding.NNInfo GetNearest(Vector3 raw, Pathfinding.NNConstraint constraint)
@@ -354,7 +354,10 @@ namespace Pathfinding
         {
             if (!Started) throw new InvalidOperationException("path never started");
             CompleteState = AstarPath.Reachable ? PathCompleteState.Complete : PathCompleteState.Partial;
+            // 迷宫：绕过中点侧向 1.2 倍距离的拐角，全长约 2.6 倍直线距离（严格档拒、宽松档收）
+            Vector3 side = new Vector3(-(b.z - a.z), 0, b.x - a.x) * 1.2f;
             vectorPath = AstarPath.Detour ? new List<Vector3> { a, a + new Vector3(200,0,0), b }
+                : AstarPath.MazeDetour ? new List<Vector3> { a, (a + b) * 0.5f + side, b }
                 : new List<Vector3> { a, b };
         }
     }

@@ -216,6 +216,7 @@ namespace BossRush
                 return;
             }
 
+            if (GroupModeEnabled && RouteGroupPage(lifecycle)) return; // 群战：选人 / 对照押注 / 观战 HUD / 名人堂
             if (TryDeferPreparedFighterPage(lifecycle)) return;
 
             switch (lifecycle)
@@ -557,7 +558,7 @@ namespace BossRush
             Action archive = page.Actions[0].OnClick;
             // 转会窗口前也写「下一场」：没有报价时自动链直接关窗开打，有报价才停在转会页让玩家拿主意（V6-3）
             List<string> live = ModeHTransferMarket.GetLiveContractProfileIds(_season);
-            bool nextIsMatch = live != null && live.Count > 0
+            bool nextIsMatch = (GroupModeEnabled || (live != null && live.Count > 0))
                 && _runState.MatchIndex < ModeHConfig.SeasonMatchCount;
             page.Actions[0].Label = L10n.T(prefix + (nextIsMatch ? "Button_NextMatch" : "Button_Continue"));
             page.Actions[0].OnClick = delegate { RunAutoAdvance("next_match", archive); };

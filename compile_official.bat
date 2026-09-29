@@ -660,6 +660,10 @@ echo(ModeH\ModeHRuntimeModule_CombatFlow.cs
 echo(ModeH\ModeHRuntimeModule_SettlementFlow.cs
 echo(ModeH\ModeHRuntimeModule_CombatProfiles.cs
 echo(ModeH\ModeHRuntimeModule_SeasonFlow.cs
+echo(ModeH\ModeHRuntimeModule_GroupFlow.cs
+echo(ModeH\ModeHGroupRoster.cs
+echo(ModeH\ModeHGroupBattle.cs
+echo(ModeH\ModeHGroupHallOfFame.cs
 echo(ModeH\ModeHSaveFlushCoordinator.cs
 echo(ModeH\ModeHSeasonRewardService.cs
 echo(ModeH\ModeHSeedStream.cs

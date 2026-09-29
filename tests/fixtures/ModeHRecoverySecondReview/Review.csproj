@@ -12,6 +12,7 @@
     <Compile Include="../../../ModeH/ModeHRunState.cs" />
     <Compile Include="../../../ModeH/ModeHStateMachine.cs" />
     <Compile Include="../../../ModeH/ModeHSeedStream.cs" />
+    <Compile Include="../../../ModeH/ModeHGroupHallOfFame.cs" />
   </ItemGroup>
   <Target Name="ExtractProductionMethods" BeforeTargets="CoreCompile">
     <Exec Command="python &quot;$(MSBuildProjectDirectory)/generate.py&quot;" />

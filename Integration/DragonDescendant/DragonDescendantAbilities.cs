@@ -205,6 +205,8 @@ namespace BossRush
         private bool IsPlayerAlly()
         {
             if (bossCharacter == null) return false;
+            // 鸭王杯（Mode H）里玩家只在看台观战：专属技能一律不朝玩家放，只靠原版 AI 与对手互殴
+            if (ModeHRuntimeGates.IsModeHRunOwnerActive) return true;
             var inst = ModBehaviour.Instance;
             if (inst == null || !inst.IsModeEActive) return false;
             // 同阵营 = 友方

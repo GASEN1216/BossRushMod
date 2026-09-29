@@ -298,7 +298,9 @@ class Program
         Check(!ModeHMapSupportRegistry.TryCreateRunVariant(source,42,out again,out reason),"partial paths rejected");
         AstarPath.Reachable=true;AstarPath.Detour=true;
         Check(!ModeHMapSupportRegistry.TryCreateRunVariant(source,42,out again,out reason),"long detours rejected");
-        AstarPath.Detour=false;Physics.Blocked=true;
+        AstarPath.Detour=false;AstarPath.MazeDetour=true;Physics.LineBlocked=true;
+        Check(ModeHMapSupportRegistry.TryCreateRunVariant(source,42,out again,out reason),"maze: corridor detours and walled spectator fall back to the relaxed arena tier");
+        AstarPath.MazeDetour=false;Physics.LineBlocked=false;Physics.Blocked=true;
         Check(!ModeHMapSupportRegistry.TryCreateRunVariant(source,42,out again,out reason),"obstructed landing rejected");
         Physics.Blocked=false;
         AstarPath.Scanning=true;

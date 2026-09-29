@@ -1,5 +1,14 @@
 # Mode H：百战留痕（黑市鸭王杯）
 
+2026-09-29 owner 改版：群战（COMPAT，L1/L2，实机待验）：
+- 玩法：每场选人页抽「本场左边出战的一群」（3~20 人，每场可换 3 批）→「就这队」后按战力随机配右边（人数由战力定，两边合计战力差 ≤ 500）→ 双方对照 + 押注 → 两群同时上场互殴 → 结算；一季固定 6 场，不因输球提前结束；名人堂改成按「胜场 → 押注净赚 → 先入堂」排名，满员挤排名最末的一季。
+- Boss 池 = 宿主 `BossFilterEnemyPresets` 里能在官方目录查到 preset 的全部 Boss + 龙裔遗族 / 焚天龙皇 / 幽灵女巫（战力固定 1000，每边同一只至多一只），不再受 `BossProfiles.json` 十二人名单与认证池限制。自定义 Boss 走 Mode G 的托管生成器，新增 `ManagedBossOwner.ModeH`（`CreateModeGManagedCharacterAsync` 在 ModeH owner 下不要求 Mode G run 状态）；三只 Boss 在 `ModeHRuntimeGates.IsModeHRunOwnerActive` 时与 Mode E 同口径只打 AI 仇恨目标，龙王召唤龙裔跟父 owner 走，召唤物经辅助契约登记并跟随召唤者阵营。
+- 拍铃改为每场一次的全局天灾（陨星雨 / 导弹轰炸 / 全员加速 50% / 全员狂暴 / 回春 / 寒潮），双方一视同仁；陨石与导弹按每人最大生命比例扣血。单场 240 秒，到时比「存活者战力 × 剩余血量」。
+- 「自己调整再开打」按钮注释掉；单挑版选秀 / 接力 / 口令 / 伤病 / 战痕 / 转会代码保留，经 `ModeHGroupConfig.Enabled` 分流后不再走到。沿用原冻结状态机、锁盘 DTO、押注账本、结算页与名人堂信封，**不加持久字段**：两队只在运行时（中断重进回选人页重抽），名人堂群战记录用 `archetypeId="group"`、`quirkId="group:胜:场:净赚"`、`signatureCommandId=头号功臣` 编码。
+- 迷宫（冷库）进鸭王杯回基地：擂台选址原来只有严格档（绕路 ≤ 1.6 倍 + 3 m、看台直视擂台），拐角多的图 48 组全被拒；现加宽松档（绕路 ≤ 4 倍 + 20 m、看台不要求视线）兜底。
+- 源：[ModeHGroupRoster.cs](file://ModeH/ModeHGroupRoster.cs)、[ModeHGroupBattle.cs](file://ModeH/ModeHGroupBattle.cs)、[ModeHGroupHallOfFame.cs](file://ModeH/ModeHGroupHallOfFame.cs)、[ModeHRuntimeModule_GroupFlow.cs](file://ModeH/ModeHRuntimeModule_GroupFlow.cs)、[ModeHMapSupportRegistry.cs](file://ModeH/ModeHMapSupportRegistry.cs)。回归：ModeHGroupRoster（3000 组抽取与排名）、ManualSeptemberReview（迷宫宽松档）；单挑版夹具经 `tests/fixtures/modeh_group_off.py` 关掉群战分流继续执行。F3 自动验收里的整备与 ERROR 用例在群战下记 SKIP。
+- 下文各节描述单挑版，除押注账本、入场、恢复与名人堂持久化外已不是玩家流程。
+
 2026-09-29 发布前审核第二轮（COMPAT，L1/L2，实机待验）：
 - 押注跟着这一场走：看台退出、挂起送回基地后内存 owner 已清空，对账改看磁盘上同 runId 的赛季是否仍可续（`HasResumableSeasonRecord`），可续就保留押注到续赛；别的赛季或已结束的赛季照旧退回。
 - 换档（`RestoreForSlotChange`）末尾按新槽代次补跑 `EnsureContentScanned`，内容闸不再在进程内换档后卡在未就绪。

@@ -5,10 +5,9 @@ This mod supports 9 arena maps and the Sky Islands · Qinglan exploration journe
 **Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt and Fate Echo** can
 all be played on any of the 9.
 
-**The Black Market Duck Cup currently runs on DEMO Ultimate Challenge only.** That mode needs a
-map to define four extra position sets - the ring, the stands, the staging area and the exit -
-and DEMO is the only one audited so far. The map selection screen only lists maps that work, so
-you can't pick wrong; there just isn't much to pick from.
+**The Black Market Duck Cup**'s map screen only lists maps that can fit an arena: DEMO Ultimate Challenge's
+arena and stands are hand-tuned, the rest get one built from their existing boss spawn points. On twisty maps
+like the Maze, when no roomy spot turns up, the arena settles for more walking around corners and stands behind a wall.
 
 Zombie Mode uses its own entry flow and doesn't read this map list.
 
@@ -41,4 +40,4 @@ On cold maps such as Zero Challenge, the From Scratch, Faction War, and Blood Hu
 - **Faction War brawls**: maps with many spread-out spawn points, so the three-way actually happens
 - **Blood Hunt**: maps with cover and complex terrain. You're bleeding out; breaking line of sight saves health
 - **Speedrun achievements**: whichever small map you know best. Speedrunning is route memory, not luck
-- **Black Market Duck Cup**: no choice to make - DEMO Ultimate Challenge
+- **Black Market Duck Cup**: open maps for the big brawl; two crowds of bosses jammed into the Maze corridors is a different kind of chaos

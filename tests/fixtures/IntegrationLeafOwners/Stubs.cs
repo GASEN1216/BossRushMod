@@ -264,7 +264,8 @@ namespace BossRush
         internal static void RemoveAll() { Probe.Add("remove"); if (Throw) throw new Exception("remove"); }
     }
     internal static class MutatorUI { internal static void ShowBanner() { Probe.Add("banner"); } internal static void HideAll() { Probe.Add("hide"); } }
-    internal sealed class ManagedBossSpawnContext { internal Func<bool> IsOwnerValid; internal CharacterRandomPreset FactoryPresetOverride; }
+    internal enum ManagedBossOwner { Legacy, ModeG, ModeH }
+    internal sealed class ManagedBossSpawnContext { internal Func<bool> IsOwnerValid; internal CharacterRandomPreset FactoryPresetOverride; internal ManagedBossOwner Owner; }
     internal sealed class ModeGRunState
     {
         internal bool AcceptPreset = true, AcceptBoss = true;

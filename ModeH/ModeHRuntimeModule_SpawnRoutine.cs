@@ -12,7 +12,7 @@ namespace BossRush
         /// </summary>
         private System.Collections.IEnumerator DriveMatchSpawning()
         {
-            return DriveSpawnRoutine(DriveCompleteMatchSpawning(), "initial");
+            return DriveSpawnRoutine(GroupModeEnabled ? DriveGroupMatchSpawning() : DriveCompleteMatchSpawning(), "initial");
         }
 
         /// <summary>Unity 协程异常不会进入 OnUpdate 的异常边界；初始生成与接力共用技术重试出口。</summary>

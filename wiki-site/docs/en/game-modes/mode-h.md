@@ -2,232 +2,137 @@
 
 ## What Is It?
 
-You are not a fighter here. You are a manager.
+You don't fight. You bet.
 
-Pick one contender to fight for you, and another joins automatically as the relay. You watch from the stands, ring the bell exactly once per match, and let them fight all six matches for you.
-
-Once a match starts, the camera follows your fighter in the ring; your own body just waits in the stands. Certain fighters with the **ERROR** anomaly can trigger a control swap; see the questions below.
-
-Six matches per season. Match 6 is the final. There is no match 7.
+Every match, two crowds of bosses brawl at once: the left side is the group you're backing this match, the right side is whatever the house lines up against them by power. You watch from the stands, and once per match you can ring the bell to call down a disaster that hits both sides alike. A season is always six matches, and when it's done your record goes on the Hall of Fame leaderboard.
 
 ## Getting In
 
-- Interact with **the boat at the base dock**. Alongside "Boss Rush" there is a second option: **Black Market Duck Cup**.
-- Costs one **BossRush Ticket**, exactly like a normal BossRush run. It is charged when you confirm on the map selection page, not before.
-- **No mode-specific item is required**, and you do not have to strip your gear.
-- The map screen lists **every BossRush map that can host a ring**. DEMO Ultimate Challenge has a hand-tuned ring and stands; the other maps build one automatically from their existing boss spawn points.
-- You cannot enter while another mode is running (Standard BossRush, From Scratch, Faction War, Blood Hunt, Fate Echo and Zombie Mode all count).
-- If entry is turned away anyway — content not ready, unsuitable venue, a clash with another mode — **your ticket comes back**, along with the reason.
+- Interact with the **boat at the base dock**. Next to "Boss Rush" you'll see an extra option: **Black Market Duck Cup**.
+- It costs one **BossRush ticket**, same as normal BossRush, and is only taken when you confirm on the map screen.
+- **No mode-specific item needed**, and you don't have to strip your gear.
+- The map screen lists **BossRush maps that can fit an arena**. Twisty maps like the Maze work too: when no roomy spot turns up, the arena settles for a bit more walking around corners and stands behind a wall.
+- You can't enter while another mode is running (Standard arena, From Scratch, Faction War, Blood Hunt, Fate Echo and Zombie Mode all count).
+- If the start gets blocked (content not ready, the map can't fit an arena, another mode in the way), **your ticket is refunded** and you're told why.
 
-## After You Arrive: Pick and Fight
+## How a Match Runs
 
-Once the map finishes loading, you can pick your fighter immediately, **including on your first visit or after a game or mod update**. There is no warm-up to wait through.
+**Lineup screen (this match's left group) → "Go with this group" → both sides + your bet → "Start Match" → watch them fight (one bell) → results → "Next Match"**
 
-On **the one and only pick page**:
+### Lineup: the group fighting on your side
 
-- Candidates are dealt once per season: **five fighters, one of each style** — Brawler, Shooter, Tank, Grinder and Closer.
-- Each card shows the fighter's **Codex portrait**, name and style, with its stat bars and gear icons for this match underneath.
-- Click one card to choose your **starter**, then another to choose your **relay**: if the starter goes down, the relay steps in. Once both are set you go to the first match's brief. Picked the wrong starter? Click it again to unpick.
-- Not happy with the lineup? Press **"Refresh candidates"**, up to **3 times** a season; once your starter is locked, a refresh only swaps the others. The page swaps the fighters in place instead of closing and reopening.
-- **Closing the page and reopening it does not reroll anything**, and the refresh count sticks to the season, so leaving and coming back does not give you fresh refreshes.
+- Each match draws a random group of bosses for the left side, **3–20** of them. Each card shows the codex portrait, name and **power**; the column header shows the total.
+- Every BossRush boss can show up, including the three mod bosses, **Dragon Descendant, Dragon King and Phantom Witch** (their power is fixed at 1000; at most one of each per side).
+- Don't like it? Hit **"Redraw"**, up to **3 times** per match.
+- Happy with it? Hit **"Go with this group"**.
 
-The three you did not take immediately draw a destination card each:
+### Both sides and your bet
 
-- **Return Ticket** — comes back as the enemy core in match 5
-- **Waitlist** — may show up in the transfer window after match 2, giving you one more shot at them
-- **Torn Up** — removed for the rest of the season; nobody gets them
-
-## How a Season Runs
-
-Six matches, all on the same rhythm:
-
-**Match brief (size up both sides, pick a bet) → Start → Watch them fight (ring the bell once if you like) → Report → "Next match"**
-
-- A match lasts at most **180 seconds**. If you have not won by then, you lose. There is no extra time.
-- The opposition escalates every match. The first two cap at two enemies on the field at once; from match 3 the cap is three.
-- Between matches: press "Next match" on the report page ("Continue" after the final), look over both sides on the match brief, then press "Start the match". With a bet set, the button reads "Start the match · Bet 5,000" or "Start the match · Bet 3 item(s)".
-- A **transfer window** opens after the settlement of **match 2** and **match 4**.
-- After match 6, your champion goes into the **Hall of Fame**.
-
-### What Gets Decided For You
-
-Kits, orders and who opens — the manager paperwork — are handled with sensible defaults. Whether to bet, and whether to bet money or items, is up to you:
-
-- **Bet**: **no bet** by default. To bet, pick an amount in the **Bet** row at the bottom of the page, or press **Bet items** to stake things from your backpack; see "Betting: Back Your Fighter" below.
-- **Kits**: the mode hands out its own gear; it has **nothing to do with your warehouse**. Reward kits you win are equipped automatically.
-- **Order**: your opening fighter's **signature order**; if it cannot be used this match, another usable order.
-- **Who opens**: your main fighter, unless it is injured and the relay is healthy — then the relay opens. An injured fighter that goes down again retires, so it waits in the relay seat instead and heals if it never has to step in.
-- The **scar** and **reward kit** on the report page are handled automatically too, and the page tells you what happened (see below).
-
-### Match Brief
-
-Every match stops at the "Match Brief" page first, with both sides on one screen:
-
-- The top line shows **which match** it is and the **win payout multiplier**; the small line under it is this match's **arena rule**.
-- Your starter and relay are on the left, this match's opponents on the right. Each fighter gets one wide card: portrait, name and condition, a row of gear icons on the right, and eight stats underneath (HP, Damage, Speed, Range, Armor, Helmet, Crit, Power), drawn on the same scale for both sides. Each column header shows that side's **total power**.
-- Pick a bet in the **Bet** row at the bottom, then press **"Start the match"**.
-- To change the roster, kits or order yourself, press **"Adjust first"**. It opens the four tabs directly (Roster / Starter kits / Relay kits / Command): the Roster tab has starters on the left and relays on the right, and every kit shows its item icon. Press "Done" to go back to the matchup, then "Lock in and start".
+- Once you confirm, the house draws opponents at random for the right side. **How many depends on power**, and the two totals are **never more than 500 apart**.
+- The top line shows **which match** and the **win payout multiplier**: the closer the fight, the better the payout; the stronger your side, the lower it goes.
+- Pick a bet in the footer row, then hit **"Start Match"**. With a bet on, the button reads "Start Match · Bet 5,000" or "Start Match · Bet 3 item(s)".
 
 ::: tip
-The old "Briefing / recon" button is gone: the opponents' gear and stats are now right there on the matchup, so there is nothing left to scout for.
+The old "Adjust before the match" button (swap fighters, gear, calls) is gone: group fights have no prep step. Your only decisions are whether to back this group, and how much.
 :::
 
-### Transfer Windows
+### The fight
 
-Only two all season, and **there is no refreshing**. You get what you get, and sometimes you get nothing.
+- Both groups hit the field at once and go for the nearest opponent. **Last side standing wins**; if both sides go down together, the house wins.
+- A match lasts up to **240 seconds**. If nobody has won by then, the side with more **power × remaining health** among the fighters still standing wins.
+- The camera follows your side while anyone is left, then the other side.
+- The spectator panel on the right has **Surrender** and **Exit**: surrender counts as a loss; exit leaves the arena, keeps this match to replay later, and settles your bet as lost.
 
-- **After match 2** — your Waitlist fighter may come knocking.
-- **After match 4** — a special enemy you just beat may be willing to sign.
-- The page shows its portrait and a plain description with two buttons: **"Sign (replaces relay)"** or **"Keep roster, next match"**. Either one goes straight into the next match.
-- Signing it bumps your **relay**. The fighter you dropped is released on the spot and **cannot be re-signed this season**.
-- **You can never sell your main fighter.** The relay is only promoted if the main fighter retires while the relay is still standing.
+## The Bell: One Disaster for Everyone
 
-### Ring Conditions
+In the whole match you get exactly one active move: **ringing the bell**.
 
-Each match rolls one ring condition. Rules apply equally to both sides:
-
-- **Center Cover** — inside the blue ring, physical damage factor is reduced by 25%; leaving removes it. This is a cover zone, with no added blocking walls.
-- **Danger Edge** — outside the orange ring, take 2% max-health armor-bypassing damage each second. Every entrant gets 5 seconds of grace.
-- **Limited Medical** — all actual healing is halved; direct damage is unchanged.
-- **Narrow Cage** — close-combat rules: melee damage factor +20%, gun damage factor -20%. No physical cage is added.
-- **Open Field** — ranged rules: gun damage factor +15% for both teams.
-- **Residual Might** — gun and melee damage factors +20% for 8 seconds after each entry. Starters, relays and reinforcements have separate windows.
-
-### What the Odds Do
-
-The odds convert the public strength gap into x1 to x5 (the bigger the gap against you, the longer the shot). They decide two things:
-
-- **What a bet pays back**: the longer the odds, the more a win pays; see "Betting: Back Your Fighter" below.
-- **Scars**: **only wins at x3 or better earn a scar**, so the riskier the win, the more there is to keep.
-
-## The Bell: The One Thing You Actually Do
-
-Your only active command during a match is to **ring the bell**.
-
-- The bell card sits **at the top left, right under the status card**. It reads "Ring the Bell: order name" plus one plain line about what the order makes your fighter do (for example, "Focus wounded enemies and look farther").
-- **You may ring once per match**, and the order runs for **6 seconds** — the thin line along the bottom of the card counts it down.
-- Ringing **does not pause the fight and does not open a menu**. The clock keeps running. Afterwards the card greys out and reads "Bell already used this match".
-
-A few situations make the bell do nothing, and those **do not consume your use** — you can ring again once things change: nobody on the field can take the order, the signature order's owner is not in the ring, the order needs the relay fighter to enter first, or the enemy count does not meet its condition. The screen tells you which one it was.
+- Once per match. It calls down a random disaster that treats **both sides the same**:
+  - **Meteor shower** — meteors pound the arena for 8 s, hitting whoever is there;
+  - **Missile strike** — three waves of missiles on random fighters, either side;
+  - **Haste** — everyone moves 50% faster for 15 s;
+  - **Frenzy** — everyone deals 50% more damage for 15 s;
+  - **Rejuvenation** — everyone on the field heals 30% at once;
+  - **Frost** — everyone moves 40% slower for 12 s.
+- Meteors and missiles take a share of each target's max health, so a hit weighs the same on a tank and on a glass cannon.
+- The bell doesn't pause the fight. The card shows which disaster you got, and the line along its bottom edge is the time left.
 
 ::: tip
-Six seconds is short and you only get one. Do not burn it at the opening whistle. Save it for the moment the match actually turns: reinforcements arriving, the enemy core showing itself, or your fighter starting to fold.
+Disasters don't take sides. If your group is many and fragile, meteors can backfire; if it's few but tough, chaos is your chance.
 :::
 
-## Fighters Get Hurt, and Fighters Retire
+## Results and the Season
 
-The two fighters you have are a resource you can run out of.
+- The results screen shows **win or loss, time, how many were left standing on each side, the disaster that hit**, and your bet.
+- A season is **always six matches**. Losing doesn't end it early. After the sixth results screen you go to the Hall of Fame.
 
-- **Going down once** leaves a fighter **injured**.
-- An **injured fighter who enters again and goes down again retires for the season** and cannot be used any more.
-- An injured fighter who **never sets foot in the ring** during a match **recovers** afterwards.
-
-That is why an injured main fighter is moved to the relay seat automatically: if the opener wins, it gets its rest. The match report says plainly who was **Fully Rested** and who **Retired for the Season**.
-
-If your main fighter retires, the relay is promoted. **If both contracted fighters retire, the season ends right there** — even in match 3.
-
-## Scars: The Riskier the Win, the More There Is to Keep
-
-Win a match **at odds of x3 or better** and the surviving fighter is offered a **scar**, at most one per match. Favored boards (x1, x2) offer nothing — scars only grow out of hard fights.
-
-A scar is one permanent change with **an upside and a downside welded together**, drawn only from those compatible with that fighter's archetype. Two examples:
-
-- **Broken Shield Charge** — after armor first breaks: sharper sight and turning, but no shooting on the move in that window.
-- **Bell Dependence** — orders hit harder after the bell, and skills land less often before it.
-
-The report page handles it **automatically**:
-
-- If the fighter has a free scar slot, the scar is **kept** and goes live immediately; the page says who earned which scar.
-- If the list is already full at **3** (or already has that scar), it becomes fame `+1` instead (capped at 99). Fame **changes nothing** about combat, rewards or transfers; it is just a number on the record.
-
-Likewise, the first **reward kit** on offer is claimed automatically and equipped by the default loadout.
-
-::: tip
-If the automatic handling fails (for example, the save cannot be written for a moment), the report page shows cards so you can choose yourself: keep the scar, replace one you already have (you are asked to confirm first, and the replaced scar does not come back), or decline the scar for fame. Reward kits work the same way: unlock one, or skip the kits for fame.
-:::
-
-## Betting: Back Your Fighter
+## Betting: Back the Left Side
 
 ::: warning
-Bets are your real money or backpack items: you back your fighter, and if it loses the house keeps the stake. In the long run the house always wins.
+A bet puts your money or your backpack items on the line: you're backing the left group to win, and if it loses, the house keeps what you put up. In the long run, the house always wins.
 :::
 
-That is the small line at the bottom of the pick page. You can bet **money** — your account balance; cash items in your backpack are never touched — or **items from your backpack**. **Nothing from your warehouse is ever staked**: matches are played on a raid map, and your warehouse only exists at the base.
+You can bet two things: **money in your account** (cash in your backpack is left alone), or **items in your backpack**. **Nothing in your storage can be bet**: the match is on a raid map, and storage is back at base.
 
-- **Where**: the pick page, every match report (for the next match) and the fallback odds page all have a **Bet** row at the bottom: **No bet / Bet 1,000 / Bet 5,000 / Bet 20,000 / Bet items**.
-- **A money bet sets how much you bet on every match from now on**, until you change it. The default is no bet, and loading a save puts it back to no bet.
-- **An item bet covers the next match only**: **Bet items** opens a page of your backpack; tap an item to stake it, tap again to take it back, then press **Done** to return.
-- **You always bet on your own fighter winning that match.** The stake is taken, or the staked items recorded, only once the match locks in. If you are short on money or the items have left your backpack, that match simply has no bet; the report page says why, and the match goes ahead.
+- **Where to pick**: the both-sides screen and every results screen (for the next match) have a "Bet" row in the footer: **No bet / Bet 1,000 / Bet 5,000 / Bet 20,000 / Bet items**.
+- **A money bet sets "how much per match from now on"**: pick once and every match uses it until you change it. Default is no bet, and loading a save resets to no bet.
+- **An item bet only covers the next match**: "Bet items" opens a page of your backpack; tap an item to put it up, tap again to take it back, then "Done".
+- The money is only taken, and the items only recorded, once the match locks in. Short on money or the items are gone? No bet this match; the results screen says why, and the match goes ahead.
 
 ### Betting Items
 
-- **What you can stake**: anything in your backpack, as many items and as valuable as you like. Only quest items (which the game will not even let you drop) and worthless items are left out. Containers can be staked too; the card says "with N inside", and a loss takes the contents as well.
-- **Value**: what a trader would pay, which is half the list price (attachments and container contents included, scaled by durability). Staking items is never better than selling them.
-- **Staked items are not taken up front**; they stay in your backpack during the match. **Lose** and the staked items are taken.
-- **Win** and you keep them, plus **prizes**:
-  - **Quality** follows your stake: the value-weighted average quality, so the pricey item decides. Stake a purple gun with a few bullets and the prizes are mostly purple.
-  - **Total value** follows the stake value and the odds: what a win pays back (see below) minus the stake value. The more valuable the stake and the longer the odds, the more the prizes are worth.
-  - **Count**: one prize per staked item, up to 6. Prizes go into your backpack. If it is full, undelivered prizes are kept pending and arrive automatically once you make room, including after reloading.
-  - Whatever the prizes cannot cover exactly (for example, nothing of that quality fits the remaining value) is paid in money.
-- Leave staked items alone once the match starts: anything missing when you lose (moved, used or merged away) is charged from your balance at its value, down to zero. Anything merged into the same stack during the match is not part of the bet; only the staked amount is taken.
-- The bet stays open until all prizes arrive, so you cannot place another bet while delivery is pending. Delivered prizes are not sent again. If an older save cannot identify the exact item you staked, it is treated as missing; another item of the same type is never taken in its place.
-
-### The Odds Reveal
-
-Once your bet is in, the match opens with a short "Odds are in" reveal: five odds cells from x1 to x5, each showing what a win pays back (for an item bet, roughly what the prizes are worth). The highlight sweeps across, slowing down, and stops on this match's odds. It is only a show and never blocks you.
+- **What you can bet**: anything in your backpack, as many and as pricey as you like. Only quest items and worthless stuff are hidden. Containers work too; lose, and what's inside goes with them.
+- **Value**: the merchant buy price, half the base price. Betting an item never beats selling it.
+- **Nothing is taken up front**: your items stay in your backpack during the match. **Lose**, and they're taken.
+- **Win**, and you keep them plus get **prizes**: quality follows what you put up, total value is "what a win pays" minus the stake value, and you get one prize per item bet (up to 6). If your backpack is full, prizes wait and arrive as soon as there's room.
+- Don't move the staked items after the match starts: on a loss, anything that can't be found is charged against your balance at its value, down to 0.
 
 ### What a Win Pays
 
-A win pays back stake × 0.92 ÷ the assumed win rate for that odds tier, **stake included**:
+A win pays back stake × 0.92 ÷ that tier's assumed win rate. The payout **includes your stake**:
 
-- **x1** — assumed 85% to win, pays back about 1.08×
-- **x2** — assumed 70% to win, pays back about 1.31×
-- **x3** — assumed 55% to win, pays back about 1.67×
-- **x4** — assumed 42% to win, pays back about 2.19×
-- **x5** — assumed 30% to win, pays back about 3.06×
+- **x1** — assumed 85% win rate, about 1.08× back
+- **x2** — assumed 70% win rate, about 1.31× back
+- **x3** — assumed 55% win rate, about 1.67× back
+- **x4** — assumed 42% win rate, about 2.19× back
+- **x5** — assumed 30% win rate, about 3.06× back
 
-For example, a 5,000 bet won at x3 pays back 8,360. A loss gives your stake to the house. Item bets use the value: items worth 5,000 won at x3 stay with you, plus prizes worth about 3,360.
+So a 5,000 bet won at x3 pays back 8,360. If a tier's **actual** win rate (after 20 bets in that tier) runs higher than the table, that tier's payout drops automatically.
 
-Over time you lose about 8 for every 100 you bet: the house always wins, which is what gambling is. If one tier's **actual** win rate (after 20 bets at that tier) comes out higher than the table, that tier's payout drops automatically.
+### Interruptions and Refunds
 
-### Results, Interruptions and Refunds
-
-- The report page adds a line: "Bet: 5,000  won, paid 8,360" or "Bet: 5,000  lost, the house keeps it"; item bets read "Bet: 3 item(s) (worth 12,345)  won: you keep the items, plus prizes: ...", listing the prizes and any remainder paid in money.
-- **A bet stays with its match**: after a technical abort, a suspended season or quitting the game mid-match, that match is played again. The bet is **not refunded**; the rematch keeps it (the button reads "Bet placed: ...") and settles it on the rematch result. The rematch never counts as your loss, but quitting cannot turn a losing match into a fresh roll either.
-- Bets come back only when the season will not be played on: **Abandon this season** on the recovery page, or a new season finding a bet left over from the old one. For item bets, the items never left your backpack.
+- **A bet sticks with its match**: a technical abort, a suspended season, or quitting mid-match and coming back all mean replaying that match (with a fresh draw). The bet **isn't refunded**; it carries over and settles on the replay.
+- It's only returned as-is if the season ends for good: "Abandon season" on the recovery page, or starting a new season while the last one still had a bet open.
 
 ::: warning
-Before you bet, ask yourself one question: if this money were gone, would I still want to keep playing? You can finish a whole season without betting.
+Before you bet, ask yourself: if this money's gone, do I still want to keep playing? You can finish a whole season without betting.
 :::
 
 ---
 
-## The Hall of Fame: 32 Seats, and You Can Be Pushed Out
+## The Hall of Fame: A Leaderboard
 
-Win the sixth match and your champion is inscribed in the **Hall of Fame**.
+After the sixth match, the season goes into the **Hall of Fame** and gets ranked:
 
-- The Hall **persists across seasons** and holds exactly **32 seats**. When the thirty-third arrives, **the oldest record is pushed out**.
-- Each record is a card with the **champion's portrait**: name, archetype and temperament, plus one plain line — its signature call, the longest odds it won an upset at, its fame and how many scars it carries.
-- A champion with an anomaly is marked apart in the list.
-- The season wrap-up page shows you the current Hall directly, so you can see how many seats are left and who is about to be pushed out. Its only button, **End season**, closes the season.
-
-Being pushed out is not a failure. It is what the rule was always going to do — names not lasting is the normal state of this place.
+- **Wins** first, then **net bet winnings**, then whoever got in earlier.
+- Each entry is a card: rank, wins and losses, net winnings, and a portrait of the season's **MVP** (the boss that fought and won most on your side). This season's row is highlighted, and the header tells you where it placed.
+- The Hall of Fame **carries across seasons** and has only **32 seats**. When it's full, **the lowest-ranked season gets pushed out**.
+- Champions from the old one-on-one days are listed after the leaderboard as "Past duel champion".
+- Hit **"End season"** when you're done looking.
 
 ---
 
 ## Questions You Might Have
 
-- **Do I have to sit through the warm-up every time?** No. You go straight to the pick page once the map finishes loading, including on your first visit, after an update, and in development builds. Optional per-fighter checks are under F3 Gameplay Validation → Duck Cup Certification and require a dedicated test save.
-- **I can't see my own character — is that right?** Yes. During a match the camera follows your fighter while your body waits in the stands; the camera comes back to you when the match ends.
-- **Can I fight myself?** Normally no. Certain eligible fighters with the **ERROR** anomaly get one 8% check per match. Success gives you control of the fighter while your own body stays in the stands. The swap ends when the fighter goes down, the match ends or control is restored. These kills still do not count toward the Codex.
-- **Can I bring my PetNest companions?** No. This mode does not admit PetNest companions.
-- **Are there mutation affixes?** No. This mode applies no mutation affixes and fires no in-run random events.
-- **Do kills here count toward the Duckov Codex?** No. Your fighter landed the blow, not you.
-- **Can I reroll the candidates?** No. Closing and reopening the page changes nothing. Those five are the five.
-- **What happens after a season?** The season closes and your champion is recorded in the **Hall of Fame**. The Hall keeps only **32 places** — the 33rd entry pushes out the oldest one.
-- **Does a technical failure count as a loss?** No. The same match retries automatically, up to two times, without recording a defeat; if you had a bet on, it is not refunded; the retry keeps it and settles it on the rematch result. Press "Start the match" when you are back. Further failures suspend the season for recovery through the boat menu.
-- **My season is stuck and won't continue.** Interact with the boat and you get a recovery page instead of the usual entry. **Abandon this season and settle the stake** first opens a confirmation that spells out what happens. Once you confirm, any bet still on the table comes back untouched (staked backpack items never left your backpack; any warehouse items an older save still holds in escrow go back too), the stuck season is cleared and you can start a new one; the season itself is gone. Not ready to decide? **Later** closes the page, and the boat entry opens it again.
+- **Do I have to wait for a warm-up every time?** No. Once the map loads, you're on the lineup screen.
+- **Is it normal not to see my own character?** Yes. During the fight the camera follows the bosses; your body waits quietly in the stands and the camera comes back when the match ends.
+- **Can I jump in myself?** No. You bet and you ring the bell.
+- **Can I bring a pet from the Nest?** No. This mode doesn't use Nest companions.
+- **Are there mutators?** No. The Duck Cup doesn't roll mutators or trigger random events.
+- **Do kills here count toward the Duck Emperor Codex?** No. That's bosses fighting bosses, not you.
+- **Does a technical fault count as a loss?** No. The same match is retried automatically, up to 2 times, and doesn't count as a defeat; any bet carries over. If it keeps failing, the season is suspended and the recovery page at the boat takes over.
+- **The season is stuck: can't get in, can't play on. Now what?** Interact at the dock and you'll get a recovery page. **"Abandon season and settle stakes"** asks you to confirm first and spells out what happens; after that any open bet is returned as-is, the stuck season is cleared, and you can start fresh. Not ready? **"Later"** closes it.
 
 ::: tip
-This mode asks only two things of you: who goes into the ring, and when to ring that one bell. The rest is up to them.
+There are really only three calls to make here: keep this group or redraw, how much to bet, and when to ring that one bell. The bosses handle the rest.
 :::

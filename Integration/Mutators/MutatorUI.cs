@@ -74,7 +74,11 @@ namespace BossRush
         /// <summary>行内右侧分类标签列宽（14 号「ENEMY」约 44px）。</summary>
         private const float CategoryColumnWidth = 60f;
         private const float PanelLeftMargin = 16f;
-        private const float PanelTopOffset = -240f;
+        /// <summary>
+        /// 面板顶边。左上角从上往下依次是随机事件徽章（-140，高 64）、遗种巢伙伴卡（-212，高 76，底边 -288），
+        /// 词条面板排在伙伴卡下面留 12，不再压住崽的 HUD（2026-09-29 owner 实测重叠）。
+        /// </summary>
+        private const float PanelTopOffset = -300f;
         private const float DetailWidth = 360f;
         private const float DetailGap = 8f;
         private const float DetailPadding = 14f;

@@ -849,7 +849,8 @@ namespace BossRush
             try
             {
                 var inst = ModBehaviour.Instance;
-                if (inst != null && inst.IsModeEActive)
+                // 鸭王杯（Mode H）同样是 Boss 互殴、玩家只在看台：与 Mode E 一样只打 AI 仇恨目标
+                if (inst != null && (inst.IsModeEActive || ModeHRuntimeGates.IsModeHRunOwnerActive))
                 {
                     // 【Mode E】从原版AI的 searchedEnemy 获取攻击目标
                     var ai = aiController != null ? aiController.GetAI() : null;
@@ -1090,8 +1091,8 @@ namespace BossRush
         private bool HasValidTargetForModeE()
         {
             var inst = ModBehaviour.Instance;
-            if (inst == null || !inst.IsModeEActive)
-                return true; // 非 Mode E，不限制
+            if (inst == null || !(inst.IsModeEActive || ModeHRuntimeGates.IsModeHRunOwnerActive))
+                return true; // 非 Mode E / 鸭王杯，不限制
 
             // 检查原版AI的 searchedEnemy
             var ai = aiController != null ? aiController.GetAI() : null;

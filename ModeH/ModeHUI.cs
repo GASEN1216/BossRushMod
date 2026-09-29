@@ -81,6 +81,8 @@ namespace BossRush
         private TextMeshProUGUI _hudTimerCaption;
         private TextMeshProUGUI _hudStarter;
         private TextMeshProUGUI _hudRelay;
+        /// <summary>群战把前两行改成双方存活；空则用「先发 / 接力」。</summary>
+        internal string HudFirstLabel, HudSecondLabel;
         private TextMeshProUGUI _hudEnemies;
         private Button _bellButton;
         private Button _surrenderButton;
@@ -443,12 +445,12 @@ namespace BossRush
             }
             if (_hudStarter != null)
             {
-                _hudStarter.text = HudLabelOpen + L10n.T(prefix + "Label_MatchStarter") + HudLabelClose
+                _hudStarter.text = HudLabelOpen + (HudFirstLabel ?? L10n.T(prefix + "Label_MatchStarter")) + HudLabelClose
                     + (starterName != null ? starterName : "-");
             }
             if (_hudRelay != null)
             {
-                _hudRelay.text = HudLabelOpen + L10n.T(prefix + "Label_MatchRelay") + HudLabelClose
+                _hudRelay.text = HudLabelOpen + (HudSecondLabel ?? L10n.T(prefix + "Label_MatchRelay")) + HudLabelClose
                     + (relayName != null ? relayName : "-");
             }
             if (_hudEnemies != null)

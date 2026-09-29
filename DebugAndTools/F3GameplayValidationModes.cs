@@ -104,10 +104,12 @@ namespace BossRush
                 !drafting ? "player_entry_timeout_or_abort" : (sawDiagnostics ? "player_entry_started_diagnostics" : null));
             if (fullSeason)
             {
-                if (drafting) yield return RunModeHStarterKits(map);
-                else Record("MODE_H_STARTER_KITS", "SKIP", 0L, string.Empty, "player_drafting_not_ready");
-                if (drafting) yield return RunModeHErrorSwap(map);
-                else Record("MODE_H_ERROR_SWAP", "SKIP", 0L, string.Empty, "player_drafting_not_ready");
+                // 群战（2026-09-29）没有整备与 ERROR 互换：两条单挑版用例记 SKIP
+                bool group = ModeHRuntimeModule.GroupModeEnabled;
+                if (drafting && !group) yield return RunModeHStarterKits(map);
+                else Record("MODE_H_STARTER_KITS", "SKIP", 0L, string.Empty, group ? "group_battle_mode" : "player_drafting_not_ready");
+                if (drafting && !group) yield return RunModeHErrorSwap(map);
+                else Record("MODE_H_ERROR_SWAP", "SKIP", 0L, string.Empty, group ? "group_battle_mode" : "player_drafting_not_ready");
                 if (drafting) yield return RunModeHFullSeason();
                 else Record("MODE_H_FULL_SEASON", "SKIP", 0L, string.Empty, "player_drafting_not_ready");
             }

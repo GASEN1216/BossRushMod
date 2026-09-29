@@ -230,6 +230,11 @@ namespace BossRush
 
             topY -= ColumnHeaderHeight;
             height -= ColumnHeaderHeight;
+            if (IsCompactRoster(fighters))
+            {
+                CreateCompactFighterGrid(column.transform, panelSize, fighters, width, topY, height, sideColor);
+                return;
+            }
             float cardHeight = tall ? FighterCardTall : FighterCardShort;
             float totalHeight = fighters.Count * (cardHeight + FighterCardGap) - FighterCardGap;
             Transform host = column.transform;
@@ -253,6 +258,72 @@ namespace BossRush
                 RectTransform cardRect = card.GetComponent<RectTransform>();
                 cardRect.anchorMin = cardRect.anchorMax = new Vector2(0.5f, 1f);
                 BuildFighterRowCard(card.transform, fighter, cardWidth, tall, sideColor);
+            }
+        }
+
+        /// <summary>群战名单：卡上只有立绘、名字与战力（没有属性格与装备），按紧凑网格排。</summary>
+        private static bool IsCompactRoster(List<ModeHCardData> fighters)
+        {
+            if (fighters == null || fighters.Count == 0) return false;
+            for (int i = 0; i < fighters.Count; i++)
+            {
+                ModeHCardData card = fighters[i];
+                if (card != null && (card.Stats.Count > 0 || card.Equipment.Count > 0)) return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 群战名单网格（2026-09-29 改版：一边 3~30 人）：一格一个人，立绘 + 名字 + 战力，
+        /// 列数按列宽算（每格至少 CompactTileMinWidth），放不下才进滚动区。单行框高按「字号×1.45+4」留足，省略号不会吞整行。
+        /// </summary>
+        private static void CreateCompactFighterGrid(Transform column, Vector2 panelSize, List<ModeHCardData> fighters,
+            float width, float topY, float height, Color sideColor)
+        {
+            int columns = Mathf.Max(1, Mathf.FloorToInt((width + CompactTileGap) / (CompactTileMinWidth + CompactTileGap)));
+            int rows = (fighters.Count + columns - 1) / columns;
+            float totalHeight = rows * (CompactTileHeight + CompactTileGap) - CompactTileGap;
+            Transform host = column;
+            float gridWidth = width;
+            float firstTop = topY - panelSize.y * 0.5f;
+            if (totalHeight > height)
+            {
+                host = CreateScrollHost(column, new Vector2(width + ModeHUI.SafeMargin * 2f, panelSize.y),
+                    topY, height, totalHeight).transform;
+                gridWidth = width - 24f;
+                firstTop = 0f;
+            }
+            float tileWidth = (gridWidth - (columns - 1) * CompactTileGap) / columns;
+            float portrait = CompactTileHeight - 14f;
+            for (int i = 0; i < fighters.Count; i++)
+            {
+                ModeHCardData fighter = fighters[i];
+                if (fighter == null) continue;
+                int row = i / columns;
+                int col = i % columns;
+                float x = -gridWidth * 0.5f + tileWidth * 0.5f + col * (tileWidth + CompactTileGap);
+                float y = firstTop - row * (CompactTileHeight + CompactTileGap) - CompactTileHeight * 0.5f;
+                GameObject card = BossRushUI.CreateCard("Fighter_" + i, host, new Vector2(x, y),
+                    new Vector2(tileWidth, CompactTileHeight), BossRushUIColors.SurfaceRaised, sideColor, true);
+                RectTransform cardRect = card.GetComponent<RectTransform>();
+                cardRect.anchorMin = cardRect.anchorMax = new Vector2(0.5f, 1f);
+                float inner = tileWidth - 16f;
+                float left = -inner * 0.5f;
+                CreatePortrait(card.transform, fighter, new Vector2(left + portrait * 0.5f, -7f), portrait);
+                float nameLeft = left + portrait + 8f;
+                float nameWidth = Mathf.Max(40f, inner - portrait - 8f);
+                TextMeshProUGUI name = DetailText(card.transform, "Name", fighter.Title,
+                    new Vector2(nameLeft, -8f), new Vector2(nameWidth, 29f),
+                    17f, BossRushUIColors.TextPrimary, TextAlignmentOptions.Left);
+                name.enableAutoSizing = false;
+                name.enableWordWrapping = false;
+                name.overflowMode = TextOverflowModes.Ellipsis;
+                TextMeshProUGUI role = DetailText(card.transform, "Role", fighter.Subtitle,
+                    new Vector2(nameLeft, -37f), new Vector2(nameWidth, 25f),
+                    14f, BossRushUIColors.TextSecondary, TextAlignmentOptions.Left);
+                role.enableAutoSizing = false;
+                role.enableWordWrapping = false;
+                role.overflowMode = TextOverflowModes.Ellipsis;
             }
         }
 
@@ -540,6 +611,10 @@ namespace BossRush
         private const float MatchInfoHeight = 40f;
         /// <summary>两列中缝（放一枚 VS）。</summary>
         private const float VersusGap = 56f;
+        /// <summary>群战名单格：高 70（7 + 名字 29 + 战力 25 + 余量），每格至少 180 宽，格间 8。</summary>
+        private const float CompactTileHeight = 70f;
+        private const float CompactTileMinWidth = 180f;
+        private const float CompactTileGap = 8f;
         /// <summary>列头：队名 21 号一行 + 细分隔线。</summary>
         private const float ColumnHeaderHeight = 44f;
         private const float FighterCardPadding = 14f;

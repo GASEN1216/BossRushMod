@@ -101,13 +101,17 @@ namespace BossRush
                 switch (state.Lifecycle)
                 {
                     case ModeHLifecycle.Drafting:
+                        // 群战（2026-09-29）：选人页只有「换一批 / 就这队」，点就这队
+                        if (ModeHRuntimeModule.GroupModeEnabled) { TryClickModeHButton(null, ModeHRuntimeModule.GroupConfirmLabel); break; }
                         // 选人页一次点击即签约并自动开打（2026-09-23）；这次没开成（例如搭档凑不齐）再换下一张卡
                         if (TryClickModeHButton("ModeH_CardAction_" + draftPick, null)) draftPick = (draftPick + 1) % ModeHConfig.DraftCandidateCount;
                         break;
                     case ModeHLifecycle.RosterLocked:
                     case ModeHLifecycle.MatchBrief:
                         // 正常流程不停在这两页；停下来说明自动开打被拒或技术重试回落，点兜底页的「开打」
-                        TryClickModeHButton(null, start);
+                        // 群战每场先停在选人页：没有「开打」就点「就这队」
+                        if (!TryClickModeHButton(null, start) && ModeHRuntimeModule.GroupModeEnabled)
+                            TryClickModeHButton(null, ModeHRuntimeModule.GroupConfirmLabel);
                         break;
                     case ModeHLifecycle.LoadoutEditing:
                     case ModeHLifecycle.OddsPreview:

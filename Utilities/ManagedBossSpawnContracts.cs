@@ -23,7 +23,12 @@ namespace BossRush
     internal enum ManagedBossOwner
     {
         Legacy,
-        ModeG
+        ModeG,
+        /// <summary>
+        /// 鸭王杯群战（2026-09-29）：与 Mode G 同一套窄契约（八个 Legacy 开关全关），
+        /// 只是没有 Mode G 的 run 状态；staging 登记由 Mode H 自己的死亡抑制表与生成 owner 负责。
+        /// </summary>
+        ModeH
     }
 
     /// <summary>
@@ -129,6 +134,18 @@ namespace BossRush
             ctx.ShowLegacyMessages = false;
             ctx.PreserveLinkedKillAttribution = true;
             ctx.IsOwnerValid = isOwnerValid;
+            return ctx;
+        }
+
+        /// <summary>
+        /// 鸭王杯群战主 Boss：开关与 Mode G 主 Boss 相同（不写波次、不装成就/掉落/恢复、不自动激活、不发旧提示），
+        /// 击杀归因不改写成玩家（玩家只在看台）。
+        /// </summary>
+        public static ManagedBossSpawnContext CreateModeHPrimary(string creditPresetKey, Func<bool> isOwnerValid)
+        {
+            ManagedBossSpawnContext ctx = CreateModeGPrimary(creditPresetKey, isOwnerValid);
+            ctx.Owner = ManagedBossOwner.ModeH;
+            ctx.PreserveLinkedKillAttribution = false;
             return ctx;
         }
     }

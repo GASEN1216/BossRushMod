@@ -11,6 +11,9 @@ HERE = Path(__file__).resolve().parent
 OUT = ROOT / "Build/runtime-regressions/ModeHPlayerFlow"
 sys.path.insert(0, str(ROOT / "tests"))
 from ModeHOneClickFlowGuard import method_body
+import sys as _sys
+_sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[1]))
+from modeh_group_off import members as group_off_members  # noqa: E402
 
 
 def main():
@@ -51,7 +54,7 @@ def main():
         "private bool IsCallbackStillValid(", "private static string DescribeCertificationProgress("))
     code += "\n} partial class ModBehaviour {\n" + extract(runner, "private void StartModeHCertificationFromF3()")
     code += "\n} static partial class F3GameplayValidationRunner {\n" + extract(runner, "internal static bool CanRunModeHCertification(") + "\n}}"
-    code += "\nnamespace BossRush { partial class UiRouting {\n"
+    code += "\nnamespace BossRush { partial class UiRouting {\n" + group_off_members("enabled", "route_page")
     code += "\n".join(extract("ModeH/ModeHRuntimeModule_UiFlow.cs", signature) for signature in (
         "private void RouteUiForLifecycle(", "private void OpenLifecyclePage(",
         "private void OpenPage(", "private static bool IsPageLifecycle("))

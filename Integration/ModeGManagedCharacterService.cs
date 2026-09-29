@@ -20,7 +20,9 @@ namespace BossRush
         {
             if (basePreset == null || ctx == null || !IsManagedOwnerValid(ctx)) return null;
             ModeGRunState state = ModeGRunContext.Current;
-            if (state == null) return null;
+            // 鸭王杯群战借同一条托管工厂：没有 Mode G run，staging 身份由 Mode H 生成 owner 自己登记与回收
+            bool modeHOwner = ctx.Owner == ManagedBossOwner.ModeH;
+            if (state == null && !modeHOwner) return null;
 
             CharacterRandomPreset stagingPreset = null;
             CharacterMainControl character = null;
@@ -37,8 +39,11 @@ namespace BossRush
                 stagingPreset.canDieIfNotRaidMap = true;
                 stagingPreset.exp = 0;
                 ctx.FactoryPresetOverride = stagingPreset;
-                stagingPresetRegistered = state.RegisterStagingPreset(stagingPreset);
-                if (!stagingPresetRegistered) return null;
+                if (state != null)
+                {
+                    stagingPresetRegistered = state.RegisterStagingPreset(stagingPreset);
+                    if (!stagingPresetRegistered) return null;
+                }
 
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
                 character = await stagingPreset.CreateCharacterAsync(
@@ -46,8 +51,8 @@ namespace BossRush
 
                 // Factory 返回后的首个同步段：先登记 exact 身份，再冻结对象。
                 if (character == null || character.Health == null) return null;
-                stagingBossRegistered = state.RegisterStagingBoss(character.Health, character);
-                if (!stagingBossRegistered || !IsManagedOwnerValid(ctx) || character.Health.IsDead
+                if (state != null) stagingBossRegistered = state.RegisterStagingBoss(character.Health, character);
+                if ((state != null && !stagingBossRegistered) || !IsManagedOwnerValid(ctx) || character.Health.IsDead
                     || !character.Health.CanDieIfNotRaidMap || HasModeGPlayerAuthoredBuff(character))
                     return null;
 
@@ -68,7 +73,7 @@ namespace BossRush
                 character.Health.CanDieIfNotRaidMap = true;
                 if (character.CharacterItem != null) character.CharacterItem.SetInt("Exp", basePreset.exp, true);
 
-                state.UnregisterStagingPreset(stagingPreset);
+                if (state != null) state.UnregisterStagingPreset(stagingPreset);
                 stagingPresetRegistered = false;
                 UnityEngine.Object.Destroy(stagingPreset);
                 stagingPreset = null;
@@ -82,9 +87,9 @@ namespace BossRush
             }
             finally
             {
-                if (stagingPresetRegistered) state.UnregisterStagingPreset(stagingPreset);
+                if (stagingPresetRegistered && state != null) state.UnregisterStagingPreset(stagingPreset);
                 if (stagingPreset != null) UnityEngine.Object.Destroy(stagingPreset);
-                if (!preparedSuccessfully && stagingBossRegistered)
+                if (!preparedSuccessfully && stagingBossRegistered && state != null)
                     state.UnregisterStagingBoss(character != null ? character.Health : null);
                 if (character != null && !preparedSuccessfully)
                     DestroyManagedCharacterQuiet(character);

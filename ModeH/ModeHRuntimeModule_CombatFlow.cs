@@ -10,6 +10,7 @@ namespace BossRush
         private bool EnsurePreparedMatchSelection(out string failureReasonId)
         {
             failureReasonId = null;
+            if (GroupModeEnabled) return EnsureGroupOddsQuote(out failureReasonId);
             if (_season == null || _runState == null || _season.currentMatchPlan == null)
             {
                 failureReasonId = "match_selection_input_missing";
@@ -136,6 +137,7 @@ namespace BossRush
         private bool PrepareLockedMatch(out string failureReasonId)
         {
             failureReasonId = null;
+            if (GroupModeEnabled) return PrepareGroupLockedMatch(out failureReasonId);
             if (!EnsurePreparedMatchSelection(out failureReasonId)) return false;
 
             ModeHMatchRosterDto roster = _season.matchRoster;
@@ -491,6 +493,7 @@ namespace BossRush
 
         private void TickActiveCombat(float deltaTime)
         {
+            if (_groupBattle != null) { TickGroupCombat(deltaTime); return; }
             if (_combatControl == null || _combatTelemetry == null) return;
             RefreshBattleSnapshotContext();
 
@@ -1033,6 +1036,7 @@ namespace BossRush
         {
             // 先作废本场增援身份，停协程并回收所有批次，再清战斗路由与控制器。
             ReleaseReinforcementRuntimeObjects();
+            ReleaseGroupBattle(); // 群战：天灾加成、自定义 Boss 与召唤物（官方 Boss 随下面的生成事务回滚）
             try
             {
                 if (_relaySpawnRoutine != null && _owner != null)

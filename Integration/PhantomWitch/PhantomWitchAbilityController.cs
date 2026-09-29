@@ -304,7 +304,8 @@ namespace BossRush
             try
             {
                 var inst = ModBehaviour.Instance;
-                if (inst != null && (inst.IsModeEActive || inst.IsModeFActive))
+                // 鸭王杯（Mode H）与 Mode E 同口径：只打 AI 仇恨目标，不锁看台上的玩家
+                if (inst != null && (inst.IsModeEActive || inst.IsModeFActive || ModeHRuntimeGates.IsModeHRunOwnerActive))
                 {
                     AICharacterController ai = aiController != null ? aiController.GetAI() : null;
                     if (ai != null && ai.searchedEnemy != null)
@@ -339,7 +340,7 @@ namespace BossRush
                         }
                     }
 
-                    if (inst.IsModeEActive || inst.IsModeFPreparationPhase)
+                    if (inst.IsModeEActive || inst.IsModeFPreparationPhase || ModeHRuntimeGates.IsModeHRunOwnerActive)
                     {
                         playerCharacter = null;
                         return;
@@ -352,7 +353,7 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[PhantomWitch] [WARNING] UpdatePlayerReference异常: " + e.Message);
                 var inst = ModBehaviour.Instance;
-                playerCharacter = (inst != null && (inst.IsModeEActive || inst.IsModeFPreparationPhase))
+                playerCharacter = (inst != null && (inst.IsModeEActive || inst.IsModeFPreparationPhase || ModeHRuntimeGates.IsModeHRunOwnerActive))
                     ? null
                     : CharacterMainControl.Main;
             }

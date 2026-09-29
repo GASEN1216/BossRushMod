@@ -189,6 +189,7 @@ namespace BossRush
 
         private void RouteAfterIntermission(ModeHMatchReportDto report)
         {
+            if (GroupModeEnabled) { RouteGroupAfterIntermission(); return; }
             List<string> live = ModeHTransferMarket.GetLiveContractProfileIds(_season);
             if ((live == null || live.Count == 0 || _runState.MatchIndex >= ModeHConfig.SeasonMatchCount)
                 && HasPendingScarOffers())
@@ -436,6 +437,7 @@ namespace BossRush
 
         private ModeHHallOfFameRecordDto BuildHallOfFameRecord()
         {
+            if (GroupModeEnabled) return BuildGroupHallOfFameRecord();
             if (_season == null || _runState == null) return null;
             ModeHProfileDto champion = FindSeasonProfile(
                 _season.contract != null ? _season.contract.contractMainProfileId : null);

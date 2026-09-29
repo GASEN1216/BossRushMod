@@ -4,6 +4,9 @@ import hashlib
 import os
 import subprocess
 import sys
+import sys as _sys
+_sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[1]))
+from modeh_group_off import members as group_off_members  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
@@ -61,6 +64,8 @@ def main():
         modifier = "" if name == "ModeHRuntimeModule" else "static "
         parts.append("internal " + modifier + "partial class " + name + " {")
         parts.extend(method(file, signature) for file, signature in methods)
+        if name == "ModeHRuntimeModule":
+            parts.append(group_off_members("enabled", "route_after", "hall_record"))
         parts.append("}")
     parts.append("}")
     (OUT / "Extracted.cs").write_text("\n".join(parts), encoding="utf-8")
