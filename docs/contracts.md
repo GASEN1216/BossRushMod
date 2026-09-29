@@ -788,6 +788,7 @@ Breaking/Operational:
   2026-09-14 拍板接受为例外（天空岛见闻、征程线索）。我们的存档仍是权威，镜像双向同步：官方点亮而我们存档里没有的，经公开属性 `UnlockedNotes`（返回的就是解锁集合本身）收回并照官方写法调 `onNoteStatusChanged`。
 - 切图前要禁输入，就用**当前场景内的临时对象**调 `InputManager.DisableInput`：`blockInputSources` 只在源销毁或失活时解封，挂 DontDestroyOnLoad 会让输入永久锁死。
   `SceneLoader.LoadScene` 同步拒绝时 `LoadFinished` 立刻为 true，等待场景的循环必须看它。
+  官方在 `allowSceneActivation = true` 之前等待玩家“点击继续”；天空岛等场景根节点时仅对本租约仍加载、无错误且 `LoadingComment == "Wait for click..."` 的阶段延长期限，点击后真实加载仍须超时。官方更新后复核诊断字符串与激活顺序（`SkyIslandRaidLease.HasSceneLoadTimeRemaining`）。
 - `DialogueBubblesManager.Show` 在 manager 缺席，或无可复用气泡且 prefab 缺失时，正常完成 UniTask 而不显示。异常也会进入返回任务，`Forget` 没有同步抛错不代表发送成功。
   天空岛只发送非交互、正时长气泡：主线程调用后正常展示必定跨帧；已完成任务只消费一次结果并拒绝记账，挂起的请求用异常观察回调消费一次。该判断依赖官方当前 `Show` / `ShowTask` 合同；官方更新时需复核，计数不是像素可见性证据。
 - 岛上判夜 22–6（`SkyIslandNight.StartHour / EndHour`），刻意等于官方 `TimeOfDayController` 运行时的 `nightStart = 22 / morningStart = 6`（官方 Volume 与敌人夜间感知同相；反编译源字段初值 19 / 5 会被 `LevelManagerPrefab` 序列化值覆盖，2026-09-25 F3 实机读出）；仍只经 `SkyIslandLighting.ClockHours()` 读 `GameClock`，不读 `AtNight`。官方改这两个值要跟着改（Dev 只读用例 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机比对）。

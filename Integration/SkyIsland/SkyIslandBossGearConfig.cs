@@ -256,8 +256,8 @@ namespace BossRush
                         "A small star furnace you can carry on your back, a tool roll lashed underneath.\nBackpack capacity +6. Any two Starworks pieces: 1 less brass scrap per dock workbench recipe, never below 1.\nFrom the Starforge Foreman. With this furnace on its back it overheats after every 2 starfires, and takes more damage while it vents.");
                 case BossRushItemIds.SkyIslandStargazerLensHelm:
                     return L10n.T(
-                        "皮帽上装了三层镜片，看人比看星还清楚。\n戴着站定 2 秒，40 米内的敌人脚下会亮起星标。\n残星瞭台的观星手戴着它，倒下时有 30% 留下。观星手的镜片被打穿，就再也标记不了你。",
-                        "Three lenses on a leather cap, better for spotting people than stars.\nStand still for 2 seconds while wearing it and enemies within 40 m get a star mark at their feet.\nThe stargazer on Starfall Overlook wears one; 30% chance it stays behind when it falls. Shoot its lens through and it can no longer mark you.");
+                        "皮帽上装了三层镜片，看人比看星还清楚。\n在晴岚群岛戴着站定 2 秒，40 米内的敌人脚下会亮起星标。\n残星瞭台的观星手戴着它，倒下时有 30% 留下。观星手的镜片被打穿，就再也标记不了你。",
+                        "Three lenses on a leather cap, better for spotting people than stars.\nOn Qinglan, stand still for 2 seconds while wearing it and enemies within 40 m get a star mark at their feet.\nThe stargazer on Starfall Overlook wears one; 30% chance it stays behind when it falls. Shoot its lens through and it can no longer mark you.");
                 case BossRushItemIds.SkyIslandRootweaveMask:
                     return L10n.T(
                         "树根编的面罩，缝里还长着苔。\n悬根猎装（面罩、藤编甲、箭囊）穿任意两件，翻搜刮箱时出岛上特产（便当、药膏、罗盘）的机会翻倍。\n悬根猎首每趟穿着整套，倒下时只留一件。它的面罩被打穿，钻出根洞前的预警圈会由 1 秒延长到 2 秒。",
@@ -300,16 +300,16 @@ namespace BossRush
                         "A round mirror set in the chest, reflecting plates like rippling water.\nWear it when you meet Zheling and you can make peace without the old letter or the route chart.\nThe Mirror Guest of Mirrorwater Temple, who only appears at night, wears it; 30% chance it stays behind when it falls. Shoot the plate through and it leaves no reflection when it swaps places.");
                 case BossRushItemIds.SkyIslandWindbreakHood:
                     return L10n.T(
-                        "帆布兜帽下是一顶轻铜盔，顶上立着一片小风翼。\n断风装备（兜帽、披甲、行囊）穿任意两件，走桥和中继平台更快。\n中央回程中继的断风游猎·守戴着它，倒下时有 40% 留下。兜帽被打穿，它冲锋前的预警线会亮得长一倍。",
-                        "A canvas hood over a light brass helm, a small wind fin on top.\nWear any two Galebreaker pieces (hood, mantle, pack) and you move faster on bridges and relay platforms.\nThe Galebreaker Warden at the central return relay wears it; 40% chance it stays behind when it falls. Shoot the hood through and its charge warning line stays lit twice as long.");
+                        "帆布兜帽下是一顶轻铜盔，顶上立着一片小风翼。\n在晴岚群岛，断风装备（兜帽、披甲、行囊）穿任意两件，走桥和中继平台更快。\n中央回程中继的断风游猎·守戴着它，倒下时有 40% 留下。兜帽被打穿，它冲锋前的预警线会亮得长一倍。",
+                        "A canvas hood over a light brass helm, a small wind fin on top.\nOn Qinglan, wear any two Galebreaker pieces (hood, mantle, pack) and you move faster on bridges and relay platforms.\nThe Galebreaker Warden at the central return relay wears it; 40% chance it stays behind when it falls. Shoot the hood through and its charge warning line stays lit twice as long.");
                 case BossRushItemIds.SkyIslandWindbreakMantle:
                     return L10n.T(
-                        "轻皮甲后拖着一件短披风，铜扣像一对鸟翼。\n断风装备穿任意两件，走桥和中继平台更快。\n西北回程中继的断风游猎·追穿着它，倒下时有 40% 留下。披甲被打穿，它冲锋前的预警线会亮得长一倍。",
-                        "Light leather scales with a short mantle behind, the brass clasps shaped like a pair of wings.\nAny two Galebreaker pieces: you move faster on bridges and relay platforms.\nThe Galebreaker Chaser at the northwest return relay wears it; 40% chance it stays behind when it falls. Shoot the mantle through and its charge line stays lit twice as long.");
+                        "轻皮甲后拖着一件短披风，铜扣像一对鸟翼。\n在晴岚群岛，断风装备穿任意两件，走桥和中继平台更快。\n西北回程中继的断风游猎·追穿着它，倒下时有 40% 留下。披甲被打穿，它冲锋前的预警线会亮得长一倍。",
+                        "Light leather scales with a short mantle behind, the brass clasps shaped like a pair of wings.\nOn Qinglan, any two Galebreaker pieces: you move faster on bridges and relay platforms.\nThe Galebreaker Chaser at the northwest return relay wears it; 40% chance it stays behind when it falls. Shoot the mantle through and its charge line stays lit twice as long.");
                 case BossRushItemIds.SkyIslandWindbreakPack:
                     return L10n.T(
-                        "行囊顶上是铺盖卷，边上绑着一支望远镜。\n背包容量 +5。断风装备穿任意两件，走桥和中继平台更快。\n东侧回程中继的断风游猎·伏背着它，倒下时有 40% 留下。它生命过半、行囊散开之前，每次冲锋后都会闪回平台边缘补枪。",
-                        "A bedroll on top, a spyglass strapped to the side.\nBackpack capacity +5. Any two Galebreaker pieces: you move faster on bridges and relay platforms.\nThe Galebreaker Stalker at the east return relay carries it; 40% chance it stays behind when it falls. Until it drops below half health and the pack bursts open, it blinks back to the platform edge to shoot after every lunge.");
+                        "行囊顶上是铺盖卷，边上绑着一支望远镜。\n背包容量 +5。在晴岚群岛，断风装备穿任意两件，走桥和中继平台更快。\n东侧回程中继的断风游猎·伏背着它，倒下时有 40% 留下。它生命过半、行囊散开之前，每次冲锋后都会闪回平台边缘补枪。",
+                        "A bedroll on top, a spyglass strapped to the side.\nBackpack capacity +5. On Qinglan, any two Galebreaker pieces: you move faster on bridges and relay platforms.\nThe Galebreaker Stalker at the east return relay carries it; 40% chance it stays behind when it falls. Until it drops below half health and the pack bursts open, it blinks back to the platform edge to shoot after every lunge.");
                 default:
                     return string.Empty;
             }
