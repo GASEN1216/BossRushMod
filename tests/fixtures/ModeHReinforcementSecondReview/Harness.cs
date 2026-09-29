@@ -194,6 +194,7 @@ namespace BossRush
         private void RequestTechnicalRetry(string s) { Retries++; ReleaseCombatRuntimeObjects(); _runState.Lifecycle = ModeHLifecycle.Recovering; }
         private void LogFailure(string s, Exception e) { Console.WriteLine("HANDLED " + s + ":" + e.GetType().Name); }
         private string ResolveCommandDisplayName(string id) { return id; }
+        private string ResolveHudCommandDisplayName(string id) { return ResolveCommandDisplayName(id); }
         private void SyncErrorSwapInputYield() { } private void TryBeginErrorSwapIfDue() { }
         private bool TryTransition(ModeHLifecycle a, ModeHLifecycle b, string reason) { _runState.Lifecycle = b; return true; }
         private IEnumerator DriveRelaySpawning() { yield break; }

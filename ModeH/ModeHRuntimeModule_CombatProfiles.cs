@@ -279,6 +279,23 @@ namespace BossRush
             return L10n.T(ModeHConfig.LocalizationKeyPrefix + "Command_" + commandId);
         }
 
+        private string _hudCommandIdCache;
+        private bool _hudCommandChineseCache;
+        private string _hudCommandNameCache;
+
+        /// <summary>观战 HUD 每帧取口令名：口令与语言都没变时复用上次结果，不再每帧拼 key、查表。</summary>
+        private string ResolveHudCommandDisplayName(string commandId)
+        {
+            if (string.IsNullOrEmpty(commandId)) return string.Empty;
+            bool chinese = L10n.IsChinese;
+            if (_hudCommandNameCache != null && chinese == _hudCommandChineseCache
+                && string.Equals(commandId, _hudCommandIdCache, StringComparison.Ordinal)) return _hudCommandNameCache;
+            _hudCommandIdCache = commandId;
+            _hudCommandChineseCache = chinese;
+            _hudCommandNameCache = ResolveCommandDisplayName(commandId);
+            return _hudCommandNameCache;
+        }
+
         #region 敌军分批入场
 
         /// <summary>一条尚未放行的后续批次敌军。</summary>

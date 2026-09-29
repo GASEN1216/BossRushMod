@@ -335,6 +335,9 @@ namespace BossRush
             RestoreFromSaveIfPresent();
             ReconcileCashBetOnRestore();
             ModeHSessionSummary.Discard();
+            // 换档回调刚把内容闸置回未就绪；内容扫描原先只在 OnStart 跑一次，
+            // 进程内换档后新赛季入口会一直报「内容未就绪」直到重启。按新槽代次补扫（有缓存，开销很小）。
+            EnsureContentScanned();
         }
 
         /// <summary>存在活动 Season 时重建内存 run owner（生成新的 owner token）。</summary>

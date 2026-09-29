@@ -370,6 +370,8 @@ namespace BossRush
                 yield break;
             }
             if (_spectatorLease != null) _spectatorLease.StartAcceptingBell();
+            // 押注从这一刻起「已开战」：之后主动退出 / 放弃赛季按输结清；随下面这次赛季落盘一起写
+            ModeHCashBetService.TryMarkCombatStarted(_runState.RunId, _runState.MatchIndex);
             TryPersistSeason("match_fighting");
         }
         private bool InitializeCombatRuntime(ModeHProfileDto starter, out string failureReasonId)
@@ -506,7 +508,7 @@ namespace BossRush
                     // 形参要的是**名字**，此前直接把内部 ID 传了进去，
                     // 玩家在拍铃按钮上看到的是 "steady" / "all_in" 这类下划线标识。
                     // Command_<id> 的中英文案早已注入，这里补上转换。
-                    ResolveCommandDisplayName(_combatControl.CommandController.LockedCommandId),
+                    ResolveHudCommandDisplayName(_combatControl.CommandController.LockedCommandId),
                     _combatControl.CommandController.CommandWindowRemainingSeconds);
             }
 
@@ -546,7 +548,12 @@ namespace BossRush
                     RequestTechnicalRetry("relay_transition_rejected");
                     return;
                 }
-                _relaySpawnRoutine = _owner.StartCoroutine(DriveSpawnRoutine(DriveRelaySpawning(), "relay"));
+                // 同步段就失败时协程已自行清空句柄并转入技术重试；不能再把已结束的句柄写回去，
+                // 否则 `_relaySpawnRoutine == null` 这道门永远不开，同场重开后接力上不了场。
+                int relayStateSequence = _runState.StateSequence;
+                Coroutine relayRoutine = _owner.StartCoroutine(DriveSpawnRoutine(DriveRelaySpawning(), "relay"));
+                if (_runState != null && _runState.StateSequence == relayStateSequence
+                    && _runState.Lifecycle == ModeHLifecycle.RelayPending) _relaySpawnRoutine = relayRoutine;
             }
         }
 

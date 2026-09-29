@@ -392,7 +392,7 @@ namespace BossRush
                 : L10n.T("押注 " + FormatMoney(refunded) + " 已原样退回。", "Your bet of " + FormatMoney(refunded) + " was returned."));
         }
 
-        /// <summary>放弃前先履行已有胜负，未决押注才退款；剩余义务必须保留原赛季作为依据。</summary>
+        /// <summary>放弃前先履行已有胜负；已开战的未决押注按输结清，没开战的才退款；剩余义务必须保留原赛季作为依据。</summary>
         private bool TryResolveCashBetBeforeAbandon()
         {
             ReconcileCashBetOnRestore();
@@ -402,9 +402,31 @@ namespace BossRush
             ModeHSeasonDto savedSeason = _season ?? ModeHProfilePersistence.LoadCurrent();
             if ((record.kind == ModeHCashBetService.KindItems && record.itemSettlement != 0)
                 || FindCashBetReport(savedSeason, record) != null) return false;
-            RefundCashBet("abandon_season");
+            if (record.combatStarted != 0) ForfeitStartedCashBet(record, "abandon_season");
+            else RefundCashBet("abandon_season");
             record = ModeHCashBetService.Current;
             return record != null && record.status != ModeHCashBetService.StatusReserved;
+        }
+
+        /// <summary>
+        /// 已开战、没有战报的押注按输结清（2026-09-29 owner 拍板：开战后退出 / 放弃不能白退）。
+        /// 押物品时收走押品；钱包或背包暂时不可用就留着，由下一次对账补结（至多一次）。
+        /// </summary>
+        private void ForfeitStartedCashBet(ModeHCashBetRecord record, string context)
+        {
+            if (record == null || record.status != ModeHCashBetService.StatusReserved) return;
+            if (record.kind == ModeHCashBetService.KindItems)
+            {
+                ModeHCashBetService.TrySettleItems(record.runId, record.matchIndex, false,
+                    _runState != null ? _runState.RunSeed : 0L);
+            }
+            else
+            {
+                long payout;
+                ModeHCashBetService.TrySettle(record.runId, record.matchIndex, false, 0L, 0L, string.Empty, out payout);
+            }
+            ModeHSessionSummary.NoteBet(ModeHCashBetService.Current);
+            ModBehaviour.DevLog("[ModeH] 已开战押注按输结清 (" + context + "): " + record.amount);
         }
 
         private static ModeHMatchReportDto FindCashBetReport(ModeHSeasonDto savedSeason, ModeHCashBetRecord record)
@@ -444,8 +466,15 @@ namespace BossRush
                     else SettleReservedBet(record, won);
                     return;
                 }
-                bool sameRun = _runState != null && string.Equals(record.runId, _runState.RunId, StringComparison.Ordinal);
-                if (!sameRun) RefundCashBet("restore_other_run");
+                // 看台退出 / 挂起送回基地后内存 owner 已清空，但磁盘上同一季仍可续：押注跟着这一场走，不能在回基地时退掉。
+                bool sameRun = _runState != null
+                    ? string.Equals(record.runId, _runState.RunId, StringComparison.Ordinal)
+                    : HasResumableSeasonRecord(savedSeason)
+                        && string.Equals(record.runId, savedSeason.runState.runId, StringComparison.Ordinal);
+                if (sameRun) return;
+                // 这一季不再打了：已开战的押注不能白退（放弃赛季同口径），没开战的原样退回
+                if (record.combatStarted != 0) ForfeitStartedCashBet(record, "restore_other_run");
+                else RefundCashBet("restore_other_run");
             }
             catch (Exception e)
             {

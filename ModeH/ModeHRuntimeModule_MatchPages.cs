@@ -327,5 +327,35 @@ namespace BossRush
         }
 
         #endregion
+
+        /// <summary>建页抛错时的兜底页（由 UiFlow 的 OpenPage 异常边界调用）：只带「返回基地」，赛季与押注保留。</summary>
+        private void OpenPageFailureFallback(ModeHPage page)
+        {
+            try
+            {
+                if (_ui == null || _runState == null) return;
+                ModeHPageContent fallback = new ModeHPageContent
+                {
+                    Title = L10n.T("页面没打开", "Page failed to open"),
+                    Body = L10n.T("这一页出了点问题。先回基地吧，本赛季和押注都留着，到鸭王杯入口就能接着打。",
+                        "Something went wrong with this page. Head back to base; your season and bet are kept, and the cup entrance lets you continue."),
+                    IsPlaceholder = true,
+                };
+                fallback.Actions.Add(new ModeHActionData
+                {
+                    Label = L10n.T("返回基地", "Return to base"),
+                    IsCancel = true,
+                    OnClick = delegate { RequestExit(ModeHExitReason.UserMapReturn, "spectator_exit"); },
+                });
+                _ui.OpenPage(page, _runState.Lifecycle, _runState.RunId, fallback);
+            }
+            catch (Exception e)
+            {
+                LogFailure("open_page_fallback", e);
+                try { if (_ui != null) _ui.ClosePage(); }
+                catch (Exception closeError) { LogFailure("open_page_fallback_close", closeError); }
+                RequestExit(ModeHExitReason.UserMapReturn, "spectator_exit");
+            }
+        }
     }
 }

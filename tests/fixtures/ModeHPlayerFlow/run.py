@@ -54,7 +54,8 @@ def main():
     code += "\nnamespace BossRush { partial class UiRouting {\n"
     code += "\n".join(extract("ModeH/ModeHRuntimeModule_UiFlow.cs", signature) for signature in (
         "private void RouteUiForLifecycle(", "private void OpenLifecyclePage(",
-        "private void OpenPage(", "private static bool IsPageLifecycle(")) + "\n}}"
+        "private void OpenPage(", "private static bool IsPageLifecycle("))
+    code += "\n" + extract("ModeH/ModeHRuntimeModule_MatchPages.cs", "private void OpenPageFailureFallback(") + "\n}}"
     code += "\nnamespace BossRush { partial class RecoveryActions {\n"
     code += "\n".join(extract("ModeH/ModeHRuntimeModule_UiFlow.cs", signature) for signature in (
         "internal void OpenRecoveryShell(", "private List<ModeHActionData> BuildRecoveryActions(",

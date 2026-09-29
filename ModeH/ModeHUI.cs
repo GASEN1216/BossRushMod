@@ -1044,7 +1044,7 @@ namespace BossRush
         /// <summary>计时数字框高：30 号字单行至少 1.45×30+4≈48。</summary>
         internal const float TimerDigitsHeight = 48f;
         /// <summary>计时小字框高：14 号字单行至少 1.45×14+4≈25。</summary>
-        internal const float TimerCaptionHeight = 24f;
+        internal const float TimerCaptionHeight = 25f;
         /// <summary>最后几秒变色：先警示色、再危险色。</summary>
         internal const int TimerWarningSeconds = 10;
         internal const int TimerDangerSeconds = 5;

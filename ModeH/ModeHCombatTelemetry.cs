@@ -355,6 +355,7 @@ namespace BossRush
         /// <summary>取本场某选手的倒地 token（不存在返回空串）。</summary>
         public string GetDownToken(string profileId)
         {
+            if (_downTokens.Count == 0) return string.Empty;
             string token = BuildDownToken(profileId);
             return _downTokens.Contains(token) ? token : string.Empty;
         }
@@ -362,6 +363,8 @@ namespace BossRush
         /// <summary>该选手本场是否已被规范倒地事件确认。</summary>
         public bool IsDown(string profileId)
         {
+            // 每帧调用：本场还没人倒地时不拼 token（绝大多数帧都走这里）
+            if (_downTokens.Count == 0) return false;
             return _downTokens.Contains(BuildDownToken(profileId));
         }
 

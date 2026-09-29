@@ -937,6 +937,8 @@ namespace BossRush
         private void ReleaseRuntimeObjects()
         {
             CancelSceneReadyWait();
+            // 战斗中退出不会再经过状态转换；不复位的话非强制落盘会一直顺延到下一次转换。
+            ModeHRuntimeGates.SetCombatFrameActive(false);
             // 收尾不能让诊断协程的 finally 再打开选人页。
             _certificationFromF3 = false;
             // 2. 停止生成队列与认证协程

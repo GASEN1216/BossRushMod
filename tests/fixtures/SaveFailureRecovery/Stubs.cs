@@ -311,7 +311,10 @@ namespace BossRush
     }
     enum ModeHMatchOutcome { PlayerVictory = 1, PlayerDefeat = 2 }
     class ModeHRunState { public long RunSeed; public string RunId; }
-    class ModeHRunStateDto { public string runId; public long runSeed; }
+    class ModeHRunStateDto { public string runId; public long runSeed; public int lifecycle; }
+    // 与生产枚举同值（ModeHStateModel.cs）；只列续赛判定用到的成员
+    enum ModeHLifecycle { Unknown = 0, None = 1, MatchFighting = 12, SeasonEnded = 19, Suspended = 21 }
+    static class ModeHStateModel { public static ModeHLifecycle ToLifecycle(int raw) { return (ModeHLifecycle)raw; } }
     class ModeHMatchReportDto { public int matchIndex, winner; }
     class ModeHSeasonDto { public ModeHRunStateDto runState; public List<ModeHMatchReportDto> matchReports; }
     static class ModeHProfilePersistence
@@ -320,6 +323,7 @@ namespace BossRush
         public static ModeHSeasonDto LoadCurrent() { return Saved; }
     }
     static class ModeHWarehouseStakeJournal { public static void TryRecomputeDeferredSlotConsistency() { } }
+    static class ModeHSessionSummary { public static int Notes; public static void NoteBet(ModeHCashBetRecord record) { Notes++; } }
     class RuntimeModule { public virtual void OnStart() { } }
     partial class ModeHRuntimeModule : RuntimeModule
     {
@@ -331,6 +335,7 @@ namespace BossRush
         public void Configure(ModeHSeasonDto season)
         { _season = season; _runState = season == null ? null : new ModeHRunState { RunId = season.runState.runId, RunSeed = 42 }; }
         public void Reconcile() { ReconcileCashBetOnRestore(); }
+        public void DropRunOwner() { _runState = null; _season = null; }
         public bool ResolveBeforeAbandon() { return TryResolveCashBetBeforeAbandon(); }
         public void OnReady() { HandleLevelReady(); }
         private bool IsLevelAfterInit() { return LevelReady; }

@@ -184,7 +184,9 @@ namespace BossRush
             failureReasonId = null;
             try
             {
-                CharacterMainControl[] characters = UnityEngine.Object.FindObjectsOfType<CharacterMainControl>();
+                // 必须含未激活对象：官方原生角色登记了 SetActiveByPlayerDistance，离玩家 100 m 外是休眠的，
+                // 不清掉会在玩家被送上看台后就近苏醒，闯进擂台改写胜负（丧尸模式隔离同样用 true）。
+                CharacterMainControl[] characters = UnityEngine.Object.FindObjectsOfType<CharacterMainControl>(true);
                 if (characters == null) return true;
 
                 CharacterMainControl player = null;
@@ -209,6 +211,10 @@ namespace BossRush
                 {
                     CharacterMainControl character = characters[i];
                     if (character == null || character.gameObject == null) continue;
+                    // 只清已载入关卡里的角色；DontDestroyOnLoad 下的常驻 / 模板对象不属于原图
+                    UnityEngine.SceneManagement.Scene scene = character.gameObject.scene;
+                    if (!scene.IsValid() || !scene.isLoaded
+                        || string.Equals(scene.name, "DontDestroyOnLoad", StringComparison.Ordinal)) continue;
                     if (ShouldPreserveNativeCharacter(character, player)) continue;
 
                     try

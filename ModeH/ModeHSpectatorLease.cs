@@ -204,8 +204,8 @@ namespace BossRush
         #region 释放
 
         /// <summary>
-        /// 幂等释放。scene generation 已变化时不向旧 Unity 引用写值，
-        /// 只释放仍存活的输入 token 与内存 owner。
+        /// 幂等释放。scene generation 已变化时不还原位置（旧坐标属于旧场景），阵营与无敌只要身体存活就还原；
+        /// 输入 token 与内存 owner 照常释放。
         /// </summary>
         public void Release(int currentSceneGeneration)
         {
@@ -222,10 +222,12 @@ namespace BossRush
             bool sameGeneration = currentSceneGeneration == _sceneGeneration;
             bool playerAlive = _hadPlayerReference && _player != null;
 
-            if (sameGeneration && playerAlive)
+            // 位置只在同一场景代次里还原；阵营与无敌是角色自身状态，只要同一身体还活着就必须还原，
+            // 否则附加场景加载触发的离场会把玩家永久留成无敌 + 中立。
+            if (playerAlive)
             {
                 // 2) 恢复位置（此时仍处于无敌 + 中立保护下）
-                if (_positionChanged)
+                if (sameGeneration && _positionChanged)
                 {
                     try { _player.SetPosition(_originalPosition); }
                     catch (Exception)

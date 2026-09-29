@@ -6,8 +6,9 @@ namespace BossRush
     internal enum ModeHPage { None, Entry, Brief, Odds, Settlement, Transfer, HallOfFame, ItemBet }
     internal sealed class ModeHPageContent
     {
-        internal string Title, FailureText;
-        internal bool ReplayCardEntrance;
+        internal string Title, FailureText, Body;
+        internal bool ReplayCardEntrance, IsPlaceholder;
+        internal readonly System.Collections.Generic.List<ModeHActionData> Actions = new System.Collections.Generic.List<ModeHActionData>();
     }
     internal sealed class RoutingState
     {
@@ -17,11 +18,14 @@ namespace BossRush
     }
     internal sealed class RoutingUi
     {
-        internal int Opens, Closes;
+        internal int Opens, Closes, FailingOpens;
         internal ModeHPage Page;
         internal ModeHPageContent Content;
         internal void OpenPage(ModeHPage page, ModeHLifecycle phase, string runId, ModeHPageContent content)
-        { Opens++; Page = page; Content = content; }
+        {
+            if (FailingOpens > 0) { FailingOpens--; throw new InvalidOperationException("injected page build failure"); }
+            Opens++; Page = page; Content = content;
+        }
         internal void ClosePage() { Closes++; Page = ModeHPage.None; }
         internal void EnsureHud(Action bell, Action surrender, Action exit) { }
         internal void SetBellCommand(string name, string meaning) { }
@@ -35,6 +39,9 @@ namespace BossRush
         private RoutingUi _ui = new RoutingUi();
         private Action _onBuild;
         private int _builds, _recoveries;
+        private string _exitReasonId;
+        private void LogFailure(string context, Exception error) { }
+        private void RequestExit(ModeHExitReason reason, string reasonId) { _exitReasonId = reasonId; }
 
         private void EnsureUi() { if (_ui == null) _ui = new RoutingUi(); }
         private void HideRecoveryShell() { }
@@ -115,6 +122,20 @@ namespace BossRush
                 Program.Check(runtime._ui.Opens == 0 && firstUi.Opens == 0
                     && runtime._pageFailureText == "current failure", "invalidated build is discarded: " + invalidation);
             }
+            // 建页抛错：模态租约已领，必须换成只带「返回基地」的兜底页，不能留下没有按钮的半成品页
+            var broken = new UiRouting { _runState = new RoutingState { Lifecycle = ModeHLifecycle.MatchBrief } };
+            broken._ui.FailingOpens = 1;
+            broken.RouteUiForLifecycle(ModeHLifecycle.MatchBrief);
+            Program.Check(broken._ui.Opens == 1 && broken._ui.Content != null && broken._ui.Content.IsPlaceholder
+                && broken._ui.Content.Actions.Count == 1 && broken._ui.Content.Actions[0].IsCancel,
+                "page build failure opens a fallback page with a single cancel action");
+            broken._ui.Content.Actions[0].OnClick();
+            Program.Check(broken._exitReasonId == "spectator_exit", "fallback action returns to base");
+            var doubleBroken = new UiRouting { _runState = new RoutingState { Lifecycle = ModeHLifecycle.MatchBrief } };
+            doubleBroken._ui.FailingOpens = 2;
+            doubleBroken.RouteUiForLifecycle(ModeHLifecycle.MatchBrief);
+            Program.Check(doubleBroken._ui.Closes == 1 && doubleBroken._exitReasonId == "spectator_exit",
+                "fallback failure closes the modal and exits instead of leaving input locked");
             var stale = new UiRouting { _runState = new RoutingState { Lifecycle = ModeHLifecycle.Suspended } };
             stale.RouteUiForLifecycle(ModeHLifecycle.MatchBrief);
             Program.Check(stale._builds == 0 && stale._ui.Opens == 0, "stale dispatch cannot build a page for another phase");

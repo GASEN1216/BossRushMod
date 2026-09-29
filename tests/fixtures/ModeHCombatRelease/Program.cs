@@ -30,6 +30,17 @@ namespace UnityEngine
             }
             return result.ToArray();
         }
+        public static T[] FindObjectsOfType<T>(bool includeInactive) where T : Component
+        {
+            List<T> result = new List<T>();
+            foreach (Object value in All)
+            {
+                T component = value as T;
+                if (component == null || component.Destroyed) continue;
+                if (includeInactive || component.gameObject.activeInHierarchy) result.Add(component);
+            }
+            return result.ToArray();
+        }
         public static void Destroy(Object value)
         {
             if (value == null) return;
@@ -47,6 +58,7 @@ namespace UnityEngine
         public bool activeInHierarchy { get { return !Destroyed && activeSelf; } }
         internal bool FailNextDeactivate;
         public GameObject(string name = "") { }
+        public SceneManagement.Scene scene = new SceneManagement.Scene { name = "Level" };
         public void SetActive(bool active)
         {
             activeSelf = active;
@@ -70,6 +82,15 @@ namespace UnityEngine
         { float x = a.x - b.x, y = a.y - b.y, z = a.z - b.z; return (float)Math.Sqrt(x*x + y*y + z*z); }
     }
     public enum CursorLockMode { None, Locked }
+    namespace SceneManagement
+    {
+        public struct Scene
+        {
+            public string name;
+            public bool IsValid() { return name != null; }
+            public bool isLoaded { get { return name != null; } }
+        }
+    }
     public static class Cursor { public static bool visible; public static CursorLockMode lockState; }
 }
 
@@ -223,6 +244,36 @@ namespace BossRush
                 "new scene player must not inherit old lease writes");
             Check(InputManager.Tokens.Count == 0 && !UnityEngine.Cursor.visible, "scene release clears surviving input token and cursor");
         }
+        private static void DormantNativeEnemyCleared()
+        {
+            // 官方原生角色离玩家 100 m 外是休眠（inactive）的；清场必须连它们一起清，否则上看台后会就近苏醒闯进擂台
+            Reset();
+            var dormant = new CharacterMainControl { Team = Teams.wolf };
+            dormant.gameObject.SetActive(false);
+            var awake = new CharacterMainControl { Team = Teams.wolf };
+            var resident = new CharacterMainControl { Team = Teams.wolf };
+            resident.gameObject.scene = new UnityEngine.SceneManagement.Scene { name = "DontDestroyOnLoad" };
+            var lease = new ModeHArenaIsolationLease(); string reason;
+            Check(lease.TryAcquire("arena", 1, 21, out reason), "arena with native enemies acquires");
+            Check(awake == null, "active native enemy is cleared");
+            Check(dormant == null, "dormant (inactive) native enemy must be cleared too");
+            Check(resident != null, "DontDestroyOnLoad characters are not part of the level and must be kept");
+            Check(CharacterMainControl.Main != null, "player is never cleared");
+            lease.Release(1);
+        }
+        private static void GenerationChangeSurvivingPlayer()
+        {
+            // 附加场景加载会推进代次但玩家身体仍在：阵营与无敌必须还原，位置不还原（旧坐标属于旧场景）
+            Reset(); var spectator = new ModeHSpectatorLease(); string reason;
+            CharacterMainControl player = CharacterMainControl.Main;
+            Check(spectator.TryAcquire(new UnityEngine.Vector3(100, 0, 100), 1, 22, out reason), "spectator acquires");
+            Check(player.Team != Teams.player || player.Health.Invincible, "lease wrote spectator protection");
+            spectator.Release(2);
+            Check(player.Team == Teams.player && !player.Health.Invincible,
+                "surviving player must get team and invincibility back even when generation changed");
+            Check(UnityEngine.Vector3.Distance(player.transform.position, new UnityEngine.Vector3(100, 0, 100)) == 0,
+                "position must not be restored across generations");
+        }
         private static int RegistryCount(string name)
         {
             return ((HashSet<int>)typeof(ModeHDeathSuppressionRegistry).GetField(name,
@@ -252,6 +303,7 @@ namespace BossRush
         {
             ArenaPartialRollback(); LateSpawnerRollback(); SpectatorCallbackRollback(true);
             SpectatorCallbackRollback(false); SceneDestructionRelease(); DestroyedSuppressionRelease();
+            DormantNativeEnemyCleared(); GenerationChangeSurvivingPlayer();
             Console.WriteLine("PASS ModeHCombatRelease: " + _checks + " assertions");
         }
     }

@@ -76,6 +76,13 @@
 **实机要看的**：
 - 长描述在物品面板里是否被 TMP 裁掉。超过原文 120% 的有：天空岛装备英文多件（约 1.3–1.4 倍）、风标罗盘、后山三件收成、工事包、尸潮邀请函 / 信标、龙息、腾云驾雾、钻石、蛋糕、叮当重铸说明。
 - 钟守「去敲归航钟吧」由 1 屏变 2 屏。
+## 2026-09-29 Mode H 发布前审核第二轮闭环（COMPAT）
+
+- CR-2026-09-29-013～026：3 项 P1、5 项 P2、6 项 P3 全部修复；[报告与实机清单](docs/reports/reviews/2026-09-29-模式H发布前审核-第二轮.md)。未改 schema / 存档 key / TypeID / 经济数值。
+- 全量 717 守卫、110 个执行回归通过；新增 / 改动的四组回归断言（押注留存、休眠敌人清场、跨代次还原、建页兜底）逐条反向验证转红并按字节还原。夹具替身补齐生产新成员（ModeHPlayerFlow、ModeHRecoverySecondReview、ModeHReinforcementSecondReview）。
+- owner 拍板两项已落地：押注账本加可选 `combatStarted`（SCHEMA+，不升版本），开战后看台退出 / 放弃赛季 / 换季按输结清；Mode H 刷出角色 `Exp` 置 0，观战击杀不给经验。`ModeHCashBetGuard` +5 断言 / 探针，`ModeHSpawnTransactionGuard` +1，`SaveFailureRecovery` 新增 `StartedBetForfeit`，反向验证转红后按字节还原。
+- 717 守卫、110 回归全绿；Windows 正式编译成功（2 条既有 CS0649），正式构建 `0BA3072F…` 已部署，游戏目录 SHA-256 与 `Build/` 一致；构建含另一会话未提交的天空岛工作区。未执行 L3，实机清单 H2-1…H2-12。
+
 ## 2026-09-29 Mode H 发布前审核闭环（COMPAT）
 
 - CR-2026-09-29-001～012：8 项 P1、4 项 P2 全部修复；[完整证据与实机清单](docs/reports/reviews/2026-09-29-模式H发布前审核.md)。覆盖押注/仓库通知异常、加载后对账、租约、重试清理、跨季退出、页面重入与战斗事实归属；未改 schema / key / 经济数值。

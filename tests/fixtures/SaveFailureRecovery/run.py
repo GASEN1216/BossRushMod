@@ -56,7 +56,10 @@ extracted += 'partial class ModeHRuntimeModule {\n' + member(bet, 'private void 
 host = clean_source((ROOT / 'ModeH/ModeHRuntimeModule.cs').read_text(encoding='utf-8-sig'))
 extracted += 'partial class ModeHRuntimeModule {\n' + member(bet, 'private void ReconcileCashBetOnRestore()') + '\n'
 extracted += member(bet, 'private bool TryResolveCashBetBeforeAbandon()') + '\n'
+extracted += member(bet, 'private void ForfeitStartedCashBet(') + '\n'
 extracted += member(bet, 'private static ModeHMatchReportDto FindCashBetReport(') + '\n'
+ui_flow = clean_source((ROOT / 'ModeH/ModeHRuntimeModule_UiFlow.cs').read_text(encoding='utf-8-sig'))
+extracted += member(ui_flow, 'private static bool HasResumableSeasonRecord(') + '\n'
 extracted += member(host, 'public override void OnStart()') + '\n' + member(host, 'private void HandleLevelReady()') + '\n}\n'
 bridge = clean_source((ROOT / 'ModeH/ModeHInventoryPersistenceBridge.cs').read_text(encoding='utf-8-sig'))
 extracted += 'static partial class ModeHInventoryPersistenceBridge {\n'

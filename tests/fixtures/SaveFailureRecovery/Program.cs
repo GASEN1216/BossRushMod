@@ -362,6 +362,81 @@ class Program
             "new slot readiness cannot inherit the previous slot bet");
     }
 
+    static void CashBetSurvivesSpectatorExit()
+    {
+        // 看台退出 / 挂起送回基地：内存 owner 已清空、本场没有战报，但磁盘上同一季仍可续。
+        // 回到基地的关卡就绪对账不能把押注退掉——押注跟着这一场走，重打时沿用。
+        int[] resumable = { (int)ModeHLifecycle.MatchFighting, (int)ModeHLifecycle.Suspended };
+        foreach (int lifecycle in resumable)
+        {
+            Reset(); string reason;
+            Check(ModeHCashBetService.TryReserve("run", 1, 5, 1000, out reason), "reserve bet before spectator exit");
+            long afterStake = EconomyManager.Money;
+            var season = new ModeHSeasonDto { runState = new ModeHRunStateDto { runId = "run", lifecycle = lifecycle },
+                matchReports = new List<ModeHMatchReportDto>() };
+            ModeHProfilePersistence.Saved = season;
+            var runtime = new ModeHRuntimeModule(42); runtime.Configure(season); runtime.DropRunOwner();
+            runtime.LevelReady = true; runtime.OnReady();
+            Check(ModeHCashBetService.Current.status == ModeHCashBetService.StatusReserved && EconomyManager.Money == afterStake,
+                "resumable season keeps its pending bet after the run owner is dropped, lifecycle=" + lifecycle);
+        }
+
+        // 反面：磁盘上是别的赛季或已结束的赛季时仍原样退回
+        foreach (string variant in new[] { "other_run", "season_ended" })
+        {
+            Reset(); string reason;
+            Check(ModeHCashBetService.TryReserve("run", 1, 5, 1000, out reason), "reserve bet before refund check");
+            long beforeStake = EconomyManager.Money + 1000;
+            ModeHProfilePersistence.Saved = new ModeHSeasonDto { runState = new ModeHRunStateDto {
+                    runId = variant == "other_run" ? "another" : "run",
+                    lifecycle = variant == "other_run" ? (int)ModeHLifecycle.MatchFighting : (int)ModeHLifecycle.SeasonEnded },
+                matchReports = new List<ModeHMatchReportDto>() };
+            var runtime = new ModeHRuntimeModule(42); runtime.Configure(null);
+            runtime.LevelReady = true; runtime.OnReady();
+            Check(ModeHCashBetService.Current.status == ModeHCashBetService.StatusRefunded && EconomyManager.Money == beforeStake,
+                "bet without a resumable owner season is refunded: " + variant);
+        }
+    }
+
+    static void StartedBetForfeit()
+    {
+        // 2026-09-29 owner 拍板：开战后放弃赛季 / 换季不能白退押注，按输结清；没开战的照旧原样退回
+        Reset(); string reason;
+        Check(ModeHCashBetService.TryReserve("run", 1, 5, 1000, out reason), "reserve bet before combat");
+        long afterStake = EconomyManager.Money;
+        Check(!ModeHCashBetService.TryMarkCombatStarted("run", 2) && !ModeHCashBetService.TryMarkCombatStarted("other", 1),
+            "combat mark only applies to the reserved bet of the same run and match");
+        Check(ModeHCashBetService.Current.combatStarted == 0, "mismatched mark leaves the bet unmarked");
+        Check(ModeHCashBetService.TryMarkCombatStarted("run", 1) && ModeHCashBetService.Current.combatStarted == 1,
+            "combat start marks the pending bet");
+        Check(!ModeHCashBetService.TryMarkCombatStarted("run", 1), "combat mark is written at most once");
+        var season = new ModeHSeasonDto { runState = new ModeHRunStateDto { runId = "run", lifecycle = (int)ModeHLifecycle.Suspended },
+            matchReports = new List<ModeHMatchReportDto>() };
+        var runtime = new ModeHRuntimeModule(42); runtime.Configure(season);
+        Check(runtime.ResolveBeforeAbandon(), "started bet resolves before abandonment");
+        ModeHCashBetRecord settled = ModeHCashBetService.Current;
+        Check(settled.status == ModeHCashBetService.StatusSettled && settled.payout == 0 && EconomyManager.Money == afterStake,
+            "abandoning after combat started settles the bet as lost instead of refunding it");
+        ModeHCashBetService.ResetStaticCaches();
+        ModeHCashBetRecord reloaded = ModeHCashBetService.Current;
+        Check(reloaded.status == ModeHCashBetService.StatusSettled && reloaded.combatStarted == 1,
+            "combat mark survives the journal round trip");
+        Check(ModeHCashBetService.TryReserve("run", 2, 5, 1000, out reason) && ModeHCashBetService.Current.combatStarted == 0,
+            "a new reservation starts unmarked");
+
+        // 换季：上一季挂着的已开战押注按输结清
+        Reset();
+        Check(ModeHCashBetService.TryReserve("old", 3, 5, 1000, out reason), "reserve bet in the old season");
+        afterStake = EconomyManager.Money;
+        Check(ModeHCashBetService.TryMarkCombatStarted("old", 3), "old season bet reached combat");
+        ModeHProfilePersistence.Saved = new ModeHSeasonDto { runState = new ModeHRunStateDto { runId = "new", lifecycle = (int)ModeHLifecycle.MatchFighting },
+            matchReports = new List<ModeHMatchReportDto>() };
+        var fresh = new ModeHRuntimeModule(42); fresh.Configure(ModeHProfilePersistence.Saved);
+        fresh.LevelReady = true; fresh.OnReady();
+        Check(ModeHCashBetService.Current.status == ModeHCashBetService.StatusSettled && ModeHCashBetService.Current.payout == 0
+            && EconomyManager.Money == afterStake, "started bet of a superseded season is settled as lost");
+    }
+
     static void AbandonBetResolution()
     {
         for (int outcome = 0; outcome <= 2; outcome++)
@@ -426,7 +501,7 @@ class Program
     {
         try
         {
-            DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); NestedStakeOwnership(); WarehouseNotifications(); CashRestoreReadiness(); AbandonBetResolution(); Schema();
+            DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); NestedStakeOwnership(); WarehouseNotifications(); CashRestoreReadiness(); CashBetSurvivesSpectatorExit(); StartedBetForfeit(); AbandonBetResolution(); Schema();
             Console.WriteLine("SaveFailureRecovery: PASS " + checks + " assertions (real services, stores and coordinators; in-memory host)");
             return 0;
         }

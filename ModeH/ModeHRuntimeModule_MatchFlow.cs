@@ -362,7 +362,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[ModeH] 拍铃被拒绝: "
                     + (failureReasonId != null ? failureReasonId : "unknown"));
                 // 拍铃是整场比赛唯一的玩家干预手段且每场限一次，失败必须有可见反馈，
-                // 否则玩家只看到"按钮没反应"。次数未被消耗，可以再次尝试。
+                // 否则玩家只看到"按钮没反应"。前置条件不满足时次数未消耗、可再试；口令应用失败则按 CAS 已消耗、不退还。
                 ShowBellFailureMessage(failureReasonId);
                 return;
             }
@@ -404,8 +404,8 @@ namespace BossRush
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
             {
                 Title = L10n.T("退出鸭王杯？", "Exit the cup?"),
-                Body = L10n.T("本场会保留为中断状态，回到鸭王杯入口后可以继续。", "This match will be kept as interrupted; return to the cup entrance to continue."),
-                Warning = L10n.T("未完成的押注不会被重复扣除。", "The pending bet will not be charged again."),
+                Body = L10n.T("本场会保留为中断状态，回到鸭王杯入口后可以重打。", "This match will be kept as interrupted; return to the cup entrance to replay it."),
+                Warning = L10n.T("本场押注按输结清，重打时可以重新下注。", "This match's bet counts as lost; you can bet again on the replay."),
                 ConfirmLabel = L10n.T("退出", "Exit"),
                 Danger = true,
                 OnConfirm = ExitFromSpectator,
@@ -416,6 +416,9 @@ namespace BossRush
         private void ExitFromSpectator()
         {
             if (_commandsClosed || _runState == null || !IsCombatLifecycle(_runState.Lifecycle)) return;
+            // 开战后主动退出不能白退押注（2026-09-29 owner 拍板）：先按输结清，再离场；比赛本身仍保留为中断、可重打
+            try { ForfeitStartedCashBet(CarriedBetForCurrentMatch(), "spectator_exit"); }
+            catch (Exception e) { LogFailure("spectator_exit_forfeit", e); }
             RequestExit(ModeHExitReason.UserMapReturn, "spectator_exit");
         }
 
@@ -702,11 +705,21 @@ namespace BossRush
                     ModeHProfileDto locked = FindSeasonProfile(_draftPrimaryProfileId);
                     List<ModeHProfileDto> merged = new List<ModeHProfileDto>();
                     if (locked != null) merged.Add(locked);
-                    for (int i = 0; i < candidates.Count && merged.Count < ModeHConfig.DraftCandidateCount; i++)
+                    // 新抽的五席自身满足「原型各异、异常至多一名」；并入锁定首发时先挑不与它撞原型 / 异常的，
+                    // 凑不满才用撞的补位，尽量不破坏选秀不变式。
+                    for (int pass = 0; pass < 2; pass++)
                     {
-                        ModeHProfileDto candidate = candidates[i];
-                        if (candidate == null || string.Equals(candidate.profileId, _draftPrimaryProfileId, StringComparison.Ordinal)) continue;
-                        merged.Add(candidate);
+                        for (int i = 0; i < candidates.Count && merged.Count < ModeHConfig.DraftCandidateCount; i++)
+                        {
+                            ModeHProfileDto candidate = candidates[i];
+                            if (candidate == null || merged.Contains(candidate)
+                                || string.Equals(candidate.profileId, _draftPrimaryProfileId, StringComparison.Ordinal)) continue;
+                            bool clashes = locked != null
+                                && (string.Equals(candidate.archetypeId, locked.archetypeId, StringComparison.Ordinal)
+                                    || (!string.IsNullOrEmpty(candidate.anomalyId) && !string.IsNullOrEmpty(locked.anomalyId)));
+                            if (pass == 0 && clashes) continue;
+                            merged.Add(candidate);
+                        }
                     }
                     if (merged.Count < ModeHConfig.DraftCandidateCount)
                     {
@@ -1082,7 +1095,13 @@ namespace BossRush
 
         private void StartMatchSpawning()
         {
-            if (_owner == null || _map == null || _runState == null) return;
+            if (_runState == null) return;
+            // 走到这里押金已扣、状态停在 LoadoutLocked（没有页面路由）：不能静默 return 把人堵住，统一走技术重试
+            if (_owner == null || _map == null)
+            {
+                RequestTechnicalRetry("spawn_context_missing");
+                return;
+            }
 
             // 押了真实物品的这一场要经 StakePrepared 再进生成：冻结表为真实资产
             // 支路专门留了 LoadoutLocked -> StakePrepared -> MatchSpawning 这条边，
@@ -1095,6 +1114,7 @@ namespace BossRush
                 if (!TryTransition(ModeHLifecycle.LoadoutLocked, ModeHLifecycle.StakePrepared,
                         "stake_prepared"))
                 {
+                    RequestTechnicalRetry("stake_prepared_rejected");
                     return;
                 }
                 spawnOrigin = ModeHLifecycle.StakePrepared;
@@ -1102,6 +1122,7 @@ namespace BossRush
 
             if (!TryTransition(spawnOrigin, ModeHLifecycle.MatchSpawning, "spawn_begin"))
             {
+                RequestTechnicalRetry("spawn_begin_rejected");
                 return;
             }
             _spawnRoutine = _owner.StartCoroutine(DriveMatchSpawning());

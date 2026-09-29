@@ -16,6 +16,8 @@ ModeHCashBetGuard — 鸭王杯「押钱 / 押背包物品」的结构与数值�
    计划、实物/剩余义务、现金结清可恢复，未送达不销账；输了扣的钱不超过余额；退回不动钱。
 6. 押注跟着这一场走：技术重试、恢复回落、挂起 / 关停 / 切图中止都不退，重锁时先沿用挂着的那一笔
    （旧版一中断就整额退回，打输了强退重进等于重掷）；只有放弃赛季、开新赛季对到上一季、F3 清理才退。
+6b. 开战后不能白退（2026-09-29 owner 拍板）：进入交战给押注记 combatStarted，新押注清零；看台主动退出先按输结清再离场；
+   放弃赛季、换季对到已开战的押注按输结清，没开战的才退回。技术中止、挂起不受影响。
 7. 接线：锁盘落盘成功后、生成之前下注；本场结算处结算；读档与开新赛季时对账；
    模块销毁时清掉静态缓存；押注只在每场赛前；下注成功后直接生成，不播「开盘」。
 每条断言都有内存变异探针，探针不转红本守卫自判失败。
@@ -189,6 +191,21 @@ def check(sources):
     need(body(bet, "private void ReconcileCashBetOnRestore()"), 'RefundCashBet("restore_other_run");',
          "[退回] 读档对到上一季的押注原样退回")
 
+    # ---- 6b. 开战后不能白退 ----
+    ordered(src["combat"], ["ModeHCashBetService.TryMarkCombatStarted(_runState.RunId, _runState.MatchIndex);",
+                            'TryPersistSeason("match_fighting");'],
+            "[开战] 进入交战给押注记已开战，随这次赛季落盘一起写")
+    if service.count("candidate.combatStarted = 0;") != 2:
+        errors.append("[开战] 押钱与押物品两种新押注都要清掉上一笔的开战标记")
+    ordered(body(src["match"], "private void ExitFromSpectator()"),
+            ["ForfeitStartedCashBet(CarriedBetForCurrentMatch()", 'RequestExit(ModeHExitReason.UserMapReturn, "spectator_exit");'],
+            "[开战] 看台主动退出先把本场押注按输结清，再离场")
+    need(abandon_bet, 'if (record.combatStarted != 0) ForfeitStartedCashBet(record, "abandon_season");',
+         "[开战] 放弃赛季时已开战的押注按输结清")
+    need(body(bet, "private void ReconcileCashBetOnRestore()"),
+         'if (record.combatStarted != 0) ForfeitStartedCashBet(record, "restore_other_run");',
+         "[开战] 换季对到已开战的押注按输结清")
+
     # ---- 7. 接线 ----
     lock = body(src["match"], "private void LockLoadoutAndStartMatch()")
     ordered(lock, ['TryPersistSeason("loadout_locked", true)', "ReserveStandingCashBet();", "StartMatchSpawning();"],
@@ -219,7 +236,7 @@ def check(sources):
     need(commit, "_cashSnapshotRequired |= delta != 0;", "[现金] 零金额计划不能抹掉此前未保存的钱包义务")
     need(service, "return _cashSnapshotRequired || _itemSnapshotRequired;", "[物品] pending 已入缓存后仍保留资产采集义务")
     reconcile = body(bet, "private void ReconcileCashBetOnRestore()")
-    ordered(reconcile, ["record.itemSettlement != 0", "SettleReservedBet(record, record.itemSettlement == 1);", "if (!sameRun)"],
+    ordered(reconcile, ["record.itemSettlement != 0", "SettleReservedBet(record, record.itemSettlement == 1);", "if (sameRun) return;"],
             "[恢复] 无活动赛季时也要先偿还已确定的实物欠账")
     need(src["module"], "ModeHCashBetService.Tick();", "[恢复] 宿主必须驱动欠账与 IO 重试")
     module = src["module"]
@@ -276,6 +293,13 @@ def main():
         ("module", "ModeHCashBetService.Tick();", ""),
         ("ui_flow", "if (!TryResolveCashBetBeforeAbandon())", "if (false)"),
         ("bet", "|| FindCashBetReport(savedSeason, record) != null) return false;", ") return false;"),
+        ("combat", "            ModeHCashBetService.TryMarkCombatStarted(_runState.RunId, _runState.MatchIndex);\n", ""),
+        ("service", "                candidate.missingValue = 0;\n                candidate.combatStarted = 0;\n                return Commit(previous, candidate, -amount",
+         "                candidate.missingValue = 0;\n                return Commit(previous, candidate, -amount"),
+        ("match", "            try { ForfeitStartedCashBet(CarriedBetForCurrentMatch(), \"spectator_exit\"); }",
+         "            try { }"),
+        ("bet", 'if (record.combatStarted != 0) ForfeitStartedCashBet(record, "abandon_season");', "if (false) { }"),
+        ("bet", 'if (record.combatStarted != 0) ForfeitStartedCashBet(record, "restore_other_run");', "if (false) { }"),
     ]
     for key, before, after in probes:
         if sources[key].count(before) != 1:

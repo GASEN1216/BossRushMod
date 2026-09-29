@@ -535,7 +535,7 @@ namespace BossRush
             string reason;
 
             // armor_first_break：护甲耐久首次归零。没穿护甲的选手不触发（语义如此）。
-            if (IsActiveFighterArmorBroken())
+            if (_injuryAndScar.OwnsScar("broken_shield_charge") && IsActiveFighterArmorBroken())
             {
                 _injuryAndScar.TryOpenScarWindow(
                     "broken_shield_charge", "armor_first_break", out reason);
@@ -543,20 +543,21 @@ namespace BossRush
 
             // enemy_first_low_health：任一存活敌军首次进入残血。
             // 复用点火目标扫描已经算好的最残比例，不另开一轮每帧遍历。
-            if (_lowestEnemyHealthFraction <= ModeHConfig.LastStandHealthFraction)
+            if (_lowestEnemyHealthFraction <= ModeHConfig.LastStandHealthFraction
+                && _injuryAndScar.OwnsScar("blood_rush"))
             {
                 _injuryAndScar.TryOpenScarWindow(
                     "blood_rush", "enemy_first_low_health", out reason);
             }
 
             // first_ranged_damage_taken：本场登场选手首次吃到远程伤害。
-            if (_telemetry.ActiveFighterTookRangedDamage)
+            if (_telemetry.ActiveFighterTookRangedDamage && _injuryAndScar.OwnsScar("longshot_memory"))
             {
                 _injuryAndScar.TryOpenScarWindow(
                     "longshot_memory", "first_ranged_damage_taken", out reason);
             }
 
-            if (_activeFighter.IsRelay)
+            if (_activeFighter.IsRelay && _injuryAndScar.OwnsScar("relay_expert"))
             {
                 _injuryAndScar.TryOpenScarWindow("relay_expert", "relay_entered", out reason);
             }

@@ -62,6 +62,8 @@ namespace BossRush
         private ModeHCommandFireContext _sharedFireContext;
 
         private readonly HashSet<string> _consumedTriggers = new HashSet<string>(StringComparer.Ordinal);
+        /// <summary>当前登场选手已消费的触发型战痕 id；BindFighter 清空。每帧判定先查它，避免重复拼复合键。</summary>
+        private readonly HashSet<string> _consumedForActive = new HashSet<string>(StringComparer.Ordinal);
 
         private AICharacterController _ai;
         /// <summary>本场出战选手实际持有的伤病 ID（触发型入口的归属判据）。</summary>
@@ -138,6 +140,7 @@ namespace BossRush
             ModeHCommandFireContext fireContext)
         {
             RestoreAll();
+            _consumedForActive.Clear();
             _ai = ai;
             _activeProfileId = profileId;
             _activeStableKey = stableKey;
@@ -254,6 +257,7 @@ namespace BossRush
             _commandModulations.Clear();
             _ownedScarIds.Clear();
             _consumedTriggers.Clear();
+            _consumedForActive.Clear();
             _selfSettledCommandScale = 1f;
             _armorKitDisabled = false;
             _ai = null;
@@ -407,7 +411,14 @@ namespace BossRush
             float window = spec.WindowSeconds > 0 ? spec.WindowSeconds : ModeHConfig.MatchDurationSeconds;
             if (!OpenWindow(scarId, true, spec.Components, window, out failureReasonId)) return false;
             _consumedTriggers.Add(scarId + "|" + _activeProfileId + "|" + _matchIndex);
+            _consumedForActive.Add(scarId);
             return true;
+        }
+
+        /// <summary>本场是否持有该战痕。每帧触发判定的零分配前置门。</summary>
+        public bool OwnsScar(string scarId)
+        {
+            return scarId != null && _ownedScarIds.Contains(scarId);
         }
 
         private bool TryGetScarTriggerSpec(
@@ -420,6 +431,7 @@ namespace BossRush
                 failureReasonId = "scar_not_owned:" + scarId;
                 return false;
             }
+            if (_consumedForActive.Contains(scarId)) return false;
             spec = GetScar(scarId);
             if (spec == null)
             {
@@ -469,6 +481,7 @@ namespace BossRush
                 ModeHScarSpec spec = GetScar(dto.scarId);
                 if (spec == null || !IsEntryUsable(spec.Components)) continue;
                 _consumedTriggers.Add(dto.scarId + "|" + _activeProfileId + "|" + _matchIndex);
+                _consumedForActive.Add(dto.scarId);
                 string reason;
                 OpenWindow(dto.scarId, true, spec.Components, dto.remainingSeconds, out reason);
             }

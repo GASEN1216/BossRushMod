@@ -292,7 +292,17 @@ namespace BossRush
             _pageFailureText = null;
             if (content != null && _replayCardEntrance) content.ReplayCardEntrance = true;
             _replayCardEntrance = false;
-            _ui.OpenPage(page, _runState.Lifecycle, _runState.RunId, content);
+            try
+            {
+                _ui.OpenPage(page, _runState.Lifecycle, _runState.RunId, content);
+            }
+            catch (Exception e)
+            {
+                // 模态租约（时停、禁输入）在建页之前就领了：建页抛错会留下没有按钮的半成品页。
+                // 换成只有「返回基地」的兜底页；赛季照旧保留，回到鸭王杯入口可以接着打。
+                LogFailure("open_page_" + page, e);
+                OpenPageFailureFallback(page);
+            }
         }
 
         /// <summary>会弹模态页的相位（自动流程期间先不建页）。</summary>
@@ -682,6 +692,15 @@ namespace BossRush
                 page.Lines.Add(DescribeSummaryMatch(openMatch) + L10n.T("：中途退出", ": left early")
                     + L10n.T(" · 押注 ", " · bet ") + DescribeRecordStake(carried) + L10n.T(" 留到重打", " kept for the rematch"));
             }
+            else if (reason != ModeHExitReason.SeasonComplete && _runState != null
+                && _runState.MatchIndex >= ModeHConfig.FirstMatchIndex && FindReportByMatch(_runState.MatchIndex) == null)
+            {
+                // 看台主动退出：押注已按输结清，这一场本身没有战报
+                ModeHCashBetRecord forfeited = ModeHSessionSummary.FindBet(ModeHSessionSummary.Key(runId, _runState.MatchIndex));
+                if (forfeited != null && forfeited.status == ModeHCashBetService.StatusSettled)
+                    page.Lines.Add(DescribeSummaryMatch(_runState.MatchIndex) + L10n.T("：中途退出", ": left early")
+                        + DescribeSummaryBet(page, forfeited, ref net, ref anyMoney, gained, lost));
+            }
 
             List<string> refunded = new List<string>();
             foreach (ModeHCashBetRecord record in ModeHSessionSummary.AllBets())
@@ -798,6 +817,12 @@ namespace BossRush
                         refunded.Add(DescribeRecordStake(record));
                 if (refunded.Count > 0)
                     page.Lines.Add(L10n.T("原样退回：", "Returned: ") + string.Join(L10n.T("、", ", "), refunded.ToArray()));
+                List<string> forfeited = new List<string>();
+                foreach (ModeHCashBetRecord record in ModeHSessionSummary.AllBets())
+                    if (record != null && record.status == ModeHCashBetService.StatusSettled && record.payout == 0)
+                        forfeited.Add(DescribeRecordStake(record));
+                if (forfeited.Count > 0)
+                    page.Lines.Add(L10n.T("已开战按输结清：", "Lost (match had started): ") + string.Join(L10n.T("、", ", "), forfeited.ToArray()));
                 if (page.Lines.Count > 0) ModeHSessionSummary.Show(page, L10n.T("关闭", "Close"), null);
             }
             catch (Exception e)
@@ -960,8 +985,8 @@ namespace BossRush
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
             {
                 Title = L10n.T("放弃本赛季？", "Abandon this season?"),
-                Body = L10n.T("已有赛果的押注按输赢结清，其余押注原样退回，旧档托管的物品还回仓库。之后结束这一季，可以重新开一季。",
-                    "Bets with a recorded result are settled as won or lost; other bets are refunded, and storage items held from an old save are returned. This season then ends and you can start a new one."),
+                Body = L10n.T("已有赛果的押注按输赢结清，已开打没打完的押注按输结清，还没开打的原样退回；旧档托管的物品还回仓库。之后结束这一季，可以重新开一季。",
+                    "Bets with a recorded result are settled as won or lost, bets on a match already under way count as lost, and bets on unstarted matches are refunded; storage items held from an old save are returned. This season then ends and you can start a new one."),
                 Warning = L10n.T("这一季没打完的场次、战绩与名声都不再继续。",
                     "The remaining matches, results and fame of this season will not carry on."),
                 ConfirmLabel = L10n.T("放弃赛季", "Abandon season"),

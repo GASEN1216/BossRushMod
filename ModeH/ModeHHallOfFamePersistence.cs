@@ -142,6 +142,8 @@ namespace BossRush
                     _pending = null;
                     _pendingDigest = null;
                     _writeBarrier = false;
+                    // 与 HandleSetFile 同口径：槽被删后旧故障不再适用，不清会把之后的名人堂写入堵到重启。
+                    _storeFaulted = false;
                     _lastError = null;
                 }
             }
@@ -304,6 +306,8 @@ namespace BossRush
                 }
             }
 
+            // 暂存失败要把缓存还原：否则重试命中上面的「同 ID 已存在」直接报成功，这条记录永远不落盘。
+            List<ModeHHallOfFameRecordDto> before = new List<ModeHHallOfFameRecordDto>(envelope.records);
             envelope.records.Add(record);
             envelope.records.Sort(CompareRecords);
             while (envelope.records.Count > ModeHConfig.MaxHallOfFameRecords)
@@ -311,7 +315,9 @@ namespace BossRush
                 envelope.records.RemoveAt(0);
             }
 
-            return StageEnvelope(envelope, out error);
+            if (StageEnvelope(envelope, out error)) return true;
+            envelope.records = before;
+            return false;
         }
 
         #endregion

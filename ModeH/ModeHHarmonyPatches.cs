@@ -15,7 +15,7 @@
 // - 都是 [HarmonyPostfix]，只读改 ref bool __result，不改变原版执行流，不返回 false；
 // - 快路径先读静态 ModeHRuntimeGates.IsModeHStandInActive（零分配 bool），
 //   未激活直接返回，热路径不建集合、不分配；
-// - 激活后再做 O(1) 身份查询：__instance.gameObject 必须是本场已登记的玩家身体；
+// - 激活后再做 O(1) 身份查询：发起动作的角色（__instance.characterController）必须是本场已登记的玩家身体；
 // - 全程 no-throw，任何异常 fail-closed 到原版 false（身体保持冻结），
 //   并按 5 秒限频告警，绝不打断宿主动作流程。
 //
@@ -75,7 +75,9 @@ namespace BossRush
 
             try
             {
-                GameObject go = instance.gameObject;
+                // 动作组件可能挂在角色子物体上；登记的是角色根物体，优先按发起动作的角色比对
+                CharacterMainControl owner = instance.characterController;
+                GameObject go = owner != null ? owner.gameObject : instance.gameObject;
                 if (go == null) return false;
                 return ModeHRuntimeGates.IsModeHStandInBody(go.GetInstanceID());
             }

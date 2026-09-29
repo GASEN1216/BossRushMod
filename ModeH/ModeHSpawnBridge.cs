@@ -199,6 +199,9 @@ namespace BossRush
             {
                 handle.Character.SetTeam(handle.Team);
                 handle.Character.SetPosition(arenaPos);
+                // 观战模式的击杀不给主角经验（2026-09-29 owner 拍板，与图鉴排除同口径）：ERROR 互换期间
+                // 官方把 fromCharacter 改写为主角，Health.Hurt 会按角色物品的 Exp 发经验。写法同 Mode G 刷怪。
+                if (handle.Character.CharacterItem != null) handle.Character.CharacterItem.SetInt("Exp", 0, true);
 
                 // 缓存字段是 Inspector 序列化的，Mod 刷出的选手上可能为空，所以回退不可省。
                 // 回退必须传 true：本方法在隔离期调用，此时角色已被 SetActive(false)，

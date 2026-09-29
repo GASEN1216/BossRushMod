@@ -212,7 +212,7 @@ namespace BossRush
                 new Vector2(x, 0f), panelSize, new Vector2(0.5f, 0.5f));
             float headerTop = topY - panelSize.y * 0.5f;
             TextMeshProUGUI team = DetailText(column.transform, "Team", title,
-                new Vector2(-width * 0.5f, headerTop), new Vector2(width * 0.5f, 32f),
+                new Vector2(-width * 0.5f, headerTop), new Vector2(width * 0.5f, 35f),
                 21f, sideColor, TextAlignmentOptions.MidlineLeft);
             team.enableAutoSizing = false;
             if (!string.IsNullOrEmpty(sideNote))
@@ -276,12 +276,12 @@ namespace BossRush
             float nameWidth = inner - FighterPortraitSize - 12f - (gearCount > 0 ? gearWidth + 12f : 0f);
 
             TextMeshProUGUI name = DetailText(card, "Name", fighter.Title,
-                new Vector2(nameLeft, -FighterCardPadding - 2f), new Vector2(nameWidth, 30f),
+                new Vector2(nameLeft, -FighterCardPadding - 2f), new Vector2(nameWidth, 33f),
                 20f, BossRushUIColors.TextPrimary, TextAlignmentOptions.Left);
             name.enableAutoSizing = false;
             name.enableWordWrapping = false;
             TextMeshProUGUI role = DetailText(card, "Role", fighter.Subtitle,
-                new Vector2(nameLeft, -FighterCardPadding - 30f), new Vector2(nameWidth, 24f),
+                new Vector2(nameLeft, -FighterCardPadding - 30f), new Vector2(nameWidth, 25f),
                 14f, BossRushUIColors.TextSecondary, TextAlignmentOptions.Left);
             role.enableAutoSizing = false;
             role.enableWordWrapping = false;
@@ -338,7 +338,7 @@ namespace BossRush
                 { Icon = item.Icon, Count = item.Count, Quality = item.GameQuality },
                     new Vector2(0f, -14f - ItemIconSize * 0.5f), ItemIconSize, true, false);
                 TextMeshProUGUI itemName = DetailText(card.transform, "Name", item.Title,
-                    new Vector2(-cardWidth * 0.5f + 12f, -24f - ItemIconSize), new Vector2(cardWidth - 24f, 26f),
+                    new Vector2(-cardWidth * 0.5f + 12f, -24f - ItemIconSize), new Vector2(cardWidth - 24f, 28f),
                     16f, BossRushUIColors.TextPrimary, TextAlignmentOptions.Center);
                 itemName.enableWordWrapping = false;
                 itemName.enableAutoSizing = false;
@@ -511,7 +511,7 @@ namespace BossRush
             {
                 TextMeshProUGUI count = ZombieModeUIHelper.CreateText("Count", tile.transform, data.Count.ToString(),
                     size >= 60f ? 18f : 12f, new Vector2(size * 0.5f - 18f, -size * 0.5f + 16f),
-                    new Vector2(32f, 28f), TextAlignmentOptions.BottomRight, BossRushUIColors.TextPrimary);
+                    new Vector2(32f, 31f), TextAlignmentOptions.BottomRight, BossRushUIColors.TextPrimary);
                 count.enableAutoSizing = false;
                 BossRushUI.ApplyGameFont(count);
                 BossRushUIKit.ApplyWorldTextOutline(count);

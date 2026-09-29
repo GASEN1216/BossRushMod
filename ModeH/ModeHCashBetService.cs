@@ -19,6 +19,9 @@
 //   押注跟着这一场走（2026-09-24 追加）：技术中止、挂起、退游戏重进都不退，重打这一场时沿用、按重打的结果结算
 //   （旧版一中断就整额退回，打输了强退重进等于重掷，押钱就不会「慢慢往下掉」）。
 //   只有这一季不再打了才原样退回：恢复页放弃赛季、开新赛季时发现上一季挂着的押注。
+//   开战后不能白退（2026-09-29 owner 拍板）：本场进入交战即在账本记 combatStarted；看台主动退出、
+//   放弃赛季或换季时，已开战且没有战报的押注按输结清。技术中止、挂起、崩溃重进仍沿用（技术故障绝不判负）。
+//   combatStarted 是 v3 内的可选字段：旧档缺省为 0，旧版本读到会忽略，不升 schemaVersion。
 //
 // 押背包物品（kind = KindItems，物品侧在 ModeHItemBetStake）：锁盘不扣钱或搬物，给押品盖持久身份，随主角物品树同存；
 //   押什么、押多少都不限（owner：「押上的物品不要有限制，只是其品质和价钱会影响到再次给予其奖品的品质和价钱」）。
@@ -63,6 +66,8 @@ namespace BossRush
         public int itemSettlement;
         /// <summary>尚未交付的奖品或尚未收走的押品（带持久身份的 ModeHItemBetEntry）。</summary>
         public string pendingItems = string.Empty;
+        /// <summary>本场已进入交战（1）。之后主动退出 / 放弃赛季按输结清；旧档缺省为 0。</summary>
+        public int combatStarted;
         /// <summary>收走押品后累计的缺失估值；与实物快照一起保存，最终结算只扣一次。</summary>
         public long missingValue;
         /// <summary>按赔率档（下标 = 赔率 1–5）的押注次数与胜场，用来校准赔付。</summary>
@@ -311,6 +316,17 @@ namespace BossRush
             }
         }
 
+        /// <summary>本场进入交战时给挂着的押注记一笔「已开战」；不动钱，随下一次存档落盘。no-throw。</summary>
+        internal static bool TryMarkCombatStarted(string runId, int matchIndex)
+        {
+            try { return EnsureJournal().TryMarkCombatStarted(runId, matchIndex); }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeH] 押注开战标记失败: " + e.Message);
+                return false;
+            }
+        }
+
         /// <summary>实物结算：先保存固定计划，再逐批交付/收走并保存资产，最后结清现金与统计。</summary>
         internal static bool TrySettleItems(string runId, int matchIndex, bool won, long runSeed)
         {
@@ -425,6 +441,7 @@ namespace BossRush
                 candidate.itemSettlement = 0;
                 candidate.pendingItems = string.Empty;
                 candidate.missingValue = 0;
+                candidate.combatStarted = 0;
                 return Commit(previous, candidate, -amount, out failureReasonId);
             }
 
@@ -459,6 +476,7 @@ namespace BossRush
                 candidate.itemSettlement = 0;
                 candidate.pendingItems = string.Empty;
                 candidate.missingValue = 0;
+                candidate.combatStarted = 0;
                 // 锁盘的持久身份随主角物品树与账本同批保存，不能只存账本。
                 _itemSnapshotRequired = true;
                 return Commit(previous, candidate, 0, out failureReasonId);
@@ -583,6 +601,23 @@ namespace BossRush
                 return true;
             }
 
+            internal bool TryMarkCombatStarted(string runId, int matchIndex)
+            {
+                if (_staging) return false;
+                _store.LoadOrInit();
+                if (_store.HasWriteBarrier || _store.IsStoreFaulted) return false;
+                ModeHCashBetRecord previous = _store.Current;
+                if (previous.status != StatusReserved || previous.combatStarted != 0 || previous.matchIndex != matchIndex
+                    || !string.Equals(previous.runId, runId, StringComparison.Ordinal)) return false;
+                ModeHCashBetRecord candidate = previous.Clone();
+                candidate.combatStarted = 1;
+                if (!_store.Store(candidate)) return false;
+                // 不动钱、不绕闸：战斗帧里不强制写盘，随下一次存档一起落（丢了只是回到旧口径的退款）
+                string error;
+                _coordinator.RequestFlush(out error);
+                return true;
+            }
+
             internal bool TryRefund(string context, out long refunded)
             {
                 refunded = 0;
@@ -687,6 +722,7 @@ namespace BossRush
                 _cashSnapshotRequired = false;
                 _itemSnapshotRequired = false;
                 _nextItemRetry = 0f;
+                StandingTier = 0; // 押注档是纯运行时选择，换档回到「不押」
                 ModeHItemBetStake.ResetStaticCaches();
                 if (_coordinator != null) _coordinator.NotifySlotChanged();
             }
@@ -741,6 +777,7 @@ namespace BossRush
                 if (TryGetLong(root, "prizeCash", out big)) record.prizeCash = big;
                 if (TryGetLong(root, "missingValue", out big)) record.missingValue = big;
                 if (root.TryGetInt("itemSettlement", out value)) record.itemSettlement = value;
+                if (root.TryGetInt("combatStarted", out value)) record.combatStarted = value != 0 ? 1 : 0;
                 string pending;
                 if (root.TryGetString("pendingItems", out pending)) record.pendingItems = pending ?? string.Empty;
                 string prizes;
@@ -801,6 +838,7 @@ namespace BossRush
                 sb.Append("\",\"prizeItems\":\"");
                 SimpleJsonHelper.EscapeString(sb, record.prizeItems ?? string.Empty);
                 sb.Append("\",\"itemSettlement\":").Append(record.itemSettlement.ToString(CultureInfo.InvariantCulture));
+                sb.Append(",\"combatStarted\":").Append(record.combatStarted.ToString(CultureInfo.InvariantCulture));
                 sb.Append(",\"missingValue\":\"").Append(record.missingValue.ToString(CultureInfo.InvariantCulture));
                 sb.Append("\",\"pendingItems\":\"");
                 SimpleJsonHelper.EscapeString(sb, record.pendingItems ?? string.Empty);

@@ -10,6 +10,7 @@ ModeHSpawnTransactionGuard — Mode H 生成事务守卫（设计提案 §19.3�
 - clone 上固定 aiCombatFactor=1f、dropBoxOnDead=false、目标 team；
 - 一律传 group=null、isLeader=false（避免 leader/成员双向同步 searchedEnemy 污染点火）；
 - 失败整批逆序回收；
+- 上场前把角色物品的 Exp 置 0：观战模式的击杀不给主角经验（ERROR 互换期间官方会把击杀者改写为主角）；
 - Mode H 不调用也不修改 Utilities/EnemySpawnCore.cs。
 """
 import os
@@ -52,6 +53,7 @@ def main():
         (r"ai\.forceTracePlayerDistance = 0f;", "清零强制追踪玩家"),
         (r"ai\.searchedEnemy = null;", "清空 searchedEnemy"),
         (r"ai\.noticed = false;", "清空 noticed"),
+        (r'handle\.Character\.CharacterItem\.SetInt\("Exp", 0, true\);', "上场前 Exp 置 0（观战击杀不给主角经验）"),
         (r"internal static void Recycle\(ModeHSpawnHandle handle\)", "统一回收入口"),
     ]
     for pattern, desc in checks:

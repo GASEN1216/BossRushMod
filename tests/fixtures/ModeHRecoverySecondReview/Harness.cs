@@ -58,6 +58,8 @@ namespace BossRush
         public static bool Active, RecoveryBlocked;
         public static Action<string> Record;
         public static void SetRunOwnerActive(bool active) { Active = active; Record("owner_gate"); }
+        public static bool CombatFrameActive;
+        public static void SetCombatFrameActive(bool active) { CombatFrameActive = active; }
         public static void SetRecoveryOnlyBlocked(bool active, string reason)
         { RecoveryBlocked = active; Record("recovery_gate"); }
     }
