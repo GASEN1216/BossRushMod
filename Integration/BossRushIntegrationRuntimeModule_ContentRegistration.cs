@@ -47,7 +47,7 @@ namespace BossRush
             BackMountainLocalization.Inject();
             // 天空岛物品的 DisplayNameRaw 注入（AGENTS.md 4.4）
             SkyIslandItems.InjectLocalization();
-            SkyIslandSceneReferenceBridge.InjectLocalization();
+            SkyIslandSceneReferenceBridge.InjectLocalization(); SkyIslandEnemyTiers.ReinjectNames();
             SkyIslandSearchPoint.InjectLocalizations();
             // 失落的航向仪（Jeff 序章的交付物）的 DisplayNameRaw 注入（AGENTS.md 4.4）
             SkyIslandNavInstrumentConfig.InjectLocalization();

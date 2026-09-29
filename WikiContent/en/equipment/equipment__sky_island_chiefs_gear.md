@@ -80,4 +80,4 @@
 - **Stalker (K2)**: lunges once, then flicks back to where it started to shoot from the platform edge. Do not chase it into a gunfight at the edge; wait for its next lunge. Below half health its pack comes apart and it stops flicking back.
 - **Warden (K3)**: lunges only once and its line stays lit longest (about 1.2 seconds), the easiest of the three to read, so learn the lunge on it first. Its line stays lit twice as long once its Galebreaker Hood is shot through.
 
-[tip] All of them show a boss health bar and name and come back every raid even after you beat them; first kills are recorded in the archipelago journal under "About the isles → This run · journey progress". Talk to Fuzhou, Weibai, Qinghe or Miantai and they mention where the chiefs you have not beaten yet are and how to handle them.
+[tip] All of them show a boss health bar and name and come back every raid even after you beat them; first kills you land yourself are recorded in the archipelago journal under "About the isles → This run · journey progress". Talk to Fuzhou, Weibai, Qinghe or Miantai and they mention where the chiefs you have not beaten yet are and how to handle them.

@@ -84,5 +84,24 @@ namespace BossRush
             int underscore = id.IndexOf('_');
             return LandmarkLabel("POI_" + (underscore < 0 ? id : id.Substring(0, underscore)));
         }
+        /// <summary>
+        /// <see cref="ModBehaviour.ValidationHasActiveMode"/> 给的内部模式键 → 玩家看得懂的模式名（与在线 Wiki 模式页同名）。
+        /// 入岛被拒的提示原先直接拼 `ModeD` / `Zombie` / `CampaignFinal`（发版审查 A-03）。
+        /// </summary>
+        internal static string ActiveModeLabel(string mode)
+        {
+            switch (mode)
+            {
+                case "BossRush": return L10n.T("标准 BossRush", "Standard BossRush");
+                case "ModeD": return L10n.T("白手起家", "From Scratch");
+                case "ModeE": return L10n.T("划地为营", "Faction War");
+                case "ModeF": return L10n.T("血猎追击", "Blood Hunt");
+                case "ModeG": return L10n.T("宿命回响", "Fate Echo");
+                case "Zombie": return L10n.T("末日丧尸", "Zombie Mode");
+                case "ModeH": return L10n.T("黑市鸭王杯", "Black Market Duck Cup");
+                case "CampaignFinal": return L10n.T("竞技场决战", "Arena Showdown");
+                default: return L10n.T("当前模式", "the current mode");
+            }
+        }
     }
 }

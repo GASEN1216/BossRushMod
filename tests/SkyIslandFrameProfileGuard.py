@@ -25,6 +25,8 @@ from cs_source_util import clean_source  # noqa: E402
 
 PROFILE = "SkyIsland/SkyIslandFrameProfile.cs"
 SESSION = "SkyIsland/SkyIslandSession.cs"
+# 会话每帧驱动的子系统（遭遇…环境音）2026-09-29 提取到同一 partial 的 TickSubsystems（发版审查 A-01：逐步隔离异常）。
+SESSION_TICK = "SkyIsland/SkyIslandSessionTick.cs"
 WORLD = "SkyIsland/SkyIslandWorldStory.cs"
 FIELDCRAFT = "SkyIsland/SkyIslandFieldcraft.cs"
 MODULE = "SkyIsland/SkyIslandRuntimeModule.cs"
@@ -32,15 +34,15 @@ RUNNER = "DebugAndTools/F3GameplayValidationRunner.cs"
 SAMPLING = "DebugAndTools/F3GameplayValidationResourcePerformance.cs"
 RUNTIME = "DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs"
 BAT = "compile_official.bat"
-FIXED = [PROFILE, SESSION, WORLD, FIELDCRAFT, MODULE, RUNNER, SAMPLING, RUNTIME, BAT]
+FIXED = [PROFILE, SESSION, SESSION_TICK, WORLD, FIELDCRAFT, MODULE, RUNNER, SAMPLING, RUNTIME, BAT]
 
 REQUIRED_MARKS = {
-    SESSION: ("Hud", "StoryRest", "Encounters", "Scavenging", "Residents", "StorySave", "GatesAndMarkers", "Lighting",
-              "Ambience", "GroundProbe", "HudRefresh"),
+    SESSION: ("Hud", "StoryRest", "GroundProbe", "HudRefresh"),
+    SESSION_TICK: ("Encounters", "Scavenging", "Residents", "StorySave", "GatesAndMarkers", "Lighting", "Ambience"),
     WORLD: ("StoryUi", "Pigeon"),
     FIELDCRAFT: ("Gnats", "Gathering", "FiresAndBuffs", "WindAndSwarm"),
 }
-ENTRY = {SESSION: "private void Update()", WORLD: "internal void Tick()", FIELDCRAFT: "internal void Tick()"}
+ENTRY = {SESSION: "private void Update()", SESSION_TICK: "private void TickSubsystems()", WORLD: "internal void Tick()", FIELDCRAFT: "internal void Tick()"}
 DEV_ONLY_TOKENS = ("Stopwatch.GetTimestamp", "frameCount", "recorded.Add", "current[", "recording = true")
 
 
@@ -142,6 +144,8 @@ def check(sources):
     if unused:
         errors.append("这些段没有任何标记（报告里恒为 0，读起来像「这一段不花时间」）：" + ",".join(unused))
     update = squash(body_of(clean_source(sources[SESSION]), "private void Update()") or "")
+    if "TickSubsystems();" not in update:
+        errors.append("会话 Update 必须调用 TickSubsystems()：遭遇到环境音这几段的分段标记在它里面")
     if starts != 1 or not update.strip().startswith(squash("if (closed) return; SkyIslandFrameProfile.Start();")):
         errors.append("SkyIslandFrameProfile.Start() 全仓只许一处，就在会话 Update 开头（实际 %d 处）" % starts)
 
@@ -210,7 +214,8 @@ def main():
         (PROFILE, '        [Conditional("BOSSRUSH_DEV")]\n        internal static void Mark(', "        internal static void Mark("),
         (PROFILE, '"ground_probe", "hud_refresh"', '"ground_probe"'),
         (PROFILE, "#else\n            frames = null;\n            return false;\n#endif", "#endif"),
-        (SESSION, "            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Encounters);\n", ""),
+        (SESSION_TICK, "            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Encounters);\n", ""),
+        (SESSION, "            TickSubsystems();\n", ""),
         (FIELDCRAFT, "            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Gnats);\n", ""),
         (WORLD, "            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Pigeon);\n", "            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Hud);\n"),
         (SESSION, "            SkyIslandFrameProfile.Start();\n", ""),

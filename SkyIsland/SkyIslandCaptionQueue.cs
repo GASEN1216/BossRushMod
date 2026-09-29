@@ -16,6 +16,8 @@
 //   2. 排序：警示排在全部普通字幕之前、其它警示之后；同级先来先播。
 //   3. 队满：先丢最旧的普通字幕；队里全是警示时，新来的普通字幕直接丢，新来的警示挤掉最旧的警示。
 //   4. 打断：正在播的是普通字幕、新来的是警示 → 通知 HUD 让当前这条快速淡出。
+//   5. 过期：警示带入队时刻（游戏时间），出队时超过时限的直接丢弃。HUD 隐藏期间（开着官方地图 / 背包，
+//      官方界面不停游戏时间）字幕不推进，关掉界面后再播「离开那一圈」时那一波早炸完了（发版审查 C-04）。
 // ============================================================================
 
 using System;
@@ -30,6 +32,8 @@ namespace BossRush
         {
             internal string Text;
             internal bool Warning;
+            /// <summary>入队时刻（调用方给的时基，HUD 用游戏时间）。</summary>
+            internal float Stamp;
         }
 
         internal enum Admission
@@ -57,7 +61,8 @@ namespace BossRush
         /// <param name="showing">正在播的那条文案；没有在播时传 null。</param>
         /// <param name="showingWarning">正在播的那条是不是警示。</param>
         /// <param name="preempt">为 true 时，调用方应让正在播的普通字幕立即转入快速淡出。</param>
-        internal Admission Admit(string text, bool warning, string showing, bool showingWarning, out bool preempt)
+        /// <param name="stamp">入队时刻，供 <see cref="TryDequeue(out Entry, float, float)"/> 判警示过期。</param>
+        internal Admission Admit(string text, bool warning, string showing, bool showingWarning, out bool preempt, float stamp = 0f)
         {
             preempt = false;
             if (string.IsNullOrEmpty(text)) return Admission.Dropped;
@@ -81,7 +86,7 @@ namespace BossRush
                 }
                 pending.RemoveAt(victim);
             }
-            var entry = new Entry { Text = text, Warning = warning };
+            var entry = new Entry { Text = text, Warning = warning, Stamp = stamp };
             if (warning) pending.Insert(WarningInsertIndex(), entry);
             else pending.Add(entry);
             preempt = warning && showing != null && !showingWarning;
@@ -98,6 +103,14 @@ namespace BossRush
             entry = pending[0];
             pending.RemoveAt(0);
             return true;
+        }
+
+        /// <summary>同 <see cref="TryDequeue(out Entry)"/>，但跳过入队已超过 <paramref name="maxWarningAge"/> 的警示（普通字幕不过期）。</summary>
+        internal bool TryDequeue(out Entry entry, float now, float maxWarningAge)
+        {
+            while (TryDequeue(out entry))
+                if (!entry.Warning || now - entry.Stamp <= maxWarningAge) return true;
+            return false;
         }
 
         internal void Clear() { pending.Clear(); }

@@ -128,7 +128,7 @@ python tools/run_guards.py --filter OfficialCompileList
 
 ### 4.17 F3 验收用例与常驻 HUD
 
-- F3、只读套件、Dev 演练和全自动实机回归的完整规则在 `DebugAndTools/AGENTS.md`；F3 只在 Dev 构建存在。
+- F3、只读套件、Dev 演练和全自动实机回归的完整规则在 `DebugAndTools/AGENTS.md`；F3 只在 Dev 构建可用（正式构建里演练 / 全自动入口整份 `#if BOSSRUSH_DEV`，只读用例代码仍编入、由 `DevModeEnabled` 常量门控不可达）。
 - 截图由 owner 看，AI 只读文字报告；请 owner 实测时给步骤 id、文件名、画面位置与不合格条件。
 - 常驻 HUD 每帧经官方 HUD 显隐与暂停双门，并登记 `PersistentHudVisibilityGuard`。
 

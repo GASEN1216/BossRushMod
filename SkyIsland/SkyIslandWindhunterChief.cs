@@ -471,7 +471,7 @@ namespace BossRush
             disengaging = false;
             Announce(string.Format(L10n.T("{0}倒下了，桥上的风一下子松了。", "{0} falls and the wind over the bridge eases."),
                 SkyIslandBossRules.Name(profile)), false);
-            SkyIslandBossForge.RaiseDefeated(profile, position);
+            SkyIslandBossForge.RaiseDefeated(profile, position, damage);
         }
 
         private void OnDisable()

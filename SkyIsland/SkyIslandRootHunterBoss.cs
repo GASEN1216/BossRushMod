@@ -450,7 +450,7 @@ namespace BossRush
             if (slow != null) slow.Release();
             Announce("悬根猎首倒下了，林子里的根须慢慢垂了下去。",
                 "The Hanging-Root Huntmaster falls, and the roots across the wood slowly go limp.", false);
-            SkyIslandBossForge.RaiseDefeated(profile, position);
+            SkyIslandBossForge.RaiseDefeated(profile, position, damage);
         }
 
         /// <summary>收掉本控制器建的全部场上物件（根桩、绊索、伏击圈、根洞圈）。不恢复 AI：倒下与销毁都不该让它再动。</summary>

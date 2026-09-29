@@ -652,7 +652,8 @@ def check_encounter_refresh():
 
 
 def check_session_ownership():
-    session = source('SkyIslandSession.cs')
+    # 会话每帧子系统 2026-09-29 提取到同一 partial 的 SkyIslandSessionTick.cs（发版审查 A-01），断言照旧针对整个类。
+    session = source('SkyIslandSession.cs') + '\n' + source('SkyIslandSessionTick.cs')
     for token in ('scavenging.Tick()', 'scavenging.Dispose()', 'services.Dispose()',
                   'bounty.ReportEncounterCleared()', 'bounty.ReportScavenged', 'bounty.ReportRegionVisited()'):
         assert token in session, 'Session must own the expansion wiring: ' + token

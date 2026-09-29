@@ -46,4 +46,4 @@
 - Inside **8 m** it can only shoot normally.
 - Wear its lens helm down to zero durability and it can no longer mark anyone.
 
-[tip] Both show a boss health bar and name. First kills of the Foreman and the Stargazer are recorded in the archipelago journal under "About the isles → This run · journey progress".
+[tip] Both show a boss health bar and name. First kills you land yourself on the Foreman and the Stargazer are recorded in the archipelago journal under "About the isles → This run · journey progress".

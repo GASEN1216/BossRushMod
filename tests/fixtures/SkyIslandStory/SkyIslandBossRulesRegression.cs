@@ -256,6 +256,8 @@ internal static class SkyIslandBossRulesRegression
             "boss mirror: flips land within a bounded band; a shattered reflection staggers it");
         check(SkyIslandBossRules.SwapMinDistance > SkyIslandBossRules.SwapRadius && SkyIslandBossRules.SwapMinDistance < 2f * SkyIslandBossRules.SwapRadius + 1f,
             "boss mirror: the ring never lights under your feet, but backing away while shooting walks into it");
+        check(SkyIslandBossRules.LungeStandOff < SkyIslandBossRules.LungeRadius,
+            "boss lunge: the landing ring covers a player who stands still, so sidestepping the lit line matters");
         check(SkyIslandBossRules.LungeMinRange < SkyIslandBossRules.LungeMaxRange && SkyIslandBossRules.LungeStandOff > SkyIslandBossRules.LungeRadius * 0.5f
             && SkyIslandBossRules.StalkerPackBreakBelow > 0f && SkyIslandBossRules.StalkerPackBreakBelow < 1f,
             "boss lunge: a lunge needs room to start and stops short of you");

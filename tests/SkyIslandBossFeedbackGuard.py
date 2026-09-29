@@ -116,9 +116,10 @@ def check(code):
     impact = body_of(fx, "internal static void Play(Transform root, Vector3 origin, float radius, Color tint, int dustCount, bool thump)")
     need(errors, impact, "if (thump) SkyIslandBossSfx.Play(root, SkyIslandBossCue.Impact, origin);", "结算表现要按 thump 补闷响")
     need(errors, impact, "Flash(root, origin,", "结算表现要有闪光")
-    raise_ = body_of(forge, "internal static void RaiseDefeated(SkyIslandBossProfile profile, Vector3 position)")
-    ordered(errors, raise_, ["SkyIslandImpactFx.DefeatBurst(null, position, DefeatTint(profile));", "Action<SkyIslandBossProfile, Vector3> handler = Defeated;"],
-            "RaiseDefeated 要先放倒下回执（不能在没有订阅者时被 return 跳过）")
+    raise_ = body_of(forge, "internal static void RaiseDefeated(SkyIslandBossProfile profile, Vector3 position, DamageInfo damage)")
+    ordered(errors, raise_, ["SkyIslandImpactFx.DefeatBurst(null, position, DefeatTint(profile));", "Action<SkyIslandBossProfile, Vector3> handler = Defeated;",
+                             "if (!KilledByMainCharacter(damage)) return;", "handler(profile, position);"],
+            "RaiseDefeated 要先放倒下回执（谁打死的都放），首杀剧情回调只认主角击杀（CR-2026-09-29-112）")
     phases = {
         "foreman": ("phase = target;", "SkyIslandImpactFx.PhaseBurst(context.Root, boss.transform.position, StarfireTint);", "DeployPylons();"),
         "root": ("phase = target;", "SkyIslandImpactFx.PhaseBurst(context.Root, boss.transform.position, AmbushTint);", "int index = PickHollow();"),

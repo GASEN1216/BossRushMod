@@ -247,7 +247,7 @@ namespace BossRush
             DestroyRing();
             channeling = false;
             Announce("蚋笛翁倒下了，笛子滚进了池子里。", "The Gnat Piper falls, and its flute rolls into the pond.", false);
-            SkyIslandBossForge.RaiseDefeated(profile, position);
+            SkyIslandBossForge.RaiseDefeated(profile, position, damage);
         }
 
         private void OnDestroy()

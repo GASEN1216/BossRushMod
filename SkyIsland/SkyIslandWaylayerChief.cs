@@ -100,7 +100,7 @@ namespace BossRush
             {
                 snatchRing = SkyIslandBossForge.CreateGroundRing(context.Root, boss.transform.position);
                 snatchRing.gameObject.name = "SkyIslandSnatchRing";
-                SkyIslandBossForge.SetRing(snatchRing, SkyIslandBossRules.SnatchRange, 0f, SnatchTint);
+                SkyIslandBossForge.SetRing(snatchRing, SkyIslandBossRules.SnatchReach, 0f, SnatchTint);
             }
             catch (Exception e)
             {
@@ -119,9 +119,9 @@ namespace BossRush
             float started = Time.time;
             while (Time.time - started < telegraph && !Aborted() && !dropped)
             {
-                // 圈跟着它的脚走：伸手够得着的就是它此刻身边这一圈。
+                // 圈跟着它的脚走：伸手够得着的就是它此刻身边这一圈。半径画的是结算判定 SnatchReach，不是起手距离（发版审查 B-02）。
                 SkyIslandBossForge.PlaceRing(snatchRing, context.Root, boss.transform.position);
-                SkyIslandBossForge.SetRing(snatchRing, SkyIslandBossRules.SnatchRange, Mathf.Clamp01((Time.time - started) / telegraph), SnatchTint);
+                SkyIslandBossForge.SetRing(snatchRing, SkyIslandBossRules.SnatchReach, Mathf.Clamp01((Time.time - started) / telegraph), SnatchTint);
                 yield return null;
             }
             DestroyRing();
@@ -433,7 +433,7 @@ namespace BossRush
             EndFlee();
             snatching = false;
             Announce("截信人倒下了，邮包里的信撒了一地。", "The Waylayer falls, and the letters in its mailbag scatter across the ground.", false);
-            SkyIslandBossForge.RaiseDefeated(profile, position);
+            SkyIslandBossForge.RaiseDefeated(profile, position, damage);
         }
 
         private void OnDestroy()

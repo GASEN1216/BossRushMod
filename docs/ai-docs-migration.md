@@ -368,3 +368,5 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 - 2026-09-29：`ZombieMode/AGENTS.md` 刷怪可达性一条按代码修正。官方 AI 走 A* Pathfinding，官方关卡不烘焙 Unity NavMesh，旧规则写的「NavMesh 采样与完整路径」在官方地图上恒不成立（丧尸模式 Demo 图收集刷怪点为 0 的根因）；现改为经共享 `SpawnPositionHelper.TryResolveReachableFrom`（A* 连通区优先，无 A* 退 NavMesh），并补上「收集与失败回基地都要等 `LevelManager.AfterInit`」。
 
 - 2026-09-29：`Common/UI/AGENTS.md` 交互骨架一条与 `docs/architecture/UI制作共识.md` §5 / §7 / §10 按 owner 要求改口径：鸭王杯赛前各页「警告 / 提示文字全部删掉，不要再自己往 UI 上加说明文字」——页头只留横幅 / 标题（去掉引导句），流程页不挂风险横幅或页脚免责小字，危险操作的后果写进确认框；代码侧由 `tests/ModeHPrematchDeclutterGuard.py` 钉住。
+
+- 2026-09-29：根 `AGENTS.md` §4.17 与 `SkyIsland/AGENTS.md` §5 的「F3 只在 Dev 构建存在」按代码改正为「只在 Dev 构建可用」：演练 / 全自动入口整份 `#if BOSSRUSH_DEV`，只读用例代码编入正式构建、由 `DevModeEnabled` 常量门控不可达（CR-2026-09-29-114）。

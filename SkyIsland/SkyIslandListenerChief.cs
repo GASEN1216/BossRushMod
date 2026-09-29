@@ -242,7 +242,7 @@ namespace BossRush
             ClearRocks();
             dropping = false;
             Announce("听雨人倒下了，洞里只剩下雨声。", "The Rain Listener falls. Only the sound of rain is left in the cave.", false);
-            SkyIslandBossForge.RaiseDefeated(profile, position);
+            SkyIslandBossForge.RaiseDefeated(profile, position, damage);
         }
 
         private void OnDestroy()

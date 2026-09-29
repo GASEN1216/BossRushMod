@@ -301,7 +301,13 @@ namespace BossRush
                     "You are not carrying the instrument. There is another one to salvage beside the wreck in Ground Zero.");
                 return false;
             }
-            if (!story.RequireAssetSnapshot(null, out reason)) return false;
+            if (!story.RequireAssetSnapshot(null, out reason))
+            {
+                // 错误码只进日志；玩家看得懂的只有「存档正忙，稍后再交」（发版审查 A-03）。
+                Debug.LogWarning("[SkyIslandPrelude] 交付前资产快照未就绪：" + reason);
+                reason = L10n.T("存档正忙，请稍后再交。", "The game is busy saving. Try handing it in again in a moment.");
+                return false;
+            }
             if (!story.TryDeliverQuest(SkyIslandStoryAction.UnlockRoute, DeliveryMoney, out reason)) return false;
             // 先落事实再收物品：收不走最多是玩家手里多一具卖不掉的仪器，反过来就是白扣一件交付物。
             if (!SkyIslandNavInstrumentConfig.TryConsumeOne())

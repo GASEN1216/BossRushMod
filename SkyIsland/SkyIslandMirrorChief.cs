@@ -286,7 +286,7 @@ namespace BossRush
             Vector3 position = boss != null ? boss.transform.position : transform.position;
             Cleanup();
             Announce("镜中客倒下了，池面上的倒影慢慢散了。", "The Mirror Guest falls and the reflections on the pool slowly fade.", false);
-            SkyIslandBossForge.RaiseDefeated(profile, position);
+            SkyIslandBossForge.RaiseDefeated(profile, position, damage);
         }
 
         /// <summary>收掉圈、倒影与烤出来的网格。倒下与销毁都走这里，不恢复 AI（人已经倒了或正在销毁）。</summary>

@@ -83,8 +83,6 @@ namespace BossRush
         internal SkyIslandOfficialQuestTaskDefinition[] Tasks;
         /// <summary>纯门：表里写，隔离回归穷举。</summary>
         internal Func<SkyIslandOfficialQuestContext, bool> Gate;
-        /// <summary>可空：运行时才知道的门（序章的场景 / 包 / 模式）。</summary>
-        internal Func<bool> RuntimeGate;
         /// <summary>可空：null 时桥走默认实现（<see cref="SkyIslandStoryService.TryApply"/> 对应动作）。</summary>
         internal SkyIslandOfficialQuestCommit Accept;
         internal SkyIslandOfficialQuestCommit Deliver;
@@ -188,8 +186,8 @@ namespace BossRush
             if (context.Data.Has(definition.AcceptedFlag) || context.Data.Has(definition.DeliveredFlag)) return false;
             string blocker;
             if (!SkyIslandStoryRules.CanApply(context.Data, definition.AcceptAction, out blocker)) return false;
-            if (definition.Gate != null && !definition.Gate(context)) return false;
-            return definition.RuntimeGate == null || definition.RuntimeGate();
+            // 运行时才知道的门（序章的场景 / 包 / 模式）也写在 Gate 里，由 SkyIslandOfficialQuestContext 带进来。
+            return definition.Gate == null || definition.Gate(context);
         }
 
         internal static bool TasksDone(SkyIslandOfficialQuestDefinition definition, SkyIslandStoryData data)

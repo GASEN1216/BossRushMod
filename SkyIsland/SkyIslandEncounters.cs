@@ -27,6 +27,8 @@ namespace BossRush
             /// <summary>带队是只在夜里出来的头目（蚋笛翁、镜中客）；整组换阵营（断风游猎）。装配时从档案读一次。</summary>
             internal bool NightLead, RivalFaction;
             internal float RetryAt;
+            /// <summary>本趟连续装配失败次数：决定重试间隔退避与是否再弹红字（发版审查 B-09），成功刷出一位就清零。</summary>
+            internal int SpawnFailures;
             internal SkyIslandEnemyRecord[] Actors;
             /// <summary>同伴死亡按数量合并；成功发送或过期后消费，不进存档。</summary>
             internal SkyIslandChatterEvent Mourning;
@@ -255,6 +257,13 @@ namespace BossRush
         internal const float AutoSpawnRange = 55f;
         /// <summary>手动挑战（折翎 / 钟守 / 噬风）的发起距离（米）：要求在同一座岛上，布局 v2 里最远的是折翎 63 米。</summary>
         internal const float ChallengeRange = 70f;
+        /// <summary>同时存活上限：自动组只能刷到这里（性能预算）。</summary>
+        private const int MaxActiveActors = 12;
+        /// <summary>
+        /// 剧情挑战（折翎 / 钟守 / 噬风 / 回响，每组至多 3 人）在上限之上的预留。远处没清的自动组会一直占着名额
+        /// （距离休眠已关），不留这几位，主线挑战会被别的岛上的敌群挡住、提示还说「附近还在交战」（发版审查 B-04）。
+        /// </summary>
+        private const int ChallengeReserve = 3;
 
         internal bool BeginChallenge(string id)
         {
@@ -286,7 +295,7 @@ namespace BossRush
                 reason = L10n.T("挑战地点就在这座岛上：走近一些再来。", "The challenge site is on this isle. Get closer first.");
                 return false;
             }
-            if (Time.time < encounter.RetryAt || AnySpawning() || CountActiveActors() + encounter.Count > 12)
+            if (Time.time < encounter.RetryAt || AnySpawning() || CountActiveActors() + encounter.Count > MaxActiveActors + ChallengeReserve)
             {
                 reason = L10n.T("附近还在交战：等这一阵打完再来挑战。", "There's still fighting nearby. Finish it before starting a challenge.");
                 return false;
@@ -347,14 +356,14 @@ namespace BossRush
             // 气泡排在生成之前：AnySpawning 期间（异步生成一组要跨好几帧）不推进的话，
             // chatter.PlayerPosition 会陈旧，而头目的血线 / 倒下台词按它判 20 米距离门。
             TickChatter();
-            // 同时最多 12 名活跃敌人，一次只启动一组异步生成。既有遭遇只补失去 owner 的未死槽。
+            // 自动组同时最多 MaxActiveActors 名活跃敌人（剧情挑战另有 ChallengeReserve 预留），一次只启动一组异步生成。既有遭遇只补失去 owner 的未死槽。
             if (AnySpawning()) return;
             foreach (Encounter encounter in encounters)
             {
                 // 已清场的组只剩一种情况还要刷：白天清过场、带队是夜限定头目、现在入夜了（NightLeadDue）。
                 if ((encounter.Manual && !encounter.Started) || (encounter.Cleared && !NightLeadDue(encounter)) || Time.time < encounter.RetryAt) continue;
                 int missing = CountMissing(encounter);
-                if (missing == 0 || active + missing > 12) continue;
+                if (missing == 0 || active + missing > MaxActiveActors) continue;
                 if ((player.transform.position - encounter.Marker.position).sqrMagnitude > AutoSpawnRange * AutoSpawnRange) continue;
                 Spawn(encounter);
                 break;
@@ -487,6 +496,7 @@ namespace BossRush
                             || created.GetComponent<SkyIslandBossVoice>() != null;
                         life.Bind(created, actor);
                         actor.Life = life;
+                        encounter.SpawnFailures = 0;
                         retained = true;
                     }
                     finally
@@ -498,9 +508,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                encounter.RetryAt = Time.time + 10;
-                Debug.LogWarning("[SkyIsland] encounter setup failed: " + e);
-                if (!closed) report(SkyIslandStoryRules.WithDetail(L10n.T("天空岛遭遇准备失败，10 秒后可重试：",
+                // 同一处反复失败（多半是落点数据问题）按 10 / 30 / 60 秒退避，红字只弹第一次，之后只进日志。
+                encounter.SpawnFailures++;
+                encounter.RetryAt = Time.time + (encounter.SpawnFailures <= 1 ? 10 : encounter.SpawnFailures == 2 ? 30 : 60);
+                Debug.LogWarning("[SkyIsland] encounter setup failed (" + encounter.Id + " x" + encounter.SpawnFailures + "): " + e);
+                if (!closed && encounter.SpawnFailures == 1) report(SkyIslandStoryRules.WithDetail(L10n.T("天空岛遭遇准备失败，10 秒后可重试：",
                     "Encounter setup failed; retrying in 10 seconds"), e.Message), true);
             }
             finally { encounter.Spawning = false; }

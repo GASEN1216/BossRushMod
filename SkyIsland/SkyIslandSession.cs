@@ -136,7 +136,7 @@ namespace BossRush
             }
             string mode;
             if (owner.ValidationHasActiveMode(out mode))
-            { reason = L10n.T("请先结束当前模式：", "End the current mode first: ") + mode; return false; }
+            { reason = L10n.T("请先结束当前模式：", "End the current mode first: ") + ActiveModeLabel(mode); return false; }
             CharacterMainControl main = CharacterMainControl.Main;
             if (main == null || main.Health == null || main.Health.IsDead)
             { reason = L10n.T("玩家未就绪", "The player is not ready"); return false; }
@@ -645,7 +645,7 @@ namespace BossRush
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Hud);
             if (returnRequested) { DispatchReturnIfReady(); return; }
             if (!ready) return;
-            if (worldStory != null) worldStory.Tick();
+            try { if (worldStory != null) worldStory.Tick(); } catch (Exception e) { TickFault("world_story", e); }
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.StoryRest);
             if (player == null || player != CharacterMainControl.Main || root == null || !entryScene.isLoaded)
             { Close(false, "owner_lost"); return; }
@@ -660,39 +660,8 @@ namespace BossRush
                 // 读条走游戏时间，面板把 timeScale 压到 0，这里既不推进也不清零 extractionHeld。
                 return;
             }
-            if (encounters != null) encounters.Tick();
-            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Encounters);
-            if (scavenging != null) scavenging.Tick();
-            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Scavenging);
-            if (residents != null)
-            {
-                // 折翎开战后本趟退下休整，避免最后一名倒下与剧情落盘之间的空窗、尸体和交互体重叠。
-                // 下一次出击恢复本人：胜负事实只开路，不永久剥夺聊天、送礼与婚姻入口；旧战败档同样恢复。
-                // 钟守的战斗对象是守钟装置，本人照旧只在战斗中隐藏。
-                residents.SetVisible("sky_zheling", encounters == null || !encounters.WasStartedThisRaid("Zheling"));
-                residents.SetVisible("sky_bellkeeper", !IsStoryChallengeActive("BellKeeper"));
-                // 活人感：头顶气泡 + 说话时停下脚步。自己节流，说话与否的四道门都在 SkyIslandChatter。
-                residents.Tick(player.transform.position, story == null ? null : story.Current);
-            }
-            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Residents);
-            // 落盘门按半径而不是全图。自动组改成按出击刷新之后，全岛几乎总有活着的敌人，
-            // 用 `HasLivingEnemies` 等于把这道门永久关上：已接受的剧情事实只能等离岛或死亡才写盘，
-            // 中途崩溃或强退就全丢。半径口径既保留「不在交火帧写盘」的本意，又让玩家清完手边这一段
-            // 就能安全落盘。
-            if (story != null)
-                story.Tick(encounters == null ||
-                    !encounters.HasLivingEnemiesWithin(player.transform.position, SaveQuietRadius));
-            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.StorySave);
-            if (gates != null) gates.Apply(story.Current);
-            // 钟庭环与 BellExitIfUnlocked() 同一事实源：地上看得到的圈，就是站进去能走的圈。
-            if (extractionRings != null) extractionRings.Apply(BellExitIfUnlocked() != null);
-            if (extractionRings != null) extractionRings.ApplyBeacons(WindExitIfUnlocked() != null, StarExitIfUnlocked() != null);
-            if (mapMarkers != null) mapMarkers.Apply(story.Current, exitMarker, BellExitIfUnlocked(), WindExitIfUnlocked(), StarExitIfUnlocked());
-            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.GatesAndMarkers);
-            if (lighting != null) lighting.Tick();
-            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Lighting);
-            if (ambience != null) { ambience.ApplyStory(story.Current); ambience.Tick(player.transform.position); }
-            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Ambience);
+            // 遭遇、搜刮、居民、落盘、门与地图标记、光照、环境音：见 SkyIslandSessionTick.cs，每一步各自隔离异常。
+            TickSubsystems();
             Vector3 local = player.transform.position - origin;
             if (local.y < -8 || Mathf.Abs(local.x) > 475 || Mathf.Abs(local.z) > 425)
             { Rescue(); return; }
@@ -901,7 +870,9 @@ namespace BossRush
         {
             if (lease == null || !lease.LoadFinished || SceneLoader.IsSceneLoading || lease.IsReturning) return;
             // 官方返回失败后仍保留请求；租约内部节流重试，不能由首次派发永久封死。
-            if (story != null) story.Tick(true);
+            // 撤离返航：随出击结算的记录（点灯、放生、纪念品）先入待写批次，官方 NotifyEvacuated 紧接着的
+            // 存档把它们与已扣料的背包写进同一次落盘；等岛场景卸载再结算，中间强退会丢料不留记录（发版审查 A-02）。
+            if (story != null) { if (moved) story.SettleRaidHeld(true); story.Tick(true); }
             lease.ReturnToBase(moved);
         }
         private void CancelPendingInitialization()

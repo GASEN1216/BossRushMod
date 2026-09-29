@@ -51,7 +51,8 @@ CHATTER = clean_source(read("SkyIslandChatter.cs"))
 VOICE = clean_source(read("SkyIslandBossVoice.cs"))
 ENCOUNTERS = clean_source(read("SkyIslandEncounters.cs"))
 RESIDENTS = clean_source(read("SkyIslandResidents.cs"))
-SESSION = clean_source(read("SkyIslandSession.cs"))
+# 会话每帧子系统 2026-09-29 提取到同一 partial 的 SkyIslandSessionTick.cs（发版审查 A-01），断言照旧针对整个类。
+SESSION = clean_source(read("SkyIslandSession.cs") + "\n" + read("SkyIslandSessionTick.cs"))
 FORGE = clean_source(read("SkyIslandBossForge.cs"))
 RULES = clean_source(read("SkyIslandBossRules.cs"))
 

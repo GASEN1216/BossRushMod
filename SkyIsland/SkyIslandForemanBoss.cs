@@ -567,7 +567,7 @@ namespace BossRush
             Vector3 position = boss != null ? boss.transform.position : transform.position;
             Cleanup(false);
             Announce("残星匠首倒下了，背上的星炉慢慢熄了火。", "The Starforge Foreman falls and the furnace on its back gutters out.", false);
-            SkyIslandBossForge.RaiseDefeated(profile, position);
+            SkyIslandBossForge.RaiseDefeated(profile, position, damage);
         }
 
         private void Cleanup(bool resumeAi)

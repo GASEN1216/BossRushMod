@@ -399,7 +399,7 @@ namespace BossRush
             Vector3 position = boss != null ? boss.transform.position : transform.position;
             Cleanup();
             Announce("穗镰倒下了，水渠的闸慢慢落了回去。", "Grain Sickle falls, and the sluice gate slowly settles shut.", false);
-            SkyIslandBossForge.RaiseDefeated(profile, position);
+            SkyIslandBossForge.RaiseDefeated(profile, position, damage);
         }
 
         private void OnDestroy()

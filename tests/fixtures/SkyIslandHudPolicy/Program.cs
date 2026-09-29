@@ -87,6 +87,15 @@ internal static class Program
         Check(q.TryDequeue(out entry) && entry.Text == "A" && !entry.Warning, "then the normal caption");
         Check(!q.TryDequeue(out entry), "empty queue yields nothing");
 
+        // 8b. 警示过期（发版审查 C-04）：隐藏期间攒下的机制提示超过时限就丢，普通字幕不过期。
+        q = new SkyIslandCaptionQueue(3);
+        q.Admit("OldW", true, null, false, out preempt, 1f);
+        q.Admit("OldN", false, null, false, out preempt, 1f);
+        q.Admit("NewW", true, null, false, out preempt, 9f);
+        Check(q.TryDequeue(out entry, 10f, 3f) && entry.Text == "NewW", "a fresh warning plays; the stale one ahead of it is skipped");
+        Check(q.TryDequeue(out entry, 10f, 3f) && entry.Text == "OldN", "normal captions never expire");
+        Check(!q.TryDequeue(out entry, 10f, 3f) && q.Count == 0, "nothing left after the stale warning was dropped");
+
         // 9. 随机序列上的不变式：容量不超、警示永远在普通字幕前面、不含重复、
         //    有普通字幕在队时警示绝不被丢。固定种子，跨机器结果一致。
         var random = new Random(20260910);

@@ -53,6 +53,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SPLIT_PARTS = {
     "SkyIsland/SkyIslandHud.cs": "SkyIsland/SkyIslandHud_Layout.cs",
     "SkyIsland/SkyIslandStoryPresentation.cs": "SkyIsland/SkyIslandStoryPresentation_Parts.cs",
+    # 会话每帧子系统 2026-09-29 提取到同一 partial 的 SkyIslandSessionTick.cs（发版审查 A-01），断言照旧针对整个类。
+    "SkyIsland/SkyIslandSession.cs": "SkyIsland/SkyIslandSessionTick.cs",
 }
 
 
@@ -391,7 +393,7 @@ def main():
     if re.search(r"\bQueue\s*<", hud):
         errors.append("SkyIslandHud 又自己维护了一条字幕队列：排队规则只许写在 SkyIslandCaptionQueue（隔离回归执行的那一份）")
     admit = need_body(caption_queue,
-                      "internal Admission Admit(string text, bool warning, string showing, bool showingWarning, out bool preempt)",
+                      "internal Admission Admit(string text, bool warning, string showing, bool showingWarning, out bool preempt, float stamp = 0f)",
                       "字幕分级规则")
     if admit and "FirstNormalIndex()" not in admit:
         errors.append("队满时必须先丢普通字幕，不得按到达顺序丢最旧的（那会把 Boss 机制提示挤掉）")

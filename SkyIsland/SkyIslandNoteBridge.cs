@@ -83,7 +83,7 @@ namespace BossRush
                 if (!syncPending && ReferenceEquals(index, mirroredIndex)) return;
                 nextSync = Time.unscaledTime + 1f;
                 if (index == null || SavesSystem.IsSaving) return;
-                SkyIslandStoryData data = current;
+                SkyIslandStoryData data = current ?? SkyIslandStorySaveRecovery.PendingCurrent();
                 if (data == null)
                 {
                     data = SavesSystem.KeyExisits(SkyIslandStoryRules.StorageKey)

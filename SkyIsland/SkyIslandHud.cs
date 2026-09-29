@@ -224,6 +224,8 @@ namespace BossRush
         /// <summary>字幕压暗底的最窄宽度：两三个字的短提示也要有一块看得出形状的底。</summary>
         private const float CaptionScrimMinWidth = 360f;
         private const float CaptionFadeIn = 0.25f;
+        /// <summary>警示字幕入队后超过这么多秒游戏时间还没轮到就丢掉（噬风预警 1.4 秒、多数头目圈 0.8–1.4 秒）。</summary>
+        private const float WarningCaptionMaxAge = 3f;
         private const float CaptionFadeOut = 0.5f;
         /// <summary>字幕淡入时从下方升起的像素数。与大标题同一套动势语言，只是幅度更小。</summary>
         private const float CaptionRise = 6f;
@@ -612,7 +614,7 @@ namespace BossRush
         {
             bool preempt;
             SkyIslandCaptionQueue.Admission admission = captions.Admit(value, warning,
-                captionAge >= 0f ? captionShowing : null, captionWarning, out preempt);
+                captionAge >= 0f ? captionShowing : null, captionWarning, out preempt, Time.time);
             // 同一句正在播：把停留重新拉满而不是再排一遍（战斗门控提示会被玩家连按触发）。
             // 已经在被打断淡出的那条不再拉回来。
             if (admission == SkyIslandCaptionQueue.Admission.RefreshShowing)
@@ -982,7 +984,8 @@ namespace BossRush
             if (captionAge < 0f)
             {
                 SkyIslandCaptionQueue.Entry next;
-                if (!captions.TryDequeue(out next)) return;
+                // 警示按游戏时间过期：隐藏期间攒下的机制提示，关掉官方界面时那一招多半已经结算了（C-04）。
+                if (!captions.TryDequeue(out next, Time.time, WarningCaptionMaxAge)) return;
                 StartCaption(next.Text, next.Warning);
             }
 

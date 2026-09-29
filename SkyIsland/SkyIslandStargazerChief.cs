@@ -189,7 +189,7 @@ namespace BossRush
             Vector3 position = boss != null ? boss.transform.position : transform.position;
             DestroyRing();
             Announce("瞭台观星手倒下了，镜筒从台边滚了下去。", "The overlook stargazer falls and its spyglass rolls off the platform.", false);
-            SkyIslandBossForge.RaiseDefeated(profile, position);
+            SkyIslandBossForge.RaiseDefeated(profile, position, damage);
         }
 
         private void OnDestroy()

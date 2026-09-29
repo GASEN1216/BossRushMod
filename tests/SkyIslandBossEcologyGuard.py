@@ -329,7 +329,7 @@ def check(raw):
         destroy = body_of(source, "private void OnDestroy()")
         require(errors, source, "health.OnDeadEvent.AddListener(OnDead);", PATHS[key] + " 要订自己的死亡事件")
         require(errors, destroy, "health.OnDeadEvent.RemoveListener(OnDead);", PATHS[key] + " 要在 OnDestroy 退订死亡事件")
-        require(errors, source, "SkyIslandBossForge.RaiseDefeated(profile, position);", PATHS[key] + " 倒下时派发击败事件")
+        require(errors, source, "SkyIslandBossForge.RaiseDefeated(profile, position, damage);", PATHS[key] + " 倒下时派发击败事件（带致死一击，首杀只认主角）")
         require(errors, source, "SkyIslandBossRules.TelegraphSeconds(", PATHS[key] + " 的预警时长要过 TelegraphSeconds（静听耳罩让所有头目的预警更久）")
         if squash("health.OnHurtEvent.AddListener(OnHurt);") in squash(source):
             require(errors, destroy, "health.OnHurtEvent.RemoveListener(OnHurt);", PATHS[key] + " 的受击回调要在 OnDestroy 退订")

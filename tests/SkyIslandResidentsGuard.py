@@ -9,7 +9,9 @@ DATA = json.loads((ROOT / 'Assets/Data/DuckNpcs.json').read_text(encoding='utf-8
 NPCS = {row['id']: row for row in DATA['npcs']}
 SOURCE = clean_source((ROOT / 'SkyIsland/SkyIslandResidents.cs').read_text(encoding='utf-8-sig'))
 INTERACT = clean_source((ROOT / 'SkyIsland/SkyIslandResidentInteractable.cs').read_text(encoding='utf-8-sig'))
-SESSION = clean_source((ROOT / 'SkyIsland/SkyIslandSession.cs').read_text(encoding='utf-8-sig'))
+# 会话每帧子系统 2026-09-29 提取到同一 partial 的 SkyIslandSessionTick.cs（发版审查 A-01），断言照旧针对整个类。
+SESSION = clean_source((ROOT / 'SkyIsland/SkyIslandSession.cs').read_text(encoding='utf-8-sig') + '\n'
+                       + (ROOT / 'SkyIsland/SkyIslandSessionTick.cs').read_text(encoding='utf-8-sig'))
 errors = []
 
 for npc_id in ['sky_qinghe', 'sky_weibai', 'sky_fuzhou', 'sky_miantai', 'sky_zheling', 'sky_bellkeeper']:

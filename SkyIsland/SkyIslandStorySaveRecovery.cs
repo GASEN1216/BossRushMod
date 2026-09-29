@@ -16,6 +16,17 @@ namespace BossRush
             return false;
         }
 
+        /// <summary>
+        /// 当前槽还压着没写盘的剧情时返回它的内存进度，否则 null。
+        /// 基地的图鉴镜像读的是磁盘；离岛写盘被推迟时磁盘还是旧值，照它反向 Relock 会把这趟刚收录的见闻收回（发版审查 A-04）。
+        /// </summary>
+        internal static SkyIslandStoryData PendingCurrent()
+        {
+            foreach (SkyIslandStorySaveRecovery recovery in UnityEngine.Object.FindObjectsOfType<SkyIslandStorySaveRecovery>(true))
+                if (recovery.story != null && recovery.story.IsCurrentSlot) return recovery.story.Current;
+            return null;
+        }
+
         internal static void CloseOrRetain(SkyIslandStoryService value)
         {
             if (value == null || value.TryClose()) return;

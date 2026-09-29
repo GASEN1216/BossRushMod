@@ -205,7 +205,7 @@ namespace BossRush
 
         // ---- 截信人 ----
         internal const float SnatchRange = 2.5f;
-        /// <summary>伸手预警结束时还在这个距离内就被抢：比起手距离宽一点，退得不够远照样被抢。</summary>
+        /// <summary>伸手预警结束时还在这个距离内就被抢：比起手距离宽一点，退得不够远照样被抢。地上的伸手圈按这个半径画（圈即判定）。</summary>
         internal const float SnatchReach = 2.9f;
         internal const float SnatchTelegraph = 0.8f;
         internal const float SnatchCooldown = 7f;
@@ -302,8 +302,11 @@ namespace BossRush
         internal const float LungeTelegraphBroken = 1.8f;
         internal const float LungeRadius = 1.8f;
         internal const float LungeDamage = 14f;
-        /// <summary>冲步停在玩家面前（追的第二步停在身后）这么远。</summary>
-        internal const float LungeStandOff = 2.5f;
+        /// <summary>
+        /// 冲步停在玩家面前（追的第二步停在身后）这么远。必须小于 <see cref="LungeRadius"/>：落点圈要罩住站着不动的玩家，
+        /// 「冲锋线亮起就横着让开」才成立。旧值 2.5 m 大于 1.8 m 圈 + 官方默认受击半径 0.45 m，站定的人永远吃不到（发版审查 B-01）。
+        /// </summary>
+        internal const float LungeStandOff = 1.2f;
         internal const float LungeMinRange = 6f;
         internal const float LungeMaxRange = 28f;
         internal const float LungeStagger = 1.2f;
@@ -805,7 +808,7 @@ namespace BossRush
                 case 0: return EscapeSpeed(StarfireRadius, StarfireTelegraph);
                 case 1: return EscapeSpeed(FlareRadius, MarkLockSeconds);
                 case 2: return EscapeSpeed(AmbushRadius, AmbushTelegraph);
-                case 3: return EscapeSpeed(SnatchRange, SnatchTelegraph);
+                case 3: return EscapeSpeed(SnatchReach, SnatchTelegraph);
                 case 4: return EscapeSpeed(MudRadius, MudTelegraph);
                 case 5: return EscapeSpeed(SweepRadius, SweepTelegraph);
                 case 6: return EscapeSpeed(RockfallRadius, RockfallTelegraph);

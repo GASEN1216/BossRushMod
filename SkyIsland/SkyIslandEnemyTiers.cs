@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BossRush
@@ -122,7 +123,7 @@ namespace BossRush
         {
             try
             {
-                LocalizationHelper.InjectLocalization(key, L10n.T(nameCn, nameEn));
+                InjectName(key, nameCn, nameEn);
                 if (character.characterPreset == null) return;
                 character.characterPreset.nameKey = key;
                 if (tier != SkyIslandEnemyTier.Scav) character.characterPreset.showName = true;
@@ -220,7 +221,31 @@ namespace BossRush
             catch (Exception e) { Debug.LogWarning("[SkyIslandEnemy] AI 调参失败：" + e.Message); }
         }
 
-        internal static void ResetStaticCaches() { colorBlock = null; }
+        /// <summary>
+        /// 刷怪时注入过的血条名（键 → 中 / 英）。官方 SetOverrideText 只存一份字符串，玩家在岛上切语言后
+        /// 场上敌人的名字会停在旧语言；语言切换重注入（`InjectLocalization_Extra_Integration`）经 <see cref="ReinjectNames"/> 按当前语言重写（发版审查 B-06）。
+        /// 键数有界：档次 / 头目 / 具名对手的名字键总共几十个。
+        /// </summary>
+        private static readonly Dictionary<string, string[]> injectedNames = new Dictionary<string, string[]>(StringComparer.Ordinal);
+
+        internal static void InjectName(string key, string nameCn, string nameEn)
+        {
+            if (string.IsNullOrEmpty(key)) return;
+            injectedNames[key] = new[] { nameCn, nameEn };
+            LocalizationHelper.InjectLocalization(key, L10n.T(nameCn, nameEn));
+        }
+
+        internal static void ReinjectNames()
+        {
+            try
+            {
+                foreach (KeyValuePair<string, string[]> entry in injectedNames)
+                    LocalizationHelper.InjectLocalization(entry.Key, L10n.T(entry.Value[0], entry.Value[1]));
+            }
+            catch (Exception e) { Debug.LogWarning("[SkyIslandEnemy] 血条名重注入失败：" + e.Message); }
+        }
+
+        internal static void ResetStaticCaches() { colorBlock = null; injectedNames.Clear(); }
     }
 
     /// <summary>档次（数值 / 外观 / 名字）已施加的一次性标记。随角色对象一起销毁，不需要额外清理。</summary>

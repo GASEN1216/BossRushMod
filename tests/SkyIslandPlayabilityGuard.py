@@ -21,7 +21,8 @@ def main():
     boss = read("SkyIsland/SkyIslandStormBoss.cs")
     enc = read("SkyIsland/SkyIslandEncounters.cs")
     rules = read("SkyIsland/SkyIslandStoryRules.cs")
-    session = read("SkyIsland/SkyIslandSession.cs")
+    # 会话每帧子系统 2026-09-29 提取到同一 partial 的 SkyIslandSessionTick.cs（发版审查 A-01），断言照旧针对整个类。
+    session = read("SkyIsland/SkyIslandSession.cs") + "\n" + read("SkyIsland/SkyIslandSessionTick.cs")
     errors = []
 
     def need(source, label, *tokens):

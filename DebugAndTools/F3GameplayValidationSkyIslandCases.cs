@@ -671,7 +671,7 @@ namespace BossRush
             bool canWrite = story.CanWrite;
             metrics = "current_slot=" + currentSlot + ",can_write=" + canWrite
                 + ",recovery_pending=" + SkyIslandStorySaveRecovery.IsPending()
-                + ",status=" + story.SaveStatus;
+                + ",status=" + story.SaveStatus + ",error=" + (story.SaveErrorCode ?? "none");
             bool ok = currentSlot && canWrite;
             if (!ok) reason = "剧情存档不可写：槽位已变、有写屏障或 store 处于单向故障（进度提交会被拒）";
             return ok;

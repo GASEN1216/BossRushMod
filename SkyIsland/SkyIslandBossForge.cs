@@ -48,8 +48,9 @@ namespace BossRush
     internal static class SkyIslandBossForge
     {
         /// <summary>
-        /// 头目 / 岛主倒下。由天空岛剧情 owner 订阅（记首杀手记、回话），订阅方必须幂等并在销毁时退订。
-        /// 带档案与倒下位置；只由招式控制器的死亡回调派发。
+        /// 头目 / 岛主被**主角**打倒。由天空岛剧情 owner 订阅（记首杀手记、回话），订阅方必须幂等并在销毁时退订。
+        /// 带档案与倒下位置；只由招式控制器的死亡回调派发。被拾荒者、断风或其它来源打死不派发（owner 2026-09-29 定：
+        /// 首杀只认主角击杀，口径同官方击杀计数 `CharacterMainControl.OnDead` 的 `fromCharacter.IsMainCharacter`）。
         /// </summary>
         internal static event Action<SkyIslandBossProfile, Vector3> Defeated;
 
@@ -65,7 +66,12 @@ namespace BossRush
             }
             created.gameObject.AddComponent<SkyIslandBossMark>();
             ApplyIdentity(created, profile);
-            if (!string.IsNullOrEmpty(profile.FaceId)) SkyIslandResidents.ApplyBattleFace(created, profile.FaceId);
+            // 捏脸是可失败的装饰（同下方掉落 / 台词）：坏蓝图抛出来会让带队位整组刷不出、10 秒重试一次（发版审查 B-05）。
+            if (!string.IsNullOrEmpty(profile.FaceId))
+            {
+                try { SkyIslandResidents.ApplyBattleFace(created, profile.FaceId); }
+                catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 专属捏脸失败（照常参战）：" + profile.Id + " " + e.Message); }
+            }
             string reason;
             if (!TryEquip(created, profile, out reason))
                 Debug.LogWarning("[SkyIslandBoss] 配装失败，" + profile.Id + " 以无专属装备形态参战：" + reason);
@@ -125,7 +131,10 @@ namespace BossRush
         {
             try
             {
-                LocalizationHelper.InjectLocalization(profile.NameKey, SkyIslandBossRules.Name(profile));
+                // 与 SkyIslandBossRules.Name(profile) 同一份拼法；登记中英两份，切语言时随档次名一起重注入（B-06）。
+                SkyIslandEnemyTiers.InjectName(profile.NameKey,
+                    SkyIslandBossRules.NameCn(profile.Kind) + SkyIslandBossRules.VariantCn(profile.Variant),
+                    SkyIslandBossRules.NameEn(profile.Kind) + SkyIslandBossRules.VariantEn(profile.Variant));
                 CharacterRandomPreset preset = created.characterPreset;
                 if (preset == null) return;
                 // 这是遭遇 owner 本次生成克隆出来的 preset，改它不污染官方角色池。
@@ -313,14 +322,23 @@ namespace BossRush
             return SkyIslandBossRules.IsRivalFaction(encounterId);
         }
 
-        internal static void RaiseDefeated(SkyIslandBossProfile profile, Vector3 position)
+        internal static void RaiseDefeated(SkyIslandBossProfile profile, Vector3 position, DamageInfo damage)
         {
-            // 倒下的回执先于剧情回调：纯表现，失败只记警告（口径同结算表现）。
+            // 倒下的回执先于剧情回调：纯表现，失败只记警告（口径同结算表现）。谁打死的都放。
             if (profile != null) SkyIslandImpactFx.DefeatBurst(null, position, DefeatTint(profile));
             Action<SkyIslandBossProfile, Vector3> handler = Defeated;
             if (handler == null || profile == null) return;
+            // 首杀只认主角击杀（CR-2026-09-29-112）：尸体箱与专属掉落照官方走，只是不记手记、不播首杀字幕。
+            if (!KilledByMainCharacter(damage)) return;
             try { handler(profile, position); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 击败回调失败：" + e.Message); }
+        }
+
+        /// <summary>这一击出自主角：与官方击杀计数同口径（`dmgInfo.fromCharacter && fromCharacter.IsMainCharacter`）。</summary>
+        internal static bool KilledByMainCharacter(DamageInfo damage)
+        {
+            try { return damage.fromCharacter != null && damage.fromCharacter.IsMainCharacter; }
+            catch (Exception) { return false; }
         }
 
         // ====================================================================
@@ -398,6 +416,13 @@ namespace BossRush
         internal static LineRenderer StraightLine(Transform parent, string name, float width, Color color)
         {
             LineRenderer line = SkyIslandGroundRing.Create(parent, Vector3.zero);
+            // 与 CreateGroundRing 同口径：材质不可用时 GroundRing 返回 disabled 的线。静默返回会留下「看不见却绊人」的绊索，
+            // 抛出去让调用方按「画不出来就连桩一起收」收尾（发版审查 B-07）。
+            if (!line.enabled)
+            {
+                UnityEngine.Object.Destroy(line.gameObject);
+                throw new InvalidOperationException("头目直线表现材质不可用：" + name);
+            }
             line.gameObject.name = name;
             line.transform.localRotation = Quaternion.identity;
             line.loop = false;

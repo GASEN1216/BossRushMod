@@ -211,9 +211,9 @@ namespace BossRush
                 if (store.HasWriteBarrier)
                     return L10n.T("群岛记录无法读取，已保护原存档；任务暂不可提交",
                         "Archipelago records are unreadable; the original save is protected and progress cannot be submitted");
+                // 错误码（如 flush_deferred_is_saving）只给日志与 F3 读 SaveErrorCode，不念给玩家听（发版审查 A-03）。
                 if (store.IsStoreFaulted || lastSaveError != null)
-                    return L10n.T("群岛进度保存待重试：", "Archipelago progress save will retry: ") +
-                        (store.LastError ?? lastSaveError);
+                    return L10n.T("群岛进度暂未保存，稍后自动重试", "Archipelago progress isn't saved yet. It will retry automatically");
                 return store.HasPendingWrite || coordinator.HasDeferredFlush
                     ? L10n.T("群岛记录待安全时机保存", "Archipelago records will save at a safe moment")
                     : L10n.T("群岛记录已同步", "Archipelago records are in sync");
@@ -227,6 +227,8 @@ namespace BossRush
         /// （`SkyIslandSession` 的 `!story.CanWrite ? story.SaveStatus : null`），这里跟上同一条口径。
         /// <see cref="SaveStatus"/> 本身不动：F3 验收面板要读到「正常」那一支。
         /// </summary>
+        /// <summary>最近一次存档错误码；只给日志与 F3 诊断，玩家看的是 <see cref="SaveStatus"/>。</summary>
+        internal string SaveErrorCode { get { return store.LastError ?? lastSaveError; } }
         internal string SaveProblem
         {
             get

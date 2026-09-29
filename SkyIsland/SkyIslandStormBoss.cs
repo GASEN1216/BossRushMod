@@ -351,6 +351,16 @@ namespace BossRush
         {
             if (finished) return;
             finished = true;
+            // 官方死亡帧先停用 Boss 物体（控制器挂在它身上），预警 / 脉冲协程随之中止、走不到自己的收尾：
+            // 挂在地图根上的圈与预警灯由这里淡出回收，否则 Boss 死了地上还亮着一圈（发版审查 B-03）。
+            if (warningLight != null) SkyIslandLightFade.FadeTo(warningLight, 0f, 0.2f, true);
+            else if (warningObject != null) Destroy(warningObject);
+            LineRenderer ringLine = ringObject != null ? ringObject.GetComponent<LineRenderer>() : null;
+            if (ringLine != null) SkyIslandRingFadeOut.Begin(ringLine, 0.16f);
+            else if (ringObject != null) Destroy(ringObject);
+            warningObject = null;
+            warningLight = null;
+            ringObject = null;
             if (boss != null) SkyIslandImpactFx.DefeatBurst(boss.transform.parent, boss.transform.position, RingTint);
             if (echo)
                 Announce("回响散了。风晶烧过的地方落下一箱东西。",

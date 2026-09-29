@@ -49,5 +49,5 @@ The Starforge Foreman wears the full Starworks set and always leaves one piece: 
 - Wear its lens helm down to zero durability and it can no longer mark anyone.
 
 ::: tip
-Both show a boss health bar and name. First kills of the Foreman and the Stargazer are recorded in the archipelago journal under "About the isles → This run · journey progress".
+Both show a boss health bar and name. First kills you land yourself on the Foreman and the Stargazer are recorded in the archipelago journal under "About the isles → This run · journey progress".
 :::
