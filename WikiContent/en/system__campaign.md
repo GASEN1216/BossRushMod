@@ -63,7 +63,7 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 - Reward **20,000** + BossRush Ticket x2. Handing in opens the base's **garden site** for you.
 
 #### Chapter 2 · The Fighter With a Garden
-- Base: build the garden (pay at the site to start construction)
+- Base: build the backyard garden (pay at the site to start construction)
 - Base: give Jeff 2 backyard harvests (Dragonbreath Fruit, Emberheart Chili or Umbral Mushroom, any mix). Carry them in your backpack; they are taken when you hand in. Crops need watering and ripen in about 20 minutes.
 - Go to **From Scratch**
 - Enter with only a ticket, including an empty pet bag, and reach wave 5. Equip anything you find during the run.
@@ -142,22 +142,22 @@ Alongside the six campaign chapters, Jeff offers fourteen one-time introductions
 
 Every hand-in pays a reward, and the item is usually what the next introduction needs, so you can go straight on without buying it first. Reward items go to your backpack first, then storage. The fourteen together pay **74,000** cash.
 
-| Introduction | Reward |
-| --- | --- |
-| Bring Your Own Gear (Fate Echo) | 3,000 + BossRush Ticket x2 |
-| Your Turn in the Stands (Black Market Duck Cup) | 3,000 + Relic Egg x1 |
-| Room for a Cub (Pet Nest) | 3,000 + BossRush Ticket x1 |
-| Expect a Surprise (random events) | 5,000 + BossRush Ticket x1 |
-| Something from the Clouds (Sky Island gear, hand in Brass Scrap x5) | 10,000 |
-| Start with Empty Hands (From Scratch) | 5,000 + Random Flag x1 |
-| Choose Your Side (Faction War) | 5,000 + Bloodhunt Transponder x1 + BossRush Ticket x1 |
-| Borrowed Time (Blood Hunt) | 3,000 + Zombie Tide Invitation x1 |
-| Hear the Horde (Zombie Mode) | 5,000 + Affix Forge Stone x2 |
-| A Place for Seeds (garden) | 3,000 + Dragon Seed, Ember Seed and Phantom Spore x1 each |
-| Keep a Trophy (display) | 6,000 + Dragonbreath Fruit, Emberheart Chili and Umbral Mushroom x1 each |
-| Give Gear Some Character (affix forging) | 5,000 + Cold Quench Fluid x2 |
-| Give Old Gear a Chance (reforge) | 8,000 |
-| Read the Daily Paper (daily report) | 10,000 + Relic Egg x1 |
+- **Bring Your Own Gear (Fate Echo)** — 3,000 + BossRush Ticket x2
+- **Your Turn in the Stands (Black Market Duck Cup)** — 3,000 + Relic Egg x1
+- **Room for a Cub (Pet Nest)** — 3,000 + BossRush Ticket x1
+- **Expect a Surprise (random events)** — 5,000 + BossRush Ticket x1
+- **Something from the Clouds (Sky Island gear, hand in Brass Scrap x5)** — 10,000
+- **Start with Empty Hands (From Scratch)** — 5,000 + Random Flag x1
+- **Choose Your Side (Faction War)** — 5,000 + Bloodhunt Transponder x1 + BossRush Ticket x1
+- **Borrowed Time (Blood Hunt)** — 3,000 + Zombie Tide Invitation x1
+- **Hear the Horde (Zombie Mode)** — 5,000 + Affix Forge Stone x2
+- **A Place for Seeds (garden)** — 3,000 + Dragon Seed, Ember Seed and Phantom Spore x1 each
+- **Keep a Trophy (display)** — 6,000 + Dragonbreath Fruit, Emberheart Chili and Umbral Mushroom x1 each
+- **Give Gear Some Character (affix forging)** — 5,000 + Cold Quench Fluid x2
+- **Give Old Gear a Chance (reforge)** — 8,000
+- **Read the Daily Paper (daily report)** — 10,000 + Relic Egg x1
+
+What each one asks for:
 
 - **Modes**: From Scratch, Faction War, Blood Hunt, Fate Echo, Black Market Duck Cup and Zombie Mode. Each quest explains the entry items and preparation; starting a real run is enough, with no first-try victory required.
 - **Pet Nest and random events**: hatch or deploy a cub, or experience a random event in a supported mode.

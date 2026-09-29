@@ -1,5 +1,7 @@
 # Mode H：百战留痕（黑市鸭王杯）
 
+2026-09-30：模组 Boss 战力改为龙裔 1500、幻影女巫 500、焚天龙皇 2000（`ModeHGroupConfig`）。
+
 2026-09-29 第四轮（COMPAT，L1/L2）：龙裔在鸭王杯里用 `RefreshPlayerReference()` 把「玩家」引用换成 AI 锁定的对手，二阶段弹幕与燃烧弹朝对面放；龙皇阵营模式下有攻击循环 / 自定义射击心跳看门狗（`TickFactionLoopWatchdog`），循环被静默停掉时重开并打警告。
 
 2026-09-29 第三轮（焚天龙皇，COMPAT，L1/L2）：阵营模式下龙皇攻击循环不再等 1 秒错峰；鸭王杯里龙皇血量 ×3（`ModeHGroupConfig.CustomHealthScale`）；冲击波不击飞看台玩家；「孩儿护我」龙裔落在龙皇脚下；召唤物进 `ModeHGroupBattle` 单位表（`IsAuxiliary`、`SummonedBy`），可切观战、被索敌改打对面；龙皇飞天期间 `IsInChildProtection` 为真时不被锁，正锁着它的优先改打它召唤的龙裔。

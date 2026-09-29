@@ -2,10 +2,10 @@
 
 Some things the Mod never tells you about. These are the ones that have been dug up so far.
 
-### "Protect me, my child!"
+### "My child, protect me!"
 
 When the Skyburner Dragon Lord's health bottoms out, it doesn't fall over. It rises into the air
-and shouts: **"Protect me, my child!"**
+and shouts: **"My child, protect me!"**
 
 And a Dragon Descendant drops in front of it and answers with one word: **"Father!"**
 

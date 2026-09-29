@@ -40,8 +40,7 @@ Fortunes and gossip are flavor text. They grant no hidden stats and do not unloc
   wiping out dozens of enemies, dying repeatedly, or making a lot of money each get their own
   story. Doing nothing at all gets its own story too.
 - **Yesterday's recap**: kills, boss kills, deployments, extractions, deaths, money in and out,
-  damage dealt, damage taken, and your biggest single hit. Only hostile characters killed by the player count; bosses are included in the kill total. Damage taken includes environmental damage. Black Market Duck Cup matches are excluded - your contracted
-  fighters did the work, not you, so bounties don't progress there either.
+  damage dealt, damage taken, and your biggest single hit. Only hostile characters killed by the player count; bosses are included in the kill total. Damage taken includes environmental damage. Black Market Duck Cup matches are excluded - the Bosses did the fighting, not you, so bounties don't progress there either.
 - **Bounty column**: yesterday's bounty result, plus today's new bounty, live progress, payout and settlement timing.
 - **Weather & gossip**: weather at this world time tomorrow (including storms; not a forecast for the entire day, with fixed map weather labeled separately), today's do's and don'ts,
   and word on the street.

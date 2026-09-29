@@ -12,7 +12,7 @@ The nine waves form three acts. Waves 3, 6, and 9 feature your Nemesis. Losing a
 - **Fate Echo Relic** (sold by the base vending machine)
 - Your current weapons, armor, ammo, consumables, and other equipment stay with you
 - No Faction Flag or Bloodhunt Transponder (those take priority for Faction War / Blood Hunt)
-- Map selection prepays the ticket. The contract page opens after loading with the first contract already selected, so "Fight Now" works right away; click the other card to switch, or press "Not Now" to back out with the ticket refunded. The Relic is consumed only when you confirm entry
+- Map selection prepays the ticket. The contract page opens after loading with the first contract already selected, so "Fight Now" works right away; click the other card to switch, or close the page with the "×" at the top right (or Esc) to back out with the ticket refunded. The Relic is consumed only when you confirm entry
 
 Canceling the confirmation costs nothing. A wave-9 victory returns one Relic. Death, defeat, and an aborted run grant no normal reward.
 
@@ -37,16 +37,16 @@ The axis schedule repeats across the run:
 The HUD shows the act, wave, this wave's single counter target, verifiable dual-threshold progress, Resolve, and your chosen contract.
 During intermission the HUD previews the next wave's counter (range direction / marked ammo / the family about to be locked), and a banner confirms it when the wave begins, so you have time to adapt.
 
-### Last Stand
+### Final Execution
 
-Last Stand occurs only on **multi-Boss waves (2, 5, and 8)**: once that wave's committed Bosses are killed down to the last one, **Last Stand** begins:
+The Final Execution occurs only on **multi-Boss waves (2, 5, and 8)**: once that wave's committed Bosses are killed down to the last one, the **Final Execution** begins:
 
 - 12-second countdown
 - A scoreable direct gun or melee kill during the countdown grants 1 Resolve
 - Environmental, Buff, or unclassified final blows still clear the wave, but do not grant this Resolve
 - If the timer expires, the surviving Boss receives a revenge boost: healing, movement speed, and gun/melee damage
 
-Single-Boss waves (1, 3, 4, 6, 7, 9) never trigger Last Stand, so a run offers at most 3 executions, which matches the Last Stand cap of 3 Resolve.
+Single-Boss waves (1, 3, 4, 6, 7, 9) never trigger a Final Execution, so a run offers at most 3 executions, which matches the Final Execution cap of 3 Resolve.
 
 Lower several Bosses' health before finishing them, then save your burst for the last survivor. Missing the 12-second window still allows a clear, but loses the execution Resolve and triggers Revenge.
 
@@ -65,14 +65,14 @@ When a run ends in defeat, the Boss responsible may become your next Nemesis. A 
 The confirmation page deterministically offers two contracts from a pool of eight; choose one. Contracts belong to four families:
 
 - **Adaptation** — Break the distance, ammo, and attribute axes
-- **Execution** — Turn Last Stand windows into finishing blows
+- **Execution** — Turn Final Execution windows into finishing blows
 - **Tempo** — Chain breaks or maintain Resolve across all three acts
 - **Style** — Complete targets built around distance echoes, ammo bans, and attribute locks
 
 Contracts are honor objectives: they do not alter Boss strength, player stats, or reward counts. Clearing the run with the objective completed advances your contract streak; “seals” describe that completion, rather than additional collectible items. Your previous selection is excluded from the next candidate pair once. Defeat, abandoning a run, or clearing it without completing the contract breaks the streak; previous victories and kill records remain.
 
 - **Triad Breaker**: break each axis once; bring both gun and melee options.
-- **Last Executioner**: complete two Last Stand executions and directly finish an R3 Nemesis.
+- **Last Executioner**: complete two Final Executions and directly finish an R3 Nemesis.
 - **Counterflow Chain**: break three consecutive axis objectives; missing a break interrupts the chain.
 - **Unbroken Acts**: earn at least 2 Resolve per act. Act I offers distance, ammo, and execution opportunities.
 - **Edge Walker**: finish waves 1/4/7 with scored direct hits to trigger three distance echoes; breaking all three is not required.
@@ -82,7 +82,7 @@ Contracts are honor objectives: they do not alter Boss strength, player stats, o
 
 ### Resolve and Rewards
 
-Resolve caps at 11 and comes from axis breaks and Last Stand executions:
+Resolve caps at 11 and comes from axis breaks and Final Executions:
 
 - **0-2** — Wave-9 victory reward: 6 items
 - **3-5** — Wave-9 victory reward: 7 items
@@ -127,7 +127,7 @@ worth it. Quitting early wastes less time than getting worn down for another ten
 - After waves 1, 4, and 7, watch for the distance read and prepare the opposite range
 - Fire at least 5 valid shots during waves 2, 5, and 8. Use ammo not yet named for each later learning wave; different grades of the same caliber can count as different ammo types
 - When an ammo mark is published, read the HUD before deciding whether to swap ammo, swap weapons, or go melee
-- Last Stand is optional and only appears on waves 2, 5, and 8. Secure the wave first, then gamble for Resolve and contract progress
+- The Final Execution is optional and only appears on waves 2, 5, and 8. Secure the wave first, then gamble for Resolve and contract progress
 - Bring a backup answer for the Nemesis temperament in rematches; an R3 Nemesis is not the same fight as its first appearance
 
 [tip] There is no build that always works in Fate Echo. Keep a second and third way to fight ready; the more you lean on one habit, the easier the next wave counters it.

@@ -377,10 +377,25 @@ namespace BossRush
                 }
 
                 ZombieModeBossKind kind = GetZombieModeBossKindForIndex(i);
-                CharacterMainControl boss = await TrySpawnZombieModeBossAsync(runId, GetZombieModeBossSpawnPosition(i), kind);
-                if (!IsZombieModeRunValid(runId) || runState.CombatPhase != ZombieModeCombatPhase.Combat) return;
+                CharacterMainControl boss = null;
+                // 生成失败（落点解析不到可达点、生成核心重试耗尽等）先换落点重试，全部失败才从本波扣掉
+                for (int attempt = 0; attempt < ZombieModeTuning.BossSpawnAttempts && boss == null; attempt++)
+                {
+                    if (attempt > 0)
+                    {
+                        ModBehaviour.DevLog("[ZombieMode] [WARNING] 第 " + runState.CurrentWave + " 波第 " + (i + 1)
+                            + " 只 Boss 生成失败，换落点重试（第 " + attempt + " 次）");
+                        await UniTask.DelayFrame(ZombieModeTuning.BossSpawnRetryDelayFrames);
+                        if (!IsZombieModeRunValid(runId) || runState.CombatPhase != ZombieModeCombatPhase.Combat) return;
+                    }
+                    Vector3 position = attempt == 0 ? GetZombieModeBossSpawnPosition(i) : GetZombieModeSpawnPosition();
+                    boss = await TrySpawnZombieModeBossAsync(runId, position, kind);
+                    if (!IsZombieModeRunValid(runId) || runState.CombatPhase != ZombieModeCombatPhase.Combat) return;
+                }
                 if (boss == null)
                 {
+                    ModBehaviour.DevLog("[ZombieMode] [WARNING] 第 " + runState.CurrentWave + " 波第 " + (i + 1)
+                        + " 只 Boss 连续 " + ZombieModeTuning.BossSpawnAttempts + " 次生成失败，本波少算一只");
                     runState.CurrentWaveBossesRemaining = Mathf.Max(0, runState.CurrentWaveBossesRemaining - 1);
                     if (runState.CurrentWaveBossesRemaining <= 0)
                     {

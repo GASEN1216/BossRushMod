@@ -35,7 +35,7 @@ Filtering out a collected boss never removes its record. Names use the current t
 
 - The **fatal blow must be attributed to the main player**. Ordinary pets, PetNest companions and environmental finishing blows do not count. Player deaths, friendly targets and base demonstration characters are excluded.
 - **Faction War exception**: that mode attributes kills by your hired bosses to you, so those kills can count.
-- **The Black Market Duck Cup is excluded throughout**, including ERROR control swaps. Qualifying kills in other modes and vanilla raids can count.
+- **The Black Market Duck Cup is excluded throughout**. Qualifying kills in other modes and vanilla raids can count.
 - **Best time** measures from your first observed damaging hit until death, using game time. Pausing adds no time; dodging, reloading and healing during the fight do.
 - A one-hit kill or missing starting observation records the kill without inventing a duration, shown as **—**. A valid starting hit and kill observed within the same frame display **<0.1s**.
 - First-kill date and mode are set once. All modes share one best-time record per boss; this is not a leaderboard for equal difficulty.

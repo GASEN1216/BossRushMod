@@ -56,15 +56,15 @@ Rapidly fires prismatic bolts in a spiral pattern, one bolt per 0.1 seconds for 
 - Skill rotation: Phantom Spear Barrage → Prismatic Bolt → Charge → Rainbow Ring → Prismatic Bolt → Solar Dance → Phantom Spear → Charge → Spiral Prismatic Bolt → Loop
 - On phase transition, the Dragon Lord teleports above the player and displays a frenzy alert
 
-## Special Mechanic: "Protect me, my child!"
-When the Skyburner Dragon Lord's HP drops to 1, it does not die immediately. Instead it ascends to 5m and calls out: **"Protect me, my child!"**
+## Special Mechanic: "My child, protect me!"
+When the Skyburner Dragon Lord's HP drops to 1, it does not die immediately. Instead it ascends to 5m and calls out: **"My child, protect me!"**
 
 - The Dragon Lord becomes invulnerable and stops its normal attacks, but still fires a Prismatic Bolt every 3 seconds
 - Summons a half-stat Dragon Descendant (max HP, gun damage, and melee damage each ×0.5)
 - The Skyburner Dragon Lord only truly dies after the Dragon Descendant is killed. Shooting the invulnerable body does nothing
 
 ::: warning
-Do not ignore the "Protect me, my child!" phase. Prioritize killing the Dragon Descendant while dodging the Dragon Lord's Prismatic Bolts every 3 seconds.
+Do not ignore the "My child, protect me!" phase. Prioritize killing the Dragon Descendant while dodging the Dragon Lord's Prismatic Bolts every 3 seconds.
 :::
 
 ## Drops
@@ -100,16 +100,27 @@ That 1% on the Dragon Cannon means roughly 100 Dragon Lord kills on expectation 
 - Solar Dance and Phantom Spears both have warnings: find safe ground first, deal damage only after the attack commits
 - Rainbow Ring expands then contracts: run outward during expansion, move inward during contraction
 - Phase 2 doubles the attack frequency; constant movement is essential
-- "Protect me, my child!" phase: prioritize killing the Dragon Descendant while dodging the Dragon Lord's Prismatic Bolts
+- "My child, protect me!" phase: prioritize killing the Dragon Descendant while dodging the Dragon Lord's Prismatic Bolts
 - Wearing Dragon Set or Dragon King Set refunds 80% of the fire damage you take a moment later, significantly reducing difficulty (not true immunity, your HP still dips first)
 - Pure melee is unreliable against a target hovering 3-5m up. Bring at least one ranged weapon
 - For no-damage kills, use the Boss Filter to clear other bosses and face the Dragon Lord alone
+
+## In the Duck Cup
+The Black Market Duck Cup is boss versus boss with you in the stands, so the Dragon Lord runs a different set of rules there:
+
+- It counts as 2000 power, the highest of the three mod bosses, has triple health, and each team gets at most one
+- It starts casting the moment it enters, with no opening pause
+- Skills go at whoever it is currently locked on: beams, body contact and magma only hurt the other side, and the shockwave won't knock you off the stands
+- While it hovers during "My child, protect me!" nobody can target it; bosses that were on it switch to the Descendant it summons, which lands beside the Lord, can be spectated, and takes the Lord down with it
+
+See "Black Market Duck Cup" for the full match rules.
 
 ## Spawn Limits
 - Standard BossRush: normally moved beyond the first 20 candidate positions; short pools, insufficient ordinary Bosses or filtering can make it appear earlier
 - Infinite Hell: eligible for weighted draws from wave 1
 - Faction War: Does not appear
 - Blood Hunt: Does not appear
+- Black Market Duck Cup: one of the boss pool, at most one per team
 
 ## Related Achievements
 - **Kingslayer** — First kill (reward: 100,000)

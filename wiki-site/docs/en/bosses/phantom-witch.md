@@ -117,11 +117,21 @@ scythe is appended to the loot crate without displacing anything already in it.
 - The curse slow stacks up to 3 times, so avoid eating curses back to back
 - Don't peek the same cover repeatedly: the 2-second tracking marker can deliver a teleport sweep behind it
 
+## In the Duck Cup
+The Black Market Duck Cup is boss versus boss with you in the stands:
+
+- She counts as 500 power, the lowest of the three mod bosses, her health isn't scaled up, and each team gets at most one
+- Her moves go only at whoever she is currently locked on and never at the stands; the minions she summons in phase 3 don't chase you either, they fight the other team
+- Minions count as members of their team: you can spectate them, they count toward the fighters standing, and they add no power to the time-out score
+
+See "Black Market Duck Cup" for the full match rules.
+
 ## Spawn Restrictions
 - Standard BossRush and Infinite Hell: not in the strong-Boss exclusion list, can appear normally
 - From Scratch: no Bosses in waves 1–5; eligible from wave 6
 - Faction War: joins the normal draw
 - Blood Hunt: joins the normal draw
+- Black Market Duck Cup: one of the boss pool, at most one per team
 
 ## Related Achievements
 There are currently no Witch-specific first-kill, no-hit or weapon-collection achievements. Qualifying kills advance her Codex entry and Codex collection progress; see the achievement list for the actual conditions.

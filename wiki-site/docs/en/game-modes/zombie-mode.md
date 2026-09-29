@@ -35,6 +35,8 @@ You must pick one of two loadouts upon entering:
 - **Melee** — Starting Gear: Random melee weapon ×1 (quality ≤5) + healing items (with guaranteed recovery items) + food ×3 + drinks ×2
 - **Gunner** — Starting Gear: Random firearm ×1 + matching caliber ammo ×2000 + medical ×3 + food ×2 + drinks ×1
 
+Both loadouts also get a random armor set: body armor, helmet and headset, one each (quality ≤5).
+
 ---
 
 ## Core Loop
@@ -67,7 +69,7 @@ Every 5th wave is a **Boss Wave**; all others are normal waves.
 ## Extraction Opportunity
 
 After each Boss Wave, the preparation phase includes an **extraction opportunity**:
-- A prompt appears: "Extract Now" or "Continue Fighting"
+- A prompt appears: "Extract Now" or "Keep Fighting"
 - Choosing extraction requires standing in the extraction zone for **15 seconds**
 - Leaving the zone cancels extraction and starts the next wave
 - Successful extraction: Purification Points convert 1:1 to cash, return to base
@@ -116,6 +118,7 @@ The tide runs in five-wave cycles: Low Tide → Rising Tide → High Tide → Pe
 - Preparation maintains 35% of the next wave's pressure, clamped to 12-48 zombies, and replenishes at most one every 1.65 seconds
 - Combat refills toward its current pressure target in bounded batches; it prefers reachable NavMesh positions near the player and retains a safe fallback of at least 12m when strict candidates fail
 - Preferred spawn distance is 22m for waves 1-2, 20m for waves 3-5, and 18m afterward
+- Every spawn point must be walkable to where you stand: points on a disconnected island or another level are discarded, so no zombie spawns that can never reach you
 - Living counts are reconciled against valid runtime enemies before each refill; a normal zombie that remains more than 60m away for 8 seconds is recovered near the player instead of occupying a hidden slot
 - Zombies actively track the player (trace distance: 500m)
 
@@ -140,6 +143,7 @@ Stronger than normal with unique abilities. Drop **3** purification stars (30–
 
 > Both exploder variants show in-game as "Exploder Zombie"; they differ only in whether the blast is the mod's or the base game's.
 > Neither appears in waves 1-5; the full special pool opens up from wave 6.
+> The poison clouds of Plague Zombies, the Plague affix and the Toxic Aura apply the Poison status with every damage tick.
 
 ### Elite Zombies
 
@@ -222,12 +226,14 @@ Each ability cast bursts matching sparks from the chest and sends a shock ring a
 
 ### Boss Abilities
 
+When several Bosses are on the field, their damaging openers (shockwave, dash, corruption zone) are spaced at least 0.9s apart so they never all land on the same instant; shields and summons are not limited by this.
+
 **Titan**:
 - **Shockwave**: 6m radius, 60 damage, 12s cooldown, 1s startup
 - **Fortify**: 40% damage reduction, 4s duration, 20s cooldown
 
 **Hunter**:
-- **Dash**: Shows a startup warning, then dashes toward the locked player position up to 15m; deals 40 damage within 3.5m of its actual landing position, 5s cooldown
+- **Dash**: Shows a 0.45s startup warning, then dashes toward the locked player position up to 15m; deals 40 damage within 3.5m of its actual landing position, 5s cooldown
 - **Frenzy**: Triggers below 30% HP — +50% attack speed, +30% move speed, size increase; once triggered it lasts until the Hunter dies
 
 **Splitter**:
@@ -282,7 +288,7 @@ Pollution is the difficulty scaling mechanic.
 ### Sources
 
 - +1 natural pollution per Boss Wave cleared
-- Some reward options add pollution (e.g., "Pollution Deal" contracts)
+- Some reward options add pollution (the Pact options, e.g. the one that costs Purification 80/150 for Pollution +1/+2)
 
 ### Effects
 
@@ -315,10 +321,10 @@ After each wave, choose from rewards:
 - **Economy** — Description: Purification Points/paid-refresh discounts/healing/a high-weight low-quality junk recycling option; weapons, ammo, medical, food, keys, special items, and containers with attachments or contents are protected
 - **NPC** — Description: Temporarily summon merchant/nurse/goblin/courier
 - **Fortification** — Description: Defensive structure supply packs
-- **Contract** — Description: High-risk high-reward trades (may increase pollution)
+- **Pact** — Description: High-risk high-reward trades (may increase pollution)
 - **Insurance** — Description: Keep some items on death
-- **Map Event** — Description: High-value airdrop/elite squad
-- **Projectile Mod** — Description: Penetration/burn/cold/poison/armor break/trident/shotgun spray/stasis/ricochet/fork/return/helix/trail
+- **Event** — Description: High-value airdrop/elite squad
+- **Projectile** — Description: Penetration/burn/cold/poison/armor break/trident/shotgun spray/stasis/ricochet/fork/return/helix/trail
 - **Trigger** — Description: Lifesteal/crit burst/purification siphon/second wind/doom pulse
 - **Mutator** — Description: Crit focus/bullet time/guardian shield/quick reload/dash boost
 - **Battlefield** — Description: Ammo rain/purge aura/curse trap/black hole/gravity drag

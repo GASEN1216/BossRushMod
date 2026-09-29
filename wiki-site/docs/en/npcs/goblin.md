@@ -21,8 +21,8 @@ Reforging and affix forging are separate menu options and never interfere. One c
 - **Lv.2** — Shop opens; free Diamond
 - **Lv.3** — 10% shop discount
 - **Lv.4** — Free Cold Quench Fluid
-- **Lv.5** — Story: Dingdang's Past (Part 1)
-- **Lv.6** — 15% discount
+- **Lv.5** — Story: Dingdang's Past (Part 1); the shop stocks the five new weapons (Viper Dagger, Summoning Staff, Energy Shield, Frost Spear, Thunder Ring), 1 of each
+- **Lv.6** — 15% discount; the shop stocks the helmet and armor of the Frost Set and the Thunder Set (4 pieces, 1 of each)
 - **Lv.7** — Diamond Ring available in shop
 - **Lv.10** — Story: Part 2; 20% discount; Affix Forge Stones stocked (up to 5 per restock); Dingdang's Drawing
 

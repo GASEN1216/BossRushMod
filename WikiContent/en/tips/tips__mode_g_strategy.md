@@ -30,7 +30,7 @@ Fate Echo **reads you first, then tests you**. Do not treat the strongest habit 
 
 - Check the HUD for the named ammo type
 - Swap ammo, swap weapons, or go melee before you start violating the mark
-- The Nemesis is pressure enough. Protect the break condition and leave Last Stand to waves 2, 5 and 8
+- The Nemesis is pressure enough. Protect the break condition and leave the Final Execution to waves 2, 5 and 8
 
 ### Act II: Spend Resources Carefully (Waves 4-6)
 
@@ -47,15 +47,15 @@ This is where many runs spend too much chasing Resolve. Contract progress matter
 - Wave 8 is the final distance lesson and the last chance to earn a range break
 - Wave 9 combines the Ammo Mark with the R3 Nemesis. Keep your most reliable ammo and burst option instead of emptying everything on wave 8
 
-### Should You Take Last Stand?
+### Should You Take the Final Execution?
 
-Last Stand only triggers on multi-Boss waves (2, 5, 8), so you get at most 3 chances per run.
+The Final Execution only triggers on multi-Boss waves (2, 5, 8), so you get at most 3 chances per run.
 
 - **Safe route**: finish the last Boss during the countdown and secure the wave
 - **Contract route**: only chase Resolve when a scoreable direct gun/melee final blow is ready
 - **Greedy route**: drag the timer for one more Resolve and let the empowered final Boss turn the fight
 
-When Last Stand expires, the Boss heals and gains movement, gun, and melee damage. Do not trade a stable clear for a low-confidence gamble.
+When the Final Execution timer expires, the Boss heals and gains movement, gun, and melee damage. Do not trade a stable clear for a low-confidence gamble.
 
 ### Resolve Planning
 
@@ -80,8 +80,8 @@ Reaching 6 Resolve raises the reward to 8 items; 6–8 Resolve share that bracke
 
 - **Bringing one gun only** — Attribute Lock or Ammo Mark leaves you with no second answer
 - **Spraying random ammo during learning** — invalid samples can suppress the ammo read and make contracts harder
-- **Treating Last Stand as mandatory** — it is an optional score window, not a wave-clear requirement
+- **Treating the Final Execution as mandatory** — it is an optional score window, not a wave-clear requirement
 - **Reading only the Boss count** — the three-Boss wave is not always the most dangerous part; an unprepared counter is
 - **Treating the Relic as a one-way cost** — victory returns it; the real cost is a failed run
 
-[tip] A comfortable loop is: stable output on wave 1, deliberate range change on wave 2, conservative Nemesis and ammo handling on wave 3. Add Last Stand and contract goals once that rhythm feels natural.
+[tip] A comfortable loop is: stable output on wave 1, deliberate range change on wave 2, conservative Nemesis and ammo handling on wave 3. Add the Final Execution and contract goals once that rhythm feels natural.

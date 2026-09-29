@@ -10,7 +10,7 @@
 
 ### Phase 2 (First Lethal Hit → Revival at 50% HP)
 - **Don't celebrate.** It comes back harder: 1.1x dmg, 1.5x crit, 1.5x chase speed
-- Contact damage now active — don't let it touch you
+- Contact damage now active — don't let it touch you. Before each rush it kicks up dust, throws sparks and charges for about 0.3s: sidestep the moment you see it. Rolling through the rush takes no damage
 - Firebombs every 1s, always aimed at your feet; it can heal by standing in the fire
 - **Key: out-DPS the self-healing**
 
@@ -43,11 +43,11 @@
 
 ### Phase 2
 - Attack interval halved (1.0s → 0.5s)
-- Charge becomes double charge
+- Charge becomes double charge; before the second dash it pauses about 0.3s and lights a countdown ring
 - New Spiral Bolt + Spear Barrage (4 × 16 spears)
 - Requires faster reactions
 
-### "Protect me, my child!"
+### "My child, protect me!"
 - At 1 HP → ascends, summons half-stat Dragon Descendant
 - Fires Bolts every 3s while Junior lives
 - **Kill the Descendant first**
@@ -70,6 +70,7 @@
 ## General Tips
 
 - Use arena cover and terrain
+- Your dodge roll's invulnerability also works against the instant hits of the Dragon Descendant, Skyburner Dragon Lord, Phantom Witch and Zombie Mode Bosses (barrages, rushes, one-shot area slashes); lingering ground zones such as poison circles, lava and curse fields are continuous damage, so rolling won't save you: walk out of them
 - Ammo shop near signpost — restock anytime
 - Multi-boss waves: watch directional indicators, don't get surrounded
 - Boss Filter to disable problematic Bosses

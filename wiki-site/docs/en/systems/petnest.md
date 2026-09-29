@@ -80,7 +80,7 @@ Every cub has its own backpack: **4 slots** to start, with more from levels, end
 - **No cubs**
   - Fate Echo: a grudge between two has no room for a third
   - Zombie Mode: it runs its own lifecycle and rewards
-  - Black Market Duck Cup: pet deployment is disabled, including during an ERROR control swap
+  - Black Market Duck Cup: a spectator mode; you stay out of the ring, and so does your cub
 - **Base**: only the deployed cub idles around the nest
 
 ## Disaster Expeditions
@@ -142,8 +142,8 @@ Cubs grow by working with you, capping at level 10 ("Adult"), after which they s
 ## Nest capacity and releasing
 
 - **The nest starts with 12 places.** It expands by +4 each time your index reaches 10 / 20 / 30 unlocked bloodlines, up to 24.
-- **Releasing** — click a cub's card on the nest page to select it (no need to deploy it first), then release it to get back 60 relic souls of its bloodline. Releasing is permanent and the cub is not memorialized; a cub away on an expedition cannot be released. When the nest is full, this is how you make room; no need to send a cub on a Desperate expedition and hope.
-- **Batch release** — "Batch release..." on the nest page switches to ticking mode: click cards to tick or untick, or tick every releasable cub at once; confirm to release them all in one go, 60 souls back per cub.
+- **Releasing** — click a cub's card on the nest page to select it (no need to deploy it first), then press "Release" at the bottom of the right-hand panel and confirm to get back 60 relic souls of its bloodline. Releasing is permanent and the cub is not memorialized; a cub away on an expedition cannot be released, and a cub with items still in its backpack must empty it first. When the nest is full, this is how you make room; no need to send a cub on a Desperate expedition and hope.
+- **Batch release** — "Select" at the top right of the nest page switches to ticking mode: click cards to tick or untick. "Tick all common cubs" on the right ticks every ordinary cub at once; the deployed cub and shiny or chroma cubs are never ticked that way and have to be ticked one by one. Press "Release N" and confirm to release them all in one go, 60 souls back per cub.
 
 ## Tips
 - Souls exist only to condense eggs. Bank **240** of one bloodline and you can target that boss's egg directly, so unlucky players can still complete the index.

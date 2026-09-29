@@ -4,7 +4,7 @@ Custom items cover entry, NPC services, consumables, mode tools, base progressio
 
 ## Categories
 
-- **Entry & Utility** — Tickets, Flags, Transponder, Fate Echo Relic, Journal, Achievement Medal, Duckov Codex
+- **Entry & Utility** — Tickets, Flags, Transponder, Fate Echo Relic, Zombie Tide Invitation, Journal, Achievement Medal, Duckov Codex
 - **NPC Items** — Gifts, materials, special interaction items
 - **Consumables** — Healing, buffs, summoning
 - **Mode-Exclusive** — Faction War tactical items, Blood Hunt fortifications, the Fate Echo Relic, and Zombie Mode's Portable Safe-Zone Device (run reward, single use)
@@ -14,7 +14,7 @@ Custom items cover entry, NPC services, consumables, mode tools, base progressio
 
 ## Where to Get Them
 
-- **Base Merchant** — Tickets, Flags, Transponder, Fate Echo Relic, Journal, Medal, Duckov Codex, Brick Stone
+- **Base Merchant** — Tickets, Flags, Transponder, Fate Echo Relic, Zombie Tide Invitation, Journal, Medal, Duckov Codex, Brick Stone
 - **Dingdang** — Diamond, Diamond Ring (Affinity-gated), Cold Quench Fluid, Affix Forge Stones (affinity Lv.10)
 - **Yu Zhi** — Calming Drops (Lv.3), Peace Charm (Lv.8)
 - **Boss Drops** — Exclusive equipment, Affix Forge Stones, relic eggs and souls, the three Backyard seeds

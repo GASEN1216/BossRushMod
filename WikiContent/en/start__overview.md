@@ -6,7 +6,7 @@ A massive content expansion for Escape from Duckov (Steam Workshop). What starte
 
 ### At a Glance
 
-- **8 Game Modes** — Standard, Infinite Hell, From Scratch, Faction War, Blood Hunt, Fate Echo, Black Market Duck Cup (recruit and bet), Zombie Mode
+- **8 Game Modes** — Standard, Infinite Hell, From Scratch, Faction War, Blood Hunt, Fate Echo, Black Market Duck Cup (watch and bet), Zombie Mode
 - **9 Arena Maps + Sky Islands** — Arena battles across the map pool, plus separate expeditions to the Qinglan Archipelago
 - **3 Custom Arena Bosses** — Dragon Descendant, Skyburner Dragon Lord, Phantom Witch (unique skills + exclusive drops)
 - **3 Regular NPC Companions** — Dingdang (Smith), Yu Zhi (Nurse), Awen (Courier)

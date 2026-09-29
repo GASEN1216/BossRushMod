@@ -14,7 +14,7 @@ The Skyburner Dragon Lord's personal firearm. It supports 17 ammo types that can
 - Base Speed 108 / Base Range 24 / Crit 28% / Crit Damage 1.6x
 - Move Speed while held: 85%
 
-[tip] Loading a specific ammo profile changes damage, fire rate, magazine, reload time, range, and projectile behavior. The values above are the unloaded base stats.
+[tip] Loading a specific ammo type changes damage, fire rate, magazine, reload time, range, and projectile behavior. The values above are the unloaded base stats.
 
 ### 17 Selectable Ammo Types
 
@@ -24,7 +24,7 @@ Compatible ammo in your inventory appears in the ammo-type list. Select it and r
 - **Sniper** — 4 pierce, extremely slow ROF (×0.12), ×4 damage, range 36; for precise priority-target kills.
 - **Heavy** — 2 pierce with declining follow-up damage, ×1.4 damage, range 28.
 - **Rocket** — Low-arc homing rocket that airbursts at roughly half range into **6** radial sub-rockets; mag 5.
-- **IceBlade** — Ice element, 3 pierce, ×2 damage, half ROF; a 1.25m ice explosion applies Cold on impact or expiry.
+- **IceBlade** — Ice element, 3 pierce, ×2 damage, half ROF; on impact or at the end of its flight it bursts into a 1.25m ice explosion that applies the vanilla Cold status (not a freeze).
 
 #### Spread / Coverage
 - **Shotgun** — 12-pellet, 20° dragonbreath cone, ×1.65 damage; up to two burning zones on hit or at range end.
@@ -37,7 +37,7 @@ Compatible ammo in your inventory appears in the ammo-type list. Select it and r
 - **Arrow** — Slight drop; sticks on hit, then detonates after a short delay, ×1.8 damage.
 - **Energy** — Electric tracking round that splits into 3 tracking secondaries on hit or expiry.
 - **Nano** — Fast poison needles with 3 pierce and 3 bounces; no longer splits.
-- **Firework** — Horizontal helix round that airbursts at roughly 70% range into **12** firework secondaries. The first target is excluded from secondary focus; staggered scheduling preserves the bloom while reducing impact stutter.
+- **Firework** — Horizontal helix round that airbursts at roughly 70% range into **12** firework secondaries. The target the main round hits first is not focused again by the secondaries.
 
 #### Elemental Oddities
 - **Snow** — Ice element, low base damage, ultra-slow straight roll for 5s that grows and gains damage. The main snowball splits into 4 small snowballs on hit or expiry; they get brief spawn protection, roll for 2s, and continue growing. Only the main snowball leaves a 1s ice zone.
@@ -59,4 +59,3 @@ Compatible ammo in your inventory appears in the ammo-type list. Select it and r
 - Rocket, Firework, and Shotgun excel against groups; Sniper, Heavy, and Magnum suit priority targets.
 - Snowballs, poison pools, and burning zones reward landing prediction. Energy and Nano are useful against evasive enemies.
 - The Large Energy Bullet groups scattered enemies into one spot; follow up with Shotgun, Rocket, or a Skyburner Halberd slam.
-- Firework optimization does not reduce its visual or damage design. Avoid concentrating every projectile in extremely tight terrain when possible.

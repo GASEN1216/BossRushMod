@@ -59,8 +59,8 @@ Once you're comfortable:
 - **Blood Hunt** — Naked + Ticket + Transponder. Constant bleed, kill to survive
 - **Fate Echo** — Current gear + Ticket + Fate Echo Relic. Nine waves, three acts, and the
   Bosses counter whatever you did last wave
-- **Black Market Duck Cup** — just a Ticket. You normally manage from the stands: sign two fighters, read the odds,
-  place your bets and call one order per match
+- **Black Market Duck Cup** — just a Ticket. You sit in the stands while two Boss teams, blue and red, brawl over six matches;
+  you pick which team wins and ring the bell to call a disaster
 - **Infinite Hell** — pick the Infinite Hell difficulty and find your ceiling
 
 ## Quick Tips

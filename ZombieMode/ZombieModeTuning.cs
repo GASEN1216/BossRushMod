@@ -138,6 +138,12 @@ namespace BossRush
             public const int BossWaveSupportPressurePerCycle = 9;
             public const int BossWaveSupportPressureMaximum = 60;
             public const int BossWaveSpawnBatchMaximum = 3;
+            /// <summary>
+            /// 单只 Boss 最多尝试生成几次（首次用 Boss 专属落点，之后换随机可靠落点）。2026-09-29 玩家反馈第 30 波
+            /// 6 只 Boss 只出来 5 只：生成失败原先直接按「已击败」扣掉，HUD 写 6 只、场上少一只。
+            /// </summary>
+            public const int BossSpawnAttempts = 4;
+            public const int BossSpawnRetryDelayFrames = 15;
             public const float WaveSpeedMultiplierStart = 0.72f;
             public const float WaveSpeedMultiplierPerWave = 0.035f;
             public const float WaveSpeedMultiplierMaximum = 1f;
@@ -488,6 +494,8 @@ namespace BossRush
         public const int BossWaveSupportPressurePerCycle = Spawn.BossWaveSupportPressurePerCycle;
         public const int BossWaveSupportPressureMaximum = Spawn.BossWaveSupportPressureMaximum;
         public const int BossWaveSpawnBatchMaximum = Spawn.BossWaveSpawnBatchMaximum;
+        public const int BossSpawnAttempts = Spawn.BossSpawnAttempts;
+        public const int BossSpawnRetryDelayFrames = Spawn.BossSpawnRetryDelayFrames;
         public const float WaveSpeedMultiplierStart = Spawn.WaveSpeedMultiplierStart;
         public const float WaveSpeedMultiplierPerWave = Spawn.WaveSpeedMultiplierPerWave;
         public const float WaveSpeedMultiplierMaximum = Spawn.WaveSpeedMultiplierMaximum;

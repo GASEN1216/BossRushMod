@@ -1,6 +1,6 @@
 # Game Mode Overview
 
-8 modes, from chill to "why did I do this to myself", plus a standalone zombie survival mode and a manager mode built around signing fighters and placing bets.
+8 modes, from chill to "why did I do this to myself", plus a standalone zombie survival mode and a spectator mode where you bet on which of two Boss teams wins.
 
 ## At a Glance
 
@@ -13,7 +13,7 @@
 | **Blood Hunt** | Naked + Ticket + Transponder | 4 phases | Constant bleed, kill to heal | ★★★★★ |
 | **Fate Echo** | Current loadout + Ticket + Fate Echo Relic | 9 waves, 3 acts | Counter your habits, then hunt your nemesis | ★★★★★ |
 | **Zombie Mode** | Zombie Tide Invitation | Roguelite survival | Enter empty-handed, endless zombie waves + escalating pollution + purification-point economy, separate from the seven modes above | ★★★★☆ |
-| **Black Market Duck Cup** | One BossRush ticket, from the option next to "Boss Rush" at base | Six matches per season | Bet from the stands: each match two power-matched boss teams brawl, bigger every match; you back one team and ring the bell once to call down a disaster | ★★★☆☆ |
+| **Black Market Duck Cup** | One BossRush ticket, from the option next to "Boss Rush" at base | Six matches per season | Bet from the stands: each match two power-matched boss teams brawl, bigger every match; you back one team to win and ring the bell once per match to call down a disaster on everyone; after six matches you are ranked in the Hall of Fame by how many bets landed | ★★★☆☆ |
 
 ## Mode Detection Priority
 
@@ -35,5 +35,5 @@ The Black Market Duck Cup is not on this list: like Standard BossRush it just ne
 - Zombie Mode is a **standalone survival mode**: no ticket entry, its own purification-point economy. See the "Zombie Mode" page for full rules
 
 ::: tip
-Standard BossRush, Infinite Hell, From Scratch, Faction War and Blood Hunt roll random "mutators" at run start, changing enemy/player/environment rules for that run. Fate Echo (its nine-wave counter schedule is fixed), the Black Market Duck Cup (what the odds sheet says is what you get) and Zombie Mode (it has its own in-run reward system) do not. See the "Mutator System" page.
+Standard BossRush, Infinite Hell, From Scratch, Faction War and Blood Hunt roll random "mutators" at run start, changing enemy/player/environment rules for that run. Fate Echo (its nine-wave counter schedule is fixed), the Black Market Duck Cup (both Boss teams are drawn and shown before the match) and Zombie Mode (it has its own in-run reward system) do not. See the "Mutator System" page.
 :::

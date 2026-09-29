@@ -44,8 +44,10 @@ internal static class Program
                 continue;
             }
             customs++;
-            int expected = entry.Key == DragonKingConfig.BossNameKey ? 2000 : 1000;
-            Check(entry.Power == expected, "custom boss power (Dragon King 2000, others 1000): " + entry.Key);
+            int expected = entry.Key == DragonKingConfig.BossNameKey ? 2000
+                : entry.Key == DragonDescendantConfig.BOSS_NAME_KEY ? 1500
+                : entry.Key == PhantomWitchConfig.BossNameKey ? 500 : -1;
+            Check(entry.Power == expected, "custom boss power (Dragon King 2000, Descendant 1500, Witch 500): " + entry.Key);
         }
         Check(customs == 3, "all three custom bosses join the pool once");
         Check(ModeHGroupPool.Build(new ModBehaviour()).Count == 3, "empty host table still yields the three custom bosses");

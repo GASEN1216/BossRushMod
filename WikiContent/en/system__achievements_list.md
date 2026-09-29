@@ -4,7 +4,7 @@
 This mod currently contains 45 achievements across 9 categories. Completing achievements grants cash rewards. Press L (default, configurable) to open the achievement panel and check your progress.
 
 ### Basic Completion
-- First Steps: Complete BossRush for the first time. Reward `$5,000`, difficulty `★`
+- First Steps: Extract successfully from BossRush for the first time. Reward `$5,000`, difficulty `★`
 - Easy Peasy: Complete BossRush on Easy difficulty. Reward `$10,000`, difficulty `★`
 - Getting Serious: Complete BossRush on Normal difficulty. Reward `$25,000`, difficulty `★★`
 - From Scratch: Complete 10 waves in From Scratch. Reward `$30,000`, difficulty `★★`

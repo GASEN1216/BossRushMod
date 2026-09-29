@@ -33,8 +33,12 @@ namespace BossRush
         internal const int RerollsPerMatch = 3;
         /// <summary>单场时长。人多血厚，比单挑版多给一分钟；到时按剩余战力判胜负。</summary>
         internal const float MatchDurationSeconds = 240f;
-        /// <summary>自定义 Boss 的默认战力（owner 2026-09-29：三只强度过高，按 1000 点算）。</summary>
-        internal const int CustomBossPower = 1000;
+        /// <summary>
+        /// 自定义 Boss 的战力（owner 2026-09-29）：起初三只统一按 1000 点算；第五轮改为龙裔 1500、幻影女巫 500，
+        /// 龙皇单独 2000（见下）。
+        /// </summary>
+        internal const int DragonDescendantPower = 1500;
+        internal const int PhantomWitchPower = 500;
         /// <summary>焚天龙皇单独按 2000 点算（owner 2026-09-29 第二轮）。</summary>
         internal const int DragonKingPower = 2000;
         /// <summary>
@@ -150,11 +154,11 @@ namespace BossRush
                 }
             }
             AddCustom(pool, DragonDescendantConfig.BOSS_NAME_KEY,
-                DragonDescendantConfig.BOSS_NAME_CN, DragonDescendantConfig.BOSS_NAME_EN, ModeHGroupConfig.CustomBossPower);
+                DragonDescendantConfig.BOSS_NAME_CN, DragonDescendantConfig.BOSS_NAME_EN, ModeHGroupConfig.DragonDescendantPower);
             AddCustom(pool, DragonKingConfig.BossNameKey, DragonKingConfig.BossNameCN, DragonKingConfig.BossNameEN,
                 ModeHGroupConfig.DragonKingPower);
             AddCustom(pool, PhantomWitchConfig.BossNameKey, PhantomWitchConfig.BossNameCN, PhantomWitchConfig.BossNameEN,
-                ModeHGroupConfig.CustomBossPower);
+                ModeHGroupConfig.PhantomWitchPower);
             return pool;
         }
 

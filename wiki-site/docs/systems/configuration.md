@@ -71,7 +71,7 @@
 ### bossInfiniteHellFactors
 - 默认值：{}
 - 范围：Boss:倍率
-- 各 Boss 在无间炼狱中的权重倍率
+- 各 Boss 在无间炼狱中的权重倍率；Boss 筛选器「无间炼狱因子」页里的五档对应 0.2 / 0.5 / 1.0 / 1.5 / 2.0
 
 ### enableDragonDash
 - 默认值：true

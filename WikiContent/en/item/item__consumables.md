@@ -74,7 +74,7 @@ A small lantern on a driftwood frame with a cloudmoss paper shade.
 
 A cake of pounded cloudmoss and greenear whose smoke is warm.
 
-- **Source**: made at Qinghe's stove (or the terrace garden) or Miantai's mortar (or the Hanging Root Wood note "a mailbag in the roots") from Cloudmoss Fiber ×2 + Greenear Sheaf ×2
+- **Source**: made at Qinghe's stove (or the terrace garden) or Miantai's mortar (or the Hanging Root Wood note "a mailbag in the roots") from Cloudmoss Fiber ×2 + Greenear Sheaf ×2; the echo cache the Windeater's echo leaves when it falls may also hold 2
 - **Effect**: on the Qinglan isles, about 5 minutes of game time safe from any wind (gales included), with +15% stamina recovery
 - **Also**: the windcrystal lamp at Mirrorwater Temple burns one in its censer
 - **Limits**: usable on the Sky Islands only; ends when you leave
@@ -86,7 +86,7 @@ A cake of pounded cloudmoss and greenear whose smoke is warm.
 
 A small charm on a brass backing, set with a windcrystal shard and a pinch of stardust.
 
-- **Source**: made at Fuzhou's dock workbench from Brass Scrap ×3 + Windcrystal Shard ×2 + Stardust ×1
+- **Source**: made at Fuzhou's dock workbench from Brass Scrap ×3 + Windcrystal Shard ×2 + Stardust ×1; the echo cache the Windeater's echo leaves when it falls may also hold 1
 - **Effect**: for this raid, **35% less damage from the Windeater's storm pulses**, +10% max health (only the newly added portion is topped up) and +10% stamina recovery
 - **Limits**: usable on the Sky Islands only; one per raid (the second one's use button is greyed out); ends when you leave
 - Stack 3 / Use time 1.5s

@@ -10,12 +10,12 @@ Equip this totem and **you can fly**. Actual flight. Ascend, glide, and hop over
 
 ## Controls
 
-- **Hold sprint** (Space) — Fly upward
+- **Hold Dash** (Space by default) — Fly upward
 - **Release** — Stop ascending, begin glide
 - **Direction keys** — Horizontal movement while airborne
 
 ::: warning
-Flying replaces normal sprint.
+Flying replaces your normal dash: with this totem equipped, the Dash key lifts you off instead of dodging.
 :::
 
 ## Parameters

@@ -71,7 +71,7 @@ This option is off by default. When enabled, loot crates can serve as temporary 
 ### bossInfiniteHellFactors
 - Default: {}
 - Range: Boss:multiplier
-- Weight multiplier for each Boss in Infinite Hell
+- Weight multiplier for each Boss in Infinite Hell; the five levels on the Boss Filter's "Hell Factors" tab map to 0.2 / 0.5 / 1.0 / 1.5 / 2.0
 
 ### enableDragonDash
 - Default: true

@@ -17,6 +17,7 @@ The Sky Islands have a separate roster of lords and chiefs. See Sky Islands · Q
 - **From Scratch** — No Bosses for waves 1-5; waves 6-10 exclude heavy hitters (the Phantom Witch is not on that list either); full pool from wave 11
 - **Faction War** — Dragon Descendant max 1/session, Dragon Lord doesn't appear, Phantom Witch in normal draw
 - **Blood Hunt** — Same as Faction War; dead Bosses auto-replaced
+- **Black Market Duck Cup** — All three are in the full boss pool, at most one of each per team: Dragon Descendant at 1500 power, Phantom Witch 500, Skyburner Dragon Lord 2000 (with triple health). You watch from the stands and they fight the other team's bosses
 
 ### Boss Filter
 

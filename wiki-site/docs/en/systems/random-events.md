@@ -44,7 +44,7 @@ Free, riskless, and the only cost is bending down. **In Infinite Hell you don't 
 that mode has a cash magnet that pulls anything within `2` metres to you, so one walk through
 the pile collects the lot.
 
-### Uninvited Guest (about 13%, 120 seconds)
+### Boss Intrusion (about 13%, 120 seconds)
 
 One Boss pulled at random from the current Boss pool, walking in from `30` metres out.
 

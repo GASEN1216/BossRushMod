@@ -16,7 +16,7 @@ Touch a dragon's reverse scale and it bites back. **A one-time lifesaver totem**
 - **Protection**: gains a brief **0.5s invincibility** window after activation
 - **Then**: Totem shatters, removed from slot
 
-[warn] When it triggers you'll see "The Reverse Scale shattered...". You nearly died, and that save is used up.
+[warn] When it triggers, a speech bubble above your head reads "The Reverse Scale shattered...". You nearly died, and that save is used up.
 
 ### Tips
 

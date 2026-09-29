@@ -12,7 +12,7 @@ Dragon Descendant is the first custom boss in this mod, with two phases. Beat it
 ## Combat Phases
 
 ### Phase 1 (Full HP ~ First Lethal Hit)
-- Shooting: Uses Dragon Breath for standard gunfire; every 10th shot triggers a small blast at the player's feet if within 5m (5 fire damage, 1m radius). Stay 5m+ away and it never reaches you
+- Shooting: Uses Dragon Breath for standard gunfire; every 10th shot, if you are within 5m, locks onto where you stand and lights a warning ring for 0.8 seconds before exploding there (10 fire damage, 1.6m radius). Step away and it misses; stay 5m+ away and it never reaches you
 - Incendiary Grenade: Thrown every 5 seconds, always aimed at the player's feet
 - Phase 1 damage multiplier is low (0.3x), mainly to let you learn its attack patterns
 
@@ -65,16 +65,26 @@ several kills, and Dragon Breath is the stubborn one.
 - On first lethal hit, **don't rush in to loot**. Back off and watch for gaps in the eight-way incendiaries
 - Don't use fire DoT during the revival sequence; it only heals the boss
 - In Phase 2, read the loop: strafe during straight shots, dodge the rush, then use the short pause after the fan sweep as your best damage window
-- Melee players shouldn't facetank: the 1.5m contact hitbox plus the 5m blast check means taking multiple damage instances at once
+- Melee players shouldn't facetank: the 1.5m contact hitbox stacked on rapid volleys and incendiaries means taking multiple damage instances at once
 - **Ice weapons/ammo shine in Phase 2**: stack up the slow threshold, attack from the side while it's slowed, then disengage before the next rush
 - Wearing Dragon Set or Dragon King Set refunds 80% of the fire damage you take a moment later (not true immunity, your HP still dips first)
 - Melee players should wait for the ice slow to trigger before committing
+
+## In the Duck Cup
+The Black Market Duck Cup is boss versus boss with you in the stands:
+
+- It counts as 1500 power, each team gets at most one, and its health isn't scaled up
+- Its phase 2 charge, straight and fan volleys and incendiary grenades all go at whoever it is currently locked on, never at the stands; the ground-marked explosion doesn't show up there
+- The half-stat Descendant that the Skyburner Dragon Lord summons fights on the Lord's side against the other team, and can be spectated
+
+See "Black Market Duck Cup" for the full match rules.
 
 ## Spawn Limits
 - Standard BossRush: normally moved beyond the first 20 candidate positions; short pools, insufficient ordinary Bosses or filtering can make it appear earlier
 - Infinite Hell: eligible for weighted draws from wave 1
 - Faction War: Max 1 per session
 - Blood Hunt: Max 1 per session
+- Black Market Duck Cup: one of the boss pool, at most one per team
 
 ## Related Achievements
 - **Dragon Slayer** — First kill (reward: 30,000)

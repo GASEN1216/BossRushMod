@@ -95,6 +95,18 @@ Bring your current loadout, a Ticket, and the Relic into BossRush map selection.
 
 ---
 
+## Zombie Tide Invitation
+
+The **admission ticket** for Zombie Mode: a sealed red invitation with a biohazard mark on the corner.
+
+- **Source**: Base merchant / **Stock**: 5 / **Price**: 20,000
+- **Consumed**: 1 on entering Zombie Mode; refunded if the mode fails to start, not refunded if you fail to extract
+- **Stack**: does not stack
+
+See Zombie Mode for full rules.
+
+---
+
 ## Faction Flag (7 variants)
 
 Determines your faction in Faction War. Consumed on entry.

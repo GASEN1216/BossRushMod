@@ -6,7 +6,7 @@ This mod currently contains 45 achievements across 9 categories. Completing achi
 ## Basic Completion
 | Achievement | Requirement | Reward | Difficulty |
 | --- | --- | --- | --- |
-| First Steps | Complete BossRush for the first time | $5,000 | ★ |
+| First Steps | Extract successfully from BossRush for the first time | $5,000 | ★ |
 | Easy Peasy | Complete BossRush on Easy difficulty | $10,000 | ★ |
 | Getting Serious | Complete BossRush on Normal difficulty | $25,000 | ★★ |
 | From Scratch | Complete 10 waves in From Scratch | $30,000 | ★★ |

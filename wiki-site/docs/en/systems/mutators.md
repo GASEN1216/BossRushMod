@@ -14,12 +14,12 @@ At the start of every run, the system draws a handful of mutators from a pool of
 - **Faction War** — Rolls mutators?: √
 - **Blood Hunt** — Rolls mutators?: √
 - **Fate Echo** — Rolls mutators?: × (the nine-wave counter schedule is fixed)
-- **Black Market Duck Cup** — Rolls mutators?: × (what the odds sheet says is what you get)
+- **Black Market Duck Cup** — Rolls mutators?: × (both Boss teams are drawn and shown before the match; what you see is what you get)
 - **Zombie Mode** — Rolls mutators?: × (separate system)
 
 ## How to See Active Mutators
 
-- An **ACTIVE MUTATORS** list appears on the left edge after the run starts and shows the total count
+- An **ACTIVE MUTATORS** list appears at the top left after the run starts and shows the total count; it sits below the random-event badge and the PetNest companion card, so it never covers your cub's HUD
 - Every row is labeled **Enemy / Boon / Rule**, with category colors for quick scanning
 - Hover a row to open the full descriptions on the right; the row you are reading is highlighted
 - The detail panel scrolls when the list is long, and remains open while moving the pointer from the compact list into the details
