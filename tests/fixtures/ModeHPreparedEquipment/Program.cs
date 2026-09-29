@@ -61,6 +61,8 @@ namespace BossRush
             Check(ModeHLoadoutKitRegistry.ResolvePreparedAmmoTypeId(gun, gun.Gun) == 100, "valid target remains frozen");
             gun.Gun.TargetBulletID = -1;
             Check(ModeHLoadoutKitRegistry.ResolvePreparedAmmoTypeId(gun, gun.Gun) == 0, "no ammo fails closed");
+            PersistenceAndLoadout.Run();
+            LoadoutOptions.Run();
             Console.WriteLine("PASS ModeHPreparedEquipment " + checks + " assertions");
         }
     }
@@ -70,6 +72,7 @@ namespace BossRush
     {
         public int TypeID;
         public bool IsBullet;
+        public int StackCount, MaxStackCount = 6;
         public ItemSetting_Gun Gun;
         public Constants Constants = new Constants();
         readonly Dictionary<string, Stat> stats = new Dictionary<string, Stat>();
@@ -78,7 +81,7 @@ namespace BossRush
         public float GetStatValue(string key) { Stat stat = GetStat(key); return stat != null ? stat.BaseValue : 0f; }
         public float GetStatValue(int hash) { foreach (var row in stats) if (row.Key.GetHashCode() == hash) return row.Value.BaseValue; return 0; }
         public T GetComponent<T>() where T : class { return Gun as T; }
-        public Item Copy() { var copy = new Item(); foreach (var row in stats) copy.Set(row.Key, row.Value.BaseValue); return copy; }
+        public Item Copy() { var copy = new Item { TypeID = TypeID, IsBullet = IsBullet, MaxStackCount = MaxStackCount }; foreach (var row in stats) copy.Set(row.Key, row.Value.BaseValue); return copy; }
     }
     class Constants
     {
@@ -97,7 +100,9 @@ namespace BossRush
         public static Dictionary<int, Item> Prefabs = new Dictionary<int, Item>();
         public static int[] SearchIds;
         public static Item GetPrefab(int id) { Item value; return Prefabs.TryGetValue(id, out value) ? value : null; }
+        public static Item InstantiateSync(int id) { return GetPrefab(id)?.Copy(); }
         public static int[] GetAllTypeIds(ItemFilter filter) { return SearchIds; }
+        public static ItemMetaData GetMetaData(int id) { return new ItemMetaData { icon = id }; }
     }
     static class GameplayDataSettings
     {

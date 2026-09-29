@@ -280,8 +280,8 @@ Mode H 的正式入口、五席试棚、三幕六战、虚拟整备与下注、�
 **没有真实资产开关。** `modeHRealWarehouseStakeEnabled`、
 `IsModeHRealWarehouseStakeConfiguredEnabled` 与 `ModeHStakeJournal.GatePassed`
 三个符号一律不得出现，`ModeHConfigApiGuard.py` 与 `ModeHStakeJournalGuard.py` 显式断言这一点。
-同意通过“进入模式”表达：入口页、模式说明与 `ModeHInteractable` 三处都固定显示
-`BossRush_ModeH_RealStakeRiskNotice` 风险行。系统唯一会自行禁用真实押品的情况是
+玩家在赛前押注选项和真实押品确认框获知后果；2026-09-28 按 owner 要求移除选人页风险警告和开盘动画，倍率保留在赛前双方对照页。
+`BossRush_ModeH_RealStakeRiskNotice` 本地化 key 为兼容保留。系统唯一会自行禁用真实押品的情况是
 只读派生结果 `ModeHWarehouseStakeJournal.IsSlotConsistent` 为假，它不是可写开关。
 
 **运行时门。** `ModeHRuntimeGates` 提供**五个**互不混用的 no-throw 只读结果：
@@ -474,22 +474,31 @@ PetNest/ 目录零处直调），每批至多一次；`IsSaving` 时改走 defer
 `ModeGPerformanceGuard` 断言该字面量）；战痕的凶手改由**只在随从在场期间**订阅的
 官方 `Health.OnHurt` 静态事件记录，离场立刻退订。
 
-**反射面：唯一一处反射写。** `PetNest/PetNestPetProxyBridge.cs` 反射写
+**反射面。** `PetNest/PetNestPetProxyBridge.cs` 的旧探针反射写
 `LevelManager` 的私有字段 `petCharacter`（`AccessTools.Field`），用于让官方
-`PetProxy` 的捡漏背包跟随随从。**实测修正**：该字段并非"无可见赋值点"——每张图的
+`PetProxy` 的旧借席探针跟随随从。2026-09-28 起生产背包不再消费该桥，旧桥只保留 Dev 探针与兼容清理。**历史实测修正**：该字段并非"无可见赋值点"——每张图的
 关卡初始化都会创建官方宠物并占席，因此实现的是**借席不夺席**：只在非基地图借席、
 借席前记录原占位者、离场/死亡/切图必然还原、还席前核对席位仍是自己的随从、
 反射解析失败或字段类型变更一律 fail-closed（随从无背包，不崩）。
 
+2026-09-28 `WIRE+`：`PetNestBackpackRestoration` 缓存并只读官方 `ItemTreeData.OnItemLoaded` 的私有同名 `Action<Item>` 字段，在每节点 `Variables.SetRaw` 完成后、整树连接前调用，保留官方恢复通知的时机及其它 Mod 的订阅。字段缺失或类型变更时拒绝恢复并保留原快照；回调异常由本次恢复 owner 回收已创建节点，不静默跳过订阅者。
+
+**独立背包（2026-09-28，SCHEMA+）。** `PetNestBackpack` 在基地 / 出击随从的共同激活入口绑定崽的稳定 `id`，头顶官方交互名为「背包」。点击后惰性建立官方 `Item.Inventory`，界面走 `LootView.LootItem`；容量沿用原基础格数、等级、性格与天赋公式。物品完整 `ItemTreeData`、槽位与排序锁序列化成可选 `PetNestPetRecord.backpackJson`，随 `Bundle_v2` 保存，原 schemaVersion 与键不变，旧档缺字段视为空背包。半途恢复失败不覆盖原记录；迟到的异步物品核对对象代数与存档槽后才入袋。切图 / 重伤先封存再销毁；换崽不转移物品，有物品的崽不能放生或派去远征，先取空才允许。
+
+`PetNestBackpackSnapshot` 使用共享 JSON 读写器显式保留官方树节点、原始 KV 字节、配件连接与嵌套容器；官方连接类型没有 `Serializable`，不能直接用 `JsonUtility` 保存整棵树。恢复逐节点登记唯一 owner，缺物品、连接失败、取消或通知异常时回收全部本次节点。变更事件立即登记资产义务，正常保存继续通过原协调器；封存失败关闭交互并保留未保存的物品容器，禁止用另一主角或存档槽的资产完成旧转移。持久化前的进程崩溃仍不能保证恢复。
+
+背包资产快照独立于孵化 / 远征的基地仓库快照：官方 LootView 内的主角和官方宠物背包与崽记录同批采集，出击图不等待基地仓库。物理落盘仍仅经 `PetNestSaveCoordinator` 的共享引擎；官方收集回调只允许更新 ES3 缓存，不重复 `SaveFile`，即便宿主 `IsSaving` 已置位也能采到本次记录。普通主动落盘仍受 `IsSaving` 延迟闸保护。已有官方宠物背包中的物品没有可靠的崽身份，保留在原容器，不猜测迁移。
+
 **版本升级检查单（隐性契约）。** 官方更新后必须复查：
 
-- `LevelManager.petCharacter`（私有字段名与类型）——唯一反射写点；
+- `LevelManager.petCharacter`（私有字段名与类型）——仅旧借席探针使用；
 - `AICharacterController.leader`（public 字段）——跟随驱动；
 - `CharacterMainControl.modelRoot`（public Transform）——幼体视觉缩放；
 - `CharacterRandomPreset` 的 `hasSkill` / `exp` / `hasSoul` / `team` / `dropBoxOnDead`
   ——中性化五件套；
-- `PetProxy.Update` 的门控条件与 `CharacterMainControl.PetCapcity` 容量同步语义
-  （官方拼写就是 `PetCapcity`，少一个 a）；
+- `Item.CreateInventoryComponent`、`LootView.LootItem`、`Inventory.onContentChanged` 与 `ItemTreeData` 的完整恢复语义；
+- `ItemTreeData.OnItemLoaded` 私有 backing field 的名称、`Action<Item>` 类型及变量恢复后的通知时机；
+- `PetProxy.Update` / `CharacterMainControl.PetCapcity` 仅旧探针仍需复核（官方拼写少一个 a）；
 - `Health.OnHurt` 静态事件签名——战痕凶手来源。
 
 **本地化。** key 统一使用 `BossRush_PetNest_` 前缀，唯一来源是

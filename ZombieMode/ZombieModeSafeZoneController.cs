@@ -257,13 +257,18 @@ namespace BossRush
                                   delta * (ejectionRadius * inverseDistance);
             destination.y = enemyTransform.position.y;
             Vector3 resolved;
-            if (SpawnPositionHelper.TrySampleNavMesh(
-                    destination,
-                    out resolved,
-                    ZombieModeTuning.NavMeshLiftOffset,
-                    ZombieModeTuning.SafeZoneEnemyEjectionNavMeshRadius) &&
+            if (TryResolveZombieModeSpawnPoint(destination, false, out resolved, ZombieModeTuning.SafeZoneEnemyEjectionNavMeshRadius) &&
                 !IsZombieModePositionInsideSafeZoneEnemyExclusion(resolved))
             {
+                destination = resolved;
+            }
+            else
+            {
+                if (!TryGetZombieModeReliableSpawnPosition(out resolved) ||
+                    IsZombieModePositionInsideSafeZoneEnemyExclusion(resolved))
+                {
+                    return false;
+                }
                 destination = resolved;
             }
 

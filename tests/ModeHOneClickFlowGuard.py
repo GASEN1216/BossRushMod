@@ -108,8 +108,8 @@ def check(sources):
     need(pick, 'RunAutoAdvance("champion_picked", delegate',
          "选人点击必须直接进自动开打链（不再停在名单 / 看盘 / 赔率页）")
     draft = body("match", "private ModeHPageContent BuildDraftPageContent()")
-    need(draft, "page.ShowRealStakeNotice = true;", "入口页仍须固定披露真实押品风险（§22.1）")
-    need(draft, "page.CompactRiskNotice = true;", "选人页的风险披露放页脚，不占顶部红条")
+    if "page.ShowRealStakeNotice = true;" in draft:
+        errors.append("选人页不再挂风险警告；押注后果由赛前选项与确认框说明")
     card = body("match", "private ModeHCardData BuildProfileCard(")
     need(card, "card.PortraitKey = profile.stableKey;", "选人卡立绘键必须是 stableKey（= 图鉴条目键）")
     need(card, "card.Body = ResolveFighterPlainDescription(profile);", "选人卡正文必须是白话说明")

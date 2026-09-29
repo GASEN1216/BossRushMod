@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+namespace UnityEngine { internal static class Debug { internal static void LogWarning(object message) { } } }
 namespace Saves { internal static class SavesSystem { public static int CurrentSlot = 1; } }
 namespace BossRush
 {
@@ -138,6 +139,7 @@ namespace BossRush
         private ModeHMatchReportDto _lastSettlementReport;
         private ModeHSeasonRewardOperationDto _lastRewardOperation;
         public int Routes, Releases, ImplicitAbortReturns, UiRefreshes;
+        private void NotePageFailure(string message) { }
         public ModeHPageContent Page() { return BuildCompletedSettlementPageContent(); }
         public void Retry() { RequestTechnicalRetry("reinforcement_spawn_failed"); }
         public void AbortSpawn() { AbortMatchSpawning("spawn_failed"); }

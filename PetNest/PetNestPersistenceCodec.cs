@@ -176,7 +176,8 @@ namespace BossRush
               .Str("lockedByExpeditionId", pet.lockedByExpeditionId)
               .Int("careerCount", pet.careerCount)
               .Int("expeditionCount", pet.expeditionCount)
-              .Int("mergedOldScarCount", pet.mergedOldScarCount);
+              .Int("mergedOldScarCount", pet.mergedOldScarCount)
+              .Str("backpackJson", pet.backpackJson);
 
             sb.BeginArray("talents");
             if (pet.talents != null)
@@ -290,6 +291,7 @@ namespace BossRush
             pet.careerCount = node.GetInt("careerCount", 0);
             pet.expeditionCount = node.GetInt("expeditionCount", 0);
             pet.mergedOldScarCount = node.GetInt("mergedOldScarCount", 0);
+            pet.backpackJson = node.GetString("backpackJson", null);
 
             pet.talents = new List<PetNestTalentEntry>();
             List<BossRushJsonValue> talentNodes = node.GetArray("talents");

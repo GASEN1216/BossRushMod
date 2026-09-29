@@ -291,9 +291,6 @@ namespace BossRush
                     return false;
                 }
                 InitializeItemValueCacheAsync();
-                TryCreateArenaDifficultyEntryPoint();
-                BossRushSignInteractable sign = UnityEngine.Object.FindObjectOfType<BossRushSignInteractable>();
-                if (sign != null) sign.AddAmmoRefillOption();
                 bossRushArenaActive = true;
                 return true;
             }

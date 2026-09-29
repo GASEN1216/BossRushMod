@@ -34,6 +34,7 @@ namespace BossRush
 
         /// <summary>实物变更前置检查通过后置位；之后的所有落盘都必须连同实物一起写。</summary>
         private static bool _assetSnapshotRequired;
+        private static bool _backpackAssetSnapshotRequired;
 
         // false：实物资产屏障要求 Store 之后立刻 durable，任何场景都立即试写；
         // Tick 的重试仍按基地门控且不计预算（引擎统一处理）。
@@ -54,7 +55,36 @@ namespace BossRush
         internal static bool RequireAssetSnapshot(out string error)
         {
             error = null;
+            if (SavesSystem.IsSaving) { error = "asset_save_not_ready"; return false; }
+            if (!CanCollectAssets(out error)) return false;
+            lock (_lock) { _assetSnapshotRequired = true; }
+            return true;
+        }
+
+        internal static void MarkBackpackAssetsChanged()
+        {
+            lock (_lock) { _backpackAssetSnapshotRequired = true; }
+        }
+
+        /// <summary>背包只与 LootView 中的主角 / 官方宠物容器互转，出击图无需等待基地仓库。</summary>
+        internal static bool RequireBackpackAssetSnapshot(out string error)
+        {
+            error = null;
             if (SavesSystem.IsSaving || SavesSystem.CurrentSlot < 0 || CharacterMainControl.Main == null
+                || CharacterMainControl.Main.CharacterItem == null
+                || (PetProxy.PetInventory != null && PetProxy.PetInventory.Loading))
+            {
+                error = "asset_save_not_ready";
+                return false;
+            }
+            MarkBackpackAssetsChanged();
+            return true;
+        }
+
+        private static bool CanCollectAssets(out string error)
+        {
+            error = null;
+            if (SavesSystem.CurrentSlot < 0 || CharacterMainControl.Main == null
                 || CharacterMainControl.Main.CharacterItem == null || PlayerStorage.Instance == null
                 || !PlayerStorage.Instance.HasInitialized() || PlayerStorage.Loading
                 || PlayerStorage.Inventory == null || PlayerStorageBuffer.Instance == null
@@ -63,7 +93,6 @@ namespace BossRush
                 error = "asset_save_not_ready";
                 return false;
             }
-            lock (_lock) { _assetSnapshotRequired = true; }
             return true;
         }
 
@@ -71,17 +100,31 @@ namespace BossRush
         internal static bool CollectPendingAssets(out string error)
         {
             error = null;
-            bool required;
-            lock (_lock) { required = _assetSnapshotRequired; }
-            if (!required) return true;
-            if (!RequireAssetSnapshot(out error)) return false;
+            if (!PetNestBackpack.CollectAll(out error)) return false;
+            bool required, backpackRequired;
+            lock (_lock) { required = _assetSnapshotRequired; backpackRequired = _backpackAssetSnapshotRequired; }
+            if (!required && !backpackRequired) return true;
+            if (backpackRequired && (SavesSystem.CurrentSlot < 0 || CharacterMainControl.Main == null
+                || CharacterMainControl.Main.CharacterItem == null
+                || (PetProxy.PetInventory != null && PetProxy.PetInventory.Loading)))
+            {
+                error = "asset_save_not_ready";
+                return false;
+            }
+            // 官方 OnCollectSaveData 本就在 IsSaving 中；这里仅检查实体就绪，禁止复用操作前闸。
+            if (required && !CanCollectAssets(out error)) return false;
             try
             {
                 CharacterMainControl.Main.CharacterItem.Save("MainCharacterItemData");
-                PlayerStorage.Inventory.Save("PlayerStorage");
-                PlayerStorageBuffer.SaveBuffer();
-                SavesSystem.Save<EconomyManager.SaveData>("EconomyData",
-                    (EconomyManager.SaveData)EconomyManager.Instance.GenerateSaveData());
+                if (backpackRequired && LevelConfig.SavePet && PetProxy.PetInventory != null)
+                    PetProxy.PetInventory.Save("Inventory_Safe");
+                if (required)
+                {
+                    PlayerStorage.Inventory.Save("PlayerStorage");
+                    PlayerStorageBuffer.SaveBuffer();
+                    SavesSystem.Save<EconomyManager.SaveData>("EconomyData",
+                        (EconomyManager.SaveData)EconomyManager.Instance.GenerateSaveData());
+                }
                 return true;
             }
             catch (Exception e) { error = "asset_collect_failed:" + e.GetType().Name; return false; }
@@ -129,7 +172,7 @@ namespace BossRush
         internal static void NotifySlotChanged()
         {
             _engine.NotifySlotChanged();
-            lock (_lock) { _assetSnapshotRequired = false; }
+            lock (_lock) { _assetSnapshotRequired = false; _backpackAssetSnapshotRequired = false; }
         }
 
         /// <summary>宿主 tick：重试被推迟的批次。未 deferred 时 O(1) 早返。</summary>
@@ -152,7 +195,7 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             _engine.Reset();
-            lock (_lock) { _assetSnapshotRequired = false; }
+            lock (_lock) { _assetSnapshotRequired = false; _backpackAssetSnapshotRequired = false; }
             PetNestPersistence.ResetStaticCaches();
         }
 
@@ -168,7 +211,7 @@ namespace BossRush
 
             public bool IsStoreFaulted { get { return PetNestPersistence.IsAnyStoreFaulted; } }
 
-            public bool HasSnapshotObligation { get { lock (_lock) { return _assetSnapshotRequired; } } }
+            public bool HasSnapshotObligation { get { lock (_lock) { return _assetSnapshotRequired || _backpackAssetSnapshotRequired; } } }
 
             public string LastError { get { return null; } }
 
@@ -185,7 +228,8 @@ namespace BossRush
 
             public void OnPhysicalSaveSucceeded()
             {
-                lock (_lock) { _assetSnapshotRequired = false; }
+                lock (_lock) { _assetSnapshotRequired = false; _backpackAssetSnapshotRequired = false; }
+                PetNestBackpack.NotifyPhysicalSaveSucceeded();
                 PetNestMuseumStats.EvaluatePersistedAchievements();
             }
         }

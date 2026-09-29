@@ -30,12 +30,16 @@ def main():
                   'private bool IsZombieModeNormalSpawnStillAllowed(', 'private bool TryReserveZombieModeNormalSpawnSlot(',
                   'private void ReleaseZombieModeNormalSpawnSlot(', 'internal async UniTask<CharacterMainControl> TrySpawnZombieModeBossAsync(',
                   'private void DestroyZombieModePausedSpawnCandidate(', 'private void PrepareZombieModeSpawnedEnemy(',
-                  'private async UniTask<bool> WaitForZombieModeRuntimeResumeAsync(']
-    production = 'using System; using System.Collections.Generic; using UnityEngine; using Cysharp.Threading.Tasks;\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n'
-    production += '\n'.join(member(text, signature) for signature in signatures) + '\n}}'
+                  'private async UniTask<bool> WaitForZombieModeRuntimeResumeAsync(',
+                  'private bool TryResolveZombieModeSpawnPoint(']
+    damage_path = ROOT / 'ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs'
+    damage_raw = damage_path.read_bytes()
+    production = 'using System; using System.Collections.Generic; using UnityEngine; using UnityEngine.AI; using Duckov.Buffs; using Cysharp.Threading.Tasks;\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n'
+    production += '\n'.join(member(text, signature) for signature in signatures)
+    production += '\n' + member(damage_raw.decode('utf-8-sig'), 'internal void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source,') + '\n}}'
     generated = OUT / 'Production.cs'
     generated.write_text(production, encoding='utf-8')
-    (OUT / 'production-sha256.json').write_text(json.dumps({str(path.relative_to(ROOT)): hashlib.sha256(raw).hexdigest()}, indent=2), encoding='utf-8')
+    (OUT / 'production-sha256.json').write_text(json.dumps({str(path.relative_to(ROOT)): hashlib.sha256(raw).hexdigest(), str(damage_path.relative_to(ROOT)): hashlib.sha256(damage_raw).hexdigest()}, indent=2), encoding='utf-8')
     sources = [generated, HERE / 'Program.cs', HERE / 'Stubs.cs']
     includes = ''.join('<Compile Include="' + escape(str(path), {'"': '&quot;'}) + '" />' for path in sources)
     project = OUT / 'Regression.csproj'

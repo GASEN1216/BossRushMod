@@ -68,15 +68,18 @@ class Program
         Check(PetNestCompanionSpawner.Requests.Count==0,"LevelInited alone cannot borrow before AfterInit");
         LevelManager.AfterInit=true;
         CharacterMainControl.Main.CharacterItem=new ItemStatsSystem.Item { BaseCapacity=2 };
-        PetNestCompanionRuntime.TrySpawnForScene(owner,7);
-        Check(PetNestCompanionSpawner.Requests.Count==0,"missing official pet inventory waits for retry");
-        PetProxy.PetInventory=new ItemStatsSystem.Inventory { Capacity=2 };
         SceneLoader.IsSceneLoading=true;
         PetNestCompanionRuntime.TrySpawnForScene(owner,7);
         Check(PetNestCompanionSpawner.Requests.Count==0,"loading screen keeps cub creation pending");
         SceneLoader.IsSceneLoading=false;
         PetNestCompanionRuntime.TrySpawnForScene(owner,7);
+        Check(PetNestCompanionSpawner.Requests.Count==1 && PetProxy.PetInventory==null,
+            "independent cub backpack no longer waits for the official pet inventory");
+        PetProxy.PetInventory=new ItemStatsSystem.Inventory { Capacity=2 };
+        int pendingCancellations=PetNestDownedHandler.PendingCancellations;
         PetNestCompanionRuntime.CleanupOnce();
+        Check(PetNestDownedHandler.PendingCancellations==pendingCancellations+1,
+            "companion cleanup cancels the previous actor's queued downed event before replacement");
         old=CompleteSpawn();
         Check(old.Cleanups>0 && !PetNestCompanionRuntime.HasCompanion,"cancelled raid request cannot reappear with unchanged seat");
         PetNestCompanionRuntime.TrySpawnForScene(owner,7);

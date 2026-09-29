@@ -12,7 +12,7 @@ namespace BossRush
     ///   与 Mode G 一样不占用路牌的难度子选项；
     /// - IsInteractable 统一受 ModeHAvailability、地图支持、展示资源预检、
     ///   Mode H 运行门和旧模式冲突门控；
-    /// - 真实资产风险行（BossRush_ModeH_RealStakeRiskNotice，§22.1）固定披露在选人页页脚；
+    /// - 押注后果由赛前押注行及确认框说明，选人页不挂警告；
     ///   进入地图选择器时不再另推一条横幅（2026-09-25 owner：「进鸭王杯地图选择器时的横幅也去掉」）；
     /// - 确认后唯一调用 ModeHEntry.TryEnter；被拒绝时不改变旧模式状态。
     /// </summary>

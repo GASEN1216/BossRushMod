@@ -27,6 +27,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 namespace BossRush
 {
@@ -511,7 +512,7 @@ namespace BossRush
             viewport.GetComponent<RectTransform>().anchoredPosition = position;
             viewport.AddComponent<RectMask2D>();
 
-            ScrollRect scroll = viewport.AddComponent<ScrollRect>();
+            ScrollRect scroll = viewport.AddComponent<PetNestScrollRect>();
             scroll.horizontal = false;
             scroll.vertical = true;
             scroll.movementType = ScrollRect.MovementType.Clamped;
@@ -536,6 +537,7 @@ namespace BossRush
             scroll.viewport = viewport.GetComponent<RectTransform>();
             scroll.content = content.GetComponent<RectTransform>();
             BossRushUI.ConfigureScrollRect(scroll);
+            scroll.inertia = false;
             return content.transform;
         }
 
@@ -1154,5 +1156,17 @@ namespace BossRush
         }
 
         #endregion
+    }
+    /// <summary>Windows 滚轮可能送来 120 单位；规范成一格，避免共享灵敏度再次放大成整页跳动。</summary>
+    internal sealed class PetNestScrollRect : ScrollRect
+    {
+        public override void OnScroll(PointerEventData eventData)
+        {
+            Vector2 original = eventData.scrollDelta;
+            eventData.scrollDelta = new Vector2(Mathf.Clamp(original.x, -1f, 1f),
+                Mathf.Clamp(original.y, -1f, 1f));
+            try { base.OnScroll(eventData); }
+            finally { eventData.scrollDelta = original; }
+        }
     }
 }

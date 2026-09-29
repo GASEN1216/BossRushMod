@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using ItemStatsSystem;
+namespace UnityEngine { internal static class Debug { internal static void LogWarning(object message) { } } }
 namespace ItemStatsSystem { public class Inventory { public List<Item> Content = new List<Item>(); } }
 namespace BossRush
 {
@@ -87,7 +88,6 @@ namespace BossRush
     }
     internal partial class ModeHCombatTelemetry { public HashSet<string> _enteredProfileIds = new HashSet<string>(); }
     internal class ModeHCombatControl { public ModeHInjuryAndScarSystem InjuryAndScar = new ModeHInjuryAndScarSystem(); }
-    internal static class ModeHBetRevealView { public static bool IsPlaying; }
     internal sealed class ModeHUI { public int Closed; public void ClosePage() { Closed++; } }
     internal partial class ModeHRuntimeModule
     {
@@ -98,7 +98,6 @@ namespace BossRush
         public int _sceneGeneration, _restoredSlotGeneration, _resumeSceneIntentGeneration;
         public bool _restoredSeasonPending, _resumeScenePending, _resumeNeedsMatchReset, _commandsClosed, _shutdownCompleted;
         private bool _seasonDirty;
-        public bool _waitingForBetReveal;
         public ModeHUI _ui;
         private int _recoveryDriveStateSequence = -1;
         public ModBehaviour _owner = new ModBehaviour();

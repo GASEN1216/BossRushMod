@@ -10,7 +10,16 @@ namespace BossRush
     {
         private List<string> BuildDefaultKitSelection(ModeHProfileDto profile)
         {
-            // 全槽基础配装在选人前冻结；手动 kit 仅作为覆盖，不再默认固定装备。
+            // 新一场沿用这个选手上一场的覆盖装备；按 profile 身份取，换首发也不串装。
+            ModeHMatchRosterDto previous = _season != null ? _season.matchRoster : null;
+            if (profile != null && previous != null)
+            {
+                List<string> selected = previous.matchStarterProfileId == profile.profileId
+                    ? previous.starterKitIds : previous.matchRelayProfileId == profile.profileId
+                    ? previous.relayKitIds : null;
+                if (selected != null) return new List<string>(selected);
+            }
+            // 全槽基础配装在选人前冻结；没有历史选择时使用原本那套。
             return new List<string>();
         }
 

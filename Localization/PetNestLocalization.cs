@@ -55,6 +55,7 @@ namespace BossRush
             Add(map, "Page_Expedition", "天灾远征", "Disaster Expedition");
             Add(map, "Page_Museum", "遗种博物馆", "Relic Museum");
             Add(map, "Page_Memorial", "阵亡纪念碑", "Memorial");
+            Add(map, "Backpack", "背包", "Backpack");
 
             // 命名弹窗（SystemDesc 对玩家承诺过"起个名字"，入口在 PetNestRenameModal）
             Add(map, "Rename_Title", "给它起个名字", "Name this cub");
@@ -111,6 +112,9 @@ namespace BossRush
             Add(map, "Fail_pet_duplicate", "这只崽已经在巢里了", "That cub is already in the nest");
             Add(map, "Fail_pet_locked_by_expedition", "它正在远征途中", "It is away on an expedition");
             Add(map, "Fail_pet_downed", "它本局已经重伤退场", "It has already been carried off this run");
+            Add(map, "Fail_backpack_not_empty", "先取出这只崽背包里的物品，再放生或派去远征", "Empty this cub's backpack before releasing it or sending it on an expedition");
+            Add(map, "Fail_backpack_unavailable", "背包暂时打不开，物品记录已保留，请稍后重试", "The backpack is unavailable. Its saved contents are intact; try again later");
+            Add(map, "Fail_backpack_save_failed", "背包保存失败，请稍后重试", "The backpack could not be saved; try again later");
             Add(map, "Fail_pet_invalid", "这只崽的数据不完整，无法入巢",
                 "This cub's data is incomplete and cannot enter the nest");
             Add(map, "Fail_souls_insufficient", "遗魂不够", "Not enough relic souls");

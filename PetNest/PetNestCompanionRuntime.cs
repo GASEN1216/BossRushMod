@@ -252,20 +252,7 @@ namespace BossRush
                 _deployedPetId = pet.id;
                 handle = null;
 
-                // 捡漏背包：借席 + 容量 Modifier，与随从同寿命
-                // 借席失败（反射不可用 / 席位被他方随从占着）时**不给容量加成**：
-                // 席位仍归官方宠物，格子加在玩家身上等于白送给官方宠物背包，
-                // 与「随从没借到席就没有捡漏收益」的 fail-closed 语义相反。
-                string yieldReason;
-                if (PetNestPetProxyBridge.TryBorrowSeat(_handle.Character, out yieldReason))
-                {
-                    if (!PetNestPetProxyBridge.ApplyCapacityBonus(playerNow, ResolveCapacityBonus(pet)))
-                        PetNestPetProxyBridge.ReleaseSeat();
-                }
-                else
-                {
-                    ModBehaviour.DevLog("[PetNest] 借席未成功，跳过容量加成: " + yieldReason);
-                }
+                // 背包在 TryActivate 中绑定 pet.id，基地与出击共用官方格子 UI。
 
                 // 战痕要刻"被谁打倒"：只在随从在场期间订阅官方 OnHurt，离场立刻退订
                 PetNestDownedHandler.EnsureHurtSubscribed();
@@ -313,8 +300,7 @@ namespace BossRush
         private static bool IsCompanionWorldReady()
         {
             return !SceneLoader.IsSceneLoading && LevelManager.LevelInited && LevelManager.AfterInit
-                && CharacterMainControl.Main != null && CharacterMainControl.Main.CharacterItem != null
-                && PetProxy.PetInventory != null && !PetProxy.PetInventory.Loading;
+                && CharacterMainControl.Main != null && CharacterMainControl.Main.CharacterItem != null;
         }
 
         /// <summary>
@@ -401,6 +387,7 @@ namespace BossRush
 
             try
             {
+                PetNestDownedHandler.CancelPendingDowned();
                 PetNestDownedHandler.ShutdownHurtSubscription();
                 PetNestProgressionService.ShutdownKillTracking();
             }

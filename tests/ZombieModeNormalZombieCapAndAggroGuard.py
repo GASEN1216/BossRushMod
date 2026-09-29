@@ -315,11 +315,11 @@ def main() -> int:
         if result:
             return result
     for token in [
-        "reason == ZombieModeDistantRecoveryReason",
+        "bool recoveredNearPlayer = IsZombieModeActive &&",
         "TryGetZombieModeReliableSpawnPosition(out targetPos)",
-        "TryGetNearestAlternateSpawnPoint(currentPos, state, player, out targetPos)",
+        "IsZombieModeActive || !TryGetNearestAlternateSpawnPoint(currentPos, state, player, out targetPos)",
     ]:
-        result = require(recover, token, "distant recovery must reuse the player-near selector and retain generic fallback")
+        result = require(recover, token, "all Zombie recovery reasons must use reachable points; generic fallback is reserved for other modes")
         if result:
             return result
 

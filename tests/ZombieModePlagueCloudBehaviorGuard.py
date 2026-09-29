@@ -3,6 +3,7 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 
 RUNTIME = Path("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs")
@@ -49,8 +50,8 @@ def extract_case(body: str, case_token: str, next_case_token: str) -> str | None
 
 
 def main() -> int:
-    runtime = RUNTIME.read_text(encoding="utf-8-sig")
-    components = COMPONENTS.read_text(encoding="utf-8-sig")
+    runtime = clean_source(RUNTIME.read_text(encoding="utf-8-sig"))
+    components = clean_source(COMPONENTS.read_text(encoding="utf-8-sig"))
 
     special_body = extract_method_body(runtime, "private void TryExecuteZombieModeSpecialSkill(")
     if special_body is None:
@@ -111,9 +112,18 @@ def main() -> int:
         "damagePerSecond",
         "tickInterval",
         "followSourcePosition",
+        "runtime.SetDamageBuff(GameplayDataSettings.Buffs != null ? GameplayDataSettings.Buffs.Poison : null);",
     ]:
         if token not in spawn_body:
             return fail("damage-cloud spawn helper missing token -> " + token)
+
+    area = clean_source(Path("ZombieMode/ZombieModeBossController.cs").read_text(encoding="utf-8-sig"))
+    if "inst.DealZombieModeRuntimeAreaDamageToPlayer(RuntimeRunId, source, transform.position, radius, tickDamage, damageBuff);" not in area:
+        return fail("poison cloud must pass its Buff to the existing damage receiver path")
+    damage = extract_method_body(runtime, "internal void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source,") or ""
+    for token in ("damageInfo.buff = buff;", "damageInfo.buffChance = buff != null ? 1f : 0f;", "receiver.Hurt(damageInfo);"):
+        if token not in damage:
+            return fail("official Health.Hurt poison application missing -> " + token)
 
     for token in [
         "public sealed class ZombieModeTelegraphedDamageCloudRuntime : ZombieModeTimedRunScopedRuntime",

@@ -296,7 +296,7 @@ namespace BossRush
         /// <summary>
         /// 锁盘成功后下注。先看这一场是不是已经押上（中断后重打）：是就沿用，不重扣也不重押。
         /// 否则押物品（勾过的话）或押钱。钱不够、东西不在、上一笔没结清时这一场不押：记一句原因给结算页，比赛照打。
-        /// 押成就播一次「开盘」揭晓（纯表现，不挡状态机）。
+        /// 赔率已在赛前展示，押成后直接进入生成。
         /// </summary>
         private void ReserveStandingCashBet()
         {
@@ -310,7 +310,6 @@ namespace BossRush
                 // 押注跟着这一场走：沿用中断前那一笔（读档后按账本从背包里认领押上的东西）
                 if (carried.kind == ModeHCashBetService.KindItems)
                     ModeHItemBetStake.RebindFromLedger(ModeHItemBetEntry.Decode(carried.items));
-                ModeHBetRevealView.Play(carried.amount, carried.odds, carried.kind == ModeHCashBetService.KindItems);
                 return;
             }
             if (!ModeHCashBetService.IsAvailable) return;
@@ -330,7 +329,6 @@ namespace BossRush
                     : L10n.T("这一场没押成（存档正忙或上一笔还没结清）。", "No bet this match (save busy or a previous bet is still open)."), failure);
                 return;
             }
-            ModeHBetRevealView.Play(amount, odds, false);
         }
 
         /// <summary>押背包物品：记下押上的是哪几件、估值多少（物品原地不动），账本记成后才清掉勾选。</summary>
@@ -352,7 +350,6 @@ namespace BossRush
                 return;
             }
             ModeHItemBetStake.ClearSelection();
-            ModeHBetRevealView.Play(value, odds, true);
         }
 
         private void NoteCashBetSkipped(string note, string failureId)

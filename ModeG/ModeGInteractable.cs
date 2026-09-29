@@ -57,7 +57,6 @@ namespace BossRush
         private const float BadgeHeight = 24f;
         private const float ButtonWidth = 240f;
         private const float ButtonHeight = 52f;
-        private const float ButtonGap = 20f;
         private const float BottomPad = 24f;
         /// <summary>
         /// 单行文本框的最小高度系数：游戏中文字体一行约 1.45 倍字号。框比一行矮时 TMP 的 Ellipsis
@@ -295,9 +294,9 @@ namespace BossRush
                 BossRushUIColors.WarningText, ContentWidth, EmblemSize) + 8f;
 
             // 玩法说明：三句大白话——怎么打、敌人会怎样、能拿到什么。「决意」金色标出，和局内 HUD 同一个词。
-            // 长段落左对齐、按 ①②③ 分条（2026-09-23 审美审查 UB-19：居中长句行首参差，读不出是三条）。
+            // 三条玩法说明居中，与标题及契约选择区对齐。
             string gold = ColorUtility.ToHtmlStringRGB(BossRushUIColors.WarningText);
-            cursor += PlaceText(CreateParagraphText("Rules", st,
+            cursor += PlaceText(CreateBodyText("Rules", st,
                 L10n.T(
                     "① 带上自己的装备连打九波，敌人会专门针对你上一波的打法。\n"
                     + "② 换个距离、弹药或武器破解针对，就能攒下<color=#" + gold + ">决意</color>。\n"
@@ -350,7 +349,7 @@ namespace BossRush
             }
             catch { /* 呈现失败不影响确认页 */ }
 
-            // 分隔线：上面是选择，下面是入场须知
+            // 契约选择与开始按钮之间的分隔线。
             cursor += 10f;
             GameObject divider = ZombieModeUIHelper.CreateSeparator("Divider", st,
                 new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -(cursor + 4f)), 1f, BossRushUIColors.Divider);
@@ -358,35 +357,11 @@ namespace BossRush
             dividerRect.sizeDelta = new Vector2(-PadX * 2f, dividerRect.sizeDelta.y);
             cursor += 18f;
 
-            // 强制披露（规格 §3.1）：死亡损失遵循当前地图规则 + 多攒决意的备装建议。
-            // 两行都必须在扣除入场物品前对玩家可见，不得省略。
-            cursor += PlaceText(CreateParagraphText("Disclosure", st,
-                L10n.T("BossRush_ModeG_Entry_DeathRule") + "\n"
-                    + L10n.T("BossRush_ModeG_Entry_LoadoutHint"),
-                14f, BossRushUIColors.TextSecondary), ContentWidth, 0f, cursor) + 6f;
-
-            // 入场消耗紧贴按钮：点下去之前最后看到的就是代价。取消什么都不扣（预扣船票由 CloseModal 退回）。
-            cursor += PlaceText(CreateBodyText("Cost", st,
-                L10n.T("入场消耗：船票 ×1、宿命回响信物 ×1。点「暂不挑战」不扣任何东西。",
-                    "Entry cost: 1 ticket + 1 Fate Echo relic. \"Not Now\" costs nothing."),
-                16f, BossRushUIColors.TextPrimary), ContentWidth, 0f, cursor) + 16f;
-
-            // 暂不挑战（免费退出，次级样式，左）/ 立即迎战（本屏唯一主操作，最右；UI 共识对照审查 B-23）。
-            // 契约默认已选第一张，「立即迎战」打开就能点，不挂灰按钮（B-13）。
-            // 主操作底色走 AccentFill（全 Mod 按钮口径，2026-09-23）：旧版是 Success 平涂绿，与 Mode H / Mode E 三套主操作色（UB-33）。
+            // 契约默认已选第一张，底部只保留居中的开始按钮。
             float buttonY = -(cursor + ButtonHeight * 0.5f);
-            float buttonX = (ButtonWidth + ButtonGap) * 0.5f;
-            // 「放弃挑战」在局内是不可逆的弃局（ModeGAbandonPresenter）；这里只是免费退出、还会退回船票，
-            // 所以不用危险色、也不叫放弃。次级样式：SurfaceRaised 底 + Stroke 描边（SurfaceRaised 对面板底只有 1.03:1）。
-            Button cancelButton = ZombieModeUIHelper.CreateButton(
-                "Cancel", st, L10n.T("暂不挑战", "Not Now"),
-                new Vector2(0.5f, 1f), new Vector2(-buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
-                BossRushUIColors.SurfaceRaised, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
-                CloseModal, true);
-            BossRushUIKit.StyleSecondaryButton(cancelButton);
             ZombieModeUIHelper.CreateButton(
                 "Start", st, L10n.T("立即迎战", "Fight Now"),
-                new Vector2(0.5f, 1f), new Vector2(buttonX, buttonY), new Vector2(ButtonWidth, ButtonHeight),
+                new Vector2(0.5f, 1f), new Vector2(0f, buttonY), new Vector2(ButtonWidth, ButtonHeight),
                 BossRushUIColors.AccentFill, 20f, new Vector2(ButtonWidth - 24f, ButtonHeight - 12f),
                 () => ConfirmAndStart(host), true);
             cursor += ButtonHeight + BottomPad;
@@ -395,7 +370,7 @@ namespace BossRush
             RectTransform surfaceRect = surface.GetComponent<RectTransform>();
             surfaceRect.sizeDelta = new Vector2(ModalWidth, Mathf.Ceil(cursor));
             BossRushUI.PlayOpenAnimation(surface);
-            // ESC / 手柄取消 = 「暂不挑战」：同一下 ESC 不再穿透去开官方暂停菜单（UB-19）。
+            // ESC / 手柄取消关闭入场页；同一下按键不穿透到官方暂停菜单。
             _cancelKey = ModeGModalCancelKey.Attach(root, CloseModal);
 
             try

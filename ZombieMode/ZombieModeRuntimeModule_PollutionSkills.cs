@@ -8,6 +8,8 @@ using ItemStatsSystem;
 using ItemStatsSystem.Items;
 using ItemStatsSystem.Stats;
 using UnityEngine;
+using Duckov.Buffs;
+using Duckov.Utilities;
 
 namespace BossRush
 {
@@ -628,6 +630,9 @@ namespace BossRush
                 0f,
                 0f,
                 followSourcePosition);
+            // 此入口只用于毒疫 / 毒性光环。官方 Health.Hurt 仅从 DamageInfo.buff 施加状态，
+            // 普通区域伤害或 element_Poison 都不会自动补上中毒 Buff。
+            runtime.SetDamageBuff(GameplayDataSettings.Buffs != null ? GameplayDataSettings.Buffs.Poison : null);
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, cloud, runtime, null);
         }
 
@@ -876,7 +881,7 @@ namespace BossRush
             DealZombieModeAreaDamageToPlayer(runId, null, origin, radius, damage);
         }
 
-        internal void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source, Vector3 origin, float radius, float damage)
+        internal void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source, Vector3 origin, float radius, float damage, Buff buff = null)
         {
             if (!IsZombieModeRunValid(runId) || IsZombieModeRuntimePaused())
             {
@@ -899,6 +904,8 @@ namespace BossRush
             DamageInfo damageInfo = new DamageInfo(damageSource);
             damageInfo.damageType = DamageTypes.normal;
             damageInfo.damageValue = damage;
+            damageInfo.buff = buff;
+            damageInfo.buffChance = buff != null ? 1f : 0f;
             damageInfo.damagePoint = player.transform.position;
             damageInfo.damageNormal = delta.sqrMagnitude > 0.0001f ? delta.normalized : Vector3.up;
             damageInfo.isFromBuffOrEffect = source == null;

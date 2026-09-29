@@ -111,8 +111,26 @@ namespace BossRush
         internal static string Describe(Definition definition, bool done)
         {
             if (definition == null) return string.Empty;
-            return L10n.T(definition.HintCN, definition.HintEN)
-                + (done ? L10n.T("\n试过了？回基地来跟我聊聊。", "\nTried it? Come back to base and tell me how it went.") : string.Empty);
+            string objective;
+            switch (definition.Id)
+            {
+                case ModeG: objective = L10n.T("开始一局宿命回响", "Start a Fate Echo run"); break;
+                case ModeH: objective = L10n.T("完成一场黑市鸭王杯比赛", "Finish one Black Market Duck King Cup match"); break;
+                case PetNest: objective = L10n.T("孵出一只崽，或带崽出击一次", "Hatch a cub or take one on a raid"); break;
+                case RandomEvents: objective = L10n.T("在普通 BossRush 中触发一次随机事件", "Trigger a random event in ordinary BossRush"); break;
+                case SkyIslandGear: objective = L10n.T("带一件天空岛 Boss 专属装备回基地", "Bring one island boss gear item back to base"); break;
+                case ModeD: objective = L10n.T("开始一局白手起家", "Start a From Scratch run"); break;
+                case ModeE: objective = L10n.T("开始一局划地为营", "Start a Territory run"); break;
+                case ModeF: objective = L10n.T("开始一局血猎追击", "Start a Blood Hunt run"); break;
+                case Zombie: objective = L10n.T("选好开局流派，开始一局丧尸模式", "Choose a starting build and start a Zombie run"); break;
+                case Garden: objective = L10n.T("建成菜地", "Build the garden"); break;
+                case Trophy: objective = L10n.T("在展示架或假人上陈列一件 Boss 战利品", "Display a Boss trophy on a rack or mannequin"); break;
+                case AffixForge: objective = L10n.T("带一件已有词缀的装备回基地", "Bring gear with a forged affix back to base"); break;
+                case Reforge: objective = L10n.T("带一件重铸过的装备回基地", "Bring reforged gear back to base"); break;
+                case DailyReport: objective = L10n.T("在基地日报中签到一次", "Sign in once through the daily paper at base"); break;
+                default: return string.Empty;
+            }
+            return objective + (done ? L10n.T("（已完成）", " (done)") : string.Empty);
         }
 
         /// <summary>

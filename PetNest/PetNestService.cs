@@ -224,6 +224,11 @@ namespace BossRush
                 failureReasonId = "pet_locked_by_expedition";
                 return false;
             }
+            if (HasBackpackItems(pet))
+            {
+                failureReasonId = "backpack_not_empty";
+                return false;
+            }
 
             try
             {
@@ -305,6 +310,11 @@ namespace BossRush
                     failureReasonId = "pet_locked_by_expedition";
                     return false;
                 }
+                if (HasBackpackItems(pet))
+                {
+                    failureReasonId = "backpack_not_empty";
+                    return false;
+                }
             }
 
             try
@@ -345,6 +355,37 @@ namespace BossRush
                 failureReasonId = "release_pet_failed:" + e.GetType().Name;
                 return false;
             }
+        }
+
+        internal static bool HasBackpackItems(PetNestPetRecord pet)
+        {
+            if (pet == null) return false;
+            int liveCount;
+            if (PetNestBackpack.TryGetLiveItemCount(pet.id, out liveCount)) return liveCount > 0;
+            if (string.IsNullOrEmpty(pet.backpackJson)) return false;
+            try { return PetNestBackpackSnapshot.Decode(pet.backpackJson).Items.Count > 0; }
+            // 不完整的快照仍可能有物品，禁止通过放生 / 远征把原记录删掉。
+            catch (Exception) { return true; }
+        }
+
+        /// <summary>官方容器快照写入该崽的候选记录，与其他巢状态共用 Bundle_v2 事务。</summary>
+        internal static bool StoreBackpack(string petId, string json, out string error)
+        {
+            error = null;
+            PetNestPetRecord pet = TryGetPet(petId);
+            if (pet == null) { error = "pet_not_found"; return false; }
+            if (string.Equals(pet.backpackJson, json, StringComparison.Ordinal)) return true;
+            if (!BeginCandidate(out error)) return false;
+            try
+            {
+                pet = TryGetPet(petId);
+                if (pet == null) { error = "pet_not_found"; return false; }
+                pet.backpackJson = json;
+                // 即使实体快照暂时不能采集，也保留义务；不能把宠物新状态单独落盘。
+                PetNestSaveCoordinator.MarkBackpackAssetsChanged();
+                return CommitCandidate(out error, false);
+            }
+            finally { PetNestPersistenceAccess.AbortTransaction(); }
         }
 
         /// <summary>改名。空名表示恢复血脉默认名。</summary>

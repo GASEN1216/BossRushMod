@@ -142,7 +142,9 @@ internal static class Program
         host = Fresh(); ModeGEntryPreview preview = host.GetOrCreateModeGEntryPreview();
         Harness.Events.Clear();
         Check(host.PrepareModeGArenaRuntime(preview), "Arena prepare bridge failed");
-        Ordered("set-points:Arena", "item-cache", "entry-point", "ammo-refill");
+        Ordered("set-points:Arena", "item-cache");
+        Check(!Harness.Events.Contains("entry-point") && !Harness.Events.Contains("ammo-refill"),
+            "Mode G must not create standard arena signs, trash cans or refill options");
         Check(host.bossRushArenaActive, "Arena active write did not reach host");
         Check(host.CommitModeGArenaEntry(preview), "Arena commit bridge failed");
         Ordered("precache", "disable", "clear-enemies");

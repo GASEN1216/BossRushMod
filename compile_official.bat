@@ -652,7 +652,6 @@ echo(ModeH\ModeHRuntimeModule_MatchPages.cs
 echo(ModeH\ModeHRuntimeModule_BetFlow.cs
 echo(ModeH\ModeHCashBetService.cs
 echo(ModeH\ModeHItemBetStake.cs
-echo(ModeH\ModeHBetRevealView.cs
 echo(ModeH\ModeHRuntimeModule_CombatFlow.cs
 echo(ModeH\ModeHRuntimeModule_SettlementFlow.cs
 echo(ModeH\ModeHRuntimeModule_CombatProfiles.cs
@@ -1086,6 +1085,9 @@ echo(PetNest\PetNestSoulNotice.cs
 echo(PetNest\PetNestHatchService.cs
 echo(PetNest\PetNestModeGate.cs
 echo(PetNest\PetNestCompanionRuntime.cs
+echo(PetNest\PetNestBackpack.cs
+echo(PetNest\PetNestBackpackSnapshot.cs
+echo(PetNest\PetNestBackpackRestoration.cs
 echo(PetNest\PetNestDeathSuppressionRegistry.cs
 echo(PetNest\PetNestDownedHandler.cs
 echo(PetNest\PetNestExpeditionService.cs

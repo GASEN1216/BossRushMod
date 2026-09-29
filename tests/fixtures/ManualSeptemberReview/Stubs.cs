@@ -226,7 +226,13 @@ namespace BossRush
     static class PetNestTuning { public const int MaxBaseIdleCompanions=3,CompanionPetCapacityBonus=1,PetLevelsPerCapacityBonus=3; public const float BaseIdleSpawnIntervalSeconds=.1f; }
     static class PetNestModeGate { public const string ReasonQueryFailed="query"; public static bool Allowed=true; public static bool IsCompanionAllowed(ModBehaviour o,out string reason) { reason=null;return Allowed; } }
     static class PetNestLocalization { public static string DescribeFailure(string s) { return s; } }
-    static class PetNestDownedHandler { public static void EnsureHurtSubscribed() { } public static void ShutdownHurtSubscription() { } }
+    static class PetNestDownedHandler
+    {
+        public static int PendingCancellations;
+        public static void EnsureHurtSubscribed() { }
+        public static void ShutdownHurtSubscription() { }
+        public static void CancelPendingDowned() { PendingCancellations++; }
+    }
     static class PetNestProgressionService { public static void EnsureKillTrackingSubscribed() { } public static void ShutdownKillTracking() { } }
     static class PetNestCompanionHudView { public static void EnsureCreated() { } public static void Destroy() { } }
     class PetNestPersonality { public int ExtraPetCapacity; public static PetNestPersonality Resolve(PetNestPetRecord p) { return new PetNestPersonality(); } }

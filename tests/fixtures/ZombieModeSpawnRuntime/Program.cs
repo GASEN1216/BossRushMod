@@ -9,6 +9,7 @@ internal static class Program
     private static ZombieModeRuntimeModule New(out ModBehaviour host,out ZombieModeRunState state)
     {
         Probe.Trace.Clear(); Assert(Probe.Yields.Count==0,"Previous asynchronous wait must be drained");
+        UnityEngine.AI.NavMesh.Reset();
         CharacterMainControl.Main=new CharacterMainControl("player") { Team=Teams.player };
         host=new ModBehaviour(); state=new ZombieModeRunState(); return new ZombieModeRuntimeModule(host,state);
     }
@@ -72,5 +73,31 @@ internal static class Program
         var instance=state.CurrentWaveBossInstances.Single();
         Assert(instance.Lifecycle.Alive && instance.Character==boss && instance.Lifecycle.LastReachableTime==12 && instance.Lifecycle.LastHurtTime==12,"Boss lifecycle must be initialized before runtime registration");
     }
-    public static void Main() { NormalOrder(); GateAndSlot(); PauseRetry(); BossOrder(); Console.WriteLine("PASS ZombieModeSpawnRuntime"); }
+    private static void NavigationAndPoison()
+    {
+        ModBehaviour host; ZombieModeRunState state; var module=New(out host,out state);
+        Vector3 result;
+        UnityEngine.AI.NavMesh.SampleSuccess=false;
+        Assert(!module.Resolve(new Vector3(20,0,0),false,out result),"Terrain without NavMesh must not become a valid spawn");
+        Assert(module.TrySpawnZombieModeNormalZombieAsync(1,new Vector3(20,0,0)).Inner.Result==null && host.Requests.Count==0 && state.PendingNormalZombieSpawns==0,"Normal/summoned enemy must reject invalid terrain before reserving or creating");
+        UnityEngine.AI.NavMesh.Reset(); UnityEngine.AI.NavMesh.PathStatus=UnityEngine.AI.NavMeshPathStatus.PathPartial;
+        Assert(!module.Resolve(new Vector3(20,0,0),false,out result),"Disconnected navigation islands must be rejected");
+        Assert(module.TrySpawnZombieModeBossAsync(1,new Vector3(20,0,0),ZombieModeBossKind.Titan).Inner.Result==null && host.Requests.Count==0,"Boss must reject incomplete paths before creating");
+        UnityEngine.AI.NavMesh.Reset(); UnityEngine.AI.NavMesh.SampleOffset=new Vector3(0,3,0);
+        Assert(!module.Resolve(new Vector3(20,0,0),false,out result),"Nearby NavMesh on another floor must not be accepted");
+        UnityEngine.AI.NavMesh.Reset(); UnityEngine.AI.NavMesh.SampleOffset=new Vector3(1,0,1);
+        Assert(module.Resolve(new Vector3(20,0,0),false,out result) && result.x==21 && result.z==1 && result.y==ZombieModeTuning.NavMeshLiftOffset,"Spawn must use full sampled XYZ, including lift");
+        Assert(!module.Resolve(new Vector3(1,0,0),true,out result),"Virtual ring must preserve player-safe distance");
+        UnityEngine.AI.NavMesh.Reset();
+        var source=new CharacterMainControl("plague"); var poison=new Duckov.Buffs.Buff(); var receiver=CharacterMainControl.Main.mainDamageReceiver;
+        module.DealZombieModeAreaDamageToPlayer(1,source,Vector3.zero,4,4,poison);
+        Assert(receiver.Calls==1 && receiver.Last.buff==poison && receiver.Last.buffChance==1 && receiver.Last.fromCharacter==source && receiver.Last.damageValue==4,"Cloud tick must submit official poison Buff, guaranteed chance, source and damage in one receiver hit");
+        module.DealZombieModeAreaDamageToPlayer(1,source,new Vector3(10,0,0),4,4,poison);
+        module.Paused=true; module.DealZombieModeAreaDamageToPlayer(1,source,Vector3.zero,4,4,poison); module.Paused=false;
+        module.DealZombieModeAreaDamageToPlayer(2,source,Vector3.zero,4,4,poison);
+        Assert(receiver.Calls==1,"Outside, paused and stale-run clouds must not damage or poison");
+        module.DealZombieModeAreaDamageToPlayer(1,source,Vector3.zero,4,4);
+        Assert(receiver.Calls==2 && receiver.Last.buff==null && receiver.Last.buffChance==0,"Non-poison areas must retain their original damage without adding poison");
+    }
+    public static void Main() { NormalOrder(); GateAndSlot(); PauseRetry(); BossOrder(); NavigationAndPoison(); Console.WriteLine("PASS ZombieModeSpawnRuntime"); }
 }

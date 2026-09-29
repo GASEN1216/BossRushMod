@@ -24,16 +24,6 @@ namespace BossRush
         partial void OnUpdateInternal(float deltaTime, float unscaledDeltaTime)
         {
             if (_ui != null) _ui.ApplyHudVisibility(); // 观战 HUD 跟随官方界面与暂停收起，刷怪期也要（见 ModeHUI）
-            ModeHBetRevealView.Tick(); // 押钱「开盘」揭晓走表（没在播时 O(1) 早返）
-            // 押注揭晓是开战前的确认动画：锁盘已完成、赔率已冻结，但战场生成要等
-            // 动画落点与短暂停留结束，避免敌我已经开打时大面板仍挡住视野。
-            if (_waitingForBetReveal && !_commandsClosed && !ModeHBetRevealView.IsPlaying
-                && !BossRushUI.IsGamePaused())
-            {
-                _waitingForBetReveal = false;
-                if (_runState != null && _runState.Lifecycle == ModeHLifecycle.LoadoutLocked)
-                    StartMatchSpawning();
-            }
             if (_commandsClosed) return;
             if (_runState == null) return;
             if (_restoredSeasonPending || _resumeScenePending) return;
@@ -243,7 +233,9 @@ namespace BossRush
                 // 还没有战报的技术中止不算输，也不退押注：押注跟着这一场走，重锁时沿用（ReserveStandingCashBet）
             }
             int retries = _runState.IncrementTechnicalRetry();
-            ModBehaviour.DevLog("[ModeH] 技术故障 (" + (reasonId ?? "unknown") + ") retry=" + retries);
+            UnityEngine.Debug.LogWarning("[ModeH] 技术故障 (" + (reasonId ?? "unknown") + ") match="
+                + _runState.MatchIndex + " retry=" + retries);
+            NotePageFailure(L10n.T("本场准备失败，已保留押注，可以重试。", "Match preparation failed. Your bet is kept; you can retry."));
             if (retries > ModeHConfig.MaxAutomaticTechnicalRetriesPerMatch)
             {
                 RequestSuspended(reasonId != null ? reasonId : "technical_retry_exhausted");
@@ -398,9 +390,7 @@ namespace BossRush
         {
             ModeHPageContent page = new ModeHPageContent();
             page.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Entry");
-            // 真实押品风险仍在入口页页脚披露；单场押注留到每场开打前的看盘/赔率页。
-            page.ShowRealStakeNotice = true;
-            page.CompactRiskNotice = true;
+            // 选人页只展示候选；押注后果由赛前押注选项及确认框说明。
 
             if (_season == null) return page;
             EnsureDraftCandidates();
@@ -1037,14 +1027,6 @@ namespace BossRush
                     return;
                 }
                 ReserveStandingCashBet(); // 锁盘成功才扣押金；钱不够这一场就不押，比赛照打
-                if (ModeHBetRevealView.IsPlaying)
-                {
-                    _waitingForBetReveal = true;
-                    // LoadoutLocked 没有独立页面路由；先收掉赔率页并释放模态输入，
-                    // 揭晓动画才能独占视线且不把旧按钮留在其下方。
-                    if (_ui != null) _ui.ClosePage();
-                    return;
-                }
                 StartMatchSpawning();
             }
             catch (Exception e)

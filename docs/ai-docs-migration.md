@@ -1,5 +1,19 @@
 # AI 协作文档收敛迁移记录
 
+## 2026-09-28 遗种背包合同修正（SCHEMA+ / COMPAT / WIRE+）
+
+按用户要求把无效的官方 PetProxy 加格子改为崽独立背包，docs/contracts.md §6.2 与知识库遗种巢系统同步。旧借席桥仅留给 Dev 探针，生产改用官方 Inventory / LootView，按 pet.id 的可选 backpackJson 持久化，版本键保持 v2。专题补充滚轮输入归一与重伤待办清理；DownedCount 是累计次数，F3 漏检指标原误用累计值，现同步修正验收口径。
+
+续查补充官方 ItemTreeData 连接类型不能直接 JsonUtility 序列化的边界：背包改走共享 JSON 的完整树快照，恢复 owner 负责失败节点回收；只读缓存官方 OnItemLoaded backing field，按官方顺序通知既有订阅者。§6.2 同步物理保存失败保留容器、主角 / 槽位隔离及反射字段版本检查；没有新增持久化引擎或物理落盘入口。
+
+## 2026-09-28 宿命回响入场文案合同修正（COMPAT）
+
+按用户要求删除 Mode G 入场 Disclosure / Cost / Cancel 文案和按钮，保留 ESC 取消与退款，三条规则居中；旧 §3.1 强制披露要求不再作为当前入场 UI 合同，相关守卫同步用户要求。
+
+## 2026-09-28 丧尸刷怪点来源规则修正（COMPAT）
+
+按 owner 本次“复用官方刷怪的位置”要求，ZombieMode/AGENTS.md 取消“仅 BossRush 画像、不混入原版 CharacterSpawnerRoot”的限制，明确复用既有官方 Points 缓存、画像 / 候选环回退以及生成前的 NavMesh 完整路径校验。历史文件名 ZombieModeBossRushSpawnPointsOnlyGuard.py 保留以兼容现有调用，实际断言和 tests/README.md 已同步新行为；ZombieModeReuseCompatibilityGuard 不再把允许 Raycast 兜底的 helper 当成安全落点证明，改守实际 NavMesh 采样和完整路径。知识库同步毒疫官方 Buff 与商人单一入口说明。
+
 ## 2026-09-28 天空岛修复规则与台账收敛（SAFE）
 
 天空岛专项规则将已过时的作者工程绝对路径改为 `tools/unity_project_path.py` 解析入口，并落下本轮实际寄存回执、自动组选敌与爆炸缓冲恢复约束。剧情专题纠正旧“先交付事实再 SendToPlayer”的说明，与当前任务事务和岛上缓冲口径一致；生产复核、自动化与本地化专题补充缓存、采样和语言刷新边界。为满足台账预算，将 2026-09-27 生产就绪审计的代码修复闭环段按字节归档，根库保留索引及未完成 L3 提醒，原文 SHA 证据位于 `Build/sky-island-fixes-20260928/ledger-archive-proof.json`。

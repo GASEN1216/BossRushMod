@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 BOSS = Path("ZombieMode/ZombieModeRuntimeModule_BossController.cs")
@@ -14,15 +15,14 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
-    text = BOSS.read_text(encoding="utf-8")
+    text = clean_source(BOSS.read_text(encoding="utf-8"))
 
     required_tokens = [
         "private bool TryResolveZombieModeBossFallbackPosition(",
-        "SpawnPositionHelper.TryFindAroundPlayer(",
-        "owner.TryGetNearestZombieModeMapSpawnPositionToPlayerForBossRuntimeModule(out target)",
-        "SpawnPositionHelper.TrySampleNavMesh(",
+        "return TryGetZombieModeReliableSpawnPosition(out target);",
         "if (!TryResolveZombieModeBossFallbackPosition(instance, out target))",
         "SetZombieModeEnemyTargetToMainPlayer(ai);",
+        "GetZombieModeEnemyAI(boss.gameObject, marker)",
     ]
     for token in required_tokens:
         if token not in text:
@@ -41,8 +41,6 @@ def main() -> int:
     for token in [
         "private void TickZombieModeBossController(float deltaTime)",
         "module.TickZombieModeBossController(deltaTime);",
-        "return TryGetNearestZombieModeMapSpawnPositionToPlayer(out position);",
-        "return GetZombieModeEnemyAI(enemyObject, marker);",
         "SetZombieModeEnemyTargetToMainPlayer(ai);",
     ]:
         if token not in host:

@@ -139,6 +139,8 @@ static class ItemUtilities
 }
 class Health { public float CurrentHealth = 100, MaxHealth = 100; public void SetHealth(float health) { CurrentHealth = health; } }
 class CharacterMainControl { public static CharacterMainControl Main; public Item CharacterItem; public Health Health = new Health(); }
+static class PetProxy { public static Inventory PetInventory; }
+static class LevelConfig { public static bool SavePet = true; }
 class PlayerStorage
 {
     public static readonly List<ItemStatsSystem.Data.ItemTreeData> IncomingItemBuffer = new List<ItemStatsSystem.Data.ItemTreeData>();
@@ -158,8 +160,50 @@ namespace ItemStatsSystem.Data
 {
     public class ItemTreeData
     {
+        public static event Action<Item> OnItemLoaded;
         public int rootInstanceID, RootTypeID, Count;
+        public List<DataEntry> entries = new List<DataEntry>();
+        public sealed class DataEntry
+        {
+            public int instanceID, typeID;
+            public List<Duckov.Utilities.CustomData> variables = new List<Duckov.Utilities.CustomData>();
+            public List<SlotInstanceIDPair> slotContents = new List<SlotInstanceIDPair>();
+            public List<InventoryDataEntry> inventory = new List<InventoryDataEntry>();
+            public List<int> inventorySortLocks = new List<int>();
+        }
+        // 刻意与官方一致：连接类不带 Serializable，生产 codec 不依赖 Unity 自动序列化。
+        public sealed class SlotInstanceIDPair
+        {
+            public string slot; public int instanceID;
+            public SlotInstanceIDPair(string slot, int id) { this.slot = slot; instanceID = id; }
+        }
+        public sealed class InventoryDataEntry
+        {
+            public int position, instanceID;
+            public InventoryDataEntry(int position, int id) { this.position = position; instanceID = id; }
+        }
         public static ItemTreeData FromItem(Item item) { return new ItemTreeData { rootInstanceID = item.GetInstanceID(), RootTypeID = item.TypeID, Count = item.StackCount }; }
+    }
+}
+namespace Duckov.Utilities
+{
+    public enum CustomDataType { Raw = 0, Float = 1, Int = 2, Bool = 3, String = 4 }
+    public sealed class CustomData
+    {
+        private readonly byte[] bytes;
+        public string Key { get; private set; }
+        public CustomDataType DataType { get; private set; }
+        public bool Display { get; set; }
+        public CustomData(string key, CustomDataType type, byte[] raw)
+        { Key = key; DataType = type; bytes = (byte[])raw.Clone(); }
+        public byte[] GetRawCopied() { return (byte[])bytes.Clone(); }
+    }
+    public sealed class CustomDataCollection
+    {
+        public static string ThrowOnKey;
+        public readonly List<CustomData> Entries = new List<CustomData>();
+        public void SetRaw(string key, CustomDataType type, byte[] raw, bool create, bool display)
+        { if (key == ThrowOnKey) throw new InvalidOperationException("injected variable failure"); Entries.Add(new CustomData(key, type, raw) { Display = display }); }
     }
 }
 namespace ItemStatsSystem
@@ -169,13 +213,35 @@ namespace ItemStatsSystem
         public static object Instance = new object();
         public static bool FailInstantiate;
         public static int MissingPrefabId, InstantiateCalls;
+        public static readonly List<Item> Instances = new List<Item>();
         public static Item GetPrefab(int id) { return id == MissingPrefabId ? null : new Item { TypeID = id }; }
         // 官方已知条目缺 prefab 时返回同 TypeID 非 null 空壳，不能用 null 替身掩盖它。
-        public static Item InstantiateSync(int id) { InstantiateCalls++; return FailInstantiate ? null : new Item { TypeID = id, Lineage = null, IsFallback = id == MissingPrefabId }; }
+        public static Item InstantiateSync(int id)
+        {
+            InstantiateCalls++;
+            if (FailInstantiate) return null;
+            var item = new Item { TypeID = id, Lineage = null, IsFallback = id == MissingPrefabId };
+            Instances.Add(item); return item;
+        }
         public static ItemMetaData GetMetaData(int id) { return new ItemMetaData { id = id, quality = id >= 200 ? 8 : 5 }; }
     }
     struct ItemMetaData { public int id, quality; public string DisplayName { get { return "#" + id; } } }
-    public class Slot { public Item Content; }
+    public class Slot
+    {
+        public Item Content; public string Key; public bool Reject;
+        public bool Plug(Item item, out Item displaced)
+        {
+            displaced = null; if (Reject) return false;
+            if (Content != null && Content.Stackable && Content.TypeID == item.TypeID)
+            { Content.Combine(item); return item.StackCount == 0; }
+            displaced = Content; Content = item; item.PluggedIntoSlot = this; return true;
+        }
+        public Item Unplug() { Item previous = Content; Content = null; if (previous != null) previous.PluggedIntoSlot = null; return previous; }
+    }
+    public class SlotCollection : List<Slot>
+    {
+        public Slot GetSlot(string key) { return Find(slot => slot.Key == key); }
+    }
     public class Item : UnityEngine.Object
     {
         public T GetComponent<T>() where T : class { return null; }
@@ -188,7 +254,10 @@ namespace ItemStatsSystem
         public object PluggedIntoSlot;
         public AgentUtilities AgentUtilities;
         public Inventory InInventory, Inventory;
-        public List<Slot> Slots;
+        public SlotCollection Slots;
+        public Duckov.Utilities.CustomDataCollection Variables = new Duckov.Utilities.CustomDataCollection();
+        public void CreateSlotsComponent() { Slots = new SlotCollection(); }
+        public void CreateInventoryComponent() { Inventory = new Inventory(); }
         int count = 1;
         // Real StackCount setter clamps to max; raw Count KV deliberately does not.
         public int StackCount { get { return count; } set { count = Math.Max(0, Math.Min(MaxStackCount, value)); } }
@@ -199,7 +268,13 @@ namespace ItemStatsSystem
             SavesSystem.Save(key, Inventory != null ? Inventory.Count : 0);
             SavesSystem.Save(key + "_counts", Inventory != null ? Inventory.Counts() : new Dictionary<int, int>());
         }
-        public void DestroyTree() { Destroyed = true; }
+        public void DestroyTree()
+        {
+            if (Destroyed) return;
+            Destroyed = true;
+            if (Slots != null) foreach (Slot slot in Slots) if (slot.Content != null) slot.Content.DestroyTree();
+            if (Inventory != null) foreach (Item child in Inventory) if (child != null) child.DestroyTree();
+        }
         public int GetInstanceID() { return instanceId; }
         public void Detach() { if (InInventory != null) InInventory.RemoveItem(this); PluggedIntoSlot = null; AgentUtilities = null; }
         internal void Drop(CharacterMainControl player, bool random) { AgentUtilities = new AgentUtilities { ActiveAgent = new object() }; }
@@ -208,7 +283,11 @@ namespace ItemStatsSystem
     public class AgentUtilities { public object ActiveAgent; }
     public class Inventory : IEnumerable<Item>
     {
+        public bool Loading;
         public int Capacity = 64;
+        public List<int> lockedIndexes = new List<int>();
+        public void SetCapacity(int capacity) { Capacity = capacity; }
+        public void LockIndex(int index) { if (!lockedIndexes.Contains(index)) lockedIndexes.Add(index); }
         public bool Reject;
         public Action<Item> AfterAdd, AfterRemove;
         public Dictionary<int, Item> Items = new Dictionary<int, Item>();
@@ -254,6 +333,13 @@ namespace ItemStatsSystem
         public void Use(Item item, object user) { OnUse(item, user); }
     }
 }
+namespace ItemStatsSystem.Items
+{
+    public class Slot : ItemStatsSystem.Slot
+    {
+        public Slot(string key) { Key = key; }
+    }
+}
 namespace BossRush
 {
     internal struct SkyIslandIngredient { internal int TypeId, Count; internal SkyIslandIngredient(int id, int count) { TypeId = id; Count = count; } }
@@ -297,6 +383,15 @@ namespace BossRush
         internal static string ActiveCompanionPetId;
         internal static int Cleanups;
         internal static void CleanupOnce() { Cleanups++; ActiveCompanionPetId = null; }
+    }
+    // 背包实体和官方 UI 在本夹具外；这里只让真实保存协调器执行其资产采集边界。
+    internal static class PetNestBackpack
+    {
+        internal static bool CollectAll(out string error) { error = null; return true; }
+        internal static bool TryGetLiveItemCount(string id, out int count) { count = 0; return false; }
+        internal static void ResetStaticCaches() { }
+        internal static void DiscardForSlotChange() { }
+        internal static void NotifyPhysicalSaveSucceeded() { }
     }
     static class CampaignTuning
     {

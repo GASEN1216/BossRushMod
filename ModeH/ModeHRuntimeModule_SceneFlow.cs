@@ -122,9 +122,6 @@ namespace BossRush
         private int _draftRefreshCount;
         private const int DraftMaxRefreshes = 3;
 
-        /// <summary>押注开盘揭晓期间暂缓生成战场，动画结束后由宿主 tick 继续。</summary>
-        private bool _waitingForBetReveal;
-
         #endregion
 
         #region 场景到达
@@ -295,7 +292,6 @@ namespace BossRush
             _recoveryDriveStateSequence = -1;
             _leaseCheckAccumulator = 0f;
             _errorSwapInputYielded = false;
-            _waitingForBetReveal = false;
             _draftPrimaryProfileId = null;
             _draftRelayProfileId = null;
             _draftRefreshCount = 0;
@@ -983,7 +979,6 @@ namespace BossRush
 
             _leaseCheckAccumulator = 0f;
             _errorSwapInputYielded = false;
-            _waitingForBetReveal = false;
         }
 
         #endregion

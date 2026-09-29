@@ -1,4 +1,4 @@
-"""L1 接线：两步选人、赛前双方属性、押品图标、揭晓先于开战。实际布局/输入仍须 L3。"""
+"""L1 接线：两步选人、赛前双方属性、押品图标、确认后直接开战。实际布局/输入仍须 L3。"""
 from pathlib import Path
 import sys
 
@@ -125,12 +125,9 @@ def check(sources):
          "已锁定首发有可见角标")
 
     lock = body("match", "private void LockLoadoutAndStartMatch()")
-    ordered(lock, ["ReserveStandingCashBet();", "if (ModeHBetRevealView.IsPlaying)", "_waitingForBetReveal = true;",
-                   "_ui.ClosePage();", "return;", "StartMatchSpawning();"], "押注动画在开战前完成，先关闭旧页面")
-    update = body("match", "partial void OnUpdateInternal(")
-    need(update, "_waitingForBetReveal && !_commandsClosed && !ModeHBetRevealView.IsPlaying", "停播且 owner 活跃才可开战")
-    need(update, "&& !BossRushUI.IsGamePaused()", "暂停中不允许动画结束触发开战")
-    need(update, "_runState.Lifecycle == ModeHLifecycle.LoadoutLocked", "等待后复核锁盘相位")
+    need(lock, "ReserveStandingCashBet(); StartMatchSpawning();", "锁盘下注后直接生成，不再等待动画")
+    if "ModeHBetRevealView" in src["match"] or "ModeHBetRevealView" in src["bet"]:
+        errors.append("开盘动画已移除，不得重新接回比赛流程")
     need(body("ui", "private void CreateSpectatorActions("),
          "-SpectatorActionMargin - SpectatorActionSize.x * 0.5f", "观战按钮整块留在右侧屏幕内")
 
@@ -155,8 +152,7 @@ PROBES = [
     ("match", "merged.Add(locked);", "merged.Clear();"),
     ("scene", "DraftMaxRefreshes = 3;", "DraftMaxRefreshes = 30;"),
     ("flow", "if (!_allowBriefToLoadout) return;", ""),
-    ("match", "_waitingForBetReveal = true;", "_waitingForBetReveal = false;"),
-    ("match", "&& !_commandsClosed && !ModeHBetRevealView.IsPlaying", "&& !ModeHBetRevealView.IsPlaying"),
+    ("match", "                ReserveStandingCashBet();", "                return;"),
     ("draw", "stat.Value / stat.Maximum", "1f"),
     ("draw", "TextAlignmentOptions.BottomRight", "TextAlignmentOptions.Center"),
     ("ledger", "plan.prizeItems = plan.pendingItems;", "plan.prizeItems = string.Empty;"),

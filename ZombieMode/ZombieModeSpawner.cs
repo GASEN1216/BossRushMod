@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace BossRush
 {
@@ -10,6 +11,7 @@ namespace BossRush
         private readonly Dictionary<long, List<ZombieModeSpawnPoint>> zombieModeSpawnPointDedupGrid =
             new Dictionary<long, List<ZombieModeSpawnPoint>>();
         private float zombieModeSpawnPointDedupCellSize = 1f;
+        private readonly NavMeshPath zombieModeSpawnReachabilityPath = new NavMeshPath();
 
         // 注：本模式之前自维护的"丧尸预设缓存字段 + Resources.FindObjectsOfTypeAll 查找方法"
         // 已删除（审查 §1.1）。SpawnEnemyCore 通过共享的 cachedCharacterPresets 自动 fallback；
@@ -24,14 +26,12 @@ namespace BossRush
 
             runState.SpawnPoints.Clear();
             ResetZombieModeSpawnPointDedupGrid();
-            if (runState.MapProfile != null)
+            // 原刷怪器在地图隔离时销毁，先复用共享缓存中的官方 Points 世界坐标。
+            owner.PreCacheMapSpawnerPositions();
+            TryPopulateZombieModeSpawnPointsFromCachedOriginalSpawnerPositions();
+            if (runState.SpawnPoints.Count <= 0 && runState.MapProfile != null)
             {
                 AddZombieModeSpawnPointArray(runState.MapProfile.StaticSpawnPoints, false);
-            }
-
-            if (runState.SpawnPoints.Count <= 0)
-            {
-                TryPopulateZombieModeSpawnPointsFromCachedOriginalSpawnerPositions();
             }
 
             ModBehaviour.DevLog("[ZombieMode] 收集刷怪点: " + runState.SpawnPoints.Count);
@@ -166,13 +166,13 @@ namespace BossRush
 
         internal bool TryGetZombieModeReliableSpawnPosition(out Vector3 position)
         {
-            CharacterMainControl main = CharacterMainControl.Main;
-            if (main != null && TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position))
+            if (TryGetNearestZombieModeMapSpawnPositionToPlayer(out position))
             {
                 return true;
             }
 
-            if (TryGetNearestZombieModeMapSpawnPositionToPlayer(out position))
+            CharacterMainControl main = CharacterMainControl.Main;
+            if (main != null && TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position))
             {
                 return true;
             }
@@ -223,6 +223,16 @@ namespace BossRush
                     continue;
                 }
 
+                if (distanceSqr >= bestPreferredDistanceSqr)
+                {
+                    continue;
+                }
+                Vector3 reachablePoint;
+                if (!TryResolveZombieModeSpawnPoint(point, false, out reachablePoint))
+                {
+                    continue;
+                }
+
                 if (distanceSqr < bestFallbackDistanceSqr)
                 {
                     bestFallbackDistanceSqr = distanceSqr;
@@ -247,7 +257,10 @@ namespace BossRush
                 return false;
             }
 
-            position = points[bestIndex].Position;
+            if (!TryResolveZombieModeSpawnPoint(points[bestIndex].Position, false, out position))
+            {
+                return false;
+            }
             runState.NextSpawnPointIndex = (bestIndex + 1) % points.Count;
             return true;
         }
@@ -267,7 +280,9 @@ namespace BossRush
         {
             int startIndex = Mathf.Abs(runState.NextSpawnPointIndex) % 12;
             runState.NextSpawnPointIndex = (startIndex + 1) % 12;
-            return SpawnPositionHelper.TryFindAroundPlayer(
+            for (int attempt = 0; attempt < 12; attempt++, startIndex = (startIndex + 1) % 12)
+            {
+                if (SpawnPositionHelper.TryFindAroundPlayer(
                 playerPos,
                 ringCount: 12,
                 radius: Mathf.Max(18f, minPlayerDistance + 6f),
@@ -275,31 +290,42 @@ namespace BossRush
                 liftOffset: ZombieModeTuning.NavMeshLiftOffset,
                 minPlayerDistance: minPlayerDistance,
                 navMeshSampleRadius: ZombieModeTuning.NavMeshVirtualSpawnRadius,
-                startIndex: startIndex);
+                startIndex: startIndex) &&
+                    TryResolveZombieModeSpawnPoint(resolved, true, out resolved))
+                {
+                    return true;
+                }
+            }
+            resolved = Vector3.zero;
+            return false;
         }
 
-        private bool TryResolveZombieModeSpawnPoint(Vector3 position, bool virtualPoint, out Vector3 resolved)
+        private bool TryResolveZombieModeSpawnPoint(Vector3 position, bool virtualPoint, out Vector3 resolved, float navMeshSampleRadius = -1f)
         {
-            // 虚拟点（玩家附近回退环）：raw 是几何构造点，需要 NavMesh 优先 + 通过 minPlayerDistance。
-            // 预设点（地图配置 / 原 spawner）：raw 已是预设位置，Raycast 优先且不再做 minPlayerDistance 过滤。
-            if (virtualPoint)
+            resolved = Vector3.zero;
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null)
             {
-                if (!SpawnPositionHelper.TrySampleNavMesh(
-                        position,
-                        out resolved,
-                        liftOffset: ZombieModeTuning.NavMeshLiftOffset,
-                        navMeshSampleRadius: ZombieModeTuning.NavMeshVirtualSpawnRadius))
-                {
-                    return false;
-                }
-                return SpawnPositionHelper.PassesMinPlayerDistance(resolved, GetZombieModeSpawnPointMinPlayerDistance());
+                return false;
             }
 
-            return SpawnPositionHelper.TrySnapToGround(
-                position,
-                out resolved,
-                liftOffset: ZombieModeTuning.NavMeshLiftOffset,
-                navMeshSampleRadius: ZombieModeTuning.SpawnPointNavMeshSampleRadius);
+            // Raycast 命中地形不代表可行走；SamplePosition 也可能落在断开的导航岛或另一层。
+            // 所有来源都必须采纳 NavMesh 的 XYZ，并证明到当前玩家有完整路径。
+            NavMeshHit spawnHit;
+            NavMeshHit playerHit;
+            float sampleRadius = navMeshSampleRadius > 0f ? navMeshSampleRadius :
+                (virtualPoint ? ZombieModeTuning.NavMeshVirtualSpawnRadius : ZombieModeTuning.SpawnPointNavMeshSampleRadius);
+            if (!NavMesh.SamplePosition(position, out spawnHit, sampleRadius, NavMesh.AllAreas) ||
+                !NavMesh.SamplePosition(player.transform.position, out playerHit, 2f, NavMesh.AllAreas) ||
+                Mathf.Abs(spawnHit.position.y - position.y) > 2f ||
+                Mathf.Abs(playerHit.position.y - player.transform.position.y) > 2f ||
+                !NavMesh.CalculatePath(spawnHit.position, playerHit.position, NavMesh.AllAreas, zombieModeSpawnReachabilityPath) ||
+                zombieModeSpawnReachabilityPath.status != NavMeshPathStatus.PathComplete)
+            {
+                return false;
+            }
+            resolved = spawnHit.position + Vector3.up * ZombieModeTuning.NavMeshLiftOffset;
+            return !virtualPoint || SpawnPositionHelper.PassesMinPlayerDistance(resolved, ZombieModeTuning.SpawnPointMinPlayerDistance);
         }
 
         internal async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync(
@@ -325,6 +351,15 @@ namespace BossRush
                 {
                     return null;
                 }
+
+                // 分裂 / 召唤也会直接传入几何偏移点，进入共享生成核心前统一验证。
+                Vector3 reachablePosition;
+                if (!TryResolveZombieModeSpawnPoint(position, false, out reachablePosition) &&
+                    !TryGetZombieModeReliableSpawnPosition(out reachablePosition))
+                {
+                    return null;
+                }
+                position = reachablePosition;
 
                 if (!TryReserveZombieModeNormalSpawnSlot(runId))
                 {
@@ -466,6 +501,14 @@ namespace BossRush
 
                 // 入口确保 cachedCharacterPresets 已构建（§1.1）。
                 owner.EnsureCharacterPresetsCacheReady();
+
+                Vector3 reachablePosition;
+                if (!TryResolveZombieModeSpawnPoint(position, false, out reachablePosition) &&
+                    !TryGetZombieModeReliableSpawnPosition(out reachablePosition))
+                {
+                    return null;
+                }
+                position = reachablePosition;
 
                 bool abortedByPause = false;
                 UniTaskCompletionSource<CharacterMainControl> tcs = new UniTaskCompletionSource<CharacterMainControl>();

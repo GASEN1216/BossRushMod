@@ -374,17 +374,32 @@ namespace BossRush
 
         #region 清理
 
-        /// <summary>静态缓存重置（Mod 卸载 / 宿主重建）。</summary>
-        internal static void ResetStaticCaches()
+        /// <summary>角色退场时作废旧的待处理致死事件，避免下一帧套用到新随从；累计诊断次数保留。</summary>
+        internal static void CancelPendingDowned()
         {
-            ShutdownHurtSubscription();
             lock (_lock)
             {
                 _downedPending = false;
                 _pendingPlace = null;
             }
+            Health health = _invincibleHealth;
             _invincibleHealth = null;
             _invincibleUntilUnscaled = 0f;
+            if (health != null)
+            {
+                try { health.SetInvincible(false); }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[PetNest] 取消退场待办时解除短无敌失败: " + e.Message);
+                }
+            }
+        }
+
+        /// <summary>静态缓存重置（Mod 卸载 / 宿主重建）。</summary>
+        internal static void ResetStaticCaches()
+        {
+            ShutdownHurtSubscription();
+            CancelPendingDowned();
             _downedCount = 0;
         }
 

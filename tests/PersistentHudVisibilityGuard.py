@@ -146,7 +146,6 @@ MODAL = {
     "ModeG/ModeGInteractable.cs": "Mode G 入口确认页（ModeGEntry）：交互打开的模态",
     "ModeG/ModeGRecapPanel.cs": "Mode G 战后回顾（ModeGRecap）：模态",
     "ModeH/ModeHRecoveryPanel.cs": "Mode H 恢复壳（ModeHRecovery）：应急模态",
-    "ModeH/ModeHBetRevealView.cs": "Mode H 押钱「开盘」揭晓（Modal）：锁盘后播 3.5 秒的一次性演出，不接管输入",
     "PetNest/PetNestUI.cs": "遗种巢主界面（PetNestPanel）：交互打开",
     "PetNest/PetNestRenameModal.cs": "遗种巢改名（PetNestModal）",
     "PetNest/PetNestHatchRevealView.cs": "遗种巢孵化揭晓（PetNestModal）",

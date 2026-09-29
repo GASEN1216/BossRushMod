@@ -23,7 +23,7 @@
 | `PortableSafeZoneDeviceBundleGuard.py` | 便携安全区装置 AssetBundle 的 UnityFS 文件头、体积上限、部署脚本与资源契约。 |
 | `ZombieModeWaveCleanupAndBossSpawnGuard.py` | 每波普通散落物清理、Boss 初始点校正与卡死恢复链。 |
 | `ZombieModeSpawnEnemyCoreReuseGuard.py` | `TrySpawnZombieModeNormalZombieAsync` / `TrySpawnZombieModeBossAsync` 必须走 `SpawnEnemyCore(...)`。 |
-| `ZombieModeBossRushSpawnPointsOnlyGuard.py` | 丧尸刷怪点只能来自 BossRush 地图配置画像，不得混入原版 `CharacterSpawnerRoot`。 |
+| `ZombieModeBossRushSpawnPointsOnlyGuard.py` | 保留历史文件名；丧尸优先复用共享缓存的官方 Points，地图画像 / 候选环只作回退，所有最终生成位置必须验证可达性。 |
 | `ZombieModeNormalZombieCapAndAggroGuard.py` | 普通丧尸压力必须受 50 只上限、最近 BossRush 刷怪点、玩家仇恨锁定约束。 |
 | `ZombieModePacingTuningGuard.py` | 尸潮必须保持“准备期低潮、普通波逐阶段加速、移速逐波恢复”的动态节奏。 |
 | `ZombieModeNormalSpawnPhaseGuard.py` | 普通丧尸异步生成必须在等待/落地注册阶段继续检查调用方允许的战斗阶段。 |

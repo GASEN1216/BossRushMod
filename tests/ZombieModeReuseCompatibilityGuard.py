@@ -72,7 +72,10 @@ def main() -> int:
         require(spawner, "SpawnEnemyCore(", "ZombieMode enemy spawning must reuse shared spawn core")
         require(spawner, "EnsureCharacterPresetsCacheReady();", "ZombieMode must reuse shared preset cache warmup")
         require(spawner, "SpawnPositionHelper.TryFindAroundPlayer", "ZombieMode virtual spawn points must reuse shared geometry helper")
-        require(spawner, "SpawnPositionHelper.TrySampleNavMesh", "ZombieMode spawn sampling must reuse shared NavMesh helper")
+        resolve = extract_method(clean_source(spawner), "TryResolveZombieModeSpawnPoint") or ""
+        require(resolve, "NavMesh.SamplePosition(position, out spawnHit", "ZombieMode must require an actual NavMesh sample without raycast-only fallback")
+        require(resolve, "NavMesh.CalculatePath(spawnHit.position, playerHit.position", "ZombieMode must check a path from the spawn surface to the player's surface")
+        require(resolve, "zombieModeSpawnReachabilityPath.status != NavMeshPathStatus.PathComplete", "ZombieMode must reject disconnected navigation islands")
         require(spawner, "skipBossRushLootTracking: true", "ZombieMode bosses must stay compatible with BossRush loot ownership")
         forbid(spawner, "Resources.FindObjectsOfTypeAll<", "ZombieMode spawner must not restore its own preset scan")
         require(spawn_core, "SpawnEnemyCoreInternalAsync", "shared spawn core must expose observable async completion")

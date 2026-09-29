@@ -2,6 +2,8 @@
 
 通过 `python tools/run_runtime_regressions.py --filter ManualSeptemberReview` 执行。
 
+2026-09-28 同步：生产随从已使用独立背包，生成仍等待 LevelInited / AfterInit / 切图结束及主角物品就绪，但不再等待官方 PetInventory。回归钉住官方宠物背包缺席时仍可生成，并以调用计数验证 CleanupOnce 会取消旧角色的待处理重伤事件。下方官方容量桥测试继续覆盖保留的 Dev 探针，不再表示生产背包实现；独立物品树与保存事务由 ContentTransactions 覆盖。
+
 2026-09-23 复查增补：直接链接 `PetNestPetProxyBridge.cs`，不再用空的容量桥替身。覆盖官方关卡和安全箱就绪前不得生成随从、官方背包即时从 2 格扩为 6 格、重复调用不叠加、按真实属性回收溢出、清理不误改尚存的新场景背包，以及旧 Unity 对象销毁后等待安全箱快照加载并恢复越界物品。Stat、Inventory、反射字段由宿主替身模拟；字段名、官方属性和 `SetCapacity` 行为已对照 `鸭科夫源码/`，实际游戏界面的格子与存档恢复仍待 L3。
 
 2026-09-22 增补：远征 `PlayRoutine` 与暂停等待逐字抽取，测试驱动递归执行每个 `Current` 子 IEnumerator。分别在进入阶段和结果停留阶段暂停，验证不消费 `MarkRevealed`，恢复后同一记录仅确认一次。面板控件和存档确认只以计数替身观测，不证明实机模态菜单的操作表现。

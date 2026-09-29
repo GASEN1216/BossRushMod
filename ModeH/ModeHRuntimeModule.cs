@@ -526,7 +526,6 @@ namespace BossRush
             ModeHOfficialBossAttributeCatalog.ResetStaticCaches();
             ModeHCombatTelemetry.ResetStaticCaches();
             ModeHSpectatorLease.ResetStaticCaches();
-            ModeHBetRevealView.Stop();
             ModeHCashBetService.ResetStaticCaches();
             ModeHDraftRefreshLedger.ResetStaticCaches();
             ModeHItemBetStake.ResetStaticCaches();

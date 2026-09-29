@@ -47,7 +47,9 @@ namespace BossRush
             AddCounter(into, "affix_stone_hooks", delegate { return AffixForgeStoneDropService.TrackedCount; });
             AddCounter(into, "petnest_drop_hooks", delegate { return PetNestDropService.TrackedCount; });
             AddCounter(into, "petnest_idle_spawns", delegate { return PetNestBaseIdleSpawner.ActiveCount; });
-            AddCounter(into, "petnest_downed", delegate { return PetNestDownedHandler.DownedCount; });
+            // DownedCount 是会话累计次数；只能用仍存活的待办与订阅判断泄漏。
+            AddCounter(into, "petnest_downed_pending", delegate { return PetNestDownedHandler.HasPendingDowned ? 1 : 0; });
+            AddCounter(into, "petnest_hurt_hooks", delegate { return PetNestDownedHandler.IsHurtSubscribed ? 1 : 0; });
             AddCounter(into, "codex_fight_hooks", delegate { return CodexKillCollector.TrackedFightCount; });
         }
 

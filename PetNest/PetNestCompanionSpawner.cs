@@ -503,6 +503,7 @@ namespace BossRush
                 agent.Bind(handle.Character, master);
                 // 炫彩 / 异色光环：只有真的带色的崽才会创建对象（AGENTS 4.12）
                 AttachChromaAura(handle, pet);
+                PetNestBackpack.Attach(handle.Character, pet);
 
                 handle.Activated = true;
                 return true;
@@ -528,6 +529,11 @@ namespace BossRush
             handle.CleanedUp = true;
 
             DetachChromaAura(handle);
+            if (handle.Character != null)
+            {
+                PetNestBackpack backpack = handle.Character.GetComponentInChildren<PetNestBackpack>();
+                if (backpack != null) backpack.Dispose(true);
+            }
 
             try
             {

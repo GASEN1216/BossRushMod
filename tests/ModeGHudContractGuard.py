@@ -23,6 +23,7 @@ ModeGHudContractGuard — Mode G 战斗 HUD 呈现契约守卫（规格 §15）�
 import os
 import re
 import sys
+from cs_source_util import clean_source
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HUD = os.path.join(REPO_ROOT, "ModeG", "ModeGHUD.cs")
@@ -52,8 +53,8 @@ REQUIRED_HUD_KEYS = [
     "BossRush_ModeG_Hud_NextWave",
 ]
 
-# §3.1 入场前强制披露 key（确认页必须在扣除入场物品前展示）
-REQUIRED_ENTRY_KEYS = [
+# 保留已发布的本地化 key；2026-09-28 owner 要求从入场页删除这些段落。
+LEGACY_ENTRY_KEYS = [
     "BossRush_ModeG_Entry_DeathRule",
     "BossRush_ModeG_Entry_LoadoutHint",
 ]
@@ -166,12 +167,18 @@ def main():
                 errors.append("[{}] 不满足: {}".format(name, desc))
 
     if interactable:
-        for key in REQUIRED_ENTRY_KEYS:
-            if key not in interactable:
-                errors.append("[EntryDisclosure] 确认页缺 §3.1 强制披露 key: " + key)
+        entry = clean_source(interactable).split("private bool OpenConfirmPage(", 1)[-1].split(
+            "private static RectTransform CreateHeroClip(", 1)[0]
+        for token in LEGACY_ENTRY_KEYS + ['"Disclosure"', '"Cost"', '"Cancel"']:
+            if token in entry:
+                errors.append("[EntrySimplified] 入场页重新出现已移除的说明或取消按钮: " + token)
+        if not re.search(r'PlaceText\(CreateBodyText\("Rules",\s*st,', entry):
+            errors.append("[EntryRulesCentered] 三条入场说明必须使用居中的正文样式")
+        if not re.search(r'ModeGModalCancelKey\.Attach\(root,\s*CloseModal\)', entry):
+            errors.append("[EntryCancelKey] 移除取消按钮后仍须保留 ESC / 手柄退出与退款路径")
 
     if injector:
-        for key in REQUIRED_HUD_KEYS + REQUIRED_ENTRY_KEYS:
+        for key in REQUIRED_HUD_KEYS + LEGACY_ENTRY_KEYS:
             if 'InjectModeGString("' + key + '"' not in injector:
                 errors.append("[MissingInjection] 本地化未注入 key: " + key)
 

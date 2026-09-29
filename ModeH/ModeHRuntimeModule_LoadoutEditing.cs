@@ -42,6 +42,7 @@ namespace BossRush
                 {
                     if (!CanEditLoadout(owner)) return;
                     edit();
+                    TryPersistSeason("loadout_edited");
                     RouteUiForLifecycle(_runState.Lifecycle);
                 },
             };
@@ -65,9 +66,11 @@ namespace BossRush
             ModeHOptionRow tabs = new ModeHOptionRow();
             tabs.AtTop = true;
             AddSectionTab(tabs, roster, 1, L10n.T("阵容", "Roster"));
-            AddSectionTab(tabs, roster, 2, L10n.T("首发配装 ", "Starter kits ") + CountKits(roster.starterKitIds));
+            AddSectionTab(tabs, roster, 2, L10n.T("首发配装 ", "Starter gear ")
+                + CountKits(FindSeasonProfile(roster.matchStarterProfileId), roster.starterKitIds));
             // 接力休息（单人出战）时没有接力配装可调：不挂这个页签（§4.14 不挂灰掉的占位项）
-            if (hasRelay) AddSectionTab(tabs, roster, 3, L10n.T("接力配装 ", "Relay kits ") + CountKits(roster.relayKitIds));
+            if (hasRelay) AddSectionTab(tabs, roster, 3, L10n.T("接力配装 ", "Relay gear ")
+                + CountKits(FindSeasonProfile(roster.matchRelayProfileId), roster.relayKitIds));
             AddSectionTab(tabs, roster, 4, L10n.T("口令", "Command"));
             page.OptionRows.Add(tabs);
             page.Body = DescribeLoadoutSummary(roster);
@@ -112,10 +115,11 @@ namespace BossRush
                 + L10n.T("　·　口令 ", "  ·  Command ") + command;
         }
 
-        /// <summary>「已带 n / 上限」：配装是多选，页签上直接写件数（审查 B-22）。</summary>
-        private static string CountKits(List<string> kits)
+        /// <summary>件数包含基础全套和已替换装备，与赛前人物面板一致。</summary>
+        private string CountKits(ModeHProfileDto profile, List<string> kits)
         {
-            return (kits != null ? kits.Count : 0) + "/" + ModeHConfig.MaxKitsPerFighter;
+            ModeHPreparedFighterStats stats = GetPreparedFighterStats(profile, kits);
+            return stats != null ? stats.Gear.Count.ToString() : "0";
         }
 
         private void AddSectionTab(ModeHOptionRow tabs, ModeHMatchRosterDto roster, int section, string label)
@@ -146,6 +150,7 @@ namespace BossRush
                     + "\n" + DescribeFighterState(FindSeasonProfile(id)), delegate
                 {
                     if (roster.matchStarterProfileId == profileId) return;
+                    List<string> selectedKits = BuildDefaultKitSelection(FindSeasonProfile(profileId));
                     string old = roster.matchStarterProfileId;
                     roster.matchStarterProfileId = profileId;
                     if (roster.matchRelayProfileId == profileId)
@@ -153,7 +158,7 @@ namespace BossRush
                         roster.matchRelayProfileId = old;
                         roster.relayKitIds = roster.starterKitIds;
                     }
-                    roster.starterKitIds = BuildDefaultKitSelection(FindSeasonProfile(profileId));
+                    roster.starterKitIds = selectedKits;
                     roster.activeProfileId = profileId;
                 }, roster.matchStarterProfileId == id, L10n.T("√ 首发", "√ Starter")));
                 if (id == roster.matchStarterProfileId) continue;
@@ -161,8 +166,9 @@ namespace BossRush
                     + "\n" + DescribeFighterState(FindSeasonProfile(id)), delegate
                 {
                     if (roster.matchRelayProfileId == profileId) return;
+                    List<string> selectedKits = BuildDefaultKitSelection(FindSeasonProfile(profileId));
                     roster.matchRelayProfileId = profileId;
-                    roster.relayKitIds = BuildDefaultKitSelection(FindSeasonProfile(profileId));
+                    roster.relayKitIds = selectedKits;
                 }, roster.matchRelayProfileId == id, L10n.T("√ 接力", "√ Relay")));
             }
             relays.Add(MakePreparationOption(L10n.T("接力休息", "Rest the relay")
@@ -206,6 +212,22 @@ namespace BossRush
         private void AddKitOptions(ModeHPageContent page, ModeHProfileDto profile, List<string> selected)
         {
             if (profile == null || selected == null) return;
+            // 基础装备是选人页已经展示、实际穿着的全套；也必须在调整页逐槽可见。
+            // 点回基础装备只撤掉该槽覆盖，基础全套不占四件额外装备的额度。
+            foreach (ModeHResolvedKit kit in GetPreparedProfileOutfit(profile))
+            {
+                if (kit == null || kit.Spec == null || !kit.Available
+                    || ModeHInjuryAndScarSystem.InjuryDisablesKitSlot(profile.injuryId, kit.Spec.ReplaceSlot)) continue;
+                ModeHResolvedKit choice = kit;
+                bool replaced = selected.Exists(id => KitReplacesSlot(id, choice.Spec.ReplaceSlot));
+                ModeHActionData option = MakePreparationOption(L10n.T(kit.Spec.NameKey) + "\n"
+                    + L10n.T("基础装备", "Original equipment"), delegate
+                    { selected.RemoveAll(id => KitReplacesSlot(id, choice.Spec.ReplaceSlot)); },
+                    !replaced, L10n.T("√ 已带上", "√ Equipped"));
+                option.Icon = ItemAssetsCollection.GetMetaData(kit.ResolvedTypeId).icon;
+                option.IconQuality = kit.ResolvedQuality;
+                page.PreparationOptions.Add(option);
+            }
             foreach (ModeHResolvedKit kit in ModeHLoadoutKitRegistry.GetSelectableKits(
                 _season.unlockedKitIds, profile.archetypeId, profile.profileId))
             {
@@ -239,6 +261,12 @@ namespace BossRush
             }
             page.PreparationColumns = 2;
             page.PreparationRowHeight = 108f;
+        }
+
+        private static bool KitReplacesSlot(string id, string slot)
+        {
+            ModeHResolvedKit kit = ModeHLoadoutKitRegistry.GetKit(id);
+            return kit != null && kit.Spec != null && kit.Spec.ReplaceSlot == slot;
         }
 
         private void NormalizeInjuredLoadout(ModeHMatchRosterDto roster, ModeHProfileDto starter, ModeHProfileDto relay)

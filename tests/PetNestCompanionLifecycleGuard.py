@@ -8,8 +8,8 @@ PetNestCompanionLifecycleGuard — 遗种巢随从局内生命周期守卫（实
 - **零常驻**：出战席位为空时连门控都不查、不分配；局内至多一次 CreateCharacterAsync；
 - 异步生成必须在 await 之后重验 owner / scene generation / 玩家引用；
 - 半成品 handle 必须在 finally 里回收，不得留在场上；
-- 借席与容量 Modifier 与随从同寿命：入场挂、离场摘；
-- 容量 Modifier 挂**玩家**的 CharacterItem（官方 PetProxy 读的是玩家 stat），
+- 独立背包在共同激活入口绑定崽，回收前封存；生产不再借官方宠物席位；
+- 旧 Dev 借席探针的容量 Modifier 挂**玩家**的 CharacterItem（官方 PetProxy 读的是玩家 stat），
   且必须用 ModifierType.Add（PetCapcity 是格子数，不是百分比）；
 - 官方 stat key 拼写必须是 PetCapcity（少一个 a），改成 PetCapacity 会静默失效；
 - 清场豁免与敌对性安全网都认得随从（AGENTS.md 4.5 安全网不得误伤玩家方随从）；
@@ -32,6 +32,7 @@ from petnest_guard_util import (  # noqa: E402
 )
 
 GUARD = "PetNestCompanionLifecycleGuard"
+from cs_source_util import clean_source
 
 
 def method_body(code, signature):
@@ -97,6 +98,7 @@ def check_runtime(errors):
         for token, desc in [
             ("PetNestPetProxyBridge.ReleaseSeat()", "还席"),
             ("PetNestPetProxyBridge.RemoveCapacityBonus(", "摘容量 Modifier"),
+            ("PetNestDownedHandler.CancelPendingDowned()", "取消旧角色的待处理重伤"),
             ("PetNestCompanionSpawner.CleanupOnce(_handle)", "回收随从"),
         ]:
             if token not in body:
@@ -104,11 +106,16 @@ def check_runtime(errors):
         if "_handle = null;" not in body or "_deployedPetId = null;" not in body:
             errors.append("[清理] CleanupOnce 必须在 finally 里清空引用")
 
-    # 借席与容量同寿命
-    if "PetNestPetProxyBridge.TryBorrowSeat(" not in code:
-        errors.append("[捡漏背包] 入场必须借席")
-    if "PetNestPetProxyBridge.ApplyCapacityBonus(" not in code:
-        errors.append("[捡漏背包] 入场必须挂容量 Modifier")
+    # 独立背包在战斗 / 基地共用的激活与回收入口接线，生产不再依赖官方宠物席位。
+    if "PetNestPetProxyBridge.TryBorrowSeat(" in code or "PetNestPetProxyBridge.ApplyCapacityBonus(" in code:
+        errors.append("[独立背包] 生产随从不得再借用官方宠物席位或修改其容量")
+    spawner = strip_cs_comments(read_petnest("PetNestCompanionSpawner.cs") or "")
+    activate = method_body(spawner, "internal static bool TryActivate(") or ""
+    dispose = method_body(spawner, "internal static void CleanupOnce(PetNestCompanionHandle handle)") or ""
+    if "PetNestBackpack.Attach(handle.Character, pet);" not in activate:
+        errors.append("[独立背包] TryActivate 必须按实际崽绑定背包")
+    if "backpack.Dispose(true);" not in dispose:
+        errors.append("[独立背包] 回收随从前必须封存背包")
 
     # 入场重试窗口：绝大多数地图在 sceneLoaded 这一刻还没有任何 run 标志为真
     # （带 customSpawnPos 的竞技场要等协程、Mode D 有 0.5s 延迟、IsActive 要等开波），
@@ -237,12 +244,68 @@ def check_exemptions(errors):
             errors.append("[清理] 宿主销毁必须复位随从运行时（PetNestRuntimeModule.OnDestroy）")
 
 
+def check_backpack(errors):
+    code = clean_source(read_petnest("PetNestBackpack.cs") or "")
+    opening = method_body(code, "private async UniTaskVoid OpenAsync()") or ""
+    capture = method_body(code, "private bool Capture(out string error)") or ""
+    dispose = method_body(code, "internal void Dispose(bool save)") or ""
+    dirty = method_body(code, "private void MarkDirty()") or ""
+    required = [
+        (opening, "PetNestBackpackSnapshot.Decode(pet.backpackJson)", "必须解码所属崽的完整物品树"),
+        (opening, "ItemAssetsCollection.GetPrefab(node.typeID) == null", "每个节点实例化前必须确认 prefab"),
+        (opening, "using (PetNestBackpackRestoration restoration = new PetNestBackpackRestoration())", "恢复必须持有全部节点的短命 owner"),
+        (opening, "generation != _generation || _slot != SavesSystem.CurrentSlot", "迟到的物品必须重验代数与存档槽"),
+        (opening, "restoration.Transfer();", "根入袋后才能移交全部节点所有权"),
+        (opening, "LootView.LootItem(_container);", "必须复用官方背包格子和拖拽界面"),
+        (capture, "snapshot.Encode()", "捕获必须走显式物品树 codec"),
+        (capture, "CharacterMainControl.Main != _assetOwner", "旧容器不得借新角色资产提交"),
+        (dirty, "PetNestSaveCoordinator.MarkBackpackAssetsChanged();", "变更当帧必须登记资产义务"),
+        (dispose, "transform.SetParent(null, true);", "封存失败必须脱离将被销毁的角色"),
+        (dispose, "retained._container = _container;", "OnDestroy 失败必须把唯一容器交给新 owner"),
+    ]
+    for body, statement, message in required:
+        if statement not in body:
+            errors.append("[背包] " + message)
+    if "JsonUtility" in code:
+        errors.append("[背包] 官方树的连接类不可依赖 JsonUtility 自动序列化")
+    restoration = clean_source(read_petnest("PetNestBackpackRestoration.cs") or "")
+    create = method_body(restoration, "internal void CreateNode(ItemTreeData.DataEntry entry)") or ""
+    if create.find("_owned.Add(entry.instanceID, item);") < 0 or create.find("_owned.Add(entry.instanceID, item);") > create.find("item.Variables.SetRaw("):
+        errors.append("[背包] 变量恢复前必须登记本次节点所有权")
+    if "LoadedEvent.FieldType != typeof(Action<Item>)" not in create or "if (onLoaded != null) onLoaded(item);" not in create:
+        errors.append("[背包] 必须校验并转发官方每节点 OnItemLoaded 通知")
+    cleanup = method_body(restoration, "public void Dispose()") or ""
+    if "foreach (Item item in _owned.Values)" not in cleanup or "item.DestroyTree();" not in cleanup:
+        errors.append("[背包] 恢复失败必须逐节点回收，包含未连接的孤儿")
+    for event, handler in [("_inventory.onContentChanged", "OnContentChanged"),
+                           ("_inventory.onInventorySorted", "OnInventorySorted"),
+                           ("_inventory.onSetIndexLock", "OnContentChanged"),
+                           ("_container.onItemTreeChanged", "OnItemTreeChanged"),
+                           ("_container.onChildChanged", "OnItemTreeChanged")]:
+        for op in ("+=", "-="):
+            if event + " " + op + " " + handler + ";" not in code:
+                errors.append("[背包] 必须成对管理事件 " + event)
+    if not re.search(r"foreach \(int index in snapshot.Locks\)\s*_inventory.LockIndex\(index\);", opening):
+        errors.append("[背包] 必须保留所有非负排序锁，不能随当前容量截断")
+    persistence = clean_source(read_petnest("PetNestPersistence.cs") or "")
+    for signature in ("private static void HandleSetFile()", "private static void HandleSaveDeleted()"):
+        if "PetNestBackpack.DiscardForSlotChange();" not in (method_body(persistence, signature) or ""):
+            errors.append("[背包] 切档 / 删档必须隔离旧容器，禁止写进新槽")
+    ui = clean_source(read_petnest("PetNestUI.cs") or "")
+    for statement in ("viewport.AddComponent<PetNestScrollRect>()", "scroll.inertia = false;",
+                      "Mathf.Clamp(original.x, -1f, 1f)", "Mathf.Clamp(original.y, -1f, 1f)",
+                      "finally { eventData.scrollDelta = original; }"):
+        if statement not in ui:
+            errors.append("[滚动] 缺少滚轮幅度约束或事件恢复: " + statement)
+
+
 def main():
     errors = []
     check_runtime(errors)
     check_bridge(errors)
     check_spawner(errors)
     check_exemptions(errors)
+    check_backpack(errors)
     return report(GUARD, errors)
 
 

@@ -71,7 +71,12 @@ def check(sources):
     need(release, "PassesStaticAudit(ResolveAuditedPreset(key), out error)", "发布目录仍需实际预设静态资格")
     need(release, "ModeHCommandCompatibilityStatus.ReleaseSupported", "发布资格与实测状态必须分开")
     need(release, 'spawnTimelineDigest = "release_contract_v1"', "报告必须标注发布契约来源")
-    need(release, "if (!_report.overallPassed) return false;", "不能绕过候选/原型/口令门槛")
+    rejected = method_body(clean_source(sources["cert"]), "if (!_report.overallPassed)") or ""
+    need(squeeze(rejected), "return false;", "不能绕过候选/原型/口令门槛")
+    resolve = body("cert", "internal static CharacterRandomPreset ResolveAuditedPreset(")
+    order = [resolve.find(x) for x in ("GameplayDataSettings.CharacterRandomPresetData", "catalog.presets", "ObjectCache.GetCharacterPresets()")]
+    if -1 in order or order != sorted(order):
+        errors.append("预设查询应优先官方常驻目录，再回退扫描缓存")
     targets = body("combat", "private void RefreshFireTargets(")
     need(targets, "WakeArenaOpponent(character, origin.mainDamageReceiver);", "复用存活敌人扫描为敌方补目标")
     need(targets, "WakeArenaOpponent(origin, _fireContext.NearestEnemy);", "同一轮为我方补最近对手")
@@ -101,6 +106,7 @@ PROBES = [
     ("scene", "if (!F3GameplayValidationRunner.CanRunModeHCertification(_owner, out reason)) return false;", ""),
     ("cert", "if (!ModBehaviour.DevModeEnabled)", "if (false)"),
     ("cert", 'spawnTimelineDigest = "release_contract_v1"', 'spawnTimelineDigest = ""'),
+    ("cert", "catalog != null ? catalog.presets : null", "null"),
     ("combat", "WakeArenaOpponent(character, origin.mainDamageReceiver);", ""),
     ("combat", "WakeArenaOpponent(origin, _fireContext.NearestEnemy);", ""),
     ("combat", "Team.IsEnemy(character.Team, current.Team)) return;", "false) return;"),

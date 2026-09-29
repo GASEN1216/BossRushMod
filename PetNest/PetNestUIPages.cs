@@ -319,17 +319,13 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 捡漏背包讲清楚：出战崽加在**官方宠物背包**上，只在 BossRush 系列出击里生效
-        /// （owner 2026-09-22 问「加宠物格子在哪里加了」；借席失败不加格子，2026-09-23 复核第 10 项）。
+        /// 崽的独立背包，容量沿用原成长规则；物品与该崽绑定。
         /// </summary>
         internal static string DescribeScavengerBackpack(int bonus)
         {
-            string amount = bonus > 0 ? " +" + bonus : string.Empty;
             return L10n.T(
-                "出战崽随你进 BossRush 系列出击（标准 / 无间炼狱 / D / E / F）时，官方宠物背包" + amount
-                    + " 格，在出击中打开宠物背包查看。只有崽借到官方宠物的随行席位时才加格子（席位被别的随从占着就不加）；基地与普通出击不生效，崽重伤退场后收回。",
-                "In BossRush-family raids (standard / Endless / D / E / F) the deployed cub adds" + amount
-                    + " slots to the official pet backpack; open the pet backpack during the raid. The slots only apply when the cub can borrow the official pet seat (not if another companion holds it). Not active in the base or normal raids; removed if the cub is carried off.");
+                "这只崽有 " + bonus + " 格独立背包。在基地或出击时，靠近它选择头顶的「背包」，使用官方背包格子存取。物品跟着这只崽保存，切图、换崽或重伤退场后仍保留。放生或派去远征前先取空背包。",
+                "This cub has " + bonus + " backpack slots. Approach it in the base or on a raid and choose Backpack to use the official inventory grid. Contents stay with this cub across maps, deployment changes, and knockouts. Empty it before releasing the cub or sending it on an expedition.");
         }
 
         /// <summary>扩建提示：「解锁更多血脉可以扩建巢（3 / 5）」；已到上限返回 null。容量数字取自 Tuning，避免两套真相。</summary>

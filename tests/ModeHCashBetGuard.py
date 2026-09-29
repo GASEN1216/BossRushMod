@@ -17,7 +17,7 @@ ModeHCashBetGuard — 鸭王杯「押钱 / 押背包物品」的结构与数值�
 6. 押注跟着这一场走：技术重试、恢复回落、挂起 / 关停 / 切图中止都不退，重锁时先沿用挂着的那一笔
    （旧版一中断就整额退回，打输了强退重进等于重掷）；只有放弃赛季、开新赛季对到上一季、F3 清理才退。
 7. 接线：锁盘落盘成功后、生成之前下注；本场结算处结算；读档与开新赛季时对账；
-   模块销毁时清掉静态缓存；选人页与结算页挂押注行；下注成功播「开盘」。
+   模块销毁时清掉静态缓存；押注只在每场赛前；下注成功后直接生成，不播「开盘」。
 每条断言都有内存变异探针，探针不转红本守卫自判失败。
 """
 import os
@@ -174,7 +174,7 @@ def check(sources):
     forbid(abort, "RefundCashBet(", "[沿用] 挂起 / 关停 / 切图中止不退押注，回来重打照算")
     lock_bet = body(bet, "private void ReserveStandingCashBet()")
     ordered(lock_bet, ["ModeHCashBetRecord carried = CarriedBetForCurrentMatch();", "if (carried != null)",
-                       "ModeHBetRevealView.Play(carried.amount, carried.odds,", "ReserveItemBet(odds);",
+                       "ModeHItemBetStake.RebindFromLedger(", "ReserveItemBet(odds);",
                        "ModeHCashBetService.TryReserve("],
             "[沿用] 重锁时先沿用挂着的那一笔（不重扣），再押物品，最后押钱")
     need(body(src["ui_flow"], "private void AbandonSeasonFromRecovery()"), 'RefundCashBet("abandon_season");',
@@ -231,9 +231,7 @@ def check(sources):
          "[页面] 赔率页要挂押注行")
     forbid(body(src["ui_flow"], "private void DecorateSettlementPage(ModeHPageContent page)"), "AppendCashBetRow(page);",
            "[页面] 结算页不得提前押尚未显示双方属性的下一场；押注只在赛前页")
-    need(lock_bet, "ModeHBetRevealView.Play(amount, odds, false);", "[页面] 押钱成了要播「开盘」揭晓")
-    need(body(bet, "private void ReserveItemBet(int odds)"), "ModeHBetRevealView.Play(value, odds, true);",
-         "[页面] 押物品成了要播「开盘」揭晓")
+    forbid(bet, "ModeHBetRevealView", "[页面] 赔率已在赛前展示，不再播放开盘动画")
     return errors
 
 

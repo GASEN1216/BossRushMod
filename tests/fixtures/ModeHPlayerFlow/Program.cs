@@ -3,9 +3,18 @@ using System.Collections.Generic;
 
 namespace UnityEngine
 {
+    public static class Debug { public static void LogWarning(object message) { } }
     public struct Vector2 { }
     public struct Vector3 { }
     public sealed class GameObject { public bool activeInHierarchy; }
+}
+namespace Duckov.Utilities
+{
+    public static class GameplayDataSettings
+    {
+        public sealed class PresetCatalog { public List<CharacterRandomPreset> presets = new List<CharacterRandomPreset>(); }
+        public static PresetCatalog CharacterRandomPresetData = new PresetCatalog();
+    }
 }
 
 public enum Teams { player, middle, scav, wolf }
@@ -46,6 +55,11 @@ public sealed class AICharacterController
 }
 namespace BossRush
 {
+    internal static class ObjectCache
+    {
+        internal static CharacterRandomPreset[] Presets = new CharacterRandomPreset[0];
+        internal static CharacterRandomPreset[] GetCharacterPresets() { return Presets; }
+    }
     public partial class ModBehaviour
     {
         public static string Root;
@@ -64,10 +78,6 @@ namespace BossRush
         private ModeHProductionCertificationDto _report;
         private string _lastError;
         public ModeHProductionCertificationDto Report { get { return _report; } }
-        private static CharacterRandomPreset ResolveAuditedPreset(string key)
-        {
-            return new CharacterRandomPreset { isBoss = true, showName = true, team = Teams.scav, nameKey = key };
-        }
         public static bool Supports(string key) { return IsReleaseControlPointAvailable(key); }
     }
     partial class ArenaWake
@@ -98,6 +108,18 @@ namespace BossRush
         {
             ModBehaviour.Root = args[0];
             Check(ModeHProfileRegistry.EnsureValidated(), "production profile data loads");
+            foreach (string stableKey in ModeHProfileRegistry.GetProductionStableKeys())
+                Duckov.Utilities.GameplayDataSettings.CharacterRandomPresetData.presets.Add(new CharacterRandomPreset
+                    { isBoss = true, showName = true, team = Teams.scav, nameKey = stableKey });
+            var officialPreset = Duckov.Utilities.GameplayDataSettings.CharacterRandomPresetData.presets[0];
+            ObjectCache.Presets = new[] { new CharacterRandomPreset { nameKey = officialPreset.nameKey, team = Teams.player } };
+            Check(ReferenceEquals(ReleaseCatalog.ResolveAuditedPreset(officialPreset.nameKey), officialPreset),
+                "official persistent catalog wins over stale or runtime-clone scan cache");
+            var fallback = new CharacterRandomPreset { nameKey = "fixture_extra" };
+            ObjectCache.Presets = new[] { fallback };
+            Check(ReferenceEquals(ReleaseCatalog.ResolveAuditedPreset("fixture_extra"), fallback),
+                "presets outside official catalog retain existing cache fallback");
+            ObjectCache.Presets = new CharacterRandomPreset[0];
             var catalog = new ReleaseCatalog();
             Check(catalog.TryUseReleaseCatalog(), "fresh entry builds complete release report synchronously");
             Check(catalog.Report.overallPassed && ModeHPresetRegistry.Installed == catalog.Report, "release pool materialized");

@@ -325,6 +325,15 @@ namespace BossRush
                 int stack = Math.Min(count, ammo.MaxStackCount);
                 if (stack <= 0) { reason = "kit_apply_ammo_stack_invalid"; return false; }
                 ammo.StackCount = stack;
+                // 备用弹属于临时参赛者；官方预设背包可能已被随机战利品填满，
+                // 小堆叠弹药的 240 发也可能超过它的容量。按实际需要扩一格，
+                // 保持冻结弹量；弹匣仍严格受枪械 Capacity 限制。
+                if (compatibilityCheck == null)
+                {
+                    int free = inventory.GetFirstEmptyPosition(0);
+                    if (free < 0 || free >= inventory.Capacity)
+                        inventory.SetCapacity(Math.Max(inventory.Capacity, inventory.Content.Count) + 1);
+                }
                 // 不合并进旧物品：保留 CreatedItems 的独立所有权，失败时可完整逆序回收。
                 if (ammo.StackCount != stack || !inventory.AddItem(ammo))
                 { reason = "kit_apply_ammo_store_failed"; return false; }

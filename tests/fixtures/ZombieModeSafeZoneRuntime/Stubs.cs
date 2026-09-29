@@ -138,6 +138,7 @@ namespace BossRush
     {
         internal static bool Succeed;
         internal static UnityEngine.Vector3 Resolved;
+        internal static bool RejectCandidates, RejectFallback;
         public static bool TrySampleNavMesh(UnityEngine.Vector3 point, out UnityEngine.Vector3 result, float lift, float radius)
         {
             result = Resolved;
@@ -165,6 +166,16 @@ namespace BossRush
     }
     internal sealed partial class ZombieModeRuntimeModule
     {
+        private bool TryResolveZombieModeSpawnPoint(UnityEngine.Vector3 point,bool virtualPoint,out UnityEngine.Vector3 result,float navMeshSampleRadius=-1f)
+        {
+            result=SpawnPositionHelper.Succeed ? SpawnPositionHelper.Resolved : point;
+            return !SpawnPositionHelper.RejectCandidates;
+        }
+        private bool TryGetZombieModeReliableSpawnPosition(out UnityEngine.Vector3 result)
+        {
+            result=new UnityEngine.Vector3(30,0,0);
+            return !SpawnPositionHelper.RejectFallback;
+        }
         private readonly ZombieModeRunState runState;
         internal ZombieModeRuntimeModule(ZombieModeRunState state) { runState = state; }
         private void UpdateZombieModeSafeZoneVisual() { Probe.Trace.Add("visual:" + runState.RunId); }

@@ -549,10 +549,11 @@ namespace BossRush
                 catch {}
 
                 Vector3 targetPos = Vector3.zero;
-                bool recoveredNearPlayer = reason == ZombieModeDistantRecoveryReason &&
+                bool recoveredNearPlayer = IsZombieModeActive &&
                                            player != null &&
                                            TryGetZombieModeReliableSpawnPosition(out targetPos);
-                if (!recoveredNearPlayer && !TryGetNearestAlternateSpawnPoint(currentPos, state, player, out targetPos))
+                // 丧尸的下坠、卡住和远距离恢复都复用严格可达性选择，不能回退到仅落地的候选。
+                if (!recoveredNearPlayer && (IsZombieModeActive || !TryGetNearestAlternateSpawnPoint(currentPos, state, player, out targetPos)))
                 {
                     ModBehaviour.DevLog("[EnemyRecovery] [WARNING] No valid recovery spawn found for " + enemy.name + " reason=" + reason);
                     return false;

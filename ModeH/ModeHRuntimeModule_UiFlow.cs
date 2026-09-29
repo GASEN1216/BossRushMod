@@ -161,7 +161,11 @@ namespace BossRush
                 string error;
                 if (!ModeHSaveFlushCoordinator.RequestSeasonWrite(_season, out error, requireDurable))
                 {
-                    ModBehaviour.DevLog("[ModeH] [WARNING] Season 落盘失败 (" + reasonId + "): "
+                    // 普通快照已排队，战斗期/同帧/官方保存忙是正常延期，不是落盘失败。
+                    // 开战和结算的 durable 屏障仍须等待真实写入成功。
+                    if (!requireDurable && error != null
+                        && error.StartsWith("flush_deferred_", StringComparison.Ordinal)) return true;
+                    UnityEngine.Debug.LogWarning("[ModeH] Season 落盘失败 (" + reasonId + "): "
                         + (error != null ? error : "unknown"));
                     return false;
                 }

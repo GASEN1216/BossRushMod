@@ -21,6 +21,7 @@ namespace BossRush
             internal readonly WavesArenaRuntimeModule Arena = new WavesArenaRuntimeModule();
             internal bool DActive, EActive, FActive, GActive, ZombieActive, ArenaActive;
             internal bool ThrowGQuery;
+            internal bool ReliableAvailable = true;
             internal int GReads, MarkerAIReads, Pressure, ReliableCalls;
             internal Vector3[] Points = { new Vector3(10, 0, 0), new Vector3(20, 0, 0) };
             internal readonly Dictionary<Teams, List<Vector3>> Allocation = new Dictionary<Teams, List<Vector3>>();
@@ -40,7 +41,7 @@ namespace BossRush
                     enemy => Pressure++);
                 Runtime.ClearEnemyRecoveryMonitorState();
             }
-            private bool Reliable(out Vector3 position) { ReliableCalls++; position = new Vector3(2, 0, 0); return true; }
+            private bool Reliable(out Vector3 position) { ReliableCalls++; position = new Vector3(2, 0, 0); return ReliableAvailable; }
             internal void Tick(float seconds)
             { Time.deltaTime = seconds; Time.time += seconds; Runtime.UpdateEnemyRecoveryMonitor(); }
         }
@@ -115,6 +116,21 @@ namespace BossRush
             Check(Physics.Probes == probes + 1, "replaced source array rebuilds geometry cache");
             owner.Runtime.ClearEnemyRecoveryMonitorState(); AppendE(owner);
             Check(Physics.Probes == probes + 2, "clear invalidates source identity cache");
+
+            Reset(); owner = new Owner { ZombieActive = true }; enemy = Enemy("falling zombie");
+            enemy.gameObject.Add(new ZombieModeEnemyRuntimeMarker());
+            owner.ZombieRun.RunOnlyObjects.Add(new ZombieModeRunOnlyRecord { Kind = ZombieModeRunOnlyObjectKind.Enemy, GameObject = enemy.gameObject });
+            owner.Tick(1);
+            for (int i = 1; i <= 3; i++) { enemy.transform.position = new Vector3(0, -3 * i, 0); owner.Tick(1); }
+            Check(owner.ReliableCalls == 1 && enemy.Teleports == 1 && enemy.transform.position.x == 2,
+                "Falling zombie must use the same validated reachable selector as distant recovery");
+            Reset(); owner = new Owner { ZombieActive = true, ReliableAvailable = false }; enemy = Enemy("unreachable zombie");
+            enemy.gameObject.Add(new ZombieModeEnemyRuntimeMarker());
+            owner.ZombieRun.RunOnlyObjects.Add(new ZombieModeRunOnlyRecord { Kind = ZombieModeRunOnlyObjectKind.Enemy, GameObject = enemy.gameObject });
+            owner.Tick(1);
+            for (int i = 1; i <= 3; i++) { enemy.transform.position = new Vector3(0, -3 * i, 0); owner.Tick(1); }
+            Check(owner.ReliableCalls == 1 && enemy.Teleports == 0,
+                "No reachable Zombie point must not fall through to generic raycast-only map points");
 
             Reset(); owner = new Owner { ArenaActive = true }; var a = Enemy("single"); var b = Enemy("multi");
             owner.Arena.CurrentBoss = a; owner.Arena.BossesPerWave = 1; owner.Tick(1);

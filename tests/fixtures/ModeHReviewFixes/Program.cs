@@ -19,7 +19,6 @@ internal static class Program
         ModeHRuntimeGates.IsModeHCombatFrameActive = false; ModeHRuntimeGates.SlotGeneration = 1;
         ModeHWarehouseStakeJournal.Active = null; ModeHWarehouseStakeJournal.IsSlotConsistent = true;
         UnityEngine.Time.frameCount++;
-        ModeHBetRevealView.IsPlaying = false;
         ModeHMapSupportRegistry.Variant = null;
     }
     private static ModeHRuntimeModule Runtime(ModeHLifecycle lifecycle, int match = 6)
@@ -49,16 +48,14 @@ internal static class Program
         Check(run.Started == 1 && run.Failure == null, "stake barriers followed by lock actually reach spawn");
         Check(Saves.SavesSystem.PhysicalWrites == 5, "four journal writes and lock barrier are durable");
         Reset();
-        var animated = Runtime(ModeHLifecycle.OddsPreview, 1);
-        animated._ui = new ModeHUI();
-        ModeHBetRevealView.IsPlaying = true;
-        animated.Lock();
-        Check(animated.Started == 0 && animated._waitingForBetReveal && animated._ui.Closed == 1,
-            "active bet reveal closes prematch page and blocks spawning");
-        animated.Lock();
-        Check(animated.CashReserves == 1 && animated.Started == 0,
-            "repeated confirmation during reveal cannot reserve or spawn twice");
-        ModeHBetRevealView.IsPlaying = false;
+        var direct = Runtime(ModeHLifecycle.OddsPreview, 1);
+        direct._ui = new ModeHUI();
+        direct.Lock();
+        Check(direct.Started == 1 && direct.CashReserves == 1,
+            "confirmation reserves once and starts immediately without reveal");
+        direct.Lock();
+        Check(direct.CashReserves == 1 && direct.Started == 1,
+            "repeated confirmation cannot reserve or spawn twice");
         string error;
         Check(!ModeHSaveFlushCoordinator.RequestSeasonWrite(run._season, out error), "ordinary writes still throttle");
         UnityEngine.Time.frameCount++; ModeHSaveFlushCoordinator.Tick();

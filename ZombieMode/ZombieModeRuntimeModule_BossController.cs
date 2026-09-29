@@ -600,30 +600,7 @@ namespace BossRush
                 return false;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
-            Vector3 center = player != null ? player.transform.position : instance.Character.transform.position;
-            if (SpawnPositionHelper.TryFindAroundPlayer(
-                    center,
-                    ringCount: 12,
-                    radius: 16f,
-                    resolved: out target,
-                    liftOffset: ZombieModeTuning.NavMeshLiftOffset,
-                    minPlayerDistance: 10f,
-                    navMeshSampleRadius: ZombieModeTuning.NavMeshVirtualSpawnRadius))
-            {
-                return true;
-            }
-
-            if (owner.TryGetNearestZombieModeMapSpawnPositionToPlayerForBossRuntimeModule(out target))
-            {
-                return true;
-            }
-
-            return SpawnPositionHelper.TrySampleNavMesh(
-                center + Vector3.forward * 16f,
-                out target,
-                ZombieModeTuning.NavMeshLiftOffset,
-                ZombieModeTuning.NavMeshVirtualSpawnRadius);
+            return TryGetZombieModeReliableSpawnPosition(out target);
         }
 
         internal void HandleZombieModeBossHurt(int runId, ZombieModeEnemyRuntimeMarker marker, CharacterMainControl victim)

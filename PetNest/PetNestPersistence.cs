@@ -481,7 +481,7 @@ namespace BossRush
             }
         }
 
-        internal bool FlushPending()
+        internal bool FlushPending(bool withinOfficialCollection = false)
         {
             lock (_lock)
             {
@@ -494,7 +494,7 @@ namespace BossRush
                 }
                 try
                 {
-                    if (SavesSystem.IsSaving)
+                    if (SavesSystem.IsSaving && !withinOfficialCollection)
                     {
                         _lastError = "flush_deferred_is_saving";
                         return false;
@@ -799,7 +799,7 @@ namespace BossRush
                 // 官方收集时把唯一 Bundle_v2 pending 合并进存档，但不单独 SaveFile。
                 string assetError;
                 if (!PetNestSaveCoordinator.CollectPendingAssets(out assetError)) return;
-                _bundle.FlushPending();
+                _bundle.FlushPending(true);
             }
             catch (Exception)
             {
@@ -811,6 +811,7 @@ namespace BossRush
         {
             try
             {
+                PetNestBackpack.DiscardForSlotChange();
                 _bundle.ResetForSlotChange();
                 _legacyNest.ResetForSlotChange();
                 _legacyExpedition.ResetForSlotChange();
@@ -827,6 +828,7 @@ namespace BossRush
         {
             try
             {
+                PetNestBackpack.DiscardForSlotChange();
                 _bundle.ResetForSlotChange();
                 _legacyNest.ResetForSlotChange();
                 _legacyExpedition.ResetForSlotChange();

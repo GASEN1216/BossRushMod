@@ -72,6 +72,13 @@ internal static class Program
             "A sampled NavMesh point inside the portable slot must not override the valid ejection");
         Assert(ai.forceTracePlayerDistance == 32f, "Ejection outside protection must retain aggression");
         SpawnPositionHelper.Succeed = false;
+        enemy.transform.position = new Vector3(10, 0, 0);
+        SpawnPositionHelper.RejectCandidates = true;
+        SpawnPositionHelper.RejectFallback = true;
+        Assert(!module.TryMoveZombieModeEnemyOutsideSafeZone(enemy.gameObject, enemy, false) && enemy.transform.position.x == 10,
+            "Failed navigation must leave enemy in place, never eject onto raw terrain outside the map");
+        SpawnPositionHelper.RejectCandidates = false;
+        SpawnPositionHelper.RejectFallback = false;
     }
 
     private static void TestRemovalOrderAndRunIsolation()

@@ -11,7 +11,7 @@ ModeHLocalizationGuard — Mode H 本地化守卫（设计提案 §23.2、§26.1
 - 所有 BossRush_ModeH_ raw key 都必须有中英注入（一律走 L10n.T(cn, en)）；
 - 命令 / 异常 / 伤病 / 战痕 / 状态 / 侦察 / 恢复错误 / 押品明细文本无缺项；
 - 显式断言 BossRush_ModeH_RealStakeRiskNotice 存在，中英文本都讲清「押的是钱、输了押金归庄家」
-  （2026-09-24 owner 拍板：仓库物品在出击地图上押不了，押注改押钱），且被入口页、模式说明与 ModeHInteractable 三处引用；
+  （2026-09-24 owner 拍板：仓库物品在出击地图上押不了，押注改押钱）；旧 key 和风险组件保留，选人页不展示；
 - 代码里出现的 BossRush_ModeH_ key 都必须被注入（不得显示 raw key）。
 """
 import os
@@ -215,7 +215,7 @@ def main():
             text = read_text(os.path.join(root, name)) or ""
             if "RealStakeRiskNotice" in text:
                 risk_key_users.append(name)
-    # 2026-09-25 owner：进入地图选择器时不再推送风险横幅；披露固定在选人页页脚（ModeHUIPages 的 CompactRiskNotice）。
+    # 2026-09-28 owner：地图选择器和选人页均不推送风险横幅；押注后果在赛前选项及确认框说明。
     for required in ["ModeHUIPages.cs", "ModeHLocalization.cs"]:
         if required not in risk_key_users:
             errors.append("[RiskNotice] {} 必须引用 RealStakeRiskNotice".format(required))

@@ -206,6 +206,7 @@ namespace BossRush
 
                 // 1) 落盘 + 退订
                 SafeRuntime.Run("PetNestSaveCoordinator.TryFlushOnHostDestroy", () => PetNestSaveCoordinator.TryFlushOnHostDestroy());
+                SafeRuntime.Run("PetNestBackpack.ResetStaticCaches", () => PetNestBackpack.ResetStaticCaches());
                 SafeRuntime.Run("PetNestSaveCoordinator.ShutdownSubscription", () => PetNestSaveCoordinator.ShutdownSubscription());
 
                 // 2) 还席

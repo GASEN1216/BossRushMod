@@ -107,6 +107,11 @@ namespace BossRush
             if (module != null) module.DealZombieModeRuntimeAreaDamageToPlayer(runId, source, origin, radius, damage);
         }
 
+        internal void DealZombieModeRuntimeAreaDamageToPlayer(int runId, CharacterMainControl source, Vector3 origin, float radius, float damage, Buff buff)
+        {
+            if (zombieModeRuntimeModule != null) zombieModeRuntimeModule.DealZombieModeAreaDamageToPlayer(runId, source, origin, radius, damage, buff);
+        }
+
         public void TryApplyZombieModePlayerSlow(int runId, float percent, float duration)
         {
             ZombieModeRuntimeModule module = zombieModeRuntimeModule;
@@ -128,11 +133,6 @@ namespace BossRush
         internal Coroutine StartZombieModeBossCoroutineForRuntimeModule(IEnumerator routine, int runId)
         {
             return StartZombieModeCoroutine(routine, runId);
-        }
-
-        internal bool TryGetNearestZombieModeMapSpawnPositionToPlayerForBossRuntimeModule(out Vector3 position)
-        {
-            return TryGetNearestZombieModeMapSpawnPositionToPlayer(out position);
         }
 
         internal AICharacterController GetZombieModeEnemyAIForBossRuntimeModule(GameObject enemyObject, ZombieModeEnemyRuntimeMarker marker)

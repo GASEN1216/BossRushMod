@@ -65,8 +65,37 @@ namespace UnityEngine
         public string name; public Transform transform; internal readonly List<Component> Components=new List<Component>();
         public GameObject(string value) { name=value; transform=new Transform { gameObject=this }; Components.Add(transform); }
     }
-    public struct Vector3 { public float x,y,z; public Vector3(float x,float y,float z) { this.x=x;this.y=y;this.z=z; } }
-    public static class Mathf { public static int Max(int a,int b) { return Math.Max(a,b); } public static float Max(float a,float b) { return Math.Max(a,b); } }
+    public struct Vector3
+    {
+        public float x,y,z;
+        public Vector3(float x,float y,float z) { this.x=x;this.y=y;this.z=z; }
+        public static Vector3 zero { get { return new Vector3(); } }
+        public static Vector3 up { get { return new Vector3(0,1,0); } }
+        public float sqrMagnitude { get { return x*x+y*y+z*z; } }
+        public Vector3 normalized { get { return this*(1f/(float)Math.Sqrt(sqrMagnitude)); } }
+        public static Vector3 operator +(Vector3 a,Vector3 b) { return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z); }
+        public static Vector3 operator -(Vector3 a,Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
+        public static Vector3 operator *(Vector3 a,float b) { return new Vector3(a.x*b,a.y*b,a.z*b); }
+    }
+    public static class Mathf { public static int Max(int a,int b) { return Math.Max(a,b); } public static float Max(float a,float b) { return Math.Max(a,b); } public static float Abs(float a) { return Math.Abs(a); } }
+}
+
+namespace Duckov.Buffs { public sealed class Buff { } }
+namespace UnityEngine.AI
+{
+    public enum NavMeshPathStatus { PathComplete, PathPartial, PathInvalid }
+    public sealed class NavMeshPath { public NavMeshPathStatus status; }
+    public struct NavMeshHit { public Vector3 position; }
+    public static class NavMesh
+    {
+        public const int AllAreas=-1;
+        public static bool SampleSuccess, PathSuccess;
+        public static NavMeshPathStatus PathStatus;
+        public static Vector3 SampleOffset;
+        public static void Reset() { SampleSuccess=true; PathSuccess=true; PathStatus=NavMeshPathStatus.PathComplete; SampleOffset=Vector3.zero; }
+        public static bool SamplePosition(Vector3 point,out NavMeshHit hit,float radius,int mask) { hit=new NavMeshHit { position=point+SampleOffset }; return SampleSuccess; }
+        public static bool CalculatePath(Vector3 from,Vector3 to,int mask,NavMeshPath path) { path.status=PathStatus; return PathSuccess; }
+    }
 }
 
 namespace BossRush
@@ -77,6 +106,7 @@ namespace BossRush
     public sealed class CharacterMainControl : Component
     {
         public static CharacterMainControl Main; public Teams Team; public bool dropBoxOnDead=true; public Health Health=new Health();
+        public DamageReceiver mainDamageReceiver=new DamageReceiver();
         public readonly AICharacterController AI=new AICharacterController();
         public CharacterMainControl(string name) { gameObject=new GameObject(name); gameObject.Components.Add(this); }
         public void SetTeam(Teams team) { Team=team; Probe.Trace.Add("team:"+team); }
@@ -100,10 +130,18 @@ namespace BossRush
         public int RunId=1,LivingNormalZombieCount,PendingNormalZombieSpawns,LivingZombieCount;
         public readonly List<ZombieModeBossInstance> CurrentWaveBossInstances=new List<ZombieModeBossInstance>();
     }
-    public static class ZombieModeTuning { public const int MaxNormalZombieCount=20; public const float NormalZombieForceTraceDistance=120; }
+    public static class ZombieModeTuning { public const int MaxNormalZombieCount=20; public const float NormalZombieForceTraceDistance=120,NavMeshVirtualSpawnRadius=3,SpawnPointNavMeshSampleRadius=2,NavMeshLiftOffset=0.1f,SpawnPointMinPlayerDistance=12; }
+    public static class SpawnPositionHelper { public static bool PassesMinPlayerDistance(Vector3 point,float distance) { return (point-CharacterMainControl.Main.transform.position).sqrMagnitude>=distance*distance; } }
+    public enum DamageTypes { normal }
+    public struct DamageInfo
+    {
+        public CharacterMainControl fromCharacter; public DamageTypes damageType; public float damageValue,buffChance; public Vector3 damagePoint,damageNormal; public bool isFromBuffOrEffect; public Duckov.Buffs.Buff buff;
+        public DamageInfo(CharacterMainControl source):this() { fromCharacter=source; }
+    }
+    public sealed class DamageReceiver { public int Calls; public DamageInfo Last; public void Hurt(DamageInfo info) { Last=info; Calls++; } }
     public sealed class SpawnRequest
     {
-        public bool Boss,Equipment,Multiplier,Normalize,SkipLoot; public Func<bool> Active; public Action<EnemySpawnContext> Success; public Action Failure;
+        public bool Boss,Equipment,Multiplier,Normalize,SkipLoot; public Vector3 Position; public Func<bool> Active; public Action<EnemySpawnContext> Success; public Action Failure;
         public void Complete(CharacterMainControl value) { Success(new EnemySpawnContext { character=value }); }
     }
     public sealed class ModBehaviour
@@ -116,7 +154,7 @@ namespace BossRush
         public void SpawnEnemyCore(EnemyPresetInfo preset,Vector3 position,bool isBoss,Func<bool> isActiveCheck,Action<EnemySpawnContext> onSpawned,Action onFailed,bool applyEquipment,bool applyBossMultiplier,bool normalizeDamageMultiplier,bool skipBossRushLootTracking=false)
         {
             Probe.Trace.Add(isBoss?"spawn:boss":"spawn:normal");
-            Requests.Enqueue(new SpawnRequest { Boss=isBoss,Equipment=applyEquipment,Multiplier=applyBossMultiplier,Normalize=normalizeDamageMultiplier,SkipLoot=skipBossRushLootTracking,Active=isActiveCheck,Success=onSpawned,Failure=onFailed });
+            Requests.Enqueue(new SpawnRequest { Position=position,Boss=isBoss,Equipment=applyEquipment,Multiplier=applyBossMultiplier,Normalize=normalizeDamageMultiplier,SkipLoot=skipBossRushLootTracking,Active=isActiveCheck,Success=onSpawned,Failure=onFailed });
         }
     }
     internal sealed partial class ZombieModeRuntimeModule
@@ -124,6 +162,9 @@ namespace BossRush
         private const string ZOMBIE_MODE_NORMAL_PRESET_NAME="Cname_Zombie";
         private readonly ModBehaviour owner; private readonly ZombieModeRunState runState;
         internal bool Paused,Invalid,SuppressThreat;
+        private readonly UnityEngine.AI.NavMeshPath zombieModeSpawnReachabilityPath=new UnityEngine.AI.NavMeshPath();
+        private bool TryGetZombieModeReliableSpawnPosition(out Vector3 position) { position=Vector3.zero; return false; }
+        internal bool Resolve(Vector3 position,bool virtualPoint,out Vector3 resolved) { return TryResolveZombieModeSpawnPoint(position,virtualPoint,out resolved); }
         internal ZombieModeRuntimeModule(ModBehaviour owner,ZombieModeRunState state) { this.owner=owner;runState=state; }
         private bool IsZombieModeRunValid(int runId) { return !Invalid && runState.RunId==runId; }
         private bool IsZombieModeRuntimePaused() { return Paused; }

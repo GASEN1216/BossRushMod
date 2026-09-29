@@ -75,7 +75,7 @@ namespace BossRush
                 return slot;
             }
             slot.Title = L10n.T("出战：", "Deployed: ") + PetNestService.GetDecoratedPetName(deployed);
-            slot.Subtitle = L10n.T("出击时官方宠物背包 +", "Official pet backpack +")
+            slot.Subtitle = L10n.T("独立背包：", "Cub backpack: ")
                 + PetNestCompanionRuntime.ResolveCapacityBonus(deployed) + L10n.T(" 格", " slots");
             slot.Icon = ResolveLineagePortrait(deployed.lineageKey);
             slot.Shiny = deployed.shiny;
@@ -127,7 +127,7 @@ namespace BossRush
             if (ctx.BatchMode)
             {
                 // 远征中的崽不能放生：行照常显示（状态写着「远征中」），不画勾选框、不可勾——不挂点不动的框
-                if (pet.state == (int)PetNestPetState.OnExpedition) return row;
+                if (pet.state == (int)PetNestPetState.OnExpedition || PetNestService.HasBackpackItems(pet)) return row;
                 row.Checkbox = true;
                 row.Selected = ctx.BatchSelection != null && ctx.BatchSelection.Contains(petId);
                 row.OnCardClick = delegate
@@ -223,13 +223,14 @@ namespace BossRush
             }
 
             // 危险操作靠左、描边不实心，点了照旧走确认弹窗
-            detail.Actions.Add(new PetNestActionData
+            if (!PetNestService.HasBackpackItems(pet)) detail.Actions.Add(new PetNestActionData
             {
                 // 按钮上只写素名：装饰名（渐变 / 金字）放在确认弹窗里，那里是深色面板底（2026-09-23 复核第 12 项）
                 Label = L10n.T("放生", "Release"),
                 IsDanger = true,
                 OnClick = delegate { if (ctx.Release != null) ctx.Release(new[] { petId }); },
             });
+            else detail.FooterText = PetNestLocalization.DescribeFailure("backpack_not_empty");
 
             string reason;
             if (ctx.SendOnExpedition != null && PetNestExpeditionService.CanDepart(pet, out reason))
@@ -310,7 +311,7 @@ namespace BossRush
             for (int i = 0; i < pets.Count; i++)
             {
                 PetNestPetRecord pet = pets[i];
-                if (pet == null || pet.state == (int)PetNestPetState.OnExpedition) continue;
+                if (pet == null || pet.state == (int)PetNestPetState.OnExpedition || PetNestService.HasBackpackItems(pet)) continue;
                 if (ctx.BatchSelection != null && ctx.BatchSelection.Contains(pet.id)) picked.Add(pet.id);
                 bool protectedPet = pet.shiny || PetNestChroma.HasChroma(pet)
                     || string.Equals(pet.id, deployedId, StringComparison.Ordinal);

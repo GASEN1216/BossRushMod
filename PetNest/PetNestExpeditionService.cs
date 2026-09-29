@@ -264,6 +264,8 @@ namespace BossRush
                 failureReasonId = "pet_locked_by_expedition";
             else if (pet.state == (int)PetNestPetState.Downed)
                 failureReasonId = "pet_downed";
+            else if (PetNestService.HasBackpackItems(pet))
+                failureReasonId = "backpack_not_empty";
             return failureReasonId == null;
         }
 

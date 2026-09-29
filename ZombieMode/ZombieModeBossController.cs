@@ -106,6 +106,12 @@ namespace BossRush
         private bool followSourcePosition;
         private float startupSeconds;
         private bool armed;
+        private Duckov.Buffs.Buff damageBuff;
+
+        internal void SetDamageBuff(Duckov.Buffs.Buff buff)
+        {
+            damageBuff = buff;
+        }
 
         public void Initialize(
             int newRunId,
@@ -158,7 +164,10 @@ namespace BossRush
             float tickDamage = damagePerSecond * tickInterval;
             if (tickDamage > 0f)
             {
-                inst.DealZombieModeRuntimeAreaDamageToPlayer(RuntimeRunId, source, transform.position, radius, tickDamage);
+                if (damageBuff != null)
+                    inst.DealZombieModeRuntimeAreaDamageToPlayer(RuntimeRunId, source, transform.position, radius, tickDamage, damageBuff);
+                else
+                    inst.DealZombieModeRuntimeAreaDamageToPlayer(RuntimeRunId, source, transform.position, radius, tickDamage);
             }
 
             if (slowPercent > 0f)

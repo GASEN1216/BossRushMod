@@ -314,12 +314,44 @@ namespace BossRush
             }
             dto.payloadDigest = digest;
 
+            // 队列必须拥有独立快照：IsSaving 会把 FlushPending 推到后续帧，
+            // 期间运行时仍会更新同一 Season 的阵容、伤病与战报。保留原引用会让
+            // 待写内容偏离这里冻结的摘要，并被误判为损坏存档。
+            ModeHSeasonDto snapshot;
+            try { snapshot = (ModeHSeasonDto)CloneSaveSnapshot(dto); }
+            catch (Exception e)
+            {
+                error = "season_snapshot_failed:" + e.GetType().Name;
+                return false;
+            }
             lock (_lock)
             {
-                _pending = dto;
+                _pending = snapshot;
                 _pendingDigest = digest;
             }
             return true;
+        }
+
+        private static object CloneSaveSnapshot(object value)
+        {
+            if (value == null) return null;
+            Type type = value.GetType();
+            if (type.IsValueType || type == typeof(string)) return value;
+            System.Collections.IList source = value as System.Collections.IList;
+            if (source != null)
+            {
+                System.Collections.IList copy = (System.Collections.IList)Activator.CreateInstance(type);
+                foreach (object entry in source) copy.Add(CloneSaveSnapshot(entry));
+                return copy;
+            }
+            object result = Activator.CreateInstance(type);
+            foreach (System.Reflection.FieldInfo field in type.GetFields(
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+            {
+                if (!field.IsStatic && !field.IsNotSerialized)
+                    field.SetValue(result, CloneSaveSnapshot(field.GetValue(value)));
+            }
+            return result;
         }
 
         /// <summary>
@@ -370,7 +402,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                _storeFaulted = true;
+                // I/O 暂时失败保留原快照重试；只有确实读回了不一致的数据才锁定。
                 _lastError = "season_flush_exception:" + e.GetType().Name;
                 return false;
             }

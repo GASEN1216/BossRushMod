@@ -1,4 +1,4 @@
-"""ZombieModeBossRushSpawnPointsOnlyGuard: ZombieMode uses BossRush stored map spawn points only."""
+"""Legacy guard name: official cached spawn points lead, map-profile points are a validated fallback."""
 
 from pathlib import Path
 import re
@@ -50,7 +50,7 @@ def main() -> int:
     if cache_fallback.count("owner.GetZombieModeCachedSpawnerPositionsForRuntimeModule()") != 3 or cache_fallback.count("owner.GetZombieModeCachedSpawnerSceneNameForRuntimeModule()") != 1:
         return fail("cached map point fallback must retain the original array and scene query order/count")
 
-    collect_method = extract_method_body(spawner, "CollectZombieModeSpawnPoints")
+    collect_method = extract_method_body(clean_source(spawner), "CollectZombieModeSpawnPoints")
     if not collect_method:
         return fail("CollectZombieModeSpawnPoints not found")
 
@@ -58,6 +58,17 @@ def main() -> int:
         return fail("spawn collection must read ZombieModeMapProfile.StaticSpawnPoints")
     if "TryPopulateZombieModeSpawnPointsFromCachedOriginalSpawnerPositions" not in collect_method:
         return fail("spawn collection must reuse cached original spawner positions before giving up")
+    collect_flat = " ".join(collect_method.split())
+    expected = "owner.PreCacheMapSpawnerPositions(); TryPopulateZombieModeSpawnPointsFromCachedOriginalSpawnerPositions(); if (runState.SpawnPoints.Count <= 0 && runState.MapProfile != null) { AddZombieModeSpawnPointArray(runState.MapProfile.StaticSpawnPoints, false); }"
+    if expected not in collect_flat:
+        return fail("official Points cache must be captured before isolation and preferred over the map-profile fallback")
+    reliable = extract_method_body(clean_source(spawner), "TryGetZombieModeReliableSpawnPosition")
+    if reliable.find("TryGetNearestZombieModeMapSpawnPositionToPlayer(out position)") > reliable.find("TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position)"):
+        return fail("official/map points must precede virtual ring fallback")
+    for name in ("TrySpawnZombieModeNormalZombieAsync", "TrySpawnZombieModeBossAsync"):
+        body = extract_method_body(clean_source(spawner), name)
+        if "!TryResolveZombieModeSpawnPoint(position, false, out reachablePosition)" not in body or "position = reachablePosition;" not in body:
+            return fail("all final spawn calls, including splits and bosses, must validate the submitted position -> " + name)
 
     if "GetCurrentMapConfig()" in collect_method:
         return fail("spawn collection must not rebuild its own map-config point source")
@@ -74,7 +85,7 @@ def main() -> int:
     ]
     for token in forbidden_tokens:
         if token in spawner:
-            return fail("ZombieModeSpawner still depends on original or duplicate map point source: " + token)
+            return fail("ZombieModeSpawner must reuse the shared official cache instead of duplicating scene scans: " + token)
 
     profile_assignment = (
         "profile.StaticSpawnPoints = mapConfig.modeESpawnPoints != null && mapConfig.modeESpawnPoints.Length > 0\n"

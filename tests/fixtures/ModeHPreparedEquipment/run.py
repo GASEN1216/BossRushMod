@@ -15,7 +15,9 @@ from ModeHOneClickFlowGuard import method_body
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    paths = (ROOT / "ModeH/ModeHRuntimeModule_PreparedLoadouts.cs", ROOT / "ModeH/ModeHLoadoutKitRegistry_Prepared.cs")
+    paths = (ROOT / "ModeH/ModeHRuntimeModule_PreparedLoadouts.cs", ROOT / "ModeH/ModeHLoadoutKitRegistry_Prepared.cs",
+             ROOT / "ModeH/ModeHProfilePersistence.cs", ROOT / "ModeH/ModeHRuntimeModule_CombatProfiles.cs",
+             ROOT / "ModeH/ModeHLoadoutKitApplicator.cs", ROOT / "ModeH/ModeHRuntimeModule_LoadoutEditing.cs")
     stats = paths[0].read_text(encoding="utf-8-sig")
     registry = paths[1].read_text(encoding="utf-8-sig")
     members = "\n".join(method_body(stats, signature) for signature in (
@@ -28,13 +30,26 @@ def main():
     start = stats.index("        private static float ReadStat(")
     end = stats.index("        private static void SetPreviewBase(", start)
     members += stats[start:end]
-    code = "using System; using System.Collections; using System.Collections.Generic; using System.Reflection; namespace BossRush { static partial class ModeHRuntimeModule {\n"
+    code = "using System; using System.Collections; using System.Collections.Generic; using System.Reflection; namespace BossRush { partial class ModeHRuntimeModule {\n"
     code += members + "\ninternal static ModeHPreparedFighterStats Read(Item b, Item w, Item a) { return CalculatePreparedStats(b,w,a); }\n"
-    code += "internal static void Prepare(Item b, CharacterRandomPreset p) { PrepareVisibleBaseStats(b,p); }\n}\n"
-    code += "static partial class ModeHLoadoutKitRegistry {\n" + method_body(registry, "internal static int ResolvePreparedAmmoTypeId(") + "\n}}"
+    code += "internal static void Prepare(Item b, CharacterRandomPreset p) { PrepareVisibleBaseStats(b,p); }\n"
+    code += method_body(paths[3].read_text(encoding="utf-8-sig"), "private List<string> BuildDefaultKitSelection(") + "\n"
+    editing = paths[5].read_text(encoding="utf-8-sig")
+    code += "\n".join(method_body(editing, signature) for signature in (
+        "private bool CanEditLoadout(", "private ModeHActionData MakePreparationOption(",
+        "private void AddKitOptions(", "private static bool KitReplacesSlot(")) + "\n}\n"
+    code += "static partial class ModeHLoadoutKitRegistry {\n" + method_body(registry, "internal static int ResolvePreparedAmmoTypeId(") + "\n}\n"
+    persistence = paths[2].read_text(encoding="utf-8-sig")
+    code += "static partial class ModeHProfilePersistence {\n"
+    code += "\n".join(method_body(persistence, signature) for signature in (
+        "public static bool StageWrite(", "public static bool FlushPending()",
+        "private static bool VerifyDigest(", "private static object CloneSaveSnapshot(")) + "\n}\n"
+    code += "static partial class ModeHLoadoutKitApplicator {\n" + method_body(
+        paths[4].read_text(encoding="utf-8-sig"), "private static bool TryStoreAmmo(") + "\n}}"
     generated = OUT / "Production.cs"
     generated.write_text(code, encoding="utf-8")
-    files = [generated, HERE / "Program.cs"]
+    files = [generated, HERE / "Program.cs", HERE / "PersistenceAndLoadout.cs", HERE / "LoadoutOptions.cs",
+             ROOT / "ModeH/ModeHStateDtos.cs"]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649</NoWarn></PropertyGroup><ItemGroup>'
     project += ''.join('<Compile Include="' + escape(str(p)) + '" />' for p in files)
     (OUT / "Regression.csproj").write_text(project + '</ItemGroup></Project>', encoding="utf-8")

@@ -553,13 +553,17 @@ namespace BossRush
                     return null;
                 }
 
-                // 销毁原版 StockShop，避免原始交易选项混进来
+                // 先保存旧交互；官方 GetInteractableList 总会包含根选项本身，
+                // 只删除 StockShop 或清空子列表都无法移除根上的无效“交易”。
+                InteractableBase[] originalInteractions = npcGo.GetComponentsInChildren<InteractableBase>(true);
+
+                // 原版店铺和原版交互一起退场，避免悬空的交易入口。
                 try
                 {
-                    StockShop origShop = npcGo.GetComponentInChildren<StockShop>(true);
-                    if (origShop != null)
+                    StockShop[] originalShops = npcGo.GetComponentsInChildren<StockShop>(true);
+                    for (int i = 0; i < originalShops.Length; i++)
                     {
-                        UnityEngine.Object.Destroy(origShop);
+                        if (originalShops[i] != null) UnityEngine.Object.Destroy(originalShops[i]);
                     }
                 }
                 catch (Exception) { }
@@ -568,10 +572,29 @@ namespace BossRush
                 // StockShop.Awake 会立刻按 merchantID 加载并订阅存档；先保持 inactive，
                 // 等身份、刷新周期与条目全部写完后再激活，不能让 Awake 看见默认字段。
                 shopObj.SetActive(false);
-                shopObj.transform.SetParent(mainInteract.transform, false);
-                shopObj.transform.localPosition = Vector3.zero;
-                shopObj.transform.localRotation = Quaternion.identity;
+                shopObj.transform.SetParent(npcGo.transform, false);
+                shopObj.transform.position = mainInteract.transform.position;
+                shopObj.transform.rotation = Quaternion.identity;
                 shopObj.transform.localScale = Vector3.one;
+
+                // 新入口独立承接原交互范围，旧根及其所有子选项随后移除。
+                BoxCollider interactionCollider = shopObj.AddComponent<BoxCollider>();
+                Collider originalCollider = mainInteract.interactCollider;
+                if (originalCollider != null)
+                {
+                    Bounds bounds = originalCollider.bounds;
+                    Vector3 scale = shopObj.transform.lossyScale;
+                    interactionCollider.center = shopObj.transform.InverseTransformPoint(bounds.center);
+                    interactionCollider.size = new Vector3(
+                        bounds.size.x / Mathf.Max(0.001f, Mathf.Abs(scale.x)),
+                        bounds.size.y / Mathf.Max(0.001f, Mathf.Abs(scale.y)),
+                        bounds.size.z / Mathf.Max(0.001f, Mathf.Abs(scale.z)));
+                }
+                else
+                {
+                    interactionCollider.size = Vector3.one * 2f;
+                }
+                interactionCollider.isTrigger = true;
 
                 StockShop shop = shopObj.AddComponent<StockShop>();
 
@@ -609,31 +632,7 @@ namespace BossRush
                 RandomEventMerchantShopInteractable interact =
                     shopObj.AddComponent<RandomEventMerchantShopInteractable>();
                 interact.Setup(shop, RandomEventsTuning.LocalizationPrefix + "MerchantShop");
-
-                try
-                {
-                    mainInteract.interactableGroup = true;
-                    System.Reflection.FieldInfo groupField =
-                        BossRushEagerReflectionCache.InteractableBase_OtherInterablesInGroup;
-                    if (groupField != null)
-                    {
-                        List<InteractableBase> groupList = groupField.GetValue(mainInteract) as List<InteractableBase>;
-                        if (groupList == null)
-                        {
-                            groupList = new List<InteractableBase>();
-                            groupField.SetValue(mainInteract, groupList);
-                        }
-                        for (int i = groupList.Count - 1; i >= 0; i--)
-                        {
-                            if (groupList[i] == null) groupList.RemoveAt(i);
-                        }
-                        groupList.Add(interact);
-                    }
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人交互组注入失败: " + e.Message);
-                }
+                interact.interactMarkerOffset = mainInteract.interactMarkerOffset;
 
                 shopObj.SetActive(true);
                 // 激活已同步执行 StockShop.Awake；Unity 的 Start 要到本帧稍后才执行。
@@ -679,6 +678,18 @@ namespace BossRush
                     ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人初始库存复位失败: " + e.Message);
                     UnityEngine.Object.Destroy(shopObj);
                     return null;
+                }
+                for (int i = 0; i < originalInteractions.Length; i++)
+                {
+                    InteractableBase original = originalInteractions[i];
+                    if (original == null) continue;
+                    original.MarkerActive = false;
+                    original.interactableGroup = false;
+                    List<InteractableBase> group = NPCInteractionGroupHelper.GetOrCreateGroupList(original, "[RandomEventMerchantShop]");
+                    if (group != null) group.Clear();
+                    if (original.interactCollider != null) original.interactCollider.enabled = false;
+                    original.enabled = false;
+                    UnityEngine.Object.Destroy(original);
                 }
                 return shop;
             }
@@ -905,16 +916,16 @@ namespace BossRush
 
             try
             {
-                // 作为子交互选项不需要独立碰撞检测
+                // 神秘商人仅保留这一个独立入口。
                 this.interactCollider = GetComponent<Collider>();
                 if (this.interactCollider != null)
                 {
-                    this.interactCollider.enabled = false;
+                    this.interactCollider.enabled = true;
                 }
             }
             catch (Exception) { }
 
-            try { this.MarkerActive = false; } catch (Exception) { }
+            try { this.MarkerActive = true; } catch (Exception) { }
         }
 
         protected override void Start()

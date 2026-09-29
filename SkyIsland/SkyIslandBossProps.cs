@@ -212,7 +212,13 @@ namespace BossRush
             for (int i = 0; i < ghostMaterials.Length; i++)
             {
                 Material original = materials != null && i < materials.Length ? materials[i] : null;
-                Texture texture = original != null ? original.mainTexture : Texture2D.whiteTexture;
+                Texture texture = Texture2D.whiteTexture;
+                // CharacterShowBack 等轮廓材质没有贴图属性；访问 mainTexture 会由 Unity 直接报错。
+                if (original != null)
+                {
+                    if (original.HasProperty("_BaseMap")) texture = original.GetTexture("_BaseMap");
+                    else if (original.HasProperty("_MainTex")) texture = original.GetTexture("_MainTex");
+                }
                 ghostMaterials[i] = BossRushFxMaterials.Get(BossRushFxBlend.Alpha, texture != null ? texture : Texture2D.whiteTexture);
                 if (ghostMaterials[i] == null) throw new InvalidOperationException("倒影透明材质不可用");
             }

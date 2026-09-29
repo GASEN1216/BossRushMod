@@ -76,7 +76,7 @@ namespace BossRush
         public float PreparationRowHeight;
         public List<string> PreparationHeaders = new List<string>();
     }
-    internal sealed class ModeHPreparedFighterStats { internal float Power; }
+    internal sealed class ModeHPreparedFighterStats { internal float Power; internal List<object> Gear = new List<object>(); }
     internal sealed partial class ModeHRuntimeModule
     {
         private bool _commandsClosed;
@@ -86,6 +86,10 @@ namespace BossRush
         private int _selectedVirtualStake;
         private ModeHOddsQuote _currentOddsQuote;
         internal bool PreparedStatsAvailable;
+        internal readonly List<ModeHResolvedKit> OriginalKits = new List<ModeHResolvedKit>();
+        internal int PersistedEdits;
+        private bool TryPersistSeason(string reason) { PersistedEdits++; return true; }
+        private List<ModeHResolvedKit> GetPreparedProfileOutfit(ModeHProfileDto profile) { return OriginalKits; }
         private ModeHPreparedFighterStats GetPreparedFighterStats(ModeHProfileDto profile, IList<string> kits)
         { return PreparedStatsAvailable && profile != null ? new ModeHPreparedFighterStats { Power = 100f } : null; }
         private ModeHPreparedFighterStats GetPreparedEnemyStats(ModeHMatchPlanDto plan, int index)
@@ -157,7 +161,22 @@ namespace BossRush
             Check(commandsPage.PreparationOptions.Count > 0 && commandsPage.Actions.Count == 1, "command page lists commands with a single Done action");
             Check(commandsPage.PreparationOptions.All(x => x.Label.Contains("seconds")), "each command exposes its active window");
             commandsPage.Actions.Last().OnClick();
+            runtime.OriginalKits.Add(new ModeHResolvedKit { Spec = new ModeHKitSpec
+                { KitId = "originalHelmet", NameKey = "Original helmet", ReplaceSlot = "Helmet" } });
+            runtime.OriginalKits.Add(new ModeHResolvedKit { Spec = new ModeHKitSpec
+                { KitId = "originalBackpack", NameKey = "Original backpack", ReplaceSlot = "Backpack" } });
             runtime.Page().OptionRows[0].Options[1].OnClick();
+            var gearPage = runtime.Page();
+            Check(gearPage.PreparationOptions.Count(x => x.Label.StartsWith("Original")) == 2
+                && gearPage.PreparationOptions.Where(x => x.Label.StartsWith("Original")).All(x => x.IsSelected),
+                "editor shows every original equipment slot, initially marked equipped");
+            gearPage.PreparationOptions.First(x => x.Label.StartsWith("Helmet")).OnClick();
+            Check(runtime.Page().PreparationOptions.First(x => x.Label.StartsWith("Helmet")).IsSelected
+                && !runtime.Page().PreparationOptions.First(x => x.Label.StartsWith("Original helmet")).IsSelected,
+                "manual replacement changes both original and override equipped badges");
+            runtime.Page().PreparationOptions.First(x => x.Label.StartsWith("Original helmet")).OnClick();
+            Check(!season.matchRoster.starterKitIds.Contains("Helmet") && runtime.PersistedEdits >= 2,
+                "restoring original gear clears the override and persists the edit");
             Check(runtime.Page().PreparationOptions.All(x => !x.Label.StartsWith("Armor") && !x.Label.StartsWith("✓ Armor")), "disabled armor has no editing button");
             runtime.Page().Actions.Last().OnClick();
             int score = runtime.Score;

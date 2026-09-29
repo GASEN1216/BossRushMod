@@ -91,6 +91,10 @@ namespace BossRush
                 if (item.StackCount <= 0) item.StackCount = 1;
                 EquipmentHelper.AddTagToItem(item, spec.Slot);
                 EquipmentHelper.EnsureModifierOnItem(item, spec.StatKey, ModifierType.Add, spec.StatValue, true);
+                // 官方 AIMainBrain.FilterPlayerHearSound 先检查 SoundVisable >= 0.2，
+                // 再用 HearingAbility 计算距离。只加听力数值仍不会触发官方声音提示。
+                if (spec.Slot == "Headset")
+                    EquipmentHelper.EnsureModifierOnItem(item, "SoundVisable", ModifierType.Add, 1f, false);
                 // 不设 Value，NPC 商店标价 0（contracts §7.1）。
                 item.Value = SkyIslandItemRules.ValueOf(spec.TypeId);
                 // 官方 Item.Repairable = UseDurability && Tags.Contains("Repairable")：不打这个标签维修台会显示「无法维修」。

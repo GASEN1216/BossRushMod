@@ -45,11 +45,10 @@ namespace BossRush
         /// </summary>
         public List<ModeHActionData> RealStakeSlots = new List<ModeHActionData>();
         public List<ModeHActionData> PreparationOptions = new List<ModeHActionData>();
-        /// <summary>是否在顶部显示真实资产风险行（入口页必须为 true）。</summary>
+        /// <summary>是否在顶部显示真实资产风险行（选人页不启用）。</summary>
         public bool ShowRealStakeNotice;
         /// <summary>
-        /// 风险行改成页脚一行小字而不是顶部红条。选人页用：正常流程按默认值开打、从不押真实物品，
-        /// 顶部红条会把「挑个选手」吓成「要赌仓库」；披露本身仍在（§22.1 入口页固定显示）。
+        /// 兼容旧页面的紧凑风险行样式；只有 ShowRealStakeNotice 启用时才读取，选人页不启用。
         /// </summary>
         public bool CompactRiskNotice;
         /// <summary>押品选择器是否可用；不可用时原位显示 DisabledReason。</summary>
@@ -279,7 +278,7 @@ namespace BossRush
         #region 风险行
 
         /// <summary>
-        /// §22.1 冻结：入口/试棚页顶部固定显示真实资产风险行，**不可折叠、不可关闭**。
+        /// 旧风险行组件供需要说明押品的页面复用；选人页不再展示。
         /// 样式是深色卡 + 左侧危险色竖条 + 危险色字（审查 UB-12：旧版整条 1384×64 实心红，是整页最大的色块，比内容还抢眼）。
         /// </summary>
         private static float CreateRealStakeNotice(

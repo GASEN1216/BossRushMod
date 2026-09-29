@@ -38,6 +38,7 @@ partial class Program
         LevelManager.Instance.IsBaseLevel = true; UnityEngine.Time.frameCount++;
         CharacterMainControl.Main = new CharacterMainControl { CharacterItem = new Item { Inventory = new Inventory() } };
         PlayerStorage.Inventory = new Inventory(); PlayerStorage.Loading = false;
+        PetProxy.PetInventory = null;
         BossRushAchievementManager.Reset();
         PetNestExpeditionService.ResetValidationRewardBackend();
         ShowcaseService.ResetStaticCaches();
@@ -503,7 +504,233 @@ partial class Program
         ManualChromaAndDurations();
         PityGuarantees();
         PetNestLifecycleRepairs();
+        PetNestBackpackPersistence();
+        PetNestBackpackTreeRoundTrip();
+        PetNestBackpackOwnedRestoration();
         Console.WriteLine("ContentTransactions: " + checks + " assertions passed");
+    }
+
+    static void PetNestBackpackPersistence()
+    {
+        Reset(); PrepareNest();
+        string error;
+        var nest = PetNestService.Nest;
+        nest.pets.Add(new PetNestPetRecord { id = "cub-a", lineageKey = "test", level = 1 });
+        nest.pets.Add(new PetNestPetRecord { id = "cub-b", lineageKey = "test", level = 1 });
+        const string contents = "{\"version\":1,\"items\":[{\"position\":3,\"tree\":{\"rootInstanceID\":42,\"name\":\"装备\\\"和配件\"}}]}";
+        Check(PetNestService.StoreBackpack("cub-a", contents, out error), "backpack snapshot is accepted for the owning cub");
+        Check(PetNestService.TryGetPet("cub-a").backpackJson == contents
+            && PetNestService.TryGetPet("cub-b").backpackJson == null, "same-lineage cubs keep separate backpack contents by stable id");
+        var clone = PetNestCodec.CloneBundle(PetNestPersistence.Bundle.Current);
+        clone.nest.pets[0].backpackJson = "other";
+        Check(PetNestService.TryGetPet("cub-a").backpackJson == contents, "candidate edits cannot change the live cub backpack");
+        var decoded = PetNestCodec.DecodeBundle(BossRushJsonParser.ParseOrNull(PetNestCodec.EncodeBundle(PetNestPersistence.Bundle.Current)));
+        Check(decoded.nest.pets[0].backpackJson == contents && decoded.nest.pets[1].backpackJson == null,
+            "opaque official item trees including quotes survive Bundle JSON round trip and old pets remain empty");
+        Check(!PetNestService.TryReleasePet("cub-a", out error) && error == "backpack_not_empty"
+            && PetNestService.PetCount == 2, "release cannot delete a loaded cub backpack");
+        Check(!PetNestExpeditionService.CanDepart(PetNestService.TryGetPet("cub-a"), out error)
+            && error == "backpack_not_empty", "expedition cannot strand or delete a loaded cub backpack");
+        Check(!PetNestService.StoreBackpack("missing", contents, out error) && error == "pet_not_found",
+            "backpack writes cannot create an orphan or target another cub");
+
+        // 实际出击图没有基地仓库；专属背包只采集 LootView 可见的两端。
+        PlayerStorage.Instance = null;
+        LevelManager.Instance.IsBaseLevel = false;
+        PetProxy.PetInventory = new Inventory();
+        Check(PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error), "raid backpack opens without a base warehouse");
+        SavesSystem.FailPhysical = 1;
+        Check(!PetNestSaveCoordinator.RequestAssetFlush(out error) && PetNestSaveCoordinator.HasDeferredFlush,
+            "physical failure retains backpack snapshot and its asset collection obligation");
+        UnityEngine.Time.frameCount++;
+        Check(PetNestSaveCoordinator.RequestAssetFlush(out error)
+            && DiskNest().nest.pets[0].backpackJson == contents
+            && SavesSystem.Disk.ContainsKey("MainCharacterItemData") && SavesSystem.Disk.ContainsKey("Inventory_Safe"),
+            "retry persists the cub and both transfer inventories in the same physical batch");
+
+        PetNestPersistence.EnsureSubscribed();
+        Check(PetNestService.StoreBackpack("cub-a", null, out error), "taking the last item stages an empty backpack");
+        SavesSystem.IsSaving = true;
+        SavesSystem.Collect();
+        var cache = PetNestCodec.DecodeBundle(BossRushJsonParser.ParseOrNull((string)SavesSystem.Cache[PetNestTuning.BundleStorageKey]));
+        Check(cache.nest.pets[0].backpackJson == null, "official collection while IsSaving accepts the cub's latest empty state");
+        SavesSystem.IsSaving = false;
+        Check(PetNestExpeditionService.CanDepart(PetNestService.TryGetPet("cub-a"), out error), "emptying the backpack restores expedition access");
+        SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", true);
+        Check(!PetNestService.StoreBackpack("cub-a", contents, out error)
+            && PetNestService.TryGetPet("cub-a").backpackJson == null,
+            "rejected backpack writes do not mutate the accepted cub record");
+        SavesSystem.SetFile(1);
+        Check(!PetNestService.StoreBackpack("cub-a", contents, out error) && PetNestService.PetCount == 0,
+            "switching save slots rejects the old cub's backpack identity");
+    }
+
+    static void PetNestBackpackTreeRoundTrip()
+    {
+        var tree = new ItemStatsSystem.Data.ItemTreeData { rootInstanceID = 10 };
+        var root = new ItemStatsSystem.Data.ItemTreeData.DataEntry { instanceID = 10, typeID = 100 };
+        var attachment = new ItemStatsSystem.Data.ItemTreeData.DataEntry { instanceID = 20, typeID = 101 };
+        var nested = new ItemStatsSystem.Data.ItemTreeData.DataEntry { instanceID = 30, typeID = 102 };
+        byte[] raw = { 0, 255, 34, 92, 128, 7 };
+        root.variables.Add(new Duckov.Utilities.CustomData("自定义\\\"KV", Duckov.Utilities.CustomDataType.Raw, raw) { Display = true });
+        root.variables.Add(new Duckov.Utilities.CustomData("Durability", Duckov.Utilities.CustomDataType.Float, BitConverter.GetBytes(0.375f)));
+        root.variables.Add(new Duckov.Utilities.CustomData("Durability", Duckov.Utilities.CustomDataType.Float, BitConverter.GetBytes(0.75f)));
+        root.variables.Add(new Duckov.Utilities.CustomData("", Duckov.Utilities.CustomDataType.Raw, raw));
+        nested.variables.Add(new Duckov.Utilities.CustomData("Count", Duckov.Utilities.CustomDataType.Int, BitConverter.GetBytes(7)));
+        root.slotContents.Add(new ItemStatsSystem.Data.ItemTreeData.SlotInstanceIDPair("Scope", 20));
+        root.inventory.Add(new ItemStatsSystem.Data.ItemTreeData.InventoryDataEntry(4, 30));
+        root.inventorySortLocks.Add(4);
+        tree.entries.Add(root); tree.entries.Add(attachment); tree.entries.Add(nested);
+        var snapshot = new PetNestBackpackSnapshot();
+        snapshot.Items.Add(new PetNestBackpackEntry { Position = 3, Tree = tree });
+        snapshot.Locks.Add(3);
+        string json = snapshot.Encode();
+        var restored = PetNestBackpackSnapshot.Decode(json);
+        var actual = restored.Items[0].Tree.entries[0];
+        Check(restored.Items[0].Position == 3 && restored.Locks[0] == 3,
+            "cub snapshot preserves sparse inventory position and sorting lock");
+        Check(actual.slotContents[0].slot == "Scope" && actual.slotContents[0].instanceID == 20
+            && actual.inventory[0].position == 4 && actual.inventory[0].instanceID == 30
+            && actual.inventorySortLocks[0] == 4 && restored.Items[0].Tree.entries.Count == 3,
+            "explicit codec preserves attachment and nested-inventory connections without Serializable metadata");
+        Check(actual.variables[0].Key == root.variables[0].Key && actual.variables[0].Display
+            && actual.variables[0].DataType == Duckov.Utilities.CustomDataType.Raw
+            && Convert.ToBase64String(actual.variables[0].GetRawCopied()) == Convert.ToBase64String(raw)
+            && BitConverter.ToSingle(actual.variables[1].GetRawCopied(), 0) == 0.375f
+            && BitConverter.ToInt32(restored.Items[0].Tree.entries[2].variables[0].GetRawCopied(), 0) == 7,
+            "raw KV bytes, display metadata, durability and stack count survive the production codec");
+        Check(restored.Encode() == json, "full snapshot encoding is stable after restoration");
+        Check(actual.variables.Count == 4 && actual.variables[2].Key == "Durability"
+            && BitConverter.ToSingle(actual.variables[2].GetRawCopied(), 0) == 0.75f && actual.variables[3].Key == "",
+            "official duplicate and empty KV keys retain their original order and data");
+        Check(PetNestBackpackSnapshot.Decode(null).Items.Count == 0, "legacy cub without a snapshot gets an empty backpack");
+        root.inventory.Add(new ItemStatsSystem.Data.ItemTreeData.InventoryDataEntry(5, 20));
+        bool rejected = false;
+        try { snapshot.Encode(); } catch (InvalidOperationException) { rejected = true; }
+        Check(rejected, "shared child identity is rejected instead of restoring duplicate items");
+        root.inventory.RemoveAt(1);
+        attachment.slotContents.Add(new ItemStatsSystem.Data.ItemTreeData.SlotInstanceIDPair("Cycle", 10));
+        rejected = false;
+        try { snapshot.Encode(); } catch (InvalidOperationException) { rejected = true; }
+        Check(rejected, "cyclic attachment graphs are rejected before instantiation");
+        attachment.slotContents.Clear();
+        tree.entries.Add(new ItemStatsSystem.Data.ItemTreeData.DataEntry { instanceID = 40, typeID = 103 });
+        rejected = false;
+        try { snapshot.Encode(); } catch (InvalidOperationException) { rejected = true; }
+        Check(rejected, "orphaned items are rejected instead of silently disappearing");
+        rejected = false;
+        try { PetNestBackpackSnapshot.Decode(json.Replace("\"instanceID\":30", "\"instanceID\":31")); }
+        catch (InvalidOperationException) { rejected = true; }
+        // 两处同时替换仍是同一棵合法树，所以专门删除一条连接的节点来验证断边。
+        Check(!rejected, "consistent node identity remapping remains valid");
+        rejected = false;
+        string broken = json.Replace("\"position\":4,\"instanceID\":30", "\"position\":4,\"instanceID\":99");
+        try { PetNestBackpackSnapshot.Decode(broken); } catch (InvalidOperationException) { rejected = true; }
+        Check(rejected, "dangling inventory links preserve the original snapshot by rejecting restoration");
+        var locksOnly = new PetNestBackpackSnapshot(); locksOnly.Locks.Add(2);
+        locksOnly.Locks.Add(999);
+        Check(PetNestBackpackSnapshot.Decode(locksOnly.Encode()).Locks[1] == 999,
+            "empty high-position sorting locks survive capacity changes");
+        Check(!PetNestService.HasBackpackItems(new PetNestPetRecord { id = "empty", backpackJson = locksOnly.Encode() }),
+            "sorting locks alone do not block releasing an empty cub backpack");
+        Check(PetNestService.HasBackpackItems(new PetNestPetRecord { id = "damaged", backpackJson = broken }),
+            "invalid saved contents remain protected against release and expedition deletion");
+    }
+
+    static void PetNestBackpackOwnedRestoration()
+    {
+        Reset(); ItemAssetsCollection.Instances.Clear();
+        var tree = new ItemStatsSystem.Data.ItemTreeData { rootInstanceID = 1 };
+        var root = new ItemStatsSystem.Data.ItemTreeData.DataEntry { instanceID = 1, typeID = 100 };
+        var attachment = new ItemStatsSystem.Data.ItemTreeData.DataEntry { instanceID = 2, typeID = 101 };
+        var nested = new ItemStatsSystem.Data.ItemTreeData.DataEntry { instanceID = 3, typeID = 102 };
+        root.slotContents.Add(new ItemStatsSystem.Data.ItemTreeData.SlotInstanceIDPair("Scope", 2));
+        root.inventory.Add(new ItemStatsSystem.Data.ItemTreeData.InventoryDataEntry(80, 3));
+        root.inventorySortLocks.Add(80);
+        tree.entries.Add(root); tree.entries.Add(attachment); tree.entries.Add(nested);
+        Item restored;
+        var defaultScope = new Item { TypeID = 101, StackCount = 2 };
+        using (var owner = new PetNestBackpackRestoration())
+        {
+            foreach (var node in tree.entries) owner.CreateNode(node);
+            ItemAssetsCollection.Instances[0].Slots = new SlotCollection { new Slot { Key = "Scope", Content = defaultScope } };
+            restored = owner.Connect(tree);
+            owner.Transfer();
+        }
+        Check(!restored.Destroyed && restored.Slots.GetSlot("Scope").Content.TypeID == 101
+            && restored.Inventory.GetItemAt(80).TypeID == 102 && restored.Inventory.lockedIndexes[0] == 80,
+            "owned restoration connects dynamic slots, nested inventory and high locks before transfer");
+        Check(defaultScope.Destroyed && restored.Slots.GetSlot("Scope").Content.StackCount == 1,
+            "prefab default slot contents are removed before Plug can merge or inflate the restored stack");
+        restored.DestroyTree();
+        Check(ItemAssetsCollection.Instances.TrueForAll(item => item.Destroyed),
+            "successful restored hierarchy has one owner and recursive disposal");
+        ItemAssetsCollection.Instances.Clear();
+        using (var owner = new PetNestBackpackRestoration())
+        {
+            owner.CreateNode(root); owner.CreateNode(attachment);
+            // 模拟切图发生在逐帧恢复的 await 之后，尚未连接的两件也必须回收。
+        }
+        Check(ItemAssetsCollection.Instances.Count == 2 && ItemAssetsCollection.Instances.TrueForAll(item => item.Destroyed),
+            "cancellation before connection destroys every isolated node owned by this restore");
+        ItemAssetsCollection.Instances.Clear();
+        bool rejected = false;
+        using (var owner = new PetNestBackpackRestoration())
+        {
+            foreach (var node in tree.entries) owner.CreateNode(node);
+            ItemAssetsCollection.Instances[0].Slots = new SlotCollection { new Slot { Key = "Scope", Reject = true } };
+            try { owner.Connect(tree); } catch (InvalidOperationException) { rejected = true; }
+        }
+        Check(rejected && ItemAssetsCollection.Instances.TrueForAll(item => item.Destroyed),
+            "rejected attachment plug reclaims root and every unconnected child");
+        ItemAssetsCollection.Instances.Clear();
+        attachment.variables.Add(new Duckov.Utilities.CustomData("throw", Duckov.Utilities.CustomDataType.Raw, new byte[] { 1 }));
+        Duckov.Utilities.CustomDataCollection.ThrowOnKey = "throw";
+        rejected = false;
+        using (var owner = new PetNestBackpackRestoration())
+        {
+            owner.CreateNode(root);
+            try { owner.CreateNode(attachment); } catch (InvalidOperationException) { rejected = true; }
+        }
+        Duckov.Utilities.CustomDataCollection.ThrowOnKey = null;
+        Check(rejected && ItemAssetsCollection.Instances.Count == 2 && ItemAssetsCollection.Instances.TrueForAll(item => item.Destroyed),
+            "variable restore failure occurs after ownership registration and leaves no orphan node");
+        ItemAssetsCollection.Instances.Clear();
+        ItemAssetsCollection.MissingPrefabId = 101;
+        rejected = false;
+        using (var owner = new PetNestBackpackRestoration())
+        {
+            owner.CreateNode(root);
+            try { owner.CreateNode(attachment); } catch (InvalidOperationException) { rejected = true; }
+        }
+        ItemAssetsCollection.MissingPrefabId = 0;
+        Check(rejected && ItemAssetsCollection.Instances.Count == 1 && ItemAssetsCollection.Instances[0].Destroyed,
+            "missing descendant prefab rejects fallback shells and reclaims earlier nodes");
+        ItemAssetsCollection.Instances.Clear();
+        int notifications = 0;
+        bool notifiedBeforeConnection = true;
+        Action<Item> observer = delegate(Item item)
+        {
+            notifications++;
+            notifiedBeforeConnection &= item.Slots == null && item.Inventory == null;
+            if (item.TypeID == 101)
+            {
+                Check(item.Variables.Entries.Count == 1, "official item-loaded observers see restored variables");
+                throw new InvalidOperationException("injected external observer failure");
+            }
+        };
+        ItemStatsSystem.Data.ItemTreeData.OnItemLoaded += observer;
+        rejected = false;
+        try
+        {
+            using (var owner = new PetNestBackpackRestoration())
+                foreach (var node in tree.entries) owner.CreateNode(node);
+        }
+        catch (InvalidOperationException) { rejected = true; }
+        finally { ItemStatsSystem.Data.ItemTreeData.OnItemLoaded -= observer; }
+        Check(rejected && notifications == 2 && notifiedBeforeConnection
+            && ItemAssetsCollection.Instances.TrueForAll(item => item.Destroyed),
+            "official item-loaded event preserves per-node timing and throwing observers leave no orphan items");
     }
 
     /// 剥掉 TMP 富文本标签，只留可见文字。

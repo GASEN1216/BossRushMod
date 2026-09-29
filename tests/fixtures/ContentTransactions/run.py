@@ -66,7 +66,7 @@ def main():
     ] + ["PetNest/" + name + ".cs" for name in (
         "PetNestService", "PetNestModels", "PetNestTuning", "PetNestPersistenceCodec",
         "PetNestPersistence", "PetNestSaveCoordinator", "PetNestHatchService", "PetNestMuseumStats",
-        "PetNestExpeditionService",
+        "PetNestExpeditionService", "PetNestBackpackSnapshot", "PetNestBackpackRestoration",
         # 2026-09-20：孵化 roll 与显示名都要用炫彩调色板（纯数据、无 Unity 依赖）
         "PetNestChroma")]
     paths = [ROOT / p for p in linked] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "QuestDeliveryRegression.cs", OUT / "Extracted.cs"]

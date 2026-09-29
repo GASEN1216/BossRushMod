@@ -216,9 +216,11 @@ namespace BossRush
         internal bool TryUseReleaseCatalog()
         {
             string game, mod, error;
-            if (!ModeHCommandCompatibilityRegistry.EnsureValidated()
-                || !ModeHCanonicalDigest.TryGetGameBuildSignature(out game, out error)
-                || !ModeHCanonicalDigest.TryGetModBuildSignature(out mod, out error)) return false;
+            if (!ModeHCommandCompatibilityRegistry.EnsureValidated())
+            { _lastError = ModeHCommandCompatibilityRegistry.LastError; return false; }
+            if (!ModeHCanonicalDigest.TryGetGameBuildSignature(out game, out error)
+                || !ModeHCanonicalDigest.TryGetModBuildSignature(out mod, out error))
+            { _lastError = error; return false; }
             ModeHCommandCompatibilityRegistry.BindBuildSignature(
                 game, mod, ModeHContentCatalog.ContentCatalogSignature);
             _records.Clear();
@@ -234,7 +236,11 @@ namespace BossRush
             for (int i = 0; keys != null && i < keys.Count; i++)
             {
                 string key = keys[i];
-                if (!PassesStaticAudit(ResolveAuditedPreset(key), out error)) continue;
+                if (!PassesStaticAudit(ResolveAuditedPreset(key), out error))
+                {
+                    Debug.LogWarning("[ModeH] 发布目录选手不可用: " + key + " reason=" + error);
+                    continue;
+                }
                 ModeHCommandCompatibilityRegistry.ClearStableKey(key);
                 for (int j = 0; effects != null && j < effects.Count; j++)
                 {
@@ -256,7 +262,12 @@ namespace BossRush
                 };
             }
             _report = BuildReport();
-            if (!_report.overallPassed) return false;
+            if (!_report.overallPassed)
+            {
+                Debug.LogWarning("[ModeH] 发布目录门槛失败: " + _lastError + " passed="
+                    + _report.passedStableKeys.Count + " candidates=" + (keys != null ? keys.Count : 0));
+                return false;
+            }
             ModeHPresetRegistry.MaterializeFromReport(_report);
             return true;
         }
@@ -638,6 +649,19 @@ namespace BossRush
         internal static CharacterRandomPreset ResolveAuditedPreset(string stableKey)
         {
             if (string.IsNullOrEmpty(stableKey)) return null;
+            // 官方常驻目录持有完整资产；Resources 扫描缓存可能在启动早期形成，
+            // 且包含后续被销毁的运行时 clone，不能作为发布目录的唯一来源。
+            try
+            {
+                var catalog = Duckov.Utilities.GameplayDataSettings.CharacterRandomPresetData;
+                List<CharacterRandomPreset> official = catalog != null ? catalog.presets : null;
+                for (int i = 0; official != null && i < official.Count; i++)
+                {
+                    CharacterRandomPreset preset = official[i];
+                    if (preset != null && string.Equals(preset.nameKey, stableKey, StringComparison.Ordinal)) return preset;
+                }
+            }
+            catch (Exception) { /* 官方目录尚未就绪时保留已有缓存回退。 */ }
             try
             {
                 CharacterRandomPreset[] presets = ObjectCache.GetCharacterPresets();

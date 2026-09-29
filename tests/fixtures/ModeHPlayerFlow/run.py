@@ -27,7 +27,8 @@ def main():
 
     cert = "ModeH/ModeHProductionCertification.cs"
     methods = [extract(cert, signature) for signature in (
-        "internal bool TryUseReleaseCatalog()", "private static bool IsReleaseControlPointAvailable(",
+        "internal bool TryUseReleaseCatalog()", "internal static CharacterRandomPreset ResolveAuditedPreset(",
+        "private static bool IsReleaseControlPointAvailable(",
         "internal static bool PassesStaticAudit(", "private ModeHProductionCertificationDto BuildReport()",
         "private bool EvaluateThreshold(", "private List<ModeHCommandCertificationStatusDto> BuildCommandStatuses(",
         "private void AppendEntryStatus(")]

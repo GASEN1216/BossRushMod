@@ -179,6 +179,8 @@ namespace BossRush
         public List<PetNestScarRecord> scars;
         /// <summary>成年体快照（未成年为 null）。</summary>
         public PetNestAdultSnapshot adultSnapshot;
+        /// <summary>该崽的独立背包快照。SCHEMA+：旧档为空；官方 ItemTreeData JSON，随 Bundle_v2 保存。</summary>
+        public string backpackJson;
 
         /// <summary>容器兜底，反序列化后必须调用。</summary>
         public void Normalize()
@@ -216,6 +218,7 @@ namespace BossRush
             clone.careerCount = careerCount;
             clone.expeditionCount = expeditionCount;
             clone.mergedOldScarCount = mergedOldScarCount;
+            clone.backpackJson = backpackJson;
 
             clone.talents = new List<PetNestTalentEntry>(talents != null ? talents.Count : 0);
             if (talents != null)
