@@ -13,7 +13,8 @@
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
-using ItemStatsSystem;
+using Duckov.UI;
+using TMPro;
 using UnityEngine;
 
 namespace BossRush
@@ -93,8 +94,11 @@ namespace BossRush
         private float _elapsed;
         private float _retargetAccumulator;
         private bool _hasResult;
-        private bool _playerWon;
+        private int _winner;
+        private bool _surrendered;
         private bool _timeout;
+        private int _cameraIndex = -1;
+        private bool _cameraPreferRed;
         private int _allyAlive;
         private int _enemyAlive;
         private int _allyTotal;
@@ -119,7 +123,11 @@ namespace BossRush
 
         internal List<ModeHGroupUnit> Units { get { return _units; } }
         internal bool HasResult { get { return _hasResult; } }
-        internal bool PlayerWon { get { return _playerWon; } }
+        /// <summary>胜方：0 = 同归于尽 / 平局（庄家赢），1 = 蓝队，2 = 红队。</summary>
+        internal int Winner { get { return _winner; } }
+        internal const int WinnerNone = 0, WinnerBlue = 1, WinnerRed = 2;
+        /// <summary>玩家在观战里投降（不论押哪边都按输结算）。</summary>
+        internal bool Surrendered { get { return _surrendered; } }
         internal bool Timeout { get { return _timeout; } }
         internal float Elapsed { get { return _elapsed; } }
         internal float RemainingSeconds { get { return Mathf.Max(0f, ModeHGroupConfig.MatchDurationSeconds - _elapsed); } }
@@ -133,21 +141,66 @@ namespace BossRush
         internal ModeHGroupBellEffect BellEffect { get { return _bellEffect; } }
         internal float BellRemaining { get { return _bellRemaining; } }
 
-        /// <summary>镜头跟谁：左边第一个还站着的，左边全倒了跟右边的。</summary>
+        /// <summary>
+        /// 镜头跟谁：玩家用 WASD / 方向键 / 鼠标切换选中的那一个；他倒了就顺到同一队下一个还站着的，
+        /// 那一队全倒了跟另一队。开场先跟玩家押的那一队。
+        /// </summary>
         internal CharacterMainControl CameraFocus
         {
             get
             {
-                CharacterMainControl fallback = null;
-                for (int i = 0; i < _units.Count; i++)
-                {
-                    ModeHGroupUnit unit = _units[i];
-                    if (unit.Down || unit.Character == null) continue;
-                    if (!unit.IsEnemy) return unit.Character;
-                    if (fallback == null) fallback = unit.Character;
-                }
-                return fallback;
+                if (_cameraIndex >= 0 && _cameraIndex < _units.Count && IsCameraCandidate(_units[_cameraIndex]))
+                    return _units[_cameraIndex].Character;
+                bool side = _cameraIndex >= 0 && _cameraIndex < _units.Count ? _units[_cameraIndex].IsEnemy : _cameraPreferRed;
+                int next = FindAlive(_cameraIndex < 0 ? 0 : _cameraIndex, 1, side, true);
+                if (next < 0) next = FindAlive(0, 1, !side, true);
+                _cameraIndex = next;
+                return next >= 0 ? _units[next].Character : null;
             }
+        }
+
+        /// <summary>开场镜头先跟哪一队。</summary>
+        internal void SetCameraPreference(bool red)
+        {
+            _cameraPreferRed = red;
+            _cameraIndex = -1;
+        }
+
+        /// <summary>A / ← / 鼠标左键：上一个；D / → / 鼠标右键：下一个（两队连着轮）。</summary>
+        internal void CycleCamera(int direction)
+        {
+            if (_units.Count == 0) return;
+            int start = _cameraIndex < 0 ? 0 : _cameraIndex + (direction >= 0 ? 1 : -1);
+            int next = FindAlive(start, direction >= 0 ? 1 : -1, false, false);
+            if (next >= 0) _cameraIndex = next;
+        }
+
+        /// <summary>W / ↑：跳到蓝队；S / ↓：跳到红队（再按一次在这一队里往下轮）。</summary>
+        internal void FocusSide(bool red)
+        {
+            bool sameSide = _cameraIndex >= 0 && _cameraIndex < _units.Count && _units[_cameraIndex].IsEnemy == red;
+            int start = sameSide ? _cameraIndex + 1 : 0;
+            int next = FindAlive(start, 1, red, true);
+            if (next >= 0) _cameraIndex = next;
+        }
+
+        private int FindAlive(int start, int step, bool red, bool filterSide)
+        {
+            int count = _units.Count;
+            if (count == 0) return -1;
+            for (int n = 0; n < count; n++)
+            {
+                int i = ((start + n * step) % count + count) % count;
+                ModeHGroupUnit unit = _units[i];
+                if (!IsCameraCandidate(unit) || (filterSide && unit.IsEnemy != red)) continue;
+                return i;
+            }
+            return -1;
+        }
+
+        private static bool IsCameraCandidate(ModeHGroupUnit unit)
+        {
+            return unit != null && !unit.Down && unit.Character != null;
         }
 
         #endregion
@@ -166,6 +219,7 @@ namespace BossRush
         /// <summary>开打：计时清零，数一次活人。</summary>
         internal void Begin()
         {
+            ModeHGroupTeamTags.SetActive(true);
             _elapsed = 0f;
             _retargetAccumulator = RetargetIntervalSeconds;
             CountAlive(0f);
@@ -205,12 +259,14 @@ namespace BossRush
             if (_enemyAlive == 0 || _allyAlive == 0)
             {
                 // 同帧两边全倒：没人站着就是庄家赢
-                ClaimResult(_enemyAlive == 0 && _allyAlive > 0, false);
+                ClaimResult(_allyAlive > 0 ? WinnerBlue : (_enemyAlive > 0 ? WinnerRed : WinnerNone), false);
                 return true;
             }
             if (_elapsed >= ModeHGroupConfig.MatchDurationSeconds)
             {
-                ClaimResult(ScoreSide(false) > ScoreSide(true), true);
+                float blue = ScoreSide(false);
+                float red = ScoreSide(true);
+                ClaimResult(blue > red ? WinnerBlue : (red > blue ? WinnerRed : WinnerNone), true);
                 return true;
             }
 
@@ -224,20 +280,28 @@ namespace BossRush
             return false;
         }
 
-        /// <summary>投降：直接判玩家输。</summary>
+        /// <summary>投降：直接判玩家输（不论押哪边）。</summary>
         internal bool TrySurrender()
         {
             if (_hasResult) return false;
-            ClaimResult(false, false);
+            _surrendered = true;
+            ClaimResult(WinnerNone, false);
             return true;
         }
 
-        private void ClaimResult(bool playerWon, bool timeout)
+        private void ClaimResult(int winner, bool timeout)
         {
             _hasResult = true;
-            _playerWon = playerWon;
+            _winner = winner;
             _timeout = timeout;
             EndBellEffect();
+            ModeHFriendlyFireBarrier.Disarm();
+        }
+
+        /// <summary>开打：同队伤害屏障上膛（两队 Boss 的爆炸、范围技能不再误伤队友）。</summary>
+        internal void ArmFriendlyFireBarrier()
+        {
+            ModeHFriendlyFireBarrier.Arm();
         }
 
         private void CountAlive(float deltaTime)
@@ -622,6 +686,8 @@ namespace BossRush
         /// </summary>
         internal void Release()
         {
+            ModeHFriendlyFireBarrier.Disarm();
+            ModeHGroupTeamTags.SetActive(false);
             try { RuntimeStatModifierTracker.RemoveAll(_bellModifiers, "ModeHGroupBell"); }
             catch (Exception) { /* 角色已销毁 */ }
             for (int i = 0; i < _units.Count; i++)
@@ -680,49 +746,163 @@ namespace BossRush
         #endregion
     }
 
-    /// <summary>群战站位：以锚点为中心按六边形逐圈排开，每个点吸附到官方 A* 可走点，吸附不到就退回锚点。</summary>
+    /// <summary>
+    /// 群战站位：以锚点为中心按六边形逐圈找点，每个点吸附到官方 A* 可走点，再过两道检查：
+    /// 身体胶囊不碰墙 / 半高障碍，锚点到这个点之间没有墙（同一块开阔地，不会隔墙落到另一条走廊或墙体里）。
+    /// 2026-09-29 owner 实测迷宫里有 Boss 刷进墙：旧版只吸附 A* 节点，节点贴墙时角色半个身子在墙里。
+    /// 合格点不够时按合格点循环复用（角色之间互相推开，不会被推进墙），一个合格点都没有才退回锚点。
+    /// </summary>
     internal static class ModeHGroupFormation
     {
-        private const float Spacing = 1.8f;
+        private const float Spacing = 1.6f;
+        private const int MaxRings = 14;
+        private const float BodyRadius = 0.45f;
 
         internal static List<Vector3> Build(Vector3 anchor, int count)
         {
             List<Vector3> result = new List<Vector3>(count);
             if (count <= 0) return result;
-            result.Add(Snap(anchor, anchor));
-            int ring = 1;
-            while (result.Count < count && ring < 12)
+            List<Vector3> clear = new List<Vector3>(count);
+            Vector3 point;
+            if (TrySnapClear(anchor, anchor, out point)) clear.Add(point);
+            for (int ring = 1; ring <= MaxRings && clear.Count < count; ring++)
             {
                 int slots = ring * 6;
                 float radius = ring * Spacing;
-                for (int i = 0; i < slots && result.Count < count; i++)
+                for (int i = 0; i < slots && clear.Count < count; i++)
                 {
                     float angle = (i / (float)slots) * Mathf.PI * 2f;
                     Vector3 raw = anchor + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
-                    result.Add(Snap(raw, anchor));
+                    if (TrySnapClear(raw, anchor, out point) && !TooClose(clear, point)) clear.Add(point);
                 }
-                ring++;
             }
-            while (result.Count < count) result.Add(anchor);
+            if (clear.Count == 0) clear.Add(anchor);
+            for (int i = 0; i < count; i++) result.Add(clear[i % clear.Count]);
             return result;
         }
 
-        private static Vector3 Snap(Vector3 raw, Vector3 anchor)
+        private static bool TooClose(List<Vector3> points, Vector3 point)
         {
+            for (int i = 0; i < points.Count; i++)
+                if ((points[i] - point).sqrMagnitude < 1f) return true;
+            return false;
+        }
+
+        private static bool TrySnapClear(Vector3 raw, Vector3 anchor, out Vector3 position)
+        {
+            position = anchor;
             try
             {
                 AstarPath astar = AstarPath.active;
-                if (astar == null || astar.isScanning) return anchor;
+                if (astar == null || astar.isScanning) return false;
                 Pathfinding.NNInfo nearest = astar.GetNearest(raw, Pathfinding.NNConstraint.Walkable);
-                if (nearest.node == null || !nearest.node.Walkable) return anchor;
-                if (Vector3.Distance(nearest.position, raw) > 2.5f || Mathf.Abs(nearest.position.y - anchor.y) > 2.5f)
-                    return anchor;
-                return nearest.position;
+                if (nearest.node == null || !nearest.node.Walkable) return false;
+                if (Vector3.Distance(nearest.position, raw) > 2f || Mathf.Abs(nearest.position.y - anchor.y) > 1.5f)
+                    return false;
+                Vector3 p = nearest.position;
+                int walls = Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask
+                    | Duckov.Utilities.GameplayDataSettings.Layers.halfObsticleLayer;
+                if (Physics.CheckCapsule(p + Vector3.up * 0.5f, p + Vector3.up * 1.4f, BodyRadius, walls,
+                        QueryTriggerInteraction.Ignore)) return false;
+                if ((p - anchor).sqrMagnitude > 0.01f && Physics.Linecast(anchor + Vector3.up * 1f, p + Vector3.up * 1f,
+                        Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask, QueryTriggerInteraction.Ignore))
+                    return false;
+                position = p;
+                return true;
             }
             catch (Exception)
             {
-                return anchor;
+                return false;
             }
+        }
+    }
+
+    /// <summary>
+    /// 鸭王杯群战的同队伤害屏障（2026-09-29 owner：一个队的会伤害自己的队友）。
+    /// 官方子弹本来就不打同队（Projectile 对 context.team 与受击者同队直接跳过），漏网的是爆炸（榴弹、火箭、
+    /// 部分 Boss 技能用 Teams.all 的「谁都炸」口径）与自定义 Boss 的范围技能。只在开打到分出胜负之间上膛，
+    /// 由 Patches/Combat/ModeHFriendlyFireReceiverPatch（DamageReceiver.Hurt 前缀）查询：攻击者与受击者同队、都不是玩家、不是自伤时拦下。
+    /// 天灾的陨石 / 导弹把伤害归到对面最近的人，不受影响；龙王「孩儿护我」的联动死亡来源为空，不受影响。
+    /// </summary>
+    internal static class ModeHFriendlyFireBarrier
+    {
+        private static bool _armed;
+
+        internal static bool IsArmed { get { return _armed; } }
+
+        internal static void Arm() { _armed = true; }
+
+        internal static void Disarm() { _armed = false; }
+
+        internal static void ResetStaticCaches() { _armed = false; }
+
+        /// <summary>no-throw；异常按不拦截处理，不打断官方受伤流程。</summary>
+        internal static bool ShouldBlock(Health target, CharacterMainControl from)
+        {
+            if (!_armed || target == null || from == null) return false;
+            try
+            {
+                CharacterMainControl victim = target.TryGetCharacter();
+                if (victim == null || ReferenceEquals(victim, from) || victim.IsMainCharacter || from.IsMainCharacter) return false;
+                Teams team = victim.Team;
+                return team == from.Team && team != Teams.player && team != Teams.all && team != Teams.middle;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 鸭王杯群战的血条队伍标识（2026-09-29 owner：学划地为营给两边加「- 蓝队」「- 红队」，字色和意思一致）。
+    /// 由统一的血条名字补丁（BossRushHealthBarNamePatch，与划地为营 / 血猎追击同一个 LateUpdate 后缀）在群战期间调用；
+    /// 蓝队 = Teams.scav（左），红队 = Teams.wolf（右），颜色与对照页列头同一对 token。
+    /// </summary>
+    internal static class ModeHGroupTeamTags
+    {
+        private static bool _active;
+        private static readonly string BlueOpen = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.RarityRare) + ">";
+        private static readonly string RedOpen = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText) + ">";
+
+        internal static bool IsActive { get { return _active; } }
+
+        internal static void SetActive(bool active) { _active = active; }
+
+        internal static void ResetStaticCaches() { _active = false; }
+
+        internal static string TeamName(bool red) { return red ? L10n.T("红队", "Red Team") : L10n.T("蓝队", "Blue Team"); }
+
+        private static string Suffix(bool red, string name) { return " " + (red ? RedOpen : BlueOpen) + "- " + name + "</color>"; }
+
+        /// <summary>给一条 Boss 血条的名字补上队伍后缀（切语言后先剥掉另一种语言的旧后缀）。no-throw。</summary>
+        internal static void Apply(HealthBar bar, TextMeshProUGUI nameText)
+        {
+            if (!_active || bar == null || nameText == null || !nameText.gameObject.activeSelf) return;
+            try
+            {
+                Health target = bar.target;
+                CharacterMainControl character = target != null ? target.TryGetCharacter() : null;
+                if (character == null || character.IsMainCharacter) return;
+                Teams team = character.Team;
+                string text = nameText.text ?? string.Empty;
+                string baseText = Strip(text);
+                string desired = team == Teams.scav ? baseText + Suffix(false, TeamName(false))
+                    : team == Teams.wolf ? baseText + Suffix(true, TeamName(true)) : baseText;
+                if (!string.Equals(text, desired, StringComparison.Ordinal)) nameText.text = desired;
+            }
+            catch (Exception) { /* 血条刚被回收 */ }
+        }
+
+        private static string Strip(string text)
+        {
+            string[] suffixes =
+            {
+                Suffix(false, "蓝队"), Suffix(false, "Blue Team"), Suffix(true, "红队"), Suffix(true, "Red Team"),
+            };
+            for (int i = 0; i < suffixes.Length; i++)
+                if (text.EndsWith(suffixes[i], StringComparison.Ordinal)) return text.Substring(0, text.Length - suffixes[i].Length);
+            return text;
         }
     }
 }

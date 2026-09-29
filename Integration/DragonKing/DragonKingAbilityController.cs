@@ -854,10 +854,13 @@ namespace BossRush
                 {
                     // 【Mode E】从原版AI的 searchedEnemy 获取攻击目标
                     var ai = aiController != null ? aiController.GetAI() : null;
-                    if (ai != null && ai.searchedEnemy != null)
+                    // 技能期间 AI 被暂停、searchedEnemy 被清空：继续锁暂停前的那个对手
+                    DamageReceiver searched = ai != null ? ai.searchedEnemy : null;
+                    if (searched == null && aiController != null) searched = aiController.PausedTarget;
+                    if (searched != null)
                     {
                         // searchedEnemy 是 DamageReceiver，通过 Health 获取 CharacterMainControl
-                        var targetHealth = ai.searchedEnemy.health;
+                        var targetHealth = searched.health;
                         if (targetHealth != null)
                         {
                             var targetChar = targetHealth.TryGetCharacter();
@@ -1090,8 +1093,7 @@ namespace BossRush
         /// </summary>
         private bool HasValidTargetForModeE()
         {
-            var inst = ModBehaviour.Instance;
-            if (inst == null || !(inst.IsModeEActive || ModeHRuntimeGates.IsModeHRunOwnerActive))
+            if (!IsFactionTargetMode())
                 return true; // 非 Mode E / 鸭王杯，不限制
 
             // 检查原版AI的 searchedEnemy
@@ -1099,7 +1101,17 @@ namespace BossRush
             if (ai == null)
                 return false; // AI不可用，不攻击
 
-            return ai.searchedEnemy != null;
+            return ai.searchedEnemy != null || aiController.PausedTarget != null;
+        }
+
+        /// <summary>
+        /// Mode E / 鸭王杯（Mode H）：龙皇按 AI 仇恨目标打（其他 Boss），不锁看台上的玩家。
+        /// 光束、碰撞、岩浆这些「碰到才伤」的判定与技能门共用这一处判断。
+        /// </summary>
+        internal static bool IsFactionTargetMode()
+        {
+            var inst = ModBehaviour.Instance;
+            return inst != null && (inst.IsModeEActive || ModeHRuntimeGates.IsModeHRunOwnerActive);
         }
 
         // ========== 生命周期 ==========

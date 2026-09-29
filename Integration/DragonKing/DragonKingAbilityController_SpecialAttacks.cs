@@ -399,7 +399,7 @@ namespace BossRush
                 for (int i = 0; i < linesPerWave; i++)
                 {
                     // 动态获取玩家当前位置（高度设为身体中间）
-                    Vector3 currentPos = playerCharacter.transform.position + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset;
+                    Vector3 currentPos = GetLanceTargetPosition() + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset;
 
                     // 每条线都在玩家脚下，旋转5°
                     float rotation = i * 5f;
@@ -689,8 +689,8 @@ namespace BossRush
                 List<GameObject> warningLines = new List<GameObject>(linesPerWave);
 
                 // 模拟玩家移动轨迹来生成线位置
-                Vector3 basePos = playerCharacter.transform.position + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset;
-                Vector3 playerForward = playerCharacter.transform.forward;
+                Vector3 basePos = GetLanceTargetPosition() + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset;
+                Vector3 playerForward = lastLanceTargetForward;
                 playerForward.y = 0;
                 playerForward = playerForward.normalized;
 
@@ -864,5 +864,42 @@ namespace BossRush
             }
         }
 
+
+        /// <summary>
+        /// 光束、身体碰撞这些「碰到才伤」的判定认谁：Mode E / 鸭王杯是 AI 当前在打的对手（伤害也结算到它身上），
+        /// 其余模式是玩家（原行为）。
+        /// </summary>
+        internal CharacterMainControl CombatContactTarget
+        {
+            get
+            {
+                return IsFactionTargetMode() ? playerCharacter : CharacterMainControl.Main;
+            }
+        }
+
+        // 以太长矛两招在协程里每 0.1 秒 / 每波读一次目标位置。鸭王杯 / 划地为营里目标是 AI 仇恨对象，
+        // 死了或被 Pause 清掉时 playerCharacter 会变空，旧写法直接读 transform 抛异常，预警线画了但矛不发（2026-09-29）。
+        private Vector3 lastLanceTargetPos;
+        private Vector3 lastLanceTargetForward = Vector3.forward;
+
+        /// <summary>长矛瞄准点：目标还在就用它并记下来，目标没了沿用上一次（第一次没有就用龙皇脚下）。</summary>
+        private Vector3 GetLanceTargetPosition()
+        {
+            try
+            {
+                CharacterMainControl target = playerCharacter;
+                if (target != null && target.Health != null && !target.Health.IsDead)
+                {
+                    lastLanceTargetPos = target.transform.position;
+                    Vector3 forward = target.transform.forward;
+                    forward.y = 0f;
+                    if (forward.sqrMagnitude > 0.0001f) lastLanceTargetForward = forward.normalized;
+                    return lastLanceTargetPos;
+                }
+            }
+            catch (Exception) { /* 目标刚被回收：沿用上一次 */ }
+            if (lastLanceTargetPos == Vector3.zero && BossTransform != null) lastLanceTargetPos = BossTransform.position;
+            return lastLanceTargetPos;
+        }
     }
 }

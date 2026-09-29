@@ -82,7 +82,7 @@ namespace BossRush
         private TextMeshProUGUI _hudStarter;
         private TextMeshProUGUI _hudRelay;
         /// <summary>群战把前两行改成双方存活；空则用「先发 / 接力」。</summary>
-        internal string HudFirstLabel, HudSecondLabel;
+        internal string HudFirstLabel, HudSecondLabel, HudThirdLabel;
         private TextMeshProUGUI _hudEnemies;
         private Button _bellButton;
         private Button _surrenderButton;
@@ -457,7 +457,7 @@ namespace BossRush
             {
                 // 这一行是**场上还活着的敌人数**。旧版借用了看盘页「人数区间」的标签，
                 // 玩家看到「人数区间 2」不知道在说什么（2026-09-23 owner 实测截图）。
-                _hudEnemies.text = HudLabelOpen + L10n.T(prefix + "Hud_EnemiesLeft") + HudLabelClose
+                _hudEnemies.text = HudLabelOpen + (HudThirdLabel ?? L10n.T(prefix + "Hud_EnemiesLeft")) + HudLabelClose
                     + liveEnemyCount;
             }
 

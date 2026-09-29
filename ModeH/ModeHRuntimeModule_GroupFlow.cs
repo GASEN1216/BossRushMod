@@ -1,13 +1,14 @@
 // ============================================================================
-// ModeHRuntimeModule_GroupFlow.cs - 鸭王杯群战的玩家流程（2026-09-29 owner 改版）
+// ModeHRuntimeModule_GroupFlow.cs - 鸭王杯群战的玩家流程（2026-09-29 owner 改版，第二轮）
 // ============================================================================
-// 每场：选人页（本场左边出战的一群，3~20 人，可换几批）→ 点「就这队」按战力给右边配对手
-//     → 双方对照 + 押注 → 开打（两群同时上场）→ 结算 → 下一场；6 场打完进名人堂看排名。
+// 每场：一张页面同时摆出蓝队（左）与红队（右），两队一起抽、按战力配平（差 ≤ 500），战力与人数随场次爬升；
+//     玩家选押哪一队赢 + 押多少 →「开打」（两群同时上场）→ 结算 → 下一场；6 场打完进名人堂看排名。
+//     「换一批」两队一起重抽，页面原地换内容（同一标题走 ModeHUI 的同页刷新，不重播打开 / 入场动画）。
 // 沿用原有冻结状态机与落盘点：
-//   Drafting（第 1 场选人）→ RosterLocked → MatchBrief（第 2~6 场先选人、再押注）→ LoadoutEditing
-//   → OddsPreview → LoadoutLocked → MatchSpawning → MatchFighting → MatchSettling → Intermission。
+//   Drafting（第 1 场）→ RosterLocked → MatchBrief（第 2~6 场）→ LoadoutEditing → OddsPreview → LoadoutLocked
+//   → MatchSpawning → MatchFighting → MatchSettling → Intermission。
 // 单挑版的选秀 / 接力 / 口令 / 伤病 / 战痕 / 转会 / 战前调整代码保留不删，群战模式下不再走到。
-// 两队只存在运行时（ModeHGroupRoster）：中断重进回到选人页重新抽，押注按原有账本沿用或结清。
+// 两队与押哪边只存在运行时（ModeHGroupRoster）：中断重进回到这一页重新抽，押注按原有账本沿用或结清。
 // ============================================================================
 
 using System;
@@ -29,8 +30,12 @@ namespace BossRush
         private readonly List<string> _groupResultLines = new List<string>();
         private string _groupResultRunId;
         private int _groupResultMatchIndex = -1;
+        /// <summary>玩家押哪一队赢（页面上的选择，跨场沿用）；true = 红队。</summary>
+        private bool _groupBetOnRed;
+        /// <summary>锁盘那一刻押的队（本场结算按它，开打后改页面选择不影响本场）。</summary>
+        private bool _groupLockedBetOnRed;
 
-        /// <summary>群战选人与对照页当前对应的场次：第 1 场选人时 MatchIndex 还是 0。</summary>
+        /// <summary>群战页面当前对应的场次：第 1 场在 Drafting 时 MatchIndex 还是 0。</summary>
         private int GroupMatchIndex
         {
             get
@@ -74,40 +79,28 @@ namespace BossRush
             }
         }
 
-        /// <summary>本场左边这群：没有或是上一场的就重新抽一批。</summary>
+        /// <summary>本场两队：没有或是上一场的就两队一起重新抽。</summary>
         private ModeHGroupRoster EnsureGroupRoster()
         {
             if (_runState == null) return null;
             int matchIndex = GroupMatchIndex;
             if (_groupRoster != null && _groupRoster.MatchIndex == matchIndex
                 && string.Equals(_groupRoster.RunId, _runState.RunId, StringComparison.Ordinal)
-                && _groupRoster.Allies.Count > 0) return _groupRoster;
+                && _groupRoster.Allies.Count > 0 && _groupRoster.Enemies.Count > 0) return _groupRoster;
             ModeHGroupRoster roster = new ModeHGroupRoster();
             roster.RunId = _runState.RunId;
             roster.MatchIndex = matchIndex;
-            if (!ModeHGroupPool.TryRollAllies(CreateGroupRng(0), EnsureGroupPool(), roster)) return null;
+            if (!ModeHGroupPool.TryRollTeams(CreateGroupRng(0), EnsureGroupPool(), matchIndex, roster)) return null;
             _groupRoster = roster;
             return roster;
         }
 
-        private bool IsGroupRosterConfirmedForCurrentMatch()
+        private bool IsGroupRosterReadyForCurrentMatch()
         {
-            return _runState != null && _groupRoster != null && _groupRoster.Confirmed
+            return _runState != null && _groupRoster != null
                 && _groupRoster.MatchIndex == GroupMatchIndex
                 && string.Equals(_groupRoster.RunId, _runState.RunId, StringComparison.Ordinal)
-                && _groupRoster.Enemies.Count > 0;
-        }
-
-        private void RerollGroupRoster()
-        {
-            if (_commandsClosed || _runState == null || !IsGroupRosterPhase()) return;
-            ModeHGroupRoster roster = EnsureGroupRoster();
-            if (roster == null || roster.Confirmed || roster.RerollsUsed >= ModeHGroupConfig.RerollsPerMatch) return;
-            int used = roster.RerollsUsed + 1;
-            if (!ModeHGroupPool.TryRollAllies(CreateGroupRng(used), EnsureGroupPool(), roster)) return;
-            roster.RerollsUsed = used;
-            _replayCardEntrance = true;
-            RouteUiForLifecycle(_runState.Lifecycle);
+                && _groupRoster.Allies.Count > 0 && _groupRoster.Enemies.Count > 0;
         }
 
         private bool IsGroupRosterPhase()
@@ -116,40 +109,57 @@ namespace BossRush
                 || _runState.Lifecycle == ModeHLifecycle.MatchBrief);
         }
 
-        /// <summary>「就这队」：按战力给右边配对手，第 1 场顺带签完名单进首场，之后停在双方对照 + 押注页。</summary>
-        private void ConfirmGroupRoster()
+        /// <summary>「换一批」：两队一起重抽，同一张页原地换内容（不播入场动画，免得闪一下）。</summary>
+        private void RerollGroupRoster()
         {
-            if (_commandsClosed || _runState == null || _season == null || !IsGroupRosterPhase()) return;
+            if (_commandsClosed || _runState == null || !IsGroupRosterPhase()) return;
             ModeHGroupRoster roster = EnsureGroupRoster();
-            if (roster == null || roster.Confirmed) return;
-            if (!ModeHGroupPool.TryRollEnemies(CreateGroupRng(100 + roster.RerollsUsed), EnsureGroupPool(), roster))
-            {
-                if (_owner != null) _owner.ShowMessage(L10n.T("这一批配不出对手，换一批试试。", "No opponents fit this group; try another draw."));
-                return;
-            }
-            roster.Confirmed = true;
-            if (_runState.Lifecycle == ModeHLifecycle.Drafting)
-            {
-                RunAutoAdvance("group_roster_confirmed", delegate
-                {
-                    if (TryTransition(ModeHLifecycle.Drafting, ModeHLifecycle.RosterLocked, "group_roster_confirmed"))
-                        TryPersistSeason("roster_locked");
-                });
-                return;
-            }
+            if (roster == null || roster.RerollsUsed >= ModeHGroupConfig.RerollsPerMatch) return;
+            int used = roster.RerollsUsed + 1;
+            if (!ModeHGroupPool.TryRollTeams(CreateGroupRng(used), EnsureGroupPool(), roster.MatchIndex, roster)) return;
+            roster.RerollsUsed = used;
             EnsureMatchPlan();
-            if (_runState != null) RouteUiForLifecycle(_runState.Lifecycle);
+            RouteUiForLifecycle(_runState.Lifecycle);
         }
 
-        /// <summary>按确认的两队建本场计划（敌方 = 右边）。计划仍走原有字段与摘要，锁盘、恢复与账本照旧认它。</summary>
+        private void SelectGroupBetSide(bool red)
+        {
+            if (_commandsClosed || _runState == null || !IsGroupRosterPhase() || _groupBetOnRed == red) return;
+            _groupBetOnRed = red;
+            RouteUiForLifecycle(_runState.Lifecycle);
+        }
+
+        /// <summary>「开打」：第 1 场顺带签完名单进首场，再沿原自动链锁盘、生成。</summary>
+        private void StartGroupMatch()
+        {
+            if (_commandsClosed || _runState == null || !IsGroupRosterPhase() || !IsGroupRosterReadyForCurrentMatch()) return;
+            if (_runState.Lifecycle != ModeHLifecycle.Drafting)
+            {
+                StartMatchFromBrief();
+                return;
+            }
+            _allowBriefToLoadout = true;
+            try
+            {
+                RunAutoAdvance("group_start", delegate
+                {
+                    if (TryTransition(ModeHLifecycle.Drafting, ModeHLifecycle.RosterLocked, "group_start"))
+                        TryPersistSeason("roster_locked");
+                });
+            }
+            finally { _allowBriefToLoadout = false; }
+        }
+
+        /// <summary>按当前两队建本场计划（敌方 = 红队）。计划仍走原有字段与摘要，锁盘、恢复与账本照旧认它。</summary>
         private void EnsureGroupMatchPlan()
         {
             if (_season == null || _runState == null) return;
-            if (!IsGroupRosterConfirmedForCurrentMatch())
+            if (_runState.MatchIndex < ModeHConfig.FirstMatchIndex) return; // 第 1 场开打时才进 MatchBrief 建计划
+            if (!IsGroupRosterReadyForCurrentMatch())
             {
-                // 读档回来或换了一批：盘上那份计划对不上现在这群人，作废，等玩家重新选定
+                // 读档回来：盘上那份计划对不上现在这两队，作废，等页面重新抽
                 if (_season.currentMatchPlan != null && _season.currentMatchPlan.matchIndex == _runState.MatchIndex
-                    && (_runState.Lifecycle == ModeHLifecycle.MatchBrief || _runState.Lifecycle == ModeHLifecycle.Drafting))
+                    && _runState.Lifecycle == ModeHLifecycle.MatchBrief)
                     _season.currentMatchPlan = null;
                 return;
             }
@@ -206,17 +216,28 @@ namespace BossRush
             }
         }
 
-        /// <summary>赔率只看两边合计战力（与单挑版同一条分差公式与档位）。</summary>
+        /// <summary>页面展示用的返还倍率：只看押的那一队与对面的合计战力（与单挑版同一条分差公式与档位）。</summary>
+        private int ResolveGroupOdds(bool red)
+        {
+            if (_groupRoster == null) return ModeHConfig.MinOdds;
+            int mine = red ? _groupRoster.EnemyPower : _groupRoster.AllyPower;
+            int theirs = red ? _groupRoster.AllyPower : _groupRoster.EnemyPower;
+            return ModeHStateModel.ResolveOddsTier(ModeHOddsController.ComputePreparedPowerEdge(mine, theirs));
+        }
+
+        /// <summary>锁盘用的报价：押哪队就按哪队的角度算分差。</summary>
         private bool EnsureGroupOddsQuote(out string failureReasonId)
         {
             failureReasonId = null;
-            if (_season == null || _runState == null || !IsGroupRosterConfirmedForCurrentMatch()
+            if (_season == null || _runState == null || !IsGroupRosterReadyForCurrentMatch()
                 || _season.currentMatchPlan == null)
             {
-                failureReasonId = "group_roster_not_confirmed";
+                failureReasonId = "group_roster_not_ready";
                 return false;
             }
-            int edge = ModeHOddsController.ComputePreparedPowerEdge(_groupRoster.AllyPower, _groupRoster.EnemyPower);
+            int mine = _groupBetOnRed ? _groupRoster.EnemyPower : _groupRoster.AllyPower;
+            int theirs = _groupBetOnRed ? _groupRoster.AllyPower : _groupRoster.EnemyPower;
+            int edge = ModeHOddsController.ComputePreparedPowerEdge(mine, theirs);
             ModeHOddsQuote quote = new ModeHOddsQuote();
             quote.PlayerPublicScore = 100 + edge;
             quote.EnemyPublicScore = 100;
@@ -243,7 +264,7 @@ namespace BossRush
                     OpenLifecyclePage(ModeHPage.Brief, lifecycle, BuildGroupPageContent);
                     return true;
                 case ModeHLifecycle.RosterLocked:
-                    // 只有恢复会停在这里：直接推到首场选人 / 对照页，不留一张只有「开打」的空页
+                    // 只有恢复会停在这里：直接推到首场页面，不留一张只有「开打」的空页
                     RunAutoAdvance("group_roster_locked", null);
                     return true;
                 case ModeHLifecycle.MatchSpawning:
@@ -261,46 +282,17 @@ namespace BossRush
             }
         }
 
-        /// <summary>群战的选人页 / 对照押注页（Drafting 与 MatchBrief 共用；没选定时是选人页）。</summary>
+        /// <summary>
+        /// 群战的唯一赛前页（Drafting 与 MatchBrief 共用，标题固定）：蓝红两队 + 押哪边赢 + 押注 +「换一批 / 开打」。
+        /// 标题不变，换一批 / 换押注 / 换押哪边都走 ModeHUI 的同页刷新：只换内容、保留滚动、不播动画。
+        /// </summary>
         private ModeHPageContent BuildGroupPageContent()
         {
             ModeHPageContent page = new ModeHPageContent();
-            if (_season == null || _runState == null) return page;
-            int displayIndex = GroupMatchIndex;
-            page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Label_Match").Replace("{0}", displayIndex.ToString())
-                + " / " + ModeHConfig.SeasonMatchCount;
-            if (!IsGroupRosterConfirmedForCurrentMatch()) return BuildGroupRosterPage(page);
-
-            EnsureMatchPlan();
-            string failure;
-            if (_season.currentMatchPlan == null || !EnsureGroupOddsQuote(out failure))
-            {
-                page.Body += "\n" + L10n.T("这一场的对手还在安排，马上会重新排一次。", "This match's opponents are being set up again.");
-                return page;
-            }
             page.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Brief");
-            AppendGroupSide(page.PlayerFighters, _groupRoster.Allies);
-            AppendGroupSide(page.EnemyFighters, _groupRoster.Enemies);
-            page.PlayerSideNote = DescribeGroupSide(_groupRoster.Allies.Count, _groupRoster.AllyPower);
-            page.EnemySideNote = DescribeGroupSide(_groupRoster.Enemies.Count, _groupRoster.EnemyPower);
-            page.MatchNote = L10n.T("两群同时上场，一边全倒就分胜负；拍铃是一次全场天灾，敌我不分。",
-                "Both groups fight at once; the side left standing wins. The bell calls one disaster on everyone.");
-            page.Headline = L10n.T("胜利返还倍率", "Win payout multiplier");
-            page.HeadlineValue = FormatPayoutMultiplier(_currentOddsQuote.Odds);
-            // 2026-09-29 owner：去掉「自己调整再开打」（战前调整），群战没有整备页
-            AppendCashBetRow(page);
-            page.Actions.Add(new ModeHActionData
-            {
-                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_StartMatch") + DescribeStandingBetSuffix(),
-                IsPrimary = true,
-                OnClick = StartMatchFromBrief,
-            });
-            return page;
-        }
-
-        private ModeHPageContent BuildGroupRosterPage(ModeHPageContent page)
-        {
-            page.Title = L10n.T("本场出战", "This match's lineup");
+            if (_season == null || _runState == null) return page;
+            page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Label_Match").Replace("{0}", GroupMatchIndex.ToString())
+                + " / " + ModeHConfig.SeasonMatchCount;
             ModeHGroupRoster roster = EnsureGroupRoster();
             if (roster == null)
             {
@@ -312,11 +304,35 @@ namespace BossRush
                 });
                 return page;
             }
+            EnsureMatchPlan();
+            page.PlayerSideTitle = ModeHGroupTeamTags.TeamName(false);
+            page.EnemySideTitle = ModeHGroupTeamTags.TeamName(true);
+            page.TeamColorSides = true;
             AppendGroupSide(page.PlayerFighters, roster.Allies);
+            AppendGroupSide(page.EnemyFighters, roster.Enemies);
             page.PlayerSideNote = DescribeGroupSide(roster.Allies.Count, roster.AllyPower);
-            page.EnemySideNote = L10n.T("待定", "TBD");
-            page.MatchNote = L10n.T("选定后按战力给右边随机配对手，两边合计战力相差不超过 " + ModeHGroupConfig.PowerTolerance + "。",
-                "Once you confirm, opponents are drawn to within " + ModeHGroupConfig.PowerTolerance + " total power.");
+            page.EnemySideNote = DescribeGroupSide(roster.Enemies.Count, roster.EnemyPower);
+            page.MatchNote = L10n.T("两队同时上场，一边全倒就分胜负；拍铃是一次全场天灾，两队都挨。",
+                "Both teams fight at once; the side left standing wins. The bell calls one disaster on everyone.");
+            page.Headline = L10n.T("押" + ModeHGroupTeamTags.TeamName(_groupBetOnRed) + "赢 · 返还倍率",
+                "Back " + ModeHGroupTeamTags.TeamName(_groupBetOnRed) + " · payout");
+            page.HeadlineValue = FormatPayoutMultiplier(ResolveGroupOdds(_groupBetOnRed));
+
+            ModeHOptionRow side = new ModeHOptionRow();
+            side.Label = L10n.T("押哪边赢", "Back");
+            for (int i = 0; i < 2; i++)
+            {
+                bool red = i == 1;
+                side.Options.Add(new ModeHActionData
+                {
+                    Label = ModeHGroupTeamTags.TeamName(red) + " " + FormatPayoutMultiplier(ResolveGroupOdds(red)),
+                    IsSelected = _groupBetOnRed == red,
+                    OnClick = delegate { SelectGroupBetSide(red); },
+                });
+            }
+            page.OptionRows.Add(side);
+            AppendCashBetRow(page);
+
             int left = ModeHGroupConfig.RerollsPerMatch - roster.RerollsUsed;
             if (left > 0)
             {
@@ -328,15 +344,12 @@ namespace BossRush
             }
             page.Actions.Add(new ModeHActionData
             {
-                Label = GroupConfirmLabel,
+                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_StartMatch") + DescribeStandingBetSuffix(),
                 IsPrimary = true,
-                OnClick = ConfirmGroupRoster,
+                OnClick = StartGroupMatch,
             });
             return page;
         }
-
-        /// <summary>选人页主按钮的字（F3 自动验收按这串点）。</summary>
-        internal static string GroupConfirmLabel { get { return L10n.T("就这队", "Go with this group"); } }
 
         private static string DescribeGroupSide(int count, int power)
         {
@@ -410,6 +423,7 @@ namespace BossRush
                 return false;
             }
             locked.realStakeSelected = ModeHRealStakeService.HasLockedStakeForMatch(_runState.RunId, _runState.MatchIndex);
+            _groupLockedBetOnRed = _groupBetOnRed;
             _season.preMatchSnapshot = snapshot;
             _season.currentLoadoutLock = locked;
             return true;
@@ -452,7 +466,7 @@ namespace BossRush
         {
             ModeHGroupRoster roster = _groupRoster;
             if (_runState == null || _season == null || _map == null || _owner == null
-                || !IsGroupRosterConfirmedForCurrentMatch())
+                || !IsGroupRosterReadyForCurrentMatch())
             {
                 AbortMatchSpawning("group_spawn_inputs_missing");
                 yield break;
@@ -617,7 +631,12 @@ namespace BossRush
                 };
                 if (unit.Health != null) ModeHEventRouter.RegisterParticipant(unit.Health, unit.Participant);
             }
+            battle.SetCameraPreference(_groupLockedBetOnRed);
+            battle.ArmFriendlyFireBarrier();
             battle.Begin();
+            if (_owner != null)
+                _owner.ShowMessage(L10n.T("观战：A / D、← / →、鼠标左右键切换选手，W / ↑ 看蓝队，S / ↓ 看红队",
+                    "Spectate: A / D, ← / → or mouse buttons to switch; W / ↑ Blue Team, S / ↓ Red Team"));
 
             _spawnRoutine = null;
             if (!TryTransition(ModeHLifecycle.MatchSpawning, ModeHLifecycle.MatchFighting, "combat_started"))
@@ -763,13 +782,14 @@ namespace BossRush
         {
             ModeHGroupBattle battle = _groupBattle;
             if (battle == null) return;
+            TickGroupSpectatorInput(battle);
             bool finished = battle.Tick(deltaTime);
             if (_ui != null)
             {
                 _ui.TickHud(deltaTime, battle.RemainingSeconds,
                     battle.AllyAlive + " / " + battle.AllyTotal,
                     battle.EnemyAlive + " / " + battle.EnemyTotal,
-                    battle.EnemyAlive,
+                    battle.AllyAlive + battle.EnemyAlive,
                     !battle.BellConsumed && (_spectatorLease == null || _spectatorLease.IsBellAccepting),
                     battle.BellConsumed,
                     ModeHGroupBattle.DescribeEffect(battle.BellEffect),
@@ -778,12 +798,36 @@ namespace BossRush
             if (finished || battle.HasResult) BeginGroupMatchSettlement();
         }
 
-        /// <summary>HUD：两行改成双方存活，拍铃卡写天灾。</summary>
+        /// <summary>
+        /// 观战切换（2026-09-29 owner）：A / ← / 鼠标左键上一个，D / → / 鼠标右键下一个，W / ↑ 跳到蓝队，S / ↓ 跳到红队。
+        /// 暂停、确认框或指针在界面上（点拍铃 / 投降）时不切；玩家身体的输入由观战租约关着，不会跟着走。
+        /// </summary>
+        private void TickGroupSpectatorInput(ModeHGroupBattle battle)
+        {
+            try
+            {
+                if (BossRushUI.IsGamePaused() || BossRushConfirmDialog.IsOpen) return;
+                UnityEngine.EventSystems.EventSystem events = UnityEngine.EventSystems.EventSystem.current;
+                bool overUi = events != null && events.IsPointerOverGameObject();
+                if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow) || (!overUi && Input.GetMouseButtonDown(0)))
+                    battle.CycleCamera(-1);
+                else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow) || (!overUi && Input.GetMouseButtonDown(1)))
+                    battle.CycleCamera(1);
+                else if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
+                    battle.FocusSide(false);
+                else if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
+                    battle.FocusSide(true);
+            }
+            catch (Exception) { /* 输入读不到：本帧不切 */ }
+        }
+
+        /// <summary>HUD：两行改成两队存活，拍铃卡写天灾。</summary>
         private void ApplyGroupHud()
         {
             if (_ui == null) return;
-            _ui.HudFirstLabel = L10n.T("我方存活", "Your side");
-            _ui.HudSecondLabel = L10n.T("敌方存活", "Opponents");
+            _ui.HudFirstLabel = ModeHGroupTeamTags.TeamName(false) + L10n.T("存活", " standing");
+            _ui.HudSecondLabel = ModeHGroupTeamTags.TeamName(true) + L10n.T("存活", " standing");
+            _ui.HudThirdLabel = L10n.T("场上共", "On field");
             ModeHGroupBellEffect effect = _groupBattle != null ? _groupBattle.BellEffect : ModeHGroupBellEffect.None;
             _ui.SetBellCommand(ModeHGroupBattle.DescribeEffect(effect), ModeHGroupBattle.DescribeEffectPlain(effect));
         }
@@ -818,7 +862,9 @@ namespace BossRush
             {
                 ModeHLoadoutLockDto locked = _season.currentLoadoutLock;
                 int odds = locked != null ? locked.lockedOdds : ModeHConfig.MinOdds;
-                bool won = battle.PlayerWon;
+                bool betRed = _groupLockedBetOnRed;
+                bool won = !battle.Surrendered && battle.Winner == (betRed
+                    ? ModeHGroupBattle.WinnerRed : ModeHGroupBattle.WinnerBlue);
                 ModeHMatchOutcome outcome = won ? ModeHMatchOutcome.PlayerVictory : ModeHMatchOutcome.PlayerDefeat;
 
                 ModeHMatchReportDto report = new ModeHMatchReportDto();
@@ -828,11 +874,15 @@ namespace BossRush
                     + Mathf.RoundToInt(battle.Elapsed * 1000f);
                 report.winner = (int)outcome;
                 report.timeout = battle.Timeout;
-                report.cowardiceType = !won && !battle.Timeout && battle.AllyAlive > 0 ? "player_surrender" : string.Empty;
+                report.cowardiceType = battle.Surrendered ? "player_surrender" : string.Empty;
                 report.errorTriggered = false;
                 report.entrantIds = new List<string>();
                 if (_groupRoster != null)
-                    for (int i = 0; i < _groupRoster.Allies.Count; i++) report.entrantIds.Add(_groupRoster.Allies[i].Key);
+                {
+                    // 战报记玩家押的那一队（名人堂头号功臣从这里数）
+                    List<ModeHGroupEntry> backed = betRed ? _groupRoster.Enemies : _groupRoster.Allies;
+                    for (int i = 0; i < backed.Count; i++) report.entrantIds.Add(backed[i].Key);
+                }
                 report.injuryEvents = new List<ModeHInjuryEventDto>();
                 report.scarOfferId = string.Empty;
                 report.finalDefeatedProfileSnapshot = string.Empty;
@@ -894,8 +944,14 @@ namespace BossRush
             _groupResultLines.Clear();
             _groupResultRunId = _runState != null ? _runState.RunId : null;
             _groupResultMatchIndex = _runState != null ? _runState.MatchIndex : -1;
-            _groupResultLines.Add(L10n.T("我方存活：", "Your side standing: ") + battle.AllyAlive + " / " + battle.AllyTotal);
-            _groupResultLines.Add(L10n.T("敌方存活：", "Opponents standing: ") + battle.EnemyAlive + " / " + battle.EnemyTotal);
+            string outcome = battle.Surrendered ? L10n.T("投降", "Surrendered")
+                : battle.Winner == ModeHGroupBattle.WinnerBlue ? ModeHGroupTeamTags.TeamName(false) + L10n.T("胜", " wins")
+                : battle.Winner == ModeHGroupBattle.WinnerRed ? ModeHGroupTeamTags.TeamName(true) + L10n.T("胜", " wins")
+                : L10n.T("同归于尽（庄家赢）", "Mutual wipe-out (house wins)");
+            _groupResultLines.Add(L10n.T("战果：", "Result: ") + outcome);
+            _groupResultLines.Add(L10n.T("你押了：", "You backed: ") + ModeHGroupTeamTags.TeamName(_groupLockedBetOnRed));
+            _groupResultLines.Add(ModeHGroupTeamTags.TeamName(false) + L10n.T("存活：", " standing: ") + battle.AllyAlive + " / " + battle.AllyTotal);
+            _groupResultLines.Add(ModeHGroupTeamTags.TeamName(true) + L10n.T("存活：", " standing: ") + battle.EnemyAlive + " / " + battle.EnemyTotal);
             if (battle.BellConsumed)
                 _groupResultLines.Add(L10n.T("天灾：", "Disaster: ") + ModeHGroupBattle.DescribeEffect(battle.BellEffect));
             if (battle.Timeout)
@@ -1043,7 +1099,7 @@ namespace BossRush
                     if (mine) currentRank = rank;
                     ModeHCardData card = new ModeHCardData();
                     card.Title = L10n.T("第 " + rank + " 名", "#" + rank) + " · "
-                        + L10n.T(wins + " 胜 " + (matches - wins) + " 负", wins + "W " + (matches - wins) + "L");
+                        + L10n.T("押中 " + wins + " / " + matches + " 场", wins + " / " + matches + " called");
                     card.Subtitle = L10n.T("净赚 ", "Net ") + (net >= 0 ? "+" : "-") + FormatMoney(Math.Abs(net));
                     List<string> body = new List<string>();
                     if (!string.IsNullOrEmpty(record.signatureCommandId))

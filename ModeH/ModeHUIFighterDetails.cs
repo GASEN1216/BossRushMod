@@ -189,12 +189,14 @@ namespace BossRush
             int most = Mathf.Max(content.PlayerFighters.Count, content.EnemyFighters.Count);
             float cardsHeight = height - ColumnHeaderHeight;
             bool tall = most * FighterCardTall + Mathf.Max(0, most - 1) * FighterCardGap <= cardsHeight;
-            CreateFighterColumn(surface, panelSize, content.PlayerFighters, L10n.T("我方", "Your side"),
+            CreateFighterColumn(surface, panelSize, content.PlayerFighters,
+                content.PlayerSideTitle ?? L10n.T("我方", "Your side"),
                 content.PlayerSideNote, -(columnWidth + VersusGap) * 0.5f, columnWidth, topY, height, tall,
-                BossRushUIColors.Accent);
-            CreateFighterColumn(surface, panelSize, content.EnemyFighters, L10n.T("敌方", "Opponents"),
+                content.TeamColorSides ? BlueTeamColor : BossRushUIColors.Accent);
+            CreateFighterColumn(surface, panelSize, content.EnemyFighters,
+                content.EnemySideTitle ?? L10n.T("敌方", "Opponents"),
                 content.EnemySideNote, (columnWidth + VersusGap) * 0.5f, columnWidth, topY, height, tall,
-                EnemySideColor);
+                content.TeamColorSides ? RedTeamColor : EnemySideColor);
             TextMeshProUGUI versus = DetailText(surface, "Versus", "VS",
                 new Vector2(-VersusGap * 0.5f, topY - panelSize.y * 0.5f), new Vector2(VersusGap, ColumnHeaderHeight - 8f),
                 20f, BossRushUIColors.TextSecondary, TextAlignmentOptions.Center);
@@ -611,6 +613,9 @@ namespace BossRush
         private const float MatchInfoHeight = 40f;
         /// <summary>两列中缝（放一枚 VS）。</summary>
         private const float VersusGap = 56f;
+        /// <summary>鸭王杯群战两队的颜色：蓝队用稀有蓝、红队用危险红（与血条上的「- 蓝队 / - 红队」同色）。</summary>
+        internal static readonly Color BlueTeamColor = BossRushUIColors.RarityRare;
+        internal static readonly Color RedTeamColor = BossRushUIColors.DangerText;
         /// <summary>群战名单格：高 70（7 + 名字 29 + 战力 25 + 余量），每格至少 180 宽，格间 8。</summary>
         private const float CompactTileHeight = 70f;
         private const float CompactTileMinWidth = 180f;

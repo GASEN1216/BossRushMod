@@ -186,6 +186,8 @@ namespace BossRush
         /// <summary>押物品选择页能盖在哪些相位上（就是挂押注行的那几页）。</summary>
         private static bool IsItemBetPickerHost(ModeHLifecycle lifecycle)
         {
+            // 群战第 1 场的赛前页停在 Drafting，押注行也在这一页
+            if (lifecycle == ModeHLifecycle.Drafting) return GroupModeEnabled;
             switch (lifecycle)
             {
                 case ModeHLifecycle.RosterLocked:

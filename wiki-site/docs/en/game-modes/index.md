@@ -13,7 +13,7 @@
 | **Blood Hunt** | Naked + Ticket + Transponder | 4 phases | Constant bleed, kill to heal | ★★★★★ |
 | **Fate Echo** | Current loadout + Ticket + Fate Echo Relic | 9 waves, 3 acts | Counter your habits, then hunt your nemesis | ★★★★★ |
 | **Zombie Mode** | Zombie Tide Invitation | Roguelite survival | Enter empty-handed, endless zombie waves + escalating pollution + purification-point economy, separate from the seven modes above | ★★★★☆ |
-| **Black Market Duck Cup** | One BossRush ticket, from the option next to "Boss Rush" at base | Six matches per season | Bet from the stands: each match two power-matched crowds of bosses brawl, you back the left side and ring the bell once to call down a disaster | ★★★☆☆ |
+| **Black Market Duck Cup** | One BossRush ticket, from the option next to "Boss Rush" at base | Six matches per season | Bet from the stands: each match two power-matched boss teams brawl, bigger every match; you back one team and ring the bell once to call down a disaster | ★★★☆☆ |
 
 ## Mode Detection Priority
 

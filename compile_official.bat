@@ -377,6 +377,7 @@ echo(Patches\BaseHub\BaseHubShopAwakePatch.cs
 echo(Patches\BaseHub\BaseHubBoatPatch.cs
 echo(Patches\BaseHub\BaseHubPatchGroup.cs
 echo(Patches\Combat\CharacterOnDeadPatch.cs
+echo(Patches\Combat\ModeHFriendlyFireReceiverPatch.cs
 echo(Patches\Combat\BossLethalHealthProtectionPatch.cs
 echo(Patches\Combat\ProjectileHalfObstaclePatch.cs
 echo(Patches\Combat\CombatPatchGroup.cs

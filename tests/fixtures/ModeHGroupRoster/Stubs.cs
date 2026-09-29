@@ -7,6 +7,7 @@ namespace UnityEngine
     public static class Mathf
     {
         public static float Max(float a, float b) { return a > b ? a : b; }
+        public static int Max(int a, int b) { return a > b ? a : b; }
         public static float Clamp(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
         public static int Clamp(int v, int min, int max) { return v < min ? min : (v > max ? max : v); }
         public static float Sqrt(float v) { return (float)Math.Sqrt(v); }

@@ -80,10 +80,11 @@ namespace BossRush
 
             lastDistanceCheckTime = Time.time;
 
-            // 获取玩家引用
-            if (cachedPlayer == null || !cachedPlayer.gameObject.activeInHierarchy)
+            // 获取碰撞对象：普通模式是玩家；Mode E / 鸭王杯是 AI 当前在打的那个对手（看台上的玩家不该被撞）
+            CharacterMainControl contactTarget = controller.CombatContactTarget;
+            if (!ReferenceEquals(contactTarget, cachedPlayer) || cachedPlayer == null || !cachedPlayer.gameObject.activeInHierarchy)
             {
-                cachedPlayer = CharacterMainControl.Main;
+                cachedPlayer = contactTarget;
                 if (cachedPlayer != null)
                 {
                     cachedPlayerTransform = cachedPlayer.transform;
@@ -167,7 +168,8 @@ namespace BossRush
                 return;
             }
 
-            if (cachedMainRoot != null && other.transform.root == cachedMainRoot)
+            // 只有玩家用根节点比：AI 角色可能挂在同一个场景容器下，根节点相同不代表是同一个人
+            if (cachedMainRoot != null && cachedMainCharacter.IsMainCharacter && other.transform.root == cachedMainRoot)
             {
                 lastDamageTime = currentTime;
                 controller.ApplySunBeamDamage();
@@ -184,12 +186,15 @@ namespace BossRush
 
         private void CacheMainCharacter()
         {
-            if (cachedMainCharacter != null && cachedMainCharacter.gameObject != null && cachedMainCharacter.gameObject.activeInHierarchy)
+            // 普通模式是玩家；Mode E / 鸭王杯是龙皇当前在打的对手（光束伤害本来就结算到这个目标上）
+            CharacterMainControl target = controller != null ? controller.CombatContactTarget : CharacterMainControl.Main;
+            if (ReferenceEquals(target, cachedMainCharacter) && cachedMainCharacter != null && cachedMainCharacter.gameObject != null
+                && cachedMainCharacter.gameObject.activeInHierarchy)
             {
                 return;
             }
 
-            cachedMainCharacter = CharacterMainControl.Main;
+            cachedMainCharacter = target;
             cachedMainRoot = cachedMainCharacter != null ? cachedMainCharacter.transform.root : null;
         }
     }
@@ -309,6 +314,24 @@ namespace BossRush
         private bool savedDefaultWeaponOut;
 
         /// <summary>
+        /// Pause 前 AI 正在打的目标。技能释放期间 AI 被暂停、searchedEnemy 被清空；Mode E / 鸭王杯这类「按 AI 仇恨找目标」
+        /// 的模式靠它在暂停期间继续锁定同一个对手，Resume 时原样还给 AI（2026-09-29：龙皇技能放到一半丢目标）。
+        /// </summary>
+        private DamageReceiver savedSearchedEnemy;
+
+        /// <summary>暂停期间仍然存活的原目标；没暂停或原目标已倒返回 null。</summary>
+        public DamageReceiver PausedTarget
+        {
+            get { return IsPaused && IsLiveReceiver(savedSearchedEnemy) ? savedSearchedEnemy : null; }
+        }
+
+        private static bool IsLiveReceiver(DamageReceiver receiver)
+        {
+            try { return receiver != null && receiver.health != null && !receiver.health.IsDead; }
+            catch (Exception) { return false; }
+        }
+
+        /// <summary>
         /// 日志前缀（用于区分不同Boss）
         /// </summary>
         private readonly string logPrefix;
@@ -418,7 +441,8 @@ namespace BossRush
                     cachedAI.PutBackWeapon();
                     cachedAI.defaultWeaponOut = false;
 
-                    // 清除目标
+                    // 清除目标（先记下来，技能期间与 Resume 时还要用）
+                    savedSearchedEnemy = cachedAI.searchedEnemy;
                     cachedAI.searchedEnemy = null;
                     cachedAI.aimTarget = null;
                     cachedAI.noticed = false;
@@ -494,6 +518,13 @@ namespace BossRush
                         cachedAI.searchedEnemy = playerCharacter.mainDamageReceiver;
                         cachedAI.noticed = true;
                     }
+                    else if (IsLiveReceiver(savedSearchedEnemy))
+                    {
+                        // 不传目标（Mode E / 鸭王杯）：还给 AI 暂停前的那个对手，不让它重新从零索敌
+                        cachedAI.searchedEnemy = savedSearchedEnemy;
+                        cachedAI.noticed = true;
+                    }
+                    savedSearchedEnemy = null;
                 }
 
                 // 重新启用所有NodeCanvas行为树
@@ -879,6 +910,45 @@ namespace BossRush
             }
         }
 
+        private static readonly Collider[] enemyZoneHits = new Collider[24];
+        private static readonly List<CharacterMainControl> enemyZoneVictims = new List<CharacterMainControl>(8);
+
+        /// <summary>按伤害间隔烧一次范围内与龙皇敌对的角色（每人一次；看台玩家与龙皇自己除外）。</summary>
+        private void TickActiveZoneAgainstEnemies()
+        {
+            if (bossCharacter == null || Time.time - createTime > duration || Time.time - lastDamageTime < damageInterval) return;
+            try
+            {
+                int count = Physics.OverlapSphereNonAlloc(transform.position, radius + 0.5f, enemyZoneHits,
+                    GameplayDataSettings.Layers.damageReceiverLayerMask, QueryTriggerInteraction.Collide);
+                enemyZoneVictims.Clear();
+                Teams bossTeam = bossCharacter.Team;
+                for (int i = 0; i < count; i++)
+                {
+                    Collider hit = enemyZoneHits[i];
+                    DamageReceiver receiver = hit != null ? hit.GetComponent<DamageReceiver>() : null;
+                    Health health = receiver != null ? receiver.health : null;
+                    if (health == null || health.IsDead) continue;
+                    CharacterMainControl victim = health.TryGetCharacter();
+                    if (victim == null || victim == bossCharacter || victim.IsMainCharacter
+                        || !Team.IsEnemy(bossTeam, victim.Team) || enemyZoneVictims.Contains(victim)) continue;
+                    enemyZoneVictims.Add(victim);
+                }
+                if (enemyZoneVictims.Count == 0) return;
+                lastDamageTime = Time.time;
+                for (int i = 0; i < enemyZoneVictims.Count; i++) ApplyLavaDamage(enemyZoneVictims[i]);
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[DragonKing] 岩浆（阵营模式）伤害失败: " + e.Message);
+            }
+            finally
+            {
+                enemyZoneVictims.Clear();
+                System.Array.Clear(enemyZoneHits, 0, enemyZoneHits.Length);
+            }
+        }
+
         private bool IsMainPlayerInsideZone()
         {
             Vector3 zoneCenter = transform.position;
@@ -913,6 +983,22 @@ namespace BossRush
         {
             if (activeZones.Count == 0)
             {
+                return;
+            }
+
+            // Mode E / 鸭王杯：岩浆烧的是龙皇的敌人（其他 Boss），不是看台上的玩家
+            if (DragonKingAbilityController.IsFactionTargetMode())
+            {
+                for (int i = activeZones.Count - 1; i >= 0; i--)
+                {
+                    DragonKingLavaZone zone = activeZones[i];
+                    if (zone == null)
+                    {
+                        activeZones.RemoveAt(i);
+                        continue;
+                    }
+                    zone.TickActiveZoneAgainstEnemies();
+                }
                 return;
             }
 

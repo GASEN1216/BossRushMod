@@ -1,5 +1,15 @@
 # Mode H：百战留痕（黑市鸭王杯）
 
+2026-09-29 owner 实测第二轮（COMPAT，L1/L2，实机待验）：
+- 两队一起抽、一张赛前页：蓝队（左，Teams.scav）与红队（右，Teams.wolf）同时摆出，玩家选押哪队（`_groupBetOnRed`，锁盘时冻结为 `_groupLockedBetOnRed`，结算按「押的那队赢且没投降」判胜）；「换一批」两队一起重抽，页面标题固定走 ModeHUI 同页刷新，不再闪。原「就这队」一步取消。
+- 战力与人数随场次爬升：蓝队按 `ModeHGroupConfig.MatchPowerScale`（官方平均战力 × 4 / 6 / 8.5 / 11 / 14 / 17.5，±8%，3~20 人）抽，红队按蓝队配平（差 ≤ 500）；官方 Boss 允许重复，自定义 Boss 每队至多一只；焚天龙皇战力 2000，另两只 1000。
+- 刷进墙：站位点除吸附 A* 节点外，再要求身体胶囊不碰墙 / 半高障碍、锚点到该点无墙遮挡（`ModeHGroupFormation`），合格点不够时循环复用。
+- 同队误伤：`ModeHFriendlyFireBarrier` 在开打到分出胜负之间上膛，由 `Patches/Combat/ModeHFriendlyFireReceiverPatch.cs`（DamageReceiver.Hurt 前缀）拦同队、非玩家、非自伤的伤害；不动冻结签名的 Health.Hurt 前缀链。
+- 血条队伍标识：`ModeHGroupTeamTags` 经统一血条补丁（与划地为营同一个 LateUpdate 后缀）追加「- 蓝队 / - 红队」，蓝 = RarityRare、红 = DangerText，对照页列头同色。
+- 观战切换：A / ← / 鼠标左键上一个、D / → / 鼠标右键下一个、W / ↑ 蓝队、S / ↓ 红队（指针在界面上、暂停或确认框打开时不切）；镜头先跟押的那队。
+- 焚天龙皇技能：技能释放 Pause AI 时保存原目标（`BossAIController.PausedTarget`，Resume 不传目标时还回去），以太长矛目标丢失时沿用最后瞄点不再抛异常，光束 / 身体碰撞认 AI 当前目标，岩浆烧范围内敌对 Boss（均只在 Mode E / 鸭王杯分支）。
+- 名人堂「胜场」即押中场数，头号功臣按押的那队统计。
+
 2026-09-29 owner 改版：群战（COMPAT，L1/L2，实机待验）：
 - 玩法：每场选人页抽「本场左边出战的一群」（3~20 人，每场可换 3 批）→「就这队」后按战力随机配右边（人数由战力定，两边合计战力差 ≤ 500）→ 双方对照 + 押注 → 两群同时上场互殴 → 结算；一季固定 6 场，不因输球提前结束；名人堂改成按「胜场 → 押注净赚 → 先入堂」排名，满员挤排名最末的一季。
 - Boss 池 = 宿主 `BossFilterEnemyPresets` 里能在官方目录查到 preset 的全部 Boss + 龙裔遗族 / 焚天龙皇 / 幽灵女巫（战力固定 1000，每边同一只至多一只），不再受 `BossProfiles.json` 十二人名单与认证池限制。自定义 Boss 走 Mode G 的托管生成器，新增 `ManagedBossOwner.ModeH`（`CreateModeGManagedCharacterAsync` 在 ModeH owner 下不要求 Mode G run 状态）；三只 Boss 在 `ModeHRuntimeGates.IsModeHRunOwnerActive` 时与 Mode E 同口径只打 AI 仇恨目标，龙王召唤龙裔跟父 owner 走，召唤物经辅助契约登记并跟随召唤者阵营。

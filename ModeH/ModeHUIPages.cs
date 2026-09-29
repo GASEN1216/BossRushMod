@@ -74,6 +74,7 @@ namespace BossRush
         /// <summary>看盘页两列列头右侧的小字（合计战力）。</summary>
         public string PlayerSideNote;
         public string EnemySideNote;
+        public string PlayerSideTitle, EnemySideTitle; public bool TeamColorSides; // 群战：列头写蓝队 / 红队并用蓝红两色
         /// <summary>整备选项的列数（1 = 整行；阵容页左首发右接力、配装两列），与每格高度（0 = 默认 112）。</summary>
         public int PreparationColumns = 1;
         public float PreparationRowHeight;

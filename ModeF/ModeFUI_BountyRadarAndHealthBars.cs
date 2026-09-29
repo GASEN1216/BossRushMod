@@ -1069,8 +1069,10 @@ namespace BossRush
 
             bool isModeF = cachedInstance.IsModeFActive;
             bool isModeE = !isModeF && cachedInstance.IsModeEActive;
+            // 鸭王杯群战：血条名字后缀「- 蓝队 / - 红队」（与划地为营同一个补丁、同样节流）
+            bool isModeH = !isModeF && !isModeE && ModeHGroupTeamTags.IsActive;
 
-            if (!isModeF && !isModeE)
+            if (!isModeF && !isModeE && !isModeH)
             {
                 if (lastProcessedFrameByBarId.Count > 0)
                     lastProcessedFrameByBarId.Clear();
@@ -1127,8 +1129,10 @@ namespace BossRush
 
             if (isModeF)
                 cachedInstance.ApplyModeFHealthBarNameOverride(__instance, ___nameText);
-            else
+            else if (isModeE)
                 cachedInstance.ApplyModeEHealthBarNameOverride(__instance, ___nameText);
+            else
+                ModeHGroupTeamTags.Apply(__instance, ___nameText);
         }
     }
 

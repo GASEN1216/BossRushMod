@@ -44,33 +44,56 @@ internal static class Program
                 continue;
             }
             customs++;
-            Check(entry.Power == 1000, "custom boss default power is 1000 (owner 2026-09-29)");
+            int expected = entry.Key == DragonKingConfig.BossNameKey ? 2000 : 1000;
+            Check(entry.Power == expected, "custom boss power (Dragon King 2000, others 1000): " + entry.Key);
         }
         Check(customs == 3, "all three custom bosses join the pool once");
         Check(ModeHGroupPool.Build(new ModBehaviour()).Count == 3, "empty host table still yields the three custom bosses");
 
-        int minCount = int.MaxValue, maxCount = 0, worstDiff = 0, enemyFailures = 0;
-        for (int seed = 0; seed < 3000; seed++)
+        float average = ModeHGroupPool.AverageOfficialPower(pool);
+        int[] minPower = new int[7], maxPower = new int[7], minCount = new int[7], maxCount = new int[7];
+        long[] sumPower = new long[7];
+        for (int m = 1; m <= 6; m++) { minPower[m] = int.MaxValue; minCount[m] = int.MaxValue; }
+        int worstDiff = 0, rollFailures = 0, duplicateRosters = 0;
+        const int Seeds = 1500;
+        for (int seed = 0; seed < Seeds; seed++)
         {
-            System.Random rng = new System.Random(seed);
-            ModeHGroupRoster roster = new ModeHGroupRoster();
-            Check(ModeHGroupPool.TryRollAllies(rng, pool, roster), "allies roll #" + seed);
-            int count = roster.Allies.Count;
-            minCount = Math.Min(minCount, count);
-            maxCount = Math.Max(maxCount, count);
-            Check(count >= 3 && count <= 20, "ally count within 3~20 #" + seed);
-            Check(CustomCapHeld(roster.Allies), "ally custom cap #" + seed);
-            if (!ModeHGroupPool.TryRollEnemies(rng, pool, roster)) { enemyFailures++; continue; }
-            int diff = Math.Abs(roster.AllyPower - roster.EnemyPower);
-            worstDiff = Math.Max(worstDiff, diff);
-            Check(diff <= ModeHGroupConfig.PowerTolerance, "power gap <= 500 #" + seed + " gap=" + diff);
-            Check(roster.Enemies.Count >= 1 && roster.Enemies.Count <= ModeHGroupConfig.MaxEnemyCount, "enemy count bounds #" + seed);
-            Check(CustomCapHeld(roster.Enemies), "enemy custom cap #" + seed);
-            Check(!roster.Confirmed, "rolling never confirms the roster");
+            for (int m = 1; m <= 6; m++)
+            {
+                System.Random rng = new System.Random(seed * 7 + m);
+                ModeHGroupRoster roster = new ModeHGroupRoster();
+                if (!ModeHGroupPool.TryRollTeams(rng, pool, m, roster)) { rollFailures++; continue; }
+                int count = roster.Allies.Count;
+                Check(count >= 3 && count <= 20, "blue count within 3~20 m" + m + " #" + seed);
+                Check(roster.Enemies.Count >= 1 && roster.Enemies.Count <= ModeHGroupConfig.MaxEnemyCount, "red count bounds m" + m);
+                int diff = Math.Abs(roster.AllyPower - roster.EnemyPower);
+                worstDiff = Math.Max(worstDiff, diff);
+                Check(diff <= ModeHGroupConfig.PowerTolerance, "power gap <= 500 m" + m + " #" + seed + " gap=" + diff);
+                Check(CustomCapHeld(roster.Allies) && CustomCapHeld(roster.Enemies), "custom cap m" + m + " #" + seed);
+                if (HasDuplicate(roster.Allies) || HasDuplicate(roster.Enemies)) duplicateRosters++;
+                minPower[m] = Math.Min(minPower[m], roster.AllyPower);
+                maxPower[m] = Math.Max(maxPower[m], roster.AllyPower);
+                minCount[m] = Math.Min(minCount[m], count);
+                maxCount[m] = Math.Max(maxCount[m], count);
+                sumPower[m] += roster.AllyPower;
+            }
         }
-        Check(enemyFailures == 0, "enemy roll never fails on a normal pool");
-        Check(minCount == 3 && maxCount == 20, "ally counts reach both ends of 3~20 (saw " + minCount + ".." + maxCount + ")");
-        Console.WriteLine("group roll: ally " + minCount + ".." + maxCount + ", worst power gap " + worstDiff);
+        Check(rollFailures == 0, "team roll never fails on a normal pool");
+        Check(duplicateRosters > 0, "official bosses may repeat within a team");
+        for (int m = 1; m <= 6; m++)
+        {
+            int target = ModeHGroupConfig.TargetPower(m, average);
+            Console.WriteLine("m" + m + ": target " + target + " blue power " + minPower[m] + ".." + maxPower[m]
+                + " avg " + (sumPower[m] / Seeds) + " count " + minCount[m] + ".." + maxCount[m]);
+            if (m > 1)
+            {
+                Check(sumPower[m] > sumPower[m - 1], "average blue power rises every match (m" + m + ")");
+                Check(minPower[m] > maxPower[m - 1] * 0.95f, "match m" + m + " is not weaker than the previous match");
+            }
+        }
+        Check(maxCount[6] >= 16, "the last match reaches the top of the count range");
+        Check(maxCount[1] <= 8, "the first match stays small");
+        Console.WriteLine("group roll: worst power gap " + worstDiff);
 
         // 名人堂：编码往返、排名、满员淘汰
         List<ModeHHallOfFameRecordDto> records = new List<ModeHHallOfFameRecordDto>
@@ -106,6 +129,13 @@ internal static class Program
             seen[entry.Key] = count;
         }
         return true;
+    }
+
+    private static bool HasDuplicate(List<ModeHGroupEntry> team)
+    {
+        HashSet<string> seen = new HashSet<string>();
+        foreach (ModeHGroupEntry entry in team) if (!seen.Add(entry.Key)) return true;
+        return false;
     }
 
     private static ModeHHallOfFameRecordDto Group(string id, int wins, int matches, long net, string created)

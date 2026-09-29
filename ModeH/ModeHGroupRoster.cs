@@ -1,10 +1,11 @@
 // ============================================================================
-// ModeHGroupRoster.cs - 鸭王杯群战：Boss 池、战力估算与左右两队的抽取（2026-09-29 owner 改版）
+// ModeHGroupRoster.cs - 鸭王杯群战：Boss 池、战力估算与蓝红两队的抽取（2026-09-29 owner 改版）
 // ============================================================================
 // 玩法（owner 原话收敛）：
-//   - 每场先在选人页抽出「本场左边出战的群体」，人数 3~20 随机，可换几批；
-//   - 选定后按战力给右边随机配敌人，人数由战力决定，两边合计战力相差不超过 500；
-//   - 一季固定 6 场，打完按胜场与净赚进名人堂排名。
+//   - 每场两边一起抽：蓝队（左）按本场的战力目标抽，红队（右）按蓝队战力配平，两边合计战力相差不超过 500；
+//   - 战力与人数随场次爬升：第 1 场较低，第 6 场到顶；
+//   - 官方 Boss 可以重复出场（可能一边 20 个都是同一只），三只自定义 Boss 每边至多一只；
+//   - 玩家选押哪边赢；一季固定 6 场，打完按押中场数与净赚进名人堂排名。
 // Boss 池 = BossRush 的全部 Boss（宿主 EnemyPresets，不经玩家的 Boss 池筛选）+ 三只自定义 Boss。
 // 纯数据与抽取逻辑，不碰场景对象；生成与战斗在 ModeHGroupBattle / ModeHRuntimeModule_GroupFlow。
 // ============================================================================
@@ -20,25 +21,42 @@ namespace BossRush
     {
         /// <summary>鸭王杯走群战流程（owner 2026-09-29 定）；单挑版代码保留，不再走到。</summary>
         internal static readonly bool Enabled = true;
-        /// <summary>左边（玩家这边）人数下限。</summary>
+        /// <summary>蓝队人数下限。</summary>
         internal const int MinAllyCount = 3;
-        /// <summary>左边人数上限。</summary>
+        /// <summary>蓝队人数上限。</summary>
         internal const int MaxAllyCount = 20;
         /// <summary>两边合计战力允许的最大差值。</summary>
         internal const int PowerTolerance = 500;
-        /// <summary>右边人数上限（战力再高也不无限往上堆人）。</summary>
+        /// <summary>红队人数上限（战力再高也不无限往上堆人）。</summary>
         internal const int MaxEnemyCount = 30;
         /// <summary>每场选人页可以「换一批」的次数。</summary>
         internal const int RerollsPerMatch = 3;
         /// <summary>单场时长。人多血厚，比单挑版多给一分钟；到时按剩余战力判胜负。</summary>
         internal const float MatchDurationSeconds = 240f;
-        /// <summary>自定义 Boss 的默认战力（owner 2026-09-29：三只强度过高，一律按 1000 点算）。</summary>
+        /// <summary>自定义 Boss 的默认战力（owner 2026-09-29：三只强度过高，按 1000 点算）。</summary>
         internal const int CustomBossPower = 1000;
-        /// <summary>同一只自定义 Boss 每边最多几只（特效与技能很重，不让一边刷一排龙王）。</summary>
+        /// <summary>焚天龙皇单独按 2000 点算（owner 2026-09-29 第二轮）。</summary>
+        internal const int DragonKingPower = 2000;
+        /// <summary>同一只自定义 Boss 每边最多几只（特效与技能很重，不让一边刷一排龙王）；官方 Boss 不限。</summary>
         internal const int MaxSameCustomPerSide = 1;
         /// <summary>官方 Boss 战力下限 / 上限（防止个别预设数值异常把配平搞崩）。</summary>
         internal const int MinOfficialPower = 80;
         internal const int MaxOfficialPower = 2500;
+
+        /// <summary>
+        /// 每场蓝队的战力目标 = 官方 Boss 平均战力 × 这一档（大致等于「平均几个人」）。
+        /// 第 1 场约 4 人份，第 6 场约 17.5 人份，逐场单调爬升；落在目标 ±8% 内就算中。
+        /// </summary>
+        internal static readonly float[] MatchPowerScale = { 4f, 6f, 8.5f, 11f, 14f, 17.5f };
+        internal const float MatchPowerBand = 0.08f;
+
+        /// <summary>第 matchIndex 场（1 起）的蓝队战力目标；池里没有官方 Boss 时按 400 一人估。</summary>
+        internal static int TargetPower(int matchIndex, float averagePower)
+        {
+            int slot = Mathf.Clamp(matchIndex, 1, MatchPowerScale.Length) - 1;
+            float average = averagePower > 0f ? averagePower : 400f;
+            return Mathf.RoundToInt(average * MatchPowerScale[slot]);
+        }
     }
 
     /// <summary>池里的一种 Boss。</summary>
@@ -66,16 +84,16 @@ namespace BossRush
         }
     }
 
-    /// <summary>一场的左右两队（纯运行时，不落盘：中断重进回到选人页重新抽）。</summary>
+    /// <summary>一场的蓝红两队（纯运行时，不落盘：中断重进回到选人页重新抽）。</summary>
     internal sealed class ModeHGroupRoster
     {
         public string RunId;
         public int MatchIndex;
         /// <summary>本场已经换过几批。</summary>
         public int RerollsUsed;
-        /// <summary>玩家已点「就这队」并配好对手。</summary>
-        public bool Confirmed;
+        /// <summary>蓝队（左，Teams.scav）。</summary>
         public readonly List<ModeHGroupEntry> Allies = new List<ModeHGroupEntry>();
+        /// <summary>红队（右，Teams.wolf）。</summary>
         public readonly List<ModeHGroupEntry> Enemies = new List<ModeHGroupEntry>();
 
         public int AllyPower { get { return SumPower(Allies); } }
@@ -94,7 +112,7 @@ namespace BossRush
     {
         /// <summary>
         /// 用宿主已初始化的 Boss 预设表建池。官方 Boss 必须能在官方目录里查到 preset（查不到就生成不了，不进池）。
-        /// 三只自定义 Boss 走各自的托管生成器，战力固定 <see cref="ModeHGroupConfig.CustomBossPower"/>。
+        /// 三只自定义 Boss 走各自的托管生成器，战力固定（龙皇 2000，其余 1000）。
         /// </summary>
         internal static List<ModeHGroupEntry> Build(ModBehaviour owner)
         {
@@ -121,21 +139,19 @@ namespace BossRush
                 }
             }
             AddCustom(pool, DragonDescendantConfig.BOSS_NAME_KEY,
-                DragonDescendantConfig.BOSS_NAME_CN, DragonDescendantConfig.BOSS_NAME_EN);
-            AddCustom(pool, DragonKingConfig.BossNameKey, DragonKingConfig.BossNameCN, DragonKingConfig.BossNameEN);
-            AddCustom(pool, PhantomWitchConfig.BossNameKey, PhantomWitchConfig.BossNameCN, PhantomWitchConfig.BossNameEN);
+                DragonDescendantConfig.BOSS_NAME_CN, DragonDescendantConfig.BOSS_NAME_EN, ModeHGroupConfig.CustomBossPower);
+            AddCustom(pool, DragonKingConfig.BossNameKey, DragonKingConfig.BossNameCN, DragonKingConfig.BossNameEN,
+                ModeHGroupConfig.DragonKingPower);
+            AddCustom(pool, PhantomWitchConfig.BossNameKey, PhantomWitchConfig.BossNameCN, PhantomWitchConfig.BossNameEN,
+                ModeHGroupConfig.CustomBossPower);
             return pool;
         }
 
-        private static void AddCustom(List<ModeHGroupEntry> pool, string key, string cn, string en)
+        private static void AddCustom(List<ModeHGroupEntry> pool, string key, string cn, string en, int power)
         {
             if (string.IsNullOrEmpty(key)) return;
             for (int i = 0; i < pool.Count; i++) if (string.Equals(pool[i].Key, key, StringComparison.Ordinal)) return;
-            pool.Add(new ModeHGroupEntry
-            {
-                Key = key, DisplayNameCn = cn, DisplayNameEn = en,
-                Power = ModeHGroupConfig.CustomBossPower, IsCustom = true,
-            });
+            pool.Add(new ModeHGroupEntry { Key = key, DisplayNameCn = cn, DisplayNameEn = en, Power = power, IsCustom = true });
         }
 
         internal static bool IsCustomKey(string key)
@@ -167,59 +183,70 @@ namespace BossRush
             }
         }
 
-        /// <summary>抽左边：人数 3~20 随机，先不重复地抽，池不够再允许重复。</summary>
-        internal static bool TryRollAllies(System.Random rng, List<ModeHGroupEntry> pool, ModeHGroupRoster roster)
+        /// <summary>官方 Boss 的平均战力（场次战力目标的单位）。</summary>
+        internal static float AverageOfficialPower(List<ModeHGroupEntry> pool)
+        {
+            float sum = 0f;
+            int count = 0;
+            for (int i = 0; pool != null && i < pool.Count; i++)
+            {
+                if (pool[i] == null || pool[i].IsCustom) continue;
+                sum += pool[i].Power;
+                count++;
+            }
+            return count > 0 ? sum / count : 0f;
+        }
+
+        /// <summary>
+        /// 两边一起抽：蓝队按第 matchIndex 场的战力目标（±8%，3~20 人），红队按蓝队战力配平（差 ≤ 500，1~30 人）。
+        /// </summary>
+        internal static bool TryRollTeams(System.Random rng, List<ModeHGroupEntry> pool, int matchIndex, ModeHGroupRoster roster)
         {
             if (rng == null || pool == null || pool.Count == 0 || roster == null) return false;
             roster.Allies.Clear();
             roster.Enemies.Clear();
-            roster.Confirmed = false;
-            int count = rng.Next(ModeHGroupConfig.MinAllyCount, ModeHGroupConfig.MaxAllyCount + 1);
-            List<ModeHGroupEntry> bag = new List<ModeHGroupEntry>(pool);
-            Shuffle(rng, bag);
-            int guard = 0;
-            while (roster.Allies.Count < count && guard++ < count * 20)
+            int target = ModeHGroupConfig.TargetPower(matchIndex, AverageOfficialPower(pool));
+            int band = Mathf.Max(1, Mathf.RoundToInt(target * ModeHGroupConfig.MatchPowerBand));
+            List<ModeHGroupEntry> blue = RollToPower(rng, pool, target, band,
+                ModeHGroupConfig.MinAllyCount, ModeHGroupConfig.MaxAllyCount);
+            if (blue == null) return false;
+            roster.Allies.AddRange(blue);
+            List<ModeHGroupEntry> red = RollToPower(rng, pool, roster.AllyPower, ModeHGroupConfig.PowerTolerance,
+                1, ModeHGroupConfig.MaxEnemyCount);
+            if (red == null)
             {
-                if (bag.Count == 0)
-                {
-                    bag.AddRange(pool);
-                    Shuffle(rng, bag);
-                }
-                ModeHGroupEntry pick = bag[bag.Count - 1];
-                bag.RemoveAt(bag.Count - 1);
-                if (!CanAdd(roster.Allies, pick)) continue;
-                roster.Allies.Add(pick);
+                roster.Allies.Clear();
+                return false;
             }
-            return roster.Allies.Count >= ModeHGroupConfig.MinAllyCount;
+            roster.Enemies.AddRange(red);
+            return true;
         }
 
         /// <summary>
-        /// 抽右边：随机往里加人，停在目标战力下方随机一点；最后一个冲过头就换成让差值最小的那一个。
-        /// 多试几轮，取第一组差值在容差内的；都不行取差值最小的一组再贪心修一次。
+        /// 抽一队到目标战力：随机往里加人（官方 Boss 可重复），停在目标下方随机一点；最后一个冲过头就换成让差值最小的那一个。
+        /// 多试几轮，取第一组「人数合规且差值在容差内」的；都不行取差值最小的一组再贪心修一次。
         /// </summary>
-        internal static bool TryRollEnemies(System.Random rng, List<ModeHGroupEntry> pool, ModeHGroupRoster roster)
+        internal static List<ModeHGroupEntry> RollToPower(System.Random rng, List<ModeHGroupEntry> pool, int target,
+            int tolerance, int minCount, int maxCount)
         {
-            if (rng == null || pool == null || pool.Count == 0 || roster == null) return false;
-            int target = roster.AllyPower;
-            int tolerance = ModeHGroupConfig.PowerTolerance;
             List<ModeHGroupEntry> best = null;
             int bestDiff = int.MaxValue;
             for (int attempt = 0; attempt < 64; attempt++)
             {
                 List<ModeHGroupEntry> team = new List<ModeHGroupEntry>();
-                int stopAt = target - tolerance + rng.Next(0, tolerance);
+                int stopAt = target - tolerance + rng.Next(0, tolerance + 1);
                 int sum = 0;
                 int guard = 0;
-                while ((sum < stopAt || team.Count == 0) && team.Count < ModeHGroupConfig.MaxEnemyCount && guard++ < 400)
+                while ((sum < stopAt || team.Count < minCount) && team.Count < maxCount && guard++ < 400)
                 {
                     ModeHGroupEntry pick = pool[rng.Next(pool.Count)];
                     if (!CanAdd(team, pick)) continue;
                     team.Add(pick);
                     sum += pick.Power;
                 }
-                if (sum - target > tolerance && team.Count > 0)
+                if (sum - target > tolerance && team.Count > minCount)
                 {
-                    // 最后一个冲过头：换成让两边最接近的那一个（同样守自定义上限）
+                    // 最后一个冲过头：换成让差值最小的那一个（同样守自定义上限）
                     ModeHGroupEntry last = team[team.Count - 1];
                     team.RemoveAt(team.Count - 1);
                     int without = sum - last.Power;
@@ -233,14 +260,14 @@ namespace BossRush
                         int diff = Math.Abs(without + candidate.Power - target);
                         if (diff < replacementDiff) { replacementDiff = diff; replacement = candidate; }
                     }
-                    if (replacement != null && (team.Count == 0 || replacementDiff < Math.Abs(without - target)))
+                    if (replacement != null && (team.Count < minCount || replacementDiff < Math.Abs(without - target)))
                     {
                         team.Add(replacement);
                         sum = without + replacement.Power;
                     }
                     else sum = without;
                 }
-                if (team.Count == 0) continue;
+                if (team.Count < minCount) continue;
                 int finalDiff = Math.Abs(sum - target);
                 if (finalDiff <= tolerance)
                 {
@@ -254,15 +281,14 @@ namespace BossRush
                     bestDiff = finalDiff;
                 }
             }
-            if (best == null) return false;
-            if (bestDiff > tolerance) GreedyFix(pool, best, target, tolerance);
-            roster.Enemies.Clear();
-            roster.Enemies.AddRange(best);
-            return roster.Enemies.Count > 0;
+            if (best == null) return null;
+            if (bestDiff > tolerance) GreedyFix(pool, best, target, tolerance, minCount, maxCount);
+            return best;
         }
 
-        /// <summary>兜底：差太多时逐个加 / 换 / 减，直到进容差或没得改（池里最小战力远低于容差，实际总能收敛）。</summary>
-        private static void GreedyFix(List<ModeHGroupEntry> pool, List<ModeHGroupEntry> team, int target, int tolerance)
+        /// <summary>兜底：差太多时逐个加 / 减，直到进容差或没得改（池里最小战力远低于容差，实际总能收敛）。</summary>
+        private static void GreedyFix(List<ModeHGroupEntry> pool, List<ModeHGroupEntry> team, int target, int tolerance,
+            int minCount, int maxCount)
         {
             for (int step = 0; step < 64; step++)
             {
@@ -271,7 +297,7 @@ namespace BossRush
                 if (Math.Abs(diff) <= tolerance) return;
                 if (diff < 0)
                 {
-                    if (team.Count >= ModeHGroupConfig.MaxEnemyCount) return;
+                    if (team.Count >= maxCount) return;
                     ModeHGroupEntry add = null;
                     int addDiff = Math.Abs(diff);
                     for (int i = 0; i < pool.Count; i++)
@@ -285,7 +311,7 @@ namespace BossRush
                 }
                 else
                 {
-                    if (team.Count <= 1) return;
+                    if (team.Count <= minCount) return;
                     int removeIndex = -1;
                     int removeDiff = Math.Abs(diff);
                     for (int i = 0; i < team.Count; i++)
@@ -307,17 +333,6 @@ namespace BossRush
             for (int i = 0; i < team.Count; i++)
                 if (team[i] != null && string.Equals(team[i].Key, pick.Key, StringComparison.Ordinal)) same++;
             return same < ModeHGroupConfig.MaxSameCustomPerSide;
-        }
-
-        private static void Shuffle(System.Random rng, List<ModeHGroupEntry> list)
-        {
-            for (int i = list.Count - 1; i > 0; i--)
-            {
-                int j = rng.Next(i + 1);
-                ModeHGroupEntry temp = list[i];
-                list[i] = list[j];
-                list[j] = temp;
-            }
         }
     }
 }

@@ -551,6 +551,8 @@ namespace BossRush
             ModeHContentCatalog.ResetStaticCaches();
             ModeHProfileRegistry.ResetStaticCaches();
             ModeHLoadoutKitRegistry.ResetStaticCaches();
+            ModeHFriendlyFireBarrier.ResetStaticCaches();
+            ModeHGroupTeamTags.ResetStaticCaches();
             ModeHCommandCompatibilityRegistry.ResetStaticCaches();
             ModeHMapSupportRegistry.ResetStaticCaches();
             ModeHPresentationAssetCache.ResetStaticCaches();
