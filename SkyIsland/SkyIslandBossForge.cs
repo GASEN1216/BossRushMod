@@ -161,7 +161,8 @@ namespace BossRush
 
         /// <summary>
         /// 配装事务：逐件先问 prefab、实例化、插进对应槽位；被顶下来的官方随机装备直接销毁（它没穿在 Boss 身上，不该出现在箱子里）。
-        /// 任一件失败就把本事务已插上的专属装备整批逆序回收。武器、弹药与背包物品保持官方 preset 原样，这就是「其余走原版掉落」。
+        /// 任一件失败就把本事务已插上的专属装备整批逆序回收。武器由遭遇 owner 随后交给 SkyIslandEnemyArmory 按档次配（品质 5 以上），
+        /// 弹药与背包物品保持官方 preset 原样，这就是「其余走原版掉落」。
         /// </summary>
         internal static bool TryEquip(CharacterMainControl created, SkyIslandBossProfile profile, out string reason)
         {

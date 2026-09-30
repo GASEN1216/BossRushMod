@@ -7,7 +7,7 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>
-    /// COMPAT：区域接近生成，沿用官方装备与经验，战斗基础属性按原版参照提升 50%；地图拥有角色、preset 与战利品。
+    /// COMPAT：区域接近生成，沿用官方经验，战斗基础属性按原版参照提升 50%，武器按档次换到品质 3 / 5 以上（SkyIslandEnemyArmory）；地图拥有角色、preset 与战利品。
     ///
     /// 刷新口径（2026-09-09 可玩性复审后定）：
     /// - **自动组按出击刷新**：每次进岛都会重新生成，出击图应当每趟都有风险。
@@ -486,6 +486,8 @@ namespace BossRush
                         // 手动剧情挑战仍强制追踪；距离休眠由上面的独立安全网解除，与此选敌策略无关。
                         SkyIslandEnemyTiers.ApplyAi(ai, tier, encounter.Manual);
                         ApplyIdentity(created, encounter, i, tier);
+                        // 官方拾荒者底模常拿品质 1 的斧头；头目 / 岛主的 Forge 只换护甲。武器按档次统一在这里配。
+                        SkyIslandEnemyArmory.Arm(created, tier);
                         // 头顶气泡：头目 / 岛主 / 具名对手在身份层里挂过自己的台词组件，噬风按人设不说话；
                         // 其余全是小兵，走共享话语库。判一次存进记录，推进时不再逐个 GetComponent。
                         // `Notice` 必须跟着复位：这个槽位可能是补刷（上一位丢了 owner），

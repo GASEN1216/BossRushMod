@@ -324,11 +324,8 @@ def check_scavenging():
     assert 'Physics.CheckCapsule' in scav and 'Physics.Raycast' in scav, 'Placement needs ground and wall checks'
     body = scav.split('public void Dispose()', 1)[1]
     assert 'UnityEngine.Object.Destroy(point.Box.gameObject)' in body, 'Session exit must destroy crates it owns'
-    # 39 块世界空间 TMP 牌子不能全程常驻，必须按距离带滞回门控。
-    assert 'private void UpdateLabels(Vector3 origin)' in scav, 'Crate labels must be distance gated'
-    assert 'LabelShowRange = 45f' in scav and 'LabelHideRange = 55f' in scav, 'Label hysteresis band changed'
-    assert 'point.Label.SetActive(visible)' in scav, 'Label gating must actually toggle the object'
-    assert 'if (point.Label != null) point.Label.SetActive(false);' in scav,         'A freshly built label must start hidden and be opened by the gate'
+    # owner 2026-09-30：搜刮箱头顶不挂浮空字（旧的 39 块档次牌子连同距离门控一起删掉）。
+    assert 'TextMeshPro' not in scav and 'AttachLabel' not in scav, 'Crates must not carry floating world text'
     # 地上捡到的箱子不得开保底：十个星工遗存箱各保底一件高品质，一趟就发烂了。
     fill_call = scav.split('SkyIslandRewardCrate.Fill(', 1)[1].split(');', 1)[0]
     assert 'true' not in fill_call, 'Found loot must not request the guaranteed top band'

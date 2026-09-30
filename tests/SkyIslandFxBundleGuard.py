@@ -7,6 +7,7 @@
    热浪另要求管线提供不透明场景色（SceneColorAvailable），ResetStaticCaches 卸包；
 4. 调用点：匠首过热叠折射热浪、穗镰泥块换流动材质（换上后不再推涟漪圈）；
 5. 包文件在时（local-only 二进制）：UnityPy 读出恰好两个材质，着色器名对、都带 d3d11 编译产物、< 256 KiB；
+   另有搜刮箱三件网格（2026-09-30 方案 A），运行时路径与构建器名字一一对应，网格不带材质（包里不多着色器）；
 6. 作者着色器是透明队列、只走 UniversalForward（Deferred 下透明物体走前向；不写 UniversalForwardOnly、不留无名 pass）。
 
 包文件缺失时退出码 2（外部制品缺失，source-only 模式记 PARTIAL）。脚本末尾带内存反向检查。
@@ -26,6 +27,7 @@ FOREMAN = ROOT / "SkyIsland" / "SkyIslandForemanBoss.cs"
 BAT = ROOT / "compile_official.bat"
 RELEASE_MANIFEST = ROOT / "tools" / "resource_release_manifest.json"
 BUNDLE = ROOT / "Assets" / "ui" / "skyisland_fx"
+LOOT_CRATES = ("LootCrate_Supply", "LootCrate_Voyage", "LootCrate_Starworks")
 HAZE_SHADER = "BossRush/SkyIsland/HeatHaze"
 MUD_SHADER = "BossRush/SkyIsland/MudFlow"
 
@@ -91,6 +93,18 @@ def check(code):
         need(errors, builder, 'private const string HazeMaterialPath = Dir + "/SkyIslandHeatHaze.mat";', "作者构建器热浪材质路径漂移")
         need(errors, builder, 'private const string MudMaterialPath = Dir + "/SkyIslandMudFlow.mat";', "作者构建器泥面材质路径漂移")
         need(errors, builder, 'private const string Dir = "Assets/SkyIsland/Fx";', "作者构建器目录漂移")
+    # 搜刮箱网格：运行时三条路径按档次下标排列，与构建器的 CrateNames / CrateMeshPath 同名（Unity 包内路径小写）。
+    for name in LOOT_CRATES:
+        need(errors, fx, '"assets/skyisland/fx/crates/%s.asset"' % name.lower(), "运行时缺搜刮箱网格路径：" + name)
+    order = [squash(fx or "").find('"assets/skyisland/fx/crates/%s.asset"' % n.lower()) for n in LOOT_CRATES]
+    if any(i < 0 for i in order) or order != sorted(order):
+        errors.append("搜刮箱网格路径必须按 生活物资 / 航务补给 / 星工遗存 排（下标即 SkyIslandLootTier）")
+    need(errors, body_of(fx, "private static void Load()"), "lootCrates[i] = bundle.LoadAsset<Mesh>(LootCrateMeshPaths[i]);", "搜刮箱网格没随包加载")
+    need(errors, body_of(fx, "internal static void ResetStaticCaches()\n        {\n            if (bundle"), "lootCrates = null;", "卸包时要清掉搜刮箱网格引用")
+    if builder:
+        need(errors, builder, 'private const string CratesDir = Dir + "/Crates";', "作者构建器搜刮箱目录漂移")
+        need(errors, builder, 'private static readonly string[] CrateNames = { "LootCrate_Supply", "LootCrate_Voyage", "LootCrate_Starworks" };',
+             "作者构建器搜刮箱名字漂移")
     for key in ("haze_shader", "mud_shader"):
         shader = code.get(key)
         if shader is None:
@@ -113,13 +127,17 @@ def inspect_bundle():
     except ImportError:
         return errors, "UnityPy 不可用，跳过二进制内容检查"
     env = UnityPy.load(str(BUNDLE))
-    materials, shaders = [], {}
+    materials, shaders, meshes = [], {}, []
     for obj in env.objects:
-        if obj.type.name == "Material":
+        if obj.type.name == "Mesh":
+            meshes.append(obj.read_typetree().get("m_Name"))
+        elif obj.type.name == "Material":
             materials.append(obj.read_typetree().get("m_Name"))
         elif obj.type.name == "Shader":
             tree = obj.read_typetree()
             shaders[tree.get("m_ParsedForm", {}).get("m_Name")] = (tree.get("platforms") or [], len(tree.get("compressedBlob") or []))
+    if sorted(meshes) != sorted(LOOT_CRATES):
+        errors.append("包内搜刮箱网格不是恰好三件：%s" % meshes)
     if sorted(materials) != ["SkyIslandHeatHaze", "SkyIslandMudFlow"]:
         errors.append("包内材质不是恰好两个：%s" % materials)
     for name in (HAZE_SHADER, MUD_SHADER):
@@ -162,6 +180,8 @@ def reverse_checks(code):
         ("bat", 'copy /Y "Assets\\ui\\skyisland_fx"', 'rem "Assets\\ui\\skyisland_fx"'),
         ("manifest", '"Assets/ui/skyisland_fx"', '"Assets/ui/removed-skyisland-fx"'),
         ("foreman", "overheatHaze = SkyIslandImpactFx.CreateHeatHaze(overheatGlow.transform);", ""),
+        ("fx", "lootCrates[i] = bundle.LoadAsset<Mesh>(LootCrateMeshPaths[i]);", ""),
+        ("fx", '"assets/skyisland/fx/crates/lootcrate_voyage.asset",', '"assets/skyisland/fx/crates/lootcrate_voyage_old.asset",'),
     ]
     if code.get("haze_shader"):
         probes.append(("haze_shader", '"LightMode"="UniversalForward"', '"LightMode"="UniversalForwardOnly"'))

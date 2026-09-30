@@ -215,6 +215,7 @@ namespace BossRush
             // 子系统静态缓存的唯一清理 owner 是模块 OnDestroy（设计复审 D-4）：
             // 物资池与档次染色块跨出击复用，只在模块销毁时释放。
             SkyIslandLootPools.ResetStaticCaches();
+            SkyIslandEnemyArmory.ResetStaticCaches();
             SkyIslandEnemyTiers.ResetStaticCaches();
             SkyIslandPatrolAppearance.ResetStaticCaches();
             SkyIslandStormBoss.ResetStaticCaches();

@@ -34,3 +34,5 @@
 2026-09-28：`TargetingPolicy` 经真实生成 owner 核对自动组传入自然选敌、手动剧情组保留强制追踪；
 自动组仍禁用距离休眠、可以在死亡后完成清场。这里只记录 ApplyAi 的策略参数，实际方法及官方
 感知结果、每帧目标和攻击目标的传递由 `SkyIslandCombatRuntime` 执行，不把替身记账当作真实 AI 实测。
+
+2026-09-30 武器品质：`ArmoryRegression.cs` 链接生产 `SkyIslandEnemyArmoryRules`，核对普通档下限 3、头目档下限 5、巡守分档与口径白名单；从真实遭遇 owner 刷出全部遭遇组（含手动、噬风、回响、夜限定带队），逐位核对每名敌人按自己的档次配枪一次，正式序章 `SpawnBoss` 按头目档配枪。运行时 `SkyIslandEnemyArmory` 是替身，官方物品表、槽位、弹匣与 AI 拿枪待实机（`[SkyIslandArmory] ARMED` 日志）。删掉遭遇组的 `Arm` 调用后执行结果转红。

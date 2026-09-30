@@ -556,6 +556,7 @@ namespace BossRush
                 };
                 if (!SkyIslandBossForge.TryApply(created, "K3_Relay", 0, context))
                     throw new InvalidOperationException("断风游猎档案装配失败");
+                SkyIslandEnemyArmory.Arm(created, SkyIslandEnemyTier.Chief);
                 boss = created;
                 retained = true;
                 Report(L10n.T("风声不对了。看着航向仪的那个，断风游猎·守，醒了。",

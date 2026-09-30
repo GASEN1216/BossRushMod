@@ -229,6 +229,9 @@ namespace BossRush
                 yield return null;
             }
             LastPrewarm = stats;
+            // 敌人武器池同一时机预热（SkyIslandEnemyArmory）：第一名敌人刷出来时不再现查官方物品表。
+            IEnumerator armory = SkyIslandEnemyArmory.Prewarm();
+            while (armory.MoveNext()) yield return armory.Current;
             Debug.Log("[SkyIslandLoot] PREWARM bands=" + stats.Bands + " built=" + stats.Built + " cached=" + stats.CacheHits
                 + " frames=" + stats.Frames + " total_ms=" + stats.TotalMs.ToString("F0") + " max_band_ms=" + stats.MaxBandMs.ToString("F0"));
         }

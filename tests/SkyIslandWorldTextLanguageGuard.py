@@ -89,22 +89,16 @@ def main():
             "采集点：语言检查必须排在昼夜早退之前（否则白天切语言永远走不到）")
     ordered(body(gathering, "private void Relabel(bool chinese)", "采集点重写字"),
             ["labelsChinese = chinese;", "SkyIslandFieldcraftRules.GatherLabel(spot.Node.Kind)",
-             "text.text = label;", "point.Relabel(label);"],
-            "采集点：浮空字与官方交互名一起重写")
+             "point.Relabel(label);"],
+            "采集点：官方交互名按当前语言重写（头顶浮空字 owner 2026-09-30 已删）")
     ordered(body(gathering, "internal void Relabel(string title)", "采集交互体换字"),
             ["label = title;", 'ApplyInteractName("relabel");'],
             "采集交互体：改字段后必须刷新官方缓存 key 的覆盖文字")
 
+    # 搜刮点头顶的档次牌子 owner 2026-09-30 已删：没有世界字，也就没有语言重写；只钉住别偷偷加回来。
     scav = read(SKY + "SkyIslandScavenging.cs")
-    ordered(body(scav, "internal void Tick()", "搜刮点推进"),
-            ["UpdateLabels(origin);", "bool chinese = L10n.IsChinese;",
-             "if (chinese != labelsChinese) RelabelPoints(chinese);"],
-            "搜刮点：推进里比较语言")
-    ordered(body(scav, "private void RelabelPoints(bool chinese)", "搜刮点重写字"),
-            ["labelsChinese = chinese;", "text.text = TierLabel(points[i].Anchor.Tier);"],
-            "搜刮点：暂时隐藏的牌子也一起重写，下次显形就是对的")
-    if "text.text = TierLabel(tier);" not in scav:
-        errors.append("搜刮点建牌与重写必须共用 TierLabel，两处口径不能分叉")
+    if "TextMeshPro" in scav:
+        errors.append("搜刮点不得再挂世界空间文字（owner 2026-09-30）")
 
     world = read(SKY + "SkyIslandWorldStory.cs")
     ordered(body(world, "internal void Tick()", "剧情推进"),

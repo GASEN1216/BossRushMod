@@ -267,7 +267,9 @@ def main():
     build_spot = need_body(gathering, "private void Build(Spot spot, bool night)", "采集点建造")
     require(build_spot, "trigger.size = new Vector3(SkyIslandFieldcraftRules.NodeTriggerSize, 2f, SkyIslandFieldcraftRules.NodeTriggerSize);",
             "触发盒尺寸必须取规则常量（交互竞争属性测试按它算半宽）")
-    require(build_spot, "SkyIslandProximityLabel.Attach(sign", "采集点的字走近才浮现")
+    # owner 2026-09-30：采集点头顶不挂浮空字，名字只在官方交互提示里出现。
+    if "TextMeshPro" in gathering or "SkyIslandProximityLabel" in (build_spot or ""):
+        errors.append("采集点不得再挂浮空字（owner 2026-09-30）")
     bind = need_body(gathering, "internal void Bind(string title, float seconds, Action action)", "采集读条")
     ordered(bind, ['ModeFItemConfigHelper.SetHiddenMember(this, "interactTime", seconds);', "Mathf.Abs(InteractTime - seconds) > 0.01f",
                    "Debug.LogWarning("], "读条时长写进官方私有字段后必须读回核对（改名时有声）")

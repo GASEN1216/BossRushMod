@@ -1,5 +1,31 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
+
+## 2026-09-30 天空岛搜刮箱三种木箱外观（COMPAT / OPERATIONAL，L1/L2）
+
+- owner 选方案 A：复用岛上已有的 Tripo 木箱，打进特效小包。生活物资＝桶箱堆（1.04×0.88×1.05 m）、航务补给＝一排长货箱（1.29×0.47×0.50 m）、星工遗存＝长着风晶的小货箱（1.08×0.91×0.43 m，加青色点光）。
+- 链路：`tools/sky_island_loot_crates.py`（Blender 5.2 后台，退出码 0 + `SKY_ISLAND_LOOT_CRATES_OK`）→ 作者工程 `Assets/SkyIsland/Fx/Crates/`（JSON + 三个 Mesh 资产，未提交）→ `SkyIslandFxBundleBuilder.BuildOnlyAndExit`（Unity 2022.3.62f3 批处理，退出码 0，包内回读三件网格）→ UnityPy 判包：两个材质与两份着色器 d3d11 产物与旧包等长，新增三件网格，199,122 字节（上限 256 KiB）→ 复制 `Assets/ui/skyisland_fx`。
+- 第一次导出绕序全反（叉积与法线一致 0/1400）：世界那条链是 FBX 导入器替它翻的，自己写 Unity 网格要反转每个三角形；脚本已加自检（< 95% 一致即失败）。
+- 运行时：`SkyIslandLootCrateLook` 按名字取场景材质（`Sky_TripoCrateBarrel` / `Sky_TripoCoverCrates` / `Sky_TripoCrystalCluster`，已用 UnityPy 核对场景包里都有），只藏官方包渲染器（不碰交互气泡），三个候选朝向里挑不压墙的，不加实体碰撞，搜空不消失；缺网格或材质保留官方包。只作用于搜刮点，Boss 奖励箱与委托谢礼箱不变。
+- 验证：新守卫 `SkyIslandLootCrateLookGuard`（6 条反向探针）、`SkyIslandFxBundleGuard` 扩到三件网格（+2 条反向探针）；changed-only 守卫除缺 shapely 外全绿；`verify_sky_island_bundle_shaders.py` PASS；正式编译部署，`BossRush.dll` `B2CDF181…`、`skyisland_fx` `1699BADD…` 作者产物 / 仓库 / 游戏目录三份一致。未实机：箱子在 URP Deferred 下的明暗、贴图是否对位、朝向是否压墙要看。
+
+## 2026-09-30 天空岛第二轮：Mod 武器进池、去浮空字、NPC 单气泡、航路任务点了没反应（COMPAT，L1/L2）
+
+- 武器池（owner 定）：官方与其它 Mod 的武器都进池、口径不再过滤；只排除本 Mod 自己的 500001–500999（主动能力绑主角、且是 Boss 奖励 / 传说级掉落）。枪仍要求有同口径弹药（没弹药 AI 打不响）。`TypeIdLedgerGuard` 豁免 500999 号段上界字面量。
+- 搜刮箱与采集点头顶的浮空字整块删掉（连同距离门控与语言重写）；四个守卫同步改为「不得再挂世界字」，真实加回 TextMeshPro 字段四个都转红、按字节还原。
+- NPC 一堆气泡：官方只在交互组宿主 Awake 里关组员气泡，Mod 运行时后加的组员（剧情「聊聊航路」、航路任务、各 NPC 送礼 / 服务选项）各挂一个气泡，还按各自偏移散在身上（任务给予者写死 0.1 米，「!」挂在腰上）。`NPCInteractionGroupHelper.AddSubInteractable` 现在 setup 前继承宿主偏移、setup 后 `MarkerActive = false`，全 Mod 的交互组都只剩宿主一个气泡；任务「!」在宿主气泡正上方 0.5 米。
+- 航路任务点了没反应：运行时 `AddComponent<QuestGiver>` 拿到字段初值 `finishWhenTimeOut = true`、读条 0 秒，任务页开出来的下一帧交互「读条完成」自动结束，官方 `OnInteractStop` 把页关掉。setup 写 `finishWhenTimeOut = false`（官方预制体的序列化值）。新守卫 `NPCGroupMarkerAndQuestGiverGuard`（4 条内存反向探针）。
+- 搜刮箱外观（owner 问要不要换）：现在用的是官方 `LootBoxPrefab`（敌人死亡掉的包），全局预制体里没有别的容器；方案待拍板，未动。
+- 验证：守卫 changed-only 除缺 shapely 外全绿；天空岛 16 个执行回归全过；正式编译并部署，`BossRush.dll` SHA-256 `422984C2…` 与 `Build/` 一致（非 Dev；同时含另一会话正在改的 `SkyIslandWorldStory.cs`）。未实机。
+
+## 2026-09-30 天空岛敌人与头目武器品质（COMPAT，L1/L2）
+
+- owner 反馈精英和 Boss 拿品质 1 的斧头。根因：全岛敌人（含头目 / 岛主、序章断风游猎·守、普通巡守）都从官方普通拾荒者 preset 克隆，武器沿用官方随机装配；`SkyIslandBossForge` 只换护甲，`VanillaPresetId` 只供数值参照；巡守底模还是血量最低的拾荒者。
+- 修：新增 `SkyIslandEnemyArmory`（运行时）与 `SkyIslandEnemyArmoryRules`（纯规则），官方创建完成后按档次补齐主武器与近战——拾荒者 3–4、精英 4–5、具名对手 / 头目 5–6、岛主 / 噬风 6–7（下限 3 / 5，不再往下退），巡守 Rank 1–4 走拾荒者档、5+ 走精英档。只发官方静态物品表武器，过掉落排除标签、黑名单、岛上 10 万价值上限，排除控心与粘手物品；枪限小口径 / 大口径 / 霰弹 / 狙击，装满弹匣 + 两匣备弹，弹药品质不低于档次下限（该口径没有就取最高品质）。达标原装不换，换下的销毁，换上的随官方尸体箱掉落。接线：遭遇组身份层后、序章 Forge 后、巡守固定外形后；武器池随物资池读条预热，模块 OnDestroy 复位。
+- 经济：每名敌人尸体箱里的武器档次随之上升（头目 / 岛主每趟一把品质 5+ 枪），owner 本次要求内；数值只在 `SkyIslandEnemyArmoryRules` 一处，可回退。
+- 验证：新守卫 `SkyIslandEnemyArmoryGuard`（9 条内存反向探针）；`SkyIslandEncounters` 执行回归新增 `ArmoryRegression`（全部遭遇组逐位档次 + 序章），真实删掉遭遇组配枪调用后转红、按字节还原；SkyIsland 守卫 56/58（红项为缺 shapely 与作者工程着色器函数缺失，与本次无关）；隔离正式编译通过；17:31 正式构建部署到游戏目录，`BossRush.dll` SHA-256 `71EFAFE8…DE04FC` 与 `Build/` 一致（非 Dev，含同工作区另一会话未提交的天空岛剧情改动）。未实机：清单「2026-09-30 敌人武器品质」W-01…W-05。
+
 ## 2026-09-30 天空岛普通巡守密度与固定外形（COMPAT / SCHEMA+ / OPERATIONAL，L1/L2）
 
 新增独立巡守 owner 与 112 个固定点，A6/B8、C10、D/E/F各12、G/H各14、四小岛各6；十二套固定外形、八档由弱到强。原 22 个 Boss/剧情遭遇组不改，普通 active+pending上限24；近远恢复同 Actor/HP/装备，死亡本趟不重刷，晚到创建回收。724个不同守卫、Windows正式编译、16组相关执行回归及Wiki构建通过；调度器346断言与7变异、点位18反例、3修改守卫反向验证通过。实际DLL与配置已部署并核SHA，源码/完整观察步骤见 [密度交付报告](docs/reports/sky-island/2026-09-30-天空岛普通敌人密度与固定外形.md)。没有运行游戏或读写玩家存档，DENS-01～05待L3；此前生产审查问题仍未闭环。
@@ -11,8 +37,6 @@
 ## 2026-09-30 天空岛模型碰撞修复续接（COMPAT / SCHEMA+ / OPERATIONAL，L1/L2）
 
 修复建筑底部实体地面洞、硬物碰撞漏配与名义包围盒误挡、岛边双面碰撞、斜桥柱顶及连捞落脚净空；重新烘焙 4,004 顶点 / 4,774 面的连通导航。最终 raid 包 Unity PlayMode 静态物理验证通过；CR-2026-09-30-001 的新增硬物与桥梁指纹漏检已修复，11 项生产调用反例及两个内存变异通过；全硬物来源重绑后再次 PhysX 复验通过。完整数字、部署哈希与 COLL-01～06 人工验收见 [交付报告](docs/reports/sky-island/2026-09-30-天空岛模型碰撞修复与交付.md)。Windows 正式构建已替换上一轮 Dev DLL，实际 raid 包及 DLL 哈希一致，73 个发布资源包校验通过；未启动游戏或访问玩家存档，L3 待验。
-
-更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
 ## 2026-09-30 鸭王杯模组 Boss 战力、丧尸模式 Boss 波补刷、WikiContent 全量对照代码（COMPAT，L1/L2）
 

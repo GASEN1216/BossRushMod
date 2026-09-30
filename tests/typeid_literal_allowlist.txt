@@ -9,3 +9,4 @@ Achievement/BossRushAchievementManager.cs:500000 | 成就奖励分数阈值，�
 Integration/AffixForge/AffixBuffFactory.cs:500601 | 词缀 Buff.ID 基址（磐石），Buff.ID 与物品 TypeID 不同域；扫描放宽到 500xxx 后才扫到
 Integration/AffixForge/AffixBuffFactory.cs:500604 | 词缀 Buff.ID 基址（迅手），同上
 Integration/AffixForge/AffixBuffFactory.cs:500607 | 词缀 Buff.ID 基址（狂潮），同上
+SkyIsland/SkyIslandEnemyArmoryRules.cs:500999 | 本 Mod 500xxx 号段上界，只用来把自家物品排除出天空岛敌人武器池，不是物品 TypeID

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Duckov.Utilities;
 using ItemStatsSystem;
-using TMPro;
 using UnityEngine;
 
 namespace BossRush
@@ -25,9 +24,8 @@ namespace BossRush
         {
             internal SkyIslandLootAnchor Anchor;
             internal Vector3 Position;
-            internal bool Placed, Built, Failed, Opened, LabelVisible;
+            internal bool Placed, Built, Failed, Opened;
             internal InteractableLootbox Box;
-            internal GameObject Label;
         }
 
         private readonly List<Point> points = new List<Point>();
@@ -38,18 +36,7 @@ namespace BossRush
         private readonly Action<string, bool> report;
         private readonly Action scavenged;
         private readonly int raidSeed;
-        /// <summary>
-        /// 牌子建不建（启用对象）的滞回带，避免在阈值上反复开关。只管「这块牌子要不要在场」，
-        /// 亮不亮交给 <see cref="SkyIslandProximityLabel"/> 按 <see cref="LabelNear"/> / <see cref="LabelFar"/> 走近才浮现（UE-03）。
-        /// 旧写法 45 m 内直接亮：一屏只有约 28×20 m，屏幕里每个箱子头顶都一直挂着一行彩字。
-        /// </summary>
-        private const float LabelShowRange = 45f;
-        private const float LabelHideRange = 55f;
-        /// <summary>牌子走近才浮现的距离带（米），与采集点（5 / 10）、纪念物（6 / 11）同一量级。</summary>
-        private const float LabelNear = 6f;
-        private const float LabelFar = 12f;
-        /// <summary>翻过的箱子牌子最亮到多少：压暗成「看过了」，不再顶着「星工遗存」招人。</summary>
-        private const float OpenedLabelPeak = 0.45f;
+        private readonly SkyIslandLootCrateLook crateLook;
         private bool closed, subscribed, poolWarned;
         private float nextTick;
         private int openedCount;
@@ -123,6 +110,7 @@ namespace BossRush
             if (sceneRoot == null) throw new ArgumentNullException("sceneRoot");
             if (mainPlayer == null) throw new ArgumentNullException("mainPlayer");
             root = sceneRoot;
+            crateLook = new SkyIslandLootCrateLook(sceneRoot.transform);
             player = mainPlayer;
             groundMask = ground;
             raidSeed = seed;
@@ -229,44 +217,6 @@ namespace BossRush
             }
             // 一次只建一个：入区瞬间不集中做实例化与物品创建。
             if (best != null) Build(best);
-            UpdateLabels(origin);
-            bool chinese = L10n.IsChinese;
-            if (chinese != labelsChinese) RelabelPoints(chinese);
-        }
-
-        /// <summary>已建物资牌子上一次按哪种语言写的。</summary>
-        private bool labelsChinese = L10n.IsChinese;
-
-        /// <summary>玩家在岛上切了语言：已建的牌子（含暂时隐藏的）按当前语言重写，下次显形就是对的（语言在取用时解析，AGENTS §4.4）。</summary>
-        private void RelabelPoints(bool chinese)
-        {
-            labelsChinese = chinese;
-            for (int i = 0; i < points.Count; i++)
-            {
-                GameObject label = points[i].Label;
-                TextMeshPro text = label != null ? label.GetComponent<TextMeshPro>() : null;
-                if (text != null) text.text = TierLabel(points[i].Anchor.Tier);
-            }
-        }
-
-        /// <summary>
-        /// 39 块世界空间 TMP 牌子不能全程常驻（每块都是独立网格与 draw call）。
-        /// 按距离带滞回开关，只保留近处的；这是纯表现层，不影响箱子本身可否交互。
-        /// </summary>
-        private void UpdateLabels(Vector3 origin)
-        {
-            for (int i = 0; i < points.Count; i++)
-            {
-                Point point = points[i];
-                if (point.Label == null) continue;
-                float distance = (point.Position - origin).sqrMagnitude;
-                bool visible = point.LabelVisible
-                    ? distance < LabelHideRange * LabelHideRange
-                    : distance < LabelShowRange * LabelShowRange;
-                if (visible == point.LabelVisible) continue;
-                point.LabelVisible = visible;
-                point.Label.SetActive(visible);
-            }
         }
 
         private void Build(Point point)
@@ -291,48 +241,11 @@ namespace BossRush
                 report(L10n.T("岛上的物资表现在是空的，这个搜刮点没出东西",
                     "The archipelago loot table is empty right now; this cache produced nothing"), true);
             }
-            // 牌子先建后隐；下一次 Tick 的距离门控会按需打开。
-            point.Label = AttachLabel(box.transform, point.Anchor.Tier);
-            if (point.Label != null) point.Label.SetActive(false);
+            // 不挂浮空字（owner 2026-09-30）：档次由箱子本身与官方搜刮界面交代，头顶不再顶一行「星工遗存」。
+            // 箱子外观按档次换成岛上的木箱（桶箱堆 / 长货箱 / 长风晶的小货箱）；资源不全时保留官方包的样子。
+            crateLook.Apply(box, point.Anchor.Tier, point.Anchor.Bearing);
             Debug.Log("[SkyIslandLoot] POINT_READY id=" + point.Anchor.Id + " tier=" + point.Anchor.Tier +
                 " items=" + added);
-        }
-
-        private static GameObject AttachLabel(Transform parent, SkyIslandLootTier tier)
-        {
-            GameObject sign = new GameObject("SkyIslandLootLabel", typeof(TextMeshPro));
-            sign.transform.SetParent(parent, false);
-            sign.transform.localPosition = Vector3.up * 1.4f;
-            sign.transform.rotation = Quaternion.Euler(60f, 0f, 0f);
-            TextMeshPro text = sign.GetComponent<TextMeshPro>();
-            text.font = ZombieModeUIHelper.GetGameFont();
-            text.text = TierLabel(tier);
-            text.fontSize = 2.2f;
-            text.alignment = TextAlignmentOptions.Center;
-            text.color = TierColor(tier);
-            text.rectTransform.sizeDelta = new Vector2(12f, 3f);
-            // 压在砂岩与云海高光上的世界字要有描边托住（UE-14），共享材质按字体一份。
-            Material outlined = BossRushUIKit.GetOutlinedFontMaterial(text.font);
-            if (outlined != null) text.fontSharedMaterial = outlined;
-            // 走近才浮现（UE-03）：和纪念物、采集点、船点招牌同一口径，不再 45 m 外就常亮。
-            SkyIslandProximityLabel.Attach(sign, LabelNear, LabelFar);
-            return sign;
-        }
-
-        private static string TierLabel(SkyIslandLootTier tier)
-        {
-            return L10n.T(SkyIslandLootTables.TierNameCn(tier), SkyIslandLootTables.TierNameEn(tier));
-        }
-
-        /// <summary>
-        /// 牌子字色按档次走稀有度色（UE-03）：星工遗存传说金、航务补给稀有蓝、生活物资次级灰。
-        /// 旧写法借了警示黄（它不是警告）与按钮底色 Success（给白字垫底的暗绿，当字色读不清）。
-        /// </summary>
-        internal static Color TierColor(SkyIslandLootTier tier)
-        {
-            if (tier == SkyIslandLootTier.Starworks) return BossRushUIColors.RarityLegendary;
-            if (tier == SkyIslandLootTier.Voyage) return BossRushUIColors.RarityRare;
-            return BossRushUIColors.TextSecondary;
         }
 
         private void OnStartLoot(InteractableLootbox box)
@@ -344,14 +257,6 @@ namespace BossRush
                 if (point.Box != box || point.Opened) continue;
                 point.Opened = true;
                 openedCount++;
-                // 翻过的箱子：牌子换次级色、最亮压到一半以下，读作「看过了」（UE-03）。
-                if (point.Label != null)
-                {
-                    TextMeshPro text = point.Label.GetComponent<TextMeshPro>();
-                    if (text != null) text.color = new Color(BossRushUIColors.TextSecondary.r, BossRushUIColors.TextSecondary.g,
-                        BossRushUIColors.TextSecondary.b, text.color.a);
-                    SkyIslandProximityLabel.SetPeak(point.Label, OpenedLabelPeak);
-                }
                 // 委托进度由会话持有的 owner 记账，本类不持有跨系统静态状态。
                 if (scavenged != null) scavenged();
                 Debug.Log("[SkyIslandLoot] POINT_OPENED id=" + point.Anchor.Id + " total=" + openedCount);
@@ -372,7 +277,6 @@ namespace BossRush
                 point.Box.gameObject.SetActive(false);
                 UnityEngine.Object.Destroy(point.Box.gameObject);
                 point.Box = null;
-                point.Label = null;
             }
             points.Clear();
         }

@@ -117,7 +117,17 @@ namespace BossRush.Utils
                     component = childObj.AddComponent<T>();
                 }
 
+                // 官方语义：交互组只有宿主显示交互气泡，组员的气泡在宿主 Awake 里关掉、偏移对齐宿主。
+                // 运行时后加的组员赶不上宿主 Awake，不在这里补就会每个选项各挂一个气泡，全堆在 NPC 身上。
+                // 偏移先继承、再让 setup 覆盖；气泡在 setup 之后关，子类 setup 不会把它重新打开。
+                InteractableBase owner = FindGroupOwner(parent, groupList);
+                if (owner != null)
+                {
+                    component.interactMarkerOffset = owner.interactMarkerOffset;
+                }
+
                 setup?.Invoke(component);
+                component.MarkerActive = false;
 
                 if (!groupList.Contains(component))
                 {
@@ -133,6 +143,33 @@ namespace BossRush.Utils
                     childObj.SetActive(true);
                 }
             }
+        }
+
+        /// <summary>parent 上持有这份组员清单的宿主交互体；找不到返回 null。</summary>
+        private static InteractableBase FindGroupOwner(Transform parent, List<InteractableBase> groupList)
+        {
+            var field = BossRushEagerReflectionCache.InteractableBase_OtherInterablesInGroup;
+            if (parent == null || groupList == null || field == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                foreach (InteractableBase candidate in parent.GetComponents<InteractableBase>())
+                {
+                    if (candidate != null && ReferenceEquals(field.GetValue(candidate), groupList))
+                    {
+                        return candidate;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // 反射读组员清单失败：不继承偏移，照常挂组员
+            }
+
+            return null;
         }
 
         /// <summary>

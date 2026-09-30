@@ -207,6 +207,16 @@ namespace BossRush
     // 隔离进程里返回中文分支即可：断言只看清场记账与生成顺序，不看文案。
     internal static class L10n { internal static bool IsChinese = true; internal static string T(string zh, string en) { return IsChinese ? zh : en; } }
 
+    /// 武器配装的替身：只记录「谁按哪一档配枪」。品质表本身链接生产 SkyIslandEnemyArmoryRules；
+    /// 官方物品表、槽位与弹匣是宿主边界，隔离进程证不了，留给实机日志 `[SkyIslandArmory] ARMED`。
+    internal static class SkyIslandEnemyArmory
+    {
+        internal static readonly List<CharacterMainControl> Characters = new List<CharacterMainControl>();
+        internal static readonly List<SkyIslandEnemyTier> Tiers = new List<SkyIslandEnemyTier>();
+        internal static void Arm(CharacterMainControl character, SkyIslandEnemyTier tier) { Characters.Add(character); Tiers.Add(tier); }
+        internal static void Reset() { Characters.Clear(); Tiers.Clear(); }
+    }
+
     /// 档次装饰的替身：只记录「谁被判成了哪一档」，让夹具能断言逐位分配。
     internal static class SkyIslandEnemyTiers
     {

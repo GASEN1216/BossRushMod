@@ -235,6 +235,8 @@ namespace BossRush
                 created.gameObject.SetActive(false);
                 if (!SkyIslandPatrolAppearance.Apply(created, cell.Slot.RegionId, cell.Profile.Rank))
                     throw new InvalidOperationException("巡守固定外形装配失败");
+                // 底模是最弱的官方拾荒者：武器按岛区等级换到品质 3 以上（高等级岛区 4 以上）。
+                SkyIslandEnemyArmory.ArmPatrol(created, cell.Profile.Rank);
                 if (closed || root == null || !valid() || generation != schedule.Generation) return;
                 ConfigureNavigation(created);
                 bool activate = !BossRushUI.IsGamePaused() && Nearby(cell, player.transform.position) && Allowed(cell);

@@ -229,8 +229,11 @@ echo(SkyIsland\SkyIslandLootPools.cs
 echo(SkyIsland\SkyIslandMapFog.cs
 echo(SkyIsland\SkyIslandRewardCrate.cs
 echo(SkyIsland\SkyIslandScavenging.cs
+echo(SkyIsland\SkyIslandLootCrateLook.cs
 echo(SkyIsland\SkyIslandEnemyTier.cs
 echo(SkyIsland\SkyIslandEnemyTiers.cs
+echo(SkyIsland\SkyIslandEnemyArmoryRules.cs
+echo(SkyIsland\SkyIslandEnemyArmory.cs
 echo(SkyIsland\SkyIslandPatrolRules.cs
 echo(SkyIsland\SkyIslandPatrolSchedule.cs
 echo(SkyIsland\SkyIslandPatrolAppearance.cs

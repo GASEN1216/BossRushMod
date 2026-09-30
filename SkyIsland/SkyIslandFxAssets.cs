@@ -16,8 +16,9 @@ namespace BossRush
 {
 
     /// <summary>
-    /// 天空岛运行时特效小包 skyisland_fx（作者工程 SkyIslandFxBundleBuilder 构建，约 20 KB）：热浪折射与泥面流动两个材质。
-    /// 独立于场景包，首次用到时 LoadFromFile 一次（只在匠首过热或穗镰铺泥时，AGENTS §4.12）。包缺失、材质缺失或着色器
+    /// 天空岛运行时特效小包 skyisland_fx（作者工程 SkyIslandFxBundleBuilder 构建，约 200 KB）：热浪折射与泥面流动两个材质，
+    /// 外加搜刮箱三种外观的网格（<see cref="SkyIslandLootCrateLook"/>，2026-09-30）。
+    /// 独立于场景包，首次用到时 LoadFromFile 一次（匠首过热、穗镰铺泥或第一只搜刮箱建出来时，AGENTS §4.12）。包缺失、材质缺失或着色器
     /// 不受支持时对应属性返回 null，调用方退回粒子版表现。热浪还要求管线提供不透明场景色（URP 资产的 Opaque Texture，
     /// 且主相机没有关掉），否则采样到的是灰底，宁可不用。静态状态由 <see cref="SkyIslandImpactFx.ResetStaticCaches"/> 收。
     /// </summary>
@@ -26,8 +27,16 @@ namespace BossRush
         internal const string BundleRelativePath = "Assets/ui/skyisland_fx";
         internal const string HazeMaterialPath = "assets/skyisland/fx/skyislandheathaze.mat";
         internal const string MudMaterialPath = "assets/skyisland/fx/skyislandmudflow.mat";
+        /// <summary>搜刮箱网格，下标即 <see cref="SkyIslandLootTier"/>（生活物资 / 航务补给 / 星工遗存）。</summary>
+        internal static readonly string[] LootCrateMeshPaths =
+        {
+            "assets/skyisland/fx/crates/lootcrate_supply.asset",
+            "assets/skyisland/fx/crates/lootcrate_voyage.asset",
+            "assets/skyisland/fx/crates/lootcrate_starworks.asset"
+        };
         private static AssetBundle bundle;
         private static Material haze, mud;
+        private static Mesh[] lootCrates;
         private static bool attempted;
 
         internal static Material Mud
@@ -38,6 +47,14 @@ namespace BossRush
         internal static Material Haze
         {
             get { Load(); return haze != null && SceneColorAvailable() ? haze : null; }
+        }
+
+        /// <summary>某一档搜刮箱的网格；包或网格缺失返回 null，调用方保留官方包的样子。</summary>
+        internal static Mesh LootCrate(SkyIslandLootTier tier)
+        {
+            Load();
+            int index = (int)tier;
+            return lootCrates != null && index >= 0 && index < lootCrates.Length ? lootCrates[index] : null;
         }
 
         private static void Load()
@@ -60,6 +77,8 @@ namespace BossRush
                 }
                 haze = Usable(bundle.LoadAsset<Material>(HazeMaterialPath));
                 mud = Usable(bundle.LoadAsset<Material>(MudMaterialPath));
+                lootCrates = new Mesh[LootCrateMeshPaths.Length];
+                for (int i = 0; i < LootCrateMeshPaths.Length; i++) lootCrates[i] = bundle.LoadAsset<Mesh>(LootCrateMeshPaths[i]);
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 特效小包加载失败（只用粒子版）：" + e.Message); }
         }
@@ -100,6 +119,7 @@ namespace BossRush
             bundle = null;
             haze = null;
             mud = null;
+            lootCrates = null;
             attempted = false;
         }
     }

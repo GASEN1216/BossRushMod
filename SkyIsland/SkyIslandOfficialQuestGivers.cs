@@ -122,7 +122,12 @@ namespace BossRush
                 component.spawnPOI = false;
                 component.overrideInteractName = true;
                 component._overrideInteractNameKey = InteractNameKey;
-                component.interactMarkerOffset = new Vector3(0f, 0.1f, 0f);
+                // 运行时 AddComponent 拿到的是字段初值 finishWhenTimeOut = true、读条 0 秒：打开任务页的下一帧交互就「读条完成」
+                // 自动结束，官方 OnInteractStop 随即把任务页关掉，玩家看到的是点了没反应。官方 NPC 预制体上这一位序列化为 false，
+                // 任务页开着时交互一直保持，关页由 QuestGiver.OnUpdate 收尾。
+                component.finishWhenTimeOut = false;
+                // 头顶「!」放在交互组宿主的气泡正上方（官方 Awake 按 interactMarkerOffset + 0.5 米摆）：偏移由
+                // AddSubInteractable 从宿主继承，不再写死 0.1 米（那会把「!」挂在居民腰上、交互气泡落在脚边）。
             });
             if (giver == null) return false;
             attached.Add(giver);

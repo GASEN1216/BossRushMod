@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 
 namespace BossRush
@@ -15,7 +14,8 @@ namespace BossRush
     /// - 按 AGENTS 4.12 门控：进图时只做 30 次落点射线；交互体在玩家进入 <see cref="SkyIslandFieldcraftRules.ActivationRange"/>
     ///   时才建，一次推进最多建一个，不在进图时预生成整图。
     /// - 按出击刷新、不进存档：每趟每处只采一次，采完即收掉交互体。
-    /// - 视觉只用程序化贴地光斑 + 点光与走近才浮现的浮空字（不重打包、不引入新模型）；风晶簇夜里更亮。
+    /// - 视觉只用程序化贴地光斑 + 点光（不重打包、不引入新模型）；风晶簇夜里更亮。名字只在官方交互提示里出现，
+    ///   头顶不挂浮空字（owner 2026-09-30）。
     ///
     /// 【贴地光斑为什么是必需的，不是装饰（CR-2026-09-13-005）】
     ///   设计口径写的是「远处有光、走近浮名字」，但改之前「远处有光」这一半在代码里不存在：
@@ -45,7 +45,7 @@ namespace BossRush
         /// </summary>
         private const float GlowDiscSize = 1.8f;
 
-        /// <summary>采完那一处的光斑、点光与浮空字淡出的秒数（UE-05）。旧写法当帧 Destroy，光斑和 6 m 点光一起凭空熄灭。</summary>
+        /// <summary>采完那一处的光斑与点光淡出的秒数（UE-05）。旧写法当帧 Destroy，光斑和 6 m 点光一起凭空熄灭。</summary>
         private const float HarvestFade = 0.4f;
         /// <summary>风晶簇的光斑：系数 0.45 → 0.35、上限 0.55（UE-05）。旧值夜里 0.9，差不多是一块实心青盘。</summary>
         private const float CrystalDiscFactor = 0.35f;
@@ -126,10 +126,10 @@ namespace BossRush
             return found;
         }
 
-        /// <summary>已建采集点的浮空字与交互名上一次按哪种语言写的。</summary>
+        /// <summary>已建采集点的官方交互名上一次按哪种语言写的。</summary>
         private bool labelsChinese = L10n.IsChinese;
 
-        /// <summary>玩家在岛上切了语言：已建、还没采的点把浮空字与官方交互名按当前语言重写（语言在取用时解析，AGENTS §4.4）。</summary>
+        /// <summary>玩家在岛上切了语言：已建、还没采的点把官方交互名按当前语言重写（语言在取用时解析，AGENTS §4.4）。</summary>
         private void Relabel(bool chinese)
         {
             labelsChinese = chinese;
@@ -138,9 +138,6 @@ namespace BossRush
                 Spot spot = spots[i];
                 if (spot.Root == null || spot.Harvested) continue;
                 string label = SkyIslandFieldcraftRules.GatherLabel(spot.Node.Kind);
-                Transform sign = spot.Root.transform.Find("Label");
-                TextMeshPro text = sign != null ? sign.GetComponent<TextMeshPro>() : null;
-                if (text != null) text.text = label;
                 SkyIslandGatherPoint point = spot.Root.GetComponent<SkyIslandGatherPoint>();
                 if (point != null) point.Relabel(label);
             }
@@ -225,22 +222,7 @@ namespace BossRush
                     spot.GlowDisc = renderer;
                 }
 
-                GameObject sign = new GameObject("Label", typeof(TextMeshPro));
-                sign.transform.SetParent(go.transform, false);
-                sign.transform.localPosition = Vector3.up * 2.1f;
-                sign.transform.rotation = Quaternion.Euler(60f, 0f, 0f);
-                TextMeshPro text = sign.GetComponent<TextMeshPro>();
-                text.font = ZombieModeUIHelper.GetGameFont();
-                text.text = label;
-                text.fontSize = 2.4f;
-                text.alignment = TextAlignmentOptions.Center;
-                text.color = BossRushUIColors.TextPrimary;
-                text.rectTransform.sizeDelta = new Vector2(14f, 3f);
-                // 压在亮地面上的世界字要有描边托住（UE-14），共享材质按字体一份。
-                Material outlined = BossRushUIKit.GetOutlinedFontMaterial(text.font);
-                if (outlined != null) text.fontSharedMaterial = outlined;
-                // 字只在走近时浮现，远处只看得到那一点光（口径同纪念物）。
-                SkyIslandProximityLabel.Attach(sign, 5f, 10f);
+                // 不挂浮空字（owner 2026-09-30）：远处靠光斑与点光认出来，走到跟前官方交互提示给出名字。
 
                 spot.Root = go;
                 spot.Glow = light;
