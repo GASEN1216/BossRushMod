@@ -70,29 +70,29 @@ namespace BossRush
             switch (key)
             {
                 case "Search_A": return L10n.T(
-                    "浮舟的渡口。缆绳每天留着一条，工具也还在。",
-                    "Fuzhou's dock. One mooring line kept free every day, and the tools still here.");
+                    "浮舟的码头。修东西、做东西在这儿，回家也从这儿走。",
+                    "Fuzhou's dock. Repair and craft here, and head home from here too.");
                 case "Search_B": return L10n.T(
-                    "留言板上钉着三张纸，谁都可以揭一张。",
-                    "Three sheets pinned to the board. Anyone may take one.");
+                    "苇白的委托板。她不在，这里一样能接活、交活。",
+                    "Weibai's board. If she's away, you can take and hand in work here.");
                 case "Search_C": return L10n.T(
                     "晴禾的菜畦一层层种向云海，灶还温着。",
                     "Qinghe's beds step down toward the cloud sea. The stove is still warm.");
                 case "Search_D": return L10n.T(
-                    "风标卡在巨根之间。清掉附近的威胁再校准。",
-                    "The wind beacon is jammed in the roots. Clear the threats nearby, then calibrate.");
+                    "风标卡在巨根里。附近两伙人清掉，就能校准。",
+                    "The wind beacon is stuck in the roots. Clear the two groups nearby and you can fix it.");
                 case "Search_E": return L10n.T(
-                    "双航标门要两端的灯同时回应。门后就是钟庭。",
-                    "The twin-beacon gate needs both lights answering. The Bell Court lies beyond.");
+                    "两盏灯都亮了这扇门才开。门后就是钟庭。",
+                    "This gate opens once both lights are on. The Bell Court is beyond.");
                 case "Search_F": return L10n.T(
-                    "折翎留了张告示：风灾没有夺走全部航路。",
-                    "A notice from Zheling: the storm did not take every lane.");
+                    "折翎守着这条路。拿旧信和航路图来能谈，也能硬打。",
+                    "Zheling guards this road. Bring the letter and chart to talk, or fight him.");
                 case "Search_G": return L10n.T(
-                    "铜环还完整，星灯只等一次重新校准。",
-                    "The brass rings are intact. The star lamp needs one recalibration.");
+                    "星灯没坏，只是偏了。附近两伙人清掉，就能修好。",
+                    "The star lamp isn't broken, just off. Clear the two groups nearby and you can fix it.");
                 case "Search_H": return L10n.T(
-                    "归航钟不再催人出航。它为什么再响，看你。",
-                    "The Homecoming Bell no longer sends anyone out. Why it rings again is up to you.");
+                    "这就是归航钟。钟守点了头，才能敲。",
+                    "This is the Homecoming Bell. It can only ring once the Bell Keeper agrees.");
                 case "Search_S1": return L10n.T(
                     "池边的纸页记着菜种、日期，和每个归航人的名字。",
                     "The pages by the pool list seeds, dates, and everyone expected home.");
@@ -103,8 +103,8 @@ namespace BossRush
                     "三道水声从洞壁传来。旧航路图把它们标成避风口。",
                     "Three streams sound through the cave wall. The old chart marks them as shelter.");
                 case "Search_S4": return L10n.T(
-                    "观星镜被守卫占着。清掉他们，校准镜片。",
-                    "Guards have taken the telescope. Clear them out and align the lens.");
+                    "观星镜被一伙人占着。清掉他们就能修。",
+                    "A gang has taken the telescope. Clear them and you can fix it.");
                 case "Search_A_02": return L10n.T(
                     "等候名单划掉了大半，最后一行是浮舟新添的。",
                     "Most of the waiting list is crossed out. The last line is new, in Fuzhou's hand.");

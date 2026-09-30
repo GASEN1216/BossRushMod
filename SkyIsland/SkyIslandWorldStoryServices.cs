@@ -158,6 +158,41 @@ namespace BossRush
                 : rounds;
         }
 
+        /// <summary>
+        /// 面板正文先说一句「这里有任务要接 / 交，切到『航路任务』」（2026-09-29 引导复核）。
+        ///
+        /// 岛上主线挂在官方任务给予者上（<c>SkyIslandOfficialQuestGivers</c>），它和「聊聊航路」同在一个交互组里，要切过去才看得到；
+        /// 自绘面板本身不接任务（<c>SkyIslandOfficialApiReuseGuard</c>：主线走官方任务页）。以前玩家跟苇白说完话、点开面板，
+        /// 面板里只有委托和手记，完全不知道主线任务在隔壁那一项里。
+        /// 只在「此刻正好该找这位接 / 交」时说（与目标卡同一个 <see cref="SkyIslandOfficialQuestTable.NextContactQuest"/>），平时一个字都不加。
+        /// </summary>
+        private void QuestHint(int giverId)
+        {
+            if (giverId == 0) return;
+            SkyIslandOfficialQuestDefinition quest = SkyIslandOfficialQuestTable.NextContactQuest(story.Current);
+            if (quest == null || quest.GiverId != giverId) return;
+            bool accepted = story.Current.Has(quest.AcceptedFlag);
+            Hint((accepted ? L10n.T("「", "'") + quest.Name() + L10n.T("」可以交了：", "' is ready to hand in: ")
+                    : L10n.T("这里有任务「", "There's a quest here, '") + quest.Name() + L10n.T("」：", "': ")) +
+                SkyIslandOfficialQuestTable.QuestSwitchHint() + L10n.T("。", "."));
+        }
+
+        /// <summary>
+        /// 装置是不是这一趟的兜底给予者：只有对应居民不在岛上时，任务才挂在装置上（<c>EnsureDeviceFallback</c>），
+        /// 居民在的时候装置面板不该叫人去切一个根本不存在的交互项。
+        /// </summary>
+        private int DeviceQuestGiver(string marker)
+        {
+            IList<SkyIslandOfficialQuestDefinition> island = SkyIslandOfficialQuestTable.Island;
+            for (int i = 0; i < island.Count; i++)
+            {
+                int giverId = island[i].GiverId;
+                if (SkyIslandOfficialQuestTable.FallbackMarkerOfGiver(giverId) != marker) continue;
+                return session.HasResident(SkyIslandOfficialQuestTable.ResidentOfGiver(giverId)) ? 0 : giverId;
+            }
+            return 0;
+        }
+
         /// <summary>「翻阅群岛手记」：苇白与码头装置各挂一份，打开的是同一本（只读存档，不写任何东西）。</summary>
         private void JournalChoice(List<SkyIslandStoryPresentation.Choice> choices)
         {

@@ -1099,6 +1099,8 @@ namespace BossRush
             else if (id == "BellKeeper") story.TryApply(SkyIslandStoryAction.BellKeeperDefeated, out message);
             else if (id == "Storm") story.TryApply(SkyIslandStoryAction.StormSlain, out message);
             else if (!RecordStormEchoCleared(id)) story.RecordEncounterCleared(id);
+            // 航标守卫清了一伙：告诉玩家这伙算进哪盏灯、还差哪儿（每趟每组只说一次，与委托记账同一个幂等集）。
+            if (!bountyCredited.Contains(id)) AnnounceGuardProgress(id);
             // 遭遇 owner 在存档接受之前会每秒重投同一个 id（写屏障/暂时失败），
             // 委托记账必须按 id 幂等，否则一次延迟保存会把「清理航路威胁」刷成好几单。
             if (bountyCredited.Add(id)) bounty.ReportEncounterCleared();

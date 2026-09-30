@@ -255,11 +255,17 @@ namespace BossRush
 namespace BossRush
 {
     internal enum SkyIslandStoryAction { ReconcileZheling, ZhelingDefeated, BellKeeperDefeated, StormSlain }
-    internal sealed class SkyIslandStoryData { internal bool ZhelingResolved, BellKeeperResolved, BothBeacons, StormResolved; }
+    internal sealed class SkyIslandStoryData
+    {
+        internal bool ZhelingResolved, BellKeeperResolved, BothBeacons, StormResolved;
+        // SkyIslandSessionQuestBridge.AnnounceGuardProgress 读清场事实；婚姻夹具不清场，恒为 false。
+        internal bool EncounterCleared(string id) { return false; }
+    }
     internal static class SkyIslandStoryRules
     {
         internal static bool CanApply(SkyIslandStoryData data, SkyIslandStoryAction action, out string reason)
         { reason = null; return true; }
+        internal static string GuardProgressCaption(SkyIslandStoryData data, string encounterId) { return null; }
     }
     internal static class SkyIslandStormEchoRules { internal static bool IsEcho(string id) { return id == "StormEcho"; } }
     internal sealed partial class SkyIslandEncounters

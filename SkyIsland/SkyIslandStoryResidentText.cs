@@ -8,14 +8,14 @@ namespace BossRush
             switch (id)
             {
                 case "sky_fuzhou":
-                    return L10n.T("回来了，先歇脚。修家伙、做东西，还是岛上码头那张工台；我在家，钟庭之争那桩事也在那儿交代。",
-                        "Back. Sit, rest your feet. Repairs and making things are still done at the island dock workbench. While I'm home, the Bell Court Standoff gets settled there too.");
+                    return L10n.T("回来了，先歇会儿。修东西、做东西还得去岛上码头的工台。我在家的时候，「钟庭之争」也在那张工台上接、上交。",
+                        "Back. Sit, rest your feet. Repairs and crafting are still at the island dock workbench. While I'm home, take and hand in The Bell Court Standoff at that workbench too.");
                 case "sky_miantai":
                     return L10n.T("我在家。上岛要苔药、药臼，去悬根林那口臼，东西都放着。",
                         "I'm home. For moss remedy or the mortar on the island, it's the one under the roots in Hanging Root Wood. Everything's still there.");
                 case "sky_zheling":
-                    return L10n.T("这回守的是家。岛上没了的事，到了镜水寺再说；家里不动刀。",
-                        "This time I'm holding the house. Whatever's left on the island can wait until the temple. No blades at home.");
+                    return L10n.T("在家我不拿刀。岛上还没了的事，到镜水寺再说。",
+                        "I don't carry a blade at home. Whatever's left on the island, we'll settle at the temple.");
                 case "sky_bellkeeper":
                     return L10n.T("（他在木牌上写：人在家，钟还在岛上。要敲钟，回钟庭找我。）",
                         "(He writes on a slate: I'm home; the bell is still out on the island. To ring it, come to the Bell Court.)");
@@ -71,8 +71,9 @@ namespace BossRush
                         : data.Has(SkyIslandStoryFlag.StarLamp)
                             ? L10n.T("东边的灯亮了，西边悬根林那支风标还卡着。修顺了，来我这儿报个到。\n",
                                 "The east lamp is up. The west beacon in Hanging Root Wood is still jammed. Once it turns, check in with me.\n")
-                            : L10n.T("西边悬根林那支风标，东边残星工坊那盏星灯，都得修。两头一亮，双航标门自己就开。\n",
-                                "The west beacon in Hanging Root Wood and the east star lamp at Fallen Star Workshop both need fixing. Light both ends and the twin-beacon gate opens itself.\n");
+                            // 两屏：官方对话先放两屏就问「办事 / 告辞 / 再聊」，去哪、先干什么都得落在这两屏里。
+                            : L10n.T("西边悬根林的风标、东边残星工坊的星灯都灭了。灯边上各占着两伙人，打掉了才修得了。\n",
+                                "The wind beacon west in Hanging Root Wood and the star lamp east at Fallen Star Workshop are both out. Two gangs sit near each one; clear them before you can fix it.\n");
                 if (!accepted && !data.BothBeacons)
                     progress += L10n.T("这活你还没接呢，先找我接上。\n",
                         "You haven't taken this job yet. Come to me and take it first.\n");
@@ -83,9 +84,23 @@ namespace BossRush
                 return greeting + L10n.T("航标这桩活了结了。去码头找浮舟，钟庭之争那一桩，他等着派给你。\n",
                     "The beacon job's done. Go find Fuzhou at the dock; he has The Bell Court Standoff to hand you.\n");
             if (data.Has(SkyIslandStoryFlag.Ending))
-                return greeting + L10n.T("钟响时，两头的风铃也响了。岛上委托板还挂着，回去可以再揭一张。\n",
-                    "The chimes at both ends rang with the bell. There's still work on the island contract board next trip.\n") + CurrentObjective + "\n";
-            return greeting + CurrentObjective + "\n";
+                return greeting + L10n.T("钟一响，两头的风铃也跟着响了。委托板上还有活，想接随时来。\n",
+                    "When the bell rang, the chimes at both ends rang too. There's still work on the board whenever you want it.\n") + CurrentObjective + "\n";
+            // 钟庭这一段她用自己的话说，不再念目标卡原句：目标卡是给 HUD 分行看的，念出来是一屏七八十字的清单。
+            return greeting + WeibaiBellCourtLine(data);
+        }
+
+        /// <summary>接了「钟庭之争」、钟还没敲：苇白只说下一步去哪、怎么过钟守那关（每条正好两屏）。</summary>
+        private static string WeibaiBellCourtLine(SkyIslandStoryData data)
+        {
+            if (data.BellKeeperResolved)
+                return L10n.T("钟守松口了？那去钟庭找他接「归航钟」，把钟敲响。\n敲完跟钟守说一声，再回码头找浮舟交差。\n",
+                    "The Bell Keeper gave in? Then take The Homecoming Bell from him at the Bell Court and ring it.\nTell the Bell Keeper once it rings, then go see Fuzhou at the dock.\n");
+            if (data.StormResolved)
+                return L10n.T("噬风是你打散的？那钟守没理由再拦了。\n过鸣风栈道去钟庭，跟他好好谈就行。\n",
+                    "You're the one who broke up the Windeater? Then the Bell Keeper has no reason left to stop you.\nCross Windsong Boardwalk to the Bell Court and just talk to him.\n");
+            return L10n.T("钟守那关得你自己去过，钟庭在鸣风栈道那头。\n想快就打停他那台守钟装置；想讲和，先在栈道的双航标门把噬风引出来打掉。\n",
+                "You'll have to get past the Bell Keeper yourself; the Bell Court is across Windsong Boardwalk.\nFor the quick way, stop his bell engine. For peace, call out the Windeater at the boardwalk's twin-beacon gate and beat it first.\n");
         }
     }
 }

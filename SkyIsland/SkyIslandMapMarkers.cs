@@ -31,6 +31,7 @@ namespace BossRush
         private readonly Action<string, bool> notify;
         private readonly List<GameObject> spawned = new List<GameObject>();
         private int appliedFlags = int.MinValue;
+        private int appliedCleared = -1;
         private int appliedExits = -1;
         private SystemLanguage appliedLanguage;
         private bool disposed;
@@ -47,10 +48,13 @@ namespace BossRush
             int exits = (bell != null ? 1 : 0) | (wind != null ? 2 : 0) | (star != null ? 4 : 0);
             // 标签是按当前语言注入的覆盖文本（见 Add）：换了语言也整体重建一次，地图上的字才跟着换。
             SystemLanguage language = LocalizationManager.CurrentLanguage;
-            if (data.flags == appliedFlags && exits == appliedExits && language == appliedLanguage) return;
+            // 清掉一伙航标守卫只改清场表、不改旗标：地图圈要跟着从这伙人挪到下一伙 / 灯本身，所以清场数也算变化。
+            int cleared = data.clearedEncounters == null ? 0 : data.clearedEncounters.Length;
+            if (data.flags == appliedFlags && cleared == appliedCleared && exits == appliedExits && language == appliedLanguage) return;
             // 进岛时已经开着的出口不提示；只有这一趟里新点亮的才提示一次。
             int opened = appliedExits < 0 ? 0 : exits & ~appliedExits;
             appliedFlags = data.flags;
+            appliedCleared = cleared;
             appliedExits = exits;
             appliedLanguage = language;
             Clear();
@@ -61,7 +65,7 @@ namespace BossRush
             Add(wind, L10n.T("悬根林广场撤离点", "Hanging Root Wood extraction"), BossRushUIColors.SuccessText, 0f, exit);
             Add(star, L10n.T("残星工坊广场撤离点", "Fallen Star Workshop extraction"), BossRushUIColors.SuccessText, 0f, exit);
             foreach (string target in ObjectiveTargets(data))
-                Add(root.Find(target), L10n.T("当前目标", "Current objective"), BossRushUIColors.WarningText, ObjectiveRadius, null);
+                Add(root.Find(target), ObjectiveLabel(target), BossRushUIColors.WarningText, ObjectiveRadius, null);
             // 支线 / 可选挑战用紫（UE-21）：旧写法和码头撤离点同为 Accent 青，地图上一眼分不开。
             foreach (string target in SideTargets(data))
                 Add(root.Find(target), SideLabel(target), BossRushUIColors.RarityEpic, ObjectiveRadius, null);
@@ -88,8 +92,25 @@ namespace BossRush
             if (data.Has(SkyIslandStoryFlag.Ending)) yield break;
             if (!data.BothBeacons)
             {
-                if (!data.Has(SkyIslandStoryFlag.WindBeacon)) yield return "Search_D";
-                if (!data.Has(SkyIslandStoryFlag.StarLamp)) yield return "Search_G";
+                // 守卫没清完时圈的是还没清的那几伙人，不是灯：修灯要先清两伙，其中一伙离灯五六十米，
+                // 以前只圈灯，玩家清完灯旁那一伙、按装置被拒，地图上找不到另一伙在哪儿（2026-09-29 引导复核）。
+                // 每盏灯：修好了不圈；守卫没清完圈没清的那几伙；清完了圈灯本身。
+                // 写在本方法里而不是拆 helper：导航执行回归按签名只抽这两个迭代器（tests/fixtures/SkyIslandStory/run.py）。
+                SkyIslandStoryFlag[] lamps = { SkyIslandStoryFlag.WindBeacon, SkyIslandStoryFlag.StarLamp };
+                string[][] guards = { SkyIslandStoryRules.WindBeaconGuards, SkyIslandStoryRules.StarLampGuards };
+                string[] beacons = { "Search_D", "Search_G" };
+                for (int lamp = 0; lamp < lamps.Length; lamp++)
+                {
+                    if (data.Has(lamps[lamp])) continue;
+                    bool guarded = false;
+                    foreach (string guard in guards[lamp])
+                    {
+                        if (data.EncounterCleared(guard)) continue;
+                        guarded = true;
+                        yield return SkyIslandStoryRules.GuardMarker(guard);
+                    }
+                    if (!guarded) yield return beacons[lamp];
+                }
                 yield break;
             }
             yield return "Search_H";
@@ -110,6 +131,32 @@ namespace BossRush
             if (!data.Has(SkyIslandStoryFlag.OldLetter)) yield return "Search_S2";
             if (!data.Has(SkyIslandStoryFlag.RouteChart)) yield return "Search_S3";
             if (!data.Has(SkyIslandStoryFlag.Telescope)) yield return "Search_S4";
+        }
+
+        /// <summary>
+        /// 这个主线目标点要干什么；地图圈与风标罗盘共用（罗盘以前只报「当前目标」，玩家分不清是去打人还是去修灯）。
+        /// 认不得的标记返回 null，调用方退回泛称。
+        /// </summary>
+        internal static string TargetTask(string target)
+        {
+            switch (target)
+            {
+                case "EnemySpawn_D": case "Search_D_02": case "EnemySpawn_G": case "Search_G_02":
+                    return L10n.T("清掉这伙守卫", "clear these guards");
+                case "Search_D": return L10n.T("修风标", "fix the wind beacon");
+                case "Search_G": return L10n.T("修星灯", "fix the star lamp");
+                case "Search_H": return L10n.T("归航钟庭", "the Bell Court");
+                case "Search_A": return L10n.T("找浮舟", "find Fuzhou");
+                case "Search_B": return L10n.T("找苇白", "find Weibai");
+                default: return null;
+            }
+        }
+
+        /// <summary>地图圈上的字：说清圈里要干什么，而不是一律「当前目标」。</summary>
+        private static string ObjectiveLabel(string target)
+        {
+            string task = TargetTask(target);
+            return task == null ? L10n.T("当前目标", "Current objective") : L10n.T("目标 · ", "Objective · ") + task;
         }
 
         private static string SideLabel(string target)

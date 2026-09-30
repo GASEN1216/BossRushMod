@@ -188,6 +188,7 @@ namespace BossRush
             {
                 SkyIslandStoryData data = Current;
                 bool chinese = L10n.IsChinese;
+                // 清场经 Store 换了快照引用，下面的 ReferenceEquals 已经会失效重算；目标卡上航标那一行（「清了 1/2 伙」）因此跟得上。
                 if (objectiveCache == null || !ReferenceEquals(objectiveData, data) || objectiveFlags != data.flags || objectiveChinese != chinese)
                 {
                     objectiveCache = SkyIslandStoryRules.Objective(data);
@@ -613,11 +614,12 @@ namespace BossRush
                     return (data.Has(SkyIslandStoryFlag.Ending)
                         ? L10n.T("听见钟声了，船头的名册也添了四页。归来的人亲手写的，去看看。",
                             "Heard the bell. Four new pages in the roster at the bow. Written by the people who came home.")
-                        : weibaiAway
-                            ? L10n.T("路上的活找苇白。她没上岛，就去风铃集的委托板。要回去，到码头解桩，走过的路都记着。",
-                            "Lane work is Weibai's; if she isn't on the isles, use the Windchime Market board. To head home, cast off at the mooring post here; everything you've done stays recorded.")
-                            : L10n.T("沿桥去风铃集，找苇白。要回去，到码头解桩，走过的路都记着。",
-                            "Follow the bridge to Windchime Market and find Weibai. To head home, cast off at the mooring post here; everything you've done stays recorded.")) +
+                        : FuzhouQuestLine(data) ?? (weibaiAway
+                            // 「解桩」是旧说法：岛上没有这个交互，返航是站进撤离圈（2026-09-30 引导复核）。屏数不变。
+                            ? L10n.T("活都在苇白那儿。她没上岛，就去风铃集的委托板接。想回家就站进码头的撤离环，这趟做过的事都记着。",
+                            "Work comes from Weibai; if she isn't on the isles, use the Windchime Market board. To head home, stand in the dock's extraction ring; everything you've done stays recorded.")
+                            : L10n.T("顺着北边的桥走就是风铃集，去找苇白。想回家就站进码头的撤离环，这趟做过的事都记着。",
+                            "Take the north bridge to Windchime Market and find Weibai. To head home, stand in the dock's extraction ring; everything you've done stays recorded."))) +
                         (SkyIslandLetters.Collected(data, "Letter_01")
                             ? L10n.T("\n阿潮的缆绳，我挂回最高那根桩上了。打结的手法还是老样子。",
                             "\nAchao's mooring line is back on the tallest post. Same old knots.")
@@ -637,8 +639,12 @@ namespace BossRush
                     return data.BellKeeperResolved
                         ? L10n.T("（他递来木牌：）去敲归航钟吧。让他们知道，岛上还有人在等。",
                             "(He hands you a slate:) Ring the Homecoming Bell. Let them know we're still here.")
-                        : L10n.T("（他递来木牌：）钟一响，又会有人出海。证明航路安全，我才放行；不然，就来停下那台守钟装置。",
-                            "(He hands you a slate:) Once the bell rings, people will put to sea. Prove the lanes are safe and I'll let it ring. If you can't, come and stop the bell engine.");
+                        // 官方对话先放两屏就问「办事 / 告辞 / 再聊」：怎么过他这一关必须落在这两屏里（每条正好两屏）。
+                        : data.StormResolved
+                            ? L10n.T("（他递来木牌：）栈道那阵风是你打散的？那我信航路安全了。",
+                                "(He hands you a slate:) You broke up the wind on the boardwalk? Then I believe the lanes are safe.")
+                            : L10n.T("（他递来木牌：）钟一响又会有人出海送命，栈道上的「噬风」还在呢。打掉它我就放行，不想等就来打停我那台守钟装置。",
+                                "(He hands you a slate:) Ring it and people sail out to die, and the Windeater is still on the boardwalk. Beat it and I'll allow it; if you won't wait, stop my bell engine.");
                 default: return CurrentObjective;
             }
         }
@@ -667,8 +673,8 @@ namespace BossRush
                         : string.Empty) + ZhelingFrogLine(data)
                     : L10n.T("上次是我输了。伤养好了，路不会再拦。旧腰牌上刻着：『航路交给你。』",
                             "You won our last fight. I have recovered, and I will not bar the road again. The old badge reads: 'The route is yours now.'"))
-                : L10n.T("那场风灾，我不想再见第二回。带旧信和航路图来谈，或者正面打赢我。",
-                            "I won't let that storm happen again. Bring the old letter and route chart, or face me in a fight.");
+                : L10n.T("那场风灾，我不想再见第二回。拿倒挂邮亭的旧信和听雨洞的航路图来我就跟你谈，要么正面打赢我。",
+                            "I won't let that storm happen again. Bring the letter from the Upturned Post Hut and the chart from Rainlisten Grotto and we'll talk, or beat me.");
         }
 
         /// <summary>
@@ -732,6 +738,31 @@ namespace BossRush
                             "\nThe temple still has frogs, and Frogsong Pool has a new breeding ground. Your frogspawn survived.");
             return L10n.T("\n风灾时，蛙鸣池的青蛙躲进了寺里。夜里去池边捧一团蛙卵，送它们回家。",
                             "\nThe Frogsong frogs sheltered here during the storm. Scoop up some frogspawn at night and take it home.");
+        }
+
+        /// <summary>
+        /// 浮舟发「钟庭之争」（2026-09-29 引导复核）：航标交差之后到结局前，他开口先说正事，**顶替**「沿桥去风铃集，找苇白」那一段——
+        /// 交完苇白那单过来的人，以前听到的是一句把他指回去的话。其余状态返回 null，照旧说原来那段。
+        ///
+        /// 【屏数】每条都正好两屏，与被顶替的那段一样：官方对话先放两屏再问「我想办点事 / 先这样 / 再聊聊」
+        /// （<c>SkyIslandResidentDialogue</c>），正事必须落在这两屏里；全自动验收在双航标阶段按屏序断言第 5 屏的「星工装备」，
+        /// 两屏换两屏，后面的屏序不动（`python3 tools/sky_island_line_screens.py` 可复核）。
+        /// </summary>
+        private static string FuzhouQuestLine(SkyIslandStoryData data)
+        {
+            if (!data.Has(SkyIslandStoryFlag.BeaconQuestDelivered)) return null;
+            if (!data.Has(SkyIslandStoryFlag.BellCourtQuestAccepted))
+                return L10n.T("灯是亮了，钟还哑着。钟庭那边有桩事，把交互切到「航路任务」，从我这儿接「钟庭之争」。",
+                    "The lights are on, but the bell's still silent. There's a job at the Bell Court: switch the interaction to 'Route quests' and take The Bell Court Standoff from me.");
+            if (!data.BellKeeperResolved)
+                return data.StormResolved
+                    ? L10n.T("噬风散了，钟守没理由再拦你。过鸣风栈道去钟庭，跟他谈就行。",
+                        "The Windeater's gone, so the Bell Keeper has no reason left to stop you. Cross Windsong Boardwalk to the Bell Court and just talk to him.")
+                    : L10n.T("钟守还是不肯松口吧。想快就过栈道去打停他那台守钟装置，想讲和就先把栈道上的「噬风」打掉。",
+                        "The Bell Keeper still won't budge, right? For the quick way, cross the boardwalk and stop his bell engine; for peace, beat the Windeater there first.");
+            // 结局前（本方法只在结局前被调，结局那段台词在它前面判）：钟守松了口，钟还没敲。
+            return L10n.T("钟守松口了，就去钟庭找他接「归航钟」，把钟敲响。敲完跟他说一声，再回来找我交差。",
+                "So the Bell Keeper gave in. Take The Homecoming Bell from him and ring it. Tell him once it rings, then come back to me.");
         }
 
         /// <summary>

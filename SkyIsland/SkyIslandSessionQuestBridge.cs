@@ -43,5 +43,18 @@ namespace BossRush
             UnityEngine.Transform point = root.transform.Find(marker);
             return point == null ? null : point.GetComponent<SkyIslandSearchPoint>();
         }
+
+        /// <summary>
+        /// 航标守卫清了一伙（2026-09-29 引导复核）：字幕说这伙算进哪盏灯、还差哪一伙在哪儿。
+        /// 以前只报「航路已清理 · 悬根林」，玩家不知道这一伙和「点亮两端航标」有什么关系，更不知道还差另一伙。
+        /// 放在本 partial 而不是会话主文件：主文件贴着 1200 行预算。文案唯一来源是 <see cref="SkyIslandStoryRules.GuardProgressCaption"/>。
+        /// 只读剧情事实、不写存档。
+        /// </summary>
+        private void AnnounceGuardProgress(string id)
+        {
+            if (story == null || !story.Current.EncounterCleared(id)) return;
+            string caption = SkyIslandStoryRules.GuardProgressCaption(story.Current, id);
+            if (caption != null) Announce(caption, false);
+        }
     }
 }

@@ -207,14 +207,28 @@ namespace BossRush
             return TasksDone(definition, context.Data);
         }
 
-        /// <summary>只补任务接取和复命这两个旧 HUD 漏掉的步骤，不把支线、和解或战斗改成强制任务。</summary>
+        /// <summary>
+        /// 只补任务接取和复命这两个旧 HUD 漏掉的步骤，不把支线、和解或战斗改成强制任务。
+        /// 第一句直接说「去找谁、干什么」；第二句说在哪儿点：任务挂在官方任务给予者上，和「聊聊航路」同一个交互组，
+        /// 要切到「航路任务」那一项（<see cref="QuestSwitchHint"/>）。
+        /// 以前只写「航路任务：接取「…」」，玩家不知道这是要去找人、还要在交互里切一项（2026-09-29 引导复核）。
+        /// </summary>
         internal static string NextContactObjective(SkyIslandStoryData data)
         {
             SkyIslandOfficialQuestDefinition quest = NextContactQuest(data);
             if (quest == null) return null;
-            return quest.Contact() + L10n.T(" · 航路任务：", " · Route quests: ") +
-                (data.Has(quest.AcceptedFlag) ? L10n.T("交付「", "complete ") : L10n.T("接取「", "accept ")) +
-                quest.Name() + L10n.T("」", "");
+            bool accepted = data.Has(quest.AcceptedFlag);
+            // 「交付 / complete」两个词被执行回归钉着（HUD directs completed objectives back to their giver）。
+            return L10n.T("去找", "Find ") + quest.Contact() + L10n.T("，", " and ") +
+                (accepted ? L10n.T("交付「", "complete ") : L10n.T("接下「", "take ")) + quest.Name() + L10n.T("」", "") +
+                " · " + QuestSwitchHint();
+        }
+
+        /// <summary>接 / 交任务要切到哪一项：目标卡、居民台词与面板正文共用这一句。</summary>
+        internal static string QuestSwitchHint()
+        {
+            // 官方默认滚轮切交互项，但玩家可以在设置里把滚轮改成换武器（ScrollWheelBehaviour），所以只说「切」不点名按键。
+            return L10n.T("走到跟前，把交互切到「航路任务」那一项", "walk up and switch the interaction to 'Route quests'");
         }
 
         /// <summary>HUD、地图与罗盘共用下一次接取/复命；探索阶段返回 null。</summary>
@@ -266,9 +280,9 @@ namespace BossRush
                 ObjectName = "BossRush_SkyIsland_Quest_590011",
                 NameKey = BeaconQuestNameKey, DescriptionKey = BeaconQuestDescriptionKey,
                 Name = () => L10n.T("点亮两端航标", "Light Both Beacons"),
-                Contact = () => L10n.T("苇白／风铃集委托板", "Weibai / Windchime Market board"),
-                Description = () => L10n.T("苇白：两头的灯都灭着，船看不见岛。悬根林的风标要校，残星工坊的星灯要修。都亮起来，回来跟我说一声。我不在就找风铃集的委托板。",
-                    "Weibai: Both lights are out, so the ships cannot see the isles. The wind beacon in Hanging Root Wood needs calibrating, the star lamp at Fallen Star Workshop needs repairs. Get them burning and come tell me. If I am away, the Windchime Market board will do."),
+                Contact = () => L10n.T("风铃集的苇白（不在就找委托板）", "Weibai at Windchime Market (or the board if she's away)"),
+                Description = () => L10n.T("苇白：两头的灯都灭了，船看不见岛。西边悬根林有个风标，东边残星工坊有盏星灯，灯旁边都占着一伙人。把人清了、灯修好，回来跟我说。我不在就找风铃集的委托板。",
+                    "Weibai: Both lights are out, so ships can't see the isles. There's a wind beacon west in Hanging Root Wood and a star lamp east at Fallen Star Workshop, and a gang sits by each one. Clear them out, fix the lights, and come tell me. If I'm away, use the Windchime Market board."),
                 AcceptedFlag = SkyIslandStoryFlag.BeaconQuestAccepted, DeliveredFlag = SkyIslandStoryFlag.BeaconQuestDelivered,
                 AcceptAction = SkyIslandStoryAction.AcceptBeaconQuest, DeliverAction = SkyIslandStoryAction.DeliverBeaconQuest,
                 RewardMoney = BeaconQuestMoney,
@@ -285,17 +299,17 @@ namespace BossRush
                     {
                         TaskId = 1, Done = data => data.Has(SkyIslandStoryFlag.WindBeacon),
                         Description = data => data.Has(SkyIslandStoryFlag.WindBeacon)
-                            ? L10n.T("悬根林的风标校好了。", "The Hanging Root Wood wind beacon is calibrated.")
+                            ? L10n.T("悬根林的风标修好了。", "The Hanging Root Wood wind beacon is fixed.")
                             : Blocker(data, SkyIslandStoryAction.RepairWindBeacon,
-                                L10n.T("到悬根林风标下的见闻点，把西边那座风标校准。", "Go to the record point under the Hanging Root Wood beacon and calibrate the west one.")),
+                                L10n.T("守卫清完了。走到悬根林的风标跟前按交互，选「校准西侧风标」。", "The guards are down. Walk up to the Hanging Root Wood wind beacon, interact, and pick 'Calibrate the west wind beacon'.")),
                     },
                     new SkyIslandOfficialQuestTaskDefinition
                     {
                         TaskId = 2, Done = data => data.Has(SkyIslandStoryFlag.StarLamp),
                         Description = data => data.Has(SkyIslandStoryFlag.StarLamp)
-                            ? L10n.T("残星工坊的星灯亮了。", "The Fallen Star Workshop star lamp is lit.")
+                            ? L10n.T("残星工坊的星灯修好了。", "The Fallen Star Workshop star lamp is fixed.")
                             : Blocker(data, SkyIslandStoryAction.RepairStarLamp,
-                                L10n.T("到残星工坊星灯下的见闻点，把东边那盏星灯修好。", "Go to the record point under the Fallen Star Workshop lamp and repair the east one.")),
+                                L10n.T("守卫清完了。走到残星工坊的星灯跟前按交互，选「修复东侧星灯」。", "The guards are down. Walk up to the Fallen Star Workshop star lamp, interact, and pick 'Repair the east star lamp'.")),
                         ExtraHint = data => L10n.T("两盏都亮了，回风铃集找苇白交差；她不在，就去委托板。", "Once both burn, report to Weibai at Windchime Market, or to the board if she's away."),
                     },
                 },
@@ -306,9 +320,9 @@ namespace BossRush
                 ObjectName = "BossRush_SkyIsland_Quest_590012",
                 NameKey = BellCourtQuestNameKey, DescriptionKey = BellCourtQuestDescriptionKey,
                 Name = () => L10n.T("钟庭之争", "The Bell Court Standoff"),
-                Contact = () => L10n.T("码头 · 浮舟", "Dock · Fuzhou"),
-                Description = () => L10n.T("浮舟：灯亮了，钟还是哑的。钟守不肯松口。你从鸣风栈道过去，跟他谈；谈不拢，就把守钟装置打停。完事了，到码头找我。",
-                    "Fuzhou: The lights are burning, but the bell is still silent, and the Bell Keeper won't budge. Cross Windsong Boardwalk and talk to him. If talking fails, stop his bell engine. When it's settled, find me at the dock."),
+                Contact = () => L10n.T("码头的浮舟", "Fuzhou at the dock"),
+                Description = () => L10n.T("浮舟：灯亮了，钟还是哑的，钟守不让敲。你过鸣风栈道去钟庭找他。想打就把他那台守钟装置打停；想和平解决，就先把栈道上的「噬风」打掉，他就肯松口。办完回码头说一声。",
+                    "Fuzhou: The lights are on, but the bell's still silent. The Bell Keeper won't let anyone ring it. Cross Windsong Boardwalk to the Bell Court. If you want a fight, stop his bell engine. If you want peace, beat the Windeater on the boardwalk first and he'll give in. Tell me at the dock when it's done."),
                 AcceptedFlag = SkyIslandStoryFlag.BellCourtQuestAccepted, DeliveredFlag = SkyIslandStoryFlag.BellCourtQuestDelivered,
                 AcceptAction = SkyIslandStoryAction.AcceptBellCourtQuest, DeliverAction = SkyIslandStoryAction.DeliverBellCourtQuest,
                 RewardMoney = BellCourtQuestMoney,
@@ -326,13 +340,13 @@ namespace BossRush
                         TaskId = 1, Done = data => data.BellKeeperResolved,
                         Description = data => data.BellKeeperResolved
                             ? L10n.T("钟守松口了。", "The Bell Keeper has stood down.")
-                            : L10n.T("去归航钟庭，跟钟守谈，或者把守钟装置打停。", "Go to the Bell Court. Talk the Bell Keeper down, or stop his bell engine."),
+                            : L10n.T("去归航钟庭找钟守：跟他谈，或者把守钟装置打停。", "Go to the Bell Court and find the Bell Keeper. Talk him down, or stop his bell engine."),
                         ExtraHint = data => data.BellKeeperResolved
                             ? (data.Has(SkyIslandStoryFlag.HomecomingQuestDelivered)
                                 ? L10n.T("回码头跟浮舟说一声。", "Go back to the dock and tell Fuzhou.")
                                 : L10n.T("钟就在眼前，先把钟守的「归航钟」办了，回程再跟浮舟说。", "The bell is right here. Finish the Bell Keeper's Homecoming Bell first, then tell Fuzhou on the way back."))
                             : Blocker(data, SkyIslandStoryAction.ReconcileBellKeeper,
-                                L10n.T("航路安全的证据已经足够，可以直接与钟守谈谈。", "You have enough proof that the lanes are safe; you can talk to the Bell Keeper.")),
+                                L10n.T("证据够了，直接跟钟守谈就行。", "You have enough proof. Just talk to the Bell Keeper.")),
                     },
                 },
             };
@@ -342,9 +356,9 @@ namespace BossRush
                 ObjectName = "BossRush_SkyIsland_Quest_590013",
                 NameKey = HomecomingQuestNameKey, DescriptionKey = HomecomingQuestDescriptionKey,
                 Name = () => L10n.T("归航钟", "The Homecoming Bell"),
-                Contact = () => L10n.T("归航钟庭 · 钟守", "Bell Court · Bell Keeper"),
-                Description = () => L10n.T("钟守留字：这钟以前是催人出航的。这一次不是。敲吧，让还在外头的人知道有人等着。",
-                    "The Bell Keeper's note: This bell used to send people out. Not this time. Ring it, so whoever is still out there knows someone is waiting."),
+                Contact = () => L10n.T("归航钟庭的钟守", "the Bell Keeper at the Bell Court"),
+                Description = () => L10n.T("钟守留字：这钟以前是催人出海的，这回不是。去敲吧，让外头的人知道家里有人等。敲完回来跟我说。",
+                    "The Bell Keeper's note: This bell used to send people out to sea. Not this time. Go ring it, so the people out there know someone's waiting. Come tell me after."),
                 AcceptedFlag = SkyIslandStoryFlag.HomecomingQuestAccepted, DeliveredFlag = SkyIslandStoryFlag.HomecomingQuestDelivered,
                 AcceptAction = SkyIslandStoryAction.AcceptHomecomingQuest, DeliverAction = SkyIslandStoryAction.DeliverHomecomingQuest,
                 RewardMoney = HomecomingQuestMoney,
@@ -364,7 +378,7 @@ namespace BossRush
                         Description = data => data.Has(SkyIslandStoryFlag.Ending)
                             ? L10n.T("钟响过了。", "The bell has rung.")
                             : Blocker(data, SkyIslandStoryAction.RingHomecomingBell,
-                                L10n.T("到归航钟庭的见闻点，敲响归航钟。", "Go to the record point in the Bell Court and ring the Homecoming Bell.")),
+                                L10n.T("走到钟庭的归航钟跟前按交互，选「敲响归航钟」。", "Walk up to the Homecoming Bell in the Bell Court, interact, and pick 'Ring the Homecoming Bell'.")),
                     },
                 },
             };

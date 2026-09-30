@@ -96,6 +96,8 @@ namespace BossRush
             if (BlockedByCombat()) return;
             reopen = delegate { ReadPoint(key, recorded); };
             hiddenHints.Clear();
+            // 委托板 / 渡口工台 / 钟庭装置是居民缺席时的兜底给予者：这一趟任务真挂在它们身上时，正文先说去哪一项接 / 交。
+            QuestHint(DeviceQuestGiver(key));
             var choices = new List<SkyIslandStoryPresentation.Choice>();
             // 四座秘境的物证点先是一段三步小谜题（SkyIslandPuzzles）；解开之后、或物证早已拿到，才是普通的「收录」页。
             SkyIslandPuzzle puzzle = SkyIslandPuzzles.For(key);
@@ -200,6 +202,7 @@ namespace BossRush
         private List<SkyIslandStoryPresentation.Choice> ResidentChoices(string id, Transform speaker)
         {
             hiddenHints.Clear();
+            QuestHint(SkyIslandOfficialQuestTable.GiverIdOfResident(id));
             var choices = new List<SkyIslandStoryPresentation.Choice>();
             if (id == "sky_qinghe")
             {
@@ -1085,8 +1088,10 @@ namespace BossRush
                 Vector3 toPigeon = pigeon.transform.position - from;
                 return SkyIslandItemRules.CompassReading(true, toPigeon.x, toPigeon.z, L10n.T("信鸽落脚的地方", "where the pigeon landed"));
             }
-            string what = L10n.T("当前目标", "your current objective");
             Transform target = NearestMarker(SkyIslandMapMarkers.ObjectiveTargets(story.Current), from);
+            // 说出这一处要干什么（清守卫 / 修灯 / 找谁），和地图圈上的字同一份。
+            string what = (target != null ? SkyIslandMapMarkers.TargetTask(target.name) : null)
+                ?? L10n.T("当前目标", "your current objective");
             if (target == null)
             {
                 target = NearestMarker(SkyIslandMapMarkers.SideTargets(story.Current), from);
