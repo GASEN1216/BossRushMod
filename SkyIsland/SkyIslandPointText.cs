@@ -144,20 +144,20 @@ namespace BossRush
             switch (key)
             {
                 case "Search_A": return L10n.T(
-                    "浮舟的渡船日志：风灾之后，码头仍每天留着一条返航的缆绳。沿北面的桥去风铃集，苇白正在等能修灯的人。渡口的工具还在，钝了的家伙可以在这里回一回火。",
-                    "Fuzhou's ferry log: since the storm, the dock still keeps one mooring line free every day. Take the north bridge to Windchime Market. Weibai is waiting for someone who can mend the lamps. The dock tools are still here, so anything gone blunt can be brought back to an edge.");
+                    "浮舟的渡船日志：风灾之后，码头仍每天留着一条返航的缆绳。沿北面的桥去风铃集，苇白正在等能修灯的人。渡口的工具还在，磨损的装备可以在这儿修一修。",
+                    "Fuzhou's ferry log: since the storm, the dock still keeps one mooring line free every day. Take the north bridge to Windchime Market. Weibai is waiting for someone who can mend the lamps. The dock tools are still here, so worn gear can be repaired.");
                 case "Search_B": return L10n.T(
                     "留言板上钉着三张纸：苇白在找修复两端航标的帮手，晴禾在找落在蛙鸣池的种植记录，还有一张空白的委托单，谁都可以揭。人不在岛上，留言也送得到。",
                     "Three sheets are pinned to the board: Weibai wants help restoring both beacons, Qinghe is looking for the planting record she left at Frogsong Pool, and one blank contract slip anyone may take. Notes still reach people who are off the island.");
                 case "Search_C": return L10n.T(
-                    "晴禾把菜畦一层层种向云海。田埂上的空格属于尚未归来的船员。灶还温着，种植记录回来之后，谁路过都能讨一碗归航菜。夜里下地前，可以在这口灶上做驱风香或云苔纱笠；灶火的烟也能赶开云蚋。",
-                    "Qinghe planted the beds in terraces stepping down toward the cloud sea. The gaps along the ridge belong to crew who have not come back. The stove is still warm. Once the planting record is back, anyone passing can ask for a bowl of homecoming greens. Before working at night, make incense or a cloudmoss veil here; the hearth smoke drives cloud gnats away too.");
+                    "晴禾把菜畦一层层种向云海。田埂上那些空格，是给还没回来的船员留的。灶还温着，种植记录回来之后，谁路过都能讨一碗归航菜。夜里下地前，可以在这口灶上做驱风香或云苔纱笠；灶火的烟也能赶开云蚋。",
+                    "Qinghe planted the beds in terraces stepping down toward the cloud sea. The gaps along the ridge are kept for crew who haven't come back. The stove is still warm. Once the planting record is back, anyone passing can ask for a bowl of homecoming greens. Before working at night, make incense or a cloudmoss veil here; the hearth smoke drives cloud gnats away too.");
                 case "Search_D": return L10n.T(
-                    "风标卡在巨根之间。清掉附近的威胁后，校准指针，让西侧的航路重新有方向。",
-                    "The wind beacon is jammed among the great roots. Clear the threats nearby, then calibrate the needle and give the western lane its bearing back.");
+                    "风标卡在巨根之间。先把附近的人清掉，再校准指针，西边的航路就有方向了。",
+                    "The wind beacon is jammed among the great roots. Clear out the guards nearby, then calibrate the needle and the western lane has a bearing again.");
                 case "Search_E": return L10n.T(
-                    "双航标门需要风标与星灯同时回应。门后是归航钟庭；桥边的绞盘控制回村的中轴旧桥。栏杆上有一行后来刻的字：灯亮之后别一个人站桥心，有东西会顺着光摸过来。",
-                    "The twin-beacon gate needs the wind beacon and the star lamp answering together. Beyond it lies the Homecoming Bell Court; the winch by the bridge works the old centre span back to the village. Someone later cut a line into the rail: once the lights are up, don't stand alone mid-span. Things follow the light.");
+                    "双航标门要风标和星灯一起亮才开。门后是归航钟庭；桥边的绞盘能放下回村的中轴旧桥。栏杆上有一行后来刻的字：灯亮之后别一个人站在桥中间，有东西会顺着光摸过来。",
+                    "The twin-beacon gate only opens when the wind beacon and the star lamp are both lit. Beyond it is the Homecoming Bell Court; the winch by the bridge lowers the old centre bridge back to the village. Someone later cut a line into the rail: once the lights are up, don't stand alone in the middle of the bridge. Things follow the light.");
                 case "Search_F": return L10n.T(
                     "折翎留下的告示：风灾没有夺走全部航路。旧信和听雨洞的图纸，也许能让他改主意。",
                     "A notice left by Zheling: the storm did not take every lane. The old letter and the chart from the Rainlisten Grotto might change his mind.");
@@ -168,10 +168,10 @@ namespace BossRush
                 // 这句是玩家**唯一**能读到的解释，而挑战选项就挨在同一页上——不写清楚，
                 // 打起来只会觉得「名字说是装置，脸却是他本人」。
                 case "Search_H": return L10n.T(
-                    "归航钟不再催人出航。它为什么再响，要看两端的航标、送回来的信，和守钟人怎么选。钟架下立着守钟装置，脸是照当值守钟人铸的，好让远处回来的人认得谁在等。它如今空转停不下来，顶着的还是钟守那张脸。",
+                    "归航钟不再催人出海了。它还响不响，要看两头的航标、送回来的信，和守钟人怎么选。钟架下立着守钟装置，脸是照当值守钟人铸的，好让远处回来的人认得谁在等。它现在空转停不下来，顶的还是钟守那张脸。",
                     "The Homecoming Bell doesn't send anyone out anymore. Whether it rings again depends on the two beacons, the letter that made it home, and what the keeper decides. The bell engine under the frame is cast with the keeper's face, so anyone coming home can tell from far off who is waiting. It runs empty now and won't stop, still wearing the Keeper's face.");
                 case "Search_S1": return L10n.T(
-                    "池边潮湿的纸页上记着菜种、日期，以及每一个归航人的名字。晴禾在页角留了话：镜水寺的青蛙还在繁育，夜里可用云苔纤维包一团蛙卵带回来，白天也能放。放回的会一直记着，顺路送一团就好，不用一趟来回跑齐。",
+                    "池边潮湿的纸页上记着菜种、日期，以及每一个归航人的名字。晴禾在页角留了话：镜水寺的青蛙还在繁育，夜里可用云苔纤维包一团蛙卵带回来，白天也能放。放回去的都会记着，顺路送一团就行，不用一趟跑齐。",
                     "The damp pages by the pool list seeds, dates, and the name of every person expected home. Qinghe added a note in the margin: the temple frogs still breed. Wrap a clutch of spawn in cloudmoss one night and bring it here; daylight is fine for release. Every clutch counts, so drop one off in passing. No need to do them all in one raid.");
                 case "Search_S2": return L10n.T(
                     "没有寄出的旧信压在倒挂邮亭里。字迹歪斜，却还清楚地写着：请别让岛上的灯熄灭。",

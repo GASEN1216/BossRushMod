@@ -120,7 +120,7 @@ namespace BossRush
             if (lines.Count > 0 && !firstAnnounced)
             {
                 firstAnnounced = true;
-                Announce("折翎把刀横在路上：刀光沿一条线由近到远落下，横着让开，别顺着线往后退。",
+                Announce("折翎把刀横在路上：刀光沿着一条线由近到远砍下来，横着让开，别顺着线往后退。",
                     "Zheling lays his blade across the road: the cuts fall along a line, near to far. Sidestep; don't back away down the line.", true);
             }
             float telegraph = SkyIslandBossRules.TelegraphSeconds(CutTelegraph, SkyIslandBossGearWorn.Earmuffs);

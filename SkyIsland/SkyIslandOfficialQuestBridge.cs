@@ -129,7 +129,7 @@ namespace BossRush
                 {
                     bool onIsland;
                     SkyIslandStoryService value = SkyIslandOfficialQuestStory.Resolve(host, out onIsland);
-                    message = L10n.T("晴岚任务尚未就绪。", "The Qinglan quest is not ready yet.");
+                    message = L10n.T("晴岚任务还没准备好。", "The Qinglan quest is not ready yet.");
                     if (value == null || !value.BeginOfficialDelivery(collectAssets, out message)) return false;
                     deliveryStory = value;
                     return true;
@@ -189,7 +189,7 @@ namespace BossRush
             SkyIslandStoryService story = SkyIslandOfficialQuestStory.Resolve(host, out onIsland);
             if (story == null || story.Current == null)
             {
-                message = L10n.T("晴岚任务尚未就绪。", "The Qinglan quest is not ready yet.");
+                message = L10n.T("晴岚任务还没准备好。", "The Qinglan quest is not ready yet.");
                 return false;
             }
             if (story.Current.Has(flag)) { message = null; return true; }

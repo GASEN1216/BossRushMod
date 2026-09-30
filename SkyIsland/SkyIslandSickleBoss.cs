@@ -293,7 +293,7 @@ namespace BossRush
             if (!sweepAnnounced)
             {
                 sweepAnnounced = true;
-                Announce("穗镰抡圆了镰刀：脚下亮圈就退开三步。",
+                Announce("穗镰抡圆了镰刀：它脚下一亮圈，你就退开三步。",
                     "Grain Sickle winds up a full swing. When the ring lights up at its feet, back off three steps.", true);
             }
 

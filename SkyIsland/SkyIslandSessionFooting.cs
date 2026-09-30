@@ -66,7 +66,7 @@ namespace BossRush
             player.SetPosition(safePosition);
             airborneSince = -1;
             extractionHeld = -1;
-            Status(L10n.T("已返回最近安全落脚点", "Returned to the nearest safe footing"), false);
+            Status(L10n.T("已回到最近的安全落脚点", "Returned to the nearest safe footing"), false);
             Debug.Log("[SkyIsland] FALL_RESCUE position=" + safePosition);
         }
 

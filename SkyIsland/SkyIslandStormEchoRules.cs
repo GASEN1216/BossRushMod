@@ -75,7 +75,7 @@ namespace BossRush
 
         internal static string NotReady
         {
-            get { return L10n.T("群岛还没就绪，风引不起来。", "The isles are not ready yet; the wind will not come."); }
+            get { return L10n.T("岛上还在准备，风引不起来。", "The isles aren't ready yet; the wind won't come."); }
         }
 
         internal static string ReserveFailed

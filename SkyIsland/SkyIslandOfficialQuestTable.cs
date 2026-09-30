@@ -344,7 +344,7 @@ namespace BossRush
                         ExtraHint = data => data.BellKeeperResolved
                             ? (data.Has(SkyIslandStoryFlag.HomecomingQuestDelivered)
                                 ? L10n.T("回码头跟浮舟说一声。", "Go back to the dock and tell Fuzhou.")
-                                : L10n.T("钟就在眼前，先把钟守的「归航钟」办了，回程再跟浮舟说。", "The bell is right here. Finish the Bell Keeper's Homecoming Bell first, then tell Fuzhou on the way back."))
+                                : L10n.T("钟就在眼前，先接钟守的「归航钟」去敲，回头再跟浮舟说。", "The bell is right here. Take the Bell Keeper's Homecoming Bell and ring it first, then tell Fuzhou on the way back."))
                             : Blocker(data, SkyIslandStoryAction.ReconcileBellKeeper,
                                 L10n.T("证据够了，直接跟钟守谈就行。", "You have enough proof. Just talk to the Bell Keeper.")),
                     },

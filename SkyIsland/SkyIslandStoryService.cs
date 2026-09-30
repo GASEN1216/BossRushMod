@@ -208,13 +208,13 @@ namespace BossRush
             get
             {
                 if (!IsCurrentSlot)
-                    return L10n.T("存档槽已改变，请重新进入群岛", "Save slot changed. Re-enter the archipelago");
+                    return L10n.T("存档槽换了，重新进一次群岛", "Save slot changed. Re-enter the archipelago");
                 if (store.HasWriteBarrier)
-                    return L10n.T("群岛记录无法读取，已保护原存档；任务暂不可提交",
-                        "Archipelago records are unreadable; the original save is protected and progress cannot be submitted");
+                    return L10n.T("群岛记录读不出来，原存档没动；任务先交不了",
+                        "Can't read the archipelago records; your save is untouched, so progress can't be handed in yet");
                 // 错误码（如 flush_deferred_is_saving）只给日志与 F3 读 SaveErrorCode，不念给玩家听（发版审查 A-03）。
                 if (store.IsStoreFaulted || lastSaveError != null)
-                    return L10n.T("群岛进度暂未保存，稍后自动重试", "Archipelago progress isn't saved yet. It will retry automatically");
+                    return L10n.T("进度还没存上，稍后自动重试", "Progress isn't saved yet. It will retry on its own");
                 return store.HasPendingWrite || coordinator.HasDeferredFlush
                     ? L10n.T("群岛记录待安全时机保存", "Archipelago records will save at a safe moment")
                     : L10n.T("群岛记录已同步", "Archipelago records are in sync");
@@ -335,8 +335,8 @@ namespace BossRush
             if (!SkyIslandStoryRules.TryApply(Current, action, out candidate, out message)) return false;
             if (!store.Store(candidate))
             {
-                message = L10n.T("群岛记录提交失败，可稍后再次操作。",
-                    "Could not commit the archipelago record. Try again in a moment.");
+                message = L10n.T("没记上，过一会儿再试一次。",
+                    "Couldn't save that. Try again in a moment.");
                 return false;
             }
             MarkPending(true);
@@ -349,7 +349,7 @@ namespace BossRush
         // 与 Campaign 的补偿式交付相同：确认到账、提交候选、同批采集现金，失败保留重试 owner。
         internal bool TryDeliverQuest(SkyIslandStoryAction action, int money, out string message)
         {
-            message = L10n.T("奖金暂时无法提交，请稍后重试。", "The reward cannot be committed yet. Please try again.");
+            message = L10n.T("奖金这会儿发不出去，稍后再试。", "The reward can't be paid out yet. Try again shortly.");
             if (rewardCommitting || !CanWrite || SavesSystem.IsSaving || Duckov.Economy.EconomyManager.Instance == null) return false;
             SkyIslandStoryData candidate;
             string appliedMessage;
@@ -432,8 +432,8 @@ namespace BossRush
             if (!changed) return true;
             if (!store.Store(candidate))
             {
-                message = L10n.T("旧群岛记录迁移失败，请稍后重试。",
-                    "Could not migrate the existing archipelago record. Try again shortly.");
+                message = L10n.T("旧存档里的群岛记录没转过来，稍后再试。",
+                    "Couldn't carry your old archipelago record over. Try again shortly.");
                 return false;
             }
             migrated = true;
@@ -478,10 +478,10 @@ namespace BossRush
             values.Add(marker);
             candidate.discoveredNotes = values.ToArray();
             if (!store.Store(candidate))
-            { message = L10n.T("手记提交失败，请稍后重试。", "Could not commit the note. Try again shortly."); return false; }
+            { message = L10n.T("手记没记上，稍后再试。", "Couldn't save the note. Try again shortly."); return false; }
             MarkPending(false);
             LogTiming("note", marker);
-            message = L10n.T("群岛见闻已收入本槽手记。", "The note is saved to this slot's archipelago journal.");
+            message = L10n.T("已记进这个存档的群岛手记。", "Saved to this save's archipelago journal.");
             return true;
         }
 
@@ -497,7 +497,7 @@ namespace BossRush
             if (SkyIslandLetters.Find(id) == null && SkyIslandCrew.IndexOf(id) < 0 && SkyIslandItemRules.FindKeepsake(id) == null &&
                 SkyIslandLights.Find(id) == null && !SkyIslandMosquitoRules.IsFrogNote(id) && !SkyIslandBossRules.IsBossNote(id))
             {
-                message = L10n.T("这条手记没有登记。", "That journal entry is not registered.");
+                message = L10n.T("手记里没有这一条。", "There's no such entry in the journal.");
                 return false;
             }
             // 永久成本记录必须与已扣除材料的背包一起落盘：基地立实物快照（SaveFile 本身不会采集角色），
@@ -508,7 +508,7 @@ namespace BossRush
                 string error;
                 if (Array.IndexOf(Current.discoveredNotes, id) < 0 && !RequireAssetSnapshot(id, out error))
                 {
-                    message = L10n.T("物品存档尚未就绪，请稍后再试。", "Item saving is not ready. Please try again shortly.");
+                    message = L10n.T("背包还没存好，稍后再试。", "Your pack isn't saved yet. Try again shortly.");
                     return false;
                 }
             }
@@ -672,7 +672,7 @@ namespace BossRush
                             "\nThe old sweeper still polishes the temple bell for me. Once the lamps are lit, I'll join him for tea.")
                         : string.Empty) + ZhelingFrogLine(data)
                     : L10n.T("上次是我输了。伤养好了，路不会再拦。旧腰牌上刻着：『航路交给你。』",
-                            "You won our last fight. I have recovered, and I will not bar the road again. The old badge reads: 'The route is yours now.'"))
+                            "You beat me last time. I have recovered, and I won't block the road again. The old badge reads: 'The route is yours now.'"))
                 : L10n.T("那场风灾，我不想再见第二回。拿倒挂邮亭的旧信和听雨洞的航路图来我就跟你谈，要么正面打赢我。",
                             "I won't let that storm happen again. Bring the letter from the Upturned Post Hut and the chart from Rainlisten Grotto and we'll talk, or beat me.");
         }
@@ -703,7 +703,7 @@ namespace BossRush
         {
             if (!onIsland)
                 return SkyIslandMosquitoRules.FrogsComplete(data)
-                    ? L10n.T("\n蛙鸣池的青蛙养起来了，下趟去岛上还可以听听。纱笠的织法留在菜畦灶台，夜里去记得戴上。",
+                    ? L10n.T("\n蛙鸣池的青蛙养起来了，下趟去岛上还可以听听。纱笠的织法留在菜畦灶台，夜里上岛记得戴上。",
                         "\nThe Frogsong frogs are thriving; listen for them next trip. The veil pattern is at the island's garden stove. Wear one at night.")
                     : L10n.T("\n岛上的水车边蚋多。纱笠的织法留在菜畦灶台，带云苔纤维和星屑就能做。",
                         "\nGnats swarm by the island's waterwheel. The veil pattern is at the garden stove; bring cloudmoss fiber and stardust to make one.");

@@ -213,7 +213,7 @@ namespace BossRush
             choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.StationChoice(station), delegate
             {
                 if (fieldcraft == null)
-                    return L10n.T("工具还没摆开，等群岛就绪再来。", "The tools aren't laid out yet. Come back once the isles are ready.");
+                    return L10n.T("工具还没摆出来，等岛上准备好再来。", "The tools aren't laid out yet. Come back once the isles are ready.");
                 OpenCrafting(station);
                 // 返回 null：新开的合成面板自己的正文保持不动（见 SkyIslandStoryPresentation.BuildChoice）。
                 return null;

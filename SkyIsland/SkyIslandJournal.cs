@@ -162,19 +162,19 @@ namespace BossRush
                 "five fuse into a Qinglan Windcrystal (once the star lamp is lit); charms, salves and compasses need them too; the echo's cache gives three back"));
             Use(text, BossRushItemIds.SkyIslandStardust, L10n.T("晴岚护符、云苔纱笠、残星瞭台的风晶灯；夜里风晶簇更容易出；回响遗存里有两撮",
                 "Qinglan charms, the cloudmoss veil and the Starfall Overlook lamp; clusters yield more at night; the echo's cache holds two"));
-            Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("用于七盏风晶灯与灭蚊灯，灯旁能取暖。十盏灯全亮后，岛上夜里无风，桥上仍有风。结局后可在鸣风栈道烧一块来「引风」，召回噬风·回响，每趟一次。",
+            Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("用来点七盏风晶灯、做灭蚊灯，灯旁能取暖。十盏灯全亮后，岛上夜里没风，桥上还有风。结局后可在鸣风栈道烧一块来「引风」，把噬风·回响叫回来，每趟一次。",
                 "Wicks for seven windcrystal lamps and the Gnat Zapper. Lamps provide warmth. Ten lit lamps stop island night winds; bridges stay windy. After the ending, burn one on Windsong Boardwalk to call the Windeater's echo, once per raid."));
             Use(text, BossRushItemIds.SkyIslandWindLantern, L10n.T("挡微风、大风挡一半，也能照明。会招云蚋，但灯下的蚋不叮人、不躲子弹，趁灯亮着清掉。钟庭风晶灯也需要一盏。",
-                "Blocks breezes and half of a gale. Draws gnats into its light, where they cannot bite or dodge shots. Clear them before it goes out. The Bell Court lamp also needs one."));
+                "Blocks breezes and half of a gale. Draws gnats into its light, where they can't bite or dodge shots. Clear them before it goes out. The Bell Court lamp also needs one."));
             Use(text, BossRushItemIds.SkyIslandWindwardIncense, L10n.T("挡风、加快耐力恢复，也能驱蚋。镜水寺风晶灯需要一炷。回响唤起的栈道与桥上大风也能挡。",
                 "Blocks wind, speeds stamina recovery and repels gnats. The Mirrorwater Temple lamp needs one. Also blocks gales on the boardwalk and bridges during the echo fight."));
-            Use(text, BossRushItemIds.SkyIslandQinglanCharm, string.Format(L10n.T("本趟噬风（含回响）的风暴伤害 -{0}%，生命上限与耐力恢复小幅提升",
+            Use(text, BossRushItemIds.SkyIslandQinglanCharm, string.Format(L10n.T("本趟挨噬风（含回响）的风暴少受 {0}% 伤害，生命上限和耐力恢复也略高",
                 "{0}% less damage from the Windeater's storm (its echo included) this raid, a little more max health and stamina recovery"),
                 Percent(SkyIslandFieldcraftRules.CharmStormWard)));
             Use(text, BossRushItemIds.SkyIslandHomecomingBento, L10n.T("菜畦重新开张之后在岛上吃，算作晴禾的归航菜；回响遗存里偶尔有一份",
                 "once the garden has reopened, eaten on the isles it counts as Qinghe's homecoming meal; the echo's cache sometimes holds one"));
             Use(text, BossRushItemIds.SkyIslandStarmossSalve, L10n.T("回复生命并止痒，短时间内叮咬也不发痒。可以出门前先抹，不用等眠苔的苔药冷却。",
-                "Heals and stops itching. New bites will not itch for a while. Apply before leaving if needed; no need to wait for Miantai's remedy cooldown."));
+                "Heals and stops itching. New bites won't itch for a while. Apply before leaving if needed; no need to wait for Miantai's remedy cooldown."));
             Use(text, BossRushItemIds.SkyIslandWindVaneCompass, L10n.T("捧着蛙卵时先指蛙鸣池；平时指信鸽、目标、支线，最后指缺灯处或风晶簇",
                 "while carrying frogspawn, points to Frogsong Pool first; otherwise to pigeons, objectives, side paths, then missing lamps or wind crystal clusters"));
             Use(text, BossRushItemIds.SkyIslandHomecomingBadge, string.Format(L10n.T("带在身上：渡口整备与眠苔的苔药只收 {0}%；在岛上使用：拉缆绳回登云码头（每趟一次）",
@@ -257,7 +257,7 @@ namespace BossRush
                 if (Recorded(data, keys[i]))
                     text.Append("■ ").Append(name).Append('\n').Append(body != null ? body(keys[i]) : string.Empty);
                 else
-                    text.Append("□ ").Append(name).Append(L10n.T("（尚未收录）", " (not yet recorded)"));
+                    text.Append("□ ").Append(name).Append(L10n.T("（还没收录）", " (not yet recorded)"));
             }
             return text.ToString();
         }
@@ -300,7 +300,7 @@ namespace BossRush
                 if (i > 0) text.Append('\n');
                 string name = SkyIslandItemRules.Name(all[i].TypeId);
                 if (SkyIslandItemRules.Granted(data, all[i].NoteId)) text.Append("■ ").Append(name);
-                else text.Append("□ ").Append(name).Append(L10n.T("（尚未获得：", " (not yet: ")).Append(all[i].How).Append(L10n.T("）", ")"));
+                else text.Append("□ ").Append(name).Append(L10n.T("（还没拿到：", " (not yet: ")).Append(all[i].How).Append(L10n.T("）", ")"));
             }
             return text.ToString();
         }

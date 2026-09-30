@@ -288,7 +288,7 @@ namespace BossRush
             if (added == 0 && !poolWarned && report != null)
             {
                 poolWarned = true;
-                report(L10n.T("群岛物资表暂时为空，本次搜刮点没有产出",
+                report(L10n.T("岛上的物资表现在是空的，这个搜刮点没出东西",
                     "The archipelago loot table is empty right now; this cache produced nothing"), true);
             }
             // 牌子先建后隐；下一次 Tick 的距离门控会按需打开。

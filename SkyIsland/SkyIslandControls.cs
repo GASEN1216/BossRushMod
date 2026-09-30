@@ -9,7 +9,7 @@ namespace BossRush
     {
         /// <summary>三个按钮共用同一句「先进岛」提示，中英各写一遍容易漂。</summary>
         private static string EnterFirst
-        { get { return L10n.T("请先进入天空岛", "Enter the Sky Islands first"); } }
+        { get { return L10n.T("先进天空岛再用", "Enter the Sky Islands first"); } }
 
         internal static void Build(Transform parent, ModBehaviour host, Action closeMenu, Action<string, bool> report)
         {
@@ -30,8 +30,8 @@ namespace BossRush
             // 颜色写实际色：码头用 BossRushUIColors.Accent（青绿），其余三处用 SuccessText（薄荷绿）。
             // 布局 v2：悬根林 / 残星工坊广场随各自航标点亮出现，钟庭在两端航标都亮之后出现（与撤离判定同一事实源 *ExitIfUnlocked）。
             // 以前写的「蓝环」与画出来的颜色对不上，照着找的人会以为环没刷出来。
-            Label(panel.transform, L10n.T("基地船点可正式出发。岛上按地图键查阅全岛；站进码头的青色环停留 3 秒返航。修好风标或星灯，悬根林或残星工坊广场会开出绿环；两端航标都亮后，归航钟庭的绿环同样可用。",
-                "Depart from the base boat. Use the map key on the island; stand in the teal ring at the dock for 3 seconds to return. Repairing the wind beacon or the star lamp opens a green ring on the Hanging Root Wood or Fallen Star Workshop plaza; once both beacons burn, the green ring at the Homecoming Bell Court works too."), 17, 66);
+            Label(panel.transform, L10n.T("从基地的船点出发。岛上按地图键看全岛；站进码头的青色环停 3 秒就能返航。修好风标或星灯，悬根林或残星工坊广场会出现绿环；两端航标都亮了，归航钟庭的绿环也能用。",
+                "Leave from the boat at base. Press the map key on the island to see all of it; stand in the teal ring at the dock for 3 seconds to head back. Fixing the wind beacon or the star lamp opens a green ring on the Hanging Root Wood or Fallen Star Workshop plaza; once both beacons are lit, the green ring at the Homecoming Bell Court works too."), 17, 66);
             Button(panel.transform, L10n.T("从基地前往天空岛", "Depart base for Sky Islands"), BossRushUIColors.Success, delegate
             {
                 string reason;
@@ -52,7 +52,7 @@ namespace BossRush
             {
                 SkyIslandSession session = host.GetComponent<SkyIslandSession>();
                 if (session == null || !session.CanChangeLighting)
-                { report(L10n.T("请等待天空岛就绪", "Wait for the Sky Islands to finish loading"), true); return; }
+                { report(L10n.T("岛上还在准备，稍等一下", "The Sky Islands are still getting ready"), true); return; }
                 closeMenu(); session.CycleLighting();
             });
             lightButton.interactable = currentSession != null && currentSession.CanChangeLighting;
@@ -87,7 +87,7 @@ namespace BossRush
             {
                 SkyIslandSession session = host.GetComponent<SkyIslandSession>();
                 if (session == null)
-                { report(L10n.T("当前没有天空岛会话", "There is no Sky Islands session right now"), false); return; }
+                { report(L10n.T("现在不在天空岛上", "You are not on the Sky Islands right now"), false); return; }
                 closeMenu(); session.Close(true, "manual_return");
             });
         }

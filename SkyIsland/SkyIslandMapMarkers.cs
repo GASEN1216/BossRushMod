@@ -71,13 +71,13 @@ namespace BossRush
                 Add(root.Find(target), SideLabel(target), BossRushUIColors.RarityEpic, ObjectiveRadius, null);
             if (notify == null) return;
             if ((opened & 2) != 0)
-                notify(L10n.T("风标点亮：悬根林广场开出返航风道，站进绿环即可撤离",
+                notify(L10n.T("风标亮了：悬根林广场多了一个返航点，站进绿环即可撤离",
                     "Wind beacon lit: an extraction ring has opened on the Hanging Root Wood plaza; step into the green ring to extract."), false);
             if ((opened & 4) != 0)
-                notify(L10n.T("星灯点亮：残星工坊广场开出返航风道，站进绿环即可撤离",
+                notify(L10n.T("星灯亮了：残星工坊广场多了一个返航点，站进绿环即可撤离",
                     "Star lamp lit: an extraction ring has opened on the Fallen Star Workshop plaza; step into the green ring to extract."), false);
             if ((opened & 1) != 0)
-                notify(L10n.T("双航标已亮：归航钟庭的撤离点开放", "Both beacons lit: the Bell Court extraction is open"), false);
+                notify(L10n.T("两端航标都亮了：归航钟庭的撤离点开了", "Both beacons lit: the Bell Court extraction is open"), false);
         }
 
         /// <summary>与 <see cref="SkyIslandStoryRules.Objective"/> 同一顺序：先接取/复命，再探索；结局后的未交任务仍保留目标。</summary>

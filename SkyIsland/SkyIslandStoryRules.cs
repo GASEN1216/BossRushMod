@@ -149,12 +149,12 @@ namespace BossRush
         {
             candidate = null;
             if (source == null)
-            { message = L10n.T("群岛记录尚未载入。", "The archipelago record has not loaded yet."); return false; }
+            { message = L10n.T("群岛记录还没读出来。", "The archipelago record hasn't loaded yet."); return false; }
             SkyIslandStoryFlag flag;
             string required;
             if (!Describe(source, action, out flag, out required, out message)) return false;
             if (source.Has(flag))
-            { message = L10n.T("这段群岛见闻已经完成。", "That part of the archipelago story is already complete."); return false; }
+            { message = L10n.T("这一步已经做完了。", "That step is already done."); return false; }
             if (required != null) { message = required; return false; }
             candidate = source.Copy();
             candidate.flags |= (int)flag;
@@ -235,15 +235,15 @@ namespace BossRush
             if (data == null || !data.StormResolved) return false;
             if (!data.Has(SkyIslandStoryFlag.Ending))
             {
-                blocker = L10n.T("栈道上那阵风散了。等归航钟响过，带着噬风之核、烧一块晴岚风晶，还能在这里把它的回响引回来。",
+                blocker = L10n.T("栈道上那阵风散了。等归航钟响过，带上噬风之核、烧一块晴岚风晶，还能在这儿把它的回响引回来。",
                     "The wind on the boardwalk is gone. Once the Homecoming Bell has rung, bring the Windeater Core and burn a Qinglan Windcrystal here to call its echo back.");
                 return false;
             }
             if (usedThisRaid) return false;
             if (!coreCarried)
             {
-                blocker = L10n.T("引风要把噬风之核带在背包里（不会用掉）。它若还在基地仓库，下次上岛带上。",
-                    "Calling the wind needs the Windeater Core in your pack (it is not used up). If it is still in base storage, bring it next trip.");
+                blocker = L10n.T("引风要把噬风之核带在背包里（不会用掉）。核要是还在基地仓库，下趟上岛记得带上。",
+                    "Calling the wind needs the Windeater Core in your pack (it isn't used up). If it's still in base storage, bring it next trip.");
                 return false;
             }
             if (windcrystals < StormEchoWindcrystalCost)
@@ -271,14 +271,14 @@ namespace BossRush
                 case SkyIslandStoryAction.AcceptPrelude:
                     flag = SkyIslandStoryFlag.PreludeAccepted;
                     message = L10n.T("Jeff：零号区掉下来一台航向仪，不是地面上的东西。守着它的家伙也不像本地拾荒者。帮我把航向仪带回来。",
-                        "Jeff: A navigation instrument fell into Ground Zero, and it is not from down here. Whatever guards it is no local scavenger either. Bring the instrument back to me."); break;
+                        "Jeff: A navigation instrument fell into Ground Zero, and it isn't from down here. Whatever guards it is no local scavenger either. Bring the instrument back to me."); break;
                 case SkyIslandStoryAction.RecoverPreludeInstrument:
                     flag = SkyIslandStoryFlag.PreludeInstrumentRecovered;
                     if (!source.Has(SkyIslandStoryFlag.PreludeAccepted))
                         required = L10n.T("先回基地问问 Jeff 那台坠落的仪器。",
                             "Ask Jeff back at base about the fallen instrument first.");
-                    message = L10n.T("航向仪还在走。残缺的记录一遍遍指向云上的晴岚群岛。把它带回去给 Jeff。",
-                        "The instrument is still running. Its broken log points again and again to Qinglan, above the clouds. Take it back to Jeff."); break;
+                    message = L10n.T("航向仪还在走。记录缺了一半，翻来覆去只指着云上的晴岚群岛。把它带回去给 Jeff。",
+                        "The instrument is still running. What is left of its log keeps pointing to Qinglan, up above the clouds. Take it back to Jeff."); break;
                 case SkyIslandStoryAction.UnlockRoute:
                     flag = SkyIslandStoryFlag.RouteUnlocked;
                     if (!source.Has(SkyIslandStoryFlag.PreludeInstrumentRecovered))
@@ -289,7 +289,7 @@ namespace BossRush
                 case SkyIslandStoryAction.AcceptBeaconQuest:
                     flag = SkyIslandStoryFlag.BeaconQuestAccepted;
                     if (!source.SkyIslandRouteUnlocked)
-                        required = L10n.T("先向 Jeff 交付坐标，开放晴岚航线。", "Deliver the coordinates to Jeff to open the Qinglan route first.");
+                        required = L10n.T("先把坐标交给 Jeff，晴岚的航线才开得了。", "Hand the coordinates to Jeff first; that opens the Qinglan route.");
                     message = L10n.T("活接下了：西边悬根林的风标、东边残星工坊的星灯，两盏都修好再回来找苇白。地图上圈出来了。",
                         "Job taken: fix the wind beacon out west in Hanging Root Wood and the star lamp out east at Fallen Star Workshop, then come back to Weibai. They're circled on the map."); break;
                 case SkyIslandStoryAction.DeliverBeaconQuest:
@@ -398,8 +398,8 @@ namespace BossRush
                 case SkyIslandStoryAction.ReconcileZheling:
                     flag = SkyIslandStoryFlag.ZhelingReconciled;
                     if (source.ZhelingResolved)
-                        required = L10n.T("折翎的选择已经记下了，镜水寺的路一直开着。",
-                            "Zheling's choice is already on record, and the Mirrorwater Temple road stays open.");
+                        required = L10n.T("折翎这边已经有结果了，镜水寺的路一直开着。",
+                            "Zheling has already made his choice, and the Mirrorwater Temple road stays open.");
                     // 穿着镜中客的镜纹甲（运行时字段，不进存档）：折翎认得那身纹路，不带旧信与航路图也肯谈。
                     else if (!source.wearsMirrorArmor && !source.Has(SkyIslandStoryFlag.OldLetter | SkyIslandStoryFlag.RouteChart))
                         required = L10n.T("折翎：拿倒挂邮亭的旧信和听雨洞的航路图来，我们再谈。不然就走，或者跟我打。",
@@ -409,7 +409,7 @@ namespace BossRush
                 case SkyIslandStoryAction.ZhelingDefeated:
                     flag = SkyIslandStoryFlag.ZhelingDefeated;
                     if (source.ZhelingResolved)
-                        required = L10n.T("折翎的结果已经记下。", "Zheling's outcome is already on record.");
+                        required = L10n.T("折翎这边已经有结果了。", "That's already settled with Zheling.");
                     message = CombatOutcome(SkyIslandStoryFlag.ZhelingDefeated); break;
                 case SkyIslandStoryAction.ReconcileBellKeeper:
                     flag = SkyIslandStoryFlag.BellKeeperReconciled;
@@ -429,7 +429,7 @@ namespace BossRush
                     // 他留下的旧腰牌写着『航路交给你』，作为「航路已经通了」的物证成立。
                     else if (!(source.Has(SkyIslandStoryFlag.OldLetter | SkyIslandStoryFlag.RouteChart | SkyIslandStoryFlag.Telescope)
                         && source.ZhelingResolved) && !source.StormResolved)
-                        required = L10n.T("钟守不信航路安全。想讲和，最简单是去栈道的双航标门把「噬风」引出来打掉；要不就带齐旧信、航路图、修好观星镜，再把折翎的事了了（和解或战胜都算）。不想等，也可以直接打停守钟装置。",
+                        required = L10n.T("钟守不信航路安全。想讲和，最省事的是去栈道的双航标门，把「噬风」引出来打掉；要不就带齐旧信、航路图，修好观星镜，再把折翎那边了结（和解或战胜都算）。不想等，直接打停守钟装置也行。",
                             "The Bell Keeper doubts the lanes are safe. To make peace, the easy way is to call out the Windeater at the boardwalk's twin-beacon gate and beat it. Or bring the old letter and the route chart, fix the telescope, and settle Zheling (talking or winning both count). Or skip all that and stop his bell engine.");
                     message = L10n.T("钟守在木牌上写：『行，这回敲钟是告诉外头的人，家里有人等。』守钟装置停了。接下来找钟守接「归航钟」，去敲钟。",
                         "The Bell Keeper writes: 'Fine. This time the bell tells them someone's waiting at home.' The bell engine stops. Next, take The Homecoming Bell from him and go ring it."); break;
@@ -439,13 +439,13 @@ namespace BossRush
                         required = L10n.T("先把两盏灯修好，再来找钟守。",
                             "Fix both lights before you take on the Bell Keeper.");
                     else if (source.BellKeeperResolved)
-                        required = L10n.T("钟守的结果已经记下。", "The Bell Keeper's outcome is already on record.");
+                        required = L10n.T("钟守这边已经有结果了。", "That's already settled with the Bell Keeper.");
                     message = CombatOutcome(SkyIslandStoryFlag.BellKeeperDefeated); break;
                 case SkyIslandStoryAction.StormSlain:
                     flag = SkyIslandStoryFlag.StormSlain;
                     if (!source.BothBeacons)
-                        required = L10n.T("两端航标都亮起来，它才会循着光过来。",
-                            "It only comes for the light once both beacons burn.");
+                        required = L10n.T("两盏灯都亮了，它才会顺着光找过来。",
+                            "It only follows the light once both beacons are lit.");
                     message = CombatOutcome(SkyIslandStoryFlag.StormSlain); break;
                 case SkyIslandStoryAction.RingHomecomingBell:
                     flag = SkyIslandStoryFlag.Ending;

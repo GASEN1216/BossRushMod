@@ -66,7 +66,7 @@ namespace BossRush
         {
             Keepsake(CompassKeepsake, BossRushItemIds.SkyIslandWindVaneCompass, false,
                 "收下第一封信鸽来信", "keep your first pigeon letter",
-                "浮舟捎来一只风标罗盘，已放进背包或基地仓库。在岛上使用，可寻找信鸽或下一个目标。",
+                "浮舟捎来一只风标罗盘，已放进背包或基地仓库。在岛上使用，能找信鸽或下一个目标。",
                 "Fuzhou sent a wind-vane compass. Check your pack, or base storage if it was full. Use it on the isles to find pigeons or your next objective."),
             Keepsake("Keepsake_Badge", BossRushItemIds.SkyIslandHomecomingBadge, true,
                 "敲响归航钟", "ring the Homecoming Bell",

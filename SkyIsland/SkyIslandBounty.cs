@@ -106,7 +106,7 @@ namespace BossRush
         internal bool TryAccept(SkyIslandBountyKind kind, out string message)
         {
             if (kind == SkyIslandBountyKind.None)
-            { message = L10n.T("这不是一份有效的委托。", "That is not a valid contract."); return false; }
+            { message = L10n.T("这单接不了。", "That contract can't be taken."); return false; }
             if (HasActive)
             {
                 message = L10n.T("苇白：手头这一单还没交呢：", "Weibai: You still owe me this one: ") + Describe();
@@ -146,7 +146,7 @@ namespace BossRush
             reward = PendingReward;
             if (!HasActive)
             {
-                message = L10n.T("苇白：现在没有你手上的委托，先挑一单吧。",
+                message = L10n.T("苇白：你手上还没接单，先挑一单吧。",
                     "Weibai: You are not carrying a contract. Pick one up first.");
                 return false;
             }

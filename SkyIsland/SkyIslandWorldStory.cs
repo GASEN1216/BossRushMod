@@ -255,7 +255,7 @@ namespace BossRush
         {
             choices.Add(new SkyIslandStoryPresentation.Choice(label, delegate
             {
-                if (!session.IsReady) return L10n.T("请等待群岛就绪。", "Wait for the archipelago to finish loading.");
+                if (!session.IsReady) return L10n.T("岛上还在准备，稍等一下。", "The isles are still getting ready. Hold on a moment.");
                 // 分段计时只记「点过一次服务」；成交与否看服务 owner 的回话。
                 story.LogTiming("service", action.Method.Name);
                 // 成交会改变耐久、血量、饭食次数与价钱；连失败也按同一判据重取按钮，不能让旧报价留在原页。
@@ -285,7 +285,7 @@ namespace BossRush
                 {
                     Hint(L10n.T("本趟航务委托已全部完成（", "All lane contracts are complete for this trip (") +
                         contract.CompletedRounds + "/" + SkyIslandBounty.MaxRounds +
-                        L10n.T("），剩下的留给下一趟。", "). The rest can wait for your next trip."));
+                        L10n.T("），剩下的下趟再说。", "). The rest can wait for next trip."));
                     return;
                 }
                 SkyIslandBountyKind[] kinds = SkyIslandBounty.AllKinds;
@@ -313,7 +313,7 @@ namespace BossRush
                 // 玩家在游戏里第一次该遇到它的地方就完全不知道它存在。
                 // 只在这一趟真会起蚋时才承诺（精灵表缺失的那趟整夜没有蚋）。
                 if (offered == 0)
-                    Hint(L10n.T("航路威胁已清理，物资点也翻遍了。",
+                    Hint(L10n.T("路上的敌人都清了，物资点也翻遍了。",
                             "The lanes are clear and the caches are picked over.")
                         + (session.HasGnatBountyThisRaid && !session.IsNightNow
                             ? L10n.T("天黑以后再来，起蚋的夜里还有驱蚋委托可接。",
@@ -430,8 +430,8 @@ namespace BossRush
                 {
                     string reason;
                     session.CanBeginStoryChallenge(id, out reason);
-                    return reason ?? L10n.T("现在开不了：走近挑战地点，看看前置目标做完没有，或者等上一场仗打完。",
-                        "Can't start yet: get closer to the site, check the prerequisites are done, and let the last fight finish.");
+                    return reason ?? L10n.T("现在开不了：走近挑战的地方，先把前面的事做完，再等上一场仗打完。",
+                        "Can't start yet: get closer to the site, finish what comes before it, and wait for the last fight to end.");
                 }
                 presentation.Dispose();
                 // 面板已经收起，回执写不回正文（SetBodyText 见正文已销毁直接返回）：改走字幕，否则面板一关就没了下文。
@@ -618,8 +618,8 @@ namespace BossRush
         /// </summary>
         private string ZhelingBadgeText()
         {
-            return L10n.T("旧腰牌上刻着：『航路交给你。』\n钟守认得这块腰牌，拿着它就说明折翎那一关已经了结。",
-                "The old badge is engraved: 'The route is yours now.'\nThe Bell Keeper knows this badge. It proves the matter with Zheling is settled.") +
+            return L10n.T("旧腰牌上刻着：『航路交给你。』\n钟守认得这块腰牌。有它在，就说明折翎那一关过了。",
+                "The old badge is engraved: 'The route is yours now.'\nThe Bell Keeper knows this badge. It shows Zheling's part is done.") +
                 "\n\n" + story.Summary;
         }
 
@@ -713,8 +713,8 @@ namespace BossRush
         private string OverlookGuarded(string key)
         {
             if (key == "Search_S4" && !session.IsEncounterCleared("S4"))
-                return L10n.T("先清除瞭台上的守卫，再静下心校准观星镜。",
-                    "Clear the guards on the overlook first, then calibrate the telescope in peace.");
+                return L10n.T("先清除瞭台上的守卫，再安心调观星镜。",
+                    "Clear the guards on the overlook first, then adjust the telescope in peace.");
             return null;
         }
 
@@ -885,7 +885,7 @@ namespace BossRush
             choices.Add(SkyIslandStoryPresentation.WithItem(new SkyIslandStoryPresentation.Choice(SkyIslandLights.ChoiceLabel(light, count), delegate
             {
                 if (fieldcraft == null)
-                    return L10n.T("工具还没摆开，等群岛就绪再来。", "The tools aren't laid out yet. Come back once the isles are ready.");
+                    return L10n.T("工具还没摆出来，等岛上准备好再来。", "The tools aren't laid out yet. Come back once the isles are ready.");
                 string guarded = OverlookGuarded(key);
                 if (guarded != null) return guarded;
                 string message;
@@ -957,7 +957,7 @@ namespace BossRush
                 choices.Add(SkyIslandStoryPresentation.WithItem(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.RecipeLabel(
                     SkyIslandFieldcraftRules.ForWearer(recipe, starworksWorn), fieldcraft.CountInPack), delegate
                 {
-                    if (fieldcraft == null) return L10n.T("现在没法做东西。", "Nothing can be made right now.");
+                    if (fieldcraft == null) return L10n.T("现在做不了东西。", "Nothing can be made right now.");
                     string message;
                     bool crafted = fieldcraft.Craft(recipe, out message);
                     if (crafted) story.LogTiming("craft", recipe.Id);
@@ -1091,11 +1091,11 @@ namespace BossRush
             Transform target = NearestMarker(SkyIslandMapMarkers.ObjectiveTargets(story.Current), from);
             // 说出这一处要干什么（清守卫 / 修灯 / 找谁），和地图圈上的字同一份。
             string what = (target != null ? SkyIslandMapMarkers.TargetTask(target.name) : null)
-                ?? L10n.T("当前目标", "your current objective");
+                ?? L10n.T("眼下的目标", "your current objective");
             if (target == null)
             {
                 target = NearestMarker(SkyIslandMapMarkers.SideTargets(story.Current), from);
-                what = L10n.T("还没了结的支线", "an unfinished side path");
+                what = L10n.T("还没做完的支线", "an unfinished side path");
             }
             // 主线支线都没了：带着晴岚风晶就指还缺风晶灯的地方；否则指这一趟还没采的风晶簇（碎晶是点灯的料）。
             if (target == null && fieldcraft != null && fieldcraft.CountInPack(BossRushItemIds.SkyIslandQinglanWindcrystal) > 0)

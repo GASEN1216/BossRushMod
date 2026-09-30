@@ -11,10 +11,10 @@ namespace BossRush
                     return L10n.T("回来了，先歇会儿。修东西、做东西还得去岛上码头的工台。我在家的时候，「钟庭之争」也在那张工台上接、上交。",
                         "Back. Sit, rest your feet. Repairs and crafting are still at the island dock workbench. While I'm home, take and hand in The Bell Court Standoff at that workbench too.");
                 case "sky_miantai":
-                    return L10n.T("我在家。上岛要苔药、药臼，去悬根林那口臼，东西都放着。",
-                        "I'm home. For moss remedy or the mortar on the island, it's the one under the roots in Hanging Root Wood. Everything's still there.");
+                    return L10n.T("我在家。要苔药，上岛去悬根林那口药臼，东西都放着。",
+                        "I'm home. For moss remedy or the mortar, go to the one on the island, in Hanging Root Wood under the roots. Everything's still there.");
                 case "sky_zheling":
-                    return L10n.T("在家我不拿刀。岛上还没了的事，到镜水寺再说。",
+                    return L10n.T("在家我不拿刀。岛上没了结的事，到镜水寺再说。",
                         "I don't carry a blade at home. Whatever's left on the island, we'll settle at the temple.");
                 case "sky_bellkeeper":
                     return L10n.T("（他在木牌上写：人在家，钟还在岛上。要敲钟，回钟庭找我。）",
@@ -35,7 +35,7 @@ namespace BossRush
                             "Everyone who came home got a hot meal. The last bed is for the next boat.")
                         : L10n.T("新风车转起来了。等下一船靠岸，我就下锅。",
                             "The new pinwheel is turning. I'll start cooking when the next boat docks."))
-                    : L10n.T("记录到手了，菜畦又能开火了。归航菜就留在畦边，回岛的时候，每趟来吃一顿热的。",
+                    : L10n.T("记录拿回来了，菜畦又能开火了。归航菜留在畦边，每趟上岛，都来吃一顿热的。",
                         "I've got the record back, so the beds can cook again. The homecoming meal waits by the garden; come and eat a hot one each trip."));
             if (data.Has(SkyIslandStoryFlag.PlantingRecord))
                 return greeting + (onIsland
@@ -73,7 +73,7 @@ namespace BossRush
                                 "The east lamp is up. The west beacon in Hanging Root Wood is still jammed. Once it turns, check in with me.\n")
                             // 两屏：官方对话先放两屏就问「办事 / 告辞 / 再聊」，去哪、先干什么都得落在这两屏里。
                             : L10n.T("西边悬根林的风标、东边残星工坊的星灯都灭了。灯边上各占着两伙人，打掉了才修得了。\n",
-                                "The wind beacon west in Hanging Root Wood and the star lamp east at Fallen Star Workshop are both out. Two gangs sit near each one; clear them before you can fix it.\n");
+                                "The wind beacon west in Hanging Root Wood and the star lamp east at Fallen Star Workshop are both out. Two gangs sit near each one; clear them out before you can fix either.\n");
                 if (!accepted && !data.BothBeacons)
                     progress += L10n.T("这活你还没接呢，先找我接上。\n",
                         "You haven't taken this job yet. Come to me and take it first.\n");

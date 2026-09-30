@@ -200,7 +200,7 @@ namespace BossRush
             switch (EvaluateRepair(out plan, out price, out badge))
             {
                 case SkyIslandServiceReadiness.Unavailable:
-                    return L10n.T("现在没法整备。", "No refit is possible right now.");
+                    return L10n.T("现在整备不了。", "No refit is possible right now.");
                 case SkyIslandServiceReadiness.NothingToDo:
                     return L10n.T("浮舟：你身上的家伙都还结实，用不着我动手。",
                         "Fuzhou: Everything you carry is still sound. Nothing for me to do.");
@@ -210,7 +210,7 @@ namespace BossRush
             }
             bool account = AccountAvailable;
             if (!EconomyManager.Pay(new Cost((long)price), account, true))
-                return L10n.T("浮舟：钱没走通，先别急，回头再来。",
+                return L10n.T("浮舟：钱没付成，先别急，回头再来。",
                     "Fuzhou: The payment did not go through. No rush — come back later.");
             int repaired = 0;
             for (int i = 0; i < plan.Count; i++)
@@ -326,7 +326,7 @@ namespace BossRush
             switch (EvaluateHeal(out price, out wait, out badge))
             {
                 case SkyIslandServiceReadiness.Unavailable:
-                    return L10n.T("现在没法处理伤口。", "Wounds cannot be treated right now.");
+                    return L10n.T("现在处理不了伤口。", "Wounds cannot be treated right now.");
                 case SkyIslandServiceReadiness.CoolingDown:
                     return L10n.T("眠苔：药还在熬，", "Miantai: The remedy is still steeping — ") + wait +
                         (wait == 1
@@ -340,7 +340,7 @@ namespace BossRush
             }
             bool account = AccountAvailable;
             if (!EconomyManager.Pay(new Cost((long)price), account, true))
-                return L10n.T("眠苔：钱没走通，先歇一会儿。",
+                return L10n.T("眠苔：钱没付成，先歇一会儿。",
                     "Miantai: The payment did not go through. Rest a moment.");
             player.Health.SetHealth(player.Health.MaxHealth);
             // 内容批次四：苔药敷上顺手止了云蚋的痒（药膏另管「这一阵叮上也不痒」，两者分工见 SkyIslandGnats.Soothe）。
@@ -362,14 +362,14 @@ namespace BossRush
         {
             if (disposed || player == null) return L10n.T("现在吃不上饭。", "There is no meal to be had right now.");
             if (!plantingDelivered)
-                return L10n.T("种植记录还没交还，菜畦尚未重新开张。",
+                return L10n.T("种植记录还没还给晴禾，菜畦还没重新开张。",
                     "The planting record has not been returned, so the garden has not reopened.");
             if (mealUsed)
                 return L10n.T("本趟已经吃过归航菜，下次出击再来。",
                     "You have already had a homecoming meal this raid. Come back next trip.");
             if (!ApplyMeal())
-                return L10n.T("归航菜暂时未能领取，请稍后重试。",
-                    "The homecoming meal could not be served. Please try again later.");
+                return L10n.T("这会儿没领到归航菜，过会儿再试试。",
+                    "Couldn't get the homecoming meal just now. Try again in a bit.");
             return L10n.T("吃过了晴禾准备的归航菜，身上暖和起来。（本次出击生效）",
                 "Qinghe's homecoming meal leaves you warm and well fed. (this raid only)");
         }

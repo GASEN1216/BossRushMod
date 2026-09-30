@@ -789,14 +789,14 @@ namespace BossRush
         {
             switch (buff)
             {
-                case SkyIslandFieldBuff.Lantern: return L10n.T("风灯：照明、防风约4分钟。夜里引蚋，灯灭前清掉。仅群岛有效。", "Lantern: light and wind shelter for about 4 min. At night, clear gnats before it goes out. Qinglan only.");
-                case SkyIslandFieldBuff.Incense: return L10n.T("使用：防风并加快耐力恢复，持续约5分钟。仅群岛有效。", "Use: block wind chill and recover stamina faster for about 5 min. Qinglan only.");
-                case SkyIslandFieldBuff.Charm: return L10n.T("使用：噬风风暴伤害-35%，生命上限与回耐+10%。本趟有效，不叠加，离岛失效。", "Use: Windeater storm damage -35%; max HP and stamina recovery +10%. This raid only. No stacking; ends on leaving.");
-                case SkyIslandFieldBuff.Meal: return L10n.T("岛上食用：交还种植记录后，可获得归航菜增益。每趟一次。", "Eat on Qinglan for the meal buff after returning the planting record. Once per raid.");
-                case SkyIslandFieldBuff.Recall: return L10n.T("岛上使用：返回登云码头，每趟一次，不消耗。附近有敌人时不可用。", "Use on Qinglan: return to Cloudrise Dock once per raid. Not consumed. No enemies nearby.");
-                case SkyIslandFieldBuff.Zapper: return L10n.T("岛上放置：吸引并电落12米内的云蚋，持续约5分钟。最多两盏，离岛失效。", "Place on Qinglan: lure and zap gnats within 12m for about 5 min. Up to two; ends on leaving.");
-                case SkyIslandFieldBuff.Fan: return L10n.T("岛上使用：扑落前方约3米内的云蚋，击退稍远的蚋。不消耗。", "Use on Qinglan: knock down gnats within about 3m ahead and push back those further away. Not consumed.");
-                case SkyIslandFieldBuff.Soothe: return L10n.T("岛上使用：立即止痒，之后约90秒内叮咬不再发痒。", "Use on Qinglan: stop itching and prevent new itches for about 90s.");
+                case SkyIslandFieldBuff.Lantern: return L10n.T("风灯：照明加防风，约4分钟。夜里会引来云蚋，灯灭前先清掉。只在群岛有效。", "Lantern: light and wind shelter for about 4 min. At night it draws gnats, so clear them before it goes out. Qinglan only.");
+                case SkyIslandFieldBuff.Incense: return L10n.T("使用：挡风，耐力恢复变快，约5分钟。只在群岛有效。", "Use: block wind chill and recover stamina faster for about 5 min. Qinglan only.");
+                case SkyIslandFieldBuff.Charm: return L10n.T("使用：受到的噬风风暴伤害减少35%，生命上限和耐力恢复各加10%。只管这一趟，不能叠加，离岛失效。", "Use: take 35% less Windeater storm damage; max HP and stamina recovery +10%. Lasts this raid only, doesn't stack, ends when you leave.");
+                case SkyIslandFieldBuff.Meal: return L10n.T("岛上食用：交还种植记录后，才有归航菜的增益。每趟一次。", "Eat on Qinglan for the meal buff after returning the planting record. Once per raid.");
+                case SkyIslandFieldBuff.Recall: return L10n.T("岛上使用：直接回登云码头，每趟一次，不消耗。附近有敌人时用不了。", "Use on Qinglan: go straight back to Cloudrise Dock, once per raid. Not consumed. Won't work with enemies nearby.");
+                case SkyIslandFieldBuff.Zapper: return L10n.T("岛上放置：把12米内的云蚋引来电落，持续约5分钟。最多摆两盏，离岛失效。", "Place on Qinglan: lure and zap gnats within 12m for about 5 min. Up to two; ends on leaving.");
+                case SkyIslandFieldBuff.Fan: return L10n.T("岛上使用：扇落身前约3米内的云蚋，更远的会被推开。不消耗。", "Use on Qinglan: knock down gnats within about 3m ahead and push back those further away. Not consumed.");
+                case SkyIslandFieldBuff.Soothe: return L10n.T("岛上使用：马上止痒，之后约90秒内被叮也不会痒。", "Use on Qinglan: stop itching and prevent new itches for about 90s.");
                 default: return string.Empty;
             }
         }
@@ -821,7 +821,7 @@ namespace BossRush
         }
 
         internal static string RecallNotReady
-        { get { return L10n.T("群岛还没就绪，缆绳拉不动。", "The isles are not ready yet; the line will not pull."); } }
+        { get { return L10n.T("岛上还在准备，缆绳拉不动。", "The isles aren't ready yet; the line won't pull."); } }
 
         internal static string RecallFailed
         { get { return L10n.T("缆绳没拉动，码头那头找不到落脚的地方。", "The line won't pull. There's no footing at the dock end."); } }
@@ -833,9 +833,9 @@ namespace BossRush
             {
                 case SkyIslandFieldBuff.Lantern: return L10n.T("风灯点亮了：约 4 分钟内微风吹不透，大风里也能挡掉一半。夜里云蚋会顺着光聚到灯罩上，只盯着火，不咬人，也躲不开子弹。",
                     "The wind lantern is lit: for about 4 minutes a breeze cannot chill you, and it holds off half of a gale. At night cloud gnats swarm the shade. They only care about the flame, won't bite, and can't dodge bullets.");
-                case SkyIslandFieldBuff.Incense: return L10n.T("驱风香点上了：约 5 分钟内什么风都侵不了身，耐力恢复加快。",
+                case SkyIslandFieldBuff.Incense: return L10n.T("驱风香点上了：约 5 分钟内什么风都冻不着你，耐力恢复也变快。",
                     "Windward incense is burning: for about 5 minutes no wind can chill you, and stamina recovers faster.");
-                case SkyIslandFieldBuff.Charm: return L10n.T("晴岚护符系上了：本趟噬风的风暴伤不到你那么深，生命上限与耐力恢复也小幅提升（离岛失效）。",
+                case SkyIslandFieldBuff.Charm: return L10n.T("晴岚护符系上了：这趟噬风的风暴伤你更轻，生命上限和耐力恢复也涨了一点（离岛失效）。",
                     "The Qinglan charm is tied on: the Windeater's storm will not cut as deep this raid, and max health and stamina recovery rise a little (ends when you leave the isles).");
                 default: return string.Empty;
             }
@@ -956,7 +956,7 @@ namespace BossRush
         internal static string WindExplain(bool stormPending)
         {
             string text = L10n.T(
-                "起风了：夜里和桥上会慢慢积累寒意，积满后耐力恢复变慢、饿得更快（不掉血）。灶火与风晶灯旁、焚着驱风香时什么风都挡得住；风灯挡得住微风，大风里只挡一半。",
+                "起风了：夜里和桥上会慢慢受寒，受满了耐力恢复变慢、饿得更快（不掉血）。灶火和风晶灯旁、焚着驱风香时什么风都挡得住；风灯只挡得住微风，大风里只挡一半。",
                 "The wind is picking up: at night and on bridges you slowly get chilled. A full chill slows stamina recovery and makes you hungry faster (no health loss). By a hearth or a windcrystal lamp, or with windward incense burning, no wind gets through; a wind lantern holds off a breeze but only half of a gale.");
             if (stormPending)
                 text += L10n.T("两盏航标都亮了、噬风还没散：鸣风栈道和桥上是大风。",

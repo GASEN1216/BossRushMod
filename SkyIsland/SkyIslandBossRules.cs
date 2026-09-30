@@ -882,8 +882,8 @@ namespace BossRush
                     return L10n.T("第一次打倒悬根猎首：它每趟都会回到悬根林，每次都穿着全套悬根猎装，倒下时只留下其中一件。",
                         "The Hanging-Root Huntmaster is down for the first time. It returns to the Hanging Root Wood every raid in its full rootweave hunting gear and leaves one piece behind each time it falls.");
                 case SkyIslandBossKind.Waylayer:
-                    return L10n.T("首次击败截信人。它每趟都会回倒挂邮亭，赃物都在尸体上。有三成机会掉落旧邮包。",
-                        "First Waylayer defeat. It returns to the Upturned Post Hut each raid. Recover stolen items from its body. Old Mailbag drop chance: 30%.");
+                    return L10n.T("第一次打倒截信人：它每趟都会回倒挂邮亭，抢走的东西都在它身上，倒下时有三成机会留下旧邮包。",
+                        "The Waylayer is down for the first time. It returns to the Upturned Post Hut every raid, whatever it stole is on its body, and it leaves the Old Mailbag behind three times in ten.");
                 case SkyIslandBossKind.Sickle:
                     return L10n.T("第一次打倒穗镰：它每趟都会回到青穗梯田，每次都穿着全套蓑衣农装，倒下时只留下其中一件。",
                         "Grain Sickle is down for the first time. It returns to the Green Terraces every raid in its full straw-cloak farm gear and leaves one piece behind each time it falls.");
@@ -897,8 +897,8 @@ namespace BossRush
                     return L10n.T("第一次打倒镜中客：它只在夜里回到镜水寺，倒下时有三成机会留下镜纹甲。",
                         "The Mirror Guest is down for the first time. It returns to Mirrorwater Temple only at night and leaves its mirrorgrain plate behind three times in ten.");
                 case SkyIslandBossKind.Windhunter:
-                    return string.Format(L10n.T("首次击败{0}。三位断风游猎各守一座回程中继平台，各穿一件断风装备。每位有四成机会掉落所穿的那件。",
-                        "First defeat of {0}. Each Galebreaker holds a return relay platform and wears one set piece. Each has a 40% chance to drop that piece."), Name(profile));
+                    return string.Format(L10n.T("第一次打倒{0}。三位断风游猎各守一座回程中继平台，各穿一件断风装备，倒下时有四成机会留下所穿的那件。",
+                        "{0} is down for the first time. Each of the three Galebreakers holds a return relay platform and wears one set piece, and leaves it behind four times in ten."), Name(profile));
                 default:
                     return L10n.T("头目倒下了。", "The chief is down.");
             }

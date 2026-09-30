@@ -25,8 +25,8 @@ namespace BossRush
                     // 蛙卵 → 信鸽 → 当前目标 / 支线 → 缺灯处（带着晴岚风晶时）→ 还没采的风晶簇。
                     // 按住物品看到的这句是玩家最先读到的说明，落后于行为就是在骗人。
                     description = L10n.T(
-                        "使用：寻找群岛目标，不消耗。\n捧蛙卵时先指蛙鸣池。其余依次找信鸽、主线或支线。\n带着风晶还能找缺灯处，最后找本趟未采的风晶簇。",
-                        "Use: find island objectives. Not consumed.\nFrogspawn first leads to Frogsong Pool. Then pigeons, objectives or unfinished side paths.\nWith a windcrystal, find missing lamps. Last: clusters ungathered this raid.")
+                        "使用：找群岛上的下一个目标，不消耗。\n捧着蛙卵时先指蛙鸣池，其余依次是信鸽、主线、支线。\n带着风晶还能找没点亮的灯，最后找这趟还没采的风晶簇。",
+                        "Use: points to your next stop on the isles. Not consumed.\nCarrying frogspawn, it points to Frogsong Pool first. After that: pigeons, main objectives, side paths.\nWith a windcrystal it also finds unlit lamps, and last the clusters you haven't gathered this raid.")
                 };
             }
         }

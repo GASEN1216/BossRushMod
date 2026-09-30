@@ -102,27 +102,27 @@ namespace BossRush
 
         /// <summary>三处「还没就绪」提示共用同一句文案，避免中英两份各写三遍再各漂一遍。</summary>
         private static string WaitForReady
-        { get { return L10n.T("请等待天空岛就绪", "Wait for the Sky Islands to finish loading"); } }
+        { get { return L10n.T("岛上还在准备，稍等一下", "The Sky Islands are still getting ready"); } }
 
         internal static bool CanEnter(ModBehaviour owner, out string reason)
         {
             reason = null;
-            if (owner == null) { reason = L10n.T("Mod 尚未就绪", "The mod is not ready yet"); return false; }
+            if (owner == null) { reason = L10n.T("Mod 还没准备好", "The mod is not ready yet"); return false; }
             if (!SkyIslandRaidLease.IsBundleDeployed())
             {
-                reason = L10n.T("缺少天空岛独立出击场景包，请更新 Mod 资源",
+                reason = L10n.T("少了天空岛的出击场景包，先更新 Mod 资源",
                     "The Sky Islands raid scene bundle is missing. Update the mod's assets");
                 return false;
             }
             if (owner.GetComponent<SkyIslandSession>() != null || owner.GetComponent<ArenaPrototypeSession>() != null)
             {
-                reason = L10n.T("请先结束当前场景旅程并等待回收",
-                    "End the current scene journey and wait for it to be recycled");
+                reason = L10n.T("先结束当前的场景旅程，等它收拾完",
+                    "End the current scene journey and wait for it to clean up");
                 return false;
             }
             if (SkyIslandStorySaveRecovery.IsPending())
             {
-                reason = L10n.T("上一段群岛记录仍在保存，请稍后重试",
+                reason = L10n.T("上一段群岛记录还在保存，稍后再试",
                     "The previous archipelago record is still saving. Try again shortly");
                 return false;
             }
@@ -130,25 +130,25 @@ namespace BossRush
             { reason = L10n.T("请等待完整玩法验收结束", "Wait for the full gameplay validation to finish"); return false; }
             if (SceneLoader.IsSceneLoading || LevelManager.LevelInitializing || !LevelManager.LevelInited)
             {
-                reason = L10n.T("请等待场景与玩家初始化完成",
-                    "Wait for the scene and the player to finish initialising");
+                reason = L10n.T("场景和玩家还在加载，稍等一下",
+                    "The scene and the player are still loading. Hold on a moment");
                 return false;
             }
             string mode;
             if (owner.ValidationHasActiveMode(out mode))
-            { reason = L10n.T("请先结束当前模式：", "End the current mode first: ") + ActiveModeLabel(mode); return false; }
+            { reason = L10n.T("先结束正在进行的模式：", "End the current mode first: ") + ActiveModeLabel(mode); return false; }
             CharacterMainControl main = CharacterMainControl.Main;
             if (main == null || main.Health == null || main.Health.IsDead)
-            { reason = L10n.T("玩家未就绪", "The player is not ready"); return false; }
+            { reason = L10n.T("玩家还没准备好", "The player is not ready"); return false; }
             if (!SceneRuntimeGate.IsBaseHubSceneName(SceneManager.GetActiveScene().name))
             {
-                reason = L10n.T("请先回基地再前往天空岛", "Return to base before departing for the Sky Islands");
+                reason = L10n.T("先回基地，再去天空岛", "Return to base before departing for the Sky Islands");
                 return false;
             }
             if (!F3GameplayValidationRunner.AllowsLockedSkyIslandEntry && !SkyIslandPreludeFlow.CanUseRoute(out reason))
                 return false;
             if (GameCamera.Instance == null || GameCamera.Instance.renderCamera == null)
-            { reason = L10n.T("游戏相机尚未就绪", "The game camera is not ready yet"); return false; }
+            { reason = L10n.T("游戏相机还没准备好", "The game camera is not ready yet"); return false; }
             return true;
         }
 
@@ -185,7 +185,7 @@ namespace BossRush
                     CancelPendingInitialization();
                     // 异常原文是给维护者的中文诊断：完整异常进日志，提示条经 WithDetail，英文界面只给双语前缀。
                     Debug.LogWarning("[SkyIsland] setup failed: " + e);
-                    Status(SkyIslandStoryRules.WithDetail(L10n.T("天空岛创建失败：", "Sky Islands setup failed"), e.Message), true);
+                    Status(SkyIslandStoryRules.WithDetail(L10n.T("天空岛没能建起来：", "Sky Islands setup failed"), e.Message), true);
                     Close(true, "build_failed"); yield break;
                 }
                 if (!more) yield break;
@@ -199,8 +199,8 @@ namespace BossRush
             // 常驻四行长句会一直抢视线焦点，而且 90 px 的框实测装不下（中文 4 行 / 英文 6 行）。
             // 天空岛自己的 HUD 把常驻部分收成右侧一张小卡，区域名改成进出时的一次性大标题。
             hud = new SkyIslandHud(host.transform);
-            hud.SetLandingHint(L10n.T("地图键查阅全岛 · 站进撤离环停留 3 秒返航",
-                "Map key views the isles · hold 3s inside an extraction ring to return"));
+            hud.SetLandingHint(L10n.T("地图键看全岛 · 站进撤离环 3 秒返航",
+                "Map key: see the isles · stand in an extraction ring 3s to return"));
             Status(L10n.T("正在加载晴岚群岛…", "Loading the Qinglan Archipelago…"), false);
             // 基地场景的组件不留成字段：出图即成已销毁引用。取到就交给租约克隆（CR-2026-09-10-003）。
             TimeOfDayConfig timeOfDayTemplate = LevelConfig.Instance.timeOfDayConfig;
@@ -384,7 +384,7 @@ namespace BossRush
                 navigationReady = true;
                 assemblyError = e.Message;
                 Debug.LogWarning("[SkyIsland] standalone level assembly failed: " + e);
-                Status(SkyIslandStoryRules.WithDetail(L10n.T("独立关卡装配失败：", "Standalone level assembly failed"), e.Message), true);
+                Status(SkyIslandStoryRules.WithDetail(L10n.T("关卡没能搭起来：", "Standalone level assembly failed"), e.Message), true);
             }
         }
 
@@ -475,11 +475,11 @@ namespace BossRush
         internal async void SpawnEnemy()
         {
             if (closed || !ready || spawning || (enemy != null && enemy.Health != null && !enemy.Health.IsDead))
-            { Status(L10n.T("请等待场景就绪或先击败现有测试敌人",
+            { Status(L10n.T("先等场景准备好，或打掉现有的测试敌人",
                 "Wait for the scene, or defeat the existing test enemy first"), true); return; }
             Transform spawn = Nearest(enemyMarkers, player.transform.position);
             if (spawn == null || Vector3.Distance(spawn.position, player.transform.position) > 120)
-            { Status(L10n.T("请先沿路靠近一个岛区，再生成测试敌人",
+            { Status(L10n.T("先沿路走近一个岛区，再生成测试敌人",
                 "Walk closer to an island region before spawning a test enemy"), true); return; }
             spawning = true;
             CharacterRandomPreset clone = null;
@@ -525,7 +525,7 @@ namespace BossRush
             {
                 if (created != null) Destroy(created.gameObject);
                 Debug.LogWarning("[SkyIsland] spawn enemy failed: " + e);
-                if (this != null && !closed) Status(SkyIslandStoryRules.WithDetail(L10n.T("生成敌人失败：", "Enemy spawn failed"), e.Message), true);
+                if (this != null && !closed) Status(SkyIslandStoryRules.WithDetail(L10n.T("没能生成敌人：", "Enemy spawn failed"), e.Message), true);
             }
             finally { if (clone != null) Destroy(clone, created != null ? 0.1f : 0f); if (this != null) spawning = false; }
         }
@@ -539,7 +539,7 @@ namespace BossRush
             catch (Exception e)
             {
                 Debug.LogWarning("[SkyIsland] visit landmark failed: " + e);
-                Status(SkyIslandStoryRules.WithDetail(L10n.T("前往下一个地标失败：", "Could not move to the next landmark"), e.Message), true);
+                Status(SkyIslandStoryRules.WithDetail(L10n.T("没能前往下一个地标：", "Could not move to the next landmark"), e.Message), true);
                 return;
             }
             safePosition = landmark.position + Vector3.up * 0.15f;
@@ -565,7 +565,7 @@ namespace BossRush
             catch (Exception e)
             {
                 Debug.LogWarning("[SkyIsland] lighting switch failed: " + e);
-                Status(SkyIslandStoryRules.WithDetail(L10n.T("天空岛光色切换失败：", "Lighting switch failed"), e.Message), true);
+                Status(SkyIslandStoryRules.WithDetail(L10n.T("光色没能切换：", "Lighting switch failed"), e.Message), true);
             }
         }
 
@@ -624,7 +624,7 @@ namespace BossRush
             catch (Exception e)
             {
                 Debug.LogWarning("[SkyIsland] open map failed: " + e);
-                Status(SkyIslandStoryRules.WithDetail(L10n.T("官方地图打开失败：", "Could not open the game map"), e.Message), true);
+                Status(SkyIslandStoryRules.WithDetail(L10n.T("没能打开官方地图：", "Could not open the game map"), e.Message), true);
             }
         }
 
@@ -1001,7 +1001,7 @@ namespace BossRush
         {
             reason = null;
             if (!IsSessionValid())
-            { reason = L10n.T("请等待群岛就绪。", "Wait for the archipelago to finish loading."); return false; }
+            { reason = L10n.T("岛上还在准备，稍等一下。", "The isles are still getting ready. Hold on a moment."); return false; }
             if (HasHostileEnemiesWithin(player.transform.position, StoryPanelQuietRadius))
             {
                 reason = L10n.T("附近还有威胁，先把这段航路清干净再说。",
@@ -1015,7 +1015,7 @@ namespace BossRush
             get
             {
                 return scavenging == null
-                    ? L10n.T("物资点尚未就绪", "Scavenging points are not ready yet")
+                    ? L10n.T("物资点还没准备好", "Scavenging points are not ready yet")
                     : L10n.T("已搜刮 ", "Looted ") + scavenging.OpenedPoints + " / " + scavenging.PlacedPoints +
                         L10n.T(" 处", " points");
             }

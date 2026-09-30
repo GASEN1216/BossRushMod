@@ -987,8 +987,8 @@ namespace BossRush
         internal static string Released(int released)
         {
             if (released >= FrogTarget)
-                return L10n.T("三团蛙卵都在蛙鸣池里了。长成的蛙夜里会顺着水边散到岛上各处，静水边都有它们。那封写给池子里青蛙的信，总算有谁在替那个孩子数灯了。",
-                    "All three clutches are in Frogsong Pool now. The frogs that grow there will spread along the waterline at night, and every still pond will have a few. Someone is counting the lights for that child at last.");
+                return L10n.T("三团蛙卵都在蛙鸣池里了。长成的蛙夜里会顺着水边散到岛上各处，静水边都有它们。还记得那封写给池子里青蛙、托它们数灯的信吗？青蛙回来了，这下有人替那个孩子数灯了。",
+                    "All three clutches are in Frogsong Pool now. The frogs that grow there will spread along the waterline at night, and every still pond will have a few. Remember the letter asking the pool frogs to count the lights? The frogs are back, so someone can count them for that kid now.");
             return L10n.T("蛙卵沉进了蛙鸣池的浅水。等它们长起来，会顺着水边散开，岛上近水的地方都会少些云蚋。（蛙鸣池 ",
                 "The frogspawn sinks into the shallows of Frogsong Pool. Once they grow, they'll spread along the waterline, and there'll be fewer gnats near standing water across the isles. (Frogsong Pool ") +
                 released + "/" + FrogTarget + L10n.T("）", ")");
