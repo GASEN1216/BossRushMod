@@ -9,6 +9,10 @@
 - 验证（L2）：Unity 碰撞校验 PASS failures=0；ECM2 实跑 PASS 0 失败；反向验证（注释掉建挡块）实跑转红 18 处坠落，还原后字节一致；着色器判包、73 包资源校验、SkyIsland 守卫 57/58（唯一红为 `SkyIslandRoadPlacementPropertyTest` 在 runner 下找不到 shapely，带依赖路径单跑 PASS）。raid 包作者 / 仓库 / 游戏三份 `5f8b6c3a…` 一致（`Validation/buttress_deployment_hashes_20260930.json`）；本轮只换资源包，未重编 DLL，未启动游戏。
 - 未覆盖：飞行图腾可越过 1.7 m 栏杆（玩法取舍，待 owner 定）；头目瞬移不查导航连通（审计线索，未改）。L3 人工：贴着 BF、FG、GE、K2 桥栏来回冲刺翻滚、被镜中客换位到桥边，不应掉出。
 
+## 2026-09-30 天空岛主题曲更名「人鱼湾」（COMPAT，L1/L2）
+
+owner 决定继续用洛克王国原曲，只改显示名：`BgmTracks.json` 点唱机条目 `晴岚群岛 / Qinglan Archipelago` → `人鱼湾 / Mermaid Bay`，作者仍为「洛克王国 / Roco Kingdom」，文件 `sky_island_theme.ogg` 与场景曲条目不变。点唱机按音频路径判重，旧条目原位换标题，存档 index 不移位。WikiContent 中英 6 处曲名同步，站点重建。owner 本地另存的 90 秒 `sky_island_theme.wav`（未入库、无引用）按 owner 要求删除；程序化原创替代曲草稿经 owner 否决，未入库。**验证**：`BossBgm` / `BackMountain` / `Wiki` 守卫 19 PASS，Wiki 站点构建通过；未 Windows 编译（无代码改动，JSON 随正式构建部署）。**未实机（L3 待 owner）**：基地点唱机曲目列表显示「人鱼湾」、切英文显示 Mermaid Bay。
+
 ## 2026-09-30 天空岛搜刮箱三种木箱外观（COMPAT / OPERATIONAL，L1/L2）
 
 - owner 选方案 A：复用岛上已有的 Tripo 木箱，打进特效小包。生活物资＝桶箱堆（1.04×0.88×1.05 m）、航务补给＝一排长货箱（1.29×0.47×0.50 m）、星工遗存＝长着风晶的小货箱（1.08×0.91×0.43 m，加青色点光）。

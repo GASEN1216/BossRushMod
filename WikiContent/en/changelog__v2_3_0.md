@@ -109,7 +109,7 @@
 - **Garden** (chapter 1): opens the official garden site that has been fenced off at base; pay Shovel ×1 and Poop ×9 to build it. You get 2 of each seed when the garden opens, the base vendor sells more, and each of the three mod Bosses has a roughly 25% chance to drop an extra one. A plant ripens in about 20 minutes and only grows once watered.
 - **Harvests transform you**: Dragonbreath Fruit, Emberheart Chili and Umbral Mushroom can be eaten at base or in a raid, turning you into the Dragon Descendant, the Skyburner Dragon Lord or the Phantom Witch for 30 seconds with their attack abilities. Your health and gear stay your own.
 - **Display bonus** (chapter 2): put mod Boss trophies on the vanilla weapon display rack or a dummy. Each one adds max health by quality, up to 8 pieces; eight quality-8 pieces add about +21% in total.
-- **Jukebox** (chapter 3): the base jukebox gains the mod tracks "Dragon Elegy" and "Umbral Corridors", plus the Sky Islands theme "Qinglan Archipelago".
+- **Jukebox** (chapter 3): the base jukebox gains the mod tracks "Dragon Elegy" and "Umbral Corridors", plus the Sky Islands theme "Mermaid Bay" (Roco Kingdom).
 
 ### New: PetNest
 
@@ -169,7 +169,7 @@
 
 - Boss fights now have looping battle music and a victory stinger.
 - The Sky Islands have their own looping background music (see above).
-- The jukebox gains the Sky Islands theme "Qinglan Archipelago", and mod tracks are louder overall.
+- The jukebox gains the Sky Islands theme "Mermaid Bay", and mod tracks are louder overall.
 
 ### Improved: Interface and Wiki
 

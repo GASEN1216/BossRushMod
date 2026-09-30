@@ -73,7 +73,7 @@ tells you what just opened.
 
 - Once unlocked, mod battle tracks are appended to the base jukebox's playlist, sitting alongside
   the vanilla songs for you to pick from.
-- Three tracks so far: `Dragon Elegy`, `Umbral Corridors` and the Sky Islands theme `Qinglan Archipelago`. Switching language updates their titles without duplicating tracks.
+- Three tracks so far: `Dragon Elegy`, `Umbral Corridors` and the Sky Islands theme `Mermaid Bay` (Roco Kingdom). Switching language updates their titles without duplicating tracks.
 - Mod tracks always go after the vanilla ones, so nothing you already had shifts position in the list.
 
 ### Eating your harvest

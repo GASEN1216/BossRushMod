@@ -15,7 +15,7 @@
   "jukebox": [
     { "musicName": "龙裔挽歌", "musicNameEn": "Dragon Elegy", "author": "BossRush · 晴岚群岛", "authorEn": "BossRush · Qinglan Archipelago", "file": "jukebox_dragon_elegy.ogg" },
     { "musicName": "幽影回廊", "musicNameEn": "Umbral Corridors", "author": "BossRush · 晴岚群岛", "authorEn": "BossRush · Qinglan Archipelago", "file": "jukebox_umbral_corridors.ogg" },
-    { "musicName": "晴岚群岛", "musicNameEn": "Qinglan Archipelago", "author": "洛克王国", "authorEn": "Roco Kingdom", "file": "sky_island_theme.ogg" }
+    { "musicName": "人鱼湾", "musicNameEn": "Mermaid Bay", "author": "洛克王国", "authorEn": "Roco Kingdom", "file": "sky_island_theme.ogg" }
   ],
   "sceneTracks": [
     { "sceneKey": "SkyIsland", "file": "sky_island_theme.ogg", "loop": true }
