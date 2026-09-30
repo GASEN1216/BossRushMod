@@ -97,7 +97,9 @@ def load_model(name):
         remap = {source: target for target, source in enumerate(used)}
         parts.append(MeshPart(material, tuple(normalized[i] for i in used),
                               tuple(tuple(remap[i] for i in face) for face in faces)))
-    return tuple(parts)
+    from sky_island_flora import refine_model
+    refined=refine_model(name,parts)
+    return tuple(MeshPart(*part) for part in refined) if refined is not None else tuple(parts)
 
 
 def _palette_for(name, overrides):
@@ -157,5 +159,10 @@ def stamp(g, name, position, height, yaw=0, palette=None):
         if missing:
             raise ValueError('Missing sky island palette keys: ' + ', '.join(sorted(missing)))
     for part in parts:
-        g.addmesh(part.material, part.verts, part.faces, smooth=False)
+        # Small flora is non-blocking even when a petal shares a brass/ivory color.
+        flora=name.startswith(('flower_','grass_','plant_','mushroom_','lily_'))
+        if flora:
+            g.addmesh(part.material, part.verts, part.faces, smooth=False,group=g.CURRENT+'_Flora')
+        else:
+            g.addmesh(part.material, part.verts, part.faces, smooth=False)
     return parts

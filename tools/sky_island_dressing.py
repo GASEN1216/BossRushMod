@@ -232,15 +232,25 @@ def meadows(g, layout, counts):
 
 
 def lotus(g,x,y,z,scale=1):
-    # Sculpted petals sit on a real CC0 lily leaf; no new texture or transparent plane needed.
+    from sky_island_flora import Geometry
+    # A folded blossom sits above the existing lily pad, with a readable inner cup.
     g.cylinder((x,y+.02,z),1.25*scale,.04,'Fern',12)
     stamp(g,'lily_large',(x,y,z),.42*scale,0)
+    petals=Geometry()
     for ring in range(2):
         for i in range(7):
-            a=i*TAU/7+ring*.4; r=(.7-ring*.3)*scale
-            g.sphere((x+r*math.cos(a),y+(.32+ring*.28)*scale,z+r*math.sin(a)),
-                     (.46*scale,.18*scale,.45*scale),'Blossom' if ring==0 else 'LilyWhite',8,4)
-    g.sphere((x,y+.59*scale,z),(.26*scale,.2*scale,.26*scale),'Glow',8,4)
+            a=i*TAU/7+ring*.43
+            base=(x+.06*scale*math.cos(a),y+(.15+ring*.13)*scale,z+.06*scale*math.sin(a))
+            petals.blade('Blossom' if ring==0 else 'LilyWhite',base,a,
+                         (1.02-ring*.28)*scale,(.29-ring*.07)*scale,
+                         (.20+ring*.16)*scale,curl=.12*scale,fold=.065*scale)
+    for material,data in petals.groups.items():
+        g.addmesh(material,data['v'],data['f'],smooth=False,group=g.CURRENT+'_Flora')
+    g.cylinder((x,y+.50*scale,z),.20*scale,.09*scale,'Flower',12,radius_top=.16*scale)
+    for i in range(7):
+        a=i*TAU/7
+        g.sphere((x+.115*scale*math.cos(a),y+.557*scale,z+.115*scale*math.sin(a)),
+                 (.036*scale,.022*scale,.036*scale),'LilyWhite',5,3)
 
 
 def water_gardens(g,layout,counts):

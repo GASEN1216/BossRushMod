@@ -1,0 +1,953 @@
+{
+  "status": "PASS",
+  "evidence": "L2 Blender geometry and downward BVH rays",
+  "blenderVersion": "5.2.1 LTS",
+  "source": "D:\\sofrware\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\ArtSource\\SkyIsland\\SkyIslandWorld.blend",
+  "floors": [
+    {
+      "region": "A",
+      "before": {
+        "checked": 125,
+        "misses": 125,
+        "examples": [
+          [
+            "A_CargoHouse",
+            -0.49,
+            -0.49
+          ],
+          [
+            "A_CargoHouse",
+            -0.49,
+            -0.25
+          ],
+          [
+            "A_CargoHouse",
+            -0.49,
+            0
+          ],
+          [
+            "A_CargoHouse",
+            -0.49,
+            0.25
+          ],
+          [
+            "A_CargoHouse",
+            -0.49,
+            0.49
+          ],
+          [
+            "A_CargoHouse",
+            -0.25,
+            -0.49
+          ],
+          [
+            "A_CargoHouse",
+            -0.25,
+            -0.25
+          ],
+          [
+            "A_CargoHouse",
+            -0.25,
+            0
+          ],
+          [
+            "A_CargoHouse",
+            -0.25,
+            0.25
+          ],
+          [
+            "A_CargoHouse",
+            -0.25,
+            0.49
+          ],
+          [
+            "A_CargoHouse",
+            0,
+            -0.49
+          ],
+          [
+            "A_CargoHouse",
+            0,
+            -0.25
+          ]
+        ]
+      },
+      "after": {
+        "checked": 125,
+        "misses": 0,
+        "examples": []
+      },
+      "oldArea": 8655.321042060852,
+      "area": 8992.183095932007,
+      "expectedArea": 8992.183398712765,
+      "triangles": 21
+    },
+    {
+      "region": "B",
+      "before": {
+        "checked": 525,
+        "misses": 525,
+        "examples": [
+          [
+            "B_TeaHouse",
+            -0.49,
+            -0.49
+          ],
+          [
+            "B_TeaHouse",
+            -0.49,
+            -0.25
+          ],
+          [
+            "B_TeaHouse",
+            -0.49,
+            0
+          ],
+          [
+            "B_TeaHouse",
+            -0.49,
+            0.25
+          ],
+          [
+            "B_TeaHouse",
+            -0.49,
+            0.49
+          ],
+          [
+            "B_TeaHouse",
+            -0.25,
+            -0.49
+          ],
+          [
+            "B_TeaHouse",
+            -0.25,
+            -0.25
+          ],
+          [
+            "B_TeaHouse",
+            -0.25,
+            0
+          ],
+          [
+            "B_TeaHouse",
+            -0.25,
+            0.25
+          ],
+          [
+            "B_TeaHouse",
+            -0.25,
+            0.49
+          ],
+          [
+            "B_TeaHouse",
+            0,
+            -0.49
+          ],
+          [
+            "B_TeaHouse",
+            0,
+            -0.25
+          ]
+        ]
+      },
+      "after": {
+        "checked": 525,
+        "misses": 0,
+        "examples": []
+      },
+      "oldArea": 12183.400464057922,
+      "area": 13444.83892917633,
+      "expectedArea": 13444.838912150855,
+      "triangles": 34
+    },
+    {
+      "region": "C",
+      "before": {
+        "checked": 225,
+        "misses": 225,
+        "examples": [
+          [
+            "C_WaterMill",
+            -0.49,
+            -0.49
+          ],
+          [
+            "C_WaterMill",
+            -0.49,
+            -0.25
+          ],
+          [
+            "C_WaterMill",
+            -0.49,
+            0
+          ],
+          [
+            "C_WaterMill",
+            -0.49,
+            0.25
+          ],
+          [
+            "C_WaterMill",
+            -0.49,
+            0.49
+          ],
+          [
+            "C_WaterMill",
+            -0.25,
+            -0.49
+          ],
+          [
+            "C_WaterMill",
+            -0.25,
+            -0.25
+          ],
+          [
+            "C_WaterMill",
+            -0.25,
+            0
+          ],
+          [
+            "C_WaterMill",
+            -0.25,
+            0.25
+          ],
+          [
+            "C_WaterMill",
+            -0.25,
+            0.49
+          ],
+          [
+            "C_WaterMill",
+            0,
+            -0.49
+          ],
+          [
+            "C_WaterMill",
+            0,
+            -0.25
+          ]
+        ]
+      },
+      "after": {
+        "checked": 225,
+        "misses": 0,
+        "examples": []
+      },
+      "oldArea": 13794.759469985962,
+      "area": 14408.398367881775,
+      "expectedArea": 14408.398557959714,
+      "triangles": 32
+    },
+    {
+      "region": "D",
+      "before": {
+        "checked": 225,
+        "misses": 225,
+        "examples": [
+          [
+            "D_GreatRootTree",
+            -0.49,
+            -0.49
+          ],
+          [
+            "D_GreatRootTree",
+            -0.49,
+            -0.25
+          ],
+          [
+            "D_GreatRootTree",
+            -0.49,
+            0
+          ],
+          [
+            "D_GreatRootTree",
+            -0.49,
+            0.25
+          ],
+          [
+            "D_GreatRootTree",
+            -0.49,
+            0.49
+          ],
+          [
+            "D_GreatRootTree",
+            -0.25,
+            -0.49
+          ],
+          [
+            "D_GreatRootTree",
+            -0.25,
+            -0.25
+          ],
+          [
+            "D_GreatRootTree",
+            -0.25,
+            0
+          ],
+          [
+            "D_GreatRootTree",
+            -0.25,
+            0.25
+          ],
+          [
+            "D_GreatRootTree",
+            -0.25,
+            0.49
+          ],
+          [
+            "D_GreatRootTree",
+            0,
+            -0.49
+          ],
+          [
+            "D_GreatRootTree",
+            0,
+            -0.25
+          ]
+        ]
+      },
+      "after": {
+        "checked": 225,
+        "misses": 0,
+        "examples": []
+      },
+      "oldArea": 14013.77141046524,
+      "area": 15020.298857808113,
+      "expectedArea": 15020.29887435461,
+      "triangles": 40
+    },
+    {
+      "region": "E",
+      "before": {
+        "checked": 150,
+        "misses": 150,
+        "examples": [
+          [
+            "E_WindPillarWest",
+            -0.49,
+            -0.49
+          ],
+          [
+            "E_WindPillarWest",
+            -0.49,
+            -0.25
+          ],
+          [
+            "E_WindPillarWest",
+            -0.49,
+            0
+          ],
+          [
+            "E_WindPillarWest",
+            -0.49,
+            0.25
+          ],
+          [
+            "E_WindPillarWest",
+            -0.49,
+            0.49
+          ],
+          [
+            "E_WindPillarWest",
+            -0.25,
+            -0.49
+          ],
+          [
+            "E_WindPillarWest",
+            -0.25,
+            -0.25
+          ],
+          [
+            "E_WindPillarWest",
+            -0.25,
+            0
+          ],
+          [
+            "E_WindPillarWest",
+            -0.25,
+            0.25
+          ],
+          [
+            "E_WindPillarWest",
+            -0.25,
+            0.49
+          ],
+          [
+            "E_WindPillarWest",
+            0,
+            -0.49
+          ],
+          [
+            "E_WindPillarWest",
+            0,
+            -0.25
+          ]
+        ]
+      },
+      "after": {
+        "checked": 150,
+        "misses": 0,
+        "examples": []
+      },
+      "oldArea": 12240.733716964722,
+      "area": 12384.310594558716,
+      "expectedArea": 12384.310574809735,
+      "triangles": 33
+    },
+    {
+      "region": "F",
+      "before": {
+        "checked": 375,
+        "misses": 375,
+        "examples": [
+          [
+            "F_MirrorPool",
+            -0.49,
+            -0.49
+          ],
+          [
+            "F_MirrorPool",
+            -0.49,
+            -0.25
+          ],
+          [
+            "F_MirrorPool",
+            -0.49,
+            0
+          ],
+          [
+            "F_MirrorPool",
+            -0.49,
+            0.25
+          ],
+          [
+            "F_MirrorPool",
+            -0.49,
+            0.49
+          ],
+          [
+            "F_MirrorPool",
+            -0.25,
+            -0.49
+          ],
+          [
+            "F_MirrorPool",
+            -0.25,
+            -0.25
+          ],
+          [
+            "F_MirrorPool",
+            -0.25,
+            0
+          ],
+          [
+            "F_MirrorPool",
+            -0.25,
+            0.25
+          ],
+          [
+            "F_MirrorPool",
+            -0.25,
+            0.49
+          ],
+          [
+            "F_MirrorPool",
+            0,
+            -0.49
+          ],
+          [
+            "F_MirrorPool",
+            0,
+            -0.25
+          ]
+        ]
+      },
+      "after": {
+        "checked": 375,
+        "misses": 0,
+        "examples": []
+      },
+      "oldArea": 12334.692094802856,
+      "area": 15089.830293655396,
+      "expectedArea": 15089.83035229836,
+      "triangles": 31
+    },
+    {
+      "region": "G",
+      "before": {
+        "checked": 200,
+        "misses": 200,
+        "examples": [
+          [
+            "G_StarDome",
+            -0.49,
+            -0.49
+          ],
+          [
+            "G_StarDome",
+            -0.49,
+            -0.25
+          ],
+          [
+            "G_StarDome",
+            -0.49,
+            0
+          ],
+          [
+            "G_StarDome",
+            -0.49,
+            0.25
+          ],
+          [
+            "G_StarDome",
+            -0.49,
+            0.49
+          ],
+          [
+            "G_StarDome",
+            -0.25,
+            -0.49
+          ],
+          [
+            "G_StarDome",
+            -0.25,
+            -0.25
+          ],
+          [
+            "G_StarDome",
+            -0.25,
+            0
+          ],
+          [
+            "G_StarDome",
+            -0.25,
+            0.25
+          ],
+          [
+            "G_StarDome",
+            -0.25,
+            0.49
+          ],
+          [
+            "G_StarDome",
+            0,
+            -0.49
+          ],
+          [
+            "G_StarDome",
+            0,
+            -0.25
+          ]
+        ]
+      },
+      "after": {
+        "checked": 200,
+        "misses": 0,
+        "examples": []
+      },
+      "oldArea": 10372.007420539856,
+      "area": 11859.094601154327,
+      "expectedArea": 11859.094704809522,
+      "triangles": 37
+    },
+    {
+      "region": "H",
+      "before": {
+        "checked": 175,
+        "misses": 175,
+        "examples": [
+          [
+            "H_HomecomingBell",
+            -0.49,
+            -0.49
+          ],
+          [
+            "H_HomecomingBell",
+            -0.49,
+            -0.25
+          ],
+          [
+            "H_HomecomingBell",
+            -0.49,
+            0
+          ],
+          [
+            "H_HomecomingBell",
+            -0.49,
+            0.25
+          ],
+          [
+            "H_HomecomingBell",
+            -0.49,
+            0.49
+          ],
+          [
+            "H_HomecomingBell",
+            -0.25,
+            -0.49
+          ],
+          [
+            "H_HomecomingBell",
+            -0.25,
+            -0.25
+          ],
+          [
+            "H_HomecomingBell",
+            -0.25,
+            0
+          ],
+          [
+            "H_HomecomingBell",
+            -0.25,
+            0.25
+          ],
+          [
+            "H_HomecomingBell",
+            -0.25,
+            0.49
+          ],
+          [
+            "H_HomecomingBell",
+            0,
+            -0.49
+          ],
+          [
+            "H_HomecomingBell",
+            0,
+            -0.25
+          ]
+        ]
+      },
+      "after": {
+        "checked": 175,
+        "misses": 0,
+        "examples": []
+      },
+      "oldArea": 11199.520195007324,
+      "area": 12310.81723356247,
+      "expectedArea": 12310.816923027336,
+      "triangles": 28
+    },
+    {
+      "region": "S1",
+      "before": {
+        "checked": 50,
+        "misses": 50,
+        "examples": [
+          [
+            "S1_FrogPond",
+            -0.49,
+            -0.49
+          ],
+          [
+            "S1_FrogPond",
+            -0.49,
+            -0.25
+          ],
+          [
+            "S1_FrogPond",
+            -0.49,
+            0
+          ],
+          [
+            "S1_FrogPond",
+            -0.49,
+            0.25
+          ],
+          [
+            "S1_FrogPond",
+            -0.49,
+            0.49
+          ],
+          [
+            "S1_FrogPond",
+            -0.25,
+            -0.49
+          ],
+          [
+            "S1_FrogPond",
+            -0.25,
+            -0.25
+          ],
+          [
+            "S1_FrogPond",
+            -0.25,
+            0
+          ],
+          [
+            "S1_FrogPond",
+            -0.25,
+            0.25
+          ],
+          [
+            "S1_FrogPond",
+            -0.25,
+            0.49
+          ],
+          [
+            "S1_FrogPond",
+            0,
+            -0.49
+          ],
+          [
+            "S1_FrogPond",
+            0,
+            -0.25
+          ]
+        ]
+      },
+      "after": {
+        "checked": 50,
+        "misses": 0,
+        "examples": []
+      },
+      "oldArea": 2607.4479179382324,
+      "area": 2839.1335611343384,
+      "expectedArea": 2839.133391782001,
+      "triangles": 25
+    },
+    {
+      "region": "S2",
+      "before": {
+        "checked": 50,
+        "misses": 50,
+        "examples": [
+          [
+            "S2_PostOffice",
+            -0.49,
+            -0.49
+          ],
+          [
+            "S2_PostOffice",
+            -0.49,
+            -0.25
+          ],
+          [
+            "S2_PostOffice",
+            -0.49,
+            0
+          ],
+          [
+            "S2_PostOffice",
+            -0.49,
+            0.25
+          ],
+          [
+            "S2_PostOffice",
+            -0.49,
+            0.49
+          ],
+          [
+            "S2_PostOffice",
+            -0.25,
+            -0.49
+          ],
+          [
+            "S2_PostOffice",
+            -0.25,
+            -0.25
+          ],
+          [
+            "S2_PostOffice",
+            -0.25,
+            0
+          ],
+          [
+            "S2_PostOffice",
+            -0.25,
+            0.25
+          ],
+          [
+            "S2_PostOffice",
+            -0.25,
+            0.49
+          ],
+          [
+            "S2_PostOffice",
+            0,
+            -0.49
+          ],
+          [
+            "S2_PostOffice",
+            0,
+            -0.25
+          ]
+        ]
+      },
+      "after": {
+        "checked": 50,
+        "misses": 0,
+        "examples": []
+      },
+      "oldArea": 2731.0161695480347,
+      "area": 2861.8802213668823,
+      "expectedArea": 2861.8803878604504,
+      "triangles": 25
+    },
+    {
+      "region": "S3",
+      "before": {
+        "checked": 50,
+        "misses": 50,
+        "examples": [
+          [
+            "S3_RainCave",
+            -0.49,
+            -0.49
+          ],
+          [
+            "S3_RainCave",
+            -0.49,
+            -0.25
+          ],
+          [
+            "S3_RainCave",
+            -0.49,
+            0
+          ],
+          [
+            "S3_RainCave",
+            -0.49,
+            0.25
+          ],
+          [
+            "S3_RainCave",
+            -0.49,
+            0.49
+          ],
+          [
+            "S3_RainCave",
+            -0.25,
+            -0.49
+          ],
+          [
+            "S3_RainCave",
+            -0.25,
+            -0.25
+          ],
+          [
+            "S3_RainCave",
+            -0.25,
+            0
+          ],
+          [
+            "S3_RainCave",
+            -0.25,
+            0.25
+          ],
+          [
+            "S3_RainCave",
+            -0.25,
+            0.49
+          ],
+          [
+            "S3_RainCave",
+            0,
+            -0.49
+          ],
+          [
+            "S3_RainCave",
+            0,
+            -0.25
+          ]
+        ]
+      },
+      "after": {
+        "checked": 50,
+        "misses": 0,
+        "examples": []
+      },
+      "oldArea": 3525.5688495635986,
+      "area": 3971.290252685547,
+      "expectedArea": 3971.2898363243175,
+      "triangles": 25
+    },
+    {
+      "region": "S4",
+      "before": {
+        "checked": 50,
+        "misses": 50,
+        "examples": [
+          [
+            "S4_StarLookout",
+            -0.49,
+            -0.49
+          ],
+          [
+            "S4_StarLookout",
+            -0.49,
+            -0.25
+          ],
+          [
+            "S4_StarLookout",
+            -0.49,
+            0
+          ],
+          [
+            "S4_StarLookout",
+            -0.49,
+            0.25
+          ],
+          [
+            "S4_StarLookout",
+            -0.49,
+            0.49
+          ],
+          [
+            "S4_StarLookout",
+            -0.25,
+            -0.49
+          ],
+          [
+            "S4_StarLookout",
+            -0.25,
+            -0.25
+          ],
+          [
+            "S4_StarLookout",
+            -0.25,
+            0
+          ],
+          [
+            "S4_StarLookout",
+            -0.25,
+            0.25
+          ],
+          [
+            "S4_StarLookout",
+            -0.25,
+            0.49
+          ],
+          [
+            "S4_StarLookout",
+            0,
+            -0.49
+          ],
+          [
+            "S4_StarLookout",
+            0,
+            -0.25
+          ]
+        ]
+      },
+      "after": {
+        "checked": 50,
+        "misses": 0,
+        "examples": []
+      },
+      "oldArea": 3729.5420598983765,
+      "area": 3968.9020671844482,
+      "expectedArea": 3968.9018864882455,
+      "triangles": 25
+    }
+  ],
+  "groundProbeCount": 2200,
+  "priorMissingGroundProbes": 2200,
+  "missingGroundProbes": 0,
+  "restoredGroundArea": 9763.197265267372,
+  "perimeterSegments": 926,
+  "opposedPerimeterFaces": true,
+  "unchangedVisibleNavigationBridges": true,
+  "unchangedGeometrySha256": "256982ec0fb38ce51ae6983cd6e44887762a049fa7fd091b094dfa5166f6cb8b",
+  "gameSmoke": "Not performed"
+}

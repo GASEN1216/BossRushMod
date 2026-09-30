@@ -107,17 +107,72 @@ class Geometry:
         faces = [tuple(reversed(face)) for face in faces]
         self.add(material, vertices, faces, smooth=False)
 
-    def leaf(self, origin, tip, width, material):
-        """有厚度的折脊小叶，六顶点八三角，绝无正反重合片。"""
+    def leaf(self, origin, tip, width, material, roll=0.0, curl=.10, petal=False):
+        """闭合弯曲叶片：连续中脉、三段叶缘及薄腹面，卷转不产生重合面。"""
         direction = tuple(tip[i]-origin[i] for i in range(3))
-        side = _unit(_cross(direction, (0, 1, 0)))
-        middle = _add(origin, _mul(direction, .52))
-        left = _add(middle, _mul(side, width))
-        right = _add(middle, _mul(side, -width))
-        upper = _add(middle, (0, width*.32, 0))
-        lower = _add(middle, (0, -width*.18, 0))
-        self.add(material, [origin, left, tip, right, upper, lower],
-                 [(0,1,4),(1,2,4),(2,3,4),(3,0,4),(1,0,5),(2,1,5),(3,2,5),(0,3,5)])
+        axis = _unit(direction)
+        side = _cross(axis, (0, 1, 0))
+        if sum(value*value for value in side) < .001:
+            side = _cross(axis, (1, 0, 0))
+        side = _unit(side)
+        normal = _unit(_cross(side, axis))
+        side, normal = (_add(_mul(side, math.cos(roll)), _mul(normal, math.sin(roll))),
+                        _add(_mul(normal, math.cos(roll)), _mul(side, -math.sin(roll))))
+        vertices = [origin]
+        # 花瓣的远端较宽；叶片收尖，中脉直接由表面折线表现。
+        profile = (.55, .94, .82) if petal else (.65, 1.0, .53)
+        for t, spread in zip((.23, .54, .82), profile):
+            center = _add(_add(origin, _mul(direction, t)),
+                          _mul(normal, width*curl*math.sin(math.pi*t)))
+            vertices.extend((_add(center, _mul(side, width*spread)),
+                             _add(center, _mul(normal, -width*.065*spread)),
+                             _add(center, _mul(side, -width*spread)),
+                             _add(center, _mul(normal, width*.22*spread))))
+        vertices.append(tip)
+        faces = [(0, 1+(i+1)%4, 1+i) for i in range(4)]
+        for ring in range(2):
+            start = 1+ring*4
+            faces.extend((start+i, start+(i+1)%4, start+4+(i+1)%4, start+4+i)
+                         for i in range(4))
+        faces.extend((9+i, 9+(i+1)%4, 13) for i in range(4))
+        self.add(material, vertices, faces)
+
+    def foliage_cluster(self, center, size, material, seed=0, sides=7, rings=3):
+        """带叶柄的簇生叶，拟合旧球冠实际包络，维持树干定位与道路净空。"""
+        envelope = Geometry()
+        envelope.crown(center, size, material, seed, sides, rings)
+        reference = envelope.groups[material]["v"]
+        cluster = Geometry()
+        for index in range(5):
+            angle = index*TAU/5 + seed*.31
+            root = (0, -.82, 0)
+            joint = (math.cos(angle)*.23, -.16+index*.025, math.sin(angle)*.23)
+            tip = (math.cos(angle), .38+.25*math.cos(angle+.6), math.sin(angle))
+            cluster.tube([root, joint], [.035, .014], material, 4)
+            cluster.leaf(joint, tip, .32, material, roll=(index-2)*.14, curl=.24)
+        cluster.leaf((0, -.30, 0), (.12, 1.0, -.08), .26, material, roll=.3)
+        data = cluster.groups[material]
+        low = [min(v[i] for v in data["v"]) for i in range(3)]
+        high = [max(v[i] for v in data["v"]) for i in range(3)]
+        lo = [min(v[i] for v in reference) for i in range(3)]
+        hi = [max(v[i] for v in reference) for i in range(3)]
+        vertices = [tuple(lo[i]+(v[i]-low[i])*(hi[i]-lo[i])/(high[i]-low[i])
+                          for i in range(3)) for v in data["v"]]
+        self.add(material, vertices, data["f"])
+
+    def flower(self, center, radius, material, heart, angle=0.0):
+        """五瓣浅碟状花冠与封闭六角花盘，只用软植被材质。"""
+        for index in range(5):
+            theta = angle+index*TAU/5
+            direction = (math.cos(theta), 0, math.sin(theta))
+            root = _add(center, _mul(direction, radius*.10))
+            tip = _add(_add(center, _mul(direction, radius)), (0, radius*.20, 0))
+            self.leaf(root, tip, radius*.32, material, roll=.10*math.sin(theta),
+                      curl=.45, petal=True)
+        self.tube([_add(center, (0, -.025*radius, 0)),
+                   _add(center, (0, .12*radius, 0)),
+                   _add(center, (0, .23*radius, 0))],
+                  [radius*.18, radius*.22, radius*.13], heart, 6)
 
     def box(self, center, size, material, bevel=.08):
         x, y, z = center
@@ -174,7 +229,12 @@ def _tree(geometry, name):
             sy=y+ry*(.40+.25*math.sin(angle+.7))
             sz=z+math.sin(angle)*rz*.7
             secondary=accent if side==index%4 else primary
-            geometry.crown((sx,sy,sz),(rx*.43,ry*.60,rz*.43),secondary,index*4+side+12,7,3)
+            geometry.foliage_cluster((sx,sy,sz),(rx*.43,ry*.60,rz*.43),secondary,index*4+side+12,7,3)
+        if primary == "Blossom":
+            for bloom in range(2):
+                theta = index*.73+bloom*2.1
+                flower_center = (x+math.cos(theta)*rx*.60, y+ry*1.20, z+math.sin(theta)*rz*.58)
+                geometry.flower(flower_center, min(rx,rz)*.19, primary, accent, theta)
     # 冠缘小叶簇有厚度，每树少量即可在近景显出叶子尺度。
     for index,(x,y,z,rx,ry,rz) in enumerate(crowns[:3]):
         for side in (-1,1):
@@ -192,7 +252,7 @@ def _shrub(geometry, name):
     else:
         lobes=[(-.44,.52,.05,.65,.49,.58),(.48,.64,.1,.72,.58,.65),(0,.99,-.06,.67,.57,.63)]
     for index,(x,y,z,rx,ry,rz) in enumerate(lobes):
-        geometry.crown((x,y,z),(rx,ry,rz),"Leaf" if index%2==0 else "LeafLight",index+7,9,4)
+        geometry.foliage_cluster((x,y,z),(rx,ry,rz),"Leaf" if index%2==0 else "LeafLight",index+7,9,4)
     for index in range(3):
         angle=TAU*index/3+.5
         geometry.leaf((.35*math.cos(angle),.5,.35*math.sin(angle)),
@@ -204,25 +264,33 @@ def _shrub(geometry, name):
 
 
 def _fern(geometry):
-    # 五条弯曲羽状复叶，每条两侧各五片实体小叶，避免原来宽蕉叶的黑色贴图轮廓。
-    for index in range(5):
-        angle=index*TAU/5+.18
-        forward=(math.cos(angle),0,math.sin(angle))
-        side=(-math.sin(angle),0,math.cos(angle))
-        length=.87 if index%2 else 1.05
-        height=.58+index*.025
+    # 外层舒展、内层直立；羽片向尖端收窄，左右错节，不做机械镜像。
+    for index in range(7):
+        angle = index*TAU/5+.18 if index < 5 else (index-5)*math.pi+.8
+        forward = (math.cos(angle), 0, math.sin(angle))
+        side = (-math.sin(angle), 0, math.cos(angle))
+        young = index >= 5
+        length = .62 if young else (.87 if index%2 else 1.05)
+        height = .80 if young else .56+index*.018
         def curve(t):
-            return _add(_mul(forward,length*t),(0,.025+height*math.sin(t*1.55),0))
-        tip=curve(1)
-        geometry.tube([curve(t) for t in (0,.25,.5,.75,1)],[.024,.021,.017,.012,.006],"Forest",4)
-        for pair in range(5):
-            t=.20+pair*.16
-            middle=curve(t)
-            width=.31*(1-t*.72)
-            for sign in (-1,1):
-                endpoint=_add(middle,_add(_mul(side,width*sign),_add(_mul(forward,.13),(0,.045,0))))
-                geometry.leaf(middle,endpoint,width*.44,"LeafLight" if (pair+index)%3==0 else "Leaf")
-        geometry.leaf(curve(.86),tip,.075,"LeafLight")
+            return _add(_mul(forward, length*t),
+                        (0, .025+height*math.sin(t*1.95)-.11*t*t, 0))
+        samples = (0, .18, .38, .58, .78, 1)
+        geometry.tube([curve(t) for t in samples],
+                      [.025, .022, .018, .014, .009, .004], "Forest", 5)
+        for pair in range(6):
+            t = .17+pair*.125
+            width = .31*math.sin(math.pi*(.17+t*.77))*(1-t*.65)
+            for sign in (-1, 1):
+                middle = curve(t+(.025 if sign > 0 else 0))
+                reach = width*(.82 if young else 1)
+                endpoint = _add(middle, _add(_mul(side, reach*sign),
+                                _add(_mul(forward, .12*(1-t*.4)),
+                                     (0, .05-.09*t, 0))))
+                geometry.leaf(middle, endpoint, reach*.25,
+                              "LeafLight" if (pair+index)%4==0 else "Leaf",
+                              roll=sign*(.18+pair*.045), curl=.23)
+        geometry.leaf(curve(.87), curve(1), .040, "LeafLight", roll=index*.07)
 
 
 def _coral(geometry):
@@ -230,7 +298,7 @@ def _coral(geometry):
     stems=[(-.38,.78,-.12),(.30,1.02,.20),(-.12,1.2,.08),(.42,.72,-.30),(-.40,.65,.38)]
     for index,(x,y,z) in enumerate(stems):
         geometry.tube([(0,.04,0),(x*.4,y*.5,z*.4),(x,y,z)],[.085,.065,.025],"Coral",6)
-        geometry.crown((x,y-.04,z),(.16,.22,.16),"LeafLight" if index%2 else "Leaf",index+4,6,3)
+        geometry.foliage_cluster((x,y-.04,z),(.16,.22,.16),"LeafLight" if index%2 else "Leaf",index+4,6,3)
         for sign in (-1,1):
             start=(x*.55,y*.57,z*.55)
             tip=(x+sign*.18,y*.80,z-.14)
@@ -263,6 +331,12 @@ def model(name, bounds):
         _coral(geometry)
     else:
         _bench(geometry)
+    # 单件作者几何预算；实例数由原摆放器决定，不能靠无限堆叶片提质。
+    triangle_budget = 5500 if name.startswith("tree_") or name == "cherry_tree" else 2600
+    triangles = sum(len(face)-2 for data in geometry.groups.values() for face in data["f"])
+    if triangles > triangle_budget:
+        raise ValueError("Botany triangle budget exceeded: {} ({}/{})".format(
+            name, triangles, triangle_budget))
     points=[point for data in geometry.groups.values() for point in data["v"]]
     lo=[min(p[i] for p in points) for i in range(3)]
     hi=[max(p[i] for p in points) for i in range(3)]
@@ -295,7 +369,10 @@ def stamp(g, payload, x, base_y, z, yaw_deg, scale):
     for material,data in groups.items():
         vertices=[(x+(vx*cosine+vz*sine)*scale,base_y+vy*scale,z+(-vx*sine+vz*cosine)*scale) for vx,vy,vz in data["v"]]
         # 所有新面均平面着色，合批接口不依赖 smooth-list 的扩展。
-        g.addmesh(material,vertices,data["f"],smooth=False)
+        if payload["meta"]["name"] in ("bush_a","bush_b","cliff_shrub_cap","coral_clump","fern_clump"):
+            g.addmesh(material,vertices,data["f"],smooth=False,group=g.CURRENT+'_Flora')
+        else:
+            g.addmesh(material,vertices,data["f"],smooth=False)
         triangles+=sum(len(face)-2 for face in data["f"])
     return triangles
 

@@ -14,6 +14,7 @@ from pathlib import Path
 import bpy
 import bmesh
 from mathutils import Vector
+from mathutils.geometry import tessellate_polygon
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sky_island_frame  # noqa: E402  旧版手写坐标 → 当前岛位（main 里按 layout 绑定）
@@ -237,7 +238,7 @@ def create_object(name,verts,faces,mat=None,uv=None,smooth=None,hidden=False,cor
         for poly in mesh.polygons:
             for li in poly.loop_indices: layer.data[li].uv=uv[mesh.loops[li].vertex_index]
     # Recompute closed-shell normals; open terrain keeps the supplied upward faces.
-    if corner_normals is None and not name.startswith(('NAV_','COL_Ground','VIS_Ground')):
+    if corner_normals is None and not name.startswith(('NAV_','COL_Ground','VIS_Ground','COL_Rail')):
         bm=bmesh.new(); bm.from_mesh(mesh)
         bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces)); bm.to_mesh(mesh); bm.free()
     if smooth:
@@ -253,6 +254,8 @@ def create_object(name,verts,faces,mat=None,uv=None,smooth=None,hidden=False,cor
     obj=bpy.data.objects.new(name,mesh)
     bpy.context.scene.collection.objects.link(obj)
     obj.hide_render=hidden
+    if '_Paving_' in name or '_GroundDetail_' in name:
+        obj.visible_shadow=False
     return obj
 
 
@@ -385,12 +388,15 @@ def island_shell(island):
 
 
 def paved_disc(x,y,z,r,mat='Limestone'):
+    global CURRENT
+    region=CURRENT; CURRENT=region+'_GroundDetail'
     cylinder((x,y-.10,z),r,.24,mat,40)
     torus((x,y+.04,z),r-.35,.12,'Chalk',segments=48,sides=5)
     # Radial decorative seams, physically flush.
     for i in range(12):
         a=i*TAU/12
         beam((x+2*math.cos(a),y+.03,z+2*math.sin(a)),(x+(r-.5)*math.cos(a),y+.03,z+(r-.5)*math.sin(a)),.055,'Chalk',4)
+    CURRENT=region
 
 
 def bell(x,y,z,scale=1):
@@ -464,9 +470,11 @@ def area_landmarks(islands):
     for side in [-1,1]:
         for row in range(3):
             cx,cz,bed_w,bed_d=next(beds)
+            CURRENT='C_GroundDetail'
             box((cx,y+.045,cz),(bed_w,.08,bed_d),'Soil',.01)
             for dx in [-12,12]: box((cx+dx,y+.08,cz),(.35,.12,bed_d+1.3),'Limestone',.01)
             for zz in [-bed_d/2,bed_d/2]: box((cx,y+.08,cz+zz),(bed_w,.12,.35),'Limestone',.01)
+            CURRENT='C_Flora'
             for col in range(6):
                 for rr in range(3):
                     px=cx-9.6+col*3.7; pz=cz-5+rr*4.5
@@ -491,6 +499,7 @@ def area_landmarks(islands):
                             beam((px+dx,y,pz+dz),(px+dx+.15,top,pz+dz),.026,'LeafGold',5)
                             sphere((px+dx+.15,top,pz+dz),(.12,.27,.1),'Flower',6,3,False)
     # 水车贴在水磨坊（C_WaterMill）南墙外，随障碍同一换算；磨坊深 12 米不缩。
+    CURRENT='C'
     mill_x,mill_z=sky_island_frame.scale_offset('C',-50,20)
     wx,wz=x+mill_x,z+mill_z-6.2
     torus((wx,y+5,wz),4.8,.5,'Wood',axis='z',segments=24)
@@ -682,13 +691,23 @@ def bridge_details(bridges):
 
         # Arc-length spacing runs once over the complete bridge, including short corner samples.
         count=max(1,math.ceil(length/1.55))
+        CURRENT='Bridge_'+bridge['id']+'_GroundDetail'
         for i in range(count):
             left,right=at_distance((i+.5)*length/count)
             beam(tuple(left-Vector((0,.11,0))),tuple(right-Vector((0,.11,0))),.18,'Wood' if i%5==0 else 'WoodLight',4)
+        CURRENT='Bridge_'+bridge['id']
+        # A horizontal support cap can pierce the low side of a sloping deck.
+        # Account for the whole cap radius, including the widened relay approaches.
+        maximum_slope=0.0
+        for triangle in bridge['surfaceTriangles']:
+            a,b,c=(Vector(point) for point in triangle)
+            normal=(b-a).cross(c-a)
+            maximum_slope=max(maximum_slope,math.hypot(normal.x,normal.z)/max(abs(normal.y),1e-8))
+        extra_drop=max(0.0,.35+width*.64*maximum_slope-1.0)
         for distance in range(24,int(length)-10,32):
             left,right=at_distance(distance); p=(left+right)*.5
-            cylinder(tuple(p-Vector((0,9,0))),width*.47,16,'Limestone',8,radius_top=width*.64)
-            cylinder(tuple(p-Vector((0,20,0))),width*.18,9,'Rock',6,radius_top=width*.47)
+            cylinder(tuple(p-Vector((0,9+extra_drop,0))),width*.47,16,'Limestone',8,radius_top=width*.64)
+            cylinder(tuple(p-Vector((0,20+extra_drop,0))),width*.18,9,'Rock',6,radius_top=width*.47)
         # Tiny continuous inlaid seams and warm studs lead the eye through the curve.
         for distance in range(6,int(length)-3,12):
             left,right=at_distance(distance)
@@ -1122,6 +1141,30 @@ def cliff_dressing(islands):
         for i in range(4): sphere((xx+(i-1.5)*w*.4,y-47,zz),(w*.65,2.2,3.8),'Cloud',10,5)
 
 
+def solid_island_ground(island):
+    """Physical terrain continues below props; navigation holes are not floor holes.
+
+    Keep the authored outline and bridge portal vertices exactly. Nominal obstacle
+    footprints remain navigation exclusions, but their visual grass patches must
+    support players beside narrow trunks, columns and open building entrances.
+    """
+    vertices=[(float(x),float(island['height']),float(z)) for x,z in island['outline']]
+    points=[Vector(p) for p in vertices]
+    lookup={tuple(p):i for i,p in enumerate(points)}
+    faces=[]
+    for triangle in tessellate_polygon([points]):
+        face=tuple(p if isinstance(p,int) else lookup[tuple(p)] for p in triangle)
+        normal=(points[face[1]]-points[face[0]]).cross(points[face[2]]-points[face[0]])
+        if abs(normal.y)<1e-8:
+            continue
+        if normal.y<0:
+            face=(face[0],face[2],face[1])
+        faces.append(face)
+    if not faces:
+        raise ValueError('Empty physical island floor: '+island['id'])
+    return vertices,faces
+
+
 def terrain_and_boundary(layout):
     global CURRENT
     ground=layout['ground']; verts=ground['vertices']; faces=ground['triangles']
@@ -1132,8 +1175,10 @@ def terrain_and_boundary(layout):
         # Compact indices preserve per-region frustum culling.
         used=sorted(set(i for f in tri for i in f)); remap={old:new for new,old in enumerate(used)}
         vv=[verts[i] for i in used]; ff=[tuple(remap[i] for i in f) for f in tri]
-        create_object('VIS_Ground_'+str(region),vv,ff,mat)
-        create_object('COL_Ground_'+str(region),vv,ff,hidden=True)
+        island=next((i for i in layout['islands'] if i['id']==region),None)
+        cv,cf=solid_island_ground(island) if island is not None else (vv,ff)
+        create_object('VIS_Ground_'+str(region),cv,cf,mat)
+        create_object('COL_Ground_'+str(region),cv,cf,hidden=True)
     nav=layout['navigation']
     create_object('NAV_SkyIsland',nav['vertices'],nav['triangles'],hidden=True)
     # Continuous physical safety rail on the outside of the exact ground domain.
@@ -1169,7 +1214,7 @@ def terrain_and_boundary(layout):
 def build_materials(assets):
     for name,color in PALETTE.items():
         mat=bpy.data.materials.new('Sky_'+name); mat.diffuse_color=linear_color(rgba(color)); mat.use_nodes=True
-        bsdf=mat.node_tree.nodes.get('Principled BSDF'); bsdf.inputs['Base Color'].default_value=linear_color(rgba(color))
+        bsdf=next(n for n in mat.node_tree.nodes if n.type=='BSDF_PRINCIPLED'); bsdf.inputs['Base Color'].default_value=linear_color(rgba(color))
         bsdf.inputs['Roughness'].default_value=.77
         if name in ['Brass','BrassLight','Copper']: bsdf.inputs['Metallic'].default_value=.32; bsdf.inputs['Roughness'].default_value=.4
         if name=='Water': bsdf.inputs['Roughness'].default_value=.21; bsdf.inputs['Metallic'].default_value=.25
@@ -1196,12 +1241,21 @@ def build_materials(assets):
 def main():
     global CURRENT
     parser=argparse.ArgumentParser(); parser.add_argument('--project',required=True); parser.add_argument('--skip-render',action='store_true')
+    parser.add_argument('--prepare-navigation',action='store_true',help='Export rigid footprint inputs only; do not replace the production FBX')
     args=parser.parse_args(sys.argv[sys.argv.index('--')+1:]); project=Path(args.project).resolve()
     if not (project/'ProjectSettings'/'ProjectVersion.txt').is_file(): raise ValueError('Existing Unity project required')
     assets=project/'Assets'/'SkyIsland'; source=project/'ArtSource'/'SkyIsland'
     assets.mkdir(parents=True,exist_ok=True); source.mkdir(parents=True,exist_ok=True)
     layout=json.loads((assets/'sky_island_layout.json').read_text(encoding='utf-8-sig'))
     for obj in list(bpy.data.objects): bpy.data.objects.remove(obj,do_unlink=True)
+    # A live MCP rebuild starts from the existing author file, not factory startup.
+    # Drop only this generator's unused datablocks so exported contract names stay stable.
+    for mesh in list(bpy.data.meshes):
+        if mesh.users==0 and mesh.name.startswith(('VIS_','NAV_','COL_')):
+            bpy.data.meshes.remove(mesh)
+    for material in list(bpy.data.materials):
+        if material.users==0 and material.name.startswith('Sky_'):
+            bpy.data.materials.remove(material)
     # Tripo3D 件的材质必须在 build_materials 之前登记，否则 MATERIALS 里没有对应条目。
     sys.path.insert(0,str(Path(__file__).resolve().parent))
     import sky_island_tripo_props
@@ -1226,11 +1280,8 @@ def main():
         _centre=(_isl['center'][0],_isl['center'][2]) if _isl else None
         collision_box(obs['id'],obs['center'],
                       sky_island_tripo_props.collision_fit(obs,source/'tripo',_centre) or obs['size'])
-        # The navigation/collision surface excludes obstacles; the visible soil must still
-        # continue beneath narrow trunks, posts and round pedestals instead of exposing void.
-        floor=y-h/2-.001
-        addmesh('GrassLight' if CURRENT in ['A','C','S1'] else 'Grass',
-                [(x-w/2,floor,z-d/2),(x-w/2,floor,z+d/2),(x+w/2,floor,z+d/2),(x+w/2,floor,z-d/2)],[(0,1,2,3)])
+        # VIS_Ground and COL_Ground already cover the full island under this prop.
+        # Separate nominal footprint patches caused height seams and black slivers.
         if kind == 'life_prop':
             settlement_records.append(sky_island_settlement.place_model(sys.modules[__name__],obs))
             continue
@@ -1311,6 +1362,13 @@ def main():
         obj=create_object('VIS_'+region+'_'+mat,data['v'],data['f'],mat,data['uv'],data['smooth'],
                           corner_normals=data.get('corner_normals'))
         stats[obj.name]={'vertices':len(data['v']),'triangles':sum(len(f)-2 for f in data['f'])}
+    if args.prepare_navigation:
+        from export_sky_island_collision_footprints import export as export_footprints
+        report=export_footprints(project,assets/'sky_island_layout.json',source/'sky_island_collision_footprints.json')
+        print('SKY_ISLAND_COLLISION_INPUTS_OK '+json.dumps(report))
+        return
+    from sky_island_collision_navigation import apply_navigation
+    effective_nav=apply_navigation(sys.modules[__name__],layout,assets)
     scene=bpy.context.scene; scene.unit_settings.system='METRIC'; scene.unit_settings.scale_length=1
     bpy.ops.object.select_all(action='DESELECT')
     for obj in scene.objects: obj.select_set(obj.type in {'MESH','EMPTY'})
@@ -1319,11 +1377,11 @@ def main():
     metadata={'coordinateSystem':'Unity XYZ metres','materials':{'Sky_'+name:{'rgba':TILED_TEXTURES[name][2] if name in TILED_TEXTURES else rgba(color),'texture':(MODEL_TEXTURES[name].replace(chr(92),'/') if name in MODEL_TEXTURES else 'Textures/sky_mural.png' if name=='Mural' else 'Textures/sky_cloth.png' if name=='Cloth' else 'Textures/'+TILED_TEXTURES[name][0] if name in TILED_TEXTURES else None),'emission':EMISSION.get(name,0)} for name,color in PALETTE.items()},
               'markers':[{'name':m['id'],'position':m['position']} for m in layout['markers']]+[{'name':'POI_B_Mural','position':mural_marker(islands)}],
               'visualMeshes':stats,'totalVisualTriangles':sum(s['triangles'] for s in stats.values()),'meshHygiene':MESH_HYGIENE,'collisionBoxes':COLLISIONS,
-              'navVertices':len(layout['navigation']['vertices']),'navTriangles':len(layout['navigation']['triangles']),
+              'navVertices':len(effective_nav['vertices']),'navTriangles':len(effective_nav['triangles']),
               'sourceLayout':str(assets/'sky_island_layout.json'),'textures':['Textures/sky_mural.png','Textures/sky_cloth.png']+['Textures/'+n for n in sorted(set(v[0] for v in TILED_TEXTURES.values()))]}
     (source/'sky_island_geometry.json').write_text(json.dumps(metadata,indent=2,ensure_ascii=False),encoding='utf-8')
     # Authoring light/cameras exist only in the .blend, not the exported FBX.
-    scene.world.use_nodes=True; world=scene.world.node_tree.nodes.get('Background'); world.inputs['Color'].default_value=(.30,.53,.69,1); world.inputs['Strength'].default_value=.62
+    scene.world.use_nodes=True; world=next(n for n in scene.world.node_tree.nodes if n.type=='BACKGROUND'); world.inputs['Color'].default_value=(.30,.53,.69,1); world.inputs['Strength'].default_value=.62
     bpy.ops.object.light_add(type='SUN',location=(-400,-500,700)); sun=bpy.context.object; sun.name='Author_Sun'
     sun.rotation_euler=(math.radians(28),math.radians(-25),math.radians(-28)); sun.data.energy=2.5; sun.data.angle=math.radians(12); sun.data.color=(1,.82,.63)
     bpy.ops.object.camera_add(); camera=bpy.context.object; camera.name='Author_Camera'; scene.camera=camera

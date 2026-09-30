@@ -77,7 +77,7 @@ namespace BossRush
         private bool TryFallbackFooting(Vector3 from, out Vector3 footing)
         {
             footing = from;
-            Transform best = null;
+            bool found = false;
             float bestDistance = float.MaxValue;
             for (int i = 0; i < landmarks.Count; i++)
             {
@@ -87,15 +87,24 @@ namespace BossRush
                 if (distance >= bestDistance || distance < SameSpotRadius * SameSpotRadius) continue;
                 // 排除出事点本身（上面的近距离过滤）、脚下没有自建地面的、以及被实体占着的：
                 // 换过去还是站不住的话，下一轮连捞会再往外挑一个更远的地标，逐步走出这片坏地。
-                try { VerifyGround(landmark); }
-                catch (Exception) { continue; }
-                if (Blocked(landmark.position)) continue;
-                best = landmark;
+                Vector3 candidate;
+                if (!TryRescueFooting(landmark.position, out candidate)) continue;
+                footing = candidate;
+                found = true;
                 bestDistance = distance;
             }
-            if (best == null && playerSpawn != null) best = playerSpawn;
-            if (best == null) return false;
-            footing = best.position + Vector3.up * 0.15f;
+            if (found) return true;
+            return playerSpawn != null && TryRescueFooting(playerSpawn.position, out footing);
+        }
+
+        /// <summary>标记只提供探测位置；净空检查和传送高度必须使用同一次射线命中的真实地面。</summary>
+        private bool TryRescueFooting(Vector3 at, out Vector3 footing)
+        {
+            footing = at;
+            RaycastHit hit;
+            if (!Physics.Raycast(at + Vector3.up * 2f, Vector3.down, out hit, 4f, groundMask, QueryTriggerInteraction.Ignore)
+                || !hit.transform.IsChildOf(root.transform) || Blocked(hit.point)) return false;
+            footing = hit.point + Vector3.up * 0.15f;
             return true;
         }
     }

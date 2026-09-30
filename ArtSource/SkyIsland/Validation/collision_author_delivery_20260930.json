@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "evidenceLevel": "L2",
+  "blenderVersion": "5.2.1 LTS",
+  "source": "D:\\sofrware\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\ArtSource\\SkyIsland\\SkyIslandWorld.blend",
+  "sourceBlendSHA256": "fa8dc9db0b6b8a264b44d143cfca0bbf542ce4eb978173dfb509e403cfa62171",
+  "sourceCollisionSHA256": "e6fa5fa2b82a4dd3fcfb446561483ab03f3242e679b0adf7a59726d3b7145224",
+  "solidSources": 381,
+  "navigationVertices": 4004,
+  "navigationTriangles": 4774,
+  "groundRegions": 27,
+  "boundaryObjects": 0,
+  "verification": "Live Blender MCP authoring geometry fingerprint and navigation coordinates; no file changes"
+}

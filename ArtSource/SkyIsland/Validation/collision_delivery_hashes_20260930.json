@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-30",
+  "status": "PASS",
+  "evidenceLevel": "L1/L2",
+  "officialWindowsBuildExitCode": 0,
+  "devBuild": false,
+  "deployedFiles": [
+    {
+      "path": "BossRush.dll",
+      "source": "D:\\sofrware\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\BossRushMod\\Build\\BossRush.dll",
+      "target": "D:\\sofrware\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\BossRush.dll",
+      "bytes": 6408192,
+      "sourceSha256": "745f7442ab5310d95e1ca93c7b7197627ec76e3d00fb3bc1896cd5ab97f0132b",
+      "targetSha256": "745f7442ab5310d95e1ca93c7b7197627ec76e3d00fb3bc1896cd5ab97f0132b",
+      "match": true
+    },
+    {
+      "path": "Assets/arenas/sky_island_raid",
+      "source": "D:\\sofrware\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\BossRushMod\\Assets\\arenas\\sky_island_raid",
+      "target": "D:\\sofrware\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\arenas\\sky_island_raid",
+      "bytes": 158975886,
+      "sourceSha256": "0dd2b1b95f6a5bc9a9f420965b66414fb1e9757e4a3b56662e754b8af5c4e434",
+      "targetSha256": "0dd2b1b95f6a5bc9a9f420965b66414fb1e9757e4a3b56662e754b8af5c4e434",
+      "match": true
+    }
+  ],
+  "authorPreviewBundle": {
+    "path": "D:\\sofrware\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\BossRushMod\\Assets\\arenas\\sky_island_world",
+    "sha256": "aa487c3435b7b6cc09d0fafbdbb7267b84628ad2429fc25e6cf34b11cc3cdbc5",
+    "bytes": 158585162,
+    "gameDeploymentRequired": false
+  },
+  "footingFixtureMatchesCurrentSource": true,
+  "gameSmoke": "Not performed",
+  "noPlayerSaveAccess": true,
+  "collisionNavigationSha256": "2e9620842612ca438afd3c97438dcf9dd08ec48216ef19918e58fdf1a1331dac",
+  "collisionSourceSha256": "e6fa5fa2b82a4dd3fcfb446561483ab03f3242e679b0adf7a59726d3b7145224",
+  "productionSolidSources": 381,
+  "finalPhysicsStatus": "PASS"
+}

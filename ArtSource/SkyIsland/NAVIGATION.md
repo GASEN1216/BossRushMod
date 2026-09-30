@@ -2,9 +2,26 @@
 
 2026-09-08 初版；2026-09-10 布局 v2（岛群压缩 + 中继平台）。分类：`COMPAT`（离线资源），不修改存档、地图配置入口或游戏模式。
 
-`layout.json` 由 `tools/sky_island_navigation.py` 生成，是 Blender 场景、实体碰撞和 A* 导航共同消费的几何事实源。坐标固定为 **Unity X/Y/Z、米**，Y 向上；运行时整体偏移只应加一次。不要独立移动某一份桥或岛的碰撞。
+`layout.json` 由 `tools/sky_island_navigation.py` 生成，是岛桥布局与设计导航的几何事实源；发布导航的碰撞避让层见下节。坐标固定为 **Unity X/Y/Z、米**，Y 向上；运行时整体偏移只应加一次。不要独立移动某一份桥或岛的碰撞。
 
-## 重建与检查
+## 2026-09-29 实体碰撞与发布导航（COMPAT / SCHEMA+）
+
+`layout.json` 保留岛、桥、剧情标记和设计导航；发布使用 `collision_navigation.json` 的实际实体避让导航。可见岛面和 `COL_Ground_<区域>` 都覆盖完整岛轮廓，设计导航里的建筑占位洞不能再变成玩家脚下的地面洞。桥面仍按原分片高程生成，边栏保留相反绕序的双面。
+
+`SkyIslandCollisionBuilder` 对最终硬质 VIS 网格烘焙静态非凸碰撞，不再使用旧名义包围盒堵住门洞与树下空间。Flora、Paving、GroundDetail 分组分别标注软植被、铺装和已有地面支持的薄装饰；树干、墙柱、岩石、栏杆仍有实体碰撞。斜桥支柱按桥面最大坡度和柱顶半径下移，柱顶不得穿入较低一侧的桥板。
+
+新增导航文件是作者阶段的可重复烘焙结果，不是玩家存档扩展。它记录设计布局 SHA-256、全部生产硬物（含桥梁）的几何指纹、岛区刚性物体的身体高度切片、交互接近处的精细修正和连通性。生成器从作者 SkyIslandCollisionBuilder.cs 当前材料和分组规则重新枚举硬物，名称集合新增、删除或硬软转换也必须使旧 sidecar 失效；岛区切片与全硬物签名使用不同名单，桥梁不能从失效检测中排除。平岛合并后重新三角化，桥面只合并同一平面；最终顶点必须小于 4095。生成器遇到布局或实体指纹过期会中止发布，不能静默回退到穿过实体的旧导航。
+
+修改实体模型后的顺序：
+1. 在同一作者工程执行 `tools/generate_sky_island.py -- --project <作者工程> --skip-render --prepare-navigation`，只导出 `ArtSource/SkyIsland/sky_island_collision_footprints.json`，不覆盖生产 FBX。可通过 Blender MCP 调用，后台运行仍须加 `--factory-startup --python-exit-code 1`。
+2. 在普通 Python 环境执行 `python tools/build_sky_island_collision_navigation.py --footprints <作者工程>/ArtSource/SkyIsland/sky_island_collision_footprints.json`；需要 Shapely 2.1，原子更新本仓库 `collision_navigation.json`。不满足预算、连通或必达标记时不得发布。
+3. 重新执行不带 `--prepare-navigation` 的生成命令，指纹核对后将发布 NAV 写进 `.blend` / FBX，并同步作者工程 `Assets/SkyIsland/sky_island_collision_navigation.json`。
+4. Unity 顺序运行 `BuildResourcesAndExit`、`SkyIslandRaidBuilder.BuildAndExit`、`SkyIslandCollisionValidation.ValidateAndExit`；最后一步不加 `-quit`。运行后必须读取新报告与退出码。
+5. 运行 `SkyIslandCollisionNavigationPropertyTest`、相关天空岛守卫、执行回归与着色器判包，再正式编译部署并核对三份包体 SHA-256。
+
+原设计导航的性质检查继续验证设计布局。发布侧另检查实际 NAV 的地面支持、预算、连通、交互距离和五道剧情门，Unity 直接对最终 raid 包执行 PhysX 胶囊扫掠、区域地面、桥口、边界与实体双面射线。以上属于 L2，游戏内角色、战斗和性能仍需 L3。
+
+## 原设计布局重建与检查
 
 在 BossRushMod 根目录执行：
 

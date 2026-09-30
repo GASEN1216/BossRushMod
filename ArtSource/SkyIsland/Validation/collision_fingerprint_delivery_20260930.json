@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "evidenceLevel": "L2",
+  "solidSources": 381,
+  "sliceSources": 312,
+  "bridgeSources": 69,
+  "sourceCollisionSha256": "e6fa5fa2b82a4dd3fcfb446561483ab03f3242e679b0adf7a59726d3b7145224",
+  "sliceInputsByteEquivalent": true,
+  "navigationUnchanged": true,
+  "navigationSHA256": "1e849bf782cffd50a7e53bc968946608c9c6bb2b83845e94f8a1c664ff986b90",
+  "liveSourceValidation": "PASS"
+}

@@ -51,7 +51,7 @@ EXTERNAL_ARTIFACT_GUARDS = {
     "ModeGPresentationAssetGuard.py", "ModeHPresentationAssetGuard.py",
     "PortableSafeZoneDeviceBundleGuard.py", "BaseBuildingResourcePropertyTest.py",
     "DailyReportArtPropertyTest.py",
-    "SkyIslandFxBundleGuard.py",
+    "SkyIslandFxBundleGuard.py", "SkyIslandCollisionNavigationPropertyTest.py",
 }
 
 
@@ -180,7 +180,7 @@ def main():
                         help="只跑与当前 git 改动相关的 guard（匹配不到时回退全量）")
     parser.add_argument("--verbose", action="store_true", help="打印失败 guard 的完整输出")
     parser.add_argument("--source-only", action="store_true",
-                        help="源码 CI：执行全部源码断言，三个外部制品检查明确标记 PARTIAL；发布验证不要使用此项")
+                        help="源码 CI：执行全部源码断言，外部制品检查明确标记 PARTIAL；发布验证不要使用此项")
     parser.add_argument("--jobs", type=int, default=min(8, (os.cpu_count() or 4)),
                         help="并发进程数（默认 CPU 数，上限 8）")
     parser.add_argument("--list-red", action="store_true", help="只列出当前失败项，不打印其它内容")
@@ -213,7 +213,7 @@ def main():
     partial = [r for r in results if args.source_only and r[1] == 2 and r[0] in EXTERNAL_ARTIFACT_GUARDS]
     failed = [r for r in results if r[1] != 0 and r not in partial]
     for name, code, out, dur in partial:
-        print("  [PARTIAL] " + name + ": 已检查源码；外部制品未验证")
+        print("  [PARTIAL] " + name + ": 已检查源码；外部制品或作者策略未验证")
         print("         " + out.strip().splitlines()[-1])
 
     new_failures = [r for r in failed if r[0] not in known_red]
