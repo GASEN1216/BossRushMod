@@ -49,8 +49,8 @@ ANCHORS = {
                         + [('S4', a, 13, 0) for a in (0, 120, 240)],
     'rune_stone':       [('D', a, 31, 0) for a in (20, 200)] + [('H', a, 43, 0) for a in (100, 280)]
                         + [('S2', a, 14, 0) for a in (150, 330)],
-    'stone_stair':      [('H', a, 38, 0) for a in (160, 340)] + [('F', a, 24, 0) for a in (0, 180)]
-                        + [('G', a, 22, 0) for a in (110, 290)],
+    # 2026-09-30：六座 2 m 高、哪儿也不通的残阶撤下。模型底下是空壳，Unity ECM2 随机行走在 F 岛那一座的
+    # 底下卡住一个角色（walker_stuck，(152.45, 15.02, -27.79)）；出击场景只按可见网格建碰撞，挡盒不起作用。
     'street_lamp':      [('B', a, 24, 0) for a in (0, 45, 90, 135, 180, 225, 270, 315)]
                         + [('A', a, 16, 0) for a in (0, 120, 240)]
                         + [('F', a, 23, 0) for a in (60, 180, 300)],
@@ -106,7 +106,7 @@ def _model(g, data_dir, name):
             key = material_name(name)
             payload = (payload,
                        key if key in getattr(g, 'MODEL_TEXTURES', {})
-                       else payload['meta'].get('material', 'RockLight'))
+                       else PREFER_TILED.get(name) or payload['meta'].get('material', 'RockLight'))
         _CACHE[name] = payload
     return _CACHE[name]
 
@@ -115,8 +115,178 @@ def reset():
     """每次完整生成前清空，避免跨次运行串味。"""
     _CACHE.clear()
     _KIND_SEEN.clear()
+    _NORMALS.clear()
     sky_island_surface_materials.clear()
     sky_island_botany.reset()
+
+
+# 2026-09-30：Tripo 件的法线。导入时按 (顶点, UV) 在图集接缝处把顶点拆开、整件写死平滑，
+# 生成器在拆开的顶点上各自重算平滑法线：平滑面沿接缝出现 4–28% 的折痕，锐边（箱角、石棱）又被抹圆
+# （`Build/sky-material-audit-20260930` F2 / F6）。这里按位置焊接后求法线：每个焊接顶点上，按「共享一条
+# 夹角小于 SMOOTH_ANGLE 的边」把周围的面连成平滑扇区，扇区内按角点角度加权平均；更大的折角把扇区切开，
+# 保持硬边。同一条平滑边两侧的面在两个端点都落进同一扇区，法线逐位相同，平滑面上不留折痕（复测：逐面
+# 各取「与本面夹角小于阈值的邻面」去平均，相邻两面纳入的邻面不同，仍有 2–38% 的平滑边折痕）。
+# 面朝向由 bmesh 在焊接后的整件上统一定向。结果按模型缓存在局部坐标，每个实例只旋转法线，
+# 作为 corner_normals 交给 addmesh（瀑布的分面材质已走同一接口）。
+SMOOTH_ANGLE = 40.0
+_NORMALS = {}
+
+
+def _oriented_normals(g, payload):
+    name = payload['meta']['name']
+    if name not in _NORMALS:
+        mesh = payload['mesh']
+        faces, _smooth, _removed, _collapsed = g.clean_faces(mesh['v'], mesh['f'], True, uv=mesh['uv'])
+        _kept, oriented, normals = sector_normals(mesh['v'], faces)
+        _NORMALS[name] = (oriented, normals)
+    return _NORMALS[name]
+
+
+def sector_normals(verts, faces):
+    """整件焊接、统一定向后按平滑扇区求逐角法线（算法见上方注释）。faces 须已过 clean_faces。
+
+    返回 (保留下来的面在 faces 里的下标, 定向后的面, 逐角法线)；瀑布的水 / 石分面
+    （sky_island_surface_materials）按下标把两组面对回整件结果，交界处仍是同一扇区。"""
+    import bmesh
+    # 小于 0.5 mm 的边在世界坐标 float32 下可能折叠，addmesh 会因此拒绝保留法线：提前去掉这些碎面。
+    def edge_ok(face):
+        return all(sum((verts[face[i]][k] - verts[face[(i + 1) % len(face)]][k]) ** 2 for k in range(3)) > 2.5e-7
+                   for i in range(len(face)))
+    kept = [index for index, face in enumerate(faces) if edge_ok(face)]
+    faces = [faces[index] for index in kept]
+    keys, welded, positions = {}, [], []
+    for p in verts:
+        key = (round(p[0], 5), round(p[1], 5), round(p[2], 5))
+        if key not in keys:
+            keys[key] = len(positions)
+            positions.append(p)
+        welded.append(keys[key])
+    bm = bmesh.new()
+    bverts = [bm.verts.new((p[0], p[2], p[1])) for p in positions]
+    created = []
+    for index, face in enumerate(faces):
+        ring = [welded[i] for i in reversed(face)]
+        if len(set(ring)) != len(ring):
+            continue
+        try:
+            created.append((index, bm.faces.new([bverts[w] for w in ring])))
+        except ValueError:
+            continue                       # 反向重复的双面薄片：保留原绕序，法线按自身几何
+    bm.faces.ensure_lookup_table()
+    bmesh.ops.recalc_face_normals(bm, faces=[f for _, f in created])
+    oriented, normal_of = list(faces), {}
+    for index, bmface in created:
+        by_weld = {welded[i]: i for i in faces[index]}
+        loop = [by_weld[v.index] for v in bmface.verts]
+        oriented[index] = tuple(reversed(loop))
+        n = bmface.normal
+        normal_of[index] = (n.x, n.z, n.y, bmface.calc_area())
+    bm.free()
+
+    def newell(face):
+        nx = ny = nz = 0.0
+        for i in range(len(face)):
+            a, b = verts[face[i]], verts[face[(i + 1) % len(face)]]
+            nx += (a[1] - b[1]) * (a[2] + b[2]); ny += (a[2] - b[2]) * (a[0] + b[0]); nz += (a[0] - b[0]) * (a[1] + b[1])
+        length = math.sqrt(nx * nx + ny * ny + nz * nz) or 1.0
+        # 换轴（反射）与反绕序两次取反相抵：Unity 绕序的右手 Newell 法线就是 create_object 之后的外法线。
+        return (nx / length, ny / length, nz / length, length / 2)
+    for index, face in enumerate(oriented):
+        if index not in normal_of:
+            normal_of[index] = newell(face)
+
+    # bmesh 的整体定向在非流形边处会把一整块翻反（复测：岛缘卵石 rock_b 源绕序相邻冲突 0%，定向后 17%；
+    # cave_rock 0.1% → 1.3%）。两份里取相邻绕序冲突更少的一份；取源绕序时，按「面中心离整件中心的方向 ·
+    # 面法线」的面积加权和整体翻到朝外。
+    def conflicts(face_list):
+        edges = {}
+        for face in face_list:
+            ring = [welded[i] for i in face]
+            for k in range(len(ring)):
+                a, b = ring[k], ring[(k + 1) % len(ring)]
+                if a != b:
+                    edges.setdefault((min(a, b), max(a, b)), []).append(a < b)
+        return sum(1 for pair in edges.values() if len(pair) == 2 and pair[0] == pair[1])
+    if conflicts(faces) < conflicts(oriented):
+        count = sum(len(face) for face in faces) or 1
+        centre = [sum(verts[i][k] for face in faces for i in face) / count for k in range(3)]
+        outward = 0.0
+        for face in faces:
+            nx, ny, nz, area = newell(face)
+            middle = [sum(verts[i][k] for i in face) / len(face) - centre[k] for k in range(3)]
+            outward += (middle[0] * nx + middle[1] * ny + middle[2] * nz) * area
+        oriented = [tuple(reversed(face)) for face in faces] if outward < 0 else list(faces)
+        normal_of = {index: newell(face) for index, face in enumerate(oriented)}
+    limit = math.cos(math.radians(SMOOTH_ANGLE))
+    rings = [[welded[i] for i in face] for face in oriented]
+    edge_faces, around = {}, {}
+    for index, ring in enumerate(rings):
+        for k, w in enumerate(ring):
+            around.setdefault(w, []).append((index, k))
+            other = ring[(k + 1) % len(ring)]
+            if other != w:
+                edge_faces.setdefault((min(w, other), max(w, other)), []).append(index)
+
+    def corner_angle(face, k):
+        p, a, b = verts[face[k]], verts[face[k - 1]], verts[face[(k + 1) % len(face)]]
+        u = (a[0] - p[0], a[1] - p[1], a[2] - p[2]); v = (b[0] - p[0], b[1] - p[1], b[2] - p[2])
+        lu = math.sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]); lv = math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
+        if lu < 1e-12 or lv < 1e-12:
+            return 0.0
+        return math.acos(max(-1.0, min(1.0, (u[0] * v[0] + u[1] * v[1] + u[2] * v[2]) / (lu * lv))))
+
+    normals = [[None] * len(face) for face in oriented]
+    for w, corners in around.items():
+        parent = {index: index for index, _ in corners}
+
+        def find(x):
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+        for index, k in corners:
+            ring = rings[index]
+            for neighbour in (ring[k - 1], ring[(k + 1) % len(ring)]):
+                for other in edge_faces.get((min(w, neighbour), max(w, neighbour)), ()):
+                    if other != index and other in parent:
+                        a, b = normal_of[index], normal_of[other]
+                        if a[0] * b[0] + a[1] * b[1] + a[2] * b[2] >= limit:
+                            parent[find(index)] = find(other)
+        sums = {}
+        for index, k in corners:
+            n, weight = normal_of[index], corner_angle(oriented[index], k)
+            total = sums.setdefault(find(index), [0.0, 0.0, 0.0])
+            total[0] += n[0] * weight; total[1] += n[1] * weight; total[2] += n[2] * weight
+        for index, k in corners:
+            sx, sy, sz = sums[find(index)]
+            length = math.sqrt(sx * sx + sy * sy + sz * sz)
+            n = normal_of[index]
+            normals[index][k] = (sx / length, sy / length, sz / length) if length > 1e-12 else (n[0], n[1], n[2])
+    return kept, oriented, [tuple(row) for row in normals]
+
+
+def _world_clean(g, vertices, faces, normals, uv):
+    """逐条复现 addmesh 里 clean_faces 的判据（float32 坐标、角点折叠、零面积、同绕序重复面），
+    连同对应的角法线一起处理，保证交给 addmesh 的面它一张都不会再删，法线与面一一对齐。"""
+    from struct import pack, unpack
+    from sky_island_mesh_hygiene import _distance_squared, _has_area, _oriented_face_key
+    points = [unpack('fff', pack('fff', *p)) for p in vertices]
+    kept_faces, kept_normals, seen = [], [], set()
+    for face, row in zip(faces, normals):
+        corners, rows = [], []
+        for vertex, normal in zip(face, row):
+            if not corners or _distance_squared(points[vertex], points[corners[-1]]) > 1e-14:
+                corners.append(vertex); rows.append(normal)
+        if len(corners) > 1 and _distance_squared(points[corners[0]], points[corners[-1]]) <= 1e-14:
+            corners.pop(); rows.pop()
+        if len(corners) < 3 or not _has_area(points, corners):
+            continue
+        key = (True, _oriented_face_key(tuple((points[i], tuple(uv[i])) for i in corners)))
+        if key in seen:
+            continue
+        seen.add(key)
+        kept_faces.append(tuple(corners)); kept_normals.append(tuple(rows))
+    return kept_faces, kept_normals
 
 
 def _stamp(g, entry, x, base_y, z, yaw_deg, scale=1.0):
@@ -131,8 +301,15 @@ def _stamp(g, entry, x, base_y, z, yaw_deg, scale=1.0):
                  z + (-vx * sine + vz * cosine) * scale) for vx, vy, vz in mesh['v']]
     if sky_island_surface_materials.stamp(g, payload, material, vertices):
         return len(mesh['f'])
-    g.addmesh(material, vertices, mesh['f'], mesh['uv'], mesh.get('smooth', True))
-    return len(mesh['f'])
+    if material not in getattr(g, 'MODEL_TEXTURES', {}) and material not in PREFER_TILED.values():
+        # 回退到调色板 / 平铺材质的件与程序化几何同组合批，不能混入保留法线的面。
+        g.addmesh(material, vertices, mesh['f'], mesh['uv'], mesh.get('smooth', True))
+        return len(mesh['f'])
+    faces, local = _oriented_normals(g, payload)
+    rotated = [tuple((nx * cosine + nz * sine, ny, -nx * sine + nz * cosine) for nx, ny, nz in row) for row in local]
+    faces, rotated = _world_clean(g, vertices, faces, rotated, mesh['uv'])
+    g.addmesh(material, vertices, faces, mesh['uv'], [True] * len(faces), corner_normals=rotated)
+    return len(faces)
 
 
 def replace_obstacle(g, obs, data_dir, island_centre=None):
@@ -298,7 +475,7 @@ COLLISION_POLICY = {
     'root_rock': 'footprint', 'crystal_cluster': 'footprint',
     'great_tree': ('trunk', 1.8), 'cherry_tree': ('trunk', 1.2),
     'ruined_column': ('trunk', 0.9), 'rune_stone': ('trunk', 0.9), 'shop_sign': ('trunk', 0.35),
-    # 'stone_stair' 故意不登记：台阶要能走上去。
+    # 'stone_stair' 已撤下（见 ANCHORS 注释）。
 }
 
 # 盒子往内收一点，宁可留一条能贴着走的缝，也不要在模型外面再造一圈看不见的墙。
@@ -353,6 +530,12 @@ def emit_collision(g, name, index, x, base_y, z, yaw_deg, bounds):
     return True
 
 
+# 图集几乎没有明暗（rock_b 亮度标准差 0.02，岛缘卵石读成纯色平滑石）：不登记图集，改用平铺石纹（材质审计 F6）。
+# 值是生成器 TILED_ALIASES 里的别名材质：贴图与 RockLight 同一张，但单独成组，才能带上面的角法线
+# （与程序化 RockLight 同组就不能保留法线，复测：折痕 11%、硬边 92% 没变）。
+PREFER_TILED = {'rock_b': 'Pebble'}
+
+
 def register(g, data_dir):
     """把已备好的 Tripo 件登记成非平铺贴图材质，必须在 build_materials 之前调用。
 
@@ -377,7 +560,7 @@ def register(g, data_dir):
         if payload is None:
             continue
         texture = payload['meta'].get('texture')
-        if not texture:
+        if not texture or name in PREFER_TILED:
             continue
         key = material_name(name)
         g.PALETTE[key] = '#ffffff'          # 白底，颜色全部来自贴图
@@ -451,8 +634,11 @@ def build(g, layout, data_dir, dressing):
                         else:
                             yaw_deg = facing_yaw(x, z, 2 * x - ax, 2 * z - az)
                         from sky_island_prop_placement import model_bounds
-                        x,z,yaw_deg=g.PROP_SPACE.place(island_id,name,model_bounds(payload),x,z,yaw_deg,
-                                                       'roadside' if strategy[0]=='roadside' else 'building')
+                        chosen=g.PROP_SPACE.place(island_id,name,model_bounds(payload),x,z,yaw_deg,
+                                                  'roadside' if strategy[0]=='roadside' else 'building',optional=True)
+                        if chosen is None:
+                            continue
+                        x,z,yaw_deg=chosen
                         g.CURRENT = island_id
                         cy = island['center'][1]
                         triangles += _stamp(g, (payload, material), x, cy, z, yaw_deg)
@@ -481,10 +667,17 @@ def build(g, layout, data_dir, dressing):
                 continue
             x, z = spot
             yaw_deg = anchor_yaw(name, island_id, angle_deg, x, z, cx, cz, yaw_deg)
-            from sky_island_prop_placement import model_bounds
-            x,z,yaw_deg=g.PROP_SPACE.place(island_id,name,model_bounds(payload),x,z,yaw_deg,'free')
             g.CURRENT = island_id
-            triangles += _stamp(g, (payload, material), x, cy, z, yaw_deg)
+            # 2026-09-30：按实际网格裁决（树按树干 + 树冠分层，建筑按身体层与屋檐层截面），让开路面、门口、
+            # 桥口、交互点与先摆的硬物；挡住就就近平移，10 m 内找不到就不摆。碰撞盒跟最终位置走。
+            emitted = []
+            shift = g.PROP_SPACE.fit(g, island_id, name,
+                                     lambda: emitted.append(_stamp(g, (payload, material), x, cy, z, yaw_deg)),
+                                     'tree' if name in TREE_MODELS else 'hard', 10.0)
+            if shift is None:
+                continue
+            x, z = x + shift[0], z + shift[1]
+            triangles += sum(emitted)
             # 只有锚点分支补碰撞：这一支走 `free()` 严格避让，离敌人要走的路最远。
             # 语义分支（路缘 / 墙角）不补，理由见 COLLISION_POLICY 上方的注释。
             solid = emit_collision(g, name, placed, x, cy, z, yaw_deg, bounds)
@@ -520,6 +713,9 @@ PLACEMENT = {
     'crate_barrel': ('building', {'margin': 2.0}),
     'farm_cart':    ('building', {'margin': 3.0}),
 }
+
+# 按树裁决（树干硬、树冠可与别的树冠交叠）的锚点件。
+TREE_MODELS = {'great_tree', 'cherry_tree'}
 
 # 墙角堆放时要跳过的障碍类型：掩体本身是道具，生活道具已由 settlement 摆过。
 _SKIP_KINDS = {'cover', 'life_prop', 'pool', 'water'}

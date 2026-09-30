@@ -1,0 +1,3304 @@
+{
+ "schemaVersion": 1,
+ "coordinateSystem": "Unity XYZ metres",
+ "source": "offline replay of production placement (see module docstring)",
+ "notes": [],
+ "points": [
+  {
+   "kind": "search_point",
+   "id": "Search_A",
+   "x": -30,
+   "y": 0,
+   "z": -240,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_A_02",
+   "x": 32,
+   "y": 0,
+   "z": -190,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_B",
+   "x": -12,
+   "y": 5,
+   "z": -104,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_B_02",
+   "x": 32,
+   "y": 5,
+   "z": -65,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_C",
+   "x": -195,
+   "y": 10,
+   "z": -100,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_C_02",
+   "x": -133,
+   "y": 10,
+   "z": -50,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_D",
+   "x": -190,
+   "y": 16,
+   "z": 55,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_D_02",
+   "x": -145,
+   "y": 16,
+   "z": 106,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_E",
+   "x": -15,
+   "y": 18,
+   "z": 60,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_E_02",
+   "x": 47,
+   "y": 18,
+   "z": 110,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_F",
+   "x": 205,
+   "y": 15,
+   "z": -45,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_F_02",
+   "x": 141,
+   "y": 15,
+   "z": -42,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_G",
+   "x": 145,
+   "y": 21,
+   "z": 55,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_G_02",
+   "x": 207,
+   "y": 21,
+   "z": 105,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_H",
+   "x": -25,
+   "y": 26,
+   "z": 205,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_H_02",
+   "x": 37,
+   "y": 26,
+   "z": 255,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_S1",
+   "x": -308,
+   "y": 7,
+   "z": -115,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_S2",
+   "x": -294.5,
+   "y": 13,
+   "z": 91,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_S3",
+   "x": 290.5,
+   "y": 10,
+   "z": -74,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "search_point",
+   "id": "Search_S4",
+   "x": 283,
+   "y": 26,
+   "z": 66,
+   "footprint": 0.0,
+   "clearRadius": 1.1,
+   "mesh": null
+  },
+  {
+   "kind": "travel_guide",
+   "id": "Search_A_02",
+   "x": 31.444,
+   "y": 0.05,
+   "z": -186.849,
+   "footprint": 0.0,
+   "clearRadius": 0.65,
+   "mesh": null
+  },
+  {
+   "kind": "travel_guide",
+   "id": "Search_B_02",
+   "x": 35.176,
+   "y": 5.05,
+   "z": -64.61,
+   "footprint": 0.0,
+   "clearRadius": 0.65,
+   "mesh": null
+  },
+  {
+   "kind": "memorial_stake",
+   "id": "Search_D",
+   "x": -186.346,
+   "y": 16.05,
+   "z": 55.579,
+   "footprint": 0.45,
+   "clearRadius": 1.2,
+   "mesh": "stake_sign"
+  },
+  {
+   "kind": "memorial_stake",
+   "id": "Search_G",
+   "x": 144.721,
+   "y": 21.05,
+   "z": 58.188,
+   "footprint": 0.45,
+   "clearRadius": 1.2,
+   "mesh": "stake_sign"
+  },
+  {
+   "kind": "memorial_stake",
+   "id": "Search_S4",
+   "x": 280.257,
+   "y": 26.05,
+   "z": 67.648,
+   "footprint": 0.45,
+   "clearRadius": 1.2,
+   "mesh": "stake_sign"
+  },
+  {
+   "kind": "memorial_stake",
+   "id": "Search_C",
+   "x": -195.501,
+   "y": 10.05,
+   "z": -96.839,
+   "footprint": 0.45,
+   "clearRadius": 1.2,
+   "mesh": "stake_sign"
+  },
+  {
+   "kind": "memorial_stake",
+   "id": "Search_E",
+   "x": -15.167,
+   "y": 18.05,
+   "z": 63.196,
+   "footprint": 0.45,
+   "clearRadius": 1.2,
+   "mesh": "stake_sign"
+  },
+  {
+   "kind": "memorial_stake",
+   "id": "EnemySpawn_F",
+   "x": 193.347,
+   "y": 15.05,
+   "z": -79.211,
+   "footprint": 0.45,
+   "clearRadius": 1.2,
+   "mesh": "stake_sign"
+  },
+  {
+   "kind": "memorial_stake",
+   "id": "Search_H",
+   "x": -25.0,
+   "y": 26.05,
+   "z": 201.8,
+   "footprint": 0.45,
+   "clearRadius": 1.2,
+   "mesh": "stake_sign"
+  },
+  {
+   "kind": "memorial_stake",
+   "id": "Lamp_A_02",
+   "x": 25.555,
+   "y": 0.05,
+   "z": -247.169,
+   "footprint": 0.45,
+   "clearRadius": 1.2,
+   "mesh": "stake_sign"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "A1",
+   "x": -20.085,
+   "y": 0.05,
+   "z": -208.559,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "A2",
+   "x": 21.085,
+   "y": 0.05,
+   "z": -247.441,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "A3",
+   "x": 6.5,
+   "y": 0.05,
+   "z": -203.938,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "B1",
+   "x": -30.324,
+   "y": 5.05,
+   "z": -83.272,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "B2",
+   "x": -4.0,
+   "y": 5.05,
+   "z": -130.0,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "B3",
+   "x": -13.812,
+   "y": 5.05,
+   "z": -110.761,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "B4",
+   "x": 29.264,
+   "y": 5.05,
+   "z": -57.482,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "C1",
+   "x": -137.0,
+   "y": 10.05,
+   "z": -66.804,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "C2",
+   "x": -196.0,
+   "y": 10.05,
+   "z": -109.196,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "C3",
+   "x": -183.062,
+   "y": 10.05,
+   "z": -59.5,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "C4",
+   "x": -201.578,
+   "y": 10.05,
+   "z": -102.394,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "D1",
+   "x": -129.362,
+   "y": 16.05,
+   "z": 85.052,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "D2",
+   "x": -139.638,
+   "y": 16.05,
+   "z": 48.948,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "D3",
+   "x": -56.438,
+   "y": 12.005,
+   "z": 23.5,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "D4",
+   "x": -192.736,
+   "y": 16.05,
+   "z": 47.482,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "E1",
+   "x": -8.447,
+   "y": 18.05,
+   "z": 93.796,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "E2",
+   "x": 39.447,
+   "y": 18.05,
+   "z": 50.204,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "E3",
+   "x": 1.0,
+   "y": 11.55,
+   "z": -7.5,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "E4",
+   "x": -11.5,
+   "y": 18.05,
+   "z": 53.938,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "F1",
+   "x": 169.243,
+   "y": 15.05,
+   "z": -78.757,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "F2",
+   "x": 196.757,
+   "y": 15.05,
+   "z": -93.243,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "F3",
+   "x": 130.638,
+   "y": 15.05,
+   "z": -96.5,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "F4",
+   "x": 208.5,
+   "y": 15.05,
+   "z": -51.062,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "G1",
+   "x": 154.763,
+   "y": 21.05,
+   "z": 85.75,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "G2",
+   "x": 141.804,
+   "y": 21.05,
+   "z": 48.0,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "G3",
+   "x": 60.115,
+   "y": 10.69,
+   "z": -9.8,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "G4",
+   "x": 149.5,
+   "y": 21.05,
+   "z": 49.638,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "H1",
+   "x": -16.143,
+   "y": 26.05,
+   "z": 237.596,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "H2",
+   "x": 27.143,
+   "y": 26.05,
+   "z": 196.404,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "H3",
+   "x": -18.437,
+   "y": 26.05,
+   "z": 224.137,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "H4",
+   "x": 30.422,
+   "y": 26.05,
+   "z": 252.606,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "S1a",
+   "x": -309.048,
+   "y": 7.05,
+   "z": -80.435,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "S1b",
+   "x": -306.958,
+   "y": 7.05,
+   "z": -120.909,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "S2a",
+   "x": -295.716,
+   "y": 13.05,
+   "z": 123.894,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "S2b",
+   "x": -293.458,
+   "y": 13.05,
+   "z": 85.091,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "S3a",
+   "x": 289.284,
+   "y": 10.05,
+   "z": -41.106,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "S3b",
+   "x": 288.947,
+   "y": 10.05,
+   "z": -79.796,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "S4a",
+   "x": 281.784,
+   "y": 26.05,
+   "z": 98.894,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "loot_crate",
+   "id": "S4b",
+   "x": 284.042,
+   "y": 26.05,
+   "z": 60.091,
+   "footprint": 0.66,
+   "clearRadius": 1.0,
+   "mesh": "crate"
+  },
+  {
+   "kind": "bounty_crate",
+   "id": "round1",
+   "x": -9.402,
+   "y": 5.05,
+   "z": -102.5,
+   "footprint": 0.6,
+   "clearRadius": 1.0,
+   "mesh": "official_lootbox"
+  },
+  {
+   "kind": "bounty_crate",
+   "id": "round2",
+   "x": -14.598,
+   "y": 5.05,
+   "z": -102.5,
+   "footprint": 0.6,
+   "clearRadius": 1.0,
+   "mesh": "official_lootbox"
+  },
+  {
+   "kind": "bounty_crate",
+   "id": "round3",
+   "x": -12.0,
+   "y": 5.05,
+   "z": -107.0,
+   "footprint": 0.6,
+   "clearRadius": 1.0,
+   "mesh": "official_lootbox"
+  },
+  {
+   "kind": "resident",
+   "id": "POI_B",
+   "x": -12,
+   "y": 5.15,
+   "z": -78,
+   "footprint": 0.6,
+   "clearRadius": 3.1,
+   "mesh": "character",
+   "wander": true
+  },
+  {
+   "kind": "resident",
+   "id": "EnemySpawn_B",
+   "x": 21,
+   "y": 5.15,
+   "z": -111,
+   "footprint": 0.6,
+   "clearRadius": 3.1,
+   "mesh": "character",
+   "wander": true
+  },
+  {
+   "kind": "resident",
+   "id": "POI_A",
+   "x": -12,
+   "y": 0.15,
+   "z": -203,
+   "footprint": 0.6,
+   "clearRadius": 3.1,
+   "mesh": "character",
+   "wander": true
+  },
+  {
+   "kind": "resident",
+   "id": "POI_D",
+   "x": -148,
+   "y": 16.15,
+   "z": 92,
+   "footprint": 0.6,
+   "clearRadius": 3.1,
+   "mesh": "character",
+   "wander": true
+  },
+  {
+   "kind": "resident",
+   "id": "EnemySpawn_F",
+   "x": 196,
+   "y": 15.15,
+   "z": -81,
+   "footprint": 0.6,
+   "clearRadius": 1.2,
+   "mesh": "character",
+   "wander": false
+  },
+  {
+   "kind": "resident",
+   "id": "POI_H",
+   "x": 5,
+   "y": 26.15,
+   "z": 213,
+   "footprint": 0.6,
+   "clearRadius": 1.2,
+   "mesh": "character",
+   "wander": false
+  },
+  {
+   "kind": "pigeon",
+   "id": "Letter_01",
+   "x": -2.799,
+   "y": 0.05,
+   "z": -221.551,
+   "footprint": 0.0,
+   "clearRadius": 0.6,
+   "mesh": null
+  },
+  {
+   "kind": "pigeon",
+   "id": "Letter_02",
+   "x": -0.39,
+   "y": 5.05,
+   "z": -91.824,
+   "footprint": 0.0,
+   "clearRadius": 0.6,
+   "mesh": null
+  },
+  {
+   "kind": "pigeon",
+   "id": "Letter_03",
+   "x": -167.743,
+   "y": 10.05,
+   "z": -81.648,
+   "footprint": 0.0,
+   "clearRadius": 0.6,
+   "mesh": null
+  },
+  {
+   "kind": "pigeon",
+   "id": "Letter_04",
+   "x": -287.124,
+   "y": 7.05,
+   "z": -116.597,
+   "footprint": 0.0,
+   "clearRadius": 0.6,
+   "mesh": null
+  },
+  {
+   "kind": "pigeon",
+   "id": "Letter_05",
+   "x": -285.4,
+   "y": 13.05,
+   "z": 80.648,
+   "footprint": 0.0,
+   "clearRadius": 0.6,
+   "mesh": null
+  },
+  {
+   "kind": "pigeon",
+   "id": "Letter_06",
+   "x": 177.825,
+   "y": 15.05,
+   "z": -81.498,
+   "footprint": 0.0,
+   "clearRadius": 0.6,
+   "mesh": null
+  },
+  {
+   "kind": "pigeon",
+   "id": "Letter_07",
+   "x": 281.649,
+   "y": 10.05,
+   "z": -66.453,
+   "footprint": 0.0,
+   "clearRadius": 0.6,
+   "mesh": null
+  },
+  {
+   "kind": "pigeon",
+   "id": "Letter_08",
+   "x": 297.967,
+   "y": 26.05,
+   "z": 58.199,
+   "footprint": 0.0,
+   "clearRadius": 0.6,
+   "mesh": null
+  },
+  {
+   "kind": "pigeon",
+   "id": "Letter_09",
+   "x": 12.013,
+   "y": 18.05,
+   "z": 78.853,
+   "footprint": 0.0,
+   "clearRadius": 0.6,
+   "mesh": null
+  },
+  {
+   "kind": "pigeon",
+   "id": "Letter_10",
+   "x": 161.352,
+   "y": 21.05,
+   "z": 89.257,
+   "footprint": 0.0,
+   "clearRadius": 0.6,
+   "mesh": null
+  },
+  {
+   "kind": "pigeon",
+   "id": "Letter_11",
+   "x": -18.4,
+   "y": 26.05,
+   "z": 235.771,
+   "footprint": 0.0,
+   "clearRadius": 0.6,
+   "mesh": null
+  },
+  {
+   "kind": "pigeon",
+   "id": "Letter_12",
+   "x": -26.743,
+   "y": 0.05,
+   "z": -214.684,
+   "footprint": 0.0,
+   "clearRadius": 0.6,
+   "mesh": null
+  },
+  {
+   "kind": "gather_node",
+   "id": "A1",
+   "x": -25.0,
+   "y": 0.05,
+   "z": -204.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "A2",
+   "x": 22.0,
+   "y": 0.05,
+   "z": -250.928,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "B1",
+   "x": -17.0,
+   "y": 5.05,
+   "z": -87.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "B2",
+   "x": 4.0,
+   "y": 5.05,
+   "z": -126.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "C1",
+   "x": -169.0,
+   "y": 10.05,
+   "z": -63.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "C2",
+   "x": -132.0,
+   "y": 10.05,
+   "z": -72.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "C3",
+   "x": -185.273,
+   "y": 10.05,
+   "z": -101.929,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "D1",
+   "x": -132.929,
+   "y": 16.05,
+   "z": 90.727,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "D2",
+   "x": -140.0,
+   "y": 16.05,
+   "z": 92.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "D3",
+   "x": -126.0,
+   "y": 16.05,
+   "z": 51.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "E1",
+   "x": -2.0,
+   "y": 18.05,
+   "z": 88.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "E2",
+   "x": 49.0,
+   "y": 18.05,
+   "z": 56.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "F1",
+   "x": 158.072,
+   "y": 15.05,
+   "z": -79.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "F2",
+   "x": 209.0,
+   "y": 15.05,
+   "z": -89.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "S1a",
+   "x": -294.0,
+   "y": 7.05,
+   "z": -83.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "S1b",
+   "x": -296.928,
+   "y": 7.05,
+   "z": -114.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "S2a",
+   "x": -286.5,
+   "y": 13.05,
+   "z": 117.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "S2b",
+   "x": -274.5,
+   "y": 13.05,
+   "z": 82.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "S3a",
+   "x": 298.5,
+   "y": 10.05,
+   "z": -48.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "S3b",
+   "x": 292.5,
+   "y": 10.05,
+   "z": -65.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "K1",
+   "x": -60.429,
+   "y": 12.005,
+   "z": 27.727,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "K3",
+   "x": -0.343,
+   "y": 11.55,
+   "z": -1.843,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "G1",
+   "x": 152.071,
+   "y": 21.05,
+   "z": 90.727,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "G2",
+   "x": 155.0,
+   "y": 21.05,
+   "z": 51.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "G3",
+   "x": 167.0,
+   "y": 21.05,
+   "z": 98.928,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "K2",
+   "x": 64.51,
+   "y": 10.69,
+   "z": -3.8,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "H1",
+   "x": -12.0,
+   "y": 26.05,
+   "z": 233.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "H2",
+   "x": 39.0,
+   "y": 26.05,
+   "z": 201.0,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "S4a",
+   "x": 290.727,
+   "y": 26.05,
+   "z": 94.071,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "gather_node",
+   "id": "S4b",
+   "x": 297.071,
+   "y": 26.05,
+   "z": 64.727,
+   "footprint": 0.0,
+   "clearRadius": 0.8,
+   "mesh": "ground_glow"
+  },
+  {
+   "kind": "hearth",
+   "id": "Search_A",
+   "x": -26.465,
+   "y": 0.05,
+   "z": -238.352,
+   "footprint": 0.55,
+   "clearRadius": 1.2,
+   "mesh": "fire_particles"
+  },
+  {
+   "kind": "hearth",
+   "id": "Search_C",
+   "x": -196.09,
+   "y": 10.05,
+   "z": -102.138,
+   "footprint": 0.55,
+   "clearRadius": 1.2,
+   "mesh": "fire_particles"
+  },
+  {
+   "kind": "hearth",
+   "id": "POI_D",
+   "x": -150.399,
+   "y": 16.05,
+   "z": 91.916,
+   "footprint": 0.55,
+   "clearRadius": 1.2,
+   "mesh": "fire_particles"
+  },
+  {
+   "kind": "story_gate",
+   "id": "K1",
+   "x": -33.0,
+   "y": 5.754,
+   "z": -34.5,
+   "footprint": 0.0,
+   "clearRadius": 0.0,
+   "mesh": "gate",
+   "yaw": 180.0,
+   "width": 7.0
+  },
+  {
+   "kind": "story_gate",
+   "id": "K2",
+   "x": 21.276,
+   "y": 5.825,
+   "z": -34.512,
+   "footprint": 0.0,
+   "clearRadius": 0.0,
+   "mesh": "gate",
+   "yaw": -172.231,
+   "width": 7.0
+  },
+  {
+   "kind": "story_gate",
+   "id": "K3",
+   "x": -6.0,
+   "y": 6.66,
+   "z": -34.5,
+   "footprint": 0.0,
+   "clearRadius": 0.0,
+   "mesh": "gate",
+   "yaw": 0.0,
+   "width": 7.0
+  },
+  {
+   "kind": "story_gate",
+   "id": "BellCourt",
+   "x": 5.0,
+   "y": 19.333,
+   "z": 140.5,
+   "footprint": 0.0,
+   "clearRadius": 0.0,
+   "mesh": "gate",
+   "yaw": 0.0,
+   "width": 9.0
+  },
+  {
+   "kind": "story_gate",
+   "id": "ZhelingPass",
+   "x": 190.0,
+   "y": 16.606,
+   "z": 3.0,
+   "footprint": 0.0,
+   "clearRadius": 0.0,
+   "mesh": "gate",
+   "yaw": 0.0,
+   "width": 8.0
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "K1#0L",
+   "x": -102.4,
+   "y": 16.0,
+   "z": 42.0,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "K1#0R",
+   "x": -97.6,
+   "y": 16.0,
+   "z": 42.0,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "K1#1L",
+   "x": -27.4,
+   "y": 5.0,
+   "z": -47.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "K1#1R",
+   "x": -22.6,
+   "y": 5.0,
+   "z": -47.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "K2#2L",
+   "x": 120.1,
+   "y": 21.0,
+   "z": 63.0,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "K2#2R",
+   "x": 124.9,
+   "y": 21.0,
+   "z": 63.0,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "K2#3L",
+   "x": 26.6,
+   "y": 5.0,
+   "z": -47.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "K2#3R",
+   "x": 31.4,
+   "y": 5.0,
+   "z": -47.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "K3#4L",
+   "x": -0.4,
+   "y": 5.0,
+   "z": -47.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "K3#4R",
+   "x": 4.4,
+   "y": 5.0,
+   "z": -47.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "K3#5L",
+   "x": -16.4,
+   "y": 18.0,
+   "z": 32.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "K3#5R",
+   "x": -11.6,
+   "y": 18.0,
+   "z": 32.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "BellCourt#6L",
+   "x": 10.6,
+   "y": 18.0,
+   "z": 127.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "BellCourt#6R",
+   "x": 15.4,
+   "y": 18.0,
+   "z": 127.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "BellCourt#7L",
+   "x": -5.4,
+   "y": 26.0,
+   "z": 177.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "BellCourt#7R",
+   "x": -0.6,
+   "y": 26.0,
+   "z": 177.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "ZhelingPass#8L",
+   "x": 195.6,
+   "y": 15.0,
+   "z": -10.0,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "ZhelingPass#8R",
+   "x": 200.4,
+   "y": 15.0,
+   "z": -10.0,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "ZhelingPass#9L",
+   "x": 179.6,
+   "y": 21.0,
+   "z": 27.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "bridge_sign_post",
+   "id": "ZhelingPass#9R",
+   "x": 184.4,
+   "y": 21.0,
+   "z": 27.5,
+   "footprint": 0.16,
+   "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "extraction_ring",
+   "id": "Exit",
+   "x": 0.0,
+   "y": 0,
+   "z": -253.15,
+   "footprint": 0.0,
+   "clearRadius": 2.62,
+   "mesh": "ground_ring"
+  },
+  {
+   "kind": "extraction_ring",
+   "id": "BellExtraction",
+   "x": 5.0,
+   "y": 26,
+   "z": 231.3,
+   "footprint": 0.0,
+   "clearRadius": 2.62,
+   "mesh": "ground_ring"
+  },
+  {
+   "kind": "extraction_ring",
+   "id": "Region_D",
+   "x": -160,
+   "y": 16,
+   "z": 75,
+   "footprint": 0.0,
+   "clearRadius": 2.62,
+   "mesh": "ground_ring"
+  },
+  {
+   "kind": "extraction_ring",
+   "id": "Region_G",
+   "x": 175,
+   "y": 21,
+   "z": 57,
+   "footprint": 0.0,
+   "clearRadius": 2.62,
+   "mesh": "ground_ring"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_A_01",
+   "x": -50.273,
+   "y": 0.0,
+   "z": -184.37,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_A_02",
+   "x": 51.481,
+   "y": 0.0,
+   "z": -254.875,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_A_03",
+   "x": 26.403,
+   "y": 0.0,
+   "z": -182.46,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_A_04",
+   "x": -24.91,
+   "y": 0.0,
+   "z": -257.921,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_A_05",
+   "x": -7.786,
+   "y": 0.0,
+   "z": -213.016,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_A_06",
+   "x": -52.004,
+   "y": 0.0,
+   "z": -230.955,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_B_01",
+   "x": -60.773,
+   "y": 5.0,
+   "z": -139.171,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_B_02",
+   "x": 60.636,
+   "y": 5.0,
+   "z": -50.207,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_B_03",
+   "x": -42.686,
+   "y": 5.0,
+   "z": -44.512,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_B_04",
+   "x": 40.137,
+   "y": 5.0,
+   "z": -144.234,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_B_05",
+   "x": -4.521,
+   "y": 5.0,
+   "z": -95.83,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_B_06",
+   "x": 10.011,
+   "y": 5.0,
+   "z": -45.155,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_B_07",
+   "x": -58.165,
+   "y": 5.0,
+   "z": -91.137,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_B_08",
+   "x": -14.561,
+   "y": 5.0,
+   "z": -144.918,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_C_01",
+   "x": -108.617,
+   "y": 10.0,
+   "z": -133.976,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_C_02",
+   "x": -225.125,
+   "y": 10.0,
+   "z": -31.386,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_C_03",
+   "x": -112.883,
+   "y": 10.0,
+   "z": -25.355,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_C_04",
+   "x": -215.588,
+   "y": 10.0,
+   "z": -134.261,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_C_05",
+   "x": -163.923,
+   "y": 10.0,
+   "z": -78.267,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_C_06",
+   "x": -102.945,
+   "y": 10.0,
+   "z": -79.075,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_C_07",
+   "x": -168.941,
+   "y": 10.0,
+   "z": -24.597,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_C_08",
+   "x": -227.356,
+   "y": 10.0,
+   "z": -84.332,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_C_09",
+   "x": -159.111,
+   "y": 10.0,
+   "z": -132.982,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_C_10",
+   "x": -196.466,
+   "y": 10.0,
+   "z": -55.357,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_D_01",
+   "x": -210.408,
+   "y": 16.0,
+   "z": 130.753,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_D_02",
+   "x": -103.687,
+   "y": 16.0,
+   "z": 18.804,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_D_03",
+   "x": -216.095,
+   "y": 16.0,
+   "z": 19.993,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_D_04",
+   "x": -102.214,
+   "y": 16.0,
+   "z": 126.096,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_D_05",
+   "x": -160.934,
+   "y": 16.0,
+   "z": 78.428,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_D_06",
+   "x": -158.818,
+   "y": 16.0,
+   "z": 16.714,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_D_07",
+   "x": -155.189,
+   "y": 16.0,
+   "z": 129.016,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_D_08",
+   "x": -211.849,
+   "y": 16.0,
+   "z": 76.24,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_D_09",
+   "x": -105.471,
+   "y": 16.0,
+   "z": 75.589,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_D_10",
+   "x": -186.254,
+   "y": 16.0,
+   "z": 47.777,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_D_11",
+   "x": -125.719,
+   "y": 16.0,
+   "z": 96.731,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_D_12",
+   "x": -193.473,
+   "y": 16.0,
+   "z": 103.771,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_E_01",
+   "x": -37.192,
+   "y": 18.0,
+   "z": 127.328,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_E_02",
+   "x": 71.089,
+   "y": 18.0,
+   "z": 34.083,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_E_03",
+   "x": -32.517,
+   "y": 18.0,
+   "z": 30.201,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_E_04",
+   "x": 61.527,
+   "y": 18.0,
+   "z": 129.928,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_E_05",
+   "x": 23.5,
+   "y": 18.0,
+   "z": 66.785,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_E_06",
+   "x": 12.365,
+   "y": 18.0,
+   "z": 127.337,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_E_07",
+   "x": -40.442,
+   "y": 18.0,
+   "z": 79.249,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_E_08",
+   "x": 72.533,
+   "y": 18.0,
+   "z": 82.414,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_E_09",
+   "x": 11.657,
+   "y": 18.0,
+   "z": 29.45,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_E_10",
+   "x": -16.751,
+   "y": 18.0,
+   "z": 100.676,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_E_11",
+   "x": 36.853,
+   "y": 18.0,
+   "z": 96.905,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_E_12",
+   "x": -9.997,
+   "y": 18.0,
+   "z": 65.302,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_F_01",
+   "x": 174.1,
+   "y": 15.0,
+   "z": -10.374,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_F_02",
+   "x": 231.047,
+   "y": 15.0,
+   "z": -121.167,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_F_03",
+   "x": 114.589,
+   "y": 15.0,
+   "z": -111.68,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_F_04",
+   "x": 237.289,
+   "y": 15.0,
+   "z": -46.471,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_F_05",
+   "x": 113.757,
+   "y": 15.0,
+   "z": -39.801,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_F_06",
+   "x": 181.988,
+   "y": 15.0,
+   "z": -85.201,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_F_07",
+   "x": 220.426,
+   "y": 15.0,
+   "z": -9.168,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_F_08",
+   "x": 157.281,
+   "y": 15.0,
+   "z": -114.302,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_F_09",
+   "x": 197.764,
+   "y": 15.0,
+   "z": -44.396,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_F_10",
+   "x": 131.006,
+   "y": 15.0,
+   "z": -8.55,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_F_11",
+   "x": 221.203,
+   "y": 15.0,
+   "z": -78.799,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_F_12",
+   "x": 151.851,
+   "y": 15.0,
+   "z": -40.429,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_01",
+   "x": 219.606,
+   "y": 21.0,
+   "z": 30.274,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_02",
+   "x": 121.346,
+   "y": 21.0,
+   "z": 119.321,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_03",
+   "x": 221.286,
+   "y": 21.0,
+   "z": 123.94,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_04",
+   "x": 129.59,
+   "y": 21.0,
+   "z": 27.607,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_05",
+   "x": 177.855,
+   "y": 21.0,
+   "z": 66.025,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_06",
+   "x": 227.226,
+   "y": 21.0,
+   "z": 75.854,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_07",
+   "x": 170.582,
+   "y": 21.0,
+   "z": 118.711,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_08",
+   "x": 119.232,
+   "y": 21.0,
+   "z": 71.916,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_09",
+   "x": 181.01,
+   "y": 21.0,
+   "z": 24.016,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_10",
+   "x": 146.438,
+   "y": 21.0,
+   "z": 88.588,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_11",
+   "x": 201.341,
+   "y": 21.0,
+   "z": 49.594,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_12",
+   "x": 195.449,
+   "y": 21.0,
+   "z": 105.867,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_13",
+   "x": 230.603,
+   "y": 21.0,
+   "z": 101.572,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_14",
+   "x": 150.452,
+   "y": 21.0,
+   "z": 41.45,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_01",
+   "x": -48.629,
+   "y": 26.0,
+   "z": 272.872,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_02",
+   "x": 63.442,
+   "y": 26.0,
+   "z": 180.403,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_03",
+   "x": -37.321,
+   "y": 26.0,
+   "z": 174.776,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_04",
+   "x": 55.082,
+   "y": 26.0,
+   "z": 275.08,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_05",
+   "x": 15.327,
+   "y": 26.0,
+   "z": 228.191,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_06",
+   "x": 12.934,
+   "y": 26.0,
+   "z": 173.759,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_07",
+   "x": -41.73,
+   "y": 26.0,
+   "z": 222.423,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_08",
+   "x": 53.772,
+   "y": 26.0,
+   "z": 229.147,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_09",
+   "x": 10.912,
+   "y": 26.0,
+   "z": 271.225,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_10",
+   "x": -20.215,
+   "y": 26.0,
+   "z": 249.701,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_11",
+   "x": -11.123,
+   "y": 26.0,
+   "z": 197.269,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_12",
+   "x": 34.864,
+   "y": 26.0,
+   "z": 204.299,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_13",
+   "x": -52.424,
+   "y": 26.0,
+   "z": 247.032,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_H_14",
+   "x": 25.797,
+   "y": 26.0,
+   "z": 242.655,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S1_01",
+   "x": -263.842,
+   "y": 7.0,
+   "z": -84.927,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S1_02",
+   "x": -316.162,
+   "y": 7.0,
+   "z": -111.018,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S1_03",
+   "x": -280.815,
+   "y": 7.0,
+   "z": -122.687,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S1_04",
+   "x": -316.171,
+   "y": 7.0,
+   "z": -78.272,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S1_05",
+   "x": -290.421,
+   "y": 7.0,
+   "z": -93.644,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S1_06",
+   "x": -263.066,
+   "y": 7.0,
+   "z": -111.515,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S2_01",
+   "x": -256.785,
+   "y": 13.0,
+   "z": 112.855,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S2_02",
+   "x": -300.001,
+   "y": 13.0,
+   "z": 78.073,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S2_03",
+   "x": -298.529,
+   "y": 13.0,
+   "z": 116.821,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S2_04",
+   "x": -259.823,
+   "y": 13.0,
+   "z": 80.3,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S2_05",
+   "x": -280.979,
+   "y": 13.0,
+   "z": 97.394,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S2_06",
+   "x": -301.126,
+   "y": 13.0,
+   "z": 100.607,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S3_01",
+   "x": 332.329,
+   "y": 10.0,
+   "z": -37.363,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S3_02",
+   "x": 275.705,
+   "y": 10.0,
+   "z": -93.886,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S3_03",
+   "x": 274.712,
+   "y": 10.0,
+   "z": -36.133,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S3_04",
+   "x": 329.617,
+   "y": 10.0,
+   "z": -87.898,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S3_05",
+   "x": 306.349,
+   "y": 10.0,
+   "z": -62.059,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S3_06",
+   "x": 272.082,
+   "y": 10.0,
+   "z": -64.441,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S4_01",
+   "x": 323.057,
+   "y": 26.0,
+   "z": 104.779,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S4_02",
+   "x": 267.054,
+   "y": 26.0,
+   "z": 47.432,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S4_03",
+   "x": 267.924,
+   "y": 26.0,
+   "z": 103.617,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S4_04",
+   "x": 321.055,
+   "y": 26.0,
+   "z": 48.283,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S4_05",
+   "x": 296.638,
+   "y": 26.0,
+   "z": 69.501,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_S4_06",
+   "x": 264.765,
+   "y": 26.0,
+   "z": 75.567,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "C#0",
+   "x": -144.0,
+   "y": 10.0,
+   "z": -96.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "C#1",
+   "x": -145.5,
+   "y": 10.0,
+   "z": -93.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "C#2",
+   "x": -145.5,
+   "y": 10.0,
+   "z": -98.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "C_02#0",
+   "x": -133.0,
+   "y": 10.0,
+   "z": -50.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "C_02#1",
+   "x": -134.5,
+   "y": 10.0,
+   "z": -47.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "C_02#2",
+   "x": -134.5,
+   "y": 10.0,
+   "z": -52.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "D#0",
+   "x": -139.0,
+   "y": 16.0,
+   "z": 59.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "D#1",
+   "x": -140.5,
+   "y": 16.0,
+   "z": 61.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "D#2",
+   "x": -140.5,
+   "y": 16.0,
+   "z": 56.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "D_02#0",
+   "x": -145.0,
+   "y": 16.0,
+   "z": 106.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "D_02#1",
+   "x": -146.5,
+   "y": 16.0,
+   "z": 108.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "D_02#2",
+   "x": -146.5,
+   "y": 16.0,
+   "z": 103.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "E#0",
+   "x": -70.0,
+   "y": 17.0,
+   "z": 85.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "E#1",
+   "x": -71.5,
+   "y": 17.0,
+   "z": 87.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "E#2",
+   "x": -71.5,
+   "y": 17.0,
+   "z": 82.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "E_02#0",
+   "x": 96.25,
+   "y": 19.5,
+   "z": 90.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "E_02#1",
+   "x": 94.75,
+   "y": 19.5,
+   "z": 92.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "E_02#2",
+   "x": 94.75,
+   "y": 19.5,
+   "z": 87.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "G#0",
+   "x": 154.0,
+   "y": 21.0,
+   "z": 59.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "G#1",
+   "x": 152.5,
+   "y": 21.0,
+   "z": 61.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "G#2",
+   "x": 152.5,
+   "y": 21.0,
+   "z": 56.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "G_02#0",
+   "x": 207.0,
+   "y": 21.0,
+   "z": 105.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "G_02#1",
+   "x": 205.5,
+   "y": 21.0,
+   "z": 107.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "G_02#2",
+   "x": 205.5,
+   "y": 21.0,
+   "z": 102.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "S1#0",
+   "x": -269.0,
+   "y": 7.0,
+   "z": -116.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "S1#1",
+   "x": -270.5,
+   "y": 7.0,
+   "z": -113.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "S1#2",
+   "x": -270.5,
+   "y": 7.0,
+   "z": -118.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "S2#0",
+   "x": -261.5,
+   "y": 13.0,
+   "z": 84.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "S2#1",
+   "x": -263.0,
+   "y": 13.0,
+   "z": 86.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "S2#2",
+   "x": -263.0,
+   "y": 13.0,
+   "z": 81.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "S3#0",
+   "x": 323.5,
+   "y": 10.0,
+   "z": -81.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "S3#1",
+   "x": 322.0,
+   "y": 10.0,
+   "z": -78.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "S3#2",
+   "x": 322.0,
+   "y": 10.0,
+   "z": -83.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "S4#0",
+   "x": 316.0,
+   "y": 26.0,
+   "z": 59.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "S4#1",
+   "x": 314.5,
+   "y": 26.0,
+   "z": 61.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "S4#2",
+   "x": 314.5,
+   "y": 26.0,
+   "z": 56.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "F#0",
+   "x": 141.0,
+   "y": 15.0,
+   "z": -42.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "F#1",
+   "x": 139.5,
+   "y": 15.0,
+   "z": -39.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "F#2",
+   "x": 139.5,
+   "y": 15.0,
+   "z": -44.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "Zheling#0",
+   "x": 196.0,
+   "y": 15.0,
+   "z": -81.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "BellKeeper#0",
+   "x": 15.0,
+   "y": 26.0,
+   "z": 235.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "BellKeeper#1",
+   "x": 13.5,
+   "y": 26.0,
+   "z": 237.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "BellKeeper#2",
+   "x": 13.5,
+   "y": 26.0,
+   "z": 232.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "Storm#0",
+   "x": 15.0,
+   "y": 18.0,
+   "z": 68.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "Storm#1",
+   "x": 13.5,
+   "y": 18.0,
+   "z": 70.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "Storm#2",
+   "x": 13.5,
+   "y": 18.0,
+   "z": 65.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "K1_Relay#0",
+   "x": -62.5,
+   "y": 11.955,
+   "z": 20.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "K1_Relay#1",
+   "x": -64.0,
+   "y": 11.955,
+   "z": 22.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "K1_Relay#2",
+   "x": -64.0,
+   "y": 11.955,
+   "z": 17.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "K2_Relay#0",
+   "x": 56.51,
+   "y": 10.64,
+   "z": -3.8,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "K2_Relay#1",
+   "x": 55.01,
+   "y": 10.64,
+   "z": -1.202,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "K2_Relay#2",
+   "x": 55.01,
+   "y": 10.64,
+   "z": -6.398,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "K3_Relay#0",
+   "x": -6.0,
+   "y": 11.5,
+   "z": -7.5,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "K3_Relay#1",
+   "x": -7.5,
+   "y": 11.5,
+   "z": -4.902,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "K3_Relay#2",
+   "x": -7.5,
+   "y": 11.5,
+   "z": -10.098,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "E_03#0",
+   "x": 36.0,
+   "y": 18.0,
+   "z": 64.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "E_03#1",
+   "x": 34.5,
+   "y": 18.0,
+   "z": 66.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "E_03#2",
+   "x": 34.5,
+   "y": 18.0,
+   "z": 61.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "H_02#0",
+   "x": 37.0,
+   "y": 26.0,
+   "z": 255.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "H_02#1",
+   "x": 35.5,
+   "y": 26.0,
+   "z": 257.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "H_02#2",
+   "x": 35.5,
+   "y": 26.0,
+   "z": 252.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "StormEcho#0",
+   "x": 15.0,
+   "y": 18.0,
+   "z": 68.0,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "StormEcho#1",
+   "x": 13.5,
+   "y": 18.0,
+   "z": 70.598,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "encounter_slot",
+   "id": "StormEcho#2",
+   "x": 13.5,
+   "y": 18.0,
+   "z": 65.402,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  }
+ ]
+}

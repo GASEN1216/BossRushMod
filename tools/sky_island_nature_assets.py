@@ -15,7 +15,9 @@ ASSET_DIRECTORY = (Path(__file__).resolve().parents[1] / 'ArtSource' / 'SkyIslan
 DEFAULT_MATERIALS = {
     'grass': 'Leaf', 'leafsGreen': 'LeafLight', 'leafsDark': 'Forest',
     'colorPurple': 'Lavender', 'colorRed': 'Blossom', 'colorYellow': 'Flower',
-    'colorWhite': 'BrassLight', '_defaultMat': 'Ivory', 'colorTan': 'CrystalLavender',
+    # 2026-09-30：colorTan 原映射到 CrystalLavender（水晶光泽 + 自发光），363 朵蘑菇菌盖成了发亮的紫塑料；
+    # 改哑光花瓣材质。D / S3 月光蘑菇仍由调用方显式覆盖成晶体材质（夜里发光是设计）。
+    'colorWhite': 'BrassLight', '_defaultMat': 'Ivory', 'colorTan': 'Flower',
     'woodBark': 'Wood', 'woodInner': 'WoodLight', 'wood': 'WoodLight',
     'woodDark': 'WoodDark', 'stone': 'RockLight',
 }

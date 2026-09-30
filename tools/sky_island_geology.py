@@ -15,7 +15,8 @@ import zlib
 
 MATERIALS = ('GeologySand', 'GeologyLight', 'GeologyDeep')
 FALLBACK_MATERIALS = ('Rock', 'RockLight', 'RockDeep')
-GEOLOGY_TEXTURE_METRES = 32.0
+# 2026-09-30：32 m 一个周期只有约 29 px/m，岛缘崖面糊成一片（材质审计 F7）；20 m 约 51 px/m，大层理仍在。
+GEOLOGY_TEXTURE_METRES = 20.0
 REFERENCE = 'ArtSource/SkyIsland/Production20260914/References/E_geology_native.png'
 
 # 剖面只定义大体积与断面，不再按整圈分配深浅条纹。下半部转为块岩的平面断口，

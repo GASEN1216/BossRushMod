@@ -16,6 +16,8 @@ import subprocess
 import sys
 import tempfile
 
+# 本机 Shapely 按 NAVIGATION.md 装在被忽略的任务目录；CI 装在全局环境。两处都能找到。
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'Build/sky-island-python-deps'))
 from shapely.geometry import Point, LineString, Polygon, box
 from shapely.ops import unary_union
 

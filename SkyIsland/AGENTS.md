@@ -85,6 +85,9 @@
 - 贴路、靠墙这类语义化摆放不要用 `tools/sky_island_dressing.py` 的 `PlantingSpace.free()` 当可放判据：它是给植被远离路径撒点用的排除语义，会全部拒绝。
 
 - 道路回放 `ArtSource/SkyIsland/road_layout.json` 的合并面，修改登记模型先 `--prepare-roads` 重测实际包络再烘焙；家具用最终道路与实际模型尺寸定位，不能用中心点或旧名义半径保证整件模型净空。具体构建顺序见 NAVIGATION.md。
+- **按坐标画的东西一律走统一摆放裁决**（2026-09-30）：地标零件、码头货箱、村景灯柱与花丛、灯标记铜灯、岛缘散布树石花、Tripo 锚点件都经 `fitted` / `PlacementSpace.fit`——量实际网格在身体层（离地 0.06–2.2 m）与上层的截面，查最终路面 + 0.2 m 路缘、桥口直段、门口、玩法标记、运行时物件（`ArtSource/SkyIsland/runtime_placements.json`）与先摆的硬物截面；挡住就近平移，找不到就撤下并记 `propOmissions`。花草最后撒，`PlantingSpace` 经 `blocked_circle` 看得见前面的硬物。新增按坐标画的件必须走 `fitted`，`SkyIslandSceneCleanlinessPropertyTest` 钉住名单与发射顺序。
+- **全岛净空证据**：`generate_sky_island.py --audit-ledger <目录>`（实例台账，不写作者工程）→ `tools/sky_island_scene_audit.py --compact ArtSource/SkyIsland/Validation/sky_island_scene_audit.json`（压路 / 互穿 / 悬空 / 陷地 / 伸出岛缘 / 挡桥口门口交互点 / 运行时物件 / 共面闪烁）。设计上就接在一起的只能登记进 `DESIGNED_CONTACT` / `DESIGNED_KIND_CONTACT` 并写理由，不放宽判据。C# 运行时落点数据改了先跑 `tools/sky_island_runtime_placements.py`；导航重烘后跑 `tools/sky_island_patrol_slots.py`（巡守槽位必须落在新导航三角形中心，JSON 与 C# 兜底一起写）。巡守槽位从导航派生，生成器**不给它让位**（`DERIVED_RUNTIME_KINDS`），否则几何 → 导航 → 槽位 → 几何成环、重跑结果随上一轮槽位漂移；其余运行时物件来自固定数据，照常让位。
+- **出击场景只按可见硬网格建碰撞**，`COL_Wall_` 挡盒不进 raid：想让一件东西「只看不上」只能改几何或撤下；桥面导航不按摆件挖洞，桥面上不要立实体摆件（中继平台灯只能坐在护栏线上）。Unity 碰撞校验报 `navigation_sweep_blocked` 时，把报告交给 `build_sky_island_collision_navigation.py --physics-report` 再烘一次。
 - 实体几何修改后重烘焙 `ArtSource/SkyIsland/collision_navigation.json`；发布 NAV 由实际硬质网格身体高度切片得到，绑定布局与全部生产硬物（含桥梁）的指纹；生成时重新枚举当前硬物名称集合，新增 / 删除 / 硬软转换不得沿用旧名单验签。`--prepare-navigation` 只准备输入，不覆盖生产 FBX。完整重建命令与验证见 `ArtSource/SkyIsland/NAVIGATION.md`；旧设计导航不能替代发布侧 PhysX / 剧情门检查。
 - 导航网格顶点硬上限 4095，超了进岛前就抛异常。余量按运行时 `mesh.vertexCount` 算，不按 UnityPy 离线计数。
 - 中继平台是桥的一段（中心标记 `Relay_<桥 ID>`），不是新岛：`RegionBit`、`COL_Ground_<岛>`、门语义都不因它改变。
@@ -93,6 +96,9 @@
 - Unity 批处理：先确认没有别的实例占用工程；每步单独执行并检查退出码与产物，不用分号或 `&&` 串联（会把失败伪装成成功）。Blender 后台加 `--factory-startup --python-exit-code 1`，并在日志里找 PASS 标记。
 - **运行时特效小包 `skyisland_fx`**（热浪折射、泥面流动两个材质）独立于场景包：作者工程 `SkyIslandFxBundleBuilder.BuildOnlyAndExit` 只打这两个材质及其着色器，产物复制到 `Assets/ui/skyisland_fx`，正式编译脚本部署。重打它**不会**把场景与其它资产一起发出去，想加运行时特效材质优先放这里、别动场景包。透明特效着色器只写一个 `UniversalForward` pass（Deferred 下透明物体走前向，不需要 GBuffer pass）；采样 `_CameraOpaqueTexture` 的材质只在 `SkyIslandFxAssets.SceneColorAvailable()` 为真时启用，否则退回粒子版（`SkyIslandFxBundleGuard`）。
 - 光色与天色硬编码在四处（玩家看到的天空主要是云 shader 的 haze 常量），改一处同步四处。画风基准是原版暖琥珀色带，材质 `_BaseColor` 全白、颜色在贴图里（`ArtSource/SkyIsland/VANILLA_GRADE.md`）。
+- **颜色进贴图**（2026-09-30）：每个环境材质一张平铺手绘贴图 `<材质>_handpainted_mat.png`，由 `tools/sky_island_surface_textures.py`（`generate` 出底纹、`bake` 在线性空间定级）生成，清单 `ArtSource/SkyIsland/surface_textures.json`，生成器的 `TILED_TEXTURES` 从清单派生、tint 全为 1；原有平铺材质一律 1024²（不许降纹素），新增调色板材质 512²；新增调色板材质要一起进清单，不要再加没贴图的纯色材质。自发光色走 `emissionRgba`（作者构建器读），材质定义只在 `generate_sky_island.material_definition()`，整图与模型库共用。着色器自发光按日照压暗（晴昼约三成、星夜全亮）。
+- **路灯夜里亮并照亮周围**（2026-10-01）：环境着色器是 `UniversalMaterialType=Unlit`，延迟管线的点光源照不到岛面；路灯光由着色器读全局数组 `_SkyIslandLamp*`（最多 16 盏）自己加，数组由 `SkyIslandStreetLamps`（会话持有，白天 O(1) 早返）按玩家附近的 `NightLamp_*` 场景标记写入，最近几盏另放真实点光源照亮官方角色。新增发光灯具要在生成器里 `lamp_light(kind, position)` 登记灯位（摆放裁决会同步平移 / 撤掉），Tripo 灯的灯罩玻璃走 `sky_island_surface_materials` 分面并登记玻璃中心；守卫 `SkyIslandStreetLampGuard`。
+- **Tripo 件法线与图集**：`_stamp` 焊接后按 40° 切硬边求 corner normals（只对 Tripo 专属材质；回退到调色板 / 平铺材质的件照旧合批）；法线按焊接顶点上的平滑扇区（共享一条 <40° 的边即同扇区）求平均，平滑边两侧逐位相同、不留折痕；面的朝向取源绕序与 bmesh 定向里相邻冲突少的一份（bmesh 在非流形边处会整块翻反），瀑布水 / 石分面也先在整件上求同一份法线（`sector_normals`）。要带自己法线又用平铺贴图的件（岛缘卵石 `rock_b`）走 `TILED_ALIASES` 别名材质单独成组（`Pebble` 跟随 RockLight 的贴图）。图集高清版用 `tools/sky_island_tripo_textures.py` 从留存原件重导（与现有图集相关系数 < 0.9 拒绝），不重跑 `sky_island_tripo_import.py`——那会重新减面、改包络，连带道路与导航重烘。
 - 小地图形状按几何烘焙、颜色取对齐后的生成图。布局几何一变，`tools/build_sky_island_minimap.py` 会拒绝旧底图：重走 `tools/sky_island_minimap_art.py` 的 reference / generate / align，或加 `--flat`。
 
 ## 7. Wiki 与文本

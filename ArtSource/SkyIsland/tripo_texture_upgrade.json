@@ -1,0 +1,603 @@
+{
+ "schemaVersion": 1,
+ "textures": {
+  "barn": {
+   "source": "replace/barn.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "1a7d0cccae9660affa36145be1366bead74c219c63cd1c16fab0784eed58ea14",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9996,
+   "lightnessGamma": 0.72,
+   "meanLightness": [
+    0.3603,
+    0.4768
+   ],
+   "sha256": "82ba315e00a55ab87bfd86082e4ebd28c93eec0d1702ad03aca9fd3467db0a39"
+  },
+  "cave_rock": {
+   "source": "replace/cave_rock.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "4e4c08eac48f6bec56c0334b254fbe3269dd5712f15c5b1511d188900650c81c",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9996,
+   "lightnessGamma": 0.72,
+   "meanLightness": [
+    0.3734,
+    0.4899
+   ],
+   "sha256": "6c9f1601b27fb2d30d3b2cc65ba47c11c7955f88c5f2e9df05b4d98963ad4120"
+  },
+  "cherry_pavilion": {
+   "source": "cherry_pavilion.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "c17cb9121586b3a5781c6d57a3c1e11c38d57984a9f4442cb12865adc8084329",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9998,
+   "lightnessGamma": 0.7977,
+   "meanLightness": [
+    0.4194,
+    0.497
+   ],
+   "sha256": "400078088fcdfa6d45bf1a98878a9b2a292f3b354cda55f5059def026ef123d8"
+  },
+  "cottage_dormer": {
+   "source": "cottage_dormer.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "aa7dc55954e0593226e5f8f1a3099770f6970ad46d3e7e4d49dbe7c6720ad65e",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9999,
+   "lightnessGamma": 0.7644,
+   "meanLightness": [
+    0.4038,
+    0.4952
+   ],
+   "sha256": "1033ddb1e3612a3124aadcf6ac8530d00a267f9ca30f903fc67ef9908837fc41"
+  },
+  "cottage_large": {
+   "source": "cottage_large.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "9545ce95cc873b6ff7a078b383566ab0323760300323c0c2423c97adc2fdd606",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9999,
+   "lightnessGamma": 0.7856,
+   "meanLightness": [
+    0.4138,
+    0.4941
+   ],
+   "sha256": "3abb35d132ae2051d74d1b8db4c04ff123acb73bf99dcee7168b4dafc15eb4b9"
+  },
+  "cottage_small": {
+   "source": "cottage_small.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "c6cabda03192c67c507ed07e5555d54d2267531bc496ae07f5b252a1db392864",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9999,
+   "lightnessGamma": 0.7214,
+   "meanLightness": [
+    0.3826,
+    0.4953
+   ],
+   "sha256": "aa4a915a560452982a4cc2db7de1c62c196fa4acb5f148ebf21c4d4cbc55e9ee"
+  },
+  "distant_islet_a": {
+   "source": "round2/face_1500/distant_islet_a.glb",
+   "sourceSize": [
+    1024,
+    1024
+   ],
+   "sourceSha256": "69720a2c03e608d9afb352ccb15e8ad9fbe020a4ed2cb9ea29321ecd28d483aa",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.999,
+   "lightnessGamma": 0.72,
+   "meanLightness": [
+    0.3562,
+    0.474
+   ],
+   "sha256": "397b2dd0194895162707c4f8863eb435db1cb9b9eec1db86ab973e35109043a4"
+  },
+  "distant_islet_b": {
+   "source": "round2/face_1500/distant_islet_b.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "22b939387c8cb2ef150566eadb534587699b9a9484d1753bf3cae02706a824a9",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9997,
+   "lightnessGamma": 0.7573,
+   "meanLightness": [
+    0.4004,
+    0.4969
+   ],
+   "sha256": "262ad62c784e80d373d616ceac4e3696c018a8d7f22c9f8e61f02b1fd8561213"
+  },
+  "distant_islet_c": {
+   "source": "round2/face_1500/distant_islet_c.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "df5c29b7adcb12e471637ece9eb8a7bea3c0c43484d282f8e583b3c8f8d5fa94",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9997,
+   "lightnessGamma": 0.7663,
+   "meanLightness": [
+    0.4047,
+    0.4968
+   ],
+   "sha256": "239c9881ed815b44f03016f825d773092213712eacf96054704909789cda3b30"
+  },
+  "dock_house": {
+   "source": "replace/dock_house.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "bb149b3cfd2b59f1f927c993d695a5f50d8f854874cff981669508e0175c4ff5",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9999,
+   "lightnessGamma": 0.8106,
+   "meanLightness": [
+    0.4252,
+    0.4971
+   ],
+   "sha256": "e39d882ee5bfa4f8239a9f7087419b62b8527d775ad003c8ab32958d0607c086"
+  },
+  "farm_barn": {
+   "source": "farm_barn.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "10afe74919f71bf2b826288433a1d65a3b87daec5bdbd27f25e579ff5d0aa0ea",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9996,
+   "lightnessGamma": 0.72,
+   "meanLightness": [
+    0.3686,
+    0.4853
+   ],
+   "sha256": "22312a2974ff16cef8a60910eac159de5f4e19ed77f581dcdf7a0e679b57b510"
+  },
+  "glow_crystal": {
+   "source": "round2/face_1500/glow_crystal.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "3c1ed298062da4ad3648dffc7be35a61ab3104f98d766bfcc9c5f0871d21c270",
+   "previousSize": [
+    256,
+    256
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9996,
+   "lightnessGamma": 0.915,
+   "meanLightness": [
+    0.4688,
+    0.4984
+   ],
+   "sha256": "4161c70216909ab6cfa4a6893d84ec9e86527f31a0102dde821f1495f63b4a9e"
+  },
+  "lookout_tower": {
+   "source": "replace/lookout_tower.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "a94f727b92ab926f7cb689c6f5f604a8e7830394f358ab1ecaafb47f0f4041cf",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9998,
+   "lightnessGamma": 0.72,
+   "meanLightness": [
+    0.3635,
+    0.4767
+   ],
+   "sha256": "6bb100be1312e6f05958fbe2b487c556263d2c83eef25238dc7c5c3b87de6317"
+  },
+  "market_stall": {
+   "source": "market_stall.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "2699b7d5afd6ec6a332d29f8b05d6f5ded1f5224a1a0780a3c1356bee13d8c8e",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9997,
+   "lightnessGamma": 0.7462,
+   "meanLightness": [
+    0.395,
+    0.4975
+   ],
+   "sha256": "8ac656cd57531c1929747ae9ab02d641f1253e1b8ba8788eb9868a243a3a8cf8"
+  },
+  "mill": {
+   "source": "replace/mill.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "9e51ae31e132f0c071451d90754dc2ed08dd7738f17164e3ab18642429b20991",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9998,
+   "lightnessGamma": 0.72,
+   "meanLightness": [
+    0.3101,
+    0.4242
+   ],
+   "sha256": "895f6806d595a059402dbbeaccfa4925dbfa47321632d52cb8fac1b937c3135e"
+  },
+  "pavilion_hall": {
+   "source": "replace/pavilion_hall.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "b87cd4da329d736be3c283a6c4ff0abcbb60d13043b1c7e41946482b695b7bbc",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9996,
+   "lightnessGamma": 0.7707,
+   "meanLightness": [
+    0.4068,
+    0.4987
+   ],
+   "sha256": "47540638a0d4405706621cb5adc19ad6a21f6cfb0c8f4c7e4b3743251dd88c14"
+  },
+  "post_house": {
+   "source": "replace/post_house.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "415be3d44cd03ff1f8e8e625e1394552502551e02b906e0b1a8f8026c31817c2",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9999,
+   "lightnessGamma": 0.7325,
+   "meanLightness": [
+    0.3882,
+    0.4955
+   ],
+   "sha256": "6b7e1d1b05c70ab193923065b4e83a5a926330222f5fed352969a0c263f3ebeb"
+  },
+  "shrine_pavilion": {
+   "source": "shrine_pavilion.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "3b1e65f8083f0fa80db3bcf471193460c93c93268c1a0082e5d1758c4041b00a",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9998,
+   "lightnessGamma": 0.7575,
+   "meanLightness": [
+    0.4005,
+    0.4966
+   ],
+   "sha256": "861255f6058a6ae770b386af8987148c8f7f826ed0e906ca1baf04e6e1dc7250"
+  },
+  "tea_house": {
+   "source": "replace/tea_house.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "74f6437678ba8e20dd3e69a12c13ab1d73b7eb5ec51392f0db83acc121e130f0",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9998,
+   "lightnessGamma": 0.7625,
+   "meanLightness": [
+    0.4029,
+    0.4973
+   ],
+   "sha256": "ce576ef6235adada117077915525f058e1fc321366c8bc5626f9c2e89e9d2254"
+  },
+  "temple": {
+   "source": "replace/temple.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "e552030ae3b18d4e83750a17b3af9a010121a1fedef8a01ce175224afd5086ba",
+   "previousSize": [
+    1024,
+    1024
+   ],
+   "size": [
+    2048,
+    2048
+   ],
+   "atlasCorrelation": 0.9999,
+   "lightnessGamma": 0.7351,
+   "meanLightness": [
+    0.3895,
+    0.4972
+   ],
+   "sha256": "271c7874768c1c3effe7f0f0e6c1124f3513141cadf0a5ce989d6c4e1fc6a25d"
+  },
+  "village_house_a": {
+   "source": "replace/village_house_a.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "5c39d5b694a8a25fe87a42e5d50c0b3be3b66410ef8f96baecab4e50abf91395",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9999,
+   "lightnessGamma": 0.72,
+   "meanLightness": [
+    0.3755,
+    0.4866
+   ],
+   "sha256": "5a090427dfe8816883a2af70a23273dd737479aa187135f6c409cb132c54cc72"
+  },
+  "village_house_b": {
+   "source": "replace/village_house_b.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "52344c716404921c99c395ea3b1945a5617204f2e68ad5a8599aa018797f5d5f",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9998,
+   "lightnessGamma": 0.7828,
+   "meanLightness": [
+    0.4125,
+    0.4964
+   ],
+   "sha256": "e3471e4ab43ee8c94a28f72c87a980d5b6410e87d3375898a05d21a26e69713f"
+  },
+  "village_house_c": {
+   "source": "replace/village_house_c.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "c3b4b043581005ea1d1c9442d70a43256c868d6d4d390d4cb2a75dbe76a5155e",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9999,
+   "lightnessGamma": 0.8364,
+   "meanLightness": [
+    0.4366,
+    0.4971
+   ],
+   "sha256": "01398414f183db194a1fff89c74dc5338bb79c5b4e76c34eb1830a2da06e3e2e"
+  },
+  "wind_beacon": {
+   "source": "replace/wind_beacon.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "84a94f10e53b74b20c71a99cd84591debed218be40ee32afd54d84c7757defbb",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9998,
+   "lightnessGamma": 0.72,
+   "meanLightness": [
+    0.3339,
+    0.4473
+   ],
+   "sha256": "abfb053dfdeff632c3b7db832f3e47ff7e6db5b0404e4b429a839b360ccedade"
+  },
+  "workshop_dome": {
+   "source": "replace/workshop_dome.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "4f14c03e0891584986bc06e5d0e00acd46a07aa2d23c8cd97f9b736c4eb1b779",
+   "previousSize": [
+    1024,
+    1024
+   ],
+   "size": [
+    2048,
+    2048
+   ],
+   "atlasCorrelation": 0.9999,
+   "lightnessGamma": 0.7754,
+   "meanLightness": [
+    0.4091,
+    0.496
+   ],
+   "sha256": "a89310a8b5279d06323ee10f0a5a34f6d065282ddc7b5219c4a0fa7c001452fa"
+  },
+  "workshop_shed": {
+   "source": "replace/workshop_shed.glb",
+   "sourceSize": [
+    4096,
+    4096
+   ],
+   "sourceSha256": "893c74dcc83d00cd8ac7730364248e8c3784586bbb5ace09b00c2b5baff51727",
+   "previousSize": [
+    512,
+    512
+   ],
+   "size": [
+    1024,
+    1024
+   ],
+   "atlasCorrelation": 0.9995,
+   "lightnessGamma": 0.7326,
+   "meanLightness": [
+    0.3882,
+    0.4987
+   ],
+   "sha256": "1e2ca09db8a18c7db49e543d5de7dfce5686623b8312b7c2e1909245619077fb"
+  }
+ }
+}

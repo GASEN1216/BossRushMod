@@ -1,0 +1,552 @@
+{
+ "schemaVersion": 1,
+ "policy": "_BaseColor white; colour lives in the texture",
+ "textures": {
+  "Leaf": {
+   "file": "leaf_handpainted_mat.png",
+   "repeatMetres": 2.6,
+   "source": "foliage.png",
+   "sourceSha256": "cb6cd32bde6600694f09126ca1e84090c7b65e8f36c393481c242d227066c46e",
+   "sha256": "7d35a63b0bf50c82168e92a921b200ea8032cac701e19f65ba4e19530a1f4674",
+   "size": 512,
+   "meanSrgb": "#6d803d",
+   "meanLinear": [
+    0.1531,
+    0.2186,
+    0.0471
+   ]
+  },
+  "LeafLight": {
+   "file": "leaflight_handpainted_mat.png",
+   "repeatMetres": 2.6,
+   "source": "foliage.png",
+   "sourceSha256": "cb6cd32bde6600694f09126ca1e84090c7b65e8f36c393481c242d227066c46e",
+   "sha256": "943de1028ef26a0f1722e6c8e8fe1bbe0823183e2761e0a6324eeaacd313ae05",
+   "size": 512,
+   "meanSrgb": "#9da760",
+   "meanLinear": [
+    0.3396,
+    0.3895,
+    0.1182
+   ]
+  },
+  "Forest": {
+   "file": "forest_handpainted_mat.png",
+   "repeatMetres": 2.6,
+   "source": "foliage.png",
+   "sourceSha256": "cb6cd32bde6600694f09126ca1e84090c7b65e8f36c393481c242d227066c46e",
+   "sha256": "d54a9ae2c904bdf2a280004d290a08eece27211d58d907138216930193d3fbc8",
+   "size": 512,
+   "meanSrgb": "#4a5831",
+   "meanLinear": [
+    0.0688,
+    0.0997,
+    0.0314
+   ]
+  },
+  "Fern": {
+   "file": "fern_handpainted_mat.png",
+   "repeatMetres": 2.2,
+   "source": "foliage.png",
+   "sourceSha256": "cb6cd32bde6600694f09126ca1e84090c7b65e8f36c393481c242d227066c46e",
+   "sha256": "937ada3fc08ff4878d81e2e3971c6ad9ebd03662c04079e56b2e9f55e2affca4",
+   "size": 512,
+   "meanSrgb": "#668552",
+   "meanLinear": [
+    0.1336,
+    0.2369,
+    0.0861
+   ]
+  },
+  "LeafGold": {
+   "file": "leafgold_handpainted_mat.png",
+   "repeatMetres": 2.6,
+   "source": "foliage.png",
+   "sourceSha256": "cb6cd32bde6600694f09126ca1e84090c7b65e8f36c393481c242d227066c46e",
+   "sha256": "07475383751c8d29669a12019ea7c71ab86a9c4edd4020fe900e30add592a297",
+   "size": 512,
+   "meanSrgb": "#bea35b",
+   "meanLinear": [
+    0.5174,
+    0.3698,
+    0.1061
+   ]
+  },
+  "Blossom": {
+   "file": "blossom_handpainted_mat.png",
+   "repeatMetres": 1.8,
+   "source": "petals.png",
+   "sourceSha256": "aefc948e988e98ddf07c50c7294a59190f39c4813364b840fa6003b8db7cc503",
+   "sha256": "f6611f8326c7536cd395060a6a96f44e888993e0eeafc62b48771347fc9362e6",
+   "size": 512,
+   "meanSrgb": "#d8a1a4",
+   "meanLinear": [
+    0.6869,
+    0.3611,
+    0.3721
+   ]
+  },
+  "Flower": {
+   "file": "flower_handpainted_mat.png",
+   "repeatMetres": 1.6,
+   "source": "petals.png",
+   "sourceSha256": "aefc948e988e98ddf07c50c7294a59190f39c4813364b840fa6003b8db7cc503",
+   "sha256": "34e54baf9d900857f6c26755d3b4e6c46c042b3eac0cedef99098c242902cefa",
+   "size": 512,
+   "meanSrgb": "#dec89f",
+   "meanLinear": [
+    0.7305,
+    0.5823,
+    0.3478
+   ]
+  },
+  "Lavender": {
+   "file": "lavender_handpainted_mat.png",
+   "repeatMetres": 1.6,
+   "source": "petals.png",
+   "sourceSha256": "aefc948e988e98ddf07c50c7294a59190f39c4813364b840fa6003b8db7cc503",
+   "sha256": "6aa6ed1abaf4db00c05302b5b3fa058f278a44753cc2bb01668d18ba1959331b",
+   "size": 512,
+   "meanSrgb": "#b2a4c1",
+   "meanLinear": [
+    0.4463,
+    0.376,
+    0.5387
+   ]
+  },
+  "Coral": {
+   "file": "coral_handpainted_mat.png",
+   "repeatMetres": 1.8,
+   "source": "petals.png",
+   "sourceSha256": "aefc948e988e98ddf07c50c7294a59190f39c4813364b840fa6003b8db7cc503",
+   "sha256": "672c49edcf8877bba41d82af768519d3496c8ead2cd134613c81e61a7539ba29",
+   "size": 512,
+   "meanSrgb": "#bd735e",
+   "meanLinear": [
+    0.5098,
+    0.1722,
+    0.1141
+   ]
+  },
+  "LilyWhite": {
+   "file": "lilywhite_handpainted_mat.png",
+   "repeatMetres": 1.6,
+   "source": "petals.png",
+   "sourceSha256": "aefc948e988e98ddf07c50c7294a59190f39c4813364b840fa6003b8db7cc503",
+   "sha256": "4eb763561a4ea47b40469f32ac1b9e7fbdd435c6f10bbb582908d08e5e64ab81",
+   "size": 512,
+   "meanSrgb": "#d3ccc2",
+   "meanLinear": [
+    0.6555,
+    0.6052,
+    0.5432
+   ]
+  },
+  "Brass": {
+   "file": "brass_handpainted_mat.png",
+   "repeatMetres": 2.0,
+   "source": "brass.png",
+   "sourceSha256": "9b98f05f8f0ab65398c6c5e1ffc2f5d4141d13312554a32fdabbba5b80c12682",
+   "sha256": "a296bc784bce8ca24a7f7a9d99a0bcaed13b7648cf164d0c6e9eda5896317fcb",
+   "size": 512,
+   "meanSrgb": "#bb8f4c",
+   "meanLinear": [
+    0.4984,
+    0.2772,
+    0.0725
+   ]
+  },
+  "BrassLight": {
+   "file": "brasslight_handpainted_mat.png",
+   "repeatMetres": 2.0,
+   "source": "brass.png",
+   "sourceSha256": "9b98f05f8f0ab65398c6c5e1ffc2f5d4141d13312554a32fdabbba5b80c12682",
+   "sha256": "6919c53b78faa674edf96b149cbcb74d5065ea4fecd4dc83da11752052ffb0c3",
+   "size": 512,
+   "meanSrgb": "#d7b065",
+   "meanLinear": [
+    0.6858,
+    0.4356,
+    0.1325
+   ]
+  },
+  "Copper": {
+   "file": "copper_handpainted_mat.png",
+   "repeatMetres": 2.0,
+   "source": "brass.png",
+   "sourceSha256": "9b98f05f8f0ab65398c6c5e1ffc2f5d4141d13312554a32fdabbba5b80c12682",
+   "sha256": "35e4aef53e9f58228350cbb8c0c12cbfe75a880f75ad0ca185f2daac805dcf38",
+   "size": 512,
+   "meanSrgb": "#b27c51",
+   "meanLinear": [
+    0.4473,
+    0.2042,
+    0.0824
+   ]
+  },
+  "WoodDark": {
+   "file": "wooddark_handpainted_mat.png",
+   "repeatMetres": 4.0,
+   "source": "wood_handpainted_vanilla.png",
+   "sourceSha256": "6f29a0664249d54bdcfcc3bcea4e24c16791c13483e1cef7d2a34a72753be388",
+   "sha256": "c3c0c86e9a717550c7f1c311ada313fb971860409745a73ef02633658438fbbe",
+   "size": 512,
+   "meanSrgb": "#49392a",
+   "meanLinear": [
+    0.0667,
+    0.0411,
+    0.0234
+   ]
+  },
+  "PaintTeal": {
+   "file": "paintteal_handpainted_mat.png",
+   "repeatMetres": 3.0,
+   "source": "painted_wood.png",
+   "sourceSha256": "3aa41e1c716c7de6fc99fca628fef924b2bc05b4925856a1254554a870176842",
+   "sha256": "44d8f45e1c37b5f8eb8eb3816e4555208d7607db2906186308e229de81145dda",
+   "size": 512,
+   "meanSrgb": "#467d76",
+   "meanLinear": [
+    0.0624,
+    0.2073,
+    0.1824
+   ]
+  },
+  "PaintTealLight": {
+   "file": "paintteallight_handpainted_mat.png",
+   "repeatMetres": 3.0,
+   "source": "painted_wood.png",
+   "sourceSha256": "3aa41e1c716c7de6fc99fca628fef924b2bc05b4925856a1254554a870176842",
+   "sha256": "4114e88b98088f0beb1c592f89d8a0357650862577321972bbd1e3b2b21fc6ad",
+   "size": 512,
+   "meanSrgb": "#7ea99e",
+   "meanLinear": [
+    0.2114,
+    0.3977,
+    0.346
+   ]
+  },
+  "PaintTealDeep": {
+   "file": "painttealdeep_handpainted_mat.png",
+   "repeatMetres": 3.0,
+   "source": "painted_wood.png",
+   "sourceSha256": "3aa41e1c716c7de6fc99fca628fef924b2bc05b4925856a1254554a870176842",
+   "sha256": "5621ff5f20d3e8db9e42d11a9e102150af46240033206d27abe077ce83eb94fc",
+   "size": 512,
+   "meanSrgb": "#345b57",
+   "meanLinear": [
+    0.0355,
+    0.1069,
+    0.097
+   ]
+  },
+  "Soil": {
+   "file": "soil_handpainted_mat.png",
+   "repeatMetres": 6.0,
+   "source": "soil.png",
+   "sourceSha256": "bb6db5793a786654694db9130abb9d539556cfc0eaef032aaa5a76fb0f7d2652",
+   "sha256": "5b443efe933cec072ba1e92bb8bd84e18bcbe8466bc23dfce491c930fa3f92fb",
+   "size": 1024,
+   "meanSrgb": "#785a3e",
+   "meanLinear": [
+    0.1886,
+    0.1035,
+    0.0496
+   ]
+  },
+  "Glow": {
+   "file": "glow_handpainted_mat.png",
+   "repeatMetres": 1.5,
+   "source": "petals.png",
+   "sourceSha256": "aefc948e988e98ddf07c50c7294a59190f39c4813364b840fa6003b8db7cc503",
+   "sha256": "f094e96c1952045a0f4e5dbfbd096f8009c760eb9469a5a1aa74e583cbd95813",
+   "size": 512,
+   "meanSrgb": "#cfb880",
+   "meanLinear": [
+    0.6286,
+    0.4809,
+    0.2179
+   ]
+  },
+  "StarGlow": {
+   "file": "starglow_handpainted_mat.png",
+   "repeatMetres": 1.5,
+   "source": "petals.png",
+   "sourceSha256": "aefc948e988e98ddf07c50c7294a59190f39c4813364b840fa6003b8db7cc503",
+   "sha256": "381925de93d745f7d6cbb42f517e3aa0107870faef0ee2579f58833352980b6d",
+   "size": 512,
+   "meanSrgb": "#8ac4c6",
+   "meanLinear": [
+    0.2578,
+    0.5553,
+    0.5655
+   ]
+  },
+  "PearlGlow": {
+   "file": "pearlglow_handpainted_mat.png",
+   "repeatMetres": 1.5,
+   "source": "petals.png",
+   "sourceSha256": "aefc948e988e98ddf07c50c7294a59190f39c4813364b840fa6003b8db7cc503",
+   "sha256": "d822538a0f6026a7b8ef09da7f0d749effa07004dcdee50cbdd10e513db53abd",
+   "size": 512,
+   "meanSrgb": "#d0b1c3",
+   "meanLinear": [
+    0.6361,
+    0.4451,
+    0.5478
+   ]
+  },
+  "CrystalLavender": {
+   "file": "crystallavender_handpainted_mat.png",
+   "repeatMetres": 2.0,
+   "source": "stone_handpainted_vanilla.png",
+   "sourceSha256": "87ca62ce7e406e2d2c22aaaf469efbc53c5e83948559b2b7e47b12b80e19a01c",
+   "sha256": "4e83727686f64c2ec782d66c4fcee971663b7594ed7c7909e2e8a8518ec11eea",
+   "size": 512,
+   "meanSrgb": "#a799d5",
+   "meanLinear": [
+    0.3893,
+    0.3214,
+    0.6688
+   ]
+  },
+  "CrystalTeal": {
+   "file": "crystalteal_handpainted_mat.png",
+   "repeatMetres": 2.0,
+   "source": "stone_handpainted_vanilla.png",
+   "sourceSha256": "87ca62ce7e406e2d2c22aaaf469efbc53c5e83948559b2b7e47b12b80e19a01c",
+   "sha256": "3eac7a4cf20a523ca7f47b9cb97c3ca8f24f9a00f4feb56a77e3963f0fb312f4",
+   "size": 512,
+   "meanSrgb": "#71b6be",
+   "meanLinear": [
+    0.1673,
+    0.4709,
+    0.5184
+   ]
+  },
+  "GeologySand": {
+   "file": "geologysand_handpainted_mat.png",
+   "repeatMetres": 20,
+   "source": "geology_handpainted_native.png",
+   "sourceSha256": "940b7160fed63ee1c731e6fc2ebcffa598ad99ba777a1920589e9139b777c7c1",
+   "sha256": "9e9ecfe9346fbf5095da8d81731fc63dbd1e68ba7ab48babcb29170636677244",
+   "size": 1024,
+   "meanSrgb": "#bfa381",
+   "meanLinear": [
+    0.5257,
+    0.3693,
+    0.2226
+   ]
+  },
+  "GeologyLight": {
+   "file": "geologylight_handpainted_mat.png",
+   "repeatMetres": 20,
+   "source": "geology_handpainted_native.png",
+   "sourceSha256": "940b7160fed63ee1c731e6fc2ebcffa598ad99ba777a1920589e9139b777c7c1",
+   "sha256": "3e03950b72627c116382fc5cba9bbb312b67c519bf965eb12f1602d835d41be5",
+   "size": 1024,
+   "meanSrgb": "#d2ad86",
+   "meanLinear": [
+    0.645,
+    0.4226,
+    0.2385
+   ]
+  },
+  "GeologyDeep": {
+   "file": "geologydeep_handpainted_mat.png",
+   "repeatMetres": 20,
+   "source": "geology_handpainted_native.png",
+   "sourceSha256": "940b7160fed63ee1c731e6fc2ebcffa598ad99ba777a1920589e9139b777c7c1",
+   "sha256": "c10ebf372434a127c19c6c9f59f12114158709a16541baf8cc9524875ef3023e",
+   "size": 1024,
+   "meanSrgb": "#98846a",
+   "meanLinear": [
+    0.3147,
+    0.2312,
+    0.146
+   ]
+  },
+  "Limestone": {
+   "file": "limestone_handpainted_mat.png",
+   "repeatMetres": 8,
+   "source": "stone_handpainted_vanilla.png",
+   "sourceSha256": "87ca62ce7e406e2d2c22aaaf469efbc53c5e83948559b2b7e47b12b80e19a01c",
+   "sha256": "bd078690067d402afe9a1cc5b779803ad17cfdd10a68dc6eec3e32aa37ce50f5",
+   "size": 1024,
+   "meanSrgb": "#d8c8a3",
+   "meanLinear": [
+    0.6873,
+    0.5795,
+    0.3665
+   ]
+  },
+  "Ivory": {
+   "file": "ivory_handpainted_mat.png",
+   "repeatMetres": 6,
+   "source": "stone_handpainted_vanilla.png",
+   "sourceSha256": "87ca62ce7e406e2d2c22aaaf469efbc53c5e83948559b2b7e47b12b80e19a01c",
+   "sha256": "fb68117918609eb2f12f003690c863dc282f768fe8bb115130bad9edf36a80cb",
+   "size": 1024,
+   "meanSrgb": "#d8cdad",
+   "meanLinear": [
+    0.6871,
+    0.6147,
+    0.421
+   ]
+  },
+  "Chalk": {
+   "file": "chalk_handpainted_mat.png",
+   "repeatMetres": 8,
+   "source": "stone_handpainted_vanilla.png",
+   "sourceSha256": "87ca62ce7e406e2d2c22aaaf469efbc53c5e83948559b2b7e47b12b80e19a01c",
+   "sha256": "bcaf25ecda5d540e4a5b222b84025a85f4749e925a0d032e0b7833735400470d",
+   "size": 1024,
+   "meanSrgb": "#c2b292",
+   "meanLinear": [
+    0.5453,
+    0.4464,
+    0.289
+   ]
+  },
+  "Rock": {
+   "file": "rock_handpainted_mat.png",
+   "repeatMetres": 14,
+   "source": "stone_handpainted_vanilla.png",
+   "sourceSha256": "87ca62ce7e406e2d2c22aaaf469efbc53c5e83948559b2b7e47b12b80e19a01c",
+   "sha256": "03ba4934819dd1325bea4ad551b14314f0193089f78dce3eb5a8c56859c6ffb4",
+   "size": 1024,
+   "meanSrgb": "#a9896d",
+   "meanLinear": [
+    0.398,
+    0.2539,
+    0.1537
+   ]
+  },
+  "RockLight": {
+   "file": "rocklight_handpainted_mat.png",
+   "repeatMetres": 14,
+   "source": "stone_handpainted_vanilla.png",
+   "sourceSha256": "87ca62ce7e406e2d2c22aaaf469efbc53c5e83948559b2b7e47b12b80e19a01c",
+   "sha256": "d1457a3f406c3dc33281e6e8f57c91ae1d428ee02e3d3fd1bff931c020dd8d02",
+   "size": 1024,
+   "meanSrgb": "#c0a27f",
+   "meanLinear": [
+    0.5322,
+    0.3616,
+    0.2151
+   ]
+  },
+  "RockDeep": {
+   "file": "rockdeep_handpainted_mat.png",
+   "repeatMetres": 16,
+   "source": "stone_handpainted_vanilla.png",
+   "sourceSha256": "87ca62ce7e406e2d2c22aaaf469efbc53c5e83948559b2b7e47b12b80e19a01c",
+   "sha256": "ff4d59fb213130b45cab76d87e222dc5a0d78e16a60c8f77c949bef044cc4db3",
+   "size": 1024,
+   "meanSrgb": "#6b5540",
+   "meanLinear": [
+    0.1472,
+    0.0922,
+    0.0526
+   ]
+  },
+  "Grass": {
+   "file": "grass_handpainted_mat.png",
+   "repeatMetres": 17,
+   "source": "grass_handpainted_vanilla.png",
+   "sourceSha256": "26ab04fe1e9d06046348440bd3a6f4f4cbbc980f310e88633a6437841c6c406a",
+   "sha256": "794176f72171ef4714f7cb87ded334360953293ae4ea1c27b8fc41d02a63c5c0",
+   "size": 1024,
+   "meanSrgb": "#7d9052",
+   "meanLinear": [
+    0.2082,
+    0.2821,
+    0.0856
+   ]
+  },
+  "GrassLight": {
+   "file": "grasslight_handpainted_mat.png",
+   "repeatMetres": 17,
+   "source": "grass_handpainted_vanilla.png",
+   "sourceSha256": "26ab04fe1e9d06046348440bd3a6f4f4cbbc980f310e88633a6437841c6c406a",
+   "sha256": "7e7a67e1c75bbfc9f35c69213b1b0add6bdd497449ceaa38889e2b60661b9324",
+   "size": 1024,
+   "meanSrgb": "#99a85c",
+   "meanLinear": [
+    0.3226,
+    0.3935,
+    0.1088
+   ]
+  },
+  "Wood": {
+   "file": "wood_handpainted_mat.png",
+   "repeatMetres": 5,
+   "source": "wood_handpainted_vanilla.png",
+   "sourceSha256": "6f29a0664249d54bdcfcc3bcea4e24c16791c13483e1cef7d2a34a72753be388",
+   "sha256": "a43a6a2f0fa638c1b25c3f0a66b96ee2ae4cc7d13fd16833a40be72a7e244f23",
+   "size": 1024,
+   "meanSrgb": "#8a6542",
+   "meanLinear": [
+    0.2545,
+    0.1323,
+    0.0561
+   ]
+  },
+  "WoodLight": {
+   "file": "woodlight_handpainted_mat.png",
+   "repeatMetres": 5,
+   "source": "wood_handpainted_vanilla.png",
+   "sourceSha256": "6f29a0664249d54bdcfcc3bcea4e24c16791c13483e1cef7d2a34a72753be388",
+   "sha256": "9496e2f8d4978a45a4de017b348006f311156e68edaed953814f1f7ae8a5c8b5",
+   "size": 1024,
+   "meanSrgb": "#be9264",
+   "meanLinear": [
+    0.5184,
+    0.2878,
+    0.1286
+   ]
+  },
+  "Teal": {
+   "file": "teal_handpainted_mat.png",
+   "repeatMetres": 4.4,
+   "source": "roof_handpainted_terracotta.png",
+   "sourceSha256": "86042cb0ee92b39e1b7a8763f943c9497d806acc3e272837f4c756d0b9b14ffe",
+   "sha256": "027a840e90b1dbe922816bbc56eee690a52c20b06a38752b2d47142892942740",
+   "size": 1024,
+   "meanSrgb": "#a4643c",
+   "meanLinear": [
+    0.3717,
+    0.1291,
+    0.0464
+   ]
+  },
+  "TealLight": {
+   "file": "teallight_handpainted_mat.png",
+   "repeatMetres": 4.4,
+   "source": "roof_handpainted_terracotta.png",
+   "sourceSha256": "86042cb0ee92b39e1b7a8763f943c9497d806acc3e272837f4c756d0b9b14ffe",
+   "sha256": "3023838eb11f78c28f51ebd6798178c6445c561dacef61aca325b550803408b7",
+   "size": 1024,
+   "meanSrgb": "#c07f4d",
+   "meanLinear": [
+    0.5321,
+    0.214,
+    0.0749
+   ]
+  },
+  "TealDeep": {
+   "file": "tealdeep_handpainted_mat.png",
+   "repeatMetres": 4.4,
+   "source": "roof_handpainted_terracotta.png",
+   "sourceSha256": "86042cb0ee92b39e1b7a8763f943c9497d806acc3e272837f4c756d0b9b14ffe",
+   "sha256": "98b8f286943f93cd542f3a80824c6b66994f36430a5817990675b357ab22d8b9",
+   "size": 1024,
+   "meanSrgb": "#6b3e23",
+   "meanLinear": [
+    0.1476,
+    0.0485,
+    0.0169
+   ]
+  }
+ }
+}

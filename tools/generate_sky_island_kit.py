@@ -61,14 +61,8 @@ def specs():
 
 
 def material_metadata():
-    materials={}
-    for name,color in geometry.PALETTE.items():
-        tiled=geometry.TILED_TEXTURES.get(name)
-        texture=("Textures/sky_mural.png" if name=="Mural" else "Textures/sky_cloth.png" if name=="Cloth"
-                 else "Textures/"+tiled[0] if tiled else None)
-        materials["Sky_"+name]={"rgba":tiled[2] if tiled else geometry.rgba(color),"texture":texture,
-                                "emission":1.2 if name in ("Glow","StarGlow") else 0}
-    return materials
+    # 与整图 geometry.json 同一份定义（颜色进贴图、自发光色、光泽），不在这里另写一套。
+    return {"Sky_"+name:geometry.material_definition(name,color) for name,color in geometry.PALETTE.items()}
 
 
 def extract_module(name,label,function,build,folder,collection_index):

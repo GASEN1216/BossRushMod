@@ -148,7 +148,8 @@ def main():
     require(pigeon_tick, "SkyIslandLetter letter = story.CanWrite ? SkyIslandLetters.NextFor(story.Current) : null;",
             "存档不可写时不放信鸽：收不下的信不该出现")
     place = need_body(world, "private bool PlacePigeon(SkyIslandLetter letter)", "信鸽落点")
-    for token in ("SkyIslandRewardCrate.TryFindCratePosition(", "SkyIslandLootTables.StableHash(letter.Id) % 360",
+    # 2026-09-30：方位取 PlacementFor(letter.Id)——不在改写表里的仍是 StableHash(letter.Id) % 360。
+    for token in ("SkyIslandRewardCrate.TryFindCratePosition(", "SkyIslandLootTables.PlacementFor(letter.Id,",
                   "SkyIslandRewardCrate.InteractableSeparation"):
         require(place, token, "信鸽落点必须复用纪念物的放置算法（交互竞争属性测试按同一算法复算）")
     read_letter = need_body(world, "private void ReadLetter(SkyIslandLetter letter)", "读信")

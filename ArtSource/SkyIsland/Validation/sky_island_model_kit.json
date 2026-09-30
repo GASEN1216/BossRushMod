@@ -11,222 +11,222 @@
   "materials": {
     "Sky_Limestone": {
       "rgba": [
-        1.02,
-        1.01,
-        0.9,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/stone_handpainted_vanilla.png",
+      "texture": "Textures/limestone_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Ivory": {
       "rgba": [
-        1.11,
-        1.13,
-        1.04,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/stone_handpainted_vanilla.png",
+      "texture": "Textures/ivory_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Chalk": {
       "rgba": [
-        0.92,
-        0.9,
-        0.81,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/stone_handpainted_vanilla.png",
+      "texture": "Textures/chalk_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Rock": {
       "rgba": [
-        0.8,
-        0.7,
-        0.61,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/stone_handpainted_vanilla.png",
+      "texture": "Textures/rock_handpainted_mat.png",
       "emission": 0
     },
     "Sky_RockLight": {
       "rgba": [
-        0.91,
-        0.82,
-        0.71,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/stone_handpainted_vanilla.png",
+      "texture": "Textures/rocklight_handpainted_mat.png",
       "emission": 0
     },
     "Sky_RockDeep": {
       "rgba": [
-        0.51,
-        0.44,
-        0.37,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/stone_handpainted_vanilla.png",
+      "texture": "Textures/rockdeep_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Grass": {
       "rgba": [
-        0.84,
-        0.82,
-        0.8,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/grass_handpainted_vanilla.png",
+      "texture": "Textures/grass_handpainted_mat.png",
       "emission": 0
     },
     "Sky_GrassLight": {
       "rgba": [
-        1.02,
-        0.95,
-        0.89,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/grass_handpainted_vanilla.png",
+      "texture": "Textures/grasslight_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Forest": {
       "rgba": [
-        0.30196078431372547,
-        0.3607843137254902,
-        0.2,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/forest_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Leaf": {
       "rgba": [
-        0.44313725490196076,
-        0.5215686274509804,
-        0.24705882352941178,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/leaf_handpainted_mat.png",
       "emission": 0
     },
     "Sky_LeafLight": {
       "rgba": [
-        0.6392156862745098,
-        0.6784313725490196,
-        0.38823529411764707,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/leaflight_handpainted_mat.png",
       "emission": 0
     },
     "Sky_LeafGold": {
       "rgba": [
-        0.7764705882352941,
-        0.6627450980392157,
-        0.3686274509803922,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/leafgold_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Wood": {
       "rgba": [
-        0.67,
-        0.7,
-        0.78,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/wood_handpainted_vanilla.png",
+      "texture": "Textures/wood_handpainted_mat.png",
       "emission": 0
     },
     "Sky_WoodLight": {
       "rgba": [
-        0.92,
-        0.99,
-        1.13,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/wood_handpainted_vanilla.png",
+      "texture": "Textures/woodlight_handpainted_mat.png",
       "emission": 0
     },
     "Sky_WoodDark": {
       "rgba": [
-        0.2901960784313726,
-        0.22745098039215686,
-        0.16862745098039217,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/wooddark_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Teal": {
       "rgba": [
-        1.01,
-        0.87,
-        0.76,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/roof_handpainted_terracotta.png",
+      "texture": "Textures/teal_handpainted_mat.png",
       "emission": 0
     },
     "Sky_TealLight": {
       "rgba": [
-        1.19,
-        1.09,
-        0.94,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/roof_handpainted_terracotta.png",
+      "texture": "Textures/teallight_handpainted_mat.png",
       "emission": 0
     },
     "Sky_TealDeep": {
       "rgba": [
-        0.67,
-        0.56,
-        0.48,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/roof_handpainted_terracotta.png",
+      "texture": "Textures/tealdeep_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Brass": {
       "rgba": [
-        0.7411764705882353,
-        0.5686274509803921,
-        0.30196078431372547,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/brass_handpainted_mat.png",
       "emission": 0
     },
     "Sky_BrassLight": {
       "rgba": [
-        0.8588235294117647,
-        0.6980392156862745,
-        0.403921568627451,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/brasslight_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Copper": {
       "rgba": [
-        0.7058823529411765,
-        0.49411764705882355,
-        0.3215686274509804,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/copper_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Coral": {
       "rgba": [
-        0.7450980392156863,
-        0.4549019607843137,
-        0.3764705882352941,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/coral_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Blue": {
@@ -252,22 +252,34 @@
     "Sky_Glow": {
       "rgba": [
         1.0,
+        1.0,
+        1.0,
+        1
+      ],
+      "texture": "Textures/glow_handpainted_mat.png",
+      "emission": 1.2,
+      "emissionRgba": [
+        1.0,
         0.8901960784313725,
         0.6274509803921569,
         1.0
-      ],
-      "texture": null,
-      "emission": 1.2
+      ]
     },
     "Sky_StarGlow": {
       "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1
+      ],
+      "texture": "Textures/starglow_handpainted_mat.png",
+      "emission": 1.2,
+      "emissionRgba": [
         0.6588235294117647,
         0.9294117647058824,
         0.9411764705882353,
         1.0
-      ],
-      "texture": null,
-      "emission": 1.2
+      ]
     },
     "Sky_Cloud": {
       "rgba": [
@@ -311,22 +323,22 @@
     },
     "Sky_Soil": {
       "rgba": [
-        0.47843137254901963,
-        0.3607843137254902,
-        0.25098039215686274,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/soil_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Flower": {
       "rgba": [
-        0.8745098039215686,
-        0.792156862745098,
-        0.6313725490196078,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/flower_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Mural": {
@@ -351,132 +363,162 @@
     },
     "Sky_Blossom": {
       "rgba": [
-        0.8509803921568627,
-        0.6392156862745098,
-        0.6509803921568628,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/blossom_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Lavender": {
       "rgba": [
-        0.7019607843137254,
-        0.6509803921568628,
-        0.7686274509803922,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/lavender_handpainted_mat.png",
       "emission": 0
     },
     "Sky_Fern": {
       "rgba": [
-        0.41568627450980394,
-        0.5411764705882353,
-        0.3333333333333333,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/fern_handpainted_mat.png",
       "emission": 0
     },
     "Sky_LilyWhite": {
       "rgba": [
-        0.9568627450980393,
-        0.9254901960784314,
-        0.8862745098039215,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/lilywhite_handpainted_mat.png",
       "emission": 0
     },
     "Sky_CrystalLavender": {
       "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1
+      ],
+      "texture": "Textures/crystallavender_handpainted_mat.png",
+      "emission": 0.18,
+      "emissionRgba": [
         0.6588235294117647,
         0.6039215686274509,
         0.8392156862745098,
         1.0
       ],
-      "texture": null,
-      "emission": 0
+      "smoothness": 0.42
     },
     "Sky_CrystalTeal": {
       "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1
+      ],
+      "texture": "Textures/crystalteal_handpainted_mat.png",
+      "emission": 0.22,
+      "emissionRgba": [
         0.4470588235294118,
         0.7176470588235294,
         0.7490196078431373,
         1.0
       ],
-      "texture": null,
-      "emission": 0
+      "smoothness": 0.42
     },
     "Sky_PearlGlow": {
       "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1
+      ],
+      "texture": "Textures/pearlglow_handpainted_mat.png",
+      "emission": 0.55,
+      "emissionRgba": [
         0.9490196078431372,
         0.8117647058823529,
         0.8941176470588236,
         1.0
-      ],
-      "texture": null,
-      "emission": 0
+      ]
     },
     "Sky_PaintTeal": {
       "rgba": [
-        0.2823529411764706,
-        0.4980392156862745,
-        0.47058823529411764,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/paintteal_handpainted_mat.png",
       "emission": 0
     },
     "Sky_PaintTealLight": {
       "rgba": [
-        0.5058823529411764,
-        0.6705882352941176,
-        0.6313725490196078,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/paintteallight_handpainted_mat.png",
       "emission": 0
     },
     "Sky_PaintTealDeep": {
       "rgba": [
-        0.21176470588235294,
-        0.36470588235294116,
-        0.34901960784313724,
-        1.0
+        1.0,
+        1.0,
+        1.0,
+        1
       ],
-      "texture": null,
+      "texture": "Textures/painttealdeep_handpainted_mat.png",
       "emission": 0
     },
     "Sky_GeologySand": {
       "rgba": [
-        1.03,
-        1.11,
-        1.26,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/geology_handpainted_native.png",
+      "texture": "Textures/geologysand_handpainted_mat.png",
       "emission": 0
     },
     "Sky_GeologyLight": {
       "rgba": [
-        1.13,
-        1.18,
-        1.3,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/geology_handpainted_native.png",
+      "texture": "Textures/geologylight_handpainted_mat.png",
       "emission": 0
     },
     "Sky_GeologyDeep": {
       "rgba": [
-        0.82,
-        0.9,
-        1.04,
+        1.0,
+        1.0,
+        1.0,
         1
       ],
-      "texture": "Textures/geology_handpainted_native.png",
+      "texture": "Textures/geologydeep_handpainted_mat.png",
+      "emission": 0
+    },
+    "Sky_Pebble": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1
+      ],
+      "texture": "Textures/rocklight_handpainted_mat.png",
       "emission": 0
     }
   },
@@ -631,7 +673,7 @@
           "material": "Sky_Leaf"
         }
       ],
-      "bytes": 123580
+      "bytes": 128972
     },
     {
       "name": "SkyIsland_House",
@@ -767,7 +809,7 @@
           "material": "Sky_Leaf"
         }
       ],
-      "bytes": 109452
+      "bytes": 113980
     },
     {
       "name": "SkyIsland_Lantern",
@@ -827,7 +869,7 @@
           "material": "Sky_Glow"
         }
       ],
-      "bytes": 27292
+      "bytes": 28524
     },
     {
       "name": "SkyIsland_Planter",
@@ -880,7 +922,7 @@
           "material": "Sky_Leaf"
         }
       ],
-      "bytes": 23996
+      "bytes": 25260
     },
     {
       "name": "SkyIsland_Bench",
@@ -940,7 +982,7 @@
           "material": "Sky_Wood"
         }
       ],
-      "bytes": 25900
+      "bytes": 26316
     },
     {
       "name": "SkyIsland_Barrel",
@@ -1000,7 +1042,7 @@
           "material": "Sky_Wood"
         }
       ],
-      "bytes": 27500
+      "bytes": 28012
     },
     {
       "name": "SkyIsland_WindChime",
@@ -1074,7 +1116,7 @@
           "material": "Sky_BrassLight"
         }
       ],
-      "bytes": 224380
+      "bytes": 259612
     },
     {
       "name": "SkyIsland_HomecomingBell",
@@ -1155,7 +1197,7 @@
           "material": "Sky_BrassLight"
         }
       ],
-      "bytes": 78284
+      "bytes": 85676
     },
     {
       "name": "SkyIsland_DuckStatue",
@@ -1229,7 +1271,7 @@
           "material": "Sky_Teal"
         }
       ],
-      "bytes": 49948
+      "bytes": 50716
     },
     {
       "name": "SkyIsland_Tree",
@@ -1289,7 +1331,7 @@
           "material": "Sky_Leaf"
         }
       ],
-      "bytes": 33276
+      "bytes": 34556
     },
     {
       "name": "SkyIsland_produce_stall",
@@ -1426,7 +1468,7 @@
           "material": "Sky_PaintTealDeep"
         }
       ],
-      "bytes": 139036
+      "bytes": 151708
     },
     {
       "name": "SkyIsland_supply_handcart",
@@ -1528,7 +1570,7 @@
           "material": "Sky_PaintTealLight"
         }
       ],
-      "bytes": 93228
+      "bytes": 100508
     },
     {
       "name": "SkyIsland_camp_tent",
@@ -1637,7 +1679,7 @@
           "material": "Sky_WoodLight"
         }
       ],
-      "bytes": 71468
+      "bytes": 78412
     },
     {
       "name": "SkyIsland_tool_workbench",
@@ -1739,7 +1781,7 @@
           "material": "Sky_PaintTeal"
         }
       ],
-      "bytes": 93564
+      "bytes": 97724
     },
     {
       "name": "SkyIsland_rain_barrel",
@@ -1876,7 +1918,7 @@
           "material": "Sky_Leaf"
         }
       ],
-      "bytes": 93372
+      "bytes": 100348
     },
     {
       "name": "SkyIsland_windmill_planter",
@@ -2006,7 +2048,7 @@
           "material": "Sky_Copper"
         }
       ],
-      "bytes": 80364
+      "bytes": 84972
     },
     {
       "name": "SkyIsland_floatboat_cargo",
@@ -2108,7 +2150,7 @@
           "material": "Sky_Coral"
         }
       ],
-      "bytes": 93900
+      "bytes": 100924
     },
     {
       "name": "SkyIsland_firewood_rack",
@@ -2196,7 +2238,7 @@
           "material": "Sky_Coral"
         }
       ],
-      "bytes": 81164
+      "bytes": 83564
     },
     {
       "name": "SkyIsland_duck_mailbox",
@@ -2326,7 +2368,7 @@
           "material": "Sky_Leaf"
         }
       ],
-      "bytes": 77788
+      "bytes": 82124
     },
     {
       "name": "SkyIsland_laundry_rack",
@@ -2435,7 +2477,7 @@
           "material": "Sky_PaintTeal"
         }
       ],
-      "bytes": 77804
+      "bytes": 82332
     },
     {
       "name": "SkyIsland_compost_planter",
@@ -2572,7 +2614,7 @@
           "material": "Sky_Coral"
         }
       ],
-      "bytes": 97564
+      "bytes": 102732
     },
     {
       "name": "SkyIsland_picnic_table",
@@ -2674,7 +2716,7 @@
           "material": "Sky_PaintTeal"
         }
       ],
-      "bytes": 79388
+      "bytes": 83612
     },
     {
       "name": "SkyIsland_wayfinding_sign",
@@ -2811,7 +2853,7 @@
           "material": "Sky_LeafLight"
         }
       ],
-      "bytes": 71260
+      "bytes": 74124
     },
     {
       "name": "SkyIsland_tea_stove",
@@ -2934,19 +2976,53 @@
           "material": "Sky_Ivory"
         }
       ],
-      "bytes": 99036
+      "bytes": 105580
     }
   ],
   "modelCount": 24,
   "totalTriangles": 56618,
   "packedImages": [
-    "geology_handpainted_native.png",
-    "grass_handpainted_vanilla.png",
-    "roof_handpainted_terracotta.png",
+    "blossom_handpainted_mat.png",
+    "brass_handpainted_mat.png",
+    "brasslight_handpainted_mat.png",
+    "chalk_handpainted_mat.png",
+    "copper_handpainted_mat.png",
+    "coral_handpainted_mat.png",
+    "crystallavender_handpainted_mat.png",
+    "crystalteal_handpainted_mat.png",
+    "fern_handpainted_mat.png",
+    "flower_handpainted_mat.png",
+    "forest_handpainted_mat.png",
+    "geologydeep_handpainted_mat.png",
+    "geologylight_handpainted_mat.png",
+    "geologysand_handpainted_mat.png",
+    "glow_handpainted_mat.png",
+    "grass_handpainted_mat.png",
+    "grasslight_handpainted_mat.png",
+    "ivory_handpainted_mat.png",
+    "lavender_handpainted_mat.png",
+    "leaf_handpainted_mat.png",
+    "leafgold_handpainted_mat.png",
+    "leaflight_handpainted_mat.png",
+    "lilywhite_handpainted_mat.png",
+    "limestone_handpainted_mat.png",
+    "paintteal_handpainted_mat.png",
+    "painttealdeep_handpainted_mat.png",
+    "paintteallight_handpainted_mat.png",
+    "pearlglow_handpainted_mat.png",
+    "rock_handpainted_mat.png",
+    "rockdeep_handpainted_mat.png",
+    "rocklight_handpainted_mat.png",
     "sky_cloth.png",
     "sky_mural.png",
-    "stone_handpainted_vanilla.png",
-    "wood_handpainted_vanilla.png"
+    "soil_handpainted_mat.png",
+    "starglow_handpainted_mat.png",
+    "teal_handpainted_mat.png",
+    "tealdeep_handpainted_mat.png",
+    "teallight_handpainted_mat.png",
+    "wood_handpainted_mat.png",
+    "wooddark_handpainted_mat.png",
+    "woodlight_handpainted_mat.png"
   ],
   "usage": "纯视觉模块。Unity材质复用同名Sky_*与此manifest真实贴图；不从树冠/风铃自动推断整盒碰撞。",
   "validation": {

@@ -30,9 +30,21 @@ COLLISIONS = []
 RAIL_BUTTRESS = {}
 REPLACED_OBSTACLES = set()
 DUPLICATE_EMISSIONS_SKIPPED = set()
+# 2026-09-30：登记障碍的实测顶高（悬空横梁 / 亭顶按它落到真实柱顶上）与壁画实际平移量（叙事标记跟着走）。
+REGISTERED_TOP = {}
+REGISTERED_SPANS = {}
+LAYOUT_MARKERS = []
+LAYOUT_OBSTACLES = []
+MURAL_SHIFT = (0.0, 0.0)
+PROP_SPACE = None
 ANIMATED = []
 PAVING_TRACKS = []
 MESH_HYGIENE = {'removedFaces': 0, 'collapsedCorners': 0}
+# 自发光色覆盖：白底贴图材质（Tripo 灯罩玻璃）的发光色不能取调色板里的白。由 sky_island_surface_materials.register 填。
+EMISSION_RGBA = {}
+# 夜灯灯位（2026-10-01）：每盏路灯发光部位的世界坐标，全部摆放结束后写成场景标记 NightLamp_<种类>_<序号>，
+# 运行时 SkyIslandStreetLamps 按它在夜里照亮周围。摆放裁决平移 / 撤下一件时同步平移 / 撤掉它的灯位（prop_placement）。
+LAMP_LIGHTS = []
 EMISSION = {'Glow': 1.2, 'StarGlow': 1.2, 'CrystalLavender': .18,
             'CrystalTeal': .22, 'PearlGlow': .55}
 # 调色板对齐原版鸭科夫：从游戏 `resources.assets` 采样 154 张 `_C` 反照率贴图，色相集中在
@@ -68,7 +80,7 @@ MODEL_TEXTURES = {}
 TRIPO_DIR = None
 TRIPO_PROPS = None
 
-TILED_TEXTURES = {
+TILED_TEXTURES_SOURCE = {
     # 原生生成的低对比砂岩只用于新岩体；铺装石材保留自己的尺度与裂缝语言。
     'GeologySand': ('geology_handpainted_native.png', 20, [1.03,1.11,1.26,1]),
     'GeologyLight': ('geology_handpainted_native.png', 20, [1.13,1.18,1.30,1]),
@@ -87,6 +99,44 @@ TILED_TEXTURES = {
     'TealLight': ('roof_handpainted_terracotta.png', 4.4, [1.19,1.09,.94,1]),   # #c17f4e 受光瓦脊
     'TealDeep': ('roof_handpainted_terracotta.png', 4.4, [.67,.56,.48,1]),   # #6d4128 檐下暗瓦
 }
+
+
+def _surface_textures():
+    """2026-09-30：颜色进贴图、`_BaseColor` 全白。`tools/sky_island_surface_textures.py bake` 给每个环境材质
+    烘一张平铺手绘贴图（上面的原 tint 已在线性空间烘进去），清单 `ArtSource/SkyIsland/surface_textures.json`。
+    清单里没有的材质沿用 TILED_TEXTURES_SOURCE；清单缺失时整张表原样回退。"""
+    path=Path(__file__).resolve().parents[1]/'ArtSource/SkyIsland/surface_textures.json'
+    tiled=dict(TILED_TEXTURES_SOURCE)
+    if path.is_file():
+        for name,row in json.loads(path.read_text(encoding='utf-8'))['textures'].items():
+            tiled[name]=(row['file'],row['repeatMetres'],[1.0,1.0,1.0,1])
+    return tiled
+
+
+TILED_TEXTURES = _surface_textures()
+# 别名材质：贴图、平铺米数与底色都跟随原材质，只是单独成组。带自己角法线的件（Tripo 岛缘卵石，见
+# sky_island_tripo_props.PREFER_TILED）不能与重算法线的程序化几何同组，就放进别名组。
+TILED_ALIASES = {'Pebble': 'RockLight'}
+for _alias, _base in TILED_ALIASES.items():
+    TILED_TEXTURES[_alias] = TILED_TEXTURES[_base]
+    PALETTE[_alias] = PALETTE[_base]
+# 带贴图的水晶类件被作者构建器按名字一律给到 0.64 光泽（高光峰值是普通材质的 10 倍，读成塑料亮）：
+# 这里写明各自的光泽，构建器优先读 geometry.json 里的 smoothness。
+SMOOTHNESS = {'TripoGlowCrystal': .28, 'TripoCrystalCluster': .28, 'TripoCrystalFountain': .28,
+              'CrystalLavender': .42, 'CrystalTeal': .42}
+
+
+def material_definition(name,color):
+    """geometry.json 里一个材质的定义；整图与独立模型库（generate_sky_island_kit）共用，两边不会漂。"""
+    row={'rgba':TILED_TEXTURES[name][2] if name in TILED_TEXTURES else rgba(color),
+         'texture':(MODEL_TEXTURES[name].replace(chr(92),'/') if name in MODEL_TEXTURES else 'Textures/sky_mural.png' if name=='Mural' else 'Textures/sky_cloth.png' if name=='Cloth' else 'Textures/'+TILED_TEXTURES[name][0] if name in TILED_TEXTURES else None),
+         'emission':EMISSION.get(name,0)}
+    # 颜色进了贴图、底色是白的材质，自发光色仍取调色板原色（不跟着底色变白）。
+    if name in EMISSION:
+        row['emissionRgba']=rgba(EMISSION_RGBA.get(name,color))
+    if name in SMOOTHNESS:
+        row['smoothness']=SMOOTHNESS[name]
+    return row
 
 
 def rgba(code):
@@ -295,13 +345,19 @@ def tree(x,y,z,scale=1,gold=False):
         beam((x,y+.5,z),(x+2*scale*math.cos(a),y+.12,z+2*scale*math.sin(a)),.35*scale,'Wood',r_end=.08)
 
 
+def lamp_light(kind,position):
+    """登记一盏夜灯的灯位（发光部位中心，Unity 世界坐标）。"""
+    LAMP_LIGHTS.append({'kind':kind,'position':[round(float(v),3) for v in position]})
+
+
 def lantern(x,y,z,scale=1):
     # 第二轮：有 brass_lamp_post 就摆成品铜灯柱，高度与原程序化灯杆一致。
-    # 成品贴图不带自发光，灯罩里补一颗 Glow 小灯芯，星夜档里灯仍然是亮的。
+    # 2026-10-01：原先在灯罩里补的 Glow 小灯芯被不透明的画面玻璃挡住，夜里看不见；改由
+    # sky_island_surface_materials 把灯罩玻璃面分进发光材质，并在玻璃中心登记夜灯灯位。
     if TRIPO_PROPS is not None and TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
             ('brass_lamp_post',),x,y,z,3.6*scale,('lamp',round(x,2),round(y,2),round(z,2))):
-        sphere((x,y+3.25*scale,z),(.16*scale,.2*scale,.16*scale),'Glow',8,4)
         return
+    lamp_light('lantern',(x+.65*scale,y+2.7*scale,z))
     cylinder((x,y+1.7*scale,z),.1*scale,3.4*scale,'WoodDark',8)
     beam((x,y+3.3*scale,z),(x+.7*scale,y+3.3*scale,z),.09*scale,'Brass')
     lathe((x+.65*scale,y+2.4*scale,z),[(0,.22*scale),(.1*scale,.32*scale),(.62*scale,.32*scale),(.76*scale,.12*scale)],'Glow',10)
@@ -429,7 +485,17 @@ def mural_marker(islands):
     """风铃集壁画正前方的叙事标记：与壁画同一换算，壁画宽度不缩放、站位离墙 2.92 米。"""
     x,y,z=islands['B']['center']
     mx,mz=sky_island_frame.scale_offset('B',-23,32.92)
-    return [x+mx,y+.25,z+mz-2.92]
+    dx,dz=MURAL_SHIFT
+    return [x+mx+dx,y+.25,z+mz-2.92+dz]
+
+
+def fitted(name,emit,category='hard',search=6.0,sid=None,**kwargs):
+    """按坐标画的一件东西走统一摆放裁决（2026-09-30）：量实际网格，压路 / 挡门 / 挡桥头 / 挡交互点 /
+    插进先摆的硬物时就近平移，找不到就不画。PROP_SPACE 未建（单测、旧流程）时原样画。"""
+    if PROP_SPACE is None:
+        emit()
+        return (0.0,0.0)
+    return PROP_SPACE.fit(sys.modules[__name__],sid or CURRENT.split('_')[0],name,emit,category,search,**kwargs)
 
 
 def area_landmarks(islands):
@@ -439,38 +505,60 @@ def area_landmarks(islands):
     CURRENT='B'; x,y,z=islands['B']['center']
     S=lambda dx,dz: sky_island_frame.scale_offset('B',dx,dz)
     paved_disc(x,y+.05,z,sky_island_frame.scale_radius('B',17))
+    replaced_supports=0
     for index,dx in enumerate([-6,6]):
         identifier='B_ChimeSupport%02d'%(index+1)
         if identifier in REPLACED_OBSTACLES:
             DUPLICATE_EMISSIONS_SKIPPED.add(identifier)
+            replaced_supports+=1
             continue
         ox,oz=S(dx,5)
         cylinder((x+ox,y+4.6,z+oz),.52,9.2,'Wood',12)
         cylinder((x+ox,y+.3,z+oz),1.15,.6,'Limestone',12)
         sphere((x+ox,y+9.6,z+oz),(.65,.85,.65),'Brass',12,6)
-    ox,oz=S(7,5)
-    beam((x-ox,y+8.7,z+oz),(x+ox,y+8.7,z+oz),.28,'WoodDark')
-    for i in range(7):
-        bx=x+S(-5.4+i*1.8,0)[0]; drop=.7+.4*math.sin(i)
-        beam((bx,y+8.6,z+oz),(bx,y+7.2-drop,z+oz),.055,'Brass')
-        bell(bx,y+6.4-drop,z+oz,.28)
+    # 两根支柱都换成 Tripo 风铃架时，架子自己挂着风铃；原横梁与七口小钟悬在架顶上方 1.7 m（台账实测），
+    # 是替换时漏掉的重复发射，一并跳过。
+    if replaced_supports==2:
+        DUPLICATE_EMISSIONS_SKIPPED.add('B_ChimeCrossbeam')
+    else:
+        ox,oz=S(7,5)
+        beam((x-ox,y+8.7,z+oz),(x+ox,y+8.7,z+oz),.28,'WoodDark')
+        for i in range(7):
+            bx=x+S(-5.4+i*1.8,0)[0]; drop=.7+.4*math.sin(i)
+            beam((bx,y+8.6,z+oz),(bx,y+7.2-drop,z+oz),.055,'Brass')
+            bell(bx,y+6.4-drop,z+oz,.28)
     # Freestanding mural next to the north edge, accessible on its front side.
+    # 2026-09-30：壁画原是离地 0.35 m 的一张面片、背后什么都没有；补两根立柱、顶梁与石台，整件走摆放裁决。
     mx,mz=S(-23,32.92)
-    textured_quad([(x+mx-3.8,y+.35,z+mz),(x+mx+3.8,y+.35,z+mz),(x+mx+3.8,y+5.95,z+mz),(x+mx-3.8,y+5.95,z+mz)],'Mural')
+    def mural():
+        textured_quad([(x+mx-3.8,y+.35,z+mz),(x+mx+3.8,y+.35,z+mz),(x+mx+3.8,y+5.95,z+mz),(x+mx-3.8,y+5.95,z+mz)],'Mural')
+        for side in [-1,1]:
+            box((x+mx+side*4.0,y+3.1,z+mz+.14),(.34,6.2,.34),'WoodDark',.05)
+        box((x+mx,y+6.14,z+mz+.14),(8.6,.3,.4),'WoodDark',.06)
+        box((x+mx,y+.2,z+mz+.14),(8.4,.4,.55),'Limestone',.08)
+    global MURAL_SHIFT
+    MURAL_SHIFT=fitted('mural',mural,search=10.0) or (0.0,0.0)
     for xx in [-16,17]:
         px,pz=S(xx,-12)
-        cylinder((x+px,y+.8,z+pz),1.6,.16,'WoodLight',20)
-        cylinder((x+px,y+.38,z+pz),.16,.8,'WoodDark',8)
-        for a in [0,2.1,4.2]: cylinder((x+px+2.2*math.cos(a),y+.5,z+pz+2.2*math.sin(a)),.6,.9,'Wood',10)
+        def table(px=px,pz=pz):
+            cylinder((x+px,y+.8,z+pz),1.6,.16,'WoodLight',20)
+            cylinder((x+px,y+.38,z+pz),.16,.8,'WoodDark',8)
+            for a in [0,2.1,4.2]: cylinder((x+px+2.2*math.cos(a),y+.5,z+pz+2.2*math.sin(a)),.6,.9,'Wood',10)
+        fitted('village_table',table,search=14.0)
     # Festival bunting strung high above the two village approach paths.
+    # 2026-09-30：两端补木杆（原来整串彩旗挂在空中），木杆按实际网格让开路面与房屋。
     for zoff in [-24,23]:
-        pts=[]
         span_x,span_z=S(22,zoff)
-        for i in range(15):
-            t=i/14; pts.append((x-span_x+2*span_x*t,y+6.2-2*math.sin(math.pi*t),z+span_z))
-        ribbon(pts,'Wood',.04)
-        for i,p in enumerate(pts[1:-1]):
-            addmesh(['Coral','Teal','BrassLight'][i%3],[(p[0]-.5,p[1],p[2]),(p[0]+.5,p[1],p[2]),(p[0],p[1]-1.1,p[2])],[(0,1,2)])
+        def bunting(span_x=span_x,span_z=span_z):
+            pts=[]
+            for i in range(15):
+                t=i/14; pts.append((x-span_x+2*span_x*t,y+6.2-2*math.sin(math.pi*t),z+span_z))
+            for end in (pts[0],pts[-1]):
+                beam((end[0],y,end[2]),(end[0],end[1]+.25,end[2]),.13,'WoodDark')
+            ribbon(pts,'Wood',.04)
+            for i,p in enumerate(pts[1:-1]):
+                addmesh(['Coral','Teal','BrassLight'][i%3],[(p[0]-.5,p[1],p[2]),(p[0]+.5,p[1],p[2]),(p[0],p[1]-1.1,p[2])],[(0,1,2)])
+        fitted('bunting',bunting,search=6.0)
     # Farm fields are arranged around a clear principal walkway.
     CURRENT='C'; x,y,z=islands['C']['center']
     beds=iter(farm_beds(islands))
@@ -521,9 +609,12 @@ def area_landmarks(islands):
         ox,oz=sky_island_frame.scale_offset('D',53*math.cos(angle),57*math.sin(angle))
         tx=x+ox; tz=z+oz
         # A 类漏接：悬根林换 Tripo 橄榄叶树（与 D 岛散布树的月叶口径一致）。
-        if TRIPO_PROPS is None or not TRIPO_PROPS.replace_tree(sys.modules[__name__],TRIPO_DIR,tx,y,tz,2.2,'moonleaf',
-                TRIPO_PROPS.stable_rng('root_forest',angle).randrange(1<<30)):
-            tree(tx,y,tz,2.2)
+        # 2026-09-30：一棵压在路上、一棵长进悬根巨树的根里；树干按实际网格让开路面与先摆的硬物。
+        def root_forest_tree(tx=tx,tz=tz,angle=angle):
+            if TRIPO_PROPS is None or not TRIPO_PROPS.replace_tree(sys.modules[__name__],TRIPO_DIR,tx,y,tz,2.2,'moonleaf',
+                    TRIPO_PROPS.stable_rng('root_forest',angle).randrange(1<<30)):
+                tree(tx,y,tz,2.2)
+        fitted('root_forest_tree',root_forest_tree,'tree',search=8.0)
     # 根拱两脚落在 D_GreatRootTree / D_RootTree02 上，与障碍同一换算。
     points=[]
     for ax,lift,az in [(-285,0,133),(-281,16,136),(-270,27,140),(-253,32,143),(-236,29,146),(-222,19,148),(-214,0,151)]:
@@ -545,11 +636,15 @@ def area_landmarks(islands):
     CURRENT='E'; x,y,z=islands['E']['center']
     paved_disc(x,y+.05,z,sky_island_frame.scale_radius('E',24))
     ex,ez=sky_island_frame.scale_offset('E',17,26)
-    beam((x-ex,y+14,z+ez),(x+ex,y+14,z+ez),.34,'Brass')
+    # 2026-09-30：横梁原在岛面 +14 m，两根 Tripo 风柱只有 5.5 m，梁与九口钟悬空 8 m（台账实测）。
+    # 梁架在两根风柱实测顶高上（梁心低于柱顶 0.25 m，嵌进柱头），钟舌最低点不低于岛面 +2.75 m，人照常从下面走。
+    top=min(REGISTERED_TOP.get('E_WindPillarWest',y+14.25),REGISTERED_TOP.get('E_WindPillarEast',y+14.25))-.25
+    beam((x-ex,top,z+ez),(x+ex,top,z+ez),.34,'Brass')
     for i in range(9):
-        px=x+sky_island_frame.scale_offset('E',-13+i*3.25,0)[0]; drop=1.4+1.1*math.sin(i*.8)
-        beam((px,y+14,z+ez),(px,y+12-drop,z+ez),.05,'Brass')
-        bell(px,y+10.9-drop,z+ez,.34)
+        px=x+sky_island_frame.scale_offset('E',-13+i*3.25,0)[0]; drop=.35+.3*math.sin(i*.8)
+        rod=max(y+2.75+1.4*.34+5.1*.34,top-.6-drop)
+        beam((px,top,z+ez),(px,rod,z+ez),.05,'Brass')
+        bell(px,rod-5.1*.34,z+ez,.34)
     # Mirror temple: shrine pavilions, thin water reflections and stone lanterns.
     CURRENT='F'; x,y,z=islands['F']['center']
     SF=lambda dx,dz: sky_island_frame.scale_offset('F',dx,dz)
@@ -565,8 +660,11 @@ def area_landmarks(islands):
                 cylinder((x+ox,y+3.5,z+oz),.42,7,'Limestone',12)
                 cylinder((x+ox,y+.25,z+oz),.8,.5,'Chalk',12)
         ox,oz=SF(sign*34,30)
-        lathe((x+ox,y+6.9,z+oz),[(0,8),(.7,6.8),(3,3.8),(4,.6),(4.5,0)],'Teal',4)
-        torus((x+ox,y+9.8,z+oz),1,.13,'Brass')
+        # 2026-09-30：亭顶原在岛面 +6.9 m，Tripo 亭柱只有 4.5 m，四坡顶悬空 2.4 m；落到这座亭四根柱的实测顶高。
+        pillars=['F_PavilionSupport%02d'%((0 if sign==-1 else 4)+k+1) for k in range(4)]
+        roof=min(REGISTERED_TOP.get(p,y+6.95) for p in pillars)-.05
+        lathe((x+ox,roof,z+oz),[(0,8),(.7,6.8),(3,3.8),(4,.6),(4.5,0)],'Teal',4)
+        torus((x+ox,roof+2.9,z+oz),1,.13,'Brass')
     # Wide rings create graphical ripples on the solid visual pool surface.
     for dx,dz,rad in [(-6,-4,4.5),(8,5,3),(-12,6,1.8)]:
         ox,oz=SF(dx,dz)
@@ -574,9 +672,12 @@ def area_landmarks(islands):
     for sign in [-1,1]:
         for dz in [-22,22]:
             ox,oz=SF(sign*25,dz)
-            cylinder((x+ox,y+.6,z+oz),.8,1.2,'Chalk',8)
-            box((x+ox,y+1.65,z+oz),(1.3,1.1,1.3),'Glow')
-            lathe((x+ox,y+2.15,z+oz),[(0,1.15),(.65,.1)],'Teal',4)
+            def stone_lantern(ox=ox,oz=oz):
+                lamp_light('stone',(x+ox,y+1.65,z+oz))
+                cylinder((x+ox,y+.6,z+oz),.8,1.2,'Chalk',8)
+                box((x+ox,y+1.65,z+oz),(1.3,1.1,1.3),'Glow')
+                lathe((x+ox,y+2.15,z+oz),[(0,1.15),(.65,.1)],'Teal',4)
+            fitted('stone_lantern',stone_lantern,search=10.0)
     # Workshop armillary sphere, large brass star machine visible in game view.
     CURRENT='G'; x,y,z=islands['G']['center']
     paved_disc(x,y+.03,z,sky_island_frame.scale_radius('G',15))
@@ -609,7 +710,10 @@ def area_landmarks(islands):
         addmesh('Ivory' if i%3 else 'Chalk',verts,[(0,1,2,3),(4,7,6,5),(0,4,5,1),(1,5,6,2),(2,6,7,3),(3,7,4,0)])
     beam((x,y+40,bz),(x,y+30,bz),.28,'WoodDark')
     bell(x,y+16,bz,2.65)
-    torus((x,y+51,bz),20,.48,'Brass',axis='z',segments=64,tilt=.23)
+    # 2026-09-30：铜环、断石光环与九颗星原与拱同在 bz 平面，铜环横穿拱石、光环最低一段切进大钟钟顶；
+    # 整组挪到拱后 6 m（拱厚 ±3 m），剪影不变，彼此不再相交。
+    hz=bz+6
+    torus((x,y+51,hz),20,.48,'Brass',axis='z',segments=64,tilt=.23)
     # An interrupted stone halo gives the final landmark a strong ancient silhouette.
     for i in range(18):
         a0=i*TAU/18+.035; a1=(i+1)*TAU/18-.035
@@ -617,7 +721,7 @@ def area_landmarks(islands):
         for zz in [-1.2,1.2]:
             for rr,a in [(21,a0),(23,a0),(23,a1),(21,a1)]:
                 xx=rr*math.cos(a); yy=rr*math.sin(a)
-                verts.append((x+xx*math.cos(.23)+yy*math.sin(.23),y+51+yy*math.cos(.23)-xx*math.sin(.23),bz+zz))
+                verts.append((x+xx*math.cos(.23)+yy*math.sin(.23),y+51+yy*math.cos(.23)-xx*math.sin(.23),hz+zz))
         addmesh('Limestone' if i%3 else 'Ivory',verts,[(0,1,2,3),(4,7,6,5),(0,4,5,1),(1,5,6,2),(2,6,7,3),(3,7,4,0)])
     star=[]
     for i in range(16):
@@ -626,30 +730,45 @@ def area_landmarks(islands):
     addmesh('BrassLight',star,[tuple(reversed(range(16)))])
     for i in range(9):
         a=i*TAU/9
-        sphere((x+20*math.cos(a),y+51+20*math.sin(a),bz),(.8,.8,.8),'StarGlow',10,5)
+        sphere((x+20*math.cos(a),y+51+20*math.sin(a),hz),(.8,.8,.8),'StarGlow',10,5)
     # Side island landmarks: pond, suspended postal kiosk, cave and telescope.
     for sid in ['S1','S2','S3','S4']:
         CURRENT=sid; x,y,z=islands[sid]['center']
         if sid=='S1':
-            cylinder((x,y+.06,z),8,.1,'Water',32)
-            for a in [0,1,2.7,4]: sphere((x+10*math.cos(a),y+.5,z+10*math.sin(a)),(2.5,.9,1.6),'RockLight',10,5,False)
+            # 2026-09-30：登记障碍 S1_FrogPond 已按 pool 画了水面与池沿，这里的圆水面是第二层（台账重叠 115 m²）。
+            if 'S1_FrogPond' in {o['id'] for o in LAYOUT_OBSTACLES}:
+                DUPLICATE_EMISSIONS_SKIPPED.add('S1_PondDisc')
+            else:
+                cylinder((x,y+.06,z),8,.1,'Water',32)
+            for a in [0,1,2.7,4]:
+                fitted('pond_rock',lambda a=a:sphere((x+10*math.cos(a),y+.5,z+10*math.sin(a)),(2.5,.9,1.6),'RockLight',10,5,False),search=6.0)
         elif sid=='S2':
             x+=10
-            box((x,y+1.6,z),(1.4,3.2,1.2),'Teal',.2)
-            box((x,y+2.2,z-.62),(1,.25,.15),'WoodDark')
-            lathe((x,y+3.2,z),[(0,1.5),(.75,0)],'Copper',4)
-            for sign in [-1,1]: ribbon([(x+sign*5,y,z+3),(x+sign*7,y+10,z+4),(x+sign*12,y+16,z+10)],'Wood',.2)
+            def kiosk(x=x,z=z):
+                box((x,y+1.6,z),(1.4,3.2,1.2),'Teal',.2)
+                box((x,y+2.2,z-.62),(1,.25,.15),'WoodDark')
+                lathe((x,y+3.2,z),[(0,1.5),(.75,0)],'Copper',4)
+                for sign in [-1,1]: ribbon([(x+sign*5,y,z+3),(x+sign*7,y+10,z+4),(x+sign*12,y+16,z+10)],'Wood',.2)
+            fitted('post_kiosk',kiosk,search=10.0)
         elif sid=='S3':
             z-=10; x+=3
-            for a in [0,.55,1.1,1.65,2.2,2.8,3.3]:
-                sphere((x+8*math.cos(a),y+4+6*math.sin(a),z),(4,5,7),'RockLight',8,5,False)
-            for dx in [-7,0,7]: lantern(x+dx,y,z+4,.8)
+            # 2026-09-30：S3_RainCave 已换成 Tripo 洞石时，程序化球石洞是重复发射（台账互穿 2.3 m²），跳过。
+            if 'S3_RainCave' in REPLACED_OBSTACLES:
+                DUPLICATE_EMISSIONS_SKIPPED.add('S3_CaveSpheres')
+            else:
+                for a in [0,.55,1.1,1.65,2.2,2.8,3.3]:
+                    sphere((x+8*math.cos(a),y+4+6*math.sin(a),z),(4,5,7),'RockLight',8,5,False)
+            for dx in [-7,0,7]: fitted('cave_lantern',lambda dx=dx:lantern(x+dx,y,z+4,.8),search=5.0)
         else:
             paved_disc(x,y+.04,z,12)
             z+=9
-            for dx,dz in [(-3,-2),(3,-2),(0,3)]: beam((x+dx,y,z+dz),(x,y+4,z),.22,'Brass')
-            beam((x,y+4,z),(x+6,y+8,z+4),1.2,'Teal',16,r_end=1.6)
-            sphere((x+6,y+8,z+4),(1.5,1.5,1.5),'StarGlow',12,6)
+            # 2026-09-30：S4_StarLookout 已换成 Tripo 瞭望塔时，程序化望远镜是重复发射（台账互穿 4.4 m²），跳过。
+            if 'S4_StarLookout' in REPLACED_OBSTACLES:
+                DUPLICATE_EMISSIONS_SKIPPED.add('S4_Telescope')
+            else:
+                for dx,dz in [(-3,-2),(3,-2),(0,3)]: beam((x+dx,y,z+dz),(x,y+4,z),.22,'Brass')
+                beam((x,y+4,z),(x+6,y+8,z+4),1.2,'Teal',16,r_end=1.6)
+                sphere((x+6,y+8,z+4),(1.5,1.5,1.5),'StarGlow',12,6)
 
 
 def dock_landmark(islands):
@@ -672,16 +791,21 @@ def dock_landmark(islands):
         sphere((bx+sign*4,y+16,bz+7),(4,6,4),'Ivory',16,8)
         ribbon([(bx+sign*4,y+11,bz+7),(bx+sign*4.5,y+3,bz+6)],'Wood',.07)
         torus((bx+sign*4,y+16,bz+7),4.02,.12,'Brass',axis='z')
-    for i in range(7):
-        crate_x,crate_z=sky_island_frame.scale_offset('A',26,-25)
-        px=x+crate_x+(i%3)*3.1; pz=z+crate_z+(i//3)*4
-        box((px,y+1.1,pz),(2.8,2.2,2.7),'WoodLight')
-        for dx in [-1,1]: box((px+dx,y+1.1,pz-1.36),(.12,2.15,.12),'WoodDark')
+    # 2026-09-30：七只货箱原压在登记掩体 A_Cover01 上（台账互穿 0.67 m²）；整堆按实际网格让开。
+    def cargo():
+        for i in range(7):
+            crate_x,crate_z=sky_island_frame.scale_offset('A',26,-25)
+            px=x+crate_x+(i%3)*3.1; pz=z+crate_z+(i//3)*4
+            box((px,y+1.1,pz),(2.8,2.2,2.7),'WoodLight')
+            for dx in [-1,1]: box((px+dx,y+1.1,pz-1.36),(.12,2.15,.12),'WoodDark')
+    fitted('dock_cargo',cargo,search=8.0)
     # Tall slanted entry arch with tiny welcoming lanterns.
     arch_z=z+sky_island_frame.scale_offset('A',0,15)[1]
     for dx in [-7,7]: cylinder((x+dx,y+4,arch_z),.55,8,'Limestone',12)
-    beam((x-8,y+8.5,arch_z),(x+8,y+8.5,arch_z),.32,'Teal')
-    lantern(x-6,y,arch_z-1); lantern(x+6,y,arch_z-1)
+    # 横梁架在柱顶上（原梁底比柱顶高 0.18 m，悬空一道缝）。
+    beam((x-8,y+8.27,arch_z),(x+8,y+8.27,arch_z),.32,'Teal')
+    fitted('arch_lantern',lambda:lantern(x-6,y,arch_z-1),search=3.0)
+    fitted('arch_lantern',lambda:lantern(x+6,y,arch_z-1),search=3.0)
 
 
 def bridge_details(bridges):
@@ -730,6 +854,20 @@ def bridge_details(bridges):
                 sphere(tuple(p+Vector((0,1.45,0))),(.18,.23,.18),'Glow',8,4)
 
 
+# 护栏上梁（岛面 +1.05 m、半径 0.12 m，见 terrain_and_boundary）的顶面高度。
+RAIL_BEAM_TOP=1.05+.12
+
+
+def rail_lamp(x,y,z,scale=1):
+    """坐在护栏上梁顶的小风灯：铜座、玻璃罩（Glow，软材质）、上下两道铜箍与小铜顶。"""
+    lamp_light('rail',(x,y+.35*scale,z))
+    cylinder((x,y+.05*scale,z),.13*scale,.1*scale,'Brass',8)
+    lathe((x,y+.1*scale,z),[(0,.12*scale),(.08*scale,.2*scale),(.4*scale,.2*scale),(.5*scale,.07*scale)],'Glow',10)
+    for yy in (.13,.43):
+        torus((x,y+yy*scale,z),.19*scale,.025*scale,'Brass',segments=12,sides=4)
+    cylinder((x,y+.55*scale,z),.08*scale,.1*scale,'Brass',8)
+
+
 def relay_platforms(bridges):
     """中继平台：中央铺一块石面，四角在护栏线上各立一盏灯，远处也认得出这是能停下来打的一段。
 
@@ -745,9 +883,13 @@ def relay_platforms(bridges):
             paved_disc(cx,cy+.03,cz,min(half_along,half_width)*.7)
             for along in (-1,1):
                 for side in (-1,1):
-                    px=cx+fx*along*(half_along-.6)+rx*side*(half_width+.15)
-                    pz=cz+fz*along*(half_along-.6)+rz*side*(half_width+.15)
-                    lantern(px,cy,pz,.8)
+                    # 2026-09-30：原灯柱立在护栏线外 0.15 m 的空中、穿过护栏（台账悬空 1–6.5 m）；挪进桥面又成了
+                    # 中继平台四角的实体障碍（Unity 碰撞校验 navigation_sweep_blocked 12 处：桥面导航不按摆件挖洞）。
+                    # 改为坐在护栏上梁顶的小灯：灯心在护栏线外 0.1 m（仍压在 ±0.12 m 的上梁上），铜件向内不超过 0.16 m，
+                    # 离角色胶囊（贴边导航内缩 0.7 m、半径 0.45）还有余量；玻璃罩是软材质不出碰撞。四角的识别度不变。
+                    px=cx+fx*along*(half_along-.6)+rx*side*(half_width+.1)
+                    pz=cz+fz*along*(half_along-.6)+rz*side*(half_width+.1)
+                    rail_lamp(px,cy+RAIL_BEAM_TOP,pz,1.2)
 
 
 def landscape_scatter(islands,obstacles):
@@ -765,34 +907,43 @@ def landscape_scatter(islands,obstacles):
                 variant=('gold' if base in ['C','S1'] else
                          'blossom' if base in ['B','F','S2'] and math.sin(xx*.137+zz*.073)>-.2 else
                          'moonleaf' if base in ['D','S3'] and math.cos(xx*.07-zz*.09)>.2 else 'plain')
-                if TRIPO_PROPS is None or not TRIPO_PROPS.replace_tree(sys.modules[__name__],TRIPO_DIR,
-                                                           xx,y,zz,tscale,variant,TRIPO_PROPS.stable_seed('tree',sid,i)):
-                    tree(xx,y,zz,tscale,gold=sid in ['C','S1'])
+                def scatter_tree(xx=xx,zz=zz,tscale=tscale,variant=variant,i=i):
+                    if TRIPO_PROPS is None or not TRIPO_PROPS.replace_tree(sys.modules[__name__],TRIPO_DIR,
+                                                               xx,y,zz,tscale,variant,TRIPO_PROPS.stable_seed('tree',sid,i)):
+                        tree(xx,y,zz,tscale,gold=sid in ['C','S1'])
+                # 2026-09-30：岛缘散布原只避登记障碍，树、灌木、石块会压在通往桥口的路上、堵桥头；统一走摆放裁决。
+                fitted('scatter_tree',scatter_tree,'tree',search=3.0)
             else:
                 # 灌木原为 8 段 4 环不平滑的正椭球，读成硬边低模球。改平滑并提高分段，
                 # 同时按实例扰动三轴比例——完美椭球本身就假，只改着色不够。
                 # 用独立 RNG 取扰动，避免改动全局 RNG 序列而扰乱后续所有摆放。
                 jitter=random.Random(stable_seed(sid,i,'bush'))
                 # 第二轮：有 Tripo 灌木就摆成品，一件都没导入时才退回程序化椭球（见 stamp_variant）。
-                if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
-                        ('bush_a','bush_b','bush_c'),xx,y,zz,2.1*jitter.uniform(.8,1.25),('bush',sid,i)):
-                    sphere((xx,y+.7,zz),(2.2*jitter.uniform(.78,1.28),1.2*jitter.uniform(.82,1.35),
-                                         2.0*jitter.uniform(.78,1.28)),
-                           'Leaf' if i%2 else 'LeafLight',12,6,True)
+                def scatter_bush(xx=xx,zz=zz,i=i,jitter=jitter):
+                    if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                            ('bush_a','bush_b','bush_c'),xx,y,zz,2.1*jitter.uniform(.8,1.25),('bush',sid,i)):
+                        sphere((xx,y+.7,zz),(2.2*jitter.uniform(.78,1.28),1.2*jitter.uniform(.82,1.35),
+                                             2.0*jitter.uniform(.78,1.28)),
+                               'Leaf' if i%2 else 'LeafLight',12,6,True)
+                fitted('scatter_bush',scatter_bush,'flora',search=3.0)
             if i%2==0:
                 # 石块保留硬边（岩石本就有棱），但提高分段并打散比例，不再是一排同样的圆球。
                 jitter=random.Random(stable_seed(sid,i,'rock'))
-                if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
-                        ('rock_a','rock_b'),xx+2,y-.25,zz-1,1.7*jitter.uniform(.7,1.35),('rock',sid,i)):
-                    sphere((xx+2,y+.6,zz-1),(1.7*jitter.uniform(.65,1.4),1.0*jitter.uniform(.7,1.5),
-                                             1.4*jitter.uniform(.65,1.4)),
-                           'RockLight' if i%3 else 'Rock',10,5,False)
+                def scatter_rock(xx=xx,zz=zz,i=i,jitter=jitter):
+                    if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                            ('rock_a','rock_b'),xx+2,y-.25,zz-1,1.7*jitter.uniform(.7,1.35),('rock',sid,i)):
+                        sphere((xx+2,y+.6,zz-1),(1.7*jitter.uniform(.65,1.4),1.0*jitter.uniform(.7,1.5),
+                                                 1.4*jitter.uniform(.65,1.4)),
+                               'RockLight' if i%3 else 'Rock',10,5,False)
+                fitted('scatter_rock',scatter_rock,search=3.0)
         for i in range(8 if len(sid)==1 else 3):
             a=i*TAU/8+.4; rad=min(island['size'])*.3
             xx=x+rad*math.cos(a); zz=z+rad*math.sin(a)
-            if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
-                    ('flower_patch','lavender_clump'),xx+.43,y,zz,.85,('flowers',sid,i)):
-                for k in range(3): sphere((xx+k*.43,y+.23,zz+.2*math.sin(k)),(.25,.38,.25),'Flower',8,4,True)
+            def scatter_flowers(xx=xx,zz=zz,i=i):
+                if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                        ('flower_patch','lavender_clump'),xx+.43,y,zz,.85,('flowers',sid,i)):
+                    for k in range(3): sphere((xx+k*.43,y+.23,zz+.2*math.sin(k)),(.25,.38,.25),'Flower',8,4,True)
+            fitted('scatter_flowers',scatter_flowers,'flora',search=3.0)
 
 
 def world_clouds():
@@ -1085,6 +1236,40 @@ def garden_clump(x,y,z,radius=4):
                 sphere((px+.16*j,y+.65+.09*j,pz+.2*math.sin(j)),(.20,.12,.20),'Flower' if i%3 else 'Coral',6,3,False)
 
 
+REGISTERED_FACADE = {}
+
+
+def registered_facade(identifier,x,z,fx,fz,low,high):
+    """登记障碍实际网格在 low–high 高度的截面上，从 (x,z) 沿 (fx,fz) 到墙面的距离减 0.3 m（挂杆插进墙里）。"""
+    rows=REGISTERED_SPANS.get(identifier)
+    if not rows:
+        return 0.0
+    import sky_island_prop_placement as placement
+    polys=placement.slab_hulls(placement.spans_of(sys.modules[__name__],rows),low,high,join=1e9)
+    if not polys or not polys[0]:
+        return 0.0
+    poly=polys[0]; best=0.0
+    for (ax,az),(bx,bz) in zip(poly,poly[1:]+poly[:1]):
+        ex,ez=bx-ax,bz-az; det=fx*(-ez)-fz*(-ex)
+        if abs(det)<1e-9:
+            continue
+        t=((ax-x)*(-ez)-(az-z)*(-ex))/det
+        u=(fx*(az-z)-fz*(ax-x))/det
+        if t>0 and -1e-9<=u<=1+1e-9:
+            best=max(best,t)
+    return max(0.0,best-.3)
+
+
+def marker_lanterns(layout):
+    """灯标记处的铜灯柱。2026-09-30：原在全部摆放之后按标记坐标直接画，压到路缘；改在散布之前、走摆放裁决，
+    只在标记 6 m 内就近挪（灯仍是那个灯标记的灯），后面的花草与 Tripo 件也就知道它在这儿。"""
+    global CURRENT
+    for m in layout['markers']:
+        if m['kind'].lower()=='lamp':
+            CURRENT=m.get('island','Lamps')
+            fitted('marker_lantern',lambda m=m:lantern(*m['position']),search=6.0,ignore=(m['id'],))
+
+
 def village_life(layout,islands):
     global CURRENT
     CURRENT='B_Life'; y=islands['B']['height']
@@ -1142,11 +1327,14 @@ def village_life(layout,islands):
                 PROP_SPACE.capture(sys.modules[__name__],'B','porch_hedge',gx,gz,hedge)
         # This is an attached overhead sign, not floor furniture: its mounting
         # beam must stay in the facade rather than be relocated into empty air.
-        fixed=PROP_SPACE.reserved[[r['id'] for r in PROP_SPACE.reserved].index(o['id'])]['bounds']
-        distances=[(edge-coordinate)/direction for edge,coordinate,direction in
-                   [(fixed[2] if fx>0 else fixed[0],x,fx),(fixed[3] if fz>0 else fixed[1],z,fz)] if abs(direction)>1e-6]
-        facade=max(0,min(v for v in distances if v>=0))
-        sx,sz=x+fx*(facade+1.8),z+fz*(facade+1.8)
+        # 2026-09-30：原按登记包围盒边定墙面，Tripo 房子的墙比包围盒退进 1.9–7.4 m，六块招牌全悬空（台账实测）。
+        # 改按这栋房子实际网格在招牌高度（岛面 +3.9–5.1 m）的截面找墙面，挂杆插进墙里 0.3 m。
+        facade=REGISTERED_FACADE.get(o['id'],{}).get(round(heading,3))
+        if facade is None:
+            facade=registered_facade(o['id'],x,z,fx,fz,y+3.9,y+5.1)
+        sx,sz=x+fx*(facade+1.5),z+fz*(facade+1.5)
+        import sky_island_prop_placement as placement
+        sign_before=placement.snapshot(sys.modules[__name__])
         before={key:len(data['v']) for key,data in GROUPS.items()}
         beam((sx,y+4.5,sz+1.8),(sx,y+4.5,sz),.08,'WoodDark')
         torus((sx,y+3.8,sz),.62,.08,'Brass',axis='z',segments=20)
@@ -1156,20 +1344,28 @@ def village_life(layout,islands):
             first=before.get(key,0)
             data['v'][first:]=[(sx+(vx-sx)*cosine+(vz-sz)*sine,vy,
                                 sz-(vx-sx)*sine+(vz-sz)*cosine) for vx,vy,vz in data['v'][first:]]
+        # 招牌占住门前上方，后面的灯柱不能再插进去。
+        if PROP_SPACE is not None:
+            rows=placement.emitted(sys.modules[__name__],sign_before)
+            spans=placement.spans_of(sys.modules[__name__],rows)
+            PROP_SPACE.reserve('B_Sign_'+o['id'],'B',[],placement.slab_hulls(spans,y+2.2,y+8),'hard')
     # 下列坐标按旧版岛位手写，统一换算到当前岛位（鸭雕像与 B_DuckStatue 障碍同一换算）。
     statue_x,statue_z=sky_island_frame.relocate('B',18,-112)
     if 'B_DuckStatue' not in REPLACED_OBSTACLES:
         duck_statue(statue_x,y,statue_z,.9)
     else:DUPLICATE_EMISSIONS_SKIPPED.add('B_DuckStatue')
+    # 2026-09-30：下面几组按旧版手写坐标换算，原来不看新路网：灯柱与花丛压在路上、插进招牌。统一走摆放裁决。
     for x,z in [sky_island_frame.relocate('B',px,pz) for px,pz in [(-16,-149),(20,-151),(-17,-112),(26,-115),(-63,-134),(66,-124),(-40,-69),(45,-65)]]:
-        lantern(x,y,z,1.15)
-        garden_clump(x+1.9,y,z+1.3,1.7)
+        fitted('village_lantern',lambda x=x,z=z:lantern(x,y,z,1.15),search=8.0)
+        fitted('village_garden',lambda x=x,z=z:garden_clump(x+1.9,y,z+1.3,1.7),'flora',search=4.0)
     for x,z in [sky_island_frame.relocate('B',px,pz) for px,pz in [(-76,-171),(75,-168),(-79,-80),(78,-81),(-46,-68),(34,-76)]]:
-        garden_clump(x,y,z,6)
+        fitted('village_garden',lambda x=x,z=z:garden_clump(x,y,z,6),'flora',search=6.0)
     # A village banner hangs well above the northern passage, fully textured.
     banner_x,banner_z=sky_island_frame.relocate('B',0,-75)
-    for x in [-6,6]: beam((banner_x+x,y,banner_z),(banner_x+x,y+7.5,banner_z),.17,'WoodDark')
-    textured_quad([(banner_x-6,y+5.2,banner_z),(banner_x+6,y+5.2,banner_z),(banner_x+6,y+7.2,banner_z),(banner_x-6,y+7.2,banner_z)],'Cloth')
+    def banner():
+        for x in [-6,6]: beam((banner_x+x,y,banner_z),(banner_x+x,y+7.5,banner_z),.17,'WoodDark')
+        textured_quad([(banner_x-6,y+5.2,banner_z),(banner_x+6,y+5.2,banner_z),(banner_x+6,y+7.2,banner_z),(banner_x-6,y+7.2,banner_z)],'Cloth')
+    fitted('village_banner',banner,search=8.0)
 
 
 def cliff_dressing(islands):
@@ -1268,8 +1464,9 @@ def terrain_and_boundary(layout):
             if any((p-q).length_squared<6.25 for dx in [-1,0,1] for dy in [-1,0,1] for dz in [-1,0,1]
                    for q in post_cells.get((cell[0]+dx,cell[1]+dy,cell[2]+dz),[])): continue
             post_cells[cell].append(p.copy())
-            beam(tuple(p-Vector((0,.12,0))),tuple(p+Vector((0,1.35,0))),.19,'WoodDark',6)
-            cylinder(tuple(p+Vector((0,1.40,0))),.24,.16,'Brass',6,radius_top=.11)
+            # 2026-09-30：立柱与铜帽由 6 边改 8 边（材质审计 F3：护栏遍布岛缘，六棱柱读成硬折的塑料件）。
+            beam(tuple(p-Vector((0,.12,0))),tuple(p+Vector((0,1.35,0))),.19,'WoodDark',8)
+            cylinder(tuple(p+Vector((0,1.40,0))),.24,.16,'Brass',8,radius_top=.11)
     if railv: create_object('COL_Rail_Perimeter',railv,railf,hidden=True)
     rail_buttresses(layout,edges,verts,faces)
 
@@ -1374,6 +1571,27 @@ def build_materials(assets):
         MATERIALS[name]=mat
 
 
+def registered_tree(obs,base,h):
+    import sky_island_prop_placement as placement
+    x,_,z=obs['center']
+    protected=[m for m in LAYOUT_MARKERS if m.get('island')==obs.get('island') and placement.MARKER_CLEAR.get(m['kind'])]
+    for factor in (1.0,.92,.85,.78,.72,.66,.6):
+        before=placement.snapshot(sys.modules[__name__])
+        if not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,('great_tree',),
+                x,base,z,h*.9*factor,('obstacle_tree',obs['id'])):
+            return False
+        rows=placement.emitted(sys.modules[__name__],before)
+        trunk=placement.slab_hulls(placement.spans_of(sys.modules[__name__],rows),base+placement.BODY_LOW,base+placement.BODY_HIGH)
+        clear=all(placement.poly_point_distance(poly,(m['position'][0],m['position'][2]))>=placement.MARKER_CLEAR[m['kind']]
+                  for poly in trunk for m in protected)
+        if clear or factor==.6:
+            if not clear:
+                raise ValueError('Registered tree roots still cover a gameplay marker: '+obs['id'])
+            return True
+        placement.rollback(sys.modules[__name__],before)
+    return False
+
+
 def emit_registered_obstacle(index,obs,source,islands,settlement_records):
     global CURRENT
     import sky_island_settlement
@@ -1414,8 +1632,9 @@ def emit_registered_obstacle(index,obs,source,islands,settlement_records):
                         'blossom' if obs.get('island')=='B' else 'plain',
                         TRIPO_PROPS.stable_rng('obstacle_tree',obs['id']).randrange(1<<30))
             else:
-                done=TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,('great_tree',),
-                        x,base,z,h*.9,('obstacle_tree',obs['id']))
+                # 2026-09-30：great_tree 的板根按 0.9 倍登记高度摆时铺到 10 m 外，把 Search_D_02、遭遇槽位与采集点
+                # 埋进根里（台账实测 5.6 m²）。按实际树干层截面逐级缩小，直到让开玩法标记。
+                done=registered_tree(obs,base,h)
         if not done: tree(x,base,z,max(1,w/6))
     elif 'dome' in kind:
         cylinder((x,y-h/2+h*.35,z),w*.45,h*.7,'Limestone',24)
@@ -1448,6 +1667,7 @@ def main():
     parser=argparse.ArgumentParser(); parser.add_argument('--project',required=True); parser.add_argument('--skip-render',action='store_true')
     parser.add_argument('--prepare-navigation',action='store_true',help='Export rigid footprint inputs only; do not replace the production FBX')
     parser.add_argument('--prepare-roads',action='store_true',help='Measure fixed model bounds and export legacy route inputs without replacing the production FBX')
+    parser.add_argument('--audit-ledger',help='Write the per-instance geometry ledger to this directory and stop before any author-project output')
     args=parser.parse_args(sys.argv[sys.argv.index('--')+1:]); project=Path(args.project).resolve()
     if not (project/'ProjectSettings'/'ProjectVersion.txt').is_file(): raise ValueError('Existing Unity project required')
     assets=project/'Assets'/'SkyIsland'; source=project/'ArtSource'/'SkyIsland'
@@ -1470,6 +1690,10 @@ def main():
     sky_island_tripo_props.reset()
     sky_island_tripo_props.register(sys.modules[__name__],TRIPO_DIR)
     build_materials(assets)
+    if args.audit_ledger:
+        # 审计模式：只记实例台账，不写作者工程里的任何文件（见 sky_island_instance_ledger）。
+        import sky_island_instance_ledger
+        sky_island_instance_ledger.install(sys.modules[__name__])
     sky_island_frame.bind_layout(layout)
     islands={s['id']:s for s in layout['islands']}
     for sid,isl in islands.items(): CURRENT=sid; island_shell(isl)
@@ -1478,13 +1702,26 @@ def main():
     import sky_island_settlement
     settlement_records=[]
     registered_bounds={}
+    registered_hulls={}
+    import sky_island_prop_placement as placement
+    global LAYOUT_MARKERS,LAYOUT_OBSTACLES
+    LAYOUT_MARKERS=layout['markers']; LAYOUT_OBSTACLES=layout['obstacles']
     for index,obs in enumerate(layout['obstacles']):
-        before={key:len(data['v']) for key,data in GROUPS.items()}
+        before=placement.snapshot(sys.modules[__name__])
         emit_registered_obstacle(index,obs,source,islands,settlement_records)
-        points=[v for key,data in GROUPS.items() for v in data['v'][before.get(key,0):]]
+        rows=placement.emitted(sys.modules[__name__],before)
+        points=[v for key,v0,v1,_,_ in rows for v in GROUPS[key]['v'][v0:v1]]
         if points:
             registered_bounds[obs['id']]=[min(p[0] for p in points),min(p[2] for p in points),
                                           max(p[0] for p in points),max(p[2] for p in points)]
+            REGISTERED_TOP[obs['id']]=max(p[1] for p in points)
+            REGISTERED_SPANS[obs['id']]=rows
+            ground=islands[obs['island']]['height'] if obs.get('island') in islands else obs['center'][1]-obs['size'][1]/2
+            spans=placement.spans_of(sys.modules[__name__],rows)
+            registered_hulls[obs['id']]={'island':obs.get('island'),
+                'category':'tree' if 'tree' in obs['kind'] else 'hard',
+                'body':placement.slab_hulls(spans,ground+placement.BODY_LOW,ground+placement.BODY_HIGH),
+                'high':placement.slab_hulls(spans,ground+placement.BODY_HIGH,ground+placement.HIGH_TOP)}
     if args.prepare_roads:
         rows=[{'id':o['id'],'island':o['island'],'kind':o['kind'],'bounds':registered_bounds[o['id']]}
               for o in layout['obstacles'] if o['id'] in registered_bounds]
@@ -1502,34 +1739,52 @@ def main():
             'pavingTracks':[{'points':p,'width':w} for p,w in PAVING_TRACKS]},indent=2),encoding='utf-8')
         print('SKY_ISLAND_ROAD_INPUTS_OK '+str(source))
         return
-    dock_landmark(islands); area_landmarks(islands); bridge_details(layout['bridges']); relay_platforms(layout['bridges'])
     make_paths(islands,layout['bridges'])
     road_data=json.loads((Path(__file__).resolve().parents[1]/'ArtSource/SkyIsland/road_layout.json').read_text(encoding='utf-8'))
     for identifier,bounds in road_data['actualRegisteredBounds'].items():
         actual=registered_bounds.get(identifier)
         if actual is None or any(abs(a-b)>.005 for a,b in zip(actual,bounds)):
             raise ValueError('Road placement geometry changed; rebake roads: '+identifier)
-    from sky_island_prop_placement import PlacementSpace
+    # 2026-09-30：统一摆放裁决先于一切按坐标画的东西建好（路网 + 桥口 / 门口 / 玩法标记 / 运行时物件 + 登记障碍实测截面）；
+    # 地标、码头、村景、灯标记、岛缘散布、Tripo 件、花草按这个顺序画，后画的都知道先画的在哪。
+    from sky_island_prop_placement import PlacementSpace, load_inputs
     global PROP_SPACE
-    PROP_SPACE=PlacementSpace(sys.modules[__name__],layout,registered_bounds)
-    village_life(layout,islands); cliff_dressing(islands)
+    roads,runtime=load_inputs()
+    PROP_SPACE=PlacementSpace(sys.modules[__name__],layout,registered_bounds,roads,runtime,registered_hulls)
+    landmark_before=placement.snapshot(sys.modules[__name__])
+    dock_landmark(islands); area_landmarks(islands)
+    # 地标里原地画的部分（钟庭拱廊、风铃桥梁、根拱、水车……）也占地方：身体层与上层截面整块登记，后面的花草与散件都让开。
+    # 贴地铺装（*_GroundDetail）与贴地嵌饰（岛面 +0.13 m 以下）不算。
+    PROP_SPACE.reserve_emitted(sys.modules[__name__],'landmark',landmark_before)
+    bridge_details(layout['bridges']); relay_platforms(layout['bridges'])
+    village_life(layout,islands); marker_lanterns(layout); cliff_dressing(islands)
     landscape_scatter(islands,layout['obstacles']); world_clouds()
-    # Offline decorative geometry shares the same palette, regional mesh groups and layout.
+    # Tripo3D 英雄道具：纯装饰，不加导航顶点；位置由 PROP_SPACE 按实际包络裁决。
+    # tripo 目录为空时整段静默跳过，因此没有模型也不影响世界生成。
     sys.path.insert(0,str(Path(__file__).resolve().parent))
     import sky_island_dressing
-    dressing=sky_island_dressing.build(sys.modules[__name__],layout)
-    dressing['settlement']=sky_island_settlement.finish_gardens(sys.modules[__name__],layout,settlement_records)
-    (source/'sky_island_dressing.json').write_text(json.dumps(dressing,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
-    # Tripo3D 英雄道具：纯装饰，避让复用 dressing 的 PlantingSpace，不加导航顶点。
-    # tripo 目录为空时整段静默跳过，因此没有模型也不影响世界生成。
     import sky_island_tripo_props
     tripo=sky_island_tripo_props.build(sys.modules[__name__],layout,source/'tripo',sky_island_dressing)
-    (source/'sky_island_tripo.json').write_text(json.dumps(tripo,indent=2,ensure_ascii=False),encoding='utf-8')
+    # Offline decorative geometry shares the same palette, regional mesh groups and layout.
+    dressing=sky_island_dressing.build(sys.modules[__name__],layout)
+    dressing['settlement']=sky_island_settlement.finish_gardens(sys.modules[__name__],layout,settlement_records)
+    if not args.audit_ledger:
+        (source/'sky_island_dressing.json').write_text(json.dumps(dressing,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
+        (source/'sky_island_tripo.json').write_text(json.dumps(tripo,indent=2,ensure_ascii=False),encoding='utf-8')
     for m in layout['markers']:
         marker(m['id'],m['position'])
-        if m['kind'].lower()=='lamp':
-            CURRENT=m.get('island','Lamps'); lantern(*m['position'])
     marker('POI_B_Mural',mural_marker(islands))
+    night_lamps=[{'name':'NightLamp_%s_%03d'%(lamp['kind'],index),'kind':lamp['kind'],'position':lamp['position']}
+                 for index,lamp in enumerate(LAMP_LIGHTS)]
+    for lamp in night_lamps:
+        marker(lamp['name'],lamp['position'])
+    if args.audit_ledger:
+        report=sky_island_instance_ledger.dump(sys.modules[__name__],args.audit_ledger,layout,
+            {'propPlacements':PROP_SPACE.records,'propOmissions':PROP_SPACE.omitted,'collisionBoxes':COLLISIONS,'registeredPropBounds':registered_bounds,
+             'tripo':tripo,'dressing':dressing,'markers':layout['markers'],
+             'geologyObjects':sorted(o.name for o in bpy.context.scene.objects if o.name.endswith('_Geology'))})
+        print('SKY_ISLAND_LEDGER_OK '+json.dumps(report))
+        return
     stats={}
     # 岩体跨材质保持闭合，已由 geology 直接生成；加入同一份导出统计。
     for obj in bpy.context.scene.objects:
@@ -1551,9 +1806,10 @@ def main():
     for obj in scene.objects: obj.select_set(obj.type in {'MESH','EMPTY'})
     fbx=assets/'SkyIslandWorld.fbx'
     bpy.ops.export_scene.fbx(filepath=str(fbx),use_selection=True,object_types={'MESH','EMPTY'},axis_forward='-Z',axis_up='Y',bake_anim=False,add_leaf_bones=False,path_mode='RELATIVE')
-    metadata={'coordinateSystem':'Unity XYZ metres','materials':{'Sky_'+name:{'rgba':TILED_TEXTURES[name][2] if name in TILED_TEXTURES else rgba(color),'texture':(MODEL_TEXTURES[name].replace(chr(92),'/') if name in MODEL_TEXTURES else 'Textures/sky_mural.png' if name=='Mural' else 'Textures/sky_cloth.png' if name=='Cloth' else 'Textures/'+TILED_TEXTURES[name][0] if name in TILED_TEXTURES else None),'emission':EMISSION.get(name,0)} for name,color in PALETTE.items()},
+    metadata={'coordinateSystem':'Unity XYZ metres','materials':{'Sky_'+name:material_definition(name,color) for name,color in PALETTE.items()},
               'markers':[{'name':m['id'],'position':m['position']} for m in layout['markers']]+[{'name':'POI_B_Mural','position':mural_marker(islands)}],
-              'visualMeshes':stats,'totalVisualTriangles':sum(s['triangles'] for s in stats.values()),'meshHygiene':MESH_HYGIENE,'collisionBoxes':COLLISIONS,'railButtress':RAIL_BUTTRESS,'registeredPropBounds':registered_bounds,'propPlacements':PROP_SPACE.records,'duplicateLandmarkEmissionsSkipped':sorted(DUPLICATE_EMISSIONS_SKIPPED),
+              'nightLamps':night_lamps,
+              'visualMeshes':stats,'totalVisualTriangles':sum(s['triangles'] for s in stats.values()),'meshHygiene':MESH_HYGIENE,'collisionBoxes':COLLISIONS,'railButtress':RAIL_BUTTRESS,'registeredPropBounds':registered_bounds,'propPlacements':PROP_SPACE.records,'propOmissions':PROP_SPACE.omitted,'duplicateLandmarkEmissionsSkipped':sorted(DUPLICATE_EMISSIONS_SKIPPED),
               'navVertices':len(effective_nav['vertices']),'navTriangles':len(effective_nav['triangles']),
               'sourceLayout':str(assets/'sky_island_layout.json'),'textures':['Textures/sky_mural.png','Textures/sky_cloth.png']+['Textures/'+n for n in sorted(set(v[0] for v in TILED_TEXTURES.values()))]}
     (source/'sky_island_geometry.json').write_text(json.dumps(metadata,indent=2,ensure_ascii=False),encoding='utf-8')

@@ -76,6 +76,9 @@ namespace BossRush
             catch (Exception e) { TickFault("gates_and_markers", e); }
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.GatesAndMarkers);
             try { if (lighting != null) lighting.Tick(); } catch (Exception e) { TickFault("lighting", e); }
+            // 路灯跟着光照刚写下的日光色亮灭（与着色器自发光同一口径），白天 O(1) 早返。
+            try { if (streetLamps != null && lighting != null) streetLamps.Tick(player.transform.position, lighting.AppliedSun); }
+            catch (Exception e) { TickFault("street_lamps", e); }
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Lighting);
             try { if (ambience != null) { ambience.ApplyStory(story.Current); ambience.Tick(player.transform.position); } }
             catch (Exception e) { TickFault("ambience", e); }

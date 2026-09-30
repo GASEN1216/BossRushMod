@@ -188,6 +188,26 @@ namespace BossRush
             return "Household Stores";
         }
 
+        /// <summary>
+        /// 按散列方位摆放的灶火与完成纪念物，有几处散列方位正好落在路面上（2026-09-30 场景审计：
+        /// 标记本身就在路中间，六个试探方位里第一个站得住的就在路上）。这几处改用离线复算选定的方位与距离；
+        /// 键就是原来喂给 <see cref="StableHash"/> 的字符串，不在表里的照旧取散列方位与调用方给的距离。
+        /// 复算与守卫：`tools/sky_island_runtime_placements.py`、`tests/SkyIslandSceneCleanlinessPropertyTest.py`。
+        /// </summary>
+        internal static void PlacementFor(string key, float defaultDistance, out float bearing, out float distance)
+        {
+            switch (key)
+            {
+                case "Search_A:hearth": bearing = 25f; distance = 3.9f; return;
+                case "Search_D": bearing = 9f; distance = 3.7f; return;
+                case "EnemySpawn_F": bearing = 146f; distance = 3.2f; return;
+                // 信鸽 Letter_02 的散列方位落在风铃架（Tripo 件比登记占地长）上。
+                case "Letter_02": bearing = 37f; distance = 3.2f; return;
+            }
+            bearing = StableHash(key) % 360;
+            distance = defaultDistance;
+        }
+
         /// <summary>Mono 与 .NET Core 的 string.GetHashCode 口径不同，抽样必须用自带的稳定散列。</summary>
         internal static int StableHash(string value)
         {
@@ -241,10 +261,11 @@ namespace BossRush
                 Anchor("A2", "Lamp_A_02", 215f, 6f, SkyIslandLootTier.Supply, "A"),
                 Anchor("A3", "EnemySpawn_A", 120f, 7f, SkyIslandLootTier.Supply, "A"),
                 // B 风铃集：枢纽，密度最高，出发前能在这里凑齐消耗品。
-                Anchor("B1", "Lamp_B", 120f, 6f, SkyIslandLootTier.Supply, "B"),
-                Anchor("B2", "Lamp_B_02", 300f, 6f, SkyIslandLootTier.Supply, "B"),
-                Anchor("B3", "Search_B", 250f, 7f, SkyIslandLootTier.Supply, "B"),
-                Anchor("B4", "Search_B_02", 40f, 7f, SkyIslandLootTier.Supply, "B"),
+                // 2026-09-30 场景审计：B1 / B2 / B4 原方位落在路面上，B3 贴着茶水灶；按离线复算挪到路边空地。
+                Anchor("B1", "Lamp_B", 145f, 6.5f, SkyIslandLootTier.Supply, "B"),
+                Anchor("B2", "Lamp_B_02", 270f, 4f, SkyIslandLootTier.Supply, "B"),
+                Anchor("B3", "Search_B", 255f, 7f, SkyIslandLootTier.Supply, "B"),
+                Anchor("B4", "Search_B_02", 50f, 8f, SkyIslandLootTier.Supply, "B"),
                 // C 青穗梯田：西线第一段，仍是生活物资。
                 Anchor("C1", "Lamp_C", 60f, 6f, SkyIslandLootTier.Supply, "C"),
                 Anchor("C2", "Lamp_C_02", 240f, 6f, SkyIslandLootTier.Supply, "C"),
@@ -264,10 +285,11 @@ namespace BossRush
                 // F 镜水寺：东线第一段。
                 Anchor("F1", "Lamp_F", 45f, 6f, SkyIslandLootTier.Voyage, "F"),
                 Anchor("F2", "Lamp_F_02", 225f, 6f, SkyIslandLootTier.Voyage, "F"),
-                Anchor("F3", "POI_F", 135f, 7f, SkyIslandLootTier.Voyage, "F"),
-                Anchor("F4", "Search_F", 315f, 7f, SkyIslandLootTier.Voyage, "F"),
+                // 2026-09-30 场景审计：F3 / F4 原方位压到路缘。
+                Anchor("F3", "POI_F", 140f, 7f, SkyIslandLootTier.Voyage, "F"),
+                Anchor("F4", "Search_F", 300f, 7f, SkyIslandLootTier.Voyage, "F"),
                 // G 残星工坊：东航标所在，全图最深的常规区域。
-                Anchor("G1", "Lamp_G", 30f, 6f, SkyIslandLootTier.Starworks, "G"),
+                Anchor("G1", "Lamp_G", 30f, 5.5f, SkyIslandLootTier.Starworks, "G"),
                 Anchor("G2", "Lamp_G_02", 210f, 6f, SkyIslandLootTier.Starworks, "G"),
                 Anchor("G3", "Relay_K2", 301f, 7f, SkyIslandLootTier.Starworks, "G"),
                 Anchor("G4", "Search_G", 250f, 7f, SkyIslandLootTier.Starworks, "G"),
@@ -277,12 +299,13 @@ namespace BossRush
                 Anchor("H3", "Lamp_H", 280f, 9f, SkyIslandLootTier.Starworks, "H"),
                 Anchor("H4", "Search_H_02", 200f, 7f, SkyIslandLootTier.Starworks, "H"),
                 // 四条支路：绕路的人应当拿到额外回报，S4 与工坊同档。
-                Anchor("S1a", "POI_S1", 100f, 7f, SkyIslandLootTier.Voyage, "S1"),
+                // 2026-09-30 场景审计：S1a 原落点贴着岛缘护栏，S3b 原方位在路上。
+                Anchor("S1a", "POI_S1", 100f, 7.5f, SkyIslandLootTier.Voyage, "S1"),
                 Anchor("S1b", "Search_S1", 280f, 6f, SkyIslandLootTier.Voyage, "S1"),
                 Anchor("S2a", "POI_S2", 100f, 7f, SkyIslandLootTier.Voyage, "S2"),
                 Anchor("S2b", "Search_S2", 280f, 6f, SkyIslandLootTier.Voyage, "S2"),
                 Anchor("S3a", "POI_S3", 100f, 7f, SkyIslandLootTier.Voyage, "S3"),
-                Anchor("S3b", "Search_S3", 280f, 6f, SkyIslandLootTier.Voyage, "S3"),
+                Anchor("S3b", "Search_S3", 255f, 6f, SkyIslandLootTier.Voyage, "S3"),
                 Anchor("S4a", "POI_S4", 100f, 7f, SkyIslandLootTier.Starworks, "S4"),
                 Anchor("S4b", "Search_S4", 280f, 6f, SkyIslandLootTier.Starworks, "S4")
             };

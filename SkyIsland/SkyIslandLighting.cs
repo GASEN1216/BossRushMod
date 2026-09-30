@@ -60,6 +60,9 @@ namespace BossRush
             new Preset("晨光", "Morning", new Color(1.00f, 0.82f, 0.62f), new Color(0.26f, 0.33f, 0.45f), new Vector3(17, 60, 0), 1.55f)
         };
 
+        /// <summary>最近一次写下去的日光色（路灯的昼夜系数按它算，与着色器自发光的压暗同一口径）。</summary>
+        internal Color AppliedSun { get { return appliedSun; } }
+
         internal string PresetName
         {
             get { return presetIndex < 0 ? L10n.T("自动 · ", "Auto · ") + Presets[automaticIndex].Name : Presets[presetIndex].Name; }

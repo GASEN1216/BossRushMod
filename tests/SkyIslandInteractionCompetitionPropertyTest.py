@@ -131,6 +131,18 @@ def stable_hash(value):
     return h & 0x7FFFFFFF
 
 
+# 散列方位的少数改写（`SkyIslandLootTables.PlacementFor`）：键 → (方位, 距离)。从生产源码逐条读，不在这里另抄一份。
+PLACEMENT_OVERRIDES = {key: (float(bearing), float(distance)) for key, bearing, distance in re.findall(
+    r'case "([A-Za-z0-9_:]+)":\s*bearing\s*=\s*([0-9.]+)f;\s*distance\s*=\s*([0-9.]+)f;\s*return;', LOOT_SRC)}
+
+
+def placement_for(key, default_distance):
+    """逐字复现 SkyIslandLootTables.PlacementFor：表里有就用表里的方位与距离，否则散列方位 + 调用方距离。"""
+    if key in PLACEMENT_OVERRIDES:
+        return PLACEMENT_OVERRIDES[key]
+    return stable_hash(key) % 360, default_distance
+
+
 def resolve_crate(anchor, bearing, distance):
     """逐字复现 SkyIslandRewardCrate.TryFindCratePosition：**只做地面 + 墙体两项裁决**。
 
@@ -184,7 +196,7 @@ def build_interactables():
     # 3) 完成纪念物：按持久 flag 重建，本测试按「全部已完成」的最坏情况算。
     for marker in MEMORIAL_MARKERS:
         anchor = MARKERS[marker]
-        spot = resolve_crate(anchor, stable_hash(marker) % 360, SEPARATION)
+        spot = resolve_crate(anchor, *placement_for(marker, SEPARATION))
         if spot is None:
             # 生产找不到净空就只留光、不挂交互体（绝不退回原点）——没有交互体就没有竞争。
             notes.append('纪念物 %s 没有净空落点，生产只留光不挂交互体' % marker)
@@ -223,7 +235,7 @@ def build_interactables():
     # 7) 信鸽：每趟至多一只（`SkyIslandWorldStory.PlacePigeon`），落点是信的锚点外一个交互间距、方位按信的 id 取稳定散列。
     #    12 封信不会同时在场（同组不比），但每一封都必须与其它交互体不抢——下一趟来哪一封只取决于存档。
     for letter_id, anchor_marker in LETTERS:
-        spot = resolve_crate(MARKERS[anchor_marker], stable_hash(letter_id) % 360, SEPARATION)
+        spot = resolve_crate(MARKERS[anchor_marker], *placement_for(letter_id, SEPARATION))
         if spot is None:
             # 生产找不到净空就这趟不放信鸽（信留到下一趟）：没有交互体就没有竞争。
             notes.append('信鸽 %s 在 %s 没有净空落点，生产这趟不放信鸽' % (letter_id, anchor_marker))

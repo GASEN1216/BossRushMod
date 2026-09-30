@@ -656,8 +656,9 @@ namespace BossRush
             // 复算的就是它），方位角按标记名取稳定散列，同一块地形每次进岛都落在同一处。
             // 找不到净空就**只留光、不挂交互体**：纪念物是纯装饰，装置不是，绝不退回原点。
             Vector3 spot;
-            if (!SkyIslandRewardCrate.TryFindCratePosition(root.transform, point.position,
-                SkyIslandLootTables.StableHash(marker) % 360, SkyIslandRewardCrate.InteractableSeparation,
+            float bearing, distance;
+            SkyIslandLootTables.PlacementFor(marker, SkyIslandRewardCrate.InteractableSeparation, out bearing, out distance);
+            if (!SkyIslandRewardCrate.TryFindCratePosition(root.transform, point.position, bearing, distance,
                 GameplayDataSettings.Layers.groundLayerMask.value, out spot)) return;
             // 完成状态重入时重建，不能只在首次提交事件中点亮。
             feedback.Add(SkyIslandStoryInteractable.Create(root.transform, spot, marker + "_Completed", label,
@@ -1023,14 +1024,16 @@ namespace BossRush
                 L10n.T("，脚上绑着一封信。", ", a letter tied to its leg."), false);
         }
 
-        /// <summary>落点与纪念物同一套算法：锚点外一个交互间距，方位按信的 id 取稳定散列（交互竞争属性测试逐封复算）。找不到净空这趟就不放。</summary>
+        /// <summary>落点与纪念物同一套算法：锚点外一个交互间距，方位按信的 id 取稳定散列（交互竞争属性测试逐封复算），
+        /// 少数散列方位压到摆件的按 <see cref="SkyIslandLootTables.PlacementFor"/> 改写。找不到净空这趟就不放。</summary>
         private bool PlacePigeon(SkyIslandLetter letter)
         {
             Transform anchor = root.transform.Find(letter.Anchor);
             Vector3 spot;
+            float bearing, distance;
+            SkyIslandLootTables.PlacementFor(letter.Id, SkyIslandRewardCrate.InteractableSeparation, out bearing, out distance);
             if (anchor == null || !SkyIslandRewardCrate.TryFindCratePosition(root.transform, anchor.position,
-                SkyIslandLootTables.StableHash(letter.Id) % 360, SkyIslandRewardCrate.InteractableSeparation,
-                GameplayDataSettings.Layers.groundLayerMask.value, out spot)) return false;
+                bearing, distance, GameplayDataSettings.Layers.groundLayerMask.value, out spot)) return false;
             pigeon = SkyIslandStoryInteractable.Create(root.transform, spot, "SkyIslandPigeon_" + letter.Id,
                 PigeonTitle(), delegate { ReadLetter(letter); });
             GameObject glow = new GameObject("PigeonGlow");

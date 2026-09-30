@@ -21,8 +21,10 @@ namespace BossRush
         internal static Vector3 FindSpot(Transform root, Transform marker, int groundMask)
         {
             Vector3 spot;
-            if (SkyIslandRewardCrate.TryFindCratePosition(root, marker.position, SkyIslandLootTables.StableHash(marker.name + ":hearth") % 360,
-                SpotDistance, groundMask, out spot)) return spot;
+            float bearing, distance;
+            SkyIslandLootTables.PlacementFor(marker.name + ":hearth", SpotDistance, out bearing, out distance);
+            if (SkyIslandRewardCrate.TryFindCratePosition(root, marker.position, bearing,
+                distance, groundMask, out spot)) return spot;
             RaycastHit hit;
             if (Physics.Raycast(marker.position + Vector3.up * 2f, Vector3.down, out hit, 4f, groundMask, QueryTriggerInteraction.Ignore))
                 return hit.point;

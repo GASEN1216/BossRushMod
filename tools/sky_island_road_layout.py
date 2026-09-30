@@ -499,8 +499,8 @@ def main():
     data['sourceLayoutSha256'] = hashlib.sha256(args.layout.read_bytes()).hexdigest()
     data['sourceLayoutHashPolicy'] = 'sha256_file_bytes; layoutHash uses canonical JSON'
     data['sourceActualProbeSha256'] = hashlib.sha256(args.actual.read_bytes()).hexdigest()
-    data['sourceReference'] = {'baseline': str(args.baseline.relative_to(ROOT)) if args.baseline.is_relative_to(ROOT) else args.baseline.name,
-                               'actualProbe': str(args.actual.relative_to(ROOT)) if args.actual.is_relative_to(ROOT) else args.actual.name,
+    data['sourceReference'] = {'baseline': args.baseline.relative_to(ROOT).as_posix() if args.baseline.is_relative_to(ROOT) else args.baseline.name,
+                               'actualProbe': args.actual.relative_to(ROOT).as_posix() if args.actual.is_relative_to(ROOT) else args.actual.name,
                                'runtimeNeedsBuildInputs': False}
     # Explain exact geometry evidence without an entity / porch overlap exemption.
     entities = {o['id']: o['bounds'] for o in planning_entities(layout, data['actualRegisteredBounds'])}

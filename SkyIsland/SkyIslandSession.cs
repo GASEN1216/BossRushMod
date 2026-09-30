@@ -49,6 +49,7 @@ namespace BossRush
         private bool navigationReady, returning, deathPending, loadStarted, returnRequested;
         private SkyIslandRendering rendering;
         private SkyIslandLighting lighting;
+        private SkyIslandStreetLamps streetLamps;
         private ArenaPrototypeNavigation navigation;
         private IEnumerator<Progress> scan;
         private GameObject root;
@@ -249,6 +250,8 @@ namespace BossRush
             IndexGroundRegions();
             lighting = new SkyIslandLighting();
             lighting.Apply(root);
+            streetLamps = new SkyIslandStreetLamps();
+            streetLamps.Apply(root);
             root.SetActive(true);
             Physics.SyncTransforms();
             // CR-2026-09-10-006：地形不可见的现场取证。激活当帧 `isVisible` 还没被剔除结果更新过，
@@ -925,6 +928,8 @@ namespace BossRush
             patrols = null;
             Safe("graph", delegate { if (navigation != null) navigation.Dispose(); });
             navigation = null;
+            Safe("street_lamps", delegate { if (streetLamps != null) streetLamps.Dispose(); });
+            streetLamps = null;
             Safe("lighting", delegate { if (lighting != null) lighting.Dispose(); });
             Safe("materials", delegate { if (rendering != null) rendering.Dispose(); });
             if (hud != null) hud.Dispose();

@@ -34,24 +34,55 @@ def bench_check(source):
     assert all(abs(c[2]-20)<=1.3000001 for c,_ in calls),'BENCH_PARTS_SEPARATED'
 
 
-def landmark_owner_check(source):
+def run_landmarks(source,replaced,tops=None):
     import json
     import sky_island_frame
     layout=json.loads((ROOT/'ArtSource/SkyIsland/layout.json').read_text(encoding='utf-8'))
     sky_island_frame.bind_layout(layout)
     node=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name=='area_landmarks')
-    expected={'B_ChimeSupport01','B_ChimeSupport02','D_WindBeacon','G_BrokenAstrolabe'}|{'F_PavilionSupport%02d'%i for i in range(1,9)}
+    fitted_names=[]
+    def fitted(name,emit,*args,**kwargs):
+        fitted_names.append(name);emit();return (0.0,0.0)
     namespace={'math':math,'TAU':math.tau,'sky_island_frame':sky_island_frame,'TRIPO_PROPS':None,
-               'REPLACED_OBSTACLES':expected,'DUPLICATE_EMISSIONS_SKIPPED':set(),'CURRENT':'B'}
-    operations=['paved_disc','cylinder','sphere','beam','bell','textured_quad','ribbon','addmesh','box','torus','tree','lathe','lantern','duck_statue']
+               'REPLACED_OBSTACLES':set(replaced),'DUPLICATE_EMISSIONS_SKIPPED':set(),'CURRENT':'B',
+               'fitted':fitted,'LAYOUT_OBSTACLES':layout['obstacles'],'REGISTERED_TOP':dict(tops or {}),
+               'MURAL_SHIFT':(0.0,0.0)}
+    operations=['paved_disc','cylinder','sphere','beam','bell','textured_quad','ribbon','addmesh','box','torus','tree','lathe','lantern','duck_statue',
+                'lamp_light']
     calls=[]
     for name in operations:namespace[name]=lambda *args,_name=name,**kwargs:calls.append((_name,args))
     # Cultivation data stays production-owned while geometry primitives are host stubs.
     farm=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name=='farm_beds')
     exec(compile(ast.Module(body=[farm,node],type_ignores=[]),'production landmark emitters','exec'),namespace)
-    namespace['area_landmarks']({i['id']:i for i in layout['islands']})
+    islands={i['id']:i for i in layout['islands']}
+    namespace['area_landmarks'](islands)
+    return namespace,calls,fitted_names,islands
+
+
+def landmark_owner_check(source):
+    replaced={'B_ChimeSupport01','B_ChimeSupport02','D_WindBeacon','G_BrokenAstrolabe'}|{'F_PavilionSupport%02d'%i for i in range(1,9)}
+    namespace,calls,fitted_names,islands=run_landmarks(source,replaced)
+    # 2026-09-30：两根风铃支柱都换成 Tripo 风铃架时，悬在架顶上方的横梁与小钟一并跳过；S1 登记池已画水面，圆水面跳过。
+    expected=replaced|{'B_ChimeCrossbeam','S1_PondDisc'}
     assert namespace['DUPLICATE_EMISSIONS_SKIPPED']==expected,'DUPLICATE_LANDMARK_OWNER'
     assert any(name=='paved_disc' for name,_ in calls) and any(name=='bell' for name,_ in calls),'LANDMARK_FEATURES_REMOVED'
+    # 按坐标画的小件全部走统一摆放裁决（台账里曾压路的桌凳、石灯、壁画、彩旗、邮亭、洞口灯、池边石）。
+    for name in ('village_table','stone_lantern','mural','bunting','post_kiosk','cave_lantern','pond_rock','root_forest_tree'):
+        assert name in fitted_names,'LANDMARK_NOT_FITTED:'+name
+    namespace,_,_,_=run_landmarks(source,replaced|{'S3_RainCave','S4_StarLookout'})
+    assert {'S3_CaveSpheres','S4_Telescope'}<=namespace['DUPLICATE_EMISSIONS_SKIPPED'],'REPLACED_LANDMARK_DUPLICATED'
+    # 悬空横梁与亭顶落到实测柱顶：换一组柱顶，梁 / 亭顶必须跟着走。
+    y_e=islands['E']['height'];y_f=islands['F']['height']
+    tops={'E_WindPillarWest':y_e+5.49,'E_WindPillarEast':y_e+5.49}
+    tops.update({'F_PavilionSupport%02d'%i:y_f+4.5 for i in range(1,9)})
+    _,calls,_,_=run_landmarks(source,replaced,tops)
+    beams=[args for name,args in calls if name=='beam' and abs(args[0][1]-args[1][1])<1e-9 and args[2]==.34]
+    assert beams and abs(beams[0][0][1]-(y_e+5.49-.25))<1e-6,'E_BELL_BEAM_NOT_ON_PILLARS'
+    bells=[args for name,args in calls if name=='bell' and abs(args[2]-beams[0][0][2])<1e-6]
+    # 钟舌垂到钟口下 1.4×scale：最低点也要高过岛面 2.75 m。
+    assert len(bells)==9 and all(args[1]-1.4*args[3]>=y_e+2.75-1e-6 for args in bells),'E_BELLS_BLOCK_HEADROOM'
+    roofs=[args for name,args in calls if name=='lathe' and args[2]=='Teal' and args[1][0]==(0,8)]
+    assert len(roofs)==2 and all(abs(args[0][1]-(y_f+4.45))<1e-6 for args in roofs),'F_ROOF_NOT_ON_PILLARS'
 
 
 def main():

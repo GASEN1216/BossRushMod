@@ -25,6 +25,17 @@
 
 双面栏杆外侧另有 `COL_Rail_Buttress_*` 定向凸 BoxCollider：生成器 `rail_buttresses` 写 `geometry.json` 的 `railButtress`，作者构建器按它建盒。原因是 ECM2 解穿插不扫掠，压进零厚度栏杆的角色可能被推向虚空。改动碰撞后在作者工程追加 `BossRush.SkyIslandMovementSimulation.RunAndExit`（不加 `-quit`），它用官方 ECM2 参数在最终 raid 包里做外边冲撞、起步穿插与随机游走，任何越界或坠落记红。
 
+## 2026-09-30 场景净空、穿模与质感（COMPAT / SCHEMA+）
+
+按坐标画的件全部经统一摆放裁决（`tools/sky_island_prop_placement.py` `PlacementSpace.fit`），全岛净空由实例台账复核，证据进 `Validation/sky_island_scene_audit.json`（守卫 `SkyIslandSceneCleanlinessPropertyTest`）。报告：`docs/reports/sky-island/天空岛_场景净空穿模质感审计_20260930.md`。重建顺序在上文「修改实体模型后的顺序」之外补四步：
+
+0. C# 运行时落点数据（搜刮锚点、`SkyIslandLootTables.PlacementFor` 改写表、巡守槽位）改了，先 `python tools/sky_island_runtime_placements.py`，生成器据它给运行时物件让位；
+1. 导航重烘后 `python tools/sky_island_patrol_slots.py`，再跑一次第 0 步（巡守槽位进了运行时表，供场景审计查净空；生成器不读巡守槽位，不用为此重新生成）；
+2. 正式生成之外再跑一次 `generate_sky_island.py -- --project <作者工程> --skip-render --audit-ledger <Build 目录>`，然后 `PYTHONPATH=Build/sky-island-python-deps python tools/sky_island_scene_audit.py --ledger <目录> --out <目录> --compact ArtSource/SkyIsland/Validation/sky_island_scene_audit.json`，非设计接触必须为 0；
+3. 调色板材质或平铺贴图变了，先 `python tools/sky_island_surface_textures.py bake --project <作者工程>`，正式生成后还要跑 `generate_sky_island_kit.py`（模型库材质表与整图同源，`SkyIslandSettlementGeometryTests` 核对）。
+
+Unity 碰撞校验报 `navigation_sweep_blocked` 时，把 `raid_collision_validation.json` 交给导航烘焙的 `--physics-report`，阻挡件会按精确截面挖洞，再从第 2 步起重跑。导航顶点现为 4073 / 4095（烘焙器取预算内最细的简化档），余量只有 22，再加实体件前先算这一项。
+
 ## 原设计布局重建与检查
 
 在 BossRushMod 根目录执行：

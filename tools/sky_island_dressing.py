@@ -40,6 +40,7 @@ class PlantingSpace:
         self.markers = [m['position'] for m in layout['markers'] if m.get('island') == island['id']]
         self.portals = [(b['path'][0 if b['from'] == island['id'] else -1], b['width']/2+5)
                         for b in layout['bridges'] if island['id'] in [b['from'], b['to']]]
+        self.space = getattr(g, 'PROP_SPACE', None)
 
     def free(self, x, z, radius=.5):
         p = (x, z)
@@ -60,7 +61,11 @@ class PlantingSpace:
         x0, _, z0 = self.island['center']
         clearing = sky_island_frame.scale_radius_for_island(
             self.island, {'B': 21, 'D': 17, 'E': 28, 'G': 19, 'H': 33, 'S1': 11, 'S4': 14}.get(self.island['id'], 9))
-        return math.hypot(x-x0, z-z0) > clearing+radius
+        if math.hypot(x-x0, z-z0) <= clearing+radius:
+            return False
+        # 2026-09-30：统一摆放裁决建好之后，花草也让开先摆的硬物实测截面与交互 / 桥口 / 门口净空。
+        space = getattr(self, 'space', None)
+        return space is None or not space.blocked_circle(self.island['id'], x, z, radius)
 
 
 def crystal(g, x, y, z, height, radius, material, yaw=0, lean=.15):
@@ -265,7 +270,13 @@ def water_gardens(g,layout,counts):
         g.CURRENT=sid; x,y,z=islands[sid]['center']
         for i in range(9):
             a=i*TAU/9; r=sky_island_frame.scale_radius(sid,23 if sid=='F' else 9)
-            stamp(g,'plant_flatTall',(x+math.cos(a)*r,y+.02,z+math.sin(a)*r),1.1,a)
+            emit=lambda a=a,r=r:stamp(g,'plant_flatTall',(x+math.cos(a)*r,y+.02,z+math.sin(a)*r),1.1,a)
+            # 2026-09-30：水边高草原不看路网（一丛压在镜水寺路上），有统一摆放裁决时按实际网格让开。
+            space=getattr(g,'PROP_SPACE',None)
+            if space is None:
+                emit()
+            elif space.fit(g,sid,'waterside_plant',emit,'flora',2.0) is None:
+                continue
             counts['watersidePlants']+=1
 
 

@@ -1105,10 +1105,10 @@
       106.01939675710427
     ],
     "D_RootTree02": [
-      -146.64190805027198,
-      90.83537740114335,
-      -123.63035804777712,
-      113.60524500072816
+      -143.48521379619584,
+      94.05471172882321,
+      -126.91689779439953,
+      110.44901640052427
     ],
     "D_WindBeacon": [
       -180.4124,
@@ -1531,7 +1531,7 @@
       84.36789064393336
     ]
   },
-  "sourceActualBoundsSha256": "e9fb6c70e7162b1f26803d9769a53a4f8e7babefc58b7d0db679a2d34d5b63eb",
+  "sourceActualBoundsSha256": "81fc888c71c6673dd2006c2b968a46589e6c9773ea152f3e9e750ca6981eb34b",
   "policy": {
     "entityClearance": 0.2,
     "planningSlack": 0.02,
@@ -46519,10 +46519,10 @@
       "reason": "fixed obstacle envelopes limit straight run; bridge mouth and tangent retained"
     }
   ],
-  "sourceActualProbeSha256": "b6083c423ac4bdbd05cd1494e3d73f14d0ca5a8931fbf97f06313726671b0436",
+  "sourceActualProbeSha256": "6c0703c4a82a5653082db7c8597fdbd30ed2228457ee6ef31367b82f51af91e8",
   "sourceReference": {
-    "baseline": "Build\\sky-placement-20260930\\baseline_roads.json",
-    "actualProbe": "Build\\sky-placement-20260930\\actual_registered_footprints.json",
+    "baseline": "Build/sky-placement-20260930b/sky_island_road_inputs.json",
+    "actualProbe": "Build/sky-placement-20260930b/sky_island_registered_bounds.json",
     "runtimeNeedsBuildInputs": false
   },
   "clearanceEvidence": [
@@ -46539,5 +46539,5 @@
       "entityOverlapExceptions": []
     }
   ],
-  "payloadHash": "41ccc947b675c28e0d60624910000f6b9033e54207457f416f0de604695ba5a3"
+  "payloadHash": "25f6801f256916cef175ac3a20a689a9d928324a94edcc1ef95a850b1b38d127"
 }

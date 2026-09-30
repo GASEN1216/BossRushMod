@@ -1,0 +1,7288 @@
+{
+  "status": "PASS",
+  "evidenceLevel": "L2",
+  "verification": "Official ECM2 CharacterMovement (r0.30 h1.00 step0.25 perch0 mask0x820c1) driven with Move() at 50 Hz in Unity PlayMode against the final raid bundle",
+  "groundColliders": 27,
+  "wallColliders": 3701,
+  "outerBoundaryEdges": 926,
+  "boundaryRuns": 6158,
+  "overlapStarts": 5824,
+  "randomWalkers": 1472,
+  "walkerWallTurns": 2958,
+  "walkersStuck": 0,
+  "failureCounts": {},
+  "failures": [],
+  "climbs": [
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_PaintTeal",
+      "id": "COL_Wall_Mesh_VIS_A_PaintTeal:39",
+      "at": [
+        -37.58,
+        0.35,
+        -252.98
+      ],
+      "height": 0.35,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_PaintTeal"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_PaintTeal",
+      "id": "COL_Wall_Mesh_VIS_A_PaintTeal:132",
+      "at": [
+        -35.19,
+        0.42,
+        -252.65
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_PaintTeal"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_Pebble",
+      "id": "COL_Wall_Mesh_VIS_A_Pebble:1207",
+      "at": [
+        -46.09,
+        0.5,
+        -252.96
+      ],
+      "height": 0.5,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoBannerPole",
+      "id": "COL_Wall_Mesh_VIS_A_TripoBannerPole:323",
+      "at": [
+        -6.93,
+        0.46,
+        -194.12
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoBannerPole"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCottageSmall",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCottageSmall:330",
+      "at": [
+        30.72,
+        0.97,
+        -248.18
+      ],
+      "height": 0.97,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCottageSmall"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCottageSmall",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCottageSmall:1188",
+      "at": [
+        33.26,
+        0.49,
+        -249.77
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCottageSmall"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCottageSmall",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCottageSmall:1716",
+      "at": [
+        31.01,
+        0.59,
+        -247.65
+      ],
+      "height": 0.59,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCottageSmall"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverCrates:160",
+      "at": [
+        22.15,
+        0.54,
+        -238.12
+      ],
+      "height": 0.54,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverCrates:220",
+      "at": [
+        22.79,
+        0.78,
+        -239.15
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverCrates:260",
+      "at": [
+        22.81,
+        0.77,
+        -239.18
+      ],
+      "height": 0.77,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverCrates:260",
+      "at": [
+        22.7,
+        0.46,
+        -239.88
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverCrates:360",
+      "at": [
+        22.36,
+        0.75,
+        -239.65
+      ],
+      "height": 0.75,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverCrates:760",
+      "at": [
+        22.15,
+        0.54,
+        -238.12
+      ],
+      "height": 0.54,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverCrates:820",
+      "at": [
+        22.79,
+        0.78,
+        -239.15
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverCrates:860",
+      "at": [
+        22.7,
+        0.46,
+        -239.88
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverCrates:860",
+      "at": [
+        22.81,
+        0.77,
+        -239.18
+      ],
+      "height": 0.77,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverCrates:960",
+      "at": [
+        22.36,
+        0.75,
+        -239.65
+      ],
+      "height": 0.75,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverStone:120",
+      "at": [
+        30.23,
+        0.51,
+        -205.6
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverStone:280",
+      "at": [
+        30.29,
+        0.9,
+        -203.21
+      ],
+      "height": 0.9,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverStone:280",
+      "at": [
+        30.35,
+        1.02,
+        -202.87
+      ],
+      "height": 1.02,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverStone:420",
+      "at": [
+        30.4,
+        0.9,
+        -203.15
+      ],
+      "height": 0.9,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverStone:720",
+      "at": [
+        30.23,
+        0.51,
+        -205.6
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverStone:880",
+      "at": [
+        30.35,
+        1.02,
+        -202.87
+      ],
+      "height": 1.02,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverStone:880",
+      "at": [
+        30.29,
+        0.9,
+        -203.21
+      ],
+      "height": 0.9,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCoverStone:1020",
+      "at": [
+        30.4,
+        0.9,
+        -203.15
+      ],
+      "height": 0.9,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCrateBarrel",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCrateBarrel:140",
+      "at": [
+        -41.64,
+        0.68,
+        -219.18
+      ],
+      "height": 0.68,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCrateBarrel"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoCrateBarrel",
+      "id": "COL_Wall_Mesh_VIS_A_TripoCrateBarrel:740",
+      "at": [
+        -41.66,
+        0.67,
+        -219.19
+      ],
+      "height": 0.67,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoCrateBarrel"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoFarmCart",
+      "id": "COL_Wall_Mesh_VIS_A_TripoFarmCart:40",
+      "at": [
+        -43.66,
+        0.36,
+        -217.36
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoFarmCart"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoFarmCart",
+      "id": "COL_Wall_Mesh_VIS_A_TripoFarmCart:80",
+      "at": [
+        -43.61,
+        0.7,
+        -216.84
+      ],
+      "height": 0.7,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoFarmCart"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoFarmCart",
+      "id": "COL_Wall_Mesh_VIS_A_TripoFarmCart:1240",
+      "at": [
+        -43.66,
+        0.36,
+        -217.36
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoFarmCart"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoFarmCart",
+      "id": "COL_Wall_Mesh_VIS_A_TripoFarmCart:1280",
+      "at": [
+        -43.61,
+        0.7,
+        -216.84
+      ],
+      "height": 0.7,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoFarmCart"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_A_TripoPlanter:234",
+      "at": [
+        -43.89,
+        0.66,
+        -221.62
+      ],
+      "height": 0.66,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_A_TripoPlanter:247",
+      "at": [
+        -42.9,
+        0.82,
+        -221.46
+      ],
+      "height": 0.82,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_A_TripoPlanter:286",
+      "at": [
+        -43.88,
+        0.66,
+        -221.61
+      ],
+      "height": 0.66,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_A_TripoPlanter:507",
+      "at": [
+        -43.81,
+        0.41,
+        -221.5
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_A_TripoPlanter:637",
+      "at": [
+        -42.92,
+        0.65,
+        -221.88
+      ],
+      "height": 0.65,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_Wood",
+      "id": "COL_Wall_Mesh_VIS_A_Wood:2030",
+      "at": [
+        42.62,
+        1.15,
+        -257.38
+      ],
+      "height": 1.15,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_Wood",
+      "id": "COL_Wall_Mesh_VIS_A_Wood:4205",
+      "at": [
+        -48.18,
+        1.01,
+        -251.36
+      ],
+      "height": 1.01,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_Wood",
+      "id": "COL_Wall_Mesh_VIS_A_Wood:4205",
+      "at": [
+        -48.28,
+        0.98,
+        -251.22
+      ],
+      "height": 0.98,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_Wood",
+      "id": "COL_Wall_Mesh_VIS_A_Wood:7540",
+      "at": [
+        37.55,
+        1.2,
+        -182.52
+      ],
+      "height": 1.2,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_Wood",
+      "id": "COL_Wall_Mesh_VIS_A_Wood:7830",
+      "at": [
+        -42.57,
+        0.36,
+        -182.52
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_Wood",
+      "id": "COL_Wall_Mesh_VIS_A_Wood:8555",
+      "at": [
+        -48.27,
+        0.98,
+        -251.23
+      ],
+      "height": 0.98,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_A_Wood",
+      "id": "COL_Wall_Mesh_VIS_A_Wood:8555",
+      "at": [
+        -48.1,
+        1.01,
+        -251.32
+      ],
+      "height": 1.01,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Ivory",
+      "id": "COL_Wall_Mesh_VIS_B_Ivory:1800",
+      "at": [
+        -22.4,
+        6.01,
+        -53.34
+      ],
+      "height": 1.01,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Ivory",
+        "COL_Wall_Mesh_VIS_B_PaintTealLight",
+        "COL_Wall_Mesh_VIS_B_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Life_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_B_Life_WoodDark:798",
+      "at": [
+        -34.71,
+        5.79,
+        -83.41
+      ],
+      "height": 0.79,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Life_WoodDark",
+        "COL_Wall_Mesh_VIS_B_Life_WoodLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Life_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_B_Life_WoodDark:2565",
+      "at": [
+        -34.81,
+        5.79,
+        -83.4
+      ],
+      "height": 0.79,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Life_WoodDark",
+        "COL_Wall_Mesh_VIS_B_Life_WoodLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Limestone",
+      "id": "COL_Wall_Mesh_VIS_B_Limestone:28",
+      "at": [
+        -20.79,
+        5.42,
+        -77.25
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Limestone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Limestone",
+      "id": "COL_Wall_Mesh_VIS_B_Limestone:448",
+      "at": [
+        -20.79,
+        5.42,
+        -77.25
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Limestone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_PaintTealDeep",
+      "id": "COL_Wall_Mesh_VIS_B_PaintTealDeep:272",
+      "at": [
+        -57.11,
+        5.4,
+        -124.76
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_WoodDark",
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_B_PaintTealLight:2028",
+      "at": [
+        -22.49,
+        6.01,
+        -53.31
+      ],
+      "height": 1.01,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Ivory",
+        "COL_Wall_Mesh_VIS_B_PaintTealLight",
+        "COL_Wall_Mesh_VIS_B_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Pebble",
+      "id": "COL_Wall_Mesh_VIS_B_Pebble:2354",
+      "at": [
+        59.3,
+        5.41,
+        -97.38
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Pebble",
+      "id": "COL_Wall_Mesh_VIS_B_Pebble:4494",
+      "at": [
+        8.15,
+        5.41,
+        -48.96
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Pebble",
+      "id": "COL_Wall_Mesh_VIS_B_Pebble:4815",
+      "at": [
+        -54.01,
+        5.46,
+        -63.18
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Pebble",
+      "id": "COL_Wall_Mesh_VIS_B_Pebble:5136",
+      "at": [
+        -42.01,
+        5.46,
+        -142.55
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Pebble",
+      "id": "COL_Wall_Mesh_VIS_B_Pebble:6313",
+      "at": [
+        -54.95,
+        5.44,
+        -95.71
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_RockLight",
+      "id": "COL_Wall_Mesh_VIS_B_RockLight:290",
+      "at": [
+        -19.79,
+        5.44,
+        -110.6
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_RockLight",
+        "COL_Wall_Mesh_VIS_B_WoodDark",
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_RockLight",
+      "id": "COL_Wall_Mesh_VIS_B_RockLight:1160",
+      "at": [
+        -19.79,
+        5.44,
+        -110.59
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_RockLight",
+        "COL_Wall_Mesh_VIS_B_WoodDark",
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoChimeRack",
+      "id": "COL_Wall_Mesh_VIS_B_TripoChimeRack:5644",
+      "at": [
+        5.82,
+        5.81,
+        -90.52
+      ],
+      "height": 0.81,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoChimeRack"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCoverCrates:160",
+      "at": [
+        -23.26,
+        5.58,
+        -100.7
+      ],
+      "height": 0.58,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCoverCrates:220",
+      "at": [
+        -22.28,
+        5.78,
+        -100.02
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCoverCrates:400",
+      "at": [
+        -20.74,
+        5.45,
+        -99.49
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCoverCrates:560",
+      "at": [
+        -20.74,
+        5.46,
+        -99.49
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCoverCrates:760",
+      "at": [
+        -23.26,
+        5.58,
+        -100.7
+      ],
+      "height": 0.58,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCoverCrates:820",
+      "at": [
+        -22.28,
+        5.78,
+        -100.02
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCoverCrates:1000",
+      "at": [
+        -20.74,
+        5.45,
+        -99.49
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCoverCrates:1160",
+      "at": [
+        -20.74,
+        5.46,
+        -99.49
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCoverStone:280",
+      "at": [
+        19.41,
+        5.46,
+        -91.83
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCoverStone:420",
+      "at": [
+        19.88,
+        5.41,
+        -91.81
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCoverStone:880",
+      "at": [
+        19.41,
+        5.46,
+        -91.83
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCoverStone:1020",
+      "at": [
+        19.88,
+        5.41,
+        -91.81
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCrateBarrel",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCrateBarrel:640",
+      "at": [
+        -21.04,
+        5.66,
+        -58.6
+      ],
+      "height": 0.66,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCrateBarrel"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCrateBarrel",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCrateBarrel:2320",
+      "at": [
+        -20.98,
+        5.66,
+        -58.68
+      ],
+      "height": 0.66,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCrateBarrel"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCrateBarrel",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCrateBarrel:3040",
+      "at": [
+        -21.04,
+        5.66,
+        -58.6
+      ],
+      "height": 0.66,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCrateBarrel"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoCrateBarrel",
+      "id": "COL_Wall_Mesh_VIS_B_TripoCrateBarrel:4720",
+      "at": [
+        -20.98,
+        5.66,
+        -58.68
+      ],
+      "height": 0.66,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCrateBarrel"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_B_TripoPlanter:1060",
+      "at": [
+        -23.95,
+        5.78,
+        -56.71
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_B_TripoPlanter:2756",
+      "at": [
+        -25.16,
+        5.72,
+        -56.53
+      ],
+      "height": 0.72,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoTeaHouse",
+      "id": "COL_Wall_Mesh_VIS_B_TripoTeaHouse:0",
+      "at": [
+        -31.06,
+        5.36,
+        -114.15
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoTeaHouse"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoTeaHouse",
+      "id": "COL_Wall_Mesh_VIS_B_TripoTeaHouse:198",
+      "at": [
+        -32.33,
+        5.41,
+        -115.24
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoTeaHouse"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoTeaHouse",
+      "id": "COL_Wall_Mesh_VIS_B_TripoTeaHouse:198",
+      "at": [
+        -32.98,
+        5.42,
+        -115.61
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoTeaHouse"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoTeaHouse",
+      "id": "COL_Wall_Mesh_VIS_B_TripoTeaHouse:1287",
+      "at": [
+        -32.95,
+        5.42,
+        -115.71
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoTeaHouse"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoTeaHouse",
+      "id": "COL_Wall_Mesh_VIS_B_TripoTeaHouse:1287",
+      "at": [
+        -32.56,
+        5.42,
+        -115.5
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoTeaHouse"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoTeaHouse",
+      "id": "COL_Wall_Mesh_VIS_B_TripoTeaHouse:2772",
+      "at": [
+        -35.05,
+        5.41,
+        -127.81
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoTeaHouse"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoTeaHouse",
+      "id": "COL_Wall_Mesh_VIS_B_TripoTeaHouse:2772",
+      "at": [
+        -34.67,
+        5.41,
+        -127.31
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoTeaHouse"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoTeaHouse",
+      "id": "COL_Wall_Mesh_VIS_B_TripoTeaHouse:5247",
+      "at": [
+        -28.2,
+        5.42,
+        -120.2
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoTeaHouse"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_TripoTeaHouse",
+      "id": "COL_Wall_Mesh_VIS_B_TripoTeaHouse:5247",
+      "at": [
+        -28.7,
+        5.42,
+        -119.48
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoTeaHouse"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Wood",
+      "id": "COL_Wall_Mesh_VIS_B_Wood:2392",
+      "at": [
+        -31.31,
+        5.36,
+        -55.17
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Wood",
+      "id": "COL_Wall_Mesh_VIS_B_Wood:2392",
+      "at": [
+        -30.96,
+        5.69,
+        -54.91
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Wood",
+      "id": "COL_Wall_Mesh_VIS_B_Wood:3289",
+      "at": [
+        -53.07,
+        5.4,
+        -124.19
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_WoodDark",
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Wood",
+      "id": "COL_Wall_Mesh_VIS_B_Wood:3289",
+      "at": [
+        -53.71,
+        5.4,
+        -124.28
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_WoodDark",
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Wood",
+      "id": "COL_Wall_Mesh_VIS_B_Wood:6877",
+      "at": [
+        58.15,
+        5.61,
+        -96.7
+      ],
+      "height": 0.61,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Wood",
+      "id": "COL_Wall_Mesh_VIS_B_Wood:8372",
+      "at": [
+        -57.3,
+        5.61,
+        -134.26
+      ],
+      "height": 0.61,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Wood",
+      "id": "COL_Wall_Mesh_VIS_B_Wood:13754",
+      "at": [
+        -19.75,
+        5.37,
+        -110.7
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_RockLight",
+        "COL_Wall_Mesh_VIS_B_WoodDark",
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Wood",
+      "id": "COL_Wall_Mesh_VIS_B_Wood:13754",
+      "at": [
+        -20.11,
+        5.64,
+        -110.93
+      ],
+      "height": 0.64,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_WoodDark",
+        "COL_Wall_Mesh_VIS_B_WoodLight",
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_Wood",
+      "id": "COL_Wall_Mesh_VIS_B_Wood:15847",
+      "at": [
+        58.24,
+        6.14,
+        -96.39
+      ],
+      "height": 1.14,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_B_WoodDark:3249",
+      "at": [
+        -52.72,
+        5.41,
+        -122.72
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_B_WoodLight:200",
+      "at": [
+        -55.95,
+        5.41,
+        -124.19
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_WoodDark",
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_B_WoodLight:200",
+      "at": [
+        -55.32,
+        5.41,
+        -124.1
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_WoodDark",
+        "COL_Wall_Mesh_VIS_B_WoodLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_B_WoodLight:3200",
+      "at": [
+        -55.32,
+        5.41,
+        -124.1
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_WoodDark",
+        "COL_Wall_Mesh_VIS_B_WoodLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_B_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_B_WoodLight:3200",
+      "at": [
+        -55.95,
+        5.41,
+        -124.19
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_WoodDark",
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_Pebble",
+      "id": "COL_Wall_Mesh_VIS_C_Pebble:2525",
+      "at": [
+        -154.9,
+        10.56,
+        -31.69
+      ],
+      "height": 0.56,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_Pebble",
+      "id": "COL_Wall_Mesh_VIS_C_Pebble:5252",
+      "at": [
+        -104.88,
+        10.48,
+        -94.44
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoBarn",
+      "id": "COL_Wall_Mesh_VIS_C_TripoBarn:2436",
+      "at": [
+        -131.79,
+        10.44,
+        -104.16
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoBarn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverCrates:160",
+      "at": [
+        -125.09,
+        10.74,
+        -71.28
+      ],
+      "height": 0.74,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverCrates:240",
+      "at": [
+        -126.58,
+        10.4,
+        -72.16
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverCrates:280",
+      "at": [
+        -188.36,
+        10.74,
+        -106.38
+      ],
+      "height": 0.74,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverCrates:320",
+      "at": [
+        -188.52,
+        10.74,
+        -106.12
+      ],
+      "height": 0.74,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverCrates:960",
+      "at": [
+        -125.09,
+        10.74,
+        -71.28
+      ],
+      "height": 0.74,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverCrates:1000",
+      "at": [
+        -125.94,
+        10.85,
+        -72.28
+      ],
+      "height": 0.85,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverCrates:1360",
+      "at": [
+        -125.09,
+        10.74,
+        -71.28
+      ],
+      "height": 0.74,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverCrates:1440",
+      "at": [
+        -126.58,
+        10.4,
+        -72.16
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverCrates:1480",
+      "at": [
+        -188.36,
+        10.74,
+        -106.38
+      ],
+      "height": 0.74,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverCrates:1520",
+      "at": [
+        -188.52,
+        10.74,
+        -106.12
+      ],
+      "height": 0.74,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverCrates:2160",
+      "at": [
+        -125.09,
+        10.74,
+        -71.28
+      ],
+      "height": 0.74,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverCrates:2200",
+      "at": [
+        -125.94,
+        10.85,
+        -72.28
+      ],
+      "height": 0.85,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverStone:420",
+      "at": [
+        -158.76,
+        10.42,
+        -47.07
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_C_TripoCoverStone:1020",
+      "at": [
+        -158.76,
+        10.42,
+        -47.07
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoFarmBarn",
+      "id": "COL_Wall_Mesh_VIS_C_TripoFarmBarn:5825",
+      "at": [
+        -170.56,
+        10.59,
+        -115.12
+      ],
+      "height": 0.59,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoFarmBarn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoFarmBarn",
+      "id": "COL_Wall_Mesh_VIS_C_TripoFarmBarn:5825",
+      "at": [
+        -170.38,
+        10.57,
+        -115.09
+      ],
+      "height": 0.57,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoFarmBarn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoFarmBarn",
+      "id": "COL_Wall_Mesh_VIS_C_TripoFarmBarn:7223",
+      "at": [
+        -199.61,
+        10.41,
+        -125.43
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoFarmBarn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoFarmBarn",
+      "id": "COL_Wall_Mesh_VIS_C_TripoFarmBarn:11650",
+      "at": [
+        -175.61,
+        10.37,
+        -112.95
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoFarmBarn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoFarmBarn",
+      "id": "COL_Wall_Mesh_VIS_C_TripoFarmBarn:13048",
+      "at": [
+        -175.09,
+        10.38,
+        -105.58
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoFarmBarn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_C_TripoPlanter:1060",
+      "at": [
+        -208.69,
+        10.65,
+        -75.71
+      ],
+      "height": 0.65,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_Wood",
+      "id": "COL_Wall_Mesh_VIS_C_Wood:3528",
+      "at": [
+        -206.83,
+        10.83,
+        -130.77
+      ],
+      "height": 0.83,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_Wood",
+      "id": "COL_Wall_Mesh_VIS_C_Wood:3780",
+      "at": [
+        -123.01,
+        10.69,
+        -130.94
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_Wood",
+      "id": "COL_Wall_Mesh_VIS_C_Wood:11088",
+      "at": [
+        -206.83,
+        10.83,
+        -130.77
+      ],
+      "height": 0.83,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_Wood",
+      "id": "COL_Wall_Mesh_VIS_C_Wood:11340",
+      "at": [
+        -123.01,
+        10.69,
+        -130.94
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_C_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_C_WoodDark:3406",
+      "at": [
+        -123.19,
+        10.57,
+        -56.94
+      ],
+      "height": 0.57,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_WoodDark",
+        "COL_Wall_Mesh_VIS_C_WoodLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_D_BrassLight:132",
+      "at": [
+        -196.35,
+        16.4,
+        66.49
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Coral",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_D_BrassLight:143",
+      "at": [
+        -196.34,
+        16.42,
+        66.49
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Coral",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_D_BrassLight:209",
+      "at": [
+        -194.7,
+        16.49,
+        67.03
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Coral",
+        "COL_Wall_Mesh_VIS_D_WoodDark",
+        "COL_Wall_Mesh_VIS_D_BrassLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_D_BrassLight:220",
+      "at": [
+        -195.07,
+        16.49,
+        66.93
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Coral",
+        "COL_Wall_Mesh_VIS_D_WoodDark",
+        "COL_Wall_Mesh_VIS_D_BrassLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_D_BrassLight:462",
+      "at": [
+        -195.88,
+        16.46,
+        67.64
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Coral",
+        "COL_Wall_Mesh_VIS_D_WoodDark",
+        "COL_Wall_Mesh_VIS_D_BrassLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_D_BrassLight:473",
+      "at": [
+        -195.7,
+        16.49,
+        66.71
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Coral",
+        "COL_Wall_Mesh_VIS_D_WoodDark",
+        "COL_Wall_Mesh_VIS_D_BrassLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_D_BrassLight:484",
+      "at": [
+        -196.14,
+        16.49,
+        66.56
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Coral",
+        "COL_Wall_Mesh_VIS_D_WoodDark",
+        "COL_Wall_Mesh_VIS_D_BrassLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_D_BrassLight:528",
+      "at": [
+        -194.63,
+        16.5,
+        67.14
+      ],
+      "height": 0.5,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Coral",
+        "COL_Wall_Mesh_VIS_D_WoodDark",
+        "COL_Wall_Mesh_VIS_D_BrassLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_D_BrassLight:550",
+      "at": [
+        -194.73,
+        16.49,
+        67.02
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Coral",
+        "COL_Wall_Mesh_VIS_D_WoodDark",
+        "COL_Wall_Mesh_VIS_D_BrassLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_D_BrassLight:561",
+      "at": [
+        -195.11,
+        16.49,
+        66.94
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Coral",
+        "COL_Wall_Mesh_VIS_D_WoodDark",
+        "COL_Wall_Mesh_VIS_D_BrassLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_D_BrassLight:594",
+      "at": [
+        -192.27,
+        16.51,
+        65.01
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_PaintTealLight",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_Coral",
+      "id": "COL_Wall_Mesh_VIS_D_Coral:1014",
+      "at": [
+        -196.14,
+        16.49,
+        66.56
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Coral",
+        "COL_Wall_Mesh_VIS_D_WoodDark",
+        "COL_Wall_Mesh_VIS_D_BrassLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_Coral",
+      "id": "COL_Wall_Mesh_VIS_D_Coral:1040",
+      "at": [
+        -195.61,
+        16.49,
+        66.75
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Coral",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_D_PaintTealLight:66",
+      "at": [
+        -192.37,
+        16.49,
+        65.1
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_PaintTealLight",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_D_PaintTealLight:77",
+      "at": [
+        -192.33,
+        16.47,
+        65.09
+      ],
+      "height": 0.47,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_PaintTealLight",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_D_PaintTealLight:88",
+      "at": [
+        -192.37,
+        16.49,
+        65.1
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_PaintTealLight",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_D_PaintTealLight:110",
+      "at": [
+        -192.34,
+        16.48,
+        65.11
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_PaintTealLight",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_D_PaintTealLight:418",
+      "at": [
+        -192.37,
+        16.49,
+        65.1
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_PaintTealLight",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_D_PaintTealLight:429",
+      "at": [
+        -192.32,
+        16.48,
+        65.08
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_PaintTealLight",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_D_PaintTealLight:440",
+      "at": [
+        -192.37,
+        16.49,
+        65.1
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_PaintTealLight",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_D_PaintTealLight:451",
+      "at": [
+        -192.26,
+        16.52,
+        65.0
+      ],
+      "height": 0.52,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_PaintTealLight",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_Pebble",
+      "id": "COL_Wall_Mesh_VIS_D_Pebble:238",
+      "at": [
+        -154.63,
+        16.44,
+        20.81
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_Pebble",
+      "id": "COL_Wall_Mesh_VIS_D_Pebble:357",
+      "at": [
+        -144.24,
+        16.44,
+        20.88
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_Pebble",
+      "id": "COL_Wall_Mesh_VIS_D_Pebble:3808",
+      "at": [
+        -154.86,
+        16.49,
+        20.83
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_Pebble",
+      "id": "COL_Wall_Mesh_VIS_D_Pebble:6664",
+      "at": [
+        -143.83,
+        16.44,
+        122.72
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_Pebble",
+      "id": "COL_Wall_Mesh_VIS_D_Pebble:6783",
+      "at": [
+        -212.44,
+        16.39,
+        123.97
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverCrates:160",
+      "at": [
+        -138.64,
+        16.55,
+        52.12
+      ],
+      "height": 0.55,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverCrates:220",
+      "at": [
+        -139.76,
+        16.78,
+        51.71
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverCrates:260",
+      "at": [
+        -139.76,
+        16.77,
+        51.65
+      ],
+      "height": 0.77,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverCrates:260",
+      "at": [
+        -140.12,
+        16.78,
+        51.46
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverCrates:320",
+      "at": [
+        -140.03,
+        16.75,
+        52.26
+      ],
+      "height": 0.75,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverCrates:360",
+      "at": [
+        -140.01,
+        16.75,
+        52.22
+      ],
+      "height": 0.75,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverCrates:760",
+      "at": [
+        -138.64,
+        16.55,
+        52.12
+      ],
+      "height": 0.55,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverCrates:820",
+      "at": [
+        -139.76,
+        16.78,
+        51.71
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverCrates:860",
+      "at": [
+        -140.12,
+        16.78,
+        51.46
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverCrates:860",
+      "at": [
+        -139.76,
+        16.77,
+        51.65
+      ],
+      "height": 0.77,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverCrates:920",
+      "at": [
+        -140.03,
+        16.75,
+        52.26
+      ],
+      "height": 0.75,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverCrates:960",
+      "at": [
+        -140.01,
+        16.75,
+        52.22
+      ],
+      "height": 0.75,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverStone:120",
+      "at": [
+        -199.48,
+        16.46,
+        51.63
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverStone:560",
+      "at": [
+        -197.66,
+        17.03,
+        49.62
+      ],
+      "height": 1.03,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverStone:640",
+      "at": [
+        -197.94,
+        16.41,
+        49.67
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverStone:880",
+      "at": [
+        -162.79,
+        16.44,
+        112.01
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverStone:1320",
+      "at": [
+        -199.48,
+        16.46,
+        51.63
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverStone:1760",
+      "at": [
+        -197.66,
+        17.03,
+        49.62
+      ],
+      "height": 1.03,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverStone:1840",
+      "at": [
+        -197.94,
+        16.41,
+        49.67
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCoverStone:2080",
+      "at": [
+        -162.79,
+        16.44,
+        112.01
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCrystalCluster:742",
+      "at": [
+        -150.88,
+        16.52,
+        47.24
+      ],
+      "height": 0.52,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCrystalCluster:2014",
+      "at": [
+        -178.14,
+        16.46,
+        39.27
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCrystalCluster:2650",
+      "at": [
+        -148.99,
+        16.44,
+        47.98
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCrystalCluster:3392",
+      "at": [
+        -154.22,
+        16.48,
+        95.94
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCrystalCluster:4346",
+      "at": [
+        -144.57,
+        16.46,
+        65.12
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCrystalCluster:6042",
+      "at": [
+        -145.64,
+        16.61,
+        64.19
+      ],
+      "height": 0.61,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_D_TripoCrystalCluster:6042",
+      "at": [
+        -146.33,
+        16.55,
+        64.02
+      ],
+      "height": 0.55,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoRootRock",
+      "id": "COL_Wall_Mesh_VIS_D_TripoRootRock:2080",
+      "at": [
+        -151.65,
+        16.36,
+        111.93
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoRootRock"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoRootRock",
+      "id": "COL_Wall_Mesh_VIS_D_TripoRootRock:6880",
+      "at": [
+        -151.65,
+        16.36,
+        111.93
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoRootRock"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoShrinePavilion",
+      "id": "COL_Wall_Mesh_VIS_D_TripoShrinePavilion:0",
+      "at": [
+        -152.11,
+        16.66,
+        58.93
+      ],
+      "height": 0.66,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoShrinePavilion",
+      "id": "COL_Wall_Mesh_VIS_D_TripoShrinePavilion:0",
+      "at": [
+        -151.45,
+        16.7,
+        59.27
+      ],
+      "height": 0.7,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoShrinePavilion",
+      "id": "COL_Wall_Mesh_VIS_D_TripoShrinePavilion:2574",
+      "at": [
+        -151.14,
+        16.45,
+        59.13
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoShrinePavilion",
+      "id": "COL_Wall_Mesh_VIS_D_TripoShrinePavilion:2640",
+      "at": [
+        -151.53,
+        16.44,
+        58.64
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoWindBeacon",
+      "id": "COL_Wall_Mesh_VIS_D_TripoWindBeacon:0",
+      "at": [
+        -178.34,
+        16.47,
+        59.48
+      ],
+      "height": 0.47,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoWindBeacon"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_TripoWindBeacon",
+      "id": "COL_Wall_Mesh_VIS_D_TripoWindBeacon:2436",
+      "at": [
+        -176.86,
+        16.85,
+        55.94
+      ],
+      "height": 0.85,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoWindBeacon"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_Wood",
+      "id": "COL_Wall_Mesh_VIS_D_Wood:10320",
+      "at": [
+        -122.14,
+        16.46,
+        94.02
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_D_WoodDark:3276",
+      "at": [
+        -121.22,
+        16.39,
+        93.96
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_WoodLight",
+        "COL_Wall_Mesh_VIS_D_Wood",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_D_WoodDark:3780",
+      "at": [
+        -203.15,
+        16.86,
+        104.19
+      ],
+      "height": 0.86,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_D_WoodLight:120",
+      "at": [
+        -122.06,
+        16.45,
+        94.05
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_D_WoodLight:600",
+      "at": [
+        -117.94,
+        16.45,
+        92.21
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_WoodLight",
+        "COL_Wall_Mesh_VIS_D_Wood",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_D_WoodLight:810",
+      "at": [
+        -202.96,
+        16.44,
+        104.15
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Wood",
+        "COL_Wall_Mesh_VIS_D_WoodDark",
+        "COL_Wall_Mesh_VIS_D_RockLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_D_WoodLight:870",
+      "at": [
+        -203.04,
+        16.85,
+        103.9
+      ],
+      "height": 0.85,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_WoodLight",
+        "COL_Wall_Mesh_VIS_D_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_D_WoodLight:1020",
+      "at": [
+        -122.06,
+        16.45,
+        94.05
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_D_WoodLight:1500",
+      "at": [
+        -117.94,
+        16.45,
+        92.21
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_WoodLight",
+        "COL_Wall_Mesh_VIS_D_Wood",
+        "COL_Wall_Mesh_VIS_D_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_D_WoodLight:1710",
+      "at": [
+        -202.96,
+        16.44,
+        104.15
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Wood",
+        "COL_Wall_Mesh_VIS_D_WoodDark",
+        "COL_Wall_Mesh_VIS_D_RockLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_D_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_D_WoodLight:1770",
+      "at": [
+        -203.04,
+        16.85,
+        103.9
+      ],
+      "height": 0.85,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_WoodLight",
+        "COL_Wall_Mesh_VIS_D_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_Coral",
+      "id": "COL_Wall_Mesh_VIS_E_Coral:40",
+      "at": [
+        -16.41,
+        18.36,
+        107.19
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_Chalk"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_Coral",
+      "id": "COL_Wall_Mesh_VIS_E_Coral:215",
+      "at": [
+        -16.21,
+        18.39,
+        106.47
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_Chalk"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_Pebble",
+      "id": "COL_Wall_Mesh_VIS_E_Pebble:1717",
+      "at": [
+        -32.12,
+        18.45,
+        35.56
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_Pebble",
+      "id": "COL_Wall_Mesh_VIS_E_Pebble:2929",
+      "at": [
+        -36.6,
+        18.46,
+        46.08
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_Pebble",
+      "id": "COL_Wall_Mesh_VIS_E_Pebble:5858",
+      "at": [
+        -35.11,
+        18.55,
+        90.14
+      ],
+      "height": 0.55,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_Pebble",
+      "id": "COL_Wall_Mesh_VIS_E_Pebble:6060",
+      "at": [
+        -32.44,
+        18.53,
+        35.75
+      ],
+      "height": 0.53,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_E_TripoCoverCrates:260",
+      "at": [
+        -17.39,
+        18.8,
+        68.81
+      ],
+      "height": 0.8,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_E_TripoCoverCrates:440",
+      "at": [
+        -18.57,
+        18.44,
+        69.63
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_E_TripoCoverCrates:480",
+      "at": [
+        -18.57,
+        18.44,
+        69.63
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_E_TripoCoverCrates:560",
+      "at": [
+        -18.17,
+        18.39,
+        69.66
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_E_TripoCoverCrates:860",
+      "at": [
+        -17.39,
+        18.8,
+        68.81
+      ],
+      "height": 0.8,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_E_TripoCoverCrates:1040",
+      "at": [
+        -18.57,
+        18.44,
+        69.63
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_E_TripoCoverCrates:1080",
+      "at": [
+        -18.57,
+        18.44,
+        69.63
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_E_TripoCoverCrates:1160",
+      "at": [
+        -18.17,
+        18.39,
+        69.66
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_E_TripoCoverStone:280",
+      "at": [
+        48.64,
+        19.1,
+        69.11
+      ],
+      "height": 1.1,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_E_TripoCoverStone:880",
+      "at": [
+        48.64,
+        19.1,
+        69.11
+      ],
+      "height": 1.1,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_Wood",
+      "id": "COL_Wall_Mesh_VIS_E_Wood:1674",
+      "at": [
+        59.14,
+        18.69,
+        105.36
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_WoodLight",
+        "COL_Wall_Mesh_VIS_E_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_Wood",
+      "id": "COL_Wall_Mesh_VIS_E_Wood:3472",
+      "at": [
+        55.58,
+        18.69,
+        107.78
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_WoodLight",
+        "COL_Wall_Mesh_VIS_E_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_Wood",
+      "id": "COL_Wall_Mesh_VIS_E_Wood:3596",
+      "at": [
+        59.08,
+        18.51,
+        104.81
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_WoodLight",
+        "COL_Wall_Mesh_VIS_E_WoodDark",
+        "COL_Wall_Mesh_VIS_E_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_E_WoodDark:2912",
+      "at": [
+        55.71,
+        18.5,
+        108.32
+      ],
+      "height": 0.5,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_WoodLight",
+        "COL_Wall_Mesh_VIS_E_WoodDark",
+        "COL_Wall_Mesh_VIS_E_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_E_WoodDark:3024",
+      "at": [
+        59.44,
+        18.69,
+        107.1
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_WoodLight",
+        "COL_Wall_Mesh_VIS_E_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_E_WoodDark:6272",
+      "at": [
+        55.58,
+        18.69,
+        107.78
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_WoodLight",
+        "COL_Wall_Mesh_VIS_E_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_E_WoodDark:6384",
+      "at": [
+        59.58,
+        18.36,
+        107.62
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_WoodLight",
+        "COL_Wall_Mesh_VIS_E_WoodDark",
+        "COL_Wall_Mesh_VIS_E_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_E_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_E_WoodDark:6384",
+      "at": [
+        59.59,
+        18.56,
+        107.63
+      ],
+      "height": 0.56,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_WoodLight",
+        "COL_Wall_Mesh_VIS_E_WoodDark",
+        "COL_Wall_Mesh_VIS_E_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_Pebble",
+      "id": "COL_Wall_Mesh_VIS_F_Pebble:847",
+      "at": [
+        123.56,
+        15.37,
+        -16.23
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_Pebble",
+      "id": "COL_Wall_Mesh_VIS_F_Pebble:1540",
+      "at": [
+        234.31,
+        15.38,
+        -110.12
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_Pebble",
+      "id": "COL_Wall_Mesh_VIS_F_Pebble:3850",
+      "at": [
+        234.13,
+        15.39,
+        -109.57
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_Pebble",
+      "id": "COL_Wall_Mesh_VIS_F_Pebble:4389",
+      "at": [
+        121.23,
+        15.52,
+        -28.71
+      ],
+      "height": 0.52,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCherryPavilion",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCherryPavilion:4150",
+      "at": [
+        185.3,
+        15.52,
+        -110.46
+      ],
+      "height": 0.52,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCherryPavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCottageSmall",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCottageSmall:330",
+      "at": [
+        132.62,
+        15.75,
+        -24.16
+      ],
+      "height": 0.75,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCottageSmall"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCottageSmall",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCottageSmall:1188",
+      "at": [
+        130.43,
+        15.37,
+        -21.85
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCottageSmall"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCottageSmall",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCottageSmall:3696",
+      "at": [
+        132.59,
+        15.75,
+        -24.13
+      ],
+      "height": 0.75,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCottageSmall"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverCrates:160",
+      "at": [
+        140.28,
+        15.56,
+        -113.64
+      ],
+      "height": 0.56,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverCrates:220",
+      "at": [
+        139.61,
+        15.78,
+        -112.78
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverCrates:260",
+      "at": [
+        139.61,
+        15.78,
+        -112.78
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverCrates:360",
+      "at": [
+        139.94,
+        15.75,
+        -112.26
+      ],
+      "height": 0.75,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverCrates:560",
+      "at": [
+        139.02,
+        15.37,
+        -111.2
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverCrates:760",
+      "at": [
+        140.28,
+        15.56,
+        -113.64
+      ],
+      "height": 0.56,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverCrates:820",
+      "at": [
+        139.61,
+        15.78,
+        -112.78
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverCrates:960",
+      "at": [
+        139.94,
+        15.75,
+        -112.26
+      ],
+      "height": 0.75,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverCrates:1160",
+      "at": [
+        139.02,
+        15.37,
+        -111.2
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverStone:120",
+      "at": [
+        213.16,
+        15.48,
+        -90.91
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverStone:280",
+      "at": [
+        213.14,
+        15.9,
+        -88.36
+      ],
+      "height": 0.9,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverStone:280",
+      "at": [
+        213.19,
+        16.02,
+        -88.02
+      ],
+      "height": 1.02,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverStone:300",
+      "at": [
+        213.2,
+        16.02,
+        -88.02
+      ],
+      "height": 1.02,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverStone:420",
+      "at": [
+        213.25,
+        15.9,
+        -88.3
+      ],
+      "height": 0.9,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverStone:720",
+      "at": [
+        213.16,
+        15.48,
+        -90.91
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverStone:880",
+      "at": [
+        213.19,
+        16.02,
+        -88.02
+      ],
+      "height": 1.02,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverStone:880",
+      "at": [
+        213.14,
+        15.9,
+        -88.36
+      ],
+      "height": 0.9,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverStone:900",
+      "at": [
+        213.2,
+        16.02,
+        -88.02
+      ],
+      "height": 1.02,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCoverStone:1020",
+      "at": [
+        213.25,
+        15.9,
+        -88.3
+      ],
+      "height": 0.9,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCrateBarrel",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCrateBarrel:20",
+      "at": [
+        148.6,
+        15.66,
+        -91.26
+      ],
+      "height": 0.66,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCrateBarrel"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCrateBarrel",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCrateBarrel:140",
+      "at": [
+        148.9,
+        15.68,
+        -91.02
+      ],
+      "height": 0.68,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCrateBarrel"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCrateBarrel",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCrateBarrel:620",
+      "at": [
+        148.6,
+        15.66,
+        -91.26
+      ],
+      "height": 0.66,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCrateBarrel"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoCrateBarrel",
+      "id": "COL_Wall_Mesh_VIS_F_TripoCrateBarrel:740",
+      "at": [
+        148.9,
+        15.68,
+        -91.02
+      ],
+      "height": 0.68,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoCrateBarrel"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_F_TripoPlanter:78",
+      "at": [
+        147.79,
+        15.81,
+        -87.62
+      ],
+      "height": 0.81,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_F_TripoPlanter:247",
+      "at": [
+        147.4,
+        15.65,
+        -88.21
+      ],
+      "height": 0.65,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_F_TripoPlanter:273",
+      "at": [
+        148.82,
+        15.69,
+        -88.58
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_F_TripoPlanter:637",
+      "at": [
+        147.47,
+        15.89,
+        -87.86
+      ],
+      "height": 0.89,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoShrinePavilion",
+      "id": "COL_Wall_Mesh_VIS_F_TripoShrinePavilion:0",
+      "at": [
+        130.16,
+        15.66,
+        -12.2
+      ],
+      "height": 0.66,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoShrinePavilion",
+      "id": "COL_Wall_Mesh_VIS_F_TripoShrinePavilion:0",
+      "at": [
+        129.57,
+        15.7,
+        -12.68
+      ],
+      "height": 0.7,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoShrinePavilion",
+      "id": "COL_Wall_Mesh_VIS_F_TripoShrinePavilion:660",
+      "at": [
+        130.76,
+        15.67,
+        -12.34
+      ],
+      "height": 0.67,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoShrinePavilion",
+      "id": "COL_Wall_Mesh_VIS_F_TripoShrinePavilion:2574",
+      "at": [
+        129.33,
+        15.45,
+        -12.57
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_TripoShrinePavilion",
+      "id": "COL_Wall_Mesh_VIS_F_TripoShrinePavilion:2640",
+      "at": [
+        129.55,
+        15.44,
+        -12.01
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_Wood",
+      "id": "COL_Wall_Mesh_VIS_F_Wood:1860",
+      "at": [
+        228.71,
+        15.69,
+        -52.29
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_Wood",
+        "COL_Wall_Mesh_VIS_F_WoodLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_Wood",
+      "id": "COL_Wall_Mesh_VIS_F_Wood:3410",
+      "at": [
+        223.75,
+        15.44,
+        -12.57
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_Wood",
+      "id": "COL_Wall_Mesh_VIS_F_Wood:4030",
+      "at": [
+        117.33,
+        15.55,
+        -64.23
+      ],
+      "height": 0.55,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_Wood",
+      "id": "COL_Wall_Mesh_VIS_F_Wood:6355",
+      "at": [
+        123.62,
+        15.45,
+        -102.21
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_WoodDark",
+        "COL_Wall_Mesh_VIS_F_Wood",
+        "COL_Wall_Mesh_VIS_F_WoodLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_Wood",
+      "id": "COL_Wall_Mesh_VIS_F_Wood:8990",
+      "at": [
+        129.73,
+        15.36,
+        -33.09
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_F_WoodDark:3416",
+      "at": [
+        229.2,
+        15.69,
+        -50.59
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_Wood",
+        "COL_Wall_Mesh_VIS_F_WoodLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_F_WoodLight:180",
+      "at": [
+        124.04,
+        15.57,
+        -101.31
+      ],
+      "height": 0.57,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_RockLight",
+        "COL_Wall_Mesh_VIS_F_WoodDark",
+        "COL_Wall_Mesh_VIS_F_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_F_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_F_WoodLight:1200",
+      "at": [
+        232.26,
+        15.4,
+        -54.34
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_Wood",
+        "COL_Wall_Mesh_VIS_F_WoodLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_Pebble",
+      "id": "COL_Wall_Mesh_VIS_G_Pebble:2121",
+      "at": [
+        229.07,
+        21.37,
+        86.03
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoAstrolabe",
+      "id": "COL_Wall_Mesh_VIS_G_TripoAstrolabe:0",
+      "at": [
+        204.32,
+        21.36,
+        59.04
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoAstrolabe"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoAstrolabe",
+      "id": "COL_Wall_Mesh_VIS_G_TripoAstrolabe:1330",
+      "at": [
+        204.36,
+        21.36,
+        58.99
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoAstrolabe"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoAstrolabe",
+      "id": "COL_Wall_Mesh_VIS_G_TripoAstrolabe:5054",
+      "at": [
+        203.49,
+        21.48,
+        59.28
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoAstrolabe"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCottageSmall",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCottageSmall:1188",
+      "at": [
+        143.74,
+        21.37,
+        37.25
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCottageSmall"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCottageSmall",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCottageSmall:1188",
+      "at": [
+        143.94,
+        21.62,
+        37.9
+      ],
+      "height": 0.62,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCottageSmall"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverCrates:220",
+      "at": [
+        146.02,
+        21.77,
+        62.87
+      ],
+      "height": 0.77,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverCrates:260",
+      "at": [
+        145.96,
+        21.78,
+        62.83
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverCrates:360",
+      "at": [
+        145.45,
+        21.76,
+        62.51
+      ],
+      "height": 0.76,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverCrates:400",
+      "at": [
+        146.07,
+        21.85,
+        61.68
+      ],
+      "height": 0.85,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverCrates:820",
+      "at": [
+        146.02,
+        21.77,
+        62.87
+      ],
+      "height": 0.77,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverCrates:860",
+      "at": [
+        145.96,
+        21.78,
+        62.83
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverCrates:920",
+      "at": [
+        144.97,
+        21.35,
+        62.58
+      ],
+      "height": 0.35,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverCrates:960",
+      "at": [
+        145.45,
+        21.76,
+        62.51
+      ],
+      "height": 0.76,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverCrates:1000",
+      "at": [
+        146.07,
+        21.85,
+        61.68
+      ],
+      "height": 0.85,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverStone:280",
+      "at": [
+        190.99,
+        21.99,
+        110.9
+      ],
+      "height": 0.99,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverStone:420",
+      "at": [
+        191.22,
+        21.9,
+        110.66
+      ],
+      "height": 0.9,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverStone:880",
+      "at": [
+        190.99,
+        21.99,
+        110.9
+      ],
+      "height": 0.99,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCoverStone",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCoverStone:1020",
+      "at": [
+        191.22,
+        21.9,
+        110.66
+      ],
+      "height": 0.9,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCrateBarrel",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCrateBarrel:900",
+      "at": [
+        164.9,
+        21.68,
+        113.05
+      ],
+      "height": 0.68,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCrateBarrel"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCrateBarrel",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCrateBarrel:2700",
+      "at": [
+        164.9,
+        21.68,
+        113.05
+      ],
+      "height": 0.68,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCrateBarrel"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCrystalCluster:1360",
+      "at": [
+        142.85,
+        21.4,
+        88.19
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCrystalCluster:1360",
+      "at": [
+        143.26,
+        21.43,
+        88.09
+      ],
+      "height": 0.43,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCrystalCluster:1680",
+      "at": [
+        160.73,
+        21.44,
+        55.07
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCrystalCluster:2160",
+      "at": [
+        181.87,
+        21.4,
+        118.53
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCrystalCluster:3760",
+      "at": [
+        143.26,
+        21.44,
+        88.09
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCrystalCluster:3760",
+      "at": [
+        142.85,
+        21.4,
+        88.19
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCrystalCluster:4080",
+      "at": [
+        160.73,
+        21.44,
+        55.07
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_G_TripoCrystalCluster:4560",
+      "at": [
+        181.87,
+        21.4,
+        118.53
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_G_TripoPlanter:318",
+      "at": [
+        162.66,
+        21.48,
+        115.38
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoPlanter",
+      "id": "COL_Wall_Mesh_VIS_G_TripoPlanter:2809",
+      "at": [
+        214.57,
+        21.66,
+        47.8
+      ],
+      "height": 0.66,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoPlanter"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_G_TripoRuinedColumn:480",
+      "at": [
+        164.4,
+        21.5,
+        59.43
+      ],
+      "height": 0.5,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_G_TripoRuinedColumn:1280",
+      "at": [
+        131.15,
+        21.51,
+        41.72
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_G_TripoRuinedColumn:1840",
+      "at": [
+        162.91,
+        21.46,
+        59.69
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_G_TripoRuinedColumn:2080",
+      "at": [
+        162.83,
+        21.42,
+        61.21
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_G_TripoRuinedColumn:2880",
+      "at": [
+        164.4,
+        21.5,
+        59.43
+      ],
+      "height": 0.5,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_G_TripoRuinedColumn:3680",
+      "at": [
+        131.15,
+        21.51,
+        41.72
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_G_TripoRuinedColumn:4240",
+      "at": [
+        162.91,
+        21.46,
+        59.69
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_G_TripoRuinedColumn:4480",
+      "at": [
+        162.83,
+        21.42,
+        61.21
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_G_TripoStonePlatform:0",
+      "at": [
+        159.02,
+        21.51,
+        47.39
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_G_TripoStonePlatform:664",
+      "at": [
+        159.1,
+        21.53,
+        46.79
+      ],
+      "height": 0.53,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_G_TripoStonePlatform:3071",
+      "at": [
+        156.28,
+        21.47,
+        49.4
+      ],
+      "height": 0.47,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_G_TripoStonePlatform:3237",
+      "at": [
+        157.72,
+        21.46,
+        44.58
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_G_TripoStonePlatform:3818",
+      "at": [
+        159.08,
+        21.5,
+        47.75
+      ],
+      "height": 0.5,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_G_TripoStonePlatform:4067",
+      "at": [
+        155.05,
+        21.46,
+        48.55
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_G_TripoStonePlatform:4731",
+      "at": [
+        157.87,
+        21.54,
+        44.88
+      ],
+      "height": 0.54,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoWorkshopShed",
+      "id": "COL_Wall_Mesh_VIS_G_TripoWorkshopShed:200",
+      "at": [
+        156.3,
+        21.4,
+        110.04
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoWorkshopShed"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoWorkshopShed",
+      "id": "COL_Wall_Mesh_VIS_G_TripoWorkshopShed:400",
+      "at": [
+        148.82,
+        21.43,
+        94.64
+      ],
+      "height": 0.43,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoWorkshopShed"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoWorkshopShed",
+      "id": "COL_Wall_Mesh_VIS_G_TripoWorkshopShed:1300",
+      "at": [
+        155.25,
+        21.39,
+        111.77
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoWorkshopShed"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoWorkshopShed",
+      "id": "COL_Wall_Mesh_VIS_G_TripoWorkshopShed:3200",
+      "at": [
+        156.3,
+        21.4,
+        110.04
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoWorkshopShed"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoWorkshopShed",
+      "id": "COL_Wall_Mesh_VIS_G_TripoWorkshopShed:3400",
+      "at": [
+        148.82,
+        21.43,
+        94.61
+      ],
+      "height": 0.43,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoWorkshopShed"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_TripoWorkshopShed",
+      "id": "COL_Wall_Mesh_VIS_G_TripoWorkshopShed:4300",
+      "at": [
+        155.25,
+        21.39,
+        111.77
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoWorkshopShed"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_Wood",
+      "id": "COL_Wall_Mesh_VIS_G_Wood:2834",
+      "at": [
+        216.15,
+        21.54,
+        41.33
+      ],
+      "height": 0.54,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_WoodDark",
+        "COL_Wall_Mesh_VIS_G_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_Wood",
+      "id": "COL_Wall_Mesh_VIS_G_Wood:5232",
+      "at": [
+        126.08,
+        21.45,
+        112.68
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_Wood",
+      "id": "COL_Wall_Mesh_VIS_G_Wood:6104",
+      "at": [
+        217.98,
+        21.43,
+        38.51
+      ],
+      "height": 0.43,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_WoodLight",
+        "COL_Wall_Mesh_VIS_G_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_Wood",
+      "id": "COL_Wall_Mesh_VIS_G_Wood:9156",
+      "at": [
+        217.02,
+        21.52,
+        39.72
+      ],
+      "height": 0.52,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_WoodLight",
+        "COL_Wall_Mesh_VIS_G_WoodDark",
+        "COL_Wall_Mesh_VIS_G_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_Wood",
+      "id": "COL_Wall_Mesh_VIS_G_Wood:11336",
+      "at": [
+        138.29,
+        22.12,
+        121.5
+      ],
+      "height": 1.12,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_Wood",
+      "id": "COL_Wall_Mesh_VIS_G_Wood:13080",
+      "at": [
+        215.63,
+        21.48,
+        39.35
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_WoodLight",
+        "COL_Wall_Mesh_VIS_G_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_G_WoodDark:3510",
+      "at": [
+        218.77,
+        21.6,
+        38.99
+      ],
+      "height": 0.6,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_G_WoodDark:6903",
+      "at": [
+        215.21,
+        21.45,
+        41.03
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_G_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_G_WoodLight:2300",
+      "at": [
+        214.56,
+        21.44,
+        39.2
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_WoodLight",
+        "COL_Wall_Mesh_VIS_G_WoodDark",
+        "COL_Wall_Mesh_VIS_G_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_Coral",
+      "id": "COL_Wall_Mesh_VIS_H_Coral:495",
+      "at": [
+        -36.41,
+        26.4,
+        213.05
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_Wood",
+        "COL_Wall_Mesh_VIS_H_Chalk"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_Pebble",
+      "id": "COL_Wall_Mesh_VIS_H_Pebble:1909",
+      "at": [
+        61.65,
+        26.42,
+        184.82
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_Pebble",
+      "id": "COL_Wall_Mesh_VIS_H_Pebble:2158",
+      "at": [
+        -33.65,
+        26.38,
+        271.41
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_Pebble",
+      "id": "COL_Wall_Mesh_VIS_H_Pebble:4150",
+      "at": [
+        -4.39,
+        26.5,
+        175.33
+      ],
+      "height": 0.5,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoBannerPole",
+      "id": "COL_Wall_Mesh_VIS_H_TripoBannerPole:304",
+      "at": [
+        -5.21,
+        26.4,
+        234.6
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoBannerPole",
+        "COL_Wall_Mesh_VIS_H_BrassLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoBannerPole",
+      "id": "COL_Wall_Mesh_VIS_H_TripoBannerPole:608",
+      "at": [
+        -5.32,
+        26.39,
+        234.67
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoBannerPole",
+        "COL_Wall_Mesh_VIS_H_BrassLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_H_TripoCoverCrates:220",
+      "at": [
+        -16.94,
+        26.78,
+        209.89
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_H_TripoCoverCrates:260",
+      "at": [
+        -17.09,
+        26.76,
+        209.92
+      ],
+      "height": 0.76,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_H_TripoCoverCrates:260",
+      "at": [
+        -17.24,
+        26.8,
+        209.48
+      ],
+      "height": 0.8,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_H_TripoCoverCrates:560",
+      "at": [
+        -18.1,
+        26.39,
+        208.69
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_H_TripoCoverCrates:820",
+      "at": [
+        -16.94,
+        26.78,
+        209.89
+      ],
+      "height": 0.78,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_H_TripoCoverCrates:860",
+      "at": [
+        -17.24,
+        26.8,
+        209.48
+      ],
+      "height": 0.8,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_H_TripoCoverCrates:860",
+      "at": [
+        -17.09,
+        26.76,
+        209.92
+      ],
+      "height": 0.76,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoCoverCrates",
+      "id": "COL_Wall_Mesh_VIS_H_TripoCoverCrates:1160",
+      "at": [
+        -18.1,
+        26.39,
+        208.69
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoCoverCrates"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoMemorialStele",
+      "id": "COL_Wall_Mesh_VIS_H_TripoMemorialStele:0",
+      "at": [
+        -31.05,
+        26.37,
+        232.39
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoMemorialStele"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoMemorialStele",
+      "id": "COL_Wall_Mesh_VIS_H_TripoMemorialStele:2324",
+      "at": [
+        -30.51,
+        27.03,
+        232.28
+      ],
+      "height": 1.03,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoMemorialStele"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoMemorialStele",
+      "id": "COL_Wall_Mesh_VIS_H_TripoMemorialStele:5146",
+      "at": [
+        -30.51,
+        27.03,
+        232.28
+      ],
+      "height": 1.03,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoMemorialStele"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_H_TripoRuinedColumn:1280",
+      "at": [
+        35.73,
+        26.77,
+        214.33
+      ],
+      "height": 0.77,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_H_TripoRuinedColumn:3680",
+      "at": [
+        -3.89,
+        26.5,
+        196.92
+      ],
+      "height": 0.5,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_H_TripoRuinedColumn:4480",
+      "at": [
+        37.81,
+        26.41,
+        213.66
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_H_TripoRuinedColumn:6080",
+      "at": [
+        35.73,
+        26.77,
+        214.33
+      ],
+      "height": 0.77,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_H_TripoRuinedColumn:8480",
+      "at": [
+        -3.89,
+        26.5,
+        196.92
+      ],
+      "height": 0.5,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoRuinedColumn",
+      "id": "COL_Wall_Mesh_VIS_H_TripoRuinedColumn:9280",
+      "at": [
+        37.81,
+        26.41,
+        213.66
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_H_TripoStonePlatform:0",
+      "at": [
+        33.48,
+        26.51,
+        234.87
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_H_TripoStonePlatform:664",
+      "at": [
+        33.35,
+        26.67,
+        234.26
+      ],
+      "height": 0.67,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_H_TripoStonePlatform:3071",
+      "at": [
+        30.63,
+        26.46,
+        236.89
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_H_TripoStonePlatform:3818",
+      "at": [
+        33.37,
+        26.51,
+        234.87
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_H_TripoStonePlatform:3818",
+      "at": [
+        33.42,
+        26.51,
+        235.23
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_H_TripoStonePlatform:4067",
+      "at": [
+        29.4,
+        26.46,
+        236.03
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_TripoStonePlatform",
+      "id": "COL_Wall_Mesh_VIS_H_TripoStonePlatform:4731",
+      "at": [
+        32.22,
+        26.54,
+        232.36
+      ],
+      "height": 0.54,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_Wood",
+      "id": "COL_Wall_Mesh_VIS_H_Wood:3074",
+      "at": [
+        34.21,
+        26.74,
+        245.53
+      ],
+      "height": 0.74,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_Wood",
+        "COL_Wall_Mesh_VIS_H_WoodLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_H_WoodDark:3052",
+      "at": [
+        33.69,
+        26.54,
+        243.25
+      ],
+      "height": 0.54,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_WoodDark",
+        "COL_Wall_Mesh_VIS_H_Wood",
+        "COL_Wall_Mesh_VIS_H_WoodLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_H_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_H_WoodDark:6213",
+      "at": [
+        29.64,
+        26.76,
+        244.18
+      ],
+      "height": 0.76,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_Wood",
+        "COL_Wall_Mesh_VIS_H_WoodLight"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S1_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S1_Pebble:1365",
+      "at": [
+        -262.04,
+        7.51,
+        -105.64
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S1_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S1_Pebble:1430",
+      "at": [
+        -262.11,
+        7.44,
+        -90.12
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S1_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S1_Pebble:1885",
+      "at": [
+        -312.44,
+        7.42,
+        -119.15
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S1_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S1_Pebble:2730",
+      "at": [
+        -287.27,
+        7.47,
+        -81.31
+      ],
+      "height": 0.47,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S1_Wood",
+      "id": "COL_Wall_Mesh_VIS_S1_Wood:1170",
+      "at": [
+        -309.47,
+        7.57,
+        -122.3
+      ],
+      "height": 0.57,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S1_Wood",
+      "id": "COL_Wall_Mesh_VIS_S1_Wood:1989",
+      "at": [
+        -263.54,
+        7.6,
+        -115.12
+      ],
+      "height": 0.6,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S1_Wood",
+      "id": "COL_Wall_Mesh_VIS_S1_Wood:2691",
+      "at": [
+        -269.93,
+        7.83,
+        -78.01
+      ],
+      "height": 0.83,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S1_Wood",
+      "id": "COL_Wall_Mesh_VIS_S1_Wood:2691",
+      "at": [
+        -269.76,
+        7.93,
+        -77.72
+      ],
+      "height": 0.93,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S1_Wood",
+      "id": "COL_Wall_Mesh_VIS_S1_Wood:5031",
+      "at": [
+        -267.57,
+        7.97,
+        -120.51
+      ],
+      "height": 0.97,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S1_Wood",
+      "id": "COL_Wall_Mesh_VIS_S1_Wood:6201",
+      "at": [
+        -269.76,
+        7.93,
+        -77.72
+      ],
+      "height": 0.93,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S1_Wood",
+      "id": "COL_Wall_Mesh_VIS_S1_Wood:6201",
+      "at": [
+        -269.78,
+        7.85,
+        -77.7
+      ],
+      "height": 0.85,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S2_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S2_Pebble:1846",
+      "at": [
+        -305.26,
+        13.39,
+        119.35
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S2_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S2_Pebble:1917",
+      "at": [
+        -304.22,
+        13.42,
+        99.88
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S2_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S2_Pebble:1988",
+      "at": [
+        -303.93,
+        13.44,
+        79.52
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S2_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S2_Pebble:3692",
+      "at": [
+        -257.33,
+        13.48,
+        95.74
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S2_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S2_Pebble:3763",
+      "at": [
+        -262.07,
+        13.37,
+        121.04
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S2_TripoRuneStone",
+      "id": "COL_Wall_Mesh_VIS_S2_TripoRuneStone:2226",
+      "at": [
+        -298.07,
+        13.42,
+        104.56
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_TripoRuneStone"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S2_Wood",
+      "id": "COL_Wall_Mesh_VIS_S2_Wood:2376",
+      "at": [
+        -258.22,
+        13.92,
+        120.51
+      ],
+      "height": 0.92,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S2_Wood",
+      "id": "COL_Wall_Mesh_VIS_S2_Wood:3036",
+      "at": [
+        -302.8,
+        13.56,
+        124.27
+      ],
+      "height": 0.56,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S2_Wood",
+      "id": "COL_Wall_Mesh_VIS_S2_Wood:6732",
+      "at": [
+        -263.74,
+        13.44,
+        125.07
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S2_Wood",
+      "id": "COL_Wall_Mesh_VIS_S2_Wood:7788",
+      "at": [
+        -306.34,
+        14.26,
+        79.49
+      ],
+      "height": 1.26,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_S3_BrassLight:132",
+      "at": [
+        317.92,
+        10.71,
+        -47.23
+      ],
+      "height": 0.71,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_S3_BrassLight:143",
+      "at": [
+        317.9,
+        10.71,
+        -47.22
+      ],
+      "height": 0.71,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_S3_BrassLight:209",
+      "at": [
+        317.98,
+        10.71,
+        -47.12
+      ],
+      "height": 0.71,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_S3_BrassLight:220",
+      "at": [
+        318.14,
+        10.36,
+        -47.53
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Coral",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_S3_BrassLight:462",
+      "at": [
+        317.86,
+        10.71,
+        -47.05
+      ],
+      "height": 0.71,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_S3_BrassLight:473",
+      "at": [
+        318.0,
+        10.36,
+        -47.59
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Coral",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_S3_BrassLight:484",
+      "at": [
+        317.92,
+        10.7,
+        -47.26
+      ],
+      "height": 0.7,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_S3_BrassLight:506",
+      "at": [
+        317.99,
+        10.71,
+        -47.03
+      ],
+      "height": 0.71,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_S3_BrassLight:528",
+      "at": [
+        317.98,
+        10.71,
+        -47.11
+      ],
+      "height": 0.71,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_S3_BrassLight:550",
+      "at": [
+        317.99,
+        10.71,
+        -47.11
+      ],
+      "height": 0.71,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_BrassLight",
+      "id": "COL_Wall_Mesh_VIS_S3_BrassLight:561",
+      "at": [
+        318.11,
+        10.36,
+        -47.51
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Coral",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Coral",
+      "id": "COL_Wall_Mesh_VIS_S3_Coral:144",
+      "at": [
+        317.85,
+        10.36,
+        -47.74
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Coral",
+      "id": "COL_Wall_Mesh_VIS_S3_Coral:153",
+      "at": [
+        318.51,
+        10.36,
+        -47.54
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Coral",
+      "id": "COL_Wall_Mesh_VIS_S3_Coral:180",
+      "at": [
+        318.04,
+        10.42,
+        -47.58
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Coral",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Coral",
+      "id": "COL_Wall_Mesh_VIS_S3_Coral:207",
+      "at": [
+        318.14,
+        10.36,
+        -47.53
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Coral",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Coral",
+      "id": "COL_Wall_Mesh_VIS_S3_Coral:207",
+      "at": [
+        317.99,
+        10.71,
+        -47.13
+      ],
+      "height": 0.71,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Coral",
+      "id": "COL_Wall_Mesh_VIS_S3_Coral:432",
+      "at": [
+        317.93,
+        10.71,
+        -46.95
+      ],
+      "height": 0.71,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Coral",
+      "id": "COL_Wall_Mesh_VIS_S3_Coral:441",
+      "at": [
+        318.75,
+        10.56,
+        -48.86
+      ],
+      "height": 0.56,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Ivory",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Coral",
+      "id": "COL_Wall_Mesh_VIS_S3_Coral:459",
+      "at": [
+        317.92,
+        10.69,
+        -47.29
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Coral",
+      "id": "COL_Wall_Mesh_VIS_S3_Coral:468",
+      "at": [
+        317.99,
+        10.71,
+        -47.08
+      ],
+      "height": 0.71,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_BrassLight",
+        "COL_Wall_Mesh_VIS_S3_Coral"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Ivory",
+      "id": "COL_Wall_Mesh_VIS_S3_Ivory:21",
+      "at": [
+        320.05,
+        10.38,
+        -48.9
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Ivory",
+      "id": "COL_Wall_Mesh_VIS_S3_Ivory:129",
+      "at": [
+        320.05,
+        10.38,
+        -48.9
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTeal",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTeal:40",
+      "at": [
+        320.14,
+        10.35,
+        -48.6
+      ],
+      "height": 0.35,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTeal",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTeal:100",
+      "at": [
+        320.14,
+        10.35,
+        -48.6
+      ],
+      "height": 0.35,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:60",
+      "at": [
+        320.13,
+        10.4,
+        -48.91
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:66",
+      "at": [
+        320.13,
+        10.4,
+        -48.92
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:72",
+      "at": [
+        320.12,
+        10.4,
+        -48.91
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:78",
+      "at": [
+        320.13,
+        10.4,
+        -48.92
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:78",
+      "at": [
+        320.02,
+        10.38,
+        -48.79
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:84",
+      "at": [
+        320.13,
+        10.4,
+        -48.92
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:90",
+      "at": [
+        320.06,
+        10.41,
+        -48.95
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:90",
+      "at": [
+        320.06,
+        10.4,
+        -48.96
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:96",
+      "at": [
+        320.09,
+        10.38,
+        -49.02
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:108",
+      "at": [
+        320.03,
+        10.38,
+        -48.75
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:114",
+      "at": [
+        320.12,
+        10.41,
+        -48.89
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:114",
+      "at": [
+        320.06,
+        10.4,
+        -48.94
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:132",
+      "at": [
+        320.12,
+        10.41,
+        -48.9
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:144",
+      "at": [
+        320.1,
+        10.38,
+        -49.02
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:144",
+      "at": [
+        320.05,
+        10.39,
+        -48.68
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:150",
+      "at": [
+        320.08,
+        10.41,
+        -48.91
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:252",
+      "at": [
+        320.07,
+        10.4,
+        -48.94
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:258",
+      "at": [
+        320.13,
+        10.41,
+        -48.93
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:264",
+      "at": [
+        320.13,
+        10.4,
+        -48.92
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:270",
+      "at": [
+        320.08,
+        10.4,
+        -48.96
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:276",
+      "at": [
+        320.06,
+        10.4,
+        -48.94
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:282",
+      "at": [
+        320.08,
+        10.4,
+        -48.97
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:300",
+      "at": [
+        320.13,
+        10.4,
+        -48.92
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:300",
+      "at": [
+        320.08,
+        10.41,
+        -48.93
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:312",
+      "at": [
+        320.07,
+        10.4,
+        -48.95
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:318",
+      "at": [
+        320.12,
+        10.41,
+        -48.9
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:330",
+      "at": [
+        320.21,
+        10.39,
+        -48.71
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_PaintTealLight",
+      "id": "COL_Wall_Mesh_VIS_S3_PaintTealLight:330",
+      "at": [
+        320.08,
+        10.4,
+        -48.97
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S3_Pebble:1694",
+      "at": [
+        333.06,
+        10.36,
+        -46.37
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S3_Pebble:1771",
+      "at": [
+        324.4,
+        10.4,
+        -38.09
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S3_Pebble:3696",
+      "at": [
+        284.72,
+        10.44,
+        -95.17
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S3_Pebble:4389",
+      "at": [
+        276.52,
+        10.39,
+        -60.77
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S3_Pebble:4543",
+      "at": [
+        276.86,
+        10.45,
+        -89.78
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_TripoCaveRock",
+      "id": "COL_Wall_Mesh_VIS_S3_TripoCaveRock:0",
+      "at": [
+        305.67,
+        10.5,
+        -77.92
+      ],
+      "height": 0.5,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_TripoCaveRock"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_TripoCaveRock",
+      "id": "COL_Wall_Mesh_VIS_S3_TripoCaveRock:792",
+      "at": [
+        302.88,
+        10.42,
+        -74.99
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_TripoCaveRock"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_TripoCaveRock",
+      "id": "COL_Wall_Mesh_VIS_S3_TripoCaveRock:3168",
+      "at": [
+        304.99,
+        10.36,
+        -74.88
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_TripoCaveRock"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_TripoShrinePavilion",
+      "id": "COL_Wall_Mesh_VIS_S3_TripoShrinePavilion:264",
+      "at": [
+        306.18,
+        10.51,
+        -49.36
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_TripoShrinePavilion",
+      "id": "COL_Wall_Mesh_VIS_S3_TripoShrinePavilion:2574",
+      "at": [
+        308.11,
+        10.45,
+        -49.6
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_TripoShrinePavilion",
+      "id": "COL_Wall_Mesh_VIS_S3_TripoShrinePavilion:2640",
+      "at": [
+        308.7,
+        10.44,
+        -49.58
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Wood",
+      "id": "COL_Wall_Mesh_VIS_S3_Wood:2640",
+      "at": [
+        322.1,
+        10.55,
+        -34.7
+      ],
+      "height": 0.55,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_Wood",
+      "id": "COL_Wall_Mesh_VIS_S3_Wood:6600",
+      "at": [
+        322.19,
+        10.69,
+        -34.59
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_S3_WoodDark:1800",
+      "at": [
+        320.09,
+        10.41,
+        -48.95
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_S3_WoodDark:1800",
+      "at": [
+        320.06,
+        10.41,
+        -48.95
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_WoodDark",
+      "id": "COL_Wall_Mesh_VIS_S3_WoodDark:3600",
+      "at": [
+        320.06,
+        10.4,
+        -48.94
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_S3_WoodLight:62",
+      "at": [
+        320.08,
+        10.4,
+        -48.93
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S3_WoodLight",
+      "id": "COL_Wall_Mesh_VIS_S3_WoodLight:142",
+      "at": [
+        320.08,
+        10.4,
+        -48.93
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_PaintTealLight",
+        "COL_Wall_Mesh_VIS_S3_WoodDark"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S4_Pebble:332",
+      "at": [
+        325.6,
+        26.36,
+        52.95
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_Pebble",
+      "id": "COL_Wall_Mesh_VIS_S4_Pebble:2407",
+      "at": [
+        269.39,
+        26.37,
+        49.68
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_Pebble"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster:80",
+      "at": [
+        311.46,
+        26.39,
+        91.33
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster:80",
+      "at": [
+        311.52,
+        26.4,
+        91.69
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster:160",
+      "at": [
+        311.36,
+        26.46,
+        90.05
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster:1360",
+      "at": [
+        310.7,
+        26.37,
+        90.48
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster:1680",
+      "at": [
+        277.61,
+        26.48,
+        84.39
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster:2240",
+      "at": [
+        300.81,
+        26.53,
+        52.53
+      ],
+      "height": 0.53,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster:2480",
+      "at": [
+        311.52,
+        26.4,
+        91.69
+      ],
+      "height": 0.4,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster:2480",
+      "at": [
+        311.46,
+        26.39,
+        91.33
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster:2560",
+      "at": [
+        311.36,
+        26.46,
+        90.05
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster:3760",
+      "at": [
+        310.7,
+        26.37,
+        90.48
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster:4080",
+      "at": [
+        277.61,
+        26.48,
+        84.39
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_TripoCrystalCluster",
+      "id": "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster:4640",
+      "at": [
+        300.81,
+        26.53,
+        52.53
+      ],
+      "height": 0.53,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_Wood",
+      "id": "COL_Wall_Mesh_VIS_S4_Wood:2280",
+      "at": [
+        318.8,
+        27.14,
+        47.12
+      ],
+      "height": 1.14,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_Wood",
+      "id": "COL_Wall_Mesh_VIS_S4_Wood:8208",
+      "at": [
+        270.87,
+        26.97,
+        103.23
+      ],
+      "height": 0.97,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_Wood"
+      ]
+    },
+    {
+      "source": "overlap:COL_Wall_Mesh_VIS_S4_Wood",
+      "id": "COL_Wall_Mesh_VIS_S4_Wood:8968",
+      "at": [
+        267.31,
+        26.42,
+        50.56
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_Wood"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_20",
+      "at": [
+        325.15,
+        26.72,
+        93.61
+      ],
+      "height": 0.72,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_44",
+      "at": [
+        -289.99,
+        13.37,
+        101.45
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_TripoPostHouse"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_79",
+      "at": [
+        147.68,
+        21.49,
+        93.13
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoWorkshopShed"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_113",
+      "at": [
+        234.6,
+        15.5,
+        -77.18
+      ],
+      "height": 0.5,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_137",
+      "at": [
+        -258.42,
+        13.54,
+        119.28
+      ],
+      "height": 0.54,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Wood"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_143",
+      "at": [
+        233.32,
+        15.38,
+        -51.91
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_F_WoodDark"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_158",
+      "at": [
+        -12.62,
+        5.68,
+        -73.14
+      ],
+      "height": 0.68,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoVillageHouseA"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_203",
+      "at": [
+        53.49,
+        5.39,
+        -141.1
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_222",
+      "at": [
+        124.92,
+        21.52,
+        59.68
+      ],
+      "height": 0.52,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_235",
+      "at": [
+        180.67,
+        21.49,
+        118.26
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoCrystalCluster"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_268",
+      "at": [
+        158.1,
+        21.74,
+        48.56
+      ],
+      "height": 0.74,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_276",
+      "at": [
+        -302.02,
+        13.59,
+        74.21
+      ],
+      "height": 0.59,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_290",
+      "at": [
+        5.02,
+        5.38,
+        -59.21
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCottageDormer"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_292",
+      "at": [
+        36.19,
+        0.37,
+        -182.43
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_Wood"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_307",
+      "at": [
+        -218.98,
+        10.35,
+        -88.46
+      ],
+      "height": 0.35,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_316",
+      "at": [
+        124.8,
+        21.42,
+        37.19
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_Wood"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_341",
+      "at": [
+        -143.42,
+        16.73,
+        20.48
+      ],
+      "height": 0.73,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_350",
+      "at": [
+        -13.41,
+        5.68,
+        -73.72
+      ],
+      "height": 0.68,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoVillageHouseA"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_360",
+      "at": [
+        325.2,
+        26.49,
+        92.43
+      ],
+      "height": 0.49,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_365",
+      "at": [
+        -43.22,
+        5.36,
+        -51.84
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_371",
+      "at": [
+        277.22,
+        10.52,
+        -39.2
+      ],
+      "height": 0.52,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_383",
+      "at": [
+        282.9,
+        10.55,
+        -93.93
+      ],
+      "height": 0.55,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Pebble",
+        "COL_Wall_Mesh_VIS_S3_Wood"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_385",
+      "at": [
+        -36.97,
+        18.68,
+        77.77
+      ],
+      "height": 0.68,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_404",
+      "at": [
+        161.9,
+        21.68,
+        60.39
+      ],
+      "height": 0.68,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_415",
+      "at": [
+        -57.55,
+        5.38,
+        -87.43
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Wood"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_424",
+      "at": [
+        -13.79,
+        5.68,
+        -73.96
+      ],
+      "height": 0.68,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoVillageHouseA"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_468",
+      "at": [
+        -123.73,
+        16.37,
+        112.55
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoGreatTree"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_514",
+      "at": [
+        -219.25,
+        10.8,
+        -86.76
+      ],
+      "height": 0.8,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_516",
+      "at": [
+        -305.0,
+        13.46,
+        120.06
+      ],
+      "height": 0.46,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_519",
+      "at": [
+        -108.66,
+        10.45,
+        -78.6
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_Wood"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_557",
+      "at": [
+        20.39,
+        26.36,
+        177.59
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_576",
+      "at": [
+        -312.38,
+        7.41,
+        -119.06
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_582",
+      "at": [
+        -156.87,
+        10.38,
+        -48.19
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_605",
+      "at": [
+        -41.75,
+        5.54,
+        -141.71
+      ],
+      "height": 0.54,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_659",
+      "at": [
+        -156.57,
+        10.48,
+        -48.3
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_663",
+      "at": [
+        52.13,
+        5.55,
+        -49.35
+      ],
+      "height": 0.55,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_683",
+      "at": [
+        -12.58,
+        5.68,
+        -73.24
+      ],
+      "height": 0.68,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoVillageHouseA"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_720",
+      "at": [
+        11.85,
+        5.38,
+        -54.64
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoBannerPole"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_723",
+      "at": [
+        -36.4,
+        5.45,
+        -80.9
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoVillageHouseC"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_750",
+      "at": [
+        -311.89,
+        7.38,
+        -101.66
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_S1_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_763",
+      "at": [
+        -101.58,
+        16.57,
+        29.59
+      ],
+      "height": 0.57,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_819",
+      "at": [
+        -11.27,
+        0.65,
+        -182.56
+      ],
+      "height": 0.65,
+      "on": [
+        "COL_Wall_Mesh_VIS_A_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_846",
+      "at": [
+        20.34,
+        26.37,
+        177.58
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_872",
+      "at": [
+        128.47,
+        21.69,
+        41.23
+      ],
+      "height": 0.69,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoRuinedColumn"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_879",
+      "at": [
+        -36.8,
+        18.75,
+        77.85
+      ],
+      "height": 0.75,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_883",
+      "at": [
+        -123.63,
+        16.48,
+        112.4
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoGreatTree"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_896",
+      "at": [
+        125.09,
+        21.42,
+        37.17
+      ],
+      "height": 0.42,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_Wood"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_973",
+      "at": [
+        184.34,
+        21.47,
+        75.78
+      ],
+      "height": 0.47,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoWorkshopDome"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_981",
+      "at": [
+        -114.28,
+        16.53,
+        122.69
+      ],
+      "height": 0.53,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoGreatTree"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1028",
+      "at": [
+        -207.75,
+        16.54,
+        37.78
+      ],
+      "height": 0.54,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoGreatTree"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1073",
+      "at": [
+        126.23,
+        21.54,
+        74.2
+      ],
+      "height": 0.54,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1078",
+      "at": [
+        -261.73,
+        13.39,
+        74.92
+      ],
+      "height": 0.39,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Wood"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1118",
+      "at": [
+        -100.65,
+        16.38,
+        29.58
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1175",
+      "at": [
+        -31.4,
+        5.43,
+        -116.31
+      ],
+      "height": 0.43,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoTeaHouse"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1185",
+      "at": [
+        317.7,
+        26.57,
+        44.63
+      ],
+      "height": 0.57,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1193",
+      "at": [
+        180.75,
+        22.16,
+        77.96
+      ],
+      "height": 1.16,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoWorkshopDome"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1210",
+      "at": [
+        -149.97,
+        16.44,
+        59.76
+      ],
+      "height": 0.44,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoShrinePavilion"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1232",
+      "at": [
+        -43.25,
+        5.38,
+        -51.7
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1259",
+      "at": [
+        159.73,
+        21.57,
+        106.31
+      ],
+      "height": 0.57,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoWorkshopShed"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1274",
+      "at": [
+        48.63,
+        18.48,
+        66.16
+      ],
+      "height": 0.48,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_TripoCoverStone"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1279",
+      "at": [
+        -258.27,
+        13.65,
+        77.96
+      ],
+      "height": 0.65,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1296",
+      "at": [
+        30.68,
+        26.8,
+        236.1
+      ],
+      "height": 0.8,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1304",
+      "at": [
+        -209.1,
+        10.37,
+        -131.23
+      ],
+      "height": 0.37,
+      "on": [
+        "COL_Wall_Mesh_VIS_C_Wood"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1325",
+      "at": [
+        3.43,
+        5.47,
+        -58.34
+      ],
+      "height": 0.47,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoCottageDormer"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1327",
+      "at": [
+        156.33,
+        21.8,
+        48.64
+      ],
+      "height": 0.8,
+      "on": [
+        "COL_Wall_Mesh_VIS_G_TripoStonePlatform"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1328",
+      "at": [
+        -306.88,
+        13.36,
+        117.83
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_S2_Wood"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1346",
+      "at": [
+        -16.99,
+        18.38,
+        105.87
+      ],
+      "height": 0.38,
+      "on": [
+        "COL_Wall_Mesh_VIS_E_Chalk"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1354",
+      "at": [
+        55.01,
+        5.57,
+        -97.95
+      ],
+      "height": 0.57,
+      "on": [
+        "COL_Wall_Mesh_VIS_B_TripoBannerPole"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1391",
+      "at": [
+        -123.57,
+        16.43,
+        112.62
+      ],
+      "height": 0.43,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_TripoGreatTree"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1417",
+      "at": [
+        324.5,
+        10.45,
+        -38.52
+      ],
+      "height": 0.45,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1420",
+      "at": [
+        -100.85,
+        16.36,
+        79.91
+      ],
+      "height": 0.36,
+      "on": [
+        "COL_Wall_Mesh_VIS_D_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1442",
+      "at": [
+        332.74,
+        10.58,
+        -45.63
+      ],
+      "height": 0.58,
+      "on": [
+        "COL_Wall_Mesh_VIS_S3_Pebble"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1473",
+      "at": [
+        267.91,
+        26.51,
+        49.92
+      ],
+      "height": 0.51,
+      "on": [
+        "COL_Wall_Mesh_VIS_S4_Wood"
+      ]
+    },
+    {
+      "source": "walker",
+      "id": "walker_1499",
+      "at": [
+        35.34,
+        26.41,
+        214.75
+      ],
+      "height": 0.41,
+      "on": [
+        "COL_Wall_Mesh_VIS_H_TripoRuinedColumn"
+      ]
+    }
+  ],
+  "bundleSHA256": "498bb1f8f8deae78a6e48b0820a3c920c31da3d7f775e361e6c360d375ff547d",
+  "limits": "No official input smoothing, AI steering, root motion or frame-time jitter; flight/teleport items not simulated",
+  "summary": "edges=926 runs=6158 overlaps=5824 walkers=1472 failures={}"
+}

@@ -295,6 +295,7 @@ echo(SkyIsland\SkyIslandGathering.cs
 echo(SkyIsland\SkyIslandFieldcraft.cs
 echo(SkyIsland\SkyIslandInventoryTransaction.cs
 echo(SkyIsland\SkyIslandNight.cs
+echo(SkyIsland\SkyIslandStreetLamps.cs
 echo(SkyIsland\SkyIslandMosquitoRules.cs
 echo(SkyIsland\SkyIslandGnats.cs
 echo(SkyIsland\SkyIslandGnatsLure.cs

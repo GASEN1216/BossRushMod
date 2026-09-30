@@ -244,7 +244,7 @@ def _tree(geometry, name):
             geometry.leaf(origin,(origin[0]+side*.46,origin[1]+.13,origin[2]-.37),.25,accent)
 
 
-def _shrub(geometry, name):
+def _shrub(geometry, name, lod=0):
     if name == "cliff_shrub_cap":
         lobes=[(-1.1,.6,0,1.0,.54,.85),(0,.9,.1,1.13,.72,.95),(1.05,.55,-.1,.93,.49,.8),(-.3,.55,-.72,.83,.43,.64)]
     elif name == "bush_b":
@@ -253,6 +253,8 @@ def _shrub(geometry, name):
         lobes=[(-.44,.52,.05,.65,.49,.58),(.48,.64,.1,.72,.58,.65),(0,.99,-.06,.67,.57,.63)]
     for index,(x,y,z,rx,ry,rz) in enumerate(lobes):
         geometry.foliage_cluster((x,y,z),(rx,ry,rz),"Leaf" if index%2==0 else "LeafLight",index+7,9,4)
+    if lod:
+        return
     for index in range(3):
         angle=TAU*index/3+.5
         geometry.leaf((.35*math.cos(angle),.5,.35*math.sin(angle)),
@@ -263,9 +265,12 @@ def _shrub(geometry, name):
             geometry.leaf(start,(start[0]+sign*.20,start[1]+.12,start[2]-.24),.12,"LeafLight")
 
 
-def _fern(geometry):
+def _fern(geometry, lod=0):
     # 外层舒展、内层直立；羽片向尖端收窄，左右错节，不做机械镜像。
-    for index in range(7):
+    # lod=1（1 m 以下的花圃小蕨）：只留外圈 5 片、每片 3 对羽片、叶轴 3 边，一屏里读起来一样，面数约三成。
+    fronds = 7 if lod == 0 else 5
+    pairs = 6 if lod == 0 else 3
+    for index in range(fronds):
         angle = index*TAU/5+.18 if index < 5 else (index-5)*math.pi+.8
         forward = (math.cos(angle), 0, math.sin(angle))
         side = (-math.sin(angle), 0, math.cos(angle))
@@ -277,9 +282,9 @@ def _fern(geometry):
                         (0, .025+height*math.sin(t*1.95)-.11*t*t, 0))
         samples = (0, .18, .38, .58, .78, 1)
         geometry.tube([curve(t) for t in samples],
-                      [.025, .022, .018, .014, .009, .004], "Forest", 5)
-        for pair in range(6):
-            t = .17+pair*.125
+                      [.025, .022, .018, .014, .009, .004], "Forest", 5 if lod == 0 else 3)
+        for pair in range(pairs):
+            t = .17+pair*(.125 if lod == 0 else .25)
             width = .31*math.sin(math.pi*(.17+t*.77))*(1-t*.65)
             for sign in (-1, 1):
                 middle = curve(t+(.025 if sign > 0 else 0))
@@ -293,12 +298,14 @@ def _fern(geometry):
         geometry.leaf(curve(.87), curve(1), .040, "LeafLight", roll=index*.07)
 
 
-def _coral(geometry):
+def _coral(geometry, lod=0):
     # 岛上珊瑚状灌枝属于活植物，枝条圆厚并带叶芽，不再使用断裂板片。
     stems=[(-.38,.78,-.12),(.30,1.02,.20),(-.12,1.2,.08),(.42,.72,-.30),(-.40,.65,.38)]
-    for index,(x,y,z) in enumerate(stems):
-        geometry.tube([(0,.04,0),(x*.4,y*.5,z*.4),(x,y,z)],[.085,.065,.025],"Coral",6)
+    for index,(x,y,z) in enumerate(stems if lod == 0 else stems[:3]):
+        geometry.tube([(0,.04,0),(x*.4,y*.5,z*.4),(x,y,z)],[.085,.065,.025],"Coral",6 if lod == 0 else 4)
         geometry.foliage_cluster((x,y-.04,z),(.16,.22,.16),"LeafLight" if index%2 else "Leaf",index+4,6,3)
+        if lod:
+            continue
         for sign in (-1,1):
             start=(x*.55,y*.57,z*.55)
             tip=(x+sign*.18,y*.80,z-.14)
@@ -313,22 +320,29 @@ def _bench(geometry):
         geometry.box((x,.095,0),(.75,.19,.94),"Limestone",.05)
 
 
-def model(name, bounds):
+# 2026-09-30：花圃里 0.75–1 m 的小蕨、小珊瑚枝、小灌木每丛 8.7k 三角形，27% 的边在屏幕上不到 2 像素
+# （`Build/sky-material-audit-20260930` F1），又碎又闪。目标高度低于 LOD_HEIGHT 时换轻量版，包络不变。
+LOD_HEIGHT = 1.05
+LOD_NAMES = frozenset(("bush_a", "bush_b", "fern_clump", "coral_clump"))
+
+
+def model(name, bounds, lod=0):
     """返回按旧尺寸合同规范化的多材质几何；原 JSON 不改写。"""
     if name not in NAMES:
         return None
-    key=(name,tuple(bounds["min"]),tuple(bounds["max"]))
+    lod = lod if name in LOD_NAMES else 0
+    key=(name,tuple(bounds["min"]),tuple(bounds["max"]),lod)
     if key in _CACHE:
         return _CACHE[key]
     geometry=Geometry()
     if name.startswith("tree_") or name=="cherry_tree":
         _tree(geometry,name)
     elif name in ("bush_a","bush_b","cliff_shrub_cap"):
-        _shrub(geometry,name)
+        _shrub(geometry,name,lod)
     elif name=="fern_clump":
-        _fern(geometry)
+        _fern(geometry,lod)
     elif name=="coral_clump":
-        _coral(geometry)
+        _coral(geometry,lod)
     else:
         _bench(geometry)
     # 单件作者几何预算；实例数由原摆放器决定，不能靠无限堆叶片提质。
@@ -358,7 +372,9 @@ def model(name, bounds):
 
 
 def stamp(g, payload, x, base_y, z, yaw_deg, scale):
-    groups=model(payload["meta"]["name"],payload["meta"]["bounds"])
+    bounds=payload["meta"]["bounds"]
+    height=(bounds["max"][1]-bounds["min"][1])*scale
+    groups=model(payload["meta"]["name"],bounds,1 if height<LOD_HEIGHT else 0)
     if groups is None:
         return None
     if not path_clear(g, payload["meta"]["name"], groups, x, base_y, z, scale):
