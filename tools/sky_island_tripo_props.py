@@ -450,25 +450,9 @@ def build(g, layout, data_dir, dressing):
                             yaw_deg = facing_yaw(x, z, ax, az)
                         else:
                             yaw_deg = facing_yaw(x, z, 2 * x - ax, 2 * z - az)
-                        adjustment = None
-                        if (name == 'stone_bench' and island_id == 'B'
-                                and math.hypot(x + 4.01262, z + 109.79367) < .1):
-                            # B 南路缘凳原座板穿入市场侧箱。按 0.25m / 32 方位近邻
-                            # 搜索取得首个严格 PlantingSpace 净空位；保持原朝向与随机流。
-                            # 真实重制包络及周围摊位 / 箱桶 / 花箱已逐三角验证。
-                            before = [x, island['center'][1], z]
-                            x, z = x - 2.451963201, z - .487725805
-                            rebuilt = sky_island_botany.model(name, bounds)
-                            radius = max(math.hypot(v[0], v[2])
-                                         for part in rebuilt.values() for v in part['v'])
-                            if not space.free(x, z, radius):
-                                raise ValueError('B south stone bench no longer passes placement clearance')
-                            adjustment = {'reason': 'separate_market_stall_side_box',
-                                          'originalPosition': before,
-                                          'offset': [-2.451963201, 0, -.487725805],
-                                          'footprintRadius': radius,
-                                          'strictPlantingSpacePassed': True,
-                                          'yawPreserved': True}
+                        from sky_island_prop_placement import model_bounds
+                        x,z,yaw_deg=g.PROP_SPACE.place(island_id,name,model_bounds(payload),x,z,yaw_deg,
+                                                       'roadside' if strategy[0]=='roadside' else 'building')
                         g.CURRENT = island_id
                         cy = island['center'][1]
                         triangles += _stamp(g, (payload, material), x, cy, z, yaw_deg)
@@ -478,8 +462,6 @@ def build(g, layout, data_dir, dressing):
                                            'position': [round(x, 2), round(cy, 2), round(z, 2)],
                                            'yaw': round(yaw_deg, 1), 'material': material,
                                            'placement': strategy[0]})
-                        if adjustment is not None:
-                            placements[-1]['adjustment'] = adjustment
                         break
                 if not progressed:
                     break
@@ -499,6 +481,8 @@ def build(g, layout, data_dir, dressing):
                 continue
             x, z = spot
             yaw_deg = anchor_yaw(name, island_id, angle_deg, x, z, cx, cz, yaw_deg)
+            from sky_island_prop_placement import model_bounds
+            x,z,yaw_deg=g.PROP_SPACE.place(island_id,name,model_bounds(payload),x,z,yaw_deg,'free')
             g.CURRENT = island_id
             triangles += _stamp(g, (payload, material), x, cy, z, yaw_deg)
             # 只有锚点分支补碰撞：这一支走 `free()` 严格避让，离敌人要走的路最远。
@@ -516,7 +500,7 @@ def build(g, layout, data_dir, dressing):
             'description': 'Tripo3D image-to-3D hero props, decorative only, outside navigation',
             'models': counts, 'instances': sum(counts.values()), 'triangles': triangles,
             'placementPolicy': {'navigation': 'untouched; decorative geometry only',
-                                'avoidance': 'sky_island_dressing.PlantingSpace.free()',
+                                'avoidance': 'initial semantic site plus final actual geometry / road / prop clearance',
                                 'clearance': 'model bounding radius + 1.5m'},
             'placements': placements,
             'vegetationPathClearance': list(sky_island_botany.PATH_REJECTIONS)}

@@ -52,6 +52,7 @@ EXTERNAL_ARTIFACT_GUARDS = {
     "PortableSafeZoneDeviceBundleGuard.py", "BaseBuildingResourcePropertyTest.py",
     "DailyReportArtPropertyTest.py",
     "SkyIslandFxBundleGuard.py", "SkyIslandCollisionNavigationPropertyTest.py",
+    "SkyIslandShadowStabilityPropertyTest.py",
 }
 
 

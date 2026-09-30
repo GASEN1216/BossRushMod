@@ -90,14 +90,27 @@ def prop_side_candidates(obstacle, radius):
     gap = radius + 1.25  # PlantingSpace reserves radius + 1 around each obstacle.
     yaw = obstacle['modelYaw']
     front = (-math.sin(yaw), -math.cos(yaw))
-    for fraction in (.25, .75, .5):
-        x = low_x + (high_x-low_x)*fraction
-        z = low_z + (high_z-low_z)*fraction
-        edges = [((x, high_z+gap), (0, 1)), ((low_x-gap, z), (-1, 0)),
-                 ((high_x+gap, z), (1, 0)), ((x, low_z-gap), (0, -1))]
-        for point, normal in edges:
-            if normal[0]*front[0] + normal[1]*front[1] <= .35:
-                yield point
+    for extra in (0.0,1.5,3.0,4.5,6.0):
+        padding=gap+extra
+        for fraction in (.25,.75,.5):
+            x=low_x+(high_x-low_x)*fraction;z=low_z+(high_z-low_z)*fraction
+            edges=[((x,high_z+padding),(0,1)),((low_x-padding,z),(-1,0)),
+                   ((high_x+padding,z),(1,0)),((x,low_z-padding),(0,-1))]
+            for point,normal in edges:
+                if normal[0]*front[0]+normal[1]*front[1]<=.35:yield point
+        # Entrance corner planting frames the two shoulders, never the front axis.
+        # Actual road, marker, island and inter-plant clearance still decides.
+        for x in (low_x-padding,high_x+padding):
+            for z in (low_z-padding,high_z+padding):yield x,z
+    # Constrained stalls may have only entrance-shoulder lawn. Search those
+    # pockets by distance while retaining an open corridor along the front axis.
+    cx,cz=obstacle['center'][0],obstacle['center'][2]
+    side=(-front[1],front[0])
+    for step in range(1,25):
+        distance=step*.5
+        for angle in range(48):
+            dx,dz=distance*math.cos(angle*math.tau/48),distance*math.sin(angle*math.tau/48)
+            if abs(dx*side[0]+dz*side[1])>radius+.35:yield cx+dx,cz+dz
 
 
 def _planting_record(g, before, sid, position, radius, category, kind, shrubs=False, prop_id=None):
@@ -253,6 +266,22 @@ def finish_gardens(g, layout, records):
         y = island['height']
         space = PlantingSpace(g, layout, island)
         local_occupied = []
+        # Prop gardens frame small activities without obscuring usable front faces.
+        for record in [r for r in records if r['island']==sid]:
+            accepted = 0
+            for px, pz in prop_side_candidates(obstacles[record['id']], garden_radius):
+                if not space.free(px,pz,garden_radius) or any(
+                        math.hypot(px-a,pz-b) < max(3.5, garden_radius+r+.25)
+                        for a, b, r in local_occupied):
+                    continue
+                before = _mesh_counts(g)
+                g.garden_clump(px,y,pz,1.0)
+                planted.append(_planting_record(g, before, sid, (px,y,pz), garden_radius,
+                                                'prop_side', 'garden_clump', True, record['id']))
+                local_occupied.append((px,pz,garden_radius))
+                accepted += 1
+                if accepted == 3:
+                    break
         for points, width in g.PAVING_TRACKS:
             for index in range(1, len(points)-1, 3):
                 x, z = points[index]
@@ -293,22 +322,6 @@ def finish_gardens(g, layout, records):
                         shrubs += 1
                     planted.append(_planting_record(g, before, sid, (px,y,pz), .9,
                                                      'roadside', kind, has_shrubs))
-        # Prop gardens frame small activities without obscuring usable front faces.
-        for record in [r for r in records if r['island']==sid]:
-            accepted = 0
-            for px, pz in prop_side_candidates(obstacles[record['id']], garden_radius):
-                if not space.free(px,pz,garden_radius) or any(
-                        math.hypot(px-a,pz-b) < max(3.5, garden_radius+r+.25)
-                        for a, b, r in local_occupied):
-                    continue
-                before = _mesh_counts(g)
-                g.garden_clump(px,y,pz,1.0)
-                planted.append(_planting_record(g, before, sid, (px,y,pz), garden_radius,
-                                                'prop_side', 'garden_clump', True, record['id']))
-                local_occupied.append((px,pz,garden_radius))
-                accepted += 1
-                if accepted == 3:
-                    break
     prop_side = [p for p in planted if p['category']=='prop_side']
     covered = {p['propId'] for p in prop_side}
     return {'metadataVersion': METADATA_VERSION,

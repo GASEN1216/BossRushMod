@@ -812,3 +812,7 @@ Mode F/G/H、Zombie、终章/BGM、最终清场与存档回读。Player.log 不�
 
 - CR-2026-09-29-101～117（P2×4 / P3×13，COMPAT / SAFE / OPERATIONAL）：Fixed，L1 + L2、无 L3；逐条根因 / 修复 / 验证见本地报告 `docs/reports/sky-island/天空岛_发布前生产审查_2026-09-29.md` §1，修复流水见 `FIX_TRACKER.md` 同日节。切片 C「Mod 物品进岛上物资池」refuted。
 - CR-2026-09-29-112（P3 / COMPAT）：头目首杀手记与字幕不看击杀者，断风被拾荒者打死也记首杀（`SkyIslandBossForge.RaiseDefeated`，消费方 `SkyIslandWorldStoryBosses`）。Fixed（owner 2026-09-29 定「只认主角击杀」）：`RaiseDefeated` 带致死一击，倒下回执照放，首杀回调按官方击杀计数口径 `fromCharacter.IsMainCharacter` 过滤；尸体箱与掉落照常；三张装备页 Wiki 中英改为「亲手打倒的首杀」。
+
+## 2026-09-30 天空岛道路与阴影（COMPAT，模型专题）
+
+已修复旧路线穿入登记模型、房前家具朝向及长椅背板错位、重复输出已替换地标、跨级联阴影坐标插值、共面反绕序贴图 / 深度争抢和 normal bias 不一致。采用连续重规划道路、实际包络摆放、单一结构 owner、片元级阴影坐标与配对面标记；未关闭正常阴影。证据和实机判据见 [本轮报告](docs/reports/sky-island/2026-09-30-天空岛摆放与阴影修复.md)。此记录只覆盖模型专题，不关闭上方整体生产审查的独立玩法问题。

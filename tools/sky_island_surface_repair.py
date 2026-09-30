@@ -91,6 +91,18 @@ def join_coincident_positions(obj, tolerance=1e-6):
     }
 
 
+def clean_candidate_surfaces(mesh):
+    """按最终 float32 坐标去掉退化/同绕序同 UV 重复面，保留双面图集。"""
+    from sky_island_mesh_hygiene import clean_faces
+    before = len(mesh['f'])
+    faces, smooth, removed, collapsed = clean_faces(
+        mesh['v'], mesh['f'], mesh.get('smooth', False), uv=mesh['uv'])
+    mesh['f'], mesh['smooth'] = faces, smooth
+    return {'facesBefore': before, 'facesAfter': len(faces),
+            'removedFaces': removed, 'collapsedCorners': collapsed,
+            'policy': 'float32_degenerate_and_same_winding_same_atlas_only'}
+
+
 def prepare(source_path, baseline_path, output_path, contain_bounds=False):
     import sky_island_tripo_import as importer
     source_path, baseline_path, output_path = map(Path, (source_path, baseline_path, output_path))
@@ -107,6 +119,7 @@ def prepare(source_path, baseline_path, output_path, contain_bounds=False):
     candidate['mesh'] = importer.extract(obj)
     containment = (contain_in_placement_bounds(candidate['mesh'], original['meta']['bounds'])
                    if contain_bounds else None)
+    hygiene = clean_candidate_surfaces(candidate['mesh'])
     triangles = len(candidate['mesh']['f'])
     if triangles > original['meta']['triangles']:
         raise ValueError('修复超出原面数预算。')
@@ -121,6 +134,7 @@ def prepare(source_path, baseline_path, output_path, contain_bounds=False):
             'method': 'coincident_source_positions_joined_before_decimation_preserving_corner_uv',
             'sourceGLBSHA256': source_sha, 'originalJSONSHA256': baseline_sha,
             'joinDistanceMetres': 1e-6, 'originalBoundsRetained': True,
+            'meshHygiene': hygiene,
         },
     })
     if containment is not None:
@@ -135,7 +149,8 @@ def prepare(source_path, baseline_path, output_path, contain_bounds=False):
         'sourceGLBSHA256': source_sha, 'baselineJSON': str(baseline_path.resolve()),
         'baselineJSONSHA256': baseline_sha, 'candidateJSON': str(output_path.resolve()),
         'candidateSHA256': _sha(output_path), 'sourceFilesUnchanged': unchanged,
-        'coincidentJoin': proof, 'trianglesBefore': len(original['mesh']['f']),
+        'coincidentJoin': proof, 'meshHygiene': hygiene,
+        'trianglesBefore': len(original['mesh']['f']),
         'trianglesAfter': triangles, 'originalMetadataBoundsPreserved':
             candidate['meta']['bounds'] == original['meta']['bounds'],
         'placementContainment': containment,

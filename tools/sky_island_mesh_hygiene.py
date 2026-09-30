@@ -2,17 +2,21 @@
 
 球极点和半径为零的旋转截面原来输出退化四边形。仅折叠同一面的
 相邻重合角点，保留有效三角和原顶点/UV 索引；不删正反双面叶片。
+同绕序重复面只在顶点索引一致或显式传入 UV 且位置/UV 一致时去重。
 """
 
 from struct import pack, unpack
 
 
-def clean_faces(vertices, faces, smooth=False):
+def clean_faces(vertices, faces, smooth=False, uv=None):
     # Blender/FBX 坐标缓冲是 float32。世界远端的共线小叶在 double 中可能
     # 残留极小面积，写入网格才归零；按最终坐标精度判定，避免 443 个空三角。
     points = [unpack('fff', pack('fff', *p)) for p in vertices]
     clean, shading = [], []
     removed = collapsed = 0
+    seen = set()
+    if uv is not None and len(uv) != len(vertices):
+        raise ValueError("UV must match every source vertex")
     for index, face in enumerate(faces):
         corners = []
         for vertex in face:
@@ -26,8 +30,17 @@ def clean_faces(vertices, faces, smooth=False):
         if len(corners) < 3 or not _has_area(points, corners):
             removed += 1
             continue
+        shade = smooth[index] if isinstance(smooth, (list, tuple)) else smooth
+        # UV 接缝不焊接；反绕序保留，循环移位仍属于同一面。
+        # 未提供 UV 时只认相同索引，不能猜同位置点的贴图是否相同。
+        attributes = tuple((points[i], tuple(uv[i])) for i in corners) if uv is not None else tuple(corners)
+        key = (shade, _oriented_face_key(attributes))
+        if key in seen:
+            removed += 1
+            continue
+        seen.add(key)
         clean.append(tuple(corners))
-        shading.append(smooth[index] if isinstance(smooth, (list, tuple)) else smooth)
+        shading.append(shade)
     return clean, shading, removed, collapsed
 
 
@@ -44,3 +57,8 @@ def _has_area(vertices, corners):
         if sum(v*v for v in cross) > 1e-18:
             return True
     return False
+
+
+def _oriented_face_key(corners):
+    """循环面序归一；不排序角点，否则会把双面薄片的背面误删。"""
+    return min(corners[i:] + corners[:i] for i in range(len(corners)))

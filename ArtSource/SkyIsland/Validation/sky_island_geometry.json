@@ -2066,16 +2066,16 @@
       "triangles": 3940
     },
     "VIS_B_Wood": {
-      "vertices": 5322,
-      "triangles": 9428
+      "vertices": 5080,
+      "triangles": 8992
     },
     "VIS_B_WoodDark": {
       "vertices": 2490,
       "triangles": 4236
     },
     "VIS_B_Brass": {
-      "vertices": 4206,
-      "triangles": 7048
+      "vertices": 4038,
+      "triangles": 6808
     },
     "VIS_C_Wood": {
       "vertices": 4420,
@@ -2098,8 +2098,8 @@
       "triangles": 2920
     },
     "VIS_D_Brass": {
-      "vertices": 2457,
-      "triangles": 4449
+      "vertices": 2174,
+      "triangles": 3888
     },
     "VIS_E_Wood": {
       "vertices": 1114,
@@ -2134,8 +2134,8 @@
       "triangles": 2712
     },
     "VIS_G_Brass": {
-      "vertices": 2648,
-      "triangles": 4732
+      "vertices": 1640,
+      "triangles": 2716
     },
     "VIS_H_Wood": {
       "vertices": 946,
@@ -2198,8 +2198,8 @@
       "triangles": 1504
     },
     "VIS_Bridge_AB_Wood": {
-      "vertices": 464,
-      "triangles": 768
+      "vertices": 432,
+      "triangles": 720
     },
     "VIS_Bridge_AB_WoodDark": {
       "vertices": 480,
@@ -2210,8 +2210,8 @@
       "triangles": 320
     },
     "VIS_Bridge_BC_Wood": {
-      "vertices": 472,
-      "triangles": 780
+      "vertices": 432,
+      "triangles": 720
     },
     "VIS_Bridge_BC_WoodDark": {
       "vertices": 504,
@@ -2222,8 +2222,8 @@
       "triangles": 360
     },
     "VIS_Bridge_CD_Wood": {
-      "vertices": 472,
-      "triangles": 780
+      "vertices": 432,
+      "triangles": 720
     },
     "VIS_Bridge_CD_WoodDark": {
       "vertices": 504,
@@ -2234,8 +2234,8 @@
       "triangles": 360
     },
     "VIS_Bridge_DE_Wood": {
-      "vertices": 1496,
-      "triangles": 2484
+      "vertices": 1440,
+      "triangles": 2400
     },
     "VIS_Bridge_DE_WoodDark": {
       "vertices": 1332,
@@ -2246,8 +2246,8 @@
       "triangles": 620
     },
     "VIS_Bridge_BF_Wood": {
-      "vertices": 480,
-      "triangles": 792
+      "vertices": 432,
+      "triangles": 720
     },
     "VIS_Bridge_BF_WoodDark": {
       "vertices": 576,
@@ -2258,8 +2258,8 @@
       "triangles": 480
     },
     "VIS_Bridge_FG_Wood": {
-      "vertices": 464,
-      "triangles": 768
+      "vertices": 432,
+      "triangles": 720
     },
     "VIS_Bridge_FG_WoodDark": {
       "vertices": 480,
@@ -2270,8 +2270,8 @@
       "triangles": 320
     },
     "VIS_Bridge_GE_Wood": {
-      "vertices": 1488,
-      "triangles": 2472
+      "vertices": 1440,
+      "triangles": 2400
     },
     "VIS_Bridge_GE_WoodDark": {
       "vertices": 1296,
@@ -2282,8 +2282,8 @@
       "triangles": 560
     },
     "VIS_Bridge_EH_Wood": {
-      "vertices": 480,
-      "triangles": 792
+      "vertices": 432,
+      "triangles": 720
     },
     "VIS_Bridge_EH_WoodDark": {
       "vertices": 552,
@@ -2294,8 +2294,8 @@
       "triangles": 440
     },
     "VIS_Bridge_CS1_Wood": {
-      "vertices": 464,
-      "triangles": 768
+      "vertices": 432,
+      "triangles": 720
     },
     "VIS_Bridge_CS1_WoodDark": {
       "vertices": 492,
@@ -2306,8 +2306,8 @@
       "triangles": 340
     },
     "VIS_Bridge_DS2_Wood": {
-      "vertices": 464,
-      "triangles": 768
+      "vertices": 432,
+      "triangles": 720
     },
     "VIS_Bridge_DS2_WoodDark": {
       "vertices": 492,
@@ -2318,8 +2318,8 @@
       "triangles": 340
     },
     "VIS_Bridge_FS3_Wood": {
-      "vertices": 464,
-      "triangles": 768
+      "vertices": 432,
+      "triangles": 720
     },
     "VIS_Bridge_FS3_WoodDark": {
       "vertices": 504,
@@ -2330,8 +2330,8 @@
       "triangles": 360
     },
     "VIS_Bridge_GS4_Wood": {
-      "vertices": 464,
-      "triangles": 768
+      "vertices": 432,
+      "triangles": 720
     },
     "VIS_Bridge_GS4_WoodDark": {
       "vertices": 492,
@@ -2342,8 +2342,8 @@
       "triangles": 340
     },
     "VIS_Bridge_K1_Wood": {
-      "vertices": 2240,
-      "triangles": 3712
+      "vertices": 2112,
+      "triangles": 3520
     },
     "VIS_Bridge_K1_WoodDark": {
       "vertices": 2224,
@@ -2354,8 +2354,8 @@
       "triangles": 1360
     },
     "VIS_Bridge_K2_Wood": {
-      "vertices": 2560,
-      "triangles": 4240
+      "vertices": 2400,
+      "triangles": 4000
     },
     "VIS_Bridge_K2_WoodDark": {
       "vertices": 2560,
@@ -2366,8 +2366,8 @@
       "triangles": 1600
     },
     "VIS_Bridge_K3_Wood": {
-      "vertices": 1520,
-      "triangles": 2520
+      "vertices": 1440,
+      "triangles": 2400
     },
     "VIS_Bridge_K3_WoodDark": {
       "vertices": 1428,
@@ -2377,17 +2377,9 @@
       "vertices": 468,
       "triangles": 780
     },
-    "VIS_A_GrassLight": {
-      "vertices": 20,
-      "triangles": 10
-    },
     "VIS_A_TripoDockHouse": {
       "vertices": 5693,
-      "triangles": 3000
-    },
-    "VIS_B_Grass": {
-      "vertices": 84,
-      "triangles": 42
+      "triangles": 2999
     },
     "VIS_B_TripoTeaHouse": {
       "vertices": 5635,
@@ -2406,24 +2398,20 @@
       "triangles": 2500
     },
     "VIS_B_Blossom": {
-      "vertices": 4479,
-      "triangles": 7493
+      "vertices": 21099,
+      "triangles": 35113
     },
     "VIS_B_Flower": {
-      "vertices": 4405,
-      "triangles": 6506
+      "vertices": 7235,
+      "triangles": 11664
     },
     "VIS_B_TripoChimeRack": {
       "vertices": 9352,
-      "triangles": 5000
+      "triangles": 4998
     },
     "VIS_B_TripoDuckStatue": {
       "vertices": 2108,
       "triangles": 2499
-    },
-    "VIS_C_GrassLight": {
-      "vertices": 36,
-      "triangles": 18
     },
     "VIS_C_TripoMill": {
       "vertices": 8203,
@@ -2433,10 +2421,6 @@
       "vertices": 6756,
       "triangles": 3500
     },
-    "VIS_D_Grass": {
-      "vertices": 36,
-      "triangles": 18
-    },
     "VIS_D_TripoGreatTree": {
       "vertices": 66728,
       "triangles": 35324
@@ -2445,17 +2429,9 @@
       "vertices": 7237,
       "triangles": 3500
     },
-    "VIS_E_Grass": {
-      "vertices": 24,
-      "triangles": 12
-    },
     "VIS_E_TripoWindPillar": {
       "vertices": 9358,
       "triangles": 5000
-    },
-    "VIS_F_Grass": {
-      "vertices": 60,
-      "triangles": 30
     },
     "VIS_F_Water": {
       "vertices": 32,
@@ -2477,10 +2453,6 @@
       "vertices": 16120,
       "triangles": 9600
     },
-    "VIS_G_Grass": {
-      "vertices": 32,
-      "triangles": 16
-    },
     "VIS_G_TripoWorkshopDome": {
       "vertices": 11047,
       "triangles": 6000
@@ -2493,49 +2465,29 @@
       "vertices": 7027,
       "triangles": 4000
     },
-    "VIS_H_Grass": {
-      "vertices": 28,
-      "triangles": 14
-    },
     "VIS_H_TripoHomecomingBell": {
       "vertices": 7647,
       "triangles": 4000
     },
     "VIS_H_TripoMemorialStele": {
       "vertices": 9624,
-      "triangles": 5000
-    },
-    "VIS_S1_GrassLight": {
-      "vertices": 8,
-      "triangles": 4
+      "triangles": 4996
     },
     "VIS_S1_Water": {
       "vertices": 96,
       "triangles": 184
     },
     "VIS_S1_Ivory": {
-      "vertices": 564,
-      "triangles": 948
-    },
-    "VIS_S2_Grass": {
-      "vertices": 8,
-      "triangles": 4
+      "vertices": 184,
+      "triangles": 340
     },
     "VIS_S2_TripoPostHouse": {
       "vertices": 4937,
       "triangles": 2500
     },
-    "VIS_S3_Grass": {
-      "vertices": 8,
-      "triangles": 4
-    },
     "VIS_S3_TripoCaveRock": {
       "vertices": 6142,
       "triangles": 2999
-    },
-    "VIS_S4_Grass": {
-      "vertices": 8,
-      "triangles": 4
     },
     "VIS_S4_TripoLookoutTower": {
       "vertices": 7282,
@@ -2618,16 +2570,16 @@
       "triangles": 736
     },
     "VIS_A_Flower": {
-      "vertices": 2397,
-      "triangles": 3363
+      "vertices": 1086,
+      "triangles": 1368
     },
     "VIS_A_BrassLight": {
       "vertices": 376,
       "triangles": 704
     },
     "VIS_A_Coral": {
-      "vertices": 632,
-      "triangles": 1132
+      "vertices": 182,
+      "triangles": 332
     },
     "VIS_A_PaintTealLight": {
       "vertices": 20,
@@ -2650,24 +2602,24 @@
       "triangles": 1100
     },
     "VIS_B_LeafLight": {
-      "vertices": 10838,
-      "triangles": 16256
+      "vertices": 4128,
+      "triangles": 5864
     },
     "VIS_B_Fern": {
       "vertices": 1552,
       "triangles": 852
     },
     "VIS_B_Leaf": {
-      "vertices": 23212,
-      "triangles": 37225
+      "vertices": 8798,
+      "triangles": 13752
     },
     "VIS_B_Copper": {
       "vertices": 90,
       "triangles": 152
     },
     "VIS_B_Coral": {
-      "vertices": 4716,
-      "triangles": 7318
+      "vertices": 726,
+      "triangles": 1086
     },
     "VIS_B_PaintTealDeep": {
       "vertices": 146,
@@ -2678,20 +2630,20 @@
       "triangles": 208
     },
     "VIS_B_Chalk": {
-      "vertices": 676,
-      "triangles": 1256
+      "vertices": 340,
+      "triangles": 632
     },
     "VIS_B_RockLight": {
-      "vertices": 400,
-      "triangles": 500
+      "vertices": 890,
+      "triangles": 1088
     },
     "VIS_B_RockDeep": {
       "vertices": 76,
       "triangles": 108
     },
     "VIS_B_Glow": {
-      "vertices": 2207,
-      "triangles": 2182
+      "vertices": 1355,
+      "triangles": 1518
     },
     "VIS_B_Soil": {
       "vertices": 32,
@@ -2702,24 +2654,24 @@
       "triangles": 2572
     },
     "VIS_C_Soil": {
-      "vertices": 338,
-      "triangles": 600
+      "vertices": 146,
+      "triangles": 240
     },
     "VIS_C_Leaf": {
-      "vertices": 22814,
-      "triangles": 34682
+      "vertices": 1076,
+      "triangles": 1304
     },
     "VIS_C_LeafGold": {
-      "vertices": 5572,
-      "triangles": 9776
+      "vertices": 16732,
+      "triangles": 28016
     },
     "VIS_C_BrassLight": {
-      "vertices": 1050,
-      "triangles": 1224
+      "vertices": 438,
+      "triangles": 816
     },
     "VIS_C_LeafLight": {
-      "vertices": 11162,
-      "triangles": 16096
+      "vertices": 8288,
+      "triangles": 12732
     },
     "VIS_C_Fern": {
       "vertices": 1672,
@@ -2734,12 +2686,12 @@
       "triangles": 304
     },
     "VIS_C_Flower": {
-      "vertices": 9486,
-      "triangles": 16369
+      "vertices": 1086,
+      "triangles": 1368
     },
     "VIS_C_Coral": {
-      "vertices": 3382,
-      "triangles": 5180
+      "vertices": 232,
+      "triangles": 412
     },
     "VIS_C_PaintTealDeep": {
       "vertices": 44,
@@ -2774,8 +2726,8 @@
       "triangles": 1440
     },
     "VIS_D_BrassLight": {
-      "vertices": 200,
-      "triangles": 372
+      "vertices": 184,
+      "triangles": 344
     },
     "VIS_D_PaintTeal": {
       "vertices": 32,
@@ -2786,12 +2738,12 @@
       "triangles": 170
     },
     "VIS_D_Ivory": {
-      "vertices": 2210,
-      "triangles": 3532
+      "vertices": 150,
+      "triangles": 236
     },
     "VIS_D_Coral": {
-      "vertices": 1026,
-      "triangles": 1752
+      "vertices": 486,
+      "triangles": 792
     },
     "VIS_D_WoodLight": {
       "vertices": 508,
@@ -2802,44 +2754,44 @@
       "triangles": 117
     },
     "VIS_D_Chalk": {
-      "vertices": 7400,
-      "triangles": 11952
+      "vertices": 104,
+      "triangles": 192
     },
     "VIS_D_RockLight": {
-      "vertices": 400,
-      "triangles": 500
+      "vertices": 435,
+      "triangles": 542
     },
     "VIS_D_Glow": {
       "vertices": 395,
       "triangles": 558
     },
     "VIS_E_Chalk": {
-      "vertices": 381,
-      "triangles": 678
+      "vertices": 45,
+      "triangles": 54
     },
     "VIS_E_PaintTealLight": {
       "vertices": 230,
       "triangles": 412
     },
     "VIS_E_Flower": {
-      "vertices": 2312,
-      "triangles": 3248
+      "vertices": 1116,
+      "triangles": 1428
     },
     "VIS_E_Coral": {
-      "vertices": 642,
-      "triangles": 1132
+      "vertices": 102,
+      "triangles": 172
     },
     "VIS_E_Ivory": {
-      "vertices": 1412,
-      "triangles": 2272
+      "vertices": 112,
+      "triangles": 192
     },
     "VIS_E_Copper": {
       "vertices": 6,
       "triangles": 8
     },
     "VIS_E_Leaf": {
-      "vertices": 10504,
-      "triangles": 16507
+      "vertices": 646,
+      "triangles": 780
     },
     "VIS_E_WoodLight": {
       "vertices": 352,
@@ -2858,28 +2810,28 @@
       "triangles": 17152
     },
     "VIS_E_LeafLight": {
-      "vertices": 6371,
-      "triangles": 9550
+      "vertices": 516,
+      "triangles": 268
     },
     "VIS_F_RockLight": {
-      "vertices": 295,
-      "triangles": 374
+      "vertices": 645,
+      "triangles": 794
     },
     "VIS_F_RockDeep": {
       "vertices": 68,
       "triangles": 101
     },
     "VIS_F_Chalk": {
-      "vertices": 544,
-      "triangles": 1004
+      "vertices": 352,
+      "triangles": 652
     },
     "VIS_F_Coral": {
-      "vertices": 1080,
-      "triangles": 1840
+      "vertices": 360,
+      "triangles": 560
     },
     "VIS_F_Glow": {
-      "vertices": 723,
-      "triangles": 1038
+      "vertices": 523,
+      "triangles": 798
     },
     "VIS_F_PaintTealLight": {
       "vertices": 316,
@@ -2894,12 +2846,12 @@
       "triangles": 904
     },
     "VIS_F_Flower": {
-      "vertices": 1220,
-      "triangles": 1568
+      "vertices": 2588,
+      "triangles": 3900
     },
     "VIS_F_BrassLight": {
-      "vertices": 750,
-      "triangles": 540
+      "vertices": 60,
+      "triangles": 80
     },
     "VIS_F_PaintTeal": {
       "vertices": 32,
@@ -2914,12 +2866,12 @@
       "triangles": 173
     },
     "VIS_G_Chalk": {
-      "vertices": 452,
-      "triangles": 816
+      "vertices": 116,
+      "triangles": 192
     },
     "VIS_G_Coral": {
-      "vertices": 960,
-      "triangles": 1704
+      "vertices": 150,
+      "triangles": 264
     },
     "VIS_G_PaintTealDeep": {
       "vertices": 498,
@@ -2930,28 +2882,28 @@
       "triangles": 164
     },
     "VIS_G_Flower": {
-      "vertices": 2541,
-      "triangles": 3570
+      "vertices": 1023,
+      "triangles": 1260
     },
     "VIS_G_BrassLight": {
-      "vertices": 964,
-      "triangles": 1520
+      "vertices": 196,
+      "triangles": 368
     },
     "VIS_H_Chalk": {
-      "vertices": 501,
-      "triangles": 882
+      "vertices": 165,
+      "triangles": 258
     },
     "VIS_H_PaintTealLight": {
       "vertices": 230,
       "triangles": 412
     },
     "VIS_H_Flower": {
-      "vertices": 3306,
-      "triangles": 7912
+      "vertices": 1116,
+      "triangles": 1428
     },
     "VIS_H_Coral": {
-      "vertices": 900,
-      "triangles": 1572
+      "vertices": 270,
+      "triangles": 452
     },
     "VIS_H_Ivory": {
       "vertices": 328,
@@ -2962,8 +2914,8 @@
       "triangles": 8
     },
     "VIS_H_Leaf": {
-      "vertices": 13136,
-      "triangles": 21524
+      "vertices": 296,
+      "triangles": 360
     },
     "VIS_H_WoodLight": {
       "vertices": 352,
@@ -2978,12 +2930,12 @@
       "triangles": 136
     },
     "VIS_H_BrassLight": {
-      "vertices": 1736,
-      "triangles": 2494
+      "vertices": 1280,
+      "triangles": 2190
     },
     "VIS_H_LeafLight": {
-      "vertices": 6302,
-      "triangles": 9196
+      "vertices": 804,
+      "triangles": 412
     },
     "VIS_S1_WoodLight": {
       "vertices": 216,
@@ -2994,8 +2946,8 @@
       "triangles": 60
     },
     "VIS_S1_Coral": {
-      "vertices": 278,
-      "triangles": 492
+      "vertices": 8,
+      "triangles": 12
     },
     "VIS_S1_PaintTealLight": {
       "vertices": 24,
@@ -3006,16 +2958,16 @@
       "triangles": 64
     },
     "VIS_S1_LeafLight": {
-      "vertices": 4534,
-      "triangles": 6455
+      "vertices": 4852,
+      "triangles": 7220
     },
     "VIS_S1_Fern": {
       "vertices": 1425,
       "triangles": 843
     },
     "VIS_S1_Leaf": {
-      "vertices": 4474,
-      "triangles": 7175
+      "vertices": 398,
+      "triangles": 484
     },
     "VIS_S1_Copper": {
       "vertices": 34,
@@ -3034,8 +2986,8 @@
       "triangles": 28
     },
     "VIS_S2_Ivory": {
-      "vertices": 424,
-      "triangles": 680
+      "vertices": 24,
+      "triangles": 40
     },
     "VIS_S2_PaintTeal": {
       "vertices": 90,
@@ -3046,28 +2998,28 @@
       "triangles": 208
     },
     "VIS_S2_Coral": {
-      "vertices": 164,
-      "triangles": 296
+      "vertices": 74,
+      "triangles": 136
     },
     "VIS_S2_Flower": {
-      "vertices": 1260,
-      "triangles": 1845
+      "vertices": 3319,
+      "triangles": 5404
     },
     "VIS_S2_LeafLight": {
-      "vertices": 2861,
-      "triangles": 3874
+      "vertices": 2980,
+      "triangles": 4180
     },
     "VIS_S2_Leaf": {
-      "vertices": 4564,
-      "triangles": 7817
+      "vertices": 6764,
+      "triangles": 11292
     },
     "VIS_S3_PaintTealLight": {
       "vertices": 104,
       "triangles": 188
     },
     "VIS_S3_Flower": {
-      "vertices": 1023,
-      "triangles": 1455
+      "vertices": 540,
+      "triangles": 720
     },
     "VIS_S3_BrassLight": {
       "vertices": 184,
@@ -3082,12 +3034,12 @@
       "triangles": 8
     },
     "VIS_S3_Ivory": {
-      "vertices": 398,
-      "triangles": 620
+      "vertices": 78,
+      "triangles": 108
     },
     "VIS_S3_Coral": {
-      "vertices": 598,
-      "triangles": 1076
+      "vertices": 148,
+      "triangles": 276
     },
     "VIS_S3_WoodLight": {
       "vertices": 44,
@@ -3102,12 +3054,12 @@
       "triangles": 157
     },
     "VIS_S4_Chalk": {
-      "vertices": 444,
-      "triangles": 804
+      "vertices": 108,
+      "triangles": 180
     },
     "VIS_S4_Coral": {
-      "vertices": 366,
-      "triangles": 648
+      "vertices": 96,
+      "triangles": 168
     },
     "VIS_S4_PaintTealDeep": {
       "vertices": 84,
@@ -3122,8 +3074,8 @@
       "triangles": 2
     },
     "VIS_A_Ivory": {
-      "vertices": 1408,
-      "triangles": 2240
+      "vertices": 288,
+      "triangles": 448
     },
     "VIS_A_Limestone": {
       "vertices": 48,
@@ -3138,12 +3090,16 @@
       "triangles": 2400
     },
     "VIS_A_Glow": {
-      "vertices": 1270,
-      "triangles": 1188
+      "vertices": 928,
+      "triangles": 960
     },
-    "VIS_B_Limestone": {
-      "vertices": 320,
-      "triangles": 604
+    "VIS_B_GroundDetail_Limestone": {
+      "vertices": 80,
+      "triangles": 156
+    },
+    "VIS_B_GroundDetail_Chalk": {
+      "vertices": 336,
+      "triangles": 624
     },
     "VIS_B_Mural": {
       "vertices": 4,
@@ -3153,65 +3109,93 @@
       "vertices": 24,
       "triangles": 8
     },
-    "VIS_C_Limestone": {
+    "VIS_C_GroundDetail_Soil": {
+      "vertices": 192,
+      "triangles": 360
+    },
+    "VIS_C_GroundDetail_Limestone": {
       "vertices": 768,
       "triangles": 1440
     },
-    "VIS_C_Forest": {
-      "vertices": 6361,
-      "triangles": 10106
+    "VIS_C_Flora_LeafLight": {
+      "vertices": 35002,
+      "triangles": 58116
+    },
+    "VIS_C_Flora_Leaf": {
+      "vertices": 72295,
+      "triangles": 120910
+    },
+    "VIS_C_Flora_Coral": {
+      "vertices": 3150,
+      "triangles": 4768
+    },
+    "VIS_C_Flora_Forest": {
+      "vertices": 6168,
+      "triangles": 10768
+    },
+    "VIS_C_Flora_LeafGold": {
+      "vertices": 1800,
+      "triangles": 2880
+    },
+    "VIS_C_Flora_Flower": {
+      "vertices": 33384,
+      "triangles": 54144
     },
     "VIS_D_Forest": {
-      "vertices": 7181,
-      "triangles": 11682
+      "vertices": 7806,
+      "triangles": 12752
     },
     "VIS_D_Leaf": {
-      "vertices": 17626,
-      "triangles": 27836
+      "vertices": 11570,
+      "triangles": 18844
     },
-    "VIS_D_Limestone": {
-      "vertices": 112,
-      "triangles": 216
-    },
-    "VIS_D_StarGlow": {
-      "vertices": 1536,
-      "triangles": 1584
-    },
-    "VIS_E_Limestone": {
+    "VIS_D_GroundDetail_Limestone": {
       "vertices": 80,
       "triangles": 156
     },
-    "VIS_F_Limestone": {
-      "vertices": 384,
-      "triangles": 712
+    "VIS_D_GroundDetail_Chalk": {
+      "vertices": 336,
+      "triangles": 624
+    },
+    "VIS_E_GroundDetail_Limestone": {
+      "vertices": 80,
+      "triangles": 156
+    },
+    "VIS_E_GroundDetail_Chalk": {
+      "vertices": 336,
+      "triangles": 624
     },
     "VIS_F_Teal": {
       "vertices": 72,
       "triangles": 88
     },
-    "VIS_G_Limestone": {
-      "vertices": 128,
-      "triangles": 248
+    "VIS_G_GroundDetail_Limestone": {
+      "vertices": 80,
+      "triangles": 156
     },
-    "VIS_G_Copper": {
+    "VIS_G_GroundDetail_Chalk": {
       "vertices": 336,
-      "triangles": 672
+      "triangles": 624
     },
-    "VIS_G_StarGlow": {
-      "vertices": 268,
-      "triangles": 424
+    "VIS_H_GroundDetail_Limestone": {
+      "vertices": 80,
+      "triangles": 156
+    },
+    "VIS_H_GroundDetail_Chalk": {
+      "vertices": 336,
+      "triangles": 624
     },
     "VIS_H_Limestone": {
-      "vertices": 240,
-      "triangles": 420
+      "vertices": 160,
+      "triangles": 264
     },
     "VIS_H_StarGlow": {
       "vertices": 588,
       "triangles": 784
     },
     "VIS_S1_RockLight": {
-      "vertices": 345,
-      "triangles": 446
+      "vertices": 310,
+      "triangles": 404
     },
     "VIS_S2_Teal": {
       "vertices": 32,
@@ -3222,20 +3206,24 @@
       "triangles": 4
     },
     "VIS_S3_RockLight": {
-      "vertices": 406,
-      "triangles": 532
+      "vertices": 441,
+      "triangles": 574
     },
     "VIS_S3_TripoBrassLampPost": {
       "vertices": 3414,
       "triangles": 1800
     },
     "VIS_S3_Glow": {
-      "vertices": 246,
-      "triangles": 228
+      "vertices": 120,
+      "triangles": 144
     },
-    "VIS_S4_Limestone": {
+    "VIS_S4_GroundDetail_Limestone": {
       "vertices": 80,
       "triangles": 156
+    },
+    "VIS_S4_GroundDetail_Chalk": {
+      "vertices": 336,
+      "triangles": 624
     },
     "VIS_S4_Teal": {
       "vertices": 32,
@@ -3245,7 +3233,11 @@
       "vertices": 84,
       "triangles": 120
     },
-    "VIS_Bridge_AB_WoodLight": {
+    "VIS_Bridge_AB_GroundDetail_Wood": {
+      "vertices": 32,
+      "triangles": 48
+    },
+    "VIS_Bridge_AB_GroundDetail_WoodLight": {
       "vertices": 128,
       "triangles": 192
     },
@@ -3253,7 +3245,11 @@
       "vertices": 160,
       "triangles": 192
     },
-    "VIS_Bridge_BC_WoodLight": {
+    "VIS_Bridge_BC_GroundDetail_Wood": {
+      "vertices": 40,
+      "triangles": 60
+    },
+    "VIS_Bridge_BC_GroundDetail_WoodLight": {
       "vertices": 144,
       "triangles": 216
     },
@@ -3269,7 +3265,11 @@
       "vertices": 240,
       "triangles": 288
     },
-    "VIS_Bridge_CD_WoodLight": {
+    "VIS_Bridge_CD_GroundDetail_Wood": {
+      "vertices": 40,
+      "triangles": 60
+    },
+    "VIS_Bridge_CD_GroundDetail_WoodLight": {
       "vertices": 160,
       "triangles": 240
     },
@@ -3285,13 +3285,17 @@
       "vertices": 240,
       "triangles": 288
     },
-    "VIS_Bridge_DE_WoodLight": {
+    "VIS_Bridge_DE_GroundDetail_Wood": {
+      "vertices": 56,
+      "triangles": 84
+    },
+    "VIS_Bridge_DE_GroundDetail_WoodLight": {
       "vertices": 208,
       "triangles": 312
     },
     "VIS_Bridge_DE_Limestone": {
-      "vertices": 96,
-      "triangles": 184
+      "vertices": 16,
+      "triangles": 28
     },
     "VIS_Bridge_DE_Rock": {
       "vertices": 12,
@@ -3301,7 +3305,11 @@
       "vertices": 480,
       "triangles": 576
     },
-    "VIS_Bridge_BF_WoodLight": {
+    "VIS_Bridge_BF_GroundDetail_Wood": {
+      "vertices": 48,
+      "triangles": 72
+    },
+    "VIS_Bridge_BF_GroundDetail_WoodLight": {
       "vertices": 192,
       "triangles": 288
     },
@@ -3317,7 +3325,11 @@
       "vertices": 320,
       "triangles": 384
     },
-    "VIS_Bridge_FG_WoodLight": {
+    "VIS_Bridge_FG_GroundDetail_Wood": {
+      "vertices": 32,
+      "triangles": 48
+    },
+    "VIS_Bridge_FG_GroundDetail_WoodLight": {
       "vertices": 120,
       "triangles": 180
     },
@@ -3325,13 +3337,17 @@
       "vertices": 160,
       "triangles": 192
     },
-    "VIS_Bridge_GE_WoodLight": {
+    "VIS_Bridge_GE_GroundDetail_Wood": {
+      "vertices": 48,
+      "triangles": 72
+    },
+    "VIS_Bridge_GE_GroundDetail_WoodLight": {
       "vertices": 176,
       "triangles": 264
     },
     "VIS_Bridge_GE_Limestone": {
-      "vertices": 96,
-      "triangles": 184
+      "vertices": 16,
+      "triangles": 28
     },
     "VIS_Bridge_GE_Rock": {
       "vertices": 12,
@@ -3341,7 +3357,11 @@
       "vertices": 400,
       "triangles": 480
     },
-    "VIS_Bridge_EH_WoodLight": {
+    "VIS_Bridge_EH_GroundDetail_Wood": {
+      "vertices": 48,
+      "triangles": 72
+    },
+    "VIS_Bridge_EH_GroundDetail_WoodLight": {
       "vertices": 168,
       "triangles": 252
     },
@@ -3357,7 +3377,11 @@
       "vertices": 240,
       "triangles": 288
     },
-    "VIS_Bridge_CS1_WoodLight": {
+    "VIS_Bridge_CS1_GroundDetail_Wood": {
+      "vertices": 32,
+      "triangles": 48
+    },
+    "VIS_Bridge_CS1_GroundDetail_WoodLight": {
       "vertices": 128,
       "triangles": 192
     },
@@ -3365,7 +3389,11 @@
       "vertices": 160,
       "triangles": 192
     },
-    "VIS_Bridge_DS2_WoodLight": {
+    "VIS_Bridge_DS2_GroundDetail_Wood": {
+      "vertices": 32,
+      "triangles": 48
+    },
+    "VIS_Bridge_DS2_GroundDetail_WoodLight": {
       "vertices": 128,
       "triangles": 192
     },
@@ -3373,7 +3401,11 @@
       "vertices": 160,
       "triangles": 192
     },
-    "VIS_Bridge_FS3_WoodLight": {
+    "VIS_Bridge_FS3_GroundDetail_Wood": {
+      "vertices": 32,
+      "triangles": 48
+    },
+    "VIS_Bridge_FS3_GroundDetail_WoodLight": {
       "vertices": 128,
       "triangles": 192
     },
@@ -3381,7 +3413,11 @@
       "vertices": 160,
       "triangles": 192
     },
-    "VIS_Bridge_GS4_WoodLight": {
+    "VIS_Bridge_GS4_GroundDetail_Wood": {
+      "vertices": 32,
+      "triangles": 48
+    },
+    "VIS_Bridge_GS4_GroundDetail_WoodLight": {
       "vertices": 128,
       "triangles": 192
     },
@@ -3389,13 +3425,17 @@
       "vertices": 160,
       "triangles": 192
     },
-    "VIS_Bridge_K1_WoodLight": {
+    "VIS_Bridge_K1_GroundDetail_Wood": {
+      "vertices": 128,
+      "triangles": 192
+    },
+    "VIS_Bridge_K1_GroundDetail_WoodLight": {
       "vertices": 488,
       "triangles": 732
     },
     "VIS_Bridge_K1_Limestone": {
-      "vertices": 128,
-      "triangles": 240
+      "vertices": 48,
+      "triangles": 84
     },
     "VIS_Bridge_K1_Rock": {
       "vertices": 36,
@@ -3405,13 +3445,17 @@
       "vertices": 960,
       "triangles": 1152
     },
-    "VIS_Bridge_K2_WoodLight": {
+    "VIS_Bridge_K2_GroundDetail_Wood": {
+      "vertices": 160,
+      "triangles": 240
+    },
+    "VIS_Bridge_K2_GroundDetail_WoodLight": {
       "vertices": 608,
       "triangles": 912
     },
     "VIS_Bridge_K2_Limestone": {
-      "vertices": 144,
-      "triangles": 268
+      "vertices": 64,
+      "triangles": 112
     },
     "VIS_Bridge_K2_Rock": {
       "vertices": 48,
@@ -3421,13 +3465,17 @@
       "vertices": 1120,
       "triangles": 1344
     },
-    "VIS_Bridge_K3_WoodLight": {
+    "VIS_Bridge_K3_GroundDetail_Wood": {
+      "vertices": 80,
+      "triangles": 120
+    },
+    "VIS_Bridge_K3_GroundDetail_WoodLight": {
       "vertices": 296,
       "triangles": 444
     },
     "VIS_Bridge_K3_Limestone": {
-      "vertices": 112,
-      "triangles": 212
+      "vertices": 32,
+      "triangles": 56
     },
     "VIS_Bridge_K3_Rock": {
       "vertices": 24,
@@ -3437,7 +3485,11 @@
       "vertices": 640,
       "triangles": 768
     },
-    "VIS_Bridge_DE_Chalk": {
+    "VIS_Bridge_DE_GroundDetail_Limestone": {
+      "vertices": 80,
+      "triangles": 156
+    },
+    "VIS_Bridge_DE_GroundDetail_Chalk": {
       "vertices": 336,
       "triangles": 624
     },
@@ -3445,7 +3497,11 @@
       "vertices": 4552,
       "triangles": 2400
     },
-    "VIS_Bridge_GE_Chalk": {
+    "VIS_Bridge_GE_GroundDetail_Limestone": {
+      "vertices": 80,
+      "triangles": 156
+    },
+    "VIS_Bridge_GE_GroundDetail_Chalk": {
       "vertices": 336,
       "triangles": 624
     },
@@ -3453,7 +3509,11 @@
       "vertices": 4552,
       "triangles": 2400
     },
-    "VIS_Bridge_K1_Chalk": {
+    "VIS_Bridge_K1_GroundDetail_Limestone": {
+      "vertices": 80,
+      "triangles": 156
+    },
+    "VIS_Bridge_K1_GroundDetail_Chalk": {
       "vertices": 336,
       "triangles": 624
     },
@@ -3461,7 +3521,11 @@
       "vertices": 4552,
       "triangles": 2400
     },
-    "VIS_Bridge_K2_Chalk": {
+    "VIS_Bridge_K2_GroundDetail_Limestone": {
+      "vertices": 80,
+      "triangles": 156
+    },
+    "VIS_Bridge_K2_GroundDetail_Chalk": {
       "vertices": 336,
       "triangles": 624
     },
@@ -3469,7 +3533,11 @@
       "vertices": 4552,
       "triangles": 2400
     },
-    "VIS_Bridge_K3_Chalk": {
+    "VIS_Bridge_K3_GroundDetail_Limestone": {
+      "vertices": 80,
+      "triangles": 156
+    },
+    "VIS_Bridge_K3_GroundDetail_Chalk": {
       "vertices": 336,
       "triangles": 624
     },
@@ -3478,100 +3546,100 @@
       "triangles": 2400
     },
     "VIS_A_Paving_Limestone": {
-      "vertices": 120,
-      "triangles": 114
+      "vertices": 224,
+      "triangles": 222
     },
     "VIS_B_Paving_Limestone": {
-      "vertices": 434,
-      "triangles": 420
+      "vertices": 816,
+      "triangles": 820
     },
     "VIS_C_Paving_Limestone": {
-      "vertices": 162,
-      "triangles": 158
+      "vertices": 301,
+      "triangles": 299
     },
     "VIS_D_Paving_Limestone": {
-      "vertices": 210,
-      "triangles": 204
+      "vertices": 326,
+      "triangles": 326
     },
     "VIS_E_Paving_Limestone": {
-      "vertices": 192,
-      "triangles": 186
+      "vertices": 214,
+      "triangles": 212
     },
     "VIS_F_Paving_Limestone": {
-      "vertices": 468,
-      "triangles": 460
+      "vertices": 710,
+      "triangles": 712
     },
     "VIS_G_Paving_Limestone": {
-      "vertices": 182,
-      "triangles": 176
+      "vertices": 306,
+      "triangles": 304
     },
     "VIS_H_Paving_Limestone": {
-      "vertices": 50,
-      "triangles": 48
+      "vertices": 19,
+      "triangles": 17
     },
     "VIS_S1_Paving_Limestone": {
-      "vertices": 34,
-      "triangles": 32
+      "vertices": 58,
+      "triangles": 56
     },
     "VIS_S2_Paving_Limestone": {
-      "vertices": 34,
-      "triangles": 32
+      "vertices": 41,
+      "triangles": 39
     },
     "VIS_S3_Paving_Limestone": {
-      "vertices": 42,
-      "triangles": 40
+      "vertices": 47,
+      "triangles": 45
     },
     "VIS_S4_Paving_Limestone": {
-      "vertices": 42,
-      "triangles": 40
-    },
-    "VIS_B_Life_Limestone": {
-      "vertices": 364,
-      "triangles": 620
-    },
-    "VIS_B_Life_Forest": {
-      "vertices": 6996,
-      "triangles": 11568
-    },
-    "VIS_B_Life_LeafLight": {
-      "vertices": 15782,
-      "triangles": 23292
-    },
-    "VIS_B_Life_Leaf": {
-      "vertices": 21254,
-      "triangles": 32768
-    },
-    "VIS_B_Life_Coral": {
-      "vertices": 4590,
-      "triangles": 7760
-    },
-    "VIS_B_Life_WoodLight": {
-      "vertices": 744,
-      "triangles": 1296
-    },
-    "VIS_B_Life_WoodDark": {
-      "vertices": 976,
-      "triangles": 1832
+      "vertices": 57,
+      "triangles": 55
     },
     "VIS_B_Life_Wood": {
       "vertices": 336,
       "triangles": 624
     },
+    "VIS_B_Life_WoodLight": {
+      "vertices": 744,
+      "triangles": 1296
+    },
+    "VIS_B_Life_Coral": {
+      "vertices": 720,
+      "triangles": 880
+    },
     "VIS_B_Life_BrassLight": {
       "vertices": 720,
       "triangles": 880
     },
+    "VIS_B_Life_LeafLight": {
+      "vertices": 600,
+      "triangles": 720
+    },
+    "VIS_B_Life_WoodDark": {
+      "vertices": 896,
+      "triangles": 1736
+    },
+    "VIS_B_Life_Flora_Coral": {
+      "vertices": 3690,
+      "triangles": 6560
+    },
+    "VIS_B_Life_Flora_Leaf": {
+      "vertices": 90272,
+      "triangles": 151572
+    },
+    "VIS_B_Life_Flora_LeafLight": {
+      "vertices": 52214,
+      "triangles": 87744
+    },
+    "VIS_B_Life_Flora_Forest": {
+      "vertices": 14238,
+      "triangles": 25784
+    },
     "VIS_B_Life_Brass": {
-      "vertices": 924,
-      "triangles": 1800
+      "vertices": 840,
+      "triangles": 1680
     },
     "VIS_B_Life_Ivory": {
-      "vertices": 372,
-      "triangles": 552
-    },
-    "VIS_B_Life_Teal": {
-      "vertices": 90,
-      "triangles": 180
+      "vertices": 120,
+      "triangles": 160
     },
     "VIS_B_Life_TripoBrassLampPost": {
       "vertices": 9104,
@@ -3753,157 +3821,281 @@
       "vertices": 266,
       "triangles": 160
     },
-    "VIS_A_Leaf": {
-      "vertices": 10590,
-      "triangles": 17368
+    "VIS_A_Flora_Leaf": {
+      "vertices": 34434,
+      "triangles": 58600
     },
-    "VIS_A_LeafLight": {
-      "vertices": 5144,
-      "triangles": 7572
+    "VIS_A_Flora_LeafLight": {
+      "vertices": 17804,
+      "triangles": 30024
     },
-    "VIS_A_Forest": {
-      "vertices": 4507,
-      "triangles": 7358
+    "VIS_A_Flora_Forest": {
+      "vertices": 2394,
+      "triangles": 4264
     },
     "VIS_A_TripoRockB": {
       "vertices": 4488,
       "triangles": 2148
     },
+    "VIS_A_Forest": {
+      "vertices": 3339,
+      "triangles": 5474
+    },
+    "VIS_A_Leaf": {
+      "vertices": 12334,
+      "triangles": 20356
+    },
+    "VIS_A_LeafLight": {
+      "vertices": 4780,
+      "triangles": 7080
+    },
     "VIS_B_TripoRockB": {
       "vertices": 7480,
       "triangles": 3580
     },
+    "VIS_B_Flora_Leaf": {
+      "vertices": 81024,
+      "triangles": 137744
+    },
+    "VIS_B_Flora_LeafLight": {
+      "vertices": 41630,
+      "triangles": 70260
+    },
+    "VIS_B_Flora_Forest": {
+      "vertices": 8526,
+      "triangles": 15448
+    },
     "VIS_B_Forest": {
-      "vertices": 6751,
-      "triangles": 11014
+      "vertices": 3788,
+      "triangles": 5888
+    },
+    "VIS_C_Forest": {
+      "vertices": 3982,
+      "triangles": 6488
     },
     "VIS_C_TripoRockB": {
       "vertices": 6732,
       "triangles": 3222
     },
-    "VIS_D_LeafLight": {
-      "vertices": 8285,
-      "triangles": 12318
+    "VIS_D_Flora_Leaf": {
+      "vertices": 58321,
+      "triangles": 99034
+    },
+    "VIS_D_Flora_LeafLight": {
+      "vertices": 31556,
+      "triangles": 53316
+    },
+    "VIS_D_Flora_Forest": {
+      "vertices": 5082,
+      "triangles": 9096
     },
     "VIS_D_TripoRockB": {
       "vertices": 7854,
       "triangles": 3759
     },
-    "VIS_E_Forest": {
-      "vertices": 4161,
-      "triangles": 6654
+    "VIS_E_Flora_Leaf": {
+      "vertices": 39973,
+      "triangles": 67870
+    },
+    "VIS_E_Flora_LeafLight": {
+      "vertices": 21856,
+      "triangles": 36876
+    },
+    "VIS_E_Flora_Forest": {
+      "vertices": 3738,
+      "triangles": 6664
     },
     "VIS_E_TripoRockB": {
       "vertices": 7480,
       "triangles": 3580
     },
-    "VIS_F_Leaf": {
-      "vertices": 16588,
-      "triangles": 27312
+    "VIS_F_Flora_Leaf": {
+      "vertices": 56899,
+      "triangles": 97930
     },
-    "VIS_F_LeafLight": {
-      "vertices": 5855,
-      "triangles": 9343
+    "VIS_F_Flora_LeafLight": {
+      "vertices": 26493,
+      "triangles": 45043
     },
-    "VIS_F_Forest": {
-      "vertices": 4040,
-      "triangles": 6369
+    "VIS_F_Flora_Forest": {
+      "vertices": 3583,
+      "triangles": 6423
     },
     "VIS_F_TripoRockB": {
       "vertices": 5236,
       "triangles": 2506
     },
     "VIS_F_Blossom": {
-      "vertices": 5394,
-      "triangles": 8560
+      "vertices": 7419,
+      "triangles": 11833
+    },
+    "VIS_F_Forest": {
+      "vertices": 3501,
+      "triangles": 5426
+    },
+    "VIS_F_Leaf": {
+      "vertices": 8578,
+      "triangles": 13468
+    },
+    "VIS_F_LeafLight": {
+      "vertices": 3692,
+      "triangles": 5380
     },
     "VIS_G_Forest": {
-      "vertices": 5131,
-      "triangles": 8362
+      "vertices": 3439,
+      "triangles": 5518
     },
     "VIS_G_Leaf": {
-      "vertices": 13945,
-      "triangles": 22500
+      "vertices": 14566,
+      "triangles": 23828
     },
     "VIS_G_LeafLight": {
-      "vertices": 6759,
-      "triangles": 10054
+      "vertices": 5288,
+      "triangles": 8004
     },
     "VIS_G_TripoRockB": {
       "vertices": 6358,
       "triangles": 3043
     },
-    "VIS_H_Forest": {
-      "vertices": 4664,
-      "triangles": 7656
+    "VIS_G_Flora_Leaf": {
+      "vertices": 46635,
+      "triangles": 79242
+    },
+    "VIS_G_Flora_LeafLight": {
+      "vertices": 24458,
+      "triangles": 41268
+    },
+    "VIS_G_Flora_Forest": {
+      "vertices": 4200,
+      "triangles": 7552
+    },
+    "VIS_H_Flora_Leaf": {
+      "vertices": 45344,
+      "triangles": 77564
+    },
+    "VIS_H_Flora_LeafLight": {
+      "vertices": 22696,
+      "triangles": 38376
+    },
+    "VIS_H_Flora_Forest": {
+      "vertices": 3738,
+      "triangles": 6696
     },
     "VIS_H_TripoRockB": {
       "vertices": 5236,
       "triangles": 2506
     },
     "VIS_S1_Forest": {
-      "vertices": 3925,
-      "triangles": 6473
+      "vertices": 2947,
+      "triangles": 4886
     },
     "VIS_S1_LeafGold": {
-      "vertices": 2632,
-      "triangles": 4816
+      "vertices": 11704,
+      "triangles": 19600
     },
     "VIS_S1_TripoRockB": {
       "vertices": 4862,
       "triangles": 2327
     },
+    "VIS_S1_Flora_Leaf": {
+      "vertices": 18921,
+      "triangles": 32090
+    },
+    "VIS_S1_Flora_LeafLight": {
+      "vertices": 10725,
+      "triangles": 18153
+    },
+    "VIS_S1_Flora_Forest": {
+      "vertices": 2343,
+      "triangles": 4185
+    },
     "VIS_S1_Flower": {
-      "vertices": 958,
-      "triangles": 1342
+      "vertices": 432,
+      "triangles": 564
     },
     "VIS_S2_Blossom": {
-      "vertices": 1792,
-      "triangles": 3264
+      "vertices": 9216,
+      "triangles": 15552
     },
     "VIS_S2_TripoRockB": {
       "vertices": 4862,
       "triangles": 2327
     },
+    "VIS_S2_Flora_Leaf": {
+      "vertices": 17097,
+      "triangles": 28886
+    },
+    "VIS_S2_Flora_LeafLight": {
+      "vertices": 9810,
+      "triangles": 16500
+    },
+    "VIS_S2_Flora_Forest": {
+      "vertices": 1680,
+      "triangles": 2976
+    },
     "VIS_S2_Forest": {
-      "vertices": 3098,
-      "triangles": 5108
+      "vertices": 2591,
+      "triangles": 4334
     },
     "VIS_S3_Forest": {
-      "vertices": 4113,
-      "triangles": 6802
+      "vertices": 5150,
+      "triangles": 8560
     },
     "VIS_S3_Leaf": {
-      "vertices": 7512,
-      "triangles": 12899
+      "vertices": 14910,
+      "triangles": 24836
     },
     "VIS_S3_LeafLight": {
-      "vertices": 3704,
-      "triangles": 5188
+      "vertices": 3548,
+      "triangles": 5124
     },
     "VIS_S3_TripoRockB": {
       "vertices": 4862,
       "triangles": 2327
     },
+    "VIS_S3_Flora_Leaf": {
+      "vertices": 18172,
+      "triangles": 30812
+    },
+    "VIS_S3_Flora_LeafLight": {
+      "vertices": 10118,
+      "triangles": 17088
+    },
+    "VIS_S3_Flora_Forest": {
+      "vertices": 2268,
+      "triangles": 4080
+    },
     "VIS_S4_Forest": {
-      "vertices": 3628,
-      "triangles": 5980
+      "vertices": 2879,
+      "triangles": 4846
     },
     "VIS_S4_Leaf": {
-      "vertices": 6893,
-      "triangles": 11860
+      "vertices": 13446,
+      "triangles": 22484
     },
     "VIS_S4_LeafLight": {
-      "vertices": 3735,
-      "triangles": 5258
+      "vertices": 5288,
+      "triangles": 8004
     },
     "VIS_S4_TripoRockB": {
       "vertices": 5236,
       "triangles": 2506
     },
+    "VIS_S4_Flora_Leaf": {
+      "vertices": 17787,
+      "triangles": 30070
+    },
+    "VIS_S4_Flora_LeafLight": {
+      "vertices": 10204,
+      "triangles": 17184
+    },
+    "VIS_S4_Flora_Forest": {
+      "vertices": 1932,
+      "triangles": 3440
+    },
     "VIS_S4_Flower": {
-      "vertices": 866,
-      "triangles": 1202
+      "vertices": 360,
+      "triangles": 432
     },
     "VIS_CloudSea_CloudBackdrop": {
       "vertices": 4,
@@ -4053,133 +4245,297 @@
       "vertices": 2381,
       "triangles": 1289
     },
-    "VIS_A_Lavender": {
-      "vertices": 1956,
-      "triangles": 3221
+    "VIS_A_Flora_Lavender": {
+      "vertices": 5208,
+      "triangles": 8928
     },
-    "VIS_A_CrystalLavender": {
-      "vertices": 672,
-      "triangles": 896
+    "VIS_A_Flora_BrassLight": {
+      "vertices": 1612,
+      "triangles": 2976
     },
-    "VIS_B_Lavender": {
-      "vertices": 2568,
-      "triangles": 4442
+    "VIS_A_Flora_Ivory": {
+      "vertices": 1000,
+      "triangles": 1600
     },
-    "VIS_C_Blossom": {
-      "vertices": 3242,
-      "triangles": 5202
+    "VIS_A_Flora_CrystalLavender": {
+      "vertices": 600,
+      "triangles": 800
+    },
+    "VIS_A_Flora_Flower": {
+      "vertices": 7560,
+      "triangles": 12960
+    },
+    "VIS_A_Flora_Glow": {
+      "vertices": 1560,
+      "triangles": 2880
+    },
+    "VIS_B_Flora_Flower": {
+      "vertices": 8064,
+      "triangles": 13824
+    },
+    "VIS_B_Flora_Glow": {
+      "vertices": 1664,
+      "triangles": 3072
+    },
+    "VIS_B_Flora_Coral": {
+      "vertices": 13160,
+      "triangles": 22720
+    },
+    "VIS_B_Flora_BrassLight": {
+      "vertices": 4056,
+      "triangles": 7488
+    },
+    "VIS_B_Flora_Lavender": {
+      "vertices": 6720,
+      "triangles": 11520
+    },
+    "VIS_C_Flora_Blossom": {
+      "vertices": 6300,
+      "triangles": 10800
+    },
+    "VIS_C_Flora_BrassLight": {
+      "vertices": 6994,
+      "triangles": 12912
     },
     "VIS_C_Glow": {
       "vertices": 1232,
       "triangles": 1248
     },
-    "VIS_D_CrystalTeal": {
-      "vertices": 1236,
-      "triangles": 1648
+    "VIS_D_Flora_Chalk": {
+      "vertices": 6540,
+      "triangles": 10464
     },
-    "VIS_D_CrystalLavender": {
-      "vertices": 4176,
-      "triangles": 5568
+    "VIS_D_Flora_CrystalLavender": {
+      "vertices": 3924,
+      "triangles": 5232
+    },
+    "VIS_D_Flora_Lavender": {
+      "vertices": 20174,
+      "triangles": 34584
+    },
+    "VIS_D_Flora_BrassLight": {
+      "vertices": 3406,
+      "triangles": 6288
+    },
+    "VIS_D_Flora_Ivory": {
+      "vertices": 2080,
+      "triangles": 3328
+    },
+    "VIS_D_Flora_CrystalTeal": {
+      "vertices": 1248,
+      "triangles": 1664
     },
     "VIS_D_Lavender": {
-      "vertices": 6291,
-      "triangles": 7645
+      "vertices": 3312,
+      "triangles": 3470
+    },
+    "VIS_D_StarGlow": {
+      "vertices": 1440,
+      "triangles": 1440
+    },
+    "VIS_E_Flora_Lavender": {
+      "vertices": 5964,
+      "triangles": 10224
+    },
+    "VIS_E_Flora_BrassLight": {
+      "vertices": 1846,
+      "triangles": 3408
+    },
+    "VIS_E_Flora_Flower": {
+      "vertices": 6048,
+      "triangles": 10368
+    },
+    "VIS_E_Flora_Glow": {
+      "vertices": 1248,
+      "triangles": 2304
+    },
+    "VIS_E_Flora_Ivory": {
+      "vertices": 1120,
+      "triangles": 1792
+    },
+    "VIS_E_Flora_CrystalLavender": {
+      "vertices": 672,
+      "triangles": 896
     },
     "VIS_E_Glow": {
-      "vertices": 1160,
-      "triangles": 1072
+      "vertices": 848,
+      "triangles": 864
     },
-    "VIS_E_CrystalLavender": {
-      "vertices": 780,
-      "triangles": 1040
+    "VIS_F_Flora_Blossom": {
+      "vertices": 9730,
+      "triangles": 16680
     },
-    "VIS_E_Lavender": {
-      "vertices": 1428,
-      "triangles": 2505
+    "VIS_F_Flora_BrassLight": {
+      "vertices": 8242,
+      "triangles": 15216
     },
-    "VIS_F_Lavender": {
-      "vertices": 6623,
-      "triangles": 9224
+    "VIS_F_Flora_Lavender": {
+      "vertices": 21854,
+      "triangles": 37464
     },
     "VIS_F_StarGlow": {
       "vertices": 1344,
       "triangles": 1344
     },
-    "VIS_G_Ivory": {
-      "vertices": 1480,
-      "triangles": 2368
+    "VIS_G_Flora_Lavender": {
+      "vertices": 6468,
+      "triangles": 11088
     },
-    "VIS_G_CrystalLavender": {
-      "vertices": 888,
-      "triangles": 1184
+    "VIS_G_Flora_BrassLight": {
+      "vertices": 2002,
+      "triangles": 3696
     },
-    "VIS_G_Lavender": {
-      "vertices": 1692,
-      "triangles": 2862
+    "VIS_G_Flora_Flower": {
+      "vertices": 6552,
+      "triangles": 11232
+    },
+    "VIS_G_Flora_Glow": {
+      "vertices": 1352,
+      "triangles": 2496
+    },
+    "VIS_G_Flora_Ivory": {
+      "vertices": 1380,
+      "triangles": 2208
+    },
+    "VIS_G_Flora_CrystalLavender": {
+      "vertices": 828,
+      "triangles": 1104
     },
     "VIS_G_Glow": {
-      "vertices": 1340,
-      "triangles": 1224
+      "vertices": 944,
+      "triangles": 960
+    },
+    "VIS_H_Flora_Lavender": {
+      "vertices": 12516,
+      "triangles": 21456
+    },
+    "VIS_H_Flora_BrassLight": {
+      "vertices": 5720,
+      "triangles": 10560
+    },
+    "VIS_H_Flora_Flower": {
+      "vertices": 13916,
+      "triangles": 23856
     },
     "VIS_H_Lavender": {
-      "vertices": 4256,
-      "triangles": 6363
+      "vertices": 1197,
+      "triangles": 1127
     },
     "VIS_H_Glow": {
       "vertices": 1320,
       "triangles": 1476
     },
-    "VIS_S1_Glow": {
-      "vertices": 564,
-      "triangles": 536
+    "VIS_S1_Flora_Lavender": {
+      "vertices": 1680,
+      "triangles": 2880
     },
-    "VIS_S1_Lavender": {
-      "vertices": 918,
-      "triangles": 1328
+    "VIS_S1_Flora_BrassLight": {
+      "vertices": 520,
+      "triangles": 960
     },
-    "VIS_S1_CrystalLavender": {
-      "vertices": 228,
-      "triangles": 304
+    "VIS_S1_Flora_Flower": {
+      "vertices": 2898,
+      "triangles": 4968
     },
-    "VIS_S2_Lavender": {
-      "vertices": 2286,
-      "triangles": 3056
+    "VIS_S1_Flora_Glow": {
+      "vertices": 598,
+      "triangles": 1104
     },
-    "VIS_S2_CrystalLavender": {
+    "VIS_S1_Flora_Ivory": {
+      "vertices": 400,
+      "triangles": 640
+    },
+    "VIS_S1_Flora_CrystalLavender": {
       "vertices": 240,
       "triangles": 320
     },
+    "VIS_S1_Glow": {
+      "vertices": 288,
+      "triangles": 288
+    },
+    "VIS_S2_Flora_Ivory": {
+      "vertices": 380,
+      "triangles": 608
+    },
+    "VIS_S2_Flora_CrystalLavender": {
+      "vertices": 228,
+      "triangles": 304
+    },
+    "VIS_S2_Flora_Lavender": {
+      "vertices": 2100,
+      "triangles": 3600
+    },
+    "VIS_S2_Flora_BrassLight": {
+      "vertices": 650,
+      "triangles": 1200
+    },
+    "VIS_S2_Flora_Flower": {
+      "vertices": 2268,
+      "triangles": 3888
+    },
+    "VIS_S2_Flora_Glow": {
+      "vertices": 468,
+      "triangles": 864
+    },
     "VIS_S2_Glow": {
-      "vertices": 402,
-      "triangles": 364
+      "vertices": 288,
+      "triangles": 288
     },
-    "VIS_S3_Lavender": {
-      "vertices": 2322,
-      "triangles": 3125
+    "VIS_S3_Flora_Ivory": {
+      "vertices": 480,
+      "triangles": 768
     },
-    "VIS_S3_CrystalTeal": {
-      "vertices": 192,
-      "triangles": 256
+    "VIS_S3_Flora_CrystalTeal": {
+      "vertices": 288,
+      "triangles": 384
+    },
+    "VIS_S3_Flora_Lavender": {
+      "vertices": 1848,
+      "triangles": 3168
+    },
+    "VIS_S3_Flora_BrassLight": {
+      "vertices": 572,
+      "triangles": 1056
+    },
+    "VIS_S3_Flora_Flower": {
+      "vertices": 2268,
+      "triangles": 3888
+    },
+    "VIS_S3_Flora_Glow": {
+      "vertices": 468,
+      "triangles": 864
     },
     "VIS_S3_StarGlow": {
       "vertices": 288,
       "triangles": 288
     },
-    "VIS_S4_Ivory": {
-      "vertices": 360,
-      "triangles": 576
+    "VIS_S4_Flora_Lavender": {
+      "vertices": 2100,
+      "triangles": 3600
     },
-    "VIS_S4_CrystalLavender": {
-      "vertices": 216,
-      "triangles": 288
+    "VIS_S4_Flora_BrassLight": {
+      "vertices": 650,
+      "triangles": 1200
+    },
+    "VIS_S4_Flora_Ivory": {
+      "vertices": 420,
+      "triangles": 672
+    },
+    "VIS_S4_Flora_CrystalLavender": {
+      "vertices": 252,
+      "triangles": 336
+    },
+    "VIS_S4_Flora_Flower": {
+      "vertices": 2016,
+      "triangles": 3456
+    },
+    "VIS_S4_Flora_Glow": {
+      "vertices": 416,
+      "triangles": 768
     },
     "VIS_S4_Glow": {
-      "vertices": 420,
-      "triangles": 376
-    },
-    "VIS_S4_Lavender": {
-      "vertices": 1044,
-      "triangles": 1580
+      "vertices": 288,
+      "triangles": 288
     },
     "VIS_A_RockDeep": {
       "vertices": 32,
@@ -4193,6 +4549,10 @@
       "vertices": 4040,
       "triangles": 2000
     },
+    "VIS_A_Lavender": {
+      "vertices": 840,
+      "triangles": 1008
+    },
     "VIS_A_PearlGlow": {
       "vertices": 420,
       "triangles": 504
@@ -4204,6 +4564,10 @@
     "VIS_B_TripoGlowCrystal": {
       "vertices": 4040,
       "triangles": 2000
+    },
+    "VIS_B_Lavender": {
+      "vertices": 840,
+      "triangles": 1008
     },
     "VIS_B_PearlGlow": {
       "vertices": 420,
@@ -4241,6 +4605,10 @@
       "vertices": 4767,
       "triangles": 2697
     },
+    "VIS_D_LeafLight": {
+      "vertices": 936,
+      "triangles": 468
+    },
     "VIS_D_PearlGlow": {
       "vertices": 2005,
       "triangles": 2406
@@ -4252,6 +4620,14 @@
     "VIS_E_TripoGlowCrystal": {
       "vertices": 2020,
       "triangles": 1000
+    },
+    "VIS_E_Forest": {
+      "vertices": 2079,
+      "triangles": 3318
+    },
+    "VIS_E_Lavender": {
+      "vertices": 420,
+      "triangles": 504
     },
     "VIS_E_PearlGlow": {
       "vertices": 210,
@@ -4269,6 +4645,10 @@
       "vertices": 3030,
       "triangles": 1500
     },
+    "VIS_F_Lavender": {
+      "vertices": 1890,
+      "triangles": 2268
+    },
     "VIS_F_PearlGlow": {
       "vertices": 945,
       "triangles": 1134
@@ -4281,9 +4661,17 @@
       "vertices": 3030,
       "triangles": 1500
     },
+    "VIS_G_Lavender": {
+      "vertices": 630,
+      "triangles": 756
+    },
     "VIS_G_PearlGlow": {
       "vertices": 315,
       "triangles": 378
+    },
+    "VIS_G_StarGlow": {
+      "vertices": 48,
+      "triangles": 64
     },
     "VIS_H_Fern": {
       "vertices": 1612,
@@ -4292,6 +4680,10 @@
     "VIS_H_TripoGlowCrystal": {
       "vertices": 4040,
       "triangles": 2000
+    },
+    "VIS_H_Forest": {
+      "vertices": 2912,
+      "triangles": 4788
     },
     "VIS_H_PearlGlow": {
       "vertices": 420,
@@ -4304,6 +4696,10 @@
     "VIS_S1_TripoGlowCrystal": {
       "vertices": 3030,
       "triangles": 1500
+    },
+    "VIS_S1_Lavender": {
+      "vertices": 630,
+      "triangles": 756
     },
     "VIS_S1_PearlGlow": {
       "vertices": 315,
@@ -4325,6 +4721,10 @@
       "vertices": 4767,
       "triangles": 2697
     },
+    "VIS_S2_Lavender": {
+      "vertices": 1890,
+      "triangles": 2268
+    },
     "VIS_S2_PearlGlow": {
       "vertices": 945,
       "triangles": 1134
@@ -4345,6 +4745,10 @@
       "vertices": 4767,
       "triangles": 2697
     },
+    "VIS_S3_Lavender": {
+      "vertices": 1890,
+      "triangles": 2268
+    },
     "VIS_S3_PearlGlow": {
       "vertices": 945,
       "triangles": 1134
@@ -4357,45 +4761,105 @@
       "vertices": 3030,
       "triangles": 1500
     },
+    "VIS_S4_Lavender": {
+      "vertices": 630,
+      "triangles": 756
+    },
     "VIS_S4_PearlGlow": {
       "vertices": 315,
       "triangles": 378
     },
-    "VIS_F_LilyWhite": {
-      "vertices": 1400,
-      "triangles": 1680
+    "VIS_F_Flora_LilyWhite": {
+      "vertices": 490,
+      "triangles": 840
     },
-    "VIS_S1_Blossom": {
-      "vertices": 882,
-      "triangles": 1080
+    "VIS_F_LilyWhite": {
+      "vertices": 700,
+      "triangles": 700
+    },
+    "VIS_S1_Flora_Blossom": {
+      "vertices": 336,
+      "triangles": 576
+    },
+    "VIS_S1_Flora_LilyWhite": {
+      "vertices": 294,
+      "triangles": 504
     },
     "VIS_S1_LilyWhite": {
-      "vertices": 840,
-      "triangles": 1008
+      "vertices": 420,
+      "triangles": 420
     },
     "VIS_Distant_Birds_Ivory": {
       "vertices": 90,
       "triangles": 60
     },
+    "VIS_A_Flora_Coral": {
+      "vertices": 1170,
+      "triangles": 2080
+    },
     "VIS_A_RockLight": {
-      "vertices": 210,
-      "triangles": 252
+      "vertices": 350,
+      "triangles": 420
     },
     "VIS_C_RockLight": {
-      "vertices": 140,
-      "triangles": 168
+      "vertices": 595,
+      "triangles": 714
+    },
+    "VIS_D_Flora_Coral": {
+      "vertices": 1350,
+      "triangles": 2400
+    },
+    "VIS_E_Flora_Coral": {
+      "vertices": 900,
+      "triangles": 1600
     },
     "VIS_E_RockLight": {
-      "vertices": 140,
-      "triangles": 168
+      "vertices": 350,
+      "triangles": 420
+    },
+    "VIS_F_Flora_Coral": {
+      "vertices": 720,
+      "triangles": 1280
+    },
+    "VIS_G_Flora_Coral": {
+      "vertices": 1440,
+      "triangles": 2560
     },
     "VIS_G_RockLight": {
-      "vertices": 210,
-      "triangles": 252
+      "vertices": 280,
+      "triangles": 336
+    },
+    "VIS_H_Flora_Coral": {
+      "vertices": 810,
+      "triangles": 1440
+    },
+    "VIS_H_RockLight": {
+      "vertices": 35,
+      "triangles": 42
+    },
+    "VIS_S1_Flora_Coral": {
+      "vertices": 270,
+      "triangles": 480
+    },
+    "VIS_S2_Flora_Coral": {
+      "vertices": 540,
+      "triangles": 960
     },
     "VIS_S2_RockLight": {
       "vertices": 35,
       "triangles": 42
+    },
+    "VIS_S3_Flora_Coral": {
+      "vertices": 270,
+      "triangles": 480
+    },
+    "VIS_S4_Flora_Coral": {
+      "vertices": 450,
+      "triangles": 800
+    },
+    "VIS_S4_RockLight": {
+      "vertices": 105,
+      "triangles": 126
     },
     "VIS_H_TripoBellArch": {
       "vertices": 14159,
@@ -4457,10 +4921,6 @@
       "vertices": 3970,
       "triangles": 2000
     },
-    "VIS_B_TripoShopSign": {
-      "vertices": 3897,
-      "triangles": 2000
-    },
     "VIS_F_TripoShrinePavilion": {
       "vertices": 3855,
       "triangles": 2000
@@ -4472,6 +4932,10 @@
     "VIS_S3_TripoShrinePavilion": {
       "vertices": 3855,
       "triangles": 2000
+    },
+    "VIS_C_Blossom": {
+      "vertices": 4608,
+      "triangles": 7776
     },
     "VIS_C_TripoPergola": {
       "vertices": 4322,
@@ -4546,20 +5010,32 @@
       "triangles": 1600
     },
     "VIS_B_TripoStreetLamp": {
-      "vertices": 6440,
-      "triangles": 3500
+      "vertices": 7728,
+      "triangles": 4200
     },
     "VIS_A_TripoStreetLamp": {
-      "vertices": 5152,
-      "triangles": 2800
+      "vertices": 2576,
+      "triangles": 1400
     },
     "VIS_F_TripoStreetLamp": {
-      "vertices": 6440,
-      "triangles": 3500
+      "vertices": 7728,
+      "triangles": 4200
     },
-    "VIS_B_TripoBannerPole": {
+    "VIS_B_Limestone": {
+      "vertices": 192,
+      "triangles": 360
+    },
+    "VIS_F_Limestone": {
+      "vertices": 192,
+      "triangles": 360
+    },
+    "VIS_A_TripoBannerPole": {
       "vertices": 1026,
       "triangles": 599
+    },
+    "VIS_B_TripoBannerPole": {
+      "vertices": 5130,
+      "triangles": 2995
     },
     "VIS_E_TripoBannerPole": {
       "vertices": 1026,
@@ -4574,8 +5050,8 @@
       "triangles": 600
     },
     "VIS_B_TripoCrateBarrel": {
-      "vertices": 2289,
-      "triangles": 1800
+      "vertices": 3052,
+      "triangles": 2400
     },
     "VIS_C_TripoCrateBarrel": {
       "vertices": 2289,
@@ -4586,16 +5062,16 @@
       "triangles": 1800
     },
     "VIS_F_TripoCrateBarrel": {
-      "vertices": 1526,
-      "triangles": 1200
+      "vertices": 763,
+      "triangles": 600
     },
     "VIS_B_TripoPlanter": {
       "vertices": 2772,
       "triangles": 1600
     },
     "VIS_F_TripoPlanter": {
-      "vertices": 1386,
-      "triangles": 800
+      "vertices": 693,
+      "triangles": 400
     },
     "VIS_C_TripoPlanter": {
       "vertices": 2772,
@@ -4606,8 +5082,8 @@
       "triangles": 400
     },
     "VIS_G_TripoPlanter": {
-      "vertices": 2079,
-      "triangles": 1200
+      "vertices": 2772,
+      "triangles": 1600
     },
     "VIS_B_TripoBrassLampPost": {
       "vertices": 2276,
@@ -4638,10 +5114,10 @@
       "triangles": 1200
     }
   },
-  "totalVisualTriangles": 1557939,
+  "totalVisualTriangles": 3426285,
   "meshHygiene": {
-    "removedFaces": 1759,
-    "collapsedCorners": 42670
+    "removedFaces": 39,
+    "collapsedCorners": 43196
   },
   "collisionBoxes": [
     {
@@ -5817,9 +6293,9 @@
     {
       "name": "Tripo_great_tree_01",
       "center": [
-        -115.90282906645281,
+        -110.1072741087184,
         25.0,
-        114.70527105065906
+        113.15235678004393
       ],
       "size": [
         3.6,
@@ -5921,27 +6397,27 @@
     {
       "name": "Tripo_market_stall_00",
       "center": [
-        -21.705524734916022,
+        49.494534651203004,
         7.099999904632568,
-        -137.59949087224805
+        -136.5308457711156
       ],
       "size": [
-        4.212022702509554,
+        5.061924552699607,
         4.199999809265137,
-        5.168404629265214
+        4.792184769146838
       ]
     },
     {
       "name": "Tripo_market_stall_01",
       "center": [
-        -2.9739015143437606,
+        -57.35043631097503,
         7.099999904632568,
-        -113.7764751906823
+        -51.783346442702324
       ],
       "size": [
-        3.0353560252286154,
+        5.111322104314429,
         4.199999809265137,
-        4.8545025522443845
+        4.680592918309708
       ]
     },
     {
@@ -5986,9 +6462,9 @@
     {
       "name": "Tripo_cottage_small_00",
       "center": [
-        -171.0499445476508,
+        -169.9249445476508,
         13.18559667468071,
-        -96.62208603362319
+        -94.6735288751082
       ],
       "size": [
         7.078928986170317,
@@ -6012,14 +6488,14 @@
     {
       "name": "Tripo_cottage_small_02",
       "center": [
-        137.35164442907947,
+        141.32242508542444,
         24.18559667468071,
-        69.03708627376062
+        44.67657534477269
       ],
       "size": [
-        6.143539836384808,
+        7.753684843634887,
         6.631886065006256,
-        6.318068499346779
+        7.769224744359328
       ]
     },
     {
@@ -6033,19 +6509,6 @@
         7.712777197697068,
         6.631886065006256,
         7.743814405358235
-      ]
-    },
-    {
-      "name": "Tripo_shop_sign_00",
-      "center": [
-        57.43239376375021,
-        8.5,
-        -117.04623041189605
-      ],
-      "size": [
-        0.7,
-        7.0,
-        0.7
       ]
     },
     {
@@ -6103,9 +6566,9 @@
     {
       "name": "Tripo_cherry_tree_01",
       "center": [
-        122.02558243603356,
+        129.46520609947945,
         19.548020362854004,
-        -41.41426971300974
+        -33.116194060030026
       ],
       "size": [
         2.4,
@@ -6116,9 +6579,9 @@
     {
       "name": "Tripo_cherry_tree_02",
       "center": [
-        -194.45862389026698,
+        -193.6821667549594,
         14.548020362854004,
-        -116.37837087752618
+        -113.48059339865898
       ],
       "size": [
         2.4,
@@ -6155,14 +6618,14 @@
     {
       "name": "Tripo_pergola_01",
       "center": [
-        -183.0901256983272,
+        -188.1875135676188,
         11.996274471282959,
-        -76.81022275497736
+        -95.6401753857582
       ],
       "size": [
-        4.636724631358869,
+        5.594785586289294,
         3.992548942565918,
-        4.587939259340562
+        5.578556384331306
       ]
     },
     {
@@ -6272,9 +6735,9 @@
     {
       "name": "Tripo_root_rock_02",
       "center": [
-        -173.824050853171,
+        -168.18545582130895,
         17.686675921082497,
-        43.95067341945595
+        39.54489558998147
       ],
       "size": [
         4.840784582323971,
@@ -6350,9 +6813,9 @@
     {
       "name": "Tripo_crystal_cluster_01",
       "center": [
-        -182.12356490373338,
+        -177.16722936601016,
         17.58205840922892,
-        45.64103775871759
+        39.80196368159649
       ],
       "size": [
         3.4349422231089277,
@@ -6480,9 +6943,9 @@
     {
       "name": "Tripo_rune_stone_01",
       "center": [
-        -179.67584461242072,
+        -139.37687918927554,
         17.7046560049057,
-        67.83857822703183
+        37.79490519472119
       ],
       "size": [
         1.8,
@@ -6543,9 +7006,5306 @@
       ]
     }
   ],
-  "navVertices": 3870,
-  "navTriangles": 4048,
-  "sourceLayout": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\Assets\\SkyIsland\\sky_island_layout.json",
+  "registeredPropBounds": {
+    "A_CargoHouse": [
+      -37.84109565598455,
+      -239.1997169145058,
+      -22.905130119316063,
+      -219.45031046993188
+    ],
+    "B_TeaHouse": [
+      -42.58505398984988,
+      -128.08890383383806,
+      -25.712719728948333,
+      -110.95214164165895
+    ],
+    "B_House02": [
+      -23.92589971747816,
+      -131.11656727282872,
+      -6.931126415679106,
+      -115.52176128518815
+    ],
+    "B_House03": [
+      14.754425887202379,
+      -129.13951582697504,
+      33.54553241769329,
+      -110.47888522078397
+    ],
+    "B_House04": [
+      -43.22317675060445,
+      -81.68233462183082,
+      -33.01409053389442,
+      -70.85349113645934
+    ],
+    "B_House05": [
+      -24.238550761807254,
+      -76.90773126477741,
+      -7.4130740934490476,
+      -60.52936863583366
+    ],
+    "B_House06": [
+      18.772757171569317,
+      -85.46723494198932,
+      36.63858888111696,
+      -66.45001764809419
+    ],
+    "B_GardenTree01": [
+      -50.509167688710384,
+      -110.3938054655081,
+      -42.69171337696096,
+      -104.69803076743267
+    ],
+    "B_GardenTree02": [
+      39.33490542418856,
+      -114.71589045022,
+      44.747388305350356,
+      -107.11277988008817
+    ],
+    "B_GardenTree03": [
+      -33.74905734489784,
+      -58.52249660936,
+      -28.231865355064176,
+      -50.598213120128854
+    ],
+    "B_GardenTree04": [
+      31.76215970564046,
+      -59.24711820576451,
+      37.39737806906428,
+      -52.02930604789489
+    ],
+    "B_ChimeSupport01": [
+      -6.082113756831628,
+      -93.15569337684286,
+      -2.039082600412544,
+      -89.65877539472616
+    ],
+    "B_ChimeSupport02": [
+      2.2436678288158873,
+      -93.37097739263189,
+      6.133706603678867,
+      -89.70079058848745
+    ],
+    "B_DuckStatue": [
+      11.44611104497067,
+      -83.29522498762825,
+      13.099554737051953,
+      -81.63587414050235
+    ],
+    "C_WaterMill": [
+      -205.00096311881802,
+      -73.6771964970757,
+      -193.2076005886895,
+      -58.908099149374436
+    ],
+    "C_FarmBarn": [
+      -140.74823443281701,
+      -121.43105470951133,
+      -120.35756142612347,
+      -99.94746902435944
+    ],
+    "D_GreatRootTree": [
+      -202.22761041116374,
+      74.85097089246626,
+      -168.31915444178742,
+      106.01939675710427
+    ],
+    "D_RootTree02": [
+      -146.64190805027198,
+      90.83537740114335,
+      -123.63035804777712,
+      113.60524500072816
+    ],
+    "D_WindBeacon": [
+      -180.4124,
+      55.6602,
+      -176.5356,
+      59.6813
+    ],
+    "E_WindPillarWest": [
+      2.3368960939722476,
+      97.55879906639866,
+      3.645556890974513,
+      98.86226556157929
+    ],
+    "E_WindPillarEast": [
+      26.128586469320446,
+      97.35223510216048,
+      27.841222699994862,
+      99.05832913499022
+    ],
+    "F_MirrorPool": [
+      150.7775,
+      -77.608,
+      199.2225,
+      -47.058
+    ],
+    "F_TempleHall": [
+      163.59580059692644,
+      -39.54796678656777,
+      204.32122054831828,
+      -12.699612683139602
+    ],
+    "F_TemplePavilion": [
+      129.35617727910486,
+      -87.36383469082499,
+      143.34885642261943,
+      -73.11278766086363
+    ],
+    "F_PavilionSupport01": [
+      147.19656004081978,
+      -49.49685649817124,
+      149.4237081172631,
+      -47.246340048732336
+    ],
+    "F_PavilionSupport02": [
+      147.20640293841478,
+      -42.73382473166788,
+      149.39607603656106,
+      -40.50867854086409
+    ],
+    "F_PavilionSupport03": [
+      154.04819919171175,
+      -49.47831651197841,
+      156.24324745237382,
+      -47.26411446070095
+    ],
+    "F_PavilionSupport04": [
+      154.12589017399975,
+      -42.70955082547205,
+      156.13409731614126,
+      -40.695262189858774
+    ],
+    "F_PavilionSupport05": [
+      193.78596911376562,
+      -49.40523776458914,
+      195.84798569692924,
+      -47.333281877299605
+    ],
+    "F_PavilionSupport06": [
+      193.82348327870233,
+      -42.700220876441755,
+      195.95888849698565,
+      -40.59181293248674
+    ],
+    "F_PavilionSupport07": [
+      200.73111391930306,
+      -49.24047585952371,
+      202.58322513798913,
+      -47.35308866050293
+    ],
+    "F_PavilionSupport08": [
+      200.5639165968449,
+      -42.76094977107186,
+      202.80107538410533,
+      -40.49590189380283
+    ],
+    "G_StarDome": [
+      172.84574642277207,
+      72.9526207593506,
+      198.8405241605988,
+      98.75424481793453
+    ],
+    "G_SideShed": [
+      139.21656458006763,
+      92.4182224507292,
+      161.33914748617175,
+      114.15080284200381
+    ],
+    "G_BrokenAstrolabe": [
+      202.2311,
+      55.4924,
+      204.5876,
+      59.4858
+    ],
+    "H_HomecomingBell": [
+      2.8102,
+      248.59,
+      7.1898,
+      254.6
+    ],
+    "H_MemorialWest": [
+      -31.365508523085573,
+      231.32102035325636,
+      -29.568762440518604,
+      232.55955069512396
+    ],
+    "H_MemorialEast": [
+      39.43661524256119,
+      231.4856734104435,
+      41.307777216891914,
+      232.683516774991
+    ],
+    "S1_FrogPond": [
+      -301.275,
+      -112.275,
+      -282.725,
+      -99.725
+    ],
+    "S2_PostOffice": [
+      -293.6897682716089,
+      100.6126572415821,
+      -281.77659400550357,
+      113.48350280518679
+    ],
+    "S3_RainCave": [
+      302.54455061407907,
+      -78.40344466131447,
+      308.81319324161603,
+      -71.88837433066884
+    ],
+    "S4_StarLookout": [
+      292.6002,
+      81.1265,
+      297.272,
+      86.8591
+    ],
+    "A_Cover01": [
+      21.673667892343822,
+      -241.21191782199125,
+      24.025026442865833,
+      -237.88134889445868
+    ],
+    "A_Cover02": [
+      29.419915583933438,
+      -205.9056344948511,
+      31.2198503461077,
+      -201.78325255240418
+    ],
+    "B_Cover01": [
+      -23.45742372861609,
+      -101.2566240566395,
+      -20.345365269358282,
+      -98.53336143769765
+    ],
+    "B_Cover02": [
+      18.514827889212896,
+      -93.7113752137041,
+      22.569116394740302,
+      -90.93640149596551
+    ],
+    "C_Cover01": [
+      -189.7610642606448,
+      -107.1402482524941,
+      -186.76560448366544,
+      -104.2601981954547
+    ],
+    "C_Cover02": [
+      -160.1097726500816,
+      -49.174350507835044,
+      -156.1711891298334,
+      -46.110712843937044
+    ],
+    "C_Cover03": [
+      -126.95925854313093,
+      -73.09053259482735,
+      -123.66196910478807,
+      -70.68066033969907
+    ],
+    "D_Cover01": [
+      -199.90871091364167,
+      48.53565512211103,
+      -196.76522625112224,
+      52.31416986904065
+    ],
+    "D_Cover02": [
+      -141.85824801699033,
+      50.556422771639284,
+      -138.45878004498277,
+      52.772012324722006
+    ],
+    "D_Cover03": [
+      -163.83830230097763,
+      109.82243243153053,
+      -160.22838659149622,
+      113.3096509551351
+    ],
+    "E_Cover01": [
+      -18.969192418580764,
+      67.72698783919357,
+      -15.562296001848415,
+      69.89747975768016
+    ],
+    "E_Cover02": [
+      47.76911048825325,
+      66.05636846008568,
+      49.446272287342154,
+      70.16481867233838
+    ],
+    "F_Cover01": [
+      138.04197257475425,
+      -113.8864417471295,
+      140.78977881271268,
+      -110.79054099172743
+    ],
+    "F_Cover02": [
+      212.28536462623427,
+      -91.05357721363066,
+      214.06230003332925,
+      -86.93340645415908
+    ],
+    "G_Cover01": [
+      145.08302128546467,
+      60.5899081808367,
+      146.68756644115362,
+      64.1877667897289
+    ],
+    "G_Cover02": [
+      189.86470977703195,
+      109.36657879025451,
+      193.9860069283802,
+      111.7660227393614
+    ],
+    "H_Cover01": [
+      -18.339310310679984,
+      207.88788892029217,
+      -16.12965144216613,
+      211.27856292759157
+    ],
+    "H_Cover02": [
+      26.633425208066797,
+      208.22390407342866,
+      28.92885997470449,
+      212.35260315808523
+    ],
+    "A_Life01_floatboat_cargo": [
+      -40.42299178437858,
+      -254.27396879699145,
+      -33.191294287135634,
+      -247.63394029721044
+    ],
+    "A_Life02_supply_handcart": [
+      -17.76514457365745,
+      -218.39356422301492,
+      -12.432993330650943,
+      -211.85902326594476
+    ],
+    "B_Life03_produce_stall": [
+      -60.17828210256513,
+      -126.06850389379385,
+      -51.54075617241913,
+      -121.06234450599979
+    ],
+    "B_Life04_picnic_table": [
+      32.16569343615497,
+      -142.25088966762775,
+      39.04230656384503,
+      -136.67151033237224
+    ],
+    "B_Life05_laundry_rack": [
+      -23.803087231703483,
+      -53.771894857810615,
+      -16.62251276829652,
+      -50.4554180545806
+    ],
+    "B_Life06_duck_mailbox": [
+      12.00132899389689,
+      -66.23609109575631,
+      15.371883252162071,
+      -63.13595214605188
+    ],
+    "B_Life07_tea_stove": [
+      -20.46886689257817,
+      -112.11983491860514,
+      -14.938953122701255,
+      -109.22784853352495
+    ],
+    "B_Life08_windmill_planter": [
+      30.06841771145626,
+      -92.06262387540214,
+      35.727839914869485,
+      -88.13737612459785
+    ],
+    "C_Life09_compost_planter": [
+      -216.81234365073595,
+      -119.09127434685881,
+      -208.96705365585623,
+      -115.2550883657605
+    ],
+    "C_Life10_supply_handcart": [
+      -124.63627585416329,
+      -62.75094808312656,
+      -119.10663752808246,
+      -55.97438709060937
+    ],
+    "C_Life11_rain_barrel": [
+      -204.325912216465,
+      -50.60900797949878,
+      -199.802929210694,
+      -46.71170727280181
+    ],
+    "C_Life12_windmill_planter": [
+      -221.48230285042945,
+      -62.64410546853812,
+      -215.1941830913365,
+      -58.12069453146187
+    ],
+    "D_Life13_camp_tent": [
+      -199.9610656893445,
+      61.597395174925346,
+      -189.57573431065552,
+      70.81200482507467
+    ],
+    "D_Life14_firewood_rack": [
+      -123.47545747849642,
+      91.76642657623535,
+      -116.90068197370701,
+      96.32409035509392
+    ],
+    "D_Life15_tea_stove": [
+      -203.64472191939777,
+      102.74624792350015,
+      -198.10842462712972,
+      105.79255113237852
+    ],
+    "E_Life16_wayfinding_sign": [
+      -18.787504720404392,
+      105.7547566622755,
+      -13.987636075460662,
+      107.63645534177218
+    ],
+    "E_Life17_picnic_table": [
+      53.762231229360964,
+      103.75003326211709,
+      60.95496877063904,
+      109.38696673788291
+    ],
+    "F_Life18_tea_stove": [
+      123.30623811017053,
+      -102.6208527737649,
+      129.27594481546325,
+      -99.17320082025178
+    ],
+    "F_Life19_picnic_table": [
+      227.0916327212248,
+      -55.07135353659885,
+      234.5901672787752,
+      -48.88784646340115
+    ],
+    "G_Life20_tool_workbench": [
+      166.39876055460718,
+      106.68589323521188,
+      173.32934992528618,
+      110.85705911844853
+    ],
+    "G_Life21_floatboat_cargo": [
+      130.73229931110637,
+      97.58904774274511,
+      136.91179530380083,
+      103.70459977271351
+    ],
+    "G_Life22_firewood_rack": [
+      211.84474220479575,
+      37.815731253191196,
+      219.24908577342717,
+      42.18988001565647
+    ],
+    "H_Life23_wayfinding_sign": [
+      -38.85530977505894,
+      212.01929899238695,
+      -34.21127637017277,
+      214.26911938641422
+    ],
+    "H_Life24_picnic_table": [
+      28.044951991202907,
+      241.91096938864163,
+      35.87024800879709,
+      248.15343061135835
+    ],
+    "S1_Life25_windmill_planter": [
+      -310.1817261998278,
+      -90.17158671747124,
+      -305.53801779212597,
+      -86.79373645186305
+    ],
+    "S2_Life26_duck_mailbox": [
+      -266.5233827699483,
+      105.20541821364927,
+      -263.01446164611275,
+      108.30155165181463
+    ],
+    "S3_Life27_camp_tent": [
+      314.7358473961389,
+      -51.30228677422944,
+      322.2641526038611,
+      -44.69771322577056
+    ],
+    "S4_Life28_tool_workbench": [
+      310.1442315785909,
+      81.30171180800278,
+      315.1537238310252,
+      84.36789064393336
+    ]
+  },
+  "propPlacements": [
+    {
+      "id": "B_porch_counter_0",
+      "island": "B",
+      "model": "porch_counter",
+      "role": "roadside",
+      "sourcePosition": [
+        -26.475974498800134,
+        5,
+        -107.19569310811406
+      ],
+      "position": [
+        -26.475974498800134,
+        5,
+        -101.19569310811406
+      ],
+      "yaw": 12.787924838175082,
+      "bounds": [
+        -28.9547843187684,
+        -102.33641377211751,
+        -23.99716467883187,
+        -100.0549724441106
+      ],
+      "movedMeters": 6.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_porch_barrel_1",
+      "island": "B",
+      "model": "porch_barrel",
+      "role": "building",
+      "sourcePosition": [
+        -32.95589185046791,
+        5,
+        -109.74527275968323
+      ],
+      "position": [
+        -33.70589185046791,
+        5,
+        -109.74527275968323
+      ],
+      "yaw": 0,
+      "bounds": [
+        -34.245891850467906,
+        -110.28527275968324,
+        -33.16589185046791,
+        -109.20527275968323
+      ],
+      "movedMeters": 0.75,
+      "solidReservation": true
+    },
+    {
+      "id": "B_porch_garden_2",
+      "island": "B",
+      "model": "porch_garden",
+      "role": "building",
+      "sourcePosition": [
+        -26.660622082176424,
+        5,
+        -131.76061152137703
+      ],
+      "position": [
+        -26.660622082176424,
+        5,
+        -140.76061152137703
+      ],
+      "yaw": 0,
+      "bounds": [
+        -29.074080860775315,
+        -142.77964430619855,
+        -24.35266038965537,
+        -138.16085839701353
+      ],
+      "movedMeters": 9.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_garden_3",
+      "island": "B",
+      "model": "porch_garden",
+      "role": "building",
+      "sourcePosition": [
+        -43.183348624022976,
+        5,
+        -108.68881569594387
+      ],
+      "position": [
+        -39.68929151513895,
+        5,
+        -95.64881704104145
+      ],
+      "yaw": 0,
+      "bounds": [
+        -41.96903811898535,
+        -97.38003078258276,
+        -37.32652304156941,
+        -93.5762714736135
+      ],
+      "movedMeters": 13.499999999999996,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_4",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -25.357989042749583,
+        5,
+        -127.56827957309412
+      ],
+      "position": [
+        -30.982989042749587,
+        5,
+        -137.31106536566904
+      ],
+      "yaw": 0,
+      "bounds": [
+        -31.556753442154818,
+        -137.73666301872623,
+        -30.328832453340553,
+        -136.83730719940718
+      ],
+      "movedMeters": 11.24999999999999,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_5",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -27.06532748519253,
+        5,
+        -128.79097963564277
+      ],
+      "position": [
+        -31.565327485192533,
+        5,
+        -136.58520826970272
+      ],
+      "yaw": 0,
+      "bounds": [
+        -32.012205172577794,
+        -137.19911448820181,
+        -31.018703715635105,
+        -136.10369384821342
+      ],
+      "movedMeters": 9.000000000000002,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_6",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -28.772665927635472,
+        5,
+        -130.01367969819145
+      ],
+      "position": [
+        -32.14766592763547,
+        5,
+        -135.8593511737364
+      ],
+      "yaw": 0,
+      "bounds": [
+        -32.553118271559406,
+        -136.472305556882,
+        -31.741488416967876,
+        -135.2488275719214
+      ],
+      "movedMeters": 6.749999999999988,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_7",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -30.48000437007842,
+        5,
+        -131.2363797607401
+      ],
+      "position": [
+        -33.10500437007842,
+        5,
+        -135.7830131306084
+      ],
+      "yaw": 0,
+      "bounds": [
+        -34.103937074319674,
+        -136.21610961918225,
+        -32.10745890808319,
+        -135.34938153168537
+      ],
+      "movedMeters": 5.249999999999988,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_8",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -38.96952495948028,
+        5,
+        -108.56157527728703
+      ],
+      "position": [
+        -38.96952495948028,
+        5,
+        -108.56157527728703
+      ],
+      "yaw": 0,
+      "bounds": [
+        -39.63475288592991,
+        -109.4213530779632,
+        -38.295864676503165,
+        -107.70586366873815
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_9",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -40.67686340192323,
+        5,
+        -109.7842753398357
+      ],
+      "position": [
+        -40.67686340192323,
+        5,
+        -109.7842753398357
+      ],
+      "yaw": 0,
+      "bounds": [
+        -41.20955279036784,
+        -110.26920115832284,
+        -40.110607124377296,
+        -109.33099663444553
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_10",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -42.384201844366174,
+        5,
+        -111.00697540238436
+      ],
+      "position": [
+        -40.793211586696444,
+        5,
+        -109.41598514471463
+      ],
+      "yaw": 0,
+      "bounds": [
+        -41.638958890600264,
+        -110.08991165307803,
+        -39.94328414958999,
+        -108.73002980538058
+      ],
+      "movedMeters": 2.2499999999999982,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_11",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -44.09154028680912,
+        5,
+        -112.22967546493301
+      ],
+      "position": [
+        -44.09154028680912,
+        5,
+        -112.22967546493301
+      ],
+      "yaw": 0,
+      "bounds": [
+        -44.50833411672144,
+        -112.7769056952175,
+        -43.68037605023575,
+        -111.63772799573391
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_bench_12",
+      "island": "B",
+      "model": "porch_bench",
+      "role": "roadside",
+      "sourcePosition": [
+        -4.767778745553005,
+        5,
+        -115.48374597373628
+      ],
+      "position": [
+        -4.392778745553005,
+        5,
+        -116.1332650265746
+      ],
+      "yaw": 155.24879423258272,
+      "bounds": [
+        -6.31356765542894,
+        -117.46178285864617,
+        -2.4573360759632967,
+        -114.83653189721127
+      ],
+      "movedMeters": 0.75,
+      "solidReservation": true
+    },
+    {
+      "id": "B_porch_barrel_13",
+      "island": "B",
+      "model": "porch_barrel",
+      "role": "building",
+      "sourcePosition": [
+        -17.11019614133097,
+        5,
+        -115.42253709767624
+      ],
+      "position": [
+        -16.049535969551147,
+        5,
+        -114.36187692589642
+      ],
+      "yaw": 0,
+      "bounds": [
+        -16.589535969551147,
+        -114.90187692589643,
+        -15.509535969551148,
+        -113.82187692589642
+      ],
+      "movedMeters": 1.4999999999999971,
+      "solidReservation": true
+    },
+    {
+      "id": "B_porch_garden_14",
+      "island": "B",
+      "model": "porch_garden",
+      "role": "building",
+      "sourcePosition": [
+        -4.0576595930111,
+        5,
+        -130.04652434137915
+      ],
+      "position": [
+        -7.163488134241348,
+        5,
+        -141.63763425684797
+      ],
+      "yaw": 0,
+      "bounds": [
+        -9.708751342974224,
+        -143.7023227463929,
+        -4.84482190943776,
+        -138.742918494832
+      ],
+      "movedMeters": 12.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_garden_15",
+      "island": "B",
+      "model": "porch_garden",
+      "role": "building",
+      "sourcePosition": [
+        -27.482163685677293,
+        5,
+        -117.45334362327543
+      ],
+      "position": [
+        -16.87556196787908,
+        5,
+        -106.84674190547722
+      ],
+      "yaw": 0,
+      "bounds": [
+        -19.12760138552744,
+        -108.56964265701787,
+        -14.483734027998697,
+        -105.1356643760601
+      ],
+      "movedMeters": 15.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_16",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -4.73443279800186,
+        5,
+        -125.70895843075526
+      ],
+      "position": [
+        -4.73443279800186,
+        5,
+        -125.70895843075526
+      ],
+      "yaw": 0,
+      "bounds": [
+        -5.298270965409063,
+        -126.1757838803605,
+        -4.2874526987978365,
+        -125.13485008030186
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_17",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -5.728817088360657,
+        5,
+        -127.55860701442937
+      ],
+      "position": [
+        -4.978817088360657,
+        5,
+        -127.55860701442937
+      ],
+      "yaw": 0,
+      "bounds": [
+        -5.989009843622013,
+        -127.92639200024463,
+        -3.967919244341407,
+        -127.1733921151213
+      ],
+      "movedMeters": 0.75,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_18",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -6.7232013787194544,
+        5,
+        -129.40825559810347
+      ],
+      "position": [
+        -5.2232013787194544,
+        5,
+        -129.40825559810347
+      ],
+      "yaw": 0,
+      "bounds": [
+        -6.212842250301168,
+        -129.79800062687116,
+        -4.231973482818453,
+        -128.96287906486515
+      ],
+      "movedMeters": 1.5,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_19",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -7.717585669078252,
+        5,
+        -131.25790418177758
+      ],
+      "position": [
+        -5.769028510563265,
+        5,
+        -130.13290418177758
+      ],
+      "yaw": 0,
+      "bounds": [
+        -6.267580346480466,
+        -130.579215070935,
+        -5.145254356463383,
+        -129.5941500386216
+      ],
+      "movedMeters": 2.25,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_20",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -23.755011691443983,
+        5,
+        -115.48335935636295
+      ],
+      "position": [
+        -22.69435151966416,
+        5,
+        -114.42269918458314
+      ],
+      "yaw": 0,
+      "bounds": [
+        -23.60653301248338,
+        -114.97336619024915,
+        -21.760279594835644,
+        -113.8550847717434
+      ],
+      "movedMeters": 1.4999999999999971,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_21",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -24.74939598180278,
+        5,
+        -117.33300794003706
+      ],
+      "position": [
+        -23.972938846495218,
+        5,
+        -114.43523046116985
+      ],
+      "yaw": 0,
+      "bounds": [
+        -24.478768579130417,
+        -114.98118732786608,
+        -23.534842909739975,
+        -113.78880379489607
+      ],
+      "movedMeters": 3.000000000000007,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_22",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -25.74378027216158,
+        5,
+        -119.18265652371117
+      ],
+      "position": [
+        -22.74378027216158,
+        5,
+        -113.98650410100454
+      ],
+      "yaw": 0,
+      "bounds": [
+        -23.740772639918788,
+        -114.42656395336579,
+        -21.748254059536972,
+        -113.5454181456196
+      ],
+      "movedMeters": 6.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_23",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -26.738164562520375,
+        5,
+        -121.03230510738527
+      ],
+      "position": [
+        -22.988164562520375,
+        5,
+        -114.53711457900198
+      ],
+      "yaw": 0,
+      "bounds": [
+        -23.982814266402443,
+        -114.98502807057768,
+        -21.99507050085574,
+        -114.08761708406394
+      ],
+      "movedMeters": 7.5,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_counter_24",
+      "island": "B",
+      "model": "porch_counter",
+      "role": "roadside",
+      "sourcePosition": [
+        9.099311618997236,
+        5,
+        -112.17793548014261
+      ],
+      "position": [
+        12.996425936027208,
+        5,
+        -114.42793548014261
+      ],
+      "yaw": 87.94096675230044,
+      "bounds": [
+        12.285599454566297,
+        -116.84884162746525,
+        13.70725241748812,
+        -112.00702933281997
+      ],
+      "movedMeters": 4.499999999999998,
+      "solidReservation": true
+    },
+    {
+      "id": "B_porch_barrel_25",
+      "island": "B",
+      "model": "porch_barrel",
+      "role": "building",
+      "sourcePosition": [
+        14.758438939505787,
+        5,
+        -119.11225570594854
+      ],
+      "position": [
+        13.697778767725966,
+        5,
+        -118.05159553416873
+      ],
+      "yaw": 0,
+      "bounds": [
+        13.157778767725965,
+        -118.59159553416873,
+        14.237778767725967,
+        -117.51159553416872
+      ],
+      "movedMeters": 1.4999999999999958,
+      "solidReservation": true
+    },
+    {
+      "id": "B_porch_garden_26",
+      "island": "B",
+      "model": "porch_garden",
+      "role": "building",
+      "sourcePosition": [
+        36.592925956555085,
+        5,
+        -108.53785489742937
+      ],
+      "position": [
+        33.29298313149795,
+        5,
+        -96.22230061224374
+      ],
+      "yaw": 0,
+      "bounds": [
+        31.032032601769338,
+        -97.98707527975243,
+        35.96890966615424,
+        -93.34570967227535
+      ],
+      "movedMeters": 12.750000000000005,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_garden_27",
+      "island": "B",
+      "model": "porch_garden",
+      "role": "building",
+      "sourcePosition": [
+        12.95045562204966,
+        5,
+        -131.6466809015274
+      ],
+      "position": [
+        11.397541351434535,
+        5,
+        -125.85112594379298
+      ],
+      "yaw": 0,
+      "bounds": [
+        8.974372372361342,
+        -127.85163421868354,
+        13.506378318108341,
+        -123.79918005645457
+      ],
+      "movedMeters": 6.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_28",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        32.25136267882289,
+        5,
+        -107.88721805137216
+      ],
+      "position": [
+        32.25136267882289,
+        5,
+        -107.88721805137216
+      ],
+      "yaw": 0,
+      "bounds": [
+        31.67622453374041,
+        -108.45080118030239,
+        32.7181957493239,
+        -107.44161912559646
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_29",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        33.719241575853545,
+        5,
+        -109.38899418104398
+      ],
+      "position": [
+        33.719241575853545,
+        5,
+        -109.38899418104398
+      ],
+      "yaw": 0,
+      "bounds": [
+        33.16754859986362,
+        -109.95671989756724,
+        34.18481101968758,
+        -108.9148182777522
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_30",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        35.1871204728842,
+        5,
+        -110.8907703107158
+      ],
+      "position": [
+        35.1871204728842,
+        5,
+        -110.8907703107158
+      ],
+      "yaw": 0,
+      "bounds": [
+        34.175867341827306,
+        -111.26670971282341,
+        36.19890017420747,
+        -110.5004646637219
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_31",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        36.65499936991486,
+        5,
+        -112.39254644038762
+      ],
+      "position": [
+        36.65499936991486,
+        5,
+        -112.39254644038762
+      ],
+      "yaw": 0,
+      "bounds": [
+        36.24140811650061,
+        -112.9758291604018,
+        37.06175134194039,
+        -111.78633823784193
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_32",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        12.18454979591703,
+        5,
+        -127.50109430063529
+      ],
+      "position": [
+        12.18454979591703,
+        5,
+        -127.50109430063529
+      ],
+      "yaw": 0,
+      "bounds": [
+        11.702147819267099,
+        -128.0451164857136,
+        12.75297895437679,
+        -127.03636542683637
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_33",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        13.652428692947685,
+        5,
+        -129.0028704303071
+      ],
+      "position": [
+        13.652428692947685,
+        5,
+        -127.5028704303071
+      ],
+      "yaw": 0,
+      "bounds": [
+        13.066014984632051,
+        -128.40836740795265,
+        14.286732644847971,
+        -126.6405616110847
+      ],
+      "movedMeters": 1.5,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_34",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        15.12030758997834,
+        5,
+        -130.50464655997894
+      ],
+      "position": [
+        13.62030758997834,
+        5,
+        -127.90657034862562
+      ],
+      "yaw": 0,
+      "bounds": [
+        13.101380482085686,
+        -128.3507557531016,
+        14.25483522294579,
+        -127.37963264892383
+      ],
+      "movedMeters": 3.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_35",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        16.588186487008997,
+        5,
+        -132.00642268965075
+      ],
+      "position": [
+        12.875875885779623,
+        5,
+        -128.29411208842137
+      ],
+      "yaw": 0,
+      "bounds": [
+        12.260301631357644,
+        -128.6987346604239,
+        13.489455422045788,
+        -127.89008459391567
+      ],
+      "movedMeters": 5.250000000000001,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_bench_36",
+      "island": "B",
+      "model": "porch_bench",
+      "role": "roadside",
+      "sourcePosition": [
+        -32.801654440591776,
+        5,
+        -84.6806418800816
+      ],
+      "position": [
+        -32.051654440591776,
+        5,
+        -83.38160377440494
+      ],
+      "yaw": -4.179569873430101,
+      "bounds": [
+        -33.941192790497006,
+        -84.08990734595533,
+        -30.164666980884657,
+        -82.6383932843541
+      ],
+      "movedMeters": 1.5,
+      "solidReservation": true
+    },
+    {
+      "id": "B_porch_barrel_37",
+      "island": "B",
+      "model": "porch_barrel",
+      "role": "building",
+      "sourcePosition": [
+        -28.41327090321589,
+        5,
+        -72.67289716522745
+      ],
+      "position": [
+        -28.41327090321589,
+        5,
+        -72.67289716522745
+      ],
+      "yaw": 0,
+      "bounds": [
+        -28.953270903215888,
+        -73.21289716522746,
+        -27.87327090321589,
+        -72.13289716522745
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_porch_garden_38",
+      "island": "B",
+      "model": "porch_garden",
+      "role": "building",
+      "sourcePosition": [
+        -43.034728626435296,
+        5,
+        -84.62931193868837
+      ],
+      "position": [
+        -40.12301436903194,
+        5,
+        -95.49597748444039
+      ],
+      "yaw": 0,
+      "bounds": [
+        -42.698992555378716,
+        -97.51481051060772,
+        -37.48283872722352,
+        -92.58333185190102
+      ],
+      "movedMeters": 11.249999999999995,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_garden_39",
+      "island": "B",
+      "model": "porch_garden",
+      "role": "building",
+      "sourcePosition": [
+        -34.31983222900838,
+        5,
+        -67.27698488958944
+      ],
+      "position": [
+        -34.31983222900838,
+        5,
+        -67.27698488958944
+      ],
+      "yaw": 0,
+      "bounds": [
+        -36.76290125182094,
+        -69.36311061769833,
+        -32.20511793282081,
+        -65.53701432839783
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_40",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -38.71768811065829,
+        5,
+        -83.83202830964547
+      ],
+      "position": [
+        -38.71768811065829,
+        5,
+        -83.83202830964547
+      ],
+      "yaw": 0,
+      "bounds": [
+        -39.21587997169846,
+        -84.39974847822319,
+        -38.26119951234219,
+        -83.3089449625381
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_41",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -40.59430667008673,
+        5,
+        -82.88953014921825
+      ],
+      "position": [
+        -41.24382572292506,
+        5,
+        -83.26453014921825
+      ],
+      "yaw": 0,
+      "bounds": [
+        -41.76580317852753,
+        -84.22573977050509,
+        -40.714763937504294,
+        -82.30089292472927
+      ],
+      "movedMeters": 0.75,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_42",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -42.47092522951517,
+        5,
+        -81.94703198879101
+      ],
+      "position": [
+        -42.47092522951517,
+        5,
+        -82.69703198879101
+      ],
+      "yaw": 0,
+      "bounds": [
+        -42.90996541679676,
+        -83.34225666857685,
+        -41.962255923081926,
+        -82.15420039016422
+      ],
+      "movedMeters": 0.75,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_43",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -44.34754378894361,
+        5,
+        -81.00453382836378
+      ],
+      "position": [
+        -44.34754378894361,
+        5,
+        -81.00453382836378
+      ],
+      "yaw": 0,
+      "bounds": [
+        -44.948340393592424,
+        -81.91086284669066,
+        -43.73500082007578,
+        -80.09480076482247
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_44",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -32.24683495234383,
+        5,
+        -70.94784068775712
+      ],
+      "position": [
+        -31.496834952343832,
+        5,
+        -70.94784068775712
+      ],
+      "yaw": 0,
+      "bounds": [
+        -32.10959239533901,
+        -71.33984741069962,
+        -30.86226283044492,
+        -70.54932606570182
+      ],
+      "movedMeters": 0.75,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_45",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -34.123453511772276,
+        5,
+        -70.0053425273299
+      ],
+      "position": [
+        -33.59312342588237,
+        5,
+        -69.47501244143999
+      ],
+      "yaw": 0,
+      "bounds": [
+        -34.29593233705133,
+        -70.28805381611738,
+        -32.86565334664826,
+        -68.65909100960623
+      ],
+      "movedMeters": 0.750000000000001,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_46",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -36.00007207120071,
+        5,
+        -69.06284436690267
+      ],
+      "position": [
+        -36.00007207120071,
+        5,
+        -69.06284436690267
+      ],
+      "yaw": 0,
+      "bounds": [
+        -36.65506739423006,
+        -69.5189584747729,
+        -35.41538388658908,
+        -68.64519328346539
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_47",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -37.876690630629156,
+        5,
+        -68.12034620647543
+      ],
+      "position": [
+        -37.876690630629156,
+        5,
+        -68.12034620647543
+      ],
+      "yaw": 0,
+      "bounds": [
+        -38.341884536662526,
+        -68.67991716206846,
+        -37.309996999117224,
+        -67.65411636312804
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_counter_48",
+      "island": "B",
+      "model": "porch_counter",
+      "role": "roadside",
+      "sourcePosition": [
+        -4.734807031936676,
+        5,
+        -76.61559591028201
+      ],
+      "position": [
+        -4.734807031936676,
+        5,
+        -73.61559591028201
+      ],
+      "yaw": -107.6589786165196,
+      "bounds": [
+        -6.058398553372934,
+        -76.09209962244965,
+        -3.4112155105004187,
+        -71.13909219811437
+      ],
+      "movedMeters": 3.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_porch_barrel_49",
+      "island": "B",
+      "model": "porch_barrel",
+      "role": "building",
+      "sourcePosition": [
+        -9.450689985564967,
+        5,
+        -70.7799721433446
+      ],
+      "position": [
+        -5.828468136980961,
+        5,
+        -69.80940072421014
+      ],
+      "yaw": 0,
+      "bounds": [
+        -6.368468136980961,
+        -70.34940072421014,
+        -5.288468136980961,
+        -69.26940072421013
+      ],
+      "movedMeters": 3.7500000000000018,
+      "solidReservation": true
+    },
+    {
+      "id": "B_porch_garden_50",
+      "island": "B",
+      "model": "porch_garden",
+      "role": "building",
+      "sourcePosition": [
+        -28.00534306576964,
+        5,
+        -75.38419913310186
+      ],
+      "position": [
+        -29.953900224284627,
+        5,
+        -76.50919913310186
+      ],
+      "yaw": 0,
+      "bounds": [
+        -32.36344769341922,
+        -78.43243419053789,
+        -27.652982850458454,
+        -73.76929562163193
+      ],
+      "movedMeters": 2.25,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_garden_51",
+      "island": "B",
+      "model": "porch_garden",
+      "role": "building",
+      "sourcePosition": [
+        -4.941200166605014,
+        5,
+        -61.370283426377775
+      ],
+      "position": [
+        4.058799833394986,
+        5,
+        -61.370283426377775
+      ],
+      "yaw": 0,
+      "bounds": [
+        1.8548378708429656,
+        -63.34300539146407,
+        6.647573913142654,
+        -59.63890762039651
+      ],
+      "movedMeters": 9.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_52",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -23.923185804379145,
+        5,
+        -76.99928182240197
+      ],
+      "position": [
+        -25.222223910055803,
+        5,
+        -76.24928182240197
+      ],
+      "yaw": 0,
+      "bounds": [
+        -25.743091072880667,
+        -77.19813750142895,
+        -24.70718129069476,
+        -75.306575563331
+      ],
+      "movedMeters": 1.5,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_53",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -25.013647379435056,
+        5,
+        -75.20459701627958
+      ],
+      "position": [
+        -25.207761663261948,
+        5,
+        -74.48015264656277
+      ],
+      "yaw": 0,
+      "bounds": [
+        -25.71188429420272,
+        -75.45535337190573,
+        -24.708952851186424,
+        -73.50710090206563
+      ],
+      "movedMeters": 0.7500000000000054,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_54",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -26.104108954490968,
+        5,
+        -73.40991221015717
+      ],
+      "position": [
+        -26.104108954490968,
+        5,
+        -73.40991221015717
+      ],
+      "yaw": 0,
+      "bounds": [
+        -26.566854601016107,
+        -74.39795117308869,
+        -25.638713333686297,
+        -72.4201471545975
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_55",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -27.194570529546883,
+        5,
+        -71.61522740403478
+      ],
+      "position": [
+        -26.444570529546883,
+        5,
+        -71.61522740403478
+      ],
+      "yaw": 0,
+      "bounds": [
+        -26.931222581395886,
+        -72.0620364711571,
+        -25.82761459926827,
+        -71.07080676645668
+      ],
+      "movedMeters": 0.75,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_56",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -5.132101967410698,
+        5,
+        -65.58170319914434
+      ],
+      "position": [
+        -5.856546337127499,
+        5,
+        -65.38758891531745
+      ],
+      "yaw": 0,
+      "bounds": [
+        -6.224057609266238,
+        -66.39001401598625,
+        -5.442051831801991,
+        -64.38630339555402
+      ],
+      "movedMeters": 0.7500000000000003,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_57",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -6.22256354246661,
+        5,
+        -63.787018393021945
+      ],
+      "position": [
+        -6.22256354246661,
+        5,
+        -63.787018393021945
+      ],
+      "yaw": 0,
+      "bounds": [
+        -6.621080867437179,
+        -64.43813229082234,
+        -5.804955303902305,
+        -63.1858094893915
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_58",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -7.313025117522523,
+        5,
+        -61.99233358689955
+      ],
+      "position": [
+        -9.964675546972076,
+        5,
+        -59.340683157449995
+      ],
+      "yaw": 0,
+      "bounds": [
+        -10.614218321886554,
+        -59.83769084437731,
+        -9.409801240676078,
+        -58.90571473759802
+      ],
+      "movedMeters": 3.75,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_59",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        -8.403486692578436,
+        5,
+        -60.19764878077716
+      ],
+      "position": [
+        -10.352043851093423,
+        5,
+        -59.07264878077716
+      ],
+      "yaw": 0,
+      "bounds": [
+        -11.365631787716243,
+        -59.459036404276425,
+        -9.338743875630986,
+        -58.69411750772531
+      ],
+      "movedMeters": 2.25,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_bench_60",
+      "island": "B",
+      "model": "porch_bench",
+      "role": "roadside",
+      "sourcePosition": [
+        13.178804803995865,
+        5,
+        -79.21482865307765
+      ],
+      "position": [
+        13.178804803995865,
+        5,
+        -79.21482865307765
+      ],
+      "yaw": -13.363882656573086,
+      "bounds": [
+        11.237907389756394,
+        -80.20185777783297,
+        15.11161250541159,
+        -78.19374726633535
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_porch_barrel_61",
+      "island": "B",
+      "model": "porch_barrel",
+      "role": "building",
+      "sourcePosition": [
+        25.434870242808238,
+        5,
+        -85.09127406666373
+      ],
+      "position": [
+        25.046641675154458,
+        5,
+        -86.54016280609733
+      ],
+      "yaw": 0,
+      "bounds": [
+        24.50664167515446,
+        -87.08016280609733,
+        25.586641675154457,
+        -86.00016280609732
+      ],
+      "movedMeters": 1.4999999999999962,
+      "solidReservation": true
+    },
+    {
+      "id": "B_porch_garden_62",
+      "island": "B",
+      "model": "porch_garden",
+      "role": "building",
+      "sourcePosition": [
+        19.367335906348416,
+        5,
+        -62.75491947417162
+      ],
+      "position": [
+        14.820702536480113,
+        5,
+        -60.12991947417162
+      ],
+      "yaw": 0,
+      "bounds": [
+        12.316526157173765,
+        -61.965816404467844,
+        17.02772278160798,
+        -57.250793542809255
+      ],
+      "movedMeters": 5.25,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_garden_63",
+      "island": "B",
+      "model": "porch_garden",
+      "role": "building",
+      "sourcePosition": [
+        36.648634534587906,
+        5,
+        -87.7789713714022
+      ],
+      "position": [
+        36.648634534587906,
+        5,
+        -94.5289713714022
+      ],
+      "yaw": 0,
+      "bounds": [
+        34.18007803138695,
+        -96.29264754732267,
+        39.040121040604035,
+        -92.54214082658513
+      ],
+      "movedMeters": 6.75,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_64",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        17.99321653748126,
+        5,
+        -66.92436739447284
+      ],
+      "position": [
+        17.61821653748126,
+        5,
+        -66.27484834163451
+      ],
+      "yaw": 0,
+      "bounds": [
+        17.12942499401554,
+        -66.81258790111754,
+        18.187020033578676,
+        -65.81094014142013
+      ],
+      "movedMeters": 0.75,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_65",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        19.721210053509274,
+        5,
+        -65.73103659014188
+      ],
+      "position": [
+        20.445654423226074,
+        5,
+        -65.53692230631499
+      ],
+      "yaw": 0,
+      "bounds": [
+        19.793881153614983,
+        -65.95825515627918,
+        21.04562912194196,
+        -65.13646515548662
+      ],
+      "movedMeters": 0.7499999999999987,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_66",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        21.449203569537286,
+        5,
+        -64.53770578581093
+      ],
+      "position": [
+        21.449203569537286,
+        5,
+        -64.53770578581093
+      ],
+      "yaw": 0,
+      "bounds": [
+        20.83884567957381,
+        -64.92282836779968,
+        22.090527412890438,
+        -64.14334523605372
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_67",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        23.177197085565297,
+        5,
+        -63.34437498147999
+      ],
+      "position": [
+        21.87815897988864,
+        5,
+        -64.09437498147999
+      ],
+      "yaw": 0,
+      "bounds": [
+        21.471668708775407,
+        -64.69836556567516,
+        22.292766410583265,
+        -63.51759336700134
+      ],
+      "movedMeters": 1.5,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_68",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        32.43325134588516,
+        5,
+        -87.83414901544627
+      ],
+      "position": [
+        33.49391151766498,
+        5,
+        -86.77348884366646
+      ],
+      "yaw": 0,
+      "bounds": [
+        32.778342493957055,
+        -87.59587261860813,
+        34.18852312610759,
+        -85.94926170458675
+      ],
+      "movedMeters": 1.4999999999999971,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_69",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        34.161244861913175,
+        5,
+        -86.64081821111532
+      ],
+      "position": [
+        33.436800492196376,
+        5,
+        -86.83493249494221
+      ],
+      "yaw": 0,
+      "bounds": [
+        32.775632117702585,
+        -87.67284658624335,
+        34.03682041483635,
+        -85.94473764899553
+      ],
+      "movedMeters": 0.7499999999999987,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_70",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        35.88923837794118,
+        5,
+        -85.44748740678436
+      ],
+      "position": [
+        35.13923837794118,
+        5,
+        -86.74652551246102
+      ],
+      "yaw": 0,
+      "bounds": [
+        34.27357754869174,
+        -87.4434081250712,
+        35.93996315060084,
+        -86.11775604027052
+      ],
+      "movedMeters": 1.5,
+      "solidReservation": false
+    },
+    {
+      "id": "B_porch_hedge_71",
+      "island": "B",
+      "model": "porch_hedge",
+      "role": "building",
+      "sourcePosition": [
+        37.6172318939692,
+        5,
+        -84.25415660245342
+      ],
+      "position": [
+        38.3672318939692,
+        5,
+        -84.25415660245342
+      ],
+      "yaw": 0,
+      "bounds": [
+        37.800095139765055,
+        -84.70927453343688,
+        38.894636193288534,
+        -83.76179050034341
+      ],
+      "movedMeters": 0.75,
+      "solidReservation": false
+    },
+    {
+      "id": "H_bell_arch_72",
+      "island": "H",
+      "model": "bell_arch",
+      "role": "free",
+      "sourcePosition": [
+        -15.072164130788845,
+        26,
+        192.87782266891938
+      ],
+      "position": [
+        -15.072164130788845,
+        26,
+        192.87782266891938
+      ],
+      "yaw": -148.0,
+      "bounds": [
+        -18.523406614446845,
+        188.76512671792662,
+        -11.620921647130846,
+        196.99051861991214
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_great_tree_73",
+      "island": "D",
+      "model": "great_tree",
+      "role": "free",
+      "sourcePosition": [
+        -201.7453513924711,
+        16,
+        33.254648607528935
+      ],
+      "position": [
+        -201.7453513924711,
+        16,
+        33.254648607528935
+      ],
+      "yaw": 239.43147642908505,
+      "bounds": [
+        -214.03585838093406,
+        20.988954315363504,
+        -189.45484440400813,
+        45.52034289969436
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_great_tree_74",
+      "island": "D",
+      "model": "great_tree",
+      "role": "free",
+      "sourcePosition": [
+        -115.90282906645281,
+        16,
+        114.70527105065906
+      ],
+      "position": [
+        -110.1072741087184,
+        16,
+        113.15235678004393
+      ],
+      "yaw": 220.37843203874957,
+      "bounds": [
+        -122.74018336970465,
+        100.51142550672652,
+        -97.47436484773215,
+        125.79328805336134
+      ],
+      "movedMeters": 6.000000000000003,
+      "solidReservation": true
+    },
+    {
+      "id": "F_cherry_pavilion_75",
+      "island": "F",
+      "model": "cherry_pavilion",
+      "role": "free",
+      "sourcePosition": [
+        187.37706371838158,
+        15,
+        -114.64169117484317
+      ],
+      "position": [
+        187.37706371838158,
+        15,
+        -114.64169117484317
+      ],
+      "yaw": 166.00000000000003,
+      "bounds": [
+        184.01109343689987,
+        -118.06753378520645,
+        190.74555676875158,
+        -111.21521956755133
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "S1_cherry_pavilion_76",
+      "island": "S1",
+      "model": "cherry_pavilion",
+      "role": "free",
+      "sourcePosition": [
+        -279.6791455867827,
+        7,
+        -87.25480623210568
+      ],
+      "position": [
+        -279.6791455867827,
+        7,
+        -87.25480623210568
+      ],
+      "yaw": 38.99999999999996,
+      "bounds": [
+        -283.6151653752513,
+        -91.20095670296199,
+        -275.74514637781385,
+        -83.30701952823264
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "C_cottage_large_77",
+      "island": "C",
+      "model": "cottage_large",
+      "role": "free",
+      "sourcePosition": [
+        -156.8359133126935,
+        10,
+        -94.14061293981155
+      ],
+      "position": [
+        -156.8359133126935,
+        10,
+        -94.14061293981155
+      ],
+      "yaw": 149.99999999999997,
+      "bounds": [
+        -163.6375534022756,
+        -100.89499914976507,
+        -149.986815030984,
+        -87.35882672985802
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "C_farm_barn_78",
+      "island": "C",
+      "model": "farm_barn",
+      "role": "free",
+      "sourcePosition": [
+        -195.79466182966462,
+        10,
+        -123.97933491033297
+      ],
+      "position": [
+        -195.79466182966462,
+        10,
+        -123.97933491033297
+      ],
+      "yaw": -145.0,
+      "bounds": [
+        -202.5514642779777,
+        -130.92109241936384,
+        -189.02224688740455,
+        -117.05241586593809
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "C_farm_barn_79",
+      "island": "C",
+      "model": "farm_barn",
+      "role": "free",
+      "sourcePosition": [
+        -177.55912977757512,
+        10,
+        -105.7500320298552
+      ],
+      "position": [
+        -177.55912977757512,
+        10,
+        -105.7500320298552
+      ],
+      "yaw": -154.0,
+      "bounds": [
+        -183.96736022005652,
+        -112.4914612452786,
+        -171.13315780957728,
+        -99.02081626080658
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_cottage_dormer_80",
+      "island": "B",
+      "model": "cottage_dormer",
+      "role": "free",
+      "sourcePosition": [
+        7.555031959040768,
+        5,
+        -56.132729994332756
+      ],
+      "position": [
+        7.555031959040768,
+        5,
+        -56.132729994332756
+      ],
+      "yaw": 10.999999999999995,
+      "bounds": [
+        3.234084576565221,
+        -60.75078777006662,
+        11.875979341516315,
+        -51.51467221859889
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "C_cottage_dormer_81",
+      "island": "C",
+      "model": "cottage_dormer",
+      "role": "free",
+      "sourcePosition": [
+        -179.0257378125572,
+        10,
+        -118.53539793119178
+      ],
+      "position": [
+        -179.0257378125572,
+        10,
+        -118.53539793119178
+      ],
+      "yaw": -160.00000000000003,
+      "bounds": [
+        -183.79954635137423,
+        -123.53375201979064,
+        -174.25192927374016,
+        -113.53704384259292
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_market_stall_82",
+      "island": "B",
+      "model": "market_stall",
+      "role": "free",
+      "sourcePosition": [
+        49.494534651203004,
+        5,
+        -136.5308457711156
+      ],
+      "position": [
+        49.494534651203004,
+        5,
+        -136.5308457711156
+      ],
+      "yaw": 130.00000000000003,
+      "bounds": [
+        46.83095708379973,
+        -139.05951873432707,
+        52.17411763008747,
+        -133.98309830127047
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_market_stall_83",
+      "island": "B",
+      "model": "market_stall",
+      "role": "free",
+      "sourcePosition": [
+        -57.35043631097503,
+        5,
+        -51.783346442702324
+      ],
+      "position": [
+        -57.35043631097503,
+        5,
+        -51.783346442702324
+      ],
+      "yaw": -52.99999999999994,
+      "bounds": [
+        -60.05381173655802,
+        -54.27620267550217,
+        -54.66204607946852,
+        -49.31037623410266
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "A_market_stall_84",
+      "island": "A",
+      "model": "market_stall",
+      "role": "free",
+      "sourcePosition": [
+        -10.63112305708808,
+        0,
+        -192.3049775785657
+      ],
+      "position": [
+        -10.63112305708808,
+        0,
+        -192.3049775785657
+      ],
+      "yaw": -21.000000000000007,
+      "bounds": [
+        -12.720322051648255,
+        -195.00942383847365,
+        -8.565170215147687,
+        -189.60945468060146
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "H_stone_platform_85",
+      "island": "H",
+      "model": "stone_platform",
+      "role": "free",
+      "sourcePosition": [
+        31.206983090807,
+        26,
+        234.5385617749714
+      ],
+      "position": [
+        31.206983090807,
+        26,
+        234.5385617749714
+      ],
+      "yaw": 0,
+      "bounds": [
+        28.712283090807,
+        232.0407617749714,
+        33.709483090807,
+        237.0161617749714
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_stone_platform_86",
+      "island": "G",
+      "model": "stone_platform",
+      "role": "free",
+      "sourcePosition": [
+        156.85390885691112,
+        21,
+        47.05747001857128
+      ],
+      "position": [
+        156.85390885691112,
+        21,
+        47.05747001857128
+      ],
+      "yaw": 0,
+      "bounds": [
+        154.35920885691112,
+        44.55967001857128,
+        159.35640885691112,
+        49.53507001857128
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "C_cottage_small_87",
+      "island": "C",
+      "model": "cottage_small",
+      "role": "free",
+      "sourcePosition": [
+        -171.0499445476508,
+        10,
+        -96.62208603362319
+      ],
+      "position": [
+        -169.9249445476508,
+        10,
+        -94.6735288751082
+      ],
+      "yaw": -160.00000000000003,
+      "bounds": [
+        -173.6118251976647,
+        -98.29305183691234,
+        -166.23279678742966,
+        -91.03953464694396
+      ],
+      "movedMeters": 2.25,
+      "solidReservation": true
+    },
+    {
+      "id": "F_cottage_small_88",
+      "island": "F",
+      "model": "cottage_small",
+      "role": "free",
+      "sourcePosition": [
+        129.8454773937122,
+        15,
+        -24.34268522696015
+      ],
+      "position": [
+        129.8454773937122,
+        15,
+        -24.34268522696015
+      ],
+      "yaw": -47.99999999999995,
+      "bounds": [
+        125.82431004536825,
+        -28.382498589136684,
+        133.8780891723685,
+        -20.31317647612154
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_cottage_small_89",
+      "island": "G",
+      "model": "cottage_small",
+      "role": "free",
+      "sourcePosition": [
+        141.32242508542444,
+        21,
+        44.67657534477269
+      ],
+      "position": [
+        141.32242508542444,
+        21,
+        44.67657534477269
+      ],
+      "yaw": -132.0,
+      "bounds": [
+        137.3012577370805,
+        40.64706659393408,
+        145.35503686408074,
+        48.71638870694922
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "A_cottage_small_90",
+      "island": "A",
+      "model": "cottage_small",
+      "role": "free",
+      "sourcePosition": [
+        33.698244497945716,
+        0,
+        -247.28830034113795
+      ],
+      "position": [
+        33.698244497945716,
+        0,
+        -247.28830034113795
+      ],
+      "yaw": 129.00000000000003,
+      "bounds": [
+        29.68582569979919,
+        -251.3054110332629,
+        37.69869524828581,
+        -243.26149811499081
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "F_shrine_pavilion_91",
+      "island": "F",
+      "model": "shrine_pavilion",
+      "role": "free",
+      "sourcePosition": [
+        130.8564351949598,
+        15,
+        -14.21863766616844
+      ],
+      "position": [
+        130.8564351949598,
+        15,
+        -14.21863766616844
+      ],
+      "yaw": -40.99999999999997,
+      "bounds": [
+        127.57974205697748,
+        -17.475476381064425,
+        134.12765841322698,
+        -10.966023874740403
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_shrine_pavilion_92",
+      "island": "D",
+      "model": "shrine_pavilion",
+      "role": "free",
+      "sourcePosition": [
+        -151.89473684210526,
+        16,
+        60.961272401810156
+      ],
+      "position": [
+        -151.89473684210526,
+        16,
+        60.961272401810156
+      ],
+      "yaw": 149.99999999999997,
+      "bounds": [
+        -155.08813941187782,
+        57.83769049178157,
+        -148.6951586970466,
+        64.08795790167723
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "S3_shrine_pavilion_93",
+      "island": "S3",
+      "model": "shrine_pavilion",
+      "role": "free",
+      "sourcePosition": [
+        307.1881814241831,
+        10,
+        -51.38453251136984
+      ],
+      "position": [
+        307.1881814241831,
+        10,
+        -51.38453251136984
+      ],
+      "yaw": 19.000000000000117,
+      "bounds": [
+        304.1834190239179,
+        -54.26392633773044,
+        310.18654997353843,
+        -48.50251405731325
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_cherry_tree_94",
+      "island": "B",
+      "model": "cherry_tree",
+      "role": "free",
+      "sourcePosition": [
+        53.644017959161765,
+        5,
+        -60.163167407696704
+      ],
+      "position": [
+        53.644017959161765,
+        5,
+        -60.163167407696704
+      ],
+      "yaw": 135.60937321662144,
+      "bounds": [
+        50.39221757449417,
+        -63.42126225150919,
+        56.89581834382936,
+        -56.90507256388422
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "F_cherry_tree_95",
+      "island": "F",
+      "model": "cherry_tree",
+      "role": "free",
+      "sourcePosition": [
+        129.46520609947945,
+        15,
+        -33.116194060030026
+      ],
+      "position": [
+        129.46520609947945,
+        15,
+        -33.116194060030026
+      ],
+      "yaw": 336.3035903748401,
+      "bounds": [
+        126.54001350510838,
+        -36.25640858969572,
+        132.39039869385053,
+        -29.975979530364334
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "C_cherry_tree_96",
+      "island": "C",
+      "model": "cherry_tree",
+      "role": "free",
+      "sourcePosition": [
+        -194.45862389026698,
+        10,
+        -116.37837087752618
+      ],
+      "position": [
+        -193.6821667549594,
+        10,
+        -113.48059339865898
+      ],
+      "yaw": 110.57575689394284,
+      "bounds": [
+        -196.76835309948942,
+        -116.32205910469834,
+        -190.5959804104294,
+        -110.63912769261962
+      ],
+      "movedMeters": 2.9999999999999947,
+      "solidReservation": true
+    },
+    {
+      "id": "C_cherry_tree_97",
+      "island": "C",
+      "model": "cherry_tree",
+      "role": "free",
+      "sourcePosition": [
+        -136.83794309704768,
+        10,
+        -59.53906798389821
+      ],
+      "position": [
+        -136.83794309704768,
+        10,
+        -59.53906798389821
+      ],
+      "yaw": 241.8055498781112,
+      "bounds": [
+        -140.03961104488997,
+        -62.56961985699446,
+        -133.6362751492054,
+        -56.508516110801956
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "C_pergola_98",
+      "island": "C",
+      "model": "pergola",
+      "role": "free",
+      "sourcePosition": [
+        -149.09181044271202,
+        10,
+        -70.81540247678018
+      ],
+      "position": [
+        -149.09181044271202,
+        10,
+        -70.81540247678018
+      ],
+      "yaw": 59.99999999999997,
+      "bounds": [
+        -151.993320128059,
+        -73.70995364320004,
+        -146.18975864119753,
+        -67.92839028310604
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "C_pergola_99",
+      "island": "C",
+      "model": "pergola",
+      "role": "free",
+      "sourcePosition": [
+        -188.1875135676188,
+        10,
+        -95.6401753857582
+      ],
+      "position": [
+        -188.1875135676188,
+        10,
+        -95.6401753857582
+      ],
+      "yaw": -124.0,
+      "bounds": [
+        -191.13546228868063,
+        -98.57574053459957,
+        -185.24063153431112,
+        -92.697127444842
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "H_ruined_column_100",
+      "island": "H",
+      "model": "ruined_column",
+      "role": "free",
+      "sourcePosition": [
+        -20.26660216451672,
+        26,
+        259.77649441097867
+      ],
+      "position": [
+        -20.26660216451672,
+        26,
+        259.77649441097867
+      ],
+      "yaw": 248.86049815008096,
+      "bounds": [
+        -23.13143387126266,
+        257.27549616021287,
+        -17.36623439277973,
+        262.29123304328766
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "H_ruined_column_101",
+      "island": "H",
+      "model": "ruined_column",
+      "role": "free",
+      "sourcePosition": [
+        -19.08073111125697,
+        26,
+        244.50019156155815
+      ],
+      "position": [
+        -19.08073111125697,
+        26,
+        244.50019156155815
+      ],
+      "yaw": 115.8034460398943,
+      "bounds": [
+        -22.033427267960505,
+        241.87754122399198,
+        -16.162336102343364,
+        247.1394262670741
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "H_ruined_column_102",
+      "island": "H",
+      "model": "ruined_column",
+      "role": "free",
+      "sourcePosition": [
+        -4.777025819345708,
+        26,
+        198.13784233192283
+      ],
+      "position": [
+        -4.777025819345708,
+        26,
+        198.13784233192283
+      ],
+      "yaw": 237.98899597302358,
+      "bounds": [
+        -7.736688810936771,
+        195.38034095783672,
+        -1.785056073493128,
+        200.91553983507086
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "H_ruined_column_103",
+      "island": "H",
+      "model": "ruined_column",
+      "role": "free",
+      "sourcePosition": [
+        36.752078525976245,
+        26,
+        214.68312429057642
+      ],
+      "position": [
+        36.752078525976245,
+        26,
+        214.68312429057642
+      ],
+      "yaw": 153.7033943447665,
+      "bounds": [
+        34.10068821596592,
+        211.76019040540538,
+        39.386589847140236,
+        217.64021530875837
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_ruined_column_104",
+      "island": "G",
+      "model": "ruined_column",
+      "role": "free",
+      "sourcePosition": [
+        126.66045622649771,
+        21,
+        72.4666318592754
+      ],
+      "position": [
+        126.66045622649771,
+        21,
+        72.4666318592754
+      ],
+      "yaw": 197.54517588640385,
+      "bounds": [
+        124.264557375292,
+        69.65604709479585,
+        129.06784061535768,
+        75.31354419489304
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_ruined_column_105",
+      "island": "G",
+      "model": "ruined_column",
+      "role": "free",
+      "sourcePosition": [
+        162.66161845076994,
+        21,
+        59.76336770861128
+      ],
+      "position": [
+        162.66161845076994,
+        21,
+        59.76336770861128
+      ],
+      "yaw": 28.53452443587698,
+      "bounds": [
+        159.95754813890807,
+        56.78909033316139,
+        165.347488841522,
+        62.70417311262839
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_root_rock_106",
+      "island": "D",
+      "model": "root_rock",
+      "role": "free",
+      "sourcePosition": [
+        -151.81454417869105,
+        16,
+        110.45510441001854
+      ],
+      "position": [
+        -151.81454417869105,
+        16,
+        110.45510441001854
+      ],
+      "yaw": 305.3658407544351,
+      "bounds": [
+        -154.47581974204138,
+        107.90961784983755,
+        -149.1648483321287,
+        113.00880986058142
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_root_rock_107",
+      "island": "D",
+      "model": "root_rock",
+      "role": "free",
+      "sourcePosition": [
+        -160.0,
+        16,
+        94.58771929824562
+      ],
+      "position": [
+        -160.0,
+        16,
+        94.58771929824562
+      ],
+      "yaw": 17.113995404965863,
+      "bounds": [
+        -162.18318544450736,
+        92.11329857313203,
+        -157.81263586775847,
+        97.07571126386331
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_root_rock_108",
+      "island": "D",
+      "model": "root_rock",
+      "role": "free",
+      "sourcePosition": [
+        -168.18545582130895,
+        16,
+        39.54489558998147
+      ],
+      "position": [
+        -168.18545582130895,
+        16,
+        39.54489558998147
+      ],
+      "yaw": 217.02654631330182,
+      "bounds": [
+        -170.76009864769173,
+        36.8810927676482,
+        -165.61936402168197,
+        42.19736174872173
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_root_rock_109",
+      "island": "D",
+      "model": "root_rock",
+      "role": "free",
+      "sourcePosition": [
+        -150.8641995525007,
+        16,
+        52.3881004169598
+      ],
+      "position": [
+        -150.8641995525007,
+        16,
+        52.3881004169598
+      ],
+      "yaw": 195.66446597846684,
+      "bounds": [
+        -153.01238625276295,
+        49.92501064767681,
+        -148.71984689975656,
+        54.8375175829929
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "S2_root_rock_110",
+      "island": "S2",
+      "model": "root_rock",
+      "role": "free",
+      "sourcePosition": [
+        -273.30761184457486,
+        13,
+        109.19238815542512
+      ],
+      "position": [
+        -273.30761184457486,
+        13,
+        109.19238815542512
+      ],
+      "yaw": 176.5054933967296,
+      "bounds": [
+        -275.07443407035134,
+        106.9987485411216,
+        -271.5399240884672,
+        111.37185417254071
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "E_root_rock_111",
+      "island": "E",
+      "model": "root_rock",
+      "role": "free",
+      "sourcePosition": [
+        19.11813729218408,
+        18,
+        106.000895566167
+      ],
+      "position": [
+        19.11813729218408,
+        18,
+        106.000895566167
+      ],
+      "yaw": 82.57088152243833,
+      "bounds": [
+        16.839998302880083,
+        104.10242991671231,
+        21.410357080705403,
+        107.90119726937942
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "E_root_rock_112",
+      "island": "E",
+      "model": "root_rock",
+      "role": "free",
+      "sourcePosition": [
+        10.881862707815918,
+        18,
+        53.999104433833
+      ],
+      "position": [
+        10.881862707815918,
+        18,
+        53.999104433833
+      ],
+      "yaw": 231.38576130333874,
+      "bounds": [
+        8.217736066517954,
+        51.40646683012967,
+        13.534893960339659,
+        56.582880189650645
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "C_farm_cart_113",
+      "island": "C",
+      "model": "farm_cart",
+      "role": "building",
+      "sourcePosition": [
+        -185.172882352829,
+        10,
+        -54.43288235282898
+      ],
+      "position": [
+        -185.172882352829,
+        10,
+        -54.43288235282898
+      ],
+      "yaw": -130.61410424933248,
+      "bounds": [
+        -186.95480525226563,
+        -56.27467029308073,
+        -183.38490613348844,
+        -52.59538828241002
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "A_farm_cart_114",
+      "island": "A",
+      "model": "farm_cart",
+      "role": "building",
+      "sourcePosition": [
+        -44.653117647171015,
+        0,
+        -217.31188235282897
+      ],
+      "position": [
+        -44.653117647171015,
+        0,
+        -217.31188235282897
+      ],
+      "yaw": 128.6775148057125,
+      "bounds": [
+        -46.418754673381116,
+        -219.1544510720547,
+        -42.88438629563706,
+        -215.46256788303046
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_farm_cart_115",
+      "island": "G",
+      "model": "farm_cart",
+      "role": "building",
+      "sourcePosition": [
+        166.685117647171,
+        21,
+        116.03811764717102
+      ],
+      "position": [
+        166.685117647171,
+        21,
+        116.03811764717102
+      ],
+      "yaw": -129.10923522406836,
+      "bounds": [
+        164.91676668627753,
+        114.19117252500699,
+        168.4594070749807,
+        117.8806114087919
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_crystal_cluster_116",
+      "island": "D",
+      "model": "crystal_cluster",
+      "role": "free",
+      "sourcePosition": [
+        -154.96977870409316,
+        16,
+        96.78828218553089
+      ],
+      "position": [
+        -154.96977870409316,
+        16,
+        96.78828218553089
+      ],
+      "yaw": 31.76644625139157,
+      "bounds": [
+        -156.76857270208464,
+        94.99352750028496,
+        -153.1164547995954,
+        98.61278547236442
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_crystal_cluster_117",
+      "island": "D",
+      "model": "crystal_cluster",
+      "role": "free",
+      "sourcePosition": [
+        -177.16722936601016,
+        16,
+        39.80196368159649
+      ],
+      "position": [
+        -177.16722936601016,
+        16,
+        39.80196368159649
+      ],
+      "yaw": 135.0232723207314,
+      "bounds": [
+        -179.02645181182248,
+        37.90459544212999,
+        -175.29155566038202,
+        41.63943328960557
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_crystal_cluster_118",
+      "island": "D",
+      "model": "crystal_cluster",
+      "role": "free",
+      "sourcePosition": [
+        -149.8894045350219,
+        16,
+        47.22136726273236
+      ],
+      "position": [
+        -149.8894045350219,
+        16,
+        47.22136726273236
+      ],
+      "yaw": 296.3255231400648,
+      "bounds": [
+        -151.66442567975403,
+        45.46648984974444,
+        -148.14916845035756,
+        49.02770815399446
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_crystal_cluster_119",
+      "island": "D",
+      "model": "crystal_cluster",
+      "role": "free",
+      "sourcePosition": [
+        -145.6145404152056,
+        16,
+        64.92719275811584
+      ],
+      "position": [
+        -145.6145404152056,
+        16,
+        64.92719275811584
+      ],
+      "yaw": 323.85345809868437,
+      "bounds": [
+        -147.46877780200603,
+        63.11838929718551,
+        -143.76736447550797,
+        66.79771028522896
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_crystal_cluster_120",
+      "island": "G",
+      "model": "crystal_cluster",
+      "role": "free",
+      "sourcePosition": [
+        142.52129497679283,
+        21,
+        88.12224861053974
+      ],
+      "position": [
+        142.52129497679283,
+        21,
+        88.12224861053974
+      ],
+      "yaw": 327.0853565781953,
+      "bounds": [
+        140.68595086480138,
+        86.3347236461138,
+        144.35306814892178,
+        89.97178759264312
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_crystal_cluster_121",
+      "island": "G",
+      "model": "crystal_cluster",
+      "role": "free",
+      "sourcePosition": [
+        160.05296679023317,
+        21,
+        54.427173725394724
+      ],
+      "position": [
+        160.05296679023317,
+        21,
+        54.427173725394724
+      ],
+      "yaw": 46.88120867027354,
+      "bounds": [
+        158.2179179061192,
+        52.56681882432673,
+        161.9484161896111,
+        56.30202923872044
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_crystal_cluster_122",
+      "island": "G",
+      "model": "crystal_cluster",
+      "role": "free",
+      "sourcePosition": [
+        181.21121362931777,
+        21,
+        119.1950813973076
+      ],
+      "position": [
+        181.21121362931777,
+        21,
+        119.1950813973076
+      ],
+      "yaw": 105.26703077334074,
+      "bounds": [
+        179.6294375901494,
+        117.53378667419412,
+        182.8370000977635,
+        120.81254038026744
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "S4_crystal_cluster_123",
+      "island": "S4",
+      "model": "crystal_cluster",
+      "role": "free",
+      "sourcePosition": [
+        311.2570794876535,
+        26,
+        90.69927917237334
+      ],
+      "position": [
+        311.2570794876535,
+        26,
+        90.69927917237334
+      ],
+      "yaw": 155.44002322168578,
+      "bounds": [
+        309.4919516488488,
+        88.93101722531567,
+        313.0167297175514,
+        92.40566636043621
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "S4_crystal_cluster_124",
+      "island": "S4",
+      "model": "crystal_cluster",
+      "role": "free",
+      "sourcePosition": [
+        277.001668211395,
+        26,
+        84.17060809473884
+      ],
+      "position": [
+        277.001668211395,
+        26,
+        84.17060809473884
+      ],
+      "yaw": 56.73767469850753,
+      "bounds": [
+        275.21157984939384,
+        82.33689719677399,
+        278.8537477802856,
+        86.00826617757265
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "S4_crystal_cluster_125",
+      "island": "S4",
+      "model": "crystal_cluster",
+      "role": "free",
+      "sourcePosition": [
+        300.46743484055247,
+        26,
+        53.071316586162474
+      ],
+      "position": [
+        300.46743484055247,
+        26,
+        53.071316586162474
+      ],
+      "yaw": 333.74621683150366,
+      "bounds": [
+        298.68935634614763,
+        51.345485405959636,
+        302.2491596444402,
+        54.85915739809422
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_rune_stone_126",
+      "island": "D",
+      "model": "rune_stone",
+      "role": "free",
+      "sourcePosition": [
+        -139.99491824343824,
+        16,
+        87.02026580794465
+      ],
+      "position": [
+        -139.99491824343824,
+        16,
+        87.02026580794465
+      ],
+      "yaw": 185.49363080934444,
+      "bounds": [
+        -140.96112693866868,
+        85.94636640467047,
+        -139.0287095482078,
+        88.09416521121884
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "D_rune_stone_127",
+      "island": "D",
+      "model": "rune_stone",
+      "role": "free",
+      "sourcePosition": [
+        -139.37687918927554,
+        16,
+        37.79490519472119
+      ],
+      "position": [
+        -139.37687918927554,
+        16,
+        37.79490519472119
+      ],
+      "yaw": 331.28416230378866,
+      "bounds": [
+        -140.6221853730711,
+        36.50213228151299,
+        -138.13157300548,
+        39.087678107929385
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "H_rune_stone_128",
+      "island": "H",
+      "model": "rune_stone",
+      "role": "free",
+      "sourcePosition": [
+        -20.357077915101502,
+        26,
+        252.19213693381278
+      ],
+      "position": [
+        -20.357077915101502,
+        26,
+        252.19213693381278
+      ],
+      "yaw": 169.53659313272144,
+      "bounds": [
+        -21.398172616168303,
+        251.0550711318387,
+        -19.315983214034702,
+        253.32920273578685
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "H_rune_stone_129",
+      "island": "H",
+      "model": "rune_stone",
+      "role": "free",
+      "sourcePosition": [
+        16.60415329958213,
+        26,
+        194.77014713422813
+      ],
+      "position": [
+        16.60415329958213,
+        26,
+        194.77014713422813
+      ],
+      "yaw": 13.451479731701736,
+      "bounds": [
+        15.521768000865398,
+        193.59919036847472,
+        17.68653859829886,
+        195.94110389998153
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "S2_rune_stone_130",
+      "island": "S2",
+      "model": "rune_stone",
+      "role": "free",
+      "sourcePosition": [
+        -298.0065046398288,
+        13,
+        105.33931773309737
+      ],
+      "position": [
+        -298.0065046398288,
+        13,
+        105.33931773309737
+      ],
+      "yaw": 133.89483486154947,
+      "bounds": [
+        -299.3299687658007,
+        104.01911863401362,
+        -296.6830405138569,
+        106.65951683218113
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "S2_rune_stone_131",
+      "island": "S2",
+      "model": "rune_stone",
+      "role": "free",
+      "sourcePosition": [
+        -270.37564434701784,
+        13,
+        93.0
+      ],
+      "position": [
+        -270.37564434701784,
+        13,
+        93.0
+      ],
+      "yaw": 312.5063813086988,
+      "bounds": [
+        -271.7001525423094,
+        91.68285691828581,
+        -269.05113615172627,
+        94.31714308171419
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "H_stone_stair_132",
+      "island": "H",
+      "model": "stone_stair",
+      "role": "free",
+      "sourcePosition": [
+        -26.27538071443648,
+        26,
+        223.9078396393045
+      ],
+      "position": [
+        -26.27538071443648,
+        26,
+        223.9078396393045
+      ],
+      "yaw": -92.0,
+      "bounds": [
+        -27.611927463841813,
+        222.6068172577419,
+        -24.939713423875233,
+        225.17100826871305
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "H_stone_stair_133",
+      "island": "H",
+      "model": "stone_stair",
+      "role": "free",
+      "sourcePosition": [
+        33.538705885751725,
+        26,
+        220.47991304069865
+      ],
+      "position": [
+        33.538705885751725,
+        26,
+        220.47991304069865
+      ],
+      "yaw": 99.00000000000004,
+      "bounds": [
+        32.071357610707416,
+        219.07356714584722,
+        35.01414029792386,
+        221.9232493990015
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "F_stone_stair_134",
+      "island": "F",
+      "model": "stone_stair",
+      "role": "free",
+      "sourcePosition": [
+        153.0539565554116,
+        15,
+        -28.475650176398418
+      ],
+      "position": [
+        153.0539565554116,
+        15,
+        -28.475650176398418
+      ],
+      "yaw": -31.0,
+      "bounds": [
+        151.3099688259558,
+        -30.23082147421794,
+        154.76441027713608,
+        -26.73806154974895
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "F_stone_stair_135",
+      "island": "F",
+      "model": "stone_stair",
+      "role": "free",
+      "sourcePosition": [
+        162.54957728353236,
+        15,
+        -92.96410727183877
+      ],
+      "position": [
+        162.54957728353236,
+        15,
+        -92.96410727183877
+      ],
+      "yaw": -156.00000000000003,
+      "bounds": [
+        160.909505474303,
+        -94.65807119608347,
+        164.22328629044583,
+        -91.28752779270916
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_stone_stair_136",
+      "island": "G",
+      "model": "stone_stair",
+      "role": "free",
+      "sourcePosition": [
+        148.85729057885908,
+        21,
+        42.71644247171103
+      ],
+      "position": [
+        148.85729057885908,
+        21,
+        42.71644247171103
+      ],
+      "yaw": -140.99999999999994,
+      "bounds": [
+        147.095261038704,
+        40.91938987742331,
+        150.64731173149693,
+        44.48799703410185
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_stone_stair_137",
+      "island": "G",
+      "model": "stone_stair",
+      "role": "free",
+      "sourcePosition": [
+        206.7030917847787,
+        21,
+        78.89265020405854
+      ],
+      "position": [
+        206.7030917847787,
+        21,
+        78.89265020405854
+      ],
+      "yaw": 82.99999999999999,
+      "bounds": [
+        205.2669856122442,
+        77.5254066411526,
+        208.13677489766607,
+        80.29768012405201
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_street_lamp_138",
+      "island": "B",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        -0.4909101110951273,
+        5,
+        -116.24759014952123
+      ],
+      "position": [
+        -0.4909101110951273,
+        5,
+        -116.24759014952123
+      ],
+      "yaw": -64.08812973756145,
+      "bounds": [
+        -1.61511163948582,
+        -117.08710628276124,
+        0.6109270923469443,
+        -115.35296034311754
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "A_street_lamp_139",
+      "island": "A",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        7.106679862737655,
+        0,
+        -194.05714285714288
+      ],
+      "position": [
+        7.106679862737655,
+        0,
+        -194.05714285714288
+      ],
+      "yaw": 90.0,
+      "bounds": [
+        6.122079862737655,
+        -194.55194285714288,
+        8.135479862737656,
+        -193.60214285714287
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "F_street_lamp_140",
+      "island": "F",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        131.80673172304762,
+        15,
+        -39.81932554725229
+      ],
+      "position": [
+        131.80673172304762,
+        15,
+        -39.81932554725229
+      ],
+      "yaw": -72.72405623597058,
+      "bounds": [
+        130.68922228569147,
+        -40.54619906439514,
+        132.8938547826157,
+        -39.041321334388364
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_street_lamp_141",
+      "island": "B",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        -4.908102099097222,
+        5,
+        -77.66236062487707
+      ],
+      "position": [
+        -13.601434535698838,
+        5,
+        -79.99173203079975
+      ],
+      "yaw": -85.89916508004215,
+      "bounds": [
+        -14.66013849170142,
+        -80.51597780759069,
+        -12.583971239477012,
+        -79.424627322841
+      ],
+      "movedMeters": 9.0,
+      "solidReservation": true
+    },
+    {
+      "id": "A_street_lamp_142",
+      "island": "A",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        -9.426307684657868,
+        0,
+        -235.27498382189478
+      ],
+      "position": [
+        -9.426307684657868,
+        0,
+        -235.27498382189478
+      ],
+      "yaw": -1.7312313463684215,
+      "bounds": [
+        -9.912181164685869,
+        -236.2728804379713,
+        -8.901987701862295,
+        -234.23170497994795
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "F_street_lamp_143",
+      "island": "F",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        156.2554833064961,
+        15,
+        -22.156901226682137
+      ],
+      "position": [
+        156.2554833064961,
+        15,
+        -22.156901226682137
+      ],
+      "yaw": 143.79123047186988,
+      "bounds": [
+        155.27461213437581,
+        -23.279301780437134,
+        157.23035128573738,
+        -21.09367534381983
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_street_lamp_144",
+      "island": "B",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        -14.962310014952992,
+        5,
+        -93.81902985078244
+      ],
+      "position": [
+        -16.26134812062965,
+        5,
+        -93.06902985078244
+      ],
+      "yaw": -112.74482877523225,
+      "bounds": [
+        -17.401447783445633,
+        -93.88640977728926,
+        -15.177399066819456,
+        -92.23203388216008
+      ],
+      "movedMeters": 1.4999999999999984,
+      "solidReservation": true
+    },
+    {
+      "id": "F_street_lamp_145",
+      "island": "F",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        155.08481745553794,
+        15,
+        -110.0198358026397
+      ],
+      "position": [
+        155.08481745553794,
+        15,
+        -110.0198358026397
+      ],
+      "yaw": -173.53609185119564,
+      "bounds": [
+        154.47734336939396,
+        -111.09331836792761,
+        155.64776863407027,
+        -108.98579167923032
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_street_lamp_146",
+      "island": "B",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        10.391307595810751,
+        5,
+        -94.10922605217488
+      ],
+      "position": [
+        8.141307595810751,
+        5,
+        -90.2121117351449
+      ],
+      "yaw": -63.759640660230204,
+      "bounds": [
+        7.017355681399416,
+        -91.05555154117293,
+        9.243211529686883,
+        -89.31343094293524
+      ],
+      "movedMeters": 4.5,
+      "solidReservation": true
+    },
+    {
+      "id": "F_street_lamp_147",
+      "island": "F",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        184.6521623332243,
+        15,
+        -97.16768300095751
+      ],
+      "position": [
+        184.6521623332243,
+        15,
+        -97.16768300095751
+      ],
+      "yaw": -13.690049617465357,
+      "bounds": [
+        183.96660327997574,
+        -98.23199533214368,
+        185.36592988966683,
+        -96.0510069385487
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_street_lamp_148",
+      "island": "B",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        51.85714285714286,
+        5,
+        -74.89332013726235
+      ],
+      "position": [
+        51.85714285714286,
+        5,
+        -74.89332013726235
+      ],
+      "yaw": 92.43346587724429,
+      "bounds": [
+        50.85242194489006,
+        -75.43135597648607,
+        52.90433403274578,
+        -74.39692510411838
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "F_street_lamp_149",
+      "island": "F",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        217.66735222706643,
+        15,
+        -102.95109116471279
+      ],
+      "position": [
+        217.66735222706643,
+        15,
+        -102.95109116471279
+      ],
+      "yaw": 161.33496330129518,
+      "bounds": [
+        216.88346948124644,
+        -104.08413547590123,
+        218.42767376759693,
+        -101.8726595773651
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_street_lamp_150",
+      "island": "B",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        37.9786763058202,
+        5,
+        -68.5559481958459
+      ],
+      "position": [
+        37.9786763058202,
+        5,
+        -68.5559481958459
+      ],
+      "yaw": -178.30557213297251,
+      "bounds": [
+        37.45367203894114,
+        -69.59775225404887,
+        38.46259102429454,
+        -67.55714796319249
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "F_street_lamp_151",
+      "island": "F",
+      "model": "street_lamp",
+      "role": "roadside",
+      "sourcePosition": [
+        216.61184715029805,
+        15,
+        -68.84536400942115
+      ],
+      "position": [
+        216.61184715029805,
+        15,
+        -68.84536400942115
+      ],
+      "yaw": 98.41483788067534,
+      "bounds": [
+        215.5654382486535,
+        -69.48539100932108,
+        217.69615591468605,
+        -68.2511767346952
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_stone_bench_152",
+      "island": "B",
+      "model": "stone_bench",
+      "role": "roadside",
+      "sourcePosition": [
+        4.924563755690235,
+        5,
+        -110.29000607886594
+      ],
+      "position": [
+        -0.7004362443097705,
+        5,
+        -120.03279187144088
+      ],
+      "yaw": -64.08812973756145,
+      "bounds": [
+        -2.002934034064223,
+        -121.97119845139838,
+        0.602061545444682,
+        -118.09438529148338
+      ],
+      "movedMeters": 11.250000000000004,
+      "solidReservation": true
+    },
+    {
+      "id": "F_stone_bench_153",
+      "island": "F",
+      "model": "stone_bench",
+      "role": "roadside",
+      "sourcePosition": [
+        133.92356619239757,
+        15,
+        -23.969089239591387
+      ],
+      "position": [
+        135.42356619239757,
+        15,
+        -23.969089239591387
+      ],
+      "yaw": -72.72405623597056,
+      "bounds": [
+        134.35800070258878,
+        -25.939283165383184,
+        136.48913168220636,
+        -21.99889531379959
+      ],
+      "movedMeters": 1.5,
+      "solidReservation": true
+    },
+    {
+      "id": "B_stone_bench_154",
+      "island": "B",
+      "model": "stone_bench",
+      "role": "roadside",
+      "sourcePosition": [
+        47.014610571958286,
+        5,
+        -134.3411983226994
+      ],
+      "position": [
+        44.84127746280788,
+        5,
+        -133.75885547121874
+      ],
+      "yaw": 116.4164137870854,
+      "bounds": [
+        43.52580133744824,
+        -135.6940339039238,
+        46.15675358816752,
+        -131.82367703851367
+      ],
+      "movedMeters": 2.249999999999999,
+      "solidReservation": true
+    },
+    {
+      "id": "F_stone_bench_155",
+      "island": "F",
+      "model": "stone_bench",
+      "role": "roadside",
+      "sourcePosition": [
+        189.8416015873192,
+        15,
+        -113.29686037641372
+      ],
+      "position": [
+        193.5916015873192,
+        15,
+        -113.29686037641372
+      ],
+      "yaw": 166.3099503825346,
+      "bounds": [
+        191.6213286946649,
+        -114.25661714188874,
+        195.56187447997348,
+        -112.3371036109387
+      ],
+      "movedMeters": 3.75,
+      "solidReservation": true
+    },
+    {
+      "id": "A_banner_pole_156",
+      "island": "A",
+      "model": "banner_pole",
+      "role": "roadside",
+      "sourcePosition": [
+        -9.047049629688264,
+        0,
+        -194.05714285714288
+      ],
+      "position": [
+        -9.047049629688264,
+        0,
+        -196.30714285714288
+      ],
+      "yaw": -90.0,
+      "bounds": [
+        -10.800549629688264,
+        -197.07674285714288,
+        -7.306449629688264,
+        -195.5351428571429
+      ],
+      "movedMeters": 2.25,
+      "solidReservation": true
+    },
+    {
+      "id": "B_banner_pole_157",
+      "island": "B",
+      "model": "banner_pole",
+      "role": "roadside",
+      "sourcePosition": [
+        -5.108358126452746,
+        5,
+        -83.65636495406372
+      ],
+      "position": [
+        -1.3960475252233726,
+        5,
+        -87.3686755552931
+      ],
+      "yaw": 138.73448748395177,
+      "bounds": [
+        -3.1243416164336106,
+        -89.19588568087237,
+        0.33895076553080583,
+        -85.55274477847495
+      ],
+      "movedMeters": 5.25,
+      "solidReservation": true
+    },
+    {
+      "id": "E_banner_pole_158",
+      "island": "E",
+      "model": "banner_pole",
+      "role": "roadside",
+      "sourcePosition": [
+        15.176848972603604,
+        18,
+        89.06587116762648
+      ],
+      "position": [
+        18.926848972603604,
+        18,
+        89.06587116762648
+      ],
+      "yaw": 75.85202543440379,
+      "bounds": [
+        17.05093435626769,
+        87.89183804832989,
+        20.815858927012822,
+        90.24073019293824
+      ],
+      "movedMeters": 3.75,
+      "solidReservation": true
+    },
+    {
+      "id": "H_banner_pole_159",
+      "island": "H",
+      "model": "banner_pole",
+      "role": "roadside",
+      "sourcePosition": [
+        -4.047049629688264,
+        26,
+        234.1875
+      ],
+      "position": [
+        -4.047049629688264,
+        26,
+        234.1875
+      ],
+      "yaw": -90.0,
+      "bounds": [
+        -5.8005496296882635,
+        233.4179,
+        -2.306449629688264,
+        234.9595
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_banner_pole_160",
+      "island": "B",
+      "model": "banner_pole",
+      "role": "roadside",
+      "sourcePosition": [
+        11.952950370311736,
+        5,
+        -54.5
+      ],
+      "position": [
+        14.202950370311736,
+        5,
+        -54.5
+      ],
+      "yaw": -90.0,
+      "bounds": [
+        12.449450370311736,
+        -55.2696,
+        15.943550370311737,
+        -53.728
+      ],
+      "movedMeters": 2.25,
+      "solidReservation": true
+    },
+    {
+      "id": "B_banner_pole_161",
+      "island": "B",
+      "model": "banner_pole",
+      "role": "roadside",
+      "sourcePosition": [
+        11.910843443765035,
+        5,
+        -123.36474219153934
+      ],
+      "position": [
+        11.910843443765035,
+        5,
+        -123.36474219153934
+      ],
+      "yaw": 115.91187026243858,
+      "bounds": [
+        10.007875874055204,
+        -124.82538963254493,
+        13.824365369647497,
+        -121.91189061904095
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_banner_pole_162",
+      "island": "B",
+      "model": "banner_pole",
+      "role": "roadside",
+      "sourcePosition": [
+        54.78107494403295,
+        5,
+        -97.30998683311904
+      ],
+      "position": [
+        54.78107494403295,
+        5,
+        -97.30998683311904
+      ],
+      "yaw": 102.59190876239815,
+      "bounds": [
+        52.91404043897865,
+        -98.44569085456993,
+        56.660175959575426,
+        -96.17943735574487
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_banner_pole_163",
+      "island": "B",
+      "model": "banner_pole",
+      "role": "roadside",
+      "sourcePosition": [
+        -32.848408806971676,
+        5,
+        -94.59627223813517
+      ],
+      "position": [
+        -26.848408806971676,
+        5,
+        -94.59627223813517
+      ],
+      "yaw": 90.0,
+      "bounds": [
+        -28.589008806971677,
+        -95.36827223813518,
+        -25.094908806971677,
+        -93.82667223813517
+      ],
+      "movedMeters": 6.0,
+      "solidReservation": true
+    },
+    {
+      "id": "A_crate_barrel_164",
+      "island": "A",
+      "model": "crate_barrel",
+      "role": "building",
+      "sourcePosition": [
+        -43.073131015300746,
+        0,
+        -218.89186898469924
+      ],
+      "position": [
+        -40.823131015300746,
+        0,
+        -218.89186898469924
+      ],
+      "yaw": 127.85029456779466,
+      "bounds": [
+        -42.17298044441689,
+        -220.22035746118615,
+        -39.498353737278705,
+        -217.54984953487286
+      ],
+      "movedMeters": 2.25,
+      "solidReservation": true
+    },
+    {
+      "id": "B_crate_barrel_165",
+      "island": "B",
+      "model": "crate_barrel",
+      "role": "building",
+      "sourcePosition": [
+        35.40513101530075,
+        5,
+        -109.04186898469925
+      ],
+      "position": [
+        35.40513101530075,
+        5,
+        -109.04186898469925
+      ],
+      "yaw": -132.38750764107036,
+      "bounds": [
+        34.06819121693904,
+        -110.3756403186498,
+        36.75965707509259,
+        -107.68568284740557
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "C_crate_barrel_166",
+      "island": "C",
+      "model": "crate_barrel",
+      "role": "building",
+      "sourcePosition": [
+        -186.75286898469926,
+        10,
+        -56.01286898469925
+      ],
+      "position": [
+        -188.92620209384967,
+        10,
+        -55.43052613321858
+      ],
+      "yaw": -130.0121908602136,
+      "bounds": [
+        -190.25932703198902,
+        -56.76062920359945,
+        -187.57457701823844,
+        -54.07875638534618
+      ],
+      "movedMeters": 2.2500000000000027,
+      "solidReservation": true
+    },
+    {
+      "id": "G_crate_barrel_167",
+      "island": "G",
+      "model": "crate_barrel",
+      "role": "building",
+      "sourcePosition": [
+        165.10513101530074,
+        21,
+        114.45813101530075
+      ],
+      "position": [
+        164.52278816382008,
+        21,
+        112.28479790615035
+      ],
+      "yaw": -128.3969759435843,
+      "bounds": [
+        163.19356645263488,
+        110.95849539512164,
+        165.8711133821999,
+        113.63223702080558
+      ],
+      "movedMeters": 2.249999999999999,
+      "solidReservation": true
+    },
+    {
+      "id": "F_crate_barrel_168",
+      "island": "F",
+      "model": "crate_barrel",
+      "role": "building",
+      "sourcePosition": [
+        148.14213101530075,
+        15,
+        -91.12513101530075
+      ],
+      "position": [
+        148.14213101530075,
+        15,
+        -91.12513101530075
+      ],
+      "yaw": -45.0,
+      "bounds": [
+        146.80697199106433,
+        -92.48015974008854,
+        149.5004831419601,
+        -89.78664858919274
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_crate_barrel_169",
+      "island": "B",
+      "model": "crate_barrel",
+      "role": "building",
+      "sourcePosition": [
+        -25.173868984699247,
+        5,
+        -65.64186898469924
+      ],
+      "position": [
+        -26.23452915647907,
+        5,
+        -64.58120881291943
+      ],
+      "yaw": -130.0121908602136,
+      "bounds": [
+        -27.567654094618412,
+        -65.9113118833003,
+        -24.88290408086785,
+        -63.22943906504703
+      ],
+      "movedMeters": 1.4999999999999971,
+      "solidReservation": true
+    },
+    {
+      "id": "C_crate_barrel_170",
+      "island": "C",
+      "model": "crate_barrel",
+      "role": "building",
+      "sourcePosition": [
+        -211.66913101530076,
+        10,
+        -56.01286898469925
+      ],
+      "position": [
+        -211.66913101530076,
+        10,
+        -56.01286898469925
+      ],
+      "yaw": 130.0121908602136,
+      "bounds": [
+        -213.02377795867048,
+        -57.34657182107951,
+        -210.3390279449199,
+        -54.66469900282624
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_crate_barrel_171",
+      "island": "G",
+      "model": "crate_barrel",
+      "role": "building",
+      "sourcePosition": [
+        136.18886898469924,
+        21,
+        114.45813101530075
+      ],
+      "position": [
+        136.18886898469924,
+        21,
+        114.45813101530075
+      ],
+      "yaw": 128.3969759435843,
+      "bounds": [
+        134.83762456616293,
+        113.12814499094286,
+        137.51517149572794,
+        115.80188661662679
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_crate_barrel_172",
+      "island": "B",
+      "model": "crate_barrel",
+      "role": "building",
+      "sourcePosition": [
+        -25.195131015300753,
+        5,
+        -60.641868984699244
+      ],
+      "position": [
+        -26.255791187080575,
+        5,
+        -59.58120881291942
+      ],
+      "yaw": 131.80533853501143,
+      "bounds": [
+        -27.61295448157567,
+        -60.91779639327794,
+        -24.922707052015753,
+        -58.22939316370331
+      ],
+      "movedMeters": 1.500000000000002,
+      "solidReservation": true
+    },
+    {
+      "id": "C_crate_barrel_173",
+      "island": "C",
+      "model": "crate_barrel",
+      "role": "building",
+      "sourcePosition": [
+        -211.66913101530076,
+        10,
+        -76.92913101530075
+      ],
+      "position": [
+        -211.66913101530076,
+        10,
+        -76.92913101530075
+      ],
+      "yaw": 49.987809139786414,
+      "bounds": [
+        -213.020756090912,
+        -78.28090076317315,
+        -210.33600607716141,
+        -75.59902794491988
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_crate_barrel_174",
+      "island": "G",
+      "model": "crate_barrel",
+      "role": "building",
+      "sourcePosition": [
+        191.95386898469926,
+        21,
+        47.04186898469925
+      ],
+      "position": [
+        191.95386898469926,
+        21,
+        47.04186898469925
+      ],
+      "yaw": 47.612492358929636,
+      "bounds": [
+        190.5993429249074,
+        45.685682847405566,
+        193.29080878306095,
+        48.3756403186498
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "B_crate_barrel_175",
+      "island": "B",
+      "model": "crate_barrel",
+      "role": "building",
+      "sourcePosition": [
+        -23.33086898469925,
+        5,
+        -61.85813101530075
+      ],
+      "position": [
+        -21.45586898469925,
+        5,
+        -58.610535751109104
+      ],
+      "yaw": -44.99999999999997,
+      "bounds": [
+        -22.79102800893569,
+        -59.96556447589688,
+        -20.097516858039892,
+        -57.27205332500108
+      ],
+      "movedMeters": 3.75,
+      "solidReservation": true
+    },
+    {
+      "id": "B_planter_176",
+      "island": "B",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        34.839222166061404,
+        5,
+        -109.6077778339386
+      ],
+      "position": [
+        35.42156501754207,
+        5,
+        -111.781110943089
+      ],
+      "yaw": -132.2454577331325,
+      "bounds": [
+        34.45943019418839,
+        -112.71310404020576,
+        36.38369984089575,
+        -110.84911784597224
+      ],
+      "movedMeters": 2.250000000000001,
+      "solidReservation": true
+    },
+    {
+      "id": "F_planter_177",
+      "island": "F",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        147.5762221660614,
+        15,
+        -90.5592221660614
+      ],
+      "position": [
+        148.15856501754206,
+        15,
+        -88.385889056911
+      ],
+      "yaw": -45.0,
+      "bounds": [
+        147.21040553464903,
+        -89.33404853980403,
+        149.1067245004351,
+        -87.43772957401796
+      ],
+      "movedMeters": 2.249999999999999,
+      "solidReservation": true
+    },
+    {
+      "id": "C_planter_178",
+      "island": "C",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        -187.3187778339386,
+        10,
+        -56.5787778339386
+      ],
+      "position": [
+        -188.90976809160836,
+        10,
+        -58.16976809160833
+      ],
+      "yaw": -129.75445788778396,
+      "bounds": [
+        -189.88262750425147,
+        -59.08528594403346,
+        -187.93690867896524,
+        -57.25425023918321
+      ],
+      "movedMeters": 2.250000000000008,
+      "solidReservation": true
+    },
+    {
+      "id": "A_planter_179",
+      "island": "A",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        -42.507222166061396,
+        0,
+        -219.4577778339386
+      ],
+      "position": [
+        -44.45577932457638,
+        0,
+        -220.5827778339386
+      ],
+      "yaw": 127.49908295334251,
+      "bounds": [
+        -45.43676342342994,
+        -221.48188546733255,
+        -43.47479522572283,
+        -219.68367020054464
+      ],
+      "movedMeters": 2.25,
+      "solidReservation": true
+    },
+    {
+      "id": "G_planter_180",
+      "island": "G",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        164.5392221660614,
+        21,
+        113.8922221660614
+      ],
+      "position": [
+        163.4142221660614,
+        21,
+        115.84077932457639
+      ],
+      "yaw": -128.098285094769,
+      "bounds": [
+        162.43524883375335,
+        114.93717490055843,
+        164.39319549836944,
+        116.74438374859434
+      ],
+      "movedMeters": 2.25,
+      "solidReservation": true
+    },
+    {
+      "id": "B_planter_181",
+      "island": "B",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        -25.739777833938597,
+        5,
+        -66.2077778339386
+      ],
+      "position": [
+        -26.489777833938597,
+        5,
+        -67.50681593961525
+      ],
+      "yaw": -129.75445788778396,
+      "bounds": [
+        -27.462637246581732,
+        -68.42233379204038,
+        -25.51691842129546,
+        -66.59129808719013
+      ],
+      "movedMeters": 1.5,
+      "solidReservation": true
+    },
+    {
+      "id": "C_planter_182",
+      "island": "C",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        -211.1032221660614,
+        10,
+        -56.5787778339386
+      ],
+      "position": [
+        -208.8532221660614,
+        10,
+        -56.5787778339386
+      ],
+      "yaw": 129.75445788778396,
+      "bounds": [
+        -209.82608157870453,
+        -57.49429568636373,
+        -207.8803627534183,
+        -55.66325998151348
+      ],
+      "movedMeters": 2.25,
+      "solidReservation": true
+    },
+    {
+      "id": "G_planter_183",
+      "island": "G",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        136.7547778339386,
+        21,
+        113.8922221660614
+      ],
+      "position": [
+        136.17243498245793,
+        21,
+        111.718889056911
+      ],
+      "yaw": 128.098285094769,
+      "bounds": [
+        135.19346165014989,
+        110.81528463289304,
+        137.15140831476597,
+        112.62249348092895
+      ],
+      "movedMeters": 2.249999999999999,
+      "solidReservation": true
+    },
+    {
+      "id": "B_planter_184",
+      "island": "B",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        -24.629222166061403,
+        5,
+        -61.20777783393859
+      ],
+      "position": [
+        -24.629222166061403,
+        5,
+        -56.70777783393859
+      ],
+      "yaw": 131.59040662905574,
+      "bounds": [
+        -25.594354301042312,
+        -57.635607960039195,
+        -23.664090031080494,
+        -55.77994770783799
+      ],
+      "movedMeters": 4.5,
+      "solidReservation": true
+    },
+    {
+      "id": "C_planter_185",
+      "island": "C",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        -211.1032221660614,
+        10,
+        -76.3632221660614
+      ],
+      "position": [
+        -208.8532221660614,
+        10,
+        -76.3632221660614
+      ],
+      "yaw": 50.24554211221606,
+      "bounds": [
+        -209.82608157870453,
+        -77.27874001848653,
+        -207.8803627534183,
+        -75.44770431363628
+      ],
+      "movedMeters": 2.25,
+      "solidReservation": true
+    },
+    {
+      "id": "G_planter_186",
+      "island": "G",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        192.5197778339386,
+        21,
+        47.6077778339386
+      ],
+      "position": [
+        194.7697778339386,
+        21,
+        47.6077778339386
+      ],
+      "yaw": 47.754542266867496,
+      "bounds": [
+        193.8076430105849,
+        46.67578473682183,
+        195.7319126572923,
+        48.539770931055365
+      ],
+      "movedMeters": 2.25,
+      "solidReservation": true
+    },
+    {
+      "id": "B_planter_187",
+      "island": "B",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        -23.8967778339386,
+        5,
+        -61.2922221660614
+      ],
+      "position": [
+        -29.1467778339386,
+        5,
+        -61.2922221660614
+      ],
+      "yaw": -44.99999999999997,
+      "bounds": [
+        -30.09493731683164,
+        -62.24038164895445,
+        -28.19861835104556,
+        -60.34406268316835
+      ],
+      "movedMeters": 5.25,
+      "solidReservation": true
+    },
+    {
+      "id": "C_planter_188",
+      "island": "C",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        -144.6812221660614,
+        10,
+        -120.3332221660614
+      ],
+      "position": [
+        -144.6812221660614,
+        10,
+        -120.3332221660614
+      ],
+      "yaw": 54.546506665823884,
+      "bounds": [
+        -145.66826115729694,
+        -121.21624060412013,
+        -143.69418317482584,
+        -119.45020372800268
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    },
+    {
+      "id": "G_planter_189",
+      "island": "G",
+      "model": "planter",
+      "role": "building",
+      "sourcePosition": [
+        214.3042221660614,
+        21,
+        47.6077778339386
+      ],
+      "position": [
+        214.3042221660614,
+        21,
+        47.6077778339386
+      ],
+      "yaw": -47.754542266867496,
+      "bounds": [
+        213.3420873427077,
+        46.67578473682183,
+        215.2663569894151,
+        48.539770931055365
+      ],
+      "movedMeters": 0.0,
+      "solidReservation": true
+    }
+  ],
+  "duplicateLandmarkEmissionsSkipped": [
+    "B_ChimeSupport01",
+    "B_ChimeSupport02",
+    "B_DuckStatue",
+    "D_WindBeacon",
+    "F_PavilionSupport01",
+    "F_PavilionSupport02",
+    "F_PavilionSupport03",
+    "F_PavilionSupport04",
+    "F_PavilionSupport05",
+    "F_PavilionSupport06",
+    "F_PavilionSupport07",
+    "F_PavilionSupport08",
+    "G_BrokenAstrolabe"
+  ],
+  "navVertices": 4011,
+  "navTriangles": 4823,
+  "sourceLayout": "D:\\sofrware\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\Assets\\SkyIsland\\sky_island_layout.json",
   "textures": [
     "Textures/sky_mural.png",
     "Textures/sky_cloth.png",

@@ -82,3 +82,12 @@ Blender 后台遇到 Python 异常默认**仍返回退出码 0**：可加 `--pyt
 这些是离线实际几何检查。Unity 导入、游戏内角色通行、AI 行为、镜头遮挡与性能必须另行验证；不能把此报告当作实机 smoke 通过。
 
 桥路视觉由同一 `crossSections` 构造纵梁，桥板和桥墩按全桥弧长连续布置。岛内铺装的 30 个入口吸附真实桥心并沿入岛方向设置 8 / 16 米控制点，前 8 米与桥严格相切；花草布景读取实际铺路采样点避让。
+
+
+## 2026-09-30 道路、家具与阴影重建（COMPAT / SCHEMA+）
+
+`road_layout.json` 按登记模型的真实包络与名义占地并集规划，回放合并后的单层道路，不再次用 Catmull 插值。`sky_island_prop_placement.py` 用最终道路和实际模型包络摆放附加模型与房前家具；同位置登记地标的旧程序化重复结构只保留一个视觉 owner。房前招牌作为上方附着物保留立面支撑，柔性植物允许自然搭接，但不得侵入道路或登记实体。
+
+固定模型、朝向或原始道路变化时先运行 Blender 生成器 `--prepare-roads`，导出作者工程 `ArtSource/SkyIsland/sky_island_registered_bounds.json` 和 `sky_island_road_inputs.json`，不覆盖生产 FBX。随后在 Shapely 2.1 环境运行 `tools/sky_island_road_layout.py --baseline <作者工程>/ArtSource/SkyIsland/sky_island_road_inputs.json --actual <作者工程>/ArtSource/SkyIsland/sky_island_registered_bounds.json`。确认道路属性回归后，继续本页的 `--prepare-navigation`、碰撞导航烘焙和正式模型生成顺序。生产生成会核对实际包络，旧道路不可静默沿用。
+
+阴影修复需要重建 prefab 和 raid 包：作者构建器将反绕序共面配对信息存入 UV8，Shader 使用 TEXCOORD7；只换 Shader 不能给旧网格补标记。完整作者资产检查用 `SkyIslandShadowStabilityPropertyTest`；源码 CI 中作者部分为 PARTIAL。`SkyIslandRoadPlacementPropertyTest` 需要 Shapely，CI 已声明相同依赖。

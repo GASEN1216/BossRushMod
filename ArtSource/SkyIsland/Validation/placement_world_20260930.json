@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "evidenceLevel": "L2",
+  "propInstances": 190,
+  "movedInstances": 86,
+  "solidReservations": 130,
+  "fixedBounds": 88,
+  "duplicateStructureOwnersSkipped": [
+    "B_ChimeSupport01",
+    "B_ChimeSupport02",
+    "B_DuckStatue",
+    "D_WindBeacon",
+    "F_PavilionSupport01",
+    "F_PavilionSupport02",
+    "F_PavilionSupport03",
+    "F_PavilionSupport04",
+    "F_PavilionSupport05",
+    "F_PavilionSupport06",
+    "F_PavilionSupport07",
+    "F_PavilionSupport08",
+    "G_BrokenAstrolabe"
+  ],
+  "issues": [],
+  "geometrySha256": "057cdc7aaedb8a050a31af534c6e4305f3b1aaacf498f290de1aef0fc0917235",
+  "roadLayoutSha256": "1d0b0e5bdc325f873f5470cd3f9737aebc3f21001fb7585a9487ca98e7c8507a"
+}
