@@ -1,0 +1,36 @@
+{
+  "date": "2026-09-30",
+  "status": "PASS",
+  "evidenceLevel": "L2",
+  "classification": "COMPAT",
+  "change": "外边界栏杆背后 3318 只定向凸 BoxCollider 挡块（926 条外边），修 ECM2 非扫掠解穿插把角色推出桥栏",
+  "authorBase": "duckov_modding-main 3ce616b + 未提交改动",
+  "repoBase": "1a08e13d + 未提交改动",
+  "bundle": {
+    "author": {
+      "path": "../duckov_modding-main/UnityFiles/BossRush/SkyIslandRaidExport/sky_island_raid",
+      "bytes": 160902637,
+      "sha256": "5f8b6c3a2ba26baf0a17098460c575d1dfd189f895a3d3e473437c2705bf8949"
+    },
+    "repo": {
+      "path": "Assets/arenas/sky_island_raid",
+      "bytes": 160902637,
+      "sha256": "5f8b6c3a2ba26baf0a17098460c575d1dfd189f895a3d3e473437c2705bf8949"
+    },
+    "game": {
+      "path": "D:/software/steam/steamapps/common/Escape from Duckov/Duckov_Data/Mods/BossRush/Assets/arenas/sky_island_raid",
+      "bytes": 160902637,
+      "sha256": "5f8b6c3a2ba26baf0a17098460c575d1dfd189f895a3d3e473437c2705bf8949"
+    }
+  },
+  "allThreeMatch": true,
+  "previousGameBundleSha256": "642adfcf798e7aafe71eef4820628888e9fc58c88d1de14d99e59393654fc8ee",
+  "sourceFbxSha256": "4b3797dcfc4cb07dc0c456a319379ae8dae2094af76bf8b164120351e46ecf78",
+  "unity": {
+    "collisionValidation": "PASS failures=0",
+    "movementSimulation": "PASS edges=926 runs=6157 overlaps=5959 walkers=1473 failures=0",
+    "reverseCheckWithoutButtress": "FAILED overlap_ejected_fall=18"
+  },
+  "dllDeployed": false,
+  "gameSmoke": "not run; no game process or save accessed"
+}

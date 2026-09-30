@@ -27,6 +27,7 @@ GROUPS = {}
 MATERIALS = {}
 CURRENT = 'A'
 COLLISIONS = []
+RAIL_BUTTRESS = {}
 REPLACED_OBSTACLES = set()
 DUPLICATE_EMISSIONS_SKIPPED = set()
 ANIMATED = []
@@ -1270,6 +1271,80 @@ def terrain_and_boundary(layout):
             beam(tuple(p-Vector((0,.12,0))),tuple(p+Vector((0,1.35,0))),.19,'WoodDark',6)
             cylinder(tuple(p+Vector((0,1.40,0))),.24,.16,'Brass',6,radius_top=.11)
     if railv: create_object('COL_Rail_Perimeter',railv,railf,hidden=True)
+    rail_buttresses(layout,edges,verts,faces)
+
+
+# 栏杆背后的实心挡块（2026-09-30）。零厚度双面栏杆挡得住扫掠移动，但 ECM2 的解穿插不扫掠：
+# 角色一旦起步就压进栏杆边的木梁/柱子（瞬移、头目换位、刷怪落点），最小平移方向可能指向虚空，
+# 一步就被推出栏杆。Unity 里用官方 CharacterMovement 实跑复现 19 处
+# （SkyIslandMovementSimulation overlap_ejected_fall）。挡块是栏杆外侧的凸盒，内侧面贴着行走边，
+# 从任何穿插点解出去都是朝岛内最短。反折角附近的盒子若会伸进可走域就逐段缩短，宁可留缝也不造空气墙。
+BUTTRESS_THICKNESS=.8
+BUTTRESS_BOTTOM=-.25
+BUTTRESS_TOP=1.7
+
+
+def _walk_polygons(layout):
+    polys=[[(p[0],p[1]) for p in island['outline']] for island in layout['islands']]
+    for bridge in layout['bridges']:
+        for tri in bridge['surfaceTriangles']: polys.append([(p[0],p[2]) for p in tri])
+    return polys
+
+
+def _inside(polys,x,z):
+    for poly in polys:
+        inside=False; j=len(poly)-1
+        for i in range(len(poly)):
+            (xi,zi),(xj,zj)=poly[i],poly[j]
+            if (zi>z)!=(zj>z) and x<(xj-xi)*(z-zi)/(zj-zi)+xi: inside=not inside
+            j=i
+        if inside: return True
+    return False
+
+
+def rail_buttresses(layout,edges,verts,faces):
+    polys=_walk_polygons(layout)
+    third={}
+    for f in faces:
+        for i in range(3): third[tuple(sorted((f[i],f[(i+1)%3])))]=f[(i+2)%3]
+    boxes=[]; count=0; trimmed=0
+    for e in edges:
+        a,b=Vector(verts[e[0]]),Vector(verts[e[1]])
+        flat=Vector((b.x-a.x,0,b.z-a.z))
+        if flat.length<.12: continue
+        tangent=flat.normalized(); normal=Vector((tangent.z,0,-tangent.x))
+        c=Vector(verts[third[tuple(sorted(e))]])
+        if normal.dot(c-a)>0: normal=-normal           # normal 指向虚空
+        mid=(a+b)*.5
+        if _inside(polys,mid.x+normal.x*.6,mid.z+normal.z*.6): continue   # 洞边 / 共边：外侧还是可走地面
+        # 两端各向内收，直到盒子脚印（含 3 条纵线采样）全部落在可走域外（留 3 cm 容差）。
+        start,end=0.0,flat.length
+        def clear(s0,s1):
+            for s in (s0,(s0+s1)*.5,s1):
+                for t in (.03,BUTTRESS_THICKNESS*.5,BUTTRESS_THICKNESS):
+                    p=a+tangent*s+normal*t
+                    if _inside(polys,p.x,p.z): return False
+            return True
+        while end-start>.2 and not clear(start,end):
+            start+=.1; end-=.1; trimmed+=1
+        if end-start<=.2: continue
+        # 桥口缓坡与斜桥的边是倾斜的（BF 一条边 37 m 升 9 m）：挡块随边抬升，长边按 2 m 切段。
+        # 每段是一只**凸**的定向 BoxCollider（作者构建器按这里的元数据建）：非凸 MeshCollider 在 PhysX 里是
+        # 一层空壳没有「里面」，压进去照样可能从外侧面被推出——第一版用网格挡块实测只从 18 处降到 14 处。
+        pieces=max(1,math.ceil((end-start)/2.0))
+        for piece in range(pieces):
+            s0=start+(end-start)*piece/pieces; s1=start+(end-start)*(piece+1)/pieces
+            p0=a+(b-a)*(s0/flat.length); p1=a+(b-a)*(s1/flat.length)
+            along=p1-p0
+            up=normal.cross(along).normalized()
+            if up.y<0: up=-up
+            centre=(p0+p1)*.5+normal*(BUTTRESS_THICKNESS*.5)+Vector((0,(BUTTRESS_BOTTOM+BUTTRESS_TOP)*.5,0))
+            boxes.append({'center':[round(c,4) for c in centre],'forward':[round(c,6) for c in along.normalized()],
+                          'up':[round(c,6) for c in up],
+                          'size':[BUTTRESS_THICKNESS,round((BUTTRESS_TOP-BUTTRESS_BOTTOM)*up.y,4),round(along.length,4)]})
+        count+=1
+    RAIL_BUTTRESS.update({'edges':count,'boxes':boxes,'trimSteps':trimmed,'thickness':BUTTRESS_THICKNESS,
+                          'bottom':BUTTRESS_BOTTOM,'top':BUTTRESS_TOP})
 
 
 def build_materials(assets):
@@ -1478,7 +1553,7 @@ def main():
     bpy.ops.export_scene.fbx(filepath=str(fbx),use_selection=True,object_types={'MESH','EMPTY'},axis_forward='-Z',axis_up='Y',bake_anim=False,add_leaf_bones=False,path_mode='RELATIVE')
     metadata={'coordinateSystem':'Unity XYZ metres','materials':{'Sky_'+name:{'rgba':TILED_TEXTURES[name][2] if name in TILED_TEXTURES else rgba(color),'texture':(MODEL_TEXTURES[name].replace(chr(92),'/') if name in MODEL_TEXTURES else 'Textures/sky_mural.png' if name=='Mural' else 'Textures/sky_cloth.png' if name=='Cloth' else 'Textures/'+TILED_TEXTURES[name][0] if name in TILED_TEXTURES else None),'emission':EMISSION.get(name,0)} for name,color in PALETTE.items()},
               'markers':[{'name':m['id'],'position':m['position']} for m in layout['markers']]+[{'name':'POI_B_Mural','position':mural_marker(islands)}],
-              'visualMeshes':stats,'totalVisualTriangles':sum(s['triangles'] for s in stats.values()),'meshHygiene':MESH_HYGIENE,'collisionBoxes':COLLISIONS,'registeredPropBounds':registered_bounds,'propPlacements':PROP_SPACE.records,'duplicateLandmarkEmissionsSkipped':sorted(DUPLICATE_EMISSIONS_SKIPPED),
+              'visualMeshes':stats,'totalVisualTriangles':sum(s['triangles'] for s in stats.values()),'meshHygiene':MESH_HYGIENE,'collisionBoxes':COLLISIONS,'railButtress':RAIL_BUTTRESS,'registeredPropBounds':registered_bounds,'propPlacements':PROP_SPACE.records,'duplicateLandmarkEmissionsSkipped':sorted(DUPLICATE_EMISSIONS_SKIPPED),
               'navVertices':len(effective_nav['vertices']),'navTriangles':len(effective_nav['triangles']),
               'sourceLayout':str(assets/'sky_island_layout.json'),'textures':['Textures/sky_mural.png','Textures/sky_cloth.png']+['Textures/'+n for n in sorted(set(v[0] for v in TILED_TEXTURES.values()))]}
     (source/'sky_island_geometry.json').write_text(json.dumps(metadata,indent=2,ensure_ascii=False),encoding='utf-8')

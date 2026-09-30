@@ -21,6 +21,10 @@
 
 原设计导航的性质检查继续验证设计布局。发布侧另检查实际 NAV 的地面支持、预算、连通、交互距离和五道剧情门，Unity 直接对最终 raid 包执行 PhysX 胶囊扫掠、区域地面、桥口、边界与实体双面射线。以上属于 L2，游戏内角色、战斗和性能仍需 L3。
 
+## 2026-09-30 外边界凸挡块与 ECM2 实跑（COMPAT）
+
+双面栏杆外侧另有 `COL_Rail_Buttress_*` 定向凸 BoxCollider：生成器 `rail_buttresses` 写 `geometry.json` 的 `railButtress`，作者构建器按它建盒。原因是 ECM2 解穿插不扫掠，压进零厚度栏杆的角色可能被推向虚空。改动碰撞后在作者工程追加 `BossRush.SkyIslandMovementSimulation.RunAndExit`（不加 `-quit`），它用官方 ECM2 参数在最终 raid 包里做外边冲撞、起步穿插与随机游走，任何越界或坠落记红。
+
 ## 原设计布局重建与检查
 
 在 BossRushMod 根目录执行：

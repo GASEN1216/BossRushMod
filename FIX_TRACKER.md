@@ -2,6 +2,13 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-09-30 天空岛桥栏凸挡块：修角色被模型「弹」出地图（COMPAT，L2）
+
+- 根因：官方角色移动 ECM2（半径 0.30、跨步 0.25、贴边悬停 0）的解穿插不扫掠。角色一旦压进栏杆边的木梁 / 柱子（瞬移、头目换位、刷怪落点），最小平移方向可能指向虚空；零厚度双面栏杆是空壳，挡不住这一步。作者工程新增 `SkyIslandMovementSimulation`，用游戏自带 ECM2 与官方预制体参数在最终 raid 包里真跑：外边冲撞 6157 次、起步穿插 5959 次、随机游走 1473 人，修前 18 处穿插起步被推出桥栏坠落（BF / FG / FS3 / GE / GS4 / K2 桥），边界冲撞与游走本身 0 越界。
+- 修：`tools/generate_sky_island.py` `rail_buttresses` 沿 926 条外边在栏杆外侧生成 0.8 m 厚、-0.25～+1.7 m、随坡抬升、2 m 分段的定向凸挡块（3318 只），反折角处逐段内收不侵入可走域；元数据写进 `geometry.json` `railButtress`，作者 `SkyIslandBundleBuilder.AddRailButtresses` 建 `COL_Rail_Buttress_*` BoxCollider（走既有 `COL_Rail_` 前缀，运行时分墙体层），`SkyIslandCollisionValidation` 只放行这批声明过的盒子并逐只核对位置与尺寸。
+- 验证（L2）：Unity 碰撞校验 PASS failures=0；ECM2 实跑 PASS 0 失败；反向验证（注释掉建挡块）实跑转红 18 处坠落，还原后字节一致；着色器判包、73 包资源校验、SkyIsland 守卫 57/58（唯一红为 `SkyIslandRoadPlacementPropertyTest` 在 runner 下找不到 shapely，带依赖路径单跑 PASS）。raid 包作者 / 仓库 / 游戏三份 `5f8b6c3a…` 一致（`Validation/buttress_deployment_hashes_20260930.json`）；本轮只换资源包，未重编 DLL，未启动游戏。
+- 未覆盖：飞行图腾可越过 1.7 m 栏杆（玩法取舍，待 owner 定）；头目瞬移不查导航连通（审计线索，未改）。L3 人工：贴着 BF、FG、GE、K2 桥栏来回冲刺翻滚、被镜中客换位到桥边，不应掉出。
+
 ## 2026-09-30 天空岛搜刮箱三种木箱外观（COMPAT / OPERATIONAL，L1/L2）
 
 - owner 选方案 A：复用岛上已有的 Tripo 木箱，打进特效小包。生活物资＝桶箱堆（1.04×0.88×1.05 m）、航务补给＝一排长货箱（1.29×0.47×0.50 m）、星工遗存＝长着风晶的小货箱（1.08×0.91×0.43 m，加青色点光）。
