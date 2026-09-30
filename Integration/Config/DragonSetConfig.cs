@@ -138,8 +138,8 @@ namespace BossRush
             // 寒冷防护+1
             EquipmentHelper.AddModifierToItem(item, "ColdProtection", ModifierType.Add, DRAGON_HELM_COLD_PROTECTION, true);
 
-            // 枪械爆头伤害+10%
-            EquipmentHelper.AddModifierToItem(item, "GunCritDamageGain", ModifierType.PercentageAdd, DRAGON_HELM_CRIT_DAMAGE_GAIN, true);
+            // 枪械爆头伤害+10%。必须用 Add：角色的 GunCritDamageGain 基础值是 0，PercentageAdd 乘在 0 上等于没加（与龙王之冕同一个坑）。
+            EquipmentHelper.AddModifierToItem(item, "GunCritDamageGain", ModifierType.Add, DRAGON_HELM_CRIT_DAMAGE_GAIN, true);
 
             // 固定降低物理承伤倍率 0.1，避免被其他固定抗性再稀释
             EquipmentHelper.AddModifierToItem(item, "ElementFactor_Physics", ModifierType.Add, DRAGON_HELM_PHYSICS_RESIST, true);
