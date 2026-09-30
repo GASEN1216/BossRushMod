@@ -32,6 +32,7 @@ SUITE = "DebugAndTools/F3GameplayValidationSkyIsland.cs"
 CASES = "DebugAndTools/F3GameplayValidationSkyIslandCases.cs"
 RUNTIME = "DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs"
 SURFACE = "SkyIsland/SkyIslandSessionValidation.cs"
+PATROL_CASES = "DebugAndTools/F3GameplayValidationSkyIslandPatrols.cs"
 
 # `Inspect` 的 CJK 码位区间。C# 那边写成整数常量而不是字面汉字或 \u 转义，是因为后两者
 # 在文件被按非 UTF-8 读写、或经过会折反斜杠的工具时会静默变形，而这条断言完全靠
@@ -112,7 +113,7 @@ FORBIDDEN_PATTERNS = (
 
 # 观测面允许调用的会话方法：全部是只读的几何与计数。
 READ_ONLY_HELPERS = frozenset(("ExtractionMarkerAt", "BellExitIfUnlocked", "WindExitIfUnlocked", "StarExitIfUnlocked",
-                               "CountWalkableNodes"))
+                               "CountWalkableNodes", "ValidateRuntime"))
 CALL_KEYWORDS = frozenset(("if", "for", "foreach", "while", "switch", "return", "default", "typeof", "nameof",
                            "sizeof", "catch", "using", "lock", "checked", "unchecked", "when", "new"))
 
@@ -223,7 +224,7 @@ def main():
 
     suite = read(SUITE)
     cases = read(CASES)
-    runtime = read(RUNTIME)
+    runtime = read(RUNTIME) + "\n" + read(PATROL_CASES)
     surface = read(SURFACE)
     runner = read("DebugAndTools/F3GameplayValidationRunner.cs")
     mode_gate = read("Utilities/ModeRuntimeHooks.cs")
@@ -247,7 +248,7 @@ def main():
         return body
 
     # ---- 1. 新文件必须进编译清单（无通配符，漏了不报错）----
-    for path in (SUITE, CASES, RUNTIME, SURFACE):
+    for path in (SUITE, CASES, RUNTIME, SURFACE, PATROL_CASES):
         if path.replace("/", BACKSLASH) not in bat:
             errors.append("编译清单缺少 " + path)
 
@@ -309,6 +310,15 @@ def main():
                           "中途取消/异常时不复位，下次从基地启动会错走岛内编排")
     if len(re.findall(r"\b_skyIslandMode\s*=\s*false\s*;", execution)) != 1:
         errors.append("会话侧只许在 CompleteSession 这一处复位 _skyIslandMode")
+
+    patrol_source = read("SkyIsland/SkyIslandPatrols.cs")
+    patrol_validation = need_body(patrol_source, "internal bool ValidateRuntime(out string metrics, out string reason)", "巡守只读核对")
+    for member in ("TryReserve", "CompleteSpawn", "AbortSpawn", "TryActivate", "Suspend", "MarkDefeated", "Tick", "Dispose", "ApplyName"):
+        if re.search(r"\b" + member + r"\s*\(", patrol_validation):
+            errors.append("巡守只读核对不得调用可写入口：" + member)
+    for pattern, why in FORBIDDEN_PATTERNS:
+        if re.search(pattern, normalize(patrol_validation)):
+            errors.append("巡守只读核对不得改变运行时：" + why)
 
     # ---- 5. 只读纪律：套件、用例与会话观测面 ----
     for label, source in (("岛内套件", suite), ("岛内用例", cases), ("岛内运行时用例", runtime), ("会话观测面", surface)):

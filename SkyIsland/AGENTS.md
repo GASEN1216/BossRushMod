@@ -46,6 +46,7 @@
 ## 4. 运行时规则
 
 - 自动遭遇复用官方感知选敌，避免强制追踪每帧覆盖已选中的敌对 NPC；手动剧情挑战保留原追踪。生成后敌对性与距离休眠解除仍按根规则执行。
+- 普通巡守由独立 `SkyIslandPatrols` owner 持有，配置与兜底在 `SkyIslandPatrolRules`；不消费 Boss/剧情组预算。固定位置与外形按岛区配置，近远切换保留同一活体、生命与装备，死亡本趟不重刷；在途预留计入预算，退出拒绝旧 token 并回收晚到对象。停用/恢复清掉旧请求与 AI 路径，恢复前重设岛图 mask；战斗/保存半径门同时计入巡守。
 - 密集爆炸只在天空岛句柄门内临时借换官方工作缓冲，继续执行官方伤害/阵营/遮挡/去重循环；异常、嵌套和正常返回均恢复原引用。缓冲按 manager 和同步调用深度复用，停用时不加每帧工作。
 
 - **判夜只有一个口径**：`SkyIslandNight` + `SkyIslandLighting.ClockHours()`。没有 `GameClock` 实例时 `TimeOfDay` 恒为 00:00 且不抛异常；不要用官方 `TimeOfDayController.AtNight`。夜是 22–6 点，刻意等于官方 `TimeOfDayController` 运行时的 `nightStart / morningStart`（官方 Volume 与敌人夜间感知同相；反编译源的字段初值 19 / 5 会被 `LevelManagerPrefab` 序列化值覆盖，官方数值以 F3 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机读数为准，不照抄反编译初值）；一昼夜约 24 现实分钟、夜里约 8 分钟（`clockTimeScale = 60`），写夜间内容先按这个算（`SkyIslandMosquitoGuard`）。
@@ -79,6 +80,7 @@
 - 改 `ArtSource/SkyIsland/*.json` 不等于改了游戏里的场景：生成器 → 作者工程重打包 → 判包 → 部署，每一环留证据。
 - 岛位、障碍、聚落摆件、铺路、布景、门与木牌的坐标统一经 `tools/sky_island_frame.py` 换算。导航与聚落互相依赖，要反复跑到标记不再移动。挪内容锚点时连门的位置一起看「开门前从哪边够得着」（`SkyIslandGateNavigationPropertyTest`）；岛距一变，按旧岛距调的触发、追踪半径全要跟。
 - 贴路、靠墙这类语义化摆放不要用 `tools/sky_island_dressing.py` 的 `PlantingSpace.free()` 当可放判据：它是给植被远离路径撒点用的排除语义，会全部拒绝。
+
 - 道路回放 `ArtSource/SkyIsland/road_layout.json` 的合并面，修改登记模型先 `--prepare-roads` 重测实际包络再烘焙；家具用最终道路与实际模型尺寸定位，不能用中心点或旧名义半径保证整件模型净空。具体构建顺序见 NAVIGATION.md。
 - 实体几何修改后重烘焙 `ArtSource/SkyIsland/collision_navigation.json`；发布 NAV 由实际硬质网格身体高度切片得到，绑定布局与全部生产硬物（含桥梁）的指纹；生成时重新枚举当前硬物名称集合，新增 / 删除 / 硬软转换不得沿用旧名单验签。`--prepare-navigation` 只准备输入，不覆盖生产 FBX。完整重建命令与验证见 `ArtSource/SkyIsland/NAVIGATION.md`；旧设计导航不能替代发布侧 PhysX / 剧情门检查。
 - 导航网格顶点硬上限 4095，超了进岛前就抛异常。余量按运行时 `mesh.vertexCount` 算，不按 UnityPy 离线计数。

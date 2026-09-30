@@ -85,6 +85,11 @@ namespace BossRush
         /// <c>SkyIslandEncounters.LivingEnemyCount</c>——那条注释写着「给 F3 验收用」，此前一直没有调用点。
         /// </summary>
         internal int ValidationLivingEnemies { get { return encounters == null ? 0 : encounters.LivingEnemyCount; } }
+        internal bool ValidationPatrolRuntime(out string metrics, out string reason)
+        {
+            if (patrols == null) { metrics = "patrol_owner=null"; reason = "patrol_owner_missing"; return false; }
+            return patrols.ValidateRuntime(out metrics, out reason);
+        }
         /// <summary>信鸽此刻带的信（SKY_LETTER_PIGEON）；这一趟没有信鸽或已飞走时为 null。</summary>
         internal SkyIslandLetter ValidationPigeonLetter { get { return worldStory == null ? null : worldStory.PigeonLetter; } }
         /// <summary>信鸽的一次性落点闩（SKY_LETTER_PIGEON）：为真表示这一趟已经放过（或放不下而放弃），等收信后重新武装。</summary>

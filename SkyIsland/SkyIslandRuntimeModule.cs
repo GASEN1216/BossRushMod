@@ -216,6 +216,7 @@ namespace BossRush
             // 物资池与档次染色块跨出击复用，只在模块销毁时释放。
             SkyIslandLootPools.ResetStaticCaches();
             SkyIslandEnemyTiers.ResetStaticCaches();
+            SkyIslandPatrolAppearance.ResetStaticCaches();
             SkyIslandStormBoss.ResetStaticCaches();
             // 头目 / 岛主：击败事件的静态订阅（剧情 owner 销毁时已退订，这里兜底）与专属装备的占位克隆表。
             SkyIslandBossForge.ResetStaticCaches();

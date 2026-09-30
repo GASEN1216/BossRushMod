@@ -54,7 +54,7 @@ namespace BossRush
         private static readonly string[] SkyIslandCaseIds =
         {
             "SKY_SESSION_READY", "SKY_OFFICIAL_CONTRACT", "SKY_SCENE_IDENTITY", "SKY_NAV_GRAPH",
-            "SKY_EXPLOSION_PATCH", "SKY_MARKERS", "SKY_CONTENT_TABLE", "SKY_SCAVENGE_PLACEMENT",
+            "SKY_EXPLOSION_PATCH", "SKY_MARKERS", "SKY_CONTENT_TABLE", "SKY_PATROL_RUNTIME", "SKY_SCAVENGE_PLACEMENT",
             "SKY_INTERACTION_SEPARATION", "SKY_LOOT_BANDS", "SKY_PANEL_ART",
             "SKY_GATE_STATE", "SKY_GATE_REACHABILITY",
             "SKY_STORY_OBJECTIVE", "SKY_STORY_CODEC", "SKY_STORY_SAVE_STATE", "SKY_SERVICE_PRICING",
@@ -188,6 +188,7 @@ namespace BossRush
             SetStage("2/5 内容装配与落位");
             RunSkyIslandSync("SKY_MARKERS", ValidateSkyIslandMarkers);
             RunSkyIslandSync("SKY_CONTENT_TABLE", ValidateSkyIslandContentTable);
+            RunSkyIslandSync("SKY_PATROL_RUNTIME", ValidateSkyIslandPatrols);
             RunSkyIslandSync("SKY_SCAVENGE_PLACEMENT", ValidateSkyIslandScavengePlacement);
             RunSkyIslandSync("SKY_INTERACTION_SEPARATION", ValidateSkyIslandInteractionSeparation);
             RunSkyIslandSync("SKY_LOOT_BANDS", ValidateSkyIslandLootBands);

@@ -325,6 +325,7 @@ namespace BossRush
             ambience.ApplyStory(story.Current);
             encounters = new SkyIslandEncounters(root, player, navigation.Mask, groundMask, content, IsSessionValid,
                 EncounterWasSaved, OnEncounterCleared, Status, EncounterLabel, OnStormDefeated);
+            patrols = new SkyIslandPatrols(root, player, navigation.Mask, groundMask, origin, content, IsSessionValid, delegate { return story.Current; });
             raidSeed = unchecked(Environment.TickCount ^ (int)(Time.realtimeSinceStartup * 1000f));
             services = new SkyIslandServices(player, root, groundMask, raidSeed);
             // 撤离点的地面标识。半径就是 ExtractionRadius，圈内即判定内。
@@ -920,6 +921,8 @@ namespace BossRush
             Safe("scan", delegate { if (scan != null) scan.Dispose(); });
             scan = null;
             Safe("gates", delegate { if (gates != null) gates.Dispose(); });
+            Safe("patrols", delegate { if (patrols != null) patrols.Dispose(); });
+            patrols = null;
             Safe("graph", delegate { if (navigation != null) navigation.Dispose(); });
             navigation = null;
             Safe("lighting", delegate { if (lighting != null) lighting.Dispose(); });
@@ -999,8 +1002,7 @@ namespace BossRush
             reason = null;
             if (!IsSessionValid())
             { reason = L10n.T("请等待群岛就绪。", "Wait for the archipelago to finish loading."); return false; }
-            if (encounters != null &&
-                encounters.HasLivingEnemiesWithin(player.transform.position, StoryPanelQuietRadius))
+            if (HasHostileEnemiesWithin(player.transform.position, StoryPanelQuietRadius))
             {
                 reason = L10n.T("附近还有威胁，先把这段航路清干净再说。",
                     "There are still threats nearby. Clear this stretch of the lane first.");

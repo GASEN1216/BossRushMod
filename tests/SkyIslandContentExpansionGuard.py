@@ -722,7 +722,15 @@ def check_session_ownership():
         'Story panels need a combat gate; the modal pause is reliable and would otherwise be a free pause button'
     gate = session.split('internal bool CanOpenStoryPanel(out string reason)', 1)[1] \
         .split(chr(10) + '        }', 1)[0]
-    assert 'encounters.HasLivingEnemiesWithin(' in gate, 'The combat gate must ask the encounter owner'
+    assert 'HasHostileEnemiesWithin(player.transform.position, StoryPanelQuietRadius)' in gate, \
+        'Story panels must use the shared hostile-radius gate'
+    patrol_tick = source('SkyIslandSessionTick.cs')
+    hostile = patrol_tick.split('private bool HasHostileEnemiesWithin(Vector3 at, float radius)', 1)[1] \
+        .split(chr(10) + '        }', 1)[0]
+    hostile = re.sub(r'\s+', '', hostile)
+    assert 'return(encounters!=null&&encounters.HasLivingEnemiesWithin(at,radius))||(patrols!=null&&patrols.HasLivingEnemiesWithin(at,radius));' in hostile, \
+        'The combat gate must include both legacy encounters and ordinary patrols'
+
     assert 'StoryPanelQuietRadius' in gate, 'The quiet radius must be a named constant, not a literal'
     # 按半径而不是全图：把一组敌人丢在岛的另一头不该让全岛剧情交互永久失效。
     assert 'HasLivingEnemies)' not in gate, 'A whole-island check would deadlock the story on abandoned enemies'

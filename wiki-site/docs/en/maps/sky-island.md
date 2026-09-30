@@ -71,6 +71,20 @@ There are **39 scavenging points** across the map (3–4 in each of the eight ma
 
 The enemies here talk too. The Cloudedge Scavengers came up to make a living after the storm cut the lanes, and they are not monsters: walk near one of their camps and you will hear someone reckon what the brass is worth, say nobody dares gather crystal out by the cloud sea, or notice that people used to live in this house. One of them shouts when it first spots you, and says something when a mate goes down beside it. The Galebreakers have their own lines and only talk about the bridge, the wind and the toll. None of it is chatty: the same speaker waits over half a minute before opening its mouth again, and at most two bubbles show at once, so do not count on overhearing intel. Chiefs and island lords each have their own lines at three moments: turning up, crossing a health threshold, and going down. Those never compete with the mechanic warnings at the bottom of the screen. The Windeater is a gust of wind left by the storm and never speaks; the runaway bell engine at the Bell Court is a machine and only rings. Before a chief or island lord strikes, its warning ring fills in from the center while a rising charge-up tone plays, so you can hear it coming even with your back turned; when an island lord (or the Windeater) crosses a health threshold a wave of light ripples out from its feet, and when a chief or lord falls a bell tolls.
 
+Ordinary patrols occupy fixed positions on every island, including the dock and Windchime Market. Each region has a fixed feather color, face, body shape, helmet and armor silhouette. The dock is easier; later regions increase health, damage, alertness and reaction speed. Returning to a region resumes the same living character with the same injuries and equipment. A patrol defeated during an outing does not respawn until the next outing. The identifying helmet and armor models do not add extra high-value loot.
+
+- Cloudrise Dock: 6 Harbor Scavengers, blue-gray feathers and plain caps.
+- Windchime Market: 8 Market Guards, sandy gold feathers and light helmets.
+- Greenear Terraces: 10 Granary Sentries, grass-green feathers and headlamps.
+- Hanging Root Forest: 12 Forest Scouts, deep-green feathers and tier-two helmets.
+- Windsong Boardwalk: 12 Windbreak Hunters, blue feathers and tier-three helmets.
+- Mirrorwater Temple: 12 Temple Guards, ivory feathers and a different tier-three helmet.
+- Fallen Star Workshop: 14 Starworks Guards, gray feathers, copper-orange wings and tier-four helmets.
+- Homecoming Bell Court: 14 Belltower Guards, dark-red feathers and a taller tier-four silhouette.
+- Frogsong Pool, Upturned Post Hut, Rainlisten Grotto and Starfall Overlook: 6 patrols each, with fixed teal/straw-hat, rust-orange/cap, stone-purple/pot-helmet and ice-blue/UN-helmet themes.
+
+The existing enemy groups, chiefs, island lords and story challenges below retain their own spawning and progression rules.
+
 - **Cloudedge Scavengers** — the baseline density across the map, fighting like the game's ordinary scavengers. Different regions field different official scavenger builds.
 - **The Galebreakers** — they lead the roaming groups on the Windsong Boardwalk and at the Bell Court. Tougher, faster to react, and recognizable at a glance by their size and colour, so the groups on the main line are not a quick sweep. The three chiefs on the return relay platforms, Galebreaker Chaser / Stalker / Warden, are their leaders; see below.
 - **Overlook Stargazer** (chief) — leads the Starfall Overlook guards and wears a stargazer's lens helm. From high ground, with a clear line of sight, it first paints a ring at your feet, then drops two starfire shells once the mark locks. Step out of the ring, or duck behind cover to break its line of sight, and inside 8 m it can only shoot normally; wear its lens helm down to zero durability and it cannot mark anyone again. It drops that **Stargazer's Lens Helm** 30% of the time.

@@ -16,6 +16,8 @@ namespace BossRush
 {
     internal sealed partial class SkyIslandSession
     {
+        private SkyIslandPatrols patrols;
+
         /// <summary>本趟已经报过异常的步骤：同一步只记一次，免得每帧刷 Player.log。</summary>
         private readonly HashSet<string> tickFaults = new HashSet<string>(StringComparer.Ordinal);
 
@@ -24,8 +26,15 @@ namespace BossRush
             if (tickFaults.Add(step)) Debug.LogError("[SkyIsland] TICK_FAULT " + step + "（本趟后续同类异常不再重复记录）: " + e);
         }
 
+        private bool HasHostileEnemiesWithin(Vector3 at, float radius)
+        {
+            return (encounters != null && encounters.HasLivingEnemiesWithin(at, radius))
+                || (patrols != null && patrols.HasLivingEnemiesWithin(at, radius));
+        }
+
         private void TickSubsystems()
         {
+            try { if (patrols != null) patrols.Tick(); } catch (Exception e) { TickFault("patrols", e); }
             try { if (encounters != null) encounters.Tick(); } catch (Exception e) { TickFault("encounters", e); }
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Encounters);
             try { if (scavenging != null) scavenging.Tick(); } catch (Exception e) { TickFault("scavenging", e); }
@@ -52,8 +61,7 @@ namespace BossRush
             try
             {
                 if (story != null)
-                    story.Tick(encounters == null ||
-                        !encounters.HasLivingEnemiesWithin(player.transform.position, SaveQuietRadius));
+                    story.Tick(!HasHostileEnemiesWithin(player.transform.position, SaveQuietRadius));
             }
             catch (Exception e) { TickFault("story_save", e); }
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.StorySave);

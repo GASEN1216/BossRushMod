@@ -231,6 +231,10 @@ echo(SkyIsland\SkyIslandRewardCrate.cs
 echo(SkyIsland\SkyIslandScavenging.cs
 echo(SkyIsland\SkyIslandEnemyTier.cs
 echo(SkyIsland\SkyIslandEnemyTiers.cs
+echo(SkyIsland\SkyIslandPatrolRules.cs
+echo(SkyIsland\SkyIslandPatrolSchedule.cs
+echo(SkyIsland\SkyIslandPatrolAppearance.cs
+echo(SkyIsland\SkyIslandPatrols.cs
 echo(SkyIsland\SkyIslandStormBoss.cs
 echo(SkyIsland\SkyIslandBounty.cs
 echo(SkyIsland\SkyIslandServices.cs
@@ -331,6 +335,7 @@ echo(DebugAndTools\F3GameplayValidationDepth.cs
 echo(DebugAndTools\F3GameplayValidationDeepFlows.cs
 echo(DebugAndTools\F3GameplayValidationLeaks.cs
 echo(DebugAndTools\F3GameplayValidationSkyIsland.cs
+echo(DebugAndTools\F3GameplayValidationSkyIslandPatrols.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandCases.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandRuntimeCases.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandDrill.cs

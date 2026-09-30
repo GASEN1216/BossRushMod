@@ -140,7 +140,9 @@ def main():
     # 自动组按出击刷新后，全图口径等于把落盘门永久关上。
     forbid(session, "落盘门", "story.Tick(encounters == null || !encounters.HasLivingEnemies)")
     need(session, "落盘门",
-         "HasLivingEnemiesWithin(player.transform.position, SaveQuietRadius)",
+         "story.Tick(!HasHostileEnemiesWithin(player.transform.position, SaveQuietRadius))",
+         "(encounters != null && encounters.HasLivingEnemiesWithin(at, radius))",
+         "|| (patrols != null && patrols.HasLivingEnemiesWithin(at, radius))",
          "private const float SaveQuietRadius")
     need(enc, "半径口径", "internal bool HasLivingEnemiesWithin(Vector3 point, float radius)")
 
