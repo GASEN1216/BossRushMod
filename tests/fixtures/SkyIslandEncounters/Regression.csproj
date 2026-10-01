@@ -24,6 +24,7 @@
     <Compile Include="../../../SkyIsland/SkyIslandBossRules.cs" Link="Production/SkyIslandBossRules.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandCombatBalance.cs" Link="Production/SkyIslandCombatBalance.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandCombatPreset.cs" Link="Production/SkyIslandCombatPreset.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandEnemySources.cs" Link="Production/SkyIslandEnemySources.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandItemRules.cs" Link="Production/SkyIslandItemRules.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandLetters.cs" Link="Production/SkyIslandLetters.cs" />
     <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />

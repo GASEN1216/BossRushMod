@@ -13,6 +13,25 @@ namespace BossRush
         Starworks = 2
     }
 
+    /// <summary>
+    /// 搜刮箱里一格官方物品的类别（owner 2026-10-01：箱里要有物资、武器、子弹、装备）。
+    /// 类别只决定按哪组官方 Tag 建池（<c>SkyIslandLootPools.GetCategoryBand</c>），品质带、加权、价值上限与黑名单口径不变；
+    /// 类别池为空时退回本档通用池（<see cref="General"/>），绝不因此出空格。
+    /// </summary>
+    internal enum SkyIslandLootCategory
+    {
+        /// <summary>本档通用池：全部官方 Tag 的并集，也就是改版前每一格的来源。</summary>
+        General = 0,
+        /// <summary>武器：Gun + MeleeWeapon。</summary>
+        Weapon = 1,
+        /// <summary>子弹：Bullet，按堆给。</summary>
+        Ammo = 2,
+        /// <summary>装备：护甲、头盔、背包、面罩、耳机。</summary>
+        Gear = 3,
+        /// <summary>物资：医疗、针剂、食物。</summary>
+        Supplies = 4
+    }
+
     /// <summary>一个搜刮点的稳定身份：锚点标记 + 极坐标偏移 + 档次。落点由运行时地面检查最终决定。</summary>
     internal sealed class SkyIslandLootAnchor
     {
@@ -120,21 +139,120 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 件数下限/上限。上限压在 4 件，配合 12 敌上限控制单区峰值。
+        /// 搜刮箱的格子数下限/上限（一格 = 一件或一堆；含保底的那一格岛上特产）。
         ///
-        /// **必须随档次单调不减**：旧表里航务补给是 2–4、星工遗存反而只有 2–3，
+        /// owner 2026-10-01 实机反馈旧表（生活物资 1–2 件、航务 2–3、星工 2–4）太空：码头开出来常常只有一件。
+        /// 改为每箱 3–7 格：生活物资 3–4、航务补给 4–6、星工遗存 5–7；富裕岛区（<see cref="IsRichRegion"/>）再往上偏一格，
+        /// 整体夹在 [<see cref="CrateMinSlots"/>, <see cref="CrateMaxSlots"/>]，箱子容量 12 格放得下。
+        ///
+        /// **必须随档次单调不减**：旧表里航务补给曾是 2–4、星工遗存反而只有 2–3，
         /// 中段区域比全图最深处出得还多，与品质带的递增方向相反。
-        /// 生活物资同时下调到 1–2：码头与集市本来就是安全区，不该在最安全的地方给最多的量。
+        /// 只管地上捡到的搜刮箱；Boss 战利品与委托谢礼的件数由各自调用方给，不读这张表。
         /// </summary>
         internal static int MinCount(SkyIslandLootTier tier)
         {
-            return tier == SkyIslandLootTier.Supply ? 1 : 2;
+            if (tier == SkyIslandLootTier.Starworks) return 5;
+            if (tier == SkyIslandLootTier.Voyage) return 4;
+            return 3;
         }
         internal static int MaxCount(SkyIslandLootTier tier)
         {
-            if (tier == SkyIslandLootTier.Starworks) return 4;
-            if (tier == SkyIslandLootTier.Voyage) return 3;
-            return 2;
+            if (tier == SkyIslandLootTier.Starworks) return 7;
+            if (tier == SkyIslandLootTier.Voyage) return 6;
+            return 4;
+        }
+
+        /// <summary>任何一只搜刮箱的格子数下限（owner 2026-10-01）。</summary>
+        internal const int CrateMinSlots = 3;
+        /// <summary>任何一只搜刮箱的格子数上限（owner 2026-10-01），远小于箱子容量 12。</summary>
+        internal const int CrateMaxSlots = 7;
+        /// <summary>富裕岛区的格子数加成。</summary>
+        internal const int RichRegionBonus = 1;
+
+        /// <summary>
+        /// 富裕岛区：镜水寺 F、残星工坊 G、归航钟庭 H 与两条深处支路 S3 / S4。
+        /// 与巡守按岛区分级（`Assets/Data/SkyIsland/Patrols.json` 的 rank ≥ 6）是同一批，守卫交叉核对。
+        /// </summary>
+        internal static bool IsRichRegion(string region)
+        {
+            switch (region)
+            {
+                case "F":
+                case "G":
+                case "H":
+                case "S3":
+                case "S4":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// 一只搜刮箱的官方物品格数：总格数里先扣掉保底的一格特产；额外特产（<c>SkyIslandItemRules.IslandExtraFor</c>）
+        /// 照旧追加一格、不占原有格数，只有总格数已经顶到 <see cref="CrateMaxSlots"/> 时才顶掉一格官方物品。
+        /// 于是总格数 = 1 + 返回值 + (额外特产 ? 1 : 0)，恒在 [<see cref="CrateMinSlots"/>, <see cref="CrateMaxSlots"/>]。
+        /// </summary>
+        internal static int OfficialSlots(int slots, bool islandExtra)
+        {
+            int official = slots - 1;
+            if (islandExtra && slots >= CrateMaxSlots) official--;
+            return official < 0 ? 0 : official;
+        }
+
+        /// <summary>
+        /// 每档一副 6 张的类别牌：一只箱子的官方物品格从洗过的牌里依次发（不放回），超过 6 格的部分补通用池。
+        /// 生活物资偏吃的用的，航务补给偏子弹，星工遗存偏装备；每副都有武器、子弹、装备、物资与一张通用（留给蓝图、金饰这类惊喜）。
+        /// 不放回发牌让同一类在一只箱里出现的次数不超过它的张数，满格的箱子五类都见得到。
+        /// </summary>
+        internal static SkyIslandLootCategory[] CategoryDeck(SkyIslandLootTier tier)
+        {
+            if (tier == SkyIslandLootTier.Starworks)
+                return new[] { SkyIslandLootCategory.Supplies, SkyIslandLootCategory.Ammo, SkyIslandLootCategory.Weapon,
+                    SkyIslandLootCategory.Gear, SkyIslandLootCategory.Gear, SkyIslandLootCategory.General };
+            if (tier == SkyIslandLootTier.Voyage)
+                return new[] { SkyIslandLootCategory.Supplies, SkyIslandLootCategory.Ammo, SkyIslandLootCategory.Ammo,
+                    SkyIslandLootCategory.Weapon, SkyIslandLootCategory.Gear, SkyIslandLootCategory.General };
+            return new[] { SkyIslandLootCategory.Supplies, SkyIslandLootCategory.Supplies, SkyIslandLootCategory.Ammo,
+                SkyIslandLootCategory.Weapon, SkyIslandLootCategory.Gear, SkyIslandLootCategory.General };
+        }
+
+        /// <summary>按本档牌堆给 <paramref name="slots"/> 格发类别（部分 Fisher–Yates，不放回）；同一条随机流结果固定。</summary>
+        internal static SkyIslandLootCategory[] DealCategories(SkyIslandLootTier tier, int slots, Random random)
+        {
+            if (slots <= 0) return new SkyIslandLootCategory[0];
+            SkyIslandLootCategory[] deck = CategoryDeck(tier);
+            var dealt = new SkyIslandLootCategory[slots];
+            for (int i = 0; i < slots; i++)
+            {
+                if (i >= deck.Length) { dealt[i] = SkyIslandLootCategory.General; continue; }
+                int j = i + random.Next(deck.Length - i);
+                SkyIslandLootCategory card = deck[j];
+                deck[j] = deck[i];
+                deck[i] = card;
+                dealt[i] = card;
+            }
+            return dealt;
+        }
+
+        /// <summary>一格子弹给多少发（一格一堆，实际再被这种子弹的官方堆叠上限截住）。深处给得多。</summary>
+        internal static int AmmoStackMin(SkyIslandLootTier tier)
+        {
+            if (tier == SkyIslandLootTier.Starworks) return 30;
+            if (tier == SkyIslandLootTier.Voyage) return 20;
+            return 15;
+        }
+        internal static int AmmoStackMax(SkyIslandLootTier tier)
+        {
+            if (tier == SkyIslandLootTier.Starworks) return 60;
+            if (tier == SkyIslandLootTier.Voyage) return 40;
+            return 30;
+        }
+
+        internal static int RollAmmoStack(SkyIslandLootTier tier, Random random)
+        {
+            int min = AmmoStackMin(tier), max = AmmoStackMax(tier);
+            return min + random.Next(max - min + 1);
         }
 
         /// <summary>
@@ -164,6 +282,26 @@ namespace BossRush
                 int guarantee = GuaranteeMinQuality(tiers[i]);
                 if (guarantee > 0) AddBand(bands, guarantee, MaxQuality(tiers[i]));
             }
+            return bands.ToArray();
+        }
+
+        /// <summary>搜刮箱按类别抽的四个类别（通用池就是 <see cref="PrewarmBands"/> 里的常规带，不重复列）。</summary>
+        internal static readonly SkyIslandLootCategory[] PoolCategories =
+        {
+            SkyIslandLootCategory.Weapon, SkyIslandLootCategory.Ammo, SkyIslandLootCategory.Gear, SkyIslandLootCategory.Supplies
+        };
+
+        /// <summary>
+        /// 进岛装配时要预热的类别池：每一档常规带 × <see cref="PoolCategories"/>，每项是 {类别, 下限, 上限}。
+        /// 正好是 <c>SkyIslandLootPools.PickCategory</c> 会去查的全部类别池。纯算术，隔离回归逐项核对。
+        /// </summary>
+        internal static int[][] PrewarmCategoryBands()
+        {
+            var bands = new System.Collections.Generic.List<int[]>(12);
+            SkyIslandLootTier[] tiers = { SkyIslandLootTier.Supply, SkyIslandLootTier.Voyage, SkyIslandLootTier.Starworks };
+            for (int i = 0; i < tiers.Length; i++)
+                for (int c = 0; c < PoolCategories.Length; c++)
+                    bands.Add(new[] { (int)PoolCategories[c], MinQuality(tiers[i]), MaxQuality(tiers[i]) });
             return bands.ToArray();
         }
 
@@ -230,10 +368,18 @@ namespace BossRush
             return new Random(unchecked(raidSeed * 486187739 + StableHash(anchorId)));
         }
 
-        internal static int RollCount(SkyIslandLootTier tier, Random random)
+        /// <summary>一只搜刮箱的总格数：本档区间整体按岛区富裕程度上移，再夹进 [<see cref="CrateMinSlots"/>, <see cref="CrateMaxSlots"/>] 后均匀抽。</summary>
+        internal static int RollCount(SkyIslandLootTier tier, string region, Random random)
         {
-            int min = MinCount(tier), max = MaxCount(tier);
+            int bonus = IsRichRegion(region) ? RichRegionBonus : 0;
+            int min = ClampSlots(MinCount(tier) + bonus), max = ClampSlots(MaxCount(tier) + bonus);
             return min + random.Next(max - min + 1);
+        }
+
+        private static int ClampSlots(int slots)
+        {
+            if (slots < CrateMinSlots) return CrateMinSlots;
+            return slots > CrateMaxSlots ? CrateMaxSlots : slots;
         }
 
         /// <summary>档次统计：给验收和守卫用，确认每个区域都有产出且深处更值钱。</summary>

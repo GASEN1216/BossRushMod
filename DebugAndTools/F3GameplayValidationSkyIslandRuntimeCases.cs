@@ -1148,5 +1148,32 @@ namespace BossRush
         }
 
         #endregion
+
+        // 撤离环用例（ValidateSkyIslandExtractionRings，在 F3GameplayValidationSkyIslandCases.cs）的三个取样工具，
+        // 2026-10-01 为那份文件的 1200 行预算原样挪到这里（LargeFileBudgetGuard），逻辑一字未改。
+        /// <summary>已解锁 ⇔ 环可见，且可见时半径等于判定半径、不带碰撞体；锚点缺失时环也必须缺失。</summary>
+        private static bool RingMatchesUnlock(LineRenderer ring, bool unlocked, float expected)
+        {
+            if (ring == null) return !unlocked;
+            bool visible = ring.gameObject.activeInHierarchy;
+            return visible == unlocked && (!visible || Mathf.Abs(MeasureRingRadius(ring) - expected) < 0.01f)
+                && ring.GetComponent<Collider>() == null;
+        }
+
+        private static LineRenderer FindExtractionRing(GameObject root, string markerName)
+        {
+            foreach (LineRenderer line in root.GetComponentsInChildren<LineRenderer>(true))
+                if (line != null && line.gameObject.name == "SkyIslandExtractionRing_" + markerName) return line;
+            return null;
+        }
+
+        /// <summary>按环上顶点到中心的距离反算实际画出来的半径。画错了这里立刻不等。</summary>
+        private static float MeasureRingRadius(LineRenderer line)
+        {
+            if (line == null || line.positionCount <= 0) return -1f;
+            float total = 0f;
+            for (int i = 0; i < line.positionCount; i++) total += line.GetPosition(i).magnitude;
+            return total / line.positionCount;
+        }
     }
 }

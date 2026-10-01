@@ -80,7 +80,16 @@ namespace BossRush
             try { if (streetLamps != null && lighting != null) streetLamps.Tick(player.transform.position, lighting.AppliedSun); }
             catch (Exception e) { TickFault("street_lamps", e); }
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Lighting);
-            try { if (ambience != null) { ambience.ApplyStory(story.Current); ambience.Tick(player.transform.position); } }
+            try
+            {
+                if (ambience != null)
+                {
+                    ambience.ApplyStory(story.Current);
+                    ambience.Tick(player.transform.position);
+                    // 背景音乐只在登云码头（落地点）放；还没踩到任何岛面时就是刚落地，也算码头。
+                    ambience.SetDockMusic(standingRegion == null || standingRegion == "A");
+                }
+            }
             catch (Exception e) { TickFault("ambience", e); }
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Ambience);
         }

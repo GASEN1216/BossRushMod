@@ -49,6 +49,8 @@ namespace BossRush
             SkyIslandItems.InjectLocalization();
             SkyIslandSceneReferenceBridge.InjectLocalization(); SkyIslandEnemyTiers.ReinjectNames();
             SkyIslandSearchPoint.InjectLocalizations();
+            // 搜刮箱交互名「搜集 / Search」（官方 displayNameKey 按 key 查表，切语言时随这条链重注入）
+            SkyIslandRewardCrate.InjectLocalizations();
             // 失落的航向仪（Jeff 序章的交付物）的 DisplayNameRaw 注入（AGENTS.md 4.4）
             SkyIslandNavInstrumentConfig.InjectLocalization();
             // 20 处见闻在官方笔记图鉴里的标题与正文（官方查 Note_{key}_Title / _Content）。

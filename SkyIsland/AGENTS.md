@@ -46,8 +46,9 @@
 ## 4. 运行时规则
 
 - 自动遭遇复用官方感知选敌，避免强制追踪每帧覆盖已选中的敌对 NPC；手动剧情挑战保留原追踪。生成后敌对性与距离休眠解除仍按根规则执行。
-- 普通巡守由独立 `SkyIslandPatrols` owner 持有，配置与兜底在 `SkyIslandPatrolRules`；不消费 Boss/剧情组预算。固定位置与外形按岛区配置，近远切换保留同一活体、生命与装备，死亡本趟不重刷；在途预留计入预算，退出拒绝旧 token 并回收晚到对象。停用/恢复清掉旧请求与 AI 路径，恢复前重设岛图 mask；战斗/保存半径门同时计入巡守。
-- **敌人武器按档次配**（`SkyIslandEnemyArmory`，品质表 `SkyIslandEnemyArmoryRules`，`SkyIslandEnemyArmoryGuard`）：全岛敌人（含头目 / 岛主）都从官方拾荒者 preset 克隆，官方随机装配会给品质 1 的斧头，Forge 只换护甲。owner 2026-09-30 定：岛上敌人手里武器至少品质 3，具名对手 / 头目 / 岛主 / 噬风至少品质 5。新增刷怪路径必须在官方创建完成、身份 / 外形装好之后调 `Arm` / `ArmPatrol`；官方与其它 Mod 的武器都发、口径不限，只排除本 Mod 自己的 500xxx；过岛上物资池价值上限，不发控心与粘手物品，枪必须有同口径弹药并配满。
+- **刷怪底模全是官方 Boss 预设**（owner 2026-10-01，`SkyIslandEnemySources`，`SkyIslandCombatBalanceGuard`）：头目 / 岛主 / 具名对手 / 噬风 / 序章守卫克隆各自参照的那位 Boss，小兵、精英与巡守按点位 key 散列到官方 Boss 池（排除 `_NPC_`、口口口口、`_Test`、载具、中立 / 玩家阵营与非 `EnemyPreset_` 前缀）。别的文件不许自己扫 `CharacterRandomPreset`。小兵、精英、巡守的数值是那位 Boss 原版乘统一倍率，掉落 / 经验 / 现金由 `SkyIslandMinionKit` 换回岛屿拾荒者口径并关掉 `isBoss`（战役、日报、Rogue 结算按 `isBossCharacter` 计数）。统一倍率：生命、伤害、反应、开火前摇、散布、暴击 ×3；移速、弹速、射程、视野、听觉、夜视 ×1.5（`SkyIslandCombatBalance.PerceptionMultiplier`）。
+- 普通巡守由独立 `SkyIslandPatrols` owner 持有，配置与兜底在 `SkyIslandPatrolRules`；不消费 Boss/剧情组预算。固定位置按岛区配置（选点离岛缘 ≥12 m / 小岛 10 m、离路网与地标 ≤20 m、离导航边界 ≥2 m，`SkyIslandPatrolPlacementPropertyTest` 钉住；改槽位后重跑 `tools/sky_island_runtime_placements.py` 与场景审计 `--compact`），外形就是抽到的那位 Boss，近远切换保留同一活体、生命与装备，死亡本趟不重刷；在途预留计入预算，退出拒绝旧 token 并回收晚到对象。停用/恢复清掉旧请求与 AI 路径，恢复前重设岛图 mask；战斗/保存半径门同时计入巡守。
+- **敌人武器按档次配**（`SkyIslandEnemyArmory`，品质表 `SkyIslandEnemyArmoryRules`，`SkyIslandEnemyArmoryGuard`）：底模是官方 Boss（见上），Boss 原装武器可能低于下限，Forge 只换护甲。owner 2026-09-30 定：岛上敌人手里武器至少品质 3，具名对手 / 头目 / 岛主 / 噬风至少品质 5。新增刷怪路径必须在官方创建完成、身份 / 外形装好之后调 `Arm` / `ArmPatrol`；官方与其它 Mod 的武器都发、口径不限，只排除本 Mod 自己的 500xxx；过岛上物资池价值上限，不发控心与粘手物品，枪必须有同口径弹药并配满。主武器槽空着的不补枪：那是近战 Boss，塞了枪也不开。
 - **搜刮箱与采集点头顶不挂浮空字**（owner 2026-09-30，`SkyIslandHudGuard` / `SkyIslandFieldcraftGuard`）：远处靠光斑与点光认，名字只在官方交互提示里出现。
 - **搜刮箱按档次换木箱外观**（`SkyIslandLootCrateLook`，`SkyIslandLootCrateLookGuard`）：交互仍是官方 `InteractableLootbox`，只藏官方包的渲染器；网格在 `skyisland_fx`，材质按名字取场景已加载的那份，不打进包（避开 URP 剥变体）。改箱子造型走 `tools/sky_island_loot_crates.py` → 作者工程 `SkyIslandFxBundleBuilder` → 判包 → 复制 `Assets/ui/skyisland_fx`。
 - 密集爆炸只在天空岛句柄门内临时借换官方工作缓冲，继续执行官方伤害/阵营/遮挡/去重循环；异常、嵌套和正常返回均恢复原引用。缓冲按 manager 和同步调用深度复用，停用时不加每帧工作。

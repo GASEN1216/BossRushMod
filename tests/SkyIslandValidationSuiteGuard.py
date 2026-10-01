@@ -93,7 +93,7 @@ MUTATING_MEMBERS = (
 FORBIDDEN_PATTERNS = (
     (r"\bSavesSystem\.(?:Save|SaveFile|SaveGlobal|SetFile|DeleteCurrentSave|RestoreIndexedBackup|CollectSaveData)\b",
      "直接写档或换槽"),
-    (r"\bSkyIslandRewardCrate\.(?:Create|Build|Fill|CreateWithGoods)\b", "建箱"),
+    (r"\bSkyIslandRewardCrate\.(?:Create|Build|Fill|FillScavenge|CreateWithGoods)\b", "建箱"),
     (r"\btimeScale\s*=(?![=>])", "改时间流速"),
     (r"\.(?:position|localPosition|rotation)\s*=(?![=>])", "搬动场景对象"),
     (r"\.(?:Invoke|SetValue)\(", "用反射或委托调用绕过上面的名单"),

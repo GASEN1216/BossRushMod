@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BossRush;
 
 // 生产代码的委托文案走 L10n.T（英文玩家不该看到中文派单）。L10n 依赖官方
@@ -62,7 +63,10 @@ internal static class Program
             Check(SkyIslandLootTables.MinCount(order[i]) >= 1, "min count sane: " + order[i]);
             Check(SkyIslandLootTables.MaxCount(order[i]) >= SkyIslandLootTables.MinCount(order[i]),
                 "count band sane: " + order[i]);
-            Check(SkyIslandLootTables.MaxCount(order[i]) <= 4, "count stays within the crate budget: " + order[i]);
+            // owner 2026-10-01：每箱 3–7 格（含保底特产那一格），容量 12 格放得下。
+            Check(SkyIslandLootTables.MinCount(order[i]) >= SkyIslandLootTables.CrateMinSlots
+                  && SkyIslandLootTables.MaxCount(order[i]) <= SkyIslandLootTables.CrateMaxSlots,
+                "count stays within the 3-7 slot budget: " + order[i]);
             if (i == 0) continue;
             Check(SkyIslandLootTables.MinQuality(order[i]) > SkyIslandLootTables.MinQuality(order[i - 1]),
                 "min quality escalates at " + order[i]);
@@ -108,15 +112,95 @@ internal static class Program
         Check(SkyIslandLootTables.StableHash("G1") != SkyIslandLootTables.StableHash("G2"), "hash separates points");
         Check(SkyIslandLootTables.StableHash("G1") >= 0, "hash stays non-negative for seeding");
         Check(SkyIslandLootTables.StableHash(null) == 0 && SkyIslandLootTables.StableHash("") == 0, "hash tolerates empty");
-        // RollCount 必须始终落在档次件数区间内，否则箱子会空或撑爆容量。
+        // RollCount 必须始终落在「档次区间按岛区上移、再夹进 [3, 7]」之内，且区间两端都抽得到。
+        var seen = new Dictionary<string, HashSet<int>>(StringComparer.Ordinal);
         foreach (SkyIslandLootAnchor anchor in SkyIslandLootTables.Anchors)
-            for (int seed = 0; seed < 40; seed++)
+        {
+            int bonus = SkyIslandLootTables.IsRichRegion(anchor.Region) ? SkyIslandLootTables.RichRegionBonus : 0;
+            int low = Math.Min(Math.Max(SkyIslandLootTables.MinCount(anchor.Tier) + bonus, 3), 7);
+            int high = Math.Min(Math.Max(SkyIslandLootTables.MaxCount(anchor.Tier) + bonus, 3), 7);
+            var counts = new HashSet<int>();
+            for (int seed = 0; seed < 200; seed++)
             {
-                int count = SkyIslandLootTables.RollCount(anchor.Tier,
+                int count = SkyIslandLootTables.RollCount(anchor.Tier, anchor.Region,
                     SkyIslandLootTables.CreateStream(seed, "count:" + anchor.Id));
-                Check(count >= SkyIslandLootTables.MinCount(anchor.Tier) &&
-                      count <= SkyIslandLootTables.MaxCount(anchor.Tier), "roll within band: " + anchor.Id);
+                Check(count >= low && count <= high, "roll within band: " + anchor.Id);
+                Check(count >= SkyIslandLootTables.CrateMinSlots && count <= SkyIslandLootTables.CrateMaxSlots, "roll within 3-7: " + anchor.Id);
+                counts.Add(count);
             }
+            Check(counts.Count == high - low + 1, "every slot count in the band is reachable: " + anchor.Id);
+            seen[anchor.Id] = counts;
+        }
+        // 具体口径（owner 2026-10-01）：码头 3–4，悬根林 4–6，镜水寺 5–7（富裕），工坊 / 钟庭 6–7。
+        Check(seen["A1"].Min() == 3 && seen["A1"].Max() == 4, "supply crates hold 3-4 slots");
+        Check(seen["D1"].Min() == 4 && seen["D1"].Max() == 6, "voyage crates hold 4-6 slots");
+        Check(seen["F1"].Min() == 5 && seen["F1"].Max() == 7 && seen["S3a"].Min() == 5, "rich voyage regions shift up one slot");
+        Check(seen["G1"].Min() == 6 && seen["H4"].Max() == 7 && seen["S4b"].Max() == 7, "starworks crates hold 6-7 slots in rich regions");
+        string[] rich = { "F", "G", "H", "S3", "S4" };
+        foreach (string region in new[] { "A", "B", "C", "D", "E", "F", "G", "H", "S1", "S2", "S3", "S4" })
+            Check(SkyIslandLootTables.IsRichRegion(region) == (Array.IndexOf(rich, region) >= 0), "rich region table: " + region);
+        Check(!SkyIslandLootTables.IsRichRegion(null), "unknown region is not rich");
+    }
+
+    /// <summary>格子拆分：保底特产一格 + 额外特产追加一格（顶到 7 格才顶掉一格官方物品），总格数恒在 [3, 7]。</summary>
+    private static void SlotSplit()
+    {
+        for (int slots = SkyIslandLootTables.CrateMinSlots; slots <= SkyIslandLootTables.CrateMaxSlots; slots++)
+        {
+            int plain = SkyIslandLootTables.OfficialSlots(slots, false);
+            int withExtra = SkyIslandLootTables.OfficialSlots(slots, true);
+            Check(plain == slots - 1, "staple takes exactly one slot: " + slots);
+            Check(1 + plain >= SkyIslandLootTables.CrateMinSlots && 1 + plain <= SkyIslandLootTables.CrateMaxSlots, "plain crate stays in 3-7: " + slots);
+            Check(2 + withExtra >= SkyIslandLootTables.CrateMinSlots && 2 + withExtra <= SkyIslandLootTables.CrateMaxSlots, "extra crate stays in 3-7: " + slots);
+            Check(withExtra == (slots >= SkyIslandLootTables.CrateMaxSlots ? plain - 1 : plain), "extra only displaces an official item at the cap: " + slots);
+            Check(withExtra >= 1, "every crate keeps at least one official item: " + slots);
+        }
+    }
+
+    /// <summary>类别牌：同一流结果固定、不放回、超出牌数补通用池；每档牌堆都有武器 / 子弹 / 装备 / 物资。</summary>
+    private static void CategoryDeal()
+    {
+        foreach (SkyIslandLootTier tier in new[] { SkyIslandLootTier.Supply, SkyIslandLootTier.Voyage, SkyIslandLootTier.Starworks })
+        {
+            SkyIslandLootCategory[] deck = SkyIslandLootTables.CategoryDeck(tier);
+            Check(deck.Length >= SkyIslandLootTables.CrateMaxSlots - 1, "deck covers a full crate: " + tier);
+            foreach (SkyIslandLootCategory need in new[] { SkyIslandLootCategory.Weapon, SkyIslandLootCategory.Ammo,
+                SkyIslandLootCategory.Gear, SkyIslandLootCategory.Supplies })
+                Check(Array.IndexOf(deck, need) >= 0, "deck has " + need + ": " + tier);
+            for (int seed = 0; seed < 300; seed++)
+            {
+                SkyIslandLootCategory[] first = SkyIslandLootTables.DealCategories(tier, 6, SkyIslandLootTables.CreateStream(seed, "G1"));
+                SkyIslandLootCategory[] again = SkyIslandLootTables.DealCategories(tier, 6, SkyIslandLootTables.CreateStream(seed, "G1"));
+                Check(first.SequenceEqual(again), "same stream deals the same categories");
+                // 不放回：一副牌全发出去就是这副牌本身（多重集合相等）。
+                Check(first.OrderBy(c => c).SequenceEqual(deck.OrderBy(c => c)), "a full deal uses every card exactly once: " + tier);
+                SkyIslandLootCategory[] two = SkyIslandLootTables.DealCategories(tier, 2, SkyIslandLootTables.CreateStream(seed, "A1"));
+                foreach (SkyIslandLootCategory card in two.Distinct())
+                    Check(two.Count(c => c == card) <= deck.Count(c => c == card), "no category beyond its cards: " + tier);
+            }
+            SkyIslandLootCategory[] overflow = SkyIslandLootTables.DealCategories(tier, deck.Length + 2, new Random(1));
+            Check(overflow[deck.Length] == SkyIslandLootCategory.General && overflow[deck.Length + 1] == SkyIslandLootCategory.General,
+                "slots beyond the deck fall back to the general pool");
+            Check(SkyIslandLootTables.DealCategories(tier, 0, new Random(1)).Length == 0, "no slots, no cards");
+            // 子弹一格一堆，深处给得多。
+            Check(SkyIslandLootTables.AmmoStackMin(tier) >= 10 && SkyIslandLootTables.AmmoStackMin(tier) <= SkyIslandLootTables.AmmoStackMax(tier),
+                "ammo stack band sane: " + tier);
+            for (int seed = 0; seed < 100; seed++)
+            {
+                int stack = SkyIslandLootTables.RollAmmoStack(tier, new Random(seed));
+                Check(stack >= SkyIslandLootTables.AmmoStackMin(tier) && stack <= SkyIslandLootTables.AmmoStackMax(tier), "ammo stack in band: " + tier);
+            }
+        }
+        Check(SkyIslandLootTables.AmmoStackMax(SkyIslandLootTier.Starworks) > SkyIslandLootTables.AmmoStackMax(SkyIslandLootTier.Supply),
+            "deeper crates hold bigger ammo stacks");
+        // 类别池预热表：每一档常规带 × 四类，正好 12 个，不含通用类（通用带由 PrewarmBands 预热）。
+        int[][] bands = SkyIslandLootTables.PrewarmCategoryBands();
+        Check(bands.Length == 12, "category prewarm covers 3 tiers x 4 categories");
+        foreach (SkyIslandLootTier tier in new[] { SkyIslandLootTier.Supply, SkyIslandLootTier.Voyage, SkyIslandLootTier.Starworks })
+            foreach (SkyIslandLootCategory category in SkyIslandLootTables.PoolCategories)
+                Check(bands.Count(b => b[0] == (int)category && b[1] == SkyIslandLootTables.MinQuality(tier)
+                    && b[2] == SkyIslandLootTables.MaxQuality(tier)) == 1, "category band prewarmed once: " + tier + "/" + category);
+        Check(bands.All(b => b[0] != (int)SkyIslandLootCategory.General), "general pool is not duplicated in the category prewarm");
     }
 
     private static List<int> Draw(int seed, string id)
@@ -282,6 +366,8 @@ internal static class Program
             QualityBands();
             QualityWeights();
             SeededStreams();
+            SlotSplit();
+            CategoryDeal();
             BountyFlow();
         }
         catch (Exception e)

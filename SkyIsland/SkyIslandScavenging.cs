@@ -10,8 +10,8 @@ namespace BossRush
     /// COMPAT：天空岛物资搜集点 owner。
     ///
     /// 设计口径：
-    /// - 复用官方 `InteractableLootbox` 与官方搜刮 UI，玩家不需要学新交互；物品来自官方
-    ///   `ItemAssetsCollection`，不新增 TypeID，也不写任何经济数值。
+    /// - 复用官方 `InteractableLootbox` 与官方搜刮 UI，玩家不需要学新交互（交互名「搜集」，去掉尸体箱预制体的「搬起」）；
+    ///   官方物品来自 `ItemAssetsCollection`，另保底一格已登记的岛上特产，不新增 TypeID。
     /// - 落点只由已有作者标记 + 极坐标偏移推出，再由地面/墙体/占位三重检查裁决；
     ///   任一锚点失败只跳过该点（fail-open），不影响整套系统。
     /// - 按 4.12 门控：进入 72 米才真正建箱，一次 Tick 最多建一个；不在进图时预生成整图战利品。
@@ -223,8 +223,9 @@ namespace BossRush
         {
             point.Built = true;
             string error;
+            // searchCache：交互名「搜集」、去掉官方尸体箱自带的「搬起」（只有地上的搜刮点这样，赚来的箱子保持官方原样）。
             InteractableLootbox box = SkyIslandRewardCrate.Build(root.transform, point.Position,
-                point.Anchor.Bearing, "SkyIslandLoot_" + point.Anchor.Id, out error);
+                point.Anchor.Bearing, "SkyIslandLoot_" + point.Anchor.Id, out error, true);
             if (box == null)
             {
                 point.Failed = true;
@@ -232,9 +233,9 @@ namespace BossRush
                 return;
             }
             point.Box = box;
-            int added = SkyIslandRewardCrate.Fill(box, point.Anchor.Tier, raidSeed,
-                point.Anchor.Id, SkyIslandLootTables.RollCount(point.Anchor.Tier,
-                    SkyIslandLootTables.CreateStream(raidSeed, "count:" + point.Anchor.Id)));
+            // 3–7 格：保底一格岛上特产，其余按档次类别牌抽武器 / 子弹 / 装备 / 物资（owner 2026-10-01）；地上的箱子不开保底品质带。
+            string contents;
+            int added = SkyIslandRewardCrate.FillScavenge(box, point.Anchor, raidSeed, out contents);
             if (added == 0 && !poolWarned && report != null)
             {
                 poolWarned = true;
@@ -245,7 +246,7 @@ namespace BossRush
             // 箱子外观按档次换成岛上的木箱（桶箱堆 / 长货箱 / 长风晶的小货箱）；资源不全时保留官方包的样子。
             crateLook.Apply(box, point.Anchor.Tier, point.Anchor.Bearing);
             Debug.Log("[SkyIslandLoot] POINT_READY id=" + point.Anchor.Id + " tier=" + point.Anchor.Tier +
-                " items=" + added);
+                " items=" + added + " " + contents);
         }
 
         private void OnStartLoot(InteractableLootbox box)

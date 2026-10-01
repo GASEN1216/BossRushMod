@@ -86,9 +86,10 @@ def check(src, bat):
     if forge < 0 or arm < forge:
         errors.append("序章头目必须在 Forge 之后按头目档配枪")
     pat = squash(src["patrols"])
-    look, arm = pat.find(squash("SkyIslandPatrolAppearance.Apply(created, cell.Slot.RegionId, cell.Profile.Rank)")), pat.find(squash("SkyIslandEnemyArmory.ArmPatrol(created, cell.Profile.Rank);"))
-    if look < 0 or arm < look:
-        errors.append("巡守必须在固定外形之后按岛区等级配枪")
+    # 2026-10-01 起巡守的外形就是抽到的那位官方 Boss（不再换岛区鸭模）：配枪排在官方创建之后、导航接线之前。
+    made, arm, nav = pat.find(squash("created = await clone.CreateCharacterAsync(")), pat.find(squash("SkyIslandEnemyArmory.ArmPatrol(created, cell.Profile.Rank);")), pat.find(squash("ConfigureNavigation(created);"))
+    if made < 0 or arm < made or nav < arm:
+        errors.append("巡守必须在官方创建之后、接导航之前按岛区等级配枪")
 
     armory = src["armory"]
     for token, why in (

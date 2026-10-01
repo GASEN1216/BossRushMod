@@ -2,6 +2,18 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-01 天空岛实机反馈七项：全岛官方 Boss、属性 ×3、加密巡守、搜刮箱、居民中立、码头 BGM（COMPAT / OPERATIONAL，L1/L2）
+
+- 有枪不开（根因已查实）：刷怪底模按「阵营 scav、不是 Boss」收全部 preset，官方快照里 33 个只有一半是持枪拾荒者；序章「断风游猎·守」取名字排最前的，正好是近战的 `EnemyPreset_BossMelee_SchoolBully_Child`。开不开枪由 preset 私有 `aiController` 决定，与手里的枪无关。
+- owner 拍板「天空岛全部用 Boss 预设」：新 `SkyIslandEnemySources`（头目 / 岛主 / 具名对手 / 噬风 / 序章克隆各自参照的官方 Boss；小兵、精英、巡守按点位散列到官方 Boss 池，排除 `_NPC_`、口口口口、`_Test`、载具、中立 / 玩家阵营、非 `EnemyPreset_` 前缀）；新 `SkyIslandMinionKit`（小兵 / 精英 / 巡守留 Boss 行头，杂项掉落、经验、现金换岛屿拾荒者口径，`isBoss` 关掉免得刷爆战役「击杀 Boss」、日报与 Rogue 结算）；`SkyIslandEnemyArmory` 空主武器槽不补枪（近战 Boss）。巡守岛区鸭模外观 `SkyIslandPatrolAppearance` 删除，头顶是 Boss 自己的名字。
+- 属性：`SkyIslandCombatBalance.Multiplier` 1.5 → 3（生命、伤害、反应、开火前摇、散布、暴击）；新 `PerceptionMultiplier = 1.5`（移速、弹速、射程、视野、听觉、夜视，乘 3 会在一屏外开火）；小兵、精英、巡守按抽到的 Boss 原版算（owner 选「全按各自 Boss 原版 ×3」，巡守再乘岛区系数）；巡守的反应 / 开火前摇不再被岛区档案覆盖成 0.5–1.2 秒；序章守卫额外 ×2 生命（1500）。
+- 密度与落点（子代理）：巡守 112 → 187、ActiveLimit 24 → 32、挂起半径 110 → 95 m；选点离岛缘 ≥12 / 10 m、离路网与地标 ≤20 m、离导航边界 ≥2 m（旧槽位 67 个离岛缘 <5 m）；派生 `runtime_placements.json` 与场景审计同步。
+- 搜刮箱（子代理）：只对搜刮点改交互名「搜集 / Search」（反射写 `displayNameKey`，库存标题同名）并去掉「搬起」；每箱 3–7 格（生活 3–4、航务 4–6 / 富裕岛区 5–7、星工 6–7），第一格保底一堆岛上特产，其余按类别牌发物资 / 子弹 / 武器 / 装备 / 杂项，子弹按堆；12 个类别池进预热。一趟满搜约 200 格（旧约 92 件），经济约 ×2。
+- 居民在岛上改 `Teams.middle`（敌人隔桥锁打不死的居民）；背景音乐只在登云码头放（按脚下岛区获取 / 释放场景曲租约）。
+- 证据（L1/L2）：全量守卫 730/730；天空岛执行回归 16/16、F3 回归 3/3（设 GAME_PATH 等三个变量）；新回归 `EnemySourcesRegression`（Boss 池口径、参照克隆、小兵换掉落）与守卫改动均做反向验证；正式编译部署（最终 DLL 见下一条，构建与游戏目录 SHA 一致），`Patrols.json` 部署 SHA 一致；Wiki 站点重建。
+- F3「NPC/剧情」页新增「清空天空岛剧情/任务」（只在 Dev 构建）：`SkyIslandProgressDebugControls`（宿主 partial 预算已满，挂在 `CampaignPetNestDebugControls.Build` 末尾）→ 确认框 → `SkyIslandStoryService.DevResetCurrentSlot`（只许岛外；基地优先用序章常驻门面，免得旧数据回写；共享 store + 立即落盘 + 读回核对）。官方任务日志由投影核心下一拍撤回；物品、好感、征程不动。Dev 与正式两种构建都编过，正式 DLL `4F9B3E32` 已部署，`check_dll_identifiers --expect absent` PASS。
+- 未实机（L3）：Boss 池实际成员看 `Player.log` 的 `[SkyIslandEnemy] BOSS_POOL`；非鸭模 Boss（机械雪人等）上 Forge / 守钟装置换脸是否生效；Boss 原装枪不换时的备弹是否够；187 巡守 + Boss 模型的帧时间未采样；Boss 技能（手雷、召唤等）在桥上与居民附近的表现；首次到岛时居民 35 m 内有巡守，需要先清场。
+
 ## 2026-10-01 天空岛路灯夜里亮并照亮周围（COMPAT，L1/L2）
 
 - 根因：Tripo 雕花路灯与铜灯柱的灯罩是图集里的不透明画面玻璃，材质无自发光，`lantern()` 塞在里面的 Glow 灯芯被挡住；岛上没有灯光源，且环境着色器是 `UniversalMaterialType=Unlit`（GBuffer albedo 为 0），URP 点光源照不到岛面。

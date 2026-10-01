@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using Duckov.Utilities;
 using ItemStatsSystem;
 using UnityEngine;
@@ -75,9 +76,28 @@ namespace BossRush
             return false;
         }
 
-        /// <summary>建一个空箱。失败返回 null 并给出原因，由调用方 fail-open。</summary>
+        /// <summary>搜刮点箱子的交互名（中英由 <see cref="InjectLocalizations"/> 注入，取用时按当前语言解析）。</summary>
+        internal const string SearchNameKey = "BossRush_SkyIsland_LootSearch";
+
+        // 官方 InteractableLootbox.displayNameKey 是私有序列化字段：Start 里 `InteractName = displayNameKey` 会盖掉任何事先写的
+        // 交互名，Inventory 取值时也把它抄成库存标题。只能在 Start 之前写这个字段（口径同 NPCGiftContainerService / CourierService）。
+        private static readonly FieldInfo LootboxDisplayNameKeyField =
+            typeof(InteractableLootbox).GetField("displayNameKey", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static bool displayNameFieldWarned;
+
+        /// <summary>语言注入链（`InjectLocalization_Extra_Integration`）每次切语言都会调一次。</summary>
+        internal static void InjectLocalizations()
+        {
+            LocalizationHelper.InjectLocalization(SearchNameKey, L10n.T("搜集", "Search"));
+        }
+
+        /// <summary>
+        /// 建一个空箱。失败返回 null 并给出原因，由调用方 fail-open。
+        /// <paramref name="searchCache"/> 只给地上的搜刮点（<see cref="SkyIslandScavenging"/>）：交互名改成「搜集」、去掉官方尸体箱
+        /// 预制体自带的「搬起」（<see cref="PrepareSearchCache"/>）。Boss 战利品、委托谢礼、回响遗存这些「赚来的」箱子保持官方原样。
+        /// </summary>
         internal static InteractableLootbox Build(Transform parent, Vector3 position, float yaw,
-            string name, out string error)
+            string name, out string error, bool searchCache = false)
         {
             error = null;
             GameObject staging = null;
@@ -98,6 +118,8 @@ namespace BossRush
                 // 按位置哈希随机把箱子 SetActive(false)——箱子会静默消失，且不报错。
                 // 对象此刻仍未激活且不是 prefab 资产，DestroyImmediate 在这里是安全且确定的。
                 if (loader != null) UnityEngine.Object.DestroyImmediate(loader);
+                // 同样必须在激活之前：激活那一刻官方 InteractableBase.Awake 会把「搬起」的触发盒挪到交互层并编进交互组。
+                if (searchCache) PrepareSearchCache(box);
                 box.name = name;
                 // 先摆好世界坐标再挂到活动父节点：激活那一刻官方逻辑读到的必须是最终位置，
                 // 而不是暂存节点所在的场景原点（官方按位置哈希取 key）。
@@ -123,6 +145,8 @@ namespace BossRush
                 // 容量同理：EnsureLocalInventory 的 fallbackCapacity 只在回退路径生效，
                 // 成功路径拿到的是 Inventory 默认的 64 格。显式设一次，让常量真正说了算。
                 box.Inventory.SetCapacity(InventoryCapacity);
+                // 组里只剩箱子自己时把交互组关掉：交互提示只有「搜集」一行，滚轮也无可切换。
+                if (searchCache && box.GetInteractableList().Count <= 1) box.interactableGroup = false;
                 return box;
             }
             catch (Exception e)
@@ -185,6 +209,126 @@ namespace BossRush
                 }
             }
             return added;
+        }
+
+        /// <summary>
+        /// 搜刮点箱子（只在未激活暂存阶段调用）：
+        /// 1. 去掉「搬起」。官方 `LootBoxPrefab` 是敌人尸体箱，子物体 `Carriable` 上挂着 <see cref="InteractableCarriable"/>（交互名「搬起」）、
+        ///    <see cref="Carriable"/> 与它自己的触发盒，并登记在箱子的交互组列表里。这里把这三样 `DestroyImmediate` 掉、子物体本身留着
+        ///    （不赌它下面没挂渲染件）。组列表是官方私有字段，里面那一项变成已销毁引用：官方读这张表的三处——
+        ///    `InteractableBase.Awake`（`if (interactableBase)`）、`GetInteractableList`（`== null` 与 `activeInHierarchy`）、
+        ///    `InteractHUD.RefreshContent`（`!= null`）——都先判 Unity 空引用再用，不会碰到它；激活后再按
+        ///    `GetInteractableList().Count` 把只剩自己的交互组关掉（<see cref="Build"/>）。
+        ///    触发盒一起删：留着它会在交互层上占 `CA_Interact` 那 5 个重叠槽位之一，`GetComponent&lt;InteractableBase&gt;` 为空白白被跳过。
+        /// 2. 交互名换成「搜集」：写私有 `displayNameKey`，官方 Start 读它当交互名，搜刮界面标题也随之显示「搜集」。
+        /// 反射字段缺失时保留官方名字（「战利品」）并警告一次，箱子照样能搜。
+        /// </summary>
+        private static void PrepareSearchCache(InteractableLootbox box)
+        {
+            foreach (InteractableCarriable carry in box.GetComponentsInChildren<InteractableCarriable>(true))
+            {
+                if (carry == null) continue;
+                Collider trigger = carry.interactCollider;
+                if (trigger != null && trigger.gameObject == carry.gameObject && carry.gameObject != box.gameObject)
+                    UnityEngine.Object.DestroyImmediate(trigger);
+                UnityEngine.Object.DestroyImmediate(carry);
+            }
+            foreach (Carriable carriable in box.GetComponentsInChildren<Carriable>(true))
+                if (carriable != null) UnityEngine.Object.DestroyImmediate(carriable);
+            if (LootboxDisplayNameKeyField != null && LootboxDisplayNameKeyField.FieldType == typeof(string))
+            {
+                InjectLocalizations();
+                LootboxDisplayNameKeyField.SetValue(box, SearchNameKey);
+            }
+            else if (!displayNameFieldWarned)
+            {
+                displayNameFieldWarned = true;
+                Debug.LogWarning("[SkyIslandCrate] 官方 InteractableLootbox.displayNameKey 字段签名已变化，搜刮箱保留官方交互名");
+            }
+        }
+
+        /// <summary>
+        /// 地上搜刮箱的装填（owner 2026-10-01）。返回实际装进去的格数（一堆子弹、一堆材料都算一格）。
+        ///
+        /// - 总格数 <see cref="SkyIslandLootTables.RollCount"/>：按档次与岛区富裕程度在 3–7 格里取。
+        /// - 第 1 格保底一堆岛上特产（<see cref="SkyIslandItemRules.IslandStapleFor"/>）。
+        /// - 额外特产（<see cref="SkyIslandItemRules.IslandExtraFor"/>，悬根猎装任两件机会翻倍）照旧追加一格，
+        ///   只有总格数顶到 7 时才顶掉一格官方物品（<see cref="SkyIslandLootTables.OfficialSlots"/>）。
+        /// - 其余格按本档类别牌（<see cref="SkyIslandLootTables.DealCategories"/>）逐格从武器 / 子弹 / 装备 / 物资 / 通用池按品质加权抽；
+        ///   类别池为空退回通用池；子弹一格一堆（<see cref="SkyIslandLootTables.RollAmmoStack"/>）。地上的箱子一律不开保底品质带。
+        /// - 各段走各自的随机流（raidSeed + 点 id + 后缀），同一趟同一点内容固定。
+        /// <paramref name="summary"/> 给日志：每格「类别:TypeID×堆数」。
+        /// </summary>
+        internal static int FillScavenge(InteractableLootbox box, SkyIslandLootAnchor anchor, int raidSeed, out string summary)
+        {
+            summary = string.Empty;
+            if (box == null || box.Inventory == null || anchor == null) return 0;
+            SkyIslandLootTier tier = anchor.Tier;
+            int slots = SkyIslandLootTables.RollCount(tier, anchor.Region,
+                SkyIslandLootTables.CreateStream(raidSeed, "count:" + anchor.Id));
+            var log = new System.Text.StringBuilder(96);
+            int added = 0;
+            System.Random stapleStream = SkyIslandLootTables.CreateStream(raidSeed, anchor.Id + "#staple");
+            int stapleCount;
+            int staple = SkyIslandItemRules.IslandStapleFor(tier, stapleStream.NextDouble(), stapleStream.NextDouble(), out stapleCount);
+            if (AddStack(box, staple, stapleCount, log, "Island")) added++;
+            int extra = SkyIslandItemRules.IslandExtraFor(tier, SkyIslandBossRules.HunterIslandExtraRoll(
+                SkyIslandLootTables.CreateStream(raidSeed, anchor.Id + "#island").NextDouble(), SkyIslandBossGearWorn.RootweavePieces));
+            if (extra != 0 && AddStack(box, extra, 1, log, "Island")) added++;
+            System.Random random = SkyIslandLootTables.CreateStream(raidSeed, anchor.Id);
+            SkyIslandLootCategory[] categories = SkyIslandLootTables.DealCategories(tier,
+                SkyIslandLootTables.OfficialSlots(slots, extra != 0), random);
+            for (int i = 0; i < categories.Length; i++)
+            {
+                SkyIslandLootCategory category = categories[i];
+                int typeId = SkyIslandLootPools.PickCategory(category, tier, random);
+                if (typeId == 0 && category != SkyIslandLootCategory.General)
+                {
+                    category = SkyIslandLootCategory.General;
+                    typeId = SkyIslandLootPools.Pick(tier, false, random);
+                }
+                if (typeId == 0) continue;
+                int amount = category == SkyIslandLootCategory.Ammo ? SkyIslandLootTables.RollAmmoStack(tier, random) : 1;
+                if (AddStack(box, typeId, amount, log, category.ToString())) added++;
+            }
+            summary = "slots=" + slots + " " + log.ToString().TrimEnd();
+            return added;
+        }
+
+        /// <summary>
+        /// 往箱子里放**一格**：可堆叠的按 <paramref name="amount"/> 堆（被官方堆叠上限截住），不可堆叠的就一件。
+        /// 先问 prefab、实例化后回读 TypeID，与 <see cref="Fill"/> 同一条防线；失败只跳过这一格。
+        /// </summary>
+        private static bool AddStack(InteractableLootbox box, int typeId, int amount, System.Text.StringBuilder log, string label)
+        {
+            if (typeId <= 0) return false;
+            Item item = null;
+            try
+            {
+                // 先问 prefab：缺资源时 InstantiateSync 给的空壳带着同一个 TypeID，回读拦不住它。
+                if (ItemAssetsCollection.GetPrefab(typeId) == null) throw new InvalidOperationException("物品资源缺失");
+                item = ItemAssetsCollection.InstantiateSync(typeId);
+                if (item == null || item.TypeID != typeId) throw new InvalidOperationException("物品实例无效");
+                int stack = 1;
+                if (item.Stackable && amount > 1)
+                {
+                    stack = Mathf.Clamp(amount, 1, Mathf.Max(1, item.MaxStackCount));
+                    item.StackCount = stack;
+                }
+                item.Inspected = false;
+                if (!box.Inventory.AddItem(item)) throw new InvalidOperationException("装箱失败");
+                item = null;
+                log.Append(label).Append(':').Append(typeId).Append('x').Append(stack).Append(' ');
+                return true;
+            }
+            catch (Exception e)
+            {
+                if (item != null && item.InInventory == box.Inventory) return true;
+                if (item != null && item.InInventory == null && item.PluggedIntoSlot == null)
+                { try { item.DestroyTree(); } catch { /* 只清理未交付的物品 */ } }
+                Debug.LogWarning("[SkyIslandCrate] 物品 " + typeId + " 装箱失败：" + e.Message);
+                return false;
+            }
         }
 
         /// <summary>

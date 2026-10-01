@@ -507,17 +507,11 @@ namespace BossRush
             }
         }
 
+        // 克隆守卫参照的那位官方 Boss（K3 档案的 EnemyPreset_Boss_BALeader，持枪）。旧口径取名字排最前的拾荒者阵营 preset，
+        // 挑到的是近战的校霸小弟，守卫手里的枪一枪不开（SkyIslandEnemySources）。
         private CharacterRandomPreset FindPreset()
         {
-            CharacterRandomPreset selected = null;
-            foreach (CharacterRandomPreset preset in Resources.FindObjectsOfTypeAll<CharacterRandomPreset>())
-            {
-                if (preset == null || preset.isBoss || preset.isZombie || preset.team != Teams.scav ||
-                    preset.name.IndexOf("Dummy", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    preset.name.StartsWith("BossRush_", StringComparison.Ordinal)) continue;
-                if (selected == null || string.CompareOrdinal(preset.name, selected.name) < 0) selected = preset;
-            }
-            return selected;
+            return SkyIslandEnemySources.ForBaseline(SkyIslandCombatBalance.For("K3_Relay", 0, SkyIslandEnemyTier.Chief), "K3_Relay#0");
         }
 
         private async void SpawnBoss(Vector3 position, int expectedGeneration)
@@ -536,6 +530,8 @@ namespace BossRush
                 clone.setActiveByPlayerDistance = false;
                 // 序章与岛内的守共用基准；Forge 只装身份、装备与招式，数值必须在官方创建前准备。
                 SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief);
+                // 零号区这一位必掉品质 5–6 的枪，比岛上同名的那位更耐打，免得刚开档就能速推（owner 2026-10-01）。
+                clone.health *= SkyIslandCombatBalance.PreludeWardenHealthFactor;
                 position = GroundPoint(position);
                 created = await clone.CreateCharacterAsync(position, Vector3.left, -1, null, false);
                 if (created == null) throw new InvalidOperationException("官方角色创建失败");

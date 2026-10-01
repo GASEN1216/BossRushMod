@@ -106,6 +106,7 @@ def main():
     world = clean_source(read("SkyIsland/SkyIslandWorldStory.cs"))
     items = clean_source(read("Integration/SkyIsland/SkyIslandItems.cs"))
     item_rules = clean_source(read("SkyIsland/SkyIslandItemRules.cs"))
+    read_crate = clean_source(read("SkyIsland/SkyIslandRewardCrate.cs"))
     session_raw = read("SkyIsland/SkyIslandSession.cs")
     layout = json.loads(read("ArtSource/SkyIsland/layout.json"))
     author_markers = {m["id"] for m in layout["markers"]}
@@ -218,6 +219,25 @@ def main():
         next_free = re.search(r"下一可用 ID：\*\*(\d+)\*\*", table_text)
         if "500073-500082" not in table_text or not next_free or not ledger or int(next_free.group(1)) != int(ledger.group(1)) + 1:
             errors.append("docs/reference/Bossrush使用物品ID表.md 缺批次三那一段（500073-500082），或「下一可用 ID」没有紧接登记上限")
+
+    # ---- 2b. 搜刮箱保底特产（owner 2026-10-01）：只出采集材料与局内耗材，纪念品与合成成品绝不进箱 ----
+    staple = body_of(item_rules, "internal static int[] StapleTable(SkyIslandLootTier tier)") or ""
+    staple_rows = re.findall(r"BossRushItemIds\.(\w+),\s*(\d+),\s*(\d+),\s*(\d+)", staple)
+    staple_allowed = {"SkyIslandGreenearSheaf", "SkyIslandDriftwood", "SkyIslandCloudmossFiber", "SkyIslandBrassScrap",
+                      "SkyIslandWindcrystalShard", "SkyIslandStardust", "SkyIslandHomecomingBento", "SkyIslandStarmossSalve",
+                      "SkyIslandWindLantern", "SkyIslandWindwardIncense"}
+    if len(staple_rows) < 3 or "case SkyIslandLootTier.Starworks:" not in staple or "case SkyIslandLootTier.Voyage:" not in staple:
+        errors.append("搜刮箱保底特产表没解析全（三档都要有）：%d 行" % len(staple_rows))
+    for name, weight, low, high in staple_rows:
+        if name not in staple_allowed:
+            errors.append("搜刮箱保底特产只许采集材料与局内耗材，纪念品与合成成品不进箱：" + name)
+        if name not in all_names:
+            errors.append("搜刮箱保底特产 %s 不是登记过的天空岛物品" % name)
+        if int(weight) <= 0 or not 1 <= int(low) <= int(high) <= 4:
+            errors.append("搜刮箱保底特产 %s 的权重或堆数不合理：%s %s-%s" % (name, weight, low, high))
+    fill_scavenge = body_of(read_crate, "internal static int FillScavenge(") or ""
+    if "SkyIslandItemRules.IslandStapleFor(tier," not in fill_scavenge:
+        errors.append("搜刮箱必须保底一格岛上特产（SkyIslandItemRules.IslandStapleFor）")
 
     # ---- 3. 物品配置 ----
     for name in MATERIALS:

@@ -14,6 +14,8 @@ u"""天空岛物资池预热（CR-2026-09-14-014）：预热调用必须在进�
    只在模块销毁时 `ResetStaticCaches`，且全仓唯一调用点在模块 `OnDestroy`）。
 4. 预热带表覆盖每一档的常规带与保底带（`PrewarmBands` 的算法；集合相等由执行回归逐项核对）。
 5. F3 `SKY_LOOT_BANDS` 先读缓存状态、再第一次调用 `Get`（反过来判据恒真），并交给纯判据 `JudgeLootPrewarm`。
+6. 搜刮箱的类别池（owner 2026-10-01，`PrewarmCategoryBands`）在同一个 `Prewarm` 里接着预热：已缓存跳过、每建一个让出一帧；
+   F3 同样先读类别池缓存状态、再第一次 `GetCategoryBand`。
 
 反向检查在内存里恢复错误写法，确认每条都抓得住。
 """
@@ -110,6 +112,19 @@ def check(sources):
         loop = squash(body_of(prewarm, squash("for (int i = 0; i < bands.Length; i++)")) or "")
         if "yield return null;" not in loop or loop.find("GetBand(") > loop.find("yield return null;"):
             errors.append("物资池预热必须每建完一个品质带就让出一帧（单帧建完全部带等于把卡顿挪到读条最后一帧）")
+    cat_tokens = ["int[][] categoryBands = SkyIslandLootTables.PrewarmCategoryBands();",
+                  "for (int c = 0; c < categoryBands.Length; c++)", "if (IsCategoryCached(category, categoryBands[c][1], categoryBands[c][2]))",
+                  "continue;", "GetCategoryBand(category, categoryBands[c][1], categoryBands[c][2]);", "yield return null;"]
+    position = prewarm.find(squash("GetBand(bands[i][0], bands[i][1]);"))
+    for token in cat_tokens:
+        found = prewarm.find(squash(token), position + 1)
+        if found < 0:
+            errors.append("搜刮箱类别池预热缺或顺序不对（须排在品质带之后、同一个 Prewarm 里）：" + token)
+            break
+        position = found
+    cat_loop = squash(body_of(prewarm, squash("for (int c = 0; c < categoryBands.Length; c++)")) or "")
+    if not cat_loop or "yield return null;" not in cat_loop or cat_loop.find("GetCategoryBand(") > cat_loop.find("yield return null;"):
+        errors.append("类别池预热必须每建完一个池子就让出一帧")
     for token in ("cache.Clear()", "weights.Clear()", "ResetStaticCaches("):
         if token in prewarm:
             errors.append("物资池预热不得复位缓存（缓存口径不变，只在模块销毁时复位）：" + token)
@@ -132,6 +147,10 @@ def check(sources):
     first_get = loot.find(squash("SkyIslandLootPools.Get("))
     if cached < 0 or first_get < 0 or cached > first_get:
         errors.append("SKY_LOOT_BANDS 必须在第一次 Get 之前读缓存状态：Get 会顺手把没建的带建起来，读晚了判据恒真")
+    cat_cached = loot.find(squash("SkyIslandLootPools.IsCategoryCached("))
+    cat_first = loot.find(squash("SkyIslandLootPools.GetCategoryBand("))
+    if cat_cached < 0 or cat_first < 0 or cat_cached > cat_first or cat_cached > first_get:
+        errors.append("SKY_LOOT_BANDS 必须在第一次查询之前读类别池缓存状态")
     if "JudgeLootPrewarm(" not in loot:
         errors.append("SKY_LOOT_BANDS 的预热判据必须交给纯判据 JudgeLootPrewarm（隔离回归执行的那一份）")
     return errors
@@ -158,6 +177,14 @@ def main():
         (POOLS, "                LastPrewarm = stats;\n                yield return null;\n", "                LastPrewarm = stats;\n"),
         # 预热时顺手清缓存
         (POOLS, "            int[][] bands = SkyIslandLootTables.PrewarmBands();\n", "            int[][] bands = SkyIslandLootTables.PrewarmBands();\n            cache.Clear();\n"),
+        # 类别池预热不让出帧
+        (POOLS, "                LastPrewarm = stats;\n                yield return null;\n            }\n            LastPrewarm = stats;\n            // 敌人武器池",
+         "                LastPrewarm = stats;\n            }\n            LastPrewarm = stats;\n            // 敌人武器池"),
+        # 类别池预热整段删掉
+        (POOLS, "            int[][] categoryBands = SkyIslandLootTables.PrewarmCategoryBands();\n", "            int[][] categoryBands = new int[0][];\n"),
+        # F3 先查类别池再读类别缓存
+        (CASES, "            int[][] categoryBands = SkyIslandLootTables.PrewarmCategoryBands();\n",
+         "            SkyIslandLootPools.GetCategoryBand(SkyIslandLootCategory.Ammo, 1, 3);\n            int[][] categoryBands = SkyIslandLootTables.PrewarmCategoryBands();\n"),
         # 漏掉保底带
         (TABLES, "                if (guarantee > 0) AddBand(bands, guarantee, MaxQuality(tiers[i]));\n", ""),
         # F3 先 Get 再读缓存

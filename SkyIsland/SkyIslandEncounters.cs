@@ -50,7 +50,8 @@ namespace BossRush
             }
         }
         private readonly List<Encounter> encounters = new List<Encounter>();
-        private readonly List<CharacterRandomPreset> sources = new List<CharacterRandomPreset>();
+        // 小兵换掉落与经验时参照的官方拾荒者（SkyIslandMinionKit）；找不到时为 null，小兵保留 Boss 原掉落。
+        private readonly CharacterRandomPreset scavReference;
         private readonly GameObject root;
         private readonly CharacterMainControl player;
         private readonly GraphMask mask;
@@ -88,13 +89,9 @@ namespace BossRush
             this.describe = describe;
             this.stormDefeated = onStormDefeated;
             chatter = new SkyIslandChatter(SkyIslandChatter.EnemyCooldownMin, SkyIslandChatter.EnemyCooldownMax, valid);
-            // 一次加载时缓存，不在每帧/每次遭遇扫描全局资源。
-            foreach (CharacterRandomPreset preset in Resources.FindObjectsOfTypeAll<CharacterRandomPreset>())
-                if (preset != null && !preset.isBoss && !preset.isZombie && preset.team == Teams.scav &&
-                    preset.name.IndexOf("Dummy", StringComparison.OrdinalIgnoreCase) < 0 &&
-                    !preset.name.StartsWith("BossRush_", StringComparison.Ordinal)) sources.Add(preset);
-            sources.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
-            if (sources.Count == 0) throw new InvalidOperationException("天空岛没有可用的官方战斗角色资源");
+            // 一次加载时缓存，不在每帧/每次遭遇扫描全局资源。底模全部是官方 Boss 预设（owner 2026-10-01，SkyIslandEnemySources）。
+            SkyIslandEnemySources.Bosses();
+            scavReference = SkyIslandEnemySources.ScavReference();
             ContentSource = content.Source;
             foreach (SkyIslandEncounterDefinition definition in content.Encounters) Add(definition);
         }
@@ -454,7 +451,10 @@ namespace BossRush
                     // 夜限定带队白天不刷：位置留着，玩家夜里走近时再补（SkyIslandBossForge.LeadWaitsForNight）。
                     if (LeadWaiting(encounter, i)) continue;
                     Vector3 point = FindGround(encounter.Marker, i);
-                    CharacterRandomPreset source = sources[PresetIndex(encounter.Id, i)];
+                    // 有固定参照的（头目、岛主、具名对手、噬风）克隆参照的那位官方 Boss；小兵与精英按位置从 Boss 池里固定抽一位。
+                    SkyIslandEnemyTier tier = encounter.Definition.TierFor(i);
+                    SkyIslandCombatBaseline baseline = SkyIslandCombatBalance.For(encounter.Id, i, tier);
+                    CharacterRandomPreset source = SkyIslandEnemySources.ForBaseline(baseline, encounter.Id + "#" + i);
                     CharacterRandomPreset clone = UnityEngine.Object.Instantiate(source);
                     clone.name = "BossRush_SkyIsland_" + encounter.Id;
                     // 正式独立出击沿用官方 CharacterMainControl.OnDead 箱子、经验与魂语义。
@@ -465,8 +465,9 @@ namespace BossRush
                     try
                     {
                         // 在途 preset 仅由当前 async 栈拥有，场景退出无权提前销毁。
-                        SkyIslandEnemyTier tier = encounter.Definition.TierFor(i);
                         SkyIslandCombatPreset.Apply(clone, source, encounter.Id, i, tier);
+                        // 小兵与精英：Boss 的行头与本事，拾荒者的掉落与经验（owner 2026-10-01）。
+                        if (baseline == null) SkyIslandMinionKit.UseScavLoot(clone, scavReference);
                         created = await clone.CreateCharacterAsync(point, Vector3.forward, -1, null, false);
                         if (created == null) throw new InvalidOperationException("官方角色创建失败");
                         SkyIslandEnemyLife life = created.gameObject.AddComponent<SkyIslandEnemyLife>();
@@ -557,22 +558,6 @@ namespace BossRush
             }, SkyIslandStormEchoRules.IsEcho(encounterId));
         }
 
-        /// <summary>
-        /// 这一组第 index 名用哪个官方 preset。
-        ///
-        /// 旧写法 `sources[i % sources.Count]` 与遭遇身份无关：全岛 13 组的**带队者永远是同一个**
-        /// preset（按名字排序的第一个），第二名永远是第二个。一整张图打下来只见得到两三种敌人，
-        /// 而 `sources` 里通常有十几种官方拾荒者。
-        ///
-        /// 改成按「遭遇 id + 位次」取稳定散列：不同区域拿到不同 preset，同一个位置每次进岛
-        /// 仍是同一个（自动组现在按出击刷新，位置稳定比每趟随机更容易建立预期）。
-        /// 用 `StableHash` 而不是 `string.GetHashCode`：后者在 Mono 与 .NET Core 上口径不同，
-        /// 会让不同机器的同一处刷出不同敌人。`sources` 已按名字排序，下标同样跨机稳定。
-        /// </summary>
-        private int PresetIndex(string encounterId, int index)
-        {
-            return SkyIslandLootTables.StableHash(encounterId + "#" + index) % sources.Count;
-        }
 
         private static int CountMissing(Encounter encounter)
         {

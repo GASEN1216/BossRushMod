@@ -529,6 +529,12 @@ namespace BossRush
             string prewarmMetrics, prewarmReason;
             bool prewarmOk = JudgeLootPrewarm(prewarmBands, cachedBefore, prewarm.Ran, prewarm.Built, prewarm.CacheHits, prewarm.Frames,
                 prewarm.TotalMs, prewarm.MaxBandMs, out prewarmMetrics, out prewarmReason);
+            // 搜刮箱类别池（owner 2026-10-01）同样要在第一次查询之前读缓存状态。
+            int[][] categoryBands = SkyIslandLootTables.PrewarmCategoryBands();
+            int categoryCached = 0;
+            for (int i = 0; i < categoryBands.Length; i++)
+                if (SkyIslandLootPools.IsCategoryCached((SkyIslandLootCategory)categoryBands[i][0], categoryBands[i][1], categoryBands[i][2]))
+                    categoryCached++;
             SkyIslandLootTier[] tiers =
             {
                 SkyIslandLootTier.Supply, SkyIslandLootTier.Voyage, SkyIslandLootTier.Starworks
@@ -545,8 +551,16 @@ namespace BossRush
                 int maxCount = SkyIslandLootTables.MaxCount(tier);
                 int[] pool = SkyIslandLootPools.Get(tier);
                 int[] band = SkyIslandLootPools.GetGuaranteeBand(tier);
+                // 类别池大小（武器 / 子弹 / 装备 / 物资）：为 0 的那类在箱里退回通用池，只记数不判红。
+                string categorySizes = string.Empty;
+                for (int c = 0; c < SkyIslandLootTables.PoolCategories.Length; c++)
+                {
+                    int[] categoryPool = SkyIslandLootPools.GetCategoryBand(SkyIslandLootTables.PoolCategories[c], min, max);
+                    categorySizes += (c == 0 ? string.Empty : "/") + (categoryPool == null ? 0 : categoryPool.Length);
+                }
                 parts.Add(tier + "=q" + min + "-" + max + ",n" + minCount + "-" + maxCount
-                    + ",pool=" + (pool == null ? 0 : pool.Length) + ",guar=" + (band == null ? 0 : band.Length));
+                    + ",pool=" + (pool == null ? 0 : pool.Length) + ",guar=" + (band == null ? 0 : band.Length)
+                    + ",cat_w/a/g/s=" + categorySizes);
                 if (min > max || minCount > maxCount) errors.Add(tier + ":band_inverted");
                 // 单调不减：深处必须更值钱、件数不许倒挂（旧表里 Voyage 2-4 比 Starworks 2-3 还多）。
                 if (i > 0 && (min < previousMin || max < previousMax || maxCount < previousCount))
@@ -556,7 +570,10 @@ namespace BossRush
             }
             // 顶档必须够得到官方第 8 档，否则最深处的箱子永远刷不出顶级物品。
             if (SkyIslandLootTables.MaxQuality(SkyIslandLootTier.Starworks) != 8) errors.Add("starworks_max_quality!=8");
-            metrics = string.Join(" | ", parts.ToArray()) + " | " + prewarmMetrics;
+            if (prewarm.Ran && categoryCached != categoryBands.Length)
+                errors.Add("category_not_prewarmed=" + categoryCached + "/" + categoryBands.Length);
+            metrics = string.Join(" | ", parts.ToArray()) + " | " + prewarmMetrics
+                + ",category_cached_before_case=" + categoryCached + "/" + categoryBands.Length;
             if (errors.Count > 0 || !prewarmOk)
                 reason = (prewarmReason ?? string.Empty)
                     + (errors.Count > 0 ? "品质带/件数/池子不合格：" + string.Join(",", errors.ToArray()) : string.Empty);
@@ -826,31 +843,6 @@ namespace BossRush
             else if (!bellOk) reason = "钟庭绿环的显隐与双航标解锁不同源，或半径与判定不一致";
             else if (!beaconsOk) reason = "航标广场绿环的显隐与风标/星灯不同源，或半径与判定不一致";
             return dockOk && bellOk && beaconsOk;
-        }
-
-        /// <summary>已解锁 ⇔ 环可见，且可见时半径等于判定半径、不带碰撞体；锚点缺失时环也必须缺失。</summary>
-        private static bool RingMatchesUnlock(LineRenderer ring, bool unlocked, float expected)
-        {
-            if (ring == null) return !unlocked;
-            bool visible = ring.gameObject.activeInHierarchy;
-            return visible == unlocked && (!visible || Mathf.Abs(MeasureRingRadius(ring) - expected) < 0.01f)
-                && ring.GetComponent<Collider>() == null;
-        }
-
-        private static LineRenderer FindExtractionRing(GameObject root, string markerName)
-        {
-            foreach (LineRenderer line in root.GetComponentsInChildren<LineRenderer>(true))
-                if (line != null && line.gameObject.name == "SkyIslandExtractionRing_" + markerName) return line;
-            return null;
-        }
-
-        /// <summary>按环上顶点到中心的距离反算实际画出来的半径。画错了这里立刻不等。</summary>
-        private static float MeasureRingRadius(LineRenderer line)
-        {
-            if (line == null || line.positionCount <= 0) return -1f;
-            float total = 0f;
-            for (int i = 0; i < line.positionCount; i++) total += line.GetPosition(i).magnitude;
-            return total / line.positionCount;
         }
 
         /// <summary>

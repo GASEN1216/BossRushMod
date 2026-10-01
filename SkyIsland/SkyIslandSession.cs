@@ -489,13 +489,7 @@ namespace BossRush
             CharacterMainControl created = null;
             try
             {
-                CharacterRandomPreset source = null;
-                foreach (CharacterRandomPreset preset in Resources.FindObjectsOfTypeAll<CharacterRandomPreset>())
-                    if (preset != null && !preset.isBoss && !preset.isZombie && preset.team == Teams.scav &&
-                        preset.name.IndexOf("Dummy", StringComparison.OrdinalIgnoreCase) < 0 &&
-                        !preset.name.StartsWith("BossRush_", StringComparison.Ordinal) &&
-                        (source == null || string.CompareOrdinal(preset.name, source.name) < 0)) source = preset;
-                if (source == null) throw new InvalidOperationException("未找到已加载的普通拾荒者 preset");
+                CharacterRandomPreset source = SkyIslandEnemySources.ForMinion("TestEnemy");
                 clone = Instantiate(source);
                 clone.name = "BossRush_SkyIsland_TestEnemy";
                 clone.dropBoxOnDead = false;

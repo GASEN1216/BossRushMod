@@ -267,8 +267,10 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 搜刮箱与奖励箱里的岛上特产：每箱至多一件，由档次与一次独立抽样决定——不占该箱原本的件数，也不动原有随机流。
+        /// 额外的岛上特产：每箱至多一件，由档次与一次独立抽样决定——不占该箱原本的件数，也不动原有随机流。
         /// 概率刻意压低：一趟 39 个搜刮点期望约 3.4 份便当、3.6 罐药膏、0.2 只罗盘（委托谢礼与噬风战利品另算）。
+        /// 2026-10-01 起搜刮箱另有一格保底特产（<see cref="IslandStapleFor"/>），这一件是保底之外的第二件；
+        /// Boss 战利品与委托谢礼仍只有这一件机会。悬根猎装的「机会翻倍」作用在这一次抽样上。
         /// </summary>
         internal static int IslandExtraFor(SkyIslandLootTier tier, double roll)
         {
@@ -286,6 +288,78 @@ namespace BossRush
                 default:
                     return 0;
             }
+        }
+
+        /// <summary>
+        /// 搜刮箱保底的那一格岛上特产（owner 2026-10-01：每箱至少一件天空岛特产）：按档次挑品种与堆数，占一格。
+        /// <paramref name="pick"/> 选品种（按表里的整数权重），<paramref name="amount"/> 在该品种的 [min, max] 里取堆数；两个都在 [0, 1)。
+        ///
+        /// 只出采集材料与局内耗材：生活物资给青穗草、浮木、云苔纤维、归航菜便当；航务补给在这之上掺进残铜片、风晶碎片、
+        /// 星苔药膏、风灯、驱风香；星工遗存给残铜片、风晶碎片、星屑、星苔药膏、风灯、驱风香。
+        /// 纪念品（晴岚航徽、噬风之核、风标罗盘）、合成成品（晴岚风晶、护符、纱笠、灭蚊灯、蒲扇）**绝不进表**：
+        /// 前者只发一次，后者是配方的去处，箱子里直接给就冲掉了合成（`SkyIslandFieldcraftGuard` 钉表）。
+        /// 只用于地上捡到的搜刮箱；Boss 战利品、委托谢礼与回响遗存照旧不走这张表。
+        /// </summary>
+        internal static int IslandStapleFor(SkyIslandLootTier tier, double pick, double amount, out int count)
+        {
+            int[] table = StapleTable(tier);
+            int total = 0;
+            for (int i = 0; i < table.Length; i += 4) total += table[i + 1];
+            int roll = (int)(Clamp01(pick) * total);
+            int row = 0;
+            for (int running = 0; row < table.Length - 4; row += 4)
+            {
+                running += table[row + 1];
+                if (roll < running) break;
+            }
+            int min = table[row + 2], max = table[row + 3];
+            count = min + (int)(Clamp01(amount) * (max - min + 1));
+            if (count > max) count = max;
+            return table[row];
+        }
+
+        /// <summary>保底特产表：每行 {TypeID, 权重, 最少, 最多}。</summary>
+        internal static int[] StapleTable(SkyIslandLootTier tier)
+        {
+            switch (tier)
+            {
+                case SkyIslandLootTier.Starworks:
+                    return new[]
+                    {
+                        BossRushItemIds.SkyIslandBrassScrap, 20, 2, 3,
+                        BossRushItemIds.SkyIslandWindcrystalShard, 20, 1, 2,
+                        BossRushItemIds.SkyIslandStardust, 15, 1, 2,
+                        BossRushItemIds.SkyIslandStarmossSalve, 15, 1, 1,
+                        BossRushItemIds.SkyIslandWindLantern, 15, 1, 1,
+                        BossRushItemIds.SkyIslandWindwardIncense, 15, 1, 1
+                    };
+                case SkyIslandLootTier.Voyage:
+                    return new[]
+                    {
+                        BossRushItemIds.SkyIslandCloudmossFiber, 15, 2, 3,
+                        BossRushItemIds.SkyIslandDriftwood, 10, 2, 3,
+                        BossRushItemIds.SkyIslandBrassScrap, 25, 1, 2,
+                        BossRushItemIds.SkyIslandWindcrystalShard, 15, 1, 2,
+                        BossRushItemIds.SkyIslandHomecomingBento, 10, 1, 1,
+                        BossRushItemIds.SkyIslandStarmossSalve, 10, 1, 1,
+                        BossRushItemIds.SkyIslandWindLantern, 8, 1, 1,
+                        BossRushItemIds.SkyIslandWindwardIncense, 7, 1, 1
+                    };
+                default:
+                    return new[]
+                    {
+                        BossRushItemIds.SkyIslandGreenearSheaf, 30, 2, 4,
+                        BossRushItemIds.SkyIslandDriftwood, 30, 2, 3,
+                        BossRushItemIds.SkyIslandCloudmossFiber, 25, 1, 3,
+                        BossRushItemIds.SkyIslandHomecomingBento, 15, 1, 1
+                    };
+            }
+        }
+
+        private static double Clamp01(double value)
+        {
+            if (value < 0 || double.IsNaN(value)) return 0;
+            return value >= 1 ? 0.999999999 : value;
         }
 
         /// <summary>

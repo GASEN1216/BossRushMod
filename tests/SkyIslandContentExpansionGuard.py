@@ -187,17 +187,37 @@ def check_loot_anchors():
             assert default, 'Item count %s has no default branch' % accessor
             values['Supply'] = default.group(1)
         counts[accessor] = {k: int(v) for k, v in values.items()}
-    assert counts['MinCount'] == {'Supply': 1, 'Voyage': 2, 'Starworks': 2}, \
+    # owner 2026-10-01：每箱 3–7 格（含保底的一格岛上特产），生活物资 3–4、航务补给 4–6、星工遗存 5–7。
+    assert counts['MinCount'] == {'Supply': 3, 'Voyage': 4, 'Starworks': 5}, \
         'Loot minimum counts changed: %r' % counts['MinCount']
-    assert counts['MaxCount'] == {'Supply': 2, 'Voyage': 3, 'Starworks': 4}, \
+    assert counts['MaxCount'] == {'Supply': 4, 'Voyage': 6, 'Starworks': 7}, \
         'Loot maximum counts changed: %r' % counts['MaxCount']
     for accessor, table in counts.items():
         ordered = [table['Supply'], table['Voyage'], table['Starworks']]
         assert ordered == sorted(ordered), \
             '%s must not invert against the quality bands: %r' % (accessor, ordered)
+    slot_min = re.search(r'internal const int CrateMinSlots = (\d+);', tables)
+    slot_max = re.search(r'internal const int CrateMaxSlots = (\d+);', tables)
+    assert slot_min and slot_max and (int(slot_min.group(1)), int(slot_max.group(1))) == (3, 7), \
+        'Crate slot clamp must stay at owner 2026-10-01 [3, 7]'
+    capacity = re.search(r'internal const int InventoryCapacity = (\d+);', source('SkyIslandRewardCrate.cs'))
+    assert capacity and int(slot_max.group(1)) < int(capacity.group(1)), 'Crate slots must fit in the crate inventory'
     for tier_name in ('Supply', 'Voyage', 'Starworks'):
-        assert 1 <= counts['MinCount'][tier_name] <= counts['MaxCount'][tier_name] <= 4, \
+        assert 3 <= counts['MinCount'][tier_name] <= counts['MaxCount'][tier_name] <= 7, \
             'Crate budget broken for ' + tier_name
+    # 富裕岛区（格子数 +1）与巡守 rank ≥ 6 的岛区是同一批：换岛区分级时两边一起改。
+    rich_body = tables.split('internal static bool IsRichRegion(string region)', 1)[1].split('\n        }', 1)[0]
+    rich = set(re.findall(r'case "(\w+)":', rich_body))
+    patrol_ranks = json.loads((ROOT / 'Assets/Data/SkyIsland/Patrols.json').read_text(encoding='utf-8-sig'))
+    profiles = patrol_ranks.get('profiles', patrol_ranks) if isinstance(patrol_ranks, dict) else patrol_ranks
+    deep = {row['regionId'] for row in profiles if int(row['rank']) >= 6}
+    assert rich == deep == {'F', 'G', 'H', 'S3', 'S4'}, 'Rich loot regions drifted from patrol rank >= 6: %r / %r' % (rich, deep)
+    roll = tables.split('internal static int RollCount(SkyIslandLootTier tier, string region, Random random)', 1)
+    assert len(roll) == 2, 'RollCount must take the anchor region'
+    roll = roll[1].split('\n        }', 1)[0]
+    for token in ('IsRichRegion(region) ? RichRegionBonus : 0', 'ClampSlots(MinCount(tier) + bonus)',
+                  'ClampSlots(MaxCount(tier) + bonus)', 'min + random.Next(max - min + 1)'):
+        assert token in roll, 'RollCount must shift by region richness and clamp into [3, 7]: ' + token
     assert 'MarkerClearance = 4.5f' in tables, 'Marker clearance must stay >= interaction pick radius'
     assert 'ActivationRange = 72f' in tables, 'Scavenging activation gate changed'
     # Mono 与 .NET Core 的 string.GetHashCode 口径不同，抽样必须用自带稳定散列。
@@ -258,6 +278,39 @@ def check_pools():
         'Pool must be built per official tag so untagged items stay out'
     assert 'foreach (Tag tag in tags.AllTags)' in pools, 'Pool must iterate the official tag set'
 
+    # 搜刮箱的类别池（owner 2026-10-01）与通用带同一套口径：不降级、共享排除、黑名单、价值上限、只缓存完整查询、按品质加权；
+    # 另照敌人配枪口径排除本 Mod 500xxx。
+    category = pools.split('internal static int[] GetCategoryBand(SkyIslandLootCategory category, int minQuality, int maxQuality)', 1)
+    assert len(category) == 2, 'Category pool query missing'
+    category = category[1].split(chr(10) + '        }', 1)[0]
+    for token in ('ItemAssetsCollection.GetAllTypeIds(filter)', 'LootExcludeTagPolicy.BuildExcludeTags(',
+                  'filter.requireTags = new[] { tag }', 'foreach (Tag tag in CategoryTags(tags, category))',
+                  'LootBlacklistRegistry.Contains(ids[i])', 'SkyIslandEnemyArmoryRules.IsOwnModItem(ids[i])',
+                  'result.RemoveAll(id => !WithinValueCap(id));', 'result.Sort()',
+                  'BuildCumulativeWeights(cached, minQuality)'):
+        assert token in category, 'Category pool must keep the island pool contract: ' + token
+    assert 'ItemAssetsCollection.Search(' not in category, 'Category pools must not use the down-grading Search'
+    assert 'if (complete)' in category and category.split('if (complete)', 1)[0].count('cache[key]') == 0, \
+        'Category pools may cache only completed queries'
+    assert category.index('result.AddRange(unique);') < category.index('result.RemoveAll(id => !WithinValueCap(id));') \
+        < category.index('complete = true;'), 'Category pool value cap must run before the query is marked complete'
+    pick_category = pools.split('internal static int PickCategory(', 1)[1].split(chr(10) + '        }', 1)[0]
+    assert 'return Pick(tier, false, random);' in pick_category and 'PickFrom(band, CategoryKey(category, min, max), random)' in pick_category, \
+        'Category picks must stay quality weighted and General must be the regular band without the guarantee'
+    assert '(int)category * 1000 + minQuality * 100 + maxQuality' in pools, 'Category cache keys must not collide with band keys'
+    prewarm = pools.split('internal static IEnumerator Prewarm()', 1)[1].split(chr(10) + '        }', 1)[0]
+    cat_loop = prewarm.split('for (int c = 0; c < categoryBands.Length; c++)', 1)
+    assert 'int[][] categoryBands = SkyIslandLootTables.PrewarmCategoryBands();' in prewarm and len(cat_loop) == 2, \
+        'Category pools must be prewarmed on the assembly path'
+    cat_loop = cat_loop[1].split(chr(10) + '            }', 1)[0]
+    assert cat_loop.index('IsCategoryCached(') < cat_loop.index('GetCategoryBand(') < cat_loop.index('yield return null;'), \
+        'Category prewarm must skip cached pools and yield one frame per built pool'
+    assert prewarm.index('categoryBands') < prewarm.index('SkyIslandEnemyArmory.Prewarm()'), \
+        'Category pools are prewarmed together with the loot bands'
+    category_bands = source('SkyIslandLootTables.cs').split('internal static int[][] PrewarmCategoryBands()', 1)[1].split('\n        }', 1)[0]
+    assert 'PoolCategories' in category_bands and 'MinQuality(tiers[i]), MaxQuality(tiers[i])' in category_bands, \
+        'Category prewarm must cover every tier x every category of the regular band'
+
     policy = clean_source((ROOT / 'Config/LootExcludeTagPolicy.cs').read_text(encoding='utf-8'))
     for token in ('tagsData.DestroyOnLootBox', 'tagsData.DontDropOnDeadInSlot',
                   'tagsData.LockInDemoTag', 'TryFindQuestTag(tagsData)'):
@@ -310,13 +363,36 @@ def check_crate():
         'A local inventory never inherits needInspect; it must be set explicitly'
     assert 'box.Inventory.SetCapacity(InventoryCapacity)' in crate, \
         'fallbackCapacity only applies on the fallback path; capacity must be set explicitly'
+    # owner 2026-10-01：搜刮点箱子交互名「搜集」、去掉尸体箱预制体的「搬起」；只在激活前改，只对搜刮点。
+    assert 'string name, out string error, bool searchCache = false)' in crate, 'Build must default to the official crate'
+    assert 'if (searchCache) PrepareSearchCache(box);' in build, 'Search-cache preparation must be opt-in'
+    assert build.index('PrepareSearchCache(box)') < build.index('SetParent(parent, true)'), \
+        'Carry interaction and the name key must be changed while the clone is still inactive (before Awake / Start)'
+    assert build.index('SetActive(true)') < build.index('box.interactableGroup = false') , \
+        'The group flag is decided after activation through the official GetInteractableList'
+    assert 'if (searchCache && box.GetInteractableList().Count <= 1) box.interactableGroup = false;' in build, \
+        'Only a crate left alone in its group may switch the group off'
+    prepare = crate.split('private static void PrepareSearchCache(InteractableLootbox box)', 1)[1].split('\n        }', 1)[0]
+    for token in ('GetComponentsInChildren<InteractableCarriable>(true)', 'UnityEngine.Object.DestroyImmediate(carry);',
+                  'UnityEngine.Object.DestroyImmediate(trigger);', 'GetComponentsInChildren<Carriable>(true)',
+                  'LootboxDisplayNameKeyField.SetValue(box, SearchNameKey);'):
+        assert token in prepare, 'Search-cache preparation incomplete: ' + token
+    assert 'carry.gameObject != box.gameObject' in prepare, 'Never strip the crate\'s own interaction collider'
+    assert 'GetField("displayNameKey", BindingFlags.Instance | BindingFlags.NonPublic)' in crate, \
+        'The official name key is private and only read before Start'
+    assert 'LocalizationHelper.InjectLocalization(SearchNameKey, L10n.T("搜集", "Search"));' in crate, \
+        'Search name must be bilingual and resolved at use time'
+    for earned in ('internal static bool Create(', 'internal static bool CreateWithGoods('):
+        body = crate.split(earned, 1)[1].split('\n        }', 1)[0]
+        assert 'Build(parent, position, 0f, name, out error);' in body, earned + ' must keep the official earned crate'
 
 
 def check_scavenging():
     scav = source('SkyIslandScavenging.cs')
     assert 'InteractableLootbox.OnStartLoot += OnStartLoot' in scav, 'Loot progress needs the official open event'
     assert 'InteractableLootbox.OnStartLoot -= OnStartLoot' in scav, 'Event subscription must be released'
-    assert 'SkyIslandRewardCrate.Build' in scav and 'SkyIslandRewardCrate.Fill' in scav, 'Reuse the shared crate builder'
+    assert 'SkyIslandRewardCrate.Build' in scav and 'SkyIslandRewardCrate.FillScavenge(' in scav, 'Reuse the shared crate builder'
+    assert '"SkyIslandLoot_" + point.Anchor.Id, out error, true);' in scav, 'Scavenging crates must opt into the search name'
     # 4.12 门控：进入范围才建箱，一次一个；不在进图时预生成整图战利品。
     assert 'if (best != null) Build(best);' in scav, 'Only one crate may be built per tick'
     assert 'SkyIslandLootTables.ActivationRange' in scav, 'Crate construction must be range gated'
@@ -327,8 +403,30 @@ def check_scavenging():
     # owner 2026-09-30：搜刮箱头顶不挂浮空字（旧的 39 块档次牌子连同距离门控一起删掉）。
     assert 'TextMeshPro' not in scav and 'AttachLabel' not in scav, 'Crates must not carry floating world text'
     # 地上捡到的箱子不得开保底：十个星工遗存箱各保底一件高品质，一趟就发烂了。
-    fill_call = scav.split('SkyIslandRewardCrate.Fill(', 1)[1].split(');', 1)[0]
+    fill_call = scav.split('SkyIslandRewardCrate.FillScavenge(', 1)[1].split(');', 1)[0]
     assert 'true' not in fill_call, 'Found loot must not request the guaranteed top band'
+    crate = source('SkyIslandRewardCrate.cs')
+    fill = crate.split('internal static int FillScavenge(', 1)[1].split('\n        }', 1)[0]
+    assert 'Pick(tier, true' not in fill and 'GetGuaranteeBand' not in fill, 'Found loot must not use the guarantee band'
+    order = ['SkyIslandLootTables.RollCount(tier, anchor.Region,', 'SkyIslandItemRules.IslandStapleFor(tier,',
+             'SkyIslandBossRules.HunterIslandExtraRoll(', 'SkyIslandLootTables.OfficialSlots(slots, extra != 0)',
+             'SkyIslandLootPools.PickCategory(category, tier, random)', 'SkyIslandLootPools.Pick(tier, false, random)',
+             'SkyIslandLootTables.RollAmmoStack(tier, random)']
+    at = -1
+    for token in order:
+        found = fill.find(token, at + 1)
+        assert found > at, 'Scavenge fill order broken (count -> staple -> extra -> categories -> fallback -> ammo stack): ' + token
+        at = found
+    for stream in ('"count:" + anchor.Id', 'anchor.Id + "#staple"', 'anchor.Id + "#island"', 'CreateStream(raidSeed, anchor.Id)'):
+        assert stream in fill, 'Every part of a crate rolls on its own fixed stream: ' + stream
+    assert 'if (typeId == 0 && category != SkyIslandLootCategory.General)' in fill, 'Empty category pools fall back to the regular band'
+    assert 'category == SkyIslandLootCategory.Ammo ? SkyIslandLootTables.RollAmmoStack(tier, random) : 1' in fill, \
+        'Only ammo comes in random stacks'
+    add = crate.split('private static bool AddStack(', 1)[1].split('\n        }', 1)[0]
+    assert add.index('ItemAssetsCollection.GetPrefab(typeId) == null') < add.index('ItemAssetsCollection.InstantiateSync(typeId)'), \
+        'Crate fill must check the prefab before InstantiateSync'
+    assert 'item.TypeID != typeId' in add and 'Mathf.Clamp(amount, 1, Mathf.Max(1, item.MaxStackCount))' in add, \
+        'One slot is one stack clamped by the official stack limit'
 
 
 def check_enemy_tiers():
@@ -346,22 +444,21 @@ def check_enemy_tiers():
     # 只缩放模型：角色 transform 不动，碰撞体与导航半径保持官方口径。
     assert 'character.characterModel.transform.localScale' in tiers, 'Tier scaling must target the model only'
     assert re.search(r'character\.transform\.localScale\s*=', tiers) is None, 'Never scale the character transform'
-    # 基础属性已迁到生成前的固定原版参照；新守卫钉 1.5 倍、基准快照和创建时序。
+    # 基础属性已迁到生成前的固定原版参照；SkyIslandCombatBalanceGuard 钉倍率（×3 / 感知 ×1.5）、基准快照和创建时序。
     from SkyIslandCombatBalanceGuard import check as check_combat_balance
     check_combat_balance(ROOT)
     # Champion 保留自己的脸与名字，染色/放大会毁掉具名角色的辨识度。
     champion = tiers.split('internal static void Apply(', 1)[1].split('\n        }', 1)[0]
     assert 'decorate = tier != SkyIslandEnemyTier.Champion' in champion, 'Champions must skip appearance decoration'
     assert 'ApplyStoryChampion' in tiers, 'Named story foes need their own entry point'
-    # HealthBar 有 `if (!characterPreset.showName) return;` 的门控，普通拾荒者 preset 上它是 false，
-    # 只改 nameKey 血条上根本不显示。精英与 Boss 必须显式打开，Scav 保持匿名。
+    # HealthBar 有 `if (!characterPreset.showName) return;` 的门控，只改 nameKey 血条上根本不显示。
+    # 精英与 Boss 必须显式打开。
     assert 'if (tier != SkyIslandEnemyTier.Scav) character.characterPreset.showName = true;' in tiers, \
         'Renaming a tier without enabling showName leaves the health bar unchanged'
-    # Scav 必须**不**改名：它的 showName 恒为 false，自定义名玩家根本看不到，
-    # 但改 nameKey 会把击杀记到 Count/Kills/BossRush_SkyIsland_Enemy_Scav 下，
-    # 官方拾荒者击杀数与 RequireEnemyKilled 解锁都不再推进。自动组按出击刷新之后这批击杀会反复产生。
+    # Scav 不改名：2026-10-01 起小兵的底模是抽到的那位官方 Boss（SkyIslandEnemySources），
+    # 头顶就该是 Boss 自己的名字（Killa、Tagilla……），不再是「拾荒者」，也不硬套一个岛区名。
     assert 'if (decorate && tier != SkyIslandEnemyTier.Scav)' in champion, \
-        'Plain scavengers must keep the official name key so official kill counters still advance'
+        'Plain island enemies must keep their own official boss name'
     # 身份与外观仍需幂等；战斗基础数值不再从这里施加。
     # 这两条必须按**方法体**判断：只在整份源码里找 token，删掉一处另一处还在，子串仍会命中。
     assert 'MarkApplied(character)' in champion, 'Tier application must be idempotent'

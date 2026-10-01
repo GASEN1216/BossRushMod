@@ -7,7 +7,7 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>COMPAT：地图会话独占的空间音效与装置反馈；集中距离调度，不控制碰撞或剧情。
-    /// 整趟循环的背景音乐走 BossBgmCoordinator 的场景常驻层（sceneTracks.SkyIsland），本类只负责按会话获取与释放租约。</summary>
+    /// 背景音乐走 BossBgmCoordinator 的场景常驻层（sceneTracks.SkyIsland），只在登云码头循环；本类按会话与所在岛获取、释放租约。</summary>
     internal sealed class SkyIslandAmbience : IDisposable
     {
         private sealed class Device
@@ -30,7 +30,7 @@ namespace BossRush
         private SkyIslandStoryData appliedStory;
         private bool frogsHome;
         private float nextDistanceCheck;
-        private bool disposed, audioWarning;
+        private bool disposed, audioWarning, musicOn;
         private Vector3 playerPosition;
         private readonly GameObject bgmOwner;
 
@@ -50,9 +50,23 @@ namespace BossRush
             Add(root, "Search_C", (int)SkyIslandStoryFlag.PlantingDelivered, new Color(.98f, .70f, .52f), null, 65f);
             Add(root, "Search_H", (int)SkyIslandStoryFlag.Ending, new Color(1f, .88f, .57f), null, 6f);
             AddFrogPool(root);
-            // 场景常驻 BGM：会话开始即起播并循环，Boss 曲结束后由协调器接回；没配曲目或文件缺失时什么也不做
+            // 场景常驻 BGM：登岛（落在登云码头）即起播并循环，Boss 曲结束后由协调器接回；没配曲目或文件缺失时什么也不做。
+            // 只在码头放（owner 2026-10-01：一直放太吵），离开码头由 SetDockMusic 释放，回到码头再接上。
             bgmOwner = root;
+            musicOn = true;
             BossBgmCoordinator.AcquireSceneBgm(BossBgmScenes.SkyIsland, bgmOwner);
+        }
+
+        /// <summary>
+        /// 背景音乐只在登云码头放：<paramref name="onDock"/> 由会话按「脚下那块地」给（走在桥上保持上一个岛，不会来回跳）。
+        /// 只在状态变化时动租约；离开码头时官方停曲，Boss 曲停下后也不会再把场景曲接回来（租约已经不在）。
+        /// </summary>
+        internal void SetDockMusic(bool onDock)
+        {
+            if (disposed || onDock == musicOn) return;
+            musicOn = onDock;
+            if (onDock) BossBgmCoordinator.AcquireSceneBgm(BossBgmScenes.SkyIsland, bgmOwner);
+            else BossBgmCoordinator.ReleaseSceneBgm(bgmOwner);
         }
 
         /// <summary>只有一个无灯、无碰撞的池边发声体；夜里修复繁育水域后，近处才会发声。</summary>

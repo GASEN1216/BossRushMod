@@ -33,7 +33,7 @@ def check(src):
     errors = []
     look, scav, export = src["look"], src["scav"], src["export"]
     build = squash(scav.split("private void Build(Point point)", 1)[-1].split("private void OnStartLoot(", 1)[0])
-    fill = build.find(squash("SkyIslandRewardCrate.Fill(box, point.Anchor.Tier"))
+    fill = build.find(squash("SkyIslandRewardCrate.FillScavenge(box, point.Anchor, raidSeed"))
     apply = build.find(squash("crateLook.Apply(box, point.Anchor.Tier, point.Anchor.Bearing);"))
     if fill < 0 or apply < fill:
         errors.append("搜刮点必须在装完物资之后换外观")

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using BossRush.Utils;
 using Duckov.Utilities;
 using Pathfinding;
 using UnityEngine;
@@ -30,10 +29,10 @@ namespace BossRush
         private readonly SkyIslandContentData content;
         private readonly Cell[] cells;
         private readonly SkyIslandPatrolSchedule schedule;
-        private readonly CharacterRandomPreset source;
-        private readonly List<int> active = new List<int>(24);
+        // 掉落与经验的拾荒者参照（SkyIslandMinionKit）；找不到时为 null，巡守保留 Boss 原掉落。
+        private readonly CharacterRandomPreset scavReference;
+        private readonly List<int> active = new List<int>(SkyIslandPatrolRules.ActiveLimit);
         private bool closed;
-        private bool namesChinese;
         private float nextTick, nextSpawn;
         private int tickCount;
         internal int PlannedSlots { get { return cells.Length; } }
@@ -59,25 +58,9 @@ namespace BossRush
                 cells[i] = new Cell { Slot = slot, Profile = profile };
             }
             schedule = new SkyIslandPatrolSchedule(cells.Length, SkyIslandPatrolRules.ActiveLimit);
-            source = FindSource();
-            namesChinese = L10n.IsChinese;
-        }
-
-        // 同一底模与同一原版基准供各区倍率使用，绝不按生成顺序或随机池改变难度。
-        private static CharacterRandomPreset FindSource()
-        {
-            var choices = new List<CharacterRandomPreset>();
-            foreach (CharacterRandomPreset preset in Resources.FindObjectsOfTypeAll<CharacterRandomPreset>())
-                if (preset != null && !preset.isBoss && !preset.isZombie && !preset.isVehicle && preset.team == Teams.scav
-                    && preset.health >= 25f && preset.name.IndexOf("Dummy", StringComparison.OrdinalIgnoreCase) < 0
-                    && !preset.name.StartsWith("BossRush_", StringComparison.Ordinal)) choices.Add(preset);
-            choices.Sort(delegate(CharacterRandomPreset a, CharacterRandomPreset b)
-            {
-                int health = a.health.CompareTo(b.health);
-                return health != 0 ? health : string.CompareOrdinal(a.name, b.name);
-            });
-            if (choices.Count == 0) throw new InvalidOperationException("巡守缺少原版普通敌人底模");
-            return choices[0];
+            // 每个槽位是一位官方 Boss（owner 2026-10-01：天空岛全部用 Boss 预设），按槽位 id 固定抽，入图时建好池子。
+            SkyIslandEnemySources.Bosses();
+            scavReference = SkyIslandEnemySources.ScavReference();
         }
 
         private Vector3 Position(Cell cell) { return origin + new Vector3(cell.Slot.X, cell.Slot.Y, cell.Slot.Z); }
@@ -100,15 +83,12 @@ namespace BossRush
             nextTick = now + SkyIslandPatrolRules.TickInterval;
             tickCount++;
             Vector3 at = player.transform.position;
-            bool languageChanged = namesChinese != L10n.IsChinese;
-            namesChinese = L10n.IsChinese;
             // 远区只停用同一活体，保留装备、生命和单趟死亡状态；不销毁并重新满血补刷。
             for (int n = active.Count - 1; n >= 0; n--)
             {
                 int index = active[n]; Cell cell = cells[index];
                 if (cell.Character == null || cell.Character.Health == null || cell.Character.Health.IsDead)
                 { MarkDefeated(index, cell.SpawnGeneration); continue; }
-                if (languageChanged) ApplyName(cell);
                 float radius = SkyIslandPatrolRules.SuspensionRadius;
                 if ((Position(cell) - at).sqrMagnitude > radius * radius
                     && (cell.Character.transform.position - at).sqrMagnitude > radius * radius)
@@ -128,7 +108,6 @@ namespace BossRush
                         ConfigureNavigation(cell.Character);
                         cell.Character.gameObject.SetActive(true);
                         active.Add(i);
-                        ApplyName(cell);
                     }
                     catch (Exception e)
                     {
@@ -163,7 +142,6 @@ namespace BossRush
             active.Remove(index);
             foreach (Seeker seeker in cell.Character.GetComponentsInChildren<Seeker>(true)) seeker.CancelCurrentPathRequest();
             foreach (AI_PathControl path in cell.Character.GetComponentsInChildren<AI_PathControl>(true)) path.StopMove();
-            NPCNameTagHelper.UnregisterOriginalHealthBarName(cell.Character.transform);
             cell.Character.gameObject.SetActive(false);
         }
 
@@ -192,7 +170,8 @@ namespace BossRush
             return true;
         }
 
-        private static void Prepare(CharacterRandomPreset clone, CharacterRandomPreset baseline, SkyIslandPatrolProfile profile)
+        private static void Prepare(CharacterRandomPreset clone, CharacterRandomPreset baseline, SkyIslandPatrolProfile profile,
+            CharacterRandomPreset scavReference)
         {
             SkyIslandCombatPreset.Apply(clone, baseline, "Patrol_" + profile.RegionId, 0, SkyIslandEnemyTier.Scav);
             clone.health *= profile.HealthFactor;
@@ -200,10 +179,15 @@ namespace BossRush
             clone.meleeDamageMultiplier *= profile.DamageFactor;
             clone.sightDistance = profile.SightDistance;
             clone.hearingAbility = Mathf.Min(clone.hearingAbility, .35f + profile.Rank * .12f);
-            clone.hasSkill = false;
-            clone.reactionTime = profile.ReactionTime;
-            clone.shootDelay = Mathf.Max(.16f, .55f - (profile.Rank - 1) * .045f);
+            // 岛区档案里的反应与开火前摇是「原版口径」的阶梯，同样吃统一倍率（owner 2026-10-01：反应、开火都要更快），
+            // 并且不慢于这位 Boss 自己乘过倍率的值；旧写法直接覆盖成 0.5–1.2 秒，把 Apply 里的加速整个抹掉了。
+            clone.reactionTime = Mathf.Min(clone.reactionTime, profile.ReactionTime / SkyIslandCombatBalance.Multiplier);
+            clone.shootDelay = Mathf.Min(clone.shootDelay,
+                Mathf.Max(.16f, .55f - (profile.Rank - 1) * .045f) / SkyIslandCombatBalance.Multiplier);
+            // 底模是抽到的那位官方 Boss：生命、伤害是它的原版乘统一倍率再乘岛区系数，技能照 Boss 自己的，
+            // 头顶显示 Boss 自己的名字（不再挂「拾荒者」与岛区名牌）。掉落与经验照拾荒者（owner 2026-10-01）。
             clone.showName = true;
+            SkyIslandMinionKit.UseScavLoot(clone, scavReference);
             clone.dropBoxOnDead = true;
             clone.setActiveByPlayerDistance = false;
         }
@@ -217,9 +201,10 @@ namespace BossRush
                 if (closed || root == null || !valid()) return;
                 Vector3 point;
                 if (!TryFooting(cell, out point)) throw new InvalidOperationException("固定点位地面或净空不合格");
+                CharacterRandomPreset source = SkyIslandEnemySources.ForMinion(cell.Slot.Id);
                 clone = UnityEngine.Object.Instantiate(source);
                 clone.name = "BossRush_SkyIslandPatrol_" + cell.Slot.Id;
-                Prepare(clone, source, cell.Profile);
+                Prepare(clone, source, cell.Profile, scavReference);
                 created = await clone.CreateCharacterAsync(point, Vector3.forward, -1, null, false);
                 if (created == null) throw new InvalidOperationException("官方创建巡守失败");
                 SkyIslandPatrolLife life = created.gameObject.AddComponent<SkyIslandPatrolLife>();
@@ -233,9 +218,7 @@ namespace BossRush
                     cell.Character = created; cell.Life = life; cell.SpawnGeneration = generation; retained = true; return;
                 }
                 created.gameObject.SetActive(false);
-                if (!SkyIslandPatrolAppearance.Apply(created, cell.Slot.RegionId, cell.Profile.Rank))
-                    throw new InvalidOperationException("巡守固定外形装配失败");
-                // 底模是最弱的官方拾荒者：武器按岛区等级换到品质 3 以上（高等级岛区 4 以上）。
+                // 外形就是那位 Boss 自己的，不再换成岛区鸭模；武器按岛区等级换到品质 3 以上（高等级岛区 4 以上）。
                 SkyIslandEnemyArmory.ArmPatrol(created, cell.Profile.Rank);
                 if (closed || root == null || !valid() || generation != schedule.Generation) return;
                 ConfigureNavigation(created);
@@ -245,7 +228,6 @@ namespace BossRush
                 life.Bind(this, index, generation, created.Health);
                 created.gameObject.SetActive(activate && schedule.IsActive(index));
                 if (schedule.IsActive(index)) active.Add(index);
-                ApplyName(cell);
                 cell.Failures = 0; retained = true;
             }
             catch (Exception e)
@@ -267,31 +249,6 @@ namespace BossRush
                     if (!presetOwned && clone != null) UnityEngine.Object.Destroy(clone, .1f);
                 }
             }
-        }
-
-        private static string NameOf(string region)
-        {
-            switch (region)
-            {
-                case "A": return L10n.T("港口拾荒者", "Harbor Scavenger");
-                case "B": return L10n.T("集市巡守", "Market Guard");
-                case "C": return L10n.T("谷仓守卫", "Granary Sentry");
-                case "D": return L10n.T("林地哨兵", "Forest Scout");
-                case "E": return L10n.T("风口猎手", "Windbreak Hunter");
-                case "F": return L10n.T("旧寺卫兵", "Temple Guard");
-                case "G": return L10n.T("星工守卫", "Starworks Guard");
-                case "H": return L10n.T("钟庭禁卫", "Belltower Guard");
-                case "S1": return L10n.T("池边巡守", "Poolside Guard");
-                case "S2": return L10n.T("瞭台哨兵", "Lookout Sentry");
-                case "S3": return L10n.T("远寺巡守", "Temple Outrider");
-                case "S4": return L10n.T("星台卫兵", "Observatory Guard");
-                default: return L10n.T("群岛巡守", "Island Guard");
-            }
-        }
-        private static void ApplyName(Cell cell)
-        {
-            if (cell.Character == null) return;
-            NPCNameTagHelper.RegisterOriginalHealthBarName(cell.Character.transform, NameOf(cell.Slot.RegionId), 2.2f, "[SkyIslandPatrol]");
         }
 
         internal void MarkDefeated(int index, int generation)
@@ -351,7 +308,6 @@ namespace BossRush
                 if (cell.Life != null) cell.Life.Unbind();
                 if (cell.Character != null)
                 {
-                    NPCNameTagHelper.UnregisterOriginalHealthBarName(cell.Character.transform);
                     cell.Character.gameObject.SetActive(false);
                     UnityEngine.Object.Destroy(cell.Character.gameObject);
                 }
@@ -385,7 +341,6 @@ namespace BossRush
         private void OnDestroy()
         {
             OnDead(default(DamageInfo)); Unbind();
-            NPCNameTagHelper.UnregisterOriginalHealthBarName(transform);
             if (preset != null) Destroy(preset, .1f);
             preset = null;
         }

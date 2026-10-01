@@ -54,18 +54,33 @@ namespace BossRush
                 if (guaranteeMin > 0)
                 {
                     int[] band = GetBand(guaranteeMin, SkyIslandLootTables.MaxQuality(tier));
-                    if (band != null && band.Length > 0) { min = guaranteeMin; return PickFrom(band, min, tier, random); }
+                    if (band != null && band.Length > 0)
+                        return PickFrom(band, guaranteeMin * 100 + SkyIslandLootTables.MaxQuality(tier), random);
                 }
             }
             int[] pool = GetBand(min, SkyIslandLootTables.MaxQuality(tier));
             if (pool == null || pool.Length == 0) return 0;
-            return PickFrom(pool, min, tier, random);
+            return PickFrom(pool, min * 100 + SkyIslandLootTables.MaxQuality(tier), random);
         }
 
-        private static int PickFrom(int[] band, int minQuality, SkyIslandLootTier tier, System.Random random)
+        /// <summary>
+        /// 搜刮箱按类别抽一格（owner 2026-10-01）：在本档常规品质带内、只从这一类的官方 Tag 里抽，**按品质加权**。
+        /// 通用类直接走 <see cref="Pick"/>；类别池为空返回 0，由调用方退回 <see cref="Pick"/> 的通用池——绝不因此出空格。
+        /// </summary>
+        internal static int PickCategory(SkyIslandLootCategory category, SkyIslandLootTier tier, System.Random random)
+        {
+            if (category == SkyIslandLootCategory.General) return Pick(tier, false, random);
+            int min = SkyIslandLootTables.MinQuality(tier), max = SkyIslandLootTables.MaxQuality(tier);
+            int[] band = GetCategoryBand(category, min, max);
+            if (band == null || band.Length == 0) return 0;
+            return PickFrom(band, CategoryKey(category, min, max), random);
+        }
+
+        /// <summary><paramref name="key"/> 是这个池子在 cache / weights 里的键：通用带 min*100+max，类别池见 <see cref="CategoryKey"/>。</summary>
+        private static int PickFrom(int[] band, int key, System.Random random)
         {
             int[] cumulative;
-            if (!weights.TryGetValue(minQuality * 100 + SkyIslandLootTables.MaxQuality(tier), out cumulative)
+            if (!weights.TryGetValue(key, out cumulative)
                 || cumulative == null || cumulative.Length != band.Length)
                 return band[random.Next(band.Length)];   // 权重表缺失时退回均匀抽，绝不因此抽不出东西
             int total = cumulative[cumulative.Length - 1];
@@ -144,6 +159,119 @@ namespace BossRush
             }
             Debug.Log("[SkyIslandLoot] POOL band=" + minQuality + "-" + maxQuality + " size=" + cached.Length);
             return cached;
+        }
+
+        /// <summary>类别池在 cache / weights 里的键：通用带的键都小于 1000，类别池从 1000 起，两者不会撞。</summary>
+        private static int CategoryKey(SkyIslandLootCategory category, int minQuality, int maxQuality)
+        {
+            return (int)category * 1000 + minQuality * 100 + maxQuality;
+        }
+
+        /// <summary>
+        /// 某一类、某个品质带的物品池（搜刮箱按类别抽，owner 2026-10-01）。口径与 <see cref="GetBand"/> 逐条相同：
+        /// `GetAllTypeIds` 不降级、共享排除标签、全局黑名单、单件价值上限、排序、只缓存完整跑完的查询、权重同批算好；
+        /// 不同的只有 requireTags 换成这一类的官方 Tag，另外照敌人配枪的口径排除本 Mod 自己的 500xxx 物品。
+        /// 这一类的 Tag 一个都找不到时得到空池（照样缓存），由调用方退回通用池。
+        /// </summary>
+        internal static int[] GetCategoryBand(SkyIslandLootCategory category, int minQuality, int maxQuality)
+        {
+            if (category == SkyIslandLootCategory.General) return GetBand(minQuality, maxQuality);
+            if (minQuality > maxQuality) return EmptyPool;
+            int key = CategoryKey(category, minQuality, maxQuality);
+            int[] cached;
+            if (cache.TryGetValue(key, out cached)) return cached;
+            var result = new List<int>();
+            bool complete = false;
+            try
+            {
+                GameplayDataSettings.TagsData tags = GameplayDataSettings.Tags;
+                if (tags != null && tags.AllTags != null)
+                {
+                    List<Tag> exclude = LootExcludeTagPolicy.BuildExcludeTags(tags, true, true);
+                    Tag[] excludeArray = exclude.ToArray();
+                    var unique = new HashSet<int>();
+                    foreach (Tag tag in CategoryTags(tags, category))
+                    {
+                        if (tag == null || exclude.Contains(tag)) continue;
+                        ItemFilter filter = default(ItemFilter);
+                        filter.requireTags = new[] { tag };
+                        filter.excludeTags = excludeArray;
+                        filter.minQuality = minQuality;
+                        filter.maxQuality = maxQuality;
+                        filter.caliber = string.Empty;
+                        int[] ids = ItemAssetsCollection.GetAllTypeIds(filter);
+                        if (ids == null) continue;
+                        for (int i = 0; i < ids.Length; i++)
+                            if (ids[i] > 0 && !LootBlacklistRegistry.Contains(ids[i])
+                                && !SkyIslandEnemyArmoryRules.IsOwnModItem(ids[i])) unique.Add(ids[i]);
+                    }
+                    result.AddRange(unique);
+                    result.RemoveAll(id => !WithinValueCap(id));
+                    complete = true;
+                }
+                result.Sort();
+            }
+            catch (Exception e)
+            {
+                complete = false;
+                Debug.LogWarning("[SkyIslandLoot] 类别池查询失败 " + category + " band=" + minQuality + "-" + maxQuality + "：" + e.Message);
+            }
+            cached = result.ToArray();
+            int[] cumulative = BuildCumulativeWeights(cached, minQuality);
+            if (complete)
+            {
+                cache[key] = cached;
+                weights[key] = cumulative;
+            }
+            Debug.Log("[SkyIslandLoot] POOL category=" + category + " band=" + minQuality + "-" + maxQuality + " size=" + cached.Length);
+            return cached;
+        }
+
+        /// <summary>这个类别池已经完整查过、进了缓存。只读。</summary>
+        internal static bool IsCategoryCached(SkyIslandLootCategory category, int minQuality, int maxQuality)
+        {
+            if (category == SkyIslandLootCategory.General) return IsCached(minQuality, maxQuality);
+            return cache.ContainsKey(CategoryKey(category, minQuality, maxQuality));
+        }
+
+        /// <summary>
+        /// 一类对应的官方 Tag。固定 Tag 走 `GameplayDataSettings.Tags` 的属性，其余按官方 Tag 名找（口径同 Mode E/F 商人分类）：
+        /// 武器 Gun + MeleeWeapon；子弹 Bullet；装备 Armor + Helmat + Backpack + FaceMask（找不到退 Mask）+ Headset；
+        /// 物资 Medic（找不到退 Medical）+ Injector + Food。
+        /// </summary>
+        private static List<Tag> CategoryTags(GameplayDataSettings.TagsData tags, SkyIslandLootCategory category)
+        {
+            var result = new List<Tag>(5);
+            switch (category)
+            {
+                case SkyIslandLootCategory.Weapon:
+                    result.Add(tags.Gun);
+                    result.Add(TagNamed(tags, "MeleeWeapon"));
+                    break;
+                case SkyIslandLootCategory.Ammo:
+                    result.Add(tags.Bullet);
+                    break;
+                case SkyIslandLootCategory.Gear:
+                    result.Add(tags.Armor);
+                    result.Add(tags.Helmat);
+                    result.Add(tags.Backpack);
+                    result.Add(TagNamed(tags, "FaceMask") ?? TagNamed(tags, "Mask"));
+                    result.Add(TagNamed(tags, "Headset"));
+                    break;
+                case SkyIslandLootCategory.Supplies:
+                    result.Add(TagNamed(tags, "Medic") ?? TagNamed(tags, "Medical"));
+                    result.Add(TagNamed(tags, "Injector"));
+                    result.Add(TagNamed(tags, "Food"));
+                    break;
+            }
+            return result;
+        }
+
+        private static Tag TagNamed(GameplayDataSettings.TagsData tags, string name)
+        {
+            foreach (Tag tag in tags.AllTags)
+                if (tag != null && tag.name == name) return tag;
+            return null;
         }
 
         /// <summary>
@@ -229,10 +357,33 @@ namespace BossRush
                 yield return null;
             }
             LastPrewarm = stats;
+            // 搜刮箱的类别池（owner 2026-10-01）：每一档 × 武器 / 子弹 / 装备 / 物资，同样一个池子占一帧、已缓存跳过。
+            int[][] categoryBands = SkyIslandLootTables.PrewarmCategoryBands();
+            stats.CategoryBands = categoryBands.Length;
+            for (int c = 0; c < categoryBands.Length; c++)
+            {
+                SkyIslandLootCategory category = (SkyIslandLootCategory)categoryBands[c][0];
+                if (IsCategoryCached(category, categoryBands[c][1], categoryBands[c][2]))
+                {
+                    stats.CategoryCacheHits++;
+                    continue;
+                }
+                long categoryStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+                GetCategoryBand(category, categoryBands[c][1], categoryBands[c][2]);
+                double categoryMs = (System.Diagnostics.Stopwatch.GetTimestamp() - categoryStarted) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+                stats.CategoryBuilt++;
+                stats.TotalMs += categoryMs;
+                if (categoryMs > stats.MaxBandMs) stats.MaxBandMs = categoryMs;
+                stats.Frames++;
+                LastPrewarm = stats;
+                yield return null;
+            }
+            LastPrewarm = stats;
             // 敌人武器池同一时机预热（SkyIslandEnemyArmory）：第一名敌人刷出来时不再现查官方物品表。
             IEnumerator armory = SkyIslandEnemyArmory.Prewarm();
             while (armory.MoveNext()) yield return armory.Current;
             Debug.Log("[SkyIslandLoot] PREWARM bands=" + stats.Bands + " built=" + stats.Built + " cached=" + stats.CacheHits
+                + " category_bands=" + stats.CategoryBands + " category_built=" + stats.CategoryBuilt + " category_cached=" + stats.CategoryCacheHits
                 + " frames=" + stats.Frames + " total_ms=" + stats.TotalMs.ToString("F0") + " max_band_ms=" + stats.MaxBandMs.ToString("F0"));
         }
 
@@ -249,6 +400,8 @@ namespace BossRush
     {
         internal bool Ran;
         internal int Bands, Built, CacheHits, Frames;
+        /// <summary>搜刮箱类别池（owner 2026-10-01）：几个、新建几个、命中缓存几个。帧数与耗时并进上面的 Frames / TotalMs / MaxBandMs。</summary>
+        internal int CategoryBands, CategoryBuilt, CategoryCacheHits;
         internal double TotalMs, MaxBandMs;
     }
 }

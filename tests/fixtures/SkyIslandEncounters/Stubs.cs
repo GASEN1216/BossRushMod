@@ -113,8 +113,13 @@ namespace UnityEngine
         public static bool CheckCapsule(Vector3 a, Vector3 b, float radius, int mask, QueryTriggerInteraction ignore) { return false; }
     }
     public static class Time { public static float time; public static float unscaledTime { get { return time; } } }
-    public static class Resources { public static T[] FindObjectsOfTypeAll<T>() { return (T[])(object)new[] { CharacterRandomPreset.Source }; } }
-    public static class Debug { public static void LogWarning(string value) { } }
+    public static class Resources
+    {
+        // 默认只有一个持枪拾荒者；来源筛选的回归会临时换成混了近战 / Boss / 其它阵营的整表。
+        internal static CharacterRandomPreset[] Presets;
+        public static T[] FindObjectsOfTypeAll<T>() { return (T[])(object)(Presets ?? new[] { CharacterRandomPreset.Source, CharacterRandomPreset.ScavReference }); }
+    }
+    public static class Debug { public static readonly System.Collections.Generic.List<string> Logs = new System.Collections.Generic.List<string>(); public static void Log(string value) { Logs.Add(value); } public static void LogWarning(string value) { } }
 }
 namespace Duckov.Utilities { public static class GameplayDataSettings { public static class Layers { public struct Mask { public int value; } public static Mask groundLayerMask = new Mask { value = 1 }; public static int wallLayerMask = 2; } } }
 namespace Pathfinding
@@ -122,7 +127,7 @@ namespace Pathfinding
     public struct GraphMask { }
     public class Seeker : UnityEngine.Component { public GraphMask graphMask; public void CancelCurrentPathRequest() { } }
 }
-public enum Teams { scav, wolf, bear }
+public enum Teams { scav, wolf, bear, player, middle }
 public class AICharacterController : UnityEngine.Component
 {
     public float forceTracePlayerDistance;
@@ -171,9 +176,12 @@ public class CharacterRandomPreset : UnityEngine.Object
     public bool setMeleeDamageMultiplier;
     public int exp;
     public string nameKey;
-    public bool isBoss, isZombie, dropBoxOnDead, setActiveByPlayerDistance;
+    public bool isBoss, isZombie, isVehicle, dropBoxOnDead, setActiveByPlayerDistance;
     public Teams team;
-    internal static CharacterRandomPreset Source = new CharacterRandomPreset { name="Scav", nameKey="Cname_Scav", team=Teams.scav, health=45f, damageMultiplier=0.9f, moveSpeedFactor=1f, meleeDamageMultiplier=1f, bulletSpeedMultiplier=0.75f, gunDistanceMultiplier=1f, gunScatterMultiplier=0.65f, nightVisionAbility=0.5f, aiCombatFactor=1f, sightDistance=17f, hearingAbility=1f, reactionTime=0.5f, shootDelay=0.2f, nightReactionTimeFactor=1.5f, exp=20 };
+    // 2026-10-01 起天空岛小兵的底模是官方 Boss：默认表里的 Source 是一位 Boss（数值沿用旧替身，原有数值断言不变），
+    // ScavReference 是小兵换掉落与经验时参照的岛屿拾荒者。
+    internal static CharacterRandomPreset ScavReference = new CharacterRandomPreset { name="EnemyPreset_Scav_Island", nameKey="Cname_Scav", team=Teams.scav, health=45f, exp=20 };
+    internal static CharacterRandomPreset Source = new CharacterRandomPreset { name="EnemyPreset_Boss_Island_Shot", nameKey="Cname_Boss_Shot", isBoss=true, team=Teams.scav, health=45f, damageMultiplier=0.9f, moveSpeedFactor=1f, meleeDamageMultiplier=1f, bulletSpeedMultiplier=0.75f, gunDistanceMultiplier=1f, gunScatterMultiplier=0.65f, nightVisionAbility=0.5f, aiCombatFactor=1f, sightDistance=17f, hearingAbility=1f, reactionTime=0.5f, shootDelay=0.2f, nightReactionTimeFactor=1.5f, exp=20 };
     internal static readonly List<CharacterRandomPreset> Clones = new List<CharacterRandomPreset>();
     internal static readonly List<CharacterMainControl> Created = new List<CharacterMainControl>();
     internal static TaskCompletionSource<CharacterMainControl> Block;
@@ -218,6 +226,14 @@ namespace BossRush
     }
 
     /// 档次装饰的替身：只记录「谁被判成了哪一档」，让夹具能断言逐位分配。
+    /// 小兵换掉落的替身：只记下「谁被换成了拾荒者口径」，并照生产口径关掉 isBoss、取拾荒者经验。
+    internal static class SkyIslandMinionKit
+    {
+        internal static readonly List<CharacterRandomPreset> Applied = new List<CharacterRandomPreset>();
+        internal static void UseScavLoot(CharacterRandomPreset clone, CharacterRandomPreset scav)
+        { Applied.Add(clone); clone.isBoss = false; if (scav != null) clone.exp = scav.exp; }
+    }
+
     internal static class SkyIslandEnemyTiers
     {
         internal static readonly List<SkyIslandEnemyTier> Applied = new List<SkyIslandEnemyTier>();

@@ -8,7 +8,7 @@ namespace BossRush
     /// COMPAT：把官方拾荒者 preset 改造成天空岛自己的敌人档次。
     ///
     /// 外观与身份都是**可失败的装饰**，任一失败都不影响这场战斗能不能打完（口径同战役终章 Boss）：
-    /// 基础数值在创建角色前由 SkyIslandCombatPreset 按 Wiki ×1.5 准备；
+    /// 基础数值在创建角色前由 SkyIslandCombatPreset 按 Wiki 原版参照乘统一倍率准备；
     /// 2. 外观：只缩放 `characterModel`，**不动角色 transform**——碰撞体与导航半径保持官方口径，
     ///    体型变化不会带来物理/寻路成本或穿模；
     /// 3. 染色：走 `MaterialPropertyBlock`，绝不碰 `sharedMaterial`（会污染同款所有敌人）。
@@ -72,10 +72,9 @@ namespace BossRush
         {
             if (character == null || !MarkApplied(character)) return;
             bool decorate = tier != SkyIslandEnemyTier.Champion;
-            // Scav 刻意**不**改名：它的 `showName` 一直是 false，「云沿拾荒者」这个名字玩家从来看不到，
-            // 改 nameKey 却会把击杀记进 `Count/Kills/BossRush_SkyIsland_Enemy_Scav`，
-            // 于是官方拾荒者击杀数与 `RequireEnemyKilled` 解锁都不推进。自动组改成按出击刷新之后
-            // 这批击杀会反复产生，白打的代价更大。精英以上仍用自己的 key（模组内容本就该独立计数）。
+            // Scav 刻意**不**改名：2026-10-01 起小兵的底模是抽到的那位官方 Boss（SkyIslandEnemySources），
+            // 头顶显示的就是 Boss 自己的名字（Killa、Tagilla……），击杀也记在那位 Boss 的官方 key 下。
+            // 精英以上仍用自己的 key（断风游猎、噬风这些是模组内容，本就该独立计数）。
             if (decorate && tier != SkyIslandEnemyTier.Scav)
                 ApplyName(character, tier, NameKey(tier), NameCn(tier), NameEn(tier));
             if (tier == SkyIslandEnemyTier.Scav) return;

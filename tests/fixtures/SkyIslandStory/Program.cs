@@ -572,6 +572,51 @@ internal static class Program
         Check(extras.Count == 6 && extras["Supply:500071"] == 1200 && extras["Voyage:500072"] == 1000 && extras["Voyage:500071"] == 800
             && extras["Starworks:500072"] == 1800 && extras["Starworks:500071"] == 600 && extras["Starworks:500070"] == 200,
             "island extra rates per tier are exactly the documented ones");
+        // 搜刮箱保底特产（owner 2026-10-01）：每箱一格，只出采集材料与局内耗材，纪念品与合成成品绝不进箱；
+        // 三张表的权重都合计 100，按 10000 格的抽样网格逐项核对出现次数 = 权重 × 100；深处一格的期望价值更高。
+        var stapleNever = new HashSet<int> { BossRushItemIds.SkyIslandHomecomingBadge, BossRushItemIds.SkyIslandWindeaterCore,
+            BossRushItemIds.SkyIslandWindVaneCompass, BossRushItemIds.SkyIslandQinglanWindcrystal, BossRushItemIds.SkyIslandQinglanCharm,
+            BossRushItemIds.SkyIslandCloudmossVeil, BossRushItemIds.SkyIslandGnatZapper, BossRushItemIds.SkyIslandSmokeFan };
+        double previousStapleValue = -1;
+        foreach (SkyIslandLootTier tier in new[] { SkyIslandLootTier.Supply, SkyIslandLootTier.Voyage, SkyIslandLootTier.Starworks })
+        {
+            int[] table = SkyIslandItemRules.StapleTable(tier);
+            int weightTotal = 0;
+            for (int row = 0; row < table.Length; row += 4) weightTotal += table[row + 1];
+            Check(table.Length % 4 == 0 && table.Length >= 12 && weightTotal == 100, "staple table rows and weights: " + tier);
+            var hits = new Dictionary<int, int>();
+            double stapleValue = 0;
+            for (int i = 0; i < rollGrid; i++)
+            {
+                int low, high;
+                int typeId = SkyIslandItemRules.IslandStapleFor(tier, (i + 0.5) / rollGrid, 0.0, out low);
+                Check(SkyIslandItemRules.IslandStapleFor(tier, (i + 0.5) / rollGrid, 0.9999, out high) == typeId,
+                    "the amount roll never changes the item: " + tier);
+                Check(!stapleNever.Contains(typeId) && Array.IndexOf(SkyIslandItemRules.AllTypeIds, typeId) >= 0,
+                    "staple is a registered material or consumable, never a keepsake or crafted good: " + tier + " " + typeId);
+                Check(low >= 1 && low <= high && high <= 4, "staple stack sane: " + tier + " " + typeId);
+                int seen;
+                hits.TryGetValue(typeId, out seen);
+                hits[typeId] = seen + 1;
+                stapleValue += SkyIslandItemRules.ValueOf(typeId) * (low + high) / 2.0 / rollGrid;
+            }
+            for (int row = 0; row < table.Length; row += 4)
+            {
+                Check(hits.ContainsKey(table[row]) && hits[table[row]] == table[row + 1] * (rollGrid / 100),
+                    "staple rate equals its weight: " + tier + " " + table[row]);
+            }
+            Check(hits.Count >= 4, "each tier offers at least four staples: " + tier);
+            Check(stapleValue > previousStapleValue, "deeper crates carry a more valuable staple: " + tier + " " + stapleValue.ToString("F0"));
+            previousStapleValue = stapleValue;
+            int edge;
+            Check(SkyIslandItemRules.IslandStapleFor(tier, -1, -1, out edge) == table[0] && edge == table[2]
+                && SkyIslandItemRules.IslandStapleFor(tier, 1.5, 1.5, out edge) == table[table.Length - 4] && edge == table[table.Length - 1],
+                "out-of-range rolls clamp to the table ends: " + tier);
+        }
+        Check(Array.IndexOf(SkyIslandItemRules.StapleTable(SkyIslandLootTier.Supply), BossRushItemIds.SkyIslandHomecomingBento) >= 0
+            && Array.IndexOf(SkyIslandItemRules.StapleTable(SkyIslandLootTier.Starworks), BossRushItemIds.SkyIslandStardust) >= 0
+            && Array.IndexOf(SkyIslandItemRules.StapleTable(SkyIslandLootTier.Supply), BossRushItemIds.SkyIslandStardust) < 0,
+            "household crates hold food and plain materials; stardust only shows up deep");
         Check(SkyIslandItemRules.Bearing(0, 1) == "北" && SkyIslandItemRules.Bearing(1, 0) == "东" && SkyIslandItemRules.Bearing(0, -1) == "南"
             && SkyIslandItemRules.Bearing(-1, 0) == "西" && SkyIslandItemRules.Bearing(1, 1) == "东北" && SkyIslandItemRules.Bearing(-1, 1) == "西北"
             && SkyIslandItemRules.Bearing(-1, -1) == "西南" && SkyIslandItemRules.Bearing(1, -1) == "东南", "eight-way bearing with +z north and +x east");

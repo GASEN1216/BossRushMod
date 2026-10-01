@@ -220,6 +220,8 @@ echo(SkyIsland\SkyIslandStorySaveRecovery.cs
 echo(SkyIsland\SkyIslandStoryService.cs
 echo(SkyIsland\SkyIslandStoryResidentText.cs
 echo(SkyIsland\SkyIslandStoryServiceAutotest.cs
+echo(SkyIsland\SkyIslandStoryServiceDevReset.cs
+echo(DebugAndTools\SkyIslandProgressDebugControls.cs
 echo(SkyIsland\SkyIslandWorldStory.cs
 echo(SkyIsland\SkyIslandWorldStoryRewards.cs
 echo(SkyIsland\SkyIslandAmbience.cs
@@ -234,9 +236,10 @@ echo(SkyIsland\SkyIslandEnemyTier.cs
 echo(SkyIsland\SkyIslandEnemyTiers.cs
 echo(SkyIsland\SkyIslandEnemyArmoryRules.cs
 echo(SkyIsland\SkyIslandEnemyArmory.cs
+echo(SkyIsland\SkyIslandEnemySources.cs
+echo(SkyIsland\SkyIslandMinionKit.cs
 echo(SkyIsland\SkyIslandPatrolRules.cs
 echo(SkyIsland\SkyIslandPatrolSchedule.cs
-echo(SkyIsland\SkyIslandPatrolAppearance.cs
 echo(SkyIsland\SkyIslandPatrols.cs
 echo(SkyIsland\SkyIslandStormBoss.cs
 echo(SkyIsland\SkyIslandBounty.cs

@@ -63,6 +63,7 @@ internal static partial class Program
     {
         CheckCombatBalance();
         CheckPreludeSpawnBalance();
+        CheckEnemySources();
         CheckEnemyArmory();
         CheckEncounterTargetingPolicy();
         CheckChatter();

@@ -60,7 +60,8 @@ need("return SkyIslandPreludeFlow.InstrumentNameKey;" in prelude, "仪器交互�
 integration = clean_source((ROOT / "Integration/BossRushIntegrationRuntimeModule_ContentRegistration.cs").read_text(encoding="utf-8-sig"))
 integration_inject = body(integration, "internal void InjectLocalization_Extra_Integration()")
 for call in ("SkyIslandPreludeFlow.InjectLocalizations();", "SkyIslandItems.InjectLocalization();",
-             "SkyIslandSceneReferenceBridge.InjectLocalization();", "SkyIslandSearchPoint.InjectLocalizations();"):
+             "SkyIslandSceneReferenceBridge.InjectLocalization();", "SkyIslandSearchPoint.InjectLocalizations();",
+             "SkyIslandRewardCrate.InjectLocalizations();"):
     need(call in integration_inject, "统一语言注入链必须调用 " + call)
 search = read("SkyIslandSearchPoint.cs")
 search_inject = body(search, "internal static void InjectLocalizations()")

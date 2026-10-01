@@ -11,14 +11,27 @@ namespace BossRush
     }
 
     /// <summary>
-    /// COMPAT：2026-09-26 owner 指定原版属性 +50%。来源：
+    /// COMPAT：原版属性倍率。来源：
     /// https://escapefromduckov.net/zh/wiki/creatures （按精确 preset ID 区分本体、风暴区与强化版）。
-    /// 普通敌人用实际原版底模，精英 / 剧情对手 / 头目用下面的固定基准。
+    /// 小兵与精英用实际抽到的那位官方 Boss 底模（SkyIslandEnemySources），剧情对手 / 头目 / 岛主 / 噬风用下面的固定基准。
     /// 此表只定义基础战斗能力；经济、护甲、元素克制与自定义招式仍由各自系统负责。
+    ///
+    /// 2026-10-01 owner 定「属性翻 3 倍、整体难度比原版地图高 3 倍，反应和开火都要更快」：
+    /// <see cref="Multiplier"/> 管生命、伤害、反应、开火前摇、散布与暴击；
+    /// 移速、弹速、射程、视野、听觉与夜视另走 <see cref="PerceptionMultiplier"/>（仍是 2026-09-26 的 1.5 倍）——
+    /// 这几项乘 3 时敌人会在一屏（约 28×20 m）之外看见并开火、跑起来像瞬移，难而不公平，不是 owner 要的「更难打」。
     /// </summary>
     internal static class SkyIslandCombatBalance
     {
-        internal const float Multiplier = 1.5f;
+        internal const float Multiplier = 3f;
+        internal const float PerceptionMultiplier = 1.5f;
+
+        /// <summary>
+        /// 序章守卫（零号区「断风游猎·守」）在统一倍率之上再乘的生命系数。它倒下必掉品质 5–6 的枪，
+        /// owner 2026-10-01 要求别让刚开档的玩家轻易打下来：K3 参照 250 × 3 × 2 = 1500（再受游戏难度影响）。
+        /// 只用于零号区序章，岛上 K3 中继平台那一位不受影响。
+        /// </summary>
+        internal const float PreludeWardenHealthFactor = 2f;
         private static readonly SkyIslandCombatBaseline[] baselines =
         {
             new SkyIslandCombatBaseline { PresetId = "EnemyPreset_Scav_Snow_Elete",
@@ -67,12 +80,13 @@ namespace BossRush
             if (tier == SkyIslandEnemyTier.Storm) return Find("EnemyPreset_Boss_Island_Koukou");
             if (tier == SkyIslandEnemyTier.Champion)
                 return Find(encounterId == "BellKeeper" ? "EnemyPreset_Boss_SnowMan" : "EnemyPreset_Boss_Killa");
-            if (tier == SkyIslandEnemyTier.Elite) return Find("EnemyPreset_Scav_Snow_Elete");
-            if (tier == SkyIslandEnemyTier.Scav) return null;
+            // 小兵与精英（断风游猎）的底模是从官方 Boss 池抽的那一位，数值就按它自己的原版（owner 2026-10-01「全按各自 Boss 原版 ×3」）；
+            // 雪地精英拾荒者那一行留在表里只作 Wiki 快照对照，不再有人引用。
+            if (tier == SkyIslandEnemyTier.Elite || tier == SkyIslandEnemyTier.Scav) return null;
             throw new ArgumentException("天空岛头目未绑定战斗基准：" + encounterId);
         }
 
-        /// <summary>负暴击修正是惩罚，向零缩小；正修正乘 1.5，上限为 100%。</summary>
+        /// <summary>负暴击修正是惩罚，向零缩小；正修正乘 <see cref="Multiplier"/>，上限为 100%。</summary>
         internal static float BoostCrit(float value)
         {
             return Math.Min(1f, value < 0f ? value / Multiplier : value * Multiplier);

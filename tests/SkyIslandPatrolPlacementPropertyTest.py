@@ -4,6 +4,13 @@
 导航包含/高度/三角中心由重心坐标独立复算，不调用选点算法。静态交互位置复用已有
 SkyIslandInteractionCompetitionPropertyTest（搜刮、采集、信鸽、纪念物、装置和居民）；
 反向探针只改 deepcopy 的数据，源文件按 SHA-256 核对。不能证明 Unity 实机 AI/碰撞。
+
+「不在犄角旮旯」（owner 2026-10-01 实机反馈：旧槽位大多贴在岛的四角）三条可量化判据：
+- 离本岛轮廓（layout.json islands[].outline）≥ EDGE_MARGIN（主岛 12 m，边长 ≤65 m 的小岛 10 m）；
+- 离本岛「玩家会经过的地方」≤ TRAFFIC_REACH：路网中心线（road_layout.json tracks）、桥头（portals）、
+  岛心 / 地标 / 撤离 / 搜索 / 遭遇标记（layout.json markers 的 TRAFFIC_MARKER_KINDS）；
+- 离导航边界（collision_navigation.json boundaryEdges：岛缘与建筑挖洞）≥ WALL_CLEARANCE，不塞墙角。
+`tools/sky_island_patrol_slots.py` 用同一个 `point_failures` 筛候选，不另写第二份判据。
 """
 import copy
 import hashlib
@@ -24,8 +31,16 @@ DATA = ROOT / "Assets/Data/SkyIsland/Patrols.json"
 RULES = ROOT / "SkyIsland/SkyIslandPatrolRules.cs"
 NAVIGATION = ROOT / "ArtSource/SkyIsland/collision_navigation.json"
 LAYOUT = ROOT / "ArtSource/SkyIsland/layout.json"
-TARGETS = {"A": 6, "B": 8, "C": 10, "D": 12, "E": 12, "F": 12,
-           "G": 14, "H": 14, "S1": 6, "S2": 6, "S3": 6, "S4": 6}
+ROADS = ROOT / "ArtSource/SkyIsland/road_layout.json"
+# 2026-10-01 加密：主岛约翻倍、小岛按可用面积加。钟庭只有一条路，合格候选集中在钟庭广场（40 个），
+# 超过 20 名时同区最小间距掉到 8 m 以下；听雨洞离岛缘 10 m 以内只剩 9 个候选，给 7。
+TARGETS = {"A": 10, "B": 14, "C": 18, "D": 22, "E": 22, "F": 22,
+           "G": 26, "H": 20, "S1": 8, "S2": 8, "S3": 7, "S4": 10}
+SMALL_ISLANDS = {"S1", "S2", "S3", "S4"}
+EDGE_MARGIN = {"main": 12.0, "small": 10.0}  # 离本岛轮廓的水平下限
+TRAFFIC_REACH = 20.0  # 离路网 / 桥头 / 地标的水平上限：约一屏宽（相机一屏约 28×20 m），站在路上就看得见
+WALL_CLEARANCE = 2.0  # 离导航边界的水平下限：不塞进建筑墙角或岛缘缺口
+TRAFFIC_MARKER_KINDS = {"region", "point_of_interest", "extraction", "search", "enemy_spawn"}
 RANKS = {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6,
          "G": 7, "H": 8, "S1": 3, "S2": 4, "S3": 6, "S4": 7}
 PROFILE_KEYS = {"regionId", "rank", "healthFactor", "damageFactor", "sightDistance", "reactionTime"}
@@ -63,6 +78,72 @@ def barycentric_height(p, vertices):
     return u * a[1] + v * b[1] + w * c[1]
 
 
+def segment_distance(p, a, b):
+    """XZ 平面上点到线段的距离；p / a / b 都是 (x, z)。"""
+    dx, dz = b[0] - a[0], b[1] - a[1]
+    length = dx * dx + dz * dz
+    u = 0.0 if length == 0 else max(0.0, min(1.0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / length))
+    return math.hypot(p[0] - a[0] - u * dx, p[1] - a[1] - u * dz)
+
+
+def placement_geometry(navigation, layout, roads):
+    """按岛区整理三条「不在犄角旮旯」判据要用的几何：轮廓、玩家会经过的线 / 点、导航边界线段。"""
+    outlines = {island["id"]: [tuple(p) for p in island["outline"]] for island in layout["islands"]}
+    traffic = {region: [] for region in TARGETS}
+    for track in roads["tracks"]:
+        if track["island"] in traffic:
+            points = [tuple(p) for p in track["points"]]
+            traffic[track["island"]] += list(zip(points, points[1:]))
+    for portal in roads["portals"]:
+        if portal["island"] in traffic:
+            traffic[portal["island"]].append((tuple(portal["point"]), tuple(portal["point"])))
+    for marker in layout["markers"]:
+        if marker["kind"] in TRAFFIC_MARKER_KINDS and marker.get("island") in traffic:
+            spot = (marker["position"][0], marker["position"][2])
+            traffic[marker["island"]].append((spot, spot))
+    vertices = navigation["vertices"]
+    walls = []
+    for a, b in navigation["boundaryEdges"]:
+        pa, pb = (vertices[a][0], vertices[a][2]), (vertices[b][0], vertices[b][2])
+        walls.append((min(pa[0], pb[0]), max(pa[0], pb[0]), min(pa[1], pb[1]), max(pa[1], pb[1]), pa, pb))
+    assert all(outlines.get(region) for region in TARGETS), "某个岛区没有轮廓"
+    assert all(traffic.values()), "某个岛区没有路网 / 地标"
+    return {"outlines": outlines, "traffic": traffic, "walls": walls}
+
+
+def placement_metrics(p, region, geometry, wall_probe=WALL_CLEARANCE * 4):
+    """返回 (离岛缘, 离路网地标, 离导航边界)，单位米。导航边界只量 wall_probe 以内的线段，再远按 wall_probe 计。"""
+    q = (p[0], p[2])
+    outline = geometry["outlines"][region]
+    edge = min(segment_distance(q, outline[i], outline[(i + 1) % len(outline)]) for i in range(len(outline)))
+    reach = min(segment_distance(q, a, b) for a, b in geometry["traffic"][region])
+    wall = wall_probe
+    for x0, x1, z0, z1, a, b in geometry["walls"]:
+        if x0 - wall <= q[0] <= x1 + wall and z0 - wall <= q[1] <= z1 + wall:
+            wall = min(wall, segment_distance(q, a, b))
+    return edge, reach, wall
+
+
+def point_failures(p, region, ctx):
+    """单点判据（不含导航包含 / 三角中心 / 同区间距）：出生点、居民、交互点净空与「不在犄角旮旯」三条。"""
+    _, markers, protected, _, geometry = ctx
+    failures = []
+    if horizontal(p, markers["PlayerSpawn"]) < 14 - TOLERANCE:
+        failures.append("spawn_clearance")
+    if any(horizontal(p, markers[m]) < 8 - TOLERANCE for m in RESIDENT_MARKERS):
+        failures.append("resident_clearance")
+    if any(horizontal(p, position) < 4 - TOLERANCE for _, position in protected):
+        failures.append("interaction_clearance")
+    edge, reach, wall = placement_metrics(p, region, geometry)
+    if edge < EDGE_MARGIN["small" if region in SMALL_ISLANDS else "main"] - TOLERANCE:
+        failures.append("edge_margin")
+    if reach > TRAFFIC_REACH + TOLERANCE:
+        failures.append("traffic_reach")
+    if wall < WALL_CLEARANCE - TOLERANCE:
+        failures.append("wall_clearance")
+    return failures
+
+
 def context():
     navigation_bytes = NAVIGATION.read_bytes()
     navigation = json.loads(navigation_bytes.decode("utf-8-sig"))["navigation"]
@@ -83,13 +164,14 @@ def context():
     protected = [(marker["id"], marker["position"]) for marker in layout["markers"]
                  if marker["kind"] != "region"]
     protected += [(name, pos) for name, pos, _, _ in items if not name.startswith("resident:")]
-    return faces, markers, protected, hashlib.sha256(navigation_bytes).hexdigest()
+    geometry = placement_geometry(navigation, layout, load(ROADS))
+    return faces, markers, protected, hashlib.sha256(navigation_bytes).hexdigest(), geometry
 
 
 def validate(data, ctx):
     """收集各条独立不变式失败，反例不因前一条失败而绕过后面的判据。"""
     errors = []
-    faces, markers, protected, navigation_hash = ctx
+    faces, markers, protected, navigation_hash, _ = ctx
     if set(data) != {"version", "sourceNavigationSha256", "profiles", "slots"} or type(data.get("version")) is not int or data["version"] != 1:
         errors.append("schema")
     if data.get("sourceNavigationSha256") != navigation_hash:
@@ -145,12 +227,7 @@ def validate(data, ctx):
         centers = [tuple(sum(vertex[axis] for vertex in tri) / 3 for axis in range(3)) for tri in faces[region]]
         if not any(max(abs(p[i] - center[i]) for i in range(3)) <= TOLERANCE for center in centers):
             errors.append("triangle_center:" + str(sid))
-        if horizontal(p, markers["PlayerSpawn"]) < 14 - TOLERANCE:
-            errors.append("spawn_clearance:" + str(sid))
-        if any(horizontal(p, markers[m]) < 8 - TOLERANCE for m in RESIDENT_MARKERS):
-            errors.append("resident_clearance:" + str(sid))
-        if any(horizontal(p, position) < 4 - TOLERANCE for _, position in protected):
-            errors.append("interaction_clearance:" + str(sid))
+        errors += [code + ":" + str(sid) for code in point_failures(p, region, ctx)]
         for other in good_slots:
             if region == other["regionId"] and horizontal(p, point(other)) < 5 - TOLERANCE:
                 errors.append("spacing:" + str(sid))
@@ -162,19 +239,28 @@ def check_rule_constants(source=None):
     src = clean_source(RULES.read_text(encoding="utf-8-sig") if source is None else source)
     for name, expected in (("SpawnClearance", 14), ("ResidentClearance", 8),
                            ("InteractionClearance", 4), ("SlotSpacing", 5),
-                           ("ActivationRadius", 70), ("SuspensionRadius", 110),
+                           ("ActivationRadius", 70), ("SuspensionRadius", 95),
                            ("SpawnInterval", 0.12), ("TickInterval", 0.25)):
         match = re.search(r"\b" + name + r"\s*=\s*([0-9.]+)f\b", src)
         assert match and float(match.group(1)) == expected, "生产避让常量漂移：" + name
+    # 32 = 全图任一点 70 m 内最多 26 个槽位（残星工坊腹地）+ 6 个滞回余量；挂起半径 95 m 让走远的岛尽早让出名额。
     match = re.search(r"\bActiveLimit\s*=\s*(\d+)\s*;", src)
-    assert match and int(match.group(1)) == 24, "普通巡逻激活上限漂移"
+    assert match and int(match.group(1)) == 32, "普通巡逻激活上限漂移"
+    body = re.search(r"\bint\s+TargetCount\s*\(\s*string\s+regionId\s*\)\s*\{(.*?)default\s*:", src, re.S)
+    assert body, "TargetCount 结构变化"
+    counts = {}
+    for labels, value in re.findall(r'((?:case\s+"[A-Z0-9]+"\s*:\s*)+)return\s+(\d+)\s*;', body.group(1)):
+        for region in re.findall(r'"([A-Z0-9]+)"', labels):
+            counts[region] = int(value)
+    assert counts == TARGETS, "C# TargetCount 与离线岛区数量不一致：" + str(counts)
 
 
 def constant_probes():
     source = RULES.read_text(encoding="utf-8-sig")
-    cases = (("ActiveLimit = 24", "ActiveLimit = 25"),
+    cases = (("ActiveLimit = 32", "ActiveLimit = 24"),
              ("ActivationRadius = 70f", "ActivationRadius = 110f"),
-             ("SuspensionRadius = 110f", "SuspensionRadius = 70f"),
+             ("SuspensionRadius = 95f", "SuspensionRadius = 110f"),
+             ('case "A": return 10;', 'case "A": return 6;'),
              ("SpawnInterval = 0.12f", "SpawnInterval = 0.0f"),
              ("TickInterval = 0.25f", "TickInterval = 0.0f"))
     for original, mutated in cases:
@@ -202,7 +288,7 @@ def fallback_data():
 
 
 def negative_probes(data, ctx):
-    _, markers, protected, _ = ctx
+    faces, markers, protected, _, geometry = ctx
     cases = []
     def case(name, code, edit):
         candidate = copy.deepcopy(data)
@@ -226,11 +312,21 @@ def negative_probes(data, ctx):
     case("倒置伤害梯度", "difficulty_order", lambda d: d["profiles"][0].update(damageFactor=4))
     case("过大初期视距", "early_sight", lambda d: d["profiles"][0].update(sightDistance=40))
     case("非有限坐标", "slot_schema", lambda d: d["slots"][0].update(x=float("nan")))
+    # 犄角旮旯：把第一个槽位挪到同区真实的导航三角形中心上，只是选在岛角 / 离路网最远 / 最贴导航边界处。
+    region = data["slots"][0]["regionId"]
+    centers = [tuple(sum(vertex[axis] for vertex in tri) / 3 for axis in range(3)) for tri in faces[region]]
+    metrics = [(placement_metrics(c, region, geometry), c) for c in centers]
+    corner = min(metrics, key=lambda row: row[0][0])[1]
+    remote = max(metrics, key=lambda row: row[0][1])[1]
+    walled = min(metrics, key=lambda row: row[0][2])[1]
+    case("贴岛缘角落", "edge_margin", lambda d: move(d, corner))
+    case("远离路网地标", "traffic_reach", lambda d: move(d, remote))
+    case("塞进墙角", "wall_clearance", lambda d: move(d, walled))
     return cases
 
 
 def main():
-    tracked = (DATA, RULES, NAVIGATION, LAYOUT)
+    tracked = (DATA, RULES, NAVIGATION, LAYOUT, ROADS)
     hashes = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in tracked}
     data = load(DATA)
     check_rule_constants()
@@ -242,8 +338,10 @@ def main():
     probes = negative_probes(data, ctx)
     rule_probes = constant_probes()
     assert all(hashlib.sha256(path.read_bytes()).hexdigest() == digest for path, digest in hashes.items()), "验收期间源文件变化，需要重新取样；反例只修改内存数据"
-    print("[PASS] SkyIslandPatrolPlacementPropertyTest: 12 regions, 112 fixed triangle centers, JSON/Fallback parity")
-    print("[PASS] navigation/height/count/spacing/entry/residents/interactions/rank; deepcopy negative probes=" + str(len(probes)) + ", constant probes=" + str(rule_probes))
+    print("[PASS] SkyIslandPatrolPlacementPropertyTest: " + str(len(TARGETS)) + " regions, " + str(sum(TARGETS.values()))
+          + " fixed triangle centers, JSON/Fallback parity")
+    print("[PASS] navigation/height/count/spacing/entry/residents/interactions/rank/edge/traffic/wall; deepcopy negative probes="
+          + str(len(probes)) + ", constant probes=" + str(rule_probes))
     print("[INFO] sampled/current navigation SHA-256=" + ctx[3])
     print("[INFO] island counts: " + ", ".join(region + "=" + str(count) for region, count in TARGETS.items()))
     for label, positions in (("spawn", [ctx[1]["PlayerSpawn"]]), ("resident", [ctx[1][m] for m in RESIDENT_MARKERS]),
@@ -253,6 +351,9 @@ def main():
     minimum = min(horizontal(point(a), point(b)) for i, a in enumerate(data["slots"]) for b in data["slots"][i + 1:]
                   if a["regionId"] == b["regionId"])
     print("[INFO] minimum same-region spacing=" + format(minimum, ".3f") + "m")
+    metrics = [placement_metrics(point(slot), slot["regionId"], ctx[4]) for slot in data["slots"]]
+    print("[INFO] island edge min=" + format(min(m[0] for m in metrics), ".3f") + "m, traffic reach max="
+          + format(max(m[1] for m in metrics), ".3f") + "m, navigation wall min=" + format(min(m[2] for m in metrics), ".3f") + "m")
     return 0
 
 

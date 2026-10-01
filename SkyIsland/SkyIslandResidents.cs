@@ -209,6 +209,10 @@ namespace BossRush
                     seeker.CancelCurrentPathRequest();
                     seeker.graphMask = navigation.Mask;
                 }
+                // 居民蓝图是 player 阵营（基地里与主角同阵营），岛上的敌人按官方 Team.IsEnemy 会把他们当目标，
+                // 隔着桥锁定一位打不死的居民一直开枪（2026-10-01 实机）。岛上改成官方中立阵营 middle：
+                // 谁都不把 middle 当敌人，middle 也不打别人；居民本来就无敌，不影响对话、送礼与服务。
+                npc.SetTeam(Teams.middle);
                 AttachStoryInteraction(npc, id, displayName);
                 owned.Add(id, npc);
                 retained = true;

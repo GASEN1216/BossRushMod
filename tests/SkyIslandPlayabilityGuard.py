@@ -108,12 +108,13 @@ def main():
 
     # ---- 4. 敌人 preset 必须按遭遇身份取，不能全岛同一个 ----
     forbid(enc, "遭遇 preset", "sources[i % sources.Count]")
-    need(enc, "遭遇 preset",
-         "sources[PresetIndex(encounter.Id, i)]",
-         "private int PresetIndex(string encounterId, int index)",
-         "SkyIslandLootTables.StableHash(encounterId")
+    # 2026-10-01 起底模是官方 Boss：有参照的克隆参照那位，小兵按「遭遇 id + 位次」散列到 Boss 池（SkyIslandEnemySources）。
+    need(enc, "遭遇 preset", 'SkyIslandEnemySources.ForBaseline(baseline, encounter.Id + "#" + i)')
+    sources = (ROOT / "SkyIsland" / "SkyIslandEnemySources.cs").read_text(encoding="utf-8-sig")
+    need(sources, "遭遇 preset", "SkyIslandLootTables.StableHash(key")
     # 跨机稳定：不得退回 string.GetHashCode（Mono 与 .NET Core 口径不同）。
     forbid(enc, "遭遇 preset", "encounterId.GetHashCode()")
+    forbid(sources, "遭遇 preset", "key.GetHashCode()")
 
     # ---- 5. 钟守物证路线认「折翎已了结」，不只认和解 ----
     bell = rules.split("case SkyIslandStoryAction.ReconcileBellKeeper:", 1)[1] \

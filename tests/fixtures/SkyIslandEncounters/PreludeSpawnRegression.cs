@@ -16,13 +16,13 @@ internal static partial class Program
             Check(!flow.IsSpawning && flow.Spawned != null, "prelude completes normal spawn");
             var clone = CharacterRandomPreset.Clones[attempt];
             var actor = CharacterRandomPreset.Created[attempt];
-            NearCombat(clone.health, 375f, "prelude prepares Warden baseline before factory");
-            NearCombat(actor.Health.MaxHealth, 375f, "prelude factory receives Warden health");
-            NearCombat(actor.Health.CurrentHealth, 375f, "prelude spawns at full health");
-            NearCombat(clone.damageMultiplier, 1.5f, "prelude Warden gun damage");
-            NearCombat(clone.meleeDamageMultiplier, 1.5f, "prelude Warden melee damage");
+            NearCombat(clone.health, 1500f, "prelude prepares Warden baseline x3 and prelude factor x2 before factory");
+            NearCombat(actor.Health.MaxHealth, 1500f, "prelude factory receives Warden health");
+            NearCombat(actor.Health.CurrentHealth, 1500f, "prelude spawns at full health");
+            NearCombat(clone.damageMultiplier, 3f, "prelude Warden gun damage");
+            NearCombat(clone.meleeDamageMultiplier, 3f, "prelude Warden melee damage");
             NearCombat(clone.moveSpeedFactor, 1.725f, "prelude Warden movement");
-            NearCombat(clone.reactionTime, 0.2f, "prelude Warden reaction");
+            NearCombat(clone.reactionTime, 0.1f, "prelude Warden reaction");
             NearCombat(CharacterRandomPreset.Source.health, 45f, "prelude source unchanged across respawns");
             Check(actor.Team == Teams.wolf && clone.dropBoxOnDead && !clone.setActiveByPlayerDistance,
                 "prelude keeps hostility loot and activation safety");

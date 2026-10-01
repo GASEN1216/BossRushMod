@@ -12,8 +12,8 @@ namespace BossRush
     /// <summary>
     /// COMPAT：天空岛敌人的武器配装（owner 2026-09-30：岛上敌人至少品质 3，头目 / 岛主至少品质 5）。
     ///
-    /// 官方 `CreateCharacterAsync` 装配完成后调用一次：主武器与近战低于本档下限就换成同槽位的官方武器，
-    /// 没有主武器的补一把枪；达标的官方原装不动。品质带见 <see cref="SkyIslandEnemyArmoryRules"/>。
+    /// 官方 `CreateCharacterAsync` 装配完成后调用一次：主武器与近战低于本档下限就换成同槽位的官方武器；
+    /// 达标的官方原装不动，空槽不补（底模是官方 Boss，空着主武器槽的是近战 Boss）。品质带见 <see cref="SkyIslandEnemyArmoryRules"/>。
     ///
     /// - 官方与其它 Mod 的武器都进池（owner 2026-09-30），口径不限；只排除本 Mod 自己的 500xxx 物品
     ///   （<see cref="SkyIslandEnemyArmoryRules.IsOwnModItem"/>），过官方掉落排除标签、全局黑名单与岛上物资池的单件价值上限；
@@ -79,6 +79,9 @@ namespace BossRush
             if (slot == null) return false;
             Item current = slot.Content;
             if (current != null && band.Keeps(current.Quality)) return false;
+            // 空槽不补（2026-10-01 起底模全是官方 Boss）：主武器槽空着说明这位是近战 Boss（Tagilla、Killa、校霸），
+            // 它的 AI 只会冲上来砍，塞一把枪进去它也不开，还会被 SwitchToFirstAvailableWeapon 换到手上、把锤子收起来。
+            if (current == null) return false;
             int[] pool = Pool(slotKey, band.Min, band.Max);
             if (pool.Length == 0) pool = Pool(slotKey, band.Floor, band.Max);
             if (pool.Length == 0)
