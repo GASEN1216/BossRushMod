@@ -84,6 +84,8 @@ namespace BossRush
             timeOfDay = UnityEngine.Object.Instantiate(template);
             timeOfDay.gameObject.name = "BossRush_SkyIslandTimeOfDay";
             UnityEngine.Object.DontDestroyOnLoad(timeOfDay.gameObject);
+            // 地堡的晴天条目三个时段都是室内后处理（远景雾纯黑），岛上白天会和夜里一样黑：副本里换成官方户外的。
+            SkyIslandOutdoorDaylight.Apply(timeOfDay);
             if (!SkyIslandSceneReferenceBridge.EnsureRegistered())
                 throw new InvalidOperationException("天空岛官方场景引用桥接尚未就绪");
             string path = Path.Combine(modDirectory, BundleRelativePath);

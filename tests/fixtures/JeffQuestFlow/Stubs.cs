@@ -108,6 +108,7 @@ namespace Duckov.Quests
         public virtual UnityEngine.Sprite Icon { get { return null; } }
         public int RewardId { get { return id; } }
         public virtual void OnClaim() { }
+        public void Claim() { if (Claimed) return; OnClaim(); }
         public virtual object GenerateSaveData() { return null; }
         public virtual void SetupSaveData(object data) { }
     }
@@ -136,7 +137,10 @@ namespace Duckov.Quests
             bool result = false;
             if (!InvokePatch(typeof(OfficialQuestCompletePatch), this, ref result)) return result;
             if (Complete || !AreTasksFinished()) return false;
-            ForceComplete(); return true;
+            ForceComplete();
+            // Mirrors Harmony: the postfix runs after the official TryComplete returned true.
+            typeof(OfficialQuestCompletePatch).GetMethod("Postfix", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { this, true });
+            return true;
         }
         private static bool InvokePatch(Type type, Quest quest, ref bool result)
         {

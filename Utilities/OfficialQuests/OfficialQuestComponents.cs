@@ -68,14 +68,17 @@ namespace BossRush
     {
         public int questId;
         public int amount;
+        /// <summary>完成面板还开着：见 <see cref="OfficialQuestProjection.HoldRewardsForCompletePanel"/>。</summary>
+        [NonSerialized] internal bool presenting;
 
-        public override bool Claimed { get { return OfficialQuestProjection.IsRewardPaid(questId); } }
+        public override bool Claimed { get { return !presenting && OfficialQuestProjection.IsRewardPaid(questId); } }
         public override bool AutoClaim { get { return true; } }
         public override string Description { get { return OfficialQuestText.DescribeMoney(amount); } }
 
-        /// <summary>发放随交付事实一次完成（见各客户端的 PayReward / 交付事务），这里永远是空操作。</summary>
+        /// <summary>发放随交付事实一次完成（见各客户端的 PayReward / 交付事务），这里只收起完成面板的展示态。</summary>
         public override void OnClaim()
         {
+            presenting = false;
         }
 
         public override object GenerateSaveData() { return Claimed; }
@@ -94,8 +97,10 @@ namespace BossRush
         public int questId;
         public int typeId;
         public int amount;
+        /// <summary>完成面板还开着：见 <see cref="OfficialQuestProjection.HoldRewardsForCompletePanel"/>。</summary>
+        [NonSerialized] internal bool presenting;
 
-        public override bool Claimed { get { return OfficialQuestProjection.IsRewardPaid(questId); } }
+        public override bool Claimed { get { return !presenting && OfficialQuestProjection.IsRewardPaid(questId); } }
         public override bool AutoClaim { get { return true; } }
 
         public override UnityEngine.Sprite Icon
@@ -109,9 +114,10 @@ namespace BossRush
 
         public override string Description { get { return OfficialQuestItems.DisplayName(typeId) + " x" + amount; } }
 
-        /// <summary>发放在交付事务里完成，这里永远是空操作。</summary>
+        /// <summary>发放在交付事务里完成，这里只收起完成面板的展示态。</summary>
         public override void OnClaim()
         {
+            presenting = false;
         }
 
         public override object GenerateSaveData() { return Claimed; }
@@ -166,6 +172,14 @@ namespace BossRush
             __result = false;
             OfficialQuestProjection.ReportDeliveryFailure(reason);
             return false;
+        }
+
+        /// <summary>官方真的完成了这一拍：奖励行先显示成「未领取」，让官方完成面板停住等玩家点（见 HoldRewardsForCompletePanel）。</summary>
+        [HarmonyPostfix]
+        private static void Postfix(Quest __instance, bool __result)
+        {
+            if (__result && __instance != null && OfficialQuestProjection.IsOwnQuest(__instance.ID))
+                OfficialQuestProjection.HoldRewardsForCompletePanel(__instance);
         }
     }
 

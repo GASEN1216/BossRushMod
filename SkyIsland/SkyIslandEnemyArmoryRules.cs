@@ -69,11 +69,14 @@ namespace BossRush
             return typeId >= OwnItemMin && typeId <= OwnItemMax;
         }
 
-        /// <summary>弹匣装满之外背包里再带多少发：两个弹匣，最少 20 发。</summary>
+        /// <summary>
+        /// 弹匣装满之外背包里至少带多少发：三个弹匣，最少 45 发。
+        /// 旧口径两个弹匣、最少 20 发，岛上头目一场仗要打一阵子，两匣打完就只剩「没子弹了」（owner 2026-10-01）。
+        /// </summary>
         internal static int ReserveRounds(int capacity)
         {
-            int reserve = capacity * 2;
-            return reserve < 20 ? 20 : reserve;
+            int reserve = capacity * 3;
+            return reserve < 45 ? 45 : reserve;
         }
     }
 }

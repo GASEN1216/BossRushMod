@@ -18,8 +18,11 @@ namespace BossRush
     /// - 官方与其它 Mod 的武器都进池（owner 2026-09-30），口径不限；只排除本 Mod 自己的 500xxx 物品
     ///   （<see cref="SkyIslandEnemyArmoryRules.IsOwnModItem"/>），过官方掉落排除标签、全局黑名单与岛上物资池的单件价值上限；
     ///   控心武器、粘手物品不发。枪必须有弹匣、有同口径弹药——没弹药的枪在 AI 手里打不响。
-    /// - 换上的枪装满弹匣，背包再放 <see cref="SkyIslandEnemyArmoryRules.ReserveRounds"/> 发同款弹药；
-    ///   弹药品质不低于本档 `AmmoMin`，没有就退回这把枪能用的最高品质弹药。
+    /// - 换上的枪装满弹匣；**手里每一把枪**（换上的、达标留下的官方原装、副武器）背包里都补足
+    ///   <see cref="SkyIslandEnemyArmoryRules.ReserveRounds"/> 发同款弹药（<see cref="EnsureAmmo"/>）。
+    ///   官方 `AddBullet` 只按 preset 的弹药品质表随机给一堆，Boss 预设的高品质表在不少口径上抽不到弹，
+    ///   留下的原装枪于是一发备弹都没有，打空一匣就原地喊「没子弹了」反复换弹（owner 2026-10-01 实测）。
+    ///   弹药品质不低于本档 `AmmoMin`，没有就退回这把枪能用的最高品质弹药；已经装着 / 背着同口径弹药时沿用那一种。
     /// - 被换下的官方随机武器直接销毁（它不在敌人手里，不该出现在尸体箱里）；换上的武器随官方尸体箱掉落。
     /// - 可失败的装饰：池子为空或任一步失败时保留官方原装，照常参战。
     ///
@@ -29,6 +32,7 @@ namespace BossRush
     internal static class SkyIslandEnemyArmory
     {
         private const string PrimarySlot = "PrimaryWeapon";
+        private const string SecondarySlot = "SecondaryWeapon";
         private const string MeleeSlot = "MeleeWeapon";
         private const int MaxQuality = 7;
         private static readonly int ControlMindTypeHash = "ControlMindType".GetHashCode();
@@ -62,6 +66,9 @@ namespace BossRush
                 string fromKey = character.characterPreset != null ? character.characterPreset.nameKey : null;
                 bool changed = EnsureWeapon(character, body, PrimarySlot, band, random, fromKey, label);
                 changed |= EnsureWeapon(character, body, MeleeSlot, band, random, fromKey, label);
+                // 换没换都补弹：达标留下的官方原装与副武器同样要有备弹（见类注释）。
+                EnsureAmmo(body, PrimarySlot, band, random, fromKey, label);
+                EnsureAmmo(body, SecondarySlot, band, random, fromKey, label);
                 if (changed) character.SwitchToFirstAvailableWeapon();
                 string summary = "[SkyIslandArmory] ARMED tier=" + label + " primary=" + Describe(body, PrimarySlot)
                     + " melee=" + Describe(body, MeleeSlot) + " changed=" + changed;
@@ -111,7 +118,7 @@ namespace BossRush
                 if (!slot.Plug(created, out unplugged)) throw new InvalidOperationException("插槽失败");
                 if (unplugged != null) unplugged.DestroyTree();
                 created = null;
-                if (gun != null) StoreReserve(body, ammoTypeId, SkyIslandEnemyArmoryRules.ReserveRounds(gun.Capacity), fromKey);
+                // 备弹由 Arm 里随后的 EnsureAmmo 按弹匣里这一种补足，这里不另放。
                 return true;
             }
             catch (Exception e)
@@ -122,14 +129,70 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 这个槽位上若是枪：弹匣空着就装满，背包里同款弹药补到 <see cref="SkyIslandEnemyArmoryRules.ReserveRounds"/> 发。
+        /// 弹种优先沿用弹匣里已装的、其次背包里已有的同口径弹药（官方 AddBullet 给的），都没有才按本档品质另挑。
+        /// 只加不减，可失败：任一步失败保留现状并记一次警告。
+        /// </summary>
+        private static void EnsureAmmo(Item body, string slotKey, SkyIslandWeaponBand band, System.Random random, string fromKey, string label)
+        {
+            try
+            {
+                Slot slot = SkyIslandBossForge.FindSlot(body, slotKey);
+                Item weapon = slot != null ? slot.Content : null;
+                ItemSetting_Gun gun = weapon != null ? weapon.GetComponent<ItemSetting_Gun>() : null;
+                if (gun == null || body.Inventory == null) return;
+                int ammoTypeId = 0;
+                Item loaded = gun.GetCurrentLoadedBullet();
+                if (loaded != null && IsValidBullet(gun, loaded.TypeID)) ammoTypeId = loaded.TypeID;
+                if (ammoTypeId <= 0) ammoTypeId = CarriedAmmo(body.Inventory, gun);
+                if (ammoTypeId <= 0) ammoTypeId = PickAmmo(weapon, gun, band.AmmoMin, random);
+                if (ammoTypeId <= 0)
+                {
+                    WarnOnce("noammo|" + weapon.TypeID, "[SkyIslandArmory] 这把枪找不到可用弹药：" + label + " " + slotKey + " " + weapon.TypeID);
+                    return;
+                }
+                if (loaded == null) FillMagazine(weapon, gun, ammoTypeId, fromKey);
+                int need = SkyIslandEnemyArmoryRules.ReserveRounds(gun.Capacity) - CountInInventory(body.Inventory, ammoTypeId);
+                if (need > 0) StoreReserve(body, ammoTypeId, need, fromKey);
+            }
+            catch (Exception e)
+            {
+                WarnOnce("ammo|" + label + "|" + slotKey + "|" + e.Message, "[SkyIslandArmory] 补弹失败：" + label + " " + slotKey + " " + e.Message);
+            }
+        }
+
+        /// <summary>背包里已有的、这把枪能装的弹药（官方 AddBullet 给的那一堆）；没有返回 0。</summary>
+        private static int CarriedAmmo(Inventory inventory, ItemSetting_Gun gun)
+        {
+            foreach (Item item in inventory)
+                if (item != null && item.GetBool("IsBullet", false) && gun.IsValidBullet(item)) return item.TypeID;
+            return 0;
+        }
+
+        private static int CountInInventory(Inventory inventory, int typeId)
+        {
+            int count = 0;
+            foreach (Item item in inventory)
+                if (item != null && item.TypeID == typeId) count += item.Stackable ? item.StackCount : 1;
+            return count;
+        }
+
         /// <summary>选弹药、装满弹匣；返回选中的弹药 TypeID，这把枪没有可用弹药时返回 0。</summary>
         private static int LoadMagazine(Item weapon, ItemSetting_Gun gun, SkyIslandWeaponBand band, System.Random random, string fromKey)
         {
             int ammoTypeId = PickAmmo(weapon, gun, band.AmmoMin, random);
             if (ammoTypeId <= 0) return 0;
+            FillMagazine(weapon, gun, ammoTypeId, fromKey);
+            return ammoTypeId;
+        }
+
+        /// <summary>按指定弹种把弹匣装满（容器或容量还没就绪时什么都不做，由官方换弹从背包装填）。</summary>
+        private static void FillMagazine(Item weapon, ItemSetting_Gun gun, int ammoTypeId, string fromKey)
+        {
             gun.SetTargetBulletType(ammoTypeId);
             // 弹匣容器或容量在实例上晚一步才就绪：只放背包备弹，由官方换弹装填（口径同 ModeHLoadoutKitApplicator）。
-            if (weapon.Inventory == null || gun.Capacity <= 0) return ammoTypeId;
+            if (weapon.Inventory == null || gun.Capacity <= 0) return;
             int remaining = gun.Capacity;
             while (remaining > 0)
             {
@@ -142,7 +205,6 @@ namespace BossRush
                 remaining -= stack;
             }
             if (GunBulletCountCacheField != null) GunBulletCountCacheField.SetValue(gun, -1);
-            return ammoTypeId;
         }
 
         private static void StoreReserve(Item body, int ammoTypeId, int count, string fromKey)

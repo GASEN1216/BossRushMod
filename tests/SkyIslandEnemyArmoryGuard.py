@@ -102,6 +102,9 @@ def check(src, bat):
         ("band.Keeps(current.Quality)", "达标原装不换"),
         ("slot.CanPlug(created)", "拆旧之前先校验新武器能插进槽"),
         ("character.SwitchToFirstAvailableWeapon()", "换完要重新拿起武器"),
+        # owner 2026-10-01「Boss 一直说没子弹了」：达标留下的官方原装与副武器也要补备弹，不能只给换上的那把。
+        ("EnsureAmmo(body, PrimarySlot, band, random, fromKey, label);", "主武器（含达标留下的原装）必须补备弹"),
+        ("EnsureAmmo(body, SecondarySlot, band, random, fromKey, label);", "副武器也必须补备弹"),
     ):
         if token not in armory:
             errors.append("SkyIslandEnemyArmory " + why + "（缺 " + token + "）")

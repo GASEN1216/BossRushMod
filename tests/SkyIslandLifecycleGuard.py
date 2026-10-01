@@ -5,7 +5,7 @@ from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = {name: f'SkyIsland/SkyIsland{name}.cs'
-         for name in ('Session', 'SessionFooting', 'RaidLease', 'Rendering', 'Lighting', 'SearchPoint', 'Controls')}
+         for name in ('Session', 'SessionFooting', 'RaidLease', 'Rendering', 'Lighting', 'SearchPoint', 'Controls', 'OutdoorDaylight')}
 
 
 def main():
@@ -44,12 +44,18 @@ def main():
                       # 基地那份出图即销毁。必须克隆成常驻副本，并在唯一收口 TryRelease 里销毁。
                       'timeOfDay = UnityEngine.Object.Instantiate(template)',
                       'UnityEngine.Object.DontDestroyOnLoad(timeOfDay.gameObject)',
+                      # 2026-10-01：地堡晴天条目三个时段都是室内 BaseVolume（远景雾纯黑），岛上白天和夜里一样黑；
+                      # 克隆副本里把白天 / 黎明换成官方零号区户外的，基地原件不碰。
+                      'SkyIslandOutdoorDaylight.Apply(timeOfDay)',
                       'if (timeOfDay != null) UnityEngine.Object.Destroy(timeOfDay.gameObject)',
                       'Time.unscaledTime < retryAt', 'retryAt = Time.unscaledTime + 2f',
                       'if (!releaseRequested || loading || returning) return',
                       'if (scene.IsValid() && scene.isLoaded) return', 'bundle.Unload(true)',
                       'Action callback = completed; completed = null', 'recovery.Bind(this)',
                       'main.Health.IsDead) return', 'lease.PumpRelease()'],
+        'OutdoorDaylight': ['IndoorProfileName = "BaseVolume"', 'DaylightProfileName = "Volume_Level_GroundZero_Morning"',
+                            'phase.timePhaseTag == TimePhaseTags.night', 'phase.volumeProfile.name != IndoorProfileName',
+                            'phases[i] = phase', 'clone.GetComponentsInChildren<TimeOfDayEntry>(true)'],
         'Rendering': ['BossRush/SkyIsland/Environment', 'BossRush/SkyIsland/Water', 'BossRush/SkyIsland/Cloud',
                       'source.GetTexture(sourceMap)', 'source.GetTextureScale(sourceMap)', 'source.GetTextureOffset(sourceMap)',
                       'material.HasProperty(targetMap)', 'COL_Ground', 'COL_Wall', 'COL_Rail'],

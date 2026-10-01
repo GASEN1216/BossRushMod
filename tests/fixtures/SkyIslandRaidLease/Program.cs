@@ -20,6 +20,7 @@ internal static class Program
         // 官方层级：LevelConfig/TimeOfDayConfig/TimeOfDay_*，全是基地场景里的 MonoBehaviour。
         template=new GameObject("TimeOfDayConfig").AddComponent<TimeOfDayConfig>();
         var lease=new SkyIslandRaidLease();lease.Prepare(modPath,template);
+        Check(SkyIslandOutdoorDaylight.Last!=null && SkyIslandOutdoorDaylight.Last!=template,"outdoor daylight volume is applied to the persistent clone, never the base original");
         // Prepare 之后基地场景必然卸载（官方 SceneLoader 独占关卡转换），模板随之销毁。
         // 租约若把模板原样带过图，注入到岛上的就是已销毁引用 —— 这一步让夹具与实机同构。
         UnityEngine.Object.Destroy(template.gameObject);

@@ -16,7 +16,7 @@ namespace BossRush
                 throw new ArgumentException("天空岛属性只能应用到独立克隆");
             SkyIslandCombatBaseline baseline = SkyIslandCombatBalance.For(encounterId, index, tier);
             float factor = SkyIslandCombatBalance.Multiplier;
-            // 机动与感知只乘 1.5（SkyIslandCombatBalance.PerceptionMultiplier 注释写了为什么不跟着乘 3）。
+            // 机动与感知只乘 1.5（SkyIslandCombatBalance.PerceptionMultiplier 注释写了为什么不跟着统一倍率走）。
             float sense = SkyIslandCombatBalance.PerceptionMultiplier;
             clone.health = (baseline != null ? baseline.Health : source.health) * factor;
             clone.damageMultiplier = (baseline != null ? baseline.Damage : source.damageMultiplier) * factor;

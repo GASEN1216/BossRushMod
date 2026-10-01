@@ -124,8 +124,9 @@ def placement_metrics(p, region, geometry, wall_probe=WALL_CLEARANCE * 4):
     return edge, reach, wall
 
 
-# 居民净空（发布前审查 P2）：居民 35 m 内有活着的敌人时，对话、剧情面板与归航徽都打不开（SkyIslandSession.StoryPanelQuietRadius），
-# 码头还是落地与返航的地方，剧情写盘要 45 m 内无敌（SaveQuietRadius）。旧口径只留 8 m，第一次到岛先要清掉身边一圈巡守才能说话。
+# 居民净空（发布前审查 P2）：巡守站位离居民至少 35 m、码头 45 m（剧情写盘要 45 m 内无敌，SaveQuietRadius）。
+# 当时剧情面板的战斗静默门也是 35 m；2026-10-01 那道门收到 5 m（SkyIslandSession.StoryPanelQuietRadius），
+# 这里的摆放净空不跟着收：居民跟前站着巡守，一开口就会被打，旧口径只留 8 m 时第一次到岛要先清掉身边一圈巡守。
 RESIDENT_CLEARANCE = 35.0
 DOCK_RESIDENT_CLEARANCE = 45.0
 DOCK_RESIDENT_MARKER = "POI_A"

@@ -194,6 +194,9 @@ namespace BossRush
                 return;
             }
             if (!EnsureStory()) return;
+            // 航线位每拍按剧情事实重读：F3「清空天空岛进度」等整份替换剧情后，旧缓存会让船点选项在序章交付前还挂着、
+            // Jeff 也不再挂任务（2026-10-01 owner 实测）。交付 / 迁移写入同一份事实，这里读到的就是权威值。
+            routeUnlocked = story.Current != null && story.Current.SkyIslandRouteUnlocked;
             RefreshInstrumentState();
 
             Scene scene = SceneManager.GetActiveScene();

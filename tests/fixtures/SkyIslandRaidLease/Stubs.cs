@@ -11,6 +11,13 @@ namespace BossRush
         internal static System.Collections.IEnumerator Prepare(string path, bool prefabs, Func<bool> cancelled, Action consumer, float timeout)
         { if (!cancelled()) consumer(); yield break; }
     }
+    // 生产实现读官方 VolumeProfile 资产（FindObjectsOfTypeAll），宿主边界；这里只记「换的是副本、不是基地原件」。
+    internal static class SkyIslandOutdoorDaylight
+    {
+        internal static int Calls;
+        internal static TimeOfDayConfig Last;
+        internal static int Apply(TimeOfDayConfig clone) { Calls++; Last = clone; return 0; }
+    }
 }
 namespace UnityEngine
 {

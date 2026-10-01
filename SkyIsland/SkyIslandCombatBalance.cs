@@ -16,19 +16,19 @@ namespace BossRush
     /// 小兵与精英用实际抽到的那位官方 Boss 底模（SkyIslandEnemySources），剧情对手 / 头目 / 岛主 / 噬风用下面的固定基准。
     /// 此表只定义基础战斗能力；经济、护甲、元素克制与自定义招式仍由各自系统负责。
     ///
-    /// 2026-10-01 owner 定「属性翻 3 倍、整体难度比原版地图高 3 倍，反应和开火都要更快」：
-    /// <see cref="Multiplier"/> 管生命、伤害、反应、开火前摇、散布与暴击；
+    /// 2026-10-01 owner 先定「属性翻 3 倍、整体难度比原版地图高 3 倍，反应和开火都要更快」，同日实测后改为「整体 Boss 数值改为现在的一半」：
+    /// <see cref="Multiplier"/> 从 3 降到 1.5，管生命、伤害、反应、开火前摇、散布与暴击（仍比原版强，只是不再是 3 倍）；
     /// 移速、弹速、射程、视野、听觉与夜视另走 <see cref="PerceptionMultiplier"/>（仍是 2026-09-26 的 1.5 倍）——
-    /// 这几项乘 3 时敌人会在一屏（约 28×20 m）之外看见并开火、跑起来像瞬移，难而不公平，不是 owner 要的「更难打」。
+    /// 这几项是「看得见、追得上」的口径，减半会低于原版（敌人比官方地图还瞎），不是 owner 说的「数值减半」，所以不动。
     /// </summary>
     internal static class SkyIslandCombatBalance
     {
-        internal const float Multiplier = 3f;
+        internal const float Multiplier = 1.5f;
         internal const float PerceptionMultiplier = 1.5f;
 
         /// <summary>
         /// 序章守卫（零号区「断风游猎·守」）在统一倍率之上再乘的生命系数。它倒下必掉品质 5–6 的枪，
-        /// owner 2026-10-01 要求别让刚开档的玩家轻易打下来：K3 参照 250 × 3 × 2 = 1500（再受游戏难度影响）。
+        /// owner 2026-10-01 要求别让刚开档的玩家轻易打下来：K3 参照 250 × 1.5 × 2 = 750（统一倍率同日减半后，再受游戏难度影响）。
         /// 只用于零号区序章，岛上 K3 中继平台那一位不受影响。
         /// </summary>
         internal const float PreludeWardenHealthFactor = 2f;

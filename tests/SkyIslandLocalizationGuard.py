@@ -44,6 +44,8 @@ FILES = [
     "SkyIslandGroundRing.cs",
     "SkyIslandControls.cs",
     "SkyIslandGuideInteractable.cs",
+    # 2026-10-01：贝壳签筒（航路图组里的抽签子选项与回话）。
+    "SkyIslandShellLottery.cs",
     "SkyIslandSearchPoint.cs",
     "SkyIslandResidentInteractable.cs",
     "SkyIslandStoryResidentText.cs",

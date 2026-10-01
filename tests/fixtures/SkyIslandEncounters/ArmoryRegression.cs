@@ -29,7 +29,7 @@ internal static partial class Program
         Check(SkyIslandEnemyArmoryRules.IsOwnModItem(500001) && SkyIslandEnemyArmoryRules.IsOwnModItem(500103)
             && !SkyIslandEnemyArmoryRules.IsOwnModItem(92235) && !SkyIslandEnemyArmoryRules.IsOwnModItem(254)
             && !SkyIslandEnemyArmoryRules.IsOwnModItem(501000), "only this mod's own items are excluded");
-        Check(SkyIslandEnemyArmoryRules.ReserveRounds(30) == 60 && SkyIslandEnemyArmoryRules.ReserveRounds(5) == 20, "reserve rounds");
+        Check(SkyIslandEnemyArmoryRules.ReserveRounds(30) == 90 && SkyIslandEnemyArmoryRules.ReserveRounds(5) == 45, "reserve rounds");
 
         // 每一组（自动 / 手动 / 噬风 / 回响 / 夜限定带队）从真实 owner 刷出来，逐位核对配枪档次。
         SkyIslandBossForge.Night = true;

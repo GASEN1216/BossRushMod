@@ -362,6 +362,26 @@ namespace BossRush
             return entry.Binding.RewardPaid != null ? entry.Binding.RewardPaid() : entry.Binding.IsDelivered();
         }
 
+        /// <summary>
+        /// 官方 <c>QuestGiverView</c> 交付成功后开完成面板，面板逐帧等「奖励全部已领取 / 点跳过」才收起。
+        /// 投影奖励的「已领取」读交付事实，这一拍已经是真，面板开出来的第一帧就自己收掉了（2026-10-01 owner 实测「没看清就关了」）。
+        /// 所以只对这一份刚完成的实例把奖励行先显示成未领取：面板照官方流程停住，玩家点「全部领取」或跳过时官方调 Claim，
+        /// OnClaim 收起展示态（钱与物品早在交付事务里发过，Claim 不再发）。读档重建的投影没有这一步，照旧显示已领取。
+        /// </summary>
+        internal static void HoldRewardsForCompletePanel(Quest quest)
+        {
+            if (quest == null || QuestRewardsField == null) return;
+            var rewards = QuestRewardsField.GetValue(quest) as List<Reward>;
+            if (rewards == null) return;
+            for (int i = 0; i < rewards.Count; i++)
+            {
+                var money = rewards[i] as OfficialQuestProjectionReward;
+                if (money != null) { money.presenting = true; continue; }
+                var item = rewards[i] as OfficialQuestProjectionItemReward;
+                if (item != null) item.presenting = true;
+            }
+        }
+
         internal static void ReportDeliveryFailure(string reason)
         {
             if (active != null && !active.disposed && active.host != null && !string.IsNullOrEmpty(reason))

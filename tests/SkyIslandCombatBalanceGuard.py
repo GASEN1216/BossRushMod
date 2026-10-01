@@ -1,4 +1,4 @@
-"""天空岛原版参照倍率（生命 / 伤害 / 反应等 ×3，机动与感知 ×1.5）的数值来源、刷怪底模与创建时序。行为由 SkyIslandEncounters 执行回归验证。"""
+"""天空岛原版参照倍率（生命 / 伤害 / 反应等 ×1.5，机动与感知 ×1.5）的数值来源、刷怪底模与创建时序。行为由 SkyIslandEncounters 执行回归验证。"""
 import json
 import re
 from pathlib import Path
@@ -12,8 +12,9 @@ def check(root):
             for name in ("SkyIslandCombatBalance", "SkyIslandCombatPreset", "SkyIslandEncounters",
                          "SkyIslandEnemyTiers", "SkyIslandBossForge", "SkyIslandBossRules", "SkyIslandPreludeFlow")}
     balance = code["SkyIslandCombatBalance"]
-    # owner 2026-10-01：属性翻 3 倍；移速、弹速、射程、视野、听觉、夜视留在 1.5（乘 3 会在一屏外开火、跑成瞬移）。
-    assert re.search(r"const\s+float\s+Multiplier\s*=\s*3f\s*;", balance), "统一倍率必须是原版 ×3"
+    # owner 2026-10-01：先定属性翻 3 倍，同日实测后「整体 Boss 数值改为现在的一半」→ ×1.5；
+    # 移速、弹速、射程、视野、听觉、夜视一直是 1.5（再高会在一屏外开火、跑成瞬移；减半又比原版还瞎）。
+    assert re.search(r"const\s+float\s+Multiplier\s*=\s*1\.5f\s*;", balance), "统一倍率必须是原版 ×1.5"
     assert re.search(r"const\s+float\s+PerceptionMultiplier\s*=\s*1\.5f\s*;", balance), "机动与感知倍率必须是原版 ×1.5"
     assert re.search(r"const\s+float\s+PreludeWardenHealthFactor\s*=\s*2f\s*;", balance), "零号区序章守卫额外生命系数必须是 2"
     snapshot = json.loads((root / "tests/fixtures/SkyIslandEncounters/VanillaCombatReference.json").read_text(encoding="utf-8"))
@@ -101,4 +102,4 @@ def check(root):
 
 if __name__ == "__main__":
     check(Path(__file__).resolve().parent.parent)
-    print("PASS SkyIslandCombatBalanceGuard: Wiki baseline, x3 / perception x1.5, official boss sources, clone ownership and spawn order")
+    print("PASS SkyIslandCombatBalanceGuard: Wiki baseline, x1.5 / perception x1.5, official boss sources, clone ownership and spawn order")

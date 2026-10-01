@@ -202,6 +202,8 @@ echo(SkyIsland\SkyIslandChatterLines.cs
 echo(SkyIsland\SkyIslandChatter.cs
 echo(SkyIsland\SkyIslandEncounters.cs
 echo(SkyIsland\SkyIslandGuideInteractable.cs
+echo(SkyIsland\SkyIslandShellLottery.cs
+echo(SkyIsland\SkyIslandOutdoorDaylight.cs
 echo(SkyIsland\SkyIslandOfficialContract.cs
 echo(SkyIsland\SkyIslandOfficialQuestBridge.cs
 echo(SkyIsland\SkyIslandOfficialQuestGivers.cs

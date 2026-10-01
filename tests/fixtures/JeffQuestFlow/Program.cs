@@ -221,10 +221,13 @@ internal static class Program
         Check(OfficialQuestItems.HeldInBackpack(BossRushItemIds.EmberChili)==0 && OfficialQuestItems.HeldInBackpack(BossRushItemIds.PhantomMushroom)==0,"both harvests taken");
         var items2=CampaignRewardTable.ChapterItems(2);
         Check(items2.All(i=>Given(i.TypeId)==Expected(items2,i.TypeId)),"chapter 2 seeds given exactly once");
-        Check(q2.Rewards.All(r=>r.Claimed),"reward rows claimed after delivery");
+        Check(q2.Rewards.All(r=>!r.Claimed),"complete panel keeps freshly delivered rows unclaimed until it closes");
+        foreach(var row in q2.Rewards) row.Claim();
+        Check(q2.Rewards.All(r=>r.Claimed),"reward rows claimed once the panel claims them");
         int givenCount=OfficialQuestItems.Given.Count;
         manager.Dispose(); manager=new QuestManager(); Tick();
         Check(OfficialQuestItems.Given.Count==givenCount && manager.HistoryQuests.Any(q=>q.ID==twoId),"rebuilding the delivered projection gives nothing again");
+        Check(manager.HistoryQuests.First(q=>q.ID==twoId).Rewards.All(r=>r.Claimed),"rebuilt delivered projection reads claimed");
     }
     private static void Chapters()
     {
@@ -252,6 +255,8 @@ internal static class Program
             Check(!quest.TryComplete() && Active(id)==quest,"failed commit keeps chapter active "+id);
             CampaignPersistence.HasWriteBarrier=false;
             Check(quest.TryComplete() && manager.HistoryQuests.Contains(quest),"chapter delivers after write recovery "+id);
+            Check(quest.Rewards.All(r=>!r.Claimed),"complete panel stays open on the fresh delivery "+id);
+            foreach(var row in quest.Rewards) row.Claim();
             Check(quest.Rewards.All(r=>r.Claimed),"reward projection reflects delivered fact "+id);
             CampaignBaseObjectives.ResetStaticCaches(); Tick();
             Check(quest.Tasks.All(t=>t.IsFinished()) && quest.Tasks.All(t=>t.Description.Contains("(done)") || t.Description.Contains("(handed in)")),"completed chapter stays complete after base objects disappear "+id);

@@ -17,13 +17,14 @@ namespace BossRush
         private List<InteractableBase> boatGroup;
         private bool subscribed;
         /// <summary>
-        /// 「天空岛航路已开放」那条提示条**每进程只发一次**。
+        /// 「天空岛航路已开放」那条提示条**只在航线刚开的那一次**发（Jeff 交付序章那一拍置位，挂上船点入口时念一遍）。
         ///
         /// 它以前跟着 <see cref="OnStartedLoading"/> 与「离开基地」两处复位，于是每撤离一次、
-        /// 走回码头就再念一遍；收齐十二封信要十二趟，这句话就念十二遍。
+        /// 走回码头就再念一遍；后来改成每进程一次，可每次开游戏进基地仍会再念（2026-10-01 owner：「只提示一次」）。
+        /// 航线本身是存档事实，开一次就永久开着，所以提示跟着「交付」这件一次性的事走，不跟进程或场景走。
         /// 入口本身仍每次回基地重新挂（船点子场景会卸载），只有这句话不再重播。
         /// </summary>
-        private bool announced;
+        private bool announcePending;
         private bool bundleWarned;
         private int attempts;
         private float nextAttempt;
@@ -37,7 +38,7 @@ namespace BossRush
         {
             owner = host;
             quests = new SkyIslandOfficialQuestBridge(host);
-            prelude = new SkyIslandPreludeFlow(host, ScheduleEntry, quests);
+            prelude = new SkyIslandPreludeFlow(host, OnRouteOpened, quests);
             SkyIslandNoteBridge.EnsureRuntime();
             SkyIslandSceneReferenceBridge.EnsureRegistered();
             if (!subscribed)
@@ -67,6 +68,13 @@ namespace BossRush
         }
 
         private void OnLevelReady() { ScheduleEntry(); }
+
+        /// <summary>Jeff 刚收下航向仪：下一次挂上船点入口时念一遍「航路已开放」，此后不再念。</summary>
+        private void OnRouteOpened()
+        {
+            announcePending = true;
+            ScheduleEntry();
+        }
 
         private void OnStartedLoading(SceneLoadingContext context)
         {
@@ -153,9 +161,9 @@ namespace BossRush
                 departure = NPCInteractionGroupHelper.AddSubInteractable<SkyIslandDepartureInteractable>(
                     candidate.transform, "BossRush_SkyIsland_Departure", boatGroup, value => value.Bind(owner, prelude));
                 if (departure == null) continue;
-                if (!announced)
+                if (announcePending)
                 {
-                    announced = true;
+                    announcePending = false;
                     owner.ShowMessage(L10n.T("天空岛航路已开放：在基地船点选择「前往天空岛」。",
                         "The Sky Islands are open: choose Depart for Sky Islands at the base boat."));
                 }

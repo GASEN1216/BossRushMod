@@ -41,7 +41,8 @@
 - Island lords always drop one piece of the gear they wear; chiefs have a chance to drop theirs.
 - Once both beacons burn you can face the **Windeater** on Windsong Boardwalk: four phases, the glowing ground ring is the real blast radius, and rock walls block it. The story can be finished without it, but beating it makes the Bell Keeper far easier to talk down. After the ending you can call its echo once per raid.
 - Ordinary lane enemies return every raid, so the archipelago never turns into an empty island; every island also has patrols at fixed posts that get tougher the deeper you go.
-- Island enemies carry weapons with a quality floor: at least quality 3 for ordinary enemies and quality 5 for named opponents, chiefs and island lords, and the weapon drops into their loot box.
+- Island enemies carry weapons with a quality floor: at least quality 3 for ordinary enemies and quality 5 for named opponents, chiefs and island lords, and the weapon drops into their loot box. Every gun comes with enough spare ammo, so they no longer empty one magazine and just shout that they are out.
+- Island enemies have 1.5 times the health and damage of the original boss they are based on.
 
 #### Exploring and collecting
 - **39 scavenging points** in three tiers (Household Stores, Voyage Supplies, Starworks Cache), each with its own crate look. Contents stay fixed within a raid and refresh on the next one.
@@ -52,6 +53,7 @@
 - **Pigeon letters**: one carrier pigeon per raid brings a letter that could not be sent the year of the storm, 12 in all.
 - **Hidden-isle puzzles**: the evidence in the four hidden isles is a three-step puzzle, with no penalty for wrong answers.
 - **Lane contracts**: clear threats, recover supplies, patrol areas or swat gnats at night, up to three per raid.
+- **Shell lots**: the seashells that chiefs and island lords drop can be spent on lots beside the charts at the dock and in Windchime Market: 3 for a small lot, 10 for a big one, and the prize goes straight into your pack.
 - **The archipelago journal**: twenty discoveries, letters, the crew roster, the lights and your trip progress. Discoveries also go into the official notes index, readable back at base.
 
 #### Exclusive items (36)

@@ -33,6 +33,11 @@ namespace BossRush
                 var group = NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(guide, "[SkyIslandGuide]");
                 NPCInteractionGroupHelper.AddSubInteractable<SkyIslandGuideInteractable>(guide.transform,
                     "SkyIsland_Lighting", group, value => { value.session = owner; value.lightingAction = true; });
+                // 贝壳签筒（owner 2026-10-01，官方海岛挑战的贝壳抽奖）：同组子选项，不新增世界交互体。
+                NPCInteractionGroupHelper.AddSubInteractable<SkyIslandShellLotteryInteractable>(guide.transform,
+                    "SkyIsland_ShellLotterySmall", group, value => value.Bind(owner, false));
+                NPCInteractionGroupHelper.AddSubInteractable<SkyIslandShellLotteryInteractable>(guide.transform,
+                    "SkyIsland_ShellLotteryBig", group, value => value.Bind(owner, true));
             }
         }
 

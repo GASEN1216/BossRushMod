@@ -2,6 +2,18 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-01 天空岛实机反馈七项（第二批）：完成面板、序章前入口、Boss 备弹、贝壳签筒、数值减半、岛上白天户外后处理、静默门 5 m（COMPAT，L1/L2）
+
+- 序章交付完成面板一开就关（根因已查实，L1）：官方 `QuestCompletePanel` 逐帧等「奖励全已领取 / 点跳过」，投影奖励的 `Claimed` 读交付事实、交付那一拍已为真。`OfficialQuestCompletePatch` 加 Postfix，只把刚完成的那份实例的奖励行先显示成未领取，官方 `Claim` 收起；读档重建照旧已领取。征程任务同受益。
+- 序章完成前基地船点仍有天空岛选项：`SkyIslandPreludeFlow.routeUnlocked` 只在开门面时读一次，F3 清空进度后缓存不刷新（L1 推断为实测成因）；改为每拍按剧情事实重读。「航路已开放」横幅改为只在 Jeff 交付那一拍置位、挂入口时念一次，开游戏进基地不再重念。
+- Boss 有枪没子弹（L1）：`SkyIslandEnemyArmory` 只给换上的枪放备弹，达标留下的官方原装靠官方 `AddBullet`（按 Boss 预设弹药品质表抽，不少口径抽不到）。新增 `EnsureAmmo`：主 / 副武器每把枪补到三匣、至少 45 发（`ReserveRounds`），弹种先沿用已装 / 已带的。
+- 贝壳签筒（新内容）：码头与风铃集航路图交互组各加小签（3 贝壳，航务补给档 q2–5）/ 大签（10 贝壳，星工遗存档 q4–8），走搜刮箱同一套池与合成台同一套扣料事务；不新增世界交互体。贝壳来源是保留官方 Boss 掉落表的头目 / 岛主 / 具名对手 / 噬风。
+- 天空岛 Boss 数值减半：`SkyIslandCombatBalance.Multiplier` 3 → 1.5（感知 1.5 不变）；序章守卫 750、噬风 3000。
+- 「视野外白天和黑夜一样、烟雾太浓」（根因已查实，离线读官方场景）：租约克隆的地堡 `TimeOfDayConfig` 晴天条目白天 / 黎明 / 夜里全用室内 `BaseVolume`，远景雾纯黑。新 `SkyIslandOutdoorDaylight` 在副本里把白天、黎明换成官方 `Volume_Level_GroundZero_Morning`（浅蓝远景雾），夜里与基地原件不动。一度试过调官方视野迷雾 `FogOfWarWorld` 的不透明度，查实不是成因后撤回。
+- 「附近有威胁」静默门 35 m → 5 m（剧情面板、对话、交任务、航徽、云蚋散群同一道门）；巡守摆放净空与写盘半径不变。
+- 证据（L2）：全量守卫 735/735；执行回归全量 113/113（三变量）；`JeffQuestFlow` 新增完成面板断言、`SkyIslandPlayerEntryGuard` 公告一次、`SkyIslandEnemyArmoryGuard` 补弹、`SkyIslandLifecycleGuard` 与 `SkyIslandRaidLease` 执行回归的户外后处理（只换副本）均反向验证转红后按字节还原；正式编译部署 `BossRush.dll` 1fbec4a1…（游戏目录同 sha）；Wiki 地图页 / 更新日志中英同步，站点重建通过。
+- 未实机（L3）：Jeff 交付后完成面板停住、点「全部领取」或跳过才收；F3 清空进度后船点无「前往天空岛」、Jeff 重新挂「云上的坐标」；进基地横幅只在刚交付后出现一次；头目打空弹匣后能换弹继续开火（Player.log 无 `[SkyIslandArmory] 这把枪找不到可用弹药`）；航路图滚轮有两支签、贝壳不够有提示、背包满不扣贝壳；岛上白天远处不再压成一片黑、呈浅蓝远景雾（Player.log `DAYLIGHT_VOLUME replaced=` 大于 0），夜里观感不变；贴身 5 m 外的敌人不再挡对话。
+
 ## 2026-10-01 收尾：天空岛 CR-2026-09-30-005～012 与审查遗留 P3 / 复用全部修复（COMPAT / WIRE+ / OPERATIONAL，L2）
 
 原 09-30 审查报告已不在本机与私有仓库，三路子代理按摘要在当前代码里重新定位，8 条 CR 与审查遗留 4 处全部成立并修复。

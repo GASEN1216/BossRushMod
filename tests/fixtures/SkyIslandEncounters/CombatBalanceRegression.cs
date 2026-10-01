@@ -24,8 +24,8 @@ internal static partial class Program
                         NearCombat((float)field.GetValue(baseline), row.GetProperty(field.Name).GetSingle(), "Wiki snapshot " + baseline.PresetId + "/" + field.Name);
             }
         }
-        // owner 2026-10-01：生命、伤害、反应、开火前摇、散布与暴击 ×3；机动与感知仍 ×1.5。
-        NearCombat(SkyIslandCombatBalance.Multiplier, 3f, "lethality multiplier is 3");
+        // owner 2026-10-01：生命、伤害、反应、开火前摇、散布与暴击先 ×3、同日减半为 ×1.5；机动与感知仍 ×1.5。
+        NearCombat(SkyIslandCombatBalance.Multiplier, 1.5f, "lethality multiplier is 1.5");
         NearCombat(SkyIslandCombatBalance.PerceptionMultiplier, 1.5f, "perception multiplier stays 1.5");
         string[] encounters = { "G", "S4", "D", "S2", "C", "S3", "S1", "F", "K1_Relay", "K2_Relay", "K3_Relay", "Zheling", "BellKeeper", "Storm", "StormEcho" };
         string[] ids = { "Boss_Alex", "Boss_3Shot", "Boss_Hunter", "Boss_Speedy", "Boss_Tagilla", "Boss_Grenade", "Boss_Fly", "Boss_Vida", "Boss_Speedy_Ice", "Boss_Deng", "Boss_BALeader", "Boss_Killa", "Boss_SnowMan", "Boss_Island_Koukou", "Boss_Island_Koukou" };
@@ -87,10 +87,10 @@ internal static partial class Program
             var clone = source.Copy();
             SkyIslandCombatPreset.Apply(clone, source, "C_02", 0, SkyIslandEnemyTier.Scav);
             NearCombat(clone.health, health * SkyIslandCombatBalance.Multiplier, "ordinary source-relative health");
-            NearCombat(clone.damageMultiplier, 2.46f, "ordinary gun damage");
-            NearCombat(clone.meleeDamageMultiplier, 6f, "ordinary independent melee damage");
-            NearCombat(clone.gunCritRateGain, -0.1f, "negative crit penalty improves");
-            NearCombat(clone.reactionTime, 0.2f, "ordinary reaction improves");
+            NearCombat(clone.damageMultiplier, 1.23f, "ordinary gun damage");
+            NearCombat(clone.meleeDamageMultiplier, 3f, "ordinary independent melee damage");
+            NearCombat(clone.gunCritRateGain, -0.2f, "negative crit penalty improves");
+            NearCombat(clone.reactionTime, 0.4f, "ordinary reaction improves");
             Check(clone.nameKey == "official" && clone.exp == 20, "ordinary kills and economy retain original keys");
             SkyIslandCombatPreset.Apply(clone, source, "C_02", 0, SkyIslandEnemyTier.Scav);
             NearCombat(clone.health, health * SkyIslandCombatBalance.Multiplier, "ordinary idempotence");

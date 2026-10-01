@@ -64,8 +64,12 @@ namespace BossRush
         // 撤离圈半径与停留秒数：唯一定义点，地图说明与 HUD 倒计时共用。
         private const float ExtractionRadius = 2.5f;
         private const float ExtractionHold = 3f;
-        /// <summary>剧情面板的「战斗静默」半径：这个距离内还有活着的敌人就不许开面板。见 <see cref="CanOpenStoryPanel"/>。</summary>
-        private const float StoryPanelQuietRadius = 35f;
+        /// <summary>
+        /// 剧情面板的「战斗静默」半径：这个距离内还有活着的敌人就不许开面板、和居民说话、交任务。见 <see cref="CanOpenStoryPanel"/>。
+        /// owner 2026-10-01：35 m 太大（隔着半个广场的巡守也算「附近有威胁」），收到 5 m——只挡「贴着敌人开面板拿暂停键」。
+        /// 云蚋「附近有敌人就散」也读这道门（SkyIslandGnats.Sample），同为 5 m（owner 同日确认）。
+        /// </summary>
+        private const float StoryPanelQuietRadius = 5f;
         /// <summary>
         /// 存档落盘的「战斗静默」半径。比剧情面板那道门放宽一档：面板挡的是「拿暂停键」，
         /// 半径小一点更严格；落盘挡的是「在交火帧写盘掉帧」，只要手边这一段清干净就该放行，
