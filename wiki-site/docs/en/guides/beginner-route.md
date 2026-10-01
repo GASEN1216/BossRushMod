@@ -58,7 +58,7 @@ fights alongside you.
 
 ## Gear Progression
 
-Basic gear → **Dragon Set + Dragon Breath** → **Dragon King Set + Halberd + Totems** →
+Basic gear → **Dragon Set + Dragon's Breath** → **Dragon King Set + Halberd + Totems** →
 **Reforge** with Cold Quench Fluid → **Affix Forging** to turn well-statted gear into gear that
 actually does something
 

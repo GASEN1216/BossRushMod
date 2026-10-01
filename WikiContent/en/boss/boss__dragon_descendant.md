@@ -1,18 +1,18 @@
 ## Dragon Descendant
 
 ### Overview
-Dragon Descendant is the first custom boss in this mod, with two phases. Beat it for the Dragon Set and the Dragon Breath gun; it's the first stop for custom boss loot.
+Dragon Descendant is the first custom boss in this mod, with two phases. Beat it for the Dragon Set and the Dragon's Breath gun; it's the first stop for custom boss loot.
 
 ### Base Stats
 - HP: 500
 - Contact Damage: 20 (1.5m range, 0.5s cooldown, knockback force 10)
-- Equipment: Crimson Dragon Helm, Flame Scale Armor, Dragon Breath
+- Equipment: Crimson Dragon Helm, Flame Scale Armor, Dragon's Breath
 - **Fire Immune**: Fire damage heals it instead of hurting it
 
 ### Combat Phases
 
 #### Phase 1 (Full HP ~ First Lethal Hit)
-- Shooting: Uses Dragon Breath for standard gunfire; every 10th shot, if you are within 5m, locks onto where you stand and lights a warning ring for 0.8 seconds before exploding there (10 fire damage, 1.6m radius). Step away and it misses; stay 5m+ away and it never reaches you
+- Shooting: Uses Dragon's Breath for standard gunfire; every 10th shot, if you are within 5m, locks onto where you stand and lights a warning ring for 0.8 seconds before exploding there (10 fire damage, 1.6m radius). Step away and it misses; stay 5m+ away and it never reaches you
 - Incendiary Grenade: Thrown every 5 seconds, always aimed at the player's feet
 - Phase 1 damage multiplier is low (0.3x), mainly to let you learn its attack patterns
 
@@ -42,10 +42,10 @@ After revival it enters a frenzied state with a completely new rhythm:
 
 - Flame Scale Armor (Armor): **60%**
 - Crimson Dragon Helm (Helmet): **30%**
-- Dragon Breath (Firearm): **10%**
+- Dragon's Breath (Firearm): **10%**
 
 The three add up to 100%, so you are **guaranteed** one piece - but collecting all three takes
-several kills, and Dragon Breath is the stubborn one.
+several kills, and Dragon's Breath is the stubborn one.
 
 **What every Boss drops on top of that** (parallel, never displacing each other)
 

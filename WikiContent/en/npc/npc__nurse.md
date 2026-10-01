@@ -25,7 +25,7 @@ A nurse who came out of J-Lab, with the marks of its experiments still on her le
 ### Gifts
 
 - **Likes**: Diamond and consumable/medical items (+80); Birthday Cake (+150)
-- **Loves**: Diamond Ring (+500)
+- **Loves**: Diamond Ring and Crown (+500)
 - **Neutral**: Other items (+20)
 - **Dislikes**: Brick Stone, which reminds her of the lab (-60)
 

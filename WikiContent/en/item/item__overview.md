@@ -21,6 +21,6 @@ Custom items cover entry, NPC services, consumables, mode tools, base progressio
 - **Garden Harvest** — the three raid meals, 2 per harvest
 - **Loot Crates** — Random drops post-Boss
 - **Achievements** — Cash rewards via the panel
-- **System** — Dingdang's Drawing (Lv.10), auto-granted consumables in modes
+- **System** — Dingdang's Doodle (Lv.10), auto-granted consumables in modes
 - **Sky Islands Gathering & Crafting** — Gather local goods or find them in crates, then craft at residents' workstations; see the island map page
 - **Mystery Merchant** — Categorized shops in Faction War / Blood Hunt

@@ -98,6 +98,7 @@ The tide runs in five-wave cycles: Low Tide → Rising Tide → High Tide → Pe
 - There is no kill-count target; defeat every Boss in the wave instead
 - Boss count grows only with progression: waves 5/10/15/20/25 contain **1/2/3/4/5 Bosses**, then every later Boss wave adds one more with no gameplay cap
 - Boss count is independent of map size and spawn-point count
+- If a Boss fails to spawn, the game retries at another spot, up to 4 attempts in total; only when all 4 fail is that Boss dropped from the wave
 - Boss cycles do not add movement speed; difficulty grows through Boss health, damage, and support pressure
 - The wave completes only after every Boss is dead
 
@@ -206,7 +207,7 @@ Examples below assume pollution 0; higher pollution raises the Elite and Special
 
 ## Boss System
 
-Boss Waves appear every 5 waves. There are 5 Boss types. Each drops **8** purification stars (300–800 points total).
+Boss Waves appear every 5 waves. There are 5 Boss types. Each drops **8** purification stars (300–700 points total).
 
 - **Titan** — HP Mult: ×35; Dmg Mult: ×1.8; Scale: ×1.8; Speed: ×0.7; Traits: Slow but extremely tanky, shockwave + damage reduction
 - **Hunter** — HP Mult: ×18; Dmg Mult: ×1.4; Scale: ×1.2; Speed: ×1.6; Traits: Fast dash, low-HP frenzy
@@ -275,7 +276,7 @@ The core currency of Zombie Mode:
 - **Normal** — Stars: 1; Point Range (total): 3–8
 - **Special** — Stars: 3; Point Range (total): 30–60
 - **Elite** — Stars: 5; Point Range (total): 80–150
-- **Boss** — Stars: 8; Point Range (total): 300–800
+- **Boss** — Stars: 8; Point Range (total): 300–700
 
 > High pollution grants bonus points: +10% per 10 pollution, up to +50%.
 

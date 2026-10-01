@@ -73,13 +73,13 @@ On kill, **one item is chosen via weighted random** from these six (not six inde
 
 - Reverse Scale (Totem): 39% drop rate
 - Cloud Soar I (Totem): 15% drop rate
-- Dragon King Crown (Helmet): 15% drop rate
-- Dragon King Scale Armor (Armor): 15% drop rate
+- Dragon King's Crown (Helmet): 15% drop rate
+- Dragon King's Scale Mail (Armor): 15% drop rate
 - Inferno Emperor's Realm-Breaking Halberd (Melee): 15% drop rate
-- Dragon Cannon (Firearm): 1% drop rate
+- Skyburner Dragon Cannon (Firearm): 1% drop rate
 
 ::: tip
-That 1% on the Dragon Cannon means roughly 100 Dragon Lord kills on expectation - the hardest item in the Mod to obtain.
+That 1% on the Skyburner Dragon Cannon means roughly 100 Dragon Lord kills on expectation - the hardest item in the Mod to obtain.
 :::
 
 **What every Boss drops on top of that** (parallel, never displacing each other)

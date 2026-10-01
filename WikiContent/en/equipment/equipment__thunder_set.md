@@ -1,6 +1,6 @@
 ## Thunder Set
 
-[tip] Now obtainable: Storm Zone bosses (Four Horsemen, Koko Koko and friends) drop it on vanilla maps and in BossRush runs alike, or buy it from Dingdang's Shop at affinity level 6 (limited stock). Dingdang's line changed too: "Upper management cleared them."
+[tip] Now obtainable: Storm Zone bosses (Four Horsemen, Koko Koko and friends) drop it on vanilla maps and in BossRush runs alike, or buy it from Dingdang's Shop at affinity level 6 (limited stock).
 
 ### What Is It?
 

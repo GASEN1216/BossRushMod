@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-The most mechanically rich melee weapon in the mod. Three-hit combo + Dragon King Slam leap attack. Dropped by the Dragon Lord. **High skill ceiling, massive reward.**
+The most mechanically rich melee weapon in the mod. Three-hit combo + Dragon Emperor Fissure leap attack. Dropped by the Dragon Lord. **High skill ceiling, massive reward.**
 
 ### Stats
 
@@ -23,9 +23,9 @@ Every hit applies: +15 fire bonus, 2s burn, +1 Dragon Flame Mark.
 ### Dragon Flame Mark
 
 - Max 5 stacks / 6s duration (refreshed per stack)
-- **Detonated by Dragon King Slam** — 30 dmg/stack (5 stacks = 150 bonus damage)
+- **Detonated by Dragon Emperor Fissure** — 30 dmg/stack (5 stacks = 150 bonus damage)
 
-### Dragon King Slam (Right Click)
+### Dragon Emperor Fissure (Right Click)
 
 - **Cooldown**: 5s / **Stamina**: 20
 - Hold to show jump arc (orange = safe, red = blocked), release to execute
@@ -36,13 +36,13 @@ Every hit applies: +15 fire bonus, 2s burn, +1 Dragon Flame Mark.
 ### Combat Loop
 
 1. Combo 3 hits → stack marks
-2. Slam → detonate + fire pillars
+2. Fissure → detonate + fire pillars
 3. Combo during cooldown → rebuild marks
 4. **Repeat**
 
 ### Tips
 
-- Hit 2 launches, Hit 3 pulls, which sets enemies up nicely for your Slam
+- Hit 2 launches, Hit 3 pulls, which sets enemies up nicely for your Fissure
 - Preview arc = precision landing. Don't leap blind
 - Jump into dense clusters for max fire pillar coverage
 - Pair with Dragon King Set dash → close gap → combo → slam

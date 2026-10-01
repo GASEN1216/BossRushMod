@@ -48,7 +48,7 @@ export const INFOBOX: Record<string, Infobox> = {
       { zh: '碰撞伤害', en: 'Contact damage', vz: '20（1.5 米）', ve: '20 (1.5 m)' },
       { zh: '阶段', en: 'Phases', vz: '2（致命伤时假死复活）', ve: '2 (fakes death on lethal hit)' },
       { zh: '免疫', en: 'Immunity', vz: '火焰（受火伤反而回血）', ve: 'Fire (heals from it)' },
-      { zh: '持有装备', en: 'Wields', vz: '赤龙首 / 焰鳞甲 / 龙息', ve: 'Dragon set + Dragon Breath' },
+      { zh: '持有装备', en: 'Wields', vz: '赤龙首 / 焰鳞甲 / 龙息', ve: "Dragon set + Dragon's Breath" },
     ],
     links: ['/equipment/dragon-set', '/equipment/dragon-breath', '/guides/boss-fights'],
   },

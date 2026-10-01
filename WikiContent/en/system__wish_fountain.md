@@ -23,6 +23,12 @@
 - The panel pauses for a moment after success, then closes automatically.
 - The cooldown is currently a global `30 seconds`, not per individual fountain.
 
+### Background Danmaku
+
+- When you open the wish panel, wishes that have already been submitted scroll across the background from right to left like danmaku (scrolling comments). Only the wish text is shown, with no names, and each line is cut off with an ellipsis after 40 characters.
+- They drift only in the bands along the top and bottom of the screen, so the panel in the middle stays clear.
+- The newest fetched results are used first; if the network is down for a moment, the game falls back to the local cache.
+
 ### Wish Reward
 
 - After each successful wish, the fountain also checks whether a reward is ready to claim.

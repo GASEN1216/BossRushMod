@@ -317,7 +317,7 @@ export const CATEGORIES: WikiCategory[] = [
       {
         path: '/equipment/dragon-breath',
         zh: '龙息',
-        en: 'Dragon Breath',
+        en: "Dragon's Breath",
         icon: 'eq-dragon-breath',
         blurbZh: '能叠灼烧的火焰枪',
         blurbEn: 'Flame gun that stacks burn',
@@ -327,7 +327,7 @@ export const CATEGORIES: WikiCategory[] = [
       {
         path: '/equipment/dragon-cannon',
         zh: '焚天龙铳',
-        en: 'Dragon Cannon',
+        en: 'Skyburner Dragon Cannon',
         icon: 'eq-dragon-cannon',
         blurbZh: '15 种弹药改写成不同龙焰弹幕',
         blurbEn: '15 ammo types, 15 different dragonfire patterns',

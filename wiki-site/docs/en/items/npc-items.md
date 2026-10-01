@@ -84,7 +84,7 @@ Awen sweeps all existing lootboxes nearest-to-farthest. Works in standard BossRu
 
 ---
 
-## Dingdang's Drawing
+## Dingdang's Doodle
 
 A painting he spent days on. Use to view fullscreen. Durability 999, so it never wears out.
 

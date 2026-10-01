@@ -13,7 +13,7 @@
 
 - **Daily chat**: Dingdang +40 / Yu Zhi +30 (once/day)
 - **Liked gift**: +80 / **Neutral gift**: +20 / **Disliked**: -40 (Yu Zhi -60 for Brick Stone)
-- **Diamond Ring**: +500 / **Birthday Cake**: +150
+- **Diamond Ring or Crown**: +500 / **Birthday Cake**: +150
 
 ### Decay
 

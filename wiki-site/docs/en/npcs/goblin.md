@@ -24,12 +24,12 @@ Reforging and affix forging are separate menu options and never interfere. One c
 - **Lv.5** — Story: Dingdang's Past (Part 1); the shop stocks the five new weapons (Viper Dagger, Summoning Staff, Energy Shield, Frost Spear, Thunder Ring), 1 of each
 - **Lv.6** — 15% discount; the shop stocks the helmet and armor of the Frost Set and the Thunder Set (4 pieces, 1 of each)
 - **Lv.7** — Diamond Ring available in shop
-- **Lv.10** — Story: Part 2; 20% discount; Affix Forge Stones stocked (up to 5 per restock); Dingdang's Drawing
+- **Lv.10** — Story: Part 2; 20% discount; Affix Forge Stones stocked (up to 5 per restock); Dingdang's Doodle
 
 ## Gifts
 
 - **Likes**: Diamond and recipe/blueprint items (+80); Birthday Cake (+150)
-- **Loves**: Diamond Ring (+500)
+- **Loves**: Diamond Ring and Crown (+500; giving the ring is a proposal)
 - **Neutral**: Other items (+20)
 - **Dislikes**: Brick Stone, the fake diamond (-40)
 

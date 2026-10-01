@@ -1,4 +1,4 @@
-## Dragon Breath
+## Dragon's Breath
 
 ### What Is It?
 
@@ -10,7 +10,7 @@ Your first custom gun. Dropped by Dragon Descendant. Looks modest on paper, but 
 - Dmg 23 / ROF 13 / Mag 20 / Reload 3s / Speed 122 / Range 28
 - Crit 25% / Crit Dmg 1.5x / Move 82% (hip) / 45% (ADS) / Spread 27/8
 
-### Dragon Flame Burn
+### Dragon Burn
 
 - **50% chance** per hit to apply burn
 - Burn: **(0.1% target max HP + 1) true fire damage** per stack per second

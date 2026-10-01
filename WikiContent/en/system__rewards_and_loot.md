@@ -109,7 +109,7 @@ Each kill drops **exactly one** piece, weighted across three. The numbers add up
 
 - Flame Scale Armor (Armor): **60%**
 - Crimson Dragon Helm (Helmet): **30%**
-- Dragon Breath (Firearm): **10%**
+- Dragon's Breath (Firearm): **10%**
 
 So you are **guaranteed** one piece, but collecting all three takes several kills, and Dragon
 Breath in particular is down to luck.
@@ -120,12 +120,12 @@ Again **exactly one** piece, weighted across six:
 
 - Reverse Scale (Totem): **39%**
 - Cloud Soar I (Totem): **15%**
-- Dragon King Crown (Helmet): **15%**
-- Dragon King Scale Armor (Armor): **15%**
+- Dragon King's Crown (Helmet): **15%**
+- Dragon King's Scale Mail (Armor): **15%**
 - Inferno Emperor's Realm-Breaking Halberd (Melee): **15%**
-- Dragon Cannon (Firearm): **1%**
+- Skyburner Dragon Cannon (Firearm): **1%**
 
-[tip] That 1% on the Dragon Cannon means roughly 100 Dragon Lord kills on expectation. It is the hardest item in the Mod to obtain - go in knowing that.
+[tip] That 1% on the Skyburner Dragon Cannon means roughly 100 Dragon Lord kills on expectation. It is the hardest item in the Mod to obtain - go in knowing that.
 
 #### Phantom Witch - an independent extra
 
@@ -173,7 +173,7 @@ Both **follow that Boss's normal loot path** - they are not always left on the c
 **Requires delivering Duck King Campaign chapter 1 to unlock the garden.** After that, the three
 custom Bosses' loot crates each carry an extra seed:
 
-- Dragon Descendant -> **Dragon Seed** (grows Dragon Breath Fruit)
+- Dragon Descendant -> **Dragon Seed** (grows Dragonbreath Fruit)
 - Skyburner Dragon Lord -> **Skyburner Ember Seed** (grows Emberheart Chili)
 - Phantom Witch -> **Phantom Spore** (grows Shadow Mushroom)
 

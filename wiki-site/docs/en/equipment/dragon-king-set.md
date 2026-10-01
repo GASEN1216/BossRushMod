@@ -6,12 +6,12 @@ The Dragon Set, but **better in every way**. Dropped by Skyburner Dragon Lord. K
 
 ## Pieces
 
-### Dragon King Crown
+### Dragon King's Crown
 Armor 7 / Durability 200 / Physical damage taken -15% / Storm +1 / Cold +1 / Gun Crit Dmg **+15%** / Fire damage taken -20% / Shock damage taken -20%
 - Drop: Dragon Lord (15%)
 - vs Crimson Dragon Helm: better crit, **no poison vuln, no FOV loss**
 
-### Dragon King Scale Armor
+### Dragon King's Scale Mail
 Armor 7 / Durability 200 / Physical damage taken -25% / Storm +1 / Cold +1 / Fire damage taken -25% / Shock damage taken -25%
 - Drop: Dragon Lord (15%)
 - vs Flame Scale Armor: **no poison vuln**

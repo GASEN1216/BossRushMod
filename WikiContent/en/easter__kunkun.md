@@ -37,9 +37,9 @@ Switch the mount to the wolf model in the config and you really do get a wolf. I
 
 ### The ammo vendor has opinions
 
-Buy more than **10** of the same ammo type in one go at the arena ammo shop and a banner pops up:
+Buy one particular ammo type **10 times** during a single visit to the arena ammo shop and a banner pops up:
 
-> Hey now, are you here to restock a store or what?
+> Hey, are you here to stock up?
 
 ### The three hidden achievements
 

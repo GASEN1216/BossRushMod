@@ -13,7 +13,7 @@ Multi-faction sandbox chaos. Pick a faction, watch Bosses from different faction
 
 - **Random** — Surprise assignment to 1 of 5 NPC factions
 - **Scav / USEC / Lab** — Standard factions, balanced Boss pools
-- **BEAR** — The base game has no BEAR units, so allies are filled in from regular enemies and get a x2.5 stat boost to compensate. **Beefy allies**
+- **BEAR** — The base game has no BEAR units, so allies are filled in from regular enemies and get x2.5 HP and damage to compensate. **Beefy allies**
 - **Wolf** — Prioritizes all unique Wolf Bosses; extras become promoted minions
 - **Lone Wolf** — No allies. Every faction is your enemy. **Are you sure about this?**
 
@@ -110,14 +110,14 @@ Main interaction with the merchant lets you summon **Coalball**, a pet combat co
 
 4 exclusive items (Mystery Merchant "Other" shop):
 
-- **Taunt Smoke Bomb** — Spawn Bosses at 10 nearest points
+- **Taunt Smoke** — Spawn Bosses at 10 nearest points
 - **Chaos Detonator** — Spawn Bosses at ALL spawn points. **Total chaos**
-- **Hunter's Whistle** — All hostile Bosses within 50m chase you
-- **Blood Hunt Beacon** — ALL hostile Bosses on the map chase you. **Brave souls only**
+- **Bosscall Whistle** — All hostile Bosses within 50m chase you
+- **Bloodhunt Beacon** — ALL hostile Bosses on the map chase you. **Brave souls only**
 
-Every 10 Boss kills auto-grants 1 Taunt Smoke Bomb.
+Every 10 Boss kills auto-grants 1 Taunt Smoke.
 
-Taunt Smoke Bomb and Chaos Detonator have **no active-Boss population cap**. The former always attempts the nearest 10 points and the latter attempts every point on the map. A second respawn task cannot begin until the current one finishes.
+Taunt Smoke and Chaos Detonator have **no active-Boss population cap**. The former always attempts the nearest 10 points and the latter attempts every point on the map. A second respawn task cannot begin until the current one finishes.
 
 ## End Condition
 

@@ -171,13 +171,13 @@
     "key": "eq-dragon-breath",
     "src": "/images/ui/eq-dragon-breath.webp",
     "zh": "龙息",
-    "en": "Dragon Breath"
+    "en": "Dragon's Breath"
   },
   {
     "key": "eq-dragon-cannon",
     "src": "/images/ui/eq-dragon-cannon.webp",
     "zh": "焚天龙铳",
-    "en": "Dragon Cannon"
+    "en": "Skyburner Dragon Cannon"
   },
   {
     "key": "eq-frostmourne",

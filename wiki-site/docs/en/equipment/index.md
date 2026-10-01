@@ -11,8 +11,8 @@ The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch
 - **Cloud Soar I** — Flight totem (Dragon Lord)
 - **Reverse Scale** — One-time lifesave totem (Dragon Lord)
 - **Inferno Emperor's Realm-Breaking Halberd** — Fire melee with 3-hit combo (Dragon Lord)
-- **Dragon Breath** — Fire gun with burn DOT (Dragon Descendant)
-- **Dragon Cannon** — 17 selectable ammo types (Dragon Lord, 1%)
+- **Dragon's Breath** — Fire gun with burn DOT (Dragon Descendant)
+- **Skyburner Dragon Cannon** — 17 selectable ammo types (Dragon Lord, 1%)
 - **Soulreaper's Requiem** — Ghost scythe with curse (Phantom Witch, 50%)
 - **Frostmourne** — Ice melee with undead summon (vanilla "???" Boss, 50%)
 
@@ -59,7 +59,7 @@ Both dragon sets give a "fire refund" (fire damage hits first, then 80% comes ba
 
 ## Progression Path
 
-1. Farm **Dragon Descendant** → Dragon Set + Dragon Breath (transitional gear)
+1. Farm **Dragon Descendant** → Dragon Set + Dragon's Breath (transitional gear)
 2. Farm **Skyburner Dragon Lord** → Dragon King Set + Halberd + Totems + Cannon
 3. Farm **Phantom Witch** → Soulreaper's Requiem (mobility + crowd control)
 4. Keep an eye on the vanilla "???" Boss for **Frostmourne** (ice + undead summon)

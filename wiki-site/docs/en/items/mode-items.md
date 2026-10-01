@@ -4,14 +4,14 @@
 
 Purchasable from Mystery Merchant "Other" shop. **Faction War only.**
 
-- **Taunt Smoke Bomb** (Blue) — Spawn Bosses at 10 nearest points
+- **Taunt Smoke** (Blue) — Spawn Bosses at 10 nearest points
 - **Chaos Detonator** (Purple) — Spawn Bosses at ALL points. **Instant mayhem**
-- **Hunter's Whistle** (Blue) — All hostile Bosses within 50m chase you
-- **Blood Hunt Beacon** (Purple) — ALL hostile Bosses on the map chase you
+- **Bosscall Whistle** (Blue) — All hostile Bosses within 50m chase you
+- **Bloodhunt Beacon** (Purple) — ALL hostile Bosses on the map chase you
 
-Every 10 Boss kills auto-grants 1 Smoke Bomb. Flags: see Entry & Utility Items.
+Every 10 Boss kills auto-grants 1 Taunt Smoke. Flags: see Entry & Utility Items.
 
-Taunt Smoke Bomb and Chaos Detonator are no longer blocked by an active-Boss population cap. The former always attempts the nearest 10 spawn points, while the latter attempts every point on the map. A new call cannot start until the current respawn task finishes.
+Taunt Smoke and Chaos Detonator are no longer blocked by an active-Boss population cap. The former always attempts the nearest 10 spawn points, while the latter attempts every point on the map. A new call cannot start until the current respawn task finishes.
 
 ---
 
@@ -19,10 +19,10 @@ Taunt Smoke Bomb and Chaos Detonator are no longer blocked by an active-Boss pop
 
 **Blood Hunt only.** From Boss kills or Mystery Merchant.
 
-- **Foldable Cover** (Green, stack 10) — Light cover, 250 HP
-- **Barbed Wire** (Blue, stack 5) — Slows enemies, 200 HP
-- **Reinforced Roadblock** (Purple, stack 5) — Heavy cover, 500 HP
-- **Repair Spray** (Green, stack 10) — Fixes nearest friendly fortification within 3m, restores 25% max HP
+- **Foldable Cover Pack** (Green, stack 10) — Light cover, 250 HP
+- **Barbed Wire Pack** (Blue, stack 5) — Slows enemies, 200 HP
+- **Reinforced Roadblock Pack** (Purple, stack 5) — Heavy cover, 500 HP
+- **Emergency Repair Spray** (Green, stack 10) — Repairs the damaged fortification under your cursor (within 3m of you), restores 25% max HP
 
 ### Deployment
 

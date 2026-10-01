@@ -17,10 +17,10 @@ Sandbox free-for-all. No win/loss conditions. Set your own goals:
 
 ## When to Use Tactical Items
 
-- **Taunt Smoke Bomb** — Low Boss count on field? Spawn more targets
+- **Taunt Smoke** — Low Boss count on field? Spawn more targets
 - **Chaos Detonator** — Want map-wide mayhem? Hit the button
-- **Hunter's Whistle** — Concentrate nearby Bosses for focused kills
-- **Blood Hunt Beacon** — Every Boss on the map chases you. High risk, high reward
+- **Bosscall Whistle** — Concentrate nearby Bosses for focused kills
+- **Bloodhunt Beacon** — Every Boss on the map chases you. High risk, high reward
 
 ## Economy
 
@@ -47,5 +47,5 @@ Sandbox free-for-all. No win/loss conditions. Set your own goals:
 - No allies; all 5 factions are hostile
 - Extra starting supplies to compensate
 - **Let Bosses fight each other**, then clean up the survivors
-- Blood Hunt Beacon → map-wide free-for-all (spectacular and dangerous)
+- Bloodhunt Beacon → map-wide free-for-all (spectacular and dangerous)
 - Only attempt with solid gear

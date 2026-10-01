@@ -6,8 +6,8 @@ The Sky Islands have a separate roster of lords and chiefs. See Sky Islands · Q
 
 ## The Roster
 
-- **Dragon Descendant** — 500 HP, mid difficulty. Drops: Crimson Dragon Helm, Flame Scale Armor, Dragon Breath
-- **Skyburner Dragon Lord** — 800 HP, **highest difficulty**. Drops: Dragon King Crown, Dragon King Scale Armor, Cloud Soar I, Reverse Scale, Inferno Emperor's Realm-Breaking Halberd, Dragon Cannon
+- **Dragon Descendant** — 500 HP, mid difficulty. Drops: Crimson Dragon Helm, Flame Scale Armor, Dragon's Breath
+- **Skyburner Dragon Lord** — 800 HP, **highest difficulty**. Drops: Dragon King's Crown, Dragon King's Scale Mail, Cloud Soar I, Reverse Scale, Inferno Emperor's Realm-Breaking Halberd, Skyburner Dragon Cannon
 - **Phantom Witch** — 1000 HP, high difficulty. Blink + scythe + Curse Realm + summoning. Drops: Soulreaper's Requiem
 
 ## When Do They Appear?

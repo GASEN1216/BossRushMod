@@ -1,4 +1,4 @@
-# Dragon Cannon
+# Skyburner Dragon Cannon
 
 ## What Is It?
 
@@ -62,4 +62,4 @@ Soak a group with Water Balloons first, then switch to Energy (Electric) rounds 
 
 - Rocket, Firework, and Shotgun excel against groups; Sniper, Heavy, and Magnum suit priority targets.
 - Snowballs, poison pools, and burning zones reward landing prediction. Energy and Nano are useful against evasive enemies.
-- The Large Energy Bullet groups scattered enemies into one spot; follow up with Shotgun, Rocket, or a Inferno Emperor's Realm-Breaking Halberd slam.
+- The Large Energy Bullet groups scattered enemies into one spot; follow up with Shotgun, Rocket, or an Inferno Emperor's Realm-Breaking Halberd slam.
