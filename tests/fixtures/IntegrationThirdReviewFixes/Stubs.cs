@@ -230,4 +230,11 @@ namespace BossRush.Utils
         public static void ShowLoveHeart(Transform t, float a, float b, float c, string s) { }
         public static void ShowBrokenHeart(Transform t, float a, float b, float c, string s) { }
     }
+    // 捏脸 NPC 名牌随角色刷新 / 注销（发布前审查 P1）：夹具只关心移动，替身记次数即可。
+    public static class NPCNameTagHelper
+    {
+        public static int Refreshed, Unregistered;
+        public static void RefreshOriginalHealthBarName(Transform t) { Refreshed++; }
+        public static void UnregisterOriginalHealthBarName(Transform t) { Unregistered++; }
+    }
 }

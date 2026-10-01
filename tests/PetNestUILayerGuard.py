@@ -326,6 +326,27 @@ def check_failure_reasons(errors):
         if r not in registered:
             errors.append("[本地化覆盖] 缺少核心失败原因本地化键: Fail_" + r)
 
+    # 落盘协调器的失败码：孵化（PetNestHatchService）与崽背包（PetNestBackpack.NotifyFailure）
+    # 把 RequestAssetFlush 的 out error 原样交给 DescribeFailure。漏登记时玩家会读到 key_flush_failed 这类裸串。
+    # 下面三条对遗种巢不可达，单独豁免并写明理由；引擎新增失败码时这里会转红，逼着补文案或补豁免。
+    unreachable_for_petnest = {
+        "flush_deferred_not_base": "PetNestSaveCoordinator 以 deferOutsideBaseScene=false 构造引擎",
+        "flush_deferred_savefile_frame_busy": "RequestAssetFlush 传 bypassGates=true，每帧闸恒放行",
+        "flush_deferred_budget_exhausted": "只写 Tick 的 _lastError，不经任何 out error 返回",
+    }
+    coordinator_pattern = re.compile(r'(?:Defer\(|\?\?\s*|\berror\s*=\s*|_lastError\s*=\s*)"([a-z_]+)')
+    for rel in [("Common", "Lifecycle", "BossRushSaveCoordinatorEngine.cs"),
+                ("PetNest", "PetNestSaveCoordinator.cs")]:
+        text = read_text(repo_path(*rel))
+        if text is None:
+            errors.append("[File] 缺少 " + "/".join(rel))
+            continue
+        for m in coordinator_pattern.finditer(strip_cs_comments(text)):
+            val = m.group(1)
+            if val not in registered and val not in unreachable_for_petnest:
+                errors.append("[本地化覆盖] " + rel[-1] + " 的落盘失败码 '" + val
+                              + "' 缺少 Fail_" + val + " 本地化键（孵化 / 崽背包会原样显示给玩家）")
+
     pattern = re.compile(r'(?:failureReason(?:Id)?|_lastBlockReasonId)\s*=\s*"([^"]+)"')
     for name in sorted(os.listdir(PETNEST_DIR)):
         if not name.endswith(".cs"):

@@ -104,7 +104,7 @@ So a 5,000 bet won at x3 pays back 8,360. If a tier's **actual** win rate (after
 
 ### Interruptions and Refunds
 
-- **A bet sticks with its match**: a technical abort, a suspended season, or closing the game mid-match and coming back all mean replaying that match (with a fresh draw). The bet **isn't refunded**; it carries over and settles on the replay.
+- **A bet sticks with its match**: a technical abort, a suspended season, or closing the game mid-match and coming back all mean replaying that match (with a fresh draw). The bet **isn't refunded**; it carries over and settles on the replay, still on the team you originally backed and at the payout you locked in, so the pre-match page no longer shows "Back a side" or "Redraw".
 - **Leaving after the fight starts costs you**: press "Exit" in the spectator panel and the match is kept to replay later, but a bet on a match that has already started counts as lost.
 - **Dropping the season**: "Abandon season" on the recovery page, or starting a new season while the last one still had a bet open, works the same way: a bet on a match under way counts as lost, a bet on a match that hadn't started is returned as-is. A confirm box spells this out first.
 
@@ -118,7 +118,7 @@ Before you bet, ask yourself: if this money's gone, do I still want to keep play
 
 After the sixth match, the season goes into the **Hall of Fame** and gets ranked:
 
-- **Matches called** first, then **net bet winnings**, then whoever got in earlier.
+- **Matches called** first, then **net bet winnings**, then whoever got in earlier. Net winnings cover the whole season, even if you played it over several sessions.
 - Each entry is a card: rank, matches called, net winnings, and a portrait of the season's **MVP** (the boss that showed up most in the teams you backed, counting more when you called it right); calling an upset also adds a "Won an upset at xN" line. This season's row is highlighted, and the header tells you where it placed.
 - The Hall of Fame **carries across seasons** and has only **32 seats**. When it's full, **the lowest-ranked season gets pushed out**.
 - Champions from the old one-on-one days are listed after the leaderboard as "Past duel champion".

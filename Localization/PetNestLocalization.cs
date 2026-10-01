@@ -190,6 +190,23 @@ namespace BossRush
                 "Clearing the deploy slot could not be stored");
             Add(map, "Fail_spend_souls_failed", "扣除遗魂失败，本次改动未保存",
                 "Spending relic souls failed; nothing was stored");
+
+            // —— 落盘协调器（BossRushSaveCoordinatorEngine / PetNestSaveCoordinator）——
+            // 孵化与崽背包走 RequestAssetFlush，失败码原样经 DescribeFailure 显示给玩家；
+            // 这几条此前没登记，玩家看到的是 key_flush_failed 这类裸串。
+            // 改动已进内存候选包，协调器会重试，所以文案说「稍后自动再存」而不是「没保存」。
+            Add(map, "Fail_flush_deferred_is_saving", "游戏正在存档，这次改动稍后会自动补存",
+                "The game is saving right now; this change will be saved shortly");
+            Add(map, "Fail_key_flush_failed", "这次改动暂时没写进存档，稍后会自动再试",
+                "This change couldn't be written to the save yet; it will retry shortly");
+            Add(map, "Fail_store_faulted", "遗种巢存档出了故障，改动会在游戏下次存档时一起保存",
+                "The PetNest save hit an error; this change will be stored with the game's next save");
+            Add(map, "Fail_flush_exception", "存档时出了错，稍后会自动再试",
+                "Saving hit an error; it will retry shortly");
+            Add(map, "Fail_snapshot_unavailable", "背包和仓库暂时没法存档，请稍后再试",
+                "Your inventory and storage can't be saved right now; try again in a moment");
+            Add(map, "Fail_asset_collect_failed", "背包和仓库暂时没法存档，请稍后再试",
+                "Your inventory and storage can't be saved right now; try again in a moment");
         }
 
         #endregion

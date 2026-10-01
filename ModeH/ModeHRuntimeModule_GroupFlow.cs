@@ -8,7 +8,9 @@
 //   Drafting（第 1 场）→ RosterLocked → MatchBrief（第 2~6 场）→ LoadoutEditing → OddsPreview → LoadoutLocked
 //   → MatchSpawning → MatchFighting → MatchSettling → Intermission。
 // 单挑版的选秀 / 接力 / 口令 / 伤病 / 战痕 / 转会 / 战前调整代码保留不删，群战模式下不再走到。
-// 两队与押哪边只存在运行时（ModeHGroupRoster）：中断重进回到这一页重新抽，押注按原有账本沿用或结清。
+// 两队只存在运行时（ModeHGroupRoster）：中断重进回到这一页重新抽，押注按原有账本沿用或结清。
+// 押哪边随押注记进账本（ModeHCashBetRecord.betSide）：沿用押注时恢复这一边，并收起「押哪边赢」与「换一批」，
+// 免得重进后换边 / 换阵容还按旧赔率结算（2026-10-01 审查 P1）。
 // ============================================================================
 
 using System;
@@ -113,6 +115,7 @@ namespace BossRush
         private void RerollGroupRoster()
         {
             if (_commandsClosed || _runState == null || !IsGroupRosterPhase()) return;
+            if (CarriedGroupBet() != null) return; // 沿用押注的这一场不能换阵容（赔率是押注时定的）
             ModeHGroupRoster roster = EnsureGroupRoster();
             if (roster == null || roster.RerollsUsed >= ModeHGroupConfig.RerollsPerMatch) return;
             int used = roster.RerollsUsed + 1;
@@ -125,6 +128,7 @@ namespace BossRush
         private void SelectGroupBetSide(bool red)
         {
             if (_commandsClosed || _runState == null || !IsGroupRosterPhase() || _groupBetOnRed == red) return;
+            if (IsGroupBetSideLocked(CarriedGroupBet())) return; // 沿用押注：押哪边已定，不能换边
             _groupBetOnRed = red;
             RouteUiForLifecycle(_runState.Lifecycle);
         }
@@ -235,6 +239,7 @@ namespace BossRush
                 failureReasonId = "group_roster_not_ready";
                 return false;
             }
+            RestoreCarriedGroupBetSide(); // 沿用押注：锁盘与结算都按押注时那一边
             int mine = _groupBetOnRed ? _groupRoster.EnemyPower : _groupRoster.AllyPower;
             int theirs = _groupBetOnRed ? _groupRoster.AllyPower : _groupRoster.EnemyPower;
             int edge = ModeHOddsController.ComputePreparedPowerEdge(mine, theirs);
@@ -314,27 +319,32 @@ namespace BossRush
             page.EnemySideNote = DescribeGroupSide(roster.Enemies.Count, roster.EnemyPower);
             page.MatchNote = L10n.T("两队同时上场，一边全倒就分胜负；拍铃是一次全场天灾，两队都挨。",
                 "Both teams fight at once; the side left standing wins. The bell calls one disaster on everyone.");
+            // 中断后重打沿用押注：押哪边恢复成押注时那一边，倍率按押注时定下的那一档（结算就按它赔）
+            ModeHCashBetRecord carried = RestoreCarriedGroupBetSide();
             page.Headline = L10n.T("押" + ModeHGroupTeamTags.TeamName(_groupBetOnRed) + "赢 · 返还倍率",
                 "Back " + ModeHGroupTeamTags.TeamName(_groupBetOnRed) + " · payout");
-            page.HeadlineValue = FormatPayoutMultiplier(ResolveGroupOdds(_groupBetOnRed));
+            page.HeadlineValue = FormatPayoutMultiplier(carried != null ? carried.odds : ResolveGroupOdds(_groupBetOnRed));
 
-            ModeHOptionRow side = new ModeHOptionRow();
-            side.Label = L10n.T("押哪边赢", "Back");
-            for (int i = 0; i < 2; i++)
+            if (!IsGroupBetSideLocked(carried))
             {
-                bool red = i == 1;
-                side.Options.Add(new ModeHActionData
+                ModeHOptionRow side = new ModeHOptionRow();
+                side.Label = L10n.T("押哪边赢", "Back");
+                for (int i = 0; i < 2; i++)
                 {
-                    Label = ModeHGroupTeamTags.TeamName(red) + " " + FormatPayoutMultiplier(ResolveGroupOdds(red)),
-                    IsSelected = _groupBetOnRed == red,
-                    OnClick = delegate { SelectGroupBetSide(red); },
-                });
+                    bool red = i == 1;
+                    side.Options.Add(new ModeHActionData
+                    {
+                        Label = ModeHGroupTeamTags.TeamName(red) + " " + FormatPayoutMultiplier(ResolveGroupOdds(red)),
+                        IsSelected = _groupBetOnRed == red,
+                        OnClick = delegate { SelectGroupBetSide(red); },
+                    });
+                }
+                page.OptionRows.Add(side);
             }
-            page.OptionRows.Add(side);
             AppendCashBetRow(page);
 
             int left = ModeHGroupConfig.RerollsPerMatch - roster.RerollsUsed;
-            if (left > 0)
+            if (left > 0 && carried == null)
             {
                 page.Actions.Add(new ModeHActionData
                 {
@@ -1070,31 +1080,6 @@ namespace BossRush
             record.gameBuildSignature = _season.gameBuildSignature ?? string.Empty;
             record.modBuildSignature = _season.modBuildSignature ?? string.Empty;
             return record;
-        }
-
-        /// <summary>本季押注净赚：这一趟记下的已结押注（同一场取最后一笔）+ 账本里最新那笔。</summary>
-        private long ComputeGroupSeasonNet()
-        {
-            if (_runState == null) return 0L;
-            Dictionary<int, ModeHCashBetRecord> byMatch = new Dictionary<int, ModeHCashBetRecord>();
-            List<ModeHCashBetRecord> all = new List<ModeHCashBetRecord>();
-            try
-            {
-                all.AddRange(ModeHSessionSummary.AllBets());
-                ModeHCashBetRecord current = ModeHCashBetService.Current;
-                if (current != null) all.Add(current);
-            }
-            catch (Exception e) { LogFailure("group_season_net", e); }
-            for (int i = 0; i < all.Count; i++)
-            {
-                ModeHCashBetRecord record = all[i];
-                if (record == null || record.status != ModeHCashBetService.StatusSettled
-                    || !string.Equals(record.runId, _runState.RunId, StringComparison.Ordinal)) continue;
-                byMatch[record.matchIndex] = record;
-            }
-            long net = 0L;
-            foreach (ModeHCashBetRecord record in byMatch.Values) net += record.payout - record.amount;
-            return net;
         }
 
         /// <summary>名人堂页：群战赛季按胜场、净赚排名，本季那一行高亮；旧版冠军记录排在后面。</summary>

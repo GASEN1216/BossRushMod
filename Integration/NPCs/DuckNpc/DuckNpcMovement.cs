@@ -77,6 +77,12 @@ namespace BossRush
         /// <summary>
         /// 接线。失败返回 false（此时组件会自我禁用，NPC 退回站桩）。
         /// </summary>
+        /// <summary>
+        /// 平时站在 home 不漫步，只有开了跟随才走（CR-2026-09-30-004）。给按人设站定的永久 NPC（折翎、无声钟守）用：
+        /// 他们也能结婚，婚后开跟随要靠这个组件走路，所以组件照挂，只是不随便溜达。
+        /// </summary>
+        internal bool StayHomeUnlessFollowing { get; set; }
+
         internal bool Bind(CharacterMainControl character, Vector3 homePosition, float wanderRadius)
         {
             _character = character;
@@ -206,6 +212,11 @@ namespace BossRush
                 {
                     MoveTowardFollowTarget();
                 }
+                return;
+            }
+
+            if (StayHomeUnlessFollowing)
+            {
                 return;
             }
 

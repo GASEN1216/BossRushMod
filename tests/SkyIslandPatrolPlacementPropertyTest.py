@@ -35,7 +35,7 @@ ROADS = ROOT / "ArtSource/SkyIsland/road_layout.json"
 # 2026-10-01 加密：主岛约翻倍、小岛按可用面积加。钟庭只有一条路，合格候选集中在钟庭广场（40 个），
 # 超过 20 名时同区最小间距掉到 8 m 以下；听雨洞离岛缘 10 m 以内只剩 9 个候选，给 7。
 TARGETS = {"A": 10, "B": 14, "C": 18, "D": 22, "E": 22, "F": 22,
-           "G": 26, "H": 20, "S1": 8, "S2": 8, "S3": 7, "S4": 10}
+           "G": 26, "H": 9, "S1": 8, "S2": 8, "S3": 7, "S4": 10}
 SMALL_ISLANDS = {"S1", "S2", "S3", "S4"}
 EDGE_MARGIN = {"main": 12.0, "small": 10.0}  # 离本岛轮廓的水平下限
 TRAFFIC_REACH = 20.0  # 离路网 / 桥头 / 地标的水平上限：约一屏宽（相机一屏约 28×20 m），站在路上就看得见
@@ -124,13 +124,24 @@ def placement_metrics(p, region, geometry, wall_probe=WALL_CLEARANCE * 4):
     return edge, reach, wall
 
 
+# 居民净空（发布前审查 P2）：居民 35 m 内有活着的敌人时，对话、剧情面板与归航徽都打不开（SkyIslandSession.StoryPanelQuietRadius），
+# 码头还是落地与返航的地方，剧情写盘要 45 m 内无敌（SaveQuietRadius）。旧口径只留 8 m，第一次到岛先要清掉身边一圈巡守才能说话。
+RESIDENT_CLEARANCE = 35.0
+DOCK_RESIDENT_CLEARANCE = 45.0
+DOCK_RESIDENT_MARKER = "POI_A"
+
+
+def resident_clearance(marker):
+    return DOCK_RESIDENT_CLEARANCE if marker == DOCK_RESIDENT_MARKER else RESIDENT_CLEARANCE
+
+
 def point_failures(p, region, ctx):
     """单点判据（不含导航包含 / 三角中心 / 同区间距）：出生点、居民、交互点净空与「不在犄角旮旯」三条。"""
     _, markers, protected, _, geometry = ctx
     failures = []
     if horizontal(p, markers["PlayerSpawn"]) < 14 - TOLERANCE:
         failures.append("spawn_clearance")
-    if any(horizontal(p, markers[m]) < 8 - TOLERANCE for m in RESIDENT_MARKERS):
+    if any(horizontal(p, markers[m]) < resident_clearance(m) - TOLERANCE for m in RESIDENT_MARKERS):
         failures.append("resident_clearance")
     if any(horizontal(p, position) < 4 - TOLERANCE for _, position in protected):
         failures.append("interaction_clearance")
@@ -237,7 +248,7 @@ def validate(data, ctx):
 
 def check_rule_constants(source=None):
     src = clean_source(RULES.read_text(encoding="utf-8-sig") if source is None else source)
-    for name, expected in (("SpawnClearance", 14), ("ResidentClearance", 8),
+    for name, expected in (("SpawnClearance", 14), ("ResidentClearance", 35),
                            ("InteractionClearance", 4), ("SlotSpacing", 5),
                            ("ActivationRadius", 70), ("SuspensionRadius", 95),
                            ("SpawnInterval", 0.12), ("TickInterval", 0.25)):

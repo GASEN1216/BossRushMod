@@ -391,6 +391,9 @@ namespace BossRush
                     damageInfo.damageValue = detonationDamage;
                     damageInfo.damageType = DamageTypes.normal;
                     damageInfo.damagePoint = target.transform.position;
+                    // 技能自建伤害：标成特效伤害，不再被当成武器命中去触发词缀、套装和雷戒
+                    // （与连击追加火伤 FenHuangComboManager.ApplyFireDamage 同口径）。
+                    damageInfo.isFromBuffOrEffect = true;
                     damageInfo.AddElementFactor(ElementTypes.fire, 1f);
                     target.health.Hurt(damageInfo);
                 }
@@ -509,6 +512,8 @@ namespace BossRush
                     dmg.damageValue = FenHuangHalberdConfig.LandingImpactDamage;
                     dmg.damageType = DamageTypes.normal;
                     dmg.damagePoint = receiver.transform.position;
+                    // 跳斩落地是技能自建伤害，同爆燃一样标成特效伤害。
+                    dmg.isFromBuffOrEffect = true;
                     dmg.AddElementFactor(ElementTypes.fire, 1f);
                     receiver.health.Hurt(dmg);
                 }

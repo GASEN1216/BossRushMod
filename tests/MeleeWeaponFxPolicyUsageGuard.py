@@ -105,6 +105,16 @@ def check_weapon(name: str, path: Path) -> tuple:
         if DIRECT_SLASH_FX_ASSIGN.search(ensure_block) or DIRECT_HIT_FX_ASSIGN.search(ensure_block):
             has_copy_paste = True
 
+    # 检查 3（2026-10-01）：回退特效找不到时缓存一直是 null，ApplyTo 每次挥砍都会再进 getter；
+    # getter 里的 Resources.FindObjectsOfTypeAll 全内存扫描必须按 FallbackRescanInterval 节流（照 NewWeaponMeleeFx）。
+    if "Resources.FindObjectsOfTypeAll<ItemAgent_MeleeWeapon>" in text:
+        if "FallbackRescanInterval" not in text:
+            return (False, f"[FAIL] {name}: 回退特效全内存扫描缺少 FallbackRescanInterval 重扫节流")
+        for getter in ("GetFallbackSlashFx()", "GetFallbackHitFx()"):
+            body = extract_block(text, "private static GameObject " + getter)
+            if not body or "CanRescan()" not in body or "NoteScanResult(" not in body:
+                return (False, f"[FAIL] {name}: {getter} 必须经 CanRescan() 节流并在扫空时 NoteScanResult")
+
     # 判定结果
     if has_policy_usage and not has_copy_paste:
         return (True, f"[PASS] {name}: 已使用 MeleeWeaponFxPolicy.ApplyTo，无 copy-paste 模板")

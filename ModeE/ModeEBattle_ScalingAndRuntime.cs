@@ -19,7 +19,8 @@ namespace BossRush
             try
             {
                 // 通过 Stat 系统添加生命值修饰符
-                Item characterItem = character.GetComponent<Item>();
+                // 角色 Item 是 SetItem 挂到子物体上的，不在角色 GameObject 本身：GetComponent<Item>() 恒为 null，必须走 CharacterItem
+                Item characterItem = character.CharacterItem;
                 if (characterItem != null)
                 {
                     Stat maxHealthStat = characterItem.GetStat("MaxHealth");

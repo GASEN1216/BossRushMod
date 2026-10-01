@@ -482,6 +482,41 @@ class Program
             "a blocked recorded payout cannot be silently replaced with a smaller principal refund");
     }
 
+    static void BetSideAndSeasonNet()
+    {
+        // 2026-10-01 审查：群战押哪边随押注记进账本（沿用押注时恢复）；名人堂「净赚」按季累计，跨会话不丢、同一场只计一次
+        Reset(); string reason; long payout;
+        Check(ModeHCashBetService.TryReserve("run", 1, 5, 1000, out reason, ModeHCashBetService.BetSideRed)
+            && ModeHCashBetService.Current.betSide == ModeHCashBetService.BetSideRed, "group bet side recorded at reservation");
+        ModeHCashBetService.ResetStaticCaches();
+        Check(ModeHCashBetService.ReservedFor("run", 1).betSide == ModeHCashBetService.BetSideRed, "bet side survives the journal round trip");
+        Check(ModeHCashBetService.TrySettle("run", 1, true, 0L, 0L, string.Empty, out payout) && payout > 1000, "first match won");
+        long first = payout - 1000;
+        ModeHCashBetRecord afterFirst = ModeHCashBetService.Current;
+        Check(afterFirst.netRunId == "run" && afterFirst.runNet == first && afterFirst.netMatchMask == (1 << 1),
+            "settlement accumulates the season net in the ledger");
+        ModeHCashBetService.ResetStaticCaches(); // 换一趟游戏会话：这一趟的会话快照不在了，账本还在
+        Check(ModeHCashBetService.TryReserve("run", 2, 3, 1000, out reason)
+            && ModeHCashBetService.Current.betSide == ModeHCashBetService.BetSideNone, "single-duel reservation records no side");
+        Check(ModeHCashBetService.TrySettle("run", 2, false, 0L, 0L, string.Empty, out payout), "second match lost");
+        ModeHCashBetService.ResetStaticCaches();
+        ModeHCashBetRecord afterSecond = ModeHCashBetService.Current;
+        Check(afterSecond.runNet == first - 1000 && afterSecond.netMatchMask == ((1 << 1) | (1 << 2)),
+            "season net spans game sessions");
+        Check(!ModeHCashBetService.TrySettle("run", 2, true, 0L, 0L, string.Empty, out payout)
+            && ModeHCashBetService.Current.runNet == first - 1000, "a settled match is never counted twice");
+        Check(ModeHCashBetService.TryReserve("next", 1, 5, 1000, out reason)
+            && ModeHCashBetService.TrySettle("next", 1, false, 0L, 0L, string.Empty, out payout)
+            && ModeHCashBetService.Current.netRunId == "next" && ModeHCashBetService.Current.runNet == -1000
+            && ModeHCashBetService.Current.netMatchMask == (1 << 1), "a new season starts its own net");
+        // 修复前写的账本没有这几个字段：缺省为未记录方向 / 空累计
+        Reset();
+        SavesSystem.Cache[BetKey] = "{\"schemaVersion\":3,\"runId\":\"old\",\"matchIndex\":2,\"odds\":4,\"status\":1,\"amount\":\"500\",\"kind\":0}";
+        Check(ModeHCashBetService.Current.betSide == ModeHCashBetService.BetSideNone && ModeHCashBetService.Current.netRunId == string.Empty
+            && ModeHCashBetService.Current.runNet == 0 && ModeHCashBetService.Current.netMatchMask == 0,
+            "legacy ledger defaults the new optional fields");
+    }
+
     static void Schema()
     {
         Reset();
@@ -501,7 +536,7 @@ class Program
     {
         try
         {
-            DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); NestedStakeOwnership(); WarehouseNotifications(); CashRestoreReadiness(); CashBetSurvivesSpectatorExit(); StartedBetForfeit(); AbandonBetResolution(); Schema();
+            DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); NestedStakeOwnership(); WarehouseNotifications(); CashRestoreReadiness(); CashBetSurvivesSpectatorExit(); StartedBetForfeit(); AbandonBetResolution(); BetSideAndSeasonNet(); Schema();
             Console.WriteLine("SaveFailureRecovery: PASS " + checks + " assertions (real services, stores and coordinators; in-memory host)");
             return 0;
         }

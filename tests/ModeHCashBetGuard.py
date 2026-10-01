@@ -18,6 +18,10 @@ ModeHCashBetGuard — 鸭王杯「押钱 / 押背包物品」的结构与数值�
    （旧版一中断就整额退回，打输了强退重进等于重掷）；只有放弃赛季、开新赛季对到上一季、F3 清理才退。
 6b. 开战后不能白退（2026-09-29 owner 拍板）：进入交战给押注记 combatStarted，新押注清零；看台主动退出先按输结清再离场；
    放弃赛季、换季对到已开战的押注按输结清，没开战的才退回。技术中止、挂起不受影响。
+6c. 群战沿用押注不能换边 / 换阵容（2026-10-01 审查 P1）：押注时把押哪一队写进账本 betSide（两种押法都写）；
+   沿用押注时锁盘报价前恢复这一边，赛前页收起「押哪边赢」（记了方向时）与「换一批」，点了也不生效；页面倍率显示押注时那一档。
+6d. 名人堂「净赚」按季累计（2026-10-01 审查 P2）：结清时与账本同批累计 runNet / netMatchMask，名人堂以账本累计为准，
+   会话快照只补账本里没计到的场次。
 7. 接线：锁盘落盘成功后、生成之前下注；本场结算处结算；读档与开新赛季时对账；
    模块销毁时清掉静态缓存；押注只在每场赛前；下注成功后直接生成，不播「开盘」。
 每条断言都有内存变异探针，探针不转红本守卫自判失败。
@@ -37,6 +41,7 @@ FILES = {
     "module": "ModeH/ModeHRuntimeModule.cs",
     "scene": "ModeH/ModeHRuntimeModule_SceneFlow.cs",
     "ui_flow": "ModeH/ModeHRuntimeModule_UiFlow.cs",
+    "group": "ModeH/ModeHRuntimeModule_GroupFlow.cs",
 }
 
 
@@ -155,9 +160,10 @@ def check(sources):
     need(settle, "candidate.status = StatusSettled", "[一次] 结算后状态改成已结算")
     refund = body(service, "internal bool TryRefund(string context, out long refunded)")
     need(refund, "previous.status != StatusReserved", "[一次] 只退回挂着的那一笔")
-    reserve = body(service, "internal bool TryReserve(string runId, int matchIndex, int odds, long amount, out string failureReasonId)")
+    # 签名尾部 2026-10-01 加了可选的 betSide，按前缀定位
+    reserve = body(service, "internal bool TryReserve(string runId, int matchIndex, int odds, long amount, out string failureReasonId,")
     need(reserve, "previous.status == StatusReserved", "[一次] 上一笔没结清不得再押")
-    reserve_items = body(service, "internal bool TryReserveItems(string runId, int matchIndex, int odds, long value, string items, out string failureReasonId)")
+    reserve_items = body(service, "internal bool TryReserveItems(string runId, int matchIndex, int odds, long value, string items, out string failureReasonId,")
     need(reserve_items, "previous.status == StatusReserved", "[一次] 上一笔没结清不得再押物品")
 
     # ---- 5. 押物品的钱 ----
@@ -205,6 +211,43 @@ def check(sources):
     need(body(bet, "private void ReconcileCashBetOnRestore()"),
          'if (record.combatStarted != 0) ForfeitStartedCashBet(record, "restore_other_run");',
          "[开战] 换季对到已开战的押注按输结清")
+
+    # ---- 6c. 群战沿用押注不能换边 / 换阵容 ----
+    group = src["group"]
+    if service.count("candidate.betSide = NormalizeBetSide(betSide);") != 2:
+        errors.append("[换边] 押钱与押物品两种新押注都要把押哪一队写进账本")
+    for call in ("ModeHCashBetService.TryReserve(", "ModeHCashBetService.TryReserveItems("):
+        at = bet.find(call)
+        if at < 0 or "LockedGroupBetSide())" not in bet[at:bet.find(";", at)]:
+            errors.append("[换边] %s 必须带上锁盘那一刻押的队（LockedGroupBetSide()）" % call)
+    ordered(body(group, "private bool EnsureGroupOddsQuote(out string failureReasonId)"),
+            ["RestoreCarriedGroupBetSide();", "int mine = _groupBetOnRed"],
+            "[换边] 沿用押注时锁盘报价前先恢复押注时那一边（结算按 _groupLockedBetOnRed）")
+    need(body(group, "private void SelectGroupBetSide(bool red)"), "if (IsGroupBetSideLocked(CarriedGroupBet())) return;",
+         "[换边] 沿用押注且记了方向时不能换边")
+    need(body(group, "private void RerollGroupRoster()"), "if (CarriedGroupBet() != null) return;",
+         "[换边] 沿用押注的这一场不能「换一批」")
+    page = body(group, "private ModeHPageContent BuildGroupPageContent()")
+    ordered(page, ["ModeHCashBetRecord carried = RestoreCarriedGroupBetSide();", "if (!IsGroupBetSideLocked(carried))",
+                   "if (left > 0 && carried == null)"],
+            "[换边] 赛前页先恢复押注方向，再按需收起「押哪边赢」与「换一批」")
+    need(page, "FormatPayoutMultiplier(carried != null ? carried.odds : ResolveGroupOdds(_groupBetOnRed))",
+         "[换边] 沿用押注时页面倍率显示押注时那一档（结算按它赔）")
+    decode = body(service, "private static ModeHCashBetRecord Decode(string json)")
+    encode = body(service, "private static string Encode(ModeHCashBetRecord record)")
+    need(decode, 'root.TryGetInt("betSide", out value)', "[存档] 押注方向读档恢复（旧档缺省 0）")
+    need(encode, 'sb.Append(",\\"betSide\\":")', "[存档] 押注方向随账本落盘")
+
+    # ---- 6d. 名人堂净赚按季累计 ----
+    ordered(settle, ["candidate.status = StatusSettled;", "AccumulateRunNet(candidate, previous, gross);",
+                     "Commit(previous, candidate, delta, out reason)"],
+            "[净赚] 结清时把本场净赚与账本同批累计")
+    season_net = body(bet, "private long ComputeGroupSeasonNet()")
+    need(season_net, "net = current.runNet;", "[净赚] 名人堂净赚以账本按季累计为准（跨会话）")
+    need(season_net, "if (bit != 0 && (counted & bit) != 0) continue;", "[净赚] 会话快照不得重复计入账本已累计的场次")
+    for key in ("netRunId", "runNet", "netMatchMask"):
+        need(encode, '\\"%s\\":' % key, "[存档] 按季净赚随账本落盘")
+        need(decode, '"%s"' % key, "[存档] 按季净赚读档恢复")
 
     # ---- 7. 接线 ----
     lock = body(src["match"], "private void LockLoadoutAndStartMatch()")
@@ -300,6 +343,21 @@ def main():
          "            try { }"),
         ("bet", 'if (record.combatStarted != 0) ForfeitStartedCashBet(record, "abandon_season");', "if (false) { }"),
         ("bet", 'if (record.combatStarted != 0) ForfeitStartedCashBet(record, "restore_other_run");', "if (false) { }"),
+        ("group", "            RestoreCarriedGroupBetSide(); // 沿用押注", "            // 沿用押注"),
+        ("group", "            if (IsGroupBetSideLocked(CarriedGroupBet())) return;", ""),
+        ("group", "            if (CarriedGroupBet() != null) return;", ""),
+        ("group", "if (left > 0 && carried == null)", "if (left > 0)"),
+        ("group", "            if (!IsGroupBetSideLocked(carried))\n", "            if (true)\n"),
+        ("group", "FormatPayoutMultiplier(carried != null ? carried.odds : ResolveGroupOdds(_groupBetOnRed))",
+         "FormatPayoutMultiplier(ResolveGroupOdds(_groupBetOnRed))"),
+        ("bet", "out failure,\n                    LockedGroupBetSide()))\n            {\n                NoteCashBetSkipped(failure ==",
+         "out failure))\n            {\n                NoteCashBetSkipped(failure =="),
+        ("service", "                candidate.betSide = NormalizeBetSide(betSide);\n                candidate.status = StatusReserved;\n                candidate.payout = 0;\n                candidate.kind = KindCash;",
+         "                candidate.status = StatusReserved;\n                candidate.payout = 0;\n                candidate.kind = KindCash;"),
+        ("service", 'if (root.TryGetInt("betSide", out value)) record.betSide = NormalizeBetSide(value);', ""),
+        ("service", "                AccumulateRunNet(candidate, previous, gross);\n", ""),
+        ("bet", "                        net = current.runNet;\n", ""),
+        ("bet", "                if (bit != 0 && (counted & bit) != 0) continue;", ""),
     ]
     for key, before, after in probes:
         if sources[key].count(before) != 1:

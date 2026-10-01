@@ -7,6 +7,7 @@
      钱不够时 UpdateReforgeButtonInteractable 不再整段刷红，而是回到同一个渲染入口（UD-23）。
   3. 属性行固定是两步：OnPointerClick 先走 BeginPropertyLockPending（第一次点直接 return），
      确认之后才 ConsumeItem；待确认在清理属性交互时撤回；清理时还原数值色，不再统一刷成 Color.white（UD-24）。
+     确认之后先 LockProperty、成功后才 ConsumeItem，扣不掉就 UnlockProperty 撤回（2026-10-01 审查：先扣后锁、锁失败不退）。
   4. 重铸揭晓挂在详情面板重建之后：RefreshUIAfterReforgeDelayed 在 AddPropertyLockIcons 之后调 PlayQueuedReforgeReveal；
      ShowPropertyChanges 为每条变化登记揭晓（UD-25）。
   5. 关闭界面的 Cleanup 调 CleanupReforgeFeel（撤回待确认、拆掉贴在官方对象池条目上的表现层）。
@@ -89,6 +90,11 @@ def main():
         if not re.search(r"ReforgeUIManager\.BeginPropertyLockPending\(this\);\s*return;", click) \
                 or "ReforgeUIManager.IsPropertyLockPending(this)" not in click[:begin]:
             errors.append("第一次点击必须只进入待确认并 return，不能落到扣费")
+    lock_at = click.find("PropertyLockSystem.LockProperty(TargetItem, PropertyKey, PropType)")
+    if lock_at < 0 or consume < 0 or lock_at > consume:
+        errors.append("OnPointerClick 必须先 LockProperty、成功后才 ConsumeItem（锁定失败不能白扣冷淬液）")
+    elif "PropertyLockSystem.UnlockProperty(TargetItem, PropertyKey, PropType);" not in click[consume:]:
+        errors.append("冷淬液扣不掉时必须 UnlockProperty 撤回刚写的固定标记")
     clear = method_body(runtime, "private static void ClearPropertyLockIcons()")
     if "CancelPendingPropertyLock();" not in clear:
         errors.append("ClearPropertyLockIcons 必须撤回待确认（切换物品 / 关闭界面时清掉二次确认计时）")

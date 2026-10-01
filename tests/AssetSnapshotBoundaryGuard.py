@@ -63,7 +63,8 @@ def main():
         ],
         "SkyIsland/SkyIslandSession.cs": [
             r"story.RaidHeldCosts = true;",
-            r'story.SettleRaidHeld\(reason == "raid_unloaded"\)[\s\S]{0,200}?SkyIslandStorySaveRecovery.CloseOrRetain\(story\)',
+            # CR-2026-09-30-002：回主菜单也会卸载岛场景，去留改由 KeepsRaidHeldRecords 只认撤离与倒下。
+            r'story.SettleRaidHeld\(KeepsRaidHeldRecords\(reason\)\)[\s\S]{0,200}?SkyIslandStorySaveRecovery.CloseOrRetain\(story\)',
         ],
         # 发放顺序：实例造出来了才记台账；只有「确实没有归属、也没有仓库缓冲回执」才回滚台账。
         "Integration/SkyIsland/SkyIslandItems.cs": [

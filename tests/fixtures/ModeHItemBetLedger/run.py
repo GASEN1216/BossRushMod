@@ -54,15 +54,20 @@ def main():
     code += 'internal static partial class ModeHCashBetService {\n'
     for line in (r'internal const int StatusNone = \d+;', r'internal const int StatusReserved = \d+;',
                  r'internal const int StatusSettled = \d+;', r'internal const int StatusRefunded = \d+;',
-                 r'internal const int KindCash = \d+;', r'internal const int KindItems = \d+;'):
+                 r'internal const int KindCash = \d+;', r'internal const int KindItems = \d+;',
+                 r'internal const int BetSideNone = \d+;', r'internal const int BetSideBlue = \d+;',
+                 r'internal const int BetSideRed = \d+;'):
         code += const_line(service, line) + '\n'
+    code += member(service, 'internal static int NormalizeBetSide(int side)') + '\n'
     code += member(service, 'internal static long ComputePayout(long stake, int odds)') + '\n'
     code += member(service, 'internal static int ResolveAssumedWinPermille(int tier)') + '\n'
     # 生产里是 private 嵌套类；夹具里放成 internal 以便直接驱动（成员逐字照抄）
     code += 'internal sealed partial class CashBetJournal {\n'
     for signature in (
-            'internal bool TryReserveItems(string runId, int matchIndex, int odds, long value, string items, out string failureReasonId)',
+            # 2026-10-01 签名尾部加了可选的 betSide，按前缀抽取
+            'internal bool TryReserveItems(string runId, int matchIndex, int odds, long value, string items, out string failureReasonId,',
             'internal bool TrySettle(string runId, int matchIndex, bool won, long lossCharge, long winCash, string prizes, out long payout)',
+            'private static void AccumulateRunNet(ModeHCashBetRecord candidate, ModeHCashBetRecord previous, long gross)',
             'internal bool TryRefund(string context, out long refunded)',
             'private static int ReadSchema(string json)',
             'private static int ReadCompatibleSchema(string json)',

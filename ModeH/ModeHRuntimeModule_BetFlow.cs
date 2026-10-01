@@ -285,6 +285,80 @@ namespace BossRush
 
         #endregion
 
+        #region 群战押注方向与赛季净赚（2026-10-01 审查；放在这里是为 GroupFlow 的单文件行数预算）
+
+        /// <summary>这一季这一场已经押上、还没结清的那一笔（中断后重打时沿用）；按页面场次找（第 1 场 Drafting 时 MatchIndex 还是 0）。</summary>
+        private ModeHCashBetRecord CarriedGroupBet()
+        {
+            if (_runState == null) return null;
+            return ModeHCashBetService.ReservedFor(_runState.RunId, GroupMatchIndex);
+        }
+
+        /// <summary>沿用的押注记了押哪边（旧档没记的无从恢复，只能保留页面选择）。</summary>
+        private static bool IsGroupBetSideLocked(ModeHCashBetRecord carried)
+        {
+            return carried != null && carried.betSide != ModeHCashBetService.BetSideNone;
+        }
+
+        /// <summary>沿用押注时把押哪边恢复成押注时那一边；返回沿用的那一笔（没有为 null）。</summary>
+        private ModeHCashBetRecord RestoreCarriedGroupBetSide()
+        {
+            ModeHCashBetRecord carried = CarriedGroupBet();
+            if (IsGroupBetSideLocked(carried)) _groupBetOnRed = carried.betSide == ModeHCashBetService.BetSideRed;
+            return carried;
+        }
+
+        /// <summary>写进押注账本的方向：群战按锁盘那一刻押的队，单挑不记。</summary>
+        private int LockedGroupBetSide()
+        {
+            if (!GroupModeEnabled) return ModeHCashBetService.BetSideNone;
+            return _groupLockedBetOnRed ? ModeHCashBetService.BetSideRed : ModeHCashBetService.BetSideBlue;
+        }
+
+        /// <summary>
+        /// 本季押注净赚：以账本里按季累计的 runNet 为准（跨会话、退游戏重进都在）；
+        /// 修复前已结、账本里没累计到的场次，再用这一趟记下的已结押注补上（同一场只计一次）。
+        /// </summary>
+        private long ComputeGroupSeasonNet()
+        {
+            if (_runState == null) return 0L;
+            long net = 0L;
+            int counted = 0;
+            Dictionary<int, ModeHCashBetRecord> byMatch = new Dictionary<int, ModeHCashBetRecord>();
+            List<ModeHCashBetRecord> all = new List<ModeHCashBetRecord>();
+            try
+            {
+                all.AddRange(ModeHSessionSummary.AllBets());
+                ModeHCashBetRecord current = ModeHCashBetService.Current;
+                if (current != null)
+                {
+                    all.Add(current);
+                    if (string.Equals(current.netRunId, _runState.RunId, StringComparison.Ordinal))
+                    {
+                        net = current.runNet;
+                        counted = current.netMatchMask;
+                    }
+                }
+            }
+            catch (Exception e) { LogFailure("group_season_net", e); }
+            for (int i = 0; i < all.Count; i++)
+            {
+                ModeHCashBetRecord record = all[i];
+                if (record == null || record.status != ModeHCashBetService.StatusSettled
+                    || !string.Equals(record.runId, _runState.RunId, StringComparison.Ordinal)) continue;
+                byMatch[record.matchIndex] = record;
+            }
+            foreach (ModeHCashBetRecord record in byMatch.Values)
+            {
+                int bit = record.matchIndex > 0 && record.matchIndex < 31 ? 1 << record.matchIndex : 0;
+                if (bit != 0 && (counted & bit) != 0) continue; // 账本累计里已经有这一场
+                net += record.payout - record.amount;
+            }
+            return net;
+        }
+
+        #endregion
+
         #region 锁盘、结算与退回
 
         /// <summary>
@@ -320,7 +394,8 @@ namespace BossRush
             long amount = ModeHCashBetService.StandingAmount;
             if (amount <= 0) return;
             string failure;
-            if (!ModeHCashBetService.TryReserve(_runState.RunId, _runState.MatchIndex, odds, amount, out failure))
+            if (!ModeHCashBetService.TryReserve(_runState.RunId, _runState.MatchIndex, odds, amount, out failure,
+                    LockedGroupBetSide()))
             {
                 NoteCashBetSkipped(failure == "cash_bet_not_enough_money"
                     ? L10n.T("钱不够 " + FormatMoney(amount) + "，这一场没押。", "Not enough money for " + FormatMoney(amount) + "; no bet this match.")
@@ -341,7 +416,8 @@ namespace BossRush
                 return;
             }
             string failure;
-            if (!ModeHCashBetService.TryReserveItems(_runState.RunId, _runState.MatchIndex, odds, value, entries, out failure))
+            if (!ModeHCashBetService.TryReserveItems(_runState.RunId, _runState.MatchIndex, odds, value, entries, out failure,
+                    LockedGroupBetSide()))
             {
                 ModeHItemBetStake.ReleaseLocked();
                 NoteCashBetSkipped(L10n.T("这一场没押成（存档正忙或上一笔还没结清）。", "No bet this match (save busy or a previous bet is still open)."), failure);

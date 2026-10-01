@@ -77,18 +77,18 @@ The enemies here talk too. They came up to make a living after the storm cut the
 
 **Every enemy on the islands is an official boss.** Each grunt, patrol and Galebreaker is a fixed pick from the game's bosses for that spot (Killa, Tagilla, the School Bully, Triple Shot, the speedsters and so on): its looks, fighting style, skills and name tag are that boss's own, and melee bosses rush you with their melee weapons. Their numbers are three times that boss's original (see below). Chiefs, island lords, Zheling, the bell engine and the Windeater are each their own reference boss. NPC look-alike bosses such as Jeff, the 2000-health Koukou and this mod's own large bosses never appear. Grunts and patrols drop an ordinary scavenger's loot and experience and do not count towards "kill bosses" objectives; chiefs and island lords keep their boss loot and experience.
 
-Ordinary patrols occupy fixed positions on every island, including the dock and Windchime Market. They stand by the roads, bridgeheads and landmarks rather than in the corners of the islands, and each spot is the same boss every trip. The dock is easier; later regions increase health, damage and alertness (a regional factor on top of three times the boss's original). Returning to a region resumes the same living character with the same injuries and equipment. A patrol defeated during an outing does not respawn until the next outing. At most 32 patrols are active at once.
+Ordinary patrols occupy fixed positions on every island, including the dock and Windchime Market. They stand by the roads, bridgeheads and landmarks rather than in the corners of the islands, never right next to a resident (at least 35 m away, 45 m at the dock), and each spot is the same boss every trip. The dock is easier; later regions increase health, damage and alertness (a regional factor on top of three times the boss's original). Returning to a region resumes the same living character with the same injuries and equipment. A patrol defeated during an outing does not respawn until the next outing. At most 32 patrols are active at once.
 
 - Cloudrise Dock: 10.
 - Windchime Market: 14.
 - Greenear Terraces: 18.
 - Hanging Root Forest, Windsong Boardwalk and Mirrorwater Temple: 22 each.
 - Fallen Star Workshop: 26.
-- Homecoming Bell Court: 20.
+- Homecoming Bell Court: 9.
 - Frogsong Pool and Upturned Post Hut: 8 each; Rainlisten Grotto 7; Starfall Overlook 10.
 
 ::: tip
-Patrols stand close to the residents and landmarks. While a living enemy is within 35 m, residents will not talk and search points and workbenches will not open, so clear the area the first time you reach an island.
+While a living enemy is within 35 m, residents will not talk and search points and workbenches will not open. Patrols never stand right next to a resident, but enemies that chase you over still count, so clear your surroundings before you get busy.
 :::
 
 The existing enemy groups, chiefs, island lords and story challenges below retain their own spawning and progression rules.

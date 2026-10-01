@@ -893,6 +893,13 @@ namespace BossRush
             InvalidateZombieModeRun();
             owner.ClearZombieModeSupportSpawnQueueForRuntimeModule();
 
+            // 整表 Destroy 前先补一次拾取所有权扫描：常规扫描每秒一次，撤离那一刻
+            // 1 秒内刚捡进背包的掉落还登记在 RunOnlyObjects 里，会被下面一并销毁。
+            if (destroyGameObjects)
+            {
+                ReleaseZombieModeOwnedDropCandidates();
+            }
+
             RunScopedRegistry.ForEachReverse(
                 runState.RunOnlyObjects,
                 record => record.Cleanup(destroyGameObjects),

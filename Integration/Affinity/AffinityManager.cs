@@ -170,22 +170,15 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 游戏收集保存数据时调用（保存数据并写入磁盘）
+        /// 游戏收集保存数据时调用：只把好感度写进官方存档缓存，落盘交给官方紧随其后的 SaveFile。
+        /// 不能在这里自己 SaveFile：采集还没走完（别的订阅者的数据还没写进缓存），
+        /// 提前写盘会让官方随后那次 SaveFile 把这份半成品复制成 .bac / 定时备份，每次存档还多写一遍整个文件；
+        /// 官方 NotifySaveBeforeLoadScene(false) 这种只采集不落盘的路径也会被它强行落盘。
         /// </summary>
         private static void OnCollectSaveData()
         {
             if (!CanWrite) return;
             SaveImmediate();
-
-            // 强制写入磁盘，确保返回主菜单再进入存档时数据不丢失
-            try
-            {
-                Saves.SavesSystem.SaveFile(false);
-            }
-            catch (System.Exception e)
-            {
-                ModBehaviour.DevLog("[Affinity] [WARNING] 写入磁盘失败: " + e.Message);
-            }
         }
 
         /// <summary>

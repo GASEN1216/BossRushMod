@@ -549,16 +549,23 @@ namespace BossRush
                 string transactionError;
                 if (!PetNestPersistenceAccess.BeginTransaction(out transactionError)) return 0;
                 List<PetNestExpeditionRecord> records = Records;
-                bool changed = false;
+                // progressed：现金记账 / 物品游标前进 / 整条发完，必须连同资产 durable 落盘。
+                // 一直发不出（资源缺失、经济未就绪）时只有诊断计数在变：不能每 5 秒整档 SaveFile。
+                bool progressed = false, attemptsChanged = false;
                 for (int i = records.Count - 1; i >= 0; i--)
                 {
                     PetNestExpeditionRecord r = records[i];
                     if (r == null || !r.settled || r.rewardsGranted) continue;
 
+                    bool cashBefore = r.cashGranted;
+                    int unitsBefore = r.grantedLootUnits;
                     bool complete = GrantRewards(r);
-                    if (!complete)
+                    if (r.cashGranted != cashBefore || r.grantedLootUnits != unitsBefore) progressed = true;
+                    // 计数到上限封顶：之后无进展的重试不再改记录，也就不再写候选包
+                    if (!complete && r.rewardGrantAttempts < PetNestTuning.MaxRewardGrantAttempts)
                     {
                         r.rewardGrantAttempts++;
+                        attemptsChanged = true;
                         if (r.rewardGrantAttempts == PetNestTuning.MaxRewardGrantAttempts)
                             ModBehaviour.DevLog("[PetNest] [ERROR] 远征奖励连续 "
                                 + r.rewardGrantAttempts + " 次未发全，欠账继续保留: " + r.id);
@@ -567,15 +574,21 @@ namespace BossRush
                     {
                         r.rewardsGranted = true;
                         granted++;
+                        progressed = true;
                         if (r.revealed) records.RemoveAt(i);
                     }
-                    changed = true;
                 }
-                if (changed)
+                string commitError;
+                if (progressed)
                 {
-                    string commitError;
                     if (!CommitBoth(out commitError))
                         ModBehaviour.DevLog("[PetNest] [WARNING] 奖励游标未能提交: " + commitError);
+                }
+                else if (attemptsChanged)
+                {
+                    // 无到账：诊断计数只进内存候选包、不请求 SaveFile，随下次遗种巢落盘或官方存档写出
+                    if (!PetNestPersistenceAccess.CommitTransaction(out commitError))
+                        PetNestPersistenceAccess.AbortTransaction();
                 }
                 else
                 {

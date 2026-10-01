@@ -35,6 +35,12 @@ namespace BossRush
         private static GameObject cachedFallbackSlashFx;
         private static GameObject cachedFallbackHitFx;
 
+        // 一次都没找到时的重扫节流（照 NewWeaponMeleeFx）：场上暂时没有别的近战武器可借（例如刚进图）时
+        // 缓存一直是 null，每刀都会跑一遍 Resources.FindObjectsOfTypeAll；官方武器可能晚于首刀才加载，
+        // 所以不能找不到就永久放弃。
+        private const float FallbackRescanInterval = 5f;
+        private static float lastFailedScanTime = float.NegativeInfinity;
+
         // 霜之哀伤 FX 策略：允许 slashFx 和 hitFx 回退，使用自定义缩放
         private static readonly MeleeWeaponFxPolicy FxPolicy =
             new MeleeWeaponFxPolicy(allowSlashFxFallback: true, allowHitFxFallback: true,
@@ -281,14 +287,16 @@ namespace BossRush
         {
             cachedFallbackSlashFx = null;
             cachedFallbackHitFx = null;
+            lastFailedScanTime = float.NegativeInfinity;
             _cachedConfig = null;
         }
 
         private static GameObject GetFallbackSlashFx()
         {
-            if (cachedFallbackSlashFx == null)
+            if (cachedFallbackSlashFx == null && CanRescan())
             {
                 cachedFallbackSlashFx = FindFallbackMeleeFx(true);
+                NoteScanResult(cachedFallbackSlashFx);
             }
 
             return cachedFallbackSlashFx;
@@ -296,11 +304,27 @@ namespace BossRush
 
         private static GameObject GetFallbackHitFx()
         {
-            if (cachedFallbackHitFx == null)
+            if (cachedFallbackHitFx == null && CanRescan())
             {
                 cachedFallbackHitFx = FindFallbackMeleeFx(false);
+                NoteScanResult(cachedFallbackHitFx);
             }
             return cachedFallbackHitFx;
+        }
+
+        /// <summary>距上次「扫了但没找到」是否已超过节流间隔。</summary>
+        private static bool CanRescan()
+        {
+            return Time.unscaledTime - lastFailedScanTime >= FallbackRescanInterval;
+        }
+
+        /// <summary>只有扫空才记时间戳；扫到了就不再进这条路径。</summary>
+        private static void NoteScanResult(GameObject found)
+        {
+            if (found == null)
+            {
+                lastFailedScanTime = Time.unscaledTime;
+            }
         }
 
         private static GameObject FindFallbackMeleeFx(bool slashFx)

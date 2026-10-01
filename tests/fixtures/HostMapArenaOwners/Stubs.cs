@@ -115,6 +115,7 @@ namespace BossRush
         internal int InfiniteHellWaveIndex { get; set; }
         internal long InfiniteHellCashPool { get; set; }
         internal int InfiniteHellMilestoneRewardTier { get; set; }
+        internal long InfiniteHellWaveCashThisWave { get; set; }
         internal Vector3 DemoChallengeStartPosition { get; set; }
         internal WavesArenaRuntimeModule(ModBehaviour value) { owner = value; }
         private void ClearCashMagnetState() { Probe.Record("cash"); }

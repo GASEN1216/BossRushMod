@@ -14,6 +14,8 @@ BEACON = Path("Integration/Items/ZombieTideBeaconConfig.cs")
 BEACON_USAGE = Path("Integration/Items/ZombieTideBeaconUsage.cs")
 PORTABLE_SAFE_ZONE = Path("Integration/Items/PortableSafeZoneDeviceConfig.cs")
 PORTABLE_SAFE_ZONE_USAGE = Path("Integration/Items/PortableSafeZoneDeviceUsage.cs")
+INVITATION_USAGE = Path("Integration/Items/ZombieTideInvitationUsage.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
 BLACKLIST = Path("Config/LootBlacklistRegistry.cs")
 INTEGRATION_PARTS = [
     Path("Integration/BossRushIntegration.cs"),
@@ -27,6 +29,26 @@ LOCALIZATION = Path("Localization/LocalizationInjector.cs")
 def fail(message: str) -> int:
     print(message)
     return 1
+
+
+def method_body(text: str, signature: str):
+    """按花括号配对取方法体；找不到签名返回 None。"""
+    start = text.find(signature)
+    if start < 0:
+        return None
+    opening = text.find("{", start)
+    if opening < 0:
+        return None
+    depth, index = 0, opening
+    while index < len(text):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[opening:index + 1]
+        index += 1
+    return None
 
 
 def read_boss_rush_integration() -> str:
@@ -92,8 +114,6 @@ def main() -> int:
     for snippet in [
         "inst.CanUseZombieModeBeacon()",
         "inst.TryUseZombieModeBeacon()",
-        "BossRush_ZombieMode_Notify_BeaconNotZombieMode",
-        "inst.GetZombieModeBeaconUnavailableReasonKey()",
     ]:
         if snippet not in usage_text:
             return fail("ZombieModeItemIdentityGuard: beacon usage missing runtime hook -> " + snippet)
@@ -101,11 +121,36 @@ def main() -> int:
     for snippet in [
         "inst.CanUseZombieModePortableSafeZoneDevice()",
         "inst.TryUseZombieModePortableSafeZoneDevice()",
-        "BossRush_ZombieMode_Notify_PortableSafeZoneNotZombieMode",
-        "inst.GetZombieModePortableSafeZoneUnavailableReasonKey()",
     ]:
         if snippet not in portable_safe_zone_usage_text:
             return fail("ZombieModeItemIdentityGuard: portable safe-zone usage missing runtime hook -> " + snippet)
+
+    # 2026-10-01：CanBeUsed 会被官方背包悬停 / 右键菜单 / 快捷栏反复调用（ItemDisplay.CanUse、
+    # ItemOperationMenu.UseButtonInteractable），在里面弹通知会让鼠标划过物品就刷屏。
+    # 判断函数只返回结果；不可用原因归口到模式侧 Get*UnavailableReasonKey，由 TryUse* 在真正使用被拒时提示。
+    invitation_usage_text = INVITATION_USAGE.read_text(encoding="utf-8")
+    for name, text in [
+        ("beacon", usage_text),
+        ("portable safe-zone", portable_safe_zone_usage_text),
+        ("invitation", invitation_usage_text),
+    ]:
+        body = method_body(text, "public override bool CanBeUsed(")
+        if body is None:
+            return fail("ZombieModeItemIdentityGuard: " + name + " usage missing CanBeUsed")
+        if "NotificationText.Push" in body or "PopText(" in body:
+            return fail("ZombieModeItemIdentityGuard: " + name + " CanBeUsed must not show notifications (hover spam)")
+
+    extraction_text = EXTRACTION.read_text(encoding="utf-8")
+    for signature, required in [
+        ("internal string GetZombieModeBeaconUnavailableReasonKey()", "BossRush_ZombieMode_Notify_BeaconNotZombieMode"),
+        ("internal string GetZombieModePortableSafeZoneUnavailableReasonKey()", "BossRush_ZombieMode_Notify_PortableSafeZoneNotZombieMode"),
+        ("internal bool TryUseZombieModeBeacon()", "NotificationText.Push(L10n.T(GetZombieModeBeaconUnavailableReasonKey()));"),
+        ("internal bool TryUseZombieModePortableSafeZoneDevice()", "NotificationText.Push(L10n.T(GetZombieModePortableSafeZoneUnavailableReasonKey()));"),
+    ]:
+        body = method_body(extraction_text, signature)
+        if body is None or required not in body:
+            return fail("ZombieModeItemIdentityGuard: unavailable reason must stay in mode-side use path -> "
+                        + signature + " / " + required)
 
     print("ZombieModeItemIdentityGuard: PASS")
     return 0

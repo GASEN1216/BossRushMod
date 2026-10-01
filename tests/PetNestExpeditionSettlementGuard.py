@@ -180,7 +180,7 @@ def main():
     # 9. 发奖走可恢复的独立标记，落档成功而发奖失败时能补发
     if "rewardsGranted" not in code:
         errors.append("[发奖] 必须有独立的 rewardsGranted 标记（settled 之外的第二个标记）")
-    backfill = re.search(r"internal static int TryGrantPendingRewards\(\)[\s\S]{0,2400}?\n        \}", code)
+    backfill = re.search(r"internal static int TryGrantPendingRewards\(\)[\s\S]{0,4000}?\n        \}", code)
     if backfill is None:
         errors.append("[发奖] 缺少可恢复的补发通道 TryGrantPendingRewards()")
     else:
@@ -196,6 +196,22 @@ def main():
             errors.append("[发奖] 必须记录连续失败次数供可靠性诊断")
         if re.search(r"rewardGrantAttempts\s*>=\s*PetNestTuning\.MaxRewardGrantAttempts[\s\S]{0,240}rewardsGranted\s*=\s*true", body):
             errors.append("[发奖] 超过尝试次数不得伪装已发完，欠账必须永久保留")
+        # 2026-10-01：奖励一直发不出时，每 5 秒一轮的补发不得每轮都整档 SaveFile。
+        # 只有真正到账（现金记账 / 游标前进 / 整条发完）才走 CommitBoth（内含 RequestFlush）。
+        progress = body.find("if (progressed)")
+        commit = body.find("CommitBoth(", progress) if progress >= 0 else -1
+        no_progress = body.find("else if (attemptsChanged)", commit) if commit >= 0 else -1
+        if progress < 0 or commit < 0 or no_progress < 0:
+            errors.append("[发奖] 补发落盘必须按「是否真正到账」门控：无进展不得调用 CommitBoth")
+        else:
+            tail = body[no_progress:]
+            if "CommitBoth(" in tail or "RequestFlush" in tail:
+                errors.append("[发奖] 无到账的重试只能把诊断计数留在内存候选包，不得请求落盘")
+            for token in ["r.cashGranted != cashBefore", "r.grantedLootUnits != unitsBefore"]:
+                if token not in body:
+                    errors.append("[发奖] 进展判据缺少 " + token)
+            if "r.rewardGrantAttempts < PetNestTuning.MaxRewardGrantAttempts" not in body:
+                errors.append("[发奖] 诊断计数必须封顶，否则无进展的重试会无限改写候选包")
 
     # 9b. 按条目记账：现金与战利品各有自己的账，补发只重做真正失败的那一格
     grant = re.search(

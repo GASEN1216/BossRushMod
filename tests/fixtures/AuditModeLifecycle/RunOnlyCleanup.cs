@@ -35,6 +35,7 @@ namespace BossRush
         private void RemoveZombieModeOptionRuntimeEffects() { owner.RemoveZombieModeOptionRuntimeEffectsForRuntimeModule(); }
         private void ClearZombieModeRewardShell() { owner.ClearZombieModeRewardShellForRuntimeModule(); }
         internal void RestoreZombieModeMapIsolationShell() { owner.Trace.Add("restore-isolation"); }
+        private void ReleaseZombieModeOwnedDropCandidates() { owner.Trace.Add("release-owned-drops"); }
     }
 
     public partial class ModBehaviour
@@ -167,7 +168,7 @@ namespace BossRush
             ZombieModeRuntimeModule.TestNextRunId = 9;
             owner.CleanupTestRunOnlyState(ZombieModeFailureReason.ManualExit, true);
             string actualOrder = string.Join(",", owner.Trace);
-            string expectedOrder = "settle:41:run=41,remove-attributes,remove-option-effects,clear-fortification,clear-support," +
+            string expectedOrder = "settle:41:run=41,remove-attributes,remove-option-effects,clear-fortification,clear-support,release-owned-drops," +
                 "record-c:run=-41:cleaning=True,record-b:run=-41:cleaning=True,record-a:run=-41:cleaning=True," +
                 "clear-enemy-ids,clear-reward,restore-isolation";
             Check(actualOrder == expectedOrder, "failure cleanup preserves settlement, effect, invalidation, reverse-record and shell-cleanup order");

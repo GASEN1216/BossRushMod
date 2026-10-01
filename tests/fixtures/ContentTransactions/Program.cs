@@ -970,6 +970,28 @@ partial class Program
         Check(PetNestExpeditionService.TryGrantPendingRewards() == 0 && ItemUtilities.Delivered.Count == 1,
             "completed reward remains idempotent after prefab recovery");
 
+        // 2026-10-01：奖励一直发不出时，每 5 秒一轮的补发不得每轮整档 SaveFile。
+        Reset(); PrepareNest();
+        var stuck = PendingEgg("stuck", "gone");
+        stuck.outcomeLootTypeIds[0] = 123456;
+        PetNestPersistence.Bundle.Current.expedition.records.Add(stuck);
+        ItemAssetsCollection.MissingPrefabId = 123456;
+        int stuckWrites = SavesSystem.Writes;
+        for (int round = 0; round < PetNestTuning.MaxRewardGrantAttempts + 3; round++)
+        {
+            PetNestExpeditionService.ResetValidationRewardBackend();
+            PetNestExpeditionService.TryGrantPendingRewards();
+        }
+        stuck = PetNestExpeditionService.Records[0];
+        Check(SavesSystem.Writes == stuckWrites, "stuck reward retries never request a full SaveFile");
+        Check(!stuck.rewardsGranted && stuck.grantedLootUnits == 0
+            && stuck.rewardGrantAttempts == PetNestTuning.MaxRewardGrantAttempts,
+            "stuck reward keeps its debt and a capped diagnostic counter");
+        ItemAssetsCollection.MissingPrefabId = 0;
+        PetNestExpeditionService.ResetValidationRewardBackend();
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 1 && ItemUtilities.Delivered.Count == 1
+            && SavesSystem.Writes == stuckWrites + 1, "first real delivery after a stuck period is saved durably once");
+
         Reset(); PrepareNest();
         Check(!PetNestExpeditionService.CanDepart(null, out error), "missing cub has no departure action");
         pet = new PetNestPetRecord { id = "selectable", lineageKey = "test" }; pet.Normalize();

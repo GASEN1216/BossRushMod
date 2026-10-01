@@ -17,19 +17,14 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 只判断能不能用，不弹提示（理由同 ZombieTideBeaconUsage.CanBeUsed：官方悬停 / 菜单 / 快捷栏会反复调它）。
+        /// 进入 OnUse 后若仍被拒，由 ShowZombieModeMapSelection 的失败原因提示。
+        /// </summary>
         public override bool CanBeUsed(Item item, object user)
         {
             string failureReason;
-            if (!ZombieModeMapSelectionHelper.CanOpenZombieModeMapSelection(out failureReason))
-            {
-                if (!string.IsNullOrEmpty(failureReason))
-                {
-                    NotificationText.Push(failureReason);
-                }
-                return false;
-            }
-
-            return true;
+            return ZombieModeMapSelectionHelper.CanOpenZombieModeMapSelection(out failureReason);
         }
 
         protected override void OnUse(Item item, object user)

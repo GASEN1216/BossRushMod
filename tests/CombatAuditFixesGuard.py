@@ -40,6 +40,22 @@ CHECKS = [
     ("Integration/DragonDescendant/DragonDescendantBoss.cs", "private void EquipDragonBreathWeapon(", "ItemAssetsCollection.GetPrefab(DragonDescendantConfig.DRAGON_BREATH_TYPE_ID) == null"),
     ("Integration/DragonDescendant/DragonDescendantBoss.cs", "public async UniTask<CharacterMainControl> SpawnDragonDescendant(", "if (!completed && character != null) CleanupCancelledDragonDescendant(character);"),
     ("Integration/DragonKing/DragonKingBoss.cs", "public async UniTask<CharacterMainControl> SpawnDragonKing(", "if (!completed && character != null) CleanupCancelledDragonKing(character, assetReferenceAdded);"),
+    # 2026-10-01：焚皇断界戟爆燃与跳斩落地是技能自建伤害，不得被当成武器命中触发词缀 / 套装 / 雷戒。
+    ("Integration/DragonKing/Weapons/FenHuangHalberdAction.cs", "private void TriggerDetonation(", "damageInfo.isFromBuffOrEffect = true;"),
+    ("Integration/DragonKing/Weapons/FenHuangHalberdAction.cs", "private void DealLandingImpactDamage(", "dmg.isFromBuffOrEffect = true;"),
+    # 2026-10-01：龙王 / 龙裔补根 §4.5 敌对性安全网（形态照幽灵女巫），豁免遗种巢随从与 Mode E/F。
+    ("Integration/DragonKing/DragonKingBoss.cs", "public async UniTask<CharacterMainControl> SpawnDragonKing(", "else if (!Team.IsEnemy(Teams.player, character.Team))"),
+    ("Integration/DragonKing/DragonKingBoss.cs", "public async UniTask<CharacterMainControl> SpawnDragonKing(", "PetNestCompanionAgent.IsCompanionCharacter(character)"),
+    ("Integration/DragonKing/DragonKingBoss.cs", "public async UniTask<CharacterMainControl> SpawnDragonKing(", "(owner.IsModeEActive || owner.IsModeFActive)"),
+    ("Integration/DragonDescendant/DragonDescendantBoss.cs", "public async UniTask<CharacterMainControl> SpawnDragonDescendant(", "else if (!Team.IsEnemy(Teams.player, character.Team))"),
+    ("Integration/DragonDescendant/DragonDescendantBoss.cs", "public async UniTask<CharacterMainControl> SpawnDragonDescendant(", "PetNestCompanionAgent.IsCompanionCharacter(character)"),
+    ("Integration/DragonDescendant/DragonDescendantBoss.cs", "public async UniTask<CharacterMainControl> SpawnDragonDescendant(", "(owner.IsModeEActive || owner.IsModeFActive)"),
+]
+
+# 安全网必须早于激活：激活后 AI 立即按当前 team 选目标。
+HOSTILITY_ORDER = [
+    ("Integration/DragonKing/DragonKingBoss.cs", "public async UniTask<CharacterMainControl> SpawnDragonKing("),
+    ("Integration/DragonDescendant/DragonDescendantBoss.cs", "public async UniTask<CharacterMainControl> SpawnDragonDescendant("),
 ]
 
 
@@ -52,6 +68,16 @@ def main():
                 errors.append(path + ": missing " + required)
         except ValueError:
             errors.append(path + ": missing method " + marker)
+    for path, marker in HOSTILITY_ORDER:
+        try:
+            body = member(path, marker)
+        except ValueError:
+            errors.append(path + ": missing method " + marker)
+            continue
+        net = body.find("character.SetTeam(Teams.wolf);")
+        activate = body.find("character.gameObject.SetActive(true);")
+        if net < 0 or activate < 0 or net > activate:
+            errors.append(path + ": hostility safety net must run before activation")
     if errors:
         print("CombatAuditFixesGuard: FAIL\n" + "\n".join(errors))
         return 1

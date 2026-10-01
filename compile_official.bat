@@ -256,6 +256,7 @@ echo(SkyIsland\SkyIslandCaptionQueue.cs
 echo(SkyIsland\SkyIslandSessionValidation.cs
 echo(SkyIsland\SkyIslandSessionAutotest.cs
 echo(SkyIsland\SkyIslandSessionFooting.cs
+echo(SkyIsland\SkyIslandSessionDeparture.cs
 echo(SkyIsland\SkyIslandSessionTick.cs
 echo(SkyIsland\SkyIslandSessionRecall.cs
 echo(SkyIsland\SkyIslandSessionGnatBounty.cs

@@ -89,6 +89,9 @@ def main() -> int:
         "owner.CleanupZombieModeFortificationInteractionStateForRuntimeModule();",
         "InvalidateZombieModeRun();",
         "owner.ClearZombieModeSupportSpawnQueueForRuntimeModule();",
+        # Ownership rescan must precede the destroy-all pass: pickup scans are throttled,
+        # so drops picked up within the last interval are still run-only records.
+        "ReleaseZombieModeOwnedDropCandidates();",
         "RunScopedRegistry.ForEachReverse(",
         "runState.RunOnlyObjects.Clear();",
         "owner.ClearZombieModeEnemyInstanceIdsForRuntimeModule();",
@@ -99,6 +102,23 @@ def main() -> int:
     positions = [position for position in positions if position >= 0]
     if len(positions) != len(cleanup_order) or positions != sorted(positions):
         return fail("ZombieModeRunOnlyCleanupGuard: RuntimeModule cleanup order or RunId invalidation point changed")
+
+    if "if (destroyGameObjects)" not in cleanup_method[:cleanup_method.find("ReleaseZombieModeOwnedDropCandidates();")]:
+        return fail("ZombieModeRunOnlyCleanupGuard: ownership rescan must run on the destroy-all cleanup path")
+    drops_text = Path("ZombieMode/ZombieModeDropsAndPerformance.cs").read_text(encoding="utf-8")
+    release_start = drops_text.find("internal void ReleaseZombieModeOwnedDropCandidates()")
+    # read_text 走通用换行，CRLF 已折成 \n；方法体以 8 空格缩进的闭括号收尾。
+    release_end = drops_text.find("\n        }\n", release_start) if release_start >= 0 else -1
+    release_body = drops_text[release_start:release_end] if release_start >= 0 and release_end > 0 else ""
+    for snippet in [
+        "ownedItem.InInventory != null || ownedItem.PluggedIntoSlot != null",
+        "RemoveZombieModeRunOnlyObjectRecord(candidate.GameObject);",
+        "runState.EntityDropCleanupCandidates.RemoveAt(i);",
+    ]:
+        if snippet not in release_body:
+            return fail("ZombieModeRunOnlyCleanupGuard: ownership rescan missing snippet -> " + snippet)
+    if "Destroy(" in release_body:
+        return fail("ZombieModeRunOnlyCleanupGuard: ownership rescan must only release records, never destroy")
 
     for bridge in [
         "SettleZombieModeFailureInsuranceShell(runId);",

@@ -99,6 +99,16 @@ namespace UnityEngine
     public static class Time { public static float unscaledTime; }
 }
 
+namespace ItemStatsSystem
+{
+    // Only the ownership fields read by the extraction rescan are modelled.
+    public sealed class Item : UnityEngine.MonoBehaviour
+    {
+        public object InInventory;
+        public object PluggedIntoSlot;
+    }
+}
+
 namespace UnityEngine.SceneManagement
 {
     public struct Scene { public int buildIndex; }
@@ -163,6 +173,7 @@ namespace BossRush
         public float ActiveSafeZoneRadius, PortableSafeZoneRadius, LastSafeZoneTickTime;
         public UnityEngine.Vector3 ActiveSafeZoneCenter, PortableSafeZoneCenter;
         public readonly List<ZombieModeRunOnlyRecord> RunOnlyObjects = new List<ZombieModeRunOnlyRecord>();
+        public readonly List<ZombieModeDropCandidate> EntityDropCleanupCandidates = new List<ZombieModeDropCandidate>();
     }
     internal sealed partial class ZombieModeRuntimeModule
     {

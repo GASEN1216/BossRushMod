@@ -341,6 +341,11 @@ v1 新字段缺省为未准备结算、无待交付项、缺失估值 0，下一
 - 追加可选 `combatStarted`（2026-09-29，SCHEMA+，不升 `schemaVersion`）：本场进入交战时记 1，新押注清零；
   旧档缺省为 0，旧版本读到会忽略。看台主动退出、放弃赛季、换季对到已开战且无战报的押注按输结清，
   未开战的仍原样退回；技术中止、挂起、崩溃重进仍沿用。标记不动钱、不强制写盘，丢失时回到旧口径退款。
+- 追加可选 `betSide`、`netRunId`、`runNet`、`netMatchMask`（2026-10-01，SCHEMA+，不升 `schemaVersion`）：
+  `betSide` 记群战押哪一队（0 未记录 / 1 蓝 / 2 红，非法值读作 0），沿用押注时恢复方向并收起选边与「换一批」；
+  `netRunId` / `runNet`（long 写成字符串）/ `netMatchMask`（bit = 场次号）在结清时与账本同批按季累计「拿回 − 押金」，
+  名人堂群战「净赚」以它为准，换季从零起算，同一场只计一次。旧档缺省为 0 / 空，旧版本读到会忽略；
+  修复前已结的场次账本里没有累计，名人堂只能用本次会话快照补。
 
 结构守卫 `ModeHCashBetGuard` / `ModeHIsolationGuard`，故障恢复执行回归 `SaveFailureRecovery`。
 

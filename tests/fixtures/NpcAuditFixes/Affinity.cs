@@ -32,7 +32,7 @@ class Program {
   Saves.SavesSystem.Reset(legacy);AffinityManager.Initialize();
   Check(AffinityManager.CheckAndApplyDailyDecay("npc")==0 && AffinityManager.GetPoints("npc")==2300,"legacy missing decay day initializes without retroactive loss");
   Check(AffinityManager.IsMarriedToPlayer("npc"),"legacy spouse survives");
-  AffinityManager.AddPoints("npc",-10);Saves.SavesSystem.Collect();Check(Saves.SavesSystem.Writes==1,"valid snapshot remains writable");
+  AffinityManager.AddPoints("npc",-10);Saves.SavesSystem.Collect();Check(Saves.SavesSystem.Writes==1,"valid snapshot remains writable");Check(Saves.SavesSystem.PhysicalWrites==0,"collect only fills the official cache; the official SaveFile after collection writes the disk");
   Saves.SavesSystem.Reset(null);AffinityManager.Initialize();AffinityManager.SetPoints("new",50);Saves.SavesSystem.Collect();Check(Saves.SavesSystem.Writes==1,"missing key is a fresh writable slot");
   Saves.SavesSystem.Reset("bad");AffinityManager.Initialize();Saves.SavesSystem.Raw=legacy;AffinityManager.Load();Check(AffinityManager.CanWrite && AffinityManager.GetPoints("npc")==2300,"successful reload lifts barrier");
   Console.WriteLine("Affinity "+checks+" PASS");

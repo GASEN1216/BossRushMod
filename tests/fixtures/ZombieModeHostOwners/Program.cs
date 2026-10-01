@@ -71,7 +71,7 @@ internal static class Program
             if (attached)
             {
                 if (!finalized) expected.AddRange(new[] { "rollback:" + (destroy ? "Active" : "Exiting"), "invitation", "cash" });
-                expected.AddRange(new[] { "insurance:23", "attributes", "effects", "fortification", "queue:-23", "record-last", "record-first", "enemy-ids", "rewards", "map-restore" });
+                expected.AddRange(new[] { "insurance:23", "attributes", "effects", "fortification", "queue:-23", "owned-drops", "record-last", "record-first", "enemy-ids", "rewards", "map-restore" });
             }
             expected.Add("clear-runtime");
             Check(Trace.Calls.SequenceEqual(expected), "cleanup order attached=" + attached + " destroy=" + destroy + " finalized=" + finalized + " actual=" + string.Join(",", Trace.Calls));

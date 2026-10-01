@@ -66,27 +66,30 @@ namespace BossRush
             int fluidCount = ItemFactory.GetItemCountInInventory(ColdQuenchFluidConfig.TYPE_ID);
             if (fluidCount <= 0) return;
 
-            // 消耗冷淬液
+            // 先写固定标记、成功后再扣冷淬液；扣不掉就撤回固定。
+            // 旧顺序是先扣后锁：锁定失败（已固定、物品变量不可写等）时冷淬液白白没了。
+            if (!PropertyLockSystem.LockProperty(TargetItem, PropertyKey, PropType))
+            {
+                ModBehaviour.DevLog("[PropertyEntry] 固定属性失败，不扣冷淬液: " + PropertyKey);
+                return;
+            }
             if (!ItemFactory.ConsumeItem(ColdQuenchFluidConfig.TYPE_ID, 1))
             {
-                ModBehaviour.DevLog("[PropertyEntry] 消耗冷淬液失败");
+                PropertyLockSystem.UnlockProperty(TargetItem, PropertyKey, PropType);
+                ModBehaviour.DevLog("[PropertyEntry] 消耗冷淬液失败，已撤回固定: " + PropertyKey);
                 return;
             }
 
-            // 固定属性
-            if (PropertyLockSystem.LockProperty(TargetItem, PropertyKey, PropType))
-            {
-                ModBehaviour.DevLog("[PropertyEntry] 属性已固定: " + PropertyKey);
-                IsLocked = true;
-                CanLock = false;
+            ModBehaviour.DevLog("[PropertyEntry] 属性已固定: " + PropertyKey);
+            IsLocked = true;
+            CanLock = false;
 
-                // 数值变金色 + 金色闪光与 UI/confirm
-                ApplyVisualState();
-                ReforgeUIManager.PlayPropertyLockedFeedback(this);
+            // 数值变金色 + 金色闪光与 UI/confirm
+            ApplyVisualState();
+            ReforgeUIManager.PlayPropertyLockedFeedback(this);
 
-                // 通知UI刷新
-                ReforgeUIManager.NotifyPropertyLocked();
-            }
+            // 通知UI刷新
+            ReforgeUIManager.NotifyPropertyLocked();
         }
 
         public void OnPointerEnter(PointerEventData eventData)

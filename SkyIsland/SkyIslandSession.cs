@@ -96,6 +96,7 @@ namespace BossRush
         private readonly HashSet<string> raidRegions = new HashSet<string>(StringComparer.Ordinal); // 本趟踏足过的区域：巡视委托按本趟计
         // 玩家此刻站着的区域；走在桥上或腾空时保持上一个。null 表示还没踩到任何区域的地面。
         private string standingRegion;
+        private string departureScene; // 官方开始加载的离岛去向（SkyIslandSessionDeparture，CR-2026-09-30-002）
         // FieldStatus 的脏检查输入：这些计数没变就复用上一次拼好的字符串（每 0.5 秒调用一次）。
         private int chipsOpened = int.MinValue, chipsPlaced, chipsActive, chipsProgress, chipsTarget, chipsRounds;
         private bool chipsChinese;
@@ -799,6 +800,7 @@ namespace BossRush
         {
             if (context.sceneName == SkyIslandSceneReferenceBridge.SceneName && !moved) return;
             if (!moved && !entryScene.IsValid()) return;
+            departureScene = context.sceneName;
             returning = true;
             ready = false;
             CancelPendingInitialization();
@@ -820,7 +822,8 @@ namespace BossRush
             // ready 一落 Update 就不再走撤离分支，不主动收起的话官方读条会留在屏幕上自己读到 00:00。
             Safe("extraction_countdown_hide", delegate { if (extractionCountdown != null) extractionCountdown.Hide(); });
             if (worldStory != null) worldStory.Hide();
-            if (story != null) story.Tick(true);
+            // 倒下也和撤离一样，在官方死亡存档之前把这一趟的永久记录放进待写批次，与背包同一次落盘（CR-2026-09-30-003）。
+            if (story != null) { if (moved) story.SettleRaidHeld(true); story.Tick(true); }
         }
         private void DestroyEnemy()
         {
@@ -910,8 +913,8 @@ namespace BossRush
             Safe("ambience", delegate { if (ambience != null) ambience.Dispose(); });
             Safe("story_ui", delegate { if (worldStory != null) worldStory.Dispose(); });
             // 待保存 owner 与 Mod 宿主无关：CloseOrRetain 一律移交给独立持久对象，宿主销毁不再吞掉已接受事实。
-            // 这一趟暂不入档的永久记录先结算：只有岛场景随返航卸载（撤离或倒下，官方已存好背包）才保留，退游戏或会话被销毁一律撤掉。
-            Safe("story_raid_held", delegate { if (story != null) story.SettleRaidHeld(reason == "raid_unloaded"); });
+            // 这一趟暂不入档的永久记录先结算：只有撤离或倒下后岛场景随返航卸载（官方已存好背包）才保留，回主菜单、退游戏或会话被销毁一律撤掉。
+            Safe("story_raid_held", delegate { if (story != null) story.SettleRaidHeld(KeepsRaidHeldRecords(reason)); });
             Safe("story_save", delegate { SkyIslandStorySaveRecovery.CloseOrRetain(story); });
             Safe("enemy", DestroyEnemy);
             Safe("path", delegate { if (probe != null) probe.CancelCurrentPathRequest(); });

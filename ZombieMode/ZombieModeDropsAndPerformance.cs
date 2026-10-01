@@ -629,6 +629,32 @@ namespace BossRush
             CleanupZombieModeExpiredDropCandidates(false);
         }
 
+        /// <summary>
+        /// 局结束整表清理（撤离 / 失败 / 切图 / 宿主销毁）前强制做一次所有权扫描。
+        /// 常规拾取扫描按 DropPickupScanIntervalSeconds 节流：最后一个间隔内刚捡进背包或装备槽的掉落
+        /// 仍挂在 RunOnlyObjects 里，CleanupZombieModeRunOnlyState 的 Destroy 会把它从玩家身上销毁。
+        /// 这里只释放「已被某个容器 / 槽位持有」的候选记录，不销毁任何东西；地上的掉落照旧交给整表清理。
+        /// 只在局结束时跑一次，不进每帧热路径。
+        /// </summary>
+        internal void ReleaseZombieModeOwnedDropCandidates()
+        {
+            for (int i = runState.EntityDropCleanupCandidates.Count - 1; i >= 0; i--)
+            {
+                ZombieModeDropCandidate candidate = runState.EntityDropCleanupCandidates[i];
+                if (candidate == null || candidate.GameObject == null)
+                {
+                    continue;
+                }
+
+                Item ownedItem = candidate.GameObject.GetComponent<Item>();
+                if (ownedItem != null && (ownedItem.InInventory != null || ownedItem.PluggedIntoSlot != null))
+                {
+                    RemoveZombieModeRunOnlyObjectRecord(candidate.GameObject);
+                    runState.EntityDropCleanupCandidates.RemoveAt(i);
+                }
+            }
+        }
+
         internal void CleanupZombieModeExpiredDropCandidates(bool forceWaveCleanup)
         {
             if (runState.EntityDropCleanupCandidates.Count <= 0)

@@ -101,7 +101,9 @@ namespace BossRush
             first.ConfigureBossRushMode(6, false);
             Check(first.BossesPerWave == 6 && configReads == 0, "normal-mode-uses-argument");
             configured = null;
+            first.InfiniteHellWaveCashThisWave = 4321L; // 上一局打到一半留下的本波现金
             first.ConfigureBossRushMode(5, true);
+            Check(first.InfiniteHellWaveCashThisWave == 0L, "infinite-wave-cash-reset");
             Check(first.BossesPerWave == 5 && first.InfiniteHellMode, "infinite-null-config-fallback");
             Check(first.InfiniteHellWaveIndex == 0 && first.InfiniteHellCashPool == 0L && first.InfiniteHellMilestoneRewardTier == 0, "infinite-progress-reset");
             Check(signReads == 1, "infinite-null-sign-single-read");

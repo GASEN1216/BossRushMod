@@ -26,8 +26,13 @@ def main() -> int:
     if 'NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_BeaconNotPreparation"));' in usage:
         return fail("beacon usage still hardcodes NotPreparation for every unavailable state")
 
-    if "L10n.T(inst.GetZombieModeBeaconUnavailableReasonKey())" not in usage:
-        return fail("beacon usage must display the mode-provided unavailable reason")
+    # 2026-10-01: CanBeUsed is polled by vanilla hover / menu / shortcut UI, so it must not
+    # push notifications. The mode-provided reason is shown by TryUseZombieModeBeacon instead.
+    if "NotificationText.Push" in usage:
+        return fail("beacon usage must not push notifications from CanBeUsed (hover spam)")
+
+    if "NotificationText.Push(L10n.T(GetZombieModeBeaconUnavailableReasonKey()));" not in extraction:
+        return fail("beacon use path must display the mode-provided unavailable reason")
 
     print("ZombieModeBeaconUnavailableReasonGuard: PASS")
     return 0

@@ -80,6 +80,7 @@ namespace BossRush
         internal void RefundZombieModeCashIfNeeded() { Trace.Add("cash"); }
         private void SettleZombieModeFailureInsuranceShell(int runId) { Trace.Add("insurance:" + runId); }
         private void RemoveZombieModeAttributeModifiers() { Trace.Add("attributes"); }
+        private void ReleaseZombieModeOwnedDropCandidates() { Trace.Add("owned-drops"); }
         private void RemoveZombieModeOptionRuntimeEffects() { Trace.Add("effects"); }
         private void ClearZombieModeRewardShell() { Trace.Add("rewards"); }
         private void RestoreZombieModeMapIsolationShell() { Trace.Add("map-restore"); }

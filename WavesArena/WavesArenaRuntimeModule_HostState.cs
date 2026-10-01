@@ -53,6 +53,8 @@ namespace BossRush
                 InfiniteHellWaveIndex = 0;
                 InfiniteHellCashPool = 0L;
                 InfiniteHellMilestoneRewardTier = 0;
+                // 上一局打到一半死亡 / 撤离时这一波已累计的现金也要清零，否则会混进新一局第一波掉出来（同 ModeD 复位）
+                InfiniteHellWaveCashThisWave = 0L;
 
                 try
                 {

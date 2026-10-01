@@ -34,13 +34,17 @@ def main():
     runtime = read("ZombieMode/ZombieModeRuntimeModule.cs")
     spatial = read("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
     extraction = read("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
-    source = "using System; using System.Collections.Generic; using UnityEngine; using UnityEngine.SceneManagement;\nnamespace BossRush {\n"
+    drops = read("ZombieMode/ZombieModeDropsAndPerformance.cs")
+    source = "using System; using System.Collections.Generic; using ItemStatsSystem; using UnityEngine; using UnityEngine.SceneManagement;\nnamespace BossRush {\n"
     for name in ("ZombieModeLifecyclePhase", "ZombieModeCombatPhase", "ZombieModeRunOnlyObjectKind", "ZombieModeBossKind"):
         source += member(models, "public enum " + name) + "\n"
     source += member(models, "public sealed class ZombieModeRunOnlyRecord") + "\n"
+    source += member(models, "public sealed class ZombieModeDropCandidate") + "\n"
     source += "internal sealed partial class ZombieModeRuntimeModule {\n"
-    for signature in ("internal bool IsZombieModeRunValid(", "internal void RegisterZombieModeRunOnlyObject(", "internal void PruneZombieModeRunOnlyEnemyRecords("):
+    for signature in ("internal bool IsZombieModeRunValid(", "internal void RegisterZombieModeRunOnlyObject(", "internal void PruneZombieModeRunOnlyEnemyRecords(",
+                      "internal void RemoveZombieModeRunOnlyObjectRecord("):
         source += member(runtime, signature) + "\n"
+    source += member(drops, "internal void ReleaseZombieModeOwnedDropCandidates()") + "\n"
     source += member(extraction, "internal bool AnyZombieModeSafeZoneActive") + "\n"
     for field in ("private readonly HashSet<int> zombieModeEnemyInstanceIds", "private readonly Dictionary<int, ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkersByInstanceId", "private readonly List<ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkerScratch"):
         start = spatial.index(field)

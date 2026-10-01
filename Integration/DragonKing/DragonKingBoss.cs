@@ -337,6 +337,33 @@ namespace BossRush
                     character.Health.showHealthBar = true;
                 }
                 
+                // 敌对性安全网（根 AGENTS §4.5，形态照 PhantomWitchBoss）：基础预设的 team 若被官方
+                // 改成中立，Team.IsEnemy(player, team)==false 会让玩家打不掉龙王、波次卡死。
+                // 豁免：遗种巢随从（玩家方，防御性不变式）；Mode E/F 有独立阵营体系，
+                // 由 OnModeEEnemySpawned / Mode F 补位回调在生成后自行 SetTeam，这里不抢先改。
+                // 放在激活之前：激活后 AI 立即按当前 team 选目标。
+                try
+                {
+                    if (PetNestCompanionAgent.IsCompanionCharacter(character))
+                    {
+                        DevLog("[DragonKing] 敌对性安全网豁免遗种巢随从");
+                    }
+                    else if (owner != null && (owner.IsModeEActive || owner.IsModeFActive))
+                    {
+                        DevLog("[DragonKing] Mode E/F 阵营由模式生成回调设置，跳过敌对性安全网");
+                    }
+                    else if (!Team.IsEnemy(Teams.player, character.Team))
+                    {
+                        DevLog("[DragonKing] 检测到非敌对 Boss (team=" + character.Team
+                            + ")，强制设为 Teams.wolf");
+                        character.SetTeam(Teams.wolf);
+                    }
+                }
+                catch (Exception teamEx)
+                {
+                    DevLog("[DragonKing] [WARNING] 强制 Boss 阵营失败: " + teamEx.Message);
+                }
+
                 // 设置Boss属性
                 SetupDragonKingAttributes(character);
                 

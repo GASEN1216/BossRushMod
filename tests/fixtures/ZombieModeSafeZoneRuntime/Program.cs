@@ -168,13 +168,45 @@ internal static class Program
         Assert(ItemAgent_Gun.SubscriberCount == 0, "All run cleanup paths must unsubscribe");
     }
 
+    private static void TestExtractionKeepsJustPickedUpDrops()
+    {
+        var state = State(7);
+        var module = new ZombieModeRuntimeModule(state);
+        var picked = new GameObject("picked-drop");
+        var pickedItem = picked.AddComponent<ItemStatsSystem.Item>();
+        var equipped = new GameObject("equipped-drop");
+        equipped.AddComponent<ItemStatsSystem.Item>();
+        var ground = new GameObject("ground-drop");
+        ground.AddComponent<ItemStatsSystem.Item>();
+        var lootbox = new GameObject("boss-lootbox");
+        foreach (var drop in new[] { picked, equipped, ground, lootbox })
+        {
+            state.EntityDropCleanupCandidates.Add(new ZombieModeDropCandidate { GameObject = drop });
+            module.RegisterZombieModeRunOnlyObject(state.RunId, ZombieModeRunOnlyObjectKind.Unknown, drop, drop, null);
+        }
+        // Picked up / equipped after the last throttled pickup scan: still registered as run-only drops.
+        pickedItem.InInventory = new object();
+        equipped.GetComponent<ItemStatsSystem.Item>().PluggedIntoSlot = new object();
+
+        module.ReleaseZombieModeOwnedDropCandidates();
+        Assert(state.EntityDropCleanupCandidates.Count == 2 && state.RunOnlyObjects.Count == 2,
+            "Rescan must release exactly the owned drops");
+
+        // Same destroy-all pass as CleanupZombieModeRunOnlyState(reason, true).
+        for (int i = state.RunOnlyObjects.Count; i-- > 0;) state.RunOnlyObjects[i].Cleanup(true);
+        state.RunOnlyObjects.Clear();
+        Assert(picked != null && equipped != null, "Extraction cleanup must not destroy items already in the player's inventory or slots");
+        Assert(ground == null && lootbox == null, "Unowned drops on the ground must still be destroyed");
+    }
+
     public static int Main()
     {
         TestBoundaryAndThreatRestoration();
         TestRemovalOrderAndRunIsolation();
         TestSpatialQueriesAndAiCache();
         TestEventOwnership();
-        Console.WriteLine("ZombieModeSafeZoneRuntime PASS: boundaries, threat, removal order, ownership, queries, cache, subscriptions");
+        TestExtractionKeepsJustPickedUpDrops();
+        Console.WriteLine("ZombieModeSafeZoneRuntime PASS: boundaries, threat, removal order, ownership, queries, cache, subscriptions, extraction drop ownership");
         return 0;
     }
 }

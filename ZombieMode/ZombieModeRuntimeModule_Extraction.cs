@@ -53,6 +53,13 @@ namespace BossRush
 
         internal string GetZombieModePortableSafeZoneUnavailableReasonKey()
         {
+            // 「不在丧尸模式」原先由 PortableSafeZoneDeviceUsage.CanBeUsed 自己弹；判断函数不再弹窗后归口到这里，
+            // 与 GetZombieModeBeaconUnavailableReasonKey 同口径。
+            if (!IsZombieModeActive)
+            {
+                return "BossRush_ZombieMode_Notify_PortableSafeZoneNotZombieMode";
+            }
+
             return "BossRush_ZombieMode_Notify_PortableSafeZoneUnavailable";
         }
 

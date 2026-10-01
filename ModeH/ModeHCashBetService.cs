@@ -70,6 +70,19 @@ namespace BossRush
         public int combatStarted;
         /// <summary>收走押品后累计的缺失估值；与实物快照一起保存，最终结算只扣一次。</summary>
         public long missingValue;
+        /// <summary>
+        /// 群战押的哪一队（BetSide*）：0 未记录（单挑或旧档）/ 1 蓝队 / 2 红队。中断后重打沿用这一笔时按它恢复押注方向，
+        /// 不能让玩家换边按旧赔率结算。v3 内的可选字段，旧档缺省为 0。
+        /// </summary>
+        public int betSide;
+        /// <summary>
+        /// 名人堂「净赚」的按季累计（2026-10-01 修复：原先只数这一趟会话里记下的押注，分几次打完的赛季会少算）。
+        /// netRunId = 累计属于哪一季，runNet = 该季已结押注的「拿回 − 押金」合计，netMatchMask = 已计入的场次位图（bit = 场次号）。
+        /// 只在结清（TrySettle）时与账本同批更新；v3 内的可选字段，旧档缺省为空 / 0。
+        /// </summary>
+        public string netRunId = string.Empty;
+        public long runNet;
+        public int netMatchMask;
         /// <summary>按赔率档（下标 = 赔率 1–5）的押注次数与胜场，用来校准赔付。</summary>
         public long[] tierBets = new long[ModeHConfig.MaxOdds + 1];
         public long[] tierWins = new long[ModeHConfig.MaxOdds + 1];
@@ -190,6 +203,9 @@ namespace BossRush
         internal const int StatusRefunded = 3;
         internal const int KindCash = 0;
         internal const int KindItems = 1;
+        internal const int BetSideNone = 0;
+        internal const int BetSideBlue = 1;
+        internal const int BetSideRed = 2;
 
         private static CashBetJournal _journal;
 
@@ -248,6 +264,12 @@ namespace BossRush
             }
         }
 
+        /// <summary>押注方向只认 BetSide* 三个值；读到别的（坏档、未来版本）按未记录处理。</summary>
+        internal static int NormalizeBetSide(int side)
+        {
+            return side == BetSideBlue || side == BetSideRed ? side : BetSideNone;
+        }
+
         /// <summary>这一季这一场已经押上、还没结清的那一笔（中断后重打时沿用）；没有时为 null。</summary>
         internal static ModeHCashBetRecord ReservedFor(string runId, int matchIndex)
         {
@@ -259,7 +281,7 @@ namespace BossRush
 
         /// <summary>锁盘时保存押品凭据与主角物品快照，不扣钱或搬动物品。</summary>
         internal static bool TryReserveItems(string runId, int matchIndex, int odds, long value,
-            List<ModeHItemBetEntry> entries, out string failureReasonId)
+            List<ModeHItemBetEntry> entries, out string failureReasonId, int betSide = BetSideNone)
         {
             failureReasonId = null;
             if (value < 0 || entries == null || entries.Count == 0)
@@ -269,7 +291,7 @@ namespace BossRush
             }
             try
             {
-                return EnsureJournal().TryReserveItems(runId, matchIndex, odds, value, ModeHItemBetEntry.Encode(entries), out failureReasonId);
+                return EnsureJournal().TryReserveItems(runId, matchIndex, odds, value, ModeHItemBetEntry.Encode(entries), out failureReasonId, betSide);
             }
             catch (Exception e)
             {
@@ -281,13 +303,14 @@ namespace BossRush
         /// <summary>
         /// 锁盘后扣押金。钱不够、钱包不在、上一笔还没结清时不押（返回 false 并给出原因），比赛照打。
         /// </summary>
-        internal static bool TryReserve(string runId, int matchIndex, int odds, long amount, out string failureReasonId)
+        internal static bool TryReserve(string runId, int matchIndex, int odds, long amount, out string failureReasonId,
+            int betSide = BetSideNone)
         {
             failureReasonId = null;
             if (amount <= 0) return true;
             try
             {
-                return EnsureJournal().TryReserve(runId, matchIndex, odds, amount, out failureReasonId);
+                return EnsureJournal().TryReserve(runId, matchIndex, odds, amount, out failureReasonId, betSide);
             }
             catch (Exception e)
             {
@@ -410,7 +433,8 @@ namespace BossRush
                 get { return _store.Current.Clone(); }
             }
 
-            internal bool TryReserve(string runId, int matchIndex, int odds, long amount, out string failureReasonId)
+            internal bool TryReserve(string runId, int matchIndex, int odds, long amount, out string failureReasonId,
+                int betSide = BetSideNone)
             {
                 failureReasonId = null;
                 if (!CanMoveMoney(out failureReasonId)) return false;
@@ -430,6 +454,7 @@ namespace BossRush
                 candidate.matchIndex = matchIndex;
                 candidate.amount = amount;
                 candidate.odds = odds;
+                candidate.betSide = NormalizeBetSide(betSide);
                 candidate.status = StatusReserved;
                 candidate.payout = 0;
                 candidate.kind = KindCash;
@@ -445,7 +470,8 @@ namespace BossRush
                 return Commit(previous, candidate, -amount, out failureReasonId);
             }
 
-            internal bool TryReserveItems(string runId, int matchIndex, int odds, long value, string items, out string failureReasonId)
+            internal bool TryReserveItems(string runId, int matchIndex, int odds, long value, string items, out string failureReasonId,
+                int betSide = BetSideNone)
             {
                 failureReasonId = null;
                 if (!CanMoveMoney(out failureReasonId)) return false;
@@ -465,6 +491,7 @@ namespace BossRush
                 candidate.matchIndex = matchIndex;
                 candidate.amount = value;
                 candidate.odds = odds;
+                candidate.betSide = NormalizeBetSide(betSide);
                 candidate.status = StatusReserved;
                 candidate.payout = 0;
                 candidate.kind = KindItems;
@@ -593,12 +620,29 @@ namespace BossRush
                 candidate.prizeCash = won && previous.kind == KindItems ? delta : 0L;
                 candidate.tierBets[tier]++;
                 if (won) candidate.tierWins[tier]++;
+                AccumulateRunNet(candidate, previous, gross);
                 if (!Commit(previous, candidate, delta, out reason)) return false;
                 payout = gross;
                 ModBehaviour.DevLog("[ModeH] 押钱结算: " + (previous.kind == KindItems ? "押物品 估值 " : "押 ") + previous.amount
                     + " x" + tier + (won ? " 赢 拿回 " + gross : " 输" + (charged > 0 ? " 扣 " + charged : ""))
                     + " | 本档 " + candidate.tierWins[tier] + "/" + candidate.tierBets[tier]);
                 return true;
+            }
+
+            /// <summary>名人堂「净赚」按季累计：换季从零起算，同一季同一场只计一次（与结清同批写进账本）。</summary>
+            private static void AccumulateRunNet(ModeHCashBetRecord candidate, ModeHCashBetRecord previous, long gross)
+            {
+                string runId = previous.runId ?? string.Empty;
+                if (!string.Equals(candidate.netRunId, runId, StringComparison.Ordinal))
+                {
+                    candidate.netRunId = runId;
+                    candidate.runNet = 0L;
+                    candidate.netMatchMask = 0;
+                }
+                int bit = previous.matchIndex > 0 && previous.matchIndex < 31 ? 1 << previous.matchIndex : 0;
+                if (bit == 0 || (candidate.netMatchMask & bit) != 0) return;
+                candidate.runNet += gross - previous.amount;
+                candidate.netMatchMask |= bit;
             }
 
             internal bool TryMarkCombatStarted(string runId, int matchIndex)
@@ -778,6 +822,11 @@ namespace BossRush
                 if (TryGetLong(root, "missingValue", out big)) record.missingValue = big;
                 if (root.TryGetInt("itemSettlement", out value)) record.itemSettlement = value;
                 if (root.TryGetInt("combatStarted", out value)) record.combatStarted = value != 0 ? 1 : 0;
+                if (root.TryGetInt("betSide", out value)) record.betSide = NormalizeBetSide(value);
+                string netRunId;
+                if (root.TryGetString("netRunId", out netRunId)) record.netRunId = netRunId ?? string.Empty;
+                if (TryGetLong(root, "runNet", out big)) record.runNet = big;
+                if (root.TryGetInt("netMatchMask", out value)) record.netMatchMask = value;
                 string pending;
                 if (root.TryGetString("pendingItems", out pending)) record.pendingItems = pending ?? string.Empty;
                 string prizes;
@@ -839,6 +888,12 @@ namespace BossRush
                 SimpleJsonHelper.EscapeString(sb, record.prizeItems ?? string.Empty);
                 sb.Append("\",\"itemSettlement\":").Append(record.itemSettlement.ToString(CultureInfo.InvariantCulture));
                 sb.Append(",\"combatStarted\":").Append(record.combatStarted.ToString(CultureInfo.InvariantCulture));
+                sb.Append(",\"betSide\":").Append(record.betSide.ToString(CultureInfo.InvariantCulture));
+                sb.Append(",\"netMatchMask\":").Append(record.netMatchMask.ToString(CultureInfo.InvariantCulture));
+                sb.Append(",\"runNet\":\"").Append(record.runNet.ToString(CultureInfo.InvariantCulture));
+                sb.Append("\",\"netRunId\":\"");
+                SimpleJsonHelper.EscapeString(sb, record.netRunId ?? string.Empty);
+                sb.Append("\"");
                 sb.Append(",\"missingValue\":\"").Append(record.missingValue.ToString(CultureInfo.InvariantCulture));
                 sb.Append("\",\"pendingItems\":\"");
                 SimpleJsonHelper.EscapeString(sb, record.pendingItems ?? string.Empty);

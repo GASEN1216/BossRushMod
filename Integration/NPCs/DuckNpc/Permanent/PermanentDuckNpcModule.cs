@@ -358,14 +358,12 @@ namespace BossRush
                 ModBehaviour.DevLog(LogPrefix + " [WARNING] 注册名字标签失败 " + blueprint.id + ": " + e.Message);
             }
 
-            if (!blueprint.canWander)
-            {
-                return;
-            }
-
+            // 永久 NPC 都能结婚，婚后开跟随要靠 DuckNpcMovement 走路，所以一律挂上（CR-2026-09-30-004：
+            // 折翎、无声钟守按人设 canWander=false，以前不挂，婚后开跟随原地不动）。按人设站定的只是平时不溜达。
             try
             {
                 DuckNpcMovement movement = npc.gameObject.AddComponent<DuckNpcMovement>();
+                movement.StayHomeUnlessFollowing = !blueprint.canWander;
                 // Bind 失败（场景无 A* 图等）时组件自我禁用，NPC 退回站桩，不是致命错误。
                 movement.Bind(npc, home, blueprint.wanderRadius);
             }
