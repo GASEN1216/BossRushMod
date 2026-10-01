@@ -2,21 +2,21 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
-## 2026-09-30 天空岛整体生产审查（Open，L1/L2）
+## 2026-09-30 天空岛整体生产审查（2026-10-01 全部 Fixed，L2；实机待验）
 
 当前候选未达到整体生产标准；确认 3 项 P1、8 项 P2，完整触发、源码证据、隔离反例、各方面判断和 PROD-SKY-01～09 实机清单见 [整体生产审查](docs/reports/sky-island/2026-09-30-天空岛整体生产标准审查.md)。没有修改生产代码、启动游戏或访问玩家存档，不沿用旧版本实机绿项。
 
 - CR-2026-09-30-002（P1 / Fixed 2026-10-01 / L2）：返回主菜单被按成功返航结算。修：`SkyIslandSessionDeparture.KeepsRaidHeldRecords` 只认撤离与倒下、去向是主菜单不留；`ReleaseReviewNpcAndDepartureGuard`。
-- CR-2026-09-30-003（P1 / Fixed 2026-10-01 / L2）：死亡保存和永久记录结算之间存在丢失窗口。修：`OnPlayerDied` 与撤离同口径先 `SettleRaidHeld(true)` 再 `Tick(true)`，随官方死亡存档同批落盘。
+- CR-2026-09-30-003（P1 / Fixed 2026-10-01 / L2）：死亡保存和永久记录结算之间存在丢失窗口。修：`OnPlayerDied` 与撤离同口径 `SettleRaidHeld(true)` 再 `Tick(true)`；官方死亡处理先存档，这里紧接着立即写盘，不再等岛场景卸载。
 - CR-2026-09-30-004（P1 / Fixed 2026-10-01 / L2）：折翎和无声钟守的配偶跟随缺少移动组件。修：永久 NPC 一律挂 `DuckNpcMovement`，`StayHomeUnlessFollowing` 让按人设站定的平时不溜达、婚后跟随照走。
-- CR-2026-09-30-005（P2 / Open / L1）：撤离提前剧情保存缺少同批角色资产快照。
-- CR-2026-09-30-006（P2 / Open / L1）：六位居民婚后恢复跳过每日好感衰减。
-- CR-2026-09-30-007（P2 / Open / L1）：官方加载异常后的全局忙标志阻断返航恢复。
-- CR-2026-09-30-008（P2 / Open / L1/L2）：帧时间采样漏掉跨越窗口终点的长帧。
-- CR-2026-09-30-009（P2 / Open / L1）：已经显示的机制警示在隐藏 HUD 后恢复为过期提示。
-- CR-2026-09-30-010（P2 / Open / L1/L2）：自动验收总状态没有纳入主套件和岛内套件红项。
-- CR-2026-09-30-011（P2 / Open / L2）：规范 Shader 检查命令使用失效的游戏路径。
-- CR-2026-09-30-012（P2 / Open / L1）：发声体先销毁时氛围循环音失去停止入口，尚未证明实际声音残留。
+- CR-2026-09-30-005（P2 / Fixed 2026-10-01 / L1→L2）：撤离提前剧情保存缺少同批角色资产快照。修：`SkyIslandStoryService` 在 `SettleRaidHeld(true)` 后记下出击角色，`CollectSnapshot` 写剧情前照官方 `SaveMainCharacter` 同批存背包与血量。
+- CR-2026-09-30-006（P2 / Fixed 2026-10-01 / L1→L2）：六位居民婚后恢复跳过每日好感衰减。修：`PermanentDuckNpcModule.ForceSpawnAtAsync` 复核后补 `ApplyDailyDecayOnSpawn`（口径同护士 / 哥布林）。
+- CR-2026-09-30-007（P2 / Fixed 2026-10-01 / L1→L2）：官方加载异常后的全局忙标志阻断返航恢复。修：`SkyIslandRaidLease.ReleaseStuckOfficialLoadingFlag`（只在租约自己那次加载抛异常后反射放下 `IsSceneLoading`，已登记 contracts §7）。
+- CR-2026-09-30-008（P2 / Fixed 2026-10-01 / L1/L2→L2）：帧时间采样漏掉跨越窗口终点的长帧。修：`SamplePerformanceWindow` 改为先 yield 再取样再判到点，跨终点长帧计入。
+- CR-2026-09-30-009（P2 / Fixed 2026-10-01 / L1→L2）：已经显示的机制警示在隐藏 HUD 后恢复为过期提示。修：`SkyIslandCaptionQueue.ShowingWarningExpired` + HUD 开播记入队时刻，过期即收。
+- CR-2026-09-30-010（P2 / Fixed 2026-10-01 / L1/L2→L2）：自动验收总状态没有纳入主套件和岛内套件红项。修：`RunStatus` 并入套件 FAIL。
+- CR-2026-09-30-011（P2 / Fixed 2026-10-01 / L2→L2）：规范 Shader 检查命令使用失效的游戏路径。修：`verify_sky_island_bundle_shaders.py` 先认 GAME_PATH、再按编译脚本候选表探测，找不到判 FAIL。
+- CR-2026-09-30-012（P2 / Fixed 2026-10-01 / L1→L2）：发声体先销毁时氛围循环音失去停止入口，尚未证明实际声音残留。修：`SkyIslandAmbience` 记住 AudioObject 引用停音，发声体销毁时每帧补停（实际残留仍需实机听）。
 
 2026-09-30 天空岛模型碰撞修复（COMPAT / SCHEMA+ / L1+L2）：建筑占位被误裁成实体地面洞、硬物缺碰撞与名义包围盒误挡、救援以标记高度代替命中地面均已修复，验证和 COLL-01～06 清单见 [交付报告](docs/reports/sky-island/2026-09-30-天空岛模型碰撞修复与交付.md)。复审 CR-2026-09-30-001（P2 / OPERATIONAL）：导航指纹未包含桥梁硬面，也不检测新增硬物；Fixed：生产 apply_navigation 重新枚举当前硬物集合，指纹包含桥梁；11 项执行反例、两个恢复旧逻辑的内存变异和真实 Blender 来源校验通过。切片输入与导航几何未改，完整来源绑定后 raid 包再次 PhysX PASS。
 

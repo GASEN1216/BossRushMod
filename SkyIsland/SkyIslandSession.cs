@@ -822,7 +822,8 @@ namespace BossRush
             // ready 一落 Update 就不再走撤离分支，不主动收起的话官方读条会留在屏幕上自己读到 00:00。
             Safe("extraction_countdown_hide", delegate { if (extractionCountdown != null) extractionCountdown.Hide(); });
             if (worldStory != null) worldStory.Hide();
-            // 倒下也和撤离一样，在官方死亡存档之前把这一趟的永久记录放进待写批次，与背包同一次落盘（CR-2026-09-30-003）。
+            // 倒下也和撤离一样结算这一趟的永久记录（CR-2026-09-30-003）：官方死亡处理（丢物、存角色、写盘）先跑完，
+            // 这里紧接着放进待写批次并立即写盘，不再等岛场景卸载，强退窗口缩到同一帧。
             if (story != null) { if (moved) story.SettleRaidHeld(true); story.Tick(true); }
         }
         private void DestroyEnemy()

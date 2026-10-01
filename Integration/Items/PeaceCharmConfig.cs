@@ -44,8 +44,8 @@ namespace BossRush
                 item.MaxStackCount = 1;
                 item.StackCount = 1;
                 item.name = DISPLAY_NAME_EN;
-                SetHiddenMember(item, "description", GetDescription());
-                SetHiddenMember(item, "DescriptionRaw", GetDescription());
+                ModeFItemConfigHelper.SetHiddenMember(item, "description", GetDescription());
+                ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", GetDescription());
                 EquipmentHelper.AddTagToItem(item, "Special");
 
                 ModBehaviour.DevLog("[PeaceCharmConfig] Item configured: TypeID=" + TYPE_ID);
@@ -60,23 +60,6 @@ namespace BossRush
         {
             ItemFactory.RegisterConfigurator(TYPE_ID, ConfigureItem);
             ModBehaviour.DevLog("[PeaceCharmConfig] Registered item configurator");
-        }
-
-        private static void SetHiddenMember(object target, string memberName, object value)
-        {
-            const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-            PropertyInfo property = target.GetType().GetProperty(memberName, flags);
-            if (property != null && property.SetMethod != null)
-            {
-                property.SetValue(target, value);
-                return;
-            }
-
-            FieldInfo field = target.GetType().GetField(memberName, flags);
-            if (field != null)
-            {
-                field.SetValue(target, value);
-            }
         }
     }
 }

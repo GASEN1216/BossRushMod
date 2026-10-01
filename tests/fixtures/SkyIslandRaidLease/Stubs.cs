@@ -171,8 +171,10 @@ public class SceneLoader
         Duckov.Scenes.MultiSceneLocation location=default(Duckov.Scenes.MultiSceneLocation),
         bool saveToFile=true, bool hideTips=false)
     {Returns++;LastEvacuated=notifyEvacuation;LastCurtain=overrideCurtainScene;IsSceneLoading=true;Pending=new TaskCompletionSource<bool>();return Pending.Task;}
+    // 与官方同形（`<LoadScene>d__45.MoveNext` 的 catch 只 SetException）：失败时 IsSceneLoading 不复位，只有成功卸完旧场景才放下。
+    // 旧替身失败也置假，掩盖了「官方加载异常后全局忙标志卡住、返航永远等」（CR-2026-09-30-007）。
     internal static void Finish(bool failed=false)
-    {var pending=Pending;Pending=null;IsSceneLoading=false;if(failed)pending.SetException(new Exception("official load failed"));else pending.SetResult(true);}
+    {var pending=Pending;Pending=null;if(!failed)IsSceneLoading=false;if(failed)pending.SetException(new Exception("official load failed"));else pending.SetResult(true);}
 }
 namespace BossRush
 {

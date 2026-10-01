@@ -363,8 +363,19 @@ namespace BossRush
                 modeEHealthBarAppliedVersionByBarId.Remove(barId);
             }
 
+            // 玩家血条：原版 LateUpdate 每帧改它，补丁每帧都要来；但拼出来的串只取决于玩家名（GetModeEPlayerName 自带节流缓存）、
+            // 玩家阵营与语言（语言变化走上面的版本号）。以前这里无条件重拼「名字 + 阵营后缀」，每帧两次字符串分配（发布前审查 P3）；
+            // 现在输入没变就沿用缓存串，写回 nameText 仍按 Ordinal 比较、只在不同时赋值，显示结果不变。
+            bool playerInputsChanged = false;
+            if (forceShowName)
+            {
+                playerInputsChanged =
+                    !string.Equals(modeEPlayerBarBuiltName, GetModeEPlayerName(), StringComparison.Ordinal) ||
+                    modeEPlayerBarBuiltFaction != ModeEPlayerFaction;
+            }
+
             bool needsRebuild =
-                forceShowName ||
+                playerInputsChanged ||
                 targetChanged ||
                 !modeEHealthBarDesiredTextByBarId.TryGetValue(barId, out desiredText) ||
                 string.IsNullOrEmpty(desiredText) ||
@@ -383,6 +394,11 @@ namespace BossRush
                 modeEHealthBarDesiredTextByBarId[barId] = desiredText;
                 modeEHealthBarAppliedVersionByBarId[barId] = modeEHealthBarNameVersion;
                 modeEHealthBarTargetIdsByBarId[barId] = targetId;
+                if (forceShowName)
+                {
+                    modeEPlayerBarBuiltName = GetModeEPlayerName();
+                    modeEPlayerBarBuiltFaction = ModeEPlayerFaction;
+                }
             }
 
             if (forceShowName && !nameText.gameObject.activeSelf)

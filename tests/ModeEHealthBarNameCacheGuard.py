@@ -1,10 +1,17 @@
 """
 Guard: Mode E healthbar name override must cache desired text per healthbar
 target instead of rebuilding suffix strings every throttled LateUpdate pass.
+
+玩家血条（forceShowName）每帧都会进补丁（原版 LateUpdate 每帧改它）：只有玩家名或玩家阵营变了才重拼
+「名字 + 阵营后缀」，不允许 needsRebuild 里再出现无条件的 forceShowName（2026-10-01 发布前审查 P3）。
 """
 
 from pathlib import Path
+import re
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from cs_source_util import clean_source
 
 
 SOURCES = [
@@ -90,6 +97,28 @@ def main() -> int:
 
     if "StripModeEFactionSuffix(" in apply_body:
         return fail("ModeEHealthBarNameCacheGuard: ApplyModeEHealthBarNameOverride still strips suffixes directly")
+
+    # 玩家血条：按输入变化重拼，不再每帧无条件重拼（剥注释、规范空白后按完整语句匹配）
+    clean_apply = " ".join(clean_source(apply_body).split())
+    rebuild = re.search(r"bool needsRebuild =([^;]*);", clean_apply)
+    if rebuild is None:
+        return fail("ModeEHealthBarNameCacheGuard: ApplyModeEHealthBarNameOverride lacks needsRebuild expression")
+    terms = [term.strip() for term in rebuild.group(1).split("||")]
+    if "forceShowName" in terms:
+        return fail("ModeEHealthBarNameCacheGuard: player bar still rebuilds name string every frame (bare forceShowName in needsRebuild)")
+    if "playerInputsChanged" not in terms:
+        return fail("ModeEHealthBarNameCacheGuard: needsRebuild lacks playerInputsChanged term")
+    for required in (
+        "playerInputsChanged = !string.Equals(modeEPlayerBarBuiltName, GetModeEPlayerName(), StringComparison.Ordinal) || modeEPlayerBarBuiltFaction != ModeEPlayerFaction;",
+        "if (forceShowName) { modeEPlayerBarBuiltName = GetModeEPlayerName(); modeEPlayerBarBuiltFaction = ModeEPlayerFaction; }",
+    ):
+        if required not in clean_apply:
+            return fail(f"ModeEHealthBarNameCacheGuard: ApplyModeEHealthBarNameOverride lacks player-bar input cache -> {required}")
+
+    clean_reset = " ".join(clean_source(reset_body).split())
+    for required in ("modeEPlayerBarBuiltName = null;", "modeEPlayerBarBuiltFaction = null;"):
+        if required not in clean_reset:
+            return fail(f"ModeEHealthBarNameCacheGuard: ResetModeEUiCaches lacks -> {required}")
 
     print("ModeEHealthBarNameCacheGuard: PASS")
     return 0

@@ -162,12 +162,17 @@ def check(sources):
         errors.append("SamplePerformance 必须转发到共享性能采样窗口")
     sample_body = body_of(clean_source(sources[SAMPLING]), "private IEnumerator SamplePerformanceWindow(string caseId, float seconds, bool baseline)") or ""
     sample = squash(sample_body)
+    # CR-2026-09-30-008：先 yield 一帧、再取 unscaledDeltaTime、最后才判窗口到点——跨过终点的那一帧长帧要收进本窗口。
     order = [sample.find(squash(t)) for t in ("BeginSkyIslandFrameProfile();",
-                                              "while (Time.realtimeSinceStartupAsDouble - started < seconds && !ShouldAbort()",
+                                              "while (!ShouldAbort() && SceneManager.GetActiveScene().handle == sceneHandle)",
+                                              "yield return null;",
+                                              "float ms = Time.unscaledDeltaTime * 1000f;",
+                                              "if (Time.realtimeSinceStartupAsDouble - started >= seconds) break;",
                                               "string profileReason = AppendSkyIslandFrameProfile(ref metrics, profileStarted);",
                                               "if (complete && profileReason == null && (baseline || p95 <= Mathf.Max(50f, _baselineP95Ms * 1.75f)))")]
     if min(order) < 0 or order != sorted(order):
-        errors.append("SamplePerformance 必须在采样循环之前开窗、之后关窗，分项计时不合格时不记 PASS")
+        errors.append("SamplePerformance 必须在采样循环之前开窗、之后关窗，分项计时不合格时不记 PASS；"
+                      "循环里先等帧、再取样、最后判到点（跨过窗口终点的长帧要收进本窗口）")
     runtime = clean_source(sources[RUNTIME])
     # 岛内模式门写在 SkyIsland partial 里（宿主 partial 有行数预算，只留两行调用）：主套件若也开了录制，没人打标记，PERF 用例会记成 profile_no_frames。
     begin = squash(body_of(runtime, "private void BeginSkyIslandFrameProfile()") or "").strip()

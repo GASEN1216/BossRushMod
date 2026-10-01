@@ -58,6 +58,11 @@ def validate(bridge, module, cleanup, events, host_bridge, runtime):
     post_await = force[force.index("await DuckNpcSpawner.SpawnAsync"):force.index("PermanentDuckNpcRegistry.RegisterInstance")]
     if "isRequestValid != null && !isRequestValid()" not in post_await:
         errors.append("owner validity must be checked after the actual await")
+    # CR-2026-09-30-006: married permanent NPCs only come back through this method, so it must settle the
+    # shared daily affinity decay like a normal spawn, after the post-await validity check (stale requests never decay).
+    decay = post_await.find("NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(npcId, LogPrefix)")
+    if decay < 0 or decay < post_await.find("isRequestValid != null && !isRequestValid()"):
+        errors.append("married restore must settle daily affinity decay after the post-await validity check")
     if "UnregisterInstance" in force:
         errors.append("late owned object cleanup must not unregister a newer object with the same id")
     need(module, "public void Destroy(ModBehaviour mod)", ["_spawnGeneration++"])
@@ -90,7 +95,8 @@ def main():
         # Prove the guard rejects the original two omissions and the late-registration regression.
         for index, token in [(0, "RequestPermanentSpouseRestore(spouseNpcId, restorePosition, true)"),
                              (0, "MarkWeddingNpcInstance(npc.gameObject, request.NpcId)"),
-                             (1, "generation != _spawnGeneration")]:
+                             (1, "generation != _spawnGeneration"),
+                             (1, "NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(npcId, LogPrefix)")]:
             mutation = sources.copy()
             mutation[index] = mutation[index].replace(token, "false" if index == 1 else "MissingCall()")
             if not validate(*mutation):
@@ -100,7 +106,7 @@ def main():
     for error in errors:
         print("PermanentSpouseRestoreLifecycleGuard: FAIL - " + error)
     if not errors:
-        print("PermanentSpouseRestoreLifecycleGuard: PASS (3 negative probes)")
+        print("PermanentSpouseRestoreLifecycleGuard: PASS (4 negative probes)")
     return bool(errors)
 
 

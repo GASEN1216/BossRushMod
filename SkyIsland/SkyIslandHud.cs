@@ -302,6 +302,8 @@ namespace BossRush
         private bool stacked, captionWarning;
         /// <summary>被警示打断的时刻（captionAge 读数）与当时的不透明度；captionCutAge 为 -1 表示没被打断。</summary>
         private float captionCutAge = -1f, captionCutAlpha, captionAlpha;
+        /// <summary>正在播的那条字幕的入队时刻（游戏时间）；同一句被重新触发时刷新。判警示过期用（CR-2026-09-30-009）。</summary>
+        private float captionStamp;
         /// <summary>卡片顶边避让官方右上角提示栈：节流计时与上一次写下的顶边。</summary>
         /// <summary>初值等于建造时写下的顶边，这样第一次 WriteCardTransform 不会把卡片甩到屏幕顶上。</summary>
         private float layoutTimer, appliedCardTop = -CardTop;
@@ -620,6 +622,8 @@ namespace BossRush
             if (admission == SkyIslandCaptionQueue.Admission.RefreshShowing)
             {
                 if (captionCutAge < 0f && captionAge > CaptionFadeIn) captionAge = CaptionFadeIn;
+                // 重新触发的同一句算新鲜的：入队时刻按「此刻减去已推进时长」重记，过期判据从这里重新起算。
+                captionStamp = Time.time - captionAge;
                 return;
             }
             if (preempt && captionCutAge < 0f)
@@ -987,6 +991,14 @@ namespace BossRush
                 // 警示按游戏时间过期：隐藏期间攒下的机制提示，关掉官方界面时那一招多半已经结算了（C-04）。
                 if (!captions.TryDequeue(out next, Time.time, WarningCaptionMaxAge)) return;
                 StartCaption(next.Text, next.Warning);
+                captionStamp = next.Stamp;
+            }
+            else if (SkyIslandCaptionQueue.ShowingWarningExpired(captionWarning, captionStamp, captionAge, Time.time, WarningCaptionMaxAge))
+            {
+                // 已经开播的警示同样按游戏时间过期：播到一半打开地图 / 背包 / 对话，HUD 不推进它，
+                // 关掉界面时那一招早结算了，直接收掉，下一帧接着播队里的（CR-2026-09-30-009）。
+                EndCaption();
+                return;
             }
 
             captionAge += delta;

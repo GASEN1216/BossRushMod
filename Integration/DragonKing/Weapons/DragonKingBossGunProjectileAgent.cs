@@ -333,6 +333,34 @@ namespace BossRush
             get { return projectile != null && profile != null; }
         }
 
+        // 在飞的龙皇铳子弹计数：Projectile.UpdateMoveAndCheck 补丁对全场每颗子弹每帧都会进来，计数为 0 时直接放行，
+        // 官方 / 其它 Mod 的子弹不再为找本组件做 GetComponent（发布前审查 P3）。只在 Initialize 与 OnDisable 两处
+        // 随 IsActiveForRuntime 同步；所有失配方向都只会让计数偏大（退回原来的 GetComponent 路径），不会漏掉龙皇铳子弹。
+        // 故意不在 ClearStaticCaches 里清零：清零后仍存活的子弹会在 OnDisable 把计数减成负数并被钳回 0，反而可能漏判。
+        private static int activeRuntimeAgentCount;
+        private bool countedAsActiveRuntime;
+
+        internal static bool HasAnyActiveRuntimeAgent
+        {
+            get { return activeRuntimeAgentCount > 0; }
+        }
+
+        private void SyncActiveRuntimeAgentCount()
+        {
+            bool active = IsActiveForRuntime;
+            if (active == countedAsActiveRuntime)
+            {
+                return;
+            }
+
+            countedAsActiveRuntime = active;
+            activeRuntimeAgentCount += active ? 1 : -1;
+            if (activeRuntimeAgentCount < 0)
+            {
+                activeRuntimeAgentCount = 0;
+            }
+        }
+
         public bool UsesCustomMovement
         {
             get
@@ -490,6 +518,8 @@ namespace BossRush
             projectile = projectileInstance;
             sourceGun = gunAgent;
             profile = shotProfile;
+            // 紧跟两个判据字段赋值同步计数：后面任何一步抛异常，这颗子弹也已计入，补丁不会早返漏掉它
+            SyncActiveRuntimeAgentCount();
             shotId = currentShotId;
             projectileIndex = currentProjectileIndex;
             secondaryProjectile = isSecondary;
@@ -1411,6 +1441,7 @@ namespace BossRush
             projectile = null;
             sourceGun = null;
             profile = null;
+            SyncActiveRuntimeAgentCount();
             secondaryProjectile = false;
             returning = false;
             splitTriggered = false;

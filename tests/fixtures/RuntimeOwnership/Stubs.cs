@@ -68,6 +68,12 @@ public static class AffinityManager
     public static bool IsMarriedToPlayer(string id) => Married && id==Spouse;
     public static bool IsSpouseFollowingPlayer(string id) => Following;
 }
+// 记录每日好感衰减的结算次数（CR-2026-09-30-006：婚后恢复要与普通生成同口径结算）。
+public static class NPCAffinityInteractionHelper
+{
+    public static List<string> Decayed=new List<string>();
+    public static int ApplyDailyDecayOnSpawn(string npcId, string logPrefix) { Decayed.Add(npcId); return 0; }
+}
 public static class AsyncFixture
 {
     public static List<Task> Tasks=new List<Task>();

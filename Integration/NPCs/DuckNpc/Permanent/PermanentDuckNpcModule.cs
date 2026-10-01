@@ -506,6 +506,9 @@ namespace BossRush
                     return existing;
                 }
 
+                // 婚后恢复（教堂站桩 / 跟随）与普通生成同一口径结算每日好感衰减：已婚的永久 NPC 不走普通刷新，
+                // 这里是它们唯一的生成入口（CR-2026-09-30-006）。放在 await 后复核之后，失效请求不扣；同一天只结算一次。
+                NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(npcId, LogPrefix);
                 AttachPermanentParts(npc, blueprint, position);
 
                 if (stayStill)

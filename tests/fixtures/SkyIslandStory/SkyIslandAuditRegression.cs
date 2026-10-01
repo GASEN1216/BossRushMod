@@ -67,8 +67,17 @@ internal static class SkyIslandAuditRegression
             check(midRaid != null && midRaid.Has(SkyIslandStoryFlag.OldLetter)
                 && Array.IndexOf(midRaid.discoveredNotes, "Light_F") < 0 && Array.IndexOf(midRaid.discoveredNotes, "Frog_2") < 0,
                 "raid: mid-raid save carries the story fact but not the held records (keep=" + keep + ")");
+            int packSaves = CharacterMainControl.Main.CharacterItem.SaveCalls;
+            int raidWrites = SavesSystem.PhysicalWrites;
             story.SettleRaidHeld(keep);
             check(story.TryClose(), "raid: settle then close persists (keep=" + keep + ")");
+            // CR-2026-09-30-005：撤离 / 倒下结算后的那次写盘必须同批带上出击角色背包，否则盘上是「有记录 + 出击前背包」；
+            // 回主菜单撤掉记录时不碰背包（官方让它回到出击前）。
+            check(SavesSystem.PhysicalWrites == raidWrites + 1
+                && (CharacterMainControl.Main.CharacterItem.SaveCalls > packSaves) == keep
+                && (!keep || SavesSystem.KeyExisits("MainCharacterHealth")),
+                keep ? "raid: settled records are written in the same batch as the raid pack snapshot"
+                     : "raid: dropping held records never snapshots the raid pack");
             SkyIslandStoryData settled = SkyIslandStoryCodec.Decode(SavesSystem.Load<string>(SkyIslandStoryRules.StorageKey));
             bool lampSaved = settled != null && Array.IndexOf(settled.discoveredNotes, "Light_F") >= 0;
             bool frogSaved = settled != null && Array.IndexOf(settled.discoveredNotes, "Frog_2") >= 0;

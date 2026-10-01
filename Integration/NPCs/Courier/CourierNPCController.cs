@@ -65,18 +65,25 @@ namespace BossRush
         // 注：首次见面对话内容已移至 LocalizationInjector.COURIER_FIRST_MEET_DIALOGUES
         // 使用 LocalizationInjector.GetCourierFirstMeetDialogueKeys() 获取本地化键
 
+        // 首次见面只会从「未见」变成「已见」：这个键只有 SetFirstMeetTriggered 写、且只写 true。
+        // 读到 true 就记在本实例上，之后不再查存档（以前 Update 每帧都 KeyExisits + Load 两次 ES3 查询，发布前审查 P3）；
+        // false 不缓存，对话中断重试、多个快递员实例时仍以存档为准。实例随场景销毁，换存档槽不会带着旧值。
+        private bool firstMeetTriggeredCached = false;
+
         /// <summary>
-        /// 检查是否已触发首次见面（从存档读取）
+        /// 检查是否已触发首次见面（从存档读取，读到 true 后按实例缓存）
         /// </summary>
         private bool HasTriggeredFirstMeet
         {
             get
             {
+                if (firstMeetTriggeredCached) return true;
                 try
                 {
                     if (Saves.SavesSystem.KeyExisits(FIRST_MEET_SAVE_KEY))
                     {
-                        return Saves.SavesSystem.Load<bool>(FIRST_MEET_SAVE_KEY);
+                        firstMeetTriggeredCached = Saves.SavesSystem.Load<bool>(FIRST_MEET_SAVE_KEY);
+                        return firstMeetTriggeredCached;
                     }
                     return false;
                 }
@@ -383,16 +390,16 @@ namespace BossRush
             // 如果已经在对话中，跳过
             if (isInFirstMeetDialogue) return;
 
-            // 如果已经触发过首次见面，永久跳过（DevMode 和非 DevMode 统一逻辑）
-            if (HasTriggeredFirstMeet) return;
-
             // 如果玩家引用为空，跳过
             if (playerTransform == null) return;
 
-            // 检测玩家距离
+            // 检测玩家距离（先做便宜的距离判断，玩家走近了才去问存档）
             float nearDistanceSqr = NEAR_DISTANCE * NEAR_DISTANCE;
             if ((CachedTransform.position - playerTransform.position).sqrMagnitude <= nearDistanceSqr)
             {
+                // 如果已经触发过首次见面，永久跳过（DevMode 和非 DevMode 统一逻辑）
+                if (HasTriggeredFirstMeet) return;
+
                 // 触发首次见面对话
                 ModBehaviour.DevLog("[CourierNPC] 玩家进入范围，触发首次见面对话");
                 TriggerFirstMeetDialogue().Forget();

@@ -174,7 +174,7 @@ namespace BossRush
                     new MultiSceneLocation { SceneID = SkyIslandSceneReferenceBridge.SceneId, LocationName = "StartPoints/PlayerSpawn" },
                     clickToConinue: true, notifyEvacuation: false, saveToFile: true);
             }
-            catch (Exception e) { Error = e.Message; Debug.LogError("[SkyIsland] RAID_LOAD_FAILED " + e); }
+            catch (Exception e) { Error = e.Message; Debug.LogError("[SkyIsland] RAID_LOAD_FAILED " + e); ReleaseStuckOfficialLoadingFlag("load"); }
             finally
             {
                 loading = false;
@@ -218,8 +218,37 @@ namespace BossRush
                 await SceneLoader.Instance.LoadScene(GameplayDataSettings.SceneManagement.BaseScene,
                     curtain, clickToConinue: false, notifyEvacuation: evacuated, saveToFile: true);
             }
-            catch (Exception e) { Error = e.Message; Debug.LogError("[SkyIsland] RAID_RETURN_FAILED " + e); }
+            catch (Exception e) { Error = e.Message; Debug.LogError("[SkyIsland] RAID_RETURN_FAILED " + e); ReleaseStuckOfficialLoadingFlag("return"); }
             finally { returning = false; retryAt = Time.unscaledTime + 2f; TryRelease(); }
+        }
+
+        /// <summary>
+        /// 官方 <c>SceneLoader.LoadScene</c> 置起 <c>IsSceneLoading</c> 之后再抛异常，状态机的 catch 只 SetException、不放下这个静态标志
+        /// （TeamSoda.Duckov.Core.dll `SceneLoader/&lt;LoadScene&gt;d__45.MoveNext`：IL_0140 置真，只有 IL_097F 卸完旧场景才置假）。
+        /// 标志卡住后官方每次 LoadScene 都以「已经在加载场景了」早返、Esc 暂停菜单也打不开（UIInputManager 判它），
+        /// 租约的返航重试、恢复泵与会话派发全在等它，玩家被锁在岛上只能强退（CR-2026-09-30-007）。
+        /// 只在本租约自己 await 的那次官方加载以异常结束后调用：官方入口见标志已真会正常早返、不抛异常，
+        /// 所以走到这里的标志是那次加载自己置起的；它的状态机已终结，不会再有人放下它。
+        /// </summary>
+        private static void ReleaseStuckOfficialLoadingFlag(string where)
+        {
+            if (!SceneLoader.IsSceneLoading) return;
+            try
+            {
+                const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Public
+                    | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static;
+                System.Reflection.PropertyInfo property = typeof(SceneLoader).GetProperty("IsSceneLoading", flags);
+                System.Reflection.MethodInfo setter = property != null ? property.GetSetMethod(true) : null;
+                if (setter != null) setter.Invoke(null, new object[] { false });
+                else
+                {
+                    System.Reflection.FieldInfo field = typeof(SceneLoader).GetField("IsSceneLoading", flags)
+                        ?? typeof(SceneLoader).GetField("<IsSceneLoading>k__BackingField", flags);
+                    if (field != null) field.SetValue(null, false);
+                }
+                Debug.LogWarning("[SkyIsland] RAID_LOADER_FLAG_RELEASED at=" + where + " cleared=" + !SceneLoader.IsSceneLoading);
+            }
+            catch (Exception e) { Debug.LogWarning("[SkyIsland] 官方加载标志复位失败：" + e.Message); }
         }
 
         internal void Release(Action callback)

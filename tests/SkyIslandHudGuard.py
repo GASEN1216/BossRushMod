@@ -395,6 +395,20 @@ def main():
                       "字幕分级规则")
     if admit and "FirstNormalIndex()" not in admit:
         errors.append("队满时必须先丢普通字幕，不得按到达顺序丢最旧的（那会把 Boss 机制提示挤掉）")
+    # 发版审查 C-04 / CR-2026-09-30-009：警示按游戏时间过期——排队的出队时丢，已经开播的在 HUD 恢复后第一帧收掉
+    # （隐藏期间 HUD 不推进字幕，关掉地图 / 背包 / 对话时那一招早结算了）；同一句重新触发时入队时刻跟着刷新。
+    tick_caption = need_body(hud, "private void TickCaption(float delta)", "字幕每帧推进")
+    if tick_caption:
+        dequeue = tick_caption.find("captions.TryDequeue(out next, Time.time, WarningCaptionMaxAge)")
+        stamp = tick_caption.find("captionStamp = next.Stamp;")
+        expired = tick_caption.find("SkyIslandCaptionQueue.ShowingWarningExpired(captionWarning, captionStamp, captionAge, Time.time, WarningCaptionMaxAge)")
+        end = tick_caption.find("EndCaption();", expired) if expired >= 0 else -1
+        advance = tick_caption.find("captionAge += delta;")
+        if not (0 <= dequeue < stamp and 0 <= expired < end < advance):
+            errors.append("TickCaption 必须让警示按游戏时间过期：出队时丢过期的、开播时记下入队时刻、"
+                          "已经开播的在推进前判 ShowingWarningExpired 并收掉（HUD 恢复后不再播过期的机制提示）")
+    if caption and "captionStamp = Time.time - captionAge;" not in caption:
+        errors.append("同一句警示正在播又被触发时没有刷新入队时刻：重新拉满的提示会被当成过期收掉")
     if '"SkyIslandHudPolicy"' not in regressions or not (ROOT / "tests/fixtures/SkyIslandHudPolicy/Program.cs").exists():
         errors.append("字幕分级规则的隔离回归 SkyIslandHudPolicy 没有登记（tools/run_runtime_regressions.py）")
     phase = need_body(storm, "private void EnterPhase()", "噬风相位切换")

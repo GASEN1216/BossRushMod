@@ -934,6 +934,13 @@ namespace BossRush
         private static bool _active;
         private static readonly string BlueOpen = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.RarityRare) + ">";
         private static readonly string RedOpen = "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText) + ">";
+        // 四条后缀只取决于两种字色与两种语言的队名，类型初始化时拼好（须排在 BlueOpen / RedOpen 之后）；
+        // 以前每处理一条血条都现拼 5 次后缀再比较（发布前审查 P3：血条名字每次都重新拼字符串）。
+        private static readonly string BlueSuffixCn = Suffix(false, "蓝队");
+        private static readonly string BlueSuffixEn = Suffix(false, "Blue Team");
+        private static readonly string RedSuffixCn = Suffix(true, "红队");
+        private static readonly string RedSuffixEn = Suffix(true, "Red Team");
+        private static readonly string[] AllSuffixes = { BlueSuffixCn, BlueSuffixEn, RedSuffixCn, RedSuffixEn };
 
         internal static bool IsActive { get { return _active; } }
 
@@ -956,9 +963,12 @@ namespace BossRush
                 if (character == null || character.IsMainCharacter) return;
                 Teams team = character.Team;
                 string text = nameText.text ?? string.Empty;
+                string suffix = team == Teams.scav ? L10n.T(BlueSuffixCn, BlueSuffixEn)
+                    : team == Teams.wolf ? L10n.T(RedSuffixCn, RedSuffixEn) : null;
+                // 已带当前语言的正确后缀：旧逻辑「剥掉再拼回」得到的就是原串，直接返回，稳态零分配
+                if (suffix != null && text.EndsWith(suffix, StringComparison.Ordinal)) return;
                 string baseText = Strip(text);
-                string desired = team == Teams.scav ? baseText + Suffix(false, TeamName(false))
-                    : team == Teams.wolf ? baseText + Suffix(true, TeamName(true)) : baseText;
+                string desired = suffix != null ? baseText + suffix : baseText;
                 if (!string.Equals(text, desired, StringComparison.Ordinal)) nameText.text = desired;
             }
             catch (Exception) { /* 血条刚被回收 */ }
@@ -966,12 +976,8 @@ namespace BossRush
 
         private static string Strip(string text)
         {
-            string[] suffixes =
-            {
-                Suffix(false, "蓝队"), Suffix(false, "Blue Team"), Suffix(true, "红队"), Suffix(true, "Red Team"),
-            };
-            for (int i = 0; i < suffixes.Length; i++)
-                if (text.EndsWith(suffixes[i], StringComparison.Ordinal)) return text.Substring(0, text.Length - suffixes[i].Length);
+            for (int i = 0; i < AllSuffixes.Length; i++)
+                if (text.EndsWith(AllSuffixes[i], StringComparison.Ordinal)) return text.Substring(0, text.Length - AllSuffixes[i].Length);
             return text;
         }
     }

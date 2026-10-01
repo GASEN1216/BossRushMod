@@ -96,6 +96,13 @@ internal static class Program
         Check(q.TryDequeue(out entry, 10f, 3f) && entry.Text == "OldN", "normal captions never expire");
         Check(!q.TryDequeue(out entry, 10f, 3f) && q.Count == 0, "nothing left after the stale warning was dropped");
 
+        // 8c. 已经开播的警示（CR-2026-09-30-009）：入队 1 秒、等 1 秒开播、播了 0.5 秒时打开地图 10 秒，
+        //     关掉地图时不再接着播；连续播放（游戏时间与屏幕推进同步）播满 6 秒也不误判；普通字幕永不过期。
+        Check(SkyIslandCaptionQueue.ShowingWarningExpired(true, 1f, 0.5f, 12.5f, 3f), "a showing warning hidden past the limit expires on resume");
+        Check(!SkyIslandCaptionQueue.ShowingWarningExpired(true, 1f, 0.5f, 3.5f, 3f), "a showing warning hidden briefly keeps playing");
+        Check(!SkyIslandCaptionQueue.ShowingWarningExpired(true, 1f, 6f, 8f, 3f), "continuous display never expires a warning");
+        Check(!SkyIslandCaptionQueue.ShowingWarningExpired(false, 1f, 0.5f, 60f, 3f), "normal captions never expire while showing");
+
         // 9. 随机序列上的不变式：容量不超、警示永远在普通字幕前面、不含重复、
         //    有普通字幕在队时警示绝不被丢。固定种子，跨机器结果一致。
         var random = new Random(20260910);

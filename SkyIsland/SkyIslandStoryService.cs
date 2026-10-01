@@ -21,6 +21,12 @@ namespace BossRush
         private bool keepsakeDeliveryActive;
         private Func<bool> keepsakeAssetCollector;
         private SkyIslandStoryAction? cashPaidPendingAction;
+        /// <summary>
+        /// 撤离 / 倒下结算后欠的那份出击角色资产快照（CR-2026-09-30-005）：结算把点灯、放生放进待写批次，
+        /// 会话随即提前写盘，同批必须带上已扣料的随身背包，否则盘上是「有记录 + 出击前背包」。
+        /// 角色随岛场景销毁后 Unity 判空，义务自然消失：那时背包已由官方撤离 / 死亡存档负责。
+        /// </summary>
+        private CharacterMainControl raidAssetOwner;
         /// <summary>这一趟出击里暂不入档的永久记录 id（见 <see cref="EncodeForSave"/>）。</summary>
         private readonly HashSet<string> raidHeldNotes = new HashSet<string>(StringComparer.Ordinal);
         private string summaryCache, summaryStatus;
@@ -174,6 +180,8 @@ namespace BossRush
             if (stored)
             {
                 raidHeldNotes.Clear();
+                // 记录随结算入档：同一批写盘还要采集这位出击角色的物品与血量（见 raidAssetOwner）。
+                if (keep) raidAssetOwner = CharacterMainControl.Main;
                 MarkPending(true);
             }
             Debug.Log("[SkyIsland] RAID_HELD_SETTLE keep=" + keep + " stored=" + stored + " ids=" + string.Join(",", present.ToArray()));
@@ -877,11 +885,12 @@ namespace BossRush
             assetSnapshotRequired = false;
             cashSnapshotRequired = false;
             cashPaidPendingAction = null;
+            raidAssetOwner = null;
         }
 
         private bool HasSnapshotObligation
         {
-            get { return assetSnapshotRequired || cashSnapshotRequired || officialQuestAssetCollector != null || keepsakeAssetCollector != null; }
+            get { return assetSnapshotRequired || cashSnapshotRequired || officialQuestAssetCollector != null || keepsakeAssetCollector != null || raidAssetOwner != null; }
         }
 
         private sealed class SaveSource : IBossRushSaveBatchSource
@@ -899,6 +908,19 @@ namespace BossRush
             {
                 error = null;
                 if (!owner.CollectPendingCash()) { error = "cash_snapshot_unavailable"; return false; }
+                CharacterMainControl raider = owner.raidAssetOwner;
+                if (raider != null)
+                {
+                    // 出击结算的记录与背包同批：照官方 LevelManager.SaveMainCharacter 只存角色物品与血量（出击图没有仓库实例；
+                    // 天空岛官方合同已要求 LevelConfig.saveCharacter）。撤离帧里它与紧随的 NotifyEvacuated 存的是同一份背包。
+                    try
+                    {
+                        if (raider.CharacterItem == null || raider.Health == null) { error = "raid_asset_not_ready"; return false; }
+                        raider.CharacterItem.Save("MainCharacterItemData");
+                        SavesSystem.Save<float>("MainCharacterHealth", raider.Health.CurrentHealth);
+                    }
+                    catch (Exception e) { error = "raid_asset_collect_failed:" + e.GetType().Name; return false; }
+                }
                 if (!owner.assetSnapshotRequired) return true;
                 try
                 {
@@ -919,6 +941,7 @@ namespace BossRush
                 owner.cashSnapshotRequired = false;
                 owner.officialQuestAssetCollector = null;
                 owner.keepsakeAssetCollector = null;
+                owner.raidAssetOwner = null;
             }
         }
     }

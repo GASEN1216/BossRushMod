@@ -53,10 +53,14 @@ namespace BossRush
             BeginSkyIslandFrameProfile();
             try
             {
-                while (Time.realtimeSinceStartupAsDouble - started < seconds && !ShouldAbort()
-                    && SceneManager.GetActiveScene().handle == sceneHandle)
+                // 先等一帧再取 unscaledDeltaTime（口径同下方资源窗口）：每个样本是「上一帧到这一帧」的时长。
+                // 开窗那一刻读到的是窗口之前那一帧，不算；跨过窗口终点的那一帧在退出前收下——
+                // 旧写法先判时间再取样，最后那帧长帧恰好跨过终点时哪个窗口都不计（CR-2026-09-30-008）。
+                while (!ShouldAbort() && SceneManager.GetActiveScene().handle == sceneHandle)
                 {
                     if (frames.Count >= 8192) { overflow = true; break; }
+                    yield return null;
+                    if (ShouldAbort() || SceneManager.GetActiveScene().handle != sceneHandle) break;
                     float ms = Time.unscaledDeltaTime * 1000f;
                     if (ms > 0f && !float.IsInfinity(ms)) frames.Add(ms);
                     if (ms > _peakFrameMs)
@@ -64,7 +68,7 @@ namespace BossRush
                         _peakFrameMs = ms;
                         _peakStage = _status;
                     }
-                    yield return null;
+                    if (Time.realtimeSinceStartupAsDouble - started >= seconds) break;
                 }
                 finished = true;
             }

@@ -268,6 +268,9 @@ namespace BossRush
         private readonly Dictionary<int, int> modeEHealthBarAppliedVersionByBarId = new Dictionary<int, int>();
         private int modeEHealthBarNameVersion = 1;
         private bool? modeELastHealthBarLanguageIsChinese = null;
+        // 玩家血条上次拼名字时用的输入（名字 + 阵营）：两者没变就复用缓存串，不再每帧重拼
+        private string modeEPlayerBarBuiltName = null;
+        private Teams? modeEPlayerBarBuiltFaction = null;
 
         #endregion
 

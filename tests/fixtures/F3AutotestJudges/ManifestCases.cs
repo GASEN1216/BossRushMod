@@ -75,7 +75,7 @@ internal static partial class Program
             EndedUtc = "2026-09-14T11:00:00Z", ReportLog = "BossRushValidation_1.log", RestoreStory = "PASS", RestoreDetail = "readback ok",
             ItemLedger = "reclaimed 3", MoneyLedger = "+0", EnvironmentRestore = "PASS", ShotBytes = 5000000000L, ShotCount = 1
         };
-        info.Status = F3AutotestJudges.RunStatus(true, false, false, steps, 3);
+        info.Status = F3AutotestJudges.RunStatus(true, false, false, steps, 3, null);
         Check(info.Status == "FAIL", "run with a red step is FAIL");
 
         BossRushJsonValue root;
@@ -177,14 +177,21 @@ internal static partial class Program
         Check(new F3AutotestRunInfo().RestoreStory == "NOT_RUN" && F3AutotestJudges.RestoreNeedsAttention(new F3AutotestRunInfo().RestoreStory),
             "a run that never reached restore is flagged by default");
 
-        Check(F3AutotestJudges.RunStatus(false, true, true, Records("FAIL"), 1) == "RESTORE_FAILED", "run status: restore failure outranks everything");
-        Check(F3AutotestJudges.RunStatus(false, false, false, Records("PASS"), 1) == "RESTORE_FAILED", "run status: restore failure on an otherwise green run");
-        Check(F3AutotestJudges.RunStatus(true, true, true, Records("FAIL"), 1) == "CANCELLED", "run status: cancelled outranks aborted and red");
-        Check(F3AutotestJudges.RunStatus(true, false, true, Records("FAIL"), 1) == "ABORTED", "run status: aborted outranks red");
-        Check(F3AutotestJudges.RunStatus(true, false, false, Records("PASS", "FAIL"), 5) == "FAIL", "run status: red outranks incomplete");
-        Check(F3AutotestJudges.RunStatus(true, false, false, Records("PASS", "PASS"), 3) == "INCOMPLETE", "run status: missing steps are INCOMPLETE");
-        Check(F3AutotestJudges.RunStatus(true, false, false, Records("PASS", "SKIP", "PASS"), 3) == "PASS", "run status: all steps present and none red is PASS");
-        Check(F3AutotestJudges.RunStatus(true, false, false, Records("SKIP", "SKIP"), 2) == "INCOMPLETE", "run status: every step skipped is INCOMPLETE, not PASS");
+        Check(F3AutotestJudges.RunStatus(false, true, true, Records("FAIL"), 1, null) == "RESTORE_FAILED", "run status: restore failure outranks everything");
+        Check(F3AutotestJudges.RunStatus(false, false, false, Records("PASS"), 1, null) == "RESTORE_FAILED", "run status: restore failure on an otherwise green run");
+        Check(F3AutotestJudges.RunStatus(true, true, true, Records("FAIL"), 1, null) == "CANCELLED", "run status: cancelled outranks aborted and red");
+        Check(F3AutotestJudges.RunStatus(true, false, true, Records("FAIL"), 1, null) == "ABORTED", "run status: aborted outranks red");
+        Check(F3AutotestJudges.RunStatus(true, false, false, Records("PASS", "FAIL"), 5, null) == "FAIL", "run status: red outranks incomplete");
+        Check(F3AutotestJudges.RunStatus(true, false, false, Records("PASS", "PASS"), 3, null) == "INCOMPLETE", "run status: missing steps are INCOMPLETE");
+        Check(F3AutotestJudges.RunStatus(true, false, false, Records("PASS", "SKIP", "PASS"), 3, null) == "PASS", "run status: all steps present and none red is PASS");
+        Check(F3AutotestJudges.RunStatus(true, false, false, Records("SKIP", "SKIP"), 2, null) == "INCOMPLETE", "run status: every step skipped is INCOMPLETE, not PASS");
+        // CR-2026-09-30-010：主套件 / 岛内套件 / 收尾检查（.log 读回的用例结论）红着时，自动步骤全绿也不能报 PASS。
+        var suiteRed = new Dictionary<string, string> { { "SKY_PERF_FINAL_5S", "FAIL" }, { "MODE_E_SMOKE", "PASS" } };
+        var suiteGreen = new Dictionary<string, string> { { "SKY_PERF_FINAL_5S", "PASS" }, { "MODE_H_SEASON", "WARN" }, { "SKY_NIGHT", "SKIP" } };
+        Check(F3AutotestJudges.RunStatus(true, false, false, Records("PASS", "PASS"), 2, suiteRed) == "FAIL", "run status: a red suite case turns a green step run red");
+        Check(F3AutotestJudges.RunStatus(true, false, false, Records("PASS"), 3, suiteRed) == "FAIL", "run status: a red suite case outranks incomplete");
+        Check(F3AutotestJudges.RunStatus(true, false, true, Records("PASS"), 1, suiteRed) == "ABORTED", "run status: aborted still outranks a red suite case");
+        Check(F3AutotestJudges.RunStatus(true, false, false, Records("PASS", "PASS"), 2, suiteGreen) == "PASS", "run status: suite PASS / WARN / SKIP keep a green run green");
     }
 
     private static void ResultCases()

@@ -14,17 +14,52 @@
     python tools/verify_sky_island_bundle_shaders.py            # 默认查仓库副本与游戏副本
     python tools/verify_sky_island_bundle_shaders.py <包路径>...
 
+游戏副本的位置与 `compile_official.bat` 同一口径（CR-2026-09-30-011）：先认环境变量 `GAME_PATH`
+（目录下要有 `Duckov_Data/Managed/Assembly-CSharp.dll`，否则警告并忽略），再按编译脚本
+`:ensure_game_path` 里 `call :try_game_path` 的候选顺序探测；候选表直接从编译脚本读，不在这里另抄一份。
+都找不到时游戏副本记 FAIL（不跳过当绿），设好 `GAME_PATH` 或显式传包路径再跑。
+
 退出码：0 = 全部着色器可用；1 = 有着色器没有 pass，或包读不出来。
 """
 
 from pathlib import Path
+import os
+import re
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 BUNDLE_RELATIVE = "Assets/arenas/sky_island_raid"
-GAME_BUNDLE = Path(r"D:\software\steam\steamapps\common\Escape from Duckov\Duckov_Data\Mods\BossRush") / BUNDLE_RELATIVE
+# 部署目标与编译脚本一致：%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%（MOD_NAME=BossRush）。
+MOD_RELATIVE = Path("Duckov_Data") / "Mods" / "BossRush"
+MANAGED_MARKER = Path("Duckov_Data") / "Managed" / "Assembly-CSharp.dll"
+COMPILE_SCRIPT = ROOT / "compile_official.bat"
 # 运行时 `SkyIslandRendering.Apply` 逐材质检查的三个名字，必须与生产代码一致。
 REQUIRED = ("BossRush/SkyIsland/Environment", "BossRush/SkyIsland/Water", "BossRush/SkyIsland/Cloud")
+
+
+def game_path_candidates(compile_script=COMPILE_SCRIPT):
+    """按编译脚本 `:ensure_game_path` 里的 `call :try_game_path "..."` 顺序取候选；`%~dp0` 换成仓库根。"""
+    text = Path(compile_script).read_text(encoding="utf-8", errors="ignore")
+    match = re.search(r"^:ensure_game_path\s*$(.*?)^goto :eof", text, re.M | re.S)
+    if not match:
+        raise RuntimeError(str(compile_script) + " 里找不到 :ensure_game_path（游戏路径探测口径变了，同步本脚本）")
+    root = str(ROOT) + os.sep
+    return [Path(raw.replace("%~dp0", root)) for raw in re.findall(r'call :try_game_path "([^"]+)"', match.group(1))]
+
+
+def resolve_game_path(environ=None, candidates=None):
+    """返回 (游戏根目录或 None, 来源说明)。口径同 compile_official.bat：有效的 GAME_PATH 优先，否则按候选顺序探测。"""
+    environ = os.environ if environ is None else environ
+    configured = environ.get("GAME_PATH")
+    if configured:
+        path = Path(configured)
+        if (path / MANAGED_MARKER).is_file():
+            return path.resolve(), "GAME_PATH"
+        print("[WARN] Ignoring invalid GAME_PATH: " + configured)
+    for candidate in (game_path_candidates() if candidates is None else candidates):
+        if (candidate / MANAGED_MARKER).is_file():
+            return candidate.resolve(), "compile_official.bat candidate"
+    return None, "not found"
 
 
 def inspect(path):
@@ -114,8 +149,19 @@ def check(path):
 
 
 def main():
-    targets = sys.argv[1:] or [ROOT / BUNDLE_RELATIVE, GAME_BUNDLE]
-    results = [check(target) for target in targets]
+    targets = sys.argv[1:]
+    results = []
+    if not targets:
+        targets = [ROOT / BUNDLE_RELATIVE]
+        game, source = resolve_game_path()
+        if game is None:
+            print("== <游戏副本>")
+            print("   GAME NOT FOUND：设环境变量 GAME_PATH 指向 Escape from Duckov 安装根目录，或显式传包路径")
+            results.append(False)
+        else:
+            print("GAME_PATH=" + str(game) + "（" + source + "）")
+            targets.append(game / MOD_RELATIVE / BUNDLE_RELATIVE)
+    results += [check(target) for target in targets]
     if all(results):
         print("SkyIslandBundleShaders: PASS")
         return 0

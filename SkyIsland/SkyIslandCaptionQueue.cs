@@ -113,6 +113,18 @@ namespace BossRush
             return false;
         }
 
+        /// <summary>
+        /// 正在播的警示是否已经过期（CR-2026-09-30-009）：入队到现在的游戏时间，扣掉它真正在屏幕上推进的时长，
+        /// 剩下的就是排队等待加上 HUD 隐藏的时间；超过时限说明玩家关掉官方界面时那一招多半已经结算，不该接着播。
+        /// 普通字幕不过期；连续显示期间等式右边只有排队那一截（出队时已保证不超时限），不会被误判。
+        /// </summary>
+        /// <param name="stamp">入队时刻（同 <see cref="Entry.Stamp"/>，同一句被重新触发时由调用方刷新）。</param>
+        /// <param name="shownSeconds">这条字幕已经在屏幕上推进的秒数（HUD 隐藏期间不推进）。</param>
+        internal static bool ShowingWarningExpired(bool warning, float stamp, float shownSeconds, float now, float maxWarningAge)
+        {
+            return warning && now - stamp - shownSeconds > maxWarningAge;
+        }
+
         internal void Clear() { pending.Clear(); }
 
         private int FirstNormalIndex()

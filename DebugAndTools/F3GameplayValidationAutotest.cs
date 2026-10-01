@@ -297,7 +297,7 @@ namespace BossRush
                 itemsOk = ClearAutotestSnapshotKey();
             if (!itemsOk) { _autotest.Info.RestoreStory = "PENDING_RECOVERY"; _autotestRecoveryCheckedSlot = int.MinValue; }
             _autotest.Info.Status = F3AutotestJudges.RunStatus(storyOk && itemsOk && envOk, _cancelRequested, _fatalAbort || _hostLost || _slotChanged,
-                _autotest.Records, _autotest.ExpectedSteps);
+                _autotest.Records, _autotest.ExpectedSteps, ReadAutotestCaseOutcomes());
             _autotest.RestoreDone = true;
             WriteAutotestReport();
             WriteRaw("AUTOTEST | " + _autotest.Info.Status + " | restore=" + _autotest.Info.RestoreStory + " | result_dir=" + _autotest.RunDir);
@@ -340,7 +340,7 @@ namespace BossRush
                 }
                 else _autotest.Info.RestoreStory = "NOT_NEEDED";
                 _autotest.Info.Status = F3AutotestJudges.RunStatus(!F3AutotestJudges.RestoreNeedsAttention(_autotest.Info.RestoreStory),
-                    _cancelRequested, true, _autotest.Records, _autotest.ExpectedSteps);
+                    _cancelRequested, true, _autotest.Records, _autotest.ExpectedSteps, ReadAutotestCaseOutcomes());
             }
             catch (Exception e)
             {

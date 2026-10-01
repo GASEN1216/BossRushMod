@@ -58,6 +58,8 @@ namespace BossRush
             modeEHealthBarAppliedVersionByBarId.Clear();
             modeEHealthBarNameVersion = 1;
             modeELastHealthBarLanguageIsChinese = null;
+            modeEPlayerBarBuiltName = null;
+            modeEPlayerBarBuiltFaction = null;
         }
 
         private void MarkModeEHealthBarNamesDirty()

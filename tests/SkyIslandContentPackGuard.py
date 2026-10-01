@@ -320,6 +320,16 @@ def main():
     require(distance, "frogsHome && SkyIslandNight.IsNight(SkyIslandLighting.ClockHours())", "蛙声只在放满三团后的夜里播放")
     ordered(distance, ["float radius = device.Near ? 44f : 38f;", "if (!near) Stop(device);", "device.Root.SetActive(near);"],
             "蛙鸣沿用近域滞回，离开或天亮先停音再隐藏")
+    # CR-2026-09-30-012：官方 AudioObject 没有 OnDestroy，事件 start 后即 release，发声体先被销毁时循环风声不会自己停。
+    # 停止入口不能依赖发声体仍存活：Play 时记下组件引用，Stop 优先用它，Tick 见发声体已毁补停一次。
+    play = need_body(ambience, "private bool Play(Device device, string file, bool loop)", "局部音效发声")
+    require(play, "device.Audio = device.Root.GetComponent<Duckov.AudioObject>();", "发声成功后必须记下官方 AudioObject 引用")
+    stop = need_body(ambience, "private void Stop(Device device)", "局部音效停止")
+    ordered(stop, ["Duckov.AudioObject audio = device.Audio;", "if (!ReferenceEquals(audio, null) && stopAll != null)",
+                   "stopAll.Invoke(audio, new[] { stopImmediately });"],
+            "停止优先用记下的引用并绕开 Unity 判空，发声体先销毁也停得掉")
+    tick = need_body(ambience, "internal void Tick(Vector3 position)", "声场逐帧")
+    require(tick, "if (device.Root == null) { if (device.Looping) Stop(device); continue; }", "发声体被别处销毁时要补停循环音")
     require(session, "ambience.ApplyStory(story.Current)", "环境回馈必须收到包含 Frog_n 笔记的完整剧情快照")
     # WAV 与既有环境音同为 local-only；实际交付另跑生成器 --check，不让干净签出因没有二进制误报。
     require(squash(read("tools/gen_sky_island_sfx.py")), '"frog_chorus.wav": 5.0', "蛙声必须登记可复现生成与音频校验")

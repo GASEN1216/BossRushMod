@@ -1081,8 +1081,13 @@ namespace BossRush
             return value == "auto" ? "自动断言" : value == "shot" ? "截图待 AI 看" : "只能人工";
         }
 
-        /// <summary>整轮状态：还原失败 &gt; 取消 / 中止 &gt; 有红 &gt; 有没跑到的、或一步都没通过（全是 SKIP）&gt; PASS。</summary>
-        internal static string RunStatus(bool restoreOk, bool cancelled, bool aborted, IList<F3AutotestStepRecord> steps, int expectedSteps)
+        /// <summary>
+        /// 整轮状态：还原失败 &gt; 取消 / 中止 &gt; 有红 &gt; 有没跑到的、或一步都没通过（全是 SKIP）&gt; PASS。
+        /// 「有红」同时看自动步骤与 <paramref name="caseOutcomes"/>（.log 里读回的主套件、岛内套件与收尾检查结论）：
+        /// summary 的「红项」本来就列它们，总状态只看自动步骤会在用例红着时报 PASS（CR-2026-09-30-010）。
+        /// </summary>
+        internal static string RunStatus(bool restoreOk, bool cancelled, bool aborted, IList<F3AutotestStepRecord> steps, int expectedSteps,
+            IDictionary<string, string> caseOutcomes)
         {
             if (!restoreOk) return "RESTORE_FAILED";
             if (cancelled) return "CANCELLED";
@@ -1093,6 +1098,9 @@ namespace BossRush
                 if (step.Result == "FAIL") return "FAIL";
                 if (step.Result == "PASS") anyPass = true;
             }
+            if (caseOutcomes != null)
+                foreach (string outcome in caseOutcomes.Values)
+                    if (outcome == "FAIL") return "FAIL";
             return steps.Count < expectedSteps || (steps.Count > 0 && !anyPass) ? "INCOMPLETE" : "PASS";
         }
 

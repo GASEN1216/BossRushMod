@@ -1159,6 +1159,13 @@ namespace BossRush
         [HarmonyPrefix]
         private static bool Prefix(Projectile __instance, out DragonKingBossGunProjectileAgent __state)
         {
+            // 场上没有在飞的龙皇铳子弹：直接放行，不对官方 / 其它 Mod 的子弹做每帧 GetComponent
+            if (!DragonKingBossGunProjectileAgent.HasAnyActiveRuntimeAgent)
+            {
+                __state = null;
+                return true;
+            }
+
             __state = __instance != null ? __instance.GetComponent<DragonKingBossGunProjectileAgent>() : null;
             if (__state == null || !__state.IsActiveForRuntime)
             {

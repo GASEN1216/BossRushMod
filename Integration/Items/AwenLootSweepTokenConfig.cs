@@ -64,8 +64,8 @@ namespace BossRush
                 item.StackCount = 1;
                 item.Value = 3200;
                 item.Quality = 4;
-                SetHiddenMember(item, "description", GetDescription());
-                SetHiddenMember(item, "DescriptionRaw", GetDescription());
+                ModeFItemConfigHelper.SetHiddenMember(item, "description", GetDescription());
+                ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", GetDescription());
                 EquipmentHelper.AddTagToItem(item, "Special");
                 ConfigureUsage(item);
                 ModBehaviour.DevLog("[AwenLootSweepTokenConfig] Item configured: TypeID=" + TYPE_ID);
@@ -236,23 +236,6 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[AwenLootSweepTokenConfig] SetTypeID failed: " + e.Message);
-            }
-        }
-
-        private static void SetHiddenMember(object target, string memberName, object value)
-        {
-            const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-            PropertyInfo property = target.GetType().GetProperty(memberName, flags);
-            if (property != null && property.SetMethod != null)
-            {
-                property.SetValue(target, value, null);
-                return;
-            }
-
-            FieldInfo field = target.GetType().GetField(memberName, flags);
-            if (field != null)
-            {
-                field.SetValue(target, value);
             }
         }
     }

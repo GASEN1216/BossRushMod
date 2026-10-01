@@ -2,6 +2,17 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-01 收尾：天空岛 CR-2026-09-30-005～012 与审查遗留 P3 / 复用全部修复（COMPAT / WIRE+ / OPERATIONAL，L2）
+
+原 09-30 审查报告已不在本机与私有仓库，三路子代理按摘要在当前代码里重新定位，8 条 CR 与审查遗留 4 处全部成立并修复。
+
+- CR-005～012：见 CODE_REVIEW_FINDINGS（撤离提前写盘同批存角色资产；婚后恢复补每日衰减；租约放下官方卡住的加载忙标志；帧时间跨终点长帧计入；HUD 恢复后过期警示即收；自动验收总状态并入套件红项；Shader 检查自动探测游戏路径；循环音不依赖发声体存活也能停）。
+- 同日更正 CR-003 描述：官方死亡处理（丢物、存角色、写盘）先于会话回调执行，`OnPlayerDied` 是紧接其后立即结算写盘，不是「之前」。
+- P3 性能：划地为营玩家血条与鸭王杯群战队伍后缀在名字 / 阵营 / 语言不变时复用缓存串；快递员首次见面只在走近时查存档且记住已见面；龙皇铳子弹补丁在没有龙皇铳子弹在飞时第一句早返（全场子弹每帧少一次 GetComponent）。
+- 复用：`Integration/Items` 下 4 份私有 `SetHiddenMember` 改用 `ModeFItemConfigHelper.SetHiddenMember`（静态证明等价；`ModeE/RespawnItemConfig.cs` 那份带 try/日志，行为不同，未动）。
+- 证据（L2）：全量守卫 735/735；执行回归全量 113/113；新增 / 扩展守卫 `ModeHGroupTeamTagsNoRebuildGuard`、`CourierFirstMeetSaveQueryGuard`、`DragonKingBossGunProjectilePatchEarlyOutGuard`、`ModeEHealthBarNameCacheGuard`、`PermanentSpouseRestoreLifecycleGuard`、`SkyIslandHudGuard`、`F3AutotestOrchestratorGuard`、`WindowsPathDetectionGuard`、`AssetSnapshotBoundaryGuard`、`SkyIslandContentPackGuard` 与对应执行回归均做反向验证；Dev 与正式构建都编过，正式 DLL `49336682` 已部署，`check_dll_identifiers --expect absent` PASS；`verify_sky_island_bundle_shaders.py` 不设变量实跑 PASS。
+- 未实机（L3）：撤离结算页强退后灯与材料一致；婚后多日不互动好感下降；返航加载异常后约 2 秒重试（日志 `RAID_LOADER_FLAG_RELEASED`）；开地图 5 秒再关不再续播旧警示；回基地后听不到岛上风声；Mode E / 鸭王杯血条名字显示不变；快递员首次见面照常；龙皇铳各弹种照常。
+
 ## 2026-10-01 发布前外部审查：6 条 P1 + 11 条 P2/P3 全部核实成立并修复（COMPAT / SCHEMA+，L2）
 
 外部审查（只读、未编译未实机）列的每条都先对照当前代码与官方反编译源核实，全部成立，按最小改法修。三路并行：本会话（天空岛 / 永久 NPC）+ 两个子代理（ModeH / 无间炼狱 / 划地为营 / 重铸 / 好感；丧尸 / 遗种巢 / 武器 / 龙王）。
@@ -9,7 +20,7 @@
 - P1 永久 NPC 与天空岛居民头顶名字只登记一次（不跟随、隐藏不收、销毁不注销）：`DuckNpcRuntimeMarker` 加 LateUpdate 刷新、OnDisable 收起、OnDestroy 注销（口径同快递员 / 护士）。
 - P1 群战重打沿用押注不记押哪队：押注记录加可选 `betSide`（旧档缺省 0，SCHEMA+）；沿用时恢复当初那一边、收起选边与「换一批」、倍率显示押注那档（`ModeHCashBetService` / `ModeHRuntimeModule_GroupFlow` / `_BetFlow`，GroupFlow 超行数把四个小方法挪进 BetFlow）。
 - P1 无间炼狱本波现金跨局残留：复位块补 `InfiniteHellWaveCashThisWave = 0L`。
-- P1 CR-2026-09-30-002 / 003 / 004：见 CODE_REVIEW_FINDINGS（回主菜单不再保留暂不入档记录；倒下与撤离同批结算；折翎 / 钟守婚后跟随能走）。
+- P1 CR-2026-09-30-002 / 003 / 004：见 CODE_REVIEW_FINDINGS（回主菜单不再保留暂不入档记录；倒下紧接官方死亡存档立即结算写盘；折翎 / 钟守婚后跟随能走）。
 - P2 划地为营 / 随机事件神秘商人 999999 生命没生效：`GetComponent<Item>()` 改 `character.CharacterItem`（新守卫 `ModeEMerchantHealthGuard`）。
 - P2 天空岛巡守离居民太近：选点净空居民 35 m、码头 45 m（与剧情面板 / 写盘安静半径同口径），重生成 176 个槽位（钟庭合格位只剩 9 个，20 → 9），派生落点与场景审计同步（缺陷仍是 23 条设计接触）。
 - P2 尸潮信标 / 便携安全区 / 尸潮邀请函悬停弹通知：三个 `CanBeUsed` 只返回结果，原因留在模式侧 Try 路径。

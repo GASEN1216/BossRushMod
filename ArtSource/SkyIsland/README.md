@@ -46,6 +46,8 @@ bundle 不入 git（`.gitignore` 的 `/Assets/*`）。重建入口见 `tools/gen
 python tools/verify_sky_island_bundle_shaders.py
 ```
 
+它查仓库副本与游戏副本；游戏目录与 `compile_official.bat` 同一口径：先认有效的 `GAME_PATH`，再按编译脚本 `:ensure_game_path` 的候选探测，找不到记 FAIL（不跳过当绿）。也可以显式传包路径。
+
 - [Unity 晴昼预览](Previews/SkyIsland_Unity_Village.webp)
 - [Unity 晨光预览](Previews/SkyIsland_Unity_Village_Morning.webp)
 - [Unity 暮色预览](Previews/SkyIsland_Unity_Village_Dusk.webp)

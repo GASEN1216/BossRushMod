@@ -51,6 +51,19 @@ internal static class PerformanceWindows
         check(!SkyIslandFrameProfile.Recording && SkyIslandFrameProfile.Closed == 1,
             "performance: normal completion closes profile once");
 
+        // CR-2026-09-30-008：最后一帧卡 0.5 秒、恰好跨过 5 秒终点，这一帧必须收进本窗口（峰值与 p95 都看得到它）。
+        var crossing = Fresh();
+        using (var stack = new ValidationCoroutineStack(crossing.Run()))
+        {
+            while (Time.realtimeSinceStartupAsDouble < 4.75 && stack.MoveNext()) Time.realtimeSinceStartupAsDouble += 0.25;
+            Time.realtimeSinceStartupAsDouble = 5.25;
+            Time.unscaledDeltaTime = 0.5f;
+            while (stack.MoveNext()) { }
+        }
+        check(crossing.Results.Count == 1 && crossing.Results[0] == "PASS" && crossing._peakFrameMs == 500f
+            && crossing.Metrics[0].StartsWith("samples=19,p95_ms=500.00", StringComparison.Ordinal),
+            "performance: long frame crossing the window end is sampled");
+
         var changed = Fresh();
         using (var stack = new ValidationCoroutineStack(changed.Run()))
         {

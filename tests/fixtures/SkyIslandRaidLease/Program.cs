@@ -71,7 +71,10 @@ internal static class Program
         Check(Duckov.UI.ClosureView.Shown==1,"evacuation shows the official closure screen");
         Check(SceneLoader.LastCurtain!=null && SceneLoader.LastCurtain.Name=="EvacuateScreen",
             "evacuation swaps the loading curtain for the official evacuate screen");
-        SceneLoader.Finish(true);lease.ReturnToBase(true);Check(SceneLoader.Returns==1,"failed return retry is throttled");
+        SceneLoader.Finish(true);
+        // CR-2026-09-30-007：官方加载异常后不放下 IsSceneLoading；租约必须放下自己那次加载置起的标志，否则重试永远被挡。
+        Check(!SceneLoader.IsSceneLoading,"faulted official return releases the loading flag it left behind");
+        lease.ReturnToBase(true);Check(SceneLoader.Returns==1,"failed return retry is throttled");
         Time.unscaledTime=3;lease.ReturnToBase(true);Check(SceneLoader.Returns==2,"failed return can retry");
         lease.Release(null);SceneManager.UnloadRaid();SceneLoader.Finish();Check(bundle.Unloaded,"successful retry releases resources");
 
@@ -88,6 +91,7 @@ internal static class Program
         Check(!roots[1].activeSelf,"failed activation contract must not start official services");
         Check(lease.Error!=null && SkyIslandSceneReferenceBridge.Failure!=null,"failed activation raises an observable cancellation signal");
         SceneLoader.Finish(true);bundle=AssetBundle.Last;callbacks=0;
+        Check(!SceneLoader.IsSceneLoading,"faulted official entry load releases the loading flag before recovery");
         lease.Release(()=>callbacks++);lease.PumpRelease();
         Check(SceneLoader.Returns==1,"initialization failure still reaches a bounded base return");
         SceneManager.UnloadRaid();SceneLoader.Finish();

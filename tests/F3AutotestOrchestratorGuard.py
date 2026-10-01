@@ -360,6 +360,11 @@ def check(src):
     restore = autotest.body("AutotestLegRestore") if autotest else None
     if restore is None or not re.search(r"F3AutotestJudges\.RunStatus\(storyOk\s*&&\s*itemsOk\s*&&\s*envOk\s*,", restore):
         errors.append("收尾报告必须同时计入剧情、物品收回/恢复键落盘和环境恢复结果")
+    # CR-2026-09-30-010：总状态要并入 .log 读回的主套件、岛内套件与收尾检查结论，不能只看自动步骤。
+    for name in ("AutotestLegRestore", "FinishAutotestRestoreSynchronously"):
+        text = autotest.body(name) if autotest else None
+        if text is None or not re.search(r"F3AutotestJudges\.RunStatus\([^;]*_autotest\.ExpectedSteps,\s*ReadAutotestCaseOutcomes\(\)\)", text):
+            errors.append("%s 算总状态时必须把 ReadAutotestCaseOutcomes() 交给 RunStatus（主套件与岛内套件的红项要让整轮变红）" % name)
     reclaim = story.body("TryReclaimAutotestItems") if story else None
     ordered(errors, reclaim, ("ReclaimAutotestItems(snapshot)", "CountOwnedItems(typeId, out where)",
             "if (!matches) return false;", 'CharacterItem.Save("MainCharacterItemData")',
@@ -424,6 +429,7 @@ PROBES = (
     ("DebugAndTools/F3GameplayValidationAutotestModels.cs", sub_once(r"\A#if BOSSRUSH_DEV\r?\n", ""), "纯数据模型去掉 Dev 包裹"),
     (BAT, sub_once(r"echo\(DebugAndTools\\F3GameplayValidationAutotestModels\.cs\r\n", ""), "新模型文件漏登记编译清单"),
     (AUTOTEST, sub_once(r"RunStatus\(storyOk && itemsOk && envOk,", "RunStatus(storyOk,"), "物品恢复键落盘失败仍报告成功"),
+    (AUTOTEST, sub_once(r"_autotest\.ExpectedSteps, ReadAutotestCaseOutcomes\(\)\)", "_autotest.ExpectedSteps, null)"), "总状态不并入主套件与岛内套件红项"),
     (STORY, sub_once(r'CharacterMainControl.Main.CharacterItem.Save\("MainCharacterItemData"\);', ""), "收回后未采集主角容器快照"),
     (ACTIONS, sub_once(r"\A#if BOSSRUSH_DEV\r?\n", ""), "去掉整份 Dev 包裹"),
     (AUTOTEST, sub_once(r"\nnamespace BossRush", "\n#endif\nnamespace BossRush"), "最外层 #if 提前闭合"),

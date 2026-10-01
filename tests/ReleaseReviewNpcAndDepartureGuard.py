@@ -5,7 +5,7 @@
 2. CR-2026-09-30-004：永久 NPC 都能结婚，婚后开跟随靠 DuckNpcMovement 走路；按人设站定（canWander=false，
    折翎、无声钟守）的以前直接 return 不挂组件，婚后跟随原地不动。现在一律挂，站定的只是平时不溜达。
 3. CR-2026-09-30-002：回主菜单也会卸载岛场景，「这一趟暂不入档的永久记录」只在撤离或倒下时保留，去向是主菜单的不留。
-   CR-2026-09-30-003：倒下时与撤离同口径，在官方死亡存档之前结算（只认 OnPlayerDied 方法体）。
+   CR-2026-09-30-003：倒下时与撤离同口径，紧接官方死亡存档立即结算并写盘（只认 OnPlayerDied 方法体）。
 
 反向验证：去掉 LateUpdate 刷新 / OnDestroy 注销、恢复 canWander 早退、删掉站定判断、把去留改回只看 raid_unloaded，各自转红（main 里内存探针，每次运行都跑）。
 """
@@ -87,7 +87,7 @@ def check(src):
     session = src[SESSION]
     died = body(session, "private void OnPlayerDied(DamageInfo damage)")
     if died is None or "if (story != null) { if (moved) story.SettleRaidHeld(true); story.Tick(true); }" not in died:
-        errors.append("CR-2026-09-30-003：倒下时要在官方死亡存档之前把这一趟的永久记录放进待写批次（同撤离口径）")
+        errors.append("CR-2026-09-30-003：倒下时要紧接官方死亡存档把这一趟的永久记录放进待写批次并立即写盘（同撤离口径）")
     loading = body(session, "private void OnStartedLoading(SceneLoadingContext context)")
     if loading is None or "departureScene = context.sceneName;" not in loading:
         errors.append("OnStartedLoading 必须记下官方要加载的离岛去向")

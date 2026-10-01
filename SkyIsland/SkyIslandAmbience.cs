@@ -15,6 +15,8 @@ namespace BossRush
             internal GameObject Root;
             internal Transform Rotor;
             internal Light Light;
+            /// <summary>发声体上的官方 AudioObject：发声体被别处先销毁时仍能停掉它手里的 FMOD 事件（见 Stop）。</summary>
+            internal Duckov.AudioObject Audio;
             internal int Flag;
             internal bool Near, Looping, FrogChorus;
             internal string Ambient;
@@ -181,7 +183,8 @@ namespace BossRush
             if (checkDistance) nextDistanceCheck = Time.time + .25f;
             foreach (Device device in devices)
             {
-                if (device.Root == null) continue;
+                // 发声体被别处先销毁：循环风声不会随 GameObject 停（见 Stop），这里补停一次，不等离岛。
+                if (device.Root == null) { if (device.Looping) Stop(device); continue; }
                 if (checkDistance) UpdateDistance(device);
                 if (!device.Near) continue;
                 if (device.Rotor != null)
@@ -217,7 +220,10 @@ namespace BossRush
                 if (postSound == null || stopAll == null) throw new InvalidOperationException("官方空间音效生命周期入口缺失");
                 string path = Path.Combine(soundDirectory, file);
                 if (!File.Exists(path)) throw new FileNotFoundException("天空岛音效未部署", file);
-                return postSound.Invoke(null, new object[] { path, device.Root, loop }) != null;
+                bool posted = postSound.Invoke(null, new object[] { path, device.Root, loop }) != null;
+                // 官方 PostCustomSFX 经 AudioObject.GetOrCreate 把事件挂在发声体的组件上；趁它活着记住引用。
+                if (posted && (object)device.Audio == null) device.Audio = device.Root.GetComponent<Duckov.AudioObject>();
+                return posted;
             }
             catch (Exception e)
             {
@@ -230,9 +236,13 @@ namespace BossRush
         {
             try
             {
-                // AudioObject 不承诺 OnDestroy 停止 programmer sound，因此先显式 StopAll，再销毁 emitter。
-                Duckov.AudioObject audio = device.Root == null ? null : device.Root.GetComponent<Duckov.AudioObject>();
-                if (audio != null && stopAll != null) stopAll.Invoke(audio, new[] { stopImmediately });
+                // 官方 AudioObject 没有 OnDestroy，PostFile 的事件 start 后即 release，FMOD 只在事件停下后才回收：
+                // 发声体销毁不会停掉 custom_loop 的循环风声（反编译源 Duckov/AudioObject.cs）。所以先显式 StopAll 再销毁 emitter；
+                // 发声体被别处先销毁时 Unity 判空、GetComponent 拿不到，改用 Play 时记下的引用：StopAll 只遍历托管的 events
+                // 列表调 FMOD，不碰已销毁的原生对象（CR-2026-09-30-012）。ReferenceEquals 绕开 Unity 的判空重载。
+                Duckov.AudioObject audio = device.Audio;
+                if (ReferenceEquals(audio, null) && device.Root != null) audio = device.Root.GetComponent<Duckov.AudioObject>();
+                if (!ReferenceEquals(audio, null) && stopAll != null) stopAll.Invoke(audio, new[] { stopImmediately });
             }
             catch (Exception e) { ModBehaviour.DevLog("[SkyIsland] [WARNING] 局部音效停止失败：" + e.Message); }
             device.Looping = false;

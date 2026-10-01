@@ -41,6 +41,7 @@
 - 按品质带抽物资要**加权**。在筛出来的清单上均匀抽，一档被抽中的概率会正比于这一档的物品种类数。岛上物资池有单件价值上限，挡住高价官方物品。
 - 做收集品的节奏门之前，先算它把完成路径拉长多少、拉长的那段有没有新内容。
 - 按出击刷新的状态（搜刮、委托进度、局内 buff、采集点）不进存档。持久事实优先复用剧情存档的 `discoveredNotes`，按 id 前缀区分。确需新旗标走 `SCHEMA+` 并同步 `SkyIslandStoryRules.KnownFlags`，否则 Codec 拒绝整份存档；新区域同步 `RegionBit`、Codec 区域掩码、marker 与作者布局。
+- 撤离提前写盘（`DispatchReturnIfReady` 的 `SettleRaidHeld(true)` + `Tick(true)`）由 `SkyIslandStoryService.CollectSnapshot` 同批存出击角色的物品与血量（CR-2026-09-30-005）：随出击结算的记录不许不带背包单独落盘。
 - 纪念品保存按实际缓冲回执区分，包含背包满时自动寄存的罗盘：寄存实物和发放记录同批保存；随身物品、点灯和放生的成本仍随出击结算。交付冻结与重试走 `SkyIslandStoryService`，不能只按名义 `ToStorage` 或 typed pending 是否存在判断。
 
 ## 4. 运行时规则

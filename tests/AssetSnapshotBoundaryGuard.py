@@ -46,8 +46,14 @@ def main():
             r"PlayerStorageBuffer.SaveBuffer\(\)", r'SavesSystem.Save<float>\("MainCharacterHealth"',
             r"assetSnapshotRequired = true;",
             # 物理保存成功才清三份采集义务：实物快照、现金、官方任务交付资产（CR-2026-09-27-403）。
-            r"OnPhysicalSaveSucceeded\(\)\s*\{\s*owner.assetSnapshotRequired = false;\s*owner.cashSnapshotRequired = false;\s*owner.officialQuestAssetCollector = null;\s*owner.keepsakeAssetCollector = null;\s*\}",
-            r"HasSnapshotObligation\s*\{\s*get \{ return assetSnapshotRequired \|\| cashSnapshotRequired \|\| officialQuestAssetCollector != null \|\| keepsakeAssetCollector != null;\s*\}\s*\}",
+            r"OnPhysicalSaveSucceeded\(\)\s*\{\s*owner.assetSnapshotRequired = false;\s*owner.cashSnapshotRequired = false;\s*owner.officialQuestAssetCollector = null;\s*owner.keepsakeAssetCollector = null;\s*owner.raidAssetOwner = null;\s*\}",
+            r"HasSnapshotObligation\s*\{\s*get \{ return assetSnapshotRequired \|\| cashSnapshotRequired \|\| officialQuestAssetCollector != null \|\| keepsakeAssetCollector != null \|\| raidAssetOwner != null;\s*\}\s*\}",
+            # CR-2026-09-30-005：撤离 / 倒下结算把随出击记录放进待写批次，会话随即提前写盘；
+            # 同批必须采集那位出击角色的物品与血量（照官方 SaveMainCharacter），且排在 typed pending 之前。
+            r"if \(stored\)\s*\{\s*raidHeldNotes.Clear\(\);[\s\S]{0,120}?if \(keep\) raidAssetOwner = CharacterMainControl.Main;",
+            r"if \(!owner.CollectPendingCash\(\)\)[\s\S]{0,200}?CharacterMainControl raider = owner.raidAssetOwner;\s*if \(raider != null\)[\s\S]{0,600}?"
+            r'raider.CharacterItem.Save\("MainCharacterItemData"\);\s*SavesSystem.Save<float>\("MainCharacterHealth", raider.Health.CurrentHealth\);',
+            r"cashPaidPendingAction = null;\s*raidAssetOwner = null;",
             r"HasSnapshotObligation \{ get \{ return owner.HasSnapshotObligation; \} \}",
             r"if \(store.HasPendingWrite \|\| coordinator.HasDeferredFlush \|\| HasSnapshotObligation\)",
             r"if \(rewardCommitting \|\| officialDeliveryActive \|\| keepsakeDeliveryActive\) return false;",

@@ -13,7 +13,7 @@ public static class Program
     private static ModBehaviour Reset(bool follow=false)
     {
         PermanentDuckNpcModule.Invalidate(); PermanentDuckNpcRegistry.Instance=null;
-        DuckNpcSpawner.Pending.Clear(); AsyncFixture.Tasks.Clear();
+        DuckNpcSpawner.Pending.Clear(); AsyncFixture.Tasks.Clear(); NPCAffinityInteractionHelper.Decayed.Clear();
         SceneManager.Current=new Scene {handle=1,name="Base"};
         AffinityManager.Spouse="xiaoman"; AffinityManager.Married=true; AffinityManager.Following=follow;
         CharacterMainControl.Main=new CharacterMainControl();
@@ -41,6 +41,8 @@ public static class Program
         await Task.WhenAll(AsyncFixture.Tasks);
         Check(resident.gameObject.Marked && resident.gameObject.Idle && resident.gameObject.Refreshes==1 && !mod.Placeholder && !mod.HasPending,
               "cold completion marks resident removes placeholder refreshes interactions");
+        Check(NPCAffinityInteractionHelper.Decayed.Count==1 && NPCAffinityInteractionHelper.Decayed[0]=="xiaoman",
+              "married restore settles daily affinity decay once like a normal spawn");
 
         mod=Reset(true); mod.Begin(true);
         CharacterMainControl.Main.transform.position=new Vector3(150,0,150);
@@ -48,6 +50,7 @@ public static class Program
         await Task.WhenAll(AsyncFixture.Tasks);
         Check(follower.gameObject.Following && follower.transform.position==CharacterMainControl.Main.transform.position && !mod.HasPending,
               "follow restore starts only after spawn and uses current player position");
+        Check(NPCAffinityInteractionHelper.Decayed.Count==1, "follow restore settles daily affinity decay");
 
         foreach (string invalidation in new[] {"same-name new scene", "divorce", "generation", "building removed", "home requested"})
         {
@@ -60,7 +63,8 @@ public static class Program
             else mod.Invalidate();
             var stale=new CharacterMainControl(); DuckNpcSpawner.Pending[0].SetResult(stale);
             await Task.WhenAll(AsyncFixture.Tasks);
-            Check(stale.gameObject.Destroyed && !newer.gameObject.Destroyed && PermanentDuckNpcRegistry.Instance==newer,
+            Check(stale.gameObject.Destroyed && !newer.gameObject.Destroyed && PermanentDuckNpcRegistry.Instance==newer
+                  && NPCAffinityInteractionHelper.Decayed.Count==0,
                   invalidation + " discards only its late object");
         }
 
@@ -73,7 +77,8 @@ public static class Program
 
         mod=Reset(); resident=new CharacterMainControl(); PermanentDuckNpcRegistry.Instance=resident; mod.Begin(false);
         await Task.WhenAll(AsyncFixture.Tasks);
-        Check(DuckNpcSpawner.Pending.Count==0 && resident.gameObject.Marked && !resident.gameObject.Destroyed,
+        Check(DuckNpcSpawner.Pending.Count==0 && resident.gameObject.Marked && !resident.gameObject.Destroyed
+              && NPCAffinityInteractionHelper.Decayed.Count==0,
               "existing resident is reused without spawn");
         Console.WriteLine("RuntimeOwnership regression PASS: " + checks + " checks");
     }

@@ -676,6 +676,11 @@ Breaking/Operational:
 
 官方更新后按 `docs/architecture/Harmony补丁契约稳定性.md` 复查。
 
+天空岛租约放下官方加载忙标志（2026-10-01，CR-2026-09-30-007，`COMPAT` / `WIRE+`）：官方 `SceneLoader.LoadScene` 的状态机
+置起静态 `IsSceneLoading` 后若抛异常，catch 只 `SetException` 不复位，之后所有切图入口早返、Esc 菜单也打不开。
+`SkyIslandRaidLease.ReleaseStuckOfficialLoadingFlag` 只在租约自己等待的那次进岛 / 返航加载抛异常后，用反射调这个属性的
+非公开 setter 放下标志，再走 2 秒节流重试。官方更新后核对属性名与 setter 仍在；反射失败只记日志、保持原行为。
+
 补丁启动扫描只允许把类级或方法级带 `[HarmonyPatch]` 元数据的类型交给 class processor；
 普通业务方法名为 `Cleanup` 不得被 Harmony 当作 cleanup 回调。动态角色的
 `MagicBlendState.OnStateEnter` 可能早于 `MagicBlending.Start`，兼容补丁只推迟未初始化的首个回调，
