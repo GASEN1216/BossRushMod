@@ -1,5 +1,9 @@
 # AI 协作文档收敛迁移记录
 
+## 2026-10-01 docs 与资源改走私有仓库（SAFE / OPERATIONAL）
+
+按 owner 要求，根 `AGENTS.md` §3、§13 与 `docs/AGENTS.md` 把「`docs/`、多数 `Assets/`、`ArtSource/` 默认 local-only」改为「不进公开仓库，多机同步走私有仓库 `GASEN1216/BossRushMod-private`」，并写明 `private-sync.ps1 sync` 的推送已授权、不再为别的文档或资源新增 `.gitignore` 放行。守卫直接读的那几份仍留在公开仓库，CI 不受影响。`docs/guides/私有仓库同步.md` 补「另一台电脑拉代码编译测试」一节：只拉公开仓库也能编出 DLL，但部署会缺资源或带旧资源。同日按 owner 要求，`compile_dev.bat` 编译前自动跑 `private-sync.ps1 sync`：没有私有仓库或脚本就跳过，失败只警告、继续编译，`BOSSRUSH_SKIP_PRIVATE_SYNC=1` 可关；`compile_official.bat` 不变。
+
 ## 2026-09-28 遗种背包合同修正（SCHEMA+ / COMPAT / WIRE+）
 
 按用户要求把无效的官方 PetProxy 加格子改为崽独立背包，docs/contracts.md §6.2 与知识库遗种巢系统同步。旧借席桥仅留给 Dev 探针，生产改用官方 Inventory / LootView，按 pet.id 的可选 backpackJson 持久化，版本键保持 v2。专题补充滚轮输入归一与重伤待办清理；DownedCount 是累计次数，F3 漏检指标原误用累计值，现同步修正验收口径。

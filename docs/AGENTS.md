@@ -5,7 +5,8 @@
 ## 纳管
 
 - `docs/` 默认 local-only（`.gitignore` 的 `/docs/*`）。例外是被守卫直接读取的文档，在 `.gitignore` 里逐个放行；新增这类「守卫依赖的文档」时同步放行，否则 fresh clone 一跑守卫就红。当前放行清单以 `.gitignore` 为准（`docs/contracts.md` 在内）。
-- `docs/architecture/` 等仍是 local-only。根 `AGENTS.md` 或子系统 `AGENTS.md` 引用它们时，关键结论要在 AGENTS 或守卫里有落点，不能只存在于本地文档。
+- 其余文档一律不提交到公开仓库，改完跑 `docs/guides/private-sync.ps1 sync` 推到私有仓库 `GASEN1216/BossRushMod-private`（`compile_dev.bat` 编译前会自动跑一次），另一台电脑靠它拿到最新文档与资源（用法见 `docs/guides/私有仓库同步.md`）。不要为了「多机能看到」去 `.gitignore` 放行或 `git add -f`。
+- `docs/architecture/` 等不在公开仓库里。根 `AGENTS.md` 或子系统 `AGENTS.md` 引用它们时，关键结论要在 AGENTS 或守卫里有落点，不能只存在于本地文档。
 - 含密钥的本地文件（`飞书应用密钥.md`、`AI生图API和密钥.md`）不复制进回答、提交、公开文档或提示词。
 
 ## 放哪里

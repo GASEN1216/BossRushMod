@@ -22,7 +22,7 @@
 
 模块职责、入口和规则文件见 `MODULES.md`；按任务运行 `python tools/task_context.py --module <id>`。
 专项规则：`Integration/AGENTS.md`、`Patches/AGENTS.md`、`Utilities/AGENTS.md`、`ZombieMode/AGENTS.md`、`DebugAndTools/AGENTS.md`、`SkyIsland/AGENTS.md`、`Common/UI/AGENTS.md`、`tests/AGENTS.md`、`docs/AGENTS.md`、`wiki-site/AGENTS.md`。
-官方反编译源 `鸭科夫源码/` 只读、不编译；`docs/` 与多数 `Assets/` 默认 local-only。
+官方反编译源 `鸭科夫源码/` 只读、不编译；`docs/` 与多数 `Assets/` 不进公开仓库，走私有仓库同步（§13）。
 
 ## 4. 硬规则
 
@@ -173,7 +173,7 @@ python tools/run_guards.py --filter OfficialCompileList
 
 ## 13. 文档纳管
 
-`docs/`、多数 `Assets/` 与 `ArtSource/` 默认 local-only；守卫直接读的文件须在 `.gitignore` 精确放行。仓库级规则仅放受跟踪的规则文件或 `docs/contracts.md`；本地 `docs/architecture/` 的关键结论应落到规则或守卫。规则文档不写易过期数字，交付数字写台账或带日期报告。
+`docs/`、多数 `Assets/` 与 `ArtSource/` 不进公开仓库，多机同步走私有仓库 `GASEN1216/BossRushMod-private`（同一工作目录、git 目录在仓库外，`docs/guides/private-sync.ps1 sync`，`compile_dev.bat` 编译前自动跑、失败只警告，`BOSSRUSH_SKIP_PRIVATE_SYNC=1` 跳过；该推送已授权，用法见 `docs/guides/私有仓库同步.md`）。公开仓库只保留守卫直接读、在 `.gitignore` 精确放行的那几份，不为别的文档或资源新增放行。仓库级规则仅放受跟踪的规则文件或 `docs/contracts.md`；本地 `docs/architecture/` 的关键结论应落到规则或守卫。规则文档不写易过期数字，交付数字写台账或带日期报告。
 
 ## 14. 变更记录（已迁出）
 
