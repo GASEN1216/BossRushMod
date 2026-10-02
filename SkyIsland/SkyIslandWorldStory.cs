@@ -1095,6 +1095,9 @@ namespace BossRush
             // 说出这一处要干什么（清守卫 / 修灯 / 找谁），和地图圈上的字同一份。
             string what = (target != null ? SkyIslandMapMarkers.TargetTask(target.name) : null)
                 ?? L10n.T("眼下的目标", "your current objective");
+            // 找人接 / 交任务时指那位居民本人，与地图圈同一份（兜底装置离他 31–41 米）。
+            Transform giver = target != null ? SkyIslandMapMarkers.ContactAnchor(story.Current, session.GiverAnchor) : null;
+            if (giver != null) target = giver;
             if (target == null)
             {
                 target = NearestMarker(SkyIslandMapMarkers.SideTargets(story.Current), from);

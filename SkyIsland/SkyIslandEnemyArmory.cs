@@ -23,6 +23,12 @@ namespace BossRush
     ///   官方 `AddBullet` 只按 preset 的弹药品质表随机给一堆，Boss 预设的高品质表在不少口径上抽不到弹，
     ///   留下的原装枪于是一发备弹都没有，打空一匣就原地喊「没子弹了」反复换弹（owner 2026-10-01 实测）。
     ///   弹药品质不低于本档 `AmmoMin`，没有就退回这把枪能用的最高品质弹药；已经装着 / 背着同口径弹药时沿用那一种。
+    ///   退回那一步**不设品质上限**：官方 Boss 专属枪（Alex、蝇蝇队长、机械雪人手里的那几把，品质码 9）的弹药品质码也可能在 7 以上，
+    ///   旧写法只查 1–7，日志里就是「这把枪找不到可用弹药」，达标留下的专属枪一发都打不出来（owner 2026-10-02 实测；
+    ///   钟守的守钟装置底模就是机械雪人）。弹药品质码的实际分布没有离线核对，UNVERIFIED，所以下一条兜底必须在。
+    /// - 达标的原装枪若怎么都找不到同口径弹药，按低于下限处理、换一把本档的枪（<see cref="IsDryGun"/>）：打不响的枪比低品质的枪更糟。
+    /// - 长战不断粮：配完弹的敌人挂 <see cref="SkyIslandAmmoKeeper"/>，每 3 秒看一眼，背包里同款备弹不足一匣就补回
+    ///   <see cref="SkyIslandEnemyArmoryRules.ReserveRounds"/> 发；倒下后不再补，尸体箱里最多就是这一份。
     /// - 被换下的官方随机武器直接销毁（它不在敌人手里，不该出现在尸体箱里）；换上的武器随官方尸体箱掉落。
     /// - 可失败的装饰：池子为空或任一步失败时保留官方原装，照常参战。
     ///
@@ -35,6 +41,8 @@ namespace BossRush
         private const string SecondarySlot = "SecondaryWeapon";
         private const string MeleeSlot = "MeleeWeapon";
         private const int MaxQuality = 7;
+        /// <summary>退回「这把枪能用的任何弹药」时的品质上限：官方弹药的品质码有 9 以上的（见类注释）。</summary>
+        private const int AnyAmmoMaxQuality = 99;
         private static readonly int ControlMindTypeHash = "ControlMindType".GetHashCode();
         // 官方同步写入弹匣不会让这份缓存失效；置 -1 后由公开 getter 重算（口径同 ModeHLoadoutKitApplicator）。
         private static readonly FieldInfo GunBulletCountCacheField =
@@ -67,8 +75,10 @@ namespace BossRush
                 bool changed = EnsureWeapon(character, body, PrimarySlot, band, random, fromKey, label);
                 changed |= EnsureWeapon(character, body, MeleeSlot, band, random, fromKey, label);
                 // 换没换都补弹：达标留下的官方原装与副武器同样要有备弹（见类注释）。
-                EnsureAmmo(body, PrimarySlot, band, random, fromKey, label);
-                EnsureAmmo(body, SecondarySlot, band, random, fromKey, label);
+                int primaryAmmo = EnsureAmmo(body, PrimarySlot, band, random, fromKey, label);
+                int secondaryAmmo = EnsureAmmo(body, SecondarySlot, band, random, fromKey, label);
+                if (primaryAmmo > 0 || secondaryAmmo > 0)
+                    character.gameObject.AddComponent<SkyIslandAmmoKeeper>().Bind(character, primaryAmmo, secondaryAmmo, fromKey);
                 if (changed) character.SwitchToFirstAvailableWeapon();
                 string summary = "[SkyIslandArmory] ARMED tier=" + label + " primary=" + Describe(body, PrimarySlot)
                     + " melee=" + Describe(body, MeleeSlot) + " changed=" + changed;
@@ -85,7 +95,7 @@ namespace BossRush
             Slot slot = SkyIslandBossForge.FindSlot(body, slotKey);
             if (slot == null) return false;
             Item current = slot.Content;
-            if (current != null && band.Keeps(current.Quality)) return false;
+            if (current != null && band.Keeps(current.Quality) && !IsDryGun(body, current)) return false;
             // 空槽不补（2026-10-01 起底模全是官方 Boss）：主武器槽空着说明这位是近战 Boss（Tagilla、Killa、校霸），
             // 它的 AI 只会冲上来砍，塞一把枪进去它也不开，还会被 SwitchToFirstAvailableWeapon 换到手上、把锤子收起来。
             if (current == null) return false;
@@ -129,19 +139,39 @@ namespace BossRush
             }
         }
 
+        /// <summary>这把枪弹匣里、背包里都没有它能装的弹药，全游戏也找不到同口径弹药（AI 拿着它一发都打不出来）。</summary>
+        private static bool IsDryGun(Item body, Item weapon)
+        {
+            try
+            {
+                ItemSetting_Gun gun = weapon.GetComponent<ItemSetting_Gun>();
+                if (gun == null) return false;
+                Item loaded = gun.GetCurrentLoadedBullet();
+                if (loaded != null && IsValidBullet(gun, loaded.TypeID)) return false;
+                if (body.Inventory != null && CarriedAmmo(body.Inventory, gun) > 0) return false;
+                string caliber = Caliber(weapon);
+                if (string.IsNullOrEmpty(caliber)) return true;
+                int[] any = AmmoPool(caliber, 1, AnyAmmoMaxQuality);
+                for (int i = 0; i < any.Length; i++)
+                    if (IsValidBullet(gun, any[i])) return false;
+                return true;
+            }
+            catch (Exception) { return false; }
+        }
+
         /// <summary>
         /// 这个槽位上若是枪：弹匣空着就装满，背包里同款弹药补到 <see cref="SkyIslandEnemyArmoryRules.ReserveRounds"/> 发。
         /// 弹种优先沿用弹匣里已装的、其次背包里已有的同口径弹药（官方 AddBullet 给的），都没有才按本档品质另挑。
-        /// 只加不减，可失败：任一步失败保留现状并记一次警告。
+        /// 只加不减，可失败：任一步失败保留现状并记一次警告。返回补的弹种（不是枪、或没补上时为 0），给 <see cref="SkyIslandAmmoKeeper"/> 续弹用。
         /// </summary>
-        private static void EnsureAmmo(Item body, string slotKey, SkyIslandWeaponBand band, System.Random random, string fromKey, string label)
+        private static int EnsureAmmo(Item body, string slotKey, SkyIslandWeaponBand band, System.Random random, string fromKey, string label)
         {
             try
             {
                 Slot slot = SkyIslandBossForge.FindSlot(body, slotKey);
                 Item weapon = slot != null ? slot.Content : null;
                 ItemSetting_Gun gun = weapon != null ? weapon.GetComponent<ItemSetting_Gun>() : null;
-                if (gun == null || body.Inventory == null) return;
+                if (gun == null || body.Inventory == null) return 0;
                 int ammoTypeId = 0;
                 Item loaded = gun.GetCurrentLoadedBullet();
                 if (loaded != null && IsValidBullet(gun, loaded.TypeID)) ammoTypeId = loaded.TypeID;
@@ -149,17 +179,33 @@ namespace BossRush
                 if (ammoTypeId <= 0) ammoTypeId = PickAmmo(weapon, gun, band.AmmoMin, random);
                 if (ammoTypeId <= 0)
                 {
-                    WarnOnce("noammo|" + weapon.TypeID, "[SkyIslandArmory] 这把枪找不到可用弹药：" + label + " " + slotKey + " " + weapon.TypeID);
-                    return;
+                    WarnOnce("noammo|" + weapon.TypeID, "[SkyIslandArmory] 这把枪找不到可用弹药：" + label + " " + slotKey + " " + weapon.TypeID
+                        + " caliber=" + Caliber(weapon));
+                    return 0;
                 }
                 if (loaded == null) FillMagazine(weapon, gun, ammoTypeId, fromKey);
-                int need = SkyIslandEnemyArmoryRules.ReserveRounds(gun.Capacity) - CountInInventory(body.Inventory, ammoTypeId);
-                if (need > 0) StoreReserve(body, ammoTypeId, need, fromKey);
+                TopUpReserve(body, gun, ammoTypeId, fromKey);
+                return ammoTypeId;
             }
             catch (Exception e)
             {
                 WarnOnce("ammo|" + label + "|" + slotKey + "|" + e.Message, "[SkyIslandArmory] 补弹失败：" + label + " " + slotKey + " " + e.Message);
+                return 0;
             }
+        }
+
+        /// <summary>背包里这一种备弹补到 <see cref="SkyIslandEnemyArmoryRules.ReserveRounds"/> 发（只加不减）。</summary>
+        internal static void TopUpReserve(Item body, ItemSetting_Gun gun, int ammoTypeId, string fromKey)
+        {
+            if (body == null || body.Inventory == null || gun == null || ammoTypeId <= 0) return;
+            int need = SkyIslandEnemyArmoryRules.ReserveRounds(gun.Capacity) - CountInInventory(body.Inventory, ammoTypeId);
+            if (need > 0) StoreReserve(body, ammoTypeId, need, fromKey);
+        }
+
+        /// <summary>背包里这一种备弹还有多少发。</summary>
+        internal static int ReserveOf(Item body, int ammoTypeId)
+        {
+            return body == null || body.Inventory == null ? 0 : CountInInventory(body.Inventory, ammoTypeId);
         }
 
         /// <summary>背包里已有的、这把枪能装的弹药（官方 AddBullet 给的那一堆）；没有返回 0。</summary>
@@ -236,9 +282,9 @@ namespace BossRush
             for (int i = 0; i < preferred.Length; i++)
                 if (IsValidBullet(gun, preferred[i])) valid.Add(preferred[i]);
             if (valid.Count > 0) return valid[random.Next(valid.Count)];
-            // 这个口径没有够格的弹药：退回这把枪能用的最高品质。
+            // 这个口径没有够格的弹药：退回这把枪能用的最高品质（不设上限，见类注释）。
             int best = 0, bestQuality = -1;
-            int[] any = AmmoPool(caliber, 1, MaxQuality);
+            int[] any = AmmoPool(caliber, 1, AnyAmmoMaxQuality);
             for (int i = 0; i < any.Length; i++)
             {
                 Item prefab = ItemAssetsCollection.GetPrefab(any[i]);
@@ -319,7 +365,7 @@ namespace BossRush
             if (!gunSlot) return gun == null;
             if (gun == null || prefab.Inventory == null || gun.Capacity <= 0) return false;
             string caliber = Caliber(prefab);
-            return !string.IsNullOrEmpty(caliber) && AmmoPool(caliber, 1, MaxQuality).Length > 0;
+            return !string.IsNullOrEmpty(caliber) && AmmoPool(caliber, 1, AnyAmmoMaxQuality).Length > 0;
         }
 
         /// <summary>某口径、某品质带的弹药（官方与其它 Mod，排序后的 TypeID）。</summary>
@@ -433,6 +479,76 @@ namespace BossRush
             weaponPools.Clear();
             ammoPools.Clear();
             warned.Clear();
+        }
+
+        internal static Slot WeaponSlot(Item body, bool primary)
+        {
+            return SkyIslandBossForge.FindSlot(body, primary ? PrimarySlot : SecondarySlot);
+        }
+    }
+
+    /// <summary>
+    /// 岛上敌人的续弹（见 <see cref="SkyIslandEnemyArmory"/> 类注释）：配装时记下主 / 副武器各是哪一把、用哪种弹，
+    /// 每 <see cref="Interval"/> 秒看一眼背包，同款备弹不足一匣就补回规定发数。槽里不再是配装时那把枪就不管那一槽。
+    /// 用 InvokeRepeating 定时，不进每帧路径（SkyIslandEnemyArmoryGuard）；只挂在本 Mod 刷出的敌人身上、随角色销毁；
+    /// 倒下后取消定时，不往尸体箱里续。
+    /// </summary>
+    internal sealed class SkyIslandAmmoKeeper : MonoBehaviour
+    {
+        internal const float Interval = 3f;
+
+        private CharacterMainControl owner;
+        private Item primaryWeapon, secondaryWeapon;
+        private int primaryAmmo, secondaryAmmo;
+        private string fromKey;
+
+        internal void Bind(CharacterMainControl character, int primary, int secondary, string from)
+        {
+            owner = character;
+            Item body = character != null ? character.CharacterItem : null;
+            primaryWeapon = primary > 0 ? Weapon(body, true) : null;
+            secondaryWeapon = secondary > 0 ? Weapon(body, false) : null;
+            primaryAmmo = primary;
+            secondaryAmmo = secondary;
+            fromKey = from;
+            InvokeRepeating(nameof(Check), Interval, Interval);
+        }
+
+        private void Check()
+        {
+            try
+            {
+                if (owner == null || owner.Health == null || owner.Health.IsDead) { CancelInvoke(); return; }
+                Item body = owner.CharacterItem;
+                if (body == null) return;
+                Refill(body, true, primaryWeapon, primaryAmmo);
+                Refill(body, false, secondaryWeapon, secondaryAmmo);
+            }
+            catch (Exception) { CancelInvoke(); }
+        }
+
+        private void Refill(Item body, bool primary, Item expected, int ammoTypeId)
+        {
+            if (expected == null || ammoTypeId <= 0) return;
+            Item weapon = Weapon(body, primary);
+            if (weapon != expected) return;
+            ItemSetting_Gun gun = weapon.GetComponent<ItemSetting_Gun>();
+            if (gun == null || SkyIslandEnemyArmory.ReserveOf(body, ammoTypeId) >= Math.Max(1, gun.Capacity)) return;
+            SkyIslandEnemyArmory.TopUpReserve(body, gun, ammoTypeId, fromKey);
+        }
+
+        private static Item Weapon(Item body, bool primary)
+        {
+            Slot slot = body != null ? SkyIslandEnemyArmory.WeaponSlot(body, primary) : null;
+            return slot != null ? slot.Content : null;
+        }
+
+        private void OnDestroy()
+        {
+            CancelInvoke();
+            owner = null;
+            primaryWeapon = null;
+            secondaryWeapon = null;
         }
     }
 }

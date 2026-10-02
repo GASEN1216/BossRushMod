@@ -72,6 +72,8 @@ namespace BossRush
                 if (extractionRings != null) extractionRings.Apply(BellExitIfUnlocked() != null);
                 if (extractionRings != null) extractionRings.ApplyBeacons(WindExitIfUnlocked() != null, StarExitIfUnlocked() != null);
                 if (mapMarkers != null) mapMarkers.Apply(story.Current, exitMarker, BellExitIfUnlocked(), WindExitIfUnlocked(), StarExitIfUnlocked());
+                // 地图标记与底图同一原点（SkyIslandMapFog.KeepOfficialCenter，自带 0.5 秒节流）。
+                mapFog.KeepOfficialCenter();
             }
             catch (Exception e) { TickFault("gates_and_markers", e); }
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.GatesAndMarkers);

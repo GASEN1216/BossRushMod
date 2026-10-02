@@ -16,7 +16,8 @@ namespace BossRush
     /// 场景包里的 MiniMapSettings 只画地形，撤离点与当前目标此前在官方地图上完全没有标记
     /// （CR-2026-09-09-012：钟庭撤离难找）。这里复用官方 <c>SimplePointOfInterest</c>（ModeF 撤离标记同一类型）：
     /// - 撤离点：码头恒显；钟庭与两处航标广场与撤离圈同一事实源（会话的 *ExitIfUnlocked），解锁才出现；
-    /// - 当前目标：按剧情进度圈出下一处要去的地方，用官方的区域圈画法。
+    /// - 当前目标：按剧情进度圈出下一处要去的地方，用官方的区域圈画法；
+    ///   去找居民接 / 交任务时圈居民本人、跟着他走（他这一趟不在岛上才圈兜底装置）。
     ///
     /// 纯表现层，不参与任何判定。标记挂在世界根下、随岛一起卸载；<see cref="Apply"/> 只在剧情旗标或解锁状态
     /// 真的变化时重建，平时每帧只比较两个整数。组件建好、属性改完再 <c>Setup</c>：官方 Setup 自带「先注销再注册」，
@@ -26,37 +27,54 @@ namespace BossRush
     {
         /// <summary>当前目标的区域圈半径（米）：够圈住航标台 / 钟庭留言板一带，又不至于盖住整座岛。</summary>
         private const float ObjectiveRadius = 12f;
+        /// <summary>多久重新确认一次「要找的那位居民在哪」：居民会走动，圈跟着挪；平时只比一个引用。</summary>
+        private const float FollowInterval = 0.5f;
 
         private readonly Transform root;
         private readonly Action<string, bool> notify;
+        private readonly Func<int, Transform> giverAnchor;
         private readonly List<GameObject> spawned = new List<GameObject>();
         private int appliedFlags = int.MinValue;
         private int appliedCleared = -1;
         private int appliedExits = -1;
         private SystemLanguage appliedLanguage;
+        private Transform contactAnchor, appliedContact;
+        private GameObject followPoint;
+        private float nextFollowCheck;
         private bool disposed;
 
-        internal SkyIslandMapMarkers(Transform root, Action<string, bool> notify)
+        /// <param name="giverAnchor">任务给予者整数 → 这一趟岛上那位居民本人（不在岛上返回 null），见 <see cref="SkyIslandSession.GiverAnchor"/>。</param>
+        internal SkyIslandMapMarkers(Transform root, Action<string, bool> notify, Func<int, Transform> giverAnchor)
         {
             this.root = root;
             this.notify = notify;
+            this.giverAnchor = giverAnchor;
         }
 
         internal void Apply(SkyIslandStoryData data, Transform dock, Transform bell, Transform wind, Transform star)
         {
             if (disposed || root == null) return;
+            if (Time.unscaledTime >= nextFollowCheck)
+            {
+                nextFollowCheck = Time.unscaledTime + FollowInterval;
+                contactAnchor = ContactAnchor(data);
+                FollowContact();
+            }
             int exits = (bell != null ? 1 : 0) | (wind != null ? 2 : 0) | (star != null ? 4 : 0);
             // 标签是按当前语言注入的覆盖文本（见 Add）：换了语言也整体重建一次，地图上的字才跟着换。
             SystemLanguage language = LocalizationManager.CurrentLanguage;
             // 清掉一伙航标守卫只改清场表、不改旗标：地图圈要跟着从这伙人挪到下一伙 / 灯本身，所以清场数也算变化。
             int cleared = data.clearedEncounters == null ? 0 : data.clearedEncounters.Length;
-            if (data.flags == appliedFlags && cleared == appliedCleared && exits == appliedExits && language == appliedLanguage) return;
+            // 要找的居民刚刷出来、或者这一趟不在了：圈要在居民与兜底装置之间换一次。
+            if (data.flags == appliedFlags && cleared == appliedCleared && exits == appliedExits && language == appliedLanguage
+                && contactAnchor == appliedContact) return;
             // 进岛时已经开着的出口不提示；只有这一趟里新点亮的才提示一次。
             int opened = appliedExits < 0 ? 0 : exits & ~appliedExits;
             appliedFlags = data.flags;
             appliedCleared = cleared;
             appliedExits = exits;
             appliedLanguage = language;
+            appliedContact = contactAnchor;
             Clear();
             // 撤离点借官方出口的图标（UE-21）：和原版地图上的出口一个样子，一眼认得出「从这里走」；取不到就退回默认图标。
             Sprite exit = ExitIcon();
@@ -65,7 +83,13 @@ namespace BossRush
             Add(wind, L10n.T("悬根林广场撤离点", "Hanging Root Wood extraction"), BossRushUIColors.SuccessText, 0f, exit);
             Add(star, L10n.T("残星工坊广场撤离点", "Fallen Star Workshop extraction"), BossRushUIColors.SuccessText, 0f, exit);
             foreach (string target in ObjectiveTargets(data))
-                Add(root.Find(target), ObjectiveLabel(target), BossRushUIColors.WarningText, ObjectiveRadius, null);
+            {
+                // 接取 / 复命时只有一个目标（给予者兜底装置的标记）：那位居民在岛上就圈他本人，并跟着他走。
+                bool resident = contactAnchor != null;
+                GameObject point = Add(resident ? contactAnchor : root.Find(target), ObjectiveLabel(target),
+                    BossRushUIColors.WarningText, ObjectiveRadius, null);
+                if (resident) followPoint = point;
+            }
             // 支线 / 可选挑战用紫（UE-21）：旧写法和码头撤离点同为 Accent 青，地图上一眼分不开。
             foreach (string target in SideTargets(data))
                 Add(root.Find(target), SideLabel(target), BossRushUIColors.RarityEpic, ObjectiveRadius, null);
@@ -78,6 +102,27 @@ namespace BossRush
                     "Star lamp lit: an extraction ring has opened on the Fallen Star Workshop plaza; step into the green ring to extract."), false);
             if ((opened & 1) != 0)
                 notify(L10n.T("两端航标都亮了：归航钟庭的撤离点开了", "Both beacons lit: the Bell Court extraction is open"), false);
+        }
+
+        /// <summary>
+        /// 眼下要去找哪位居民接 / 交任务，他这一趟在岛上的位置；没有要找的人、或那位居民不在岛上时为 null。
+        /// 地图圈与风标罗盘共用这一份（罗盘见 SkyIslandWorldStory.CompassReading）。
+        /// </summary>
+        internal static Transform ContactAnchor(SkyIslandStoryData data, Func<int, Transform> giverAnchor)
+        {
+            if (giverAnchor == null || data == null) return null;
+            SkyIslandOfficialQuestDefinition contact = SkyIslandOfficialQuestTable.NextContactQuest(data);
+            return contact == null ? null : giverAnchor(contact.GiverId);
+        }
+
+        private Transform ContactAnchor(SkyIslandStoryData data) { return ContactAnchor(data, giverAnchor); }
+
+        /// <summary>居民走开超过半米就把圈挪过去（官方地图条目发现目标挪了会自己重算位置）。</summary>
+        private void FollowContact()
+        {
+            if (followPoint == null || contactAnchor == null) return;
+            Vector3 delta = contactAnchor.position - followPoint.transform.position;
+            if (delta.sqrMagnitude > 0.25f) followPoint.transform.position = contactAnchor.position;
         }
 
         /// <summary>与 <see cref="SkyIslandStoryRules.Objective"/> 同一顺序：先接取/复命，再探索；结局后的未交任务仍保留目标。</summary>
@@ -187,9 +232,9 @@ namespace BossRush
             }
         }
 
-        private void Add(Transform anchor, string label, Color color, float areaRadius, Sprite icon)
+        private GameObject Add(Transform anchor, string label, Color color, float areaRadius, Sprite icon)
         {
-            if (anchor == null) return;
+            if (anchor == null) return null;
             try
             {
                 var go = new GameObject("SkyIslandMapPoint_" + anchor.name);
@@ -206,11 +251,13 @@ namespace BossRush
                 LocalizationHelper.InjectLocalization(key, label);
                 poi.Setup(icon, key);
                 spawned.Add(go);
+                return go;
             }
             catch (Exception e)
             {
                 // 纯表现层：标不上地图也绝不能拦住旅程本身。
                 Debug.LogWarning("[SkyIsland] 地图标记创建失败 " + anchor.name + "：" + e.Message);
+                return null;
             }
         }
 
@@ -219,6 +266,7 @@ namespace BossRush
             for (int i = 0; i < spawned.Count; i++)
                 if (spawned[i] != null) UnityEngine.Object.Destroy(spawned[i]);
             spawned.Clear();
+            followPoint = null;
         }
 
         public void Dispose()

@@ -105,6 +105,10 @@ def check(src, bat):
         # owner 2026-10-01「Boss 一直说没子弹了」：达标留下的官方原装与副武器也要补备弹，不能只给换上的那把。
         ("EnsureAmmo(body, PrimarySlot, band, random, fromKey, label);", "主武器（含达标留下的原装）必须补备弹"),
         ("EnsureAmmo(body, SecondarySlot, band, random, fromKey, label);", "副武器也必须补备弹"),
+        # owner 2026-10-02「还是有些 Boss 没有子弹」：官方 Boss 专属枪（品质码 9）的弹药查不到时整把枪打不响。
+        ("band.Keeps(current.Quality) && !IsDryGun(body, current)", "达标但找不到弹药的原装枪必须换掉"),
+        ("int[] any = AmmoPool(caliber, 1, AnyAmmoMaxQuality);", "退回「这把枪能用的任何弹药」时不设品质上限"),
+        ("AddComponent<SkyIslandAmmoKeeper>().Bind(character, primaryAmmo, secondaryAmmo, fromKey);", "配完弹要挂续弹，长战不断粮"),
     ):
         if token not in armory:
             errors.append("SkyIslandEnemyArmory " + why + "（缺 " + token + "）")
@@ -139,6 +143,8 @@ def reverse(src, bat):
         ("prelude", "SkyIslandEnemyArmory.Arm(created, SkyIslandEnemyTier.Chief);", ""),
         ("encounters", "SkyIslandEnemyArmory.Arm(created, tier);", ""),
         ("armory", "SkyIslandEnemyArmoryRules.IsOwnModItem(id)", "false"),
+        ("armory", "band.Keeps(current.Quality) && !IsDryGun(body, current)", "band.Keeps(current.Quality)"),
+        ("armory", "int[] any = AmmoPool(caliber, 1, AnyAmmoMaxQuality);", "int[] any = AmmoPool(caliber, 1, MaxQuality);"),
         ("armory", "return !string.IsNullOrEmpty(caliber) &&", "return SkyIslandEnemyArmoryRules.IsIslandCaliber(caliber) &&"),
         ("armory", "SkyIslandLootTables.AllowedInPool(prefab.Value)", "true"),
         ("pools", "while (armory.MoveNext()) yield return armory.Current;", ""),

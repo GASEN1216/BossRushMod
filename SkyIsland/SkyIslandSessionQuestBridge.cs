@@ -27,6 +27,21 @@ namespace BossRush
                 ? spouse.GetComponentInChildren<PermanentDuckNpcInteractable>(true) : null;
         }
 
+        /// <summary>
+        /// 去找某位居民接 / 交任务时，地图圈和风标罗盘指向这位居民本人（只读）。
+        /// 兜底装置（渡口工台 / 委托板 / 钟庭留言板）离居民站的地方 31–41 米，而地图圈半径只有 12 米：
+        /// 以前圈画在装置上，人站在圈外（owner 2026-10-02「圈与实际位置不符」）。
+        /// 这位居民这一趟不在岛上就返回 null，调用方退回装置标记——那时任务也确实挂在装置上。
+        /// </summary>
+        internal UnityEngine.Transform GiverAnchor(int giverId)
+        {
+            string resident = SkyIslandOfficialQuestTable.ResidentOfGiver(giverId);
+            if (resident == null || !IsSessionValid()) return null;
+            InteractableBase owner = FindResidentQuestOwner(resident);
+            CharacterMainControl npc = owner == null ? null : owner.GetComponentInParent<CharacterMainControl>();
+            return npc != null ? npc.transform : null;
+        }
+
         /// <summary>随行配偶也走本趟的战斗门、服务和剧情 owner。</summary>
         internal void TalkToResident(string id, UnityEngine.Transform speaker)
         {

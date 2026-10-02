@@ -28,10 +28,18 @@ namespace BossRush
 
         /// <summary>
         /// 序章守卫（零号区「断风游猎·守」）在统一倍率之上再乘的生命系数。它倒下必掉品质 5–6 的枪，
-        /// owner 2026-10-01 要求别让刚开档的玩家轻易打下来：K3 参照 250 × 1.5 × 2 = 750（统一倍率同日减半后，再受游戏难度影响）。
+        /// owner 2026-10-01 要求别让刚开档的玩家轻易打下来：K3 参照 250 × 1.5 = 375，先抬到 <see cref="BossHealthFloor"/> 1000，再 × 2 = 2000（再受游戏难度影响）。
         /// 只用于零号区序章，岛上 K3 中继平台那一位不受影响。
         /// </summary>
         internal const float PreludeWardenHealthFactor = 2f;
+
+        /// <summary>
+        /// 本 Mod 专属 Boss（头目、岛主、折翎与守钟装置、噬风、序章守卫）的生命下限（owner 2026-10-02「我们自己的专属 Boss 血量都要 1000 以上」）。
+        /// 统一倍率之后取大：参照 Boss 原版血少的（机械雪人 320、BA 头目 250、三枪 400……）抬到这里，Alex 这类本来更高的不动。
+        /// 序章守卫在这之后再乘 <see cref="PreludeWardenHealthFactor"/>，所以零号区那一位是 2000（再受游戏难度影响）。
+        /// 小兵、精英与巡守不是专属 Boss，不受影响。
+        /// </summary>
+        internal const float BossHealthFloor = 1000f;
         private static readonly SkyIslandCombatBaseline[] baselines =
         {
             new SkyIslandCombatBaseline { PresetId = "EnemyPreset_Scav_Snow_Elete",

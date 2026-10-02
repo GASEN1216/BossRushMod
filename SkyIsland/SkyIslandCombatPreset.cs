@@ -19,6 +19,8 @@ namespace BossRush
             // 机动与感知只乘 1.5（SkyIslandCombatBalance.PerceptionMultiplier 注释写了为什么不跟着统一倍率走）。
             float sense = SkyIslandCombatBalance.PerceptionMultiplier;
             clone.health = (baseline != null ? baseline.Health : source.health) * factor;
+            // 专属 Boss 血量保底（SkyIslandCombatBalance.BossHealthFloor）。
+            if (SkyIslandEnemyArmoryRules.IsBossTier(tier)) clone.health = Math.Max(clone.health, SkyIslandCombatBalance.BossHealthFloor);
             clone.damageMultiplier = (baseline != null ? baseline.Damage : source.damageMultiplier) * factor;
             // 当前官方工厂直接读取 meleeDamageMultiplier，不以 setMeleeDamageMultiplier 决定是否读取。
             // 普通敌人保留独立近战基准；Boss Wiki 只列通用伤害，将它用作岛内两种攻击的基准。

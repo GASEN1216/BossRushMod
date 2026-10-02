@@ -347,7 +347,7 @@ namespace BossRush
                 extractionRings.ApplyBeacons(WindExitIfUnlocked() != null, StarExitIfUnlocked() != null);
             });
             // 官方地图上的撤离点与当前目标：与撤离圈同一事实源，纯表现层，单独持有 owner。
-            Safe("map_markers", delegate { mapMarkers = new SkyIslandMapMarkers(root.transform, Status); });
+            Safe("map_markers", delegate { mapMarkers = new SkyIslandMapMarkers(root.transform, Status, GiverAnchor); });
             // 撤离读条同样是纯表现层、单独持有 owner：官方控件接不上时退回 HUD 文字读秒，撤离照常。
             Safe("extraction_countdown", delegate
             {

@@ -17,6 +17,9 @@ def check(root):
     assert re.search(r"const\s+float\s+Multiplier\s*=\s*1\.5f\s*;", balance), "统一倍率必须是原版 ×1.5"
     assert re.search(r"const\s+float\s+PerceptionMultiplier\s*=\s*1\.5f\s*;", balance), "机动与感知倍率必须是原版 ×1.5"
     assert re.search(r"const\s+float\s+PreludeWardenHealthFactor\s*=\s*2f\s*;", balance), "零号区序章守卫额外生命系数必须是 2"
+    # owner 2026-10-02：本 Mod 专属 Boss（头目、岛主、具名对手、噬风，即 IsBossTier）血量至少 1000，统一倍率之后取大。
+    floor = re.search(r"const\s+float\s+BossHealthFloor\s*=\s*([\d.]+)f\s*;", balance)
+    assert floor and float(floor.group(1)) >= 1000, "专属 Boss 生命下限必须 ≥ 1000"
     snapshot = json.loads((root / "tests/fixtures/SkyIslandEncounters/VanillaCombatReference.json").read_text(encoding="utf-8"))
     rows = re.findall(r'new SkyIslandCombatBaseline\s*\{\s*PresetId\s*=\s*"([^"]+)"\s*,([^}]+)\}', balance)
     assert len(rows) == len(snapshot["baselines"]), "原版参照表与 Wiki 快照数量不一致"
@@ -51,6 +54,9 @@ def check(root):
         prelude.find('SkyIslandCombatPreset.Apply(clone, source, "K3_Relay"') < warden < prelude.find("await clone.CreateCharacterAsync(")), (
         "序章守卫的额外生命必须在统一倍率之后、官方创建之前乘一次")
     adapter = code["SkyIslandCombatPreset"]
+    health_at = adapter.find("clone.health = (baseline != null ? baseline.Health : source.health) * factor;")
+    floor_line = "if (SkyIslandEnemyArmoryRules.IsBossTier(tier)) clone.health = Math.Max(clone.health, SkyIslandCombatBalance.BossHealthFloor);"
+    assert 0 <= health_at < adapter.find(floor_line) and adapter.count(floor_line) == 1, "专属 Boss 生命下限要在统一倍率之后取大一次"
     for field, factor in (("health", "factor"), ("damageMultiplier", "factor"), ("meleeDamageMultiplier", "factor"),
                           ("aiCombatFactor", "factor"), ("moveSpeedFactor", "sense"), ("bulletSpeedMultiplier", "sense"),
                           ("gunDistanceMultiplier", "sense"), ("nightVisionAbility", "sense"), ("sightDistance", "sense"),

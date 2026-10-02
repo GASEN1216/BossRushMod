@@ -16,9 +16,10 @@ internal static partial class Program
             Check(!flow.IsSpawning && flow.Spawned != null, "prelude completes normal spawn");
             var clone = CharacterRandomPreset.Clones[attempt];
             var actor = CharacterRandomPreset.Created[attempt];
-            NearCombat(clone.health, 750f, "prelude prepares Warden baseline x1.5 and prelude factor x2 before factory");
-            NearCombat(actor.Health.MaxHealth, 750f, "prelude factory receives Warden health");
-            NearCombat(actor.Health.CurrentHealth, 750f, "prelude spawns at full health");
+            // 250 × 1.5 = 375，先抬到专属 Boss 下限 1000（owner 2026-10-02），再乘序章系数 2。
+            NearCombat(clone.health, 2000f, "prelude prepares Warden baseline x1.5, boss floor 1000 and prelude factor x2 before factory");
+            NearCombat(actor.Health.MaxHealth, 2000f, "prelude factory receives Warden health");
+            NearCombat(actor.Health.CurrentHealth, 2000f, "prelude spawns at full health");
             NearCombat(clone.damageMultiplier, 1.5f, "prelude Warden gun damage");
             NearCombat(clone.meleeDamageMultiplier, 1.5f, "prelude Warden melee damage");
             NearCombat(clone.moveSpeedFactor, 1.725f, "prelude Warden movement");

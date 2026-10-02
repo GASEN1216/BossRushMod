@@ -48,8 +48,12 @@ internal static partial class Program
                 else world.Tick();
                 var clone = CharacterRandomPreset.Clones[0];
                 var source = CharacterRandomPreset.Source;
-                NearCombat(clone.health, baseline.Health * SkyIslandCombatBalance.Multiplier, id + " health before factory");
-                NearCombat(CharacterRandomPreset.Created[0].Health.CurrentHealth, baseline.Health * SkyIslandCombatBalance.Multiplier, id + " spawns at full new health");
+                // owner 2026-10-02：专属 Boss（带队位全是 IsBossTier）统一倍率之后再抬到 1000 下限。
+                Check(SkyIslandEnemyArmoryRules.IsBossTier(def.TierFor(0)), id + " lead is an own boss tier");
+                float leadHealth = Math.Max(baseline.Health * SkyIslandCombatBalance.Multiplier, SkyIslandCombatBalance.BossHealthFloor);
+                Check(leadHealth >= 1000f, id + " own boss health is at least 1000");
+                NearCombat(clone.health, leadHealth, id + " health before factory");
+                NearCombat(CharacterRandomPreset.Created[0].Health.CurrentHealth, leadHealth, id + " spawns at full new health");
                 NearCombat(clone.damageMultiplier, baseline.Damage * SkyIslandCombatBalance.Multiplier, id + " gun damage");
                 NearCombat(clone.meleeDamageMultiplier, baseline.Damage * SkyIslandCombatBalance.Multiplier, id + " melee damage");
                 Check(clone.setMeleeDamageMultiplier, id + " melee override enabled");
@@ -68,13 +72,14 @@ internal static partial class Program
                 NearCombat(source.health, 45f, id + " source resource untouched");
                 Check(clone.exp == source.exp && clone.dropBoxOnDead, id + " original economy retained");
                 SkyIslandCombatPreset.Apply(clone, source, id, 0, def.TierFor(0));
-                NearCombat(clone.health, baseline.Health * SkyIslandCombatBalance.Multiplier, id + " preparing twice does not compound");
+                NearCombat(clone.health, leadHealth, id + " preparing twice does not compound");
                 // 同组随从不能误吃带队 Boss 的参照。
                 for (int i = 1; i < def.Count; i++)
                 {
                     var follower = SkyIslandCombatBalance.For(id, i, def.TierFor(i));
-                    NearCombat(CharacterRandomPreset.Clones[i].health,
-                        (follower == null ? source.health : follower.Health) * SkyIslandCombatBalance.Multiplier, id + " follower " + i);
+                    float followerHealth = (follower == null ? source.health : follower.Health) * SkyIslandCombatBalance.Multiplier;
+                    if (SkyIslandEnemyArmoryRules.IsBossTier(def.TierFor(i))) followerHealth = Math.Max(followerHealth, SkyIslandCombatBalance.BossHealthFloor);
+                    NearCombat(CharacterRandomPreset.Clones[i].health, followerHealth, id + " follower " + i);
                 }
             }
         }

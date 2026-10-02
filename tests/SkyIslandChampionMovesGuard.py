@@ -2,7 +2,8 @@
 
 钉住：
 1. 两个控制器都经 SkyIslandBossForge.BindChampionMoves 分派，遭遇 owner 在两条具名对手分支里都调了它；新文件已登记编译清单。
-2. 逃圈判据：每一种预警圈的「半径 ÷ 预警」≤ SkyIslandBossRules.MaxEscapeSpeed（5.5 m/s，正常跑动可达）。
+2. 逃圈判据：每一种预警圈的「半径 ÷ 预警」≤ SkyIslandBossRules.MaxEscapeSpeed（5.5 m/s，正常跑动可达）；
+   守钟装置远响是一条环带，按「环带半宽 ÷ 预警」算，且内圈必须就是近响的圈（远响时钻进去安全，2026-10-02 报时重做）。
 3. 预警时长一律过 TelegraphSeconds（静听耳罩）；只订自己身上的死亡事件并在 OnDestroy 退订；
    站定蓄力暂停 AI 之后，收尾与 OnDestroy 都会恢复；预警圈没画出来就不结算。
 4. 手工驱动的子协程要透传 Current（根 AGENTS §4.7）。
@@ -62,12 +63,19 @@ def check(code):
             errors.append("遭遇 owner 的 %s 分支没挂专属招式" % cid)
     m = re.search(r"internal const float MaxEscapeSpeed = ([0-9.]+)f;", rules)
     limit = float(m.group(1)) if m else 5.5
-    for radius, telegraph in (("CutRadius", "CutTelegraph"), ("TollRadius", "TollTelegraph"), ("EchoRadius", "EchoTelegraph")):
+    for radius, telegraph in (("CutRadius", "CutTelegraph"), ("NearRadius", "NearTelegraph")):
         r, t = const(moves, radius), const(moves, telegraph)
         if r is None or t is None or t <= 0:
             errors.append("缺常量 %s / %s" % (radius, telegraph))
         elif r / t > limit + 1e-6:
             errors.append("%s / %s = %.2f m/s，超过逃圈判据 %.1f" % (radius, telegraph, r / t, limit))
+    if "internal const float FarInner = NearRadius;" not in moves:
+        errors.append("远响的内圈必须就是近响的圈（FarInner = NearRadius）")
+    near, outer, far_t = const(moves, "NearRadius"), const(moves, "FarOuter"), const(moves, "FarTelegraph")
+    if near is None or outer is None or far_t is None or far_t <= 0 or outer <= near:
+        errors.append("缺常量 NearRadius / FarOuter / FarTelegraph，或外圈不大于内圈")
+    elif (outer - near) / 2.0 / far_t > limit + 1e-6:
+        errors.append("远响环带半宽 / FarTelegraph = %.2f m/s，超过逃圈判据 %.1f" % ((outer - near) / 2.0 / far_t, limit))
     for cls in ("SkyIslandZhelingMoves", "SkyIslandBellEngineMoves"):
         start = moves.find("internal sealed class " + cls)
         nxt = moves.find("internal sealed class ", start + 10)
@@ -88,12 +96,12 @@ def check(code):
     zheling = body_of(moves, "private IEnumerator CutRoutine(Vector3 direction)")
     if zheling is None or squash("points.Add(ground);lines.Add(line);") not in squash(zheling):
         errors.append("折翎只结算成功画出预警圈的刀点")
-    toll = body_of(moves, "private IEnumerator Toll(")
-    if toll is None or squash("if (line == null) yield break;") not in squash(toll):
-        errors.append("钟鸣圈没画出来就不能敲")
-    routine = body_of(moves, "private IEnumerator TollRoutine()")
-    if routine is None or squash("while (first.MoveNext()) yield return first.Current;") not in squash(routine) \
-            or squash("while (echo.MoveNext()) yield return echo.Current;") not in squash(routine):
+    beat = body_of(moves, "private IEnumerator Beat(")
+    if beat is None or squash("if (line == null || (far && inner == null)) { ReleaseLine(line); ReleaseLine(inner); "
+                              "ReleaseLine(wave); yield break; }") not in squash(beat):
+        errors.append("报时圈没画出来就不能敲（远响要内外两道圈都在）")
+    routine = body_of(moves, "private IEnumerator StrikeRoutine()")
+    if routine is None or squash("while (beat.MoveNext()) yield return beat.Current;") not in squash(routine):
         errors.append("手工驱动子协程要透传 Current")
     return errors
 
@@ -112,9 +120,11 @@ def reverse_checks(code):
     probes = [
         ("bat", "echo(SkyIsland\\SkyIslandChampionMoves.cs", "rem removed"),
         ("enc", 'SkyIslandBossForge.BindChampionMoves(created, "bellkeeper", BossContext());', ""),
-        ("moves", "internal const float EchoTelegraph = 1.6f;", "internal const float EchoTelegraph = 1.2f;"),
-        ("moves", "if (line == null) yield break;", ""),
-        ("moves", "while (echo.MoveNext()) yield return echo.Current;", "while (echo.MoveNext()) yield return null;"),
+        ("moves", "internal const float FarTelegraph = 1.4f;", "internal const float FarTelegraph = 1.0f;"),
+        ("moves", "internal const float NearTelegraph = 1.4f;", "internal const float NearTelegraph = 1.0f;"),
+        ("moves", "internal const float FarInner = NearRadius;", "internal const float FarInner = 9f;"),
+        ("moves", "if (line == null || (far && inner == null))", "if (line == null)"),
+        ("moves", "while (beat.MoveNext()) yield return beat.Current;", "while (beat.MoveNext()) yield return null;"),
     ]
     failures = []
     for key, old, new in probes:
@@ -135,7 +145,7 @@ def main():
         for e in errors:
             print("FAIL:", e)
         sys.exit(1)
-    print("PASS: SkyIslandChampionMovesGuard（分派、编译清单、逃圈判据、生命周期；5 个反向探针均转红）")
+    print("PASS: SkyIslandChampionMovesGuard（分派、编译清单、逃圈判据、生命周期；7 个反向探针均转红）")
 
 
 if __name__ == "__main__":

@@ -74,6 +74,11 @@ namespace UnityEngine
         internal override bool Gone { get { return Destroyed || gameObject == null; } }
         public T GetComponent<T>() { return gameObject.GetComponent<T>(); }
         public T GetComponentInChildren<T>(bool includeInactive = false) where T : Component { return gameObject.GetComponentInChildren<T>(includeInactive); }
+        public T GetComponentInParent<T>() where T : class
+        {
+            for (Transform t = transform; t != null; t = t.Parent) { T found = t.gameObject.GetComponent<T>(); if (found != null) return found; }
+            return null;
+        }
     }
     public class Transform : Component
     {
