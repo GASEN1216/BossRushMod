@@ -1,7 +1,8 @@
 ## v2.3.0
 
-### Release Status
-- **Not released yet, coming soon.** This page collects every change made after v2.2.5 (2026-08-10); all of it ships together in 2.3.0, and the date goes here on release day. A few numbers may still be tuned before then, so the individual wiki entries have the final say.
+### Release Date
+- 2026-10-02
+- This release collects every change made after v2.2.5 (2026-08-10). The individual wiki entries have the exact numbers.
 
 ### Main Theme
 - **A new name**: the mod is now called "BossRush · Qinglan Archipelago" (Chinese name: BossRush · 晴岚群岛). The online wiki lives at https://bossrushmod.pages.dev/
@@ -186,12 +187,22 @@
 
 ### Improved: Existing Content
 
+- **Fairer fights against the three mod Bosses**:
+  - Dodge-rolling now carries you through their charges, bullets, spears and slashes. Lingering ground damage such as lava trails and the Curse Realm still can't be rolled through; walk out of the warning area.
+  - **Skyburner Dragon Lord**: stops firing while casting its ground-telegraphed big moves (Charge, Solar Dance, Phantom Spear). Phantom Spear warning lines are drawn one by one, and even the last gives at least 0.4s to react. Before the second charge in phase 2 it lights a 0.3s countdown ring where it stands.
+  - **Dragon Descendant**: the blast that comes with every 10th shot now locks onto where you stand and lights a 0.8s warning ring before exploding there (10 fire damage, 1.6m radius), so stepping away dodges it. Its phase 2 dash now starts with a dust-kicking wind-up.
+  - **Phantom Witch**: each phase now draws its moves at random without repeating the same one back to back. After a swing she stands still for about 0.35–0.7s, leaving a window to hit back. Phase 3 adds Last Breath, a heavy slash with a fan-shaped warning after she teleports in.
 - **Zombie Mode**:
   - Set your own rest time between waves: press "Edit" at the bottom of the reward screen and pick 15 to 300 seconds in 15-second steps. The extraction preparation after a Boss wave uses the same length.
   - New one-use item, the **Portable Safe-Zone Device**, offered among rewards: used in combat it moves the safe zone to you; used during preparation it adds a second safe zone without a merchant.
   - The supply terminal can now **recycle junk**, preferring low-quality ordinary scrap; weapons, ammo, medicine, food, keys and the like are never taken.
+  - The five Zombie Bosses have a new look: each gets its own colored armor and ground sigil, bursts sparks of its color when using a skill or dying, and shows the official Boss icon next to its name on the health bar.
+  - The Hunter's dash now shows a wind-up warning and then charges at where you were, hitting around where it actually lands instead of teleporting. Its frenzy below 30% HP now lasts until it dies.
+  - When several Zombie Bosses share the field, their damaging skills wind up at staggered times instead of all landing in the same instant.
 - **Awen's Sweep Loot**: when you open the next sweep, anything still left in the old pickup crate is mailed to the courier in one batch with a single summary message; things you put in yourself go back to your backpack.
-- **Dragon Cannon**: every ammo type loses its white glow.
+- **Dragon Cannon**:
+  - Two new loadable ammo types bring it from 15 to 17: the **Large Energy Bullet** fires a slow, oversized orb that collapses into a singularity at the crosshair and pulls nearby enemies toward its center (Bosses are not pulled); the **Water Balloon** lobs 3 balloons that skip along the ground and apply the vanilla Soaked status.
+  - Every ammo type loses its white glow.
 - Dragon-line drop gear and the Dragon Cannon are worth more (sell price only; shop prices are unchanged).
 
 ### Changed: New Systems Are On by Default
@@ -204,8 +215,13 @@
 - Fixed mod-spawned enemies being silently switched off by the game's distance sleep once you moved far away, which left waves that could never finish. This was the single biggest cause of stuck waves.
 - Fixed From Scratch Bosses being miscounted by the standard arena's wave logic, which could spawn standard arena Bosses into From Scratch and, in long runs, play the standard clear sequence.
 - Fixed wrong faction assignment and incomplete cleanup for enemies spawned in From Scratch.
-- Fixed Faction War's roaming merchant failing to initialize.
+- Fixed Faction War's roaming merchant failing to initialize, and its huge health pool not applying, which could let it be killed by accident.
 - Fixed Blood Hunt going a long time without replacing Bosses killed during the opening preparation phase; every phase now replaces them one by one. Also fixed movement under the bloodfire state and added a kill reward prompt.
+- Fixed the per-phase Boss speed-up in Blood Hunt never taking effect.
+- Fixed the reforge benefit tendency pointing the wrong way for stats where lower is better, such as recoil: leaning toward benefits actually made higher recoil more likely.
+- Fixed the Zombie Mode "reload speed" attribute reward doing nothing when picked.
+- Fixed Zombie Mode spawning one Boss short when a spawn point was unusable; it now retries at another point.
+- Fixed deaths from a Zombie Boss's leftover corrosion zones, poison trails or death cloud being reported as killing yourself.
 - Fixed the mutator panel drawing over the backpack and other interfaces.
 - Fixed the Dragon Descendant throwing fireworks instead of grenades; it now throws the official incendiary grenade, which leaves a fire zone where it lands.
 - Fixed some interface symbols (checks, crosses, minus signs, bullets) showing up in game as blank boxes.
