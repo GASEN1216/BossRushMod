@@ -47,6 +47,12 @@ namespace BossRush
         /// <summary>竞技场场景判定的缓存代数（-1 = 尚未计算）。</summary>
         private int campaignArenaSceneGeneration = -1;
 
+        /// <summary>active scene 会晚于 sceneLoaded 切换；句柄读取不分配场景名字符串。</summary>
+        private int campaignArenaSceneHandle = -1;
+
+        /// <summary>地图注册尚未就绪的否定结果只短暂缓存，避免整局丢失报名石。</summary>
+        private float campaignArenaRetryAt;
+
         /// <summary>上次计算出的「当前场景是竞技场」结果。</summary>
         private bool campaignArenaSceneIsValid;
 
@@ -76,12 +82,13 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 当前场景是不是竞技场，按场景代数缓存。
+        /// 当前场景是不是竞技场，按场景代数与 active scene 句柄缓存。
         ///
         /// 【为什么要缓存】_owner.IsCurrentSceneValidBossRushArena 内部走
         /// SceneManager.GetActiveScene().name，**每次调用分配一个托管字符串**。
         /// 召唤石维护是每帧路径，直接调它等于每帧产生垃圾（AGENTS.md 4.12）。
-        /// 场景只在 OnSceneLoaded 时变，用模块的 scene generation 做失效键即可。
+        /// sceneLoaded 不保证 active scene 已切换，且地图注册表可能稍后才就绪；
+        /// 句柄变化立即重算，否定结果每秒重试一次，肯定结果零分配复用。
         /// </summary>
         private bool IsCampaignArenaSceneCached()
         {
@@ -89,9 +96,13 @@ namespace BossRush
             {
                 CampaignRuntimeModule runtime = _owner.CampaignRuntime;
                 int generation = runtime != null ? runtime.SceneGeneration : 0;
-                if (generation != campaignArenaSceneGeneration)
+                int handle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+                if (generation != campaignArenaSceneGeneration || handle != campaignArenaSceneHandle
+                    || (!campaignArenaSceneIsValid && Time.unscaledTime >= campaignArenaRetryAt))
                 {
                     campaignArenaSceneGeneration = generation;
+                    campaignArenaSceneHandle = handle;
+                    campaignArenaRetryAt = Time.unscaledTime + 1f;
                     campaignArenaSceneIsValid = _owner.IsCurrentSceneValidBossRushArena();
                 }
                 return campaignArenaSceneIsValid;
@@ -206,6 +217,8 @@ namespace BossRush
             // 目标达成后只应回公告板交付，不能再次生成祭坛、重复召唤终章 Boss。
             if (CampaignProgressService.GetState(def.ChapterId) != CampaignChapterState.ContractActive) return false;
 
+            // 主角可早于最终出生点定位出现；等官方初始化尾段完成后再认领石头位置。
+            if (SceneLoader.IsSceneLoading || !LevelManager.AfterInit) return false;
             if (!IsCampaignArenaSceneCached()) return false;
             CharacterMainControl main = CharacterMainControl.Main;
             if (main == null || main.Health == null || main.Health.IsDead) return false;

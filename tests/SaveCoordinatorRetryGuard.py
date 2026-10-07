@@ -22,6 +22,8 @@ import os
 import re
 import sys
 
+from cs_source_util import clean_source
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 ENGINE = os.path.join(ROOT, "Common", "Lifecycle", "BossRushSaveCoordinatorEngine.cs")
@@ -47,9 +49,20 @@ def read(path):
 
 
 def strip_comments(text):
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    text = re.sub(r"//[^\n]*", "", text)
-    return text
+    return clean_source(text)
+
+
+def method_body(code, signature):
+    start = code.find(signature)
+    if start < 0:
+        return ""
+    opening = code.find("{", start)
+    depth = 1
+    end = opening + 1
+    while end < len(code) and depth:
+        depth += (code[end] == "{") - (code[end] == "}")
+        end += 1
+    return code[opening + 1:end - 1] if depth == 0 else ""
 
 
 def check_engine(errors):
@@ -101,6 +114,33 @@ def check_engine(errors):
         errors.append("[Engine] OnPhysicalSaveSucceeded 必须在 SaveFile 成功之后才回调")
 
 
+def check_external_collection(errors):
+    engine = strip_comments(read(ENGINE) or "")
+    notify = method_body(engine, "internal void NotifyPendingWriteFlushed()")
+    for statement in ("_saveFilePending = true;", "_deferredFlushPending = true;",
+                      "_deferredRetryCount = 0;"):
+        if statement not in notify:
+            errors.append("[Engine] 外部采集写入后须保留物理落盘义务：" + statement)
+
+    store_path = os.path.join(ROOT, "Common", "Lifecycle", "BossRushSlotJsonStore.cs")
+    store = strip_comments(read(store_path) or "")
+    flush = method_body(store, "internal bool FlushPending()")
+    callback = re.search(r"if\s*\(_spec\.AfterPendingWriteFlushed\s*!=\s*null\)\s*"
+                         r"_spec\.AfterPendingWriteFlushed\(\);", flush)
+    readback = flush.find('throw new InvalidOperationException("save readback mismatch: "')
+    clear = flush.find("_pendingJson = null;", readback)
+    if callback is None or not readback < callback.start() < clear:
+        errors.append("[Store] typed pending 回读成功后、清除前须通知物理落盘义务")
+
+    persistence = strip_comments(read(os.path.join(ROOT, "Campaign", "CampaignPersistence.cs")) or "")
+    if re.search(r"AfterPendingWriteFlushed\s*=\s*CampaignSaveCoordinator\.NotifyPendingWriteFlushed\s*,",
+                 method_body(persistence, "private static BossRushSlotJsonStore<CampaignSaveData> CreateStore()")) is None:
+        errors.append("[Campaign] 存档 spec 须把外部采集接回原协调器")
+    facade = strip_comments(read(os.path.join(ROOT, "Campaign", "CampaignSaveCoordinator.cs")) or "")
+    if "_engine.NotifyPendingWriteFlushed();" not in method_body(facade, "internal static void NotifyPendingWriteFlushed()"):
+        errors.append("[Campaign] 采集完成通知须转发给持有保存义务的原引擎")
+
+
 def check_facades(errors):
     for path, directory, name in FACADES:
         src = read(path)
@@ -129,6 +169,7 @@ def check_facades(errors):
 def main():
     errors = []
     check_engine(errors)
+    check_external_collection(errors)
     check_facades(errors)
 
     if errors:

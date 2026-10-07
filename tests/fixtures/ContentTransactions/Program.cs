@@ -114,6 +114,33 @@ partial class Program
         ReopenCampaignFromDisk();
         Check(CampaignProgressService.GetState("ch1") == CampaignChapterState.ReadyToDeliver,
             "host exit snapshot survives restart without an official collection event");
+
+        Reset(); CampaignSaveCoordinator.EnsureSubscribed();
+        CampaignProgressService.TryAcceptContract("ch1");
+        LevelManager.Instance.IsBaseLevel = false;
+        CampaignProgressService.NotifyObjectivesSatisfied("ch1");
+        SavesSystem.Collect();
+        Check(!CampaignPersistence.HasPendingWrite, "official collection consumes the typed campaign pending snapshot");
+        LevelManager.Instance.IsBaseLevel = true;
+        UnityEngine.Time.frameCount++;
+        CampaignSaveCoordinator.Tick();
+        ReopenCampaignFromDisk();
+        Check(CampaignProgressService.GetState("ch1") == CampaignChapterState.ReadyToDeliver,
+            "base tick persists an official-collected snapshot even when official SaveFile never ran");
+
+        LevelManager.Instance.IsBaseLevel = false;
+        CampaignProgressService.TryDeliver("ch1");
+        SavesSystem.Collect();
+        Check(!CampaignPersistence.HasPendingWrite && CampaignSaveCoordinator.HasDeferredFlush,
+            "collected completion still owes its physical write before a slot change");
+        int writesBeforeSlotChange = SavesSystem.Writes;
+        SavesSystem.SetFile(2);
+        LevelManager.Instance.IsBaseLevel = true;
+        UnityEngine.Time.frameCount++;
+        CampaignSaveCoordinator.Tick();
+        Check(SavesSystem.Writes == writesBeforeSlotChange && !SavesSystem.Cache.ContainsKey(CampaignTuning.ProgressSaveKey)
+            && !CampaignSaveCoordinator.HasDeferredFlush,
+            "slot change discards the old physical obligation without writing its campaign snapshot into the new slot");
     }
     static void CampaignCash()
     {

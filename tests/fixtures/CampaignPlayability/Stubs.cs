@@ -29,6 +29,7 @@ namespace ItemStatsSystem
 public class CharacterMainControl : UnityEngine.Object
 {
     public UnityEngine.GameObject gameObject;
+    public readonly UnityEngine.Transform transform = new UnityEngine.Transform();
     public static CharacterMainControl Main;
     public Health Health;
     public Teams Team;

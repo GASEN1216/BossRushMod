@@ -80,6 +80,7 @@ namespace BossRush
                 BeforeStore = StampBeforeStore,
                 NotifySlotChanged = NotifySlotChangedDownstream,
                 BeforeCollectSaveData = BeforeCollectSaveData,
+                AfterPendingWriteFlushed = CampaignSaveCoordinator.NotifyPendingWriteFlushed,
             });
         }
 

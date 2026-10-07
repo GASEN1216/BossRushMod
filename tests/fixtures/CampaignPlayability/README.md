@@ -1,5 +1,7 @@
 # 战役目标与终章生命周期回归
 
+2026-10-07：新增 active scene 句柄晚于场景回调变化、地图注册表同场景稍晚就绪两条回归。夹具现在还抽取并执行真实 `TickCampaignFinalBossAltar` / `CreateCampaignFinalBossAltar`，不再用空方法代替石头维护；覆盖加载及 `AfterInit=false` 尾段不创建，最终搬人后在新位置旁创建、地面不可用时等待、碰撞体与交互组件、重复 tick 单实例且不重复查几何，以及待交付后移除。对象销毁连带销毁组件。场景句柄、地面查询、GameObject 组件容器和 FX 是替身，故不能证明地图中的可见位置或特效渲染。去掉生产场景句柄失效条件或 AfterInit 门，在隔离副本分别于 late active-scene 和 initialization-tail 断言转红。
+
 2026-10-07：终章独白增加由官方 DialogueUI / actor 失效独立发出的取消，取消前不调用 Campaign cleanup。真实终章编排必须复位当前决战并允许重新交互；旧对话迟到取消不得清掉后继决战。已有工厂在途 → cleanup → 迟到角色回收，以及旧生成异常不能取消新请求的用例继续保留。渲染与官方对话 UI 为可控替身，生产 runId、取消、清理、实例认领与死亡逻辑逐字执行。
 
 通过 `python tools/run_runtime_regressions.py --filter CampaignPlayability` 运行。

@@ -14,14 +14,45 @@ partial class Program
         Reset();
         SavesSystem.CurrentSlot = 7;
         string scenario = args[2];
-        CampaignChapterState expected = scenario == "completed" ? CampaignChapterState.Completed : CampaignChapterState.ContractActive;
+        bool finalAccepted = scenario == "final-accepted";
+        string chapterId = finalAccepted ? "ch6" : "ch1";
+        bool collectedOnly = scenario == "collected" || scenario == "collect-failure";
+        CampaignChapterState expected = collectedOnly ? CampaignChapterState.ReadyToDeliver
+            : (scenario == "completed" ? CampaignChapterState.Completed : CampaignChapterState.ContractActive);
         if (args[0] == "--campaign-disk-write")
         {
             SavesSystem.DiskPath = args[1];
             // 真实 runtime 的 bootstrap：先订阅共享 store，再加载进度。
             CampaignSaveCoordinator.EnsureSubscribed();
             CampaignProgressService.EnsureInitialized();
-            if (scenario == "completed")
+            if (finalAccepted)
+            {
+                CampaignSaveData previous = CampaignPersistence.CreateDefault();
+                previous.chapters = new CampaignChapterRecord[5];
+                for (int i = 0; i < previous.chapters.Length; i++)
+                    previous.chapters[i] = new CampaignChapterRecord { chapterId = "ch" + (i + 1), state = (int)CampaignChapterState.Completed };
+                Check(CampaignPersistence.Store(previous), "final restart scenario starts with five completed chapter records");
+                Check(CampaignProgressService.TryAcceptContract(chapterId), "final chapter is accepted through the production contract action");
+                Check(CampaignSaveCoordinator.TryFlushOnHostDestroy(), "direct close flushes the accepted final chapter");
+            }
+            else if (collectedOnly)
+            {
+                Check(CampaignProgressService.TryAcceptContract("ch1"), "direct close accepts chapter on the production subscribed store");
+                LevelManager.Instance.IsBaseLevel = false;
+                Check(CampaignProgressService.NotifyObjectivesSatisfied("ch1"), "raid completion waits for a durable snapshot");
+                SavesSystem.Collect();
+                Check(!CampaignPersistence.HasPendingWrite && CampaignSaveCoordinator.HasDeferredFlush,
+                    "official collection consumes the key but retains its physical save obligation");
+                if (scenario == "collect-failure")
+                {
+                    SavesSystem.FailPhysical = 1;
+                    try { SavesSystem.SaveFile(false); }
+                    catch (InvalidOperationException) { }
+                }
+                Check(CampaignSaveCoordinator.TryFlushOnHostDestroy(),
+                    "direct game close persists an already-collected chapter even outside base");
+            }
+            else if (scenario == "completed")
             {
                 Check(CampaignProgressService.TryAcceptContract("ch1"), "disk fixture accepts chapter before delivery");
                 Check(CampaignProgressService.NotifyObjectivesSatisfied("ch1"), "disk fixture reaches delivery through the production event");
@@ -35,14 +66,17 @@ partial class Program
                 else SavesSystem.FailKey = CampaignTuning.ProgressSaveKey;
                 Check(CampaignProgressService.TryAcceptContract("ch1"), "acceptance reaches the production pending store");
             }
-            Check(CampaignPersistence.IsSubscribed && CampaignPersistence.IsStoreFaulted,
-                "failure occurs on the same subscribed store used by the real runtime");
-            UnityEngine.Time.unscaledTime += 2f;
-            UnityEngine.Time.frameCount++;
-            CampaignSaveCoordinator.Tick();
+            if (!collectedOnly && !finalAccepted)
+            {
+                Check(CampaignPersistence.IsSubscribed && CampaignPersistence.IsStoreFaulted,
+                    "failure occurs on the same subscribed store used by the real runtime");
+                UnityEngine.Time.unscaledTime += 2f;
+                UnityEngine.Time.frameCount++;
+                CampaignSaveCoordinator.Tick();
+            }
             Check(!CampaignPersistence.IsStoreFaulted && CampaignPersistence.IsSubscribed,
-                "regular coordinator tick replaces the faulted subscribed writer");
-            Check(CampaignProgressService.GetState("ch1") == expected,
+                "final flush or recovery keeps the production campaign store subscribed and writable");
+            Check(CampaignProgressService.GetState(chapterId) == expected,
                 "subscribed recovery must not discard the accepted chapter snapshot");
             Check(File.Exists(args[1]) && !CampaignPersistence.HasPendingWrite,
                 "recovered chapter reaches the physical file adapter before this process exits");
@@ -56,9 +90,17 @@ partial class Program
             CampaignProgressService.EnsureInitialized();
             CampaignSaveCoordinator.EnsureSubscribed();
             CampaignProgressService.EnsureInitialized();
-            Check(CampaignProgressService.GetState("ch1") == expected,
+            Check(CampaignProgressService.GetState(chapterId) == expected,
                 "a separate fresh process restores the recovered chapter using only the file bytes");
             Check(!CampaignProgressService.TryAcceptContract("ch1"), "Jeff cannot offer the first chapter again after recovered progress reload");
+            if (finalAccepted)
+            {
+                Check(CampaignProgressService.GetActiveChapterId() == "ch6" && !CampaignProgressService.TryAcceptContract("ch6"),
+                    "fresh process restores the accepted final chapter and cannot offer it again");
+                for (int i = 1; i <= 5; i++)
+                    Check(CampaignProgressService.GetState("ch" + i) == CampaignChapterState.Completed,
+                        "fresh process keeps completed prerequisite chapter " + i);
+            }
             if (scenario == "completed")
                 Check(!CampaignProgressService.TryDeliver("ch1") && EconomyManager.Money == 104000,
                     "fresh process neither loses the reward nor pays a completed chapter twice");

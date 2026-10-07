@@ -28,10 +28,38 @@ namespace UnityEngine
                 go.Character.Destroyed = true;
                 if (!ReferenceEquals(go.Character.Health, null)) go.Character.Health.Destroyed = true;
             }
+            if (!ReferenceEquals(go, null))
+            {
+                Destroy(go.transform);
+                foreach (object component in go.Components) Destroy(component as Object);
+            }
         }
     }
-    public class GameObject : Object { public CharacterMainControl Character; }
-    public struct Vector3 { }
+    public class GameObject : Object
+    {
+        public CharacterMainControl Character;
+        public readonly Transform transform = new Transform();
+        public readonly System.Collections.Generic.List<object> Components = new System.Collections.Generic.List<object>();
+        public GameObject(string name = null) { }
+        public T AddComponent<T>() where T : new() { var value = new T(); Components.Add(value); return value; }
+    }
+    public class Transform : Object { public Vector3 position; }
+    public struct Vector3
+    {
+        public float x, y, z;
+        public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
+    }
+    public class BoxCollider : Object { public bool isTrigger; public Vector3 size, center; }
+    public static class Time { public static float unscaledTime; }
+}
+namespace UnityEngine.SceneManagement
+{
+    public struct Scene { public int handle; }
+    public static class SceneManager
+    {
+        public static int ActiveHandle;
+        public static Scene GetActiveScene() { return new Scene { handle = ActiveHandle }; }
+    }
 }
 
 public class DeathEvent
@@ -43,6 +71,9 @@ public class DeathEvent
     public void Invoke() { if (handlers != null) handlers(new DamageInfo()); }
     public Action<DamageInfo> Snapshot() { return handlers; }
 }
+
+public static class SceneLoader { public static bool IsSceneLoading; }
+public static class LevelManager { public static bool AfterInit; }
 
 namespace BossRush
 {
@@ -64,8 +95,19 @@ namespace BossRush
     // Presentation-only summon burst (VA-25). Counts calls so the schedule can be asserted without rendering.
     internal static class CampaignFinalBossFx
     {
-        public static int SummonBursts;
+        public static int SummonBursts, AltarBuilds, AltarDismisses;
+        internal static void Build(UnityEngine.GameObject altar) { AltarBuilds++; }
+        internal static void Dismiss(UnityEngine.GameObject altar) { AltarDismisses++; UnityEngine.Object.Destroy(altar); }
         internal static void PlaySummonBurst(UnityEngine.Vector3 position) { SummonBursts++; }
+    }
+    internal sealed class CampaignFinalBossInteractable : UnityEngine.Object { }
+    internal static class SpawnPositionHelper
+    {
+        internal static bool GroundAvailable = true;
+        internal static int GeometryQueries;
+        internal static bool TryFindAroundPlayer(UnityEngine.Vector3 player, int count, float radius,
+            out UnityEngine.Vector3 position, float lift, float minDistance, float sample)
+        { GeometryQueries++; position = new UnityEngine.Vector3(player.x + radius, player.y, player.z); return GroundAvailable; }
     }
     public static class BossBgmKeys { public const string PhantomWitch = "witch"; }
     public static class BossBgmEvents { public const string RunVictory = "victory"; }
@@ -120,7 +162,7 @@ namespace BossRush
         private void EnsureBootstrapped() { }
         private static void LogFailure(string stage, Exception error) { throw new Exception(stage, error); }
         internal CampaignRuntimeModule(ModBehaviour owner) { _owner = owner; }
-        internal void TickCampaignFinalBossAltar() { }
+        internal UnityEngine.GameObject AltarForTest { get { return campaignFinalBossAltar; } }
         private UnityEngine.Vector3 ResolveCampaignFinalBossSpawnPosition() { return new UnityEngine.Vector3(); }
         private void ApplyCampaignFinalBossVariant(CharacterMainControl boss) { }
         internal Task BeginSpawn()
@@ -149,6 +191,59 @@ internal static class FinalBossRegression
     {
         CharacterMainControl.Main = new CharacterMainControl { Health = new Health() };
         CampaignProgressService.Active = "ch6";
+        CampaignProgressService.State = CampaignChapterState.ContractActive;
+        LevelManager.AfterInit = true;
+        var delayedArena = new ModBehaviour { Arena = false };
+        UnityEngine.SceneManagement.SceneManager.ActiveHandle = 20;
+        check(!delayedArena.CanStartCampaignFinalBoss(), "loading scene is not an arena yet");
+        delayedArena.Arena = true;
+        UnityEngine.SceneManagement.SceneManager.ActiveHandle = 21;
+        check(delayedArena.CanStartCampaignFinalBoss(),
+            "late active-scene change must release the final altar without another scene-loaded callback");
+        delayedArena.Arena = false;
+        UnityEngine.SceneManagement.SceneManager.ActiveHandle = 22;
+        check(!delayedArena.CanStartCampaignFinalBoss(),
+            "changing the active scene also invalidates a cached positive arena result");
+
+        // A map registry may also become ready after its scene, with an unchanged scene handle.
+        var delayedRegistry = new ModBehaviour { Arena = false };
+        check(!delayedRegistry.CanStartCampaignFinalBoss(), "unregistered scene initially rejects final altar");
+        int negativeSceneQueries = delayedRegistry.ArenaQueryCount;
+        check(!delayedRegistry.CanStartCampaignFinalBoss() && delayedRegistry.ArenaQueryCount == negativeSceneQueries,
+            "a negative arena result does not repeat the scene-name query inside its one-second retry window");
+        delayedRegistry.Arena = true;
+        UnityEngine.Time.unscaledTime += 2f;
+        check(delayedRegistry.CanStartCampaignFinalBoss(), "negative arena cache retries after map registry becomes ready");
+        SceneLoader.IsSceneLoading = true;
+        LevelManager.AfterInit = false;
+        delayedRegistry.CampaignRuntime.TickCampaignFinalBossAltar();
+        check(delayedRegistry.CampaignRuntime.AltarForTest == null, "loading with a live player must not create the altar at the old player position");
+        SceneLoader.IsSceneLoading = false;
+        delayedRegistry.CampaignRuntime.TickCampaignFinalBossAltar();
+        check(delayedRegistry.CampaignRuntime.AltarForTest == null, "initialization tail still waits for the player's final placement");
+        CharacterMainControl.Main.transform.position = new UnityEngine.Vector3(100f, 0f, 200f);
+        LevelManager.AfterInit = true;
+        SpawnPositionHelper.GroundAvailable = false;
+        delayedRegistry.CampaignRuntime.TickCampaignFinalBossAltar();
+        check(delayedRegistry.CampaignRuntime.AltarForTest == null, "missing ground does not create an unreachable altar");
+        SpawnPositionHelper.GroundAvailable = true;
+        UnityEngine.Time.unscaledTime += 2f;
+        delayedRegistry.CampaignRuntime.TickCampaignFinalBossAltar();
+        UnityEngine.GameObject createdAltar = delayedRegistry.CampaignRuntime.AltarForTest;
+        check(createdAltar != null && createdAltar.Components.Count == 2
+            && createdAltar.transform.position.x == 103f && createdAltar.transform.position.z == 200f
+            && createdAltar.Components[0] is UnityEngine.BoxCollider
+            && createdAltar.Components[1] is CampaignFinalBossInteractable,
+            "real altar tick creates its collider and player interaction after ground becomes available");
+        int geometryQueries = SpawnPositionHelper.GeometryQueries;
+        delayedRegistry.CampaignRuntime.TickCampaignFinalBossAltar();
+        check(ReferenceEquals(createdAltar, delayedRegistry.CampaignRuntime.AltarForTest)
+            && SpawnPositionHelper.GeometryQueries == geometryQueries, "existing altar is a singleton with no repeat geometry query");
+        CampaignProgressService.State = CampaignChapterState.ReadyToDeliver;
+        delayedRegistry.CampaignRuntime.TickCampaignFinalBossAltar();
+        check(createdAltar == null && delayedRegistry.CampaignRuntime.AltarForTest == null,
+            "ready-to-deliver chapter dismisses the actual altar and prevents a second showdown");
+
         CampaignProgressService.State = CampaignChapterState.ReadyToDeliver;
         var owner = new ModBehaviour { Arena = true, bossRushArenaActive = true };
         ModBehaviour.Instance = owner;

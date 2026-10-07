@@ -116,6 +116,9 @@ namespace BossRush
             _engine.RequestFlush(out error);
         }
 
+        /// <summary>官方采集也会消费 pending；它只写缓存，物理保存义务必须留到真正写盘成功。</summary>
+        internal static void NotifyPendingWriteFlushed() { _engine.NotifyPendingWriteFlushed(); }
+
         /// <summary>切档 / 删档：清空 deferred 状态与现金义务。</summary>
         internal static void NotifySlotChanged()
         {

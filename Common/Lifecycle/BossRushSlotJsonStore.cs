@@ -65,6 +65,9 @@ namespace BossRush
         /// 返回 false 表示前置未就绪，本次不把 pending 交给 SavesSystem。可为 null。
         /// </summary>
         public Func<bool> BeforeCollectSaveData;
+
+        /// <summary>typed pending 写入并回读成功后，通知协调器仍欠物理落盘。可为 null。</summary>
+        public Action AfterPendingWriteFlushed;
     }
 
     /// <summary>槽位级单 key JSON 整存门面。一个子系统一个实例，由该子系统的 static 门面持有。</summary>
@@ -446,6 +449,7 @@ namespace BossRush
                         throw new InvalidOperationException("save readback mismatch: " + _spec.StorageKey);
                     }
 
+                    if (_spec.AfterPendingWriteFlushed != null) _spec.AfterPendingWriteFlushed();
                     _pendingJson = null;
                     _pendingActive = false;
                     _lastError = null;

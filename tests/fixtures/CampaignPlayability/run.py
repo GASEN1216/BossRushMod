@@ -37,6 +37,7 @@ def main():
         "internal bool CanStartCampaignFinalBoss()", "private bool ShouldCampaignFinalBossAltarExist()",
         "internal void StartCampaignFinalBoss()", "internal bool DebugStartCampaignFinalBossForValidation()",
         "private bool IsCampaignArenaSceneCached()", "private bool IsAnyGameplayModeActiveForCampaign()",
+        "internal void TickCampaignFinalBossAltar()", "private void CreateCampaignFinalBossAltar(Vector3 position)",
         "private async UniTask StartCampaignFinalBossPrologueThenSpawnAsync(int runId)",
         "private async UniTask StartCampaignFinalBossAsync(int runId)",
         "private void OnCampaignFinalBossDead(DamageInfo damageInfo)",

@@ -404,9 +404,19 @@ namespace BossRush
     }
     static class CampaignContentCatalog
     {
-        static CampaignChapterDef def = new CampaignChapterDef { ChapterId = "ch1", Order = 1, RewardCash = 4000 };
-        public static CampaignChapterDef GetChapter(string id) { return def; }
-        public static CampaignChapterDef GetChapterByOrder(int order) { return def; }
+        // Content/tuning is adapted; identities and prerequisite ordering remain distinct for the Ch6 restart case.
+        static readonly CampaignChapterDef[] definitions = {
+            new CampaignChapterDef { ChapterId = "ch1", Order = 1, RewardCash = 4000 },
+            new CampaignChapterDef { ChapterId = "ch2", Order = 2 },
+            new CampaignChapterDef { ChapterId = "ch3", Order = 3 },
+            new CampaignChapterDef { ChapterId = "ch4", Order = 4 },
+            new CampaignChapterDef { ChapterId = "ch5", Order = 5 },
+            new CampaignChapterDef { ChapterId = "ch6", Order = 6 }
+        };
+        public static CampaignChapterDef GetChapter(string id)
+        { foreach (CampaignChapterDef value in definitions) if (value.ChapterId == id) return value; return null; }
+        public static CampaignChapterDef GetChapterByOrder(int order)
+        { return order > 0 && order <= definitions.Length ? definitions[order - 1] : null; }
     }
     static class CampaignFacilityUnlocks
     {

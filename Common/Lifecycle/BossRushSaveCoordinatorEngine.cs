@@ -118,6 +118,20 @@ namespace BossRush
         #region 对外入口
 
         /// <summary>
+        /// 官方采集等外部入口已把 typed pending 写入内存；仍须由协调器确认物理落盘。
+        /// 采集成功不代表官方随后一定调用或完成 SaveFile，不能随 pending 一起消费这项义务。
+        /// </summary>
+        internal void NotifyPendingWriteFlushed()
+        {
+            lock (_lock)
+            {
+                _saveFilePending = true;
+                _deferredFlushPending = true;
+                _deferredRetryCount = 0;
+            }
+        }
+
+        /// <summary>
         /// 请求把当前 pending 落盘。成功返回 true；
         /// IsSaving / 非基地 / 节流 / 写失败时返回 false 并保留 pending（由 Tick 重试）。
         /// </summary>

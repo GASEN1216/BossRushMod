@@ -27,6 +27,10 @@ def check():
             errors.append(f"{path} / {signature}: 缺少 {statement}")
 
     runtime = "Campaign/CampaignRuntimeModule.cs"
+    require("Campaign/CampaignPersistence.cs", "private static BossRushSlotJsonStore<CampaignSaveData> CreateStore()",
+            "AfterPendingWriteFlushed = CampaignSaveCoordinator.NotifyPendingWriteFlushed,")
+    require("Campaign/CampaignSaveCoordinator.cs", "internal static void NotifyPendingWriteFlushed()",
+            "_engine.NotifyPendingWriteFlushed();")
     require("ModeD/ModeDEquipment_StarterKit.cs", "internal void GivePlayerStarterKit()",
             "if (UnityEngine.Random.value > 0.6f || needsMeleeStarterKit()) { GiveRandomMeleeWeapon(main); }")
     require("ModeD/ModeD.cs", "private void BindModeDItemPoolQueries()",

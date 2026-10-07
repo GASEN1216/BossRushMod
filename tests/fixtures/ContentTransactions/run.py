@@ -91,7 +91,7 @@ def main():
         raise RuntimeError("Missing built target: " + target)
     print("Campaign disk process target:", target, hashlib.sha256(Path(target).read_bytes()).hexdigest(), flush=True)
     process_dir = Path(tempfile.mkdtemp(prefix="campaign-process-", dir=OUT))
-    for scenario in ("accepted", "readback", "completed"):
+    for scenario in ("accepted", "readback", "completed", "collected", "collect-failure", "final-accepted"):
         snapshot = process_dir / (scenario + ".json")
         for action in ("write", "read"):
             code = subprocess.call(["dotnet", target, "--campaign-disk-" + action, str(snapshot), scenario], cwd=ROOT)
