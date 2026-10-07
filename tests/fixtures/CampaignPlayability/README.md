@@ -1,5 +1,7 @@
 # 战役目标与终章生命周期回归
 
+2026-10-07 报名石再次复现：夹具抽取完整真实 `SetupBossRushInDemoChallenge` 与真实普通/雪图路牌创建方法，直接链接 Campaign 宿主桥，证明官方 AfterInit 已真但 BossRush 二次传送及路牌尚未生成时不创建石头。默认出生点与真实路牌配置点刻意相距数百米；玩家后来走开，报名石仍围绕路牌生成。另覆盖显式自定义牌位置、雪图隐形交互点、牌失活/销毁/跨场景拒绝与单实例。几何执行生产 `TryFindAroundPlayer`、`TrySampleNavMesh`、`TryRaycastSnapPreserveXZ`、`PassesMinPlayerDistance`，NavMesh 适配器返回失败，Physics 适配器对受控水平地面求交；断言可见牌的受控 +0.8 米 pivot 输入确实被投回地面。模式检测、路牌模型工厂、垃圾桶/NPC/清场表现为替身，不模拟 Unity 渲染或实地图可达性。夹具逐次生成生产来源 SHA-256；此前只等官方初始化的实现须在“official AfterInit cannot create the altar before BossRush's real second teleport and roadsign creation”断言转红。
+
 2026-10-07：新增 active scene 句柄晚于场景回调变化、地图注册表同场景稍晚就绪两条回归。夹具现在还抽取并执行真实 `TickCampaignFinalBossAltar` / `CreateCampaignFinalBossAltar`，不再用空方法代替石头维护；覆盖加载及 `AfterInit=false` 尾段不创建，最终搬人后在新位置旁创建、地面不可用时等待、碰撞体与交互组件、重复 tick 单实例且不重复查几何，以及待交付后移除。对象销毁连带销毁组件。场景句柄、地面查询、GameObject 组件容器和 FX 是替身，故不能证明地图中的可见位置或特效渲染。去掉生产场景句柄失效条件或 AfterInit 门，在隔离副本分别于 late active-scene 和 initialization-tail 断言转红。
 
 2026-10-07：终章独白增加由官方 DialogueUI / actor 失效独立发出的取消，取消前不调用 Campaign cleanup。真实终章编排必须复位当前决战并允许重新交互；旧对话迟到取消不得清掉后继决战。已有工厂在途 → cleanup → 迟到角色回收，以及旧生成异常不能取消新请求的用例继续保留。渲染与官方对话 UI 为可控替身，生产 runId、取消、清理、实例认领与死亡逻辑逐字执行。

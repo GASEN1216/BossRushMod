@@ -24,6 +24,7 @@ namespace BossRush
         internal void NotifyCampaignZombieExtracted() { campaignRuntime.NotifyCampaignZombieExtracted(); }
 
         internal bool CampaignArenaActiveForRuntime { get { return bossRushArenaActive; } }
+        internal BossRushSignInteractable CampaignArenaSignForRuntime { get { return uiAndSignsRuntime.SignInteract; } }
         internal bool CampaignModeDActiveForRuntime { get { return modeDActive; } }
         internal bool CampaignModeEActiveForRuntime { get { return modeEActive; } }
         internal bool CampaignModeFActiveForRuntime { get { return modeFActive; } }

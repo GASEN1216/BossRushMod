@@ -125,6 +125,9 @@ namespace BossRush
         /// </summary>
         internal void ClearEnemiesForBossRush()
         {
+            // 征程从对白起就占用竞技场；工厂在途时尚无可按实例过滤的 Boss。
+            if (owner.IsCampaignFinalBossActive) return;
+
             try
             {
                 if (_characterCacheNeedsRefresh || _cachedCharacters.Count == 0)
@@ -289,7 +292,7 @@ namespace BossRush
         {
             ModBehaviour.DevLog("[BossRush] ContinuousClearEnemiesUntilWaveStart: 协程已启动");
 
-            RefreshCharacterCache();
+            if (!owner.IsCampaignFinalBossActive) RefreshCharacterCache();
 
             int loopCount = 0;
             const int MAX_SPAWNER_DISABLE_ATTEMPTS = 5;
@@ -299,6 +302,13 @@ namespace BossRush
             // 避免误删 Mode G 首波；查询 no-throw、未运行时条件与当前完全相同。
             while (!owner.IsActive && owner.IsBossRushArenaActive && !owner.IsModeEActive && !ModBehaviour.IsModeGRunInProgressSafe() && !ModBehaviour.IsModeHRunInProgressSafe() && loopCount < MAX_LOOP_COUNT)
             {
+                // 暂停预清场，退出/召唤失败后仍由原协程继续；决战不消耗清场预算。
+                if (owner.IsCampaignFinalBossActive)
+                {
+                    yield return owner.ArenaSharedWait05s;
+                    continue;
+                }
+
                 loopCount++;
 
                 if (loopCount <= MAX_SPAWNER_DISABLE_ATTEMPTS)

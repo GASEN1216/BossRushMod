@@ -8,6 +8,7 @@ namespace UnityEngine
 {
     public class Object
     {
+        public static T FindObjectOfType<T>() where T : class { return null; }
         public bool Destroyed;
         public static bool operator ==(Object a, Object b)
         {
@@ -37,28 +38,90 @@ namespace UnityEngine
     }
     public class GameObject : Object
     {
+        private static readonly System.Collections.Generic.List<GameObject> Objects = new System.Collections.Generic.List<GameObject>();
+        public string name;
+        public bool activeInHierarchy = true;
+        public UnityEngine.SceneManagement.Scene scene;
         public CharacterMainControl Character;
         public readonly Transform transform = new Transform();
         public readonly System.Collections.Generic.List<object> Components = new System.Collections.Generic.List<object>();
-        public GameObject(string name = null) { }
-        public T AddComponent<T>() where T : new() { var value = new T(); Components.Add(value); return value; }
+        public GameObject(string name = null) { this.name = name; scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene(); Objects.Add(this); }
+        public T AddComponent<T>() where T : new() { var value = new T(); Components.Add(value); var component = value as Component; if (component != null) component.gameObject = this; return value; }
+        public T GetComponent<T>() where T : class { foreach (object value in Components) if (value is T) return (T)value; return null; }
+        public T GetComponentInChildren<T>() where T : class { return GetComponent<T>(); }
+        public static GameObject Find(string name) { foreach (var value in Objects) if (value != null && value.activeInHierarchy && value.name == name) return value; return null; }
     }
-    public class Transform : Object { public Vector3 position; }
+    public class Component : Object { public GameObject gameObject; public Transform transform { get { return gameObject.transform; } } }
+    public class MeshRenderer : Component { }
+    public class Transform : Object { public Vector3 position; public Quaternion rotation; }
     public struct Vector3
     {
         public float x, y, z;
         public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
+        public float sqrMagnitude { get { return x*x+y*y+z*z; } }
+        public static Vector3 zero { get { return new Vector3(); } }
+        public static Vector3 up { get { return new Vector3(0,1,0); } }
+        public static Vector3 down { get { return new Vector3(0,-1,0); } }
+        public static Vector3 forward { get { return new Vector3(0,0,1); } }
+        public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z); }
+        public static Vector3 operator -(Vector3 a, Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
+        public static Vector3 operator *(Vector3 a, float b) { return new Vector3(a.x*b,a.y*b,a.z*b); }
     }
-    public class BoxCollider : Object { public bool isTrigger; public Vector3 size, center; }
+    public struct Quaternion
+    {
+        private float yaw;
+        public static Quaternion identity { get { return new Quaternion(); } }
+        public static Quaternion Euler(float x,float y,float z) { return new Quaternion { yaw = y }; }
+        public static Vector3 operator *(Quaternion rotation, Vector3 value)
+        { double angle = rotation.yaw*Math.PI/180d; return new Vector3((float)(value.x*Math.Cos(angle)+value.z*Math.Sin(angle)),value.y,(float)(value.z*Math.Cos(angle)-value.x*Math.Sin(angle))); }
+    }
+    public struct LayerMask { }
+    public struct RaycastHit { public Vector3 point; }
+    public static class Physics
+    {
+        public static bool GroundAvailable = true;
+        public static float GroundY;
+        public static Vector3 LastRayOrigin;
+        public static bool Raycast(Vector3 origin, Vector3 direction, out RaycastHit hit, float distance, LayerMask mask)
+        { LastRayOrigin = origin; hit = new RaycastHit { point = new Vector3(origin.x,GroundY,origin.z) }; return GroundAvailable && origin.y >= GroundY && origin.y-GroundY <= distance; }
+    }
+    public class BoxCollider : Component { public bool isTrigger; public Vector3 size, center; }
     public static class Time { public static float unscaledTime; }
+    public class WaitForSeconds { public WaitForSeconds(float value) { } }
+}
+namespace UnityEngine.AI
+{
+    public struct NavMeshHit { public UnityEngine.Vector3 position; }
+    public static class NavMesh
+    {
+        public const int AllAreas = -1;
+        public static int Queries;
+        public static UnityEngine.Vector3 LastRaw;
+        public static bool SamplePosition(UnityEngine.Vector3 raw, out NavMeshHit hit, float radius, int areas)
+        { Queries++; LastRaw = raw; hit = new NavMeshHit(); return false; }
+    }
+}
+namespace Duckov.Utilities
+{
+    public static class GameplayDataSettings { public static readonly LayerSettings Layers = new LayerSettings(); }
+    public sealed class LayerSettings { public UnityEngine.LayerMask groundLayerMask; }
 }
 namespace UnityEngine.SceneManagement
 {
-    public struct Scene { public int handle; }
+    public struct Scene
+    {
+        public int handle; public string name;
+        public static bool operator ==(Scene a,Scene b) { return a.handle==b.handle; }
+        public static bool operator !=(Scene a,Scene b) { return !(a==b); }
+        public override bool Equals(object value) { return value is Scene && this==(Scene)value; }
+        public override int GetHashCode() { return handle; }
+    }
     public static class SceneManager
     {
         public static int ActiveHandle;
-        public static Scene GetActiveScene() { return new Scene { handle = ActiveHandle }; }
+        public static string ActiveName = "Level_DemoChallenge_1";
+        public static Scene GetActiveScene() { return new Scene { handle = ActiveHandle, name = ActiveName }; }
+        public static void MoveGameObjectToScene(UnityEngine.GameObject go, Scene scene) { go.scene = scene; }
     }
 }
 
@@ -101,13 +164,10 @@ namespace BossRush
         internal static void PlaySummonBurst(UnityEngine.Vector3 position) { SummonBursts++; }
     }
     internal sealed class CampaignFinalBossInteractable : UnityEngine.Object { }
-    internal static class SpawnPositionHelper
+    internal static partial class SpawnPositionHelper
     {
-        internal static bool GroundAvailable = true;
-        internal static int GeometryQueries;
-        internal static bool TryFindAroundPlayer(UnityEngine.Vector3 player, int count, float radius,
-            out UnityEngine.Vector3 position, float lift, float minDistance, float sample)
-        { GeometryQueries++; position = new UnityEngine.Vector3(player.x + radius, player.y, player.z); return GroundAvailable; }
+        internal static bool GroundAvailable { get { return UnityEngine.Physics.GroundAvailable; } set { UnityEngine.Physics.GroundAvailable = value; } }
+        internal static int GeometryQueries { get { return UnityEngine.AI.NavMesh.Queries; } }
     }
     public static class BossBgmKeys { public const string PhantomWitch = "witch"; }
     public static class BossBgmEvents { public const string RunVictory = "victory"; }
@@ -189,24 +249,30 @@ internal static class FinalBossRegression
 
     internal static void Run(Action<bool, string> check)
     {
+        EntryRegression.Run(check);
         CharacterMainControl.Main = new CharacterMainControl { Health = new Health() };
         CampaignProgressService.Active = "ch6";
         CampaignProgressService.State = CampaignChapterState.ContractActive;
         LevelManager.AfterInit = true;
         var delayedArena = new ModBehaviour { Arena = false };
         UnityEngine.SceneManagement.SceneManager.ActiveHandle = 20;
+        delayedArena.CreateSignForTest();
         check(!delayedArena.CanStartCampaignFinalBoss(), "loading scene is not an arena yet");
         delayedArena.Arena = true;
         UnityEngine.SceneManagement.SceneManager.ActiveHandle = 21;
+        delayedArena.CreateSignForTest();
         check(delayedArena.CanStartCampaignFinalBoss(),
             "late active-scene change must release the final altar without another scene-loaded callback");
         delayedArena.Arena = false;
         UnityEngine.SceneManagement.SceneManager.ActiveHandle = 22;
+        delayedArena.CreateSignForTest();
         check(!delayedArena.CanStartCampaignFinalBoss(),
             "changing the active scene also invalidates a cached positive arena result");
 
         // A map registry may also become ready after its scene, with an unchanged scene handle.
         var delayedRegistry = new ModBehaviour { Arena = false };
+        UnityEngine.Object.Destroy(delayedArena.CampaignArenaSignForRuntime.gameObject);
+        delayedRegistry.CreateSignForTest();
         check(!delayedRegistry.CanStartCampaignFinalBoss(), "unregistered scene initially rejects final altar");
         int negativeSceneQueries = delayedRegistry.ArenaQueryCount;
         check(!delayedRegistry.CanStartCampaignFinalBoss() && delayedRegistry.ArenaQueryCount == negativeSceneQueries,
@@ -223,6 +289,7 @@ internal static class FinalBossRegression
         check(delayedRegistry.CampaignRuntime.AltarForTest == null, "initialization tail still waits for the player's final placement");
         CharacterMainControl.Main.transform.position = new UnityEngine.Vector3(100f, 0f, 200f);
         LevelManager.AfterInit = true;
+        delayedRegistry.CreateSignForTest();
         SpawnPositionHelper.GroundAvailable = false;
         delayedRegistry.CampaignRuntime.TickCampaignFinalBossAltar();
         check(delayedRegistry.CampaignRuntime.AltarForTest == null, "missing ground does not create an unreachable altar");
@@ -231,7 +298,7 @@ internal static class FinalBossRegression
         delayedRegistry.CampaignRuntime.TickCampaignFinalBossAltar();
         UnityEngine.GameObject createdAltar = delayedRegistry.CampaignRuntime.AltarForTest;
         check(createdAltar != null && createdAltar.Components.Count == 2
-            && createdAltar.transform.position.x == 103f && createdAltar.transform.position.z == 200f
+            && createdAltar.transform.position.x == 100f && createdAltar.transform.position.z == 203f
             && createdAltar.Components[0] is UnityEngine.BoxCollider
             && createdAltar.Components[1] is CampaignFinalBossInteractable,
             "real altar tick creates its collider and player interaction after ground becomes available");
@@ -246,6 +313,8 @@ internal static class FinalBossRegression
 
         CampaignProgressService.State = CampaignChapterState.ReadyToDeliver;
         var owner = new ModBehaviour { Arena = true, bossRushArenaActive = true };
+        UnityEngine.Object.Destroy(delayedRegistry.CampaignArenaSignForRuntime.gameObject);
+        owner.CreateSignForTest();
         ModBehaviour.Instance = owner;
         check(!owner.CanStartCampaignFinalBoss(), "ready chapter rejects final summon through actual interaction gate");
         CampaignProgressService.State = CampaignChapterState.ContractActive;
@@ -335,6 +404,8 @@ internal static class FinalBossRegression
         check(!owner.FinalActive && owner.CanStartCampaignFinalBoss(), "scene destruction permits another challenge");
 
         var isolatedOwner = new ModBehaviour { Arena = true };
+        UnityEngine.Object.Destroy(owner.CampaignArenaSignForRuntime.gameObject);
+        isolatedOwner.CreateSignForTest();
         isolatedOwner.StartCampaignFinalBoss();
         check(isolatedOwner.IsCampaignFinalBossActive && !owner.IsCampaignFinalBossActive,
             "separate hosts do not share final boss ownership state");

@@ -67,6 +67,25 @@ def main():
                          + "namespace BossRush { internal sealed partial class CampaignRuntimeModule {"
                          + fields + properties + members + lifecycle + "} internal static partial class CampaignDialoguePlayer {"
                          + cancellation + "}}", encoding="utf-8")
+    entry_source = clean_source((ROOT / "WavesArena/BossRushEntryFlow.cs").read_text(encoding="utf-8-sig"))
+    entry = extract_methods(entry_source, ("private IEnumerator SetupBossRushInDemoChallenge(Scene scene)",))
+    entry_enum = re.search(r"private enum BossRushEntryMode\s*\{[^}]+\}", entry_source).group(0)
+    signs_source = clean_source((ROOT / "UIAndSigns/UIAndSigns.cs").read_text(encoding="utf-8-sig"))
+    signs = extract_methods(signs_source, (
+        "internal void TryCreateArenaDifficultyEntryPoint_UIAndSigns(Vector3? customPosition)",
+        "private void CreateInvisibleEntryPointForChallengeSnow(Vector3? customPosition)",
+    ))
+    geometry_source = clean_source((ROOT / "Utilities/SpawnPositionHelper.cs").read_text(encoding="utf-8-sig"))
+    geometry = extract_methods(geometry_source, (
+        "internal static bool TryFindAroundPlayer(", "internal static bool TrySampleNavMesh(",
+        "private static bool TryRaycastSnapPreserveXZ(", "internal static bool PassesMinPlayerDistance(",
+    ))
+    geometry_constants = '\n'.join(re.findall(r'^        internal const float (?:DefaultLiftOffset|DefaultNavMeshSampleRadius|DefaultRaycastMaxDistance|DefaultRaycastOriginHeight) = [^;]+;', geometry_source, re.M))
+    entry_extracted = OUT / "EntryProduction.cs"
+    entry_extracted.write_text("using System; using System.Collections; using UnityEngine; using UnityEngine.SceneManagement; using UnityEngine.AI; "
+                              + "namespace BossRush { public partial class ModBehaviour {" + entry_enum + entry
+                              + "} internal sealed partial class UIAndSignsRuntimeModule {" + signs
+                              + "} internal static partial class SpawnPositionHelper {" + geometry_constants + geometry + "}}", encoding="utf-8")
     sources = [ROOT / name for name in (
         "Campaign/CampaignModels.cs", "Campaign/CampaignTuning.cs",
         "Campaign/CampaignQuestTable.cs", "Campaign/CampaignBaseObjectives.cs",
@@ -77,9 +96,10 @@ def main():
         "ModeF/ModeFRuntimeModule_BountyLatch.cs",
         "Common/Data/BossRushJsonValue.cs", "Utilities/SimpleJsonHelper.cs",
         "ModeH/ModeHCanonicalDigest.cs", "ModeH/ModeHSeedStream.cs",
-    )] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "FinalBossRegression.cs", extracted]
+    )] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "FinalBossRegression.cs", HERE / "EntryRegression.cs", extracted, entry_extracted]
     production = [p for p in sources if p.is_relative_to(ROOT) and not p.is_relative_to(HERE) and p != extracted]
     production += [ROOT / "Campaign/CampaignFinalBoss.cs", ROOT / "Campaign/CampaignDialoguePlayer.cs", ROOT / "Campaign/CampaignRuntimeModule.cs"]
+    production += [ROOT / "WavesArena/BossRushEntryFlow.cs", ROOT / "UIAndSigns/UIAndSigns.cs", ROOT / "Utilities/SpawnPositionHelper.cs"]
     (OUT / "production-source-sha256.json").write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in production}, indent=2), encoding="utf-8")
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
     project += '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'

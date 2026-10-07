@@ -104,8 +104,73 @@ namespace BossRush
             owner.HasConfig=false;owner.Runtime.ApplyLootBoxCoverSetting(fallback);Check(!col.isTrigger&&!child.isTrigger,"missing configuration preserves cover colliders");
             owner.HasConfig=true;owner.BlocksBullets=true;owner.Runtime.ApplyLootBoxCoverSetting(fallback);Check(!col.isTrigger,"enabled cover preserves colliders");
             owner.Runtime.ApplyLootBoxCoverSetting(fallback,true);Check(col.isTrigger&&child.isTrigger,"forced cover policy updates self and child colliders");
+            TestCampaignFinalBossPreclear();
             TestRegeneration();
             Console.WriteLine("ArenaHostRemainder: PASS "+assertions+" assertions");
+        }
+        private static CharacterMainControl SceneEnemy(string name,Teams team=Teams.wolf)
+        {
+            var actor=new CharacterMainControl(name);
+            actor.characterPreset=Preset(name,actor);
+            actor.characterPreset.team=team;
+            actor.Team=team;
+            return actor;
+        }
+        private static void TestCampaignFinalBossPreclear()
+        {
+            Reset();var owner=new Owner();owner.Host.IsBossRushArenaActive=true;
+            WavesArenaRuntimeModule.SetArenaCenterFromSign(Vector3.zero);
+            CharacterMainControl.Main.characterPreset=Preset("player-hostile-preset",CharacterMainControl.Main);
+            var companion=SceneEnemy("companion-with-hostile-preset");companion.Companion=true;
+            var officialPet=SceneEnemy("official-pet",Teams.player);officialPet.gameObject.Add(new PetAI());
+            var neutral=SceneEnemy("neutral",Teams.middle);
+            var outside=SceneEnemy("outside");outside.transform.position=new Vector3(501,0,0);
+            var ordinary=SceneEnemy("ordinary-before-stone");
+            var ordinaryAi=ordinary.gameObject.Add(new AICharacterController());
+            var routine=owner.Runtime.ContinuousClearEnemiesUntilWaveStart();
+            Check(routine.MoveNext()&&ReferenceEquals(routine.Current,owner.Host.ArenaSharedWait05s),"ordinary arena preclear remains a yielding live coroutine");
+            Check(ordinary==null&&ordinary.gameObject==null&&ordinaryAi==null,"ordinary preclear destroys the enemy game object and its character and AI components");
+            Check(companion!=null&&officialPet!=null&&CharacterMainControl.Main!=null&&neutral!=null&&outside!=null,"ordinary cleanup preserves companion player neutral and distant identities");
+
+            // 石头启动后即由终章持有场地，先于异步工厂返回和角色认领。
+            // 角色没有 CurrentBoss、wave 或 owned 登记，不能靠特定角色身份白名单蒙混通过。
+            owner.Host.IsCampaignFinalBossActive=true;
+            var ghost=SceneEnemy("Cname_Ghost-unclaimed-staging");
+            Check(owner.Runtime.CurrentBoss==null&&owner.Runtime.CurrentWaveBosses.Count==0&&!owner.Runtime.OwnedDaXingXing.Contains(ghost),"terminal factory candidate starts without an arena ownership registration");
+            int scans=UnityEngine.Object.SceneScans,disables=owner.Runtime.SpawnerDisableCalls;
+            Check(routine.MoveNext(),"preclear stays suspended rather than terminating when terminal dialogue starts");
+            Check(ghost!=null&&ghost.gameObject!=null&&!ghost.Health.IsDead,"terminal dialogue/spawn protects an unclaimed hostile ghost from preclear");
+            Check(UnityEngine.Object.SceneScans==scans&&owner.Runtime.SpawnerDisableCalls==disables,"terminal dialogue pauses scanning and spawner mutation before any maintenance work");
+
+            var battleEnemy=SceneEnemy("terminal-battle-enemy");
+            // 超过普通清场的 600 次上限，暂停帧不能耗尽恢复清场的预算。
+            for(int i=0;i<605;i++)Check(routine.MoveNext(),"terminal battle keeps the same suspended routine alive: "+i);
+            Check(ghost!=null&&battleEnemy!=null&&UnityEngine.Object.SceneScans==scans&&owner.Runtime.SpawnerDisableCalls==disables,"terminal battle neither scans nor deletes newly spawned enemies");
+            WavesArenaRuntimeModule.CharacterCacheNeedsRefresh=true;
+            owner.Runtime.ClearEnemiesForBossRush();
+            Check(ghost!=null&&battleEnemy!=null&&UnityEngine.Object.SceneScans==scans,"direct clear honors terminal ownership before even refreshing a dirty character cache");
+
+            // 成功或失败均释放同一个场地 owner；原有预清场协程随后继续工作。
+            owner.Host.IsCampaignFinalBossActive=false;
+            Check(routine.MoveNext()&&ghost==null&&battleEnemy==null,"releasing terminal ownership resumes the original preclear and removes stale hostile actors");
+            Check(companion!=null&&officialPet!=null&&CharacterMainControl.Main!=null,"resumed preclear still exempts player and pets");
+            var failureEnemy=SceneEnemy("failed-terminal-actor");
+            owner.Host.IsCampaignFinalBossActive=true;scans=UnityEngine.Object.SceneScans;
+            Check(routine.MoveNext()&&failureEnemy!=null&&UnityEngine.Object.SceneScans==scans,"a subsequent terminal attempt pauses maintenance again");
+            owner.Host.IsCampaignFinalBossActive=false;
+            Check(routine.MoveNext()&&failureEnemy==null,"terminal failure releases ownership and cleanup resumes again");
+            var directEnemy=SceneEnemy("ordinary-direct-clear");WavesArenaRuntimeModule.CharacterCacheNeedsRefresh=true;
+            owner.Runtime.ClearEnemiesForBossRush();
+            Check(directEnemy==null&&companion!=null&&CharacterMainControl.Main!=null,"direct clear resumes its ordinary cleanup semantics after the terminal attempt");
+            owner.Host.IsActive=true;
+            Check(!routine.MoveNext(),"ordinary wave start still terminates preclear after campaign ownership has ended");
+            owner.Host.IsActive=false;owner.Host.IsCampaignFinalBossActive=true;
+            var alreadyActiveGhost=SceneEnemy("terminal-before-preclear-start");
+            scans=UnityEngine.Object.SceneScans;disables=owner.Runtime.SpawnerDisableCalls;
+            var delayedRoutine=owner.Runtime.ContinuousClearEnemiesUntilWaveStart();
+            Check(delayedRoutine.MoveNext()&&alreadyActiveGhost!=null&&UnityEngine.Object.SceneScans==scans&&owner.Runtime.SpawnerDisableCalls==disables,"preclear first entered during terminal ownership also skips its initial scene scan");
+            owner.Host.IsCampaignFinalBossActive=false;
+            Check(delayedRoutine.MoveNext()&&alreadyActiveGhost==null,"a preclear first entered during terminal ownership can resume after release");
         }
         private static void TestRegeneration()
         {

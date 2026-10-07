@@ -7,7 +7,7 @@ HERE=Path(__file__).resolve().parent
 OUT=ROOT/'Build/runtime-regressions/ArenaHostRemainder';OUT.mkdir(parents=True,exist_ok=True)
 sys.path.insert(0,str(ROOT/'tests'))
 from ArchitectureStructureGuard import extract_method_body
-production=[ROOT/'WavesArena'/('WavesArenaRuntimeModule_'+name+'.cs') for name in ('LegacySpawn','LootTemplates','CharacterRegistry')]
+production=[ROOT/'WavesArena'/('WavesArenaRuntimeModule_'+name+'.cs') for name in ('LegacySpawn','LootTemplates','CharacterRegistry','EnemyMaintenance')]
 production.append(ROOT/'Integration/Mutators/MutatorBossRegenRuntime.cs')
 lifecycle=ROOT/'WavesArena/WavesArenaRuntimeModule.cs'
 source=lifecycle.read_text(encoding='utf8')

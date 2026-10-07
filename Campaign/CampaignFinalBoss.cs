@@ -189,7 +189,7 @@ namespace BossRush
 
                 // 无地面时先不创建；只有准备终章时才做这次几何查询。
                 Vector3 position;
-                if (SpawnPositionHelper.TryFindAroundPlayer(main.transform.position, 8, 3f,
+                if (SpawnPositionHelper.TryFindAroundPlayer(_owner.CampaignArenaSignForRuntime.transform.position, 8, 3f,
                     out position, 0f, 1.5f, 1f)) CreateCampaignFinalBossAltar(position);
             }
             catch (Exception)
@@ -217,8 +217,12 @@ namespace BossRush
             // 目标达成后只应回公告板交付，不能再次生成祭坛、重复召唤终章 Boss。
             if (CampaignProgressService.GetState(def.ChapterId) != CampaignChapterState.ContractActive) return false;
 
-            // 主角可早于最终出生点定位出现；等官方初始化尾段完成后再认领石头位置。
+            // 官方定位完成后 BossRush 仍会二次搬人；复用其随后生成的真实路牌作为场地事实。
             if (SceneLoader.IsSceneLoading || !LevelManager.AfterInit) return false;
+            if (!_owner.CampaignArenaActiveForRuntime) return false;
+            BossRushSignInteractable sign = _owner.CampaignArenaSignForRuntime;
+            if (sign == null || sign.gameObject == null || !sign.gameObject.activeInHierarchy
+                || sign.gameObject.scene.handle != UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle) return false;
             if (!IsCampaignArenaSceneCached()) return false;
             CharacterMainControl main = CharacterMainControl.Main;
             if (main == null || main.Health == null || main.Health.IsDead) return false;

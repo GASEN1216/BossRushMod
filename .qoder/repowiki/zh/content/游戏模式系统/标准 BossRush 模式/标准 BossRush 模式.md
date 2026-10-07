@@ -2,6 +2,10 @@
 
 > 2026-09-26 迁移注：波次、生成、清场、现金磁铁与 Tick 的宿主兼容入口合并到 `WavesArena.cs`；`BossRushEntryFlow.cs` 和 `WavesArenaEntryAndTeleport.cs` 继续承担跨模式入场协调。运行时状态和算法仍在既有 `WavesArenaRuntimeModule` partial，成员语义与初始化顺序不因文件归并改变。
 
+> 2026-10-07 入场与征程隔离：`ArenaActive` 只表示场景已被接管，官方 `AfterInit` 后仍可能执行 BossRush 二次传送。路牌按地图配置定位、垃圾桶按同一路牌坐标偏移；征程复用 `UIAndSignsRuntimeModule.SignInteract` 的真实可用实例作为生成门和场地锚点，要求其属于当前场景，随后在路牌旁投影地面生成报名石。雪图复用同一 owner 的隐形入口。不能提前按玩家原始出生点生成，也不随玩家后来移动改变位置。
+>
+> Legacy 的 `ClearEnemiesForBossRush` 和持续预清场均尊重 `IsCampaignFinalBossActive`。终章对白、异步工厂在途及决战期间，直接清场早返，持续协程暂停扫描、刷怪器处理和清场次数预算；终章取消/失败后由原协程恢复。只按已认领 Boss 实例过滤会漏掉工厂在途窗口。真实执行边界见 `tests/fixtures/ArenaHostRemainder` 与 `CampaignPlayability`；地图画面、导航及技能仍需实机验收。
+
 <cite>
 **本文引用的文件**
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)

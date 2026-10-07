@@ -38,6 +38,8 @@ public class CharacterMainControl : UnityEngine.Object
     public bool Marked;
     public int InstanceId = 1;
     public int GetInstanceID() { return InstanceId; }
+    public int PositionCalls;
+    public void SetPosition(UnityEngine.Vector3 position) { PositionCalls++; transform.position = position; }
 }
 public enum Teams { player, wolf, middle }
 public static class Team
@@ -83,7 +85,7 @@ namespace BossRush
         private readonly CampaignRuntimeModule campaignRuntime;
         internal CampaignRuntimeModule CampaignRuntime { get { return campaignRuntime; } }
         internal ModeHRuntimeModule ModeHRuntime;
-        public ModBehaviour() { campaignRuntime = new CampaignRuntimeModule(this); }
+        public ModBehaviour() { campaignRuntime = new CampaignRuntimeModule(this); uiAndSignsRuntime = new UIAndSignsRuntimeModule(this); }
         public bool IsCampaignConfiguredEnabled() { return true; }
         private readonly ModeFRuntimeModule modeFRuntime = new ModeFRuntimeModule();
         private bool HasModeFPlayerBountyKillLatch(int id) { return modeFRuntime.HasPlayerBountyKillLatch(id); }

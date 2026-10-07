@@ -81,7 +81,7 @@ namespace BossRush
     using Cysharp.Threading.Tasks;
     internal static class Probe
     { internal static readonly List<string> Events=new List<string>(); internal static TaskCompletionSource<bool> YieldGate; }
-    public enum Teams { player, middle, wolf, scav }
+    public enum Teams { player, middle, wolf, scav, usec, bear, lab }
     public static class Team { public static bool IsEnemy(Teams a, Teams b) { return b==Teams.wolf || b==Teams.scav; } }
     public class EnemyPresetInfo { public string name, displayName; public int team; }
     public class CharacterRandomPreset : Object
@@ -108,14 +108,18 @@ namespace BossRush
         public float CurrentHealth=30;
         public CharacterItem Item;
         public float MaxHealth { get { return Item.GetStat("MaxHealth").BaseValue; } }
+        public bool IsDead { get { return CurrentHealth <= 0f; } }
         public void SetHealth(float value) { CurrentHealth=value; }
+        public void Hurt(DamageInfo damage) { CurrentHealth-=damage.damageValue; }
     }
+    public sealed class DamageInfo
+    { public float damageValue; public bool ignoreArmor; public DamageInfo(CharacterMainControl source) { } }
     public sealed class DamageReceiver { public readonly Transform transform=new Transform(); }
     public class CharacterMainControl : MonoBehaviour
     {
         public static CharacterMainControl Main;
         public CharacterRandomPreset characterPreset;
-        public bool Companion, ModeGOwned;
+        public bool Companion, ModeGOwned, ModeEOwned, DeathWraith;
         public Teams Team=Teams.middle;
         public readonly CharacterItem CharacterItem=new CharacterItem();
         public readonly Health Health=new Health();
@@ -138,7 +142,8 @@ namespace BossRush
         public void SetTarget(Transform target) { Probe.Events.Add("target"); }
         public void SetNoticedToTarget(DamageReceiver target) { Probe.Events.Add("notice"); }
     }
-    public static class PetNestCompanionAgent { public static bool IsCompanionCharacter(CharacterMainControl c) { return c.Companion; } }
+    public class PetNestCompanionAgent : Component { public static bool IsCompanionCharacter(CharacterMainControl c) { return c.Companion; } }
+    public class PetAI : Component { }
     public static class ModeGRuntimeGates { public static bool IsDaXingXingOwnedByModeG(CharacterMainControl c) { return c.ModeGOwned; } }
     public static class ObjectCache
     { public static CharacterRandomPreset[] Presets; public static CharacterRandomPreset[] GetCharacterPresets() { return Presets; } }
@@ -158,7 +163,14 @@ namespace BossRush
     {
         internal const float ARENA_RADIUS=500f,DaXingXingCleanInterval=.5f;
         internal static BossRushMapConfig Map;
+        internal bool IsActive,IsBossRushArenaActive,IsModeEActive,IsCampaignFinalBossActive;
+        internal CharacterRandomPreset ArenaEggSpawnPreset;
+        internal readonly object ArenaSharedWait05s=new object();
         public ModBehaviour() { new GameObject{name="host"}.Add(this); }
+        internal bool IsDeathWraithCharacterForArena(CharacterMainControl c) { return c.DeathWraith; }
+        internal bool IsModeETrackedEnemyForArena(CharacterMainControl c) { return c.ModeEOwned; }
+        internal static bool IsModeGRunInProgressSafe() { return false; }
+        internal static bool IsModeHRunInProgressSafe() { return false; }
         internal static BossRushMapConfig GetMapConfigBySceneName(string scene) { return Map; }
         internal static void DevLog(string text) { }
     }
@@ -180,6 +192,9 @@ namespace BossRush
         internal MonoBehaviour CurrentBoss;
         internal bool InfiniteHellMode;
         internal int InfiniteHellWaveIndex,BossesPerWave;
+        internal bool SpawnersDisabled;
+        internal int SpawnerDisableCalls;
+        internal void DisableAllSpawners() { SpawnersDisabled=true;SpawnerDisableCalls++; }
         internal readonly List<MonoBehaviour> CurrentWaveBosses=new List<MonoBehaviour>();
         internal static InteractableLootbox CachedLootBoxTemplateWithLoader,CachedDifficultyRewardLootBoxTemplate;
         internal WavesArenaRuntimeModule(ModBehaviour host) { OnAwake(host);enemyRecoveryMonitor=new EnemyRecoveryMonitor(); }
