@@ -26,7 +26,7 @@ Two exceptions are worth knowing:
   like any other Boss. There's no completing the codex without this mode.
 
 **What does not apply here**: mutators (this mode has its own in-run upgrades), random events,
-PetNest companions, affix forging (the temporary goblin doesn't offer it), and relic soul/egg drops.
+affix forging (the temporary goblin doesn't offer it), and relic soul/egg drops (PetNest cubs can accompany you as usual).
 
 ## Starter Loadout Choice
 

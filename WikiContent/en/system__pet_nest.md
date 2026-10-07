@@ -66,11 +66,10 @@ Every cub has its own backpack: **4 slots** to start, with more from levels, end
 - **Cubs allowed**
   - The three standard difficulties
   - From Scratch / Faction War / Blood Hunt
-- **No cubs**
-  - Fate Echo: a grudge between two has no room for a third
-  - Zombie Mode: it runs its own lifecycle and rewards
-  - Black Market Duck Cup: a spectator mode; you stay out of the ring, and so does your cub
-- **Base**: only the deployed cub idles around the nest
+  - Fate Echo / Zombie Mode / Sky Islands and all raid maps
+- **Only barred in**
+  - Black Market Duck Cup: a spectator mode; you stay out of the ring, the two Boss teams own the arena, and so does your cub
+- **Base**: the deployed cub idles around the nest (spawns as a non-combat companion with combat AI disabled, preventing accidental targeting of base NPCs)
 
 ### Disaster Expeditions
 

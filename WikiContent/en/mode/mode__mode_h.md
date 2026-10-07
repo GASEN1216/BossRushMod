@@ -71,7 +71,7 @@ In the whole match you get exactly one active move: **ringing the bell**.
 
 You can bet two things: **money in your account** (cash in your backpack is left alone), or **items in your backpack**. **Nothing in your storage can be bet**: the match is on a raid map, and storage is back at base.
 
-- **Where to pick**: the pre-match screen and every results screen (for the next match) have a "Bet" row in the footer: **No bet / Bet 1,000 / Bet 5,000 / Bet 20,000 / Bet items**.
+- **Where to pick**: the pre-match screen and every results screen (for the next match) have a "Bet" row in the footer: **No bet / Bet 1,000 / Bet 5,000 / Bet 20,000 / Custom amount / Bet items**. Picking "Custom amount" brings up a slider dynamically capped by your wallet balance and the match's true return multiplier.
 - **A money bet sets "how much per match from now on"**: pick once and every match uses it until you change it. Default is no bet, and loading a save resets to no bet.
 - **An item bet only covers the next match**: "Bet items" opens a page of your backpack; tap an item to put it up, tap again to take it back, then "Done".
 - The money is only taken, and the items only recorded, once the match locks in. Short on money or the items are gone? No bet this match; the results screen says why, and the match goes ahead.

@@ -51,6 +51,11 @@
 - Range: 0.1-10
 - Global Boss stat multiplier (affects health and damage)
 
+#### bossHealthPercent
+- Default: 100
+- Range: 10-200 (%)
+- Boss health percentage (affects max health only, applies to newly spawned Bosses; multiplies with bossStatMultiplier)
+
 #### milestoneRestBonusSeconds
 - Default: 30
 - Range: 0-120

@@ -53,6 +53,11 @@
 - 范围：0.1-10
 - Boss 全局属性倍率（影响生命值和伤害）
 
+### bossHealthPercent
+- 默认值：100
+- 范围：10-200（%）
+- Boss 生命比例（仅影响生命值上限，新生成的 Boss 生效；与 bossStatMultiplier 乘法叠加）
+
 ### milestoneRestBonusSeconds
 - 默认值：30
 - 范围：0-120
