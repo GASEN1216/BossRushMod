@@ -123,6 +123,7 @@ class Program
         Check(old.Cleanups>0 && !PetNestCompanionRuntime.HasCompanion,"seat revalidation rejects a late cub even without a notification");
         PetNestCompanionRuntime.ResetStaticCaches();
         VerifyHomecomingAfterLoading(owner);
+        VerifyHomecomingFailureRecovery(owner);
         VerifyCapacityOwnership();
         foreach(var task in UniTaskVoid.Pending) Check(task.IsCompleted && !task.IsFaulted,"all asynchronous requests finished without hidden exceptions");
 
@@ -205,6 +206,59 @@ class Program
         LevelManager.Instance.IsBaseLevel=false;
         PetNestHatchRevealView.Closed=0;
         PetNestExpeditionRevealView.Closed=0;
+    }
+
+    static void VerifyHomecomingFailureRecovery(ModBehaviour owner)
+    {
+        foreach (bool changeSlot in new[] { false, true })
+        {
+            var module=new PetNestRuntimeModule(owner);
+            Saves.SavesSystem.CurrentSlot=1;
+            var pet=PetNestService.DeployedPet=Pet("same-pet-id");
+            PetNestService.ExtraPets.Clear();
+            LevelManager.Instance.IsBaseLevel=false; SceneLoader.IsSceneLoading=false; LevelManager.AfterInit=true;
+            module.OnSceneLoaded(new SceneRuntimeContext()); CompleteSpawn();
+            SceneLoader.IsSceneLoading=true; module.OnUpdate(.016f,.016f);
+            // 同一只宠同时存在归巢 id 与 Downed 集合，只应获得一次奖励。
+            if (!changeSlot) pet.state=(int)PetNestPetState.Downed;
+            LevelManager.Instance.IsBaseLevel=true; module.OnSceneLoaded(new SceneRuntimeContext());
+            SceneLoader.IsSceneLoading=false;
+            PetNestProgressionService.RunKillExp=37;
+            PetNestPersistence._bundle.CanStore=false;
+            module.OnUpdate(.016f,.016f);
+            Check(module.HasHomecomingPending && pet.exp==0 && pet.careerCount==0 && PetNestProgressionService.RunKillExp==37,
+                "rejected homecoming transaction preserves identity, pending work and kill budget");
+            PetNestPersistence._bundle.CanStore=true;
+            if (changeSlot)
+            {
+                Saves.SavesSystem.CurrentSlot=2;
+                var other=PetNestService.DeployedPet=Pet("same-pet-id");
+                Time.unscaledTime+=6; module.OnUpdate(.016f,.016f);
+                Check(other.exp==0 && other.careerCount==0 && PetNestProgressionService.RunKillExp==0,
+                    "changing slots discards old homecoming ownership even when pet ids match");
+            }
+            else
+            {
+                module.OnUpdate(.016f,.016f);
+                Check(pet.exp==0 && PetNestProgressionService.RunKillExp==37,"recovery respects the existing five-second maintenance throttle");
+                PetNestPersistence._bundle.RejectStore=true;
+                Time.unscaledTime+=6; module.OnUpdate(.016f,.016f);
+                Check(module.HasHomecomingPending && pet.exp==0 && pet.careerCount==0 && PetNestProgressionService.RunKillExp==37,
+                    "rejected candidate Store cannot leak XP or consume the homecoming budget");
+                PetNestPersistence._bundle.RejectStore=false;
+                Time.unscaledTime+=6; module.OnUpdate(.016f,.016f);
+                Check(!module.HasHomecomingPending && pet.exp==20 && pet.careerCount==1 && PetNestProgressionService.RunKillExp==0,
+                    "accepted recovery settles the active downed pet exactly once and then resets the budget");
+                Time.unscaledTime+=6; module.OnUpdate(.016f,.016f);
+                Check(pet.exp==20 && pet.careerCount==1,"repeated maintenance does not repeat accepted homecoming XP");
+            }
+            PetNestBaseIdleSpawner.CleanupAll();
+            while(UniTask.Delays.Count>0)Delay();
+            PetNestCompanionRuntime.ResetStaticCaches();
+        }
+        Saves.SavesSystem.CurrentSlot=1;
+        LevelManager.Instance.IsBaseLevel=false;
+        PetNestHatchRevealView.Closed=0; PetNestExpeditionRevealView.Closed=0;
     }
     // Unity 会递归驱动 yield return 的子 IEnumerator，不能丢弃 Current 后误判暂停通过。
     static bool AdvancePresentation(System.Collections.Generic.Stack<System.Collections.IEnumerator> stack)

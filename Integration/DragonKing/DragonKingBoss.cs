@@ -674,6 +674,9 @@ namespace BossRush
         /// </summary>
         private void OnDragonKingDeath(CharacterMainControl deadKing, DamageInfo damageInfo)
         {
+            // fallback 可使用非 Boss 官方预设；不能等预设清理后再依赖 isBossCharacter 识别。
+            CodexKillCollector.OnKnownBossDead(deadKing != null ? deadKing.Health : null,
+                damageInfo, DragonKingConfig.BossNameKey);
             DevLog("[DragonKing] 龙王被击败");
             ShowMessage(L10n.DragonKingDefeated);
 

@@ -4,16 +4,18 @@ using BossRush;
 namespace UnityEngine { struct Color { public Color(float r,float g,float b,float a){} } static class Time { public static float time; }
  static class Object { public static int DestroyCalls; public static void Destroy(object value) {DestroyCalls++;} }
  struct Vector3 {} class Transform {public Vector3 position;} }
+namespace UnityEngine.Events { delegate void UnityAction<T>(T value); }
 enum Teams { player,wolf,scav,usec,bear,lab,middle,all }
 // 与官方 Team.IsEnemy 的真实阵营判据一致。
 static class Team { public static bool IsEnemy(Teams selfTeam, Teams targetTeam) { return selfTeam != Teams.middle && (selfTeam == Teams.all || (targetTeam != Teams.middle && selfTeam != targetTeam)); } }
 class LevelManager { public static LevelManager Instance=new LevelManager(); public bool IsBaseLevel; }
-class CharacterRandomPreset { public string nameKey,name; }
-class CharacterMainControl { public bool IsMainCharacter,isBossCharacter;public Teams Team;public CharacterRandomPreset characterPreset; public Health Health; public UnityEngine.Transform transform=new UnityEngine.Transform(); public object Component; public int ComponentQueries; public T GetComponent<T>() where T:class {ComponentQueries++;return Component as T;} public int GetInstanceID(){return GetHashCode();} }
-class Health { public bool IsDead,IsMainCharacterHealth,IsCompanion;public CharacterMainControl Character;public CharacterMainControl TryGetCharacter(){return Character;}public int GetInstanceID(){return GetHashCode();} }
+class CharacterRandomPreset { public string nameKey,name; public bool isBoss,showName; public Teams team; }
+class CharacterMainControl { public bool IsMainCharacter,isBossCharacter;public Teams Team;public CharacterRandomPreset characterPreset; public Health Health; public event Action<DamageInfo> BeforeCharacterSpawnLootOnDead; public UnityEngine.Transform transform=new UnityEngine.Transform(); public object Component; public int ComponentQueries; public T GetComponent<T>() where T:class {ComponentQueries++;return Component as T;} public int GetInstanceID(){return GetHashCode();} }
+class DeathEvent { public void RemoveListener(UnityEngine.Events.UnityAction<DamageInfo> handler) {} }
+class Health { public bool IsDead,IsMainCharacterHealth,IsCompanion;public DeathEvent OnDeadEvent=new DeathEvent();public CharacterMainControl Character;public CharacterMainControl TryGetCharacter(){return Character;}public int GetInstanceID(){return GetHashCode();} }
 struct DamageInfo { public CharacterMainControl fromCharacter;public float finalDamage; }
 namespace BossRush {
- class DragonKingAbilityController { }
+ class DragonKingAbilityController { public void OnBossDeath() {} }
  class DragonDescendantAbilityController { }
  enum ZombieModeBossKind { Titan,Hunter,Splitter,Shielder,Corruptor }
  class ZombieModeEnemyRuntimeMarker {public bool IsBoss;public ZombieModeBossKind BossKind;}
@@ -24,8 +26,8 @@ namespace BossRush {
  static class PhantomWitchConfig {internal const string BossNameKey="witch",BossNameCN="witch",BossNameEN="witch",DefeatedMessageCN="defeated",DefeatedMessageEN="defeated";}
  enum PhantomWitchDeathPresentation { Standard, CampaignFinal }
  class PhantomWitchAbilityController {public void OnBossDeath(){}}
- class BossRushAudioManager {internal static BossRushAudioManager Instance;internal void StopBossBGM(string key,CharacterMainControl boss){}internal void PlayStinger(string key){}}
- static class BossBgmKeys {internal const string PhantomWitch="witch";}
+ class BossRushAudioManager {internal static BossRushAudioManager Instance;internal void StopBossBGM(string key,CharacterMainControl boss){}internal void PlayStinger(string key){}internal void ResetDragonKingBGMState(){}}
+ static class BossBgmKeys {internal const string PhantomWitch="witch",DragonDescendant="descendant";}
  static class BossBgmEvents {internal const string BossVictory="victory";}
  static class PhantomWitchAssetManager {internal static void CreateDeathEffect(UnityEngine.Vector3 position){}}
  partial class BossCleanupHelpers {}
@@ -35,7 +37,24 @@ namespace BossRush {
   static void DevLog(string message){}static void ShowMessage(string message){}static void ClearBossRandomLootTracking(CharacterMainControl boss){}
   internal void DieForTest(CharacterMainControl boss,DamageInfo hit,PhantomWitchDeathPresentation presentation){phantomWitchDeathPresentations[boss]=presentation;OnPhantomWitchDeath(boss,hit);}
  }
- static class L10n {internal static bool IsChinese=true;internal static string T(string a,string b=null){return IsChinese || b==null ? a:b;}}
+ partial class DragonKingRuntimeModule {
+  readonly Dictionary<CharacterMainControl,DragonKingAbilityController> dragonKingInstances=new Dictionary<CharacterMainControl,DragonKingAbilityController>();
+  readonly Dictionary<CharacterMainControl,Action<DamageInfo>> dragonKingLootEventHandlers=new Dictionary<CharacterMainControl,Action<DamageInfo>>();
+  readonly Dictionary<CharacterMainControl,UnityEngine.Events.UnityAction<DamageInfo>> dragonKingDeathEventHandlers=new Dictionary<CharacterMainControl,UnityEngine.Events.UnityAction<DamageInfo>>();
+  static void DevLog(string message){}static void ShowMessage(string message){}static void UnregisterDragonKingSetBonus(CharacterMainControl boss){}static void ReleaseDragonKingInstance(){}
+  static bool CheckBossKillAchievementsOnce(CharacterMainControl boss,string key){return true;}
+  internal void DieForTest(CharacterMainControl boss,DamageInfo hit){OnDragonKingDeath(boss,hit);}
+ }
+ partial class DragonDescendantRuntimeModule {
+  static CharacterRandomPreset cachedFallbackPreset;static bool fallbackPresetSearched;
+  CharacterMainControl dragonDescendantInstance; DragonDescendantAbilityController dragonDescendantAbilities;
+  static void DevLog(string message){}static void UnregisterDragonDescendantSetBonus(CharacterMainControl boss){}
+  internal void DieForTest(CharacterMainControl boss,DamageInfo hit){dragonDescendantInstance=boss;OnDragonDescendantDeath(boss,hit);}
+ }
+ static class ObjectCache { internal static CharacterRandomPreset[] Presets; internal static CharacterRandomPreset[] GetCharacterPresets(){return Presets;} }
+ static class PetNestDropService { internal static void ClearTracking(CharacterMainControl boss){} }
+ static class AffixForgeStoneDropService { internal static void ClearTracking(CharacterMainControl boss){} }
+ static class L10n {internal static bool IsChinese=true; internal static string DragonKingDefeated="defeated";internal static string T(string a,string b=null){return IsChinese || b==null ? a:b;}}
  // 2026-09-20：初见场景记录经它取场景 id。夹具只验采集链路，场景解析是 Unity 侧行为。
  static class CodexSceneNames {internal static string Captured="Level_GroundZero_Main";internal static string Capture(){return Captured;}internal static string Resolve(string id){return string.IsNullOrEmpty(id)?null:("map:"+id);}}
  // 2026-09-20 第三轮：官方 Boss 名单补目录。读**仓库里那份真实 JSON**，

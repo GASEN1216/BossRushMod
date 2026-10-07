@@ -40,7 +40,7 @@ namespace Saves
         public static int CurrentSlot, Attempts, Writes, FailAt;
         private static bool saving;
         public static bool IsSaving { get { return saving; } set { saving = value; } }
-        public static string FailReadback;
+        public static string FailReadback, FailWrite;
         private static string pendingReadFailure;
         public static Dictionary<string, object> Cache = new Dictionary<string, object>();
         public static Dictionary<string, object> Disk = new Dictionary<string, object>();
@@ -54,6 +54,7 @@ namespace Saves
         }
         public static void Save<T>(string key, T value)
         {
+            if (FailWrite == key) { FailWrite = null; throw new IOException("key write"); }
             Cache[key] = value;
             if (FailReadback == key) { pendingReadFailure = key; FailReadback = null; }
         }
@@ -76,7 +77,7 @@ namespace Saves
         public static void Reset()
         {
             Cache.Clear(); Disk.Clear(); History.Clear(); CurrentSlot = 1;
-            IsSaving = false; Attempts = Writes = FailAt = 0; FailReadback = pendingReadFailure = null;
+            IsSaving = false; Attempts = Writes = FailAt = 0; FailReadback = FailWrite = pendingReadFailure = null;
             OnSetFile = OnSaveDeleted = OnCollectSaveData = null;
         }
     }
@@ -90,12 +91,13 @@ namespace Duckov.Economy
         public static EconomyManager Instance;
         public static long Money;
         public static long Cash;
-        public static int PayCalls;
-        public static bool Reject, ThrowAfter;
+        public static int PayCalls, AddCalls;
+        public static bool Reject, ThrowAfter, RejectAfterPay;
         public class SaveData { public long money; }
         public object GenerateSaveData() { return new SaveData { money = Money }; }
         public static bool Add(long value)
         {
+            AddCalls++;
             if (Instance == null || Reject) return false;
             Money += value;
             if (ThrowAfter) throw new InvalidOperationException("money notification");
@@ -104,10 +106,10 @@ namespace Duckov.Economy
         public static bool Pay(Cost cost, bool a, bool b)
         {
             PayCalls++;
-            // 官方 Pay(Cost) 的 IsEnough 固定 cashAvailable=true，之后才使用调用者传入的 b。
+            // 现装官方 Pay(Cost) 在 IsEnough 中固定计入背包 Cash，即便 b=false。
             if (unchecked((a ? Money : 0L) + Cash) < cost.Amount) return false;
             if (Money < cost.Amount) return false;
-            return Add(-cost.Amount);
+            return Add(-cost.Amount) && !RejectAfterPay;
         }
     }
 }

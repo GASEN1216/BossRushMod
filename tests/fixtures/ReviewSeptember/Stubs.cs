@@ -7,12 +7,17 @@ namespace Saves
 {
     public static class SavesSystem
     {
-        public static bool IsSaving, FailNext;
+        private static bool saving;
+        public static bool IsSaving { get { return saving; } set { saving = value; } }
+        public static bool FailNext;
         public static int PhysicalWrites;
         public static void SaveFile(bool flag)
         {
+            // 官方同步写盘在 IO 异常后不会自行清 saving；必须由真实包装器恢复。
+            saving = true;
             if (FailNext) { FailNext = false; throw new Exception("injected IO failure"); }
             PhysicalWrites++;
+            saving = false;
         }
     }
 }

@@ -105,6 +105,7 @@ class Program
         CheckOfficialRosterWithoutBossFlag();
         CheckCustomBossIdentity();
         CheckWitchDeathOrdering();
+        CheckDragonDeathOrdering();
         CheckCustomBossRuntimePresetCleanup();
         Console.WriteLine("Codex regression checks=" + checks);
     }
@@ -469,6 +470,50 @@ class Program
             Check(ReferenceEquals(victim.characterPreset, shared) && UnityEngine.Object.DestroyCalls == destroys + 1,
                 "custom boss cleanup does not destroy an unrelated shared preset: " + kind);
         }
+    }
+
+    static void CheckDragonDeathOrdering()
+    {
+        var fallback = new CharacterRandomPreset { nameKey="ordinary_fallback",name="OrdinaryPreset",team=Teams.wolf,isBoss=false,showName=false };
+        ObjectCache.Presets = new[] { fallback };
+        Check(ReferenceEquals(new DragonDescendantRuntimeModule().FindFallbackPreset(),fallback),
+            "real fallback lookup permits an ordinary non-Boss preset when named sources are unavailable");
+        foreach (bool king in new[] { false, true })
+        foreach (bool bossFlag in new[] { false, true })
+        foreach (bool rewritten in new[] { false, true })
+        {
+            Reset();
+            string expected=king?DragonKingConfig.BossNameKey:DragonDescendantConfig.BOSS_NAME_KEY;
+            var victim=new CharacterMainControl { isBossCharacter=bossFlag,Team=Teams.wolf,
+                characterPreset=new CharacterRandomPreset { nameKey=rewritten?"Cname_StormBoss1":expected,
+                    name=king?DragonKingRuntimeModule.RuntimePresetName:DragonDescendantRuntimeModule.RuntimePresetName },
+                Component=king?(object)new DragonKingAbilityController():new DragonDescendantAbilityController() };
+            var health=victim.Health=new Health { Character=victim };
+            var hit=new DamageInfo { fromCharacter=new CharacterMainControl { IsMainCharacter=true },finalDamage=100 };
+            UnityEngine.Time.time=30; CodexKillCollector.OnGlobalHurt(health,hit);
+            UnityEngine.Time.time=34; health.IsDead=true;
+            Action die=king?(Action)(()=>new DragonKingRuntimeModule().DieForTest(victim,hit)):
+                ()=>new DragonDescendantRuntimeModule().DieForTest(victim,hit);
+            die();
+            Check(victim.characterPreset==null,"real dragon death owner releases its runtime preset before the global event");
+            CodexKillCollector.OnGlobalDead(health,hit); die(); CodexKillCollector.OnGlobalDead(health,hit);
+            var entry=CodexPersistence.Current.Find(expected);
+            Check(entry!=null && entry.Kills==1 && entry.FastestKillSeconds==4
+                && CodexPersistence.Current.Find("Cname_StormBoss1")==null,
+                "dragon owner records ordinary fallback identity once despite preset cleanup and key rewriting: "+king+"/"+bossFlag+"/"+rewritten);
+        }
+        foreach (bool king in new[] { false,true })
+        foreach (string excluded in new[] { "ally","mode-h","companion","base","npc-kill" })
+        {
+            Reset();
+            var victim=new CharacterMainControl { Team=excluded=="ally"?Teams.player:Teams.wolf };
+            victim.Health=new Health { Character=victim,IsDead=true,IsCompanion=excluded=="companion" };
+            var hit=new DamageInfo { fromCharacter=new CharacterMainControl { IsMainCharacter=excluded!="npc-kill" } };
+            ModBehaviour.ModeHRunning=excluded=="mode-h"; LevelManager.Instance.IsBaseLevel=excluded=="base";
+            if(king)new DragonKingRuntimeModule().DieForTest(victim,hit);else new DragonDescendantRuntimeModule().DieForTest(victim,hit);
+            Check(CodexPersistence.Current.Entries.Count==0,"dragon owner preserves all player eligibility filters: "+king+"/"+excluded);
+        }
+        Reset();
     }
 
     static void CheckCodec()

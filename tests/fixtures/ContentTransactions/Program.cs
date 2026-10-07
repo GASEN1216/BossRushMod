@@ -553,6 +553,7 @@ partial class Program
     }
     static void Main(string[] args)
     {
+        if (args.Length == 0) HomecomingStoreRecovery();
         if (RunCampaignDiskRegression(args)) return;
         QuestDeliveryTransactions();
         CampaignRestartLifecycle(); CampaignGuideLifecycle(); GuideCash(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
@@ -563,6 +564,55 @@ partial class Program
         PetNestBackpackTreeRoundTrip();
         PetNestBackpackOwnedRestoration();
         Console.WriteLine("ContentTransactions: " + checks + " assertions passed");
+    }
+
+    static void HomecomingStoreRecovery()
+    {
+        foreach (bool readback in new[] { false, true })
+        {
+            Reset();
+            PetNestSaveCoordinator.EnsureSubscribed();
+            var seed=PetNestCodec.CreateDefaultBundle();
+            seed.nest.deployedPetId="returning";
+            seed.nest.pets.Add(new PetNestPetRecord { id="returning",lineageKey="test",level=1,state=(int)PetNestPetState.Downed });
+            SavesSystem.Save(PetNestTuning.BundleStorageKey,PetNestCodec.EncodeBundle(seed));
+            string reason;
+            Check(PetNestPersistence.BeginTransaction(out reason),"homecoming starts with a real accepted pet transaction");
+            PetNestService.TryGetPet("returning").exp=4;
+            Check(PetNestService.StageCommit(),"combat XP enters the real pending Bundle");
+            Check(PetNestSaveCoordinator.RequireAssetSnapshot(out reason),"pending recovery retains the real asset snapshot obligation");
+            if (readback) SavesSystem.FailReadAfterSaveKey=PetNestTuning.BundleStorageKey;
+            else SavesSystem.FailKey=PetNestTuning.BundleStorageKey;
+            Check(!PetNestSaveCoordinator.RequestFlush(out reason) && PetNestPersistence.Bundle.IsStoreFaulted
+                && PetNestPersistence.Bundle.HasPendingWrite,"actual pet Save or readback fault retains accepted pending: "+readback);
+            Check(!PetNestProgressionService.SettleRunHomecoming("returning")
+                && PetNestService.TryGetPet("returning").exp==4,"faulted real store rejects homecoming without leaking XP");
+            UnityEngine.Time.frameCount++;
+            PetNestSaveCoordinator.Tick();
+            Check(!PetNestPersistence.Bundle.IsStoreFaulted && !PetNestPersistence.Bundle.HasPendingWrite
+                && DiskNest().nest.pets[0].exp==4,"same-slot Save and matching readback recover the real pet store and physical save");
+            Check(PetNestProgressionService.SettleRunHomecoming("returning"),"recovered real store accepts homecoming without a reset or mock flag change");
+            PetNestService.RestoreDownedPetsOnReturnToBase();
+            UnityEngine.Time.frameCount++; PetNestSaveCoordinator.Tick();
+            var pet=DiskNest().nest.pets[0];
+            Check(pet.exp==24 && pet.careerCount==1,"real recovery awards a returning downed pet once and preserves prior combat XP");
+            Check(PetNestProgressionService.SettleRunHomecoming(null),"empty later homecoming is a completed no-op");
+            Check(PetNestService.TryGetPet("returning").exp==24,"later maintenance cannot duplicate recovered XP");
+        }
+        Reset(); PetNestSaveCoordinator.EnsureSubscribed();
+        SavesSystem.Save(PetNestTuning.BundleStorageKey,"{\"schemaVersion\":999}");
+        string error;
+        Check(!PetNestPersistence.BeginTransaction(out error) && PetNestPersistence.Bundle.HasWriteBarrier,
+            "unknown pet schema creates a real write barrier");
+        PetNestSaveCoordinator.RequestFlush(); UnityEngine.Time.frameCount++; PetNestSaveCoordinator.Tick();
+        Check(PetNestPersistence.Bundle.HasWriteBarrier && SavesSystem.Writes==0,
+            "pending recovery never clears unknown schema barriers or overwrites their data");
+        Reset(); PetNestSaveCoordinator.EnsureSubscribed();
+        Check(PetNestPersistence.BeginTransaction(out error) && PetNestService.StageCommit(),"cross-slot check has accepted pending");
+        SavesSystem.FailKey=PetNestTuning.BundleStorageKey; PetNestSaveCoordinator.RequestFlush();
+        SavesSystem.SetFile(1); UnityEngine.Time.frameCount++; PetNestSaveCoordinator.Tick();
+        Check(!PetNestPersistence.Bundle.HasPendingWrite && !SavesSystem.Cache.ContainsKey(PetNestTuning.BundleStorageKey),
+            "slot change discards old accepted pending instead of replaying it into the new slot");
     }
 
     static void PetNestBackpackPersistence()

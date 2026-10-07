@@ -42,6 +42,8 @@ class Program
         UnityEngine.Time.frameCount++;
         Saves.SavesSystem.FailNext = true;
         Check(!ModeHSaveFlushCoordinator.RequestSeasonWrite(new ModeHSeasonDto(), out error), "injected IO exception");
+        Check(!Saves.SavesSystem.IsSaving && ModeHSaveFlushCoordinator.HasDeferredFlush,
+            "owned H physical failure releases saving while retaining its pending physical write");
         UnityEngine.Time.frameCount++;
         ModeHSaveFlushCoordinator.Tick();
         Check(Saves.SavesSystem.PhysicalWrites == 7, "IO debt retries after typed queue empty");

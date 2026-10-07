@@ -27,6 +27,7 @@ namespace BossRush
         private bool _baseMaintenancePending;
         private float _nextBaseMaintenanceTime;
         private string _homecomingPetId;
+        private int _homecomingSlot = -1;
 
         #endregion
 
@@ -123,6 +124,7 @@ namespace BossRush
                 }
                 EnsureBootstrapped();
 
+                ValidateHomecomingSlot();
                 // 回基地：把「本局重伤退场」复位为在巢待命
                 if (IsBaseScene())
                 {
@@ -181,6 +183,7 @@ namespace BossRush
                 }
                 // 官方加载会先置 IsSceneLoading，再通知基地 sceneLoaded；后面的生命周期
                 // tick 会立即回收角色，因此必须先留下归巢结算身份。
+                ValidateHomecomingSlot();
                 string returningPetId = PetNestCompanionRuntime.ActiveCompanionPetId;
                 if (!string.IsNullOrEmpty(returningPetId)) _homecomingPetId = returningPetId;
                 PetNestDownedHandler.Tick();
@@ -250,6 +253,7 @@ namespace BossRush
                 _baseMaintenancePending = false;
                 _nextBaseMaintenanceTime = 0f;
                 _homecomingPetId = null;
+                _homecomingSlot = -1;
                 _bootstrapped = false;
                 _owner = null;
             }
@@ -293,10 +297,10 @@ namespace BossRush
                     PetNestExpeditionService.ReconcileOrphanedExpeditionLocks();
                     // 不要在这里加冷却：归巢经验每次固定取 PetExpHomecoming，
                     // 不随滞留时长累积，所以没有"久留后一次性暴涨"的泄漏可堵。
-                    // 而 SettleRunHomecoming 的两条出口都会调 ResetRunKillBudget()，
-                    // 跳过它会把本局击杀预算一起漏到下一局。入口已由 IsBaseLevel 把关。
-                    PetNestProgressionService.SettleRunHomecoming(
-                        _homecomingPetId);
+                    // 只有候选已接受（或没有受益者）才消费归巢身份和本局击杀预算。
+                    // 事务拒绝保留待办，复用上方 5 秒维护节奏重试。
+                    if (!PetNestProgressionService.SettleRunHomecoming(
+                        _homecomingPetId)) return;
                     _homecomingPetId = null;
                     PetNestService.RestoreDownedPetsOnReturnToBase();
                     PetNestCompanionRuntime.CleanupOnce();
@@ -315,6 +319,19 @@ namespace BossRush
         }
 
         #region bootstrap
+
+        private void ValidateHomecomingSlot()
+        {
+            int slot = Saves.SavesSystem.CurrentSlot;
+            if (_homecomingSlot == slot) return;
+            if (_homecomingSlot >= 0)
+            {
+                _homecomingPetId = null;
+                PetNestCompanionRuntime.CleanupOnce();
+                PetNestProgressionService.ResetStaticCaches();
+            }
+            _homecomingSlot = slot;
+        }
 
         /// <summary>
         /// 幂等 bootstrap：只在开关开启时订阅存档并建血脉目录。
@@ -420,6 +437,8 @@ namespace BossRush
             _bootstrapped = false;
             _baseMaintenancePending = false;
             _nextBaseMaintenanceTime = 0f;
+            _homecomingPetId = null;
+            _homecomingSlot = -1;
             ModBehaviour.DevLog("[PetNest] 入口开关已关闭，运行时模块回到 dormant");
         }
 

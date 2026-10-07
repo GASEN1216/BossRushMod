@@ -64,6 +64,12 @@ def main():
     witch_sources = (
         ('Integration/PhantomWitch/PhantomWitchBoss.cs', 'PhantomWitchRuntimeModule',
          'private void OnPhantomWitchDeath('),
+        ('Integration/DragonKing/DragonKingBoss.cs', 'DragonKingRuntimeModule',
+         'private void OnDragonKingDeath('),
+        ('Integration/DragonDescendant/DragonDescendantBoss_RuntimeAndCleanup.cs', 'DragonDescendantRuntimeModule',
+         'private void OnDragonDescendantDeath('),
+        ('Integration/DragonDescendant/DragonDescendantBoss.cs', 'DragonDescendantRuntimeModule',
+         'internal CharacterRandomPreset FindFallbackPreset()'),
         ('Utilities/BossCleanupHelpers.cs', 'BossCleanupHelpers',
          'public static void DestroyRuntimePreset('),
     )

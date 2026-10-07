@@ -48,7 +48,11 @@ def main():
     extracted += "internal static partial class PetNestUIPages {\n"
     extracted += method("PetNest/PetNestUIPages.cs", "internal static PetNestPageContent BuildExpeditionPage(")
     extracted += "}\ninternal static partial class OfficialQuestProjection {\n"
-    extracted += method("Utilities/OfficialQuests/OfficialQuestProjection.cs", "internal static bool TryCommitDelivery(") + "\n}}"
+    extracted += method("Utilities/OfficialQuests/OfficialQuestProjection.cs", "internal static bool TryCommitDelivery(") + "\n}\n"
+    extracted += "internal static partial class PetNestProgressionService {\n"
+    for signature in ("internal static void AddExp(", "internal static bool SettleRunHomecoming(", "private static void ResetRunKillBudget()"):
+        extracted += method("PetNest/PetNestProgressionService.cs", signature) + "\n"
+    extracted += "}}"
     (OUT / "Extracted.cs").write_text(extracted, encoding="utf-8")
     linked = [
         "Campaign/CampaignProgressService.cs", "Campaign/CampaignModels.cs",

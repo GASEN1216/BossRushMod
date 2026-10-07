@@ -32,3 +32,5 @@
 2026-10-07 独立复审（CR-2026-10-07-003）：从生产文件逐字抽取 `OnPhantomWitchDeath` 和 `BossCleanupHelpers.DestroyRuntimePreset`，链接真实图鉴采集器。按官方 `Health.Hurt` 的实例死亡回调 → 全局死亡回调顺序执行，验证普通女巫与冠军之影的稳定身份、预设先清空、第三方改名、一击击杀、重复派发、已观测计时，以及友军、基地、Mode H、宠物和非玩家末击排除。音效、表现和 Unity 对象是替身；这组不代表游戏内图鉴显示已验收。隔离副本删除生产 owner 的图鉴调用后，真实回归与守卫均转红；按字节恢复后均通过。
 
 同次复审还从三 Boss 的创建语句提取实际 clone 实例名，执行真实 preset 清理方法。覆盖未改名／第三方改 nameKey 两种身份、重复清理不再 Destroy，以及无关共享 preset 不被误删。普通女巫、冠军之影和 Legacy 龙皇／龙裔的 clone 名统一使用已存在的 `*_Preset` 清理约定；托管 G/H 早已使用相同实例名。逐一还原三 Boss 的旧创建名字后，执行回归与守卫分别转红。
+
+2026-10-07 远端合并复审（CR-2026-10-07-014）：继续提取真实 `FindFallbackPreset`、`OnDragonKingDeath` 和 `OnDragonDescendantDeath`。普通非 Boss 预设可被正式 fallback 选中，因此死亡清理后不能依赖 `isBossCharacter` 进入组件识别。两位死亡 owner 同样在清理前交付 canonical key；回归覆盖 Boss 标志真／假、第三方改 key、两个死亡 owner、重复全局／实例回调、计时保留及玩家归属各道过滤。删除任一 owner 的稳定身份调用会实际漏录，相关守卫同步拒绝。此夹具仍不代表第三方替换整套角色或 Unity 实机行为已验证。

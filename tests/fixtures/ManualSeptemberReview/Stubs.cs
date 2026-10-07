@@ -198,12 +198,17 @@ namespace BossRush
     static class PetNestService
     {
         public static PetNestPetRecord DeployedPet;
-        public static PetNestPetRecord TryGetPet(string id) { return DeployedPet!=null && DeployedPet.id==id ? DeployedPet : null; }
+        public static List<PetNestPetRecord> ExtraPets = new List<PetNestPetRecord>();
+        public static List<PetNestPetRecord> AuthoritativePets
+        { get { var pets=new List<PetNestPetRecord>(ExtraPets); if(DeployedPet!=null)pets.Add(DeployedPet);return pets; } }
+        public static PetNestPetRecord TryGetPet(string id)
+        { foreach(var pet in PetNestPersistence.ActivePets) if(pet!=null && pet.id==id)return pet;return null; }
         public static string GetPetDisplayName(PetNestPetRecord p) { return p.id; }
-        public static void StageCommit() { }
-        public static List<PetNestPetRecord> Pets { get { return new List<PetNestPetRecord> { DeployedPet }; } }
-        public static bool Commit(out string reason) { reason=null;return true; }
-        public static void RestoreDownedPetsOnReturnToBase() { }
+        public static void StageCommit() { string ignored; PetNestPersistence.CommitTransaction(out ignored); }
+        public static List<PetNestPetRecord> Pets { get { return PetNestPersistence.ActivePets; } }
+        public static bool Commit(out string reason) { return PetNestPersistence.CommitTransaction(out reason); }
+        public static void RestoreDownedPetsOnReturnToBase()
+        { foreach(var pet in AuthoritativePets) if(pet.state==(int)PetNestPetState.Downed)pet.state=(int)PetNestPetState.Deployed; }
     }
     class PetNestCompanionAgent { public CharacterMainControl Master; public static bool IsCompanionHealth(Health h) { return h.IsCompanion; } public static bool IsCompanionCharacter(CharacterMainControl c) { return c.IsCompanion; } }
     class PetNestLineageInfo { public float ModelScale; public string DisplayName="lineage"; public string LineageKey="boss"; }
@@ -237,10 +242,10 @@ namespace BossRush
         public static void CancelPendingDowned() { PendingCancellations++; }
         public static void Tick() { }
     }
-    static partial class PetNestProgressionService { public static void EnsureKillTrackingSubscribed() { } public static void ShutdownKillTracking() { } public static void ClearSceneKillDedup() { } private static void ResetRunKillBudget() { } }
+    static partial class PetNestProgressionService { public static void EnsureKillTrackingSubscribed() { } public static void ShutdownKillTracking() { } public static void ClearSceneKillDedup() { } }
     static class PetNestCompanionHudView { public static void EnsureCreated() { } public static void Destroy() { } }
     class PetNestPersonality { public int ExtraPetCapacity; public static PetNestPersonality Resolve(PetNestPetRecord p) { return new PetNestPersonality(); } }
-    static class PetNestPersistenceAccess { public static bool BeginTransaction(out string reason) { reason=null;return true; } public static void AbortTransaction() { } }
+    static class PetNestPersistenceAccess { public static bool BeginTransaction(out string reason) { return PetNestPersistence.BeginTransaction(out reason); } public static void AbortTransaction() { PetNestPersistence.AbortTransaction(); } }
     class Label { public string text; public float fontSize, fontSizeMax; public object gameObject = new object(); }
     class RevealResult { public string LineageDisplayName="actual"; public bool Shiny=true; public PetNestPetRecord Pet=new PetNestPetRecord { lineageKey="boss" }; }
     static class BossRushUI { public static bool Paused; public static bool IsGamePaused() { return Paused; } }

@@ -19,3 +19,6 @@
 覆盖迟到生成、旧 finally 与新请求竞争、清理/重伤、跳过保留完整结果、大奖音效一次、暂停停表、子场景记录与未就绪重试、Mode E 玩家阵营下的敌友过滤，以及九图派生的实际落点/互斥席位/离场兜底。不能证明实际寻路连通性、模型显示、粒子观感或字体测量（L3 待实机）。
 
 2026-09-25 增补：逐字抽取生产 `ComputePreparedPowerEdge`，验证双方交换对称、我方属性递增时赔率分差单调。真实链接 `ModeHMapSupportRegistry` 与 `ModeHSeedStream`，可控官方A* / Physics替身覆盖同seed场地恢复、看台/隔离点随场地移动、A*缺席/扫描中/部分路径/长绕路/遮挡拒绝，以及路径池Claim归零。替身不证明游戏地图实际A*导航或碰撞数据正确。
+# 2026-10-07 归巢事务故障补充
+
+原样提取生产模块、归巢结算、击杀预算复位及 PetNestPersistence 的 BeginTransaction / CommitTransaction / AbortTransaction。存储接受边界使用可拒绝的深拷贝候选替身，覆盖 Begin 拒绝、Store 拒绝不泄漏经验、5 秒维护重试、成功后复位预算、活动且重伤同一宠去重、同 pet id 换槽隔离。这里的可写性恢复仅验证模块重试编排；真实写故障闩锁的恢复由 ContentTransactions 用实际 Bundle 与协调器验证，不能将本夹具替身旗标变化称为真实存档恢复。

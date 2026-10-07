@@ -170,10 +170,20 @@ def check(sources):
                      "_store.Store(previous)", "_coordinator.RequestFlush("],
             "[顺序] 先排账本、再动钱、钱没变就撤回账本、最后同批落盘")
     need(commit, "EconomyManager.Pay(new Cost(-delta), true, false)", "[钱包] 押金只从账户余额扣，不碰背包现金物品")
-    need(commit, "if (before > long.MaxValue - Math.Max(0L, EconomyManager.Cash)) EconomyManager.Add(delta);",
-         "[钱包] 官方 Cost 预检的账户加现金和溢出时，必须以已复核下界的账户变动扣款")
+    need(commit, "if (!paid && EconomyManager.Money == before)", "[钱包] 官方拒付回退必须确认 Pay 失败且账户未变，不能重复扣款")
+    need(commit, "if (cash > 0 && before > long.MaxValue - cash) EconomyManager.Add(delta);",
+         "[钱包] 仅官方 Money + Cash 上溢拒付允许有符号账户回退")
     need(commit, "delta == long.MinValue || (delta < 0 && before < -delta)", "[钱包] 排账前复核负金额及扣款下界")
     need(service, "BeforeCollectSaveData = CollectCash", "[落盘] 账本必须与现金快照同批落盘")
+    recovery = body(service, "private bool TryRecoverFaultedStore(")
+    need(recovery, "bool restoreAccepted = slot >= 0 && _slot == slot;", "[恢复] 故障恢复只能接回原资产槽的 accepted 快照")
+    ordered(recovery, ["replacement.EnsureSubscribed();", "replacement.LoadOrInit();",
+                       "replacement.Store(accepted)", "_store.ShutdownSubscription();", "_store = replacement;"],
+            "[恢复] 空 store 先订阅再接回快照，旧订阅只在新 store 可用后撤销")
+    forbid(recovery, "_cashSnapshotRequired = false", "[恢复] 不得清掉未保存的现金义务")
+    forbid(recovery, "_itemSnapshotRequired = false", "[恢复] 不得清掉未保存的物品义务")
+    need(body(service, "internal void Tick()"), "if (!TryRecoverFaultedStore()) return;",
+         "[恢复] 宿主 tick 必须先恢复故障账本再驱动保存与实物结算")
 
     # ---- 4. 至多一次 ----
     settle = body(service, "internal bool TrySettle(string runId, int matchIndex, bool won, long lossCharge, long winCash, string prizes, out long payout)")
@@ -349,6 +359,10 @@ def main():
     sources = dict((k, read(v)) for k, v in FILES.items())
     errors = check(sources)
     probes = [
+        ("service", "if (!paid && EconomyManager.Money == before)", "if (!paid)"),
+        ("service", "if (cash > 0 && before > long.MaxValue - cash) EconomyManager.Add(delta);", "EconomyManager.Add(delta);"),
+        ("service", "bool restoreAccepted = slot >= 0 && _slot == slot;", "bool restoreAccepted = true;"),
+        ("service", "if (!TryRecoverFaultedStore()) return;", ""),
         ("service", "CustomSliderSteps = 10000;", "CustomSliderSteps = 2147483647;"),
         ("service", "decimal.Floor((decimal)maximum * step / CustomSliderSteps)", "decimal.Floor((decimal)(maximum * step) / CustomSliderSteps)"),
         ("service", "Math.Max(0L, Math.Min(GetMaximumStandingAmount(MaximumStandingAmount, odds), amount));", "amount;"),
@@ -372,7 +386,7 @@ def main():
         ("service", "if (previous.status != StatusReserved || previous.matchIndex != matchIndex",
          "if (previous.matchIndex != matchIndex"),
         ("service", "EconomyManager.Pay(new Cost(-delta), true, false)", "EconomyManager.Pay(new Cost(-delta), true, true)"),
-        ("service", "if (before > long.MaxValue - Math.Max(0L, EconomyManager.Cash)) EconomyManager.Add(delta);", "if (false) EconomyManager.Add(delta);"),
+        ("service", "if (cash > 0 && before > long.MaxValue - cash) EconomyManager.Add(delta);", "if (false) EconomyManager.Add(delta);"),
         ("service", "return Commit(previous, candidate, 0, out failureReasonId);",
          "return Commit(previous, candidate, -value, out failureReasonId);"),
         ("service", "delta = won ? Math.Max(0L, Math.Min(winCash, gross - previous.amount)) : 0L;", "delta = won ? gross : 0L;"),

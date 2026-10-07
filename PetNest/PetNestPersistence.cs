@@ -505,6 +505,9 @@ namespace BossRush
                         throw new InvalidOperationException("petnest bundle readback mismatch");
                     _pendingJson = null;
                     _pendingActive = false;
+                    // 同槽已接受的候选完成真实写入和一致回读后，允许后续业务事务继续。
+                    // 未知 schema / 读取屏障在上方拒绝，不能借此解除。
+                    _storeFaulted = false;
                     _lastError = null;
                     return true;
                 }
@@ -845,7 +848,7 @@ namespace BossRush
 
         #region 状态查询
 
-        /// <summary>任一 store 进入单向故障。入口据此 fail-closed。</summary>
+        /// <summary>权威 store 写入故障。入口先拒绝新事务；已有 pending 回读成功后可恢复。</summary>
         internal static bool IsAnyStoreFaulted
         {
             get { return _bundle.IsStoreFaulted; }

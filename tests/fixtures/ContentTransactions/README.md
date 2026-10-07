@@ -38,3 +38,6 @@
 2026-09-25：链接 CampaignGuideTable 并执行引导三态事务（旧档默认、接取前拒绝、体验不等于交付、写失败不污染当前缓存、克隆保留数组、重读不丢进度）。BackMountain 变身仍是宿主替身，不模拟其外观/物理。
 
 2026-09-25 三形态扩展：后山 UsageBehavior 统一转到即时 MorphService；本夹具的变身宿主只控制成功/拒绝/异常，验证消费与补偿事务，不再将它伪装为 RaidMealService 登记。真实三形态外观、属性、碰撞和清理见 BackMountainMorph。BackMountainLifecycle 仍逐字链接旧 RaidMealService，验证旧档已预备餐食兑现、过区重挂与局末清理。
+# 2026-10-07 归巢持久化恢复补充
+
+链接完整 PetNest Bundle、Codec、Service、SaveCoordinator 与共享存档引擎，并提取真实归巢结算和经验方法。对 SavesSystem 适配器分别注入 Save 和写后回读异常，实际生产 Store 置故障；不手工清故障位，驱动实际协调器 Tick 完成同槽重写、一致回读与 SaveFile 后，验证归巢候选可继续接受、保留先前击杀经验且重伤宠仅获一次奖励。未知 schema 屏障保持只读，换槽不重放旧 pending。测试不访问玩家存档，也不承诺没有已接受 pending 的编码故障或进程退出后的未入队奖励可以恢复。

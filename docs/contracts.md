@@ -693,6 +693,12 @@ Breaking/Operational:
 `SkyIslandRaidLease.ReleaseStuckOfficialLoadingFlag` 只在租约自己等待的那次进岛 / 返航加载抛异常后，用反射调这个属性的
 非公开 setter 放下标志，再走 2 秒节流重试。官方更新后核对属性名与 setter 仍在；反射失败只记日志、保持原行为。
 
+天空岛加载失败恢复补充（2026-10-07，COMPAT / WIRE+）：`SkyIslandSceneReferenceBridge` 在官方首次设置
+`AsyncOperation.allowSceneActivation=false` 时登记本租约的原生加载操作，不能只依赖 `NextFrame` 观察。
+黑幕等待或 `onBeforeSetSceneActive` 抛错后也须放行激活；Unity 操作完成前保留资源和补丁，黑幕只偿还本租约的引用计数。
+返航失败即使岛图已被幕布卸载，也由原租约等待原生操作完成后重试；仅在失败返航的目标基地角色上跳过再次保存，
+避免半恢复角色覆盖离岛快照，原岛角色与死亡保存照常。`NotifySaveBeforeLoadScene(false)` 仍会采集角色，不能靠该参数保护快照。
+
 补丁启动扫描只允许把类级或方法级带 `[HarmonyPatch]` 元数据的类型交给 class processor；
 普通业务方法名为 `Cleanup` 不得被 Harmony 当作 cleanup 回调。动态角色的
 `MagicBlendState.OnStateEnter` 可能早于 `MagicBlending.Start`，兼容补丁只推迟未初始化的首个回调，

@@ -173,6 +173,8 @@ public sealed class Health : Component
     public static event Action<Health, DamageInfo> OnHurt, OnDead;
     public bool IsDead, Invincible;
     public float CurrentHealth = 100f, MaxHealth = 100f;
+    // 受控的宿主防御结果；用于区分原始 damageValue 与官方事件中的 finalDamage。
+    internal float DamageReceivedFactor = 1f;
     public Teams team;
     private readonly CharacterMainControl character;
     internal readonly List<DamageInfo> Hits = new List<DamageInfo>();
@@ -182,7 +184,7 @@ public sealed class Health : Component
     public void Hurt(DamageInfo info)
     {
         if (IsDead || Invincible) return;
-        Hits.Add(info); info.finalDamage = info.damageValue; CurrentHealth -= info.finalDamage;
+        Hits.Add(info); info.finalDamage = info.damageValue * DamageReceivedFactor; CurrentHealth -= info.finalDamage;
         if (CurrentHealth <= 0f)
         {
             CurrentHealth = 0f; IsDead = true;

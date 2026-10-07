@@ -27,8 +27,9 @@ class Program
         LevelManager.Instance = new LevelManager { IsBaseLevel = true };
         GameClock.Instance = new GameClock { clockTimeScale = 60 };
         EconomyManager.Instance = new EconomyManager(); EconomyManager.Money = 100000;
-        EconomyManager.Cash = 0; EconomyManager.PayCalls = 0;
         EconomyManager.Reject = EconomyManager.ThrowAfter = false;
+        EconomyManager.RejectAfterPay = false; EconomyManager.Cash = 0;
+        EconomyManager.PayCalls = EconomyManager.AddCalls = 0;
         ItemUtilities.ThrowBefore = ItemUtilities.ThrowAfter = false;
         ItemUtilities.Deliveries = 0; ItemUtilities.FailAfter = -1; ItemUtilities.OnDelivery = null;
         Item.FailSnapshot = false; ItemAssetsCollection.Available = true;
@@ -732,8 +733,9 @@ class Program
             "official cost precheck overflows wallet plus cash even with cash payment disabled");
         int calls = EconomyManager.PayCalls;
         Check(ModeHCashBetService.TryReserve("cash-overflow", 1, 5, long.MaxValue, out reason)
-            && EconomyManager.Money == 0 && EconomyManager.Cash == 1 && EconomyManager.PayCalls == calls,
-            "whole-wallet stake bypasses overflowing official precheck without consuming cash items");
+            && EconomyManager.Money == 0 && EconomyManager.Cash == 1
+            && EconomyManager.PayCalls == calls + 1 && EconomyManager.AddCalls == 1,
+            "whole-wallet stake tries Pay once and recovers its overflowing precheck with one account debit");
         Check(ModeHCashBetService.TrySettle("cash-overflow", 1, true, 0, 0, "", out payout)
             && EconomyManager.Money == payout && EconomyManager.Cash == 1,
             "overflow-boundary stake settles its frozen return once");
@@ -761,11 +763,114 @@ class Program
             && (string)SavesSystem.Cache[BetKey] == "{\"schemaVersion\":4}", "unknown future schema is never overwritten");
     }
 
-    static int Main()
+    static void CashJournalFaultRecovery()
+    {
+        foreach (bool failBeforeWrite in new[] { false, true })
+        {
+            Reset(); SeedCashStats(1000, 460);
+            if (failBeforeWrite) SavesSystem.FailWrite = BetKey;
+            else SavesSystem.FailReadback = BetKey;
+            string reason; long payout;
+            Check(ModeHCashBetService.TryReserve("fault", 1, 5, 50000, out reason)
+                && EconomyManager.Money == 50000, "accepted reservation retains one debit after transient key failure");
+            Tick();
+            Check(SavesSystem.Disk.ContainsKey(BetKey)
+                && SavedBet().GetInt("status", -1) == ModeHCashBetService.StatusReserved
+                && SavedBet().GetString("amount", "") == "50000"
+                && DiskMoney() == 50000,
+                "journal tick recovers the accepted reservation and cash obligation after transient key failure");
+            Check(!ModeHCashBetService.TryReserve("fault", 1, 5, 1000, out reason)
+                && EconomyManager.Money == 50000, "reservation recovery never takes the principal twice");
+            // 冻结分数不从变化后的统计重算，覆盖恢复接回过程而不只测普通反序列化。
+            Check(ModeHCashBetService.Current.payoutNumerator == 920
+                && ModeHCashBetService.Current.payoutDenominator == 460, "reservation recovery preserves the frozen payout fraction");
+            if (failBeforeWrite) SavesSystem.FailWrite = BetKey;
+            else SavesSystem.FailReadback = BetKey;
+            Check(ModeHCashBetService.TrySettle("fault", 1, true, 0, 0, "", out payout)
+                && payout == 100000 && EconomyManager.Money == 150000,
+                "settlement accepts its exact frozen payment before the transient ledger failure");
+            Tick();
+            Check(SavedBet().GetInt("status", -1) == ModeHCashBetService.StatusSettled
+                && DiskMoney() == 150000 && ModeHCashBetService.Current.tierBets[5] == 1001,
+                "settlement recovery publishes payment and settled status together");
+            ReloadCashJournal();
+            Check(!ModeHCashBetService.TrySettle("fault", 1, true, 0, 0, "", out payout)
+                && EconomyManager.Money == 150000, "recovered cash settlement stays paid once after reload");
+        }
+
+        Reset(); Reserve(Add());
+        ItemUtilities.OnDelivery = () => SavesSystem.FailReadback = BetKey;
+        Settle(true);
+        ItemUtilities.OnDelivery = null;
+        Check(Bag.Count == 2 && ModeHCashBetService.Current.pendingItems == string.Empty
+            && SavedBet().GetString("pendingItems", "") != string.Empty,
+            "delivered items remain an accepted unsaved obligation when ledger readback fails");
+        Tick();
+        Check(ModeHCashBetService.Current.status == ModeHCashBetService.StatusSettled
+            && SavedBet().GetInt("status", -1) == ModeHCashBetService.StatusSettled
+            && Bag.Count == 2 && DiskMoney() == EconomyManager.Money,
+            "journal recovery retains item snapshot and remaining cash obligations");
+        long paid = EconomyManager.Money;
+        Restart(); Tick(); Settle(true);
+        Check(Bag.Count == 2 && EconomyManager.Money == paid,
+            "recovered item obligation survives scene destruction and reload without a second prize");
+
+        Reset(); SavesSystem.FailReadback = BetKey;
+        string failure;
+        Check(ModeHCashBetService.TryReserve("old-slot", 1, 5, 1000, out failure), "old slot has an accepted faulted reservation");
+        SavesSystem.ChangeSlot(2); EconomyManager.Money = 23000;
+        Tick();
+        Check(ModeHCashBetService.Current.status == ModeHCashBetService.StatusNone
+            && EconomyManager.Money == 23000 && !SavesSystem.Disk.ContainsKey(BetKey),
+            "store replacement after slot change does not adopt old accepted money or bet");
+        Check(ModeHCashBetService.TryReserve("new-slot", 1, 5, 1000, out failure)
+            && EconomyManager.Money == 22000, "old store fault does not permanently block the new slot");
+    }
+
+    static long DiskMoney()
+    {
+        object saved;
+        return SavesSystem.Disk.TryGetValue("EconomyData", out saved) ? ((EconomyManager.SaveData)saved).money : -1;
+    }
+
+    static void OfficialPayOverflowRecovery()
+    {
+        Reset(); SeedCashStats(long.MaxValue, long.MaxValue);
+        EconomyManager.Money = long.MaxValue; EconomyManager.Cash = 1;
+        string reason;
+        Check(ModeHCashBetService.TryReserve("cash-overflow", 1, 5, long.MaxValue, out reason)
+            && EconomyManager.Money == 0 && EconomyManager.Cash == 1
+            && EconomyManager.PayCalls == 1 && EconomyManager.AddCalls == 1,
+            "official Money plus pocket Cash overflow cannot reject an affordable account-only stake");
+        Check(DiskMoney() == 0 && SavedBet().GetString("amount", "") == long.MaxValue.ToString(),
+            "overflow fallback commits the original principal with its cash snapshot");
+
+        Reset(); EconomyManager.Cash = 1;
+        Check(ModeHCashBetService.TryReserve("normal-pay", 1, 5, 1000, out reason)
+            && EconomyManager.Money == 99000 && EconomyManager.Cash == 1
+            && EconomyManager.PayCalls == 1 && EconomyManager.AddCalls == 1,
+            "ordinary payment still uses Pay and never adds another debit");
+        Reset(); EconomyManager.Reject = true;
+        Check(!ModeHCashBetService.TryReserve("rejected-pay", 1, 5, 1000, out reason)
+            && EconomyManager.Money == 100000 && EconomyManager.AddCalls == 1
+            && ModeHCashBetService.Current.status == ModeHCashBetService.StatusNone,
+            "ordinary unchanged payment rejection cannot enable overflow fallback");
+        Reset(); EconomyManager.RejectAfterPay = true;
+        Check(ModeHCashBetService.TryReserve("paid-but-false", 1, 5, 1000, out reason)
+            && EconomyManager.Money == 99000 && EconomyManager.AddCalls == 1,
+            "false return after a real debit cannot debit the account a second time");
+        Reset(); EconomyManager.ThrowAfter = true;
+        Check(ModeHCashBetService.TryReserve("paid-then-throw", 1, 5, 1000, out reason)
+            && EconomyManager.Money == 99000 && EconomyManager.AddCalls == 1,
+            "money notification exception after debit preserves the one accepted payment");
+    }
+
+    static int Main(string[] args)
     {
         try
         {
-            DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); NestedStakeOwnership(); WarehouseNotifications(); CashRestoreReadiness(); CashBetSurvivesSpectatorExit(); StartedBetForfeit(); AbandonBetResolution(); BetSideAndSeasonNet(); CustomCashAmount(); LargeCashBets(); SmallBetsAndFrozenRecovery(); OfficialCashPrecheckOverflow(); Schema();
+            OfficialEconomyContract.Verify(args[0]);
+            DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); NestedStakeOwnership(); WarehouseNotifications(); CashRestoreReadiness(); CashBetSurvivesSpectatorExit(); StartedBetForfeit(); AbandonBetResolution(); BetSideAndSeasonNet(); CustomCashAmount(); LargeCashBets(); SmallBetsAndFrozenRecovery(); OfficialCashPrecheckOverflow(); Schema(); CashJournalFaultRecovery(); OfficialPayOverflowRecovery();
             Console.WriteLine("SaveFailureRecovery: PASS " + checks + " assertions (real services, stores and coordinators; in-memory host)");
             return 0;
         }

@@ -100,12 +100,12 @@ namespace BossRush
         ///   b) 重伤退场（Downed）的崽——必须在 RestoreDownedPetsOnReturnToBase 复位之前读。
         /// 因此本方法要挂在基地分支的最前面。
         /// </summary>
-        internal static void SettleRunHomecoming(string activeCompanionPetId)
+        internal static bool SettleRunHomecoming(string activeCompanionPetId)
         {
             try
             {
                 string transactionError;
-                if (!PetNestPersistenceAccess.BeginTransaction(out transactionError)) return;
+                if (!PetNestPersistenceAccess.BeginTransaction(out transactionError)) return false;
                 List<PetNestPetRecord> settled = new List<PetNestPetRecord>();
 
                 PetNestPetRecord active = PetNestService.TryGetPet(activeCompanionPetId);
@@ -128,7 +128,7 @@ namespace BossRush
                 {
                     PetNestPersistenceAccess.AbortTransaction();
                     ResetRunKillBudget();
-                    return;
+                    return true;
                 }
 
                 for (int i = 0; i < settled.Count; i++)
@@ -140,15 +140,16 @@ namespace BossRush
                     pet.careerCount = next > int.MaxValue ? int.MaxValue : (int)next;
                 }
 
-                ResetRunKillBudget();
-
                 string ignored;
-                PetNestService.Commit(out ignored);
+                if (!PetNestService.Commit(out ignored)) return false;
+                ResetRunKillBudget();
+                return true;
             }
             catch (Exception e)
             {
                 PetNestPersistenceAccess.AbortTransaction();
                 ModBehaviour.DevLog("[PetNest] 归巢结算失败: " + e.Message);
+                return false;
             }
         }
 

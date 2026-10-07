@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -74,11 +75,19 @@ extracted += member(bridge, 'public static Item TryDetachAt(') + '\n'
 extracted += member(bridge, 'public static bool TryAddAtEmpty(') + '\n}\n}\n'
 (OUT / 'Extracted.cs').write_text(extracted, encoding='utf-8')
 
-paths = [ROOT / p for p in files] + [OUT / 'Extracted.cs', HERE / 'Stubs.cs', HERE / 'Program.cs']
+paths = [ROOT / p for p in files] + [OUT / 'Extracted.cs', HERE / 'Stubs.cs', HERE / 'Program.cs', HERE / 'OfficialEconomyContract.cs']
 project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework><OutputType>Exe</OutputType><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0067;0169;0414</NoWarn></PropertyGroup><ItemGroup>'
 project += ''.join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in paths)
 project += '</ItemGroup></Project>'
 (OUT / 'Regression.csproj').write_text(project, encoding='utf-8')
 hashes = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in files + ['ModeH/ModeHConfig.cs', 'ModeH/ModeHRuntimeModule.cs', 'ModeH/ModeHRuntimeModule_BetFlow.cs', 'ModeH/ModeHInventoryPersistenceBridge.cs']}
 (OUT / 'production-sha256.json').write_text(json.dumps(hashes, indent=2) + '\n', encoding='utf-8')
-raise SystemExit(subprocess.call(['dotnet', 'run', '--project', str(OUT / 'Regression.csproj'), '--configuration', 'Release'], cwd=ROOT))
+game = os.environ.get('GAME_PATH')
+if game:
+    managed = Path(game) / 'Duckov_Data/Managed'
+else:
+    response = (ROOT / 'Build/BossRush.rsp').read_text(encoding='utf-8-sig')
+    managed = Path(re.search(r'/lib:"([^"]+)"', response).group(1))
+if not (managed / 'TeamSoda.Duckov.Core.dll').is_file():
+    raise SystemExit('Set GAME_PATH to the installed game for read-only EconomyManager IL checks')
+raise SystemExit(subprocess.call(['dotnet', 'run', '--project', str(OUT / 'Regression.csproj'), '--configuration', 'Release', '--', str(managed)], cwd=ROOT))

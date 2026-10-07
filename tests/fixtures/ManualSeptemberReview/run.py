@@ -63,10 +63,16 @@ def main():
     code = 'using System; using System.Collections.Generic; namespace BossRush { partial class PetNestRuntimeModule {\n'
     code += '\n'.join(member(module.read_text(encoding='utf-8-sig'), signature) for signature in (
         'public override void OnSceneLoaded(', 'public override void OnUpdate(',
-        'private void TickBaseMaintenance()', 'private static bool IsBaseScene()'))
+        'private void TickBaseMaintenance()', 'private static bool IsBaseScene()', 'private void ValidateHomecomingSlot()'))
     code += '\n} static partial class PetNestProgressionService {\n'
     code += '\n'.join(member(progression.read_text(encoding='utf-8-sig'), signature) for signature in (
-        'internal static void AddExp(', 'internal static void SettleRunHomecoming(')) + '\n}}'
+        'internal static void AddExp(', 'internal static bool SettleRunHomecoming(',
+        'private static void ResetRunKillBudget()', 'internal static void ResetStaticCaches()')) + '\n}'
+    persistence = ROOT / 'PetNest/PetNestPersistence.cs'
+    code += '\nstatic partial class PetNestPersistence {\n'
+    code += '\n'.join(member(persistence.read_text(encoding='utf-8-sig'), signature) for signature in (
+        'internal static bool BeginTransaction(', 'internal static bool CommitTransaction(',
+        'internal static void AbortTransaction()')) + '\n}}'
     (OUT / 'ModuleHomecoming.cs').write_text(code, encoding='utf-8')
     files = linked + [OUT / 'ModuleHomecoming.cs', OUT / 'PreparedOdds.cs', OUT / 'Reveal.cs', OUT / 'ExpeditionReveal.cs', OUT / 'Combat.cs', HERE / 'Program.cs', HERE / 'Stubs.cs', HERE / 'HomecomingStubs.cs']
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0169;0414</NoWarn></PropertyGroup><ItemGroup>'
@@ -74,7 +80,7 @@ def main():
     project += '</ItemGroup></Project>'
     (OUT / 'Regression.csproj').write_text(project, encoding='utf-8')
     (OUT / 'sources.json').write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in linked + [source, expedition, combat, odds, module, progression]}, indent=2), encoding='utf-8')
+        for p in linked + [source, expedition, combat, odds, module, progression, persistence]}, indent=2), encoding='utf-8')
     return subprocess.call(['dotnet', 'run', '--project', str(OUT / 'Regression.csproj'),
         '--configuration', 'Release', '--', str(OUT / 'maps.json')], cwd=ROOT)
 

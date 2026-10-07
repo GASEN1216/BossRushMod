@@ -463,7 +463,11 @@ namespace BossRush
         public static string ReadLineage(Item item) { return item.Lineage; }
         public static bool TryStampLineage(Item item, string lineage) { if (FailStamp) return false; item.Lineage = lineage; return true; }
     }
-    static class PetNestProgressionService { public static void AddExp(PetNestPetRecord pet, int exp) { pet.exp += exp; } }
+    internal static partial class PetNestProgressionService
+    {
+        private static int _runKillExpGranted;
+        private static readonly HashSet<object> _countedVictims = new HashSet<object>();
+    }
     static class PetNestDownedHandler { public static void AppendScar(PetNestPetRecord pet, string id, string reason) { } }
     static class BossRushAchievementManager
     {

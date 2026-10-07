@@ -192,6 +192,10 @@ namespace BossRush
                 // 把它的套装摘掉、把它的 preset 销毁，并让它此后再也清理不掉。
                 if (deadDescendant == null) deadDescendant = dragonDescendantInstance;
 
+                // 非 Boss 预设 fallback 也是真正的龙裔；在 owner 清理前提交稳定身份。
+                CodexKillCollector.OnKnownBossDead(deadDescendant != null ? deadDescendant.Health : null,
+                    damageInfo, DragonDescendantConfig.BOSS_NAME_KEY);
+
                 // 只停自己起播的那首，别掐掉同波次其他 Boss 的曲子
                 BossRushAudioManager.Instance?.StopBossBGM(
                     BossBgmKeys.DragonDescendant, deadDescendant);

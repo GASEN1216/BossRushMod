@@ -250,6 +250,17 @@ def main():
         if identity not in witch_death:
             return fail("女巫死亡身份必须区分普通女巫与冠军之影: " + identity)
 
+    for path, handler, identity in (
+            ("Integration/DragonKing/DragonKingBoss.cs", "OnDragonKingDeath", "DragonKingConfig.BossNameKey"),
+            ("Integration/DragonDescendant/DragonDescendantBoss_RuntimeAndCleanup.cs", "OnDragonDescendantDeath", "DragonDescendantConfig.BOSS_NAME_KEY")):
+        source = strip_comments(Path(path).read_text(encoding="utf-8"))
+        death = extract_method_body(source, handler)
+        if death is None or not re.search(r"CodexKillCollector\.OnKnownBossDead\([^;]+damageInfo,\s*"
+                                         + re.escape(identity) + r"\);", death):
+            return fail(handler + " 必须由实际死亡 owner 提供稳定身份，普通预设 fallback 不得依赖 Boss 标志")
+        if death.index("CodexKillCollector.OnKnownBossDead(") > death.index("BossCleanupHelpers.DestroyRuntimePreset("):
+            return fail(handler + " 的图鉴结算必须早于运行时 preset 清理")
+
     # ---- 8) 零新增 Harmony patch / 零新增反射绑定策略 ----
     for path in sorted(CODEX_DIR.glob("*.cs")):
         text = strip_comments(path.read_text(encoding="utf-8"))

@@ -494,25 +494,67 @@ namespace BossRush
         private sealed class CashBetJournal : IBossRushSaveBatchSource
         {
             private const string StorageKey = "BossRush_ModeHCashBet_v1";
-            private readonly BossRushSlotJsonStore<ModeHCashBetRecord> _store;
+            private BossRushSlotJsonStore<ModeHCashBetRecord> _store;
             private readonly BossRushSaveCoordinatorEngine _coordinator;
             private bool _cashSnapshotRequired;
             private bool _itemSnapshotRequired;
             private bool _staging;
             private int _slot = -1;
             private float _nextItemRetry;
+            private float _nextStoreRecovery;
 
             internal CashBetJournal()
             {
-                _store = new BossRushSlotJsonStore<ModeHCashBetRecord>(new BossRushSlotJsonStoreSpec<ModeHCashBetRecord>
+                _store = CreateStore();
+                _coordinator = new BossRushSaveCoordinatorEngine(this, false);
+                _store.EnsureSubscribed();
+            }
+
+            private BossRushSlotJsonStore<ModeHCashBetRecord> CreateStore()
+            {
+                return new BossRushSlotJsonStore<ModeHCashBetRecord>(new BossRushSlotJsonStoreSpec<ModeHCashBetRecord>
                 {
                     StorageKey = StorageKey, SchemaVersion = 3, LogPrefix = "[ModeH] ", DisplayName = "鸭王杯押钱账本",
                     CreateDefault = () => new ModeHCashBetRecord(), Encode = Encode, Decode = Decode,
                     ReadSchemaVersion = ReadCompatibleSchema, NotifySlotChanged = OnSlotChanged,
                     BeforeCollectSaveData = CollectCash,
                 });
-                _coordinator = new BossRushSaveCoordinatorEngine(this, false);
-                _store.EnsureSubscribed();
+            }
+
+            /// <summary>瞬时键写 / 回读故障后接回本槽已接受账目，保留同一协调器的现金与实物义务。</summary>
+            private bool TryRecoverFaultedStore(bool bypassCooldown = false)
+            {
+                if (!_store.IsStoreFaulted) return true;
+                if (_staging || SavesSystem.IsSaving || (!bypassCooldown
+                    && UnityEngine.Time.realtimeSinceStartup < _nextStoreRecovery)) return false;
+                _nextStoreRecovery = UnityEngine.Time.realtimeSinceStartup + 1f;
+                BossRushSlotJsonStore<ModeHCashBetRecord> replacement = null;
+                bool adopted = false;
+                try
+                {
+                    int slot = SavesSystem.CurrentSlot;
+                    // Current 自失效漂移的缓存并清旧槽义务；只能接回仍由本次资产事务持有的槽。
+                    ModeHCashBetRecord accepted = _store.Current.Clone();
+                    bool restoreAccepted = slot >= 0 && _slot == slot;
+                    if (slot < 0 || (restoreAccepted && Decode(Encode(accepted)) == null)) return false;
+                    replacement = CreateStore();
+                    // 新 store 尚无缓存时订阅，避免重新订阅清空 accepted 和下游资产义务。
+                    if (_store.IsSubscribed) replacement.EnsureSubscribed();
+                    replacement.LoadOrInit();
+                    if (SavesSystem.CurrentSlot != slot || replacement.HasWriteBarrier || replacement.IsStoreFaulted)
+                        return false;
+                    if (restoreAccepted && !replacement.Store(accepted)) return false;
+                    _store.ShutdownSubscription();
+                    _store = replacement;
+                    adopted = true;
+                    return true;
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[ModeH] 押注账本故障恢复顺延: " + e.Message);
+                    return false;
+                }
+                finally { if (!adopted && replacement != null) replacement.ShutdownSubscription(); }
             }
 
             internal ModeHCashBetRecord Current
@@ -698,6 +740,7 @@ namespace BossRush
 
             internal void Tick()
             {
+                if (!TryRecoverFaultedStore()) return;
                 _coordinator.Tick();
                 ModeHCashBetRecord record = _store.Current;
                 if (_staging || record.status != StatusReserved || record.kind != KindItems
@@ -828,10 +871,14 @@ namespace BossRush
                     {
                         if (delta < 0)
                         {
-                            // 官方 Pay(Cost) 即使 cashAvailable=false，前置 IsEnough 仍相加钱包与现金物品。
-                            // 该和超出 long 时会误拒账户扣款；仅此边界改走已复核下界的账户变动。
-                            if (before > long.MaxValue - Math.Max(0L, EconomyManager.Cash)) EconomyManager.Add(delta);
-                            else EconomyManager.Pay(new Cost(-delta), true, false);
+                            bool paid = EconomyManager.Pay(new Cost(-delta), true, false);
+                            // 官方 Pay(Cost) 的 IsEnough 固定加上背包 Cash，极大钱包会在这一步溢出拒付。
+                            // 仅当 Pay 明确拒绝且账户未变、确实发生该加法上溢时，用官方有符号 Add 扣账户。
+                            if (!paid && EconomyManager.Money == before)
+                            {
+                                long cash = EconomyManager.Cash;
+                                if (cash > 0 && before > long.MaxValue - cash) EconomyManager.Add(delta);
+                            }
                         }
                         else if (delta > 0) EconomyManager.Add(delta);
                     }
@@ -874,7 +921,7 @@ namespace BossRush
                     return false;
                 }
                 _store.LoadOrInit();
-                if (_store.HasWriteBarrier || _store.IsStoreFaulted)
+                if (!TryRecoverFaultedStore() || _store.HasWriteBarrier || _store.IsStoreFaulted)
                 {
                     failureReasonId = "cash_bet_store_faulted";
                     return false;
@@ -884,6 +931,7 @@ namespace BossRush
 
             internal void Shutdown()
             {
+                TryRecoverFaultedStore(true);
                 _coordinator.TryFlushOnHostDestroy();
                 _store.ShutdownSubscription();
             }
@@ -894,6 +942,7 @@ namespace BossRush
                 _cashSnapshotRequired = false;
                 _itemSnapshotRequired = false;
                 _nextItemRetry = 0f;
+                _nextStoreRecovery = 0f;
                 StandingTier = 0; // 押注档是纯运行时选择，换档回到「不押」
                 ModeHItemBetStake.ResetStaticCaches();
                 if (_coordinator != null) _coordinator.NotifySlotChanged();

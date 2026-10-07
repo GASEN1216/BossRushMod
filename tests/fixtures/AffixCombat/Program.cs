@@ -63,6 +63,7 @@ internal static class Program
     {
         ForgePricingAndEligibility();
         AffixNameDisplay();
+        ThornsFinalDamageAndCooldown();
         RuntimeModifierTracking();
         CharacterMainControl player = Reset(AffixDefinitions.Id_DeathBurst);
         CharacterMainControl first = Enemy(1f), second = Enemy(), third = Enemy(), near = Enemy();
@@ -174,6 +175,48 @@ internal static class Program
         AffixRuntimeService.ShutdownRuntime();
         Check(Duckov.UI.ItemUIUtilities.SubscriberCount == 0, "shutdown releases selection display hook");
         Duckov.UI.ItemUIUtilities.Select(null);
+    }
+
+    private static void ThornsFinalDamageAndCooldown()
+    {
+        float[] reflected = { 4f, 7.2f, 11.2f };
+        string[] names = { "Ⅰ", "Ⅱ", "Ⅲ" };
+        for (int tier = 1; tier <= 3; tier++)
+        {
+            CharacterMainControl player = Reset();
+            Item armor = Affixed(AffixDefinitions.Id_Thorns);
+            armor.Affixes[0] = new AffixSlotView { AffixId = AffixDefinitions.Id_Thorns, Tier = tier };
+            player.Equip(armor);
+            player.Health.MaxHealth = player.Health.CurrentHealth = 1000f;
+            player.Health.DamageReceivedFactor = 0.4f;
+            CharacterMainControl attacker = Enemy();
+            attacker.Health.DamageReceivedFactor = 0.5f;
+            player.Health.Hurt(Hit(attacker, 100f));
+            Check(attacker.Health.Hits.Count == 1
+                && Math.Abs(attacker.Health.Hits[0].damageValue - reflected[tier - 1]) < 0.0001f,
+                "thorns tier " + tier + " uses received final damage 40 rather than raw damage 100");
+            Check(Math.Abs(attacker.Health.CurrentHealth - (1000f - reflected[tier - 1] * 0.5f)) < 0.001f,
+                "reflected hit still goes through attacker's Health.Hurt mitigation");
+            DamageInfo hit = attacker.Health.Hits[0];
+            Check(hit.fromCharacter == player && hit.isFromBuffOrEffect && !hit.ignoreArmor
+                && hit.Element == ElementTypes.physics,
+                "reflection retains player attribution, effect recursion marker and physical armor handling");
+            player.Health.Hurt(Hit(attacker, 100f));
+            Check(attacker.Health.Hits.Count == 1, "same-frame hits cannot bypass thorns cooldown");
+            Time.time += 0.34f;
+            player.Health.Hurt(Hit(attacker, 100f));
+            Check(attacker.Health.Hits.Count == 1, "thorns cooldown remains closed before 0.35 seconds");
+            Time.time += 0.02f;
+            player.Health.Hurt(Hit(attacker, 100f));
+            Check(attacker.Health.Hits.Count == 2, "thorns cooldown reopens after 0.35 seconds");
+            Time.time += 1f;
+            DamageInfo effect = Hit(attacker, 100f); effect.isFromBuffOrEffect = true;
+            player.Health.Hurt(effect);
+            Check(attacker.Health.Hits.Count == 2, "effect damage cannot recursively trigger thorns");
+            Check(AffixDefinitions.GetDisplayName(AffixDefinitions.Id_Thorns, tier).EndsWith(" " + names[tier - 1]),
+                "displayed Roman tier matches thorns strength " + tier);
+        }
+        AffixRuntimeService.ShutdownRuntime();
     }
 
     private static void RuntimeModifierTracking()
