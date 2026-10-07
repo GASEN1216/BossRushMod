@@ -104,6 +104,8 @@ class Program
         CheckActualPlayerTeam();
         CheckOfficialRosterWithoutBossFlag();
         CheckCustomBossIdentity();
+        CheckWitchDeathOrdering();
+        CheckCustomBossRuntimePresetCleanup();
         Console.WriteLine("Codex regression checks=" + checks);
     }
 
@@ -398,6 +400,75 @@ class Program
                 "actual custom controller survives overwritten or missing preset identity");
         }
         Reset();
+    }
+
+    static void CheckWitchDeathOrdering()
+    {
+        foreach (bool campaign in new[] { false, true })
+        foreach (bool oneShot in new[] { false, true })
+        foreach (bool rewritten in new[] { false, true })
+        {
+            Reset();
+            string expected = campaign ? "BossRush_Campaign_FinalBoss_Name" : PhantomWitchConfig.BossNameKey;
+            var victim = new CharacterMainControl { isBossCharacter = true, Team = Teams.wolf,
+                characterPreset = new CharacterRandomPreset { nameKey = rewritten ? "Cname_StormBoss1" : expected,
+                    name = PhantomWitchRuntimeModule.RuntimePresetName } };
+            var health = new Health { Character = victim }; victim.Health = health;
+            var hit = new DamageInfo { fromCharacter = new CharacterMainControl { IsMainCharacter = true }, finalDamage = 100 };
+            UnityEngine.Time.time = 20;
+            if (!oneShot) CodexKillCollector.OnGlobalHurt(health, hit);
+            UnityEngine.Time.time = 23; health.IsDead = true;
+            // 真实女巫实例死亡回调与真实 preset 清理先执行，之后才是官方全局死亡事件。
+            var module = new PhantomWitchRuntimeModule();
+            module.DieForTest(victim, hit, campaign ? PhantomWitchDeathPresentation.CampaignFinal : PhantomWitchDeathPresentation.Standard);
+            Check(victim.characterPreset == null, "production witch death callback clears runtime preset before the global event");
+            CodexKillCollector.OnGlobalDead(health, hit);
+            module.DieForTest(victim, hit, campaign ? PhantomWitchDeathPresentation.CampaignFinal : PhantomWitchDeathPresentation.Standard);
+            var entry = CodexPersistence.Current.Find(expected);
+            Check(entry != null && entry.Kills == 1 && CodexPersistence.Current.Find("Cname_StormBoss1") == null,
+                "witch owner identity survives prior preset cleanup and third-party rename exactly once");
+            Check(entry.FastestKillSeconds == (oneShot ? 0 : 3) && CodexKillCollector.TrackedFightCount == 0,
+                "witch retains observed timer and one-shot remains unknown");
+        }
+        foreach (string excluded in new[] { "ally", "mode-h", "companion", "base", "npc-kill" })
+        {
+            Reset();
+            var victim = new CharacterMainControl { isBossCharacter = true, Team = excluded == "ally" ? Teams.player : Teams.wolf,
+                characterPreset = new CharacterRandomPreset { nameKey = PhantomWitchConfig.BossNameKey } };
+            victim.Health = new Health { Character = victim, IsDead = true, IsCompanion = excluded == "companion" };
+            ModBehaviour.ModeHRunning = excluded == "mode-h";
+            LevelManager.Instance.IsBaseLevel = excluded == "base";
+            var hit = new DamageInfo { fromCharacter = new CharacterMainControl { IsMainCharacter = excluded != "npc-kill" } };
+            new PhantomWitchRuntimeModule().DieForTest(victim, hit, PhantomWitchDeathPresentation.Standard);
+            Check(CodexPersistence.Current.Entries.Count == 0, "stable witch owner entry preserves eligibility: " + excluded);
+        }
+        Reset();
+    }
+
+    static void CheckCustomBossRuntimePresetCleanup()
+    {
+        for (int kind = 0; kind < 3; kind++)
+        foreach (bool rewritten in new[] { false, true })
+        {
+            string key = kind == 0 ? DragonKingConfig.BossNameKey : kind == 1
+                ? DragonDescendantConfig.BOSS_NAME_KEY : PhantomWitchConfig.BossNameKey;
+            string runtimeName = kind == 0 ? DragonKingRuntimeModule.RuntimePresetName : kind == 1
+                ? DragonDescendantRuntimeModule.RuntimePresetName : PhantomWitchRuntimeModule.RuntimePresetName;
+            string cleanupName = kind == 0 ? "DragonKing_Preset" : kind == 1 ? "DragonDescendant_Preset" : "PhantomWitch_Preset";
+            var victim = new CharacterMainControl { characterPreset = new CharacterRandomPreset
+                { nameKey = rewritten ? "Cname_StormBoss1" : key, name = runtimeName } };
+            int destroys = UnityEngine.Object.DestroyCalls;
+            BossCleanupHelpers.DestroyRuntimePreset(victim, key, cleanupName, "fixture");
+            Check(victim.characterPreset == null && UnityEngine.Object.DestroyCalls == destroys + 1,
+                "production custom boss clone name remains releasable after third-party key rewrite: " + kind);
+            BossCleanupHelpers.DestroyRuntimePreset(victim, key, cleanupName, "fixture");
+            Check(UnityEngine.Object.DestroyCalls == destroys + 1, "runtime preset cleanup is idempotent: " + kind);
+            var shared = new CharacterRandomPreset { nameKey = "Cname_StormBoss1", name = "OfficialSharedPreset" };
+            victim.characterPreset = shared;
+            BossCleanupHelpers.DestroyRuntimePreset(victim, key, cleanupName, "fixture");
+            Check(ReferenceEquals(victim.characterPreset, shared) && UnityEngine.Object.DestroyCalls == destroys + 1,
+                "custom boss cleanup does not destroy an unrelated shared preset: " + kind);
+        }
     }
 
     static void CheckCodec()

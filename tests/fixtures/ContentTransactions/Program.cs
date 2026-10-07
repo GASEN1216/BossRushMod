@@ -286,18 +286,28 @@ partial class Program
             SavesSystem.FailPhysical = 1; SavesSystem.StickSavingOnFailure = true;
             if (daily) DailyReportService.TryRedeliverPendingBountyReward();
             else CampaignProgressService.TryDeliver("ch1");
+            Check(!SavesSystem.IsSaving && SavesSystem.Writes == 0 && EconomyManager.Adds == 1
+                && (daily ? DailyReportSaveCoordinator.HasDeferredFlush : CampaignSaveCoordinator.HasDeferredFlush),
+                (daily ? "daily" : "campaign") + " owned physical failure releases the official latch and preserves the obligation");
             UnityEngine.Time.frameCount++;
             if (daily) { DailyReportSaveCoordinator.Tick(); DailyReportService.TryRedeliverPendingBountyReward(); }
             else { CampaignSaveCoordinator.Tick(); CampaignProgressService.TryDeliver("ch1"); }
-            Check(SavesSystem.IsSaving && SavesSystem.Writes == 0 && EconomyManager.Adds == 1
-                && (daily ? DailyReportSaveCoordinator.HasDeferredFlush : CampaignSaveCoordinator.HasDeferredFlush),
-                (daily ? "daily" : "campaign") + " official sticky IsSaving preserves obligation without forcing write or regrant");
-            // Simulate host recovery only. Production deliberately does not alter the official latch.
-            SavesSystem.IsSaving = false; UnityEngine.Time.frameCount++;
-            if (daily) DailyReportSaveCoordinator.Tick(); else CampaignSaveCoordinator.Tick();
-            Check(DiskMoney == (daily ? 100700 : 104000) && EconomyManager.Adds == 1,
-                (daily ? "daily" : "campaign") + " retained obligation settles when host saving state recovers");
+            Check(!SavesSystem.IsSaving && DiskMoney == (daily ? 100700 : 104000) && EconomyManager.Adds == 1,
+                (daily ? "daily" : "campaign") + " retained obligation automatically settles without manual host recovery or regrant");
         }
+        SavesSystem.IsSaving = true;
+        bool called = false, rejected = false;
+        try { BossRushSaveFileThrottle.RunSaveFile(() => { called = true; }); }
+        catch (InvalidOperationException) { rejected = true; }
+        Check(rejected && !called && SavesSystem.IsSaving,
+            "owned wrapper never calls through or releases an already running official save");
+        SavesSystem.IsSaving = false;
+        InvalidOperationException expected = new InvalidOperationException("before latch");
+        Exception observed = null;
+        try { BossRushSaveFileThrottle.RunSaveFile(() => { throw expected; }); }
+        catch (Exception e) { observed = e; }
+        Check(ReferenceEquals(expected, observed) && !SavesSystem.IsSaving,
+            "owned wrapper preserves the original exception when failure occurs before the official latch");
     }
     static Item Egg()
     {

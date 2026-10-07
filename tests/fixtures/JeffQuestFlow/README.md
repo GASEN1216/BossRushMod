@@ -1,5 +1,7 @@
 # Jeff 官方任务投影执行回归
 
+2026-10-07：现装官方 `SaveFile` 的 IL 确认 `saving` 是 private static 字段，置 true 后同步调用 `ES3.StoreCachedFile`，成功才置 false，方法没有异常处理区。该契约用于共享受控保存包装：只在本次调用前未保存、同步调用抛出时释放自己留下的闩；行为执行由 `ContentTransactions` 覆盖。本夹具只读程序集，不执行官方存盘。
+
 2026-10-06：覆盖 Campaign 读取失败进入默认缓存或写入故障时，客户端暂不投影，既有已接任务仍保留、第一章不可重接；恢复后继续使用同一个官方任务实例。`OfficialAssemblyContract` 增加现装 `SavesSystem` 和 `EasySave3` IL 校验：切槽先缓存再发事件、读写显式使用当前文件路径、SaveFile 只写缓存而不自动采集、ES3 缓存重载读取物理字节、Store 调用 Sync。真正跨进程的恢复状态验证在 `ContentTransactions`，不把这里的 Campaign 数据替身冒充真实存储。
 
 入口：`python tools/run_runtime_regressions.py --filter JeffQuestFlow`。需要 .NET 8 SDK 和本机游戏 DLL；优先使用 `GAME_PATH`，否则从正式构建的 `Build/BossRush.rsp` 读取 Managed 目录。不启动游戏、不访问玩家存档。

@@ -322,7 +322,7 @@ namespace BossRush
                 if (character.characterPreset != null)
                 {
                     CharacterRandomPreset customPreset = UnityEngine.Object.Instantiate(character.characterPreset);
-                    customPreset.name = DragonKingConfig.BossNameKey;
+                    customPreset.name = "DragonKing_Preset";
                     customPreset.showName = true;
                     customPreset.showHealthBar = true;
                     customPreset.nameKey = DragonKingConfig.BossNameKey;

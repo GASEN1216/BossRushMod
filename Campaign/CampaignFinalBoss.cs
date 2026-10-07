@@ -283,7 +283,13 @@ namespace BossRush
             {
                 await CampaignDialoguePlayer.PlayFinalBossPrologueAsync();
             }
-            catch (OperationCanceledException) { return; }
+            catch (OperationCanceledException)
+            {
+                // 对话管理器也会因官方 UI / actor 失效独立取消，并非都由本模块清理发起。
+                // 当前请求尚在时必须放回召唤权；迟到的旧取消不能收掉后继决战。
+                if (runId == campaignFinalBossRunId) CleanupCampaignFinalBoss(true);
+                return;
+            }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战独白异常: " + e.Message);

@@ -411,3 +411,9 @@ Boss --> Weapon["PhantomWitchScytheWeaponConfig"]
 - 三阶段「残喘突袭」不再与侧翼压制同码：瞬移斩后接 `ExecuteLastBreathCleave`（`HeavyScytheSlash*`：0.6 s 扇形预警、3.6 m / 65°、30 伤、0.7 s 硬直）。
 - 删去从未调用的诅咒范围技与领域传送/蓄力常量；亡魂两段斩、诅咒领域、重斩起手播放 `NewWeaponSfx.SoulSummon`。
 - 技能伤害与诅咒领域每跳伤害乘 `ResolveSkillDamageScale()`，冠军之影的决战倍率由此生效。诅咒领域仍不吃翻滚豁免（持续地面区域）。
+
+## 2026-10-07 图鉴死亡采集
+
+官方先调用女巫的实例死亡回调，再派发全局 `Health.OnDead`；实例回调会销毁并清空普通女巫的 runtime preset。女巫现于清理前向图鉴提供 owner 确认的稳定身份，冠军之影使用自己的既有 key。两个图鉴入口共用原有归属与实例去重，不改变死亡掉落、波次或能力清理顺序，也不增加扫描。执行回归覆盖实际清理顺序、一击、重复全局事件和第三方 preset 改名；游戏内表现仍待验收。
+
+女巫 Legacy 生成的 clone 实例名现与托管 G/H 一致为 `PhantomWitch_Preset`。既有清理依 nameKey 或此实例名识别所有权，冠军之影改变 nameKey 和第三方改名后仍能释放自己的副本，不误删原版共享 preset。

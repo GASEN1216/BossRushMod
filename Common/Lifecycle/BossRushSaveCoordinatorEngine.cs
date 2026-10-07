@@ -266,7 +266,7 @@ namespace BossRush
                     return Defer("flush_deferred_savefile_frame_busy", out error);
                 }
 
-                SavesSystem.SaveFile(false);
+                BossRushSaveFileThrottle.RunSaveFile(() => { SavesSystem.SaveFile(false); });
 
                 lock (_lock)
                 {

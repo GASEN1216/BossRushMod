@@ -170,6 +170,8 @@ def check(sources):
                      "_store.Store(previous)", "_coordinator.RequestFlush("],
             "[顺序] 先排账本、再动钱、钱没变就撤回账本、最后同批落盘")
     need(commit, "EconomyManager.Pay(new Cost(-delta), true, false)", "[钱包] 押金只从账户余额扣，不碰背包现金物品")
+    need(commit, "if (before > long.MaxValue - Math.Max(0L, EconomyManager.Cash)) EconomyManager.Add(delta);",
+         "[钱包] 官方 Cost 预检的账户加现金和溢出时，必须以已复核下界的账户变动扣款")
     need(commit, "delta == long.MinValue || (delta < 0 && before < -delta)", "[钱包] 排账前复核负金额及扣款下界")
     need(service, "BeforeCollectSaveData = CollectCash", "[落盘] 账本必须与现金快照同批落盘")
 
@@ -370,6 +372,7 @@ def main():
         ("service", "if (previous.status != StatusReserved || previous.matchIndex != matchIndex",
          "if (previous.matchIndex != matchIndex"),
         ("service", "EconomyManager.Pay(new Cost(-delta), true, false)", "EconomyManager.Pay(new Cost(-delta), true, true)"),
+        ("service", "if (before > long.MaxValue - Math.Max(0L, EconomyManager.Cash)) EconomyManager.Add(delta);", "if (false) EconomyManager.Add(delta);"),
         ("service", "return Commit(previous, candidate, 0, out failureReasonId);",
          "return Commit(previous, candidate, -value, out failureReasonId);"),
         ("service", "delta = won ? Math.Max(0L, Math.Min(winCash, gross - previous.amount)) : 0L;", "delta = won ? gross : 0L;"),

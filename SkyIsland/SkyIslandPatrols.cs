@@ -148,7 +148,8 @@ namespace BossRush
         private void ConfigureNavigation(CharacterMainControl character)
         {
             Seeker[] seekers = character.GetComponentsInChildren<Seeker>(true);
-            AICharacterController ai = character.GetComponentInChildren<AICharacterController>();
+            // 新生成与远区挂起的巡守此时都处于 inactive，官方 AI 在角色子树内。
+            AICharacterController ai = character.GetComponentInChildren<AICharacterController>(true);
             if (seekers.Length == 0 || ai == null) throw new InvalidOperationException("巡守缺少战斗 AI / 导航");
             foreach (Seeker seeker in seekers) { seeker.CancelCurrentPathRequest(); seeker.graphMask = graphMask; }
             foreach (AI_PathControl path in character.GetComponentsInChildren<AI_PathControl>(true)) path.StopMove();

@@ -38,7 +38,8 @@ namespace Saves
     public static class SavesSystem
     {
         public static int CurrentSlot, Attempts, Writes, FailAt;
-        public static bool IsSaving;
+        private static bool saving;
+        public static bool IsSaving { get { return saving; } set { saving = value; } }
         public static string FailReadback;
         private static string pendingReadFailure;
         public static Dictionary<string, object> Cache = new Dictionary<string, object>();
@@ -61,7 +62,7 @@ namespace Saves
             IsSaving = true;
             Attempts++;
             // 官方 SaveFile 没有 finally；写失败后 IsSaving 会继续为 true。
-            if (Attempts == FailAt) throw new IOException("StoreCachedFile");
+            if (FailAt > 0 && Attempts >= FailAt) throw new IOException("StoreCachedFile");
             Disk = new Dictionary<string, object>(Cache);
             History.Add(Disk);
             Writes++;
@@ -88,6 +89,8 @@ namespace Duckov.Economy
     {
         public static EconomyManager Instance;
         public static long Money;
+        public static long Cash;
+        public static int PayCalls;
         public static bool Reject, ThrowAfter;
         public class SaveData { public long money; }
         public object GenerateSaveData() { return new SaveData { money = Money }; }
@@ -100,6 +103,9 @@ namespace Duckov.Economy
         }
         public static bool Pay(Cost cost, bool a, bool b)
         {
+            PayCalls++;
+            // 官方 Pay(Cost) 的 IsEnough 固定 cashAvailable=true，之后才使用调用者传入的 b。
+            if (unchecked((a ? Money : 0L) + Cash) < cost.Amount) return false;
             if (Money < cost.Amount) return false;
             return Add(-cost.Amount);
         }

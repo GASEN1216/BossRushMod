@@ -27,6 +27,7 @@ class Program
         LevelManager.Instance = new LevelManager { IsBaseLevel = true };
         GameClock.Instance = new GameClock { clockTimeScale = 60 };
         EconomyManager.Instance = new EconomyManager(); EconomyManager.Money = 100000;
+        EconomyManager.Cash = 0; EconomyManager.PayCalls = 0;
         EconomyManager.Reject = EconomyManager.ThrowAfter = false;
         ItemUtilities.ThrowBefore = ItemUtilities.ThrowAfter = false;
         ItemUtilities.Deliveries = 0; ItemUtilities.FailAfter = -1; ItemUtilities.OnDelivery = null;
@@ -96,12 +97,12 @@ class Program
         DailyReportService.Tick(0.001f);
         SavesSystem.FailAt = SavesSystem.Attempts + 1;
         DailyReportService.DebugAdvanceGameSeconds(DailyReportTuning.GameSecondsPerDay);
-        Check(SavesSystem.IsSaving && DailyReportPersistence.Current.DayIndex == 8
+        Check(!SavesSystem.IsSaving && SavesSystem.Attempts == SavesSystem.FailAt && DailyReportPersistence.Current.DayIndex == 8
             && DailyReportService.CarrySeconds < 1, "IO failure consumes the accepted day exactly once");
         UnityEngine.Time.realtimeSinceStartup = 60; DailyReportService.Tick(0.016f);
         Check(DailyReportPersistence.Current.DayIndex == 8 && DailyReportPersistence.Current.PeriodSignedCount == 7
             && DailyReportService.RolloverCount == 1, "retry interval does not invent day nine or reset streak");
-        SavesSystem.IsSaving = false; SavesSystem.FailAt = 0; UnityEngine.Time.frameCount++;
+        SavesSystem.FailAt = 0; UnityEngine.Time.frameCount++;
         SavesSystem.Collect(); DailyReportSaveCoordinator.Tick();
         var saved = DailyReportCodec.Decode((string)SavesSystem.Disk[DailyReportTuning.StorageKey]);
         Check(saved.DayIndex == 8 && Math.Abs(saved.CarrySeconds - DailyReportService.CarrySeconds) < 0.00001,
@@ -176,7 +177,8 @@ class Program
         for (int failureStep = 1; failureStep <= 3; failureStep++)
         {
             Reset(); Reserve(Add()); SavesSystem.FailAt = SavesSystem.Attempts + failureStep; Settle(true);
-            Check(SavesSystem.IsSaving, "injected physical failure at item settlement stage " + failureStep);
+            Check(!SavesSystem.IsSaving && SavesSystem.Attempts >= SavesSystem.FailAt && SavesSystem.Writes == SavesSystem.FailAt - 1,
+                "injected physical failure releases only its own saving latch at item settlement stage " + failureStep);
             Restart(); Settle(true); Tick();
             Check(Bag.Count == 2 && ModeHCashBetService.Current.status == ModeHCashBetService.StatusSettled
                 && ModeHCashBetService.Current.tierBets[5] == 1
@@ -217,7 +219,9 @@ class Program
         Check(selected != null && Bag.Count == 1 && ModeHCashBetService.Current.itemSettlement == 0,
             "save-busy loss never removes stake before transaction can start");
         SavesSystem.IsSaving = false; SavesSystem.FailAt = SavesSystem.Attempts + 2; Settle(false);
-        Check(selected == null && SavesSystem.IsSaving, "loss asset-save failure reached");
+        Check(selected == null && !SavesSystem.IsSaving && SavesSystem.Attempts >= SavesSystem.FailAt
+            && SavesSystem.Writes == SavesSystem.FailAt - 1,
+            "loss asset-save failure reached and releases its own saving latch");
         Restart(); Settle(false); Tick();
         Check(Bag.Count == 0 && EconomyManager.Money == 100000 && ModeHCashBetService.Current.tierBets[5] == 1,
             "loss crash replays matching disk inventory without charging missing value twice");
@@ -719,6 +723,29 @@ class Program
         }
     }
 
+    static void OfficialCashPrecheckOverflow()
+    {
+        Reset(); SeedCashStats(long.MaxValue, long.MaxValue);
+        EconomyManager.Money = long.MaxValue; EconomyManager.Cash = 1;
+        string reason; long payout;
+        Check(!EconomyManager.Pay(new Cost(1000), true, false) && EconomyManager.Money == long.MaxValue,
+            "official cost precheck overflows wallet plus cash even with cash payment disabled");
+        int calls = EconomyManager.PayCalls;
+        Check(ModeHCashBetService.TryReserve("cash-overflow", 1, 5, long.MaxValue, out reason)
+            && EconomyManager.Money == 0 && EconomyManager.Cash == 1 && EconomyManager.PayCalls == calls,
+            "whole-wallet stake bypasses overflowing official precheck without consuming cash items");
+        Check(ModeHCashBetService.TrySettle("cash-overflow", 1, true, 0, 0, "", out payout)
+            && EconomyManager.Money == payout && EconomyManager.Cash == 1,
+            "overflow-boundary stake settles its frozen return once");
+        Check(!ModeHCashBetService.TrySettle("cash-overflow", 1, true, 0, 0, "", out payout),
+            "overflow-boundary payment cannot settle twice");
+
+        Reset(); EconomyManager.Cash = 100;
+        Check(ModeHCashBetService.TryReserve("normal-cash", 1, 5, 1000, out reason)
+            && EconomyManager.Money == 99000 && EconomyManager.Cash == 100 && EconomyManager.PayCalls == 1,
+            "ordinary bank debit retains official payment notifications and leaves cash items alone");
+    }
+
     static void Schema()
     {
         Reset();
@@ -738,7 +765,7 @@ class Program
     {
         try
         {
-            DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); NestedStakeOwnership(); WarehouseNotifications(); CashRestoreReadiness(); CashBetSurvivesSpectatorExit(); StartedBetForfeit(); AbandonBetResolution(); BetSideAndSeasonNet(); CustomCashAmount(); LargeCashBets(); SmallBetsAndFrozenRecovery(); Schema();
+            DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); NestedStakeOwnership(); WarehouseNotifications(); CashRestoreReadiness(); CashBetSurvivesSpectatorExit(); StartedBetForfeit(); AbandonBetResolution(); BetSideAndSeasonNet(); CustomCashAmount(); LargeCashBets(); SmallBetsAndFrozenRecovery(); OfficialCashPrecheckOverflow(); Schema();
             Console.WriteLine("SaveFailureRecovery: PASS " + checks + " assertions (real services, stores and coordinators; in-memory host)");
             return 0;
         }

@@ -18,21 +18,54 @@
 //   - 强制路径（宿主销毁、切槽最后机会）必须传 force:true 绕过，否则会丢数据。
 //   - no-throw：判不出帧号就一律放行，宁可多写一次也不阻塞落盘。
 //
-// 这不是第二套落盘机制：它只回答「这一帧轮不轮得到你」，不碰 pending、不碰 store。
+// 同步失败保护只释放本次官方写盘留下的 saving 闩，原异常交回既有协调器；
+// 不碰 pending、不碰 store，也不接管官方自行发起的保存。
 // ============================================================================
 
 using System;
+using System.Reflection;
+using Saves;
 using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>跨子系统的每帧物理落盘闸。静态、无状态依赖、no-throw。</summary>
+    /// <summary>跨子系统的每帧落盘闸与本次同步失败保护；节流判定 no-throw，写盘异常原样传播。</summary>
     internal static class BossRushSaveFileThrottle
     {
         private static readonly object _lock = new object();
 
         /// <summary>上一次放行物理落盘的帧号。-1 表示本会话尚未落过盘。</summary>
         private static int _lastSaveFrame = -1;
+
+        /// <summary>
+        /// 仅保护由调用方同步持有的这一次官方写盘。官方 SaveFile 在置 saving=true 后
+        /// 没有 finally；物理写异常会把之后所有存档永久挡在 IsSaving 闸外。
+        /// 保留原异常与待办，只复位本调用留下的闩，不接管已在进行的官方保存。
+        /// </summary>
+        internal static void RunSaveFile(Action saveFile)
+        {
+            if (saveFile == null) throw new ArgumentNullException("saveFile");
+            if (SavesSystem.IsSaving) throw new InvalidOperationException("save_file_already_running");
+            try
+            {
+                saveFile();
+            }
+            catch
+            {
+                try
+                {
+                    // 仅异常路径反射，不增加正常写盘或每帧查询成本。
+                    FieldInfo savingField = typeof(SavesSystem).GetField("saving", BindingFlags.Static | BindingFlags.NonPublic);
+                    if (savingField != null && savingField.FieldType == typeof(bool) && SavesSystem.IsSaving)
+                        savingField.SetValue(null, false);
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[SaveFile] [WARNING] 恢复本次失败保存的闩失败: " + e.Message);
+                }
+                throw;
+            }
+        }
 
         /// <summary>
         /// 申请在本帧做一次物理落盘。

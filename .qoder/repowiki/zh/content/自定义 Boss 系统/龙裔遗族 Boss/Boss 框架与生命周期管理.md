@@ -318,3 +318,8 @@ D --> R["掉落追踪<br/>RegisterBossRandomLootTracking"]
 
 章节来源
 - [DragonDescendantConfig.cs:15-232](file://Integration/DragonDescendant/DragonDescendantConfig.cs#L15-L232)
+
+
+## 2026-10-07 第三方预设改名后的副本释放
+
+Legacy 生成的运行时 clone 实例名统一为既有清理约定 `DragonDescendant_Preset`，与托管 G/H 生成一致。第三方改写 nameKey 后，`BossCleanupHelpers.DestroyRuntimePreset` 仍可按实例名识别并释放自己的副本；图鉴身份继续由现有根能力组件确认。回归从生产创建语句提取名字，执行真实清理，覆盖改名、重复清理和不误删官方共享 preset；恢复旧实例名会转红。证据为 L1/L2，未作游戏内采样。

@@ -712,6 +712,11 @@ Breaking/Operational:
 
 ## 7.1 官方游戏行为：静默失败类陷阱
 
+**同步写盘失败与账户预检（2026-10-07，现装 DLL / IL 核对）**
+
+- `SavesSystem.SaveFile` 先置私有静态 `bool saving=true`，再备份并调用 `ES3.StoreCachedFile`，末尾才置 false，方法没有异常处理区。物理写失败会把后续调用永久挡在 `IsSaving`。共享内容引擎和 Mode H 协调器通过 `BossRushSaveFileThrottle.RunSaveFile` 包装各自的同步调用：已有保存时拒绝调用；只在自己同步调用抛异常且字段仍为 true 时反射复位，保留原异常及 pending 交既有重试。字段缺失或类型变化保持原异常并记录 DevLog。此保护不覆盖官方自行发起、Mode G / 好感旧直调路径，不保证持续 IO 故障或进程终止时的未落盘事实；没有新增轮询或写盘机制。
+- `EconomyManager.Pay(Cost, accountAvailable, cashAvailable)` 的前置 `IsEnough` 固定传 `cashAvailable=true`，把账户与现金物品数以 unchecked long 相加。即使实际禁用现金付款，接近 long 上限仍可能溢出并误拒。Mode H 先验证本金和下界，仅此和将溢出时用已有 `EconomyManager.Add(delta)` 做账户变动；普通金额保留 Pay 通知，现金物品不消耗。现装契约分别由 `JeffQuestFlow` 与 `IntegrationThirdReviewFixes` 只读元数据检查。
+
 - 非激活克隆物品不会执行 Awake；官方 ItemAssetsCollection 的同步/异步 Instantiate 不保证 Initialize。动态注册补丁在同步、异步本地与 fallback 返回前幂等补初始化，确保 AgentUtilities.Master 指向实际实例，否则使用与丢弃都会失败。
 
 下面每条都能在反编译源（`鸭科夫源码/`）里核实，而编译和 guard 都查不出来。共同点是**不报错**，表现只是「功能不工作」。

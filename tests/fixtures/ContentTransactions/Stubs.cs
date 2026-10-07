@@ -44,7 +44,9 @@ namespace Saves
 {
     static partial class SavesSystem
     {
-        public static bool IsSaving, StickSavingOnFailure;
+        private static bool saving;
+        public static bool IsSaving { get { return saving; } set { saving = value; } }
+        public static bool StickSavingOnFailure;
         public static int CurrentSlot = 0, Writes, FailPhysical;
         public static string FailKey, FailReadAfterSaveKey;
         static string pendingReadFailure;

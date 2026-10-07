@@ -3,6 +3,9 @@ using BossRush;
 using ItemStatsSystem;
 using ItemStatsSystem.Data;
 
+// 本工程专用日志边界；Stubs.cs 还由 ModeHReviewFixes 共享，该工程已有自己的宿主。
+namespace BossRush { public static class ModBehaviour { public static void DevLog(string message) { } } }
+
 class Program
 {
     static int assertions;

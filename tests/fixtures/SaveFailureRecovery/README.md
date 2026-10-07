@@ -1,9 +1,11 @@
 # SaveFailureRecovery
 
+2026-10-07：钱包替身补官方 `Pay(Cost)` 即使禁用现金仍在 `IsEnough` 相加账户与现金的溢出语义；以全 long 余额、正现金物品和低于 1 的冻结返还倍率执行真实 Commit，验证只扣本金、现金不动、一次结算，普通金额仍调用官方付款。移除生产中的溢出分支会实际转红。
+
 针对 CR-2026-09-25-001/002/003 的 L2 执行回归。
 
 - 真实生产逻辑：直接链接日报 Service、Persistence、Coordinator、DTO 与 codec，Mode H 押注账本、押品身份/收走/奖品计划/交付，共享槽位 store、保存协调器、节流器、JSON 解析器。生产 `SettleReservedBet`、仓库桥 `TryDetachAt` / `TryAddAtEmpty` 和数值常量逐字抽取，SHA-256 写到构建目录。
-- 宿主替身：钱包、背包、仓库物品摘要、物品模板、Unity 对象和 ES3 缓存/磁盘。物品树快照复制 Variables，重启必经旧 GameObject/组件销毁并重建新实例。官方 `SaveFile` 抛错后 `IsSaving` 保持 true；可在准备计划、资产确认、现金结清三个写盘点注入失败。仓库 AddAt / RemoveAt 可在实际变更后抛通知异常，验证托管引用及已交付奖励不会丢失。
+- 宿主替身：钱包、背包、仓库物品摘要、物品模板、Unity 对象和 ES3 缓存/磁盘。物品树快照复制 Variables，重启必经旧 GameObject/组件销毁并重建新实例。官方 `SaveFile` 抛错后私有 `saving` 保持 true；生产受控调用释放本次失败的闩，可在准备计划、资产确认、现金结清三个写盘点注入失败。仓库 AddAt / RemoveAt 可在实际变更后抛通知异常，验证托管引用及已交付奖励不会丢失。
 - 覆盖：日报 Store 拒绝与物理写失败的区别、领取页失败反馈；奖品送达前/后异常、满包、部分交付、三个崩溃边界、资产采集失败、槽位切换；同型号/重复身份/旧账本、堆叠数量变化、输局删除与账本同存；扣堆叠与移出容器的通知异常按实际物品状态结账，避免物品和现金双扣；v1 兼容升级与高版本写屏障。
 
 运行：`python tools/run_runtime_regressions.py --filter SaveFailureRecovery`。

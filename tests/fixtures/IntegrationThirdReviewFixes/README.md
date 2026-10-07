@@ -36,3 +36,5 @@
 2026-09-26 丧尸 Boss 链路：新增完整生产 `ZombieModeDamageRuntime`，逐字提取 Boss 护盾、减伤组合、精英防御、共享计时组件与冲刺组件；参数常量从生产 Tuning 抽取。真实 Harmony 驱动原版 Hurt 全文验证致死吸收、过量伤害、盾量单次消费、过期、光环组合、精英刚硬/反制、旧局与非玩家来源边界；本机真实 DLL 验证减伤与元素观察两种注入顺序。冲刺回归验证预警、暂停、恢复、实际落点、死亡与换局取消、掉帧后的单次伤害；运动/碰撞仍是观测替身，不能代替实机物理测试。Unity 替身补充销毁对象等于 null 及连带组件销毁语义。
 
 2026-09-27 合并迁移：伤害调用完整穿过生产 `ZombieModeCombatHostBridge` 到 `ZombieModeRuntimeModule_BossController` 与 `ZombieModeRuntimeModule_PollutionTuning` 的真实成员；模块在每个目标场景建立时显式绑定，场景列表、时钟和武器元数据是边界替身。共享护盾和冲刺组件继续从生产独立类型提取，哈希记录覆盖薄桥、owner、组件及调参源码。删除真实宿主吸收转发后，致死前护盾消费断言必须失败。
+
+2026-10-07 大额押注宿主契约：现装官方 DLL 的只读 IL 检查增加 `EconomyManager.Pay(Cost)` 和 `IsEnough`。前者即使收到 `cashAvailable:false`，首次预检仍硬编码现金可用；后者用未检查溢出的加法合计账户与现金。检查实际调用前的三条入栈指令，以及账户／现金 getter 后的普通 `add`、无 `add.ovf`。IL 留在 `installed-game-economy-il.txt`，未调用经济 API、未访问玩家数据。

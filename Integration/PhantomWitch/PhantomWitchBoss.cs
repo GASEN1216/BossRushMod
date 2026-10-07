@@ -224,7 +224,8 @@ namespace BossRush
                 if (character.characterPreset != null)
                 {
                     CharacterRandomPreset customPreset = UnityEngine.Object.Instantiate(character.characterPreset);
-                    customPreset.name = PhantomWitchConfig.BossNameKey;
+                    // 清理以此实例名兜底；第三方改写 nameKey 后仍能释放自己的副本。
+                    customPreset.name = "PhantomWitch_Preset";
                     customPreset.showName = true;
                     customPreset.showHealthBar = true;
                     customPreset.nameKey = PhantomWitchConfig.BossNameKey;
@@ -689,6 +690,12 @@ namespace BossRush
             PhantomWitchDeathPresentation presentation;
             if (!phantomWitchDeathPresentations.TryGetValue(deadWitch, out presentation))
                 presentation = PhantomWitchDeathPresentation.Standard;
+
+            // 官方先派发实例 OnDeadEvent，再派发 Health.OnDead；下面会清掉运行时 preset。
+            // 趁 owner 的身份仍有效先结算图鉴，后续全局回调由实例去重挡住。
+            CodexKillCollector.OnKnownBossDead(deadWitch != null ? deadWitch.Health : null, damageInfo,
+                presentation == PhantomWitchDeathPresentation.CampaignFinal
+                    ? "BossRush_Campaign_FinalBoss_Name" : PhantomWitchConfig.BossNameKey);
             if (presentation == PhantomWitchDeathPresentation.Standard)
                 ShowMessage(L10n.T(PhantomWitchConfig.DefeatedMessageCN, PhantomWitchConfig.DefeatedMessageEN));
 

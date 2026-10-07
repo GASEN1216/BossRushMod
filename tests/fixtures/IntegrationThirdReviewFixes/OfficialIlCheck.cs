@@ -82,6 +82,25 @@ internal static class OfficialIlCheck
             throw new Exception("Zombie defense must coexist in either transpiler order: " + otherFailure);
         Console.WriteLine("PASS: installed official Health.Hurt zombie defense before health loss, both transpiler orders");
         File.WriteAllLines("installed-game-hurt-observed-il.txt", transformed.Select((c, i) => i + ": " + c));
+        // 大额账户押注的宿主边界：Pay(Cost) 无视 cashAvailable，把现金加入首次预检。
+        MethodInfo payCost = typeof(Duckov.Economy.EconomyManager).GetMethod("Pay",
+            new[] { typeof(Duckov.Economy.Cost), typeof(bool), typeof(bool) });
+        MethodInfo isEnough = typeof(Duckov.Economy.EconomyManager).GetMethod("IsEnough",
+            new[] { typeof(Duckov.Economy.Cost), typeof(bool), typeof(bool) });
+        var payIl = PatchProcessor.GetOriginalInstructions(payCost, (ILGenerator)null);
+        var enoughIl = PatchProcessor.GetOriginalInstructions(isEnough, (ILGenerator)null);
+        int enoughCall = payIl.FindIndex(c => Equals(c.operand, isEnough));
+        if (enoughCall < 3 || payIl[enoughCall - 1].opcode != OpCodes.Ldc_I4_1
+            || payIl[enoughCall - 2].opcode != OpCodes.Ldarg_1 || payIl[enoughCall - 3].opcode != OpCodes.Ldarg_0)
+            throw new Exception("Installed Pay(Cost) precheck no longer passes cashAvailable=true");
+        int firstAdd = enoughIl.FindIndex(c => c.opcode == OpCodes.Add);
+        if (firstAdd < 0 || enoughIl.Any(c => c.opcode == OpCodes.Add_Ovf || c.opcode == OpCodes.Add_Ovf_Un)
+            || !enoughIl.Take(firstAdd).Any(c => c.operand is MethodInfo && ((MethodInfo)c.operand).Name == "get_Cash")
+            || !enoughIl.Take(firstAdd).Any(c => c.operand is MethodInfo && ((MethodInfo)c.operand).Name == "get_Money"))
+            throw new Exception("Installed IsEnough account+cash overflow contract changed");
+        File.WriteAllLines("installed-game-economy-il.txt", payIl.Select((c, i) => "Pay " + i + ": " + c)
+            .Concat(enoughIl.Select((c, i) => "IsEnough " + i + ": " + c)));
+        Console.WriteLine("PASS: installed Pay(Cost) hardcodes cash=true; IsEnough adds Money+Cash unchecked");
         Console.WriteLine("PASS: installed " + typeof(Health).Assembly.GetName().Name
             + " Health.Hurt original IL matched (factor=" + factor + ", sum=" + sum
             + ") and production transpiler inserted exactly one observer; metadata/IL only, no game objects instantiated.");

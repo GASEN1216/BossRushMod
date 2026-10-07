@@ -80,6 +80,20 @@ namespace BossRush
             // 1) 开关早返：两次 bool + 一次 no-throw getter，关闭时几乎零成本
             if (!IsActive()) return;
 
+            CollectBossDeath(target, info, null);
+        }
+
+        /// <summary>已有 Boss owner 在清理预设前提供稳定身份；仍走全部归属、模式与实例去重门。</summary>
+        internal static void OnKnownBossDead(Health target, DamageInfo info, string bossKey)
+        {
+            if (!IsActive()) return;
+
+            CollectBossDeath(target, info, bossKey);
+        }
+
+        private static void CollectBossDeath(Health target, DamageInfo info, string knownBossKey)
+        {
+
             try
             {
                 // 2) 空目标
@@ -124,7 +138,7 @@ namespace BossRush
 
                 // 8) 身份归属（内含 Boss 判定）。非 Boss 一律返回 null，
                 //    因此杂兵不会污染去重集合。
-                string key = ResolveBossKey(victim);
+                string key = knownBossKey ?? ResolveBossKey(victim);
                 if (string.IsNullOrEmpty(key)) return;
 
                 // 9) 实例去重：同一个角色实例只计一次

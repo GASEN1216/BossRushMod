@@ -80,6 +80,19 @@ internal static class OfficialAssemblyContract
             var physicalSave=References(pe,r,"SavesSystem","SaveFile");
             Ordered(physicalSave,"SavesSystem.SetAsOldGame","ES3.StoreCachedFile");
             Require(!physicalSave.Contains("SavesSystem.CollectSaveData"),"SaveFile does not collect pending Mod state automatically");
+            var saveMethod=r.GetMethodDefinition(Type(r,"SavesSystem").GetMethods().Single(h=>r.GetString(r.GetMethodDefinition(h).Name)=="SaveFile"));
+            var saveBody=pe.GetMethodBody(saveMethod.RelativeVirtualAddress);
+            Require(saveBody.ExceptionRegions.Length==0,"official SaveFile has no exception handler to release saving after an IO failure");
+            var savingField=Type(r,"SavesSystem").GetFields().Select(h=>r.GetFieldDefinition(h)).Single(f=>r.GetString(f.Name)=="saving");
+            Require((savingField.Attributes & FieldAttributes.Static)!=0 && (savingField.Attributes & FieldAttributes.FieldAccessMask)==FieldAttributes.Private,
+                "owned save wrapper reflects the current official private static saving field");
+            var saveInstructions=Instructions(pe,r,"SavesSystem","SaveFile");
+            int storeAt=saveInstructions.FindIndex(i=>i.Reference=="ES3.StoreCachedFile");
+            var latchWrites=saveInstructions.Select((instruction,index)=>new { instruction,index }).Where(x=>x.instruction.Op==OpCodes.Stsfld && x.instruction.Reference=="saving").ToArray();
+            Require(latchWrites.Length==2 && latchWrites[0].index<storeAt && latchWrites[1].index>storeAt
+                && saveInstructions[latchWrites[0].index-1].Op==OpCodes.Ldc_I4_1
+                && saveInstructions[latchWrites[1].index-1].Op==OpCodes.Ldc_I4_0,
+                "official save owns false to true to StoreCachedFile to false latch sequence");
             var harvest=References(pe,r,"Crop","Harvest");Ordered(harvest,"Cost.Return","UniTaskExtensions.Forget","Crop.DestroyCrop");Require(harvest.Count(s=>s=="Cost.Return")==1,"one harvest delivery");
             string returnState=r.GetString(r.GetTypeDefinition(Type(r,"Cost").GetNestedTypes().Single(h=>r.GetString(r.GetTypeDefinition(h).Name).StartsWith("<Return>d__",StringComparison.Ordinal))).Name);
             var delivery=References(pe,r,returnState,"MoveNext");

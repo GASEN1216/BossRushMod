@@ -304,7 +304,7 @@ namespace BossRush
                     return false;
                 }
 
-                SavesSystem.SaveFile(false);
+                BossRushSaveFileThrottle.RunSaveFile(() => { SavesSystem.SaveFile(false); });
                 _journalAssetPending = false;
                 _saveFileRequired = false;
 

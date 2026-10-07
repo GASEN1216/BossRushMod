@@ -826,7 +826,13 @@ namespace BossRush
                     }
                     try
                     {
-                        if (delta < 0) EconomyManager.Pay(new Cost(-delta), true, false);
+                        if (delta < 0)
+                        {
+                            // 官方 Pay(Cost) 即使 cashAvailable=false，前置 IsEnough 仍相加钱包与现金物品。
+                            // 该和超出 long 时会误拒账户扣款；仅此边界改走已复核下界的账户变动。
+                            if (before > long.MaxValue - Math.Max(0L, EconomyManager.Cash)) EconomyManager.Add(delta);
+                            else EconomyManager.Pay(new Cost(-delta), true, false);
+                        }
                         else if (delta > 0) EconomyManager.Add(delta);
                     }
                     catch (Exception e)

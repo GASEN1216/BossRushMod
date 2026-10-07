@@ -139,7 +139,7 @@ namespace BossRush
                 {
                     // 创建预设副本
                     CharacterRandomPreset customPreset = UnityEngine.Object.Instantiate(character.characterPreset);
-                    customPreset.name = DragonDescendantConfig.BOSS_NAME_KEY;
+                    customPreset.name = "DragonDescendant_Preset";
                     customPreset.showName = true;
                     customPreset.showHealthBar = true;
                     customPreset.nameKey = DragonDescendantConfig.BOSS_NAME_KEY;

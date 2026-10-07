@@ -1,8 +1,9 @@
 using System;
 using BossRush;
 
-internal static class Program
+internal static partial class Program
 {
+    static partial void CheckNavigation();
     private static int checks;
     private static void Check(bool ok, string id)
     {
@@ -151,6 +152,7 @@ internal static class Program
     {
         try
         {
+            CheckNavigation();
             Capacity(); LateRetryAndDuplicate(); SinglePending(); PreserveLiveActor();
             FinalFailureAndPendingDefeat(); CloseAndInvalidInputs(); SuspendedDefeat();
             Console.WriteLine("SkyIslandPatrols: PASS (7 behavior cases, " + checks + " assertions; real production schedule)");

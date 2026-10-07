@@ -70,7 +70,24 @@ def main():
                        + '</ItemGroup></Project>', encoding="utf-8")
     (OUT / "production-sha256.json").write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                                                            for p in production + [host]}, indent=2), encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(project), "--configuration", "Release"], cwd=ROOT)
+    result = subprocess.call(["dotnet", "run", "--project", str(project), "--configuration", "Release"], cwd=ROOT)
+    entry = (ROOT / "WavesArena/BossRushEntryFlow.cs").read_text(encoding="utf-8-sig")
+    inventory_bridge = OUT / "InventoryEntryBridges.cs"
+    inventory_bridge.write_text("using System; using UnityEngine.SceneManagement; using ItemStatsSystem; namespace BossRush { public partial class ModBehaviour {\n"
+        + "\n".join(member(source, s) for s in ("public bool IsPlayerNaked()", "private int GetBossRushTicketTypeId()"))
+        + "\n" + "\n".join(member(entry, s) for s in ("private enum BossRushEntryMode", "private BossRushEntryMode DetermineBossRushEntryMode(string context)"))
+        + "\n} }", encoding="utf-8")
+    inventory_paths = [ROOT / "Utilities/ModeEntryInventory.cs", ROOT / "Config/ConfigItemIds.cs", inventory_bridge, HERE / "InventoryEntryRegression.cs"]
+    inventory_project = OUT / "InventoryEntry.csproj"
+    inventory_project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
+        '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems>'
+        '</PropertyGroup><ItemGroup>'
+        + ''.join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in inventory_paths)
+        + '</ItemGroup></Project>', encoding="utf-8")
+    (OUT / "inventory-production-sha256.json").write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in [host, ROOT / "WavesArena/BossRushEntryFlow.cs", ROOT / "Utilities/ModeEntryInventory.cs", ROOT / "Config/ConfigItemIds.cs"]}, indent=2), encoding="utf-8")
+    inventory_result = subprocess.call(["dotnet", "run", "--project", str(inventory_project), "--configuration", "Release"], cwd=ROOT)
+    return inventory_result or result
 
 
 if __name__ == "__main__":

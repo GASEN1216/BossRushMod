@@ -51,10 +51,12 @@ namespace BossRush
         private static int _playbackGeneration;
         private static CancellationTokenSource _playbackCancellation;
         public static CancellationToken ObservedToken;
+        public static TaskCompletionSource<bool> IndependentPrologue;
         internal static void ResetStaticCaches() { InvalidatePlayback(); }
         public static Task PlayFinalBossPrologueAsync()
         {
             ObservedToken = PlaybackToken();
+            if (IndependentPrologue != null) return IndependentPrologue.Task;
             return Task.Delay(Timeout.Infinite, ObservedToken);
         }
     }
@@ -185,6 +187,24 @@ internal static class FinalBossRegression
             "successor dialogue receives a fresh cancellation token");
         owner.CleanupCampaignFinalBoss(true);
         check(nextPrologue.Wait(2000), "successor cancellation finishes without leaking wait");
+
+        var independent = CampaignDialoguePlayer.IndependentPrologue = new TaskCompletionSource<bool>();
+        Task independentRun = owner.BeginPrologue();
+        independent.SetCanceled();
+        check(independentRun.Wait(2000) && !owner.FinalActive && owner.CanStartCampaignFinalBoss(),
+            "official dialogue cancellation without campaign cleanup must release the final stone for retry");
+        independent = CampaignDialoguePlayer.IndependentPrologue = new TaskCompletionSource<bool>();
+        independentRun = owner.BeginPrologue();
+        owner.CleanupCampaignFinalBoss(true);
+        var independentSuccessor = CampaignDialoguePlayer.IndependentPrologue = new TaskCompletionSource<bool>();
+        Task independentSuccessorRun = owner.BeginPrologue();
+        independent.SetCanceled();
+        check(independentRun.Wait(2000) && owner.FinalActive && !independentSuccessorRun.IsCompleted,
+            "late cancellation from an old official dialogue cannot clean up the successor showdown");
+        independentSuccessor.SetCanceled();
+        check(independentSuccessorRun.Wait(2000) && !owner.FinalActive,
+            "successor independent cancellation also releases its own showdown");
+        CampaignDialoguePlayer.IndependentPrologue = null;
 
         var first = owner.SpawnResult = new TaskCompletionSource<CharacterMainControl>();
         Task firstRun = owner.BeginSpawn();

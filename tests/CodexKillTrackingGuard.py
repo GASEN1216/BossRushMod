@@ -35,7 +35,7 @@ RUNTIME_MODULE = CODEX_DIR / "CodexRuntimeModule.cs"
 CATALOG = CODEX_DIR / "CodexBossCatalog.cs"
 HOOKS = Path("Utilities/PlayerLifecycleRuntimeHooks.cs")
 
-HOT_HANDLERS = ("OnGlobalDead", "OnGlobalHurt")
+HOT_HANDLERS = ("OnGlobalDead", "OnKnownBossDead", "OnGlobalHurt")
 
 # 采集器过滤序里不可删除的身份闸：删掉任何一条都会把不该进图鉴的东西记进去
 REQUIRED_FILTERS = (
@@ -166,6 +166,21 @@ def main():
                 handler + " 的第一条语句必须是开关早返 `if (!IsActive()) return;`"
                 "（AGENTS.md 4.12：未使用状态零成本），当前是: " + first_statement)
 
+    collect_body = extract_method_body(collector, "CollectBossDeath")
+    if collect_body is None:
+        return fail("两条死亡入口必须复用同一个过滤与实例去重实现")
+    for handler, argument in (("OnGlobalDead", "null"), ("OnKnownBossDead", "bossKey")):
+        body = re.sub(r"\s+", " ", extract_method_body(collector, handler)).strip()
+        if body != "if (!IsActive()) return; CollectBossDeath(target, info, " + argument + ");":
+            return fail(handler + " 必须经过开关门并直接进入共同死亡结算")
+    for noisy in ("DevLog", "Debug.Log", "CriticalLog", "Debug.LogWarning", "string.Format", "ToString()"):
+        if noisy in collect_body:
+            return fail("共同死亡结算热路径不得出现 " + noisy)
+    if re.search(r'\+\s*"|"\s*\+', collect_body):
+        return fail("共同死亡结算热路径不得拼接字符串")
+    if "string key = knownBossKey ?? ResolveBossKey(victim);" not in collect_body:
+        return fail("owner 提供的稳定身份必须优先于可清理的 preset")
+
     hurt_body = extract_method_body(collector, "OnGlobalHurt")
     if "target.IsDead" not in hurt_body:
         return fail(
@@ -211,11 +226,29 @@ def main():
         return fail("没有控制器覆盖时必须保留官方 Boss / 女巫 / 冠军之影的原有 key")
 
     # ---- 7) 过滤序的身份闸一条都不能少 ----
-    dead_body = extract_method_body(collector, "OnGlobalDead")
+    dead_body = collect_body
     scope = dead_body + "\n" + resolve_body
     for needle, message in REQUIRED_FILTERS:
         if needle not in scope:
             return fail(message + " -> 缺少 " + needle)
+
+    witch = strip_comments(Path("Integration/PhantomWitch/PhantomWitchBoss.cs").read_text(encoding="utf-8"))
+    if 'customPreset.name = "PhantomWitch_Preset";' not in witch:
+        return fail("女巫副本实例名必须与清理的 PhantomWitch_Preset 兜底约定一致，兼容第三方改写 nameKey")
+    for path, preset_name in (("Integration/DragonKing/DragonKingBoss.cs", "DragonKing_Preset"),
+                              ("Integration/DragonDescendant/DragonDescendantBoss.cs", "DragonDescendant_Preset")):
+        source = strip_comments(Path(path).read_text(encoding="utf-8"))
+        if 'customPreset.name = "' + preset_name + '";' not in source:
+            return fail(path + " 的运行时副本必须保持清理实例名 " + preset_name + "，兼容第三方改写 nameKey")
+    witch_death = extract_method_body(witch, "OnPhantomWitchDeath")
+    if witch_death is None or "CodexKillCollector.OnKnownBossDead(" not in witch_death:
+        return fail("女巫死亡 owner 必须在清理 preset 前提供稳定图鉴身份")
+    if witch_death.index("CodexKillCollector.OnKnownBossDead(") > witch_death.index("BossCleanupHelpers.DestroyRuntimePreset("):
+        return fail("女巫图鉴结算必须早于运行时 preset 清理")
+    for identity in ('"BossRush_Campaign_FinalBoss_Name"', "PhantomWitchConfig.BossNameKey",
+                     "presentation == PhantomWitchDeathPresentation.CampaignFinal"):
+        if identity not in witch_death:
+            return fail("女巫死亡身份必须区分普通女巫与冠军之影: " + identity)
 
     # ---- 8) 零新增 Harmony patch / 零新增反射绑定策略 ----
     for path in sorted(CODEX_DIR.glob("*.cs")):

@@ -15,5 +15,6 @@
     <Compile Include="../../../../Common/Data/BossRushJsonValue.cs" />
     <Compile Include="../../../../Utilities/SimpleJsonHelper.cs" />
     <Compile Include="Stubs.cs" /><Compile Include="Program.cs" />
+    <Compile Include="../../../../Build/content-third-review-fixes/Codex/ExtractedWitchDeath.cs" />
   </ItemGroup>
 </Project>

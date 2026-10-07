@@ -57,6 +57,47 @@ def main():
     extract_presentation()
     root = HERE.parents[2]
     sys.path.insert(0, str(root / 'tools'))
+    sys.path.insert(0, str(root / 'tests'))
+    from cs_source_util import clean_source
+    witch_out = root / 'Build/content-third-review-fixes/Codex'
+    witch_out.mkdir(parents=True, exist_ok=True)
+    witch_sources = (
+        ('Integration/PhantomWitch/PhantomWitchBoss.cs', 'PhantomWitchRuntimeModule',
+         'private void OnPhantomWitchDeath('),
+        ('Utilities/BossCleanupHelpers.cs', 'BossCleanupHelpers',
+         'public static void DestroyRuntimePreset('),
+    )
+    generated = 'using System; namespace BossRush {\n'
+    hashes = {}
+    for path, cls, signature in witch_sources:
+        raw = (root / path).read_bytes()
+        hashes[path] = hashlib.sha256(raw).hexdigest()
+        source = clean_source(raw.decode('utf-8-sig'))
+        if cls == 'PhantomWitchRuntimeModule':
+            preset_name = re.search(r'customPreset\.name\s*=\s*([^;]+);', source)
+            assert preset_name, 'production witch runtime preset name'
+            generated += 'partial class PhantomWitchRuntimeModule { internal static readonly string RuntimePresetName = ' + preset_name.group(1) + '; }\n'
+        assert source.count(signature) == 1, signature
+        start = source.index(signature)
+        end = source.index('{', start) + 1
+        depth = 1
+        while depth:
+            depth += (source[end] == '{') - (source[end] == '}')
+            end += 1
+        generated += 'partial class ' + cls + ' {\n' + source[start:end] + '\n}\n'
+    for path, cls in (
+        ('Integration/DragonKing/DragonKingBoss.cs', 'DragonKingRuntimeModule'),
+        ('Integration/DragonDescendant/DragonDescendantBoss.cs', 'DragonDescendantRuntimeModule'),
+    ):
+        raw = (root / path).read_bytes()
+        hashes[path] = hashlib.sha256(raw).hexdigest()
+        source = clean_source(raw.decode('utf-8-sig'))
+        preset_name = re.search(r'customPreset\.name\s*=\s*([^;]+);', source)
+        assert preset_name, path + ' runtime preset name'
+        generated += 'partial class ' + cls + ' { internal static readonly string RuntimePresetName = ' + preset_name.group(1) + '; }\n'
+    generated += '}\n'
+    (witch_out / 'ExtractedWitchDeath.cs').write_text(generated, encoding='utf-8')
+    (witch_out / 'witch-death-source-hashes.json').write_text(json.dumps(hashes, indent=2), encoding='utf-8')
     from run_runtime_regressions import run_project_fixture
     failures = []
     for name in ("DailyReport", "Codex"):
